@@ -1,0 +1,18 @@
+{
+  "name": "skyline-cup-3d",
+  "private": true,
+  "description": "4v4 anime volleyball simulator (browser, no build step).",
+  "scripts": {
+    "test": "node tests/run.js",
+    "test:update": "node tests/run.js --update",
+    "lint": "eslint .",
+    "format": "prettier --write \"js/**/*.{js,mjs}\" \"css/**/*.css\" \"tests/**/*.js\" \"*.html\"",
+    "serve": "python3 -m http.server 8765"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "globals": "^15.0.0",
+    "prettier": "^3.0.0"
+  }
+}
