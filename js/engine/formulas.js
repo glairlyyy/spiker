@@ -6,11 +6,11 @@ const Formula = {
   /** Serve strength (roughly 20–110). Wing spikers serve hardest. */
   serveQuality: (server, team) => effP(server) * 0.8 * { WS: 1, MB: 0.88, S: 0.8 }[server.role] * team.S.serve * rnd(0.8, 1.2) * skillMod(server, 'serve'),
   /** Chance the serve goes into the net or out. Low wit and very hard serves miss more. */
+  serveErrorP: (server, team, sq) => (0.06 + Math.max(0, 1.2 - W(server)) * 0.05 + (sq > 80 ? 0.03 : 0)) * team.S.serveErr,
   /** Which way a missed serve goes: a flat or tired swing clips the net, too much power sails long. */
   serveNetShare: (server, sq, jump) => clamp((jump ? 0.42 : 0.56) - (sq - 60) / 350 + (1 - staOf(server)) * 0.2, 0.15, 0.8),
   /** Which way a missed spike goes: the lower the contact over the net, the likelier it's the net. */
   spikeNetShare: (hS, longB) => clamp(0.4 + (190 - hS) / 100 - (longB ? 0.2 : 0), 0.15, 0.75),
-  serveErrorP: (server, team, sq) => (0.06 + Math.max(0, 1.2 - W(server)) * 0.05 + (sq > 80 ? 0.03 : 0)) * team.S.serveErr,
   /** Serve-receive quality; being far from the ball costs more for slow players. */
   receiveScore: (rc, team, dist0) =>
     (effD(rc) * 0.7 + rc.speed * 0.3) * team.S.dig * skillMod(rc, 'receive') - Math.max(0, dist0 - 0.1) * 45 * (1.3 - rc.speed / 100),
@@ -25,7 +25,7 @@ const Formula = {
     if (setter.skills) succ = Math.min(0.99, succ * skillMod(setter, 'set'));
     return succ;
   },
-  /** Spike power (km/h = 40 + 0.85 × power). */
+  /** Spike power (km/h = 40 + 0.85 × power). fat: long-rally multiplier (rally.js). */
   spikePower: ({ spiker, team, setMul, quick, back, longB, combo, fat }) =>
     effP(spiker) *
     (0.55 + (spiker.jump * team.S.jump) / 180) *

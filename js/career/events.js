@@ -54,7 +54,8 @@ const Events = {
   text(run, ev, s) {
     const T = Run.myTeam(run),
       mate = T.P.find(p => p.id === ev.mate);
-    return s.replace('{mate}', mate ? mate.name : 'A teammate').replace('{cap}', T.cap.name);
+    // replacer functions: a name containing "$&" or "$'" must not be read as a replacement pattern
+    return s.replace('{mate}', () => (mate ? mate.name : 'A teammate')).replace('{cap}', () => (T.cap ? T.cap.name : 'The captain'));
   },
   /** Apply choice 0 (a) or 1 (b); clears the event and returns the log line. */
   choose(run, i) {
@@ -78,6 +79,7 @@ const Events = {
     run.event = null;
     return `${e.title} — ${label}: ${out.filter(Boolean).join(', ') || 'nothing happened'}`;
   },
+  /** Apply a list of event effects ([key, value] or ['chance', p, effects]); returns the change labels. */
   apply(run, ev, fx) {
     const out = [],
       T = Run.myTeam(run);

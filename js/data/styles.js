@@ -1,5 +1,10 @@
 // Team playstyles, team list, flex-role systems and talent archetypes.
 
+/**
+ * A playstyle with defaults: spike / block / dig / serve / jump are multipliers, serveErr multiplies the serve error
+ * chance, quick = base quick-attack chance, set = set-success bonus, dbl = double-block chance, feint = setter-dump
+ * chance, bias = stat bias for generated players.
+ */
 const mkStyle = o =>
   Object.assign(
     { spike: 1, block: 1, dig: 1, serve: 1, serveErr: 1, quick: 0.25, set: 0, dbl: 0.5, jump: 1, feint: 0.05, bias: {} },
@@ -77,6 +82,7 @@ const STYLES = {
     dbl: 0.55
   })
 };
+/** The eight teams: [name, short name, colour, playstyle]. */
 const TEAMDEFS = [
   ['Akatsuki Blaze', 'AKB', '#FF4D4D', 'power'],
   ['Shirogane Wall', 'SHW', '#9FB7CC', 'wall'],
@@ -87,6 +93,7 @@ const TEAMDEFS = [
   ['Kitsune Tricksters', 'KTT', '#FF5DA2', 'mind'],
   ['Hoshizora Unity', 'HSU', '#4EA5FF', 'balanced']
 ];
+/** Per playstyle: weights for the fourth player's (flex) role. */
 const FLEXW = {
   power: { WS: 0.75, MB: 0.15, S: 0.1 },
   wall: { MB: 0.7, WS: 0.2, S: 0.1 },
@@ -97,10 +104,7 @@ const FLEXW = {
   mind: { S: 0.6, WS: 0.25, MB: 0.15 },
   balanced: { WS: 0.4, MB: 0.3, S: 0.3 }
 };
-const SYSN = { WS: 'Wing overload', MB: 'Twin towers', S: 'Dual setter' },
-  SYSD = {
-    WS: 'Three wing spikers: more attack options, more pipe attacks.',
-    MB: 'Two middle blockers: double quicks and a taller front row.',
-    S: 'Two setters: the back-row setter runs the offense, the front-row one can attack.'
-  };
+/** Flex-role system names (the fourth player's role: a third wing, a second middle or a second setter). */
+const SYSN = { WS: 'Wing overload', MB: 'Twin towers', S: 'Dual setter' };
+/** Team archetype by number of stars. */
 const ARCH = { 1: 'One-player army', 2: 'Twin aces', 3: 'Star trio', 4: 'Golden generation' };

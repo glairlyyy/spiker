@@ -70,7 +70,6 @@ function pickSetter(c) {
 function setterDump(c, s) {
   const { m, B, V, atk, ds, dd, atkT, defT, pas, qual } = c,
     { setter, DMB, setZ } = s;
-  // setter dump
   // higher wit and higher jump make the setter a bigger dump threat
   const lefty = setter.role === 'S' && hasTech(setter, 'lefty');
   if (setter.role === 'S' && qual >= 2 && R() < atkT.S.feint * 0.5 * dumpThreat(setter, W(setter)) * (lefty ? 1.4 : 1)) {
@@ -80,10 +79,10 @@ function setterDump(c, s) {
     const dg = nearest(m, defT.P, lx, lz),
       dd0 = dist(m.pos[dg.id], lx, lz);
     const kill = R() < 0.25 + 0.18 * (W(setter) - 1.3) + (setter.jump - 60) / 250 - (defT.S.dig - 1) + dd0 * 0.3 + (lefty ? 0.1 : 0);
-    {
-      const dec = pick(atkT.P.filter(p => p !== pas && p !== setter)),
-        dz = clamp(HOME[dec.slot][1], 0.1, 0.9),
-        fk = [];
+    // the fake: a decoy hitter approaches, the middle blocker jumps with them
+    const dec = pick(atkT.P.filter(p => p !== pas && p !== setter)),
+      dz = clamp(HOME[dec.slot][1], 0.1, 0.9),
+      fk = [];
       mv(m, dec, sx(atk, 420), dz, fk, V);
       mv(m, DMB, sx(ds, 484), dz, fk, V);
       V &&
@@ -98,11 +97,10 @@ function setterDump(c, s) {
             { k: 'jump', p: dec.id, mode: 'hop', peak: jumpPx(dec), t0: 0.05 },
             { k: 'pose', p: DMB.id, pose: 'block' },
             { k: 'jump', p: DMB.id, mode: 'hop', peak: jumpPx(DMB) * 0.85, t0: 0.25 },
-            { k: 'ghost', to: { x: sx(atk, 432), z: dz, h: 118 + jumpPx(dec) } },
+            { k: 'ghost', to: { x: sx(atk, 432), z: dz, h: REACH_H + jumpPx(dec) } },
             { k: 'label', t: 'Fake set!', dy: 60, set: 1, big: 1 }
           ]
         });
-    }
     V &&
       setter.star &&
       B({ dur: 1150, cut: 1, acts: [{ k: 'cut', p: setter.id, title: setter.move, sub: 'Fake set, second-touch dump' }] });

@@ -3,12 +3,13 @@
 // so simulations and seeded runs are unaffected.
 
 const persOf = p => PERS[Math.floor(hu(p, 'pers') * PERS.length)];
-const first = p => p.name.split(' ').pop();
+/** A player's given name (the last word of their name), as teammates call them. */
+const firstName = p => p.name.split(' ').pop();
 /** A line for `kind` in this player's voice. vars: { sig, mate, opp } (players or strings). */
 function hypeLine(kind, p, m, vars = {}) {
   const L = LINES[kind][persOf(p)],
     k = (p.num + ((m && m.pts[0] + m.pts[1]) || 0) + kind.length) % L.length,
-    v = x => (x && x.name ? first(x) : x || '');
+    v = x => (x && x.name ? firstName(x) : x || '');
   return L[k].replace('{sig}', v(vars.sig)).replace('{mate}', v(vars.mate)).replace('{opp}', v(vars.opp));
 }
 /** One point from winning (either side). */
@@ -16,6 +17,10 @@ const matchPoint = m => {
   const [a, b] = m.pts;
   return Math.max(a, b) >= RULES.pointsToWin - 1 && a !== b;
 };
+/** The side ahead on points, or -1 when level. */
+const leadSide = m => (m.pts[0] === m.pts[1] ? -1 : m.pts[0] > m.pts[1] ? 0 : 1);
+/** Match point for side `s`: one point from winning and ahead. */
+const matchPointFor = (m, s) => matchPoint(m) && leadSide(m) === s;
 /**
  * Should this attack be staged? 1 = always (Normal and Max Hype): element spike, a match point, a star-vs-star face-off,
  * a star blocker in the zone reading the play. 2 = Max only: a long rally, a comeback run. At most one per rally, and a
@@ -25,16 +30,23 @@ function hypeLevel(m, c, spiker, B0, elSrc, bad) {
   if (bad || m.hypeRally) return 0;
   const played = m.pts[0] + m.pts[1],
     since = played - (m.hypeAt == null ? -99 : m.hypeAt),
-    reads = B0 && B0.star && W(B0) >= W(spiker), // the blocker is the sharper one: their scene
-    defMp = matchPoint(m) && m.pts[c.ds] > m.pts[c.atk];
+    reads = B0 && B0.star && W(B0) >= W(spiker); // the blocker is the sharper one: their scene
   let lv = 0,
     def = false;
   if (elSrc) lv = 1;
-  else if (matchPoint(m) && since >= 2) (lv = 1), (def = defMp && !!B0);
-  else if (spiker.star && B0 && B0.star && since >= 8) (lv = 1), (def = reads);
-  else if (B0 && B0.star && m.zone[c.ds] && W(B0) >= 1.3 && since >= 6) (lv = 1), (def = true);
-  else if (c.n >= 6 && since >= 3) (lv = 2), (def = reads);
-  else if (m.streak[c.atk] >= 3 && m.pts[c.atk] <= m.pts[c.ds] + 1 && since >= 3) lv = 2;
+  else if (matchPoint(m) && since >= 2) {
+    lv = 1;
+    def = matchPointFor(m, c.ds) && !!B0;
+  } else if (spiker.star && B0 && B0.star && since >= 8) {
+    lv = 1;
+    def = reads;
+  } else if (B0 && B0.star && m.zone[c.ds] && W(B0) >= 1.3 && since >= 6) {
+    lv = 1;
+    def = true;
+  } else if (c.n >= 6 && since >= 3) {
+    lv = 2;
+    def = reads;
+  } else if (m.streak[c.atk] >= 3 && m.pts[c.atk] <= m.pts[c.ds] + 1 && since >= 3) lv = 2;
   if (lv) {
     m.hypeRally = 1;
     m.hypeAt = played;
@@ -50,7 +62,6 @@ function hypeLevel(m, c, spiker, B0, elSrc, bad) {
 function hypeScene(m, B, lv, { setter, spiker, B0, elSrc, atkT, defT, atk, ds, blockers }) {
   const mp = matchPoint(m),
     el = elSrc ? elSrc.el : null,
-    lead = m.pts[0] === m.pts[1] ? -1 : m.pts[0] > m.pts[1] ? 0 : 1,
     shot = (dur, acts, def) => {
       const b = { dur, scene: lv, acts };
       if (def) m.defBeats.push(b); // the defense's part: dropped if no block is attempted (dropDefScene)
@@ -63,7 +74,7 @@ function hypeScene(m, B, lv, { setter, spiker, B0, elSrc, atkT, defT, atk, ds, b
     { k: 'shot', kind: 'face', p: spiker.id, el },
     { k: 'heart' },
     { k: 'call', p: spiker.id, t: ask, sc: 1 },
-    ...(mp ? [{ k: 'banner', t: lead === atk ? 'MATCH POINT' : 'MUST SCORE', c: atkT.color }] : [])
+    ...(mp ? [{ k: 'banner', t: matchPointFor(m, atk) ? 'MATCH POINT' : 'MUST SCORE', c: atkT.color }] : [])
   ]);
   if (setter !== spiker)
     shot(1350, [
@@ -105,15 +116,15 @@ function readLevel(m, B0, cov, bitten, hype) {
 function hypeRead(m, B, lv, { spiker, B0, defT, ds }) {
   if (!B0) return;
   const mp = matchPoint(m),
-    lead = m.pts[0] === m.pts[1] ? -1 : m.pts[0] > m.pts[1] ? 0 : 1,
+    ours = matchPointFor(m, ds),
     b1 = {
       dur: 1550,
       scene: lv,
       acts: [
       { k: 'shot', kind: 'face', p: B0.id },
       { k: 'heart', v: 1.2 },
-      { k: 'call', p: B0.id, t: hypeLine(mp && lead === ds ? 'stop' : 'read', B0, m, { opp: spiker }), sc: 1 },
-      ...(mp ? [{ k: 'banner', t: lead === ds ? 'MATCH POINT' : 'HOLD ON', c: defT.color }] : [])
+      { k: 'call', p: B0.id, t: hypeLine(ours ? 'stop' : 'read', B0, m, { opp: spiker }), sc: 1 },
+      ...(mp ? [{ k: 'banner', t: ours ? 'MATCH POINT' : 'HOLD ON', c: defT.color }] : [])
       ]
     },
     b2 = { dur: 650, scene: lv, acts: [{ k: 'shot', kind: 'wall', p: B0.id, p2: spiker.id }, { k: 'heart', v: 1.4 }] };
@@ -158,26 +169,26 @@ const callerFor = (m, T, p, x, z) => {
 };
 /** Chatter after a point: the scorer, a teammate, the other side (acts added to the point beat). */
 function hypeChatter(m, w) {
-  const W = m.t[w],
-    L = m.t[1 - w],
+  const WT = m.t[w],
+    LT = m.t[1 - w],
     acts = [],
     say = (p, kind, vars) => p && acts.push({ k: 'call', p: p.id, t: hypeLine(kind, p, m, vars), soft: acts.length ? 1 : 0 });
-  const killer = W.P.find(p => p.id === m.lastK),
-    errBy = L.P.find(p => p.id === m.errBy),
+  const killer = WT.P.find(p => p.id === m.lastK),
+    errBy = LT.P.find(p => p.id === m.errBy),
     hero = m.lastPlay === 'killblock' ? m.hero : killer;
   if (m.lastPlay === 'killblock' && hero) {
     say(hero, 'denied');
     const sp = m.ctx0 && m.ctx0.spiker;
-    if (sp && L.P.includes(sp)) say(sp, 'stuffed');
+    if (sp && LT.P.includes(sp)) say(sp, 'stuffed');
   } else if (errBy) {
     say(errBy, 'oops');
-    const mate = L.P.find(p => p !== errBy && persOf(p) === 'leader') || L.cap;
+    const mate = LT.P.find(p => p !== errBy && persOf(p) === 'leader') || LT.cap;
     if (mate !== errBy) say(mate, 'cheer');
   } else if (hero) {
     say(hero, 'scored');
-    const mate = W.P.find(p => p !== hero && (p === W.s || p.cap));
+    const mate = WT.P.find(p => p !== hero && (p === WT.s || p.cap));
     if (mate && (hero.star || m.big || m.streak[w] >= 2)) say(mate, 'mate', { mate: hero });
-    if (m.big) say(L.P.find(p => p.star) || L.cap, 'stunned');
+    if (m.big) say(LT.P.find(p => p.star) || LT.cap, 'stunned');
   }
   // keep it light on ordinary points
   const played = m.pts[0] + m.pts[1];

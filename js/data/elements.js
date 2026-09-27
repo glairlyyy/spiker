@@ -3,17 +3,6 @@
 // that suit their element; a full gauge (or a captain's buff) makes their next attack an element spike.
 
 const ELS = ['fire', 'earth', 'flash', 'water', 'wind', 'blast', 'shadow', 'star'];
-/** Legacy: team playstyle → element (kept for old saves / flavour only; elements are per player now). */
-const ELEM = {
-  power: 'fire',
-  wall: 'earth',
-  tempo: 'flash',
-  counter: 'water',
-  sky: 'wind',
-  bombers: 'blast',
-  mind: 'shadow',
-  balanced: 'star'
-};
 const ENAME = {
   fire: '🔥 Fire',
   earth: '🪨 Earth',

@@ -1,6 +1,8 @@
 // SVG face portraits for the UI (rosters, cut-ins, toasts) and the mood → face mapping.
 
+/** Mood (−1..1) → face key: fire, happy, calm, worried, panic. */
 const moodK = v => (v >= 0.6 ? 'fire' : v >= 0.2 ? 'happy' : v > -0.2 ? 'calm' : v > -0.6 ? 'worried' : 'panic');
+/** Face portrait of player `p` (look, hair, team colour) in `mood` (−1..1), as an SVG string `size` px square. */
 function faceSVG(p, mood, size) {
   const L = p.look,
     h = p.hair,
@@ -31,7 +33,7 @@ function faceSVG(p, mood, size) {
     `<path d="M7 20 C6 6 33 6 34 18 L30 14 Q22 12 11 24Z"/>`,
     ``,
     `<path d="M8 17 C9 8 31 7 33 15 L36 9 L31 8 L34 4 Q24 1 14 5 Q9 8 8 17Z"/>`
-  ][L.hs];
+  ][L.hs] || '';
   const E = (x, o = {}) => {
     const ry = o.sharp ? 1.9 : 2.6,
       id = `e${p.id}${x}${mk}`;

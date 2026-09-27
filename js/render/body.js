@@ -1,7 +1,10 @@
 // Small shared helpers: colour shading and the setter release timing (used by the 3D set pose).
 
+/** Colour `h` ('#rrggbb' or '#rgb') mixed towards white (a > 0) or black (a < 0) by |a| (0..1). */
 function shade(h, a) {
-  const n = parseInt(h.slice(1), 16);
+  let x = String(h).replace('#', '');
+  if (x.length === 3) x = x.replace(/./g, c => c + c);
+  const n = parseInt(x, 16) || 0;
   let r = n >> 16,
     g = (n >> 8) & 255,
     b = n & 255;
@@ -12,8 +15,6 @@ function shade(h, a) {
   b = Math.round(b + (f - b) * t);
   return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
 }
-/** Ink colour for lineart: a deep shade of the fill (anime cel look, no grey halos). */
-const ink = c => shade(c, -0.5);
 /** Setter release motion by set direction: k = release progress 0..1, lean = body angle, arms = end pose. */
 function setMotion(d) {
   const dirn = d.setDir || 'front',

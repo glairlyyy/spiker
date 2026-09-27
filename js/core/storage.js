@@ -1,6 +1,7 @@
 // Persistent settings/save data. Every localStorage access goes through here (it can throw in private mode).
 
 const store = {
+  /** Raw string value for `key`, or `fallback` when missing or storage is unavailable. */
   get(key, fallback = null) {
     try {
       const v = localStorage.getItem(key);
@@ -9,11 +10,15 @@ const store = {
       return fallback;
     }
   },
+  /** Store `value` as a string; silently does nothing when storage is unavailable. */
   set(key, value) {
     try {
       localStorage.setItem(key, String(value));
-    } catch (e) {}
+    } catch (e) {
+      /* private mode / quota: settings just don't persist */
+    }
   },
+  /** Parsed JSON value for `key`; `fallback` when missing, unreadable or corrupt. */
   getJSON(key, fallback = null) {
     const v = this.get(key);
     if (v === null) return fallback;
@@ -23,13 +28,17 @@ const store = {
       return fallback;
     }
   },
+  /** Store `value` as JSON. */
   setJSON(key, value) {
     this.set(key, JSON.stringify(value));
   },
+  /** Delete `key`. */
   remove(key) {
     try {
       localStorage.removeItem(key);
-    } catch (e) {}
+    } catch (e) {
+      /* storage blocked: nothing to remove */
+    }
   }
 };
 /** Storage keys in one place so save formats are easy to find and version. */

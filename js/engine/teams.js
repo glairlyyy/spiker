@@ -1,5 +1,6 @@
 // Team generation and simulation-based balancing.
 
+/** The eight tournament teams: 1–4 stars each (talent budget split over the star slots), elements assigned. */
 function mkTeams() {
   const used = new Set();
   _pid = 0;
@@ -92,8 +93,14 @@ function finalizeTeam(t) {
     nums.add(n);
     p.num = n;
   });
-  t.ovr = Math.round(t.P.reduce((a, p) => a + ovr(p), 0) / 4);
+  t.ovr = teamOvr(t);
 }
+/** Team rating: the players' average overall. */
+const teamOvr = t => Math.round(t.P.reduce((a, p) => a + ovr(p), 0) / t.P.length);
+/**
+ * Even out the eight tournament teams: play everyone against everyone (n games per pair) and nudge the stats of
+ * teams outside a 36–64% win rate, up to `rounds` times.
+ */
 function simBalance(T, rounds = 6, n = 16) {
   for (let r = 0; r < rounds; r++) {
     const wr = T.map(() => 0);
@@ -115,11 +122,12 @@ function simBalance(T, rounds = 6, n = 16) {
           for (const k of ['power', 'def', 'speed', 'jump'])
             p[k] = clamp(p[k] + d * (tg.length ? amt : Math.ceil(amt / 2)), 30, tg.length ? 88 : 99);
       }
-      if (d < 0) {
-        const sp = pick(t.P.filter(p => p.star));
+      const stars = t.P.filter(p => p.star);
+      if (d < 0 && stars.length) {
+        const sp = pick(stars);
         sp.def = clamp(sp.def - amt, 40, 99);
       }
     });
   }
-  T.forEach(t => (t.ovr = Math.round(t.P.reduce((a, p) => a + ovr(p), 0) / 4)));
+  T.forEach(t => (t.ovr = teamOvr(t)));
 }

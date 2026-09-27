@@ -29,6 +29,7 @@ const ElTrial = {
     if (run.event || you.elOn || !you.elSeen || !you.star || !run.elProof || run.week < (run.elNext || 0)) return;
     run.event = { id: 'element', pre: true };
   },
+  /** Pass chance for the Element Trial (mood, stamina and wit). */
   chance: run => clamp(0.3 + 0.08 * (run.mood - 2) + run.sta / 400 + (Run.you(run).wit - 1) * 0.25, 0.12, 0.8),
   /** Take the trial. Pass → the element unlocks for good. */
   take(run) {
@@ -41,6 +42,7 @@ const ElTrial = {
     const out = [Run.bump(run, 'sta', -20), Run.bump(run, 'mood', -1)];
     return `Element Trial failed: ${out.filter(Boolean).join(', ')}. It returns in ${ElTrial.retry} weeks.`;
   },
+  /** Put the trial off until next week. */
   wait(run) {
     run.elNext = run.week + 1;
     return 'Element Trial: not yet — it returns next week.';

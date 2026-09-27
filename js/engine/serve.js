@@ -1,5 +1,9 @@
 // Serve and serve receive: starts every rally, then hands over to rally() (engine/rally.js).
 
+/**
+ * Play one rally of match m: the reset and serve, serve receive (ace, error, pop-up), then rally() until the point
+ * is decided, and end() scores it. Returns { w, beats } (beats = null unless the match records animation).
+ */
 function playRally(m) {
   CM = m;
   m.big = 0;
@@ -9,6 +13,7 @@ function playRally(m) {
   m.ctx = null; // attack context for the element gauge
   m.errBy = null; // who made the error that ended the rally (chatter)
   m.hypeRally = 0; // at most one staged scene per rally
+  m.defBeats = [];
   const V = m.rec,
     beats = V ? [] : null,
     B = b => beats.push(b);
@@ -226,7 +231,7 @@ function playRally(m) {
     // close enough to touch it: the pass shanks off the arms instead of the ball landing clean
     // (visual only — decided from values already rolled, so it never changes the random sequence)
     const shank = V && d0 * (1 - 0.7 * f) < 0.1 && (sq * 13.7) % 1 < 0.5,
-      sp = mustDive(rc, p0, tx, tz, sdur) ? 'dive' : 'bump';
+      rcPose = mustDive(rc, p0, tx, tz, sdur) ? 'dive' : 'bump';
     let bx = tx,
       bz = tz;
     if (shank) {
@@ -235,8 +240,8 @@ function playRally(m) {
         acts: [
           ...hitFx,
           ...sw,
-          { k: 'pose', p: rc.id, pose: sp },
-          { k: 'ball', to: { p: rc.id, c: sp }, h: sArc, wob, trail: sq, op: server.op },
+          { k: 'pose', p: rc.id, pose: rcPose },
+          { k: 'ball', to: { p: rc.id, c: rcPose }, h: sArc, wob, trail: sq, op: server.op },
           { k: 'log', t: `${rc.name} gets an arm on it…` }
         ]
       });

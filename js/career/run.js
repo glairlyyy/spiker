@@ -207,6 +207,7 @@ const Run = {
     }
     throw new Error('Unknown key ' + key);
   },
+  /** Change your bond with a teammate by `v` (0–100). Returns a short label such as "+7 bond with Aoi". */
   bond(run, mateId, v) {
     const you = Run.you(run),
       m = Run.myTeam(run).P.find(p => p.id === mateId);
@@ -242,6 +243,7 @@ const Run = {
     Sponsors.offer(run);
     ElTrial.offer(run);
   },
+  /** Save the run (teams in their compact JSON form). */
   save(run) {
     store.setJSON(KEYS.career, Object.assign({}, run, { teams: run.teams.map(teamToJSON) }));
   },
@@ -256,12 +258,28 @@ const Run = {
         d = up(d);
       }
       const run = Object.assign(d, { teams: d.teams.map(teamFromJSON) });
+      if (!Run.myTeam(run) || !Run.you(run)) return null; // corrupt save: your player is missing
+      Run.repair(run);
       elAll(run.teams); // players from older saves get their element
       return run;
     } catch (e) {
       return null;
     }
   },
+  /** Fill collections and counters a damaged save may lack, so the career screens never meet undefined / NaN. */
+  repair(run) {
+    for (const k of ['log', 'seen', 'warm', 'cups', 'sponsors', 'hist']) if (!Array.isArray(run[k])) run[k] = [];
+    for (const k of ['sp', 'fans', 'trained', 'elNext']) if (!Number.isFinite(run[k])) run[k] = 0;
+    if (!Number.isFinite(run.staMax) || run.staMax <= 0) run.staMax = Legacy.staMax(run.legacy);
+    if (!Number.isFinite(run.sta)) run.sta = run.staMax;
+    if (!Number.isInteger(run.mood) || !MOODS[run.mood]) run.mood = 2;
+    if (!run.mode || typeof run.mode !== 'object') run.mode = { hard: false, short: false };
+    if (!run.plays || typeof run.plays !== 'object') run.plays = { k: 0, blk: 0, ace: 0 };
+    if (!run.uses || typeof run.uses !== 'object') run.uses = {};
+    if (!run.floor || typeof run.floor !== 'object') run.floor = {};
+    if (!run.lb || typeof run.lb !== 'object') run.lb = Object.fromEntries(STATK.map(k => [k, 0]));
+  },
+  /** Delete the saved run. */
   clear() {
     store.remove(KEYS.career);
   }

@@ -5,8 +5,40 @@ let A = null,
   ctx,
   last = 0;
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+/** Playback speeds offered in the controls. */
+const SPEEDS = [1, 2, 4];
+/** Scoreboard block for one side: name and the rotation (filled in by board()). */
+const boardTeam = (t, i) =>
+  `<div class="bt${i ? ' r' : ''}" style="--tc:${t.color}"><span class="bn">${esc(t.name)}</span><span class="rot" id="r${i}"></span></div>`;
+const timeoutButton = (t, i) =>
+  `<button class="btn" id="to${i}" onclick="reqTO(${i})" ${tip(`Call ${t.name}'s one timeout at the next break`)}>Timeout ${esc(t.short)}</button>`;
+/** Coach tactic select for side `i` (captain's call or a fixed tactic). */
+const tacticPicker = (t, i) =>
+  `<label class="tac" style="--tc:${t.color}" ${tip(`Coach tactic for ${t.name} — applies from the next rally`)}><span>${esc(t.short)}</span><select id="tac${i}" onchange="setTactic(${i},this.value)"><option value="cap">Captain's call${leadLv(t.cap) ? ` (Lv${leadLv(t.cap)})` : ''}</option>${Object.entries(TACTICS)
+    .map(([k, v]) => `<option value="${k}">${esc(v.name)}</option>`)
+    .join('')}</select><small class="tacnow" id="tacnow${i}"></small></label>`;
+// Setting button labels (shared by the initial render and the toggles)
+const hypeLabel = () => `Hype: ${HYPE[G.hype].name}`;
+const cutLabel = () => (G.cutMini ? 'Cut-ins: Mini' : 'Cut-ins: Full');
+const zoomLabel = () => (G.camFixed || RM ? 'Zooms: Off' : 'Zooms: On'); // reduced motion always turns zooms off
+const gfxLabel = () => `Graphics: ${GFX[G.gfx].name}`;
+const cam3Text = () => `Camera: ${R3D && R3D.camMode() === 'broadcast' ? 'Broadcast' : 'Courtside'}`;
+/** Set a button's label if it is on screen. */
+function setLabel(sel, text) {
+  const b = $(sel);
+  if (b) b.textContent = text;
+}
+/** The ⚙ pop-over: hype, cut-ins, zooms, graphics, 3D camera and volume. */
+function settingsMenu() {
+  return `<button class="btn" id="hypebtn" onclick="cycleHype()" ${tip('Staged shonen moments before big attacks. Normal: element spikes, match points, star face-offs. Max: also long rallies and comebacks. Tap the court to skip one.')}>${hypeLabel()}</button>
+        <button class="btn" id="cutbtn" onclick="toggleCutins()" ${tip('Full cut-ins pause play; mini shows them as a corner notification')}>${cutLabel()}</button>
+        <button class="btn" id="cambtn" onclick="toggleCamera()" ${tip('On: gentle zoom on big plays at the net. Off: no zooms or pushes (motion-friendly).')}>${zoomLabel()}</button>
+        <button class="btn" id="gfxbtn" onclick="cycleGfx()" ${tip('High: full resolution always. Auto: sharp, drops a little only if frames run slow. Fast: lower resolution for weaker devices.')}>${gfxLabel()}</button>
+        <button class="btn" id="cam3btn" onclick="toggleCam3D()" ${tip('Courtside: close and low, following the ball. Broadcast: the whole court from the stands.')}>Camera: Courtside</button>
+        <label class="vol">Volume<input type="range" min="0" max="100" value="${Math.round(SND.vol * 100)}" oninput="setVolume(this.value / 100)" aria-label="Volume"></label>`;
+}
 /**
- * Open the match screen for a fixture: { a, b, round, back, onFinish(m) → message, onLeave() }.
+ * Open the match screen for a fixture: { a, b, round, court?, back, setup(m)?, onFinish(m) → plain-text message, onLeave() }.
  */
 function startMatch(fx) {
   const { a, b } = fx,
@@ -17,37 +49,26 @@ function startMatch(fx) {
   G.view = 'match';
   $('#app').innerHTML = `<section class="match">
     <div class="board">
-      <div class="bt" style="--tc:${a.color}"><span class="bn">${esc(a.name)}</span><span class="rot" id="r0"></span></div>
+      ${boardTeam(a, 0)}
       <div class="bsc"><span id="p0">0</span><span class="colon">:</span><span id="p1">0</span><span class="setn" id="setn">${rulesText()}</span></div>
-      <div class="bt r" style="--tc:${b.color}"><span class="bn">${esc(b.name)}</span><span class="rot" id="r1"></span></div>
+      ${boardTeam(b, 1)}
       <div class="mom" aria-label="Momentum"><span class="zone" id="z0">In the zone</span><div class="mbar" style="--a:${a.color};--b:${b.color}"><i id="momf"></i><em></em></div><span class="zone" id="z1">In the zone</span></div>
     </div>
     <div class="stage" id="stage"><canvas id="cv" aria-label="Match court"></canvas>
       <div class="fsbar" aria-label="Fullscreen controls"><span class="fss"><i style="--tc:${a.color}"></i>${esc(a.short)} <b id="fs0">0</b> : <b id="fs1">0</b> ${esc(b.short)}<i style="--tc:${b.color}"></i></span>
-        <span class="fsb"><button onclick="togglePause()" id="fspause" aria-label="Pause">❚❚</button>${[1, 2, 4].map(s => `<button onclick="setSpeed(${s})" data-s="${s}" class="fsspd">${s}x</button>`).join('')}<button onclick="toggleFullscreen()" aria-label="Exit fullscreen">✕</button></span></div>
+        <span class="fsb"><button onclick="togglePause()" id="fspause" aria-label="Pause">❚❚</button>${SPEEDS.map(s => `<button onclick="setSpeed(${s})" data-s="${s}" class="fsspd">${s}x</button>`).join('')}<button onclick="toggleFullscreen()" aria-label="Exit fullscreen">✕</button></span></div>
       <div class="cut" id="cut"><div class="cut-band"><div class="cut-lines"></div><span class="cut-face"></span><span class="cut-face cut-face2"></span><span class="cut-num"></span><div class="cut-txt"><div class="cut-move"></div><div class="cut-name"></div><div class="cut-sub"></div></div></div></div>
       <div class="hbanner" id="hbanner" aria-live="polite"></div><div class="hsay" id="hsay" aria-live="polite"></div>
       <div class="toasts" id="toasts" aria-live="polite"></div><div class="over" id="over" hidden></div></div>
     <div class="controls">
       <button class="btn" id="pause" onclick="togglePause()">Pause</button>
-      <div class="seg" role="group" aria-label="Speed">${[1, 2, 4].map(s => `<button class="btn ${s === 1 ? 'on' : ''}" data-s="${s}" onclick="setSpeed(${s})">${s}x</button>`).join('')}</div>
+      <div class="seg" role="group" aria-label="Speed">${SPEEDS.map(s => `<button class="btn ${s === 1 ? 'on' : ''}" data-s="${s}" onclick="setSpeed(${s})">${s}x</button>`).join('')}</div>
       <button class="btn" onclick="skipMatch()" ${tip('Skip to the final result')}>Skip ⏭</button>
-      <button class="btn" id="to0" onclick="reqTO(0)" ${tip(`Call ${a.name}'s one timeout at the next break`)}>Timeout ${esc(a.short)}</button><button class="btn" id="to1" onclick="reqTO(1)" ${tip(`Call ${b.name}'s one timeout at the next break`)}>Timeout ${esc(b.short)}</button>
+      ${timeoutButton(a, 0)}${timeoutButton(b, 1)}
       <button class="btn" onclick="toggleFullscreen()" ${tip('Fullscreen court (F)')} aria-label="Fullscreen">⛶</button>
       <button class="btn" id="snd" onclick="toggleSound()" aria-label="Sound">${SND.on ? '🔊' : '🔇'}</button>
-      ${pop(
-        'Tactics ▾',
-        [a, b].map((t, i) => `<label class="tac" style="--tc:${t.color}" ${tip(`Coach tactic for ${t.name} — applies from the next rally`)}><span>${esc(t.short)}</span><select id="tac${i}" onchange="setTactic(${i},this.value)"><option value="cap">Captain's call${leadLv(t.cap) ? ` (Lv${leadLv(t.cap)})` : ''}</option>${Object.entries(TACTICS).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join('')}</select><small class="tacnow" id="tacnow${i}"></small></label>`).join('')
-      )}
-      ${pop(
-        '⚙ ▾',
-        `<button class="btn" id="hypebtn" onclick="cycleHype()" ${tip('Staged shonen moments before big attacks. Normal: element spikes, match points, star face-offs. Max: also long rallies and comebacks. Tap the court to skip one.')}>Hype: ${HYPE[G.hype].name}</button>
-        <button class="btn" id="cutbtn" onclick="toggleCutins()" ${tip('Full cut-ins pause play; mini shows them as a corner notification')}>${G.cutMini ? 'Cut-ins: Mini' : 'Cut-ins: Full'}</button>
-        <button class="btn" id="cambtn" onclick="toggleCamera()" ${tip('On: gentle zoom on big plays at the net. Off: no zooms or pushes (motion-friendly).')}>${G.camFixed || RM ? 'Zooms: Off' : 'Zooms: On'}</button>
-        <button class="btn" id="gfxbtn" onclick="cycleGfx()" ${tip('High: full resolution always. Auto: sharp, drops a little only if frames run slow. Fast: lower resolution for weaker devices.')}>Graphics: ${GFX[G.gfx].name}</button>
-        <button class="btn" id="cam3btn" onclick="toggleCam3D()" ${tip('Courtside: close and low, following the ball. Broadcast: the whole court from the stands.')}>Camera: Courtside</button>
-        <label class="vol">Volume<input type="range" min="0" max="100" value="${Math.round(SND.vol * 100)}" oninput="setVolume(this.value / 100)" aria-label="Volume"></label>`
-      )}
+      ${pop('Tactics ▾', [a, b].map(tacticPicker).join(''))}
+      ${pop('⚙ ▾', settingsMenu())}
     </div>
     <div class="feeds"><div class="panel"><h3>Commentary</h3><ol class="log" id="log"></ol></div><div class="panel"><h3>Box score</h3><div id="box"></div></div></div>
   </section>`;
@@ -162,8 +183,7 @@ function open3D() {
     });
 }
 function cam3Label() {
-  const b = $('#cam3btn');
-  if (b) b.textContent = `Camera: ${R3D && R3D.camMode() === 'broadcast' ? 'Broadcast' : 'Courtside'}`;
+  setLabel('#cam3btn', cam3Text());
 }
 function toggleCam3D() {
   if (!R3D) return;
@@ -207,6 +227,7 @@ function fit() {
   cv.height = Math.round(w * d * 0.44);
 }
 addEventListener('resize', fit);
+/** Queue side `i`'s one timeout for the next break. */
 function reqTO(i) {
   if (!A || A.done || A.m.to[i] || A.m.toReq[i]) return;
   A.m.toReq[i] = 1;
@@ -235,6 +256,7 @@ function showTac(i) {
   const s = $('#tacnow' + i);
   if (s && A) s.textContent = A.m.tacMode[i] === 'cap' ? `→ ${TACTICS[A.m.tac[i]].short}` : '';
 }
+/** Timeout buttons: disabled once used or queued. */
 function updTO() {
   if (!A) return;
   [0, 1].forEach(i => {
@@ -253,9 +275,10 @@ function setSpeed(s) {
 function togglePause() {
   if (!A) return;
   A.paused = !A.paused;
-  $('#pause').textContent = A.paused ? 'Resume' : 'Pause';
-  if ($('#fspause')) $('#fspause').textContent = A.paused ? '▶' : '❚❚';
+  setLabel('#pause', A.paused ? 'Resume' : 'Pause');
+  setLabel('#fspause', A.paused ? '▶' : '❚❚');
 }
+/** Simulate the rest of the match at once and show the result. */
 function skipMatch() {
   if (!A || A.done) return;
   const m = A.m;
@@ -265,6 +288,7 @@ function skipMatch() {
   board(snap(m));
   finishMatch();
 }
+/** Update the scoreboard from a match snapshot: points, serve, rotations, momentum and zone. */
 function board(s) {
   if (!$('#p0')) return;
   updTO();
@@ -300,6 +324,7 @@ function board(s) {
     mn = Math.min(...s.pts);
   $('#setn').textContent = s.over ? 'Final' : mx >= RULES.pointsToWin - 1 && mx > mn ? 'Match point' : rulesText();
 }
+/** Add a commentary line (plain text; class `c` = 'pt' | 'err' | 'set'). Keeps the newest 80. */
 function logLine(t, c) {
   const l = $('#log');
   if (!l) return;
@@ -309,6 +334,7 @@ function logLine(t, c) {
   l.prepend(li);
   while (l.children.length > 80) l.lastChild.remove();
 }
+/** Redraw both box-score tables. */
 function boxScore() {
   const el = $('#box');
   if (!el || !A) return;
@@ -325,6 +351,32 @@ function boxScore() {
     )
     .join('');
 }
+/** The three best players of a finished match (a simple impact score; the winners get a bonus). */
+function matchStars(m) {
+  return [...m.t[0].P, ...m.t[1].P]
+    .map(p => {
+      const q = m.stat[p.id] || blank();
+      return {
+        p,
+        q,
+        v: q.k + q.blk * 1.2 + q.ace * 1.2 + q.dig * 0.5 + q.ast * 0.3 - q.err * 0.5 + (p.team === m.t[m.winner] ? 1.5 : 0)
+      };
+    })
+    .sort((x, y) => y.v - x.v)
+    .slice(0, 3);
+}
+/** Podium markup: 2nd, 1st, 3rd from left to right. */
+function podium(stars) {
+  return [1, 0, 2]
+    .map(r => {
+      const e = stars[r];
+      if (!e) return '';
+      const q = e.q;
+      return `<div class="pod pod${r + 1}" style="--tc:${e.p.team.color}"><div class="pface">${faceSVG(e.p, 0.9, r ? 52 : 66)}</div><b>${esc(e.p.name)}</b><small>${esc(e.p.team.short)} · ${q.k} K · ${q.blk} B · ${q.ace} A · ${q.dig} D</small><div class="step"><span>${r + 1}</span></div></div>`;
+    })
+    .join('');
+}
+/** The match is over: count everyone's stats, run the fixture's onFinish, and show the result card after the celebration. */
 function finishMatch() {
   if (A.done) return;
   A.done = true;
@@ -345,29 +397,12 @@ function finishMatch() {
   A.trail = [];
   hideCut();
   sfx.cheer(1.2);
-  setTimeout(() => sfx.chant(), 500);
-  const all = [...m.t[0].P, ...m.t[1].P]
-    .map(p => {
-      const q = m.stat[p.id] || blank();
-      return {
-        p,
-        q,
-        v: q.k + q.blk * 1.2 + q.ace * 1.2 + q.dig * 0.5 + q.ast * 0.3 - q.err * 0.5 + (p.team === m.t[m.winner] ? 1.5 : 0)
-      };
-    })
-    .sort((x, y) => y.v - x.v)
-    .slice(0, 3);
-  const pod = [1, 0, 2]
-    .map(r => {
-      const e = all[r];
-      if (!e) return '';
-      const q = e.q;
-      return `<div class="pod pod${r + 1}" style="--tc:${e.p.team.color}"><div class="pface">${faceSVG(e.p, 0.9, r ? 52 : 66)}</div><b>${esc(e.p.name)}</b><small>${esc(e.p.team.short)} · ${q.k} K · ${q.blk} B · ${q.ace} A · ${q.dig} D</small><div class="step"><span>${r + 1}</span></div></div>`;
-    })
-    .join('');
+  const myA = A;
+  setTimeout(() => A === myA && sfx.chant(), 500); // not once the player has left the match
+  const stars = matchStars(m);
   const o = $('#over');
   o.style.setProperty('--tc', wt.color);
-  o.innerHTML = `<div class="ocard"><h2>${esc(wt.name)} win ${hi}-${lo}</h2><p class="small mute">Player of the match: <b>${esc(all[0].p.name)}</b></p><div class="podium">${pod}</div>${msg ? `<p class="betline">${msg}</p>` : ''}<button class="btn hot big" onclick="leaveMatch()">${esc(A.fx.back || 'Continue')}</button></div>`;
+  o.innerHTML = `<div class="ocard"><h2>${esc(wt.name)} win ${hi}-${lo}</h2><p class="small mute">Player of the match: <b>${esc(stars[0].p.name)}</b></p><div class="podium">${podium(stars)}</div>${msg ? `<p class="betline">${esc(msg)}</p>` : ''}<button class="btn hot big" onclick="leaveMatch()">${esc(A.fx.back || 'Continue')}</button></div>`;
   setTimeout(
     () => {
       if (o.isConnected) o.hidden = false;
@@ -375,6 +410,13 @@ function finishMatch() {
     RM ? 0 : 2600
   );
 }
+/** Restart the cut-in animation (drop the class, force a reflow, add it back). */
+function replayCut(c) {
+  c.classList.remove('on');
+  void c.offsetWidth;
+  c.classList.add('on');
+}
+/** Full cut-in for one player's move: { p, title, sub, el? }. */
 function showCut(a) {
   const p = byId(a.p),
     c = $('#cut');
@@ -388,36 +430,30 @@ function showCut(a) {
   c.querySelector('.cut-sub').textContent = a.sub;
   c.classList.toggle('op', !!p.op);
   elCut(c, a.el);
-  c.classList.remove('on');
-  void c.offsetWidth;
-  c.classList.add('on');
+  replayCut(c);
 }
 function toggleCamera() {
   G.camFixed = !G.camFixed;
   store.set(KEYS.camera, G.camFixed ? 'fixed' : 'dynamic');
   if (G.camFixed && A && A.cam) A.cam.z = A.cam.tz = 0;
-  const b = $('#cambtn');
-  if (b) b.textContent = G.camFixed ? 'Zooms: Off' : 'Zooms: On';
+  setLabel('#cambtn', zoomLabel());
 }
 function cycleHype() {
   const order = ['normal', 'max', 'off'];
   G.hype = order[(order.indexOf(G.hype) + 1) % order.length];
   store.set(KEYS.hype, G.hype);
-  const b = $('#hypebtn');
-  if (b) b.textContent = `Hype: ${HYPE[G.hype].name}`;
+  setLabel('#hypebtn', hypeLabel());
 }
 function cycleGfx() {
   const order = ['auto', 'high', 'fast'];
   G.gfx = order[(order.indexOf(G.gfx) + 1) % order.length];
   store.set(KEYS.gfx, G.gfx);
-  const b = $('#gfxbtn');
-  if (b) b.textContent = `Graphics: ${GFX[G.gfx].name}`;
+  setLabel('#gfxbtn', gfxLabel());
 }
 function toggleCutins() {
   G.cutMini = !G.cutMini;
   store.set(KEYS.cutins, G.cutMini ? 'mini' : 'full');
-  const b = $('#cutbtn');
-  if (b) b.textContent = G.cutMini ? 'Cut-ins: Mini' : 'Cut-ins: Full';
+  setLabel('#cutbtn', cutLabel());
   if (G.cutMini) hideCut();
 }
 /** Mini cut-in: a short floating card in the court's top-left corner (stacks up to 3). */
@@ -443,10 +479,12 @@ function elCut(c, el) {
     c.dataset.el = el;
   } else delete c.dataset.el;
 }
+/** Hide the full cut-in. */
 function hideCut() {
   const c = $('#cut');
   if (c) c.classList.remove('on');
 }
+/** Full cut-in for a two-player combo: { p1, p2, title, sub, el? }. */
 function showCombo(a) {
   const p1 = byId(a.p1),
     p2 = byId(a.p2),
@@ -462,9 +500,7 @@ function showCombo(a) {
   c.querySelector('.cut-move').textContent = a.title.toUpperCase();
   c.querySelector('.cut-name').textContent = `${p1.name} × ${p2.name}`;
   c.querySelector('.cut-sub').textContent = a.sub;
-  c.classList.remove('on');
-  void c.offsetWidth;
-  c.classList.add('on');
+  replayCut(c);
 }
 /** Leave the match screen: back to wherever the fixture came from. */
 function leaveMatch() {

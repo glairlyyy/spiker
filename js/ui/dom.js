@@ -1,14 +1,25 @@
 // DOM helpers and small HTML snippets.
 
+/** First element matching a CSS selector (or null). */
 const $ = s => document.querySelector(s);
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+/** Escape any value for use inside HTML text or a quoted attribute. Every name or data string goes through this. */
+const esc = s => String(s).replace(/[&<>"']/g, c => ESC_MAP[c]);
+/** A number with an explicit plus sign when positive: "+3", "-2", "0". */
+const signed = v => `${v > 0 ? '+' : ''}${v}`;
+/** "1 run" / "3 runs". */
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+/** Star marker before a name: red ★ for OP players, plain ★ for stars. */
 const stag = p => (p.op ? '<span class="opstar" title="OP player">★</span> ' : p.star ? '★ ' : '');
+/** Small square in the team colour. */
 function chip(t) {
   return `<span class="chip" style="--tc:${t.color}"></span>`;
 }
+/** Stat bar 0–99, coloured by tier (70+ cyan, 85+ hot). */
 function bar(v) {
   return `<span class="bar"><i style="width:${v}%;--bc:${v >= 85 ? 'var(--hot)' : v >= 70 ? 'var(--cyan)' : 'var(--mute)'}"></i><b>${v}</b></span>`;
 }
+/** One-line summary of a player's tournament stats. */
 function line(s) {
   return s.mp
     ? `${s.mp} matches: ${s.k} kills, ${s.blk} blocks, ${s.ace} aces, ${s.dig} digs, ${s.ast} assists, ${s.err} errors, top spike ${s.top} km/h`
@@ -19,12 +30,13 @@ function line(s) {
 const tip = t => `data-tip="${esc(t)}"`;
 /** A small ⓘ dot carrying explanatory text as a tooltip instead of a paragraph. */
 const info = t => `<span class="ii" tabindex="0" role="note" aria-label="${esc(t)}" ${tip(t)}>i</span>`;
-/** Collapsible block; `key` remembers open/closed for this session. */
+/** Collapsible block; `key` remembers open/closed for this session. `summary` and `body` are HTML. */
 const FOLD = {};
 const fold = (key, summary, body, open = false) =>
-  `<details class="fold" data-fold="${key}" ${(FOLD[key] ?? open) ? 'open' : ''} ontoggle="FOLD[this.dataset.fold]=this.open"><summary>${summary}</summary><div class="foldb">${body}</div></details>`;
-/** Pop-over menu (a button that opens a small panel); closes on outside click / Esc. */
+  `<details class="fold" data-fold="${esc(key)}" ${(FOLD[key] ?? open) ? 'open' : ''} ontoggle="FOLD[this.dataset.fold]=this.open"><summary>${summary}</summary><div class="foldb">${body}</div></details>`;
+/** Pop-over menu (a button that opens a small panel); closes on outside click / Esc. `label` and `body` are HTML. */
 const pop = (label, body, cls = '') => `<details class="pop ${cls}"><summary class="btn">${label}</summary><div class="popb">${body}</div></details>`;
+// Document-level listeners for tooltips and pop-overs: installed once at load (delegated, so re-renders never add more).
 (function uiTips() {
   if (typeof document === 'undefined') return;
   let box = null;

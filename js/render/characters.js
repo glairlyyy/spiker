@@ -1,25 +1,23 @@
 // Player and coach tags drawn above the 3D figures, and the dive timeline shared with the 3D dive pose.
 
-/** Coach label and timeout speech bubble (screen space). */
+/** Coach label and timeout speech bubble (screen space) for coach `c` at projected point `pr`, scale `k`. */
 function drawCoachTags(c, pr, k) {
   const side = c.side;
   ctx.textAlign = 'center';
-  ctx.font = `700 ${Math.round(9 * k + 1)}px "M PLUS Rounded 1c",sans-serif`;
+  ctx.font = `700 ${Math.round(9 * k + 1)}px ${FONT_ROUND}`;
   ctx.fillStyle = 'rgba(255,255,255,.7)';
   ctx.fillText(A.m.to[side] ? 'Coach · TO used' : 'Coach', pr.X, pr.Y - 126 * k);
   if (c.bubble) {
     ctx.save();
-    ctx.font = '700 15px "M PLUS Rounded 1c",sans-serif';
+    ctx.font = `700 15px ${FONT_ROUND}`;
     const tw = ctx.measureText(c.bubble).width,
       bx2 = clamp(pr.X + (side ? -tw / 2 - 10 : tw / 2 + 10), tw / 2 + 14, 1000 - tw / 2 - 14),
       by = pr.Y - 165 * k;
     ctx.fillStyle = '#fff';
-    ctx.strokeStyle = '#10163a';
+    ctx.strokeStyle = INK;
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.roundRect
-      ? ctx.roundRect(bx2 - tw / 2 - 12, by - 22, tw + 24, 32, 12)
-      : ctx.rect(bx2 - tw / 2 - 12, by - 22, tw + 24, 32);
+    roundRectPath(bx2 - tw / 2 - 12, by - 22, tw + 24, 32, 12);
     ctx.fill();
     ctx.stroke();
     ctx.beginPath();
@@ -29,11 +27,16 @@ function drawCoachTags(c, pr, k) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = '#10163a';
+    ctx.fillStyle = INK;
     ctx.textAlign = 'center';
     ctx.fillText(c.bubble, bx2, by);
     ctx.restore();
   }
+}
+/** Add a rounded rectangle to the current path (a plain one where canvas roundRect is missing). */
+function roundRectPath(x, y, w, h, r) {
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+  else ctx.rect(x, y, w, h);
 }
 /**
  * Dive timeline (fraction of the beat that started it): run-in, launch, belly slide, then push back up.

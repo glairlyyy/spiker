@@ -799,7 +799,9 @@ function setCamMode(m) {
   camMode = m;
   try {
     localStorage.setItem('sc.cam3d', m);
-  } catch (e) {}
+  } catch (e) {
+    // storage blocked (private mode / sandboxed frame): the choice just isn't remembered
+  }
 }
 /** Effect entry points for render/effects.js: anchored at the ball (or the floor under it). */
 const ballW = () => (A && A.ball ? W(A.ball.x, A.ball.z, Math.max(10, A.ball.h)) : new THREE.Vector3());

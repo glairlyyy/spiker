@@ -2,9 +2,22 @@
 // Saved separately from runs. A run keeps the unlocks that were on when it started (run.legacy).
 
 const Legacy = {
+  /** The saved Legacy state; missing or corrupt fields fall back to empty values (entries without fans / stats are dropped). */
   load() {
-    const d = store.getJSON(KEYS.legacy, null) || {};
-    return { pts: d.pts || 0, owned: d.owned || [], off: d.off || [], runs: d.runs || 0, best: d.best || null, history: d.history || [], hof: d.hof || [] };
+    const raw = store.getJSON(KEYS.legacy, null),
+      d = raw && typeof raw === 'object' ? raw : {},
+      num = v => (Number.isFinite(v) ? v : 0),
+      list = v => (Array.isArray(v) ? v : []),
+      hasFans = e => !!e && typeof e === 'object' && Number.isFinite(e.fans);
+    return {
+      pts: num(d.pts),
+      owned: list(d.owned),
+      off: list(d.off),
+      runs: num(d.runs),
+      best: hasFans(d.best) ? d.best : null,
+      history: list(d.history).filter(hasFans),
+      hof: list(d.hof).filter(h => hasFans(h) && !!h.stats && typeof h.stats === 'object')
+    };
   },
   save(L) {
     store.setJSON(KEYS.legacy, L);
@@ -52,9 +65,11 @@ const Legacy = {
     for (let n = h('starmate2') ? 2 : h('starmate') ? 1 : 0; n > 0 && i < order.length; n--) Growth.awaken(run, order[i++], true, false);
     finalizeTeam(Run.myTeam(run));
   },
+  /** Can unlock `u` be bought with Legacy state `L` (not owned, affordable, previous tier owned)? */
   canBuy(L, u) {
     return !L.owned.includes(u.id) && L.pts >= u.cost && (!u.need || L.owned.includes(u.need));
   },
+  /** Buy unlock `id`; false when it can't be bought. */
   buy(id) {
     const L = Legacy.load(),
       u = UNLOCKS.find(x => x.id === id);
@@ -87,4 +102,5 @@ const Legacy = {
     return earned;
   }
 };
+/** Run rank letter for a fan count (RANKS is ordered from the top rank down). */
 const rankOf = fans => RANKS.find(([, min]) => fans >= min)[0];

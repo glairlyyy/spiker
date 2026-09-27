@@ -18,7 +18,9 @@ const DBG = (() => {
     saveT = setTimeout(() => {
       try {
         localStorage.setItem(KEY, JSON.stringify(list.slice(-MAX)));
-      } catch (e) {}
+      } catch (e) {
+        /* storage full or blocked: the log stays in memory */
+      }
     }, 250);
   };
   const str = v => {

@@ -1,5 +1,6 @@
 // Match state, scoring, zone/captain/timeout logic, and headless simulation helpers.
 
+/** The team's players in rotation order, starting from the server (index 0); indices 1–2 are the front row. */
 function rotOrder(t, idx) {
   const o = ROT.map(k => (k === 'S' ? t.s : k === 'MB' ? t.mb : t.ws[k === 'W0' ? 0 : 1]));
   return o.map((_, i) => o[(i + idx) % 4]);
@@ -47,10 +48,12 @@ function popActs(m, P, dir, V, dur) {
   );
   return { acts: a, dive };
 }
+/** Move a player in the engine; when recording (V), also push the matching slide act onto `arr`. */
 function mv(m, p, x, z, arr, V) {
   m.pos[p.id] = { x, z };
   if (V) arr.push({ k: 'slide', p: p.id, x, z });
 }
+/** The player in `arr` who gets to (x, z) first (distance over speed). `arr` must not be empty. */
 function nearest(m, arr, x, z) {
   let b = arr[0],
     bv = 1e9;
@@ -63,7 +66,10 @@ function nearest(m, arr, x, z) {
   }
   return b;
 }
-/** opts.court: court size multiplier (default 1). */
+/**
+ * A fresh match between teams a and b. rec = record animation beats (playRally returns them).
+ * opts.court: court size multiplier (default RULES.court); opts.tac: [tactic, tactic] fixes a side's tactic.
+ */
 function newMatch(a, b, rec, opts = {}) {
   const m = {
     court: opts.court || RULES.court,
@@ -94,7 +100,20 @@ function newMatch(a, b, rec, opts = {}) {
     eg: {}, // element gauge (0–100) per unlocked player
     elLog: [], // element spikes fired: { p, el, side, won }
     ctx: null, // the attack being played (element gauge context)
-    lastK: null
+    ctx0: null, // the attack the last point ended on (chatter)
+    ctxK: null, // who scored a kill this rally (→ lastK)
+    lastK: null,
+    // per-rally state, reset by playRally()
+    busy: {}, // player id → last possession they are still busy for (see busy())
+    lastPlay: null, // 'killblock' | 'fake' — for the zone breaker
+    hero: null,
+    errBy: null,
+    hypeRally: 0,
+    // staged scenes (engine/hype.js)
+    hypeAt: null, // points played at the last attack scene
+    readAt: null, // …and at the last defense read
+    hypeDef: false, // the current scene follows the defense
+    defBeats: [] // the defense's scene beats this possession (dropDefScene)
   };
   [a, b].forEach((t, side) =>
     t.P.forEach(p => {
@@ -105,6 +124,7 @@ function newMatch(a, b, rec, opts = {}) {
   );
   return m;
 }
+/** Record stat `k` for a player ('top' keeps the maximum); moves mood (MOODD) and element gauges with it. */
 function st(m, p, k, v = 1) {
   const s = m.stat[p.id] || (m.stat[p.id] = blank());
   if (k === 'top') s.top = Math.max(s.top, v);
@@ -184,6 +204,11 @@ function captainThink(m, side) {
   }
   return out;
 }
+/**
+ * Score a point for side w: serve and rotation, momentum, mood, stamina recovery, element outcomes, the zone
+ * (and zone breaker / captain's call), buffs wearing off, the end of the match, captain and coach decisions.
+ * Pushes the point's beats onto `beats` (null in simulations). Returns { w, beats }.
+ */
 function end(m, w, beats) {
   const oppWasInZone = !!m.zone[1 - w];
   m.pts[w]++;
@@ -332,7 +357,7 @@ function end(m, w, beats) {
   if (!m.over) {
     const L = 1 - w,
       T = m.t[L],
-      avg = T.P.reduce((a, q) => a + (m.mood[q.id] || 0), 0) / 4;
+      avg = T.P.reduce((a, q) => a + (m.mood[q.id] || 0), 0) / T.P.length;
     const need = m.pts[w] >= 4 && (m.streak[w] >= 3 || (m.zone[w] && m.pts[w] - m.pts[L] >= 2) || avg < -0.35);
     if (m.toReq[L] && !m.to[L]) timeout(m, L, beats, true);
     else if (m.toReq[w] && !m.to[w]) timeout(m, w, beats, true);
@@ -340,6 +365,7 @@ function end(m, w, beats) {
   }
   return { w, beats };
 }
+/** Side L takes its timeout (manual = the player asked for it): mood and stamina reset, the other side cools off. */
 function timeout(m, L, beats, manual) {
   const T = m.t[L],
     O = 1 - L,
@@ -383,14 +409,12 @@ function timeout(m, L, beats, manual) {
     ]
   });
 }
+/** Rallies after which a simulated match gives up (a safety net; a set never gets close). */
+const SIM_MAX_RALLIES = 500;
+/** Play a whole match without animation. */
 function simMatch(a, b, opts) {
   const m = newMatch(a, b, false, opts);
   let g = 0;
-  while (!m.over && g++ < 500) playRally(m);
+  while (!m.over && g++ < SIM_MAX_RALLIES) playRally(m);
   return m;
-}
-function winProb(a, b, n = 160) {
-  let w = 0;
-  for (let i = 0; i < n; i++) if (simMatch(a, b).winner === 0) w++;
-  return clamp(w / n, 0.03, 0.97);
 }

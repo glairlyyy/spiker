@@ -18,7 +18,6 @@ const confidence = (p, m, side) =>
 // ---- personalities and scene / chatter lines (shonen moments, engine/hype.js) ----
 /** Each player has a fixed personality (from a name hash) that picks their lines. */
 const PERS = ['hot', 'cool', 'cocky', 'shy', 'leader'];
-const PERS_NAME = { hot: 'Hot-blooded', cool: 'Cool-headed', cocky: 'Cocky', shy: 'Quiet', leader: 'Leader' };
 /** {sig} = signature element spike, {mate} = teammate's first name, {opp} = opponent's first name. */
 const LINES = {
   ask: {

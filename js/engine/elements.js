@@ -42,6 +42,7 @@ function elWeights(p) {
   for (const k in v) v[k] = Math.exp(1.4 * v[k]);
   return v;
 }
+/** The signature's personal twist, weighted by the player's stats (hash roll, no RNG draw). */
 function elTwist(p) {
   const w = { pierce: p.jump, heavy: p.power, blur: p.speed, curve: p.wit * 55, split: p.def * 0.8 },
     mx = Math.max(...Object.values(w));
@@ -66,10 +67,12 @@ function elCheck(p) {
 }
 
 // ---- match gauge ----
+/** Add v to an unlocked player's gauge (clamped 0..EG.full). */
 function elCharge(m, p, v) {
   if (!p.elOn || !m.eg || !v) return;
   m.eg[p.id] = clamp((m.eg[p.id] || 0) + v, 0, EG.full);
 }
+/** A full gauge: this player's next attack (or set) is an element spike. */
 const elReady = (m, p) => !!(p.elOn && m.eg && (m.eg[p.id] || 0) >= EG.full);
 /** Fill the gauge from a recorded stat (called by st()). m.ctx describes the attack being played. */
 function elStat(m, p, k) {

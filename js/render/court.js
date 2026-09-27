@@ -1,5 +1,14 @@
-// Screen-space layer over the 3D scene: view transform, labels, particles, drill wall, ball trail, flashes.
+// Screen-space layer over the 3D scene (the transparent court canvas): view transform, chant, ball trail, arrows,
+// links, walls, particles, drill wall, labels, banners, cracks, slow-motion vignette and flashes.
+// The 3D renderer (js/render3d/r3d.mjs) calls applyView, drawChant, drawFloorFx, drawTrail and drawFx each frame.
 
+/** Canvas fonts: display (labels, banners) and rounded UI text (tags, bubbles). */
+const FONT_DISPLAY = '"Dela Gothic One","Arial Black",sans-serif',
+  FONT_ROUND = '"M PLUS Rounded 1c",sans-serif';
+/** Outline colour for text and bubbles. */
+const INK = '#10163a';
+
+/** Closed polygon through projected points `pts` ({ X, Y }), filled and/or stroked. */
 function quad(pts, fill, stroke, lw) {
   ctx.beginPath();
   pts.forEach((p, i) => (i ? ctx.lineTo(p.X, p.Y) : ctx.moveTo(p.X, p.Y)));
@@ -14,6 +23,7 @@ function quad(pts, fill, stroke, lw) {
     ctx.stroke();
   }
 }
+/** Line between projected points a and b. */
 function seg(a, b, c, w) {
   ctx.strokeStyle = c;
   ctx.lineWidth = w;
@@ -21,6 +31,20 @@ function seg(a, b, c, w) {
   ctx.moveTo(a.X, a.Y);
   ctx.lineTo(b.X, b.Y);
   ctx.stroke();
+}
+/** Stroke polyline `l` ([[x, y], …]) offset by (x, y). */
+function polyline(l, x, y) {
+  ctx.beginPath();
+  l.forEach((q, i) => (i ? ctx.lineTo(x + q[0], y + q[1]) : ctx.moveTo(x + q[0], y + q[1])));
+  ctx.stroke();
+}
+/** Text with a dark outline. */
+function outlinedText(t, x, y, fill, lw) {
+  ctx.lineWidth = lw;
+  ctx.strokeStyle = INK;
+  ctx.strokeText(t, x, y);
+  ctx.fillStyle = fill;
+  ctx.fillText(t, x, y);
 }
 /**
  * Canvas transform for the court: logical 1000-wide view, shake, camera push-in and block-contest zoom.
@@ -54,329 +78,300 @@ function applyView() {
 }
 /** Crowd chant text over the stands. */
 function drawChant(now) {
-  if (A.chant) {
-    const ch = A.chant,
-      t = A.m.t[ch.side],
-      pl = 1 + 0.08 * Math.abs(Math.sin(now * 0.012));
-    ctx.save();
-    ctx.globalAlpha = Math.min(1, ch.life * 3) * 0.9;
-    ctx.translate(ch.side ? 740 : 300, 135);
-    ctx.scale(pl, pl);
-    ctx.font = '30px "Dela Gothic One","Arial Black",sans-serif';
-    ctx.textAlign = 'center';
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = '#10163a';
-    ctx.strokeText(ch.text, 0, 0);
-    ctx.fillStyle = t.color;
-    ctx.fillText(ch.text, 0, 0);
-    ctx.restore();
-  }
+  const ch = A.chant;
+  if (!ch) return;
+  const pl = 1 + 0.08 * Math.abs(Math.sin(now * 0.012));
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, ch.life * 3) * 0.9;
+  ctx.translate(ch.side ? 740 : 300, 135);
+  ctx.scale(pl, pl);
+  ctx.font = `30px ${FONT_DISPLAY}`;
+  ctx.textAlign = 'center';
+  outlinedText(ch.text, 0, 0, A.m.t[ch.side].color, 6);
+  ctx.restore();
 }
-/** Floor-level effects in screen space: flat shockwave rings and ball marks. */
-function drawFloorFx() {
-  // rings on floor
-  for (const r of A.rings)
-    if (r.flat) {
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, r.life);
-      ctx.strokeStyle = r.c;
-      ctx.lineWidth = r.w * r.life + 1;
-      ctx.beginPath();
-      ctx.ellipse(r.x, r.y, r.r, r.r * 0.3, 0, 0, 7);
-      ctx.stroke();
-      ctx.restore();
-    }
-  if (A.decals)
-    for (const d of A.decals) {
-      ctx.save();
-      ctx.globalAlpha = Math.min(1, d.life * 1.5);
-      ctx.strokeStyle = '#4a3b2c';
-      ctx.lineWidth = 2.5;
-      ctx.lineCap = 'round';
-      for (const l of d.lines) {
-        ctx.beginPath();
-        l.forEach((q, i) => (i ? ctx.lineTo(d.x + q[0], d.y + q[1]) : ctx.moveTo(d.x + q[0], d.y + q[1])));
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-}
-/** Everything drawn over the players: arrows, links, walls, particles, drill, labels, bolts, banners, slow-mo, flash. */
+/** Floor-level screen-space effects: none remain (the 3D renderer draws floor effects); kept for r3d's call. */
+function drawFloorFx() {}
+/** Everything drawn over the players, back to front. */
 function drawFx(now) {
-  if (A.ghost) {
-    const G2 = A.ghost,
-      cx = (G2.f.X + G2.t.X) / 2,
-      cy = Math.min(G2.f.Y, G2.t.Y) - 90,
-      prog = Math.min(1, (1 - G2.life) * 2.2);
-    ctx.save();
-    ctx.globalAlpha = Math.min(1, G2.life * 1.6);
-    ctx.setLineDash([10, 8]);
-    ctx.lineDashOffset = -prog * 40;
-    ctx.strokeStyle = '#9fe8ff';
-    ctx.lineWidth = 4;
-    ctx.shadowColor = '#3fd9ff';
-    ctx.shadowBlur = 12;
-    ctx.beginPath();
-    ctx.moveTo(G2.f.X, G2.f.Y);
-    ctx.quadraticCurveTo(cx, cy, G2.t.X, G2.t.Y);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    const u = prog,
-      bx = (1 - u) * (1 - u) * G2.f.X + 2 * (1 - u) * u * cx + u * u * G2.t.X,
-      by = (1 - u) * (1 - u) * G2.f.Y + 2 * (1 - u) * u * cy + u * u * G2.t.Y;
-    ctx.globalAlpha *= 0.55;
-    ctx.fillStyle = '#ffe066';
-    ctx.beginPath();
-    ctx.arc(bx, by, 9, 0, 7);
-    ctx.fill();
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.globalAlpha = Math.min(1, G2.life * 1.6);
-    ctx.strokeStyle = '#ff3d7f';
-    ctx.lineWidth = 4;
-    const X = G2.t.X,
-      Y = G2.t.Y;
-    ctx.beginPath();
-    ctx.moveTo(X - 9, Y - 9);
-    ctx.lineTo(X + 9, Y + 9);
-    ctx.moveTo(X + 9, Y - 9);
-    ctx.lineTo(X - 9, Y + 9);
-    ctx.stroke();
-    ctx.restore();
-  }
-  if (A.real) {
-    const G2 = A.real,
-      cx = (G2.f.X + G2.t.X) / 2,
-      cy = Math.min(G2.f.Y, G2.t.Y) - 50;
-    ctx.save();
-    ctx.globalAlpha = Math.min(1, G2.life * 1.5);
-    ctx.strokeStyle = '#ff3d7f';
-    ctx.lineWidth = 5;
-    ctx.shadowColor = '#ff3d7f';
-    ctx.shadowBlur = 14;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(G2.f.X, G2.f.Y);
-    ctx.quadraticCurveTo(cx, cy, G2.t.X, G2.t.Y);
-    ctx.stroke();
-    const an = Math.atan2(G2.t.Y - cy, G2.t.X - cx);
-    ctx.fillStyle = '#ff3d7f';
-    ctx.beginPath();
-    ctx.moveTo(G2.t.X, G2.t.Y);
-    ctx.lineTo(G2.t.X - Math.cos(an - 0.45) * 16, G2.t.Y - Math.sin(an - 0.45) * 16);
-    ctx.lineTo(G2.t.X - Math.cos(an + 0.45) * 16, G2.t.Y - Math.sin(an + 0.45) * 16);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.font = '16px "Dela Gothic One","Arial Black",sans-serif';
-    ctx.textAlign = 'center';
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = '#10163a';
-    ctx.strokeText('Real set', cx, cy + 8);
-    ctx.fillStyle = '#fff';
-    ctx.fillText('Real set', cx, cy + 8);
-    ctx.restore();
-  }
-  if (A.link) {
-    const a = A.disp[A.link.p1],
-      b = A.disp[A.link.p2];
-    if (a && b) {
-      const q1 = P(a.x, a.z, a.jy + 70),
-        q2 = P(b.x, b.z, b.jy + 70);
-      ctx.save();
-      ctx.globalAlpha = Math.min(1, A.link.life * 2);
-      ctx.lineCap = 'round';
-      ctx.shadowColor = '#ffd84d';
-      ctx.shadowBlur = 18;
-      for (const [c, w] of [
-        [A.link.c, 10],
-        ['#fff6c4', 4]
-      ]) {
-        ctx.strokeStyle = c;
-        ctx.lineWidth = w;
-        ctx.beginPath();
-        ctx.moveTo(q1.X, q1.Y);
-        const mx = (q1.X + q2.X) / 2,
-          my = Math.min(q1.Y, q2.Y) - 30;
-        ctx.quadraticCurveTo(mx + Math.sin(now * 0.02) * 6, my, q2.X, q2.Y);
-        ctx.stroke();
-      }
-      for (const q of [q1, q2]) {
-        ctx.fillStyle = '#fff6c4';
-        ctx.beginPath();
-        ctx.arc(q.X, q.Y, 6 + 3 * Math.sin(now * 0.03), 0, 7);
-        ctx.fill();
-      }
-      ctx.restore();
-      if (R() < 0.5)
-        A.parts.push({
-          kind: 'spark',
-          x: lerp(q1.X, q2.X, R()),
-          y: lerp(q1.Y, q2.Y, R()) - 10,
-          vx: 0,
-          vy: -0.02,
-          s: rnd(3, 6),
-          rot: 0,
-          vr: 0.02,
-          life: 1,
-          dec: 0.003,
-          c: '#ffe38a'
-        });
-    }
-  }
-  if (A.wallFx) {
-    const W = A.wallFx,
-      c = ECOL[W.el] || '#fff';
-    ctx.save();
-    ctx.globalAlpha = Math.min(1, W.life * 1.6) * 0.55;
-    ctx.shadowColor = c;
-    ctx.shadowBlur = 25;
-    quad([P(500, W.z - 0.2, W.top), P(500, W.z + 0.2, W.top), P(500, W.z + 0.2, 90), P(500, W.z - 0.2, 90)], c, '#fff', 3);
-    ctx.globalAlpha *= 0.8;
-    for (let k = 1; k < 5; k++) {
-      const h = 90 + ((W.top - 90) * k) / 5;
-      seg(P(500, W.z - 0.2, h), P(500, W.z + 0.2, h), '#fff', 1.5);
-    }
-    ctx.restore();
-  }
-  // fx
-  if (A.lines) {
-    const Ln = A.lines;
-    ctx.save();
-    ctx.globalAlpha = Ln.life * 0.6;
-    ctx.strokeStyle = '#fff';
-    for (let i = 0; i < 40; i++) {
-      const an = (i / 40) * Math.PI * 2 + i * 0.37,
-        r0 = 40 + (i % 5) * 12,
-        r1 = r0 + Ln.pow * 4;
-      ctx.lineWidth = 1 + (i % 3);
-      ctx.beginPath();
-      ctx.moveTo(Ln.x + Math.cos(an) * r0, Ln.y + Math.sin(an) * r0);
-      ctx.lineTo(Ln.x + Math.cos(an) * r1, Ln.y + Math.sin(an) * r1);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-  for (const r of A.rings)
-    if (!r.flat) {
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, r.life);
-      ctx.strokeStyle = r.c;
-      ctx.lineWidth = r.w * r.life + 1;
-      ctx.beginPath();
-      ctx.arc(r.x, r.y, r.r, 0, 7);
-      ctx.stroke();
-      ctx.restore();
-    }
+  if (A.ghost) drawGhost(A.ghost);
+  if (A.real) drawRealSet(A.real);
+  if (A.link) drawLink(A.link, now);
+  if (A.wallFx) drawWall(A.wallFx);
+  if (A.lines) drawSpeedLines(A.lines);
   drawParts();
-  if (A.drill) {
-    // over smoke and sparks so the wall reads clearly; the ball stays on top of the wall it drills through
-    drawDrill();
-  }
+  if (A.drill) drawDrill(A.drill); // over smoke and sparks so the wall reads clearly
   ctx.globalAlpha = 1;
-  for (const l of A.labels) {
-    ctx.save();
-    ctx.globalAlpha = Math.min(1, l.life * 2);
-    ctx.textAlign = 'center';
-    let sz = l.big ? 12 : l.small ? 8 : l.pow ? Math.min(12, 9 + Math.max(0, l.pow - 60) / 10) : 9;
-    if (l.stamp) sz *= 1.2 + Math.max(0, l.life - 0.82) * 6;
-    ctx.font = `${sz}px "Dela Gothic One","Arial Black",sans-serif`;
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = '#10163a';
-    ctx.strokeText(l.t, l.x, l.y);
-    ctx.fillStyle = l.set ? '#9fe8ff' : l.small ? '#c9f7a6' : l.pow >= 100 ? '#ff3d7f' : l.pow >= 80 ? '#ffb13d' : '#fff';
-    ctx.fillText(l.t, l.x, l.y);
-    ctx.restore();
-  }
-  if (A.bolts)
-    for (const b of A.bolts) {
-      ctx.save();
-      ctx.globalAlpha = Math.min(1, b.life * 1.6) * (R() < 0.2 ? 0.4 : 1);
-      ctx.shadowColor = '#6fd6ff';
-      ctx.shadowBlur = 18;
-      ctx.lineJoin = 'round';
-      for (const [c, w] of [
-        ['#6fd6ff', 7 * b.w],
-        ['#ffffff', 2.5 * b.w]
-      ]) {
-        ctx.strokeStyle = c;
-        ctx.lineWidth = w;
-        ctx.beginPath();
-        b.pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
-        ctx.stroke();
-        ctx.lineWidth = w * 0.5;
-        for (const br of b.br) {
-          ctx.beginPath();
-          br.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
-          ctx.stroke();
-        }
-      }
-      ctx.restore();
-    }
-  if (A.toBanner) {
-    const b = A.toBanner,
-      t = A.m.t[b.side],
-      al = Math.min(1, b.life * 3, (1 - b.life) * 8);
-    ctx.save();
-    ctx.globalAlpha = al;
-    ctx.fillStyle = 'rgba(16,22,58,.85)';
-    ctx.fillRect(250, VT + 18, 500, 62);
-    ctx.fillStyle = t.color;
-    ctx.fillRect(250, VT + 18, 10, 62);
-    ctx.fillRect(740, VT + 18, 10, 62);
-    ctx.textAlign = 'center';
-    ctx.font = '30px "Dela Gothic One","Arial Black",sans-serif';
-    ctx.fillStyle = '#fff';
-    ctx.fillText('TIMEOUT', 500, VT + 52);
-    ctx.font = '700 13px "M PLUS Rounded 1c",sans-serif';
-    ctx.fillStyle = t.color;
-    ctx.fillText(`${t.name}${b.manual ? ' · your call' : ''} · mentality reset`, 500, VT + 72);
-    ctx.restore();
-  }
-  if (A.crack) {
-    const C = A.crack;
-    ctx.save();
-    ctx.globalAlpha = Math.min(1, C.life * 1.4);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    for (const [col, w] of [
-      ['rgba(159,232,255,.8)', 5],
-      ['#ffffff', 2]
-    ]) {
-      ctx.strokeStyle = col;
-      ctx.lineWidth = w;
-      for (const l of C.lines) {
-        ctx.beginPath();
-        l.forEach((q, i) => (i ? ctx.lineTo(C.x + q[0], C.y + q[1]) : ctx.moveTo(C.x + q[0], C.y + q[1])));
-        ctx.stroke();
-      }
-    }
-    ctx.restore();
-  }
-  // slow motion: a vignette that deepens as time slows (A.ts eases in/out, see step())
-  const sk = clamp((1 - (A.ts ?? 1)) / 0.7, 0, 1);
-  if (sk > 0.02) {
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    const W2 = cv.width,
-      H2 = cv.height,
-      vg = ctx.createRadialGradient(W2 / 2, H2 / 2, H2 * 0.3, W2 / 2, H2 / 2, W2 * 0.62);
-    vg.addColorStop(0, 'rgba(8,10,34,0)');
-    vg.addColorStop(1, `rgba(8,10,34,${(0.62 * sk).toFixed(3)})`);
-    ctx.fillStyle = vg;
-    ctx.fillRect(0, 0, W2, H2);
-    ctx.restore();
-  }
+  drawLabels();
+  if (A.toBanner) drawTimeoutBanner(A.toBanner);
+  if (A.crack) drawCrack(A.crack);
+  drawSlowVignette();
   if (A.flash > 0.02) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = `rgba(${A.flashC || '255,255,255'},${A.flash})`;
     ctx.fillRect(0, 0, cv.width, cv.height);
   }
 }
+/** "Ghost" arrow: the dashed arc of the ball the defense expected, a ghost ball along it, a cross where it would land. */
+function drawGhost(g) {
+  const cx = (g.f.X + g.t.X) / 2,
+    cy = Math.min(g.f.Y, g.t.Y) - 90,
+    u = Math.min(1, (1 - g.life) * 2.2);
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, g.life * 1.6);
+  ctx.setLineDash([10, 8]);
+  ctx.lineDashOffset = -u * 40;
+  ctx.strokeStyle = '#9fe8ff';
+  ctx.lineWidth = 4;
+  ctx.shadowColor = '#3fd9ff';
+  ctx.shadowBlur = 12;
+  ctx.beginPath();
+  ctx.moveTo(g.f.X, g.f.Y);
+  ctx.quadraticCurveTo(cx, cy, g.t.X, g.t.Y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // ghost ball along the quadratic curve
+  const bx = (1 - u) * (1 - u) * g.f.X + 2 * (1 - u) * u * cx + u * u * g.t.X,
+    by = (1 - u) * (1 - u) * g.f.Y + 2 * (1 - u) * u * cy + u * u * g.t.Y;
+  ctx.globalAlpha *= 0.55;
+  ctx.fillStyle = '#ffe066';
+  ctx.beginPath();
+  ctx.arc(bx, by, 9, 0, 7);
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.globalAlpha = Math.min(1, g.life * 1.6);
+  ctx.strokeStyle = '#ff3d7f';
+  ctx.lineWidth = 4;
+  const X = g.t.X,
+    Y = g.t.Y;
+  ctx.beginPath();
+  ctx.moveTo(X - 9, Y - 9);
+  ctx.lineTo(X + 9, Y + 9);
+  ctx.moveTo(X + 9, Y - 9);
+  ctx.lineTo(X - 9, Y + 9);
+  ctx.stroke();
+  ctx.restore();
+}
+/** "Real set" arrow: where the setter actually sends the ball. */
+function drawRealSet(r) {
+  const cx = (r.f.X + r.t.X) / 2,
+    cy = Math.min(r.f.Y, r.t.Y) - 50;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, r.life * 1.5);
+  ctx.strokeStyle = '#ff3d7f';
+  ctx.lineWidth = 5;
+  ctx.shadowColor = '#ff3d7f';
+  ctx.shadowBlur = 14;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(r.f.X, r.f.Y);
+  ctx.quadraticCurveTo(cx, cy, r.t.X, r.t.Y);
+  ctx.stroke();
+  const an = Math.atan2(r.t.Y - cy, r.t.X - cx);
+  ctx.fillStyle = '#ff3d7f';
+  ctx.beginPath();
+  ctx.moveTo(r.t.X, r.t.Y);
+  ctx.lineTo(r.t.X - Math.cos(an - 0.45) * 16, r.t.Y - Math.sin(an - 0.45) * 16);
+  ctx.lineTo(r.t.X - Math.cos(an + 0.45) * 16, r.t.Y - Math.sin(an + 0.45) * 16);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.font = `16px ${FONT_DISPLAY}`;
+  ctx.textAlign = 'center';
+  outlinedText('Real set', cx, cy + 8, '#fff', 4);
+  ctx.restore();
+}
+/** Glowing link between two players (pair move); its sparks are spawned by linkSparks(). */
+function drawLink(L, now) {
+  const a = A.disp[L.p1],
+    b = A.disp[L.p2];
+  if (!a || !b) return;
+  const q1 = P(a.x, a.z, a.jy + 70),
+    q2 = P(b.x, b.z, b.jy + 70);
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, L.life * 2);
+  ctx.lineCap = 'round';
+  ctx.shadowColor = '#ffd84d';
+  ctx.shadowBlur = 18;
+  for (const [c, w] of [
+    [L.c, 10],
+    ['#fff6c4', 4]
+  ]) {
+    ctx.strokeStyle = c;
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    ctx.moveTo(q1.X, q1.Y);
+    const mx = (q1.X + q2.X) / 2,
+      my = Math.min(q1.Y, q2.Y) - 30;
+    ctx.quadraticCurveTo(mx + Math.sin(now * 0.02) * 6, my, q2.X, q2.Y);
+    ctx.stroke();
+  }
+  for (const q of [q1, q2]) {
+    ctx.fillStyle = '#fff6c4';
+    ctx.beginPath();
+    ctx.arc(q.X, q.Y, 6 + 3 * Math.sin(now * 0.03), 0, 7);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+/** Block wall: a glowing pane over the net at the blockers' hands, in their element colour. */
+function drawWall(W) {
+  const c = ECOL[W.el] || '#fff';
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, W.life * 1.6) * 0.55;
+  ctx.shadowColor = c;
+  ctx.shadowBlur = 25;
+  quad([P(500, W.z - 0.2, W.top), P(500, W.z + 0.2, W.top), P(500, W.z + 0.2, 90), P(500, W.z - 0.2, 90)], c, '#fff', 3);
+  ctx.globalAlpha *= 0.8;
+  for (let k = 1; k < 5; k++) {
+    const h = 90 + ((W.top - 90) * k) / 5;
+    seg(P(500, W.z - 0.2, h), P(500, W.z + 0.2, h), '#fff', 1.5);
+  }
+  ctx.restore();
+}
+/** Radial speed lines around a big hit. */
+function drawSpeedLines(Ln) {
+  ctx.save();
+  ctx.globalAlpha = Ln.life * 0.6;
+  ctx.strokeStyle = '#fff';
+  for (let i = 0; i < 40; i++) {
+    const an = (i / 40) * Math.PI * 2 + i * 0.37,
+      r0 = 40 + (i % 5) * 12,
+      r1 = r0 + Ln.pow * 4;
+    ctx.lineWidth = 1 + (i % 3);
+    ctx.beginPath();
+    ctx.moveTo(Ln.x + Math.cos(an) * r0, Ln.y + Math.sin(an) * r0);
+    ctx.lineTo(Ln.x + Math.cos(an) * r1, Ln.y + Math.sin(an) * r1);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+/** Screen-space particles: dust, shards, confetti, sparks (other kinds as small squares). */
+function drawParts() {
+  for (const p of A.parts) {
+    const a = Math.max(0, Math.min(1, p.life));
+    ctx.globalAlpha = a;
+    switch (p.kind) {
+      case 'dust':
+        ctx.globalAlpha = a * 0.4;
+        ctx.fillStyle = '#f3dcb0';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.s, 0, 7);
+        ctx.fill();
+        break;
+      case 'conf':
+        ctx.save();
+        ctx.translate(p.x + Math.sin(p.rot * 2) * 4, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.c;
+        ctx.fillRect(-p.s / 2, -p.s / 4, p.s, (p.s / 2) * Math.abs(Math.cos(p.rot * 3)) + 1);
+        ctx.restore();
+        break;
+      case 'shard':
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.c;
+        ctx.strokeStyle = 'rgba(255,255,255,.9)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, -p.s);
+        ctx.lineTo(p.s * 0.55, p.s * 0.4);
+        ctx.lineTo(-p.s * 0.45, p.s * 0.6);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+        break;
+      case 'spark':
+        // four-point star
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.c;
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+          const r = i % 2 ? p.s * 0.3 : p.s,
+            an = (i * Math.PI) / 4;
+          ctx.lineTo(Math.cos(an) * r, Math.sin(an) * r);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        break;
+      default:
+        ctx.fillStyle = p.c || '#fff';
+        ctx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s);
+    }
+  }
+}
+/** Floating play labels (Kill!, Ace, technique names…): size by importance, colour by kind, stamps pop in. */
+function drawLabels() {
+  for (const l of A.labels) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, l.life * 2);
+    ctx.textAlign = 'center';
+    let sz = l.big ? 12 : l.small ? 8 : l.pow ? Math.min(12, 9 + Math.max(0, l.pow - 60) / 10) : 9;
+    if (l.stamp) sz *= 1.2 + Math.max(0, l.life - 0.82) * 6;
+    ctx.font = `${sz}px ${FONT_DISPLAY}`;
+    const fill = l.set ? '#9fe8ff' : l.small ? '#c9f7a6' : l.pow >= 100 ? '#ff3d7f' : l.pow >= 80 ? '#ffb13d' : '#fff';
+    outlinedText(l.t, l.x, l.y, fill, 3);
+    ctx.restore();
+  }
+}
+/** TIMEOUT banner in the calling team's colours. */
+function drawTimeoutBanner(b) {
+  const t = A.m.t[b.side];
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, b.life * 3, (1 - b.life) * 8);
+  ctx.fillStyle = 'rgba(16,22,58,.85)';
+  ctx.fillRect(250, VT + 18, 500, 62);
+  ctx.fillStyle = t.color;
+  ctx.fillRect(250, VT + 18, 10, 62);
+  ctx.fillRect(740, VT + 18, 10, 62);
+  ctx.textAlign = 'center';
+  ctx.font = `30px ${FONT_DISPLAY}`;
+  ctx.fillStyle = '#fff';
+  ctx.fillText('TIMEOUT', 500, VT + 52);
+  ctx.font = `700 13px ${FONT_ROUND}`;
+  ctx.fillStyle = t.color;
+  ctx.fillText(`${t.name}${b.manual ? ' · your call' : ''} · mentality reset`, 500, VT + 72);
+  ctx.restore();
+}
+/** Glass cracks over the side that lost its zone. */
+function drawCrack(C) {
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, C.life * 1.4);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const [col, w] of [
+    ['rgba(159,232,255,.8)', 5],
+    ['#ffffff', 2]
+  ]) {
+    ctx.strokeStyle = col;
+    ctx.lineWidth = w;
+    for (const l of C.lines) polyline(l, C.x, C.y);
+  }
+  ctx.restore();
+}
+/** Slow motion: a vignette that deepens as time slows (A.ts eases in and out, see timeScale()). */
+function drawSlowVignette() {
+  const sk = clamp((1 - (A.ts ?? 1)) / 0.7, 0, 1);
+  if (sk <= 0.02) return;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const W2 = cv.width,
+    H2 = cv.height,
+    vg = ctx.createRadialGradient(W2 / 2, H2 / 2, H2 * 0.3, W2 / 2, H2 / 2, W2 * 0.62);
+  vg.addColorStop(0, 'rgba(8,10,34,0)');
+  vg.addColorStop(1, `rgba(8,10,34,${(0.62 * sk).toFixed(3)})`);
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W2, H2);
+  ctx.restore();
+}
 /** Block-break energy wall: hexagon in the blockers' colour, cracks growing from the spinning ball. */
-function drawDrill() {
-  const D = A.drill;
-  if (!D) return;
+function drawDrill(D) {
   const u = clamp(D.t / D.dur, 0, 1),
     k = D.s * VCS * (1 + 0.15 * u),
     R0 = 62 * k;
@@ -408,7 +403,6 @@ function drawDrill() {
   ctx.lineWidth = 3;
   ctx.shadowColor = '#fff';
   ctx.shadowBlur = 6;
-  ctx.globalAlpha = 1;
   const grow = u * 4;
   for (const l of D.lines) {
     ctx.beginPath();
@@ -435,37 +429,26 @@ function drawDrill() {
   }
   ctx.restore();
 }
-/** The ball's power trail (screen space). */
+/** The ball's power trail (screen space) at the ball's projection `q`; colour by OP, element or power. */
 function drawTrail(q) {
-  if (A.trail.length > 1) {
-    const Pw = A.trailPow,
-      c = A.trailOp
-        ? R() < 0.5
-          ? '#fff27a'
-          : '#8fe9ff'
-        : A.trailEl
-          ? ECOL[A.trailEl]
-          : Pw >= 100
-            ? '#ff3d7f'
-            : Pw >= 80
-              ? '#ffb13d'
-              : '#9fe8ff';
-    ctx.save();
-    ctx.lineCap = 'round';
-    for (let i = 1; i < A.trail.length; i++) {
-      const a = A.trail[i - 1],
-        b = A.trail[i],
-        k = i / A.trail.length;
-      ctx.globalAlpha = k * 0.8;
-      ctx.strokeStyle = c;
-      ctx.lineWidth = k * (4 + Pw / 9) * q.s;
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-    }
-    ctx.restore();
+  if (A.trail.length < 2) return;
+  const Pw = A.trailPow,
+    c = A.trailOp ? (R() < 0.5 ? '#fff27a' : '#8fe9ff') : A.trailEl ? ECOL[A.trailEl] : Pw >= 100 ? '#ff3d7f' : Pw >= 80 ? '#ffb13d' : '#9fe8ff';
+  ctx.save();
+  ctx.lineCap = 'round';
+  for (let i = 1; i < A.trail.length; i++) {
+    const a = A.trail[i - 1],
+      b = A.trail[i],
+      k = i / A.trail.length;
+    ctx.globalAlpha = k * 0.8;
+    ctx.strokeStyle = c;
+    ctx.lineWidth = k * (4 + Pw / 9) * q.s;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
   }
+  ctx.restore();
 }
 /** Frame: the 3D renderer draws the scene and then this canvas's screen-space layer (see js/render3d/). */
 function draw() {

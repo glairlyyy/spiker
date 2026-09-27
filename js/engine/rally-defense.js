@@ -2,6 +2,9 @@
 // Same return convention as engine/rally-phases.js. `x` carries the attack's values (power, landing spot,
 // block formation, the hit animation acts…); block() may change power/touch flags for dig().
 
+/** Below this block coverage there is no real block attempt (rally.js drops the defender's scene on the same test). */
+const BLOCK_MIN_COV = 0.12;
+
 /** 9. Block: block break (drill + hit-stop) → stuff (kill block, or a block-cover dig) → touch → tool off the hands. */
 function block(c, x) {
   const { m, B, V, atk, ds, da, atkT, defT } = c,
@@ -10,7 +13,7 @@ function block(c, x) {
   let touched = false,
     softTouch = false,
     smashed = false;
-  if (!tip && cov > 0.12) {
+  if (!tip && cov > BLOCK_MIN_COV) {
     const bb = c1.c > c0.c ? b1 : b0;
     const bp = Formula.blockPower(b0, b1, defT, cov);
     const hands = { p: bb.id, c: 'block' },
@@ -70,7 +73,7 @@ function block(c, x) {
         bd = clamp(Math.hypot(bx - sx(ds, 484), (bzz - bz0) * 420, 150) / (kmh(dp) * 0.012), 100, 260);
       // Block cover: the best-placed teammate (high defense, decent wit) may dig the kill block
       const coverScore = q => effD(q) * 0.65 + q.speed * 0.35 - dist(m.pos[q.id], bx, bzz) * 25;
-      const cvr = atkT.P.filter(q => q !== spiker).reduce((x, q) => (coverScore(q) > coverScore(x) ? q : x));
+      const cvr = atkT.P.filter(q => q !== spiker).reduce((best, q) => (coverScore(q) > coverScore(best) ? q : best));
       const saved = R() < sig((coverScore(cvr) - dp) / 12 - 2.7) * (W(cvr) < 0.8 ? 0.3 : 1);
       if (!saved) {
         st(m, bb, 'blk');
@@ -176,9 +179,8 @@ function block(c, x) {
         });
       return { point: ds };
     }
-    if (smashed) {
-      // ball already through the block — skip touch / tool outcomes
-    } else if (R() < sig((bp - pow) / 20 + 0.2)) {
+    // touch or tool off the hands (not after a block break: that ball is already through)
+    if (!smashed && R() < sig((bp - pow) / 20 + 0.2)) {
       touched = true;
       softTouch = hasTech(bb, 'softblk');
       for (const b of blockers) if (b.el === 'earth') elCharge(m, b, EG.earth.touch);
@@ -195,7 +197,7 @@ function block(c, x) {
           ]
         });
       hit.length = 0;
-    } else if (cov < 0.6 && R() < 0.08) {
+    } else if (!smashed && cov < 0.6 && R() < 0.08) {
       st(m, spiker, 'k');
       V && B({ dur: 190, acts: [...hit, { k: 'ball', to: hands, h: 0, trail: pow }] });
       V &&
@@ -215,7 +217,7 @@ function block(c, x) {
 }
 /** 10. Dig or kill. A dig hands possession to the other side; Desperation Save can rescue a ball that was down. */
 function dig(c, x, bl) {
-  const { m, B, V, atk, ds, dd, atkT, defT } = c,
+  const { m, B, V, atk, ds, dd, defT } = c,
     { tip, cov, spiker, setter, blockers, lx, lz, hdur, hit, bdown, tier, combo, bitten, fakeDecoy, el, elS } = x,
     { touched, softTouch, smashed, pow } = bl;
   const cands = defT.P.filter(p => !blockers.includes(p));
@@ -256,8 +258,9 @@ function dig(c, x, bl) {
     return { next: [ds, dg, 1] };
   }
   if (R() < killP) {
-    // the defender got there but it's too hot to control: sometimes it pops up inside the court and a teammate saves it
+    // how far the defender gets toward the ball (share of the distance)
     const fReach = clamp((0.25 + dg.speed / 250) / (dd0 + 0.01), 0, 0.85);
+    // the defender got there but it's too hot to control: sometimes it pops up inside the court and a teammate saves it
     if (!tip && dd0 * (1 - fReach) < 0.09 && R() < popChance(dg, pow) * (1 - (elS ? elS.noPop : 0))) {
       const P = popRecovery(m, ds, defT, dg, lx, lz, pow, c.n),
         sp0 = mustDive(dg, q0, lx, lz, hdur) ? 'dive' : 'bump';
@@ -319,11 +322,10 @@ function dig(c, x, bl) {
       m.hero = setter;
     }
     if (setter !== spiker) st(m, setter, 'ast');
-    const f = clamp((0.25 + dg.speed / 250) / (dd0 + 0.01), 0, 0.85);
-    mv(m, dg, lerp(q0.x, lx, f), lerp(q0.z, lz, f), a4, V);
+    mv(m, dg, lerp(q0.x, lx, fReach), lerp(q0.z, lz, fReach), a4, V);
     const word = tier === 'ult' ? 'KILL!!' : tier === 'heavy' ? 'Kill!' : tip ? 'Tip!' : 'Point';
     // defender gets there but the spike blows through the arms and bounces off (visual only, no extra rolls)
-    const shank = V && !tip && dd0 * (1 - f) < 0.09 && (pow * 97.13) % 1 < 0.3,
+    const shank = V && !tip && dd0 * (1 - fReach) < 0.09 && (pow * 97.13) % 1 < 0.3,
       sp = mustDive(dg, q0, lx, lz, hdur) ? 'dive' : 'bump';
     let bx = lx,
       bz = lz;

@@ -1,5 +1,6 @@
 // Effective stats during a match: wit, mood, momentum and stamina modifiers; derived numbers.
 
+/** The match being played: set by playRally(), read by the effective-stat helpers below. */
 let CM = null;
 const sideOf = p => (CM.t[0] === p.team ? 0 : 1);
 /** Captain's buff on a player this match: level 1–3 (0 = none). */
@@ -36,9 +37,11 @@ function doubleContactP(setter, qual, w) {
 }
 /** Setter dump/feint multiplier from wit and jump (0.15–2.2). */
 const dumpThreat = (p, wit = p.wit) => clamp(0.25 + (wit - 1) * 0.6 + (p.jump - 50) / 60, 0.15, 2.2);
+/** Drain stamina (skills, defense and speed soften it; floor 0.05). */
 function dr(m, p, v) {
   m.sta[p.id] = clamp((m.sta[p.id] == null ? 1 : m.sta[p.id]) - v * 1.3 * skillMod(p, 'stamina') * (1.3 - (p.def + p.speed) / 400), 0.05, 1);
 }
+/** Shift mood by v (clamped to −1..1). */
 function md(m, p, v) {
   m.mood[p.id] = clamp((m.mood[p.id] || 0) + v, -1, 1);
 }

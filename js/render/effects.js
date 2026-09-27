@@ -1,528 +1,216 @@
-// Particles, lightning and playstyle element effects. With the 3D view on, each entry point hands off to R3D.fx
-// (js/render3d/fx3d.mjs) at the ball's position; the screen-space versions below remain for labels-only layers.
+// Transient effects. Contact, impact and element effects are handed to the 3D renderer (R3D.fx, js/render3d/fx3d.mjs),
+// anchored at the ball. The screen-space pieces the overlay draws (particles, labels, cracks, speed lines, banners…) are
+// spawned by the playback and aged here every frame (stepEffects, drillStep); court.js draws them.
 
-function addPart(o) {
-  A.parts.push(Object.assign({ life: 1, dec: 0.002, s: 3 }, o));
+/** Screen-space particle budget: beyond it the oldest go first. */
+const MAX_PARTS = 900;
+/** Block-break drill: how long the ball grinds into the wall before it shatters (ms, real time). */
+const DRILL_MS = 560;
+
+/* ---------- 3D effect hand-off ---------- */
+
+/** The 3D effects API, or null while the 3D view is not up (there is nothing to draw effects on then). */
+const fx3 = () => (R3D && R3D.fx) || null;
+/** Lightning from the sky onto the floor under the ball; `w` = width. */
+function bolt(w) {
+  const f = fx3();
+  if (f) f.skyBolt(w);
 }
-function bolt(x, y, w) {
-  if (R3D && R3D.fx) return R3D.fx.skyBolt(w);
-  if (!A.bolts) A.bolts = [];
-  let pts = [{ x: x + rnd(-120, 120), y: VT - 10 }];
-  const n = 9;
-  for (let i = 1; i <= n; i++) {
-    const t = i / n;
-    pts.push({ x: lerp(pts[0].x, x, t) + (i < n ? rnd(-28, 28) : 0), y: lerp(VT - 10, y, t) });
-  }
-  const br = [];
-  for (let k = 0; k < 2; k++) {
-    const i = 2 + Math.floor(R() * 5),
-      o = pts[i];
-    br.push([o, { x: o.x + rnd(-60, 60), y: o.y + rnd(20, 60) }, { x: o.x + rnd(-90, 90), y: o.y + rnd(50, 110) }]);
-  }
-  A.bolts.push({ pts, br, life: 1, w: w || 1 });
+/** Electric crackle at the ball (OP players). */
+function zap(pow) {
+  const f = fx3();
+  if (f) f.zap(pow);
 }
-function zap(x, y, pow) {
-  if (R3D && R3D.fx) return R3D.fx.zap(pow);
-  for (let i = 0; i < pow / 3; i++) {
-    const an = R() * Math.PI * 2,
-      v = rnd(0.1, 0.35);
-    A.parts.push({
-      x,
-      y,
-      vx: Math.cos(an) * v,
-      vy: Math.sin(an) * v,
-      life: 1,
-      dec: rnd(0.003, 0.006),
-      s: rnd(2, 4),
-      c: pick(['#bff4ff', '#ffffff', '#fff27a', '#6fd6ff'])
-    });
-  }
-  if (pow >= 85) bolt(x, y, 1);
+/** Contact burst at the ball (spike, serve, block) in `color`. */
+function burst(pow, color) {
+  const f = fx3();
+  if (f) f.burst(pow, color);
 }
-function burst(x, y, pow, color) {
-  if (R3D && R3D.fx) return R3D.fx.burst(pow, color);
-  const n = Math.round(pow / 3.5);
-  for (let i = 0; i < n; i++) {
-    const an = R() * Math.PI * 2,
-      v = (rnd(0.05, 0.12) * pow) / 10;
-    A.parts.push({
-      x,
-      y,
-      vx: Math.cos(an) * v,
-      vy: Math.sin(an) * v,
-      life: 1,
-      dec: rnd(0.0015, 0.003),
-      s: rnd(2, 4 + pow / 30),
-      c: R() < 0.5 ? color : '#ffffff'
-    });
-  }
-  A.rings.push({ x, y, r: 6, max: pow * 1.5, life: 1, c: color, w: 2 + pow / 25 });
-  if (pow > 80) A.rings.push({ x, y, r: 2, max: pow * 0.9, life: 1, c: '#ffffff', w: 2 });
-}
-function impact(x, y, pow, sc) {
-  if (R3D && R3D.fx) {
-    R3D.fx.impact(pow);
-    if (!RM) A.shake = Math.max(A.shake, pow / 12);
-    return;
-  }
-  for (let i = 0; i < pow / 2.5; i++) {
-    A.parts.push({
-      x: x + rnd(-8, 8),
-      y,
-      vx: (rnd(-0.25, 0.25) * pow) / 40,
-      vy: (-rnd(0.05, 0.3) * pow) / 40,
-      g: 0.0009,
-      life: 1,
-      dec: rnd(0.0015, 0.0025),
-      s: rnd(2, 5),
-      c: pick(['#f6d9a0', '#e7b56a', '#ffffff'])
-    });
-  }
-  A.rings.push({ x, y, r: 4, max: pow * 1.8 * sc, life: 1, c: '#ffffff', w: 3, flat: 1 });
+/** Ball hits the floor: dust and shockwave, plus a screen shake by power. */
+function impact(pow) {
+  const f = fx3();
+  if (f) f.impact(pow);
   if (!RM) A.shake = Math.max(A.shake, pow / 12);
 }
-function elemBurst(el, x, y, pow) {
-  if (R3D && R3D.fx) return R3D.fx.elemBurst(el, pow);
-  const n = Math.round(8 + pow / 5);
-  switch (el) {
-    case 'fire':
-      for (let i = 0; i < n * 1.4; i++) {
-        const an = R() * Math.PI * 2,
-          v = (rnd(0.03, 0.14) * pow) / 60;
-        addPart({
-          kind: 'fire',
-          x,
-          y,
-          vx: Math.cos(an) * v,
-          vy: Math.sin(an) * v - 0.05,
-          g: -0.0003,
-          s: rnd(4, 9 + pow / 15),
-          grow: -0.006,
-          dec: rnd(0.0018, 0.003)
-        });
-      }
-      A.rings.push({ x, y, r: 6, max: pow * 1.3, life: 1, c: '#ff5a1f', w: 4 });
-      break;
-    case 'water':
-      for (let i = 0; i < n * 1.3; i++) {
-        const an = -Math.PI * rnd(0.05, 0.95),
-          v = (rnd(0.08, 0.25) * pow) / 60;
-        addPart({
-          kind: 'drop',
-          x,
-          y,
-          vx: Math.cos(an) * v,
-          vy: Math.sin(an) * v,
-          g: 0.0011,
-          s: rnd(2.5, 5),
-          dec: rnd(0.0014, 0.0022),
-          c: R() < 0.7 ? '#7fd3ff' : '#e6f7ff'
-        });
-      }
-      A.rings.push({ x, y, r: 6, max: pow * 1.2, life: 1, c: '#8fdcff', w: 3 });
-      break;
-    case 'earth':
-      for (let i = 0; i < n; i++) {
-        const an = R() * Math.PI * 2,
-          v = (rnd(0.06, 0.2) * pow) / 60;
-        addPart({
-          kind: 'rock',
-          x,
-          y,
-          vx: Math.cos(an) * v,
-          vy: Math.sin(an) * v - 0.08,
-          g: 0.0013,
-          s: rnd(4, 8 + pow / 20),
-          rot: R() * 6,
-          vr: rnd(-0.02, 0.02),
-          dec: rnd(0.0012, 0.002),
-          c: pick(['#8a7a66', '#5e5245', '#b9a78c'])
-        });
-      }
-      A.rings.push({ x, y, r: 6, max: pow * 1.1, life: 1, c: '#b9a78c', w: 5 });
-      break;
-    case 'wind':
-      for (let i = 0; i < 8 + pow / 12; i++)
-        addPart({
-          kind: 'wind',
-          cx: x,
-          cy: y,
-          x,
-          y,
-          an: R() * 6.3,
-          r: rnd(8, 20),
-          dr: (rnd(0.04, 0.1) * pow) / 60,
-          w: rnd(0.008, 0.016) * (R() < 0.5 ? 1 : -1),
-          dec: rnd(0.0018, 0.003),
-          s: rnd(1.5, 3)
-        });
-      break;
-    case 'flash':
-      for (let i = 0; i < n; i++) {
-        const dir = R() < 0.5 ? 1 : -1,
-          v = (rnd(0.25, 0.6) * pow) / 60;
-        addPart({
-          kind: 'streak',
-          x,
-          y: y + rnd(-30, 30),
-          vx: dir * v,
-          vy: rnd(-0.02, 0.02),
-          s: rnd(18, 40 + pow / 3),
-          dec: rnd(0.003, 0.005),
-          c: R() < 0.6 ? '#fff27a' : '#ffffff'
-        });
-      }
-      A.rings.push({ x, y, r: 4, max: pow * 1.4, life: 1, c: '#fff27a', w: 2 });
-      break;
-    case 'blast':
-      for (let i = 0; i < 6 + pow / 15; i++) {
-        const an = R() * Math.PI * 2,
-          v = rnd(0.02, 0.07);
-        addPart({
-          kind: 'smoke',
-          x,
-          y,
-          vx: Math.cos(an) * v,
-          vy: Math.sin(an) * v - 0.02,
-          s: rnd(8, 14),
-          grow: 0.035,
-          dec: rnd(0.0012, 0.0018)
-        });
-      }
-      for (let i = 0; i < n; i++) {
-        const an = R() * Math.PI * 2,
-          v = (rnd(0.1, 0.3) * pow) / 60;
-        addPart({
-          x,
-          y,
-          vx: Math.cos(an) * v,
-          vy: Math.sin(an) * v,
-          s: rnd(2, 4),
-          dec: 0.003,
-          c: pick(['#ffd166', '#ff7b2e', '#fff'])
-        });
-      }
-      A.rings.push({ x, y, r: 8, max: pow * 1.9, life: 1, c: '#ffb13d', w: 7 });
-      break;
-    case 'shadow':
-      for (let i = 0; i < n; i++) {
-        const an = R() * Math.PI * 2,
-          v = (rnd(0.02, 0.08) * pow) / 60;
-        addPart({
-          kind: 'wisp',
-          x: x + rnd(-10, 10),
-          y: y + rnd(-10, 10),
-          vx: Math.cos(an) * v,
-          vy: -rnd(0.02, 0.06),
-          s: rnd(6, 12),
-          grow: 0.012,
-          dec: rnd(0.0014, 0.0022),
-          c: R() < 0.6 ? '#9b6cff' : '#2e1065'
-        });
-      }
-      A.rings.push({ x, y, r: 6, max: pow * 1.2, life: 1, c: '#7c3aed', w: 4 });
-      break;
-    case 'star':
-      for (let i = 0; i < n; i++) {
-        const an = R() * Math.PI * 2,
-          v = (rnd(0.04, 0.16) * pow) / 60;
-        addPart({
-          kind: 'spark',
-          x,
-          y,
-          vx: Math.cos(an) * v,
-          vy: Math.sin(an) * v,
-          s: rnd(4, 9),
-          rot: R() * 6,
-          vr: 0.01,
-          dec: rnd(0.0016, 0.0026),
-          c: R() < 0.6 ? '#ffe38a' : '#ffffff'
-        });
-      }
-      break;
+/** Element burst at the ball (fire, water, earth, wind, flash, blast, shadow, star). */
+function elemBurst(el, pow) {
+  const f = fx3();
+  if (f) f.elemBurst(el, pow);
+}
+/** Element effect on the floor where the ball lands. */
+function elemImpact(el, pow) {
+  const f = fx3();
+  if (f) f.elemImpact(el, pow);
+}
+/** Per-frame element trail behind a powered ball; dt in ms. */
+function elemTrail(el, pow, dt) {
+  const f = fx3();
+  if (f) f.trail(el, pow, dt / 1000);
+}
+
+/* ---------- screen-space pieces ---------- */
+
+/** Add a screen-space particle (defaults: life 1, dec 0.002/ms, size 3), keeping within MAX_PARTS. */
+function addPart(o) {
+  if (A.parts.length >= MAX_PARTS) A.parts.splice(0, A.parts.length - MAX_PARTS + 1);
+  A.parts.push(Object.assign({ life: 1, dec: 0.002, s: 3 }, o));
+}
+/**
+ * `n` glass shards flying out of (x, y) ± (rx, ry): speed v[0]..v[1] (+ `away` × 0.12 sideways, `lift` up), size s,
+ * decay dec, colour from `cols`; they fall under gravity.
+ */
+function spawnShards(n, { x, y, rx, ry, v: [v0, v1], lift, s: [s0, s1], dec: [d0, d1], cols, away = 0 }) {
+  for (let i = 0; i < n; i++) {
+    const an = R() * Math.PI * 2,
+      v = rnd(v0, v1);
+    addPart({
+      kind: 'shard',
+      x: x + rnd(-rx, rx),
+      y: y + rnd(-ry, ry),
+      vx: Math.cos(an) * v + away * 0.12,
+      vy: Math.sin(an) * v - lift,
+      g: 0.0009,
+      rot: R() * 6,
+      vr: rnd(-0.02, 0.02),
+      s: rnd(s0, s1),
+      life: 1,
+      dec: rnd(d0, d1),
+      c: pick(cols)
+    });
   }
 }
-function elemImpact(el, x, y, pow, sc) {
-  if (R3D && R3D.fx) return R3D.fx.elemImpact(el, pow);
-  switch (el) {
-    case 'fire':
-      for (let i = 0; i < 14 + pow / 4; i++)
-        addPart({
-          kind: 'fire',
-          x: x + rnd(-24, 24) * sc,
-          y,
-          vx: rnd(-0.02, 0.02),
-          vy: -rnd(0.06, 0.2),
-          g: -0.0002,
-          s: rnd(6, 12 + pow / 12),
-          grow: -0.007,
-          dec: rnd(0.0012, 0.0022)
-        });
-      break;
-    case 'water':
-      for (let r = 0; r < 3; r++)
-        A.rings.push({ x, y, r: 4 + r * 10, max: pow * (1.2 + r * 0.5) * sc, life: 1 - r * 0.15, c: '#8fdcff', w: 3, flat: 1 });
-      for (let i = 0; i < pow / 2; i++) {
-        const v = (rnd(0.1, 0.3) * pow) / 70;
-        addPart({ kind: 'drop', x, y, vx: rnd(-0.6, 0.6) * v, vy: -v, g: 0.0012, s: rnd(2.5, 5), dec: 0.0016, c: '#7fd3ff' });
-      }
-      break;
-    case 'earth': {
-      const lines = [];
-      for (let i = 0; i < 5 + pow / 20; i++) {
-        let an = R() * Math.PI * 2,
-          px = 0,
-          py = 0;
-        const l = [[0, 0]];
-        for (let k = 0; k < 4; k++) {
-          an += rnd(-0.5, 0.5);
-          const st = ((rnd(8, 16) * pow) / 70) * sc;
-          px += Math.cos(an) * st;
-          py += Math.sin(an) * st * 0.35;
-          l.push([px, py]);
-        }
-        lines.push(l);
-      }
-      (A.decals = A.decals || []).push({ x, y, lines, life: 1 });
-      elemBurst('earth', x, y - 6, pow * 0.8);
-      break;
+/**
+ * Random crack lines radiating from (0, 0): `n` polylines of `segs` segments, start angle ± `spread`, each segment
+ * turning ± `turn` and `len0`..`len1` long, y scaled by `squashY` (screen offsets).
+ */
+function crackLines(n, spread, segs, turn, len0, len1, squashY) {
+  const lines = [];
+  for (let i = 0; i < n; i++) {
+    let an = (i / n) * Math.PI * 2 + rnd(-spread, spread),
+      x = 0,
+      y = 0;
+    const l = [[0, 0]];
+    for (let k = 0; k < segs; k++) {
+      an += rnd(-turn, turn);
+      const st = rnd(len0, len1);
+      x += Math.cos(an) * st;
+      y += Math.sin(an) * st * squashY;
+      l.push([x, y]);
     }
-    case 'wind':
-      for (let i = 0; i < 14; i++)
-        addPart({
-          kind: 'wind',
-          cx: x,
-          cy: y - 10,
-          x,
-          y,
-          an: R() * 6.3,
-          r: rnd(10, 20),
-          dr: (rnd(0.06, 0.14) * pow) / 60,
-          w: rnd(0.01, 0.02) * (i % 2 ? 1 : -1),
-          dec: 0.002,
-          s: 2
-        });
-      break;
-    case 'blast':
-      elemBurst('blast', x, y - 10, pow * 1.2);
-      A.rings.push({ x, y, r: 6, max: pow * 2.4 * sc, life: 1, c: '#ffb13d', w: 6, flat: 1 });
-      break;
-    default:
-      elemBurst(el, x, y - 6, pow);
+    lines.push(l);
+  }
+  return lines;
+}
+/** Advance the block-break drill (real ms): spin the ball hard, throw sparks, then shatter the wall. */
+function drillStep(dt) {
+  const D = A.drill;
+  if (!D) return;
+  D.t += dt;
+  A.spin = (A.spin || 0) + dt * 0.05;
+  if (!RM && R() < dt / 14) {
+    const an = R() * Math.PI * 2,
+      v = rnd(0.15, 0.4);
+    addPart({
+      kind: 'shard',
+      x: D.X + Math.cos(an) * 10,
+      y: D.Y + Math.sin(an) * 10,
+      vx: Math.cos(an) * v,
+      vy: Math.sin(an) * v,
+      rot: R() * 6,
+      vr: 0.02,
+      s: rnd(2, 4),
+      life: 1,
+      dec: 0.004,
+      c: pick(['#fff27a', '#ffffff', '#ffb13d'])
+    });
+  }
+  if (D.t >= D.dur) {
+    const k = D.s * VCS;
+    spawnShards(46, {
+      x: D.X,
+      y: D.Y,
+      rx: 24 * k,
+      ry: 24 * k,
+      v: [0.1, 0.5],
+      lift: 0.08,
+      s: [4, 10],
+      dec: [0.0009, 0.0015],
+      cols: ['#e6f7ff', '#9fe8ff', '#ffffff', D.col],
+      away: D.away // shards fly out the back of the block
+    });
+    sfx.shatter();
+    A.drill = null;
   }
 }
-function elemTrail(el, x, y, pow, dt) {
-  if (R3D && R3D.fx) return R3D.fx.trail(el, pow, dt / 1000);
-  if (R() > Math.min(1, dt / 14)) return;
-  const k = pow >= 85 ? 2 : 1;
-  for (let i = 0; i < k; i++)
-    switch (el) {
-      case 'fire':
-        addPart({
-          kind: 'fire',
-          x: x + rnd(-4, 4),
-          y: y + rnd(-4, 4),
-          vx: rnd(-0.02, 0.02),
-          vy: -rnd(0.01, 0.05),
-          s: rnd(5, 8 + pow / 15),
-          grow: -0.012,
-          dec: 0.004
-        });
-        break;
-      case 'water':
-        addPart({
-          kind: 'drop',
-          x,
-          y,
-          vx: rnd(-0.05, 0.05),
-          vy: rnd(-0.05, 0.02),
-          g: 0.0009,
-          s: rnd(2, 4),
-          dec: 0.003,
-          c: '#9fe0ff'
-        });
-        break;
-      case 'earth':
-        if (R() < 0.5)
-          addPart({
-            kind: 'rock',
-            x,
-            y,
-            vx: rnd(-0.04, 0.04),
-            vy: 0,
-            g: 0.001,
-            s: rnd(3, 5),
-            rot: 0,
-            vr: 0.02,
-            dec: 0.003,
-            c: '#8a7a66'
-          });
-        break;
-      case 'wind':
-        addPart({ kind: 'wind', cx: x, cy: y, x, y, an: R() * 6.3, r: 6, dr: 0.03, w: 0.02, dec: 0.005, s: 1.5 });
-        break;
-      case 'flash':
-        addPart({ kind: 'ghostball', x, y, vx: 0, vy: 0, s: 9, dec: 0.006 });
-        break;
-      case 'blast':
-        if (R() < 0.6) addPart({ kind: 'smoke', x, y, vx: 0, vy: -0.01, s: 5, grow: 0.02, dec: 0.003 });
-        break;
-      case 'shadow':
-        addPart({ kind: 'wisp', x, y, vx: 0, vy: -0.015, s: 6, grow: 0.01, dec: 0.004, c: '#7c3aed' });
-        break;
-      case 'star':
-        if (R() < 0.7)
-          addPart({
-            kind: 'spark',
-            x: x + rnd(-6, 6),
-            y: y + rnd(-6, 6),
-            vx: 0,
-            vy: 0,
-            s: rnd(3, 6),
-            rot: 0,
-            vr: 0.01,
-            dec: 0.004,
-            c: '#ffe38a'
-          });
-        break;
-    }
-}
-function drawParts() {
+/** Lifetimes (ms of world time) of the one-off overlay pieces faded by stepEffects. */
+const FX_LIFE = { real: 750, lines: 380, wallFx: 650, ptFlash: 900, chant: 2400, link: 1100, crack: 2600, toBanner: 2600 };
+/** Age the screen-space effects by dt ms of world time (particles, labels, overlays, shake, flash, crowd, coaches). */
+function stepEffects(dt) {
   for (const p of A.parts) {
-    const a = Math.max(0, Math.min(1, p.life));
-    ctx.globalAlpha = a;
-    switch (p.kind) {
-      case 'fire': {
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.fillStyle = p.life > 0.65 ? '#fff1a8' : p.life > 0.35 ? '#ff9a2e' : '#e8311f';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, Math.max(0.5, p.s), 0, 7);
-        ctx.fill();
-        ctx.restore();
-        break;
-      }
-      case 'drop': {
-        const an = Math.atan2(p.vy, p.vx);
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(an);
-        ctx.fillStyle = p.c;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, p.s * 1.8, p.s * 0.8, 0, 0, 7);
-        ctx.fill();
-        ctx.restore();
-        break;
-      }
-      case 'rock': {
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.rot);
-        ctx.fillStyle = p.c;
-        ctx.beginPath();
-        ctx.moveTo(-p.s / 2, -p.s / 3);
-        ctx.lineTo(p.s / 3, -p.s / 2);
-        ctx.lineTo(p.s / 2, p.s / 3);
-        ctx.lineTo(-p.s / 4, p.s / 2);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-        break;
-      }
-      case 'wind': {
-        ctx.strokeStyle = 'rgba(230,252,255,.9)';
-        ctx.lineWidth = p.s;
-        ctx.beginPath();
-        ctx.ellipse(p.cx, p.cy, p.r, p.r * 0.55, 0, p.an - 0.9, p.an);
-        ctx.stroke();
-        break;
-      }
-      case 'streak': {
-        ctx.strokeStyle = p.c;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x - Math.sign(p.vx) * p.s, p.y);
-        ctx.stroke();
-        break;
-      }
-      case 'ghostball': {
-        ctx.globalAlpha = a * 0.45;
-        ctx.fillStyle = '#fff27a';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.s, 0, 7);
-        ctx.fill();
-        break;
-      }
-      case 'smoke': {
-        ctx.globalAlpha = a * 0.45;
-        ctx.fillStyle = p.life > 0.7 ? '#ffb35c' : '#8b8fa8';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.s, 0, 7);
-        ctx.fill();
-        break;
-      }
-      case 'dust': {
-        ctx.globalAlpha = a * 0.4;
-        ctx.fillStyle = '#f3dcb0';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.s, 0, 7);
-        ctx.fill();
-        break;
-      }
-      case 'conf': {
-        ctx.save();
-        ctx.translate(p.x + Math.sin(p.rot * 2) * 4, p.y);
-        ctx.rotate(p.rot);
-        ctx.fillStyle = p.c;
-        ctx.fillRect(-p.s / 2, -p.s / 4, p.s, (p.s / 2) * Math.abs(Math.cos(p.rot * 3)) + 1);
-        ctx.restore();
-        break;
-      }
-      case 'shard': {
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.rot);
-        ctx.fillStyle = p.c;
-        ctx.strokeStyle = 'rgba(255,255,255,.9)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(0, -p.s);
-        ctx.lineTo(p.s * 0.55, p.s * 0.4);
-        ctx.lineTo(-p.s * 0.45, p.s * 0.6);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
-        break;
-      }
-      case 'wisp': {
-        ctx.globalAlpha = a * 0.5;
-        ctx.fillStyle = p.c;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.s, 0, 7);
-        ctx.fill();
-        break;
-      }
-      case 'spark': {
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.rot);
-        ctx.fillStyle = p.c;
-        ctx.beginPath();
-        for (let i = 0; i < 8; i++) {
-          const r = i % 2 ? p.s * 0.3 : p.s,
-            an = (i * Math.PI) / 4;
-          ctx.lineTo(Math.cos(an) * r, Math.sin(an) * r);
-        }
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-        break;
-      }
-      default:
-        ctx.fillStyle = p.c;
-        ctx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s);
-    }
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    if (p.g) p.vy += p.g * dt;
+    if (p.grow) p.s += p.grow * dt;
+    if (p.rot != null) p.rot += p.vr * dt;
+    p.life -= p.dec * dt;
   }
+  A.parts = A.parts.filter(p => p.life > 0);
+  if (A.trailEl && A.trailPow && A.ball.vis) elemTrail(A.trailEl, A.trailPow, dt);
+  for (const l of A.labels) {
+    l.life -= dt / (l.big ? 1300 : 1000);
+    l.y -= dt * 0.02; // float up
+  }
+  A.labels = A.labels.filter(l => l.life > 0);
+  for (const k in FX_LIFE) {
+    const o = A[k];
+    if (o && (o.life -= dt / FX_LIFE[k]) <= 0) A[k] = null;
+  }
+  if (A.link) linkSparks();
+  A.zoom = (A.zoom || 0) * Math.pow(0.993, dt);
+  if (A.squash) A.squash = Math.max(0, A.squash - dt / 300);
+  if (A.netShake) A.netShake = Math.max(0, A.netShake - dt / 700);
+  A.spin = (A.spin || 0) + dt * (0.006 + (A.trailPow || 0) / 2500) * (A.wob ? 0.12 : 1);
+  if (A.ghost && (A.ghost.life -= playDt(dt) / 1000) <= 0) A.ghost = null;
+  A.shake *= Math.pow(0.992, dt);
+  A.flash *= Math.pow(0.99, dt);
+  A.cheer = A.cheer.map(v => Math.max(0, v - dt / 1400));
+  A.cheerAll = Math.max(0, A.cheerAll - dt / 1400);
+  if (A.wave) {
+    A.wave.x += dt * 0.75; // crowd wave sweeping across the stands
+    if (A.wave.x > 1150) A.wave = null;
+  }
+  for (const c of A.coaches) {
+    if (c.talkT > 0) {
+      c.talkT -= dt;
+      if (c.talkT <= 0) {
+        c.type = null;
+        c.bubble = null;
+        c.react = 0;
+      }
+      continue;
+    }
+    c.react = Math.max(0, c.react - dt / 1500);
+    if (!c.react) c.type = null;
+  }
+}
+/** Golden sparks rising off the link between two players (a pair move). */
+function linkSparks() {
+  const a = A.disp[A.link.p1],
+    b = A.disp[A.link.p2];
+  if (!a || !b || R() >= 0.5) return;
+  const q1 = P(a.x, a.z, a.jy + 70),
+    q2 = P(b.x, b.z, b.jy + 70);
+  addPart({
+    kind: 'spark',
+    x: lerp(q1.X, q2.X, R()),
+    y: lerp(q1.Y, q2.Y, R()) - 10,
+    vx: 0,
+    vy: -0.02,
+    s: rnd(3, 6),
+    rot: 0,
+    vr: 0.02,
+    life: 1,
+    dec: 0.003,
+    c: '#ffe38a'
+  });
 }

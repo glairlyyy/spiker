@@ -2,6 +2,7 @@
 
 const blank = () => ({ mp: 0, k: 0, att: 0, err: 0, blk: 0, ace: 0, dig: 0, ast: 0, top: 0, els: 0 });
 let _pid = 0;
+/** Random appearance (hair style, skin, eyes, accessory, height by role). */
 function mkLook(role) {
   const acc = R();
   return {
@@ -68,10 +69,11 @@ function rollStats(role, bonus, bias) {
 }
 /** Random wit for a role; talent pushes it toward the role's top end (OP players can exceed it). */
 function rollWit(role, bonus) {
-  const W = { S: [1.35, 2.0], MB: [0.8, 1.45], WS: [0.5, 1.3] }[role],
-    base = rnd(W[0], W[0] + (W[1] - W[0]) * 0.55);
-  return +Math.min(2, base + (W[1] - base) * Math.min(1, bonus / 80) + (bonus >= 110 ? rnd(0.25, 0.45) : 0)).toFixed(2);
+  const [lo, hi] = { S: [1.35, 2.0], MB: [0.8, 1.45], WS: [0.5, 1.3] }[role],
+    base = rnd(lo, lo + (hi - lo) * 0.55);
+  return +Math.min(2, base + (hi - base) * Math.min(1, bonus / 80) + (bonus >= 110 ? rnd(0.25, 0.45) : 0)).toFixed(2);
 }
+/** A random "Family Given" name not yet in `used` (and adds it). */
 function rollName(used) {
   let name;
   do {
@@ -105,6 +107,7 @@ function mkPlayer(role, slot, bonus, team, used) {
     ...st
   });
 }
+/** Overall rating: the stats weighted by role, plus wit. */
 function ovr(p) {
   const w = { S: [0.1, 0.3, 0.35, 0.25], MB: [0.2, 0.35, 0.15, 0.3], WS: [0.4, 0.2, 0.15, 0.25] }[p.role];
   return Math.round(p.power * w[0] + p.def * w[1] + p.speed * w[2] + p.jump * w[3] + (p.wit - 1) * (p.role === 'S' ? 12 : 6));

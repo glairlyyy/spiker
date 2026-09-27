@@ -30,6 +30,7 @@ const Cup = {
       Cup.simulate(run, m);
     }
   },
+  /** Play a bracket entry you are not in headlessly and record its winner and score. */
   simulate(run, x) {
     const m = simMatch(run.teams[x.a], run.teams[x.b]),
       sc = m.setScores[0];
@@ -92,7 +93,7 @@ const Cup = {
     if (!f) return null;
     return f[2] === 'err' ? s.err <= f[3] : s[f[2]] >= f[3];
   },
-  /** Rewards after one of your matches. Returns the message shown on the result card. */
+  /** Rewards after one of your matches. Returns the message shown on the result card (plain text). */
   result(run, m, kind, bm) {
     const win = m.winner === 0,
       you = Run.you(run),
@@ -136,7 +137,7 @@ const Cup = {
       else if (bm.round === 'Final') Cup.close(run, 'Champion');
       else Run.save(run);
     }
-    return esc(line);
+    return line;
   },
   /** Your cup is over (knocked out in `place`, or 'Champion'): placement rewards; the season goes on or ends. */
   close(run, place) {

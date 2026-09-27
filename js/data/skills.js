@@ -14,7 +14,7 @@ const SKILLS = {
   decoy: { name: 'Decoy Master', role: 'S', cost: 120, key: 'decoy', val: 1.15, desc: 'Blockers bite on fake sets +15%' }
 };
 // Techniques: special plays. A player uses one automatically when they meet `req` (stats; wit in wit units),
-// or always once learned in career mode. Hooks live in engine/rally.js (search for hasTech).
+// or always once learned in career mode. Hooks live in the engine's serve and rally phases (search for hasTech).
 Object.assign(SKILLS, {
   // attack
   freak: { tech: 'Attack', name: 'Freak Quick', role: 'MB', req: { speed: 80 }, cost: 160, desc: 'Minus-tempo quick: hit before the block can react (setter wit 1.6+)' },
