@@ -69,9 +69,21 @@ const GRADES = [
 ];
 /** Pre-match focus goals by role: [id, label, stat, target, reward]. 'err' is "at most". */
 const FOCUS = {
-  WS: [['k', '4+ kills', 'k', 4], ['ace', '2+ aces', 'ace', 2], ['clean', 'At most 1 error', 'err', 1]],
-  MB: [['blk', '2+ blocks', 'blk', 2], ['k', '3+ kills', 'k', 3], ['clean', 'At most 1 error', 'err', 1]],
-  S: [['ast', '6+ assists', 'ast', 6], ['dig', '3+ digs', 'dig', 3], ['clean', 'At most 1 error', 'err', 1]]
+  WS: [
+    ['k', '4+ kills', 'k', 4],
+    ['ace', '2+ aces', 'ace', 2],
+    ['clean', 'At most 1 error', 'err', 1]
+  ],
+  MB: [
+    ['blk', '2+ blocks', 'blk', 2],
+    ['k', '3+ kills', 'k', 3],
+    ['clean', 'At most 1 error', 'err', 1]
+  ],
+  S: [
+    ['ast', '6+ assists', 'ast', 6],
+    ['dig', '3+ digs', 'dig', 3],
+    ['clean', 'At most 1 error', 'err', 1]
+  ]
 };
 const FOCUS_REWARD = { sp: 25, fans: 250 };
 /** Captain's team talk before a Cup match. */
@@ -88,7 +100,13 @@ const SPONSOR_AT = [2000, 5000, 8000];
 const SPONSORS = {
   aqua: { name: 'Aqua Rush', perk: '+15 max stamina', cond: 'Keep your mood Normal or better for 4 weeks', kind: 'mood', weeks: 4 },
   shoes: { name: 'Skyline Shoes', perk: 'Speed and Jump training +10%', cond: 'Win your next match', kind: 'win' },
-  iron: { name: 'IronWorks Gym', perk: 'Power and Defense training +10%', cond: 'Train (not rest) in 3 of the next 4 weeks', kind: 'train', weeks: 4 },
+  iron: {
+    name: 'IronWorks Gym',
+    perk: 'Power and Defense training +10%',
+    cond: 'Train (not rest) in 3 of the next 4 weeks',
+    kind: 'train',
+    weeks: 4
+  },
   spike: { name: 'Spike TV', perk: '+20% fans from matches', cond: 'Grade A or better in your next match', kind: 'grade' }
 };
 /** Challenge modes chosen at creation: harder runs pay more Legacy points. */

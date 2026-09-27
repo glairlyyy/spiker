@@ -6,10 +6,7 @@
  * chance, bias = stat bias for generated players.
  */
 const mkStyle = o =>
-  Object.assign(
-    { spike: 1, block: 1, dig: 1, serve: 1, serveErr: 1, quick: 0.25, set: 0, dbl: 0.5, jump: 1, feint: 0.05, bias: {} },
-    o
-  );
+  Object.assign({ spike: 1, block: 1, dig: 1, serve: 1, serveErr: 1, quick: 0.25, set: 0, dbl: 0.5, jump: 1, feint: 0.05, bias: {} }, o);
 const STYLES = {
   power: mkStyle({
     name: 'Power offense',

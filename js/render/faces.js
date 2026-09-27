@@ -21,19 +21,25 @@ function faceSVG(p, mood, size) {
       8: `<circle cx="20" cy="4.5" r="5" fill="${h}" stroke="${ln}" stroke-width=".5"/>`
     }[L.hs] || '';
   // fringe cap (most styles) + the style's own volume on top
-  const cap = L.hs === 3 || L.hs === 5 ? '' : L.hs === 4 || L.hs === 1 ? `<path d="M8 20 C6 5 34 5 32 20 Q31 13 20 12 Q9 13 8 20Z"/>` : `<path d="M7.6 21 C5.5 4 34.5 4 32.4 21 L31 15 L29.4 19.5 L27.4 13.5 L24.6 18.8 L22.6 13 L20 18.5 L17.6 13 L15.4 18.8 L12.6 13.5 L10.6 19.5 L9 15Z"/>`;
-  const top = [
-    `<path d="M8 17 L6 8 L12 11 L12 3 L18 9 L21 1 L24 9 L30 3 L29 11 L34 8 L32 17 Q20 9 8 17Z"/>`,
-    `<path d="M7 22 C6 6 34 6 33 22 L32 16 Q20 11 8 16Z"/>`,
-    `<path d="M8 16 C8 6 32 6 32 16 Q24 10 8 16Z"/>`,
-    `<path d="M17 13 L15 1 L19 5 L21 -1 L23 5 L26 1 L24 13Z"/>`,
-    ``,
-    `<path d="M8 16 Q20 8 32 16 Q26 11 8 16Z"/>`,
-    `<path d="M8 16 C8 6 32 6 32 16 Q20 11 8 16Z"/>`,
-    `<path d="M7 20 C6 6 33 6 34 18 L30 14 Q22 12 11 24Z"/>`,
-    ``,
-    `<path d="M8 17 C9 8 31 7 33 15 L36 9 L31 8 L34 4 Q24 1 14 5 Q9 8 8 17Z"/>`
-  ][L.hs] || '';
+  const cap =
+    L.hs === 3 || L.hs === 5
+      ? ''
+      : L.hs === 4 || L.hs === 1
+        ? `<path d="M8 20 C6 5 34 5 32 20 Q31 13 20 12 Q9 13 8 20Z"/>`
+        : `<path d="M7.6 21 C5.5 4 34.5 4 32.4 21 L31 15 L29.4 19.5 L27.4 13.5 L24.6 18.8 L22.6 13 L20 18.5 L17.6 13 L15.4 18.8 L12.6 13.5 L10.6 19.5 L9 15Z"/>`;
+  const top =
+    [
+      `<path d="M8 17 L6 8 L12 11 L12 3 L18 9 L21 1 L24 9 L30 3 L29 11 L34 8 L32 17 Q20 9 8 17Z"/>`,
+      `<path d="M7 22 C6 6 34 6 33 22 L32 16 Q20 11 8 16Z"/>`,
+      `<path d="M8 16 C8 6 32 6 32 16 Q24 10 8 16Z"/>`,
+      `<path d="M17 13 L15 1 L19 5 L21 -1 L23 5 L26 1 L24 13Z"/>`,
+      ``,
+      `<path d="M8 16 Q20 8 32 16 Q26 11 8 16Z"/>`,
+      `<path d="M8 16 C8 6 32 6 32 16 Q20 11 8 16Z"/>`,
+      `<path d="M7 20 C6 6 33 6 34 18 L30 14 Q22 12 11 24Z"/>`,
+      ``,
+      `<path d="M8 17 C9 8 31 7 33 15 L36 9 L31 8 L34 4 Q24 1 14 5 Q9 8 8 17Z"/>`
+    ][L.hs] || '';
   const E = (x, o = {}) => {
     const ry = o.sharp ? 1.9 : 2.6,
       id = `e${p.id}${x}${mk}`;
@@ -50,7 +56,9 @@ function faceSVG(p, mood, size) {
       E(25, { sharp: true }) +
       `<path d="M11.8 18.6 L17.6 20 M28.2 18.6 L22.4 20" stroke="${br}" stroke-width="1.5" stroke-linecap="round"/><path d="M16.5 28 L23.5 28 Q22.8 32 20 32 Q17.2 32 16.5 28Z" fill="#6b1f2e"/><rect x="16.8" y="28" width="6.4" height="1.1" fill="#fff"/>` +
       blush,
-    happy: `<path d="M12.3 23.6 Q15 20.4 17.7 23.6 M22.3 23.6 Q25 20.4 27.7 23.6" stroke="${dk}" stroke-width="1.3" fill="none" stroke-linecap="round"/><path d="M12.4 18.4 Q15 17.4 17.4 18.2 M22.6 18.2 Q25 17.4 27.6 18.4" stroke="${br}" stroke-width="1.1" fill="none" stroke-linecap="round"/><path d="M17 28.2 Q20 31.8 23 28.2Z" fill="#6b1f2e"/>` + blush,
+    happy:
+      `<path d="M12.3 23.6 Q15 20.4 17.7 23.6 M22.3 23.6 Q25 20.4 27.7 23.6" stroke="${dk}" stroke-width="1.3" fill="none" stroke-linecap="round"/><path d="M12.4 18.4 Q15 17.4 17.4 18.2 M22.6 18.2 Q25 17.4 27.6 18.4" stroke="${br}" stroke-width="1.1" fill="none" stroke-linecap="round"/><path d="M17 28.2 Q20 31.8 23 28.2Z" fill="#6b1f2e"/>` +
+      blush,
     calm:
       E(15) +
       E(25) +

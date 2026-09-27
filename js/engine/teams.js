@@ -75,9 +75,7 @@ function finalizeTeam(t) {
   // values already set (e.g. a created player's leadership or number) are kept
   for (const q of t.P)
     if (q.lead == null)
-      q.lead = Math.round(
-        clamp(rnd(28, 78) + (q.role === 'S' ? 8 : 0) + (q.star ? 6 : 0) + (R() < 0.15 ? rnd(10, 22) : 0), 20, 99)
-      );
+      q.lead = Math.round(clamp(rnd(28, 78) + (q.role === 'S' ? 8 : 0) + (q.star ? 6 : 0) + (R() < 0.15 ? rnd(10, 22) : 0), 20, 99));
   for (const q of t.P) elAssign(q); // hidden element + signature spike (after leadership: it shapes Starlight)
   for (const q of t.P) q.cap = false;
   t.cap = t.P.reduce((x, q) => (q.lead > x.lead ? q : x), t.P[0]);

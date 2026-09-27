@@ -117,8 +117,7 @@ function elAttack(m, p, c) {
 /** Long rallies: water players build, flash players lose patience. */
 function elLong(m) {
   for (const t of m.t)
-    for (const p of t.P)
-      if (p.elOn) elCharge(m, p, p.el === 'water' ? EG.water.long : p.el === 'flash' ? EG.flash.long : 0);
+    for (const p of t.P) if (p.elOn) elCharge(m, p, p.el === 'water' ? EG.water.long : p.el === 'flash' ? EG.flash.long : 0);
 }
 /** Every point: a small trickle for all unlocked players; Starlight also rises when their team scores (more in the zone). */
 function elPoint(m, w) {
@@ -144,7 +143,23 @@ function elSpike(m, p, hitter, setter, defT, perfect) {
     res = ECOUNTER[el] ? defT.P.find(q => q.elOn && q.el === ECOUNTER[el]) : null,
     k = res ? 0.5 : 1,
     K = v => 1 + (v - 1) * k,
-    e = { el, tw: p.sig.tw, name: p.sig.name, res, k, pow: 1, cov: 1, dsc: 1, fly: 1, brk: 0, far: 0, noPop: 0, mom: 0, over: false, pair: null };
+    e = {
+      el,
+      tw: p.sig.tw,
+      name: p.sig.name,
+      res,
+      k,
+      pow: 1,
+      cov: 1,
+      dsc: 1,
+      fly: 1,
+      brk: 0,
+      far: 0,
+      noPop: 0,
+      mom: 0,
+      over: false,
+      pair: null
+    };
   switch (el) {
     case 'fire':
       e.pow = K(1.15);

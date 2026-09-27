@@ -82,11 +82,15 @@ function hypeScene(m, B, lv, { setter, spiker, B0, elSrc, atkT, defT, atk, ds, b
       { k: 'call', p: setter.id, t: set, sc: 1 }
     ]);
   if (B0)
-    shot(1450, [
-      { k: 'shot', kind: 'wall', p: B0.id, p2: spiker.id },
-      { k: 'heart', v: 1.3 },
-      { k: 'call', p: B0.id, t: hypeLine('wall', B0, m, { opp: spiker }), sc: 1 }
-    ], true);
+    shot(
+      1450,
+      [
+        { k: 'shot', kind: 'wall', p: B0.id, p2: spiker.id },
+        { k: 'heart', v: 1.3 },
+        { k: 'call', p: B0.id, t: hypeLine('wall', B0, m, { opp: spiker }), sc: 1 }
+      ],
+      true
+    );
 }
 /** No block attempted after all (a cut shot, a seam, a fake, too wide): the defender has nothing to say — drop their shots. */
 function dropDefScene(m) {
@@ -121,13 +125,20 @@ function hypeRead(m, B, lv, { spiker, B0, defT, ds }) {
       dur: 1550,
       scene: lv,
       acts: [
-      { k: 'shot', kind: 'face', p: B0.id },
-      { k: 'heart', v: 1.2 },
-      { k: 'call', p: B0.id, t: hypeLine(ours ? 'stop' : 'read', B0, m, { opp: spiker }), sc: 1 },
-      ...(mp ? [{ k: 'banner', t: ours ? 'MATCH POINT' : 'HOLD ON', c: defT.color }] : [])
+        { k: 'shot', kind: 'face', p: B0.id },
+        { k: 'heart', v: 1.2 },
+        { k: 'call', p: B0.id, t: hypeLine(ours ? 'stop' : 'read', B0, m, { opp: spiker }), sc: 1 },
+        ...(mp ? [{ k: 'banner', t: ours ? 'MATCH POINT' : 'HOLD ON', c: defT.color }] : [])
       ]
     },
-    b2 = { dur: 650, scene: lv, acts: [{ k: 'shot', kind: 'wall', p: B0.id, p2: spiker.id }, { k: 'heart', v: 1.4 }] };
+    b2 = {
+      dur: 650,
+      scene: lv,
+      acts: [
+        { k: 'shot', kind: 'wall', p: B0.id, p2: spiker.id },
+        { k: 'heart', v: 1.4 }
+      ]
+    };
   m.defBeats.push(b1, b2);
   B(b1);
   B(b2);
@@ -148,6 +159,26 @@ function hypeSpikeCut(m, spiker, bb) {
       ]
     }
   ];
+}
+/**
+ * Kill block: the stuffed ball in close-up during the squash (a `ball` shot, see block()), then — once it has hit the
+ * floor — the blocker's face with their line while the team roars. Level 1 at match point or for a star blocker
+ * (at most every 6 points); otherwise level 2 (Max Hype).
+ */
+function hypeKillBlock(m, bb, spiker) {
+  const played = m.pts[0] + m.pts[1],
+    lv = matchPoint(m) || (bb.star && played - (m.kbAt == null ? -99 : m.kbAt) >= 6) ? 1 : 2; // Normal: not every stuff
+  if (lv === 1) m.kbAt = played;
+  m.kbScene = lv;
+  return {
+    dur: 1400,
+    scene: lv,
+    acts: [
+      { k: 'shot', kind: 'face', p: bb.id },
+      { k: 'heart', v: 0.9 },
+      { k: 'call', p: bb.id, t: hypeLine('denied', bb, m, { opp: spiker }), sc: 1 }
+    ]
+  };
 }
 /**
  * Scramble drama: the ball broke through the block, got a touch, or popped off the arms — a defender calls it
@@ -177,7 +208,7 @@ function hypeChatter(m, w) {
     errBy = LT.P.find(p => p.id === m.errBy),
     hero = m.lastPlay === 'killblock' ? m.hero : killer;
   if (m.lastPlay === 'killblock' && hero) {
-    say(hero, 'denied');
+    if (m.kbScene !== 1) say(hero, 'denied'); // the kill-block scene already gave them the line
     const sp = m.ctx0 && m.ctx0.spiker;
     if (sp && LT.P.includes(sp)) say(sp, 'stuffed');
   } else if (errBy) {

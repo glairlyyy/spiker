@@ -38,8 +38,7 @@ function pickSetter(c) {
   if (!setter) {
     const fr = atkT.P.filter(p => p !== pas && !busy(m, p, c.n));
     setter = wpick(fr.length ? fr : atkT.P.filter(p => p !== pas), p => p.wit);
-  }
-  else if (qual === 1 && Ss.length < 2 && R() < 0.45)
+  } else if (qual === 1 && Ss.length < 2 && R() < 0.45)
     setter = (fr => wpick(fr.length ? fr : atkT.P.filter(p => p !== pas && p !== setter), p => p.wit))(
       atkT.P.filter(p => p !== pas && p !== setter && !busy(m, p, c.n))
     );
@@ -83,24 +82,24 @@ function setterDump(c, s) {
     const dec = pick(atkT.P.filter(p => p !== pas && p !== setter)),
       dz = clamp(HOME[dec.slot][1], 0.1, 0.9),
       fk = [];
-      mv(m, dec, sx(atk, 420), dz, fk, V);
-      mv(m, DMB, sx(ds, 484), dz, fk, V);
-      V &&
-        B({
-          dur: 700,
-          acts: [
-            { k: 'pose', p: setter.id, pose: 'set' },
-            { k: 'jump', p: setter.id, mode: 'up', peak: sj },
-            { k: 'ball', to: { p: setter.id, c: 'set', dh: sj }, h: 0 },
-            ...fk,
-            { k: 'pose', p: dec.id, pose: 'spike' },
-            { k: 'jump', p: dec.id, mode: 'hop', peak: jumpPx(dec), t0: 0.05 },
-            { k: 'pose', p: DMB.id, pose: 'block' },
-            { k: 'jump', p: DMB.id, mode: 'hop', peak: jumpPx(DMB) * 0.85, t0: 0.25 },
-            { k: 'ghost', to: { x: sx(atk, 432), z: dz, h: REACH_H + jumpPx(dec) } },
-            { k: 'label', t: 'Fake set!', dy: 60, set: 1, big: 1 }
-          ]
-        });
+    mv(m, dec, sx(atk, 420), dz, fk, V);
+    mv(m, DMB, sx(ds, 484), dz, fk, V);
+    V &&
+      B({
+        dur: 700,
+        acts: [
+          { k: 'pose', p: setter.id, pose: 'set' },
+          { k: 'jump', p: setter.id, mode: 'up', peak: sj },
+          { k: 'ball', to: { p: setter.id, c: 'set', dh: sj }, h: 0 },
+          ...fk,
+          { k: 'pose', p: dec.id, pose: 'spike' },
+          { k: 'jump', p: dec.id, mode: 'hop', peak: jumpPx(dec), t0: 0.05 },
+          { k: 'pose', p: DMB.id, pose: 'block' },
+          { k: 'jump', p: DMB.id, mode: 'hop', peak: jumpPx(DMB) * 0.85, t0: 0.25 },
+          { k: 'ghost', to: { x: sx(atk, 432), z: dz, h: REACH_H + jumpPx(dec) } },
+          { k: 'label', t: 'Fake set!', dy: 60, set: 1, big: 1 }
+        ]
+      });
     V &&
       setter.star &&
       B({ dur: 1150, cut: 1, acts: [{ k: 'cut', p: setter.id, title: setter.move, sub: 'Fake set, second-touch dump' }] });

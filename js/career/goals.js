@@ -16,10 +16,17 @@ const Goals = {
       prev = run.goal && run.goal.kind;
     // the coach picks from what makes sense this block
     const stat = STATK.includes(key) && you[key] < Training.gate(run, key) - 2 ? key : STATK.find(k => you[k] < Training.gate(run, k) - 2);
-    const warm = Object.keys(CALENDAR).map(Number).find(w => w >= run.week && w <= by && CALENDAR[w].startsWith('warmup'));
+    const warm = Object.keys(CALENDAR)
+      .map(Number)
+      .find(w => w >= run.week && w <= by && CALENDAR[w].startsWith('warmup'));
     const low = Run.mates(run).reduce((a, m) => ((you.bond[m.id] || 0) < (you.bond[a.id] || 0) ? m : a), Run.mates(run)[0]);
     const opts = [];
-    if (stat) opts.push({ kind: 'stat', stat, target: Math.min(Training.gate(run, stat), you[stat] + Math.max(4, Math.round((by - run.week + 1) * 1.6))) });
+    if (stat)
+      opts.push({
+        kind: 'stat',
+        stat,
+        target: Math.min(Training.gate(run, stat), you[stat] + Math.max(4, Math.round((by - run.week + 1) * 1.6)))
+      });
     if (warm) opts.push({ kind: 'win', week: warm });
     opts.push({ kind: 'fans', target: Math.ceil((run.fans + 500 + (by - run.week) * 50) / 100) * 100 });
     if (low && (you.bond[low.id] || 0) < 60) opts.push({ kind: 'bond', mate: low.id, target: Math.min(100, (you.bond[low.id] || 0) + 18) });

@@ -35,7 +35,9 @@ function youCard(run) {
     staPct = Math.round((run.sta / run.staMax) * 100);
   const gateTag = k => {
     const g = Training.gate(run, k);
-    return g < CAREER.runCap ? `<small class="gate ${you[k] >= g ? 'at' : ''}" title="Stops at ${g} until its Limit Break">⌈${g}</small>` : '';
+    return g < CAREER.runCap
+      ? `<small class="gate ${you[k] >= g ? 'at' : ''}" title="Stops at ${g} until its Limit Break">⌈${g}</small>`
+      : '';
   };
   return `<div class="panel ycard">
     <div class="phd"><span class="portrait">${faceSVG(you, mood.form, 64)}<b>${you.num}</b></span>
@@ -66,7 +68,8 @@ function youCard(run) {
 function elementLine(run) {
   const you = Run.you(run),
     S = ElTrial.steps(run);
-  if (!S.seen) return `<div class="elline locked" ${tip(`Your element reveals itself at OVR ${ElTrial.revealAt}`)}><span class="elb">?</span><b>Element ???</b></div>`;
+  if (!S.seen)
+    return `<div class="elline locked" ${tip(`Your element reveals itself at OVR ${ElTrial.revealAt}`)}><span class="elb">?</span><b>Element ???</b></div>`;
   const c = ECOL[you.el],
     how = `${EDESC[you.el]}.\nGauge: ${EFILL[you.el]} A captain's buff fills it at once.`;
   if (S.on)
@@ -100,7 +103,10 @@ function seasonCard(run) {
     ${
       run.sponsors.length
         ? `<div class="small"><b>Sponsors</b> ${run.sponsors
-            .map(s => `<span class="spn ${s.state}" title="${esc(SPONSORS[s.id].perk)} · ${esc(SPONSORS[s.id].cond)}">${esc(SPONSORS[s.id].name)} <i>${s.state === 'pending' ? 'on trial' : s.state === 'kept' ? 'signed' : 'lost'}</i></span>`)
+            .map(
+              s =>
+                `<span class="spn ${s.state}" title="${esc(SPONSORS[s.id].perk)} · ${esc(SPONSORS[s.id].cond)}">${esc(SPONSORS[s.id].name)} <i>${s.state === 'pending' ? 'on trial' : s.state === 'kept' ? 'signed' : 'lost'}</i></span>`
+            )
             .join(' ')}</div>`
         : ''
     }
@@ -112,7 +118,9 @@ function seasonCard(run) {
 }
 function bondCard(run) {
   const you = Run.you(run);
-  return `<div class="panel"><h3>Teammates${info('Training together shares your gains and raises their odds of breaking through to ★ star or OP. 60+ bond: two-player combos. 80+: friendship training (+50%).')}</h3>${Run.mates(run)
+  return `<div class="panel"><h3>Teammates${info('Training together shares your gains and raises their odds of breaking through to ★ star or OP. 60+ bond: two-player combos. 80+: friendship training (+50%).')}</h3>${Run.mates(
+    run
+  )
     .map(m => {
       const b = you.bond[m.id] || 0;
       return `<div class="bond">${faceSVG(m, 0, 30)}<div><b>${stag(m)}${esc(m.name)}</b>${m.cap ? ' <span class="capb">C</span>' : ''} <i class="mute small">${m.role} · OVR ${ovr(m)}</i>
@@ -136,7 +144,9 @@ function calendar(run) {
     const c = CUPS.find(x => x.after === w);
     if (c) {
       const res = run.cups.find(x => x.id === c.id);
-      pips.push(`<span class="pip cup ${cur && cur.id === c.id ? 'now' : res ? 'past' : ''}" title="${c.name}${res ? ': ' + res.place : ''}">${c.short}</span>`);
+      pips.push(
+        `<span class="pip cup ${cur && cur.id === c.id ? 'now' : res ? 'past' : ''}" title="${c.name}${res ? ': ' + res.place : ''}">${c.short}</span>`
+      );
     }
   }
   return `<div class="cal">${pips.join('')}</div>`;
@@ -147,13 +157,26 @@ function trainingPanel(run) {
     hard = CW.hard && !run.injury;
   const btn = key => {
     const pv = Training.preview(run, key, hard),
-      fmt = ([k, v]) => (v ? `+${k === 'wit' ? v.toFixed(2) : v} ${STATNAME[k]}` : pv.gate && k === pv.main[0] ? `${STATNAME[k]} at ${pv.gate} — Limit Break` : `${STATNAME[k]} maxed`);
+      fmt = ([k, v]) =>
+        v
+          ? `+${k === 'wit' ? v.toFixed(2) : v} ${STATNAME[k]}`
+          : pv.gate && k === pv.main[0]
+            ? `${STATNAME[k]} at ${pv.gate} — Limit Break`
+            : `${STATNAME[k]} maxed`;
     return `<button class="tbtn ${hard ? 'hard' : ''}" onclick="doWeek('${key}')" ${tip(`Facility Lv ${pv.lvl}${pv.next != null ? ` — ${pv.next} more sessions to Lv ${pv.lvl + 1}` : ' (max)'}. Costs ${pv.sta} stamina${pv.fail ? `, ${Math.round(pv.fail * 100)}% chance to fail` : ''}.`)}>
       <b>${TRAININGS[key].name}</b><small>Lv ${pv.lvl} · −${pv.sta} sta</small>
       <span class="g">${fmt(pv.main)}</span><span class="g2">${fmt(pv.side)}</span>
       ${pv.fail ? `<span class="f ${pv.fail > 0.25 ? 'hi' : 'md'}">${Math.round(pv.fail * 100)}% fail</span>` : ''}
       ${pv.streak ? `<span class="stk" title="Same training in a row">Streak +${Math.round(pv.streak * 100)}%</span>` : ''}
-      <span class="fl">${pv.mates.map(id => faceSVG(T.P.find(p => p.id === id), 0.3, 22)).join('')}</span></button>`;
+      <span class="fl">${pv.mates
+        .map(id =>
+          faceSVG(
+            T.P.find(p => p.id === id),
+            0.3,
+            22
+          )
+        )
+        .join('')}</span></button>`;
   };
   return `<div class="panel"><div class="thd"><h3>Week ${run.week}/${CAREER.weeks}${wt === 'camp' ? ` · Camp${info('Training camp: gains and stamina cost ×1.5')}` : ''}${run.injury ? ' · injured' : ''}${info(`Facility levels rise with use (Lv 5 max, +10% each). The same training in a row builds a streak (+5% a week, up to +20%; rest and matches don't break it). Stats stop at 80 and 90 until you pass a Limit Break trial. Faces: teammates at that training (+20% each, +50% at bond 80+). Below 50 stamina training can fail — below ${TRAIN_X.injuryAt} it can injure you.`)}</h3>
     <label class="hardt ${run.injury ? 'dis' : ''}" ${tip(`×${TRAIN_X.hard.gain} gains, skill pts ×1.5, ×${TRAIN_X.hard.sta} stamina, +${Math.round(TRAIN_X.hard.fail * 100)}% fail`)}><input type="checkbox" ${hard ? 'checked' : ''} ${run.injury ? 'disabled' : ''} onchange="CW.hard=this.checked;renderCareer()"> <b>Hard</b></label></div>
@@ -172,7 +195,10 @@ function matchPrep(run, cup) {
   const talk =
     cup && you.cap
       ? `<div class="prep"><b>Captain's team talk</b> ${Object.entries(TALKS)
-          .map(([id, t]) => `<button class="btn ${run.talk === id ? 'on' : ''}" onclick="setTalk('${id}')" title="${esc(t.desc)}">${t.name}</button>`)
+          .map(
+            ([id, t]) =>
+              `<button class="btn ${run.talk === id ? 'on' : ''}" onclick="setTalk('${id}')" title="${esc(t.desc)}">${t.name}</button>`
+          )
           .join('')}${info('You are captain — pick one before the match')}</div>`
       : '';
   return focus + talk;
@@ -244,7 +270,13 @@ function skillShop(run) {
     'skills',
     `<h3>Skills <span class="pts">${run.sp} pts</span>${aff ? ` <span class="skaff">${aff} affordable</span>` : ''}</h3>`,
     `<p class="small mute">${svgI('active')} Active — fire in matches ${svgI('passive')} Passive — always on${info('Active techniques also switch on by themselves once your stats meet the requirement.')} <a href="#" onclick="navigate('encyclopedia');return false">Encyclopedia</a></p>
-    <div class="skills compact">${ids.filter(id => SKILLS[id].tech).map(card).join('')}${ids.filter(id => !SKILLS[id].tech).map(card).join('')}</div>`,
+    <div class="skills compact">${ids
+      .filter(id => SKILLS[id].tech)
+      .map(card)
+      .join('')}${ids
+      .filter(id => !SKILLS[id].tech)
+      .map(card)
+      .join('')}</div>`,
     aff > 0
   )}</div>`;
 }

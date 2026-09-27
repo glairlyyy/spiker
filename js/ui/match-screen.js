@@ -14,7 +14,9 @@ const timeoutButton = (t, i) =>
   `<button class="btn" id="to${i}" onclick="reqTO(${i})" ${tip(`Call ${t.name}'s one timeout at the next break`)}>Timeout ${esc(t.short)}</button>`;
 /** Coach tactic select for side `i` (captain's call or a fixed tactic). */
 const tacticPicker = (t, i) =>
-  `<label class="tac" style="--tc:${t.color}" ${tip(`Coach tactic for ${t.name} — applies from the next rally`)}><span>${esc(t.short)}</span><select id="tac${i}" onchange="setTactic(${i},this.value)"><option value="cap">Captain's call${leadLv(t.cap) ? ` (Lv${leadLv(t.cap)})` : ''}</option>${Object.entries(TACTICS)
+  `<label class="tac" style="--tc:${t.color}" ${tip(`Coach tactic for ${t.name} — applies from the next rally`)}><span>${esc(t.short)}</span><select id="tac${i}" onchange="setTactic(${i},this.value)"><option value="cap">Captain's call${leadLv(t.cap) ? ` (Lv${leadLv(t.cap)})` : ''}</option>${Object.entries(
+    TACTICS
+  )
     .map(([k, v]) => `<option value="${k}">${esc(v.name)}</option>`)
     .join('')}</select><small class="tacnow" id="tacnow${i}"></small></label>`;
 // Setting button labels (shared by the initial render and the toggles)
@@ -146,7 +148,9 @@ function startMatch(fx) {
 let load3DP = null;
 function load3D(prog) {
   if (!load3DP)
-    load3DP = import(new URL('js/render3d/r3d.mjs', document.baseURI).href).then(mod => mod.init((f, t) => load3D.prog && load3D.prog(f, t)));
+    load3DP = import(new URL('js/render3d/r3d.mjs', document.baseURI).href).then(mod =>
+      mod.init((f, t) => load3D.prog && load3D.prog(f, t))
+    );
   load3D.prog = prog || load3D.prog;
   return load3DP;
 }
@@ -162,7 +166,10 @@ function open3D() {
   };
   if (R3D) return ready(R3D);
   A.hold = true;
-  st.insertAdjacentHTML('beforeend', `<div class="ld3" id="ld3" role="status"><b>Loading 3D players</b><i><span id="ld3bar"></span></i><small id="ld3txt">Starting</small></div>`);
+  st.insertAdjacentHTML(
+    'beforeend',
+    `<div class="ld3" id="ld3" role="status"><b>Loading 3D players</b><i><span id="ld3bar"></span></i><small id="ld3txt">Starting</small></div>`
+  );
   load3D((f, t) => {
     const b = $('#ld3bar'),
       tx = $('#ld3txt');
@@ -241,14 +248,20 @@ function setTactic(i, v) {
   if (v === 'cap') {
     A.m.tacMode[i] = 'cap';
     showTac(i);
-    logLine(`${t.name} coach: captain ${t.cap.name} calls the plays${leadLv(t.cap) ? '' : ' (leadership too low to change anything)'}`, 'set');
+    logLine(
+      `${t.name} coach: captain ${t.cap.name} calls the plays${leadLv(t.cap) ? '' : ' (leadership too low to change anything)'}`,
+      'set'
+    );
     return;
   }
   if (!TACTICS[v]) return;
   A.m.tacMode[i] = 'fixed';
   A.m.tac[i] = v;
   showTac(i);
-  logLine(`${t.name} coach: ${TACTICS[v].name}${v === 'auto' ? ' — the setter reads the block' : ` — feed the ${v.toUpperCase()}s`}`, 'set');
+  logLine(
+    `${t.name} coach: ${TACTICS[v].name}${v === 'auto' ? ' — the setter reads the block' : ` — feed the ${v.toUpperCase()}s`}`,
+    'set'
+  );
   instant({ k: 'coachtalk', side: i, text: v === 'auto' ? 'Your call, setter!' : v === 'ws' ? 'Feed the wings!' : 'Go quick, middles!' });
 }
 /** In captain mode, show which tactic the captain is running right now. */

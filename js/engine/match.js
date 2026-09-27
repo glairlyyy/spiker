@@ -161,8 +161,7 @@ function captainThink(m, side) {
     lv = leadLv(cap),
     out = [];
   if (!lv) return out;
-  const say = (text, extra = []) =>
-    m.rec && out.push({ dur: 750, acts: [{ k: 'call', p: cap.id, t: text }, ...extra] });
+  const say = (text, extra = []) => m.rec && out.push({ dur: 750, acts: [{ k: 'call', p: cap.id, t: text }, ...extra] });
   // buff
   if (!t.P.some(p => m.buff[p.id]) && R() < 0.03 + 0.03 * lv) {
     const mates = t.P.filter(p => p !== cap),

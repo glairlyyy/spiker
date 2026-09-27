@@ -31,7 +31,9 @@ const Run = {
       stats = {};
     for (const k of STATK) stats[k] = Run.createdStat(role, k, spec.alloc[k] || 0);
     // Hall of Fame inheritance: a tenth of the legend's gains over 40 in each stat, and one of their skills
-    if (legend) for (const k of STATK) stats[k] = Math.min(Legacy.createCap(legacy) + 5, stats[k] + Math.max(0, Math.round(((legend.stats[k] || 40) - 40) * 0.1)));
+    if (legend)
+      for (const k of STATK)
+        stats[k] = Math.min(Legacy.createCap(legacy) + 5, stats[k] + Math.max(0, Math.round(((legend.stats[k] || 40) - 40) * 0.1)));
     const inherit = legend ? (legend.skills || []).find(id => SKILLS[id] && skillRoleOk(SKILLS[id], role) && id !== spec.skill) : null;
     const you = createPlayer({
       name: spec.name,
@@ -59,10 +61,11 @@ const Run = {
     // Hard league: everyone else starts stronger and grows faster
     if (mode.hard)
       for (const T of teams) {
-        for (const p of T.P) if (p !== you) {
-          for (const k of STATK) p[k] = Math.min(99, p[k] + 5);
-          p.pot = +((p.pot || 1) + 0.25).toFixed(2);
-        }
+        for (const p of T.P)
+          if (p !== you) {
+            for (const k of STATK) p[k] = Math.min(99, p[k] + 5);
+            p.pot = +((p.pot || 1) + 0.25).toFixed(2);
+          }
         finalizeTeam(T);
       }
     // a Hall of Fame legend may turn up as a star on another team
@@ -111,7 +114,11 @@ const Run = {
       elNext: 0
     };
     Run.log(run, `${you.name} joins ${t.name} as ${ROLE_NAME[role].toLowerCase()}.`);
-    if (legend) Run.log(run, `Inherited from Hall of Famer ${legend.name}${inherit ? ` — including ${SKILLS[inherit].name}` : ''}${legend.el ? `. Your element is ${ENAME[legend.el]}` : ''}.`);
+    if (legend)
+      Run.log(
+        run,
+        `Inherited from Hall of Famer ${legend.name}${inherit ? ` — including ${SKILLS[inherit].name}` : ''}${legend.el ? `. Your element is ${ENAME[legend.el]}` : ''}.`
+      );
     Legacy.applyStart(run);
     Training.rollFloor(run);
     Goals.set(run);

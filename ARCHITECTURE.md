@@ -215,6 +215,23 @@ call, a camera push and a slow window at the end of the beat (`hypeSlow`: off wh
 "One touch!". The Hype setting (`G.hype`: off / normal /
 max) skips scene beats above its level; tapping the court skips the rest of a scene.
 
+## Blocks
+
+`block()` (engine/rally-defense.js): a block is attempted when coverage > `BLOCK_MIN_COV`. Order: block break (spike
+beats the full block by 10%+) → stuff (`stuffChance`: the block at full strength vs the spike, weighted by
+coverage^`STUFF_COV_EXP`; a cover dig may save it) → touch → tool off the hands (only off a partial block,
+`TOOL_COV`, at `TOOL_P`). A blocker at least as sharp (wit) as the hitter keeps part of the block on a cut shot.
+Targets: ~14% of attacks stuffed in normal matches; Monster games stay offence-heavy (every hitter has every
+technique). Kill blocks get a scene: a `ball` close-up on the stuff, then the blocker's face and line
+(`hypeKillBlock`: level 1 at match point or for a star blocker at most every 6 points).
+
+## Code layout notes
+
+Playback is split into classic scripts loaded right after js/render/playback.js: clock.js (world clock `timeScale`,
+the rAF loop `frame`, the stall watchdog), camera.js (push-ins), ball.js (net clearance, follow, bounce, trail),
+scenes.js (banner, subtitle line, tap-to-skip). Tooling: `npm run lint` (ESLint flat config that collects the shared
+classic-script globals from index.html), `npm run format` (Prettier, .prettierrc.json), `npm test`.
+
 ## Performance
 
 The court canvas is sized to CSS size × device pixels within a budget (`COURT_PX`, 2.4 MP — fullscreen on a

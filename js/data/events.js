@@ -5,76 +5,513 @@
 // Text placeholders: {mate} = a random teammate, {cap} = the captain. `need` names a condition.
 
 const EVENTS = [
-  { id: 'late', title: 'Extra practice after dark', text: 'The gym lights are still on after everyone leaves.',
-    a: ['Keep going', [['main', 6], ['sta', -15]]], b: ['Go home and sleep', [['mood', 1]]] },
-  { id: 'capadvice', need: 'notCap', title: 'Captain asks for advice', text: '{cap} wants your read on the lineup.',
-    a: ['Speak up in the huddle', [['lead', 8]]], b: ['Back their call', [['bondCap', 10]]] },
-  { id: 'rival', title: 'A rival watches your spike', text: 'Someone from another school is filming from the stands.',
-    a: ['Show off', [['power', 5], ['chance', 0.2, [['mood', -1]]]]], b: ['Study their team instead', [['wit', 0.05]]] },
-  { id: 'shoulder', title: 'Sore shoulder', text: 'Your hitting shoulder aches after practice.',
-    a: ['Ice it', [['sta', -10]]], b: ['Play through it', [['chance', 0.3, [['power', -5]]]]] },
-  { id: 'dinner', title: 'Team dinner', text: 'The team is heading out for hot pot.',
-    a: ['Go with everyone', [['bondAll', 5]]], b: ['Early night', [['sta', 20]]] },
-  { id: 'fanletter', title: 'A fan letter', text: 'A kid from the youth club wrote you a letter.',
-    a: ['Write back', [['fans', 200], ['mood', 1]]], b: ['Pin it on your locker', [['sp', 15]]] },
-  { id: 'film', title: 'Film session', text: 'Coach offers an hour of video before training.',
-    a: ['Study the opponents', [['wit', 0.06]]], b: ['Study your own form', [['main', 4]]] },
-  { id: 'reps', title: 'Extra reps', text: '{mate} asks you to stay and run drills together.',
-    a: ['Stay and help', [['bondMate', 12], ['sta', -10]]], b: ['Rest instead', [['sta', 10]]] },
-  { id: 'sand', title: 'Gym flooded', text: 'Practice moves to the beach courts today.',
-    a: ['Sand sprints', [['speed', 4], ['jump', 3], ['sta', -15]]], b: ['Take the day', [['sta', 15]]] },
-  { id: 'tv', title: 'Local TV interview', text: 'A reporter asks about the Cup.',
-    a: ['"We will win it."', [['fans', 400], ['chance', 0.3, [['mood', -1]]]]], b: ['Stay humble', [['lead', 4]]] },
-  { id: 'stuck', title: 'Feeling stuck', text: 'Nothing is clicking this week.',
-    a: ['Change your routine', [['chance', 0.5, [['mood', 1], ['sp', 20]]]]], b: ['Talk to the captain', [['mood', 1], ['bondCap', 5]]] },
-  { id: 'pro', title: 'A former pro visits', text: 'An old national-team player drops by practice.',
-    a: ['Ask about jumping', [['jump', 5]]], b: ['Ask about reading plays', [['wit', 0.05]]] },
-  { id: 'cramp', title: 'Leg cramps', text: 'Your calves tighten up during warm-up.',
-    a: ['Stretch it out properly', [['sta', -5], ['def', 2]]], b: ['Ignore it', [['chance', 0.4, [['speed', -4]]]]] },
-  { id: 'arcade', title: 'Arcade night', text: '{mate} wants to drag you to the arcade.',
-    a: ['Go', [['mood', 1], ['bondMate', 8], ['sta', 5]]], b: ['Train alone', [['main', 3], ['sta', -10]]] },
-  { id: 'streak', title: 'Hot streak in scrimmage', text: 'Every ball you touch goes in today.',
-    a: ['Keep swinging', [['power', 3], ['sp', 15]]], b: ['Share the ball', [['bondAll', 3], ['lead', 3]]] },
-  { id: 'notebook', title: "The setter's notebook", text: '{mate} left a notebook full of opponent tendencies.',
-    a: ['Borrow it', [['wit', 0.08]]], b: ['Give it back', [['bondMate', 8]]] },
-  { id: 'weights', title: 'New weight room', text: 'The school finally fixed the weight room.',
-    a: ['Heavy lifts', [['power', 4], ['def', 2], ['sta', -15]]], b: ['Mobility work', [['speed', 3], ['sta', -5]]] },
-  { id: 'argue', title: 'Teammates argue', text: 'Two teammates are shouting after a missed block.',
-    a: ['Step in', [['lead', 6], ['chance', 0.3, [['mood', -1]]]]], b: ['Stay out of it', [['sta', 5]]] },
-  { id: 'breakfast', title: 'Big breakfast', text: "The team manager's mum cooked for everyone.",
-    a: ['Eat it all', [['sta', 15]]], b: ['Light meal and a run', [['speed', 2]]] },
-  { id: 'rain2', need: 'tired', title: 'Heavy legs', text: 'Your legs feel like concrete this morning.',
-    a: ['Push through the session', [['main', 3], ['sta', -10], ['chance', 0.35, [['mood', -1]]]]], b: ['Ice bath and stretching', [['sta', 25]]] },
-  { id: 'scout', need: 'late', title: 'A pro scout in the stands', text: 'Word is a V.League scout is watching practice.',
-    a: ['Go all out', [['main', 4], ['sta', -15], ['fans', 300]]], b: ['Play it cool', [['wit', 0.04], ['mood', 1]]] },
-  { id: 'rivalmsg', title: 'A message from a rival', text: '"See you at the Cup. Don\'t disappoint me."',
-    a: ['Fire back', [['power', 3], ['mood', 1]]], b: ['Ignore it', [['wit', 0.04]]] },
-  { id: 'kohai', title: 'A first-year looks up to you', text: 'A first-year asks you to teach them your serve.',
-    a: ['Teach them', [['lead', 6], ['sta', -8]]], b: ['Too busy', [['main', 2]]] },
-  { id: 'exam', title: 'Exam week', text: 'Tests are coming and your grades are slipping.',
-    a: ['Study hard', [['wit', 0.07], ['sta', -10], ['sp', -10]]], b: ['Cram the night before', [['chance', 0.5, [['mood', -1]]], ['main', 2]]] },
-  { id: 'injurymate', title: 'Teammate tweaks an ankle', text: '{mate} rolls an ankle at practice.',
-    a: ['Help them to the nurse', [['bondMate', 10]]], b: ['Keep training', [['main', 3], ['bondMate', -5]]] },
-  { id: 'captalk', need: 'isCap', title: 'Captain duties', text: 'The team is flat — they look to you.',
-    a: ['Give a speech', [['lead', 5], ['bondAll', 4]]], b: ['Lead by example', [['main', 3], ['sta', -10]]] },
-  { id: 'starpress', need: 'star', title: 'Magazine interview', text: 'A volleyball magazine wants a feature on the new star.',
-    a: ['Do the photo shoot', [['fans', 600], ['sta', -5]]], b: ['Decline — train instead', [['main', 3]]] },
-  { id: 'slumpd', need: 'low', title: 'In a funk', text: "You can't stop thinking about the last bad week.",
-    a: ['Call home', [['mood', 1]]], b: ['Train it out', [['chance', 0.5, [['mood', 1]]], ['main', 2], ['sta', -10]]] },
-  { id: 'oldball', title: 'Your old middle-school ball', text: 'You find your first volleyball in the storage room.',
-    a: ['Take it home', [['mood', 1], ['lead', 2]]], b: ['Give it to a kid', [['fans', 250]]] },
-  { id: 'summer', need: 'early', title: 'Beach tournament invite', text: 'A local beach 2v2 needs one more player.',
-    a: ['Enter', [['speed', 3], ['jump', 2], ['sta', -15], ['chance', 0.4, [['fans', 300]]]]], b: ['Skip it', [['sta', 10]]] },
-  { id: 'coachx', title: 'Coach singles you out', text: "Coach says you're the weak link on defense.",
-    a: ['Extra defense reps', [['def', 4], ['sta', -12]]], b: ['Argue back', [['lead', 3], ['chance', 0.5, [['mood', -1]]]]] },
-  { id: 'setterduo', title: 'Timing practice', text: '{mate} wants to drill tempo with you after hours.',
-    a: ['Drill until it clicks', [['bondMate', 10], ['wit', 0.03], ['sta', -10]]], b: ['Next time', [['sta', 5]]] },
-  { id: 'festival', title: 'School festival', text: 'The volleyball club runs a food stall.',
-    a: ['Work the stall', [['bondAll', 4], ['fans', 150]]], b: ['Sneak off to train', [['main', 3], ['bondAll', -2]]] },
-  { id: 'video', title: 'Your highlight goes viral', text: 'Someone posted your best spike online.',
-    a: ['Share it', [['fans', 500], ['chance', 0.3, [['mood', -1]]]]], b: ['Stay focused', [['mood', 1]]] },
-  { id: 'insomnia', title: "Can't sleep", text: 'Match nerves keep you up at night.',
-    a: ['Night run', [['speed', 2], ['sta', -8]]], b: ['Meditate', [['wit', 0.04], ['sta', 5]]] },
-  { id: 'noise', title: 'Crowd-noise drill', text: 'Coach plays stadium noise through the speakers.',
-    a: ['Embrace it', [['mood', 1], ['wit', 0.03]]], b: ['Earplugs and focus', [['def', 3]]] }
+  {
+    id: 'late',
+    title: 'Extra practice after dark',
+    text: 'The gym lights are still on after everyone leaves.',
+    a: [
+      'Keep going',
+      [
+        ['main', 6],
+        ['sta', -15]
+      ]
+    ],
+    b: ['Go home and sleep', [['mood', 1]]]
+  },
+  {
+    id: 'capadvice',
+    need: 'notCap',
+    title: 'Captain asks for advice',
+    text: '{cap} wants your read on the lineup.',
+    a: ['Speak up in the huddle', [['lead', 8]]],
+    b: ['Back their call', [['bondCap', 10]]]
+  },
+  {
+    id: 'rival',
+    title: 'A rival watches your spike',
+    text: 'Someone from another school is filming from the stands.',
+    a: [
+      'Show off',
+      [
+        ['power', 5],
+        ['chance', 0.2, [['mood', -1]]]
+      ]
+    ],
+    b: ['Study their team instead', [['wit', 0.05]]]
+  },
+  {
+    id: 'shoulder',
+    title: 'Sore shoulder',
+    text: 'Your hitting shoulder aches after practice.',
+    a: ['Ice it', [['sta', -10]]],
+    b: ['Play through it', [['chance', 0.3, [['power', -5]]]]]
+  },
+  {
+    id: 'dinner',
+    title: 'Team dinner',
+    text: 'The team is heading out for hot pot.',
+    a: ['Go with everyone', [['bondAll', 5]]],
+    b: ['Early night', [['sta', 20]]]
+  },
+  {
+    id: 'fanletter',
+    title: 'A fan letter',
+    text: 'A kid from the youth club wrote you a letter.',
+    a: [
+      'Write back',
+      [
+        ['fans', 200],
+        ['mood', 1]
+      ]
+    ],
+    b: ['Pin it on your locker', [['sp', 15]]]
+  },
+  {
+    id: 'film',
+    title: 'Film session',
+    text: 'Coach offers an hour of video before training.',
+    a: ['Study the opponents', [['wit', 0.06]]],
+    b: ['Study your own form', [['main', 4]]]
+  },
+  {
+    id: 'reps',
+    title: 'Extra reps',
+    text: '{mate} asks you to stay and run drills together.',
+    a: [
+      'Stay and help',
+      [
+        ['bondMate', 12],
+        ['sta', -10]
+      ]
+    ],
+    b: ['Rest instead', [['sta', 10]]]
+  },
+  {
+    id: 'sand',
+    title: 'Gym flooded',
+    text: 'Practice moves to the beach courts today.',
+    a: [
+      'Sand sprints',
+      [
+        ['speed', 4],
+        ['jump', 3],
+        ['sta', -15]
+      ]
+    ],
+    b: ['Take the day', [['sta', 15]]]
+  },
+  {
+    id: 'tv',
+    title: 'Local TV interview',
+    text: 'A reporter asks about the Cup.',
+    a: [
+      '"We will win it."',
+      [
+        ['fans', 400],
+        ['chance', 0.3, [['mood', -1]]]
+      ]
+    ],
+    b: ['Stay humble', [['lead', 4]]]
+  },
+  {
+    id: 'stuck',
+    title: 'Feeling stuck',
+    text: 'Nothing is clicking this week.',
+    a: [
+      'Change your routine',
+      [
+        [
+          'chance',
+          0.5,
+          [
+            ['mood', 1],
+            ['sp', 20]
+          ]
+        ]
+      ]
+    ],
+    b: [
+      'Talk to the captain',
+      [
+        ['mood', 1],
+        ['bondCap', 5]
+      ]
+    ]
+  },
+  {
+    id: 'pro',
+    title: 'A former pro visits',
+    text: 'An old national-team player drops by practice.',
+    a: ['Ask about jumping', [['jump', 5]]],
+    b: ['Ask about reading plays', [['wit', 0.05]]]
+  },
+  {
+    id: 'cramp',
+    title: 'Leg cramps',
+    text: 'Your calves tighten up during warm-up.',
+    a: [
+      'Stretch it out properly',
+      [
+        ['sta', -5],
+        ['def', 2]
+      ]
+    ],
+    b: ['Ignore it', [['chance', 0.4, [['speed', -4]]]]]
+  },
+  {
+    id: 'arcade',
+    title: 'Arcade night',
+    text: '{mate} wants to drag you to the arcade.',
+    a: [
+      'Go',
+      [
+        ['mood', 1],
+        ['bondMate', 8],
+        ['sta', 5]
+      ]
+    ],
+    b: [
+      'Train alone',
+      [
+        ['main', 3],
+        ['sta', -10]
+      ]
+    ]
+  },
+  {
+    id: 'streak',
+    title: 'Hot streak in scrimmage',
+    text: 'Every ball you touch goes in today.',
+    a: [
+      'Keep swinging',
+      [
+        ['power', 3],
+        ['sp', 15]
+      ]
+    ],
+    b: [
+      'Share the ball',
+      [
+        ['bondAll', 3],
+        ['lead', 3]
+      ]
+    ]
+  },
+  {
+    id: 'notebook',
+    title: "The setter's notebook",
+    text: '{mate} left a notebook full of opponent tendencies.',
+    a: ['Borrow it', [['wit', 0.08]]],
+    b: ['Give it back', [['bondMate', 8]]]
+  },
+  {
+    id: 'weights',
+    title: 'New weight room',
+    text: 'The school finally fixed the weight room.',
+    a: [
+      'Heavy lifts',
+      [
+        ['power', 4],
+        ['def', 2],
+        ['sta', -15]
+      ]
+    ],
+    b: [
+      'Mobility work',
+      [
+        ['speed', 3],
+        ['sta', -5]
+      ]
+    ]
+  },
+  {
+    id: 'argue',
+    title: 'Teammates argue',
+    text: 'Two teammates are shouting after a missed block.',
+    a: [
+      'Step in',
+      [
+        ['lead', 6],
+        ['chance', 0.3, [['mood', -1]]]
+      ]
+    ],
+    b: ['Stay out of it', [['sta', 5]]]
+  },
+  {
+    id: 'breakfast',
+    title: 'Big breakfast',
+    text: "The team manager's mum cooked for everyone.",
+    a: ['Eat it all', [['sta', 15]]],
+    b: ['Light meal and a run', [['speed', 2]]]
+  },
+  {
+    id: 'rain2',
+    need: 'tired',
+    title: 'Heavy legs',
+    text: 'Your legs feel like concrete this morning.',
+    a: [
+      'Push through the session',
+      [
+        ['main', 3],
+        ['sta', -10],
+        ['chance', 0.35, [['mood', -1]]]
+      ]
+    ],
+    b: ['Ice bath and stretching', [['sta', 25]]]
+  },
+  {
+    id: 'scout',
+    need: 'late',
+    title: 'A pro scout in the stands',
+    text: 'Word is a V.League scout is watching practice.',
+    a: [
+      'Go all out',
+      [
+        ['main', 4],
+        ['sta', -15],
+        ['fans', 300]
+      ]
+    ],
+    b: [
+      'Play it cool',
+      [
+        ['wit', 0.04],
+        ['mood', 1]
+      ]
+    ]
+  },
+  {
+    id: 'rivalmsg',
+    title: 'A message from a rival',
+    text: '"See you at the Cup. Don\'t disappoint me."',
+    a: [
+      'Fire back',
+      [
+        ['power', 3],
+        ['mood', 1]
+      ]
+    ],
+    b: ['Ignore it', [['wit', 0.04]]]
+  },
+  {
+    id: 'kohai',
+    title: 'A first-year looks up to you',
+    text: 'A first-year asks you to teach them your serve.',
+    a: [
+      'Teach them',
+      [
+        ['lead', 6],
+        ['sta', -8]
+      ]
+    ],
+    b: ['Too busy', [['main', 2]]]
+  },
+  {
+    id: 'exam',
+    title: 'Exam week',
+    text: 'Tests are coming and your grades are slipping.',
+    a: [
+      'Study hard',
+      [
+        ['wit', 0.07],
+        ['sta', -10],
+        ['sp', -10]
+      ]
+    ],
+    b: [
+      'Cram the night before',
+      [
+        ['chance', 0.5, [['mood', -1]]],
+        ['main', 2]
+      ]
+    ]
+  },
+  {
+    id: 'injurymate',
+    title: 'Teammate tweaks an ankle',
+    text: '{mate} rolls an ankle at practice.',
+    a: ['Help them to the nurse', [['bondMate', 10]]],
+    b: [
+      'Keep training',
+      [
+        ['main', 3],
+        ['bondMate', -5]
+      ]
+    ]
+  },
+  {
+    id: 'captalk',
+    need: 'isCap',
+    title: 'Captain duties',
+    text: 'The team is flat — they look to you.',
+    a: [
+      'Give a speech',
+      [
+        ['lead', 5],
+        ['bondAll', 4]
+      ]
+    ],
+    b: [
+      'Lead by example',
+      [
+        ['main', 3],
+        ['sta', -10]
+      ]
+    ]
+  },
+  {
+    id: 'starpress',
+    need: 'star',
+    title: 'Magazine interview',
+    text: 'A volleyball magazine wants a feature on the new star.',
+    a: [
+      'Do the photo shoot',
+      [
+        ['fans', 600],
+        ['sta', -5]
+      ]
+    ],
+    b: ['Decline — train instead', [['main', 3]]]
+  },
+  {
+    id: 'slumpd',
+    need: 'low',
+    title: 'In a funk',
+    text: "You can't stop thinking about the last bad week.",
+    a: ['Call home', [['mood', 1]]],
+    b: [
+      'Train it out',
+      [
+        ['chance', 0.5, [['mood', 1]]],
+        ['main', 2],
+        ['sta', -10]
+      ]
+    ]
+  },
+  {
+    id: 'oldball',
+    title: 'Your old middle-school ball',
+    text: 'You find your first volleyball in the storage room.',
+    a: [
+      'Take it home',
+      [
+        ['mood', 1],
+        ['lead', 2]
+      ]
+    ],
+    b: ['Give it to a kid', [['fans', 250]]]
+  },
+  {
+    id: 'summer',
+    need: 'early',
+    title: 'Beach tournament invite',
+    text: 'A local beach 2v2 needs one more player.',
+    a: [
+      'Enter',
+      [
+        ['speed', 3],
+        ['jump', 2],
+        ['sta', -15],
+        ['chance', 0.4, [['fans', 300]]]
+      ]
+    ],
+    b: ['Skip it', [['sta', 10]]]
+  },
+  {
+    id: 'coachx',
+    title: 'Coach singles you out',
+    text: "Coach says you're the weak link on defense.",
+    a: [
+      'Extra defense reps',
+      [
+        ['def', 4],
+        ['sta', -12]
+      ]
+    ],
+    b: [
+      'Argue back',
+      [
+        ['lead', 3],
+        ['chance', 0.5, [['mood', -1]]]
+      ]
+    ]
+  },
+  {
+    id: 'setterduo',
+    title: 'Timing practice',
+    text: '{mate} wants to drill tempo with you after hours.',
+    a: [
+      'Drill until it clicks',
+      [
+        ['bondMate', 10],
+        ['wit', 0.03],
+        ['sta', -10]
+      ]
+    ],
+    b: ['Next time', [['sta', 5]]]
+  },
+  {
+    id: 'festival',
+    title: 'School festival',
+    text: 'The volleyball club runs a food stall.',
+    a: [
+      'Work the stall',
+      [
+        ['bondAll', 4],
+        ['fans', 150]
+      ]
+    ],
+    b: [
+      'Sneak off to train',
+      [
+        ['main', 3],
+        ['bondAll', -2]
+      ]
+    ]
+  },
+  {
+    id: 'video',
+    title: 'Your highlight goes viral',
+    text: 'Someone posted your best spike online.',
+    a: [
+      'Share it',
+      [
+        ['fans', 500],
+        ['chance', 0.3, [['mood', -1]]]
+      ]
+    ],
+    b: ['Stay focused', [['mood', 1]]]
+  },
+  {
+    id: 'insomnia',
+    title: "Can't sleep",
+    text: 'Match nerves keep you up at night.',
+    a: [
+      'Night run',
+      [
+        ['speed', 2],
+        ['sta', -8]
+      ]
+    ],
+    b: [
+      'Meditate',
+      [
+        ['wit', 0.04],
+        ['sta', 5]
+      ]
+    ]
+  },
+  {
+    id: 'noise',
+    title: 'Crowd-noise drill',
+    text: 'Coach plays stadium noise through the speakers.',
+    a: [
+      'Embrace it',
+      [
+        ['mood', 1],
+        ['wit', 0.03]
+      ]
+    ],
+    b: ['Earplugs and focus', [['def', 3]]]
+  }
 ];

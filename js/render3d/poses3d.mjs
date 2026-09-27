@@ -11,7 +11,13 @@ const sm = t => t * t * (3 - 2 * t);
 const mixN = (a, b, t) => (a ?? 0) + ((b ?? 0) - (a ?? 0)) * t;
 const mixV = (a, b, t) => a.clone().lerp(b, t).normalize();
 const mirror = arm => arm.map((v, i) => (i < 3 ? new THREE.Vector3(-v.x, v.y, v.z) : -(v || 0)));
-const mixArm = (a, b, t) => [mixV(a[0], b[0], t), mixV(a[1], b[1], t), mixV(a[2] || a[1], b[2] || b[1], t), mixN(a[3], b[3], t), mixN(a[4], b[4], t)];
+const mixArm = (a, b, t) => [
+  mixV(a[0], b[0], t),
+  mixV(a[1], b[1], t),
+  mixV(a[2] || a[1], b[2] || b[1], t),
+  mixN(a[3], b[3], t),
+  mixN(a[4], b[4], t)
+];
 const mixLeg = (a, b, t) => ({ a: mixN(a.a, b.a, t), k: mixN(a.k, b.k, t), f: mixN(a.f, b.f, t), s: mixN(a.s ?? 0.1, b.s ?? 0.1, t) });
 const NUMS = ['hp', 'sp', 'cp', 'tw', 'hd', 'hy', 'hyaw', 'hroll', 'shrug', 'curl', 'curlL', 'curlR', 'sroll', 'lift'];
 /** Blend two poses (numbers, legs and arm directions). */
@@ -63,10 +69,45 @@ function cyc(keys, ph) {
 const DOWN_ARM = [V(0.22, -1, 0.05), V(0.16, -1, 0.3), V(0.1, -1, 0.35)];
 export const STAND = { hp: 0.04, sp: 0.02, L: leg(0.1, 0.16), R: leg(0.02, 0.1), al: DOWN_ARM, curl: 0.4 };
 // receive-ready: low, weight forward, arms out in front, hands close together
-export const READY = C({ hp: 0.62, sp: 0.16, cp: 0.05, hd: -0.55, L: leg(1.05, 1.5, 0, 0.24), R: leg(0.9, 1.4, 0, 0.24), al: [V(0.28, -0.55, 0.78), V(-0.25, -0.3, 0.92), V(-0.25, -0.2, 0.95), 0, -0.9], curl: 0.45 });
-const PLATFORM = C({ hp: 0.68, sp: 0.12, cp: 0.05, hd: -0.55, L: leg(1.15, 1.6, 0, 0.3), R: leg(1.0, 1.55, 0, 0.3), al: [V(-0.3, -0.62, 0.72), V(-0.3, -0.62, 0.72), V(-0.3, -0.58, 0.76), 0, -2.2], curl: 0.95 });
-const PLATFORM_UP = C({ ...PLATFORM, hp: 0.3, hd: -0.45, L: leg(0.6, 0.9, 0, 0.26), R: leg(0.5, 0.8, 0, 0.26), al: [V(-0.28, -0.22, 0.93), V(-0.28, -0.2, 0.94), V(-0.28, -0.16, 0.95), 0, -2.2], ar: undefined });
-const WINDOW = { hp: 0.14, sp: 0, cp: -0.05, hd: -0.3, L: leg(0.5, 0.85), R: leg(0.3, 0.7), al: [V(0.75, 0.25, 0.6), V(-0.3, 0.85, 0.4), V(-0.35, 0.6, -0.72), 0, 0.6], curl: 0.15 };
+export const READY = C({
+  hp: 0.62,
+  sp: 0.16,
+  cp: 0.05,
+  hd: -0.55,
+  L: leg(1.05, 1.5, 0, 0.24),
+  R: leg(0.9, 1.4, 0, 0.24),
+  al: [V(0.28, -0.55, 0.78), V(-0.25, -0.3, 0.92), V(-0.25, -0.2, 0.95), 0, -0.9],
+  curl: 0.45
+});
+const PLATFORM = C({
+  hp: 0.68,
+  sp: 0.12,
+  cp: 0.05,
+  hd: -0.55,
+  L: leg(1.15, 1.6, 0, 0.3),
+  R: leg(1.0, 1.55, 0, 0.3),
+  al: [V(-0.3, -0.62, 0.72), V(-0.3, -0.62, 0.72), V(-0.3, -0.58, 0.76), 0, -2.2],
+  curl: 0.95
+});
+const PLATFORM_UP = C({
+  ...PLATFORM,
+  hp: 0.3,
+  hd: -0.45,
+  L: leg(0.6, 0.9, 0, 0.26),
+  R: leg(0.5, 0.8, 0, 0.26),
+  al: [V(-0.28, -0.22, 0.93), V(-0.28, -0.2, 0.94), V(-0.28, -0.16, 0.95), 0, -2.2],
+  ar: undefined
+});
+const WINDOW = {
+  hp: 0.14,
+  sp: 0,
+  cp: -0.05,
+  hd: -0.3,
+  L: leg(0.5, 0.85),
+  R: leg(0.3, 0.7),
+  al: [V(0.75, 0.25, 0.6), V(-0.3, 0.85, 0.4), V(-0.35, 0.6, -0.72), 0, 0.6],
+  curl: 0.15
+};
 const PUSH = {
   front: { al: [V(0.25, 0.9, 0.35), V(0.08, 0.9, 0.42), V(0.02, 0.6, 0.8), 0, 0.6], sp: 0.02, cp: 0, hd: -0.35 },
   quick: { al: [V(0.2, 0.97, 0.1), V(0.04, 1, 0.06), V(0, 0.9, 0.4), 0, 0.6], sp: 0, cp: 0, hd: -0.55 },
@@ -123,7 +164,11 @@ export function locoPose(m) {
     bend = 0.25 + 1.25 * r,
     arm = s => {
       const a = s * amp - 0.05 + 0.1 * r;
-      return [V(0.16, -Math.cos(a), Math.sin(a)), V(0.1, -Math.cos(a + bend), Math.sin(a + bend)), V(0.06, -Math.cos(a + bend + 0.2), Math.sin(a + bend + 0.2))];
+      return [
+        V(0.16, -Math.cos(a), Math.sin(a)),
+        V(0.1, -Math.cos(a + bend), Math.sin(a + bend)),
+        V(0.06, -Math.cos(a + bend + 0.2), Math.sin(a + bend + 0.2))
+      ];
     };
   const swL = -Math.cos(ph);
   return C({
@@ -191,10 +236,35 @@ const CUT_END = RA(V(-0.5, -0.45, 0.74), V(-0.62, -0.55, 0.56), V(-0.66, -0.6, 0
 const TIP_R = RA(V(-0.08, 0.97, 0.2), V(-0.06, 0.96, 0.26), V(-0.03, 0.98, 0.2), V(0, 0.1, 1));
 const TIP_OVER = RA(V(-0.06, 0.85, 0.52), V(-0.04, 0.8, 0.6), V(0, 0.45, 0.9), V(0, -0.6, 0.8));
 const SWING = {
-  normal: [[0, BOW_R], [0.16, WHIP_R], [CE, HIT_R], [0.42, SNAP_R], [0.7, ACROSS_R], [1, HIP_R]],
-  cut: [[0, BOW_R], [0.16, WHIP_R], [CE, HIT_R], [0.45, CUT_R], [1, CUT_END]],
-  tip: [[0, BOW_R], [0.18, RA(V(-0.3, 0.9, 0.3), V(-0.1, 0.95, 0.1), V(-0.05, 0.9, -0.1), V(0, 0.3, 1))], [CE, TIP_R], [0.55, TIP_OVER], [1, RA(V(0.1, 0.2, 0.97), V(0.2, 0, 0.98), V(0.2, -0.2, 0.96), V(0, -0.5, -0.8))]],
-  quick: [[0, QUICK_R], [CE, HIT_R], [0.42, SNAP_R], [0.7, ACROSS_R], [1, HIP_R]]
+  normal: [
+    [0, BOW_R],
+    [0.16, WHIP_R],
+    [CE, HIT_R],
+    [0.42, SNAP_R],
+    [0.7, ACROSS_R],
+    [1, HIP_R]
+  ],
+  cut: [
+    [0, BOW_R],
+    [0.16, WHIP_R],
+    [CE, HIT_R],
+    [0.45, CUT_R],
+    [1, CUT_END]
+  ],
+  tip: [
+    [0, BOW_R],
+    [0.18, RA(V(-0.3, 0.9, 0.3), V(-0.1, 0.95, 0.1), V(-0.05, 0.9, -0.1), V(0, 0.3, 1))],
+    [CE, TIP_R],
+    [0.55, TIP_OVER],
+    [1, RA(V(0.1, 0.2, 0.97), V(0.2, 0, 0.98), V(0.2, -0.2, 0.96), V(0, -0.5, -0.8))]
+  ],
+  quick: [
+    [0, QUICK_R],
+    [CE, HIT_R],
+    [0.42, SNAP_R],
+    [0.7, ACROSS_R],
+    [1, HIP_R]
+  ]
 };
 // non-hitting arm: points straight up at the ball → pulls down hard to close the shoulders → tucks in
 const UP_L = [V(0.12, 0.95, 0.28), V(0.08, 0.96, 0.26), V(0.06, 0.92, 0.38)];
@@ -214,7 +284,13 @@ const TORSO = [
   [0.7, { hp: 0.3, sp: 0.32, cp: 0.16, tw: 0.4, hd: -0.12 }],
   [1, { hp: 0.26, sp: 0.26, cp: 0.12, tw: 0.3, hd: -0.1 }]
 ];
-const mixT = (a, b, t) => ({ hp: mixN(a.hp, b.hp, t), sp: mixN(a.sp, b.sp, t), cp: mixN(a.cp, b.cp, t), tw: mixN(a.tw, b.tw, t), hd: mixN(a.hd, b.hd, t) });
+const mixT = (a, b, t) => ({
+  hp: mixN(a.hp, b.hp, t),
+  sp: mixN(a.sp, b.sp, t),
+  cp: mixN(a.cp, b.cp, t),
+  tw: mixN(a.tw, b.tw, t),
+  hd: mixN(a.hd, b.hd, t)
+});
 const ARMS_UP = [V(0.2, 0.92, 0.35), V(0.14, 0.97, 0.2), V(0.1, 1, 0.1)];
 const ARMS_LOW = [V(0.15, -0.3, 0.94), V(0.1, -0.1, 1), V(0.1, 0.1, 1)];
 
@@ -232,7 +308,16 @@ function spikePose(d, m) {
     const lm = d.landMs != null ? d.landMs : d.jy > 0 ? 0 : sw - 300, // ms since touchdown
       lt = cl((lm - 200) / 420, 0, 1),
       absorb = sm(cl(lm / 140, 0, 1));
-    const LAND = C({ hp: 0.55, sp: 0.22, hd: -0.3, L: leg(1.05, 1.6, -0.05, 0.2), R: leg(0.95, 1.55, -0.05, 0.2), al: [V(0.7, -0.35, 0.62), V(0.5, -0.4, 0.77), V(0.4, -0.4, 0.82)], ar: mirror([V(0.55, -0.55, 0.62), V(0.35, -0.6, 0.72), V(0.3, -0.6, 0.74)]), curl: 0.3 });
+    const LAND = C({
+      hp: 0.55,
+      sp: 0.22,
+      hd: -0.3,
+      L: leg(1.05, 1.6, -0.05, 0.2),
+      R: leg(0.95, 1.55, -0.05, 0.2),
+      al: [V(0.7, -0.35, 0.62), V(0.5, -0.4, 0.77), V(0.4, -0.4, 0.82)],
+      ar: mirror([V(0.55, -0.55, 0.62), V(0.35, -0.6, 0.72), V(0.3, -0.6, 0.74)]),
+      curl: 0.3
+    });
     const TOUCH = { ...LAND, hp: 0.3, sp: 0.2, L: leg(0.45, 0.6, 0, 0.2), R: leg(0.4, 0.55, 0, 0.2), ar: HIP_R };
     return { ...mix(mix(TOUCH, LAND, absorb), STAND, lt), face: { angry: 0.4 * (1 - lt) } };
   }
@@ -242,9 +327,34 @@ function spikePose(d, m) {
     const serve = sty === 'serve';
     const run = moving(m) ? locoPose({ ...m, lat: 0, fwd: Math.abs(m.fwd) + 0.5 }) : P(STAND, { hp: 0.2 });
     const armsBackRun = [V(0.15, -0.5, -0.85), V(0.15, -0.35, -0.94), V(0.1, -0.2, -0.98)];
-    const PEN = C({ hp: 0.45, sp: 0.15, hd: -0.6, L: leg(0.75, 0.35, -0.2, 0.1), R: leg(-0.55, 0.45, 0.45, 0.1), al: [V(0.15, 0.35, -0.92), V(0.12, 0.45, -0.88), V(0.1, 0.5, -0.86)], curl: 0.2 });
-    const LOAD = C({ hp: 0.62, sp: 0.28, cp: 0.08, hd: -0.8, L: leg(1.1, 1.65, -0.1, 0.14), R: leg(1.0, 1.6, -0.1, 0.14), al: [V(0.15, -0.6, -0.78), V(0.12, -0.55, -0.83), V(0.1, -0.4, -0.9)], curl: 0.2 });
-    const TAKE = C({ hp: 0.25, sp: 0.1, hd: -0.7, L: leg(0.5, 0.8, 0.5, 0.12), R: leg(0.45, 0.75, 0.5, 0.12), al: [V(0.2, -0.3, 0.93), V(0.15, -0.1, 0.99), V(0.1, 0.1, 0.99)], curl: 0.2 });
+    const PEN = C({
+      hp: 0.45,
+      sp: 0.15,
+      hd: -0.6,
+      L: leg(0.75, 0.35, -0.2, 0.1),
+      R: leg(-0.55, 0.45, 0.45, 0.1),
+      al: [V(0.15, 0.35, -0.92), V(0.12, 0.45, -0.88), V(0.1, 0.5, -0.86)],
+      curl: 0.2
+    });
+    const LOAD = C({
+      hp: 0.62,
+      sp: 0.28,
+      cp: 0.08,
+      hd: -0.8,
+      L: leg(1.1, 1.65, -0.1, 0.14),
+      R: leg(1.0, 1.6, -0.1, 0.14),
+      al: [V(0.15, -0.6, -0.78), V(0.12, -0.55, -0.83), V(0.1, -0.4, -0.9)],
+      curl: 0.2
+    });
+    const TAKE = C({
+      hp: 0.25,
+      sp: 0.1,
+      hd: -0.7,
+      L: leg(0.5, 0.8, 0.5, 0.12),
+      R: leg(0.45, 0.75, 0.5, 0.12),
+      al: [V(0.2, -0.3, 0.93), V(0.15, -0.1, 0.99), V(0.1, 0.1, 0.99)],
+      curl: 0.2
+    });
     let out;
     if (pp < 0.55) out = mix(run, C({ ...run, al: armsBackRun, ar: undefined }), sm(cl(pp / 0.55, 0, 1)));
     else if (pp < 0.82) out = mix(C({ ...run, al: armsBackRun, ar: undefined }), PEN, sm((pp - 0.55) / 0.27));
@@ -257,7 +367,10 @@ function spikePose(d, m) {
   const legsUp = { L: leg(0.1, 0.12, 0.7, 0.1), R: leg(0.04, 0.08, 0.7, 0.1) },
     // knees bent slightly behind: the loaded spring
     legsBow = { L: leg(0.12, 1.05, 0.8, 0.12), R: leg(-0.06, 1.25, 0.85, 0.12) },
-    legsPike = sty === 'pipe' ? { L: leg(0.75, 0.5, 0.6, 0.1), R: leg(-0.5, 0.4, 0.6, 0.1) } : { L: leg(0.6, 0.85, 0.5, 0.12), R: leg(0.48, 0.75, 0.5, 0.12) },
+    legsPike =
+      sty === 'pipe'
+        ? { L: leg(0.75, 0.5, 0.6, 0.1), R: leg(-0.5, 0.4, 0.6, 0.1) }
+        : { L: leg(0.6, 0.85, 0.5, 0.12), R: leg(0.48, 0.75, 0.5, 0.12) },
     legsDown = { L: leg(0.3, 0.4, 0.25, 0.16), R: leg(0.24, 0.35, 0.25, 0.16) };
   const bowT = { ...BOW_T, sp: BOW_T.sp * arch, cp: BOW_T.cp * arch, tw: BOW_T.tw * Math.min(1.1, arch) };
   if (sw == null) {
@@ -267,7 +380,17 @@ function spikePose(d, m) {
     const rA = draw > 0 ? mixArm(mirror(ARMS_UP), keys[0][1], draw) : mixArm(mirror(ARMS_LOW), mirror(ARMS_UP), takeK),
       lA = draw > 0 ? mixArm(ARMS_UP, UP_L, draw) : mixArm(ARMS_LOW, ARMS_UP, takeK);
     const body = mixT({ hp: -0.05, sp: 0.05, cp: 0, tw: 0, hd: -0.6 }, bowT, draw);
-    return { ...body, L: mixLeg(legsUp.L, legsBow.L, draw), R: mixLeg(legsUp.R, legsBow.R, draw), al: lA, ar: rA, curlL: 0.05, curlR: 0, face, aimL: draw * 0.85 };
+    return {
+      ...body,
+      L: mixLeg(legsUp.L, legsBow.L, draw),
+      R: mixLeg(legsUp.R, legsBow.R, draw),
+      al: lA,
+      ar: rA,
+      curlL: 0.05,
+      curlR: 0,
+      face,
+      aimL: draw * 0.85
+    };
   }
   // 2. the swing: uncoil → contact on a straight arm → wrist snap → follow-through; legs pike, then reach for the floor
   const e = swingE(d);
@@ -300,7 +423,13 @@ function servePose(d) {
   if (sw == null) {
     const t1 = sm(cl(pt / 260, 0, 1)),
       kk = sm(cl((pt - 120) / 300, 0, 1));
-    return { ...base, al: mixArm([V(0.2, -0.3, 0.93), V(0.1, -0.1, 1), V(0.1, 0, 1)], TOSS_L, t1), ar: mixArm(mirror(DOWN_ARM), COCK_SERVE, kk), tw: -0.5 * kk, hd: -0.35 - 0.3 * t1 };
+    return {
+      ...base,
+      al: mixArm([V(0.2, -0.3, 0.93), V(0.1, -0.1, 1), V(0.1, 0, 1)], TOSS_L, t1),
+      ar: mixArm(mirror(DOWN_ARM), COCK_SERVE, kk),
+      tw: -0.5 * kk,
+      hd: -0.35 - 0.3 * t1
+    };
   }
   const pre = swingLead(d) || 70,
     e = sw < pre ? (0.42 * sw) / pre : Math.min(1, 0.42 + (0.58 * (sw - pre)) / 110);
@@ -334,18 +463,94 @@ const DN = V(0, -1, 0.05),
 //  ball (pancake: flat on the floor; else a one-hand fist pop) → land on chest/upper stomach, chin up, back arched
 //  (swan), the other hand cushions like a push-up → slide on the momentum, legs slightly bent → push back up → ready.
 const DIVE_KEYS = [
-  [0.4, { hp: 0.45, sp: 0.12, hd: -0.5, L: leg(0.75, 1.2, -0.1, 0.16), R: leg(0.65, 1.1, -0.1, 0.16), lift: 0, slide: 0,
-    R_: [V(-0.2, -0.7, 0.68), V(-0.1, -0.5, 0.86), V(-0.05, -0.5, 0.86)], L_: [V(0.2, -0.7, 0.68), V(0.1, -0.5, 0.86), V(0.05, -0.5, 0.86)] }],
-  [0.6, { hp: 0.95, sp: 0.18, hd: -0.8, L: leg(-0.35, 0.45, 0.45, 0.14), R: leg(1.3, 1.95, -0.15, 0.14), lift: 0, slide: -0.2,
-    R_: [V(-0.15, -0.45, 0.88), V(-0.08, -0.35, 0.93), V(-0.04, -0.3, 0.95)], L_: [V(0.2, -0.45, 0.87), V(0.12, -0.4, 0.91), V(0.06, -0.35, 0.94)] }],
-  [0.82, { hp: 1.3, sp: -0.05, cp: -0.05, hd: -1.05, L: leg(-1.3, 0.35, 0.7, 0.12), R: leg(-1.05, 0.15, 0.7, 0.12), lift: 0.2, slide: -0.75,
-    R_: [V(-0.1, -0.2, 0.97), V(-0.06, -0.2, 0.98), V(-0.03, -0.25, 0.97)], L_: [V(0.3, -0.5, 0.81), V(0.18, -0.7, 0.69), V(0.1, -0.8, 0.59)] }],
-  [1.0, { hp: 1.47, sp: -0.18, cp: -0.12, hd: -1.15, L: leg(-1.45, 0.45, 0.7, 0.14), R: leg(-1.35, 0.35, 0.7, 0.14), lift: 0.02, slide: -0.9,
-    R_: [V(-0.08, -0.12, 0.99), V(-0.05, -0.12, 0.99), V(-0.02, -0.1, 1)], L_: [V(0.35, -0.5, -0.79), V(0.12, -0.96, 0.25), V(0.05, -0.15, 0.99)] }],
-  [1.5, { hp: 1.5, sp: -0.28, cp: -0.18, hd: -1.15, L: leg(-1.4, 0.65, 0.6, 0.16), R: leg(-1.3, 0.8, 0.6, 0.16), lift: 0, slide: -0.35,
-    R_: [V(-0.12, -0.25, 0.96), V(-0.06, -0.3, 0.95), V(-0.02, -0.12, 0.99)], L_: [V(0.35, -0.45, -0.82), V(0.12, -0.96, 0.25), V(0.05, -0.15, 0.99)] }],
-  [1.85, { hp: 1.0, sp: 0.1, cp: 0.05, hd: -0.6, L: leg(1.35, 2.2, -0.3, 0.2), R: leg(1.25, 2.1, -0.3, 0.2), lift: 0, slide: -0.15,
-    R_: [V(-0.3, -0.92, 0.25), V(-0.12, -0.98, 0.12), V(-0.05, -0.15, 0.99)], L_: [V(0.3, -0.92, 0.25), V(0.12, -0.98, 0.12), V(0.05, -0.15, 0.99)] }]
+  [
+    0.4,
+    {
+      hp: 0.45,
+      sp: 0.12,
+      hd: -0.5,
+      L: leg(0.75, 1.2, -0.1, 0.16),
+      R: leg(0.65, 1.1, -0.1, 0.16),
+      lift: 0,
+      slide: 0,
+      R_: [V(-0.2, -0.7, 0.68), V(-0.1, -0.5, 0.86), V(-0.05, -0.5, 0.86)],
+      L_: [V(0.2, -0.7, 0.68), V(0.1, -0.5, 0.86), V(0.05, -0.5, 0.86)]
+    }
+  ],
+  [
+    0.6,
+    {
+      hp: 0.95,
+      sp: 0.18,
+      hd: -0.8,
+      L: leg(-0.35, 0.45, 0.45, 0.14),
+      R: leg(1.3, 1.95, -0.15, 0.14),
+      lift: 0,
+      slide: -0.2,
+      R_: [V(-0.15, -0.45, 0.88), V(-0.08, -0.35, 0.93), V(-0.04, -0.3, 0.95)],
+      L_: [V(0.2, -0.45, 0.87), V(0.12, -0.4, 0.91), V(0.06, -0.35, 0.94)]
+    }
+  ],
+  [
+    0.82,
+    {
+      hp: 1.3,
+      sp: -0.05,
+      cp: -0.05,
+      hd: -1.05,
+      L: leg(-1.3, 0.35, 0.7, 0.12),
+      R: leg(-1.05, 0.15, 0.7, 0.12),
+      lift: 0.2,
+      slide: -0.75,
+      R_: [V(-0.1, -0.2, 0.97), V(-0.06, -0.2, 0.98), V(-0.03, -0.25, 0.97)],
+      L_: [V(0.3, -0.5, 0.81), V(0.18, -0.7, 0.69), V(0.1, -0.8, 0.59)]
+    }
+  ],
+  [
+    1.0,
+    {
+      hp: 1.47,
+      sp: -0.18,
+      cp: -0.12,
+      hd: -1.15,
+      L: leg(-1.45, 0.45, 0.7, 0.14),
+      R: leg(-1.35, 0.35, 0.7, 0.14),
+      lift: 0.02,
+      slide: -0.9,
+      R_: [V(-0.08, -0.12, 0.99), V(-0.05, -0.12, 0.99), V(-0.02, -0.1, 1)],
+      L_: [V(0.35, -0.5, -0.79), V(0.12, -0.96, 0.25), V(0.05, -0.15, 0.99)]
+    }
+  ],
+  [
+    1.5,
+    {
+      hp: 1.5,
+      sp: -0.28,
+      cp: -0.18,
+      hd: -1.15,
+      L: leg(-1.4, 0.65, 0.6, 0.16),
+      R: leg(-1.3, 0.8, 0.6, 0.16),
+      lift: 0,
+      slide: -0.35,
+      R_: [V(-0.12, -0.25, 0.96), V(-0.06, -0.3, 0.95), V(-0.02, -0.12, 0.99)],
+      L_: [V(0.35, -0.45, -0.82), V(0.12, -0.96, 0.25), V(0.05, -0.15, 0.99)]
+    }
+  ],
+  [
+    1.85,
+    {
+      hp: 1.0,
+      sp: 0.1,
+      cp: 0.05,
+      hd: -0.6,
+      L: leg(1.35, 2.2, -0.3, 0.2),
+      R: leg(1.25, 2.1, -0.3, 0.2),
+      lift: 0,
+      slide: -0.15,
+      R_: [V(-0.3, -0.92, 0.25), V(-0.12, -0.98, 0.12), V(-0.05, -0.15, 0.99)],
+      L_: [V(0.3, -0.92, 0.25), V(0.12, -0.98, 0.12), V(0.05, -0.15, 0.99)]
+    }
+  ]
 ];
 const mixDive = (a, b, t) => {
   const o = mix({ ...a, al: a.L_, ar: a.R_ }, { ...b, al: b.L_, ar: b.R_ }, t);
@@ -414,8 +619,7 @@ export function playerPose(d, mood, m) {
       const lp = locoPose(m);
       out = { ...out, L: mixLeg(out.L, lp.L, k), R: mixLeg(out.R, lp.R, k), lift: (lp.lift || 0) * k };
     }
-  }
-  else if (pose === 'spike') out = spikePose(d, m);
+  } else if (pose === 'spike') out = spikePose(d, m);
   else if (pose === 'serve') out = servePose(d);
   else if (pose === 'bump' && !air) {
     const u = d.swing == null ? 0 : cl(d.swing / 170, 0, 1),
@@ -427,7 +631,10 @@ export function playerPose(d, mood, m) {
         // running to the ball: a real run while far, settling into the platform as the player arrives
         const run = cl((m.speed - 2) / 1.5, 0, 1);
         const lp = locoPose(run > 0 ? m : { ...m, lat: m.lat || 0.01, fwd: 0 });
-        out = run > 0 ? { ...mix(out, lp, run * 0.85), contact: 1 } : { ...out, L: mixLeg(out.L, lp.L, mk), R: mixLeg(out.R, lp.R, mk), lift: lp.lift };
+        out =
+          run > 0
+            ? { ...mix(out, lp, run * 0.85), contact: 1 }
+            : { ...out, L: mixLeg(out.L, lp.L, mk), R: mixLeg(out.R, lp.R, mk), lift: lp.lift };
       }
     }
     out.contact = d.swing == null ? 1 : 1 - u;
@@ -455,12 +662,46 @@ export function playerPose(d, mood, m) {
     }
     out.contact = pr;
     out.face = A.cele ? { happy: 1 } : { angry: 0.7 };
-  } else if (pose === 'roar') out = { hp: -0.05, sp: -0.25, cp: -0.15, hd: -0.4, L: leg(0.3, 0.3, 0, 0.2), R: leg(-0.1, 0.2, 0, 0.2), al: [V(0.6, 0.75, 0.1), V(0.2, 0.95, -0.1)], curl: 1, face: { angry: 0.6, aa: 0.8 } };
-  else if (pose === 'slump') out = { hp: 0.35, sp: 0.2, cp: 0.1, hd: 0.55, shrug: -0.1, L: leg(0.2, 0.3), R: leg(0.05, 0.2), al: DOWN_ARM, curl: 0.3, face: { sad: 0.9 } };
-  else if (pose === 'huddle') out = { hp: 0.35, sp: 0.15, hd: 0.2, L: leg(0.3, 0.45, 0, 0.2), R: leg(0.2, 0.4, 0, 0.2), al: [V(0.55, -0.15, 0.82), V(-0.3, -0.1, 0.95), V(-0.4, -0.2, 0.9)], curl: 0.3, face: { relaxed: 0.5 } };
+  } else if (pose === 'roar')
+    out = {
+      hp: -0.05,
+      sp: -0.25,
+      cp: -0.15,
+      hd: -0.4,
+      L: leg(0.3, 0.3, 0, 0.2),
+      R: leg(-0.1, 0.2, 0, 0.2),
+      al: [V(0.6, 0.75, 0.1), V(0.2, 0.95, -0.1)],
+      curl: 1,
+      face: { angry: 0.6, aa: 0.8 }
+    };
+  else if (pose === 'slump')
+    out = {
+      hp: 0.35,
+      sp: 0.2,
+      cp: 0.1,
+      hd: 0.55,
+      shrug: -0.1,
+      L: leg(0.2, 0.3),
+      R: leg(0.05, 0.2),
+      al: DOWN_ARM,
+      curl: 0.3,
+      face: { sad: 0.9 }
+    };
+  else if (pose === 'huddle')
+    out = {
+      hp: 0.35,
+      sp: 0.15,
+      hd: 0.2,
+      L: leg(0.3, 0.45, 0, 0.2),
+      R: leg(0.2, 0.4, 0, 0.2),
+      al: [V(0.55, -0.15, 0.82), V(-0.3, -0.1, 0.95), V(-0.4, -0.2, 0.9)],
+      curl: 0.3,
+      face: { relaxed: 0.5 }
+    };
   else if (air) out = { hp: 0, sp: 0, L: leg(0.4, 0.9, 0.5), R: leg(0.1, 1.1, 0.5), al: [V(0.6, 0.2, 0.3), V(0.5, 0.3, 0.5)], curl: 0.4 };
   else {
-    const stance = pose === 'ready' ? P(READY, { hp: READY.hp + Math.abs(Math.sin(performance.now() * 0.007 + d.p.num * 0.9)) * 0.06 }) : STAND;
+    const stance =
+      pose === 'ready' ? P(READY, { hp: READY.hp + Math.abs(Math.sin(performance.now() * 0.007 + d.p.num * 0.9)) * 0.06 }) : STAND;
     out = mk > 0 ? mix(stance, locoPose(m), mk) : stance;
   }
   // get back up after a dive
@@ -468,7 +709,16 @@ export function playerPose(d, mood, m) {
   const f = out.face || {};
   if (!out.face || Object.keys(f).length === 0 || pose === 'ready' || pose === 'set' || mk > 0.5) {
     // mood face (fired up / confident / steady / nervous / rattled), unless the move sets its own
-    const mf = mood >= 0.6 ? { angry: 0.35, happy: 0.35 } : mood >= 0.2 ? { happy: 0.55 } : mood > -0.2 ? {} : mood > -0.6 ? { sad: 0.45 } : { surprised: 0.55, sad: 0.35 };
+    const mf =
+      mood >= 0.6
+        ? { angry: 0.35, happy: 0.35 }
+        : mood >= 0.2
+          ? { happy: 0.55 }
+          : mood > -0.2
+            ? {}
+            : mood > -0.6
+              ? { sad: 0.45 }
+              : { surprised: 0.55, sad: 0.35 };
     out = { ...out, face: { ...mf, ...f } };
   }
   if (d.call) out.face = { ...out.face, aa: 0.7 * Math.min(1, d.call.life * 3) };
@@ -482,7 +732,17 @@ export function coachPose(c, t) {
   if (c.type === 'ugh') return { ...base, hp: 0.25, sp: 0.2, hd: 0.3, al: [V(0.7, 0.5, 0.5), V(-0.5, 0.3, -0.8)], face: { sad: 0.8 } };
   if (c.type === 'talk') {
     const w = Math.sin(t * 0.01) * 0.3;
-    return { ...base, al: [V(0.3, -0.6, 0.7), V(-0.4, 0.2, 0.9)], ar: [V(-0.3, -0.2 + w, 0.93), V(-0.25, 0.1 + w, 0.96)], face: { aa: 0.4 + 0.3 * Math.abs(w) } };
+    return {
+      ...base,
+      al: [V(0.3, -0.6, 0.7), V(-0.4, 0.2, 0.9)],
+      ar: [V(-0.3, -0.2 + w, 0.93), V(-0.25, 0.1 + w, 0.96)],
+      face: { aa: 0.4 + 0.3 * Math.abs(w) }
+    };
   }
-  return { ...base, al: [V(0.3, -0.85, 0.4), V(-0.5, -0.1, 0.85), V(-0.6, 0, 0.8)], ar: [V(-0.3, -0.85, 0.4), V(0.5, -0.1, 0.85), V(0.6, 0, 0.8)], face: {} };
+  return {
+    ...base,
+    al: [V(0.3, -0.85, 0.4), V(-0.5, -0.1, 0.85), V(-0.6, 0, 0.8)],
+    ar: [V(-0.3, -0.85, 0.4), V(0.5, -0.1, 0.85), V(0.6, 0, 0.8)],
+    face: {}
+  };
 }

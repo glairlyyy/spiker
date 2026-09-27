@@ -4,6 +4,16 @@
 
 /** Below this block coverage there is no real block attempt (rally.js drops the defender's scene on the same test). */
 const BLOCK_MIN_COV = 0.12;
+/**
+ * Kill-block odds: the block at full strength against the spike (so an OP wall can stop an OP hitter), weighted by how
+ * much of the lane it actually covers — a half-formed block rarely stuffs anything.
+ */
+const STUFF_BIAS = 0.9,
+  STUFF_COV_EXP = 1.6;
+const stuffChance = (bp, cov, pow) => sig((bp / Math.max(cov, 0.01) - pow) / 20 - STUFF_BIAS) * Math.pow(Math.min(1, cov), STUFF_COV_EXP);
+/** Tooling it off the hands and out: only off a real but partial block (coverage in this range), at this chance. */
+const TOOL_COV = [0.25, 0.6],
+  TOOL_P = 0.05;
 
 /** 9. Block: block break (drill + hit-stop) → stuff (kill block, or a block-cover dig) → touch → tool off the hands. */
 function block(c, x) {
@@ -22,7 +32,11 @@ function block(c, x) {
     // Block break: a solid block (coverage ≥ 0.5) can still be blasted through
     // when the spike beats the block's full strength by 10%+ (chance grows to 45% at +25%).
     const ratio = pow / Math.max(1, bp / cov);
-    if (cov >= 0.5 - 0.2 * brk && ratio > 1.1 - 0.25 * brk && R() < Math.min(0.45 + 0.4 * brk, (ratio - 1.1 + 0.25 * brk) * 3 + 0.35 * brk)) {
+    if (
+      cov >= 0.5 - 0.2 * brk &&
+      ratio > 1.1 - 0.25 * brk &&
+      R() < Math.min(0.45 + 0.4 * brk, (ratio - 1.1 + 0.25 * brk) * 3 + 0.35 * brk)
+    ) {
       smashed = true;
       md(m, bb, -0.1);
       md(m, spiker, 0.1);
@@ -66,7 +80,7 @@ function block(c, x) {
           ]
         });
       hit.length = 0;
-    } else if (R() < sig((bp - pow) / 20 - 2.0)) {
+    } else if (R() < stuffChance(bp, cov, pow)) {
       const bx = sx(atk, rnd(425, 470)),
         bzz = clamp(spZ + rnd(-0.12, 0.12), 0.1, 0.9),
         dp = Math.round(pow * 0.55 + bp * 0.55),
@@ -102,7 +116,8 @@ function block(c, x) {
             { k: 'shake', amt: 7 },
             ...(saved ? [] : [{ k: 'plabel', p: spiker.id, t: '!!' }]),
             { k: 'label', t: saved ? 'Blocked!' : 'DENIED', big: 1, dy: 44, set: 1 },
-            { k: 'wall', p: bb.id, el: bel }
+            { k: 'wall', p: bb.id, el: bel },
+            ...(saved ? [] : [{ k: 'shot', kind: 'ball', p: bb.id, p2: spiker.id, hype: 1 }]) // the stuff, up close
           ]
         });
       if (saved) {
@@ -155,9 +170,7 @@ function block(c, x) {
           B({
             dur: 1200,
             cut: 1,
-            acts: [
-              { k: 'cut', p: bb.id, title: bb.bmove, sub: `Block reach ${Math.round(2.4 * 100 + jumpCm(bb) + 20) / 100} m` }
-            ]
+            acts: [{ k: 'cut', p: bb.id, title: bb.bmove, sub: `Block reach ${Math.round(2.4 * 100 + jumpCm(bb) + 20) / 100} m` }]
           });
       V &&
         B({
@@ -177,6 +190,7 @@ function block(c, x) {
             { k: 'log', t: `Stuffed! ${bb.name} shuts down ${spiker.name}${b1 ? ' with a double block' : ''}`, c: 'pt' }
           ]
         });
+      V && B(hypeKillBlock(m, bb, spiker));
       return { point: ds };
     }
     // touch or tool off the hands (not after a block break: that ball is already through)
@@ -197,7 +211,7 @@ function block(c, x) {
           ]
         });
       hit.length = 0;
-    } else if (!smashed && cov < 0.6 && R() < 0.08) {
+    } else if (!smashed && cov >= TOOL_COV[0] && cov < TOOL_COV[1] && R() < TOOL_P) {
       st(m, spiker, 'k');
       V && B({ dur: 190, acts: [...hit, { k: 'ball', to: hands, h: 0, trail: pow }] });
       V &&
@@ -293,7 +307,11 @@ function dig(c, x, bl) {
               ...pa.acts,
               ...sp.acts,
               { k: 'label', t: 'Saved!', when: 'end', set: 1 },
-              { k: 'log', t: `${spiker.name}'s spike blasts off ${dg.name}'s arms — ${P.rec.name} chases it down and keeps it alive!`, c: 'set' }
+              {
+                k: 'log',
+                t: `${spiker.name}'s spike blasts off ${dg.name}'s arms — ${P.rec.name} chases it down and keeps it alive!`,
+                c: 'set'
+              }
             ]
           });
         return { next: [ds, P.rec, 1] };
@@ -359,9 +377,7 @@ function dig(c, x, bl) {
           ...bdown,
           ...a4,
           ...(kd ? kd.acts : []),
-          ...(shank
-            ? [{ k: 'label', t: 'Off the arms!', small: 1 }]
-            : [{ k: 'pose', p: dg.id, pose: 'dive', pc: dd0 > 0.22 ? 1 : 0 }]),
+          ...(shank ? [{ k: 'label', t: 'Off the arms!', small: 1 }] : [{ k: 'pose', p: dg.id, pose: 'dive', pc: dd0 > 0.22 ? 1 : 0 }]),
           {
             k: 'ball',
             to: { x: bx, z: bz, h: 0 },
@@ -370,7 +386,9 @@ function dig(c, x, bl) {
             op: spiker.op && !tip && !shank,
             el: shank ? null : el
           },
-          ...(el && !shank ? [{ k: 'label', t: ENAME[el].split(' ').pop().toUpperCase() + '!', when: 'end', big: 1, stamp: 1, dy: 40 }] : []),
+          ...(el && !shank
+            ? [{ k: 'label', t: ENAME[el].split(' ').pop().toUpperCase() + '!', when: 'end', big: 1, stamp: 1, dy: 40 }]
+            : []),
           { k: 'impact', pow: tip ? 20 : pow, when: 'end', kill: !tip, op: spiker.op && !tip, el: tip ? null : el },
           { k: 'pose', p: spiker.id, pose: 'roar', when: 'end' },
           { k: 'label', t: word, when: 'end', big: 1 },
@@ -393,7 +411,10 @@ function dig(c, x, bl) {
   const dive = rollD || mustDive(dg, q0, lx - dd * 16, lz, hdur + (touched ? 200 : 0));
   if (dive) setBusy(m, dg, c.n + 1); // on the floor: can't attack the transition ball
   mv(m, dg, lx - dd * 16, lz, a4, V);
-  const dram = V && !tip && (smashed || (touched && dive && (m.pts[0] + m.pts[1] + c.n) % 2 === 0)) ? scramble(m, smashed ? 'brk' : 'loose', dg, callerFor(m, defT, dg, lx, lz), { x: lx, z: lz }) : null;
+  const dram =
+    V && !tip && (smashed || (touched && dive && (m.pts[0] + m.pts[1] + c.n) % 2 === 0))
+      ? scramble(m, smashed ? 'brk' : 'loose', dg, callerFor(m, defT, dg, lx, lz), { x: lx, z: lz })
+      : null;
   V &&
     B({
       dur: hdur + (touched ? 200 : 0),

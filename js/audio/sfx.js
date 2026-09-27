@@ -370,12 +370,28 @@ const sfx = {
     if (!CROWD_ON || !live()) return;
     const t = now();
     noiseAt(t, 0.9 + s * 1.2, 0.08 + 0.2 * s, 'bandpass', 1100, 900, 0.6, [SND.master, SND.rev], 0.25);
-    if (s > 0.7) crowdVoice(t + 0.05, 0.9 + s * 0.5, 0.09 * s, 190, 240, [[700, 3], [1150, 4]]); // "yeaaah"
+    if (s > 0.7)
+      crowdVoice(t + 0.05, 0.9 + s * 0.5, 0.09 * s, 190, 240, [
+        [700, 3],
+        [1150, 4]
+      ]); // "yeaaah"
   },
   /** Crowd gasp — "ooooh" on a great save. */
-  ooh: () => CROWD_ON && live() && crowdVoice(now(), 1.1, 0.14, 170, 230, [[450, 4], [850, 5]]),
+  ooh: () =>
+    CROWD_ON &&
+    live() &&
+    crowdVoice(now(), 1.1, 0.14, 170, 230, [
+      [450, 4],
+      [850, 5]
+    ]),
   /** Crowd groan — "awww" on an error. */
-  aww: () => CROWD_ON && live() && crowdVoice(now(), 1.0, 0.12, 230, 150, [[700, 3], [1100, 4]]),
+  aww: () =>
+    CROWD_ON &&
+    live() &&
+    crowdVoice(now(), 1.0, 0.12, 230, 150, [
+      [700, 3],
+      [1100, 4]
+    ]),
   clap: () => {
     if (!CROWD_ON || !live()) return;
     const t = now();

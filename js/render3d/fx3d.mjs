@@ -17,13 +17,31 @@ const radial = stops => (g, n) => {
   g.fillStyle = r;
   g.fillRect(0, 0, n, n);
 };
-const TEX_GLOW = canvasTex(radial([[0, 'rgba(255,255,255,1)'], [0.25, 'rgba(255,255,255,.75)'], [1, 'rgba(255,255,255,0)']]));
-const TEX_SMOKE = canvasTex(radial([[0, 'rgba(255,255,255,.9)'], [0.6, 'rgba(255,255,255,.35)'], [1, 'rgba(255,255,255,0)']]));
+const TEX_GLOW = canvasTex(
+  radial([
+    [0, 'rgba(255,255,255,1)'],
+    [0.25, 'rgba(255,255,255,.75)'],
+    [1, 'rgba(255,255,255,0)']
+  ])
+);
+const TEX_SMOKE = canvasTex(
+  radial([
+    [0, 'rgba(255,255,255,.9)'],
+    [0.6, 'rgba(255,255,255,.35)'],
+    [1, 'rgba(255,255,255,0)']
+  ])
+);
 const TEX_STAR = canvasTex((g, n) => {
   const c = n / 2;
-  radial([[0, 'rgba(255,255,255,1)'], [0.18, 'rgba(255,255,255,0)']])(g, n);
+  radial([
+    [0, 'rgba(255,255,255,1)'],
+    [0.18, 'rgba(255,255,255,0)']
+  ])(g, n);
   g.fillStyle = '#fff';
-  for (const [w, h] of [[3, c], [c, 3]]) {
+  for (const [w, h] of [
+    [3, c],
+    [c, 3]
+  ]) {
     g.beginPath();
     g.moveTo(c - w, c);
     g.lineTo(c, c - h);
@@ -53,7 +71,13 @@ export function createFx(scene) {
       this.col = new Float32Array(max * 3);
       this.size = new Float32Array(max);
       this.alpha = new Float32Array(max);
-      for (const [k, a, n] of [['position', this.pos, 3], ['pcol', this.col, 3], ['size', this.size, 1], ['alpha', this.alpha, 1]]) g.setAttribute(k, new THREE.BufferAttribute(a, n).setUsage(THREE.DynamicDrawUsage));
+      for (const [k, a, n] of [
+        ['position', this.pos, 3],
+        ['pcol', this.col, 3],
+        ['size', this.size, 1],
+        ['alpha', this.alpha, 1]
+      ])
+        g.setAttribute(k, new THREE.BufferAttribute(a, n).setUsage(THREE.DynamicDrawUsage));
       this.geo = g;
       const m = new THREE.ShaderMaterial({
         uniforms: { map: { value: tex }, scale: pScale },
@@ -70,7 +94,21 @@ export function createFx(scene) {
     }
     spawn(p, v, c1, c2, s0, s1, life, o = {}) {
       if (this.P.length >= this.max) return;
-      this.P.push({ p: p.clone(), v: v.clone(), c1: new THREE.Color(c1), c2: new THREE.Color(c2 ?? c1), s0, s1, life, age: 0, g: o.g ?? 0, drag: o.drag ?? 0, a: o.a ?? 1, tw: o.tw || 0, floor: o.floor });
+      this.P.push({
+        p: p.clone(),
+        v: v.clone(),
+        c1: new THREE.Color(c1),
+        c2: new THREE.Color(c2 ?? c1),
+        s0,
+        s1,
+        life,
+        age: 0,
+        g: o.g ?? 0,
+        drag: o.drag ?? 0,
+        a: o.a ?? 1,
+        tw: o.tw || 0,
+        floor: o.floor
+      });
     }
     update(dt) {
       const P = this.P,
@@ -108,14 +146,19 @@ export function createFx(scene) {
     SMOKE = new Particles(TEX_SMOKE, false, 1500);
 
   // rocks: tumbling chunks that bounce on the floor
-  const ROCKS = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(0.07), new THREE.MeshStandardMaterial({ color: '#8a7658', roughness: 1, flatShading: true }), 240);
+  const ROCKS = new THREE.InstancedMesh(
+    new THREE.DodecahedronGeometry(0.07),
+    new THREE.MeshStandardMaterial({ color: '#8a7658', roughness: 1, flatShading: true }),
+    240
+  );
   ROCKS.castShadow = true;
   ROCKS.count = 0;
   ROCKS.frustumCulled = false;
   scene.add(ROCKS);
   const rocks = [];
   const spawnRock = (p, v, s = 1) =>
-    rocks.length < 240 && rocks.push({ p: p.clone(), v: v.clone(), r: new THREE.Euler(R(0, 6), R(0, 6), 0), w: rv(12), s: s * R(0.6, 1.4), life: 1.6, age: 0 });
+    rocks.length < 240 &&
+    rocks.push({ p: p.clone(), v: v.clone(), r: new THREE.Euler(R(0, 6), R(0, 6), 0), w: rv(12), s: s * R(0.6, 1.4), life: 1.6, age: 0 });
   const M = new THREE.Matrix4(),
     Q = new THREE.Quaternion(),
     S = new THREE.Vector3();
@@ -165,8 +208,14 @@ export function createFx(scene) {
     pts.push(b.clone());
     const curve = new Poly(pts),
       seg = pts.length * 2;
-    const core = new THREE.Mesh(new THREE.TubeGeometry(curve, seg, r, 5), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
-    const glow = new THREE.Mesh(new THREE.TubeGeometry(curve, seg, r * 4.5, 6), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
+    const core = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, seg, r, 5),
+      new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    const glow = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, seg, r * 4.5, 6),
+      new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
     core.renderOrder = glow.renderOrder = 4;
     scene.add(core, glow);
     bolts.push({ core, glow, life, age: 0 });
@@ -196,7 +245,16 @@ export function createFx(scene) {
     RING = new THREE.RingGeometry(0.82, 1, 64);
   let camera = null;
   function ring(p, col, size, life = 0.45, floor = false) {
-    const m = new THREE.Mesh(RING, new THREE.MeshBasicMaterial({ color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    const m = new THREE.Mesh(
+      RING,
+      new THREE.MeshBasicMaterial({
+        color: col,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    );
     m.position.copy(p);
     if (floor) {
       m.rotation.x = -Math.PI / 2;
@@ -225,7 +283,16 @@ export function createFx(scene) {
   }
 
   const COL = el => (ECOL && ECOL[el]) || '#ffffff';
-  const HOT = { fire: '#ffd24a', flash: '#7fd8ff', water: '#d4f4ff', wind: '#6fe3ff', earth: '#6b5a44', blast: '#fff0a0', shadow: '#2a0f4a', star: '#ffffff' };
+  const HOT = {
+    fire: '#ffd24a',
+    flash: '#7fd8ff',
+    water: '#d4f4ff',
+    wind: '#6fe3ff',
+    earth: '#6b5a44',
+    blast: '#fff0a0',
+    shadow: '#2a0f4a',
+    star: '#ffffff'
+  };
 
   const fx = {
     /** Generic contact burst at a point (spike, serve, block): team-coloured ring and sparks. */
@@ -249,10 +316,12 @@ export function createFx(scene) {
           for (let i = 0; i < 5; i++) bolt(p, p.clone().add(rv(R(0.8, 1.6) * k)), E, 0.15, 0.25, 0.012);
           break;
         case 'fire':
-          for (let i = 0; i < 40 * k; i++) GLOW.spawn(p, rv(R(1, 3)).add(new THREE.Vector3(0, 2, 0)), '#fff4c0', E, R(0.4, 0.8), 0.05, R(0.3, 0.6), { drag: 3 });
+          for (let i = 0; i < 40 * k; i++)
+            GLOW.spawn(p, rv(R(1, 3)).add(new THREE.Vector3(0, 2, 0)), '#fff4c0', E, R(0.4, 0.8), 0.05, R(0.3, 0.6), { drag: 3 });
           break;
         case 'blast':
-          for (let i = 0; i < 16; i++) SMOKE.spawn(p.clone().add(rv(0.2)), rv(R(0.5, 2)), '#5a4436', '#1a1412', R(0.5, 0.9), 1.8, R(0.8, 1.2), { a: 0.55, drag: 2.5 });
+          for (let i = 0; i < 16; i++)
+            SMOKE.spawn(p.clone().add(rv(0.2)), rv(R(0.5, 2)), '#5a4436', '#1a1412', R(0.5, 0.9), 1.8, R(0.8, 1.2), { a: 0.55, drag: 2.5 });
           ring(p, '#fff0a0', 2.6 * k, 0.5);
           break;
         case 'earth':
@@ -261,7 +330,10 @@ export function createFx(scene) {
         case 'water':
           for (let i = 0; i < 50 * k; i++) {
             const a = (i / 50) * Math.PI * 2;
-            GLOW.spawn(p, new THREE.Vector3(Math.cos(a) * 3, R(1, 3), Math.sin(a) * 3), '#ffffff', E, 0.16, 0.08, 0.8, { g: 7, floor: true });
+            GLOW.spawn(p, new THREE.Vector3(Math.cos(a) * 3, R(1, 3), Math.sin(a) * 3), '#ffffff', E, 0.16, 0.08, 0.8, {
+              g: 7,
+              floor: true
+            });
           }
           break;
         case 'wind':
@@ -277,14 +349,25 @@ export function createFx(scene) {
           for (let i = 0; i < 30 * k; i++) SPARK.spawn(p, rv(R(1, 3)), '#ffffff', E, R(0.25, 0.45), 0.05, R(0.6, 1.1), { tw: 25, drag: 2 });
           break;
       }
-      if (dir) for (let i = 0; i < 20 * k; i++) GLOW.spawn(p, dir.clone().multiplyScalar(R(3, 7)).add(rv(1.2)), '#ffffff', E, 0.2, 0.02, 0.25);
+      if (dir)
+        for (let i = 0; i < 20 * k; i++) GLOW.spawn(p, dir.clone().multiplyScalar(R(3, 7)).add(rv(1.2)), '#ffffff', E, 0.2, 0.02, 0.25);
     },
     /** Ball hits the floor: flat shockwave and a dust spray. */
     impact(p, pow) {
       const k = Math.min(1.4, pow / 100),
         f = new THREE.Vector3(p.x, 0.02, p.z);
       ring(f, '#ffffff', 1.4 * k + 0.3, 0.5, true);
-      for (let i = 0; i < 26 * k; i++) SMOKE.spawn(f.clone().add(new THREE.Vector3(R(-0.2, 0.2), 0.05, R(-0.2, 0.2))), new THREE.Vector3(R(-2, 2), R(0.3, 1.5), R(-2, 2)).multiplyScalar(k), '#f6d9a0', '#b98a45', 0.18, 0.7, R(0.5, 0.9), { a: 0.45, drag: 2.5 });
+      for (let i = 0; i < 26 * k; i++)
+        SMOKE.spawn(
+          f.clone().add(new THREE.Vector3(R(-0.2, 0.2), 0.05, R(-0.2, 0.2))),
+          new THREE.Vector3(R(-2, 2), R(0.3, 1.5), R(-2, 2)).multiplyScalar(k),
+          '#f6d9a0',
+          '#b98a45',
+          0.18,
+          0.7,
+          R(0.5, 0.9),
+          { a: 0.45, drag: 2.5 }
+        );
     },
     /** Element hit on the floor: flame pillar, splash, rock burst, gusts, explosion, dark implosion, sparkles, bolt. */
     elemImpact(el, p, pow) {
@@ -295,15 +378,27 @@ export function createFx(scene) {
       ring(f, E, 1.6 * k, 0.55, true);
       switch (el) {
         case 'fire':
-          for (let i = 0; i < 50 * k; i++) GLOW.spawn(f.clone().add(new THREE.Vector3(R(-0.4, 0.4), 0, R(-0.4, 0.4))), new THREE.Vector3(R(-0.4, 0.4), R(2, 5), R(-0.4, 0.4)), '#fff4c0', E, R(0.35, 0.7), 0.05, R(0.4, 0.8), { drag: 1.5 });
+          for (let i = 0; i < 50 * k; i++)
+            GLOW.spawn(
+              f.clone().add(new THREE.Vector3(R(-0.4, 0.4), 0, R(-0.4, 0.4))),
+              new THREE.Vector3(R(-0.4, 0.4), R(2, 5), R(-0.4, 0.4)),
+              '#fff4c0',
+              E,
+              R(0.35, 0.7),
+              0.05,
+              R(0.4, 0.8),
+              { drag: 1.5 }
+            );
           break;
         case 'water':
           for (let r = 0; r < 3; r++) ring(f, '#8fdcff', (1.2 + r * 0.6) * k, 0.5 + r * 0.12, true);
-          for (let i = 0; i < 50 * k; i++) GLOW.spawn(f, new THREE.Vector3(R(-2, 2), R(2, 4.5), R(-2, 2)), '#ffffff', E, R(0.1, 0.18), 0.06, 1, { g: 9, floor: true });
+          for (let i = 0; i < 50 * k; i++)
+            GLOW.spawn(f, new THREE.Vector3(R(-2, 2), R(2, 4.5), R(-2, 2)), '#ffffff', E, R(0.1, 0.18), 0.06, 1, { g: 9, floor: true });
           break;
         case 'earth':
           for (let i = 0; i < 22 * k; i++) spawnRock(f, new THREE.Vector3(R(-2.5, 2.5), R(2, 5), R(-2.5, 2.5)), 1.3);
-          for (let i = 0; i < 16; i++) SMOKE.spawn(f, new THREE.Vector3(R(-1.5, 1.5), R(0.3, 1), R(-1.5, 1.5)), '#c9b08a', '#6b5a44', 0.3, 1, 1, { a: 0.5, drag: 2 });
+          for (let i = 0; i < 16; i++)
+            SMOKE.spawn(f, new THREE.Vector3(R(-1.5, 1.5), R(0.3, 1), R(-1.5, 1.5)), '#c9b08a', '#6b5a44', 0.3, 1, 1, { a: 0.5, drag: 2 });
           break;
         case 'wind':
           for (let i = 0; i < 3; i++) ring(f, '#ffffff', (1.4 + i * 0.8) * k, 0.4 + i * 0.12, true);
@@ -314,17 +409,36 @@ export function createFx(scene) {
           break;
         case 'blast':
           for (let i = 0; i < 40 * k; i++) GLOW.spawn(f, rv(R(2, 5)).setY(R(1, 4)), H, E, R(0.3, 0.6), 0.05, R(0.3, 0.55), { drag: 3 });
-          for (let i = 0; i < 18; i++) SMOKE.spawn(f.clone().add(rv(0.3)), rv(R(0.5, 2)).setY(R(0.5, 2)), '#5a4436', '#1a1412', R(0.5, 0.9), 1.9, R(0.9, 1.3), { a: 0.55, drag: 2.5 });
+          for (let i = 0; i < 18; i++)
+            SMOKE.spawn(f.clone().add(rv(0.3)), rv(R(0.5, 2)).setY(R(0.5, 2)), '#5a4436', '#1a1412', R(0.5, 0.9), 1.9, R(0.9, 1.3), {
+              a: 0.55,
+              drag: 2.5
+            });
           break;
         case 'shadow':
-          for (let i = 0; i < 30 * k; i++) SMOKE.spawn(f.clone().add(new THREE.Vector3(R(-1, 1), 0, R(-1, 1))), new THREE.Vector3(0, R(0.5, 1.5), 0), '#2a0f4a', '#000000', 0.5, 1.2, R(0.8, 1.2), { a: 0.7 });
+          for (let i = 0; i < 30 * k; i++)
+            SMOKE.spawn(
+              f.clone().add(new THREE.Vector3(R(-1, 1), 0, R(-1, 1))),
+              new THREE.Vector3(0, R(0.5, 1.5), 0),
+              '#2a0f4a',
+              '#000000',
+              0.5,
+              1.2,
+              R(0.8, 1.2),
+              { a: 0.7 }
+            );
           break;
         case 'star':
-          for (let i = 0; i < 30 * k; i++) SPARK.spawn(f, new THREE.Vector3(R(-1.5, 1.5), R(1, 3), R(-1.5, 1.5)), '#ffffff', E, R(0.2, 0.4), 0.05, R(0.7, 1.2), { tw: 25, g: 2 });
+          for (let i = 0; i < 30 * k; i++)
+            SPARK.spawn(f, new THREE.Vector3(R(-1.5, 1.5), R(1, 3), R(-1.5, 1.5)), '#ffffff', E, R(0.2, 0.4), 0.05, R(0.7, 1.2), {
+              tw: 25,
+              g: 2
+            });
           break;
         case 'flash':
           bolt(new THREE.Vector3(f.x + R(-1, 1), 13, f.z + R(-1, 1)), f, H, 0.25, 1, 0.035);
-          for (let i = 0; i < 20 * k; i++) SPARK.spawn(f, new THREE.Vector3(R(-3, 3), R(1, 4), R(-3, 3)), '#ffffff', E, 0.15, 0.02, 0.35, { drag: 3, g: 5 });
+          for (let i = 0; i < 20 * k; i++)
+            SPARK.spawn(f, new THREE.Vector3(R(-3, 3), R(1, 4), R(-3, 3)), '#ffffff', E, 0.15, 0.02, 0.35, { drag: 3, g: 5 });
           break;
       }
     },
@@ -341,22 +455,76 @@ export function createFx(scene) {
         const tt = performance.now() * 0.06 + s;
         switch (el) {
           case 'fire':
-            for (let i = 0; i < 4 * k; i++) GLOW.spawn(p.clone().add(rv(0.08)), back.clone().multiplyScalar(R(1, 3)).add(rv(0.6)).add(new THREE.Vector3(0, R(0.5, 1.5), 0)), H, E, R(0.35, 0.6), 0.05, R(0.25, 0.45), { drag: 2 });
-            if (Math.random() < 0.4 * k) SMOKE.spawn(p, back.clone().add(new THREE.Vector3(0, 1, 0)), '#3a2a22', '#15101a', 0.3, 0.9, 0.8, { a: 0.3, drag: 1 });
+            for (let i = 0; i < 4 * k; i++)
+              GLOW.spawn(
+                p.clone().add(rv(0.08)),
+                back
+                  .clone()
+                  .multiplyScalar(R(1, 3))
+                  .add(rv(0.6))
+                  .add(new THREE.Vector3(0, R(0.5, 1.5), 0)),
+                H,
+                E,
+                R(0.35, 0.6),
+                0.05,
+                R(0.25, 0.45),
+                { drag: 2 }
+              );
+            if (Math.random() < 0.4 * k)
+              SMOKE.spawn(p, back.clone().add(new THREE.Vector3(0, 1, 0)), '#3a2a22', '#15101a', 0.3, 0.9, 0.8, { a: 0.3, drag: 1 });
             break;
           case 'flash':
             for (let i = 0; i < 3 * k; i++) SPARK.spawn(p, rv(R(2, 5)), '#ffffff', E, R(0.12, 0.22), 0.02, R(0.12, 0.25), { drag: 4 });
             GLOW.spawn(p, back, E, H, 0.5 * k + 0.1, 0.1, 0.18);
             break;
           case 'water':
-            for (const ph of [0, Math.PI]) GLOW.spawn(p.clone().addScaledVector(side, Math.cos(tt * 0.45 + ph) * 0.24).addScaledVector(up2, Math.sin(tt * 0.45 + ph) * 0.24), back.clone().multiplyScalar(0.3), H, E, 0.22, 0.12, 0.45);
-            if (Math.random() < 0.6 * k) GLOW.spawn(p, rv(1.2).add(new THREE.Vector3(0, 1, 0)), H, E, 0.12, 0.06, 0.7, { g: 6, floor: true });
+            for (const ph of [0, Math.PI])
+              GLOW.spawn(
+                p
+                  .clone()
+                  .addScaledVector(side, Math.cos(tt * 0.45 + ph) * 0.24)
+                  .addScaledVector(up2, Math.sin(tt * 0.45 + ph) * 0.24),
+                back.clone().multiplyScalar(0.3),
+                H,
+                E,
+                0.22,
+                0.12,
+                0.45
+              );
+            if (Math.random() < 0.6 * k)
+              GLOW.spawn(p, rv(1.2).add(new THREE.Vector3(0, 1, 0)), H, E, 0.12, 0.06, 0.7, { g: 6, floor: true });
             break;
           case 'wind':
-            for (const [ph, r] of [[0, 0.3], [2.1, 0.22], [4.2, 0.36]]) GLOW.spawn(p.clone().addScaledVector(side, Math.cos(tt * 0.6 + ph) * r).addScaledVector(up2, Math.sin(tt * 0.6 + ph) * r), back.clone().multiplyScalar(0.5), '#ffffff', H, 0.14, 0.05, 0.35, { a: 0.8 });
+            for (const [ph, r] of [
+              [0, 0.3],
+              [2.1, 0.22],
+              [4.2, 0.36]
+            ])
+              GLOW.spawn(
+                p
+                  .clone()
+                  .addScaledVector(side, Math.cos(tt * 0.6 + ph) * r)
+                  .addScaledVector(up2, Math.sin(tt * 0.6 + ph) * r),
+                back.clone().multiplyScalar(0.5),
+                '#ffffff',
+                H,
+                0.14,
+                0.05,
+                0.35,
+                { a: 0.8 }
+              );
             break;
           case 'earth':
-            if (Math.random() < 0.3 * k) spawnRock(p.clone().add(rv(0.1)), back.clone().multiplyScalar(R(1, 3)).add(rv(1.5)).add(new THREE.Vector3(0, 1, 0)), 0.8);
+            if (Math.random() < 0.3 * k)
+              spawnRock(
+                p.clone().add(rv(0.1)),
+                back
+                  .clone()
+                  .multiplyScalar(R(1, 3))
+                  .add(rv(1.5))
+                  .add(new THREE.Vector3(0, 1, 0)),
+                0.8
+              );
             SMOKE.spawn(p.clone().add(rv(0.05)), back.clone().add(rv(0.4)), '#b39a74', '#6b5a44', 0.25, 0.8, 0.6, { a: 0.4, drag: 2 });
             break;
           case 'blast':
@@ -366,19 +534,40 @@ export function createFx(scene) {
             }
             break;
           case 'shadow':
-            SMOKE.spawn(p.clone().add(rv(0.08)), back.clone().multiplyScalar(R(0.5, 1.5)).add(rv(0.3)), '#2a0f4a', '#08040f', R(0.35, 0.55), 1.0, R(0.5, 0.8), { a: 0.65, drag: 1.5 });
+            SMOKE.spawn(
+              p.clone().add(rv(0.08)),
+              back.clone().multiplyScalar(R(0.5, 1.5)).add(rv(0.3)),
+              '#2a0f4a',
+              '#08040f',
+              R(0.35, 0.55),
+              1.0,
+              R(0.5, 0.8),
+              { a: 0.65, drag: 1.5 }
+            );
             if (Math.random() < 0.5) GLOW.spawn(p.clone().add(rv(0.15)), rv(0.3), E, '#3a1a6a', 0.18, 0.05, 0.4);
             break;
           case 'star':
-            if (Math.random() < 0.8) SPARK.spawn(p.clone().add(rv(R(0.05, 0.3))), back.clone().multiplyScalar(0.2).add(rv(0.2)), '#ffffff', E, R(0.15, 0.3), 0.05, R(0.5, 0.9), { tw: 30 });
+            if (Math.random() < 0.8)
+              SPARK.spawn(
+                p.clone().add(rv(R(0.05, 0.3))),
+                back.clone().multiplyScalar(0.2).add(rv(0.2)),
+                '#ffffff',
+                E,
+                R(0.15, 0.3),
+                0.05,
+                R(0.5, 0.9),
+                { tw: 30 }
+              );
             break;
         }
       }
-      if (el === 'flash' && Math.random() < 0.5 * k) bolt(p, p.clone().addScaledVector(back, R(0.8, 1.6)).add(rv(0.3)), H, 0.07, 0.18, 0.01);
+      if (el === 'flash' && Math.random() < 0.5 * k)
+        bolt(p, p.clone().addScaledVector(back, R(0.8, 1.6)).add(rv(0.3)), H, 0.07, 0.18, 0.01);
     },
     /** OP electricity: sparks, and short arcs off the point on big hits. */
     zap(p, pow) {
-      for (let i = 0; i < pow / 4; i++) SPARK.spawn(p, rv(R(2, 6)), '#ffffff', ['#bff4ff', '#fff27a', '#6fd6ff'][i % 3], R(0.1, 0.18), 0.02, R(0.2, 0.4), { drag: 3 });
+      for (let i = 0; i < pow / 4; i++)
+        SPARK.spawn(p, rv(R(2, 6)), '#ffffff', ['#bff4ff', '#fff27a', '#6fd6ff'][i % 3], R(0.1, 0.18), 0.02, R(0.2, 0.4), { drag: 3 });
       if (pow >= 85) for (let i = 0; i < 3; i++) bolt(p, p.clone().add(rv(R(0.6, 1.2))), '#6fd6ff', 0.14, 0.2, 0.01);
     },
     /** Lightning from the roof onto a point (OP kills). */
@@ -393,7 +582,9 @@ export function createFx(scene) {
     },
     /** Glow motes rising off a body point (aura). */
     mote(p, col, hot) {
-      GLOW.spawn(p, new THREE.Vector3(R(-0.2, 0.2), R(0.6, 1.6), R(-0.2, 0.2)), hot || '#ffffff', col, R(0.14, 0.26), 0.02, R(0.35, 0.6), { drag: 1 });
+      GLOW.spawn(p, new THREE.Vector3(R(-0.2, 0.2), R(0.6, 1.6), R(-0.2, 0.2)), hot || '#ffffff', col, R(0.14, 0.26), 0.02, R(0.35, 0.6), {
+        drag: 1
+      });
     },
     update(dt, cam, heightPx, fov) {
       camera = cam;

@@ -40,7 +40,13 @@ const DBG = (() => {
       last.n = (last.n || 1) + 1;
       last.at = new Date().toISOString();
     } else {
-      list.push({ at: new Date().toISOString(), up: Math.round((Date.now() - t0) / 1000), kind, msg: text, extra: extra ? str(extra).slice(0, 1500) : undefined });
+      list.push({
+        at: new Date().toISOString(),
+        up: Math.round((Date.now() - t0) / 1000),
+        kind,
+        msg: text,
+        extra: extra ? str(extra).slice(0, 1500) : undefined
+      });
       if (list.length > MAX * 2) list = list.slice(-MAX);
     }
     persist();
@@ -73,7 +79,8 @@ const DBG = (() => {
     ];
     if (state) env.push(`State: ${str(state)}`);
     const rows = list.map(
-      e => `[${e.at.slice(11, 19)} +${e.up}s] ${e.kind.toUpperCase()}${e.n > 1 ? ` ×${e.n}` : ''}: ${e.msg}${e.extra ? '\n    ' + e.extra : ''}`
+      e =>
+        `[${e.at.slice(11, 19)} +${e.up}s] ${e.kind.toUpperCase()}${e.n > 1 ? ` ×${e.n}` : ''}: ${e.msg}${e.extra ? '\n    ' + e.extra : ''}`
     );
     return [...env, '', rows.length ? rows.join('\n') : '(no errors recorded)'].join('\n');
   }

@@ -35,7 +35,8 @@ const FOLD = {};
 const fold = (key, summary, body, open = false) =>
   `<details class="fold" data-fold="${esc(key)}" ${(FOLD[key] ?? open) ? 'open' : ''} ontoggle="FOLD[this.dataset.fold]=this.open"><summary>${summary}</summary><div class="foldb">${body}</div></details>`;
 /** Pop-over menu (a button that opens a small panel); closes on outside click / Esc. `label` and `body` are HTML. */
-const pop = (label, body, cls = '') => `<details class="pop ${cls}"><summary class="btn">${label}</summary><div class="popb">${body}</div></details>`;
+const pop = (label, body, cls = '') =>
+  `<details class="pop ${cls}"><summary class="btn">${label}</summary><div class="popb">${body}</div></details>`;
 // Document-level listeners for tooltips and pop-overs: installed once at load (delegated, so re-renders never add more).
 (function uiTips() {
   if (typeof document === 'undefined') return;

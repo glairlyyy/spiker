@@ -204,9 +204,21 @@ export function applyPose(pl, P) {
 }
 /** Every bone the poses drive (for smoothing). */
 const DRIVEN = [
-  'hips', 'spine', 'chest', 'upperChest', 'neck', 'head',
+  'hips',
+  'spine',
+  'chest',
+  'upperChest',
+  'neck',
+  'head',
   ...['left', 'right'].flatMap(s => [
-    `${s}UpperLeg`, `${s}LowerLeg`, `${s}Foot`, `${s}Toes`, `${s}Shoulder`, `${s}UpperArm`, `${s}LowerArm`, `${s}Hand`,
+    `${s}UpperLeg`,
+    `${s}LowerLeg`,
+    `${s}Foot`,
+    `${s}Toes`,
+    `${s}Shoulder`,
+    `${s}UpperArm`,
+    `${s}LowerArm`,
+    `${s}Hand`,
     ...['Index', 'Middle', 'Ring', 'Little'].flatMap(f => ['Proximal', 'Intermediate', 'Distal'].map(g => `${s}${f}${g}`)),
     ...['Metacarpal', 'Proximal', 'Distal'].map(g => `${s}Thumb${g}`)
   ])
@@ -258,7 +270,8 @@ export function groundSnap(pl, lift, lying) {
   let low = Math.min(b('leftFoot').getWorldPosition(tv).y, b('rightFoot').getWorldPosition(tv).y) - y0,
     contact = pl.footRest * pl.scale;
   if (lying) {
-    for (const n of ['chest', 'head', 'leftHand', 'rightHand', 'leftLowerLeg', 'rightLowerLeg', 'hips', 'leftFoot', 'rightFoot']) low = Math.min(low, b(n).getWorldPosition(tv).y - y0);
+    for (const n of ['chest', 'head', 'leftHand', 'rightHand', 'leftLowerLeg', 'rightLowerLeg', 'hips', 'leftFoot', 'rightFoot'])
+      low = Math.min(low, b(n).getWorldPosition(tv).y - y0);
     contact = 0.1;
   }
   const onFoot = lift + contact - low,

@@ -105,7 +105,10 @@ async function build(onProgress) {
     g.fillStyle = 'rgba(255,255,255,.14)';
     g.fillText('SKYLINE CUP', cx, Z(0.98) + 0.35 * m);
   });
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 20), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.42, metalness: 0.05 }));
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(40, 20),
+    new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.42, metalness: 0.05 })
+  );
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   scene.add(floor);
@@ -140,7 +143,10 @@ async function build(onProgress) {
   const netW = 1.08 * KZ,
     netH = (150 - 92) * KH;
   const netGeo = new THREE.PlaneGeometry(netW, netH, 24, 4);
-  const net = new THREE.Mesh(netGeo, new THREE.MeshBasicMaterial({ map: netTex, transparent: true, side: THREE.DoubleSide, depthWrite: false, opacity: 0.9 }));
+  const net = new THREE.Mesh(
+    netGeo,
+    new THREE.MeshBasicMaterial({ map: netTex, transparent: true, side: THREE.DoubleSide, depthWrite: false, opacity: 0.9 })
+  );
   net.rotation.y = Math.PI / 2;
   net.position.set(0, ((92 + 150) / 2) * KH, 0);
   scene.add(net);
@@ -150,7 +156,10 @@ async function build(onProgress) {
   tape.castShadow = true;
   scene.add(tape);
   for (const z of [-0.04, 1.04]) {
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.62, 16), new THREE.MeshStandardMaterial({ color: '#cfd5ee', metalness: 0.5, roughness: 0.35 }));
+    const post = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.06, 2.62, 16),
+      new THREE.MeshStandardMaterial({ color: '#cfd5ee', metalness: 0.5, roughness: 0.35 })
+    );
     post.position.copy(W(500, z, 0)).setY(1.31);
     post.castShadow = true;
     scene.add(post);
@@ -178,8 +187,16 @@ async function build(onProgress) {
   }
   // crowd: instanced fans, coloured per match
   const nFans = lowEnd ? 180 : 320;
-  const fanBody = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.24, 0.36, 3, 8), new THREE.MeshStandardMaterial({ roughness: 0.8 }), nFans);
-  const fanHead = new THREE.InstancedMesh(new THREE.SphereGeometry(0.17, 10, 8), new THREE.MeshStandardMaterial({ color: '#e9c7a4', roughness: 0.7 }), nFans);
+  const fanBody = new THREE.InstancedMesh(
+    new THREE.CapsuleGeometry(0.24, 0.36, 3, 8),
+    new THREE.MeshStandardMaterial({ roughness: 0.8 }),
+    nFans
+  );
+  const fanHead = new THREE.InstancedMesh(
+    new THREE.SphereGeometry(0.17, 10, 8),
+    new THREE.MeshStandardMaterial({ color: '#e9c7a4', roughness: 0.7 }),
+    nFans
+  );
   const fans = [];
   for (let i = 0; i < nFans; i++) {
     const r = i % 6,
@@ -214,7 +231,10 @@ async function build(onProgress) {
     }
   });
   const flatRing = (tex, size) => {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(size, size),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })
+    );
     m.rotation.x = -Math.PI / 2;
     m.position.y = 0.015;
     m.visible = false;
@@ -238,11 +258,16 @@ async function build(onProgress) {
       g.fillRect(0, (i * h) / 6, w, h / 6 + 1);
     }
   });
-  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.16, 32, 20), new THREE.MeshStandardMaterial({ map: ballTex, roughness: 0.45, emissive: '#000000' }));
+  const ball = new THREE.Mesh(
+    new THREE.SphereGeometry(0.16, 32, 20),
+    new THREE.MeshStandardMaterial({ map: ballTex, roughness: 0.45, emissive: '#000000' })
+  );
   ball.castShadow = true;
   scene.add(ball);
   // powered balls glow and light up the players around them
-  const ballGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 }));
+  const ballGlow = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: glowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })
+  );
   ballGlow.renderOrder = 3;
   scene.add(ballGlow);
   const ballLight = new THREE.PointLight('#ffffff', 0, 4.5, 2);
@@ -260,7 +285,9 @@ async function build(onProgress) {
     prog(0.5 + (0.5 * (i + 1)) / (N_PLAYERS + N_COACHES), 'Getting players ready');
     await new Promise(r => setTimeout(r, 0));
     if (i < N_PLAYERS) {
-      pl.aura = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 }));
+      pl.aura = new THREE.Sprite(
+        new THREE.SpriteMaterial({ map: glowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })
+      );
       pl.aura.scale.set(2.2, 2.6, 1);
       scene.add(pl.aura);
       pl.zone = flatRing(ringTex, 1.5);
@@ -272,7 +299,27 @@ async function build(onProgress) {
       people.push(pl);
     } else coaches.push(pl);
   }
-  return { renderer, gl, scene, ball, ballGlow, ballLight, fx, people, coaches, fans, fanBody, fanHead, boardCanvas, boardTex, net, netGeo, netRest, ptHalf, ptMat };
+  return {
+    renderer,
+    gl,
+    scene,
+    ball,
+    ballGlow,
+    ballLight,
+    fx,
+    people,
+    coaches,
+    fans,
+    fanBody,
+    fanHead,
+    boardCanvas,
+    boardTex,
+    net,
+    netGeo,
+    netRest,
+    ptHalf,
+    ptMat
+  };
 }
 
 // ---------- cameras and projection ----------
@@ -343,7 +390,14 @@ function shotPose(s) {
   if (s.kind === 'face') {
     const f = new THREE.Vector3(Math.sin(a.root.rotation.y), 0, Math.cos(a.root.rotation.y)),
       r = new THREE.Vector3().crossVectors(f, up).normalize();
-    return { pos: H.clone().addScaledVector(f, 1.2).addScaledVector(r, 0.3).add(new THREE.Vector3(0, 0.05, 0)), look: H.clone().add(new THREE.Vector3(0, -0.07, 0)), fov: 30 };
+    return {
+      pos: H.clone()
+        .addScaledVector(f, 1.2)
+        .addScaledVector(r, 0.3)
+        .add(new THREE.Vector3(0, 0.05, 0)),
+      look: H.clone().add(new THREE.Vector3(0, -0.07, 0)),
+      fov: 30
+    };
   }
   const b = s.p2 && find(s.p2),
     T = b ? b.bone('head').getWorldPosition(new THREE.Vector3()) : H.clone().add(new THREE.Vector3(0, 0, 1)),
@@ -353,17 +407,49 @@ function shotPose(s) {
     // low and to the side of the hitter in the air, looking up past the arm at the ball
     const f = new THREE.Vector3(Math.sin(a.root.rotation.y), 0, Math.cos(a.root.rotation.y)),
       rr = new THREE.Vector3().crossVectors(f, up).normalize();
-    return { pos: H.clone().addScaledVector(rr, 2.1).addScaledVector(f, 0.5).add(new THREE.Vector3(0, -0.6, 0)), look: H.clone().addScaledVector(f, 0.2).add(new THREE.Vector3(0, 0.15, 0)), fov: 40 };
+    return {
+      pos: H.clone()
+        .addScaledVector(rr, 2.1)
+        .addScaledVector(f, 0.5)
+        .add(new THREE.Vector3(0, -0.6, 0)),
+      look: H.clone()
+        .addScaledVector(f, 0.2)
+        .add(new THREE.Vector3(0, 0.15, 0)),
+      fov: 40
+    };
   }
   if (s.kind === 'ball') {
     // at the ball against the blocker's hands, from the hitter's side
     const bp = world.ball.position.clone(),
       toA = (b ? T.clone() : bp.clone().add(new THREE.Vector3(1, 0, 0))).sub(bp).setY(0).normalize(),
       rr = new THREE.Vector3().crossVectors(toA, up).normalize();
-    return { pos: bp.clone().addScaledVector(toA, 1.9).addScaledVector(rr, 0.7).add(new THREE.Vector3(0, 0.3, 0)), look: bp.clone().addScaledVector(toA, -0.15), fov: 38 };
+    return {
+      pos: bp
+        .clone()
+        .addScaledVector(toA, 1.9)
+        .addScaledVector(rr, 0.7)
+        .add(new THREE.Vector3(0, 0.3, 0)),
+      look: bp.clone().addScaledVector(toA, -0.15),
+      fov: 38
+    };
   }
-  if (s.kind === 'ots') return { pos: H.clone().addScaledVector(d, -1).addScaledVector(r, 0.45).add(new THREE.Vector3(0, 0.22, 0)), look: T, fov: 38 };
-  return { pos: H.clone().addScaledVector(d, -1.6).addScaledVector(r, -0.4).add(new THREE.Vector3(0, 0.5, 0)), look: T.clone().lerp(H, 0.25), fov: 44 };
+  if (s.kind === 'ots')
+    return {
+      pos: H.clone()
+        .addScaledVector(d, -1)
+        .addScaledVector(r, 0.45)
+        .add(new THREE.Vector3(0, 0.22, 0)),
+      look: T,
+      fov: 38
+    };
+  return {
+    pos: H.clone()
+      .addScaledVector(d, -1.6)
+      .addScaledVector(r, -0.4)
+      .add(new THREE.Vector3(0, 0.5, 0)),
+    look: T.clone().lerp(H, 0.25),
+    fov: 44
+  };
 }
 updateBase(1);
 const pv = new THREE.Vector3(),
@@ -526,7 +612,11 @@ function posePlayer(pl, dt, ballPos) {
   root.position.copy(pos);
   const wrap = a => Math.atan2(Math.sin(a), Math.cos(a)),
     toward = (x, z) => wrap(Math.atan2(x, z) - face);
-  const left = tmp2.copy(W(d.tx, d.tz, 0)).sub(pos).setY(0).length(),
+  const left = tmp2
+      .copy(W(d.tx, d.tz, 0))
+      .sub(pos)
+      .setY(0)
+      .length(),
     free = !d.pose || d.pose === 'ready' || d.pose === 'huddle' || poseDone(d);
   let want = 0,
     rate = 6;
@@ -542,7 +632,10 @@ function posePlayer(pl, dt, ballPos) {
     const c = W(sx(side, 115), -0.035, 0);
     want = toward(c.x - pos.x, c.z - pos.z) * 0.85; // around the coach
     rate = 5;
-  } else if ((d.pose === 'ready' || d.pose === 'bump' || (mot.speed > 0.6 && d.pose !== 'spike' && d.pose !== 'set') || !d.pose) && A.ball.vis) {
+  } else if (
+    (d.pose === 'ready' || d.pose === 'bump' || (mot.speed > 0.6 && d.pose !== 'spike' && d.pose !== 'set') || !d.pose) &&
+    A.ball.vis
+  ) {
     // turn toward the ball while waiting, running or passing; attackers, setters and blockers face the net
     want = Math.max(-0.7, Math.min(0.7, toward(ballPos.x - pos.x, ballPos.z - pos.z))) * 0.8;
   }
@@ -578,10 +671,21 @@ function posePlayer(pl, dt, ballPos) {
     if (k > 0.01) {
       if (both) {
         const spread = d.pose === 'block' ? 0.28 : d.pose === 'set' ? 0.18 : 0.06;
-        const dl = t.dir.clone().add(tmp2.set(spread, 0, 0)).normalize(),
-          dr = t.dir.clone().add(tmp2.set(-spread, 0, 0)).normalize();
+        const dl = t.dir
+            .clone()
+            .add(tmp2.set(spread, 0, 0))
+            .normalize(),
+          dr = t.dir
+            .clone()
+            .add(tmp2.set(-spread, 0, 0))
+            .normalize();
         pose.al = bendArm(pose.al, dl, k * 0.85, d.pose === 'set' || d.pose === 'block');
-        pose.ar = bendArm(pose.ar || pose.al.map((v, i) => (i < 3 ? new THREE.Vector3(-v.x, v.y, v.z) : -(v || 0))), dr, k * 0.85, d.pose === 'set' || d.pose === 'block');
+        pose.ar = bendArm(
+          pose.ar || pose.al.map((v, i) => (i < 3 ? new THREE.Vector3(-v.x, v.y, v.z) : -(v || 0))),
+          dr,
+          k * 0.85,
+          d.pose === 'set' || d.pose === 'block'
+        );
       } else pose.ar = bendArm(pose.ar, t.dir, k * (d.pose === 'dive' ? 0.75 : 0.9), true);
       applyPose(pl, pose);
     }
@@ -597,14 +701,15 @@ function posePlayer(pl, dt, ballPos) {
       zk = A.zoneShown && A.zoneShown[side] ? 1.25 : 1,
       tdt = dt,
       charged = !!(d.p.elOn && (A.egShown || {})[d.p.id] >= EG.full), // full element gauge: trails turn the element colour
-      o = tier || charged
-        ? {
-            width: Math.max(tier === 2 ? 0.12 : tier ? 0.065 : 0, charged ? 0.1 : 0) * zk,
-            life: (tier === 2 || charged ? 0.34 : 0.2) * zk,
-            alpha: charged ? 0.9 : tier === 2 ? 0.8 : 0.7,
-            color: charged ? ECOL[d.p.el] : pl.trailCol
-          }
-        : { width: 0 },
+      o =
+        tier || charged
+          ? {
+              width: Math.max(tier === 2 ? 0.12 : tier ? 0.065 : 0, charged ? 0.1 : 0) * zk,
+              life: (tier === 2 || charged ? 0.34 : 0.2) * zk,
+              alpha: charged ? 0.9 : tier === 2 ? 0.8 : 0.7,
+              color: charged ? ECOL[d.p.el] : pl.trailCol
+            }
+          : { width: 0 },
       hands = ['leftHand', 'rightHand'];
     for (let i = 0; i < 2; i++) pl.trails[i].update(pl.bone(hands[i]).getWorldPosition(tmp2), tdt, cam, o);
     // eyes (Kuroko's zone): a thin streak of light from each eye that flows back behind the head, in the eye colour —
@@ -613,7 +718,16 @@ function posePlayer(pl, dt, ballPos) {
       head = pl.bone('head'),
       fwd = tmp.set(Math.sin(root.rotation.y), 0, Math.cos(root.rotation.y)),
       eo = eyesOn
-        ? { width: tier === 2 ? 0.032 : tier ? 0.026 : 0.022, life: 0.42, alpha: 1, color: pl.eyeCol, drift: fwd.clone().multiplyScalar(-1.1).add(new THREE.Vector3(0, 0.12, 0)) }
+        ? {
+            width: tier === 2 ? 0.032 : tier ? 0.026 : 0.022,
+            life: 0.42,
+            alpha: 1,
+            color: pl.eyeCol,
+            drift: fwd
+              .clone()
+              .multiplyScalar(-1.1)
+              .add(new THREE.Vector3(0, 0.12, 0))
+          }
         : { width: 0 };
     for (let i = 0; i < 2; i++) {
       const eb = pl.bone(i ? 'rightEye' : 'leftEye'),
@@ -634,11 +748,19 @@ function posePlayer(pl, dt, ballPos) {
     chg = !!(elc && (A.egShown || {})[d.p.id] >= EG.full);
   if (d.p.op && air && !A.shot && Math.random() < dt * 9) {
     const a = pl.bone(AURA[(Math.random() * AURA.length) | 0]).getWorldPosition(new THREE.Vector3());
-    fx.arc(a, a.clone().add(new THREE.Vector3().randomDirection().multiplyScalar(0.3 + Math.random() * 0.3)), Math.random() < 0.5 ? '#6fd6ff' : '#fff27a');
+    fx.arc(
+      a,
+      a.clone().add(new THREE.Vector3().randomDirection().multiplyScalar(0.3 + Math.random() * 0.3)),
+      Math.random() < 0.5 ? '#6fd6ff' : '#fff27a'
+    );
   }
   if (!A.shot && (chg || (air && (d.p.op || d.p.star)) || (A.zoneShown && A.zoneShown[side] && Math.random() < 0.35)))
     if (Math.random() < dt * (air || chg ? 30 : 8))
-      fx.mote(pl.bone(AURA[(Math.random() * AURA.length) | 0]).getWorldPosition(new THREE.Vector3()), d.p.op && !chg ? '#ff2846' : col, elc ? '#ffffff' : null);
+      fx.mote(
+        pl.bone(AURA[(Math.random() * AURA.length) | 0]).getWorldPosition(new THREE.Vector3()),
+        d.p.op && !chg ? '#ff2846' : col,
+        elc ? '#ffffff' : null
+      );
   const zone = A.zoneShown && A.zoneShown[side],
     bl = (A.buffShown && A.buffShown[d.p.id]) || 0,
     now = performance.now();
@@ -706,7 +828,8 @@ function syncSize() {
     h = cv.height,
     Q = GFX[G.gfx] || GFX.auto,
     scale = Math.min(1, Math.sqrt(Q.px3d / Math.max(1, w * h))) * dyn.res;
-  if (gl.width !== Math.round(w * scale) || gl.height !== Math.round(h * scale)) world.renderer.setSize(Math.round(w * scale), Math.round(h * scale), false);
+  if (gl.width !== Math.round(w * scale) || gl.height !== Math.round(h * scale))
+    world.renderer.setSize(Math.round(w * scale), Math.round(h * scale), false);
   const s = gl.style;
   s.left = cv.offsetLeft + 'px';
   s.top = cv.offsetTop + 'px';
@@ -765,7 +888,8 @@ function draw() {
   const ns = A.netShake || 0,
     arr = w.netGeo.attributes.position.array,
     rest = w.netRest;
-  for (let i = 0; i < arr.length; i += 3) arr[i + 2] = rest[i + 2] + (ns ? Math.sin(now * 0.05 + rest[i] * 3) * ns * 0.12 * (0.5 + 0.5 * Math.sin(rest[i + 1] * 3)) : 0);
+  for (let i = 0; i < arr.length; i += 3)
+    arr[i + 2] = rest[i + 2] + (ns ? Math.sin(now * 0.05 + rest[i] * 3) * ns * 0.12 * (0.5 + 0.5 * Math.sin(rest[i + 1] * 3)) : 0);
   w.netGeo.attributes.position.needsUpdate = true;
   // point flash on the scorer's half
   if (A.ptFlash) {

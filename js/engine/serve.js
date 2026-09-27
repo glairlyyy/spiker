@@ -13,6 +13,7 @@ function playRally(m) {
   m.ctx = null; // attack context for the element gauge
   m.errBy = null; // who made the error that ended the rally (chatter)
   m.hypeRally = 0; // at most one staged scene per rally
+  m.kbScene = 0; // a kill-block scene played this rally (chatter skips the blocker's line)
   m.defBeats = [];
   const V = m.rec,
     beats = V ? [] : null,
@@ -73,10 +74,7 @@ function playRally(m) {
     V &&
       B({
         dur: 300 + Math.abs(cur.x - sx(s, startX)) * 3,
-        acts: [
-          ...back,
-          { k: 'log', t: `${server.name} paces out a ${runM} m run-up for a ${jumpSrv ? 'jump serve' : 'jump float'}` }
-        ]
+        acts: [...back, { k: 'log', t: `${server.name} paces out a ${runM} m run-up for a ${jumpSrv ? 'jump serve' : 'jump float'}` }]
       });
     const run = [];
     mv(m, server, sx(s, endX), z0, run, V);
@@ -257,7 +255,14 @@ function playRally(m) {
           ...hitFx,
           ...sw,
           ...(shank ? [{ k: 'label', t: 'Shanked!', small: 1 }] : [{ k: 'pose', p: rc.id, pose: 'dive' }]),
-          { k: 'ball', to: { x: bx, z: bz, h: 0 }, h: shank ? 95 : sArc, wob: wob && !shank, trail: shank ? 0 : sq, op: server.op && !shank },
+          {
+            k: 'ball',
+            to: { x: bx, z: bz, h: 0 },
+            h: shank ? 95 : sArc,
+            wob: wob && !shank,
+            trail: shank ? 0 : sq,
+            op: server.op && !shank
+          },
           ...RT.P.filter(p => p !== rc).map(p => ({ k: 'jump', p: p.id, mode: 'hop', peak: 7, t0: 0, t1: 0.2 })),
           { k: 'impact', pow: sq, when: 'end', kill: 1, op: server.op },
           { k: 'label', t: 'ACE!', when: 'end', big: 1 },

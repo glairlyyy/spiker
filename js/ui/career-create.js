@@ -7,7 +7,18 @@ function renderCreate() {
   if (!CR) {
     $('#app').innerHTML = `<div class="loading"><div class="ball-spin"></div><p>Drawing the eight Cup teams…</p></div>`;
     setTimeout(() => {
-      CR = { draft: Run.draft(), role: 'WS', name: rollName(new Set()), alloc: { power: 0, def: 0, speed: 0, jump: 0 }, witSteps: 0, team: null, skill: null, pure: false, mode: {}, legend: null };
+      CR = {
+        draft: Run.draft(),
+        role: 'WS',
+        name: rollName(new Set()),
+        alloc: { power: 0, def: 0, speed: 0, jump: 0 },
+        witSteps: 0,
+        team: null,
+        skill: null,
+        pure: false,
+        mode: {},
+        legend: null
+      };
       renderCreate();
     }, 40);
     return;
@@ -67,14 +78,19 @@ function renderCreate() {
       }
       ${
         on('head')
-          ? `<h4>Head start skill</h4><select onchange="CR.skill=this.value||null" aria-label="Starting skill"><option value="">None</option>${Skills.forRole(CR.role)
+          ? `<h4>Head start skill</h4><select onchange="CR.skill=this.value||null" aria-label="Starting skill"><option value="">None</option>${Skills.forRole(
+              CR.role
+            )
               .map(id => `<option value="${id}" ${CR.skill === id ? 'selected' : ''}>${SKILLS[id].name} — ${SKILLS[id].desc}</option>`)
               .join('')}</select>`
           : ''
       }
       <h4>Challenge${info('Tougher runs multiply the Legacy points you earn')}</h4>
       ${Object.entries(MODES)
-        .map(([k, m]) => `<label class="opt" ${tip(m.desc)}><input type="checkbox" ${CR.mode[k] ? 'checked' : ''} onchange="CR.mode.${k}=this.checked;renderCreate()"> <b>${m.name}</b> <span class="small mute">×${m.legacy}</span></label>`)
+        .map(
+          ([k, m]) =>
+            `<label class="opt" ${tip(m.desc)}><input type="checkbox" ${CR.mode[k] ? 'checked' : ''} onchange="CR.mode.${k}=this.checked;renderCreate()"> <b>${m.name}</b> <span class="small mute">×${m.legacy}</span></label>`
+        )
         .join('')}
       ${
         L.owned.length
@@ -85,7 +101,10 @@ function renderCreate() {
       ${
         L.hof.length && !CR.pure
           ? `<h4>Inherit from a legend</h4><select onchange="CR.legend=this.value===''?null:+this.value;renderCreate()" aria-label="Legend to inherit from"><option value="">Nobody</option>${L.hof
-              .map((h, i) => `<option value="${i}" ${CR.legend === i ? 'selected' : ''}>${esc(h.name)} (${h.role}, rank ${h.rank}) — +10% of their gains over 40${(h.skills || []).length ? ', one skill' : ''}${h.el ? `, element ${ENAME[h.el]} revealed` : ''}</option>`)
+              .map(
+                (h, i) =>
+                  `<option value="${i}" ${CR.legend === i ? 'selected' : ''}>${esc(h.name)} (${h.role}, rank ${h.rank}) — +10% of their gains over 40${(h.skills || []).length ? ', one skill' : ''}${h.el ? `, element ${ENAME[h.el]} revealed` : ''}</option>`
+              )
               .join('')}</select>`
           : ''
       }
@@ -103,9 +122,8 @@ function crFit() {
   for (const k of STATK) CR.alloc[k] = Math.min(CR.alloc[k], cap - CAREER.statBase);
   let over = STATK.reduce((a, s) => a + CR.alloc[s], 0) + CR.witSteps * CAREER.witStepCost - Legacy.budget(list);
   while (over > 0 && CR.witSteps > 0) (CR.witSteps--, (over -= CAREER.witStepCost));
-  for (const k of [...STATK].reverse())
-    while (over > 0 && CR.alloc[k] > 0) (CR.alloc[k]--, over--);
-  if (CR.pure) (CR.legend = null), (CR.skill = null), (CR.team = null);
+  for (const k of [...STATK].reverse()) while (over > 0 && CR.alloc[k] > 0) (CR.alloc[k]--, over--);
+  if (CR.pure) ((CR.legend = null), (CR.skill = null), (CR.team = null));
 }
 function crAlloc(k, d) {
   const list = crList(),
@@ -129,7 +147,17 @@ function crRole(r) {
 }
 function crStart() {
   const name = (CR.name || '').trim() || rollName(new Set());
-  RUN = Run.create(CR.draft, { role: CR.role, name, alloc: CR.alloc, witSteps: CR.witSteps, team: CR.team, skill: CR.skill, pure: CR.pure, mode: CR.mode, legend: CR.legend });
+  RUN = Run.create(CR.draft, {
+    role: CR.role,
+    name,
+    alloc: CR.alloc,
+    witSteps: CR.witSteps,
+    team: CR.team,
+    skill: CR.skill,
+    pure: CR.pure,
+    mode: CR.mode,
+    legend: CR.legend
+  });
   CR = null;
   Run.save(RUN);
   navigate('career');

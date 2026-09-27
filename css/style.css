@@ -1389,7 +1389,9 @@ td i {
   padding: 10px 22px 12px;
   background: rgba(10, 13, 40, 0.88);
   border-left: 6px solid var(--c);
-  box-shadow: 0 0 0 2px #fff, 0 10px 30px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    0 0 0 2px #fff,
+    0 10px 30px rgba(0, 0, 0, 0.45);
   color: #fff;
   pointer-events: none;
   opacity: 0;

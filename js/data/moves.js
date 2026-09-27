@@ -1,16 +1,7 @@
 // Signature move names, combo names and coach timeout lines.
 
 const MOVES = {
-  WS: [
-    'Meteor Drive',
-    'Crimson Lance',
-    'Thunder Fang',
-    'Skybreaker',
-    'Dragon Tail Smash',
-    'Comet Hammer',
-    'Blazing Cross',
-    'Gale Piercer'
-  ],
+  WS: ['Meteor Drive', 'Crimson Lance', 'Thunder Fang', 'Skybreaker', 'Dragon Tail Smash', 'Comet Hammer', 'Blazing Cross', 'Gale Piercer'],
   MB: ['Lightning Quick', 'Flash Step Quick', 'Instant Strike', 'Minus Tempo'],
   S: ['Phantom Dump', 'Zero-Gravity Toss', 'Moonlight Dump']
 };

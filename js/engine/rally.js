@@ -124,11 +124,8 @@ function fakeSet(c, x) {
         db = B0;
       fakeDecoy = decoy;
       for (const q of others) dr(m, q, 0.02);
-      bitten =
-        R() <
-        clamp(0.8 - (W(db) - 0.8) * 0.45 + (W(setter) - 1.5) * 0.3 + (skillMod(setter, 'decoy') - 1) - readBonus, 0.15, 0.9);
-      const zOf = p =>
-          p.role === 'MB' && MBs.includes(p) ? mbZ(p) : clamp(HOME[p.slot][1] + (p.slot === 'W0' ? -0.05 : 0.05), 0.1, 0.9),
+      bitten = R() < clamp(0.8 - (W(db) - 0.8) * 0.45 + (W(setter) - 1.5) * 0.3 + (skillMod(setter, 'decoy') - 1) - readBonus, 0.15, 0.9);
+      const zOf = p => (p.role === 'MB' && MBs.includes(p) ? mbZ(p) : clamp(HOME[p.slot][1] + (p.slot === 'W0' ? -0.05 : 0.05), 0.1, 0.9)),
         xOf = p => sx(atk, p.role === 'MB' && MBs.includes(p) ? 466 : 420);
       const fk = [];
       for (const p of [...others, spiker]) mv(m, p, xOf(p), zOf(p), fk, V);
@@ -147,9 +144,7 @@ function fakeSet(c, x) {
             ...others.map(p => ({ k: 'pose', p: p.id, pose: 'spike' })),
             { k: 'pose', p: spiker.id, pose: 'spike' },
             { k: 'jump', p: decoy.id, mode: 'up', peak: jumpPx(decoy), t0: 0.2, t1: 0.95 },
-            ...others
-              .filter(p => p !== decoy)
-              .map(p => ({ k: 'jump', p: p.id, mode: 'hop', peak: jumpPx(p) * 0.7, t0: 0.3, t1: 1 })),
+            ...others.filter(p => p !== decoy).map(p => ({ k: 'jump', p: p.id, mode: 'hop', peak: jumpPx(p) * 0.7, t0: 0.3, t1: 1 })),
             ...(bitten
               ? [
                   { k: 'pose', p: db.id, pose: 'block' },
@@ -377,7 +372,11 @@ function setBeat(c, x) {
       dur: 160,
       scene: Math.min(hype || 9, read || 9),
       freeze: 1,
-      acts: [{ k: 'shot', kind: null }, { k: 'flash', a: 0.22 }, { k: 'shake', amt: 4 }]
+      acts: [
+        { k: 'shot', kind: null },
+        { k: 'flash', a: 0.22 },
+        { k: 'shake', amt: 4 }
+      ]
     });
   return { combo, elSrc, mark };
 }
@@ -388,7 +387,7 @@ function setBeat(c, x) {
  */
 function spikePower(c, x) {
   const { m, V, atk, atkT, defT } = c,
-    { setter, spiker, sq2, bad, quick, back, longB, combo, fat, pj, seam, elSrc } = x;
+    { setter, spiker, sq2, bad, quick, back, longB, combo, fat, pj, seam, elSrc, b0 } = x;
   let { cov } = x;
   st(m, spiker, 'att');
   dr(m, spiker, 0.035 + pj / 4000);
@@ -405,7 +404,8 @@ function spikePower(c, x) {
   const cutS = hasTech(spiker, 'cutshot');
   if (!tip && cov > 0.5 && R() < clamp((W(spiker) - 0.4) * 0.45 + (cutS ? 0.2 : 0), 0, 0.75)) {
     around = true;
-    cov *= cutS ? 0.35 : 0.45;
+    // a blocker at least as sharp as the hitter reads the cut and keeps part of the block on it
+    cov *= (cutS ? 0.35 : 0.45) + (W(b0) >= W(spiker) ? 0.2 : 0);
   }
   // Delayed Spike: hang in the air until the blockers come down
   const delayed = !tip && !quick && !around && cov > 0.4 && hasTech(spiker, 'delay') && R() < 0.35;
@@ -473,7 +473,8 @@ function spikeActs(c, x) {
       cut: 1,
       acts: [{ k: 'cut', p: spiker.id, title: spiker.move, sub: `Power ${Math.round(pow)}  ·  Vertical ${jumpCm(spiker)} cm` }]
     });
-  if (V && !tip && pow >= 90) B({ dur: Math.round(35 + (pow - 90) * 1.6), acts: [{ k: 'zoom', amt: Math.min(0.07, 0.02 + (pow - 90) / 900) }] });
+  if (V && !tip && pow >= 90)
+    B({ dur: Math.round(35 + (pow - 90) * 1.6), acts: [{ k: 'zoom', amt: Math.min(0.07, 0.02 + (pow - 90) / 900) }] });
   const note = tip
     ? null
     : elS

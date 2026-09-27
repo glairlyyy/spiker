@@ -54,7 +54,8 @@ const Training = {
       (run.injury ? 0.4 : 1)
     );
   },
-  staCost: (run, key, hard) => Math.round(TRAININGS[key].sta * (Training.camp(run) ? 1.5 : 1) * (hard ? TRAIN_X.hard.sta : 1) * (run.injury ? 0.5 : 1)),
+  staCost: (run, key, hard) =>
+    Math.round(TRAININGS[key].sta * (Training.camp(run) ? 1.5 : 1) * (hard ? TRAIN_X.hard.sta : 1) * (run.injury ? 0.5 : 1)),
   /** Failure chance: below 50 stamina, (50 − stamina) × 1.5%; Hard adds 15%. */
   failP: (run, hard) => clamp((50 - run.sta) * 0.015 + (hard ? TRAIN_X.hard.fail : 0), 0, 0.95),
   /** Diminishing returns: ×0.9 from 60, ×0.7 from 70, ×0.45 from 80, ×0.3 from 85, ×0.15 from 92. */

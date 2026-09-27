@@ -30,7 +30,8 @@ function timeScale(cb, raw) {
   A.slowK = A.slowOn ? (build ? TS_BUILD : cb.slow < 1 ? cb.slow : TS_SLOW) : 1;
   const tgt = A.freezeOn ? TS_FREEZE : A.sceneOn ? TS_SCENE : A.slowK;
   if (!Number.isFinite(A.ts)) A.ts = 1; // first frame (or a bad value): normal speed
-  if (tgt < 0.1) A.ts = Math.min(A.ts, tgt); // hit-stop / scene: instant
+  if (tgt < 0.1)
+    A.ts = Math.min(A.ts, tgt); // hit-stop / scene: instant
   else A.ts += (tgt - A.ts) * (1 - Math.exp(-raw / (tgt < A.ts ? 90 : 160)));
   if (Math.abs(A.ts - tgt) < 0.004) A.ts = tgt;
   const slow = A.ts < TS_SLOWFX;

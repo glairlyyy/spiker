@@ -308,6 +308,7 @@ function drawParts() {
 }
 /** Floating play labels (Kill!, Ace, technique names…): size by importance, colour by kind, stamps pop in. */
 function drawLabels() {
+  if (A.shot) return; // scene close-ups: court-anchored labels would land on the face / the subtitle
   for (const l of A.labels) {
     ctx.save();
     ctx.globalAlpha = Math.min(1, l.life * 2);
@@ -433,7 +434,17 @@ function drawDrill(D) {
 function drawTrail(q) {
   if (A.trail.length < 2) return;
   const Pw = A.trailPow,
-    c = A.trailOp ? (R() < 0.5 ? '#fff27a' : '#8fe9ff') : A.trailEl ? ECOL[A.trailEl] : Pw >= 100 ? '#ff3d7f' : Pw >= 80 ? '#ffb13d' : '#9fe8ff';
+    c = A.trailOp
+      ? R() < 0.5
+        ? '#fff27a'
+        : '#8fe9ff'
+      : A.trailEl
+        ? ECOL[A.trailEl]
+        : Pw >= 100
+          ? '#ff3d7f'
+          : Pw >= 80
+            ? '#ffb13d'
+            : '#9fe8ff';
   ctx.save();
   ctx.lineCap = 'round';
   for (let i = 1; i < A.trail.length; i++) {

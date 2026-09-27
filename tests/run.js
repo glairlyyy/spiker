@@ -42,8 +42,14 @@ test('engine: monster + league teams (golden)', () => {
   const g = load(9);
   const M = g.mkMonsterTeams(),
     L = g.mkLeagueTeams();
-  assert(M.every(t => t.P.every(p => p.op)), 'every monster player must be OP');
-  assert(L.every(t => t.P.every(p => !p.star)), 'league teams start without stars');
+  assert(
+    M.every(t => t.P.every(p => p.op)),
+    'every monster player must be OP'
+  );
+  assert(
+    L.every(t => t.P.every(p => !p.star)),
+    'league teams start without stars'
+  );
   goldenCheck('monster', hash(JSON.stringify(M.map(t => t.P.map(p => [p.power, p.def, p.speed, p.jump, p.wit])))));
 });
 test('engine: rally invariants over 300 matches', () => {
@@ -60,7 +66,11 @@ test('engine: rally invariants over 300 matches', () => {
 test('engine: every beat act kind is handled by the renderer', () => {
   const g = load(11);
   const src = fs.readFileSync(path.join(__dirname, '..', 'js/render/playback.js'), 'utf8');
-  const known = new Set([...src.matchAll(/case '([a-zA-Z]+)'/g)].map(m => m[1]).concat(['slide', 'hold', 'pose', 'jump', 'ball', 'reset', 'rot', 'score', 'point']));
+  const known = new Set(
+    [...src.matchAll(/case '([a-zA-Z]+)'/g)]
+      .map(m => m[1])
+      .concat(['slide', 'hold', 'pose', 'jump', 'ball', 'reset', 'rot', 'score', 'point'])
+  );
   const T = g.mkMonsterTeams(),
     seen = new Set();
   for (let i = 0; i < 6; i++) {
@@ -88,7 +98,23 @@ test('render3d: every pose the engine sends has a 3D pose', () => {
 // ---------- data ----------
 test('data: events, skills, unlocks and calendar are well-formed', () => {
   const g = load(1);
-  const fxKeys = new Set(['power', 'def', 'speed', 'jump', 'wit', 'lead', 'sta', 'mood', 'sp', 'fans', 'main', 'bondMate', 'bondCap', 'bondAll', 'chance']);
+  const fxKeys = new Set([
+    'power',
+    'def',
+    'speed',
+    'jump',
+    'wit',
+    'lead',
+    'sta',
+    'mood',
+    'sp',
+    'fans',
+    'main',
+    'bondMate',
+    'bondCap',
+    'bondAll',
+    'chance'
+  ]);
   const ids = new Set();
   const checkFx = (fx, where) => {
     for (const f of fx) {
@@ -186,7 +212,10 @@ test('career: old saves are migrated, not discarded', () => {
   assert(m, 'v1 save should migrate');
   eq(m.v, g.RUN_VERSION, 'version bumped');
   eq(m.week, 13, 'week 7 of 12 maps to week 13 of 24');
-  assert(m.teams.every(t => t.P.every(p => p.pot > 0)), 'potentials filled in');
+  assert(
+    m.teams.every(t => t.P.every(p => p.pot > 0)),
+    'potentials filled in'
+  );
   g.store.setJSON(g.KEYS.career, { v: 99 });
   eq(g.Run.load(), null, 'unknown future version is ignored');
 });
@@ -195,7 +224,24 @@ test('career: v2 saves (one cup, 24 weeks) upgrade to the two-cup season', () =>
     run = g.Run.create(g.Run.draft(), { role: 'MB', name: 'Mid', alloc: { power: 10, def: 20, speed: 10, jump: 20 }, witSteps: 0 });
   g.Run.you(run).jump = 84;
   const v2 = Object.assign({}, run, { v: 2, week: 25, teams: run.teams.map(g.teamToJSON) });
-  for (const k of ['legacy', 'cups', 'lb', 'streak', 'injury', 'goal', 'sponsors', 'sponsorN', 'focus', 'talk', 'trained', 'hist', 'mode', 'pure', 'legend']) delete v2[k];
+  for (const k of [
+    'legacy',
+    'cups',
+    'lb',
+    'streak',
+    'injury',
+    'goal',
+    'sponsors',
+    'sponsorN',
+    'focus',
+    'talk',
+    'trained',
+    'hist',
+    'mode',
+    'pure',
+    'legend'
+  ])
+    delete v2[k];
   v2.cup = { sched: g.newBracket([0, 1, 2, 3, 4, 5, 6, 7]), out: null };
   g.store.setJSON(g.KEYS.career, v2);
   const m = g.Run.load();
@@ -230,7 +276,13 @@ test('career: Legacy switches and pure runs', () => {
   const a = g.Run.create(g.Run.draft(), { role: 'S', name: 'Off', alloc: { power: 10, def: 10, speed: 30, jump: 10 }, witSteps: 0 });
   eq(a.fans, 0, 'a switched-off unlock does not apply');
   eq(a.sp, 100, 'the others still do');
-  const b = g.Run.create(g.Run.draft(), { role: 'S', name: 'Pure', alloc: { power: 10, def: 10, speed: 30, jump: 10 }, witSteps: 0, pure: true });
+  const b = g.Run.create(g.Run.draft(), {
+    role: 'S',
+    name: 'Pure',
+    alloc: { power: 10, def: 10, speed: 30, jump: 10 },
+    witSteps: 0,
+    pure: true
+  });
   eq(b.sp, 0, 'pure run: nothing applies');
   eq(g.Legacy.earned({ fans: 5000, pure: true }), 12, 'pure run earns ×1.25');
   eq(g.Legacy.earned({ fans: 5000, cups: [{ place: 'Champion' }, { place: 'Champion' }] }), 20, 'Double Crown +10');
@@ -246,7 +298,10 @@ test('career: every Legacy unlock applies at the start of a run', () => {
   eq(run.sp, 100, 'Skill fund');
   eq(run.staMax, 120, 'Fresh legs');
   assert(mates.filter(p => p.op).length === 1 && mates.filter(p => p.star).length === 3, 'OP teammate + Star duo');
-  assert(mates.every(p => you.bond[p.id] >= 30), 'Old friends');
+  assert(
+    mates.every(p => you.bond[p.id] >= 30),
+    'Old friends'
+  );
   eq(g.Legacy.createCap(), 75, 'Growth spurt');
   eq(g.Legacy.budget(), g.CAREER.budget + 15, 'Extra budget I–III');
 });
@@ -346,7 +401,7 @@ test('career: element hidden → revealed → Element Trial → unlocked, and sa
   assert(y2.elOn && y2.el === you.el && y2.sig.name === you.sig.name, 'element survives save/load');
   // v3 saves: players gain elements on load
   const v3 = Object.assign({}, run, { v: 3, teams: run.teams.map(g.teamToJSON) });
-  for (const t of v3.teams) for (const p of t.P) delete p.el, delete p.sig, delete p.elOn, delete p.elSeen;
+  for (const t of v3.teams) for (const p of t.P) (delete p.el, delete p.sig, delete p.elOn, delete p.elSeen);
   delete v3.elProof;
   g.store.setJSON(g.KEYS.career, v3);
   const mg = g.Run.load();
@@ -366,8 +421,9 @@ test('engine: staged scenes are rare and well-formed', () => {
       for (const bt of g.playRally(m).beats) {
         if (!bt.scene) continue;
         assert(bt.scene === 1 || bt.scene === 2, 'scene level 1 or 2');
-        for (const a2 of bt.acts) if ((a2.k === 'shot' && a2.kind) || a2.k === 'call') assert(ids.has(a2.p), 'scene act names a player on court');
-        if (bt.acts.some(a2 => a2.k === 'shot' && a2.kind === 'face')) scenes++;
+        for (const a2 of bt.acts)
+          if ((a2.k === 'shot' && a2.kind) || a2.k === 'call') assert(ids.has(a2.p), 'scene act names a player on court');
+        if (bt.scene === 1 && bt.acts.some(a2 => a2.k === 'shot' && a2.kind === 'face')) scenes++; // what Normal Hype shows
       }
     matches++;
   }

@@ -95,7 +95,21 @@ const Legacy = {
     if (!L.best || res.fans > L.best.fans) L.best = { fans: res.fans, rank: res.rank, name: res.name };
     L.history = [{ name: res.name, role: res.role, fans: res.fans, rank: res.rank, place: res.place }, ...L.history].slice(0, 10);
     if (res.stats)
-      L.hof = [...L.hof, { name: res.name, role: res.role, fans: res.fans, rank: res.rank, stats: res.stats, skills: res.skills || [], cups: res.cups || [], el: res.el || null, sig: res.sig || null, elOn: !!res.elOn }]
+      L.hof = [
+        ...L.hof,
+        {
+          name: res.name,
+          role: res.role,
+          fans: res.fans,
+          rank: res.rank,
+          stats: res.stats,
+          skills: res.skills || [],
+          cups: res.cups || [],
+          el: res.el || null,
+          sig: res.sig || null,
+          elOn: !!res.elOn
+        }
+      ]
         .sort((a, b) => b.fans - a.fans)
         .slice(0, 6);
     Legacy.save(L);

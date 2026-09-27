@@ -27,15 +27,23 @@ const Events = {
       return {
         title: `Limit Break: ${STATNAME[ev.stat]}`,
         text: `Your ${STATNAME[ev.stat].toLowerCase()} has hit its ceiling. Coach offers a trial to break through.`,
-        a: ['Take the trial', `${run ? Math.round(Training.trialP(run) * 100) : '?'}% chance: ${STATNAME[ev.stat]} can grow past ${run ? Training.gate(run, ev.stat) : '—'} (+3); fail: −15 stamina, mood down`],
+        a: [
+          'Take the trial',
+          `${run ? Math.round(Training.trialP(run) * 100) : '?'}% chance: ${STATNAME[ev.stat]} can grow past ${run ? Training.gate(run, ev.stat) : '—'} (+3); fail: −15 stamina, mood down`
+        ],
         b: ['Not yet', 'The trial comes back next time you reach the ceiling']
       };
     if (ev.id === 'element') {
       const you = run ? Run.you(run) : null;
       return {
         title: `${you ? ENAME[you.el] : 'Element'} awakening`,
-        text: you ? `Coach takes you aside: “${you.sig.name} is in you. Show me.” Pass and your element is yours for good — its gauge fills in matches, and a full gauge or a captain's buff turns your next attack into ${you.sig.name}.` : '',
-        a: ['Take the trial', `${run ? Math.round(ElTrial.chance(run) * 100) : '?'}% chance (mood, stamina, wit): unlock ${ENAME[you ? you.el : 'fire']}; fail: −20 stamina, mood down, retry in ${ElTrial.retry} weeks`],
+        text: you
+          ? `Coach takes you aside: “${you.sig.name} is in you. Show me.” Pass and your element is yours for good — its gauge fills in matches, and a full gauge or a captain's buff turns your next attack into ${you.sig.name}.`
+          : '',
+        a: [
+          'Take the trial',
+          `${run ? Math.round(ElTrial.chance(run) * 100) : '?'}% chance (mood, stamina, wit): unlock ${ENAME[you ? you.el : 'fire']}; fail: −20 stamina, mood down, retry in ${ElTrial.retry} weeks`
+        ],
         b: ['Not yet', 'The trial returns next week']
       };
     }

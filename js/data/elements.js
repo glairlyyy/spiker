@@ -46,7 +46,16 @@ const EFILL = {
   star: 'Your team scoring (more in the zone) and assists.'
 };
 /** Who resists whom: ECOUNTER[x] = the element that beats x (a defender with it halves x's effect). */
-const ECOUNTER = { fire: 'water', water: 'flash', flash: 'earth', earth: 'wind', wind: 'fire', shadow: 'star', star: 'shadow', blast: null };
+const ECOUNTER = {
+  fire: 'water',
+  water: 'flash',
+  flash: 'earth',
+  earth: 'wind',
+  wind: 'fire',
+  shadow: 'star',
+  star: 'shadow',
+  blast: null
+};
 /** Personal twist on every signature element spike (picked from the player's stats). */
 const TWIST = {
   pierce: { name: 'Pierce', desc: 'Goes through the block' },

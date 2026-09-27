@@ -17,23 +17,107 @@ const SKILLS = {
 // or always once learned in career mode. Hooks live in the engine's serve and rally phases (search for hasTech).
 Object.assign(SKILLS, {
   // attack
-  freak: { tech: 'Attack', name: 'Freak Quick', role: 'MB', req: { speed: 80 }, cost: 160, desc: 'Minus-tempo quick: hit before the block can react (setter wit 1.6+)' },
-  delay: { tech: 'Attack', name: 'Delayed Spike', role: ['WS', 'MB'], req: { jump: 85 }, cost: 140, desc: 'Hang in the air until the blockers drop' },
+  freak: {
+    tech: 'Attack',
+    name: 'Freak Quick',
+    role: 'MB',
+    req: { speed: 80 },
+    cost: 160,
+    desc: 'Minus-tempo quick: hit before the block can react (setter wit 1.6+)'
+  },
+  delay: {
+    tech: 'Attack',
+    name: 'Delayed Spike',
+    role: ['WS', 'MB'],
+    req: { jump: 85 },
+    cost: 140,
+    desc: 'Hang in the air until the blockers drop'
+  },
   cutshot: { tech: 'Attack', name: 'Cut Shot', role: 'WS', req: { wit: 1.3 }, cost: 120, desc: 'Sharp angle around the block, more often' },
-  sync: { tech: 'Setter', name: 'Synchronized Attack', role: 'S', req: { wit: 1.5 }, cost: 160, desc: 'Every hitter approaches at once — the block has to split' },
+  sync: {
+    tech: 'Setter',
+    name: 'Synchronized Attack',
+    role: 'S',
+    req: { wit: 1.5 },
+    cost: 160,
+    desc: 'Every hitter approaches at once — the block has to split'
+  },
   // serve
-  drive: { tech: 'Serve', name: 'Drive Serve', role: 'any', req: { wit: 1.2, power: 70 }, cost: 120, desc: 'Floater that dips late — passes fall apart' },
-  killer: { tech: 'Serve', name: 'Killer Jump Serve', role: 'any', req: { power: 90 }, cost: 160, desc: 'Heavy topspin jump serve (+10% pace, a bit riskier)' },
-  target: { tech: 'Serve', name: 'Target Serve', role: 'any', req: { wit: 1.4 }, cost: 120, desc: 'Serve straight at the weakest receiver' },
+  drive: {
+    tech: 'Serve',
+    name: 'Drive Serve',
+    role: 'any',
+    req: { wit: 1.2, power: 70 },
+    cost: 120,
+    desc: 'Floater that dips late — passes fall apart'
+  },
+  killer: {
+    tech: 'Serve',
+    name: 'Killer Jump Serve',
+    role: 'any',
+    req: { power: 90 },
+    cost: 160,
+    desc: 'Heavy topspin jump serve (+10% pace, a bit riskier)'
+  },
+  target: {
+    tech: 'Serve',
+    name: 'Target Serve',
+    role: 'any',
+    req: { wit: 1.4 },
+    cost: 120,
+    desc: 'Serve straight at the weakest receiver'
+  },
   // defense
-  readblk: { tech: 'Defense', name: 'Read Block', role: 'MB', req: { wit: 1.3, def: 75 }, cost: 140, desc: "Read the setter's hands — shuts down quicks" },
+  readblk: {
+    tech: 'Defense',
+    name: 'Read Block',
+    role: 'MB',
+    req: { wit: 1.3, def: 75 },
+    cost: 140,
+    desc: "Read the setter's hands — shuts down quicks"
+  },
   softblk: { tech: 'Defense', name: 'Soft Block', role: ['MB', 'WS'], req: { def: 80 }, cost: 100, desc: 'Touches pop up for an easy dig' },
-  roll: { tech: 'Defense', name: 'Rolling Receive', role: 'any', req: { def: 75, speed: 70 }, cost: 120, desc: 'Dive-and-roll: far balls cost much less' },
-  save: { tech: 'Defense', name: 'Desperation Save', role: 'any', req: { speed: 85 }, cost: 140, desc: 'Sometimes keeps a lost ball alive' },
+  roll: {
+    tech: 'Defense',
+    name: 'Rolling Receive',
+    role: 'any',
+    req: { def: 75, speed: 70 },
+    cost: 120,
+    desc: 'Dive-and-roll: far balls cost much less'
+  },
+  save: {
+    tech: 'Defense',
+    name: 'Desperation Save',
+    role: 'any',
+    req: { speed: 85 },
+    cost: 140,
+    desc: 'Sometimes keeps a lost ball alive'
+  },
   // setter plays
-  slide: { tech: 'Setter', name: '2nd-tempo Slide', role: 'MB', req: { speed: 75 }, cost: 120, desc: 'Run behind the setter and hit off one foot (setter wit 1.3+)' },
-  lefty: { tech: 'Setter', name: 'Left-hand Dump', role: 'S', req: { jump: 70, wit: 1.4 }, cost: 120, desc: 'Sneakier, more frequent second-touch dumps' },
-  pipecombo: { tech: 'Setter', name: 'Pipe Combo', role: 'S', req: { wit: 1.5 }, cost: 140, desc: 'Planned back-row play — the block arrives late' }
+  slide: {
+    tech: 'Setter',
+    name: '2nd-tempo Slide',
+    role: 'MB',
+    req: { speed: 75 },
+    cost: 120,
+    desc: 'Run behind the setter and hit off one foot (setter wit 1.3+)'
+  },
+  lefty: {
+    tech: 'Setter',
+    name: 'Left-hand Dump',
+    role: 'S',
+    req: { jump: 70, wit: 1.4 },
+    cost: 120,
+    desc: 'Sneakier, more frequent second-touch dumps'
+  },
+  pipecombo: {
+    tech: 'Setter',
+    name: 'Pipe Combo',
+    role: 'S',
+    req: { wit: 1.5 },
+    cost: 140,
+    desc: 'Planned back-row play — the block arrives late'
+  }
 });
 /** Can this player use a technique? Learned (career) or meets the stat requirements. */
 function hasTech(p, id) {

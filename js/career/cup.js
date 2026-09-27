@@ -163,7 +163,19 @@ const Cup = {
       stats = { ...Object.fromEntries(STATK.map(k => [k, you[k]])), wit: you.wit, lead: you.lead };
     const el = you.elSeen || you.elOn ? { el: you.el, sig: you.sig, elOn: !!you.elOn } : {};
     Run.snap(run);
-    const earned = Legacy.record({ name: you.name, role: you.role, fans: run.fans, rank, place, cups: run.cups, pure: run.pure, mode: run.mode, stats, skills: you.skills, ...el });
+    const earned = Legacy.record({
+      name: you.name,
+      role: you.role,
+      fans: run.fans,
+      rank,
+      place,
+      cups: run.cups,
+      pure: run.pure,
+      mode: run.mode,
+      stats,
+      skills: you.skills,
+      ...el
+    });
     run.result = { place, rank, earned, cups: run.cups, champ: bracketChampion(run.cup.sched) };
     Run.save(run);
   }

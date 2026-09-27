@@ -560,7 +560,8 @@ function tweenJump(d, a, b, t) {
     }
   }
   if (a.mode === 'up') d.jy = J.peak * (1 - Math.pow(1 - l, 2));
-  else if (a.mode === 'reup') d.jy = t < 0.4 ? J.start * (1 - Math.pow(t / 0.4, 2)) : J.peak * (1 - Math.pow(1 - l, 2)) * (t >= J.t0 ? 1 : 0);
+  else if (a.mode === 'reup')
+    d.jy = t < 0.4 ? J.start * (1 - Math.pow(t / 0.4, 2)) : J.peak * (1 - Math.pow(1 - l, 2)) * (t >= J.t0 ? 1 : 0);
   else if (a.mode === 'down') {
     if (d.jmode && d.fallMs == null && d.landMs == null && t >= d.jmode.t0 && d.jy > 0) {
       d.fallMs = 0; // free fall (see stepPlayerTimers)

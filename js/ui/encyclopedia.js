@@ -4,7 +4,13 @@ function renderEncyclopedia() {
   A = null;
   const teams = (RUN && RUN.teams) || [],
     users = id => teams.flatMap(t => t.P.filter(p => hasTech(p, id)).map(p => ({ p, t }))),
-    roleTxt = s => (s.role === 'any' ? 'Any role' : [].concat(s.role).map(r => ROLE_NAME[r]).join(', ')),
+    roleTxt = s =>
+      s.role === 'any'
+        ? 'Any role'
+        : []
+            .concat(s.role)
+            .map(r => ROLE_NAME[r])
+            .join(', '),
     reqTxt = s =>
       Object.entries(s.req || {})
         .map(([k, v]) => `${STATNAME[k]} ${k === 'wit' ? v.toFixed(1) : v}+`)
@@ -27,10 +33,11 @@ function renderEncyclopedia() {
     <nav class="ency-nav">${packs.map(k => `<a href="#pk-${k}">${k}</a>`).join('')}<a href="#pk-passive">Career skills</a><a href="#pk-el">Elements</a><a href="#pk-lead">Captain</a><a href="#pk-tac">Tactics</a></nav>
     ${packs
       .map(
-        k => `<h3 id="pk-${k}">${k} techniques</h3><div class="ency-grid">${ids
-          .filter(id => SKILLS[id].tech === k)
-          .map(techCard)
-          .join('')}</div>`
+        k =>
+          `<h3 id="pk-${k}">${k} techniques</h3><div class="ency-grid">${ids
+            .filter(id => SKILLS[id].tech === k)
+            .map(techCard)
+            .join('')}</div>`
       )
       .join('')}
     <h3 id="pk-passive">Career skills${info('Passive boosts you can only get by learning them in career mode')}</h3>
@@ -49,7 +56,11 @@ function renderEncyclopedia() {
         ${teams.length ? (who.length ? fold('e-' + e, `<span class="small ency-users"><b>${who.length}</b> unlocked</span>`, `<p class="small ency-users">${who.map(({ p, t }) => `${chip(t)}${stag(p)}${esc(p.name)} <i class="mute">${esc(p.sig.name)}</i>`).join(' &nbsp;')}</p>`) : '<p class="small mute">Nobody yet</p>') : ''}
       </div>`;
     }).join('')}
-      <div class="ency-card"><div class="ency-hd"><b>Signature twists</b><span class="ency-tag">Personal</span></div><p>${Object.values(TWIST).map(t => `<span class="twc" ${tip(t.desc)}>${t.name}</span>`).join(' ')}</p></div>
+      <div class="ency-card"><div class="ency-hd"><b>Signature twists</b><span class="ency-tag">Personal</span></div><p>${Object.values(
+        TWIST
+      )
+        .map(t => `<span class="twc" ${tip(t.desc)}>${t.name}</span>`)
+        .join(' ')}</p></div>
     </div>
     <h3 id="pk-lead">Captain leadership${info('The player with the highest leadership captains the team. Their level decides how often they step in and how strong it is. More momentum per point and an easier path into the zone.')}</h3>
     <div class="ency-grid">${[
@@ -68,11 +79,12 @@ function renderEncyclopedia() {
       <div class="ency-card"><div class="ency-hd"><b>Captain's call</b><span class="ency-tag">Default</span></div><p>The captain picks the tactic during the match (needs leadership 55+).</p></div>
       ${Object.values(TACTICS)
         .map(
-          v => `<div class="ency-card"><div class="ency-hd"><b>${esc(v.name)}</b></div><p>${
-            v.focus
-              ? `Feeds the ${v.focus}s (quick attacks ×${v.quick}). Blockers read it: +${v.read} coverage when the ${v.focus} attacks.`
-              : 'The setter chooses freely and listens to back-row calls.'
-          }</p></div>`
+          v =>
+            `<div class="ency-card"><div class="ency-hd"><b>${esc(v.name)}</b></div><p>${
+              v.focus
+                ? `Feeds the ${v.focus}s (quick attacks ×${v.quick}). Blockers read it: +${v.read} coverage when the ${v.focus} attacks.`
+                : 'The setter chooses freely and listens to back-row calls.'
+            }</p></div>`
         )
         .join('')}
     </div>
