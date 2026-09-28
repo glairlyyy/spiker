@@ -19,6 +19,9 @@ function inlineImages(parser) {
     const def = parser.json.images[sourceIndex];
     if (def.bufferView === undefined || typeof createImageBitmap === 'undefined') return original(sourceIndex, texLoader);
     if (parser.sourceCache[sourceIndex] !== undefined) return parser.sourceCache[sourceIndex].then(t => t.clone());
+    // decoded once per model file: later figures of the same model get clones sharing the image (one GPU upload)
+    const shared = modelKey && imgCache.get(modelKey);
+    if (shared && shared.has(sourceIndex)) return (parser.sourceCache[sourceIndex] = shared.get(sourceIndex)).then(t => t.clone());
     const promise = parser
       .getDependency('bufferView', def.bufferView)
       .then(view => createImageBitmap(new Blob([view], { type: def.mimeType }), { premultiplyAlpha: 'none' }))
@@ -33,10 +36,19 @@ function inlineImages(parser) {
         return original(sourceIndex, texLoader);
       });
     parser.sourceCache[sourceIndex] = promise;
+    if (shared) shared.set(sourceIndex, promise);
     return promise;
   };
   return { name: 'SC_inline_images' };
 }
+/**
+ * One pass of the heavy work per model file: decoded textures (imgCache) and geometry (geoCache, the first figure's
+ * meshes) are shared by every later figure of the same model. Keyed by the model's buffer; `modelKey` is the model
+ * being parsed right now (figures are built one at a time).
+ */
+const imgCache = new WeakMap(),
+  geoCache = new WeakMap();
+let modelKey = null;
 const bufCache = new Map();
 
 /** Download a base model (served as base64 text) once; progress 0..1. */
@@ -62,9 +74,18 @@ export async function loadBase(url, onProgress) {
   return bytes.buffer;
 }
 
+/** Greyed textures per source image and filter: every figure of a model shares one. */
+const greyCache = new Map();
 /** Hair textures are brown in the base model: greyscale + brighten so a material colour can tint any anime hair. */
 function greyTexture(tex, filter) {
   if (!tex || !tex.image) return tex;
+  const key = `${tex.source.uuid}|${filter}`;
+  if (greyCache.has(key)) return greyCache.get(key);
+  const t = greyTex(tex, filter);
+  greyCache.set(key, t);
+  return t;
+}
+function greyTex(tex, filter) {
   const im = tex.image,
     c = document.createElement('canvas');
   c.width = im.width;
@@ -129,18 +150,40 @@ export function dress(vrm, kit) {
 
 /** Parse a VRM from the shared buffer and wrap it in a root group scaled to `height` metres. */
 export async function makeVRM(buf, height) {
-  const gltf = await loader.parseAsync(buf.slice(0), '');
+  if (!imgCache.has(buf)) imgCache.set(buf, new Map());
+  modelKey = buf;
+  let gltf;
+  try {
+    gltf = await loader.parseAsync(buf.slice(0), '');
+  } finally {
+    modelKey = null;
+  }
   const vrm = gltf.userData.vrm;
   if (!vrm) throw new Error('not a VRM model');
   if (vrm.meta && vrm.meta.metaVersion === '0') VRMUtils.rotateVRM0(vrm); // VRM 0.x faces −Z: turn it like a VRM 1 model
   VRMUtils.removeUnnecessaryVertices(gltf.scene);
   if (VRMUtils.combineSkeletons) VRMUtils.combineSkeletons(gltf.scene);
+  const meshes = [];
   vrm.scene.traverse(o => {
     if (o.isMesh) {
       o.castShadow = true;
       o.frustumCulled = false;
+      meshes.push(o);
     }
   });
+  // later figures of this model reuse the first figure's geometry (same mesh order): one copy in memory and on the GPU
+  const tmpl = geoCache.get(buf);
+  if (!tmpl)
+    geoCache.set(
+      buf,
+      meshes.map(o => o.geometry)
+    );
+  else if (tmpl.length === meshes.length)
+    meshes.forEach((o, i) => {
+      if (o.geometry === tmpl[i]) return;
+      o.geometry.dispose();
+      o.geometry = tmpl[i];
+    });
   const root = new THREE.Group();
   root.add(vrm.scene);
   const bone = n => vrm.humanoid.getNormalizedBoneNode(n);

@@ -113,6 +113,8 @@ artifact; its drawing code was removed here (only the screen-space layer in `ren
   pool and `dressActors` spreads players at random with equal odds over the base and all loaded models (stable per
   player via `hu`). VRM 0.x models are rotated
   (`rotateVRM0`); dressing matches VRoid material names anywhere in the name.
+- One heavy pass per model file: `makeVRM` shares decoded textures (`imgCache`, clones share one image / GPU upload),
+  geometry (`geoCache`, the first figure's meshes) and greyed hair textures across every figure of the same model.
 - `players3d.mjs` — VRM loading, repeatable dressing, pose → normalized bones, smoothing, arm aiming at the ball
   (`torsoDir`/`bendArm`), feet on the floor, expressions.
 - `poses3d.mjs` — one pose per engine pose, driven by the same values the playback layer keeps (swing/spike
