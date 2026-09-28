@@ -1,21 +1,42 @@
 // Light trails that follow a point (a player's hand): a camera-facing ribbon that tapers and fades with age.
 // Stars get a thin short streak, OP players a wide long one, in their hair colour (think Kuroko's zone eye trail).
+// Two layers over one strip: a dark anime-style outline along the edges (normal blending), and the glow inside it
+// (additive).
 import * as THREE from 'three';
 
 const VS = `
 attribute float alpha;
+attribute float edge;
 varying float vA;
+varying float vE;
 void main() {
   vA = alpha;
+  vE = edge;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
+/** Outer share of the half-width that is outline. */
+const OUT = '0.32';
 const FS = `
 uniform vec3 color;
 uniform vec3 core;
 varying float vA;
+varying float vE;
 void main() {
-  gl_FragColor = vec4(mix(color, core, vA * vA * 0.3) * vA, vA);
+  float e = abs(vE), inside = 1.0 - smoothstep(1.0 - ${OUT} - 0.06, 1.0 - ${OUT} + 0.02, e);
+  gl_FragColor = vec4(mix(color, core, vA * vA * 0.3 + (1.0 - e) * 0.25) * vA * inside, vA * inside);
 }`;
+const FS_OUT = `
+uniform vec3 ink;
+varying float vA;
+varying float vE;
+void main() {
+  float e = abs(vE), band = smoothstep(1.0 - ${OUT} - 0.06, 1.0 - ${OUT}, e) * (1.0 - smoothstep(0.93, 1.0, e));
+  gl_FragColor = vec4(ink, band * min(1.0, vA * 1.4) * 0.9);
+}`;
+/** The strip is this much wider than o.width, so the glow inside the outline keeps its old width. */
+const OUT_W = 1.4;
+/** Outline colour: a deep navy ink, like the canvas text outlines. */
+const INK = new THREE.Color('#0b1030');
 const tA = new THREE.Vector3(),
   tB = new THREE.Vector3(),
   tC = new THREE.Vector3();
@@ -24,7 +45,9 @@ const tA = new THREE.Vector3(),
 export function makeTrail(scene, max = 36) {
   const pos = new Float32Array(max * 2 * 3),
     alpha = new Float32Array(max * 2),
+    edge = new Float32Array(max * 2),
     idx = [];
+  for (let i = 0; i < max; i++) edge.set([1, -1], i * 2); // +1 / −1 across the strip: the shaders find the edges
   for (let i = 0; i < max - 1; i++) {
     const a = i * 2;
     idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
@@ -32,6 +55,7 @@ export function makeTrail(scene, max = 36) {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   g.setAttribute('alpha', new THREE.BufferAttribute(alpha, 1));
+  g.setAttribute('edge', new THREE.BufferAttribute(edge, 1));
   g.setIndex(idx);
   const mat = new THREE.ShaderMaterial({
     vertexShader: VS,
@@ -42,16 +66,32 @@ export function makeTrail(scene, max = 36) {
     blending: THREE.AdditiveBlending,
     side: THREE.DoubleSide
   });
+  const outline = new THREE.Mesh(
+    g,
+    new THREE.ShaderMaterial({
+      vertexShader: VS,
+      fragmentShader: FS_OUT,
+      uniforms: { ink: { value: INK } },
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    })
+  );
   const mesh = new THREE.Mesh(g, mat);
-  mesh.frustumCulled = false;
-  mesh.visible = false;
-  scene.add(mesh);
+  for (const x of [outline, mesh]) {
+    x.frustumCulled = false;
+    x.visible = false;
+    scene.add(x);
+  }
+  outline.renderOrder = 4; // the ink first, the glow over it
+  mesh.renderOrder = 5;
+  const show = v => (mesh.visible = outline.visible = v);
   const pts = []; // newest first: { p, age }
   return {
     mesh,
     clear() {
       pts.length = 0;
-      mesh.visible = false;
+      show(false);
     },
     /**
      * p: the point this frame (world); cam: the camera; o = { width, life, alpha, color, drift? } (width 0 → off).
@@ -72,7 +112,7 @@ export function makeTrail(scene, max = 36) {
       if (pts.length > max) pts.length = max;
       const n = pts.length;
       if (n < 3) {
-        mesh.visible = false;
+        show(false);
         return;
       }
       mat.uniforms.color.value.set(o.color);
@@ -85,7 +125,7 @@ export function makeTrail(scene, max = 36) {
         tB.subVectors(cam.position, a); // toward the camera
         tC.crossVectors(tA, tB).normalize();
         const k = 1 - pts[i].age / o.life,
-          w = o.width * Math.pow(Math.max(0, k), 0.7) * (i === 0 ? 0.6 : 1),
+          w = o.width * OUT_W * Math.pow(Math.max(0, k), 0.7) * (i === 0 ? 0.6 : 1),
           al = o.alpha * Math.pow(Math.max(0, k), 1.4);
         pos.set([a.x + tC.x * w, a.y + tC.y * w, a.z + tC.z * w], i * 6);
         pos.set([a.x - tC.x * w, a.y - tC.y * w, a.z - tC.z * w], i * 6 + 3);
@@ -94,7 +134,7 @@ export function makeTrail(scene, max = 36) {
       g.setDrawRange(0, (n - 1) * 6);
       g.attributes.position.needsUpdate = true;
       g.attributes.alpha.needsUpdate = true;
-      mesh.visible = true;
+      show(true);
     }
   };
 }
