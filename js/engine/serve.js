@@ -4,6 +4,8 @@
  * Play one rally of match m: the reset and serve, serve receive (ace, error, pop-up), then rally() until the point
  * is decided, and end() scores it. Returns { w, beats } (beats = null unless the match records animation).
  */
+/** Extra flight speed of the hardest serves. */
+const SERVE_FAST = 1.45;
 function playRally(m) {
   CM = m;
   m.big = 0;
@@ -163,7 +165,9 @@ function playRally(m) {
   const rollR = hasTech(rc, 'roll') && d0 > 0.5;
   let rs = Formula.receiveScore(rc, RT, d0) - (drive ? 14 : 0);
   if (rollR) rs += Math.max(0, d0 - 0.1) * 45 * (1.3 - rc.speed / 100) * 0.5;
-  const sdur = clamp(Math.hypot(tx - sp.x, (tz - sp.z) * 420) / (kmh(sq) * 0.011), 480, 1300) * courtScale();
+  // a hard serve gets there sooner (SERVE_FAST: up to ×1.45 from serve 55 to 110)
+  const sfast = 1 + clamp((sq - 55) / 55, 0, 1) * (SERVE_FAST - 1),
+    sdur = clamp(Math.hypot(tx - sp.x, (tz - sp.z) * 420) / (kmh(sq) * 0.011 * sfast), 400, 1300) * courtScale();
   RT.P.forEach(p => {
     if (p !== rc) {
       const h = home(p, r);

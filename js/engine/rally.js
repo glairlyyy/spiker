@@ -7,6 +7,8 @@
 const LONG_RALLY = 6;
 /** Closest two blockers stand side by side along the net (z units: 0.06 ≈ 0.7 m, shoulder to shoulder). */
 const BLOCK_GAP = 0.06;
+/** Extra flight speed of the hardest hits (spikes; serves use SERVE_FAST in serve.js). */
+const HIT_FAST = 1.6;
 
 /**
  * Plays the rest of a rally after serve receive, alternating sides until a point is decided.
@@ -578,11 +580,16 @@ function landingSpot(c, x) {
       lz,
       elS.far
     );
-  // flight time: harder spikes fly faster (about +17% at power 100, +29% at 130)
+  // flight time: harder spikes fly faster (about +17% at power 100, +29% at 130), and a hard hit gets to the floor
+  // sooner still (HIT_FAST: up to ×1.6 from power 50 to 120)
+  const fast = 1 + clamp((pow - 50) / 70, 0, 1) * (HIT_FAST - 1);
   let hdur = tip
     ? 520
-    : clamp(Math.hypot(lx - appX, (lz - spZ) * 420, REACH_H + pj) / (kmh(pow) * (0.012 + Math.max(0, pow - 60) * 0.00005)), 120, 560) *
-      courtScale();
+    : clamp(
+        Math.hypot(lx - appX, (lz - spZ) * 420, REACH_H + pj) / (kmh(pow) * (0.012 + Math.max(0, pow - 60) * 0.00005) * fast),
+        95,
+        560
+      ) * courtScale();
   if (elS) hdur = Math.max(110, hdur * elS.fly);
   return { lx, lz, hdur };
 }
