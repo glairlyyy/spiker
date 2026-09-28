@@ -117,6 +117,7 @@ function startBeat(b) {
         A.trail = [];
         break;
       case 'slide':
+        d.slideN = (d.slideN || 0) + 1; // a new move order (landing from a jump keeps it, see stepPlayerTimers)
         maybeSqueak(d, a);
         d.sx = d.x;
         d.sz = d.z;
@@ -605,7 +606,7 @@ function airMomentum() {
         vx *= AIR_MAX / ms;
         vz *= AIR_MAX / ms;
       }
-      d.airV = { vx, vz };
+      d.airV = { vx, vz, sn: d.slideN || 0 };
     }
     d.pvx = d.x;
     d.pvz = d.z;
@@ -802,6 +803,13 @@ function stepPlayerTimers(wdt, raw) {
         d.fallMs = null;
         d.jmode = null;
         d.landMs = 0; // touchdown
+        if (d.airV && d.airV.sn === (d.slideN || 0)) {
+          // no new move ordered while in the air: where they landed is where they now stand (no walking back)
+          d.sx = d.tx = d.x;
+          d.sz = d.tz = d.z;
+          d.carry = false;
+          d.via = null;
+        }
       }
     }
     if (d.landMs != null) d.landMs += dt;
