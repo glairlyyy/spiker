@@ -268,11 +268,11 @@ export function dressActors(w) {
       return i < 0 ? null : free.splice(i, 1)[0];
     };
   for (const pl of w.people) pl.d = null;
-  // each player keeps one model across matches: the base model, or (about 1 in 3 when extra models are loaded)
-  // an extra one — while figures of it are free
+  // each player keeps one model across matches, picked at random with equal odds among the base model and every
+  // loaded one (while figures of it are free)
   for (const d of disp) {
-    const h = hu(d.p, 'model'),
-      want = models.length && h < 0.35 ? models[Math.floor((h / 0.35) * models.length)] : null,
+    const all = [null, ...models],
+      want = all[Math.min(all.length - 1, Math.floor(hu(d.p, 'model') * all.length))],
       pl = (want && take(want)) || take(null) || free.shift();
     if (pl) pl.d = d;
   }

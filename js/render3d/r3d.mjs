@@ -87,10 +87,11 @@ function kitOut(pl, scene, arena) {
   return pl;
 }
 /** Figures per extra model (a match can show up to this many players with it). */
-const EXTRA_FIGS = 4;
+const EXTRA_FIGS = 8;
 /**
  * Add another player model (a .vrm the player loaded from their own disk — never uploaded): EXTRA_FIGS figures of it
- * join the pool, and dressActors gives it to some players at random (stable per player). Re-dresses a bound match.
+ * join the pool (enough for every player on court), and dressActors spreads players evenly over all models at random
+ * (stable per player). Re-dresses a match on screen.
  */
 async function addModel(buf, name) {
   const w = world || (building && (await building, world));

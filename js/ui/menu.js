@@ -15,7 +15,7 @@ function renderMenu() {
       <span class="trow" style="margin:0"><button class="btn" onclick="navigate('encyclopedia')">Skill encyclopedia</button><button class="btn" onclick="navigate('legacy')">Unlocks</button></span></div>
     <div class="panel mdev"><h3>Playtest <span class="mute small">dev</span></h3>
       <span class="trow" style="margin:0"><button class="btn" onclick="startMonster()" ${tip('A one-off 3D match between two all-OP teams: elements, hype scenes and blocks fire often')}>Monster game</button>
-        <label class="btn" ${tip('Load a .vrm from your computer. It stays in this browser (never uploaded); about 1 in 3 players get it.')}>+ Player model<input type="file" accept=".vrm,.glb" hidden onchange="addModelFile(this)"></label>
+        <label class="btn" ${tip('Load a .vrm from your computer. It stays in this browser (never uploaded); players are spread at random over all loaded models.')}>+ Player model<input type="file" accept=".vrm,.glb" hidden onchange="addModelFile(this)"></label>
         ${Models.live.map(n => `<span class="chipm">${esc(n)} <button class="btn x" onclick="removeModel('${esc(n).replace(/'/g, '&#39;')}')" aria-label="Remove">✕</button></span>`).join('')}</span>
       <p class="small mute" id="mdl-note"></p></div>
   </section>`;
