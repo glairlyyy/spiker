@@ -68,8 +68,8 @@ function cyc(keys, ph) {
 // ---------- base poses ----------
 const DOWN_ARM = [V(0.22, -1, 0.05), V(0.16, -1, 0.3), V(0.1, -1, 0.35)];
 export const STAND = { hp: 0.04, sp: 0.02, L: leg(0.1, 0.16), R: leg(0.02, 0.1), al: DOWN_ARM, curl: 0.4 };
-// receive-ready: low, weight forward, arms in front with the hands together (fingers loosely laced, like the
-// start of a bump platform)
+// receive-ready: low, weight forward, arms long and low in front already in the passing grip — one hand laid in the
+// other, the fingers of the bottom hand wrapped over it, thumbs side by side (curlR wraps, curlL lies flat)
 export const READY = C({
   hp: 0.62,
   sp: 0.16,
@@ -77,8 +77,9 @@ export const READY = C({
   hd: -0.55,
   L: leg(1.05, 1.5, 0, 0.24),
   R: leg(0.9, 1.4, 0, 0.24),
-  al: [V(0.02, -0.62, 0.78), V(-0.55, -0.3, 0.78), V(-0.5, -0.25, 0.83), 0, -1.3],
-  curl: 0.7
+  al: [V(-0.1, -0.72, 0.68), V(-0.3, -0.6, 0.74), V(-0.3, -0.52, 0.8), 0, -2.2],
+  curlL: 0.2,
+  curlR: 0.6
 });
 const PLATFORM = C({
   hp: 0.68,
@@ -88,7 +89,8 @@ const PLATFORM = C({
   L: leg(1.15, 1.6, 0, 0.3),
   R: leg(1.0, 1.55, 0, 0.3),
   al: [V(-0.3, -0.62, 0.72), V(-0.3, -0.62, 0.72), V(-0.3, -0.58, 0.76), 0, -2.2],
-  curl: 0.95
+  curlL: 0.2, // the passing grip: one hand in the other, thumbs together
+  curlR: 0.6
 });
 const PLATFORM_UP = C({
   ...PLATFORM,
