@@ -106,7 +106,7 @@ async function addModel(buf, name) {
   }
   w.people.push(...figs);
   w.models = [...(w.models || []), name];
-  if (bound) dressActors(w);
+  if (bound && A && bound === A) dressActors(w); // a match on screen now: re-dress it (from the menu there is none)
   return name;
 }
 

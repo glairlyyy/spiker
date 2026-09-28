@@ -259,6 +259,7 @@ export function poseCoach(pl, dt, now) {
 
 /** Per match: dress the players (team kit, look, height, trail colours) and coaches; reset per-player state. */
 export function dressActors(w) {
+  if (!A || !A.disp) return; // no match on screen
   const disp = Object.values(A.disp),
     models = w.models || [],
     free = w.people.slice(),
