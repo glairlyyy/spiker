@@ -155,6 +155,28 @@ function startBeat(b) {
         instant(a);
     }
   }
+  digChase(b);
+}
+/** Top running speed in m/s (a dive launches ×1.35 faster). */
+const sprintOf = d => (6.5 + 3.5 * (((d.p && d.p.speed) || 60) / 100)) * (d.pose === 'dive' ? 1.35 : 1);
+/**
+ * A dig or receive the player can't run to in the beat's time: the world (ball, everyone else) slows just enough
+ * for them to get there at a real sprint, while the digger moves and dives at normal speed (A.digHero runs on
+ * real time — see step, capMove and the 3D posing).
+ */
+function digChase(b) {
+  A.digHero = null;
+  const a = b.acts.find(x => x.k === 'ball' && x.to && x.to.p && (x.to.c === 'bump' || x.to.c === 'dive') && x.when !== 'end'),
+    d = a && A.disp[a.to.p];
+  if (!d || d.via || b.cut || b.scene) return;
+  // ms needed: still in the air (a blocker coming down) → the fall and the landing first, then the sprint
+  const air = d.jy > 2 ? Math.sqrt((2 * d.jy * (2.43 / 150)) / 9.81) * 1000 + 60 : 0,
+    need = air + (Math.hypot((d.tx - d.x) * MX, (d.tz - d.z) * MZ) / sprintOf(d)) * 1000,
+    k = clamp((b.dur * 0.85) / Math.max(1, need), DIG_SLOW_MIN, 1);
+  if (k > 0.92) return; // reachable at normal speed
+  b._dig = k;
+  A.digHero = a.to.p;
+  if (d.dv) d.dv.dur /= k; // the dive plays out over the stretched beat, on the digger's own (real) clock
 }
 /** A long, hard cut sometimes squeaks (throttled, a little delayed). Math.random: sound only, never the game RNG. */
 function maybeSqueak(d, a) {
@@ -506,8 +528,9 @@ function applyBeat(b, t) {
   for (const id in A.disp) {
     const d = A.disp[id];
     if (d.tx === d.sx && d.tz === d.sz) continue;
-    if (d.carry && !d.waitLand) {
-      capMove(d, d.tx, d.tz); // catching up from the last beat: straight there at a sprint
+    if (id === A.digHero && d.waitLand && d.jy <= 1 && (d.landMs == null || d.landMs > 60)) d.waitLand = false; // feet down: go
+    if ((d.carry || id === A.digHero) && !d.waitLand) {
+      capMove(d, d.tx, d.tz); // catching up from the last beat, or chasing a far dig: straight there at a sprint
       continue;
     }
     if (d.via && !d.waitLand) {
@@ -572,8 +595,7 @@ function tweenJump(d, a, b, t) {
 /** Move toward (x, z) no faster than a real sprint: a move the beat is too short for carries into the next beat. */
 function capMove(d, x, z) {
   const dm = Math.hypot((x - d.x) * MX, (z - d.z) * MZ),
-    vmax = (6.5 + 3.5 * (((d.p && d.p.speed) || 60) / 100)) * (d.pose === 'dive' ? 1.35 : 1), // m/s
-    lim = (vmax * (A.fdt || 16)) / 1000;
+    lim = (sprintOf(d) * ((d.p && d.p.id === A.digHero ? A.rdt : A.fdt) || 16)) / 1000; // the digger runs on real time
   const k = dm > lim ? lim / dm : 1;
   d.x += (x - d.x) * k;
   d.z += (z - d.z) * k;
@@ -618,8 +640,9 @@ function step(dt) {
   timeScale(cb, raw);
   dt = raw * A.ts; // one clock for the whole world: ball, players, poses, hair, trails and particles (r3d reads A.ts)
   A.fdt = dt; // this frame's game time (sprint cap in capMove)
+  A.rdt = raw; // real time: the digger chasing a far ball (A.digHero) runs on it
   drillStep(raw);
-  stepPlayerTimers(dt);
+  stepPlayerTimers(dt, raw);
   stepEffects(dt);
   camStep(raw);
   if (A.done) {
@@ -664,9 +687,10 @@ function step(dt) {
   }
 }
 /** Per-player timers on the world clock: swings, pose age, free fall under gravity, landing, dive, call bubbles. */
-function stepPlayerTimers(dt) {
+function stepPlayerTimers(wdt, raw) {
   for (const id in A.disp) {
-    const d = A.disp[id];
+    const d = A.disp[id],
+      dt = id === A.digHero ? raw : wdt; // the digger chasing a far ball moves at normal speed while the world slows
     if (d.swing != null) d.swing += dt;
     if (d.spk != null) d.spk = d.spkHold ? Math.min(d.spk + dt, swingLead(d)) : d.spk + dt;
     d.pt = (d.pt || 0) + dt;

@@ -7,7 +7,8 @@ const PACE = 0.8;
 const TS_SLOW = 0.3,
   TS_BUILD = 0.35,
   TS_FREEZE = 0.04,
-  TS_SCENE = 0.03;
+  TS_SCENE = 0.03,
+  DIG_SLOW_MIN = 0.15; // a far dig never slows the world below this
 /** Below this A.ts the mix is muffled and the stage desaturated (sfx.slowmo, .slowmo class). */
 const TS_SLOWFX = 0.75;
 /**
@@ -28,10 +29,11 @@ function timeScale(cb, raw) {
   A.freezeOn = !!(on && cb.freeze);
   A.sceneOn = !!(on && cb.scene);
   A.slowK = A.slowOn ? (build ? TS_BUILD : cb.slow < 1 ? cb.slow : TS_SLOW) : 1;
+  if (on && cb._dig) A.slowK = Math.min(A.slowK, cb._dig); // a far dig: just slow enough for the digger to get there
   const tgt = A.freezeOn ? TS_FREEZE : A.sceneOn ? TS_SCENE : A.slowK;
   if (!Number.isFinite(A.ts)) A.ts = 1; // first frame (or a bad value): normal speed
-  if (tgt < 0.1)
-    A.ts = Math.min(A.ts, tgt); // hit-stop / scene: instant
+  if (tgt < 0.1 || (on && cb._dig && A.slowK === cb._dig))
+    A.ts = Math.min(A.ts, tgt); // hit-stop / scene / far dig: instant (the digger's time budget starts now)
   else A.ts += (tgt - A.ts) * (1 - Math.exp(-raw / (tgt < A.ts ? 90 : 160)));
   if (Math.abs(A.ts - tgt) < 0.004) A.ts = tgt;
   const slow = A.ts < TS_SLOWFX;

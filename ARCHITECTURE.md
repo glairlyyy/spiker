@@ -231,6 +231,14 @@ Targets: ~14% of attacks stuffed in normal matches; Monster games stay offence-h
 technique). Kill blocks get a scene: a `ball` close-up on the stuff, then the blocker's face and line
 (`hypeKillBlock`: level 1 at match point or for a star blocker at most every 6 points).
 
+## Far digs (playback)
+
+`digChase` (playback.js, at a beat's start): when a dig/receive target can't be reached at a sprint in the beat's
+time (including coming down from a block jump), the beat gets `_dig` = the world time scale that makes it just
+reachable (≥ `DIG_SLOW_MIN`). `timeScale` drops to it at once; the digger (`A.digHero`) runs on real time — timers,
+`capMove` sprint cap, straight-line chase, 3D posing — so they move and dive at normal speed while the ball and
+everyone else slow down. Presentation only (no engine change).
+
 ## Career world (P1)
 
 `js/data/world.js` (FACTIONS per league team with join conditions, ECON, HOUSING) + `js/career/world.js` (World).

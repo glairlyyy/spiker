@@ -153,7 +153,7 @@ function draw() {
   updateBall(w, now);
   // bodies, hair springs and trails run on the world clock (A.ts): in slow motion everything slows together
   const wdt = dt * Math.max(0.02, Math.min(1, A.ts ?? 1));
-  if (!A.qaFreeze) for (const pl of w.people) if (pl.d) posePlayer(pl, wdt, w.ball.position, w.fx); // qaFreeze: test hook
+  if (!A.qaFreeze) for (const pl of w.people) if (pl.d) posePlayer(pl, pl.d.p.id === A.digHero ? dt : wdt, w.ball.position, w.fx); // qaFreeze: test hook; a digger chasing a far ball poses at normal speed
   for (const pl of w.coaches) if (pl.c) poseCoach(pl, dt, now);
   updateCrowd(w, now);
   updateNet(w, now);
