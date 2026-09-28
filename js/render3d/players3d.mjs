@@ -5,6 +5,38 @@ import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 
 const loader = new GLTFLoader();
 loader.register(p => new VRMLoaderPlugin(p));
+loader.register(inlineImages);
+
+/**
+ * Textures packed inside the model (glTF bufferView images) are normally loaded through temporary blob: URLs, which
+ * some hosts block (the Claude desktop app's artifact frame: "Couldn't load texture blob:…", untextured players).
+ * Decode them straight from memory with createImageBitmap instead — no URL involved. Same result as three's own
+ * ImageBitmapLoader path (premultiplyAlpha 'none'); anything else falls back to the default loader.
+ */
+function inlineImages(parser) {
+  const original = parser.loadImageSource.bind(parser);
+  parser.loadImageSource = function (sourceIndex, texLoader) {
+    const def = parser.json.images[sourceIndex];
+    if (def.bufferView === undefined || typeof createImageBitmap === 'undefined') return original(sourceIndex, texLoader);
+    if (parser.sourceCache[sourceIndex] !== undefined) return parser.sourceCache[sourceIndex].then(t => t.clone());
+    const promise = parser
+      .getDependency('bufferView', def.bufferView)
+      .then(view => createImageBitmap(new Blob([view], { type: def.mimeType }), { premultiplyAlpha: 'none' }))
+      .then(bitmap => {
+        const tex = new THREE.Texture(bitmap);
+        tex.needsUpdate = true;
+        tex.userData.mimeType = def.mimeType;
+        return tex;
+      })
+      .catch(() => {
+        delete parser.sourceCache[sourceIndex]; // decoding failed: let three's default path try (it caches its own)
+        return original(sourceIndex, texLoader);
+      });
+    parser.sourceCache[sourceIndex] = promise;
+    return promise;
+  };
+  return { name: 'SC_inline_images' };
+}
 const bufCache = new Map();
 
 /** Download a base model (served as base64 text) once; progress 0..1. */
