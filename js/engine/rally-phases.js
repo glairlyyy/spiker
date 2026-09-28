@@ -187,13 +187,18 @@ function setHands(c, s) {
   }
   return { sq2, bumpSet };
 }
+/** Court units from the net within which a middle can still hit a quick (≈ 3.6 m: a few quick steps). */
+const QUICK_REACH = 150;
 /** 5. Choose the attack: quick or not, who hits (tactic, back-row calls, captain's buff), setter-driven techniques. */
 function chooseAttack(c, s, h) {
   const { m, front, atk, ds, atkT, defT, qual } = c,
     { setter, setZ } = s,
     { sq2 } = h;
   const free = p => !busy(m, p, c.n);
-  const MBs = atkT.P.filter(p => p.role === 'MB' && p !== setter && front(atk, p) && free(p)),
+  // a quick needs a middle already near the net: not the passer (still getting up from the first touch) and not
+  // someone who is deep in the back court after a dig or a cover — they can't reach a quick set in time
+  const nearNet = p => p !== c.pas && Math.abs(m.pos[p.id].x - 500) <= QUICK_REACH;
+  const MBs = atkT.P.filter(p => p.role === 'MB' && p !== setter && front(atk, p) && free(p) && nearNet(p)),
     mbZ = p => clamp(setZ + (MBs.indexOf(p) === 1 ? 0.16 : -0.14), 0.1, 0.9);
   // coach tactic: 'ws' / 'mb' focus shifts who gets the ball; 'auto' = setter's call (the default)
   const tac = TACTICS[(m.tac && m.tac[atk]) || 'auto'];

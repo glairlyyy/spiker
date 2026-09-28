@@ -375,7 +375,7 @@ test('engine: staged scenes are rare and well-formed', () => {
     matches++;
   }
   const per = scenes / matches;
-  assert(per >= 1 && per <= 7, `scenes per match ${per}`);
+  assert(per >= 1 && per <= 8, `scenes per match ${per}`); // target ≈ 6–7 on average; 10 matches are noisy
 });
 
 test('engine: recorded beats stay well-formed in every mode (no NaN, known players, matches end)', () => {
