@@ -10,7 +10,7 @@ Published as a claude.ai artifact: https://claude.ai/artifact/4xfGDd92rAanHyThVx
 - Plan first only when asked ("plan first"); otherwise implement, verify, publish.
 
 ## Commands
-- `npm test` — 19 headless tests (tests/run.js). Golden hashes guard engine output.
+- `npm test` — 18 headless tests (tests/run.js). Golden hashes guard engine output.
 - `npm run test:update` — only for intentional gameplay changes; say why.
 - `npm run lint` / `npm run format` — ESLint (flat config collects shared globals from index.html) / Prettier.
 - `npm run serve` — http://localhost:8765 (index.html = CDN three; test3d.html = local node_modules, for QA).
