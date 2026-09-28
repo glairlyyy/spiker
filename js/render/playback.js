@@ -552,6 +552,7 @@ function applyBeat(b, t) {
   const e = ease(t);
   for (const id in A.disp) {
     const d = A.disp[id];
+    if (d.fallMs != null && d.airV) continue; // coming down from a jump: momentum carries them (stepPlayerTimers)
     if (d.tx === d.sx && d.tz === d.sz) continue;
     if (diving(d) && d.dv.t > d.dv.dur) continue; // on the floor: runs on only once back up (endBeat carries the move)
     if (id === A.digHero && d.waitLand && d.jy <= 1 && (d.landMs == null || d.landMs > 60)) d.waitLand = false; // feet down: go
@@ -574,6 +575,39 @@ function applyBeat(b, t) {
     capMove(d, lerp(d.sx, d.tx, u), lerp(d.sz, d.tz, u));
   }
   separate();
+  airMomentum();
+}
+/** Share of the ground speed a jump keeps in the air, and the cap (m/s): a running take-off carries on a little. */
+const AIR_KEEP = 0.35,
+  AIR_MAX = 2.5;
+/**
+ * Jump physics (display only): on the ground each player's velocity is measured; at take-off a share of it becomes
+ * their air velocity (d.airV, court units per ms), which carries them while they fall back down (so a running
+ * spiker lands past the take-off spot instead of dropping straight down in place). Never through the net.
+ */
+function airMomentum() {
+  const dt = A.fdt || 16;
+  for (const id in A.disp) {
+    const d = A.disp[id];
+    if (d.jy <= 1) {
+      if (d.pvx != null && dt > 0) {
+        d.gvx = (d.x - d.pvx) / dt;
+        d.gvz = (d.z - d.pvz) / dt;
+      }
+      d.airV = null;
+    } else if (!d.airV) {
+      let vx = (d.gvx || 0) * AIR_KEEP,
+        vz = (d.gvz || 0) * AIR_KEEP;
+      const ms = Math.hypot(vx * MX, vz * MZ) * 1000; // m/s
+      if (ms > AIR_MAX) {
+        vx *= AIR_MAX / ms;
+        vz *= AIR_MAX / ms;
+      }
+      d.airV = { vx, vz };
+    }
+    d.pvx = d.x;
+    d.pvz = d.z;
+  }
 }
 /** Closest two players' feet may come (metres): bodies push apart instead of overlapping. */
 const BODY_GAP = 0.6;
@@ -756,6 +790,11 @@ function stepPlayerTimers(wdt, raw) {
     if (d.fallMs != null) {
       // real gravity: h = h0 − ½·g·t² (court h units: 150 = 2.43 m); fallH because jmode can be cleared mid-fall
       d.fallMs += dt;
+      if (d.airV) {
+        // momentum from the take-off carries on until touchdown (never over the net)
+        d.x = d.side === 0 ? Math.min(NETX - 8, d.x + d.airV.vx * dt) : Math.max(NETX + 8, d.x + d.airV.vx * dt);
+        d.z = clamp(d.z + d.airV.vz * dt, -0.3, 1.3);
+      }
       d.jy = Math.max(0, d.fallH - (0.5 * 9.81 * Math.pow(d.fallMs / 1000, 2) * 150) / 2.43);
       if (d.jy <= 0) {
         d.fallMs = null;
