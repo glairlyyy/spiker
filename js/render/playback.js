@@ -163,6 +163,8 @@ function startBeat(b) {
   digChase(b);
   preDigLook(b);
 }
+/** Gravity for players coming down from a jump (m/s²): 1.6× real, so landings feel snappy, not floaty. */
+const FALL_G = 9.81 * 1.6;
 /** Share of the beat before a far dig at which the digger reads the attack and starts running. */
 const PREDIG_AT = 0.5;
 /**
@@ -203,7 +205,7 @@ function digChase(b) {
     d = a && A.disp[a.to.p];
   if (!d || d.via || b.cut || b.scene) return;
   // ms needed: still in the air (a blocker coming down) → the fall and the landing first, then the sprint
-  const air = d.jy > 2 ? Math.sqrt((2 * d.jy * (2.43 / 150)) / 9.81) * 1000 + 60 : 0,
+  const air = d.jy > 2 ? Math.sqrt((2 * d.jy * (2.43 / 150)) / FALL_G) * 1000 + 60 : 0,
     need = air + (Math.hypot((d.tx - d.x) * MX, (d.tz - d.z) * MZ) / sprintOf(d)) * 1000,
     k = clamp((b.dur * 0.85) / Math.max(1, need), DIG_SLOW_MIN, 1);
   if (k > 0.92) return; // reachable at normal speed
@@ -827,7 +829,7 @@ function stepPlayerTimers(wdt, raw) {
         d.x = d.side === 0 ? Math.min(NETX - 8, d.x + d.airV.vx * dt) : Math.max(NETX + 8, d.x + d.airV.vx * dt);
         d.z = clamp(d.z + d.airV.vz * dt, -0.3, 1.3);
       }
-      d.jy = Math.max(0, d.fallH - (0.5 * 9.81 * Math.pow(d.fallMs / 1000, 2) * 150) / 2.43);
+      d.jy = Math.max(0, d.fallH - (0.5 * FALL_G * Math.pow(d.fallMs / 1000, 2) * 150) / 2.43);
       if (d.jy <= 0) {
         d.fallMs = null;
         d.jmode = null;
