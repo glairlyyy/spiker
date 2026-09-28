@@ -161,6 +161,34 @@ function startBeat(b) {
     }
   }
   digChase(b);
+  preDigLook(b);
+}
+/** Share of the beat before a far dig at which the digger reads the attack and starts running. */
+const PREDIG_AT = 0.5;
+/**
+ * Reading the attack: if the next beat is a dig the player can't reach in its time, they start running for it
+ * already in this beat (as the hitter swings), so less of the far-dig slow motion is needed. Display only.
+ */
+function preDigLook(b) {
+  A.preDig = null;
+  const nb = A.beats && A.beats[A.bi + 1];
+  if (!nb || nb.cut || nb.scene || b.cut || b.scene) return;
+  const a = nb.acts.find(x => x.k === 'ball' && x.to && x.to.p && (x.to.c === 'bump' || x.to.c === 'dive') && x.when !== 'end'),
+    mvA = a && nb.acts.find(x => x.k === 'slide' && x.p === a.to.p);
+  if (mvA) A.preDig = { p: a.to.p, x: mvA.x, z: mvA.z, dur: nb.dur };
+}
+function preDigGo() {
+  const g = A.preDig,
+    d = A.disp[g.p];
+  g.go = true;
+  if (!d || d.pose === 'spike' || d.pose === 'set' || d.jy > 2) return; // busy with their own play
+  const need = (Math.hypot((g.x - d.x) * MX, (g.z - d.z) * MZ) / sprintOf(d)) * 1000;
+  if (need <= g.dur * 0.85) return; // they'll make it in time anyway
+  d.sx = d.x;
+  d.sz = d.z;
+  d.tx = g.x;
+  d.tz = g.z;
+  d.carry = true; // straight there at a sprint (the dig beat's own move picks up from wherever they've got to)
 }
 /** Top running speed in m/s (a dive launches ×1.35 faster). */
 const sprintOf = d => (6.5 + 3.5 * (((d.p && d.p.speed) || 60) / 100)) * (d.pose === 'dive' ? 1.35 : 1);
@@ -552,6 +580,7 @@ function applyBeat(b, t) {
       if (d) tweenJump(d, a, b, t);
     }
   }
+  if (A.preDig && !A.preDig.go && t >= PREDIG_AT) preDigGo();
   const e = ease(t);
   for (const id in A.disp) {
     const d = A.disp[id];
@@ -808,6 +837,13 @@ function stepPlayerTimers(wdt, raw) {
           d.sx = d.tx = d.x;
           d.sz = d.tz = d.z;
           d.carry = false;
+          d.via = null;
+        } else if (d.airV) {
+          // a move ordered mid-air (back to base after a serve…): go there straight from the landing spot — not along
+          // the path from where they took off, which would first pull them back toward the take-off point
+          d.sx = d.x;
+          d.sz = d.z;
+          d.carry = true;
           d.via = null;
         }
       }

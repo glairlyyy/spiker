@@ -237,7 +237,8 @@ technique). Kill blocks get a scene: a `ball` close-up on the stuff, then the bl
 time (including coming down from a block jump), the beat gets `_dig` = the world time scale that makes it just
 reachable (≥ `DIG_SLOW_MIN`). `timeScale` drops to it at once; the digger (`A.digHero`) runs on real time — timers,
 `capMove` sprint cap, straight-line chase, 3D posing — so they move and dive at normal speed while the ball and
-everyone else slow down. Presentation only (no engine change).
+everyone else slow down. Presentation only (no engine change). Before that, `preDigLook`/`preDigGo` let the
+digger read the attack: halfway through the beat before a far dig they already start running for it.
 
 Dives: after the contact the dive runs on fixed time (`diveF`, `DIVE_POST_MS`: on the floor, then back up) and
 passive poses (`DIVE_KEEP`: ready / bump / huddle) wait for it (`afterDive`); a player on the floor doesn't move
