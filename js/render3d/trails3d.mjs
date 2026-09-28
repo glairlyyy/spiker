@@ -15,7 +15,7 @@ void main() {
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
 /** Outer share of the half-width that is outline. */
-const OUT = '0.32';
+const OUT = '0.15';
 const FS = `
 uniform vec3 color;
 uniform vec3 core;
@@ -34,7 +34,7 @@ void main() {
   gl_FragColor = vec4(ink, band * min(1.0, vA * 1.4) * 0.9);
 }`;
 /** The strip is this much wider than o.width, so the glow inside the outline keeps its old width. */
-const OUT_W = 1.4;
+const OUT_W = 1.15;
 /** Outline colour: a deep navy ink, like the canvas text outlines. */
 const INK = new THREE.Color('#0b1030');
 const tA = new THREE.Vector3(),
