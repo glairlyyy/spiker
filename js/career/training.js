@@ -132,7 +132,7 @@ const Training = {
     return `Limit Break trial failed — ${STATNAME[stat]} stays capped at ${Training.gate(run, stat)} for now: ${out.filter(Boolean).join(', ')}`;
   },
   rest(run) {
-    const out = [Run.bump(run, 'sta', Math.round(rnd(30, 60)))];
+    const out = [Run.bump(run, 'sta', Math.round(rnd(30, 60) * World.restMul(run)))];
     if (run.injury && R() < 0.5) {
       run.injury.weeks = Math.max(0, run.injury.weeks - 1);
       out.push('injury healing faster');

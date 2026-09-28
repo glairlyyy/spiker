@@ -1,7 +1,11 @@
 // Career matches: warm-ups, the Skyline Cup (after week 24) and the Grand Cup (after week 28), match grades,
 // pre-match focus, the captain's team talk, placement rewards and the end of a run.
 
+/** Cup "placing" for a free agent who never played in it. */
+const NO_CUP = 'Did not play';
 const Cup = {
+  /** How a cup went for you, in words. */
+  placeText: p => (p === 'Champion' ? '🏆 Champion' : p === NO_CUP ? 'did not play' : `out in the ${p.toLowerCase()}`),
   /** Warm-up opponent: 'warmup' a random team (fixed for the week), 'warmup2' the strongest other team. */
   warmupOpponent(run) {
     const others = run.teams.filter((t, i) => i !== run.team);
@@ -19,6 +23,11 @@ const Cup = {
     }
     run.cup = { id: def.id, sched: newBracket(ord), done: false };
     Run.log(run, `The ${def.name} begins${def.seeded ? ' (seeded by rating)' : ''}. Stamina refilled.`);
+    // no club, no cup: a free agent watches it from the stands
+    if (World.isFree(run)) {
+      Run.log(run, `No club has signed you — you watch the ${def.name} from the stands.`);
+      Cup.close(run, NO_CUP);
+    }
   },
   /** Your next Cup match; other matches of earlier slots in the round are simulated first. */
   next(run) {
@@ -105,7 +114,11 @@ const Cup = {
       R0 = kind === 'cup' ? (win ? REWARDS.cupWin : { sp: 0, fans: 0, bond: 0 }) : win ? REWARDS.warmupWin : REWARDS.warmupLoss;
     const sp = Math.round((R0.sp + plays * REWARDS.perPlay.sp) * mul * gmul),
       fans = Math.round((R0.fans + plays * REWARDS.perPlay.fans) * mul * gmul * Sponsors.fanMul(run));
-    const out = [Run.bump(run, 'sp', sp), Run.bump(run, 'fans', fans)];
+    const out = [
+      Run.bump(run, 'sp', sp),
+      Run.bump(run, 'fans', fans),
+      World.prize(run, Math.round((kind === 'cup' ? (win ? ECON.cupWin : 0) : win ? ECON.warmupWin : ECON.warmupLoss) * mul))
+    ];
     if (grade === 'S') out.push(Run.bump(run, 'mood', 1));
     if (R0.bond) {
       for (const q of Run.mates(run)) Run.bond(run, q.id, R0.bond);
@@ -144,11 +157,17 @@ const Cup = {
     const def = Run.cupDef(run);
     Cup.finishBracket(run);
     const P = PLACES[place] || { fans: 0, sp: 0 },
-      out = [Run.bump(run, 'fans', Math.round(P.fans * def.mul)), Run.bump(run, 'sp', Math.round(P.sp * def.mul))];
+      out = [
+        Run.bump(run, 'fans', Math.round(P.fans * def.mul)),
+        Run.bump(run, 'sp', Math.round(P.sp * def.mul)),
+        World.prize(run, Math.round((ECON.place[place] || 0) * def.mul))
+      ];
     run.cups.push({ id: def.id, place, champ: bracketChampion(run.cup.sched) });
     Run.log(
       run,
-      `${place === 'Champion' ? `${Run.myTeam(run).name} win the ${def.name}!` : `Out of the ${def.name} in the ${place.toLowerCase()}.`} ${out.filter(Boolean).join(', ')}`
+      place === NO_CUP
+        ? `The ${def.name} is over — won by ${run.teams[bracketChampion(run.cup.sched)].name}.`
+        : `${place === 'Champion' ? `${Run.myTeam(run).name} win the ${def.name}!` : `Out of the ${def.name} in the ${place.toLowerCase()}.`} ${out.filter(Boolean).join(', ')}`
     );
     if (CUPS.indexOf(def) < CUPS.length - 1) {
       run.cup.done = true;

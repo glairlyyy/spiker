@@ -17,9 +17,11 @@ function renderCareer() {
   else if (wt === 'warmup' || wt === 'warmup2') main = warmupPanel(run);
   else main = trainingPanel(run);
   $('#app').innerHTML = `<section class="career" style="--tc:${team.color}">
-    <aside>${youCard(run)}${seasonCard(run)}${bondCard(run)}</aside>
+    <aside>${youCard(run)}${lifeCard(run)}${seasonCard(run)}${bondCard(run)}</aside>
     <div class="cmain">
       ${calendar(run)}
+      ${gazetteCard(run)}
+      ${World.isFree(run) && !run.event ? clubsCard(run) : ''}
       ${main}
       ${skillShop(run)}
       <div class="panel">${fold('diary', `<h3>Diary <span class="mute small">${run.log.length}</span></h3>`, `<ol class="log">${run.log.map(l => `<li><b>${typeof l.w === 'number' ? 'W' + l.w : l.w}</b> ${esc(l.t)}</li>`).join('')}</ol>`)}
@@ -58,6 +60,7 @@ function youCard(run) {
       <div><span>Mood</span><span class="mood m${run.mood}">${mood.name}</span></div>
       <div><span>Skill points</span><b>${run.sp}</b></div>
       <div><span>Fans</span><b>${run.fans.toLocaleString()}</b></div>
+      <div><span>Money</span><b>$${run.money.toLocaleString()}</b></div>
     </div>
     ${elementLine(run)}
     ${you.skills.length ? `<div class="skchips">${you.skills.map(skillChip).join('')}</div>` : ''}
@@ -99,7 +102,7 @@ function seasonCard(run) {
       : '';
   return `<div class="panel season"><h3>Season${run.sponsors.length ? '' : info(`Sponsors make offers at ${SPONSOR_AT.map(f => f.toLocaleString()).join(', ')} fans.`)}</h3>
     ${g ? `<div class="goal ${g.done === true ? 'ok' : g.done === false ? 'miss' : ''}"><b>Coach's goal${info(`Reward: +${GOAL_REWARD.sp} skill pts, +${GOAL_REWARD.fans} fans, mood up. Missing it: mood down.`)}</b> ${esc(Goals.text(run, g))} <span class="mute small">by W${g.by}${prog ? ' · ' + prog : ''}${g.done === true ? ' · reached' : g.done === false ? ' · missed' : ''}</span></div>` : ''}
-    ${run.cups.map(c => `<div class="small">${esc(CUPS.find(x => x.id === c.id).name)}: <b>${c.place === 'Champion' ? '🏆 Champion' : 'out in the ' + c.place.toLowerCase()}</b></div>`).join('')}
+    ${run.cups.map(c => `<div class="small">${esc(CUPS.find(x => x.id === c.id).name)}: <b>${Cup.placeText(c.place)}</b></div>`).join('')}
     ${
       run.sponsors.length
         ? `<div class="small"><b>Sponsors</b> ${run.sponsors
@@ -169,6 +172,7 @@ function trainingPanel(run) {
       ${pv.fail ? `<span class="f ${pv.fail > 0.25 ? 'hi' : 'md'}">${Math.round(pv.fail * 100)}% fail</span>` : ''}
       ${pv.streak ? `<span class="stk" title="Same training in a row">Streak +${Math.round(pv.streak * 100)}%</span>` : ''}
       <span class="fl">${pv.mates
+        .filter(id => T.P.some(p => p.id === id)) // a teammate who has since left
         .map(id =>
           faceSVG(
             T.P.find(p => p.id === id),
@@ -208,7 +212,7 @@ function warmupPanel(run) {
   return `<div class="panel"><h3>Week ${run.week}: warm-up${info(`Win: +${REWARDS.warmupWin.sp} skill pts, +${REWARDS.warmupWin.fans} fans, +${REWARDS.warmupWin.bond} bond. Loss: +${REWARDS.warmupLoss.sp} skill pts, +${REWARDS.warmupLoss.fans} fans. Each of your kills, blocks and aces adds more.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3>
     <p>${chip(Run.myTeam(run))}${esc(Run.myTeam(run).name)} vs ${chip(opp)}<b>${esc(opp.name)}</b> <span class="mute small">${opp.S.name} · rating ${opp.ovr}</span></p>
     ${matchPrep(run, false)}
-    <button class="btn hot big" onclick="playCareer('warmup')">Play warm-up</button></div>`;
+    <div class="trow"><button class="btn hot big" onclick="playCareer('warmup')">Play warm-up</button><button class="btn big" onclick="playCareer('warmup', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
 }
 function cupPanel(run) {
   const S = run.cup.sched,
@@ -230,7 +234,7 @@ function cupPanel(run) {
       <div class="bcol"><h4>Final</h4>${slot(S[6])}</div></div>
     <div class="panel"><h3>${nm.round}${info(`Win: +${Math.round(REWARDS.cupWin.sp * def.mul)} skill pts, +${Math.round(REWARDS.cupWin.fans * def.mul).toLocaleString()} fans. ${last ? 'A loss ends the season.' : `A loss ends your ${def.name} — the season goes on to the Grand Cup.`}\nPlacement: quarterfinal +${Math.round(P.Quarterfinal.fans * def.mul)} fans · semifinal +${Math.round(P.Semifinal.fans * def.mul)} · runner-up +${Math.round(P.Final.fans * def.mul).toLocaleString()} · champion +${Math.round(P.Champion.fans * def.mul).toLocaleString()}${last ? ` · both cups: +${DOUBLE_CROWN} Legacy points` : ''}.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3><p>vs <b>${esc(T[nm.a === run.team ? nm.b : nm.a].name)}</b></p>
       ${matchPrep(run, true)}
-    <button class="btn hot big" onclick="playCareer('cup')">Play ${nm.round.toLowerCase()}</button></div>`;
+    <div class="trow"><button class="btn hot big" onclick="playCareer('cup')">Play ${nm.round.toLowerCase()}</button><button class="btn big" onclick="playCareer('cup', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
 }
 function eventCard(run) {
   const e = Events.def(run.event, run),
@@ -314,8 +318,56 @@ function seePhysio() {
 function learnSkill(id) {
   if (Skills.learn(RUN, id)) renderCareer();
 }
-function playCareer(kind) {
-  navigate('match', Cup.fixture(RUN, kind));
+/** Play a career match on the match screen, or (sim) resolve it at once without watching. */
+function playCareer(kind, sim) {
+  const fx = Cup.fixture(RUN, kind);
+  if (!sim) return navigate('match', fx);
+  const m = newMatch(fx.a, fx.b, false);
+  if (fx.setup) fx.setup(m);
+  while (!m.over) playRally(m);
+  fx.onFinish(m);
+  renderCareer();
+}
+/** Money and housing. Rent is paid on payday (every few weeks). */
+function lifeCard(run) {
+  const H = HOUSING[run.housing],
+    next = Math.ceil(run.week / ECON.payEvery) * ECON.payEvery;
+  return `<div class="panel life"><h3>Life${info(`Payday every ${ECON.payEvery} weeks: +$${ECON.allowance} allowance, −$${ECON.food} food, −rent. Run out of money and you're evicted to the abandoned gym. Prize money from matches.`)}</h3>
+    <div class="small"><b>$${run.money.toLocaleString()}</b> · next payday week ${next}</div>
+    <label class="small hsel">Home <select onchange="setHousing(this.value)" aria-label="Housing">${HOUSEK.map(k => `<option value="${k}" ${k === run.housing ? 'selected' : ''}>${HOUSING[k].name} — $${HOUSING[k].rent}</option>`).join('')}</select>${info(H.desc)}</label>
+    <div class="small mute">${World.isFree(run) ? 'Free agent — no club yet' : `${esc(FACTIONS[run.team].name)}${info(`${FACTIONS[run.team].front}. Word is: ${FACTIONS[run.team].dark.toLowerCase()}.`)}`}</div></div>`;
+}
+/** Clubs that would sign you (free agents only). */
+function clubsCard(run) {
+  return `<div class="panel clubs">${fold(
+    'clubs',
+    `<h3>Find a club${info('You play warm-ups with a pickup squad and miss the cups until a club signs you. You take the same-role spot on the club.')}</h3>`,
+    `<div class="clist">${run.teams
+      .map(t => {
+        const c = World.canJoin(run, t.i),
+          f = FACTIONS[t.i];
+        return `<div class="club" style="--tc:${t.color}"><div>${chip(t)}<b>${esc(t.name)}</b> <span class="mute small">${esc(f.name)} · OVR ${t.ovr}</span>${info(`${f.front}. Word is: ${f.dark.toLowerCase()}.`)}</div>
+          <div class="small ${c.ok ? '' : 'mute'}">${World.joinText(t.i)}</div>
+          <button class="btn ${c.ok ? 'hot' : ''}" onclick="joinClub(${t.i})" ${c.ok ? '' : 'disabled'} ${c.ok ? '' : tip('Missing: ' + c.why.join(', '))}>${c.ok ? 'Sign' : 'Locked'}</button></div>`;
+      })
+      .join('')}</div>`,
+    true
+  )}</div>`;
+}
+/** The Gazette from the last payday, until you dismiss it. */
+function gazetteCard(run) {
+  const g = run.gazette;
+  if (!g || g.read) return '';
+  return `<div class="panel gazette"><h3>The Gazette <span class="mute small">week ${g.week}</span></h3><ul class="small">${g.items.map(t => `<li>${esc(t)}</li>`).join('')}</ul>
+    <button class="btn" onclick="RUN.gazette.read=true;Run.save(RUN);renderCareer()">Close</button></div>`;
+}
+function setHousing(k) {
+  if (World.setHousing(RUN, k)) Run.save(RUN);
+  renderCareer();
+}
+function joinClub(ti) {
+  if (World.join(RUN, ti)) Run.save(RUN);
+  renderCareer();
 }
 /** Abandon: ask inline (browser confirm dialogs are blocked inside the artifact frame), then clear the run. */
 function abandonRun(sure) {

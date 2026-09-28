@@ -23,8 +23,10 @@ const Run = {
       mode = spec.mode || {},
       legend = spec.legend != null && !spec.pure ? Legacy.load().hof[spec.legend] : null;
     const teams = draft.teams,
-      ti = spec.team != null ? spec.team : draft.team,
-      t = teams[ti],
+      free = spec.team == null, // no Team pick: you start as a free agent on a pickup squad
+      pickup = free ? World.pickup(new Set(teams.flatMap(x => x.P.map(p => p.name)))) : null,
+      ti = free ? null : spec.team,
+      t = free ? pickup : teams[ti],
       role = spec.role,
       slot = role === 'S' ? 'S' : role === 'MB' ? 'MB' : 'W0',
       old = t.P.find(p => p.slot === slot),
@@ -70,7 +72,7 @@ const Run = {
       }
     // a Hall of Fame legend may turn up as a star on another team
     const hof = spec.pure ? [] : Legacy.load().hof.filter(h => h !== legend);
-    if (hof.length && R() < 0.5) Run.addLegend(teams, ti, pick(hof));
+    if (hof.length && R() < 0.5) Run.addLegend(teams, ti == null ? -1 : ti, pick(hof));
     const staMax = Legacy.staMax(legacy);
     const run = {
       v: RUN_VERSION,
@@ -111,9 +113,20 @@ const Run = {
       hist: [],
       // v4: the Element Trial (S grade in the zone done? next offer week)
       elProof: false,
-      elNext: 0
+      elNext: 0,
+      // v5: free agency (pickup squad until you sign), money, housing, league news and the Gazette
+      pickup,
+      money: ECON.start,
+      housing: 'studio',
+      news: [],
+      gazette: null
     };
-    Run.log(run, `${you.name} joins ${t.name} as ${ROLE_NAME[role].toLowerCase()}.`);
+    Run.log(
+      run,
+      free
+        ? `${you.name} arrives in the city as a free agent (${ROLE_NAME[role].toLowerCase()}) — find a club that will take you.`
+        : `${you.name} joins ${t.name} as ${ROLE_NAME[role].toLowerCase()}.`
+    );
     if (legend)
       Run.log(
         run,
@@ -165,7 +178,12 @@ const Run = {
     const you = Run.you(run);
     run.hist.push({ w: run.week, ovr: ovr(you), ...Object.fromEntries(STATK.map(k => [k, you[k]])), wit: you.wit });
   },
-  myTeam: run => run.teams[run.team],
+  /** Your team: a league club, or the pickup squad while you're a free agent (run.team null). */
+  myTeam: run => (run.team == null ? run.pickup : run.teams[run.team]),
+  /** League news for the next Gazette. */
+  news(run, text) {
+    (run.news || (run.news = [])).push(text);
+  },
   you: run => Run.myTeam(run).P.find(p => p.id === run.youId),
   mates: run => Run.myTeam(run).P.filter(p => p.id !== run.youId),
   /** What this week is: 'train' | 'camp' | 'warmup' | 'warmup2' | 'cup'. */
@@ -218,6 +236,7 @@ const Run = {
   bond(run, mateId, v) {
     const you = Run.you(run),
       m = Run.myTeam(run).P.find(p => p.id === mateId);
+    if (!m) return ''; // that teammate is gone (you changed club, or they were transferred)
     const nv = clamp((you.bond[mateId] || 0) + v, 0, 100),
       d = nv - (you.bond[mateId] || 0);
     you.bond[mateId] = nv;
@@ -235,6 +254,7 @@ const Run = {
       run.injury = null;
       Run.log(run, 'Fully recovered from the injury.');
     }
+    World.week(run);
     run.trained = 0;
     Run.snap(run);
     run.week++;
@@ -252,7 +272,10 @@ const Run = {
   },
   /** Save the run (teams in their compact JSON form). */
   save(run) {
-    store.setJSON(KEYS.career, Object.assign({}, run, { teams: run.teams.map(teamToJSON) }));
+    store.setJSON(
+      KEYS.career,
+      Object.assign({}, run, { teams: run.teams.map(teamToJSON), pickup: run.pickup ? teamToJSON(run.pickup) : null })
+    );
   },
   /** Load the saved run, upgrading older save formats step by step (see RUN_MIGRATIONS). */
   load() {
@@ -264,7 +287,7 @@ const Run = {
         if (!up) return null;
         d = up(d);
       }
-      const run = Object.assign(d, { teams: d.teams.map(teamFromJSON) });
+      const run = Object.assign(d, { teams: d.teams.map(teamFromJSON), pickup: d.pickup ? teamFromJSON(d.pickup) : null });
       if (!Run.myTeam(run) || !Run.you(run)) return null; // corrupt save: your player is missing
       Run.repair(run);
       elAll(run.teams); // players from older saves get their element
@@ -276,7 +299,9 @@ const Run = {
   /** Fill collections and counters a damaged save may lack, so the career screens never meet undefined / NaN. */
   repair(run) {
     for (const k of ['log', 'seen', 'warm', 'cups', 'sponsors', 'hist']) if (!Array.isArray(run[k])) run[k] = [];
-    for (const k of ['sp', 'fans', 'trained', 'elNext']) if (!Number.isFinite(run[k])) run[k] = 0;
+    for (const k of ['sp', 'fans', 'trained', 'elNext', 'money']) if (!Number.isFinite(run[k])) run[k] = 0;
+    if (!HOUSING[run.housing]) run.housing = 'studio';
+    if (!Array.isArray(run.news)) run.news = [];
     if (!Number.isFinite(run.staMax) || run.staMax <= 0) run.staMax = Legacy.staMax(run.legacy);
     if (!Number.isFinite(run.sta)) run.sta = run.staMax;
     if (!Number.isInteger(run.mood) || !MOODS[run.mood]) run.mood = 2;
@@ -298,7 +323,7 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 4;
+const RUN_VERSION = 5;
 const RUN_MIGRATIONS = {
   // v1 → v2: 12-week calendar became 24 weeks; players gained a hidden growth potential.
   1: d => {
@@ -341,6 +366,12 @@ const RUN_MIGRATIONS = {
     if (you) you.elSeen = ovr(you) >= 70;
     Object.assign(d, { elProof: false, elNext: 0 });
     d.v = 4;
+    return d;
+  },
+  // v4 → v5: money, housing and the Gazette (runs in progress keep their team — no pickup squad).
+  4: d => {
+    Object.assign(d, { pickup: null, money: ECON.start, housing: 'studio', news: [], gazette: null });
+    d.v = 5;
     return d;
   }
 };

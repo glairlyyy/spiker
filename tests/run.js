@@ -149,6 +149,7 @@ function playRun(g, role = 'WS') {
       if (!pre) g.Run.endWeek(run);
       continue;
     }
+    if (g.World.isFree(run)) for (const t of run.teams) if (g.World.join(run, t.i)) break; // sign as soon as a club allows
     const wt = g.Run.weekType(run);
     if (wt === 'cup' || wt.startsWith('warmup')) {
       run.focus = g.FOCUS[role][0][0];
@@ -196,13 +197,13 @@ test('career: save → load round-trip keeps the run intact', () => {
   assert(back, 'load returned null');
   eq(back.week, run.week, 'week');
   eq(g.Run.you(back).jump, g.Run.you(run).jump, 'jump stat');
-  eq(g.Run.you(back).team, back.teams[back.team], 'player re-linked to team');
+  eq(g.Run.you(back).team, g.Run.myTeam(back), 'player re-linked to team');
   eq(JSON.stringify(back.teams.map(g.teamToJSON)), JSON.stringify(run.teams.map(g.teamToJSON)), 'teams');
 });
 test('career: old saves are migrated, not discarded', () => {
   const g = load(6),
     d = g.Run.draft(),
-    run = g.Run.create(d, { role: 'WS', name: 'Old', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
+    run = g.Run.create(d, { role: 'WS', name: 'Old', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0, team: 0 }); // old saves: always on a club
   // build a v1-shaped save: 12-week calendar, no potentials, no star/op fields on you
   run.week = 7;
   const v1 = Object.assign({}, run, { v: 1, teams: run.teams.map(g.teamToJSON) });
@@ -221,7 +222,13 @@ test('career: old saves are migrated, not discarded', () => {
 });
 test('career: v2 saves (one cup, 24 weeks) upgrade to the two-cup season', () => {
   const g = load(9),
-    run = g.Run.create(g.Run.draft(), { role: 'MB', name: 'Mid', alloc: { power: 10, def: 20, speed: 10, jump: 20 }, witSteps: 0 });
+    run = g.Run.create(g.Run.draft(), {
+      role: 'MB',
+      name: 'Mid',
+      alloc: { power: 10, def: 20, speed: 10, jump: 20 },
+      witSteps: 0,
+      team: 0
+    });
   g.Run.you(run).jump = 84;
   const v2 = Object.assign({}, run, { v: 2, week: 25, teams: run.teams.map(g.teamToJSON) });
   for (const k of [
@@ -368,7 +375,13 @@ test('engine: elements — rarity, every element fires, counters, captain buff',
 });
 test('career: element hidden → revealed → Element Trial → unlocked, and saved', () => {
   const g = load(22),
-    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Spark', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    run = g.Run.create(g.Run.draft(), {
+      role: 'WS',
+      name: 'Spark',
+      alloc: { power: 20, def: 10, speed: 10, jump: 20 },
+      witSteps: 0,
+      team: 0
+    }),
     you = g.Run.you(run);
   assert(you.el && !you.elOn && !you.elSeen, 'your element starts hidden and locked');
   for (const k of g.STATK) you[k] = 80;
@@ -449,6 +462,67 @@ test('engine: recorded beats stay well-formed in every mode (no NaN, known playe
       }
     assert(m.over, 'match ends');
   }
+});
+
+test('career: free agent start, club join conditions, paydays, transfers, spectated cups', () => {
+  const g = load(41),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Walk-on', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    you = g.Run.you(run);
+  assert(g.World.isFree(run) && g.Run.myTeam(run) === run.pickup && run.pickup.P.length === 4, 'starts on a pickup squad');
+  eq(run.money, g.ECON.start, 'starting money');
+  // a club with a fee you can't pay is locked; an open club signs you and you take a same-role slot
+  const pricey = g.FACTIONS.findIndex(f => f.join.fee > run.money),
+    open = g.FACTIONS.findIndex(f => !Object.keys(f.join).length);
+  assert(!g.World.canJoin(run, pricey).ok && !g.World.join(run, pricey), 'fee club locked');
+  assert(g.World.join(run, open), 'open club signs you');
+  eq(run.team, open, 'on the club');
+  assert(run.teams[open].P.includes(you) && run.teams[open].P.length === 4 && run.pickup.P.length === 4, 'rosters stay 4');
+  assert(!g.World.canJoin(run, open).ok, "can't sign twice");
+  // payday: allowance − food − rent; an empty wallet means eviction
+  g.World.setHousing(run, 'condo');
+  run.money = 0;
+  run.week = 4;
+  g.World.payday(run);
+  eq(run.housing, 'homeless', 'evicted when broke');
+  assert(run.gazette && run.gazette.items.length, 'gazette published');
+  for (const t of run.teams) assert(t.P.length === 4 && t.P.every(p => p.team === t), 'transfers keep rosters linked');
+  // a free agent who never signs watches both cups and the run still ends
+  const h = load(42),
+    r2 = h.Run.create(h.Run.draft(), { role: 'MB', name: 'Loner', alloc: { power: 10, def: 20, speed: 10, jump: 20 }, witSteps: 0 });
+  let guard = 0;
+  while (!r2.result && guard++ < 200) {
+    if (r2.event) {
+      const pre = r2.event.pre;
+      h.Events.choose(r2, 1);
+      if (!pre) h.Run.endWeek(r2);
+      continue;
+    }
+    const wt = h.Run.weekType(r2);
+    if (wt.startsWith('warmup')) {
+      const fx = h.Cup.fixture(r2, 'warmup'),
+        m = h.newMatch(fx.a, fx.b, false);
+      while (!m.over) h.playRally(m);
+      fx.onFinish(m);
+    } else {
+      h.Training.rest(r2);
+      h.Run.endWeek(r2);
+    }
+  }
+  assert(r2.result, 'run ends');
+  eq(r2.cups.map(c => c.place).join(','), `${h.NO_CUP},${h.NO_CUP}`, 'both cups watched');
+  // v4 saves gain money and housing and keep their club
+  const r3 = g.Run.create(g.Run.draft(), {
+      role: 'S',
+      name: 'Old',
+      alloc: { power: 10, def: 10, speed: 30, jump: 10 },
+      witSteps: 0,
+      team: 1
+    }),
+    v4 = Object.assign({}, r3, { v: 4, teams: r3.teams.map(g.teamToJSON), pickup: null });
+  for (const k of ['money', 'housing', 'news', 'gazette']) delete v4[k];
+  g.store.setJSON(g.KEYS.career, v4);
+  const up = g.Run.load();
+  assert(up && up.v === g.RUN_VERSION && up.team === 1 && up.money === g.ECON.start && up.housing === 'studio', 'v4 save upgraded');
 });
 
 // ---------- report ----------

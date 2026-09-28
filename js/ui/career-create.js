@@ -32,7 +32,7 @@ function renderCreate() {
     ti = CR.team != null ? CR.team : CR.draft.team,
     team = T[ti],
     slot = CR.role === 'S' ? 'S' : CR.role === 'MB' ? 'MB' : 'W0',
-    showTeam = on('pick') || on('scout'),
+    showTeam = on('pick') && CR.team != null,
     cap = Legacy.createCap(list),
     L = Legacy.load();
   const row = k => {
@@ -67,8 +67,8 @@ function renderCreate() {
       <h3>Your team</h3>
       ${
         on('pick')
-          ? `<label class="small">Team <select onchange="CR.team=+this.value;renderCreate()">${T.map(t => `<option value="${t.i}" ${t.i === ti ? 'selected' : ''}>${esc(t.name)} — ${t.S.name}</option>`).join('')}</select></label>`
-          : `<p class="small mute">Random team${on('scout') ? '' : info(`You join a random Cup team, replacing its ${ROLE_NAME[CR.role].toLowerCase()}.`)}</p>`
+          ? `<label class="small">Start <select onchange="CR.team=this.value===''?null:+this.value;renderCreate()"><option value="">Free agent</option>${T.map(t => `<option value="${t.i}" ${t.i === CR.team ? 'selected' : ''}>${esc(t.name)} — ${t.S.name}</option>`).join('')}</select></label>`
+          : `<p class="small mute">Free agent${info('You arrive with no club: play warm-ups with a pickup squad and sign with a club once you meet its conditions. Free agents miss the cups.')}</p>`
       }
       ${
         showTeam

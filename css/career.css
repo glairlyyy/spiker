@@ -884,3 +884,9 @@
 .skills.compact.lg .sk {
   padding-right: 9px;
 }
+.life .hsel { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
+.life .hsel select { flex: 1; min-width: 0; }
+.clist { display: grid; gap: 6px; }
+.club { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 6px 8px; border-left: 3px solid var(--tc); background: var(--surf2); border-radius: 8px; }
+.gazette ul { margin: 6px 0 10px; padding-left: 18px; }
+@media (max-width: 600px) { .club { grid-template-columns: 1fr auto; } .club > .small { grid-column: 1 / -1; } }

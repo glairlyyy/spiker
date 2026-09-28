@@ -10,7 +10,7 @@ function renderRunEnd() {
   const cupLine = c => {
     const def = CUPS.find(x => x.id === c.id),
       ch = run.teams[c.champ];
-    return `<li><b>${esc(def.name)}</b> — ${c.place === 'Champion' ? '🏆 Champion' : `out in the ${c.place.toLowerCase()}`}${c.place !== 'Champion' && ch ? ` <span class="mute">(won by ${esc(ch.name)})</span>` : ''}</li>`;
+    return `<li><b>${esc(def.name)}</b> — ${Cup.placeText(c.place)}${c.place !== 'Champion' && ch ? ` <span class="mute">(won by ${esc(ch.name)})</span>` : ''}</li>`;
   };
   $('#app').innerHTML = `<section class="runend" style="--tc:${team.color}">
     <div class="panel rcard">

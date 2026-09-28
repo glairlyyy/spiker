@@ -225,6 +225,15 @@ Targets: ~14% of attacks stuffed in normal matches; Monster games stay offence-h
 technique). Kill blocks get a scene: a `ball` close-up on the stuff, then the blocker's face and line
 (`hypeKillBlock`: level 1 at match point or for a star blocker at most every 6 points).
 
+## Career world (P1)
+
+`js/data/world.js` (FACTIONS per league team with join conditions, ECON, HOUSING) + `js/career/world.js` (World).
+A run starts as a free agent on a pickup squad (`run.pickup`, `run.team` null; `Run.myTeam` returns it) unless the
+Team pick unlock chose a club. `World.join` swaps you into a club's same-role slot (the replaced player drops to the
+pickup squad). Free agents play warm-ups with the pickup squad and watch the cups (`NO_CUP` placing). Every
+`ECON.payEvery` weeks: allowance − food − rent (eviction to the abandoned gym when broke), housing effects, one
+league transfer (`World.transfers`) and a Gazette (`run.gazette`, news collected via `Run.news`). Save v5.
+
 ## Code layout notes
 
 Playback is split into classic scripts loaded right after js/render/playback.js: clock.js (world clock `timeScale`,

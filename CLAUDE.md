@@ -49,4 +49,6 @@ screenshot `#stage`. A STALL line after long synchronous loops is a test artifac
   No manga panels. Slow-mo uses one world clock (A.ts) with eased ramps.
 - Blocks: stuff odds = full-strength block vs spike, weighted by coverage; ~14% of attacks stuffed in normal play.
 - Modes: Career and Monster game only (tournament removed). UI is compact: details in tooltips/folds.
+- Career world (P1): free-agent start, faction join conditions, money/housing/paydays, league transfers, Gazette,
+  Sim ⏭ button to skip a match before playing. Calendar stays 28 weeks; character creation rework later.
 - Open work: full cleanup of js/render3d; scene frequency tuning (Normal ≈ 6–7 per match).

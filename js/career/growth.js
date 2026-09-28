@@ -58,6 +58,7 @@ const Growth = {
     }
     const what = op ? 'awakens as an OP player — red star!' : 'breaks through as a ★ star!';
     Run.log(run, mate ? `Your teammate ${p.name} ${what}` : `League news: ${p.name} (${p.team.name}) ${what}`);
+    if (!mate) Run.news(run, `${p.name} (${p.team.name}) ${what}`);
   },
   /** A teammate trained with you: they take a share of your gains. */
   shared(run, id, pv) {
