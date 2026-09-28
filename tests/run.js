@@ -214,9 +214,9 @@ test('career: Limit Break gates, facility Lv 5 and Hard training', () => {
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
   run.event = null;
-  const n = g.Training.preview(run, 'power', false).main[1],
+  const n = g.Training.preview(run, 'power', false).main[2],
     h = g.Training.preview(run, 'power', true);
-  assert(h.main[1] > n && h.sta === 2 * g.Training.preview(run, 'power', false).sta, 'Hard: more gain, double stamina');
+  assert(h.main[2] > n && h.sta === 2 * g.Training.preview(run, 'power', false).sta, 'Hard: more gain, double stamina');
 });
 test('career: Legacy switches and pure runs', () => {
   const g = load(12);

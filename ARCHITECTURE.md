@@ -296,6 +296,13 @@ training places per stat across regions; sand = technique ×SAND_SP skill points
 `can`/`day`/`evening`/`scout`. Evenings, scouting and resting at home only where you are; away from home you rest at
 a hotel. `run.slot` 'done' = the trip took the evening.
 
+## Training XP
+
+Training gives XP (`Training.xpFor`: base gain × `TRAIN_X.xp.per` × every multiplier — place quality and home turf
+(x), facility level, mood, streak, teammates, camp, Hard). A stat rises a point each time its XP reaches
+`Training.need(v)` = base × grow^(v − from) (exponential); leftovers bank in `run.xp`; nothing banks at a
+limit-break gate or the cap. Wit counts in 0.02 steps (level = wit × 50). Events still change stats directly.
+
 ## Career hub UI
 
 `js/ui/career-hub.js` renders the whole career screen as a fixed full-screen layer (covers the page header): the

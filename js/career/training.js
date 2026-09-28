@@ -61,18 +61,51 @@ const Training = {
   failP: (run, hard) => clamp((50 - run.sta) * 0.015 + (hard ? TRAIN_X.hard.fail : 0), 0, 0.95),
   /** Diminishing returns: ×0.9 from 60, ×0.7 from 70, ×0.45 from 80, ×0.3 from 85, ×0.15 from 92. */
   dim: v => (v >= 92 ? 0.15 : v >= 85 ? 0.3 : v >= 80 ? 0.45 : v >= 70 ? 0.7 : v >= 60 ? 0.9 : 1),
-  /** Expected gain for one stat (diminishing near the top, stopped at the limit-break gate and the run cap). */
-  gain(run, stat, base, mul) {
-    const you = Run.you(run);
-    if (stat === 'wit') return +Math.min(base * mul * (you.wit >= 1.6 ? 0.5 : 1), CAREER.witRunCap - you.wit).toFixed(2);
-    return Math.max(0, Math.min(Math.round(base * mul * Training.dim(you[stat])), Training.gate(run, stat) - you[stat]));
+  /** XP needed for the next point of a stat at level v. */
+  need: v => Math.round(TRAIN_X.xp.base * Math.pow(TRAIN_X.xp.grow, Math.max(0, v - TRAIN_X.xp.from))),
+  /** A stat's level (wit in 0.02 steps). */
+  level: (you, stat) => (stat === 'wit' ? Math.round(you.wit * 50) : you[stat]),
+  /** Where a stat stops: its limit-break gate and the run cap (wit: its own cap). */
+  top: (run, stat) => (stat === 'wit' ? Math.round(CAREER.witRunCap * 50) : Math.min(Training.gate(run, stat), CAREER.runCap)),
+  /** XP a session gives a stat: its base gain (wit converted to 0.02 steps) × per × the multiplier. */
+  xpFor: (stat, base, mul) => Math.round((stat === 'wit' ? base * 50 : base) * TRAIN_X.xp.per * mul),
+  /** Adding xp to a stat: { pts, have } — points gained and the XP left toward the next one (none past the top). */
+  sim(run, stat, xp) {
+    const top = Training.top(run, stat);
+    let v = Training.level(Run.you(run), stat),
+      have = ((run.xp && run.xp[stat]) || 0) + xp,
+      pts = 0;
+    while (v < top && have >= Training.need(v)) {
+      have -= Training.need(v);
+      v++;
+      pts++;
+    }
+    if (v >= top) have = 0; // at the gate / cap: nothing banks until it opens
+    return { pts, have };
   },
+  /** Expected points for one stat from a session (wit as a decimal gain). */
+  gain(run, stat, base, mul) {
+    const { pts } = Training.sim(run, stat, Training.xpFor(stat, base, mul));
+    return stat === 'wit' ? +(pts * 0.02).toFixed(2) : pts;
+  },
+  /** Give a stat XP: raises it by the points earned, banks the rest. Returns a short label for the log. */
+  addXp(run, stat, xp) {
+    const you = Run.you(run),
+      r = Training.sim(run, stat, xp);
+    (run.xp || (run.xp = {}))[stat] = r.have;
+    if (stat === 'wit') you.wit = +(you.wit + r.pts * 0.02).toFixed(2);
+    else you[stat] += r.pts;
+    const up = r.pts ? `+${stat === 'wit' ? (r.pts * 0.02).toFixed(2) : r.pts} ${STATNAME[stat]}` : '';
+    return up ? `${up} (${xp} xp)` : `${xp} ${STATNAME[stat]} xp`;
+  },
+  /** XP toward the next point: { have, need } (for the stat bars). */
+  progress: (run, stat) => ({ have: (run.xp && run.xp[stat]) || 0, need: Training.need(Training.level(Run.you(run), stat)) }),
   preview(run, key, hard, x = 1) {
     const T = TRAININGS[key],
       mul = Training.mul(run, key, hard, x);
     return {
-      main: [T.main[0], Training.gain(run, T.main[0], T.main[1], mul)],
-      side: [T.side[0], Training.gain(run, T.side[0], T.side[1], mul)],
+      main: [T.main[0], Training.gain(run, T.main[0], T.main[1], mul), Training.xpFor(T.main[0], T.main[1], mul)],
+      side: [T.side[0], Training.gain(run, T.side[0], T.side[1], mul), Training.xpFor(T.side[0], T.side[1], mul)],
       sta: Training.staCost(run, key, hard),
       fail: Training.failP(run, hard),
       lvl: Training.facility(run, key) + 1,
@@ -103,7 +136,7 @@ const Training = {
       out.push(Run.bump(run, pv.main[0], pv.main[0] === 'wit' ? -0.03 : -3), Run.bump(run, 'mood', -1));
       return `${name} failed: ${out.filter(Boolean).join(', ')}`;
     }
-    out.push(Run.bump(run, pv.main[0], pv.main[1]), Run.bump(run, pv.side[0], pv.side[1]));
+    out.push(Training.addXp(run, pv.main[0], pv.main[2]), Training.addXp(run, pv.side[0], pv.side[2]));
     out.push(Run.bump(run, 'sta', -pv.sta), Run.bump(run, 'sp', Math.round(CAREER.spPerTraining * (hard ? 1.5 : 1) * spMul)));
     for (const id of pv.mates) {
       out.push(Run.bond(run, id, 7));

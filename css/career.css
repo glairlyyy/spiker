@@ -1626,3 +1626,16 @@
 .spot .stk.far {
   color: #f43f5e;
 }
+.career .xpbar {
+  position: relative;
+  display: block;
+  padding-bottom: 3px;
+}
+.career .xpbar > i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--gold);
+  border-radius: 1px;
+}

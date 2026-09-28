@@ -120,12 +120,12 @@ function trainSpot(run, id, c) {
     x = (Q.known ? Q.q : (REGIONS[s.region] || REGIONS.open).q) * (1 + City.turf(run, id)), // preview at the advertised quality
     pv = Training.preview(run, key, hard, x),
     turf = City.turf(run, id),
-    fmt = ([k, v]) =>
-      v
-        ? `+${k === 'wit' ? v.toFixed(2) : v} ${STATNAME[k]}`
-        : pv.gate && k === pv.main[0]
-          ? `${STATNAME[k]} at ${pv.gate} — Limit Break`
-          : `${STATNAME[k]} maxed`,
+    fmt = ([k, v, xp]) => {
+      const pr = Training.progress(run, k);
+      return pv.gate && k === pv.main[0]
+        ? `${STATNAME[k]} at ${pv.gate} — Limit Break`
+        : `<span ${tip(`${STATNAME[k]}: ${pr.have}/${pr.need} xp to the next point (the XP needed grows with the stat)`)}>+${xp} ${STATNAME[k]} xp${v ? ` → +${k === 'wit' ? v.toFixed(2) : v}` : ''}</span>`;
+    },
     mates = pv.mates.filter(pid => T.P.some(p => p.id === pid)); // a teammate who has since left
   return `<div class="tline">${qualityTag(run, id)} <b class="g">${fmt(pv.main)}</b> <span class="g2">${fmt(pv.side)}</span> <span class="mute small">−${pv.sta} sta · $${City.price(run, id)} · Lv ${pv.lvl}</span>
       ${pv.fail ? `<span class="f ${pv.fail > 0.25 ? 'hi' : 'md'}">${Math.round(pv.fail * 100)}% fail</span>` : ''}

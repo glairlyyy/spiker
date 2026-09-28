@@ -126,6 +126,7 @@ const Run = {
       slot: 'day',
       scout: {},
       spotQ: {},
+      xp: {}, // training experience toward each stat's next point
       loc: 'wu' // off the plane at the airport, on the coast
     };
     Run.log(
@@ -320,6 +321,7 @@ const Run = {
     if (!run.mode || typeof run.mode !== 'object') run.mode = { hard: false, short: false };
     if (!run.plays || typeof run.plays !== 'object') run.plays = { k: 0, blk: 0, ace: 0 };
     if (!run.uses || typeof run.uses !== 'object') run.uses = {};
+    if (!run.xp || typeof run.xp !== 'object') run.xp = {};
     if (!run.floor || typeof run.floor !== 'object') run.floor = {};
     if (!run.lb || typeof run.lb !== 'object') run.lb = Object.fromEntries(STATK.map(k => [k, 0]));
     // an event this version no longer knows (removed / renamed) would leave the week stuck on a blank card

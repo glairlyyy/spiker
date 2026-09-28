@@ -26,7 +26,10 @@ function youCard(run) {
             ? `★ Star${info(`OP at OVR ${CAREER.op.ovr}, ${STATNAME[KEYSTAT[you.role]]} ${CAREER.op.key}, wit ${CAREER.op.wit}`)}`
             : `Rookie${info(`★ Star at OVR ${CAREER.star.ovr}`)}`
       }</div></div></div>
-    <div class="stats">${STATK.map(k => `<span>${STATNAME[k]}${gateTag(k)}</span>${bar(you[k])}`).join('')}
+    <div class="stats">${STATK.map(k => {
+      const pr = Training.progress(run, k);
+      return `<span ${tip(`${pr.have}/${pr.need} xp to the next point`)}>${STATNAME[k]}${gateTag(k)}</span><span class="xpbar">${bar(you[k])}<i style="width:${Math.round((pr.have / Math.max(1, pr.need)) * 100)}%"></i></span>`;
+    }).join('')}
       <span>Wit</span><span class="bar wit"><i style="width:${you.wit * 50}%"></i><b>${you.wit.toFixed(2)}</b></span>
       <span>Leadership</span>${bar(you.lead)}</div>
     <div class="vitals">

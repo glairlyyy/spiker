@@ -58,7 +58,13 @@ const TRAIN_X = {
   streak: { step: 0.05, max: 0.2 },
   gates: [80, 90], // a stat stops here until its Limit Break trial is passed
   injuryAt: 25, // stamina below this: a failed session may injure you
-  physio: 30 // skill points to heal an injury at once
+  physio: 30, // skill points to heal an injury at once
+  /**
+   * Training gives experience; a stat goes up a point each time its XP reaches `need` — which grows exponentially
+   * with the stat: base × grow^(value − from). XP from a session = the training's base gain × per × every multiplier
+   * (place quality, facility level, mood, streak, teammates, camp, Hard…). Wit counts in 0.02 steps (level = wit × 50).
+   */
+  xp: { per: 10, base: 10, grow: 1.05, from: 50 }
 };
 /** Match grade from your own line (kills, blocks, aces, digs, errors, win): multiplies that match's rewards. */
 const GRADES = [
