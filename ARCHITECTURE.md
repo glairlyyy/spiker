@@ -108,6 +108,10 @@ artifact; its drawing code was removed here (only the screen-space layer in `ren
   camera, scene shots `shotPose` with hard cuts, `P3D`, view transform, camera mode, debug camera),
   `actors3d.mjs` (`posePlayer` → `motion`, `steer`, head tracking, `reachForBall`, `lightTrails`, `glow`;
   `poseCoach`; `dressActors`), `fx3d.mjs`, `trails3d.mjs`.
+- Extra player models: a .vrm picked in the menu (Playtest card) is kept in the player's own browser (IndexedDB,
+  `js/ui/models.js`, never uploaded) and loaded at start-up; `R3D.addModel` adds `EXTRA_FIGS` figures of it to the
+  pool and `dressActors` gives it to about 1 in 3 players (stable per player via `hu`). VRM 0.x models are rotated
+  (`rotateVRM0`); dressing matches VRoid material names anywhere in the name.
 - `players3d.mjs` — VRM loading, repeatable dressing, pose → normalized bones, smoothing, arm aiming at the ball
   (`torsoDir`/`bendArm`), feet on the floor, expressions.
 - `poses3d.mjs` — one pose per engine pose, driven by the same values the playback layer keeps (swing/spike

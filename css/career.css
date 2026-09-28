@@ -1503,3 +1503,15 @@
     max-width: calc(100vw - 2 * var(--gap));
   }
 }
+.chipm {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 13px;
+}
+.chipm .x {
+  padding: 0 7px;
+}

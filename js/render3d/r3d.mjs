@@ -65,22 +65,49 @@ async function build(onProgress) {
     scene.add(pl.root);
     prog(0.5 + (0.5 * (i + 1)) / (N_PLAYERS + N_COACHES), 'Getting players ready');
     await new Promise(r => setTimeout(r, 0));
-    if (i < N_PLAYERS) {
-      pl.aura = new THREE.Sprite(
-        new THREE.SpriteMaterial({ map: arena.glowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })
-      );
-      pl.aura.scale.set(2.2, 2.6, 1);
-      scene.add(pl.aura);
-      pl.zone = arena.flatRing(arena.ringTex, 1.5);
-      pl.buff = arena.flatRing(arena.dashTex, 1.7);
-      pl.buff.material.color.set('#ffd84d');
-      pl.trails = [makeTrail(scene), makeTrail(scene)]; // left / right hand light trails (stars and OP players)
-      pl.eyeTrails = [makeTrail(scene, 44), makeTrail(scene, 44)]; // Kuroko-style eye streaks (in the zone / captain's buff)
-      pl.vrm.lookAt && (pl.vrm.lookAt.target = arena.ball);
-      people.push(pl);
-    } else coaches.push(pl);
+    if (i < N_PLAYERS) people.push(kitOut(pl, scene, arena));
+    else coaches.push(pl);
   }
   return { renderer, gl, scene, fx, people, coaches, ...arena };
+}
+
+/** A player figure's extras: aura, zone / buff floor rings, hand and eye light trails, eyes on the ball. */
+function kitOut(pl, scene, arena) {
+  pl.aura = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: arena.glowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })
+  );
+  pl.aura.scale.set(2.2, 2.6, 1);
+  scene.add(pl.aura);
+  pl.zone = arena.flatRing(arena.ringTex, 1.5);
+  pl.buff = arena.flatRing(arena.dashTex, 1.7);
+  pl.buff.material.color.set('#ffd84d');
+  pl.trails = [makeTrail(scene), makeTrail(scene)]; // left / right hand light trails (stars and OP players)
+  pl.eyeTrails = [makeTrail(scene, 44), makeTrail(scene, 44)]; // Kuroko-style eye streaks (in the zone / captain's buff)
+  pl.vrm.lookAt && (pl.vrm.lookAt.target = arena.ball);
+  return pl;
+}
+/** Figures per extra model (a match can show up to this many players with it). */
+const EXTRA_FIGS = 4;
+/**
+ * Add another player model (a .vrm the player loaded from their own disk — never uploaded): EXTRA_FIGS figures of it
+ * join the pool, and dressActors gives it to some players at random (stable per player). Re-dresses a bound match.
+ */
+async function addModel(buf, name) {
+  const w = world || (building && (await building, world));
+  if (!w) throw new Error('3D not ready');
+  const figs = [];
+  for (let i = 0; i < EXTRA_FIGS; i++) {
+    const pl = await makeVRM(buf, 1.8);
+    pl.model = name;
+    pl.root.visible = false;
+    w.scene.add(pl.root);
+    figs.push(kitOut(pl, w.scene, w));
+    await new Promise(r => setTimeout(r, 0));
+  }
+  w.people.push(...figs);
+  w.models = [...(w.models || []), name];
+  if (bound) dressActors(w);
+  return name;
 }
 
 // ---------- per match ----------
@@ -242,6 +269,8 @@ export const api = {
   get res() {
     return world ? +(world.gl.width / Math.max(1, cv.width)).toFixed(2) : null; // 3D render scale vs the court canvas (debug)
   },
+  addModel,
+  models: () => (world && world.models) || [],
   poseAll: dt => world && world.people.forEach(pl => pl.d && posePlayer(pl, dt, W(A.ball.x, A.ball.z, A.ball.h), world.fx)), // test hook: fast-forward posing
   get ballPos() {
     return world ? world.ball.position : null; // the drawn ball (test hook)

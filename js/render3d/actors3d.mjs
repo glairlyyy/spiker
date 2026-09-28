@@ -259,13 +259,28 @@ export function poseCoach(pl, dt, now) {
 
 /** Per match: dress the players (team kit, look, height, trail colours) and coaches; reset per-player state. */
 export function dressActors(w) {
-  const disp = Object.values(A.disp);
-  w.people.forEach((pl, i) => {
-    const d = disp[i];
-    pl.d = d;
+  const disp = Object.values(A.disp),
+    models = w.models || [],
+    free = w.people.slice(),
+    take = model => {
+      const i = free.findIndex(pl => (pl.model || null) === model);
+      return i < 0 ? null : free.splice(i, 1)[0];
+    };
+  for (const pl of w.people) pl.d = null;
+  // each player keeps one model across matches: the base model, or (about 1 in 3 when extra models are loaded)
+  // an extra one — while figures of it are free
+  for (const d of disp) {
+    const h = hu(d.p, 'model'),
+      want = models.length && h < 0.35 ? models[Math.floor((h / 0.35) * models.length)] : null,
+      pl = (want && take(want)) || take(null) || free.shift();
+    if (pl) pl.d = d;
+  }
+  w.people.forEach(pl => {
+    const d = pl.d;
     pl.root.visible = pl.aura.visible = !!d;
     if (!d) {
       for (const t of [...pl.trails, ...pl.eyeTrails]) t.clear();
+      pl.zone.visible = pl.buff.visible = false;
       return;
     }
     const p = d.p,

@@ -97,9 +97,10 @@ export function dress(vrm, kit) {
       m.color && m.color.copy(col(c));
       m.shadeColorFactor && m.shadeColorFactor.copy(col(c).multiplyScalar(shade));
     };
-    if (n.startsWith('Tops')) tint(kit.shirt);
-    else if (n.startsWith('Bottoms')) tint(kit.shorts || '#ffffff', 0.7);
-    else if (n.startsWith('Shoes')) tint(kit.shoes || '#ffffff', 0.75);
+    // VRoid material names (with or without a F00_… prefix)
+    if (/Tops/.test(n)) tint(kit.shirt);
+    else if (/Bottoms/.test(n)) tint(kit.shorts || '#ffffff', 0.7);
+    else if (/Shoes/.test(n)) tint(kit.shoes || '#ffffff', 0.75);
     else if (/HAIR/.test(n)) {
       if (!m.userData.grey) {
         m.map = greyTexture(m.map, 'grayscale(1) brightness(2.1) contrast(1.15)');
@@ -130,6 +131,8 @@ export function dress(vrm, kit) {
 export async function makeVRM(buf, height) {
   const gltf = await loader.parseAsync(buf.slice(0), '');
   const vrm = gltf.userData.vrm;
+  if (!vrm) throw new Error('not a VRM model');
+  if (vrm.meta && vrm.meta.metaVersion === '0') VRMUtils.rotateVRM0(vrm); // VRM 0.x faces −Z: turn it like a VRM 1 model
   VRMUtils.removeUnnecessaryVertices(gltf.scene);
   if (VRMUtils.combineSkeletons) VRMUtils.combineSkeletons(gltf.scene);
   vrm.scene.traverse(o => {
