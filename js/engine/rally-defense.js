@@ -234,7 +234,11 @@ function dig(c, x, bl) {
   const { m, B, V, atk, ds, dd, defT } = c,
     { tip, cov, spiker, setter, blockers, lx, lz, hdur, hit, bdown, tier, combo, bitten, fakeDecoy, el, elS } = x,
     { touched, softTouch, smashed, pow } = bl;
-  const cands = defT.P.filter(p => !blockers.includes(p));
+  // blockers — and every other free front-row player, who went up late (see formBlock's lateB) — are still in the
+  // air or landing at the net: the dig goes to someone on the floor behind them (a front-row player only if nobody is)
+  const atNet = p => blockers.includes(p) || (c.front(ds, p) && !busy(m, p, c.n)),
+    floor = defT.P.filter(p => !atNet(p)),
+    cands = floor.length ? floor : defT.P.filter(p => !blockers.includes(p));
   const dg = nearest(m, cands, lx, lz),
     q0 = m.pos[dg.id],
     dd0 = dist(q0, lx, lz);
