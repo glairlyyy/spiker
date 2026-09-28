@@ -200,64 +200,6 @@ test('career: save → load round-trip keeps the run intact', () => {
   eq(g.Run.you(back).team, g.Run.myTeam(back), 'player re-linked to team');
   eq(JSON.stringify(back.teams.map(g.teamToJSON)), JSON.stringify(run.teams.map(g.teamToJSON)), 'teams');
 });
-test('career: old saves are migrated, not discarded', () => {
-  const g = load(6),
-    d = g.Run.draft(),
-    run = g.Run.create(d, { role: 'WS', name: 'Old', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0, team: 0 }); // old saves: always on a club
-  // build a v1-shaped save: 12-week calendar, no potentials, no star/op fields on you
-  run.week = 7;
-  const v1 = Object.assign({}, run, { v: 1, teams: run.teams.map(g.teamToJSON) });
-  for (const t of v1.teams) for (const p of t.P) delete p.pot;
-  g.store.setJSON(g.KEYS.career, v1);
-  const m = g.Run.load();
-  assert(m, 'v1 save should migrate');
-  eq(m.v, g.RUN_VERSION, 'version bumped');
-  eq(m.week, 13, 'week 7 of 12 maps to week 13 of 24');
-  assert(
-    m.teams.every(t => t.P.every(p => p.pot > 0)),
-    'potentials filled in'
-  );
-  g.store.setJSON(g.KEYS.career, { v: 99 });
-  eq(g.Run.load(), null, 'unknown future version is ignored');
-});
-test('career: v2 saves (one cup, 24 weeks) upgrade to the two-cup season', () => {
-  const g = load(9),
-    run = g.Run.create(g.Run.draft(), {
-      role: 'MB',
-      name: 'Mid',
-      alloc: { power: 10, def: 20, speed: 10, jump: 20 },
-      witSteps: 0,
-      team: 0
-    });
-  g.Run.you(run).jump = 84;
-  const v2 = Object.assign({}, run, { v: 2, week: 25, teams: run.teams.map(g.teamToJSON) });
-  for (const k of [
-    'legacy',
-    'cups',
-    'lb',
-    'streak',
-    'injury',
-    'goal',
-    'sponsors',
-    'sponsorN',
-    'focus',
-    'talk',
-    'trained',
-    'hist',
-    'mode',
-    'pure',
-    'legend'
-  ])
-    delete v2[k];
-  v2.cup = { sched: g.newBracket([0, 1, 2, 3, 4, 5, 6, 7]), out: null };
-  g.store.setJSON(g.KEYS.career, v2);
-  const m = g.Run.load();
-  assert(m, 'v2 save should migrate');
-  eq(m.v, g.RUN_VERSION, 'version bumped');
-  eq(g.Run.weekType(m), 'cup', 'still in the Skyline Cup');
-  eq(m.cup.id, 'skyline', 'cup identified');
-  eq(m.lb.jump, 1, 'a stat already past 80 keeps its first Limit Break');
-});
 test('career: Limit Break gates, facility Lv 5 and Hard training', () => {
   const g = load(10),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Gate', alloc: { power: 30, def: 10, speed: 10, jump: 10 }, witSteps: 0 }),
@@ -412,14 +354,6 @@ test('career: element hidden → revealed → Element Trial → unlocked, and sa
   const back = g.Run.load(),
     y2 = g.Run.you(back);
   assert(y2.elOn && y2.el === you.el && y2.sig.name === you.sig.name, 'element survives save/load');
-  // v3 saves: players gain elements on load
-  const v3 = Object.assign({}, run, { v: 3, teams: run.teams.map(g.teamToJSON) });
-  for (const t of v3.teams) for (const p of t.P) (delete p.el, delete p.sig, delete p.elOn, delete p.elSeen);
-  delete v3.elProof;
-  g.store.setJSON(g.KEYS.career, v3);
-  const mg = g.Run.load();
-  assert(mg && mg.v === g.RUN_VERSION && mg.teams.every(t => t.P.every(p => g.ELS.includes(p.el))), 'v3 save upgraded with elements');
-  assert(g.Run.you(mg).elSeen, 'OVR 70+ player sees their element after the upgrade');
 });
 
 test('engine: staged scenes are rare and well-formed', () => {
@@ -510,19 +444,6 @@ test('career: free agent start, club join conditions, paydays, transfers, specta
   }
   assert(r2.result, 'run ends');
   eq(r2.cups.map(c => c.place).join(','), `${h.NO_CUP},${h.NO_CUP}`, 'both cups watched');
-  // v4 saves gain money and housing and keep their club
-  const r3 = g.Run.create(g.Run.draft(), {
-      role: 'S',
-      name: 'Old',
-      alloc: { power: 10, def: 10, speed: 30, jump: 10 },
-      witSteps: 0,
-      team: 1
-    }),
-    v4 = Object.assign({}, r3, { v: 4, teams: r3.teams.map(g.teamToJSON), pickup: null });
-  for (const k of ['money', 'housing', 'news', 'gazette']) delete v4[k];
-  g.store.setJSON(g.KEYS.career, v4);
-  const up = g.Run.load();
-  assert(up && up.v === g.RUN_VERSION && up.team === 1 && up.money === g.ECON.start && up.housing === 'studio', 'v4 save upgraded');
 });
 
 // ---------- report ----------

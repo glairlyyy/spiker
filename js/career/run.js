@@ -323,56 +323,7 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 5;
-const RUN_MIGRATIONS = {
-  // v1 → v2: 12-week calendar became 24 weeks; players gained a hidden growth potential.
-  1: d => {
-    d.week = d.week > 12 ? 25 : Math.round(((d.week - 1) * 24) / 12) + 1;
-    for (const t of d.teams) for (const p of t.P) if (p.pot == null) p.pot = 1;
-    d.warmOpp = null;
-    d.v = 2;
-    return d;
-  },
-  // v2 → v3: a second block (weeks 25–28) and the Grand Cup; training depth, goals, sponsors, Legacy snapshot.
-  2: d => {
-    const you = d.teams.flatMap(t => t.P).find(p => p.id === d.youId) || {};
-    if (d.week > 24 && !d.cup) d.week = 25;
-    if (d.cup) d.cup.id = d.cup.id || 'skyline';
-    const L = Legacy.load();
-    Object.assign(d, {
-      legacy: d.legacy || L.owned.filter(id => !L.off.includes(id)),
-      pure: false,
-      mode: { hard: false, short: false },
-      legend: null,
-      cups: d.cups || [],
-      lb: Object.fromEntries(STATK.map(k => [k, you[k] >= 90 ? 2 : you[k] >= 80 ? 1 : 0])),
-      streak: null,
-      injury: null,
-      goal: null,
-      sponsors: [],
-      sponsorN: 0,
-      focus: null,
-      talk: null,
-      trained: 0,
-      hist: []
-    });
-    if (d.result) d.result.cups = d.result.cups || [{ id: 'skyline', place: d.result.place }];
-    d.v = 3;
-    return d;
-  },
-  // v3 → v4: per-player elements (assigned on load) and the Element Trial.
-  3: d => {
-    const you = d.teams.flatMap(t => t.P).find(p => p.id === d.youId);
-    if (you) you.elSeen = ovr(you) >= 70;
-    Object.assign(d, { elProof: false, elNext: 0 });
-    d.v = 4;
-    return d;
-  },
-  // v4 → v5: money, housing and the Gazette (runs in progress keep their team — no pickup squad).
-  4: d => {
-    Object.assign(d, { pickup: null, money: ECON.start, housing: 'studio', news: [], gazette: null });
-    d.v = 5;
-    return d;
-  }
-};
+const RUN_VERSION = 1;
+/** version → upgrade step (none yet: the game started fresh; add steps when the saved shape changes). */
+const RUN_MIGRATIONS = {};
 const ROLE_NAME = { S: 'Setter', MB: 'Middle blocker', WS: 'Wing spiker' };

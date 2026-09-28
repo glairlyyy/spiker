@@ -49,6 +49,6 @@ const KEYS = {
   gfx: 'skyline_gfx',
   hype: 'skyline_hype',
   volume: 'skyline_volume',
-  career: 'skyline_career_v1',
+  career: 'sns_run_v1', // Spite & Spike run (older Skyline Cup careers are not carried over)
   legacy: 'skyline_legacy_v1'
 };

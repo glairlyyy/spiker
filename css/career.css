@@ -890,3 +890,4 @@
 .club { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 6px 8px; border-left: 3px solid var(--tc); background: var(--surf2); border-radius: 8px; }
 .gazette ul { margin: 6px 0 10px; padding-left: 18px; }
 @media (max-width: 600px) { .club { grid-template-columns: 1fr auto; } .club > .small { grid-column: 1 / -1; } }
+.mcard.solo { grid-column: 1 / -1; }

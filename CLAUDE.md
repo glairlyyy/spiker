@@ -1,6 +1,7 @@
-# Skyline Cup 3D — project instructions
+# Spite & Spike (working title) — project instructions
 
-4v4 anime volleyball simulator in the browser (three.js + VRM players). No build step.
+4v4 volleyball RPG in the browser (three.js + VRM players), built from the Skyline Cup prototype. No build step.
+The game design doc (GDD) is the target; the old Skyline Cup career/modes are not kept (no save compatibility).
 Published as a claude.ai artifact: https://claude.ai/artifact/4xfGDd92rAanHyThVxfr3X (republish to the same URL).
 
 ## Working style (owner preferences)
@@ -30,7 +31,7 @@ Published as a claude.ai artifact: https://claude.ai/artifact/4xfGDd92rAanHyThVx
 - Seeded randomness: never change the order/count of R()/rnd()/pick() draws in engine unless intended (golden changes).
   Presentation code (hype, element assignment hash, chatter) must draw no randoms.
 - Beat act kinds/flags are the engine↔renderer interface; every act kind needs a `case` in playback.js (tested).
-- Career saves: bump RUN_VERSION + add a RUN_MIGRATIONS step when the saved shape changes.
+- Saves: fresh format (RUN_VERSION 1, key sns_run_v1). While in development, breaking changes may just bump the version.
 - Artifact host quirks: confirm()/alert() blocked (use inline confirms); localStorage may throw; blob: URLs may be
   blocked (textures are decoded in memory — keep it that way).
 - Escape all user/data strings in innerHTML with esc().
@@ -48,7 +49,7 @@ screenshot `#stage`. A STALL line after long synchronous loops is a test artifac
   attempted), block-break spike cut + ball close-up, kill-block scene, loose-ball slow-mo calls, personality chatter.
   No manga panels. Slow-mo uses one world clock (A.ts) with eased ramps.
 - Blocks: stuff odds = full-strength block vs spike, weighted by coverage; ~14% of attacks stuffed in normal play.
-- Modes: Career and Monster game only (tournament removed). UI is compact: details in tooltips/folds.
+- Menu: one game (Spite & Spike); Monster game kept only as a QA hook (startMonster()). UI is compact: details in tooltips/folds.
 - Career world (P1): free-agent start, faction join conditions, money/housing/paydays, league transfers, Gazette,
   Sim ⏭ button to skip a match before playing. Calendar stays 28 weeks; character creation rework later.
 - Open work: full cleanup of js/render3d; scene frequency tuning (Normal ≈ 6–7 per match).
