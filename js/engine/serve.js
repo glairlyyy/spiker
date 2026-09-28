@@ -31,8 +31,16 @@ function playRally(m) {
   const oS = rotOrder(ST, m.rot[s]),
     oR = rotOrder(RT, m.rot[r]),
     server = oS[0];
+  // the serve is chosen up front (same random draws, same order), so the server walks straight to where it starts:
+  // the service spot for a standing float, the start of the run-up for a jump serve / jump float
+  let sq = Formula.serveQuality(server, ST);
+  const sType = serveType(server, sq),
+    jumpSrv = sType === 'jump',
+    runM = runUpM(server, sType),
+    endX = jumpSrv ? 60 : 44,
+    startX = Math.max(-120, endX - runM * UNITS_PER_M);
   let sl = [];
-  oS.forEach((p, i) => mv(m, p, sx(s, RSPOT[i][0]), RSPOT[i][1], sl, V));
+  oS.forEach((p, i) => mv(m, p, sx(s, i === 0 && sType !== 'float' ? startX : RSPOT[i][0]), RSPOT[i][1], sl, V));
   oR.forEach((p, i) => {
     const q = i === 0 ? RECV0 : RSPOT[i];
     mv(m, p, sx(r, q[0]), q[1], sl, V);
@@ -50,12 +58,14 @@ function playRally(m) {
         { k: 'log', t: `Rotation ${(m.rot[s] % 4) + 1}: ${server.name} (${server.role}) to serve` }
       ]
     });
-  V && B({ dur: 1100, acts: [] }); // the server's routine (bounce it / spin and aim, see preServe): a beat before the serve
-  let sq = Formula.serveQuality(server, ST);
-  // serve style: running jump serve / jump float / standing float
-  const sType = serveType(server, sq),
-    jumpSrv = sType === 'jump',
-    runM = runUpM(server, sType);
+  V &&
+    B({
+      dur: 1100, // the server's routine (bounce it / spin and aim, see preServe): a beat before the serve
+      acts:
+        sType !== 'float'
+          ? [{ k: 'log', t: `${server.name} paces out a ${runM} m run-up for a ${jumpSrv ? 'jump serve' : 'jump float'}` }]
+          : []
+    });
   if (jumpSrv) sq *= 1 + (runM - 3.2) * 0.05; // longer run-up = a bit more pace (±5%)
   // serve techniques
   const killer = jumpSrv && hasTech(server, 'killer') && R() < 0.5,
@@ -65,18 +75,8 @@ function playRally(m) {
   dr(m, server, jumpSrv ? 0.03 : 0.015);
   if (jumpSrv) setBusy(m, server, 2); // lands deep behind the end line: still running in on the first return
   if (sType !== 'float') {
-    const back = [],
-      z0 = m.pos[server.id].z,
-      endX = jumpSrv ? 60 : 44,
-      startX = Math.max(-120, endX - runM * UNITS_PER_M),
-      cur = m.pos[server.id];
-    mv(m, server, sx(s, startX), z0, back, V);
-    V &&
-      B({
-        dur: 300 + Math.abs(cur.x - sx(s, startX)) * 3,
-        acts: [...back, { k: 'log', t: `${server.name} paces out a ${runM} m run-up for a ${jumpSrv ? 'jump serve' : 'jump float'}` }]
-      });
-    const run = [];
+    const z0 = m.pos[server.id].z,
+      run = [];
     mv(m, server, sx(s, endX), z0, run, V);
     const pk = jumpPx(server) * (jumpSrv ? 0.8 : 0.35);
     V &&

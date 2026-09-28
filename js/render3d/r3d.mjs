@@ -145,7 +145,7 @@ function draw() {
   updateBase(dt || 0.016);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, cv.width, cv.height);
-  if (A.ball.vis && A.ball.follow) followBall();
+  if (A.ball.follow) followBall(); // also shows the ball once the server starts the routine
   const V = applyView(); // same shake / push-in / zoom as the playback layer; also sets the overlay transform
   viewCamera(V);
   const w = world,

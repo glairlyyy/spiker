@@ -22,7 +22,7 @@ function clearNet(a) {
 function ballScreen() {
   return P(A.ball.x, A.ball.z, A.ball.h);
 }
-/** Keep a held ball at the holder's hand (bouncing it before a serve while A.dribble). */
+/** Keep a held ball at the holder's hand (the server's routine before a serve: see preServe). Called while A.ball.follow. */
 function followBall() {
   const f = A.disp[A.ball.follow];
   if (!f) {
@@ -31,11 +31,13 @@ function followBall() {
   }
   if (f.pose === 'preserve' && f.psv) {
     const b = (f.psvB = preServe(f)); // the 3D pose reads the phase (psvB) so the hands move with the ball
+    A.ball.vis = b.ph !== 'carry'; // no ball until the server is at their spot and starts the routine
     A.ball.x = b.x;
     A.ball.z = b.z;
     A.ball.h = b.h;
     return;
   }
+  A.ball.vis = true;
   A.ball.x = f.x + (DIR(f.side) * 16) / VCS;
   A.ball.z = f.z;
   A.ball.h = 72 + f.jy;

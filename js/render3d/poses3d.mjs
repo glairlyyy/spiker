@@ -474,9 +474,8 @@ function preservePose(d, m) {
   const b = d.psvB || { ph: 'carry', k: 1 },
     mk = moveMix(m);
   if (b.ph === 'carry' || mk > 0.05) {
-    // walking to the service spot with the ball at the right hip
-    const base = mk > 0 ? mix(STAND, locoPose(m), mk) : STAND;
-    return { ...base, hand: 'right', contact: 0.85 };
+    // walking to where they serve from (no ball yet)
+    return mk > 0 ? mix(STAND, locoPose(m), mk) : STAND;
   }
   const k = b.k ?? 1;
   switch (b.ph) {
@@ -642,8 +641,9 @@ export function poseDone(d) {
     case 'dive':
       return !!d.dv && diveF(d.dv) > 2.3;
     case 'bump':
-    case 'set':
       return d.swing != null && d.swing > 800;
+    case 'set':
+      return d.swing != null && d.swing > 600 && d.jy <= 1; // hands down once the set is away and the feet are down
     case 'spike':
     case 'serve':
       return d.spk != null && d.spk > 700 && (d.landMs == null || d.landMs > 450);
@@ -654,9 +654,14 @@ export function poseDone(d) {
   }
   return false;
 }
+/** Poses that stay as they are when done (celebrations, the huddle, the stance itself, the serve routine). */
+const HELD = new Set(['ready', 'roar', 'slump', 'huddle', 'preserve']);
 export function playerPose(d, mood, m) {
   const air = d.jy > 8,
-    pose = poseDone(d) && moving(m) ? 'walk' : d.pose,
+    done = poseDone(d),
+    // a finished move doesn't freeze in its last frame (a setter's hands still up after the set): walk if moving,
+    // otherwise settle back into the ready stance. Celebrations and the huddle are held on purpose.
+    pose = done && moving(m) ? 'walk' : done && !HELD.has(d.pose) ? 'ready' : d.pose,
     mk = moveMix(m);
   let out;
   if (pose === 'dive') {

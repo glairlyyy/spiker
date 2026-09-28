@@ -130,7 +130,7 @@ function startBeat(b) {
         break;
       case 'hold':
         A.ball.follow = a.p;
-        A.ball.vis = true;
+        A.ball.vis = false; // appears in the server's hands once they're at their spot (followBall)
         A.dribble = true;
         // the server's routine before the serve (see preServe in ball.js): bounce it, or spin it and aim
         d.pose = 'preserve';

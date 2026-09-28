@@ -246,11 +246,16 @@ engine a double block's second blocker and the late blockers take spots ≥ `BLO
 
 ## Pre-serve routine
 
-The engine's `hold` beat + a 1.1 s beat before the serve. Playback gives the server pose `preserve` and `d.psv`
+The serve type is picked before the reset, so the server walks straight to where the serve starts (the run-up start
+for a jump serve / jump float). The engine's `hold` beat + a 1.1 s beat before the serve. The ball appears only when
+the routine starts (`followBall` sets `A.ball.vis`). Playback gives the server pose `preserve` and `d.psv`
 ({ kind: 'bounce' | 'aim', t }, t runs once they stand at the service spot). `preServe` (render/ball.js) is the one
 timeline: it places the ball (two bounces off the right hand → catch to the chest; or spin in both hands → held out
 in the left hand at eye height toward the other court) and stores the phase in `d.psvB`, which `preservePose`
 (poses3d) follows; `pose.hand` tells `reachForBall` which hand(s) meet the ball.
+
+Finished moves settle: when `poseDone` and not moving, a player returns to the ready stance (except `HELD` poses:
+celebrations, huddle, the serve routine).
 
 ## Career world (P1)
 
