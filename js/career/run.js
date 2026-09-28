@@ -119,7 +119,10 @@ const Run = {
       money: ECON.start,
       housing: 'studio',
       news: [],
-      gazette: null
+      gazette: null,
+      // the city map: this week's slot (day action, then an optional evening) and scouted clubs (team index → week)
+      slot: 'day',
+      scout: {}
     };
     Run.log(
       run,
@@ -256,6 +259,7 @@ const Run = {
     }
     World.week(run);
     run.trained = 0;
+    run.slot = 'day';
     Run.snap(run);
     run.week++;
     const cup = CUPS.find(c => c.after === run.week - 1);
@@ -302,6 +306,8 @@ const Run = {
     for (const k of ['sp', 'fans', 'trained', 'elNext', 'money']) if (!Number.isFinite(run[k])) run[k] = 0;
     if (!HOUSING[run.housing]) run.housing = 'studio';
     if (!Array.isArray(run.news)) run.news = [];
+    if (run.slot !== 'eve') run.slot = 'day';
+    if (!run.scout || typeof run.scout !== 'object') run.scout = {};
     if (!Number.isFinite(run.staMax) || run.staMax <= 0) run.staMax = Legacy.staMax(run.legacy);
     if (!Number.isFinite(run.sta)) run.sta = run.staMax;
     if (!Number.isInteger(run.mood) || !MOODS[run.mood]) run.mood = 2;

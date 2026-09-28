@@ -49,6 +49,7 @@ const Training = {
       (1 + mates) *
       (1 + Training.streakBonus(run, key)) *
       (1 + Sponsors.trainBonus(run, key)) *
+      (1 + City.turf(run, key)) *
       (Training.camp(run) ? 1.5 : 1) *
       (hard ? TRAIN_X.hard.gain : 1) *
       (run.injury ? 0.4 : 1)
@@ -77,6 +78,7 @@ const Training = {
       lvl: Training.facility(run, key) + 1,
       next: Training.toNext(run, key),
       streak: Training.streakBonus(run, key),
+      turf: City.turf(run, key),
       gate: STATK.includes(T.main[0]) && Run.you(run)[T.main[0]] >= Training.gate(run, T.main[0]) ? Training.gate(run, T.main[0]) : null,
       mates: run.floor[key] || []
     };

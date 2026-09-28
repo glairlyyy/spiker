@@ -446,6 +446,56 @@ test('career: free agent start, club join conditions, paydays, transfers, specta
   eq(r2.cups.map(c => c.place).join(','), `${h.NO_CUP},${h.NO_CUP}`, 'both cups watched');
 });
 
+test('career: city map — day then evening, turf bonus, outings, scouting, saved', () => {
+  const g = load(77),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Mapper', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
+  run.event = null;
+  for (const id of Object.keys(g.SPOTS)) {
+    const s = g.SPOTS[id];
+    assert(s.train ? g.TRAININGS[s.train] : ['rest', 'rec', 'ramen', 'arcade', 'street', 'sleep'].includes(s.act), `${id} does something`);
+    if (s.d != null) assert(s.d >= 0 && s.d < 8, `${id} district`);
+  }
+  for (const k of g.TRAINK) assert(g.City.spotOf(k), `a place for ${k} training`);
+  eq(g.City.slot(run), 'day', 'week starts in the day');
+  assert(!g.City.can(run, 'arcade').ok, 'no evening outing before the day action');
+  const w0 = run.week;
+  assert(g.City.day(run, 'gym', false), 'train at the gym');
+  eq(g.City.slot(run), 'eve', 'evening after the day action');
+  assert(!g.City.can(run, 'beach').ok, 'one day action a week');
+  run.event = null;
+  assert(!g.City.can(run, 'ramen').ok, 'dinner needs a teammate');
+  const mate = g.Run.mates(run)[0].id,
+    b0 = g.Run.you(run).bond[mate] || 0,
+    m0 = run.money;
+  assert(g.City.evening(run, 'ramen', mate), 'dinner');
+  eq(run.money, m0 - g.SPOTS.ramen.cost, 'dinner costs money');
+  assert((g.Run.you(run).bond[mate] || 0) > b0, 'dinner raises bond');
+  g.Run.endWeek(run);
+  eq(run.week, w0 + 1, 'week advanced');
+  eq(g.City.slot(run), 'day', 'new week starts in the day');
+  // home turf: a training in your club's district gains more
+  run.event = null;
+  const open = g.FACTIONS.findIndex(f => !Object.keys(f.join).length);
+  assert(g.World.join(run, open), 'sign');
+  for (const k of g.TRAINK) eq(g.City.turf(run, k), g.SPOTS[g.City.spotOf(k)].d === open ? g.TURF_BONUS : 0, `turf for ${k}`);
+  // street hustle keeps values sane
+  for (let i = 0; i < 20; i++) {
+    run.event = null;
+    run.slot = 'eve';
+    run.money = i % 3 ? 100 : 5;
+    assert(g.City.evening(run, 'street'), 'street');
+    assert(run.money >= 0 && run.sta >= 0, 'street keeps money and stamina ≥ 0');
+  }
+  run.slot = 'eve';
+  const ti = (open + 1) % 8;
+  assert(g.City.scout(run, ti) && g.City.scouted(run, ti), 'scouted');
+  eq(g.City.slot(run), 'day', 'scouting uses the evening');
+  run.slot = 'eve';
+  g.Run.save(run);
+  const back = g.Run.load();
+  assert(back && back.slot === 'eve' && g.City.scouted(back, ti), 'slot and scouting saved');
+});
+
 // ---------- report ----------
 if (update) {
   fs.writeFileSync(GOLDEN, JSON.stringify(record, null, 2) + '\n');

@@ -671,7 +671,8 @@
 .tbtn.hard {
   border-color: var(--hot) !important;
 }
-.tbtn .stk {
+.tbtn .stk,
+.spot .stk {
   font-size: 11px;
   font-weight: 800;
   color: var(--gold);
@@ -884,10 +885,184 @@
 .skills.compact.lg .sk {
   padding-right: 9px;
 }
-.life .hsel { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
-.life .hsel select { flex: 1; min-width: 0; }
-.clist { display: grid; gap: 6px; }
-.club { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 6px 8px; border-left: 3px solid var(--tc); background: var(--surf2); border-radius: 8px; }
-.gazette ul { margin: 6px 0 10px; padding-left: 18px; }
-@media (max-width: 600px) { .club { grid-template-columns: 1fr auto; } .club > .small { grid-column: 1 / -1; } }
-.mcard.solo { grid-column: 1 / -1; }
+.life .hsel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+}
+.life .hsel select {
+  flex: 1;
+  min-width: 0;
+}
+.clist {
+  display: grid;
+  gap: 6px;
+}
+.club {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-left: 3px solid var(--tc);
+  background: var(--surf2);
+  border-radius: 8px;
+}
+.gazette ul {
+  margin: 6px 0 10px;
+  padding-left: 18px;
+}
+@media (max-width: 600px) {
+  .club {
+    grid-template-columns: 1fr auto;
+  }
+  .club > .small {
+    grid-column: 1 / -1;
+  }
+}
+.mcard.solo {
+  grid-column: 1 / -1;
+}
+
+/* ---------- city map ---------- */
+.citymap .thd {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.city {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  background: #0c1016;
+  border: 1px solid var(--line);
+  user-select: none;
+}
+.citymap.eve .city {
+  filter: saturate(0.7) brightness(0.8) hue-rotate(10deg);
+}
+.city .dist {
+  fill: color-mix(in srgb, var(--tc) 14%, transparent);
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-width: 2;
+}
+.city .dist.mine {
+  fill: color-mix(in srgb, var(--tc) 30%, transparent);
+  stroke: var(--tc);
+  stroke-width: 3;
+}
+.city .dl {
+  fill: color-mix(in srgb, var(--tc, #fff) 70%, #fff);
+  font: 700 16px var(--disp);
+  text-anchor: middle;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  opacity: 0.85;
+}
+.city .dl.dt {
+  fill: var(--mute);
+}
+.city .river {
+  fill: none;
+  stroke: rgba(76, 201, 240, 0.25);
+  stroke-width: 16;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+.city .down {
+  fill: rgba(255, 255, 255, 0.05);
+  stroke: rgba(255, 255, 255, 0.18);
+  stroke-width: 2;
+  stroke-dasharray: 6 6;
+}
+.city .pin {
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.city .pin > circle {
+  fill: var(--surf2);
+  stroke: var(--tc, var(--cyan));
+  stroke-width: 3;
+}
+.city .pin .ic {
+  font-size: 30px;
+  text-anchor: middle;
+}
+.city .pin:hover > circle,
+.city .pin:focus > circle,
+.city .pin.sel > circle {
+  stroke: var(--gold);
+  stroke-width: 5;
+}
+.city .pin.off {
+  opacity: 0.4;
+}
+.city .pin.turf > circle {
+  stroke: var(--gold);
+}
+.city .pin.hq.can > circle {
+  stroke-width: 5;
+  filter: drop-shadow(0 0 8px var(--tc));
+}
+.city .bd circle {
+  fill: var(--hot);
+}
+.city .bd text {
+  fill: #fff;
+  font: 800 13px var(--body);
+  text-anchor: middle;
+}
+#spot {
+  margin-top: 10px;
+  min-height: 70px;
+}
+.spot h4 {
+  margin: 0 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.spot .tline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.spot .g,
+.spot .g2 {
+  color: var(--cyan);
+}
+.spot .f.md {
+  color: var(--gold);
+  font-weight: 800;
+}
+.spot .f.hi {
+  color: #f43f5e;
+  font-weight: 800;
+}
+.spot .fl {
+  display: flex;
+  gap: 2px;
+}
+.spot .trow {
+  align-items: center;
+}
+.spot .trow .btn svg {
+  vertical-align: middle;
+}
+.spot .roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 6px 0;
+}
+.spot .roster span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

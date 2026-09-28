@@ -15,13 +15,13 @@ function renderCareer() {
   if (run.event) main = eventCard(run);
   else if (wt === 'cup') main = cupPanel(run);
   else if (wt === 'warmup' || wt === 'warmup2') main = warmupPanel(run);
-  else main = trainingPanel(run);
+  else main = mapPanel(run);
   $('#app').innerHTML = `<section class="career" style="--tc:${team.color}">
     <aside>${youCard(run)}${lifeCard(run)}${seasonCard(run)}${bondCard(run)}</aside>
     <div class="cmain">
       ${calendar(run)}
       ${gazetteCard(run)}
-      ${World.isFree(run) && !run.event ? clubsCard(run) : ''}
+      ${World.isFree(run) && !run.event && (wt === 'cup' || wt.startsWith('warmup')) ? clubsCard(run) : ''}
       ${main}
       ${skillShop(run)}
       <div class="panel">${fold('diary', `<h3>Diary <span class="mute small">${run.log.length}</span></h3>`, `<ol class="log">${run.log.map(l => `<li><b>${typeof l.w === 'number' ? 'W' + l.w : l.w}</b> ${esc(l.t)}</li>`).join('')}</ol>`)}
@@ -154,42 +154,6 @@ function calendar(run) {
   }
   return `<div class="cal">${pips.join('')}</div>`;
 }
-function trainingPanel(run) {
-  const wt = Run.weekType(run),
-    T = Run.myTeam(run),
-    hard = CW.hard && !run.injury;
-  const btn = key => {
-    const pv = Training.preview(run, key, hard),
-      fmt = ([k, v]) =>
-        v
-          ? `+${k === 'wit' ? v.toFixed(2) : v} ${STATNAME[k]}`
-          : pv.gate && k === pv.main[0]
-            ? `${STATNAME[k]} at ${pv.gate} — Limit Break`
-            : `${STATNAME[k]} maxed`;
-    return `<button class="tbtn ${hard ? 'hard' : ''}" onclick="doWeek('${key}')" ${tip(`Facility Lv ${pv.lvl}${pv.next != null ? ` — ${pv.next} more sessions to Lv ${pv.lvl + 1}` : ' (max)'}. Costs ${pv.sta} stamina${pv.fail ? `, ${Math.round(pv.fail * 100)}% chance to fail` : ''}.`)}>
-      <b>${TRAININGS[key].name}</b><small>Lv ${pv.lvl} · −${pv.sta} sta</small>
-      <span class="g">${fmt(pv.main)}</span><span class="g2">${fmt(pv.side)}</span>
-      ${pv.fail ? `<span class="f ${pv.fail > 0.25 ? 'hi' : 'md'}">${Math.round(pv.fail * 100)}% fail</span>` : ''}
-      ${pv.streak ? `<span class="stk" title="Same training in a row">Streak +${Math.round(pv.streak * 100)}%</span>` : ''}
-      <span class="fl">${pv.mates
-        .filter(id => T.P.some(p => p.id === id)) // a teammate who has since left
-        .map(id =>
-          faceSVG(
-            T.P.find(p => p.id === id),
-            0.3,
-            22
-          )
-        )
-        .join('')}</span></button>`;
-  };
-  return `<div class="panel"><div class="thd"><h3>Week ${run.week}/${CAREER.weeks}${wt === 'camp' ? ` · Camp${info('Training camp: gains and stamina cost ×1.5')}` : ''}${run.injury ? ' · injured' : ''}${info(`Facility levels rise with use (Lv 5 max, +10% each). The same training in a row builds a streak (+5% a week, up to +20%; rest and matches don't break it). Stats stop at 80 and 90 until you pass a Limit Break trial. Faces: teammates at that training (+20% each, +50% at bond 80+). Below 50 stamina training can fail — below ${TRAIN_X.injuryAt} it can injure you.`)}</h3>
-    <label class="hardt ${run.injury ? 'dis' : ''}" ${tip(`×${TRAIN_X.hard.gain} gains, skill pts ×1.5, ×${TRAIN_X.hard.sta} stamina, +${Math.round(TRAIN_X.hard.fail * 100)}% fail`)}><input type="checkbox" ${hard ? 'checked' : ''} ${run.injury ? 'disabled' : ''} onchange="CW.hard=this.checked;renderCareer()"> <b>Hard</b></label></div>
-    <div class="tgrid5">${TRAINK.map(btn).join('')}</div>
-    <div class="trow">
-      <button class="btn" onclick="doWeek('rest')" ${tip(`+30–60 stamina${run.injury ? ', may heal faster' : ''}`)}>Rest</button>
-      <button class="btn" onclick="doWeek('rec')" ${tip('Mood up, +10 stamina')}>Recreation</button>
-    </div></div>`;
-}
 /** Pre-match choices: a focus goal (everyone) and, for Cup matches, the captain's team talk. */
 function matchPrep(run, cup) {
   const you = Run.you(run);
@@ -284,21 +248,11 @@ function skillShop(run) {
     aff > 0
   )}</div>`;
 }
-/** A week's choice: training key, 'rest' or 'rec'. Then maybe an event, then the next week. */
-function doWeek(choice) {
-  const run = RUN;
-  if (run.event) return;
-  const line = choice === 'rest' ? Training.rest(run) : choice === 'rec' ? Training.recreation(run) : Training.train(run, choice, CW.hard);
-  Run.log(run, line);
-  if (!Events.roll(run)) Run.endWeek(run);
-  else Run.save(run);
-  renderCareer();
-}
 function chooseEvent(i) {
   if (!RUN.event) return;
   const pre = RUN.event.pre; // offers shown before the week's choice don't end the week
   Run.log(RUN, Events.choose(RUN, i));
-  if (pre) Run.save(RUN);
+  if (pre || City.slot(RUN) === 'eve') Run.save(RUN); // offers before the day, or events after it (the evening is next)
   else Run.endWeek(RUN);
   renderCareer();
 }

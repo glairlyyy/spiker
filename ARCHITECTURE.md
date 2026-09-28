@@ -232,7 +232,17 @@ A run starts as a free agent on a pickup squad (`run.pickup`, `run.team` null; `
 Team pick unlock chose a club. `World.join` swaps you into a club's same-role slot (the replaced player drops to the
 pickup squad). Free agents play warm-ups with the pickup squad and watch the cups (`NO_CUP` placing). Every
 `ECON.payEvery` weeks: allowance − food − rent (eviction to the abandoned gym when broke), housing effects, one
-league transfer (`World.transfers`) and a Gazette (`run.gazette`, news collected via `Run.news`). Save v5.
+league transfer (`World.transfers`) and a Gazette (`run.gazette`, news collected via `Run.news`).
+
+## City map (training weeks)
+
+`js/data/city.js` (CITY geometry: 8 faction districts = team index + downtown ellipse, HQ pins; SPOTS places;
+HOME_AT by housing; STREET, SCOUT_STA, TURF_BONUS) + `js/career/city.js` (City, DOM-free) + `js/ui/career-map.js`
+(SVG map + spot panel). A training week is two slots (`run.slot`): **day** = one main action at a place (each
+training has one place; Home = rest, Park = recreation), then events roll; **evening** = one optional outing
+(ramen: bond with a chosen mate; arcade: mood + bond all; street hustle: money on OVR; scout a club HQ: roster +
+elements + a rumour into the Gazette, `run.scout`; early night) or End week. A training place inside your club's
+district gets the home-turf bonus in `Training.mul`. Free agents sign at HQs (clubs card only on match weeks).
 
 ## Code layout notes
 

@@ -10,7 +10,7 @@ Published as a claude.ai artifact: https://claude.ai/artifact/4xfGDd92rAanHyThVx
 - Plan first only when asked ("plan first"); otherwise implement, verify, publish.
 
 ## Commands
-- `npm test` — 18 headless tests (tests/run.js). Golden hashes guard engine output.
+- `npm test` — 19 headless tests (tests/run.js). Golden hashes guard engine output.
 - `npm run test:update` — only for intentional gameplay changes; say why.
 - `npm run lint` / `npm run format` — ESLint (flat config collects shared globals from index.html) / Prettier.
 - `npm run serve` — http://localhost:8765 (index.html = CDN three; test3d.html = local node_modules, for QA).
@@ -52,4 +52,6 @@ screenshot `#stage`. A STALL line after long synchronous loops is a test artifac
 - Menu: one game (Spite & Spike); Monster game kept only as a QA hook (startMonster()). UI is compact: details in tooltips/folds.
 - Career world (P1): free-agent start, faction join conditions, money/housing/paydays, league transfers, Gazette,
   Sim ⏭ button to skip a match before playing. Calendar stays 28 weeks; character creation rework later.
+- City map (training weeks): day action at a place + one evening outing (dinner/arcade/street hustle/scout HQ/sleep);
+  faction districts, home-turf training bonus. Story is skipped for now.
 - Open work: full cleanup of js/render3d; scene frequency tuning (Normal ≈ 6–7 per match).
