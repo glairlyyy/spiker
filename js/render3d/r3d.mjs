@@ -151,6 +151,7 @@ function draw() {
   const w = world,
     B = A.ball;
   updateBall(w, now);
+  blockTouch(w, now);
   // bodies, hair springs and trails run on the world clock (A.ts): in slow motion everything slows together
   const wdt = dt * Math.max(0.02, Math.min(1, A.ts ?? 1));
   if (!A.qaFreeze) for (const pl of w.people) if (pl.d) posePlayer(pl, pl.d.p.id === A.digHero ? dt : wdt, w.ball.position, w.fx); // qaFreeze: test hook; a digger chasing a far ball poses at normal speed
@@ -180,6 +181,32 @@ function draw() {
   drawFx(now);
 }
 
+const hL = new THREE.Vector3(),
+  hR = new THREE.Vector3();
+/** Fade (ms) of the ball leaving a blocker's hands back onto its own flight path. */
+const BLOCK_REL_MS = 140;
+/**
+ * A ball sent into a block (A.blockTouch, set by playback): as it arrives it is drawn right against the blocker's real
+ * hands (between them, on the hitter's side), so a stuff or a touch visibly meets the palms. Uses last frame's hands.
+ */
+function blockTouch(w, now) {
+  const rel = !A.blockTouch && A.blockLast ? 1 - (now - (A.blockRel || 0)) / BLOCK_REL_MS : 1,
+    id = A.blockTouch || (rel > 0 ? A.blockLast : null);
+  if (!id || !w.ball.visible) return;
+  const pl = w.people.find(q => q.d && q.d.p.id === id);
+  if (!pl) return;
+  pl.bone('leftHand').getWorldPosition(hL);
+  pl.bone('rightHand').getWorldPosition(hR);
+  hL.add(hR).multiplyScalar(0.5);
+  hL.x += (pl.d.side === 0 ? 1 : -1) * 0.2; // the ball sits in front of the palms, toward the hitter
+  hL.y += 0.05;
+  const u = Math.max(0, Math.min(1, 1 - w.ball.position.distanceTo(hL) / 1.6)) * Math.max(0, rel),
+    k = u * u * (3 - 2 * u);
+  if (k <= 0) return;
+  w.ball.position.lerp(hL, k);
+  w.ballGlow.position.copy(w.ball.position);
+  w.ballLight.position.copy(w.ball.position);
+}
 /** Effect entry points for render/effects.js: anchored at the ball (or the floor under it). */
 const ballW = () => (A && A.ball ? W(A.ball.x, A.ball.z, Math.max(10, A.ball.h)) : new THREE.Vector3());
 const fxApi = {

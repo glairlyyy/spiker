@@ -247,6 +247,13 @@ function startBall(a) {
     else if (lc === 'set') sfx.set();
     else if (lc === 'block') sfx.block();
   }
+  // a ball sent into a blocker's hands: the 3D layer puts it right at their hands (see blockTouch in r3d)
+  const bt = a.to.c === 'block' ? a.to.p : null;
+  if (!bt && A.blockTouch) {
+    A.blockLast = A.blockTouch;
+    A.blockRel = performance.now();
+  }
+  A.blockTouch = bt;
   A.lastC = a.to.c || null;
   A.lastP = a.to.p || null;
   A.ball.follow = null;

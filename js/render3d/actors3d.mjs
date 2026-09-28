@@ -70,8 +70,9 @@ export function posePlayer(pl, dt, ballPos, fx) {
       headY = (1.62 / 1.8) * pl.headY;
     const yaw = Math.max(-0.9, Math.min(0.9, Math.atan2(loc.x, Math.max(0.2, loc.z)))),
       pitch = Math.max(-0.8, Math.min(0.45, -Math.atan2(loc.y - headY, Math.hypot(loc.x, loc.z))));
-    pose.hy = (pose.hy || 0) + yaw * 0.7;
-    pose.hd = (pose.hd || 0) * 0.5 + pitch * 0.6;
+    const eye = d.pose === 'block' ? 1 : 0.7; // a blocker's eyes stay locked on the ball
+    pose.hy = (pose.hy || 0) + yaw * eye;
+    pose.hd = (pose.hd || 0) * (1 - eye * 0.5) + pitch * (eye * 0.85);
   }
   root.position.y = (d.jy || 0) * KH;
   applyPose(pl, pose);
