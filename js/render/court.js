@@ -97,7 +97,7 @@ function drawFx(now) {
   if (A.ghost) drawGhost(A.ghost);
   if (A.real) drawRealSet(A.real);
   if (A.link) drawLink(A.link, now);
-  if (A.wallFx) drawWall(A.wallFx);
+  if (A.wallFx && !A.shot) drawWall(A.wallFx); // hidden in scene close-ups: projected that near, it covers the faces
   if (A.lines) drawSpeedLines(A.lines);
   drawParts();
   if (A.drill) drawDrill(A.drill); // over smoke and sparks so the wall reads clearly
