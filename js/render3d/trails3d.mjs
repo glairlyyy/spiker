@@ -15,14 +15,14 @@ void main() {
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
 /** Outer share of the half-width that is outline. */
-const OUT = '0.15';
+const OUT = '0.08';
 const FS = `
 uniform vec3 color;
 uniform vec3 core;
 varying float vA;
 varying float vE;
 void main() {
-  float e = abs(vE), inside = 1.0 - smoothstep(1.0 - ${OUT} - 0.06, 1.0 - ${OUT} + 0.02, e);
+  float e = abs(vE), inside = 1.0 - smoothstep(1.0 - ${OUT} - 0.03, 1.0 - ${OUT} + 0.01, e);
   gl_FragColor = vec4(mix(color, core, vA * vA * 0.3 + (1.0 - e) * 0.25) * vA * inside, vA * inside);
 }`;
 const FS_OUT = `
@@ -30,11 +30,11 @@ uniform vec3 ink;
 varying float vA;
 varying float vE;
 void main() {
-  float e = abs(vE), band = smoothstep(1.0 - ${OUT} - 0.06, 1.0 - ${OUT}, e) * (1.0 - smoothstep(0.93, 1.0, e));
+  float e = abs(vE), band = smoothstep(1.0 - ${OUT} - 0.03, 1.0 - ${OUT}, e) * (1.0 - smoothstep(0.97, 1.0, e));
   gl_FragColor = vec4(ink, band * min(1.0, vA * 1.4) * 0.9);
 }`;
 /** The strip is this much wider than o.width, so the glow inside the outline keeps its old width. */
-const OUT_W = 1.15;
+const OUT_W = 1.08;
 /** Outline colour: a deep navy ink, like the canvas text outlines. */
 const INK = new THREE.Color('#0b1030');
 const tA = new THREE.Vector3(),
