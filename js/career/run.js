@@ -285,6 +285,8 @@ const Run = {
     if (!run.uses || typeof run.uses !== 'object') run.uses = {};
     if (!run.floor || typeof run.floor !== 'object') run.floor = {};
     if (!run.lb || typeof run.lb !== 'object') run.lb = Object.fromEntries(STATK.map(k => [k, 0]));
+    // an event this version no longer knows (removed / renamed) would leave the week stuck on a blank card
+    if (run.event && !Events.def(run.event, run)) run.event = null;
   },
   /** Delete the saved run. */
   clear() {

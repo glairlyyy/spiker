@@ -431,6 +431,26 @@ test('engine: staged scenes are rare and well-formed', () => {
   assert(per >= 1 && per <= 7, `scenes per match ${per}`);
 });
 
+test('engine: recorded beats stay well-formed in every mode (no NaN, known players, matches end)', () => {
+  for (let s = 0; s < 24; s++) {
+    const g = load(9000 + s),
+      T = g[['mkTeams', 'mkMonsterTeams', 'mkLeagueTeams'][s % 3]](),
+      [a, b] = [T[0], T[1 + (s % (T.length - 1))]],
+      ids = new Set([...a.P, ...b.P].map(p => p.id)),
+      m = g.newMatch(a, b, true);
+    let guard = 0;
+    while (!m.over && guard++ < 200)
+      for (const bt of g.playRally(m).beats) {
+        assert(bt.dur > 0 && Number.isFinite(bt.dur), 'beat duration');
+        for (const x of bt.acts) {
+          for (const f of ['p', 'p1', 'p2']) if (x[f] != null) assert(ids.has(x[f]), `${x.k} names an unknown player`);
+          for (const [k, v] of Object.entries(x)) if (typeof v === 'number') assert(Number.isFinite(v), `${x.k}.${k} is not finite`);
+        }
+      }
+    assert(m.over, 'match ends');
+  }
+});
+
 // ---------- report ----------
 if (update) {
   fs.writeFileSync(GOLDEN, JSON.stringify(record, null, 2) + '\n');

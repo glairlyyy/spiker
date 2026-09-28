@@ -723,10 +723,7 @@ function posePlayer(pl, dt, ballPos) {
             life: 0.42,
             alpha: 1,
             color: pl.eyeCol,
-            drift: fwd
-              .clone()
-              .multiplyScalar(-1.1)
-              .add(new THREE.Vector3(0, 0.12, 0))
+            drift: (pl.eyeDrift || (pl.eyeDrift = new THREE.Vector3())).copy(fwd).multiplyScalar(-1.1).setY(0.12) // reused per player
           }
         : { width: 0 };
     for (let i = 0; i < 2; i++) {
