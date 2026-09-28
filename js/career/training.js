@@ -38,8 +38,8 @@ const Training = {
         (run.floor[k] = run.floor[k] || []).push(m.id);
       }
   },
-  /** Gain multiplier for a training right now. */
-  mul(run, key, hard) {
+  /** Gain multiplier for a training right now (x: the place — its quality × home turf, see City.mul). */
+  mul(run, key, hard, x = 1) {
     const you = Run.you(run);
     let mates = 0;
     for (const id of run.floor[key] || []) mates += (you.bond[id] || 0) >= 80 ? 0.5 : 0.2;
@@ -49,7 +49,7 @@ const Training = {
       (1 + mates) *
       (1 + Training.streakBonus(run, key)) *
       (1 + Sponsors.trainBonus(run, key)) *
-      (1 + City.turf(run, key)) *
+      x *
       (Training.camp(run) ? 1.5 : 1) *
       (hard ? TRAIN_X.hard.gain : 1) *
       (run.injury ? 0.4 : 1)
@@ -67,9 +67,9 @@ const Training = {
     if (stat === 'wit') return +Math.min(base * mul * (you.wit >= 1.6 ? 0.5 : 1), CAREER.witRunCap - you.wit).toFixed(2);
     return Math.max(0, Math.min(Math.round(base * mul * Training.dim(you[stat])), Training.gate(run, stat) - you[stat]));
   },
-  preview(run, key, hard) {
+  preview(run, key, hard, x = 1) {
     const T = TRAININGS[key],
-      mul = Training.mul(run, key, hard);
+      mul = Training.mul(run, key, hard, x);
     return {
       main: [T.main[0], Training.gain(run, T.main[0], T.main[1], mul)],
       side: [T.side[0], Training.gain(run, T.side[0], T.side[1], mul)],
@@ -78,15 +78,14 @@ const Training = {
       lvl: Training.facility(run, key) + 1,
       next: Training.toNext(run, key),
       streak: Training.streakBonus(run, key),
-      turf: City.turf(run, key),
       gate: STATK.includes(T.main[0]) && Run.you(run)[T.main[0]] >= Training.gate(run, T.main[0]) ? Training.gate(run, T.main[0]) : null,
       mates: run.floor[key] || []
     };
   },
-  /** Train (hard = the Hard option; not while injured). Returns a summary line for the log. */
-  train(run, key, hard) {
+  /** Train (hard = the Hard option; not while injured; x = the place's multiplier; spMul = skill points ×). Returns a summary line for the log. */
+  train(run, key, hard, x = 1, spMul = 1) {
     hard = hard && !run.injury;
-    const pv = Training.preview(run, key, hard),
+    const pv = Training.preview(run, key, hard, x),
       out = [],
       name = `${hard ? 'Hard ' : ''}${TRAININGS[key].name}${run.injury ? ' (light)' : ''} training`;
     run.lastMain = pv.main[0];
@@ -105,7 +104,7 @@ const Training = {
       return `${name} failed: ${out.filter(Boolean).join(', ')}`;
     }
     out.push(Run.bump(run, pv.main[0], pv.main[1]), Run.bump(run, pv.side[0], pv.side[1]));
-    out.push(Run.bump(run, 'sta', -pv.sta), Run.bump(run, 'sp', Math.round(CAREER.spPerTraining * (hard ? 1.5 : 1))));
+    out.push(Run.bump(run, 'sta', -pv.sta), Run.bump(run, 'sp', Math.round(CAREER.spPerTraining * (hard ? 1.5 : 1) * spMul)));
     for (const id of pv.mates) {
       out.push(Run.bond(run, id, 7));
       Growth.shared(run, id, pv);
@@ -133,8 +132,9 @@ const Training = {
     const out = [Run.bump(run, 'sta', -15), Run.bump(run, 'mood', -1)];
     return `Limit Break trial failed — ${STATNAME[stat]} stays capped at ${Training.gate(run, stat)} for now: ${out.filter(Boolean).join(', ')}`;
   },
-  rest(run) {
-    const out = [Run.bump(run, 'sta', Math.round(rnd(30, 60) * World.restMul(run)))];
+  /** Rest: stamina × how well you sleep (your home — or `mul`, e.g. a hotel away from home). */
+  rest(run, mul = null) {
+    const out = [Run.bump(run, 'sta', Math.round(rnd(30, 60) * (mul == null ? World.restMul(run) : mul)))];
     if (run.injury && R() < 0.5) {
       run.injury.weeks = Math.max(0, run.injury.weeks - 1);
       out.push('injury healing faster');

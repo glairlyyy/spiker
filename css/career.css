@@ -1515,3 +1515,114 @@
 .chipm .x {
   padding: 0 7px;
 }
+
+/* ---------- island map ---------- */
+.hub .mapwrap,
+.city {
+  background: #0a2a45;
+}
+.city .island {
+  fill: #2c3a2a;
+  stroke: #e8d9a8;
+  stroke-width: 5;
+}
+.city .reg {
+  fill: color-mix(in srgb, var(--tc) 22%, transparent);
+  stroke: color-mix(in srgb, var(--tc) 80%, #fff);
+  stroke-width: 2.5;
+}
+.city .reg.mine {
+  fill: color-mix(in srgb, var(--tc) 36%, transparent);
+  stroke-width: 4;
+}
+.city .mtn {
+  fill: rgba(255, 255, 255, 0.1);
+  stroke: rgba(255, 255, 255, 0.25);
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+.city .contest {
+  fill: none;
+  stroke: #ff3b4e;
+  stroke-width: 4;
+  stroke-dasharray: 10 8;
+  opacity: 0.8;
+}
+.city .minor {
+  fill: color-mix(in srgb, var(--tc) 18%, transparent);
+  stroke: var(--tc);
+  stroke-width: 2;
+  stroke-dasharray: 5 6;
+}
+.city .minor.mine {
+  fill: color-mix(in srgb, var(--tc) 32%, transparent);
+}
+.city .rl {
+  fill: color-mix(in srgb, var(--tc) 75%, #fff);
+  font: 700 14px var(--disp);
+  text-anchor: middle;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.6);
+  stroke-width: 3;
+}
+.city .rl.big {
+  font-size: 22px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.city .airport .ic {
+  font-size: 22px;
+  text-anchor: middle;
+}
+.city .airport .ap {
+  fill: #e8d9a8;
+  font: 600 11px var(--body);
+  text-anchor: middle;
+}
+.city .pin.gem > circle {
+  stroke: #4ade80;
+  stroke-width: 4;
+}
+.city .pin.overhyped > circle {
+  stroke: #8b919c;
+  stroke-dasharray: 4 3;
+}
+.spot .qt {
+  font-weight: 800;
+  color: var(--gold);
+}
+.spot .qt.unk {
+  color: var(--mute);
+}
+.spot .qt.gem {
+  color: #4ade80;
+}
+.spot .qt.overhyped {
+  color: #f43f5e;
+}
+.city .here circle {
+  fill: rgba(255, 216, 77, 0.18);
+  stroke: #ffd84d;
+  stroke-width: 3;
+  stroke-dasharray: 6 5;
+  animation: herePulse 2s ease-in-out infinite;
+}
+.city .here text {
+  fill: #ffd84d;
+  font: 800 12px var(--body);
+  text-anchor: middle;
+}
+@keyframes herePulse {
+  50% {
+    stroke-dashoffset: 11;
+    fill: rgba(255, 216, 77, 0.3);
+  }
+}
+.city .pin.faraway {
+  opacity: 0.55;
+}
+.spot .stk.far {
+  color: #f43f5e;
+}

@@ -9,6 +9,8 @@ const Run = {
   draft() {
     const teams = mkLeagueTeams();
     for (const t of teams) for (const p of t.P) p.pot = +rnd(GROWTH.pot[0], GROWTH.pot[1]).toFixed(2);
+    // the island's clubs: each league team plays as its faction's squad
+    for (const t of teams) if (FACTIONS[t.i] && FACTIONS[t.i].team) [t.name, t.short, t.color] = FACTIONS[t.i].team;
     return { teams, team: Math.floor(R() * teams.length) };
   },
   /** Final stat value shown at creation: base + allocated points + the role's usual bias. */
@@ -122,7 +124,9 @@ const Run = {
       gazette: null,
       // the city map: this week's slot (day action, then an optional evening) and scouted clubs (team index → week)
       slot: 'day',
-      scout: {}
+      scout: {},
+      spotQ: {},
+      loc: 'wu' // off the plane at the airport, on the coast
     };
     Run.log(
       run,
@@ -136,6 +140,7 @@ const Run = {
         `Inherited from Hall of Famer ${legend.name}${inherit ? ` — including ${SKILLS[inherit].name}` : ''}${legend.el ? `. Your element is ${ENAME[legend.el]}` : ''}.`
       );
     Legacy.applyStart(run);
+    City.roll(run); // the island's places: which premium ones are overhyped, which rough ones are gems
     Training.rollFloor(run);
     Goals.set(run);
     Run.snap(run);
@@ -306,7 +311,8 @@ const Run = {
     for (const k of ['sp', 'fans', 'trained', 'elNext', 'money']) if (!Number.isFinite(run[k])) run[k] = 0;
     if (!HOUSING[run.housing]) run.housing = 'studio';
     if (!Array.isArray(run.news)) run.news = [];
-    if (run.slot !== 'eve') run.slot = 'day';
+    if (run.slot !== 'eve' && run.slot !== 'done') run.slot = 'day';
+    if (!run.spotQ || typeof run.spotQ !== 'object' || !Object.keys(run.spotQ).length) City.roll(run);
     if (!run.scout || typeof run.scout !== 'object') run.scout = {};
     if (!Number.isFinite(run.staMax) || run.staMax <= 0) run.staMax = Legacy.staMax(run.legacy);
     if (!Number.isFinite(run.sta)) run.sta = run.staMax;

@@ -69,6 +69,7 @@ function hudRes(run) {
   const staPct = Math.round((run.sta / run.staMax) * 100),
     mood = MOODS[run.mood];
   return `<div class="hud res">
+    <div ${tip(`You are in ${REGIONS[City.loc(run)].name}. Home: ${HOUSING[run.housing].name} (${REGIONS[City.homeRegion(run)].name})`)}><i>📍</i><b>${esc(REGIONS[City.loc(run)].name)}</b></div>
     <div ${tip('Money')}><i>💰</i><b>$${run.money.toLocaleString()}</b></div>
     <div ${tip('Fans')}><i>📣</i><b>${run.fans.toLocaleString()}</b></div>
     <div ${tip('Skill points')}><i>✨</i><b>${run.sp}</b></div>
@@ -85,7 +86,7 @@ function hudClock(run) {
     pay = Math.ceil(run.week / ECON.payEvery) * ECON.payEvery - run.week,
     lab = cup ? cup.short : match ? 'Match' : eve ? 'Evening' : 'Day';
   return `<div class="hud clock ${eve ? 'eve' : ''} ${match ? 'match' : ''}">
-    <div class="dial" ${tip(`Week ${run.week} of ${CAREER.weeks}${wt === 'camp' ? ' · training camp (×1.5)' : ''}${run.injury ? ' · injured' : ''}\nPayday ${pay ? `in ${pay} week${pay > 1 ? 's' : ''}` : 'this week'}\nDay: train, rest or relax. Evening: one outing, or end the week.\nTraining in your club's district: home turf +${Math.round(TURF_BONUS * 100)}%.`)}>
+    <div class="dial" ${tip(`Week ${run.week} of ${CAREER.weeks}${wt === 'camp' ? ' · training camp (×1.5)' : ''}${run.injury ? ' · injured' : ''}\nPayday ${pay ? `in ${pay} week${pay > 1 ? 's' : ''}` : 'this week'}\nDay: train, rest or relax — or travel. Evening: one outing where you are, or end the week.\nTravel: same area free · nearby takes the evening · the highlands take a day.\nTraining in your faction's region: home turf +${Math.round(TURF_BONUS * 100)}%.`)}>
       <span class="sky">${match ? '🏐' : eve ? '🌙' : '☀'}</span><b>W${run.week}</b><small>${lab}${wt === 'camp' ? ' · camp' : ''}</small>
       <svg viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="18"/><circle class="prg" cx="20" cy="20" r="18" style="stroke-dasharray:${((run.week / CAREER.weeks) * 113).toFixed(1)} 113"/></svg></div>
     ${eve && !run.event ? `<button class="btn hot endw" onclick="mapEndWeek()" ${tip('Skip the evening')}>End week ▸</button>` : ''}

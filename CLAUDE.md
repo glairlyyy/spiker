@@ -53,8 +53,10 @@ screenshot the page (element screenshots of `#stage` time out: it never settles)
 - Menu: one game (Spite & Spike) + a dev Playtest card (Monster game, startMonster()). UI is compact: details in tooltips/folds.
 - Career world (P1): free-agent start, faction join conditions, money/housing/paydays, league transfers, Gazette,
   Sim ⏭ button to skip a match before playing. Calendar stays 28 weeks; character creation rework later.
-- City map (training weeks): day action at a place + one evening outing (dinner/arcade/street hustle/scout HQ/sleep);
-  faction districts, home-turf training bonus. Story is skipped for now.
+- Island (training weeks): 3 majors (Wei city, Wu coast, Shu highlands) + borderless minors; 2 squads per major + 2
+  minor clubs = 8 teams. Regions set prices/quality (Wei pricey, maybe overhyped; Shu cheap, maybe a gem; Wu sand =
+  technique). You are somewhere: travel takes the evening (near) or a day (highlands); hotels away from home.
+  Day action + one local evening outing. Story skipped for now.
 - Career hub UI: full-screen draggable map (panzoom, vendored in js/vendor — lint/prettier ignore it) with HUD
   overlays, shortcut dock → drawers, cards over the map. 3D map (three.js) decision deferred.
 - Open work: scene frequency tuning (Normal ≈ 6–7 per match).

@@ -280,15 +280,21 @@ pickup squad). Free agents play warm-ups with the pickup squad and watch the cup
 `ECON.payEvery` weeks: allowance − food − rent (eviction to the abandoned gym when broke), housing effects, one
 league transfer (`World.transfers`) and a Gazette (`run.gazette`, news collected via `Run.news`).
 
-## City map (training weeks)
+## Island map (training weeks)
 
-`js/data/city.js` (CITY geometry: 8 faction districts = team index + downtown ellipse, HQ pins; SPOTS places;
-HOME_AT by housing; STREET, SCOUT_STA, TURF_BONUS) + `js/career/city.js` (City, DOM-free) + `js/ui/career-map.js`
-(SVG map + spot panel). A training week is two slots (`run.slot`): **day** = one main action at a place (each
-training has one place; Home = rest, Park = recreation), then events roll; **evening** = one optional outing
-(ramen: bond with a chosen mate; arcade: mood + bond all; street hustle: money on OVR; scout a club HQ: roster +
-elements + a rumour into the Gazette, `run.scout`; early night) or End week. A training place inside your club's
-district gets the home-turf bonus in `Training.mul`. Free agents sign at HQs (or the Clubs drawer).
+`js/data/world.js`: REGIONS (wei = the city, wu = the whole coastline band, shu = the inland highlands — the three
+majors with clear borders; outlaws / gloria = borderless minors; open = no-man's land): price ×, training quality q,
+Wei `hype` (chance a premium place is overhyped), Shu `gem` (chance a rough place is a hidden gem), travel `zone`,
+map anchor `at`. FACTIONS: one per league team — two squads per major (Wei Gold/Iron, Wu Harbor/Fort, Shu
+Peak/Valley) + Street Outlaws + St. Gloria; `team` rebrands the league team in `Run.draft`. TRAVEL (zone → zone:
+0 same, 1 near = takes the evening, 2 far = takes the day), HOTEL, HOUSING by region.
+`js/data/city.js`: CITY (coast, Wu's inner line, Wei and Shu polygons, minor ellipses, airport, HQs), SPOTS (several
+training places per stat across regions; sand = technique ×SAND_SP skill points; hotels; outings per region).
+`js/career/city.js` (City): `run.loc` (where you are; a run starts on the coast, off the plane), `travel`,
+`travelTo` (the week's day action), `roll` (per-run place quality → `run.spotQ`, found out by training there),
+`price` (TRAIN_FEE / HOTEL × region price), `mul` (quality × home turf, passed to `Training.train/preview` as x),
+`can`/`day`/`evening`/`scout`. Evenings, scouting and resting at home only where you are; away from home you rest at
+a hotel. `run.slot` 'done' = the trip took the evening.
 
 ## Career hub UI
 
