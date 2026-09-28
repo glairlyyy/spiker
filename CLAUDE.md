@@ -54,4 +54,6 @@ screenshot `#stage`. A STALL line after long synchronous loops is a test artifac
   Sim ⏭ button to skip a match before playing. Calendar stays 28 weeks; character creation rework later.
 - City map (training weeks): day action at a place + one evening outing (dinner/arcade/street hustle/scout HQ/sleep);
   faction districts, home-turf training bonus. Story is skipped for now.
+- Career hub UI: full-screen draggable map (panzoom, vendored in js/vendor — lint/prettier ignore it) with HUD
+  overlays, shortcut dock → drawers, cards over the map. 3D map (three.js) decision deferred.
 - Open work: full cleanup of js/render3d; scene frequency tuning (Normal ≈ 6–7 per match).

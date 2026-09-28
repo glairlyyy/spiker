@@ -1,35 +1,9 @@
-// Career hub: your player, the season (goal, sponsors, injury), the week's choices (or event / warm-up / Cup match),
-// skills and the diary.
+// Career panels shown in the hub's drawers and pop-ups (career-hub.js): your player, season, teammates, life, clubs,
+// Gazette, the event card, warm-up / Cup match cards and the skills shop, plus their handlers.
 
-let CW = { hard: false }; // hub UI state: the Hard training toggle
+/** Hub UI state: Hard toggle, selected place, open drawer, pan/zoom view, last diary line shown as a toast. */
+let CW = { hard: false, spot: null, drawer: null, view: null, toast: null };
 
-function renderCareer() {
-  A = null;
-  RUN = RUN || Run.load();
-  if (!RUN) return navigate('create');
-  if (RUN.result) return renderRunEnd();
-  const run = RUN,
-    team = Run.myTeam(run),
-    wt = Run.weekType(run);
-  let main;
-  if (run.event) main = eventCard(run);
-  else if (wt === 'cup') main = cupPanel(run);
-  else if (wt === 'warmup' || wt === 'warmup2') main = warmupPanel(run);
-  else main = mapPanel(run);
-  $('#app').innerHTML = `<section class="career" style="--tc:${team.color}">
-    <aside>${youCard(run)}${lifeCard(run)}${seasonCard(run)}${bondCard(run)}</aside>
-    <div class="cmain">
-      ${calendar(run)}
-      ${gazetteCard(run)}
-      ${World.isFree(run) && !run.event && (wt === 'cup' || wt.startsWith('warmup')) ? clubsCard(run) : ''}
-      ${main}
-      ${skillShop(run)}
-      <div class="panel">${fold('diary', `<h3>Diary <span class="mute small">${run.log.length}</span></h3>`, `<ol class="log">${run.log.map(l => `<li><b>${typeof l.w === 'number' ? 'W' + l.w : l.w}</b> ${esc(l.t)}</li>`).join('')}</ol>`)}
-        ${run.log[0] ? `<p class="small mute lastlog">${esc(run.log[0].t)}</p>` : ''}</div>
-      <p class="small mute" id="abandon"><button class="btn" onclick="abandonRun()" ${tip('Your run saves automatically')}>Abandon run</button></p>
-    </div>
-  </section>`;
-}
 function youCard(run) {
   const you = Run.you(run),
     team = Run.myTeam(run),
@@ -224,7 +198,7 @@ function eventCard(run) {
     <div class="evc">${[e.a, e.b].map(([label, fx], i) => `<button class="btn" onclick="chooseEvent(${i})"><b>${esc(label)}</b><small>${esc(fxText(fx))}</small></button>`).join('')}</div></div>`;
 }
 /** Skills shop in two groups: active techniques (fire in matches) and passive skills (always on). */
-function skillShop(run) {
+function skillShop(run, open) {
   const you = Run.you(run),
     ids = Skills.forRole(you.role);
   const card = id => {
@@ -245,14 +219,15 @@ function skillShop(run) {
       .filter(id => !SKILLS[id].tech)
       .map(card)
       .join('')}</div>`,
-    aff > 0
+    open || aff > 0
   )}</div>`;
 }
 function chooseEvent(i) {
   if (!RUN.event) return;
   const pre = RUN.event.pre; // offers shown before the week's choice don't end the week
   Run.log(RUN, Events.choose(RUN, i));
-  if (pre || City.slot(RUN) === 'eve') Run.save(RUN); // offers before the day, or events after it (the evening is next)
+  if (pre || City.slot(RUN) === 'eve')
+    Run.save(RUN); // offers before the day, or events after it (the evening is next)
   else Run.endWeek(RUN);
   renderCareer();
 }
@@ -335,4 +310,3 @@ function abandonRun(sure) {
   RUN = null;
   navigate('menu');
 }
-Screens.career = renderCareer;

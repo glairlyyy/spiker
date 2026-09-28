@@ -242,7 +242,17 @@ HOME_AT by housing; STREET, SCOUT_STA, TURF_BONUS) + `js/career/city.js` (City, 
 training has one place; Home = rest, Park = recreation), then events roll; **evening** = one optional outing
 (ramen: bond with a chosen mate; arcade: mood + bond all; street hustle: money on OVR; scout a club HQ: roster +
 elements + a rumour into the Gazette, `run.scout`; early night) or End week. A training place inside your club's
-district gets the home-turf bonus in `Training.mul`. Free agents sign at HQs (clubs card only on match weeks).
+district gets the home-turf bonus in `Training.mul`. Free agents sign at HQs (or the Clubs drawer).
+
+## Career hub UI
+
+`js/ui/career-hub.js` renders the whole career screen as a fixed full-screen layer (covers the page header): the
+city map (`citySVG` in a `.mapinner` div, dragged / pinch- and wheel-zoomed by vendored panzoom 9 —
+`js/vendor/panzoom.min.js`, global `panzoom`; `mapInit` clamps the view to cover the screen and keeps it in `CW.view`
+across re-renders) and a HUD: resources (top left), day clock + End week (top right), your player (bottom left →
+Player drawer), shortcut dock (bottom → drawers built from the panel functions in career-week.js), the selected-place
+card (`#spot`), a card over the map for events / match days / an unread Gazette (`hubCard`), and a toast with the
+newest diary line. Pins use `data-spot` with one delegated click handler (ignored right after a drag).
 
 ## Code layout notes
 

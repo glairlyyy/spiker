@@ -1,17 +1,5 @@
-// The city map (training weeks): faction districts, places and club HQs. Pick a place, then act in the panel below.
-// Day: one main action (train / rest / recreation). Evening: one optional outing, or end the week.
-
-/** Selected place id ('gym', 'home', … or 'hq3' for a club HQ). */
-CW.spot = CW.spot || null;
-
-function mapPanel(run) {
-  const eve = City.slot(run) === 'eve',
-    wt = Run.weekType(run);
-  return `<div class="panel citymap ${eve ? 'eve' : ''}"><div class="thd"><h3>Week ${run.week}/${CAREER.weeks} · ${eve ? '🌙 Evening' : '☀ Day'}${wt === 'camp' ? ` · Camp${info('Training camp: gains and stamina cost ×1.5')}` : ''}${run.injury ? ' · injured' : ''}${info(`Day: train at a place, rest at home or relax in the park. Evening: one outing — or end the week.\nTraining in your club's district: home turf +${Math.round(TURF_BONUS * 100)}%. Club HQs: scout them in the evening; free agents sign there.`)}</h3>
-    ${eve ? `<button class="btn" onclick="mapEndWeek()" ${tip('Skip the evening')}>End week ▸</button>` : ''}</div>
-    ${citySVG(run)}
-    <div id="spot">${spotPanel(run, CW.spot)}</div></div>`;
-}
+// The city map: faction districts, places and club HQs (SVG, dragged / zoomed with panzoom), and the panel for the
+// selected place. Day: one main action (train / rest / recreation). Evening: one optional outing, or end the week.
 
 function citySVG(run) {
   const eve = City.slot(run) === 'eve',
@@ -19,8 +7,8 @@ function citySVG(run) {
     d = CITY.downtown,
     floor = run.floor || {},
     pin = (id, [x, y], icon, cls, badge, title) =>
-      `<g class="pin ${cls} ${CW.spot === id ? 'sel' : ''}" transform="translate(${x},${y})" onclick="mapPick('${id}')" role="button" tabindex="0" aria-label="${esc(title)}" onkeydown="if(event.key==='Enter')mapPick('${id}')"><title>${esc(title)}</title>
-        <circle r="30"/><text class="ic" y="10">${icon}</text>${badge ? `<g class="bd" transform="translate(24,-24)"><circle r="11"/><text y="4">${badge}</text></g>` : ''}</g>`;
+      `<g class="pin ${cls} ${CW.spot === id ? 'sel' : ''}" transform="translate(${x},${y})" data-spot="${id}" role="button" tabindex="0" aria-label="${esc(title)}"><title>${esc(title)}</title>
+        <circle r="24"/><text class="ic" y="8">${icon}</text>${badge ? `<g class="bd" transform="translate(19,-19)"><circle r="11"/><text y="4">${badge}</text></g>` : ''}</g>`;
   const districts = run.teams
     .map((t, i) => {
       const [lx, ly] = CITY.label[i],
@@ -55,14 +43,14 @@ function citySVG(run) {
         `hq ${c ? 'can' : ''} ${i === run.team ? 'mine' : ''}`,
         c ? '✓' : City.scouted(run, i) ? '👁' : '',
         `${t.name} HQ`
-      ).replace('<circle r="30"/>', `<circle r="30" style="--tc:${t.color}"/>`);
+      ).replace('<circle r="24"/>', `<circle r="24" style="--tc:${t.color}"/>`);
     })
     .join('');
-  return `<svg class="city" viewBox="0 0 ${CITY.w} ${CITY.h}" role="img" aria-label="City map">
+  return `<div class="mapinner"><svg class="city" width="${CITY.w}" height="${CITY.h}" viewBox="0 0 ${CITY.w} ${CITY.h}" role="img" aria-label="City map">
     ${districts}
     <path class="river" d="M-10,470 C180,420 260,360 420,380 S700,280 1010,250"/>
     <ellipse class="down" cx="${d.x}" cy="${d.y}" rx="${d.rx}" ry="${d.ry}"/><text class="dl dt" x="${d.x}" y="${d.y + d.ry - 12}">Downtown</text>
-    ${hqs}${spots}</svg>`;
+    ${hqs}${spots}</svg></div>`;
 }
 
 /** The panel for the selected place: what it does and its buttons. */
@@ -139,13 +127,73 @@ function hqPanel(run, ti) {
     }${ti !== run.team ? `<button class="btn" onclick="mapScout(${ti})" ${eve && !run.event ? '' : `disabled ${tip('Evenings only')}`} ${tip(`Evening: see their roster and elements, hear a rumour. −${SCOUT_STA} stamina`)}>${seen ? 'Scout again' : 'Scout'}</button>` : ''}</div></div>`;
 }
 
+/** The floating card for the selected place. */
+function spotCard(run) {
+  return `<button class="btn x" onclick="mapPick(null)" aria-label="Close">✕</button>${spotPanel(run, CW.spot)}`;
+}
 function mapPick(id) {
   CW.spot = id;
   const el = $('#spot');
-  if (el) el.innerHTML = spotPanel(RUN, id);
-  else renderCareer();
-  for (const g of document.querySelectorAll('.city .pin')) g.classList.toggle('sel', g.getAttribute('onclick') === `mapPick('${id}')`);
+  if (!el) return renderCareer();
+  el.innerHTML = id ? spotCard(RUN) : '';
+  el.classList.toggle('open', !!id);
+  for (const g of document.querySelectorAll('.city .pin')) g.classList.toggle('sel', g.dataset.spot === id);
 }
+
+let PZ = null; // the map's panzoom instance
+const PAD = 90; // px the map may be dragged past the screen edge, so edge labels can clear the HUD
+/** Make the map draggable / zoomable: it covers the screen (a little overscroll, PAD) (zoom 1× – 2.5× of "cover"), keeps its view across re-renders. */
+function mapInit() {
+  const wrap = $('#mapwrap'),
+    inner = wrap && wrap.querySelector('.mapinner');
+  if (PZ) PZ.dispose();
+  PZ = null;
+  if (!inner || typeof panzoom !== 'function') return;
+  const W = CITY.w,
+    H = CITY.h,
+    size = () => [wrap.clientWidth, wrap.clientHeight],
+    [cw, ch] = size(),
+    fit = Math.max(cw / W, ch / H);
+  const pz = panzoom(inner, { minZoom: fit, maxZoom: fit * 2.5, zoomDoubleClickSpeed: 1, onTouch: () => false });
+  const keepIn = () => {
+    const t = pz.getTransform(),
+      [cw, ch] = size(),
+      w = W * t.scale,
+      h = H * t.scale;
+    t.x = w <= cw ? (cw - w) / 2 : clamp(t.x, cw - w - PAD, PAD);
+    t.y = h <= ch ? (ch - h) / 2 : clamp(t.y, ch - h - PAD, PAD);
+  };
+  pz.on('pan', keepIn);
+  pz.on('zoom', keepIn);
+  pz.on('panend', () => (CW.panEnd = Date.now()));
+  pz.on('transform', () => {
+    const t = pz.getTransform();
+    CW.view = { x: t.x, y: t.y, s: t.scale, fit };
+  });
+  const v = CW.view && CW.view.fit === fit ? CW.view : null;
+  if (v) {
+    pz.zoomAbs(0, 0, v.s);
+    pz.moveTo(v.x, v.y);
+  } else {
+    // start centred on where you live
+    const [hx, hy] = City.at(RUN, 'home');
+    pz.zoomAbs(0, 0, fit);
+    pz.moveTo(cw / 2 - hx * fit, ch / 2 - hy * fit);
+  }
+  const hit = e => e.target.closest && e.target.closest('[data-spot]');
+  inner.addEventListener('click', e => {
+    const g = hit(e);
+    if (g && Date.now() - (CW.panEnd || 0) > 200) mapPick(g.dataset.spot);
+  });
+  inner.addEventListener('keydown', e => {
+    const g = hit(e);
+    if (g && e.key === 'Enter') mapPick(g.dataset.spot);
+  });
+  PZ = pz;
+}
+window.addEventListener('resize', () => {
+  if (G.view === 'career' && $('#mapwrap')) mapInit();
+});
 /** Act at a place: the day action (then maybe an event, then the evening) or the evening outing (ends the week). */
 function mapGo(id, mate) {
   const run = RUN,

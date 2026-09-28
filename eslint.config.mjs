@@ -8,16 +8,17 @@ import * as espree from 'espree';
 const html = fs.readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
 const shared = {};
-for (const f of scripts) {
+for (const f of scripts.filter(f => !f.startsWith('js/vendor/'))) {
   const ast = espree.parse(fs.readFileSync(new URL('./' + f, import.meta.url), 'utf8'), { ecmaVersion: 2023, sourceType: 'script' });
   for (const n of ast.body)
     if (n.type === 'VariableDeclaration') for (const d of n.declarations) shared[d.id.name] = 'writable';
     else if ((n.type === 'FunctionDeclaration' || n.type === 'ClassDeclaration') && n.id) shared[n.id.name] = 'writable';
 }
 shared.R3D = 'writable'; // set by the 3D module (window.R3D)
+shared.panzoom = 'readonly'; // js/vendor/panzoom.min.js (UMD global)
 
 export default [
-  { ignores: ['node_modules/**', 'assets/**'] },
+  { ignores: ['node_modules/**', 'assets/**', 'js/vendor/**'] },
   js.configs.recommended,
   {
     files: ['js/**/*.js'],
