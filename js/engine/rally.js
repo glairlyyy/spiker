@@ -287,8 +287,12 @@ function setBeat(c, x) {
   const { m, B, V, front, atk, ds, atkT, defT, qual } = c,
     { setter, spiker, quick, bad, back, longB, freak, slide, sync, pool, callers, fakeDecoy, bitten, sq2, bumpSet } = x,
     { setZ, spZ, b0, bz0, blockers, lateA, a1, pj, cov, readB, setTech } = x;
-  const dx = bad ? -c.da * rnd(25, 50) : 0,
-    dy = bad ? -rnd(18, 34) : 0;
+  // a bad set that stays hittable still reaches the hitter's hand (it just hits weaker: setMul in attack());
+  // the two draws stay so the random sequence is unchanged
+  if (bad) {
+    rnd(25, 50);
+    rnd(18, 34);
+  }
   // set direction relative to the setter: quick, front set, or back set (hitter behind the setter)
   const setDir = quick ? 'quick' : spZ > setZ + 0.08 ? 'back' : 'front';
   // ball calls while the set is in the air: the hitter asks for it, other confident hitters shout as decoys
@@ -359,7 +363,7 @@ function setBeat(c, x) {
         ...lateA,
         {
           k: 'ball',
-          to: { p: spiker.id, c: 'spike', dx, dh: dy },
+          to: { p: spiker.id, c: 'spike' },
           h: freak ? 8 : quick ? 30 : bad ? 250 : longB ? 300 : back ? 245 : 190,
           wob: bad
         },

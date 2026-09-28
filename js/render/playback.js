@@ -247,13 +247,17 @@ function startBall(a) {
     else if (lc === 'set') sfx.set();
     else if (lc === 'block') sfx.block();
   }
-  // a ball sent into a blocker's hands: the 3D layer puts it right at their hands (see blockTouch in r3d)
-  const bt = a.to.c === 'block' ? a.to.p : null;
-  if (!bt && A.blockTouch) {
-    A.blockLast = A.blockTouch;
-    A.blockRel = performance.now();
+  // a ball sent into a block, or to a hitter's / server's hand: the 3D layer puts it right at the real hand(s)
+  // (see handTouch in r3d)
+  const bt =
+    a.to.p && (a.to.c === 'block' || a.to.c === 'spike' || a.to.c === 'serve')
+      ? { p: a.to.p, c: a.to.c, b: A.beats && A.beats[A.bi] } // b: the beat of this flight (its progress drives the pull)
+      : null;
+  if (!bt && A.handTouch) {
+    A.handLast = A.handTouch;
+    A.handRel = performance.now();
   }
-  A.blockTouch = bt;
+  A.handTouch = bt;
   A.lastC = a.to.c || null;
   A.lastP = a.to.p || null;
   A.ball.follow = null;

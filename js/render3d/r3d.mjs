@@ -151,7 +151,7 @@ function draw() {
   const w = world,
     B = A.ball;
   updateBall(w, now);
-  blockTouch(w, now);
+  handTouch(w, now);
   // bodies, hair springs and trails run on the world clock (A.ts): in slow motion everything slows together
   const wdt = dt * Math.max(0.02, Math.min(1, A.ts ?? 1));
   if (!A.qaFreeze) for (const pl of w.people) if (pl.d) posePlayer(pl, pl.d.p.id === A.digHero ? dt : wdt, w.ball.position, w.fx); // qaFreeze: test hook; a digger chasing a far ball poses at normal speed
@@ -183,24 +183,35 @@ function draw() {
 
 const hL = new THREE.Vector3(),
   hR = new THREE.Vector3();
-/** Fade (ms) of the ball leaving a blocker's hands back onto its own flight path. */
-const BLOCK_REL_MS = 140;
+/** Fade (ms) of the ball leaving a hand back onto its own flight path. */
+const HAND_REL_MS = 140;
 /**
- * A ball sent into a block (A.blockTouch, set by playback): as it arrives it is drawn right against the blocker's real
- * hands (between them, on the hitter's side), so a stuff or a touch visibly meets the palms. Uses last frame's hands.
+ * A ball sent to a player's hands (A.handTouch { p, c }, set by playback): as it arrives it is drawn right against
+ * the real hand(s) — a block between both palms, a spike or serve at the hitting (right) hand, a little in front of
+ * it toward the net — so contacts visibly meet the hand. Uses last frame's pose.
  */
-function blockTouch(w, now) {
-  const rel = !A.blockTouch && A.blockLast ? 1 - (now - (A.blockRel || 0)) / BLOCK_REL_MS : 1,
-    id = A.blockTouch || (rel > 0 ? A.blockLast : null);
-  if (!id || !w.ball.visible) return;
-  const pl = w.people.find(q => q.d && q.d.p.id === id);
+function handTouch(w, now) {
+  const rel = !A.handTouch && A.handLast ? 1 - (now - (A.handRel || 0)) / HAND_REL_MS : 1,
+    t = A.handTouch || (rel > 0 ? A.handLast : null);
+  if (!t || !w.ball.visible) return;
+  const pl = w.people.find(q => q.d && q.d.p.id === t.p);
   if (!pl) return;
-  pl.bone('leftHand').getWorldPosition(hL);
-  pl.bone('rightHand').getWorldPosition(hR);
-  hL.add(hR).multiplyScalar(0.5);
-  hL.x += (pl.d.side === 0 ? 1 : -1) * 0.2; // the ball sits in front of the palms, toward the hitter
-  hL.y += 0.05;
-  const u = Math.max(0, Math.min(1, 1 - w.ball.position.distanceTo(hL) / 1.6)) * Math.max(0, rel),
+  const fw = pl.d.side === 0 ? 1 : -1;
+  if (t.c === 'block') {
+    pl.bone('leftHand').getWorldPosition(hL);
+    pl.bone('rightHand').getWorldPosition(hR);
+    hL.add(hR).multiplyScalar(0.5);
+    hL.x += fw * 0.2; // in front of the palms, toward the hitter
+    hL.y += 0.05;
+  } else {
+    pl.bone('rightHand').getWorldPosition(hL);
+    hL.x += fw * 0.12; // against the palm, on the net side
+    hL.y += 0.06;
+  }
+  // pulled in over the last 35% of its flight, fully at the contact and while it rests there (a stuff's pause)
+  const cur = A.beats && A.beats[A.bi],
+    fl = A.handTouch && t.b === cur && cur ? Math.min(1, (A.el || 0) / Math.max(1, cur.dur)) : 1,
+    u = Math.max(0, Math.min(1, (fl - 0.65) / 0.35)) * Math.max(0, rel),
     k = u * u * (3 - 2 * u);
   if (k <= 0) return;
   w.ball.position.lerp(hL, k);
@@ -232,6 +243,9 @@ export const api = {
     return world ? +(world.gl.width / Math.max(1, cv.width)).toFixed(2) : null; // 3D render scale vs the court canvas (debug)
   },
   poseAll: dt => world && world.people.forEach(pl => pl.d && posePlayer(pl, dt, W(A.ball.x, A.ball.z, A.ball.h), world.fx)), // test hook: fast-forward posing
+  get ballPos() {
+    return world ? world.ball.position : null; // the drawn ball (test hook)
+  },
   get people() {
     return world ? world.people : [];
   }

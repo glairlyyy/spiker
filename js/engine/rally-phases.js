@@ -234,39 +234,42 @@ function chooseAttack(c, s, h) {
   const bad = sq2 === 'bad';
   return { MBs, mbZ, tac, quick, pool, callers, trust, spiker, readBonus, freak, slide, sync, DF, B0, bad };
 }
-/** 5b. A bad set the hitter can't attack: too tight (tipped over) or too wide (chased and bumped over). */
+/**
+ * 5b. A bad set: most stay hittable (in place, just weaker — see setMul), but some go astray — the ball flies off
+ * toward the sideline or deep, and the nearest teammate chases it down and bumps (or dives) it over as a free ball.
+ */
 function badSetOver(c, s, a) {
-  const { m, B, V, atk, ds, dd, defT } = c,
+  const { m, B, V, atk, ds, dd, da, atkT, defT } = c,
     { setter, setZ } = s,
-    { spiker, bad } = a;
+    { bad } = a;
   if (bad && R() < 0.3) {
     const tx = sx(ds, rnd(280, 420)),
       tz = rnd(0.15, 0.85),
       dg = nearest(m, defT.P, tx, tz),
+      drift = rnd(-0.2, 0.2), // (kept in the random sequence) how far along the net the stray ball goes
+      deep = (setZ * 97) % 1 < 0.5, // picked from values already rolled: sprayed deep or out wide
+      bz = deep ? clamp(setZ + drift, 0.1, 0.9) : clamp(setZ + (setZ < 0.5 ? -0.36 : 0.36), 0.06, 0.94),
+      bx = sx(atk, deep ? 250 : 372),
+      mates = atkT.P.filter(p => p !== setter && !busy(m, p, c.n)),
+      rec = nearest(m, mates.length ? mates : atkT.P.filter(p => p !== setter), bx, bz),
+      dive = mustDive(rec, m.pos[rec.id], bx, bz, 900),
       a2 = [];
-    // two ways a set goes wrong (picked from values already rolled, no extra randomness):
-    //  tight — carried into the net, the hitter can only joust/tip it over
-    //  wide  — sprayed toward the sideline, the hitter chases and bumps it over
-    const drift = rnd(-0.2, 0.2),
-      tight = (setZ * 97) % 1 < 0.5,
-      bz = tight ? clamp(setZ + drift * 0.5, 0.1, 0.9) : clamp(setZ + (setZ < 0.5 ? -0.36 : 0.36), 0.06, 0.94);
-    mv(m, spiker, sx(atk, tight ? 456 : 372), bz, a2, V);
+    mv(m, rec, bx - da * 10, bz, a2, V);
+    if (dive) setBusy(m, rec, c.n + 1);
     V &&
       B({
-        dur: 1000,
+        dur: 900,
         acts: [
           { k: 'pose', p: setter.id, pose: 'set' },
-          { k: 'call', p: setter.id, t: tight ? 'Too tight!' : 'Sorry — wide!', soft: 1 },
+          { k: 'call', p: setter.id, t: deep ? 'Too far — sorry!' : 'Sorry — wide!', soft: 1 },
           ...a2,
-          { k: 'pose', p: spiker.id, pose: tight ? 'spike' : 'bump' },
-          ...(tight ? [{ k: 'jump', p: spiker.id, mode: 'up', peak: jumpPx(spiker) * 0.7, t0: 0.55, t1: 1 }] : []),
-          { k: 'ball', to: tight ? { x: sx(atk, 480), z: bz, h: 150 } : { x: sx(atk, 360), z: bz, h: 70 }, h: tight ? 70 : 150, wob: true },
+          { k: 'pose', p: rec.id, pose: dive ? 'dive' : 'bump' },
+          { k: 'call', p: rec.id, t: callLine('recv', rec, m) },
+          { k: 'ball', to: { p: rec.id, c: dive ? 'dive' : 'bump' }, h: 170, wob: true },
           { k: 'label', t: 'Bad set', when: 'end' },
           {
             k: 'log',
-            t: tight
-              ? `${setter.name}'s set is too tight to the net — ${spiker.name} can only tip it over`
-              : `${setter.name}'s set sprays wide — ${spiker.name} chases it down and bumps it over`,
+            t: `${setter.name}'s set goes astray — ${rec.name} ${dive ? 'dives' : 'races'} after it and bumps it over`,
             c: 'err'
           }
         ]
@@ -278,15 +281,9 @@ function badSetOver(c, s, a) {
         dur: 900,
         acts: [
           ...a3,
-          ...(tight
-            ? [
-                { k: 'spkstyle', p: spiker.id, st: 'tip' },
-                { k: 'jump', p: spiker.id, mode: 'down' }
-              ]
-            : [{ k: 'pose', p: spiker.id, pose: Math.abs(bz - setZ) > 0.3 ? 'dive' : 'bump' }]),
-          { k: 'ball', to: { p: dg.id, c: 'bump' }, h: tight ? 120 : 190 },
+          { k: 'ball', to: { p: dg.id, c: 'bump' }, h: 200 },
           { k: 'pose', p: dg.id, pose: 'bump' },
-          { k: 'label', t: tight ? 'Tipped over' : 'Saved over', small: 1 }
+          { k: 'label', t: 'Saved over', small: 1 }
         ]
       });
     return { next: [ds, dg, 3] };
