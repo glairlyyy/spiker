@@ -443,6 +443,55 @@ function servePose(d) {
   };
 }
 
+// ---------- before the serve ----------
+// The server's routine (phases from preServe in render/ball.js via d.psvB). `hand` tells the 3D layer which hand(s)
+// reach for the ball (contact): the right hand bounces it, both hands hold / spin it, the left holds it out to aim.
+const PUSH_R = [V(-0.15, -0.8, 0.55), V(-0.1, -0.85, 0.5), V(-0.05, -0.95, 0.3)];
+const BOUNCE_ST = {
+  hp: 0.3,
+  sp: 0.15,
+  cp: 0.05,
+  hd: 0.45,
+  L: leg(0.35, 0.55, 0, 0.14),
+  R: leg(0.05, 0.45, 0, 0.14),
+  al: DOWN_ARM,
+  ar: PUSH_R,
+  curl: 0.25
+};
+const CHEST_ST = { hp: 0.06, sp: 0.02, hd: -0.08, L: leg(0.22, 0.2, 0, 0.12), R: leg(-0.12, 0.15, 0, 0.12), al: DOWN_ARM, curl: 0.2 };
+const AIM_ST = {
+  hp: 0.08,
+  sp: 0.02,
+  tw: -0.25,
+  hd: -0.12,
+  L: leg(0.35, 0.3, 0, 0.12),
+  R: leg(-0.25, 0.25, 0, 0.12),
+  al: [V(0.1, 0.1, 1), V(0.05, 0.15, 1), V(0.05, 0.2, 1)],
+  ar: mixArm(mirror(DOWN_ARM), COCK_SERVE, 0.35),
+  curl: 0.15
+};
+function preservePose(d, m) {
+  const b = d.psvB || { ph: 'carry', k: 1 },
+    mk = moveMix(m);
+  if (b.ph === 'carry' || mk > 0.05) {
+    // walking to the service spot with the ball at the right hip
+    const base = mk > 0 ? mix(STAND, locoPose(m), mk) : STAND;
+    return { ...base, hand: 'right', contact: 0.85 };
+  }
+  const k = b.k ?? 1;
+  switch (b.ph) {
+    case 'bounce':
+      return { ...BOUNCE_ST, hand: 'right', contact: 1, face: { relaxed: 0.3 } };
+    case 'chest':
+      return { ...mix(BOUNCE_ST, CHEST_ST, k), hand: k > 0.3 ? 'both' : 'right', contact: 1, face: { angry: 0.25 * k } };
+    case 'spin':
+      return { ...mix(STAND, { ...CHEST_ST, hd: 0.3 }, k), hand: 'both', contact: 1, face: { relaxed: 0.3 } };
+    default:
+      // aim: the ball held out in the left hand toward the other court, the right arm half cocked
+      return { ...mix({ ...CHEST_ST, hd: 0.3 }, AIM_ST, k), hand: k > 0.4 ? 'left' : 'both', contact: 1, face: { angry: 0.35 * k } };
+  }
+}
+
 // ---------- dive ----------
 // Arms authored in character space with a palm direction → torso space + palm twist (dive: the body goes horizontal).
 function armsC(p, R, palmR, L, palmL) {
@@ -619,7 +668,8 @@ export function playerPose(d, mood, m) {
       const lp = locoPose(m);
       out = { ...out, L: mixLeg(out.L, lp.L, k), R: mixLeg(out.R, lp.R, k), lift: (lp.lift || 0) * k };
     }
-  } else if (pose === 'spike') out = spikePose(d, m);
+  } else if (pose === 'preserve') out = preservePose(d, m);
+  else if (pose === 'spike') out = spikePose(d, m);
   else if (pose === 'serve') out = servePose(d);
   else if (pose === 'bump' && !air) {
     const u = d.swing == null ? 0 : cl(d.swing / 170, 0, 1),

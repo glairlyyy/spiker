@@ -50,7 +50,7 @@ function playRally(m) {
         { k: 'log', t: `Rotation ${(m.rot[s] % 4) + 1}: ${server.name} (${server.role}) to serve` }
       ]
     });
-  V && B({ dur: 650, acts: [] }); // server bounces the ball, focuses: a beat before the serve
+  V && B({ dur: 1100, acts: [] }); // the server's routine (bounce it / spin and aim, see preServe): a beat before the serve
   let sq = Formula.serveQuality(server, ST);
   // serve style: running jump serve / jump float / standing float
   const sType = serveType(server, sq),

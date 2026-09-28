@@ -132,6 +132,10 @@ function startBeat(b) {
         A.ball.follow = a.p;
         A.ball.vis = true;
         A.dribble = true;
+        // the server's routine before the serve (see preServe in ball.js): bounce it, or spin it and aim
+        d.pose = 'preserve';
+        d.pAge = 0;
+        d.psv = { t: 0, kind: ((A.m.pts ? A.m.pts[0] + A.m.pts[1] : 0) + d.p.num) % 3 === 2 ? 'aim' : 'bounce' };
         break;
       case 'pose':
         startPose(d, a.pose, !!a.pc, b.dur);
@@ -199,6 +203,7 @@ function maybeSqueak(d, a) {
 const DIVE_KEEP = new Set(['ready', 'bump', 'huddle']);
 /** A new pose at the start of a beat of `dur` ms (dig/receive: the engine already chose run-and-bump vs dive). */
 function startPose(d, pose, pc, dur) {
+  if (pose !== 'preserve') d.psv = null;
   // a player still on the floor from a dive finishes it (lie, push back up) before a passive pose takes over
   if (diving(d) && DIVE_KEEP.has(pose)) {
     d.afterDive = pose;
@@ -748,6 +753,7 @@ function stepPlayerTimers(wdt, raw) {
       }
     }
     if (d.landMs != null) d.landMs += dt;
+    if (d.psv && d.pose === 'preserve' && moveM(d) < 0.15) d.psv.t += dt; // the routine starts once at the service spot
     if (d.dv) {
       d.dv.t += dt;
       if (!d.dv.hit && d.dv.t >= d.dv.dur * 0.75) {

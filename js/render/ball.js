@@ -29,16 +29,54 @@ function followBall() {
     A.ball.follow = null; // the holder left the court: let the ball go instead of failing every frame
     return;
   }
+  if (f.pose === 'preserve' && f.psv) {
+    const b = (f.psvB = preServe(f)); // the 3D pose reads the phase (psvB) so the hands move with the ball
+    A.ball.x = b.x;
+    A.ball.z = b.z;
+    A.ball.h = b.h;
+    return;
+  }
   A.ball.x = f.x + (DIR(f.side) * 16) / VCS;
   A.ball.z = f.z;
-  if (A.dribble && f.pose !== 'serve') {
-    const c = Math.abs(Math.cos(performance.now() * 0.0075));
-    A.ball.h = 6 + 58 * c;
-    if (c < 0.08 && !A.bnc) {
-      A.bnc = 1;
-      sfx.bounce();
-    } else if (c > 0.3) A.bnc = 0;
-  } else A.ball.h = 72 + f.jy;
+  A.ball.h = 72 + f.jy;
+}
+/** Bounce cycle (ms) and bounces in the pre-serve routine; hand height of the ball (court h units, 150 = 2.43 m). */
+const PSV_CYC = 400,
+  PSV_N = 2,
+  PSV_HAND = 56;
+/**
+ * The server's routine before the serve, on f.psv.t (ms at the service spot): 'bounce' — two bounces off the right
+ * hand, catch, bring it up and look at the target; 'aim' — spin it in both hands, then hold it out in the left hand
+ * at eye height toward the other court. Returns the ball { x, z, h } and the phase the 3D pose follows
+ * ({ ph: 'carry' | 'bounce' | 'chest' | 'spin' | 'aim', k: 0..1 blend }). Walking in: carried at the right hip.
+ */
+function preServe(f) {
+  const S = f.psv,
+    fw = DIR(f.side),
+    rz = f.side === 0 ? -1 : 1, // the player's right, in court z
+    at = (fwd, right, h, ph, k = 1) => ({ x: f.x + (fw * fwd) / MX, z: f.z + (rz * right) / MZ, h, ph, k }),
+    t = S.t,
+    ease = u => u * u * (3 - 2 * u);
+  if (t <= 0) return at(0.18, 0.24, 50, 'carry');
+  if (S.kind === 'bounce') {
+    if (t < PSV_CYC * PSV_N) {
+      const c = (t % PSV_CYC) / PSV_CYC,
+        h = PSV_HAND * Math.abs(Math.cos(Math.PI * c)); // hand → floor (c = 0.5) → hand
+      if (Math.abs(c - 0.5) < 0.04 && !S.bnc) {
+        S.bnc = 1;
+        sfx.bounce();
+      } else if (Math.abs(c - 0.5) > 0.1) S.bnc = 0;
+      return at(0.36, 0.2, Math.max(8, h), 'bounce', c);
+    }
+    const u = ease(Math.min(1, (t - PSV_CYC * PSV_N) / 300)); // catch, up to the chest, eyes on the target
+    return at(0.36 - 0.08 * u, 0.2 - 0.18 * u, PSV_HAND + 30 * u, 'chest', u);
+  }
+  if (t < 500) {
+    A.spin = (A.spin || 0) + 0.25; // spinning it between the hands
+    return at(0.28, 0.02, 78, 'spin', Math.min(1, t / 200));
+  }
+  const u = ease(Math.min(1, (t - 500) / 350)); // left arm out, ball at eye height toward the other court
+  return at(0.28 + 0.27 * u, 0.02 - 0.14 * u, 78 + 24 * u, 'aim', u);
 }
 /** Free-bounce physics after the ball lands (court units per ms): gravity, energy lost per hop, ends after 1.6 s. */
 const BOUNCE_G = 0.0011,

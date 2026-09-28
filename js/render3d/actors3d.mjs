@@ -94,7 +94,7 @@ function steer(pl, d, pos, face, mot, ballPos, dt) {
       .sub(pos)
       .setY(0)
       .length(),
-    free = !d.pose || d.pose === 'ready' || d.pose === 'huddle' || poseDone(d);
+    free = !d.pose || d.pose === 'ready' || d.pose === 'huddle' || d.pose === 'preserve' || poseDone(d);
   let want = 0,
     rate = 6;
   if (d.pose === 'dive' && d.dv && !poseDone(d) && Math.hypot(d.dv.dx * KX, d.dv.dz * KZ) > 0.4) {
@@ -131,8 +131,10 @@ function reachForBall(pl, d, pose, ballPos) {
   }
   if (w > 0.01 && A.ball.vis) {
     root.updateMatrixWorld(true);
-    const both = d.pose !== 'spike' && d.pose !== 'serve' && d.pose !== 'dive'; // a dive reaches with one hand
-    const t = torsoDir(pl, ballPos, both ? 'both' : 'right');
+    // one hand for spikes, serves and dives; a pose may say which (pose.hand: 'left' | 'right' | 'both')
+    const both = pose.hand ? pose.hand === 'both' : d.pose !== 'spike' && d.pose !== 'serve' && d.pose !== 'dive',
+      side = pose.hand === 'left' ? 'left' : 'right';
+    const t = torsoDir(pl, ballPos, both ? 'both' : side);
     const reach = both ? (d.pose === 'bump' || d.pose === 'dive' ? 1.25 : 1.1) : 1.0;
     const k = w * Math.max(0, Math.min(1, (reach * 1.4 - t.dist) / (reach * 0.5)));
     if (k > 0.01) {
@@ -148,7 +150,8 @@ function reachForBall(pl, d, pose, ballPos) {
             .normalize();
         pose.al = bendArm(pose.al, dl, k * 0.85, d.pose === 'set' || d.pose === 'block');
         pose.ar = bendArm(pose.ar || mirror(pose.al), dr, k * 0.85, d.pose === 'set' || d.pose === 'block');
-      } else pose.ar = bendArm(pose.ar, t.dir, k * (d.pose === 'dive' ? 0.75 : 0.9), true);
+      } else if (side === 'left') pose.al = bendArm(pose.al, t.dir, k * 0.9, true);
+      else pose.ar = bendArm(pose.ar || mirror(pose.al), t.dir, k * (d.pose === 'dive' ? 0.75 : 0.9), true);
       applyPose(pl, pose);
     }
   }

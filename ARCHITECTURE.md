@@ -244,6 +244,14 @@ passive poses (`DIVE_KEEP`: ready / bump / huddle) wait for it (`afterDive`); a 
 until back up. Collision (`separate`, playback): teammates' feet stay ≥ `BODY_GAP` apart (display only). In the
 engine a double block's second blocker and the late blockers take spots ≥ `BLOCK_GAP` from the others.
 
+## Pre-serve routine
+
+The engine's `hold` beat + a 1.1 s beat before the serve. Playback gives the server pose `preserve` and `d.psv`
+({ kind: 'bounce' | 'aim', t }, t runs once they stand at the service spot). `preServe` (render/ball.js) is the one
+timeline: it places the ball (two bounces off the right hand → catch to the chest; or spin in both hands → held out
+in the left hand at eye height toward the other court) and stores the phase in `d.psvB`, which `preservePose`
+(poses3d) follows; `pose.hand` tells `reachForBall` which hand(s) meet the ball.
+
 ## Career world (P1)
 
 `js/data/world.js` (FACTIONS per league team with join conditions, ECON, HOUSING) + `js/career/world.js` (World).
