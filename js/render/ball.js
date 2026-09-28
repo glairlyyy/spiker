@@ -57,7 +57,7 @@ function preServe(f) {
     at = (fwd, right, h, ph, k = 1) => ({ x: f.x + (fw * fwd) / MX, z: f.z + (rz * right) / MZ, h, ph, k }),
     t = S.t,
     ease = u => u * u * (3 - 2 * u);
-  if (t <= 0) return at(0.18, 0.24, 50, 'carry');
+  if (t <= 0 || moveM(f) > 0.15) return at(0.18, 0.24, 50, 'carry'); // walking in / pacing out a run-up
   if (S.kind === 'bounce') {
     if (t < PSV_CYC * PSV_N) {
       const c = (t % PSV_CYC) / PSV_CYC,
