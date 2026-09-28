@@ -1,6 +1,6 @@
 // Light trails that follow a point (a player's hand): a camera-facing ribbon that tapers and fades with age.
 // Stars get a thin short streak, OP players a wide long one, in their hair colour (think Kuroko's zone eye trail).
-// Two layers over one strip: a dark anime-style outline along the edges (normal blending), and the glow inside it
+// Two layers over one strip: a crisp solid edge in the trail's colour (normal blending), and the glow inside it
 // (additive).
 import * as THREE from 'three';
 
@@ -15,7 +15,7 @@ void main() {
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
 /** Outer share of the half-width that is outline. */
-const OUT = '0.08';
+const OUT = '0.05';
 const FS = `
 uniform vec3 color;
 uniform vec3 core;
@@ -34,9 +34,7 @@ void main() {
   gl_FragColor = vec4(ink, band * min(1.0, vA * 1.4) * 0.9);
 }`;
 /** The strip is this much wider than o.width, so the glow inside the outline keeps its old width. */
-const OUT_W = 1.08;
-/** Outline colour: a deep navy ink, like the canvas text outlines. */
-const INK = new THREE.Color('#0b1030');
+const OUT_W = 1.05;
 const tA = new THREE.Vector3(),
   tB = new THREE.Vector3(),
   tC = new THREE.Vector3();
@@ -71,7 +69,7 @@ export function makeTrail(scene, max = 36) {
     new THREE.ShaderMaterial({
       vertexShader: VS,
       fragmentShader: FS_OUT,
-      uniforms: { ink: { value: INK } },
+      uniforms: { ink: { value: new THREE.Color('#ffffff') } }, // the trail's own colour (set per update)
       transparent: true,
       depthWrite: false,
       side: THREE.DoubleSide
@@ -116,6 +114,7 @@ export function makeTrail(scene, max = 36) {
         return;
       }
       mat.uniforms.color.value.set(o.color);
+      outline.material.uniforms.ink.value.set(o.color);
       for (let i = 0; i < n; i++) {
         const a = pts[i].p,
           b = pts[Math.min(n - 1, i + 1)].p,
