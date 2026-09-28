@@ -20,7 +20,8 @@ Published as a claude.ai artifact: https://claude.ai/artifact/4xfGDd92rAanHyThVx
 - `js/engine` pure simulation, no DOM: match/serve/rally(-phases/-defense) emit **beats** (timed act lists);
   formulas, elements (per-player element gauge + element spikes), hype (staged scenes, chatter; presentation only).
 - `js/render` playback of beats (playback, clock = world time scale / rAF loop, camera, ball, scenes, overlay drawing).
-- `js/render3d` ES modules: r3d (scene, camera shots, dynamic resolution), players3d (VRM load/dress), poses3d, fx3d, trails3d.
+- `js/render3d` ES modules: r3d (entry, per-frame draw, dynamic resolution), units3d, arena3d, camera3d (game camera,
+  scene shots, P3D), actors3d (posing players/coaches, trails, auras), players3d (VRM load/dress), poses3d, fx3d, trails3d.
 - `js/career` career run (28 weeks, two cups, training, events, Element Trial, goals/sponsors, Legacy/Hall of Fame, saves).
 - `js/ui` screens (menu, create, career, match, encyclopedia, legacy), dom helpers (esc, tip/info/fold/pop).
 - ARCHITECTURE.md — detailed design notes; keep it updated with structural changes.
@@ -38,8 +39,8 @@ Published as a claude.ai artifact: https://claude.ai/artifact/4xfGDd92rAanHyThVx
 
 ## QA recipe (Playwright, Chromium preinstalled — never `playwright install`)
 Launch with `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`, open test3d.html, `startMonster()`,
-wait for `R3D && A && !A.hold`, set `A.hold=true`, loop `step(16); R3D.poseAll(0.016)`; check pageerror + `DBG.text()`;
-screenshot `#stage`. A STALL line after long synchronous loops is a test artifact.
+wait for `typeof R3D !== 'undefined' && R3D && A && !A.hold` (R3D is a `let`, not on window), set `A.hold=true`, loop `step(16); R3D.poseAll(0.016)`; check pageerror + `DBG.text()`;
+screenshot the page (element screenshots of `#stage` time out: it never settles). A STALL line after long synchronous loops is a test artifact.
 
 ## Feature state (decisions so far)
 - Match: one set to 15 (win by 2), court ×1.5, zone/captain buffs/timeouts, tactics, techniques, pop-ups, long back attack.
@@ -49,11 +50,11 @@ screenshot `#stage`. A STALL line after long synchronous loops is a test artifac
   attempted), block-break spike cut + ball close-up, kill-block scene, loose-ball slow-mo calls, personality chatter.
   No manga panels. Slow-mo uses one world clock (A.ts) with eased ramps.
 - Blocks: stuff odds = full-strength block vs spike, weighted by coverage; ~14% of attacks stuffed in normal play.
-- Menu: one game (Spite & Spike); Monster game kept only as a QA hook (startMonster()). UI is compact: details in tooltips/folds.
+- Menu: one game (Spite & Spike) + a dev Playtest card (Monster game, startMonster()). UI is compact: details in tooltips/folds.
 - Career world (P1): free-agent start, faction join conditions, money/housing/paydays, league transfers, Gazette,
   Sim ⏭ button to skip a match before playing. Calendar stays 28 weeks; character creation rework later.
 - City map (training weeks): day action at a place + one evening outing (dinner/arcade/street hustle/scout HQ/sleep);
   faction districts, home-turf training bonus. Story is skipped for now.
 - Career hub UI: full-screen draggable map (panzoom, vendored in js/vendor — lint/prettier ignore it) with HUD
   overlays, shortcut dock → drawers, cards over the map. 3D map (three.js) decision deferred.
-- Open work: full cleanup of js/render3d; scene frequency tuning (Normal ≈ 6–7 per match).
+- Open work: scene frequency tuning (Normal ≈ 6–7 per match).

@@ -159,7 +159,8 @@ const DOWN = new THREE.Vector3(0, -1, 0),
 const E = new THREE.Euler(),
   QA = new THREE.Quaternion(),
   QB = new THREE.Quaternion();
-const mirror = arm => arm.map((v, i) => (i < 3 ? new THREE.Vector3(-v.x, v.y, v.z) : -(v || 0)));
+/** Left arm → right arm (mirror the direction vectors across the body, negate the twist). */
+export const mirror = arm => arm.map((v, i) => (i < 3 ? new THREE.Vector3(-v.x, v.y, v.z) : -(v || 0)));
 function legDirs(l) {
   const s = l.s ?? 0.08;
   return [

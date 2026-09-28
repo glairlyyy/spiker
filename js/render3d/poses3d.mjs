@@ -3,6 +3,7 @@
 // twistFore] as torso-space directions (crouched poses are written in character space and converted with C()).
 // `ar` (right arm) defaults to the mirror of `al`. The right arm is the hitting arm.
 import * as THREE from 'three';
+import { mirror } from './players3d.mjs';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z).normalize();
 const leg = (a, k, f = 0, s = 0.1) => ({ a, k, f, s });
@@ -10,7 +11,6 @@ const cl = (v, a, b) => Math.max(a, Math.min(b, v));
 const sm = t => t * t * (3 - 2 * t);
 const mixN = (a, b, t) => (a ?? 0) + ((b ?? 0) - (a ?? 0)) * t;
 const mixV = (a, b, t) => a.clone().lerp(b, t).normalize();
-const mirror = arm => arm.map((v, i) => (i < 3 ? new THREE.Vector3(-v.x, v.y, v.z) : -(v || 0)));
 const mixArm = (a, b, t) => [
   mixV(a[0], b[0], t),
   mixV(a[1], b[1], t),

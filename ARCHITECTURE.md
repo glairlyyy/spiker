@@ -87,7 +87,7 @@ The match screen takes a fixture: `navigate('match', { a, b, round, back, onFini
 
 ## 3D renderer (js/render3d/)
 
-Skyline Cup 3D draws every match (career, Monster) with VRM anime players. It is a **renderer only**:
+The 3D renderer draws every match (career, Monster playtest) with VRM anime players. It is a **renderer only**:
 `render/playback.js` still turns beats into display state every frame (`A.disp`, `A.ball`, `A.cam`, `A.zoom`,
 particles, labels) and `draw()` hands off to `R3D.draw()`. The classic 2D court lives on as a separate legacy
 artifact; its drawing code was removed here (only the screen-space layer in `render/court.js` remains, plus
@@ -102,10 +102,16 @@ artifact; its drawing code was removed here (only the screen-space layer in `ren
   screen = f·p + o) is applied to the projection for shake/push-in/zoom, then the screen-space layer (`drawTags`,
   `drawTrail`, `drawFloorFx`, `drawChant`, `drawFx`) is drawn on the transparent canvas on top. Units: x/1000 →
   20.4 m court, z → 12 m, height 150 = the 2.43 m net tape (`W()`). Cameras: courtside (default) and broadcast.
+- Modules: `r3d.mjs` (entry: build once, bind per match, per-frame `draw`, dynamic resolution, `api` = `R3D`),
+  `units3d.mjs` (court units → metres `W`/`Wto`, `canvasTex`, `lowEnd`), `arena3d.mjs` (lights, court, net, board,
+  stands, instanced crowd, ball + glow; `dressArena`, `updateBall/Crowd/Net/PointFlash`), `camera3d.mjs` (game
+  camera, scene shots `shotPose` with hard cuts, `P3D`, view transform, camera mode, debug camera),
+  `actors3d.mjs` (`posePlayer` → `motion`, `steer`, head tracking, `reachForBall`, `lightTrails`, `glow`;
+  `poseCoach`; `dressActors`), `fx3d.mjs`, `trails3d.mjs`.
 - `players3d.mjs` — VRM loading, repeatable dressing, pose → normalized bones, smoothing, arm aiming at the ball
   (`torsoDir`/`bendArm`), feet on the floor, expressions.
 - `poses3d.mjs` — one pose per engine pose, driven by the same values the playback layer keeps (swing/spike
-  timers, jump arcs, `diveShape`, `setMotion`) plus **measured motion** from `r3d.mjs` (`motion()`: speed,
+  timers, jump arcs, `diveShape`, `setMotion`) plus **measured motion** from `actors3d.mjs` (`motion()`: speed,
   forward/lateral velocity, gait phase advanced by distance so feet don't slide). Locomotion blends keyframed
   walk → run cycles (Catmull-Rom over contact / mid-stance / push-off / swing), backpedal and side shuffle. The
   spike is timed off the jump: run-in → penultimate step (arms back high) → plant/load → two-arm take-off →

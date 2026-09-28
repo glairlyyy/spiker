@@ -1,4 +1,4 @@
-// Main menu: the game (Spite & Spike), Legacy and the encyclopedia. startMonster() stays for QA (no menu entry).
+// Main menu: the game (Spite & Spike), Legacy and the encyclopedia, plus a dev playtest entry (Monster game).
 
 function renderMenu() {
   A = null;
@@ -13,6 +13,8 @@ function renderMenu() {
     <div class="panel mleg"><h3>Legacy</h3>
       <p>${L.pts} Legacy points · ${L.runs} run${L.runs === 1 ? '' : 's'}${L.best ? ` · best: ${esc(L.best.name)} (rank ${L.best.rank}, ${L.best.fans.toLocaleString()} fans)` : ''}</p>
       <span class="trow" style="margin:0"><button class="btn" onclick="navigate('encyclopedia')">Skill encyclopedia</button><button class="btn" onclick="navigate('legacy')">Unlocks</button></span></div>
+    <div class="panel mdev"><h3>Playtest <span class="mute small">dev</span></h3>
+      <span class="trow" style="margin:0"><button class="btn" onclick="startMonster()" ${tip('A one-off 3D match between two all-OP teams: elements, hype scenes and blocks fire often')}>Monster game</button></span></div>
   </section>`;
 }
 function openCareer() {

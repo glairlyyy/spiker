@@ -73,7 +73,7 @@ const DBG = (() => {
   /** Everything as plain text for pasting into a chat or bug report. */
   function text(state) {
     const env = [
-      `Skyline Cup 3D debug log — ${new Date().toISOString()}`,
+      `Spite & Spike debug log — ${new Date().toISOString()}`,
       `Browser: ${navigator.userAgent}`,
       `Screen: ${innerWidth}×${innerHeight} @${devicePixelRatio}x`
     ];
