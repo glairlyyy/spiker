@@ -227,6 +227,8 @@ function startPose(d, pose, pc, dur) {
   d.pAge = 0;
   if (d.jy <= 0) d.landMs = null;
 }
+/** Strongest speed-up of a hard hit along its flight (u − acc·u·(1−u): must stay < 1 to keep the ball moving forward). */
+const BALL_ACC_MAX = 0.7;
 /** A `ball` act: the ball leaves the last toucher (or the hand holding it) for resolve(a.to); sets up the tween. */
 function startBall(a) {
   A.dribble = false;
@@ -242,7 +244,7 @@ function startBall(a) {
     const hd = (lc === 'spike' || lc === 'serve') && lp;
     if (hd) a._lag = Math.max(0, swingLead(hd) - (hd.spk || 0));
     // a hard hit leaves the hand and keeps accelerating (topspin + gravity): the harder, the stronger
-    if (hd && a.trail) a._acc = clamp((a.trail - 40) / 150, 0, 0.35);
+    if (hd && a.trail) a._acc = clamp((a.trail - 30) / 100, 0, BALL_ACC_MAX);
     if (lc === 'bump' || lc === 'dive') sfx.bump();
     else if (lc === 'set') sfx.set();
     else if (lc === 'block') sfx.block();
