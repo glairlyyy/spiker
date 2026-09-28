@@ -195,8 +195,16 @@ function maybeSqueak(d, a) {
     );
   }
 }
+/** Poses that wait for a dive to finish (anything else — a new dive, a set, a spike — takes over at once). */
+const DIVE_KEEP = new Set(['ready', 'bump', 'huddle']);
 /** A new pose at the start of a beat of `dur` ms (dig/receive: the engine already chose run-and-bump vs dive). */
 function startPose(d, pose, pc, dur) {
+  // a player still on the floor from a dive finishes it (lie, push back up) before a passive pose takes over
+  if (diving(d) && DIVE_KEEP.has(pose)) {
+    d.afterDive = pose;
+    return;
+  }
+  d.afterDive = null;
   if (d.pose !== pose || pose === 'bump' || pose === 'dive') d.swing = null;
   if (d.pose !== pose || pose === 'spike' || pose === 'serve') {
     d.spk = null;
@@ -373,7 +381,8 @@ function instant(a) {
       if (d) A.wallFx = { z: d.z, top: 138 + d.jy + 10, el: a.el || null, life: 1 };
       break;
     case 'pose': // a pose change at the end of a beat (no swing / dive set-up)
-      if (d) {
+      if (d && diving(d) && DIVE_KEEP.has(a.pose)) d.afterDive = a.pose;
+      else if (d) {
         d.pose = a.pose;
         if (a.pose !== 'dive' && d.dv) {
           d.gu = { t: 0, s: diveShape(d) };
@@ -528,6 +537,7 @@ function applyBeat(b, t) {
   for (const id in A.disp) {
     const d = A.disp[id];
     if (d.tx === d.sx && d.tz === d.sz) continue;
+    if (diving(d) && d.dv.t > d.dv.dur) continue; // on the floor: runs on only once back up (endBeat carries the move)
     if (id === A.digHero && d.waitLand && d.jy <= 1 && (d.landMs == null || d.landMs > 60)) d.waitLand = false; // feet down: go
     if ((d.carry || id === A.digHero) && !d.waitLand) {
       capMove(d, d.tx, d.tz); // catching up from the last beat, or chasing a far dig: straight there at a sprint
@@ -547,6 +557,38 @@ function applyBeat(b, t) {
     }
     capMove(d, lerp(d.sx, d.tx, u), lerp(d.sz, d.tz, u));
   }
+  separate();
+}
+/** Closest two players' feet may come (metres): bodies push apart instead of overlapping. */
+const BODY_GAP = 0.6;
+/**
+ * Collision: teammates closer than BODY_GAP are pushed apart along the line between them (half each; a player
+ * lying after a dive doesn't budge). Display only — engine positions and targets are unchanged.
+ */
+function separate() {
+  const ds = Object.values(A.disp);
+  for (let i = 0; i < ds.length; i++)
+    for (let j = i + 1; j < ds.length; j++) {
+      const a = ds[i],
+        b = ds[j];
+      if (a.side !== b.side) continue; // the net is between them
+      let dx = (b.x - a.x) * MX,
+        dz = (b.z - a.z) * MZ;
+      const dm = Math.hypot(dx, dz);
+      if (dm >= BODY_GAP) continue;
+      if (dm < 1e-4) {
+        dx = 0;
+        dz = 1e-4; // same spot: split along the net
+      }
+      const n = Math.max(dm, 1e-4),
+        push = BODY_GAP - dm,
+        la = diving(a) ? 0 : diving(b) ? 1 : 0.5,
+        lb = 1 - la;
+      a.x -= ((dx / n) * push * la) / MX;
+      a.z -= ((dz / n) * push * la) / MZ;
+      b.x += ((dx / n) * push * lb) / MX;
+      b.z += ((dz / n) * push * lb) / MZ;
+    }
 }
 /** Ball along its arc (lift a.h at the middle), late off a hand still swinging, accelerating after a hard hit. */
 function tweenBall(a, b, t) {
@@ -712,6 +754,12 @@ function stepPlayerTimers(wdt, raw) {
         d.dv.hit = 1; // chest hits the floor
         panAt(P(d.x, d.z, 0).X);
         sfx.slide();
+      }
+      if (d.afterDive && !diving(d)) {
+        d.pose = d.afterDive === 'bump' ? 'ready' : d.afterDive; // the pass is long gone: back to ready
+        d.afterDive = null;
+        d.dv = null;
+        d.pAge = 0;
       }
     }
     // landing thud after a real jump (peak height remembered in _air)

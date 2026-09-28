@@ -591,7 +591,7 @@ export function poseDone(d) {
   if (d.pose !== 'ready' && d.pose !== 'huddle' && (d.pAge || 0) > 1600) return true; // stale: nothing new since
   switch (d.pose) {
     case 'dive':
-      return !!d.dv && d.dv.t > d.dv.dur * 2.3;
+      return !!d.dv && diveF(d.dv) > 2.3;
     case 'bump':
     case 'set':
       return d.swing != null && d.swing > 800;
@@ -611,7 +611,7 @@ export function playerPose(d, mood, m) {
     mk = moveMix(m);
   let out;
   if (pose === 'dive') {
-    const f = d.dv ? d.dv.t / Math.max(1, d.dv.dur) : 3;
+    const f = d.dv ? diveF(d.dv) : 3;
     out = divePose(d, f);
     // run-in: real running strides until the low base
     const k = mk * (1 - sm(cl((f - 0.38) / 0.18, 0, 1)));

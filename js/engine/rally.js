@@ -5,6 +5,8 @@
 
 /** Possessions after which everyone starts to tire (stamina drain, long-rally element gauges). */
 const LONG_RALLY = 6;
+/** Closest two blockers stand side by side along the net (z units: 0.06 ≈ 0.7 m, shoulder to shoulder). */
+const BLOCK_GAP = 0.06;
 
 /**
  * Plays the rest of a rally after serve receive, alternating sides until a point is decided.
@@ -205,15 +207,29 @@ function formBlock(c, x) {
       side = bz0 <= spZ ? 1 : -1,
       t1 = spZ + side * 0.1;
     bz1 = clamp(p1.z + clamp(t1 - p1.z, -reach(b1) * 1.3, reach(b1) * 1.3), 0.05, 0.95);
+    // two bodies can't take off from one spot: the second blocker closes in beside the first, on their own side
+    if (Math.abs(bz1 - bz0) < BLOCK_GAP) {
+      const away = p1.z >= bz0 ? 1 : -1,
+        z = bz0 + away * BLOCK_GAP;
+      bz1 = z >= 0.05 && z <= 0.95 ? z : bz0 - away * BLOCK_GAP;
+    }
   }
   const blockers = b1 ? [b0, b1] : [b0];
   // every other front-row player still goes up (late, off-position) even when they're not part of the block —
   // nobody at the net just watches. Display only: coverage and positions in the engine are unchanged.
   const lateB = V ? defT.P.filter(p => front(ds, p) && !blockers.includes(p) && !busy(m, p, n)) : [],
+    taken = b1 ? [bz0, bz1] : [bz0], // spots at the net already taken: late blockers go up beside them, not inside them
     lateA = lateB.flatMap(p => {
       const q = m.pos[p.id];
+      let z = clamp(q.z + clamp(spZ - q.z, -0.16, 0.16), 0.05, 0.95);
+      for (let i = 0; i < 3; i++) {
+        const hit = taken.find(t => Math.abs(z - t) < BLOCK_GAP);
+        if (hit == null) break;
+        z = clamp(hit + (q.z >= hit ? 1 : -1) * BLOCK_GAP, 0.05, 0.95);
+      }
+      taken.push(z);
       return [
-        { k: 'slide', p: p.id, x: sx(ds, 482), z: clamp(q.z + clamp(spZ - q.z, -0.16, 0.16), 0.05, 0.95) },
+        { k: 'slide', p: p.id, x: sx(ds, 482), z },
         { k: 'pose', p: p.id, pose: 'block' },
         { k: 'jump', p: p.id, mode: 'up', t0: quick ? 0.45 : 0.74, t1: 1, peak: jumpPx(p) * 0.7 }
       ];

@@ -239,6 +239,11 @@ reachable (≥ `DIG_SLOW_MIN`). `timeScale` drops to it at once; the digger (`A.
 `capMove` sprint cap, straight-line chase, 3D posing — so they move and dive at normal speed while the ball and
 everyone else slow down. Presentation only (no engine change).
 
+Dives: after the contact the dive runs on fixed time (`diveF`, `DIVE_POST_MS`: on the floor, then back up) and
+passive poses (`DIVE_KEEP`: ready / bump / huddle) wait for it (`afterDive`); a player on the floor doesn't move
+until back up. Collision (`separate`, playback): teammates' feet stay ≥ `BODY_GAP` apart (display only). In the
+engine a double block's second blocker and the late blockers take spots ≥ `BLOCK_GAP` from the others.
+
 ## Career world (P1)
 
 `js/data/world.js` (FACTIONS per league team with join conditions, ECON, HOUSING) + `js/career/world.js` (World).
