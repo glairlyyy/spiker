@@ -1639,3 +1639,15 @@
   background: var(--gold);
   border-radius: 1px;
 }
+.spot .gl {
+  font-weight: 800;
+}
+.spot .gl.hi {
+  color: #4ade80;
+}
+.spot .gl.md {
+  color: var(--gold);
+}
+.spot .gl.lo {
+  color: var(--mute);
+}

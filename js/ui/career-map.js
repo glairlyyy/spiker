@@ -120,11 +120,12 @@ function trainSpot(run, id, c) {
     x = (Q.known ? Q.q : (REGIONS[s.region] || REGIONS.open).q) * (1 + City.turf(run, id)), // preview at the advertised quality
     pv = Training.preview(run, key, hard, x),
     turf = City.turf(run, id),
-    fmt = ([k, v, xp]) => {
-      const pr = Training.progress(run, k);
-      return pv.gate && k === pv.main[0]
-        ? `${STATNAME[k]} at ${pv.gate} — Limit Break`
-        : `<span ${tip(`${STATNAME[k]}: ${pr.have}/${pr.need} xp to the next point (the XP needed grows with the stat)`)}>+${xp} ${STATNAME[k]} xp${v ? ` → +${k === 'wit' ? v.toFixed(2) : v}` : ''}</span>`;
+    fmt = ([k, , xp]) => {
+      if (pv.gate && k === pv.main[0]) return `${STATNAME[k]} at ${pv.gate} — Limit Break`;
+      // how much this session moves the stat, compared with what its next point costs at your level
+      const r = xp / Training.progress(run, k).need,
+        g = r >= 2.5 ? ['High', 'hi'] : r >= 1 ? ['Mid', 'md'] : ['Low', 'lo'];
+      return `${STATNAME[k]} <span class="gl ${g[1]}">${g[0]}</span>`;
     },
     mates = pv.mates.filter(pid => T.P.some(p => p.id === pid)); // a teammate who has since left
   return `<div class="tline">${qualityTag(run, id)} <b class="g">${fmt(pv.main)}</b> <span class="g2">${fmt(pv.side)}</span> <span class="mute small">−${pv.sta} sta · $${City.price(run, id)} · Lv ${pv.lvl}</span>

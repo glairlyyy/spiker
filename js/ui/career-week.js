@@ -28,7 +28,7 @@ function youCard(run) {
       }</div></div></div>
     <div class="stats">${STATK.map(k => {
       const pr = Training.progress(run, k);
-      return `<span ${tip(`${pr.have}/${pr.need} xp to the next point`)}>${STATNAME[k]}${gateTag(k)}</span><span class="xpbar">${bar(you[k])}<i style="width:${Math.round((pr.have / Math.max(1, pr.need)) * 100)}%"></i></span>`;
+      return `<span ${tip(`${Math.round((pr.have / Math.max(1, pr.need)) * 100)}% of the way to the next point`)}>${STATNAME[k]}${gateTag(k)}</span><span class="xpbar">${bar(you[k])}<i style="width:${Math.round((pr.have / Math.max(1, pr.need)) * 100)}%"></i></span>`;
     }).join('')}
       <span>Wit</span><span class="bar wit"><i style="width:${you.wit * 50}%"></i><b>${you.wit.toFixed(2)}</b></span>
       <span>Leadership</span>${bar(you.lead)}</div>
