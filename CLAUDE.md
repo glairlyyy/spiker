@@ -36,8 +36,8 @@ Build chat loop, one task at a time:
 4. `npm test` and `npm run lint` must pass. Golden hashes change only if the task says **Goldens: update** (then
    `npm run test:update` and give the reason in the commit). Run the QA recipe when the task touches render/UI.
 5. Update `ARCHITECTURE.md` for structural changes (new file, new layer contract, new save field).
-6. Mark `[x]` and fill the task's own `Result:` line (only that line — never edit other text): one line, deviations
-   and QA numbers. One local commit per task: `T-012: <title>`.
+6. Mark `[x]` and fill the task's own `Result:` line (only that line — never rewrite or re-insert other text; edit
+   tasks.md with a targeted replace, never by regenerating the file): one line, deviations and QA numbers. One local commit per task: `T-012: <title>`.
 7. Publish the changed files to the artifact (see Publishing). Reply to the owner in one or two lines.
 
 ## Working style (owner preferences)
@@ -46,7 +46,7 @@ Build chat loop, one task at a time:
 
 ## Commands
 - `npm install` once after cloning.
-- `npm test` — 20 headless tests (tests/run.js). Golden hashes guard engine output.
+- `npm test` — headless tests (tests/run.js). Golden hashes guard engine output.
 - `npm run test:update` — only when the task says Goldens: update.
 - `npm run lint` / `npm run format` — ESLint (flat config collects shared globals from index.html) / Prettier.
 - `npm run serve` — http://localhost:8765 (index.html = CDN three; test3d.html = local node_modules, for QA).
@@ -70,7 +70,7 @@ Build chat loop, one task at a time:
 - Seeded randomness: never change the order/count of R()/rnd()/pick() draws in engine unless the task says so
   (golden changes). Presentation code (hype, element assignment hash, chatter) must draw no randoms.
 - Beat act kinds/flags are the engine↔renderer interface; every act kind needs a `case` in playback.js (tested).
-- Saves: RUN_VERSION 1, key sns_run_v1. In development, breaking changes just bump the version (task will say).
+- Saves: RUN_VERSION 2 (v2: faction reserves), key sns_run_v1. In development, breaking changes just bump the version (task will say).
 - Artifact host quirks: confirm()/alert() blocked (use inline confirms); localStorage may throw; blob: URLs may be
   blocked (textures are decoded in memory — keep it that way).
 - Escape all user/data strings in innerHTML with esc().

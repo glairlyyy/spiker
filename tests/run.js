@@ -636,6 +636,88 @@ test('career: facility access — grudge, owner condition, members and neutral g
   assert(can('home').ok && can('park').ok, 'home and Central Academy are never gated');
 });
 
+test('career: faction pools — sizes, reserves, no overlap, saved', () => {
+  const spec = { role: 'WS', name: 'Pool', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 };
+  const g = load(91),
+    run = g.Run.create(g.Run.draft(), spec);
+  for (const r of Object.keys(g.POOL)) assert(g.Pool.size(run, r) === g.POOL[r], `pool ${r} has ${g.POOL[r]} players`);
+  const ids = new Set();
+  let n = 0;
+  const all = [...run.teams, run.pickup, ...Object.values(run.reserve)].filter(Boolean);
+  for (const t of all) for (const p of t.P) (ids.add(p.id), n++);
+  assert(ids.size === n, 'every player id is unique across teams, pickup and reserves');
+  const you = g.Run.you(run);
+  for (const [r, t] of Object.entries(run.reserve)) {
+    assert(t.P.length > 0 || g.Pool.size(run, r) === g.POOL[r], `reserve ${r} fills the pool`);
+    for (const p of t.P) assert(p.team === t && p !== you, 'reserve players belong to their reserve only');
+  }
+  assert(
+    !run.pickup || run.pickup.P.every(p => !Object.values(run.reserve).some(t => t.P.includes(p))),
+    'pickup players are in no reserve'
+  );
+  g.Run.save(run);
+  const back = g.Run.load();
+  for (const [r, t] of Object.entries(run.reserve)) {
+    const b = back.reserve[r];
+    assert(b && b.P.length === t.P.length, `reserve ${r} saved`);
+    t.P.forEach((p, i) => {
+      const q = b.P[i];
+      assert(q.id === p.id && q.name === p.name && q.power === p.power && q.jump === p.jump, 'reserve player round-trips');
+      assert(q.team === b, 'reserve player is re-linked to its team');
+    });
+  }
+  const a = load(92).Run.create(load(92).Run.draft(), spec),
+    hg = load(92),
+    h = hg.Run.create(hg.Run.draft(), Object.assign({ mode: { hard: true } }, spec));
+  for (const r of Object.keys(a.reserve)) {
+    a.reserve[r].P.forEach((p, i) => assert(h.reserve[r].P[i].power >= p.power, 'Hard reserves are at least as strong'));
+  }
+});
+
+test('career: pool draw — squads, roles, weights, your spot', () => {
+  const spec = { role: 'WS', name: 'Draw', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 };
+  const g = load(93),
+    run = g.Run.create(g.Run.draft(), spec);
+  const before = JSON.stringify([run.teams.map(g.teamToJSON), Object.values(run.reserve).map(g.teamToJSON)]);
+  const sq = g.Pool.draw(run, 'wei');
+  assert(sq.length === 5 && sq.every(s => s.length === 4), 'Wei draws 5 squads of 4');
+  const flat = sq.flat();
+  assert(new Set(flat).size === 20, 'no player twice');
+  assert(
+    sq.every(s => s[0].role === 'S' && s[1].role === 'MB'),
+    'each squad has a setter and a middle'
+  );
+  const rated = g.Pool.players(run, 'wei')
+      .filter(p => !p.you)
+      .sort((a, b) => g.ovr(b) - g.ovr(a)),
+    top = new Set(rated.slice(0, 5)),
+    low = new Set(rated.slice(-5));
+  let nt = 0,
+    nl = 0;
+  for (let i = 0; i < 300; i++) {
+    for (const s of g.Pool.draw(run, 'wei', 1))
+      for (const p of s) {
+        if (top.has(p)) nt++;
+        if (low.has(p)) nl++;
+      }
+  }
+  assert(nt > nl, `the best are drawn more often than the weakest (${nt} vs ${nl})`);
+  assert(
+    g.Pool.draw(run, 'wei')
+      .flat()
+      .every(p => !p.you),
+    'a free agent is never drawn'
+  );
+  const after = JSON.stringify([run.teams.map(g.teamToJSON), Object.values(run.reserve).map(g.teamToJSON)]);
+  assert(before === after, 'drawing changes no team or reserve');
+  const wei = g.FACTIONS.findIndex(f => f.region === 'wei');
+  g.FACTIONS[wei].join = {};
+  assert(g.World.join(run, wei), 'sign with a Wei club');
+  run.rep.wei = 60;
+  const you = g.Run.you(run);
+  for (let i = 0; i < 20; i++) assert(g.Pool.draw(run, 'wei').flat().includes(you), 'standing 60 → always drawn');
+});
+
 // ---------- report ----------
 if (update) {
   fs.writeFileSync(GOLDEN, JSON.stringify(record, null, 2) + '\n');
