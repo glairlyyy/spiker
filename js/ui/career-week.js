@@ -2,7 +2,7 @@
 // Gazette, the event card, warm-up / Cup match cards and the skills shop, plus their handlers.
 
 /** Hub UI state: Hard toggle, selected place, open drawer, pan/zoom view, last diary line shown as a toast. */
-let CW = { hard: false, spot: null, drawer: null, view: null, toast: null };
+let CW = { hard: false, spot: null, drawer: null, view: null, toast: null, dossier: null };
 
 function youCard(run) {
   const you = Run.you(run),
@@ -41,7 +41,7 @@ function youCard(run) {
     </div>
     ${elementLine(run)}
     ${you.skills.length ? `<div class="skchips">${you.skills.map(skillChip).join('')}</div>` : ''}
-    ${run.pure || run.mode.hard || run.mode.short || run.legend ? `<div class="small mute runtags">${[run.pure ? 'Pure run' : '', run.mode.hard ? 'Hard league' : '', run.mode.short ? 'Short season' : '', run.legend ? `Heir of ${esc(run.legend)}` : ''].filter(Boolean).join(' · ')}</div>` : ''}
+    ${run.mode.hard || run.mode.short ? `<div class="small mute runtags">${[run.mode.hard ? 'Hard league' : '', run.mode.short ? 'Short season' : ''].filter(Boolean).join(' · ')}</div>` : ''}
   </div>`;
 }
 /** Your element: hidden (???) until OVR 70, then the three trial steps, then the signature spike. */
@@ -173,7 +173,7 @@ function cupPanel(run) {
       <div class="bcol"><h4>Quarterfinals</h4>${S.slice(0, 4).map(slot).join('')}</div>
       <div class="bcol"><h4>Semifinals</h4>${slot(S[4])}${slot(S[5])}</div>
       <div class="bcol"><h4>Final</h4>${slot(S[6])}</div></div>
-    <div class="panel"><h3>${nm.round}${info(`Win: +${Math.round(REWARDS.cupWin.sp * def.mul)} skill pts, +${Math.round(REWARDS.cupWin.fans * def.mul).toLocaleString()} fans. ${last ? 'A loss ends the season.' : `A loss ends your ${def.name} — the season goes on to the Grand Cup.`}\nPlacement: quarterfinal +${Math.round(P.Quarterfinal.fans * def.mul)} fans · semifinal +${Math.round(P.Semifinal.fans * def.mul)} · runner-up +${Math.round(P.Final.fans * def.mul).toLocaleString()} · champion +${Math.round(P.Champion.fans * def.mul).toLocaleString()}${last ? ` · both cups: +${DOUBLE_CROWN} Legacy points` : ''}.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3><p>vs <b>${esc(T[nm.a === run.team ? nm.b : nm.a].name)}</b></p>
+    <div class="panel"><h3>${nm.round}${info(`Win: +${Math.round(REWARDS.cupWin.sp * def.mul)} skill pts, +${Math.round(REWARDS.cupWin.fans * def.mul).toLocaleString()} fans. ${last ? 'A loss ends the season.' : `A loss ends your ${def.name} — the season goes on to the Grand Cup.`}\nPlacement: quarterfinal +${Math.round(P.Quarterfinal.fans * def.mul)} fans · semifinal +${Math.round(P.Semifinal.fans * def.mul)} · runner-up +${Math.round(P.Final.fans * def.mul).toLocaleString()} · champion +${Math.round(P.Champion.fans * def.mul).toLocaleString()}.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3><p>vs <b>${esc(T[nm.a === run.team ? nm.b : nm.a].name)}</b></p>
       ${matchPrep(run, true)}
     <div class="trow"><button class="btn hot big" onclick="playCareer('cup')">Play ${nm.round.toLowerCase()}</button><button class="btn big" onclick="playCareer('cup', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
 }
@@ -316,7 +316,7 @@ function factionsCard(run) {
           major && (lost.length || took.length)
             ? `<div class="small mute">Prices ×${Front.priceMul(run, r).toFixed(1)} · facilities ×${Front.qMul(run, r).toFixed(2)}${lost.length ? ` · clubs ask −${FRONT.join * lost.length} OVR/key, fees −${Math.round(FRONT.fee * lost.length * 100)}%` : ''}</div>`
             : '';
-      return `<div class="fac ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}"><div class="fh"><b>${esc(REGIONS[r].name)}</b> <span class="mute small">${REGIONS[r].kind}</span>${weak ? ' <span class="stk far">Weakened</span>' : ''}${info(REGIONS[r].desc)}<span class="fv">${mood(v)} <b>${v > 0 ? '+' : ''}${v}</b></span></div>
+      return `<div class="fac ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}"><div class="fh"><b><a href="#" class="dlink" onclick="hubOpen(null);openDossier('${r}');return false">${esc(REGIONS[r].name)}</a></b> <span class="mute small">${REGIONS[r].kind}</span>${weak ? ' <span class="stk far">Weakened</span>' : ''}${info(REGIONS[r].desc)}<span class="fv">${mood(v)} <b>${v > 0 ? '+' : ''}${v}</b></span></div>
         ${fronts ? `<div class="fms">${fronts}</div>` : ''}${places}${econ}
         <div class="rbar" ${tip('Standing −100 … +100')}><i style="${v >= 0 ? `left:50%;width:${v / 2}%` : `left:${50 + v / 2}%;width:${-v / 2}%`}"></i></div>
         <div class="small">${clubs.map(t => `${chip(t)}${esc(t.name)}${t.i === run.team ? ' <i class="mute">(yours)</i>' : ''}`).join(' · ')}${
@@ -349,7 +349,7 @@ function abandonRun(sure) {
   if (!sure) {
     const el = $('#abandon');
     if (el)
-      el.innerHTML = `Abandon this run? It will not count for Legacy points. <button class="btn hot" onclick="abandonRun(true)">Yes, abandon</button> <button class="btn" onclick="renderCareer()">Keep playing</button>`;
+      el.innerHTML = `Abandon this run? <button class="btn hot" onclick="abandonRun(true)">Yes, abandon</button> <button class="btn" onclick="renderCareer()">Keep playing</button>`;
     return;
   }
   Run.clear();

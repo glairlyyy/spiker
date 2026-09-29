@@ -371,19 +371,12 @@
   cursor: default;
   opacity: 0.55;
 }
-.sk.own {
-  opacity: 1;
-  border-color: var(--cyan);
-}
 .sk small {
   color: var(--mute);
 }
 .sk span {
   font-weight: 800;
   color: var(--hot);
-}
-.sk.own span {
-  color: var(--cyan);
 }
 .career .log li b {
   color: var(--mute);
@@ -693,38 +686,6 @@
 .cal .pip.goalw {
   box-shadow: inset 0 -3px 0 var(--gold);
 }
-.sk.own.off {
-  opacity: 0.55;
-}
-.sk .sw {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.sk .sw i {
-  width: 26px;
-  height: 14px;
-  border-radius: 7px;
-  background: var(--cyan);
-  position: relative;
-}
-.sk .sw i::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #0b0c10;
-}
-.sk.off .sw i {
-  background: var(--mute);
-}
-.sk.off .sw i::after {
-  right: auto;
-  left: 2px;
-}
 .opt {
   display: flex;
   flex-wrap: wrap;
@@ -737,12 +698,12 @@
   height: auto;
   color: var(--ink);
 }
-.legend {
+.chartkey {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
 }
-.legend i {
+.chartkey i {
   display: inline-block;
   width: 12px;
   height: 3px;
@@ -750,12 +711,10 @@
   vertical-align: middle;
   border-radius: 2px;
 }
-.hof,
 .cupres {
   margin: 6px 0;
   padding-left: 20px;
 }
-.hof li,
 .cupres li {
   margin: 3px 0;
 }
@@ -881,9 +840,6 @@
 }
 .tbtn small {
   font-size: 11px;
-}
-.skills.compact.lg .sk {
-  padding-right: 9px;
 }
 .life .hsel {
   display: flex;
@@ -1744,14 +1700,16 @@
 .facs .fac.dn .fv b {
   color: #ff5d6c;
 }
-.facs .rbar {
+.facs .rbar,
+.dossier .rbar {
   position: relative;
   height: 6px;
   margin: 6px 0;
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.1);
 }
-.facs .rbar::after {
+.facs .rbar::after,
+.dossier .rbar::after {
   content: '';
   position: absolute;
   left: 50%;
@@ -1760,7 +1718,8 @@
   width: 1px;
   background: rgba(255, 255, 255, 0.4);
 }
-.facs .rbar i {
+.facs .rbar i,
+.dossier .rbar i {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -1780,15 +1739,76 @@
   gap: 6px;
   margin: 2px 0 4px;
 }
-.facs .fm {
+.facs .fm,
+.dossier .fm {
   font-size: 11px;
   padding: 1px 6px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.08);
 }
-.facs .fm.up {
+.facs .fm.up,
+.dossier .fm.up {
   color: #4ade80;
 }
-.facs .fm.dn {
+.facs .fm.dn,
+.dossier .fm.dn {
   color: #ff5d6c;
+}
+
+/* faction dossier window */
+.dossier {
+  position: relative;
+  max-width: 760px;
+  max-height: 80vh;
+  overflow: auto;
+}
+.dossier > .x {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+.dossier h4 {
+  margin: 12px 0 4px;
+}
+.dossier .fms {
+  display: flex;
+  gap: 6px;
+  margin: 2px 0 4px;
+}
+.dossier .dtab {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.dossier .dtab th {
+  text-align: left;
+  color: var(--mute);
+  font-weight: 600;
+  padding: 2px 6px;
+}
+.dossier .dtab td {
+  text-align: left;
+  padding: 3px 6px;
+  border-top: 1px solid var(--line);
+}
+.dossier .dgo {
+  cursor: pointer;
+}
+.dossier .dgo:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.dossier .dclub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 3px 0;
+}
+.dossier .dros {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 14px;
+}
+.facs .dlink {
+  color: inherit;
+  text-decoration: underline dotted;
 }

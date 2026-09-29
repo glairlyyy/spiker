@@ -1,5 +1,4 @@
-// Career: create your player — role, name, point budget, (unlock-dependent) team pick, scout and head-start skill,
-// plus challenge modes, a pure run (every Legacy unlock off) and a Hall of Fame legend to inherit from.
+// Career: create your player — role, name, point budget, and optional challenge modes. You always start as a free agent.
 
 let CR = null;
 function renderCreate() {
@@ -13,28 +12,16 @@ function renderCreate() {
         name: rollName(new Set()),
         alloc: { power: 0, def: 0, speed: 0, jump: 0 },
         witSteps: 0,
-        team: null,
-        skill: null,
-        pure: false,
-        mode: {},
-        legend: null
+        mode: {}
       };
       renderCreate();
     }, 40);
     return;
   }
-  const list = crList(),
-    on = id => list.includes(id),
-    budget = Legacy.budget(list),
+  const budget = CAREER.budget,
     used = STATK.reduce((a, k) => a + CR.alloc[k], 0) + CR.witSteps * CAREER.witStepCost,
     left = budget - used,
-    T = CR.draft.teams,
-    ti = CR.team != null ? CR.team : CR.draft.team,
-    team = T[ti],
-    slot = CR.role === 'S' ? 'S' : CR.role === 'MB' ? 'MB' : 'W0',
-    showTeam = on('pick') && CR.team != null,
-    cap = Legacy.createCap(list),
-    L = Legacy.load();
+    cap = CAREER.createCap;
   const row = k => {
     const base = CAREER.statBase + CR.alloc[k],
       v = Run.createdStat(CR.role, k, CR.alloc[k]),
@@ -65,76 +52,28 @@ function renderCreate() {
     </div>
     <div class="panel">
       <h3>Your team</h3>
-      ${
-        on('pick')
-          ? `<label class="small">Start <select onchange="CR.team=this.value===''?null:+this.value;renderCreate()"><option value="">Free agent</option>${T.map(t => `<option value="${t.i}" ${t.i === CR.team ? 'selected' : ''}>${esc(t.name)} — ${t.S.name}</option>`).join('')}</select></label>`
-          : `<p class="small mute">Free agent${info('You arrive with no club: play warm-ups with a pickup squad and sign with a club once you meet its conditions. Free agents miss the cups.')}</p>`
-      }
-      ${
-        showTeam
-          ? `<div class="mates" style="--tc:${team.color}"><b>${chip(team)}${esc(team.name)}</b> <span class="small mute">${team.S.name} · ${team.sys}</span>
-          ${team.P.map(p => (p.slot === slot ? `<div class="mate you">You replace ${esc(p.name)} (${p.role})</div>` : `<div class="mate">${faceSVG(p, 0, 28)}<span>${stag(p)}${esc(p.name)} <i>${p.role}</i></span><small>P${p.power} D${p.def} S${p.speed} J${p.jump} · wit ${p.wit}</small></div>`)).join('')}</div>`
-          : ''
-      }
-      ${
-        on('head')
-          ? `<h4>Head start skill</h4><select onchange="CR.skill=this.value||null" aria-label="Starting skill"><option value="">None</option>${Skills.forRole(
-              CR.role
-            )
-              .map(id => `<option value="${id}" ${CR.skill === id ? 'selected' : ''}>${SKILLS[id].name} — ${SKILLS[id].desc}</option>`)
-              .join('')}</select>`
-          : ''
-      }
-      <h4>Challenge${info('Tougher runs multiply the Legacy points you earn')}</h4>
+      <p class="small mute">Free agent${info('You arrive with no club: play warm-ups with a pickup squad and sign with a club once you meet its conditions. Free agents miss the cups.')}</p>
+      <h4>Challenge${info('Optional handicaps.')}</h4>
       ${Object.entries(MODES)
         .map(
           ([k, m]) =>
-            `<label class="opt" ${tip(m.desc)}><input type="checkbox" ${CR.mode[k] ? 'checked' : ''} onchange="CR.mode.${k}=this.checked;renderCreate()"> <b>${m.name}</b> <span class="small mute">×${m.legacy}</span></label>`
+            `<label class="opt" ${tip(m.desc)}><input type="checkbox" ${CR.mode[k] ? 'checked' : ''} onchange="CR.mode.${k}=this.checked;renderCreate()"> <b>${m.name}</b></label>`
         )
         .join('')}
-      ${
-        L.owned.length
-          ? `<label class="opt" ${tip('Every Legacy unlock and the Hall of Fame off for this career')}><input type="checkbox" ${CR.pure ? 'checked' : ''} onchange="CR.pure=this.checked;crFit();renderCreate()"> <b>Pure run</b> <span class="small mute">×${PURE_BONUS}</span></label>
-             ${CR.pure ? '' : `<p class="small mute">${list.length} unlock${list.length === 1 ? '' : 's'} on${list.length ? info(list.map(id => UNLOCKS.find(u => u.id === id).name).join(', ') + ' — switch them in Unlocks') : ''}</p>`}`
-          : ''
-      }
-      ${
-        L.hof.length && !CR.pure
-          ? `<h4>Inherit from a legend</h4><select onchange="CR.legend=this.value===''?null:+this.value;renderCreate()" aria-label="Legend to inherit from"><option value="">Nobody</option>${L.hof
-              .map(
-                (h, i) =>
-                  `<option value="${i}" ${CR.legend === i ? 'selected' : ''}>${esc(h.name)} (${h.role}, rank ${h.rank}) — +10% of their gains over 40${(h.skills || []).length ? ', one skill' : ''}${h.el ? `, element ${ENAME[h.el]} revealed` : ''}</option>`
-              )
-              .join('')}</select>`
-          : ''
-      }
       <button class="btn hot big" onclick="crStart()" ${left > 0 ? 'title="You still have points to spend"' : ''}>Start career</button>
       <button class="btn big" onclick="CR=null;navigate('menu')">Back</button>
     </div>
   </section>`;
 }
-/** Unlocks that would apply to the career being created (none for a pure run). */
-const crList = () => (CR && CR.pure ? [] : Legacy.active());
-/** A pure run has a smaller budget and cap: take points back until the allocation fits. */
-function crFit() {
-  const list = crList(),
-    cap = Legacy.createCap(list);
-  for (const k of STATK) CR.alloc[k] = Math.min(CR.alloc[k], cap - CAREER.statBase);
-  let over = STATK.reduce((a, s) => a + CR.alloc[s], 0) + CR.witSteps * CAREER.witStepCost - Legacy.budget(list);
-  while (over > 0 && CR.witSteps > 0) (CR.witSteps--, (over -= CAREER.witStepCost));
-  for (const k of [...STATK].reverse()) while (over > 0 && CR.alloc[k] > 0) (CR.alloc[k]--, over--);
-  if (CR.pure) ((CR.legend = null), (CR.skill = null), (CR.team = null));
-}
 function crAlloc(k, d) {
-  const list = crList(),
-    left = Legacy.budget(list) - STATK.reduce((a, s) => a + CR.alloc[s], 0) - CR.witSteps * CAREER.witStepCost;
+  const left = CAREER.budget - STATK.reduce((a, s) => a + CR.alloc[s], 0) - CR.witSteps * CAREER.witStepCost;
   const nv = CR.alloc[k] + d;
-  if (nv < 0 || (d > 0 && (d > left || CAREER.statBase + nv > Legacy.createCap(list)))) return;
+  if (nv < 0 || (d > 0 && (d > left || CAREER.statBase + nv > CAREER.createCap))) return;
   CR.alloc[k] = nv;
   renderCreate();
 }
 function crWit(d) {
-  const left = Legacy.budget(crList()) - STATK.reduce((a, s) => a + CR.alloc[s], 0) - CR.witSteps * CAREER.witStepCost;
+  const left = CAREER.budget - STATK.reduce((a, s) => a + CR.alloc[s], 0) - CR.witSteps * CAREER.witStepCost;
   const nv = CR.witSteps + d;
   if (nv < 0 || CAREER.witBase + nv * CAREER.witStep > CAREER.witCreateCap + 1e-9 || (d > 0 && left < CAREER.witStepCost)) return;
   CR.witSteps = nv;
@@ -142,7 +81,6 @@ function crWit(d) {
 }
 function crRole(r) {
   CR.role = r;
-  if (CR.skill && !Skills.forRole(r).includes(CR.skill)) CR.skill = null;
   renderCreate();
 }
 function crStart() {
@@ -152,11 +90,7 @@ function crStart() {
     name,
     alloc: CR.alloc,
     witSteps: CR.witSteps,
-    team: CR.team,
-    skill: CR.skill,
-    pure: CR.pure,
-    mode: CR.mode,
-    legend: CR.legend
+    mode: CR.mode
   });
   CR = null;
   Run.save(RUN);
