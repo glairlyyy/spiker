@@ -81,6 +81,10 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
       (floor(pool ÷ 4) squads) play each other.
     - Signed with a minor, or alone → no evaluation matches.
     - Rewards = today's warm-up rewards. Results feed standing and the draw weight.
+    - Signed with a major but not drawn → you watch from the bench: a little Wit XP (one day-session of Wit
+      training, `EVAL.benchDays`).
+  - Reserves train weekly like everyone; each payday a faction's best reserve replaces a clearly weaker same-role
+    squad player (`PROMOTE.gap`).
   - **U21 Final Cup** (week 28): the career goal. Squads drawn from every faction pool (floor(pool ÷ 4) each)
     plus the Academy squad (13 squads with default sizes); 16-slot bracket seeded by rating, top seeds get byes.
     Camp weeks 26–28 before it. Winning → national team (lore.md §3).
