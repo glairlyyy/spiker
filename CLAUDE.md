@@ -16,11 +16,19 @@ Code home: https://github.com/glairlyyy/spiker (branch main). Containers are tem
 - **Build chat** (implementer model) writes code, keeps `ARCHITECTURE.md` current, and ticks tasks. It does not
   edit `spec.md`, `lore.md` or add/reword tasks; it may only change a task's status line and its `Result:` / `Question:` lines.
 
-Exactly one build chat works at a time (no parallel implementers, so no merge conflicts). Before starting,
-`git pull`; if the pull brings unexpected code changes, stop and tell the owner.
+Exactly one build chat works at a time (no parallel implementers, so no merge conflicts).
+
+**Sync (the build chat has no GitHub access):** the artifact is the hand-off. The build chat starts from the artifact
+(or its own container if it has the latest), works, and publishes every changed file to the artifact. It never
+pushes. The spec chat pulls the changed files from the artifact, reviews them, runs tests, commits and pushes to
+GitHub, then publishes its doc changes (spec.md, tasks.md, lore.md, CLAUDE.md) back to the artifact. So before each
+task the build chat re-reads `tasks.md` and `spec.md` **from the artifact** (Artifact read, `paths`), not from git.
+
+**Owner requests made directly in the build chat** (not in tasks.md) are fine: do them, then list them under
+"## Unplanned changes" at the end of tasks.md (one line each: what, which files) so the spec chat records them.
 
 Build chat loop, one task at a time:
-1. `git pull`. Open `tasks.md`; take the first `[ ]` task under **Now** (unless the owner names one). Mark it `[~]`.
+1. Read `tasks.md` from the artifact; take the first `[ ]` task under **Now** (unless the owner names one). Mark it `[~]`.
 2. Read the spec sections it cites. Touch only the files it lists. Follow its **Do not** list.
 3. Stop and ask (mark `[?]`, write `Question:` in the task, tell the owner) instead of guessing when:
    the task needs an unlisted file, a new top-level global, a new beat act kind, a save-shape change, a golden-hash
@@ -28,8 +36,9 @@ Build chat loop, one task at a time:
 4. `npm test` and `npm run lint` must pass. Golden hashes change only if the task says **Goldens: update** (then
    `npm run test:update` and give the reason in the commit). Run the QA recipe when the task touches render/UI.
 5. Update `ARCHITECTURE.md` for structural changes (new file, new layer contract, new save field).
-6. Mark `[x]`, add `Result: <short hash> — <one line; any deviation>`. One commit per task: `T-012: <title>`. Push main.
-7. Publish the artifact (see Publishing). Reply to the owner in one or two lines.
+6. Mark `[x]` and fill the task's own `Result:` line (only that line — never edit other text): one line, deviations
+   and QA numbers. One local commit per task: `T-012: <title>`.
+7. Publish the changed files to the artifact (see Publishing). Reply to the owner in one or two lines.
 
 ## Working style (owner preferences)
 - Ultra-concise replies, no preamble or recaps; only raise real concerns.

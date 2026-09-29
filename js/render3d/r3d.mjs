@@ -11,7 +11,7 @@ import { loadBase, makeVRM } from './players3d.mjs';
 import { createFx } from './fx3d.mjs';
 import { makeTrail } from './trails3d.mjs';
 import { W, lowEnd } from './units3d.mjs';
-import { buildArena, dressArena, updateBall, updateCrowd, updateNet, updatePointFlash, ballDir } from './arena3d.mjs';
+import { buildArena, dressArena, updateBall, updateBallShadow, updateCrowd, updateNet, updatePointFlash, ballDir } from './arena3d.mjs';
 import { base, cam, updateBase, viewCamera, P3D, setCameraWorld, setCamMode, getCamMode, setDebugCam } from './camera3d.mjs';
 import { posePlayer, poseCoach, dressActors } from './actors3d.mjs';
 
@@ -180,6 +180,7 @@ function draw() {
     B = A.ball;
   updateBall(w, now);
   handTouch(w, now);
+  updateBallShadow(w); // after handTouch: it moves the ball
   // bodies, hair springs and trails run on the world clock (A.ts): in slow motion everything slows together
   const wdt = dt * Math.max(0.02, Math.min(1, A.ts ?? 1));
   if (!A.qaFreeze) for (const pl of w.people) if (pl.d) posePlayer(pl, pl.d.p.id === A.digHero ? dt : wdt, w.ball.position, w.fx); // qaFreeze: test hook; a digger chasing a far ball poses at normal speed

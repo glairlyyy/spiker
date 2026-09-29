@@ -60,11 +60,11 @@ const REGIONS = {
   open: {
     color: '#f5e6a8',
     at: [500, 300],
-    name: 'Sacred Shrine Park',
+    name: 'Central Academy',
     kind: 'none',
     price: 1,
     q: 0.9,
-    desc: 'Holy ground in the middle of the island: every faction respects it, nobody owns it'
+    desc: 'Neutral ground by charter. Every newcomer enrols here. No faction may train, recruit or fight on campus.'
   }
 };
 /**
@@ -217,6 +217,14 @@ const FRONT = {
   aggro: { wu: 0.5, wei: 0.3, shu: 0.2 },
   revenge: 0.2,
   initiative: 10 // the raiding side's edge (street strength) in a battle nobody joins
+};
+/**
+ * Facility access: a place refuses you if your standing with its owner is at or below `grudge`, or you miss the
+ * owner's condition (same fields as a club's `join`: ovr, key, star, fans). Members of the owner always get in.
+ */
+const ACCESS = {
+  grudge: -20,
+  cond: { wei: {}, wu: {}, shu: {}, outlaws: {}, gloria: {} }
 };
 /** A night at a hotel away from home: base price (× the region's price). */
 const HOTEL = { price: 12, rest: 1 };

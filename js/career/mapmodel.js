@@ -9,7 +9,7 @@ const MapModel = {
   /** A picked map point, as the selection id 'pt:x,y' ↔ [x, y]. */
   ptId: p => `pt:${Math.round(p[0])},${Math.round(p[1])}`,
   ptOf: sel => (sel && sel.startsWith('pt:') ? sel.slice(3).split(',').map(Number) : null),
-  /** Land: the island, the majors' territories, minors' patches, the shrine park, labels, landmarks. */
+  /** Land: the island, the majors' territories, minors' patches, Central Academy, labels, landmarks. */
   land(run) {
     const mine = City.myRegion(run),
       reg = id => ({ id, color: REGIONS[id].color, mine: mine === id });

@@ -208,6 +208,16 @@ export function buildArena(scene) {
   );
   ball.castShadow = true;
   scene.add(ball);
+  // a white outlined circle on the floor straight under the ball (not the sun's shadow map, which is offset by the light angle)
+  const ballShadow = new THREE.Mesh(
+    new THREE.RingGeometry(0.2, 0.235, 48),
+    new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.9, depthWrite: false })
+  );
+  ballShadow.rotation.x = -Math.PI / 2;
+  ballShadow.renderOrder = 2;
+  ballShadow.castShadow = ballShadow.receiveShadow = false;
+  ballShadow.visible = false;
+  scene.add(ballShadow);
   // powered balls glow and light up the players around them
   const ballGlow = new THREE.Sprite(
     new THREE.SpriteMaterial({ map: glowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })
@@ -218,6 +228,7 @@ export function buildArena(scene) {
   scene.add(ballLight);
   return {
     ball,
+    ballShadow,
     ballGlow,
     ballLight,
     fans,
@@ -304,6 +315,16 @@ const prevBall = new THREE.Vector3(),
   ballAxis = new THREE.Vector3(0, 0, 1);
 /** Direction the ball last moved in (world space; for directional effects). */
 export const ballDir = new THREE.Vector3(1, 0, 0);
+/** The floor marker under the ball: follows it, widens and fades as it rises (uses the ball's final position). */
+export function updateBallShadow(w) {
+  const s = w.ballShadow;
+  s.visible = w.ball.visible;
+  if (!s.visible) return;
+  const h = Math.min(w.ball.position.y, 8);
+  s.position.set(w.ball.position.x, 0.012, w.ball.position.z);
+  s.scale.setScalar(1 + h * 0.12);
+  s.material.opacity = Math.max(0.35, 0.95 - h * 0.07);
+}
 /** Ball: position, spin, squash, element / power emissive; glow sprite and point light on powered shots. */
 export function updateBall(w, now) {
   const B = A.ball,

@@ -252,6 +252,15 @@ passive poses (`DIVE_KEEP`: ready / bump / huddle) wait for it (`afterDive`); a 
 until back up. Collision (`separate`, playback): teammates' feet stay ≥ `BODY_GAP` apart (display only). In the
 engine a double block's second blocker and the late blockers take spots ≥ `BLOCK_GAP` from the others.
 
+## Spike approach (playback)
+
+Display only; derived from the set beat's acts (`approachOf`: hitter, contact spot = the slide target, jump `t0` ≥ 0.3;
+quick attacks and cut / scene beats have none). Constants `RUNUP_M`, `TAKEOFF_M`, `PREAPP_AT`. In the beat before the
+set, `preApproachLook` / `preApproachGo` (at `PREAPP_AT`) send the hitter toward the run-up point (behind the contact
+spot, away from the net). In the set beat `d.app` drives `approachMove`: run-up → accelerating run to the take-off
+point (a hitter too far to do both goes straight to it: `direct`; a `via` back attack runs its second leg to it) →
+from `t0` a broad jump onto the contact spot, arriving at t = 1. Cleared in `endBeat`.
+
 ## Pre-serve routine
 
 The serve type is picked before the reset, so the server walks straight to where the serve starts (the run-up start

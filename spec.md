@@ -21,12 +21,18 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   attempted), block-break spike cut + ball close-up, kill-block scene, loose-ball slow-mo calls, personality
   chatter. No manga panels. Slow-mo uses one world clock (A.ts) with eased ramps.
   Target: Normal ≈ 6–7 scenes per match **[open: tuning pending]**.
-- §2.5 Spike approach **[locked, not built]** (display only, renderer): the hitter runs to a run-up point behind
+- §2.5 Spike approach **[built]** (display only, renderer): the hitter runs to a run-up point behind
   the contact spot (skipped if already there or further back), starts heading there already in the beat before the
   set, approaches, and takes off before the contact spot; the broad jump carries them onto the ball. Quick attacks
-  keep their short approach. No teleporting: grounded movement stays within sprint speed.
-- §2.6 Ball shadow **[locked, not built]**: a circle on the floor always directly under the ball, while the ball is
-  visible; smaller/fainter the higher the ball.
+  keep their short approach; jump serves have no run-up. A hitter too far to run up goes straight to the take-off
+  point. No teleporting: grounded movement stays within sprint speed.
+- §2.6 Ball marker **[built]**: a white outlined ring (no fill) on the floor always directly under the ball, while the
+  ball is visible; wider and fainter the higher the ball.
+- §2.7 Poses **[built]** (display only): jump float serve — legs tucked together in the air, run-up strides, landing
+  crouch like the jump serve; standing float serve — small dip after contact; setter — hands up in the set-ready
+  triangle while the pass travels to them (arms/head only, position unchanged).
+- §2.8 Cut-scene lines: every LINES kind × personality has 5–6 variants **[locked, not built]** (T-005). Lines are
+  picked by hash, never by R(), so results never change; only the `matches` golden (it hashes beat text) may.
 - §2.4 Blocks: stuff odds = full-strength block vs spike, weighted by coverage; ~14% of attacks stuffed in normal play.
 
 ## 3. Menu [built]

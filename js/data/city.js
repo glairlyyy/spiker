@@ -1,5 +1,5 @@
 // The island map, all claimed: Wei the city (north and east), Wu the beach (the east and south coast) and a strip
-// inland, Shu the highlands (west); the Sacred Shrine Park in the middle belongs to nobody, by common respect;
+// inland, Shu the highlands (west); Central Academy in the middle belongs to nobody, by common respect;
 // the minors sit as borderless patches inside or across them. You arrive at the airport on the south coast.
 // Coordinates are in map units (1000 × 640). Names are placeholders; balance is not tuned yet.
 
@@ -28,7 +28,7 @@ const CITY = (() => {
     inner = coast.map(([x, y]) => [Math.round(c[0] + (x - c[0]) * 0.82), Math.round(c[1] + (y - c[1]) * 0.82)]),
     /** Wu's border with Wei (north → south), then inland back to the south coast. */
     wuWei = [...inner.slice(6, 9), [740, 470], [600, 450]],
-    /** Shu's border with Wei, north coast → the Wu line (runs under the shrine park). */
+    /** Shu's border with Wei, north coast → the Wu line (runs under Central Academy). */
     shuWei = [coast[3], [480, 160], [500, 250], [500, 390], [520, 450], [540, 500]];
   return {
     w: 1000,
@@ -45,7 +45,7 @@ const CITY = (() => {
     wu: [...coast.slice(6, 13), [430, 540], [540, 500], ...wuWei.slice().reverse()],
     /** Shu's highlands: the whole west, coast to coast. */
     shu: [...coast.slice(12), ...coast.slice(0, 4), ...shuWei.slice(1), [430, 540]],
-    /** The Sacred Shrine Park: neutral ground on the Shu–Wei line. */
+    /** Central Academy: neutral ground on the Shu–Wei line. */
     park: { x: 500, y: 320, r: 72 },
     /** Borderless minors: ellipses { x, y, rx, ry, rot }. */
     minors: {
@@ -118,16 +118,16 @@ const SPOTS = {
   dojo: { name: 'Highland Dojo', slot: 'day', train: 'def', region: 'shu', at: [395, 360], icon: '🥋' },
   stone: { name: 'Stone Gym', slot: 'day', train: 'power', region: 'shu', at: [420, 475], icon: '🪨' },
   shrine: { name: 'Shrine Library', slot: 'day', train: 'wit', region: 'shu', at: [320, 410], icon: '📜' },
-  // the minors and the shrine park
+  // the minors and Central Academy
   cage: { name: 'Overpass Cage', slot: 'day', train: 'power', region: 'outlaws', at: [845, 455], icon: '⛓' },
   park: {
-    name: 'Sacred Shrine Park',
+    name: 'Academy Grounds',
     slot: 'day',
     act: 'rec',
     region: 'open',
     at: [500, 330],
-    icon: '🌳',
-    desc: 'Recreation on holy ground: mood up, +10 stamina'
+    icon: '🏛',
+    desc: 'Campus lawns, open to every student. Mood up, +10 stamina.'
   },
   home: { name: 'Home', slot: 'day', act: 'rest', region: null, icon: '🏠', desc: 'Rest: +30–60 stamina (× how well you sleep there)' },
   // hotels: a night's rest away from home, at the region's price

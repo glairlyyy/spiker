@@ -24,6 +24,7 @@ Result:
 ## Roadmap
 - **Phase 1 — Island rules** (small, independent): Central Academy rename; facility access gate.
 - **Phase 1b — Match feel**: ball shadow; spike run-up approach.
+- **Phase 1c — Cut-scene lines**: more variants (golden `matches` update only).
 - **Phase 2 — Faction pools** (data layer, no visible change): pools generated per faction; weighted squad draw.
 - **Phase 3 — Evaluations**: Academy squad (leave action); calendar → monthly evaluations; faction evaluations.
 - **Phase 4 — U21 Final Cup**: 16-slot bracket; cup from drawn squads; retire the Skyline/Grand cups and the 8
@@ -32,7 +33,7 @@ Result:
 
 ## Now — Phase 1: Island rules
 
-### [ ] T-001: Rename Sacred Shrine Park → Central Academy
+### [x] T-001: Rename Sacred Shrine Park → Central Academy
 Spec: §4.2, lore.md §4          Goldens: unchanged          Save: no change
 Goal: The neutral middle zone reads as Central Academy everywhere the player sees it. Internal ids stay the same.
 Files: js/data/world.js, js/data/city.js, js/career/city.js, js/career/mapmodel.js, tests/run.js
@@ -56,9 +57,9 @@ Accept:
 - `npm test` and `npm run lint` pass; goldens untouched.
 QA: career run → the map label in the middle reads "Central Academy"; clicking it shows "Academy Grounds" with
 the new description and a working Relax button.
-Result:
+Result: names/comments only; 21/21 + lint; career-run visual QA not run.
 
-### [ ] T-002: Facility access gate (grudge + owner condition)
+### [x] T-002: Facility access gate (grudge + owner condition)
 Spec: §4.10          Goldens: unchanged          Save: no change
 Goal: A place refuses you when you hold a grudge with its current owner or miss the owner's condition; the reason
 shows on the disabled button. Members of the owning faction always get in.
@@ -104,11 +105,11 @@ Accept:
 QA: career run → fight a street battle, then check a place of the side you fought against: with standing −10 it
 still works; set `RUN.rep.<region> = -20` in the console and reopen the panel: the button is disabled with the
 reason in its tooltip.
-Result:
+Result: ACCESS in world.js, City.access + gate in City.can; new test; 21/21 + lint; console QA not run.
 
 ## Now — Phase 1b: Match feel (renderer only — no engine change, goldens stay)
 
-### [ ] T-003: Ball shadow circle on the floor
+### [x] T-003: Ball shadow circle on the floor
 Spec: §2.6          Goldens: unchanged          Save: no change
 Goal: While the ball is visible, a soft dark circle sits on the floor exactly under it (also while it floats high),
 so players can read where it will come down.
@@ -133,9 +134,9 @@ Accept:
 - `npm test` and `npm run lint` pass.
 QA: Monster game (QA recipe): screenshots at a serve toss, a high set and a ball about to land — the circle is under
 the ball each time, smaller/fainter when high; hidden when the ball is hidden (between rallies). No pageerror.
-Result:
+Result: marker follows the ball exactly, hidden with it; widens + fades with height. Owner change in build chat: white outlined ring, no fill.
 
-### [ ] T-004: Spike approach — run-up point, take-off before the ball
+### [x] T-004: Spike approach — run-up point, take-off before the ball
 Spec: §2.5          Goldens: unchanged          Save: no change
 Goal: The hitter no longer runs straight to the hitting spot and jumps there. They run to a run-up point behind it
 (already during the beat before the set), approach, take off before the contact spot, and the broad jump carries
@@ -190,32 +191,64 @@ Accept:
   teleport). Put the three numbers in `Result:`.
 QA: Monster game: screenshots of one normal attack at set start, take-off and contact — the hitter visibly runs in
 from behind and jumps before the ball's spot. Check `DBG.text()` for warnings.
+Result: QA 42 non-quick attacks: take-off 0.6–1.2 m in 90.5 %, end-of-set distance max 0.054 m, 0 over-sprint moves. Added: `direct` (too far to run up → straight to take-off), `via` back attack 2nd leg ends at take-off. Fix: jump serves excluded from approachOf.
+
+## Now — Phase 1c: Cut-scene lines
+
+### [ ] T-005: 2–3 more line variants for every cut-scene kind
+Spec: §2.8          Goldens: update — `matches` ONLY (beat text changes); `teams`, `sims`, `monster` must stay identical
+Save: no change
+Goal: Every staged-scene / chatter line kind has 5–6 variants per personality instead of 3, so scenes repeat less.
+Files: js/data/dialogue.js, tests/golden.json (via `npm run test:update`)
+Do not:
+- Touch js/engine/hype.js or the picking formula (`hypeLine`: hash of number + score + kind length, no R()).
+- Add or rename kinds or personalities, or placeholders other than `{sig}`, `{mate}`, `{opp}` — and use a placeholder
+  only in kinds whose existing lines already use it.
+- Change `CALLS` (ball calls; not cut scenes).
+- Add old-language words or lore exposition (spec §6); keep each line short (≤ 40 characters), the same punctuation
+  style (’ … —), in that personality's voice: hot = loud/!!, cool = terse, cocky = taunting, shy = hesitant,
+  leader = team-first.
+Steps:
+1. In `LINES` (js/data/dialogue.js), for all 19 kinds × 5 personalities, append 2–3 new lines (never edit or reorder
+   the existing 3). No duplicates within a list.
+2. `npm test`: only the `matches` golden may fail. If `teams`, `sims` or `monster` fails, stop — something besides
+   text changed.
+3. `npm run test:update`, then `npm test` passes. `git diff tests/golden.json` must show only the `matches` line.
+4. Commit message states the reason: "matches golden: new dialogue text in scene beats; no gameplay change".
+Accept:
+- Each `LINES[kind][pers]` has length 5 or 6 (check with a one-off node snippet; put the min/max in Result).
+- golden.json diff = the `matches` line only; 21/21 + lint pass.
+QA: Monster game on Max Hype: watch 2 scenes, lines render and fit the bubble; no pageerror.
 Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
 Phase 2 — Faction pools
-- T-005: `POOL` data (sizes Wei 20, Wu 14, Shu 10, Outlaws 6, St. Gloria 5) + new `js/career/pool.js`: build
+- T-006: `POOL` data (sizes Wei 20, Wu 14, Shu 10, Outlaws 6, St. Gloria 5) + new `js/career/pool.js`: build
   `run.pool[region]` at run creation; the current teams' players join their region's pool, the rest generated.
   Save: RUN_VERSION bump. Teams still play as today.
-- T-006: `Pool.draw(run, region, n)` — weighted squad draw (rating + standing, guaranteed spot above a threshold);
+- T-007: `Pool.draw(run, region, n)` — weighted squad draw (rating + standing, guaranteed spot above a threshold);
   headless tests only.
-- T-007: League transfers move players between pools; joining a club = joining its faction's pool (`run.fac`).
+- T-008: League transfers move players between pools; joining a club = joining its faction's pool (`run.fac`).
 
 Phase 3 — Evaluations
-- T-008: Academy squad: rename pickup → Academy squad in UI/log; "Leave squad" action (inline confirm); alone
+- T-009: Academy squad: rename pickup → Academy squad in UI/log; "Leave squad" action (inline confirm); alone
   state (no mates: training partners, outings and bonds handle an empty squad).
-- T-009: Calendar: evaluation weeks 4–24 replace warm-ups; camp 26–28; eligibility by status (§4.11).
-- T-010: Evaluation matches: Academy (vs a drawn major squad) and major-faction (drawn squads of your pool;
+- T-010: Calendar: evaluation weeks 4–24 replace warm-ups; camp 26–28; eligibility by status (§4.11).
+- T-011: Evaluation matches: Academy (vs a drawn major squad) and major-faction (drawn squads of your pool;
   not drawn → you watch). Rewards = warm-up rewards.
 
 Phase 4 — U21 Final Cup
-- T-011: 16-slot bracket with byes in js/game/bracket.js (8-team brackets keep working until T-012).
-- T-012: U21 Final Cup from drawn squads + Academy squad; replaces both cups; Legacy keeps working
+- T-012: 16-slot bracket with byes in js/game/bracket.js (8-team brackets keep working until T-013).
+- T-013: U21 Final Cup from drawn squads + Academy squad; replaces both cups; Legacy keeps working
   (DOUBLE_CROWN becomes unreachable — leave it, spec §5.3 open).
-- T-013: Retire the 8 fixed teams: `FACTIONS` becomes per region; HQ pins per faction; scouting per faction.
+- T-014: Retire the 8 fixed teams: `FACTIONS` becomes per region; HQ pins per faction; scouting per faction.
 
 Phase 5 — Voice pass
-- T-014: Faction `front`/`dark`, region `desc`, Gazette and event strings in lore.md §7 voices.
+- T-015: Faction `front`/`dark`, region `desc`, Gazette and event strings in lore.md §7 voices.
 
 ## Done
+
+## Unplanned changes
+(build chat: owner requests made directly in the build chat — one line each; the spec chat moves them into spec.md)
+- Recorded in spec §2.7: jump-float / standing-float serve poses, set-ready hands, white ring marker (T-003).

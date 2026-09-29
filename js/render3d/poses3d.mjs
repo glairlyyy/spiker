@@ -297,6 +297,24 @@ const mixT = (a, b, t) => ({
 const ARMS_UP = [V(0.2, 0.92, 0.35), V(0.14, 0.97, 0.2), V(0.1, 1, 0.1)];
 const ARMS_LOW = [V(0.15, -0.3, 0.94), V(0.1, -0.1, 1), V(0.1, 0.1, 1)];
 
+/** Landing after a swing (spike, jump serve, jump float): soft on both feet, knees bent to absorb; the hitting arm finishes across the body. */
+function landPose(d, sw) {
+  const lm = d.landMs != null ? d.landMs : d.jy > 0 ? 0 : sw - 300, // ms since touchdown
+    lt = cl((lm - 200) / 420, 0, 1),
+    absorb = sm(cl(lm / 140, 0, 1));
+  const LAND = C({
+    hp: 0.55,
+    sp: 0.22,
+    hd: -0.3,
+    L: leg(1.05, 1.6, -0.05, 0.2),
+    R: leg(0.95, 1.55, -0.05, 0.2),
+    al: [V(0.7, -0.35, 0.62), V(0.5, -0.4, 0.77), V(0.4, -0.4, 0.82)],
+    ar: mirror([V(0.55, -0.55, 0.62), V(0.35, -0.6, 0.72), V(0.3, -0.6, 0.74)]),
+    curl: 0.3
+  });
+  const TOUCH = { ...LAND, hp: 0.3, sp: 0.2, L: leg(0.45, 0.6, 0, 0.2), R: leg(0.4, 0.55, 0, 0.2), ar: HIP_R };
+  return { ...mix(mix(TOUCH, LAND, absorb), STAND, lt), face: { angry: 0.4 * (1 - lt) } };
+}
 function spikePose(d, m) {
   const air = d.jy > 8,
     J = d.jmode,
@@ -307,23 +325,7 @@ function spikePose(d, m) {
     arch = sty === 'power' ? 1.4 : sty === 'quick' ? 0.6 : 1;
   const face = { angry: 0.85 };
   // 3. landing: soft on both feet, knees bent to absorb; the hitting arm finishes across the body
-  if (!air && sw != null) {
-    const lm = d.landMs != null ? d.landMs : d.jy > 0 ? 0 : sw - 300, // ms since touchdown
-      lt = cl((lm - 200) / 420, 0, 1),
-      absorb = sm(cl(lm / 140, 0, 1));
-    const LAND = C({
-      hp: 0.55,
-      sp: 0.22,
-      hd: -0.3,
-      L: leg(1.05, 1.6, -0.05, 0.2),
-      R: leg(0.95, 1.55, -0.05, 0.2),
-      al: [V(0.7, -0.35, 0.62), V(0.5, -0.4, 0.77), V(0.4, -0.4, 0.82)],
-      ar: mirror([V(0.55, -0.55, 0.62), V(0.35, -0.6, 0.72), V(0.3, -0.6, 0.74)]),
-      curl: 0.3
-    });
-    const TOUCH = { ...LAND, hp: 0.3, sp: 0.2, L: leg(0.45, 0.6, 0, 0.2), R: leg(0.4, 0.55, 0, 0.2), ar: HIP_R };
-    return { ...mix(mix(TOUCH, LAND, absorb), STAND, lt), face: { angry: 0.4 * (1 - lt) } };
-  }
+  if (!air && sw != null) return landPose(d, sw);
   if (!air) {
     // approach, timed off the jump: run → big penultimate step (arms swing back high) → plant, get low → take-off
     const pp = J && J.mode === 'up' && d.jt != null ? cl(d.jt / Math.max(0.05, J.t0), 0, 1) : m && moving(m) ? 0.3 : 0;
@@ -418,32 +420,56 @@ function spikePose(d, m) {
 }
 
 const FLOAT_HIT = RA(V(-0.15, 0.93, 0.33), V(-0.1, 0.9, 0.42), V(-0.05, 0.85, 0.52), V(0, -0.1, 1)); // firm open palm
-/** Standing float serve: toss, cock, short punch through the ball. */
-function servePose(d) {
+// Jump float, in the air: knees bent behind the body, feet together (not the standing stride), then reaching for the floor.
+const FLOAT_AIR = { L: leg(0.12, 1.0, 0.75, 0.1), R: leg(0.02, 1.15, 0.8, 0.1) },
+  FLOAT_DOWN = { L: leg(0.3, 0.4, 0.25, 0.16), R: leg(0.24, 0.35, 0.25, 0.16) };
+/** Float serve (standing, or with a jump): toss, cock, short punch through the ball; then the landing / a small dip. */
+function servePose(d, m) {
   const sw = d.spk,
     pt = d.pt || 0,
+    air = d.jy > 8,
+    jumpy = d.spkStyle === 'jumpfloat',
     base = { hp: 0.1, sp: 0.02, L: leg(0.35, 0.3, 0, 0.12), R: leg(-0.25, 0.25, 0, 0.12), hd: -0.35, curlR: 0, face: { angry: 0.35 } };
+  if (jumpy && !air && sw != null) return landPose(d, sw); // touching down: crouch to absorb, like the jump serve
+  // legs: airborne → tucked behind (never the standing stride); running up → real strides
+  let legs = null;
+  if (jumpy && air) {
+    const pk = (d.jmode && d.jmode.peak) || 60,
+      u = cl(d.jy / pk, 0, 1),
+      down = sw != null ? sm(cl(1 - u / 0.5, 0, 1)) : 0;
+    legs = { L: mixLeg(FLOAT_AIR.L, FLOAT_DOWN.L, down), R: mixLeg(FLOAT_AIR.R, FLOAT_DOWN.R, down) };
+  } else if (jumpy && m && moving(m)) {
+    const lp = locoPose(m),
+      k = moveMix(m);
+    legs = { L: mixLeg(base.L, lp.L, k), R: mixLeg(base.R, lp.R, k), lift: (lp.lift || 0) * k };
+  }
+  const fin = o => (legs ? { ...o, ...legs } : o);
   if (sw == null) {
     const t1 = sm(cl(pt / 260, 0, 1)),
       kk = sm(cl((pt - 120) / 300, 0, 1));
-    return {
+    return fin({
       ...base,
       al: mixArm([V(0.2, -0.3, 0.93), V(0.1, -0.1, 1), V(0.1, 0, 1)], TOSS_L, t1),
       ar: mixArm(mirror(DOWN_ARM), COCK_SERVE, kk),
       tw: -0.5 * kk,
       hd: -0.35 - 0.3 * t1
-    };
+    });
   }
   const pre = swingLead(d) || 70,
-    e = sw < pre ? (0.42 * sw) / pre : Math.min(1, 0.42 + (0.58 * (sw - pre)) / 110);
-  return {
+    e = sw < pre ? (0.42 * sw) / pre : Math.min(1, 0.42 + (0.58 * (sw - pre)) / 110),
+    // a standing serve: the body follows the punch with a small dip and settles back (some impact, no jump)
+    dip = jumpy ? 0 : sm(cl((sw - pre) / 90, 0, 1)) * (1 - sm(cl((sw - pre - 110) / 260, 0, 1)));
+  return fin({
     ...base,
+    hp: base.hp + 0.22 * dip,
+    L: mixLeg(base.L, leg(0.5, 0.75, 0, 0.12), dip),
+    R: mixLeg(base.R, leg(0.05, 0.6, 0, 0.12), dip),
     al: mixArm(TOSS_L, PULL_L, cl(e * 1.4, 0, 1)),
     ar: e < 0.42 ? mixArm(COCK_SERVE, FLOAT_HIT, sm(e / 0.42)) : mixArm(FLOAT_HIT, PUNCH_R, (e - 0.42) / 0.58),
     tw: e < 0.42 ? mixN(-0.5, 0, e / 0.42) : 0.2,
-    sp: e < 0.42 ? -0.1 : 0.12,
+    sp: (e < 0.42 ? -0.1 : 0.12) + 0.08 * dip,
     contact: cl(1 - Math.abs(e - 0.42) / 0.2, 0, 1)
-  };
+  });
 }
 
 // ---------- before the serve ----------
@@ -678,7 +704,7 @@ export function playerPose(d, mood, m) {
     }
   } else if (pose === 'preserve') out = preservePose(d, m);
   else if (pose === 'spike') out = spikePose(d, m);
-  else if (pose === 'serve') out = servePose(d);
+  else if (pose === 'serve') out = servePose(d, m);
   else if (pose === 'bump' && !air) {
     const u = d.swing == null ? 0 : cl(d.swing / 170, 0, 1),
       rel = d.swing != null && d.swing > 520;
@@ -697,6 +723,17 @@ export function playerPose(d, mood, m) {
     }
     out.contact = d.swing == null ? 1 : 1 - u;
     out.face = { surprised: 0.25 };
+  } else if (pose === 'setprep') {
+    // the ball is on its way: hands come up above the forehead, elbows out, fingers spread (the set-ready triangle),
+    // eyes on the ball, knees soft — held until the set itself starts
+    const k = sm(cl((d.pAge || 0) / 300, 0, 1));
+    out = mix(READY, { ...WINDOW, hd: -0.55, sp: 0.03 }, k);
+    if (mk > 0) {
+      const lp = locoPose(m); // still moving under the ball: real strides, hands already rising
+      out = { ...out, L: mixLeg(out.L, lp.L, mk), R: mixLeg(out.R, lp.R, mk), hp: mixN(out.hp, lp.hp, mk * 0.6), lift: lp.lift };
+    }
+    out.contact = 1;
+    out.face = { relaxed: 0.3 };
   } else if (pose === 'set') {
     const sm2 = setMotion(d),
       push = PUSH[d.setDir || 'front'],

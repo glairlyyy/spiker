@@ -160,8 +160,27 @@ function startBeat(b) {
         instant(a);
     }
   }
+  // the pass is on its way to the setter: they raise their hands early, ready for the ball (display only)
+  for (const a of b.acts) {
+    const sd = a.k === 'ball' && a.when !== 'end' && a.to && a.to.c === 'set' && a.to.p ? A.disp[a.to.p] : null;
+    if (sd && sd.pose === 'ready' && sd.jy <= 2 && !diving(sd) && !sd.afterDive) startPose(sd, 'setprep', false, b.dur);
+  }
   digChase(b);
   preDigLook(b);
+  preApproachLook(b);
+  const ap = approachOf(b),
+    hd = ap && A.disp[ap.p];
+  if (hd) {
+    const dir = Math.sign(ap.cx - NETX) || 1;
+    ap.at = ap.rx == null || Math.hypot((hd.x - ap.rx) * MX, (hd.z - ap.rz) * MZ) <= 0.5 || dir * (hd.x - ap.rx) > 0 ? 0 : ap.t0 * 0.45;
+    // too far from the run-up point to run up AND take off in time (a hitter coming off the block): straight to the take-off point
+    ap.direct =
+      ap.at > 0 &&
+      ((Math.hypot((hd.x - ap.rx) * MX, (hd.z - ap.rz) * MZ) + Math.hypot((ap.rx - ap.ox) * MX, (ap.rz - ap.oz) * MZ)) / sprintOf(hd)) *
+        1000 >
+        ap.t0 * b.dur * 0.8;
+    hd.app = ap;
+  }
 }
 /** Gravity for players coming down from a jump (m/s²): 1.6× real, so landings feel snappy, not floaty. */
 const FALL_G = 9.81 * 1.6;
@@ -191,6 +210,98 @@ function preDigGo() {
   d.tx = g.x;
   d.tz = g.z;
   d.carry = true; // straight there at a sprint (the dig beat's own move picks up from wherever they've got to)
+}
+/** Spike approach (display only): the run-up point sits this far behind the contact spot, away from the net (m). */
+const RUNUP_M = 3;
+/** The take-off point sits this far before the contact spot (m): the broad jump carries the hitter onto the ball. */
+const TAKEOFF_M = 0.9;
+/** Share of the beat before the set at which the hitter starts for the run-up point. */
+const PREAPP_AT = 0.35;
+/**
+ * The spike approach a beat asks for: null, or { p, cx, cz, rx, rz, ox, oz, t0 } — the hitter, contact spot, run-up
+ * point (rx/rz null when the slide has its own `via` run-up) and take-off point. Quick attacks (t0 < 0.3) and
+ * cut / scene beats have none. Derived from the set beat's acts only.
+ */
+function approachOf(b) {
+  if (!b || b.cut || b.scene) return null;
+  const ba = b.acts.find(x => x.k === 'ball' && x.to && x.to.p && x.to.c === 'spike' && x.when !== 'end'),
+    sl = ba && b.acts.find(x => x.k === 'slide' && x.p === ba.to.p),
+    jp = ba && b.acts.find(x => x.k === 'jump' && x.p === ba.to.p && x.mode === 'up');
+  if (!sl || !jp || (jp.t0 || 0) < 0.3) return null;
+  if (b.acts.some(x => x.k === 'spkstyle' && x.p === ba.to.p && x.st === 'serve')) return null; // a jump serve has its own routine
+  const dir = Math.sign(sl.x - NETX) || 1,
+    run = !sl.via;
+  return {
+    p: ba.to.p,
+    cx: sl.x,
+    cz: sl.z,
+    rx: run ? clamp(sl.x + (dir * RUNUP_M) / MX, 20, 980) : null,
+    rz: run ? sl.z : null,
+    ox: sl.x + (dir * TAKEOFF_M) / MX,
+    oz: sl.z,
+    t0: jp.t0 || 0
+  };
+}
+/** Reading the set: the hitter of the next beat starts for their run-up point already in this beat. */
+function preApproachLook(b) {
+  A.preApp = null;
+  const nb = A.beats && A.beats[A.bi + 1],
+    ap = nb && !b.cut && !b.scene ? approachOf(nb) : null;
+  if (!ap || ap.rx == null) return;
+  A.preApp = { p: ap.p, rx: ap.rx, rz: ap.rz, touch: b.acts.some(x => x.k === 'ball' && x.to && x.to.p === ap.p && x.when !== 'end') };
+}
+function preApproachGo() {
+  const g = A.preApp,
+    d = A.disp[g.p];
+  g.go = true;
+  if (g.touch || !d || d.jy > 2 || diving(d)) return; // busy with their own play
+  d.sx = d.x;
+  d.sz = d.z;
+  d.tx = g.rx;
+  d.tz = g.rz;
+  d.carry = true; // straight to the run-up point at a sprint (the set beat's own move picks up from there)
+}
+/**
+ * The hitter's move in the set beat: A) to the run-up point, B) an accelerating run to the take-off point, C) in the
+ * air a broad jump onto the contact spot, arriving at t = 1. Returns false to leave the move to the generic code
+ * (a `via` back attack before its take-off).
+ */
+function approachMove(d, t) {
+  const g = d.app,
+    dm = g.t0 > g.at ? g.t0 - g.at : 0.01;
+  if (t >= g.t0) {
+    if (g.fx == null) {
+      g.fx = d.x;
+      g.fz = d.z;
+    }
+    const u = clamp((t - g.t0) / Math.max(0.01, 1 - g.t0), 0, 1);
+    d.x = lerp(g.fx, g.cx, u);
+    d.z = lerp(g.fz, g.cz, u);
+    return true;
+  }
+  if (g.direct) {
+    const k = ease(t / g.t0);
+    capMove(d, lerp(d.sx, g.ox, k), lerp(d.sz, g.oz, k));
+    return true;
+  }
+  if (g.rx == null) {
+    // a `via` back attack: the generic code runs the first leg; the second ends at the take-off point at t0
+    const v = d.via;
+    if (!v || t < v.at || v.at >= g.t0) return false;
+    const k = (t - v.at) / (g.t0 - v.at);
+    capMove(d, lerp(v.x, g.ox, k * k), lerp(v.z, g.oz, k * k));
+    return true;
+  }
+  if (t < g.at) {
+    const k = ease(t / g.at);
+    capMove(d, lerp(d.sx, g.rx, k), lerp(d.sz, g.rz, k));
+    return true;
+  }
+  const k = clamp((t - g.at) / dm, 0, 1),
+    x0 = g.at > 0 ? g.rx : d.sx,
+    z0 = g.at > 0 ? g.rz : d.sz;
+  capMove(d, lerp(x0, g.ox, k * k), lerp(z0, g.oz, k * k));
+  return true;
 }
 /** Top running speed in m/s (a dive launches ×1.35 faster). */
 const sprintOf = d => (6.5 + 3.5 * (((d.p && d.p.speed) || 60) / 100)) * (d.pose === 'dive' ? 1.35 : 1);
@@ -583,12 +694,14 @@ function applyBeat(b, t) {
     }
   }
   if (A.preDig && !A.preDig.go && t >= PREDIG_AT) preDigGo();
+  if (A.preApp && !A.preApp.go && t >= PREAPP_AT) preApproachGo();
   const e = ease(t);
   for (const id in A.disp) {
     const d = A.disp[id];
     if (d.fallMs != null && d.airV) continue; // coming down from a jump: momentum carries them (stepPlayerTimers)
-    if (d.tx === d.sx && d.tz === d.sz) continue;
     if (diving(d) && d.dv.t > d.dv.dur) continue; // on the floor: runs on only once back up (endBeat carries the move)
+    if (d.app && !d.waitLand && approachMove(d, t)) continue; // spike approach: run-up, take-off, broad jump
+    if (d.tx === d.sx && d.tz === d.sz) continue;
     if (id === A.digHero && d.waitLand && d.jy <= 1 && (d.landMs == null || d.landMs > 60)) d.waitLand = false; // feet down: go
     if ((d.carry || id === A.digHero) && !d.waitLand) {
       capMove(d, d.tx, d.tz); // catching up from the last beat, or chasing a far dig: straight there at a sprint
@@ -730,6 +843,7 @@ function capMove(d, x, z) {
 function endBeat(b) {
   for (const id in A.disp) {
     const d = A.disp[id];
+    d.app = null;
     // not there yet (landed late, or the move was longer than a sprint allows): keep running in the next beat
     if (moveM(d) > 0.05) {
       d.sx = d.x;

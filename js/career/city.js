@@ -75,7 +75,7 @@ const City = {
   pos: run => (Array.isArray(run.pos) ? run.pos : (REGIONS[run.loc] || REGIONS.wu).at),
   /** The region you are in. */
   loc: run => City.regionAt(City.pos(run)),
-  /** The region at a map point: a minor's patch, the shrine park, else the major whose land it is. */
+  /** The region at a map point: a minor's patch, Central Academy, else the major whose land it is. */
   regionAt([x, y]) {
     for (const [r, e] of Object.entries(CITY.minors)) {
       const a = (-e.rot * Math.PI) / 180,
@@ -111,11 +111,30 @@ const City = {
   seen: (run, p) => (run.fog || []).some(q => Math.hypot(q[0] - p[0], q[1] - p[1]) <= REVEAL_R),
   /** Your home region (where you live). */
   homeRegion: run => City.region(run, 'home'),
+  /** Does the place's owner let you in? { ok, why }: grudge, then the owner's condition; its members always pass. */
+  access(run, id) {
+    const s = SPOTS[id];
+    if (!s || s.region == null || s.region === 'open') return { ok: true, why: '' };
+    const owner = City.region(run, id);
+    if (run.team != null && FACTIONS[run.team] && FACTIONS[run.team].region === owner) return { ok: true, why: '' };
+    const rep = City.rep(run, owner);
+    if (rep <= ACCESS.grudge) return { ok: false, why: `${REGIONS[owner].name} won't let you in (standing ${rep})` };
+    const c = ACCESS.cond[owner] || {},
+      you = Run.you(run),
+      miss = [];
+    if (c.ovr && ovr(you) < c.ovr) miss.push(`OVR ${c.ovr}`);
+    if (c.key && you[KEYSTAT[you.role]] < c.key) miss.push(`${STATNAME[KEYSTAT[you.role]]} ${c.key}`);
+    if (c.star && !you.star) miss.push('★ star');
+    if (c.fans && run.fans < c.fans) miss.push(`${c.fans.toLocaleString()} fans`);
+    return miss.length ? { ok: false, why: `${REGIONS[owner].name} asks for ${miss.join(', ')}` } : { ok: true, why: '' };
+  },
   /** Can you do this now? { ok, why }. */
   can(run, id, mate) {
     const s = SPOTS[id];
     if (!s) return { ok: false, why: 'unknown place' };
     if (run.event) return { ok: false, why: 'answer the event first' };
+    const acc = City.access(run, id);
+    if (!acc.ok) return acc;
     const late = City.noTime(run, City.cost(run, id));
     if (late) return { ok: false, why: late };
     const cost = City.price(run, id);

@@ -563,7 +563,7 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   const td = g.City.travelDays(run, [700, 300]);
   assert(g.City.travelTo(run, [700, 300]) && g.City.days(run) === 7 - td && g.City.loc(run) === 'wei', 'walked into the city');
   assert(g.City.seen(run, [720, 320]), 'the fog lifts around you');
-  eq(g.City.regionAt([500, 320]), 'open', 'the shrine park belongs to nobody');
+  eq(g.City.regionAt([500, 320]), 'open', 'Central Academy belongs to nobody');
   eq(g.City.regionAt([815, 470]), 'outlaws', 'the overpass is the Outlaws');
   g.Run.endWeek(run);
   // home turf: your faction's region
@@ -609,6 +609,31 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
       back.loc === 'wu',
     'days, scouting, places and location saved'
   );
+});
+
+test('career: facility access — grudge, owner condition, members and neutral ground', () => {
+  const g = load(78),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Gate', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
+  run.event = null;
+  run.days = 7;
+  run.money = 500;
+  const can = id => g.City.can(run, id);
+  assert(can('weiPower').ok, 'a Wei place is open at standing 0');
+  run.rep.wei = -19;
+  assert(can('weiPower').ok, 'standing −19 is still fine');
+  run.rep.wei = -20;
+  assert(!can('weiPower').ok && can('weiPower').why.includes("won't let you in"), 'a grudge shuts the door');
+  const wei = g.FACTIONS.findIndex(f => f.region === 'wei'),
+    team0 = run.team;
+  run.team = wei;
+  assert(can('weiPower').ok, "the owner's members always get in");
+  run.team = team0;
+  g.ACCESS.cond.wei = { fans: 1e9 };
+  run.rep.wei = 0;
+  assert(!can('weiPower').ok && can('weiPower').why.includes('asks for'), "the owner's condition can shut the door");
+  g.ACCESS.cond.wei = {};
+  for (const r of Object.keys(g.REGIONS)) run.rep[r] = -100;
+  assert(can('home').ok && can('park').ok, 'home and Central Academy are never gated');
 });
 
 // ---------- report ----------
