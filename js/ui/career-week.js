@@ -227,11 +227,8 @@ function skillShop(run, open) {
 }
 function chooseEvent(i) {
   if (!RUN.event) return;
-  const pre = RUN.event.pre; // offers shown before the week's choice don't end the week
   Run.log(RUN, Events.choose(RUN, i));
-  if (pre || City.slot(RUN) === 'eve')
-    Run.save(RUN); // offers before the day, or events after it (the evening is next)
-  else Run.endWeek(RUN);
+  Run.save(RUN); // the week goes on: only the player ends it
   renderCareer();
 }
 function setFocus(id) {
@@ -279,12 +276,58 @@ function clubsCard(run) {
         const c = World.canJoin(run, t.i),
           f = FACTIONS[t.i];
         return `<div class="club" style="--tc:${t.color}"><div>${chip(t)}<b>${esc(t.name)}</b> <span class="mute small">${esc(f.name)} · OVR ${t.ovr}</span>${info(`${f.front}. Word is: ${f.dark.toLowerCase()}.`)}</div>
-          <div class="small ${c.ok ? '' : 'mute'}">${World.joinText(t.i)}</div>
+          <div class="small ${c.ok ? '' : 'mute'}">${World.joinText(t.i, run)}</div>
           <button class="btn ${c.ok ? 'hot' : ''}" onclick="joinClub(${t.i})" ${c.ok ? '' : 'disabled'} ${c.ok ? '' : tip('Missing: ' + c.why.join(', '))}>${c.ok ? 'Sign' : 'Locked'}</button></div>`;
       })
       .join('')}</div>`,
     true
   )}</div>`;
+}
+/** Your standing with each faction (region), its clubs, and this week's street battle. */
+function factionsCard(run) {
+  const c = City.clashSite(run),
+    mood = v => (v >= 30 ? 'Trusted' : v > 0 ? 'Friendly' : v <= -30 ? 'Hostile' : v < 0 ? 'Wary' : 'Neutral');
+  return `<div class="panel facs">${Object.keys(REGIONS)
+    .filter(r => REGIONS[r].kind !== 'none')
+    .map(r => {
+      const v = City.rep(run, r),
+        clubs = run.teams.filter(t => FACTIONS[t.i].region === r),
+        foe = c && (c.a === r ? c.b : c.b === r ? c.a : null);
+      const major = MAJORS.includes(r),
+        lost = major ? Front.lostIds(run, r) : [],
+        took = major ? Front.takenIds(run, r) : [],
+        weak = major && Front.weak(run, r),
+        fronts = major
+          ? MAJORS.filter(o => o !== r)
+              .map(o => {
+                const m = Front.meter(run, r, o);
+                return `<span class="fm ${m > 0 ? 'up' : m < 0 ? 'dn' : ''}" ${tip(`Border pressure vs ${REGIONS[o].name}: ${FRONT.seize} net wins seize a place`)}>vs ${esc(REGIONS[o].name.split(' ')[0])} ${m > 0 ? '+' : ''}${m}</span>`;
+              })
+              .join('')
+          : '',
+        places =
+          (took.length
+            ? `<div class="small">Took: ${took.map(id => `${esc(SPOTS[id].name)} <i class="mute">(from ${esc(REGIONS[SPOTS[id].region].name)})</i>`).join(', ')}</div>`
+            : '') +
+          (lost.length
+            ? `<div class="small">Lost: ${lost.map(id => `${esc(SPOTS[id].name)} <i class="mute">(to ${esc(REGIONS[run.own[id]].name)})</i>`).join(', ')}</div>`
+            : ''),
+        econ =
+          major && (lost.length || took.length)
+            ? `<div class="small mute">Prices ×${Front.priceMul(run, r).toFixed(1)} · facilities ×${Front.qMul(run, r).toFixed(2)}${lost.length ? ` · clubs ask −${FRONT.join * lost.length} OVR/key, fees −${Math.round(FRONT.fee * lost.length * 100)}%` : ''}</div>`
+            : '';
+      return `<div class="fac ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}"><div class="fh"><b>${esc(REGIONS[r].name)}</b> <span class="mute small">${REGIONS[r].kind}</span>${weak ? ' <span class="stk far">Weakened</span>' : ''}${info(REGIONS[r].desc)}<span class="fv">${mood(v)} <b>${v > 0 ? '+' : ''}${v}</b></span></div>
+        ${fronts ? `<div class="fms">${fronts}</div>` : ''}${places}${econ}
+        <div class="rbar" ${tip('Standing −100 … +100')}><i style="${v >= 0 ? `left:50%;width:${v / 2}%` : `left:${50 + v / 2}%;width:${-v / 2}%`}"></i></div>
+        <div class="small">${clubs.map(t => `${chip(t)}${esc(t.name)}${t.i === run.team ? ' <i class="mute">(yours)</i>' : ''}`).join(' · ')}${
+          foe
+            ? ` <a href="#" class="clashk" onclick="hubOpen(null);mapPick('clash');return false">⚔ vs ${esc(REGIONS[foe].name)} this week</a>`
+            : ''
+        }</div></div>`;
+    })
+    .join(
+      ''
+    )}<p class="small mute">Standing moves when you pick a side in a street battle: win +${CLASH.win}, lose ${CLASH.lose}; the side you fight against always ${CLASH.other}. Every battle pushes its border: ${FRONT.seize} net wins seize a border place (lost places come back first).</p></div>`;
 }
 /** The Gazette from the last payday, until you dismiss it. */
 function gazetteCard(run) {

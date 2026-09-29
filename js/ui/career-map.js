@@ -1,84 +1,36 @@
-// The island map: regions, places and club HQs (SVG, dragged / zoomed with panzoom), and the panel for the
-// selected place. Day: one main action (train / rest / recreation). Evening: one optional outing, or end the week.
+// The island map's UI: mounting the renderer (MapView, js/ui/map-svg.js) with the model (MapModel), the panel for the
+// selected place, and the actions behind its buttons. A week has 7 days: every action takes a day plus the trip there (by distance); the player ends the
+// week. The map is dark where you haven't been: places show once explored; click any land to travel there.
 
-function citySVG(run) {
-  const eve = City.slot(run) === 'eve',
-    pts = poly => poly.map(p => p.join(',')).join(' '),
-    path = poly => 'M' + poly.map(p => p.join(',')).join('L') + 'Z',
-    floor = run.floor || {},
-    mine = City.myRegion(run),
-    pin = (id, [x, y], icon, cls, badge, title) =>
-      `<g class="pin ${cls} ${CW.spot === id ? 'sel' : ''}" transform="translate(${x},${y})" data-spot="${id}" role="button" tabindex="0" aria-label="${esc(title)}"><title>${esc(title)}</title>
-        <circle r="22"/><text class="ic" y="7">${icon}</text>${badge ? `<g class="bd" transform="translate(17,-17)"><circle r="10"/><text y="4">${badge}</text></g>` : ''}</g>`;
-  const col = r => (r === 'wei' ? '#f5b82e' : r === 'wu' ? '#3fa9f5' : r === 'shu' ? '#4ade80' : r === 'outlaws' ? '#ff8c42' : '#ff5da2'),
-    lab = (r, big) => {
-      const [x, y] = CITY.label[r];
-      return `<text class="rl ${big ? 'big' : ''}" x="${x}" y="${y}" style="--tc:${col(r)}">${esc(REGIONS[r].name)}${r === mine ? ' · home turf' : ''}</text>`;
-    };
-  const land = `
-    <path class="island" d="${path(CITY.coast)}"/>
-    <path class="reg wu ${mine === 'wu' ? 'mine' : ''}" style="--tc:${col('wu')}" fill-rule="evenodd" d="${path(CITY.coast)} ${path(CITY.inner)}"/>
-    <polygon class="reg ${mine === 'shu' ? 'mine' : ''}" style="--tc:${col('shu')}" points="${pts(CITY.shu)}"/>
-    ${CITY.mountains.map(([x, y]) => `<path class="mtn" d="M${x - 22},${y + 12} L${x},${y - 16} L${x + 22},${y + 12}Z"/>`).join('')}
-    <polygon class="reg ${mine === 'wei' ? 'mine' : ''}" style="--tc:${col('wei')}" points="${pts(CITY.wei)}"/>
-    <polyline class="contest" points="${pts(CITY.wei.slice(1, 5))}"><title>Contested Wei–Wu border</title></polyline>
-    ${Object.entries(CITY.minors)
-      .map(
-        ([r, e]) =>
-          `<ellipse class="minor ${mine === r ? 'mine' : ''}" style="--tc:${col(r)}" cx="${e.x}" cy="${e.y}" rx="${e.rx}" ry="${e.ry}" transform="rotate(${e.rot} ${e.x} ${e.y})"/>`
-      )
-      .join('')}
-    ${lab('wei', 1)}${lab('shu', 1)}${lab('wu', 1)}${lab('outlaws')}${lab('gloria')}
-    <g class="airport" transform="translate(${CITY.airport.join(',')})"><text class="ic" y="6">✈</text><text class="ap" y="30">Airport</text></g>`;
-  const spots = Object.entries(SPOTS)
-    .filter(([id]) => id !== 'sleep') // one Home pin serves day (rest) and evening (early night)
-    .map(([id, s]) => {
-      const off = id === 'home' ? false : (s.slot === 'eve') !== eve,
-        mates = s.train ? (floor[s.train] || []).length : 0,
-        Q = s.train ? City.quality(run, id) : null;
-      const trip = City.travel(run, City.region(run, id));
-      return pin(
-        id,
-        City.at(run, id),
-        s.icon,
-        `${off ? 'off' : ''} ${trip >= 2 ? 'faraway' : ''} ${s.train && City.turf(run, id) ? 'turf' : ''} ${Q && Q.known && Q.tag ? Q.tag : ''}`,
-        mates || '',
-        `${s.name}${s.train ? ` — ${TRAININGS[s.train].name} training` : ''}`
-      );
-    })
-    .join('');
-  const hqs = run.teams
-    .map((t, i) => {
-      const c = World.isFree(run) && World.canJoin(run, i).ok;
-      return pin(
-        `hq${i}`,
-        CITY.hq[i],
-        '🛡',
-        `hq ${c ? 'can' : ''} ${i === run.team ? 'mine' : ''}`,
-        c ? '✓' : City.scouted(run, i) ? '👁' : '',
-        `${t.name} HQ`
-      ).replace('<circle r="22"/>', `<circle r="22" style="--tc:${t.color}"/>`);
-    })
-    .join('');
-  const here = REGIONS[City.loc(run)],
-    you = `<g class="here" transform="translate(${here.at.join(',')})"><circle r="30"/><text y="5">YOU</text><title>You are in ${esc(here.name)}</title></g>`;
-  return `<div class="mapinner"><svg class="city" width="${CITY.w}" height="${CITY.h}" viewBox="0 0 ${CITY.w} ${CITY.h}" role="img" aria-label="Island map">
-    ${land}${you}${hqs}${spots}</svg></div>`;
+/** Draw the map for this run (MapView = the renderer; MapModel = what to draw). */
+function mapMount(run) {
+  const el = $('#mapwrap');
+  if (el) MapView.mount(el, MapModel.build(run, CW.spot), { pick: mapPick, point: mapPoint });
+}
+/** Empty map clicked: land → a point to travel to; sea → deselect. */
+function mapPoint(p) {
+  if (!City.onLand(p)) return mapPick(null);
+  CW.spot = MapModel.ptId(p);
+  renderCareer();
 }
 
 /** The panel for the selected place: what it does and its buttons. */
 function spotPanel(run, id) {
   if (!id) return `<p class="small mute">Pick a place on the map.</p>`;
   if (id.startsWith('hq')) return hqPanel(run, +id.slice(2));
-  const eve = City.slot(run) === 'eve',
-    sid = id === 'home' && eve ? 'sleep' : id,
+  if (id === 'clash') return clashPanel(run);
+  if (id.startsWith('pt:')) return pointPanel(run, MapModel.ptOf(id));
+  const sid = id,
     s = SPOTS[sid],
     c = City.can(run, sid),
     reg = REGIONS[City.region(run, sid)] || REGIONS.open,
     cost = City.price(run, sid),
-    trip = City.travel(run, City.region(run, sid)),
+    at = City.at(run, sid),
+    trip = City.trip(run, at),
+    days = City.cost(run, sid),
     go = (label, arg = '') =>
-      `<button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${sid}'${arg})" ${c.ok ? '' : `disabled ${tip(c.why)}`}>${label}</button>`;
+      `<button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${sid}'${arg})" ${c.ok ? '' : `disabled ${tip(c.why)}`}>${label}${dayTag(days)}</button>`,
+    trOk = trip && !run.event && !City.noTime(run, trip);
   let body = '';
   if (s.train) body = trainSpot(run, sid, c);
   else if (s.act === 'ramen')
@@ -87,16 +39,60 @@ function spotPanel(run, id) {
         m =>
           `<button class="btn" onclick="mapGo('${sid}','${m.id}')" ${City.can(run, sid, m.id).ok ? '' : 'disabled'}>${faceSVG(m, 0, 22)} ${esc(m.name)} <small class="mute">${Run.you(run).bond[m.id] || 0}</small></button>`
       )
-      .join('')}</div>${c.ok || c.why === 'pick a teammate' ? '' : `<p class="small mute">${esc(c.why)}</p>`}`;
+      .join('')}${dayTag(days)}</div>${c.ok || c.why === 'pick a teammate' ? '' : `<p class="small mute">${esc(c.why)}</p>`}`;
   else
     body = `<p class="small">${esc(s.desc)}${cost ? ` · $${cost}` : ''}${sid === 'home' ? ` · ${esc(HOUSING[run.housing].name)} ×${World.restMul(run)}` : ''}</p><div class="trow">${go(s.act === 'rest' ? 'Rest' : s.act === 'rec' ? 'Relax' : 'Go')}</div>`;
+  const front = s.region && Object.values(FRONT.borders).some(B => Object.values(B).some(l => l.includes(sid))),
+    held = Front.seized(run, sid);
   return `<div class="spot"><h4>${s.icon} ${esc(s.name)} <span class="mute small" ${tip(reg.desc)}>${esc(reg.name)}</span>${
-    trip === 1 && !eve
-      ? ` <span class="stk" ${tip('Getting there takes the evening: no outing afterwards')}>Trip: evening</span>`
-      : trip >= 2
-        ? ` <span class="stk far" ${tip('Far away: travelling there takes a whole day')}>Far</span>`
+    held
+      ? ` <span class="stk far" ${tip(`Seized from ${REGIONS[s.region].name} in the street war`)}>Seized</span>`
+      : front
+        ? ` <span class="stk" ${tip('A border place: it changes hands if the neighbours win enough street battles')}>Border</span>`
         : ''
-  }</h4>${body}${c.travel && !eve ? `<div class="trow"><button class="btn" onclick="mapTravel('${City.region(run, sid)}')">Travel to ${esc(reg.name)} (takes the day)</button></div>` : ''}</div>`;
+  }${
+    trip
+      ? ` <span class="stk ${trip >= 2 ? 'far' : ''}" ${tip(`Getting there takes ${trip} day${trip > 1 ? 's' : ''}, on top of the day there`)}>Trip: ${trip} day${trip > 1 ? 's' : ''}</span>`
+      : ''
+  }</h4>${body}${trip ? `<div class="trow"><button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${trOk ? '' : `disabled ${tip(City.noTime(run, trip) || 'answer the event first')}`}>Just travel there${dayTag(trip)}</button></div>` : ''}</div>`;
+}
+/** Any point of the island: travel there (the fog lifts around it). */
+function pointPanel(run, p) {
+  const d = City.travelDays(run, p),
+    seen = City.seen(run, p),
+    r = REGIONS[City.regionAt(p)],
+    late = run.event ? 'answer the event first' : City.noTime(run, d);
+  return `<div class="spot"><h4>⚑ ${seen ? esc(r.name) : 'Unexplored land'}${
+    d >= 2 ? ` <span class="stk far">Trip: ${d} days</span>` : ''
+  }</h4><p class="small">${seen ? esc(r.desc) : 'Nobody you know has been out there. Go and see what you find.'}</p>
+    <div class="trow"><button class="btn hot" onclick="mapTravel(${p[0]},${p[1]})" ${late ? `disabled ${tip(late)}` : ''}>Travel here${dayTag(d)}</button></div></div>`;
+}
+/** " · N days" on an action button. */
+function dayTag(n) {
+  return ` <small class="dt">${n}d</small>`;
+}
+
+/** This week's street battle: watch it or fight for a side. */
+function clashPanel(run) {
+  const c = City.clashSite(run);
+  if (!c) return `<p class="small mute">The street battle is over.</p>`;
+  const d = City.clashCost(run),
+    trip = d - 1,
+    late = run.event ? 'answer the event first' : City.noTime(run, d),
+    p = Math.round(City.clashP(run) * 100),
+    btn = (side, label, t) =>
+      `<button class="btn ${side ? 'hot' : ''}" onclick="mapClash(${side ? `'${side}'` : 'null'})" ${late ? `disabled ${tip(late)}` : tip(t)}>${label}${dayTag(d)}</button>`,
+    fight = (side, foe) =>
+      btn(
+        side,
+        `Fight for ${esc(REGIONS[side].name)}`,
+        `${p}% to win (your OVR). Win: +${CLASH.win} standing with ${REGIONS[side].name}, +${CLASH.fans} fans. Lose: ${CLASH.lose}. Either way ${CLASH.other} with ${REGIONS[foe].name}. −${CLASH.sta} stamina`
+      ),
+    st = r => `${esc(REGIONS[r].name)} <b>${City.rep(run, r) > 0 ? '+' : ''}${City.rep(run, r)}</b>`;
+  return `<div class="spot"><h4>⚔ Street battle <span class="mute small">${esc(REGIONS[c.a].name)} vs ${esc(REGIONS[c.b].name)} · ${esc(c.name)}</span>${
+    trip ? ` <span class="stk ${trip >= 2 ? 'far' : ''}">Trip: ${trip} day${trip > 1 ? 's' : ''}</span>` : ''
+  }</h4><p class="small">Crews from both sides are settling it on the street this week. Standing: ${st(c.a)} · ${st(c.b)}</p>
+    <div class="trow">${btn(null, 'Watch', `See both sides' clubs in action: scouts them. −${CLASH.watchSta} stamina`)}${fight(c.a, c.b)}${fight(c.b, c.a)}</div></div>`;
 }
 
 /** Quality of a training place as the player knows it. */
@@ -144,7 +140,7 @@ function trainSpot(run, id, c) {
       )
       .join('')}</span>
       <label class="hardt ${run.injury ? 'dis' : ''}" ${tip(`×${TRAIN_X.hard.gain} gains, skill pts ×1.5, ×${TRAIN_X.hard.sta} stamina, +${Math.round(TRAIN_X.hard.fail * 100)}% fail`)}><input type="checkbox" ${hard ? 'checked' : ''} ${run.injury ? 'disabled' : ''} onchange="CW.hard=this.checked;mapPick(CW.spot)"> Hard</label>
-      <button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${id}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}>Train ${TRAININGS[key].name}</button></div>`;
+      <button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${id}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}>Train ${TRAININGS[key].name}${dayTag(City.cost(run, id))}</button></div>`;
 }
 
 function hqPanel(run, ti) {
@@ -152,18 +148,19 @@ function hqPanel(run, ti) {
     f = FACTIONS[ti],
     free = World.isFree(run),
     j = World.canJoin(run, ti),
-    eve = City.slot(run) === 'eve',
+    sc = City.scoutCost(run, ti),
+    late = run.event ? 'answer the event first' : City.noTime(run, sc),
     seen = City.scouted(run, ti);
   const roster = seen
     ? `<div class="roster small">${t.P.map(p => `<span>${faceSVG(p, 0, 22)}${stag(p)}${esc(p.name)} <i class="mute">${p.role} ${ovr(p)}</i>${p.elOn ? ` <b style="color:${ECOL[p.el]}">${ENAME[p.el]}</b>` : ''}</span>`).join('')}</div>`
     : '';
   return `<div class="spot" style="--tc:${t.color}"><h4>${chip(t)}${esc(t.name)} <span class="mute small">${esc(REGIONS[f.region].name)} · rating ${t.ovr}</span></h4>
-    <p class="small">${esc(f.front)}.${seen ? ` <span class="mute">Word is: ${esc(f.dark.toLowerCase())}.</span>` : ''}</p>${roster}
+    <p class="small">${esc(f.front)}.${City.rep(run, f.region) ? ` <span ${tip(`Your standing with ${REGIONS[f.region].name}`)}>Standing <b>${City.rep(run, f.region) > 0 ? '+' : ''}${City.rep(run, f.region)}</b>.</span>` : ''}${seen ? ` <span class="mute">Word is: ${esc(f.dark.toLowerCase())}.</span>` : ''}</p>${roster}
     <div class="trow">${
       free
-        ? `<button class="btn ${j.ok ? 'hot' : ''}" onclick="joinClub(${ti})" ${j.ok ? '' : `disabled ${tip('Missing: ' + j.why.join(', '))}`}>Sign</button><span class="small ${j.ok ? '' : 'mute'}">${esc(World.joinText(ti))}</span>`
+        ? `<button class="btn ${j.ok ? 'hot' : ''}" onclick="joinClub(${ti})" ${j.ok ? '' : `disabled ${tip('Missing: ' + j.why.join(', '))}`}>Sign</button><span class="small ${j.ok ? '' : 'mute'}">${esc(World.joinText(ti, run))}</span>`
         : ''
-    }${ti !== run.team ? `<button class="btn" onclick="mapScout(${ti})" ${eve && !run.event && !City.farTo(run, f.region) ? '' : `disabled ${tip(City.farTo(run, f.region) ? 'Scout where you are: travel there first' : 'Evenings only')}`} ${tip(`Evening: see their roster and elements, hear a rumour. −${SCOUT_STA} stamina`)}>${seen ? 'Scout again' : 'Scout'}</button>` : ''}</div></div>`;
+    }${ti !== run.team ? `<button class="btn" onclick="mapScout(${ti})" ${late ? `disabled ${tip(late)}` : tip(`A day at their HQ${sc > 1 ? ' (+ the trip)' : ''}: see their roster and elements, hear a rumour. −${SCOUT_STA} stamina`)}>${seen ? 'Scout again' : 'Scout'}${dayTag(sc)}</button>` : ''}</div></div>`;
 }
 
 /** The floating card for the selected place. */
@@ -176,98 +173,57 @@ function mapPick(id) {
   if (!el) return renderCareer();
   el.innerHTML = id ? spotCard(RUN) : '';
   el.classList.toggle('open', !!id);
-  for (const g of document.querySelectorAll('.city .pin')) g.classList.toggle('sel', g.dataset.spot === id);
+  MapView.select(id);
 }
 
-let PZ = null; // the map's panzoom instance
-const PAD = 90; // px the map may be dragged past the screen edge, so edge labels can clear the HUD
-/** Make the map draggable / zoomable: it covers the screen (a little overscroll, PAD) (zoom 1× – 2.5× of "cover"), keeps its view across re-renders. */
-function mapInit() {
-  const wrap = $('#mapwrap'),
-    inner = wrap && wrap.querySelector('.mapinner');
-  if (PZ) PZ.dispose();
-  PZ = null;
-  if (!inner || typeof panzoom !== 'function') return;
-  const W = CITY.w,
-    H = CITY.h,
-    size = () => [wrap.clientWidth, wrap.clientHeight],
-    [cw, ch] = size(),
-    fit = Math.max(cw / W, ch / H);
-  const pz = panzoom(inner, { minZoom: fit, maxZoom: fit * 2.5, zoomDoubleClickSpeed: 1, onTouch: () => false });
-  const keepIn = () => {
-    const t = pz.getTransform(),
-      [cw, ch] = size(),
-      w = W * t.scale,
-      h = H * t.scale;
-    t.x = w <= cw ? (cw - w) / 2 : clamp(t.x, cw - w - PAD, PAD);
-    t.y = h <= ch ? (ch - h) / 2 : clamp(t.y, ch - h - PAD, PAD);
-  };
-  pz.on('pan', keepIn);
-  pz.on('zoom', keepIn);
-  pz.on('panend', () => (CW.panEnd = Date.now()));
-  pz.on('transform', () => {
-    const t = pz.getTransform();
-    CW.view = { x: t.x, y: t.y, s: t.scale, fit };
-  });
-  const v = CW.view && CW.view.fit === fit ? CW.view : null;
-  if (v) {
-    pz.zoomAbs(0, 0, v.s);
-    pz.moveTo(v.x, v.y);
-  } else {
-    // start centred on where you live
-    const [hx, hy] = City.at(RUN, 'home');
-    pz.zoomAbs(0, 0, fit);
-    pz.moveTo(cw / 2 - hx * fit, ch / 2 - hy * fit);
-  }
-  const hit = e => e.target.closest && e.target.closest('[data-spot]');
-  inner.addEventListener('click', e => {
-    const g = hit(e);
-    if (g && Date.now() - (CW.panEnd || 0) > 200) mapPick(g.dataset.spot);
-  });
-  inner.addEventListener('keydown', e => {
-    const g = hit(e);
-    if (g && e.key === 'Enter') mapPick(g.dataset.spot);
-  });
-  PZ = pz;
-}
-window.addEventListener('resize', () => {
-  if (G.view === 'career' && $('#mapwrap')) mapInit();
-});
-/** Act at a place: the day action (then maybe an event, then the evening) or the evening outing (ends the week). */
+/** Spend a day at a place (+ the trip); the week's one event may come after the first day. Never ends the week. */
 function mapGo(id, mate) {
-  const run = RUN,
-    s = SPOTS[id];
-  if (!s || !City.can(run, id, mate).ok) return;
-  if (s.slot === 'day') {
-    Run.log(run, City.day(run, id, CW.hard));
+  const run = RUN;
+  if (!SPOTS[id] || !City.can(run, id, mate).ok) return;
+  Run.log(run, City.day(run, id, CW.hard, mate));
+  mapAfter(run);
+}
+function mapAfter(run) {
+  if (!run.rolled) {
+    run.rolled = true;
     Events.roll(run);
-    if (run.slot === 'done' && !run.event)
-      Run.endWeek(run); // a long trip: no evening
-    else Run.save(run);
-  } else {
-    Run.log(run, City.evening(run, id, mate));
-    Run.endWeek(run);
   }
+  Run.save(run);
+  renderCareer();
+}
+function mapClash(side) {
+  const line = City.clash(RUN, side);
+  if (!line) return;
+  Run.log(RUN, line);
+  CW.spot = null;
+  mapAfter(RUN);
+}
+/** Close the week-start battle popup; look = select its pin. */
+function clashSeen(look) {
+  if (!RUN.clash) return;
+  RUN.clash.seen = true;
+  if (look) CW.spot = 'clash';
+  Run.save(RUN);
   renderCareer();
 }
 function mapScout(ti) {
   const line = City.scout(RUN, ti);
   if (!line) return;
   Run.log(RUN, line);
-  Run.endWeek(RUN);
   CW.spot = `hq${ti}`;
-  renderCareer();
+  mapAfter(RUN);
 }
-/** The week's day action: travel to another region (you arrive with the evening free). */
-function mapTravel(r) {
-  const line = City.travelTo(RUN, r);
+/** Just travel to a point (its trip days, at least one). */
+function mapTravel(x, y) {
+  const line = City.travelTo(RUN, [x, y]);
   if (!line) return;
   Run.log(RUN, line);
+  if (CW.spot && CW.spot.startsWith('pt:')) CW.spot = null;
   Run.save(RUN);
   renderCareer();
 }
 function mapEndWeek() {
-  if (RUN.event || City.slot(RUN) !== 'eve') return;
+  if (RUN.event || Run.weekType(RUN) === 'cup' || Run.weekType(RUN).startsWith('warmup')) return;
   Run.endWeek(RUN);
   renderCareer();
 }

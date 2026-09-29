@@ -22,9 +22,8 @@ const World = {
   faction: ti => FACTIONS[ti] || null,
   /** Can you sign with team ti now? { ok, why } — why lists what's missing. */
   canJoin(run, ti) {
-    const f = FACTIONS[ti],
-      you = Run.you(run),
-      j = (f && f.join) || {},
+    const you = Run.you(run),
+      j = World.joinReq(run, ti),
       miss = [];
     if (!World.isFree(run)) miss.push('already signed');
     if (Run.cupDef(run)) miss.push('not during a cup');
@@ -35,9 +34,19 @@ const World = {
     if (j.fee && run.money < j.fee) miss.push(`$${j.fee}`);
     return { ok: !miss.length, why: miss };
   },
+  /** What a club asks now: a weakened faction (places lost, Front) lowers its bar. */
+  joinReq(run, ti) {
+    const j = Object.assign({}, (FACTIONS[ti] && FACTIONS[ti].join) || {}),
+      n = run && FACTIONS[ti] ? Front.lost(run, FACTIONS[ti].region) : 0;
+    if (!n) return j;
+    if (j.ovr) j.ovr -= FRONT.join * n;
+    if (j.key) j.key -= FRONT.join * n;
+    if (j.fee) j.fee = Math.round(j.fee * Math.max(0, 1 - FRONT.fee * n));
+    return j;
+  },
   /** What a club asks, as text. */
-  joinText(ti) {
-    const j = FACTIONS[ti].join,
+  joinText(ti, run) {
+    const j = World.joinReq(run, ti),
       p = [];
     if (j.ovr) p.push(`OVR ${j.ovr}+`);
     if (j.key) p.push(`key stat ${j.key}+`);
@@ -67,7 +76,7 @@ const World = {
       t.ws = [t.P[2], t.P[3]];
     }
     for (const m of T.P) if (m !== you && you.bond[m.id] == null) you.bond[m.id] = 0;
-    const fee = FACTIONS[ti].join.fee || 0;
+    const fee = World.joinReq(run, ti).fee || 0;
     run.money -= fee;
     run.team = ti;
     finalizeTeam(T);

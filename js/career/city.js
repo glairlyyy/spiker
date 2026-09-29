@@ -1,14 +1,27 @@
-// The island map phase of a training week: a day action (train at a place, rest at home, recreation in the park)
-// and one optional evening outing (dinner, a night out, street hustle, scouting a club HQ, an early night).
+// The island map phase of a training week: 7 days to spend. Every action (train, rest, relax, an outing, scouting a
+// club HQ) takes a day, plus the trip there: by map distance (City.trip, at most TRIP_MAX days). You can also just
+// walk to any point of the island. The map is dark where you haven't been (run.fog: points you've stood on, each
+// revealing REVEAL_R around it). Nothing may spill into next week; the week ends only when the player ends it.
 // Places belong to regions (REGIONS): the region sets the price and the quality; Wei's premium places may turn out
-// overhyped and Shu's rough ones may be hidden gems (rolled per run, found out by training there). A trip between
-// the highlands and the rest of the island takes the evening. DOM-free (runs headless in tests).
+// overhyped and Shu's rough ones may be hidden gems (rolled per run, found out by training there). DOM-free.
 
 const City = {
-  /** 'day' until the week's main action is done, then 'eve' ('done' after a long trip: no evening). */
-  slot: run => (run.slot === 'eve' || run.slot === 'done' ? run.slot : 'day'),
+  /** Days left this week (night falls at 0: only End week remains). */
+  days: run => (Number.isFinite(run.days) ? run.days : WEEK_DAYS),
+  night: run => City.days(run) <= 0,
+  /** Days an action at a place takes: the trip there + a day there. */
+  cost: (run, id) => City.trip(run, City.at(run, id)) + 1,
+  /** Spend days (callers checked they fit). */
+  spend(run, n) {
+    run.days = Math.max(0, City.days(run) - n);
+  },
+  /** Why n days don't fit ('' if they do). */
+  noTime(run, n) {
+    const d = City.days(run);
+    return n <= d ? '' : d ? `takes ${n} day${n > 1 ? 's' : ''} — only ${d} left this week` : 'no days left — end the week';
+  },
   /** Region of a place (home: where you live). */
-  region: (run, id) => SPOTS[id].region || (HOUSING[run.housing] || HOUSING.studio).region || 'open',
+  region: (run, id) => (run.own && run.own[id]) || SPOTS[id].region || (HOUSING[run.housing] || HOUSING.studio).region || 'open',
   /** Map position of a place (home moves with your housing). */
   at: (run, id) => (SPOTS[id].at ? SPOTS[id].at : HOME_AT[run.housing] || HOME_AT.studio),
   /** The training places for a key. */
@@ -43,29 +56,59 @@ const City = {
       run.spotQ[id] = { q, tag, known };
     }
   },
-  quality: (run, id) => (run.spotQ && run.spotQ[id]) || { q: (REGIONS[SPOTS[id].region] || REGIONS.open).q, tag: '', known: true },
+  quality(run, id) {
+    const Q = (run.spotQ && run.spotQ[id]) || { q: (REGIONS[SPOTS[id].region] || REGIONS.open).q, tag: '', known: true };
+    return Object.assign({}, Q, { q: Math.round(Q.q * Front.qMul(run, City.region(run, id)) * 100) / 100 });
+  },
   /** Money for a session / outing / hotel night at a place (0 at home and in the park). */
   price(run, id) {
     const s = SPOTS[id],
-      R0 = REGIONS[City.region(run, id)] || REGIONS.open;
-    if (s.train) return Math.round(TRAIN_FEE * R0.price);
-    if (s.hotel) return Math.round(HOTEL.price * R0.price);
-    return s.cost ? Math.round(s.cost * R0.price) : 0;
+      r = City.region(run, id),
+      p = ((REGIONS[r] || REGIONS.open).price || 1) * Front.priceMul(run, r);
+    if (s.train) return Math.round(TRAIN_FEE * p);
+    if (s.hotel) return Math.round(HOTEL.price * p);
+    return s.cost ? Math.round(s.cost * p) : 0;
   },
   /** Gain multiplier of a session at a place: its quality × home turf. */
   mul: (run, id) => City.quality(run, id).q * (1 + City.turf(run, id)),
-  /** A trip between the highlands and the rest of the island (either way) takes the evening too. */
-  /** Where you are now (a region); a new run starts where you live. */
-  loc: run => (REGIONS[run.loc] ? run.loc : City.region(run, 'home')),
-  /** Travel from where you are to region r: 0 here, 1 near (takes the evening), 2 far (takes the day). */
-  travel(run, r) {
-    const a = REGIONS[City.loc(run)],
-      b = REGIONS[r];
-    return a && b ? TRAVEL[a.zone][b.zone] : 0;
+  /** Where you stand on the map ([x, y]); a run starts at the airport. */
+  pos: run => (Array.isArray(run.pos) ? run.pos : (REGIONS[run.loc] || REGIONS.wu).at),
+  /** The region you are in. */
+  loc: run => City.regionAt(City.pos(run)),
+  /** The region at a map point: a minor's patch, the shrine park, else the major whose land it is. */
+  regionAt([x, y]) {
+    for (const [r, e] of Object.entries(CITY.minors)) {
+      const a = (-e.rot * Math.PI) / 180,
+        dx = x - e.x,
+        dy = y - e.y,
+        u = dx * Math.cos(a) - dy * Math.sin(a),
+        v = dx * Math.sin(a) + dy * Math.cos(a);
+      if ((u / e.rx) ** 2 + (v / e.ry) ** 2 <= 1) return r;
+    }
+    if (Math.hypot(x - CITY.park.x, y - CITY.park.y) <= CITY.park.r) return 'open';
+    for (const r of ['wu', 'wei', 'shu']) if (inPoly([x, y], CITY[r])) return r;
+    return 'open';
   },
-  /** Kept for callers: a trip that isn't free. */
-  far: (run, id) => City.travel(run, City.region(run, id)) > 0,
-  farTo: (run, r) => City.travel(run, r) > 0,
+  /** On the island? */
+  onLand: p => inPoly(p, CITY.coast),
+  /** Travel days from where you are to point p: 0 close by, then one per TRIP_DAY map units, at most TRIP_MAX. */
+  trip(run, p) {
+    const [x, y] = City.pos(run),
+      d = Math.hypot(p[0] - x, p[1] - y);
+    return d <= NEAR_R ? 0 : Math.min(TRIP_MAX, Math.ceil(d / TRIP_DAY));
+  },
+  /** Stand at p (you've spent the days): the fog lifts around it. */
+  moveTo(run, p) {
+    run.pos = [Math.round(p[0]), Math.round(p[1])];
+    run.loc = City.regionAt(run.pos);
+    City.reveal(run, run.pos);
+  },
+  reveal(run, p) {
+    const F = run.fog || (run.fog = []);
+    if (!F.some(q => Math.hypot(q[0] - p[0], q[1] - p[1]) < 30)) F.push([Math.round(p[0]), Math.round(p[1])]);
+  },
+  /** Explored: near a point you've stood on. */
+  seen: (run, p) => (run.fog || []).some(q => Math.hypot(q[0] - p[0], q[1] - p[1]) <= REVEAL_R),
   /** Your home region (where you live). */
   homeRegion: run => City.region(run, 'home'),
   /** Can you do this now? { ok, why }. */
@@ -73,22 +116,17 @@ const City = {
     const s = SPOTS[id];
     if (!s) return { ok: false, why: 'unknown place' };
     if (run.event) return { ok: false, why: 'answer the event first' };
-    if (s.slot !== City.slot(run)) return { ok: false, why: s.slot === 'day' ? 'day action done' : 'evenings come after the day' };
-    const cost = City.price(run, id),
-      t = City.travel(run, City.region(run, id));
+    const late = City.noTime(run, City.cost(run, id));
+    if (late) return { ok: false, why: late };
+    const cost = City.price(run, id);
     if (cost && run.money < cost) return { ok: false, why: `needs $${cost}` };
-    if (s.slot === 'day' && t >= 2) return { ok: false, why: 'too far — travel there first (takes the day)', travel: true };
-    if (s.slot === 'eve' && t > 0) return { ok: false, why: 'evenings are spent where you are' };
-    if ((id === 'home' || id === 'sleep') && t > 0) return { ok: false, why: 'you are away from home — rest at a hotel here, or go home' };
     if (s.act === 'ramen' && !Run.mates(run).some(p => p.id === mate)) return { ok: false, why: 'pick a teammate' };
     return { ok: true, why: '' };
   },
-  /**
-   * Day action at a place: returns the diary line (the caller rolls events, then the evening — or ends the week at
-   * once if run.slot is 'done': a long trip).
-   */
-  day(run, id, hard) {
-    if (!City.can(run, id).ok) return '';
+  /** A day at a place (after the trip there): train, rest, relax or an outing. Returns the diary line. */
+  day(run, id, hard, mate) {
+    if (!City.can(run, id, mate).ok) return '';
+    if (['ramen', 'arcade', 'street'].includes(SPOTS[id].act)) return City.evening(run, id, mate);
     const s = SPOTS[id],
       cost = City.price(run, id),
       out = [];
@@ -96,7 +134,7 @@ const City = {
     if (s.train) {
       run.money -= cost;
       const Q = City.quality(run, id);
-      line = Training.train(run, s.train, hard, City.mul(run, id), s.sand ? SAND_SP : 1);
+      line = Training.train(run, s.train, hard, City.mul(run, id) * DAY_GAIN, (s.sand ? SAND_SP : 1) * DAY_GAIN);
       if (!Q.known && run.spotQ && run.spotQ[id]) {
         run.spotQ[id].known = true;
         if (Q.tag === 'overhyped') out.push(`${s.name} turned out overhyped — just average for the price`);
@@ -111,15 +149,20 @@ const City = {
       if (s.hotel) run.money -= cost;
       line = `${s.hotel ? `${s.name} (−$${cost}): ` : ''}${Training.rest(run, s.hotel ? HOTEL.rest : null)}`;
     } else line = Training.recreation(run);
-    const t = City.travel(run, City.region(run, id));
-    run.loc = City.region(run, id); // you are there now
-    run.slot = t ? 'done' : 'eve';
-    return t ? `${line} · Getting there took the evening.` : line;
+    return City.arrive(run, id) + line;
   },
-  /** Evening outing: returns the diary line. The week ends after it (the caller calls Run.endWeek). */
+  /** Go to point p, spending the trip + a day there; returns the trip's diary prefix. */
+  go(run, p) {
+    const t = City.trip(run, p);
+    City.spend(run, t + 1);
+    City.moveTo(run, p);
+    return t ? `(${t}-day trip) ` : '';
+  },
+  arrive: (run, id) => City.go(run, City.at(run, id)),
+  /** An outing (dinner, a night out, street hustle): returns the diary line. */
   evening(run, id, mate) {
-    if (!City.can(run, id, mate).ok) return '';
     const s = SPOTS[id],
+      trip = City.arrive(run, id),
       cost = City.price(run, id),
       out = [];
     if (cost) {
@@ -130,8 +173,7 @@ const City = {
     else if (s.act === 'arcade') {
       out.push(Run.bump(run, 'mood', 1));
       for (const m of Run.mates(run)) out.push(Run.bond(run, m.id, 3));
-    } else if (s.act === 'sleep') out.push(Run.bump(run, 'sta', 10));
-    else if (s.act === 'street') {
+    } else if (s.act === 'street') {
       const rival = Math.round(rnd(STREET.rival[0], STREET.rival[1])),
         you = ovr(Run.you(run)),
         win = R() < clamp(0.5 + (you - rival) / 40, 0.1, 0.9);
@@ -147,25 +189,83 @@ const City = {
       }
       out.push(Run.bump(run, 'sta', -STREET.sta));
     }
-    run.slot = 'day';
-    return `${s.name}: ${out.filter(Boolean).join(', ') || 'a quiet evening'}`;
+    return `${trip}${s.name}: ${out.filter(Boolean).join(', ') || 'a quiet night'}`;
   },
-  /** Travel to region r (the week's day action): you arrive with the evening free. Returns the diary line. */
-  travelTo(run, r) {
-    if (run.event || City.slot(run) !== 'day' || !REGIONS[r] || r === City.loc(run)) return '';
-    run.loc = r;
-    run.slot = 'eve';
-    return `Travelled to ${REGIONS[r].name} — the trip took the day.`;
+  /** Days to just travel to point p (at least one). */
+  travelDays: (run, p) => Math.max(1, City.trip(run, p)),
+  /** Travel to any point on the island. Returns the diary line. */
+  travelTo(run, p) {
+    const t = City.travelDays(run, p);
+    if (run.event || !City.onLand(p) || City.noTime(run, t)) return '';
+    City.spend(run, t);
+    City.moveTo(run, p);
+    return `Travelled to ${REGIONS[City.loc(run)].name} (${t} day${t > 1 ? 's' : ''}).`;
   },
-  /** Evening at a club HQ: scout them (roster, elements, a rumour). Returns the diary line. */
+  /** Days to scout club ti: the trip to its HQ + a day. */
+  scoutCost: (run, ti) => City.trip(run, CITY.hq[ti]) + 1,
+  /** A day at a club HQ: scout them (roster, elements, a rumour). Returns the diary line. */
   scout(run, ti) {
-    if (run.event || City.slot(run) !== 'eve' || !run.teams[ti] || City.farTo(run, FACTIONS[ti].region)) return '';
+    if (run.event || !run.teams[ti] || City.noTime(run, City.scoutCost(run, ti))) return '';
     const t = run.teams[ti],
-      f = FACTIONS[ti];
+      f = FACTIONS[ti],
+      trip = City.go(run, CITY.hq[ti]);
     (run.scout || (run.scout = {}))[ti] = run.week;
     Run.news(run, `Rumour from ${f.name}: ${f.dark.toLowerCase()}.`);
-    run.slot = 'day';
-    return `Scouted ${t.name}: rating ${t.ovr}, ${t.P.filter(p => p.elOn).length} element user(s). ${Run.bump(run, 'sta', -SCOUT_STA)}`;
+    return `${trip}Scouted ${t.name}: rating ${t.ovr}, ${t.P.filter(p => p.elOn).length} element user(s). ${Run.bump(run, 'sta', -SCOUT_STA)}`;
   },
-  scouted: (run, ti) => !!(run.scout && run.scout[ti] != null)
+  scouted: (run, ti) => !!(run.scout && run.scout[ti] != null),
+  /** Standing with a region's clubs (−100…100). */
+  rep: (run, r) => (run.rep && run.rep[r]) || 0,
+  repBump(run, r, d) {
+    const R0 = run.rep || (run.rep = {}),
+      v0 = R0[r] || 0;
+    R0[r] = clamp(v0 + d, -100, 100);
+    const n = R0[r] - v0;
+    return n ? `${n > 0 ? '+' : '−'}${Math.abs(n)} standing with ${REGIONS[r].name}` : '';
+  },
+  /** A training week may open with a street battle: an aggressor raids a neighbour (run.clash, over at the week's end). */
+  clashRoll(run) {
+    run.clash = null;
+    const wt = Run.weekType(run);
+    if ((wt !== 'train' && wt !== 'camp') || R() >= CLASH.chance) return;
+    const { att, def } = Front.pick(run),
+      site = CLASH.sites.findIndex(s => (s.a === att && s.b === def) || (s.a === def && s.b === att));
+    run.clash = { site, att, seen: false, done: false };
+  },
+  /** A battle nobody joined is settled at the week's end. Returns the diary line. */
+  clashEnd(run) {
+    const c = City.clashSite(run);
+    if (!c) return '';
+    run.clash.done = true;
+    const w = Front.sim(run, c.a, c.b, run.clash.att),
+      l = w === c.a ? c.b : c.a,
+      s = Front.result(run, w, l);
+    return `Street battle: ${REGIONS[w].name} beat ${REGIONS[l].name}${s ? ` — ${s}` : ''}.`;
+  },
+  clashSite: run => (run.clash && !run.clash.done ? CLASH.sites[run.clash.site] : null),
+  clashCost: run => City.trip(run, City.clashSite(run).at) + 1,
+  /** Fight's win chance. */
+  clashP: run => clamp(0.5 + (ovr(Run.you(run)) - CLASH.par) / 40, 0.2, 0.85),
+  /** Go to the battle: watch (side null) or fight for side (a region). Returns the diary line. */
+  clash(run, side) {
+    const c = City.clashSite(run);
+    if (!c || run.event || City.noTime(run, City.clashCost(run)) || (side && side !== c.a && side !== c.b)) return '';
+    const trip = City.go(run, c.at),
+      out = [];
+    run.clash.done = true;
+    const vs = `${REGIONS[c.a].name} vs ${REGIONS[c.b].name}`;
+    if (!side) {
+      for (const t of run.teams) if ([c.a, c.b].includes(FACTIONS[t.i].region)) (run.scout || (run.scout = {}))[t.i] = run.week;
+      const w = Front.sim(run, c.a, c.b, run.clash.att),
+        s = Front.result(run, w, w === c.a ? c.b : c.a);
+      out.push(Run.bump(run, 'sta', -CLASH.watchSta));
+      return `${trip}Watched the street battle (${vs}): ${REGIONS[w].name} won${s ? ` — ${s}` : ''}; both sides' clubs scouted. ${out.filter(Boolean).join(', ')}`;
+    }
+    const foe = side === c.a ? c.b : c.a,
+      win = R() < City.clashP(run),
+      s = Front.result(run, win ? side : foe, win ? foe : side);
+    out.push(City.repBump(run, side, win ? CLASH.win : CLASH.lose), City.repBump(run, foe, CLASH.other), Run.bump(run, 'sta', -CLASH.sta));
+    if (win) out.push(Run.bump(run, 'fans', CLASH.fans));
+    return `${trip}Fought for ${REGIONS[side].name} in the street battle — ${win ? 'won' : 'lost'}: ${out.filter(Boolean).join(', ')}${s ? `. ${s}!` : ''}`;
+  }
 };

@@ -286,15 +286,31 @@ league transfer (`World.transfers`) and a Gazette (`run.gazette`, news collected
 majors with clear borders; outlaws / gloria = borderless minors; open = no-man's land): price ×, training quality q,
 Wei `hype` (chance a premium place is overhyped), Shu `gem` (chance a rough place is a hidden gem), travel `zone`,
 map anchor `at`. FACTIONS: one per league team — two squads per major (Wei Gold/Iron, Wu Harbor/Fort, Shu
-Peak/Valley) + Street Outlaws + St. Gloria; `team` rebrands the league team in `Run.draft`. TRAVEL (zone → zone:
-0 same, 1 near = takes the evening, 2 far = takes the day), HOTEL, HOUSING by region.
+Peak/Valley) + Street Outlaws + St. Gloria; `team` rebrands the league team in `Run.draft`. HOTEL, HOUSING by region.
 `js/data/city.js`: CITY (coast, Wu's inner line, Wei and Shu polygons, minor ellipses, airport, HQs), SPOTS (several
 training places per stat across regions; sand = technique ×SAND_SP skill points; hotels; outings per region).
-`js/career/city.js` (City): `run.loc` (where you are; a run starts on the coast, off the plane), `travel`,
-`travelTo` (the week's day action), `roll` (per-run place quality → `run.spotQ`, found out by training there),
+`js/career/city.js` (City): `run.pos` (map point you stand on; a run starts at the airport), `regionAt` (minor patch /
+shrine park / major polygon), `trip` (days by distance, NEAR_R / TRIP_DAY / TRIP_MAX), `go`/`moveTo` (spend, stand,
+`reveal` → `run.fog`), `seen` (the dark map), `travelTo` (any land point), `roll` (per-run place quality → `run.spotQ`, found out by training there),
 `price` (TRAIN_FEE / HOTEL × region price), `mul` (quality × home turf, passed to `Training.train/preview` as x),
-`can`/`day`/`evening`/`scout`. Evenings, scouting and resting at home only where you are; away from home you rest at
-a hotel. `run.slot` 'done' = the trip took the evening.
+`can`/`day`/`scout`. Week = `run.days` (WEEK_DAYS 7): every action costs `City.cost` = trip + 1 day and is refused if
+it would spill into next week (`noTime`); at 0 days it is night; only `mapEndWeek` (the player) calls `Run.endWeek`.
+Events roll once per week after the first action (`run.rolled`). Street battles: `clashRoll` in `Run.nextWeek`
+(`run.clash` with its aggressor, settled by `clashEnd` at week end if nobody joined), `clash(run, side)`; standing per
+region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border meters `run.front`, seized places `run.own`
+(City.region follows the holder), `priceMul`/`qMul`/`weak`, `pick` (aggressor + target), `sim`/`result`/`seize`;
+`World.joinReq` lowers a weakened faction's join bar. Sessions × DAY_GAIN (gains and skill points).
+
+### Island map layers (ready for a three.js renderer)
+1. Rules — City / Front (DOM-free): positions, travel, fog (`City.seen`), regions (`regionAt`), ownership.
+2. Model — `MapModel.build(run, sel)` (`js/career/mapmodel.js`, DOM-free, tested): `{ w, h, land: { coast, beach,
+   regions[{id, poly, color, mine}], contest, minors[ellipses], park, mountains, labels, airport }, seized[{at, r,
+   color}], pins[{id, kind: spot|hq|clash, at, icon, badge, title, color?, flags: off/far/turf/gem/overhyped/hq/can/
+   mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-view centre), sel }`. Map units
+   CITY.w × CITY.h, y down. Selection ids: a pin id, or `pt:x,y` (`ptId` / `ptOf`).
+3. Renderer — `MapView` (`js/ui/map-svg.js`: SVG + panzoom): `mount(el, model, { pick(id), point([x, y]) })`,
+   `select(id)`, `dispose()`; owns its pan/zoom view across re-mounts. `js/ui/career-map.js` mounts it (`mapMount`),
+   turns picks into panels (`mapPick`) and land clicks into travel targets (`mapPoint`). Region colours: REGIONS.color.
 
 ## Training XP
 

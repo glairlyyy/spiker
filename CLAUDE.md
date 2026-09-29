@@ -4,13 +4,21 @@
 The game design doc (GDD) is the target; the old Skyline Cup career/modes are not kept (no save compatibility).
 Published as a claude.ai artifact: https://claude.ai/artifact/4xfGDd92rAanHyThVxfr3X (republish to the same URL).
 
+## Where the code lives
+- Source of truth: the artifact above holds the full project as published files (index.html, js/, css/, tests/,
+  CLAUDE.md, ARCHITECTURE.md, package.json, lint/format configs, test3d.html, qa_poses.html; VRM base in assets/vrm).
+  List: Artifact action "list", scope "files", url above. Restore: Artifact action "read" with `paths` (all listed
+  paths), copy into a folder, `npm install`. Publish every changed file each time so the artifact stays complete.
+- Working copy in cloud sessions: /home/claude/work/sc3d (local git, no remote; the container is temporary).
+- No GitHub repo yet.
+
 ## Working style (owner preferences)
 - Ultra-concise replies, no preamble or recaps; only raise real concerns.
 - Targeted edits, not rewrites. Max one clarifying question; assume reasonably.
 - Plan first only when asked ("plan first"); otherwise implement, verify, publish.
 
 ## Commands
-- `npm test` — 18 headless tests (tests/run.js). Golden hashes guard engine output.
+- `npm test` — 20 headless tests (tests/run.js). Golden hashes guard engine output.
 - `npm run test:update` — only for intentional gameplay changes; say why.
 - `npm run lint` / `npm run format` — ESLint (flat config collects shared globals from index.html) / Prettier.
 - `npm run serve` — http://localhost:8765 (index.html = CDN three; test3d.html = local node_modules, for QA).
@@ -24,6 +32,10 @@ Published as a claude.ai artifact: https://claude.ai/artifact/4xfGDd92rAanHyThVx
   scene shots, P3D), actors3d (posing players/coaches, trails, auras), players3d (VRM load/dress), poses3d, fx3d, trails3d.
 - `js/career` career run (28 weeks, two cups, training, events, Element Trial, goals/sponsors, Legacy/Hall of Fame, saves).
 - `js/ui` screens (menu, create, career, match, encyclopedia, legacy), dom helpers (esc, tip/info/fold/pop).
+- Island map = 3 layers, kept apart for a future three.js map: rules (`js/career/city.js` City, `front.js` Front) →
+  `js/career/mapmodel.js` MapModel.build(run, sel) (plain data: land, pins + flags, seized, fog, you, flag) →
+  renderer `js/ui/map-svg.js` MapView (contract: mount(el, model, {pick, point}) / select(id) / dispose()). Panels and
+  actions (`js/ui/career-map.js`) only talk to City/MapModel/MapView. A new renderer replaces map-svg.js only.
 - ARCHITECTURE.md — detailed design notes; keep it updated with structural changes.
 
 ## Rules that bite
@@ -53,10 +65,29 @@ screenshot the page (element screenshots of `#stage` time out: it never settles)
 - Menu: one game (Spite & Spike) + a dev Playtest card (Monster game, startMonster()). UI is compact: details in tooltips/folds.
 - Career world (P1): free-agent start, faction join conditions, money/housing/paydays, league transfers, Gazette,
   Sim ⏭ button to skip a match before playing. Calendar stays 28 weeks; character creation rework later.
-- Island (training weeks): 3 majors (Wei city, Wu coast, Shu highlands) + borderless minors; 2 squads per major + 2
+- Island (training weeks): 3 majors (Wei city north+east, Wu = east/south beach + a strip inland, Shu highlands west; no unclaimed land except the neutral Sacred Shrine Park = region `open`) + borderless minors; 2 squads per major + 2
   minor clubs = 8 teams. Regions set prices/quality (Wei pricey, maybe overhyped; Shu cheap, maybe a gem; Wu sand =
-  technique). You are somewhere: travel takes the evening (near) or a day (highlands); hotels away from home.
-  Day action + one local evening outing. Story skipped for now.
+  technique). You stand at a map point (`run.pos`, start at the airport); hotels away from home. The map is dark except
+  around points you've stood on (`run.fog`, REVEAL_R); click any land to travel there. A week = 7 days: every action
+  (train/rest/outing/scout) takes a day + the trip by distance (free within NEAR_R, 1 day / TRIP_DAY, max 3); nothing may spill over; night at 0 days; only the player ends the week;
+  one event roll per week. Street battles (CLASH, ~45% of training weeks, popup at week start): watch (scouts both
+  sides) or fight for a side (win +standing / lose −; the other side always −). `run.rep` = standing per region.
+  Faction dynamics (js/career/front.js, FRONT): Wu most aggressive (+revenge); every battle (joined or settled at
+  week end) pushes its border meter; 2 net wins seize a border place (2 per side per border; retakes first) → owner's
+  price/turf/colour; a faction with 2 lost is weakened (dearer, worse facilities, easier to join). Minors not in it. Day sessions give DAY_GAIN (0.25) of the old weekly gain. Story skipped for now.
 - Career hub UI: full-screen draggable map (panzoom, vendored in js/vendor — lint/prettier ignore it) with HUD
-  overlays, shortcut dock → drawers, cards over the map. 3D map (three.js) decision deferred.
+  overlays, shortcut dock → drawers, cards over the map. 3D map (three.js) later: implement the MapView contract.
+- Seized border places show as a patch in the holder's colour; border polygons don't redraw yet.
+
+## Direction & pending decisions (owner)
+- Lore first: the owner is mapping out the game lore; lore-driven mechanics (what standing unlocks, club switching,
+  story events, faction flavour) wait for it. Until then work on fundamentals.
+- Portraits: career faces are still generated 2D (faceSVG). Undecided: 3D VRM head snapshots vs hand-made 2D anime
+  portraits (every unique character mapped by hand, with its own model + portrait); Live2D (pixi-live2d-display) or
+  video loops (WebM / animated WebP) possible for special characters at big moments. Build nothing until decided;
+  when built, keep portraits behind one call (e.g. Portrait.show(el, character, mood)) so the kind can vary per character.
+- Skipped for now: founding your own club (team building); minor factions in the faction war.
+- Candidate next work: balance pass (7-day week × DAY_GAIN × fees × faction prices × paydays, via headless season
+  sims), standing effects, leaving/switching clubs, scouting → match edge, moving borders, three.js map (MapView
+  contract), new-run setup + results screens, Legacy/Hall of Fame keep-or-drop.
 - Open work: scene frequency tuning (Normal ≈ 6–7 per match).

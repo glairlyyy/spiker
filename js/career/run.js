@@ -122,12 +122,19 @@ const Run = {
       housing: 'studio',
       news: [],
       gazette: null,
-      // the city map: this week's slot (day action, then an optional evening) and scouted clubs (team index → week)
-      slot: 'day',
+      // the city map: days left this week, whether the week's event was rolled, scouted clubs (team index → week)
+      days: WEEK_DAYS,
+      rolled: false,
+      rep: {}, // standing with each region's clubs
+      own: {}, // seized border places → the region holding them
+      front: {}, // pressure on each major border (FRONT.borders key → net wins)
+      clash: null, // this week's street battle
       scout: {},
       spotQ: {},
       xp: {}, // training experience toward each stat's next point
-      loc: 'wu' // off the plane at the airport, on the coast
+      loc: 'wu', // off the plane at the airport, on the coast
+      pos: CITY.airport.slice(), // where you stand on the map
+      fog: [CITY.airport.slice()] // the points you've stood on (the map is dark elsewhere)
     };
     Run.log(
       run,
@@ -264,8 +271,11 @@ const Run = {
       Run.log(run, 'Fully recovered from the injury.');
     }
     World.week(run);
+    if (City.clashSite(run)) Run.log(run, City.clashEnd(run));
     run.trained = 0;
-    run.slot = 'day';
+    run.days = WEEK_DAYS;
+    run.rolled = false;
+    run.clash = null;
     Run.snap(run);
     run.week++;
     const cup = CUPS.find(c => c.after === run.week - 1);
@@ -275,6 +285,7 @@ const Run = {
   },
   /** A training week begins: who's at which training, a new coach's goal at the start of a block, sponsor offers. */
   nextWeek(run) {
+    City.clashRoll(run);
     Training.rollFloor(run);
     Goals.set(run);
     Sponsors.offer(run);
@@ -312,9 +323,14 @@ const Run = {
     for (const k of ['sp', 'fans', 'trained', 'elNext', 'money']) if (!Number.isFinite(run[k])) run[k] = 0;
     if (!HOUSING[run.housing]) run.housing = 'studio';
     if (!Array.isArray(run.news)) run.news = [];
-    if (run.slot !== 'eve' && run.slot !== 'done') run.slot = 'day';
+    if (!Number.isFinite(run.days) || run.days < 0 || run.days > WEEK_DAYS) run.days = WEEK_DAYS;
+    delete run.slot;
     if (!run.spotQ || typeof run.spotQ !== 'object' || !Object.keys(run.spotQ).length) City.roll(run);
     if (!run.scout || typeof run.scout !== 'object') run.scout = {};
+    for (const k of ['rep', 'own', 'front']) if (!run[k] || typeof run[k] !== 'object') run[k] = {};
+    if (!Array.isArray(run.pos)) run.pos = (REGIONS[run.loc] || REGIONS.wu).at.slice();
+    if (!Array.isArray(run.fog)) run.fog = [run.pos.slice()];
+    if (run.clash && !CLASH.sites[run.clash.site]) run.clash = null;
     if (!Number.isFinite(run.staMax) || run.staMax <= 0) run.staMax = Legacy.staMax(run.legacy);
     if (!Number.isFinite(run.sta)) run.sta = run.staMax;
     if (!Number.isInteger(run.mood) || !MOODS[run.mood]) run.mood = 2;

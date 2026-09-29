@@ -3,15 +3,15 @@
 // Names are placeholders; balance is not tuned yet.
 
 /**
- * The island's powers. Three majors hold clear borders (Wei the city, Wu the whole coastline, Shu the highlands);
+ * The island's powers. Three majors hold clear borders (Wei the city, Wu the beach, Shu the highlands);
  * minors have no border of their own — a patch inside or across the majors' land. Each region prices and equips
  * its places its own way: price × the base fee; q = training quality; hype = chance a premium (Wei) place is
- * overhyped (really just average); gem = chance a rough (Shu) place is a hidden gem; zone = travel zone (see
- * TRAVEL); at = where you stand on the map while there; hotel = a night's price there (× nothing: already local).
+ * overhyped (really just average); gem = chance a rough (Shu) place is a hidden gem;
+ * color = map colour; at = the region's anchor on the map; hotel = a night's price there (× nothing: already local).
  */
 const REGIONS = {
   wei: {
-    zone: 'city',
+    color: '#f5b82e',
     at: [700, 300],
     name: 'Wei Dynasty',
     kind: 'major',
@@ -21,7 +21,7 @@ const REGIONS = {
     desc: 'The city: top facilities at top prices — not all of them live up to it'
   },
   wu: {
-    zone: 'coast',
+    color: '#3fa9f5',
     at: [470, 585],
     name: 'Wu Navy',
     kind: 'major',
@@ -30,7 +30,7 @@ const REGIONS = {
     desc: 'The coastline: mid prices, mid facilities; the sand courts are the best place to build technique'
   },
   shu: {
-    zone: 'high',
+    color: '#4ade80',
     at: [300, 290],
     name: 'Shu Highlands',
     kind: 'major',
@@ -40,7 +40,7 @@ const REGIONS = {
     desc: 'Mountain towns far from the city: everything cheap and rough — now and then a hidden gem'
   },
   outlaws: {
-    zone: 'border',
+    color: '#ff8c42',
     at: [815, 470],
     name: 'Street Outlaws',
     kind: 'minor',
@@ -49,7 +49,7 @@ const REGIONS = {
     desc: 'Cages and courts under the overpass, on the Wei–Wu line'
   },
   gloria: {
-    zone: 'city',
+    color: '#ff5da2',
     at: [690, 255],
     name: 'St. Gloria',
     kind: 'minor',
@@ -57,7 +57,15 @@ const REGIONS = {
     q: 1.35,
     desc: 'A private club inside the city: the best money can buy'
   },
-  open: { zone: 'country', at: [500, 290], name: 'Open country', kind: 'none', price: 1, q: 0.9, desc: 'Nobody’s land between the powers' }
+  open: {
+    color: '#f5e6a8',
+    at: [500, 300],
+    name: 'Sacred Shrine Park',
+    kind: 'none',
+    price: 1,
+    q: 0.9,
+    desc: 'Holy ground in the middle of the island: every faction respects it, nobody owns it'
+  }
 };
 /**
  * One faction per league team (index = team index; styles come from TEAMDEFS). Each major fields two squads.
@@ -148,7 +156,7 @@ const ECON = {
 const HOUSING = {
   homeless: {
     name: 'Abandoned gym',
-    region: 'open',
+    region: 'wei',
     rent: 0,
     rest: 0.6,
     moodPay: [-1, 0.6],
@@ -169,16 +177,46 @@ const HOUSING = {
 };
 const HOUSEK = Object.keys(HOUSING);
 /**
- * Travel between zones: 0 = the same place (act and still have the evening), 1 = near (the trip takes the evening),
- * 2 = far (the trip takes the whole day: travel there first). The border (the Outlaws' overpass) touches the city and
- * the coast; the highlands are far from everything.
+ * Street battles between the majors: chance a training week opens with one; sites (map point).
+ * Fighting: win chance on your OVR vs `par`; standing with the side you fought for +win / +lose, and always `other`
+ * with the side you fought against. Watching scouts both sides' clubs.
  */
-const TRAVEL = {
-  city: { city: 0, border: 0, coast: 1, country: 1, high: 2 },
-  coast: { coast: 0, border: 0, city: 1, country: 1, high: 2 },
-  border: { border: 0, city: 0, coast: 0, country: 1, high: 2 },
-  country: { country: 0, city: 1, coast: 1, border: 1, high: 1 },
-  high: { high: 0, country: 1, city: 2, coast: 2, border: 2 }
+const CLASH = {
+  chance: 0.45,
+  sites: [
+    { a: 'wei', b: 'wu', at: [860, 330], name: 'the contested border' },
+    { a: 'wei', b: 'shu', at: [490, 130], name: 'the northern ridge' },
+    { a: 'wu', b: 'shu', at: [395, 540], name: 'the southern plain' }
+  ],
+  par: 62,
+  sta: 15,
+  watchSta: 5,
+  win: 10,
+  lose: -5,
+  other: -10,
+  fans: 60
+};
+/**
+ * Faction dynamics (Front): each major border has 2 places per side that can be seized (the rest is heartland).
+ * seize = net battle wins on a border to take a place; a faction with weakAt+ places lost is weakened. Per place
+ * lost: prices +price, quality −q (+q per place taken), club join needs −join (OVR / key stat), fee −fee.
+ * aggro = who starts street battles (+revenge for last battle's loser; the raider gets +initiative).
+ */
+const FRONT = {
+  borders: {
+    'wei-wu': { wei: ['weiSpeed', 'weiWit'], wu: ['harbor', 'dunes'] },
+    'wei-shu': { wei: ['weiPower', 'weiJump'], shu: ['dojo', 'steps'] },
+    'wu-shu': { wu: ['sand', 'pier'], shu: ['shrine', 'stone'] }
+  },
+  seize: 2,
+  weakAt: 2,
+  price: 0.1,
+  q: 0.04,
+  join: 3,
+  fee: 0.25,
+  aggro: { wu: 0.5, wei: 0.3, shu: 0.2 },
+  revenge: 0.2,
+  initiative: 10 // the raiding side's edge (street strength) in a battle nobody joins
 };
 /** A night at a hotel away from home: base price (× the region's price). */
-const HOTEL = { price: 30, rest: 1 };
+const HOTEL = { price: 12, rest: 1 };

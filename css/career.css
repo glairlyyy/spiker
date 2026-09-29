@@ -1219,6 +1219,27 @@
   background: radial-gradient(circle at 50% 35%, #ff7a86, var(--hot) 60%, #7f1020);
   color: #fff;
 }
+.hub .clock .days {
+  display: flex;
+  gap: 3px;
+  margin: 2px 0;
+}
+.hub .clock .days i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #f5b82e;
+  box-shadow: 0 0 6px rgba(245, 184, 46, 0.6);
+}
+.hub .clock .days i.used {
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+}
+.hub .btn .dt {
+  opacity: 0.7;
+  font-weight: 600;
+  margin-left: 2px;
+}
 .hub .dial .sky {
   font-size: 20px;
 }
@@ -1521,10 +1542,50 @@
 .city {
   background: #0a2a45;
 }
+/* outside the map: the same dark as the fog over the sea */
+.hub .mapwrap {
+  background: #040b13;
+}
 .city .island {
   fill: #2c3a2a;
-  stroke: #e8d9a8;
+  stroke: #5b6b52;
   stroke-width: 5;
+}
+.city .park {
+  fill: #2f5a3a;
+  stroke: #f5e6a8;
+  stroke-width: 3;
+  stroke-dasharray: 3 6;
+  stroke-linecap: round;
+}
+.city .seized {
+  fill: color-mix(in srgb, var(--tc) 45%, transparent);
+  stroke: var(--tc);
+  stroke-width: 3;
+  stroke-dasharray: 8 5;
+}
+.city .fog {
+  fill: #03070d;
+  opacity: 0.9;
+  pointer-events: none;
+}
+.city .flag circle {
+  fill: #ffb020;
+  stroke: #1b1204;
+  stroke-width: 2;
+}
+.city .flag text {
+  text-anchor: middle;
+  font-size: 20px;
+  fill: #ffb020;
+}
+.city .beach {
+  fill: none;
+  stroke: #e8d9a8;
+  stroke-width: 44;
+  stroke-linejoin: round;
+  opacity: 0.55;
+  pointer-events: none;
 }
 .city .reg {
   fill: color-mix(in srgb, var(--tc) 22%, transparent);
@@ -1580,6 +1641,17 @@
   fill: #e8d9a8;
   font: 600 11px var(--body);
   text-anchor: middle;
+}
+.city .pin.clash > circle {
+  fill: #3a0d12;
+  stroke: #ff3b4e;
+  stroke-width: 4;
+  animation: clashp 1.2s ease-in-out infinite alternate;
+}
+@keyframes clashp {
+  to {
+    stroke: #ffb020;
+  }
 }
 .city .pin.gem > circle {
   stroke: #4ade80;
@@ -1650,4 +1722,73 @@
 }
 .spot .gl.lo {
   color: var(--mute);
+}
+
+/* factions drawer */
+.facs .fac {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.facs .fh {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.facs .fv {
+  margin-left: auto;
+  font-size: 12px;
+}
+.facs .fac.up .fv b {
+  color: #4ade80;
+}
+.facs .fac.dn .fv b {
+  color: #ff5d6c;
+}
+.facs .rbar {
+  position: relative;
+  height: 6px;
+  margin: 6px 0;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.facs .rbar::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  bottom: -2px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.4);
+}
+.facs .rbar i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 3px;
+  background: #4ade80;
+}
+.facs .fac.dn .rbar i {
+  background: #ff5d6c;
+}
+.facs .clashk {
+  color: #ff8c42;
+  margin-left: 6px;
+}
+
+.facs .fms {
+  display: flex;
+  gap: 6px;
+  margin: 2px 0 4px;
+}
+.facs .fm {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.facs .fm.up {
+  color: #4ade80;
+}
+.facs .fm.dn {
+  color: #ff5d6c;
 }
