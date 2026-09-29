@@ -47,7 +47,8 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   most aggressive), Shu (mountain highlands; west) — plus borderless minor factions. No unclaimed land except the
   neutral middle zone, region `open`. **[locked, not built]** it becomes **Central Academy** (lore.md §4): entry point,
   fields no team, never seized. Code still says "Sacred Shrine Park". Today: 2 squads per major + 2 minor clubs = 8
-  fixed teams; **[locked, not built]** replaced by faction pools (§4.11).
+  fixed teams — they stay as each faction's home squads (training, bonds, scouting, transfers); matches that
+  matter (evaluations, U21 Final Cup) use squads drawn from the faction pools (§4.11).
 - §4.3 Regions set prices/quality: Wei pricey (maybe overhyped), Shu cheap (maybe a hidden gem), Wu sand = technique.
 - §4.4 Movement: the player stands at a map point (`run.pos`, start at the airport); hotels when away from home.
   Map is dark except around visited points (`run.fog`, REVEAL_R). Click any land to travel.
@@ -85,7 +86,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
       training, `EVAL.benchDays`).
   - Reserves train weekly like everyone; each payday a faction's best reserve replaces a clearly weaker same-role
     squad player (`PROMOTE.gap`).
-  - **U21 Final Cup** (week 28): the career goal. Squads drawn from every faction pool (floor(pool ÷ 4) each)
+  - **U21 Final Cup** (after week 28; replaces the Skyline and Grand Cups): the career goal. Squads drawn from every faction pool (floor(pool ÷ 4) each)
     plus the Academy squad (13 squads with default sizes); 16-slot bracket seeded by rating, top seeds get byes.
     Camp weeks 26–28 before it. Winning → national team (lore.md §3).
   - Street battles (§4.6) and the faction war (§4.7) are unchanged.

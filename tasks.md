@@ -22,22 +22,90 @@ Result:
 ```
 
 ## Roadmap
-- Phase 1 — Island rules ✓ · 1b — Match feel ✓ · 1c — Cut-scene lines ✓ · 2 — Faction pools (T-006/T-007 ✓, T-008 left)
+- Phase 1 — Island rules ✓ · 1b — Match feel ✓ · 1c — Cut-scene lines ✓ · 2 — Faction pools ✓
 - Cleanup + info ✓ (T-016 Legacy removed, T-017/T-018 faction dossier)
 - Phase 3 — Evaluations ✓ (T-008–T-011)
-- **Phase 4 — U21 Final Cup**: 16-slot bracket; cup from drawn squads; retire the Skyline/Grand cups and the 8
-  fixed teams.
+- **Phase 4 — U21 Final Cup** (now): bracket with byes (T-019); U21 cup from drawn squads (T-020). The 8 league
+  teams stay as faction home squads.
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now
-(empty — next: Phase 4, U21 Final Cup)
+## Now — Phase 4: U21 Final Cup
+
+### [ ] T-019: Brackets of any size with byes
+Spec: §4.11          Goldens: unchanged          Save: no change
+Goal: `js/game/bracket.js` handles 8 or 16 entrants, with byes (null entries) that resolve automatically, so the
+U21 Final Cup can seat 12–13 squads.
+Files: js/game/bracket.js, tests/run.js
+Do not:
+- Change behaviour for an 8-entry order (the current cups keep working until T-020): same entries, same rounds.
+- Draw randoms.
+Steps:
+1. `newBracket(order)`: `order.length` is 8 or 16 (entries may be `null` = bye). Round names by size: 16 → 'Round of
+   16', 8 → 'Quarterfinal', 4 → 'Semifinal', 2 → 'Final'. First round = pairs of `order`.
+2. `advanceBracket(sched)`: before returning an unplayed entry, auto-resolve byes (`a` or `b` null → `w` = the other,
+   `res` = null; both null → `w` = null and mark `bye: true` so it is skipped); build the next round from the
+   previous round's winners in order; return null after the Final. Keep the doc comments accurate.
+3. `bracketChampion(sched)`: the winner of the entry with `round === 'Final'` (null until played).
+4. New helper `seedOrder(n)` (allowed new global) → standard seeding positions for n = 8 / 16 (1 plays n,
+   e.g. 16: [1,16,8,9,5,12,4,13,3,14,6,11,7,10,2,15]); used by T-020.
+5. tests/run.js — new test `'bracket: 8 and 16 entries, byes'`: an 8-order bracket gives 7 matches QF/SF/F as today;
+   a 16-order with 3 nulls in the bottom seeds plays 12 real matches and crowns one champion; byes never reach the
+   caller of `advanceBracket`.
+Accept: all tests + lint; goldens untouched.
+QA: none (headless).
+Result:
+
+### [ ] T-020: U21 Final Cup — one cup of drawn squads replaces the Skyline and Grand Cups
+Spec: §4.11, lore.md §3 (the U21 champion goes to the national team)          Goldens: unchanged (career only)
+Save: RUN_VERSION 2 → 3 (`run.cup` gains `entrants`, `me`; `run.cups[].champ` becomes a name) — older saves dropped
+Goal: After week 28 the U21 Final Cup starts: every faction's pool is drawn into squads (Wei 5, Wu 3, Shu 2, Outlaws 1,
+St. Gloria 1) plus the Academy squad if you are still in it; a 16-slot bracket seeded by rating (top seeds get byes).
+You play if your side is in it; otherwise you watch it from the stands. Winning ends the season as champion.
+Files: js/data/career.js, js/data/world.js, js/career/cup.js, js/career/eval.js, js/career/run.js,
+js/ui/career-week.js, js/ui/career-end.js, js/ui/career-hub.js, tests/run.js, ARCHITECTURE.md
+Do not:
+- Remove the 8 league teams (they stay as faction home squads for training, bonds, scouting and transfers).
+- Touch js/engine or reward numbers other than the new 'Round of 16' entries below.
+- Leave players lent after any match (yours or simulated): always `Eval.restore()`.
+Steps:
+1. js/data/career.js: `CUPS = [{ id: 'u21', after: 28, name: 'U21 Final Cup', short: 'U21', mul: 1.5, seeded: true }]`
+   (doc comment: the season's one cup; the champion goes to the national team). `PLACES` gains
+   `'Round of 16': { fans: 150, sp: 10 }`; js/data/world.js `ECON.place` gains `'Round of 16': 50`.
+2. js/career/eval.js: `squad(run, ids, name, color, region)` — find players in `Pool.players(run, region)` + you +
+   `run.pickup.P` (region defaults to `run.eval.region` as today). Update callers.
+3. js/career/cup.js:
+   - `entrants(run)` → list of `{ name, short, color, region, ids, academy }`: for each region in `POOL` order,
+     every squad of `Pool.draw(run, r)` named `${REGIONS[r].name} ${roman(i+1)}` (I, II, …; colour = region colour);
+     then, if `World.isFree(run) && run.academy !== false`, the Academy squad (`academy: true`, ids of `run.pickup.P`).
+   - `start(run, def)`: `sta` refill as today; `E = entrants(run)`; `me` = index of the entrant containing your id
+     (−1 if none); order by entrant rating (build each with `Eval.squad`, read `ovr`, no lend) → `seedOrder(16)`
+     positions, empty seeds = null; `run.cup = { id, entrants: E, me, sched: newBracket(order), done: false }`.
+     Log; if `me < 0`: log "You watch the U21 Final Cup from the stands." and `Cup.close(run, NO_CUP)`.
+   - `team(run, i)`: the Academy entrant → `run.pickup`; else `Eval.squad(run, E[i].ids, E[i].name, E[i].color,
+     E[i].region)` with `short: E[i].short`.
+   - `next` / `simulate` / `fixture('cup')` / `result` use entrant indexes and `run.cup.me` instead of `run.team`;
+     `simulate` and your match lend both squads (`Eval.lend`) and restore right after (finish and leave).
+   - `close` records `{ id, place, champ: E[bracketChampion(...)].name }`; champion → `Cup.end`. With one cup,
+     every close ends the run (`Cup.end`).
+   - Remove `warmupOpponent` and the 'warmup' branches (nothing uses them after T-011).
+4. js/career/run.js: `RUN_VERSION = 3` (comment: v3 — cup entrants; older saves dropped). `endWeek` already starts
+   the cup from `CUPS`.
+5. UI: `cupPanel` renders the bracket by rounds present in `sched` (Round of 16 → Final) using entrant names/colours;
+   `mine` = `run.cup.me`; info text drops "the season goes on to the Grand Cup". `calendar` shows one U21 pip.
+   `career-end.js`: headline = champion → `U21 champions — ${team name}. The national team is calling.`, else
+   'Season over'; cup line "won by {champ name}"; remove the Double Crown logic.
+6. tests/run.js: the full-run tests expect `cups = ['u21']` (placing may be NO_CUP when you're not in it); new test
+   `'career: U21 Final Cup — entrants, seeding, byes, restore'`: a fresh academy run forced to week 29 start → 13
+   entrants, 3 byes, `me` = the Academy entrant; simulate the whole bracket → one champion name, every
+   `p.team` restored to its real team, pool sizes unchanged; a Shu member with standing 60 → `me` ≥ 0; alone → `me` −1
+   and placing NO_CUP.
+7. ARCHITECTURE.md: cup section rewritten (entrants, seeding, lend/restore).
+Accept: all tests + lint; goldens untouched.
+QA: career run with Short season → reach the cup (end weeks; Sim ⏭ evaluations) → bracket shows Round of 16 with byes,
+your Academy squad seeded; Sim ⏭ through to the end → run-end screen names the champion. No pageerror.
+Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
-
-Phase 4 — U21 Final Cup
-- T-019: 16-slot bracket with byes in js/game/bracket.js (8-team brackets keep working until T-020).
-- T-020: U21 Final Cup from drawn squads + Academy squad; replaces both cups.
-- T-021: Retire the 8 fixed teams: `FACTIONS` becomes per region; HQ pins per faction; scouting per faction.
 
 Phase 5 — Voice pass
 - T-022: Faction `front`/`dark`, region `desc`, Gazette and event strings in lore.md §7 voices.
