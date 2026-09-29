@@ -8,12 +8,13 @@ Code home: https://github.com/glairlyyy/spiker (branch main). Containers are tem
 - `CLAUDE.md` (this file) — how to work: workflow, commands, rules that bite, QA, publishing. Stable.
 - `spec.md` — WHAT the game is: current feature state, locked decisions, open questions, out of scope. Source of truth.
 - `tasks.md` — the work queue: small tasks with files, acceptance criteria, test impact.
+- `lore.md` — the hidden truth (setting, history, factions) and the voice list every in-game string must use.
 - `ARCHITECTURE.md` — HOW the code is built: layers, engine flow, renderer, saves, testing.
 
 ## Workflow (spec-driven, two chats)
-- **Spec chat** (owner + planner model) writes `spec.md` and `tasks.md`. It does not write game code.
+- **Spec chat** (owner + planner model) writes `spec.md`, `lore.md` and `tasks.md`. It does not write game code.
 - **Build chat** (implementer model) writes code, keeps `ARCHITECTURE.md` current, and ticks tasks. It does not
-  edit `spec.md` or add/reword tasks; it may only change a task's status line and its `Result:` / `Question:` lines.
+  edit `spec.md`, `lore.md` or add/reword tasks; it may only change a task's status line and its `Result:` / `Question:` lines.
 
 Build chat loop, one task at a time:
 1. `git pull`. Open `tasks.md`; take the first `[ ]` task under **Now** (unless the owner names one). Mark it `[~]`.

@@ -8,13 +8,15 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   factions, trains, and plays watch-only 3D matches with a 2D interface. Spite-driven story (later, lore-first).
 - Built from the Skyline Cup prototype; old Skyline career/modes are not kept (no save compatibility).
 - Desktop-only UI for now. Compact UI: details live in tooltips/folds.
+- Setting, history, factions and narrative voices: `lore.md` (hidden truth). Goal: win the U21 league → the major
+  nation's national team (international career).
 
 ## 2. Match (engine + 3D playback) [built]
 - §2.1 Rules: one set to 15, win by 2; court ×1.5; zone/captain buffs, timeouts, tactics, techniques, pop-ups,
   long back attack.
 - §2.2 Elements: per player, hidden; unlocked for OP, ~1/4 of star players, and the career player via the Element
   Trial. Gauge fills by element play; full gauge or captain buff → next attack is the signature element spike.
-  Counter elements halve effects.
+  Counter elements halve effects. Fiction: lore.md §2 (the Trial is the modern method; the ritual is forgotten).
 - §2.3 Hype (setting Off/Normal/Max, tap to skip): attack build-up scenes, blocker read mid-jump (only if a block is
   attempted), block-break spike cut + ball close-up, kill-block scene, loose-ball slow-mo calls, personality
   chatter. No manga panels. Slow-mo uses one world clock (A.ts) with eased ramps.
@@ -25,11 +27,14 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 - One game (Spite & Spike) + a dev Playtest card (Monster game, `startMonster()`).
 
 ## 4. Career world [built unless tagged]
-- §4.1 Start: free agent; join factions through join conditions; money, housing, paydays, league transfers,
+- §4.1 Start: free agent (lore.md §4: no team, no faction); join factions through join conditions; money, housing, paydays, league transfers,
   Gazette; Sim ⏭ button to skip a match before playing it. Calendar: 28 weeks (for now).
+  A free agent can't enter the league or cups until signed [built: watches from the stands].
+  **[open]** the free agent currently has a pickup squad (`World.pickup`); lore says alone — keep, rename, or drop.
 - §4.2 Island: 3 major factions — Wei (city academy; north + east), Wu (beach/coast; east/south + an inland strip;
   most aggressive), Shu (mountain highlands; west) — plus borderless minor factions. No unclaimed land except the
-  neutral Sacred Shrine Park (region `open`). 2 squads per major + 2 minor clubs = 8 teams.
+  neutral middle zone, region `open`. **[locked, not built]** it becomes **Central Academy** (lore.md §4): entry point,
+  fields no team, never seized. Code still says "Sacred Shrine Park". 2 squads per major + 2 minor clubs = 8 teams.
 - §4.3 Regions set prices/quality: Wei pricey (maybe overhyped), Shu cheap (maybe a hidden gem), Wu sand = technique.
 - §4.4 Movement: the player stands at a map point (`run.pos`, start at the airport); hotels when away from home.
   Map is dark except around visited points (`run.fog`, REVEAL_R). Click any land to travel.
@@ -46,9 +51,13 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 - §4.8 Hub UI: full-screen draggable map (panzoom) with HUD overlays, shortcut dock → drawers, cards over the map.
 - §4.9 Map architecture: rules → MapModel → MapView (see CLAUDE.md Layout). A three.js island map **[locked, later]**
   replaces only `map-svg.js` by implementing the MapView contract.
+- §4.10 Facility access **[locked, not built]**: a place is usable if you can pay, your standing with its owner
+  region isn't a grudge (negative), and you meet the owner's condition (per faction, lore.md §5 dogma; values set in
+  the balance pass). Ownership changes on seizure, so access can flip. Today standing is display-only.
 
 ## 5. Open questions — do not build until decided
-- §5.1 Lore: owner is writing it. Waits on it: what standing unlocks, club switching, story events, faction flavour.
+- §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story
+  events, club switching, what standing unlocks beyond access.
 - §5.2 Portraits: now generated 2D (`faceSVG`). Options: 3D VRM head snapshots, or hand-made 2D anime portraits
   (unique characters mapped by hand with own model + portrait); Live2D (pixi-live2d-display) or video loops
   (WebM / animated WebP) for special characters at big moments. When built: one call,
@@ -56,10 +65,18 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 - §5.3 Legacy / Hall of Fame: keep or drop.
 - §5.4 Character creation rework (deferred).
 
-## 6. Out of scope for now
+## 6. Narrative rules **[locked, not built for existing strings]**
+- Every player-facing string has one speaker from lore.md §7 (`registrar`, `wei`, `wu`, `shu`, `outlaw`, `gloria`,
+  `villager`, `diary`, `rumor`). No tutorial voice.
+- Numbers are always true; claims, reasons and history may be biased or wrong. Never state lore.md truth directly.
+- Mechanics explanations (tooltips, costs) use `registrar`: terse, factual, no "why".
+- No old-language words until lore.md §8 has a glossary.
+
+## 7. Out of scope for now
 - Founding your own club (team building). Minor factions in the faction war. Ghost PvP. Mobile layout.
 
-## 7. Backlog (candidates — become tasks only when specced)
+## 8. Backlog (candidates — become tasks only when specced)
 - Balance pass: 7-day week × DAY_GAIN × fees × faction prices × paydays, measured with headless season sims.
 - Standing effects; leaving/switching clubs (needs §5.1); scouting → match edge; moving borders.
 - three.js island map (§4.9). New-run setup + results screens. Hype scene frequency tuning (§2.3).
+- Shrine Park → Central Academy (§4.2). Facility access gating (§4.10). Voice pass over existing strings (§6).
