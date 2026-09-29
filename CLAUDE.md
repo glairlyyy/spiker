@@ -8,7 +8,8 @@ Published as a claude.ai artifact: https://claude.ai/artifact/4xfGDd92rAanHyThVx
 - Source of truth: the artifact above holds the full project as published files (index.html, js/, css/, tests/,
   CLAUDE.md, ARCHITECTURE.md, package.json, lint/format configs, test3d.html, qa_poses.html; VRM base in assets/vrm).
   List: Artifact action "list", scope "files", url above. Restore: Artifact action "read" with `paths` (all listed
-  paths), copy into a folder, `npm install`. Publish every changed file each time so the artifact stays complete.
+  paths), copy into a folder, `npm install`. Dotfiles are published renamed: `prettierrc.json` → `.prettierrc.json`,
+  `prettierignore.txt` → `.prettierignore`. Publish every changed file each time so the artifact stays complete.
 - Working copy in cloud sessions: /home/claude/work/sc3d (local git, no remote; the container is temporary).
 - No GitHub repo yet.
 
