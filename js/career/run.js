@@ -19,7 +19,7 @@ const Run = {
   createdStat: (role, k, alloc) => clamp(CAREER.statBase + alloc + (RB[role][k] || 0), 25, 99),
   /**
    * Start a run. spec = { role, name, alloc: {power, def, speed, jump}, witSteps, mode? ({hard, short}) }.
-   * You always start as a free agent: your player takes the same-role slot on the pickup squad.
+   * You always start as a free agent: your player takes the same-role slot on the Academy squad (the pickup squad).
    */
   create(draft, spec) {
     const mode = spec.mode || {};
@@ -112,6 +112,8 @@ const Run = {
       elNext: 0,
       // v5: free agency (pickup squad until you sign), money, housing, league news and the Gazette
       pickup,
+      eval: null, // this week's evaluation draw (see js/career/eval.js)
+      academy: true, // Academy squad member; false after leaving it (no way back)
       // faction pools: generated players outside the league teams (see js/career/pool.js)
       reserve,
       money: ECON.start,
@@ -153,9 +155,14 @@ const Run = {
     (run.news || (run.news = [])).push(text);
   },
   you: run => Run.myTeam(run).P.find(p => p.id === run.youId),
-  mates: run => Run.myTeam(run).P.filter(p => p.id !== run.youId),
-  /** What this week is: 'train' | 'camp' | 'warmup' | 'warmup2' | 'cup'. */
-  weekType: run => (Run.cupDef(run) ? 'cup' : CALENDAR[run.week] || 'train'),
+  /** Your teammates: none once you have left the Academy squad while still a free agent. */
+  mates: run => (World.isFree(run) && run.academy === false ? [] : Run.myTeam(run).P.filter(p => p.id !== run.youId)),
+  /** What this week is: 'train' | 'camp' | 'eval' (an evaluation you take part in) | 'cup'. */
+  weekType(run) {
+    if (Run.cupDef(run)) return 'cup';
+    const k = CALENDAR[run.week] || 'train';
+    return k === 'eval' ? (Eval.kind(run) ? 'eval' : 'train') : k;
+  },
   log(run, text) {
     const c = Run.cupDef(run);
     run.log.unshift({ w: c ? c.short : run.week, t: text });
@@ -242,6 +249,7 @@ const Run = {
     Goals.set(run);
     Sponsors.offer(run);
     ElTrial.offer(run);
+    Eval.setup(run);
   },
   /** Save the run (teams in their compact JSON form). */
   save(run) {
@@ -283,6 +291,9 @@ const Run = {
     for (const k of ['sp', 'fans', 'trained', 'elNext', 'money']) if (!Number.isFinite(run[k])) run[k] = 0;
     if (!HOUSING[run.housing]) run.housing = 'studio';
     if (!run.reserve || typeof run.reserve !== 'object') run.reserve = {};
+    if (typeof run.academy !== 'boolean') run.academy = World.isFree(run);
+    if (run.eval && run.eval.week !== run.week) run.eval = null;
+    Eval.setup(run);
     if (!Array.isArray(run.news)) run.news = [];
     if (!Number.isFinite(run.days) || run.days < 0 || run.days > WEEK_DAYS) run.days = WEEK_DAYS;
     delete run.slot;

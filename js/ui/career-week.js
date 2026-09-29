@@ -1,5 +1,5 @@
 // Career panels shown in the hub's drawers and pop-ups (career-hub.js): your player, season, teammates, life, clubs,
-// Gazette, the event card, warm-up / Cup match cards and the skills shop, plus their handlers.
+// Gazette, the event card, evaluation / Cup match cards and the skills shop, plus their handlers.
 
 /** Hub UI state: Hard toggle, selected place, open drawer, pan/zoom view, last diary line shown as a toast. */
 let CW = { hard: false, spot: null, drawer: null, view: null, toast: null, dossier: null };
@@ -97,16 +97,33 @@ function seasonCard(run) {
     }</div>`;
 }
 function bondCard(run) {
-  const you = Run.you(run);
-  return `<div class="panel"><h3>Teammates${info('Training together shares your gains and raises their odds of breaking through to ★ star or OP. 60+ bond: two-player combos. 80+: friendship training (+50%).')}</h3>${Run.mates(
-    run
-  )
+  const you = Run.you(run),
+    mates = Run.mates(run),
+    alone = World.isFree(run) && run.academy === false;
+  return `<div class="panel"><h3>Teammates${info('Training together shares your gains and raises their odds of breaking through to ★ star or OP. 60+ bond: two-player combos. 80+: friendship training (+50%).')}</h3>${
+    alone ? '<p class="small mute">No squad. The Academy no longer lists you.</p>' : ''
+  }${mates
     .map(m => {
       const b = you.bond[m.id] || 0;
       return `<div class="bond">${faceSVG(m, 0, 30)}<div><b>${stag(m)}${esc(m.name)}</b>${m.cap ? ' <span class="capb">C</span>' : ''} <i class="mute small">${m.role} · OVR ${ovr(m)}</i>
         <span class="bbar ${b >= 80 ? 'f' : b >= 60 ? 'c' : ''}"><i style="width:${b}%"></i></span><small class="mute">Bond ${b}${b >= 80 ? ' · friends' : b >= 60 ? ' · combos' : ''}</small></div></div>`;
     })
-    .join('')}</div>`;
+    .join('')}${
+    World.isFree(run) && run.academy !== false
+      ? `<p class="small mute" id="leaveac"><button class="btn" onclick="leaveSquad()" ${tip('The Academy will not invite you again')}>Leave squad</button></p>`
+      : ''
+  }</div>`;
+}
+/** Leave the Academy squad: ask inline (confirm dialogs are blocked in the artifact frame), then withdraw. */
+function leaveSquad(sure) {
+  if (!sure) {
+    const el = $('#leaveac');
+    if (el)
+      el.innerHTML = `Leave for good? The Academy won't invite you again. <button class="btn hot" onclick="leaveSquad(true)">Yes</button> <button class="btn" onclick="renderCareer()">No</button>`;
+    return;
+  }
+  if (World.leaveAcademy(RUN)) Run.save(RUN);
+  renderCareer();
 }
 /** Season timeline: 28 weeks with matches, camps, the coach's goal, and both cups. */
 function calendar(run) {
@@ -115,7 +132,7 @@ function calendar(run) {
     g = run.goal;
   for (let w = 1; w <= CAREER.weeks; w++) {
     const k = CALENDAR[w] || 'train',
-      lab = k === 'camp' ? 'Camp' : k.startsWith('warmup') ? 'Match' : '',
+      lab = k === 'camp' ? 'Camp' : k === 'eval' ? 'Eval' : '',
       skip = run.mode.short && w < 5,
       now = !cur && w === run.week;
     pips.push(
@@ -148,12 +165,33 @@ function matchPrep(run, cup) {
       : '';
   return focus + talk;
 }
-function warmupPanel(run) {
-  const opp = run.teams[Cup.warmupOpponent(run)];
-  return `<div class="panel"><h3>Week ${run.week}: warm-up${info(`Win: +${REWARDS.warmupWin.sp} skill pts, +${REWARDS.warmupWin.fans} fans, +${REWARDS.warmupWin.bond} bond. Loss: +${REWARDS.warmupLoss.sp} skill pts, +${REWARDS.warmupLoss.fans} fans. Each of your kills, blocks and aces adds more.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3>
-    <p>${chip(Run.myTeam(run))}${esc(Run.myTeam(run).name)} vs ${chip(opp)}<b>${esc(opp.name)}</b> <span class="mute small">${opp.S.name} · rating ${opp.ovr}</span></p>
+/** The evaluation week's card: play (or Sim) your evaluation match, or watch from the bench when not selected. */
+function evalPanel(run) {
+  const e = run.eval || Eval.setup(run),
+    label = e.kind === 'academy' ? 'Academy' : REGIONS[e.region].name,
+    D = Dossier.build(run, e.region),
+    all = Pool.players(run, e.region).concat([Run.you(run)]),
+    club = Run.myTeam(run),
+    list = (ps, showOvr) =>
+      ps.map(p => `<span>${stag(p)}${esc(p.name)} <i class="mute">${p.role}${showOvr ? ' ' + ovr(p) : ''}</i></span>`).join(' · '),
+    byId = ids => ids.map(id => all.find(p => p.id === id)).filter(Boolean),
+    head = `<h3>Week ${run.week}: ${esc(label)} evaluation${info(`Win: +${REWARDS.warmupWin.sp} skill pts, +${REWARDS.warmupWin.fans} fans, +${REWARDS.warmupWin.bond} bond. Loss: +${REWARDS.warmupLoss.sp} skill pts, +${REWARDS.warmupLoss.fans} fans. Each of your kills, blocks and aces adds more.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3>`;
+  if (e.kind === 'faction' && !e.mine)
+    return `<div class="panel">${head}<p>Not selected this month.</p>
+    <div class="trow"><button class="btn hot big" onclick="benchEval()">Watch from the bench</button></div></div>`;
+  const mine = e.kind === 'academy' ? club.P : byId(e.mine);
+  return `<div class="panel">${head}
+    <p class="small"><b>${e.kind === 'academy' ? esc(club.name) : esc(club.name) + ' squad'}</b> ${list(mine, true)}</p>
+    <p class="small"><b>${esc(REGIONS[e.region].name)} squad</b> ${list(byId(e.opp), D.scouted || D.member)}</p>
+    ${D.scouted || D.member ? '' : '<p class="small mute">Scout one of their clubs to see ratings.</p>'}
     ${matchPrep(run, false)}
-    <div class="trow"><button class="btn hot big" onclick="playCareer('warmup')">Play warm-up</button><button class="btn big" onclick="playCareer('warmup', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
+    <div class="trow"><button class="btn hot big" onclick="playCareer('eval')">Play evaluation</button><button class="btn big" onclick="playCareer('eval', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
+}
+/** Not selected: watch from the bench (wit XP) and end the week. */
+function benchEval() {
+  Run.log(RUN, Eval.bench(RUN));
+  Run.endWeek(RUN);
+  renderCareer();
 }
 function cupPanel(run) {
   const S = run.cup.sched,
@@ -270,7 +308,7 @@ function lifeCard(run) {
 function clubsCard(run) {
   return `<div class="panel clubs">${fold(
     'clubs',
-    `<h3>Find a club${info('You play warm-ups with a pickup squad and miss the cups until a club signs you. You take the same-role spot on the club.')}</h3>`,
+    `<h3>Find a club${info('You play Academy evaluations with the Academy squad and miss the cups until a club signs you. You take the same-role spot on the club.')}</h3>`,
     `<div class="clist">${run.teams
       .map(t => {
         const c = World.canJoin(run, t.i),

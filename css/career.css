@@ -242,6 +242,7 @@
 .cal .pip.past {
   opacity: 0.45;
 }
+.cal .pip.eval,
 .cal .pip.warmup,
 .cal .pip.warmup2 {
   border-color: var(--cyan);

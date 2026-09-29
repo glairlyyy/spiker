@@ -52,7 +52,7 @@ function renderCreate() {
     </div>
     <div class="panel">
       <h3>Your team</h3>
-      <p class="small mute">Free agent${info('You arrive with no club: play warm-ups with a pickup squad and sign with a club once you meet its conditions. Free agents miss the cups.')}</p>
+      <p class="small mute">Free agent${info('You arrive with no club: play Academy evaluations with the Academy squad and sign with a club once you meet its conditions. Free agents miss the cups.')}</p>
       <h4>Challenge${info('Optional handicaps.')}</h4>
       ${Object.entries(MODES)
         .map(

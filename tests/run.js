@@ -201,10 +201,27 @@ function playRun(g, role = 'WS') {
     }
     if (g.World.isFree(run)) for (const t of run.teams) if (g.World.join(run, t.i)) break; // sign as soon as a club allows
     const wt = g.Run.weekType(run);
-    if (wt === 'cup' || wt.startsWith('warmup')) {
+    if (wt === 'eval') {
+      if (run.eval.kind === 'faction' && !run.eval.mine) {
+        g.Eval.bench(run); // not drawn: watch from the bench
+        g.Run.endWeek(run);
+        continue;
+      }
+      const region = run.eval.region,
+        fx = g.Cup.fixture(run, 'eval'),
+        m = g.newMatch(fx.a, fx.b, false);
+      while (!m.over) g.playRally(m);
+      fx.onFinish(m);
+      assert(
+        g.Pool.players(run, region).every(p => p.team.i !== -2),
+        'nobody stays lent after an evaluation'
+      );
+      continue;
+    }
+    if (wt === 'cup') {
       run.focus = g.FOCUS[role][0][0];
       run.talk = 'fire';
-      const fx = g.Cup.fixture(run, wt === 'cup' ? 'cup' : 'warmup');
+      const fx = g.Cup.fixture(run, 'cup');
       const m = g.newMatch(fx.a, fx.b, false);
       if (fx.setup) fx.setup(m);
       while (!m.over) g.playRally(m);
@@ -416,6 +433,11 @@ test('career: free agent start, club join conditions, paydays, transfers, specta
     you = g.Run.you(run);
   assert(g.World.isFree(run) && g.Run.myTeam(run) === run.pickup && run.pickup.P.length === 4, 'starts on a pickup squad');
   eq(run.staMax, g.CAREER.staMax, 'base stamina cap');
+  assert(run.pickup.name === 'Academy squad', 'the pickup squad is the Academy squad');
+  assert(g.World.leaveAcademy(run) && g.Run.mates(run).length === 0, 'leaving the squad leaves you alone');
+  assert(!g.World.leaveAcademy(run), 'a second leave does nothing');
+  g.Run.save(run);
+  assert(g.Run.load().academy === false, 'academy: false is saved');
   assert(!('legacy' in run) && !('pure' in run) && !('legend' in run), 'no meta-progression fields on a new run');
   eq(run.money, g.ECON.start, 'starting money');
   // a club with a fee you can't pay is locked; an open club signs you and you take a same-role slot
@@ -446,11 +468,16 @@ test('career: free agent start, club join conditions, paydays, transfers, specta
       continue;
     }
     const wt = h.Run.weekType(r2);
-    if (wt.startsWith('warmup')) {
-      const fx = h.Cup.fixture(r2, 'warmup'),
+    if (wt === 'eval') {
+      const region = r2.eval.region,
+        fx = h.Cup.fixture(r2, 'eval'),
         m = h.newMatch(fx.a, fx.b, false);
       while (!m.over) h.playRally(m);
       fx.onFinish(m);
+      assert(
+        h.Pool.players(r2, region).every(p => p.team.i !== -2),
+        'nobody stays lent after an evaluation'
+      );
     } else {
       h.Training.rest(r2);
       h.Run.endWeek(r2);
@@ -714,6 +741,85 @@ test('career: faction dossier — state, places, roster gate', () => {
   eq(JSON.stringify(run.teams.map(g.teamToJSON)), before, 'building a dossier changes no team');
   const gl = g.Dossier.build(run, 'gloria');
   assert(gl.state === 'minor' && gl.fronts.length === 0, 'St. Gloria is not in the war');
+});
+
+test('career: reserves grow and get promoted', () => {
+  const g = load(95),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Res', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
+  const sum = p => g.STATK.reduce((a, k) => a + p[k], 0),
+    all = () => Object.values(run.reserve).flatMap(t => t.P);
+  const before = all().reduce((a, p) => a + sum(p), 0);
+  for (let i = 0; i < 8; i++) {
+    run.event = null;
+    g.Run.endWeek(run);
+  }
+  assert(all().reduce((a, p) => a + sum(p), 0) > before, 'reserves gain stats week by week');
+  const sizes = Object.fromEntries(Object.keys(g.POOL).map(r => [r, g.Pool.size(run, r)]));
+  const res = run.reserve.wei.P[0];
+  for (const k of g.STATK) res[k] = 95;
+  g.World.promote(run);
+  const wt = run.teams.find(t => t.P.includes(res));
+  assert(wt && g.FACTIONS[wt.i].region === 'wei' && res.team === wt, 'the reserve joined a Wei league team');
+  assert(run.reserve.wei.P.some(p => p.team === run.reserve.wei) && !run.reserve.wei.P.includes(res), 'a squad player went down');
+  assert(
+    run.teams.every(t => t.P.length === 4),
+    'every team still has 4 players'
+  );
+  for (const r of Object.keys(g.POOL)) eq(g.Pool.size(run, r), sizes[r], `pool ${r} size unchanged`);
+});
+
+test('career: evaluation rules', () => {
+  const g = load(96),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Evalu', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
+  eq(g.Eval.kind(run), 'academy', 'a free agent in the Academy squad is evaluated by the Academy');
+  run.week = 4;
+  run.eval = null;
+  const e = g.Eval.setup(run);
+  assert(e && e.kind === 'academy' && e.mine === null && e.opp.length === 4, 'week 4: your side is the squad, the opponent has 4 ids');
+  const pool = new Set(g.Pool.players(run, e.region).map(p => p.id));
+  assert(g.MAJORS.includes(e.region) && e.opp.every(id => pool.has(id)), 'the opponent is drawn from one major pool');
+  eq(g.Run.weekType(run), 'eval', 'week 4 is an evaluation week');
+  const before = new Map(g.Pool.players(run, e.region).map(p => [p.id, p.team]));
+  const T = g.Eval.squad(run, e.opp, 'Opp · Eval', '#fff');
+  g.Eval.lend(run, T);
+  g.Eval.lend(run, T);
+  assert(
+    T.P.every(p => p.team === T),
+    'lent players point at the squad'
+  );
+  g.Eval.restore();
+  g.Eval.restore();
+  assert(
+    g.Pool.players(run, e.region).every(p => p.team === before.get(p.id)),
+    'restore puts every player back'
+  );
+  const you0 = g.Run.you(run),
+    w0 = you0.wit,
+    xp0 = run.xp.wit || 0;
+  assert(g.Eval.bench(run).includes('Watched from the bench'), 'bench returns the diary line');
+  assert(you0.wit > w0 || (run.xp.wit || 0) > xp0, 'the bench banks wit XP');
+  g.World.leaveAcademy(run);
+  eq(g.Eval.kind(run), null, 'alone: no evaluation');
+  eq(g.Run.weekType(run), 'train', 'week 4 is a plain training week when alone');
+  // signed with a major and standing 60: drawn every time, against a different squad
+  const g2 = load(97),
+    r2 = g2.Run.create(g2.Run.draft(), { role: 'WS', name: 'Sign', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    wei = g2.FACTIONS.findIndex(f => f.region === 'wei');
+  g2.FACTIONS[wei].join = {};
+  assert(g2.World.join(r2, wei), 'sign with a Wei club');
+  r2.week = 8;
+  r2.rep.wei = 60;
+  r2.eval = null;
+  const e2 = g2.Eval.setup(r2),
+    you = g2.Run.you(r2);
+  assert(
+    e2.kind === 'faction' && e2.region === 'wei' && e2.mine.includes(you.id) && e2.opp.length === 4,
+    'faction evaluation: you are in it'
+  );
+  assert(!e2.opp.some(id => e2.mine.includes(id)), 'a different squad');
+  const gl = g2.FACTIONS.findIndex(f => f.region === 'gloria');
+  r2.team = gl;
+  eq(g2.Eval.kind(r2), null, 'a minor club has no evaluation');
 });
 
 // ---------- report ----------

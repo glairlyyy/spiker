@@ -52,9 +52,9 @@ const Cup = {
     while ((m = advanceBracket(run.cup.sched))) Cup.simulate(run, m);
   },
   /** Match-day form: your mood, +0.1 per 80+ bond for your side, the captain's talk; noise for the opponents. */
-  prepare(run, opp, kind) {
+  prepare(run, opp, kind, side = Run.myTeam(run)) {
     const you = Run.you(run),
-      mine = Run.myTeam(run),
+      mine = side,
       bonds = Run.mates(run).filter(m => (you.bond[m.id] || 0) >= 80).length;
     const talk = kind === 'cup' && you.cap ? run.talk : null;
     for (const p of mine.P) {
@@ -65,19 +65,38 @@ const Cup = {
     }
     for (const p of opp.P) p.form = +(rnd(-0.2, 0.2) - (talk === 'calm' ? 0.15 : 0)).toFixed(2);
   },
-  /** Fixture for the match screen. kind: 'warmup' | 'cup'. Your team is always on the left. */
+  /** Fixture for the match screen. kind: 'eval' | 'cup' (| legacy 'warmup'). Your side is always on the left. */
   fixture(run, kind) {
-    const mine = Run.myTeam(run),
-      def = Run.cupDef(run),
-      bm = kind === 'cup' ? Cup.next(run) : null,
-      oi = kind === 'cup' ? (bm.a === run.team ? bm.b : bm.a) : Cup.warmupOpponent(run),
-      opp = run.teams[oi],
-      you = Run.you(run);
-    Cup.prepare(run, opp, kind);
+    const you = Run.you(run),
+      def = Run.cupDef(run);
+    let mine = Run.myTeam(run),
+      opp,
+      round,
+      bm = null;
+    if (kind === 'eval') {
+      // an evaluation: drawn squads (lent their players for the match); the Academy squad is a real team
+      const e = Eval.setup(run),
+        club = run.team != null ? run.teams[run.team] : null;
+      if (e.kind === 'faction') {
+        mine = Eval.squad(run, e.mine, `${club.name} · Eval`, club.color);
+        Eval.lend(run, mine);
+      }
+      opp = Eval.squad(run, e.opp, `${REGIONS[e.region].name} · Eval`, REGIONS[e.region].color);
+      Eval.lend(run, opp);
+      round = `${e.kind === 'academy' ? 'Academy' : REGIONS[e.region].name} evaluation (week ${run.week})`;
+    } else if (kind === 'cup') {
+      bm = Cup.next(run);
+      opp = run.teams[bm.a === run.team ? bm.b : bm.a];
+      round = `${def.name} ${bm.round}`;
+    } else {
+      opp = run.teams[Cup.warmupOpponent(run)];
+      round = `Warm-up match (week ${run.week})`;
+    }
+    Cup.prepare(run, opp, kind, mine);
     return {
       a: mine,
       b: opp,
-      round: kind === 'cup' ? `${def.name} ${bm.round}` : `Warm-up match (week ${run.week})`,
+      round,
       back: 'Continue',
       // "Feed me": a captain's buff on you for the first 8 points
       setup: m => {
@@ -86,8 +105,14 @@ const Cup = {
           elBuff(m, you); // an unlocked element: the gauge starts full
         }
       },
-      onFinish: m => Cup.result(run, m, kind, bm),
-      onLeave: () => navigate('career')
+      onFinish: m => {
+        if (kind === 'eval') Eval.restore();
+        return Cup.result(run, m, kind, bm);
+      },
+      onLeave: () => {
+        if (kind === 'eval') Eval.restore();
+        navigate('career');
+      }
     };
   },
   /** Your grade for one match (S–C) from your own line. */
@@ -138,7 +163,7 @@ const Cup = {
       opp = m.t[1];
     const line = `${win ? 'Won' : 'Lost'} ${score} vs ${opp.name} · grade ${grade}. You: ${s.k} kills, ${s.blk} blocks, ${s.ace} aces · ${out.filter(Boolean).join(', ')}`;
     Run.log(run, line);
-    if (kind === 'warmup') {
+    if (kind === 'warmup' || kind === 'eval') {
       run.warm.push({ week: run.week, vs: opp.i, win, score, grade });
       Run.endWeek(run);
     } else {

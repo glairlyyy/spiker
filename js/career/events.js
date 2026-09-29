@@ -14,11 +14,12 @@ const Events = {
   roll(run) {
     if (run.event) return run.event; // a Limit Break trial (or another special event) is already waiting
     if (R() >= CAREER.eventChance) return null;
-    const pool = EVENTS.filter(e => !run.seen.includes(e.id) && (!e.need || EVENT_NEED[e.need](run)));
+    const alone = !Run.mates(run).length,
+      pool = EVENTS.filter(e => !run.seen.includes(e.id) && (!e.need || EVENT_NEED[e.need](run)) && !(alone && e.text.includes('{mate}')));
     if (!pool.length) return null;
     const e = pick(pool);
     run.seen.push(e.id);
-    run.event = { id: e.id, mate: pick(Run.mates(run)).id };
+    run.event = { id: e.id, mate: (pick(Run.mates(run)) || {}).id }; // alone: no teammate
     return run.event;
   },
   /** Event definition. Special events: 'limit' (Limit Break trial), 'element' (Element Trial), 'sponsor' (offer at a fan milestone). */
