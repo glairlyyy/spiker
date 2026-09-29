@@ -297,7 +297,7 @@ Steps:
      (`run.team != null && FACTIONS[run.team].region === r`), else excluded.
    - if `you` is a candidate and `City.rep(run, r) >= DRAW.sure`, you are placed first in squad 1 in your role's slot.
    - fill role by role per squad: S slot from role 'S', MB from 'MB', two wings from 'WS'; each pick is weighted
-     (`wpick(list, weightFn)` from js/engine/teams.js); a picked player is removed from candidates.
+     (`wpick(list, weightFn)` from js/core/rng.js); a picked player is removed from candidates.
    - a role running out: take the highest-weight remaining player of any role for that slot.
    - fewer than 4 candidates left → stop (return the squads made so far).
 3. tests/run.js — new test `'career: pool draw — squads, roles, weights, your spot'`:
