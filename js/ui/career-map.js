@@ -223,7 +223,7 @@ function mapTravel(x, y) {
   renderCareer();
 }
 function mapEndWeek() {
-  if (RUN.event || Run.weekType(RUN) === 'cup' || Run.weekType(RUN).startsWith('warmup')) return;
+  if (RUN.event || Run.weekType(RUN) === 'cup' || Run.weekType(RUN) === 'eval') return;
   Run.endWeek(RUN);
   renderCareer();
 }

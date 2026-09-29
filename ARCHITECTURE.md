@@ -296,6 +296,15 @@ and not used in play yet. A player lives in exactly one place; `you` and the pic
 `Pool.draw(run, r, n)` returns n squads `[S, MB, WS, WS]` (new arrays, nothing mutated): weighted by ovr (`DRAW` in world.js),
 you are a candidate only while signed with r, and a standing ≥ `DRAW.sure` puts you in squad 1.
 
+## Evaluations
+
+`CALENDAR` weeks marked `'eval'` (4, 8 … 24) replace the old warm-ups; `Run.weekType` returns `'eval'` only if `Eval.kind(run)` is
+non-null (`'academy'`: free agent still in the Academy squad, `'faction'`: signed with a major, else none). `Eval.setup(run)`
+(`js/career/eval.js`, called from `Run.nextWeek` and `Run.repair`) draws the week into `run.eval = { week, kind, region, mine, opp }`
+(player id arrays, from `Pool.draw`; `mine` null = Academy squad or not drawn). `Eval.squad` builds a temporary team;
+`Eval.lend` / `restore` point players' `team`, `cap` and `slot` at it for the match and back (never `finalizeTeam` on it).
+`Eval.bench` = not selected: wit XP worth `EVAL.benchDays` day-sessions.
+
 ## Faction dossier
 
 `Dossier.build(run, r)` (`js/career/dossier.js`, DOM-free, read-only) returns one faction's window data: standing, state

@@ -18,7 +18,7 @@ const Goals = {
     const stat = STATK.includes(key) && you[key] < Training.gate(run, key) - 2 ? key : STATK.find(k => you[k] < Training.gate(run, k) - 2);
     const warm = Object.keys(CALENDAR)
       .map(Number)
-      .find(w => w >= run.week && w <= by && CALENDAR[w].startsWith('warmup'));
+      .find(w => w >= run.week && w <= by && CALENDAR[w] === 'eval' && Eval.kind(run) === 'academy');
     const low = Run.mates(run).reduce((a, m) => ((you.bond[m.id] || 0) < (you.bond[a.id] || 0) ? m : a), Run.mates(run)[0]);
     const opts = [];
     if (stat)
@@ -37,7 +37,7 @@ const Goals = {
   text(run, g) {
     if (!g) return '';
     if (g.kind === 'stat') return `${STATNAME[g.stat]} ${g.target}`;
-    if (g.kind === 'win') return `win the week-${g.week} warm-up`;
+    if (g.kind === 'win') return `win the week-${g.week} evaluation`;
     if (g.kind === 'fans') return `${g.target.toLocaleString()} fans`;
     const m = Run.myTeam(run).P.find(p => p.id === g.mate);
     return `bond ${g.target} with ${m ? m.name : 'a teammate'}`;

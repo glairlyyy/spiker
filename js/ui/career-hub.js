@@ -60,7 +60,7 @@ function hubCard(run) {
   const wt = Run.weekType(run);
   if (run.event) return { html: eventCard(run), dim: true };
   if (wt === 'cup') return { html: cupPanel(run), cls: 'wide' };
-  if (wt === 'warmup' || wt === 'warmup2') return { html: warmupPanel(run) + (World.isFree(run) ? hubClubsHint() : '') };
+  if (wt === 'eval') return { html: evalPanel(run) + (World.isFree(run) ? hubClubsHint() : '') };
   const c = City.clashSite(run);
   const att = c && (run.clash.att || c.a),
     def = c && (att === c.a ? c.b : c.a);
@@ -98,7 +98,7 @@ function hudClock(run) {
   const wt = Run.weekType(run),
     days = City.days(run),
     cup = Run.cupDef(run),
-    match = wt === 'cup' || wt.startsWith('warmup'),
+    match = wt === 'cup' || wt === 'eval',
     pay = Math.ceil(run.week / ECON.payEvery) * ECON.payEvery - run.week,
     eve = !match && days <= 0,
     lab = cup ? cup.short : match ? 'Match' : eve ? 'Night' : `${days} day${days > 1 ? 's' : ''} left`;

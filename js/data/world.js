@@ -233,5 +233,7 @@ const POOL = { wei: 20, wu: 14, shu: 10, outlaws: 6, gloria: 5 };
  * standing ≥ sure → you are always drawn.
  */
 const DRAW = { floor: 40, span: 20, minW: 0.1, repPer: 50, sure: 60 };
+/** Reserve promotion on payday: a faction's best reserve replaces a weaker same-role squad player if it beats their OVR by at least `gap`. */
+const PROMOTE = { gap: 3 };
 /** A night at a hotel away from home: base price (× the region's price). */
 const HOTEL = { price: 12, rest: 1 };

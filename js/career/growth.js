@@ -7,17 +7,22 @@ const Growth = {
     const you = Run.you(run);
     Growth.checkYou(run, you);
     for (const t of run.teams) {
-      for (const p of t.P) {
-        if (p === you) continue;
-        const mate = t.i === run.team,
-          bf = 1 + (mate ? you.bond[p.id] || 0 : 0) / GROWTH.bondDiv,
-          pot = (p.pot || 1) * (run.mode && run.mode.hard ? 1.15 : 1); // Hard league: everyone else grows faster
-        Growth.spread(p, rnd(GROWTH.weekly[0], GROWTH.weekly[1]) * pot);
-        if (!p.star && R() < GROWTH.star * pot * bf) Growth.awaken(run, p, mate, false);
-        else if (p.star && !p.op && R() < GROWTH.op * pot * bf) Growth.awaken(run, p, mate, true);
-      }
+      for (const p of t.P) if (p !== you) Growth.grow(run, p, t.i === run.team, you);
       finalizeTeam(t);
     }
+    // faction reserves grind too (no bond factor)
+    for (const t of Object.values(run.reserve || {})) {
+      for (const p of t.P) Growth.grow(run, p, false, you);
+      if (t.P.length) finalizeTeam(t);
+    }
+  },
+  /** One player's week: stats grow (× potential; Hard league faster), with the chance to break through to star, then OP. */
+  grow(run, p, mate, you) {
+    const bf = 1 + (mate ? you.bond[p.id] || 0 : 0) / GROWTH.bondDiv,
+      pot = (p.pot || 1) * (run.mode && run.mode.hard ? 1.15 : 1);
+    Growth.spread(p, rnd(GROWTH.weekly[0], GROWTH.weekly[1]) * pot);
+    if (!p.star && R() < GROWTH.star * pot * bf) Growth.awaken(run, p, mate, false);
+    else if (p.star && !p.op && R() < GROWTH.op * pot * bf) Growth.awaken(run, p, mate, true);
   },
   /** Your own star / OP status: earned by hitting the overall (and for OP, key stat + wit) criteria. */
   checkYou(run, you) {

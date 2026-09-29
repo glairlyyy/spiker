@@ -2,23 +2,30 @@
 // league transfers and the Gazette. DOM-free (runs headless in tests).
 
 const World = {
-  /** The pickup squad you play with as a free agent: three average players plus you. */
+  /** The Academy squad (the pickup squad): the three teammates Central Academy assigns to a free agent, plus you. */
   pickup(used) {
     const t = {
       i: -1,
-      name: 'Free Agents',
-      short: 'FA',
+      name: 'Academy squad',
+      short: 'ACA',
       color: '#8a90b0',
       sk: 'balanced',
       S: STYLES.balanced,
       hist: { w: 0, l: 0, sw: 0, sl: 0, res: [] },
       nStars: 0,
-      arch: 'Pickup squad'
+      arch: 'Assigned by Central Academy'
     };
     fillRoster(t, {}, used);
     return t;
   },
   isFree: run => run.team == null,
+  /** Leave the Academy squad for good (you are alone afterwards: no teammates, no Academy evaluations). False if you can't. */
+  leaveAcademy(run) {
+    if (!World.isFree(run) || run.academy === false) return false;
+    run.academy = false;
+    Run.log(run, 'Academy squad: withdrawn at your request. Evaluation invitations cancelled.');
+    return true;
+  },
   faction: ti => FACTIONS[ti] || null,
   /** Can you sign with team ti now? { ok, why } — why lists what's missing. */
   canJoin(run, ti) {
@@ -118,6 +125,7 @@ const World = {
     }
     Run.log(run, `Payday: ${out.filter(Boolean).join(', ')}. Balance $${run.money}.`);
     World.transfers(run);
+    World.promote(run);
     World.gazette(run);
   },
   /** The league moves on its own: a stronger club poaches a better player of one role from a weaker club. */
@@ -150,6 +158,40 @@ const World = {
       if (T[run.team] === buyer || T[run.team] === s) for (const m of Run.mates(run)) if (you.bond[m.id] == null) you.bond[m.id] = 0;
       Run.news(run, `Transfer: ${buyer.name} poach ${star.name} (${star.role}) from ${s.name}; ${mine.name} goes the other way.`);
       return;
+    }
+  },
+  /** Payday: each faction's best reserve takes the place of its weakest same-role squad player if clearly better (PROMOTE.gap). */
+  promote(run) {
+    const you = Run.you(run);
+    for (const r of Object.keys(run.reserve || {})) {
+      const rt = run.reserve[r];
+      if (!rt || !rt.P.length) continue;
+      const res = rt.P.reduce((a, p) => (ovr(p) > ovr(a) ? p : a));
+      let weak = null,
+        wt = null;
+      for (const t of run.teams) {
+        if (!FACTIONS[t.i] || FACTIONS[t.i].region !== r) continue;
+        for (const p of t.P) if (p !== you && p.role === res.role && (!weak || ovr(p) < ovr(weak))) ((weak = p), (wt = t));
+      }
+      if (!weak || ovr(res) < ovr(weak) + PROMOTE.gap) continue;
+      const i = wt.P.indexOf(weak),
+        j = rt.P.indexOf(res);
+      [res.slot, weak.slot] = [weak.slot, res.slot];
+      [res.num, weak.num] = [weak.num, res.num];
+      wt.P[i] = res;
+      rt.P[j] = weak;
+      res.team = wt;
+      weak.team = rt;
+      for (const t of [wt, rt]) {
+        [t.s, t.mb] = t.P;
+        t.ws = [t.P[2], t.P[3]];
+        finalizeTeam(t);
+      }
+      if (Run.myTeam(run) === wt) {
+        delete you.bond[weak.id];
+        if (you.bond[res.id] == null) you.bond[res.id] = 0;
+      }
+      Run.news(run, `${REGIONS[r].name}: ${res.name} promoted to ${wt.name}; ${weak.name} sent to the reserves.`);
     }
   },
   /** Monthly Gazette: the news collected since the last payday plus power rankings. */

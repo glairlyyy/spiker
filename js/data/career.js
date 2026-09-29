@@ -37,7 +37,9 @@ const TRAININGS = {
 const TRAINK = Object.keys(TRAININGS);
 const STATNAME = { power: 'Power', def: 'Defense', speed: 'Speed', jump: 'Jump', wit: 'Wit', lead: 'Leadership' };
 /** What each week is. Anything not listed is a training week. */
-const CALENDAR = { 6: 'warmup', 12: 'warmup', 18: 'warmup2', 22: 'camp', 23: 'camp', 24: 'camp', 27: 'warmup2', 28: 'camp' };
+const CALENDAR = { 4: 'eval', 8: 'eval', 12: 'eval', 16: 'eval', 20: 'eval', 24: 'eval', 26: 'camp', 27: 'camp', 28: 'camp' };
+/** Monthly evaluations: a player who is not selected watches from the bench — wit XP worth `benchDays` day-sessions of Wit training. */
+const EVAL = { benchDays: 1 };
 /** The two major cups: played after week `after`. The Grand Cup is seeded by rating and pays more. */
 const CUPS = [
   { id: 'skyline', after: 24, name: 'Skyline Cup', short: 'SC', mul: 1 },
