@@ -51,6 +51,11 @@ Status tags as in spec.md: **[locked]** decided · **[open]** undecided — do n
   and a hollow one.
 - **Free agent:** no team, no faction, alone. May use any facility if they can pay, aren't in a grudge with its
   owner (negative standing), and meet the owner's special condition. Cannot enter the league or cups until signed.
+- **Academy squad:** Central Academy assigns each newcomer three strangers to attend the monthly skill evaluation
+  with. Walk away and the Academy forgets you: no more invites.
+- **Faction pools:** a faction is a roster, not a team (Wei biggest, St. Gloria smallest). Squads are drawn for each
+  evaluation and for the U21 Final Cup. Majors run their own monthly evaluations — the inherited grading ritual,
+  and a perk of belonging. Minors don't; neither does anyone for a loner.
 
 ## 5. Factions — truth · public face · grading dogma
 Grading dogma = what the faction's join conditions and facility conditions mean in the fiction.

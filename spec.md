@@ -30,11 +30,12 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 - §4.1 Start: free agent (lore.md §4: no team, no faction); join factions through join conditions; money, housing, paydays, league transfers,
   Gazette; Sim ⏭ button to skip a match before playing it. Calendar: 28 weeks (for now).
   A free agent can't enter the league or cups until signed [built: watches from the stands].
-  **[open]** the free agent currently has a pickup squad (`World.pickup`); lore says alone — keep, rename, or drop.
-- §4.2 Island: 3 major factions — Wei (city academy; north + east), Wu (beach/coast; east/south + an inland strip;
+  The pickup squad (`World.pickup`) stays, reframed as the Academy squad (§4.11).
+- §4.2 Island: 3 major factions — Wei (city; north + east), Wu (beach/coast; east/south + an inland strip;
   most aggressive), Shu (mountain highlands; west) — plus borderless minor factions. No unclaimed land except the
   neutral middle zone, region `open`. **[locked, not built]** it becomes **Central Academy** (lore.md §4): entry point,
-  fields no team, never seized. Code still says "Sacred Shrine Park". 2 squads per major + 2 minor clubs = 8 teams.
+  fields no team, never seized. Code still says "Sacred Shrine Park". Today: 2 squads per major + 2 minor clubs = 8
+  fixed teams; **[locked, not built]** replaced by faction pools (§4.11).
 - §4.3 Regions set prices/quality: Wei pricey (maybe overhyped), Shu cheap (maybe a hidden gem), Wu sand = technique.
 - §4.4 Movement: the player stands at a map point (`run.pos`, start at the airport); hotels when away from home.
   Map is dark except around visited points (`run.fog`, REVEAL_R). Click any land to travel.
@@ -54,6 +55,21 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 - §4.10 Facility access **[locked, not built]**: a place is usable if you can pay, your standing with its owner
   region isn't a grudge (negative), and you meet the owner's condition (per faction, lore.md §5 dogma; values set in
   the balance pass). Ownership changes on seizure, so access can flip. Today standing is display-only.
+- §4.11 Competition structure **[locked, not built]** — replaces the 8 fixed teams, warm-ups and both cups:
+  - Faction pools: each faction holds a roster instead of fixed teams. Sizes: Wei 20, Wu 14, Shu 10, Street
+    Outlaws 6, St. Gloria 5 (tunable). Squads of 4 are drawn per event.
+  - Draw: weighted by rating and standing with that faction; a guaranteed spot above a high-standing threshold
+    (value set in the balance pass). A signed player may not be drawn — the price of a big pool.
+  - Monthly evaluation (every 4 weeks, 7 per run), a benefit of your status:
+    - Free agent in the **Academy squad** (the pickup squad: 3 teammates assigned by Central Academy) → Central
+      Academy evaluation. Leaving the squad is allowed anytime; afterwards no evaluation invites, no rejoining.
+    - Signed with a major (Wei/Wu/Shu) → that faction's own evaluation: squads drawn from its pool
+      (floor(pool ÷ 4) squads) play each other.
+    - Signed with a minor, or alone → no evaluation matches.
+    - Rewards = today's warm-up rewards. Results feed standing and the draw weight.
+  - **U21 Final Cup** (week 28): the career goal. Squads drawn from every faction pool (floor(pool ÷ 4) each)
+    plus the Academy squad; bracket seeded by rating. Winning → national team (lore.md §3).
+  - Street battles (§4.6) and the faction war (§4.7) are unchanged.
 
 ## 5. Open questions — do not build until decided
 - §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story
@@ -79,4 +95,5 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 - Balance pass: 7-day week × DAY_GAIN × fees × faction prices × paydays, measured with headless season sims.
 - Standing effects; leaving/switching clubs (needs §5.1); scouting → match edge; moving borders.
 - three.js island map (§4.9). New-run setup + results screens. Hype scene frequency tuning (§2.3).
+- Competition structure (§4.11) — needs staging: pools → draw → evaluations → U21 Final Cup; big career/test impact.
 - Shrine Park → Central Academy (§4.2). Facility access gating (§4.10). Voice pass over existing strings (§6).
