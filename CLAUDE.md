@@ -59,7 +59,7 @@ Build chat loop, one task at a time:
 - `js/render3d` ES modules: r3d (entry, per-frame draw, dynamic resolution), units3d, arena3d, camera3d (game camera,
   scene shots, P3D), actors3d (posing players/coaches, trails, auras), players3d (VRM load/dress), poses3d, fx3d, trails3d.
 - `js/career` career run (28 weeks, training, events, Element Trial, city/front/world, map model, saves).
-- `js/ui` screens (menu, create, career hub/map/week, match, encyclopedia, legacy), dom helpers (esc, tip/info/fold/pop).
+- `js/ui` screens (menu, create, career hub/map/week/dossier/end, match, encyclopedia), dom helpers (esc, tip/info/fold/pop).
 - Island map = 3 layers: rules (`js/career/city.js` City, `front.js` Front) → `js/career/mapmodel.js`
   MapModel.build(run, sel) (plain data) → renderer `js/ui/map-svg.js` MapView (mount(el, model, {pick, point}) /
   select(id) / dispose()). Panels (`js/ui/career-map.js`) only talk to City/MapModel/MapView.

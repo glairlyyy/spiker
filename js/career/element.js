@@ -1,4 +1,4 @@
-// Career: your element. Hidden until OVR 70 (revealed at once for an heir of a Hall of Fame legend), then the
+// Career: your element. Hidden until OVR 70, then the
 // Element Trial: be a ★ star, earn an S grade in a match where your team reached the zone, then pass the trial
 // (chance from mood, stamina and wit; a failed trial comes back 3 weeks later).
 

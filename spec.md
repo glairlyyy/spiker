@@ -86,7 +86,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     Camp weeks 26–28 before it. Winning → national team (lore.md §3).
   - Street battles (§4.6) and the faction war (§4.7) are unchanged.
 
-- §4.12 Faction dossier **[locked, not built]**: a window per faction (all 5; opened from its HQ panel and from the
+- §4.12 Faction dossier **[built]**: a window per faction (all 5; opened from its HQ panel and from the
   Factions drawer) with everything the player can know about it:
   - State: Weakened (lost ≥ FRONT.weakAt places) / Pressed (lost 1) / Rising (took more than lost) / Stable;
     minors: "Not in the war". Border meters vs the other majors; places taken / lost; price and quality multipliers.
@@ -98,7 +98,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   - Your standing with it.
   Text follows spec §6 (numbers true; `registrar` voice for labels). Data comes from a DOM-free model
   (`Dossier.build(run, r)`), the window only renders it.
-- §4.13 Meta progression **[locked, not built]**: none. No Legacy points, unlocks, pure runs, Hall of Fame or
+- §4.13 Meta progression **[built — removed]**: none. No Legacy points, unlocks, pure runs, Hall of Fame or
   legend inheritance. Every career starts the same: free agent, base budget and caps (CAREER), no starting skill,
   no team pick. Challenge modes (Hard league, Short season) stay as plain options. The run-end screen keeps the
   result, rank and growth chart.

@@ -14,8 +14,8 @@ earlier files **at load time** (inside functions, anything loaded is fine).
 | Engine | `js/engine/` | Pure simulation. **No DOM, canvas or audio.** Runs headless (odds, preseason, tests). |
 | Audio | `js/audio/` | Synthesized WebAudio effects (`sfx.*`). |
 | Game | `js/game/` | Global state `G` (settings, current screen), screen router (`Screens`, `navigate()`), bracket helpers (career Cup). |
-| Career | `js/career/` | Career-mode rules (run, training, events, skills, Cup, Legacy). **No DOM** — testable headlessly. |
-| UI | `js/ui/` | DOM screens: menu, match screen, career create/week/result, Legacy, skill encyclopedia. |
+| Career | `js/career/` | Career-mode rules (run, training, events, skills, Cup). **No DOM** — testable headlessly. |
+| UI | `js/ui/` | DOM screens: menu, match screen, career create/week/result (`career-end.js`), skill encyclopedia. |
 | Render | `js/render/`, `js/render3d/` | Beat playback and the screen-space layer (canvas); the 3D scene, players and poses (three.js + VRM). |
 
 ## Engine flow
@@ -56,7 +56,7 @@ mkTeams() ─► simBalance() ─► newMatch(a, b, record)
 
 ## Screens
 
-`menu`, `match`, `create`, `career`, `legacy`, `encyclopedia` — switch with `navigate(name, …args)`.
+`menu`, `match`, `create`, `career`, `encyclopedia` — switch with `navigate(name, …args)`.
 The match screen takes a fixture: `navigate('match', { a, b, round, back, onFinish(m) → message, onLeave() })`
 (career Cup and league games, the Monster exhibition). There is no stand-alone tournament/betting mode.
 
@@ -78,10 +78,7 @@ The match screen takes a fixture: `navigate('match', { a, b, round, back, onFini
   `data/events.js`, `data/skills.js`. Special events ('limit', 'sponsor') are built in `Events.def`.
 - Skills reach the engine only through `skillMod(p, key)` and bonds through `bondCombo(a, b)` (`engine/skills.js`);
   both are neutral for normal players and draw no random numbers.
-- **Legacy** (`career/legacy.js`, `KEYS.legacy`): points per run (× challenge modes `MODES` and the pure-run bonus),
-  unlocks that can each be switched off (`off`), a run keeps the set that was on when it started (`run.legacy`,
-  `Legacy.on`). The **Hall of Fame** keeps the 6 best careers: a new player can inherit from one, and legends may
-  appear as stars on other teams.
+- No meta progression: every career starts the same (free agent, `CAREER.budget` / `createCap` / `staMax`); challenge modes (`MODES`) are plain options.
 - UI: `ui/icons.js` draws the active (bolt + type) / passive (aura) skill icons used in the shop, player card and
   encyclopedia; the result screen has a season growth chart from `run.hist`.
 
@@ -299,6 +296,17 @@ and not used in play yet. A player lives in exactly one place; `you` and the pic
 `Pool.draw(run, r, n)` returns n squads `[S, MB, WS, WS]` (new arrays, nothing mutated): weighted by ovr (`DRAW` in world.js),
 you are a candidate only while signed with r, and a standing ≥ `DRAW.sure` puts you in squad 1.
 
+## Faction dossier
+
+`Dossier.build(run, r)` (`js/career/dossier.js`, DOM-free, read-only) returns one faction's window data: standing, state
+(weakened / pressed / rising / stable / minor), border meters, places taken / lost, price and quality multipliers,
+the facilities it holds now (seized ones marked, with `City.access`), its clubs (join text, `World.canJoin`) and the pool
+roster. Ratings and elements are `null` until one of its clubs is scouted or you are a member. It reuses `City`, `Front`,
+`World`, `Pool` and `Training`; no rules live in it.
+
+The window is `ui/career-dossier.js` (`dossierCard`, `openDossier(r)` / `closeDossier()`, Esc closes; state `CW.dossier`): opened by the
+HQ panel's Dossier button and the faction names in the Factions drawer, rendered in the hub's modal layer when no event card is up.
+
 ## Island map (training weeks)
 
 `js/data/world.js`: REGIONS (wei = the city, wu = the whole coastline band, shu = the inland highlands — the three
@@ -379,7 +387,7 @@ Career runs carry `v` (`RUN_VERSION`, `career/run.js`). Bump the version when th
 
 - **golden** engine output (teams, recorded matches incl. beats, simulated matches, monster teams) → `tests/golden.json`;
 - rally invariants over 300 matches and that every beat act kind has a renderer handler;
-- data integrity (events, skills, unlocks, calendar), full career runs, save round-trip, save migration, every Legacy unlock.
+- data integrity (events, skills, calendar), full career runs, save round-trip, save migration.
 
 A deliberate gameplay change updates the golden file with `node tests/run.js --update` — review the diff first.
 Pure refactors must pass **without** `--update`.

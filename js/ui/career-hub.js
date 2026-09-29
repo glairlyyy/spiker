@@ -50,6 +50,7 @@ function renderCareer() {
     ${toast ? `<div class="htoast" role="status">${esc(toast)}</div>` : ''}
     ${CW.drawer ? hubDrawer(run) : ''}
     ${card ? `<div class="hubmodal ${card.dim ? 'dim' : ''}"><div class="hubcard ${card.cls || ''}">${card.html}</div></div>` : ''}
+    ${CW.dossier && !card ? `<div class="hubmodal"><div class="hubcard wide">${dossierCard(run, CW.dossier)}</div></div>` : ''}
   </section>`;
   mapMount(run);
 }

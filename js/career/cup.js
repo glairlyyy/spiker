@@ -51,15 +51,14 @@ const Cup = {
     let m;
     while ((m = advanceBracket(run.cup.sched))) Cup.simulate(run, m);
   },
-  /** Match-day form: your mood, +0.1 per 80+ bond for your side, Home crowd, the captain's talk; noise for the opponents. */
+  /** Match-day form: your mood, +0.1 per 80+ bond for your side, the captain's talk; noise for the opponents. */
   prepare(run, opp, kind) {
     const you = Run.you(run),
       mine = Run.myTeam(run),
       bonds = Run.mates(run).filter(m => (you.bond[m.id] || 0) >= 80).length;
-    const home = kind === 'cup' && Legacy.on(run, 'home') ? 0.3 : 0,
-      talk = kind === 'cup' && you.cap ? run.talk : null;
+    const talk = kind === 'cup' && you.cap ? run.talk : null;
     for (const p of mine.P) {
-      let f = (p === you ? MOODS[run.mood].form : 0.1 * bonds) + home;
+      let f = p === you ? MOODS[run.mood].form : 0.1 * bonds;
       if (talk === 'fire' && p !== you) f += 0.35;
       if (talk === 'calm') f = Math.max(f, 0.2);
       p.form = +Math.min(1, f).toFixed(2);
@@ -175,27 +174,11 @@ const Cup = {
       Run.save(run);
     } else Cup.end(run, place);
   },
-  /** End the run: rank, Legacy points (and a Hall of Fame entry). place = your Grand Cup finish. */
+  /** End the run: rank and result. place = your Grand Cup finish. */
   end(run, place) {
-    const you = Run.you(run),
-      rank = rankOf(run.fans),
-      stats = { ...Object.fromEntries(STATK.map(k => [k, you[k]])), wit: you.wit, lead: you.lead };
-    const el = you.elSeen || you.elOn ? { el: you.el, sig: you.sig, elOn: !!you.elOn } : {};
+    const rank = rankOf(run.fans);
     Run.snap(run);
-    const earned = Legacy.record({
-      name: you.name,
-      role: you.role,
-      fans: run.fans,
-      rank,
-      place,
-      cups: run.cups,
-      pure: run.pure,
-      mode: run.mode,
-      stats,
-      skills: you.skills,
-      ...el
-    });
-    run.result = { place, rank, earned, cups: run.cups, champ: bracketChampion(run.cup.sched) };
+    run.result = { place, rank, cups: run.cups, champ: bracketChampion(run.cup.sched) };
     Run.save(run);
   }
 };

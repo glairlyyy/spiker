@@ -128,7 +128,7 @@ const World = {
       sellers = T.filter(t => t !== buyer);
     for (let tries = 0; tries < 4; tries++) {
       const s = pick(sellers),
-        cand = s.P.filter(p => p !== you && !p.legend),
+        cand = s.P.filter(p => p !== you),
         star = cand.reduce((a, p) => (!a || ovr(p) > ovr(a) ? p : a), null);
       if (!star) continue;
       const mine = buyer.P.find(p => p.role === star.role && p !== you);

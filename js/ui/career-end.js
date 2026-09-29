@@ -1,4 +1,4 @@
-// Career: run result screen (both cups, growth chart), the Legacy unlock shop with on/off switches, the Hall of Fame.
+// Career: run result screen (both cups, rank, growth chart).
 
 function renderRunEnd() {
   const run = RUN,
@@ -19,15 +19,9 @@ function renderRunEnd() {
       <p>${esc(you.name)} · ${ROLE_NAME[you.role]} · OVR ${ovr(you)} · ${run.fans.toLocaleString()} fans</p>
       <ul class="cupres">${cups.map(cupLine).join('')}</ul>
       <p class="small mute">${run.plays.k} K · ${run.plays.blk} B · ${run.plays.ace} A${info(`Across all matches: ${run.plays.k} kills, ${run.plays.blk} blocks, ${run.plays.ace} aces. Grades: ${(run.grades || []).join(' ') || '—'}`)}</p>
-      <p><b>+${r.earned} Legacy points</b>${info(
-        `1 per ${LEGACY_PER_FANS} fans${run.pure ? `, ×${PURE_BONUS} pure run` : ''}${Object.keys(MODES)
-          .filter(k => run.mode && run.mode[k])
-          .map(k => `, ×${MODES[k].legacy} ${MODES[k].name.toLowerCase()}`)
-          .join('')}${crown ? `, +${DOUBLE_CROWN} Double Crown` : ''}`
-      )}</p></div>
+      </div>
     </div>
     ${growthChart(run)}
-    ${legacyShop()}
     <div class="trow"><button class="btn hot" onclick="finishRun('create')">New career</button><button class="btn" onclick="finishRun('menu')">Main menu</button></div>
   </section>`;
 }
@@ -56,7 +50,7 @@ function growthChart(run) {
     .join('');
   return `<div class="panel"><h3>Your season</h3>
     <svg class="growth" viewBox="0 0 600 160" role="img" aria-label="Stat growth over the season">${grid}${cups}${['power', 'def', 'speed', 'jump', 'ovr'].map(line).join('')}</svg>
-    <p class="small legend">${Object.entries(COL)
+    <p class="small chartkey">${Object.entries(COL)
       .map(([k, c]) => `<span><i style="background:${c}"></i>${k === 'ovr' ? 'OVR' : STATNAME[k]}</span>`)
       .join('')}</p></div>`;
 }
@@ -65,40 +59,3 @@ function finishRun(to) {
   RUN = null;
   navigate(to);
 }
-function legacyShop() {
-  const L = Legacy.load();
-  return `<div class="panel"><h3>Legacy unlocks${info('Permanent bonuses for new careers, bought with Legacy points from fans at the end of each run. Switch owned unlocks off for a tougher run — changes apply from your next career.')} <span class="pts">${L.pts} pts</span></h3>
-    <div class="skills compact lg">${UNLOCKS.map(u => {
-      const own = L.owned.includes(u.id),
-        off = L.off.includes(u.id),
-        locked = u.need && !L.owned.includes(u.need);
-      return own
-        ? `<button class="sk own ${off ? 'off' : ''}" onclick="toggleUnlock('${u.id}')" role="switch" aria-checked="${!off}" ${tip(u.desc)}><b>${esc(u.name)}</b><span class="sw"><i></i>${off ? 'Off' : 'On'}</span></button>`
-        : `<button class="sk" onclick="buyUnlock('${u.id}')" ${!Legacy.canBuy(L, u) ? 'aria-disabled="true"' : ''} ${tip(u.desc + (locked ? ' · needs the previous tier' : ''))}><b>${esc(u.name)}</b><span>${locked ? '🔒 ' : ''}${u.cost}</span></button>`;
-    }).join('')}</div>
-    ${hallOfFame(L)}
-    ${L.history.length ? `${fold('runs', `<h4>Recent runs</h4>`, `<ol class="log">${L.history.map(h => `<li><b>${h.rank}</b> ${esc(h.name)} (${h.role}) — ${esc(h.place)}, ${h.fans.toLocaleString()} fans</li>`).join('')}</ol>`)}` : ''}</div>`;
-}
-function hallOfFame(L) {
-  const hd = `<h4>Hall of Fame${info('Your best careers (top 6 by fans) enter the Hall of Fame. New players can inherit from a legend, and legends may turn up as stars on other teams.')}</h4>`;
-  if (!L.hof.length) return hd + `<p class="small mute">Empty</p>`;
-  return `${hd}<ol class="hof">${L.hof
-    .map(
-      h =>
-        `<li><b>${h.rank}</b> ${esc(h.name)} <i class="mute">${ROLE_NAME[h.role]}</i> · ${h.fans.toLocaleString()} fans${h.el ? ` · <span style="color:${ECOL[h.el]}" title="${esc(h.sig ? h.sig.name : '')}">${ENAME[h.el]}${h.elOn ? '' : ' (locked)'}</span>` : ''} · ${STATK.map(k => `${STATNAME[k][0]}${h.stats[k]}`).join(' ')}${(h.cups || []).some(c => c.place === 'Champion') ? ' · 🏆' : ''}</li>`
-    )
-    .join('')}</ol>`;
-}
-function buyUnlock(id) {
-  if (!Legacy.buy(id)) return;
-  G.view === 'legacy' ? renderLegacy() : renderRunEnd();
-}
-function toggleUnlock(id) {
-  if (!Legacy.toggle(id)) return;
-  G.view === 'legacy' ? renderLegacy() : renderRunEnd();
-}
-function renderLegacy() {
-  A = null;
-  $('#app').innerHTML = `<section class="runend">${legacyShop()}<button class="btn" onclick="navigate('menu')">Back</button></section>`;
-}
-Screens.legacy = renderLegacy;

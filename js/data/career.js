@@ -1,4 +1,4 @@
-// Career mode constants: creation budget, trainings, mood levels, calendar, rewards, ranks, Legacy unlocks.
+// Career mode constants: creation budget, trainings, mood levels, calendar, rewards, ranks.
 
 const CAREER = {
   weeks: 28, // two blocks: weeks 1–24 → Skyline Cup, weeks 25–28 → Grand Cup
@@ -50,7 +50,6 @@ const PLACES = {
   Final: { fans: 1500, sp: 60 },
   Champion: { fans: 3000, sp: 90 }
 };
-const DOUBLE_CROWN = 10; // Legacy points for winning both cups
 /** Training depth: facility levels (uses needed per level), Hard option, streaks, limit-break gates. */
 const TRAIN_X = {
   lvUses: [0, 4, 8, 18, 26], // Lv 1–5
@@ -115,12 +114,11 @@ const SPONSORS = {
   },
   spike: { name: 'Spike TV', perk: '+20% fans from matches', cond: 'Grade A or better in your next match', kind: 'grade' }
 };
-/** Challenge modes chosen at creation: harder runs pay more Legacy points. */
+/** Challenge modes chosen at creation (optional handicaps). */
 const MODES = {
-  hard: { name: 'Hard league', desc: 'Every other player starts stronger and grows faster.', legacy: 1.3 },
-  short: { name: 'Short season', desc: 'Start at week 5 — four fewer training weeks.', legacy: 1.2 }
+  hard: { name: 'Hard league', desc: 'Every other player starts stronger and grows faster.' },
+  short: { name: 'Short season', desc: 'Start at week 5 — four fewer training weeks.' }
 };
-const PURE_BONUS = 1.25; // Legacy points for a run with every unlock switched off
 /** League growth: every other player grinds each week; some break through to star, and stars to OP. */
 const GROWTH = {
   weekly: [2, 4], // stat points per week (× potential), spread over stats, key stat weighted double
@@ -141,28 +139,4 @@ const RANKS = [
   ['A', 7000],
   ['B', 4000],
   ['C', 0]
-];
-const LEGACY_PER_FANS = 500;
-const UNLOCKS = [
-  { id: 'budget1', name: 'Extra budget I', cost: 5, desc: '+5 creation points' },
-  { id: 'budget2', name: 'Extra budget II', cost: 10, desc: '+5 creation points', need: 'budget1' },
-  { id: 'budget3', name: 'Extra budget III', cost: 20, desc: '+5 creation points', need: 'budget2' },
-  { id: 'fresh', name: 'Fresh legs', cost: 8, desc: 'Stamina cap 120' },
-  { id: 'scout', name: 'Scout', cost: 10, desc: "See your team's players before joining" },
-  { id: 'head', name: 'Head start', cost: 12, desc: 'Start with one skill of your choice' },
-  { id: 'pick', name: 'Team pick', cost: 15, desc: 'Choose your team instead of random' },
-  // start-of-run boosts
-  { id: 'vibes', name: 'Good vibes', cost: 6, desc: 'Start every run in Great mood' },
-  { id: 'fans', name: 'Fan club', cost: 8, desc: 'Start with 1,000 fans' },
-  { id: 'fund', name: 'Skill fund', cost: 8, desc: 'Start with 100 skill points' },
-  { id: 'leader', name: 'Born leader', cost: 10, desc: '+20 leadership at the start (captain material)' },
-  { id: 'gym', name: 'Veteran coach', cost: 10, desc: 'Every training starts at facility Lv 2' },
-  { id: 'bonded', name: 'Old friends', cost: 12, desc: 'Start with 30 bond with every teammate' },
-  { id: 'spurt', name: 'Growth spurt', cost: 14, desc: 'Creation cap 75 per stat (instead of 70)' },
-  { id: 'eye', name: 'Talent eye', cost: 14, desc: 'Your teammates have higher hidden potential (grow faster)' },
-  { id: 'home', name: 'Home crowd', cost: 16, desc: 'Your team starts every Cup match fired up (+mood)' },
-  // teammates
-  { id: 'starmate', name: 'Star teammate', cost: 18, desc: 'One teammate starts as a ★ star' },
-  { id: 'starmate2', name: 'Star duo', cost: 30, desc: 'Two teammates start as ★ stars', need: 'starmate' },
-  { id: 'opmate', name: 'OP teammate', cost: 45, desc: 'One teammate starts as an OP red star', need: 'starmate' }
 ];

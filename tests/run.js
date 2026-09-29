@@ -133,7 +133,6 @@ test('data: events, skills, unlocks and calendar are well-formed', () => {
     assert(s.name && s.desc && s.cost > 0, 'skill fields missing: ' + id);
     assert(s.tech ? s.req && g.SKILL_HOW[id] : s.key && s.val, 'skill shape wrong: ' + id);
   }
-  for (const u of g.UNLOCKS) assert(!u.need || g.UNLOCKS.some(x => x.id === u.need), 'unlock needs missing: ' + u.id);
   for (const w of Object.keys(g.CALENDAR)) assert(+w >= 1 && +w <= g.CAREER.weeks, 'calendar week out of range ' + w);
 });
 
@@ -269,43 +268,6 @@ test('career: Limit Break gates, facility Lv 5 and Hard training', () => {
     h = g.Training.preview(run, 'power', true);
   assert(h.main[2] > n && h.sta === 2 * g.Training.preview(run, 'power', false).sta, 'Hard: more gain, double stamina');
 });
-test('career: Legacy switches and pure runs', () => {
-  const g = load(12);
-  g.store.setJSON(g.KEYS.legacy, { pts: 0, owned: ['fans', 'fund'], off: [], runs: 0, history: [] });
-  g.Legacy.toggle('fans');
-  const a = g.Run.create(g.Run.draft(), { role: 'S', name: 'Off', alloc: { power: 10, def: 10, speed: 30, jump: 10 }, witSteps: 0 });
-  eq(a.fans, 0, 'a switched-off unlock does not apply');
-  eq(a.sp, 100, 'the others still do');
-  const b = g.Run.create(g.Run.draft(), {
-    role: 'S',
-    name: 'Pure',
-    alloc: { power: 10, def: 10, speed: 30, jump: 10 },
-    witSteps: 0,
-    pure: true
-  });
-  eq(b.sp, 0, 'pure run: nothing applies');
-  eq(g.Legacy.earned({ fans: 5000, pure: true }), 12, 'pure run earns ×1.25');
-  eq(g.Legacy.earned({ fans: 5000, cups: [{ place: 'Champion' }, { place: 'Champion' }] }), 20, 'Double Crown +10');
-});
-test('career: every Legacy unlock applies at the start of a run', () => {
-  const g = load(8);
-  g.store.setJSON(g.KEYS.legacy, { pts: 0, owned: g.UNLOCKS.map(u => u.id), runs: 0, history: [] });
-  const run = g.Run.create(g.Run.draft(), { role: 'S', name: 'Rich', alloc: { power: 10, def: 10, speed: 30, jump: 10 }, witSteps: 1 });
-  const you = g.Run.you(run),
-    mates = g.Run.mates(run);
-  eq(run.mood, 4, 'Good vibes');
-  eq(run.fans, 1000, 'Fan club');
-  eq(run.sp, 100, 'Skill fund');
-  eq(run.staMax, 120, 'Fresh legs');
-  assert(mates.filter(p => p.op).length === 1 && mates.filter(p => p.star).length === 3, 'OP teammate + Star duo');
-  assert(
-    mates.every(p => you.bond[p.id] >= 30),
-    'Old friends'
-  );
-  eq(g.Legacy.createCap(), 75, 'Growth spurt');
-  eq(g.Legacy.budget(), g.CAREER.budget + 15, 'Extra budget I–III');
-});
-
 test('engine: elements — rarity, every element fires, counters, captain buff', () => {
   const g = load(21);
   // rarity: regular players never; OP always; roughly 1 in 4 other stars
@@ -372,8 +334,7 @@ test('career: element hidden → revealed → Element Trial → unlocked, and sa
       role: 'WS',
       name: 'Spark',
       alloc: { power: 20, def: 10, speed: 10, jump: 20 },
-      witSteps: 0,
-      team: 0
+      witSteps: 0
     }),
     you = g.Run.you(run);
   assert(you.el && !you.elOn && !you.elSeen, 'your element starts hidden and locked');
@@ -454,6 +415,8 @@ test('career: free agent start, club join conditions, paydays, transfers, specta
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Walk-on', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
     you = g.Run.you(run);
   assert(g.World.isFree(run) && g.Run.myTeam(run) === run.pickup && run.pickup.P.length === 4, 'starts on a pickup squad');
+  eq(run.staMax, g.CAREER.staMax, 'base stamina cap');
+  assert(!('legacy' in run) && !('pure' in run) && !('legend' in run), 'no meta-progression fields on a new run');
   eq(run.money, g.ECON.start, 'starting money');
   // a club with a fee you can't pay is locked; an open club signs you and you take a same-role slot
   const pricey = g.FACTIONS.findIndex(f => f.join.fee > run.money),
@@ -716,6 +679,41 @@ test('career: pool draw — squads, roles, weights, your spot', () => {
   run.rep.wei = 60;
   const you = g.Run.you(run);
   for (let i = 0; i < 20; i++) assert(g.Pool.draw(run, 'wei').flat().includes(you), 'standing 60 → always drawn');
+});
+
+test('career: faction dossier — state, places, roster gate', () => {
+  const g = load(94),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Dossier', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
+  run.event = null;
+  run.days = 7;
+  let d = g.Dossier.build(run, 'wei');
+  eq(d.state, 'stable', 'a fresh Wei is stable');
+  assert(d.places.length >= 4 && d.places.every(p => p.access && typeof p.price === 'number'), 'Wei has facilities with price and access');
+  eq(d.roster.length, g.POOL.wei, 'the roster is the whole pool');
+  assert(
+    d.roster.every(p => p.ovr === null && p.el === null),
+    'unscouted: ratings and elements unknown'
+  );
+  assert(d.fronts.length === 2 && d.fronts.every(f => f.meter === 0), 'two fronts, no pressure yet');
+  const wei = g.FACTIONS.findIndex(f => f.region === 'wei');
+  assert(g.City.scout(run, wei), 'scout a Wei club');
+  d = g.Dossier.build(run, 'wei');
+  assert(d.scouted && d.roster.every(p => typeof p.ovr === 'number'), 'scouted: every rating shows');
+  const before = JSON.stringify(run.teams.map(g.teamToJSON));
+  g.Front.seize(run, 'wu', 'wei', 'wei-wu');
+  const wu = g.Dossier.build(run, 'wu');
+  eq(g.Dossier.build(run, 'wei').state, 'pressed', 'one place lost: pressed');
+  const seized = wu.places.find(p => p.seized);
+  assert(
+    seized && seized.from === 'wei' && !g.Dossier.build(run, 'wei').places.some(p => p.id === seized.id),
+    'a seized place moves to the holder'
+  );
+  eq(wu.state, 'rising', 'the taker is rising');
+  g.Front.seize(run, 'wu', 'wei', 'wei-wu');
+  eq(g.Dossier.build(run, 'wei').state, 'weakened', 'two places lost: weakened');
+  eq(JSON.stringify(run.teams.map(g.teamToJSON)), before, 'building a dossier changes no team');
+  const gl = g.Dossier.build(run, 'gloria');
+  assert(gl.state === 'minor' && gl.fronts.length === 0, 'St. Gloria is not in the war');
 });
 
 // ---------- report ----------

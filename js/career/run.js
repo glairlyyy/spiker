@@ -18,30 +18,20 @@ const Run = {
   /** Final stat value shown at creation: base + allocated points + the role's usual bias. */
   createdStat: (role, k, alloc) => clamp(CAREER.statBase + alloc + (RB[role][k] || 0), 25, 99),
   /**
-   * Start a run. spec = { role, name, alloc: {power, def, speed, jump}, witSteps, team?, skill?,
-   *   pure? (every Legacy unlock off), mode? ({hard, short}), legend? (Hall of Fame index to inherit from) }.
-   * Your player takes the same-role slot on the team (the setter, the middle, or the first wing).
+   * Start a run. spec = { role, name, alloc: {power, def, speed, jump}, witSteps, mode? ({hard, short}) }.
+   * You always start as a free agent: your player takes the same-role slot on the pickup squad.
    */
   create(draft, spec) {
-    const legacy = spec.pure ? [] : Legacy.active(),
-      mode = spec.mode || {},
-      legend = spec.legend != null && !spec.pure ? Legacy.load().hof[spec.legend] : null;
+    const mode = spec.mode || {};
     const teams = draft.teams,
-      free = spec.team == null, // no Team pick: you start as a free agent on a pickup squad
       reserve = draft.reserve || Pool.build(teams, new Set(teams.flatMap(x => x.P.map(p => p.name)))),
-      pickup = free ? World.pickup(new Set(teams.concat(Object.values(reserve)).flatMap(x => x.P.map(p => p.name)))) : null,
-      ti = free ? null : spec.team,
-      t = free ? pickup : teams[ti],
+      pickup = World.pickup(new Set(teams.concat(Object.values(reserve)).flatMap(x => x.P.map(p => p.name)))),
+      t = pickup,
       role = spec.role,
       slot = role === 'S' ? 'S' : role === 'MB' ? 'MB' : 'W0',
       old = t.P.find(p => p.slot === slot),
       stats = {};
     for (const k of STATK) stats[k] = Run.createdStat(role, k, spec.alloc[k] || 0);
-    // Hall of Fame inheritance: a tenth of the legend's gains over 40 in each stat, and one of their skills
-    if (legend)
-      for (const k of STATK)
-        stats[k] = Math.min(Legacy.createCap(legacy) + 5, stats[k] + Math.max(0, Math.round(((legend.stats[k] || 40) - 40) * 0.1)));
-    const inherit = legend ? (legend.skills || []).find(id => SKILLS[id] && skillRoleOk(SKILLS[id], role) && id !== spec.skill) : null;
     const you = createPlayer({
       name: spec.name,
       role,
@@ -55,8 +45,7 @@ const Run = {
       num: old.num,
       lead: Math.round(rnd(30, 60)),
       you: true,
-      ...(legend && legend.el ? { el: legend.el, sig: legend.sig, elSeen: true } : {}), // an heir knows their element at once
-      skills: [spec.skill, inherit].filter(Boolean),
+      skills: [],
       bond: {},
       ...stats
     });
@@ -83,15 +72,12 @@ const Run = {
         }
         if (T.P.length) finalizeTeam(T);
       }
-    // a Hall of Fame legend may turn up as a star on another team
-    const hof = spec.pure ? [] : Legacy.load().hof.filter(h => h !== legend);
-    if (hof.length && R() < 0.5) Run.addLegend(teams, ti == null ? -1 : ti, pick(hof));
-    const staMax = Legacy.staMax(legacy);
+    const staMax = CAREER.staMax;
     const run = {
       v: RUN_VERSION,
       week: mode.short ? 5 : 1,
       teams,
-      team: ti,
+      team: null,
       youId: you.id,
       sta: staMax,
       staMax,
@@ -108,11 +94,8 @@ const Run = {
       plays: { k: 0, blk: 0, ace: 0 },
       lastMain: KEYSTAT[role],
       result: null,
-      // v3: Legacy set in force, challenge modes, two cups, training depth, goals, sponsors, history
-      legacy,
-      pure: !!spec.pure,
+      // v3: challenge modes, two cups, training depth, goals, sponsors, history
       mode: { hard: !!mode.hard, short: !!mode.short },
-      legend: legend ? legend.name : null,
       cups: [],
       lb: Object.fromEntries(STATK.map(k => [k, 0])),
       streak: null,
@@ -149,56 +132,12 @@ const Run = {
       pos: CITY.airport.slice(), // where you stand on the map
       fog: [CITY.airport.slice()] // the points you've stood on (the map is dark elsewhere)
     };
-    Run.log(
-      run,
-      free
-        ? `${you.name} arrives in the city as a free agent (${ROLE_NAME[role].toLowerCase()}) — find a club that will take you.`
-        : `${you.name} joins ${t.name} as ${ROLE_NAME[role].toLowerCase()}.`
-    );
-    if (legend)
-      Run.log(
-        run,
-        `Inherited from Hall of Famer ${legend.name}${inherit ? ` — including ${SKILLS[inherit].name}` : ''}${legend.el ? `. Your element is ${ENAME[legend.el]}` : ''}.`
-      );
-    Legacy.applyStart(run);
+    Run.log(run, `${you.name} arrives in the city as a free agent (${ROLE_NAME[role].toLowerCase()}) — find a club that will take you.`);
     City.roll(run); // the island's places: which premium ones are overhyped, which rough ones are gems
     Training.rollFloor(run);
     Goals.set(run);
     Run.snap(run);
     return run;
-  },
-  /** Put a Hall of Fame legend on a random other team as a ★ star (in their role's slot). */
-  addLegend(teams, mine, h) {
-    const others = teams.filter(t => t.i !== mine),
-      t = pick(others),
-      slot = h.role === 'S' ? 'S' : h.role === 'MB' ? 'MB' : 'W1',
-      old = t.P.find(p => p.slot === slot);
-    if (!old) return;
-    const st = {};
-    for (const k of STATK) st[k] = Math.round((h.stats[k] || 60) * 0.92);
-    const p = createPlayer({
-      name: h.name,
-      role: h.role,
-      slot,
-      wit: +Math.min(2, (h.stats.wit || 1.2) * 0.92).toFixed(2),
-      hair: old.hair,
-      look: mkLook(h.role),
-      move: old.move,
-      bmove: old.bmove,
-      team: t,
-      num: old.num,
-      lead: h.stats.lead || 60,
-      star: true,
-      bonus: 18,
-      legend: true,
-      pot: 1,
-      ...(h.el ? { el: h.el, sig: h.sig, elOn: !!h.elOn } : {}),
-      ...st
-    });
-    t.P[t.P.indexOf(old)] = p;
-    [t.s, t.mb] = t.P;
-    t.ws = [t.P[2], t.P[3]];
-    finalizeTeam(t);
   },
   /** The cup being played right now (or null between cups). */
   cupDef: run => (run.cup && !run.cup.done ? CUPS.find(c => c.id === run.cup.id) : null),
@@ -353,7 +292,7 @@ const Run = {
     if (!Array.isArray(run.pos)) run.pos = (REGIONS[run.loc] || REGIONS.wu).at.slice();
     if (!Array.isArray(run.fog)) run.fog = [run.pos.slice()];
     if (run.clash && !CLASH.sites[run.clash.site]) run.clash = null;
-    if (!Number.isFinite(run.staMax) || run.staMax <= 0) run.staMax = Legacy.staMax(run.legacy);
+    if (!Number.isFinite(run.staMax) || run.staMax <= 0) run.staMax = CAREER.staMax;
     if (!Number.isFinite(run.sta)) run.sta = run.staMax;
     if (!Number.isInteger(run.mood) || !MOODS[run.mood]) run.mood = 2;
     if (!run.mode || typeof run.mode !== 'object') run.mode = { hard: false, short: false };
@@ -379,3 +318,5 @@ const RUN_VERSION = 2;
 /** version → upgrade step (none yet; v2: faction reserves — older saves are dropped; add steps when the saved shape changes). */
 const RUN_MIGRATIONS = {};
 const ROLE_NAME = { S: 'Setter', MB: 'Middle blocker', WS: 'Wing spiker' };
+/** Run rank letter for a fan count (RANKS is ordered from the top rank down). */
+const rankOf = fans => RANKS.find(([, min]) => fans >= min)[0];
