@@ -1,4 +1,4 @@
-# Skyline Cup 3D — architecture
+# Spite & Spike — architecture
 
 A 4v4 anime volleyball simulator drawn in 3D. Plain HTML + CSS + classic `<script>` files (no build step), plus
 ES modules for the 3D renderer (`js/render3d/`, loaded with `import()`).
