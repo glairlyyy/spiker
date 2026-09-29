@@ -53,22 +53,25 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 - §4.9 Map architecture: rules → MapModel → MapView (see CLAUDE.md Layout). A three.js island map **[locked, later]**
   replaces only `map-svg.js` by implementing the MapView contract.
 - §4.10 Facility access **[locked, not built]**: a place is usable if you can pay, your standing with its owner
-  region isn't a grudge (negative), and you meet the owner's condition (per faction, lore.md §5 dogma; values set in
-  the balance pass). Ownership changes on seizure, so access can flip. Today standing is display-only.
+  region isn't a grudge (standing ≤ `ACCESS.grudge`, default −20, tuned in the balance pass), and you meet the owner's condition (per faction, lore.md §5 dogma; values set in
+  the balance pass). Members of the owning faction always get in. Central Academy grounds and Home are always
+  open. Ownership changes on seizure, so access can flip. Today standing is display-only.
 - §4.11 Competition structure **[locked, not built]** — replaces the 8 fixed teams, warm-ups and both cups:
   - Faction pools: each faction holds a roster instead of fixed teams. Sizes: Wei 20, Wu 14, Shu 10, Street
     Outlaws 6, St. Gloria 5 (tunable). Squads of 4 are drawn per event.
   - Draw: weighted by rating and standing with that faction; a guaranteed spot above a high-standing threshold
     (value set in the balance pass). A signed player may not be drawn — the price of a big pool.
-  - Monthly evaluation (every 4 weeks, 7 per run), a benefit of your status:
+  - Monthly evaluation (weeks 4, 8, 12, 16, 20, 24 — replaces warm-ups), a benefit of your status:
     - Free agent in the **Academy squad** (the pickup squad: 3 teammates assigned by Central Academy) → Central
-      Academy evaluation. Leaving the squad is allowed anytime; afterwards no evaluation invites, no rejoining.
+      Academy evaluation vs a squad drawn from a random major's pool. Leaving the squad is allowed anytime;
+      afterwards no evaluation invites, no rejoining.
     - Signed with a major (Wei/Wu/Shu) → that faction's own evaluation: squads drawn from its pool
       (floor(pool ÷ 4) squads) play each other.
     - Signed with a minor, or alone → no evaluation matches.
     - Rewards = today's warm-up rewards. Results feed standing and the draw weight.
   - **U21 Final Cup** (week 28): the career goal. Squads drawn from every faction pool (floor(pool ÷ 4) each)
-    plus the Academy squad; bracket seeded by rating. Winning → national team (lore.md §3).
+    plus the Academy squad (13 squads with default sizes); 16-slot bracket seeded by rating, top seeds get byes.
+    Camp weeks 26–28 before it. Winning → national team (lore.md §3).
   - Street battles (§4.6) and the faction war (§4.7) are unchanged.
 
 ## 5. Open questions — do not build until decided
