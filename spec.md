@@ -86,6 +86,23 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     Camp weeks 26–28 before it. Winning → national team (lore.md §3).
   - Street battles (§4.6) and the faction war (§4.7) are unchanged.
 
+- §4.12 Faction dossier **[locked, not built]**: a window per faction (all 5; opened from its HQ panel and from the
+  Factions drawer) with everything the player can know about it:
+  - State: Weakened (lost ≥ FRONT.weakAt places) / Pressed (lost 1) / Rising (took more than lost) / Stable;
+    minors: "Not in the war". Border meters vs the other majors; places taken / lost; price and quality multipliers.
+  - Facilities: every place the faction holds now (incl. seized ones, marked), with stat trained, price, quality
+    (the advertised value until you've trained there), facility level, and whether it lets you in (`City.access`).
+  - Roster: every pool player (league squads + reserves) — name, role, which squad or "reserve". Ratings and awakened
+    elements only once scouted (any of its clubs scouted this run) or if you're a member. Unscouted = "unknown".
+  - Clubs: its league squads, join conditions, Sign when possible (same rules as the HQ panel).
+  - Your standing with it.
+  Text follows spec §6 (numbers true; `registrar` voice for labels). Data comes from a DOM-free model
+  (`Dossier.build(run, r)`), the window only renders it.
+- §4.13 Meta progression **[locked, not built]**: none. No Legacy points, unlocks, pure runs, Hall of Fame or
+  legend inheritance. Every career starts the same: free agent, base budget and caps (CAREER), no starting skill,
+  no team pick. Challenge modes (Hard league, Short season) stay as plain options. The run-end screen keeps the
+  result, rank and growth chart.
+
 ## 5. Open questions — do not build until decided
 - §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story
   events, club switching, what standing unlocks beyond access.
@@ -93,7 +110,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   (unique characters mapped by hand with own model + portrait); Live2D (pixi-live2d-display) or video loops
   (WebM / animated WebP) for special characters at big moments. When built: one call,
   `Portrait.show(el, character, mood)`, so the kind can vary per character.
-- §5.3 Legacy / Hall of Fame: keep or drop.
+- §5.3 Legacy / Hall of Fame: **dropped** (owner, to cut complexity) — see §4.13.
 - §5.4 Character creation rework (deferred).
 
 ## 6. Narrative rules **[locked, not built for existing strings]**
