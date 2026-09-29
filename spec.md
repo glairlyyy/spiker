@@ -31,7 +31,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 - §2.7 Poses **[built]** (display only): jump float serve — legs tucked together in the air, run-up strides, landing
   crouch like the jump serve; standing float serve — small dip after contact; setter — hands up in the set-ready
   triangle while the pass travels to them (arms/head only, position unchanged).
-- §2.8 Cut-scene lines: every LINES kind × personality has 5–6 variants **[locked, not built]** (T-005). Lines are
+- §2.8 Cut-scene lines **[built]**: every LINES kind × personality has 5–6 variants. Lines are
   picked by hash, never by R(), so results never change; only the `matches` golden (it hashes beat text) may.
 - §2.4 Blocks: stuff odds = full-strength block vs spike, weighted by coverage; ~14% of attacks stuffed in normal play.
 
@@ -68,7 +68,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   region isn't a grudge (standing ≤ `ACCESS.grudge`, default −20, tuned in the balance pass), and you meet the owner's condition (per faction, lore.md §5 dogma; values set in
   the balance pass). Members of the owning faction always get in. Central Academy grounds and Home are always
   open. Ownership changes on seizure, so access can flip. Today standing is display-only.
-- §4.11 Competition structure **[locked, not built]** — replaces the 8 fixed teams, warm-ups and both cups:
+- §4.11 Competition structure **[locked; pools + draw built (Pool, js/career/pool.js), rest not built]** — replaces the 8 fixed teams, warm-ups and both cups:
   - Faction pools: each faction holds a roster instead of fixed teams. Sizes: Wei 20, Wu 14, Shu 10, Street
     Outlaws 6, St. Gloria 5 (tunable). Squads of 4 are drawn per event.
   - Draw: weighted by rating and standing with that faction; a guaranteed spot above a high-standing threshold

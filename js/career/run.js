@@ -11,7 +11,9 @@ const Run = {
     for (const t of teams) for (const p of t.P) p.pot = +rnd(GROWTH.pot[0], GROWTH.pot[1]).toFixed(2);
     // the island's clubs: each league team plays as its faction's squad
     for (const t of teams) if (FACTIONS[t.i] && FACTIONS[t.i].team) [t.name, t.short, t.color] = FACTIONS[t.i].team;
-    return { teams, team: Math.floor(R() * teams.length) };
+    const used = new Set(teams.flatMap(t => t.P.map(p => p.name)));
+    const reserve = Pool.build(teams, used);
+    return { teams, team: Math.floor(R() * teams.length), reserve };
   },
   /** Final stat value shown at creation: base + allocated points + the role's usual bias. */
   createdStat: (role, k, alloc) => clamp(CAREER.statBase + alloc + (RB[role][k] || 0), 25, 99),
@@ -26,7 +28,8 @@ const Run = {
       legend = spec.legend != null && !spec.pure ? Legacy.load().hof[spec.legend] : null;
     const teams = draft.teams,
       free = spec.team == null, // no Team pick: you start as a free agent on a pickup squad
-      pickup = free ? World.pickup(new Set(teams.flatMap(x => x.P.map(p => p.name)))) : null,
+      reserve = draft.reserve || Pool.build(teams, new Set(teams.flatMap(x => x.P.map(p => p.name)))),
+      pickup = free ? World.pickup(new Set(teams.concat(Object.values(reserve)).flatMap(x => x.P.map(p => p.name)))) : null,
       ti = free ? null : spec.team,
       t = free ? pickup : teams[ti],
       role = spec.role,
@@ -71,6 +74,14 @@ const Run = {
             p.pot = +((p.pot || 1) + 0.25).toFixed(2);
           }
         finalizeTeam(T);
+      }
+    if (mode.hard)
+      for (const T of Object.values(reserve)) {
+        for (const p of T.P) {
+          for (const k of STATK) p[k] = Math.min(99, p[k] + 5);
+          p.pot = +((p.pot || 1) + 0.25).toFixed(2);
+        }
+        if (T.P.length) finalizeTeam(T);
       }
     // a Hall of Fame legend may turn up as a star on another team
     const hof = spec.pure ? [] : Legacy.load().hof.filter(h => h !== legend);
@@ -118,6 +129,8 @@ const Run = {
       elNext: 0,
       // v5: free agency (pickup squad until you sign), money, housing, league news and the Gazette
       pickup,
+      // faction pools: generated players outside the league teams (see js/career/pool.js)
+      reserve,
       money: ECON.start,
       housing: 'studio',
       news: [],
@@ -295,7 +308,11 @@ const Run = {
   save(run) {
     store.setJSON(
       KEYS.career,
-      Object.assign({}, run, { teams: run.teams.map(teamToJSON), pickup: run.pickup ? teamToJSON(run.pickup) : null })
+      Object.assign({}, run, {
+        teams: run.teams.map(teamToJSON),
+        pickup: run.pickup ? teamToJSON(run.pickup) : null,
+        reserve: Object.fromEntries(Object.entries(run.reserve || {}).map(([r, t]) => [r, teamToJSON(t)]))
+      })
     );
   },
   /** Load the saved run, upgrading older save formats step by step (see RUN_MIGRATIONS). */
@@ -308,7 +325,11 @@ const Run = {
         if (!up) return null;
         d = up(d);
       }
-      const run = Object.assign(d, { teams: d.teams.map(teamFromJSON), pickup: d.pickup ? teamFromJSON(d.pickup) : null });
+      const run = Object.assign(d, {
+        teams: d.teams.map(teamFromJSON),
+        pickup: d.pickup ? teamFromJSON(d.pickup) : null,
+        reserve: Object.fromEntries(Object.entries(d.reserve || {}).map(([r, t]) => [r, teamFromJSON(t)]))
+      });
       if (!Run.myTeam(run) || !Run.you(run)) return null; // corrupt save: your player is missing
       Run.repair(run);
       elAll(run.teams); // players from older saves get their element
@@ -322,6 +343,7 @@ const Run = {
     for (const k of ['log', 'seen', 'warm', 'cups', 'sponsors', 'hist']) if (!Array.isArray(run[k])) run[k] = [];
     for (const k of ['sp', 'fans', 'trained', 'elNext', 'money']) if (!Number.isFinite(run[k])) run[k] = 0;
     if (!HOUSING[run.housing]) run.housing = 'studio';
+    if (!run.reserve || typeof run.reserve !== 'object') run.reserve = {};
     if (!Array.isArray(run.news)) run.news = [];
     if (!Number.isFinite(run.days) || run.days < 0 || run.days > WEEK_DAYS) run.days = WEEK_DAYS;
     delete run.slot;
@@ -353,7 +375,7 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 1;
-/** version → upgrade step (none yet: the game started fresh; add steps when the saved shape changes). */
+const RUN_VERSION = 2;
+/** version → upgrade step (none yet; v2: faction reserves — older saves are dropped; add steps when the saved shape changes). */
 const RUN_MIGRATIONS = {};
 const ROLE_NAME = { S: 'Setter', MB: 'Middle blocker', WS: 'Wing spiker' };

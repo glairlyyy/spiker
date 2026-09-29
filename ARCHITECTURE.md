@@ -289,6 +289,16 @@ pickup squad). Free agents play warm-ups with the pickup squad and watch the cup
 `ECON.payEvery` weeks: allowance − food − rent (eviction to the abandoned gym when broke), housing effects, one
 league transfer (`World.transfers`) and a Gazette (`run.gazette`, news collected via `Run.news`).
 
+## Faction pools
+
+Each faction (`POOL` in `js/data/world.js`: Wei 20, Wu 14, Shu 10, Outlaws 6, St. Gloria 5) is a roster = its league-team
+players + generated reserves. `Pool.build(teams, used)` (`js/career/pool.js`, called by `Run.draft`) makes one
+reserve team per region (`run.reserve[region]`, `i: -1`, `P` may be empty); `Pool.players(run, r)` / `Pool.size(run, r)`
+list a faction's team players then reserves. Reserves are saved (`run.reserve`, RUN_VERSION 2; older saves are dropped)
+and not used in play yet. A player lives in exactly one place; `you` and the pickup squad are never reserves.
+`Pool.draw(run, r, n)` returns n squads `[S, MB, WS, WS]` (new arrays, nothing mutated): weighted by ovr (`DRAW` in world.js),
+you are a candidate only while signed with r, and a standing ≥ `DRAW.sure` puts you in squad 1.
+
 ## Island map (training weeks)
 
 `js/data/world.js`: REGIONS (wei = the city, wu = the whole coastline band, shu = the inland highlands — the three

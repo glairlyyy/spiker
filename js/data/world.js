@@ -226,5 +226,12 @@ const ACCESS = {
   grudge: -20,
   cond: { wei: {}, wu: {}, shu: {}, outlaws: {}, gloria: {} }
 };
+/** Faction pool sizes (players, league-team players included): the rest are generated reserves. */
+const POOL = { wei: 20, wu: 14, shu: 10, outlaws: 6, gloria: 5 };
+/**
+ * Squad draw weights: weight = max(minW, (ovr − floor) / span); your weight × (1 + max(0, standing) / repPer);
+ * standing ≥ sure → you are always drawn.
+ */
+const DRAW = { floor: 40, span: 20, minW: 0.1, repPer: 50, sure: 60 };
 /** A night at a hotel away from home: base price (× the region's price). */
 const HOTEL = { price: 12, rest: 1 };
