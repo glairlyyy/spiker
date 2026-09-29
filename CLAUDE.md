@@ -16,6 +16,9 @@ Code home: https://github.com/glairlyyy/spiker (branch main). Containers are tem
 - **Build chat** (implementer model) writes code, keeps `ARCHITECTURE.md` current, and ticks tasks. It does not
   edit `spec.md`, `lore.md` or add/reword tasks; it may only change a task's status line and its `Result:` / `Question:` lines.
 
+Exactly one build chat works at a time (no parallel implementers, so no merge conflicts). Before starting,
+`git pull`; if the pull brings unexpected code changes, stop and tell the owner.
+
 Build chat loop, one task at a time:
 1. `git pull`. Open `tasks.md`; take the first `[ ]` task under **Now** (unless the owner names one). Mark it `[~]`.
 2. Read the spec sections it cites. Touch only the files it lists. Follow its **Do not** list.
