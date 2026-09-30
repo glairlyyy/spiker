@@ -31,19 +31,104 @@ Result:
 - Match music ✓ (T-032)
 - Block tactics ✓ (T-026 lane-read block, T-027 defence setting + scouting habits).
 - Substitutions ✓ (T-028 squads of 6, T-029 in-match subs, T-030 coach AI, T-031 you on the bench).
-- **Growth rework** (next, to be detailed): training cap (T-034), match XP (T-035), skills learned in play (T-036); then **Challenges** (T-037/T-038).
+- **Growth rework** (now): training cap (T-034), match XP (T-035), skills learned in play (T-036); then **Challenges** (T-037/T-038).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Later — outlines (not ready: the spec chat details each before it moves to Now)
+## Now — Growth rework (spec §4.14)
 
-Growth rework — spec §4.14 (after substitutions)
-- T-034: Training cap — gains fall off above 60, stop at TRAIN_CAP 75; remove Limit Break gates / trial (+ UI, tests);
-  RUN_VERSION bump.
-- T-035: Match XP — per-player performance → stat XP after every match you play (eval, cup, fought street battle),
-  × opponent-strength factor (stronger 1.5–2, equal 1, weaker 0.3); result card shows the XP; headless season sims
-  for balance (avg stat ~70–75 by training alone, higher only with matches).
-- T-036: Skills learned in play — tier-1 buyable, the rest by chance (by doing / by facing a user), wit + opponent
-  strength raise it; scouting lists techniques.
+### [ ] T-034: Training stops at 75 — remove Limit Break
+Spec: §4.14          Goldens: unchanged (career only)          Save: RUN_VERSION 4 → 5 (`run.lb` removed) — older saves dropped
+Goal: Training (and event stat bumps) can raise a stat to 75 at most; there is no Limit Break any more. Above 75 only
+match experience counts (T-035). Wit keeps its own cap.
+Files: js/data/career.js, js/career/training.js, js/career/run.js, js/career/events.js, js/career/goals.js,
+js/ui/career-week.js, js/ui/career-map.js, tests/run.js, ARCHITECTURE.md
+Do not:
+- Touch NPC growth (Growth.grow) or anything in js/engine.
+- Change the XP curve (TRAIN_X.xp) or session gains: the exponential `need` already makes gains shrink above 60.
+Steps:
+1. career.js: `TRAIN_CAP = 75` (doc: training and events stop here; matches go higher, spec §4.14); remove
+   `TRAIN_X.gates` and its comment.
+2. training.js: remove `gate`, `trialP`, `trial` and the "limit" event hand-off in `train`; `Training.top(run, stat,
+   src = 'train')` → wit: its cap; `'train'` → `TRAIN_CAP`; `'match'` → `CAREER.runCap`. `sim` / `gain` / `addXp` take
+   the same `src` (default 'train'); a stat already above the top gains nothing from that source and banks nothing.
+   `preview.gate` → `cap: you[main] >= TRAIN_CAP ? TRAIN_CAP : null`. Header comment updated.
+3. run.js: `bump` for stats: top = `Math.max(you[key], TRAIN_CAP)` (events never lower a stat that matches raised);
+   remove `lb` from create / repair; `RUN_VERSION = 5` (comment: v5 — Limit Break removed).
+4. events.js: remove the 'limit' special event (def, choose, the comment in `roll`).
+5. goals.js: stat goals use `TRAIN_CAP` instead of the gate (no stat goal for a stat at 73+).
+6. UI: the stat tag in `youCard` shows `⌈75` with the tip "Training stops at 75. Matches only above." (registrar
+   voice); the training card line reads "<Stat> at 75 — matches only" instead of "Limit Break"; drop 'limit' from the
+   event card kinds.
+7. tests: replace `'career: Limit Break gates…'` with `'career: training cap, facility Lv 5 and Hard training'`:
+   training 200 sessions never takes a stat past 75; an event bump at 75 does nothing; a stat already at 80 is not
+   lowered; full-run test asserts stats ≤ 75 unless raised in matches (until T-035: ≤ 75). Facility / Hard parts kept.
+8. ARCHITECTURE.md: training section (cap, sources).
+Accept: all tests + lint; goldens untouched.
+QA: career run → train a stat near the cap (set `Run.you(RUN).power = 74` in the console) → it stops at 75, the card
+says "matches only"; no Limit Break event; no pageerror.
+Result:
+
+### [ ] T-035: Match experience — your performance × opponent strength
+Spec: §4.14          Goldens: unchanged          Save: no change (uses `run.xp`)
+Goal: Every match you play gives stat XP from your own line (not the result), scaled by how strong the opponent was.
+It is the only way past 75. Street-battle fights give a flat amount by the same scaling.
+Files: js/data/career.js, js/career/growth.js, js/career/cup.js, js/career/city.js, js/ui/career-week.js,
+tests/run.js, ARCHITECTURE.md
+Do not:
+- Look at the winner for XP (win / loss rewards stay as they are, set by the kind of match).
+- Give XP when you never came on (the bench reward stays).
+Steps:
+1. career.js: `MATCH_XP = { per: { k: { power: 12 }, ace: { power: 8 }, blk: { jump: 8, def: 8 }, dig: { def: 6,
+   speed: 6 }, ast: { wit: 2 }, att: { jump: 1 } }, gap: [0.3, 2], perGap: 0.1, clash: { win: 30, loss: 20 } }`
+   (doc: XP per stat-line unit; factor = clamp(1 + (opponent ovr − your side's ovr) × perGap, gap); wit counts in
+   0.02 steps like training).
+2. growth.js: `Growth.matchXp(run, m, mine, opp)` → labels: your `m.stat` line × `MATCH_XP.per`, × the gap factor
+   (`opp.ovr` vs `mine.ovr` — the 4 who started), each stat through `Training.addXp(run, stat, xp, 'match')`.
+   Returns e.g. ["+2 Power", "Defense progress"] plus "×1.6 vs a stronger side" / "×0.4 vs a weaker side" when ≠ 1.
+3. cup.js `result`: when you played, add the labels to the result line (before rewards). city.js `clash` (you fought):
+   XP to your role's key stat = `MATCH_XP.clash[win ? 'win' : 'loss']` × the gap factor (your ovr vs `CLASH.par`),
+   source 'match'.
+4. Result card (career-week.js, wherever the match result line is shown): nothing new beyond the line; keep it short.
+5. tests: new `'career: match XP — performance, opponent strength, past the cap'`: the same stat line gives more XP
+   vs a stronger side than vs an equal one, and 0.3× vs a much weaker one; winner flag flipped → same XP; a stat at 75
+   rises from match XP; never-played → no XP. Report (not assert) in Result: a Short-season headless run with only
+   training vs one that also plays every eval — final key stat both ways.
+6. ARCHITECTURE.md: match XP.
+Accept: all tests + lint; goldens untouched.
+QA: career run → Sim ⏭ an evaluation → the result line shows the XP labels and the gap factor; no pageerror.
+Result:
+
+### [ ] T-036: Techniques learned in play (basic skills stay in the shop)
+Spec: §4.14          Goldens: unchanged          Save: no change
+Goal: The skill shop sells only basic skills (entries without `tech`). Techniques (`tech` entries) can't be bought:
+you learn one by chance after a match — by doing the related thing, or by facing a player who has it. They still
+switch on by themselves once your stats meet their `req` (as for everyone).
+Files: js/data/career.js, js/career/skills.js, js/career/cup.js, js/career/dossier.js, js/ui/career-week.js,
+js/ui/career-map.js, js/ui/career-dossier.js, tests/run.js, ARCHITECTURE.md
+Do not:
+- Change how techniques work in the engine (`hasTech`, `req`).
+- Learn more than one technique per match.
+Steps:
+1. career.js: `LEARN = { do: { Attack: ['k', 3], Setter: ['ast', 6], Serve: ['ace', 1], Defense: ['blk+dig', 4] },
+   doP: 0.08, faceP: 0.05 }` (doc: "by doing" needs that many of the stat in the match; "by facing" = an opponent on
+   court has it; chance × (0.5 + wit / 2) × the MATCH_XP gap factor, clamped to [0, 0.5]).
+2. skills.js: `canLearn` → false for `tech` entries; `Skills.tryLearn(run, m, mine, opp)` after a match you played:
+   candidates = techniques for your role you don't own; for each (in SKILLS order) the do-chance if you reached its
+   threshold, else the face-chance if an opponent who played has it (`hasTech`); first success → push to
+   `you.skills`, log "Learned <name> in play (by doing | from <player>)"; one R() per candidate considered.
+3. cup.js `result`: call it when you played; add the line to the result.
+4. UI (skills shop, career-week.js): techniques show "learn in matches" instead of a price and can't be clicked;
+   owned / "✓ stats" stay as today. Scouting: the scouted club roster (career-map.js) and the dossier roster show each
+   player's techniques by name (`Dossier` model gains `techs` per roster entry when ratings are visible).
+5. tests: a technique can't be bought; forcing R() low after a match with 3+ kills learns an Attack technique for a
+   WS; facing a player with a technique can teach it; never two in one match; dossier `techs` hidden until scouted.
+6. ARCHITECTURE.md: skills section.
+Accept: all tests + lint; goldens untouched.
+QA: career run → skills drawer shows techniques as "learn in matches"; scout a club → roster lists techniques; no
+pageerror.
+Result:
+
+## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
 Challenges — spec §4.15 (after the growth rework)
 - T-037: Challenge action — map action at a club / street court, stake, acceptance rule, hired street players when

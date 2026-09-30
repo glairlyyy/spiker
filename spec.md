@@ -151,7 +151,8 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     stronger ×1.5–2, equal ×1, weaker ×0.3. Winning or losing does not change XP.
   - What winning pays is set by why the match was played (unchanged rules): evaluations → skill pts / fans / standing,
     cup → placement rewards, street battle → the side's standing and money as today.
-  - Skills: basic (tier 1 of each role) stay buyable with skill points; advanced ones are learned in play by chance —
+  - Skills: basic skills (SKILLS entries without `tech`) stay buyable with skill points; techniques (`tech` entries) are
+    learned in play by chance — they still switch on by themselves once stats meet `req` —
     by doing (e.g. 3+ blocks in a match → a chance at Read Block) and by facing a player who uses it; chance grows with
     wit and opponent strength. Scouting shows which techniques a team's players have.
   - Save: RUN_VERSION bump (Limit Break progress removed, match XP added). Match results unchanged (goldens stay).
