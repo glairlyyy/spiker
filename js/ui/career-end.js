@@ -1,4 +1,4 @@
-// Career: run result screen (both cups, rank, growth chart).
+// Career: run result screen (the U21 Final Cup, rank, growth chart).
 
 function renderRunEnd() {
   const run = RUN,
@@ -6,16 +6,15 @@ function renderRunEnd() {
     you = Run.you(run),
     team = Run.myTeam(run),
     cups = r.cups || [],
-    crown = cups.length === CUPS.length && cups.every(c => c.place === 'Champion');
+    won = cups.find(c => c.place === 'Champion');
   const cupLine = c => {
-    const def = CUPS.find(x => x.id === c.id),
-      ch = run.teams[c.champ];
-    return `<li><b>${esc(def.name)}</b> — ${Cup.placeText(c.place)}${c.place !== 'Champion' && ch ? ` <span class="mute">(won by ${esc(ch.name)})</span>` : ''}</li>`;
+    const def = CUPS.find(x => x.id === c.id);
+    return `<li><b>${esc(def.name)}</b> — ${Cup.placeText(c.place)}${c.place !== 'Champion' && c.champ ? ` <span class="mute">(won by ${esc(c.champ)})</span>` : ''}</li>`;
   };
   $('#app').innerHTML = `<section class="runend" style="--tc:${team.color}">
     <div class="panel rcard">
       <span class="rank r${r.rank}">${r.rank}</span>
-      <div><h2>${crown ? `Double Crown — ${esc(team.name)} win both cups` : cups.some(c => c.place === 'Champion') ? `${esc(team.name)} win the ${esc(CUPS.find(x => x.id === cups.find(c => c.place === 'Champion').id).name)}` : 'Season over'}</h2>
+      <div><h2>${won ? `U21 champions — ${esc(won.champ)}. The national team is calling.` : 'Season over'}</h2>
       <p>${esc(you.name)} · ${ROLE_NAME[you.role]} · OVR ${ovr(you)} · ${run.fans.toLocaleString()} fans</p>
       <ul class="cupres">${cups.map(cupLine).join('')}</ul>
       <p class="small mute">${run.plays.k} K · ${run.plays.blk} B · ${run.plays.ace} A${info(`Across all matches: ${run.plays.k} kills, ${run.plays.blk} blocks, ${run.plays.ace} aces. Grades: ${(run.grades || []).join(' ') || '—'}`)}</p>

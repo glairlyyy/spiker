@@ -34,8 +34,8 @@ const Eval = {
     return (run.eval = { week: run.week, kind, region, mine, opp });
   },
   /** A temporary squad from player ids (in [S, MB, WS, WS] order). Not a real team: never call finalizeTeam on it. */
-  squad(run, ids, name, color) {
-    const all = Pool.players(run, run.eval ? run.eval.region : 'wei').concat([Run.you(run)]),
+  squad(run, ids, name, color, region = run.eval ? run.eval.region : 'wei') {
+    const all = Pool.players(run, region).concat([Run.you(run)], run.pickup ? run.pickup.P : []),
       P = ids.map(id => all.find(p => p.id === id)).filter(Boolean),
       T = {
         i: -2,

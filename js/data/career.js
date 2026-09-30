@@ -40,13 +40,11 @@ const STATNAME = { power: 'Power', def: 'Defense', speed: 'Speed', jump: 'Jump',
 const CALENDAR = { 4: 'eval', 8: 'eval', 12: 'eval', 16: 'eval', 20: 'eval', 24: 'eval', 26: 'camp', 27: 'camp', 28: 'camp' };
 /** Monthly evaluations: a player who is not selected watches from the bench — wit XP worth `benchDays` day-sessions of Wit training. */
 const EVAL = { benchDays: 1 };
-/** The two major cups: played after week `after`. The Grand Cup is seeded by rating and pays more. */
-const CUPS = [
-  { id: 'skyline', after: 24, name: 'Skyline Cup', short: 'SC', mul: 1 },
-  { id: 'grand', after: 28, name: 'Grand Cup', short: 'GC', mul: 1.5, seeded: true }
-];
+/** The season's one cup, played after week `after`: squads drawn from every faction pool; the champion goes to the national team. */
+const CUPS = [{ id: 'u21', after: 28, name: 'U21 Final Cup', short: 'U21', mul: 1.5, seeded: true }];
 /** Placement rewards when a cup ends for you (× the cup's mul). */
 const PLACES = {
+  'Round of 16': { fans: 150, sp: 10 },
   Quarterfinal: { fans: 300, sp: 20 },
   Semifinal: { fans: 800, sp: 40 },
   Final: { fans: 1500, sp: 60 },

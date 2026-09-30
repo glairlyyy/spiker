@@ -1,31 +1,57 @@
-// Career matches: warm-ups, the Skyline Cup (after week 24) and the Grand Cup (after week 28), match grades,
-// pre-match focus, the captain's team talk, placement rewards and the end of a run.
+// Career matches: evaluations, the U21 Final Cup (after week 28), match grades, pre-match focus, the captain's team
+// talk, placement rewards and the end of a run.
 
-/** Cup "placing" for a free agent who never played in it. */
+/** Cup "placing" for a player whose squad was not in it. */
 const NO_CUP = 'Did not play';
 const Cup = {
   /** How a cup went for you, in words. */
   placeText: p => (p === 'Champion' ? '🏆 Champion' : p === NO_CUP ? 'did not play' : `out in the ${p.toLowerCase()}`),
-  /** Warm-up opponent: 'warmup' a random team (fixed for the week), 'warmup2' the strongest other team. */
-  warmupOpponent(run) {
-    const others = run.teams.filter((t, i) => i !== run.team);
-    if (Run.weekType(run) === 'warmup2') return others.reduce((a, t) => (t.ovr > a.ovr ? t : a)).i;
-    if (run.warmOpp == null || run.warmOpp.week !== run.week) run.warmOpp = { week: run.week, i: pick(others).i };
-    return run.warmOpp.i;
+  /** Squad number as a roman numeral (1 → I). */
+  roman: n => ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'][n - 1] || String(n),
+  /** Every squad of the U21 Final Cup: each faction's pool drawn into squads, then the Academy squad while you are still in it. */
+  entrants(run) {
+    const out = [];
+    for (const r of Object.keys(POOL)) {
+      Pool.draw(run, r).forEach((sq, i) =>
+        out.push({
+          name: `${REGIONS[r].name} ${Cup.roman(i + 1)}`,
+          short: `${r.slice(0, 3).toUpperCase()}${i + 1}`,
+          color: REGIONS[r].color,
+          region: r,
+          ids: sq.map(p => p.id),
+          academy: false
+        })
+      );
+    }
+    if (World.isFree(run) && run.academy !== false && run.pickup) {
+      const T = run.pickup;
+      out.push({ name: T.name, short: T.short, color: T.color, region: null, ids: T.P.map(p => p.id), academy: true });
+    }
+    return out;
   },
-  /** A cup begins: stamina refills, the bracket is drawn (the Grand Cup is seeded by rating: 1v8, 4v5, 2v7, 3v6). */
+  /** Entrant i of the running cup as a playable squad (the Academy entrant is your real pickup squad). Lend it before a match. */
+  team(run, i) {
+    const e = run.cup.entrants[i];
+    if (e.academy) return run.pickup;
+    const T = Eval.squad(run, e.ids, e.name, e.color, e.region);
+    T.short = e.short;
+    return T;
+  },
+  /** A cup begins: stamina refills; the squads are drawn and seeded by rating (1 plays 16, 8 plays 9, …; missing seeds are byes). */
   start(run, def) {
     run.sta = run.staMax;
-    let ord = [...run.teams.keys()].sort(() => R() - 0.5);
-    if (def.seeded) {
-      const s = [...run.teams].sort((a, b) => b.ovr - a.ovr).map(t => t.i);
-      ord = [s[0], s[7], s[3], s[4], s[1], s[6], s[2], s[5]];
-    }
-    run.cup = { id: def.id, sched: newBracket(ord), done: false };
-    Run.log(run, `The ${def.name} begins${def.seeded ? ' (seeded by rating)' : ''}. Stamina refilled.`);
-    // no club, no cup: a free agent watches it from the stands
-    if (World.isFree(run)) {
-      Run.log(run, `No club has signed you — you watch the ${def.name} from the stands.`);
+    const E = Cup.entrants(run),
+      you = Run.you(run),
+      me = E.findIndex(e => e.ids.includes(you.id)),
+      ranked = E.map((e, i) => i)
+        .map(i => [i, Eval.squad(run, E[i].ids, E[i].name, E[i].color, E[i].region).ovr])
+        .sort((a, b) => b[1] - a[1])
+        .map(x => x[0]),
+      order = seedOrder(16).map(s => (s <= ranked.length ? ranked[s - 1] : null));
+    run.cup = { id: def.id, entrants: E, me, sched: newBracket(order), done: false };
+    Run.log(run, `The ${def.name} begins: ${E.length} squads, seeded by rating. Stamina refilled.`);
+    if (me < 0) {
+      Run.log(run, `You watch the ${def.name} from the stands.`);
       Cup.close(run, NO_CUP);
     }
   },
@@ -35,14 +61,19 @@ const Cup = {
     for (;;) {
       const m = advanceBracket(S);
       if (!m) return null;
-      if (m.a === run.team || m.b === run.team) return m;
+      if (m.a === run.cup.me || m.b === run.cup.me) return m;
       Cup.simulate(run, m);
     }
   },
-  /** Play a bracket entry you are not in headlessly and record its winner and score. */
+  /** Play a bracket entry you are not in headlessly and record its winner and score (both squads lent, then restored). */
   simulate(run, x) {
-    const m = simMatch(run.teams[x.a], run.teams[x.b]),
+    const A = Cup.team(run, x.a),
+      B = Cup.team(run, x.b);
+    Eval.lend(run, A);
+    Eval.lend(run, B);
+    const m = simMatch(A, B),
       sc = m.setScores[0];
+    Eval.restore();
     x.w = m.winner === 0 ? x.a : x.b;
     x.res = [sc[0], sc[1]];
   },
@@ -65,7 +96,7 @@ const Cup = {
     }
     for (const p of opp.P) p.form = +(rnd(-0.2, 0.2) - (talk === 'calm' ? 0.15 : 0)).toFixed(2);
   },
-  /** Fixture for the match screen. kind: 'eval' | 'cup' (| legacy 'warmup'). Your side is always on the left. */
+  /** Fixture for the match screen. kind: 'eval' | 'cup'. Your side is always on the left. */
   fixture(run, kind) {
     const you = Run.you(run),
       def = Run.cupDef(run);
@@ -86,11 +117,11 @@ const Cup = {
       round = `${e.kind === 'academy' ? 'Academy' : REGIONS[e.region].name} evaluation (week ${run.week})`;
     } else if (kind === 'cup') {
       bm = Cup.next(run);
-      opp = run.teams[bm.a === run.team ? bm.b : bm.a];
+      mine = Cup.team(run, run.cup.me);
+      opp = Cup.team(run, bm.a === run.cup.me ? bm.b : bm.a);
+      Eval.lend(run, mine);
+      Eval.lend(run, opp);
       round = `${def.name} ${bm.round}`;
-    } else {
-      opp = run.teams[Cup.warmupOpponent(run)];
-      round = `Warm-up match (week ${run.week})`;
     }
     Cup.prepare(run, opp, kind, mine);
     return {
@@ -106,11 +137,11 @@ const Cup = {
         }
       },
       onFinish: m => {
-        if (kind === 'eval') Eval.restore();
+        Eval.restore();
         return Cup.result(run, m, kind, bm);
       },
       onLeave: () => {
-        if (kind === 'eval') Eval.restore();
+        Eval.restore();
         navigate('career');
       }
     };
@@ -163,47 +194,45 @@ const Cup = {
       opp = m.t[1];
     const line = `${win ? 'Won' : 'Lost'} ${score} vs ${opp.name} · grade ${grade}. You: ${s.k} kills, ${s.blk} blocks, ${s.ace} aces · ${out.filter(Boolean).join(', ')}`;
     Run.log(run, line);
-    if (kind === 'warmup' || kind === 'eval') {
+    if (kind === 'eval') {
       run.warm.push({ week: run.week, vs: opp.i, win, score, grade });
       Run.endWeek(run);
     } else {
       run.talk = null;
-      bm.w = win ? run.team : opp.i;
-      bm.res = bm.a === run.team ? [sc[0], sc[1]] : [sc[1], sc[0]];
+      const me = run.cup.me;
+      bm.w = win ? me : bm.a === me ? bm.b : bm.a;
+      bm.res = bm.a === me ? [sc[0], sc[1]] : [sc[1], sc[0]];
       if (!win) Cup.close(run, bm.round);
       else if (bm.round === 'Final') Cup.close(run, 'Champion');
       else Run.save(run);
     }
     return line;
   },
-  /** Your cup is over (knocked out in `place`, or 'Champion'): placement rewards; the season goes on or ends. */
+  /** Your cup is over (knocked out in `place`, 'Champion', or NO_CUP if your squad was not in it): placement rewards; the run ends. */
   close(run, place) {
     const def = Run.cupDef(run);
     Cup.finishBracket(run);
     const P = PLACES[place] || { fans: 0, sp: 0 },
+      champ = run.cup.entrants[bracketChampion(run.cup.sched)].name,
       out = [
         Run.bump(run, 'fans', Math.round(P.fans * def.mul)),
         Run.bump(run, 'sp', Math.round(P.sp * def.mul)),
         World.prize(run, Math.round((ECON.place[place] || 0) * def.mul))
       ];
-    run.cups.push({ id: def.id, place, champ: bracketChampion(run.cup.sched) });
+    run.cups.push({ id: def.id, place, champ });
     Run.log(
       run,
       place === NO_CUP
-        ? `The ${def.name} is over — won by ${run.teams[bracketChampion(run.cup.sched)].name}.`
-        : `${place === 'Champion' ? `${Run.myTeam(run).name} win the ${def.name}!` : `Out of the ${def.name} in the ${place.toLowerCase()}.`} ${out.filter(Boolean).join(', ')}`
+        ? `The ${def.name} is over — won by ${champ}.`
+        : `${place === 'Champion' ? `${run.cup.entrants[run.cup.me].name} win the ${def.name}!` : `Out of the ${def.name} in the ${place.toLowerCase()}.`} ${out.filter(Boolean).join(', ')}`
     );
-    if (CUPS.indexOf(def) < CUPS.length - 1) {
-      run.cup.done = true;
-      Run.nextWeek(run);
-      Run.save(run);
-    } else Cup.end(run, place);
+    Cup.end(run, place);
   },
-  /** End the run: rank and result. place = your Grand Cup finish. */
+  /** End the run: rank and result. place = your U21 Final Cup finish. */
   end(run, place) {
     const rank = rankOf(run.fans);
     Run.snap(run);
-    run.result = { place, rank, cups: run.cups, champ: bracketChampion(run.cup.sched) };
+    run.result = { place, rank, cups: run.cups, champ: run.cups[run.cups.length - 1].champ };
     Run.save(run);
   }
 };
