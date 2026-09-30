@@ -28,7 +28,8 @@ task the build chat re-reads `tasks.md` and `spec.md` **from the artifact** (Art
 "## Unplanned changes" at the end of tasks.md (one line each: what, which files) so the spec chat records them.
 
 Build chat loop, one task at a time:
-1. Read `tasks.md` from the artifact; take the first `[ ]` task under **Now** (unless the owner names one). Mark it `[~]`.
+1. Read `tasks.md` from the artifact; take the first `[ ]` task under **Now**, then under **Next** (unless the owner
+   names one). Mark it `[~]`.
 2. Read the spec sections it cites. Touch only the files it lists. Follow its **Do not** list.
 3. Stop and ask (mark `[?]`, write `Question:` in the task, tell the owner) instead of guessing when:
    the task needs an unlisted file, a new top-level global, a new beat act kind, a save-shape change, a golden-hash

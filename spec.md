@@ -63,8 +63,14 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   Minor factions are not in the war. Seized places show as a patch in the holder's colour; borders don't redraw
   **[open: moving borders]**.
 - §4.8 Hub UI: full-screen draggable map (panzoom) with HUD overlays, shortcut dock → drawers, cards over the map.
-- §4.9 Map architecture: rules → MapModel → MapView (see CLAUDE.md Layout). A three.js island map **[locked, later]**
-  replaces only `map-svg.js` by implementing the MapView contract.
+- §4.9 Map architecture: rules → MapModel → MapView (see CLAUDE.md Layout). **[locked, building]** three.js island
+  map (M2) replaces the SVG view behind the same contract (+ `update(model)`, `tick(dt)`); SVG stays as fallback and
+  as the default until the 3D map reaches parity (pins, fog, selection). Look: fixed tilted camera (Kenshi-like
+  diorama; pan + zoom, no free rotation), low-poly procedural terrain from the existing coast / region shapes (Shu
+  raised highlands, Wu beach ring, CITY.mountains as peaks), water around, region tint. Scale: 1 map unit = 0.5 m.
+  The player is the default VRM model standing on the map; when `you.at` changes the avatar walks/runs there
+  (display only — rules stay instant for now), camera follows. Moving world entities, hour clock and day/night are
+  later (M1 / M3).
 - §4.10 Facility access **[locked, not built]**: a place is usable if you can pay, your standing with its owner
   region isn't a grudge (standing ≤ `ACCESS.grudge`, default −20, tuned in the balance pass), and you meet the owner's condition (per faction, lore.md §5 dogma; values set in
   the balance pass). Members of the owning faction always get in. Central Academy grounds and Home are always
