@@ -33,6 +33,27 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   triangle while the pass travels to them (arms/head only, position unchanged).
 - §2.8 Cut-scene lines **[built]**: every LINES kind × personality has 5–6 variants. Lines are
   picked by hash, never by R(), so results never change; only the `matches` golden (it hashes beat text) may.
+- §2.9 Block tactics **[locked, not built]** — 2 blockers at the net (front row stays 2 in 4v4):
+  - Lane read: the blocker on the attack's side sets the edge; the middle closes beside them. Middle bitten by a
+    quick / decoy → the far-side blocker swings across (late, weaker). Pipe / back-row attack → both close to the
+    centre. Read quality from wit + speed: good readers arrive in time with full hands; poor ones late or split.
+  - Defence setting (per team, like attack tactics; player picks theirs, AI teams have one): **Read** (default:
+    wait for the set; good on wings, late on quicks), **Commit** (middle jumps with the quick; kills quicks, beaten by
+    decoys / high outside), **Bunch** (both start central; strong vs middle / pipe, pins open).
+  - Scouting a club reveals its attack habits (lane split, pipe use) and its defence setting.
+  - Rebalance: ~14 % of attacks stuffed in normal play stays the target (headless sims). Goldens update.
+- §2.10 Substitutions **[locked, not built]**:
+  - Teams: 4 on court + 2 on the bench (6). Faction pools grow so every faction fields ≥ 1 squad of 6 (≈ Wei 24,
+    Wu 18, Shu 12, Outlaws 6, St. Gloria 6); drawn squads are 6.
+  - At a dead ball, max 2 subs per set per team; the sub takes the replaced player's rotation spot.
+  - Presentation: no walk-on animation. The model swaps in place, a floating "SUBBED" label shows over the incoming
+    player, and the coach's line appears as chatter (shirt numbers):
+    "Subbing #{out} for #{in}. Don't let us down." · "#{out}, sit. #{in}, you're up — earn it." ·
+    "#{in} in for #{out}. Same plan, fresher legs." · "#{out}, come off. #{in} — show me why you're here."
+  - Simple coach AI: sub when a player's match stamina is under a threshold or after repeated errors; small random
+    factor scaled by `coachIQ`. Smarter coach (matchups, protecting a lead, personality hunches) = backlog.
+  - Your player is benchable: the coach picks starters by rating, form and standing, and may sub you out (tired /
+    erring). A match started or finished on the bench gives reduced rewards.
 - §2.4 Blocks: stuff odds = full-strength block vs spike, weighted by coverage; ~14% of attacks stuffed in normal play.
 
 ## 3. Menu [built]
@@ -136,7 +157,8 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 
 ## 8. Backlog (candidates — become tasks only when specced)
 - Balance pass: 7-day week × DAY_GAIN × fees × faction prices × paydays, measured with headless season sims.
-- Standing effects; leaving/switching clubs (needs §5.1); scouting → match edge; moving borders.
+- Standing effects; leaving/switching clubs (needs §5.1); moving borders.
+- Smarter AI coach (matchup subs, protecting a lead, personality).
 - three.js island map (§4.9). New-run setup + results screens. Hype scene frequency tuning (§2.3).
 - Competition structure (§4.11) — needs staging: pools → draw → evaluations → U21 Final Cup; big career/test impact.
 - Shrine Park → Central Academy (§4.2). Facility access gating (§4.10). Voice pass over existing strings (§6).

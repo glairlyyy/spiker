@@ -28,6 +28,7 @@ Result:
 - **M2 — three.js map** (now): scaffold + terrain (T-023), walking player (T-024), parity + default (T-025).
 - **Phase 4 — U21 Final Cup** (after M2): bracket with byes (T-019); U21 cup from drawn squads (T-020). The 8 league
   teams stay as faction home squads.
+- **Block tactics** (T-026/T-027) → **Substitutions** (T-028–T-031), after Phase 4.
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now — M2: three.js island map (before Phase 4)
@@ -222,6 +223,19 @@ your Academy squad seeded; Sim ⏭ through to the end → run-end screen names t
 Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
+
+Block tactics (after Phase 4) — spec §2.9
+- T-026: Lane-read block in the engine (edge / close / swing / bunch-for-pipe; read quality from wit + speed);
+  rebalance to ~14 % stuffs with headless sims. Goldens: update.
+- T-027: Defence setting (Read / Commit / Bunch) for every team + match UI control; scouting reveals attack habits
+  and defence setting (dossier + HQ panel).
+
+Substitutions — spec §2.10
+- T-028: Teams of 6 (4 + 2 bench): rosters, pools, draws, saves (RUN_VERSION bump), UI lists. Engine still plays 4.
+- T-029: Engine substitution at a dead ball (new beat act kind `sub` + playback case: model swap, SUBBED label,
+  coach chatter from the 4 lines); max 2 per set. Goldens: update.
+- T-030: Simple coach AI (stamina / errors / coachIQ randomness) for every team.
+- T-031: Your player benchable: starters by rating, form, standing; reduced rewards when benched.
 
 Phase 5 — Voice pass
 - T-022: Faction `front`/`dark`, region `desc`, Gazette and event strings in lore.md §7 voices.
