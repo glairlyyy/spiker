@@ -67,7 +67,7 @@ The match screen takes a fixture: `navigate('match', { a, b, round, back, onFini
   `data/career.js`, one entry, ×1.5 rewards; see "U21 Final Cup"). Every cup close ends the run. `Run.weekType` is 'cup'
   while `run.cup` is live.
 - **Training depth** (`career/training.js`, `TRAIN_X`): facility Lv 1–5 by use, Hard option, same-training streaks,
-  steeper diminishing returns, Limit Break gates at 80 and 90 (a trial event when a stat reaches its gate), injuries
+  steeper diminishing returns, the training cap `TRAIN_CAP` 75 (no Limit Break), injuries
   when a session fails while exhausted (light training until healed, or the physio).
 - **Goals and sponsors** (`career/goals.js`): the coach sets a goal per block (`BLOCKS`), checked at the block's last
   week; sponsors make offers at fan milestones (a `pre` event shown before the week's choice) with a perk kept while a
@@ -75,9 +75,14 @@ The match screen takes a fixture: `navigate('match', { a, b, round, back, onFini
 - **Matches** (`career/cup.js`): an S–C grade from your own line scales that match's rewards; a pre-match focus goal;
   a captain's team talk before Cup matches (applied in `Cup.prepare` and the fixture's `setup(m)` hook).
 - Content is data: `data/career.js` (numbers, trainings, calendar, cups, rewards, ranks, unlocks, sponsors, modes),
-  `data/events.js`, `data/skills.js`. Special events ('limit', 'sponsor') are built in `Events.def`.
+  `data/events.js`, `data/skills.js`. Special events ('element', 'sponsor') are built in `Events.def`.
 - Skills reach the engine only through `skillMod(p, key)` and bonds through `bondCombo(a, b)` (`engine/skills.js`);
   both are neutral for normal players and draw no random numbers.
+- Skills in the shop vs in play (T-036): basic skills (no `tech`) are bought with skill points (`Skills.learn`); techniques can't be
+  (`canLearn` is false for them). `Skills.tryLearn(run, m)` runs after a match you played (`Cup.result`): per technique of your role you
+  don't own, one roll (`LEARN`: by doing a stat-line threshold, else by facing an opponent who played and has it; chance × wit ×
+  the match gap factor, ≤ 0.5), at most one per match. Techniques still fire by stats via `hasTech`. Scouting shows them
+  (`Skills.techs`; dossier roster `techs`, hidden until scouted).
 - No meta progression: every career starts the same (free agent, `CAREER.budget` / `createCap` / `staMax`); challenge modes (`MODES`) are plain options.
 - UI: `ui/icons.js` draws the active (bolt + type) / passive (aura) skill icons used in the shop, player card and
   encyclopedia; the result screen has a season growth chart from `run.hist`.
@@ -345,7 +350,7 @@ league transfer (`World.transfers`) and a Gazette (`run.gazette`, news collected
 bonds, scouting, pools, promotion, transfers) and keep `t.P` for "who plays". `fillRoster` rolls the bench after the 4 (flex
 role + a wing spiker); `finalizeTeam` gives leadership, elements and shirt numbers to all 6 (numbers unique) but the captain and
 `ovr` come from `t.P`. `World.swap(x, y)` trades two players' seats (court or bench), slots, numbers and team links (join,
-transfers, promotion). Saves (RUN_VERSION 4) store `bench` next to `P`; `teamFromJSON` relinks it.
+transfers, promotion). Saves (RUN_VERSION 5; v5 dropped `run.lb`) store `bench` next to `P`; `teamFromJSON` relinks it.
 
 ## Faction pools
 
@@ -440,8 +445,18 @@ region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border mete
 
 Training gives XP (`Training.xpFor`: base gain × `TRAIN_X.xp.per` × every multiplier — place quality and home turf
 (x), facility level, mood, streak, teammates, camp, Hard). A stat rises a point each time its XP reaches
-`Training.need(v)` = base × grow^(v − from) (exponential); leftovers bank in `run.xp`; nothing banks at a
-limit-break gate or the cap. Wit counts in 0.02 steps (level = wit × 50). Events still change stats directly.
+`Training.need(v)` = base × grow^(v − from) (exponential); leftovers bank in `run.xp`; nothing banks past the top.
+`Training.top(run, stat, src)`: 'train' (sessions, the default) → `TRAIN_CAP` 75; 'match' → `CAREER.runCap`; wit its own cap. `sim` /
+`gain` / `addXp` take the same `src`; a stat already above the top gains nothing from that source. Wit counts in 0.02 steps
+(level = wit × 50). Events still change stats directly, but stop at `TRAIN_CAP` (`Run.bump` never lowers a stat that matches raised).
+
+### Match XP (T-035)
+
+`Growth.matchXp(run, m, mine, opp)` (career/growth.js), called from `Cup.result` when you played: your `m.stat` line × `MATCH_XP.per`
+(`data/career.js`: kills → power, aces → power, blocks → jump + def, digs → def + speed, assists → wit, attempts → jump), × the gap
+factor `Growth.gapFactor(ovr of your 4 starters, opponent's)` = clamp(1 + gap × `perGap`, `gap`), each stat through
+`Training.addXp(…, 'match')` (so matches pass `TRAIN_CAP`). The winner is never read. `City.clash` (you fought) gives a flat
+`MATCH_XP.clash` amount to your key stat, scaled by your ovr vs `CLASH.par`. The result line starts with "XP: …" and the factor note.
 
 ## Career hub UI
 

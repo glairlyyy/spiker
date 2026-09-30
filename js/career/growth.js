@@ -24,6 +24,29 @@ const Growth = {
     if (!p.star && R() < GROWTH.star * pot * bf) Growth.awaken(run, p, mate, false);
     else if (p.star && !p.op && R() < GROWTH.op * pot * bf) Growth.awaken(run, p, mate, true);
   },
+  /** Match XP scale: how strong the opponent is against you (ovr gap × MATCH_XP.perGap, clamped). */
+  gapFactor: (mineOvr, oppOvr) => +clamp(1 + (oppOvr - mineOvr) * MATCH_XP.perGap, MATCH_XP.gap[0], MATCH_XP.gap[1]).toFixed(2),
+  /** " (×1.6 vs a stronger side)" when the factor is not 1. */
+  gapNote: f => (f > 1 ? ` (×${f} vs a stronger side)` : f < 1 ? ` (×${f} vs a weaker side)` : ''),
+  /** The gap factor of match m: your side's 4 starters vs theirs (m.lineup0). */
+  matchGap(m) {
+    return Growth.gapFactor(teamOvr({ P: m.lineup0[0].P }), teamOvr({ P: m.lineup0[1].P }));
+  },
+  /**
+   * Stat XP from your line in match m (its 4 starters vs theirs set the factor): each stat line unit × MATCH_XP.per,
+   * through Training.addXp with source 'match' (past the training cap). Returns the text for the result line, or ''.
+   */
+  matchXp(run, m) {
+    const s = m.stat[Run.you(run).id];
+    if (!s) return '';
+    const f = Growth.matchGap(m),
+      xp = {};
+    for (const [unit, map] of Object.entries(MATCH_XP.per))
+      for (const [stat, v] of Object.entries(map)) xp[stat] = (xp[stat] || 0) + (s[unit] || 0) * v;
+    const out = [];
+    for (const stat of [...STATK, 'wit']) if (xp[stat]) out.push(Training.addXp(run, stat, Math.round(xp[stat] * f), 'match'));
+    return out.length ? `XP: ${out.join(', ')}${Growth.gapNote(f)}` : '';
+  },
   /** Your own star / OP status: earned by hitting the overall (and for OP, key stat + wit) criteria. */
   checkYou(run, you) {
     const o = ovr(you),

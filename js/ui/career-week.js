@@ -9,12 +9,8 @@ function youCard(run) {
     team = Run.myTeam(run),
     mood = MOODS[run.mood],
     staPct = Math.round((run.sta / run.staMax) * 100);
-  const gateTag = k => {
-    const g = Training.gate(run, k);
-    return g < CAREER.runCap
-      ? `<small class="gate ${you[k] >= g ? 'at' : ''}" title="Stops at ${g} until its Limit Break">⌈${g}</small>`
-      : '';
-  };
+  const capTag = k =>
+    `<small class="gate ${you[k] >= TRAIN_CAP ? 'at' : ''}" title="Training stops at ${TRAIN_CAP}. Matches only above.">⌈${TRAIN_CAP}</small>`;
   return `<div class="panel ycard">
     <div class="phd"><span class="portrait">${faceSVG(you, mood.form, 64)}<b>${you.num}</b></span>
       <div><div class="pn">${stag(you)}${esc(you.name)}${you.cap ? ' <span class="capb" title="Team captain">C</span>' : ''}</div>
@@ -28,7 +24,7 @@ function youCard(run) {
       }</div></div></div>
     <div class="stats">${STATK.map(k => {
       const pr = Training.progress(run, k);
-      return `<span ${tip(`${Math.round((pr.have / Math.max(1, pr.need)) * 100)}% of the way to the next point`)}>${STATNAME[k]}${gateTag(k)}</span><span class="xpbar">${bar(you[k])}<i style="width:${Math.round((pr.have / Math.max(1, pr.need)) * 100)}%"></i></span>`;
+      return `<span ${tip(`${Math.round((pr.have / Math.max(1, pr.need)) * 100)}% of the way to the next point`)}>${STATNAME[k]}${capTag(k)}</span><span class="xpbar">${bar(you[k])}<i style="width:${Math.round((pr.have / Math.max(1, pr.need)) * 100)}%"></i></span>`;
     }).join('')}
       <span>Wit</span><span class="bar wit"><i style="width:${you.wit * 50}%"></i><b>${you.wit.toFixed(2)}</b></span>
       <span>Leadership</span>${bar(you.lead)}</div>
@@ -253,9 +249,9 @@ function eventCard(run) {
                       : `${v > 0 ? '+' : ''}${v} ${k === 'sta' ? 'stamina' : k === 'sp' ? 'skill pts' : STATNAME[k] || k}`
             )
             .join(', ');
-  const kind = { limit: 'Limit Break', sponsor: 'Sponsor', element: 'Element Trial' }[run.event.id] || 'Event',
+  const kind = { sponsor: 'Sponsor', element: 'Element Trial' }[run.event.id] || 'Event',
     you = Run.you(run);
-  return `<div class="panel ev ${run.event.id === 'limit' || run.event.id === 'element' ? 'lbk' : ''}"${run.event.id === 'element' ? ` style="--lbk:${ECOL[you.el]}"` : ''}><span class="evk">${kind}</span><h3>${esc(e.title)}</h3><p>${esc(Events.text(run, run.event, e.text))}</p>
+  return `<div class="panel ev ${run.event.id === 'element' ? 'lbk' : ''}"${run.event.id === 'element' ? ` style="--lbk:${ECOL[you.el]}"` : ''}><span class="evk">${kind}</span><h3>${esc(e.title)}</h3><p>${esc(Events.text(run, run.event, e.text))}</p>
     <div class="evc">${[e.a, e.b].map(([label, fx], i) => `<button class="btn" onclick="chooseEvent(${i})"><b>${esc(label)}</b><small>${esc(fxText(fx))}</small></button>`).join('')}</div></div>`;
 }
 /** Skills shop in two groups: active techniques (fire in matches) and passive skills (always on). */
@@ -266,7 +262,7 @@ function skillShop(run, open) {
     const s = SKILLS[id],
       own = you.skills.includes(id),
       byStats = !own && s.tech && hasTech(you, id);
-    return `<button class="sk ${own || byStats ? 'own' : ''} ${s.tech ? 'act' : 'pas'}" onclick="learnSkill('${id}')" ${own || byStats || !Skills.canLearn(run, id) ? 'aria-disabled="true"' : ''} ${tip(s.desc)}>${skillIcon(id)}<b>${esc(s.name)}</b><span>${own ? '✓' : byStats ? '✓ stats' : s.cost}</span></button>`;
+    return `<button class="sk ${own || byStats ? 'own' : ''} ${s.tech ? 'act' : 'pas'}" onclick="learnSkill('${id}')" ${own || byStats || !Skills.canLearn(run, id) ? 'aria-disabled="true"' : ''} ${tip(s.tech && !own && !byStats ? `${s.desc}\nLearned in matches: by doing it, or by facing a player who has it.` : s.desc)}>${skillIcon(id)}<b>${esc(s.name)}</b><span>${own ? '✓' : byStats ? '✓ stats' : s.tech ? 'learn in matches' : s.cost}</span></button>`;
   };
   const aff = ids.filter(id => !you.skills.includes(id) && Skills.canLearn(run, id)).length;
   return `<div class="panel">${fold(

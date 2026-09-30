@@ -188,6 +188,8 @@ const Cup = {
       const sp = Math.round((R0.sp + plays * REWARDS.perPlay.sp) * mul * gmul),
         fans = Math.round((R0.fans + plays * REWARDS.perPlay.fans) * mul * gmul * Sponsors.fanMul(run));
       const out = [
+        Growth.matchXp(run, m),
+        Skills.tryLearn(run, m),
         Run.bump(run, 'sp', sp),
         Run.bump(run, 'fans', fans),
         World.prize(run, Math.round((kind === 'cup' ? (win ? ECON.cupWin : 0) : win ? ECON.warmupWin : ECON.warmupLoss) * mul))

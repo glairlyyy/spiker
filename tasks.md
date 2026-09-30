@@ -31,102 +31,9 @@ Result:
 - Match music ✓ (T-032)
 - Block tactics ✓ (T-026 lane-read block, T-027 defence setting + scouting habits).
 - Substitutions ✓ (T-028 squads of 6, T-029 in-match subs, T-030 coach AI, T-031 you on the bench).
-- **Growth rework** (now): training cap (T-034), match XP (T-035), skills learned in play (T-036); then **Challenges** (T-037/T-038).
+- Growth rework ✓ (T-034 training cap 75, T-035 match XP, T-036 techniques learned in play).
+- **Challenges** (next, to be detailed): T-037/T-038.
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
-
-## Now — Growth rework (spec §4.14)
-
-### [ ] T-034: Training stops at 75 — remove Limit Break
-Spec: §4.14          Goldens: unchanged (career only)          Save: RUN_VERSION 4 → 5 (`run.lb` removed) — older saves dropped
-Goal: Training (and event stat bumps) can raise a stat to 75 at most; there is no Limit Break any more. Above 75 only
-match experience counts (T-035). Wit keeps its own cap.
-Files: js/data/career.js, js/career/training.js, js/career/run.js, js/career/events.js, js/career/goals.js,
-js/ui/career-week.js, js/ui/career-map.js, tests/run.js, ARCHITECTURE.md
-Do not:
-- Touch NPC growth (Growth.grow) or anything in js/engine.
-- Change the XP curve (TRAIN_X.xp) or session gains: the exponential `need` already makes gains shrink above 60.
-Steps:
-1. career.js: `TRAIN_CAP = 75` (doc: training and events stop here; matches go higher, spec §4.14); remove
-   `TRAIN_X.gates` and its comment.
-2. training.js: remove `gate`, `trialP`, `trial` and the "limit" event hand-off in `train`; `Training.top(run, stat,
-   src = 'train')` → wit: its cap; `'train'` → `TRAIN_CAP`; `'match'` → `CAREER.runCap`. `sim` / `gain` / `addXp` take
-   the same `src` (default 'train'); a stat already above the top gains nothing from that source and banks nothing.
-   `preview.gate` → `cap: you[main] >= TRAIN_CAP ? TRAIN_CAP : null`. Header comment updated.
-3. run.js: `bump` for stats: top = `Math.max(you[key], TRAIN_CAP)` (events never lower a stat that matches raised);
-   remove `lb` from create / repair; `RUN_VERSION = 5` (comment: v5 — Limit Break removed).
-4. events.js: remove the 'limit' special event (def, choose, the comment in `roll`).
-5. goals.js: stat goals use `TRAIN_CAP` instead of the gate (no stat goal for a stat at 73+).
-6. UI: the stat tag in `youCard` shows `⌈75` with the tip "Training stops at 75. Matches only above." (registrar
-   voice); the training card line reads "<Stat> at 75 — matches only" instead of "Limit Break"; drop 'limit' from the
-   event card kinds.
-7. tests: replace `'career: Limit Break gates…'` with `'career: training cap, facility Lv 5 and Hard training'`:
-   training 200 sessions never takes a stat past 75; an event bump at 75 does nothing; a stat already at 80 is not
-   lowered; full-run test asserts stats ≤ 75 unless raised in matches (until T-035: ≤ 75). Facility / Hard parts kept.
-8. ARCHITECTURE.md: training section (cap, sources).
-Accept: all tests + lint; goldens untouched.
-QA: career run → train a stat near the cap (set `Run.you(RUN).power = 74` in the console) → it stops at 75, the card
-says "matches only"; no Limit Break event; no pageerror.
-Result:
-
-### [ ] T-035: Match experience — your performance × opponent strength
-Spec: §4.14          Goldens: unchanged          Save: no change (uses `run.xp`)
-Goal: Every match you play gives stat XP from your own line (not the result), scaled by how strong the opponent was.
-It is the only way past 75. Street-battle fights give a flat amount by the same scaling.
-Files: js/data/career.js, js/career/growth.js, js/career/cup.js, js/career/city.js, js/ui/career-week.js,
-tests/run.js, ARCHITECTURE.md
-Do not:
-- Look at the winner for XP (win / loss rewards stay as they are, set by the kind of match).
-- Give XP when you never came on (the bench reward stays).
-Steps:
-1. career.js: `MATCH_XP = { per: { k: { power: 12 }, ace: { power: 8 }, blk: { jump: 8, def: 8 }, dig: { def: 6,
-   speed: 6 }, ast: { wit: 2 }, att: { jump: 1 } }, gap: [0.3, 2], perGap: 0.1, clash: { win: 30, loss: 20 } }`
-   (doc: XP per stat-line unit; factor = clamp(1 + (opponent ovr − your side's ovr) × perGap, gap); wit counts in
-   0.02 steps like training).
-2. growth.js: `Growth.matchXp(run, m, mine, opp)` → labels: your `m.stat` line × `MATCH_XP.per`, × the gap factor
-   (`opp.ovr` vs `mine.ovr` — the 4 who started), each stat through `Training.addXp(run, stat, xp, 'match')`.
-   Returns e.g. ["+2 Power", "Defense progress"] plus "×1.6 vs a stronger side" / "×0.4 vs a weaker side" when ≠ 1.
-3. cup.js `result`: when you played, add the labels to the result line (before rewards). city.js `clash` (you fought):
-   XP to your role's key stat = `MATCH_XP.clash[win ? 'win' : 'loss']` × the gap factor (your ovr vs `CLASH.par`),
-   source 'match'.
-4. Result card (career-week.js, wherever the match result line is shown): nothing new beyond the line; keep it short.
-5. tests: new `'career: match XP — performance, opponent strength, past the cap'`: the same stat line gives more XP
-   vs a stronger side than vs an equal one, and 0.3× vs a much weaker one; winner flag flipped → same XP; a stat at 75
-   rises from match XP; never-played → no XP. Report (not assert) in Result: a Short-season headless run with only
-   training vs one that also plays every eval — final key stat both ways.
-6. ARCHITECTURE.md: match XP.
-Accept: all tests + lint; goldens untouched.
-QA: career run → Sim ⏭ an evaluation → the result line shows the XP labels and the gap factor; no pageerror.
-Result:
-
-### [ ] T-036: Techniques learned in play (basic skills stay in the shop)
-Spec: §4.14          Goldens: unchanged          Save: no change
-Goal: The skill shop sells only basic skills (entries without `tech`). Techniques (`tech` entries) can't be bought:
-you learn one by chance after a match — by doing the related thing, or by facing a player who has it. They still
-switch on by themselves once your stats meet their `req` (as for everyone).
-Files: js/data/career.js, js/career/skills.js, js/career/cup.js, js/career/dossier.js, js/ui/career-week.js,
-js/ui/career-map.js, js/ui/career-dossier.js, tests/run.js, ARCHITECTURE.md
-Do not:
-- Change how techniques work in the engine (`hasTech`, `req`).
-- Learn more than one technique per match.
-Steps:
-1. career.js: `LEARN = { do: { Attack: ['k', 3], Setter: ['ast', 6], Serve: ['ace', 1], Defense: ['blk+dig', 4] },
-   doP: 0.08, faceP: 0.05 }` (doc: "by doing" needs that many of the stat in the match; "by facing" = an opponent on
-   court has it; chance × (0.5 + wit / 2) × the MATCH_XP gap factor, clamped to [0, 0.5]).
-2. skills.js: `canLearn` → false for `tech` entries; `Skills.tryLearn(run, m, mine, opp)` after a match you played:
-   candidates = techniques for your role you don't own; for each (in SKILLS order) the do-chance if you reached its
-   threshold, else the face-chance if an opponent who played has it (`hasTech`); first success → push to
-   `you.skills`, log "Learned <name> in play (by doing | from <player>)"; one R() per candidate considered.
-3. cup.js `result`: call it when you played; add the line to the result.
-4. UI (skills shop, career-week.js): techniques show "learn in matches" instead of a price and can't be clicked;
-   owned / "✓ stats" stay as today. Scouting: the scouted club roster (career-map.js) and the dossier roster show each
-   player's techniques by name (`Dossier` model gains `techs` per roster entry when ratings are visible).
-5. tests: a technique can't be bought; forcing R() low after a match with 3+ kills learns an Attack technique for a
-   WS; facing a player with a technique can teach it; never two in one match; dossier `techs` hidden until scouted.
-6. ARCHITECTURE.md: skills section.
-Accept: all tests + lint; goldens untouched.
-QA: career run → skills drawer shows techniques as "learn in matches"; scout a club → roster lists techniques; no
-pageerror.
-Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
@@ -137,10 +44,14 @@ Challenges — spec §4.15 (after the growth rework)
   injury risk from gap, margin and fatigue (stamina + days since last battle); severe injury −2 permanent.
 
 Phase 5 — Voice pass
-- T-022: Faction `front`/`dark`, region `desc`, Gazette and event strings in lore.md §7 voices.
+- T-022: Faction `front`/`dark`, region `desc`, Gazette and event strings in lore.md §7 voices. Also fix the stale
+  encyclopedia line "Or learn it in career for this many skill points" (ui/encyclopedia.js: techniques are learned in play).
 
 ## Done
 (one line each; full task text is in git history)
+- [x] T-034: Training stops at 75 — remove Limit Break — Done as specified; tests 33/33 (full run asserts ≤ max(75, start stat) until T-035), lint clean, goldens untouched; RUN_VERSION 5.
+- [x] T-035: Match experience — your performance × opponent strength — Done as specified; tests 34/34, lint clean, goldens untouched. Report (short season, 5 seeds, WS, power-only training incl. the cup): training only 75.6 avg power (ovr 67.8) vs also playing every eval 78.2 (ovr 69.0). QA: Sim ⏭ eval line shows "XP: … (×0.3 vs a weaker side)".
+- [x] T-036: Techniques learned in play (basic skills stay in the shop) — Done as specified; tests 35/35, lint clean, goldens untouched. Growth.matchXp now takes (run, m) and shares `Growth.matchGap(m)` with tryLearn. Not touched (unlisted): the encyclopedia card still says "Or learn it in career for this many skill points" (ui/encyclopedia.js:26,47) — stale now. QA: shop shows 8 techniques as "learn in matches"; scouted HQ roster and dossier list techniques; no pageerror.
 - [x] T-028: Squads of 6 — 4 on court + 2 on the bench (data, pools, draws, saves, rosters) — squadOf + t.bench (teams.js), bench in fillRoster/finalizeTeam/save (RUN_VERSION 4), POOL 24/18/12/6/6 + SQUAD 6, Pool.draw squads of 6 (benches drawn after all court slots, never you), Eval.squad/lend bench, Cup entrants of 6 (12 entrants, 4 byes), .P → squadOf across career code, new `World.swap` (join / transfers / promotion move players between court and bench seats), Teammates card 'Bench' heading, bench marks in the scouted roster and dossier ('<squad> · bench'). Tests: pools/draw/eval/U21 updated, new 'teams: 4 on court + 2 bench…' (30/30, lint clean); goldens updated (2 more rolls per team). Deviations: (1) STUFF_BIAS 0.45 → 0.2 in rally-defense.js — the new team rolls plus the MB-first blocker change (unplanned, earlier) left the 5-set test at 11.4 %; 10 team sets now average 13.1 % (spec ~13 %, per-set 9.6–16.8), kills 42 % unchanged; (2) elAll (engine/elements.js, unlisted) still loops t.P — only for pre-v4 saves, which are dropped; (3) eval card lists the 4 starters only. QA: career run — Teammates card shows 4 + 'Bench' (2), Wei dossier roster 24 (4 bench-marked), forced week-28 cup: 12 entrants / 4 byes; Monster game 600 steps 4+2 per side; no pageerror.
 - [x] T-029: Substitutions in the match — dead-ball swap, SUBBED label, coach line (stamina rule) — SUB + SUBLINES, `m.subs` / `m.lineup0`, `coachSubs` / `subIn` / `restoreLineups` in match.js (subs after the point's beats, before a timeout; restore when the match is over, on leaveMatch and in navigate() for a running match), new act kind `sub` (+ existing `rot`, `plabel`, `coachtalk`, `log` in the same beat), `case 'sub'` in playback, `R3D.swapActor` (actors3d `dressFigure`), byId/box score/stars/mp cover players who came on. Goldens updated. Tests: new 'engine: substitutions — rule, limit, restore' (200 sims: 244 subs in 136 matches at shipped SUB.sta 0.6, never > 2 per side, lineups restored; recorded sub acts name known players), scene/beat tests accept bench ids (31/31, lint clean). Deviations: (1) bench display entries live in `A.bench`, not flagged inside `A.disp` — every draw / animation loop already iterates A.disp, so nothing had to learn to skip them; (2) the 3D figure of the outgoing player is re-dressed as the incoming one (same body model) rather than loading a separate hidden model per bench player; (3) a setter goes off only for a setter (the engine reads `t.s`). QA: Monster game with SUB.sta 0.95 — 2 subs per side, SUBBED label + '#14, sit. #5, you're up — earn it.' + log line, 8 figures / 8 unique players, `P` ids equal the starting lineup after the match, box score lists the players who came on; no pageerror.
 - [x] T-030: Coach AI — errors and coach IQ decide subs too — SUB gains errs 3 / back 0.85 / iq [0.35, 0.9]; `subCandidate` (tired → erring → rested starter returns) + `coachSubs` with one `R() < lerp(SUB.iq…, coachIQ)` roll only when a candidate exists; engine-only `m.setErr`, `m.subbed`, `m.subLog`; the log line names the reason (tired / too many errors / fresh legs back). No new act kind. Goldens updated. Test 'engine: coach AI — errors, returns, coach IQ' (32/32, lint clean): 200 sims → tired 304, errors 21, back 38 subs; coachIQ 1 subs earlier than 0 (pooled over 4 seeds × 150 matches, e.g. 21.4 vs 21.7 points at first sub on seed 7 — small, direction held on every seed). Notes: with the shipped SUB numbers error-subs are rare (~10 % of subs); the IQ effect is modest because a candidate usually shows up late. QA: Monster game with SUB.sta 0.95 — log 'Sub …: #8 … in for #11 … (tired)', 8 unique figures, lineups restored after the match; no pageerror.

@@ -15,7 +15,7 @@ const Goals = {
       key = KEYSTAT[you.role],
       prev = run.goal && run.goal.kind;
     // the coach picks from what makes sense this block
-    const stat = STATK.includes(key) && you[key] < Training.gate(run, key) - 2 ? key : STATK.find(k => you[k] < Training.gate(run, k) - 2);
+    const stat = STATK.includes(key) && you[key] < TRAIN_CAP - 2 ? key : STATK.find(k => you[k] < TRAIN_CAP - 2);
     const warm = Object.keys(CALENDAR)
       .map(Number)
       .find(w => w >= run.week && w <= by && CALENDAR[w] === 'eval' && Eval.kind(run) === 'academy');
@@ -25,7 +25,7 @@ const Goals = {
       opts.push({
         kind: 'stat',
         stat,
-        target: Math.min(Training.gate(run, stat), you[stat] + Math.max(4, Math.round((by - run.week + 1) * 1.6)))
+        target: Math.min(TRAIN_CAP, you[stat] + Math.max(4, Math.round((by - run.week + 1) * 1.6)))
       });
     if (warm) opts.push({ kind: 'win', week: warm });
     opts.push({ kind: 'fans', target: Math.ceil((run.fans + 500 + (by - run.week) * 50) / 100) * 100 });

@@ -117,7 +117,7 @@ function trainSpot(run, id, c) {
     pv = Training.preview(run, key, hard, x),
     turf = City.turf(run, id),
     fmt = ([k, , xp]) => {
-      if (pv.gate && k === pv.main[0]) return `${STATNAME[k]} at ${pv.gate} — Limit Break`;
+      if (pv.cap && k === pv.main[0]) return `${STATNAME[k]} at ${pv.cap} — matches only`;
       // how much this session moves the stat, compared with what its next point costs at your level
       const r = xp / Training.progress(run, k).need,
         g = r >= 2.5 ? ['High', 'hi'] : r >= 1 ? ['Mid', 'md'] : ['Low', 'lo'];
@@ -129,7 +129,7 @@ function trainSpot(run, id, c) {
       ${pv.streak ? `<span class="stk" ${tip('Same training in a row')}>Streak +${Math.round(pv.streak * 100)}%</span>` : ''}
       ${turf ? `<span class="stk" ${tip("Your faction's region")}>Turf +${Math.round(turf * 100)}%</span>` : ''}
       ${s.sand ? `<span class="stk" ${tip(`Sand training builds technique: skill points ×${SAND_SP}`)}>Sand ×${SAND_SP} pts</span>` : ''}
-      ${info(`Facility Lv ${pv.lvl}${pv.next != null ? ` — ${pv.next} more sessions to Lv ${pv.lvl + 1}` : ' (max)'}. Stats stop at 80 and 90 until you pass a Limit Break trial. Teammates here: +20% each (+50% at bond 80+). Below 50 stamina training can fail — below ${TRAIN_X.injuryAt} it can injure you.`)}</div>
+      ${info(`Facility Lv ${pv.lvl}${pv.next != null ? ` — ${pv.next} more sessions to Lv ${pv.lvl + 1}` : ' (max)'}. Training stops a stat at ${TRAIN_CAP}; matches only above. Teammates here: +20% each (+50% at bond 80+). Below 50 stamina training can fail — below ${TRAIN_X.injuryAt} it can injure you.`)}</div>
     <div class="trow"><span class="fl">${mates
       .map(pid =>
         faceSVG(
@@ -155,7 +155,7 @@ function hqPanel(run, ti) {
     ? `<div class="roster small">${squadOf(t)
         .map(
           p =>
-            `<span>${faceSVG(p, 0, 22)}${stag(p)}${esc(p.name)} <i class="mute">${p.role} ${ovr(p)}${t.bench && t.bench.includes(p) ? ' · bench' : ''}</i>${p.elOn ? ` <b style="color:${ECOL[p.el]}">${ENAME[p.el]}</b>` : ''}</span>`
+            `<span>${faceSVG(p, 0, 22)}${stag(p)}${esc(p.name)} <i class="mute">${p.role} ${ovr(p)}${t.bench && t.bench.includes(p) ? ' · bench' : ''}</i>${p.elOn ? ` <b style="color:${ECOL[p.el]}">${ENAME[p.el]}</b>` : ''}${Skills.techs(p).length ? ` <span class="mute">· ${esc(Skills.techs(p).join(', '))}</span>` : ''}</span>`
         )
         .join('')}</div>`
     : '';

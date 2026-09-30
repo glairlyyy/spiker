@@ -243,7 +243,6 @@ test('career: a full run reaches a result with sane values', () => {
     eq(run.cups.map(c => c.id).join(','), 'u21', 'the U21 Final Cup ends every run (placing NO_CUP when your squad was not drawn)');
     eq(run.week, g.CAREER.weeks + 1, 'the season runs all 28 weeks');
     assert(run.hist.length >= 20, 'weekly history for the growth chart');
-    for (const k of g.STATK) assert(you[k] <= g.Training.gate(run, k), `${k} past its limit-break gate`);
     for (const k of g.STATK) assert(you[k] >= 25 && you[k] <= 99, `${k} out of range: ${you[k]}`);
     assert(you.wit >= 0.1 && you.wit <= 2, 'wit out of range');
     assert(run.sta >= 0 && run.sta <= run.staMax, 'stamina out of range');
@@ -267,23 +266,164 @@ test('career: save → load round-trip keeps the run intact', () => {
   eq(g.Run.you(back).team, g.Run.myTeam(back), 'player re-linked to team');
   eq(JSON.stringify(back.teams.map(g.teamToJSON)), JSON.stringify(run.teams.map(g.teamToJSON)), 'teams');
 });
-test('career: Limit Break gates, facility Lv 5 and Hard training', () => {
+test('career: training cap, facility Lv 5 and Hard training', () => {
   const g = load(10),
-    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Gate', alloc: { power: 30, def: 10, speed: 10, jump: 10 }, witSteps: 0 }),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Cap', alloc: { power: 30, def: 10, speed: 10, jump: 10 }, witSteps: 0 }),
     you = g.Run.you(run);
-  you.power = 79;
-  run.sta = 100;
-  g.Training.train(run, 'power');
-  eq(you.power, 80, 'power stops at the 80 gate');
-  eq(run.event && run.event.id, 'limit', 'the trial is offered at the gate');
-  run.lb.power = 1;
-  eq(g.Training.gate(run, 'power'), 90, 'first Limit Break opens the way to 90');
+  eq(g.TRAIN_CAP, 75, 'training cap');
+  you.power = 60;
+  for (let i = 0; i < 200; i++) {
+    run.sta = 100;
+    run.injury = null;
+    run.mood = 4;
+    g.Training.train(run, 'power');
+    assert(!run.event, 'no Limit Break event any more');
+  }
+  eq(you.power, 75, '200 sessions stop power at 75');
+  eq(g.Training.preview(run, 'power', false).cap, 75, 'the preview says the stat is capped');
+  const xp0 = run.xp.power || 0;
+  g.Training.addXp(run, 'power', 500);
+  eq(you.power, 75, 'XP from training past the cap does nothing');
+  eq(run.xp.power || 0, xp0, '…and banks nothing');
+  g.Run.bump(run, 'power', 10);
+  eq(you.power, 75, 'an event bump at 75 does nothing');
+  you.power = 80;
+  g.Run.bump(run, 'power', -5);
+  eq(you.power, 75, 'a negative event still applies to a raised stat');
+  you.power = 80;
+  g.Run.bump(run, 'power', 4);
+  eq(you.power, 80, 'a stat already at 80 is not lowered by a positive bump');
+  g.Training.addXp(run, 'power', 100000, 'match');
+  assert(you.power > 80, 'match XP goes past the training cap');
+  assert(!('lb' in run) && g.RUN_VERSION === 5, 'no Limit Break progress in the run; RUN_VERSION 5');
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
-  run.event = null;
   const n = g.Training.preview(run, 'power', false).main[2],
     h = g.Training.preview(run, 'power', true);
   assert(h.main[2] > n && h.sta === 2 * g.Training.preview(run, 'power', false).sta, 'Hard: more gain, double stamina');
+});
+test('career: match XP — performance, opponent strength, past the cap', () => {
+  const g = load(61),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Xp', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    you = g.Run.you(run),
+    mine = g.Run.myTeam(run),
+    foe = run.teams[1],
+    line = { k: 4, blk: 2, dig: 3, ast: 6, ace: 1, att: 10, err: 0 };
+  const xpFor = (oppLevel, winner) => {
+    for (const p of foe.P) for (const k of g.STATK) p[k] = oppLevel;
+    const got = {},
+      keep = g.Training.addXp;
+    g.Training.addXp = (r, stat, xp, src) => ((got[stat] = xp), eq(src, 'match', 'source'), '');
+    const m = { stat: { [you.id]: line }, lineup0: [{ P: mine.P }, { P: foe.P }], winner };
+    g.Growth.matchXp(run, m, mine, foe);
+    g.Training.addXp = keep;
+    return got;
+  };
+  const base = g.teamOvr(mine);
+  for (const p of foe.P) for (const k of g.STATK) p[k] = 60;
+  // a level that gives the same team ovr as yours: search
+  let L = 25;
+  while (L < 99 && g.teamOvr({ P: foe.P.map(p => ({ ...p, ...Object.fromEntries(g.STATK.map(k => [k, L])) })) }) < base) L++;
+  const eq1 = xpFor(L, 0);
+  eq(eq1.power, 4 * 12 + 1 * 8, 'kills and aces → power');
+  eq(eq1.jump, 2 * 8 + 10, 'blocks and attempts → jump');
+  eq(eq1.def, 2 * 8 + 3 * 6, 'blocks and digs → defense');
+  eq(eq1.speed, 3 * 6, 'digs → speed');
+  eq(eq1.wit, 6 * 2, 'assists → wit');
+  const strong = xpFor(L + 12, 0),
+    weak = xpFor(L - 30, 0);
+  assert(strong.power > eq1.power && strong.power <= eq1.power * 2, `stronger side gives more (${strong.power} vs ${eq1.power})`);
+  eq(weak.power, Math.round(56 * 0.3), 'a much weaker side gives ×0.3');
+  eq(JSON.stringify(xpFor(L, 1)), JSON.stringify(eq1), 'the winner flag changes nothing');
+  // past the training cap: matches raise a stat at 75
+  you.power = 75;
+  run.xp = {};
+  const label = g.Training.addXp(run, 'power', 200, 'match');
+  assert(you.power > 75 && /^\+\d+ Power/.test(label), `a stat at 75 rises from match XP (${you.power})`);
+  // never played → no XP line
+  for (const p of foe.P) for (const k of g.STATK) p[k] = 55;
+  run.week = 4;
+  run.eval = null;
+  run.event = null;
+  const fx = g.Cup.fixture(run, 'eval'),
+    m = g.newMatch(fx.a, fx.b, false);
+  while (!m.over) g.playRally(m);
+  m.played.delete(you.id);
+  const xp0 = JSON.stringify({ ...run.xp, wit: 0 }),
+    txt = fx.onFinish(m);
+  assert(!/XP:/.test(txt) && JSON.stringify({ ...run.xp, wit: 0 }) === xp0, `never played → no match XP (${txt})`);
+  // a played match shows the XP labels
+  run.week = 8;
+  run.eval = null;
+  run.event = null;
+  const fx2 = g.Cup.fixture(run, 'eval'),
+    m2 = g.newMatch(fx2.a, fx2.b, false);
+  while (!m2.over) g.playRally(m2);
+  m2.played.add(you.id);
+  m2.stat[you.id] = { ...g.blank(), k: 5, blk: 1 };
+  assert(/XP: /.test(fx2.onFinish(m2)), 'the result line shows the XP labels');
+});
+test('career: techniques are learned in play, not bought', () => {
+  const g = load(71),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Tech', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    you = g.Run.you(run);
+  run.sp = 9999;
+  assert(
+    !g.Skills.canLearn(run, 'cutshot') && !g.Skills.learn(run, 'cutshot') && !you.skills.includes('cutshot'),
+    'a technique cannot be bought'
+  );
+  assert(g.Skills.canLearn(run, 'thunder'), 'a basic skill still can');
+  // a fake finished match: you are on side 0, the foe on side 1
+  const foe = run.teams[1],
+    mk = (line, teacher) => {
+      for (const p of foe.P) {
+        p.skills = [];
+        p.wit = 0.1;
+        for (const k of g.STATK) p[k] = 30; // meets no technique's requirement
+      }
+      if (teacher) foe.P[0].skills = [teacher];
+      const stat = { [you.id]: { ...g.blank(), ...line } };
+      return {
+        stat,
+        t: [g.Run.myTeam(run), foe],
+        lineup0: [{ P: g.Run.myTeam(run).P }, { P: foe.P }],
+        played: new Set(foe.P.map(p => p.id))
+      };
+    };
+  const low = g.RNG.next;
+  g.RNG.next = () => 0.001;
+  // by doing: 3+ kills → an Attack technique for a WS (cutshot / delayed spike), first in SKILLS order
+  let txt = g.Skills.tryLearn(run, mk({ k: 3 }));
+  assert(/^Learned .+ in play \(by doing\)$/.test(txt) && you.skills.length === 1, `learned by doing: ${txt}`);
+  assert(g.SKILLS[you.skills[0]].tech === 'Attack', 'an Attack technique');
+  // never two in one match, and a second match with the same line teaches the next one
+  eq(you.skills.length, 1, 'one technique per match');
+  txt = g.Skills.tryLearn(run, mk({ k: 3 }));
+  eq(you.skills.length, 2, 'the next match teaches another');
+  // below the thresholds and nobody with it → nothing (and no random draw)
+  let draws = 0;
+  g.RNG.next = () => (draws++, 0.001);
+  eq(g.Skills.tryLearn(run, mk({ k: 1 })), '', 'nothing learned below the threshold');
+  eq(draws, 0, 'no candidate → no roll');
+  // by facing: a foe who has a Serve technique, you did nothing
+  you.skills = [];
+  const m = mk({}, 'target');
+  foe.P[0].skills = ['target'];
+  txt = g.Skills.tryLearn(run, m);
+  assert(/from /.test(txt) && you.skills.includes('target'), `learned by facing: ${txt}`);
+  g.RNG.next = () => 0.999;
+  you.skills = [];
+  eq(g.Skills.tryLearn(run, mk({ k: 9 })), '', 'a high roll learns nothing');
+  g.RNG.next = low;
+  // scouting: the dossier lists techniques only once ratings are visible
+  const d = g.Dossier.build(run, 'wei');
+  assert(
+    d.roster.every(p => (d.scouted || d.member ? Array.isArray(p.techs) : p.techs === null)),
+    'dossier techs hidden until scouted'
+  );
+  run.scout = Object.fromEntries(run.teams.map(t => [t.i, run.week]));
+  const d2 = g.Dossier.build(run, 'wei');
+  assert(d2.scouted && d2.roster.every(p => Array.isArray(p.techs)), 'dossier techs shown once scouted');
 });
 test('engine: elements — rarity, every element fires, counters, captain buff', () => {
   const g = load(21);

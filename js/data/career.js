@@ -55,12 +55,13 @@ const PLACES = {
   Final: { fans: 1500, sp: 60 },
   Champion: { fans: 3000, sp: 90 }
 };
-/** Training depth: facility levels (uses needed per level), Hard option, streaks, limit-break gates. */
+/** Training and events raise a stat to here at most; only match experience goes higher (up to CAREER.runCap). Spec §4.14. */
+const TRAIN_CAP = 75;
+/** Training depth: facility levels (uses needed per level), Hard option, streaks. */
 const TRAIN_X = {
   lvUses: [0, 4, 8, 18, 26], // Lv 1–5
   hard: { gain: 1.6, sta: 2, fail: 0.15 },
   streak: { step: 0.05, max: 0.2 },
-  gates: [80, 90], // a stat stops here until its Limit Break trial is passed
   injuryAt: 25, // stamina below this: a failed session may injure you
   physio: 30, // skill points to heal an injury at once
   /**
@@ -139,6 +140,23 @@ const REWARDS = {
   cupWin: { sp: 60, fans: 1500, bond: 5 },
   perPlay: { sp: 2, fans: 20 } // each of your kills, blocks and aces
 };
+/**
+ * Match experience (spec §4.14): stat XP per unit of your own stat line — kills, aces, blocks, digs, assists and attempts —
+ * (wit counts in 0.02 steps like training). The XP is scaled by the opponent: factor = clamp(1 + (opponent ovr − your side's
+ * ovr) × perGap, gap[0], gap[1]). A street battle you fight gives a flat amount to your key stat (`clash`), scaled the same way.
+ */
+const MATCH_XP = {
+  per: { k: { power: 12 }, ace: { power: 8 }, blk: { jump: 8, def: 8 }, dig: { def: 6, speed: 6 }, ast: { wit: 2 }, att: { jump: 1 } },
+  gap: [0.3, 2],
+  perGap: 0.1,
+  clash: { win: 30, loss: 20 }
+};
+/**
+ * Techniques are learned in play, never bought (spec §4.14). After a match you played, each technique of your role you don't
+ * own is a candidate: "by doing" when your line reached `do[category] = [stat(s), count]` (a "+" adds stats), else "by facing"
+ * when an opponent who played has it. Chance = doP / faceP × (0.5 + wit / 2) × the MATCH_XP gap factor, clamped to [0, 0.5].
+ */
+const LEARN = { do: { Attack: ['k', 3], Setter: ['ast', 6], Serve: ['ace', 1], Defense: ['blk+dig', 4] }, doP: 0.08, faceP: 0.05 };
 const RANKS = [
   ['S', 10000],
   ['A', 7000],

@@ -12,7 +12,7 @@ const EVENT_NEED = {
 const Events = {
   /** Maybe start an event (sets run.event). Each event happens at most once per run. */
   roll(run) {
-    if (run.event) return run.event; // a Limit Break trial (or another special event) is already waiting
+    if (run.event) return run.event; // a special event (Element Trial, sponsor offer) is already waiting
     if (R() >= CAREER.eventChance) return null;
     const alone = !Run.mates(run).length,
       pool = EVENTS.filter(e => !run.seen.includes(e.id) && (!e.need || EVENT_NEED[e.need](run)) && !(alone && e.text.includes('{mate}')));
@@ -22,18 +22,8 @@ const Events = {
     run.event = { id: e.id, mate: (pick(Run.mates(run)) || {}).id }; // alone: no teammate
     return run.event;
   },
-  /** Event definition. Special events: 'limit' (Limit Break trial), 'element' (Element Trial), 'sponsor' (offer at a fan milestone). */
+  /** Event definition. Special events: 'element' (Element Trial), 'sponsor' (offer at a fan milestone). */
   def(ev, run) {
-    if (ev.id === 'limit')
-      return {
-        title: `Limit Break: ${STATNAME[ev.stat]}`,
-        text: `Your ${STATNAME[ev.stat].toLowerCase()} has hit its ceiling. Coach offers a trial to break through.`,
-        a: [
-          'Take the trial',
-          `${run ? Math.round(Training.trialP(run) * 100) : '?'}% chance: ${STATNAME[ev.stat]} can grow past ${run ? Training.gate(run, ev.stat) : '—'} (+3); fail: −15 stamina, mood down`
-        ],
-        b: ['Not yet', 'The trial comes back next time you reach the ceiling']
-      };
     if (ev.id === 'element') {
       const you = run ? Run.you(run) : null;
       return {
@@ -69,10 +59,6 @@ const Events = {
   /** Apply choice 0 (a) or 1 (b); clears the event and returns the log line. */
   choose(run, i) {
     const ev = run.event;
-    if (ev.id === 'limit') {
-      run.event = null;
-      return i ? `Limit Break: not yet — ${STATNAME[ev.stat]} stays at ${Training.gate(run, ev.stat)}` : Training.trial(run, ev.stat);
-    }
     if (ev.id === 'element') {
       run.event = null;
       return i ? ElTrial.wait(run) : ElTrial.take(run);

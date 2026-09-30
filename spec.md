@@ -142,7 +142,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   legend inheritance. Every career starts the same: free agent, base budget and caps (CAREER), no starting skill,
   no team pick. Challenge modes (Hard league, Short season) stay as plain options. The run-end screen keeps the
   result, rank and growth chart.
-- §4.14 Growth: train to a floor, fight to go higher **[locked, not built — T-034–T-036]** (Kenshi rule):
+- §4.14 Growth: train to a floor, fight to go higher **[built]** (Kenshi rule):
   - Training caps: gains shrink above ~60 and stop at `TRAIN_CAP` 75 per stat. Training stays the fastest early route
     (a new run is pure self-training). The Limit Break gates (80 / 90) and trial are removed.
   - Match experience is the only way above 75 (and still counts below): every match you play (evaluation, cup, street

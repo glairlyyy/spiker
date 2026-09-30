@@ -97,7 +97,6 @@ const Run = {
       // v3: challenge modes, two cups, training depth, goals, sponsors, history
       mode: { hard: !!mode.hard, short: !!mode.short },
       cups: [],
-      lb: Object.fromEntries(STATK.map(k => [k, 0])),
       streak: null,
       injury: null,
       goal: null,
@@ -215,7 +214,7 @@ const Run = {
     const fmt = (d, name, dec = 0) => (d ? `${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(dec)} ${name}` : '');
     if (STATK.includes(key) || key === 'lead') {
       if (v > 0 && key !== 'lead') v = Math.max(1, Math.round(v * Training.dim(you[key]))); // events obey diminishing returns too
-      const top = key === 'lead' ? CAREER.runCap : Math.max(you[key], Training.gate(run, key)), // limit-break gates
+      const top = key === 'lead' ? CAREER.runCap : Math.max(you[key], TRAIN_CAP), // events stop at the training cap (never lower a stat matches raised)
         nv = Math.round(clamp(you[key] + v, 25, top)),
         d = nv - you[key];
       you[key] = nv;
@@ -349,7 +348,6 @@ const Run = {
     if (!run.uses || typeof run.uses !== 'object') run.uses = {};
     if (!run.xp || typeof run.xp !== 'object') run.xp = {};
     if (!run.floor || typeof run.floor !== 'object') run.floor = {};
-    if (!run.lb || typeof run.lb !== 'object') run.lb = Object.fromEntries(STATK.map(k => [k, 0]));
     // an event this version no longer knows (removed / renamed) would leave the week stuck on a blank card
     if (run.event && !Events.def(run.event, run)) run.event = null;
   },
@@ -363,8 +361,8 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 4;
-/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools) — older saves are dropped; add steps when the saved shape changes). */
+const RUN_VERSION = 5;
+/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone) — older saves are dropped; add steps when the saved shape changes). */
 const RUN_MIGRATIONS = {};
 const ROLE_NAME = { S: 'Setter', MB: 'Middle blocker', WS: 'Wing spiker' };
 /** Run rank letter for a fan count (RANKS is ordered from the top rank down). */
