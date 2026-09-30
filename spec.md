@@ -41,7 +41,8 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     wait for the set; good on wings, late on quicks), **Commit** (middle jumps with the quick; kills quicks, beaten by
     decoys / high outside), **Bunch** (both start central; strong vs middle / pipe, pins open).
   - Scouting a club reveals its attack habits (lane split, pipe use) and its defence setting.
-  - Rebalance: ~14 % of attacks stuffed in normal play stays the target (headless sims). Goldens update.
+  - Rebalance: 12–16 % of attacks stuffed (today 10.8 %, 400 sims); kill rate stays ~68 %. Goldens update.
+  - Settings are derived from the team style (not saved); the captain may switch on the opponent's attack mix.
 - §2.10 Substitutions **[locked, not built]**:
   - Teams: 4 on court + 2 on the bench (6). Faction pools grow so every faction fields ≥ 1 squad of 6 (≈ Wei 24,
     Wu 18, Shu 12, Outlaws 6, St. Gloria 6); drawn squads are 6.
