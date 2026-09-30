@@ -62,7 +62,7 @@ leave to menu → gain 0 and `SND.bgmSrc` null after 1 s; start a second match �
 pageerror. (Swiftshader has no speakers — check the numbers, not the sound.)
 Result:
 
-### [ ] T-019: Brackets of any size with byes
+### [x] T-019: Brackets of any size with byes
 Spec: §4.11          Goldens: unchanged          Save: no change
 Goal: `js/game/bracket.js` handles 8 or 16 entrants, with byes (null entries) that resolve automatically, so the
 U21 Final Cup can seat 12–13 squads.
@@ -84,9 +84,9 @@ Steps:
    caller of `advanceBracket`.
 Accept: all tests + lint; goldens untouched.
 QA: none (headless).
-Result:
+Result: bracket.js handles 8/16 slots with byes (BRACKET_ROUNDS/BRACKET_NEXT, seedOrder hard-coded: 8 = old Grand Cup order, 16 = the task's list); new test 'bracket: 8 and 16 entries, byes'. 25/25 + lint, goldens untouched, headless only.
 
-### [ ] T-020: U21 Final Cup — one cup of drawn squads replaces the Skyline and Grand Cups
+### [x] T-020: U21 Final Cup — one cup of drawn squads replaces the Skyline and Grand Cups
 Spec: §4.11, lore.md §3 (the U21 champion goes to the national team)          Goldens: unchanged (career only)
 Save: RUN_VERSION 2 → 3 (`run.cup` gains `entrants`, `me`; `run.cups[].champ` becomes a name) — older saves dropped
 Goal: After week 28 the U21 Final Cup starts: every faction's pool is drawn into squads (Wei 5, Wu 3, Shu 2, Outlaws 1,
@@ -134,7 +134,7 @@ Steps:
 Accept: all tests + lint; goldens untouched.
 QA: career run with Short season → reach the cup (end weeks; Sim ⏭ evaluations) → bracket shows Round of 16 with byes,
 your Academy squad seeded; Sim ⏭ through to the end → run-end screen names the champion. No pageerror.
-Result:
+Result: U21 Final Cup as specced (13 squads → 16-slot bracket, 3 byes, RUN_VERSION 3, warm-up code removed; Cup.roman added as a Cup property, no new global). 26/26 + lint, goldens untouched; QA: Academy run → W29 bracket with byes, Sim ⏭ to run-end naming the champion, no pageerror.
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
