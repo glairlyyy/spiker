@@ -25,7 +25,7 @@ Result:
 - Phase 1 — Island rules ✓ · 1b — Match feel ✓ · 1c — Cut-scene lines ✓ · 2 — Faction pools ✓
 - Cleanup + info ✓ (T-016 Legacy removed, T-017/T-018 faction dossier)
 - Phase 3 — Evaluations ✓ (T-008–T-011)
-- **M2 — three.js map** (now): scaffold + terrain (T-023), walking player (T-024), parity + default (T-025).
+- **M2 — three.js map** (now): scaffold ✓ (T-023), walking player ✓ (T-024), parity (T-025).
 - **Phase 4 — U21 Final Cup** (after M2): bracket with byes (T-019); U21 cup from drawn squads (T-020). The 8 league
   teams stay as faction home squads.
 - **Block tactics** (T-026/T-027) → **Substitutions** (T-028–T-031), after Phase 4.
@@ -33,98 +33,12 @@ Result:
 
 ## Now — M2: three.js island map (before Phase 4)
 
-### [ ] T-023: 3D map scaffold — terrain, water, camera, click-to-point (behind a toggle)
-Spec: §4.9          Goldens: unchanged          Save: no change
-Goal: A "3D map (preview)" toggle in the hub Menu drawer switches the career map to a three.js island: terrain from
-the coastline and regions, water, light, a fixed tilted camera with pan + zoom. Clicking land reports a map point
-exactly like the SVG map (travel works). No pins or avatar yet. SVG stays the default and the fallback.
-Background: `MapView` (js/ui/map-svg.js) is the renderer contract: `mount(el, model, {pick, point})`,
-`select(id)`, `dispose()`. `mapMount(run)` (career-map.js) calls it after every `renderCareer()`, and `#mapwrap` is
-re-created each time (innerHTML). The match renderer loads three.js as ES modules via `import()` (see `load3D` in
-js/ui/match-screen.js and the import maps in index.html / test3d.html). Map data: `MapModel.build(run)` → `w`
-(1000), `h` (640), `land.coast` / `land.regions[].poly` / `land.minors` (ellipses) / `land.park` (circle) /
-`land.mountains` (points), `fog`, `pins`, `you`, `focus`.
-Files: js/map3d/map3d.mjs (new ES module), js/ui/map-svg.js, js/ui/map-view.js (new classic script — index.html AND
-test3d.html right after js/ui/map-svg.js), js/ui/career-map.js, js/ui/career-hub.js, js/core/storage.js (one key),
-css/career.css, index.html, test3d.html, ARCHITECTURE.md
-Do not:
-- Change MapModel, City or any rule. Touch js/render3d/* (import from it only if needed later; not in this task).
-- Re-create the WebGL renderer on every `renderCareer()`: one renderer + canvas per career screen; re-attach the same
-  canvas into the new `#mapwrap` and call `update(model)`.
-- Load textures from blob: URLs or external hosts (procedural colours only).
-Steps:
-1. Rename the SVG object `MapView` → `MapSVG` in js/ui/map-svg.js (grep: only js/ui/*.js use it; update comments).
-2. js/ui/map-view.js: new global `MapView` facade with the same contract plus `update(model)`: uses `MapSVG` unless
-   `MAP3D.on` (a small settings object persisted with `store` under a new key `KEYS.map3d` = 'sns_map3d' — add it in
-   js/core/storage.js: this file is allowed for that one line). When on, it lazy-imports js/map3d/map3d.mjs once
-   (like `load3D`), shows the SVG meanwhile, then switches; on import or WebGL failure it logs via `DBG.log('warn',
-   …)` and stays on SVG.
-3. js/map3d/map3d.mjs exports `create(canvasHost)` → `{ mount(el, model, on), update(model), select(id), dispose() }`:
-   - Renderer: `antialias`, pixel ratio ≤ 2, sized to `el` (ResizeObserver); one rAF loop while mounted; stops on
-     `dispose()` (dispose geometries/materials/renderer).
-   - Units: map (x, y) → world (x·0.5, 0, y·0.5) metres (`MAP_M = 0.5`); export `toWorld` / `toMap`.
-   - Terrain: a grid plane (~2 m cells) over the island's bounding box; a vertex is land if inside `land.coast`
-     (point-in-polygon); height: 0.6 m base, Shu region +4…10 m rolling (smooth noise from a fixed hash, no R()),
-     each mountain point a smooth peak (~25 m, radius ~40 m), beach edge (distance to coast < 12 m) slopes to 0.
-     Vertex colours: region colour mixed 35 % into a grass/rock/sand base; minors / academy tinted the same way.
-     Water: a large plane at y = 0 in deep blue with light specular.
-   - Light: hemisphere + one directional sun with soft shadows (shadow map ≤ 2048).
-   - Camera: perspective, fixed yaw (looking north-ish, i.e. toward −z), pitch 55°; target starts at `model.focus`;
-     zoom by wheel = distance 25…420 m; pan by drag (left button) moves the target on the ground plane, clamped to the
-     island box. Keep the view across re-mounts.
-   - Click (not a drag: < 5 px movement): raycast the terrain → map point → `on.point([x, y])`; sea → `on.point` with
-     the sea point (the rules already reject sea).
-4. js/ui/career-hub.js Menu drawer: a checkbox "3D map (preview)" bound to `MAP3D.on` (re-renders the career).
-   js/ui/career-map.js `mapMount` calls `MapView.mount` as today (the facade decides).
-5. css: `#mapwrap canvas { display:block; width:100%; height:100% }`.
-Accept:
-- All tests + lint (tests are headless: nothing here runs in them).
-- With the toggle off, the game is exactly as before.
-QA (test3d.html, career run): toggle on → island renders (screenshot); wheel zoom and drag pan work; click land in
-another region → the point panel opens and "Travel" moves you (check `RUN.pos`); toggle off → SVG back; leave to the
-menu and return → no WebGL context leak (`renderer.info` / one canvas); no pageerror.
-Result:
-
-### [ ] T-024: The player walks on the 3D map (default VRM model)
-Spec: §4.9          Goldens: unchanged          Save: no change
-Goal: Your player stands on the 3D map as the default VRM model, idle-breathing. Whenever your position changes
-(travel, going to a place), the model turns and walks — or runs for longer trips — across the terrain to the new
-spot while the camera follows. Rules stay instant; this is display only.
-Background: js/render3d/players3d.mjs exports `loadBase(url, onProgress)` (base model, cached per URL) and
-`makeVRM(buf, heightM)` → `pl` (`root`, `vrm`, `bone`); `applyPose(pl, pose)`, `smoothBones(pl, dt, k)`,
-`groundSnap(pl, lift)`; js/render3d/poses3d.mjs exports `STAND`, `locoPose({ speed, fwd, lat, phase })` (walk → run
-blend by speed in m/s) and `mix`. The model URL is `assets/vrm/base.glb.txt` (see `MODEL_URL` in r3d.mjs).
-`pl.vrm.update(dt)` runs springs/expressions each frame.
-Files: js/map3d/map3d.mjs, js/map3d/avatar3d.mjs (new ES module), css/career.css (the ×N badge), ARCHITECTURE.md
-Do not:
-- Change players3d.mjs / poses3d.mjs behaviour (import only). Load more than one VRM on the map.
-- Move the player in the rules or delay rule updates: the view only animates from the previous displayed position.
-Steps:
-1. js/map3d/avatar3d.mjs: `createAvatar(scene)` → loads the base model once (`loadBase` + `makeVRM(buf, 1.65)`),
-   adds `pl.root` to the scene, casts shadows; exposes `setTarget([x, y] map units)`, `snap([x, y])`, `tick(dt,
-   heightAt)`, `busy()`, `dispose()`. Until loaded, show a simple capsule marker in its place.
-2. Walking: on a new target, path = straight line (sampled every 2 m, y from `heightAt`). Duration = clamp(dist /
-   6 m/s, 1.2 s, 6 s); ground speed = dist / duration. Gait speed passed to `locoPose` = min(ground speed, 6)
-   (> 2.5 m/s blends into a run); `phase` advances with distance (one cycle per ~1.6 m at walk, ~2.4 m at run);
-   the model turns toward the heading over ~0.25 s; ease-in/out on the first/last 0.4 s. When ground speed > 6 m/s,
-   show a small "×N" time-lapse badge over the canvas (N = ground speed / 6, rounded).
-3. Idle: `STAND` blended with a slow breathing sway; `vrm.update(dt)` every frame; `groundSnap` so feet sit on the
-   terrain (`heightAt(x, z)` exported from map3d.mjs, bilinear on the terrain grid).
-4. map3d.mjs: create the avatar on mount; `update(model)`: first time `snap(model.you.at)`, later if `you.at` changed
-   → `setTarget`. The camera target lerps toward the avatar while it walks (follow), and stops following when the
-   user drags (until the next walk).
-Accept: all tests + lint.
-QA (test3d.html, career run, 3D map on): the model appears at the airport; travel to a far point → it turns, runs
-across the island (screenshots at start / middle / end; badge shows ×N), stops and idles on the spot; a short trip
-walks. Record: frame time with the avatar (Chromium swiftshader is slow — just report it), no pageerror.
-Result:
-
-### [ ] T-025: 3D map parity — pins, selection, fog, labels (then 3D becomes the default)
+### [ ] T-025: 3D map parity — pins, selection, fog, labels
 Spec: §4.9          Goldens: unchanged          Save: no change
 Goal: Everything the SVG map shows works on the 3D map: pins (places, HQs, battle) with icons/badges/flags, selection
-highlight and pick, seized patches, region labels, the selected-point flag, and fog of war. Then the 3D map is on by
-default (the toggle stays to switch back to SVG).
-Files: js/map3d/map3d.mjs, js/map3d/pins3d.mjs (new ES module), js/ui/map-view.js, css/career.css, ARCHITECTURE.md
+highlight and pick, seized patches, region labels, the selected-point flag, and fog of war. (The SVG map is gone — owner decision; there is no toggle.)
+Files: js/map3d/map3d.mjs, js/map3d/pins3d.mjs (new ES module), css/career.css (also delete the dead SVG map rules
+`.city`, `.pin`… — grep js/ first), ARCHITECTURE.md
 Do not:
 - Put game rules in the view: read only `MapModel` fields, report only `pick(id)` / `point(p)`.
 - Draw pins as WebGL text: use an HTML overlay layer positioned each frame by projecting world points (like the
@@ -140,9 +54,9 @@ Steps:
    pins list already hides unknown places. Unexplored land stays visible but dim, like the SVG map.
 5. `model.flag` (selected point): a small flag marker on the terrain.
 6. `update(model)` diff: rebuild pins / seized / fog only when their data changed (compare JSON of those parts).
-7. js/ui/map-view.js: default `MAP3D.on = true` when no stored choice; keep SVG fallback on failure.
+7. Also: default camera distance ~60 m (the walking player must be clearly visible on entry); zoom range unchanged.
 Accept: all tests + lint.
-QA (career run): side-by-side screenshots SVG vs 3D of the same state (same pins visible, same fog); click a pin →
+QA (career run): screenshot with pins, labels and fog (compare with MapModel.pins: same count visible); click a pin →
 its panel opens and the pin highlights; scout an HQ → badge updates without remounting the scene; no pageerror.
 Result:
 
@@ -242,6 +156,8 @@ Phase 5 — Voice pass
 
 ## Done
 (one line each; full task text is in git history)
+- [x] T-023: 3D map scaffold — terrain, water, camera, click-to-point (behind a toggle) — MapView facade (map-view.js) + MapSVG rename, map3d.mjs terrain/water/sun/camera/pan/zoom/click, Menu toggle `MAP3D`. 24/24 + lint, goldens untouched. QA (test3d, swiftshader): toggle on → island renders, wheel zoom + drag pan move the view, click Shu land → panel → Travel moved RUN.pos [470,600]→[478,487]; off → SVG back, 0 canvases; leave to menu → renderer released, return → 1 canvas; no pageerror.
+- [x] T-024: The player walks on the 3D map (default VRM model) — avatar3d.mjs (VRM + capsule fallback), map3d.update snap/walk + camera follow, ×N badge (avg speed > 6 m/s). 24/24 + lint. QA (test3d, swiftshader 800×500): model at the airport; 20 m trip walks, far trip runs with ×8 badge and follow cam, ends idle on the spot, badge hides; frame ≈ 205–360 ms in swiftshader (no GPU); no pageerror.
 - [x] T-008: Reserves grow every week and get promoted on payday — Growth.grow extracted (teams + reserves); PROMOTE {gap 3} + World.promote on payday; new test (8 weeks growth, forced promotion, 4-player teams, pool sizes); 23/23 + lint; goldens untouched
 - [x] T-009: Academy squad — rename, leave, and the "alone" state — Academy squad rename, World.leaveAcademy, run.academy (create + repair), Run.mates → [] when alone, Team drawer Leave squad + inline confirm + alone line; 23/23 + lint; goldens untouched; QA: leave → alone line, 28 weeks alone without error, no pageerror. Deviation: one-line guard in js/career/events.js (unlisted file: Events.roll picked a mate from an empty list → crash; also skips {mate} events while alone); goals.js needed no change (already guarded)
 - [x] T-010: `Eval` — monthly evaluation rules and calendar (headless) — js/career/eval.js (kind, setup, squad, lend/restore, bench); CALENDAR eval weeks 4–24 + camp 26–28; weekType, nextWeek, repair, goals (academy-only win goal) wired; tests switched to eval/bench + new 'evaluation rules' test; 24/24 + lint; goldens untouched. Added to lend/restore: `cap` flag and court `slot` (engine positions by p.slot; drawn wings could share W0/W1)
@@ -259,3 +175,4 @@ Phase 5 — Voice pass
 
 ## Unplanned changes
 (build chat: owner requests made directly in the build chat — one line each; the spec chat moves them into spec.md)
+- (recorded in spec §4.9) 2026-09-30: Owner: keep only the 3D map — removed the SVG renderer (`js/ui/map-svg.js`), panzoom, the 3D toggle and `KEYS.map3d`; `MapView` loads map3d.mjs directly (notice if WebGL fails). MapModel and the rules are unchanged. Pins, labels, fog, selection and seized patches are not drawn until T-025; until then places cannot be picked (travel by clicking land works). Dead SVG map CSS (`.city`, `.pin`…) left in css/career.css.
