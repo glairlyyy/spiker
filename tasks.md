@@ -141,3 +141,4 @@ Phase 5 — Voice pass
 - (recorded in spec §4.6 / §2) Street battle "Fight for X" is now a real match (watch or ⏭ sim) with match XP, techniques and grade; `City.clashP` and `MATCH_XP.clash` / `CLASH.par` removed. Files: js/career/cup.js, city.js, js/data/career.js, js/data/world.js, js/ui/career-map.js, tests/run.js, ARCHITECTURE.md.
 - (recorded in spec §4.6 / §2) Box score (player table in the match screen) gains an OVR column — js/ui/match-screen.js.
 - (recorded in spec §4.6 / §2) Added (.vrm) player models now apply to your own career player only (everyone else keeps the base model) — js/render3d/actors3d.mjs, js/ui/models.js, js/ui/menu.js, ARCHITECTURE.md.
+- Street-battle crews and your faction's evaluation squad show their real 3-letter team tag instead of 'EVL' (Eval.squad takes a `short`; 'EVL' only for the opposing evaluation squad) — js/career/eval.js, cup.js.
