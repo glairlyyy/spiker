@@ -40,7 +40,7 @@ Model for all four tasks: `t.P` stays the 4 on court (engine, rotation, `t.s` / 
 `t.bench` = the 2 substitutes (same `team` link). `squadOf(t)` = on court + bench. Everything that means "the club's
 players" uses `squadOf`; everything that means "who is playing now" keeps `t.P`.
 
-### [ ] T-028: Squads of 6 — 4 on court + 2 on the bench (data, pools, draws, saves, rosters)
+### [x] T-028: Squads of 6 — 4 on court + 2 on the bench (data, pools, draws, saves, rosters)
 Spec: §2.10          Goldens: update (team generation rolls 2 more players per team; match play itself unchanged)
 Save: RUN_VERSION 3 → 4 (teams save `bench`; bigger pools) — older saves dropped
 Goal: Every team (tournament, monster, league, reserves' draws, Academy squad, drawn squads) has 2 bench players.
@@ -84,9 +84,9 @@ Steps:
 Accept: all tests + lint; goldens updated for this reason only.
 QA: career run → Team drawer shows 4 + a 2-player bench; Wei dossier roster 24; U21 bracket (forced week 29) shows 12
 squads; Monster game plays as before; no pageerror.
-Result:
+Result: squadOf + t.bench (teams.js), bench in fillRoster/finalizeTeam/save (RUN_VERSION 4), POOL 24/18/12/6/6 + SQUAD 6, Pool.draw squads of 6 (benches drawn after all court slots, never you), Eval.squad/lend bench, Cup entrants of 6 (12 entrants, 4 byes), .P → squadOf across career code, new `World.swap` (join / transfers / promotion move players between court and bench seats), Teammates card 'Bench' heading, bench marks in the scouted roster and dossier ('<squad> · bench'). Tests: pools/draw/eval/U21 updated, new 'teams: 4 on court + 2 bench…' (30/30, lint clean); goldens updated (2 more rolls per team). Deviations: (1) STUFF_BIAS 0.45 → 0.2 in rally-defense.js — the new team rolls plus the MB-first blocker change (unplanned, earlier) left the 5-set test at 11.4 %; 10 team sets now average 13.1 % (spec ~13 %, per-set 9.6–16.8), kills 42 % unchanged; (2) elAll (engine/elements.js, unlisted) still loops t.P — only for pre-v4 saves, which are dropped; (3) eval card lists the 4 starters only. QA: career run — Teammates card shows 4 + 'Bench' (2), Wei dossier roster 24 (4 bench-marked), forced week-28 cup: 12 entrants / 4 byes; Monster game 600 steps 4+2 per side; no pageerror.
 
-### [ ] T-029: Substitutions in the match — dead-ball swap, SUBBED label, coach line (stamina rule)
+### [x] T-029: Substitutions in the match — dead-ball swap, SUBBED label, coach line (stamina rule)
 Spec: §2.10          Goldens: update (tired players get subbed: rallies change)          Save: no change
 Goal: At a dead ball a coach swaps a tired player for a bench player (max 2 per set per team). The incoming model
 takes the outgoing player's spot at once, "SUBBED" floats over them, and the coach says one of the four spec lines
@@ -128,7 +128,7 @@ Accept: all tests + lint; goldens updated for this reason only.
 QA: Monster game with `SUB.sta = 0.95` set in the console before the match → a sub happens within a few rallies: in 3D
 the new player appears in the old one's spot, SUBBED label, coach line; no model on court twice; after the match
 `A.m.t[s].P` ids equal the starting ids; no pageerror.
-Result:
+Result: SUB + SUBLINES, `m.subs` / `m.lineup0`, `coachSubs` / `subIn` / `restoreLineups` in match.js (subs after the point's beats, before a timeout; restore when the match is over, on leaveMatch and in navigate() for a running match), new act kind `sub` (+ existing `rot`, `plabel`, `coachtalk`, `log` in the same beat), `case 'sub'` in playback, `R3D.swapActor` (actors3d `dressFigure`), byId/box score/stars/mp cover players who came on. Goldens updated. Tests: new 'engine: substitutions — rule, limit, restore' (200 sims: 244 subs in 136 matches at shipped SUB.sta 0.6, never > 2 per side, lineups restored; recorded sub acts name known players), scene/beat tests accept bench ids (31/31, lint clean). Deviations: (1) bench display entries live in `A.bench`, not flagged inside `A.disp` — every draw / animation loop already iterates A.disp, so nothing had to learn to skip them; (2) the 3D figure of the outgoing player is re-dressed as the incoming one (same body model) rather than loading a separate hidden model per bench player; (3) a setter goes off only for a setter (the engine reads `t.s`). QA: Monster game with SUB.sta 0.95 — 2 subs per side, SUBBED label + '#14, sit. #5, you're up — earn it.' + log line, 8 figures / 8 unique players, `P` ids equal the starting lineup after the match, box score lists the players who came on; no pageerror.
 
 ## Next — Substitutions, part 2
 
