@@ -143,13 +143,12 @@ const REWARDS = {
 /**
  * Match experience (spec §4.14): stat XP per unit of your own stat line — kills, aces, blocks, digs, assists and attempts —
  * (wit counts in 0.02 steps like training). The XP is scaled by the opponent: factor = clamp(1 + (opponent ovr − your side's
- * ovr) × perGap, gap[0], gap[1]). A street battle you fight gives a flat amount to your key stat (`clash`), scaled the same way.
+ * ovr) × perGap, gap[0], gap[1]).
  */
 const MATCH_XP = {
   per: { k: { power: 12 }, ace: { power: 8 }, blk: { jump: 8, def: 8 }, dig: { def: 6, speed: 6 }, ast: { wit: 2 }, att: { jump: 1 } },
   gap: [0.3, 2],
-  perGap: 0.1,
-  clash: { win: 30, loss: 20 }
+  perGap: 0.1
 };
 /**
  * Techniques are learned in play, never bought (spec §4.14). After a match you played, each technique of your role you don't

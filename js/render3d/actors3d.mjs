@@ -291,11 +291,10 @@ export function dressActors(w) {
       return i < 0 ? null : free.splice(i, 1)[0];
     };
   for (const pl of w.people) pl.d = null;
-  // each player keeps one model across matches, picked at random with equal odds among the base model and every
-  // loaded one (while figures of it are free)
+  // loaded extra models are for your own player only (career: p.you); everyone else keeps the base model. With several
+  // loaded, yours is picked by hash (stable across matches) while figures of it are free
   for (const d of disp) {
-    const all = [null, ...models],
-      want = all[Math.min(all.length - 1, Math.floor(hu(d.p, 'model') * all.length))],
+    const want = d.p.you && models.length ? models[Math.min(models.length - 1, Math.floor(hu(d.p, 'model') * models.length))] : null,
       pl = (want && take(want)) || take(null) || free.shift();
     if (pl) pl.d = d;
   }

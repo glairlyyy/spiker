@@ -178,7 +178,7 @@ const HOUSING = {
 const HOUSEK = Object.keys(HOUSING);
 /**
  * Street battles between the majors: chance a training week opens with one; sites (map point).
- * Fighting: win chance on your OVR vs `par`; standing with the side you fought for +win / +lose, and always `other`
+ * Fighting is a real match (Cup.clash); standing with the side you fought for +win / +lose, and always `other`
  * with the side you fought against. Watching scouts both sides' clubs.
  */
 const CLASH = {
@@ -188,7 +188,6 @@ const CLASH = {
     { a: 'wei', b: 'shu', at: [490, 130], name: 'the northern ridge' },
     { a: 'wu', b: 'shu', at: [395, 540], name: 'the southern plain' }
   ],
-  par: 62,
   sta: 15,
   watchSta: 5,
   win: 10,

@@ -58,6 +58,8 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     bring a rested starter back; a random factor scaled by `coachIQ`. Smarter coach (matchups, protecting a lead, personality hunches) = backlog.
   - Your player is benchable: the coach picks starters by rating, form and standing, and may sub you out (tired /
     erring). A match started or finished on the bench gives reduced rewards.
+- Box score shows each player's OVR (owner). Loaded extra .vrm models dress your own career player only; everyone
+  else (and Monster games) uses the base model (owner).
 - §2.11 Match music **[built]**: `assets/audio/the_big_fight.mp3` loops as background music while the
   match screen is open, at 50 % of the effects volume (`BGM_GAIN` 0.5 × volume slider); follows the sound toggle and
   the volume slider; fades in on start and out on leaving. Presentation only (no effect on results). More tracks /
@@ -85,7 +87,9 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   1 day per TRIP_DAY, max 3). Nothing spills into next week; a night costs 0 days; only the player ends the week.
   One event roll per week. Day sessions give DAY_GAIN (0.25) of the old weekly gain.
 - §4.6 Street battles (CLASH, ~45% of training weeks, popup at week start): watch (scouts both sides) or fight for a
-  side (win +standing / lose −; the other side always −). `run.rep` = standing per region.
+  side (win +standing / lose −; the other side always −). `run.rep` = standing per region. Fighting is a real match
+  (owner, `Cup.clash`): your side's crew drawn from its pool with you on court vs the other side's crew; watch or Sim ⏭;
+  match XP, techniques and grade as in any match. Challenges (§4.15) should reuse this flow.
 - §4.7 Faction war (`js/career/front.js`, FRONT): every battle (joined or settled at week end) pushes its border
   meter; 2 net wins seize a border place (2 per side per border; retakes first) → owner's price/turf/colour.
   A faction with 2 places lost is weakened (dearer, worse facilities, easier to join). Wu gets a revenge bonus.

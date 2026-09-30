@@ -263,9 +263,7 @@ const City = {
   },
   clashSite: run => (run.clash && !run.clash.done ? CLASH.sites[run.clash.site] : null),
   clashCost: run => City.trip(run, City.clashSite(run).at) + 1,
-  /** Fight's win chance. */
-  clashP: run => clamp(0.5 + (ovr(Run.you(run)) - CLASH.par) / 40, 0.2, 0.85),
-  /** Go to the battle: watch (side null) or fight for side (a region). Returns the diary line. */
+  /** Go to the battle and watch it (side null). Returns the diary line. Fighting is Cup.clash(run, side), a real match. */
   clash(run, side) {
     const c = City.clashSite(run);
     if (!c || run.event || City.noTime(run, City.clashCost(run)) || (side && side !== c.a && side !== c.b)) return '';
@@ -280,16 +278,6 @@ const City = {
       out.push(Run.bump(run, 'sta', -CLASH.watchSta));
       return `${trip}Watched the street battle (${vs}): ${REGIONS[w].name} won${s ? ` — ${s}` : ''}; both sides' clubs scouted. ${out.filter(Boolean).join(', ')}`;
     }
-    const foe = side === c.a ? c.b : c.a,
-      win = R() < City.clashP(run),
-      s = Front.result(run, win ? side : foe, win ? foe : side);
-    out.push(City.repBump(run, side, win ? CLASH.win : CLASH.lose), City.repBump(run, foe, CLASH.other), Run.bump(run, 'sta', -CLASH.sta));
-    if (win) out.push(Run.bump(run, 'fans', CLASH.fans));
-    // the fight itself is experience: a flat amount for your key stat, scaled by how strong the fight was against you
-    const f = Growth.gapFactor(ovr(Run.you(run)), CLASH.par);
-    out.push(
-      Training.addXp(run, KEYSTAT[Run.you(run).role], Math.round(MATCH_XP.clash[win ? 'win' : 'loss'] * f), 'match') + Growth.gapNote(f)
-    );
-    return `${trip}Fought for ${REGIONS[side].name} in the street battle — ${win ? 'won' : 'lost'}: ${out.filter(Boolean).join(', ')}${s ? `. ${s}!` : ''}`;
+    return ''; // fighting is a real match: Cup.clash(run, side)
   }
 };

@@ -712,17 +712,26 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
     assert(g.City.day(run, 'street'), 'street');
     assert(run.money >= 0 && run.sta >= 0, 'street keeps money and stamina ≥ 0');
   }
-  // a street battle: fight for one side — the other side always holds it against you
+  // a street battle: fight for one side — a real match; the other side always holds it against you
   run.days = 7;
   run.pos = [470, 600];
   run.clash = { site: 0, seen: false, done: false };
   const c = g.CLASH.sites[0],
     r0 = g.City.rep(run, c.b),
-    cc = g.City.clashCost(run);
-  assert(g.City.clash(run, c.a) && run.clash.done && !g.City.clashSite(run), 'fought');
+    cc = g.City.clashCost(run),
+    clashSp0 = run.sp;
+  const fx = g.Cup.clash(run, c.a);
+  assert(fx && !run.clash.done && run.days === 7, 'nothing is spent until the match ends');
+  assert([...fx.a.P, ...fx.a.bench].includes(g.Run.you(run)) && fx.a.P.includes(g.Run.you(run)), 'you are on court for your side');
+  const m = g.newMatch(fx.a, fx.b, false);
+  while (!m.over) g.playRally(m);
+  const line = fx.onFinish(m);
+  assert(/Fought for .+ in the street battle — (won|lost) \d+-\d+, grade [SABC]/.test(line) && /XP: /.test(line), `result line: ${line}`);
+  assert(run.clash.done && !g.City.clashSite(run), 'fought');
   eq(g.City.rep(run, c.b), r0 + g.CLASH.other, 'the other side remembers');
   assert([g.CLASH.win, g.CLASH.lose].includes(g.City.rep(run, c.a)), 'standing with your side moves');
   eq(g.City.days(run), 7 - cc, 'the trip + a day');
+  assert(g.Run.you(run).team === g.Run.myTeam(run) && clashSp0 === run.sp, 'nobody stays lent; a street battle gives no skill points');
   g.Run.endWeek(run);
   assert(!run.clash || !run.clash.done, 'the battle is gone at the week end');
   run.days = 7;

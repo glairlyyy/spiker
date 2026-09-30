@@ -151,6 +151,72 @@ const Cup = {
       }
     };
   },
+  /**
+   * A street battle you fight (owner request): your side's crew (drawn from its pool, you on court in your role) vs the other
+   * side's crew — a real match like an evaluation (XP, techniques, grade). Nothing is spent until it finishes; leaving early
+   * leaves the battle open. Returns null if you can't go now.
+   */
+  clash(run, side) {
+    const c = City.clashSite(run);
+    if (!c || run.event || City.noTime(run, City.clashCost(run)) || (side !== c.a && side !== c.b)) return null;
+    const foe = side === c.a ? c.b : c.a,
+      you = Run.you(run),
+      ids = Pool.draw(run, side, 1)[0].map(p => p.id);
+    if (!ids.includes(you.id)) {
+      // you take the same-role seat on court (else the last one); the player you replace drops to the bench
+      let k = ['S', 'MB', 'WS', 'WS'].indexOf(you.role);
+      k = k < 0 ? 3 : k;
+      ids.splice(k, 1, you.id);
+    }
+    const mine = Eval.squad(run, ids, `${REGIONS[side].name} crew`, REGIONS[side].color, side),
+      opp = Eval.squad(
+        run,
+        Pool.draw(run, foe, 1)[0].map(p => p.id),
+        `${REGIONS[foe].name} crew`,
+        REGIONS[foe].color,
+        foe
+      );
+    Eval.lend(run, mine);
+    Eval.lend(run, opp);
+    Cup.prepare(run, opp, 'clash', mine);
+    return {
+      a: mine,
+      b: opp,
+      round: `Street battle: ${REGIONS[c.a].name} vs ${REGIONS[c.b].name} · ${c.name}`,
+      back: 'Continue',
+      onFinish: m => {
+        Eval.restore();
+        return Cup.clashResult(run, m, side, foe);
+      },
+      onLeave: () => {
+        Eval.restore();
+        navigate('career');
+      }
+    };
+  },
+  /** After a street battle you fought: the trip + a day, stamina, standing, fans, match XP, techniques; the front moves. Returns the log line. */
+  clashResult(run, m, side, foe) {
+    const c = City.clashSite(run),
+      win = m.winner === 0,
+      you = Run.you(run),
+      s = m.stat[you.id] || blank(),
+      [grade, , gmul] = Cup.grade(s, win),
+      trip = City.go(run, c.at),
+      sc = m.setScores[0],
+      out = [Growth.matchXp(run, m), Skills.tryLearn(run, m)];
+    run.clash.done = true;
+    const front = Front.result(run, win ? side : foe, win ? foe : side);
+    out.push(City.repBump(run, side, win ? CLASH.win : CLASH.lose), City.repBump(run, foe, CLASH.other), Run.bump(run, 'sta', -CLASH.sta));
+    if (win) out.push(Run.bump(run, 'fans', Math.round(CLASH.fans * gmul)));
+    run.plays.k += s.k;
+    run.plays.blk += s.blk;
+    run.plays.ace += s.ace;
+    run.focus = null;
+    const line = `${trip}Fought for ${REGIONS[side].name} in the street battle — ${win ? 'won' : 'lost'} ${sc[0]}-${sc[1]}, grade ${grade}. You: ${s.k} kills, ${s.blk} blocks, ${s.ace} aces · ${out.filter(Boolean).join(', ')}${front ? `. ${front}!` : ''}`;
+    Run.log(run, line);
+    Run.save(run);
+    return line;
+  },
   /** Your grade for one match (S–C) from your own line. */
   grade(s, win) {
     const v = s.k + 1.2 * s.blk + 1.2 * s.ace + 0.4 * s.dig + 0.35 * s.ast - s.err + (win ? 1 : 0);

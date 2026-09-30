@@ -395,12 +395,12 @@ function boxScore() {
   el.innerHTML = m.t
     .map(
       t =>
-        `<table><caption>${chip(t)}${esc(t.name)}</caption><thead><tr><th>Player</th><th title="Kills">K</th><th title="Blocks">B</th><th title="Aces">A</th><th title="Digs">D</th><th title="Errors">E</th><th title="Top spike km/h">Top</th><th title="Mood">Mood</th><th title="Stamina">Sta</th></tr></thead><tbody>${played(
+        `<table><caption>${chip(t)}${esc(t.name)}</caption><thead><tr><th>Player</th><th title="Overall rating">OVR</th><th title="Kills">K</th><th title="Blocks">B</th><th title="Aces">A</th><th title="Digs">D</th><th title="Errors">E</th><th title="Top spike km/h">Top</th><th title="Mood">Mood</th><th title="Stamina">Sta</th></tr></thead><tbody>${played(
           t
         )
           .map(p => {
             const s = m.stat[p.id] || blank();
-            return `<tr><td>${stag(p)}${esc(p.name)}${p.cap ? ' <span class="capb">C</span>' : ''} <i>${p.role}</i></td><td>${s.k}</td><td>${s.blk}</td><td>${s.ace}</td><td>${s.dig}</td><td>${s.err}</td><td>${s.top || '–'}</td><td>${faceSVG(p, (A.moodShown || m.mood)[p.id] || 0, 24)}</td><td><span class="sbar"><i style="width:${Math.round(((A.staShown || m.sta)[p.id] ?? 1) * 100)}%"></i></span></td></tr>`;
+            return `<tr><td>${stag(p)}${esc(p.name)}${p.cap ? ' <span class="capb">C</span>' : ''} <i>${p.role}</i></td><td>${ovr(p)}</td><td>${s.k}</td><td>${s.blk}</td><td>${s.ace}</td><td>${s.dig}</td><td>${s.err}</td><td>${s.top || '–'}</td><td>${faceSVG(p, (A.moodShown || m.mood)[p.id] || 0, 24)}</td><td><span class="sbar"><i style="width:${Math.round(((A.staShown || m.sta)[p.id] ?? 1) * 100)}%"></i></span></td></tr>`;
           })
           .join('')}</tbody></table>`
     )

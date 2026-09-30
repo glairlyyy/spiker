@@ -1,5 +1,5 @@
 // Extra player models (.vrm files the player loads from their own disk). They are kept in this browser only
-// (IndexedDB) — never uploaded — and handed to the 3D renderer, which gives them to some players at random.
+// (IndexedDB) — never uploaded — and handed to the 3D renderer, which gives them to your own career player only.
 
 const Models = (() => {
   const DB = 'sns_models',

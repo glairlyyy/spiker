@@ -79,15 +79,14 @@ function clashPanel(run) {
   const d = City.clashCost(run),
     trip = d - 1,
     late = run.event ? 'answer the event first' : City.noTime(run, d),
-    p = Math.round(City.clashP(run) * 100),
     btn = (side, label, t) =>
       `<button class="btn ${side ? 'hot' : ''}" onclick="mapClash(${side ? `'${side}'` : 'null'})" ${late ? `disabled ${tip(late)}` : tip(t)}>${label}${dayTag(d)}</button>`,
     fight = (side, foe) =>
-      btn(
+      `<span class="btns">${btn(
         side,
         `Fight for ${esc(REGIONS[side].name)}`,
-        `${p}% to win (your OVR). Win: +${CLASH.win} standing with ${REGIONS[side].name}, +${CLASH.fans} fans. Lose: ${CLASH.lose}. Either way ${CLASH.other} with ${REGIONS[foe].name}. −${CLASH.sta} stamina`
-      ),
+        `A real match with their crew — XP, techniques and a grade like an evaluation. Win: +${CLASH.win} standing with ${REGIONS[side].name}, +${CLASH.fans} fans. Lose: ${CLASH.lose}. Either way ${CLASH.other} with ${REGIONS[foe].name}. −${CLASH.sta} stamina`
+      )}${late ? '' : `<button class="btn" onclick="mapClash('${side}', true)" ${tip('Get the result without watching')}>⏭</button>`}</span>`,
     st = r => `${esc(REGIONS[r].name)} <b>${City.rep(run, r) > 0 ? '+' : ''}${City.rep(run, r)}</b>`;
   return `<div class="spot"><h4>⚔ Street battle <span class="mute small">${esc(REGIONS[c.a].name)} vs ${esc(REGIONS[c.b].name)} · ${esc(c.name)}</span>${
     trip ? ` <span class="stk ${trip >= 2 ? 'far' : ''}">Trip: ${trip} day${trip > 1 ? 's' : ''}</span>` : ''
@@ -197,10 +196,20 @@ function mapAfter(run) {
   Run.save(run);
   renderCareer();
 }
-function mapClash(side) {
-  const line = City.clash(RUN, side);
-  if (!line) return;
-  Run.log(RUN, line);
+function mapClash(side, sim) {
+  if (side) {
+    // fighting: a real match (watch it, or sim it at once)
+    const fx = Cup.clash(RUN, side);
+    if (!fx) return;
+    if (!sim) return navigate('match', fx);
+    const m = newMatch(fx.a, fx.b, false);
+    while (!m.over) playRally(m);
+    fx.onFinish(m);
+  } else {
+    const line = City.clash(RUN, null);
+    if (!line) return;
+    Run.log(RUN, line);
+  }
   CW.spot = null;
   mapAfter(RUN);
 }

@@ -112,8 +112,8 @@ artifact; its drawing code was removed here (only the screen-space layer in `ren
   `poseCoach`; `dressActors`), `fx3d.mjs`, `trails3d.mjs`.
 - Extra player models: a .vrm picked in the menu (Playtest card) is kept in the player's own browser (IndexedDB,
   `js/ui/models.js`, never uploaded) and loaded at start-up; `R3D.addModel` adds `EXTRA_FIGS` figures of it to the
-  pool and `dressActors` spreads players at random with equal odds over the base and all loaded models (stable per
-  player via `hu`). VRM 0.x models are rotated
+  pool and `dressActors` gives a loaded model to your own player only (`p.you`, career; with several loaded, picked by hash, stable per
+  player via `hu`); everyone else keeps the base model. VRM 0.x models are rotated
   (`rotateVRM0`); dressing matches VRoid material names anywhere in the name.
 - One heavy pass per model file: `makeVRM` shares decoded textures (`imgCache`, clones share one image / GPU upload),
   geometry (`geoCache`, the first figure's meshes) and greyed hair textures across every figure of the same model.
@@ -455,8 +455,11 @@ Training gives XP (`Training.xpFor`: base gain × `TRAIN_X.xp.per` × every mult
 `Growth.matchXp(run, m, mine, opp)` (career/growth.js), called from `Cup.result` when you played: your `m.stat` line × `MATCH_XP.per`
 (`data/career.js`: kills → power, aces → power, blocks → jump + def, digs → def + speed, assists → wit, attempts → jump), × the gap
 factor `Growth.gapFactor(ovr of your 4 starters, opponent's)` = clamp(1 + gap × `perGap`, `gap`), each stat through
-`Training.addXp(…, 'match')` (so matches pass `TRAIN_CAP`). The winner is never read. `City.clash` (you fought) gives a flat
-`MATCH_XP.clash` amount to your key stat, scaled by your ovr vs `CLASH.par`. The result line starts with "XP: …" and the factor note.
+`Training.addXp(…, 'match')` (so matches pass `TRAIN_CAP`). The winner is never read. A street battle you fight is a real match: `Cup.clash(run, side)`
+builds the fixture (your side's crew from `Pool.draw`, you on court in your role, vs the other side's crew; both lent via
+`Eval.squad` / `Eval.lend`), nothing is spent until `Cup.clashResult` (trip + a day, stamina, standing, fans ×grade, match XP,
+techniques, `Front.result`); leaving early leaves the battle open. Watching stays `City.clash(run, null)`. The result line starts
+with "XP: …" and the factor note.
 
 ## Career hub UI
 
