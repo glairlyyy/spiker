@@ -156,6 +156,19 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     wit and opponent strength. Scouting shows which techniques a team's players have.
   - Save: RUN_VERSION bump (Limit Break progress removed, match XP added). Match results unchanged (goldens stay).
 
+- §4.15 Challenges **[locked, not built — T-037/T-038]** (makes a no-training run possible; see §4.14):
+  - Map action: challenge a squad at its court (or a street court): 1 day + a money **stake**. Acceptance depends on
+    your standing / fans vs the club's rating (big clubs ignore nobodies unless the stake or standing is high). You
+    play with your side (Academy squad; your club if it agrees); alone → hire weak street players for money.
+  - Win: stake back at odds from the rating gap, + standing / fans; XP per §4.14 (performance × opponent strength).
+  - Loss is a real deal: stake lost; stamina and mood crash (carries over); standing − with that faction (repeated
+    losses → grudge → facility ban, §4.10); lost by 8+ → fans − and a Gazette jab. No NPC learning.
+  - Injury risk after every challenge (win or lose) = base + rating gap + margin of defeat + **fatigue**: low stamina
+    and battles close together (days since the last match / challenge) raise it, like training on low stamina. Resting
+    lowers it. Injury = days to weeks without training or matches; a severe one also costs −2 permanently on a stat
+    (never ends the run) [assumed — owner to confirm].
+  - Balance target: a no-training run reaches the mid-70s by ~week 20 only with well-chosen fights.
+
 ## 5. Open questions — do not build until decided
 - §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story
   events, club switching, what standing unlocks beyond access.

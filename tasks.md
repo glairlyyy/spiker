@@ -31,7 +31,7 @@ Result:
 - Match music ✓ (T-032)
 - Block tactics ✓ (T-026 lane-read block, T-027 defence setting + scouting habits).
 - **Substitutions** (now): squads of 6 (T-028), in-match subs (T-029), coach AI (T-030), you on the bench (T-031).
-- **Growth rework** (after): training cap (T-034), match XP (T-035), skills learned in play (T-036).
+- **Growth rework** (after): training cap (T-034), match XP (T-035), skills learned in play (T-036); then **Challenges** (T-037/T-038).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now — Substitutions (spec §2.10)
@@ -186,6 +186,12 @@ Growth rework — spec §4.14 (after substitutions)
   for balance (avg stat ~70–75 by training alone, higher only with matches).
 - T-036: Skills learned in play — tier-1 buyable, the rest by chance (by doing / by facing a user), wit + opponent
   strength raise it; scouting lists techniques.
+
+Challenges — spec §4.15 (after the growth rework)
+- T-037: Challenge action — map action at a club / street court, stake, acceptance rule, hired street players when
+  alone, win payout by rating gap; XP via T-035.
+- T-038: Loss and injury — stake lost, stamina / mood crash, standing loss → grudge, heavy-loss fans / Gazette;
+  injury risk from gap, margin and fatigue (stamina + days since last battle); severe injury −2 permanent.
 
 Phase 5 — Voice pass
 - T-022: Faction `front`/`dark`, region `desc`, Gazette and event strings in lore.md §7 voices.
