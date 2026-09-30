@@ -45,16 +45,17 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   - Balance: stuffs 10.8 % → ~13 % of attacks (STUFF_BIAS 0.9 → 0.45), kills unchanged (~68 %, all-player kills ÷
     attacks). Numbers in `BLOCK` (js/data/tactics.js).
   - Settings are derived from the team style (not saved); the captain may switch on the opponent's attack mix.
-- §2.10 Substitutions **[locked, not built]**:
+- §2.10 Substitutions **[locked, not built — T-028–T-031]**:
   - Teams: 4 on court + 2 on the bench (6). Faction pools grow so every faction fields ≥ 1 squad of 6 (≈ Wei 24,
-    Wu 18, Shu 12, Outlaws 6, St. Gloria 6); drawn squads are 6.
+    Wu 18, Shu 12, Outlaws 6, St. Gloria 6); drawn squads are 6. Code: `t.P` = the 4 on court, `t.bench` = the 2
+    subs, `squadOf(t)` = all 6; lineups are restored after every match.
   - At a dead ball, max 2 subs per set per team; the sub takes the replaced player's rotation spot.
   - Presentation: no walk-on animation. The model swaps in place, a floating "SUBBED" label shows over the incoming
     player, and the coach's line appears as chatter (shirt numbers):
     "Subbing #{out} for #{in}. Don't let us down." · "#{out}, sit. #{in}, you're up — earn it." ·
     "#{in} in for #{out}. Same plan, fresher legs." · "#{out}, come off. #{in} — show me why you're here."
-  - Simple coach AI: sub when a player's match stamina is under a threshold or after repeated errors; small random
-    factor scaled by `coachIQ`. Smarter coach (matchups, protecting a lead, personality hunches) = backlog.
+  - Simple coach AI: sub when a player's match stamina is under a threshold (`SUB.sta`) or after repeated errors, and
+    bring a rested starter back; a random factor scaled by `coachIQ`. Smarter coach (matchups, protecting a lead, personality hunches) = backlog.
   - Your player is benchable: the coach picks starters by rating, form and standing, and may sub you out (tired /
     erring). A match started or finished on the bench gives reduced rewards.
 - §2.11 Match music **[built]**: `assets/audio/the_big_fight.mp3` loops as background music while the

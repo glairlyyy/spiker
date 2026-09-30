@@ -30,17 +30,152 @@ Result:
   teams stay as faction home squads.
 - Match music ✓ (T-032)
 - Block tactics ✓ (T-026 lane-read block, T-027 defence setting + scouting habits).
-- **Substitutions** (next, to be detailed): T-028–T-031.
+- **Substitutions** (now): squads of 6 (T-028), in-match subs (T-029), coach AI (T-030), you on the bench (T-031).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Later — outlines (not ready: the spec chat details each before it moves to Now)
+## Now — Substitutions (spec §2.10)
 
-Substitutions — spec §2.10
-- T-028: Teams of 6 (4 + 2 bench): rosters, pools, draws, saves (RUN_VERSION bump), UI lists. Engine still plays 4.
-- T-029: Engine substitution at a dead ball (new beat act kind `sub` + playback case: model swap, SUBBED label,
-  coach chatter from the 4 lines); max 2 per set. Goldens: update.
-- T-030: Simple coach AI (stamina / errors / coachIQ randomness) for every team.
-- T-031: Your player benchable: starters by rating, form, standing; reduced rewards when benched.
+Model for all four tasks: `t.P` stays the 4 on court (engine, rotation, `t.s` / `t.mb` / `t.ws` unchanged); new
+`t.bench` = the 2 substitutes (same `team` link). `squadOf(t)` = on court + bench. Everything that means "the club's
+players" uses `squadOf`; everything that means "who is playing now" keeps `t.P`.
+
+### [ ] T-028: Squads of 6 — 4 on court + 2 on the bench (data, pools, draws, saves, rosters)
+Spec: §2.10          Goldens: update (team generation rolls 2 more players per team; match play itself unchanged)
+Save: RUN_VERSION 3 → 4 (teams save `bench`; bigger pools) — older saves dropped
+Goal: Every team (tournament, monster, league, reserves' draws, Academy squad, drawn squads) has 2 bench players.
+Pools grow to Wei 24, Wu 18, Shu 12, Outlaws 6, St. Gloria 6 and squads are drawn 6 at a time. The engine still plays
+only `t.P` (subs come in T-029).
+Files: js/engine/teams.js, js/engine/save.js, js/data/world.js, js/career/pool.js, js/career/eval.js,
+js/career/cup.js, js/career/world.js, js/career/growth.js, js/career/run.js, js/career/dossier.js, js/career/events.js,
+js/career/goals.js, js/career/city.js, js/ui/career-week.js, js/ui/career-map.js, js/ui/career-dossier.js,
+tests/run.js, tests/golden.json, ARCHITECTURE.md
+Do not:
+- Put bench players into `t.P`, or make js/engine rally/serve/match code read `t.bench` (T-029).
+- Change `teamOvr` (rating stays the 4 starters) or the captain rule (captain = best leader on court).
+Steps:
+1. teams.js: new global `squadOf = t => (t.bench ? [...t.P, ...t.bench] : t.P)` (doc comment). `fillRoster`: after
+   the 4, `t.bench = [mkPlayer(fr, <fr's slot: 'S' | 'MB' | 'W1'>, bon.bench || 0, t, used), mkPlayer('WS', 'W0',
+   bon.bench || 0, t, used)]` (fr = the team's flex role). `mkMonsterTeams` passes `bon.bench = rnd(110, 150)`.
+   `finalizeTeam`: leadership, elements and shirt numbers over `squadOf(t)` (numbers unique across all 6); captain
+   and `ovr` from `t.P` only.
+2. save.js: `teamToJSON` stores `bench` like `P` (players without `team`); `teamFromJSON` relinks `bench` (`team: t`),
+   `_pid` covers bench ids; missing `bench` → `[]`.
+3. world.js data: `POOL = { wei: 24, wu: 18, shu: 12, outlaws: 6, gloria: 6 }`; squad size constant `SQUAD = 6`.
+4. pool.js: `build` counts `squadOf` of the league teams; `players` = league teams' `squadOf` + reserves; `draw`:
+   squads of 6 = today's [S, MB, WS, WS] + 2 bench (the next best by the same weights, any role; you are never put on
+   the bench by the draw — T-031); default n = floor(size / SQUAD). Returns arrays of 6 (first 4 = court order).
+5. eval.js: `squad(run, ids, …)` — first 4 → `P`, the rest → `bench`; `lend` / `restore` cover the bench
+   (`team` link only; bench `slot` untouched). cup.js: entrant ids of 6; the Academy entrant is `run.pickup` (6).
+   Expected U21 entrants with default pools: Wei 4, Wu 3, Shu 2, Outlaws 1, Gloria 1 + Academy = 12 (4 byes).
+6. Career code — grep `.P` in js/career and js/ui/career-*: switch to `squadOf` where it means the club's players:
+   growth (`Growth.grow`), promotion (a reserve may replace a weaker same-role player anywhere in the squad),
+   transfers, bonds / `Run.mates`, events picking a teammate, goals, scouting / club rosters, dossier roster (bench
+   labelled "<squad> · bench"), `Run.you` (search `squadOf(Run.myTeam(run))`), `Cup.prepare` form (all 6). Keep `t.P`
+   for "who plays". `Run.create`: you still replace the same-role player in `t.P`.
+7. UI: Team drawer (career-week.js) lists the bench under a "Bench" sub-heading; the scouted club roster
+   (career-map.js) and the dossier show bench players marked "bench".
+8. run.js: `RUN_VERSION = 4` (comment: v4 — squads of 6; older saves dropped).
+9. tests/run.js: pools 24/18/12/6/6 (reserves 12/6/0/0/0); draw → squads of 6, 4 court in [S, MB, WS, WS] order +
+   2 bench, no player twice; U21 → 12 entrants, 4 byes; save → load keeps every bench player (ids, `team` link,
+   numbers); new test `'teams: 4 on court + 2 bench, unique numbers, captain on court'` over mkTeams,
+   mkMonsterTeams, mkLeagueTeams and the pickup squad. `npm run test:update` (reason in the commit).
+10. ARCHITECTURE.md: team shape (`P` / `bench` / `squadOf`), save v4.
+Accept: all tests + lint; goldens updated for this reason only.
+QA: career run → Team drawer shows 4 + a 2-player bench; Wei dossier roster 24; U21 bracket (forced week 29) shows 12
+squads; Monster game plays as before; no pageerror.
+Result:
+
+### [ ] T-029: Substitutions in the match — dead-ball swap, SUBBED label, coach line (stamina rule)
+Spec: §2.10          Goldens: update (tired players get subbed: rallies change)          Save: no change
+Goal: At a dead ball a coach swaps a tired player for a bench player (max 2 per set per team). The incoming model
+takes the outgoing player's spot at once, "SUBBED" floats over them, and the coach says one of the four spec lines
+with shirt numbers. After the match every team's lineup is exactly as it was before (career teams persist).
+Files: js/data/rules.js, js/data/dialogue.js, js/engine/match.js, js/game/state.js, js/render/playback.js,
+js/ui/match-screen.js, js/render3d/r3d.mjs, js/render3d/actors3d.mjs, tests/run.js, tests/golden.json,
+ARCHITECTURE.md
+Do not:
+- Draw R() for this rule (T-030 adds the random part); pick lines by hash, not by R().
+- Animate a walk-on; clone teams (the engine relies on `p.team === m.t[side]`).
+- Leave a lineup changed after a match ends or is left mid-way.
+Steps:
+1. rules.js: `SUB = { max: 2, sta: 0.6, fresh: 0.9 }` (doc: per set per team; tired below `sta`; a bench player
+   needs stamina ≥ `fresh`). dialogue.js: `SUBLINES` = the 4 lines of spec §2.10 with `{out}` / `{in}` placeholders.
+2. match.js newMatch: `m.subs = [0, 0]`; `m.lineup0` = per side a snapshot `{ P: [...t.P], bench: [...t.bench || []],
+   slots: {id → slot}, cap: t.cap }`; `m.sta` / `m.mood` also for bench players; stamina recovery in `end()` covers
+   `squadOf` (bench keeps recovering). `restoreLineups(m)` puts P / bench / s / mb / ws / cap flags / slots back;
+   called in `end()` when `m.over`, and by the match screen when leaving mid-match (step 5).
+3. match.js `coachSubs(m, side)` (after `captainThink` in `end()`, only when `!m.over`): if `m.subs[side] < SUB.max`,
+   the on-court player with the lowest stamina below `SUB.sta` goes off for the fittest bench player with stamina ≥
+   `SUB.fresh` (same role first, else highest ovr). `subIn(m, side, out, inn)`: `inn` takes `out`'s index in `t.P`
+   and `out`'s slot; `out` takes `inn`'s bench place; refresh `[t.s, t.mb] = t.P; t.ws = [t.P[2], t.P[3]]`; if `out`
+   was captain, the best leader on court becomes captain (flags too); `m.pos[inn.id] = m.pos[out.id]`;
+   `m.subs[side]++`. A player may come back later (it still counts). Beats (recording only): one beat
+   `{ dur: 1500, acts: [{ k: 'sub', side, out, in }, { k: 'plabel', p: in, t: 'SUBBED' }, { k: 'coachtalk', side,
+   text }, { k: 'log', t: 'Sub <team>: #<in> <name> in for #<out> <name>', c: 'set' }] }`; line index =
+   (out.num + in.num + m.pts[0] + m.pts[1]) % 4.
+4. Playback (new act kind `sub`, allowed by this task): `A.disp` gets entries for bench players too, flagged
+   `bench: true`; every 2D draw loop and the 3D actors skip bench entries (the 3D side still loads their models at
+   match start, hidden). `case 'sub'`: the incoming entry takes the outgoing one's position / pose, `bench` flags swap.
+   `byId` (state.js) finds bench players. Box score / match stars include everyone who played (`m.stat`).
+5. match-screen.js: `leaveMatch` and any other exit before the end call `restoreLineups(A.m)` first (safe twice).
+6. tests/run.js: new test `'engine: substitutions — rule, limit, restore'`: 200 sims with `SUB.sta` as shipped → at
+   least some subs, never > 2 per side per set; after each match every team's `P`, `bench`, slots, `cap` equal the
+   snapshot; recorded matches: every `sub` act names a known player, and the "known players" check in the beats test
+   accepts bench ids. Goldens update.
+7. ARCHITECTURE.md: substitution flow, `sub` act, lineup restore.
+Accept: all tests + lint; goldens updated for this reason only.
+QA: Monster game with `SUB.sta = 0.95` set in the console before the match → a sub happens within a few rallies: in 3D
+the new player appears in the old one's spot, SUBBED label, coach line; no model on court twice; after the match
+`A.m.t[s].P` ids equal the starting ids; no pageerror.
+Result:
+
+## Next — Substitutions, part 2
+
+### [ ] T-030: Coach AI — errors and coach IQ decide subs too
+Spec: §2.10          Goldens: update (one extra roll when a sub is considered)          Save: no change
+Goal: Coaches also sub a player who keeps making errors, and bring a rested starter back; a smarter coach (coachIQ)
+acts at better moments, a weaker one more randomly.
+Files: js/data/rules.js, js/engine/match.js, tests/run.js, tests/golden.json, ARCHITECTURE.md
+Do not: add act kinds; roll R() when no candidate exists (keeps other matches' draws stable).
+Steps:
+1. SUB gains `errs: 3` (errors this set with fewer kills than errors), `back: 0.85` (a subbed-out starter with stamina
+   ≥ back may return for the player who replaced them), `iq: [0.35, 0.9]` (chance range to act, by coachIQ 0 → 1).
+2. `coachSubs`: candidates in order — tired (T-029 rule), erring, a rested starter coming back. If a candidate exists:
+   one `R() < lerp(SUB.iq[0], SUB.iq[1], t.coachIQ)` → act; else wait. A low-IQ coach (< 0.5) with no candidate may
+   not act at all (no roll).
+3. Track errors per set per player (`m.setErr`, engine-only).
+4. tests: over 200 sims, error-subs happen; high-IQ coaches sub tired players sooner on average than low-IQ ones.
+Accept: all tests + lint.
+QA: Monster game — log shows a sub with a reason; no pageerror.
+Result:
+
+### [ ] T-031: Your player can be benched — lineups, sub-outs, reduced rewards
+Spec: §2.10          Goldens: unchanged (career only)          Save: no change
+Goal: In career matches your coach picks the 4 starters from the 6 by rating, form and your standing; you may start on
+the bench and may be subbed in or out like anyone. Rewards drop when you start or finish on the bench; never playing
+gives a bench reward only.
+Files: js/data/career.js, js/career/cup.js, js/career/eval.js, js/career/run.js, js/ui/career-week.js,
+js/ui/match-screen.js, tests/run.js, ARCHITECTURE.md
+Do not: change the engine sub rules (T-029/T-030) or keep lineups off the [S, MB, WS, WS] role order.
+Steps:
+1. career.js: `BENCH = { partMul: 0.6, standingPer: 20 }` (rewards × partMul when you started or finished on the
+   bench; your selection score + standing / standingPer).
+2. `Run.lineup(run, T)` before every career match you're in (eval, cup): for each court slot [S, MB, W0, W1] pick the
+   best same-role player by `ovr + 6 × form` (+ standing / standingPer for you); the rest go to the bench (keeps roles
+   valid; a missing role falls back to the best remaining). Your pre-match card shows "Starting" or "Bench" with the
+   reason (the starter's score vs yours).
+3. The engine records who played: `m.played` set of ids (on court at any point) — engine-only, no randoms (add in
+   match.js only if T-029 has nothing equivalent; then add match.js to this task's files).
+4. `Cup.result`: never played → no grade, no win bonus, the evaluation bench reward (`Eval.bench` wit XP) + result
+   line "Watched from the bench"; started or finished on the bench → rewards × `BENCH.partMul`, grade as usual.
+5. tests: a squad where you're the weakest WS → you start on the bench; a sim where you never come in → no grade,
+   bench XP; a partial match → rewards scaled.
+Accept: all tests + lint; goldens untouched.
+QA: career run → an evaluation where you start on the bench: pre-match card says Bench; Sim ⏭ → reduced / bench result;
+no pageerror.
+Result:
+
+## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
 Phase 5 — Voice pass
 - T-022: Faction `front`/`dark`, region `desc`, Gazette and event strings in lore.md §7 voices.
