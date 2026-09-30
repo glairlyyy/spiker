@@ -1,4 +1,4 @@
-// Synthesized sound effects (WebAudio, no audio files).
+// Sound: synthesized effects (WebAudio) plus one looping music track (assets/audio/the_big_fight.mp3, match screen only).
 // Layout: master volume → compressor → speakers; a convolution reverb ("arena") and a soft-clip
 // shaper for heavy hits feed the master; every one-shot is panned by where it happens on court.
 
@@ -6,6 +6,71 @@ const SND = { ctx: null, on: true, master: null, noise: null, pan: 0, vol: 0.8, 
 SND.on = store.get(KEYS.sound) !== 'off';
 SND.vol = clamp(+(store.get(KEYS.volume) ?? 0.8), 0, 1);
 const BASE_GAIN = 0.6;
+/** Match music: decoded once, looped through its own gain node straight to the speakers (not the effects bus). */
+const BGM_URL = 'assets/audio/the_big_fight.mp3',
+  BGM_GAIN = 0.5;
+SND.bgm = null; // gain node of the playing track
+SND.bgmSrc = null; // its looping source
+SND.bgmBuf = null; // decoded track, kept for later matches
+SND.bgmWant = false; // a match is open (guards a load that finishes after leaving)
+SND.bgmLoad = false; // fetch + decode in flight
+/** Music level for the current volume slider and sound toggle. */
+const bgmLevel = () => BGM_GAIN * SND.vol * (SND.on ? 1 : 0);
+/** Start the match music (fades in over 1 s). Needs SND.ctx (audioInit first); safe to call while playing or loading. */
+async function bgmStart() {
+  const c = SND.ctx;
+  SND.bgmWant = true;
+  if (!c || SND.bgmSrc || SND.bgmLoad) return;
+  try {
+    if (!SND.bgmBuf) {
+      SND.bgmLoad = true;
+      SND.bgmBuf = await c.decodeAudioData(await (await fetch(BGM_URL)).arrayBuffer());
+    }
+  } catch (e) {
+    console.warn('Match music failed to load', e);
+    SND.bgmWant = false;
+    return;
+  } finally {
+    SND.bgmLoad = false;
+  }
+  if (!SND.bgmWant || SND.bgmSrc) return;
+  const g = c.createGain(),
+    src = c.createBufferSource(),
+    t = c.currentTime;
+  src.buffer = SND.bgmBuf;
+  src.loop = true;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(bgmLevel(), t + 1);
+  src.connect(g);
+  g.connect(c.destination);
+  src.start();
+  SND.bgm = g;
+  SND.bgmSrc = src;
+}
+/** Fade the match music out over 0.6 s, then stop it. Safe when nothing plays. */
+function bgmStop() {
+  SND.bgmWant = false;
+  const g = SND.bgm,
+    src = SND.bgmSrc;
+  if (!g || !src) return;
+  SND.bgm = SND.bgmSrc = null;
+  const t = SND.ctx.currentTime;
+  g.gain.cancelScheduledValues(t);
+  g.gain.setValueAtTime(g.gain.value, t);
+  g.gain.linearRampToValueAtTime(0, t + 0.6);
+  setTimeout(() => {
+    try {
+      src.stop();
+      g.disconnect();
+    } catch (e) {
+      /* already stopped */
+    }
+  }, 700);
+}
+/** Follow the sound toggle / volume slider. */
+function bgmSync() {
+  if (SND.bgm) SND.bgm.gain.setTargetAtTime(bgmLevel(), SND.ctx.currentTime, 0.03);
+}
 function audioInit() {
   try {
     if (SND.ctx) {
@@ -63,6 +128,7 @@ function toggleSound() {
   store.set(KEYS.sound, SND.on ? 'on' : 'off');
   audioInit();
   if (!SND.on) crowdLevel(0);
+  bgmSync();
   const b = $('#snd');
   if (b) b.textContent = SND.on ? '🔊' : '🔇';
 }
@@ -70,6 +136,7 @@ function setVolume(v) {
   SND.vol = clamp(v, 0, 1);
   store.set(KEYS.volume, SND.vol.toFixed(2));
   if (SND.master) SND.master.gain.setTargetAtTime(BASE_GAIN * SND.vol, SND.ctx.currentTime, 0.03);
+  bgmSync();
 }
 const live = () => SND.ctx && SND.on && SND.ctx.state !== 'closed';
 /** Pan the next sounds to a screen x (0–1000 canvas units). */

@@ -12,7 +12,7 @@ earlier files **at load time** (inside functions, anything loaded is fine).
 | Core | `js/core/` | `debuglog.js` (loaded first: `DBG` collects errors, console errors/warnings and match stalls; the header's Debug log button shows and copies them), `rng.js` (all randomness via `R()`, seedable with `RNG.seed(n)`), `storage.js` (all `localStorage` via `store`, keys in `KEYS`). |
 | Data | `js/data/` | Constants only — playstyles, names, looks, moves, roles, elements, `RULES`. No logic. |
 | Engine | `js/engine/` | Pure simulation. **No DOM, canvas or audio.** Runs headless (odds, preseason, tests). |
-| Audio | `js/audio/` | Synthesized WebAudio effects (`sfx.*`). |
+| Audio | `js/audio/` | Synthesized WebAudio effects plus the match music (`sfx.js`). |
 | Game | `js/game/` | Global state `G` (settings, current screen), screen router (`Screens`, `navigate()`), bracket helpers (career Cup). |
 | Career | `js/career/` | Career-mode rules (run, training, events, skills, Cup). **No DOM** — testable headlessly. |
 | UI | `js/ui/` | DOM screens: menu, match screen, career create/week/result (`career-end.js`), skill encyclopedia. |
@@ -402,6 +402,14 @@ classic-script globals from index.html), `npm run format` (Prettier, .prettierrc
 The court canvas is sized to CSS size × device pixels within a budget (`COURT_PX`, 2.4 MP — fullscreen on a
 high-DPI screen would otherwise be 6–8 MP a frame), and the 3D view renders at a dynamic fraction of it (`adaptRes`
 in r3d: steps down to 0.55 when frames run under ~50 fps, back up when there's headroom). `matchState()` reports both.
+
+## Match music
+
+`sfx.js`: `assets/audio/the_big_fight.mp3` is fetched and decoded once (`SND.bgmBuf`; no `<audio>`/blob URLs, which the
+artifact host may block), then looped by an `AudioBufferSourceNode` → its own gain (`SND.bgm`) → `ctx.destination`, bypassing
+`SND.master` (no compressor, slow-mo low-pass or reverb). Level = `BGM_GAIN` (0.5) × `SND.vol` × (sound on ? 1 : 0);
+`toggleSound` / `setVolume` re-apply it (`bgmSync`). `navigate` calls `bgmStart()` for the match screen (fade in 1 s) and
+`bgmStop()` for any other (fade out 0.6 s); the result overlay keeps playing. Headless there is no `AudioContext`: no-op.
 
 ## Robustness
 

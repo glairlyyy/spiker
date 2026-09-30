@@ -33,7 +33,10 @@ const Screens = {};
 function navigate(name, ...args) {
   if (!Screens[name]) throw new Error('Unknown screen ' + name);
   G.view = name;
-  return Screens[name](...args);
+  const out = Screens[name](...args);
+  if (name === 'match') bgmStart();
+  else bgmStop();
+  return out;
 }
 /** Find a player by id in the match being shown. */
 const byId = id => {

@@ -28,40 +28,9 @@ Result:
 - **M2 — three.js map** ✓: scaffold ✓ (T-023), walking player ✓ (T-024), parity ✓ (T-025).
 - **Phase 4 — U21 Final Cup** ✓: bracket with byes (T-019); U21 cup from drawn squads (T-020). The 8 league
   teams stay as faction home squads.
-- **Match music** (now): T-032.
+- Match music ✓ (T-032)
 - **Block tactics** (T-026/T-027) → **Substitutions** (T-028–T-031), after Phase 4.
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
-
-## Now — Match music
-
-### [ ] T-032: Match background music (owner track, 50 % volume)
-Spec: §2.11          Goldens: unchanged          Save: no change
-Goal: While the match screen is open, `assets/audio/the_big_fight.mp3` loops as background music at half the effects
-volume; it obeys the 🔊/🔇 toggle and the volume slider, and fades out when you leave the match.
-Files: js/audio/sfx.js, js/game/state.js, ARCHITECTURE.md (the mp3 is already in the repo and on the artifact)
-Do not:
-- Use `new Audio()` / `<audio>` or blob: URLs (artifact host may block them): `fetch` → `arrayBuffer` →
-  `SND.ctx.decodeAudioData` → looping `AudioBufferSourceNode`.
-- Route the music through `SND.master` (compressor pumping, slow-mo low-pass, reverb): give it its own gain node
-  straight to `SND.ctx.destination`.
-- Draw R()/rnd() or touch js/engine; play anything in headless tests (no AudioContext there → silently no-op).
-- Load the file before the first match; decode it only once (cache in `SND.bgmBuf`; later matches reuse it).
-Steps:
-1. js/audio/sfx.js: fix the header comment (no longer "no audio files"). Add `const BGM_URL = 'assets/audio/the_big_fight.mp3',
-   BGM_GAIN = 0.5;` and fields `SND.bgm` (gain node), `SND.bgmSrc`, `SND.bgmBuf`.
-2. `bgmStart()`: needs `SND.ctx` (call after `audioInit()`); if already playing, return; fetch + decode once (guard
-   against a second call while loading; any failure → one `console.warn`, no retry spam); new looping source →
-   `SND.bgm` gain → destination; gain ramps from 0 to `BGM_GAIN * SND.vol * (SND.on ? 1 : 0)` over 1 s.
-3. `bgmStop()`: ramp gain to 0 over 0.6 s, then stop and drop the source; safe to call when nothing plays.
-4. `toggleSound` and `setVolume` also set the music gain (`setTargetAtTime`, same formula).
-5. js/game/state.js `navigate`: after the screen renders, `name === 'match'` → `bgmStart()`, any other screen →
-   `bgmStop()` (`startMatch` already calls `audioInit()`). The result overlay keeps the music until you leave.
-6. ARCHITECTURE.md: audio section — music path (own gain → destination), volume rule, start/stop in `navigate`.
-Accept: all tests + lint; goldens untouched.
-QA: Monster game → `SND.bgmSrc` exists and `SND.bgm.gain.value` ≈ 0.5 × SND.vol after 1.5 s; 🔇 → 0; 🔊 → back;
-leave to menu → gain 0 and `SND.bgmSrc` null after 1 s; start a second match → no second fetch (network log); no
-pageerror. (Swiftshader has no speakers — check the numbers, not the sound.)
-Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
@@ -83,6 +52,7 @@ Phase 5 — Voice pass
 
 ## Done
 (one line each; full task text is in git history)
+- [x] T-032: Match background music (owner track, 50 % volume) — bgmStart/bgmStop/bgmSync in sfx.js (own gain → destination, decoded once, want/loading guards so a late decode after leaving stays silent), hooked in navigate; ARCHITECTURE 'Match music'. 26/26 + lint, goldens untouched. QA (test3d): 0.4 = 0.5 × 0.8 playing, 🔇 → 0, 🔊 → 0.4, leave → gain gone + bgmSrc null, second match 1 fetch total, no pageerror. Swiftshader is slow: decode took ~10 s wall before the music started. mp3 was not in my clone — fetched it from the artifact and committed it.
 - [x] T-019: Brackets of any size with byes — bracket.js handles 8/16 slots with byes (BRACKET_ROUNDS/BRACKET_NEXT, seedOrder hard-coded: 8 = old Grand Cup order, 16 = the task's list); new test 'bracket: 8 and 16 entries, byes'. 25/25 + lint, goldens untouched, headless only.
 - [x] T-020: U21 Final Cup — one cup of drawn squads replaces the Skyline and Grand Cups — U21 Final Cup as specced (13 squads → 16-slot bracket, 3 byes, RUN_VERSION 3, warm-up code removed; Cup.roman added as a Cup property, no new global). 26/26 + lint, goldens untouched; QA: Academy run → W29 bracket with byes, Sim ⏭ to run-end naming the champion, no pageerror.
 - [x] T-025: 3D map parity — pins, selection, fog, labels — pins3d.mjs (overlay pins/labels/flag, seized + border decals), fog via vertex colours in map3d.mjs, `update` diffs by JSON, dead SVG CSS deleted, default view 60 m. 24/24 + lint. QA (test3d): 4 model pins = 4 DOM pins, labels + red border visible, pin click → panel + `.sel`; revealed HQ appears and scout updates its badge with the same renderer/16 geometries/1 canvas; land click → flag; no pageerror. Deviations: first view centres on you.at (not focus); border line drawn (in model); airport label offset below the player. Seized patch built (model count 1) but only checked headlessly.
