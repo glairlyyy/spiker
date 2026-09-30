@@ -191,6 +191,9 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 
 ## 8. Backlog (candidates — become tasks only when specced)
 - Balance pass: 7-day week × DAY_GAIN × fees × faction prices × paydays, measured with headless season sims.
+- Role identity (with the balance pass): flex-role win rates are even (±3 %, 16k sims: 2 S / 2 MB / 3 WS); make
+  setter value visible ("Perfect set!" call-outs, set quality in the box score, front-row setter attack / dump in
+  dual-setter teams) and give MBs a back-row pass / dig weakness. Re-measure win rates by flex role after.
 - Standing effects; leaving/switching clubs (needs §5.1); moving borders.
 - Smarter AI coach (matchup subs, protecting a lead, personality).
 - Ace traits (after block tactics §2.9; engine, goldens update). Aces = OP players + named aces/rival (lore.md §6),
