@@ -14,6 +14,8 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 ## 2. Match (engine + 3D playback) [built]
 - §2.1 Rules: one set to 15, win by 2; court ×1.5; zone/captain buffs, timeouts, tactics, techniques, pop-ups,
   long back attack.
+  Three touches per side (a block touch is free). A pop-up off the arms saved by a teammate counts as touches 1 and 2:
+  the save is an out-of-system bump-set and a third player hits (or bumps it over) **[locked, not built — T-043]**.
 - §2.2 Elements: per player, hidden; unlocked for OP, ~1/4 of star players, and the career player via the Element
   Trial. Gauge fills by element play; full gauge or captain buff → next attack is the signature element spike.
   Counter elements halve effects. Fiction: lore.md §2 (the Trial is the modern method; the ritual is forgotten).

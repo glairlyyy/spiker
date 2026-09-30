@@ -32,7 +32,7 @@ Result:
 - Block tactics ✓ (T-026 lane-read block, T-027 defence setting + scouting habits).
 - Substitutions ✓ (T-028 squads of 6, T-029 in-match subs, T-030 coach AI, T-031 you on the bench).
 - Growth rework ✓ (T-034 training cap 75, T-035 match XP, T-036 techniques learned in play).
-- **Living map A** (now): map life model (T-039), renderer (T-040).
+- **Living map A** (now): map life model (T-039), renderer (T-040); then the three-touch fix (T-043).
 - **Rankings** (next): model (T-041), drawer + cards (T-042). Then **Team challenges**: challenge + refusal (T-037), loss and injury (T-038).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
@@ -88,6 +88,37 @@ Accept: all tests + lint; goldens untouched.
 QA (career run): screenshot with mates at a court, crews (coloured after scouting, grey before), a street battle week
 showing the crowd; draw calls rise by ≤ 6; frame time not worse than +20 % in swiftshader; leave and return → no leak
 (1 canvas, geometries back to the same count); no pageerror.
+Result:
+
+### [ ] T-043: Three touches after a pop-up — the save is the set (scramble ball)
+Spec: §2.1          Goldens: update (pop-up saves no longer get a full set + attack)          Save: no change
+Goal: When a serve or spike pops off a player's arms and a teammate saves it, that save is touch 2: the team gets one
+more touch — an out-of-system hit off the save (or a bump over) — never pass → set → spike on top (today 4 touches,
+~0.7 per match). Nobody touches the ball twice in a row.
+Files: js/engine/rally.js, js/engine/rally-defense.js, js/engine/serve.js, js/engine/rally-phases.js, tests/run.js,
+tests/golden.json, ARCHITECTURE.md
+Do not:
+- Add beat act kinds or change playback (reuse the existing set / bump / spike acts; the saver's "set" is a bump-set).
+- Change any other possession path (free ball, setter dump, bad set, block cover dig, normal dig → set → spike).
+Steps:
+1. `rally(m, B, V, atk, pas, qual, scr = null)`; the possession loop reads a 4th element of `next`: `[atk, pas, qual,
+   scr]`, where `scr = { first }` (the player whose arms it popped off) marks a scramble possession. serve.js pop save
+   → `rally(m, B, V, r, P.rec, 1, { first: rc })`; rally-defense.js dig pop save → `{ next: [ds, P.rec, 1, { first: dg }] }`.
+2. rally.js, scramble possession (`scr` set, only for that possession): skip `freeBall`, `pickSetter`, `setterDump`,
+   `setHands`; build `s` with `setter = pas` (the saver), `setX` / `setZ` = the saver's position, `dual: false`, `DMB` as
+   `pickSetter` computes it; `h = { sq2: 'bad', bumpSet: true }`; then `chooseAttack` (no quick: `sq2` 'bad' already
+   blocks it) with `scr.first` and the saver excluded from the hitter pool (fallback: any other player); `badSetOver`
+   may still send it over (3 touches: pop, save, bump); the rest of the attack as usual (`setMul` for a bad set applies).
+3. Engine-only tally `m.scr = { n, over }` (scramble possessions, and how many went over as a bump) — no randoms.
+4. tests: new `'engine: three touches — pop-up saves are the set'`: over 300 sims, `m.scr.n > 0`; in recorded matches
+   every scramble possession's hitter is neither `first` nor the saver (add an engine-only log `m.scrLog` of
+   `{ first, saver, hitter }` if needed); existing invariants hold. `npm run test:update` (reason in the commit).
+5. ARCHITECTURE.md: possession paths and touch counts (a small table: normal 3, dump 2, overpass 1, bad set 3, pop-up
+   save 3, block touch free).
+Accept: all tests + lint; goldens updated for this reason only.
+QA: Monster game — watch until an "Off the arms! … Saved!" moment (or force it: `popChance` is a global; temporarily
+raise it in the console): the saver bump-sets, a third player swings (or bumps it over); no one plays twice in a row;
+no pageerror.
 Result:
 
 ## Next — Rankings (spec §4.17), then team challenges (spec §4.15)
