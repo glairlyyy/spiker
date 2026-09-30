@@ -38,7 +38,7 @@ Result:
 
 ## Now — Living map, layer A (spec §4.16)
 
-### [ ] T-039: MapModel `life` — who is where this week, as plain data
+### [x] T-039: MapModel `life` — who is where this week, as plain data
 Spec: §4.16          Goldens: unchanged          Save: no change
 Goal: The map model carries the island's people and pressure so a renderer can show them: your teammates at the places
 they train this week, each faction's players at its home courts, the street-battle crowd, border pressure, seized flags.
@@ -62,7 +62,7 @@ Steps:
 3. ARCHITECTURE.md: MapModel `life`.
 Accept: all tests + lint; goldens untouched.
 QA: none (headless).
-Result:
+Result: Done as specified; tests 36/36, lint clean, goldens untouched, headless only. `life.crews` also carries `team` (club index) and `mates` uses the nearest explored place of the key to home.
 
 ### [ ] T-040: Living map — figures, battle crowd, border pulse, flags (renderer)
 Spec: §4.16          Goldens: unchanged          Save: no change
