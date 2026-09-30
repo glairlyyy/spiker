@@ -25,42 +25,13 @@ Result:
 - Phase 1 — Island rules ✓ · 1b — Match feel ✓ · 1c — Cut-scene lines ✓ · 2 — Faction pools ✓
 - Cleanup + info ✓ (T-016 Legacy removed, T-017/T-018 faction dossier)
 - Phase 3 — Evaluations ✓ (T-008–T-011)
-- **M2 — three.js map** (now): scaffold ✓ (T-023), walking player ✓ (T-024), parity (T-025).
-- **Phase 4 — U21 Final Cup** (after M2): bracket with byes (T-019); U21 cup from drawn squads (T-020). The 8 league
+- **M2 — three.js map** ✓: scaffold ✓ (T-023), walking player ✓ (T-024), parity ✓ (T-025).
+- **Phase 4 — U21 Final Cup** (now): bracket with byes (T-019); U21 cup from drawn squads (T-020). The 8 league
   teams stay as faction home squads.
 - **Block tactics** (T-026/T-027) → **Substitutions** (T-028–T-031), after Phase 4.
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now — M2: three.js island map (before Phase 4)
-
-### [ ] T-025: 3D map parity — pins, selection, fog, labels
-Spec: §4.9          Goldens: unchanged          Save: no change
-Goal: Everything the SVG map shows works on the 3D map: pins (places, HQs, battle) with icons/badges/flags, selection
-highlight and pick, seized patches, region labels, the selected-point flag, and fog of war. (The SVG map is gone — owner decision; there is no toggle.)
-Files: js/map3d/map3d.mjs, js/map3d/pins3d.mjs (new ES module), css/career.css (also delete the dead SVG map rules
-`.city`, `.pin`… — grep js/ first), ARCHITECTURE.md
-Do not:
-- Put game rules in the view: read only `MapModel` fields, report only `pick(id)` / `point(p)`.
-- Draw pins as WebGL text: use an HTML overlay layer positioned each frame by projecting world points (like the
-  match overlay), so emoji icons, badges and CSS states (`off`, `far`, `turf`, `gem`, `overhyped`, `can`, `mine`,
-  `clash`, `sel`) reuse the SVG map's meaning.
-Steps:
-1. pins3d.mjs: an absolutely positioned overlay `div` over the canvas; one element per `model.pins` item
-   (`data-spot`, icon, badge, flag classes, `title`); each frame place it at the projected terrain point; hide when
-   behind the camera; click / Enter → `on.pick(id)`; `select(id)` toggles `.sel`.
-2. Labels: `land.labels` as overlay text (big for majors), fading out when zoomed in close.
-3. Seized: a flat ring/disc decal on the terrain at each `seized[].at` (radius in map units), in the holder colour.
-4. Fog: per terrain vertex darkening where no `fog.points` lies within `fog.r` (update on `update(model)`), plus the
-   pins list already hides unknown places. Unexplored land stays visible but dim, like the SVG map.
-5. `model.flag` (selected point): a small flag marker on the terrain.
-6. `update(model)` diff: rebuild pins / seized / fog only when their data changed (compare JSON of those parts).
-7. Also: default camera distance ~60 m (the walking player must be clearly visible on entry); zoom range unchanged.
-Accept: all tests + lint.
-QA (career run): screenshot with pins, labels and fog (compare with MapModel.pins: same count visible); click a pin →
-its panel opens and the pin highlights; scout an HQ → badge updates without remounting the scene; no pageerror.
-Result:
-
-## Next — Phase 4: U21 Final Cup (after M2)
+## Now — Phase 4: U21 Final Cup
 
 ### [ ] T-019: Brackets of any size with byes
 Spec: §4.11          Goldens: unchanged          Save: no change
@@ -156,6 +127,7 @@ Phase 5 — Voice pass
 
 ## Done
 (one line each; full task text is in git history)
+- [x] T-025: 3D map parity — pins, selection, fog, labels — pins3d.mjs (overlay pins/labels/flag, seized + border decals), fog via vertex colours in map3d.mjs, `update` diffs by JSON, dead SVG CSS deleted, default view 60 m. 24/24 + lint. QA (test3d): 4 model pins = 4 DOM pins, labels + red border visible, pin click → panel + `.sel`; revealed HQ appears and scout updates its badge with the same renderer/16 geometries/1 canvas; land click → flag; no pageerror. Deviations: first view centres on you.at (not focus); border line drawn (in model); airport label offset below the player. Seized patch built (model count 1) but only checked headlessly.
 - [x] T-023: 3D map scaffold — terrain, water, camera, click-to-point (behind a toggle) — MapView facade (map-view.js) + MapSVG rename, map3d.mjs terrain/water/sun/camera/pan/zoom/click, Menu toggle `MAP3D`. 24/24 + lint, goldens untouched. QA (test3d, swiftshader): toggle on → island renders, wheel zoom + drag pan move the view, click Shu land → panel → Travel moved RUN.pos [470,600]→[478,487]; off → SVG back, 0 canvases; leave to menu → renderer released, return → 1 canvas; no pageerror.
 - [x] T-024: The player walks on the 3D map (default VRM model) — avatar3d.mjs (VRM + capsule fallback), map3d.update snap/walk + camera follow, ×N badge (avg speed > 6 m/s). 24/24 + lint. QA (test3d, swiftshader 800×500): model at the airport; 20 m trip walks, far trip runs with ×8 badge and follow cam, ends idle on the spot, badge hides; frame ≈ 205–360 ms in swiftshader (no GPU); no pageerror.
 - [x] T-008: Reserves grow every week and get promoted on payday — Growth.grow extracted (teams + reserves); PROMOTE {gap 3} + World.promote on payday; new test (8 weeks growth, forced promotion, 4-player teams, pool sizes); 23/23 + lint; goldens untouched

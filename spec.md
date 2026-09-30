@@ -84,8 +84,8 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   Minor factions are not in the war. Seized places show as a patch in the holder's colour; borders don't redraw
   **[open: moving borders]**.
 - §4.8 Hub UI: full-screen 3D map with HUD overlays, shortcut dock → drawers, cards over the map.
-- §4.9 Map architecture: rules → MapModel → MapView (see CLAUDE.md Layout). three.js island map **[built: terrain,
-  camera, click-to-travel, walking player; pins / fog / selection not yet (T-025)]**. The SVG map is removed (owner):
+- §4.9 Map architecture: rules → MapModel → MapView (see CLAUDE.md Layout). three.js island map **[built]**: terrain,
+  camera, click-to-travel, walking player, HTML-overlay pins / labels / flag, seized + border decals, vertex fog. The SVG map is removed (owner):
   no 2D fallback — without WebGL the map area shows a notice. Contract: `mount`, `update(model)`, `select`, `dispose`.
   Look: fixed tilted camera (Kenshi-like diorama; pan + zoom, no free rotation), low-poly procedural terrain from the
   coast / region shapes (Shu raised highlands, Wu beach ring, CITY.mountains as peaks), water around, region tint.
@@ -159,6 +159,6 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 - Balance pass: 7-day week × DAY_GAIN × fees × faction prices × paydays, measured with headless season sims.
 - Standing effects; leaving/switching clubs (needs §5.1); moving borders.
 - Smarter AI coach (matchup subs, protecting a lead, personality).
-- three.js island map (§4.9). New-run setup + results screens. Hype scene frequency tuning (§2.3).
+- New-run setup + results screens. Hype scene frequency tuning (§2.3).
 - Competition structure (§4.11) — needs staging: pools → draw → evaluations → U21 Final Cup; big career/test impact.
 - Shrine Park → Central Academy (§4.2). Facility access gating (§4.10). Voice pass over existing strings (§6).

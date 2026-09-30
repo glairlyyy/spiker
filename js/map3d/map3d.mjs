@@ -7,6 +7,7 @@
 // Display only: no rules, no randoms (terrain noise is a fixed hash).
 import * as THREE from 'three';
 import { createAvatar } from './avatar3d.mjs';
+import { createFurniture } from './pins3d.mjs';
 
 export const MAP_M = 0.5;
 export const toWorld = ([x, y]) => [x * MAP_M, y * MAP_M];
@@ -17,7 +18,9 @@ const CELL = 2, // terrain grid cell (m)
   DIST = [25, 420],
   CLICK_PX = 5,
   BEACH = 12, // beach slope width (m)
-  IDLE_S = 3; // canvas detached this long → release the renderer
+  IDLE_S = 3, // canvas detached this long → release the renderer
+  FOG_DIM = 0.3, // brightness of unexplored terrain
+  FOG_SOFT = 14; // fog edge softness (m)
 
 const lerp = (a, b, t) => a + (b - a) * t,
   clamp = (v, a, b) => Math.min(b, Math.max(a, v)),
@@ -158,7 +161,7 @@ function buildTerrain(model) {
       g = (a, b) => H[b * (nx + 1) + a];
     return lerp(lerp(g(i, j), g(i + 1, j), u), lerp(g(i, j + 1), g(i + 1, j + 1), u), v);
   };
-  return { geo, heightAt, W, D };
+  return { geo, heightAt, W, D, base: col.slice() };
 }
 
 export function create(host, onIdle) {
@@ -197,6 +200,8 @@ export function create(host, onIdle) {
     gone = 0,
     dead = false,
     avatar = null,
+    furn = null, // pins, labels, flag, decals (pins3d.mjs)
+    fogKey = null,
     badge = null,
     follow = false, // the camera follows the avatar while it walks (until the user drags)
     seen = null, // the you.at last shown
@@ -210,6 +215,26 @@ export function create(host, onIdle) {
     scene.add(mesh);
     water.position.set(terrain.W / 2, 0, terrain.D / 2);
     avatar = createAvatar(scene);
+    furn = createFurniture(scene, terrain.heightAt);
+    furn.layer.addEventListener('wheel', onWheel, { passive: false }); // wheel over a pin still zooms
+  };
+  /** Darken the terrain where nothing you have visited lies within fog.r (unexplored land stays visible, dim). */
+  const applyFog = f => {
+    const key = JSON.stringify(f);
+    if (key === fogKey) return;
+    fogKey = key;
+    const attr = terrain.geo.attributes.color,
+      pos = terrain.geo.attributes.position.array,
+      base = terrain.base,
+      pts = f.points.map(([x, y]) => [x * MAP_M, y * MAP_M]),
+      r = f.r * MAP_M;
+    for (let i = 0; i < attr.count; i++) {
+      let d = Infinity;
+      for (const [px, pz] of pts) d = Math.min(d, Math.hypot(pos[i * 3] - px, pos[i * 3 + 2] - pz));
+      const k = FOG_DIM + (1 - FOG_DIM) * (1 - smooth(r, r + FOG_SOFT, d));
+      attr.setXYZ(i, base[i * 3] * k, base[i * 3 + 1] * k, base[i * 3 + 2] * k);
+    }
+    attr.needsUpdate = true;
   };
   const place = () => {
     const { x, z, d } = view;
@@ -308,6 +333,7 @@ export function create(host, onIdle) {
         badge.hidden = !txt;
       }
       renderer.render(scene, cam);
+      furn.tick(cam, el.clientWidth, el.clientHeight, view.d);
     }
     raf = requestAnimationFrame(frame);
   };
@@ -327,8 +353,10 @@ export function create(host, onIdle) {
       ro.observe(el);
       if (!terrain) {
         build(m);
-        view = { x: m.focus[0] * MAP_M, z: m.focus[1] * MAP_M, d: 180 };
+        const at = m.you ? m.you.at : m.focus; // first view: on the player, ~60 m away
+        view = { x: at[0] * MAP_M, z: at[1] * MAP_M, d: 60 };
       }
+      el.insertBefore(furn.layer, badge);
       clampView();
       size();
       place();
@@ -338,6 +366,9 @@ export function create(host, onIdle) {
     },
     /** New model: first time stand at you.at, later walk there when it changed. */
     update(m) {
+      if (!furn) return;
+      furn.sync(m, on);
+      applyFog(m.fog);
       const at = m.you && m.you.at;
       if (!at || !avatar) return;
       const key = at.join(',');
@@ -348,7 +379,7 @@ export function create(host, onIdle) {
       }
       seen = key;
     },
-    select() {},
+    select: id => furn && furn.select(id),
     heightAt: (x, z) => (terrain ? terrain.heightAt(x, z) : 0),
     info: () => ({
       calls: renderer.info.render.calls,
@@ -360,6 +391,7 @@ export function create(host, onIdle) {
     dispose() {
       dead = true;
       if (avatar) avatar.dispose();
+      if (furn) furn.dispose();
       if (raf) cancelAnimationFrame(raf);
       if (ro) ro.disconnect();
       canvas.remove();

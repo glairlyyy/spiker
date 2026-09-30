@@ -355,7 +355,13 @@ region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border mete
    raycasts to a map point (`toMap`; 1 map unit = `MAP_M` = 0.5 m). The player is `js/map3d/avatar3d.mjs`
    (`createAvatar(scene)`: the default VRM via `loadBase` / `makeVRM`, capsule until loaded): `snap` first, `setTarget` when
    `model.you.at` changes — straight walk at 6 m/s (trip 1.2–6 s, ramps 0.4 s; faster trips show a ×N badge), gait from
-   `locoPose`, idle `STAND` + breathing, feet via `groundSnap` + `heightAt`; the camera follows until the user drags. `js/ui/career-map.js` mounts it (`mapMount`),
+   `locoPose`, idle `STAND` + breathing, feet via `groundSnap` + `heightAt`; the camera follows until the user drags.
+   Furniture is `js/map3d/pins3d.mjs` (`createFurniture(scene, heightAt)`): an HTML overlay `.maplay` over the canvas holds one
+   `.mpin` button per `model.pins` item (icon, badge, flag classes, click → `pick(id)`), the region / airport labels (fade out
+   below ~70 m camera distance) and the picked-point flag, all projected onto the terrain every frame after render; seized
+   patches and the contested-border line are terrain decals. `sync(model, on)` rebuilds a part only when its JSON changed;
+   fog is a per-vertex darkening of the terrain colours (`applyFog(model.fog)`, unexplored land dim, not hidden). First
+   view: on the player, 60 m away. `js/ui/career-map.js` mounts it (`mapMount`),
    turns picks into panels (`mapPick`) and land clicks into travel targets (`mapPoint`). Region colours: REGIONS.color.
 
 ## Training XP
