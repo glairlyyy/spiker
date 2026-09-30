@@ -31,7 +31,17 @@ Result:
 - Match music ✓ (T-032)
 - Block tactics ✓ (T-026 lane-read block, T-027 defence setting + scouting habits).
 - **Substitutions** (now): squads of 6 (T-028), in-match subs (T-029), coach AI (T-030), you on the bench (T-031).
-- **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
+- **Growth rework** (after): training cap (T-034), match XP (T-035), skills learned in play (T-036).
+- **Growth rework — spec §4.14 (after substitutions)
+- T-034: Training cap — gains fall off above 60, stop at TRAIN_CAP 75; remove Limit Break gates / trial (+ UI, tests);
+  RUN_VERSION bump.
+- T-035: Match XP — per-player performance → stat XP after every match you play (eval, cup, fought street battle),
+  × opponent-strength factor (stronger 1.5–2, equal 1, weaker 0.3); result card shows the XP; headless season sims
+  for balance (avg stat ~70–75 by training alone, higher only with matches).
+- T-036: Skills learned in play — tier-1 buyable, the rest by chance (by doing / by facing a user), wit + opponent
+  strength raise it; scouting lists techniques.
+
+Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now — Substitutions (spec §2.10)
 

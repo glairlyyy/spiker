@@ -142,6 +142,19 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   legend inheritance. Every career starts the same: free agent, base budget and caps (CAREER), no starting skill,
   no team pick. Challenge modes (Hard league, Short season) stay as plain options. The run-end screen keeps the
   result, rank and growth chart.
+- §4.14 Growth: train to a floor, fight to go higher **[locked, not built — T-034–T-036]** (Kenshi rule):
+  - Training caps: gains shrink above ~60 and stop at `TRAIN_CAP` 75 per stat. Training stays the fastest early route
+    (a new run is pure self-training). The Limit Break gates (80 / 90) and trial are removed.
+  - Match experience is the only way above 75 (and still counts below): every match you play (evaluation, cup, street
+    battle you fight in) gives stat XP from **your performance**, not the result — kills → power, blocks → jump + def,
+    digs → def + speed, sets / assists → wit (exact map in the task). Scaled by the opponent's strength vs your side:
+    stronger ×1.5–2, equal ×1, weaker ×0.3. Winning or losing does not change XP.
+  - What winning pays is set by why the match was played (unchanged rules): evaluations → skill pts / fans / standing,
+    cup → placement rewards, street battle → the side's standing and money as today.
+  - Skills: basic (tier 1 of each role) stay buyable with skill points; advanced ones are learned in play by chance —
+    by doing (e.g. 3+ blocks in a match → a chance at Read Block) and by facing a player who uses it; chance grows with
+    wit and opponent strength. Scouting shows which techniques a team's players have.
+  - Save: RUN_VERSION bump (Limit Break progress removed, match XP added). Match results unchanged (goldens stay).
 
 ## 5. Open questions — do not build until decided
 - §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story
