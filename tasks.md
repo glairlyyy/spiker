@@ -33,7 +33,36 @@ Result:
 
 ## Now — Phase 4: U21 Final Cup
 
-### [ ] T-019: Brackets of any size with byes
+### [ ] T-032: Match background music (owner track, 50 % volume)
+Spec: §2.11          Goldens: unchanged          Save: no change
+Goal: While the match screen is open, `assets/audio/the_big_fight.mp3` loops as background music at half the effects
+volume; it obeys the 🔊/🔇 toggle and the volume slider, and fades out when you leave the match.
+Files: js/audio/sfx.js, js/game/state.js, ARCHITECTURE.md (the mp3 is already in the repo and on the artifact)
+Do not:
+- Use `new Audio()` / `<audio>` or blob: URLs (artifact host may block them): `fetch` → `arrayBuffer` →
+  `SND.ctx.decodeAudioData` → looping `AudioBufferSourceNode`.
+- Route the music through `SND.master` (compressor pumping, slow-mo low-pass, reverb): give it its own gain node
+  straight to `SND.ctx.destination`.
+- Draw R()/rnd() or touch js/engine; play anything in headless tests (no AudioContext there → silently no-op).
+- Load the file before the first match; decode it only once (cache in `SND.bgmBuf`; later matches reuse it).
+Steps:
+1. js/audio/sfx.js: fix the header comment (no longer "no audio files"). Add `const BGM_URL = 'assets/audio/the_big_fight.mp3',
+   BGM_GAIN = 0.5;` and fields `SND.bgm` (gain node), `SND.bgmSrc`, `SND.bgmBuf`.
+2. `bgmStart()`: needs `SND.ctx` (call after `audioInit()`); if already playing, return; fetch + decode once (guard
+   against a second call while loading; any failure → one `console.warn`, no retry spam); new looping source →
+   `SND.bgm` gain → destination; gain ramps from 0 to `BGM_GAIN * SND.vol * (SND.on ? 1 : 0)` over 1 s.
+3. `bgmStop()`: ramp gain to 0 over 0.6 s, then stop and drop the source; safe to call when nothing plays.
+4. `toggleSound` and `setVolume` also set the music gain (`setTargetAtTime`, same formula).
+5. js/game/state.js `navigate`: after the screen renders, `name === 'match'` → `bgmStart()`, any other screen →
+   `bgmStop()` (`startMatch` already calls `audioInit()`). The result overlay keeps the music until you leave.
+6. ARCHITECTURE.md: audio section — music path (own gain → destination), volume rule, start/stop in `navigate`.
+Accept: all tests + lint; goldens untouched.
+QA: Monster game → `SND.bgmSrc` exists and `SND.bgm.gain.value` ≈ 0.5 × SND.vol after 1.5 s; 🔇 → 0; 🔊 → back;
+leave to menu → gain 0 and `SND.bgmSrc` null after 1 s; start a second match → no second fetch (network log); no
+pageerror. (Swiftshader has no speakers — check the numbers, not the sound.)
+Result:
+
+### [x] T-019: Brackets of any size with byes
 Spec: §4.11          Goldens: unchanged          Save: no change
 Goal: `js/game/bracket.js` handles 8 or 16 entrants, with byes (null entries) that resolve automatically, so the
 U21 Final Cup can seat 12–13 squads.
@@ -55,9 +84,9 @@ Steps:
    caller of `advanceBracket`.
 Accept: all tests + lint; goldens untouched.
 QA: none (headless).
-Result:
+Result: bracket.js handles 8/16 slots with byes (BRACKET_ROUNDS/BRACKET_NEXT, seedOrder hard-coded: 8 = old Grand Cup order, 16 = the task's list); new test 'bracket: 8 and 16 entries, byes'. 25/25 + lint, goldens untouched, headless only.
 
-### [ ] T-020: U21 Final Cup — one cup of drawn squads replaces the Skyline and Grand Cups
+### [x] T-020: U21 Final Cup — one cup of drawn squads replaces the Skyline and Grand Cups
 Spec: §4.11, lore.md §3 (the U21 champion goes to the national team)          Goldens: unchanged (career only)
 Save: RUN_VERSION 2 → 3 (`run.cup` gains `entrants`, `me`; `run.cups[].champ` becomes a name) — older saves dropped
 Goal: After week 28 the U21 Final Cup starts: every faction's pool is drawn into squads (Wei 5, Wu 3, Shu 2, Outlaws 1,
@@ -105,7 +134,7 @@ Steps:
 Accept: all tests + lint; goldens untouched.
 QA: career run with Short season → reach the cup (end weeks; Sim ⏭ evaluations) → bracket shows Round of 16 with byes,
 your Academy squad seeded; Sim ⏭ through to the end → run-end screen names the champion. No pageerror.
-Result:
+Result: U21 Final Cup as specced (13 squads → 16-slot bracket, 3 byes, RUN_VERSION 3, warm-up code removed; Cup.roman added as a Cup property, no new global). 26/26 + lint, goldens untouched; QA: Academy run → W29 bracket with byes, Sim ⏭ to run-end naming the champion, no pageerror.
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 

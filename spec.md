@@ -54,6 +54,10 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     factor scaled by `coachIQ`. Smarter coach (matchups, protecting a lead, personality hunches) = backlog.
   - Your player is benchable: the coach picks starters by rating, form and standing, and may sub you out (tired /
     erring). A match started or finished on the bench gives reduced rewards.
+- §2.11 Match music **[locked, not built]**: `assets/audio/the_big_fight.mp3` loops as background music while the
+  match screen is open, at 50 % of the effects volume (`BGM_GAIN` 0.5 × volume slider); follows the sound toggle and
+  the volume slider; fades in on start and out on leaving. Presentation only (no effect on results). More tracks /
+  crowd / voice clips later (backlog).
 - §2.4 Blocks: stuff odds = full-strength block vs spike, weighted by coverage; ~14% of attacks stuffed in normal play.
 
 ## 3. Menu [built]
@@ -159,6 +163,16 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 - Balance pass: 7-day week × DAY_GAIN × fees × faction prices × paydays, measured with headless season sims.
 - Standing effects; leaving/switching clubs (needs §5.1); moving borders.
 - Smarter AI coach (matchup subs, protecting a lead, personality).
+- Ace traits (after block tactics §2.9; engine, goldens update). Aces = OP players + named aces/rival (lore.md §6),
+  1–3 per faction pool. What makes them hard is how they play, not bigger stats. Your player never gets a trait (the
+  element is enough). Each ace has:
+  - one rule-bending signature trait (cut-in on first trigger): Wall (solo block covers both lanes), Minus tempo
+    (quick lands before the block jumps), Reader (after ~5 rallies blocks your favourite lane more), Iron receive
+    (first pass never shanks except vs element spikes / float serves), Clutch (from 12 pts and set point, rolls lean
+    their way);
+  - a temper: Fired up (trailing by 3+ or just stuffed → surge for a few rallies) / Rattled (2 stuffs or aces against
+    them → more errors, trait off for a while);
+  - one weakness revealed by scouting (e.g. float serves, left lane, short fuse), shown in the match UI.
 - New-run setup + results screens. Hype scene frequency tuning (§2.3).
 - Competition structure (§4.11) — needs staging: pools → draw → evaluations → U21 Final Cup; big career/test impact.
 - Shrine Park → Central Academy (§4.2). Facility access gating (§4.10). Voice pass over existing strings (§6).
