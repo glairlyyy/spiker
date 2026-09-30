@@ -62,7 +62,7 @@ const Events = {
   /** Fill {mate} and {cap}. */
   text(run, ev, s) {
     const T = Run.myTeam(run),
-      mate = T.P.find(p => p.id === ev.mate);
+      mate = squadOf(T).find(p => p.id === ev.mate);
     // replacer functions: a name containing "$&" or "$'" must not be read as a replacement pattern
     return s.replace('{mate}', () => (mate ? mate.name : 'A teammate')).replace('{cap}', () => (T.cap ? T.cap.name : 'The captain'));
   },

@@ -8,7 +8,7 @@ const BLOCK_MIN_COV = 0.12;
  * Kill-block odds: the block at full strength against the spike (so an OP wall can stop an OP hitter), weighted by how
  * much of the lane it actually covers — a half-formed block rarely stuffs anything.
  */
-const STUFF_BIAS = 0.45,
+const STUFF_BIAS = 0.2,
   STUFF_COV_EXP = 1.6;
 const stuffChance = (bp, cov, pow) => sig((bp / Math.max(cov, 0.01) - pow) / 20 - STUFF_BIAS) * Math.pow(Math.min(1, cov), STUFF_COV_EXP);
 /** Tooling it off the hands and out: only off a real but partial block (coverage in this range), at this chance. */

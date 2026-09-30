@@ -230,7 +230,7 @@ const City = {
       trip = City.go(run, CITY.hq[ti]);
     (run.scout || (run.scout = {}))[ti] = run.week;
     Run.news(run, `Rumour from ${f.name}: ${f.dark.toLowerCase()}.`);
-    return `${trip}Scouted ${t.name}: rating ${t.ovr}, ${t.P.filter(p => p.elOn).length} element user(s). ${Run.bump(run, 'sta', -SCOUT_STA)}`;
+    return `${trip}Scouted ${t.name}: rating ${t.ovr}, ${squadOf(t).filter(p => p.elOn).length} element user(s). ${Run.bump(run, 'sta', -SCOUT_STA)}`;
   },
   scouted: (run, ti) => !!(run.scout && run.scout[ti] != null),
   /** Standing with a region's clubs (−100…100). */

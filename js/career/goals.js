@@ -39,7 +39,7 @@ const Goals = {
     if (g.kind === 'stat') return `${STATNAME[g.stat]} ${g.target}`;
     if (g.kind === 'win') return `win the week-${g.week} evaluation`;
     if (g.kind === 'fans') return `${g.target.toLocaleString()} fans`;
-    const m = Run.myTeam(run).P.find(p => p.id === g.mate);
+    const m = squadOf(Run.myTeam(run)).find(p => p.id === g.mate);
     return `bond ${g.target} with ${m ? m.name : 'a teammate'}`;
   },
   met(run, g) {

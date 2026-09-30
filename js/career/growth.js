@@ -7,12 +7,12 @@ const Growth = {
     const you = Run.you(run);
     Growth.checkYou(run, you);
     for (const t of run.teams) {
-      for (const p of t.P) if (p !== you) Growth.grow(run, p, t.i === run.team, you);
+      for (const p of squadOf(t)) if (p !== you) Growth.grow(run, p, t.i === run.team, you);
       finalizeTeam(t);
     }
     // faction reserves grind too (no bond factor)
     for (const t of Object.values(run.reserve || {})) {
-      for (const p of t.P) Growth.grow(run, p, false, you);
+      for (const p of squadOf(t)) Growth.grow(run, p, false, you);
       if (t.P.length) finalizeTeam(t);
     }
   },
@@ -67,7 +67,7 @@ const Growth = {
   },
   /** A teammate trained with you: they take a share of your gains. */
   shared(run, id, pv) {
-    const m = Run.myTeam(run).P.find(p => p.id === id);
+    const m = squadOf(Run.myTeam(run)).find(p => p.id === id);
     if (!m) return;
     const [mk, mv] = pv.main,
       [sk, sv] = pv.side;

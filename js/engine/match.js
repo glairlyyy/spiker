@@ -97,6 +97,18 @@ function newMatch(a, b, rec, opts = {}) {
     })), // attacks per side by kind and their kills (engine-only tally, no randoms)
     buff: {}, // player id → { lv, n } captain's buff (n = points left)
     t: [a, b],
+    subs: [0, 0], // substitutions made this set per side (SUB.max)
+    played: new Set([...a.P, ...b.P].map(p => p.id)), // engine-only: everyone who was on court at any point (starters, then every sub who came on)
+    finished: null, // engine-only: ids on court when the match ended (set at the end, before the lineups are restored)
+    subbed: {}, // engine-only: id of a player sent to the bench → id of whoever took their place (a rested starter may return)
+    subLog: [], // engine-only: every substitution { side, pts, why }
+    setErr: {}, // engine-only: errors this set per player id (the coach's erring rule)
+    lineup0: [a, b].map(t => ({
+      P: [...t.P],
+      bench: [...(t.bench || [])],
+      slots: Object.fromEntries(squadOf(t).map(p => [p.id, p.slot])),
+      cap: t.cap
+    })), // the starting lineups, put back by restoreLineups()
     sets: [0, 0],
     pts: [0, 0],
     setNo: 1,
@@ -136,7 +148,7 @@ function newMatch(a, b, rec, opts = {}) {
     defBeats: [] // the defense's scene beats this possession (dropDefScene)
   };
   [a, b].forEach((t, side) =>
-    t.P.forEach(p => {
+    squadOf(t).forEach(p => {
       const h = home(p, side);
       m.pos[p.id] = { x: h[0], z: h[1] };
       m.mood[p.id] = p.form || 0;
@@ -152,7 +164,10 @@ function st(m, p, k, v = 1) {
     s[k] = (s[k] || 0) + v;
     if (MOODD[k]) md(m, p, MOODD[k]);
     if (k === 'k') m.ctxK = p.id;
-    if (k === 'err') m.errBy = p.id;
+    if (k === 'err') {
+      m.errBy = p.id;
+      m.setErr[p.id] = (m.setErr[p.id] || 0) + 1;
+    }
     if (p.elOn && m.eg) elStat(m, p, k);
   }
 }
@@ -240,6 +255,108 @@ function captainThink(m, side) {
   return out;
 }
 /**
+ * A substitution: `inn` (bench) takes `out`'s seat on court and slot, `out` takes the bench place. Keeps t.s / mb / ws, the
+ * captain (the best leader on court takes over if the captain goes off) and m.pos in step. Draws no randoms.
+ */
+function subIn(m, side, out, inn) {
+  const t = m.t[side],
+    i = t.P.indexOf(out),
+    j = t.bench.indexOf(inn);
+  t.P[i] = inn;
+  t.bench[j] = out;
+  [inn.slot, out.slot] = [out.slot, inn.slot];
+  [t.s, t.mb] = t.P;
+  t.ws = [t.P[2], t.P[3]];
+  if (t.cap === out) {
+    out.cap = false;
+    t.cap = t.P.reduce((x, q) => (q.lead > x.lead ? q : x), t.P[0]);
+    t.cap.cap = true;
+  }
+  m.pos[inn.id] = { ...m.pos[out.id] };
+  m.played.add(inn.id);
+  delete m.subbed[inn.id];
+  m.subbed[out.id] = inn.id;
+  m.subs[side]++;
+}
+/**
+ * Who a coach would sub now, if anyone: { out, inn, why } or null. In order: a tired player (stamina under SUB.sta), one who
+ * keeps erring (SUB.errs errors this set, more than their kills), a rested starter returning for whoever replaced them
+ * (stamina ≥ SUB.back, and better). The replacement must fit: a setter only for a setter; same role first, else the
+ * highest rating. No randoms.
+ */
+function subCandidate(m, side) {
+  const t = m.t[side],
+    sta = p => (m.sta[p.id] == null ? 1 : m.sta[p.id]),
+    fit = (out, q) => (out.role === 'S') === (q.role === 'S'),
+    best = (out, list) => {
+      const same = list.filter(q => q.role === out.role);
+      return (same.length ? same : list).reduce((a, q) => (ovr(q) > ovr(a) ? q : a));
+    },
+    rested = out => t.bench.filter(q => sta(q) >= SUB.fresh && fit(out, q));
+  for (const out of t.P.filter(p => sta(p) < SUB.sta).sort((a, b) => sta(a) - sta(b))) {
+    const r = rested(out);
+    if (r.length) return { out, inn: best(out, r), why: 'tired' };
+  }
+  const errs = p => m.setErr[p.id] || 0;
+  for (const out of t.P.filter(p => errs(p) >= SUB.errs && errs(p) > ((m.stat[p.id] && m.stat[p.id].k) || 0)).sort(
+    (a, b) => errs(b) - errs(a)
+  )) {
+    const r = rested(out);
+    if (r.length) return { out, inn: best(out, r), why: 'errors' };
+  }
+  for (const s of m.lineup0[side].P) {
+    const r = t.P.find(p => p.id === m.subbed[s.id]);
+    if (r && t.bench.includes(s) && sta(s) >= SUB.back && fit(r, s) && ovr(s) > ovr(r)) return { out: r, inn: s, why: 'back' };
+  }
+  return null;
+}
+/**
+ * The coach's substitution at a dead ball: with subs left and a candidate (subCandidate), one roll — a smarter coach
+ * (coachIQ) acts more often (SUB.iq) — then the swap. No candidate → no roll. Returns the beats (recording only).
+ */
+function coachSubs(m, side) {
+  const t = m.t[side];
+  if (m.subs[side] >= SUB.max || !t.bench || !t.bench.length) return [];
+  const c = subCandidate(m, side);
+  if (!c || R() >= lerp(SUB.iq[0], SUB.iq[1], t.coachIQ == null ? 0.7 : t.coachIQ)) return [];
+  const { out, inn, why } = c;
+  subIn(m, side, out, inn);
+  m.subLog.push({ side, pts: m.pts[0] + m.pts[1], why });
+  if (!m.rec) return [];
+  const text = SUBLINES[(out.num + inn.num + m.pts[0] + m.pts[1]) % SUBLINES.length].replace('{out}', out.num).replace('{in}', inn.num);
+  return [
+    {
+      dur: 1500,
+      acts: [
+        { k: 'sub', side, out: out.id, in: inn.id },
+        { k: 'rot', snap: snap(m) },
+        { k: 'plabel', p: inn.id, t: 'SUBBED' },
+        { k: 'coachtalk', side, text },
+        {
+          k: 'log',
+          t: `Sub ${t.name}: #${inn.num} ${inn.name} in for #${out.num} ${out.name} (${why === 'tired' ? 'tired' : why === 'errors' ? 'too many errors' : 'fresh legs back'})`,
+          c: 'set'
+        }
+      ]
+    }
+  ];
+}
+/** Put every team back exactly as it started the match (court, bench, slots, captain). Safe to call twice. */
+function restoreLineups(m) {
+  m.t.forEach((t, i) => {
+    const L = m.lineup0[i];
+    t.P = [...L.P];
+    t.bench = [...L.bench];
+    for (const p of squadOf(t)) {
+      p.slot = L.slots[p.id];
+      p.cap = p === L.cap;
+    }
+    [t.s, t.mb] = t.P;
+    t.ws = [t.P[2], t.P[3]];
+    t.cap = L.cap;
+  });
+}
+/**
  * Score a point for side w: serve and rotation, momentum, mood, stamina recovery, element outcomes, the zone
  * (and zone breaker / captain's call), buffs wearing off, the end of the match, captain and coach decisions.
  * Pushes the point's beats onto `beats` (null in simulations). Returns { w, beats }.
@@ -268,7 +385,7 @@ function end(m, w, beats) {
   for (const p of m.t[w].P) md(m, p, 0.03);
   for (const p of m.t[1 - w].P) md(m, p, -0.02);
   for (const id in m.mood) m.mood[id] *= 0.97;
-  for (const t of m.t) for (const p of t.P) m.sta[p.id] = Math.min(1, (m.sta[p.id] == null ? 1 : m.sta[p.id]) + 0.02);
+  for (const t of m.t) for (const p of squadOf(t)) m.sta[p.id] = Math.min(1, (m.sta[p.id] == null ? 1 : m.sta[p.id]) + 0.02); // the bench recovers too
   let zoneIn = false,
     capCall = -1,
     breaker = false;
@@ -389,6 +506,12 @@ function end(m, w, beats) {
       });
     }
   }
+  // substitutions at the dead ball (after the point's beats, before any timeout huddle)
+  if (!m.over)
+    for (const side of [0, 1]) {
+      const bs = coachSubs(m, side);
+      if (beats) beats.push(...bs);
+    }
   if (!m.over) {
     const L = 1 - w,
       T = m.t[L],
@@ -397,6 +520,11 @@ function end(m, w, beats) {
     if (m.toReq[L] && !m.to[L]) timeout(m, L, beats, true);
     else if (m.toReq[w] && !m.to[w]) timeout(m, w, beats, true);
     else if (!m.to[L] && need && R() < 0.35 + 0.6 * T.coachIQ) timeout(m, L, beats, false);
+  }
+  // the match is decided: note who is on court at the end, then every team goes back to its starting lineup
+  if (m.over) {
+    m.finished = new Set(m.t.flatMap(t => t.P.map(p => p.id)));
+    restoreLineups(m);
   }
   return { w, beats };
 }

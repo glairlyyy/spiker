@@ -85,7 +85,7 @@ const Dossier = {
         id: p.id,
         name: p.name,
         role: p.role,
-        squad: reserve.includes(p) ? 'Reserve' : p.team.name,
+        squad: reserve.includes(p) ? 'Reserve' : p.team.bench && p.team.bench.includes(p) ? `${p.team.name} · bench` : p.team.name,
         ovr: seeRatings ? ovr(p) : null,
         el: seeRatings && p.elOn ? p.el : null
       }))

@@ -99,16 +99,19 @@ function seasonCard(run) {
 function bondCard(run) {
   const you = Run.you(run),
     mates = Run.mates(run),
-    alone = World.isFree(run) && run.academy === false;
+    alone = World.isFree(run) && run.academy === false,
+    onBench = m => !!(m.team.bench && m.team.bench.includes(m)),
+    row = list =>
+      list
+        .map(m => {
+          const b = you.bond[m.id] || 0;
+          return `<div class="bond">${faceSVG(m, 0, 30)}<div><b>${stag(m)}${esc(m.name)}</b>${m.cap ? ' <span class="capb">C</span>' : ''} <i class="mute small">${m.role} · OVR ${ovr(m)}</i>
+        <span class="bbar ${b >= 80 ? 'f' : b >= 60 ? 'c' : ''}"><i style="width:${b}%"></i></span><small class="mute">Bond ${b}${b >= 80 ? ' · friends' : b >= 60 ? ' · combos' : ''}</small></div></div>`;
+        })
+        .join('');
   return `<div class="panel"><h3>Teammates${info('Training together shares your gains and raises their odds of breaking through to ★ star or OP. 60+ bond: two-player combos. 80+: friendship training (+50%).')}</h3>${
     alone ? '<p class="small mute">No squad. The Academy no longer lists you.</p>' : ''
-  }${mates
-    .map(m => {
-      const b = you.bond[m.id] || 0;
-      return `<div class="bond">${faceSVG(m, 0, 30)}<div><b>${stag(m)}${esc(m.name)}</b>${m.cap ? ' <span class="capb">C</span>' : ''} <i class="mute small">${m.role} · OVR ${ovr(m)}</i>
-        <span class="bbar ${b >= 80 ? 'f' : b >= 60 ? 'c' : ''}"><i style="width:${b}%"></i></span><small class="mute">Bond ${b}${b >= 80 ? ' · friends' : b >= 60 ? ' · combos' : ''}</small></div></div>`;
-    })
-    .join('')}${
+  }${row(mates.filter(m => !onBench(m)))}${mates.some(onBench) ? `<h4>Bench</h4>${row(mates.filter(onBench))}` : ''}${
     World.isFree(run) && run.academy !== false
       ? `<p class="small mute" id="leaveac"><button class="btn" onclick="leaveSquad()" ${tip('The Academy will not invite you again')}>Leave squad</button></p>`
       : ''
@@ -163,7 +166,13 @@ function matchPrep(run, cup) {
           )
           .join('')}${info('You are captain — pick one before the match')}</div>`
       : '';
-  return focus + talk;
+  // the coach's pick (Run.lineup): do you start?
+  const side = Cup.mine(run, cup ? 'cup' : 'eval'),
+    L = Run.lineup(run, side.T, side.region, true),
+    lineup = `<div class="prep"><b>Lineup</b> ${L.starts ? 'Starting' : '<b>On the bench</b>'}${
+      L.rival ? ` <span class="small mute">— you ${L.you.toFixed(1)} vs ${esc(L.rival.p.name)} ${L.rival.score.toFixed(1)}</span>` : ''
+    }${info(`Your coach picks the best player of each role by rating + 6 × form (+ your standing with the faction ÷ ${BENCH.standingPer}). Start or finish on the bench and match rewards ×${BENCH.partMul}; never play and you only get a little Wit XP.`)}</div>`;
+  return lineup + focus + talk;
 }
 /** The evaluation week's card: play (or Sim) your evaluation match, or watch from the bench when not selected. */
 function evalPanel(run) {
@@ -179,10 +188,10 @@ function evalPanel(run) {
   if (e.kind === 'faction' && !e.mine)
     return `<div class="panel">${head}<p>Not selected this month.</p>
     <div class="trow"><button class="btn hot big" onclick="benchEval()">Watch from the bench</button></div></div>`;
-  const mine = e.kind === 'academy' ? club.P : byId(e.mine);
+  const mine = e.kind === 'academy' ? club.P : byId(e.mine).slice(0, 4); // the 4 who start
   return `<div class="panel">${head}
     <p class="small"><b>${e.kind === 'academy' ? esc(club.name) : esc(club.name) + ' squad'}</b> ${list(mine, true)}</p>
-    <p class="small"><b>${esc(REGIONS[e.region].name)} squad</b> ${list(byId(e.opp), D.scouted || D.member)}</p>
+    <p class="small"><b>${esc(REGIONS[e.region].name)} squad</b> ${list(byId(e.opp).slice(0, 4), D.scouted || D.member)}</p>
     ${D.scouted || D.member ? '' : '<p class="small mute">Scout one of their clubs to see ratings.</p>'}
     ${matchPrep(run, false)}
     <div class="trow"><button class="btn hot big" onclick="playCareer('eval')">Play evaluation</button><button class="btn big" onclick="playCareer('eval', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;

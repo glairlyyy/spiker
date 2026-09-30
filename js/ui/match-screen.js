@@ -89,11 +89,24 @@ function startMatch(fx) {
   });
   ctx = cv.getContext('2d');
   fit();
-  const disp = {};
+  const disp = {},
+    bench = {}; // the bench: display entries kept out of A.disp (nothing draws or animates them) until a 'sub' act swaps one in
   m.t.forEach((t, side) =>
-    t.P.forEach(p => {
+    squadOf(t).forEach(p => {
       const h = home(p, side);
-      disp[p.id] = { p, side, x: h[0], z: h[1], sx: h[0], sz: h[1], tx: h[0], tz: h[1], jy: 0, jmode: null, pose: 'ready' };
+      (t.P.includes(p) ? disp : bench)[p.id] = {
+        p,
+        side,
+        x: h[0],
+        z: h[1],
+        sx: h[0],
+        sz: h[1],
+        tx: h[0],
+        tz: h[1],
+        jy: 0,
+        jmode: null,
+        pose: 'ready'
+      };
     })
   );
   A = {
@@ -101,6 +114,7 @@ function startMatch(fx) {
     nm,
     fx,
     disp,
+    bench,
     beats: null,
     bi: 0,
     el: 0,
@@ -376,22 +390,26 @@ function logLine(t, c) {
 function boxScore() {
   const el = $('#box');
   if (!el || !A) return;
-  const m = A.m;
+  const m = A.m,
+    played = t => squadOf(t).filter(p => t.P.includes(p) || m.stat[p.id]); // on court now, or came on and played
   el.innerHTML = m.t
     .map(
       t =>
-        `<table><caption>${chip(t)}${esc(t.name)}</caption><thead><tr><th>Player</th><th title="Kills">K</th><th title="Blocks">B</th><th title="Aces">A</th><th title="Digs">D</th><th title="Errors">E</th><th title="Top spike km/h">Top</th><th title="Mood">Mood</th><th title="Stamina">Sta</th></tr></thead><tbody>${t.P.map(
-          p => {
+        `<table><caption>${chip(t)}${esc(t.name)}</caption><thead><tr><th>Player</th><th title="Kills">K</th><th title="Blocks">B</th><th title="Aces">A</th><th title="Digs">D</th><th title="Errors">E</th><th title="Top spike km/h">Top</th><th title="Mood">Mood</th><th title="Stamina">Sta</th></tr></thead><tbody>${played(
+          t
+        )
+          .map(p => {
             const s = m.stat[p.id] || blank();
             return `<tr><td>${stag(p)}${esc(p.name)}${p.cap ? ' <span class="capb">C</span>' : ''} <i>${p.role}</i></td><td>${s.k}</td><td>${s.blk}</td><td>${s.ace}</td><td>${s.dig}</td><td>${s.err}</td><td>${s.top || '–'}</td><td>${faceSVG(p, (A.moodShown || m.mood)[p.id] || 0, 24)}</td><td><span class="sbar"><i style="width:${Math.round(((A.staShown || m.sta)[p.id] ?? 1) * 100)}%"></i></span></td></tr>`;
-          }
-        ).join('')}</tbody></table>`
+          })
+          .join('')}</tbody></table>`
     )
     .join('');
 }
 /** The three best players of a finished match (a simple impact score; the winners get a bonus). */
 function matchStars(m) {
-  return [...m.t[0].P, ...m.t[1].P]
+  return m.t
+    .flatMap(t => squadOf(t).filter(p => t.P.includes(p) || m.stat[p.id]))
     .map(p => {
       const q = m.stat[p.id] || blank();
       return {
@@ -424,7 +442,7 @@ function finishMatch() {
     hi = Math.max(...sc),
     lo = Math.min(...sc);
   for (const t of m.t)
-    for (const p of t.P) {
+    for (const p of squadOf(t).filter(q => t.P.includes(q) || m.stat[q.id])) {
       p.tour.mp++;
       if (m.stat[p.id]) addStats(p.tour, m.stat[p.id]);
     }
@@ -543,6 +561,7 @@ function showCombo(a) {
 /** Leave the match screen: back to wherever the fixture came from. */
 function leaveMatch() {
   const fx = A && A.fx;
+  if (A && A.m && !A.m.over) restoreLineups(A.m); // left mid-match: the lineups go back (safe twice)
   if (document.fullscreenElement) document.exitFullscreen?.();
   crowdLevel(0);
   if (R3D) R3D.unbind();

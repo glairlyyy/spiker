@@ -257,6 +257,29 @@ export function poseCoach(pl, dt, now) {
   pl.vrm.update(dt);
 }
 
+/** Dress one figure as display entry d: team kit, look, height, aura and trail colours; reset its per-player state. */
+function dressFigure(pl, d) {
+  const p = d.p,
+    team = p.team || A.m.t[d.side];
+  dress(pl.vrm, { shirt: team.color, shorts: '#1b2150', hair: p.hair, skin: p.look.skin, eyes: p.look.eyeC, shoes: '#ffffff' });
+  pl.root.scale.setScalar((pl.scale = (1.8 * (p.look.hgt || 1)) / pl.headY));
+  pl.aura.material.color.set(p.op ? '#ff2846' : team.color);
+  pl.zone.material.color.set(team.color);
+  // hand trails in the player's hair colour, a touch brighter
+  pl.trailCol = '#' + new THREE.Color(p.hair || '#ffffff').offsetHSL(0, 0.15, 0.12).getHexString();
+  pl.eyeCol = '#' + new THREE.Color(p.look.eyeC || '#4cc9f0').offsetHSL(0, 0.2, 0.18).getHexString();
+  for (const t of [...pl.trails, ...pl.eyeTrails]) t.clear();
+  pl.prev.clear();
+  Object.assign(pl, { yawOff: 0, mot: null });
+}
+/** A substitution: the figure that played as `outId` now plays display entry d (same spot; re-dressed as the incoming player). */
+export function swapActor(w, outId, d) {
+  const pl = w.people.find(q => q.d && q.d.p.id === outId);
+  if (!pl) return;
+  pl.d = d;
+  dressFigure(pl, d);
+}
+
 /** Per match: dress the players (team kit, look, height, trail colours) and coaches; reset per-player state. */
 export function dressActors(w) {
   if (!A || !A.disp) return; // no match on screen
@@ -284,18 +307,7 @@ export function dressActors(w) {
       pl.zone.visible = pl.buff.visible = false;
       return;
     }
-    const p = d.p,
-      team = p.team || A.m.t[d.side];
-    dress(pl.vrm, { shirt: team.color, shorts: '#1b2150', hair: p.hair, skin: p.look.skin, eyes: p.look.eyeC, shoes: '#ffffff' });
-    pl.root.scale.setScalar((pl.scale = (1.8 * (p.look.hgt || 1)) / pl.headY));
-    pl.aura.material.color.set(p.op ? '#ff2846' : team.color);
-    pl.zone.material.color.set(team.color);
-    // hand trails in the player's hair colour, a touch brighter
-    pl.trailCol = '#' + new THREE.Color(p.hair || '#ffffff').offsetHSL(0, 0.15, 0.12).getHexString();
-    pl.eyeCol = '#' + new THREE.Color(p.look.eyeC || '#4cc9f0').offsetHSL(0, 0.2, 0.18).getHexString();
-    for (const t of [...pl.trails, ...pl.eyeTrails]) t.clear();
-    pl.prev.clear();
-    Object.assign(pl, { yawOff: 0, mot: null });
+    dressFigure(pl, d);
   });
   w.coaches.forEach((pl, i) => {
     const c = A.coaches[i];

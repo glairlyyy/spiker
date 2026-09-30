@@ -32,6 +32,8 @@ const Screens = {};
  */
 function navigate(name, ...args) {
   if (!Screens[name]) throw new Error('Unknown screen ' + name);
+  // leaving a match that is still running: every lineup goes back to how it started (substitutions are per match)
+  if (name !== 'match' && typeof A !== 'undefined' && A && A.m && !A.m.over) restoreLineups(A.m);
   G.view = name;
   const out = Screens[name](...args);
   if (name === 'match') bgmStart();
@@ -41,7 +43,7 @@ function navigate(name, ...args) {
 /** Find a player by id in the match being shown. */
 const byId = id => {
   const T = typeof A !== 'undefined' && A && A.m ? A.m.t : [];
-  for (const t of T) for (const p of t.P) if (p.id === id) return p;
+  for (const t of T) for (const p of squadOf(t)) if (p.id === id) return p; // court and bench (a subbed-out player is still findable)
 };
 /** Add one match's stat line `s` into the running totals `dst` (top speed keeps the maximum; `mp` is counted by the caller). */
 const addStats = (dst, s) => {

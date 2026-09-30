@@ -123,7 +123,7 @@ function trainSpot(run, id, c) {
         g = r >= 2.5 ? ['High', 'hi'] : r >= 1 ? ['Mid', 'md'] : ['Low', 'lo'];
       return `${STATNAME[k]} <span class="gl ${g[1]}">${g[0]}</span>`;
     },
-    mates = pv.mates.filter(pid => T.P.some(p => p.id === pid)); // a teammate who has since left
+    mates = pv.mates.filter(pid => squadOf(T).some(p => p.id === pid)); // a teammate who has since left
   return `<div class="tline">${qualityTag(run, id)} <b class="g">${fmt(pv.main)}</b> <span class="g2">${fmt(pv.side)}</span> <span class="mute small">−${pv.sta} sta · $${City.price(run, id)} · Lv ${pv.lvl}</span>
       ${pv.fail ? `<span class="f ${pv.fail > 0.25 ? 'hi' : 'md'}">${Math.round(pv.fail * 100)}% fail</span>` : ''}
       ${pv.streak ? `<span class="stk" ${tip('Same training in a row')}>Streak +${Math.round(pv.streak * 100)}%</span>` : ''}
@@ -133,7 +133,7 @@ function trainSpot(run, id, c) {
     <div class="trow"><span class="fl">${mates
       .map(pid =>
         faceSVG(
-          T.P.find(p => p.id === pid),
+          squadOf(T).find(p => p.id === pid),
           0.3,
           24
         )
@@ -152,7 +152,12 @@ function hqPanel(run, ti) {
     late = run.event ? 'answer the event first' : City.noTime(run, sc),
     seen = City.scouted(run, ti);
   const roster = seen
-    ? `<div class="roster small">${t.P.map(p => `<span>${faceSVG(p, 0, 22)}${stag(p)}${esc(p.name)} <i class="mute">${p.role} ${ovr(p)}</i>${p.elOn ? ` <b style="color:${ECOL[p.el]}">${ENAME[p.el]}</b>` : ''}</span>`).join('')}</div>`
+    ? `<div class="roster small">${squadOf(t)
+        .map(
+          p =>
+            `<span>${faceSVG(p, 0, 22)}${stag(p)}${esc(p.name)} <i class="mute">${p.role} ${ovr(p)}${t.bench && t.bench.includes(p) ? ' · bench' : ''}</i>${p.elOn ? ` <b style="color:${ECOL[p.el]}">${ENAME[p.el]}</b>` : ''}</span>`
+        )
+        .join('')}</div>`
     : '';
   const habits = seen ? `<p class="small mute">${esc(Dossier.habitText(Dossier.habits(t)))}</p>` : '';
   return `<div class="spot" style="--tc:${t.color}"><h4>${chip(t)}${esc(t.name)} <span class="mute small">${esc(REGIONS[f.region].name)} · rating ${t.ovr}</span></h4>

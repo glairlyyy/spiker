@@ -40,6 +40,11 @@ const STATNAME = { power: 'Power', def: 'Defense', speed: 'Speed', jump: 'Jump',
 const CALENDAR = { 4: 'eval', 8: 'eval', 12: 'eval', 16: 'eval', 20: 'eval', 24: 'eval', 26: 'camp', 27: 'camp', 28: 'camp' };
 /** Monthly evaluations: a player who is not selected watches from the bench — wit XP worth `benchDays` day-sessions of Wit training. */
 const EVAL = { benchDays: 1 };
+/**
+ * Your coach picks the 4 starters (Run.lineup): best same-role player by ovr + 6 × form (+ your standing with the squad's
+ * faction ÷ standingPer for you). Rewards × partMul when you started or finished a match on the bench.
+ */
+const BENCH = { partMul: 0.6, standingPer: 20 };
 /** The season's one cup, played after week `after`: squads drawn from every faction pool; the champion goes to the national team. */
 const CUPS = [{ id: 'u21', after: 28, name: 'U21 Final Cup', short: 'U21', mul: 1.5, seeded: true }];
 /** Placement rewards when a cup ends for you (× the cup's mul). */
