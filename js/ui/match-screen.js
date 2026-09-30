@@ -19,6 +19,13 @@ const tacticPicker = (t, i) =>
   )
     .map(([k, v]) => `<option value="${k}">${esc(v.name)}</option>`)
     .join('')}</select><small class="tacnow" id="tacnow${i}"></small></label>`;
+/** Defence setting select for side `i` (captain's call or a fixed setting). */
+const defencePicker = (t, i) =>
+  `<label class="tac" style="--tc:${t.color}" ${tip(`Defence setting for ${t.name} — how the front row blocks; applies from the next rally`)}><span>${esc(t.short)} def</span><select id="dset${i}" onchange="setDefence(${i},this.value)"><option value="cap">Captain's call${leadLv(t.cap) ? ` (Lv${leadLv(t.cap)})` : ''}</option>${Object.entries(
+    DEFSETS
+  )
+    .map(([k, v]) => `<option value="${k}" title="${esc(v.desc)}">${esc(v.name)}</option>`)
+    .join('')}</select><small class="tacnow" id="dsnow${i}"></small></label>`;
 // Setting button labels (shared by the initial render and the toggles)
 const hypeLabel = () => `Hype: ${HYPE[G.hype].name}`;
 const cutLabel = () => (G.cutMini ? 'Cut-ins: Mini' : 'Cut-ins: Full');
@@ -69,7 +76,7 @@ function startMatch(fx) {
       ${timeoutButton(a, 0)}${timeoutButton(b, 1)}
       <button class="btn" onclick="toggleFullscreen()" ${tip('Fullscreen court (F)')} aria-label="Fullscreen">⛶</button>
       <button class="btn" id="snd" onclick="toggleSound()" aria-label="Sound">${SND.on ? '🔊' : '🔇'}</button>
-      ${pop('Tactics ▾', [a, b].map(tacticPicker).join(''))}
+      ${pop('Tactics ▾', [a, b].map(tacticPicker).join('') + [a, b].map(defencePicker).join(''))}
       ${pop('⚙ ▾', settingsMenu())}
     </div>
     <div class="feeds"><div class="panel"><h3>Commentary</h3><ol class="log" id="log"></ol></div><div class="panel"><h3>Box score</h3><div id="box"></div></div></div>
@@ -264,10 +271,28 @@ function setTactic(i, v) {
   );
   instant({ k: 'coachtalk', side: i, text: v === 'auto' ? 'Your call, setter!' : v === 'ws' ? 'Feed the wings!' : 'Go quick, middles!' });
 }
-/** In captain mode, show which tactic the captain is running right now. */
+/** Defence setting change for one side; takes effect from the next rally. */
+function setDefence(i, v) {
+  if (!A || A.done) return;
+  const t = A.m.t[i];
+  if (v === 'cap') {
+    A.m.dsetMode[i] = 'cap';
+    showTac(i);
+    logLine(`${t.name} defence: captain ${t.cap.name} calls it${leadLv(t.cap) ? '' : ' (leadership too low to change anything)'}`, 'set');
+    return;
+  }
+  if (!DEFSETS[v]) return;
+  A.m.dsetMode[i] = 'fixed';
+  A.m.dset[i] = v;
+  showTac(i);
+  logLine(`${t.name} defence: ${DEFSETS[v].name} — ${DEFSETS[v].desc}`, 'set');
+}
+/** In captain mode, show which tactic and defence setting the captain is running right now. */
 function showTac(i) {
-  const s = $('#tacnow' + i);
+  const s = $('#tacnow' + i),
+    d = $('#dsnow' + i);
   if (s && A) s.textContent = A.m.tacMode[i] === 'cap' ? `→ ${TACTICS[A.m.tac[i]].short}` : '';
+  if (d && A) d.textContent = A.m.dsetMode[i] === 'cap' ? `→ ${DEFSETS[A.m.dset[i]].short}` : '';
 }
 /** Timeout buttons: disabled once used or queued. */
 function updTO() {

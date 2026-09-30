@@ -68,13 +68,33 @@ function nearest(m, arr, x, z) {
 }
 /**
  * A fresh match between teams a and b. rec = record animation beats (playRally returns them).
- * opts.court: court size multiplier (default RULES.court); opts.tac: [tactic, tactic] fixes a side's tactic.
+ * opts.court: court size multiplier (default RULES.court); opts.tac: [tactic, tactic] fixes a side's tactic;
+ * opts.dset: [setting, setting] fixes a side's defence setting (DEFSETS; default: the team's style, then the captain may switch it).
  */
 function newMatch(a, b, rec, opts = {}) {
   const m = {
     court: opts.court || RULES.court,
     tac: [opts.tac?.[0] || 'auto', opts.tac?.[1] || 'auto'], // tactic in use per side (see TACTICS)
     tacMode: [opts.tac?.[0] ? 'fixed' : 'cap', opts.tac?.[1] ? 'fixed' : 'cap'], // 'cap' = the captain decides
+    dset: [opts.dset?.[0] || defOf(a), opts.dset?.[1] || defOf(b)], // defence setting per side (see DEFSETS): how the front row blocks
+    dsetMode: [opts.dset?.[0] ? 'fixed' : 'cap', opts.dset?.[1] ? 'fixed' : 'cap'], // 'cap' = the captain may switch it
+    dsetLog: [], // engine-only: every captain switch { side, from, to }
+    att: [0, 1].map(() => ({
+      n: 0,
+      k: 0,
+      q: 0,
+      qk: 0,
+      mid: 0,
+      midk: 0,
+      pin: 0,
+      pink: 0,
+      dbl: 0,
+      late: 0,
+      stf: 0,
+      qs: 0,
+      mids: 0,
+      pins: 0
+    })), // attacks per side by kind and their kills (engine-only tally, no randoms)
     buff: {}, // player id → { lv, n } captain's buff (n = points left)
     t: [a, b],
     sets: [0, 0],
@@ -153,6 +173,7 @@ const snap = m => ({
  *  - Buff: pick a teammate (the hottest hitter, or one who is rattled) — +5%/lvl power & defense,
  *    +0.08/lvl wit and more sets for 4 points.
  *  - Tactic: in "Captain's call" mode, read who is scoring this match and switch WS / MB focus / setter's call.
+ *  - Defence: in "Captain's call" mode, read the opponent's attack mix (m.att) and switch Read / Commit / Bunch.
  * Returns beats to show it (empty for simulations).
  */
 function captainThink(m, side) {
@@ -199,6 +220,21 @@ function captainThink(m, side) {
         { k: 'tac', side, tac: pickT },
         { k: 'log', t: `Captain ${cap.name} switches ${t.name} to ${TACTICS[pickT].name}`, c: 'set' }
       ]);
+    }
+  }
+  // defence setting
+  if (m.dsetMode[side] === 'cap' && R() < 0.05 + 0.05 * lv) {
+    const o = m.att[1 - side];
+    if (o.n >= 8) {
+      const pick = o.q / o.n > 0.35 ? 'commit' : o.mid / o.n > 0.45 ? 'bunch' : 'read';
+      if (pick !== m.dset[side]) {
+        m.dsetLog.push({ side, from: m.dset[side], to: pick });
+        m.dset[side] = pick;
+        say(pick === 'commit' ? 'Commit on the quick!' : pick === 'bunch' ? 'Bunch the middle!' : 'Read and react!', [
+          { k: 'tac', side, tac: m.tac[side], dset: pick },
+          { k: 'log', t: `Captain ${cap.name} switches ${t.name} defence to ${DEFSETS[pick].name}`, c: 'set' }
+        ]);
+      }
     }
   }
   return out;

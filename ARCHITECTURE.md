@@ -219,11 +219,36 @@ full speed and no new OP arcs or motes spawn. The defense's scene beats (the wal
 `m.defBeats` and dropped by `dropDefScene` when the final attack has no block attempt (a tip, or coverage ≤ 0.12 after
 cut shots, seams and fakes — the same test block() uses). Front-row players who aren't in the block still go up late
 (`lateB` in rally.js, display only), and the first blocker never comes from the back row while a front-row player is
-there. Scramble drama (`scramble()`): a block break, a
+there (see "Block formation"). Scramble drama (`scramble()`): a block break, a
 pop-up off the arms, a desperation save or (sometimes) a touched ball dug on the dive gets a "Break!!" / "Loose ball!"
 call, a camera push and a slow window at the end of the beat (`hypeSlow`: off when Hype is Off); block touches call
 "One touch!". The Hype setting (`G.hype`: off / normal /
 max) skips scene beats above its level; tapping the court skips the rest of a scene.
+
+## Block formation
+
+`formBlock()` (engine/rally.js) reads the attack instead of always sending the middle. `lane` = L / M / R from the hitter's net
+position (`BLOCK.laneL` / `laneR`, data/tactics.js); `pipe` = a back-row attack in lane M. Primary blocker `b0`: the front-row MB on any attack they can reach in time (`reach × 1.3`; they wait at the net, the wings stand deeper),
+else the defender closest to the hitter lane, the defender nearest the lane on a wing attack (the
+pin blocker sets the edge); if the middle bit on the fake (`bitten`) the far defender swings across (reach × `swingReach`,
+coverage × `swingCov`, no double). Second blocker `b1` closes beside `b0` on the court-inside side when one roll
+(`defT.S.dbl` × 0.6–1.4 by `readQ`, wit + speed) passes and they can reach the spot; sync attacks never get one. A blocker who
+cannot reach the spot in time is late (coverage × `lateCov`); `readQ` < 0.35 splits the hands (× `splitCov`). Everything
+returns `lane`, `pipe`, `late` for block() / hype. `m.dset[side]` is the defence setting (`DEFSETS`: read = no change;
+commit = the blocker on a quick is already up — reach × `commitReach`, coverage × `commitQuick`, a double forms — but the middle
+counts as bitten on any fake and covers little else (× `commitMiss`); bunch = both defenders start near the middle
+(`bunchStartZ`, as far as their speed allows), middle attacks × `bunchMid` with the double always forming, pins × `bunchPin`).
+Scaled coverage is capped at 1.2 so a setting cannot turn a wall into block-break territory. `m.att[side]` is an engine-only
+tally (attacks / kills / stuffs by kind quick, mid, pin; doubles; late) used by tests — it draws no randoms.
+
+Defence settings: each style carries `dset` (wall = bunch, tempo = commit, the rest read; `defOf(team)` in data/tactics.js);
+`newMatch` starts every side on it unless `opts.dset` fixes one (`m.dsetMode[side]` = 'cap' | 'fixed', like `tacMode`; not
+saved). In 'cap' mode `captainThink` (one draw per call, only then) counts the opponent's `m.att` after 8 attacks: quick share
+> 35 % → commit, middle share > 45 % → bunch, else read; a switch is chatter + log + the existing `tac` act (`dset` field) and
+is kept in `m.dsetLog`. The match screen's Tactics popover has a Defence select per team (`setDefence`, `showTac` shows the
+captain's current pick). Scouting: `Dossier.habits(team)` (quick share from style × MB count, favoured wing by WS power, pipe =
+setter has `pipecombo`, defence setting) and `Dossier.habitText`; shown in the dossier's club rows and the HQ card once
+scouted — computed from data, never from match history.
 
 ## Blocks
 
@@ -231,7 +256,7 @@ max) skips scene beats above its level; tapping the court skips the rest of a sc
 beats the full block by 10%+) → stuff (`stuffChance`: the block at full strength vs the spike, weighted by
 coverage^`STUFF_COV_EXP`; a cover dig may save it) → touch → tool off the hands (only off a partial block,
 `TOOL_COV`, at `TOOL_P`). A blocker at least as sharp (wit) as the hitter keeps part of the block on a cut shot.
-Targets: ~14% of attacks stuffed in normal matches; Monster games stay offence-heavy (every hitter has every
+Targets: ~14% of attacks stuffed in normal matches (measured 13.7 % over 600 Read-vs-Read sims, `STUFF_BIAS` 0.45); Monster games stay offence-heavy (every hitter has every
 technique). Kill blocks get a scene: a `ball` close-up on the stuff, then the blocker's face and line
 (`hypeKillBlock`: level 1 at match point or for a star blocker at most every 6 points).
 

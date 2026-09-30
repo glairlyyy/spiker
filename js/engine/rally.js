@@ -87,21 +87,53 @@ function rally(m, B, V, atk, pas, qual) {
       el: x.elS
     };
     elAttack(m, x.spiker, m.ctx);
+    const k0 = (m.stat[x.spiker.id] || blank()).k,
+      bk0 = sumBlk(m, defT),
+      fin = () => tallyAttack(m, atk, x, k0, bk0);
     r = hittingError(c, x);
-    if (r) return r.point;
+    if (r) {
+      fin();
+      return r.point;
+    }
     // ---- 9–10: block, then dig or kill ----
     const bl = block(c, x);
-    if (bl.point != null) return bl.point;
+    if (bl.point != null) {
+      fin();
+      return bl.point;
+    }
     if (bl.next) {
+      fin();
       [atk, pas, qual] = bl.next;
       continue;
     }
     r = dig(c, x, bl);
+    fin();
     if (r.point != null) return r.point;
     [atk, pas, qual] = r.next;
   }
 }
 
+/** How well a blocker reads the attack (0–1): wit and speed. */
+const readQ = b => clamp((0.5 * (W(b) - 0.4)) / 1.2 + (0.5 * (b.speed - 40)) / 55, 0, 1);
+/** Engine-only tally of one attack (no randoms): by kind (quick / middle or pipe / pins) and whether the hitter scored. */
+const sumBlk = (m, t) => t.P.reduce((n, p) => n + (m.stat[p.id] ? m.stat[p.id].blk : 0), 0);
+function tallyAttack(m, side, x, k0, bk0) {
+  const a = m.att[side],
+    kind = x.quick ? 'q' : x.pipe || x.lane === 'M' ? 'mid' : 'pin',
+    kill = (m.stat[x.spiker.id] || blank()).k > k0;
+  a.n++;
+  a[kind]++;
+  if (x.b1) a.dbl++;
+  if (sumBlk(m, m.t[1 - side]) > bk0) {
+    a.stf++;
+    a[kind + 's']++;
+  }
+  if (x.late[0]) a.late++;
+  if (kill) {
+    a.k++;
+    a[kind + 'k']++;
+  }
+}
 /**
  * 6. Multi-attack fake set: several hitters approach, the setter shows one and sets another — the first blocker
  * may bite. May switch the attack to a quick. Returns { quick, spiker, bitten, fakeDecoy }.
@@ -128,7 +160,9 @@ function fakeSet(c, x) {
         db = B0;
       fakeDecoy = decoy;
       for (const q of others) dr(m, q, 0.02);
-      bitten = R() < clamp(0.8 - (W(db) - 0.8) * 0.45 + (W(setter) - 1.5) * 0.3 + (skillMod(setter, 'decoy') - 1) - readBonus, 0.15, 0.9);
+      bitten =
+        R() < clamp(0.8 - (W(db) - 0.8) * 0.45 + (W(setter) - 1.5) * 0.3 + (skillMod(setter, 'decoy') - 1) - readBonus, 0.15, 0.9) ||
+        (m.dset[ds] === 'commit' && db.role === 'MB'); // a Commit middle is already jumping
       const zOf = p => (p.role === 'MB' && MBs.includes(p) ? mbZ(p) : clamp(HOME[p.slot][1] + (p.slot === 'W0' ? -0.05 : 0.05), 0.1, 0.9)),
         xOf = p => sx(atk, p.role === 'MB' && MBs.includes(p) ? 466 : 420);
       const fk = [];
@@ -192,28 +226,56 @@ function formBlock(c, x) {
     : quick
       ? mbZ(spiker)
       : clamp(HOME[spiker.slot][1] + (spiker.slot === 'W0' ? -0.05 : spiker.slot === 'W1' ? 0.05 : 0) + rnd(-0.06, 0.06), 0.1, 0.9);
+  const lane = spZ < BLOCK.laneL ? 'L' : spZ > BLOCK.laneR ? 'R' : 'M',
+    pipe = back && !longB && lane === 'M';
   const appX = sx(atk, slide ? 455 : quick ? 466 : longB ? 215 : back ? 325 : 420);
   // how far a blocker can shift along the net before the hit (time available × speed)
   const tAv = (quick ? 0.3 : bad ? 1.05 : 0.8) + (back ? 0.15 : 0) + (longB ? 0.1 : 0),
     reach = b => ((b.speed / 100) * tAv * 0.6) / courtScale();
-  const b0 = B0,
-    p0 = m.pos[b0.id],
-    r0 = reach(b0) * (bitten ? 0.3 : 1);
-  const bz0 = clamp(p0.z + clamp(spZ - p0.z, -r0, r0), 0.05, 0.95);
+  // defence setting (see DEFSETS): Bunch starts both front-row defenders near the middle (they drift there while the ball is set, as far as their speed allows)
+  const dset = m.dset[ds] || 'read',
+    commit = dset === 'commit',
+    bunch = dset === 'bunch',
+    midAtk = quick || pipe || lane === 'M',
+    startZ = p => {
+      const z = m.pos[p.id].z;
+      if (!bunch) return z;
+      const t = Math.abs(z - BLOCK.bunchStartZ[0]) <= Math.abs(z - BLOCK.bunchStartZ[1]) ? BLOCK.bunchStartZ[0] : BLOCK.bunchStartZ[1];
+      return z + clamp(t - z, -reach(p), reach(p));
+    },
+    byLane = (list, z) => list.reduce((a, p) => (Math.abs(startZ(p) - z) < Math.abs(startZ(a) - z) ? p : a), list[0]);
+  // who blocks: the pin-side defender sets the edge on a wing attack; the middle takes a quick / pipe / middle ball;
+  // a middle who bit on the fake is gone — the far defender swings across late
+  const others = DF.filter(p => p !== B0),
+    swing = bitten && others.length > 0;
+  // the front-row middle is the main blocker whenever they can get to the hitter's spot (they wait at the net; the wings
+  // stand deeper): the other defender only fills the gap beside them. A pin too far out for the middle falls to the pin-side defender.
+  const mb = DF.find(p => p.role === 'MB'),
+    mbCan = mb && Math.abs(startZ(mb) - spZ) <= reach(mb) * 1.3;
+  const b0 = swing ? byLane(others, spZ) : !DF.length ? B0 : midAtk ? mb || byLane(DF, spZ) : mbCan ? mb : byLane(DF, spZ),
+    p0z = startZ(b0),
+    r0 = reach(b0) * (swing ? BLOCK.swingReach : bitten ? 0.3 : commit && quick ? BLOCK.commitReach : 1), // Commit: the blocker on a quick is already up
+    bz0 = clamp(p0z + clamp(spZ - p0z, -r0, r0), 0.05, 0.95),
+    late0 = Math.abs(spZ - p0z) > r0;
   let b1 = null,
-    bz1 = 0;
-  // sync attack: no time to form a double
-  if (!quick && !sync && R() < defT.S.dbl && DF.some(p => p !== b0)) {
-    b1 = DF.find(p => p !== b0);
-    const p1 = m.pos[b1.id],
-      side = bz0 <= spZ ? 1 : -1,
-      t1 = spZ + side * 0.1;
-    bz1 = clamp(p1.z + clamp(t1 - p1.z, -reach(b1) * 1.3, reach(b1) * 1.3), 0.05, 0.95);
-    // two bodies can't take off from one spot: the second blocker closes in beside the first, on their own side
-    if (Math.abs(bz1 - bz0) < BLOCK_GAP) {
-      const away = p1.z >= bz0 ? 1 : -1,
-        z = bz0 + away * BLOCK_GAP;
-      bz1 = z >= 0.05 && z <= 0.95 ? z : bz0 - away * BLOCK_GAP;
+    bz1 = 0,
+    late1 = false;
+  // the second blocker closes in beside the first on the court-inside side — if the roll passes and they can get there.
+  // Sync attacks leave no time for a double; quicks only get one when the defence is set for them (Commit / Bunch).
+  const cand = DF.find(p => p !== b0);
+  if (cand && !sync && !swing && (!quick || commit || bunch)) {
+    const roll = R() < defT.S.dbl * (0.6 + 0.8 * readQ(cand)),
+      p1z = startZ(cand),
+      inward = bz0 < 0.5 ? 1 : -1,
+      t1 = clamp(bz0 + inward * BLOCK_GAP, 0.05, 0.95);
+    if (
+      (roll || (bunch && midAtk) || (commit && quick)) &&
+      Math.abs(t1 - p1z) <= reach(cand) * (commit && quick ? BLOCK.commitReach : 1.3)
+    ) {
+      b1 = cand;
+      bz1 = t1;
+      // two bodies can't take off from one spot
+      if (Math.abs(bz1 - bz0) < BLOCK_GAP) bz1 = clamp(bz0 - inward * BLOCK_GAP, 0.05, 0.95);
     }
   }
   const blockers = b1 ? [b0, b1] : [b0];
@@ -254,7 +316,21 @@ function formBlock(c, x) {
   };
   const c0 = cvf(b0, bz0),
     c1 = b1 ? cvf(b1, bz1) : { c: 0, raw: 0, hB: 0 };
-  if (bitten) c0.c *= 0.5;
+  // reading and the defence setting scale each blocker's coverage: arriving late, split hands, a bitten or swinging
+  // middle, Commit's middle (up early on a quick, lost on anything else), Bunch (strong in the middle, pins open)
+  const scale = (cv, b, late) => {
+    if (!cv.c) return;
+    if (late) cv.c *= BLOCK.lateCov;
+    if (readQ(b) < 0.35) cv.c *= BLOCK.splitCov;
+    if (commit && quick && (b.role === 'MB' || b === b0)) cv.c *= BLOCK.commitQuick;
+    else if (commit && b.role === 'MB') cv.c *= BLOCK.commitMiss;
+    if (bunch) cv.c *= midAtk ? BLOCK.bunchMid : BLOCK.bunchPin;
+    cv.c = Math.min(cv.c, 1.2); // the height factor's own ceiling: a setting can't turn a wall into a block break
+  };
+  scale(c0, b0, late0);
+  scale(c1, b1, late1);
+  if (swing) c0.c *= BLOCK.swingCov;
+  else if (bitten) c0.c *= 0.5;
   let cov = Math.max(c0.c, c1.c) + (c0.c > 0.4 && c1.c > 0.4 ? 0.25 : 0) + readBonus;
   // techniques that beat (or read) the block
   const readB = quick && hasTech(b0, 'readblk') && W(b0) >= 1.1,
@@ -278,7 +354,32 @@ function formBlock(c, x) {
             : null;
   const seam = b1 && c0.raw > 0.2 && c1.raw > 0.2 && Math.abs(bz0 - bz1) > 0.17 && R() < 0.5;
   const over = hS - Math.max(c0.hB, c1.hB) > 38 && Math.max(c0.raw, c1.raw) > 0.3;
-  return { back, longB, spZ, appX, b0, b1, bz0, bz1, blockers, lateB, lateA, a1, pj, hS, c0, c1, cov, readB, setTech, seam, over };
+  return {
+    back,
+    longB,
+    lane,
+    pipe,
+    late: [late0, late1],
+    spZ,
+    appX,
+    b0,
+    b1,
+    bz0,
+    bz1,
+    blockers,
+    lateB,
+    lateA,
+    a1,
+    pj,
+    hS,
+    c0,
+    c1,
+    cov,
+    readB,
+    setTech,
+    seam,
+    over
+  };
 }
 
 /**

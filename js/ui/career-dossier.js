@@ -42,7 +42,7 @@ function dossierCard(run, r) {
   const clubs = `<h4>Clubs</h4>${d.clubs
     .map(
       c =>
-        `<div class="dclub">${chip(c)}<b>${esc(c.name)}</b> <span class="small mute">rating ${c.ovr} · ${esc(c.join)}</span>${
+        `<div class="dclub">${chip(c)}<b>${esc(c.name)}</b> <span class="small mute">rating ${c.ovr} · ${esc(c.join)}</span>${c.habits ? `<div class="small mute">${esc(Dossier.habitText(c.habits))}</div>` : ''}${
           free
             ? ` <button class="btn ${c.can.ok ? 'hot' : ''}" onclick="joinClub(${c.ti})" ${c.can.ok ? '' : `disabled ${tip('Missing: ' + c.can.why.join(', '))}`}>Sign</button>`
             : ''

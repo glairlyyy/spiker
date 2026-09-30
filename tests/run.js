@@ -921,6 +921,93 @@ test('career: U21 Final Cup — entrants, seeding, byes, restore', () => {
   assert(r3.result && typeof r3.result.champ === 'string', 'the run ends and names the champion');
 });
 
+test('engine: lane-read block — stuff rate and defence settings', () => {
+  // Read vs Read over five team sets: stuffs (kill blocks) and hitter kills as a share of all attacks
+  let n = 0,
+    stuffs = 0,
+    kills = 0;
+  for (const seed of [20, 37, 54, 71, 88]) {
+    const g = load(seed),
+      T = g.mkTeams();
+    for (let i = 0; i < 50; i++) {
+      const m = g.simMatch(T[i % 8], T[(i * 3 + 1) % 8]);
+      for (const a of m.att) {
+        n += a.n;
+        kills += a.k;
+      }
+      for (const id in m.stat) stuffs += m.stat[id].blk;
+    }
+  }
+  const stuffRate = stuffs / n;
+  assert(stuffRate >= 0.12 && stuffRate <= 0.16, `stuff rate ${(100 * stuffRate).toFixed(1)} % is outside 12–16 %`);
+  assert(kills / n >= 0.36 && kills / n <= 0.48, `hitter kill rate ${((100 * kills) / n).toFixed(1)} % drifted from ~42 %`);
+  // a fixed attack style against each defence setting (attacker: side 0)
+  const g = load(9),
+    T = g.mkTeams(),
+    run = (tac, dset) => {
+      const t = { q: 0, qs: 0, pin: 0, pins: 0 };
+      for (let i = 0; i < 400; i++) {
+        const a = g.simMatch(T[i % 8], T[(i * 3 + 1) % 8], { tac: [tac, 'auto'], dset: ['read', dset] }).att[0];
+        t.q += a.q;
+        t.qs += a.qs;
+        t.pin += a.pin;
+        t.pins += a.pins;
+      }
+      return { quickStuff: t.qs / t.q, pinStuff: t.pins / t.pin };
+    };
+  const mbRead = run('mb', 'read'),
+    mbCommit = run('mb', 'commit'),
+    wsRead = run('ws', 'read'),
+    wsBunch = run('ws', 'bunch');
+  assert(
+    mbCommit.quickStuff > mbRead.quickStuff + 0.03,
+    `Commit stuffs more quicks (${mbCommit.quickStuff.toFixed(3)} vs ${mbRead.quickStuff.toFixed(3)})`
+  );
+  assert(
+    wsBunch.pinStuff < wsRead.pinStuff - 0.02,
+    `Bunch leaves the pins open (${wsBunch.pinStuff.toFixed(3)} stuffed vs ${wsRead.pinStuff.toFixed(3)})`
+  );
+});
+test('engine: defence settings — AI default, captain switch, scouting habits', () => {
+  const g = load(9),
+    T = g.mkTeams(),
+    wall = T.find(t => t.S === g.STYLES.wall),
+    tempo = T.find(t => t.S === g.STYLES.tempo);
+  if (wall) eq(g.newMatch(wall, T[0]).dset[0], 'bunch', 'a wall team starts on Bunch');
+  if (tempo) eq(g.newMatch(tempo, T[0]).dset[0], 'commit', 'a tempo team starts on Commit');
+  eq(g.newMatch(T[0], T[1], false, { dset: ['bunch', null] }).dsetMode.join(), 'fixed,cap', 'a fixed setting is not the captain’s');
+  // a leading captain answers a quick-heavy opponent with Commit (never when the setting is fixed)
+  const cap = T.find(t => t.S !== g.STYLES.tempo && t !== T[7]) || T[1],
+    foe = T[7];
+  for (const p of cap.P) p.lead = 100;
+  let sw = 0,
+    fixedSw = 0;
+  for (let i = 0; i < 50; i++) {
+    const m = g.simMatch(foe, cap, { tac: ['mb', 'auto'] });
+    sw += m.dsetLog.filter(x => x.side === 1 && x.to === 'commit').length;
+    fixedSw += g.simMatch(foe, cap, { tac: ['mb', 'auto'], dset: ['read', 'read'] }).dsetLog.length;
+  }
+  assert(sw >= 1, 'the captain switches to Commit against an MB-focus attack');
+  eq(fixedSw, 0, 'a fixed defence setting never changes');
+});
+test('career: scouting shows attack habits', () => {
+  const g = load(94),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Habits', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
+  run.event = null;
+  run.days = 7;
+  const wei = g.FACTIONS.findIndex(f => f.region === 'wei');
+  let d = g.Dossier.build(run, 'wei');
+  assert(
+    d.clubs.every(c => c.habits === null),
+    'unscouted: no habits'
+  );
+  assert(g.City.scout(run, wei), 'scout a Wei club');
+  d = g.Dossier.build(run, 'wei');
+  const h = d.clubs.find(c => c.ti === wei).habits;
+  assert(h && h.quick >= 0 && h.quick <= 70 && g.DEFSETS[h.def], 'scouted: habits are filled');
+  assert(/^Quicks ~\d+ %.*Defence: \w+$/.test(g.Dossier.habitText(h)), 'the habit line reads as one line');
+});
+
 // ---------- report ----------
 if (update) {
   fs.writeFileSync(GOLDEN, JSON.stringify(record, null, 2) + '\n');

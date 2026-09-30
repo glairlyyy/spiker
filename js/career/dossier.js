@@ -2,6 +2,21 @@
 // to the run). The faction window (ui/career-dossier.js) only renders this.
 
 const Dossier = {
+  /** What a scouted club does, from its data (no match history): quick share, favoured wing, pipe, defence setting. */
+  habits(t) {
+    const mbs = t.P.filter(p => p.role === 'MB').length,
+      ws = t.P.filter(p => p.role === 'WS'),
+      quick = mbs ? Math.min(0.7, t.S.quick * (mbs > 1 ? 1.4 : 1)) : 0,
+      wing = ws.length > 1 && ws[0].power !== ws[1].power ? (ws[0].power > ws[1].power ? 'left' : 'right') : null,
+      setter = t.P.find(p => p.role === 'S');
+    return { quick: Math.round(quick * 100), wing, pipe: !!setter && hasTech(setter, 'pipecombo'), def: defOf(t) };
+  },
+  /** One line of habits: "Quicks ~30 % · favours the left · pipe · Defence: Bunch". */
+  habitText(h) {
+    return [`Quicks ~${h.quick} %`, h.wing && `favours the ${h.wing}`, h.pipe && 'pipe', `Defence: ${DEFSETS[h.def].name}`]
+      .filter(Boolean)
+      .join(' · ');
+  },
   /** The dossier of region r (wei, wu, shu, outlaws, gloria); ratings and elements are hidden until scouted or joined. */
   build(run, r) {
     const R0 = REGIONS[r],
@@ -61,7 +76,8 @@ const Dossier = {
         color: run.teams[ti].color,
         ovr: run.teams[ti].ovr,
         join: World.joinText(ti, run),
-        can: World.canJoin(run, ti)
+        can: World.canJoin(run, ti),
+        habits: City.scouted(run, ti) || member ? Dossier.habits(run.teams[ti]) : null
       })),
       scouted,
       member,

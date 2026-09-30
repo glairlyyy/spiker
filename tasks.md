@@ -29,117 +29,9 @@ Result:
 - **Phase 4 — U21 Final Cup** ✓: bracket with byes (T-019); U21 cup from drawn squads (T-020). The 8 league
   teams stay as faction home squads.
 - Match music ✓ (T-032)
-- **Block tactics** (now): lane-read block (T-026), defence setting + scouting (T-027). Then **Substitutions** (T-028–T-031).
+- Block tactics ✓ (T-026 lane-read block, T-027 defence setting + scouting habits).
+- **Substitutions** (next, to be detailed): T-028–T-031.
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
-
-## Now — Block tactics (spec §2.9)
-
-### [ ] T-026: Lane-read block — who blocks where, reads, swings, doubles; three defence settings in the engine
-Spec: §2.9, §2.4          Goldens: update (block formation draws differently; every match hash changes)
-Save: no change
-Goal: The 2 front-row defenders block by reading the attack's lane instead of "the MB always blocks, a double
-sometimes": the pin-side blocker takes the edge, the other closes beside them; a bitten middle leaves the far blocker
-to swing late; a pipe gets both in the middle. Good readers (wit + speed) arrive on time, poor ones late or split.
-The engine also honours a per-side defence setting (Read / Commit / Bunch), default Read for everyone (the UI and AI
-choice come in T-027). Stuffs stay a real threat: 12–16 % of attacks (today: 10.8 % — measured over 400 sims).
-Files: js/engine/rally.js (formBlock), js/engine/rally-phases.js (the B0 choice at the end of the attack pick),
-js/engine/match.js (newMatch: `dset`), js/data/tactics.js (DEFSETS, BLOCK), tests/run.js, tests/golden.json,
-ARCHITECTURE.md
-Do not:
-- Add beat act kinds or change playback: blockers keep moving/jumping through the existing `slide` / `mv` / `pose` /
-  `jump` acts from formBlock (their spots `bz0` / `bz1` drive the display as today).
-- Touch block() / dig() / stuffChance in rally-defense.js except, if the stuff rate can't reach 12–16 % from
-  formBlock alone, the constants STUFF_BIAS / STUFF_COV_EXP (say which and why in Result).
-- Add R() draws beyond one roll replacing today's double-block roll (`R() < defT.S.dbl`); everything else is
-  computed from values already rolled (positions, stats, spZ).
-- Change the hype read scenes, techniques (readblk, freak, slide, sync, pipeCombo, longB) or their multipliers.
-Steps:
-1. js/data/tactics.js (constants only, doc comments):
-   - `DEFSETS = { read: { name: 'Read', short: 'Read' }, commit: { name: 'Commit', short: 'Commit' },
-     bunch: { name: 'Bunch', short: 'Bunch' } }` (descriptions in registrar voice: Read "Wait for the set. Late on
-     quicks.", Commit "Middle jumps with the quick. Open to decoys and high balls outside.", Bunch "Both start in the
-     middle. Pins open.").
-   - `BLOCK = { laneL: 0.38, laneR: 0.62, lateCov: 0.55, splitCov: 0.7, swingReach: 0.8, swingCov: 0.75,
-     commitQuick: 1.35, commitMiss: 0.6, bunchMid: 1.25, bunchStartZ: [0.42, 0.58], bunchPin: 0.85 }` —
-     starting values; tune in step 6 and keep the final ones.
-2. js/engine/match.js newMatch: `dset: [opts.dset?.[0] || 'read', opts.dset?.[1] || 'read']` next to `tac`; doc
-   comment in the opts list. No UI yet.
-3. Read quality (rally.js, local helper): `readQ(b) = clamp(0.5 * (W(b) - 0.4) / 1.2 + 0.5 * (b.speed - 40) / 55, 0, 1)`.
-4. formBlock, in this order:
-   - lane: `lane = spZ < BLOCK.laneL ? 'L' : spZ > BLOCK.laneR ? 'R' : 'M'`; `pipe = back && !longB && lane === 'M'`.
-   - defenders: the (usually 2) front-row non-setters `DF` (as today). Primary `b0`: quick or pipe or lane 'M' → the
-     MB if in DF (else the DF closest to spZ); lane 'L' / 'R' → the DF whose current z is closest to spZ (the pin
-     blocker sets the edge). Move today's `B0` pick in rally-phases.js accordingly (or pass DF and pick in formBlock —
-     keep `B0` only if hype needs it before the set; it must equal the final b0).
-   - setting start points (display and reach both use them): Bunch → both DF start from z in `BLOCK.bunchStartZ`
-     (nearest end); Read / Commit → current positions.
-   - time and reach as today (`tAv`, `reach`); a reader's lateness: `late = distance to target > reach(b)`; a late
-     blocker still goes to the nearest reachable spot and its coverage is × `BLOCK.lateCov`; `readQ < 0.35` →
-     coverage × `BLOCK.splitCov` (hands split) even when on time.
-   - second blocker `b1` closes beside b0 on the court-inside side (towards z 0.5), with today's `BLOCK_GAP` rule;
-     it forms when one roll `R() < defT.S.dbl * (0.6 + 0.8 * readQ(b1))` passes AND it can reach the spot; quick /
-     sync attacks still have no double (Commit exception below).
-   - bitten (the existing fake/decoy flag): the middle is gone; the far-side DF swings across: it becomes the
-     blocker with reach × `BLOCK.swingReach` and coverage × `BLOCK.swingCov`; no double.
-   - settings: **Commit** — on a quick the MB is already up: coverage × `BLOCK.commitQuick` and a double can form
-     beside it; on any non-quick attack after a quick approach was shown (the existing decoy / fake paths) the MB counts
-     as bitten; otherwise on non-quick attacks the MB's coverage × `BLOCK.commitMiss`. **Bunch** — lane 'M' / pipe /
-     quick: coverage × `BLOCK.bunchMid` and the double always forms if reachable; lanes 'L' / 'R': coverage ×
-     `BLOCK.bunchPin` (on top of the longer reach from the middle). **Read** — no extra factor.
-   - `cov` then goes through today's readBonus / technique multipliers unchanged; return `lane`, `pipe` and `late`
-     (b0 / b1 booleans) in the result for block() / hype (unused for now is fine).
-5. ARCHITECTURE.md: the block-formation paragraph (lane, primary, double, swing, lateness, settings, `m.dset`).
-6. Tune with headless sims (seeded, like the invariants test): target 12–16 % stuffs of all attacks with Read vs
-   Read; record the final BLOCK values and the measured rates in Result.
-7. tests/run.js — new test `'engine: lane-read block — stuff rate and defence settings'` (keep it under ~5 s):
-   - 200 sims Read vs Read over the 8 mkTeams: stuffs / attacks in [0.12, 0.16]; kills / attacks within ±6 points of
-     today's 67.7 % (i.e. [0.62, 0.74]).
-   - A quick-heavy side (tac `mb` fixed) vs Commit loses more on quicks than vs Read (quick kill % lower); a
-     wing-heavy side (tac `ws`) scores more vs Bunch than vs Read (kill % higher). Count quick attacks from the beats'
-     or the engine's own flags — add a counter on `m` only if none exists (`m.nq` / `m.nqk`, engine-only, no randoms).
-   Then `npm run test:update` for the goldens and say why in the commit.
-Accept: all tests + lint; goldens updated for this reason only; stuff rate 12–16 %.
-QA: Monster game — watch 10 rallies with blocks: on wing attacks the blocker on that side is at the pin and the second
-closes inside; after a decoy the far blocker visibly swings late; no blocker teleports (movement within sprint speed);
-no pageerror.
-Result:
-
-### [ ] T-027: Defence setting — your pick, AI teams' pick, scouting shows attack habits
-Spec: §2.9          Goldens: update (AI teams default to their style's setting; the captain may switch)
-Save: no change (the setting comes from the team's style, not the save)
-Goal: Every team has a defence setting. You pick yours in the match (like the attack tactic); AI teams start from their
-style and the captain may switch when the other side's attack mix calls for it. Scouting a club shows its attack
-habits and its defence setting.
-Files: js/data/tactics.js, js/data/styles.js, js/engine/match.js, js/ui/match-screen.js, js/career/dossier.js,
-js/ui/career-dossier.js, js/ui/career-map.js, css/style.css, tests/run.js, tests/golden.json, ARCHITECTURE.md
-Do not:
-- Store the setting in saves; derive it (`defOf(team)` from `team.sk`).
-- Show habits for unscouted clubs (same gate as ratings: scouted or member).
-Steps:
-1. styles.js: each style gets `dset` (power 'read', wall 'bunch', tempo 'commit', counter 'read', sky 'read',
-   bombers 'read', mind 'read', balanced 'read'); tactics.js: `defOf = t => (t.S && t.S.dset) || 'read'`.
-2. match.js: newMatch `dset` defaults to `defOf(team)` per side unless `opts.dset` fixes it; `dsetMode` like
-   `tacMode` ('cap' / 'fixed'). In the captain's decision block (after the tactic switch), with its own
-   `R() < 0.05 + 0.05 * lv` roll: count the opponent's attacks so far by kind (quick / middle-pipe / pins) from the
-   counters of T-026 (add `m.akind[side] = { q, mid, pin }` if needed); quick share > 0.35 → 'commit', middle+pipe share
-   > 0.45 → 'bunch', else 'read'; on a change: a `tac`-style chatter line ("Commit on the quick!" / "Bunch the
-   middle!" / "Read and react!") and a log line. Reuse the existing `tac` act if it can carry `{ side, dset }`,
-   otherwise use a plain `log` + `say` (no new act kind).
-3. match-screen.js: the Tactics popover gets a second select per team: Defence — "Captain's call" + the 3 DEFSETS
-   (tooltip = the registrar description); `setDefence(i, v)` like `setTactic`; the current setting shows next to it
-   (`#dsnow{i}`).
-4. Scouting — habits from data, not from match history: quick share (style `quick` × the team's MB count), favoured
-   wing (the stronger WS by power), pipe (any player with the `pipecombo` technique), defence setting. `Dossier.build`
-   adds `habits` per club (null when not scouted / not member); the dossier window and the club card in
-   career-map.js (the scouted roster block) show one line: "Quicks ~30 % · favours the left · pipe · Defence: Bunch".
-5. tests/run.js: extend the T-026 test or add `'engine: defence settings — AI default and captain switch'`: a wall
-   team starts on Bunch; over 50 sims vs a tac-`mb` side a captain with lead Lv ≥ 1 switches to Commit at least once;
-   dossier habits are null before scouting and filled after `City.scout`. `npm run test:update` for goldens.
-6. ARCHITECTURE.md: defence settings (data, engine switch, UI).
-Accept: all tests + lint; goldens updated for this reason only.
-QA: Monster game → Tactics ▾ shows Defence per team; switching yours logs a line and applies from the next rally.
-Career run → scout a club → HQ card and dossier show the habits line. No pageerror.
-Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
@@ -155,6 +47,8 @@ Phase 5 — Voice pass
 
 ## Done
 (one line each; full task text is in git history)
+- [x] T-026: Lane-read block — who blocks where, reads, swings, doubles; three defence settings in the engine — formBlock reads lane/pipe/bitten/late/split, 2nd blocker on the inside, DEFSETS + BLOCK in tactics.js, `m.dset`; new test; goldens updated (block choice changes every hash). Stuff rate 11.3 % → 13.7 % (600 Read-vs-Read sims, 10 team sets; per-set 11.4–16.6). formBlock alone gave ~11.3 %, so STUFF_BIAS 0.9 → 0.45 in rally-defense.js (only lever with real effect) and BLOCK lateCov 0.8 / splitCov 0.85 (softer: the gap falloff already punishes lateness). Final BLOCK: laneL .38 laneR .62 lateCov .8 splitCov .85 swingReach .8 swingCov .75 commitQuick 1.6 commitReach 3.5 (NEW constant: Commit's blocker on a quick is already up) commitMiss .6 bunchMid 1.25 bunchStartZ [.42,.58] bunchPin .65. Deviations: (1) 'today's 67.7 % kills' isn't reproducible — my tally (hitter kills / attacks, `m.att`, engine-only) is ~42 % before and after; the test guards [36, 48] %. (2) Commit/Bunch tested on stuff rates (quick stuffed 27 → 33 % vs Commit, pins stuffed 9.5 → 5 % vs Bunch), not quick kill %: block breaks offset it (quick kill −1 pt only). (3) Scaled coverage capped at 1.2 so a setting can't trigger block breaks; Commit always counts the middle as bitten on a fake; Bunch drifts to bunchStartZ only as far as speed allows. Blocker slide speed max 595 → 646 units/s (same envelope). QA: 60 sims — pin attacks: blocker at the edge (<0.1) 68 % (rest late), inside double 91 %, every swing by the far blocker; Monster game 1500 steps, no pageerror. Not eyeballed 10 rallies in 3D.
+- [x] T-027: Defence setting — your pick, AI teams' pick, scouting shows attack habits — styles.js `dset` (wall bunch, tempo commit, rest read), `defOf` in tactics.js, `m.dsetMode` + `m.dsetLog` (engine-only, not saved), captain switch in captainThink (one extra R() only in 'cap' mode, after 8 opp attacks; reuses the `tac` act with a `dset` field, no new act kind), Defence select per team in the Tactics popover (`setDefence`, `#dsnow`), `Dossier.habits`/`habitText` shown in the dossier club rows and the HQ card once scouted. Goldens updated (style defaults + the extra draw). Deviations: (1) pipe = the setter has `pipecombo` (it is a setter technique, not any player's); (2) css/style.css untouched (reused `.tac`); (3) T-026 stuff-rate test still passes unchanged (12–16 %) with style defaults, no retune. Tests: new 'defence settings' + 'scouting shows attack habits' (29/29, lint clean). QA: Monster game — both Defence selects present, picking Commit sets fixed:commit and `#dsnow` reads '→ Read' for the captain side; career — after scouting the dossier shows 'Quicks ~16 % · favours the left · pipe · Defence: Read'; no pageerror. HQ card habits line not eyeballed (same helper as the dossier).
 - [x] T-032: Match background music (owner track, 50 % volume) — bgmStart/bgmStop/bgmSync in sfx.js (own gain → destination, decoded once, want/loading guards so a late decode after leaving stays silent), hooked in navigate; ARCHITECTURE 'Match music'. 26/26 + lint, goldens untouched. QA (test3d): 0.4 = 0.5 × 0.8 playing, 🔇 → 0, 🔊 → 0.4, leave → gain gone + bgmSrc null, second match 1 fetch total, no pageerror. Swiftshader is slow: decode took ~10 s wall before the music started. mp3 was not in my clone — fetched it from the artifact and committed it.
 - [x] T-019: Brackets of any size with byes — bracket.js handles 8/16 slots with byes (BRACKET_ROUNDS/BRACKET_NEXT, seedOrder hard-coded: 8 = old Grand Cup order, 16 = the task's list); new test 'bracket: 8 and 16 entries, byes'. 25/25 + lint, goldens untouched, headless only.
 - [x] T-020: U21 Final Cup — one cup of drawn squads replaces the Skyline and Grand Cups — U21 Final Cup as specced (13 squads → 16-slot bracket, 3 byes, RUN_VERSION 3, warm-up code removed; Cup.roman added as a Cup property, no new global). 26/26 + lint, goldens untouched; QA: Academy run → W29 bracket with byes, Sim ⏭ to run-end naming the champion, no pageerror.
@@ -179,3 +73,4 @@ Phase 5 — Voice pass
 ## Unplanned changes
 (build chat: owner requests made directly in the build chat — one line each; the spec chat moves them into spec.md)
 - (recorded in spec §4.9) 2026-09-30: Owner: keep only the 3D map — removed the SVG renderer (`js/ui/map-svg.js`), panzoom, the 3D toggle and `KEYS.map3d`; `MapView` loads map3d.mjs directly (notice if WebGL fails). MapModel and the rules are unchanged. Pins, labels, fog, selection and seized patches are not drawn until T-025; until then places cannot be picked (travel by clicking land works). Dead SVG map CSS (`.city`, `.pin`…) left in css/career.css.
+- (recorded in spec §2.9) Blocker choice: the front-row MB is main blocker on every attack they can reach (was: only quick/pipe/middle); the wing fills the gap — js/engine/rally.js (formBlock), ARCHITECTURE.md, tests/golden.json (updated).

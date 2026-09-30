@@ -33,15 +33,17 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   triangle while the pass travels to them (arms/head only, position unchanged).
 - §2.8 Cut-scene lines **[built]**: every LINES kind × personality has 5–6 variants. Lines are
   picked by hash, never by R(), so results never change; only the `matches` golden (it hashes beat text) may.
-- §2.9 Block tactics **[locked, not built]** — 2 blockers at the net (front row stays 2 in 4v4):
-  - Lane read: the blocker on the attack's side sets the edge; the middle closes beside them. Middle bitten by a
+- §2.9 Block tactics **[built]** — 2 blockers at the net (front row stays 2 in 4v4):
+  - Lane read: the front-row MB is the main blocker on every attack they can reach (owner); otherwise the blocker on
+    the attack's side sets the edge; the other closes beside them on the inside. Middle bitten by a
     quick / decoy → the far-side blocker swings across (late, weaker). Pipe / back-row attack → both close to the
     centre. Read quality from wit + speed: good readers arrive in time with full hands; poor ones late or split.
   - Defence setting (per team, like attack tactics; player picks theirs, AI teams have one): **Read** (default:
     wait for the set; good on wings, late on quicks), **Commit** (middle jumps with the quick; kills quicks, beaten by
     decoys / high outside), **Bunch** (both start central; strong vs middle / pipe, pins open).
   - Scouting a club reveals its attack habits (lane split, pipe use) and its defence setting.
-  - Rebalance: 12–16 % of attacks stuffed (today 10.8 %, 400 sims); kill rate stays ~68 %. Goldens update.
+  - Balance: stuffs 10.8 % → ~13 % of attacks (STUFF_BIAS 0.9 → 0.45), kills unchanged (~68 %, all-player kills ÷
+    attacks). Numbers in `BLOCK` (js/data/tactics.js).
   - Settings are derived from the team style (not saved); the captain may switch on the opponent's attack mix.
 - §2.10 Substitutions **[locked, not built]**:
   - Teams: 4 on court + 2 on the bench (6). Faction pools grow so every faction fields ≥ 1 squad of 6 (≈ Wei 24,

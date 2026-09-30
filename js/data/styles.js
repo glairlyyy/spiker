@@ -3,10 +3,13 @@
 /**
  * A playstyle with defaults: spike / block / dig / serve / jump are multipliers, serveErr multiplies the serve error
  * chance, quick = base quick-attack chance, set = set-success bonus, dbl = double-block chance, feint = setter-dump
- * chance, bias = stat bias for generated players.
+ * chance, dset = the team's default defence setting (DEFSETS), bias = stat bias for generated players.
  */
 const mkStyle = o =>
-  Object.assign({ spike: 1, block: 1, dig: 1, serve: 1, serveErr: 1, quick: 0.25, set: 0, dbl: 0.5, jump: 1, feint: 0.05, bias: {} }, o);
+  Object.assign(
+    { spike: 1, block: 1, dig: 1, serve: 1, serveErr: 1, quick: 0.25, set: 0, dbl: 0.5, jump: 1, feint: 0.05, dset: 'read', bias: {} },
+    o
+  );
 const STYLES = {
   power: mkStyle({
     name: 'Power offense',
@@ -23,6 +26,7 @@ const STYLES = {
     spike: 0.98,
     block: 1.14,
     dbl: 0.78,
+    dset: 'bunch',
     bias: { def: 4, jump: 2 }
   }),
   tempo: mkStyle({
@@ -30,6 +34,7 @@ const STYLES = {
     desc: 'Fires quicks through the middle before the block can form.',
     quick: 0.5,
     set: 0.02,
+    dset: 'commit',
     bias: { speed: 6 }
   }),
   counter: mkStyle({
