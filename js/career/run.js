@@ -325,8 +325,8 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 2;
-/** version → upgrade step (none yet; v2: faction reserves — older saves are dropped; add steps when the saved shape changes). */
+const RUN_VERSION = 3;
+/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants — older saves are dropped; add steps when the saved shape changes). */
 const RUN_MIGRATIONS = {};
 const ROLE_NAME = { S: 'Setter', MB: 'Middle blocker', WS: 'Wing spiker' };
 /** Run rank letter for a fan count (RANKS is ordered from the top rank down). */

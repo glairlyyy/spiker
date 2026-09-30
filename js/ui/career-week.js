@@ -195,23 +195,34 @@ function benchEval() {
 }
 function cupPanel(run) {
   const S = run.cup.sched,
-    T = run.teams,
+    E = run.cup.entrants,
+    me = run.cup.me,
     def = Run.cupDef(run),
-    nm = Cup.next(run),
-    last = CUPS.indexOf(def) === CUPS.length - 1;
+    nm = Cup.next(run);
   Run.save(run);
   const slot = x => {
-    if (!x) return `<div class="bm empty"><div class="br">—</div><div class="br">—</div></div>`;
+    if (x.bye) return `<div class="bm empty"><div class="br">—</div><div class="br">—</div></div>`;
     const row = ti =>
-      `<div class="br ${x.w === ti ? 'won' : x.w !== null ? 'lost' : ''} ${ti === run.team ? 'mine' : ''}">${chip(T[ti])}<span>${esc(T[ti].name)}</span><b>${x.res ? x.res[ti === x.a ? 0 : 1] : ''}</b></div>`;
+      ti == null
+        ? `<div class="br empty"><span class="mute">bye</span></div>`
+        : `<div class="br ${x.w === ti ? 'won' : x.w !== null ? 'lost' : ''} ${ti === me ? 'mine' : ''}">${chip(E[ti])}<span>${esc(E[ti].name)}</span><b>${x.res ? x.res[ti === x.a ? 0 : 1] : ''}</b></div>`;
     return `<div class="bm ${x === nm ? 'next' : ''}">${row(x.a)}${row(x.b)}</div>`;
   };
-  const P = PLACES;
+  const rounds = ['Round of 16', 'Quarterfinal', 'Semifinal', 'Final'].filter(r => S.some(x => x.round === r)),
+    P = PLACES,
+    fans = k => Math.round(P[k].fans * def.mul).toLocaleString();
   return `<div class="bracket"><h3 class="bt3">${def.name}${def.seeded ? ' <span class="small mute">seeded</span>' : ''}</h3>
-      <div class="bcol"><h4>Quarterfinals</h4>${S.slice(0, 4).map(slot).join('')}</div>
-      <div class="bcol"><h4>Semifinals</h4>${slot(S[4])}${slot(S[5])}</div>
-      <div class="bcol"><h4>Final</h4>${slot(S[6])}</div></div>
-    <div class="panel"><h3>${nm.round}${info(`Win: +${Math.round(REWARDS.cupWin.sp * def.mul)} skill pts, +${Math.round(REWARDS.cupWin.fans * def.mul).toLocaleString()} fans. ${last ? 'A loss ends the season.' : `A loss ends your ${def.name} — the season goes on to the Grand Cup.`}\nPlacement: quarterfinal +${Math.round(P.Quarterfinal.fans * def.mul)} fans · semifinal +${Math.round(P.Semifinal.fans * def.mul)} · runner-up +${Math.round(P.Final.fans * def.mul).toLocaleString()} · champion +${Math.round(P.Champion.fans * def.mul).toLocaleString()}.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3><p>vs <b>${esc(T[nm.a === run.team ? nm.b : nm.a].name)}</b></p>
+      ${rounds
+        .map(
+          r =>
+            `<div class="bcol"><h4>${r === 'Quarterfinal' ? 'Quarterfinals' : r === 'Semifinal' ? 'Semifinals' : r}</h4>${S.filter(
+              x => x.round === r
+            )
+              .map(slot)
+              .join('')}</div>`
+        )
+        .join('')}</div>
+    <div class="panel"><h3>${nm.round}${info(`Win: +${Math.round(REWARDS.cupWin.sp * def.mul)} skill pts, +${Math.round(REWARDS.cupWin.fans * def.mul).toLocaleString()} fans. A loss ends the season.\nPlacement: round of 16 +${fans('Round of 16')} fans · quarterfinal +${fans('Quarterfinal')} · semifinal +${fans('Semifinal')} · runner-up +${fans('Final')} · champion +${fans('Champion')} — and a place on the national team.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3><p>vs <b>${esc(E[nm.a === me ? nm.b : nm.a].name)}</b></p>
       ${matchPrep(run, true)}
     <div class="trow"><button class="btn hot big" onclick="playCareer('cup')">Play ${nm.round.toLowerCase()}</button><button class="btn big" onclick="playCareer('cup', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
 }
@@ -308,7 +319,7 @@ function lifeCard(run) {
 function clubsCard(run) {
   return `<div class="panel clubs">${fold(
     'clubs',
-    `<h3>Find a club${info('You play Academy evaluations with the Academy squad and miss the cups until a club signs you. You take the same-role spot on the club.')}</h3>`,
+    `<h3>Find a club${info('You play Academy evaluations and the U21 Final Cup with the Academy squad until a club signs you. You take the same-role spot on the club.')}</h3>`,
     `<div class="clist">${run.teams
       .map(t => {
         const c = World.canJoin(run, t.i),

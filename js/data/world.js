@@ -146,7 +146,7 @@ const ECON = {
   warmupWin: 60,
   warmupLoss: 10,
   cupWin: 150, // × the cup's multiplier
-  place: { Quarterfinal: 100, Semifinal: 200, Final: 400, Champion: 800 } // × the cup's multiplier
+  place: { 'Round of 16': 50, Quarterfinal: 100, Semifinal: 200, Final: 400, Champion: 800 } // × the cup's multiplier
 };
 /**
  * Housing (region: where it is on the island): rent per payday; rest = stamina from a Rest week ×; moodPay = mood

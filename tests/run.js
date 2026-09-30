@@ -240,7 +240,7 @@ test('career: a full run reaches a result with sane values', () => {
       run = playRun(g, role),
       you = g.Run.you(run);
     assert(run.result && ['S', 'A', 'B', 'C'].includes(run.result.rank), 'run must end with a rank');
-    eq(run.cups.map(c => c.id).join(','), 'skyline,grand', 'both cups are played, whatever happens in the first');
+    eq(run.cups.map(c => c.id).join(','), 'u21', 'the U21 Final Cup ends every run (placing NO_CUP when your squad was not drawn)');
     eq(run.week, g.CAREER.weeks + 1, 'the season runs all 28 weeks');
     assert(run.hist.length >= 20, 'weekly history for the growth chart');
     for (const k of g.STATK) assert(you[k] <= g.Training.gate(run, k), `${k} past its limit-break gate`);
@@ -427,7 +427,7 @@ test('engine: recorded beats stay well-formed in every mode (no NaN, known playe
   }
 });
 
-test('career: free agent start, club join conditions, paydays, transfers, spectated cups', () => {
+test('career: free agent start, club join conditions, paydays, transfers, spectated cup', () => {
   const g = load(41),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Walk-on', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
     you = g.Run.you(run);
@@ -456,9 +456,10 @@ test('career: free agent start, club join conditions, paydays, transfers, specta
   eq(run.housing, 'homeless', 'evicted when broke');
   assert(run.gazette && run.gazette.items.length, 'gazette published');
   for (const t of run.teams) assert(t.P.length === 4 && t.P.every(p => p.team === t), 'transfers keep rosters linked');
-  // a free agent who never signs watches both cups and the run still ends
+  // a free agent who leaves the Academy and never signs watches the cup and the run still ends
   const h = load(42),
     r2 = h.Run.create(h.Run.draft(), { role: 'MB', name: 'Loner', alloc: { power: 10, def: 20, speed: 10, jump: 20 }, witSteps: 0 });
+  assert(h.World.leaveAcademy(r2), 'leaves the Academy squad');
   let guard = 0;
   while (!r2.result && guard++ < 200) {
     if (r2.event) {
@@ -484,7 +485,7 @@ test('career: free agent start, club join conditions, paydays, transfers, specta
     }
   }
   assert(r2.result, 'run ends');
-  eq(r2.cups.map(c => c.place).join(','), `${h.NO_CUP},${h.NO_CUP}`, 'both cups watched');
+  eq(r2.cups.map(c => c.place).join(','), h.NO_CUP, 'cup watched');
 });
 
 test('career: island map — regions, prices, quality, far trips, outings, scouting, 7-day weeks, saved', () => {
@@ -820,6 +821,104 @@ test('career: evaluation rules', () => {
   const gl = g2.FACTIONS.findIndex(f => f.region === 'gloria');
   r2.team = gl;
   eq(g2.Eval.kind(r2), null, 'a minor club has no evaluation');
+});
+
+test('bracket: 8 and 16 entries, byes', () => {
+  const g = load(1);
+  const play = order => {
+    const S = g.newBracket(order),
+      played = [];
+    let m;
+    while ((m = g.advanceBracket(S))) {
+      assert(m.a !== null && m.b !== null, 'a bye reached the caller');
+      m.w = Math.min(m.a, m.b); // the lower index wins
+      played.push(m.round);
+    }
+    return { S, played };
+  };
+  // 8 entries: 4 quarterfinals, 2 semifinals, a final — as before
+  const r8 = play([0, 7, 3, 4, 1, 6, 2, 5]);
+  eq(r8.played.join(), 'Quarterfinal,Quarterfinal,Quarterfinal,Quarterfinal,Semifinal,Semifinal,Final');
+  eq(g.bracketChampion(r8.S), 0);
+  eq(g.newBracket([0, 7, 3, 4, 1, 6, 2, 5])[1].round, 'Quarterfinal');
+  // 16 slots, 13 entrants (seeds 14–16 are byes)
+  const ord = g.seedOrder(16).map(s => (s <= 13 ? s - 1 : null));
+  eq(ord.filter(x => x === null).length, 3);
+  const r16 = play(ord);
+  eq(r16.played.length, 12, 'real matches with 3 byes');
+  eq(r16.played.filter(r => r === 'Round of 16').length, 5);
+  eq(g.bracketChampion(r16.S), 0);
+  assert(
+    r16.S.filter(x => x.round === 'Round of 16').every(x => x.w !== null),
+    'every first-round slot resolved'
+  );
+  eq(g.bracketChampion(g.newBracket(ord)), null, 'no champion before the final');
+  // seeds: 1 plays n, and seeds 1 and 2 sit in opposite halves
+  for (const n of [8, 16]) {
+    const o = g.seedOrder(n);
+    eq(new Set(o).size, n);
+    for (let k = 0; k < n; k += 2) eq(o[k] + o[k + 1], n + 1);
+    assert(o.indexOf(1) < n / 2 && o.indexOf(2) >= n / 2, 'seeds 1 and 2 meet only in the final');
+  }
+  // an all-bye pair advances nothing
+  const S = g.newBracket([0, 1, null, null, 2, 3, 4, 5]);
+  g.advanceBracket(S);
+  assert(S[1].bye === true && S[1].w === null, 'empty slot marked bye');
+});
+test('career: U21 Final Cup — entrants, seeding, byes, restore', () => {
+  const mk = seed => {
+    const g = load(seed);
+    return [
+      g,
+      g.Run.create(g.Run.draft(), { role: 'WS', name: 'Cupper', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 })
+    ];
+  };
+  // an Academy run: 12 drawn squads + the Academy squad, 3 byes, you are the Academy entrant
+  const [g, run] = mk(61),
+    sizes = Object.keys(g.POOL).map(r => g.Pool.size(run, r)),
+    all = Object.keys(g.POOL)
+      .flatMap(r => g.Pool.players(run, r))
+      .concat(run.pickup.P),
+    homes = all.map(p => p.team);
+  g.Cup.start(run, g.CUPS[0]);
+  const E = run.cup.entrants,
+    S = run.cup.sched;
+  eq(E.length, 13, '12 drawn squads + the Academy squad');
+  assert(E[run.cup.me].academy, 'you are in the Academy entrant');
+  eq(S.filter(x => x.round === 'Round of 16' && (x.a == null || x.b == null)).length, 3, 'the 3 top seeds have byes');
+  eq(new Set(E.flatMap(e => e.ids)).size, E.flatMap(e => e.ids).length, 'no player in two squads');
+  const top = E.map((e, i) => [i, g.Eval.squad(run, e.ids, e.name, e.color, e.region).ovr]).sort((a, b) => b[1] - a[1])[0][0];
+  assert(S[0].a === top && S[0].b == null, 'the top seed sits first with a bye');
+  g.Cup.finishBracket(run);
+  const champ = E[g.bracketChampion(S)];
+  assert(champ && typeof champ.name === 'string', 'one champion');
+  assert(
+    all.every((p, i) => p.team === homes[i]),
+    'every player is back on their real team'
+  );
+  eq(
+    Object.keys(g.POOL)
+      .map(r => g.Pool.size(run, r))
+      .join(),
+    sizes.join(),
+    'pool sizes unchanged'
+  );
+  // a Shu member with standing 60 is always drawn
+  const [g2, r2] = mk(62),
+    shu = g2.FACTIONS.findIndex(f => f.region === 'shu');
+  g2.FACTIONS[shu].join = {};
+  assert(g2.World.join(r2, shu), 'joins Shu');
+  r2.rep = Object.assign({}, r2.rep, { shu: 60 });
+  g2.Cup.start(r2, g2.CUPS[0]);
+  assert(r2.cup.me >= 0 && !r2.cup.entrants[r2.cup.me].academy, 'a trusted member plays for a Shu squad');
+  assert(!r2.result, 'the cup is on');
+  // alone: watch it from the stands
+  const [g3, r3] = mk(63);
+  g3.World.leaveAcademy(r3);
+  g3.Cup.start(r3, g3.CUPS[0]);
+  eq(r3.cup.me, -1, 'not in the cup');
+  eq(r3.cups[0].place, g3.NO_CUP, 'placing: did not play');
+  assert(r3.result && typeof r3.result.champ === 'string', 'the run ends and names the champion');
 });
 
 // ---------- report ----------

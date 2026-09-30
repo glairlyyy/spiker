@@ -70,8 +70,8 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   The pickup squad (`World.pickup`) stays, reframed as the Academy squad (§4.11).
 - §4.2 Island: 3 major factions — Wei (city; north + east), Wu (beach/coast; east/south + an inland strip;
   most aggressive), Shu (mountain highlands; west) — plus borderless minor factions. No unclaimed land except the
-  neutral middle zone, region `open`. **[locked, not built]** it becomes **Central Academy** (lore.md §4): entry point,
-  fields no team, never seized. Code still says "Sacred Shrine Park". Today: 2 squads per major + 2 minor clubs = 8
+  neutral middle zone, region `open` = **Central Academy** **[built]** (lore.md §4): entry point,
+  fields no team, never seized. Today: 2 squads per major + 2 minor clubs = 8
   fixed teams — they stay as each faction's home squads (training, bonds, scouting, transfers); matches that
   matter (evaluations, U21 Final Cup) use squads drawn from the faction pools (§4.11).
 - §4.3 Regions set prices/quality: Wei pricey (maybe overhyped), Shu cheap (maybe a hidden gem), Wu sand = technique.
@@ -96,11 +96,11 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   Scale: 1 map unit = 0.5 m. The player is the default VRM model; when `you.at` changes it walks / runs there (display
   only — rules stay instant), camera follows; trips last 1.2–6 s with a ×N time-lapse badge. Moving world entities,
   hour clock and day/night are later (M1 / M3).
-- §4.10 Facility access **[locked, not built]**: a place is usable if you can pay, your standing with its owner
+- §4.10 Facility access **[built; condition values pending the balance pass]**: a place is usable if you can pay, your standing with its owner
   region isn't a grudge (standing ≤ `ACCESS.grudge`, default −20, tuned in the balance pass), and you meet the owner's condition (per faction, lore.md §5 dogma; values set in
   the balance pass). Members of the owning faction always get in. Central Academy grounds and Home are always
   open. Ownership changes on seizure, so access can flip. Today standing is display-only.
-- §4.11 Competition structure **[locked; pools, draw, reserves growth, Academy squad and monthly evaluations built (Pool, Eval); U21 Final Cup not built]** — replaces the 8 fixed teams, warm-ups and both cups:
+- §4.11 Competition structure **[locked; built: pools, draw, reserves growth, Academy squad, monthly evaluations, U21 Final Cup]** — replaces the 8 fixed teams, warm-ups and both cups:
   - Faction pools: each faction holds a roster instead of fixed teams. Sizes: Wei 20, Wu 14, Shu 10, Street
     Outlaws 6, St. Gloria 5 (tunable). Squads of 4 are drawn per event.
   - Draw: weighted by rating and standing with that faction; a guaranteed spot above a high-standing threshold
@@ -174,5 +174,4 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     them → more errors, trait off for a while);
   - one weakness revealed by scouting (e.g. float serves, left lane, short fuse), shown in the match UI.
 - New-run setup + results screens. Hype scene frequency tuning (§2.3).
-- Competition structure (§4.11) — needs staging: pools → draw → evaluations → U21 Final Cup; big career/test impact.
-- Shrine Park → Central Academy (§4.2). Facility access gating (§4.10). Voice pass over existing strings (§6).
+- Voice pass over existing strings (§6) = T-022.

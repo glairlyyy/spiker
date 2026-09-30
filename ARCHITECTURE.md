@@ -63,9 +63,9 @@ The match screen takes a fixture: `navigate('match', { a, b, round, back, onFini
 ## Career mode
 
 - `RUN` is the active run (`career/run.js`); saved to `KEYS.career` after every week (`teamToJSON`/`teamFromJSON` in `engine/save.js`).
-- **Season:** 28 weeks in two blocks — weeks 1–24 then the **Skyline Cup**, weeks 25–28 then the seeded **Grand Cup**
-  (`CUPS` in `data/career.js`; ×1.5 rewards). Losing the Skyline Cup no longer ends the run; each cup pays placement
-  rewards (`PLACES`) and winning both is a Double Crown. `Run.weekType` is 'cup' while `run.cup` is live.
+- **Season:** 28 weeks: monthly evaluations (weeks 4–24), camp (26–28), then the **U21 Final Cup** (`CUPS` in
+  `data/career.js`, one entry, ×1.5 rewards; see "U21 Final Cup"). Every cup close ends the run. `Run.weekType` is 'cup'
+  while `run.cup` is live.
 - **Training depth** (`career/training.js`, `TRAIN_X`): facility Lv 1–5 by use, Hard option, same-training streaks,
   steeper diminishing returns, Limit Break gates at 80 and 90 (a trial event when a stat reaches its gate), injuries
   when a session fails while exhausted (light training until healed, or the physio).
@@ -282,7 +282,7 @@ celebrations, huddle, the serve routine).
 `js/data/world.js` (FACTIONS per league team with join conditions, ECON, HOUSING) + `js/career/world.js` (World).
 A run starts as a free agent on a pickup squad (`run.pickup`, `run.team` null; `Run.myTeam` returns it) unless the
 Team pick unlock chose a club. `World.join` swaps you into a club's same-role slot (the replaced player drops to the
-pickup squad). Free agents play warm-ups with the pickup squad and watch the cups (`NO_CUP` placing). Every
+pickup squad). Free agents in the Academy squad play its evaluations and enter the cup with it; alone (`NO_CUP` placing) they watch it. Every
 `ECON.payEvery` weeks: allowance − food − rent (eviction to the abandoned gym when broke), housing effects, one
 league transfer (`World.transfers`) and a Gazette (`run.gazette`, news collected via `Run.news`).
 
@@ -291,7 +291,7 @@ league transfer (`World.transfers`) and a Gazette (`run.gazette`, news collected
 Each faction (`POOL` in `js/data/world.js`: Wei 20, Wu 14, Shu 10, Outlaws 6, St. Gloria 5) is a roster = its league-team
 players + generated reserves. `Pool.build(teams, used)` (`js/career/pool.js`, called by `Run.draft`) makes one
 reserve team per region (`run.reserve[region]`, `i: -1`, `P` may be empty); `Pool.players(run, r)` / `Pool.size(run, r)`
-list a faction's team players then reserves. Reserves are saved (`run.reserve`, RUN_VERSION 2; older saves are dropped)
+list a faction's team players then reserves. Reserves are saved (`run.reserve`; older saves are dropped)
 and not used in play yet. A player lives in exactly one place; `you` and the pickup squad are never reserves.
 `Pool.draw(run, r, n)` returns n squads `[S, MB, WS, WS]` (new arrays, nothing mutated): weighted by ovr (`DRAW` in world.js),
 you are a candidate only while signed with r, and a standing ≥ `DRAW.sure` puts you in squad 1.
@@ -304,6 +304,17 @@ non-null (`'academy'`: free agent still in the Academy squad, `'faction'`: signe
 (player id arrays, from `Pool.draw`; `mine` null = Academy squad or not drawn). `Eval.squad` builds a temporary team;
 `Eval.lend` / `restore` point players' `team`, `cap` and `slot` at it for the match and back (never `finalizeTeam` on it).
 `Eval.bench` = not selected: wit XP worth `EVAL.benchDays` day-sessions.
+
+## U21 Final Cup
+
+`js/career/cup.js`. After week 28 `Cup.start` calls `Cup.entrants(run)`: every faction's `Pool.draw` squads (named
+`<Region> I, II…`), then the Academy squad while you are a free agent still in it. Saved as
+`run.cup = { id, entrants: [{ name, short, color, region, ids, academy }], me, sched, done }` (RUN_VERSION 3; `me` = your
+entrant index, −1 = not in it → you watch and `NO_CUP`). Entrants are ranked by `Eval.squad(...).ovr`, placed by
+`seedOrder(16)` (top seeds get byes as nulls) into `newBracket`; bracket entries hold entrant indexes. `Cup.team(run, i)`
+builds a squad on demand (the Academy entrant is `run.pickup`). Every match, yours (`Cup.fixture('cup')`) or simulated
+(`Cup.simulate`), `Eval.lend`s both squads and `Eval.restore()`s right after. `Cup.close` records
+`run.cups[{ id, place, champ: name }]` and ends the run (`run.result.champ` = winner's name).
 
 ## Faction dossier
 
