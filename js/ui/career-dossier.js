@@ -42,7 +42,7 @@ function dossierCard(run, r) {
   const clubs = `<h4>Clubs</h4>${d.clubs
     .map(
       c =>
-        `<div class="dclub">${chip(c)}<b>${esc(c.name)}</b> <span class="small mute">rating ${c.ovr} · ${esc(c.join)}</span>${
+        `<div class="dclub">${chip(c)}<b>${esc(c.name)}</b> <span class="small mute">rating ${c.ovr} · ${esc(c.join)}</span>${c.habits ? `<div class="small mute">${esc(Dossier.habitText(c.habits))}</div>` : ''}${
           free
             ? ` <button class="btn ${c.can.ok ? 'hot' : ''}" onclick="joinClub(${c.ti})" ${c.can.ok ? '' : `disabled ${tip('Missing: ' + c.can.why.join(', '))}`}>Sign</button>`
             : ''
@@ -54,7 +54,7 @@ function dossierCard(run, r) {
   }<div class="dros small">${d.roster
     .map(
       p =>
-        `<span><b>${esc(p.name)}</b> <i class="mute">${p.role}</i> <span class="mute">${esc(p.squad)}</span> ${p.ovr == null ? '<i class="mute">unknown</i>' : `<b>${p.ovr}</b>${p.el ? ` <b style="color:${ECOL[p.el]}">${ENAME[p.el]}</b>` : ''}`}</span>`
+        `<span><b>${esc(p.name)}</b> <i class="mute">${p.role}</i> <span class="mute">${esc(p.squad)}</span> ${p.ovr == null ? '<i class="mute">unknown</i>' : `<b>${p.ovr}</b>${p.el ? ` <b style="color:${ECOL[p.el]}">${ENAME[p.el]}</b>` : ''}${p.techs && p.techs.length ? ` <span class="mute">· ${esc(p.techs.join(', '))}</span>` : ''}`}</span>`
     )
     .join('')}</div>`;
   return `<aside class="panel dossier" style="--tc:${d.color}">

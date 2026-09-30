@@ -243,7 +243,6 @@ test('career: a full run reaches a result with sane values', () => {
     eq(run.cups.map(c => c.id).join(','), 'u21', 'the U21 Final Cup ends every run (placing NO_CUP when your squad was not drawn)');
     eq(run.week, g.CAREER.weeks + 1, 'the season runs all 28 weeks');
     assert(run.hist.length >= 20, 'weekly history for the growth chart');
-    for (const k of g.STATK) assert(you[k] <= g.Training.gate(run, k), `${k} past its limit-break gate`);
     for (const k of g.STATK) assert(you[k] >= 25 && you[k] <= 99, `${k} out of range: ${you[k]}`);
     assert(you.wit >= 0.1 && you.wit <= 2, 'wit out of range');
     assert(run.sta >= 0 && run.sta <= run.staMax, 'stamina out of range');
@@ -267,23 +266,164 @@ test('career: save → load round-trip keeps the run intact', () => {
   eq(g.Run.you(back).team, g.Run.myTeam(back), 'player re-linked to team');
   eq(JSON.stringify(back.teams.map(g.teamToJSON)), JSON.stringify(run.teams.map(g.teamToJSON)), 'teams');
 });
-test('career: Limit Break gates, facility Lv 5 and Hard training', () => {
+test('career: training cap, facility Lv 5 and Hard training', () => {
   const g = load(10),
-    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Gate', alloc: { power: 30, def: 10, speed: 10, jump: 10 }, witSteps: 0 }),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Cap', alloc: { power: 30, def: 10, speed: 10, jump: 10 }, witSteps: 0 }),
     you = g.Run.you(run);
-  you.power = 79;
-  run.sta = 100;
-  g.Training.train(run, 'power');
-  eq(you.power, 80, 'power stops at the 80 gate');
-  eq(run.event && run.event.id, 'limit', 'the trial is offered at the gate');
-  run.lb.power = 1;
-  eq(g.Training.gate(run, 'power'), 90, 'first Limit Break opens the way to 90');
+  eq(g.TRAIN_CAP, 75, 'training cap');
+  you.power = 60;
+  for (let i = 0; i < 200; i++) {
+    run.sta = 100;
+    run.injury = null;
+    run.mood = 4;
+    g.Training.train(run, 'power');
+    assert(!run.event, 'no Limit Break event any more');
+  }
+  eq(you.power, 75, '200 sessions stop power at 75');
+  eq(g.Training.preview(run, 'power', false).cap, 75, 'the preview says the stat is capped');
+  const xp0 = run.xp.power || 0;
+  g.Training.addXp(run, 'power', 500);
+  eq(you.power, 75, 'XP from training past the cap does nothing');
+  eq(run.xp.power || 0, xp0, '…and banks nothing');
+  g.Run.bump(run, 'power', 10);
+  eq(you.power, 75, 'an event bump at 75 does nothing');
+  you.power = 80;
+  g.Run.bump(run, 'power', -5);
+  eq(you.power, 75, 'a negative event still applies to a raised stat');
+  you.power = 80;
+  g.Run.bump(run, 'power', 4);
+  eq(you.power, 80, 'a stat already at 80 is not lowered by a positive bump');
+  g.Training.addXp(run, 'power', 100000, 'match');
+  assert(you.power > 80, 'match XP goes past the training cap');
+  assert(!('lb' in run) && g.RUN_VERSION === 5, 'no Limit Break progress in the run; RUN_VERSION 5');
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
-  run.event = null;
   const n = g.Training.preview(run, 'power', false).main[2],
     h = g.Training.preview(run, 'power', true);
   assert(h.main[2] > n && h.sta === 2 * g.Training.preview(run, 'power', false).sta, 'Hard: more gain, double stamina');
+});
+test('career: match XP — performance, opponent strength, past the cap', () => {
+  const g = load(61),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Xp', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    you = g.Run.you(run),
+    mine = g.Run.myTeam(run),
+    foe = run.teams[1],
+    line = { k: 4, blk: 2, dig: 3, ast: 6, ace: 1, att: 10, err: 0 };
+  const xpFor = (oppLevel, winner) => {
+    for (const p of foe.P) for (const k of g.STATK) p[k] = oppLevel;
+    const got = {},
+      keep = g.Training.addXp;
+    g.Training.addXp = (r, stat, xp, src) => ((got[stat] = xp), eq(src, 'match', 'source'), '');
+    const m = { stat: { [you.id]: line }, lineup0: [{ P: mine.P }, { P: foe.P }], winner };
+    g.Growth.matchXp(run, m, mine, foe);
+    g.Training.addXp = keep;
+    return got;
+  };
+  const base = g.teamOvr(mine);
+  for (const p of foe.P) for (const k of g.STATK) p[k] = 60;
+  // a level that gives the same team ovr as yours: search
+  let L = 25;
+  while (L < 99 && g.teamOvr({ P: foe.P.map(p => ({ ...p, ...Object.fromEntries(g.STATK.map(k => [k, L])) })) }) < base) L++;
+  const eq1 = xpFor(L, 0);
+  eq(eq1.power, 4 * 12 + 1 * 8, 'kills and aces → power');
+  eq(eq1.jump, 2 * 8 + 10, 'blocks and attempts → jump');
+  eq(eq1.def, 2 * 8 + 3 * 6, 'blocks and digs → defense');
+  eq(eq1.speed, 3 * 6, 'digs → speed');
+  eq(eq1.wit, 6 * 2, 'assists → wit');
+  const strong = xpFor(L + 12, 0),
+    weak = xpFor(L - 30, 0);
+  assert(strong.power > eq1.power && strong.power <= eq1.power * 2, `stronger side gives more (${strong.power} vs ${eq1.power})`);
+  eq(weak.power, Math.round(56 * 0.3), 'a much weaker side gives ×0.3');
+  eq(JSON.stringify(xpFor(L, 1)), JSON.stringify(eq1), 'the winner flag changes nothing');
+  // past the training cap: matches raise a stat at 75
+  you.power = 75;
+  run.xp = {};
+  const label = g.Training.addXp(run, 'power', 200, 'match');
+  assert(you.power > 75 && /^\+\d+ Power/.test(label), `a stat at 75 rises from match XP (${you.power})`);
+  // never played → no XP line
+  for (const p of foe.P) for (const k of g.STATK) p[k] = 55;
+  run.week = 4;
+  run.eval = null;
+  run.event = null;
+  const fx = g.Cup.fixture(run, 'eval'),
+    m = g.newMatch(fx.a, fx.b, false);
+  while (!m.over) g.playRally(m);
+  m.played.delete(you.id);
+  const xp0 = JSON.stringify({ ...run.xp, wit: 0 }),
+    txt = fx.onFinish(m);
+  assert(!/XP:/.test(txt) && JSON.stringify({ ...run.xp, wit: 0 }) === xp0, `never played → no match XP (${txt})`);
+  // a played match shows the XP labels
+  run.week = 8;
+  run.eval = null;
+  run.event = null;
+  const fx2 = g.Cup.fixture(run, 'eval'),
+    m2 = g.newMatch(fx2.a, fx2.b, false);
+  while (!m2.over) g.playRally(m2);
+  m2.played.add(you.id);
+  m2.stat[you.id] = { ...g.blank(), k: 5, blk: 1 };
+  assert(/XP: /.test(fx2.onFinish(m2)), 'the result line shows the XP labels');
+});
+test('career: techniques are learned in play, not bought', () => {
+  const g = load(71),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Tech', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    you = g.Run.you(run);
+  run.sp = 9999;
+  assert(
+    !g.Skills.canLearn(run, 'cutshot') && !g.Skills.learn(run, 'cutshot') && !you.skills.includes('cutshot'),
+    'a technique cannot be bought'
+  );
+  assert(g.Skills.canLearn(run, 'thunder'), 'a basic skill still can');
+  // a fake finished match: you are on side 0, the foe on side 1
+  const foe = run.teams[1],
+    mk = (line, teacher) => {
+      for (const p of foe.P) {
+        p.skills = [];
+        p.wit = 0.1;
+        for (const k of g.STATK) p[k] = 30; // meets no technique's requirement
+      }
+      if (teacher) foe.P[0].skills = [teacher];
+      const stat = { [you.id]: { ...g.blank(), ...line } };
+      return {
+        stat,
+        t: [g.Run.myTeam(run), foe],
+        lineup0: [{ P: g.Run.myTeam(run).P }, { P: foe.P }],
+        played: new Set(foe.P.map(p => p.id))
+      };
+    };
+  const low = g.RNG.next;
+  g.RNG.next = () => 0.001;
+  // by doing: 3+ kills → an Attack technique for a WS (cutshot / delayed spike), first in SKILLS order
+  let txt = g.Skills.tryLearn(run, mk({ k: 3 }));
+  assert(/^Learned .+ in play \(by doing\)$/.test(txt) && you.skills.length === 1, `learned by doing: ${txt}`);
+  assert(g.SKILLS[you.skills[0]].tech === 'Attack', 'an Attack technique');
+  // never two in one match, and a second match with the same line teaches the next one
+  eq(you.skills.length, 1, 'one technique per match');
+  txt = g.Skills.tryLearn(run, mk({ k: 3 }));
+  eq(you.skills.length, 2, 'the next match teaches another');
+  // below the thresholds and nobody with it → nothing (and no random draw)
+  let draws = 0;
+  g.RNG.next = () => (draws++, 0.001);
+  eq(g.Skills.tryLearn(run, mk({ k: 1 })), '', 'nothing learned below the threshold');
+  eq(draws, 0, 'no candidate → no roll');
+  // by facing: a foe who has a Serve technique, you did nothing
+  you.skills = [];
+  const m = mk({}, 'target');
+  foe.P[0].skills = ['target'];
+  txt = g.Skills.tryLearn(run, m);
+  assert(/from /.test(txt) && you.skills.includes('target'), `learned by facing: ${txt}`);
+  g.RNG.next = () => 0.999;
+  you.skills = [];
+  eq(g.Skills.tryLearn(run, mk({ k: 9 })), '', 'a high roll learns nothing');
+  g.RNG.next = low;
+  // scouting: the dossier lists techniques only once ratings are visible
+  const d = g.Dossier.build(run, 'wei');
+  assert(
+    d.roster.every(p => (d.scouted || d.member ? Array.isArray(p.techs) : p.techs === null)),
+    'dossier techs hidden until scouted'
+  );
+  run.scout = Object.fromEntries(run.teams.map(t => [t.i, run.week]));
+  const d2 = g.Dossier.build(run, 'wei');
+  assert(d2.scouted && d2.roster.every(p => Array.isArray(p.techs)), 'dossier techs shown once scouted');
 });
 test('engine: elements — rarity, every element fires, counters, captain buff', () => {
   const g = load(21);
@@ -391,7 +531,7 @@ test('engine: staged scenes are rare and well-formed', () => {
     matches = 0;
   for (let i = 0; i < 10; i++) {
     const [a, b] = g.mkTeams(),
-      ids = new Set([...a.P, ...b.P].map(p => p.id)),
+      ids = new Set([...g.squadOf(a), ...g.squadOf(b)].map(p => p.id)),
       m = g.newMatch(a, b, true);
     while (!m.over)
       for (const bt of g.playRally(m).beats) {
@@ -412,7 +552,7 @@ test('engine: recorded beats stay well-formed in every mode (no NaN, known playe
     const g = load(9000 + s),
       T = g[['mkTeams', 'mkMonsterTeams', 'mkLeagueTeams'][s % 3]](),
       [a, b] = [T[0], T[1 + (s % (T.length - 1))]],
-      ids = new Set([...a.P, ...b.P].map(p => p.id)),
+      ids = new Set([...g.squadOf(a), ...g.squadOf(b)].map(p => p.id)),
       m = g.newMatch(a, b, true);
     let guard = 0;
     while (!m.over && guard++ < 200)
@@ -420,6 +560,7 @@ test('engine: recorded beats stay well-formed in every mode (no NaN, known playe
         assert(bt.dur > 0 && Number.isFinite(bt.dur), 'beat duration');
         for (const x of bt.acts) {
           for (const f of ['p', 'p1', 'p2']) if (x[f] != null) assert(ids.has(x[f]), `${x.k} names an unknown player`);
+          if (x.k === 'sub') assert(ids.has(x.out) && ids.has(x.in), 'sub names known players');
           for (const [k, v] of Object.entries(x)) if (typeof v === 'number') assert(Number.isFinite(v), `${x.k}.${k} is not finite`);
         }
       }
@@ -635,8 +776,15 @@ test('career: faction pools — sizes, reserves, no overlap, saved', () => {
   const ids = new Set();
   let n = 0;
   const all = [...run.teams, run.pickup, ...Object.values(run.reserve)].filter(Boolean);
-  for (const t of all) for (const p of t.P) (ids.add(p.id), n++);
+  for (const t of all) for (const p of g.squadOf(t)) (ids.add(p.id), n++);
   assert(ids.size === n, 'every player id is unique across teams, pickup and reserves');
+  eq(
+    Object.keys(g.POOL)
+      .map(r => (run.reserve[r] ? run.reserve[r].P.length : 0))
+      .join(),
+    '12,6,0,0,0',
+    'reserves fill Wei 24 / Wu 18 / Shu 12 / Outlaws 6 / Gloria 6'
+  );
   const you = g.Run.you(run);
   for (const [r, t] of Object.entries(run.reserve)) {
     assert(t.P.length > 0 || g.Pool.size(run, r) === g.POOL[r], `reserve ${r} fills the pool`);
@@ -671,12 +819,12 @@ test('career: pool draw — squads, roles, weights, your spot', () => {
     run = g.Run.create(g.Run.draft(), spec);
   const before = JSON.stringify([run.teams.map(g.teamToJSON), Object.values(run.reserve).map(g.teamToJSON)]);
   const sq = g.Pool.draw(run, 'wei');
-  assert(sq.length === 5 && sq.every(s => s.length === 4), 'Wei draws 5 squads of 4');
+  assert(sq.length === 4 && sq.every(s => s.length === 6), 'Wei draws 4 squads of 6');
   const flat = sq.flat();
-  assert(new Set(flat).size === 20, 'no player twice');
+  assert(new Set(flat).size === 24, 'no player twice');
   assert(
-    sq.every(s => s[0].role === 'S' && s[1].role === 'MB'),
-    'each squad has a setter and a middle'
+    sq.every(s => s[0].role === 'S' && s[1].role === 'MB' && s[2].role === 'WS' && s[3].role === 'WS'),
+    'the first 4 of each squad are in court order S, MB, WS, WS (2 more on the bench)'
   );
   const rated = g.Pool.players(run, 'wei')
       .filter(p => !p.you)
@@ -776,7 +924,7 @@ test('career: evaluation rules', () => {
   run.week = 4;
   run.eval = null;
   const e = g.Eval.setup(run);
-  assert(e && e.kind === 'academy' && e.mine === null && e.opp.length === 4, 'week 4: your side is the squad, the opponent has 4 ids');
+  assert(e && e.kind === 'academy' && e.mine === null && e.opp.length === 6, 'week 4: your side is the squad, the opponent has 6 ids');
   const pool = new Set(g.Pool.players(run, e.region).map(p => p.id));
   assert(g.MAJORS.includes(e.region) && e.opp.every(id => pool.has(id)), 'the opponent is drawn from one major pool');
   eq(g.Run.weekType(run), 'eval', 'week 4 is an evaluation week');
@@ -814,7 +962,7 @@ test('career: evaluation rules', () => {
   const e2 = g2.Eval.setup(r2),
     you = g2.Run.you(r2);
   assert(
-    e2.kind === 'faction' && e2.region === 'wei' && e2.mine.includes(you.id) && e2.opp.length === 4,
+    e2.kind === 'faction' && e2.region === 'wei' && e2.mine.includes(you.id) && e2.opp.length === 6,
     'faction evaluation: you are in it'
   );
   assert(!e2.opp.some(id => e2.mine.includes(id)), 'a different squad');
@@ -873,19 +1021,23 @@ test('career: U21 Final Cup — entrants, seeding, byes, restore', () => {
       g.Run.create(g.Run.draft(), { role: 'WS', name: 'Cupper', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 })
     ];
   };
-  // an Academy run: 12 drawn squads + the Academy squad, 3 byes, you are the Academy entrant
+  // an Academy run: 11 drawn squads + the Academy squad, 4 byes, you are the Academy entrant
   const [g, run] = mk(61),
     sizes = Object.keys(g.POOL).map(r => g.Pool.size(run, r)),
     all = Object.keys(g.POOL)
       .flatMap(r => g.Pool.players(run, r))
-      .concat(run.pickup.P),
+      .concat(g.squadOf(run.pickup)),
     homes = all.map(p => p.team);
   g.Cup.start(run, g.CUPS[0]);
   const E = run.cup.entrants,
     S = run.cup.sched;
-  eq(E.length, 13, '12 drawn squads + the Academy squad');
+  eq(E.length, 12, '11 drawn squads (Wei 4, Wu 3, Shu 2, Outlaws 1, Gloria 1) + the Academy squad');
+  assert(
+    E.every(e => e.ids.length === 6),
+    'every squad has 6'
+  );
   assert(E[run.cup.me].academy, 'you are in the Academy entrant');
-  eq(S.filter(x => x.round === 'Round of 16' && (x.a == null || x.b == null)).length, 3, 'the 3 top seeds have byes');
+  eq(S.filter(x => x.round === 'Round of 16' && (x.a == null || x.b == null)).length, 4, 'the 4 top seeds have byes');
   eq(new Set(E.flatMap(e => e.ids)).size, E.flatMap(e => e.ids).length, 'no player in two squads');
   const top = E.map((e, i) => [i, g.Eval.squad(run, e.ids, e.name, e.color, e.region).ovr]).sort((a, b) => b[1] - a[1])[0][0];
   assert(S[0].a === top && S[0].b == null, 'the top seed sits first with a bye');
@@ -919,6 +1071,286 @@ test('career: U21 Final Cup — entrants, seeding, byes, restore', () => {
   eq(r3.cup.me, -1, 'not in the cup');
   eq(r3.cups[0].place, g3.NO_CUP, 'placing: did not play');
   assert(r3.result && typeof r3.result.champ === 'string', 'the run ends and names the champion');
+});
+
+test('engine: lane-read block — stuff rate and defence settings', () => {
+  // Read vs Read over five team sets: stuffs (kill blocks) and hitter kills as a share of all attacks
+  let n = 0,
+    stuffs = 0,
+    kills = 0;
+  for (const seed of [20, 37, 54, 71, 88]) {
+    const g = load(seed),
+      T = g.mkTeams();
+    for (let i = 0; i < 50; i++) {
+      const m = g.simMatch(T[i % 8], T[(i * 3 + 1) % 8]);
+      for (const a of m.att) {
+        n += a.n;
+        kills += a.k;
+      }
+      for (const id in m.stat) stuffs += m.stat[id].blk;
+    }
+  }
+  const stuffRate = stuffs / n;
+  assert(stuffRate >= 0.12 && stuffRate <= 0.16, `stuff rate ${(100 * stuffRate).toFixed(1)} % is outside 12–16 %`);
+  assert(kills / n >= 0.36 && kills / n <= 0.48, `hitter kill rate ${((100 * kills) / n).toFixed(1)} % drifted from ~42 %`);
+  // a fixed attack style against each defence setting (attacker: side 0)
+  const g = load(9),
+    T = g.mkTeams(),
+    run = (tac, dset) => {
+      const t = { q: 0, qs: 0, pin: 0, pins: 0 };
+      for (let i = 0; i < 400; i++) {
+        const a = g.simMatch(T[i % 8], T[(i * 3 + 1) % 8], { tac: [tac, 'auto'], dset: ['read', dset] }).att[0];
+        t.q += a.q;
+        t.qs += a.qs;
+        t.pin += a.pin;
+        t.pins += a.pins;
+      }
+      return { quickStuff: t.qs / t.q, pinStuff: t.pins / t.pin };
+    };
+  const mbRead = run('mb', 'read'),
+    mbCommit = run('mb', 'commit'),
+    wsRead = run('ws', 'read'),
+    wsBunch = run('ws', 'bunch');
+  assert(
+    mbCommit.quickStuff > mbRead.quickStuff + 0.03,
+    `Commit stuffs more quicks (${mbCommit.quickStuff.toFixed(3)} vs ${mbRead.quickStuff.toFixed(3)})`
+  );
+  assert(
+    wsBunch.pinStuff < wsRead.pinStuff - 0.02,
+    `Bunch leaves the pins open (${wsBunch.pinStuff.toFixed(3)} stuffed vs ${wsRead.pinStuff.toFixed(3)})`
+  );
+});
+test('engine: defence settings — AI default, captain switch, scouting habits', () => {
+  const g = load(9),
+    T = g.mkTeams(),
+    wall = T.find(t => t.S === g.STYLES.wall),
+    tempo = T.find(t => t.S === g.STYLES.tempo);
+  if (wall) eq(g.newMatch(wall, T[0]).dset[0], 'bunch', 'a wall team starts on Bunch');
+  if (tempo) eq(g.newMatch(tempo, T[0]).dset[0], 'commit', 'a tempo team starts on Commit');
+  eq(g.newMatch(T[0], T[1], false, { dset: ['bunch', null] }).dsetMode.join(), 'fixed,cap', 'a fixed setting is not the captain’s');
+  // a leading captain answers a quick-heavy opponent with Commit (never when the setting is fixed)
+  const cap = T.find(t => t.S !== g.STYLES.tempo && t !== T[7]) || T[1],
+    foe = T[7];
+  for (const p of cap.P) p.lead = 100;
+  let sw = 0,
+    fixedSw = 0;
+  for (let i = 0; i < 50; i++) {
+    const m = g.simMatch(foe, cap, { tac: ['mb', 'auto'] });
+    sw += m.dsetLog.filter(x => x.side === 1 && x.to === 'commit').length;
+    fixedSw += g.simMatch(foe, cap, { tac: ['mb', 'auto'], dset: ['read', 'read'] }).dsetLog.length;
+  }
+  assert(sw >= 1, 'the captain switches to Commit against an MB-focus attack');
+  eq(fixedSw, 0, 'a fixed defence setting never changes');
+});
+test('career: scouting shows attack habits', () => {
+  const g = load(94),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Habits', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
+  run.event = null;
+  run.days = 7;
+  const wei = g.FACTIONS.findIndex(f => f.region === 'wei');
+  let d = g.Dossier.build(run, 'wei');
+  assert(
+    d.clubs.every(c => c.habits === null),
+    'unscouted: no habits'
+  );
+  assert(g.City.scout(run, wei), 'scout a Wei club');
+  d = g.Dossier.build(run, 'wei');
+  const h = d.clubs.find(c => c.ti === wei).habits;
+  assert(h && h.quick >= 0 && h.quick <= 70 && g.DEFSETS[h.def], 'scouted: habits are filled');
+  assert(/^Quicks ~\d+ %.*Defence: \w+$/.test(g.Dossier.habitText(h)), 'the habit line reads as one line');
+});
+
+test('teams: 4 on court + 2 bench, unique numbers, captain on court', () => {
+  const g = load(77),
+    sets = {
+      tournament: g.mkTeams(),
+      league: g.mkLeagueTeams(),
+      monster: g.mkMonsterTeams(),
+      pickup: [g.World.pickup(new Set())]
+    };
+  for (const [k, T] of Object.entries(sets))
+    for (const t of T) {
+      eq(t.P.length, 4, `${k}: 4 on court`);
+      eq(t.bench.length, 2, `${k}: 2 on the bench`);
+      const all = g.squadOf(t);
+      eq(all.length, 6, `${k}: squadOf is 6`);
+      eq(new Set(all.map(p => p.num)).size, 6, `${k}: shirt numbers unique across the squad`);
+      assert(
+        all.every(p => p.team === t),
+        `${k}: everyone links to the team`
+      );
+      assert(t.P.includes(t.cap) && t.cap.cap && !t.bench.some(p => p.cap), `${k}: the captain plays`);
+      assert(
+        all.every(p => Number.isFinite(p.lead) && p.el != null),
+        `${k}: leadership and element cover the bench`
+      );
+      eq(t.ovr, g.teamOvr(t), `${k}: rating is the 4 starters`);
+    }
+  // a save keeps the bench
+  const run = g.Run.create(g.Run.draft(), { role: 'MB', name: 'Bench', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
+  g.Run.save(run);
+  const back = g.Run.load();
+  for (const [i, t] of run.teams.entries()) {
+    const b = back.teams[i];
+    eq(b.bench.map(p => p.id).join(), t.bench.map(p => p.id).join(), 'bench ids round-trip');
+    assert(
+      b.bench.every(p => p.team === b),
+      'bench players are re-linked'
+    );
+    eq(b.bench.map(p => p.num).join(), t.bench.map(p => p.num).join(), 'bench numbers round-trip');
+  }
+  eq(g.squadOf(back.pickup).length, 6, 'the Academy squad has 6');
+});
+
+test('engine: substitutions — rule, limit, restore', () => {
+  const g = load(5),
+    T = g.mkTeams(),
+    snap = t =>
+      JSON.stringify([t.P.map(p => p.id), t.bench.map(p => p.id), squadOfSlots(t), t.cap.id, t.s.id, t.mb.id, t.ws.map(p => p.id)]),
+    squadOfSlots = t => g.squadOf(t).map(p => `${p.id}:${p.slot}:${p.cap ? 1 : 0}`);
+  let subs = 0;
+  for (let i = 0; i < 200; i++) {
+    const a = T[i % 8],
+      b = T[(i * 3 + 1) % 8],
+      before = [snap(a), snap(b)],
+      m = g.simMatch(a, b);
+    subs += m.subs[0] + m.subs[1];
+    assert(m.subs[0] <= g.SUB.max && m.subs[1] <= g.SUB.max, 'never more than SUB.max subs per side');
+    eq(snap(a), before[0], 'the lineup is back after the match (side 0)');
+    eq(snap(b), before[1], 'the lineup is back after the match (side 1)');
+  }
+  assert(subs > 20, `tired players get subbed (${subs} subs in 200 matches)`);
+  // a mid-match sub: the incoming player takes the seat and slot; leaving mid-way restores everything
+  const [a, b] = T,
+    m = g.newMatch(a, b, true),
+    out = a.P.find(p => p.role === 'WS'),
+    inn = a.bench.find(p => p.role === 'WS');
+  g.subIn(m, 0, out, inn);
+  assert(
+    a.P.includes(inn) && a.bench.includes(out) && inn.slot === m.lineup0[0].slots[out.id] && a.ws.includes(inn),
+    'the sub takes the seat and slot'
+  );
+  g.restoreLineups(m);
+  g.restoreLineups(m);
+  eq(a.P.map(p => p.id).join(), m.lineup0[0].P.map(p => p.id).join(), 'restoreLineups (twice) puts the court back');
+  assert(a.bench.includes(inn) && inn.slot === m.lineup0[0].slots[inn.id], 'and the bench and slots');
+  // recorded matches: every sub act names known players and is followed by its label and the coach's line
+  let acts = 0;
+  for (let i = 0; i < 12; i++) {
+    const x = T[i % 8],
+      y = T[(i + 3) % 8],
+      ids = new Set([...g.squadOf(x), ...g.squadOf(y)].map(p => p.id)),
+      mm = g.newMatch(x, y, true);
+    while (!mm.over)
+      for (const bt of g.playRally(mm).beats) {
+        const sb = bt.acts.find(q => q.k === 'sub');
+        if (!sb) continue;
+        acts++;
+        assert(ids.has(sb.out) && ids.has(sb.in) && sb.out !== sb.in, 'sub names two known players');
+        assert(
+          bt.acts.some(q => q.k === 'plabel' && q.t === 'SUBBED' && q.p === sb.in) &&
+            bt.acts.some(q => q.k === 'coachtalk' && /#\d+/.test(q.text)),
+          'SUBBED label and a coach line with shirt numbers'
+        );
+      }
+  }
+  assert(acts > 0, 'recorded matches contain sub acts');
+});
+
+test('engine: coach AI — errors, returns, coach IQ', () => {
+  const g = load(6),
+    T = g.mkTeams(),
+    why = {};
+  for (let i = 0; i < 200; i++) {
+    const m = g.simMatch(T[i % 8], T[(i * 3 + 1) % 8]);
+    for (const x of m.subLog) why[x.why] = (why[x.why] || 0) + 1;
+  }
+  assert(why.errors > 0, `error subs happen (${JSON.stringify(why)})`);
+  assert(why.tired > 0, 'tired subs happen');
+  assert(why.back > 0, 'a rested starter returns sometimes');
+  // a sharper coach acts sooner: the first sub of side 0 comes at fewer points played (unsubbed matches count as their length)
+  const first = iq => {
+    let sum = 0,
+      n = 0;
+    for (const seed of [7, 8, 9, 10]) {
+      const g2 = load(seed),
+        T2 = g2.mkTeams();
+      for (let i = 0; i < 150; i++) {
+        const a = T2[i % 8];
+        a.coachIQ = iq;
+        const m = g2.simMatch(a, T2[(i * 3 + 1) % 8]),
+          f = m.subLog.find(x => x.side === 0);
+        sum += f ? f.pts : m.pts[0] + m.pts[1];
+        n++;
+      }
+    }
+    return sum / n;
+  };
+  const sharp = first(1),
+    dull = first(0);
+  assert(sharp < dull, `coachIQ 1 subs sooner than 0 (${sharp.toFixed(1)} vs ${dull.toFixed(1)} points)`);
+});
+
+test('career: your coach picks the 4 — bench start, never played, part rewards', () => {
+  const spec = { role: 'WS', name: 'Benchy', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 };
+  const mk = (seed, level) => {
+    const g = load(seed),
+      run = g.Run.create(g.Run.draft(), spec),
+      you = g.Run.you(run);
+    for (const k of g.STATK) you[k] = level;
+    run.week = 4;
+    run.eval = null;
+    run.event = null;
+    return [g, run, you];
+  };
+  // the weakest wing spiker of the squad starts on the bench; the 4 stay in role order
+  let [g, run, you] = mk(51, 25);
+  const spare = g
+    .squadOf(run.pickup)
+    .filter(p => p.role === 'MB' && p !== you)
+    .pop();
+  spare.role = 'WS'; // a third wing spiker in the squad
+  let L = g.Run.lineup(run, run.pickup, null, true);
+  assert(!L.starts && L.rival && L.rival.score > L.you, 'the weakest WS is benched (rival ahead of you)');
+  g.Run.lineup(run, run.pickup, null);
+  eq(run.pickup.P.map(p => p.role).join(), 'S,MB,WS,WS', 'court order S, MB, WS, WS');
+  assert(
+    run.pickup.bench.includes(you) && run.pickup.P.every((p, i) => p.slot === ['S', 'MB', 'W0', 'W1'][i]),
+    'you sit; slots follow the seats'
+  );
+  assert(run.pickup.P.includes(run.pickup.cap) && run.pickup.cap.cap, 'the captain plays');
+  // never in: no grade, no win bonus, the bench reward
+  g.SUB.max = 0;
+  const grades0 = (run.grades || []).length;
+  let fx = g.Cup.fixture(run, 'eval'),
+    m = g.newMatch(fx.a, fx.b, false);
+  while (!m.over) g.playRally(m);
+  assert(!m.played.has(you.id), 'you never came on');
+  let line = fx.onFinish(m);
+  assert(/Watched from the bench/.test(line) && !/grade/.test(line), `result line: ${line}`);
+  eq((run.grades || []).length, grades0, 'no grade recorded');
+  assert(/Watched from the bench: \S/.test(line), 'the bench XP label is shown');
+  eq(run.warm[run.warm.length - 1].win, false, 'a bench win is not your win');
+  // a strong you starts; sent off at once → finished on the bench: rewards × BENCH.partMul, graded as usual
+  [g, run, you] = mk(52, 99);
+  L = g.Run.lineup(run, run.pickup, null, true);
+  assert(L.starts, 'a strong you starts');
+  g.SUB.max = 1;
+  fx = g.Cup.fixture(run, 'eval');
+  m = g.newMatch(fx.a, fx.b, false);
+  const sub = m.t[0].bench.find(q => q.role === 'WS');
+  g.subIn(m, 0, you, sub);
+  while (!m.over) g.playRally(m);
+  assert(m.played.has(you.id) && !m.finished.has(you.id), 'you started but finished on the bench');
+  const sp0 = run.sp,
+    s = m.stat[you.id] || g.blank(),
+    win = m.winner === 0,
+    R0 = win ? g.REWARDS.warmupWin : g.REWARDS.warmupLoss,
+    gmul = g.Cup.grade(s, win)[2],
+    want = Math.round((R0.sp + (s.k + s.blk + s.ace) * g.REWARDS.perPlay.sp) * g.BENCH.partMul * gmul);
+  line = fx.onFinish(m);
+  assert(/bench: rewards ×0\.6/.test(line) && /grade/.test(line), `part-match line: ${line}`);
+  eq(run.sp - sp0, want, 'skill points × BENCH.partMul');
 });
 
 // ---------- report ----------

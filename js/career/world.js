@@ -18,6 +18,24 @@ const World = {
     fillRoster(t, {}, used);
     return t;
   },
+  /** Two players trade places: seats (court or bench), slots, shirt numbers and team links; the teams' s / mb / ws follow. */
+  swap(x, y) {
+    const tx = x.team,
+      ty = y.team,
+      put = (t, o, n) => {
+        const a = t.P.includes(o) ? t.P : t.bench;
+        a[a.indexOf(o)] = n;
+      };
+    put(tx, x, y);
+    put(ty, y, x);
+    [x.slot, y.slot] = [y.slot, x.slot];
+    [x.num, y.num] = [y.num, x.num];
+    [x.team, y.team] = [ty, tx];
+    for (const t of [tx, ty]) {
+      [t.s, t.mb] = t.P;
+      t.ws = [t.P[2], t.P[3]];
+    }
+  },
   isFree: run => run.team == null,
   /** Leave the Academy squad for good (you are alone afterwards: no teammates, no Academy evaluations). False if you can't. */
   leaveAcademy(run) {
@@ -68,21 +86,9 @@ const World = {
     const T = run.teams[ti],
       P = run.pickup,
       you = Run.you(run),
-      old = T.P.find(p => p.slot === you.slot) || T.P.find(p => p.role === you.role) || T.P[3],
-      iy = P.P.indexOf(you),
-      io = T.P.indexOf(old);
-    [you.num, old.num] = [old.num, you.num];
-    old.slot = you.slot;
-    you.slot = T.P[io].slot;
-    T.P[io] = you;
-    P.P[iy] = old;
-    you.team = T;
-    old.team = P;
-    for (const t of [T, P]) {
-      [t.s, t.mb] = t.P;
-      t.ws = [t.P[2], t.P[3]];
-    }
-    for (const m of T.P) if (m !== you && you.bond[m.id] == null) you.bond[m.id] = 0;
+      old = T.P.find(p => p.slot === you.slot) || T.P.find(p => p.role === you.role) || T.P[3];
+    World.swap(you, old);
+    for (const m of squadOf(T)) if (m !== you && you.bond[m.id] == null) you.bond[m.id] = 0;
     const fee = World.joinReq(run, ti).fee || 0;
     run.money -= fee;
     run.team = ti;
@@ -136,24 +142,14 @@ const World = {
       sellers = T.filter(t => t !== buyer);
     for (let tries = 0; tries < 4; tries++) {
       const s = pick(sellers),
-        cand = s.P.filter(p => p !== you),
+        cand = squadOf(s).filter(p => p !== you),
         star = cand.reduce((a, p) => (!a || ovr(p) > ovr(a) ? p : a), null);
       if (!star) continue;
-      const mine = buyer.P.find(p => p.role === star.role && p !== you);
+      const mine = squadOf(buyer).find(p => p.role === star.role && p !== you);
       if (!mine || ovr(mine) >= ovr(star)) continue;
-      const i = buyer.P.indexOf(mine),
-        j = s.P.indexOf(star);
-      [mine.slot, star.slot] = [star.slot, mine.slot];
-      [mine.num, star.num] = [star.num, mine.num];
-      buyer.P[i] = star;
-      s.P[j] = mine;
-      star.team = buyer;
-      mine.team = s;
-      for (const t of [buyer, s]) {
-        [t.s, t.mb] = t.P;
-        t.ws = [t.P[2], t.P[3]];
-        finalizeTeam(t);
-      }
+      World.swap(mine, star);
+      finalizeTeam(buyer);
+      finalizeTeam(s);
       if (you.bond[star.id] != null && T[run.team] !== buyer) delete you.bond[star.id];
       if (T[run.team] === buyer || T[run.team] === s) for (const m of Run.mates(run)) if (you.bond[m.id] == null) you.bond[m.id] = 0;
       Run.news(run, `Transfer: ${buyer.name} poach ${star.name} (${star.role}) from ${s.name}; ${mine.name} goes the other way.`);
@@ -171,22 +167,12 @@ const World = {
         wt = null;
       for (const t of run.teams) {
         if (!FACTIONS[t.i] || FACTIONS[t.i].region !== r) continue;
-        for (const p of t.P) if (p !== you && p.role === res.role && (!weak || ovr(p) < ovr(weak))) ((weak = p), (wt = t));
+        for (const p of squadOf(t)) if (p !== you && p.role === res.role && (!weak || ovr(p) < ovr(weak))) ((weak = p), (wt = t));
       }
       if (!weak || ovr(res) < ovr(weak) + PROMOTE.gap) continue;
-      const i = wt.P.indexOf(weak),
-        j = rt.P.indexOf(res);
-      [res.slot, weak.slot] = [weak.slot, res.slot];
-      [res.num, weak.num] = [weak.num, res.num];
-      wt.P[i] = res;
-      rt.P[j] = weak;
-      res.team = wt;
-      weak.team = rt;
-      for (const t of [wt, rt]) {
-        [t.s, t.mb] = t.P;
-        t.ws = [t.P[2], t.P[3]];
-        finalizeTeam(t);
-      }
+      World.swap(res, weak);
+      finalizeTeam(wt);
+      finalizeTeam(rt);
       if (Run.myTeam(run) === wt) {
         delete you.bond[weak.id];
         if (you.bond[res.id] == null) you.bond[res.id] = 0;

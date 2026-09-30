@@ -13,7 +13,7 @@ import { makeTrail } from './trails3d.mjs';
 import { W, lowEnd } from './units3d.mjs';
 import { buildArena, dressArena, updateBall, updateBallShadow, updateCrowd, updateNet, updatePointFlash, ballDir } from './arena3d.mjs';
 import { base, cam, updateBase, viewCamera, P3D, setCameraWorld, setCamMode, getCamMode, setDebugCam } from './camera3d.mjs';
-import { posePlayer, poseCoach, dressActors } from './actors3d.mjs';
+import { posePlayer, poseCoach, dressActors, swapActor } from './actors3d.mjs';
 
 const MODEL_URL = new URL('../../assets/vrm/base.glb.txt', import.meta.url).href;
 const N_PLAYERS = 8,
@@ -272,6 +272,7 @@ export const api = {
     return world ? +(world.gl.width / Math.max(1, cv.width)).toFixed(2) : null; // 3D render scale vs the court canvas (debug)
   },
   addModel,
+  swapActor: (outId, d) => world && swapActor(world, outId, d), // a substitution: the figure of the player going off plays the incoming one
   models: () => (world && world.models) || [],
   poseAll: dt => world && world.people.forEach(pl => pl.d && posePlayer(pl, dt, W(A.ball.x, A.ball.z, A.ball.h), world.fx)), // test hook: fast-forward posing
   get ballPos() {

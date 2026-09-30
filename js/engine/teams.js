@@ -1,5 +1,11 @@
 // Team generation and simulation-based balancing.
 
+/**
+ * A club's whole squad: the 4 on court (`t.P`, what the engine plays) plus the bench (`t.bench`, 2 substitutes).
+ * Use this wherever "the club's players" is meant; keep `t.P` for "who is playing now".
+ */
+const squadOf = t => (t.bench ? [...t.P, ...t.bench] : t.P);
+
 /** The eight tournament teams: 1–4 stars each (talent budget split over the star slots), elements assigned. */
 function mkTeams() {
   const used = new Set();
@@ -42,6 +48,11 @@ function fillRoster(t, bon, used) {
   t.ws = [mkPlayer('WS', 'W0', bon.W0 || 0, t, used), mkPlayer(fr, 'W1', bon.W1 || 0, t, used)];
   t.ws[1].flex = true;
   t.P = [t.s, t.mb, ...t.ws];
+  // the bench: one player of the flex role and a wing spiker
+  t.bench = [
+    mkPlayer(fr, fr === 'S' ? 'S' : fr === 'MB' ? 'MB' : 'W1', bon.bench || 0, t, used),
+    mkPlayer('WS', 'W0', bon.bench || 0, t, used)
+  ];
   finalizeTeam(t);
 }
 /** Career league: eight teams of average players (no stars yet) — everyone grinds from here. */
@@ -62,27 +73,29 @@ function mkMonsterTeams() {
   return defs.map(([name, short, color, sk], i) => {
     const t = { i, name, short, color, sk, S: STYLES[sk], hist: { w: 0, l: 0, sw: 0, sl: 0, res: [] }, nStars: 4, arch: 'Monster squad' };
     const bon = {};
-    for (const k of ['S', 'MB', 'W0', 'W1']) bon[k] = rnd(110, 150);
+    for (const k of ['S', 'MB', 'W0', 'W1', 'bench']) bon[k] = rnd(110, 150);
     fillRoster(t, bon, used);
     return t;
   });
 }
 /**
- * Everything that depends on a team's final roster: leadership, captain, coach, shirt numbers, rating.
+ * Everything that depends on a team's final roster: leadership, captain, coach, shirt numbers, rating. Leadership,
+ * elements and numbers cover the whole squad (numbers unique across all 6); the captain and rating are the 4 on court.
  * Call again after changing a roster (e.g. inserting a created player).
  */
 function finalizeTeam(t) {
+  const all = squadOf(t);
   // values already set (e.g. a created player's leadership or number) are kept
-  for (const q of t.P)
+  for (const q of all)
     if (q.lead == null)
       q.lead = Math.round(clamp(rnd(28, 78) + (q.role === 'S' ? 8 : 0) + (q.star ? 6 : 0) + (R() < 0.15 ? rnd(10, 22) : 0), 20, 99));
-  for (const q of t.P) elAssign(q); // hidden element + signature spike (after leadership: it shapes Starlight)
-  for (const q of t.P) q.cap = false;
+  for (const q of all) elAssign(q); // hidden element + signature spike (after leadership: it shapes Starlight)
+  for (const q of all) q.cap = false;
   t.cap = t.P.reduce((x, q) => (q.lead > x.lead ? q : x), t.P[0]);
   t.cap.cap = true;
   if (t.coachIQ == null) t.coachIQ = +rnd(0.4, 1).toFixed(2);
-  const nums = new Set(t.P.map(p => p.num).filter(Boolean));
-  t.P.forEach(p => {
+  const nums = new Set(all.map(p => p.num).filter(Boolean));
+  all.forEach(p => {
     if (p.num) return;
     let n;
     do {

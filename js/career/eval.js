@@ -33,10 +33,11 @@ const Eval = {
     }
     return (run.eval = { week: run.week, kind, region, mine, opp });
   },
-  /** A temporary squad from player ids (in [S, MB, WS, WS] order). Not a real team: never call finalizeTeam on it. */
+  /** A temporary squad from player ids (first 4 = court order [S, MB, WS, WS], the rest the bench). Not a real team: never call finalizeTeam on it. */
   squad(run, ids, name, color, region = run.eval ? run.eval.region : 'wei') {
     const all = Pool.players(run, region).concat([Run.you(run)], run.pickup ? run.pickup.P : []),
-      P = ids.map(id => all.find(p => p.id === id)).filter(Boolean),
+      got = ids.map(id => all.find(p => p.id === id)).filter(Boolean),
+      P = got.slice(0, 4),
       T = {
         i: -2,
         name,
@@ -48,7 +49,8 @@ const Eval = {
         nStars: 0,
         arch: 'Evaluation squad',
         coachIQ: 0.7,
-        P
+        P,
+        bench: got.slice(4)
       };
     [T.s, T.mb] = P;
     T.ws = [P[2], P[3]];
@@ -64,6 +66,11 @@ const Eval = {
       p.cap = p === T.cap;
       p.slot = ['S', 'MB', 'W0', 'W1'][i];
     });
+    // the bench: only the team link (its cap flag and slot stay as they are)
+    for (const p of T.bench || []) {
+      if (!EVAL_LENT.some(x => x[0] === p)) EVAL_LENT.push([p, p.team, p.cap, p.slot]);
+      p.team = T;
+    }
   },
   /** Put every lent player back (safe to call twice). */
   restore() {
@@ -72,8 +79,9 @@ const Eval = {
   },
   /** Not selected: watch from the bench (wit XP worth EVAL.benchDays day-sessions). Returns the diary line. */
   bench(run) {
-    const region = run.eval ? run.eval.region : 'wei',
-      label = Training.addXp(run, 'wit', Training.xpFor('wit', TRAININGS.wit.main[1], DAY_GAIN * EVAL.benchDays));
-    return `Not selected for the ${REGIONS[region].name} evaluation. Watched from the bench: ${label}.`;
-  }
+    const region = run.eval ? run.eval.region : 'wei';
+    return `Not selected for the ${REGIONS[region].name} evaluation. Watched from the bench: ${Eval.benchXp(run)}.`;
+  },
+  /** The bench reward itself: wit XP worth EVAL.benchDays day-sessions. Returns its label. */
+  benchXp: run => Training.addXp(run, 'wit', Training.xpFor('wit', TRAININGS.wit.main[1], DAY_GAIN * EVAL.benchDays))
 };

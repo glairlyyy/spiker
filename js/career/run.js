@@ -8,10 +8,10 @@ const Run = {
   /** Teams for a new run (the league generator) plus a pre-rolled team for the player. */
   draft() {
     const teams = mkLeagueTeams();
-    for (const t of teams) for (const p of t.P) p.pot = +rnd(GROWTH.pot[0], GROWTH.pot[1]).toFixed(2);
+    for (const t of teams) for (const p of squadOf(t)) p.pot = +rnd(GROWTH.pot[0], GROWTH.pot[1]).toFixed(2);
     // the island's clubs: each league team plays as its faction's squad
     for (const t of teams) if (FACTIONS[t.i] && FACTIONS[t.i].team) [t.name, t.short, t.color] = FACTIONS[t.i].team;
-    const used = new Set(teams.flatMap(t => t.P.map(p => p.name)));
+    const used = new Set(teams.flatMap(t => squadOf(t).map(p => p.name)));
     const reserve = Pool.build(teams, used);
     return { teams, team: Math.floor(R() * teams.length), reserve };
   },
@@ -24,8 +24,8 @@ const Run = {
   create(draft, spec) {
     const mode = spec.mode || {};
     const teams = draft.teams,
-      reserve = draft.reserve || Pool.build(teams, new Set(teams.flatMap(x => x.P.map(p => p.name)))),
-      pickup = World.pickup(new Set(teams.concat(Object.values(reserve)).flatMap(x => x.P.map(p => p.name)))),
+      reserve = draft.reserve || Pool.build(teams, new Set(teams.flatMap(x => squadOf(x).map(p => p.name)))),
+      pickup = World.pickup(new Set(teams.concat(Object.values(reserve)).flatMap(x => squadOf(x).map(p => p.name)))),
       t = pickup,
       role = spec.role,
       slot = role === 'S' ? 'S' : role === 'MB' ? 'MB' : 'W0',
@@ -52,12 +52,12 @@ const Run = {
     t.P[t.P.indexOf(old)] = you;
     [t.s, t.mb] = t.P;
     t.ws = [t.P[2], t.P[3]];
-    for (const m of t.P) if (m !== you) you.bond[m.id] = 0;
+    for (const m of squadOf(t)) if (m !== you) you.bond[m.id] = 0;
     finalizeTeam(t);
     // Hard league: everyone else starts stronger and grows faster
     if (mode.hard)
       for (const T of teams) {
-        for (const p of T.P)
+        for (const p of squadOf(T))
           if (p !== you) {
             for (const k of STATK) p[k] = Math.min(99, p[k] + 5);
             p.pot = +((p.pot || 1) + 0.25).toFixed(2);
@@ -97,7 +97,6 @@ const Run = {
       // v3: challenge modes, two cups, training depth, goals, sponsors, history
       mode: { hard: !!mode.hard, short: !!mode.short },
       cups: [],
-      lb: Object.fromEntries(STATK.map(k => [k, 0])),
       streak: null,
       injury: null,
       goal: null,
@@ -148,15 +147,53 @@ const Run = {
     const you = Run.you(run);
     run.hist.push({ w: run.week, ovr: ovr(you), ...Object.fromEntries(STATK.map(k => [k, you[k]])), wit: you.wit });
   },
+  /** Match-day form before any team talk: your mood; a teammate's is +0.1 per 80+ bond (same for everyone on your side). */
+  form(run, p) {
+    const you = Run.you(run);
+    return p === you ? MOODS[run.mood].form : 0.1 * Run.mates(run).filter(m => (you.bond[m.id] || 0) >= 80).length;
+  },
+  /**
+   * The coach's 4 (see BENCH): per court slot [S, MB, WS, WS] the best same-role player of squad T by ovr + 6 × form (+ your
+   * standing with `region` ÷ BENCH.standingPer for you); a missing role falls back to the best remaining, the rest sit.
+   * Unless `dry`, reorders T.P / T.bench, slots, s / mb / ws and the captain (best leader on court). Returns
+   * { starts, you: your score, rival: { p, score } | null } — the same-role player ahead of you (or the best sub behind).
+   */
+  lineup(run, T, region, dry) {
+    const you = Run.you(run),
+      score = p => ovr(p) + 6 * Run.form(run, p) + (p === you && region ? City.rep(run, region) / BENCH.standingPer : 0),
+      left = [...squadOf(T)],
+      P = [];
+    for (const role of ['S', 'MB', 'WS', 'WS']) {
+      const of = left.filter(p => p.role === role),
+        p = (of.length ? of : left).reduce((a, b) => (score(b) > score(a) ? b : a));
+      P.push(p);
+      left.splice(left.indexOf(p), 1);
+    }
+    const starts = P.includes(you),
+      peers = (starts ? left : P).filter(p => p.role === you.role && p !== you),
+      rival = peers.length ? peers.reduce((a, b) => (score(b) > score(a) ? b : a)) : null;
+    if (!dry) {
+      T.P = P;
+      T.bench = left;
+      P.forEach((p, i) => (p.slot = ['S', 'MB', 'W0', 'W1'][i]));
+      [T.s, T.mb] = P;
+      T.ws = [P[2], P[3]];
+      for (const p of squadOf(T)) p.cap = false;
+      T.cap = P.reduce((a, p) => (p.lead > a.lead ? p : a), P[0]);
+      T.cap.cap = true;
+      T.ovr = teamOvr(T);
+    }
+    return { starts, you: score(you), rival: rival && { p: rival, score: score(rival) } };
+  },
   /** Your team: a league club, or the pickup squad while you're a free agent (run.team null). */
   myTeam: run => (run.team == null ? run.pickup : run.teams[run.team]),
   /** League news for the next Gazette. */
   news(run, text) {
     (run.news || (run.news = [])).push(text);
   },
-  you: run => Run.myTeam(run).P.find(p => p.id === run.youId),
+  you: run => squadOf(Run.myTeam(run)).find(p => p.id === run.youId),
   /** Your teammates: none once you have left the Academy squad while still a free agent. */
-  mates: run => (World.isFree(run) && run.academy === false ? [] : Run.myTeam(run).P.filter(p => p.id !== run.youId)),
+  mates: run => (World.isFree(run) && run.academy === false ? [] : squadOf(Run.myTeam(run)).filter(p => p.id !== run.youId)),
   /** What this week is: 'train' | 'camp' | 'eval' (an evaluation you take part in) | 'cup'. */
   weekType(run) {
     if (Run.cupDef(run)) return 'cup';
@@ -177,7 +214,7 @@ const Run = {
     const fmt = (d, name, dec = 0) => (d ? `${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(dec)} ${name}` : '');
     if (STATK.includes(key) || key === 'lead') {
       if (v > 0 && key !== 'lead') v = Math.max(1, Math.round(v * Training.dim(you[key]))); // events obey diminishing returns too
-      const top = key === 'lead' ? CAREER.runCap : Math.max(you[key], Training.gate(run, key)), // limit-break gates
+      const top = key === 'lead' ? CAREER.runCap : Math.max(you[key], TRAIN_CAP), // events stop at the training cap (never lower a stat matches raised)
         nv = Math.round(clamp(you[key] + v, 25, top)),
         d = nv - you[key];
       you[key] = nv;
@@ -210,7 +247,7 @@ const Run = {
   /** Change your bond with a teammate by `v` (0–100). Returns a short label such as "+7 bond with Aoi". */
   bond(run, mateId, v) {
     const you = Run.you(run),
-      m = Run.myTeam(run).P.find(p => p.id === mateId);
+      m = squadOf(Run.myTeam(run)).find(p => p.id === mateId);
     if (!m) return ''; // that teammate is gone (you changed club, or they were transferred)
     const nv = clamp((you.bond[mateId] || 0) + v, 0, 100),
       d = nv - (you.bond[mateId] || 0);
@@ -311,7 +348,6 @@ const Run = {
     if (!run.uses || typeof run.uses !== 'object') run.uses = {};
     if (!run.xp || typeof run.xp !== 'object') run.xp = {};
     if (!run.floor || typeof run.floor !== 'object') run.floor = {};
-    if (!run.lb || typeof run.lb !== 'object') run.lb = Object.fromEntries(STATK.map(k => [k, 0]));
     // an event this version no longer knows (removed / renamed) would leave the week stuck on a blank card
     if (run.event && !Events.def(run.event, run)) run.event = null;
   },
@@ -325,8 +361,8 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 3;
-/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants — older saves are dropped; add steps when the saved shape changes). */
+const RUN_VERSION = 5;
+/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone) — older saves are dropped; add steps when the saved shape changes). */
 const RUN_MIGRATIONS = {};
 const ROLE_NAME = { S: 'Setter', MB: 'Middle blocker', WS: 'Wing spiker' };
 /** Run rank letter for a fan count (RANKS is ordered from the top rank down). */

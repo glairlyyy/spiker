@@ -1,6 +1,6 @@
 // Weekly choices: the five trainings (normal or Hard), Rest and Recreation. Gains scale with mood, facility level
 // (Lv 1–5), a streak of the same training, teammates training alongside you (friendship at bond 80+), the camps and
-// sponsor perks. Each stat stops at 80 and 90 until its Limit Break trial is passed. Training while exhausted can
+// sponsor perks. Training (and events) stop a stat at TRAIN_CAP; only matches go higher. Training while exhausted can
 // injure you (light training only until it heals).
 
 const Training = {
@@ -17,12 +17,6 @@ const Training = {
     const lv = Training.facility(run, key),
       need = TRAIN_X.lvUses[lv + 1];
     return need == null ? null : need - (run.uses[key] || 0);
-  },
-  /** Where this stat stops until its next Limit Break (99 once both are passed). */
-  gate(run, stat) {
-    if (!STATK.includes(stat)) return CAREER.runCap;
-    const n = (run.lb && run.lb[stat]) || 0;
-    return n < TRAIN_X.gates.length ? TRAIN_X.gates[n] : CAREER.runCap;
   },
   /** Same training in consecutive weeks: +5% a week, up to +20%. */
   streakBonus(run, key) {
@@ -65,33 +59,34 @@ const Training = {
   need: v => Math.round(TRAIN_X.xp.base * Math.pow(TRAIN_X.xp.grow, Math.max(0, v - TRAIN_X.xp.from))),
   /** A stat's level (wit in 0.02 steps). */
   level: (you, stat) => (stat === 'wit' ? Math.round(you.wit * 50) : you[stat]),
-  /** Where a stat stops: its limit-break gate and the run cap (wit: its own cap). */
-  top: (run, stat) => (stat === 'wit' ? Math.round(CAREER.witRunCap * 50) : Math.min(Training.gate(run, stat), CAREER.runCap)),
+  /** Where a stat stops for a source of XP: 'train' (sessions, default) → TRAIN_CAP; 'match' → the run cap. Wit: its own cap. */
+  top: (run, stat, src = 'train') => (stat === 'wit' ? Math.round(CAREER.witRunCap * 50) : src === 'match' ? CAREER.runCap : TRAIN_CAP),
   /** XP a session gives a stat: its base gain (wit converted to 0.02 steps) × per × the multiplier. */
   xpFor: (stat, base, mul) => Math.round((stat === 'wit' ? base * 50 : base) * TRAIN_X.xp.per * mul),
   /** Adding xp to a stat: { pts, have } — points gained and the XP left toward the next one (none past the top). */
-  sim(run, stat, xp) {
-    const top = Training.top(run, stat);
+  sim(run, stat, xp, src = 'train') {
+    const top = Training.top(run, stat, src);
     let v = Training.level(Run.you(run), stat),
       have = ((run.xp && run.xp[stat]) || 0) + xp,
       pts = 0;
+    if (v >= top) return { pts: 0, have: (run.xp && run.xp[stat]) || 0 }; // already at (or above) this source's top: it banks nothing
     while (v < top && have >= Training.need(v)) {
       have -= Training.need(v);
       v++;
       pts++;
     }
-    if (v >= top) have = 0; // at the gate / cap: nothing banks until it opens
+    if (v >= top) have = 0; // reached the top: nothing banks past it
     return { pts, have };
   },
   /** Expected points for one stat from a session (wit as a decimal gain). */
-  gain(run, stat, base, mul) {
-    const { pts } = Training.sim(run, stat, Training.xpFor(stat, base, mul));
+  gain(run, stat, base, mul, src = 'train') {
+    const { pts } = Training.sim(run, stat, Training.xpFor(stat, base, mul), src);
     return stat === 'wit' ? +(pts * 0.02).toFixed(2) : pts;
   },
   /** Give a stat XP: raises it by the points earned, banks the rest. Returns a short label for the log. */
-  addXp(run, stat, xp) {
+  addXp(run, stat, xp, src = 'train') {
     const you = Run.you(run),
-      r = Training.sim(run, stat, xp);
+      r = Training.sim(run, stat, xp, src);
     (run.xp || (run.xp = {}))[stat] = r.have;
     if (stat === 'wit') you.wit = +(you.wit + r.pts * 0.02).toFixed(2);
     else you[stat] += r.pts;
@@ -110,7 +105,7 @@ const Training = {
       lvl: Training.facility(run, key) + 1,
       next: Training.toNext(run, key),
       streak: Training.streakBonus(run, key),
-      gate: STATK.includes(T.main[0]) && Run.you(run)[T.main[0]] >= Training.gate(run, T.main[0]) ? Training.gate(run, T.main[0]) : null,
+      cap: STATK.includes(T.main[0]) && Run.you(run)[T.main[0]] >= TRAIN_CAP ? TRAIN_CAP : null,
       mates: run.floor[key] || []
     };
   },
@@ -144,25 +139,7 @@ const Training = {
     const lv0 = Training.facility(run, key);
     run.uses[key] = (run.uses[key] || 0) + 1;
     if (Training.facility(run, key) > lv0) out.push(`${TRAININGS[key].name} facility Lv ${Training.facility(run, key) + 1}`);
-    // reached a limit-break gate: the trial is offered right away
-    const st = pv.main[0];
-    if (STATK.includes(st) && Run.you(run)[st] >= Training.gate(run, st) && Training.gate(run, st) < CAREER.runCap)
-      run.event = { id: 'limit', stat: st };
     return `${name}${Training.camp(run) ? ' (camp)' : ''}: ${out.filter(Boolean).join(', ')}`;
-  },
-  /** Limit Break trial: the chance grows with mood and stamina. Pass → the gate opens (+3 to the stat). */
-  trialP: run => clamp(0.35 + 0.08 * (run.mood - 2) + run.sta / 300, 0.15, 0.9),
-  trial(run, stat) {
-    if (R() < Training.trialP(run)) {
-      run.lb[stat] = (run.lb[stat] || 0) + 1;
-      const you = Run.you(run),
-        v0 = you[stat];
-      you[stat] = Math.min(Training.gate(run, stat), v0 + 3); // a flat +3: the breakthrough ignores diminishing returns
-      const out = [`+${you[stat] - v0} ${STATNAME[stat]}`, Run.bump(run, 'mood', 1)];
-      return `Limit Break: ${STATNAME[stat]} can now reach ${Training.gate(run, stat)}! ${out.filter(Boolean).join(', ')}`;
-    }
-    const out = [Run.bump(run, 'sta', -15), Run.bump(run, 'mood', -1)];
-    return `Limit Break trial failed — ${STATNAME[stat]} stays capped at ${Training.gate(run, stat)} for now: ${out.filter(Boolean).join(', ')}`;
   },
   /** Rest: stamina × how well you sleep (your home — or `mul`, e.g. a hotel away from home). */
   rest(run, mul = null) {

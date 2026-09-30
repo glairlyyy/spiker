@@ -6,7 +6,7 @@ const Pool = {
   build(teams, used) {
     const out = {};
     for (const r of Object.keys(POOL)) {
-      const have = teams.filter(t => FACTIONS[t.i] && FACTIONS[t.i].region === r).reduce((n, t) => n + t.P.length, 0),
+      const have = teams.filter(t => FACTIONS[t.i] && FACTIONS[t.i].region === r).reduce((n, t) => n + squadOf(t).length, 0),
         n = Math.max(0, POOL[r] - have),
         t = {
           i: -1,
@@ -36,15 +36,17 @@ const Pool = {
     const res = run.reserve && run.reserve[r];
     return run.teams
       .filter(t => FACTIONS[t.i] && FACTIONS[t.i].region === r)
-      .flatMap(t => t.P)
+      .flatMap(t => squadOf(t))
       .concat(res ? res.P : []);
   },
   size: (run, r) => Pool.players(run, r).length,
   /**
-   * Draw n squads ([S, MB, WS, WS], new arrays; nothing is mutated) from faction r's pool, favouring better players
-   * (see DRAW). You are a candidate only while signed with r; standing ≥ DRAW.sure puts you in squad 1.
+   * Draw n squads of SQUAD (6 new arrays; nothing is mutated) from faction r's pool, favouring better players (see
+   * DRAW): the first 4 are the court order [S, MB, WS, WS], then 2 bench players (the next best by the same weights,
+   * any role). You are a candidate only while signed with r and are never put on the bench by the draw; standing ≥
+   * DRAW.sure puts you in squad 1.
    */
-  draw(run, r, n = Math.floor(Pool.size(run, r) / 4)) {
+  draw(run, r, n = Math.floor(Pool.size(run, r) / SQUAD)) {
     const you = Run.you(run),
       mine = run.team != null && FACTIONS[run.team] && FACTIONS[run.team].region === r,
       rep = City.rep(run, r),
@@ -71,6 +73,15 @@ const Pool = {
       }
       squads.push(sq);
     }
+    // then the benches: the next best players by the same weights, any role (never you: a drawn you plays)
+    for (const sq of squads)
+      for (let k = 0; k < SQUAD - 4; k++) {
+        const of = left.filter(p => p !== you);
+        if (!of.length) break;
+        const p = wpick(of, weight);
+        sq.push(p);
+        take(p);
+      }
     return squads;
   }
 };

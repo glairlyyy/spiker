@@ -227,7 +227,9 @@ const ACCESS = {
   cond: { wei: {}, wu: {}, shu: {}, outlaws: {}, gloria: {} }
 };
 /** Faction pool sizes (players, league-team players included): the rest are generated reserves. */
-const POOL = { wei: 20, wu: 14, shu: 10, outlaws: 6, gloria: 5 };
+const POOL = { wei: 24, wu: 18, shu: 12, outlaws: 6, gloria: 6 };
+/** Players in a squad: 4 on court + 2 on the bench. */
+const SQUAD = 6;
 /**
  * Squad draw weights: weight = max(minW, (ovr − floor) / span); your weight × (1 + max(0, standing) / repPer);
  * standing ≥ sure → you are always drawn.

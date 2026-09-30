@@ -33,28 +33,32 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   triangle while the pass travels to them (arms/head only, position unchanged).
 - §2.8 Cut-scene lines **[built]**: every LINES kind × personality has 5–6 variants. Lines are
   picked by hash, never by R(), so results never change; only the `matches` golden (it hashes beat text) may.
-- §2.9 Block tactics **[locked, not built]** — 2 blockers at the net (front row stays 2 in 4v4):
-  - Lane read: the blocker on the attack's side sets the edge; the middle closes beside them. Middle bitten by a
+- §2.9 Block tactics **[built]** — 2 blockers at the net (front row stays 2 in 4v4):
+  - Lane read: the front-row MB is the main blocker on every attack they can reach (owner); otherwise the blocker on
+    the attack's side sets the edge; the other closes beside them on the inside. Middle bitten by a
     quick / decoy → the far-side blocker swings across (late, weaker). Pipe / back-row attack → both close to the
     centre. Read quality from wit + speed: good readers arrive in time with full hands; poor ones late or split.
   - Defence setting (per team, like attack tactics; player picks theirs, AI teams have one): **Read** (default:
     wait for the set; good on wings, late on quicks), **Commit** (middle jumps with the quick; kills quicks, beaten by
     decoys / high outside), **Bunch** (both start central; strong vs middle / pipe, pins open).
   - Scouting a club reveals its attack habits (lane split, pipe use) and its defence setting.
-  - Rebalance: ~14 % of attacks stuffed in normal play stays the target (headless sims). Goldens update.
-- §2.10 Substitutions **[locked, not built]**:
+  - Balance: stuffs 10.8 % → ~13 % of attacks (STUFF_BIAS 0.9 → 0.2 after squads of 6; ~14.7 % measured), kills unchanged (~68 %, all-player kills ÷
+    attacks). Numbers in `BLOCK` (js/data/tactics.js).
+  - Settings are derived from the team style (not saved); the captain may switch on the opponent's attack mix.
+- §2.10 Substitutions **[built]**:
   - Teams: 4 on court + 2 on the bench (6). Faction pools grow so every faction fields ≥ 1 squad of 6 (≈ Wei 24,
-    Wu 18, Shu 12, Outlaws 6, St. Gloria 6); drawn squads are 6.
+    Wu 18, Shu 12, Outlaws 6, St. Gloria 6); drawn squads are 6. Code: `t.P` = the 4 on court, `t.bench` = the 2
+    subs, `squadOf(t)` = all 6; lineups are restored after every match.
   - At a dead ball, max 2 subs per set per team; the sub takes the replaced player's rotation spot.
   - Presentation: no walk-on animation. The model swaps in place, a floating "SUBBED" label shows over the incoming
     player, and the coach's line appears as chatter (shirt numbers):
     "Subbing #{out} for #{in}. Don't let us down." · "#{out}, sit. #{in}, you're up — earn it." ·
     "#{in} in for #{out}. Same plan, fresher legs." · "#{out}, come off. #{in} — show me why you're here."
-  - Simple coach AI: sub when a player's match stamina is under a threshold or after repeated errors; small random
-    factor scaled by `coachIQ`. Smarter coach (matchups, protecting a lead, personality hunches) = backlog.
+  - Simple coach AI: sub when a player's match stamina is under a threshold (`SUB.sta`) or after repeated errors, and
+    bring a rested starter back; a random factor scaled by `coachIQ`. Smarter coach (matchups, protecting a lead, personality hunches) = backlog.
   - Your player is benchable: the coach picks starters by rating, form and standing, and may sub you out (tired /
     erring). A match started or finished on the bench gives reduced rewards.
-- §2.11 Match music **[locked, not built]**: `assets/audio/the_big_fight.mp3` loops as background music while the
+- §2.11 Match music **[built]**: `assets/audio/the_big_fight.mp3` loops as background music while the
   match screen is open, at 50 % of the effects volume (`BGM_GAIN` 0.5 × volume slider); follows the sound toggle and
   the volume slider; fades in on start and out on leaving. Presentation only (no effect on results). More tracks /
   crowd / voice clips later (backlog).
@@ -138,6 +142,33 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   legend inheritance. Every career starts the same: free agent, base budget and caps (CAREER), no starting skill,
   no team pick. Challenge modes (Hard league, Short season) stay as plain options. The run-end screen keeps the
   result, rank and growth chart.
+- §4.14 Growth: train to a floor, fight to go higher **[built]** (Kenshi rule):
+  - Training caps: gains shrink above ~60 and stop at `TRAIN_CAP` 75 per stat. Training stays the fastest early route
+    (a new run is pure self-training). The Limit Break gates (80 / 90) and trial are removed.
+  - Match experience is the only way above 75 (and still counts below): every match you play (evaluation, cup, street
+    battle you fight in) gives stat XP from **your performance**, not the result — kills → power, blocks → jump + def,
+    digs → def + speed, sets / assists → wit (exact map in the task). Scaled by the opponent's strength vs your side:
+    stronger ×1.5–2, equal ×1, weaker ×0.3. Winning or losing does not change XP.
+  - What winning pays is set by why the match was played (unchanged rules): evaluations → skill pts / fans / standing,
+    cup → placement rewards, street battle → the side's standing and money as today.
+  - Skills: basic skills (SKILLS entries without `tech`) stay buyable with skill points; techniques (`tech` entries) are
+    learned in play by chance — they still switch on by themselves once stats meet `req` —
+    by doing (e.g. 3+ blocks in a match → a chance at Read Block) and by facing a player who uses it; chance grows with
+    wit and opponent strength. Scouting shows which techniques a team's players have.
+  - Save: RUN_VERSION bump (Limit Break progress removed, match XP added). Match results unchanged (goldens stay).
+
+- §4.15 Challenges **[locked, not built — T-037/T-038]** (makes a no-training run possible; see §4.14):
+  - Map action: challenge a squad at its court (or a street court): 1 day + a money **stake**. Acceptance depends on
+    your standing / fans vs the club's rating (big clubs ignore nobodies unless the stake or standing is high). You
+    play with your side (Academy squad; your club if it agrees); alone → hire weak street players for money.
+  - Win: stake back at odds from the rating gap, + standing / fans; XP per §4.14 (performance × opponent strength).
+  - Loss is a real deal: stake lost; stamina and mood crash (carries over); standing − with that faction (repeated
+    losses → grudge → facility ban, §4.10); lost by 8+ → fans − and a Gazette jab. No NPC learning.
+  - Injury risk after every challenge (win or lose) = base + rating gap + margin of defeat + **fatigue**: low stamina
+    and battles close together (days since the last match / challenge) raise it, like training on low stamina. Resting
+    lowers it. Injury = days to weeks without training or matches; a severe one also costs −2 permanently on a stat
+    (never ends the run) [assumed — owner to confirm].
+  - Balance target: a no-training run reaches the mid-70s by ~week 20 only with well-chosen fights.
 
 ## 5. Open questions — do not build until decided
 - §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story
@@ -161,6 +192,9 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 
 ## 8. Backlog (candidates — become tasks only when specced)
 - Balance pass: 7-day week × DAY_GAIN × fees × faction prices × paydays, measured with headless season sims.
+- Role identity (with the balance pass): flex-role win rates are even (±3 %, 16k sims: 2 S / 2 MB / 3 WS); make
+  setter value visible ("Perfect set!" call-outs, set quality in the box score, front-row setter attack / dump in
+  dual-setter teams) and give MBs a back-row pass / dig weakness. Re-measure win rates by flex role after.
 - Standing effects; leaving/switching clubs (needs §5.1); moving borders.
 - Smarter AI coach (matchup subs, protecting a lead, personality).
 - Ace traits (after block tactics §2.9; engine, goldens update). Aces = OP players + named aces/rival (lore.md §6),

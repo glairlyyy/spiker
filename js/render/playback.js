@@ -499,6 +499,22 @@ function instant(a) {
     case 'tac':
       showTac(a.side);
       break;
+    case 'sub': {
+      // the incoming player takes the outgoing one's place at once (no walk-on); the outgoing entry goes to the bench
+      const o = A.disp[a.out],
+        i = A.bench && A.bench[a.in];
+      if (!o || !i) {
+        DBG.log('warn', `Sub ${a.out} → ${a.in}: player missing from the display — skipped`);
+        break;
+      }
+      A.disp[a.in] = { p: i.p, side: o.side, x: o.x, z: o.z, sx: o.x, sz: o.z, tx: o.x, tz: o.z, jy: 0, jmode: null, pose: 'ready' };
+      A.bench[a.out] = o;
+      delete A.disp[a.out];
+      delete A.bench[a.in];
+      if (A.lastP === a.out) A.lastP = a.in;
+      if (R3D && R3D.swapActor) R3D.swapActor(a.out, A.disp[a.in]);
+      break;
+    }
     case 'plabel': {
       if (!d) break;
       const q = P(d.x, d.z, d.jy + 150);

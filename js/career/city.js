@@ -230,7 +230,7 @@ const City = {
       trip = City.go(run, CITY.hq[ti]);
     (run.scout || (run.scout = {}))[ti] = run.week;
     Run.news(run, `Rumour from ${f.name}: ${f.dark.toLowerCase()}.`);
-    return `${trip}Scouted ${t.name}: rating ${t.ovr}, ${t.P.filter(p => p.elOn).length} element user(s). ${Run.bump(run, 'sta', -SCOUT_STA)}`;
+    return `${trip}Scouted ${t.name}: rating ${t.ovr}, ${squadOf(t).filter(p => p.elOn).length} element user(s). ${Run.bump(run, 'sta', -SCOUT_STA)}`;
   },
   scouted: (run, ti) => !!(run.scout && run.scout[ti] != null),
   /** Standing with a region's clubs (−100…100). */
@@ -285,6 +285,11 @@ const City = {
       s = Front.result(run, win ? side : foe, win ? foe : side);
     out.push(City.repBump(run, side, win ? CLASH.win : CLASH.lose), City.repBump(run, foe, CLASH.other), Run.bump(run, 'sta', -CLASH.sta));
     if (win) out.push(Run.bump(run, 'fans', CLASH.fans));
+    // the fight itself is experience: a flat amount for your key stat, scaled by how strong the fight was against you
+    const f = Growth.gapFactor(ovr(Run.you(run)), CLASH.par);
+    out.push(
+      Training.addXp(run, KEYSTAT[Run.you(run).role], Math.round(MATCH_XP.clash[win ? 'win' : 'loss'] * f), 'match') + Growth.gapNote(f)
+    );
     return `${trip}Fought for ${REGIONS[side].name} in the street battle — ${win ? 'won' : 'lost'}: ${out.filter(Boolean).join(', ')}${s ? `. ${s}!` : ''}`;
   }
 };

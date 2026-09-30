@@ -117,23 +117,23 @@ function trainSpot(run, id, c) {
     pv = Training.preview(run, key, hard, x),
     turf = City.turf(run, id),
     fmt = ([k, , xp]) => {
-      if (pv.gate && k === pv.main[0]) return `${STATNAME[k]} at ${pv.gate} — Limit Break`;
+      if (pv.cap && k === pv.main[0]) return `${STATNAME[k]} at ${pv.cap} — matches only`;
       // how much this session moves the stat, compared with what its next point costs at your level
       const r = xp / Training.progress(run, k).need,
         g = r >= 2.5 ? ['High', 'hi'] : r >= 1 ? ['Mid', 'md'] : ['Low', 'lo'];
       return `${STATNAME[k]} <span class="gl ${g[1]}">${g[0]}</span>`;
     },
-    mates = pv.mates.filter(pid => T.P.some(p => p.id === pid)); // a teammate who has since left
+    mates = pv.mates.filter(pid => squadOf(T).some(p => p.id === pid)); // a teammate who has since left
   return `<div class="tline">${qualityTag(run, id)} <b class="g">${fmt(pv.main)}</b> <span class="g2">${fmt(pv.side)}</span> <span class="mute small">−${pv.sta} sta · $${City.price(run, id)} · Lv ${pv.lvl}</span>
       ${pv.fail ? `<span class="f ${pv.fail > 0.25 ? 'hi' : 'md'}">${Math.round(pv.fail * 100)}% fail</span>` : ''}
       ${pv.streak ? `<span class="stk" ${tip('Same training in a row')}>Streak +${Math.round(pv.streak * 100)}%</span>` : ''}
       ${turf ? `<span class="stk" ${tip("Your faction's region")}>Turf +${Math.round(turf * 100)}%</span>` : ''}
       ${s.sand ? `<span class="stk" ${tip(`Sand training builds technique: skill points ×${SAND_SP}`)}>Sand ×${SAND_SP} pts</span>` : ''}
-      ${info(`Facility Lv ${pv.lvl}${pv.next != null ? ` — ${pv.next} more sessions to Lv ${pv.lvl + 1}` : ' (max)'}. Stats stop at 80 and 90 until you pass a Limit Break trial. Teammates here: +20% each (+50% at bond 80+). Below 50 stamina training can fail — below ${TRAIN_X.injuryAt} it can injure you.`)}</div>
+      ${info(`Facility Lv ${pv.lvl}${pv.next != null ? ` — ${pv.next} more sessions to Lv ${pv.lvl + 1}` : ' (max)'}. Training stops a stat at ${TRAIN_CAP}; matches only above. Teammates here: +20% each (+50% at bond 80+). Below 50 stamina training can fail — below ${TRAIN_X.injuryAt} it can injure you.`)}</div>
     <div class="trow"><span class="fl">${mates
       .map(pid =>
         faceSVG(
-          T.P.find(p => p.id === pid),
+          squadOf(T).find(p => p.id === pid),
           0.3,
           24
         )
@@ -152,10 +152,16 @@ function hqPanel(run, ti) {
     late = run.event ? 'answer the event first' : City.noTime(run, sc),
     seen = City.scouted(run, ti);
   const roster = seen
-    ? `<div class="roster small">${t.P.map(p => `<span>${faceSVG(p, 0, 22)}${stag(p)}${esc(p.name)} <i class="mute">${p.role} ${ovr(p)}</i>${p.elOn ? ` <b style="color:${ECOL[p.el]}">${ENAME[p.el]}</b>` : ''}</span>`).join('')}</div>`
+    ? `<div class="roster small">${squadOf(t)
+        .map(
+          p =>
+            `<span>${faceSVG(p, 0, 22)}${stag(p)}${esc(p.name)} <i class="mute">${p.role} ${ovr(p)}${t.bench && t.bench.includes(p) ? ' · bench' : ''}</i>${p.elOn ? ` <b style="color:${ECOL[p.el]}">${ENAME[p.el]}</b>` : ''}${Skills.techs(p).length ? ` <span class="mute">· ${esc(Skills.techs(p).join(', '))}</span>` : ''}</span>`
+        )
+        .join('')}</div>`
     : '';
+  const habits = seen ? `<p class="small mute">${esc(Dossier.habitText(Dossier.habits(t)))}</p>` : '';
   return `<div class="spot" style="--tc:${t.color}"><h4>${chip(t)}${esc(t.name)} <span class="mute small">${esc(REGIONS[f.region].name)} · rating ${t.ovr}</span></h4>
-    <p class="small">${esc(f.front)}.${City.rep(run, f.region) ? ` <span ${tip(`Your standing with ${REGIONS[f.region].name}`)}>Standing <b>${City.rep(run, f.region) > 0 ? '+' : ''}${City.rep(run, f.region)}</b>.</span>` : ''}${seen ? ` <span class="mute">Word is: ${esc(f.dark.toLowerCase())}.</span>` : ''}</p>${roster}
+    <p class="small">${esc(f.front)}.${City.rep(run, f.region) ? ` <span ${tip(`Your standing with ${REGIONS[f.region].name}`)}>Standing <b>${City.rep(run, f.region) > 0 ? '+' : ''}${City.rep(run, f.region)}</b>.</span>` : ''}${seen ? ` <span class="mute">Word is: ${esc(f.dark.toLowerCase())}.</span>` : ''}</p>${roster}${habits}
     <div class="trow"><button class="btn" onclick="openDossier('${f.region}')" ${tip(`Everything you know about ${REGIONS[f.region].name}`)}>Dossier</button>${
       free
         ? `<button class="btn ${j.ok ? 'hot' : ''}" onclick="joinClub(${ti})" ${j.ok ? '' : `disabled ${tip('Missing: ' + j.why.join(', '))}`}>Sign</button><span class="small ${j.ok ? '' : 'mute'}">${esc(World.joinText(ti, run))}</span>`

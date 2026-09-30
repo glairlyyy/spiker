@@ -12,7 +12,7 @@ earlier files **at load time** (inside functions, anything loaded is fine).
 | Core | `js/core/` | `debuglog.js` (loaded first: `DBG` collects errors, console errors/warnings and match stalls; the header's Debug log button shows and copies them), `rng.js` (all randomness via `R()`, seedable with `RNG.seed(n)`), `storage.js` (all `localStorage` via `store`, keys in `KEYS`). |
 | Data | `js/data/` | Constants only — playstyles, names, looks, moves, roles, elements, `RULES`. No logic. |
 | Engine | `js/engine/` | Pure simulation. **No DOM, canvas or audio.** Runs headless (odds, preseason, tests). |
-| Audio | `js/audio/` | Synthesized WebAudio effects (`sfx.*`). |
+| Audio | `js/audio/` | Synthesized WebAudio effects plus the match music (`sfx.js`). |
 | Game | `js/game/` | Global state `G` (settings, current screen), screen router (`Screens`, `navigate()`), bracket helpers (career Cup). |
 | Career | `js/career/` | Career-mode rules (run, training, events, skills, Cup). **No DOM** — testable headlessly. |
 | UI | `js/ui/` | DOM screens: menu, match screen, career create/week/result (`career-end.js`), skill encyclopedia. |
@@ -67,7 +67,7 @@ The match screen takes a fixture: `navigate('match', { a, b, round, back, onFini
   `data/career.js`, one entry, ×1.5 rewards; see "U21 Final Cup"). Every cup close ends the run. `Run.weekType` is 'cup'
   while `run.cup` is live.
 - **Training depth** (`career/training.js`, `TRAIN_X`): facility Lv 1–5 by use, Hard option, same-training streaks,
-  steeper diminishing returns, Limit Break gates at 80 and 90 (a trial event when a stat reaches its gate), injuries
+  steeper diminishing returns, the training cap `TRAIN_CAP` 75 (no Limit Break), injuries
   when a session fails while exhausted (light training until healed, or the physio).
 - **Goals and sponsors** (`career/goals.js`): the coach sets a goal per block (`BLOCKS`), checked at the block's last
   week; sponsors make offers at fan milestones (a `pre` event shown before the week's choice) with a perk kept while a
@@ -75,9 +75,14 @@ The match screen takes a fixture: `navigate('match', { a, b, round, back, onFini
 - **Matches** (`career/cup.js`): an S–C grade from your own line scales that match's rewards; a pre-match focus goal;
   a captain's team talk before Cup matches (applied in `Cup.prepare` and the fixture's `setup(m)` hook).
 - Content is data: `data/career.js` (numbers, trainings, calendar, cups, rewards, ranks, unlocks, sponsors, modes),
-  `data/events.js`, `data/skills.js`. Special events ('limit', 'sponsor') are built in `Events.def`.
+  `data/events.js`, `data/skills.js`. Special events ('element', 'sponsor') are built in `Events.def`.
 - Skills reach the engine only through `skillMod(p, key)` and bonds through `bondCombo(a, b)` (`engine/skills.js`);
   both are neutral for normal players and draw no random numbers.
+- Skills in the shop vs in play (T-036): basic skills (no `tech`) are bought with skill points (`Skills.learn`); techniques can't be
+  (`canLearn` is false for them). `Skills.tryLearn(run, m)` runs after a match you played (`Cup.result`): per technique of your role you
+  don't own, one roll (`LEARN`: by doing a stat-line threshold, else by facing an opponent who played and has it; chance × wit ×
+  the match gap factor, ≤ 0.5), at most one per match. Techniques still fire by stats via `hasTech`. Scouting shows them
+  (`Skills.techs`; dossier roster `techs`, hidden until scouted).
 - No meta progression: every career starts the same (free agent, `CAREER.budget` / `createCap` / `staMax`); challenge modes (`MODES`) are plain options.
 - UI: `ui/icons.js` draws the active (bolt + type) / passive (aura) skill icons used in the shop, player card and
   encyclopedia; the result screen has a season growth chart from `run.hist`.
@@ -219,11 +224,63 @@ full speed and no new OP arcs or motes spawn. The defense's scene beats (the wal
 `m.defBeats` and dropped by `dropDefScene` when the final attack has no block attempt (a tip, or coverage ≤ 0.12 after
 cut shots, seams and fakes — the same test block() uses). Front-row players who aren't in the block still go up late
 (`lateB` in rally.js, display only), and the first blocker never comes from the back row while a front-row player is
-there. Scramble drama (`scramble()`): a block break, a
+there (see "Block formation"). Scramble drama (`scramble()`): a block break, a
 pop-up off the arms, a desperation save or (sometimes) a touched ball dug on the dive gets a "Break!!" / "Loose ball!"
 call, a camera push and a slow window at the end of the beat (`hypeSlow`: off when Hype is Off); block touches call
 "One touch!". The Hype setting (`G.hype`: off / normal /
 max) skips scene beats above its level; tapping the court skips the rest of a scene.
+
+## Block formation
+
+`formBlock()` (engine/rally.js) reads the attack instead of always sending the middle. `lane` = L / M / R from the hitter's net
+position (`BLOCK.laneL` / `laneR`, data/tactics.js); `pipe` = a back-row attack in lane M. Primary blocker `b0`: the front-row MB on any attack they can reach in time (`reach × 1.3`; they wait at the net, the wings stand deeper),
+else the defender closest to the hitter lane, the defender nearest the lane on a wing attack (the
+pin blocker sets the edge); if the middle bit on the fake (`bitten`) the far defender swings across (reach × `swingReach`,
+coverage × `swingCov`, no double). Second blocker `b1` closes beside `b0` on the court-inside side when one roll
+(`defT.S.dbl` × 0.6–1.4 by `readQ`, wit + speed) passes and they can reach the spot; sync attacks never get one. A blocker who
+cannot reach the spot in time is late (coverage × `lateCov`); `readQ` < 0.35 splits the hands (× `splitCov`). Everything
+returns `lane`, `pipe`, `late` for block() / hype. `m.dset[side]` is the defence setting (`DEFSETS`: read = no change;
+commit = the blocker on a quick is already up — reach × `commitReach`, coverage × `commitQuick`, a double forms — but the middle
+counts as bitten on any fake and covers little else (× `commitMiss`); bunch = both defenders start near the middle
+(`bunchStartZ`, as far as their speed allows), middle attacks × `bunchMid` with the double always forming, pins × `bunchPin`).
+Scaled coverage is capped at 1.2 so a setting cannot turn a wall into block-break territory. `m.att[side]` is an engine-only
+tally (attacks / kills / stuffs by kind quick, mid, pin; doubles; late) used by tests — it draws no randoms.
+
+Defence settings: each style carries `dset` (wall = bunch, tempo = commit, the rest read; `defOf(team)` in data/tactics.js);
+`newMatch` starts every side on it unless `opts.dset` fixes one (`m.dsetMode[side]` = 'cap' | 'fixed', like `tacMode`; not
+saved). In 'cap' mode `captainThink` (one draw per call, only then) counts the opponent's `m.att` after 8 attacks: quick share
+> 35 % → commit, middle share > 45 % → bunch, else read; a switch is chatter + log + the existing `tac` act (`dset` field) and
+is kept in `m.dsetLog`. The match screen's Tactics popover has a Defence select per team (`setDefence`, `showTac` shows the
+captain's current pick). Scouting: `Dossier.habits(team)` (quick share from style × MB count, favoured wing by WS power, pipe =
+setter has `pipecombo`, defence setting) and `Dossier.habitText`; shown in the dossier's club rows and the HQ card once
+scouted — computed from data, never from match history.
+
+## Substitutions
+
+`SUB = { max, sta, fresh }` (`js/data/rules.js`). At every dead ball `end()` (engine/match.js) calls `coachSubs(m, side)` after the
+point's beats: with subs left (`m.subs[side] < SUB.max`, per set), `subCandidate` finds who to swap — the tiredest player under `SUB.sta`, then one with
+`SUB.errs` errors (`m.setErr`) and more errors than kills, then a rested starter (≥ `SUB.back`, better rated) returning for whoever replaced them
+(`m.subbed`); the replacement is the fittest bench player at stamina ≥ `SUB.fresh` (same role first, else highest rating; a setter only for a
+setter). One roll `R() < lerp(SUB.iq[0], SUB.iq[1], coachIQ)` decides whether the coach acts now; no candidate → no roll. `m.subLog` (engine-only) records
+each sub with its reason, shown in the log line.
+`subIn` gives the incoming player the seat (`t.P` index), slot and — if the captain went off — the captaincy goes to the best
+leader on court; `m.pos` is copied. Recording adds one beat `sub` (+ `rot` snapshot, `plabel` 'SUBBED', `coachtalk` from
+`SUBLINES` picked by hash, `log`). `m.lineup0` is the starting lineup per side; `restoreLineups(m)` puts `P`, `bench`, slots, `s` /
+`mb` / `ws` and the captain back — called in `end()` when the match is over, by `leaveMatch` and by `navigate()` when a running match is
+left (safe twice; never after a finished match). Match-time stats: `m.stat` (box score / stars / `tour.mp` list players on court or with stats).
+Playback: `A.disp` holds the 4+4 on court, `A.bench` the display entries of the bench (nothing draws or animates them); `case 'sub'`
+swaps them (fresh entry at the outgoing player's spot) and calls `R3D.swapActor`, which re-dresses the same 3D figure as the
+incoming player (`dressFigure`), so no figure is ever on court twice. `byId` searches `squadOf`.
+
+### Your player and the bench (T-031)
+
+`Run.lineup(run, T, region, dry)` (career/run.js) is your coach's pick for your side before every career match (`Cup.fixture`, after
+`Cup.prepare`): per slot [S, MB, WS, WS] the best same-role player by `ovr + 6 × Run.form` (+ your standing in that region ÷
+`BENCH.standingPer`, `data/career.js`); a missing role falls back to the best remaining player. It reorders `T.P` / `T.bench`, slots,
+`s`/`mb`/`ws`, captain and `ovr`, and returns `{ starts, you, rival }`; `dry` only scores (the pre-match Lineup row). `Cup.mine(run, kind)`
+gives the side and region (cup entrant / faction-eval squad / pickup or club). The engine records `m.played` (ids who were on court at
+any time) and `m.finished` (ids on court at the end). `Cup.result`: never played → no grade, no win bonus, only `Eval.benchXp`;
+started or finished on the bench → rewards × `BENCH.partMul`; a bench win never counts for "win the evaluation" (`run.warm.win`).
 
 ## Blocks
 
@@ -231,7 +288,7 @@ max) skips scene beats above its level; tapping the court skips the rest of a sc
 beats the full block by 10%+) → stuff (`stuffChance`: the block at full strength vs the spike, weighted by
 coverage^`STUFF_COV_EXP`; a cover dig may save it) → touch → tool off the hands (only off a partial block,
 `TOOL_COV`, at `TOOL_P`). A blocker at least as sharp (wit) as the hitter keeps part of the block on a cut shot.
-Targets: ~14% of attacks stuffed in normal matches; Monster games stay offence-heavy (every hitter has every
+Targets: ~14% of attacks stuffed in normal matches (measured 13.7 % over 600 Read-vs-Read sims, `STUFF_BIAS` 0.45); Monster games stay offence-heavy (every hitter has every
 technique). Kill blocks get a scene: a `ball` close-up on the stuff, then the blocker's face and line
 (`hypeKillBlock`: level 1 at match point or for a star blocker at most every 6 points).
 
@@ -286,14 +343,23 @@ pickup squad). Free agents in the Academy squad play its evaluations and enter t
 `ECON.payEvery` weeks: allowance − food − rent (eviction to the abandoned gym when broke), housing effects, one
 league transfer (`World.transfers`) and a Gazette (`run.gazette`, news collected via `Run.news`).
 
+## Team shape (squads of 6)
+
+`t.P` = the 4 on court (what the engine plays: `t.s`, `t.mb`, `t.ws` are views of it), `t.bench` = the 2 substitutes (same
+`team` link, own slot). `squadOf(t)` (`js/engine/teams.js`) = all 6; use it wherever "the club's players" is meant (growth,
+bonds, scouting, pools, promotion, transfers) and keep `t.P` for "who plays". `fillRoster` rolls the bench after the 4 (flex
+role + a wing spiker); `finalizeTeam` gives leadership, elements and shirt numbers to all 6 (numbers unique) but the captain and
+`ovr` come from `t.P`. `World.swap(x, y)` trades two players' seats (court or bench), slots, numbers and team links (join,
+transfers, promotion). Saves (RUN_VERSION 5; v5 dropped `run.lb`) store `bench` next to `P`; `teamFromJSON` relinks it.
+
 ## Faction pools
 
-Each faction (`POOL` in `js/data/world.js`: Wei 20, Wu 14, Shu 10, Outlaws 6, St. Gloria 5) is a roster = its league-team
+Each faction (`POOL` in `js/data/world.js`: Wei 24, Wu 18, Shu 12, Outlaws 6, St. Gloria 6; `SQUAD` = 6) is a roster = its league-team
 players + generated reserves. `Pool.build(teams, used)` (`js/career/pool.js`, called by `Run.draft`) makes one
 reserve team per region (`run.reserve[region]`, `i: -1`, `P` may be empty); `Pool.players(run, r)` / `Pool.size(run, r)`
-list a faction's team players then reserves. Reserves are saved (`run.reserve`; older saves are dropped)
+list a faction's team players (squadOf) then reserves (12 / 6 / 0 / 0 / 0 with the defaults). Reserves are saved (`run.reserve`; older saves are dropped)
 and not used in play yet. A player lives in exactly one place; `you` and the pickup squad are never reserves.
-`Pool.draw(run, r, n)` returns n squads `[S, MB, WS, WS]` (new arrays, nothing mutated): weighted by ovr (`DRAW` in world.js),
+`Pool.draw(run, r, n)` returns n squads of 6 (new arrays, nothing mutated): the first 4 in court order `[S, MB, WS, WS]`, then 2 bench players (drawn after every court slot, any role, never you): weighted by ovr (`DRAW` in world.js),
 you are a candidate only while signed with r, and a standing ≥ `DRAW.sure` puts you in squad 1.
 
 ## Evaluations
@@ -301,15 +367,15 @@ you are a candidate only while signed with r, and a standing ≥ `DRAW.sure` put
 `CALENDAR` weeks marked `'eval'` (4, 8 … 24) replace the old warm-ups; `Run.weekType` returns `'eval'` only if `Eval.kind(run)` is
 non-null (`'academy'`: free agent still in the Academy squad, `'faction'`: signed with a major, else none). `Eval.setup(run)`
 (`js/career/eval.js`, called from `Run.nextWeek` and `Run.repair`) draws the week into `run.eval = { week, kind, region, mine, opp }`
-(player id arrays, from `Pool.draw`; `mine` null = Academy squad or not drawn). `Eval.squad` builds a temporary team;
-`Eval.lend` / `restore` point players' `team`, `cap` and `slot` at it for the match and back (never `finalizeTeam` on it).
+(player id arrays, from `Pool.draw`; `mine` null = Academy squad or not drawn). `Eval.squad` builds a temporary team (first 4 → `P`, the rest → `bench`);
+`Eval.lend` / `restore` point players' `team`, `cap` and `slot` (bench: `team` only) at it for the match and back (never `finalizeTeam` on it).
 `Eval.bench` = not selected: wit XP worth `EVAL.benchDays` day-sessions.
 
 ## U21 Final Cup
 
 `js/career/cup.js`. After week 28 `Cup.start` calls `Cup.entrants(run)`: every faction's `Pool.draw` squads (named
 `<Region> I, II…`), then the Academy squad while you are a free agent still in it. Saved as
-`run.cup = { id, entrants: [{ name, short, color, region, ids, academy }], me, sched, done }` (RUN_VERSION 3; `me` = your
+`run.cup = { id, entrants: [{ name, short, color, region, ids, academy }], me, sched, done }` (RUN_VERSION 4; `me` = your
 entrant index, −1 = not in it → you watch and `NO_CUP`). Entrants are ranked by `Eval.squad(...).ovr`, placed by
 `seedOrder(16)` (top seeds get byes as nulls) into `newBracket`; bracket entries hold entrant indexes. `Cup.team(run, i)`
 builds a squad on demand (the Academy entrant is `run.pickup`). Every match, yours (`Cup.fixture('cup')`) or simulated
@@ -379,8 +445,18 @@ region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border mete
 
 Training gives XP (`Training.xpFor`: base gain × `TRAIN_X.xp.per` × every multiplier — place quality and home turf
 (x), facility level, mood, streak, teammates, camp, Hard). A stat rises a point each time its XP reaches
-`Training.need(v)` = base × grow^(v − from) (exponential); leftovers bank in `run.xp`; nothing banks at a
-limit-break gate or the cap. Wit counts in 0.02 steps (level = wit × 50). Events still change stats directly.
+`Training.need(v)` = base × grow^(v − from) (exponential); leftovers bank in `run.xp`; nothing banks past the top.
+`Training.top(run, stat, src)`: 'train' (sessions, the default) → `TRAIN_CAP` 75; 'match' → `CAREER.runCap`; wit its own cap. `sim` /
+`gain` / `addXp` take the same `src`; a stat already above the top gains nothing from that source. Wit counts in 0.02 steps
+(level = wit × 50). Events still change stats directly, but stop at `TRAIN_CAP` (`Run.bump` never lowers a stat that matches raised).
+
+### Match XP (T-035)
+
+`Growth.matchXp(run, m, mine, opp)` (career/growth.js), called from `Cup.result` when you played: your `m.stat` line × `MATCH_XP.per`
+(`data/career.js`: kills → power, aces → power, blocks → jump + def, digs → def + speed, assists → wit, attempts → jump), × the gap
+factor `Growth.gapFactor(ovr of your 4 starters, opponent's)` = clamp(1 + gap × `perGap`, `gap`), each stat through
+`Training.addXp(…, 'match')` (so matches pass `TRAIN_CAP`). The winner is never read. `City.clash` (you fought) gives a flat
+`MATCH_XP.clash` amount to your key stat, scaled by your ovr vs `CLASH.par`. The result line starts with "XP: …" and the factor note.
 
 ## Career hub UI
 
@@ -402,6 +478,14 @@ classic-script globals from index.html), `npm run format` (Prettier, .prettierrc
 The court canvas is sized to CSS size × device pixels within a budget (`COURT_PX`, 2.4 MP — fullscreen on a
 high-DPI screen would otherwise be 6–8 MP a frame), and the 3D view renders at a dynamic fraction of it (`adaptRes`
 in r3d: steps down to 0.55 when frames run under ~50 fps, back up when there's headroom). `matchState()` reports both.
+
+## Match music
+
+`sfx.js`: `assets/audio/the_big_fight.mp3` is fetched and decoded once (`SND.bgmBuf`; no `<audio>`/blob URLs, which the
+artifact host may block), then looped by an `AudioBufferSourceNode` → its own gain (`SND.bgm`) → `ctx.destination`, bypassing
+`SND.master` (no compressor, slow-mo low-pass or reverb). Level = `BGM_GAIN` (0.5) × `SND.vol` × (sound on ? 1 : 0);
+`toggleSound` / `setVolume` re-apply it (`bgmSync`). `navigate` calls `bgmStart()` for the match screen (fade in 1 s) and
+`bgmStop()` for any other (fade out 0.6 s); the result overlay keeps playing. Headless there is no `AudioContext`: no-op.
 
 ## Robustness
 

@@ -25,7 +25,7 @@ const Cup = {
     }
     if (World.isFree(run) && run.academy !== false && run.pickup) {
       const T = run.pickup;
-      out.push({ name: T.name, short: T.short, color: T.color, region: null, ids: T.P.map(p => p.id), academy: true });
+      out.push({ name: T.name, short: T.short, color: T.color, region: null, ids: squadOf(T).map(p => p.id), academy: true });
     }
     return out;
   },
@@ -85,45 +85,50 @@ const Cup = {
   /** Match-day form: your mood, +0.1 per 80+ bond for your side, the captain's talk; noise for the opponents. */
   prepare(run, opp, kind, side = Run.myTeam(run)) {
     const you = Run.you(run),
-      mine = side,
-      bonds = Run.mates(run).filter(m => (you.bond[m.id] || 0) >= 80).length;
+      mine = side;
     const talk = kind === 'cup' && you.cap ? run.talk : null;
-    for (const p of mine.P) {
-      let f = p === you ? MOODS[run.mood].form : 0.1 * bonds;
+    for (const p of squadOf(mine)) {
+      let f = Run.form(run, p);
       if (talk === 'fire' && p !== you) f += 0.35;
       if (talk === 'calm') f = Math.max(f, 0.2);
       p.form = +Math.min(1, f).toFixed(2);
     }
-    for (const p of opp.P) p.form = +(rnd(-0.2, 0.2) - (talk === 'calm' ? 0.15 : 0)).toFixed(2);
+    for (const p of squadOf(opp)) p.form = +(rnd(-0.2, 0.2) - (talk === 'calm' ? 0.15 : 0)).toFixed(2);
   },
-  /** Fixture for the match screen. kind: 'eval' | 'cup'. Your side is always on the left. */
+  /** Your side of the next career match: { T: the squad (a temporary one for a drawn squad), region: whose standing counts for your place }. */
+  mine(run, kind) {
+    if (kind === 'cup') return { T: Cup.team(run, run.cup.me), region: run.cup.entrants[run.cup.me].region };
+    const e = Eval.setup(run),
+      club = run.team != null ? run.teams[run.team] : null;
+    if (e && e.kind === 'faction')
+      return { T: Eval.squad(run, e.mine, `${club.name} · Eval`, club.color), region: FACTIONS[run.team].region };
+    return { T: Run.myTeam(run), region: null }; // the Academy squad is a real team
+  },
+  /** Fixture for the match screen. kind: 'eval' | 'cup'. Your side is always on the left; your coach picks the 4 (Run.lineup). */
   fixture(run, kind) {
     const you = Run.you(run),
       def = Run.cupDef(run);
-    let mine = Run.myTeam(run),
-      opp,
+    let opp,
       round,
       bm = null;
+    if (kind === 'cup') bm = Cup.next(run); // (simulates the other matches first: before your squad is lent)
+    const side = Cup.mine(run, kind),
+      mine = side.T;
     if (kind === 'eval') {
       // an evaluation: drawn squads (lent their players for the match); the Academy squad is a real team
-      const e = Eval.setup(run),
-        club = run.team != null ? run.teams[run.team] : null;
-      if (e.kind === 'faction') {
-        mine = Eval.squad(run, e.mine, `${club.name} · Eval`, club.color);
-        Eval.lend(run, mine);
-      }
+      const e = Eval.setup(run);
+      if (e.kind === 'faction') Eval.lend(run, mine);
       opp = Eval.squad(run, e.opp, `${REGIONS[e.region].name} · Eval`, REGIONS[e.region].color);
       Eval.lend(run, opp);
       round = `${e.kind === 'academy' ? 'Academy' : REGIONS[e.region].name} evaluation (week ${run.week})`;
     } else if (kind === 'cup') {
-      bm = Cup.next(run);
-      mine = Cup.team(run, run.cup.me);
       opp = Cup.team(run, bm.a === run.cup.me ? bm.b : bm.a);
       Eval.lend(run, mine);
       Eval.lend(run, opp);
       round = `${def.name} ${bm.round}`;
     }
     Cup.prepare(run, opp, kind, mine);
+    Run.lineup(run, mine, side.region);
     return {
       a: mine,
       b: opp,
@@ -162,40 +167,53 @@ const Cup = {
     const win = m.winner === 0,
       you = Run.you(run),
       s = m.stat[you.id] || blank(),
-      plays = s.k + s.blk + s.ace,
-      def = Run.cupDef(run),
-      mul = kind === 'cup' ? def.mul : 1,
-      [grade, , gmul] = Cup.grade(s, win),
-      R0 = kind === 'cup' ? (win ? REWARDS.cupWin : { sp: 0, fans: 0, bond: 0 }) : win ? REWARDS.warmupWin : REWARDS.warmupLoss;
-    const sp = Math.round((R0.sp + plays * REWARDS.perPlay.sp) * mul * gmul),
-      fans = Math.round((R0.fans + plays * REWARDS.perPlay.fans) * mul * gmul * Sponsors.fanMul(run));
-    const out = [
-      Run.bump(run, 'sp', sp),
-      Run.bump(run, 'fans', fans),
-      World.prize(run, Math.round((kind === 'cup' ? (win ? ECON.cupWin : 0) : win ? ECON.warmupWin : ECON.warmupLoss) * mul))
-    ];
-    if (grade === 'S') out.push(Run.bump(run, 'mood', 1));
-    if (R0.bond) {
-      for (const q of Run.mates(run)) Run.bond(run, q.id, R0.bond);
-      out.push(`+${R0.bond} bond with everyone`);
-    }
-    const fm = Cup.focusMet(run, s);
-    if (fm) out.push('focus met', Run.bump(run, 'sp', FOCUS_REWARD.sp), Run.bump(run, 'fans', FOCUS_REWARD.fans));
-    else if (fm === false) out.push('focus missed');
-    run.plays.k += s.k;
-    run.plays.blk += s.blk;
-    run.plays.ace += s.ace;
-    run.grades = [...(run.grades || []), grade];
-    run.focus = null;
-    out.push(ElTrial.match(run, m, grade));
-    Sponsors.match(run, win, grade);
-    const sc = m.setScores[0],
+      played = m.played.has(you.id),
+      part = played && !(m.lineup0[0].P.includes(you) && m.finished.has(you.id)), // started or finished on the bench
+      sc = m.setScores[0],
       score = `${sc[0]}-${sc[1]}`,
       opp = m.t[1];
-    const line = `${win ? 'Won' : 'Lost'} ${score} vs ${opp.name} · grade ${grade}. You: ${s.k} kills, ${s.blk} blocks, ${s.ace} aces · ${out.filter(Boolean).join(', ')}`;
+    let line,
+      grade = null;
+    if (!played) {
+      // never came on: no grade, no win bonus — only the bench reward (wit XP)
+      line = `${win ? 'Won' : 'Lost'} ${score} vs ${opp.name} · Watched from the bench: ${Eval.benchXp(run)}`;
+      run.focus = null;
+    } else {
+      const plays = s.k + s.blk + s.ace,
+        def = Run.cupDef(run),
+        mul = (kind === 'cup' ? def.mul : 1) * (part ? BENCH.partMul : 1),
+        [g, , gmul] = Cup.grade(s, win),
+        R0 = kind === 'cup' ? (win ? REWARDS.cupWin : { sp: 0, fans: 0, bond: 0 }) : win ? REWARDS.warmupWin : REWARDS.warmupLoss;
+      grade = g;
+      const sp = Math.round((R0.sp + plays * REWARDS.perPlay.sp) * mul * gmul),
+        fans = Math.round((R0.fans + plays * REWARDS.perPlay.fans) * mul * gmul * Sponsors.fanMul(run));
+      const out = [
+        Growth.matchXp(run, m),
+        Skills.tryLearn(run, m),
+        Run.bump(run, 'sp', sp),
+        Run.bump(run, 'fans', fans),
+        World.prize(run, Math.round((kind === 'cup' ? (win ? ECON.cupWin : 0) : win ? ECON.warmupWin : ECON.warmupLoss) * mul))
+      ];
+      if (grade === 'S') out.push(Run.bump(run, 'mood', 1));
+      if (R0.bond) {
+        for (const q of Run.mates(run)) Run.bond(run, q.id, R0.bond);
+        out.push(`+${R0.bond} bond with everyone`);
+      }
+      const fm = Cup.focusMet(run, s);
+      if (fm) out.push('focus met', Run.bump(run, 'sp', FOCUS_REWARD.sp), Run.bump(run, 'fans', FOCUS_REWARD.fans));
+      else if (fm === false) out.push('focus missed');
+      run.plays.k += s.k;
+      run.plays.blk += s.blk;
+      run.plays.ace += s.ace;
+      run.grades = [...(run.grades || []), grade];
+      run.focus = null;
+      out.push(ElTrial.match(run, m, grade));
+      Sponsors.match(run, win, grade);
+      line = `${win ? 'Won' : 'Lost'} ${score} vs ${opp.name} · grade ${grade}${part ? ' (bench: rewards ×' + BENCH.partMul + ')' : ''}. You: ${s.k} kills, ${s.blk} blocks, ${s.ace} aces · ${out.filter(Boolean).join(', ')}`;
+    }
     Run.log(run, line);
     if (kind === 'eval') {
-      run.warm.push({ week: run.week, vs: opp.i, win, score, grade });
+      run.warm.push({ week: run.week, vs: opp.i, win: played && win, score, grade });
       Run.endWeek(run);
     } else {
       run.talk = null;

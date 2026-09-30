@@ -9,12 +9,8 @@ function youCard(run) {
     team = Run.myTeam(run),
     mood = MOODS[run.mood],
     staPct = Math.round((run.sta / run.staMax) * 100);
-  const gateTag = k => {
-    const g = Training.gate(run, k);
-    return g < CAREER.runCap
-      ? `<small class="gate ${you[k] >= g ? 'at' : ''}" title="Stops at ${g} until its Limit Break">⌈${g}</small>`
-      : '';
-  };
+  const capTag = k =>
+    `<small class="gate ${you[k] >= TRAIN_CAP ? 'at' : ''}" title="Training stops at ${TRAIN_CAP}. Matches only above.">⌈${TRAIN_CAP}</small>`;
   return `<div class="panel ycard">
     <div class="phd"><span class="portrait">${faceSVG(you, mood.form, 64)}<b>${you.num}</b></span>
       <div><div class="pn">${stag(you)}${esc(you.name)}${you.cap ? ' <span class="capb" title="Team captain">C</span>' : ''}</div>
@@ -28,7 +24,7 @@ function youCard(run) {
       }</div></div></div>
     <div class="stats">${STATK.map(k => {
       const pr = Training.progress(run, k);
-      return `<span ${tip(`${Math.round((pr.have / Math.max(1, pr.need)) * 100)}% of the way to the next point`)}>${STATNAME[k]}${gateTag(k)}</span><span class="xpbar">${bar(you[k])}<i style="width:${Math.round((pr.have / Math.max(1, pr.need)) * 100)}%"></i></span>`;
+      return `<span ${tip(`${Math.round((pr.have / Math.max(1, pr.need)) * 100)}% of the way to the next point`)}>${STATNAME[k]}${capTag(k)}</span><span class="xpbar">${bar(you[k])}<i style="width:${Math.round((pr.have / Math.max(1, pr.need)) * 100)}%"></i></span>`;
     }).join('')}
       <span>Wit</span><span class="bar wit"><i style="width:${you.wit * 50}%"></i><b>${you.wit.toFixed(2)}</b></span>
       <span>Leadership</span>${bar(you.lead)}</div>
@@ -99,16 +95,19 @@ function seasonCard(run) {
 function bondCard(run) {
   const you = Run.you(run),
     mates = Run.mates(run),
-    alone = World.isFree(run) && run.academy === false;
+    alone = World.isFree(run) && run.academy === false,
+    onBench = m => !!(m.team.bench && m.team.bench.includes(m)),
+    row = list =>
+      list
+        .map(m => {
+          const b = you.bond[m.id] || 0;
+          return `<div class="bond">${faceSVG(m, 0, 30)}<div><b>${stag(m)}${esc(m.name)}</b>${m.cap ? ' <span class="capb">C</span>' : ''} <i class="mute small">${m.role} · OVR ${ovr(m)}</i>
+        <span class="bbar ${b >= 80 ? 'f' : b >= 60 ? 'c' : ''}"><i style="width:${b}%"></i></span><small class="mute">Bond ${b}${b >= 80 ? ' · friends' : b >= 60 ? ' · combos' : ''}</small></div></div>`;
+        })
+        .join('');
   return `<div class="panel"><h3>Teammates${info('Training together shares your gains and raises their odds of breaking through to ★ star or OP. 60+ bond: two-player combos. 80+: friendship training (+50%).')}</h3>${
     alone ? '<p class="small mute">No squad. The Academy no longer lists you.</p>' : ''
-  }${mates
-    .map(m => {
-      const b = you.bond[m.id] || 0;
-      return `<div class="bond">${faceSVG(m, 0, 30)}<div><b>${stag(m)}${esc(m.name)}</b>${m.cap ? ' <span class="capb">C</span>' : ''} <i class="mute small">${m.role} · OVR ${ovr(m)}</i>
-        <span class="bbar ${b >= 80 ? 'f' : b >= 60 ? 'c' : ''}"><i style="width:${b}%"></i></span><small class="mute">Bond ${b}${b >= 80 ? ' · friends' : b >= 60 ? ' · combos' : ''}</small></div></div>`;
-    })
-    .join('')}${
+  }${row(mates.filter(m => !onBench(m)))}${mates.some(onBench) ? `<h4>Bench</h4>${row(mates.filter(onBench))}` : ''}${
     World.isFree(run) && run.academy !== false
       ? `<p class="small mute" id="leaveac"><button class="btn" onclick="leaveSquad()" ${tip('The Academy will not invite you again')}>Leave squad</button></p>`
       : ''
@@ -163,7 +162,13 @@ function matchPrep(run, cup) {
           )
           .join('')}${info('You are captain — pick one before the match')}</div>`
       : '';
-  return focus + talk;
+  // the coach's pick (Run.lineup): do you start?
+  const side = Cup.mine(run, cup ? 'cup' : 'eval'),
+    L = Run.lineup(run, side.T, side.region, true),
+    lineup = `<div class="prep"><b>Lineup</b> ${L.starts ? 'Starting' : '<b>On the bench</b>'}${
+      L.rival ? ` <span class="small mute">— you ${L.you.toFixed(1)} vs ${esc(L.rival.p.name)} ${L.rival.score.toFixed(1)}</span>` : ''
+    }${info(`Your coach picks the best player of each role by rating + 6 × form (+ your standing with the faction ÷ ${BENCH.standingPer}). Start or finish on the bench and match rewards ×${BENCH.partMul}; never play and you only get a little Wit XP.`)}</div>`;
+  return lineup + focus + talk;
 }
 /** The evaluation week's card: play (or Sim) your evaluation match, or watch from the bench when not selected. */
 function evalPanel(run) {
@@ -179,10 +184,10 @@ function evalPanel(run) {
   if (e.kind === 'faction' && !e.mine)
     return `<div class="panel">${head}<p>Not selected this month.</p>
     <div class="trow"><button class="btn hot big" onclick="benchEval()">Watch from the bench</button></div></div>`;
-  const mine = e.kind === 'academy' ? club.P : byId(e.mine);
+  const mine = e.kind === 'academy' ? club.P : byId(e.mine).slice(0, 4); // the 4 who start
   return `<div class="panel">${head}
     <p class="small"><b>${e.kind === 'academy' ? esc(club.name) : esc(club.name) + ' squad'}</b> ${list(mine, true)}</p>
-    <p class="small"><b>${esc(REGIONS[e.region].name)} squad</b> ${list(byId(e.opp), D.scouted || D.member)}</p>
+    <p class="small"><b>${esc(REGIONS[e.region].name)} squad</b> ${list(byId(e.opp).slice(0, 4), D.scouted || D.member)}</p>
     ${D.scouted || D.member ? '' : '<p class="small mute">Scout one of their clubs to see ratings.</p>'}
     ${matchPrep(run, false)}
     <div class="trow"><button class="btn hot big" onclick="playCareer('eval')">Play evaluation</button><button class="btn big" onclick="playCareer('eval', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
@@ -244,9 +249,9 @@ function eventCard(run) {
                       : `${v > 0 ? '+' : ''}${v} ${k === 'sta' ? 'stamina' : k === 'sp' ? 'skill pts' : STATNAME[k] || k}`
             )
             .join(', ');
-  const kind = { limit: 'Limit Break', sponsor: 'Sponsor', element: 'Element Trial' }[run.event.id] || 'Event',
+  const kind = { sponsor: 'Sponsor', element: 'Element Trial' }[run.event.id] || 'Event',
     you = Run.you(run);
-  return `<div class="panel ev ${run.event.id === 'limit' || run.event.id === 'element' ? 'lbk' : ''}"${run.event.id === 'element' ? ` style="--lbk:${ECOL[you.el]}"` : ''}><span class="evk">${kind}</span><h3>${esc(e.title)}</h3><p>${esc(Events.text(run, run.event, e.text))}</p>
+  return `<div class="panel ev ${run.event.id === 'element' ? 'lbk' : ''}"${run.event.id === 'element' ? ` style="--lbk:${ECOL[you.el]}"` : ''}><span class="evk">${kind}</span><h3>${esc(e.title)}</h3><p>${esc(Events.text(run, run.event, e.text))}</p>
     <div class="evc">${[e.a, e.b].map(([label, fx], i) => `<button class="btn" onclick="chooseEvent(${i})"><b>${esc(label)}</b><small>${esc(fxText(fx))}</small></button>`).join('')}</div></div>`;
 }
 /** Skills shop in two groups: active techniques (fire in matches) and passive skills (always on). */
@@ -257,7 +262,7 @@ function skillShop(run, open) {
     const s = SKILLS[id],
       own = you.skills.includes(id),
       byStats = !own && s.tech && hasTech(you, id);
-    return `<button class="sk ${own || byStats ? 'own' : ''} ${s.tech ? 'act' : 'pas'}" onclick="learnSkill('${id}')" ${own || byStats || !Skills.canLearn(run, id) ? 'aria-disabled="true"' : ''} ${tip(s.desc)}>${skillIcon(id)}<b>${esc(s.name)}</b><span>${own ? '✓' : byStats ? '✓ stats' : s.cost}</span></button>`;
+    return `<button class="sk ${own || byStats ? 'own' : ''} ${s.tech ? 'act' : 'pas'}" onclick="learnSkill('${id}')" ${own || byStats || !Skills.canLearn(run, id) ? 'aria-disabled="true"' : ''} ${tip(s.tech && !own && !byStats ? `${s.desc}\nLearned in matches: by doing it, or by facing a player who has it.` : s.desc)}>${skillIcon(id)}<b>${esc(s.name)}</b><span>${own ? '✓' : byStats ? '✓ stats' : s.tech ? 'learn in matches' : s.cost}</span></button>`;
   };
   const aff = ids.filter(id => !you.skills.includes(id) && Skills.canLearn(run, id)).length;
   return `<div class="panel">${fold(

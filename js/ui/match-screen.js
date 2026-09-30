@@ -19,6 +19,13 @@ const tacticPicker = (t, i) =>
   )
     .map(([k, v]) => `<option value="${k}">${esc(v.name)}</option>`)
     .join('')}</select><small class="tacnow" id="tacnow${i}"></small></label>`;
+/** Defence setting select for side `i` (captain's call or a fixed setting). */
+const defencePicker = (t, i) =>
+  `<label class="tac" style="--tc:${t.color}" ${tip(`Defence setting for ${t.name} — how the front row blocks; applies from the next rally`)}><span>${esc(t.short)} def</span><select id="dset${i}" onchange="setDefence(${i},this.value)"><option value="cap">Captain's call${leadLv(t.cap) ? ` (Lv${leadLv(t.cap)})` : ''}</option>${Object.entries(
+    DEFSETS
+  )
+    .map(([k, v]) => `<option value="${k}" title="${esc(v.desc)}">${esc(v.name)}</option>`)
+    .join('')}</select><small class="tacnow" id="dsnow${i}"></small></label>`;
 // Setting button labels (shared by the initial render and the toggles)
 const hypeLabel = () => `Hype: ${HYPE[G.hype].name}`;
 const cutLabel = () => (G.cutMini ? 'Cut-ins: Mini' : 'Cut-ins: Full');
@@ -69,7 +76,7 @@ function startMatch(fx) {
       ${timeoutButton(a, 0)}${timeoutButton(b, 1)}
       <button class="btn" onclick="toggleFullscreen()" ${tip('Fullscreen court (F)')} aria-label="Fullscreen">⛶</button>
       <button class="btn" id="snd" onclick="toggleSound()" aria-label="Sound">${SND.on ? '🔊' : '🔇'}</button>
-      ${pop('Tactics ▾', [a, b].map(tacticPicker).join(''))}
+      ${pop('Tactics ▾', [a, b].map(tacticPicker).join('') + [a, b].map(defencePicker).join(''))}
       ${pop('⚙ ▾', settingsMenu())}
     </div>
     <div class="feeds"><div class="panel"><h3>Commentary</h3><ol class="log" id="log"></ol></div><div class="panel"><h3>Box score</h3><div id="box"></div></div></div>
@@ -82,11 +89,24 @@ function startMatch(fx) {
   });
   ctx = cv.getContext('2d');
   fit();
-  const disp = {};
+  const disp = {},
+    bench = {}; // the bench: display entries kept out of A.disp (nothing draws or animates them) until a 'sub' act swaps one in
   m.t.forEach((t, side) =>
-    t.P.forEach(p => {
+    squadOf(t).forEach(p => {
       const h = home(p, side);
-      disp[p.id] = { p, side, x: h[0], z: h[1], sx: h[0], sz: h[1], tx: h[0], tz: h[1], jy: 0, jmode: null, pose: 'ready' };
+      (t.P.includes(p) ? disp : bench)[p.id] = {
+        p,
+        side,
+        x: h[0],
+        z: h[1],
+        sx: h[0],
+        sz: h[1],
+        tx: h[0],
+        tz: h[1],
+        jy: 0,
+        jmode: null,
+        pose: 'ready'
+      };
     })
   );
   A = {
@@ -94,6 +114,7 @@ function startMatch(fx) {
     nm,
     fx,
     disp,
+    bench,
     beats: null,
     bi: 0,
     el: 0,
@@ -264,10 +285,28 @@ function setTactic(i, v) {
   );
   instant({ k: 'coachtalk', side: i, text: v === 'auto' ? 'Your call, setter!' : v === 'ws' ? 'Feed the wings!' : 'Go quick, middles!' });
 }
-/** In captain mode, show which tactic the captain is running right now. */
+/** Defence setting change for one side; takes effect from the next rally. */
+function setDefence(i, v) {
+  if (!A || A.done) return;
+  const t = A.m.t[i];
+  if (v === 'cap') {
+    A.m.dsetMode[i] = 'cap';
+    showTac(i);
+    logLine(`${t.name} defence: captain ${t.cap.name} calls it${leadLv(t.cap) ? '' : ' (leadership too low to change anything)'}`, 'set');
+    return;
+  }
+  if (!DEFSETS[v]) return;
+  A.m.dsetMode[i] = 'fixed';
+  A.m.dset[i] = v;
+  showTac(i);
+  logLine(`${t.name} defence: ${DEFSETS[v].name} — ${DEFSETS[v].desc}`, 'set');
+}
+/** In captain mode, show which tactic and defence setting the captain is running right now. */
 function showTac(i) {
-  const s = $('#tacnow' + i);
+  const s = $('#tacnow' + i),
+    d = $('#dsnow' + i);
   if (s && A) s.textContent = A.m.tacMode[i] === 'cap' ? `→ ${TACTICS[A.m.tac[i]].short}` : '';
+  if (d && A) d.textContent = A.m.dsetMode[i] === 'cap' ? `→ ${DEFSETS[A.m.dset[i]].short}` : '';
 }
 /** Timeout buttons: disabled once used or queued. */
 function updTO() {
@@ -351,22 +390,26 @@ function logLine(t, c) {
 function boxScore() {
   const el = $('#box');
   if (!el || !A) return;
-  const m = A.m;
+  const m = A.m,
+    played = t => squadOf(t).filter(p => t.P.includes(p) || m.stat[p.id]); // on court now, or came on and played
   el.innerHTML = m.t
     .map(
       t =>
-        `<table><caption>${chip(t)}${esc(t.name)}</caption><thead><tr><th>Player</th><th title="Kills">K</th><th title="Blocks">B</th><th title="Aces">A</th><th title="Digs">D</th><th title="Errors">E</th><th title="Top spike km/h">Top</th><th title="Mood">Mood</th><th title="Stamina">Sta</th></tr></thead><tbody>${t.P.map(
-          p => {
+        `<table><caption>${chip(t)}${esc(t.name)}</caption><thead><tr><th>Player</th><th title="Kills">K</th><th title="Blocks">B</th><th title="Aces">A</th><th title="Digs">D</th><th title="Errors">E</th><th title="Top spike km/h">Top</th><th title="Mood">Mood</th><th title="Stamina">Sta</th></tr></thead><tbody>${played(
+          t
+        )
+          .map(p => {
             const s = m.stat[p.id] || blank();
             return `<tr><td>${stag(p)}${esc(p.name)}${p.cap ? ' <span class="capb">C</span>' : ''} <i>${p.role}</i></td><td>${s.k}</td><td>${s.blk}</td><td>${s.ace}</td><td>${s.dig}</td><td>${s.err}</td><td>${s.top || '–'}</td><td>${faceSVG(p, (A.moodShown || m.mood)[p.id] || 0, 24)}</td><td><span class="sbar"><i style="width:${Math.round(((A.staShown || m.sta)[p.id] ?? 1) * 100)}%"></i></span></td></tr>`;
-          }
-        ).join('')}</tbody></table>`
+          })
+          .join('')}</tbody></table>`
     )
     .join('');
 }
 /** The three best players of a finished match (a simple impact score; the winners get a bonus). */
 function matchStars(m) {
-  return [...m.t[0].P, ...m.t[1].P]
+  return m.t
+    .flatMap(t => squadOf(t).filter(p => t.P.includes(p) || m.stat[p.id]))
     .map(p => {
       const q = m.stat[p.id] || blank();
       return {
@@ -399,7 +442,7 @@ function finishMatch() {
     hi = Math.max(...sc),
     lo = Math.min(...sc);
   for (const t of m.t)
-    for (const p of t.P) {
+    for (const p of squadOf(t).filter(q => t.P.includes(q) || m.stat[q.id])) {
       p.tour.mp++;
       if (m.stat[p.id]) addStats(p.tour, m.stat[p.id]);
     }
@@ -518,6 +561,7 @@ function showCombo(a) {
 /** Leave the match screen: back to wherever the fixture came from. */
 function leaveMatch() {
   const fx = A && A.fx;
+  if (A && A.m && !A.m.over) restoreLineups(A.m); // left mid-match: the lineups go back (safe twice)
   if (document.fullscreenElement) document.exitFullscreen?.();
   crowdLevel(0);
   if (R3D) R3D.unbind();

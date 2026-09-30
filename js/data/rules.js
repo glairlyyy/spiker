@@ -6,4 +6,11 @@ const RULES = {
   winBy: 2,
   timeoutsPerTeam: 1
 };
+/**
+ * Substitutions: at most `max` per team per set. A coach takes a player off when their match stamina is under `sta`, or
+ * after `errs` errors this set (more than their kills); a bench player must have stamina ≥ `fresh` to come on; a
+ * subbed-out starter with stamina ≥ `back` may return for whoever replaced them. With a candidate, the coach acts with
+ * a chance between iq[0] and iq[1] (coachIQ 0 → 1) at each dead ball.
+ */
+const SUB = { max: 2, sta: 0.6, fresh: 0.9, errs: 3, back: 0.85, iq: [0.35, 0.9] };
 const rulesText = () => `First to ${RULES.pointsToWin}, win by ${RULES.winBy}`;

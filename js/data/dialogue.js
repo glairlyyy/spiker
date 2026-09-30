@@ -19,6 +19,13 @@ const confidence = (p, m, side) =>
 /** Each player has a fixed personality (from a name hash) that picks their lines. */
 const PERS = ['hot', 'cool', 'cocky', 'shy', 'leader'];
 /** {sig} = signature element spike, {mate} = teammate's first name, {opp} = opponent's first name. */
+/** The coach's line at a substitution ({out} / {in} = shirt numbers), picked by hash — never by R(). */
+const SUBLINES = [
+  "Subbing #{out} for #{in}. Don't let us down.",
+  "#{out}, sit. #{in}, you're up — earn it.",
+  '#{in} in for #{out}. Same plan, fresher legs.',
+  "#{out}, come off. #{in} — show me why you're here."
+];
 const LINES = {
   ask: {
     hot: [
