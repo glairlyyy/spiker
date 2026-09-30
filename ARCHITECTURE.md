@@ -337,15 +337,31 @@ region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border mete
 (City.region follows the holder), `priceMul`/`qMul`/`weak`, `pick` (aggressor + target), `sim`/`result`/`seize`;
 `World.joinReq` lowers a weakened faction's join bar. Sessions × DAY_GAIN (gains and skill points).
 
-### Island map layers (ready for a three.js renderer)
+### Island map layers
 1. Rules — City / Front (DOM-free): positions, travel, fog (`City.seen`), regions (`regionAt`), ownership.
 2. Model — `MapModel.build(run, sel)` (`js/career/mapmodel.js`, DOM-free, tested): `{ w, h, land: { coast, beach,
    regions[{id, poly, color, mine}], contest, minors[ellipses], park, mountains, labels, airport }, seized[{at, r,
    color}], pins[{id, kind: spot|hq|clash, at, icon, badge, title, color?, flags: off/far/turf/gem/overhyped/hq/can/
    mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-view centre), sel }`. Map units
    CITY.w × CITY.h, y down. Selection ids: a pin id, or `pt:x,y` (`ptId` / `ptOf`).
-3. Renderer — `MapView` (`js/ui/map-svg.js`: SVG + panzoom): `mount(el, model, { pick(id), point([x, y]) })`,
-   `select(id)`, `dispose()`; owns its pan/zoom view across re-mounts. `js/ui/career-map.js` mounts it (`mapMount`),
+3. Renderer — `MapView` (`js/ui/map-view.js`): `mount(el, model, { pick(id), point([x, y]) })`, `update(model)`,
+   `select(id)`, `dispose()`. The only renderer is the three.js map: it lazy-imports `js/map3d/map3d.mjs` once (a notice
+   shows while loading; on import / WebGL failure it logs `DBG.log('error')` and shows the failure text — there is no 2D
+   fallback). `map3d.create(host, onIdle)` → `{ mount, update, select, dispose, heightAt, info }`: one renderer +
+   canvas that survive `renderCareer()` (each mount re-attaches the canvas into the new `#mapwrap`); it releases itself
+   (`onIdle` → `MapView.drop3D`) when its canvas has been detached for 3 s (left the career screen). Terrain: 2 m grid
+   over the island box from `land.coast` / Shu region / `land.mountains` (fixed-hash noise, no randoms), vertex colours
+   from region tints; fixed-yaw camera, pitch 55°, wheel zoom 25–420 m, drag pans on the ground plane, a click (< 5 px)
+   raycasts to a map point (`toMap`; 1 map unit = `MAP_M` = 0.5 m). The player is `js/map3d/avatar3d.mjs`
+   (`createAvatar(scene)`: the default VRM via `loadBase` / `makeVRM`, capsule until loaded): `snap` first, `setTarget` when
+   `model.you.at` changes — straight walk at 6 m/s (trip 1.2–6 s, ramps 0.4 s; faster trips show a ×N badge), gait from
+   `locoPose`, idle `STAND` + breathing, feet via `groundSnap` + `heightAt`; the camera follows until the user drags.
+   Furniture is `js/map3d/pins3d.mjs` (`createFurniture(scene, heightAt)`): an HTML overlay `.maplay` over the canvas holds one
+   `.mpin` button per `model.pins` item (icon, badge, flag classes, click → `pick(id)`), the region / airport labels (fade out
+   below ~70 m camera distance) and the picked-point flag, all projected onto the terrain every frame after render; seized
+   patches and the contested-border line are terrain decals. `sync(model, on)` rebuilds a part only when its JSON changed;
+   fog is a per-vertex darkening of the terrain colours (`applyFog(model.fog)`, unexplored land dim, not hidden). First
+   view: on the player, 60 m away. `js/ui/career-map.js` mounts it (`mapMount`),
    turns picks into panels (`mapPick`) and land clicks into travel targets (`mapPoint`). Region colours: REGIONS.color.
 
 ## Training XP
@@ -358,12 +374,10 @@ limit-break gate or the cap. Wit counts in 0.02 steps (level = wit × 50). Event
 ## Career hub UI
 
 `js/ui/career-hub.js` renders the whole career screen as a fixed full-screen layer (covers the page header): the
-city map (`citySVG` in a `.mapinner` div, dragged / pinch- and wheel-zoomed by vendored panzoom 9 —
-`js/vendor/panzoom.min.js`, global `panzoom`; `mapInit` clamps the view to cover the screen and keeps it in `CW.view`
-across re-renders) and a HUD: resources (top left), day clock + End week (top right), your player (bottom left →
+3D island map (`MapView`, see Island map layers; it keeps its own view across re-renders) and a HUD: resources (top left), day clock + End week (top right), your player (bottom left →
 Player drawer), shortcut dock (bottom → drawers built from the panel functions in career-week.js), the selected-place
 card (`#spot`), a card over the map for events / match days / an unread Gazette (`hubCard`), and a toast with the
-newest diary line. Pins use `data-spot` with one delegated click handler (ignored right after a drag).
+newest diary line.
 
 ## Code layout notes
 

@@ -62,8 +62,8 @@ Build chat loop, one task at a time:
 - `js/career` career run (28 weeks, training, events, Element Trial, city/front/world, map model, saves).
 - `js/ui` screens (menu, create, career hub/map/week/dossier/end, match, encyclopedia), dom helpers (esc, tip/info/fold/pop).
 - Island map = 3 layers: rules (`js/career/city.js` City, `front.js` Front) → `js/career/mapmodel.js`
-  MapModel.build(run, sel) (plain data) → renderer `js/ui/map-svg.js` MapView (mount(el, model, {pick, point}) /
-  select(id) / dispose()). Panels (`js/ui/career-map.js`) only talk to City/MapModel/MapView.
+  MapModel.build(run, sel) (plain data) → `js/ui/map-view.js` MapView → three.js renderer `js/map3d/` (mount(el, model,
+  {pick, point}) / update(model) / select(id) / dispose(); avatar3d.mjs = the walking player). Panels (`js/ui/career-map.js`) only talk to City/MapModel/MapView.
 
 ## Rules that bite
 - Classic scripts share one global scope (index.html order). Grep repo before renaming/removing a top-level name.

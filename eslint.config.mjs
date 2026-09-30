@@ -15,7 +15,6 @@ for (const f of scripts.filter(f => !f.startsWith('js/vendor/'))) {
     else if ((n.type === 'FunctionDeclaration' || n.type === 'ClassDeclaration') && n.id) shared[n.id.name] = 'writable';
 }
 shared.R3D = 'writable'; // set by the 3D module (window.R3D)
-shared.panzoom = 'readonly'; // js/vendor/panzoom.min.js (UMD global)
 
 export default [
   { ignores: ['node_modules/**', 'assets/**', 'js/vendor/**'] },

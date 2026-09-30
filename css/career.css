@@ -881,79 +881,6 @@
 .mcard.solo {
   grid-column: 1 / -1;
 }
-
-/* ---------- city map ---------- */
-.city .dist {
-  fill: color-mix(in srgb, var(--tc) 14%, transparent);
-  stroke: rgba(255, 255, 255, 0.12);
-  stroke-width: 2;
-}
-.city .dist.mine {
-  fill: color-mix(in srgb, var(--tc) 30%, transparent);
-  stroke: var(--tc);
-  stroke-width: 3;
-}
-.city .dl {
-  fill: color-mix(in srgb, var(--tc, #fff) 70%, #fff);
-  font: 700 16px var(--disp);
-  text-anchor: middle;
-  letter-spacing: 0.04em;
-  pointer-events: none;
-  opacity: 0.85;
-}
-.city .dl.dt {
-  fill: var(--mute);
-}
-.city .river {
-  fill: none;
-  stroke: rgba(76, 201, 240, 0.25);
-  stroke-width: 16;
-  stroke-linecap: round;
-  pointer-events: none;
-}
-.city .down {
-  fill: rgba(255, 255, 255, 0.05);
-  stroke: rgba(255, 255, 255, 0.18);
-  stroke-width: 2;
-  stroke-dasharray: 6 6;
-}
-.city .pin {
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-.city .pin > circle {
-  fill: var(--surf2);
-  stroke: var(--tc, var(--cyan));
-  stroke-width: 3;
-}
-.city .pin .ic {
-  font-size: 24px;
-  text-anchor: middle;
-}
-.city .pin:hover > circle,
-.city .pin:focus > circle,
-.city .pin.sel > circle {
-  stroke: var(--gold);
-  stroke-width: 5;
-}
-.city .pin.off {
-  opacity: 0.4;
-}
-.city .pin.turf > circle {
-  stroke: var(--gold);
-}
-.city .pin.hq.can > circle {
-  stroke-width: 5;
-  filter: drop-shadow(0 0 8px var(--tc));
-}
-.city .bd circle {
-  fill: var(--hot);
-}
-.city .bd text {
-  fill: #fff;
-  font: 800 13px var(--body);
-  text-anchor: middle;
-}
 #spot {
   margin-top: 10px;
   min-height: 70px;
@@ -1026,21 +953,6 @@
 }
 .hub .mapwrap:active {
   cursor: grabbing;
-}
-.hub .mapinner {
-  width: 1000px;
-  height: 640px;
-  transform-origin: 0 0;
-}
-.hub .city {
-  width: 1000px;
-  height: 640px;
-  max-width: none;
-  border: 0;
-  border-radius: 0;
-}
-.hub.eve .city {
-  filter: saturate(0.65) brightness(0.72) hue-rotate(12deg);
 }
 .hub .hud {
   position: absolute;
@@ -1289,13 +1201,6 @@
   padding: 12px 14px;
   display: none;
 }
-.city .pin:focus {
-  outline: none;
-}
-.city .pin:focus-visible > circle {
-  stroke: var(--gold);
-  stroke-width: 5;
-}
 .hub .spotcard.open {
   display: block;
 }
@@ -1495,128 +1400,14 @@
 }
 
 /* ---------- island map ---------- */
-.hub .mapwrap,
-.city {
-  background: #0a2a45;
-}
 /* outside the map: the same dark as the fog over the sea */
 .hub .mapwrap {
   background: #040b13;
 }
-.city .island {
-  fill: #2c3a2a;
-  stroke: #5b6b52;
-  stroke-width: 5;
-}
-.city .park {
-  fill: #2f5a3a;
-  stroke: #f5e6a8;
-  stroke-width: 3;
-  stroke-dasharray: 3 6;
-  stroke-linecap: round;
-}
-.city .seized {
-  fill: color-mix(in srgb, var(--tc) 45%, transparent);
-  stroke: var(--tc);
-  stroke-width: 3;
-  stroke-dasharray: 8 5;
-}
-.city .fog {
-  fill: #03070d;
-  opacity: 0.9;
-  pointer-events: none;
-}
-.city .flag circle {
-  fill: #ffb020;
-  stroke: #1b1204;
-  stroke-width: 2;
-}
-.city .flag text {
-  text-anchor: middle;
-  font-size: 20px;
-  fill: #ffb020;
-}
-.city .beach {
-  fill: none;
-  stroke: #e8d9a8;
-  stroke-width: 44;
-  stroke-linejoin: round;
-  opacity: 0.55;
-  pointer-events: none;
-}
-.city .reg {
-  fill: color-mix(in srgb, var(--tc) 22%, transparent);
-  stroke: color-mix(in srgb, var(--tc) 80%, #fff);
-  stroke-width: 2.5;
-}
-.city .reg.mine {
-  fill: color-mix(in srgb, var(--tc) 36%, transparent);
-  stroke-width: 4;
-}
-.city .mtn {
-  fill: rgba(255, 255, 255, 0.1);
-  stroke: rgba(255, 255, 255, 0.25);
-  stroke-width: 1.5;
-  pointer-events: none;
-}
-.city .contest {
-  fill: none;
-  stroke: #ff3b4e;
-  stroke-width: 4;
-  stroke-dasharray: 10 8;
-  opacity: 0.8;
-}
-.city .minor {
-  fill: color-mix(in srgb, var(--tc) 18%, transparent);
-  stroke: var(--tc);
-  stroke-width: 2;
-  stroke-dasharray: 5 6;
-}
-.city .minor.mine {
-  fill: color-mix(in srgb, var(--tc) 32%, transparent);
-}
-.city .rl {
-  fill: color-mix(in srgb, var(--tc) 75%, #fff);
-  font: 700 14px var(--disp);
-  text-anchor: middle;
-  letter-spacing: 0.06em;
-  pointer-events: none;
-  paint-order: stroke;
-  stroke: rgba(0, 0, 0, 0.6);
-  stroke-width: 3;
-}
-.city .rl.big {
-  font-size: 22px;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-.city .airport .ic {
-  font-size: 22px;
-  text-anchor: middle;
-}
-.city .airport .ap {
-  fill: #e8d9a8;
-  font: 600 11px var(--body);
-  text-anchor: middle;
-}
-.city .pin.clash > circle {
-  fill: #3a0d12;
-  stroke: #ff3b4e;
-  stroke-width: 4;
-  animation: clashp 1.2s ease-in-out infinite alternate;
-}
 @keyframes clashp {
   to {
-    stroke: #ffb020;
+    border-color: #ffb020;
   }
-}
-.city .pin.gem > circle {
-  stroke: #4ade80;
-  stroke-width: 4;
-}
-.city .pin.overhyped > circle {
-  stroke: #8b919c;
-  stroke-dasharray: 4 3;
 }
 .spot .qt {
   font-weight: 800;
@@ -1630,27 +1421,6 @@
 }
 .spot .qt.overhyped {
   color: #f43f5e;
-}
-.city .here circle {
-  fill: rgba(255, 216, 77, 0.18);
-  stroke: #ffd84d;
-  stroke-width: 3;
-  stroke-dasharray: 6 5;
-  animation: herePulse 2s ease-in-out infinite;
-}
-.city .here text {
-  fill: #ffd84d;
-  font: 800 12px var(--body);
-  text-anchor: middle;
-}
-@keyframes herePulse {
-  50% {
-    stroke-dashoffset: 11;
-    fill: rgba(255, 216, 77, 0.3);
-  }
-}
-.city .pin.faraway {
-  opacity: 0.55;
 }
 .spot .stk.far {
   color: #f43f5e;
@@ -1812,4 +1582,144 @@
 .facs .dlink {
   color: inherit;
   text-decoration: underline dotted;
+}
+
+#mapwrap canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.mapbadge {
+  position: absolute;
+  left: 50%;
+  top: 16%;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--hudbg, rgba(12, 14, 20, 0.82));
+  color: #ffd166;
+  font: 700 18px/1.2 var(--font-num, inherit);
+  pointer-events: none;
+}
+
+.mapnote {
+  margin: 40vh auto 0;
+  max-width: 32em;
+  padding: 0 16px;
+  text-align: center;
+  color: #9fb0c4;
+}
+
+/* ---------- 3D map overlay: pins, labels, flag (js/map3d/pins3d.mjs) ---------- */
+.hub.eve .mapwrap canvas {
+  filter: saturate(0.65) brightness(0.72) hue-rotate(12deg);
+}
+.maplay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.maplay > * {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.mpin {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  border: 3px solid var(--tc, var(--cyan));
+  background: var(--surf2);
+  color: #fff;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: opacity 0.2s;
+}
+.mpin i {
+  font-style: normal;
+  font-size: 22px;
+  line-height: 38px;
+}
+.mpin b {
+  position: absolute;
+  right: -8px;
+  top: -8px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 10px;
+  background: var(--hot);
+  font: 800 13px/20px var(--body);
+}
+.mpin:hover,
+.mpin:focus-visible,
+.mpin.sel {
+  border-color: var(--gold);
+  border-width: 5px;
+}
+.mpin:focus {
+  outline: none;
+}
+.mpin.off {
+  opacity: 0.4;
+}
+.mpin.faraway {
+  opacity: 0.55;
+}
+.mpin.turf {
+  border-color: var(--gold);
+}
+.mpin.hq.can {
+  border-width: 5px;
+  box-shadow: 0 0 8px var(--tc);
+}
+.mpin.gem {
+  border-color: #4ade80;
+  border-width: 4px;
+}
+.mpin.overhyped {
+  border-color: #8b919c;
+  border-style: dashed;
+}
+.mpin.clash {
+  background: #3a0d12;
+  border-color: #ff3b4e;
+  border-width: 4px;
+  animation: clashp 1.2s ease-in-out infinite alternate;
+}
+.mlab {
+  color: color-mix(in srgb, var(--tc, #e8d9a8) 75%, #fff);
+  font: 700 14px var(--disp);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow:
+    0 0 3px #000,
+    0 0 3px #000;
+}
+.mlab.big {
+  font-size: 22px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.mlab.ap {
+  color: #e8d9a8;
+  font: 600 12px var(--body);
+  letter-spacing: 0;
+}
+.mlab.ap i {
+  font-style: normal;
+  font-size: 20px;
+  margin-right: 4px;
+}
+.mflag {
+  font-size: 26px;
+  color: #ffb020;
+  text-shadow:
+    0 0 3px #1b1204,
+    0 0 3px #1b1204;
+  pointer-events: none;
 }

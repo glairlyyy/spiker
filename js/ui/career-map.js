@@ -1,4 +1,4 @@
-// The island map's UI: mounting the renderer (MapView, js/ui/map-svg.js) with the model (MapModel), the panel for the
+// The island map's UI: mounting the renderer (MapView, js/ui/map-view.js) with the model (MapModel), the panel for the
 // selected place, and the actions behind its buttons. A week has 7 days: every action takes a day plus the trip there (by distance); the player ends the
 // week. The map is dark where you haven't been: places show once explored; click any land to travel there.
 

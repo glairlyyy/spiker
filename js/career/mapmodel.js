@@ -1,6 +1,6 @@
 // The island map as plain data: what a renderer draws, with no drawing in it (DOM-free, tested headless).
 // MapModel.build(run, sel) → { w, h, land, seized, pins, you, fog, flag, focus, sel }. Map units: CITY.w × CITY.h,
-// y down. A renderer (MapView: js/ui/map-svg.js today; a three.js one later) draws a model and reports two things
+// y down. A renderer (MapView: js/ui/map-view.js → js/map3d/map3d.mjs) draws a model and reports two things
 // back: a pin picked (its id) and a map point clicked ([x, y] in map units). All game rules stay in City / Front.
 
 const MapModel = {
