@@ -54,6 +54,10 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     factor scaled by `coachIQ`. Smarter coach (matchups, protecting a lead, personality hunches) = backlog.
   - Your player is benchable: the coach picks starters by rating, form and standing, and may sub you out (tired /
     erring). A match started or finished on the bench gives reduced rewards.
+- §2.11 Match music **[locked, not built]**: `assets/audio/the_big_fight.mp3` loops as background music while the
+  match screen is open, at 50 % of the effects volume (`BGM_GAIN` 0.5 × volume slider); follows the sound toggle and
+  the volume slider; fades in on start and out on leaving. Presentation only (no effect on results). More tracks /
+  crowd / voice clips later (backlog).
 - §2.4 Blocks: stuff odds = full-strength block vs spike, weighted by coverage; ~14% of attacks stuffed in normal play.
 
 ## 3. Menu [built]

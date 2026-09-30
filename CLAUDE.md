@@ -85,7 +85,7 @@ loop `step(16); R3D.poseAll(0.016)`; check pageerror + `DBG.text()`; screenshot 
 For career/UI tasks: start a new run from the menu instead of `startMonster()` and exercise the changed screen.
 
 ## Publishing (artifact = backup + playable copy)
-The artifact holds the full project as published files (index.html, js/, css/, tests/, docs, package.json,
+The artifact holds the full project as published files (index.html, js/, css/, tests/, docs, package.json, assets/audio,
 lint/format configs, test3d.html, qa_poses.html; VRM base in assets/vrm). Publish every changed file each time so
 it stays complete. Dotfiles are published renamed: `.prettierrc.json` → `prettierrc.json`, `.prettierignore` →
 `prettierignore.txt`. Restore without GitHub: Artifact "list" (scope "files", url above) → "read" with all `paths`.
