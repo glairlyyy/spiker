@@ -174,6 +174,16 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     (never ends the run) [assumed — owner to confirm].
   - Balance target: a no-training run reaches the mid-70s by ~week 20 only with well-chosen fights.
 
+- §4.16 Living map **[locked, not built — layer A: T-039/T-040; B/C wait for the lore]**: the map shows what is happening
+  (display only, no rules, no randoms):
+  - A (now): your teammates at the places they train this week; faction players drilling at their courts (more for
+    bigger pools; coloured once scouted / member, grey silhouettes before) and walking between their places; the week's
+    street battle as a two-colour crowd with flags and dust; border lines pulse with pressure and patrols thicken on the
+    winning side; seized places fly the holder's flag. Low-poly instanced figures, VRM for your player only.
+  - B (after lore): ambient life — waves, boats, gulls, beach pickup games on Wu sand, Shu village smoke, Wei city lights
+    and traffic, villagers near Central Academy.
+  - C (after lore, with M3): the sun moves as the week's days are spent; dusk when no days are left.
+
 ## 5. Open questions — do not build until decided
 - §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story
   events, club switching, what standing unlocks beyond access.

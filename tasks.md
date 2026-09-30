@@ -32,8 +32,63 @@ Result:
 - Block tactics ✓ (T-026 lane-read block, T-027 defence setting + scouting habits).
 - Substitutions ✓ (T-028 squads of 6, T-029 in-match subs, T-030 coach AI, T-031 you on the bench).
 - Growth rework ✓ (T-034 training cap 75, T-035 match XP, T-036 techniques learned in play).
+- **Living map A** (now): map life model (T-039), renderer (T-040).
 - **Challenges** (next, to be detailed): T-037/T-038.
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
+
+## Now — Living map, layer A (spec §4.16)
+
+### [ ] T-039: MapModel `life` — who is where this week, as plain data
+Spec: §4.16          Goldens: unchanged          Save: no change
+Goal: The map model carries the island's people and pressure so a renderer can show them: your teammates at the places
+they train this week, each faction's players at its home courts, the street-battle crowd, border pressure, seized flags.
+Files: js/career/mapmodel.js, tests/run.js, ARCHITECTURE.md
+Do not:
+- Draw R() / rnd() (positions come from a hash of ids + place; the model must stay identical for the same run state).
+- Show anything in unexplored land (`City.seen` false) except the battle site if it is this week's battle.
+Steps:
+1. `MapModel.life(run)` → `{ mates, crews, battle, borders }`, added to `build()` as `life`:
+   - `mates`: for each `run.floor[key]` id — `{ id, name, at, color: your team colour, spot }` at the explored training
+     place of that key nearest your home (`City.spotsFor(key)`), offset around it by hash.
+   - `crews`: per faction club HQ / its region's training places: `{ region, at, color, n, known }` — n = 2–6 figures by
+     pool size (`Pool.size` / 6, clamped), `known` = scouted or member (renderer: coloured vs grey silhouettes);
+     also `walk: [[x,y],…]` = that faction's places in order, when known (for figures walking between them).
+   - `battle`: this week's open clash → `{ at, a, b, colors: [ca, cb] }` else null.
+   - `borders`: per FRONT border `{ a, b, meter }` (`Front.meter`), for pulse strength and which side's patrols are
+     thicker.
+2. tests: `'career: map model life — mates, crews, battle, borders, no randoms'`: same run → identical JSON twice;
+   R() counter unchanged by `build`; a mate appears at their floor key's place; unexplored crews absent; clash present
+   while open, null after `clash.done`.
+3. ARCHITECTURE.md: MapModel `life`.
+Accept: all tests + lint; goldens untouched.
+QA: none (headless).
+Result:
+
+### [ ] T-040: Living map — figures, battle crowd, border pulse, flags (renderer)
+Spec: §4.16          Goldens: unchanged          Save: no change
+Goal: The 3D map shows `model.life`: small low-poly figures drilling at courts (your mates in your colour, known crews in
+theirs, unknown ones as grey silhouettes), known crews walking between their places, a two-colour crowd with flags and
+dust at the week's battle site, border lines pulsing by pressure, and a flag on every seized place.
+Files: js/map3d/life3d.mjs (new ES module), js/map3d/map3d.mjs, js/map3d/pins3d.mjs, ARCHITECTURE.md
+Do not:
+- Use VRM models for anyone but your player (performance): one `InstancedMesh` per figure kind; ≤ 300 instances total.
+- Draw game randoms (use a hash for variety); read only `model.life` / `model.seized`.
+- Rebuild every frame: rebuild instances only when `life` JSON changes (like pins3d `changed`), animate in `tick`.
+Steps:
+1. life3d.mjs `createLife(scene, heightAt)` → `{ sync(model), tick(dt, t), dispose() }`: capsule-ish low-poly figure
+   (≈1.6 m), per-instance colour; idle bob / drill hop by `t` + hash phase; walkers move along `walk` paths at ~1.2 m/s
+   (loop), grounded with `heightAt`.
+2. Battle: ~12 figures per side facing each other at `battle.at`, two flags (team colours), a looping dust puff
+   (a few billboard sprites); gone when `battle` is null.
+3. Borders (pins3d border line): dash colour/opacity pulse with |meter|; 2–4 patrol figures on the side with the higher
+   meter. Seized places: a small flag pole in the holder's colour on the decal.
+4. map3d.mjs: create / sync / tick / dispose it with the rest; `info()` reports instance counts.
+5. ARCHITECTURE.md: map life layer.
+Accept: all tests + lint; goldens untouched.
+QA (career run): screenshot with mates at a court, crews (coloured after scouting, grey before), a street battle week
+showing the crowd; draw calls rise by ≤ 6; frame time not worse than +20 % in swiftshader; leave and return → no leak
+(1 canvas, geometries back to the same count); no pageerror.
+Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
