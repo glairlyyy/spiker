@@ -33,7 +33,7 @@ Result:
 - Substitutions ✓ (T-028 squads of 6, T-029 in-match subs, T-030 coach AI, T-031 you on the bench).
 - Growth rework ✓ (T-034 training cap 75, T-035 match XP, T-036 techniques learned in play).
 - **Living map A** (now): map life model (T-039), renderer (T-040).
-- **Challenges** (next, to be detailed): T-037/T-038.
+- **Rankings** (next): model (T-041), drawer + cards (T-042). Then **Team challenges**: challenge + refusal (T-037), loss and injury (T-038).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now — Living map, layer A (spec §4.16)
@@ -90,11 +90,99 @@ showing the crowd; draw calls rise by ≤ 6; frame time not worse than +20 % in 
 (1 canvas, geometries back to the same count); no pageerror.
 Result:
 
+## Next — Rankings (spec §4.17), then team challenges (spec §4.15)
+
+### [ ] T-041: `Rank` — the three rankings as plain data
+Spec: §4.17          Goldens: unchanged          Save: RUN_VERSION 5 → 6 (`run.met`, `run.street`, `run.refused` for T-037) — older saves dropped
+Goal: A DOM-free module builds the Academy Register, the Gazette Top 20 and the Street board for the current run, with
+your rank on each and a lookup for any player's ranks.
+Files: js/career/rank.js (new — add to index.html + test3d.html), js/data/world.js, js/career/run.js,
+js/career/cup.js, js/career/city.js, tests/run.js, ARCHITECTURE.md
+Do not:
+- Draw R() (fame and street points come from data; ties broken by id).
+- Show a player's OVR on the Register unless known (rule below).
+Steps:
+1. world.js: `RANK = { top: 20, weiFame: 1.5, fame: { star: 30, op: 80, el: 20, win: 3 }, street: { fight: 10, win: 15,
+   hustle: 3, faction: 2, share: 4 } }` (doc comments).
+2. run.js: `run.met = {}` (player id → true: faced on court), `run.street = {}` (player id → points) and
+   `run.refused = {}` (club index → { week, n }: used by T-037); create + repair; `RUN_VERSION = 6`.
+3. cup.js / city.js: after any match you played (eval, cup, street battle), mark every opponent who played in `run.met`;
+   street points for you: fought a street battle +fight (+win if won), a hustle +hustle (win only); when a street battle
+   is settled (`Front.result`), the winner faction's `share` best players by OVR get +faction.
+4. rank.js `Rank`:
+   - `players(run)`: every pool player of every faction + the Academy squad (`squadOf(run.pickup)`) + you, unique.
+   - `known(run, p)`: you / your squad / member of your faction / its club or faction scouted (Dossier rule) /
+     `run.met[p.id]`.
+   - `register(run)` → sorted by OVR: `{ id, name, region, role, ovr: known ? ovr : null }` (unknown still ranked by their
+     true OVR — position is true, the number hidden).
+   - `gazette(run)` → top `RANK.top` by fame: you = `run.fans / 100`; NPC = star / op / awakened element / team wins
+     (`team.hist.w` × win) × weiFame if Wei; includes you only if you make the cut.
+   - `street(run)` → players with points > 0, sorted.
+   - `of(run, id)` → `{ register, gazette | null, street | null }` ranks (1-based).
+5. tests: `'career: rankings — register, gazette, street, known gate'` — same state twice → same lists; unknown players
+   have null OVR but true position; Wei bias lifts a Wei player above an equal non-Wei one; a fought street battle
+   adds your points; `met` marks the opponents after a simulated evaluation.
+6. ARCHITECTURE.md: rankings; save v6.
+Accept: all tests + lint; goldens untouched.
+QA: none (headless).
+Result:
+
+### [ ] T-042: Rankings drawer + ranks on match and challenge cards
+Spec: §4.17, §6 (voices)          Goldens: unchanged          Save: no change
+Goal: A Rankings drawer in the hub dock shows the three lists (tabs) with your row highlighted; the evaluation / cup
+match card shows the opponent squad's best-ranked players' ranks.
+Files: js/ui/career-hub.js, js/ui/career-week.js, css/career.css, ARCHITECTURE.md
+Do not: compute rankings in the UI (only `Rank.*`); invent lore words.
+Steps:
+1. Dock button "Rankings" → drawer with tabs Register / Gazette / Street; each list 20 rows around the top + your row
+   (with "…" gaps); headers in voice: Register (registrar: "Academy Register — U21, by rating"), Gazette (wei: "The
+   Gazette's Top 20 — the island's finest"), Street (outlaw: "Who's hot under the overpass").
+2. Unknown OVR renders "unrated"; faction chip + role; your row highlighted.
+3. Evaluation and cup cards (`evalPanel`, `cupPanel`): under the opponent, "Their best: <name> Register #n · Gazette #n"
+   for up to 2 players (skip null ranks).
+Accept: all tests + lint.
+QA: career run → Rankings drawer: 3 tabs, your row highlighted, unrated rows before scouting and rated after; an
+evaluation card shows opponent ranks; no pageerror.
+Result:
+
+### [ ] T-037: Team challenge — challenge a club, it may refuse you
+Spec: §4.15, §4.17, lore.md §5 (dogmas)          Goldens: unchanged          Save: no change (uses `run.refused` from T-041)
+Goal: From a club's HQ panel you can challenge its squad for a stake. The club decides by its faction's dogma whether
+you're worth it; the card shows how likely it is before you go. Accepted → the match plays like a street battle;
+winning pays the stake at odds. (Loss penalties and injury are T-038.)
+Files: js/data/world.js, js/career/cup.js, js/career/city.js, js/ui/career-map.js, tests/run.js, ARCHITECTURE.md
+Do not:
+- Add a new match flow: reuse the street-battle fixture shape (`Cup.clash` → a `Cup.challenge` sibling).
+- Let the target be your own club, or challenge while an event is open / no days left.
+Steps:
+1. world.js `CHALLENGE = { margin: 6, stakeStep: 50, odds: [1.2, 3], hire: { ovr: 50, cost: 80 }, refuseMax: 3,
+   pest: -8, wei: { gazette: 8, fansPer: 1000, stakePer: 100 }, wu: { keyPer: 5 }, shu: { repPer: 10, weekPer: 4 },
+   outlaws: { minStake: 50 }, gloria: {} }` (doc: worth terms per faction dogma, spec §4.15).
+2. city.js `City.worth(run, ti, stake)` → `{ worth, need, verdict: 'likely' | 'doubtful' | 'refuses', why }`:
+   worth = your side's rating + standing ÷ 10 + the faction term; need = club rating − margin; Outlaws: stake ≥ minStake →
+   likely, else refuses; Gloria: in the Gazette Top 20 → by worth, else refuses; 'doubtful' within 3 of need; the
+   club's `run.refused[ti]` week = this week → refuses ("not this week").
+3. `City.challenge(run, ti, stake)`: spends the trip + day; refused → log a one-line refusal (faction voice, 2 lines
+   each in `CHALLENGE_LINES` in world.js), `run.refused[ti] = week`, count per season → at `refuseMax` standing +pest;
+   accepted → returns true and the UI opens `Cup.challenge(run, ti, stake)`.
+4. cup.js `Cup.challenge(run, ti, stake)`: your side (Academy squad / your club squad / hired: Academy-style squad of
+   `hire.ovr` players, cost `hire.cost`) vs the club's squad (`squadOf` of the league team, lineup by `Run.lineup`);
+   result: win → money +stake × odds (by rating gap, clamped to `odds`), standing +, fans +; loss → −stake (full
+   loss rules in T-038); XP / techniques / met / street points as for a street battle.
+5. UI (career-map.js HQ panel): "Challenge" block with a stake stepper (0 … your money, step `stakeStep`), the verdict
+   line ("Accepts: likely — they respect strength" etc.), and the button; refusal shows the club's line.
+6. tests: `'career: team challenge — worth, refusal, stake payout'`: Gloria refuses outside the Top 20; Outlaws refuse
+   a 0 stake and accept 50; Wei worth rises with stake; a refusal blocks that club for the week; a won challenge pays
+   stake × odds; own club not challengeable. (`run.refused` comes from T-041.)
+7. ARCHITECTURE.md: challenges.
+Accept: all tests + lint; goldens untouched.
+QA: career run → HQ panel: verdicts change with the stake; a refused challenge logs the line and blocks the club this
+week; an accepted one plays (Sim ⏭) and pays out; no pageerror.
+Result:
+
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
-Challenges — spec §4.15 (after the growth rework)
-- T-037: Challenge action — map action at a club / street court, stake, acceptance rule, hired street players when
-  alone, win payout by rating gap; XP via T-035.
+Challenges, part 2 — spec §4.15
 - T-038: Loss and injury — stake lost, stamina / mood crash, standing loss → grudge, heavy-loss fans / Gazette;
   injury risk from gap, margin and fatigue (stamina + days since last battle); severe injury −2 permanent.
 

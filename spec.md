@@ -161,10 +161,21 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     wit and opponent strength. Scouting shows which techniques a team's players have.
   - Save: RUN_VERSION bump (Limit Break progress removed, match XP added). Match results unchanged (goldens stay).
 
-- §4.15 Challenges **[locked, not built — T-037/T-038]** (makes a no-training run possible; see §4.14):
-  - Map action: challenge a squad at its court (or a street court): 1 day + a money **stake**. Acceptance depends on
-    your standing / fans vs the club's rating (big clubs ignore nobodies unless the stake or standing is high). You
-    play with your side (Academy squad; your club if it agrees); alone → hire weak street players for money.
+- §4.15 Challenges **[locked, not built — T-037/T-038, after rankings §4.17]** (makes a no-training run possible; see §4.14):
+  - Team challenge (map action at a club HQ): your side challenges that club's squad. Costs 1 day + the trip; you name a
+    money **stake** (0 allowed). The match itself is the street-battle flow (`Cup.clash`-style fixture: watch or Sim ⏭).
+    You play with your side: the Academy squad, or your club's squad (your club must not be the target); alone → hire
+    street players for money (weak, rating ~50).
+  - **The club may refuse — "not worthy"**. Worth = your side's rating + your standing with them ÷ 10 + a faction term
+    from its dogma (lore.md §5), compared with the club's rating − a margin (`CHALLENGE.margin`):
+    - Wei: your Gazette rank and fans (fame) + the stake (money talks).
+    - Wu: your key stat / OVR (raw strength); stake counts little.
+    - Shu: standing and weeks on the island (hardship, elder approval); stake counts nothing.
+    - Street Outlaws: any stake ≥ their minimum is accepted (a bet is a bet); a 0-stake challenge is laughed off.
+    - St. Gloria: only if you are in the Gazette Top 20 (invitation only); otherwise always refused.
+    The worth check is shown before you commit (registrar: "Accepts: likely / doubtful / refuses") with the reason; the
+    exact numbers stay hidden. A refusal costs the trip day, gives a one-line refusal in that faction's voice, and that
+    club will not hear you again this week. Asking a club that refused 3 times in a season → −standing (you're a pest).
   - Win: stake back at odds from the rating gap, + standing / fans; XP per §4.14 (performance × opponent strength).
   - Loss is a real deal: stake lost; stamina and mood crash (carries over); standing − with that faction (repeated
     losses → grudge → facility ban, §4.10); lost by 8+ → fans − and a Gazette jab. No NPC learning.
@@ -183,6 +194,17 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   - B (after lore): ambient life — waves, boats, gulls, beach pickup games on Wu sand, Shu village smoke, Wei city lights
     and traffic, villagers near Central Academy.
   - C (after lore, with M3): the sun moves as the week's days are spent; dusk when no days are left.
+
+- §4.17 Rankings **[locked, not built — T-041/T-042]**: three lists, each from a biased publisher (numbers true, what
+  counts is biased; lore.md §7):
+  - **Academy Register** (`registrar`): every U21 player (all pools, the Academy squad, you) by true OVR. Known players
+    (member / your squad / scouted club or faction / met on court) show OVR; others "unrated" (faction + role only).
+  - **Gazette Top 20** (`wei`): fame = fans (you) or fame points (NPCs: star / OP, team results, element awakened), ×1.5
+    for Wei players — only Wei-sanctioned matches count, so Wei players sit higher and some are overhyped.
+  - **Street board** (`outlaw`): street points from street battles, hustles and challenges (you), and from their
+    faction's street-battle wins (NPCs: the faction's best players get the points).
+  - A Rankings drawer shows the three lists and your rank on each; pre-match and challenge cards show the opponent's
+    ranks ("Register #12 · Gazette #3 · Street —"). Display only: no match effects. Aces / the rival appear here later.
 
 ## 5. Open questions — do not build until decided
 - §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story
