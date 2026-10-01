@@ -33,9 +33,7 @@ const Cup = {
   team(run, i) {
     const e = run.cup.entrants[i];
     if (e.academy) return run.pickup;
-    const T = Eval.squad(run, e.ids, e.name, e.color, e.region);
-    T.short = e.short;
-    return T;
+    return Eval.squad(run, e.ids, e.name, e.color, e.region, e.short);
   },
   /** A cup begins: stamina refills; the squads are drawn and seeded by rating (1 plays 16, 8 plays 9, …; missing seeds are byes). */
   start(run, def) {
@@ -101,7 +99,7 @@ const Cup = {
     const e = Eval.setup(run),
       club = run.team != null ? run.teams[run.team] : null;
     if (e && e.kind === 'faction')
-      return { T: Eval.squad(run, e.mine, `${club.name} · Eval`, club.color), region: FACTIONS[run.team].region };
+      return { T: Eval.squad(run, e.mine, `${club.name} · Eval`, club.color, undefined, club.short), region: FACTIONS[run.team].region };
     return { T: Run.myTeam(run), region: null }; // the Academy squad is a real team
   },
   /** Fixture for the match screen. kind: 'eval' | 'cup'. Your side is always on the left; your coach picks the 4 (Run.lineup). */
@@ -151,6 +149,167 @@ const Cup = {
       }
     };
   },
+  /**
+   * A street battle you fight (owner request): your side's crew (drawn from its pool, you on court in your role) vs the other
+   * side's crew — a real match like an evaluation (XP, techniques, grade). Nothing is spent until it finishes; leaving early
+   * leaves the battle open. Returns null if you can't go now.
+   */
+  clash(run, side) {
+    const c = City.clashSite(run);
+    if (!c || run.event || City.noTime(run, City.clashCost(run)) || (side !== c.a && side !== c.b)) return null;
+    const foe = side === c.a ? c.b : c.a,
+      you = Run.you(run),
+      ids = Pool.draw(run, side, 1)[0].map(p => p.id);
+    if (!ids.includes(you.id)) {
+      // you take the same-role seat on court (else the last one); the player you replace drops to the bench
+      let k = ['S', 'MB', 'WS', 'WS'].indexOf(you.role);
+      k = k < 0 ? 3 : k;
+      ids.splice(k, 1, you.id);
+    }
+    const mine = Eval.squad(run, ids, `${REGIONS[side].name} crew`, REGIONS[side].color, side, side.slice(0, 3).toUpperCase()),
+      opp = Eval.squad(
+        run,
+        Pool.draw(run, foe, 1)[0].map(p => p.id),
+        `${REGIONS[foe].name} crew`,
+        REGIONS[foe].color,
+        foe,
+        foe.slice(0, 3).toUpperCase()
+      );
+    Eval.lend(run, mine);
+    Eval.lend(run, opp);
+    Cup.prepare(run, opp, 'clash', mine);
+    return {
+      a: mine,
+      b: opp,
+      round: `Street battle: ${REGIONS[c.a].name} vs ${REGIONS[c.b].name} · ${c.name}`,
+      back: 'Continue',
+      onFinish: m => {
+        Eval.restore();
+        return Cup.clashResult(run, m, side, foe);
+      },
+      onLeave: () => {
+        Eval.restore();
+        navigate('career');
+      }
+    };
+  },
+  /** A street crew for hire (alone): an Academy-style squad of CHALLENGE.hire.ovr players with you in your role's seat. */
+  hired(run) {
+    const you = Run.you(run),
+      used = new Set(
+        run.teams.concat(Object.values(run.reserve || {}), run.pickup ? [run.pickup] : []).flatMap(x => squadOf(x).map(p => p.name))
+      ),
+      T = World.pickup(used);
+    T.name = 'Street crew';
+    T.short = 'STR';
+    for (const p of squadOf(T)) {
+      const d = CHALLENGE.hire.ovr - ovr(p);
+      for (const k of STATK) p[k] = clamp(p[k] + d, 25, 99);
+    }
+    let k = T.P.findIndex(p => p.role === you.role);
+    k = k < 0 ? 3 : k;
+    T.P[k] = you;
+    [T.s, T.mb] = T.P;
+    T.ws = [T.P[2], T.P[3]];
+    T.cap = T.P.reduce((a, p) => (p.lead > a.lead ? p : a), T.P[0]);
+    T.ovr = teamOvr(T);
+    return T;
+  },
+  /**
+   * A team challenge you take (spec §4.15): your side (Academy squad, your club's squad, or a hired street crew) against club
+   * ti's squad, a real match like a street battle. Nothing is spent until it finishes. Null if the club wouldn't accept now.
+   */
+  challenge(run, ti, stake = 0) {
+    const side = City.challengeSide(run),
+      W = City.worth(run, ti, stake);
+    if (!W || !W.accepts || run.event || City.noTime(run, City.scoutCost(run, ti)) || run.money < side.cost) return null;
+    stake = clamp(Math.round(stake) || 0, 0, City.stakeMax(run));
+    const opp = run.teams[ti],
+      mine = side.kind === 'hired' ? Cup.hired(run) : side.T;
+    if (side.kind === 'hired') Eval.lend(run, mine);
+    Cup.prepare(run, opp, 'challenge', mine);
+    Run.lineup(run, mine, City.myRegion(run));
+    Run.lineup(run, opp, null);
+    return {
+      a: mine,
+      b: opp,
+      round: `Challenge: ${mine.name} vs ${opp.name}${stake ? ` · stake $${stake}` : ''}`,
+      back: 'Continue',
+      onFinish: m => {
+        Eval.restore();
+        return Cup.challengeResult(run, m, ti, stake, side);
+      },
+      onLeave: () => {
+        Eval.restore();
+        navigate('career');
+      }
+    };
+  },
+  /** After a challenge: the trip + a day, the stake at odds (or lost), the crew's pay, standing, fans, match XP, techniques, street points. Returns the log line. */
+  challengeResult(run, m, ti, stake, side) {
+    const t = run.teams[ti],
+      r = FACTIONS[ti].region,
+      win = m.winner === 0,
+      you = Run.you(run),
+      s = m.stat[you.id] || blank(),
+      [grade, , gmul] = Cup.grade(s, win),
+      trip = City.go(run, CITY.hq[ti]),
+      sc = m.setScores[0],
+      out = [Growth.matchXp(run, m), Skills.tryLearn(run, m)];
+    if (side.cost) {
+      const pay = Math.min(run.money, side.cost);
+      run.money -= pay;
+      out.push(`−$${pay} for the crew`);
+    }
+    stake = Math.min(stake, run.money);
+    if (win) {
+      const odds = clamp(1.5 + (t.ovr - m.t[0].ovr) / 20, CHALLENGE.odds[0], CHALLENGE.odds[1]),
+        gain = Math.round(stake * odds);
+      run.money += gain;
+      if (stake) out.push(`+$${gain} (stake ×${odds.toFixed(1)})`);
+      out.push(City.repBump(run, r, CLASH.win), Run.bump(run, 'fans', Math.round(CLASH.fans * gmul)));
+    } else if (stake) {
+      run.money -= stake;
+      out.push(`−$${stake} stake`);
+    }
+    out.push(Run.bump(run, 'sta', -CLASH.sta));
+    Rank.points(run, you.id, RANK.street.fight + (win ? RANK.street.win : 0));
+    Rank.meet(run, m);
+    run.plays.k += s.k;
+    run.plays.blk += s.blk;
+    run.plays.ace += s.ace;
+    run.focus = null;
+    const line = `${trip}Challenged ${t.name} — ${win ? 'won' : 'lost'} ${sc[0]}-${sc[1]}, grade ${grade}. You: ${s.k} kills, ${s.blk} blocks, ${s.ace} aces · ${out.filter(Boolean).join(', ')}`;
+    Run.log(run, line);
+    Run.save(run);
+    return line;
+  },
+  /** After a street battle you fought: the trip + a day, stamina, standing, fans, match XP, techniques; the front moves. Returns the log line. */
+  clashResult(run, m, side, foe) {
+    const c = City.clashSite(run),
+      win = m.winner === 0,
+      you = Run.you(run),
+      s = m.stat[you.id] || blank(),
+      [grade, , gmul] = Cup.grade(s, win),
+      trip = City.go(run, c.at),
+      sc = m.setScores[0],
+      out = [Growth.matchXp(run, m), Skills.tryLearn(run, m)];
+    run.clash.done = true;
+    const front = Front.result(run, win ? side : foe, win ? foe : side);
+    Rank.points(run, you.id, RANK.street.fight + (win ? RANK.street.win : 0));
+    Rank.settle(run, win ? side : foe);
+    Rank.meet(run, m);
+    out.push(City.repBump(run, side, win ? CLASH.win : CLASH.lose), City.repBump(run, foe, CLASH.other), Run.bump(run, 'sta', -CLASH.sta));
+    if (win) out.push(Run.bump(run, 'fans', Math.round(CLASH.fans * gmul)));
+    run.plays.k += s.k;
+    run.plays.blk += s.blk;
+    run.plays.ace += s.ace;
+    run.focus = null;
+    const line = `${trip}Fought for ${REGIONS[side].name} in the street battle — ${win ? 'won' : 'lost'} ${sc[0]}-${sc[1]}, grade ${grade}. You: ${s.k} kills, ${s.blk} blocks, ${s.ace} aces · ${out.filter(Boolean).join(', ')}${front ? `. ${front}!` : ''}`;
+    Run.log(run, line);
+    Run.save(run);
+    return line;
+  },
   /** Your grade for one match (S–C) from your own line. */
   grade(s, win) {
     const v = s.k + 1.2 * s.blk + 1.2 * s.ace + 0.4 * s.dig + 0.35 * s.ast - s.err + (win ? 1 : 0);
@@ -185,6 +344,7 @@ const Cup = {
         [g, , gmul] = Cup.grade(s, win),
         R0 = kind === 'cup' ? (win ? REWARDS.cupWin : { sp: 0, fans: 0, bond: 0 }) : win ? REWARDS.warmupWin : REWARDS.warmupLoss;
       grade = g;
+      Rank.meet(run, m);
       const sp = Math.round((R0.sp + plays * REWARDS.perPlay.sp) * mul * gmul),
         fans = Math.round((R0.fans + plays * REWARDS.perPlay.fans) * mul * gmul * Sponsors.fanMul(run));
       const out = [

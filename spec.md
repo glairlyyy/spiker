@@ -14,6 +14,8 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 ## 2. Match (engine + 3D playback) [built]
 - §2.1 Rules: one set to 15, win by 2; court ×1.5; zone/captain buffs, timeouts, tactics, techniques, pop-ups,
   long back attack.
+  Three touches per side (a block touch is free). A pop-up off the arms saved by a teammate counts as touches 1 and 2:
+  the save is an out-of-system bump-set and a third player hits (or bumps it over) **[built]**.
 - §2.2 Elements: per player, hidden; unlocked for OP, ~1/4 of star players, and the career player via the Element
   Trial. Gauge fills by element play; full gauge or captain buff → next attack is the signature element spike.
   Counter elements halve effects. Fiction: lore.md §2 (the Trial is the modern method; the ritual is forgotten).
@@ -58,6 +60,8 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     bring a rested starter back; a random factor scaled by `coachIQ`. Smarter coach (matchups, protecting a lead, personality hunches) = backlog.
   - Your player is benchable: the coach picks starters by rating, form and standing, and may sub you out (tired /
     erring). A match started or finished on the bench gives reduced rewards.
+- Box score shows each player's OVR (owner). Loaded extra .vrm models dress your own career player only; everyone
+  else (and Monster games) uses the base model (owner).
 - §2.11 Match music **[built]**: `assets/audio/the_big_fight.mp3` loops as background music while the
   match screen is open, at 50 % of the effects volume (`BGM_GAIN` 0.5 × volume slider); follows the sound toggle and
   the volume slider; fades in on start and out on leaving. Presentation only (no effect on results). More tracks /
@@ -85,7 +89,10 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   1 day per TRIP_DAY, max 3). Nothing spills into next week; a night costs 0 days; only the player ends the week.
   One event roll per week. Day sessions give DAY_GAIN (0.25) of the old weekly gain.
 - §4.6 Street battles (CLASH, ~45% of training weeks, popup at week start): watch (scouts both sides) or fight for a
-  side (win +standing / lose −; the other side always −). `run.rep` = standing per region.
+  side (win +standing / lose −; the other side always −). `run.rep` = standing per region. Fighting is a real match
+  (owner, `Cup.clash`): your side's crew drawn from its pool with you on court vs the other side's crew; watch or Sim ⏭;
+  match XP, techniques and grade as in any match. Challenges (§4.15) reuse this flow. Crews and your faction's
+  evaluation squad show their real 3-letter team tag (owner).
 - §4.7 Faction war (`js/career/front.js`, FRONT): every battle (joined or settled at week end) pushes its border
   meter; 2 net wins seize a border place (2 per side per border; retakes first) → owner's price/turf/colour.
   A faction with 2 places lost is weakened (dearer, worse facilities, easier to join). Wu gets a revenge bonus.
@@ -157,10 +164,21 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     wit and opponent strength. Scouting shows which techniques a team's players have.
   - Save: RUN_VERSION bump (Limit Break progress removed, match XP added). Match results unchanged (goldens stay).
 
-- §4.15 Challenges **[locked, not built — T-037/T-038]** (makes a no-training run possible; see §4.14):
-  - Map action: challenge a squad at its court (or a street court): 1 day + a money **stake**. Acceptance depends on
-    your standing / fans vs the club's rating (big clubs ignore nobodies unless the stake or standing is high). You
-    play with your side (Academy squad; your club if it agrees); alone → hire weak street players for money.
+- §4.15 Challenges **[team challenge + refusal built (T-037); loss penalties + injury not built (T-038)]** (makes a no-training run possible; see §4.14):
+  - Team challenge (map action at a club HQ): your side challenges that club's squad. Costs 1 day + the trip; you name a
+    money **stake** (0 allowed). The match itself is the street-battle flow (`Cup.clash`-style fixture: watch or Sim ⏭).
+    You play with your side: the Academy squad, or your club's squad (your club must not be the target); alone → hire
+    street players for money (weak, rating ~50).
+  - **The club may refuse — "not worthy"**. Worth = your side's rating + your standing with them ÷ 10 + a faction term
+    from its dogma (lore.md §5), compared with the club's rating − a margin (`CHALLENGE.margin`):
+    - Wei: your Gazette rank and fans (fame) + the stake (money talks).
+    - Wu: your key stat / OVR (raw strength); stake counts little.
+    - Shu: standing and weeks on the island (hardship, elder approval); stake counts nothing.
+    - Street Outlaws: any stake ≥ their minimum is accepted (a bet is a bet); a 0-stake challenge is laughed off.
+    - St. Gloria: only if you are in the Gazette Top 20 (invitation only); otherwise always refused.
+    The worth check is shown before you commit (registrar: "Accepts: likely / doubtful / refuses") with the reason; the
+    exact numbers stay hidden. A refusal costs the trip day, gives a one-line refusal in that faction's voice, and that
+    club will not hear you again this week. Asking a club that refused 3 times in a season → −standing (you're a pest).
   - Win: stake back at odds from the rating gap, + standing / fans; XP per §4.14 (performance × opponent strength).
   - Loss is a real deal: stake lost; stamina and mood crash (carries over); standing − with that faction (repeated
     losses → grudge → facility ban, §4.10); lost by 8+ → fans − and a Gazette jab. No NPC learning.
@@ -169,6 +187,27 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     lowers it. Injury = days to weeks without training or matches; a severe one also costs −2 permanently on a stat
     (never ends the run) [assumed — owner to confirm].
   - Balance target: a no-training run reaches the mid-70s by ~week 20 only with well-chosen fights.
+
+- §4.16 Living map **[layer A built (only the Wei–Wu border has a drawn line, so pulse / patrols show there); B/C wait for the lore]**: the map shows what is happening
+  (display only, no rules, no randoms):
+  - A (now): your teammates at the places they train this week; faction players drilling at their courts (more for
+    bigger pools; coloured once scouted / member, grey silhouettes before) and walking between their places; the week's
+    street battle as a two-colour crowd with flags and dust; border lines pulse with pressure and patrols thicken on the
+    winning side; seized places fly the holder's flag. Low-poly instanced figures, VRM for your player only.
+  - B (after lore): ambient life — waves, boats, gulls, beach pickup games on Wu sand, Shu village smoke, Wei city lights
+    and traffic, villagers near Central Academy.
+  - C (after lore, with M3): the sun moves as the week's days are spent; dusk when no days are left.
+
+- §4.17 Rankings **[built]**: three lists, each from a biased publisher (numbers true, what
+  counts is biased; lore.md §7):
+  - **Academy Register** (`registrar`): every U21 player (all pools, the Academy squad, you) by true OVR. Known players
+    (member / your squad / scouted club or faction / met on court) show OVR; others "unrated" (faction + role only).
+  - **Gazette Top 20** (`wei`): fame = fans (you) or fame points (NPCs: star / OP, team results, element awakened), ×1.5
+    for Wei players — only Wei-sanctioned matches count, so Wei players sit higher and some are overhyped.
+  - **Street board** (`outlaw`): street points from street battles, hustles and challenges (you), and from their
+    faction's street-battle wins (NPCs: the faction's best players get the points).
+  - A Rankings drawer shows the three lists and your rank on each; pre-match and challenge cards show the opponent's
+    ranks ("Register #12 · Gazette #3 · Street —"). Display only: no match effects. Aces / the rival appear here later.
 
 ## 5. Open questions — do not build until decided
 - §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story

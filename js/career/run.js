@@ -86,6 +86,9 @@ const Run = {
       fans: 0,
       uses: {},
       floor: {},
+      met: {}, // player id → true: faced on court (their rating is known)
+      street: {}, // player id → street points (Rank)
+      refused: {}, // club index → { week, n }: team challenges it refused (T-037)
       seen: [],
       log: [],
       event: null,
@@ -328,6 +331,7 @@ const Run = {
     for (const k of ['sp', 'fans', 'trained', 'elNext', 'money']) if (!Number.isFinite(run[k])) run[k] = 0;
     if (!HOUSING[run.housing]) run.housing = 'studio';
     if (!run.reserve || typeof run.reserve !== 'object') run.reserve = {};
+    for (const k of ['met', 'street', 'refused']) if (!run[k] || typeof run[k] !== 'object') run[k] = {};
     if (typeof run.academy !== 'boolean') run.academy = World.isFree(run);
     if (run.eval && run.eval.week !== run.week) run.eval = null;
     Eval.setup(run);
@@ -361,8 +365,8 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 5;
-/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone) — older saves are dropped; add steps when the saved shape changes). */
+const RUN_VERSION = 6;
+/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges) — older saves are dropped; add steps when the saved shape changes). */
 const RUN_MIGRATIONS = {};
 const ROLE_NAME = { S: 'Setter', MB: 'Middle blocker', WS: 'Wing spiker' };
 /** Run rank letter for a fan count (RANKS is ordered from the top rank down). */

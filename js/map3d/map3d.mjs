@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { createAvatar } from './avatar3d.mjs';
 import { createFurniture } from './pins3d.mjs';
+import { createLife } from './life3d.mjs';
 
 export const MAP_M = 0.5;
 export const toWorld = ([x, y]) => [x * MAP_M, y * MAP_M];
@@ -201,6 +202,9 @@ export function create(host, onIdle) {
     dead = false,
     avatar = null,
     furn = null, // pins, labels, flag, decals (pins3d.mjs)
+    life = null, // figures, battle crowd, patrols, seized flags (life3d.mjs)
+    pressure = 0, // the contested border's pressure 0..1 (pulse)
+    clock = 0,
     fogKey = null,
     badge = null,
     follow = false, // the camera follows the avatar while it walks (until the user drags)
@@ -216,6 +220,7 @@ export function create(host, onIdle) {
     water.position.set(terrain.W / 2, 0, terrain.D / 2);
     avatar = createAvatar(scene);
     furn = createFurniture(scene, terrain.heightAt);
+    life = createLife(scene, terrain.heightAt);
     furn.layer.addEventListener('wheel', onWheel, { passive: false }); // wheel over a pin still zooms
   };
   /** Darken the terrain where nothing you have visited lies within fog.r (unexplored land stays visible, dim). */
@@ -318,6 +323,9 @@ export function create(host, onIdle) {
     } else {
       gone = 0;
       avatar.tick(dt, terrain.heightAt);
+      clock += dt;
+      life.tick(dt, clock);
+      furn.pulse(pressure, clock);
       if (follow && avatar.busy()) {
         const [ax, az] = avatar.pos(),
           k = 1 - Math.exp(-dt * 4);
@@ -368,6 +376,9 @@ export function create(host, onIdle) {
     update(m) {
       if (!furn) return;
       furn.sync(m, on);
+      life.sync(m);
+      const bd = m.life && m.life.borders.find(b => b.a === 'wei' && b.b === 'wu');
+      pressure = bd ? Math.min(1, Math.abs(bd.meter) / 2) : 0; // FRONT.seize = 2 net wins
       applyFog(m.fog);
       const at = m.you && m.you.at;
       if (!at || !avatar) return;
@@ -386,12 +397,14 @@ export function create(host, onIdle) {
       tris: renderer.info.render.triangles,
       geos: renderer.info.memory.geometries,
       tex: renderer.info.memory.textures,
+      life: life && life.count(),
       view: view && { ...view }
     }),
     dispose() {
       dead = true;
       if (avatar) avatar.dispose();
       if (furn) furn.dispose();
+      if (life) life.dispose();
       if (raf) cancelAnimationFrame(raf);
       if (ro) ro.disconnect();
       canvas.remove();

@@ -112,8 +112,8 @@ artifact; its drawing code was removed here (only the screen-space layer in `ren
   `poseCoach`; `dressActors`), `fx3d.mjs`, `trails3d.mjs`.
 - Extra player models: a .vrm picked in the menu (Playtest card) is kept in the player's own browser (IndexedDB,
   `js/ui/models.js`, never uploaded) and loaded at start-up; `R3D.addModel` adds `EXTRA_FIGS` figures of it to the
-  pool and `dressActors` spreads players at random with equal odds over the base and all loaded models (stable per
-  player via `hu`). VRM 0.x models are rotated
+  pool and `dressActors` gives a loaded model to your own player only (`p.you`, career; with several loaded, picked by hash, stable per
+  player via `hu`); everyone else keeps the base model. VRM 0.x models are rotated
   (`rotateVRM0`); dressing matches VRoid material names anywhere in the name.
 - One heavy pass per model file: `makeVRM` shares decoded textures (`imgCache`, clones share one image / GPU upload),
   geometry (`geoCache`, the first figure's meshes) and greyed hair textures across every figure of the same model.
@@ -350,7 +350,7 @@ league transfer (`World.transfers`) and a Gazette (`run.gazette`, news collected
 bonds, scouting, pools, promotion, transfers) and keep `t.P` for "who plays". `fillRoster` rolls the bench after the 4 (flex
 role + a wing spiker); `finalizeTeam` gives leadership, elements and shirt numbers to all 6 (numbers unique) but the captain and
 `ovr` come from `t.P`. `World.swap(x, y)` trades two players' seats (court or bench), slots, numbers and team links (join,
-transfers, promotion). Saves (RUN_VERSION 5; v5 dropped `run.lb`) store `bench` next to `P`; `teamFromJSON` relinks it.
+transfers, promotion). Saves (RUN_VERSION 6; v5 dropped `run.lb`, v6 added `run.met` / `run.street` / `run.refused`) store `bench` next to `P`; `teamFromJSON` relinks it.
 
 ## Faction pools
 
@@ -419,7 +419,7 @@ region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border mete
 2. Model — `MapModel.build(run, sel)` (`js/career/mapmodel.js`, DOM-free, tested): `{ w, h, land: { coast, beach,
    regions[{id, poly, color, mine}], contest, minors[ellipses], park, mountains, labels, airport }, seized[{at, r,
    color}], pins[{id, kind: spot|hq|clash, at, icon, badge, title, color?, flags: off/far/turf/gem/overhyped/hq/can/
-   mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-view centre), sel }`. Map units
+   mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-view centre), sel, life }`. `life` (`MapModel.life`, display only, no randoms; positions from hashes of ids + place): `mates[{id, name, at, color, spot}]` (your floor mates at the explored place of their key nearest home), `crews[{region, team, at, color, n 2–6, known, walk[[x,y]…]}]` (known clubs' HQs; `known` = scouted or yours), `battle {at, a, b, colors}|null`, `borders[{a, b, meter}]`. Map units
    CITY.w × CITY.h, y down. Selection ids: a pin id, or `pt:x,y` (`ptId` / `ptOf`).
 3. Renderer — `MapView` (`js/ui/map-view.js`): `mount(el, model, { pick(id), point([x, y]) })`, `update(model)`,
    `select(id)`, `dispose()`. The only renderer is the three.js map: it lazy-imports `js/map3d/map3d.mjs` once (a notice
@@ -438,8 +438,51 @@ region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border mete
    below ~70 m camera distance) and the picked-point flag, all projected onto the terrain every frame after render; seized
    patches and the contested-border line are terrain decals. `sync(model, on)` rebuilds a part only when its JSON changed;
    fog is a per-vertex darkening of the terrain colours (`applyFog(model.fog)`, unexplored land dim, not hidden). First
-   view: on the player, 60 m away. `js/ui/career-map.js` mounts it (`mapMount`),
+   view: on the player, 60 m away. Life is `js/map3d/life3d.mjs` (`createLife(scene, heightAt)` → `{ sync(model), tick(dt, t),
+   count(), dispose() }`, display only, no game randoms): reads `model.life` + `model.seized`; one `InstancedMesh` per kind
+   (figure = capsule body + head, flag poles, flag cloth, dust puffs; ≤ 300 figures), rebuilt only when that JSON changes and
+   animated in `tick` (drill hops, walkers looping round a crew's places at 1.2 m/s, the battle crowd shoving, waving flags).
+   Mates and known crews are coloured, unscouted crews grey; patrols (2–4) stand on the stronger side of the contested Wei–Wu
+   line; every seized place flies the holder's flag. `furn.pulse(strength, t)` pulses the contested line with |meter| / 2.
+   `info().life` reports the instance counts. `js/ui/career-map.js` mounts it (`mapMount`),
    turns picks into panels (`mapPick`) and land clicks into travel targets (`mapPoint`). Region colours: REGIONS.color.
+
+## Possession paths and touch counts
+
+`rally(m, B, V, atk, pas, qual, scr)` runs one possession per loop; `next: [atk, pas, qual, scr]` hands it on (`scr` only for a
+pop-up save, else null). Touches before the hit: normal dig / pass → set → spike **3**; setter dump **2**; overpass (free ball)
+**1**; bad set over **3**; a pop-up save (a serve or spike that popped off someone's arms, `scr = { first }`) **3** —
+the popper (touch 1), the saver bump-sets (touch 2, `saveSet` in `rally-phases.js`: no free ball / setter choice / dump /
+double contact, `sq2 'bad'`, `bumpSet`), then a third player hits (`chooseAttack` skips `scr.first` and the saver) or the bad
+set goes over as a bump; a block touch is free. Engine-only tallies (no randoms): `m.scr = { n, over }`, `m.scrLog = [{ first,
+saver, hitter }]`.
+
+## Rankings
+
+`Rank` (`js/career/rank.js`, DOM-free, no randoms, ties by id; display only — no match effect) builds three lists from three
+biased publishers: `register(run)` (Academy Register: every pool player + the Academy squad + you by true OVR; `ovr` is shown
+only for players you know — you / your squad / your faction / a scouted faction / `run.met` — the true OVR orders the list
+but is not exposed), `gazette(run)` (Top `RANK.top` by fame: you = fans ÷ 100, others star / OP / awakened element / team
+wins, × `RANK.weiFame` for Wei), `street(run)` (players with street points), and `of(run, id)` (1-based places; gazette /
+street null when off the list). State: `run.met` (player id → faced on court: `Rank.meet` after every match you played),
+`run.street` (points: `Rank.points`; a fought street battle `RANK.street.fight` + `win`, a hustle won `hustle`; a settled
+battle — fought, watched or simulated — gives the winner faction's `share` best players `faction`: `Rank.settle`),
+`run.refused` (club index → `{ week, n }`, used by team challenges). Constants: `RANK` in `data/world.js`.
+
+UI (`ui/career-week.js`): the hub's Rankings drawer (`HUB_DRAWERS.rank`, `rankCard`, tab in `CW.rank`, `rankTab`) renders `Rank.register / gazette / street` — top `RANK.top` rows, then "…" and your row; `rankBest(run, players)` adds "Their best: …" (up to 2 players, null ranks skipped) to `evalPanel` and `cupPanel`. The UI only reads `Rank.*`.
+
+## Team challenges
+
+A map action at a club HQ (not your own): `City.worth(run, ti, stake)` → `{ verdict: likely|doubtful|refuses, why, accepts,
+need, worth }` (worth = your side's rating + standing ÷ `CHALLENGE.standPer` + the faction's dogma term, vs the club's rating −
+`margin`; the card shows only verdict + why). Doubtful is decided by a fixed hash of week / club / stake (no randoms, so leaving
+the match and re-asking changes nothing). `City.challenge(run, ti, stake)`: refused → the trip + a day are spent, the diary gets
+the faction's line (`CHALLENGE_LINES`), `run.refused[ti] = { week, n }` blocks that club for the week, and from `refuseMax`
+refusals each further one costs `pest` standing; accepted → `{ accepted, stake }` and nothing is spent yet. `Cup.challenge`
+is the fixture (same shape as `Cup.clash`; your side = Academy squad / club squad / `Cup.hired` street crew lent for the
+match; the club's real squad); `Cup.challengeResult` spends the trip + day, pays the stake at odds (win) or takes it (loss),
+pays the crew, then standing / fans / match XP / techniques / street points / `Rank.meet`. UI: `challengeBlock` in
+`career-map.js` (stake stepper, verdict line, Challenge, ⏭). Loss penalties and injury are T-038.
 
 ## Training XP
 
@@ -455,8 +498,11 @@ Training gives XP (`Training.xpFor`: base gain × `TRAIN_X.xp.per` × every mult
 `Growth.matchXp(run, m, mine, opp)` (career/growth.js), called from `Cup.result` when you played: your `m.stat` line × `MATCH_XP.per`
 (`data/career.js`: kills → power, aces → power, blocks → jump + def, digs → def + speed, assists → wit, attempts → jump), × the gap
 factor `Growth.gapFactor(ovr of your 4 starters, opponent's)` = clamp(1 + gap × `perGap`, `gap`), each stat through
-`Training.addXp(…, 'match')` (so matches pass `TRAIN_CAP`). The winner is never read. `City.clash` (you fought) gives a flat
-`MATCH_XP.clash` amount to your key stat, scaled by your ovr vs `CLASH.par`. The result line starts with "XP: …" and the factor note.
+`Training.addXp(…, 'match')` (so matches pass `TRAIN_CAP`). The winner is never read. A street battle you fight is a real match: `Cup.clash(run, side)`
+builds the fixture (your side's crew from `Pool.draw`, you on court in your role, vs the other side's crew; both lent via
+`Eval.squad` / `Eval.lend`), nothing is spent until `Cup.clashResult` (trip + a day, stamina, standing, fans ×grade, match XP,
+techniques, `Front.result`); leaving early leaves the battle open. Watching stays `City.clash(run, null)`. The result line starts
+with "XP: …" and the factor note.
 
 ## Career hub UI
 

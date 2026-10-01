@@ -178,7 +178,7 @@ const HOUSING = {
 const HOUSEK = Object.keys(HOUSING);
 /**
  * Street battles between the majors: chance a training week opens with one; sites (map point).
- * Fighting: win chance on your OVR vs `par`; standing with the side you fought for +win / +lose, and always `other`
+ * Fighting is a real match (Cup.clash); standing with the side you fought for +win / +lose, and always `other`
  * with the side you fought against. Watching scouts both sides' clubs.
  */
 const CLASH = {
@@ -188,7 +188,6 @@ const CLASH = {
     { a: 'wei', b: 'shu', at: [490, 130], name: 'the northern ridge' },
     { a: 'wu', b: 'shu', at: [395, 540], name: 'the southern plain' }
   ],
-  par: 62,
   sta: 15,
   watchSta: 5,
   win: 10,
@@ -228,6 +227,63 @@ const ACCESS = {
 };
 /** Faction pool sizes (players, league-team players included): the rest are generated reserves. */
 const POOL = { wei: 24, wu: 18, shu: 12, outlaws: 6, gloria: 6 };
+/**
+ * Team challenges (City.worth / City.challenge / Cup.challenge; spec §4.15). A club accepts when your worth reaches its
+ * rating − margin: worth = your side's rating + standing ÷ standPer + a term from the faction's dogma (lore.md §5):
+ * Wei: +gazette in the Gazette Top 20, + fans ÷ fansPer, + stake ÷ stakePer; Wu: (key stat − 50) ÷ keyPer (the stake counts
+ * for nothing); Shu: standing ÷ repPer + week ÷ weekPer (no stake); Outlaws: any stake ≥ minStake, else refused; Gloria:
+ * only from the Top 20. Within `doubt` below the bar it is "doubtful" (a fixed per-week/club/stake hash decides, `doubtP`
+ * accepts). stakeStep: the stake stepper; odds: payout × stake, from the rating gap (1.5 + gap ÷ 20, clamped); hire: the
+ * street crew you pay for when alone (rating `ovr`, `cost` from your money); refuseMax: refusals before you are a pest
+ * (standing `pest` on each further one).
+ */
+const CHALLENGE = {
+  margin: 6,
+  standPer: 10,
+  doubt: 3,
+  doubtP: 0.5,
+  stakeStep: 50,
+  odds: [1.2, 3],
+  hire: { ovr: 50, cost: 80 },
+  refuseMax: 3,
+  pest: -8,
+  wei: { gazette: 8, fansPer: 1000, stakePer: 100 },
+  wu: { keyPer: 5 },
+  shu: { repPer: 10, weekPer: 4 },
+  outlaws: { minStake: 50 },
+  gloria: {}
+};
+/** What the challenge card says (registrar voice; numbers stay hidden) per faction and verdict, and each faction's refusal lines. */
+const CHALLENGE_WHY = {
+  wei: {
+    likely: 'They respect fame and money',
+    doubtful: 'They want more fame or a bigger stake',
+    refuses: 'They see no fame and little money'
+  },
+  wu: { likely: 'They respect strength', doubtful: 'They doubt your strength', refuses: 'They think you too weak' },
+  shu: { likely: 'The elders know your name', doubtful: 'The elders are not sure of you', refuses: 'The elders have not seen you suffer' },
+  outlaws: { likely: 'A bet is a bet', doubtful: 'A bet is a bet', refuses: 'No stake, no game' },
+  gloria: { likely: 'You are on their list', doubtful: 'You are on their list', refuses: 'Invitation only' },
+  week: 'They will not hear you again this week'
+};
+const CHALLENGE_LINES = {
+  wei: ['The office does not take calls from nobodies.', 'Come back when the Gazette knows your name.'],
+  wu: ['Weak arms do not get a game.', 'Go lift something, then ask again.'],
+  shu: ['The elders have not seen your hardship.', 'Wait. Bleed a little, then ask again.'],
+  outlaws: ['No stake, no game. We do not play for free.', 'A bet is a bet. Bring one.'],
+  gloria: ['We do not recall inviting you.', 'Invitations are sent. They are not requested.']
+};
+/**
+ * Rankings (Rank, js/career/rank.js): top = Gazette length; weiFame = Wei players' fame multiplier (only Wei-sanctioned
+ * matches count); fame = NPC fame points (star, OP, awakened element, per team win); street = street points (you: a
+ * street battle fought + a win, a hustle won; a settled battle gives its winner faction's `share` best players `faction`).
+ */
+const RANK = {
+  top: 20,
+  weiFame: 1.5,
+  fame: { star: 30, op: 80, el: 20, win: 3 },
+  street: { fight: 10, win: 15, hustle: 3, faction: 2, share: 4 }
+};
 /** Players in a squad: 4 on court + 2 on the bench. */
 const SQUAD = 6;
 /**

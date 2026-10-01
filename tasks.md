@@ -32,14 +32,30 @@ Result:
 - Block tactics ✓ (T-026 lane-read block, T-027 defence setting + scouting habits).
 - Substitutions ✓ (T-028 squads of 6, T-029 in-match subs, T-030 coach AI, T-031 you on the bench).
 - Growth rework ✓ (T-034 training cap 75, T-035 match XP, T-036 techniques learned in play).
-- **Challenges** (next, to be detailed): T-037/T-038.
+- Living map A ✓ (T-039, T-040) · three-touch fix ✓ (T-043) · rankings ✓ (T-041, T-042) · team challenge ✓ (T-037).
+- **Next**: rankings drawer fix (T-044); then challenge loss + injury (T-038, to be detailed); voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
+
+## Now — fixes
+
+### [ ] T-044: Rankings drawer table fits the drawer
+Spec: §4.17          Goldens: unchanged          Save: no change
+Goal: The Rankings drawer shows all four columns (rank, name, faction · role, value) inside the drawer; today the table
+is wider than the drawer, names are right-aligned with a big gap and the faction / value columns are cut off.
+Files: css/career.css (the "rankings drawer" block), js/ui/career-week.js (`rankCard` markup only if needed)
+Do not: change `Rank` or what the rows contain.
+Steps:
+1. `table.rk`: `width: 100%; table-layout: fixed`; column widths ≈ 2.5em / auto / 40% / 3.5em; name left-aligned,
+   ellipsis on overflow (`white-space: nowrap; overflow: hidden; text-overflow: ellipsis`); value right-aligned.
+2. Your row (`tr.me`) and the "…" gap row keep their styles; the drawer gets no horizontal scrollbar.
+Accept: all tests + lint.
+QA: career run → Rankings drawer at 1280×800: all 4 columns visible on every tab, long names ellipsed, no horizontal
+scroll; screenshot; no pageerror.
+Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
-Challenges — spec §4.15 (after the growth rework)
-- T-037: Challenge action — map action at a club / street court, stake, acceptance rule, hired street players when
-  alone, win payout by rating gap; XP via T-035.
+Challenges, part 2 — spec §4.15
 - T-038: Loss and injury — stake lost, stamina / mood crash, standing loss → grudge, heavy-loss fans / Gazette;
   injury risk from gap, margin and fatigue (stamina + days since last battle); severe injury −2 permanent.
 
@@ -49,6 +65,12 @@ Phase 5 — Voice pass
 
 ## Done
 (one line each; full task text is in git history)
+- [x] T-039: MapModel `life` — who is where this week, as plain data — Done as specified; tests 36/36, lint clean, goldens untouched, headless only. `life.crews` also carries `team` (club index) and `mates` uses the nearest explored place of the key to home.
+- [x] T-040: Living map — figures, battle crowd, border pulse, flags (renderer) — Done; tests 36/36, lint clean, goldens untouched. Only the Wei–Wu border has a line, so the pulse and patrols use it (other borders: no line yet). QA (swiftshader, forced state): battle crowd 24 + 2 flags + dust, unscouted crew grey / scouted coloured, mates at their court; draw calls +4 (≤ 6); leave → 0 canvases, return → 1; geometry count 19 → 20 after return (avatar model loads late); no pageerror. Frame time not measured.
+- [x] T-043: Three touches after a pop-up — the save is the set (scramble ball) — Done; tests 39/39, lint clean, goldens updated (`teams`, `sims`: pop-up saves no longer get a full set + attack). The new phase is `saveSet` (not `scramble`: hype.js already has one); tallies `m.scr` / `m.scrLog` are created lazily (match.js untouched). 300 sims: 0.85 scramble possessions per match, 86 of them went over as a bump, hitter is never the popper or the saver. QA: Monster game ran 400 steps, no pageerror (no pop-up came up in that window; the animated path is covered by the recorded-beats tests).
+- [x] T-041: `Rank` — the three rankings as plain data — Done as specified; tests 37/37, lint clean, goldens untouched, RUN_VERSION 6 (old saves dropped). Register rows hide the true OVR (only the order uses it); you get no faction-share points; Rank.settle/meet hooks also in city.js (clashEnd, watch, hustle). The Limit Break test's RUN_VERSION assert updated 5 → 6.
+- [x] T-042: Rankings drawer + ranks on match and challenge cards — Done; tests 39/39, lint clean, goldens unchanged. Drawer id `rank` in `HUB_DRAWERS` (+ `CW.rank` tab key, `rankCard`/`rankTab`/`rankBest`/`RANK_TABS` in career-week.js). QA: 3 tabs, your row highlighted, 18 unrated rows before scouting, gazette 20 rows, street empty-state, opponent line renders, no pageerror (rated-after-scouting not re-driven in browser; covered by the Rank tests).
+- [x] T-037: Team challenge — challenge a club, it may refuse you — Done; tests 38/38, lint clean, goldens untouched. Deviations: CHALLENGE also has `standPer` 10, `doubt` 3, `doubtP` 0.5 (and CHALLENGE_WHY for the card text); a doubtful club is decided by a hash of week/club/stake (not a roll); acceptance spends nothing until the match ends (refusal spends trip + day); Wu ignores the stake; odds = clamp(1.5 + gap/20, 1.2, 3). QA (career-map): verdict 'refuses — No stake, no game' at $0 → 'likely' at $50 for the Outlaws, ⏭ played and settled the stake, a $0 ask logged the refusal; no pageerror.
 - [x] T-034: Training stops at 75 — remove Limit Break — Done as specified; tests 33/33 (full run asserts ≤ max(75, start stat) until T-035), lint clean, goldens untouched; RUN_VERSION 5.
 - [x] T-035: Match experience — your performance × opponent strength — Done as specified; tests 34/34, lint clean, goldens untouched. Report (short season, 5 seeds, WS, power-only training incl. the cup): training only 75.6 avg power (ovr 67.8) vs also playing every eval 78.2 (ovr 69.0). QA: Sim ⏭ eval line shows "XP: … (×0.3 vs a weaker side)".
 - [x] T-036: Techniques learned in play (basic skills stay in the shop) — Done as specified; tests 35/35, lint clean, goldens untouched. Growth.matchXp now takes (run, m) and shares `Growth.matchGap(m)` with tryLearn. Not touched (unlisted): the encyclopedia card still says "Or learn it in career for this many skill points" (ui/encyclopedia.js:26,47) — stale now. QA: shop shows 8 techniques as "learn in matches"; scouted HQ roster and dossier list techniques; no pageerror.
@@ -83,3 +105,7 @@ Phase 5 — Voice pass
 (build chat: owner requests made directly in the build chat — one line each; the spec chat moves them into spec.md)
 - (recorded in spec §4.9) 2026-09-30: Owner: keep only the 3D map — removed the SVG renderer (`js/ui/map-svg.js`), panzoom, the 3D toggle and `KEYS.map3d`; `MapView` loads map3d.mjs directly (notice if WebGL fails). MapModel and the rules are unchanged. Pins, labels, fog, selection and seized patches are not drawn until T-025; until then places cannot be picked (travel by clicking land works). Dead SVG map CSS (`.city`, `.pin`…) left in css/career.css.
 - (recorded in spec §2.9) Blocker choice: the front-row MB is main blocker on every attack they can reach (was: only quick/pipe/middle); the wing fills the gap — js/engine/rally.js (formBlock), ARCHITECTURE.md, tests/golden.json (updated).
+- (recorded in spec §4.6 / §2) Street battle "Fight for X" is now a real match (watch or ⏭ sim) with match XP, techniques and grade; `City.clashP` and `MATCH_XP.clash` / `CLASH.par` removed. Files: js/career/cup.js, city.js, js/data/career.js, js/data/world.js, js/ui/career-map.js, tests/run.js, ARCHITECTURE.md.
+- (recorded in spec §4.6 / §2) Box score (player table in the match screen) gains an OVR column — js/ui/match-screen.js.
+- (recorded in spec §4.6 / §2) Added (.vrm) player models now apply to your own career player only (everyone else keeps the base model) — js/render3d/actors3d.mjs, js/ui/models.js, js/ui/menu.js, ARCHITECTURE.md.
+- (recorded in spec §4.6) Street-battle crews and your faction's evaluation squad show their real 3-letter team tag instead of 'EVL' (Eval.squad takes a `short`; 'EVL' only for the opposing evaluation squad) — js/career/eval.js, cup.js.

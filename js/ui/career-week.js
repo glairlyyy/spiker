@@ -2,7 +2,7 @@
 // Gazette, the event card, evaluation / Cup match cards and the skills shop, plus their handlers.
 
 /** Hub UI state: Hard toggle, selected place, open drawer, pan/zoom view, last diary line shown as a toast. */
-let CW = { hard: false, spot: null, drawer: null, view: null, toast: null, dossier: null };
+let CW = { hard: false, spot: null, drawer: null, view: null, toast: null, dossier: null, rank: 'register' };
 
 function youCard(run) {
   const you = Run.you(run),
@@ -170,6 +170,59 @@ function matchPrep(run, cup) {
     }${info(`Your coach picks the best player of each role by rating + 6 × form (+ your standing with the faction ÷ ${BENCH.standingPer}). Start or finish on the bench and match rewards ×${BENCH.partMul}; never play and you only get a little Wit XP.`)}</div>`;
   return lineup + focus + talk;
 }
+/** Rankings drawer: tabs for the three lists (Rank.*, js/career/rank.js), top rows then a gap and your own row. */
+const RANK_TABS = {
+  register: ['Register', 'Academy Register — U21, by rating'],
+  gazette: ['Gazette', "The Gazette's Top 20 — the island's finest"],
+  street: ['Street', "Who's hot under the overpass"]
+};
+function rankTab(k) {
+  CW.rank = k;
+  renderCareer();
+}
+function rankCard(run) {
+  const you = Run.you(run),
+    tab = RANK_TABS[CW.rank] ? CW.rank : 'register',
+    list = Rank[tab](run),
+    n = RANK.top,
+    at = list.findIndex(r => r.id === you.id),
+    row = (r, i) =>
+      `<tr class="${r.id === you.id ? 'me' : ''}"><td>${i + 1}</td><td>${esc(r.name)}</td><td>${r.region ? esc(REGIONS[r.region].name) : 'Academy'} · ${r.role}</td><td>${
+        tab === 'register' ? (r.ovr == null ? '<i class="mute">unrated</i>' : r.ovr) : tab === 'gazette' ? Math.round(r.fame) : r.pts
+      }</td></tr>`,
+    gap = '<tr class="gap"><td colspan="4">…</td></tr>',
+    rows = list.slice(0, n).map(row).join('') + (at >= n ? gap + row(list[at], at) : '');
+  return `<div class="tabs rk">${Object.entries(RANK_TABS)
+    .map(([k, [name]]) => `<button class="btn ${k === tab ? 'hot' : ''}" onclick="rankTab('${k}')">${name}</button>`)
+    .join('')}</div>
+    <p class="small mute">${RANK_TABS[tab][1]}</p>
+    ${list.length ? `<table class="rk"><tbody>${rows}</tbody></table>` : '<p class="small mute">Nobody on the board yet.</p>'}
+    ${at < 0 ? `<p class="small mute">You are not on this list${tab === 'street' ? ' — fight, hustle, or take a challenge.' : '.'}</p>` : ''}`;
+}
+/** "Their best: <name> Register #n · Gazette #n" for up to 2 of a squad's players (skips null ranks). */
+function rankBest(run, ps) {
+  const L = { register: Rank.register(run), gazette: Rank.gazette(run), street: Rank.street(run) },
+    at = (k, id) => {
+      const i = L[k].findIndex(r => r.id === id);
+      return i < 0 ? null : i + 1;
+    },
+    got = ps
+      .map(p => ({ p, r: Object.fromEntries(Object.keys(L).map(k => [k, at(k, p.id)])) }))
+      .sort((a, b) => Math.min(...Object.values(b.r).map(v => v || 1e9)) - Math.min(...Object.values(a.r).map(v => v || 1e9)))
+      .slice(0, 2);
+  return got.length
+    ? `<p class="small mute">Their best: ${got
+        .map(
+          ({ p, r }) =>
+            `${esc(p.name)} ` +
+            Object.entries(RANK_TABS)
+              .filter(([k]) => r[k])
+              .map(([k, [name]]) => `${name} #${r[k]}`)
+              .join(' · ')
+        )
+        .join(' — ')}</p>`
+    : '';
+}
 /** The evaluation week's card: play (or Sim) your evaluation match, or watch from the bench when not selected. */
 function evalPanel(run) {
   const e = run.eval || Eval.setup(run),
@@ -189,6 +242,7 @@ function evalPanel(run) {
     <p class="small"><b>${e.kind === 'academy' ? esc(club.name) : esc(club.name) + ' squad'}</b> ${list(mine, true)}</p>
     <p class="small"><b>${esc(REGIONS[e.region].name)} squad</b> ${list(byId(e.opp).slice(0, 4), D.scouted || D.member)}</p>
     ${D.scouted || D.member ? '' : '<p class="small mute">Scout one of their clubs to see ratings.</p>'}
+    ${rankBest(run, byId(e.opp).slice(0, 4))}
     ${matchPrep(run, false)}
     <div class="trow"><button class="btn hot big" onclick="playCareer('eval')">Play evaluation</button><button class="btn big" onclick="playCareer('eval', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
 }
@@ -228,6 +282,7 @@ function cupPanel(run) {
         )
         .join('')}</div>
     <div class="panel"><h3>${nm.round}${info(`Win: +${Math.round(REWARDS.cupWin.sp * def.mul)} skill pts, +${Math.round(REWARDS.cupWin.fans * def.mul).toLocaleString()} fans. A loss ends the season.\nPlacement: round of 16 +${fans('Round of 16')} fans · quarterfinal +${fans('Quarterfinal')} · semifinal +${fans('Semifinal')} · runner-up +${fans('Final')} · champion +${fans('Champion')} — and a place on the national team.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3><p>vs <b>${esc(E[nm.a === me ? nm.b : nm.a].name)}</b></p>
+      ${rankBest(run, squadOf(E[nm.a === me ? nm.b : nm.a]))}
       ${matchPrep(run, true)}
     <div class="trow"><button class="btn hot big" onclick="playCareer('cup')">Play ${nm.round.toLowerCase()}</button><button class="btn big" onclick="playCareer('cup', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
 }
