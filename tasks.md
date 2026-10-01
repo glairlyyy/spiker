@@ -243,7 +243,7 @@ QA: career run: week actions, event once per week, sim a match from map and from
 factions drawer, end week.
 Result: City.after, Cup.simNow (replaces 3 copies; the map's challenge/clash fixtures have no setup, so no behaviour change), Cup.upcoming (renderCareer prepares the cup's next match before drawing; cupPanel no longer simulates or saves), Goals.progress, Dossier.summary + standingLabel (factionsCard renders from it), Run.canEndWeek, Run.readGazette (drawer + Gazette card share it), ROLE_NAME → data/career.js, STAT_OF → STATNAME. match-screen skipMatch is not a copy (continues the live match), left as is. New test covers each; 51/51, goldens untouched, lint clean. QA: seeded career 5 weeks (rest, end week, Gazette read, week-4 eval benched), factions + season drawers; no pageerror.
 
-### [ ] T-076: Save model — one defaults table for new runs and repair
+### [x] T-076: Save model — one defaults table for new runs and repair
 Spec: — (cleanup)          Goldens: unchanged          Save: no change (repair defaults the new field)
 Goal: A field can't be added to `Run.new` and forgotten in `repair` again (how `run.grades` slipped through).
 Files: js/career/run.js, js/career/cup.js, js/ui/career-end.js, tests/run.js, ARCHITECTURE.md
@@ -254,7 +254,7 @@ Steps:
 3. Test: `repair({...minimal})` yields every defaults key; a new run passes repair unchanged (deep equal).
 Accept: tests + lint; goldens untouched.
 QA: none (headless) + load an existing save in the browser once.
-Result:
+Result: RUN_DEFAULTS (34 fields, [make, valid]) + Run.defaults(); Run.create spreads it, repair loops it then fixes academy / eval+Eval.setup / spotQ (City.roll) / fog / clash / sta / mode in the old order; run.grades declared, pushed in place and capped at MLOG.max. Behaviour note: repair now restores a broken money field to ECON.start (was 0) and also defaults . Test: every key present in a new run, repair leaves a sound run byte-identical, a stripped save gets all keys back, grades capped. 52/52, goldens untouched, lint clean; browser: save → reload → career loads, no pageerror.
 
 ### [ ] T-077: Render files match what they do; one source for court units
 Spec: — (cleanup)          Goldens: unchanged (constants keep their values)          Save: no change

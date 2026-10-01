@@ -2390,6 +2390,23 @@ test('career: rules moved out of the UI (T-075)', () => {
   assert(m.over && finished === m && setupRan, 'simNow plays the whole match, setup and finish');
 });
 
+test('career: one defaults table for new runs and repair (T-076)', () => {
+  const g = load(41),
+    run = g.Run.create(g.Run.draft(), { role: 'MB', name: 'Defaults', mode: { story: true } });
+  for (const k of Object.keys(g.RUN_DEFAULTS)) assert(k in run, `a new run has ${k}`);
+  // a new run passes repair unchanged
+  const before = JSON.stringify(Object.assign({}, run, { teams: null, pickup: null, reserve: null }));
+  g.Run.repair(run);
+  eq(JSON.stringify(Object.assign({}, run, { teams: null, pickup: null, reserve: null })), before, 'repair changes nothing on a sound run');
+  // a damaged save gets every defaults key back, and grades stay capped
+  const bare = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Bare' });
+  for (const k of Object.keys(g.RUN_DEFAULTS)) delete bare[k];
+  bare.grades = Array.from({ length: g.MLOG.max + 5 }, () => 'B');
+  g.Run.repair(bare);
+  for (const [k, [, ok]] of Object.entries(g.RUN_DEFAULTS)) assert(ok(bare[k]), `repair restores ${k}`);
+  eq(bare.grades.length, g.MLOG.max, 'grades capped');
+});
+
 // ---------- report ----------
 let fail = 0;
 for (const r of results) {

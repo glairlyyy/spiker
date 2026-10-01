@@ -70,70 +70,36 @@ const Run = {
         }
         if (T.P.length) finalizeTeam(T);
       }
-    const staMax = CAREER.staMax;
     const run = {
+      ...Run.defaults(),
       v: RUN_VERSION,
       week: mode.short ? 5 : 1,
       teams,
       team: null,
       youId: you.id,
-      sta: staMax,
-      staMax,
-      mood: 2,
-      sp: 0,
-      fans: 0,
-      uses: {},
-      floor: {},
-      met: {}, // player id → true: faced on court (their rating is known)
-      street: {}, // player id → street points (Rank)
-      refused: {}, // club index → { week, n }: team challenges it refused (T-037)
-      losses: {}, // region → team challenges lost this run (T-038)
-      mlog: [], // match history (Cup.record, T-052): plain entries, newest last
-      lastFight: null, // absolute day (Run.dayNo) of your last challenge / street fight
-      seen: [],
-      log: [],
+      sta: CAREER.staMax,
       event: null,
       cup: null,
-      warm: [],
-      plays: { k: 0, blk: 0, ace: 0 },
       lastMain: KEYSTAT[role],
       result: null,
       // modes, cup record, training depth, goals, sponsors, history
       mode: { hard: !!mode.hard, short: !!mode.short, story: mode.story !== false },
-      cups: [],
       streak: null,
       injury: null,
       goal: null,
-      sponsors: [],
       sponsorN: 0,
       focus: null,
       talk: null,
-      trained: 0,
-      hist: [],
-      // v4: the Element Trial (S grade in the zone done? next offer week)
-      elProof: false,
-      elNext: 0,
-      // v5: free agency (pickup squad until you sign), money, housing, league news and the Gazette
+      elProof: false, // the Element Trial: S grade in the zone done?
+      // free agency (pickup squad until you sign), money, housing, league news and the Gazette
       pickup,
       eval: null, // this week's evaluation draw (see js/career/eval.js)
       academy: true, // Academy squad member; false after leaving it (no way back)
       // faction pools: generated players outside the league teams (see js/career/pool.js)
       reserve,
-      money: ECON.start,
-      housing: 'studio',
-      news: [],
       gazette: null,
-      // the city map: days left this week, whether the week's event was rolled, scouted clubs (team index → week)
-      days: WEEK_DAYS,
-      rolled: false,
-      rep: {}, // standing with each region's clubs
-      own: {}, // seized border places → the region holding them
-      front: {}, // pressure on each major border (FRONT.borders key → net wins)
       clash: null, // this week's street battle
-      scout: {},
       spotQ: {},
-      xp: {}, // training experience toward each stat's next point
-      pos: CITY.airport.slice(), // where you stand on the map
       fog: [CITY.airport.slice()] // the points you've stood on (the map is dark elsewhere)
     };
     Run.log(run, `${you.name} arrives in the city as a free agent (${ROLE_NAME[role].toLowerCase()}) — find a club that will take you.`);
@@ -340,33 +306,21 @@ const Run = {
     }
   },
   /** Fill collections and counters a damaged save may lack, so the career screens never meet undefined / NaN. */
+  /** A fresh copy of every plain-default run field (RUN_DEFAULTS). */
+  defaults: () => Object.fromEntries(Object.entries(RUN_DEFAULTS).map(([k, [make]]) => [k, make()])),
+  /** Fill what a save lacks or holds broken: every RUN_DEFAULTS field, then the fields that need the run itself. */
   repair(run) {
-    for (const k of ['log', 'seen', 'warm', 'cups', 'sponsors', 'hist', 'mlog']) if (!Array.isArray(run[k])) run[k] = [];
-    for (const k of ['sp', 'fans', 'trained', 'elNext', 'money']) if (!Number.isFinite(run[k])) run[k] = 0;
-    if (!HOUSING[run.housing]) run.housing = 'studio';
-    if (!run.reserve || typeof run.reserve !== 'object') run.reserve = {};
-    for (const k of ['met', 'street', 'refused', 'losses']) if (!run[k] || typeof run[k] !== 'object') run[k] = {};
-    if (!Number.isFinite(run.lastFight)) run.lastFight = null;
+    for (const [k, [make, ok]] of Object.entries(RUN_DEFAULTS)) if (!ok(run[k])) run[k] = make();
+    if (run.grades.length > MLOG.max) run.grades = run.grades.slice(-MLOG.max);
     if (typeof run.academy !== 'boolean') run.academy = World.isFree(run);
     if (run.eval && run.eval.week !== run.week) run.eval = null;
     Eval.setup(run);
-    if (!Array.isArray(run.news)) run.news = [];
-    if (!Number.isFinite(run.days) || run.days < 0 || run.days > WEEK_DAYS) run.days = WEEK_DAYS;
     if (!run.spotQ || typeof run.spotQ !== 'object' || !Object.keys(run.spotQ).length) City.roll(run);
-    if (!run.scout || typeof run.scout !== 'object') run.scout = {};
-    for (const k of ['rep', 'own', 'front']) if (!run[k] || typeof run[k] !== 'object') run[k] = {};
-    if (!Array.isArray(run.pos)) run.pos = CITY.airport.slice();
     if (!Array.isArray(run.fog)) run.fog = [run.pos.slice()];
     if (run.clash && !CLASH.sites[run.clash.site]) run.clash = null;
-    if (!Number.isFinite(run.staMax) || run.staMax <= 0) run.staMax = CAREER.staMax;
     if (!Number.isFinite(run.sta)) run.sta = run.staMax;
-    if (!Number.isInteger(run.mood) || !MOODS[run.mood]) run.mood = 2;
     if (!run.mode || typeof run.mode !== 'object') run.mode = { hard: false, short: false, story: true };
     if (typeof run.mode.story !== 'boolean') run.mode.story = true;
-    if (!run.plays || typeof run.plays !== 'object') run.plays = { k: 0, blk: 0, ace: 0 };
-    if (!run.uses || typeof run.uses !== 'object') run.uses = {};
-    if (!run.xp || typeof run.xp !== 'object') run.xp = {};
-    if (!run.floor || typeof run.floor !== 'object') run.floor = {};
     // an event this version no longer knows (removed / renamed) would leave the week stuck on a blank card
     if (run.event && !Events.def(run.event, run)) run.event = null;
   },
@@ -383,5 +337,46 @@ const Run = {
 const RUN_VERSION = 9;
 /** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history), v9: `run.mode.story` (T-067) — older saves are dropped; add steps when the saved shape changes). */
 const RUN_MIGRATIONS = {};
+const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+/**
+ * Run fields with a plain default: name → [make (fresh value), valid (keep a saved value?)]. `Run.create` starts from
+ * these and `Run.repair` refills any that a save lacks or holds broken — add a new simple field here, not in both.
+ */
+const RUN_DEFAULTS = {
+  log: [() => [], Array.isArray],
+  seen: [() => [], Array.isArray],
+  warm: [() => [], Array.isArray], // evaluation results { week, win }
+  cups: [() => [], Array.isArray],
+  sponsors: [() => [], Array.isArray],
+  hist: [() => [], Array.isArray],
+  mlog: [() => [], Array.isArray], // match history (Cup.record): plain entries, newest last
+  grades: [() => [], Array.isArray], // your match grades, newest last (capped like mlog)
+  news: [() => [], Array.isArray],
+  sp: [() => 0, Number.isFinite],
+  fans: [() => 0, Number.isFinite],
+  trained: [() => 0, Number.isFinite],
+  elNext: [() => 0, Number.isFinite], // next Element Trial offer week
+  money: [() => ECON.start, Number.isFinite],
+  staMax: [() => CAREER.staMax, v => Number.isFinite(v) && v > 0],
+  mood: [() => 2, v => Number.isInteger(v) && !!MOODS[v]],
+  housing: [() => 'studio', v => !!HOUSING[v]],
+  reserve: [() => ({}), isObj], // faction pools (js/career/pool.js)
+  met: [() => ({}), isObj], // player id → true: faced on court (their rating is known)
+  street: [() => ({}), isObj], // player id → street points (Rank)
+  refused: [() => ({}), isObj], // club index → { week, n }: team challenges it refused
+  losses: [() => ({}), isObj], // region → team challenges lost this run
+  rep: [() => ({}), isObj], // standing with each region's clubs
+  own: [() => ({}), isObj], // seized border places → the region holding them
+  front: [() => ({}), isObj], // pressure on each major border (FRONT.borders key → net wins)
+  scout: [() => ({}), isObj], // scouted clubs: team index → week
+  uses: [() => ({}), isObj],
+  floor: [() => ({}), isObj],
+  xp: [() => ({}), isObj], // training experience toward each stat's next point
+  plays: [() => ({ k: 0, blk: 0, ace: 0 }), isObj],
+  lastFight: [() => null, v => v === null || Number.isFinite(v)], // absolute day of your last challenge / street fight
+  days: [() => WEEK_DAYS, v => Number.isFinite(v) && v >= 0 && v <= WEEK_DAYS], // days left this week
+  rolled: [() => false, v => typeof v === 'boolean'], // this week's event rolled?
+  pos: [() => CITY.airport.slice(), Array.isArray] // where you stand on the map
+};
 /** Run rank letter for a fan count (RANKS is ordered from the top rank down). */
 const rankOf = fans => RANKS.find(([, min]) => fans >= min)[0];

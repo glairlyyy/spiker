@@ -17,7 +17,7 @@ function renderRunEnd() {
       <div><h2>${won ? (Cup.calledUp(run) ? `Called up to the national team — U21 champions, ${esc(won.champ)}.` : `U21 champions — ${esc(won.champ)}. The national team is calling.`) : 'Season over'}</h2>
       <p>${esc(you.name)} · ${ROLE_NAME[you.role]} · OVR ${ovr(you)} · ${run.fans.toLocaleString()} fans</p>
       <ul class="cupres">${cups.map(cupLine).join('')}</ul>
-      <p class="small mute">${run.plays.k} K · ${run.plays.blk} B · ${run.plays.ace} A${info(`Across all matches: ${run.plays.k} kills, ${run.plays.blk} blocks, ${run.plays.ace} aces. Grades: ${(run.grades || []).join(' ') || '—'}`)}</p>
+      <p class="small mute">${run.plays.k} K · ${run.plays.blk} B · ${run.plays.ace} A${info(`Across all matches: ${run.plays.k} kills, ${run.plays.blk} blocks, ${run.plays.ace} aces. Grades: ${run.grades.join(' ') || '—'}`)}</p>
       </div>
     </div>
     ${growthChart(run)}

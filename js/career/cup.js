@@ -534,7 +534,8 @@ const Cup = {
       run.plays.k += s.k;
       run.plays.blk += s.blk;
       run.plays.ace += s.ace;
-      run.grades = [...(run.grades || []), grade];
+      run.grades.push(grade);
+      if (run.grades.length > MLOG.max) run.grades.splice(0, run.grades.length - MLOG.max);
       run.focus = null;
       out.push(ElTrial.match(run, m, grade));
       Sponsors.match(run, win, grade);

@@ -628,6 +628,10 @@ moving for 6 s (25 s while the 3D players load) or one beat lasts 20 s, with a s
 
 Career runs carry `v` (`RUN_VERSION`, `career/run.js`). Bump the version when the save shape changes and add a step to
 `RUN_MIGRATIONS[oldVersion] = data => upgraded data`; `Run.load` applies the steps in order and ignores saves from a newer version.
+Plain-default fields live once in `RUN_DEFAULTS` (run.js: name → `[make, valid]`): `Run.create` starts from
+`Run.defaults()` and `Run.repair` refills any field a save lacks or holds broken, then repairs the run-dependent ones
+(`academy`, `eval` + `Eval.setup`, `spotQ` via `City.roll`, `fog`, `clash`, `sta`, `mode`). Add a new simple field to
+the table only. `run.grades` (your match grades, newest last) is capped at `MLOG.max` like `run.mlog`.
 
 ## Testing
 
@@ -647,7 +651,7 @@ it is called at the start of `Cup.result` (kind `eval` | `cup`, + `round`), `Cup
 `Growth.matchXp`, so `you` (OVR + the 5 stats) is the kick-off state. Entry: `{ week, day, kind, vs, short, score: [yours, theirs], win, grade (null if you did not play),
 played, you, line: { k, att, err, blk, ace, dig, ast }, box: [{ name, role, side, ovr, k, att, err, blk, ace, dig, ast, you? }] }` — numbers and strings only, no player or team
 refs. `matchLog(run)` (career-week.js) lists them newest first, each a `fold` (`ml<index>`) with your snapshot (change vs your previous entry), your line and the box score;
-the `season` drawer appends it (career-hub.js). `Run.repair` adds `mlog` to older saves of the same version.
+the `season` drawer appends it (career-hub.js). `Run.repair` adds `mlog` to older saves of the same version (RUN_DEFAULTS).
 
 ### Start from 1 (T-055)
 `Run.create` gives your player `CAREER.start` (1) in every stat and `CAREER.witBase` (1.0) wit; creation (career-create.js) keeps role / name / modes and shows the stats as plain numbers (no allocation, no wit stepper). `CAREER.statMin` (1) is the floor of
