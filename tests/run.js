@@ -624,7 +624,7 @@ test('career: training cap, facility Lv 5 and Hard training', () => {
   eq(you.power, 80, 'a stat already at 80 is not lowered by a positive bump');
   g.Training.addXp(run, 'power', 100000, 'match');
   assert(you.power > 80, 'match XP goes past the training cap');
-  assert(!('lb' in run) && g.RUN_VERSION === 7, 'no Limit Break progress in the run; RUN_VERSION 7');
+  assert(!('lb' in run) && g.RUN_VERSION === 8, 'no Limit Break progress in the run; RUN_VERSION 8');
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
   const n = g.Training.preview(run, 'power', false).main[2],
@@ -691,6 +691,76 @@ test('career: match XP — performance, opponent strength, past the cap', () => 
   m2.played.add(you.id);
   m2.stat[you.id] = { ...g.blank(), k: 5, blk: 1 };
   assert(/XP: /.test(fx2.onFinish(m2)), 'the result line shows the XP labels');
+});
+test('career: match history', () => {
+  const g = load(61),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Hist', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    you = g.Run.you(run),
+    play = fx => {
+      const m = g.newMatch(fx.a, fx.b, false);
+      while (!m.over) g.playRally(m);
+      return m;
+    };
+  eq(JSON.stringify(run.mlog), '[]', 'a new run has an empty history');
+  // an evaluation: the snapshot is the kick-off state (before the match XP)
+  run.week = 4;
+  run.eval = null;
+  run.event = null;
+  const fx = g.Cup.fixture(run, 'eval'),
+    m = play(fx),
+    before = { ovr: g.ovr(you), power: you.power, def: you.def, speed: you.speed, jump: you.jump, wit: you.wit };
+  m.played.add(you.id);
+  fx.onFinish(m);
+  eq(run.mlog.length, 1, 'an evaluation adds one entry');
+  const e = run.mlog[0];
+  eq(e.kind, 'eval', 'kind');
+  eq(JSON.stringify(e.score), JSON.stringify([m.setScores[0][0], m.setScores[0][1]]), 'score');
+  eq(e.win, m.winner === 0, 'win');
+  eq(JSON.stringify(e.you), JSON.stringify(before), 'you = your stats before the match');
+  const ids = e.box.filter(b => b.you).length;
+  eq(ids, 1, 'you appear once in the box');
+  eq(e.box.length, m.played.size, 'the box has every player who played, once');
+  eq(JSON.stringify(JSON.parse(JSON.stringify(e))), JSON.stringify(e), 'plain JSON');
+  // a challenge and a street fight
+  run.days = g.WEEK_DAYS;
+  run.week = 5;
+  run.money = 500;
+  const ti = g.FACTIONS.findIndex(f => f.region === 'outlaws');
+  const stake = g.CHALLENGE.outlaws.minStake,
+    fc = g.Cup.challenge(run, ti, stake),
+    mc = play(fc);
+  fc.onFinish(mc);
+  eq(run.mlog.length, 2, 'a challenge adds one entry');
+  eq(run.mlog[1].kind, 'challenge', 'kind challenge');
+  eq(run.mlog[1].stake, stake, 'with its stake');
+  eq(run.mlog[1].win, mc.winner === 0, 'win');
+  run.days = 7;
+  run.lastFight = null; // (no fight ban or injury after the challenge)
+  run.injury = null;
+  run.event = null;
+  run.pos = [470, 600];
+  run.clash = { site: 0, seen: false, done: false };
+  const fs = g.Cup.clash(run, g.CLASH.sites[0].a),
+    ms = play(fs);
+  fs.onFinish(ms);
+  eq(run.mlog.length, 3, 'a street fight adds one entry');
+  eq(run.mlog[2].kind, 'street', 'kind street');
+  eq(run.mlog[2].win, ms.winner === 0, 'win');
+  eq(JSON.stringify(JSON.parse(JSON.stringify(run.mlog))), JSON.stringify(run.mlog), 'the whole log is plain JSON');
+  // trimming and repair
+  for (let i = 0; i < g.MLOG.max + 5; i++) run.mlog.push({ ...e, week: i });
+  run.days = g.WEEK_DAYS;
+  run.week = 8;
+  run.eval = null;
+  run.event = null;
+  const fx3 = g.Cup.fixture(run, 'eval'),
+    m3 = play(fx3);
+  fx3.onFinish(m3);
+  eq(run.mlog.length, g.MLOG.max, 'trimmed at MLOG.max');
+  eq(run.mlog[run.mlog.length - 1].week, 8, 'the newest is kept');
+  delete run.mlog;
+  g.Run.repair(run);
+  eq(JSON.stringify(run.mlog), '[]', 'repair adds mlog');
 });
 test('career: techniques are learned in play, not bought', () => {
   const g = load(71),
@@ -1864,7 +1934,7 @@ test('career: challenge loss and injury', () => {
   run.sp = 99;
   assert(g.Training.physio(run) && !run.injury, 'physio heals the injury');
   assert(you[lost[0]] === before[g.STATK.indexOf(lost[0])] - g.INJURY.lose, 'but not the lost stat');
-  eq(g.RUN_VERSION, 7, 'save v7');
+  eq(g.RUN_VERSION, 8, 'save v8');
 });
 
 test('career: your coach picks the 4 — bench start, never played, part rewards', () => {

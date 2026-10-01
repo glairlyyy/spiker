@@ -286,7 +286,7 @@ const Cup = {
       sc = m.setScores[0],
       margin = win ? 0 : Math.max(0, sc[1] - sc[0]),
       risk = City.injuryRisk(run, t.ovr, margin), // (before the trip, the day and the match's tiredness are counted)
-      trip = City.go(run, CITY.hq[ti]),
+      trip = (Cup.record(run, m, 'challenge', { stake }), City.go(run, CITY.hq[ti])),
       out = [Growth.matchXp(run, m), Skills.tryLearn(run, m)];
     if (side.cost) {
       const pay = Math.min(run.money, side.cost);
@@ -331,7 +331,7 @@ const Cup = {
       sc = m.setScores[0],
       margin = win ? 0 : Math.max(0, sc[1] - sc[0]),
       risk = City.injuryRisk(run, City.crewOvr(run, foe), margin),
-      trip = City.go(run, c.at),
+      trip = (Cup.record(run, m, 'street'), City.go(run, c.at)),
       out = [Growth.matchXp(run, m), Skills.tryLearn(run, m)];
     run.clash.done = true;
     const front = Front.result(run, win ? side : foe, win ? foe : side);
@@ -351,6 +351,43 @@ const Cup = {
     Run.log(run, line);
     Run.save(run);
     return line;
+  },
+  /**
+   * Log one of your matches on `run.mlog` (T-052; plain numbers and strings only, newest last, trimmed to MLOG.max): the opponent, score, win,
+   * your grade, your stats at kick-off (call this BEFORE Growth.matchXp), your line and the box score of everyone who played.
+   * extra: { round, stake } for a cup tie / challenge.
+   */
+  record(run, m, kind, extra = {}) {
+    const you = Run.you(run),
+      played = m.played.has(you.id),
+      win = m.winner === 0,
+      sc = m.setScores[0],
+      line = p => {
+        const s = m.stat[p.id] || blank();
+        return { k: s.k, att: s.att, err: s.err, blk: s.blk, ace: s.ace, dig: s.dig, ast: s.ast };
+      },
+      box = [];
+    [0, 1].forEach(side => {
+      for (const p of [...m.lineup0[side].P, ...m.lineup0[side].bench])
+        if (m.played.has(p.id))
+          box.push({ name: p.name, role: p.role, side, ovr: ovr(p), ...line(p), ...(p.id === you.id ? { you: 1 } : {}) });
+    });
+    run.mlog.push({
+      week: run.week,
+      day: Run.dayNo(run),
+      kind,
+      vs: m.t[1].name,
+      short: m.t[1].short || '',
+      score: [sc[0], sc[1]],
+      win,
+      grade: played ? Cup.grade(m.stat[you.id] || blank(), win)[0] : null,
+      played,
+      ...extra,
+      you: { ovr: ovr(you), power: you.power, def: you.def, speed: you.speed, jump: you.jump, wit: you.wit },
+      line: line(you),
+      box
+    });
+    if (run.mlog.length > MLOG.max) run.mlog.splice(0, run.mlog.length - MLOG.max);
   },
   /** Your grade for one match (S–C) from your own line. */
   grade(s, win) {
@@ -373,6 +410,7 @@ const Cup = {
       sc = m.setScores[0],
       score = `${sc[0]}-${sc[1]}`,
       opp = m.t[1];
+    Cup.record(run, m, kind, kind === 'cup' ? { round: bm.round } : {});
     let line,
       grade = null;
     if (!played) {

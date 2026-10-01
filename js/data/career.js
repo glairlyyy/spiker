@@ -26,6 +26,8 @@ const MOODS = [
   { name: 'Good', mul: 1.1, form: 0.35 },
   { name: 'Great', mul: 1.2, form: 0.7 }
 ];
+/** Match history (T-052): entries kept on `run.mlog` (the oldest are dropped). */
+const MLOG = { max: 80 };
 /** Trainings: main/side gains and stamina cost. Wit gains are in wit units. */
 const TRAININGS = {
   power: { name: 'Power', main: ['power', 7], side: ['jump', 2], sta: 20 },

@@ -37,42 +37,33 @@ Result:
 - Challenge loss + injury ✓ (T-038).
 - Roads + buildings ✓ (T-045 layout data, T-046 3D town).
 - Walk the roads ✓ (T-047) · town layout revamp ✓ (T-050 data, T-051 render).
-- **Now**: match history (T-052), official venues (T-053). Then road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
+- Match history ✓ (T-052).
+- **Now**: free setter takes the second ball (T-054), official venues (T-053). Then road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now — Match history (spec §4.20), official venues (spec §4.21)
 
-### [ ] T-052: Match history in the Season drawer, with a stat snapshot per match
-Spec: §4.20          Goldens: unchanged (career / UI only)          Save: RUN_VERSION 7 → 8 (`run.mlog`) — older saves dropped
-Goal: Every match you are in (eval, cup, challenge, street fight) is recorded with your stats at kick-off, your line and
-the box score; the Season drawer lists them and opens one to show the snapshot.
-Files: js/data/career.js, js/career/cup.js, js/career/run.js, js/ui/career-week.js, js/ui/career-hub.js, css/career.css,
-tests/run.js, ARCHITECTURE.md
-Do not: touch js/engine or the match screen; change any reward; draw randoms; store player objects or team refs in the
-log (plain numbers and strings only — the save must stay small).
+### [ ] T-054: A free setter takes the second ball (no random "someone else sets")
+Spec: §2.1          Goldens: update (one R() per bad pass removed — every hash moves)          Save: no change
+Goal: Today on a bad pass (qual 1) a teammate sets instead of a free setter 45 % of the time by a coin flip
+(rally-phases.js `pickSetter`), so wing spikers set while the setter stands free. Make it a reach rule: the setter
+sets unless a teammate gets to the set point clearly first.
+Files: js/engine/rally-phases.js, js/data/rules.js, tests/run.js, tests/golden.json, ARCHITECTURE.md
+Do not: touch `saveSet` (the pop-up scramble path is right as it is), the dual-setter logic, setter dumps or any other
+draw; change who passes.
 Steps:
-1. career.js: `MLOG = { max: 80 }` (entries kept; oldest dropped).
-2. cup.js: `Cup.record(run, m, kind, extra)` → pushes onto `run.mlog` and trims to `MLOG.max`:
-   `{ week, day: Run.dayNo(run), kind: 'eval' | 'cup' | 'challenge' | 'street', vs (opponent name), short, score
-   [yours, theirs] (first set as today), win, grade (null if you did not play), played, round? (cup), stake? (challenge),
-   you: { ovr, power, def, speed, jump, wit } (BEFORE this match's XP), line: { k, att, err, blk, ace, dig, ast },
-   box: [{ name, role, side: 0 | 1, ovr, k, att, err, blk, ace, dig, ast, you? }] (everyone in m.played, both teams) }`.
-   Call it at the start of `Cup.result`, `Cup.challengeResult` and `Cup.clashResult` (before Growth.matchXp), so the
-   snapshot is the kick-off state.
-3. run.js: `mlog: []` in create + repair (array check); `RUN_VERSION = 8` with the comment line extended.
-4. career-week.js `matchLog(run)`: a panel "Match history" — one row per entry, newest first: `W12 · Challenge · vs
-   Wu Navy Fort · 21-18 · W · A` (bench: "did not play"); each row is a `fold` (key `ml<index>`) whose body shows
-   (a) your snapshot: OVR and the 5 stats, each with the change since the previous entry (+2 / −1, blank if none);
-   (b) your line; (c) the box score as a compact table (`table.rk` style: your row `tr.you`, the two sides split by a
-   heading row with the short tags). Empty state: "No matches yet."
-5. career-hub.js: the `season` drawer appends `matchLog(run)` after the season card. css: only what the table needs.
-6. tests `'career: match history'`: a sim eval, a challenge and a street fight each add one entry with the right kind,
-   score and win; `you` equals the stats before the match (compare with a copy taken before); box has every played id
-   once, plain JSON (JSON.parse(JSON.stringify(entry)) deep-equals it); trimming at MLOG.max; repair adds `mlog`.
-7. ARCHITECTURE.md: the record and save v8 (the spec chat updates CLAUDE.md at review).
-Accept: all tests + lint; goldens untouched.
-QA: career run → play (⏭) an evaluation and a challenge → Season drawer lists both, newest first; open one: snapshot,
-your line and box score fit the drawer (no horizontal scroll); no pageerror.
+1. rules.js `SETTER = { beat: 1.6 }` (doc comment): on a bad pass a free teammate sets only when the setter's time to the
+   set point (distance ÷ (0.5 + speed / 100), as `nearest` in match.js) is more than `beat` × that teammate's.
+2. pickSetter: compute setX / setZ before choosing (they don't depend on who sets);
+   replace the `qual === 1 && … && R() < 0.45` branch with the reach rule (the fastest free non-passer by `nearest`); no
+   R() in the choice. The fallback when no setter is free (wit-weighted pick) stays.
+3. tests `'engine: the setter takes the second ball'`: 400 sims — every second-touch set by a non-setter happens with
+   the setter as passer, busy, or out-reached by `beat` (record `m.setBy` reasons engine-only, like `m.scrLog`); report
+   the share of assists by non-setters before / after (today 12.7 % over 400 sims of mkTeams); the T-026 stuff-rate and
+   kill-rate tests still pass.
+4. `npm run test:update`; give the reason in the commit.
+Accept: all tests + lint; goldens updated for this reason only.
+QA: Monster game 600 steps: watch 10 bad passes — the setter runs to the ball unless someone is right there; no pageerror.
 Result:
 
 ### [ ] T-053: Official venues on the map — League Arena, Academy Hall, Beach Stadium, Highland Court
@@ -127,6 +118,7 @@ Phase 5 — Voice pass
 
 ## Done
 
+- [x] T-052: Match history in the Season drawer, with a stat snapshot per match — Done; tests 43/43, lint clean, goldens untouched. RUN_VERSION 8 (`run.mlog`, `MLOG.max` 80); `Cup.record` at the start of result / challengeResult / clashResult; Season drawer lists them with an expandable snapshot, line and box score (fits the 440 px drawer, no horizontal scroll; QA: 2 evals + a challenge, no pageerror). Challenge / street `day` is the day before the trip is spent.
 - [x] T-051: Draw the revamped town — wide beach, boardwalk, overpass, new building kinds — Done; tests 42/42, lint clean, goldens untouched. Default zoom 29 draw calls / 188k tris, zoomed out 30 / 195k (limits 40 / 260k); software-GL fps unchanged (2.75); 3 leave / return cycles: geometries stable (25), no pageerror. Height × (1 + 2.5·h·rise); wealth tint per instance (glass-blue / stone / gold vs grey / rust / patched wood); fog dims every new mesh. Extra: resort scale [1.9, 5.5, 1.2].
 - [x] T-050: Town layout data — districts, a wider beach, Wu town inland, the overpass — Done; tests 42/42, lint clean, goldens untouched. Frozen `CITY.inner`; frame 1060×700; coast pushed out; `CITY.dunes`; `WEALTH` + `wu-village` (`wuVillage` [905,225]) added; Wu links: only the coast road `main`, `hotelWu–jBw3` / `hq2–wuVillage` dirt (dropped `resort–harbor`, `jBw2–hq3`; ≤ 2 links into each settlement). Lots ~1190 (Wei 572, Wu 341, Shu 158, Outlaws 65, Academy 33, Gloria 25), wealth Wei 0.07–1.0 falling outward, Wu 0.4–0.6. Deviations: `MapModel.placeClear` = 20 (spec's NEAR_R/3 cannot reach Gloria ~30 / Outlaws ~60); `arcade` → [620,262], `resort` → [908,488] (kept on land); `tall` dropped from DISTRICTS (h comes from wealth); lot size ×(0.7+0.6·wealth), grid density × (1.15−0.45·wealth); `CITY.ritual` joins the places lots keep clear of.
 - [x] T-047: The player walks along the roads — Done; tests 41/41, lint clean. Airport → Highland Dojo QA: the camera follows the coast road then the Shu dirt road (not the straight line), ×4 badge shown, no pageerror. `MapView.routed` adds `you.route` on mount and update (also on a remount after a move).

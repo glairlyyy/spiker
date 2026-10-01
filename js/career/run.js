@@ -90,6 +90,7 @@ const Run = {
       street: {}, // player id → street points (Rank)
       refused: {}, // club index → { week, n }: team challenges it refused (T-037)
       losses: {}, // region → team challenges lost this run (T-038)
+      mlog: [], // match history (Cup.record, T-052): plain entries, newest last
       lastFight: null, // absolute day (Run.dayNo) of your last challenge / street fight
       seen: [],
       log: [],
@@ -333,7 +334,7 @@ const Run = {
   },
   /** Fill collections and counters a damaged save may lack, so the career screens never meet undefined / NaN. */
   repair(run) {
-    for (const k of ['log', 'seen', 'warm', 'cups', 'sponsors', 'hist']) if (!Array.isArray(run[k])) run[k] = [];
+    for (const k of ['log', 'seen', 'warm', 'cups', 'sponsors', 'hist', 'mlog']) if (!Array.isArray(run[k])) run[k] = [];
     for (const k of ['sp', 'fans', 'trained', 'elNext', 'money']) if (!Number.isFinite(run[k])) run[k] = 0;
     if (!HOUSING[run.housing]) run.housing = 'studio';
     if (!run.reserve || typeof run.reserve !== 'object') run.reserve = {};
@@ -372,8 +373,8 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 7;
-/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury) — older saves are dropped; add steps when the saved shape changes). */
+const RUN_VERSION = 8;
+/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history) — older saves are dropped; add steps when the saved shape changes). */
 const RUN_MIGRATIONS = {};
 const ROLE_NAME = { S: 'Setter', MB: 'Middle blocker', WS: 'Wing spiker' };
 /** Run rank letter for a fan count (RANKS is ordered from the top rank down). */

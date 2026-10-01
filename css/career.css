@@ -1762,3 +1762,26 @@
   text-align: center;
   color: var(--mute);
 }
+
+/* match history (T-052) */
+.hub table.rk.ml {
+  margin-top: 6px;
+  font-size: 12px;
+}
+.hub table.rk.ml td:first-child {
+  width: auto;
+}
+.hub table.rk.ml td:nth-child(2) {
+  width: 2.5em;
+}
+.hub table.rk.ml td:nth-child(3) {
+  width: 2.5em;
+}
+.hub table.rk.ml td:nth-child(4),
+.hub table.rk.ml td:last-child {
+  width: 5.5em;
+  text-align: right;
+}
+.hub table.rk.ml td:last-child {
+  width: 9em;
+}

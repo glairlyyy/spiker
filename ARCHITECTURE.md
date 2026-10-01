@@ -350,7 +350,7 @@ league transfer (`World.transfers`) and a Gazette (`run.gazette`, news collected
 bonds, scouting, pools, promotion, transfers) and keep `t.P` for "who plays". `fillRoster` rolls the bench after the 4 (flex
 role + a wing spiker); `finalizeTeam` gives leadership, elements and shirt numbers to all 6 (numbers unique) but the captain and
 `ovr` come from `t.P`. `World.swap(x, y)` trades two players' seats (court or bench), slots, numbers and team links (join,
-transfers, promotion). Saves (RUN_VERSION 7; v5 dropped `run.lb`, v6 added `run.met` / `run.street` / `run.refused`, v7 `run.losses` / `run.lastFight`) store `bench` next to `P`; `teamFromJSON` relinks it.
+transfers, promotion). Saves (RUN_VERSION 8; v5 dropped `run.lb`, v6 added `run.met` / `run.street` / `run.refused`, v7 `run.losses` / `run.lastFight`, v8 `run.mlog`) store `bench` next to `P`; `teamFromJSON` relinks it.
 
 ## Faction pools
 
@@ -617,3 +617,11 @@ Career runs carry `v` (`RUN_VERSION`, `career/run.js`). Bump the version when th
 
 A deliberate gameplay change updates the golden file with `node tests/run.js --update` — review the diff first.
 Pure refactors must pass **without** `--update`.
+
+### Match history (T-052)
+`Cup.record(run, m, kind, extra)` (cup.js) pushes one plain entry onto `run.mlog` (save v8; trimmed to `MLOG.max` = 80, oldest dropped) for every match you are in:
+it is called at the start of `Cup.result` (kind `eval` | `cup`, + `round`), `Cup.challengeResult` (`challenge`, + `stake`) and `Cup.clashResult` (`street`), i.e. before
+`Growth.matchXp`, so `you` (OVR + the 5 stats) is the kick-off state. Entry: `{ week, day, kind, vs, short, score: [yours, theirs], win, grade (null if you did not play),
+played, you, line: { k, att, err, blk, ace, dig, ast }, box: [{ name, role, side, ovr, k, att, err, blk, ace, dig, ast, you? }] }` — numbers and strings only, no player or team
+refs. `matchLog(run)` (career-week.js) lists them newest first, each a `fold` (`ml<index>`) with your snapshot (change vs your previous entry), your line and the box score;
+the `season` drawer appends it (career-hub.js). `Run.repair` adds `mlog` to older saves of the same version.
