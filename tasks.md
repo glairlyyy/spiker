@@ -40,10 +40,12 @@ Result:
 - Match history ✓ (T-052).
 - Free setter takes the second ball ✓ (T-054) · start from 1 ✓ (T-055).
 - Stat guard ✓ (T-056) · official venues ✓ (T-053).
-- **Now**: empty — next up from Later: road travel (T-048), injured-sub fix (T-049), voice pass (T-022). Then road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
+- **Now**: empty. Candidates (Later, need detailing): road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now — Match history (spec §4.20), official venues (spec §4.21)
+## Now
+
+(empty — the spec chat moves the next task here)
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
