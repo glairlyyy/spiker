@@ -1396,6 +1396,74 @@ test('career: reserves grow and get promoted', () => {
   for (const r of Object.keys(g.POOL)) eq(g.Pool.size(run, r), sizes[r], `pool ${r} size unchanged`);
 });
 
+test('map: official venues', () => {
+  const g = load(21),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Venue' }),
+    N = g.ROADS.nodes,
+    V = g.VENUES,
+    ids = Object.keys(V);
+  eq(ids.join(','), 'arena,hall,beach,highland', 'four venues, named in the spec');
+  eq(ids.map(id => V[id].name).join(' | '), 'League Arena | Academy Hall | Beach Stadium | Highland Court', 'their names');
+  for (const id of ids) {
+    const v = V[id];
+    assert(g.City.onLand(v.at) && g.City.regionAt(v.at) === v.region, `${id} stands on land in its region`);
+    assert(N[`venue:${id}`] && N[`venue:${id}`][0] === v.at[0] && N[`venue:${id}`][1] === v.at[1], `${id} is a road node at its spot`);
+    assert(
+      g.ROADS.edges.some(e => e.includes(`venue:${id}`)),
+      `${id} is joined to a road`
+    );
+  }
+  assert(g.MapModel.onSand(V.beach.at), 'the Beach Stadium stands on the sand');
+  eq(g.REGIONS.open.at.join(','), g.CITY.park.x + ',' + g.CITY.park.y, 'the Academy region sits at the Academy');
+  // reachable from the airport (the world test walks every node; here the route itself)
+  for (const id of ids) {
+    const r = g.City.route(g.CITY.airport, V[id].at);
+    assert(r.length >= 2 && r[r.length - 1][0] === V[id].at[0], `a route from the airport to ${id}`);
+  }
+  // landmarks and pins: always there, never fogged
+  run.fog = [];
+  let draws = 0;
+  const next = g.RNG.next;
+  g.RNG.next = () => (draws++, next());
+  const M = g.MapModel.build(run, null);
+  eq(draws, 0, 'no randoms drawn');
+  g.RNG.next = next;
+  const KIND = { arena: 'arena', hall: 'hall', beach: 'stadium', highland: 'hillcourt' };
+  for (const id of ids) {
+    const lm = M.land.landmarks.find(l => l.id === `venue:${id}`),
+      pin = M.pins.find(p => p.id === `venue:${id}`);
+    assert(lm && lm.kind === KIND[id] && lm.region === V[id].region, `${id} is a landmark of kind ${KIND[id]}`);
+    assert(pin && pin.kind === 'venue' && pin.title === V[id].name && !pin.flags.today, `${id} has a pin, not lit on a training week`);
+  }
+  // no lot within a venue's clearance
+  assert(
+    M.land.lots.every(l => ids.every(id => Math.hypot(l.at[0] - V[id].at[0], l.at[1] - V[id].at[1]) >= V[id].clear - 0.2)),
+    'no lot within a venue clearance (lot spots are rounded to 0.1)'
+  );
+  // City.venue: where this week's match is played
+  run.event = null;
+  run.week = 1;
+  eq(g.City.venue(run), null, 'a training week has no venue');
+  run.week = 4;
+  run.eval = null;
+  eq(g.City.venue(run), 'hall', 'an Academy evaluation is held at the Academy Hall');
+  eq(g.MapModel.build(run, null).pins.find(p => p.id === 'venue:hall').flags.today, true, 'and the hall glows');
+  eq(g.MapModel.build(run, null).pins.find(p => p.id === 'venue:arena').flags.today, false, 'the arena does not');
+  for (const [region, want] of [
+    ['wei', 'arena'],
+    ['wu', 'beach'],
+    ['shu', 'highland'],
+    ['outlaws', null]
+  ]) {
+    run.team = g.FACTIONS.findIndex(f => f.region === region);
+    run.eval = null;
+    eq(g.City.venue(run), want, `a ${region} member's evaluation → ${want}`);
+  }
+  run.team = null;
+  run.cup = { id: g.CUPS[0].id, done: false };
+  eq(g.City.venue(run), 'arena', 'a cup week is played at the League Arena');
+});
+
 test('career: evaluation rules', () => {
   const g = load(96),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Evalu', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
@@ -1679,6 +1747,33 @@ test('teams: 4 on court + 2 bench, unique numbers, captain on court', () => {
     eq(b.bench.map(p => p.num).join(), t.bench.map(p => p.num).join(), 'bench numbers round-trip');
   }
   eq(g.squadOf(back.pickup).length, 6, 'the Academy squad has 6');
+});
+
+test('engine: stat guard — invalid stats are repaired, valid ones untouched', () => {
+  const g = load(5);
+  const T = g.mkTeams();
+  const p = T[0].P[2];
+  const ok = T[1].P.map(q => JSON.stringify([q.power, q.def, q.speed, q.jump, q.wit]));
+  Object.assign(p, { power: -40, def: NaN, speed: 300, wit: -1 });
+  const j = p.jump;
+  assert(g.fixStats(p) === 4, 'four values fixed');
+  eq(JSON.stringify([p.power, p.def, p.speed, p.jump, p.wit]), JSON.stringify([1, 1, 99, j, 0.1]));
+  assert(
+    T[1].P.every((q, i) => g.fixStats(q) === 0 && JSON.stringify([q.power, q.def, q.speed, q.jump, q.wit]) === ok[i]),
+    'valid players untouched'
+  );
+  Object.assign(T[0].P[3], { power: 0, speed: Infinity, jump: undefined, wit: NaN });
+  const m = g.newMatch(T[0], T[1], false);
+  while (!m.over) g.playRally(m);
+  assert(
+    m.over && T[0].P.every(q => [q.power, q.def, q.speed, q.jump].every(v => v >= 1 && v <= 99) && q.wit >= 0.1 && q.wit <= 3),
+    'the match ran on repaired stats'
+  );
+  const dmg = { name: 'x', sk: T[0].sk, bench: [], P: T[0].P.map(q => Object.assign({}, q, { team: undefined, speed: -5 })) };
+  const logged = [];
+  g.DBG.log = (...a) => logged.push(a[0]); // the headless context has no timers for the real log
+  const t2 = g.teamFromJSON(dmg);
+  assert(t2.P.every(q => q.speed === 1) && logged[0] === 'warn', 'teamFromJSON repairs a damaged save and logs a warning');
 });
 
 test('engine: substitutions — rule, limit, restore', () => {

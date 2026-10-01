@@ -59,7 +59,7 @@ const REGIONS = {
   },
   open: {
     color: '#f5e6a8',
-    at: [500, 300],
+    at: [540, 500],
     name: 'Central Academy',
     kind: 'none',
     price: 1,

@@ -72,6 +72,7 @@ function nearest(m, arr, x, z) {
  * opts.dset: [setting, setting] fixes a side's defence setting (DEFSETS; default: the team's style, then the captain may switch it).
  */
 function newMatch(a, b, rec, opts = {}) {
+  for (const t of [a, b]) for (const p of squadOf(t)) fixStats(p); // the engine never sees a negative, NaN or huge stat (no-op for valid ones)
   const m = {
     court: opts.court || RULES.court,
     tac: [opts.tac?.[0] || 'auto', opts.tac?.[1] || 'auto'], // tactic in use per side (see TACTICS)

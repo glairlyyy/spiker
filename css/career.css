@@ -1690,6 +1690,23 @@
   border-width: 4px;
   animation: clashp 1.2s ease-in-out infinite alternate;
 }
+/* a venue where your match is this week: a pulsing ring (CSS only) */
+.mpin.today {
+  border-color: var(--gold);
+  border-width: 5px;
+  animation: todayp 1.4s ease-in-out infinite alternate;
+}
+@keyframes todayp {
+  from {
+    box-shadow: 0 0 4px 0 var(--gold);
+  }
+  to {
+    box-shadow: 0 0 16px 6px var(--gold);
+  }
+}
+.spot .today {
+  color: var(--gold);
+}
 .mlab {
   color: color-mix(in srgb, var(--tc, #e8d9a8) 75%, #fff);
   font: 700 14px var(--disp);

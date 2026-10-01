@@ -39,64 +39,11 @@ Result:
 - Walk the roads ✓ (T-047) · town layout revamp ✓ (T-050 data, T-051 render).
 - Match history ✓ (T-052).
 - Free setter takes the second ball ✓ (T-054) · start from 1 ✓ (T-055).
-- **Now**: stat guard (T-056), official venues (T-053). Then road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
+- Stat guard ✓ (T-056) · official venues ✓ (T-053).
+- **Now**: empty — next up from Later: road travel (T-048), injured-sub fix (T-049), voice pass (T-022). Then road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now — Match history (spec §4.20), official venues (spec §4.21)
-
-### [ ] T-056: Stat guard — repair invalid stats on load and before every match
-Spec: §4.22          Goldens: unchanged (valid stats are untouched)          Save: no change
-Goal: Every path that changes a stat already clamps it, but a damaged save or a future bug could still hand the engine a
-negative, NaN or 300 stat (speed −50 divides by zero in the reach time; a negative jump sinks into the floor). Add one
-guard so the engine never sees one.
-Files: js/engine/players.js, js/engine/save.js, js/engine/match.js, tests/run.js, ARCHITECTURE.md
-Do not: change any formula or draw; touch valid players (the guard is a no-op for them).
-Steps:
-1. players.js `fixStats(p)` → each STATK stat: not a finite number → STAT_FLOOR, outside [STAT_FLOOR, 99] → clamped (an in-range value is left exactly as is — no rounding);
-   wit: not finite → 1, else clamp [0.1, 3]; returns the count of fixed values. Call it (a) in
-   save.js `teamFromJSON` for every squad player, logging `DBG.log('warn', …)` when it fixed anything (a damaged save),
-   and (b) at match creation in match.js for both squads (valid stats are untouched, so no draw or golden changes).
-   Test: a player with power −40, def NaN, speed 300, wit −1 comes back 1 / 1 / 99 / 0.1 and a match with him runs.
-2. ARCHITECTURE.md: the guard (where it runs, what it fixes).
-Accept: all tests + lint; goldens untouched.
-QA: none (headless).
-Result:
-
-### [ ] T-053: Official venues on the map — League Arena, Academy Hall, Beach Stadium, Highland Court
-Spec: §4.21, §4.19          Goldens: unchanged          Save: no change
-Goal: Four venue landmarks show where official matches are played; each has a pin and a card; on a match week your
-match's venue glows and the match card names it.
-Files: js/data/city.js, js/data/world.js, js/career/city.js, js/career/mapmodel.js, js/map3d/kit3d.mjs,
-js/map3d/pins3d.mjs, js/ui/career-map.js, js/ui/career-week.js, css/career.css, tests/run.js, ARCHITECTURE.md
-Do not: add travel days, move `run.pos` on match days or change any match rule; call City from js/map3d; add a draw call
-per venue (venues join the merged landmark mesh); invent names beyond the four in the spec.
-Steps:
-1. city.js `VENUES = { arena: { name: 'League Arena', at, region: 'wei', holds: ['cup', 'eval:wei'] }, hall: { name:
-   'Academy Hall', at, region: 'open', holds: ['eval:academy'] }, beach: { name: 'Beach Stadium', at, region: 'wu',
-   holds: ['eval:wu'] }, highland: { name: 'Highland Court', at, region: 'shu', holds: ['eval:shu'] } }`. Points: arena
-   in wei-downtown near hq0 (clear of roads and places), hall on the Academy campus, beach on the sand (between the dunes
-   and the coast), highland near hq4. Each is a ROADS node `venue:<id>` joined to the nearest road by one edge (`main`
-   for arena / hall, `boardwalk` for the beach, `dirt` for highland); lots keep `placeClear` from venues.
-   world.js: `REGIONS.open.at` → the Academy's spot (it still says the old [500, 300]).
-2. city.js `City.venue(run)` (pure): this week's match venue id — a cup week → arena; an evaluation → by `run.eval`
-   (Academy → hall; a faction eval → its region's venue); otherwise null.
-3. MapModel: landmarks gain the four venues (kinds `arena`, `hall`, `stadium`, `hillcourt`); pins gain `kind: 'venue'`
-   (`id: 'venue:<id>'`, icon 🏟, title = name, flag `today` when it is `City.venue(run)`); venues are always known (no
-   fog gate: everyone knows where the league plays).
-4. kit3d LANDMARKS: `arena` (~40 × 32 m oval bowl of stepped stands, a roof ring, 4 floodlight masts — the biggest
-   building on the island), `hall` (a long gym hall with a curved roof), `stadium` (low open stands round a sand court,
-   faded pastel, flags), `hillcourt` (a court with stone terrace steps on one side). Flat-shaded, region accent.
-   pins3d: flag `today` → class `today` (a pulsing ring, CSS only).
-5. career-map.js: a venue card in the spot panel — name, "Held here: U21 Final Cup · Wei evaluations" (registrar
-   voice), and "This week: your match" when `today`. career-week.js: the eval and cup cards add "at <venue name>".
-6. tests `'map: official venues'`: four venues on land in their region (beach on the sand); venue nodes reachable from
-   the airport; landmarks / pins include them; `City.venue` → arena on a cup week, hall for an Academy eval, the
-   region's venue for a faction eval, null on a training week; no lot within `placeClear` of a venue; no R() drawn.
-7. ARCHITECTURE.md: venues.
-Accept: all tests + lint; goldens untouched.
-QA: career run → the four venues visible zoomed out (the arena dominates downtown); force an eval week → its venue pin
-glows and the eval card names it; the venue card opens on click; draw calls unchanged ±1; no pageerror.
-Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
@@ -114,6 +61,8 @@ Phase 5 — Voice pass
 
 ## Done
 
+- [x] T-053: Official venues on the map — League Arena, Academy Hall, Beach Stadium, Highland Court — four venues as specced (`VENUES`, nodes, landmarks, pins, `City.venue`, cards, `today` pulse); 47/47, lint clean, goldens untouched. Spots: arena [720,160] (clear 52), hall [580,510] (clear 20, ~18 × 11 m so the Academy keeps 33 lots), beach [925,450] on the widest sand by the resort strip (edge `resort`–venue), highland [400,180]. Venue clearance is per venue (`VENUES[id].clear`), not `placeClear`. QA: draw calls 29–30 (baseline 29), tris ~198k, no pageerror; hall pin pulses on an Academy eval week, card + 'Played at Academy Hall' shown; cup-week card checked in tests only (a browser cup start failed in my QA script on the baseline too).
+- [x] T-056: Stat guard — repair invalid stats on load and before every match — `fixStats` in players.js, called in `teamFromJSON` (warn log) and `newMatch`; new test (−40/NaN/300/−1 → 1/1/99/0.1, match runs, damaged save repaired); 46/46, lint clean, goldens untouched.
 - [x] T-055: Start from 1 — every stat of your new player is 1 — Done; tests 45/45, lint clean, goldens untouched. `CAREER.start` / `statMin`, `STAT_FLOOR` 1, Run.create ignores alloc, creation shows 1s with no buttons, `need` = max(1, round(…)) at every level. Notes for the spec: (1) one Power session takes Power 1 → ~36 (session XP is ~70+ × mul vs ~180 XP to reach 50), not "about a dozen sessions"; (2) a lone WS still starts: the pickup squad has only 2 WS (the coach picks the best per role), so the all-1 bench test uses an MB; (3) cup.js hired crew floor left at 25 (that squad never contains you when clamped). Tests with `alloc` still pass it (ignored); the street-battle and full-run tests assume a normal player (70 / statMin). QA: creation, 1 Power day, week-4 eval played: no pageerror.
 - [x] T-054: A free setter takes the second ball (no random "someone else sets") — Done; tests 44/44, lint clean. Goldens updated (matches, sims: one R() per bad pass removed, setX/setZ rolled before the choice) — teams hash unchanged. Reach rule `SETTER.beat` 1.6; `m.setBy` records why. Assists by non-setters 12.3 % → 8.7 % over 400 mkTeams sims. The staged-scenes test (10 matches, ≤ 8/match) tripped on the moved stream (9.1; 40-match mean 6.3–7.8 before and after): widened to 30 matches, thresholds unchanged. Monster QA 5000 steps: 9 sets, all by the free setter, no pageerror.
 - [x] T-052: Match history in the Season drawer, with a stat snapshot per match — Done; tests 43/43, lint clean, goldens untouched. RUN_VERSION 8 (`run.mlog`, `MLOG.max` 80); `Cup.record` at the start of result / challengeResult / clashResult; Season drawer lists them with an expandable snapshot, line and box score (fits the 440 px drawer, no horizontal scroll; QA: 2 evals + a challenge, no pageerror). Challenge / street `day` is the day before the trip is spent.

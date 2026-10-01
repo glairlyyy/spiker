@@ -241,9 +241,45 @@ const SCOUT_STA = 5;
 const HOME_AT = { homeless: [600, 115], highland: [180, 330], studio: [430, 622], dorm: [640, 440], condo: [760, 395] };
 
 /**
+ * Official venues (spec §4.21): where official matches are played. Landmarks with a pin and a card, always known (no fog).
+ * kind = the 3D landmark; `holds` = what is played there (`cup` = the U21 Final Cup, `eval:<region>` = that faction's evaluations;
+ * the Academy's own are `eval:academy`); `held` = the same in words for the card; `clear` = how far (map units) lots keep from it
+ * (the arena is ~80 × 64 units wide). Each has a road node `venue:<id>`. Display only: they change no travel and no match rule.
+ */
+const VENUES = {
+  arena: {
+    name: 'League Arena',
+    at: [720, 160],
+    region: 'wei',
+    kind: 'arena',
+    clear: 52,
+    holds: ['cup', 'eval:wei'],
+    held: ['U21 Final Cup', 'Wei evaluations']
+  },
+  hall: {
+    name: 'Academy Hall',
+    at: [580, 510],
+    region: 'open',
+    kind: 'hall',
+    clear: 20,
+    holds: ['eval:academy'],
+    held: ['Academy evaluations']
+  },
+  beach: { name: 'Beach Stadium', at: [925, 450], region: 'wu', kind: 'stadium', clear: 22, holds: ['eval:wu'], held: ['Wu evaluations'] },
+  highland: {
+    name: 'Highland Court',
+    at: [400, 180],
+    region: 'shu',
+    kind: 'hillcourt',
+    clear: 26,
+    holds: ['eval:shu'],
+    held: ['Shu evaluations']
+  }
+};
+/**
  * The road network (spec §4.18): nodes by id → [x, y] (all on land) and edges [a, b, kind]. Nodes sit at the airport
  * (`airport`), every SPOTS place with an `at` (same id), every club HQ (`hq0`…`hq7`), each housing's home spot (`home:<key>`,
- * see HOME_AT) and the junctions (`j…`). kind: `main` (Wu coast road, Wei avenues, Academy roads), `street` (Wei grid),
+ * see HOME_AT), the four official venues (`venue:<id>`, VENUES) and the junctions (`j…`). kind: `main` (Wu coast road, Wei avenues, Academy roads), `street` (Wei grid),
  * `dirt` (Shu, Outlaws), `path` (Shu mountain trails, temple steps), `boardwalk` (the sand strip along the dune line), `overpass` (the elevated highway, downtown Wei → the harbor). Plain data: City.route walks it, MapModel draws and
  * settles it.
  */
@@ -267,6 +303,7 @@ const ROADS = {
     jBw1: [515, 626],
     jBw2: [615, 626],
     jBw3: [760, 598],
+    'venue:beach': [925, 450],
     jBw4: [830, 572],
     jBw5: [890, 535],
     resort: [908, 488],
@@ -275,6 +312,7 @@ const ROADS = {
     jO2: [865, 440],
     // Central Academy and its roads
     park: [540, 500],
+    'venue:hall': [580, 510],
     jAc1: [575, 415],
     jAc2: [505, 555],
     // Wei: avenues and the grid
@@ -286,6 +324,7 @@ const ROADS = {
     noodles: [720, 380],
     arcade: [620, 262],
     hq0: [640, 210],
+    'venue:arena': [720, 160],
     hq1: [610, 400],
     'home:dorm': [640, 440],
     'home:condo': [760, 395],
@@ -311,6 +350,7 @@ const ROADS = {
     jSh: [280, 280],
     hutNoodles: [350, 290],
     hq4: [360, 220],
+    'venue:highland': [400, 180],
     steps: [320, 235],
     hotelShu: [410, 250],
     jSn: [490, 215]
@@ -338,6 +378,7 @@ const ROADS = {
     ['jBw3', 'jBw4', 'boardwalk'],
     ['jBw4', 'jBw5', 'boardwalk'],
     ['jBw5', 'resort', 'boardwalk'],
+    ['resort', 'venue:beach', 'boardwalk'],
     // the overpass (elevated)
     ['jW2', 'jO1', 'overpass'],
     ['jO1', 'jO2', 'overpass'],
@@ -350,6 +391,7 @@ const ROADS = {
     ['jAc1', 'park', 'main'],
     ['park', 'weiPower', 'main'],
     ['park', 'stone', 'main'],
+    ['park', 'venue:hall', 'main'],
     // Wei avenues and grid
     ['weiPower', 'jW1', 'main'],
     ['jW1', 'weiSpeed', 'main'],
@@ -357,6 +399,7 @@ const ROADS = {
     ['jW2', 'hotelWei', 'street'],
     ['weiPower', 'arcade', 'main'],
     ['arcade', 'hq0', 'main'],
+    ['hq0', 'venue:arena', 'main'],
     ['hq0', 'weiJump', 'main'],
     ['weiJump', 'jWn', 'main'],
     ['jWn', 'home:homeless', 'street'],
@@ -391,6 +434,7 @@ const ROADS = {
     ['hutNoodles', 'hq4', 'dirt'],
     ['hq4', 'steps', 'path'],
     ['hq4', 'hotelShu', 'dirt'],
+    ['hq4', 'venue:highland', 'dirt'],
     ['hotelShu', 'dojo', 'dirt'],
     ['hotelShu', 'jSn', 'dirt'],
     ['jSn', 'weiJump', 'main']

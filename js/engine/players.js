@@ -47,6 +47,20 @@ function createPlayer(spec) {
 }
 /** The lowest a created player's stat can be. Generated players never go below 25: `rollStats` keeps its own floor; only your career player starts lower (CAREER.start). */
 const STAT_FLOOR = 1;
+/**
+ * Repair a player's stats in place: a stat that is not a finite number becomes STAT_FLOOR, one outside [STAT_FLOOR, 99] is clamped,
+ * wit not finite → 1 else clamped to [0.1, 3]. In-range values are left exactly as they are (no rounding, no draws). Returns how many were fixed.
+ */
+function fixStats(p) {
+  let n = 0;
+  for (const k of STATK) {
+    const v = Number.isFinite(p[k]) ? clamp(p[k], STAT_FLOOR, 99) : STAT_FLOOR;
+    if (v !== p[k]) ((p[k] = v), n++);
+  }
+  const w = Number.isFinite(p.wit) ? clamp(p.wit, 0.1, 3) : 1;
+  if (w !== p.wit) ((p.wit = w), n++);
+  return n;
+}
 /** Random base stats for a role, then spread a talent `bonus` over them (key stat weighted double). */
 function rollStats(role, bonus, bias) {
   const b = RB[role],

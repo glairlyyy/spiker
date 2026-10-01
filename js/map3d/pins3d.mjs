@@ -16,7 +16,8 @@ const FLAGCLS = {
     hq: 'hq',
     can: 'can',
     mine: 'mine',
-    clash: 'clash'
+    clash: 'clash',
+    today: 'today'
   },
   KIND_Z = { hq: 1, spot: 2, clash: 3 },
   LABEL_FADE = [30, 70], // camera distance (m): labels vanish at the first, are fully shown at the second

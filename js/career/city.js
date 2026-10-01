@@ -75,6 +75,20 @@ const City = {
   pos: run => (Array.isArray(run.pos) ? run.pos : (REGIONS[run.loc] || REGIONS.wu).at),
   /** The region you are in. */
   loc: run => City.regionAt(City.pos(run)),
+  /**
+   * The venue (VENUES id) of this week's match, or null (spec §4.21; pure): a cup week → the arena; an evaluation week → the Academy
+   * Hall for the Academy's, else the venue that holds `eval:<your faction's region>`. Display only: nothing travels.
+   */
+  venue(run) {
+    const t = Run.weekType(run);
+    if (t === 'cup') return 'arena';
+    if (t !== 'eval') return null;
+    const e = run.eval && run.eval.week === run.week ? run.eval : null,
+      kind = e ? e.kind : Eval.kind(run);
+    if (kind === 'academy') return 'hall';
+    const region = e ? e.region : FACTIONS[run.team].region;
+    return Object.keys(VENUES).find(id => VENUES[id].holds.includes(`eval:${region}`)) || null;
+  },
   /** The region at a map point: a minor's patch, Central Academy, else the major whose land it is. */
   regionAt([x, y]) {
     for (const [r, e] of Object.entries(CITY.minors)) {

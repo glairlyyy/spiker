@@ -262,7 +262,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   before), your line (kills, attacks, errors, blocks, aces, digs, assists), and the box score of everyone who played
   (name, role, OVR, line). Numbers only (registrar voice). Bench matches are listed ("did not play").
 
-- §4.21 Official venues **[locked, not built — T-053]** (owner: show where official matches are held). Four landmark
+- §4.21 Official venues **[built — T-053]** (owner: show where official matches are held). Four landmark
   venues on the map, each a pin with a card (what is held there; this week's match if any):
   - **League Arena** (Wei downtown, by the league office): the U21 Final Cup and Wei's evaluations. The biggest
     building on the island — a stadium bowl with floodlights.
@@ -272,7 +272,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   On a match week the venue of your match glows on the map and the match card says where it is played. Display only:
   no travel days, no change to where you stand.
 
-- §4.22 Start from 1 **[built — T-055; stat guard T-056]** (owner, Kenshi start): your player starts with Power, Defense,
+- §4.22 Start from 1 **[built — T-055, stat guard T-056]** (owner, Kenshi start): your player starts with Power, Defense,
   Speed and Jump all at **1** and Wit at 1.0 — no creation points, no role bias, no wit steps. Creation keeps name,
   role, look and the challenge modes. Low levels come fast and slow down: XP for the next point keeps growing ×1.05 per
   point **below 50 too** (≈1 XP at 1, ≈6 at 40, 10 at 50), so a focused stat reaches ~50 in about a dozen sessions;

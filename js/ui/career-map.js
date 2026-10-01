@@ -19,6 +19,7 @@ function spotPanel(run, id) {
   if (!id) return `<p class="small mute">Pick a place on the map.</p>`;
   if (id.startsWith('hq')) return hqPanel(run, +id.slice(2));
   if (id === 'clash') return clashPanel(run);
+  if (id.startsWith('venue:')) return venuePanel(run, id.slice(6));
   if (id.startsWith('pt:')) return pointPanel(run, MapModel.ptOf(id));
   const sid = id,
     s = SPOTS[sid],
@@ -156,6 +157,13 @@ function challengeBlock(run, ti) {
     <button class="btn" onclick="mapChallenge(${ti}, true)" ${late ? 'disabled' : ''} ${tip('Get the result without watching')}>⏭</button>
     <span class="small ${W.verdict === 'refuses' ? 'mute' : ''}">Accepts: <b>${W.verdict}</b> — ${esc(W.why)}${side.kind === 'hired' ? ` · street crew $${side.cost}` : ''}</span>
     <span class="small mute" ${tip('Before the match: grows with their rating above yours, how badly you lose, low stamina and fighting again soon. Win or lose.')}>Injury risk ~${risk} %</span></div>`;
+}
+/** An official venue's card (spec §4.21): what is held there, and whether your match is there this week. */
+function venuePanel(run, id) {
+  const v = VENUES[id];
+  if (!v) return '';
+  return `<div class="spot" style="--tc:${REGIONS[v.region].color}"><h4>🏟 ${esc(v.name)} <span class="mute small">${esc(REGIONS[v.region].name)}</span></h4>
+    <p class="small">Held here: ${v.held.map(esc).join(' · ')}.</p>${City.venue(run) === id ? '<p class="small today"><b>This week: your match.</b></p>' : ''}</div>`;
 }
 function hqPanel(run, ti) {
   const t = run.teams[ti],

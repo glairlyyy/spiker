@@ -40,6 +40,7 @@ const MapModel = {
   landmarks: run => [
     ...Object.keys(SPOTS).map(id => ({ id, at: City.at(run, id), kind: LANDMARK[id], region: City.region(run, id) })),
     ...CITY.hq.map((at, i) => ({ id: `hq${i}`, at, kind: LANDMARK.hq, region: FACTIONS[i].region })),
+    ...Object.entries(VENUES).map(([id, v]) => ({ id: `venue:${id}`, at: v.at, kind: v.kind, region: v.region })),
     { id: 'ritual', at: CITY.ritual, kind: 'ritual', region: 'open' } // the old ritual ground: no pin, no label
   ],
   /** The sand: Wu land between the dune line and the coast (the old Wu polygon, with the old coast, is the dry side). */
@@ -88,6 +89,7 @@ const MapModel = {
     if (MapModel.lotCache && MapModel.lotCache.key === key) return MapModel.lotCache.lots;
     const N = ROADS.nodes,
       places = [...Object.keys(SPOTS).map(id => City.at(run, id)), ...CITY.hq, CITY.ritual],
+      venues = Object.values(VENUES),
       segD = (p, a, b) => {
         const dx = b[0] - a[0],
           dy = b[1] - a[1],
@@ -105,6 +107,7 @@ const MapModel = {
         City.regionAt(p) === reg &&
         near(p) >= size * 0.5 + 4 &&
         places.every(q => Math.hypot(q[0] - p[0], q[1] - p[1]) >= MapModel.placeClear) &&
+        venues.every(v => Math.hypot(v.at[0] - p[0], v.at[1] - p[1]) >= v.clear) &&
         lots.every(l => Math.hypot(l.at[0] - p[0], l.at[1] - p[1]) >= (l.size + size) * 0.55),
       add = (p, rot, size, d, id, w) => {
         lots.push({
@@ -177,7 +180,7 @@ const MapModel = {
   maxLots: 1400,
   /**
    * Pins: places, club HQs and this week's battle. flags: off (no time left for it), far (2+ day trip), turf,
-   * gem / overhyped (known quality), hq, can (a club you can sign with), mine (your club), clash.
+   * gem / overhyped (known quality), hq, can (a club you can sign with), mine (your club), clash, today (a venue where your match is this week; venues are always known).
    */
   pins(run) {
     const floor = run.floor || {},
@@ -217,6 +220,18 @@ const MapModel = {
         flags: { hq: true, can, mine: i === run.team }
       });
     });
+    const today = City.venue(run);
+    for (const [id, v] of Object.entries(VENUES))
+      out.push({
+        id: `venue:${id}`,
+        kind: 'venue',
+        at: v.at,
+        icon: '🏟',
+        color: REGIONS[v.region].color,
+        badge: '',
+        title: v.name,
+        flags: { today: id === today }
+      });
     const c = City.clashSite(run);
     if (c)
       out.push({

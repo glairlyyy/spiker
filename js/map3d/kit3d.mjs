@@ -40,6 +40,15 @@ export const hip = (w, h, d, x, y, z, color) =>
   );
 /** A post (a thin box) from y up h. */
 const post = (x, y, z, h, color, t = 0.35) => box(t, h, t, x, y, z, color);
+/** An elliptical ring (hole rxi × rzi, outer rxo × rzo) from y up h: the stepped stands of a bowl. */
+const ring = (rxi, rzi, rxo, rzo, y, h, color) => {
+  const sh = new THREE.Shape().absellipse(0, 0, rxo, rzo, 0, Math.PI * 2, false);
+  sh.holes.push(new THREE.Path().absellipse(0, 0, rxi, rzi, 0, Math.PI * 2, true));
+  return part(
+    new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: false, curveSegments: 32 }).rotateX(-Math.PI / 2).translate(0, y, 0),
+    color
+  );
+};
 
 /** Unit shapes (footprint 1 × 1, height 1, feet at y = 0), shared by every kind that uses them. */
 const SHAPES = new Map();
@@ -248,6 +257,99 @@ export const LANDMARKS = {
           g = box(1.5, 1.3 + 0.45 * ((i * 5) % 3), 1, 0, 0, 0, '#8f8b82');
         return g.rotateY(-a).translate(Math.cos(a) * 7.7, 0, Math.sin(a) * 7.7);
       })
+    ]
+  },
+  // official venues (spec §4.21) --------------------------------------------------------------------------------------------
+  // the League Arena: an oval bowl of stepped stands, a roof ring and four floodlight masts (the biggest building on the island)
+  arena: {
+    h: 22,
+    w: 42,
+    d: 34,
+    build: a => {
+      const out = [
+        part(new THREE.CylinderGeometry(1, 1, 1, 32).scale(11, 0.2, 7.5).translate(0, 0.1, 0), '#5f9a62'), // the pitch
+        ring(11, 7.5, 14.5, 11, 0, 3, '#c9c6bd'),
+        ring(14.5, 11, 17.5, 14, 0, 6, '#bdb9ae'),
+        ring(17.5, 14, 20, 16.5, 0, 9.5, '#aaa69b'),
+        ring(15.4, 11.9, 20.6, 17, 11.2, 0.7, a) // the roof ring, on the back tier
+      ];
+      for (let i = 0; i < 8; i++) {
+        const t = (i / 8) * Math.PI * 2;
+        out.push(post(Math.cos(t) * 19.3, 9.5, Math.sin(t) * 15.8, 2.2, DARK, 0.5)); // the roof's posts
+      }
+      for (const [x, z] of [
+        [-18.5, -14.5],
+        [18.5, -14.5],
+        [-18.5, 14.5],
+        [18.5, 14.5]
+      ]) {
+        out.push(post(x, 0, z, 20, DARK, 0.7), box(3.4, 1.4, 1.2, x, 20, z, '#f6f0c8')); // a floodlight mast
+      }
+      out.push(box(5, 3.2, 0.6, 0, 0, 16.9, a), box(1.8, 2.4, 0.5, 0, 0, 17.3, DARK)); // the gate
+      return out;
+    }
+  },
+  // Academy Hall: a long gym hall under a curved roof
+  hall: {
+    h: 8,
+    w: 18,
+    d: 11,
+    build: a => [
+      box(18, 4.4, 10, 0, 0, 0, '#d8d3c4'),
+      box(18.4, 0.9, 10.4, 0, 1.9, 0, a),
+      part(
+        new THREE.CylinderGeometry(1, 1, 1, 18)
+          .rotateZ(Math.PI / 2)
+          .scale(18.4, 3.6, 5.3)
+          .translate(0, 4.4, 0),
+        '#6b7a8f'
+      ),
+      box(3, 3, 0.5, 0, 0, 5.1, DARK),
+      box(6, 0.9, 0.5, 0, 4.8, 5.3, LIGHT),
+      ...[-6.5, -3.2, 3.2, 6.5].map(x => box(1.4, 1.2, 0.4, x, 2.2, 5.1, '#8fb4c8'))
+    ]
+  },
+  // Beach Stadium: faded pastel stands round a sand court, flags on the corners (a beach-boom relic)
+  stadium: {
+    h: 8,
+    w: 25,
+    d: 21,
+    build: a => {
+      const out = [
+        box(15, 0.6, 10, 0, 0, 0, '#ead9a6'),
+        ring(8, 5.6, 10, 7.6, 0, 1.4, '#c4dce8'),
+        ring(10, 7.6, 11.8, 9.4, 0, 2.6, '#e8c4cc'),
+        post(-0.1, 0.2, -5, 1.8, LIGHT, 0.25),
+        post(-0.1, 0.2, 5, 1.8, LIGHT, 0.25),
+        box(0.12, 1, 10, 0, 0.9, 0, LIGHT)
+      ];
+      for (const [x, z] of [
+        [-10.6, -8.6],
+        [10.6, -8.6],
+        [-10.6, 8.6],
+        [10.6, 8.6]
+      ]) {
+        out.push(post(x, 2.4, z, 4.6, LIGHT, 0.25), box(1.8, 1, 0.12, x + 1, 6.1, z, ACC.wu));
+      }
+      out.push(box(4, 2.2, 0.5, 0, 0, 9.6, a));
+      return out;
+    }
+  },
+  // Highland Court: an open hillside court; stone terrace steps climb behind it for seats
+  hillcourt: {
+    h: 5,
+    w: 23,
+    d: 19,
+    build: () => [
+      box(21, 0.4, 12, 0, 0, 2, '#b9b4a4'),
+      post(-5, 0.4, 2, 3.2, WOOD, 0.35),
+      post(5, 0.4, 2, 3.2, WOOD, 0.35),
+      box(10, 0.9, 0.12, 0, 2.4, 2, LIGHT),
+      box(22, 0.8, 2.4, 0, 0, -5.4, STONE),
+      box(22, 1.6, 2.4, 0, 0, -7.8, '#8f8c84'),
+      box(22, 2.4, 2.4, 0, 0, -10.2, '#7f7c74'),
+      box(0.8, 2.4, 6, -11.2, 0, -7.6, '#7f7c74'),
+      box(0.8, 2.4, 6, 11.2, 0, -7.6, '#7f7c74')
     ]
   },
   // your home: a small house with a hip roof and a chimney
