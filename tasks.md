@@ -254,7 +254,7 @@ Steps:
 3. Test: `repair({...minimal})` yields every defaults key; a new run passes repair unchanged (deep equal).
 Accept: tests + lint; goldens untouched.
 QA: none (headless) + load an existing save in the browser once.
-Result: RUN_DEFAULTS (34 fields, [make, valid]) + Run.defaults(); Run.create spreads it, repair loops it then fixes academy / eval+Eval.setup / spotQ (City.roll) / fog / clash / sta / mode in the old order; run.grades declared, pushed in place and capped at MLOG.max. Behaviour note: repair now restores a broken money field to ECON.start (was 0) and also defaults . Test: every key present in a new run, repair leaves a sound run byte-identical, a stripped save gets all keys back, grades capped. 52/52, goldens untouched, lint clean; browser: save → reload → career loads, no pageerror.
+Result: RUN_DEFAULTS (34 fields, [make, valid]) + Run.defaults(); Run.create spreads it, repair loops it then fixes academy / eval+Eval.setup / spotQ (City.roll) / fog / clash / sta / mode in the old order; run.grades declared, pushed in place and capped at MLOG.max. Behaviour note: repair now restores a broken money field to ECON.start (was 0) and also defaults rolled. Test: every key present in a new run, repair leaves a sound run byte-identical, a stripped save gets all keys back, grades capped. 52/52, goldens untouched, lint clean; browser: save → reload → career loads, no pageerror.
 
 ### [ ] T-077: Render files match what they do; one source for court units
 Spec: — (cleanup)          Goldens: unchanged (constants keep their values)          Save: no change
