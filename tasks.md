@@ -44,7 +44,7 @@ Result:
 - Player camera ✓ (T-058 Follow, T-059 POV).
 - Cleanup pass ✓ (T-071…T-081, behaviour-neutral; done ahead of Now by owner request; leftovers closed in the T-068/T-069 review).
 - Ego ✓ (T-068), block collision ✓ (T-069).
-- **Now**: POV polish (T-070). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
+- **Now**: POV polish (T-070). **Then**: relationships — the core pillar (spec §4.23, T-060 ready, T-061…T-066 next), road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now — POV polish (§4.25)
@@ -67,6 +67,87 @@ Accept: all tests + lint.
 QA: Monster game POV on the WS and on the setter, 1500 steps each: the numbers above; screenshots; no pageerror.
 Result:
 
+## Next — Relationships, the core pillar (§4.23). One task at a time; the spec chat details each before it moves here.
+
+### [ ] T-060: NPC careers — wants, traits, weekly plans, activity-based growth (headless)
+Spec: §4.23 A, H          Goldens: unchanged (career only)          Save: RUN_VERSION 9 → 10 (`run.people`) — older saves dropped
+Goal: Every NPC (league squads, faction reserves, the Academy squad, the street crew) has a want, two traits and a
+weekly plan, and grows from what the plan did (training XP / match XP with your rules) instead of the random weekly
+drift. Nothing new on screen yet except league news when an NPC gets hurt; T-061…T-066 build on this data.
+Files: js/data/people.js (new), js/career/people.js (new), js/career/growth.js, js/career/run.js, js/career/pool.js,
+index.html, test3d.html, tests/career.test.js, ARCHITECTURE.md
+Do not: touch js/engine or any UI file; draw R() / rnd() / pick() anywhere in People (use `People.roll`, below);
+change your own player's growth, training or `Growth.shared` (teammates still gain from training beside you); change the
+star / OP breakthrough rolls in `Growth.grow` (keep their R() draws and the bond factor); add memories, stances, UI
+cards or fates (T-061…T-064).
+Steps:
+1. js/data/people.js — tables only (globals: WANTS, WANT_BY, TRAITS, TRAIT_OPP, TRAIT_BY_WANT, PLAN, PLAN_TRAIT, PEOPLE):
+   - `WANTS` = { national, money, spot, grudge, prove, leave } each `{ name, desc }` (desc from spec §4.23 A, one line).
+   - `WANT_BY` (want weights by home): wei {national 3, spot 3, money 2, grudge 1, prove 0.5, leave 0.5} ·
+     wu {grudge 3, spot 2, national 2, money 1, prove 1, leave 1} · shu {prove 3, national 2, spot 1, grudge 1, money 1,
+     leave 1} · outlaws {money 3, leave 2, grudge 2, prove 1, spot 0.5, national 0.5} · gloria {national 3, money 2,
+     spot 2, leave 1, prove 0.5, grudge 0.5} · academy {national 3, prove 2, spot 2, money 1, leave 1, grudge 0.5}.
+   - `TRAITS` = { proud, loyal, jealous, warm, cynical, reckless, calculating, steady } each `{ name, desc }`;
+     `TRAIT_OPP` = [['warm','cynical'], ['reckless','steady'], ['loyal','calculating']] (never both of a pair).
+   - `TRAIT_BY_WANT` (× trait weight, others 1): grudge {proud 2, jealous 2} · money {calculating 2, cynical 2} ·
+     prove {reckless 2, proud 2} · national {steady 1.5, proud 1.5} · spot {jealous 2} · leave {cynical 2, calculating 2}.
+   - `PLAN` (action weights by want): key = train the key stat, weak = train the lowest stat, hard = key stat on Hard,
+     wit = train wit, rest, hustle (street games for cash: match XP). national {key 3, weak 2, hard 1, wit 1, rest 1,
+     hustle 0.3} · money {key 1, weak 1, hard 0.3, wit 0.3, rest 1, hustle 3} · spot {key 4, weak 1, hard 1, wit 0.5,
+     rest 1, hustle 0.3} · grudge {key 2, weak 1, hard 1, wit 0.3, rest 0.7, hustle 2} · prove {key 2, weak 1, hard 3,
+     wit 0.5, rest 0.4, hustle 0.5} · leave {key 1, weak 1, hard 0.5, wit 0.5, rest 1.5, hustle 2}.
+   - `PLAN_TRAIT` (× action weight): reckless {hard 2, rest 0.5} · steady {hard 0.5, rest 1.3} · proud {key 1.3} ·
+     calculating {weak 1.3, wit 1.5} · cynical {rest 1.3}.
+   - `PEOPLE` = { sessions: 4, xp: <tuned, step 5>, hard: 1.6, sta: { train: 15, hard: 25, hustle: 10, rest: 60,
+     week: 20, tired: 35 }, hurt: { hard: 0.04, low: 0.12, lowSta: 40, weeks: [1, 3] }, hustle: <match XP to the key
+     stat, tuned>, play: <weekly match XP to the key stat for a league-team starter, tuned> }.
+2. js/career/people.js — `People` (no DOM, no R()):
+   - `People.roll(run, id, salt)` → [0, 1) from `hstr(`${run.pseed}|${run.week}|${id}|${salt}`)`; `run.pseed` = hstr of
+     every league player's name joined (set in Run.create, saved). `People.pick(run, id, salt, weights)` picks a key
+     by weight with one roll.
+   - `People.all(run)` → every NPC once (run.teams squads, every run.reserve team incl. `street`, run.pickup), never you.
+     `People.home(run, p)` → 'wei' | 'wu' | 'shu' | 'outlaws' | 'gloria' | 'academy' (league team → its faction region;
+     reserve → its key, `street` → 'outlaws'; the pickup squad → 'academy').
+   - `People.ensure(run)` creates missing entries: `run.people[id] = { want, traits: [a, b], plan: null, sta: 100,
+     inj: 0, xp: {}, log: { train: 0, hard: 0, rest: 0, hustle: 0, hurt: 0 } }` (want by WANT_BY[home], traits by
+     TRAITS × TRAIT_BY_WANT without an opposite pair; salts 'want', 'trait0', 'trait1'). Called by Run.create, after
+     Run.load and at the start of People.week (new players from transfers / the street crew get one).
+   - `People.plan(run, p)`: injured (inj > 0) → { act: 'out' }; sta < PEOPLE.sta.tired → rest; else pick by PLAN[want] ×
+     PLAN_TRAIT of both traits. stat: key → KEYSTAT[role], weak → lowest of STATK (ties: STATK order), hard → key,
+     wit → 'wit'. `at` = the SPOTS id in their home's region whose `train` is that stat (first in SPOTS order), else null.
+   - `People.week(run)`: for every NPC: plan → apply → store `plan` (for the living map / T-062) and count it in `log`:
+     - train / hard / wit: PEOPLE.sessions sessions; each gives XP = PEOPLE.xp × q × pot × (Hard league 1.15) × (hard ?
+       PEOPLE.hard : 1) where q = City.quality(run, at).q (home gym: REGIONS.open.q) and pot = p.pot || 1; the XP goes
+       through the same curve as yours (`Training.need(level)`, level = wit × 50 for wit) up to TRAIN_CAP (wit:
+       CAREER.witRunCap × 50) — a pure helper `People.addXp(person, p, stat, xp, top)` that keeps `person.xp[stat]`;
+       stamina − PEOPLE.sta.train (hard: .hard) per session; a hard session hurts with chance PEOPLE.hurt.hard (sta <
+       lowSta: .low) → inj = weeks roll in [1, 3], `log.hurt++`, Run.news(run, `${p.name} (${team}) is out — overtrained.`).
+     - hustle: PEOPLE.hustle match XP to the key stat (top CAREER.runCap); stamina − PEOPLE.sta.hustle.
+     - rest: stamina + PEOPLE.sta.rest. out: inj − 1. Everyone: stamina + PEOPLE.sta.week, clamp [0, 100].
+     - A league-team starter (in `t.P`, not the bench) also gets PEOPLE.play match XP to the key stat (they play off
+       screen). Stats are integers, clamped to [STAT_FLOOR, 99]; wit to [0.1, CAREER.witRunCap].
+   - `People.out(run, p)` → true while injured.
+3. growth.js: `Growth.week` calls `People.week(run)` first; `Growth.grow` drops the `Growth.spread` drift (keep the
+   function if anything else uses it, else remove) and keeps only the breakthrough rolls; then finalizeTeam as now.
+4. run.js: RUN_VERSION 10 (+ the history comment); RUN_DEFAULTS `people: [() => ({}), isObj]` and `pseed` (number,
+   Run.create sets it); Run.create calls People.ensure after the run object exists; Run.load calls it after repair;
+   `Run.lineup`'s `out` also benches an injured NPC (`People.out`).
+5. pool.js: `Pool.draw` skips injured NPCs (as candidates and bench).
+6. Tuning (report the numbers in Result): measure the baseline first on the current code — 5 seeds × a fresh run ended
+   week by week to week 28 (no matches played by you): league mean OVR, top-10 mean OVR, star count at weeks 12 and 28.
+   Then tune PEOPLE.xp / hustle / play (steps of 5) so the new numbers are within ±1.5 mean OVR, ±2 top-10, ±30 % stars
+   of the baseline at both weeks. Put the baseline numbers in the new test as constants.
+7. ARCHITECTURE.md: the People layer (data, roll stream, weekly order: People.week → breakthroughs → finalizeTeam), run.people.
+Accept:
+- tests/career.test.js: (a) every NPC has a person, want in WANTS, 2 traits, no opposite pair; you have none; (b) same
+  draft → identical run.people and plans after 4 weeks; People.week draws no R() (seed, run it, compare the next R()
+  with an unseeded copy of the sequence); (c) over 5 seeds × 28 weeks `prove` NPCs train Hard more than `money` NPCs,
+  `money` hustle most, nobody with sta < 35 trains; (d) the calibration bands of step 6 (mark it `test.slow`); (e) an
+  injured NPC is not drawn by Pool.draw and not started by Run.lineup; (f) save / load keeps run.people; a v9 save is dropped.
+- All tests + lint; engine goldens unchanged.
+QA: career run → new run, end 8 weeks (events chosen), open the Gazette: an "overtrained" line may appear; no pageerror.
+Result:
+
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
 Cleanup, part 2 (after T-071…T-081)
@@ -84,7 +165,6 @@ Cleanup, part 2 (after T-071…T-081)
 - T-088: Big binaries — keep base64 for the artifact but store .glb/.mp3 in Git LFS and generate the .txt at publish.
 
 Relationships — the core pillar (spec §4.23; detailed one by one after T-059)
-- T-060: NPC careers — wants, traits, status, weekly plans, activity-based growth (data + headless sim).
 - T-061: Memory log + stance + bond as a read-only summary (all bond sources become memory kinds; ego acts from `m.egoLog`).
 - T-062: People tab — person cards, discovery of wants / traits, top memories.
 - T-063: Approaches — NPCs come to you (and to each other); you approach them.

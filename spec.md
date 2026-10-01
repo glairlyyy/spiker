@@ -314,7 +314,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   the training cap (75) and match growth (§4.14) are unchanged. Early on you are benched and lose — that is the point
   (evaluations still pay the bench reward). Stats can fall to 1 (events, injuries), never below; a guard repairs any invalid stat on load and before every match (T-056). NPCs are unchanged.
 
-- §4.23 **Relationships — the core pillar** **[locked design (owner), not built — T-060…T-066 after the camera]**
+- §4.23 **Relationships — the core pillar** **[locked design (owner), not built — T-060 ready; T-061…T-066 next]**
   Relationships are the main thing to do. Not a dating sim, not support cards: **every NPC is a career too.** They
   want something, grind for it on the same island with the same few slots, and a relationship is the history of two
   careers that keep colliding. You don't fill a gauge; you live through things together (or against each other).
@@ -408,8 +408,9 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   - `run.people[id] = { want, traits, plan, status, known: { want, traits } }`, `run.mem[pairKey] = [ … ]` (pair key
     = the two ids sorted); size budget: you-pairs for everyone met + NPC pairs within squads only (≤ ~1,500 entries).
     RUN_VERSION bump when built. Tables WANTS, TRAITS, MEMORY, REL (thresholds, decay, caps) in js/data.
-  - Career randomness only (R() at week start for plans and approaches); the engine sees only per-match flags (who
-    trusts / resents whom) passed in, so engine goldens change only with E.
+  - People rolls use their own hash stream (`People.roll`: run seed × week × player × salt), never R(), so adding a
+    feature never reshuffles the rest of the career; the engine sees only per-match flags (who trusts / resents whom)
+    passed in, so engine goldens change only with E.
 
   **I. Build order (tasks after the camera, each small):**
   T-060 NPC wants / traits / status + weekly plans and activity-based growth (data + sim, headless) ·
