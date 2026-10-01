@@ -39,7 +39,7 @@ Result:
 
 ## Now — Challenges, part 2 (spec §4.15)
 
-### [ ] T-038: Losing is a real deal — loss penalties, fatigue and injury
+### [x] T-038: Losing is a real deal — loss penalties, fatigue and injury
 Spec: §4.15          Goldens: unchanged (career only)          Save: RUN_VERSION 6 → 7 (`run.lastFight`, `run.losses`) — older saves dropped
 Goal: Losing a team challenge or a street-battle fight costs you: stake, stamina and mood, standing (repeated losses
 become a grudge), and a heavy loss costs fans and a Gazette jab. Every challenge and street fight, won or lost, risks an
@@ -87,7 +87,7 @@ Steps:
 Accept: all tests + lint; goldens untouched.
 QA: career run → challenge the Outlaws twice in a row on low stamina: the card's risk rises; lose → the result line
 lists the penalties; when injured, the challenge / fight buttons are disabled with "Injured — rest first"; no pageerror.
-Result:
+Result: Done; tests 40/40, lint clean, goldens unchanged, RUN_VERSION 7. Deviations: street-fight losses add no `run.losses` count (only challenges, per the step); `City.crewOvr` (new, in city.js) gives the street foe's rating (mean of the region's league clubs) and `City.fightBan` the ban text; risk is computed vs your own OVR before the trip and fatigue; coach subs (engine, untouched) could still bring an injured you on in an evaluation / cup. QA: low stamina raised the card's risk 16 → 27 %, a lost challenge listed −stamina, mood, −6 standing, −150 fans and a minor injury, risk hit the 45 % cap right after, and the Challenge button disabled with “Injured — rest first”; no pageerror.
 
 ## Next — Roads, settlements and buildings (spec §4.18)
 
