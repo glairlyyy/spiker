@@ -40,10 +40,10 @@ Result:
 - Match history ✓ (T-052).
 - Free setter takes the second ball ✓ (T-054) · start from 1 ✓ (T-055).
 - Stat guard ✓ (T-056) · official venues ✓ (T-053).
-- **Now**: smarter coach + trust in you + no injured sub (T-057). Then road travel (T-048), voice pass (T-022).
+- **Now**: smarter coach (T-057), player camera: Follow (T-058), POV (T-059). **Then**: relationships deep dive (spec §4.23 — the core pillar), road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now — Smarter coach (spec §2.10)
+## Now — Smarter coach (spec §2.10), player camera (spec §4.25)
 
 ### [ ] T-057: Smarter coach subs, trust in your player, never sub an injured you on
 Spec: §2.10, §4.15          Goldens: update (high-IQ coaches skip subs that make the team worse)          Save: no change
@@ -74,6 +74,56 @@ QA: Monster game 2000 steps: subs still happen, log lines read right; career eva
 the bench all match; no pageerror.
 Result:
 
+
+### [ ] T-058: Follow camera — 3rd person behind your player
+Spec: §4.25          Goldens: unchanged (presentation only)          Save: no change
+Goal: A third match camera, Follow: behind and above your player, turning with your side, easing toward the ball when
+you touch it. Career: your player; Monster games: a "Follow" select lists every player on court.
+Files: js/render3d/camera3d.mjs, js/render3d/r3d.mjs, js/ui/match-screen.js, css/style.css, ARCHITECTURE.md
+Do not: touch js/engine or beats; draw randoms; break scene shots (they still cut in and ease back); change Broadcast /
+Courtside framing; move the 2D overlay's projection off `base` (P3D keeps working in every mode).
+Steps:
+1. camera3d: `camMode` gains 'follow'; `setFollow(id)` / `getFollow()` (the player to follow; null → Courtside).
+   Follow pose each frame from the followed figure (world.people, as shotPose finds them): position = the player's
+   hips + back 4.5 m (away from the net, along their side's court axis — not their facing, so it doesn't swing) + up
+   2.6 m + a small lateral lean toward the ball; look = a blend of a point 3 m in front of the player at head height and
+   the ball (ball weight 0.35, 0.6 while the ball is on your side); FOV 55. Ease position / look with exp smoothing
+   (~0.25 s) so cuts between rallies don't jump; clamp so the camera never goes below 1.2 m or inside the net plane.
+   When the followed player is subbed off / not on court: fall back to Courtside until they return.
+2. Blend: the existing courtside `blend` becomes a small mode blend (broadcast / courtside / follow weights) so a mode
+   switch eases in ~0.6 s; scene shots keep overriding as now.
+3. r3d: expose `setFollow`, `getFollow`; re-export camMode values.
+4. match-screen: the camera button cycles Broadcast → Courtside → Follow (label "Camera: Follow"); in a career match
+   Follow targets your player (`p.you`); in a Monster game a small select next to the button picks the player (shirt
+   number + name), shown only in Follow mode. The choice of mode is remembered (`sc.cam3d`, as today; try/catch).
+5. ARCHITECTURE.md: camera modes.
+Accept: all tests + lint.
+QA: Monster game, Follow on a WS: 1500 steps — the camera stays behind the player, the ball stays on screen ≥ 90 % of
+frames (project the ball through `cam`), no jump > 3 m between frames outside scene cuts; hype scenes still cut in and
+back; switch modes mid-rally smoothly; career eval: Follow targets you; no pageerror. Screenshots in the Result.
+Result:
+
+### [ ] T-059: POV camera — 1st person from your player's eyes
+Spec: §4.25          Goldens: unchanged (presentation only)          Save: no change
+Goal: A fourth mode, POV: the view from your player's head — the ball, the net, the block in your face — with your own
+head hidden, and a safe fallback to Follow during wild moments.
+Files: js/render3d/camera3d.mjs, js/render3d/r3d.mjs, js/render3d/actors3d.mjs, js/ui/match-screen.js, ARCHITECTURE.md
+Do not: touch js/engine or beats; roll the camera; let the camera clip into the followed body; break scene shots.
+Steps:
+1. camera3d 'pov': position = the followed figure's head bone + 0.08 m forward; look = toward the ball when it is in
+   front of you (within 100° of your facing), else straight ahead along your facing at head height; FOV 70; no roll;
+   position smoothed lightly (head bob ≤ 5 cm), look smoothed (~0.12 s).
+2. Fallback: while the followed player is airborne above 0.6 m (spike / block jump) or diving, or the look direction
+   turns faster than 220°/s, blend to the Follow pose (0.25 s) and back after landing — no motion sickness.
+3. actors3d: the followed player's head (and hair / accessories) hidden in POV via a per-figure flag (`setPovHidden(id)`);
+   arms stay visible so your own hands show on digs and spikes.
+4. match-screen: the camera cycle adds POV after Follow; same player rule as Follow.
+5. ARCHITECTURE.md: POV.
+Accept: all tests + lint.
+QA: Monster game POV on a setter and on a WS: 1500 steps each — no frame shows the inside of the own head (head hidden),
+the fallback kicks in on every jump (log the switches), ball on screen ≥ 70 % of frames when it's on your side; leaving
+POV restores the head; no pageerror. Screenshots in the Result.
+Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
