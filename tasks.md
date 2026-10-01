@@ -46,7 +46,7 @@ Result:
 
 ## Now — Player camera (§4.25), Story mode (§4.26), Ego (§2.12)
 
-### [ ] T-058: Follow camera — 3rd person behind your player
+### [x] T-058: Follow camera — 3rd person behind your player
 Spec: §4.25          Goldens: unchanged (presentation only)          Save: no change
 Goal: A third match camera, Follow: behind and above your player, turning with your side, easing toward the ball when
 you touch it. Career: your player; Monster games: a "Follow" select lists every player on court.
@@ -72,7 +72,7 @@ Accept: all tests + lint.
 QA: Monster game, Follow on a WS: 1500 steps — the camera stays behind the player, the ball stays on screen ≥ 90 % of
 frames (project the ball through `cam`), no jump > 3 m between frames outside scene cuts; hype scenes still cut in and
 back; switch modes mid-rally smoothly; career eval: Follow targets you; no pageerror. Screenshots in the Result.
-Result:
+Result: Follow camera done as specified; mode weights replace the blend, follow pose tracked in every mode (no jump on switch). QA Monster WS 1500 steps: ball on screen 99.7 %, max frame move 1.06 m (no jump >3 m), cam y ≥ 2.3 m, mode switches ≤ 2.9 m/frame, scenes cut in/back; career eval follows you (select hidden); no pageerror; 48/48 tests, lint clean. Select list isn't refreshed after a sub (falls back to Courtside).
 
 ### [ ] T-059: POV camera — 1st person from your player's eyes
 Spec: §4.25          Goldens: unchanged (presentation only)          Save: no change
