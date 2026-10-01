@@ -1,18 +1,22 @@
 {
-  "name": "skyline-cup-3d",
+  "name": "spite-and-spike",
   "private": true,
-  "description": "4v4 anime volleyball simulator (browser, no build step).",
+  "description": "Spite & Spike \u2014 4v4 anime volleyball RPG (browser, no build step).",
   "scripts": {
     "test": "node tests/run.js",
     "test:update": "node tests/run.js --update",
     "lint": "eslint .",
     "format": "prettier --write \"js/**/*.{js,mjs}\" \"css/**/*.css\" \"tests/**/*.js\" \"*.html\"",
-    "serve": "python3 -m http.server 8765"
+    "serve": "python3 -m http.server 8765",
+    "format:check": "prettier --check \"js/**/*.{js,mjs}\" \"css/**/*.css\" \"tests/**/*.js\" \"*.html\""
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "@pixiv/three-vrm": "3.5.5",
     "eslint": "^9.0.0",
+    "espree": "^10.0.0",
     "globals": "^15.0.0",
-    "prettier": "^3.0.0"
+    "prettier": "^3.0.0",
+    "three": "0.169.0"
   }
 }

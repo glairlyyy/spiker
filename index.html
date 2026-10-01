@@ -1,115 +1,132 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="theme-color" content="#07080b">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Spite &amp; Spike</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@400;700;800&family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
-<link rel="stylesheet" href="css/career.css">
-<link rel="stylesheet" href="css/theme.css">
-</head>
-<body>
-<div class="wrap">
-<header class="top"><div class="brand"><h1>Spite &amp; Spike</h1><p>4v4 volleyball RPG. Nobody believed in you. Good.</p></div><div class="hright"><button class="btn dbgb" onclick="openDebug()" title="Errors and stalls collected while playing — copy them into a bug report">Debug log <i id="dbgn" hidden></i></button><button class="btn" onclick="navigate('menu')">Menu</button></div></header>
-<main id="app"></main>
-</div>
-<!--
+  <head>
+    <meta charset="utf-8" />
+    <meta name="theme-color" content="#07080b" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Spite &amp; Spike</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@400;700;800&family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/career.css" />
+    <link rel="stylesheet" href="css/theme.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <div class="brand">
+          <h1>Spite &amp; Spike</h1>
+          <p>4v4 volleyball RPG. Nobody believed in you. Good.</p>
+        </div>
+        <div class="hright">
+          <button class="btn dbgb" onclick="openDebug()" title="Errors and stalls collected while playing — copy them into a bug report">
+            Debug log <i id="dbgn" hidden></i></button
+          ><button class="btn" onclick="navigate('menu')">Menu</button>
+        </div>
+      </header>
+      <main id="app"></main>
+    </div>
+    <!--
   Spite & Spike — see ARCHITECTURE.md for how the pieces fit together.
   Scripts are classic (shared global scope) and must load in this order: each group only uses earlier groups at load time.
 -->
-<!-- three.js + three-vrm for Monster 3D (loaded only when a 3D match starts) -->
-<script type="importmap">
-{ "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
-  "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.5.5/lib/three-vrm.module.min.js"
-} }
-</script>
-<!-- Core: random source, storage -->
-<script src="js/core/debuglog.js"></script>
-<script src="js/core/rng.js"></script>
-<script src="js/core/storage.js"></script>
-<!-- Game data & rules (constants only) -->
-<script src="js/data/rules.js"></script>
-<script src="js/data/styles.js"></script>
-<script src="js/data/names.js"></script>
-<script src="js/data/looks.js"></script>
-<script src="js/data/moves.js"></script>
-<script src="js/data/roles.js"></script>
-<script src="js/data/elements.js"></script>
-<script src="js/data/tactics.js"></script>
-<script src="js/data/dialogue.js"></script>
-<script src="js/data/skills.js"></script>
-<script src="js/data/career.js"></script>
-<script src="js/data/world.js"></script>
-<script src="js/data/city.js"></script>
-<script src="js/data/events.js"></script>
-<!-- Engine — pure simulation, no DOM (also runs headless for odds, preseason, tests) -->
-<script src="js/engine/court.js"></script>
-<script src="js/engine/players.js"></script>
-<script src="js/engine/teams.js"></script>
-<script src="js/engine/save.js"></script>
-<script src="js/engine/stats.js"></script>
-<script src="js/engine/skills.js"></script>
-<script src="js/engine/formulas.js"></script>
-<script src="js/engine/elements.js"></script>
-<script src="js/engine/hype.js"></script>
-<script src="js/engine/match.js"></script>
-<script src="js/engine/serve.js"></script>
-<script src="js/engine/rally-phases.js"></script>
-<script src="js/engine/rally-defense.js"></script>
-<script src="js/engine/rally.js"></script>
-<!-- Audio -->
-<script src="js/audio/sfx.js"></script>
-<!-- Game state & navigation -->
-<script src="js/game/state.js"></script>
-<script src="js/game/bracket.js"></script>
-<!-- Career mode logic (no DOM) -->
-<script src="js/career/run.js"></script>
-<script src="js/career/training.js"></script>
-<script src="js/career/growth.js"></script>
-<script src="js/career/element.js"></script>
-<script src="js/career/world.js"></script>
-<script src="js/career/pool.js"></script>
-<script src="js/career/eval.js"></script>
-<script src="js/career/city.js"></script>
-<script src="js/career/front.js"></script>
-<script src="js/career/mapmodel.js"></script>
-<script src="js/career/dossier.js"></script>
-<script src="js/career/events.js"></script>
-<script src="js/career/goals.js"></script>
-<script src="js/career/skills.js"></script>
-<script src="js/career/rank.js"></script>
-<script src="js/career/cup.js"></script>
-<!-- DOM screens -->
-<script src="js/ui/dom.js"></script>
-<script src="js/ui/icons.js"></script>
-<script src="js/ui/match-screen.js"></script>
-<script src="js/ui/models.js"></script>
-<script src="js/ui/menu.js"></script>
-<script src="js/ui/debug-panel.js"></script>
-<script src="js/ui/career-create.js"></script>
-<script src="js/ui/career-week.js"></script>
-<script src="js/ui/map-view.js"></script>
-<script src="js/ui/career-map.js"></script>
-<script src="js/ui/career-dossier.js"></script>
-<script src="js/ui/career-hub.js"></script>
-<script src="js/ui/career-end.js"></script>
-<script src="js/ui/encyclopedia.js"></script>
-<!-- Canvas rendering & beat playback -->
-<script src="js/render/playback.js"></script>
-<script src="js/render/clock.js"></script>
-<script src="js/render/camera.js"></script>
-<script src="js/render/ball.js"></script>
-<script src="js/render/scenes.js"></script>
-<script src="js/render/effects.js"></script>
-<script src="js/render/court.js"></script>
-<script src="js/render/body.js"></script>
-<script src="js/render/faces.js"></script>
-<script src="js/render/characters.js"></script>
-<!-- Entry -->
-<script src="js/main.js"></script>
-</body></html>
+    <!-- three.js + three-vrm for Monster 3D (loaded only when a 3D match starts) -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+          "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.5.5/lib/three-vrm.module.min.js"
+        }
+      }
+    </script>
+    <!-- Core: random source, storage -->
+    <script src="js/core/debuglog.js"></script>
+    <script src="js/core/rng.js"></script>
+    <script src="js/core/storage.js"></script>
+    <!-- Game data & rules (constants only) -->
+    <script src="js/data/rules.js"></script>
+    <script src="js/data/styles.js"></script>
+    <script src="js/data/names.js"></script>
+    <script src="js/data/looks.js"></script>
+    <script src="js/data/moves.js"></script>
+    <script src="js/data/roles.js"></script>
+    <script src="js/data/elements.js"></script>
+    <script src="js/data/tactics.js"></script>
+    <script src="js/data/dialogue.js"></script>
+    <script src="js/data/skills.js"></script>
+    <script src="js/data/career.js"></script>
+    <script src="js/data/world.js"></script>
+    <script src="js/data/city.js"></script>
+    <script src="js/data/events.js"></script>
+    <!-- Engine — pure simulation, no DOM (also runs headless for odds, preseason, tests) -->
+    <script src="js/engine/court.js"></script>
+    <script src="js/engine/players.js"></script>
+    <script src="js/engine/teams.js"></script>
+    <script src="js/engine/save.js"></script>
+    <script src="js/engine/stats.js"></script>
+    <script src="js/engine/skills.js"></script>
+    <script src="js/engine/formulas.js"></script>
+    <script src="js/engine/elements.js"></script>
+    <script src="js/engine/hype.js"></script>
+    <script src="js/engine/match.js"></script>
+    <script src="js/engine/serve.js"></script>
+    <script src="js/engine/rally-phases.js"></script>
+    <script src="js/engine/rally-defense.js"></script>
+    <script src="js/engine/rally.js"></script>
+    <!-- Audio -->
+    <script src="js/audio/sfx.js"></script>
+    <!-- Game state & navigation -->
+    <script src="js/game/state.js"></script>
+    <script src="js/game/bracket.js"></script>
+    <!-- Career mode logic (no DOM) -->
+    <script src="js/career/run.js"></script>
+    <script src="js/career/training.js"></script>
+    <script src="js/career/growth.js"></script>
+    <script src="js/career/element.js"></script>
+    <script src="js/career/world.js"></script>
+    <script src="js/career/pool.js"></script>
+    <script src="js/career/eval.js"></script>
+    <script src="js/career/city.js"></script>
+    <script src="js/career/front.js"></script>
+    <script src="js/career/mapmodel.js"></script>
+    <script src="js/career/dossier.js"></script>
+    <script src="js/career/events.js"></script>
+    <script src="js/career/goals.js"></script>
+    <script src="js/career/skills.js"></script>
+    <script src="js/career/rank.js"></script>
+    <script src="js/career/cup.js"></script>
+    <!-- DOM screens -->
+    <script src="js/ui/dom.js"></script>
+    <script src="js/ui/icons.js"></script>
+    <script src="js/ui/match-screen.js"></script>
+    <script src="js/ui/models.js"></script>
+    <script src="js/ui/menu.js"></script>
+    <script src="js/ui/debug-panel.js"></script>
+    <script src="js/ui/career-create.js"></script>
+    <script src="js/ui/career-week.js"></script>
+    <script src="js/ui/map-view.js"></script>
+    <script src="js/ui/career-map.js"></script>
+    <script src="js/ui/career-dossier.js"></script>
+    <script src="js/ui/career-hub.js"></script>
+    <script src="js/ui/career-end.js"></script>
+    <script src="js/ui/encyclopedia.js"></script>
+    <!-- Canvas rendering & beat playback -->
+    <script src="js/render/playback.js"></script>
+    <script src="js/render/clock.js"></script>
+    <script src="js/render/camera.js"></script>
+    <script src="js/render/ball.js"></script>
+    <script src="js/render/scenes.js"></script>
+    <script src="js/render/effects.js"></script>
+    <script src="js/render/court.js"></script>
+    <script src="js/render/body.js"></script>
+    <script src="js/render/faces.js"></script>
+    <script src="js/render/characters.js"></script>
+    <!-- Entry -->
+    <script src="js/main.js"></script>
+  </body>
+</html>

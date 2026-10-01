@@ -2322,10 +2322,6 @@ test('career: story mode cup', () => {
 });
 
 // ---------- report ----------
-if (update) {
-  fs.writeFileSync(GOLDEN, JSON.stringify(record, null, 2) + '\n');
-  console.log('golden values written to tests/golden.json');
-}
 let fail = 0;
 for (const r of results) {
   console.log(`${r.ok ? '✓' : '✗'} ${r.name} (${r.ms} ms)`);
@@ -2335,4 +2331,9 @@ for (const r of results) {
   }
 }
 console.log(`\n${results.length - fail}/${results.length} passed`);
+// goldens are re-recorded only from a fully green run (a failing test may have left the engine half-way)
+if (update && !fail) {
+  fs.writeFileSync(GOLDEN, JSON.stringify(record, null, 2) + '\n');
+  console.log('golden values written to tests/golden.json');
+} else if (update) console.log('golden values NOT written: fix the failing tests first');
 process.exit(fail ? 1 : 0);

@@ -135,7 +135,7 @@ Audit of main @ 414892f (2026-10-01). Every task here is behaviour-neutral: test
 a task says otherwise, no save bump. If a golden moves, stop and ask — it means behaviour changed. Order = lowest risk
 first; T-071 first because a fresh `npm install` breaks lint and QA today.
 
-### [ ] T-071: Tooling — declare every dependency, drop stale config, safer test update
+### [x] T-071: Tooling — declare every dependency, drop stale config, safer test update
 Spec: — (tooling)          Goldens: unchanged          Save: no change
 Goal: A fresh clone + `npm install` gives working lint, tests and test3d.html QA; no stale config or files.
 Files: package.json, package-lock.json (new, committed), .gitignore, eslint.config.mjs, .prettierignore, files.json
@@ -154,7 +154,7 @@ Steps:
 Accept: rm -rf node_modules && npm install && npm test && npm run lint && npm run format:check all pass; test3d.html
 loads three from node_modules (QA recipe runs).
 QA: Monster game smoke (no pageerror).
-Result:
+Result: package.json renamed spite-and-spike + espree / three 0.169.0 / three-vrm 3.5.5 declared, clean registry lockfile committed, format:check; files.json + js/vendor refs gone; --update writes only when all pass; harness catches var/class; html formatted (prettier). Fresh rm -rf node_modules && npm install → 49/49, lint, format:check clean; Monster 1500 steps via node_modules three, no pageerror.
 
 ### [ ] T-072: Dead code sweep — removed features and unused helpers
 Spec: — (cleanup)          Goldens: unchanged          Save: no change (old saves may keep the dropped fields)
