@@ -120,16 +120,22 @@ Steps:
    - `REGIONS.wu.at` / `CITY.label.wu` follow Wu town; `airport` stays at [470,600] (it is now on the beach band).
 4. Roads (ROADS): add kinds `boardwalk` (along the dune line, sand ↔ pier ↔ bonfire ↔ the old resort strip) and
    `overpass` (an elevated main road from downtown Wei (`jW2` or `weiSpeed`) to the harbor (`jWu2`), passing over the
-   Outlaws patch: 2–4 edges). Reconnect the coast road through Wu town; every node still reachable from `airport`.
+   Outlaws patch: 2–4 edges). Wu is weakly connected (spec §4.19): its settlements (harbor, Wu town, the beach strip, an
+   inland village — new node + district `wu-village`) are separate clusters; between them only the coast road stays
+   `main`, every other link is `dirt`, at most 2 links into each cluster. Every node still reachable from `airport`.
 5. `DISTRICTS` (new constant in city.js): `[{ id, region, style, poly or { x, y, r }, gap, density, size, kinds, tall? }]`
-   for: wei-downtown, wei-oldtown, wei-ring, gloria (compound), wu-town, wu-harbor, wu-beach (strip along the
+   for: wei-downtown, wei-oldtown, wei-ring, gloria (compound), wu-town, wu-harbor, wu-village, wu-beach (strip along the
    boardwalk: resort, kiosk), outlaws (under the overpass), shu-village ×3–4 (round HQ7 / the highland home, HQ4 / the
    steps, the shrine / dojo, the trail), academy (campus). New lot kinds (T-051 gives them meshes): rowhouse, barracks,
-   workshop, market, warehouse, resort, kiosk, terrace. `tall` (0–1) lets downtown lots grow taller toward its centre.
+   workshop, market, warehouse, resort, kiosk, terrace. Also `WEALTH = { weiCore: [x, y], weiEdge: n, … }` holding the step-6 numbers (doc comment).
 6. MapModel.lots: fill each district with a grid (spacing `gap`, aligned to the nearest road, a hash vs `density`),
    skipping water, other regions, roads (within setback), places / HQs (NEAR_R / 3), other lots; beach districts only
    on the sand, others never on it. Keep the road-side lots outside districts but at density × 0.4 (countryside).
-   Each lot gains `h` (0–1: height factor) and `district`. `maxLots` 1400. Target counts (±20 %): Wei ~600, Wu ~300,
+   Each lot gains `wealth` (0–1), `h` (0–1: height factor) and `district`. Wealth (spec §4.19), all from fixed data +
+   hashes: Wei = smoothstep falloff with distance from `WEALTH.weiCore` (the downtown centre, ~[650, 260]) to
+   `WEALTH.weiEdge` units (centre 1 → suburbs ~0.15, Old Town ≤ 0.15) + a ±0.08 hash jitter; Gloria 0.95; Wu 0.5 ± 0.1
+   everywhere; Shu 0.2 ± 0.1; Outlaws 0.05; Academy 0.55. Downtown `h` = wealth; elsewhere `h` = wealth × 0.4.
+   Lot size and spacing grow with wealth (rich: bigger lots, more space; poor: small and packed). `maxLots` 1400. Target counts (±20 %): Wei ~600, Wu ~300,
    Shu ~150, Outlaws ~60, Academy ~40, Gloria ~30.
 7. MapModel.land gains `dunes` (the dune line), `districts` ([{ id, region, style, poly }] for walls / tinting) and a
    `ritual` landmark (kind `ritual`, a sand circle by the Academy on the old ritual ground; no pin, no label).
@@ -153,15 +159,18 @@ Steps:
 2. Roads: `boardwalk` = wooden planks ribbon just above the sand; `overpass` = deck ~7 m up on pillars every ~20 m
    (one merged mesh for decks + pillars), ramps at both ends down to the ground road.
 3. KIT: meshes for rowhouse, barracks, workshop, market, warehouse, resort (faded, pastel), kiosk, terrace (stepped
-   house on a slope); lot height × (1 + 1.5 × `h`) so downtown rises toward its centre.
+   house on a slope); lot height × (1 + 2.5 × `h`) so downtown rises toward its centre. Wealth tints each instance
+   (per-instance colour, no new draw call): rich = glass-blue / clean stone / gold trim, poor = grey, rust, patched wood;
+   Wei must read as a clear gradient from the downtown core outward, Wu as an even, middling look.
 4. Districts: a wall ring round the Gloria compound with the gatehouse at its road; an optional faint ground tint per
    district style (no new draw call if folded into the terrain colours).
 5. LANDMARKS `ritual`: a worn sand circle with a ring of low stones.
 6. Budget at default zoom vs T-046 (28 calls / ~157k tris incl. shadows): ≤ 40 draw calls, ≤ 260k tris; frame time in
    swiftshader not more than 25 % worse; fog dimming covers every new mesh.
 Accept: all tests + lint.
-QA: career run with the whole map revealed: zoomed out, Wei reads as a dense city with a tall downtown, the Wu coast as a
-wide beach with a boardwalk and an inland town, the overpass over the Outlaws, Shu as scattered villages; zoomed in on
+QA: career run with the whole map revealed: zoomed out, Wei reads as a dense city with a tall, rich downtown fading to
+shabby suburbs, the Wu coast as a
+wide beach with a boardwalk and separate, modest settlements on thin roads, the overpass over the Outlaws, Shu as scattered villages; zoomed in on
 downtown, the walk along a road between towers; leave / return 3× without leaks; draw calls and tris in the Result;
 no pageerror.
 Result:

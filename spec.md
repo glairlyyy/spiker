@@ -238,6 +238,13 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   - **Shu**: 3–4 terraced hill villages (the native villages that keep the old language — unnamed until the lore glossary
     exists), shrines, mountain paths, few people.
   - **Central Academy**: a campus quad on the old ritual ground; a weathered sand circle nearby, never labelled.
+  - **Wealth** (owner): every lot has a wealth level 0–1 that drives its look (height, size, materials, spacing).
+    *Wei*: wealth piles up in the centre and thins out steadily toward the suburbs — glass towers and stone downtown,
+    then mid-rise, then plain blocks, then shabby edges and Old Town (a smooth gradient from the downtown centre, no
+    rich pockets outside it except the walled St. Gloria compound). *Wu*: wealth is spread evenly but modest —
+    comfortable towns, none rich, none poor — and weakly connected: separate settlements (harbor, Wu town, the beach
+    strip, an inland village) joined by few roads, mostly dirt, with only the coast road as a main road (with T-048 this
+    makes Wu trips slower than Wei's). *Shu* poor and scattered; *Outlaws* the poorest; *Academy* middling and uniform.
   - Buildings fill districts (an area + style + density), not only rows along roads; ~1,200 buildings in all
     (Wei ~600, Wu ~300, Shu ~150, Outlaws ~60, Academy ~40, Gloria ~30). Trip days unchanged (T-048 decides road travel).
 - §4.20 Match history **[locked, not built — T-052]** (owner): the Season drawer lists every match you were in this run
