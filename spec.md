@@ -284,13 +284,107 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   the training cap (75) and match growth (§4.14) are unchanged. Early on you are benched and lose — that is the point
   (evaluations still pay the bench reward). Stats can fall to 1 (events, injuries), never below; a guard repairs any invalid stat on load and before every match (T-056). NPCs are unchanged.
 
-- §4.23 Relationships **[draft — CORE PILLAR (owner): relationships are the main driver of the game; full deep dive after the player camera (§4.25)]**: bond (0–100) stays the "how close" number; each teammate also
-  gets a **feeling** that events and your choices push: respect · rivalry · resentment · loyalty (one at a time, shown
-  as a tag). Triggers: you take their starting spot → resentment (they pass you worse balls: small set-quality malus
-  to you); you sit for them / feed them sets → respect; a same-role mate with similar OVR → rivalry (both train
-  harder: +gain when you train together, the coach compares you openly); loyal (bond 80+ and respect) follows you if you
-  switch clubs and can vouch for you with a faction. NPCs remember: a mate you beat in a challenge stays cold for weeks.
-  Shown on the Team drawer (tag + one-line reason, `diary` voice). Waits on: club switching (§5.1) for "follows you".
+- §4.23 **Relationships — the core pillar** **[locked design (owner), not built — T-060…T-066 after the camera]**
+  Relationships are the main thing to do. Not a dating sim, not support cards: **every NPC is a career too.** They
+  want something, grind for it on the same island with the same few slots, and a relationship is the history of two
+  careers that keep colliding. You don't fill a gauge; you live through things together (or against each other).
+
+  **Anti-cliché rules (hard):** no gifts, no dates or romance mechanics, no per-character scripted story chains, no
+  friendship-rank support cards, no "max bond = stat bonus" farming, no cheerful portrait banter. Bond only grows from
+  shared, costly acts. Hanging out has fast diminishing returns. All lines go through the lore voices (lore.md §7);
+  numbers stay true, claims may be biased.
+
+  **A. Every NPC is a career (data + weekly sim).**
+  - Every league / pool player gets: `want` (1 of WANTS), `traits` (2 of TRAITS), a weekly `plan`, a season record and a
+    `status` (active · injured · benched · cut · quit · poached · national). Their careers run whether you watch or not.
+  - WANTS (what drives their choices):
+    - `national` — the national team; plays every match it can, takes risks, picks squads that win.
+    - `money` — hustles, takes paid challenges, open to St. Gloria / Outlaw offers.
+    - `spot` — keep their starting role; trains their key stat, hostile to same-role threats.
+    - `grudge` — beat a faction (Wu vs Wei by default, Outlaws vs Wei); challenges that faction, joins street battles.
+    - `prove` — prove the elders / the Academy wrong; trains Hard, overtrains, gets hurt more (Shu-leaning).
+    - `leave` — get off the island any way possible; disloyal, follows the best offer.
+  - TRAITS (how memories become feelings and choices; 2 each, no opposites): proud · loyal · jealous · warm ·
+    cynical · reckless · calculating · steady.
+  - Weekly plan (one R() roll per NPC at week start, career randomness only): train a stat at a place in their
+    region (or where their faction allows), rest, hustle, challenge someone, scout, recover. They grow from what they
+    did with the same XP rules as you (training to TRAIN_CAP, matches above), scaled by their hidden potential — this
+    replaces the random weekly `Growth` drift for pool players. They get tired, injured (same INJURY rules when they
+    fight) and benched (same Run.lineup rules).
+  - Fates (permanent this run): **cut** (benched 3 evaluations running and under the faction's join bar → reserves,
+    then quits if `want` is unmet), **quit** (cynical + want unmet for long), **poached** (a richer club / St. Gloria
+    takes a `money` / `leave` player), **national** (called up after the U21 Final Cup — see F). Gone is gone.
+  - Shown on the living map (§4.16 layer B: individual figures, not just crews), in rumours and the Gazette.
+
+  **B. Relationships are memories, not a meter.**
+  - Each pair (you ↔ NPC, and NPC ↔ NPC inside a squad / pool) keeps a short memory log of facts:
+    `{ week, kind, value }`. Kinds and base values (data table MEMORY, tuned in the balance pass):
+    - spot_taken −30 (scar) · spot_given +20 · carried (they scored off your play / you saved their bad game) +12 ·
+      let_down (your error lost a set point) −10 · trained_together +3 (diminishing: ×0.5 each repeat in a week) ·
+      won_together +5 · lost_together +2 (−2 if jealous / cynical) · beat_me (challenge / street fight) −8 ·
+      covered_me (a dig on their bad pass, sat out for them) +8 · vouched +15 · refused_help −6 · lent_money +10 ·
+      debt_unpaid −4 per week · called_out −5 · shamed (a Gazette jab about them you caused) −12 (scar).
+  - Memories fade (×DECAY per week) except scars, which never fade. A log keeps ≤ 24 entries (same kinds merge).
+  - **Stance** = Σ value × fade × trait multipliers (proud ×2 on scars and beat_me; loyal ×0.5 on negatives once
+    allied; jealous ×1.5 on spot_taken and on your wins; warm ×1.3 on positives; cynical ×0.7 on positives; calculating
+    weighs only memories with a payoff: carried, vouched, lent_money). Tags by stance: **ally** · **respect** ·
+    neutral · **rival** · **resent** · **enemy**. A same-role mate within 5 OVR in the same squad is a rival whatever
+    the stance sign (a warm rival vs a bitter rival).
+  - The old `bond` (0–100) becomes a read-only summary of the stance (for goals, form and the Team drawer); every
+    current bond source becomes a memory kind instead.
+
+  **C. They come to you (initiative) — and choose others too.**
+  - At most 2 approaches a week, as a card or a figure waiting on the map; each expires. Chosen by wants + stance:
+    - invite_train (a place + day; accept → spend that day there together: both train, trained_together),
+    - ask_sitout (before an evaluation: "let me start" — accept → you bench, spot_given; refuse → proud: resent),
+    - duo_challenge (they propose a challenge together, split stake and risk),
+    - borrow (money; repaid on their payday — or not: debt_unpaid),
+    - call_out (a rival challenges you publicly; refuse → fame and standing hit with their faction),
+    - vouch (they offer to vouch for you to their club: its join bar −X for you),
+    - warn (a rumour: a scout, a raid, someone plotting to take your spot),
+    - poach_advice (an offer came; "should I go?" — your answer changes their fate and how they remember you).
+  - You can approach them too (Team drawer / their figure on the map): invite to train, ask for a vouch, lend, call
+    out, ask to sit out. They can refuse, and they approach other NPCs as well (you hear it as rumours).
+
+  **D. NPC ↔ NPC.** Pairs inside a squad / pool use the same memories. Cliques (3+ allies) and feuds form on their
+  own; they change who sets whom, who starts and who gets cut. The Team drawer shows **squad chemistry** (who is with
+  whom). Some approaches ask you to take a side.
+
+  **E. It shows on court (engine; small, visible effects; goldens update).**
+  - Set distribution: a setter feeds an ally +15 % more in the clutch and freezes out a resent / enemy hitter −15 %
+    (chatter + log line: "trusted" / "froze out").
+  - Cover: an ally covers your bad pass more often (dig / pop-up save chance +).
+  - Captain's buff goes to allies first; the coach's lineup score adds a teammate vouch.
+  - Rivals: when you face a rival, both get a mood swing (fired up / rattled) — the rivalry is felt, not just shown.
+  - No raw stat bonuses from relationships.
+
+  **F. Competition and permanence.**
+  - Four starting spots per squad: every teammate you raise can take yours. Helping is a real choice.
+  - National team call-up after the U21 Final Cup **[assumed — owner to confirm]**: the champion squad's best 4 by
+    match grades over the cup (+ fame as tie-break) are called up. An NPC you raised can take the place you wanted;
+    winning the cup on the bench does not send you.
+  - End of run: "People who mattered" — the 5 strongest stances (good or bad), each with their fate and the
+    memories that made it (diary voice).
+
+  **G. Discovery and presentation.**
+  - You don't see wants and traits at first: a want is revealed after enough shared memories (or a rumour / scouting),
+    a trait after you have seen it act (e.g. proud after they held a grudge). Until then the card says "unknown".
+  - Team drawer → **People**: per person — name, role, OVR (if known), stance tag, want / traits (once known), their
+    season in one line, and the 3 memories that weigh most (diary voice: "W8 — I took her spot. She hasn't
+    forgotten."). The rankings and dossier link to the same card.
+
+  **H. Data, saves, determinism.**
+  - `run.people[id] = { want, traits, plan, status, known: { want, traits } }`, `run.mem[pairKey] = [ … ]` (pair key
+    = the two ids sorted); size budget: you-pairs for everyone met + NPC pairs within squads only (≤ ~1,500 entries).
+    RUN_VERSION bump when built. Tables WANTS, TRAITS, MEMORY, REL (thresholds, decay, caps) in js/data.
+  - Career randomness only (R() at week start for plans and approaches); the engine sees only per-match flags (who
+    trusts / resents whom) passed in, so engine goldens change only with E.
+
+  **I. Build order (tasks after the camera, each small):**
+  T-060 NPC wants / traits / status + weekly plans and activity-based growth (data + sim, headless) ·
+  T-061 memory log + stance + bond as summary (migrate bond sources) · T-062 People tab (cards, discovery) ·
+  T-063 approaches (theirs and yours) · T-064 fates (cut / quit / poached / national) + end-of-run "People who
+  mattered" · T-065 NPC ↔ NPC memories, cliques, chemistry · T-066 on-court effects (engine, goldens update).
 - §4.24 Faction events **[draft — owner to confirm]**: once a payday, Front rolls one faction event from its state
   (pressure, places lost, money); each changes the map for N weeks and is reported in the Gazette (and rumours in the
   faction's own voice): border seizure (exists — gets a visible flag change + Gazette story), price hike / sale

@@ -40,7 +40,7 @@ Result:
 - Match history ✓ (T-052).
 - Free setter takes the second ball ✓ (T-054) · start from 1 ✓ (T-055).
 - Stat guard ✓ (T-056) · official venues ✓ (T-053).
-- **Now**: smarter coach (T-057), player camera: Follow (T-058), POV (T-059). **Then**: relationships deep dive (spec §4.23 — the core pillar), road travel (T-048), voice pass (T-022).
+- **Now**: smarter coach (T-057), player camera: Follow (T-058), POV (T-059). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now — Smarter coach (spec §2.10), player camera (spec §4.25)
@@ -126,6 +126,15 @@ POV restores the head; no pageerror. Screenshots in the Result.
 Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
+
+Relationships — the core pillar (spec §4.23; detailed one by one after T-059)
+- T-060: NPC careers — wants, traits, status, weekly plans, activity-based growth (data + headless sim).
+- T-061: Memory log + stance + bond as a read-only summary (all bond sources become memory kinds).
+- T-062: People tab — person cards, discovery of wants / traits, top memories.
+- T-063: Approaches — NPCs come to you (and to each other); you approach them.
+- T-064: Fates — cut / quit / poached / national; end-of-run "People who mattered".
+- T-065: NPC ↔ NPC memories, cliques, squad chemistry.
+- T-066: On-court effects — trust / freeze-out set distribution, cover, rival mood (engine, goldens update).
 
 Roads, part 2 — spec §4.18
 - T-048: Road travel — trip days from the road route length (roads faster than cross-country; Shu paths slower);
