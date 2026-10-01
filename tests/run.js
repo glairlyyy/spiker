@@ -572,7 +572,7 @@ test('career: a full run reaches a result with sane values', () => {
     eq(run.cups.map(c => c.id).join(','), 'u21', 'the U21 Final Cup ends every run (placing NO_CUP when your squad was not drawn)');
     eq(run.week, g.CAREER.weeks + 1, 'the season runs all 28 weeks');
     assert(run.hist.length >= 20, 'weekly history for the growth chart');
-    for (const k of g.STATK) assert(you[k] >= 25 && you[k] <= 99, `${k} out of range: ${you[k]}`);
+    for (const k of g.STATK) assert(you[k] >= g.CAREER.statMin && you[k] <= 99, `${k} out of range: ${you[k]}`);
     assert(you.wit >= 0.1 && you.wit <= 2, 'wit out of range');
     assert(run.sta >= 0 && run.sta <= run.staMax, 'stamina out of range');
     for (const v of Object.values(you.bond)) assert(v >= 0 && v <= 100, 'bond out of range');
@@ -691,6 +691,46 @@ test('career: match XP — performance, opponent strength, past the cap', () => 
   m2.played.add(you.id);
   m2.stat[you.id] = { ...g.blank(), k: 5, blk: 1 };
   assert(/XP: /.test(fx2.onFinish(m2)), 'the result line shows the XP labels');
+});
+test('career: start from 1', () => {
+  const g = load(71),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Zero', mode: {} }),
+    you = g.Run.you(run);
+  for (const k of g.STATK) eq(you[k], 1, `${k} starts at 1`);
+  eq(you.wit, 1, 'wit starts at 1.0');
+  assert(g.ovr(you) >= 0 && Number.isFinite(g.ovr(you)), `ovr is a number (${g.ovr(you)})`);
+  eq(g.Training.need(1), 1, 'a first point costs 1 XP');
+  eq(g.Training.need(50), 10, 'and 10 XP at 50');
+  assert(g.Training.need(20) > g.Training.need(10) && g.Training.need(40) > g.Training.need(20), 'the curve rises');
+  // one focused session raises Power by several points
+  run.event = null;
+  run.sta = run.staMax;
+  g.Training.train(run, 'power', false);
+  assert(you.power >= 4, `one Power session raises Power from 1 by several points (${you.power})`);
+  // the coach benches an all-1 you behind a same-role mate (a middle blocker: the squad has one MB slot; a lone WS still starts for lack of a rival)
+  const runMB = g.Run.create(g.Run.draft(), { role: 'MB', name: 'Zero', mode: {} });
+  eq(g.Run.lineup(runMB, g.Run.myTeam(runMB), null, true).starts, false, 'you start on the bench');
+  // nothing pushes a stat below 1
+  for (const k of g.STATK) g.Run.bump(run, k, -999);
+  for (const k of g.STATK) assert(you[k] === g.CAREER.statMin, `${k} stops at ${g.CAREER.statMin} (${you[k]})`);
+  // 300 sims of a squad with an all-1 player: no NaN / Infinity
+  const bad = o => {
+    if (typeof o === 'number') return !Number.isFinite(o);
+    if (o && typeof o === 'object') return Object.values(o).some(bad);
+    return false;
+  };
+  const mine = g.Run.myTeam(run);
+  for (const k of g.STATK) you[k] = 1;
+  for (let i = 0; i < 300; i++) {
+    const m = g.newMatch(mine, run.teams[i % 8], i < 30);
+    let n = 0;
+    while (!m.over && n++ < 3000) {
+      const r = g.playRally(m);
+      if (i < 30) assert(!bad(r.beats), 'no NaN / Infinity in the beats');
+    }
+    assert(m.over, 'the match ends (no stall)');
+    assert(!bad(m.stat), 'no NaN / Infinity in m.stat');
+  }
 });
 test('career: match history', () => {
   const g = load(61),
@@ -924,11 +964,41 @@ test('career: element hidden → revealed → Element Trial → unlocked, and sa
   assert(y2.elOn && y2.el === you.el && y2.sig.name === you.sig.name, 'element survives save/load');
 });
 
+test('engine: the setter takes the second ball', () => {
+  const g = load(5);
+  let sets = 0,
+    ast = 0,
+    astNon = 0,
+    reach = 0;
+  for (let i = 0; i < 400; i++) {
+    const T = g.mkTeams(),
+      m = g.newMatch(T[i % 8], T[(i + 3) % 8], false);
+    while (!m.over) g.playRally(m);
+    for (const e of m.setBy || []) {
+      sets++;
+      if (e.why === 'reach') {
+        reach++;
+        assert(e.role !== 'S' && e.ts > g.SETTER.beat * e.tm, `a teammate sets only when out-reaching the setter (${e.ts} vs ${e.tm})`);
+      } else if (e.why === 'free') {
+        assert(e.role === 'S' && (e.tm === null || e.ts <= g.SETTER.beat * e.tm), 'otherwise the free setter sets');
+      } else assert(e.why === 'none', 'a non-setter sets with no setter free: the setter passed or is busy');
+    }
+    for (const side of m.t)
+      for (const p of [...side.P, ...side.bench]) {
+        const s = m.stat[p.id];
+        if (!s) continue;
+        ast += s.ast;
+        if (p.role !== 'S') astNon += s.ast;
+      }
+  }
+  assert(sets > 4000 && reach > 0, `sets were judged (${sets}, ${reach} won by reach)`);
+  assert(astNon / ast < 0.11, `assists by non-setters ${((100 * astNon) / ast).toFixed(1)} % (was ~12.5 %)`);
+});
 test('engine: staged scenes are rare and well-formed', () => {
   const g = load(31);
   let scenes = 0,
     matches = 0;
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 30; i++) {
     const [a, b] = g.mkTeams(),
       ids = new Set([...g.squadOf(a), ...g.squadOf(b)].map(p => p.id)),
       m = g.newMatch(a, b, true);
@@ -943,7 +1013,7 @@ test('engine: staged scenes are rare and well-formed', () => {
     matches++;
   }
   const per = scenes / matches;
-  assert(per >= 1 && per <= 8, `scenes per match ${per}`); // target ≈ 6–7 on average; 10 matches are noisy
+  assert(per >= 1 && per <= 8, `scenes per match ${per}`); // target ≈ 6–7 on average; 30 matches (10 were noisy: T-054 moved the random stream)
 });
 
 test('engine: recorded beats stay well-formed in every mode (no NaN, known players, matches end)', () => {
@@ -1119,6 +1189,7 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
     r0 = g.City.rep(run, c.b),
     cc = g.City.clashCost(run),
     clashSp0 = run.sp;
+  for (const k of g.STATK) g.Run.you(run)[k] = 70; // (a new player starts at 1: give you a normal player's line so the match XP shows)
   const fx = g.Cup.clash(run, c.a);
   assert(fx && !run.clash.done && run.days === 7, 'nothing is spent until the match ends');
   assert([...fx.a.P, ...fx.a.bench].includes(g.Run.you(run)) && fx.a.P.includes(g.Run.you(run)), 'you are on court for your side');

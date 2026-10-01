@@ -21,7 +21,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   the save is an out-of-system bump-set and a third player hits (or bumps it over) **[built]**.
   Second touch (owner): a free setter (did not take the first touch, not busy) always sets when they can get there; a
   teammate sets only when the setter took the first ball, is busy, or a bad pass lands where a teammate gets to it
-  clearly first **[not built — T-054]**.
+  clearly first **[built — T-054]**.
 - §2.2 Elements: per player, hidden; unlocked for OP, ~1/4 of star players, and the career player via the Element
   Trial. Gauge fills by element play; full gauge or captain buff → next attack is the signature element spike.
   Counter elements halve effects. Fiction: lore.md §2 (the Trial is the modern method; the ritual is forgotten).
@@ -269,12 +269,12 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   On a match week the venue of your match glows on the map and the match card says where it is played. Display only:
   no travel days, no change to where you stand.
 
-- §4.22 Start from 1 **[locked, not built — T-055]** (owner, Kenshi start): your player starts with Power, Defense,
+- §4.22 Start from 1 **[built — T-055; stat guard T-056]** (owner, Kenshi start): your player starts with Power, Defense,
   Speed and Jump all at **1** and Wit at 1.0 — no creation points, no role bias, no wit steps. Creation keeps name,
   role, look and the challenge modes. Low levels come fast and slow down: XP for the next point keeps growing ×1.05 per
   point **below 50 too** (≈1 XP at 1, ≈6 at 40, 10 at 50), so a focused stat reaches ~50 in about a dozen sessions;
   the training cap (75) and match growth (§4.14) are unchanged. Early on you are benched and lose — that is the point
-  (evaluations still pay the bench reward). Stats can fall to 1 (events, injuries), never below. NPCs are unchanged.
+  (evaluations still pay the bench reward). Stats can fall to 1 (events, injuries), never below; a guard repairs any invalid stat on load and before every match (T-056). NPCs are unchanged.
 
 ## 5. Open questions — do not build until decided
 - §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story

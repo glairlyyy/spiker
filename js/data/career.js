@@ -1,16 +1,12 @@
-// Career mode constants: creation budget, trainings, mood levels, calendar, rewards, ranks.
+// Career mode constants: the start, trainings, mood levels, calendar, rewards, ranks.
 
 const CAREER = {
   weeks: 28, // two blocks: weeks 1–24 → Skyline Cup, weeks 25–28 → Grand Cup
   star: { ovr: 80 }, // your player becomes a ★ star at this overall
   op: { ovr: 88, key: 95, wit: 1.5 }, // …and an OP red star at this overall + key stat + wit
-  statBase: 40,
-  budget: 60,
-  createCap: 70,
+  start: 1, // every stat of a new player (Power / Defense / Speed / Jump); wit starts at witBase (spec §4.22)
+  statMin: 1, // the lowest any of your stats can go (events, injuries)
   witBase: 1.0,
-  witStep: 0.1,
-  witStepCost: 5,
-  witCreateCap: 1.4,
   runCap: 99,
   witRunCap: 2.0,
   staMax: 100,

@@ -15,10 +15,8 @@ const Run = {
     const reserve = Pool.build(teams, used);
     return { teams, team: Math.floor(R() * teams.length), reserve };
   },
-  /** Final stat value shown at creation: base + allocated points + the role's usual bias. */
-  createdStat: (role, k, alloc) => clamp(CAREER.statBase + alloc + (RB[role][k] || 0), 25, 99),
   /**
-   * Start a run. spec = { role, name, alloc: {power, def, speed, jump}, witSteps, mode? ({hard, short}) }.
+   * Start a run. spec = { role, name, mode? ({hard, short}) } (every stat starts at CAREER.start, wit at CAREER.witBase: spec §4.22).
    * You always start as a free agent: your player takes the same-role slot on the Academy squad (the pickup squad).
    */
   create(draft, spec) {
@@ -31,12 +29,12 @@ const Run = {
       slot = role === 'S' ? 'S' : role === 'MB' ? 'MB' : 'W0',
       old = t.P.find(p => p.slot === slot),
       stats = {};
-    for (const k of STATK) stats[k] = Run.createdStat(role, k, spec.alloc[k] || 0);
+    for (const k of STATK) stats[k] = CAREER.start;
     const you = createPlayer({
       name: spec.name,
       role,
       slot,
-      wit: +(CAREER.witBase + spec.witSteps * CAREER.witStep).toFixed(2),
+      wit: CAREER.witBase,
       hair: pick(HAIR),
       look: mkLook(role),
       move: pick(MOVES[role]),
@@ -225,7 +223,7 @@ const Run = {
     if (STATK.includes(key) || key === 'lead') {
       if (v > 0 && key !== 'lead') v = Math.max(1, Math.round(v * Training.dim(you[key]))); // events obey diminishing returns too
       const top = key === 'lead' ? CAREER.runCap : Math.max(you[key], TRAIN_CAP), // events stop at the training cap (never lower a stat matches raised)
-        nv = Math.round(clamp(you[key] + v, 25, top)),
+        nv = Math.round(clamp(you[key] + v, CAREER.statMin, top)),
         d = nv - you[key];
       you[key] = nv;
       return fmt(d, STATNAME[key]);

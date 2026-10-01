@@ -13,4 +13,9 @@ const RULES = {
  * a chance between iq[0] and iq[1] (coachIQ 0 → 1) at each dead ball.
  */
 const SUB = { max: 2, sta: 0.6, fresh: 0.9, errs: 3, back: 0.85, iq: [0.35, 0.9] };
+/**
+ * The second ball (spec §2.1): on a bad pass (quality 1) a free teammate sets instead of the setter only when the setter's time
+ * to the set point (distance ÷ (0.5 + speed / 100), as `nearest`) is more than `beat` × that teammate's. No randoms in the choice.
+ */
+const SETTER = { beat: 1.6 };
 const rulesText = () => `First to ${RULES.pointsToWin}, win by ${RULES.winBy}`;

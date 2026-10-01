@@ -42,9 +42,11 @@ function createPlayer(spec) {
     },
     spec
   );
-  for (const k of STATK) p[k] = Math.round(clamp(p[k] ?? 60, 25, 99));
+  for (const k of STATK) p[k] = Math.round(clamp(p[k] ?? 60, STAT_FLOOR, 99));
   return p;
 }
+/** The lowest a created player's stat can be. Generated players never go below 25: `rollStats` keeps its own floor; only your career player starts lower (CAREER.start). */
+const STAT_FLOOR = 1;
 /** Random base stats for a role, then spread a talent `bonus` over them (key stat weighted double). */
 function rollStats(role, bonus, bias) {
   const b = RB[role],

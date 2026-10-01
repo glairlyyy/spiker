@@ -56,7 +56,7 @@ const Training = {
   /** Diminishing returns: ×0.9 from 60, ×0.7 from 70, ×0.45 from 80, ×0.3 from 85, ×0.15 from 92. */
   dim: v => (v >= 92 ? 0.15 : v >= 85 ? 0.3 : v >= 80 ? 0.45 : v >= 70 ? 0.7 : v >= 60 ? 0.9 : 1),
   /** XP needed for the next point of a stat at level v. */
-  need: v => Math.round(TRAIN_X.xp.base * Math.pow(TRAIN_X.xp.grow, Math.max(0, v - TRAIN_X.xp.from))),
+  need: v => Math.max(1, Math.round(TRAIN_X.xp.base * Math.pow(TRAIN_X.xp.grow, v - TRAIN_X.xp.from))),
   /** A stat's level (wit in 0.02 steps). */
   level: (you, stat) => (stat === 'wit' ? Math.round(you.wit * 50) : you[stat]),
   /** Where a stat stops for a source of XP: 'train' (sessions, default) → TRAIN_CAP; 'match' → the run cap. Wit: its own cap. */

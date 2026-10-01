@@ -34,6 +34,9 @@ mkTeams() ─► simBalance() ─► newMatch(a, b, record)
   (`engine/rally-phases.js`), then the approach/spike core inline in `rally.js`, then `block → dig`
   (`engine/rally-defense.js`). A phase returns `{ point: side }`, `{ next: [atk, pas, qual] }`, its values, or nothing.
   **Random rolls must stay in the same order** — the golden tests catch any change.
+  `pickSetter` (T-054): the set point is rolled first, then the back-row setter sets; on a bad pass (quality 1, one setter) a free teammate takes the second
+  ball only when the setter's time to the set point is over `SETTER.beat` (rules.js, 1.6) × the teammate's — a reach rule, no random in the choice. Engine-only
+  record `m.setBy = [{ role, why: 'free' | 'reach' | 'none', qual, ts, tm }]` (like `m.scrLog`): `none` = no setter free (passer / busy; wit-weighted pick).
 - `record = false` → pure simulation (fast; used for odds and preseason).
 - `record = true` → `playRally` also returns **beats**: timed lists of acts such as
   `{k:'slide'}`, `{k:'jump'}`, `{k:'ball'}`, `{k:'burst'}`, `{k:'log'}`.
@@ -83,7 +86,7 @@ The match screen takes a fixture: `navigate('match', { a, b, round, back, onFini
   don't own, one roll (`LEARN`: by doing a stat-line threshold, else by facing an opponent who played and has it; chance × wit ×
   the match gap factor, ≤ 0.5), at most one per match. Techniques still fire by stats via `hasTech`. Scouting shows them
   (`Skills.techs`; dossier roster `techs`, hidden until scouted).
-- No meta progression: every career starts the same (free agent, `CAREER.budget` / `createCap` / `staMax`); challenge modes (`MODES`) are plain options.
+- No meta progression: every career starts the same (free agent, every stat at `CAREER.start` = 1, wit `witBase`, `staMax`; no creation points — T-055); challenge modes (`MODES`) are plain options.
 - UI: `ui/icons.js` draws the active (bolt + type) / passive (aura) skill icons used in the shop, player card and
   encyclopedia; the result screen has a season growth chart from `run.hist`.
 
@@ -550,7 +553,7 @@ block and the street fight buttons show "Injury risk ~N %" and are disabled whil
 
 Training gives XP (`Training.xpFor`: base gain × `TRAIN_X.xp.per` × every multiplier — place quality and home turf
 (x), facility level, mood, streak, teammates, camp, Hard). A stat rises a point each time its XP reaches
-`Training.need(v)` = base × grow^(v − from) (exponential); leftovers bank in `run.xp`; nothing banks past the top.
+`Training.need(v)` = max(1, round(base × grow^(v − from))) for every v, below 50 too (≈1 XP at 1, 10 at 50; T-055); leftovers bank in `run.xp`; nothing banks past the top.
 `Training.top(run, stat, src)`: 'train' (sessions, the default) → `TRAIN_CAP` 75; 'match' → `CAREER.runCap`; wit its own cap. `sim` /
 `gain` / `addXp` take the same `src`; a stat already above the top gains nothing from that source. Wit counts in 0.02 steps
 (level = wit × 50). Events still change stats directly, but stop at `TRAIN_CAP` (`Run.bump` never lowers a stat that matches raised).
@@ -625,3 +628,7 @@ it is called at the start of `Cup.result` (kind `eval` | `cup`, + `round`), `Cup
 played, you, line: { k, att, err, blk, ace, dig, ast }, box: [{ name, role, side, ovr, k, att, err, blk, ace, dig, ast, you? }] }` — numbers and strings only, no player or team
 refs. `matchLog(run)` (career-week.js) lists them newest first, each a `fold` (`ml<index>`) with your snapshot (change vs your previous entry), your line and the box score;
 the `season` drawer appends it (career-hub.js). `Run.repair` adds `mlog` to older saves of the same version.
+
+### Start from 1 (T-055)
+`Run.create` gives your player `CAREER.start` (1) in every stat and `CAREER.witBase` (1.0) wit; creation (career-create.js) keeps role / name / modes and shows the stats as plain numbers (no allocation, no wit stepper). `CAREER.statMin` (1) is the floor of
+`Run.bump` (events, injuries). `createPlayer` clamps stats to `STAT_FLOOR` (1, players.js); generated players still never go below 25 (`rollStats`). NPC generation and every engine formula are unchanged (goldens untouched). Save shape unchanged (RUN_VERSION 8).
