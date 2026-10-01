@@ -42,7 +42,8 @@ Result:
 - Stat guard ✓ (T-056) · official venues ✓ (T-053).
 - Smarter coach ✓ (T-057).
 - Player camera ✓ (T-058 Follow, T-059 POV).
-- **Now**: ego (T-068), block collision (T-069), POV polish (T-070). **Next**: cleanup pass (T-071…T-081, behaviour-neutral). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
+- Cleanup pass ✓ (T-071…T-081, behaviour-neutral; done ahead of Now by owner request).
+- **Now**: ego (T-068), block collision (T-069), POV polish (T-070). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now — Ego + block collision (§2.12), POV polish (§4.25)
@@ -331,7 +332,7 @@ Accept: same 49 tests pass in both layouts; test:quick < 10 s.
 QA: none.
 Result: run.js is now loader + reporter; 53 tests moved verbatim (order kept within each area) into engine.test.js (19), career.test.js (20), map.test.js (10), cup.test.js (4); goldenCheck / record / playRun moved into harness.js; test.slow + --quick (npm run test:quick) skips 7 slow tests: 9.5 s vs 29.9 s full; --update refuses with --quick. Deviations: the three mk(seed…) factories differ per test (seed / level / role) and stay local; UI-copy assertions kept (no return codes exist for them, the task forbids adding them). 53/53 both layouts, goldens untouched, lint clean.
 
-### [ ] T-081: ARCHITECTURE.md matches the code
+### [x] T-081: ARCHITECTURE.md matches the code
 Spec: —          Goldens: unchanged          Save: no change
 Goal: The build doc is correct and navigable.
 Files: ARCHITECTURE.md
@@ -343,7 +344,7 @@ Steps:
 3. Shorten 1 KB+ bullets; one section per layer.
 Accept: every file in index.html appears once in the doc; no version / field the code doesn't have.
 QA: none.
-Result:
+Result: Saves section: RUN_VERSION 9 with the full version history (v2…v9) and RUN_DEFAULTS; stale RUN_VERSION 8 / 4, travel zone and warm-up mentions fixed; REGIONS description matches the current island; Layers table rows for Data (constants + small pure helpers), UI, Render (+ map3d, FXR); new File map section lists every script in load order plus the render3d / map3d modules (checked: every index.html script appears). Long bullets left as they are (content still correct). Final: 53/53, lint, format:check clean; career 5 weeks + Monster 2500 steps, no pageerror.
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 

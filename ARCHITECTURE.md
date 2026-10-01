@@ -10,13 +10,37 @@ earlier files **at load time** (inside functions, anything loaded is fine).
 | Layer | Folder | Rule |
 |---|---|---|
 | Core | `js/core/` | `debuglog.js` (loaded first: `DBG` collects errors, console errors/warnings and match stalls; the header's Debug log button shows and copies them), `rng.js` (all game randomness via `R()`, seedable with `RNG.seed(n)`; presentation — particles, confetti, trail flicker, coach looks — uses `FXR` on `Math.random`, `FXR.isolate(fn)` for code that calls `R()` inside, so frame rate never moves the engine stream; a test scans js/render, js/audio and match-screen for game-RNG calls), `storage.js` (all `localStorage` via `store`, keys in `KEYS`). |
-| Data | `js/data/` | Constants only — playstyles, names, looks, moves, roles, elements, `RULES`. No logic. |
+| Data | `js/data/` | Constants plus a few small pure helpers that belong to their data (`CITY` is built by an IIFE; `callLine`, `epair`, `hasTech`…). No state, no randoms, no DOM. |
 | Engine | `js/engine/` | Pure simulation. **No DOM, canvas or audio.** Runs headless (odds, preseason, tests). |
 | Audio | `js/audio/` | Synthesized WebAudio effects plus the match music (`sfx.js`). |
 | Game | `js/game/` | Global state `G` (settings, current screen), screen router (`Screens`, `navigate()`), bracket helpers (career Cup). |
 | Career | `js/career/` | Career-mode rules (run, training, events, skills, Cup). **No DOM** — testable headlessly. |
-| UI | `js/ui/` | DOM screens: menu, match screen, career create/week/result (`career-end.js`), skill encyclopedia. |
-| Render | `js/render/`, `js/render3d/` | Beat playback and the screen-space layer (canvas); the 3D scene, players and poses (three.js + VRM). |
+| UI | `js/ui/` | DOM screens: menu, match screen, career create / hub / map panels / week cards / dossier / end, encyclopedia; `map-view.js` (the map renderer contract). Render and call rules only. |
+| Render | `js/render/`, `js/render3d/`, `js/map3d/` | Beat playback and the screen-space layer (canvas); the 3D match scene, players and poses (three.js + VRM); the 3D island map. Presentation randomness via `FXR` only. |
+
+## File map (load order)
+Classic scripts, in index.html order (each group only uses earlier groups at load time):
+- **core** `debuglog.js` (DBG), `rng.js` (R / RNG / FXR, clamp, inPoly…), `storage.js` (store, KEYS).
+- **data** `rules.js` (RULES, EGO…), `styles.js` (playstyles, team list, archetypes), `names.js` (name pools),
+  `looks.js` (appearance palettes), `moves.js` (signature / combo names, coach lines), `roles.js` (role biases, key
+  stats, mood deltas), `elements.js`, `tactics.js`, `dialogue.js` (lines, `callLine`), `skills.js`, `career.js`
+  (CAREER, CALENDAR, ROLE_NAME, STATNAME, MLOG…), `world.js` (REGIONS, FACTIONS, ECON, HOUSING, CLASH, FRONT…), `city.js`
+  (CITY geometry, SPOTS, travel constants, layout data), `events.js`.
+- **engine** `court.js` (geometry, `Z_UNITS`, `UNIT_M`, `BALL_K` / `SERVE_K`), `players.js`, `teams.js`, `save.js`,
+  `stats.js`, `skills.js`, `formulas.js`, `elements.js`, `hype.js`, `match.js`, `serve.js`, `rally-phases.js`,
+  `rally-defense.js`, `rally.js`.
+- **audio** `sfx.js`. **game** `state.js` (G, HYPE, Screens / navigate), `bracket.js`.
+- **career** `run.js` (Run, RUN_DEFAULTS), `training.js`, `growth.js`, `element.js`, `world.js`, `pool.js`, `eval.js`,
+  `city.js`, `front.js`, `mapmodel.js`, `dossier.js`, `events.js`, `goals.js`, `skills.js`, `rank.js`, `cup.js`.
+- **ui** `dom.js` (esc, tip, info, fold, signed…), `icons.js`, `match-screen.js`, `models.js`, `menu.js`,
+  `debug-panel.js`, `career-create.js`, `career-week.js`, `map-view.js`, `career-map.js`, `career-dossier.js`,
+  `career-hub.js`, `career-end.js`, `encyclopedia.js`.
+- **render** `playback.js`, `acts.js`, `movement.js`, `actors.js`, `clock.js`, `camera.js`, `ball.js`, `scenes.js`,
+  `effects.js`, `overlay.js`, `faces.js`, `tags.js`, `dive.js`; then `main.js`.
+
+ES modules (loaded on demand): `js/render3d/` — `r3d.mjs` (entry), `units3d`, `arena3d`, `camera3d`, `actors3d`,
+`players3d` (VRM load / dress, `MODEL_URL`), `poses3d` (+ `setMotion`), `fx3d`, `trails3d`; `js/map3d/` — `map3d.mjs`
+(entry), `geo3d`, `avatar3d`, `pins3d`, `life3d`, `town3d`, `kit3d`.
 
 ## Engine flow
 
@@ -366,7 +390,7 @@ league transfer (`World.transfers`) and a Gazette (`run.gazette`, news collected
 bonds, scouting, pools, promotion, transfers) and keep `t.P` for "who plays". `fillRoster` rolls the bench after the 4 (flex
 role + a wing spiker); `finalizeTeam` gives leadership, elements and shirt numbers to all 6 (numbers unique) but the captain and
 `ovr` come from `t.P`. `World.swap(x, y)` trades two players' seats (court or bench), slots, numbers and team links (join,
-transfers, promotion). Saves (RUN_VERSION 8; v5 dropped `run.lb`, v6 added `run.met` / `run.street` / `run.refused`, v7 `run.losses` / `run.lastFight`, v8 `run.mlog`) store `bench` next to `P`; `teamFromJSON` relinks it.
+transfers, promotion). Saves (RUN_VERSION 9 — see Saves) store `bench` next to `P`; `teamFromJSON` relinks it.
 
 ## Faction pools
 
@@ -380,7 +404,7 @@ you are a candidate only while signed with r, and a standing ≥ `DRAW.sure` put
 
 ## Evaluations
 
-`CALENDAR` weeks marked `'eval'` (4, 8 … 24) replace the old warm-ups; `Run.weekType` returns `'eval'` only if `Eval.kind(run)` is
+`CALENDAR` weeks marked `'eval'` (4, 8 … 24) are the monthly evaluations; `Run.weekType` returns `'eval'` only if `Eval.kind(run)` is
 non-null (`'academy'`: free agent still in the Academy squad, `'faction'`: signed with a major, else none). `Eval.setup(run)`
 (`js/career/eval.js`, called from `Run.nextWeek` and `Run.repair`) draws the week into `run.eval = { week, kind, region, mine, opp }`
 (player id arrays, from `Pool.draw`; `mine` null = Academy squad or not drawn). `Eval.squad` builds a temporary team (first 4 → `P`, the rest → `bench`);
@@ -391,7 +415,7 @@ non-null (`'academy'`: free agent still in the Academy squad, `'faction'`: signe
 
 `js/career/cup.js`. After week 28 `Cup.start` calls `Cup.entrants(run)`: every faction's `Pool.draw` squads (named
 `<Region> I, II…`), then the Academy squad while you are a free agent still in it. Saved as
-`run.cup = { id, entrants: [{ name, short, color, region, ids, academy }], me, sched, done }` (RUN_VERSION 4; `me` = your
+`run.cup = { id, entrants: [{ name, short, color, region, ids, academy }], me, sched, done }` (`me` = your
 entrant index, −1 = not in it → you watch and `NO_CUP`). Entrants are ranked by `Eval.squad(...).ovr`, placed by
 `seedOrder(16)` (top seeds get byes as nulls) into `newBracket`; bracket entries hold entrant indexes. `Cup.team(run, i)`
 builds a squad on demand (the Academy entrant is `run.pickup`). Every match, yours (`Cup.fixture('cup')`) or simulated
@@ -417,10 +441,10 @@ HQ panel's Dossier button and the faction names in the Factions drawer, rendered
 
 ## Island map (training weeks)
 
-`js/data/world.js`: REGIONS (wei = the city, wu = the whole coastline band, shu = the inland highlands — the three
-majors with clear borders; outlaws / gloria = borderless minors; open = no-man's land): price ×, training quality q,
-Wei `hype` (chance a premium place is overhyped), Shu `gem` (chance a rough place is a hidden gem), travel `zone`,
-map anchor `at`. FACTIONS: one per league team — two squads per major (Wei Gold/Iron, Wu Harbor/Fort, Shu
+`js/data/world.js`: REGIONS (wei = the city, north and east; wu = the beach band of the east / south coast and the land behind it; shu = the
+western highlands — the three majors with clear borders; outlaws / gloria = borderless minors; open = the Central
+Academy / shrine park, owned by nobody): `color`, price ×, training quality q, Wei `hype` (chance a premium place is
+overhyped), Shu `gem` (chance a rough place is a hidden gem), map anchor `at`. Travel is by distance (`City.trip`). FACTIONS: one per league team — two squads per major (Wei Gold/Iron, Wu Harbor/Fort, Shu
 Peak/Valley) + Street Outlaws + St. Gloria; `team` rebrands the league team in `Run.draft`. HOTEL, HOUSING by region.
 `js/data/city.js`: CITY (coast, Wu's inner line, Wei and Shu polygons, minor ellipses, airport, HQs), SPOTS (several
 training places per stat across regions; sand = technique ×SAND_SP skill points; hotels; outings per region).
@@ -638,7 +662,9 @@ moving for 6 s (25 s while the 3D players load) or one beat lasts 20 s, with a s
 
 ## Saves
 
-Career runs carry `v` (`RUN_VERSION`, `career/run.js`). Bump the version when the save shape changes and add a step to
+Career runs carry `v` (`RUN_VERSION` = 9, `career/run.js`; key `sns_run_v1`). History: v2 faction reserves, v3 cup
+entrants, v4 squads of 6 (`bench`), v5 `run.lb` dropped, v6 `run.met` / `street` / `refused`, v7 `losses` / `lastFight`,
+v8 `mlog`, v9 `run.mode.story`; older saves are dropped (`RUN_MIGRATIONS` is empty). Bump the version when the save shape changes and add a step to
 `RUN_MIGRATIONS[oldVersion] = data => upgraded data`; `Run.load` applies the steps in order and ignores saves from a newer version.
 Plain-default fields live once in `RUN_DEFAULTS` (run.js: name → `[make, valid]`): `Run.create` starts from
 `Run.defaults()` and `Run.repair` refills any field a save lacks or holds broken, then repairs the run-dependent ones
