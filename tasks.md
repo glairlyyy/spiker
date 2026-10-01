@@ -41,7 +41,7 @@ Result:
 - Free setter takes the second ball ✓ (T-054) · start from 1 ✓ (T-055).
 - Stat guard ✓ (T-056) · official venues ✓ (T-053).
 - Smarter coach ✓ (T-057).
-- **Now**: player camera: Follow (T-058), POV (T-059), Story mode cup guarantee (T-067), ego (T-068). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
+- **Now**: player camera: Follow (T-058), POV (T-059), Story mode cup guarantee (T-067), ego (T-068), block collision (T-069). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now — Player camera (§4.25), Story mode (§4.26), Ego (§2.12)
@@ -154,6 +154,37 @@ Steps:
 Accept: all tests + lint; goldens updated for this reason only.
 QA: Monster game with all wit set to 0.6: 2000 steps — "MINE!" labels, a collision, a solo block seen; with wit 1.9:
 almost none; no pageerror.
+Result:
+
+### [ ] T-069: Block collision — cancelled blocks and the net-fault variant
+Spec: §2.12 (Block collision)          Goldens: update (a new outcome on solo blocks)          Save: no change
+Goal: When T-068's solo block meets a partner who also commits, the two blockers collide: both blocks cancel early (an
+open net for the attack) or, in the error variant, a net fault ends the rally; a floating "BLOCK COLLISION" label in a
+warning or error style marks it.
+Files: js/data/rules.js, js/engine/rally.js, js/engine/rally-defense.js, js/render/playback.js, js/render/court.js,
+js/render3d/actors3d.mjs (only if the stagger needs it), tests/run.js, ARCHITECTURE.md
+Do not: add an act kind (extend `plabel` with an optional style flag, and use `jump` / `slide` / `pose` / `log`);
+make collisions happen without a solo block; touch the scene shots.
+Steps:
+1. rules.js EGO gains `collide` (chance the partner also commits = collide × (1 − partner maturity)) and `net` (share
+   of collisions that become a net fault). Start values: collisions ≈ 10–20 % of solo blocks, net faults ≈ 30 % of
+   collisions.
+2. Engine (where the solo block is decided, T-068): on a collision — no block touch this attack (the attack resolves
+   vs an empty net: today's no-block path); both blockers' jump acts end early (`jump` mode 'down' at ~40 % of the
+   normal hang), they `slide` 0.3 m apart and take a stagger pose (reuse an existing pose, e.g. 'bump' / landing);
+   net-fault variant: the rally ends at once, point to the attacking side, a log line "Net fault — block collision".
+   Record `m.egoLog.push({ act: 'collide', p, mate, net })`. One R() for the partner, one for the net share, only when a
+   solo block happens.
+3. `plabel` gains an optional `v` ('warn' | 'err'): playback passes it to the label; court.js drawLabels colours warn
+   orange (#ffb13d) and err red (#ff4d4d), stamped (pop-in) like big labels. Text: "BLOCK COLLISION" / "BLOCK
+   COLLISION · NET", anchored between the two blockers at net height. The act-kind test still passes (no new kind).
+4. tests `'engine: block collision'`: 400 sims with ego forced high and wit low — collisions happen only after a solo
+   block; no block touch on a collision; net-fault rallies end with the point to the attackers and no attack contact
+   after it; label acts carry `v`; with EGO.collide 0 the stream equals T-068's; T-026 stuff / kill tests still pass.
+5. `npm run test:update` with the reason. ARCHITECTURE.md: the collision outcome and the plabel style flag.
+Accept: all tests + lint; goldens updated for this reason only.
+QA: Monster game with ego 0.9 / wit 0.6 for every player: watch until a collision — both blockers come down early and
+stagger, the label shows in orange; a net-fault one in red and the point ends at once; screenshot both; no pageerror.
 Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)

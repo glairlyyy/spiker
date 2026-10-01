@@ -104,6 +104,12 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     who wants to be the star; maturity comes with wit. Shown on player cards as a short tag (Show-off · Team player).
   - Presentation: "MINE!" label over the player (`plabel`), a collision as both players' bump poses + a log line,
     chatter for set calls; no new act kinds. Engine-only tallies (`m.egoLog`) feed the memories later (T-061).
+  - **Block collision** (owner) **[not built — T-069]**: when an ego blocker goes solo and the partner also commits to
+    the same spot (the partner's maturity decides whether they hold off), the two crash at the net: both blocks are
+    **cancelled early** (they come down mid-jump and stagger apart) and the attack meets an open net. Error variant: one
+    of them hits the net — a **net fault**, point to the attackers at once. Floating label over the pair:
+    **BLOCK COLLISION** (warning colour) / **BLOCK COLLISION · NET** (error colour, red). Memory: collided −4 for both
+    (§4.23).
 - §2.4 Blocks: stuff odds = full-strength block vs spike, weighted by coverage; ~14% of attacks stuffed in normal play.
 
 ## 3. Menu [built]
