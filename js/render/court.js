@@ -440,7 +440,7 @@ const trailSize = pw => Math.min(2.4, 0.8 + Math.max(0, pw - 60) / 50);
 /** The ball's power trail (screen space) at the ball's projection `q`; colour by OP, element or power. */
 function drawTrail(q) {
   const mv = A.mv ?? 1;
-  if (A.trail.length < 2 || mv < 0.03) return;
+  if (A.trail.length < 2 || mv < 0.05) return;
   const Pw = A.trailPow,
     c = A.trailOp
       ? R() < 0.5
@@ -459,7 +459,7 @@ function drawTrail(q) {
     const a = A.trail[i - 1],
       b = A.trail[i],
       k = i / A.trail.length;
-    ctx.globalAlpha = k * 0.8 * mv;
+    ctx.globalAlpha = k * 0.8 * mv * mv;
     ctx.strokeStyle = c;
     ctx.lineWidth = k * (4 + Pw / 9) * q.s * trailSize(Pw) * (0.4 + 0.6 * mv);
     ctx.beginPath();

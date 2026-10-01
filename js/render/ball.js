@@ -112,10 +112,10 @@ function ballPhysics(dt) {
   if (p && dt > 0) A.bv = { x: (B.x - p.x) / dt, z: (B.z - p.z) / dt, h: (B.h - p.h) / dt };
   A.bp = { x: B.x, z: B.z, h: B.h };
   // ball speed in m/s (court units per ms × ms → m: 1 unit = 0.0243 m along the court, 12 m per z, 0.0162 m per height unit), smoothed
-  // into A.mv 0..1 (still ≤ 0.5 m/s, full ≥ 5 m/s): the ball's trails dim out while it rests
+  // into A.mv 0..1 (invisible ≤ 1.5 m/s, full ≥ 5.5 m/s): the ball's trails dim out while it rests
   if (A.bv) {
     const mps = Math.hypot(A.bv.x * 0.0243, A.bv.z * 12, A.bv.h * 0.0162) * 1000;
-    A.mv = (A.mv || 0) + (clamp((mps - 0.5) / 4.5, 0, 1) - (A.mv || 0)) * (1 - Math.exp(-dt / (mps > 0.5 ? 60 : 250)));
+    A.mv = (A.mv || 0) + (clamp((mps - 1.5) / 4, 0, 1) - (A.mv || 0)) * (1 - Math.exp(-dt / (mps > 1.5 ? 60 : 150)));
   }
 }
 /** Power-trail samples: longer for harder balls; the tail shrinks away once the ball is unpowered. */
