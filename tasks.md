@@ -40,12 +40,40 @@ Result:
 - Match history ✓ (T-052).
 - Free setter takes the second ball ✓ (T-054) · start from 1 ✓ (T-055).
 - Stat guard ✓ (T-056) · official venues ✓ (T-053).
-- **Now**: empty. Candidates (Later, need detailing): road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
+- **Now**: smarter coach + trust in you + no injured sub (T-057). Then road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now
+## Now — Smarter coach (spec §2.10)
 
-(empty — the spec chat moves the next task here)
+### [ ] T-057: Smarter coach subs, trust in your player, never sub an injured you on
+Spec: §2.10, §4.15          Goldens: update (high-IQ coaches skip subs that make the team worse)          Save: no change
+Goal: (1) The coach compares a tired / erring starter's current worth with the fresh bench player and a smart coach
+skips subs that make the team weaker; (2) your career player is 10 % less likely to be subbed out; (3) an injured you is
+never subbed on (was T-049).
+Files: js/data/rules.js, js/engine/match.js, js/career/cup.js, tests/run.js, ARCHITECTURE.md
+Do not: change starters (Run.lineup), the stamina rules, SUB.max / sta / errs / fresh / back, the 'back' rule, the beats
+or the sub lines; add an act kind.
+Steps:
+1. rules.js SUB gains `you: 0.9` (your player: the coach's sub-out roll × this) and `worth: [0.85, 1.05]` (doc comment:
+   a tired / erring sub needs bench ovr ≥ worth × the starter's current worth, where current worth = ovr × (1 −
+   RULES.stamina.hit × (1 − stamina)); the factor runs from worth[0] for coachIQ 0 to worth[1] for coachIQ 1 — a dull
+   coach subs almost anyone in, a sharp one only when it helps).
+2. match.js `subCandidate`: for 'tired' and 'errors', skip a pair that fails the worth test (try the next candidate).
+   `coachSubs`: when the candidate's `out` is the career player (`out.you`), the roll's chance × SUB.you. A bench
+   player with `noSub` never comes on (filter in `rested` and in the 'back' rule).
+3. cup.js: before each of your matches (the two `Run.lineup` sites and any other place your squad enters a match), set
+   `you.noSub = !!run.injury` on your player; clear it when the match ends (where lineups are restored / results run).
+   Engine-only flag: keep it out of saves (delete it after the match).
+4. tests `'engine: smarter coach subs'`: 300 sims with coachIQ 1 vs 0 — the IQ-1 side never makes a tired / erring sub
+   whose bench ovr is under worth[1] × the starter's current worth; report subs per match before / after (today ~2.9);
+   with a `you` starter, over 2000 seeded candidate rolls the sub-out rate is 0.9 × the same player without `you`
+   (± 3 %); a `noSub` bench player is never subbed on; the T-026 stuff / kill tests still pass.
+5. `npm run test:update`, reason in the commit. ARCHITECTURE.md: the coach's worth test, SUB.you, noSub.
+Accept: all tests + lint; goldens updated for this reason only.
+QA: Monster game 2000 steps: subs still happen, log lines read right; career eval with an injured you → you stay on
+the bench all match; no pageerror.
+Result:
+
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
@@ -54,8 +82,7 @@ Roads, part 2 — spec §4.18
   rules + tests change (career only).
 
 Injuries, part 2 — spec §4.15
-- T-049: The engine coach never subs an injured you on (evaluations, cup): mark the player unavailable for
-  `subCandidate` (engine-only flag set by the career before the match; goldens must stay unchanged).
+- (T-049 merged into T-057.)
 
 Phase 5 — Voice pass
 - T-022: Faction `front`/`dark`, region `desc`, Gazette and event strings in lore.md §7 voices. Also fix the stale
