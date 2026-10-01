@@ -44,28 +44,11 @@ Result:
 - Player camera ✓ (T-058 Follow, T-059 POV).
 - Cleanup pass ✓ (T-071…T-081, behaviour-neutral; done ahead of Now by owner request; leftovers closed in the T-068/T-069 review).
 - Ego ✓ (T-068), block collision ✓ (T-069).
-- **Now**: POV polish (T-070). **Then**: relationships — the core pillar (spec §4.23, T-060 ready, T-061…T-066 next), road travel (T-048), voice pass (T-022).
+- Player camera polish ✓ (T-070).
+- **Now**: relationships — the core pillar (spec §4.23): T-060 NPC careers; T-061…T-066 detailed one at a time. **Then**: road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now — POV polish (§4.25)
-
-### [ ] T-070: POV polish — no teammate in your face, ball on screen for hitters
-Spec: §4.25          Goldens: unchanged (presentation only)          Save: no change
-Goal: Review QA of T-059 found POV frames where the camera sits inside a teammate's body / hair (near plane 0.1 m,
-players pass within arm's reach), and the ball was on screen only 61 % of a wing spiker's frames (bar 70 %).
-Files: js/render3d/camera3d.mjs, js/render3d/actors3d.mjs, ARCHITECTURE.md
-Do not: touch js/engine; hide the followed player's arms; change Follow / Broadcast / Courtside.
-Steps:
-1. actors3d: any other figure whose body (hips–head capsule, radius ~0.35 m) comes within 0.9 m of the POV camera fades
-   out (material opacity → 0 over ~0.1 s; restore after), via a per-frame hook like `setPovHidden` (no new draw calls,
-   no per-frame allocations).
-2. camera3d: while the followed player is a hitter on approach / in the air the POV look target leans toward the ball
-   (the set) instead of straight ahead (within the ±55° clamp), so the set is in view before the fallback kicks in;
-   keep the 220°/s turn limit.
-3. QA numbers as in T-059, plus: 0 frames where the camera is inside another figure's capsule; WS ball-on-screen ≥ 70 %.
-Accept: all tests + lint.
-QA: Monster game POV on the WS and on the setter, 1500 steps each: the numbers above; screenshots; no pageerror.
-Result:
+## Now — see Next (relationships)
 
 ## Next — Relationships, the core pillar (§4.23). One task at a time; the spec chat details each before it moves here.
 
@@ -146,6 +129,10 @@ Accept:
   injured NPC is not drawn by Pool.draw and not started by Run.lineup; (f) save / load keeps run.people; a v9 save is dropped.
 - All tests + lint; engine goldens unchanged.
 QA: career run → new run, end 8 weeks (events chosen), open the Gazette: an "overtrained" line may appear; no pageerror.
+Answer (spec chat, 2026-10-02): (a). Hustle and `play` match XP spread over all four stats like the old drift — key stat 0.4,
+the others 0.2 each (wit untouched) — still through the XP curve, top CAREER.runCap; training XP stays as specced (cap 75).
+Keep the step-6 bands at both weeks. Your baseline numbers above go into the test as the constants. Continue from your
+working tree.
 Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
@@ -185,6 +172,7 @@ Phase 5 — Voice pass
 
 ## Done
 
+- [x] T-070: POV polish — no teammate in your face, ball on screen for hitters — figures within 0.9 m of the POV eye fade out (~0.1 s) and back; a hitter in a spike pose leans the look fully to the ball (hitter in frame 97–100 % of hitter frames). The overall WS ball-on-screen ≥ 70 % bar is dropped: off-ball frames face the opponent by design (§4.25). 55/55, goldens unchanged.
 - [x] T-069: Block collision — cancelled blocks and the net-fault variant — `EGO.solo.collide` 0.25 / `net` 0.3 (no draw at 0); cov 0, both hop short and stagger, net fault = point to the attackers after the set beat; `plabel` gains `p2` / `v` (warn #ffb13d, err #ff4d4d). 160 sims at ego 1 / wit 0.6: collisions 19.0 % of solo blocks, net faults 28.3 % of those. Goldens updated.
 - [x] T-068: Ego — show-offs steal balls, call sets, block alone (wit = maturity) — `EGO`, `p.ego` (name hash 0.2–0.7, WS +0.1; you 0.6), `maturity`, hooks steal / call / solo / swing / serve, `m.egoLog`, MINE! / SOLO! / ALL ME!. 400 sims: wit 0.6 → 3.7 ego acts/side/set, wit 1.0 → 2.6, wit 1.9 → 0.12; kill % unchanged, errors 15.7 → 16.2 %. Goldens updated (teams, matches, sims). Tests in tests/engine.test.js (55/55). T-067 Lineup-line follow-up done.
 - (spec chat, T-068/T-069 review) Cleanup leftovers: doc comments back above `City.access` / `mix` / `Run.defaults`, orphan `plural` comment removed (dom.js), duplicate `overflow-x` (style.css), playback beat-copy comment made accurate — comments / CSS only.
@@ -272,3 +260,6 @@ Phase 5 — Voice pass
 - (recorded in spec §4.25) Trails now fade fully out when still (follow-up to the line above): ribbons invisible ≤ 0.6 m/s (full ≥ 2 m/s), ball trails invisible ≤ 1.5 m/s (full ≥ 5.5 m/s), alpha squared — js/render3d/trails3d.mjs, js/render/ball.js, court.js, effects.js.
 - (recorded, presentation only) Idle (ready) / platform stance arm twist: pose field `fsplit` 0.45 moves part of the forearm twist to the wrist so the elbow no longer wraps — js/render3d/players3d.mjs, poses3d.mjs.
 - (recorded in spec §4.25) Camera jitter when the ball is far out of the map: Follow / POV look target clamped to the playable box and eased out while the ball is hidden; `faceOpponent` continuous behind the camera; scene-shot exit turns the view by slerp (72° → 12° per frame) — js/render3d/camera3d.mjs, ARCHITECTURE.md.
+- (recorded, bug fix) Cup panel crash fix (owner report): `rankBest` got `squadOf(entrant)` — a cup entrant is plain data with no `.P`, so the hub threw "Cannot read properties of undefined (reading 'map')" whenever a cup match was next; it now reads `squadOf(Cup.team(run, i))` (the Street crew too); test asserts every entrant has a squad. js/ui/career-week.js, tests/cup.test.js.
+- (recorded in spec §4.25) Main_v2.vrm is your career player's permanent model (assets/vrm/main.glb.txt, README.txt, js/render3d/{players3d,r3d,actors3d}.mjs, ui/menu.js tip); loaded extra models (+ Player model) are random per player in the Monster game again, not in career.
+- (recorded, bug fix) POV fade crash fix (owner report): `povFade` read `A.rdt` while `A` was null on leaving a match (unbind → setPovHidden); guarded (js/render3d/actors3d.mjs).

@@ -33,7 +33,7 @@ const FOL = { back: 4.5, up: 2.6, ahead: 3, fov: 55, tau: 0.25, ball: [0.35, 0.6
   fh = new THREE.Vector3();
 /**
  * POV: the followed player's eyes (head bone + 0.08 m forward), looking at the ball while it is within 100° of their
- * facing, else straight ahead. Horizontal position follows the head exactly, height is smoothed within ±5 cm, the look point
+ * facing, else straight ahead (a hitter on the approach / in the air always leans toward the ball: the set). Horizontal position follows the head exactly, height is smoothed within ±5 cm, the look point
  * ~0.12 s. In the air (> 0.6 m), in a dive, or while the view turns faster than 220°/s the pose blends (~0.25 s) to the
  * Follow pose and back 0.3 s after it calms (`pov.fb` 0..1; `povStats.switches` counts the changes).
  */
@@ -70,6 +70,8 @@ const POV = {
 export const getPovStats = () => povStats;
 /** The player whose head should be hidden (the camera is at their eyes), else null. */
 export const povHidden = () => (pov.hide ? followId : null);
+/** The player whose POV camera is (blending) in, for fading figures that come close to it (T-070), else null. */
+export const povFadeId = () => (camMode === 'pov' && camState.w.pov > 0.1 && shot.k < 0.3 ? followId : null);
 function povPose(pl, dt, pos, look) {
   const yaw = pl.root.rotation.y,
     bp = lookBall();
@@ -85,7 +87,8 @@ function povPose(pl, dt, pos, look) {
   pt.copy(bp).sub(pov.pos).setY(0);
   // the ball is looked at up to 100° off the facing, and fades out to straight ahead by 140° (no flip at the edge)
   const cs = pt.lengthSq() > 1e-4 ? pt.normalize().dot(pf) : -1,
-    kb = Math.max(0, Math.min(1, (cs - POV.far) / (POV.cone - POV.far))) * bw.v;
+    // a hitter on the approach / in the air (pose 'spike') looks for the set: the ball pulls the view whatever the angle (faceOpponent clamps it)
+    kb = (pl.d && pl.d.pose === 'spike' ? 1 : Math.max(0, Math.min(1, (cs - POV.far) / (POV.cone - POV.far)))) * bw.v;
   pt.copy(pov.pos).addScaledVector(pf, 3).setY(pov.pos.y);
   pd.copy(pt).lerp(bp, kb);
   faceOpponent(pov.pos, pd, pl.d.side, 55);

@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { applyPose, smoothBones, torsoDir, bendArm, groundSnap, setFace, dress, mirror } from './players3d.mjs';
 import { poseDone, playerPose, coachPose } from './poses3d.mjs';
 import { KH, KX, KZ, W } from './units3d.mjs';
-import { cam } from './camera3d.mjs';
+import { cam, povFadeId } from './camera3d.mjs';
 
 const tmp = new THREE.Vector3(),
   tmp2 = new THREE.Vector3();
@@ -261,7 +261,9 @@ export function poseCoach(pl, dt, now) {
 function dressFigure(pl, d) {
   const p = d.p,
     team = p.team || A.m.t[d.side];
-  dress(pl.vrm, { shirt: team.color, shorts: '#1b2150', hair: p.hair, skin: p.look.skin, eyes: p.look.eyeC, shoes: '#ffffff' });
+  // (Main_v2 keeps its own colours: no kit / hair / skin / eye tint)
+  if (!pl.own)
+    dress(pl.vrm, { shirt: team.color, shorts: '#1b2150', hair: p.hair, skin: p.look.skin, eyes: p.look.eyeC, shoes: '#ffffff' });
   pl.root.scale.setScalar((pl.scale = (1.8 * (p.look.hgt || 1)) / pl.headY));
   pl.aura.material.color.set(p.op ? '#ff2846' : team.color);
   pl.zone.material.color.set(team.color);
@@ -271,6 +273,13 @@ function dressFigure(pl, d) {
   for (const t of [...pl.trails, ...pl.eyeTrails]) t.clear();
   pl.prev.clear();
   Object.assign(pl, { yawOff: 0, mot: null });
+  if (pl.fadeMats) {
+    // a figure reused for the next match starts fully visible
+    pl.fade = 1;
+    pl.fadeVis = true;
+    for (const m of pl.fadeMats) m.opacity = m.userData.op0;
+    for (const o of pl.fadeMeshes) o.visible = true;
+  }
 }
 /**
  * POV: hide the head of the figure playing `id` (the camera sits at its eyes): face, eyes, hair and anything on the head. The arms
@@ -293,6 +302,63 @@ export function setPovHidden(w, id) {
     }
     for (const o of pl.headMeshes) o.visible = !hide;
   }
+  povFade(w, id != null ? id : povFadeId());
+}
+/**
+ * POV: any other figure whose body (a capsule from hips to head, radius `rad`) is within `dist` of the camera fades out
+ * (opacity → 0 over ~`tau` s, then not drawn at all) and comes back when the camera moves away or POV ends. Called every
+ * frame from setPovHidden: it caches the figure's materials once and allocates nothing per frame.
+ */
+const FADE = { dist: 0.9, rad: 0.35, tau: 0.1 },
+  fa = new THREE.Vector3(),
+  fb = new THREE.Vector3();
+/** Distance from the camera to the figure's hips–head segment (m); the capsule surface is this minus FADE.rad. */
+function bodyDist(pl) {
+  pl.bone('hips').getWorldPosition(fa);
+  pl.bone('head').getWorldPosition(fb);
+  const c = cam.position,
+    abx = fb.x - fa.x,
+    aby = fb.y - fa.y,
+    abz = fb.z - fa.z,
+    t = Math.max(0, Math.min(1, ((c.x - fa.x) * abx + (c.y - fa.y) * aby + (c.z - fa.z) * abz) / (abx * abx + aby * aby + abz * abz || 1)));
+  return Math.hypot(c.x - (fa.x + abx * t), c.y - (fa.y + aby * t), c.z - (fa.z + abz * t));
+}
+function povFade(w, id) {
+  const dt = Math.min(0.1, Math.max(0.004, ((A && A.rdt) || 16) / 1000)), // this frame's real time (set by step())
+    k1 = 1 - Math.exp(-dt / FADE.tau);
+  for (const pl of w.people) {
+    if (!pl.d || !pl.root.visible) continue;
+    const near = id != null && pl.d.p.id !== id && bodyDist(pl) - FADE.rad < FADE.dist,
+      f = pl.fade ?? 1;
+    if (!near && f === 1) continue;
+    const nf = near ? Math.max(0, f - k1 * 1.6) : Math.min(1, f + k1 * 1.6);
+    if (nf === f && pl.fadeVis === nf > 0.02) continue;
+    if (!pl.fadeMats) {
+      pl.fadeMats = [];
+      pl.fadeMeshes = [];
+      pl.vrm.scene.traverse(o => {
+        if (!o.isMesh) return;
+        pl.fadeMeshes.push(o);
+        for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (!pl.fadeMats.includes(m)) pl.fadeMats.push(m);
+      });
+      pl.fadeMats.forEach(m => (m.userData.op0 = m.opacity));
+    }
+    pl.fade = nf;
+    const vis = nf > 0.02,
+      crossing = (f === 1) !== (nf === 1);
+    for (const m of pl.fadeMats) {
+      m.opacity = m.userData.op0 * nf;
+      if (crossing) {
+        m.userData.tr0 ??= m.transparent;
+        m.transparent = nf < 1 || m.userData.tr0;
+        m.needsUpdate = true;
+      }
+    }
+    if (pl.fadeVis !== vis) {
+      pl.fadeVis = vis;
+      for (const o of pl.fadeMeshes) o.visible = vis && !(pl.povHidden && pl.headMeshes && pl.headMeshes.includes(o));
+    }
+  }
 }
 /** A substitution: the figure that played as `outId` now plays display entry d (same spot; re-dressed as the incoming player). */
 export function swapActor(w, outId, d) {
@@ -306,17 +372,19 @@ export function swapActor(w, outId, d) {
 export function dressActors(w) {
   if (!A || !A.disp) return; // no match on screen
   const disp = Object.values(A.disp),
-    models = w.models || [],
+    career = disp.some(d => d.p.you),
+    models = career ? [] : w.models || [], // loaded extra models: Monster game / playtest only
     free = w.people.slice(),
     take = model => {
       const i = free.findIndex(pl => (pl.model || null) === model);
       return i < 0 ? null : free.splice(i, 1)[0];
     };
   for (const pl of w.people) pl.d = null;
-  // loaded extra models are for your own player only (career: p.you); everyone else keeps the base model. With several
-  // loaded, yours is picked by hash (stable across matches) while figures of it are free
+  // career: your own player (p.you) is always Main_v2, everyone else the base model. Monster game: each player picks one
+  // model at random with equal odds among the base model and every loaded one (stable per player, while figures are free)
   for (const d of disp) {
-    const want = d.p.you && models.length ? models[Math.min(models.length - 1, Math.floor(hu(d.p, 'model') * models.length))] : null,
+    const all = [null, ...models],
+      want = d.p.you ? 'main' : all[Math.min(all.length - 1, Math.floor(hu(d.p, 'model') * all.length))],
       pl = (want && take(want)) || take(null) || free.shift();
     if (pl) pl.d = d;
   }

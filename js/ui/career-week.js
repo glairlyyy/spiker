@@ -298,7 +298,7 @@ function cupPanel(run, nm) {
         )
         .join('')}</div>
     <div class="panel"><h3>${nm.round}${info(`Win: +${Math.round(REWARDS.cupWin.sp * def.mul)} skill pts, +${Math.round(REWARDS.cupWin.fans * def.mul).toLocaleString()} fans. A loss ends the season.\nPlacement: round of 16 +${fans('Round of 16')} fans · quarterfinal +${fans('Quarterfinal')} · semifinal +${fans('Semifinal')} · runner-up +${fans('Final')} · champion +${fans('Champion')} — and a place on the national team.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3><p>vs <b>${esc(E[nm.a === me ? nm.b : nm.a].name)}</b>${City.venue(run) ? ` at <b>${esc(VENUES[City.venue(run)].name)}</b>` : ''}</p>
-      ${rankBest(run, squadOf(E[nm.a === me ? nm.b : nm.a]))}
+      ${rankBest(run, squadOf(Cup.team(run, nm.a === me ? nm.b : nm.a)))}
       ${matchPrep(run, true)}
     <div class="trow"><button class="btn hot big" onclick="playCareer('cup')">Play ${nm.round.toLowerCase()}</button><button class="btn big" onclick="playCareer('cup', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
 }
