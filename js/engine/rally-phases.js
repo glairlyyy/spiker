@@ -35,17 +35,30 @@ function pickSetter(c) {
   const { m, B, V, front, atk, ds, da, atkT, defT, pas, qual } = c;
   const Ss = atkT.P.filter(p => p.role === 'S' && p !== pas && !busy(m, p, c.n)),
     dual = atkT.P.filter(p => p.role === 'S').length > 1;
-  let setter = Ss.length ? Ss.find(p => !front(atk, p)) || Ss[0] : null;
+  // where the set is made does not depend on who sets, so it is rolled first (the reach rule needs it)
+  const setX = sx(atk, qual === 3 ? 445 : qual === 2 ? rnd(415, 450) : rnd(320, 420)),
+    setZ = qual === 3 ? 0.55 : clamp(0.55 + (rnd(-0.2, 0.2) * (4 - qual)) / 2, 0.15, 0.85),
+    eta = p => dist(m.pos[p.id], setX, setZ) / (0.5 + p.speed / 100); // time to the set point (as `nearest`)
+  let setter = Ss.length ? Ss.find(p => !front(atk, p)) || Ss[0] : null,
+    why = 'free', // engine-only record (m.setBy): why this player sets, and the reach times it was judged on
+    ts = null,
+    tm = null;
   if (!setter) {
     const fr = atkT.P.filter(p => p !== pas && !busy(m, p, c.n));
     setter = wpick(fr.length ? fr : atkT.P.filter(p => p !== pas), p => p.wit);
-  } else if (qual === 1 && Ss.length < 2 && R() < 0.45)
-    setter = (fr => wpick(fr.length ? fr : atkT.P.filter(p => p !== pas && p !== setter), p => p.wit))(
-      atkT.P.filter(p => p !== pas && p !== setter && !busy(m, p, c.n))
-    );
+    why = 'none'; // no setter is free (the passer, or busy)
+  } else if (qual === 1 && Ss.length < 2) {
+    // a bad pass: a free teammate sets only when the setter would be clearly late (SETTER.beat)
+    const fr = atkT.P.filter(p => p !== pas && p !== setter && !busy(m, p, c.n));
+    if (fr.length) {
+      const mate = nearest(m, fr, setX, setZ);
+      ts = eta(setter);
+      tm = eta(mate);
+      if (ts > SETTER.beat * tm) ((setter = mate), (why = 'reach'));
+    }
+  }
+  (m.setBy = m.setBy || []).push({ role: setter.role, why, qual, ts, tm });
   const DMB = defT.P.filter(p => p.role !== 'S' && front(ds, p)).find(p => p.role === 'MB') || defT.mb;
-  const setX = sx(atk, qual === 3 ? 445 : qual === 2 ? rnd(415, 450) : rnd(320, 420)),
-    setZ = qual === 3 ? 0.55 : clamp(0.55 + (rnd(-0.2, 0.2) * (4 - qual)) / 2, 0.15, 0.85);
   let sl = [];
   mv(m, setter, setX - da * 6, setZ, sl, V);
   for (const t of [atkT, defT])

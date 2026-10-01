@@ -157,6 +157,295 @@ test('career: map model — renderer-free data for the island map', () => {
   assert(JSON.parse(JSON.stringify(M)).pins.length === M.pins.length, 'serialisable (no DOM, no functions)');
 });
 
+test('career: world layout — roads, routes, lots, landmarks', () => {
+  const g = load(13),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Road', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    N = g.ROADS.nodes,
+    at = (a, b) => a[0] === b[0] && a[1] === b[1];
+  // every place / HQ / airport / home spot is a node at its own coordinates, on land, and reachable from the airport
+  const want = { airport: g.CITY.airport };
+  for (const [id, sp] of Object.entries(g.SPOTS)) if (sp.at) want[id] = sp.at;
+  g.CITY.hq.forEach((p, i) => (want[`hq${i}`] = p));
+  for (const [k, p] of Object.entries(g.HOME_AT)) want[`home:${k}`] = p;
+  for (const [id, p] of Object.entries(want)) assert(N[id] && at(N[id], p), `node ${id} sits at its place`);
+  const adj = {};
+  for (const [a, b] of g.ROADS.edges) {
+    assert(N[a] && N[b], `edge ${a}–${b} joins known nodes`);
+    (adj[a] = adj[a] || []).push(b);
+    (adj[b] = adj[b] || []).push(a);
+  }
+  const seen = new Set(['airport']),
+    todo = ['airport'];
+  while (todo.length) for (const v of adj[todo.pop()] || []) if (!seen.has(v)) (seen.add(v), todo.push(v));
+  assert(
+    Object.keys(N).every(id => seen.has(id)),
+    'every node is reachable from the airport'
+  );
+  assert(
+    Object.values(N).every(p => g.City.onLand(p)),
+    'every node is on land'
+  );
+  // City.route: ends at the given points, interior only along edges; straight when both ends are closer to each other than to a node
+  const edge = (a, b) => g.ROADS.edges.some(([x, y]) => (at(N[x], a) && at(N[y], b)) || (at(N[x], b) && at(N[y], a)));
+  for (const [from, to] of [
+    [g.CITY.airport, g.CITY.hq[4]],
+    [
+      [120, 300],
+      [905, 400]
+    ],
+    [g.CITY.hq[0], g.CITY.airport],
+    [
+      [540, 500],
+      [550, 505]
+    ]
+  ]) {
+    const r = g.City.route(from, to);
+    assert(at(r[0], from) && at(r[r.length - 1], to), 'a route starts and ends at the given points');
+    const inner = r.slice(1, -1);
+    for (let i = 1; i < inner.length; i++) assert(edge(inner[i - 1], inner[i]), 'and only uses edges between');
+  }
+  eq(g.City.route([540, 500], [550, 505]).length, 2, 'two close points: a straight line');
+  eq(
+    JSON.stringify(g.City.route(g.CITY.airport, g.CITY.hq[4])),
+    JSON.stringify(g.City.route(g.CITY.airport, g.CITY.hq[4])),
+    'same route twice'
+  );
+  // the map model: roads, lots, landmarks; no randoms; deterministic
+  let draws = 0;
+  const next = g.RNG.next;
+  g.RNG.next = () => (draws++, next());
+  const M = g.MapModel.build(run, null),
+    M2 = g.MapModel.build(run, null);
+  eq(draws, 0, 'MapModel.build draws no randoms');
+  eq(JSON.stringify(M.land.lots), JSON.stringify(M2.land.lots), 'the same run gives identical lots');
+  const L = M.land.lots;
+  assert(L.length > 0 && L.length <= g.MapModel.maxLots, `lots: ${L.length} (1..${g.MapModel.maxLots})`);
+  const places = [...Object.keys(g.SPOTS).map(id => g.City.at(run, id)), ...g.CITY.hq];
+  assert(
+    L.every(l => g.City.onLand(l.at)),
+    'no lot in the water'
+  );
+  assert(
+    L.every(l => places.every(p => Math.hypot(p[0] - l.at[0], p[1] - l.at[1]) >= g.MapModel.placeClear)),
+    'no lot on a place'
+  );
+  assert(
+    L.every(l => l.style && l.kind && Number.isFinite(l.rot) && l.size > 0),
+    'lots are plain data'
+  );
+  eq(M.land.roads.length, g.ROADS.edges.length, 'one road polyline per edge');
+  assert(
+    M.land.roads.every(r => r.kind && r.pts.length >= 2),
+    'roads carry kind and points'
+  );
+  const lm = M.land.landmarks;
+  assert(
+    Object.keys(g.SPOTS).every(id => lm.some(m => m.id === id && m.kind)) &&
+      g.CITY.hq.every((p, i) => lm.some(m => m.id === `hq${i}` && m.kind === 'hq')),
+    'every place and HQ has a landmark kind'
+  );
+  assert(JSON.parse(JSON.stringify(M)).land.lots.length === L.length, 'serialisable');
+});
+
+test('career: town layout — districts, beach, overpass, frozen borders', () => {
+  const g = load(14),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Town', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    M = g.MapModel.build(run, null),
+    C = g.CITY,
+    N = g.ROADS.nodes;
+  // no region border moved (the coast grew outward only)
+  eq(
+    JSON.stringify(
+      [
+        [160, 380],
+        [450, 200],
+        [520, 200],
+        [900, 250],
+        [700, 520],
+        [620, 420],
+        [495, 300],
+        [505, 300],
+        [860, 300],
+        [900, 300],
+        [700, 455],
+        [700, 440],
+        [440, 520],
+        [430, 545],
+        [640, 300],
+        [815, 470],
+        [690, 255],
+        [800, 150]
+      ].map(p => g.City.regionAt(p))
+    ),
+    JSON.stringify([
+      'shu',
+      'shu',
+      'wei',
+      'wu',
+      'wu',
+      'wei',
+      'shu',
+      'wei',
+      'wei',
+      'wu',
+      'wei',
+      'wei',
+      'shu',
+      'wu',
+      'wei',
+      'outlaws',
+      'gloria',
+      'wei'
+    ]),
+    'regionAt of fixed points is unchanged'
+  );
+  eq([C.w, C.h].join('x'), '1060x700', 'the map frame grew');
+  eq(
+    JSON.stringify(C.wuWei || C.contest.slice(0, 3)),
+    JSON.stringify([
+      [854, 199],
+      [883, 305],
+      [850, 412]
+    ]),
+    'the Wei–Wu line is frozen'
+  );
+  // every place / HQ / home is on land and in its region
+  const spots = Object.entries(g.SPOTS).filter(([, s]) => s.at && s.region),
+    homes = Object.entries(g.HOME_AT).map(([k, p]) => [`home:${k}`, p, g.HOUSING[k].region]);
+  for (const [id, s] of spots) assert(g.City.onLand(s.at) && g.City.regionAt(s.at) === s.region, `${id} stands in ${s.region}`);
+  C.hq.forEach((p, i) => assert(g.City.onLand(p) && g.City.regionAt(p) === g.FACTIONS[i].region, `hq${i} stands in its region`));
+  for (const [id, p, r] of homes) assert(g.City.onLand(p) && g.City.regionAt(p) === r, `${id} stands in ${r}`);
+  // the beach: sand places between the dunes and the coast, Wu town inland (≥ 40 units from the dune line)
+  for (const id of ['sand', 'pier', 'bonfire', 'dunes']) assert(g.MapModel.onSand(g.SPOTS[id].at), `${id} is on the sand`);
+  assert(g.MapModel.onSand(g.HOME_AT.studio), 'the beach shack is on the sand');
+  const dist = (p, line) => {
+    let best = Infinity;
+    for (let i = 0; i + 1 < line.length; i++) {
+      const [a, b] = [line[i], line[i + 1]],
+        dx = b[0] - a[0],
+        dy = b[1] - a[1],
+        t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy)));
+      best = Math.min(best, Math.hypot(p[0] - a[0] - dx * t, p[1] - a[1] - dy * t));
+    }
+    return best;
+  };
+  for (const p of [g.SPOTS.hotelWu.at, C.hq[3]])
+    assert(!g.MapModel.onSand(p) && dist(p, C.dunes) >= 40, 'Wu town places sit 40+ units inland');
+  assert(g.MapModel.onSand(N.resort) && g.MapModel.onSand(N.jBw3), 'the boardwalk runs over the sand');
+  eq(M.land.dunes.length, 7, 'land.dunes is the dune line');
+  eq(JSON.stringify(C.beach), JSON.stringify(C.coast.slice(6, 13)), 'the beach is the new coast points 6–12');
+  // roads: the boardwalk and the overpass (2–4 edges), all of it on land
+  const kinds = k => g.ROADS.edges.filter(e => e[2] === k);
+  assert(kinds('boardwalk').length >= 4, 'a boardwalk');
+  assert(kinds('overpass').length >= 2 && kinds('overpass').length <= 4, 'an overpass of 2–4 edges');
+  for (const [a, b] of g.ROADS.edges)
+    for (let t = 0; t <= 1; t += 0.05)
+      assert(g.City.onLand([N[a][0] + (N[b][0] - N[a][0]) * t, N[a][1] + (N[b][1] - N[a][1]) * t]), `road ${a}–${b} stays on land`);
+  // districts and the ritual ground
+  assert(
+    M.land.districts.length === g.DISTRICTS.length && M.land.districts.every(d => d.poly.length >= 3 && d.style),
+    'districts are plain polygons'
+  );
+  const rit = M.land.landmarks.find(l => l.id === 'ritual');
+  assert(rit && rit.kind === 'ritual' && !M.pins.some(p => p.id === 'ritual'), 'a ritual landmark with no pin');
+  assert(!M.land.labels.some(l => l.id === 'ritual'), 'and no label');
+  // lots: per-region counts near the targets (±20 %), never in the water / on a road / in another region / on the sand (but the beach)
+  const L = M.land.lots,
+    by = {},
+    flat = g.ROADS.edges.filter(e => e[2] !== 'overpass');
+  for (const l of L) by[g.City.regionAt(l.at)] = (by[g.City.regionAt(l.at)] || 0) + 1;
+  for (const [r, n, lo, hi] of [
+    ['wei', 600, 480, 720],
+    ['wu', 300, 240, 360],
+    ['shu', 150, 120, 180],
+    ['outlaws', 60, 48, 72],
+    ['open', 40, 32, 48],
+    ['gloria', 30, 24, 36]
+  ])
+    assert(by[r] >= lo && by[r] <= hi, `${r} has ${by[r]} lots (~${n})`);
+  assert(
+    L.length <= g.MapModel.maxLots && L.every(l => g.City.onLand(l.at) && l.h >= 0 && l.h <= 1 && l.district),
+    'lots: on land, with h and a district'
+  );
+  assert(
+    L.every(l => g.MapModel.onSand(l.at) === (l.district === 'wu-beach')),
+    'only the beach district stands on the sand'
+  );
+  assert(
+    L.every(l => flat.every(([a, b]) => dist(l.at, [N[a], N[b]]) >= l.size * 0.5 + 3.9)),
+    'no lot on a road (the overpass is elevated)'
+  );
+  const down = L.filter(l => l.district === 'wei-downtown');
+  assert(down.length > 20 && Math.max(...down.map(l => l.h)) > 0.8, 'downtown grows tall');
+  // wealth (spec §4.19): 0–1 per lot; Wei falls off steadily from the downtown core, Old Town poor; Wu even and modest
+  assert(
+    L.every(l => l.wealth >= 0 && l.wealth <= 1),
+    'wealth is 0–1'
+  );
+  const avg = f => {
+      const a = L.filter(f).map(l => l.wealth);
+      return a.reduce((x, y) => x + y, 0) / a.length;
+    },
+    core = g.WEALTH.weiCore,
+    ring = (a, b) =>
+      avg(
+        l =>
+          g.City.regionAt(l.at) === 'wei' &&
+          l.district !== 'wei-oldtown' &&
+          Math.hypot(l.at[0] - core[0], l.at[1] - core[1]) >= a &&
+          Math.hypot(l.at[0] - core[0], l.at[1] - core[1]) < b
+      );
+  assert(
+    ring(0, 70) > ring(70, 140) && ring(70, 140) > ring(140, 210) && ring(140, 210) > ring(210, 999),
+    'Wei wealth falls steadily outward'
+  );
+  assert(ring(0, 70) > 0.75 && ring(210, 999) < 0.3, 'rich downtown, shabby edges');
+  assert(Math.max(...L.filter(l => l.district === 'wei-oldtown').map(l => l.wealth)) <= g.WEALTH.oldtown, 'Old Town is poor');
+  const wuW = L.filter(l => g.City.regionAt(l.at) === 'wu').map(l => l.wealth);
+  assert(Math.min(...wuW) >= 0.4 && Math.max(...wuW) <= 0.6, 'Wu is even and modest');
+  assert(
+    avg(l => l.district === 'gloria') > 0.9 && avg(l => g.City.regionAt(l.at) === 'outlaws') < 0.1,
+    'Gloria rich, the Outlaws poorest'
+  );
+  assert(avg(l => g.City.regionAt(l.at) === 'shu') < 0.3, 'Shu is poor');
+  assert(
+    down.every(l => l.h === l.wealth) && L.filter(l => l.district !== 'wei-downtown').every(l => Math.abs(l.h - l.wealth * 0.4) < 0.01),
+    'h = wealth downtown, wealth × 0.4 elsewhere'
+  );
+  // Wu is weakly connected: four settlements, joined by few links (≤ 2 into each), only the coast road `main`
+  const cl = {
+    sand: 'b',
+    pier: 'b',
+    bonfire: 'b',
+    airport: 'b',
+    'home:studio': 'b',
+    resort: 'b',
+    hq3: 't',
+    hotelWu: 't',
+    jWu1: 't',
+    harbor: 'h',
+    hq2: 'h',
+    dunes: 'h',
+    jWu2: 'h',
+    wuVillage: 'v'
+  };
+  for (const k of Object.keys(N)) if (/^jBw/.test(k)) cl[k] = 'b';
+  const into = {};
+  for (const [a, b, k] of g.ROADS.edges)
+    if (cl[a] && cl[b] && cl[a] !== cl[b]) {
+      for (const c of [cl[a], cl[b]]) into[c] = (into[c] || 0) + 1;
+      assert(
+        k === 'dirt' || (k === 'main' && [a, b].every(n => ['hotelWu', 'jWu1', 'jWu2'].includes(n))),
+        `Wu link ${a}–${b} is dirt (or the coast road)`
+      );
+    }
+  assert(Object.values(into).every(n => n <= 2) && into.v === 1, 'at most 2 links into each Wu settlement');
+  assert(
+    g.MapModel.districtPoly(g.DISTRICTS.find(d => d.id === 'wu-village')).every(q => g.City.regionAt(q) === 'wu'),
+    'the Wu village stands inland in Wu'
+  );
+});
+
 test('career: map model life — mates, crews, battle, borders, no randoms', () => {
   const g = load(12),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Life', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
@@ -283,7 +572,7 @@ test('career: a full run reaches a result with sane values', () => {
     eq(run.cups.map(c => c.id).join(','), 'u21', 'the U21 Final Cup ends every run (placing NO_CUP when your squad was not drawn)');
     eq(run.week, g.CAREER.weeks + 1, 'the season runs all 28 weeks');
     assert(run.hist.length >= 20, 'weekly history for the growth chart');
-    for (const k of g.STATK) assert(you[k] >= 25 && you[k] <= 99, `${k} out of range: ${you[k]}`);
+    for (const k of g.STATK) assert(you[k] >= g.CAREER.statMin && you[k] <= 99, `${k} out of range: ${you[k]}`);
     assert(you.wit >= 0.1 && you.wit <= 2, 'wit out of range');
     assert(run.sta >= 0 && run.sta <= run.staMax, 'stamina out of range');
     for (const v of Object.values(you.bond)) assert(v >= 0 && v <= 100, 'bond out of range');
@@ -335,7 +624,7 @@ test('career: training cap, facility Lv 5 and Hard training', () => {
   eq(you.power, 80, 'a stat already at 80 is not lowered by a positive bump');
   g.Training.addXp(run, 'power', 100000, 'match');
   assert(you.power > 80, 'match XP goes past the training cap');
-  assert(!('lb' in run) && g.RUN_VERSION === 6, 'no Limit Break progress in the run; RUN_VERSION 6');
+  assert(!('lb' in run) && g.RUN_VERSION === 8, 'no Limit Break progress in the run; RUN_VERSION 8');
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
   const n = g.Training.preview(run, 'power', false).main[2],
@@ -402,6 +691,116 @@ test('career: match XP — performance, opponent strength, past the cap', () => 
   m2.played.add(you.id);
   m2.stat[you.id] = { ...g.blank(), k: 5, blk: 1 };
   assert(/XP: /.test(fx2.onFinish(m2)), 'the result line shows the XP labels');
+});
+test('career: start from 1', () => {
+  const g = load(71),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Zero', mode: {} }),
+    you = g.Run.you(run);
+  for (const k of g.STATK) eq(you[k], 1, `${k} starts at 1`);
+  eq(you.wit, 1, 'wit starts at 1.0');
+  assert(g.ovr(you) >= 0 && Number.isFinite(g.ovr(you)), `ovr is a number (${g.ovr(you)})`);
+  eq(g.Training.need(1), 1, 'a first point costs 1 XP');
+  eq(g.Training.need(50), 10, 'and 10 XP at 50');
+  assert(g.Training.need(20) > g.Training.need(10) && g.Training.need(40) > g.Training.need(20), 'the curve rises');
+  // one focused session raises Power by several points
+  run.event = null;
+  run.sta = run.staMax;
+  g.Training.train(run, 'power', false);
+  assert(you.power >= 4, `one Power session raises Power from 1 by several points (${you.power})`);
+  // the coach benches an all-1 you behind a same-role mate (a middle blocker: the squad has one MB slot; a lone WS still starts for lack of a rival)
+  const runMB = g.Run.create(g.Run.draft(), { role: 'MB', name: 'Zero', mode: {} });
+  eq(g.Run.lineup(runMB, g.Run.myTeam(runMB), null, true).starts, false, 'you start on the bench');
+  // nothing pushes a stat below 1
+  for (const k of g.STATK) g.Run.bump(run, k, -999);
+  for (const k of g.STATK) assert(you[k] === g.CAREER.statMin, `${k} stops at ${g.CAREER.statMin} (${you[k]})`);
+  // 300 sims of a squad with an all-1 player: no NaN / Infinity
+  const bad = o => {
+    if (typeof o === 'number') return !Number.isFinite(o);
+    if (o && typeof o === 'object') return Object.values(o).some(bad);
+    return false;
+  };
+  const mine = g.Run.myTeam(run);
+  for (const k of g.STATK) you[k] = 1;
+  for (let i = 0; i < 300; i++) {
+    const m = g.newMatch(mine, run.teams[i % 8], i < 30);
+    let n = 0;
+    while (!m.over && n++ < 3000) {
+      const r = g.playRally(m);
+      if (i < 30) assert(!bad(r.beats), 'no NaN / Infinity in the beats');
+    }
+    assert(m.over, 'the match ends (no stall)');
+    assert(!bad(m.stat), 'no NaN / Infinity in m.stat');
+  }
+});
+test('career: match history', () => {
+  const g = load(61),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Hist', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    you = g.Run.you(run),
+    play = fx => {
+      const m = g.newMatch(fx.a, fx.b, false);
+      while (!m.over) g.playRally(m);
+      return m;
+    };
+  eq(JSON.stringify(run.mlog), '[]', 'a new run has an empty history');
+  // an evaluation: the snapshot is the kick-off state (before the match XP)
+  run.week = 4;
+  run.eval = null;
+  run.event = null;
+  const fx = g.Cup.fixture(run, 'eval'),
+    m = play(fx),
+    before = { ovr: g.ovr(you), power: you.power, def: you.def, speed: you.speed, jump: you.jump, wit: you.wit };
+  m.played.add(you.id);
+  fx.onFinish(m);
+  eq(run.mlog.length, 1, 'an evaluation adds one entry');
+  const e = run.mlog[0];
+  eq(e.kind, 'eval', 'kind');
+  eq(JSON.stringify(e.score), JSON.stringify([m.setScores[0][0], m.setScores[0][1]]), 'score');
+  eq(e.win, m.winner === 0, 'win');
+  eq(JSON.stringify(e.you), JSON.stringify(before), 'you = your stats before the match');
+  const ids = e.box.filter(b => b.you).length;
+  eq(ids, 1, 'you appear once in the box');
+  eq(e.box.length, m.played.size, 'the box has every player who played, once');
+  eq(JSON.stringify(JSON.parse(JSON.stringify(e))), JSON.stringify(e), 'plain JSON');
+  // a challenge and a street fight
+  run.days = g.WEEK_DAYS;
+  run.week = 5;
+  run.money = 500;
+  const ti = g.FACTIONS.findIndex(f => f.region === 'outlaws');
+  const stake = g.CHALLENGE.outlaws.minStake,
+    fc = g.Cup.challenge(run, ti, stake),
+    mc = play(fc);
+  fc.onFinish(mc);
+  eq(run.mlog.length, 2, 'a challenge adds one entry');
+  eq(run.mlog[1].kind, 'challenge', 'kind challenge');
+  eq(run.mlog[1].stake, stake, 'with its stake');
+  eq(run.mlog[1].win, mc.winner === 0, 'win');
+  run.days = 7;
+  run.lastFight = null; // (no fight ban or injury after the challenge)
+  run.injury = null;
+  run.event = null;
+  run.pos = [470, 600];
+  run.clash = { site: 0, seen: false, done: false };
+  const fs = g.Cup.clash(run, g.CLASH.sites[0].a),
+    ms = play(fs);
+  fs.onFinish(ms);
+  eq(run.mlog.length, 3, 'a street fight adds one entry');
+  eq(run.mlog[2].kind, 'street', 'kind street');
+  eq(run.mlog[2].win, ms.winner === 0, 'win');
+  eq(JSON.stringify(JSON.parse(JSON.stringify(run.mlog))), JSON.stringify(run.mlog), 'the whole log is plain JSON');
+  // trimming and repair
+  for (let i = 0; i < g.MLOG.max + 5; i++) run.mlog.push({ ...e, week: i });
+  run.days = g.WEEK_DAYS;
+  run.week = 8;
+  run.eval = null;
+  run.event = null;
+  const fx3 = g.Cup.fixture(run, 'eval'),
+    m3 = play(fx3);
+  fx3.onFinish(m3);
+  eq(run.mlog.length, g.MLOG.max, 'trimmed at MLOG.max');
+  eq(run.mlog[run.mlog.length - 1].week, 8, 'the newest is kept');
+  delete run.mlog;
+  g.Run.repair(run);
+  eq(JSON.stringify(run.mlog), '[]', 'repair adds mlog');
 });
 test('career: techniques are learned in play, not bought', () => {
   const g = load(71),
@@ -565,11 +964,41 @@ test('career: element hidden → revealed → Element Trial → unlocked, and sa
   assert(y2.elOn && y2.el === you.el && y2.sig.name === you.sig.name, 'element survives save/load');
 });
 
+test('engine: the setter takes the second ball', () => {
+  const g = load(5);
+  let sets = 0,
+    ast = 0,
+    astNon = 0,
+    reach = 0;
+  for (let i = 0; i < 400; i++) {
+    const T = g.mkTeams(),
+      m = g.newMatch(T[i % 8], T[(i + 3) % 8], false);
+    while (!m.over) g.playRally(m);
+    for (const e of m.setBy || []) {
+      sets++;
+      if (e.why === 'reach') {
+        reach++;
+        assert(e.role !== 'S' && e.ts > g.SETTER.beat * e.tm, `a teammate sets only when out-reaching the setter (${e.ts} vs ${e.tm})`);
+      } else if (e.why === 'free') {
+        assert(e.role === 'S' && (e.tm === null || e.ts <= g.SETTER.beat * e.tm), 'otherwise the free setter sets');
+      } else assert(e.why === 'none', 'a non-setter sets with no setter free: the setter passed or is busy');
+    }
+    for (const side of m.t)
+      for (const p of [...side.P, ...side.bench]) {
+        const s = m.stat[p.id];
+        if (!s) continue;
+        ast += s.ast;
+        if (p.role !== 'S') astNon += s.ast;
+      }
+  }
+  assert(sets > 4000 && reach > 0, `sets were judged (${sets}, ${reach} won by reach)`);
+  assert(astNon / ast < 0.11, `assists by non-setters ${((100 * astNon) / ast).toFixed(1)} % (was ~12.5 %)`);
+});
 test('engine: staged scenes are rare and well-formed', () => {
   const g = load(31);
   let scenes = 0,
     matches = 0;
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 30; i++) {
     const [a, b] = g.mkTeams(),
       ids = new Set([...g.squadOf(a), ...g.squadOf(b)].map(p => p.id)),
       m = g.newMatch(a, b, true);
@@ -584,7 +1013,7 @@ test('engine: staged scenes are rare and well-formed', () => {
     matches++;
   }
   const per = scenes / matches;
-  assert(per >= 1 && per <= 8, `scenes per match ${per}`); // target ≈ 6–7 on average; 10 matches are noisy
+  assert(per >= 1 && per <= 8, `scenes per match ${per}`); // target ≈ 6–7 on average; 30 matches (10 were noisy: T-054 moved the random stream)
 });
 
 test('engine: recorded beats stay well-formed in every mode (no NaN, known players, matches end)', () => {
@@ -735,7 +1164,7 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   const td = g.City.travelDays(run, [700, 300]);
   assert(g.City.travelTo(run, [700, 300]) && g.City.days(run) === 7 - td && g.City.loc(run) === 'wei', 'walked into the city');
   assert(g.City.seen(run, [720, 320]), 'the fog lifts around you');
-  eq(g.City.regionAt([500, 320]), 'open', 'Central Academy belongs to nobody');
+  eq(g.City.regionAt([540, 500]), 'open', 'Central Academy belongs to nobody');
   eq(g.City.regionAt([815, 470]), 'outlaws', 'the overpass is the Outlaws');
   g.Run.endWeek(run);
   // home turf: your faction's region
@@ -760,6 +1189,7 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
     r0 = g.City.rep(run, c.b),
     cc = g.City.clashCost(run),
     clashSp0 = run.sp;
+  for (const k of g.STATK) g.Run.you(run)[k] = 70; // (a new player starts at 1: give you a normal player's line so the match XP shows)
   const fx = g.Cup.clash(run, c.a);
   assert(fx && !run.clash.done && run.days === 7, 'nothing is spent until the match ends');
   assert([...fx.a.P, ...fx.a.bench].includes(g.Run.you(run)) && fx.a.P.includes(g.Run.you(run)), 'you are on court for your side');
@@ -964,6 +1394,74 @@ test('career: reserves grow and get promoted', () => {
     'every team still has 4 players'
   );
   for (const r of Object.keys(g.POOL)) eq(g.Pool.size(run, r), sizes[r], `pool ${r} size unchanged`);
+});
+
+test('map: official venues', () => {
+  const g = load(21),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Venue' }),
+    N = g.ROADS.nodes,
+    V = g.VENUES,
+    ids = Object.keys(V);
+  eq(ids.join(','), 'arena,hall,beach,highland', 'four venues, named in the spec');
+  eq(ids.map(id => V[id].name).join(' | '), 'League Arena | Academy Hall | Beach Stadium | Highland Court', 'their names');
+  for (const id of ids) {
+    const v = V[id];
+    assert(g.City.onLand(v.at) && g.City.regionAt(v.at) === v.region, `${id} stands on land in its region`);
+    assert(N[`venue:${id}`] && N[`venue:${id}`][0] === v.at[0] && N[`venue:${id}`][1] === v.at[1], `${id} is a road node at its spot`);
+    assert(
+      g.ROADS.edges.some(e => e.includes(`venue:${id}`)),
+      `${id} is joined to a road`
+    );
+  }
+  assert(g.MapModel.onSand(V.beach.at), 'the Beach Stadium stands on the sand');
+  eq(g.REGIONS.open.at.join(','), g.CITY.park.x + ',' + g.CITY.park.y, 'the Academy region sits at the Academy');
+  // reachable from the airport (the world test walks every node; here the route itself)
+  for (const id of ids) {
+    const r = g.City.route(g.CITY.airport, V[id].at);
+    assert(r.length >= 2 && r[r.length - 1][0] === V[id].at[0], `a route from the airport to ${id}`);
+  }
+  // landmarks and pins: always there, never fogged
+  run.fog = [];
+  let draws = 0;
+  const next = g.RNG.next;
+  g.RNG.next = () => (draws++, next());
+  const M = g.MapModel.build(run, null);
+  eq(draws, 0, 'no randoms drawn');
+  g.RNG.next = next;
+  const KIND = { arena: 'arena', hall: 'hall', beach: 'stadium', highland: 'hillcourt' };
+  for (const id of ids) {
+    const lm = M.land.landmarks.find(l => l.id === `venue:${id}`),
+      pin = M.pins.find(p => p.id === `venue:${id}`);
+    assert(lm && lm.kind === KIND[id] && lm.region === V[id].region, `${id} is a landmark of kind ${KIND[id]}`);
+    assert(pin && pin.kind === 'venue' && pin.title === V[id].name && !pin.flags.today, `${id} has a pin, not lit on a training week`);
+  }
+  // no lot within a venue's clearance
+  assert(
+    M.land.lots.every(l => ids.every(id => Math.hypot(l.at[0] - V[id].at[0], l.at[1] - V[id].at[1]) >= V[id].clear - 0.2)),
+    'no lot within a venue clearance (lot spots are rounded to 0.1)'
+  );
+  // City.venue: where this week's match is played
+  run.event = null;
+  run.week = 1;
+  eq(g.City.venue(run), null, 'a training week has no venue');
+  run.week = 4;
+  run.eval = null;
+  eq(g.City.venue(run), 'hall', 'an Academy evaluation is held at the Academy Hall');
+  eq(g.MapModel.build(run, null).pins.find(p => p.id === 'venue:hall').flags.today, true, 'and the hall glows');
+  eq(g.MapModel.build(run, null).pins.find(p => p.id === 'venue:arena').flags.today, false, 'the arena does not');
+  for (const [region, want] of [
+    ['wei', 'arena'],
+    ['wu', 'beach'],
+    ['shu', 'highland'],
+    ['outlaws', null]
+  ]) {
+    run.team = g.FACTIONS.findIndex(f => f.region === region);
+    run.eval = null;
+    eq(g.City.venue(run), want, `a ${region} member's evaluation → ${want}`);
+  }
+  run.team = null;
+  run.cup = { id: g.CUPS[0].id, done: false };
+  eq(g.City.venue(run), 'arena', 'a cup week is played at the League Arena');
 });
 
 test('career: evaluation rules', () => {
@@ -1251,6 +1749,33 @@ test('teams: 4 on court + 2 bench, unique numbers, captain on court', () => {
   eq(g.squadOf(back.pickup).length, 6, 'the Academy squad has 6');
 });
 
+test('engine: stat guard — invalid stats are repaired, valid ones untouched', () => {
+  const g = load(5);
+  const T = g.mkTeams();
+  const p = T[0].P[2];
+  const ok = T[1].P.map(q => JSON.stringify([q.power, q.def, q.speed, q.jump, q.wit]));
+  Object.assign(p, { power: -40, def: NaN, speed: 300, wit: -1 });
+  const j = p.jump;
+  assert(g.fixStats(p) === 4, 'four values fixed');
+  eq(JSON.stringify([p.power, p.def, p.speed, p.jump, p.wit]), JSON.stringify([1, 1, 99, j, 0.1]));
+  assert(
+    T[1].P.every((q, i) => g.fixStats(q) === 0 && JSON.stringify([q.power, q.def, q.speed, q.jump, q.wit]) === ok[i]),
+    'valid players untouched'
+  );
+  Object.assign(T[0].P[3], { power: 0, speed: Infinity, jump: undefined, wit: NaN });
+  const m = g.newMatch(T[0], T[1], false);
+  while (!m.over) g.playRally(m);
+  assert(
+    m.over && T[0].P.every(q => [q.power, q.def, q.speed, q.jump].every(v => v >= 1 && v <= 99) && q.wit >= 0.1 && q.wit <= 3),
+    'the match ran on repaired stats'
+  );
+  const dmg = { name: 'x', sk: T[0].sk, bench: [], P: T[0].P.map(q => Object.assign({}, q, { team: undefined, speed: -5 })) };
+  const logged = [];
+  g.DBG.log = (...a) => logged.push(a[0]); // the headless context has no timers for the real log
+  const t2 = g.teamFromJSON(dmg);
+  assert(t2.P.every(q => q.speed === 1) && logged[0] === 'warn', 'teamFromJSON repairs a damaged save and logs a warning');
+});
+
 test('engine: substitutions — rule, limit, restore', () => {
   const g = load(5),
     T = g.mkTeams(),
@@ -1492,6 +2017,90 @@ test('career: team challenge — worth, refusal, stake payout', () => {
   fx1.onFinish(mm);
   assert(you.team === run.pickup || you.team === g.Run.myTeam(run), 'you are back on your own team after the match');
   assert(run.money !== m1 && /crew/.test(run.log[0].t), 'the crew is paid');
+});
+
+test('career: challenge loss and injury', () => {
+  const g = load(72),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Loser', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    you = g.Run.you(run),
+    ti = g.FACTIONS.findIndex(f => f.region === 'outlaws'),
+    r = 'outlaws',
+    fresh = () => {
+      run.sta = run.staMax;
+      run.mood = 2;
+      run.money = 500;
+      run.days = g.WEEK_DAYS;
+      run.event = null;
+      run.injury = null;
+      run.lastFight = null;
+    },
+    play = (stake = 50) => {
+      const fx = g.Cup.challenge(run, ti, stake),
+        m = g.newMatch(fx.a, fx.b, false);
+      while (!m.over) g.playRally(m);
+      return { m, line: fx.onFinish(m) };
+    };
+  // 'unlucky' rolls: R() = 0.99 → never injured; forced low → injured
+  const roll = v => (g.RNG.next = () => v);
+  roll(0.99);
+  fresh();
+  for (const p of g.squadOf(run.teams[ti])) for (const k of g.STATK) p[k] = 99;
+  for (const p of g.squadOf(run.pickup)) for (const k of g.STATK) p[k] = 25;
+  const sta0 = run.sta,
+    mood0 = run.mood,
+    rep0 = g.City.rep(run, r);
+  let res = play();
+  assert(res.m.winner === 1, 'weakened side loses');
+  assert(
+    run.sta <= sta0 - g.LOSS.sta - g.CLASH.sta + 1 && run.mood === mood0 + g.LOSS.mood && g.City.rep(run, r) <= rep0 + g.LOSS.rep,
+    `a loss costs stamina, mood and standing: ${res.line}`
+  );
+  eq(run.losses[r], 1, 'the loss is counted');
+  assert(
+    run.news.some(t => /Loser/.test(t)),
+    'a heavy loss earns a Gazette jab'
+  );
+  assert(run.lastFight === g.Run.dayNo(run), 'the fight day is recorded');
+  // the 3rd loss to a faction adds the extra standing hit
+  run.losses[r] = g.LOSS.repeat - 1;
+  fresh();
+  run.week += 1;
+  run.rep[r] = 0;
+  res = play();
+  assert(g.City.rep(run, r) <= g.LOSS.rep + g.LOSS.repeatRep, `third loss: extra standing hit (${g.City.rep(run, r)})`);
+  // risk rises with the gap, the margin, low stamina and a fight on the same day; clamped at max
+  fresh();
+  const R0 = g.City.injuryRisk(run, 60);
+  assert(g.City.injuryRisk(run, 99) > R0, 'risk rises with their rating');
+  assert(g.City.injuryRisk(run, 60, 10) > R0, 'and the margin of defeat');
+  run.sta = 20;
+  assert(g.City.injuryRisk(run, 60) > R0, 'and low stamina');
+  fresh();
+  run.lastFight = g.Run.dayNo(run);
+  assert(g.City.injuryRisk(run, 60) > R0, 'and fighting on the same day');
+  eq(g.City.injuryRisk(run, 999, 99), g.INJURY.max, 'clamped at INJURY.max');
+  // forced low: a severe injury — 3 weeks and −2 on one stat
+  fresh();
+  for (const k of g.STATK) you[k] = 60;
+  const before = g.STATK.map(k => you[k]);
+  let n = 0;
+  g.RNG.next = () => (n++ ? 0.97 : 0.0);
+  const txt = g.Cup.injure(run, 0.5);
+  assert(run.injury && run.injury.weeks === g.INJURY.weeks.severe && /severe/.test(txt), `severe: ${txt}`);
+  const lost = g.STATK.filter((k, i) => you[k] < before[i]);
+  assert(lost.length === 1 && before[g.STATK.indexOf(lost[0])] - you[lost[0]] === g.INJURY.lose, 'one stat loses INJURY.lose for good');
+  // an injured player can't challenge or fight and is benched by Run.lineup
+  roll(0.99);
+  eq(g.City.fightBan(run), 'Injured — rest first', 'the ban text');
+  eq(g.City.challenge(run, ti, 50), null, 'no challenge while injured');
+  eq(g.Cup.challenge(run, ti, 50), null, 'no challenge match while injured');
+  const L = g.Run.lineup(run, run.pickup, null, true);
+  assert(!L.starts, 'an injured you is benched');
+  // the physio clears the weeks but not the stat
+  run.sp = 99;
+  assert(g.Training.physio(run) && !run.injury, 'physio heals the injury');
+  assert(you[lost[0]] === before[g.STATK.indexOf(lost[0])] - g.INJURY.lose, 'but not the lost stat');
+  eq(g.RUN_VERSION, 8, 'save v8');
 });
 
 test('career: your coach picks the 4 — bench start, never played, part rewards', () => {

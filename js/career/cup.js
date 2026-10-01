@@ -156,7 +156,7 @@ const Cup = {
    */
   clash(run, side) {
     const c = City.clashSite(run);
-    if (!c || run.event || City.noTime(run, City.clashCost(run)) || (side !== c.a && side !== c.b)) return null;
+    if (!c || run.event || City.fightBan(run) || City.noTime(run, City.clashCost(run)) || (side !== c.a && side !== c.b)) return null;
     const foe = side === c.a ? c.b : c.a,
       you = Run.you(run),
       ids = Pool.draw(run, side, 1)[0].map(p => p.id);
@@ -222,7 +222,8 @@ const Cup = {
   challenge(run, ti, stake = 0) {
     const side = City.challengeSide(run),
       W = City.worth(run, ti, stake);
-    if (!W || !W.accepts || run.event || City.noTime(run, City.scoutCost(run, ti)) || run.money < side.cost) return null;
+    if (!W || !W.accepts || run.event || City.fightBan(run) || City.noTime(run, City.scoutCost(run, ti)) || run.money < side.cost)
+      return null;
     stake = clamp(Math.round(stake) || 0, 0, City.stakeMax(run));
     const opp = run.teams[ti],
       mine = side.kind === 'hired' ? Cup.hired(run) : side.T;
@@ -245,6 +246,35 @@ const Cup = {
       }
     };
   },
+  /** The price of a lost challenge / street fight (LOSS): stamina and mood; standing with `region` (challenges: null for a street fight, which keeps CLASH.lose); a heavy loss costs fans and a Gazette jab. Pushes labels onto `out`. */
+  lose(run, club, margin, region, out) {
+    const L = LOSS;
+    out.push(Run.bump(run, 'sta', -L.sta), Run.bump(run, 'mood', L.mood));
+    if (region) {
+      const n = (run.losses[region] = (run.losses[region] || 0) + 1);
+      out.push(City.repBump(run, region, L.rep + (n >= L.repeat ? L.repeatRep : 0)));
+    }
+    if (margin >= L.heavy) {
+      out.push(Run.bump(run, 'fans', L.fans));
+      Run.news(
+        run,
+        GAZETTE_JABS[Math.floor(hstr(`${run.week}|${club}`) * GAZETTE_JABS.length)]
+          .replace('{name}', Run.you(run).name)
+          .replace('{club}', club)
+      );
+    }
+  },
+  /** One injury roll after a challenge / street fight, win or lose (INJURY; `risk` from City.injuryRisk). Returns the diary text ('' if unhurt). */
+  injure(run, risk) {
+    const I = INJURY;
+    if (R() >= risk) return '';
+    const roll = R(),
+      sev = roll < I.sev[0] ? 'minor' : roll < I.sev[1] ? 'serious' : 'severe',
+      weeks = I.weeks[sev];
+    run.injury = { weeks: Math.max(weeks, run.injury ? run.injury.weeks : 0) };
+    const lost = sev === 'severe' ? Run.bump(run, STATK[Math.floor(((roll * 997) % 1) * STATK.length)], -I.lose) : '';
+    return `Injured: ${sev} — ${weeks} week${weeks > 1 ? 's' : ''} of light training${lost ? `. ${lost} for good` : ''}`;
+  },
   /** After a challenge: the trip + a day, the stake at odds (or lost), the crew's pay, standing, fans, match XP, techniques, street points. Returns the log line. */
   challengeResult(run, m, ti, stake, side) {
     const t = run.teams[ti],
@@ -253,8 +283,10 @@ const Cup = {
       you = Run.you(run),
       s = m.stat[you.id] || blank(),
       [grade, , gmul] = Cup.grade(s, win),
-      trip = City.go(run, CITY.hq[ti]),
       sc = m.setScores[0],
+      margin = win ? 0 : Math.max(0, sc[1] - sc[0]),
+      risk = City.injuryRisk(run, t.ovr, margin), // (before the trip, the day and the match's tiredness are counted)
+      trip = (Cup.record(run, m, 'challenge', { stake }), City.go(run, CITY.hq[ti])),
       out = [Growth.matchXp(run, m), Skills.tryLearn(run, m)];
     if (side.cost) {
       const pay = Math.min(run.money, side.cost);
@@ -268,9 +300,12 @@ const Cup = {
       run.money += gain;
       if (stake) out.push(`+$${gain} (stake ×${odds.toFixed(1)})`);
       out.push(City.repBump(run, r, CLASH.win), Run.bump(run, 'fans', Math.round(CLASH.fans * gmul)));
-    } else if (stake) {
-      run.money -= stake;
-      out.push(`−$${stake} stake`);
+    } else {
+      if (stake) {
+        run.money -= stake;
+        out.push(`−$${stake} stake`);
+      }
+      Cup.lose(run, t.name, margin, r, out);
     }
     out.push(Run.bump(run, 'sta', -CLASH.sta));
     Rank.points(run, you.id, RANK.street.fight + (win ? RANK.street.win : 0));
@@ -279,6 +314,8 @@ const Cup = {
     run.plays.blk += s.blk;
     run.plays.ace += s.ace;
     run.focus = null;
+    out.push(Cup.injure(run, risk));
+    run.lastFight = Run.dayNo(run);
     const line = `${trip}Challenged ${t.name} — ${win ? 'won' : 'lost'} ${sc[0]}-${sc[1]}, grade ${grade}. You: ${s.k} kills, ${s.blk} blocks, ${s.ace} aces · ${out.filter(Boolean).join(', ')}`;
     Run.log(run, line);
     Run.save(run);
@@ -291,8 +328,10 @@ const Cup = {
       you = Run.you(run),
       s = m.stat[you.id] || blank(),
       [grade, , gmul] = Cup.grade(s, win),
-      trip = City.go(run, c.at),
       sc = m.setScores[0],
+      margin = win ? 0 : Math.max(0, sc[1] - sc[0]),
+      risk = City.injuryRisk(run, City.crewOvr(run, foe), margin),
+      trip = (Cup.record(run, m, 'street'), City.go(run, c.at)),
       out = [Growth.matchXp(run, m), Skills.tryLearn(run, m)];
     run.clash.done = true;
     const front = Front.result(run, win ? side : foe, win ? foe : side);
@@ -301,14 +340,54 @@ const Cup = {
     Rank.meet(run, m);
     out.push(City.repBump(run, side, win ? CLASH.win : CLASH.lose), City.repBump(run, foe, CLASH.other), Run.bump(run, 'sta', -CLASH.sta));
     if (win) out.push(Run.bump(run, 'fans', Math.round(CLASH.fans * gmul)));
+    else Cup.lose(run, `${REGIONS[foe].name} crew`, margin, null, out);
     run.plays.k += s.k;
     run.plays.blk += s.blk;
     run.plays.ace += s.ace;
     run.focus = null;
+    out.push(Cup.injure(run, risk));
+    run.lastFight = Run.dayNo(run);
     const line = `${trip}Fought for ${REGIONS[side].name} in the street battle — ${win ? 'won' : 'lost'} ${sc[0]}-${sc[1]}, grade ${grade}. You: ${s.k} kills, ${s.blk} blocks, ${s.ace} aces · ${out.filter(Boolean).join(', ')}${front ? `. ${front}!` : ''}`;
     Run.log(run, line);
     Run.save(run);
     return line;
+  },
+  /**
+   * Log one of your matches on `run.mlog` (T-052; plain numbers and strings only, newest last, trimmed to MLOG.max): the opponent, score, win,
+   * your grade, your stats at kick-off (call this BEFORE Growth.matchXp), your line and the box score of everyone who played.
+   * extra: { round, stake } for a cup tie / challenge.
+   */
+  record(run, m, kind, extra = {}) {
+    const you = Run.you(run),
+      played = m.played.has(you.id),
+      win = m.winner === 0,
+      sc = m.setScores[0],
+      line = p => {
+        const s = m.stat[p.id] || blank();
+        return { k: s.k, att: s.att, err: s.err, blk: s.blk, ace: s.ace, dig: s.dig, ast: s.ast };
+      },
+      box = [];
+    [0, 1].forEach(side => {
+      for (const p of [...m.lineup0[side].P, ...m.lineup0[side].bench])
+        if (m.played.has(p.id))
+          box.push({ name: p.name, role: p.role, side, ovr: ovr(p), ...line(p), ...(p.id === you.id ? { you: 1 } : {}) });
+    });
+    run.mlog.push({
+      week: run.week,
+      day: Run.dayNo(run),
+      kind,
+      vs: m.t[1].name,
+      short: m.t[1].short || '',
+      score: [sc[0], sc[1]],
+      win,
+      grade: played ? Cup.grade(m.stat[you.id] || blank(), win)[0] : null,
+      played,
+      ...extra,
+      you: { ovr: ovr(you), power: you.power, def: you.def, speed: you.speed, jump: you.jump, wit: you.wit },
+      line: line(you),
+      box
+    });
+    if (run.mlog.length > MLOG.max) run.mlog.splice(0, run.mlog.length - MLOG.max);
   },
   /** Your grade for one match (S–C) from your own line. */
   grade(s, win) {
@@ -331,6 +410,7 @@ const Cup = {
       sc = m.setScores[0],
       score = `${sc[0]}-${sc[1]}`,
       opp = m.t[1];
+    Cup.record(run, m, kind, kind === 'cup' ? { round: bm.round } : {});
     let line,
       grade = null;
     if (!played) {

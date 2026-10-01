@@ -6,7 +6,7 @@ const HUB_DRAWERS = {
   me: ['👤', 'Player', run => youCard(run) + seasonCard(run)],
   team: ['🤝', 'Team', run => bondCard(run)],
   skills: ['✨', 'Skills', run => skillShop(run, true)],
-  season: ['📅', 'Season', run => `<div class="panel">${calendar(run)}</div>` + seasonCard(run)],
+  season: ['📅', 'Season', run => `<div class="panel">${calendar(run)}</div>` + seasonCard(run) + matchLog(run)],
   life: ['🏠', 'Life', run => lifeCard(run)],
   clubs: ['🛡', 'Clubs', run => clubsCard(run)],
   factions: ['⚖', 'Factions', run => factionsCard(run)],

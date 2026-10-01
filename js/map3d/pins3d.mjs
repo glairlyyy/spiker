@@ -5,6 +5,7 @@
 //   createFurniture(scene, heightAt) → { layer, sync(model, on), select(id), pulse(strength, t), tick(cam, w, h, dist), dispose() }
 import * as THREE from 'three';
 import { MAP_M } from './map3d.mjs';
+import { landmarkHeight } from './kit3d.mjs';
 
 const FLAGCLS = {
     off: 'off',
@@ -15,11 +16,12 @@ const FLAGCLS = {
     hq: 'hq',
     can: 'can',
     mine: 'mine',
-    clash: 'clash'
+    clash: 'clash',
+    today: 'today'
   },
   KIND_Z = { hq: 1, spot: 2, clash: 3 },
   LABEL_FADE = [30, 70], // camera distance (m): labels vanish at the first, are fully shown at the second
-  PIN_UP = 2.2, // pins float this far above the ground (m)
+  PIN_UP = 2.2, // pins float this far above their landmark's roof, or the ground (m)
   esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 const smooth = (a, b, v) => {
@@ -141,8 +143,9 @@ export function createFurniture(scene, heightAt) {
         ap.innerHTML = '<i>✈</i>Airport';
         add(ap, m.land.airport, 2, { label: true, dy: 30 }); // below the spot where you arrive
       }
-      if (changed('pins', m.pins)) {
+      if (changed('pins', [m.pins, m.land.landmarks])) {
         drop('mpin');
+        const lmk = new Map(m.land.landmarks.map(l => [l.id, l.kind]));
         for (const p of m.pins) {
           const e = document.createElement('button'),
             cls = Object.keys(p.flags || {})
@@ -158,7 +161,7 @@ export function createFurniture(scene, heightAt) {
           e.style.zIndex = KIND_Z[p.kind] || 2;
           e.innerHTML = `<i>${p.icon}</i>${p.badge ? `<b>${esc(p.badge)}</b>` : ''}`;
           e.addEventListener('click', () => on.pick(p.id));
-          add(e, p.at, PIN_UP);
+          add(e, p.at, PIN_UP + (lmk.has(p.id) ? landmarkHeight(lmk.get(p.id)) : 0));
         }
       }
       if (changed('flag', m.flag)) {

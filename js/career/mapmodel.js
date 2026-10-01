@@ -28,12 +28,159 @@ const MapModel = {
         big: MAJORS.includes(id),
         text: `${REGIONS[id].name}${id === mine ? ' · home turf' : ''}`
       })),
-      airport: CITY.airport
+      airport: CITY.airport,
+      roads: ROADS.edges.map(([a, b, kind]) => ({ kind, pts: [ROADS.nodes[a].slice(), ROADS.nodes[b].slice()] })),
+      dunes: CITY.dunes,
+      districts: DISTRICTS.map(d => ({ id: d.id, region: d.region, style: d.style, poly: MapModel.districtPoly(d) })),
+      lots: MapModel.lots(run),
+      landmarks: MapModel.landmarks(run)
     };
   },
+  /** Every place and club HQ with its landmark kind (LANDMARK): [{ id, at, kind, region }]. Your home sits where your housing is. */
+  landmarks: run => [
+    ...Object.keys(SPOTS).map(id => ({ id, at: City.at(run, id), kind: LANDMARK[id], region: City.region(run, id) })),
+    ...CITY.hq.map((at, i) => ({ id: `hq${i}`, at, kind: LANDMARK.hq, region: FACTIONS[i].region })),
+    ...Object.entries(VENUES).map(([id, v]) => ({ id: `venue:${id}`, at: v.at, kind: v.kind, region: v.region })),
+    { id: 'ritual', at: CITY.ritual, kind: 'ritual', region: 'open' } // the old ritual ground: no pin, no label
+  ],
+  /** The sand: Wu land between the dune line and the coast (the old Wu polygon, with the old coast, is the dry side). */
+  onSand(p) {
+    const dry = [...CITY.dunes, [430, 540], [540, 500], ...CITY.contest.slice().reverse()];
+    return inPoly(p, CITY.wu) && !inPoly(p, dry);
+  },
+  /** A district's polygon: `{ x, y, r }` → a 24-gon, 'beach' → the sand ring (dunes + coast), 'wei' → Wei's land, else the points. */
+  districtPoly(d) {
+    const q = d.poly;
+    if (q === 'beach') return [...CITY.dunes, ...CITY.beach.slice().reverse()];
+    if (q === 'wei') return CITY.wei;
+    if (Array.isArray(q)) return q;
+    return Array.from({ length: 24 }, (_, i) => [
+      q.x + q.r * Math.cos((i / 24) * Math.PI * 2),
+      q.y + q.r * Math.sin((i / 24) * Math.PI * 2)
+    ]);
+  },
+  /** A lot's wealth 0–1 (spec §4.19, WEALTH): Wei falls off smoothly from the downtown core; other regions a base ± a hash spread. */
+  wealth(region, p, id, district) {
+    const W = WEALTH,
+      j = (hstr(`${id}|w`) - 0.5) * 2;
+    if (region === 'wei') {
+      const d = Math.hypot(p[0] - W.weiCore[0], p[1] - W.weiCore[1]),
+        t = clamp(d / W.weiEdge, 0, 1),
+        w = W.weiFloor + (1 - W.weiFloor) * (1 - t * t * (3 - 2 * t)) + j * W.jitter;
+      return clamp(district === 'wei-oldtown' ? Math.min(w, W.oldtown) : w, 0, 1);
+    }
+    if (region === 'gloria') return clamp(W.gloria + j * 0.03, 0, 1);
+    if (region === 'open') return clamp(W.academy + j * 0.03, 0, 1);
+    if (region === 'outlaws') return clamp(W.outlaws + j * 0.03, 0, 1);
+    return clamp((W[region] === undefined ? W.wu : W[region]) + j * W.spread, 0, 1);
+  },
+  /**
+   * Settlement lots (spec §4.18, §4.19): [{ at, rot, size, style, kind, wealth, h, district }]. Each DISTRICT is filled with a grid of lots
+   * (spacing `gap`, rotated to the road nearest its middle, a hash of the slot vs `density`), earlier districts first. A lot never
+   * stands in the water, in another region, on the sand (beach districts: only on it), within a lot's width of a road (the overpass is
+   * elevated: lots may stand under it), within `placeClear` of a place, or on another lot. Outside the districts a road-side row
+   * (every SETTLE gap, both sides) is built at 0.4 × density. `wealth` (0–1, MapModel.wealth) scales a lot's side (× 0.7–1.3)
+   * and thins the grid (rich = sparser); `h` (0–1) is the height factor: = wealth in downtown, wealth × 0.4 elsewhere.
+   * Deterministic: fixed data + string hashes (hstr), no randoms. Cached per home spot (the only run-dependent input).
+   */
+  lots(run) {
+    const home = City.at(run, 'home'),
+      key = home.join(',');
+    if (MapModel.lotCache && MapModel.lotCache.key === key) return MapModel.lotCache.lots;
+    const N = ROADS.nodes,
+      places = [...Object.keys(SPOTS).map(id => City.at(run, id)), ...CITY.hq, CITY.ritual],
+      venues = Object.values(VENUES),
+      segD = (p, a, b) => {
+        const dx = b[0] - a[0],
+          dy = b[1] - a[1],
+          t = clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy), 0, 1);
+        return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+      },
+      flat = ROADS.edges.filter(([, , k]) => k !== 'overpass').map(([a, b]) => [N[a], N[b]]),
+      near = p => flat.reduce((m, [a, b]) => Math.min(m, segD(p, a, b)), Infinity),
+      polys = DISTRICTS.map(d => MapModel.districtPoly(d)),
+      inDistrict = p =>
+        DISTRICTS.some((d, i) => d.region === City.regionAt(p) && inPoly(p, polys[i]) && !!MapModel.onSand(p) === !!d.beach),
+      lots = [],
+      free = (p, size, reg) =>
+        City.onLand(p) &&
+        City.regionAt(p) === reg &&
+        near(p) >= size * 0.5 + 4 &&
+        places.every(q => Math.hypot(q[0] - p[0], q[1] - p[1]) >= MapModel.placeClear) &&
+        venues.every(v => Math.hypot(v.at[0] - p[0], v.at[1] - p[1]) >= v.clear) &&
+        lots.every(l => Math.hypot(l.at[0] - p[0], l.at[1] - p[1]) >= (l.size + size) * 0.55),
+      add = (p, rot, size, d, id, w) => {
+        lots.push({
+          at: [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10],
+          rot: Math.round(rot * 1000) / 1000,
+          size: Math.round(size * 10) / 10,
+          style: d.style,
+          kind: d.kinds[Math.floor(hstr(`${id}|k`) * d.kinds.length)],
+          wealth: Math.round(w * 100) / 100,
+          h: Math.round((d.id === 'wei-downtown' ? w : w * 0.4) * 100) / 100,
+          district: d.district || d.id
+        });
+      };
+    DISTRICTS.forEach((d, i) => {
+      const poly = polys[i],
+        xs = poly.map(q => q[0]),
+        ys = poly.map(q => q[1]),
+        c = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2],
+        R = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / 2,
+        // the grid follows the road nearest the middle
+        [a, b] = flat.reduce((m, e) => (segD(c, e[0], e[1]) < segD(c, m[0], m[1]) ? e : m), flat[0]),
+        th = Math.atan2(b[1] - a[1], b[0] - a[0]),
+        ux = Math.cos(th),
+        uy = Math.sin(th),
+        n = Math.ceil(R / d.gap) + 1;
+      for (let gi = -n; gi <= n; gi++)
+        for (let gj = -n; gj <= n; gj++) {
+          if (lots.length >= MapModel.maxLots) return;
+          const p = [c[0] + ux * gi * d.gap - uy * gj * d.gap, c[1] + uy * gi * d.gap + ux * gj * d.gap],
+            id = `${d.id}|${gi}|${gj}`;
+          if (!inPoly(p, poly) || !!MapModel.onSand(p) !== !!d.beach) continue;
+          const w = MapModel.wealth(d.region, p, id, d.id);
+          if (hstr(id) >= d.density * (1.15 - 0.45 * w)) continue;
+          const size = d.size * (0.85 + 0.3 * hstr(`${id}|s`)) * (0.7 + 0.6 * w);
+          if (!free(p, size, d.region)) continue;
+          add(p, th, size, d, id, w);
+        }
+    });
+    outer: for (const [ua, ub, kind] of ROADS.edges) {
+      if (kind === 'path' || kind === 'overpass' || kind === 'boardwalk') continue;
+      const a = N[ua],
+        b = N[ub],
+        L = Math.hypot(b[0] - a[0], b[1] - a[1]),
+        ux = (b[0] - a[0]) / L,
+        uy = (b[1] - a[1]) / L;
+      let at = 0;
+      while (at < L) {
+        const c = [a[0] + ux * at, a[1] + uy * at],
+          reg = City.regionAt(c),
+          cfg = SETTLE[reg] || SETTLE.open;
+        at += cfg.gap;
+        for (const side of [1, -1]) {
+          const id = `${ua}|${ub}|${Math.round(at)}|${side}`;
+          if (hstr(id) >= cfg.density * 0.4) continue;
+          const p = [c[0] - uy * side * cfg.setback, c[1] + ux * side * cfg.setback],
+            w = MapModel.wealth(reg, p, id, 'country'),
+            size = cfg.size * (0.85 + 0.3 * hstr(`${id}|s`)) * (0.7 + 0.6 * w);
+          if (MapModel.onSand(p) || inDistrict(p) || !free(p, size, reg)) continue;
+          if (lots.length >= MapModel.maxLots) break outer;
+          add(p, Math.atan2(uy, ux), size, { style: cfg.style, kinds: cfg.kinds, district: 'country' }, id, w);
+        }
+      }
+    }
+    MapModel.lotCache = { key, lots };
+    return lots;
+  },
+  /** Lots stay this far (map units) from a place or HQ: a landmark is up to ~38 units wide (a court), so ~20 clears its footprint. */
+  placeClear: 20,
+  /** Most settlement lots on the island. */
+  maxLots: 1400,
   /**
    * Pins: places, club HQs and this week's battle. flags: off (no time left for it), far (2+ day trip), turf,
-   * gem / overhyped (known quality), hq, can (a club you can sign with), mine (your club), clash.
+   * gem / overhyped (known quality), hq, can (a club you can sign with), mine (your club), clash, today (a venue where your match is this week; venues are always known).
    */
   pins(run) {
     const floor = run.floor || {},
@@ -73,6 +220,18 @@ const MapModel = {
         flags: { hq: true, can, mine: i === run.team }
       });
     });
+    const today = City.venue(run);
+    for (const [id, v] of Object.entries(VENUES))
+      out.push({
+        id: `venue:${id}`,
+        kind: 'venue',
+        at: v.at,
+        icon: '🏟',
+        color: REGIONS[v.region].color,
+        badge: '',
+        title: v.name,
+        flags: { today: id === today }
+      });
     const c = City.clashSite(run);
     if (c)
       out.push({

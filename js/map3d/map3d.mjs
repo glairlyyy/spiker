@@ -9,8 +9,11 @@ import * as THREE from 'three';
 import { createAvatar } from './avatar3d.mjs';
 import { createFurniture } from './pins3d.mjs';
 import { createLife } from './life3d.mjs';
+import { createTown } from './town3d.mjs';
 
 export const MAP_M = 0.5;
+export const FOG_DIM = 0.3; // brightness of unexplored terrain (the town layer dims by the same rule)
+export const FOG_SOFT = 14; // fog edge softness (m)
 export const toWorld = ([x, y]) => [x * MAP_M, y * MAP_M];
 export const toMap = (x, z) => [x / MAP_M, z / MAP_M];
 
@@ -19,9 +22,7 @@ const CELL = 2, // terrain grid cell (m)
   DIST = [25, 420],
   CLICK_PX = 5,
   BEACH = 12, // beach slope width (m)
-  IDLE_S = 3, // canvas detached this long → release the renderer
-  FOG_DIM = 0.3, // brightness of unexplored terrain
-  FOG_SOFT = 14; // fog edge softness (m)
+  IDLE_S = 3; // canvas detached this long → release the renderer
 
 const lerp = (a, b, t) => a + (b - a) * t,
   clamp = (v, a, b) => Math.min(b, Math.max(a, v)),
@@ -66,6 +67,35 @@ const edgeDist = (x, y, poly) => {
   return best;
 };
 
+/** Ground tint per district style (blended in faintly: no extra draw call). */
+const DISTRICT_TINT = {
+  city: '#8c8f96',
+  oldtown: '#8d7d68',
+  compound: '#c4b2d0',
+  shacks: '#7e6c58',
+  campus: '#86b866',
+  terrace: '#8a7b5c',
+  fishing: '#9a9172'
+};
+/** Signed distance (m) from a point to an open polyline: positive on its right-hand side (screen coordinates, y down). */
+const sideDist = (x, y, line) => {
+  let best = Infinity,
+    sign = 1;
+  for (let i = 0; i + 1 < line.length; i++) {
+    const [ax, ay] = line[i],
+      [bx, by] = line[i + 1],
+      dx = bx - ax,
+      dy = by - ay,
+      t = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1), 0, 1),
+      d = Math.hypot(x - (ax + dx * t), y - (ay + dy * t));
+    if (d < best) {
+      best = d;
+      sign = dy * (x - ax) - dx * (y - ay) >= 0 ? 1 : -1;
+    }
+  }
+  return best * sign;
+};
+
 /** The island's height grid and vertex colours (world metres), from the model's land. */
 function buildTerrain(model) {
   const L = model.land,
@@ -79,6 +109,9 @@ function buildTerrain(model) {
     coast = w(L.coast),
     shu = w((L.regions.find(r => r.id === 'shu') || { poly: [] }).poly),
     mtn = L.mountains.map(p => [p[0] * MAP_M, p[1] * MAP_M]),
+    wu = w((L.regions.find(r => r.id === 'wu') || { poly: [] }).poly),
+    dunes = L.dunes ? w(L.dunes) : [],
+    dist = L.districts ? L.districts.map(d => ({ poly: w(d.poly), tint: DISTRICT_TINT[d.style] })).filter(d => d.tint) : [],
     tint = new Map(L.regions.map(r => [r.id, new THREE.Color(r.color)])),
     pos = new Float32Array((nx + 1) * (nz + 1) * 3),
     col = new Float32Array((nx + 1) * (nz + 1) * 3),
@@ -87,6 +120,7 @@ function buildTerrain(model) {
     rock = new THREE.Color(0x7d7a70),
     sand = new THREE.Color(0xd8c690),
     seabed = new THREE.Color(0x2b5f6e),
+    tintC = new THREE.Color(),
     c = new THREE.Color();
   const regionColor = (mx, my) => {
     const p = L.park;
@@ -109,9 +143,16 @@ function buildTerrain(model) {
         k = j * (nx + 1) + i,
         land = inside(x, z, coast),
         d = edgeDist(x, z, coast);
+      // the Wu sand: between the dune line and the coast, wide and flat with a low dune ridge on the line
+      const sd0 = land && dunes.length && inside(x, z, wu) ? sideDist(x, z, dunes) : -99,
+        sd = sd0 > 45 ? -99 : sd0, // (far seaward of the line = the corner past its ends: not sand)
+        sand_ = sd > 0;
       let h;
       if (!land) h = -0.4 * Math.min(d, 10);
-      else {
+      else if (sand_ || (sd > -12 && sd <= 0)) {
+        const flat = sand_ ? 0.45 * smooth(0, 5, d) : 0.6 * smooth(0, BEACH, d);
+        h = flat + 0.9 * Math.exp(-((sd / 5) ** 2));
+      } else {
         let base = 0.6;
         if (shu.length) {
           const ds = inside(x, z, shu) ? edgeDist(x, z, shu) : 0,
@@ -133,6 +174,8 @@ function buildTerrain(model) {
         c.lerp(sand, 1 - smooth(1, BEACH, d));
         const rc = regionColor(x / MAP_M, z / MAP_M);
         if (rc) c.lerp(rc, 0.35);
+        if (sd > -99) c.lerp(sand, 0.95 * smooth(-3, 2, sd)); // the Wu sand
+        for (const q of dist) if (inside(x, z, q.poly)) c.lerp(tintC.set(q.tint), 0.16);
       }
       col.set([c.r, c.g, c.b], k * 3);
     }
@@ -202,6 +245,7 @@ export function create(host, onIdle) {
     dead = false,
     avatar = null,
     furn = null, // pins, labels, flag, decals (pins3d.mjs)
+    town = null, // roads, lots, landmarks (town3d.mjs)
     life = null, // figures, battle crowd, patrols, seized flags (life3d.mjs)
     pressure = 0, // the contested border's pressure 0..1 (pulse)
     clock = 0,
@@ -219,6 +263,7 @@ export function create(host, onIdle) {
     scene.add(mesh);
     water.position.set(terrain.W / 2, 0, terrain.D / 2);
     avatar = createAvatar(scene);
+    town = createTown(scene, terrain.heightAt);
     furn = createFurniture(scene, terrain.heightAt);
     life = createLife(scene, terrain.heightAt);
     furn.layer.addEventListener('wheel', onWheel, { passive: false }); // wheel over a pin still zooms
@@ -375,6 +420,7 @@ export function create(host, onIdle) {
     /** New model: first time stand at you.at, later walk there when it changed. */
     update(m) {
       if (!furn) return;
+      town.sync(m);
       furn.sync(m, on);
       life.sync(m);
       const bd = m.life && m.life.borders.find(b => b.a === 'wei' && b.b === 'wu');
@@ -385,7 +431,7 @@ export function create(host, onIdle) {
       const key = at.join(',');
       if (seen === null) avatar.snap(at);
       else if (key !== seen) {
-        avatar.setTarget(at);
+        avatar.setTarget(at, m.you.route);
         follow = true;
       }
       seen = key;
@@ -404,6 +450,7 @@ export function create(host, onIdle) {
       dead = true;
       if (avatar) avatar.dispose();
       if (furn) furn.dispose();
+      if (town) town.dispose();
       if (life) life.dispose();
       if (raf) cancelAnimationFrame(raf);
       if (ro) ro.disconnect();

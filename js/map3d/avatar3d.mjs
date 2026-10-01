@@ -1,6 +1,6 @@
 // The player on the 3D map: the default VRM model, idle-breathing, walking or running to wherever the rules put
 // the player. Display only — the rules move instantly; this animates from the previously shown position.
-//   createAvatar(scene) → { setTarget([x, y]), snap([x, y]), tick(dt, heightAt), busy(), pos(), lapse(), dispose() }
+//   createAvatar(scene) → { setTarget([x, y], path?), snap([x, y]), tick(dt, heightAt), busy(), pos(), lapse(), dispose() }
 // Map points are map units (see toWorld in map3d.mjs). Until the model has loaded a capsule marks the spot.
 import * as THREE from 'three';
 import { VRMUtils } from '@pixiv/three-vrm';
@@ -17,7 +17,8 @@ const MODEL_URL = new URL('../../assets/vrm/base.glb.txt', import.meta.url).href
   RUN_AT = 2.5; // m/s: above this the gait blends into a run
 
 const cl = (v, a, b) => Math.max(a, Math.min(b, v)),
-  wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+  wrap = a => Math.atan2(Math.sin(a), Math.cos(a)),
+  segYaw = (pts, i) => Math.atan2(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]); // facing along segment i
 
 export function createAvatar(scene) {
   const marker = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 1.1, 4, 10), new THREE.MeshStandardMaterial({ color: 0xffb020 }));
@@ -45,29 +46,19 @@ export function createAvatar(scene) {
       [S.x, S.z] = toWorld(at);
       S.walk = null;
     },
-    /** Walk (or run) to a map point from where the avatar stands now. */
-    setTarget(at) {
-      const [tx, tz] = toWorld(at),
-        dx = tx - S.x,
-        dz = tz - S.z,
-        dist = Math.hypot(dx, dz);
+    /** Walk (or run) to a map point from where the avatar stands now; `path` (map points, optional) is the road to follow. */
+    setTarget(at, path) {
+      const pts = [[S.x, S.z]];
+      if (path && path.length > 1) for (const p of path.slice(1, -1)) pts.push(toWorld(p));
+      pts.push(toWorld(at));
+      const cum = [0];
+      for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+      const dist = cum[cum.length - 1];
       if (dist < 0.5) return this.snap(at);
       const dur = cl(dist / SPEED, TIME[0], TIME[1]),
         r = Math.min(RAMP, dur / 2);
-      // trapezoid speed profile: ramp up, cruise at vc, ramp down; the area under it is the distance
-      S.walk = {
-        sx: S.x,
-        sz: S.z,
-        dx: dx / dist,
-        dz: dz / dist,
-        dist,
-        dur,
-        r,
-        vc: dist / (dur - r),
-        t: -TURN,
-        s: 0,
-        yaw: Math.atan2(dx, dz)
-      };
+      // trapezoid speed profile: ramp up, cruise at vc, ramp down; the area under it is the distance along the path
+      S.walk = { pts, cum, i: 0, dist, dur, r, vc: dist / (dur - r), t: -TURN, s: 0, yaw: segYaw(pts, 0) };
     },
     busy: () => !!S.walk,
     pos: () => [S.x, S.z],
@@ -86,8 +77,13 @@ export function createAvatar(scene) {
         else if (t < dur - r) [s, v] = [vc * (r / 2 + t - r), vc];
         else [s, v] = [dist - (vc * (dur - t) ** 2) / (2 * r), (vc * (dur - t)) / r];
         W.s = s;
-        S.x = W.sx + W.dx * s;
-        S.z = W.sz + W.dz * s;
+        while (W.i < W.pts.length - 2 && s > W.cum[W.i + 1]) W.i++;
+        const a = W.pts[W.i],
+          b = W.pts[W.i + 1],
+          f = cl((s - W.cum[W.i]) / (W.cum[W.i + 1] - W.cum[W.i] || 1), 0, 1);
+        S.x = a[0] + (b[0] - a[0]) * f;
+        S.z = a[1] + (b[1] - a[1]) * f;
+        W.yaw = segYaw(W.pts, W.i);
         S.yaw += wrap(W.yaw - S.yaw) * (1 - Math.exp(-dt / 0.08));
         if (W.t >= dur) S.walk = null;
       }

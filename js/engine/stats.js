@@ -8,11 +8,13 @@ const buffLv = p => (CM && CM.buff && CM.buff[p.id] ? CM.buff[p.id].lv : 0);
 const W = p => (CM && CM.mood ? clamp(p.wit * (1 + 0.12 * (CM.mood[p.id] || 0)) + 0.08 * buffLv(p), 0.1, 2) : p.wit);
 const staOf = p => (CM && CM.sta && CM.sta[p.id] != null ? CM.sta[p.id] : 1);
 const boost = p =>
-  CM && CM.mood ? (1 + 0.06 * CM.mom[sideOf(p)] + 0.05 * (CM.mood[p.id] || 0)) * (0.85 + 0.15 * staOf(p)) * (1 + 0.05 * buffLv(p)) : 1;
+  CM && CM.mood
+    ? (1 + 0.06 * CM.mom[sideOf(p)] + 0.05 * (CM.mood[p.id] || 0)) * (1 - RULES.stamina.hit * (1 - staOf(p))) * (1 + 0.05 * buffLv(p))
+    : 1;
 const witMul = w => 0.75 + 0.25 * w;
 const effP = p => p.power * witMul(W(p)) * boost(p);
 const effD = p => p.def * witMul(W(p)) * boost(p);
-const jumpPx = p => (20 + p.jump * 0.9 * p.team.S.jump) * (0.85 + 0.15 * staOf(p));
+const jumpPx = p => (20 + p.jump * 0.9 * p.team.S.jump) * (1 - RULES.stamina.jumpHit * (1 - staOf(p)));
 const jumpCm = p => Math.round(45 + p.jump * 0.55 * p.team.S.jump);
 const kmh = pow => Math.round(40 + pow * 0.85);
 /** Serve style a player uses (jump serve needs a strong enough serve roll). */
@@ -38,7 +40,7 @@ const dumpThreat = (p, wit = p.wit) => clamp(0.25 + (wit - 1) * 0.6 + (p.jump - 
 /** Drain stamina (skills, defense and speed soften it; floor 0.05). */
 function dr(m, p, v) {
   m.sta[p.id] = clamp(
-    (m.sta[p.id] == null ? 1 : m.sta[p.id]) - v * 1.3 * skillMod(p, 'stamina') * (1.3 - (p.def + p.speed) / 400),
+    (m.sta[p.id] == null ? 1 : m.sta[p.id]) - v * RULES.stamina.drain * skillMod(p, 'stamina') * (1.3 - (p.def + p.speed) / 400),
     0.05,
     1
   );

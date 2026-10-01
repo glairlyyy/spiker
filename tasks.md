@@ -33,38 +33,49 @@ Result:
 - Substitutions ✓ (T-028 squads of 6, T-029 in-match subs, T-030 coach AI, T-031 you on the bench).
 - Growth rework ✓ (T-034 training cap 75, T-035 match XP, T-036 techniques learned in play).
 - Living map A ✓ (T-039, T-040) · three-touch fix ✓ (T-043) · rankings ✓ (T-041, T-042) · team challenge ✓ (T-037).
-- **Next**: rankings drawer fix (T-044); then challenge loss + injury (T-038, to be detailed); voice pass (T-022).
+- Rankings drawer fix ✓ (T-044).
+- Challenge loss + injury ✓ (T-038).
+- Roads + buildings ✓ (T-045 layout data, T-046 3D town).
+- Walk the roads ✓ (T-047) · town layout revamp ✓ (T-050 data, T-051 render).
+- Match history ✓ (T-052).
+- Free setter takes the second ball ✓ (T-054) · start from 1 ✓ (T-055).
+- Stat guard ✓ (T-056) · official venues ✓ (T-053).
+- **Now**: empty. Candidates (Later, need detailing): road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now — fixes
+## Now
 
-### [ ] T-044: Rankings drawer table fits the drawer
-Spec: §4.17          Goldens: unchanged          Save: no change
-Goal: The Rankings drawer shows all four columns (rank, name, faction · role, value) inside the drawer; today the table
-is wider than the drawer, names are right-aligned with a big gap and the faction / value columns are cut off.
-Files: css/career.css (the "rankings drawer" block), js/ui/career-week.js (`rankCard` markup only if needed)
-Do not: change `Rank` or what the rows contain.
-Steps:
-1. `table.rk`: `width: 100%; table-layout: fixed`; column widths ≈ 2.5em / auto / 40% / 3.5em; name left-aligned,
-   ellipsis on overflow (`white-space: nowrap; overflow: hidden; text-overflow: ellipsis`); value right-aligned.
-2. Your row (`tr.me`) and the "…" gap row keep their styles; the drawer gets no horizontal scrollbar.
-Accept: all tests + lint.
-QA: career run → Rankings drawer at 1280×800: all 4 columns visible on every tab, long names ellipsed, no horizontal
-scroll; screenshot; no pageerror.
-Result:
+(empty — the spec chat moves the next task here)
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
-Challenges, part 2 — spec §4.15
-- T-038: Loss and injury — stake lost, stamina / mood crash, standing loss → grudge, heavy-loss fans / Gazette;
-  injury risk from gap, margin and fatigue (stamina + days since last battle); severe injury −2 permanent.
+Roads, part 2 — spec §4.18
+- T-048: Road travel — trip days from the road route length (roads faster than cross-country; Shu paths slower);
+  rules + tests change (career only).
+
+Injuries, part 2 — spec §4.15
+- T-049: The engine coach never subs an injured you on (evaluations, cup): mark the player unavailable for
+  `subCandidate` (engine-only flag set by the career before the match; goldens must stay unchanged).
 
 Phase 5 — Voice pass
 - T-022: Faction `front`/`dark`, region `desc`, Gazette and event strings in lore.md §7 voices. Also fix the stale
   encyclopedia line "Or learn it in career for this many skill points" (ui/encyclopedia.js: techniques are learned in play).
 
 ## Done
+
+- [x] T-053: Official venues on the map — League Arena, Academy Hall, Beach Stadium, Highland Court — four venues as specced (`VENUES`, nodes, landmarks, pins, `City.venue`, cards, `today` pulse); 47/47, lint clean, goldens untouched. Spots: arena [720,160] (clear 52), hall [580,510] (clear 20, ~18 × 11 m so the Academy keeps 33 lots), beach [925,450] on the widest sand by the resort strip (edge `resort`–venue), highland [400,180]. Venue clearance is per venue (`VENUES[id].clear`), not `placeClear`. QA: draw calls 29–30 (baseline 29), tris ~198k, no pageerror; hall pin pulses on an Academy eval week, card + 'Played at Academy Hall' shown; cup-week card checked in tests only (a browser cup start failed in my QA script on the baseline too).
+- [x] T-056: Stat guard — repair invalid stats on load and before every match — `fixStats` in players.js, called in `teamFromJSON` (warn log) and `newMatch`; new test (−40/NaN/300/−1 → 1/1/99/0.1, match runs, damaged save repaired); 46/46, lint clean, goldens untouched.
+- [x] T-055: Start from 1 — every stat of your new player is 1 — Done; tests 45/45, lint clean, goldens untouched. `CAREER.start` / `statMin`, `STAT_FLOOR` 1, Run.create ignores alloc, creation shows 1s with no buttons, `need` = max(1, round(…)) at every level. Notes for the spec: (1) one Power session takes Power 1 → ~36 (session XP is ~70+ × mul vs ~180 XP to reach 50), not "about a dozen sessions"; (2) a lone WS still starts: the pickup squad has only 2 WS (the coach picks the best per role), so the all-1 bench test uses an MB; (3) cup.js hired crew floor left at 25 (that squad never contains you when clamped). Tests with `alloc` still pass it (ignored); the street-battle and full-run tests assume a normal player (70 / statMin). QA: creation, 1 Power day, week-4 eval played: no pageerror.
+- [x] T-054: A free setter takes the second ball (no random "someone else sets") — Done; tests 44/44, lint clean. Goldens updated (matches, sims: one R() per bad pass removed, setX/setZ rolled before the choice) — teams hash unchanged. Reach rule `SETTER.beat` 1.6; `m.setBy` records why. Assists by non-setters 12.3 % → 8.7 % over 400 mkTeams sims. The staged-scenes test (10 matches, ≤ 8/match) tripped on the moved stream (9.1; 40-match mean 6.3–7.8 before and after): widened to 30 matches, thresholds unchanged. Monster QA 5000 steps: 9 sets, all by the free setter, no pageerror.
+- [x] T-052: Match history in the Season drawer, with a stat snapshot per match — Done; tests 43/43, lint clean, goldens untouched. RUN_VERSION 8 (`run.mlog`, `MLOG.max` 80); `Cup.record` at the start of result / challengeResult / clashResult; Season drawer lists them with an expandable snapshot, line and box score (fits the 440 px drawer, no horizontal scroll; QA: 2 evals + a challenge, no pageerror). Challenge / street `day` is the day before the trip is spent.
+- [x] T-051: Draw the revamped town — wide beach, boardwalk, overpass, new building kinds — Done; tests 42/42, lint clean, goldens untouched. Default zoom 29 draw calls / 188k tris, zoomed out 30 / 195k (limits 40 / 260k); software-GL fps unchanged (2.75); 3 leave / return cycles: geometries stable (25), no pageerror. Height × (1 + 2.5·h·rise); wealth tint per instance (glass-blue / stone / gold vs grey / rust / patched wood); fog dims every new mesh. Extra: resort scale [1.9, 5.5, 1.2].
+- [x] T-050: Town layout data — districts, a wider beach, Wu town inland, the overpass — Done; tests 42/42, lint clean, goldens untouched. Frozen `CITY.inner`; frame 1060×700; coast pushed out; `CITY.dunes`; `WEALTH` + `wu-village` (`wuVillage` [905,225]) added; Wu links: only the coast road `main`, `hotelWu–jBw3` / `hq2–wuVillage` dirt (dropped `resort–harbor`, `jBw2–hq3`; ≤ 2 links into each settlement). Lots ~1190 (Wei 572, Wu 341, Shu 158, Outlaws 65, Academy 33, Gloria 25), wealth Wei 0.07–1.0 falling outward, Wu 0.4–0.6. Deviations: `MapModel.placeClear` = 20 (spec's NEAR_R/3 cannot reach Gloria ~30 / Outlaws ~60); `arcade` → [620,262], `resort` → [908,488] (kept on land); `tall` dropped from DISTRICTS (h comes from wealth); lot size ×(0.7+0.6·wealth), grid density × (1.15−0.45·wealth); `CITY.ritual` joins the places lots keep clear of.
+- [x] T-047: The player walks along the roads — Done; tests 41/41, lint clean. Airport → Highland Dojo QA: the camera follows the coast road then the Shu dirt road (not the straight line), ×4 badge shown, no pageerror. `MapView.routed` adds `you.route` on mount and update (also on a remount after a move).
+- [x] T-046: Roads and buildings on the 3D map (kit registry, procedural first) — Done; tests 41/41, lint clean, goldens unchanged. kit3d.mjs (KIT + LANDMARKS registry) and town3d.mjs; +4 draw calls (28 vs 24) and +6k tris (156.7k vs 150.7k incl. shadow pass) at default zoom; 3 leave/return cycles: geos stable (24), no pageerror. Roads connect places; Wei/Wu/Shu read by style at zoom-out. Lot scale (size × MAP_M × 1.2) is a first guess.
+- [x] T-045: World layout data — road network, routes, settlement lots, landmarks — Done; tests 41/41, lint clean, goldens unchanged, headless. 49 nodes / 60 edges (all on land, all reachable from the airport; `studio` home spot is `home:studio`); 163 lots on a fresh run (far under the 1200 cap; density / gap are first guesses for T-046 to tune by eye); 0 R() draws in MapModel.build. Also exported `MapModel.maxLots` and a lot cache `MapModel.lotCache` (properties, not globals).
+- [x] T-038: Losing is a real deal — loss penalties, fatigue and injury — Done; tests 40/40, lint clean, goldens unchanged, RUN_VERSION 7. Deviations: street-fight losses add no `run.losses` count; new `City.crewOvr` (street foe rating = mean of the region's league clubs) and `City.fightBan`; risk computed before the trip. Open: engine coach subs could bring an injured you on (T-049). QA: risk 16 → 27 % on low stamina, loss line lists penalties + minor injury, 45 % cap, buttons disabled "Injured — rest first"; no pageerror.
 (one line each; full task text is in git history)
+- [x] T-044: Rankings drawer table fits the drawer — Done; tests 39/39, lint clean, goldens unchanged. Also: your row's class `me` clashed with `.hub .me` (HUD player card) and broke its layout, so it is now `tr.you` (js/ui/career-week.js, one word). QA at 1280×800: 4 columns inside the 440 px drawer on Register and Gazette, no cell overflow, no horizontal scroll, your row highlighted; screenshot checked; no pageerror.
 - [x] T-039: MapModel `life` — who is where this week, as plain data — Done as specified; tests 36/36, lint clean, goldens untouched, headless only. `life.crews` also carries `team` (club index) and `mates` uses the nearest explored place of the key to home.
 - [x] T-040: Living map — figures, battle crowd, border pulse, flags (renderer) — Done; tests 36/36, lint clean, goldens untouched. Only the Wei–Wu border has a line, so the pulse and patrols use it (other borders: no line yet). QA (swiftshader, forced state): battle crowd 24 + 2 flags + dust, unscouted crew grey / scouted coloured, mates at their court; draw calls +4 (≤ 6); leave → 0 canvases, return → 1; geometry count 19 → 20 after return (avatar model loads late); no pageerror. Frame time not measured.
 - [x] T-043: Three touches after a pop-up — the save is the set (scramble ball) — Done; tests 39/39, lint clean, goldens updated (`teams`, `sims`: pop-up saves no longer get a full set + attack). The new phase is `saveSet` (not `scramble`: hype.js already has one); tallies `m.scr` / `m.scrLog` are created lazily (match.js untouched). 300 sims: 0.85 scramble possessions per match, 86 of them went over as a bump, hitter is never the popper or the saver. QA: Monster game ran 400 steps, no pageerror (no pop-up came up in that window; the animated path is covered by the recorded-beats tests).
@@ -109,3 +120,6 @@ Phase 5 — Voice pass
 - (recorded in spec §4.6 / §2) Box score (player table in the match screen) gains an OVR column — js/ui/match-screen.js.
 - (recorded in spec §4.6 / §2) Added (.vrm) player models now apply to your own career player only (everyone else keeps the base model) — js/render3d/actors3d.mjs, js/ui/models.js, js/ui/menu.js, ARCHITECTURE.md.
 - (recorded in spec §4.6) Street-battle crews and your faction's evaluation squad show their real 3-letter team tag instead of 'EVL' (Eval.squad takes a `short`; 'EVL' only for the opposing evaluation squad) — js/career/eval.js, cup.js.
+- (recorded in spec §4.2) Central Academy moved to the Wei–Wu–Shu border tri-point (540, 500), north of the airport: park r 72→60, label, `park` spot, `park` / `jAc1` / `jAc2` road nodes, Academy road `park→dojo` replaced by `park→stone` — js/data/city.js, tests/run.js (route / regionAt coordinates).
+- (recorded) T-050 follow-up: `CITY.ritual` joins the places MapModel.lots keeps `placeClear` from (lots no longer cover the sand circle) — js/career/mapmodel.js.
+- (recorded in spec §2.0b) 2026-10-01: Owner: stamina matters more in matches — `RULES.stamina` { drain 1.7 (was 1.3), hit 0.4 (was 0.15), jumpHit 0.3 (was 0.15) }, so a lone carry tires and weakens; coach subs (`SUB.sta`) unchanged. Goldens updated (teams, matches, sims). Files: js/data/rules.js, js/engine/stats.js, tests/golden.json, ARCHITECTURE.md.

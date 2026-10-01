@@ -15,10 +15,8 @@ const Run = {
     const reserve = Pool.build(teams, used);
     return { teams, team: Math.floor(R() * teams.length), reserve };
   },
-  /** Final stat value shown at creation: base + allocated points + the role's usual bias. */
-  createdStat: (role, k, alloc) => clamp(CAREER.statBase + alloc + (RB[role][k] || 0), 25, 99),
   /**
-   * Start a run. spec = { role, name, alloc: {power, def, speed, jump}, witSteps, mode? ({hard, short}) }.
+   * Start a run. spec = { role, name, mode? ({hard, short}) } (every stat starts at CAREER.start, wit at CAREER.witBase: spec §4.22).
    * You always start as a free agent: your player takes the same-role slot on the Academy squad (the pickup squad).
    */
   create(draft, spec) {
@@ -31,12 +29,12 @@ const Run = {
       slot = role === 'S' ? 'S' : role === 'MB' ? 'MB' : 'W0',
       old = t.P.find(p => p.slot === slot),
       stats = {};
-    for (const k of STATK) stats[k] = Run.createdStat(role, k, spec.alloc[k] || 0);
+    for (const k of STATK) stats[k] = CAREER.start;
     const you = createPlayer({
       name: spec.name,
       role,
       slot,
-      wit: +(CAREER.witBase + spec.witSteps * CAREER.witStep).toFixed(2),
+      wit: CAREER.witBase,
       hair: pick(HAIR),
       look: mkLook(role),
       move: pick(MOVES[role]),
@@ -89,6 +87,9 @@ const Run = {
       met: {}, // player id → true: faced on court (their rating is known)
       street: {}, // player id → street points (Rank)
       refused: {}, // club index → { week, n }: team challenges it refused (T-037)
+      losses: {}, // region → team challenges lost this run (T-038)
+      mlog: [], // match history (Cup.record, T-052): plain entries, newest last
+      lastFight: null, // absolute day (Run.dayNo) of your last challenge / street fight
       seen: [],
       log: [],
       event: null,
@@ -165,10 +166,12 @@ const Run = {
     const you = Run.you(run),
       score = p => ovr(p) + 6 * Run.form(run, p) + (p === you && region ? City.rep(run, region) / BENCH.standingPer : 0),
       left = [...squadOf(T)],
-      P = [];
+      P = [],
+      out = p => run.injury && p === you; // an injured you never starts
     for (const role of ['S', 'MB', 'WS', 'WS']) {
-      const of = left.filter(p => p.role === role),
-        p = (of.length ? of : left).reduce((a, b) => (score(b) > score(a) ? b : a));
+      const ok = left.filter(p => !out(p)),
+        of = ok.filter(p => p.role === role),
+        p = (of.length ? of : ok).reduce((a, b) => (score(b) > score(a) ? b : a));
       P.push(p);
       left.splice(left.indexOf(p), 1);
     }
@@ -188,6 +191,8 @@ const Run = {
     }
     return { starts, you: score(you), rival: rival && { p: rival, score: score(rival) } };
   },
+  /** The absolute day of the run (week × days a week + days used this week): the clock for fatigue between fights. */
+  dayNo: run => run.week * WEEK_DAYS + (WEEK_DAYS - City.days(run)),
   /** Your team: a league club, or the pickup squad while you're a free agent (run.team null). */
   myTeam: run => (run.team == null ? run.pickup : run.teams[run.team]),
   /** League news for the next Gazette. */
@@ -218,7 +223,7 @@ const Run = {
     if (STATK.includes(key) || key === 'lead') {
       if (v > 0 && key !== 'lead') v = Math.max(1, Math.round(v * Training.dim(you[key]))); // events obey diminishing returns too
       const top = key === 'lead' ? CAREER.runCap : Math.max(you[key], TRAIN_CAP), // events stop at the training cap (never lower a stat matches raised)
-        nv = Math.round(clamp(you[key] + v, 25, top)),
+        nv = Math.round(clamp(you[key] + v, CAREER.statMin, top)),
         d = nv - you[key];
       you[key] = nv;
       return fmt(d, STATNAME[key]);
@@ -327,11 +332,12 @@ const Run = {
   },
   /** Fill collections and counters a damaged save may lack, so the career screens never meet undefined / NaN. */
   repair(run) {
-    for (const k of ['log', 'seen', 'warm', 'cups', 'sponsors', 'hist']) if (!Array.isArray(run[k])) run[k] = [];
+    for (const k of ['log', 'seen', 'warm', 'cups', 'sponsors', 'hist', 'mlog']) if (!Array.isArray(run[k])) run[k] = [];
     for (const k of ['sp', 'fans', 'trained', 'elNext', 'money']) if (!Number.isFinite(run[k])) run[k] = 0;
     if (!HOUSING[run.housing]) run.housing = 'studio';
     if (!run.reserve || typeof run.reserve !== 'object') run.reserve = {};
-    for (const k of ['met', 'street', 'refused']) if (!run[k] || typeof run[k] !== 'object') run[k] = {};
+    for (const k of ['met', 'street', 'refused', 'losses']) if (!run[k] || typeof run[k] !== 'object') run[k] = {};
+    if (!Number.isFinite(run.lastFight)) run.lastFight = null;
     if (typeof run.academy !== 'boolean') run.academy = World.isFree(run);
     if (run.eval && run.eval.week !== run.week) run.eval = null;
     Eval.setup(run);
@@ -365,8 +371,8 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 6;
-/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges) — older saves are dropped; add steps when the saved shape changes). */
+const RUN_VERSION = 8;
+/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history) — older saves are dropped; add steps when the saved shape changes). */
 const RUN_MIGRATIONS = {};
 const ROLE_NAME = { S: 'Setter', MB: 'Middle blocker', WS: 'Wing spiker' };
 /** Run rank letter for a fan count (RANKS is ordered from the top rank down). */

@@ -12,10 +12,19 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   nation's national team (international career).
 
 ## 2. Match (engine + 3D playback) [built]
+- §2.0 The sport (lore.md §4, owner): a 4v4 street game — physical and fierce. Tactics (block settings, systems, set
+  plays) give an edge but stats decide most rallies: a big physical gap should beat a smart setting. Keep this in the
+  balance pass (tactic effects modest vs stat gaps).
+- §2.0b Match stamina (owner, built): every touch drains stamina (`RULES.stamina.drain` 1.7); a tired player loses up
+  to 40 % power / defense and 30 % jump at 0 — a lone carry wears out. Coach subs rose from ~1.3 to ~2.9 per match
+  (the cap is 4: 2 per side); tune in the balance pass.
 - §2.1 Rules: one set to 15, win by 2; court ×1.5; zone/captain buffs, timeouts, tactics, techniques, pop-ups,
   long back attack.
   Three touches per side (a block touch is free). A pop-up off the arms saved by a teammate counts as touches 1 and 2:
   the save is an out-of-system bump-set and a third player hits (or bumps it over) **[built]**.
+  Second touch (owner): a free setter (did not take the first touch, not busy) always sets when they can get there; a
+  teammate sets only when the setter took the first ball, is busy, or a bad pass lands where a teammate gets to it
+  clearly first **[built — T-054]**.
 - §2.2 Elements: per player, hidden; unlocked for OP, ~1/4 of star players, and the career player via the Element
   Trial. Gauge fills by element play; full gauge or captain buff → next attack is the signature element spike.
   Counter elements halve effects. Fiction: lore.md §2 (the Trial is the modern method; the ritual is forgotten).
@@ -78,7 +87,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   The pickup squad (`World.pickup`) stays, reframed as the Academy squad (§4.11).
 - §4.2 Island: 3 major factions — Wei (city; north + east), Wu (beach/coast; east/south + an inland strip;
   most aggressive), Shu (mountain highlands; west) — plus borderless minor factions. No unclaimed land except the
-  neutral middle zone, region `open` = **Central Academy** **[built]** (lore.md §4): entry point,
+  neutral zone at the Wei–Wu–Shu tri-point (north of the airport), region `open` = **Central Academy** **[built]** (lore.md §4): entry point,
   fields no team, never seized. Today: 2 squads per major + 2 minor clubs = 8
   fixed teams — they stay as each faction's home squads (training, bonds, scouting, transfers); matches that
   matter (evaluations, U21 Final Cup) use squads drawn from the faction pools (§4.11).
@@ -146,7 +155,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   Text follows spec §6 (numbers true; `registrar` voice for labels). Data comes from a DOM-free model
   (`Dossier.build(run, r)`), the window only renders it.
 - §4.13 Meta progression **[built — removed]**: none. No Legacy points, unlocks, pure runs, Hall of Fame or
-  legend inheritance. Every career starts the same: free agent, base budget and caps (CAREER), no starting skill,
+  legend inheritance. Every career starts the same: free agent, all stats 1 (§4.22), no starting skill,
   no team pick. Challenge modes (Hard league, Short season) stay as plain options. The run-end screen keeps the
   result, rank and growth chart.
 - §4.14 Growth: train to a floor, fight to go higher **[built]** (Kenshi rule):
@@ -164,7 +173,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     wit and opponent strength. Scouting shows which techniques a team's players have.
   - Save: RUN_VERSION bump (Limit Break progress removed, match XP added). Match results unchanged (goldens stay).
 
-- §4.15 Challenges **[team challenge + refusal built (T-037); loss penalties + injury not built (T-038)]** (makes a no-training run possible; see §4.14):
+- §4.15 Challenges **[built: team challenge + refusal (T-037), loss penalties + injury (T-038); open: engine coach could sub an injured you on (T-049)]** (makes a no-training run possible; see §4.14):
   - Team challenge (map action at a club HQ): your side challenges that club's squad. Costs 1 day + the trip; you name a
     money **stake** (0 allowed). The match itself is the street-battle flow (`Cup.clash`-style fixture: watch or Sim ⏭).
     You play with your side: the Academy squad, or your club's squad (your club must not be the target); alone → hire
@@ -185,7 +194,8 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   - Injury risk after every challenge (win or lose) = base + rating gap + margin of defeat + **fatigue**: low stamina
     and battles close together (days since the last match / challenge) raise it, like training on low stamina. Resting
     lowers it. Injury = days to weeks without training or matches; a severe one also costs −2 permanently on a stat
-    (never ends the run) [assumed — owner to confirm].
+    (never ends the run) [assumed — owner to confirm]. Injured: no challenges / street fights, light training only,
+    never a starter; the physio heals the weeks, not the stat loss. Evaluations and the cup carry no injury roll.
   - Balance target: a no-training run reaches the mid-70s by ~week 20 only with well-chosen fights.
 
 - §4.16 Living map **[layer A built (only the Wei–Wu border has a drawn line, so pulse / patrols show there); B/C wait for the lore]**: the map shows what is happening
@@ -208,6 +218,66 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     faction's street-battle wins (NPCs: the faction's best players get the points).
   - A Rankings drawer shows the three lists and your rank on each; pre-match and challenge cards show the opponent's
     ranks ("Register #12 · Gazette #3 · Street —"). Display only: no match effects. Aces / the rival appear here later.
+
+- §4.18 Roads, settlements and buildings **[built — T-045, T-046, T-047; T-048 later]** (owner: hybrid look):
+  - Data first (rules layer, plain data, no randoms): a road network (nodes at the airport, every place, club HQs,
+    Central Academy + junctions; edges = main roads, Wei grid streets, Shu dirt / mountain paths); settlement lots
+    generated deterministically along roads per region style — Wei dense city blocks, Wu coastal fishing villages and
+    the harbor, Shu terraced hill villages and temple steps, Central Academy campus quad, Outlaws shacks under the
+    overpass, St. Gloria walled compound; every place / HQ gets a landmark kind (gym, sand court, dojo, HQ tower, hotel,
+    stall, shrine, cage, campus, home).
+  - Render: roads as ribbons draped on the terrain; filler buildings as instanced low-poly procedural meshes (one draw
+    call per kind); landmarks as single meshes. Every kind comes from one registry (`kit3d.mjs`), so a CC0 model pack
+    (Kenney City / Fantasy Town, Quaternius) can replace any kind later from `assets/models/` without touching rules or
+    data — owner picks the pieces.
+  - Your player walks along the roads (route through the network) instead of a straight line.
+  - Later (T-048, optional): trips along roads cost fewer days than cross-country; Shu mountain paths stay slow.
+- §4.19 Town layout revamp **[built — T-050 data, T-051 render; T-047 the walk follows the roads]** (owner: the island should feel as crowded as
+  the lore; wider beach; Wu town inland). Districts follow lore.md §3–§5:
+  - **Wei** (dense, layered): *Downtown* round Wei Gold's HQ and the league office — a tower grid, the densest place on
+    the island; *Old Town* in the north-coast pocket by the abandoned gym — the refugee town the settlers built over,
+    tight lanes, low rowhouses (homeless housing lives there); *the Ring* — mid-rise blocks out to the borders;
+    *St. Gloria* — a walled villa compound with a gatehouse.
+  - **Wu**: the beach is ~2–3× wider along the east and south coast, grown **outward** (the coastline moves out; no
+    border moves). On the sand: the faded beach-boom strip — a boardwalk along the dune line, old resort hotels, kiosks,
+    public sand courts (where the sand game was born; Wu doesn't remember it). *Wu town* sits inland behind the dunes,
+    between the beach and the Wei border (barracks, workshops, a market); the *harbor district* stays on the east coast.
+  - **The overpass**: a real elevated highway from downtown Wei down to the Wu harbor along the contested line; the
+    Outlaws' shacks, containers and cage sit under it.
+  - **Shu**: 3–4 terraced hill villages (the native villages that keep the old language — unnamed until the lore glossary
+    exists), shrines, mountain paths, few people.
+  - **Central Academy**: a campus quad on the old ritual ground; a weathered sand circle nearby, never labelled.
+  - **Wealth** (owner): every lot has a wealth level 0–1 that drives its look (height, size, materials, spacing).
+    *Wei*: wealth piles up in the centre and thins out steadily toward the suburbs — glass towers and stone downtown,
+    then mid-rise, then plain blocks, then shabby edges and Old Town (a smooth gradient from the downtown centre, no
+    rich pockets outside it except the walled St. Gloria compound). *Wu*: wealth is spread evenly but modest —
+    comfortable towns, none rich, none poor — and weakly connected: separate settlements (harbor, Wu town, the beach
+    strip, an inland village) joined by few roads, mostly dirt, with only the coast road as a main road (with T-048 this
+    makes Wu trips slower than Wei's). *Shu* poor and scattered; *Outlaws* the poorest; *Academy* middling and uniform.
+  - Buildings fill districts (an area + style + density), not only rows along roads; ~1,200 buildings in all
+    (Wei ~600, Wu ~300, Shu ~150, Outlaws ~60, Academy ~40, Gloria ~30). Trip days unchanged (T-048 decides road travel).
+- §4.20 Match history **[built — T-052]** (owner): the Season drawer lists every match you were in this run
+  (evaluations, U21 cup, team challenges, street fights; newest first): week / day, kind, opponent, score, won or lost,
+  your grade. Opening one shows the **snapshot**: your OVR, stats and wit at kick-off (and the change since the match
+  before), your line (kills, attacks, errors, blocks, aces, digs, assists), and the box score of everyone who played
+  (name, role, OVR, line). Numbers only (registrar voice). Bench matches are listed ("did not play").
+
+- §4.21 Official venues **[built — T-053]** (owner: show where official matches are held). Four landmark
+  venues on the map, each a pin with a card (what is held there; this week's match if any):
+  - **League Arena** (Wei downtown, by the league office): the U21 Final Cup and Wei's evaluations. The biggest
+    building on the island — a stadium bowl with floodlights.
+  - **Academy Hall** (Central Academy campus): the Academy squad's evaluations.
+  - **Beach Stadium** (on the Wu sand, a beach-boom relic, faded): Wu's evaluations.
+  - **Highland Court** (an open hillside court by Shu Peak's HQ, stone terraces for seats): Shu's evaluations.
+  On a match week the venue of your match glows on the map and the match card says where it is played. Display only:
+  no travel days, no change to where you stand.
+
+- §4.22 Start from 1 **[built — T-055, stat guard T-056]** (owner, Kenshi start): your player starts with Power, Defense,
+  Speed and Jump all at **1** and Wit at 1.0 — no creation points, no role bias, no wit steps. Creation keeps name,
+  role, look and the challenge modes. Low levels come fast and slow down: XP for the next point keeps growing ×1.05 per
+  point **below 50 too** (≈1 XP at 1, ≈6 at 40, 10 at 50), so a focused stat reaches ~50 in about a dozen sessions;
+  the training cap (75) and match growth (§4.14) are unchanged. Early on you are benched and lose — that is the point
+  (evaluations still pay the bench reward). Stats can fall to 1 (events, injuries), never below; a guard repairs any invalid stat on load and before every match (T-056). NPCs are unchanged.
 
 ## 5. Open questions — do not build until decided
 - §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story

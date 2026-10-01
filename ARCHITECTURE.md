@@ -34,6 +34,9 @@ mkTeams() ─► simBalance() ─► newMatch(a, b, record)
   (`engine/rally-phases.js`), then the approach/spike core inline in `rally.js`, then `block → dig`
   (`engine/rally-defense.js`). A phase returns `{ point: side }`, `{ next: [atk, pas, qual] }`, its values, or nothing.
   **Random rolls must stay in the same order** — the golden tests catch any change.
+  `pickSetter` (T-054): the set point is rolled first, then the back-row setter sets; on a bad pass (quality 1, one setter) a free teammate takes the second
+  ball only when the setter's time to the set point is over `SETTER.beat` (rules.js, 1.6) × the teammate's — a reach rule, no random in the choice. Engine-only
+  record `m.setBy = [{ role, why: 'free' | 'reach' | 'none', qual, ts, tm }]` (like `m.scrLog`): `none` = no setter free (passer / busy; wit-weighted pick).
 - `record = false` → pure simulation (fast; used for odds and preseason).
 - `record = true` → `playRally` also returns **beats**: timed lists of acts such as
   `{k:'slide'}`, `{k:'jump'}`, `{k:'ball'}`, `{k:'burst'}`, `{k:'log'}`.
@@ -50,7 +53,7 @@ mkTeams() ─► simBalance() ─► newMatch(a, b, record)
 
 ## Effective stats and formulas
 
-- `engine/stats.js` — what a player's stats are *right now*: wit × mood × momentum × stamina (`effP`, `effD`, `W`, `jumpPx`…).
+- `engine/stats.js` — what a player's stats are *right now*: wit × mood × momentum × stamina (`effP`, `effD`, `W`, `jumpPx`…). Stamina is tuned in `RULES.stamina` (`drain` per touch, `hit` = power/defense lost at 0, `jumpHit` = jump lost at 0): a hero who takes every touch tires first.
 - `engine/formulas.js` — `Formula.*` holds the numbers that decide outcomes (serve, receive, set, spike,
   block, dig, kill chance). Balance changes and future training effects belong here.
 
@@ -63,6 +66,7 @@ The match screen takes a fixture: `navigate('match', { a, b, round, back, onFini
 ## Career mode
 
 - `RUN` is the active run (`career/run.js`); saved to `KEYS.career` after every week (`teamToJSON`/`teamFromJSON` in `engine/save.js`).
+- Stat guard: `fixStats(p)` (`engine/players.js`) makes every stat a finite number in [`STAT_FLOOR`, 99] (wit [0.1, 3]; non-finite → floor / 1), leaves in-range values exactly as they are and returns the count fixed. It runs in `teamFromJSON` (a damaged save; logs `DBG.log('warn', …)`) and in `newMatch` for both squads, so the engine never sees a negative, NaN or huge stat. A no-op for valid players: no draws, no golden change.
 - **Season:** 28 weeks: monthly evaluations (weeks 4–24), camp (26–28), then the **U21 Final Cup** (`CUPS` in
   `data/career.js`, one entry, ×1.5 rewards; see "U21 Final Cup"). Every cup close ends the run. `Run.weekType` is 'cup'
   while `run.cup` is live.
@@ -83,7 +87,7 @@ The match screen takes a fixture: `navigate('match', { a, b, round, back, onFini
   don't own, one roll (`LEARN`: by doing a stat-line threshold, else by facing an opponent who played and has it; chance × wit ×
   the match gap factor, ≤ 0.5), at most one per match. Techniques still fire by stats via `hasTech`. Scouting shows them
   (`Skills.techs`; dossier roster `techs`, hidden until scouted).
-- No meta progression: every career starts the same (free agent, `CAREER.budget` / `createCap` / `staMax`); challenge modes (`MODES`) are plain options.
+- No meta progression: every career starts the same (free agent, every stat at `CAREER.start` = 1, wit `witBase`, `staMax`; no creation points — T-055); challenge modes (`MODES`) are plain options.
 - UI: `ui/icons.js` draws the active (bolt + type) / passive (aura) skill icons used in the shop, player card and
   encyclopedia; the result screen has a season growth chart from `run.hist`.
 
@@ -350,7 +354,7 @@ league transfer (`World.transfers`) and a Gazette (`run.gazette`, news collected
 bonds, scouting, pools, promotion, transfers) and keep `t.P` for "who plays". `fillRoster` rolls the bench after the 4 (flex
 role + a wing spiker); `finalizeTeam` gives leadership, elements and shirt numbers to all 6 (numbers unique) but the captain and
 `ovr` come from `t.P`. `World.swap(x, y)` trades two players' seats (court or bench), slots, numbers and team links (join,
-transfers, promotion). Saves (RUN_VERSION 6; v5 dropped `run.lb`, v6 added `run.met` / `run.street` / `run.refused`) store `bench` next to `P`; `teamFromJSON` relinks it.
+transfers, promotion). Saves (RUN_VERSION 8; v5 dropped `run.lb`, v6 added `run.met` / `run.street` / `run.refused`, v7 `run.losses` / `run.lastFight`, v8 `run.mlog`) store `bench` next to `P`; `teamFromJSON` relinks it.
 
 ## Faction pools
 
@@ -431,7 +435,7 @@ region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border mete
    from region tints; fixed-yaw camera, pitch 55°, wheel zoom 25–420 m, drag pans on the ground plane, a click (< 5 px)
    raycasts to a map point (`toMap`; 1 map unit = `MAP_M` = 0.5 m). The player is `js/map3d/avatar3d.mjs`
    (`createAvatar(scene)`: the default VRM via `loadBase` / `makeVRM`, capsule until loaded): `snap` first, `setTarget` when
-   `model.you.at` changes — straight walk at 6 m/s (trip 1.2–6 s, ramps 0.4 s; faster trips show a ×N badge), gait from
+   `model.you.at` changes — `setTarget(at, path)` walks the road polyline `model.you.route` (added by `MapView.routed` in js/ui/map-view.js from `City.route(last you.at, you.at)`; the renderer never calls `City`; straight line without it) at 6 m/s over the whole length (trip 1.2–6 s, ramps 0.4 s; faster trips show a ×N badge), facing along the current segment, gait from
    `locoPose`, idle `STAND` + breathing, feet via `groundSnap` + `heightAt`; the camera follows until the user drags.
    Furniture is `js/map3d/pins3d.mjs` (`createFurniture(scene, heightAt)`): an HTML overlay `.maplay` over the canvas holds one
    `.mpin` button per `model.pins` item (icon, badge, flag classes, click → `pick(id)`), the region / airport labels (fade out
@@ -444,6 +448,21 @@ region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border mete
    animated in `tick` (drill hops, walkers looping round a crew's places at 1.2 m/s, the battle crowd shoving, waving flags).
    Mates and known crews are coloured, unscouted crews grey; patrols (2–4) stand on the stronger side of the contested Wei–Wu
    line; every seized place flies the holder's flag. `furn.pulse(strength, t)` pulses the contested line with |meter| / 2.
+   The town layer is `js/map3d/town3d.mjs` (`createTown(scene, heightAt)` → `{ sync(model), dispose() }`, display only, no randoms):
+   reads only `model.land.roads / lots / landmarks / districts` and `model.fog`. Meshes: one vertex-coloured mesh for all roads (width and
+   colour by kind, slope-following, lifted 0.15 m, polygon offset; the `boardwalk` is planks of two tones 0.3 m up); one for the
+   `overpass` (its edges chained into a deck 5.4 m wide, 7 m up with rails and sides, ramped to the ground over 28 m at both ends, T-pillars
+   every ~20 m; deck + pillars merged); one `InstancedMesh` per base shape for the filler lots (box, gable, stepped: kind palette + size per
+   instance, height × (1 + 2.5 × `lot.h` × the kind's `rise`) so downtown towers rise toward the middle; `lot.wealth` tints the instance colour in place — rich: glass-blue / clean stone / gold, poor: grey / rust / patched wood, the middle untouched — no extra draw call); one merged mesh for all landmarks
+   and the wall ring of each `compound` district (a gatehouse of two towers and a lintel where a road crosses it); each landmark faces its
+   nearest road. Rebuilt only when the layout JSON changes, dimmed by the same fog rule as the terrain (`FOG_DIM` / `FOG_SOFT` exported
+   from map3d.mjs); 5 draw calls, ~+10k triangles. Terrain (`buildTerrain`): on the Wu stretch the sand between `land.dunes` and the coast is
+   wide, flat and low (`sideDist` = signed distance to the dune line) with a dune ridge on the line; a faint tint per district style is
+   folded into the vertex colours (no draw call). Pins above a landmark float `PIN_UP` over its roof (`landmarkHeight(kind)`). The kit registry
+   is `js/map3d/kit3d.mjs`: `KIT[kind] = { geo(), mat, scale, colors, rise }` (filler kinds, incl. rowhouse, barracks, workshop, market,
+   warehouse, resort, kiosk, terrace) and `LANDMARKS[kind] = { h, w, d, build(accent), footing? }` (incl. `ritual`: a worn sand circle with a
+   ring of low stones). Swapping a kind for a model later: make `geo()` / `build()` return the model's geometry (filler: 1 × 1 footprint,
+   height 1, feet at y = 0; landmark: door on +z, feet at y = 0, vertex colours) — nothing else changes (see the header of kit3d.mjs).
    `info().life` reports the instance counts. `js/ui/career-map.js` mounts it (`mapMount`),
    turns picks into panels (`mapPick`) and land clicks into travel targets (`mapPoint`). Region colours: REGIONS.color.
 
@@ -456,6 +475,49 @@ the popper (touch 1), the saver bump-sets (touch 2, `saveSet` in `rally-phases.j
 double contact, `sq2 'bad'`, `bumpSet`), then a third player hits (`chooseAttack` skips `scr.first` and the saver) or the bad
 set goes over as a bump; a block touch is free. Engine-only tallies (no randoms): `m.scr = { n, over }`, `m.scrLog = [{ first,
 saver, hitter }]`.
+
+## World layout (T-045)
+
+Plain data for roads and settlements (spec §4.18), no rule uses it yet. `data/city.js`: `ROADS = { nodes: { id: [x, y] }, edges:
+[[a, b, kind]] }` (kind `main` / `street` / `dirt` / `path`; nodes at `airport`, every `SPOTS` place with `at` under its own id, `hq0`…`hq7`,
+`home:<housing>` for each `HOME_AT` spot, and `j…` junctions — all on land, all reachable from the airport; a test pins the coordinates to
+their source), `SETTLE` (per region: style, density, gap, setback, size, kinds) and `LANDMARK` (kind per `SPOTS` id and `hq`).
+`City.route(from, to)` → `[from, …road nodes…, to]` (Dijkstra over `ROADS`, ties by node id; a straight `[from, to]` when the ends are
+nearer each other than to any node); trips, days and prices are untouched. `MapModel.build` adds to `land`: `roads` (`{ kind, pts }` per
+edge), `lots` (`MapModel.lots`: slots every `SETTLE[region].gap` along each non-path edge, a lot on each side when `hstr(slot) < density`;
+never on water, in another region, near a place, on a road or another lot — superseded by the districts below; cached per
+home spot) and `landmarks` (`{ id, at, kind, region }` for every place, HQ and official venue). Layout uses fixed data + `hstr` only: no `R()` draws.
+
+### Districts, the beach band and the overpass (T-050)
+
+The map frame is `CITY.w` × `CITY.h` = 1060 × 700; the Wu stretch of the coast (points 6–12, plus 5, 13) grew outward, nothing else moved:
+`CITY.inner` is a frozen literal (the Wei–Wu line `contest` = inner 6–8 + two points is unchanged), `CITY.dunes` = the old coast points 6–12
+(the beach's inner edge) and `CITY.beach` the new coast points 6–12. The sand is the band between them: `MapModel.onSand(p)` (Wu land
+that is not inside the old Wu polygon). Beach places (`sand`, `pier`, `bonfire`, `dunes`, `home:studio`) stand on it, Wu town (`hotelWu`,
+`hq3`) is 40+ units inland, the harbor (`harbor`, `hq2`) is on the east coast; `REGIONS.wu.at` / `CITY.label.wu` follow Wu town.
+New road kinds: `boardwalk` (airport → sand → pier / bonfire → along the dune line → `resort`) and `overpass` (`jW2` → `jO1` → `jO2` → `jWu2`,
+elevated, over the Outlaws patch). `DISTRICTS` (city.js): `{ id, region, style, poly, gap, density, size, kinds, beach? }` — `poly` is a
+polygon, a circle `{ x, y, r }`, or `'beach'` / `'wei'`. `MapModel.lots` fills each district with a grid (spacing `gap`, rotated to the road
+nearest its middle, `hstr(slot) < density`), earlier districts first, then adds a road-side row at 0.4 × `SETTLE` density outside the districts.
+A lot is never in the water, in another region, on the sand (the beach district: only on it), within `size / 2 + 4` of a road (the overpass is
+elevated: lots may stand under it), within `MapModel.placeClear` (20 units: a landmark's footprint) of a place, or on another lot; lots are
+`{ at, rot, size, style, kind, wealth, h, district }`. `wealth` (0–1, `MapModel.wealth`, numbers in `WEALTH`, city.js; fixed data + hashes):
+Wei falls smoothly from the downtown core (`weiCore`, `weiEdge`) to the suburbs, Old Town capped, Gloria rich, Wu even ~0.5, Shu poor,
+the Outlaws poorest, the Academy middling; it scales a lot's side (× 0.7–1.3) and thins the grid (rich = sparser). `h` = wealth in downtown, wealth × 0.4
+elsewhere. Wu is weakly connected: harbor, Wu town, the beach strip and the inland `wu-village` (`wuVillage`) are joined by few links
+(≤ 2 into each; only the coast road is `main`, the rest `dirt`). `maxLots` 1400
+(~1190 on a fresh run: Wei ~570, Wu ~340, Shu ~160, Outlaws ~65, Academy ~33, Gloria ~25). `land` also carries `dunes`, `districts`
+(`{ id, region, style, poly }`) and a `ritual` landmark (kind `ritual`, no pin, no label). New lot kinds (rowhouse, barracks, workshop,
+market, warehouse, resort, kiosk, terrace) and the `ritual` landmark are drawn by T-051 (the renderer skips a lot kind the kit does not know).
+
+Official venues (spec §4.21, `VENUES` in `data/city.js`): League Arena (Wei downtown, `cup` + `eval:wei`), Academy Hall (the campus, `eval:academy`),
+Beach Stadium (the sand by the old resort strip, `eval:wu`), Highland Court (by Shu Peak's HQ, `eval:shu`). Each is a road node `venue:<id>` joined
+to the nearest road by one edge, a landmark of kind `arena` / `hall` / `stadium` / `hillcourt` in `MapModel.landmarks` (id `venue:<id>`) and a pin
+(`kind: 'venue'`, 🏟, always known — no fog gate); lots keep `VENUES[id].clear` map units away (the arena's is 52: it is ~40 × 32 m). `City.venue(run)`
+(pure) is the venue of this week's match: a cup week → the arena, an evaluation → the Academy Hall for the Academy's, else the venue that holds
+`eval:<your faction's region>`; null otherwise. Its pin gets the flag `today` (class `today`, a CSS-only pulsing ring). The spot card
+(`venuePanel`, career-map.js) lists what is held there; the eval and cup cards say "at <venue>". Display only: no travel, no match rule, no save field.
+The four meshes (kit3d `LANDMARKS`, an elliptical-ring helper for the stands) join the one merged landmark mesh: draw calls unchanged.
 
 ## Rankings
 
@@ -482,13 +544,26 @@ refusals each further one costs `pest` standing; accepted → `{ accepted, stake
 is the fixture (same shape as `Cup.clash`; your side = Academy squad / club squad / `Cup.hired` street crew lent for the
 match; the club's real squad); `Cup.challengeResult` spends the trip + day, pays the stake at odds (win) or takes it (loss),
 pays the crew, then standing / fans / match XP / techniques / street points / `Rank.meet`. UI: `challengeBlock` in
-`career-map.js` (stake stepper, verdict line, Challenge, ⏭). Loss penalties and injury are T-038.
+`career-map.js` (stake stepper, verdict line, Challenge, ⏭).
+
+### Loss and injury (T-038)
+
+After a challenge (`Cup.challengeResult`) or a street fight you fought (`Cup.clashResult`): a loss runs `Cup.lose` (`LOSS` in
+`data/world.js`: extra stamina, mood, standing with the club's region — challenges only, `run.losses[region]` counts them and from the
+`repeat`-th each one adds `repeatRep`; a street fight keeps `CLASH.lose` — and a loss by `heavy`+ points costs fans and pushes a
+`GAZETTE_JABS` line through `Run.news`); then, win or lose, `Cup.injure(run, risk)` rolls once (`R()`) against `City.injuryRisk(run,
+oppRating, margin)` (pure: `INJURY` — rating gap, points lost by, low stamina, days since `run.lastFight`; `Run.dayNo` is the clock),
+a second roll sets the severity (`run.injury = { weeks }`, longer of the old one; severe also −`lose` on one stat, picked from that
+roll). The risk is computed before the trip and the match's tiredness are counted. `City.fightBan` ("Injured — rest first") makes
+`City.challenge`, `Cup.challenge` and `Cup.clash` refuse; `Run.lineup` never starts an injured you. The physio clears `run.injury`
+but not the lost stat. Evaluations and the cup carry no injury roll. Save v7 adds `run.losses` and `run.lastFight`. UI: the challenge
+block and the street fight buttons show "Injury risk ~N %" and are disabled while injured.
 
 ## Training XP
 
 Training gives XP (`Training.xpFor`: base gain × `TRAIN_X.xp.per` × every multiplier — place quality and home turf
 (x), facility level, mood, streak, teammates, camp, Hard). A stat rises a point each time its XP reaches
-`Training.need(v)` = base × grow^(v − from) (exponential); leftovers bank in `run.xp`; nothing banks past the top.
+`Training.need(v)` = max(1, round(base × grow^(v − from))) for every v, below 50 too (≈1 XP at 1, 10 at 50; T-055); leftovers bank in `run.xp`; nothing banks past the top.
 `Training.top(run, stat, src)`: 'train' (sessions, the default) → `TRAIN_CAP` 75; 'match' → `CAREER.runCap`; wit its own cap. `sim` /
 `gain` / `addXp` take the same `src`; a stat already above the top gains nothing from that source. Wit counts in 0.02 steps
 (level = wit × 50). Events still change stats directly, but stop at `TRAIN_CAP` (`Run.bump` never lowers a stat that matches raised).
@@ -555,3 +630,15 @@ Career runs carry `v` (`RUN_VERSION`, `career/run.js`). Bump the version when th
 
 A deliberate gameplay change updates the golden file with `node tests/run.js --update` — review the diff first.
 Pure refactors must pass **without** `--update`.
+
+### Match history (T-052)
+`Cup.record(run, m, kind, extra)` (cup.js) pushes one plain entry onto `run.mlog` (save v8; trimmed to `MLOG.max` = 80, oldest dropped) for every match you are in:
+it is called at the start of `Cup.result` (kind `eval` | `cup`, + `round`), `Cup.challengeResult` (`challenge`, + `stake`) and `Cup.clashResult` (`street`), i.e. before
+`Growth.matchXp`, so `you` (OVR + the 5 stats) is the kick-off state. Entry: `{ week, day, kind, vs, short, score: [yours, theirs], win, grade (null if you did not play),
+played, you, line: { k, att, err, blk, ace, dig, ast }, box: [{ name, role, side, ovr, k, att, err, blk, ace, dig, ast, you? }] }` — numbers and strings only, no player or team
+refs. `matchLog(run)` (career-week.js) lists them newest first, each a `fold` (`ml<index>`) with your snapshot (change vs your previous entry), your line and the box score;
+the `season` drawer appends it (career-hub.js). `Run.repair` adds `mlog` to older saves of the same version.
+
+### Start from 1 (T-055)
+`Run.create` gives your player `CAREER.start` (1) in every stat and `CAREER.witBase` (1.0) wit; creation (career-create.js) keeps role / name / modes and shows the stats as plain numbers (no allocation, no wit stepper). `CAREER.statMin` (1) is the floor of
+`Run.bump` (events, injuries). `createPlayer` clamps stats to `STAT_FLOOR` (1, players.js); generated players still never go below 25 (`rollStats`). NPC generation and every engine formula are unchanged (goldens untouched). Save shape unchanged (RUN_VERSION 8).

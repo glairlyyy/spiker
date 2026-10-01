@@ -1,5 +1,5 @@
 // MapView: the island map renderer the game talks to — the three.js map (js/map3d/map3d.mjs), lazy-loaded once.
-//   MapView.mount(el, model, { pick(id), point([x, y]) })   MapView.update(model)   MapView.select(id)   MapView.dispose()
+//   MapView.mount(el, model, { pick(id), point([x, y]) })   MapView.update(model) (adds you.route on a move)   MapView.select(id)   MapView.dispose()
 // The 3D renderer keeps ONE canvas across re-mounts (renderCareer re-creates #mapwrap) and releases itself when the
 // career screen is gone. Without WebGL the map area shows a notice (no 2D fallback).
 
@@ -10,7 +10,18 @@ const MapView = {
   el: null,
   model: null,
   on: null,
+  last: null, // the you.at last passed on (the road a trip follows starts there)
+  /** The model with you.route = the road path from the last shown position to you.at when that changed (the renderer reads only the model). */
+  routed(model) {
+    const at = model.you && model.you.at;
+    if (!at) return model;
+    const from = MapView.last;
+    MapView.last = at.slice();
+    if (!from || (from[0] === at[0] && from[1] === at[1])) return model;
+    return { ...model, you: { ...model.you, route: City.route(from, at) } };
+  },
   mount(el, model, on) {
+    model = MapView.routed(model);
     MapView.el = el;
     MapView.model = model;
     MapView.on = on;
@@ -41,6 +52,7 @@ const MapView = {
     MapView.m3 = null;
   },
   update(model) {
+    model = MapView.routed(model);
     MapView.model = model;
     if (MapView.m3) MapView.m3.update(model);
   },

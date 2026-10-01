@@ -22,7 +22,7 @@ const REGIONS = {
   },
   wu: {
     color: '#3fa9f5',
-    at: [470, 585],
+    at: [680, 545],
     name: 'Wu Navy',
     kind: 'major',
     price: 1,
@@ -59,7 +59,7 @@ const REGIONS = {
   },
   open: {
     color: '#f5e6a8',
-    at: [500, 300],
+    at: [540, 500],
     name: 'Central Academy',
     kind: 'none',
     price: 1,
@@ -253,6 +253,36 @@ const CHALLENGE = {
   outlaws: { minStake: 50 },
   gloria: {}
 };
+/**
+ * Losing a team challenge or a street fight (spec §4.15), applied by Cup.lose: extra stamina `sta` and `mood` (carry over),
+ * standing `rep` with the faction you lost to (challenges only), `repeatRep` more from the `repeat`-th loss to it (run.losses);
+ * a loss by `heavy`+ points costs `fans` and earns a Gazette jab (GAZETTE_JABS).
+ */
+const LOSS = { sta: 20, mood: -1, rep: -6, repeat: 3, repeatRep: -6, heavy: 8, fans: -150 };
+/**
+ * Injury after every challenge / street fight, won or lost (City.injuryRisk, Cup.injure): chance = base + max(0, their rating −
+ * yours) × perGap + points lost by × perPoint + (1 − stamina share) × sta + max(0, cool − days since your last fight) × perDay,
+ * clamped to [0, max]. A second roll gives the severity (< sev[0] minor, < sev[1] serious, else severe: also −`lose` for good on
+ * one stat); `weeks` of light training per severity. Evaluations and cups carry no injury roll.
+ */
+const INJURY = {
+  base: 0.03,
+  perGap: 0.006,
+  perPoint: 0.01,
+  sta: 0.15,
+  cool: 3,
+  perDay: 0.04,
+  max: 0.45,
+  sev: [0.65, 0.92],
+  weeks: { minor: 1, serious: 2, severe: 3 },
+  lose: 2
+};
+/** The Gazette's jab after a heavy loss (wei voice); {name} = you, {club} = who beat you. */
+const GAZETTE_JABS = [
+  '{club} make an example of {name}. The office expected nothing less.',
+  '{name} went looking for a fight with {club}. The Gazette notes the result.',
+  'Order holds: {club} send {name} home with a lesson.'
+];
 /** What the challenge card says (registrar voice; numbers stay hidden) per faction and verdict, and each faction's refusal lines. */
 const CHALLENGE_WHY = {
   wei: {

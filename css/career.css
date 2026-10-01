@@ -1690,6 +1690,23 @@
   border-width: 4px;
   animation: clashp 1.2s ease-in-out infinite alternate;
 }
+/* a venue where your match is this week: a pulsing ring (CSS only) */
+.mpin.today {
+  border-color: var(--gold);
+  border-width: 5px;
+  animation: todayp 1.4s ease-in-out infinite alternate;
+}
+@keyframes todayp {
+  from {
+    box-shadow: 0 0 4px 0 var(--gold);
+  }
+  to {
+    box-shadow: 0 0 16px 6px var(--gold);
+  }
+}
+.spot .today {
+  color: var(--gold);
+}
 .mlab {
   color: color-mix(in srgb, var(--tc, #e8d9a8) 75%, #fff);
   font: 700 14px var(--disp);
@@ -1732,18 +1749,56 @@
 }
 .hub table.rk {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 13px;
 }
 .hub table.rk td {
   padding: 3px 6px;
+  text-align: left;
   border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.hub table.rk tr.me td {
+.hub table.rk td:first-child {
+  width: 2.5em;
+}
+.hub table.rk td:nth-child(3) {
+  width: 40%;
+}
+.hub table.rk td:last-child {
+  width: 4.5em;
+  text-align: right;
+}
+.hub table.rk tr.you td {
   background: rgba(255, 255, 255, 0.1);
   font-weight: 700;
 }
 .hub table.rk tr.gap td {
   text-align: center;
   color: var(--mute);
+}
+
+/* match history (T-052) */
+.hub table.rk.ml {
+  margin-top: 6px;
+  font-size: 12px;
+}
+.hub table.rk.ml td:first-child {
+  width: auto;
+}
+.hub table.rk.ml td:nth-child(2) {
+  width: 2.5em;
+}
+.hub table.rk.ml td:nth-child(3) {
+  width: 2.5em;
+}
+.hub table.rk.ml td:nth-child(4),
+.hub table.rk.ml td:last-child {
+  width: 5.5em;
+  text-align: right;
+}
+.hub table.rk.ml td:last-child {
+  width: 9em;
 }

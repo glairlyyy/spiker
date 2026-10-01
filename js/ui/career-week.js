@@ -170,6 +170,34 @@ function matchPrep(run, cup) {
     }${info(`Your coach picks the best player of each role by rating + 6 × form (+ your standing with the faction ÷ ${BENCH.standingPer}). Start or finish on the bench and match rewards ×${BENCH.partMul}; never play and you only get a little Wit XP.`)}</div>`;
   return lineup + focus + talk;
 }
+/** Match history (T-052, Cup.record): newest first, each row a fold with the kick-off snapshot (changes vs your previous match), your line and the box score. */
+const MKIND = { eval: 'Evaluation', cup: 'Cup', challenge: 'Challenge', street: 'Street fight' };
+function matchLog(run) {
+  const L = run.mlog || [],
+    sgn = n => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : ''),
+    row = (e, i) => {
+      const prev = L[i - 1],
+        res = e.played ? `${e.win ? 'W' : 'L'} · ${e.grade}` : 'did not play',
+        sum = `W${e.week} · ${MKIND[e.kind] || e.kind}${e.round ? ` (${esc(e.round)})` : ''} · vs ${esc(e.vs)} · ${e.score[0]}-${e.score[1]} · ${res}`,
+        stats = [['ovr', 'OVR'], ...[...STATK, 'wit'].map(k => [k, STATNAME[k].slice(0, 3)])]
+          .map(([k, n]) => `<span>${n} <b>${e.you[k]}</b> <i class="mute">${prev ? sgn(e.you[k] - prev.you[k]) : ''}</i></span>`)
+          .join(' · '),
+        ln = e.line,
+        side = s =>
+          `<tr class="gap"><td colspan="5">${s ? esc(e.short || e.vs) : 'Your side'}</td></tr>${e.box
+            .filter(b => b.side === s)
+            .map(
+              b =>
+                `<tr class="${b.you ? 'you' : ''}"><td>${esc(b.name)}</td><td>${b.role}</td><td>${b.ovr}</td><td>${b.k}/${b.att}/${b.err}</td><td>${b.blk}/${b.ace}/${b.dig}/${b.ast}</td></tr>`
+            )
+            .join('')}`,
+        body = `<p class="small">${stats}</p>
+          ${e.played ? `<p class="small">Line: ${ln.k} kills, ${ln.att} attacks, ${ln.err} errors, ${ln.blk} blocks, ${ln.ace} aces, ${ln.dig} digs, ${ln.ast} assists${e.stake ? ` · stake $${e.stake}` : ''}</p>` : ''}
+          <table class="rk ml"><thead><tr class="gap"><td>Name</td><td>Role</td><td>OVR</td><td>K/Att/Err</td><td>Blk/Ace/Dig/Ast</td></tr></thead><tbody>${side(0)}${side(1)}</tbody></table>`;
+      return fold(`ml${i}`, sum, body);
+    };
+  return `<div class="panel"><h3>Match history</h3>${L.length ? L.map(row).reverse().join('') : '<p class="small mute">No matches yet.</p>'}</div>`;
+}
 /** Rankings drawer: tabs for the three lists (Rank.*, js/career/rank.js), top rows then a gap and your own row. */
 const RANK_TABS = {
   register: ['Register', 'Academy Register — U21, by rating'],
@@ -187,7 +215,7 @@ function rankCard(run) {
     n = RANK.top,
     at = list.findIndex(r => r.id === you.id),
     row = (r, i) =>
-      `<tr class="${r.id === you.id ? 'me' : ''}"><td>${i + 1}</td><td>${esc(r.name)}</td><td>${r.region ? esc(REGIONS[r.region].name) : 'Academy'} · ${r.role}</td><td>${
+      `<tr class="${r.id === you.id ? 'you' : ''}"><td>${i + 1}</td><td>${esc(r.name)}</td><td>${r.region ? esc(REGIONS[r.region].name) : 'Academy'} · ${r.role}</td><td>${
         tab === 'register' ? (r.ovr == null ? '<i class="mute">unrated</i>' : r.ovr) : tab === 'gazette' ? Math.round(r.fame) : r.pts
       }</td></tr>`,
     gap = '<tr class="gap"><td colspan="4">…</td></tr>',
@@ -241,6 +269,7 @@ function evalPanel(run) {
   return `<div class="panel">${head}
     <p class="small"><b>${e.kind === 'academy' ? esc(club.name) : esc(club.name) + ' squad'}</b> ${list(mine, true)}</p>
     <p class="small"><b>${esc(REGIONS[e.region].name)} squad</b> ${list(byId(e.opp).slice(0, 4), D.scouted || D.member)}</p>
+    ${City.venue(run) ? `<p class="small mute">Played at <b>${esc(VENUES[City.venue(run)].name)}</b>.</p>` : ''}
     ${D.scouted || D.member ? '' : '<p class="small mute">Scout one of their clubs to see ratings.</p>'}
     ${rankBest(run, byId(e.opp).slice(0, 4))}
     ${matchPrep(run, false)}
@@ -281,7 +310,7 @@ function cupPanel(run) {
               .join('')}</div>`
         )
         .join('')}</div>
-    <div class="panel"><h3>${nm.round}${info(`Win: +${Math.round(REWARDS.cupWin.sp * def.mul)} skill pts, +${Math.round(REWARDS.cupWin.fans * def.mul).toLocaleString()} fans. A loss ends the season.\nPlacement: round of 16 +${fans('Round of 16')} fans · quarterfinal +${fans('Quarterfinal')} · semifinal +${fans('Semifinal')} · runner-up +${fans('Final')} · champion +${fans('Champion')} — and a place on the national team.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3><p>vs <b>${esc(E[nm.a === me ? nm.b : nm.a].name)}</b></p>
+    <div class="panel"><h3>${nm.round}${info(`Win: +${Math.round(REWARDS.cupWin.sp * def.mul)} skill pts, +${Math.round(REWARDS.cupWin.fans * def.mul).toLocaleString()} fans. A loss ends the season.\nPlacement: round of 16 +${fans('Round of 16')} fans · quarterfinal +${fans('Quarterfinal')} · semifinal +${fans('Semifinal')} · runner-up +${fans('Final')} · champion +${fans('Champion')} — and a place on the national team.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3><p>vs <b>${esc(E[nm.a === me ? nm.b : nm.a].name)}</b>${City.venue(run) ? ` at <b>${esc(VENUES[City.venue(run)].name)}</b>` : ''}</p>
       ${rankBest(run, squadOf(E[nm.a === me ? nm.b : nm.a]))}
       ${matchPrep(run, true)}
     <div class="trow"><button class="btn hot big" onclick="playCareer('cup')">Play ${nm.round.toLowerCase()}</button><button class="btn big" onclick="playCareer('cup', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
