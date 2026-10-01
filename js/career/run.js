@@ -16,7 +16,7 @@ const Run = {
     return { teams, team: Math.floor(R() * teams.length), reserve };
   },
   /**
-   * Start a run. spec = { role, name, mode? ({hard, short}) } (every stat starts at CAREER.start, wit at CAREER.witBase: spec §4.22).
+   * Start a run. spec = { role, name, mode? ({hard, short, story}; story defaults to true) } (every stat starts at CAREER.start, wit at CAREER.witBase: spec §4.22).
    * You always start as a free agent: your player takes the same-role slot on the Academy squad (the pickup squad).
    */
   create(draft, spec) {
@@ -99,7 +99,7 @@ const Run = {
       lastMain: KEYSTAT[role],
       result: null,
       // v3: challenge modes, two cups, training depth, goals, sponsors, history
-      mode: { hard: !!mode.hard, short: !!mode.short },
+      mode: { hard: !!mode.hard, short: !!mode.short, story: mode.story !== false },
       cups: [],
       streak: null,
       injury: null,
@@ -161,17 +161,19 @@ const Run = {
    * standing with `region` ÷ BENCH.standingPer for you); a missing role falls back to the best remaining, the rest sit.
    * Unless `dry`, reorders T.P / T.bench, slots, s / mb / ws and the captain (best leader on court). Returns
    * { starts, you: your score, rival: { p, score } | null } — the same-role player ahead of you (or the best sub behind).
+   * `forceYou` (the Story cup, T-067): you take your role's first seat whatever the scores (an injured you still sits).
    */
-  lineup(run, T, region, dry) {
+  lineup(run, T, region, dry, forceYou) {
     const you = Run.you(run),
       score = p => ovr(p) + 6 * Run.form(run, p) + (p === you && region ? City.rep(run, region) / BENCH.standingPer : 0),
       left = [...squadOf(T)],
       P = [],
-      out = p => run.injury && p === you; // an injured you never starts
+      out = p => run.injury && p === you, // an injured you never starts
+      forced = forceYou && !out(you) && left.includes(you);
     for (const role of ['S', 'MB', 'WS', 'WS']) {
       const ok = left.filter(p => !out(p)),
         of = ok.filter(p => p.role === role),
-        p = (of.length ? of : ok).reduce((a, b) => (score(b) > score(a) ? b : a));
+        p = forced && role === you.role && left.includes(you) ? you : (of.length ? of : ok).reduce((a, b) => (score(b) > score(a) ? b : a));
       P.push(p);
       left.splice(left.indexOf(p), 1);
     }
@@ -353,7 +355,8 @@ const Run = {
     if (!Number.isFinite(run.staMax) || run.staMax <= 0) run.staMax = CAREER.staMax;
     if (!Number.isFinite(run.sta)) run.sta = run.staMax;
     if (!Number.isInteger(run.mood) || !MOODS[run.mood]) run.mood = 2;
-    if (!run.mode || typeof run.mode !== 'object') run.mode = { hard: false, short: false };
+    if (!run.mode || typeof run.mode !== 'object') run.mode = { hard: false, short: false, story: true };
+    if (typeof run.mode.story !== 'boolean') run.mode.story = true;
     if (!run.plays || typeof run.plays !== 'object') run.plays = { k: 0, blk: 0, ace: 0 };
     if (!run.uses || typeof run.uses !== 'object') run.uses = {};
     if (!run.xp || typeof run.xp !== 'object') run.xp = {};
@@ -371,8 +374,8 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 8;
-/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history) — older saves are dropped; add steps when the saved shape changes). */
+const RUN_VERSION = 9;
+/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history), v9: `run.mode.story` (T-067) — older saves are dropped; add steps when the saved shape changes). */
 const RUN_MIGRATIONS = {};
 const ROLE_NAME = { S: 'Setter', MB: 'Middle blocker', WS: 'Wing spiker' };
 /** Run rank letter for a fan count (RANKS is ordered from the top rank down). */

@@ -624,7 +624,7 @@ test('career: training cap, facility Lv 5 and Hard training', () => {
   eq(you.power, 80, 'a stat already at 80 is not lowered by a positive bump');
   g.Training.addXp(run, 'power', 100000, 'match');
   assert(you.power > 80, 'match XP goes past the training cap');
-  assert(!('lb' in run) && g.RUN_VERSION === 8, 'no Limit Break progress in the run; RUN_VERSION 8');
+  assert(!('lb' in run) && g.RUN_VERSION === 9, 'no Limit Break progress in the run; RUN_VERSION 9');
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
   const n = g.Training.preview(run, 'power', false).main[2],
@@ -1068,7 +1068,13 @@ test('career: free agent start, club join conditions, paydays, transfers, specta
   for (const t of run.teams) assert(t.P.length === 4 && t.P.every(p => p.team === t), 'transfers keep rosters linked');
   // a free agent who leaves the Academy and never signs watches the cup and the run still ends
   const h = load(42),
-    r2 = h.Run.create(h.Run.draft(), { role: 'MB', name: 'Loner', alloc: { power: 10, def: 20, speed: 10, jump: 20 }, witSteps: 0 });
+    r2 = h.Run.create(h.Run.draft(), {
+      role: 'MB',
+      name: 'Loner',
+      alloc: { power: 10, def: 20, speed: 10, jump: 20 },
+      witSteps: 0,
+      mode: { story: false }
+    });
   assert(h.World.leaveAcademy(r2), 'leaves the Academy squad');
   let guard = 0;
   while (!r2.result && guard++ < 200) {
@@ -1613,6 +1619,7 @@ test('career: U21 Final Cup — entrants, seeding, byes, restore', () => {
   assert(!r2.result, 'the cup is on');
   // alone: watch it from the stands
   const [g3, r3] = mk(63);
+  r3.mode.story = false; // (Story would hire a street crew: see the story test)
   g3.World.leaveAcademy(r3);
   g3.Cup.start(r3, g3.CUPS[0]);
   eq(r3.cup.me, -1, 'not in the cup');
@@ -1849,6 +1856,7 @@ test('engine: coach AI — errors, returns, coach IQ', () => {
     for (const seed of [7, 8, 9, 10]) {
       const g2 = load(seed),
         T2 = g2.mkTeams();
+      g2.SUB.worth = [0, 0]; // this is the roll's IQ effect only; the worth test (smarter coach subs) has its own test
       for (let i = 0; i < 150; i++) {
         const a = T2[i % 8];
         a.coachIQ = iq;
@@ -1863,6 +1871,84 @@ test('engine: coach AI — errors, returns, coach IQ', () => {
   const sharp = first(1),
     dull = first(0);
   assert(sharp < dull, `coachIQ 1 subs sooner than 0 (${sharp.toFixed(1)} vs ${dull.toFixed(1)} points)`);
+});
+
+test('engine: smarter coach subs', () => {
+  const g = load(6),
+    T = g.mkTeams(),
+    hit = g.RULES.stamina.hit,
+    worth = g.SUB.worth;
+  // a coachIQ 1 coach never makes a tired / erring sub that makes the team worse (bench ovr under worth[1] × the starter's current worth)
+  const run = iq => {
+    let subs = 0,
+      bad = 0,
+      n = 0;
+    for (let i = 0; i < 300; i++) {
+      const a = T[i % 8],
+        b = T[(i * 3 + 1) % 8];
+      a.coachIQ = iq;
+      const m = g.simMatch(a, b);
+      n++;
+      for (const x of m.subLog.filter(x => x.side === 0)) {
+        subs++;
+        if (x.why === 'back') continue;
+        const out = g.squadOf(a).find(p => p.id === x.out),
+          inn = g.squadOf(a).find(p => p.id === x.inn);
+        if (g.ovr(inn) < worth[iq] * g.ovr(out) * (1 - hit * (1 - x.sta)) - 1e-9) bad++;
+      }
+    }
+    return { per: subs / n, bad };
+  };
+  const sharp = run(1),
+    dull = run(0);
+  eq(sharp.bad, 0, 'a coachIQ 1 coach never subs when it makes the side worse');
+  assert(sharp.per < dull.per, `sharp coaches sub less (${sharp.per.toFixed(2)} vs ${dull.per.toFixed(2)} per match for side 0)`);
+  // the coach trusts your player: the sub-out roll is × SUB.you (2000+ seeded rolls each)
+  const g2 = load(9),
+    T2 = g2.mkTeams(),
+    m = g2.newMatch(T2[0], T2[1], false),
+    star = T2[0].P[2],
+    rate = isYou => {
+      let n = 0;
+      const N = 4000;
+      for (let i = 0; i < N; i++) {
+        star.you = isYou;
+        for (const k of g2.STATK) star[k] = 30; // a weak, tired starter: the swap always pays
+        T2[0].coachIQ = 0.7;
+        m.sta[star.id] = 0.2;
+        g2.coachSubs(m, 0);
+        if (m.subs[0]) n++;
+        g2.restoreLineups(m);
+        m.subs = [0, 0];
+        m.subbed = {};
+        m.subLog.length = 0;
+      }
+      return n / N;
+    };
+  const base = rate(false),
+    you = rate(true);
+  assert(
+    base > 0.5 && Math.abs(you - base * g2.SUB.you) <= 0.03,
+    `your player is subbed out ${(you * 100).toFixed(1)} % vs ${(base * 100).toFixed(1)} % (× ${g2.SUB.you})`
+  );
+  // a noSub bench player never comes on (an injured you): not for tiredness, not on the way back
+  star.you = false;
+  for (const q of T2[0].bench) q.noSub = true;
+  let came = 0;
+  for (let i = 0; i < 300; i++) {
+    m.sta[star.id] = 0.2;
+    g2.coachSubs(m, 0);
+    came += m.subs[0];
+    m.subs = [0, 0];
+    m.subbed = {};
+    m.subLog.length = 0;
+  }
+  eq(came, 0, 'a noSub player is never subbed on');
+  g2.restoreLineups(m);
+  assert(
+    T2[0].bench.every(q => !('noSub' in q)),
+    'restoreLineups clears the engine-only flag'
+  );
 });
 
 test('engine: three touches — pop-up saves are the set', () => {
@@ -2100,7 +2186,7 @@ test('career: challenge loss and injury', () => {
   run.sp = 99;
   assert(g.Training.physio(run) && !run.injury, 'physio heals the injury');
   assert(you[lost[0]] === before[g.STATK.indexOf(lost[0])] - g.INJURY.lose, 'but not the lost stat');
-  eq(g.RUN_VERSION, 8, 'save v8');
+  eq(g.RUN_VERSION, 9, 'save v9');
 });
 
 test('career: your coach picks the 4 — bench start, never played, part rewards', () => {
@@ -2163,6 +2249,76 @@ test('career: your coach picks the 4 — bench start, never played, part rewards
   line = fx.onFinish(m);
   assert(/bench: rewards ×0\.6/.test(line) && /grade/.test(line), `part-match line: ${line}`);
   eq(run.sp - sp0, want, 'skill points × BENCH.partMul');
+});
+
+test('career: story mode cup', () => {
+  const mk = (seed, role = 'WS') => {
+    const g = load(seed);
+    return [g, g.Run.create(g.Run.draft(), { role, name: 'Story', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 })];
+  };
+  const [g0, r0] = mk(71);
+  eq(r0.mode.story, true, 'Story is the default');
+  eq(g0.Run.create(g0.Run.draft(), { role: 'WS', name: 'E', mode: { story: false } }).mode.story, false, 'story can be switched off');
+  // signed with a faction but not drawn: forced into its first squad over the weakest same-role player
+  const [g, run] = mk(72);
+  const ti = 0,
+    reg = g.FACTIONS[ti].region;
+  g.FACTIONS[ti].join = {};
+  assert(g.World.join(run, ti), 'joins a faction');
+  const you = g.Run.you(run),
+    before = g.Pool.draw(run, reg).some(s => s.includes(you));
+  g.Cup.start(run, g.CUPS[0]);
+  assert(run.cup.me >= 0 && run.cup.entrants[run.cup.me].region === reg, 'you play for your faction' + (before ? ' (drawn)' : ' (forced)'));
+  // an undrawn you: pin the draw away from you by making you the weakest, then check the first squad
+  you.power = you.def = you.speed = you.jump = 25;
+  run.cup = null;
+  g.Cup.start(run, g.CUPS[0]);
+  const e = run.cup.entrants.find(x => x.region === reg && x.ids.includes(you.id));
+  assert(e, 'the weakest you is still in a squad');
+  eq(run.cup.entrants.filter(x => x.ids.includes(you.id)).length, 1, 'in exactly one squad');
+  // alone: the street crew entrant, saved with the run, never holds a second copy of you
+  const [g1, r1] = mk(73, 'MB');
+  g1.World.leaveAcademy(r1);
+  g1.RNG.seed(5);
+  const a = g1.R();
+  g1.RNG.seed(5);
+  g1.Cup.crew(r1);
+  eq(g1.R(), a, 'the crew is built on a side stream: the main draws are untouched');
+  g1.Cup.start(r1, g1.CUPS[0]);
+  assert(r1.cup.me >= 0 && r1.cup.entrants[r1.cup.me].name === 'Street crew', 'alone: you enter with a street crew');
+  const crew = r1.cup.entrants[r1.cup.me];
+  eq(crew.ids.length, 6, 'a crew of six');
+  eq(crew.ids.filter(id => id === g1.Run.you(r1).id).length, 1, 'you once');
+  assert(r1.reserve.street && !r1.reserve.street.P.some(p => p.id === r1.youId), 'the crew reserve never holds you');
+  // you start every cup match, even with the lowest rating; injured → benched
+  const you1 = g1.Run.you(r1);
+  you1.power = you1.def = you1.speed = you1.jump = 25;
+  const fx = g1.Cup.fixture(r1, 'cup');
+  assert(fx.a.P.includes(you1), 'you start the cup match');
+  fx.onLeave = null;
+  g1.Eval.restore();
+  r1.injury = { weeks: 2 };
+  const fx2 = g1.Cup.fixture(r1, 'cup');
+  assert(!fx2.a.P.includes(you1), 'injured: benched, injury beats Story');
+  g1.Eval.restore();
+  r1.injury = null;
+  // champion → called up; not Story keeps today's behaviour
+  r1.result = { place: 'Champion' };
+  assert(g1.Cup.calledUp(r1), 'a Story champion is called up');
+  r1.result = { place: 'Final' };
+  assert(!g1.Cup.calledUp(r1), 'a finalist is not');
+  const [g2, r2] = mk(74);
+  r2.mode.story = false;
+  g2.World.leaveAcademy(r2);
+  g2.Cup.start(r2, g2.CUPS[0]);
+  eq(r2.cup.me, -1, 'story off: not drawn → watch from the stands');
+  // save round trip keeps the crew and the mode
+  g1.Run.save(r1);
+  const back = g1.Run.load();
+  assert(
+    back && back.mode.story === true && back.reserve.street && back.cup.entrants.some(x => x.crew),
+    'the crew and mode survive a save'
+  );
 });
 
 // ---------- report ----------

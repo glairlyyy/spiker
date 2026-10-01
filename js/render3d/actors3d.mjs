@@ -272,6 +272,28 @@ function dressFigure(pl, d) {
   pl.prev.clear();
   Object.assign(pl, { yawOff: 0, mot: null });
 }
+/**
+ * POV: hide the head of the figure playing `id` (the camera sits at its eyes): face, eyes, hair and anything on the head. The arms
+ * and body stay. `null` shows every head again. Cheap enough to call every frame (it only touches a figure whose state changed).
+ */
+const HEAD = /^(Face|Hair)|FACE|HAIR|EYE|Accessor|Hat|Glass|Ear/;
+export function setPovHidden(w, id) {
+  for (const pl of w.people) {
+    const hide = id != null && !!pl.d && pl.root.visible && pl.d.p.id === id;
+    if (pl.povHidden === hide) continue;
+    pl.povHidden = hide;
+    if (!pl.headMeshes) {
+      pl.headMeshes = [];
+      pl.vrm.scene.traverse(o => {
+        if (!o.isMesh) return;
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        if (HEAD.test(o.name) || (o.parent && /^Face/.test(o.parent.name)) || mats.every(m => HEAD.test(m.name || '')))
+          pl.headMeshes.push(o);
+      });
+    }
+    for (const o of pl.headMeshes) o.visible = !hide;
+  }
+}
 /** A substitution: the figure that played as `outId` now plays display entry d (same spot; re-dressed as the incoming player). */
 export function swapActor(w, outId, d) {
   const pl = w.people.find(q => q.d && q.d.p.id === outId);

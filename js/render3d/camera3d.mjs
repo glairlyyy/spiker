@@ -20,17 +20,223 @@ let camMode = (() => {
     return 'courtside';
   }
 })();
-const camState = { x: 0, blend: camMode === 'courtside' ? 1 : 0 };
-/** Broadcast = the classic full-court framing; courtside = closer and lower, following the ball along the court. */
+const camState = { x: 0, w: { broadcast: 0, courtside: 0, follow: 0, pov: 0 }, eff: '' };
+if (!['broadcast', 'courtside', 'follow', 'pov'].includes(camMode)) camMode = 'courtside';
+camState.w[camMode === 'follow' || camMode === 'pov' ? 'courtside' : camMode] = 1; // Follow / POV start from Courtside until a player is picked
+let followId = null;
+/** The player the Follow camera tracks (a player id; null → Courtside). */
+export const setFollow = id => (followId = id == null ? null : id);
+export const getFollow = () => followId;
+const FOL = { back: 4.5, up: 2.6, ahead: 3, fov: 55, tau: 0.25, ball: [0.35, 0.6] },
+  fol = { id: null, pos: new THREE.Vector3(), look: new THREE.Vector3() },
+  fv = new THREE.Vector3(),
+  fh = new THREE.Vector3();
+/**
+ * POV: the followed player's eyes (head bone + 0.08 m forward), looking at the ball while it is within 100° of their
+ * facing, else straight ahead. Horizontal position follows the head exactly, height is smoothed within ±5 cm, the look point
+ * ~0.12 s. In the air (> 0.6 m), in a dive, or while the view turns faster than 220°/s the pose blends (~0.25 s) to the
+ * Follow pose and back 0.3 s after it calms (`pov.fb` 0..1; `povStats.switches` counts the changes).
+ */
+const POV = {
+    fwd: 0.08,
+    eye: 0.07,
+    fov: 70,
+    tau: 0.12,
+    yTau: 0.1,
+    bob: 0.05,
+    turn: 220,
+    air: 0.6,
+    hold: 0.3,
+    near: 0.1,
+    cone: Math.cos((100 * Math.PI) / 180),
+    far: Math.cos((140 * Math.PI) / 180)
+  },
+  pov = {
+    id: null,
+    pos: new THREE.Vector3(),
+    look: new THREE.Vector3(),
+    dir: new THREE.Vector3(0, 0, 1),
+    y: 0,
+    fb: 0,
+    hold: 0,
+    on: false,
+    hide: false
+  },
+  povStats = { switches: 0, log: [] },
+  pf = new THREE.Vector3(),
+  ph = new THREE.Vector3(),
+  pd = new THREE.Vector3(),
+  pt = new THREE.Vector3();
+export const getPovStats = () => povStats;
+/** The player whose head should be hidden (the camera is at their eyes), else null. */
+export const povHidden = () => (pov.hide ? followId : null);
+function povPose(pl, dt, pos, look) {
+  const yaw = pl.root.rotation.y,
+    bp = lookBall();
+  pf.set(Math.sin(yaw), 0, Math.cos(yaw));
+  pl.bone('head').getWorldPosition(ph);
+  const tx = ph.x + pf.x * POV.fwd,
+    tz = ph.z + pf.z * POV.fwd,
+    ty = ph.y + POV.eye,
+    fresh = pov.id !== followId;
+  pov.y = fresh ? ty : pov.y + (ty - pov.y) * (1 - Math.exp(-dt / POV.yTau));
+  pov.y = Math.max(ty - POV.bob, Math.min(ty + POV.bob, pov.y));
+  pov.pos.set(tx, pov.y, tz);
+  pt.copy(bp).sub(pov.pos).setY(0);
+  // the ball is looked at up to 100° off the facing, and fades out to straight ahead by 140° (no flip at the edge)
+  const cs = pt.lengthSq() > 1e-4 ? pt.normalize().dot(pf) : -1,
+    kb = Math.max(0, Math.min(1, (cs - POV.far) / (POV.cone - POV.far))) * bw.v;
+  pt.copy(pov.pos).addScaledVector(pf, 3).setY(pov.pos.y);
+  pd.copy(pt).lerp(bp, kb);
+  faceOpponent(pov.pos, pd, pl.d.side, 55);
+  if (fresh) pov.look.copy(pd);
+  else pov.look.lerp(pd, 1 - Math.exp(-dt / POV.tau));
+  pt.copy(pov.look).sub(pov.pos).normalize();
+  const rate = fresh || dt < 1e-3 ? 0 : (pt.angleTo(pov.dir) * 180) / Math.PI / dt;
+  pov.dir.copy(pt);
+  const wild = pl.root.position.y > POV.air || (pl.d && pl.d.pose === 'dive') || rate > POV.turn;
+  if (fresh) {
+    pov.fb = 0;
+    pov.hold = 0;
+  }
+  pov.hold = wild ? POV.hold : Math.max(0, pov.hold - dt);
+  const on = pov.hold > 0;
+  if (on !== pov.on && !fresh) {
+    povStats.switches++;
+    if (povStats.log.length < 400) povStats.log.push([+pl.root.position.y.toFixed(2), +rate.toFixed(0), on ? 'follow' : 'pov']);
+  }
+  pov.on = on;
+  pov.fb += ((on ? 1 : 0) - pov.fb) * (1 - Math.exp(-dt * 12));
+  pov.id = followId;
+  povStats.fb = pov.fb;
+  pos.copy(pov.pos);
+  look.copy(pov.look);
+}
+/**
+ * The point the Follow / POV cameras look toward: the ball clamped to the playable box (a ball far out of the map must not
+ * drag the view around), weighted by `bw.v` — 1 while the ball is in play and drawn, eased to 0 (~0.25 s) when it is hidden or
+ * parked, so the view returns to straight ahead instead of snapping to a stale far position.
+ */
+const BALL_BOX = [16, 9, 9], // |x|, |z|, y max (m)
+  bw = { v: 1, p: new THREE.Vector3() };
+function lookBall() {
+  const q = world.ball.position;
+  return bw.p.set(
+    Math.max(-BALL_BOX[0], Math.min(BALL_BOX[0], q.x)),
+    Math.max(0, Math.min(BALL_BOX[2], q.y)),
+    Math.max(-BALL_BOX[1], Math.min(BALL_BOX[1], q.z))
+  );
+}
+/** faceOpponent: from fade[0] to fade[1] rad off the axis the clamped look eases back to straight ahead (continuous behind the camera). */
+const FACE = { fade: [1.75, Math.PI] },
+  ZO = { max: 12, out: 14, back: 3 }, // back-off limit (m), speed backing off / returning (m/s)
+  zo = { k: 0, d: 0, v: new THREE.Vector3() }; // auto zoom-out when the ball leaves the frame
+/**
+ * Keep a look point within `deg` of the opponent's side (the court axis toward the net) as seen from `pos`: the camera never
+ * turns away from the other team, the ball only pulls the view sideways up to that limit (the auto zoom-out covers the rest).
+ */
+function faceOpponent(pos, look, side, deg) {
+  const dx = look.x - pos.x,
+    dz = look.z - pos.z,
+    len = Math.hypot(dx, dz);
+  if (len < 1e-4) return;
+  const ax = side === 0 ? 0 : Math.PI,
+    rel = Math.atan2(Math.sin(Math.atan2(dz, dx) - ax), Math.cos(Math.atan2(dz, dx) - ax)),
+    lim = (deg * Math.PI) / 180,
+    t = Math.min(1, Math.max(0, (Math.abs(rel) - FACE.fade[0]) / (FACE.fade[1] - FACE.fade[0]))),
+    // a target almost straight behind (|rel| → 180°) would flip the clamp from +lim to −lim in one frame: fade the pull to 0 there
+    fade = 1 - t * t * (3 - 2 * t),
+    c = Math.max(-lim, Math.min(lim, rel)) * fade;
+  if (c === rel) return;
+  look.x = pos.x + Math.cos(ax + c) * len;
+  look.z = pos.z + Math.sin(ax + c) * len;
+}
+/** The figure on court for the followed player (null: off court / not drawn). */
+const followFig = () => (world && followId != null ? world.people.find(pl => pl.d && pl.root.visible && pl.d.p.id === followId) : null);
+/** Follow pose target: behind the player along their side's court axis, above, looking ahead and toward the ball. */
+function followPose(pl, pos, look) {
+  const side = pl.d.side,
+    dir = side === 0 ? 1 : -1, // toward the net
+    hips = pl.root.position,
+    bp = lookBall(),
+    mine = Math.sign(bp.x) === -dir, // ball on your side of the net
+    lean = Math.max(-1, Math.min(1, (bp.z - hips.z) * 0.15)) * bw.v;
+  pos.set(hips.x - dir * FOL.back, Math.max(1.2, hips.y + FOL.up), hips.z + lean);
+  pos.x = dir > 0 ? Math.min(pos.x, -0.5) : Math.max(pos.x, 0.5); // never inside the net plane
+  fh.set(hips.x + dir * FOL.ahead, hips.y + 1.5, hips.z);
+  look.copy(fh).lerp(bp, FOL.ball[mine ? 1 : 0] * bw.v);
+  faceOpponent(pos, look, side, 40);
+}
+/** Broadcast = the classic full-court framing; courtside = closer and lower, following the ball along the court; follow = behind your player. */
 export function updateBase(dt) {
-  const tgt = camMode === 'courtside' ? 1 : 0;
-  camState.blend += (tgt - camState.blend) * (1 - Math.exp(-dt * 2.5));
+  const fig = followFig(), // tracked in every mode, so a mode switch fades from / to a live pose
+    eff = (camMode === 'follow' || camMode === 'pov') && !fig ? 'courtside' : camMode;
+  camState.eff = eff;
+  bw.v += ((A && A.ball.vis ? 1 : 0) - bw.v) * (1 - Math.exp(-dt / 0.25));
+  const kw = 1 - Math.exp(-dt * 5); // ~0.6 s ease between modes
+  for (const m in camState.w) camState.w[m] += ((m === eff ? 1 : 0) - camState.w[m]) * kw;
   const bx = A && A.ball.vis ? Math.max(-6.5, Math.min(6.5, (A.ball.x - 500) * KX * 0.75)) : 0;
   camState.x += (bx - camState.x) * (1 - Math.exp(-dt * 1.6));
-  const k = camState.blend,
-    pos = new THREE.Vector3(...CAM.pos).lerp(new THREE.Vector3(camState.x * 0.85, 3.3, 14.5), k),
-    look = new THREE.Vector3(...CAM.look).lerp(new THREE.Vector3(camState.x, 1.55, -0.8), k);
-  let fov = CAM.fov + (31 - CAM.fov) * k;
+  const W3 = camState.w,
+    pos = new THREE.Vector3(...CAM.pos).multiplyScalar(W3.broadcast),
+    look = new THREE.Vector3(...CAM.look).multiplyScalar(W3.broadcast);
+  pos.addScaledVector(fv.set(camState.x * 0.85, 3.3, 14.5), W3.courtside);
+  look.addScaledVector(fv.set(camState.x, 1.55, -0.8), W3.courtside);
+  let fov = CAM.fov * W3.broadcast + 31 * W3.courtside + FOL.fov * W3.follow + POV.fov * W3.pov;
+  if (fig && world) {
+    const tp = new THREE.Vector3(),
+      tl = new THREE.Vector3();
+    followPose(fig, tp, tl);
+    if (fol.id !== followId) {
+      fol.pos.copy(tp); // first frame (or a new player): start on target
+      fol.look.copy(tl);
+      fol.id = followId;
+    } else {
+      const k = 1 - Math.exp(-dt / FOL.tau);
+      fol.pos.lerp(tp, k);
+      fol.look.lerp(tl, k);
+    }
+  }
+  if (fol.id != null && fol.id === followId) {
+    pos.addScaledVector(fol.pos, W3.follow); // (the last pose while the player is off court: it only fades out)
+    look.addScaledVector(fol.look, W3.follow);
+  } else {
+    pos.addScaledVector(fv.set(camState.x * 0.85, 3.3, 14.5), W3.follow);
+    look.addScaledVector(fv.set(camState.x, 1.55, -0.8), W3.follow);
+  }
+  // POV (tracked while its figure is on court, so it blends in and out of a live pose); its fallback is the Follow pose
+  if (fig && world) {
+    const pp = new THREE.Vector3(),
+      pl2 = new THREE.Vector3();
+    povPose(fig, dt, pp, pl2);
+    pov.pp = (pov.pp || new THREE.Vector3()).copy(pp.lerp(fol.pos, pov.fb));
+    pov.pl = (pov.pl || new THREE.Vector3()).copy(pl2.lerp(fol.look, pov.fb));
+    pov.fov = POV.fov + (FOL.fov - POV.fov) * pov.fb;
+  }
+  if (pov.pp && pov.id === followId) {
+    pos.addScaledVector(pov.pp, W3.pov);
+    look.addScaledVector(pov.pl, W3.pov);
+    fov += (pov.fov - POV.fov) * W3.pov;
+  } else {
+    pos.addScaledVector(fv.set(camState.x * 0.85, 3.3, 14.5), W3.pov);
+    look.addScaledVector(fv.set(camState.x, 1.55, -0.8), W3.pov);
+    fov += (31 - POV.fov) * W3.pov;
+  }
+  // ball out of frame (judged on last frame's camera): widen the view until it is back, then ease in again; not in scene shots
+  const bv = zo.v.copy(world ? world.ball.position : zo.v.set(0, 0, 0)).project(base),
+    out = !!(A && A.ball.vis && !A.shot && (Math.abs(bv.x) > 0.85 || Math.abs(bv.y) > 0.85 || bv.z > 1));
+  zo.k += ((out ? 1 : 0) - zo.k) * (1 - Math.exp(-dt / (out ? 0.3 : 0.8)));
+  fov += (W3.follow * 28 + W3.pov * 20 + W3.courtside * 10) * zo.k;
+  // Follow: the ball out of view is usually behind the camera, so keep backing the camera away from the net (and up) until the
+  // ball is in view, then ease back in only once it is well inside the frame
+  const vis = bv.z < 1 && Math.abs(bv.x) < 0.6 && Math.abs(bv.y) < 0.6;
+  zo.d = Math.max(0, Math.min(ZO.max, zo.d + (out ? ZO.out : vis ? -ZO.back : 0) * dt));
+  if (zo.d > 0.001) {
+    const k = W3.follow * zo.d,
+      away = fig && fig.d.side === 1 ? 1 : -1; // away from the net on the followed player's side
+    pos.x = Math.max(-19, Math.min(19, pos.x + away * k));
+    pos.y += k * 0.3;
+  }
   // staged scene shot (A.shot from playback): hard cuts between shots, a quick ease in and out of the game camera
   const want = A && A.shot && world ? A.shot : null,
     key = want ? `${want.kind}|${want.p}|${want.p2 || ''}` : '';
@@ -50,10 +256,19 @@ export function updateBase(dt) {
   shot.k += ((shot.key ? 1 : 0) - shot.k) * (1 - Math.exp(-dt * (shot.key ? 16 : 5)));
   if (shot.k > 0.001) {
     const e = shot.k * shot.k * (3 - 2 * shot.k);
+    // turn the view through the shortest arc at an even rate (lerping the look points snaps the view when the two shots differ a lot)
+    const dg = sv1.copy(look).sub(pos),
+      ds = sv2.copy(shot.look).sub(shot.pos),
+      lg = dg.length(),
+      ls = ds.length();
+    sq.setFromUnitVectors(dg.normalize(), ds.normalize());
+    sq0.identity().slerp(sq, e);
     pos.lerp(shot.pos, e);
-    look.lerp(shot.look, e);
+    look.copy(pos).addScaledVector(dg.applyQuaternion(sq0), lg + (ls - lg) * e);
     fov += (shot.fov - fov) * e;
   }
+  pov.hide = camMode === 'pov' && W3.pov * (1 - pov.fb) > 0.5 && shot.k < 0.3;
+  base.near = W3.pov > 0.02 ? POV.near : 0.5; // eyes are close to the hands and the ball
   base.position.copy(pos);
   base.lookAt(look);
   base.fov = fov;
@@ -65,8 +280,12 @@ export function updateBase(dt) {
   cam.quaternion.copy(base.quaternion);
   cam.updateMatrixWorld(true);
 }
-/** Camera for a scene shot: face close-up, over the setter's shoulder at the hitter, or from behind the block. */
+const sv1 = new THREE.Vector3(),
+  sv2 = new THREE.Vector3(),
+  sq = new THREE.Quaternion(),
+  sq0 = new THREE.Quaternion();
 const shot = { k: 0, key: '', pos: new THREE.Vector3(), look: new THREE.Vector3(), fov: 30 };
+/** Camera for a scene shot: face close-up, over the setter's shoulder at the hitter, or from behind the block. */
 function shotPose(s) {
   const find = id => world.people.find(pl => pl.d && pl.d.p.id === id),
     a = find(s.p);

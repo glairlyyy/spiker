@@ -40,22 +40,113 @@ Result:
 - Match history ✓ (T-052).
 - Free setter takes the second ball ✓ (T-054) · start from 1 ✓ (T-055).
 - Stat guard ✓ (T-056) · official venues ✓ (T-053).
-- **Now**: empty. Candidates (Later, need detailing): road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
+- Smarter coach ✓ (T-057).
+- Player camera ✓ (T-058 Follow, T-059 POV).
+- **Now**: ego (T-068), block collision (T-069), POV polish (T-070). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now
+## Now — Ego + block collision (§2.12), POV polish (§4.25)
 
-(empty — the spec chat moves the next task here)
+### [ ] T-068: Ego — show-offs steal balls, call sets, block alone (wit = maturity)
+Spec: §2.12, §2.0          Goldens: update (new decisions in every rally)          Save: no change
+Goal: Every player gets an ego (0–1); low-wit players act on it — ball steals, set calls, solo blocks, hero swings,
+hero serves — with maturity from wit cutting both how often and how badly. Logged for the relationship memories later.
+Files: js/data/rules.js, js/engine/players.js, js/engine/match.js, js/engine/rally.js, js/engine/rally-phases.js,
+js/engine/rally-defense.js, js/engine/serve.js, js/data/dialogue.js, js/career/run.js, tests/run.js, ARCHITECTURE.md
+(T-067 follow-up, do first, same commit: js/ui/career-week.js — the pre-match Lineup line uses
+`Run.lineup(run, side.T, side.region, true, cup && run.mode.story)` so a Story cup match never reads "On the bench".)
+Do not: add an act kind (use `plabel`, `pose`, `log`, `chat` / existing chatter); add randoms to presentation; change
+saves beyond the player field `ego` (teams save it; old saves get the hash value on load); let one ego act decide a
+rally on its own more than its EGO table says.
+Steps:
+1. rules.js `EGO = { base: { steal, call, solo, swing, serve }, captain, err: { … } }` (doc comment; start values small:
+   aim for ~1–3 ego acts per side per set among average-wit players, ~0 with wit ≥ 1.8). `maturity(p) = clamp((p.wit −
+   0.5) / 1.5, 0, 1)`.
+2. players.js: `p.ego` in createPlayer (spec value wins; else a hash of the player's id/name → 0.2–0.8, WS +0.1, no R()
+   draw so generation stays identical); your player: 0.6 (run.js create).
+3. Engine hooks, one R() each only where an opportunity exists and its chance is > 0 (no draw at chance 0): dig / pass (rally-phases / rally-defense: an ego mate
+   other than `nearest` within reach → steal: collision chance by both players' maturity, else they take it);
+   pickSetter/chooseAttack (set call: the setter's maturity resists); formBlock (solo block: the ego blocker ignores
+   `dset`); attack on quality-1 sets (hero swing instead of the safe shot); serve (hero serve → jump serve).
+   Captain call-off per §2.12. Record `m.egoLog.push({ act, p, ok, mate? })` (engine-only).
+4. Presentation: "MINE!" `plabel`, bump poses on a collision, a log line; set-call chatter lines in dialogue.js (street
+   voice, 5 lines). Hype scenes unchanged.
+5. tests `'engine: ego'`: 400 sims — ego acts per side per set in range for average wit, near zero for wit ≥ 1.8;
+   success rate rises with maturity; collisions only on steals; with ego 0 everywhere the match is identical to an
+   ego-free reference run of the same seed (no extra draws when no opportunity); T-026 stuff / kill tests still
+   pass (retune EGO, not those tests, if they don't); report kill % and error % before / after.
+6. `npm run test:update` with the reason. ARCHITECTURE.md: ego.
+Accept: all tests + lint; goldens updated for this reason only.
+QA: Monster game with all wit set to 0.6: 2000 steps — "MINE!" labels, a collision, a solo block seen; with wit 1.9:
+almost none; no pageerror.
+Result:
+
+### [ ] T-069: Block collision — cancelled blocks and the net-fault variant
+Spec: §2.12 (Block collision)          Goldens: update (a new outcome on solo blocks)          Save: no change
+Goal: When T-068's solo block meets a partner who also commits, the two blockers collide: both blocks cancel early (an
+open net for the attack) or, in the error variant, a net fault ends the rally; a floating "BLOCK COLLISION" label in a
+warning or error style marks it.
+Files: js/data/rules.js, js/engine/rally.js, js/engine/rally-defense.js, js/render/playback.js, js/render/court.js,
+js/render3d/actors3d.mjs (only if the stagger needs it), tests/run.js, ARCHITECTURE.md
+Do not: add an act kind (extend `plabel` with an optional style flag, and use `jump` / `slide` / `pose` / `log`);
+make collisions happen without a solo block; touch the scene shots.
+Steps:
+1. rules.js EGO gains `collide` (chance the partner also commits = collide × (1 − partner maturity)) and `net` (share
+   of collisions that become a net fault). Start values: collisions ≈ 10–20 % of solo blocks, net faults ≈ 30 % of
+   collisions.
+2. Engine (where the solo block is decided, T-068): on a collision — no block touch this attack (the attack resolves
+   vs an empty net: today's no-block path); both blockers' jump acts end early (`jump` mode 'down' at ~40 % of the
+   normal hang), they `slide` 0.3 m apart and take a stagger pose (reuse an existing pose, e.g. 'bump' / landing);
+   net-fault variant: the rally ends at once, point to the attacking side, a log line "Net fault — block collision".
+   Record `m.egoLog.push({ act: 'collide', p, mate, net })`. One R() for the partner, one for the net share, only when a
+   solo block happens.
+3. `plabel` gains an optional `v` ('warn' | 'err'): playback passes it to the label; court.js drawLabels colours warn
+   orange (#ffb13d) and err red (#ff4d4d), stamped (pop-in) like big labels. Text: "BLOCK COLLISION" / "BLOCK
+   COLLISION · NET", anchored between the two blockers at net height. The act-kind test still passes (no new kind).
+4. tests `'engine: block collision'`: 400 sims with ego forced high and wit low — collisions happen only after a solo
+   block; no block touch on a collision; net-fault rallies end with the point to the attackers and no attack contact
+   after it; label acts carry `v`; with EGO.collide 0 the stream equals T-068's; T-026 stuff / kill tests still pass.
+5. `npm run test:update` with the reason. ARCHITECTURE.md: the collision outcome and the plabel style flag.
+Accept: all tests + lint; goldens updated for this reason only.
+QA: Monster game with ego 0.9 / wit 0.6 for every player: watch until a collision — both blockers come down early and
+stagger, the label shows in orange; a net-fault one in red and the point ends at once; screenshot both; no pageerror.
+Result:
+
+### [ ] T-070: POV polish — no teammate in your face, ball on screen for hitters
+Spec: §4.25          Goldens: unchanged (presentation only)          Save: no change
+Goal: Review QA of T-059 found POV frames where the camera sits inside a teammate's body / hair (near plane 0.1 m,
+players pass within arm's reach), and the ball was on screen only 61 % of a wing spiker's frames (bar 70 %).
+Files: js/render3d/camera3d.mjs, js/render3d/actors3d.mjs, ARCHITECTURE.md
+Do not: touch js/engine; hide the followed player's arms; change Follow / Broadcast / Courtside.
+Steps:
+1. actors3d: any other figure whose body (hips–head capsule, radius ~0.35 m) comes within 0.9 m of the POV camera fades
+   out (material opacity → 0 over ~0.1 s; restore after), via a per-frame hook like `setPovHidden` (no new draw calls,
+   no per-frame allocations).
+2. camera3d: while the followed player is a hitter on approach / in the air the POV look target leans toward the ball
+   (the set) instead of straight ahead (within the ±55° clamp), so the set is in view before the fallback kicks in;
+   keep the 220°/s turn limit.
+3. QA numbers as in T-059, plus: 0 frames where the camera is inside another figure's capsule; WS ball-on-screen ≥ 70 %.
+Accept: all tests + lint.
+QA: Monster game POV on the WS and on the setter, 1500 steps each: the numbers above; screenshots; no pageerror.
+Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
+
+Relationships — the core pillar (spec §4.23; detailed one by one after T-059)
+- T-060: NPC careers — wants, traits, status, weekly plans, activity-based growth (data + headless sim).
+- T-061: Memory log + stance + bond as a read-only summary (all bond sources become memory kinds; ego acts from `m.egoLog`).
+- T-062: People tab — person cards, discovery of wants / traits, top memories.
+- T-063: Approaches — NPCs come to you (and to each other); you approach them.
+- T-064: Fates — cut / quit / poached / national; end-of-run "People who mattered".
+- T-065: NPC ↔ NPC memories, cliques, squad chemistry.
+- T-066: On-court effects — trust / freeze-out set distribution, cover, rival mood (engine, goldens update).
 
 Roads, part 2 — spec §4.18
 - T-048: Road travel — trip days from the road route length (roads faster than cross-country; Shu paths slower);
   rules + tests change (career only).
 
 Injuries, part 2 — spec §4.15
-- T-049: The engine coach never subs an injured you on (evaluations, cup): mark the player unavailable for
-  `subCandidate` (engine-only flag set by the career before the match; goldens must stay unchanged).
+- (T-049 merged into T-057.)
 
 Phase 5 — Voice pass
 - T-022: Faction `front`/`dark`, region `desc`, Gazette and event strings in lore.md §7 voices. Also fix the stale
@@ -63,6 +154,10 @@ Phase 5 — Voice pass
 
 ## Done
 
+- [x] T-067: Story mode — you always play the U21 Final Cup — Story default (`run.mode.story`, RUN_VERSION 9); forced into the first faction squad / Academy entrant / seeded street crew (`run.reserve.street`, side RNG stream); `forceYou` lineup; `Cup.calledUp`; Endless shown disabled; 49/49, lint clean, goldens untouched. Spec-chat QA: create shows Story / Endless (later), new run mode story v9, no pageerror. Lineup-line fix moved to T-068.
+- [x] T-059: POV camera — 1st person from your player's eyes — POV done as specified (+ ball look fades out 100°→140° instead of a hard edge, no flip; base near 0.1 in POV). QA Monster, 1500 steps each: head hidden every POV frame, 0 frames with the camera within 0.35 m of a visible head, restored on leaving; every air episode reached the Follow fallback (10–13 switches logged per run); max frame move ≤ 1.5 m; ball on screen when in play on your side: setter 79 %, WS 61 % (WS misses are mostly fallback jump frames; 86 % outside them) — below the 70 % bar for the WS; no pageerror; screenshot /tmp/p1.png. Earlier Follow ball-on-screen re-measured with the real ball: 96 %.
+- [x] T-058: Follow camera — 3rd person behind your player — Follow camera done as specified; mode weights replace the blend, follow pose tracked in every mode (no jump on switch). QA Monster WS 1500 steps: ball on screen 99.7 %, max frame move 1.06 m (no jump >3 m), cam y ≥ 2.3 m, mode switches ≤ 2.9 m/frame, scenes cut in/back; career eval follows you (select hidden); no pageerror; 48/48 tests, lint clean. Select list isn't refreshed after a sub (falls back to Courtside).
+- [x] T-057: Smarter coach subs, trust in your player, never sub an injured you on — worth test (`SUB.worth` [0.85, 1.05] by coachIQ), `SUB.you` 0.9, `noSub` (set in `Cup.prepare` when injured, cleared by `restoreLineups`); 48/48, lint clean. Goldens updated (teams, matches, sims): coaches now skip subs that make the side worse. Subs per match (both sides, 300 sims): default coach 3.04 → 1.97; coachIQ 0 2.94 → 2.57, coachIQ 1 3.10 → 1.76; tired 831 → 543, errors 15 → 7, back 67 → 40. The 'coachIQ 1 subs sooner' test now zeroes `SUB.worth` (the roll's effect only). `m.subLog` also records `out`, `inn`, `sta`. QA: Monster game (SUB.sta raised to 0.95 so subs show; 9000 steps) 4 subs, log lines 'Sub <team>: #13 … in for #17 … (tired)'; career eval with `run.injury`: `noSub` set, you stayed on the bench the whole match (4 subs, none for you), flag gone afterwards; no pageerror.
 - [x] T-053: Official venues on the map — League Arena, Academy Hall, Beach Stadium, Highland Court — four venues as specced (`VENUES`, nodes, landmarks, pins, `City.venue`, cards, `today` pulse); 47/47, lint clean, goldens untouched. Spots: arena [720,160] (clear 52), hall [580,510] (clear 20, ~18 × 11 m so the Academy keeps 33 lots), beach [925,450] on the widest sand by the resort strip (edge `resort`–venue), highland [400,180]. Venue clearance is per venue (`VENUES[id].clear`), not `placeClear`. QA: draw calls 29–30 (baseline 29), tris ~198k, no pageerror; hall pin pulses on an Academy eval week, card + 'Played at Academy Hall' shown; cup-week card checked in tests only (a browser cup start failed in my QA script on the baseline too).
 - [x] T-056: Stat guard — repair invalid stats on load and before every match — `fixStats` in players.js, called in `teamFromJSON` (warn log) and `newMatch`; new test (−40/NaN/300/−1 → 1/1/99/0.1, match runs, damaged save repaired); 46/46, lint clean, goldens untouched.
 - [x] T-055: Start from 1 — every stat of your new player is 1 — Done; tests 45/45, lint clean, goldens untouched. `CAREER.start` / `statMin`, `STAT_FLOOR` 1, Run.create ignores alloc, creation shows 1s with no buttons, `need` = max(1, round(…)) at every level. Notes for the spec: (1) one Power session takes Power 1 → ~36 (session XP is ~70+ × mul vs ~180 XP to reach 50), not "about a dozen sessions"; (2) a lone WS still starts: the pickup squad has only 2 WS (the coach picks the best per role), so the all-1 bench test uses an MB; (3) cup.js hired crew floor left at 25 (that squad never contains you when clamped). Tests with `alloc` still pass it (ignored); the street-battle and full-run tests assume a normal player (70 / statMin). QA: creation, 1 Power day, week-4 eval played: no pageerror.
@@ -123,3 +218,12 @@ Phase 5 — Voice pass
 - (recorded in spec §4.2) Central Academy moved to the Wei–Wu–Shu border tri-point (540, 500), north of the airport: park r 72→60, label, `park` spot, `park` / `jAc1` / `jAc2` road nodes, Academy road `park→dojo` replaced by `park→stone` — js/data/city.js, tests/run.js (route / regionAt coordinates).
 - (recorded) T-050 follow-up: `CITY.ritual` joins the places MapModel.lots keeps `placeClear` from (lots no longer cover the sand circle) — js/career/mapmodel.js.
 - (recorded in spec §2.0b) 2026-10-01: Owner: stamina matters more in matches — `RULES.stamina` { drain 1.7 (was 1.3), hit 0.4 (was 0.15), jumpHit 0.3 (was 0.15) }, so a lone carry tires and weakens; coach subs (`SUB.sta`) unchanged. Goldens updated (teams, matches, sims). Files: js/data/rules.js, js/engine/stats.js, tests/golden.json, ARCHITECTURE.md.
+- (recorded in spec §4.25) Softer screen shake: per-frame random jitter → slow two-sine sway at half amplitude, off with Zooms: Off (js/render/court.js).
+- (recorded in spec §4.25) Camera auto zoom-out: when the ball is out of frame (Courtside / Follow / POV) the FOV widens until it is back in view — js/render3d/camera3d.mjs, ARCHITECTURE.md.
+- (recorded in spec §4.25) Ball trail grows with hit power: screen trail width ×0.8 (power 60) → ×1.9 (114), longer streak (power/4 points), 3D element trail strength up to 1.8× — js/render/court.js, ball.js, js/render3d/fx3d.mjs.
+- (recorded in spec §4.25) Follow / POV always face the opponent's side: the look point is clamped to ±40° (Follow) / ±55° (POV) of the court axis toward the net; the ball only pulls the view within that, auto zoom-out covers the rest — js/render3d/camera3d.mjs.
+- (recorded in spec §4.25) Follow camera backs away from the net (up to 12 m, +0.3 m up per m) while the ball is out of view, then returns once it is well inside the frame — js/render3d/camera3d.mjs.
+- (recorded in spec §4.25) Every trail dims out while its object is still: ribbons measure their point's speed (full ≥ 1.6 m/s, off ≤ 0.25 m/s); the ball's screen / element trails use a smoothed ball speed `A.mv` — js/render3d/trails3d.mjs, js/render/ball.js, court.js, effects.js, ARCHITECTURE.md.
+- (recorded in spec §4.25) Trails now fade fully out when still (follow-up to the line above): ribbons invisible ≤ 0.6 m/s (full ≥ 2 m/s), ball trails invisible ≤ 1.5 m/s (full ≥ 5.5 m/s), alpha squared — js/render3d/trails3d.mjs, js/render/ball.js, court.js, effects.js.
+- (recorded, presentation only) Idle (ready) / platform stance arm twist: pose field `fsplit` 0.45 moves part of the forearm twist to the wrist so the elbow no longer wraps — js/render3d/players3d.mjs, poses3d.mjs.
+- (recorded in spec §4.25) Camera jitter when the ball is far out of the map: Follow / POV look target clamped to the playable box and eased out while the ball is hidden; `faceOpponent` continuous behind the camera; scene-shot exit turns the view by slerp (72° → 12° per frame) — js/render3d/camera3d.mjs, ARCHITECTURE.md.

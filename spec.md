@@ -69,12 +69,47 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     bring a rested starter back; a random factor scaled by `coachIQ`. Smarter coach (matchups, protecting a lead, personality hunches) = backlog.
   - Your player is benchable: the coach picks starters by rating, form and standing, and may sub you out (tired /
     erring). A match started or finished on the bench gives reduced rewards.
+  - Smarter coach + trust in you (owner) **[built — T-057; subs per match ~3.0 → ~2.0]**: before a tired / erring sub the coach compares what
+    the starter is worth *now* (rating × stamina loss) with the fresh bench player; a high-IQ coach only subs when the
+    bench player is actually better now, a low-IQ coach follows the rule blindly (`coachIQ` decides how strictly).
+    Your player gets the coach's trust — you grind harder than anyone — so the chance of being subbed out is 10 % lower
+    (`SUB.you` 0.9 on the coach's roll). An injured you is never subbed on.
 - Box score shows each player's OVR (owner). Loaded extra .vrm models dress your own career player only; everyone
   else (and Monster games) uses the base model (owner).
 - §2.11 Match music **[built]**: `assets/audio/the_big_fight.mp3` loops as background music while the
   match screen is open, at 50 % of the effects volume (`BGM_GAIN` 0.5 × volume slider); follows the sound toggle and
   the volume slider; fades in on start and out on leaving. Presentation only (no effect on results). More tracks /
   crowd / voice clips later (backlog).
+- §2.12 Ego **[locked (owner), not built — T-068]**: street volleyball (§2.0) is full of players who want to be the
+  star. Every player has an **ego** (0–1) and a **maturity** from wit (≈0 at wit 0.5, 1 at wit 2.0): new, low-wit
+  players play for themselves; high-wit players still have ego but act on it less and botch it less.
+  - Ego acts (each a chance per opportunity = EGO.base[act] × ego × (1 − maturity)):
+    - **ball steal** — on a dig / pass that is a teammate's ball (the nearest player), an ego player goes for it too:
+      "Mine!" — a collision (the ball drops or the pass is shanked) or, if it works, their touch instead;
+    - **set call** — a hitter demands the set: a low-maturity setter gives it to them even when another hitter is
+      open (worse matchup vs the block); a mature setter ignores the call;
+    - **solo block** — an ego blocker ignores the defence setting (§2.9) and commits alone / early: gaps for the
+      other blocker, a stuff when the read is right;
+    - **hero swing** — on a bad set an ego hitter swings full power instead of rolling or tipping it: more kills,
+      more errors and stuffs;
+    - **hero serve** — an ego server goes for the risky jump serve: more aces, more errors.
+  - Success feeds it (mood up, fame for highlight plays); failure costs mood and the team's momentum. Maturity also
+    lowers the error side of every ego act (a mature player's hero swing is a calculated one).
+  - Communication: a high-wit captain on court calls it off (chances × (1 − captain maturity × EGO.captain)).
+  - Relationships (§4.23): ego acts are memories — stole_my_ball −6, collided −4 (both), hero_carried +8 (it won the
+    point: warm / loyal teammates count it, jealous ones resent it), set_hogged −4 (the open hitter who got nothing).
+    Ego toward allies is halved, toward rivals ×1.5: a feud shows up as stolen balls.
+  - Ego value: NPCs from traits once they exist (proud / reckless / jealous up; steady / calculating / warm down),
+    until then a fixed hash per player (0.2–0.8, WS a little higher); your player starts at 0.6 — you are the new kid
+    who wants to be the star; maturity comes with wit. Shown on player cards as a short tag (Show-off · Team player).
+  - Presentation: "MINE!" label over the player (`plabel`), a collision as both players' bump poses + a log line,
+    chatter for set calls; no new act kinds. Engine-only tallies (`m.egoLog`) feed the memories later (T-061).
+  - **Block collision** (owner) **[not built — T-069]**: when an ego blocker goes solo and the partner also commits to
+    the same spot (the partner's maturity decides whether they hold off), the two crash at the net: both blocks are
+    **cancelled early** (they come down mid-jump and stagger apart) and the attack meets an open net. Error variant: one
+    of them hits the net — a **net fault**, point to the attackers at once. Floating label over the pair:
+    **BLOCK COLLISION** (warning colour) / **BLOCK COLLISION · NET** (error colour, red). Memory: collided −4 for both
+    (§4.23).
 - §2.4 Blocks: stuff odds = full-strength block vs spike, weighted by coverage; ~14% of attacks stuffed in normal play.
 
 ## 3. Menu [built]
@@ -173,7 +208,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     wit and opponent strength. Scouting shows which techniques a team's players have.
   - Save: RUN_VERSION bump (Limit Break progress removed, match XP added). Match results unchanged (goldens stay).
 
-- §4.15 Challenges **[built: team challenge + refusal (T-037), loss penalties + injury (T-038); open: engine coach could sub an injured you on (T-049)]** (makes a no-training run possible; see §4.14):
+- §4.15 Challenges **[built: team challenge + refusal (T-037), loss penalties + injury (T-038); injured you never subbed on (T-057)]** (makes a no-training run possible; see §4.14):
   - Team challenge (map action at a club HQ): your side challenges that club's squad. Costs 1 day + the trip; you name a
     money **stake** (0 allowed). The match itself is the street-battle flow (`Cup.clash`-style fixture: watch or Sim ⏭).
     You play with your side: the Academy squad, or your club's squad (your club must not be the target); alone → hire
@@ -278,6 +313,139 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   point **below 50 too** (≈1 XP at 1, ≈6 at 40, 10 at 50), so a focused stat reaches ~50 in about a dozen sessions;
   the training cap (75) and match growth (§4.14) are unchanged. Early on you are benched and lose — that is the point
   (evaluations still pay the bench reward). Stats can fall to 1 (events, injuries), never below; a guard repairs any invalid stat on load and before every match (T-056). NPCs are unchanged.
+
+- §4.23 **Relationships — the core pillar** **[locked design (owner), not built — T-060…T-066 after the camera]**
+  Relationships are the main thing to do. Not a dating sim, not support cards: **every NPC is a career too.** They
+  want something, grind for it on the same island with the same few slots, and a relationship is the history of two
+  careers that keep colliding. You don't fill a gauge; you live through things together (or against each other).
+
+  **Anti-cliché rules (hard):** no gifts, no dates or romance mechanics, no per-character scripted story chains, no
+  friendship-rank support cards, no "max bond = stat bonus" farming, no cheerful portrait banter. Bond only grows from
+  shared, costly acts. Hanging out has fast diminishing returns. All lines go through the lore voices (lore.md §7);
+  numbers stay true, claims may be biased.
+
+  **A. Every NPC is a career (data + weekly sim).**
+  - Every league / pool player gets: `want` (1 of WANTS), `traits` (2 of TRAITS), a weekly `plan`, a season record and a
+    `status` (active · injured · benched · cut · quit · poached · national). Their careers run whether you watch or not.
+  - WANTS (what drives their choices):
+    - `national` — the national team; plays every match it can, takes risks, picks squads that win.
+    - `money` — hustles, takes paid challenges, open to St. Gloria / Outlaw offers.
+    - `spot` — keep their starting role; trains their key stat, hostile to same-role threats.
+    - `grudge` — beat a faction (Wu vs Wei by default, Outlaws vs Wei); challenges that faction, joins street battles.
+    - `prove` — prove the elders / the Academy wrong; trains Hard, overtrains, gets hurt more (Shu-leaning).
+    - `leave` — get off the island any way possible; disloyal, follows the best offer.
+  - TRAITS (how memories become feelings and choices; 2 each, no opposites): proud · loyal · jealous · warm ·
+    cynical · reckless · calculating · steady.
+  - Weekly plan (one R() roll per NPC at week start, career randomness only): train a stat at a place in their
+    region (or where their faction allows), rest, hustle, challenge someone, scout, recover. They grow from what they
+    did with the same XP rules as you (training to TRAIN_CAP, matches above), scaled by their hidden potential — this
+    replaces the random weekly `Growth` drift for pool players. They get tired, injured (same INJURY rules when they
+    fight) and benched (same Run.lineup rules).
+  - Fates (permanent this run): **cut** (benched 3 evaluations running and under the faction's join bar → reserves,
+    then quits if `want` is unmet), **quit** (cynical + want unmet for long), **poached** (a richer club / St. Gloria
+    takes a `money` / `leave` player), **national** (called up after the U21 Final Cup — see F). Gone is gone.
+  - Shown on the living map (§4.16 layer B: individual figures, not just crews), in rumours and the Gazette.
+
+  **B. Relationships are memories, not a meter.**
+  - Each pair (you ↔ NPC, and NPC ↔ NPC inside a squad / pool) keeps a short memory log of facts:
+    `{ week, kind, value }`. Kinds and base values (data table MEMORY, tuned in the balance pass):
+    - spot_taken −30 (scar) · spot_given +20 · carried (they scored off your play / you saved their bad game) +12 ·
+      let_down (your error lost a set point) −10 · trained_together +3 (diminishing: ×0.5 each repeat in a week) ·
+      won_together +5 · lost_together +2 (−2 if jealous / cynical) · beat_me (challenge / street fight) −8 ·
+      covered_me (a dig on their bad pass, sat out for them) +8 · vouched +15 · refused_help −6 · lent_money +10 ·
+      debt_unpaid −4 per week · called_out −5 · shamed (a Gazette jab about them you caused) −12 (scar).
+  - Memories fade (×DECAY per week) except scars, which never fade. A log keeps ≤ 24 entries (same kinds merge).
+  - **Stance** = Σ value × fade × trait multipliers (proud ×2 on scars and beat_me; loyal ×0.5 on negatives once
+    allied; jealous ×1.5 on spot_taken and on your wins; warm ×1.3 on positives; cynical ×0.7 on positives; calculating
+    weighs only memories with a payoff: carried, vouched, lent_money). Tags by stance: **ally** · **respect** ·
+    neutral · **rival** · **resent** · **enemy**. A same-role mate within 5 OVR in the same squad is a rival whatever
+    the stance sign (a warm rival vs a bitter rival).
+  - The old `bond` (0–100) becomes a read-only summary of the stance (for goals, form and the Team drawer); every
+    current bond source becomes a memory kind instead.
+
+  **C. They come to you (initiative) — and choose others too.**
+  - At most 2 approaches a week, as a card or a figure waiting on the map; each expires. Chosen by wants + stance:
+    - invite_train (a place + day; accept → spend that day there together: both train, trained_together),
+    - ask_sitout (before an evaluation: "let me start" — accept → you bench, spot_given; refuse → proud: resent),
+    - duo_challenge (they propose a challenge together, split stake and risk),
+    - borrow (money; repaid on their payday — or not: debt_unpaid),
+    - call_out (a rival challenges you publicly; refuse → fame and standing hit with their faction),
+    - vouch (they offer to vouch for you to their club: its join bar −X for you),
+    - warn (a rumour: a scout, a raid, someone plotting to take your spot),
+    - poach_advice (an offer came; "should I go?" — your answer changes their fate and how they remember you).
+  - You can approach them too (Team drawer / their figure on the map): invite to train, ask for a vouch, lend, call
+    out, ask to sit out. They can refuse, and they approach other NPCs as well (you hear it as rumours).
+
+  **D. NPC ↔ NPC.** Pairs inside a squad / pool use the same memories. Cliques (3+ allies) and feuds form on their
+  own; they change who sets whom, who starts and who gets cut. The Team drawer shows **squad chemistry** (who is with
+  whom). Some approaches ask you to take a side.
+
+  **E. It shows on court (engine; small, visible effects; goldens update).**
+  - Set distribution: a setter feeds an ally +15 % more in the clutch and freezes out a resent / enemy hitter −15 %
+    (chatter + log line: "trusted" / "froze out").
+  - Cover: an ally covers your bad pass more often (dig / pop-up save chance +).
+  - Captain's buff goes to allies first; the coach's lineup score adds a teammate vouch.
+  - Rivals: when you face a rival, both get a mood swing (fired up / rattled) — the rivalry is felt, not just shown.
+  - No raw stat bonuses from relationships.
+
+  **F. Competition and permanence.**
+  - Four starting spots per squad: every teammate you raise can take yours. Helping is a real choice.
+  - National team call-up after the U21 Final Cup: **Story** — you are always called up if your squad wins (§4.26);
+    the champion squad's other call-ups are its best by match grades. **Endless** — the best 4 by match grades
+    (+ fame as tie-break), you included or not: an NPC you raised can take the place you wanted, and winning
+    the cup on the bench does not send you. In both modes NPCs compete for the other call-ups and club spots.
+  - End of run: "People who mattered" — the 5 strongest stances (good or bad), each with their fate and the
+    memories that made it (diary voice).
+
+  **G. Discovery and presentation.**
+  - You don't see wants and traits at first: a want is revealed after enough shared memories (or a rumour / scouting),
+    a trait after you have seen it act (e.g. proud after they held a grudge). Until then the card says "unknown".
+  - Team drawer → **People**: per person — name, role, OVR (if known), stance tag, want / traits (once known), their
+    season in one line, and the 3 memories that weigh most (diary voice: "W8 — I took her spot. She hasn't
+    forgotten."). The rankings and dossier link to the same card.
+
+  **H. Data, saves, determinism.**
+  - `run.people[id] = { want, traits, plan, status, known: { want, traits } }`, `run.mem[pairKey] = [ … ]` (pair key
+    = the two ids sorted); size budget: you-pairs for everyone met + NPC pairs within squads only (≤ ~1,500 entries).
+    RUN_VERSION bump when built. Tables WANTS, TRAITS, MEMORY, REL (thresholds, decay, caps) in js/data.
+  - Career randomness only (R() at week start for plans and approaches); the engine sees only per-match flags (who
+    trusts / resents whom) passed in, so engine goldens change only with E.
+
+  **I. Build order (tasks after the camera, each small):**
+  T-060 NPC wants / traits / status + weekly plans and activity-based growth (data + sim, headless) ·
+  T-061 memory log + stance + bond as summary (migrate bond sources) · T-062 People tab (cards, discovery) ·
+  T-063 approaches (theirs and yours) · T-064 fates (cut / quit / poached / national) + end-of-run "People who
+  mattered" · T-065 NPC ↔ NPC memories, cliques, chemistry · T-066 on-court effects (engine, goldens update).
+- §4.24 Faction events **[draft — owner to confirm]**: once a payday, Front rolls one faction event from its state
+  (pressure, places lost, money); each changes the map for N weeks and is reported in the Gazette (and rumours in the
+  faction's own voice): border seizure (exists — gets a visible flag change + Gazette story), price hike / sale
+  (a region's prices ×1.3 / ×0.8), gym raid (a place closed 1–2 weeks: pin greyed, rubble decal), recruitment drive
+  (a faction's join bar −5, its crews swarm the map), curfew (a region charges +1 day to enter), festival (Wu beach
+  week: bonfire free, mood up, street battles off). Rules in Front (data table EVENTS, no randoms outside the payday
+  roll); MapModel shows them; the living map animates them.
+- §4.25 Player camera **[built — T-058 Follow, T-059 POV; polish T-070]**: in a match, a camera toggle Broadcast / Courtside (exist) /
+  **Follow** (3rd person: behind and above your player, turns with your side, eases to the ball on your touches) /
+  **POV** (1st person from your player's head: the ball, the net, the block in your face; your own arms on spikes and
+  digs, falls back to Follow during your jumps if it gets too wild). Hype scenes still cut to their shots and return.
+  Only your career player (Monster games: pick any player). Comfort: no camera roll, smoothed head bob, FOV 70.
+  Owner tweaks (build chat): Follow / POV always face the opponent's side (look clamped ±40° / ±55°); when the ball
+  leaves the frame the view widens (and Follow backs away from the net up to 12 m) until it is back; softer screen
+  shake (slow sway, off with Zooms: Off); ball trails scale with hit power and every trail fades while its object is
+  still; a ball far out of the map never drags the view (look target clamped to the court box, eased out while
+  hidden), and a hype shot's exit turns the view smoothly.
+
+- §4.26 Game modes **[locked (owner), built T-067; Endless = backlog]**: a new run picks **Story** (default) or
+  **Endless** (later).
+  - **Story**: the run is your story, so the final stage always includes you. At the U21 Final Cup you are always in
+    a squad (forced into your faction's first drawn squad over its weakest same-role player; an Academy member plays
+    with the Academy squad; alone → you enter with a hired street crew), and you **always start** every cup match (the
+    coach's lineup puts you first in your role; the coach may still sub you if tired — SUB.you applies). If your squad
+    wins, you are always called up to the national team (the ending). Evaluations, challenges and street fights keep
+    the normal lineup rules (you can be benched there).
+  - **Endless** (backlog, room kept): no guarantees anywhere — cup draws and lineups as for anyone, the national
+    call-up by match grades (§4.23 F); after the cup the season rolls over instead of ending (aging out of U21, the
+    senior league, NPC careers continuing: **[open]**).
+  - Code: `run.mode.story` (true for Story); every guarantee checks it, so Endless only removes them.
 
 ## 5. Open questions — do not build until decided
 - §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story

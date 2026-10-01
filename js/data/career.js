@@ -118,8 +118,17 @@ const SPONSORS = {
   },
   spike: { name: 'Spike TV', perk: '+20% fans from matches', cond: 'Grade A or better in your next match', kind: 'grade' }
 };
-/** Challenge modes chosen at creation (optional handicaps). */
+/**
+ * Modes chosen at creation. `game` modes are the run's kind (spec §4.26: Story guarantees you the U21 Final Cup; Endless is
+ * kept for later, not playable yet); the rest are optional handicaps.
+ */
 const MODES = {
+  story: {
+    name: 'Story',
+    desc: 'The U21 Final Cup always includes you and you start every match. Win it and you are called up.',
+    game: true
+  },
+  endless: { name: 'Endless', desc: 'No guarantees. Later.', game: true, disabled: true },
   hard: { name: 'Hard league', desc: 'Every other player starts stronger and grows faster.' },
   short: { name: 'Short season', desc: 'Start at week 5 — four fewer training weeks.' }
 };

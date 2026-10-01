@@ -223,7 +223,8 @@ function aim(rest, dir, tw) {
 /**
  * Pose → normalized bone rotations. Legs are authored in character space (+z forward, +y up, +x the player's
  * left) unless `legBody` (dive: legs follow the body). Arms are [upper, fore, hand, twistUpper, twistFore]
- * directions in torso space; the right arm defaults to the mirror of the left.
+ * directions in torso space; the right arm defaults to the mirror of the left. `fsplit` (default 1): share of the forearm twist
+ * the forearm itself keeps; the rest turns at the wrist, which softens the twisted-elbow look of a held palms-up grip.
  */
 export function applyPose(pl, P) {
   const b = pl.bone;
@@ -264,7 +265,7 @@ export function applyPose(pl, P) {
     const sh = b(side + 'Shoulder');
     if (sh) sh.quaternion.setFromEuler(E.set(0, 0, sg * (P.shrug || 0)));
     const qU = aim(rest, u, twU),
-      qF = aim(rest, f, twF),
+      qF = aim(rest, f, (twF || 0) * (P.fsplit ?? 1)), // fsplit < 1: part of the forearm twist moves to the wrist (no elbow wrap)
       qH = aim(rest, h || f, twF);
     b(side + 'UpperArm').quaternion.copy(qU);
     b(side + 'LowerArm').quaternion.copy(qU.clone().invert().multiply(qF));
