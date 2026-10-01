@@ -9,7 +9,7 @@ earlier files **at load time** (inside functions, anything loaded is fine).
 
 | Layer | Folder | Rule |
 |---|---|---|
-| Core | `js/core/` | `debuglog.js` (loaded first: `DBG` collects errors, console errors/warnings and match stalls; the header's Debug log button shows and copies them), `rng.js` (all randomness via `R()`, seedable with `RNG.seed(n)`), `storage.js` (all `localStorage` via `store`, keys in `KEYS`). |
+| Core | `js/core/` | `debuglog.js` (loaded first: `DBG` collects errors, console errors/warnings and match stalls; the header's Debug log button shows and copies them), `rng.js` (all game randomness via `R()`, seedable with `RNG.seed(n)`; presentation — particles, confetti, trail flicker, coach looks — uses `FXR` on `Math.random`, `FXR.isolate(fn)` for code that calls `R()` inside, so frame rate never moves the engine stream; a test scans js/render, js/audio and match-screen for game-RNG calls), `storage.js` (all `localStorage` via `store`, keys in `KEYS`). |
 | Data | `js/data/` | Constants only — playstyles, names, looks, moves, roles, elements, `RULES`. No logic. |
 | Engine | `js/engine/` | Pure simulation. **No DOM, canvas or audio.** Runs headless (odds, preseason, tests). |
 | Audio | `js/audio/` | Synthesized WebAudio effects plus the match music (`sfx.js`). |

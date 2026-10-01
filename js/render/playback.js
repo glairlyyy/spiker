@@ -1023,13 +1023,13 @@ function stepGait(dt) {
     d.gait = (d.gait || 0) + dist * 0.11;
     d._px = d.x;
     d._pz = d.z;
-    if (d.mv > 0.14 && d.jy < 2 && R() < dt / 70) {
+    if (d.mv > 0.14 && d.jy < 2 && FXR.r() < dt / 70) {
       const q = P(d.x, d.z, 0);
       addPart({
-        x: q.X + rnd(-6, 6),
+        x: q.X + FXR.rnd(-6, 6),
         y: q.Y,
-        vx: rnd(-0.03, 0.03) - DIR(d.side) * (d.fwd || 0) * 0.04,
-        vy: -rnd(0.01, 0.04),
+        vx: FXR.rnd(-0.03, 0.03) - DIR(d.side) * (d.fwd || 0) * 0.04,
+        vy: -FXR.rnd(0.01, 0.04),
         grow: 0.02,
         s: 3,
         life: 1,
@@ -1037,13 +1037,13 @@ function stepGait(dt) {
         kind: 'dust'
       });
     }
-    if (d.pose === 'dive' && d.mv > 0.08 && R() < dt / 30) {
+    if (d.pose === 'dive' && d.mv > 0.08 && FXR.r() < dt / 30) {
       const q = P(d.x, d.z, 0);
       addPart({
-        x: q.X + rnd(-10, 10),
+        x: q.X + FXR.rnd(-10, 10),
         y: q.Y,
-        vx: rnd(-0.05, 0.05),
-        vy: -rnd(0.02, 0.06),
+        vx: FXR.rnd(-0.05, 0.05),
+        vy: -FXR.rnd(0.02, 0.06),
         grow: 0.03,
         s: 4,
         life: 1,
@@ -1071,17 +1071,17 @@ function stepCelebration(dt) {
   A.coaches[C.w].type = 'yay';
   A.coaches[1 - C.w].react = 1;
   A.coaches[1 - C.w].type = 'ugh';
-  if (C.t < 7000 && R() < dt / 18) {
-    const col = pick([A.m.t[C.w].color, '#ffffff', '#ffd84d', A.m.t[C.w].color]);
+  if (C.t < 7000 && FXR.r() < dt / 18) {
+    const col = FXR.pick([A.m.t[C.w].color, '#ffffff', '#ffd84d', A.m.t[C.w].color]);
     addPart({
       kind: 'conf',
-      x: rnd(-20, 1020),
+      x: FXR.rnd(-20, 1020),
       y: VT - 10,
-      vx: rnd(-0.03, 0.03),
-      vy: rnd(0.05, 0.11),
-      rot: R() * 6,
-      vr: rnd(-0.012, 0.012),
-      s: rnd(4, 7),
+      vx: FXR.rnd(-0.03, 0.03),
+      vy: FXR.rnd(0.05, 0.11),
+      rot: FXR.r() * 6,
+      vr: FXR.rnd(-0.012, 0.012),
+      s: FXR.rnd(4, 7),
       life: 1,
       dec: 0.00022,
       c: col

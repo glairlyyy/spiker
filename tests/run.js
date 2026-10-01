@@ -63,6 +63,24 @@ test('engine: rally invariants over 300 matches', () => {
     for (const id in m.mood) assert(m.mood[id] >= -1 && m.mood[id] <= 1, 'mood out of range');
   }
 });
+test('render: presentation never draws from the game RNG', () => {
+  // playback runs playRally lazily inside step(): a frame-rate-dependent draw here would move the engine stream
+  const root = path.join(__dirname, '..'),
+    files = [
+      ...fs.readdirSync(path.join(root, 'js/render')).map(f => 'js/render/' + f),
+      ...fs.readdirSync(path.join(root, 'js/audio')).map(f => 'js/audio/' + f),
+      'js/ui/match-screen.js'
+    ],
+    bad = [];
+  for (const f of files) {
+    const lines = fs.readFileSync(path.join(root, f), 'utf8').split('\n');
+    lines.forEach((l, i) => {
+      const code = l.replace(/\/\/.*$/, '');
+      if (/(^|[^.\w])(R\(\)|rnd\(|pick\()/.test(code) && !/FXR\.isolate/.test(code)) bad.push(`${f}:${i + 1}`);
+    });
+  }
+  eq(bad.join(' '), '', 'use FXR (core/rng.js) for presentation randomness');
+});
 test('engine: every beat act kind is handled by the renderer', () => {
   const g = load(11);
   const src = fs.readFileSync(path.join(__dirname, '..', 'js/render/playback.js'), 'utf8');

@@ -61,21 +61,21 @@ function addPart(o) {
  */
 function spawnShards(n, { x, y, rx, ry, v: [v0, v1], lift, s: [s0, s1], dec: [d0, d1], cols, away = 0 }) {
   for (let i = 0; i < n; i++) {
-    const an = R() * Math.PI * 2,
-      v = rnd(v0, v1);
+    const an = FXR.r() * Math.PI * 2,
+      v = FXR.rnd(v0, v1);
     addPart({
       kind: 'shard',
-      x: x + rnd(-rx, rx),
-      y: y + rnd(-ry, ry),
+      x: x + FXR.rnd(-rx, rx),
+      y: y + FXR.rnd(-ry, ry),
       vx: Math.cos(an) * v + away * 0.12,
       vy: Math.sin(an) * v - lift,
       g: 0.0009,
-      rot: R() * 6,
-      vr: rnd(-0.02, 0.02),
-      s: rnd(s0, s1),
+      rot: FXR.r() * 6,
+      vr: FXR.rnd(-0.02, 0.02),
+      s: FXR.rnd(s0, s1),
       life: 1,
-      dec: rnd(d0, d1),
-      c: pick(cols)
+      dec: FXR.rnd(d0, d1),
+      c: FXR.pick(cols)
     });
   }
 }
@@ -86,13 +86,13 @@ function spawnShards(n, { x, y, rx, ry, v: [v0, v1], lift, s: [s0, s1], dec: [d0
 function crackLines(n, spread, segs, turn, len0, len1, squashY) {
   const lines = [];
   for (let i = 0; i < n; i++) {
-    let an = (i / n) * Math.PI * 2 + rnd(-spread, spread),
+    let an = (i / n) * Math.PI * 2 + FXR.rnd(-spread, spread),
       x = 0,
       y = 0;
     const l = [[0, 0]];
     for (let k = 0; k < segs; k++) {
-      an += rnd(-turn, turn);
-      const st = rnd(len0, len1);
+      an += FXR.rnd(-turn, turn);
+      const st = FXR.rnd(len0, len1);
       x += Math.cos(an) * st;
       y += Math.sin(an) * st * squashY;
       l.push([x, y]);
@@ -107,21 +107,21 @@ function drillStep(dt) {
   if (!D) return;
   D.t += dt;
   A.spin = (A.spin || 0) + dt * 0.05;
-  if (!RM && R() < dt / 14) {
-    const an = R() * Math.PI * 2,
-      v = rnd(0.15, 0.4);
+  if (!RM && FXR.r() < dt / 14) {
+    const an = FXR.r() * Math.PI * 2,
+      v = FXR.rnd(0.15, 0.4);
     addPart({
       kind: 'shard',
       x: D.X + Math.cos(an) * 10,
       y: D.Y + Math.sin(an) * 10,
       vx: Math.cos(an) * v,
       vy: Math.sin(an) * v,
-      rot: R() * 6,
+      rot: FXR.r() * 6,
       vr: 0.02,
-      s: rnd(2, 4),
+      s: FXR.rnd(2, 4),
       life: 1,
       dec: 0.004,
-      c: pick(['#fff27a', '#ffffff', '#ffb13d'])
+      c: FXR.pick(['#fff27a', '#ffffff', '#ffb13d'])
     });
   }
   if (D.t >= D.dur) {
@@ -197,16 +197,16 @@ function stepEffects(dt) {
 function linkSparks() {
   const a = A.disp[A.link.p1],
     b = A.disp[A.link.p2];
-  if (!a || !b || R() >= 0.5) return;
+  if (!a || !b || FXR.r() >= 0.5) return;
   const q1 = P(a.x, a.z, a.jy + 70),
     q2 = P(b.x, b.z, b.jy + 70);
   addPart({
     kind: 'spark',
-    x: lerp(q1.X, q2.X, R()),
-    y: lerp(q1.Y, q2.Y, R()) - 10,
+    x: lerp(q1.X, q2.X, FXR.r()),
+    y: lerp(q1.Y, q2.Y, FXR.r()) - 10,
     vx: 0,
     vy: -0.02,
-    s: rnd(3, 6),
+    s: FXR.rnd(3, 6),
     rot: 0,
     vr: 0.02,
     life: 1,

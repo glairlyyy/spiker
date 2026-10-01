@@ -23,6 +23,25 @@ const RNG = {
   }
 };
 const R = () => RNG.next();
+/**
+ * Presentation-only randomness (particles, confetti, trail flicker, coach looks): never the game stream, so what the
+ * screen draws — and how often, which depends on frame rate — can't move the engine's draws. `isolate(fn)` runs code
+ * that calls R()/pick() internally (e.g. mkLook) on this source instead.
+ */
+const FXR = {
+  r: () => Math.random(),
+  rnd: (a, b) => a + Math.random() * (b - a),
+  pick: a => a[Math.floor(Math.random() * a.length)],
+  isolate(fn) {
+    const next = RNG.next;
+    RNG.next = () => Math.random();
+    try {
+      return fn();
+    } finally {
+      RNG.next = next;
+    }
+  }
+};
 const rnd = (a, b) => a + R() * (b - a);
 const pick = a => a[Math.floor(R() * a.length)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));

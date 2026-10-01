@@ -441,7 +441,7 @@ function drawTrail(q) {
   if (A.trail.length < 2 || mv < 0.05) return;
   const Pw = A.trailPow,
     c = A.trailOp
-      ? R() < 0.5
+      ? FXR.r() < 0.5
         ? '#fff27a'
         : '#8fe9ff'
       : A.trailEl

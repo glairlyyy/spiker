@@ -133,7 +133,7 @@ function startMatch(fx) {
     staShown: {},
     coaches: [0, 1].map(side => ({
       side,
-      p: { look: mkLook('S'), hair: pick(HAIR), op: false, team: m.t[side] },
+      p: FXR.isolate(() => ({ look: mkLook('S'), hair: pick(HAIR), op: false, team: m.t[side] })),
       react: 0,
       type: null
     })),

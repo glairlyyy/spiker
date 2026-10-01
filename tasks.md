@@ -180,7 +180,7 @@ Accept: tests + lint pass; goldens untouched; grep finds none of the removed nam
 QA: career run → hub, map, a match (watch) and the end screen; Monster game; no pageerror.
 Result: crowd audio (crowdStart/Level/Voice, cheer/ooh/aww/clap/stomp/chant) + call sites, A.banners/A.rings, drawFloorFx, .bet CSS gone; .betline → .resline; SPOTS slot field (25), run.loc + fallbacks, delete run.slot, CW.view, plural, World.faction removed; City.evening → City.outing; signed() for inline +/- (7 sites); stale cup comments fixed. 49/49 (one test now reads City.loc(back) instead of back.loc), goldens untouched, lint clean; QA career run (create → hub, 8 drawers, rest, end week) + Monster, no pageerror. −191 lines.
 
-### [ ] T-073: Presentation randomness off the game RNG
+### [x] T-073: Presentation randomness off the game RNG
 Spec: CLAUDE.md "Rules that bite" (presentation draws no randoms)          Goldens: unchanged          Save: no change
 Goal: Display code never draws from R()/rnd()/pick(): playback calls `playRally` lazily inside `step()`, so today the
 engine stream depends on frame rate whenever a match is seeded.
@@ -197,7 +197,7 @@ Steps:
    with the same score sequence (if feasible headless; else the scan only).
 Accept: tests + lint; goldens untouched.
 QA: Monster game, Max hype: shards, sparks, confetti and OP trails still vary; no pageerror.
-Result:
+Result: FXR {r, rnd, pick, isolate} in core/rng.js; 41 call sites switched (court.js trail flicker, effects.js shards/cracks/drill/sparks, playback.js dust/confetti); coach looks via FXR.isolate(mkLook/pick HAIR). New test scans js/render, js/audio, match-screen (headless dt-sequence test not feasible: playback isn't loaded headless). 50/50, goldens untouched, lint clean; Monster 3000 steps, effects still vary, no pageerror.
 
 ### [ ] T-074: CSS — dead selectors, duplicates, colour tokens
 Spec: — (cleanup)          Goldens: unchanged          Save: no change
