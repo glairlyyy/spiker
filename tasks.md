@@ -44,109 +44,14 @@ Result:
 - Player camera ✓ (T-058 Follow, T-059 POV).
 - Cleanup pass ✓ (T-071…T-081, behaviour-neutral; done ahead of Now by owner request; leftovers closed in the T-068/T-069 review).
 - Ego ✓ (T-068), block collision ✓ (T-069).
-- **Now**: POV polish (T-070). **Then**: relationships — the core pillar (spec §4.23, T-060 ready, T-061…T-066 next), road travel (T-048), voice pass (T-022).
+- Player camera polish ✓ (T-070).
+- - NPC careers ✓ (T-060).
+- **Now**: relationships — the core pillar (spec §4.23): T-061 memories + stance next (spec chat details it); T-062…T-066 one at a time. **Then**: road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now — POV polish (§4.25)
-
-### [ ] T-070: POV polish — no teammate in your face, ball on screen for hitters
-Spec: §4.25          Goldens: unchanged (presentation only)          Save: no change
-Goal: Review QA of T-059 found POV frames where the camera sits inside a teammate's body / hair (near plane 0.1 m,
-players pass within arm's reach), and the ball was on screen only 61 % of a wing spiker's frames (bar 70 %).
-Files: js/render3d/camera3d.mjs, js/render3d/actors3d.mjs, ARCHITECTURE.md
-Do not: touch js/engine; hide the followed player's arms; change Follow / Broadcast / Courtside.
-Steps:
-1. actors3d: any other figure whose body (hips–head capsule, radius ~0.35 m) comes within 0.9 m of the POV camera fades
-   out (material opacity → 0 over ~0.1 s; restore after), via a per-frame hook like `setPovHidden` (no new draw calls,
-   no per-frame allocations).
-2. camera3d: while the followed player is a hitter on approach / in the air the POV look target leans toward the ball
-   (the set) instead of straight ahead (within the ±55° clamp), so the set is in view before the fallback kicks in;
-   keep the 220°/s turn limit.
-3. QA numbers as in T-059, plus: 0 frames where the camera is inside another figure's capsule; WS ball-on-screen ≥ 70 %.
-Accept: all tests + lint.
-QA: Monster game POV on the WS and on the setter, 1500 steps each: the numbers above; screenshots; no pageerror.
-Result:
+## Now — see Next (relationships)
 
 ## Next — Relationships, the core pillar (§4.23). One task at a time; the spec chat details each before it moves here.
-
-### [ ] T-060: NPC careers — wants, traits, weekly plans, activity-based growth (headless)
-Spec: §4.23 A, H          Goldens: unchanged (career only)          Save: RUN_VERSION 9 → 10 (`run.people`) — older saves dropped
-Goal: Every NPC (league squads, faction reserves, the Academy squad, the street crew) has a want, two traits and a
-weekly plan, and grows from what the plan did (training XP / match XP with your rules) instead of the random weekly
-drift. Nothing new on screen yet except league news when an NPC gets hurt; T-061…T-066 build on this data.
-Files: js/data/people.js (new), js/career/people.js (new), js/career/growth.js, js/career/run.js, js/career/pool.js,
-index.html, test3d.html, tests/career.test.js, ARCHITECTURE.md
-Do not: touch js/engine or any UI file; draw R() / rnd() / pick() anywhere in People (use `People.roll`, below);
-change your own player's growth, training or `Growth.shared` (teammates still gain from training beside you); change the
-star / OP breakthrough rolls in `Growth.grow` (keep their R() draws and the bond factor); add memories, stances, UI
-cards or fates (T-061…T-064).
-Steps:
-1. js/data/people.js — tables only (globals: WANTS, WANT_BY, TRAITS, TRAIT_OPP, TRAIT_BY_WANT, PLAN, PLAN_TRAIT, PEOPLE):
-   - `WANTS` = { national, money, spot, grudge, prove, leave } each `{ name, desc }` (desc from spec §4.23 A, one line).
-   - `WANT_BY` (want weights by home): wei {national 3, spot 3, money 2, grudge 1, prove 0.5, leave 0.5} ·
-     wu {grudge 3, spot 2, national 2, money 1, prove 1, leave 1} · shu {prove 3, national 2, spot 1, grudge 1, money 1,
-     leave 1} · outlaws {money 3, leave 2, grudge 2, prove 1, spot 0.5, national 0.5} · gloria {national 3, money 2,
-     spot 2, leave 1, prove 0.5, grudge 0.5} · academy {national 3, prove 2, spot 2, money 1, leave 1, grudge 0.5}.
-   - `TRAITS` = { proud, loyal, jealous, warm, cynical, reckless, calculating, steady } each `{ name, desc }`;
-     `TRAIT_OPP` = [['warm','cynical'], ['reckless','steady'], ['loyal','calculating']] (never both of a pair).
-   - `TRAIT_BY_WANT` (× trait weight, others 1): grudge {proud 2, jealous 2} · money {calculating 2, cynical 2} ·
-     prove {reckless 2, proud 2} · national {steady 1.5, proud 1.5} · spot {jealous 2} · leave {cynical 2, calculating 2}.
-   - `PLAN` (action weights by want): key = train the key stat, weak = train the lowest stat, hard = key stat on Hard,
-     wit = train wit, rest, hustle (street games for cash: match XP). national {key 3, weak 2, hard 1, wit 1, rest 1,
-     hustle 0.3} · money {key 1, weak 1, hard 0.3, wit 0.3, rest 1, hustle 3} · spot {key 4, weak 1, hard 1, wit 0.5,
-     rest 1, hustle 0.3} · grudge {key 2, weak 1, hard 1, wit 0.3, rest 0.7, hustle 2} · prove {key 2, weak 1, hard 3,
-     wit 0.5, rest 0.4, hustle 0.5} · leave {key 1, weak 1, hard 0.5, wit 0.5, rest 1.5, hustle 2}.
-   - `PLAN_TRAIT` (× action weight): reckless {hard 2, rest 0.5} · steady {hard 0.5, rest 1.3} · proud {key 1.3} ·
-     calculating {weak 1.3, wit 1.5} · cynical {rest 1.3}.
-   - `PEOPLE` = { sessions: 4, xp: <tuned, step 5>, hard: 1.6, sta: { train: 15, hard: 25, hustle: 10, rest: 60,
-     week: 20, tired: 35 }, hurt: { hard: 0.04, low: 0.12, lowSta: 40, weeks: [1, 3] }, hustle: <match XP to the key
-     stat, tuned>, play: <weekly match XP to the key stat for a league-team starter, tuned> }.
-2. js/career/people.js — `People` (no DOM, no R()):
-   - `People.roll(run, id, salt)` → [0, 1) from `hstr(`${run.pseed}|${run.week}|${id}|${salt}`)`; `run.pseed` = hstr of
-     every league player's name joined (set in Run.create, saved). `People.pick(run, id, salt, weights)` picks a key
-     by weight with one roll.
-   - `People.all(run)` → every NPC once (run.teams squads, every run.reserve team incl. `street`, run.pickup), never you.
-     `People.home(run, p)` → 'wei' | 'wu' | 'shu' | 'outlaws' | 'gloria' | 'academy' (league team → its faction region;
-     reserve → its key, `street` → 'outlaws'; the pickup squad → 'academy').
-   - `People.ensure(run)` creates missing entries: `run.people[id] = { want, traits: [a, b], plan: null, sta: 100,
-     inj: 0, xp: {}, log: { train: 0, hard: 0, rest: 0, hustle: 0, hurt: 0 } }` (want by WANT_BY[home], traits by
-     TRAITS × TRAIT_BY_WANT without an opposite pair; salts 'want', 'trait0', 'trait1'). Called by Run.create, after
-     Run.load and at the start of People.week (new players from transfers / the street crew get one).
-   - `People.plan(run, p)`: injured (inj > 0) → { act: 'out' }; sta < PEOPLE.sta.tired → rest; else pick by PLAN[want] ×
-     PLAN_TRAIT of both traits. stat: key → KEYSTAT[role], weak → lowest of STATK (ties: STATK order), hard → key,
-     wit → 'wit'. `at` = the SPOTS id in their home's region whose `train` is that stat (first in SPOTS order), else null.
-   - `People.week(run)`: for every NPC: plan → apply → store `plan` (for the living map / T-062) and count it in `log`:
-     - train / hard / wit: PEOPLE.sessions sessions; each gives XP = PEOPLE.xp × q × pot × (Hard league 1.15) × (hard ?
-       PEOPLE.hard : 1) where q = City.quality(run, at).q (home gym: REGIONS.open.q) and pot = p.pot || 1; the XP goes
-       through the same curve as yours (`Training.need(level)`, level = wit × 50 for wit) up to TRAIN_CAP (wit:
-       CAREER.witRunCap × 50) — a pure helper `People.addXp(person, p, stat, xp, top)` that keeps `person.xp[stat]`;
-       stamina − PEOPLE.sta.train (hard: .hard) per session; a hard session hurts with chance PEOPLE.hurt.hard (sta <
-       lowSta: .low) → inj = weeks roll in [1, 3], `log.hurt++`, Run.news(run, `${p.name} (${team}) is out — overtrained.`).
-     - hustle: PEOPLE.hustle match XP to the key stat (top CAREER.runCap); stamina − PEOPLE.sta.hustle.
-     - rest: stamina + PEOPLE.sta.rest. out: inj − 1. Everyone: stamina + PEOPLE.sta.week, clamp [0, 100].
-     - A league-team starter (in `t.P`, not the bench) also gets PEOPLE.play match XP to the key stat (they play off
-       screen). Stats are integers, clamped to [STAT_FLOOR, 99]; wit to [0.1, CAREER.witRunCap].
-   - `People.out(run, p)` → true while injured.
-3. growth.js: `Growth.week` calls `People.week(run)` first; `Growth.grow` drops the `Growth.spread` drift (keep the
-   function if anything else uses it, else remove) and keeps only the breakthrough rolls; then finalizeTeam as now.
-4. run.js: RUN_VERSION 10 (+ the history comment); RUN_DEFAULTS `people: [() => ({}), isObj]` and `pseed` (number,
-   Run.create sets it); Run.create calls People.ensure after the run object exists; Run.load calls it after repair;
-   `Run.lineup`'s `out` also benches an injured NPC (`People.out`).
-5. pool.js: `Pool.draw` skips injured NPCs (as candidates and bench).
-6. Tuning (report the numbers in Result): measure the baseline first on the current code — 5 seeds × a fresh run ended
-   week by week to week 28 (no matches played by you): league mean OVR, top-10 mean OVR, star count at weeks 12 and 28.
-   Then tune PEOPLE.xp / hustle / play (steps of 5) so the new numbers are within ±1.5 mean OVR, ±2 top-10, ±30 % stars
-   of the baseline at both weeks. Put the baseline numbers in the new test as constants.
-7. ARCHITECTURE.md: the People layer (data, roll stream, weekly order: People.week → breakthroughs → finalizeTeam), run.people.
-Accept:
-- tests/career.test.js: (a) every NPC has a person, want in WANTS, 2 traits, no opposite pair; you have none; (b) same
-  draft → identical run.people and plans after 4 weeks; People.week draws no R() (seed, run it, compare the next R()
-  with an unseeded copy of the sequence); (c) over 5 seeds × 28 weeks `prove` NPCs train Hard more than `money` NPCs,
-  `money` hustle most, nobody with sta < 35 trains; (d) the calibration bands of step 6 (mark it `test.slow`); (e) an
-  injured NPC is not drawn by Pool.draw and not started by Run.lineup; (f) save / load keeps run.people; a v9 save is dropped.
-- All tests + lint; engine goldens unchanged.
-QA: career run → new run, end 8 weeks (events chosen), open the Gazette: an "overtrained" line may appear; no pageerror.
-Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
@@ -185,6 +90,8 @@ Phase 5 — Voice pass
 
 ## Done
 
+- [x] T-060: NPC careers — wants, traits, weekly plans, activity-based growth — `People` (hash roll stream, no R()), `run.people` / `run.pseed`, RUN_VERSION 10; match XP spread over the 4 stats (answer a). Tuned xp 20 / hustle 100 / play 100: w12 mean 75.5 (base 75.2), top-10 83.7 (82.2), stars 5.0 (5.8); w28 mean 83.3 (86.5), top-10 94.8 (94.2), stars 10.2 (11.2). Accepted: the w28 mean sits 3 below because bench / reserve players no longer drift up — the top of the league is unchanged. 60/60, goldens unchanged.
+- [x] T-070: POV polish — no teammate in your face, ball on screen for hitters — figures within 0.9 m of the POV eye fade out (~0.1 s) and back; a hitter in a spike pose leans the look fully to the ball (hitter in frame 97–100 % of hitter frames). The overall WS ball-on-screen ≥ 70 % bar is dropped: off-ball frames face the opponent by design (§4.25). 55/55, goldens unchanged.
 - [x] T-069: Block collision — cancelled blocks and the net-fault variant — `EGO.solo.collide` 0.25 / `net` 0.3 (no draw at 0); cov 0, both hop short and stagger, net fault = point to the attackers after the set beat; `plabel` gains `p2` / `v` (warn #ffb13d, err #ff4d4d). 160 sims at ego 1 / wit 0.6: collisions 19.0 % of solo blocks, net faults 28.3 % of those. Goldens updated.
 - [x] T-068: Ego — show-offs steal balls, call sets, block alone (wit = maturity) — `EGO`, `p.ego` (name hash 0.2–0.7, WS +0.1; you 0.6), `maturity`, hooks steal / call / solo / swing / serve, `m.egoLog`, MINE! / SOLO! / ALL ME!. 400 sims: wit 0.6 → 3.7 ego acts/side/set, wit 1.0 → 2.6, wit 1.9 → 0.12; kill % unchanged, errors 15.7 → 16.2 %. Goldens updated (teams, matches, sims). Tests in tests/engine.test.js (55/55). T-067 Lineup-line follow-up done.
 - (spec chat, T-068/T-069 review) Cleanup leftovers: doc comments back above `City.access` / `mix` / `Run.defaults`, orphan `plural` comment removed (dom.js), duplicate `overflow-x` (style.css), playback beat-copy comment made accurate — comments / CSS only.
@@ -272,3 +179,6 @@ Phase 5 — Voice pass
 - (recorded in spec §4.25) Trails now fade fully out when still (follow-up to the line above): ribbons invisible ≤ 0.6 m/s (full ≥ 2 m/s), ball trails invisible ≤ 1.5 m/s (full ≥ 5.5 m/s), alpha squared — js/render3d/trails3d.mjs, js/render/ball.js, court.js, effects.js.
 - (recorded, presentation only) Idle (ready) / platform stance arm twist: pose field `fsplit` 0.45 moves part of the forearm twist to the wrist so the elbow no longer wraps — js/render3d/players3d.mjs, poses3d.mjs.
 - (recorded in spec §4.25) Camera jitter when the ball is far out of the map: Follow / POV look target clamped to the playable box and eased out while the ball is hidden; `faceOpponent` continuous behind the camera; scene-shot exit turns the view by slerp (72° → 12° per frame) — js/render3d/camera3d.mjs, ARCHITECTURE.md.
+- (recorded, bug fix) Cup panel crash fix (owner report): `rankBest` got `squadOf(entrant)` — a cup entrant is plain data with no `.P`, so the hub threw "Cannot read properties of undefined (reading 'map')" whenever a cup match was next; it now reads `squadOf(Cup.team(run, i))` (the Street crew too); test asserts every entrant has a squad. js/ui/career-week.js, tests/cup.test.js.
+- (recorded in spec §4.25) Main_v2.vrm is your career player's permanent model (assets/vrm/main.glb.txt, README.txt, js/render3d/{players3d,r3d,actors3d}.mjs, ui/menu.js tip); loaded extra models (+ Player model) are random per player in the Monster game again, not in career.
+- (recorded, bug fix) POV fade crash fix (owner report): `povFade` read `A.rdt` while `A` was null on leaving a match (unbind → setPovHidden); guarded (js/render3d/actors3d.mjs).

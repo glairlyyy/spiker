@@ -314,7 +314,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   the training cap (75) and match growth (§4.14) are unchanged. Early on you are benched and lose — that is the point
   (evaluations still pay the bench reward). Stats can fall to 1 (events, injuries), never below; a guard repairs any invalid stat on load and before every match (T-056). NPCs are unchanged.
 
-- §4.23 **Relationships — the core pillar** **[locked design (owner), not built — T-060 ready; T-061…T-066 next]**
+- §4.23 **Relationships — the core pillar** **[locked design (owner); A built T-060; T-061…T-066 next]**
   Relationships are the main thing to do. Not a dating sim, not support cards: **every NPC is a career too.** They
   want something, grind for it on the same island with the same few slots, and a relationship is the history of two
   careers that keep colliding. You don't fill a gauge; you live through things together (or against each other).
@@ -339,7 +339,9 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   - Weekly plan (one R() roll per NPC at week start, career randomness only): train a stat at a place in their
     region (or where their faction allows), rest, hustle, challenge someone, scout, recover. They grow from what they
     did with the same XP rules as you (training to TRAIN_CAP, matches above), scaled by their hidden potential — this
-    replaces the random weekly `Growth` drift for pool players. They get tired, injured (same INJURY rules when they
+    replaces the random weekly `Growth` drift for pool players. Matches (off-screen league play, hustles) raise all four
+    stats (key stat weighted double); only starters and hustlers grow past the training cap, so the league's depth ends
+    the season a little weaker than its top (built T-060: week-28 mean OVR ~83, top-10 ~95). They get tired, injured (same INJURY rules when they
     fight) and benched (same Run.lineup rules).
   - Fates (permanent this run): **cut** (benched 3 evaluations running and under the faction's join bar → reserves,
     then quits if `want` is unmet), **quit** (cynical + want unmet for long), **poached** (a richer club / St. Gloria
@@ -424,7 +426,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   (a faction's join bar −5, its crews swarm the map), curfew (a region charges +1 day to enter), festival (Wu beach
   week: bonfire free, mood up, street battles off). Rules in Front (data table EVENTS, no randoms outside the payday
   roll); MapModel shows them; the living map animates them.
-- §4.25 Player camera **[built — T-058 Follow, T-059 POV; polish T-070]**: in a match, a camera toggle Broadcast / Courtside (exist) /
+- §4.25 Player camera **[built — T-058 Follow, T-059 POV; polish T-070 built]**: in a match, a camera toggle Broadcast / Courtside (exist) /
   **Follow** (3rd person: behind and above your player, turns with your side, eases to the ball on your touches) /
   **POV** (1st person from your player's head: the ball, the net, the block in your face; your own arms on spikes and
   digs, falls back to Follow during your jumps if it gets too wild). Hype scenes still cut to their shots and return.
@@ -433,7 +435,9 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   leaves the frame the view widens (and Follow backs away from the net up to 12 m) until it is back; softer screen
   shake (slow sway, off with Zooms: Off); ball trails scale with hit power and every trail fades while its object is
   still; a ball far out of the map never drags the view (look target clamped to the court box, eased out while
-  hidden), and a hype shot's exit turns the view smoothly.
+  hidden), and a hype shot's exit turns the view smoothly. In POV, figures that come within arm's reach of the eye fade out.
+  Your career player is always the owner's own model (Main_v2, kept in its own colours); loaded extra models appear only
+  in the Monster game (random per player).
 
 - §4.26 Game modes **[locked (owner), built T-067; Endless = backlog]**: a new run picks **Story** (default) or
   **Endless** (later).

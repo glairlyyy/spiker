@@ -54,6 +54,8 @@ const bufCache = new Map();
 /** Download a base model (served as base64 text) once; progress 0..1. */
 /** The base player model (VRM as base64 text: the artifact host may block binary / blob loads). */
 export const MODEL_URL = new URL('../../assets/vrm/base.glb.txt', import.meta.url).href;
+/** Your own player in career matches (Main_v2.vrm, base64 text like the base model). */
+export const MAIN_URL = new URL('../../assets/vrm/main.glb.txt', import.meta.url).href;
 export async function loadBase(url, onProgress) {
   if (bufCache.has(url)) return bufCache.get(url);
   const res = await fetch(url);

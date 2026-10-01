@@ -192,6 +192,10 @@ test('career: story mode cup', () => {
   const e = run.cup.entrants.find(x => x.region === reg && x.ids.includes(you.id));
   assert(e, 'the weakest you is still in a squad');
   eq(run.cup.entrants.filter(x => x.ids.includes(you.id)).length, 1, 'in exactly one squad');
+  // the cup panel lists every entrant's best players from Cup.team (an entrant is plain data with no `.P`; the Street crew included)
+  run.cup.entrants.forEach((x, i) =>
+    assert(Array.isArray(g.squadOf(g.Cup.team(run, i))) && g.squadOf(g.Cup.team(run, i)).length > 0, `entrant ${i} has a squad`)
+  );
   // alone: the street crew entrant, saved with the run, never holds a second copy of you
   const [g1, r1] = mk(73, 'MB');
   g1.World.leaveAcademy(r1);

@@ -7,7 +7,7 @@
 //   camera3d game camera, scene shots, P3D       actors3d  posing players and coaches, trails, auras, rings
 //   players3d VRM load / dress / pose apply      poses3d   pose library      fx3d / trails3d  effects
 import * as THREE from 'three';
-import { loadBase, makeVRM, MODEL_URL } from './players3d.mjs';
+import { loadBase, makeVRM, MODEL_URL, MAIN_URL } from './players3d.mjs';
 import { createFx } from './fx3d.mjs';
 import { makeTrail } from './trails3d.mjs';
 import { W, lowEnd } from './units3d.mjs';
@@ -70,7 +70,7 @@ async function build(onProgress) {
 
   // players and coaches: one base model, parsed once per figure, dressed per match
   prog(0, 'Downloading players');
-  const buf = await loadBase(MODEL_URL, f => prog(f * 0.5, 'Downloading players'));
+  const buf = await loadBase(MODEL_URL, f => prog(f * 0.3, 'Downloading players'));
   const people = [],
     coaches = [];
   for (let i = 0; i < N_PLAYERS + N_COACHES; i++) {
@@ -80,6 +80,18 @@ async function build(onProgress) {
     await new Promise(r => setTimeout(r, 0));
     if (i < N_PLAYERS) people.push(kitOut(pl, scene, arena));
     else coaches.push(pl);
+  }
+  // your own player in career matches: Main_v2 (one figure, kept as modelled; a failed load just leaves the base model)
+  try {
+    const mb = await loadBase(MAIN_URL, f => prog(0.3 + f * 0.2, 'Downloading players')),
+      pl = await makeVRM(mb, 1.8);
+    pl.model = 'main';
+    pl.own = true;
+    pl.root.visible = false;
+    scene.add(pl.root);
+    people.push(kitOut(pl, scene, arena));
+  } catch (e) {
+    DBG.log('warn', 'Main model could not be loaded', e);
   }
   return { renderer, gl, scene, fx, people, coaches, ...arena };
 }
