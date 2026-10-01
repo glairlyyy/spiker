@@ -210,6 +210,20 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   - A Rankings drawer shows the three lists and your rank on each; pre-match and challenge cards show the opponent's
     ranks ("Register #12 · Gazette #3 · Street —"). Display only: no match effects. Aces / the rival appear here later.
 
+- §4.18 Roads, settlements and buildings **[locked, not built — T-045–T-047; T-048 later]** (owner: hybrid look):
+  - Data first (rules layer, plain data, no randoms): a road network (nodes at the airport, every place, club HQs,
+    Central Academy + junctions; edges = main roads, Wei grid streets, Shu dirt / mountain paths); settlement lots
+    generated deterministically along roads per region style — Wei dense city blocks, Wu coastal fishing villages and
+    the harbor, Shu terraced hill villages and temple steps, Central Academy campus quad, Outlaws shacks under the
+    overpass, St. Gloria walled compound; every place / HQ gets a landmark kind (gym, sand court, dojo, HQ tower, hotel,
+    stall, shrine, cage, campus, home).
+  - Render: roads as ribbons draped on the terrain; filler buildings as instanced low-poly procedural meshes (one draw
+    call per kind); landmarks as single meshes. Every kind comes from one registry (`kit3d.mjs`), so a CC0 model pack
+    (Kenney City / Fantasy Town, Quaternius) can replace any kind later from `assets/models/` without touching rules or
+    data — owner picks the pieces.
+  - Your player walks along the roads (route through the network) instead of a straight line.
+  - Later (T-048, optional): trips along roads cost fewer days than cross-country; Shu mountain paths stay slow.
+
 ## 5. Open questions — do not build until decided
 - §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story
   events, club switching, what standing unlocks beyond access.
