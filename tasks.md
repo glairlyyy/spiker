@@ -112,9 +112,7 @@ Steps:
 3. mapmodel.js: `land.roads` = polylines `{ kind, pts }`; `land.lots` = settlement lots `{ at, rot, size, style, kind }`
    placed along road edges inside their region (both sides, `setback` from the road, spacing by `density`, never within
    NEAR_R / 3 of a place, never on water / outside the coast), capped at 1200 lots; `land.landmarks` = `{ id, at, kind,
-   region }` for every place / HQ; `you.route` = `City.route(previous pos, you.at)` when `you.at` changed (renderer
-   walks it; previous pos = the last model's `you.at`, kept on the run as `run.lastPos` only if needed — else compute
-   from `run.fog`'s last point; no save change).
+   region }` for every place / HQ.
 4. tests: `'career: world layout — roads, routes, lots, landmarks'`: every place / HQ / airport / home spot reachable
    from the airport; `City.route` starts / ends at the given points and only uses edges; same run → identical
    `land.lots` JSON twice; lots ≤ 1200, none in the water, none on a place; R() counter unchanged by `MapModel.build`.
@@ -155,12 +153,15 @@ Result:
 Spec: §4.18, §4.9          Goldens: unchanged          Save: no change
 Goal: When you travel, the avatar follows `you.route` (the road path) instead of a straight line, with the same 1.2–6 s
 trip time and ×N time-lapse badge (now based on the path length).
-Files: js/map3d/avatar3d.mjs, js/map3d/map3d.mjs, ARCHITECTURE.md
-Do not: change rules or trip costs; let the avatar leave the terrain (keep `heightAt`).
+Files: js/ui/map-view.js, js/map3d/avatar3d.mjs, js/map3d/map3d.mjs, ARCHITECTURE.md
+Do not: change rules or trip costs; let the avatar leave the terrain (keep `heightAt`); call `City` from js/map3d (the
+renderer reads only the model).
 Steps:
 1. avatar3d `setTarget(at, path)`: when `path` has 2+ points, walk the polyline at constant speed with the same
    trapezoid speed profile over the whole length; face along the current segment (smoothed); fallback straight line.
-2. map3d update passes `model.you.route`; the camera follow keeps working.
+2. map-view.js (UI layer) remembers the last `you.at` it passed on; when it changes it adds
+   `model.you.route = City.route(last, you.at)` before `update(model)`. map3d passes `you.route` to the avatar; the camera
+   follow keeps working.
 Accept: all tests + lint.
 QA: career run → travel from the airport to Shu: the avatar follows the coast road then the mountain path; ×N badge
 shows for a long trip; no pageerror.
