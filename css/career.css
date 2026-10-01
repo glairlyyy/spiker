@@ -45,15 +45,15 @@
   content: ' →';
 }
 .mcard.monster {
-  background: linear-gradient(160deg, var(--surf) 55%, color-mix(in srgb, #ff2e4d 18%, var(--surf)));
-  border-color: #ff2e4d;
+  background: linear-gradient(160deg, var(--surf) 55%, color-mix(in srgb, var(--bad) 18%, var(--surf)));
+  border-color: var(--bad);
 }
 .mcard.monster .mk {
-  color: #ff2e4d;
+  color: var(--bad);
 }
 .mcard.monster b::before {
   content: '★ ';
-  color: #ff2e4d;
+  color: var(--bad);
 }
 .mleg {
   grid-column: 1 / -1;
@@ -67,7 +67,6 @@
 .mleg p {
   margin: 0;
 }
-
 .create {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
@@ -148,7 +147,6 @@
   font-style: normal;
   font-size: 12px;
 }
-
 .career {
   display: grid;
   grid-template-columns: 330px 1fr;
@@ -184,11 +182,11 @@
 }
 .mood.m0,
 .mood.m1 {
-  color: #f43f5e;
+  color: var(--bad-rose);
 }
 .mood.m3,
 .mood.m4 {
-  color: #16a34a;
+  color: var(--good-deep);
 }
 .bond {
   display: grid;
@@ -242,9 +240,7 @@
 .cal .pip.past {
   opacity: 0.45;
 }
-.cal .pip.eval,
-.cal .pip.warmup,
-.cal .pip.warmup2 {
+.cal .pip.eval {
   border-color: var(--cyan);
   color: var(--cyan);
 }
@@ -260,60 +256,6 @@
   background: var(--ink);
   color: var(--bg);
   border-color: var(--ink);
-}
-.tgrid5 {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
-}
-.tbtn {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  align-items: flex-start;
-  text-align: left;
-  cursor: pointer;
-  background: var(--surf2);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 10px;
-  font-size: 13px;
-  min-height: 150px;
-}
-.tbtn:hover {
-  border-color: var(--tc, var(--cyan));
-  box-shadow: inset 0 0 0 1px var(--tc, var(--cyan));
-}
-.tbtn b {
-  font-size: 16px;
-}
-.tbtn small {
-  color: var(--mute);
-  font-weight: 700;
-}
-.tbtn .g {
-  font-weight: 800;
-  color: var(--cyan);
-}
-.tbtn .g2 {
-  color: var(--cyan);
-}
-.tbtn .c {
-  color: var(--mute);
-}
-.tbtn .f.md {
-  color: var(--gold);
-  font-weight: 800;
-}
-.tbtn .f.hi {
-  color: #f43f5e;
-  font-weight: 800;
-}
-.tbtn .fl {
-  display: flex;
-  gap: 2px;
-  margin-top: auto;
-  min-height: 22px;
 }
 .trow {
   display: flex;
@@ -355,17 +297,6 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: 8px;
-}
-.sk {
-  display: grid;
-  gap: 2px;
-  text-align: left;
-  background: var(--surf2);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 10px;
-  cursor: pointer;
-  font-size: 13px;
 }
 .sk:disabled,
 .sk[aria-disabled='true'] {
@@ -430,12 +361,6 @@
   .create,
   .career {
     grid-template-columns: 1fr;
-  }
-  .tgrid5 {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  }
-  .tbtn {
-    min-height: 0;
   }
   .career > aside {
     order: 2;
@@ -526,20 +451,11 @@
 .ency-users {
   line-height: 1.8;
 }
-.sk-tag {
-  font-style: normal;
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  color: var(--cyan);
-  letter-spacing: 0.05em;
-}
 .opline {
-  color: #ff2e4d;
+  color: var(--bad);
   font-weight: 800;
 }
-
-/* ---- career v3: season, training depth, skills icons, legacy switches ---- */
+/* ---- season calendar, training depth, skill icons, mode switches ---- */
 .ic {
   vertical-align: -2px;
   flex: none;
@@ -554,7 +470,7 @@
   line-height: 1;
 }
 .ski.act {
-  color: #ffd84d;
+  color: var(--warn-hi);
   background: rgba(255, 216, 77, 0.12);
 }
 .ski.pas {
@@ -568,14 +484,17 @@
   margin: 0;
 }
 .sk {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  background: var(--surf2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  cursor: pointer;
+  font-size: 13px;
   position: relative;
   padding-right: 54px;
-}
-.skh {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 14px 0 6px;
 }
 .skchips {
   display: flex;
@@ -613,7 +532,7 @@
   margin-bottom: 8px;
 }
 .season .goal.ok {
-  border-color: #16a34a;
+  border-color: var(--good-deep);
 }
 .season .goal.miss {
   border-color: var(--hot);
@@ -635,7 +554,7 @@
   font-size: 11px;
 }
 .spn.kept {
-  border-color: #16a34a;
+  border-color: var(--good-deep);
 }
 .spn.lost {
   opacity: 0.5;
@@ -662,10 +581,6 @@
 .hardt.dis {
   opacity: 0.5;
 }
-.tbtn.hard {
-  border-color: var(--hot) !important;
-}
-.tbtn .stk,
 .spot .stk {
   font-size: 11px;
   font-weight: 800;
@@ -732,7 +647,6 @@
 .ev.lbk .evk {
   color: var(--lbk, var(--gold));
 }
-
 /* Element line on your card: ??? until revealed, the trial steps, then the signature spike */
 .elline {
   display: flex;
@@ -784,7 +698,6 @@
 .elsteps i.ok {
   background: var(--e);
 }
-
 /* compact skill grid: name + cost, description in the tooltip */
 .skills.compact {
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -808,24 +721,6 @@
   letter-spacing: 0;
   margin-left: 8px;
 }
-.thd {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.thd h3 {
-  margin-right: auto;
-}
-.thd .hardt {
-  margin: 0;
-}
-.lastlog {
-  margin: 6px 0 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 .fold h3 {
   margin: 0;
 }
@@ -838,9 +733,6 @@
 .fold > summary h3 .pts {
   float: none;
   margin-left: auto;
-}
-.tbtn small {
-  font-size: 11px;
 }
 .life .hsel {
   display: flex;
@@ -908,7 +800,7 @@
   font-weight: 800;
 }
 .spot .f.hi {
-  color: #f43f5e;
+  color: var(--bad-rose);
   font-weight: 800;
 }
 .spot .fl {
@@ -932,7 +824,6 @@
   align-items: center;
   gap: 4px;
 }
-
 /* ---------- career hub: full-screen map + HUD ---------- */
 .hub {
   position: fixed;
@@ -943,13 +834,6 @@
   display: block;
   --hudbg: rgba(12, 14, 20, 0.82);
   --gap: max(10px, env(safe-area-inset-left));
-}
-.hub .mapwrap {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  touch-action: none;
-  cursor: grab;
 }
 .hub .mapwrap:active {
   cursor: grabbing;
@@ -1398,15 +1282,19 @@
 .chipm .x {
   padding: 0 7px;
 }
-
 /* ---------- island map ---------- */
 /* outside the map: the same dark as the fog over the sea */
 .hub .mapwrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
   background: #040b13;
 }
 @keyframes clashp {
   to {
-    border-color: #ffb020;
+    border-color: var(--warn);
   }
 }
 .spot .qt {
@@ -1417,13 +1305,13 @@
   color: var(--mute);
 }
 .spot .qt.gem {
-  color: #4ade80;
+  color: var(--good);
 }
 .spot .qt.overhyped {
-  color: #f43f5e;
+  color: var(--bad-rose);
 }
 .spot .stk.far {
-  color: #f43f5e;
+  color: var(--bad-rose);
 }
 .career .xpbar {
   position: relative;
@@ -1442,7 +1330,7 @@
   font-weight: 800;
 }
 .spot .gl.hi {
-  color: #4ade80;
+  color: var(--good);
 }
 .spot .gl.md {
   color: var(--gold);
@@ -1450,7 +1338,6 @@
 .spot .gl.lo {
   color: var(--mute);
 }
-
 /* factions drawer */
 .facs .fac {
   padding: 8px 0;
@@ -1466,10 +1353,10 @@
   font-size: 12px;
 }
 .facs .fac.up .fv b {
-  color: #4ade80;
+  color: var(--good);
 }
 .facs .fac.dn .fv b {
-  color: #ff5d6c;
+  color: var(--bad-soft);
 }
 .facs .rbar,
 .dossier .rbar {
@@ -1495,16 +1382,15 @@
   top: 0;
   bottom: 0;
   border-radius: 3px;
-  background: #4ade80;
+  background: var(--good);
 }
 .facs .fac.dn .rbar i {
-  background: #ff5d6c;
+  background: var(--bad-soft);
 }
 .facs .clashk {
   color: #ff8c42;
   margin-left: 6px;
 }
-
 .facs .fms {
   display: flex;
   gap: 6px;
@@ -1519,13 +1405,12 @@
 }
 .facs .fm.up,
 .dossier .fm.up {
-  color: #4ade80;
+  color: var(--good);
 }
 .facs .fm.dn,
 .dossier .fm.dn {
-  color: #ff5d6c;
+  color: var(--bad-soft);
 }
-
 /* faction dossier window */
 .dossier {
   position: relative;
@@ -1583,13 +1468,11 @@
   color: inherit;
   text-decoration: underline dotted;
 }
-
 #mapwrap canvas {
   display: block;
   width: 100%;
   height: 100%;
 }
-
 .mapbadge {
   position: absolute;
   left: 50%;
@@ -1602,7 +1485,6 @@
   font: 700 18px/1.2 var(--font-num, inherit);
   pointer-events: none;
 }
-
 .mapnote {
   margin: 40vh auto 0;
   max-width: 32em;
@@ -1610,7 +1492,6 @@
   text-align: center;
   color: #9fb0c4;
 }
-
 /* ---------- 3D map overlay: pins, labels, flag (js/map3d/pins3d.mjs) ---------- */
 .hub.eve .mapwrap canvas {
   filter: saturate(0.65) brightness(0.72) hue-rotate(12deg);
@@ -1677,7 +1558,7 @@
   box-shadow: 0 0 8px var(--tc);
 }
 .mpin.gem {
-  border-color: #4ade80;
+  border-color: var(--good);
   border-width: 4px;
 }
 .mpin.overhyped {
@@ -1734,13 +1615,12 @@
 }
 .mflag {
   font-size: 26px;
-  color: #ffb020;
+  color: var(--warn);
   text-shadow:
     0 0 3px #1b1204,
     0 0 3px #1b1204;
   pointer-events: none;
 }
-
 /* rankings drawer */
 .hub .tabs.rk {
   display: flex;
@@ -1779,7 +1659,6 @@
   text-align: center;
   color: var(--mute);
 }
-
 /* match history (T-052) */
 .hub table.rk.ml {
   margin-top: 6px;

@@ -199,7 +199,7 @@ Accept: tests + lint; goldens untouched.
 QA: Monster game, Max hype: shards, sparks, confetti and OP trails still vary; no pageerror.
 Result: FXR {r, rnd, pick, isolate} in core/rng.js; 41 call sites switched (court.js trail flicker, effects.js shards/cracks/drill/sparks, playback.js dust/confetti); coach looks via FXR.isolate(mkLook/pick HAIR). New test scans js/render, js/audio, match-screen (headless dt-sequence test not feasible: playback isn't loaded headless). 50/50, goldens untouched, lint clean; Monster 3000 steps, effects still vary, no pageerror.
 
-### [ ] T-074: CSS — dead selectors, duplicates, colour tokens
+### [x] T-074: CSS — dead selectors, duplicates, colour tokens
 Spec: — (cleanup)          Goldens: unchanged          Save: no change
 Goal: Smaller, consistent stylesheets with no visible change.
 Files: css/style.css, css/theme.css, css/career.css
@@ -219,7 +219,7 @@ Steps:
 Accept: lint + tests; before/after screenshots identical by eye (menu, create, hub + every drawer, map card, match
 screen, end screen); css line count reported in Result.
 QA: career run through every hub drawer and a watched match; screenshots before/after.
-Result:
+Result: 34 dead class selectors removed (style.css tournament/betting/menu leftovers, theme.css, career.css .tbtn/.tgrid5/.pip.warmup*/.sk-tag/.skh/.thd/.lastlog — found by a script checking every class against js+html); the SVG-map rules were already gone; dead light/dark/data-theme token blocks dropped, theme.css :root is the only token set (:root:root:root → :root); same-file duplicates merged (.over, #box, .sk, .hub .mapwrap); status tokens --good/--good-deep/--bad/--bad-rose/--bad-soft/--warn/--warn-hi (exact shades kept) replace 30 literals; section header renamed. CSS 3903 → 3541 lines. Pixel diff vs old CSS (same seeded career run): menu, create, hub, 8 drawers, spot card, week 2 all 0.00 % (one drawer differed only mid slide-in animation); Monster match screen unchanged by eye; no pageerror.
 
 ### [ ] T-075: Move game rules out of the UI
 Spec: — (cleanup)          Goldens: unchanged          Save: no change

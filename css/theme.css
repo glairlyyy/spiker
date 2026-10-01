@@ -1,9 +1,9 @@
 /*
  * "Future tech" theme — dark, minimal, glass panels, thin lines, uppercase micro-labels.
- * Loaded last: it only overrides tokens and surface styling; layout stays in style.css / career.css.
+ * Loaded last: the colour/font tokens (the only token set) and surface styling; layout stays in style.css / career.css.
  * The court canvas keeps its anime look.
  */
-:root:root:root {
+:root {
   --bg: #07080b;
   --surf: #111318;
   --surf2: #1a1d24;
@@ -13,6 +13,14 @@
   --hot: #ff3b4e;
   --cyan: #4cc9f0;
   --gold: #f5c451;
+  /* status colours: good / bad / warning (exact shades kept) */
+  --good: #4ade80;
+  --good-deep: #16a34a;
+  --bad: #ff2e4d;
+  --bad-rose: #f43f5e;
+  --bad-soft: #ff5d6c;
+  --warn: #ffb020;
+  --warn-hi: #ffd84d;
   --glass: rgba(255, 255, 255, 0.035);
   --glass2: rgba(255, 255, 255, 0.06);
   --glow: 0 0 0 1px rgba(76, 201, 240, 0.35), 0 0 24px rgba(76, 201, 240, 0.12);
@@ -58,12 +66,6 @@ body {
   font-size: 12px;
   letter-spacing: 0.04em;
 }
-.wallet {
-  background: var(--glass);
-  border: 1px solid var(--line);
-  font: 600 14px var(--disp);
-  letter-spacing: 0.08em;
-}
 /* ---------- type ---------- */
 h2 {
   font: 600 26px/1.1 var(--disp);
@@ -89,7 +91,6 @@ h4 {
 .panel,
 .bracket,
 .mcard,
-.tcard,
 .pl,
 .ency-card,
 .ocard {
@@ -103,10 +104,6 @@ h4 {
 .ocard {
   background: rgba(14, 16, 22, 0.9);
   border-top: 2px solid var(--tc);
-}
-.modal {
-  background: rgba(3, 4, 8, 0.72);
-  backdrop-filter: blur(6px);
 }
 /* ---------- buttons & inputs ---------- */
 .btn {
@@ -328,50 +325,12 @@ table td {
   border-color: var(--cyan);
   box-shadow: var(--glow);
 }
-.tcard {
-  border-left: 3px solid var(--tc);
-  transition:
-    box-shadow 0.2s,
-    transform 0.2s;
-}
-.tcard:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--glow);
-}
-.tname {
-  font: 600 18px var(--disp);
-  letter-spacing: 0.06em;
-}
-.vsside {
-  background: var(--surf);
-  border: 1px solid var(--line);
-  border-top: 2px solid var(--tc);
-}
-.vsp {
-  font: 600 28px var(--disp);
-}
 /* ---------- career ---------- */
-.tbtn,
 .sk,
 .pip,
 .alloc .btn {
   background: var(--glass2) !important;
   border: 1px solid var(--line) !important;
-}
-.tbtn {
-  border-radius: 12px;
-  transition:
-    box-shadow 0.2s,
-    transform 0.2s;
-}
-.tbtn:hover {
-  box-shadow: var(--glow);
-  transform: translateY(-2px);
-}
-.tbtn b {
-  font: 600 18px var(--disp);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 .cal .pip.now {
   background: var(--ink) !important;
@@ -417,29 +376,13 @@ table td {
   font-weight: 600;
 }
 @media (prefers-reduced-motion: reduce) {
-  .mcard:hover,
-  .tcard:hover,
-  .tbtn:hover {
+  .mcard:hover {
     transform: none;
   }
 }
-
 /* ---- Monster 3D ---- */
 .mcard[role='group'] {
   cursor: default;
-}
-.mplay {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 10px;
-}
-.mplay .btn small {
-  font-size: 10px;
-  opacity: 0.8;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-left: 4px;
 }
 #cv3 {
   position: absolute;
@@ -502,28 +445,11 @@ table td {
   color: var(--mute, #93a0c8);
   font-size: 12px;
 }
-.b3d {
-  font-size: 0.5em;
-  vertical-align: 0.5em;
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: linear-gradient(90deg, #3fd9ff, #ff2e74);
-  color: #061018;
-  letter-spacing: 0.08em;
-}
-.mclassic {
-  grid-column: 1 / -1;
-  margin: 0;
-}
-.mclassic a {
-  color: var(--cyan, #3fd9ff);
-}
 .ld3 .trow {
   display: flex;
   gap: 8px;
   margin-top: 8px;
 }
-
 /* ---- debug log ---- */
 .dbgb i {
   font-style: normal;
