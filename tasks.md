@@ -41,7 +41,7 @@ Result:
 
 ## Now — Roads, settlements and buildings (spec §4.18)
 
-### [ ] T-047: The player walks along the roads
+### [x] T-047: The player walks along the roads
 Spec: §4.18, §4.9          Goldens: unchanged          Save: no change
 Goal: When you travel, the avatar follows `you.route` (the road path) instead of a straight line, with the same 1.2–6 s
 trip time and ×N time-lapse badge (now based on the path length).
@@ -57,7 +57,7 @@ Steps:
 Accept: all tests + lint.
 QA: career run → travel from the airport to Shu: the avatar follows the coast road then the mountain path; ×N badge
 shows for a long trip; no pageerror.
-Result:
+Result: Done; tests 41/41, lint clean. Airport → Highland Dojo QA: the camera follows the coast road then the Shu dirt road (not the straight line), ×4 badge shown, no pageerror. `MapView.routed` adds `you.route` on mount and update (also on a remount after a move).
 
 ## Next — Match history (spec §4.20), town layout revamp (spec §4.19)
 
