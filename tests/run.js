@@ -2347,7 +2347,6 @@ test('career: rules moved out of the UI (T-075)', () => {
   run.rolled = false;
   g.City.after(run);
   assert(run.rolled, 'rolled after the first action');
-  const ev = run.event;
   run.event = null;
   g.City.after(run);
   eq(run.event, null, 'never twice a week');
