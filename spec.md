@@ -284,6 +284,26 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   the training cap (75) and match growth (§4.14) are unchanged. Early on you are benched and lose — that is the point
   (evaluations still pay the bench reward). Stats can fall to 1 (events, injuries), never below; a guard repairs any invalid stat on load and before every match (T-056). NPCs are unchanged.
 
+- §4.23 Relationships **[draft — owner to confirm]**: bond (0–100) stays the "how close" number; each teammate also
+  gets a **feeling** that events and your choices push: respect · rivalry · resentment · loyalty (one at a time, shown
+  as a tag). Triggers: you take their starting spot → resentment (they pass you worse balls: small set-quality malus
+  to you); you sit for them / feed them sets → respect; a same-role mate with similar OVR → rivalry (both train
+  harder: +gain when you train together, the coach compares you openly); loyal (bond 80+ and respect) follows you if you
+  switch clubs and can vouch for you with a faction. NPCs remember: a mate you beat in a challenge stays cold for weeks.
+  Shown on the Team drawer (tag + one-line reason, `diary` voice). Waits on: club switching (§5.1) for "follows you".
+- §4.24 Faction events **[draft — owner to confirm]**: once a payday, Front rolls one faction event from its state
+  (pressure, places lost, money); each changes the map for N weeks and is reported in the Gazette (and rumours in the
+  faction's own voice): border seizure (exists — gets a visible flag change + Gazette story), price hike / sale
+  (a region's prices ×1.3 / ×0.8), gym raid (a place closed 1–2 weeks: pin greyed, rubble decal), recruitment drive
+  (a faction's join bar −5, its crews swarm the map), curfew (a region charges +1 day to enter), festival (Wu beach
+  week: bonfire free, mood up, street battles off). Rules in Front (data table EVENTS, no randoms outside the payday
+  roll); MapModel shows them; the living map animates them.
+- §4.25 Player camera **[draft — owner to confirm]**: in a match, a camera toggle Broadcast / Courtside (exist) /
+  **Follow** (3rd person: behind and above your player, turns with your side, eases to the ball on your touches) /
+  **POV** (1st person from your player's head: the ball, the net, the block in your face; your own arms on spikes and
+  digs, falls back to Follow during your jumps if it gets too wild). Hype scenes still cut to their shots and return.
+  Only your career player (Monster games: pick any player). Comfort: no camera roll, smoothed head bob, FOV 70.
+
 ## 5. Open questions — do not build until decided
 - §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story
   events, club switching, what standing unlocks beyond access.
