@@ -4,7 +4,7 @@
 // are plain CSS on the overlay elements (css/career.css, .mpin …).
 //   createFurniture(scene, heightAt) → { layer, sync(model, on), select(id), pulse(strength, t), tick(cam, w, h, dist), dispose() }
 import * as THREE from 'three';
-import { MAP_M } from './map3d.mjs';
+import { MAP_M, smooth } from './geo3d.mjs';
 import { landmarkHeight } from './kit3d.mjs';
 
 const FLAGCLS = {
@@ -24,18 +24,19 @@ const FLAGCLS = {
   PIN_UP = 2.2, // pins float this far above their landmark's roof, or the ground (m)
   esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-const smooth = (a, b, v) => {
-  const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
-  return t * t * (3 - 2 * t);
-};
-
 export function createFurniture(scene, heightAt) {
   const layer = document.createElement('div');
   layer.className = 'maplay';
   const decals = new THREE.Group();
   let contest = null; // the contested-border line (pulsed by pressure)
   scene.add(decals);
-  const P = { key: {}, items: [] }; // items: { el, x, y, z, label? } world points to project
+  const P = { key: {}, items: [], ver: 0 }; // items: { el, x, y, z, label? } world points to project; ver bumps on change
+  const V = new THREE.Vector3(), // reused by tick (no per-frame allocation)
+    lastCam = new THREE.Matrix4();
+  let lastVer = -1,
+    lastW = 0,
+    lastH = 0,
+    lastDist = -1;
 
   const world = ([mx, my], up) => {
     const x = mx * MAP_M,
@@ -51,10 +52,12 @@ export function createFurniture(scene, heightAt) {
   const drop = cls => {
     layer.querySelectorAll('.' + cls).forEach(e => e.remove());
     P.items = P.items.filter(i => !i.el.classList.contains(cls));
+    P.ver++;
   };
   const add = (el, at, up, extra = {}) => {
     layer.append(el);
     P.items.push({ el, ...world(at, up), vis: null, ...extra });
+    P.ver++;
   };
   const clearGroup = g => {
     for (const o of [...g.children]) {
@@ -200,8 +203,16 @@ export function createFurniture(scene, heightAt) {
     },
     /** Place every overlay element at its projected ground point (call after the frame is rendered). */
     tick(cam, w, h, dist) {
+      // nothing moved (camera, canvas size, items): the overlay is already in place
+      cam.updateMatrixWorld();
+      if (P.ver === lastVer && w === lastW && h === lastH && dist === lastDist && lastCam.equals(cam.matrixWorld)) return;
+      lastVer = P.ver;
+      lastDist = dist;
+      lastW = w;
+      lastH = h;
+      lastCam.copy(cam.matrixWorld);
       const fade = smooth(LABEL_FADE[0], LABEL_FADE[1], dist),
-        v = new THREE.Vector3();
+        v = V;
       for (const it of P.items) {
         v.set(it.x, it.y, it.z).project(cam);
         const show = v.z < 1 && Math.abs(v.x) < 1.15 && Math.abs(v.y) < 1.15 && (!it.label || fade > 0.02);

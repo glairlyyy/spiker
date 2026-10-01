@@ -17,7 +17,7 @@ const MapModel = {
       coast: CITY.coast,
       beach: CITY.beach,
       regions: ['wu', 'shu', 'wei'].map(id => Object.assign(reg(id), { poly: CITY[id] })),
-      contest: { line: CITY.contest, title: 'Contested Wei–Wu border' },
+      contest: { line: CITY.contest, title: `Contested ${CITY.contestPair.map(r => REGIONS[r].name.split(' ')[0]).join('–')} border` },
       minors: Object.entries(CITY.minors).map(([id, e]) => Object.assign(reg(id), e)),
       park: Object.assign(reg('open'), CITY.park, { title: REGIONS.open.desc }),
       mountains: CITY.mountains,
@@ -318,8 +318,15 @@ const MapModel = {
       borders: Object.keys(FRONT.borders).map(k => {
         const [a, b] = k.split('-');
         return { a, b, meter: Front.meter(run, a, b) };
-      })
+      }),
+      contest: MapModel.contest(run)
     };
+  },
+  /** The contested border (CITY.contestPair): meter from a's side, pressure 0..1 (1 = the next win seizes), holder. */
+  contest(run) {
+    const [a, b] = CITY.contestPair,
+      meter = Front.meter(run, a, b);
+    return { a, b, meter, pressure: Math.min(1, Math.abs(meter) / FRONT.seize), hold: meter > 0 ? a : meter < 0 ? b : null };
   },
   build(run, sel = null) {
     return {

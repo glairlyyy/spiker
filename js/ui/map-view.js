@@ -34,7 +34,7 @@ const MapView = {
       .then(mod => {
         MapView.loading = false;
         if (!MapView.el || !MapView.el.isConnected) return; // the screen changed meanwhile: the next mount loads it
-        MapView.m3 = mod.create(MapView.el, () => MapView.drop3D());
+        MapView.m3 = mod.create(() => MapView.drop3D());
         MapView.m3.mount(MapView.el, MapView.model, MapView.on);
       })
       .catch(e => {
@@ -50,6 +50,8 @@ const MapView = {
   drop3D() {
     if (MapView.m3) MapView.m3.dispose();
     MapView.m3 = null;
+    MapView.failed = null; // a later mount tries again (a load error may have been transient)
+    MapView.el = MapView.model = MapView.on = null; // don't hold the detached screen
   },
   update(model) {
     model = MapView.routed(model);

@@ -7,7 +7,7 @@
 //   camera3d game camera, scene shots, P3D       actors3d  posing players and coaches, trails, auras, rings
 //   players3d VRM load / dress / pose apply      poses3d   pose library      fx3d / trails3d  effects
 import * as THREE from 'three';
-import { loadBase, makeVRM } from './players3d.mjs';
+import { loadBase, makeVRM, MODEL_URL } from './players3d.mjs';
 import { createFx } from './fx3d.mjs';
 import { makeTrail } from './trails3d.mjs';
 import { W, lowEnd } from './units3d.mjs';
@@ -29,7 +29,6 @@ import {
 } from './camera3d.mjs';
 import { posePlayer, poseCoach, dressActors, swapActor, setPovHidden } from './actors3d.mjs';
 
-const MODEL_URL = new URL('../../assets/vrm/base.glb.txt', import.meta.url).href;
 const N_PLAYERS = 8,
   N_COACHES = 2;
 

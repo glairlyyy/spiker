@@ -7,7 +7,7 @@
 //   createLife(scene, heightAt) → { sync(model), tick(dt, t), count(), dispose() }
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { MAP_M } from './map3d.mjs';
+import { MAP_M } from './geo3d.mjs';
 
 /** One figure (≈1.45 m, feet at the origin): a capsule body and a head. */
 const figureGeo = () => {
@@ -129,9 +129,9 @@ export function createLife(scene, heightAt) {
     }
     // patrols: on the stronger side of a border that has a line (the contested Wei–Wu one), thicker with pressure
     const line = m.land.contest && m.land.contest.line,
-      bd = L.borders.find(x => x.a === 'wei' && x.b === 'wu') || L.borders.find(x => x.meter);
-    if (line && line.length > 1 && bd && bd.meter) {
-      const hold = bd.meter > 0 ? bd.a : bd.b,
+      bd = L.contest; // the contested border's pressure, from the model (no faction names here)
+    if (line && line.length > 1 && bd && bd.hold) {
+      const hold = bd.hold,
         reg = m.land.regions.find(r => r.id === hold),
         cen = reg ? reg.poly.reduce((s, p) => [s[0] + p[0] / reg.poly.length, s[1] + p[1] / reg.poly.length], [0, 0]) : line[0],
         n = clampInt(PATROL[0] + Math.floor(Math.abs(bd.meter) / 2), PATROL[0], PATROL[1]),
@@ -169,7 +169,8 @@ export function createLife(scene, heightAt) {
     if (cloth.instanceColor) cloth.instanceColor.needsUpdate = true;
   };
 
-  /** Point at distance s along a closed path (world points + cumulative segment lengths). */
+  /** Point at distance s along a closed path (world points + cumulative segment lengths), written into AT (reused). */
+  const AT = { x: 0, z: 0, yaw: 0 };
   const along = (f, s) => {
     let d = s % f.len,
       i = 0;
@@ -178,7 +179,10 @@ export function createLife(scene, heightAt) {
       b = f.path[i + 1],
       from = i ? f.seg[i - 1] : 0,
       u = (d - from) / Math.max(0.001, f.seg[i] - from);
-    return { x: a.x + (b.x - a.x) * u, z: a.z + (b.z - a.z) * u, yaw: Math.atan2(b.x - a.x, b.z - a.z) };
+    AT.x = a.x + (b.x - a.x) * u;
+    AT.z = a.z + (b.z - a.z) * u;
+    AT.yaw = Math.atan2(b.x - a.x, b.z - a.z);
+    return AT;
   };
 
   return {
@@ -203,7 +207,9 @@ export function createLife(scene, heightAt) {
           x += Math.sin(yaw) * s * 0.25;
         } else {
           const p = along(f, (f.ph * f.len + t * WALK) % f.len);
-          [x, z, yaw] = [p.x, p.z, p.yaw];
+          x = p.x;
+          z = p.z;
+          yaw = p.yaw;
           lift = Math.abs(Math.sin(t * 6 + f.ph * 9)) * 0.06;
           lean = 0.12;
         }

@@ -1,6 +1,6 @@
 // The 3D island map (three.js). Draws a MapModel (see js/career/mapmodel.js) as low-poly terrain with water, a fixed
 // tilted camera and pan / zoom, and reports clicks as map points.
-//   create(host, onIdle) → { mount(el, model, on), update(model), select(id), dispose(), heightAt(x, z), info() }
+//   create(onIdle) → { mount(el, model, on), update(model), select(id), dispose(), heightAt(x, z), info() }
 // The player's avatar (avatar3d.mjs) stands at model.you.at and walks when it changes; the camera follows it.
 // Units: map (x, y) → world (x·MAP_M, 0, y·MAP_M) metres (1 map unit = 0.5 m). One renderer and canvas live across
 // re-mounts (the career screen re-creates its #mapwrap each render); the view (target, distance) survives them.
@@ -10,26 +10,17 @@ import { createAvatar } from './avatar3d.mjs';
 import { createFurniture } from './pins3d.mjs';
 import { createLife } from './life3d.mjs';
 import { createTown } from './town3d.mjs';
-
-export const MAP_M = 0.5;
-export const FOG_DIM = 0.3; // brightness of unexplored terrain (the town layer dims by the same rule)
-export const FOG_SOFT = 14; // fog edge softness (m)
-export const toWorld = ([x, y]) => [x * MAP_M, y * MAP_M];
-export const toMap = (x, z) => [x / MAP_M, z / MAP_M];
+import { MAP_M, toMap, clamp, lerp, smooth, fogFactor } from './geo3d.mjs';
 
 const CELL = 2, // terrain grid cell (m)
   PITCH = (55 * Math.PI) / 180,
   DIST = [25, 420],
   CLICK_PX = 5,
   BEACH = 12, // beach slope width (m)
-  IDLE_S = 3; // canvas detached this long → release the renderer
+  IDLE_S = 3, // canvas detached this long → release the renderer
+  SHADOW_MAP = 2048, // sun shadow map size (px)
+  SHADOW_BOX = 120; // half-size of the sun's shadow frustum around the view (m)
 
-const lerp = (a, b, t) => a + (b - a) * t,
-  clamp = (v, a, b) => Math.min(b, Math.max(a, v)),
-  smooth = (a, b, v) => {
-    const t = clamp((v - a) / (b - a), 0, 1);
-    return t * t * (3 - 2 * t);
-  };
 /** Fixed value noise: a hash of the lattice point, smoothly interpolated. */
 const hash = (x, y) => {
   let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263);
@@ -208,7 +199,7 @@ function buildTerrain(model) {
   return { geo, heightAt, W, D, base: col.slice() };
 }
 
-export function create(host, onIdle) {
+export function create(onIdle) {
   const canvas = document.createElement('canvas'),
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true }),
     scene = new THREE.Scene(),
@@ -224,8 +215,8 @@ export function create(host, onIdle) {
   scene.add(new THREE.HemisphereLight(0xcfe6ff, 0x4a5a3a, 0.9));
   const sun = new THREE.DirectionalLight(0xfff0d8, 2.1);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, { left: -120, right: 120, top: 120, bottom: -120, near: 1, far: 500 });
+  sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
+  Object.assign(sun.shadow.camera, { left: -SHADOW_BOX, right: SHADOW_BOX, top: SHADOW_BOX, bottom: -SHADOW_BOX, near: 1, far: 500 });
   sun.shadow.bias = -0.0006;
   scene.add(sun, sun.target);
   const water = new THREE.Mesh(
@@ -253,7 +244,9 @@ export function create(host, onIdle) {
     badge = null,
     follow = false, // the camera follows the avatar while it walks (until the user drags)
     seen = null, // the you.at last shown
-    view = null; // { x, z, d }: the camera target on the ground and its distance (kept across re-mounts)
+    view = null, // { x, z, d }: the camera target on the ground and its distance (kept across re-mounts)
+    cw = 0, // canvas size (px), cached by size() — never read from the DOM per frame
+    ch = 0;
 
   const build = m => {
     terrain = buildTerrain(m);
@@ -276,13 +269,10 @@ export function create(host, onIdle) {
     const attr = terrain.geo.attributes.color,
       pos = terrain.geo.attributes.position.array,
       base = terrain.base,
-      pts = f.points.map(([x, y]) => [x * MAP_M, y * MAP_M]),
-      r = f.r * MAP_M;
+      k = fogFactor(f);
     for (let i = 0; i < attr.count; i++) {
-      let d = Infinity;
-      for (const [px, pz] of pts) d = Math.min(d, Math.hypot(pos[i * 3] - px, pos[i * 3 + 2] - pz));
-      const k = FOG_DIM + (1 - FOG_DIM) * (1 - smooth(r, r + FOG_SOFT, d));
-      attr.setXYZ(i, base[i * 3] * k, base[i * 3 + 1] * k, base[i * 3 + 2] * k);
+      const v = k(pos[i * 3], pos[i * 3 + 2]);
+      attr.setXYZ(i, base[i * 3] * v, base[i * 3 + 1] * v, base[i * 3 + 2] * v);
     }
     attr.needsUpdate = true;
   };
@@ -295,8 +285,10 @@ export function create(host, onIdle) {
   };
   const size = () => {
     if (!el || !el.clientWidth || !el.clientHeight) return;
-    renderer.setSize(el.clientWidth, el.clientHeight, false);
-    cam.aspect = el.clientWidth / el.clientHeight;
+    cw = el.clientWidth;
+    ch = el.clientHeight;
+    renderer.setSize(cw, ch, false);
+    cam.aspect = cw / ch;
     cam.updateProjectionMatrix();
   };
   /** Ground point (y = 0) under a pointer event, or null (sky). */
@@ -304,7 +296,7 @@ export function create(host, onIdle) {
     const r = canvas.getBoundingClientRect();
     ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ndc, cam);
-    return ray.ray.intersectPlane(plane, hit) ? hit.clone() : null;
+    return ray.ray.intersectPlane(plane, hit) ? hit : null; // the shared vector: read it before the next call
   };
   const clampView = () => {
     view.x = clamp(view.x, 0, terrain.W);
@@ -318,7 +310,8 @@ export function create(host, onIdle) {
   const onDown = e => {
     if (e.button !== 0) return;
     down = { x: e.clientX, y: e.clientY, moved: 0 };
-    grab = ground(e);
+    const g = ground(e);
+    grab = g ? { x: g.x, z: g.z } : null;
     canvas.setPointerCapture(e.pointerId);
   };
   const onMove = e => {
@@ -342,7 +335,7 @@ export function create(host, onIdle) {
     ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ndc, cam);
     const h = ray.intersectObject(mesh)[0],
-      p = h ? h.point : ray.ray.intersectPlane(plane, new THREE.Vector3());
+      p = h ? h.point : ray.ray.intersectPlane(plane, hit);
     if (p) on.point(toMap(p.x, p.z).map(Math.round));
   };
   const onWheel = e => {
@@ -351,11 +344,15 @@ export function create(host, onIdle) {
     clampView();
     place();
   };
-  canvas.addEventListener('pointerdown', onDown);
-  canvas.addEventListener('pointermove', onMove);
-  canvas.addEventListener('pointerup', onUp);
-  canvas.addEventListener('pointercancel', () => (down = grab = null));
-  canvas.addEventListener('wheel', onWheel, { passive: false });
+  const onCancel = () => (down = grab = null),
+    listeners = [
+      ['pointerdown', onDown],
+      ['pointermove', onMove],
+      ['pointerup', onUp],
+      ['pointercancel', onCancel],
+      ['wheel', onWheel, { passive: false }]
+    ];
+  for (const [k, f, o] of listeners) canvas.addEventListener(k, f, o);
 
   const frame = t => {
     raf = 0;
@@ -386,7 +383,7 @@ export function create(host, onIdle) {
         badge.hidden = !txt;
       }
       renderer.render(scene, cam);
-      furn.tick(cam, el.clientWidth, el.clientHeight, view.d);
+      furn.tick(cam, cw, ch, view.d);
     }
     raf = requestAnimationFrame(frame);
   };
@@ -423,8 +420,7 @@ export function create(host, onIdle) {
       town.sync(m);
       furn.sync(m, on);
       life.sync(m);
-      const bd = m.life && m.life.borders.find(b => b.a === 'wei' && b.b === 'wu');
-      pressure = bd ? Math.min(1, Math.abs(bd.meter) / 2) : 0; // FRONT.seize = 2 net wins
+      pressure = m.life && m.life.contest ? m.life.contest.pressure : 0; // the model's pressure on the contested border
       applyFog(m.fog);
       const at = m.you && m.you.at;
       if (!at || !avatar) return;
@@ -454,10 +450,15 @@ export function create(host, onIdle) {
       if (life) life.dispose();
       if (raf) cancelAnimationFrame(raf);
       if (ro) ro.disconnect();
+      for (const [k, f, o] of listeners) canvas.removeEventListener(k, f, o);
+      if (furn) furn.layer.removeEventListener('wheel', onWheel);
       canvas.remove();
+      // shared kit materials / geometry caches (userData.shared) belong to their module and survive a re-create
       scene.traverse(o => {
-        if (o.geometry) o.geometry.dispose();
-        if (o.material) o.material.dispose();
+        if (o.userData && o.userData.shared) return;
+        if (o.geometry && !(o.geometry.userData && o.geometry.userData.shared)) o.geometry.dispose();
+        const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+        for (const m of mats) if (!(m.userData && m.userData.shared)) m.dispose();
       });
       sun.shadow.map && sun.shadow.map.dispose();
       renderer.dispose();

@@ -2409,6 +2409,18 @@ test('career: one defaults table for new runs and repair (T-076)', () => {
   eq(bare.grades.length, g.MLOG.max, 'grades capped');
 });
 
+test('map: the contested border comes from the model (T-079)', () => {
+  const g = load(51),
+    run = g.Run.create(g.Run.draft(), { role: 'S', name: 'Contest' });
+  let C = g.MapModel.build(run).life.contest;
+  eq(C.a + '-' + C.b, g.CITY.contestPair.join('-'), 'the pair is data');
+  assert(C.meter === 0 && C.pressure === 0 && C.hold === null, 'calm at the start');
+  g.Front.result(run, C.b, C.a);
+  C = g.MapModel.build(run).life.contest;
+  eq(C.hold, C.b, 'the winning side holds the line');
+  eq(C.pressure, Math.min(1, 1 / g.FRONT.seize), 'pressure = net wins / FRONT.seize');
+});
+
 // ---------- report ----------
 let fail = 0;
 for (const r of results) {

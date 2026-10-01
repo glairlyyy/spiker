@@ -441,12 +441,12 @@ region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border mete
 2. Model — `MapModel.build(run, sel)` (`js/career/mapmodel.js`, DOM-free, tested): `{ w, h, land: { coast, beach,
    regions[{id, poly, color, mine}], contest, minors[ellipses], park, mountains, labels, airport }, seized[{at, r,
    color}], pins[{id, kind: spot|hq|clash, at, icon, badge, title, color?, flags: off/far/turf/gem/overhyped/hq/can/
-   mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-view centre), sel, life }`. `life` (`MapModel.life`, display only, no randoms; positions from hashes of ids + place): `mates[{id, name, at, color, spot}]` (your floor mates at the explored place of their key nearest home), `crews[{region, team, at, color, n 2–6, known, walk[[x,y]…]}]` (known clubs' HQs; `known` = scouted or yours), `battle {at, a, b, colors}|null`, `borders[{a, b, meter}]`. Map units
+   mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-view centre), sel, life }`. `life` (`MapModel.life`, display only, no randoms; positions from hashes of ids + place): `mates[{id, name, at, color, spot}]` (your floor mates at the explored place of their key nearest home), `crews[{region, team, at, color, n 2–6, known, walk[[x,y]…]}]` (known clubs' HQs; `known` = scouted or yours), `battle {at, a, b, colors}|null`, `borders[{a, b, meter}]`, `contest {a, b, meter, pressure 0..1, hold}` (`MapModel.contest`: the `CITY.contestPair` border; the renderer reads it, it never names factions). Map units
    CITY.w × CITY.h, y down. Selection ids: a pin id, or `pt:x,y` (`ptId` / `ptOf`).
 3. Renderer — `MapView` (`js/ui/map-view.js`): `mount(el, model, { pick(id), point([x, y]) })`, `update(model)`,
    `select(id)`, `dispose()`. The only renderer is the three.js map: it lazy-imports `js/map3d/map3d.mjs` once (a notice
    shows while loading; on import / WebGL failure it logs `DBG.log('error')` and shows the failure text — there is no 2D
-   fallback). `map3d.create(host, onIdle)` → `{ mount, update, select, dispose, heightAt, info }`: one renderer +
+   fallback). `map3d.create(onIdle)` → `{ mount, update, select, dispose, heightAt, info }`: one renderer +
    canvas that survive `renderCareer()` (each mount re-attaches the canvas into the new `#mapwrap`); it releases itself
    (`onIdle` → `MapView.drop3D`) when its canvas has been detached for 3 s (left the career screen). Terrain: 2 m grid
    over the island box from `land.coast` / Shu region / `land.mountains` (fixed-hash noise, no randoms), vertex colours
@@ -459,13 +459,18 @@ region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border mete
    `.mpin` button per `model.pins` item (icon, badge, flag classes, click → `pick(id)`), the region / airport labels (fade out
    below ~70 m camera distance) and the picked-point flag, all projected onto the terrain every frame after render; seized
    patches and the contested-border line are terrain decals. `sync(model, on)` rebuilds a part only when its JSON changed;
-   fog is a per-vertex darkening of the terrain colours (`applyFog(model.fog)`, unexplored land dim, not hidden). First
+   fog is a per-vertex darkening of the terrain colours (`applyFog(model.fog)` with `fogFactor`, unexplored land dim, not hidden).
+   Shared helpers live in `js/map3d/geo3d.mjs` (`MAP_M`, `FOG_DIM`, `FOG_SOFT`, `toWorld` / `toMap`, `clamp` / `lerp` /
+   `smooth`, `fogFactor(fog)` → k(x, z) with squared-distance early-outs): every map3d module imports from it, never from
+   map3d.mjs (no import cycles). Per frame nothing reads the DOM size (cached by the ResizeObserver) and the pin overlay
+   is only re-projected when the camera, canvas size, distance or items changed. `dispose` removes its listeners and
+   skips `userData.shared` objects (kit materials / shape caches). `MODEL_URL` (the base VRM) is exported once by players3d.mjs. First
    view: on the player, 60 m away. Life is `js/map3d/life3d.mjs` (`createLife(scene, heightAt)` → `{ sync(model), tick(dt, t),
    count(), dispose() }`, display only, no game randoms): reads `model.life` + `model.seized`; one `InstancedMesh` per kind
    (figure = capsule body + head, flag poles, flag cloth, dust puffs; ≤ 300 figures), rebuilt only when that JSON changes and
    animated in `tick` (drill hops, walkers looping round a crew's places at 1.2 m/s, the battle crowd shoving, waving flags).
    Mates and known crews are coloured, unscouted crews grey; patrols (2–4) stand on the stronger side of the contested Wei–Wu
-   line; every seized place flies the holder's flag. `furn.pulse(strength, t)` pulses the contested line with |meter| / 2.
+   line (`life.contest.hold`); every seized place flies the holder's flag. `furn.pulse(strength, t)` pulses the contested line with `life.contest.pressure`.
    The town layer is `js/map3d/town3d.mjs` (`createTown(scene, heightAt)` → `{ sync(model), dispose() }`, display only, no randoms):
    reads only `model.land.roads / lots / landmarks / districts` and `model.fog`. Meshes: one vertex-coloured mesh for all roads (width and
    colour by kind, slope-following, lifted 0.15 m, polygon offset; the `boardwalk` is planks of two tones 0.3 m up); one for the
@@ -473,8 +478,7 @@ region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border mete
    every ~20 m; deck + pillars merged); one `InstancedMesh` per base shape for the filler lots (box, gable, stepped: kind palette + size per
    instance, height × (1 + 2.5 × `lot.h` × the kind's `rise`) so downtown towers rise toward the middle; `lot.wealth` tints the instance colour in place — rich: glass-blue / clean stone / gold, poor: grey / rust / patched wood, the middle untouched — no extra draw call); one merged mesh for all landmarks
    and the wall ring of each `compound` district (a gatehouse of two towers and a lintel where a road crosses it); each landmark faces its
-   nearest road. Rebuilt only when the layout JSON changes, dimmed by the same fog rule as the terrain (`FOG_DIM` / `FOG_SOFT` exported
-   from map3d.mjs); 5 draw calls, ~+10k triangles. Terrain (`buildTerrain`): on the Wu stretch the sand between `land.dunes` and the coast is
+   nearest road. Rebuilt only when the layout JSON changes, dimmed by the same fog rule as the terrain (`fogFactor` in geo3d.mjs); 5 draw calls, ~+10k triangles. Terrain (`buildTerrain`): on the Wu stretch the sand between `land.dunes` and the coast is
    wide, flat and low (`sideDist` = signed distance to the dune line) with a dune ridge on the line; a faint tint per district style is
    folded into the vertex colours (no draw call). Pins above a landmark float `PIN_UP` over its roof (`landmarkHeight(kind)`). The kit registry
    is `js/map3d/kit3d.mjs`: `KIT[kind] = { geo(), mat, scale, colors, rise }` (filler kinds, incl. rowhouse, barracks, workshop, market,

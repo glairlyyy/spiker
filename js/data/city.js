@@ -65,8 +65,9 @@ const CITY = (() => {
     dunes,
     /** Wei's city: its east and south sides are the contested border with Wu. */
     wei: [...coast.slice(3, 7), ...wuWei, ...shuWei.slice(1).reverse()],
-    /** The contested Wei–Wu border. */
+    /** The contested Wei–Wu border (its line, and the pair of regions it divides). */
     contest: wuWei,
+    contestPair: ['wei', 'wu'],
     /** The beach: the east coast round to the south (coast points 6–12; the sand is between them and `dunes`). */
     beach: coast.slice(6, 13),
     /** Wu: the beach and the land behind it up to Wei, plus a strip inland in the south. */

@@ -4,20 +4,18 @@
 // Map points are map units (see toWorld in map3d.mjs). Until the model has loaded a capsule marks the spot.
 import * as THREE from 'three';
 import { VRMUtils } from '@pixiv/three-vrm';
-import { loadBase, makeVRM, applyPose, smoothBones, groundSnap } from '../render3d/players3d.mjs';
+import { loadBase, makeVRM, applyPose, smoothBones, groundSnap, MODEL_URL } from '../render3d/players3d.mjs';
 import { STAND, locoPose, mix } from '../render3d/poses3d.mjs';
-import { toWorld } from './map3d.mjs';
+import { toWorld, clamp as cl } from './geo3d.mjs';
 
-const MODEL_URL = new URL('../../assets/vrm/base.glb.txt', import.meta.url).href,
-  HEIGHT = 1.65, // metres
+const HEIGHT = 1.65, // metres
   SPEED = 6, // m/s: the pace a trip is timed at (longer trips run faster, shown as a time-lapse)
   TIME = [1.2, 6], // trip duration limits (s)
   RAMP = 0.4, // ease-in / ease-out (s)
   TURN = 0.25, // wait for the turn before setting off (s)
   RUN_AT = 2.5; // m/s: above this the gait blends into a run
 
-const cl = (v, a, b) => Math.max(a, Math.min(b, v)),
-  wrap = a => Math.atan2(Math.sin(a), Math.cos(a)),
+const wrap = a => Math.atan2(Math.sin(a), Math.cos(a)),
   segYaw = (pts, i) => Math.atan2(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]); // facing along segment i
 
 export function createAvatar(scene) {

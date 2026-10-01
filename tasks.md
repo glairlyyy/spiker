@@ -292,7 +292,7 @@ Accept: tests + lint; goldens untouched; playback.js under ~450 lines.
 QA: Monster game Max hype 3000 steps + a career watched match: subs, timeouts, scenes, cut-ins as before.
 Result: instant() is now a 6-line lookup into ACTS (acts.js, new: ACTS_FX 21 / ACTS_UI 12 / ACTS_ROSTER 4 handlers, (a, d, bs), early breaks became returns, FLASH_* moved with them); movement.js (new: pre-dig reads, spike approach, sprint caps, dig chase, squeaks, air momentum, separation); actors.js (new: player timers, gait/dust, celebration). playback.js 1090 → 460 lines. Act-kind test reads the ACTS method keys + startBeat cases. T-069 file list gains acts.js. 52/52, goldens untouched, lint + format clean; QA Monster Max hype 6000 steps: 26 act kinds dispatched through ACTS (labels, techniques, cut-ins, combo, shots, flashes, pose/setdir/spkstyle), no pageerror (only the known hold STALL line).
 
-### [ ] T-079: map3d hygiene — shared helpers, no hard-coded factions, clean dispose
+### [x] T-079: map3d hygiene — shared helpers, no hard-coded factions, clean dispose
 Spec: §4.9 (map)          Goldens: unchanged          Save: no change
 Goal: Break the circular imports, keep faction rules in MapModel, stop per-frame allocations and layout reads.
 Files: js/map3d/*.mjs, js/map3d/geo3d.mjs (new), js/career/mapmodel.js, js/ui/map-view.js,
@@ -312,7 +312,7 @@ Steps:
 Accept: tests + lint; heap stable over 10 hub re-mounts (Chrome memory snapshot or renderer.info counts).
 QA: career run: walk, travel, fog reveal, seized patch, pins, 10 drawer open/close cycles; renderer.info geometries/
 textures before = after; screenshots before/after.
-Result:
+Result: geo3d.mjs (new: MAP_M, FOG_*, toWorld/toMap, clamp/lerp/smooth, fogFactor with squared-distance early-outs) — avatar/pins/life/town import from it (no cycles; 3 smooth copies + avatar cl gone); terrain and town share fogFactor; MapModel.life.contest {a,b,meter,pressure,hold} from CITY.contestPair (data) — map3d pulse and life3d patrols read it, no 'wei'/'wu' or /2 in the renderer; dispose removes named listeners and skips userData.shared; canvas size cached (no clientWidth per frame); pins tick reuses one Vector3 + Matrix4 and skips when camera/size/distance/items (version) unchanged; life3d along() writes a reused object; map-view drop3D resets failed and nulls el/model/on; create(onIdle) (unused host dropped); SHADOW_MAP / SHADOW_BOX named; MODEL_URL exported once from players3d. New test on MapModel contest; 53/53, goldens untouched, lint clean. QA seeded career: map + travel (walk, fog reveal) screenshots identical to the old code (0.00 % pixels > 24), renderer.info geos 25→26 / tex 27 after travel and stable over 10 drawer re-mounts (same as old code); no pageerror.
 
 ### [ ] T-080: Tests — split by area, shared factories, quick mode
 Spec: — (tests)          Goldens: unchanged          Save: no change
