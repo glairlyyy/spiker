@@ -69,7 +69,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     bring a rested starter back; a random factor scaled by `coachIQ`. Smarter coach (matchups, protecting a lead, personality hunches) = backlog.
   - Your player is benchable: the coach picks starters by rating, form and standing, and may sub you out (tired /
     erring). A match started or finished on the bench gives reduced rewards.
-  - Smarter coach + trust in you (owner) **[not built — T-057]**: before a tired / erring sub the coach compares what
+  - Smarter coach + trust in you (owner) **[built — T-057; subs per match ~3.0 → ~2.0]**: before a tired / erring sub the coach compares what
     the starter is worth *now* (rating × stamina loss) with the fresh bench player; a high-IQ coach only subs when the
     bench player is actually better now, a low-IQ coach follows the rule blindly (`coachIQ` decides how strictly).
     Your player gets the coach's trust — you grind harder than anyone — so the chance of being subbed out is 10 % lower
@@ -178,7 +178,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     wit and opponent strength. Scouting shows which techniques a team's players have.
   - Save: RUN_VERSION bump (Limit Break progress removed, match XP added). Match results unchanged (goldens stay).
 
-- §4.15 Challenges **[built: team challenge + refusal (T-037), loss penalties + injury (T-038); open: engine coach could sub an injured you on (T-057)]** (makes a no-training run possible; see §4.14):
+- §4.15 Challenges **[built: team challenge + refusal (T-037), loss penalties + injury (T-038); injured you never subbed on (T-057)]** (makes a no-training run possible; see §4.14):
   - Team challenge (map action at a club HQ): your side challenges that club's squad. Costs 1 day + the trip; you name a
     money **stake** (0 allowed). The match itself is the street-battle flow (`Cup.clash`-style fixture: watch or Sim ⏭).
     You play with your side: the Academy squad, or your club's squad (your club must not be the target); alone → hire

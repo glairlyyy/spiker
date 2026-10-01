@@ -84,6 +84,9 @@ const Cup = {
   prepare(run, opp, kind, side = Run.myTeam(run)) {
     const you = Run.you(run),
       mine = side;
+    if (run.injury)
+      you.noSub = true; // engine-only: the coach never subs an injured you on (restoreLineups clears it)
+    else delete you.noSub;
     const talk = kind === 'cup' && you.cap ? run.talk : null;
     for (const p of squadOf(mine)) {
       let f = Run.form(run, p);

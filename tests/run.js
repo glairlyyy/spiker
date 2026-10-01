@@ -1849,6 +1849,7 @@ test('engine: coach AI — errors, returns, coach IQ', () => {
     for (const seed of [7, 8, 9, 10]) {
       const g2 = load(seed),
         T2 = g2.mkTeams();
+      g2.SUB.worth = [0, 0]; // this is the roll's IQ effect only; the worth test (smarter coach subs) has its own test
       for (let i = 0; i < 150; i++) {
         const a = T2[i % 8];
         a.coachIQ = iq;
@@ -1863,6 +1864,84 @@ test('engine: coach AI — errors, returns, coach IQ', () => {
   const sharp = first(1),
     dull = first(0);
   assert(sharp < dull, `coachIQ 1 subs sooner than 0 (${sharp.toFixed(1)} vs ${dull.toFixed(1)} points)`);
+});
+
+test('engine: smarter coach subs', () => {
+  const g = load(6),
+    T = g.mkTeams(),
+    hit = g.RULES.stamina.hit,
+    worth = g.SUB.worth;
+  // a coachIQ 1 coach never makes a tired / erring sub that makes the team worse (bench ovr under worth[1] × the starter's current worth)
+  const run = iq => {
+    let subs = 0,
+      bad = 0,
+      n = 0;
+    for (let i = 0; i < 300; i++) {
+      const a = T[i % 8],
+        b = T[(i * 3 + 1) % 8];
+      a.coachIQ = iq;
+      const m = g.simMatch(a, b);
+      n++;
+      for (const x of m.subLog.filter(x => x.side === 0)) {
+        subs++;
+        if (x.why === 'back') continue;
+        const out = g.squadOf(a).find(p => p.id === x.out),
+          inn = g.squadOf(a).find(p => p.id === x.inn);
+        if (g.ovr(inn) < worth[iq] * g.ovr(out) * (1 - hit * (1 - x.sta)) - 1e-9) bad++;
+      }
+    }
+    return { per: subs / n, bad };
+  };
+  const sharp = run(1),
+    dull = run(0);
+  eq(sharp.bad, 0, 'a coachIQ 1 coach never subs when it makes the side worse');
+  assert(sharp.per < dull.per, `sharp coaches sub less (${sharp.per.toFixed(2)} vs ${dull.per.toFixed(2)} per match for side 0)`);
+  // the coach trusts your player: the sub-out roll is × SUB.you (2000+ seeded rolls each)
+  const g2 = load(9),
+    T2 = g2.mkTeams(),
+    m = g2.newMatch(T2[0], T2[1], false),
+    star = T2[0].P[2],
+    rate = isYou => {
+      let n = 0;
+      const N = 4000;
+      for (let i = 0; i < N; i++) {
+        star.you = isYou;
+        for (const k of g2.STATK) star[k] = 30; // a weak, tired starter: the swap always pays
+        T2[0].coachIQ = 0.7;
+        m.sta[star.id] = 0.2;
+        g2.coachSubs(m, 0);
+        if (m.subs[0]) n++;
+        g2.restoreLineups(m);
+        m.subs = [0, 0];
+        m.subbed = {};
+        m.subLog.length = 0;
+      }
+      return n / N;
+    };
+  const base = rate(false),
+    you = rate(true);
+  assert(
+    base > 0.5 && Math.abs(you - base * g2.SUB.you) <= 0.03,
+    `your player is subbed out ${(you * 100).toFixed(1)} % vs ${(base * 100).toFixed(1)} % (× ${g2.SUB.you})`
+  );
+  // a noSub bench player never comes on (an injured you): not for tiredness, not on the way back
+  star.you = false;
+  for (const q of T2[0].bench) q.noSub = true;
+  let came = 0;
+  for (let i = 0; i < 300; i++) {
+    m.sta[star.id] = 0.2;
+    g2.coachSubs(m, 0);
+    came += m.subs[0];
+    m.subs = [0, 0];
+    m.subbed = {};
+    m.subLog.length = 0;
+  }
+  eq(came, 0, 'a noSub player is never subbed on');
+  g2.restoreLineups(m);
+  assert(
+    T2[0].bench.every(q => !('noSub' in q)),
+    'restoreLineups clears the engine-only flag'
+  );
 });
 
 test('engine: three touches — pop-up saves are the set', () => {

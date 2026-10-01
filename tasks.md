@@ -40,40 +40,11 @@ Result:
 - Match history ✓ (T-052).
 - Free setter takes the second ball ✓ (T-054) · start from 1 ✓ (T-055).
 - Stat guard ✓ (T-056) · official venues ✓ (T-053).
-- **Now**: smarter coach (T-057), player camera: Follow (T-058), POV (T-059). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
+- Smarter coach ✓ (T-057).
+- **Now**: player camera: Follow (T-058), POV (T-059). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now — Smarter coach (spec §2.10), player camera (spec §4.25)
-
-### [ ] T-057: Smarter coach subs, trust in your player, never sub an injured you on
-Spec: §2.10, §4.15          Goldens: update (high-IQ coaches skip subs that make the team worse)          Save: no change
-Goal: (1) The coach compares a tired / erring starter's current worth with the fresh bench player and a smart coach
-skips subs that make the team weaker; (2) your career player is 10 % less likely to be subbed out; (3) an injured you is
-never subbed on (was T-049).
-Files: js/data/rules.js, js/engine/match.js, js/career/cup.js, tests/run.js, ARCHITECTURE.md
-Do not: change starters (Run.lineup), the stamina rules, SUB.max / sta / errs / fresh / back, the 'back' rule, the beats
-or the sub lines; add an act kind.
-Steps:
-1. rules.js SUB gains `you: 0.9` (your player: the coach's sub-out roll × this) and `worth: [0.85, 1.05]` (doc comment:
-   a tired / erring sub needs bench ovr ≥ worth × the starter's current worth, where current worth = ovr × (1 −
-   RULES.stamina.hit × (1 − stamina)); the factor runs from worth[0] for coachIQ 0 to worth[1] for coachIQ 1 — a dull
-   coach subs almost anyone in, a sharp one only when it helps).
-2. match.js `subCandidate`: for 'tired' and 'errors', skip a pair that fails the worth test (try the next candidate).
-   `coachSubs`: when the candidate's `out` is the career player (`out.you`), the roll's chance × SUB.you. A bench
-   player with `noSub` never comes on (filter in `rested` and in the 'back' rule).
-3. cup.js: before each of your matches (the two `Run.lineup` sites and any other place your squad enters a match), set
-   `you.noSub = !!run.injury` on your player; clear it when the match ends (where lineups are restored / results run).
-   Engine-only flag: keep it out of saves (delete it after the match).
-4. tests `'engine: smarter coach subs'`: 300 sims with coachIQ 1 vs 0 — the IQ-1 side never makes a tired / erring sub
-   whose bench ovr is under worth[1] × the starter's current worth; report subs per match before / after (today ~2.9);
-   with a `you` starter, over 2000 seeded candidate rolls the sub-out rate is 0.9 × the same player without `you`
-   (± 3 %); a `noSub` bench player is never subbed on; the T-026 stuff / kill tests still pass.
-5. `npm run test:update`, reason in the commit. ARCHITECTURE.md: the coach's worth test, SUB.you, noSub.
-Accept: all tests + lint; goldens updated for this reason only.
-QA: Monster game 2000 steps: subs still happen, log lines read right; career eval with an injured you → you stay on
-the bench all match; no pageerror.
-Result:
-
+## Now — Player camera (spec §4.25)
 
 ### [ ] T-058: Follow camera — 3rd person behind your player
 Spec: §4.25          Goldens: unchanged (presentation only)          Save: no change
@@ -149,6 +120,7 @@ Phase 5 — Voice pass
 
 ## Done
 
+- [x] T-057: Smarter coach subs, trust in your player, never sub an injured you on — worth test (`SUB.worth` [0.85, 1.05] by coachIQ), `SUB.you` 0.9, `noSub` (set in `Cup.prepare` when injured, cleared by `restoreLineups`); 48/48, lint clean. Goldens updated (teams, matches, sims): coaches now skip subs that make the side worse. Subs per match (both sides, 300 sims): default coach 3.04 → 1.97; coachIQ 0 2.94 → 2.57, coachIQ 1 3.10 → 1.76; tired 831 → 543, errors 15 → 7, back 67 → 40. The 'coachIQ 1 subs sooner' test now zeroes `SUB.worth` (the roll's effect only). `m.subLog` also records `out`, `inn`, `sta`. QA: Monster game (SUB.sta raised to 0.95 so subs show; 9000 steps) 4 subs, log lines 'Sub <team>: #13 … in for #17 … (tired)'; career eval with `run.injury`: `noSub` set, you stayed on the bench the whole match (4 subs, none for you), flag gone afterwards; no pageerror.
 - [x] T-053: Official venues on the map — League Arena, Academy Hall, Beach Stadium, Highland Court — four venues as specced (`VENUES`, nodes, landmarks, pins, `City.venue`, cards, `today` pulse); 47/47, lint clean, goldens untouched. Spots: arena [720,160] (clear 52), hall [580,510] (clear 20, ~18 × 11 m so the Academy keeps 33 lots), beach [925,450] on the widest sand by the resort strip (edge `resort`–venue), highland [400,180]. Venue clearance is per venue (`VENUES[id].clear`), not `placeClear`. QA: draw calls 29–30 (baseline 29), tris ~198k, no pageerror; hall pin pulses on an Academy eval week, card + 'Played at Academy Hall' shown; cup-week card checked in tests only (a browser cup start failed in my QA script on the baseline too).
 - [x] T-056: Stat guard — repair invalid stats on load and before every match — `fixStats` in players.js, called in `teamFromJSON` (warn log) and `newMatch`; new test (−40/NaN/300/−1 → 1/1/99/0.1, match runs, damaged save repaired); 46/46, lint clean, goldens untouched.
 - [x] T-055: Start from 1 — every stat of your new player is 1 — Done; tests 45/45, lint clean, goldens untouched. `CAREER.start` / `statMin`, `STAT_FLOOR` 1, Run.create ignores alloc, creation shows 1s with no buttons, `need` = max(1, round(…)) at every level. Notes for the spec: (1) one Power session takes Power 1 → ~36 (session XP is ~70+ × mul vs ~180 XP to reach 50), not "about a dozen sessions"; (2) a lone WS still starts: the pickup squad has only 2 WS (the coach picks the best per role), so the all-1 bench test uses an MB; (3) cup.js hired crew floor left at 25 (that squad never contains you when clamped). Tests with `alloc` still pass it (ignored); the street-battle and full-run tests assume a normal player (70 / statMin). QA: creation, 1 Power day, week-4 eval played: no pageerror.

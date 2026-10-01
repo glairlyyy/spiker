@@ -102,7 +102,7 @@ function newMatch(a, b, rec, opts = {}) {
     played: new Set([...a.P, ...b.P].map(p => p.id)), // engine-only: everyone who was on court at any point (starters, then every sub who came on)
     finished: null, // engine-only: ids on court when the match ended (set at the end, before the lineups are restored)
     subbed: {}, // engine-only: id of a player sent to the bench → id of whoever took their place (a rested starter may return)
-    subLog: [], // engine-only: every substitution { side, pts, why }
+    subLog: [], // engine-only: every substitution { side, pts, why, out, inn, sta (the outgoing player's stamina) }
     setErr: {}, // engine-only: errors this set per player id (the coach's erring rule)
     lineup0: [a, b].map(t => ({
       P: [...t.P],
@@ -283,7 +283,7 @@ function subIn(m, side, out, inn) {
  * Who a coach would sub now, if anyone: { out, inn, why } or null. In order: a tired player (stamina under SUB.sta), one who
  * keeps erring (SUB.errs errors this set, more than their kills), a rested starter returning for whoever replaced them
  * (stamina ≥ SUB.back, and better). The replacement must fit: a setter only for a setter; same role first, else the
- * highest rating. No randoms.
+ * highest rating; a tired / erring sub must pay off (SUB.worth by coachIQ); a `noSub` player never comes on. No randoms.
  */
 function subCandidate(m, side) {
   const t = m.t[side],
@@ -293,36 +293,38 @@ function subCandidate(m, side) {
       const same = list.filter(q => q.role === out.role);
       return (same.length ? same : list).reduce((a, q) => (ovr(q) > ovr(a) ? q : a));
     },
-    rested = out => t.bench.filter(q => sta(q) >= SUB.fresh && fit(out, q));
+    rested = out => t.bench.filter(q => !q.noSub && sta(q) >= SUB.fresh && fit(out, q)),
+    need = lerp(SUB.worth[0], SUB.worth[1], t.coachIQ == null ? 0.7 : t.coachIQ),
+    pays = (out, inn) => ovr(inn) >= need * ovr(out) * (1 - RULES.stamina.hit * (1 - sta(out))); // a smart coach only subs when it helps
   for (const out of t.P.filter(p => sta(p) < SUB.sta).sort((a, b) => sta(a) - sta(b))) {
     const r = rested(out);
-    if (r.length) return { out, inn: best(out, r), why: 'tired' };
+    if (r.length && pays(out, best(out, r))) return { out, inn: best(out, r), why: 'tired' };
   }
   const errs = p => m.setErr[p.id] || 0;
   for (const out of t.P.filter(p => errs(p) >= SUB.errs && errs(p) > ((m.stat[p.id] && m.stat[p.id].k) || 0)).sort(
     (a, b) => errs(b) - errs(a)
   )) {
     const r = rested(out);
-    if (r.length) return { out, inn: best(out, r), why: 'errors' };
+    if (r.length && pays(out, best(out, r))) return { out, inn: best(out, r), why: 'errors' };
   }
   for (const s of m.lineup0[side].P) {
     const r = t.P.find(p => p.id === m.subbed[s.id]);
-    if (r && t.bench.includes(s) && sta(s) >= SUB.back && fit(r, s) && ovr(s) > ovr(r)) return { out: r, inn: s, why: 'back' };
+    if (r && t.bench.includes(s) && !s.noSub && sta(s) >= SUB.back && fit(r, s) && ovr(s) > ovr(r)) return { out: r, inn: s, why: 'back' };
   }
   return null;
 }
 /**
  * The coach's substitution at a dead ball: with subs left and a candidate (subCandidate), one roll — a smarter coach
- * (coachIQ) acts more often (SUB.iq) — then the swap. No candidate → no roll. Returns the beats (recording only).
+ * (coachIQ) acts more often (SUB.iq; × SUB.you when it is your career player coming off) — then the swap. No candidate → no roll. Returns the beats (recording only).
  */
 function coachSubs(m, side) {
   const t = m.t[side];
   if (m.subs[side] >= SUB.max || !t.bench || !t.bench.length) return [];
   const c = subCandidate(m, side);
-  if (!c || R() >= lerp(SUB.iq[0], SUB.iq[1], t.coachIQ == null ? 0.7 : t.coachIQ)) return [];
+  if (!c || R() >= lerp(SUB.iq[0], SUB.iq[1], t.coachIQ == null ? 0.7 : t.coachIQ) * (c.out.you ? SUB.you : 1)) return [];
   const { out, inn, why } = c;
   subIn(m, side, out, inn);
-  m.subLog.push({ side, pts: m.pts[0] + m.pts[1], why });
+  m.subLog.push({ side, pts: m.pts[0] + m.pts[1], why, out: out.id, inn: inn.id, sta: m.sta[out.id] == null ? 1 : m.sta[out.id] });
   if (!m.rec) return [];
   const text = SUBLINES[(out.num + inn.num + m.pts[0] + m.pts[1]) % SUBLINES.length].replace('{out}', out.num).replace('{in}', inn.num);
   return [
@@ -355,6 +357,7 @@ function restoreLineups(m) {
     [t.s, t.mb] = t.P;
     t.ws = [t.P[2], t.P[3]];
     t.cap = L.cap;
+    for (const p of squadOf(t)) delete p.noSub; // engine-only (an injured you): never outlives the match
   });
 }
 /**
