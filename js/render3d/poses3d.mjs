@@ -79,7 +79,8 @@ export const READY = C({
   R: leg(0.9, 1.4, 0, 0.24),
   al: [V(-0.1, -0.72, 0.68), V(-0.3, -0.6, 0.74), V(-0.3, -0.52, 0.8), 0, -2.2],
   curlL: 0.2,
-  curlR: 0.6
+  curlR: 0.6,
+  fsplit: 0.45
 });
 const PLATFORM = C({
   hp: 0.68,
@@ -90,7 +91,8 @@ const PLATFORM = C({
   R: leg(1.0, 1.55, 0, 0.3),
   al: [V(-0.3, -0.62, 0.72), V(-0.3, -0.62, 0.72), V(-0.3, -0.58, 0.76), 0, -2.2],
   curlL: 0.2, // the passing grip: one hand in the other, thumbs together
-  curlR: 0.6
+  curlR: 0.6,
+  fsplit: 0.45
 });
 const PLATFORM_UP = C({
   ...PLATFORM,
