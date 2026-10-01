@@ -101,9 +101,11 @@ const Run = {
       gazette: null,
       clash: null, // this week's street battle
       spotQ: {},
+      pseed: People.seed(teams), // the seed of the NPC rolls (People.roll)
       fog: [CITY.airport.slice()] // the points you've stood on (the map is dark elsewhere)
     };
     Run.log(run, `${you.name} arrives in the city as a free agent (${ROLE_NAME[role].toLowerCase()}) — find a club that will take you.`);
+    People.ensure(run); // every NPC gets a want, traits and a plan slot (spec §4.23 A)
     City.roll(run); // the island's places: which premium ones are overhyped, which rough ones are gems
     Training.rollFloor(run);
     Goals.set(run);
@@ -134,10 +136,11 @@ const Run = {
       score = p => ovr(p) + 6 * Run.form(run, p) + (p === you && region ? City.rep(run, region) / BENCH.standingPer : 0),
       left = [...squadOf(T)],
       P = [],
-      out = p => run.injury && p === you, // an injured you never starts
+      out = p => (run.injury && p === you) || People.out(run, p), // an injured player (you or an NPC, spec §4.23 A) never starts
       forced = forceYou && !out(you) && left.includes(you);
     for (const role of ['S', 'MB', 'WS', 'WS']) {
-      const ok = left.filter(p => !out(p)),
+      const fit = left.filter(p => !out(p)),
+        ok = fit.length ? fit : left, // (everyone hurt: the coach starts someone anyway)
         of = ok.filter(p => p.role === role),
         p = forced && role === you.role && left.includes(you) ? you : (of.length ? of : ok).reduce((a, b) => (score(b) > score(a) ? b : a));
       P.push(p);
@@ -301,6 +304,7 @@ const Run = {
       if (!Run.myTeam(run) || !Run.you(run)) return null; // corrupt save: your player is missing
       for (const t of run.teams.concat(run.pickup || [], Object.values(run.reserve))) for (const p of squadOf(t)) ensureEgo(p); // saves from before ego
       Run.repair(run);
+      People.ensure(run); // players added since the last save (transfers, the street crew) get a career
       elAll(run.teams); // players from older saves get their element
       return run;
     } catch (e) {
@@ -335,8 +339,8 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 9;
-/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history), v9: `run.mode.story` (T-067) — older saves are dropped; add steps when the saved shape changes). */
+const RUN_VERSION = 10;
+/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history), v9: `run.mode.story` (T-067), v10: `run.people` / `run.pseed` (NPC careers, T-060) — older saves are dropped; add steps when the saved shape changes). */
 const RUN_MIGRATIONS = {};
 const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
 /**
@@ -362,6 +366,8 @@ const RUN_DEFAULTS = {
   mood: [() => 2, v => Number.isInteger(v) && !!MOODS[v]],
   housing: [() => 'studio', v => !!HOUSING[v]],
   reserve: [() => ({}), isObj], // faction pools (js/career/pool.js)
+  people: [() => ({}), isObj], // NPC careers: player id → { want, traits, plan, sta, inj, xp, log } (js/career/people.js)
+  pseed: [() => 0, Number.isFinite], // seed of the NPC rolls
   met: [() => ({}), isObj], // player id → true: faced on court (their rating is known)
   street: [() => ({}), isObj], // player id → street points (Rank)
   refused: [() => ({}), isObj], // club index → { week, n }: team challenges it refused

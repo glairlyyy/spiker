@@ -5,6 +5,7 @@ const Growth = {
   /** One week of growth for everyone except you, then re-finalize every team. */
   week(run) {
     const you = Run.you(run);
+    People.week(run); // NPC careers: their plans give the XP (training, matches); the breakthrough rolls below stay random
     Growth.checkYou(run, you);
     for (const t of run.teams) {
       for (const p of squadOf(t)) if (p !== you) Growth.grow(run, p, t.i === run.team, you);
@@ -16,11 +17,10 @@ const Growth = {
       if (t.P.length) finalizeTeam(t);
     }
   },
-  /** One player's week: stats grow (× potential; Hard league faster), with the chance to break through to star, then OP. */
+  /** One player's week: the chance to break through to star, then OP (× potential; Hard league faster). Stat growth is People.week. */
   grow(run, p, mate, you) {
     const bf = 1 + (mate ? you.bond[p.id] || 0 : 0) / GROWTH.bondDiv,
       pot = (p.pot || 1) * (run.mode && run.mode.hard ? 1.15 : 1);
-    Growth.spread(p, rnd(GROWTH.weekly[0], GROWTH.weekly[1]) * pot);
     if (!p.star && R() < GROWTH.star * pot * bf) Growth.awaken(run, p, mate, false);
     else if (p.star && !p.op && R() < GROWTH.op * pot * bf) Growth.awaken(run, p, mate, true);
   },
@@ -61,15 +61,6 @@ const Growth = {
       you.op = true;
       you.bonus = Math.max(you.bonus, 110);
       Run.log(run, `Awakening! ${you.name} is now an OP player — red star!`);
-    }
-  },
-  /** Add `pts` stat points, key stat weighted double; fractions round up by chance. */
-  spread(p, pts) {
-    const key = KEYSTAT[p.role];
-    for (const k of STATK) {
-      const v = (pts * (k === key ? 0.4 : 0.2)) / (p[k] >= 90 ? 2 : 1),
-        n = Math.floor(v) + (R() < v % 1 ? 1 : 0);
-      p[k] = Math.min(99, p[k] + n);
     }
   },
   /** Breakthrough: star (key stat +8, others +3), or a star turning OP (+6 everywhere, wit up). */

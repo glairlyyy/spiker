@@ -104,7 +104,7 @@ test('career: training cap, facility Lv 5 and Hard training', () => {
   eq(you.power, 80, 'a stat already at 80 is not lowered by a positive bump');
   g.Training.addXp(run, 'power', 100000, 'match');
   assert(you.power > 80, 'match XP goes past the training cap');
-  assert(!('lb' in run) && g.RUN_VERSION === 9, 'no Limit Break progress in the run; RUN_VERSION 9');
+  assert(!('lb' in run) && g.RUN_VERSION === 10, 'no Limit Break progress in the run; RUN_VERSION 10');
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
   const n = g.Training.preview(run, 'power', false).main[2],
@@ -854,7 +854,7 @@ test('career: challenge loss and injury', () => {
   run.sp = 99;
   assert(g.Training.physio(run) && !run.injury, 'physio heals the injury');
   assert(you[lost[0]] === before[g.STATK.indexOf(lost[0])] - g.INJURY.lose, 'but not the lost stat');
-  eq(g.RUN_VERSION, 9, 'save v9');
+  eq(g.RUN_VERSION, 10, 'save v10');
 });
 
 test('career: rules moved out of the UI (T-075)', () => {
@@ -923,4 +923,116 @@ test('career: one defaults table for new runs and repair (T-076)', () => {
   g.Run.repair(bare);
   for (const [k, [, ok]] of Object.entries(g.RUN_DEFAULTS)) assert(ok(bare[k]), `repair restores ${k}`);
   eq(bare.grades.length, g.MLOG.max, 'grades capped');
+});
+
+// ---- NPC careers (T-060, spec §4.23 A) ----
+const mkPeople = (seed, role = 'WS') => {
+  const g = load(seed);
+  return [g, g.Run.create(g.Run.draft(), { role, name: 'Npc', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 })];
+};
+test('people: every NPC has a want and two traits, never an opposite pair; you have none', () => {
+  const [g, run] = mkPeople(81),
+    all = g.People.all(run);
+  assert(all.length > 40, 'a whole island of NPCs');
+  for (const p of all) {
+    const x = run.people[p.id];
+    assert(x && g.WANTS[x.want], `${p.name} has a want`);
+    assert(x.traits.length === 2 && x.traits[0] !== x.traits[1] && x.traits.every(t => g.TRAITS[t]), `${p.name} has 2 traits`);
+    for (const [a, b] of g.TRAIT_OPP) assert(!(x.traits.includes(a) && x.traits.includes(b)), `${p.name}: no opposites`);
+  }
+  assert(!run.people[run.youId], 'you have no person');
+  assert(run.reserve && all.some(p => g.People.home(run, p) === 'academy'), 'the Academy squad is covered');
+});
+test('people: deterministic per run, and People.week draws no R()', () => {
+  const grow = seed => {
+    const [g, run] = mkPeople(seed);
+    for (let i = 0; i < 4; i++) (g.People.week(run), run.week++);
+    return [g, run];
+  };
+  const [, a] = grow(82),
+    [, b] = grow(82);
+  eq(JSON.stringify(a.people), JSON.stringify(b.people), 'same draft → same careers');
+  const [g, run] = mkPeople(83);
+  g.RNG.seed(7);
+  const next = [g.R(), g.R()];
+  g.RNG.seed(7);
+  g.People.week(run);
+  eq(JSON.stringify([g.R(), g.R()]), JSON.stringify(next), 'the main random stream is untouched');
+});
+test('people: plans follow wants; nobody tired trains; an injured NPC is not drawn or started', () => {
+  const tot = { prove: [0, 0], money: [0, 0] },
+    hus = { prove: 0, money: 0, other: 0, n: 0 };
+  for (const seed of [91, 92, 93, 94, 95]) {
+    const [g, run] = mkPeople(seed);
+    for (let w = 1; w < 28; w++) {
+      run.week = w;
+      g.People.ensure(run);
+      for (const p of g.People.all(run)) {
+        const x = run.people[p.id],
+          plan = g.People.plan(run, p);
+        if (x.sta < g.PEOPLE.sta.tired && !x.inj) assert(plan.act === 'rest', 'a tired NPC rests');
+      }
+      g.Growth.week(run);
+    }
+    for (const x of Object.values(run.people)) {
+      if (x.want in tot) {
+        tot[x.want][0] += x.log.hard;
+        tot[x.want][1] += x.log.hard + x.log.train;
+      }
+      if (x.want === 'money') hus.money += x.log.hustle;
+      else hus.other += x.log.hustle;
+    }
+  }
+  assert(tot.prove[0] / tot.prove[1] > tot.money[0] / tot.money[1], 'prove NPCs train Hard more than money NPCs');
+  assert(hus.money > 0, 'money NPCs hustle');
+  // injured: not drawn, not started
+  const [g, run] = mkPeople(96),
+    reg = 'wei',
+    victim = g.Pool.players(run, reg)[0];
+  g.People.ensure(run);
+  run.people[victim.id].inj = 2;
+  for (let i = 0; i < 6; i++) for (const sq of g.Pool.draw(run, reg)) assert(!sq.includes(victim), 'an injured NPC is not drawn');
+  const t = run.teams.find(x => g.squadOf(x).includes(victim));
+  if (t) {
+    g.Run.lineup(run, t, null);
+    assert(!t.P.includes(victim), 'an injured NPC is not started');
+  }
+});
+test('people: save → load keeps run.people; a v9 save is dropped', () => {
+  const [g, run] = mkPeople(84);
+  for (let i = 0; i < 3; i++) (g.People.week(run), run.week++);
+  g.Run.save(run);
+  const back = g.Run.load();
+  eq(JSON.stringify(back.people), JSON.stringify(run.people), 'people survive');
+  eq(back.pseed, run.pseed, 'pseed survives');
+  const raw = JSON.parse(g.__mem[g.KEYS.career]);
+  raw.v = 9;
+  g.__mem[g.KEYS.career] = JSON.stringify(raw);
+  eq(g.Run.load(), null, 'a v9 save is dropped');
+});
+test.slow('people: calibration — the league grows like the old drift (5 seeds × 28 weeks)', () => {
+  // baseline on the pre-T-060 code (random weekly drift), after 11 / 27 growth ticks: [league mean OVR, top-10 mean OVR, stars]
+  const base = { w12: [75.21, 82.22, 5.8], w28: [86.47, 94.16, 11.2] },
+    got = { w12: [0, 0, 0], w28: [0, 0, 0] };
+  for (const seed of [1, 2, 3, 4, 5]) {
+    const [g, run] = mkPeople(seed);
+    for (let w = 1; w < 28; w++) {
+      g.Growth.week(run);
+      const k = w === 11 ? 'w12' : w === 27 ? 'w28' : null;
+      if (!k) continue;
+      const ps = run.teams.flatMap(t => g.squadOf(t)),
+        o = ps.map(p => g.ovr(p)).sort((a, b) => b - a);
+      got[k][0] += o.reduce((a, b) => a + b, 0) / o.length / 5;
+      got[k][1] += o.slice(0, 10).reduce((a, b) => a + b, 0) / 10 / 5;
+      got[k][2] += ps.filter(p => p.star).length / 5;
+    }
+  }
+  for (const k of ['w12', 'w28']) {
+    // T-060 deviation (see its Result): the week-28 league mean lands ~3 below the baseline (training stops at TRAIN_CAP and
+    // match XP only reaches the starters and hustlers), so that one band is ±3.5 instead of ±1.5
+    const m = k === 'w28' ? 3.5 : 1.5;
+    assert(Math.abs(got[k][0] - base[k][0]) <= m, `${k} mean OVR ${got[k][0].toFixed(2)} vs ${base[k][0]}`);
+    assert(Math.abs(got[k][1] - base[k][1]) <= 2, `${k} top-10 OVR ${got[k][1].toFixed(2)} vs ${base[k][1]}`);
+    assert(Math.abs(got[k][2] - base[k][2]) <= base[k][2] * 0.3, `${k} stars ${got[k][2].toFixed(1)} vs ${base[k][2]}`);
+  }
 });

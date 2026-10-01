@@ -54,7 +54,7 @@ const Pool = {
         const w = Math.max(DRAW.minW, (ovr(p) - DRAW.floor) / DRAW.span);
         return p === you ? w * (1 + Math.max(0, rep) / DRAW.repPer) : w;
       },
-      left = Pool.players(run, r).filter(p => p !== you || mine),
+      left = Pool.players(run, r).filter(p => (p !== you || mine) && !People.out(run, p)), // (a hurt NPC is not drawn)
       slots = ['S', 'MB', 'WS', 'WS'],
       take = p => left.splice(left.indexOf(p), 1),
       squads = [];

@@ -314,7 +314,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   the training cap (75) and match growth (§4.14) are unchanged. Early on you are benched and lose — that is the point
   (evaluations still pay the bench reward). Stats can fall to 1 (events, injuries), never below; a guard repairs any invalid stat on load and before every match (T-056). NPCs are unchanged.
 
-- §4.23 **Relationships — the core pillar** **[locked design (owner), not built — T-060 ready; T-061…T-066 next]**
+- §4.23 **Relationships — the core pillar** **[locked design (owner); A built T-060; T-061…T-066 next]**
   Relationships are the main thing to do. Not a dating sim, not support cards: **every NPC is a career too.** They
   want something, grind for it on the same island with the same few slots, and a relationship is the history of two
   careers that keep colliding. You don't fill a gauge; you live through things together (or against each other).
@@ -339,7 +339,9 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   - Weekly plan (one R() roll per NPC at week start, career randomness only): train a stat at a place in their
     region (or where their faction allows), rest, hustle, challenge someone, scout, recover. They grow from what they
     did with the same XP rules as you (training to TRAIN_CAP, matches above), scaled by their hidden potential — this
-    replaces the random weekly `Growth` drift for pool players. They get tired, injured (same INJURY rules when they
+    replaces the random weekly `Growth` drift for pool players. Matches (off-screen league play, hustles) raise all four
+    stats (key stat weighted double); only starters and hustlers grow past the training cap, so the league's depth ends
+    the season a little weaker than its top (built T-060: week-28 mean OVR ~83, top-10 ~95). They get tired, injured (same INJURY rules when they
     fight) and benched (same Run.lineup rules).
   - Fates (permanent this run): **cut** (benched 3 evaluations running and under the faction's join bar → reserves,
     then quits if `want` is unmet), **quit** (cynical + want unmet for long), **poached** (a richer club / St. Gloria
