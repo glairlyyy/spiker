@@ -427,7 +427,7 @@ function step(dt) {
       return;
     }
     const r = playRally(A.m);
-    A.beats = r.beats.map(b => ({ ...b })); // playback marks / trims its own copies, never the engine's beats
+    A.beats = r.beats.map(b => ({ ...b })); // a shallow copy: playback re-times / trims its own beat list (acts are shared and get playback marks)
     A.bi = 0;
     return;
   }

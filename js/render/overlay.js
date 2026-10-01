@@ -319,7 +319,20 @@ function drawLabels() {
     let sz = l.big ? 12 : l.small ? 8 : l.pow ? Math.min(12, 9 + Math.max(0, l.pow - 60) / 10) : 9;
     if (l.stamp) sz *= 1.2 + Math.max(0, l.life - 0.82) * 6;
     ctx.font = `${sz}px ${FONT_DISPLAY}`;
-    const fill = l.set ? '#9fe8ff' : l.small ? '#c9f7a6' : l.pow >= 100 ? '#ff3d7f' : l.pow >= 80 ? '#ffb13d' : '#fff';
+    const fill =
+      l.v === 'err'
+        ? '#ff4d4d'
+        : l.v === 'warn'
+          ? '#ffb13d'
+          : l.set
+            ? '#9fe8ff'
+            : l.small
+              ? '#c9f7a6'
+              : l.pow >= 100
+                ? '#ff3d7f'
+                : l.pow >= 80
+                  ? '#ffb13d'
+                  : '#fff';
     outlinedText(l.t, l.x, l.y, fill, 3);
     ctx.restore();
   }

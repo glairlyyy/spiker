@@ -65,8 +65,10 @@ const ACTS_FX = {
   },
   plabel(a, d, bs) {
     if (!d) return;
-    const q = P(d.x, d.z, d.jy + 150);
-    A.labels.push({ t: a.t, x: q.X, y: q.Y, life: 1, big: 1, set: 0, pow: 120 });
+    // `p2`: anchor between two players at net height; `v` ('warn' | 'err'): a stamped warning / error style (T-069)
+    const d2 = a.p2 ? A.disp[a.p2] : null,
+      q = d2 ? P((d.x + d2.x) / 2, (d.z + d2.z) / 2, 150) : P(d.x, d.z, d.jy + 150);
+    A.labels.push({ t: a.t, x: q.X, y: q.Y, life: 1, big: 1, set: 0, pow: 120, v: a.v, stamp: a.v ? 1 : 0 });
     if (/^BUFF Lv(\d)/.test(a.t)) sfx.buff(+a.t.slice(7));
   },
   cam(a, d, bs) {

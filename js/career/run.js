@@ -42,6 +42,7 @@ const Run = {
       team: t,
       num: old.num,
       lead: Math.round(rnd(30, 60)),
+      ego: 0.6, // the new kid who wants to be the star (spec §2.12): maturity comes with wit
       you: true,
       skills: [],
       bond: {},
@@ -298,6 +299,7 @@ const Run = {
         reserve: Object.fromEntries(Object.entries(d.reserve || {}).map(([r, t]) => [r, teamFromJSON(t)]))
       });
       if (!Run.myTeam(run) || !Run.you(run)) return null; // corrupt save: your player is missing
+      for (const t of run.teams.concat(run.pickup || [], Object.values(run.reserve))) for (const p of squadOf(t)) ensureEgo(p); // saves from before ego
       Run.repair(run);
       elAll(run.teams); // players from older saves get their element
       return run;
@@ -305,7 +307,6 @@ const Run = {
       return null;
     }
   },
-  /** Fill collections and counters a damaged save may lack, so the career screens never meet undefined / NaN. */
   /** A fresh copy of every plain-default run field (RUN_DEFAULTS). */
   defaults: () => Object.fromEntries(Object.entries(RUN_DEFAULTS).map(([k, [make]]) => [k, make()])),
   /** Fill what a save lacks or holds broken: every RUN_DEFAULTS field, then the fields that need the run itself. */

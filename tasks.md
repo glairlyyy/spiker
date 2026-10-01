@@ -42,77 +42,12 @@ Result:
 - Stat guard ✓ (T-056) · official venues ✓ (T-053).
 - Smarter coach ✓ (T-057).
 - Player camera ✓ (T-058 Follow, T-059 POV).
-- Cleanup pass ✓ (T-071…T-081, behaviour-neutral; done ahead of Now by owner request).
-- **Now**: ego (T-068), block collision (T-069), POV polish (T-070). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
+- Cleanup pass ✓ (T-071…T-081, behaviour-neutral; done ahead of Now by owner request; leftovers closed in the T-068/T-069 review).
+- Ego ✓ (T-068), block collision ✓ (T-069).
+- **Now**: POV polish (T-070). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now — Ego + block collision (§2.12), POV polish (§4.25)
-
-### [ ] T-068: Ego — show-offs steal balls, call sets, block alone (wit = maturity)
-Spec: §2.12, §2.0          Goldens: update (new decisions in every rally)          Save: no change
-Goal: Every player gets an ego (0–1); low-wit players act on it — ball steals, set calls, solo blocks, hero swings,
-hero serves — with maturity from wit cutting both how often and how badly. Logged for the relationship memories later.
-Files: js/data/rules.js, js/engine/players.js, js/engine/match.js, js/engine/rally.js, js/engine/rally-phases.js,
-js/engine/rally-defense.js, js/engine/serve.js, js/data/dialogue.js, js/career/run.js, tests/engine.test.js,
-tests/career.test.js, ARCHITECTURE.md
-(T-067 follow-up, do first, same commit: js/ui/career-week.js — the pre-match Lineup line uses
-`Run.lineup(run, side.T, side.region, true, cup && run.mode.story)` so a Story cup match never reads "On the bench".)
-Do not: add an act kind (use `plabel`, `pose`, `log`, `chat` / existing chatter); add randoms to presentation; change
-saves beyond the player field `ego` (teams save it; old saves get the hash value on load); let one ego act decide a
-rally on its own more than its EGO table says.
-Steps:
-1. rules.js `EGO = { base: { steal, call, solo, swing, serve }, captain, err: { … } }` (doc comment; start values small:
-   aim for ~1–3 ego acts per side per set among average-wit players, ~0 with wit ≥ 1.8). `maturity(p) = clamp((p.wit −
-   0.5) / 1.5, 0, 1)`.
-2. players.js: `p.ego` in createPlayer (spec value wins; else a hash of the player's id/name → 0.2–0.8, WS +0.1, no R()
-   draw so generation stays identical); your player: 0.6 (run.js create).
-3. Engine hooks, one R() each only where an opportunity exists and its chance is > 0 (no draw at chance 0): dig / pass (rally-phases / rally-defense: an ego mate
-   other than `nearest` within reach → steal: collision chance by both players' maturity, else they take it);
-   pickSetter/chooseAttack (set call: the setter's maturity resists); formBlock (solo block: the ego blocker ignores
-   `dset`); attack on quality-1 sets (hero swing instead of the safe shot); serve (hero serve → jump serve).
-   Captain call-off per §2.12. Record `m.egoLog.push({ act, p, ok, mate? })` (engine-only).
-4. Presentation: "MINE!" `plabel`, bump poses on a collision, a log line; set-call chatter lines in dialogue.js (street
-   voice, 5 lines). Hype scenes unchanged.
-5. tests `'engine: ego'`: 400 sims — ego acts per side per set in range for average wit, near zero for wit ≥ 1.8;
-   success rate rises with maturity; collisions only on steals; with ego 0 everywhere the match is identical to an
-   ego-free reference run of the same seed (no extra draws when no opportunity); T-026 stuff / kill tests still
-   pass (retune EGO, not those tests, if they don't); report kill % and error % before / after.
-6. `npm run test:update` with the reason. ARCHITECTURE.md: ego.
-Accept: all tests + lint; goldens updated for this reason only.
-QA: Monster game with all wit set to 0.6: 2000 steps — "MINE!" labels, a collision, a solo block seen; with wit 1.9:
-almost none; no pageerror.
-Result:
-
-### [ ] T-069: Block collision — cancelled blocks and the net-fault variant
-Spec: §2.12 (Block collision)          Goldens: update (a new outcome on solo blocks)          Save: no change
-Goal: When T-068's solo block meets a partner who also commits, the two blockers collide: both blocks cancel early (an
-open net for the attack) or, in the error variant, a net fault ends the rally; a floating "BLOCK COLLISION" label in a
-warning or error style marks it.
-Files: js/data/rules.js, js/engine/rally.js, js/engine/rally-defense.js, js/render/playback.js, js/render/acts.js (the `plabel` handler, since T-078), js/render/overlay.js (was court.js, renamed in T-077),
-js/render3d/actors3d.mjs (only if the stagger needs it), tests/engine.test.js, ARCHITECTURE.md
-Do not: add an act kind (extend `plabel` with an optional style flag, and use `jump` / `slide` / `pose` / `log`);
-make collisions happen without a solo block; touch the scene shots.
-Steps:
-1. rules.js EGO gains `collide` (chance the partner also commits = collide × (1 − partner maturity)) and `net` (share
-   of collisions that become a net fault). Start values: collisions ≈ 10–20 % of solo blocks, net faults ≈ 30 % of
-   collisions.
-2. Engine (where the solo block is decided, T-068): on a collision — no block touch this attack (the attack resolves
-   vs an empty net: today's no-block path); both blockers' jump acts end early (`jump` mode 'down' at ~40 % of the
-   normal hang), they `slide` 0.3 m apart and take a stagger pose (reuse an existing pose, e.g. 'bump' / landing);
-   net-fault variant: the rally ends at once, point to the attacking side, a log line "Net fault — block collision".
-   Record `m.egoLog.push({ act: 'collide', p, mate, net })`. One R() for the partner, one for the net share, only when a
-   solo block happens.
-3. `plabel` gains an optional `v` ('warn' | 'err'): playback passes it to the label; overlay.js drawLabels colours warn
-   orange (#ffb13d) and err red (#ff4d4d), stamped (pop-in) like big labels. Text: "BLOCK COLLISION" / "BLOCK
-   COLLISION · NET", anchored between the two blockers at net height. The act-kind test still passes (no new kind).
-4. tests `'engine: block collision'`: 400 sims with ego forced high and wit low — collisions happen only after a solo
-   block; no block touch on a collision; net-fault rallies end with the point to the attackers and no attack contact
-   after it; label acts carry `v`; with EGO.collide 0 the stream equals T-068's; T-026 stuff / kill tests still pass.
-5. `npm run test:update` with the reason. ARCHITECTURE.md: the collision outcome and the plabel style flag.
-Accept: all tests + lint; goldens updated for this reason only.
-QA: Monster game with ego 0.9 / wit 0.6 for every player: watch until a collision — both blockers come down early and
-stagger, the label shows in orange; a net-fault one in red and the point ends at once; screenshot both; no pageerror.
-Result:
+## Now — POV polish (§4.25)
 
 ### [ ] T-070: POV polish — no teammate in your face, ball on screen for hitters
 Spec: §4.25          Goldens: unchanged (presentation only)          Save: no change
@@ -170,6 +105,9 @@ Phase 5 — Voice pass
 
 ## Done
 
+- [x] T-069: Block collision — cancelled blocks and the net-fault variant — `EGO.solo.collide` 0.25 / `net` 0.3 (no draw at 0); cov 0, both hop short and stagger, net fault = point to the attackers after the set beat; `plabel` gains `p2` / `v` (warn #ffb13d, err #ff4d4d). 160 sims at ego 1 / wit 0.6: collisions 19.0 % of solo blocks, net faults 28.3 % of those. Goldens updated.
+- [x] T-068: Ego — show-offs steal balls, call sets, block alone (wit = maturity) — `EGO`, `p.ego` (name hash 0.2–0.7, WS +0.1; you 0.6), `maturity`, hooks steal / call / solo / swing / serve, `m.egoLog`, MINE! / SOLO! / ALL ME!. 400 sims: wit 0.6 → 3.7 ego acts/side/set, wit 1.0 → 2.6, wit 1.9 → 0.12; kill % unchanged, errors 15.7 → 16.2 %. Goldens updated (teams, matches, sims). Tests in tests/engine.test.js (55/55). T-067 Lineup-line follow-up done.
+- (spec chat, T-068/T-069 review) Cleanup leftovers: doc comments back above `City.access` / `mix` / `Run.defaults`, orphan `plural` comment removed (dom.js), duplicate `overflow-x` (style.css), playback beat-copy comment made accurate — comments / CSS only.
 - [x] T-081: ARCHITECTURE.md matches the code — Saves section: RUN_VERSION 9 with the full version history (v2…v9) and RUN_DEFAULTS; stale RUN_VERSION 8 / 4, travel zone and warm-up mentions fixed; REGIONS description matches the current island; Layers table rows for Data (constants + small pure helpers), UI, Render (+ map3d, FXR); new File map section lists every script in load order plus the render3d / map3d modules (checked: every index.html script appears). Long bullets left as they are (content still correct). Final: 53/53, lint, format:check clean; career 5 weeks + Monster 2500 steps, no pageerror.
 - [x] T-080: Tests — split by area, shared factories, quick mode — run.js is now loader + reporter; 53 tests moved verbatim (order kept within each area) into engine.test.js (19), career.test.js (20), map.test.js (10), cup.test.js (4); goldenCheck / record / playRun moved into harness.js; test.slow + --quick (npm run test:quick) skips 7 slow tests: 9.5 s vs 29.9 s full; --update refuses with --quick. Deviations: the three mk(seed…) factories differ per test (seed / level / role) and stay local; UI-copy assertions kept (no return codes exist for them, the task forbids adding them). 53/53 both layouts, goldens untouched, lint clean.
 - [x] T-079: map3d hygiene — shared helpers, no hard-coded factions, clean dispose — geo3d.mjs (new: MAP_M, FOG_*, toWorld/toMap, clamp/lerp/smooth, fogFactor with squared-distance early-outs) — avatar/pins/life/town import from it (no cycles; 3 smooth copies + avatar cl gone); terrain and town share fogFactor; MapModel.life.contest {a,b,meter,pressure,hold} from CITY.contestPair (data) — map3d pulse and life3d patrols read it, no 'wei'/'wu' or /2 in the renderer; dispose removes named listeners and skips userData.shared; canvas size cached (no clientWidth per frame); pins tick reuses one Vector3 + Matrix4 and skips when camera/size/distance/items (version) unchanged; life3d along() writes a reused object; map-view drop3D resets failed and nulls el/model/on; create(onIdle) (unused host dropped); SHADOW_MAP / SHADOW_BOX named; MODEL_URL exported once from players3d. New test on MapModel contest; 53/53, goldens untouched, lint clean. QA seeded career: map + travel (walk, fog reveal) screenshots identical to the old code (0.00 % pixels > 24), renderer.info geos 25→26 / tex 27 after travel and stable over 10 drawer re-mounts (same as old code); no pageerror.

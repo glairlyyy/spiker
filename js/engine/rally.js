@@ -76,6 +76,18 @@ function rally(m, B, V, atk, pas, qual, scr = null) {
     Object.assign(x, fakeSet(c, x));
     Object.assign(x, formBlock(c, x));
     Object.assign(x, setBeat(c, x));
+    if (x.collide && x.collide.net) {
+      // the two blockers hit the net together: a fault, point to the attackers (no attack contact follows)
+      V &&
+        B({
+          dur: 900,
+          acts: [
+            { k: 'label', t: 'Net fault', when: 'end', big: 1 },
+            { k: 'log', t: 'Net fault — block collision', c: 'pt' }
+          ]
+        });
+      return atk;
+    }
     Object.assign(x, spikePower(c, x));
     Object.assign(x, spikeActs(c, x));
     Object.assign(x, landingSpot(c, x));
@@ -102,6 +114,7 @@ function rally(m, B, V, atk, pas, qual, scr = null) {
     }
     // ---- 9–10: block, then dig or kill ----
     const bl = block(c, x);
+    if (x.soloLog && bl.point === ds) x.soloLog.ok = true; // the solo block stuffed it
     if (bl.point != null) {
       fin();
       return bl.point;
@@ -126,6 +139,7 @@ function tallyAttack(m, side, x, k0, bk0) {
   const a = m.att[side],
     kind = x.quick ? 'q' : x.pipe || x.lane === 'M' ? 'mid' : 'pin',
     kill = (m.stat[x.spiker.id] || blank()).k > k0;
+  if (x.heroLog) x.heroLog.ok = kill;
   a.n++;
   a[kind]++;
   if (x.b1) a.dbl++;
@@ -238,7 +252,9 @@ function formBlock(c, x) {
   const tAv = (quick ? 0.3 : bad ? 1.05 : 0.8) + (back ? 0.15 : 0) + (longB ? 0.1 : 0),
     reach = b => ((b.speed / 100) * tAv * 0.6) / courtScale();
   // defence setting (see DEFSETS): Bunch starts both front-row defenders near the middle (they drift there while the ball is set, as far as their speed allows)
-  const dset = m.dset[ds] || 'read',
+  // ego (spec §2.12): a front-row blocker who wants to be the wall ignores the defence setting and blocks alone
+  const soloP = DF.find(p => egoRoll(m, p, 'solo')) || null,
+    dset = soloP ? 'read' : m.dset[ds] || 'read',
     commit = dset === 'commit',
     bunch = dset === 'bunch',
     midAtk = quick || pipe || lane === 'M',
@@ -257,7 +273,7 @@ function formBlock(c, x) {
   // stand deeper): the other defender only fills the gap beside them. A pin too far out for the middle falls to the pin-side defender.
   const mb = DF.find(p => p.role === 'MB'),
     mbCan = mb && Math.abs(startZ(mb) - spZ) <= reach(mb) * 1.3;
-  const b0 = swing ? byLane(others, spZ) : !DF.length ? B0 : midAtk ? mb || byLane(DF, spZ) : mbCan ? mb : byLane(DF, spZ),
+  const b0 = soloP || (swing ? byLane(others, spZ) : !DF.length ? B0 : midAtk ? mb || byLane(DF, spZ) : mbCan ? mb : byLane(DF, spZ)),
     p0z = startZ(b0),
     r0 = reach(b0) * (swing ? BLOCK.swingReach : bitten ? 0.3 : commit && quick ? BLOCK.commitReach : 1), // Commit: the blocker on a quick is already up
     bz0 = clamp(p0z + clamp(spZ - p0z, -r0, r0), 0.05, 0.95),
@@ -268,7 +284,7 @@ function formBlock(c, x) {
   // the second blocker closes in beside the first on the court-inside side — if the roll passes and they can get there.
   // Sync attacks leave no time for a double; quicks only get one when the defence is set for them (Commit / Bunch).
   const cand = DF.find(p => p !== b0);
-  if (cand && !sync && !swing && (!quick || commit || bunch)) {
+  if (cand && !sync && !swing && !soloP && (!quick || commit || bunch)) {
     const roll = R() < defT.S.dbl * (0.6 + 0.8 * readQ(cand)),
       p1z = startZ(cand),
       inward = bz0 < 0.5 ? 1 : -1,
@@ -284,9 +300,16 @@ function formBlock(c, x) {
     }
   }
   const blockers = b1 ? [b0, b1] : [b0];
+  // block collision (T-069): the other front-row defender also commits to the same ball — both blocks cancel (no block touch),
+  // or in `solo.net` of cases the bodies hit the net: a fault. Rolled only when a solo block happens and there is a partner.
+  const partner = soloP ? DF.find(p => p !== soloP) : null;
+  let collide = null;
+  if (partner && EGO.solo.collide > 0 && R() < EGO.solo.collide * (1 - maturity(partner))) {
+    collide = { a: soloP, b: partner, net: R() < EGO.solo.net };
+  }
   // every other front-row player still goes up (late, off-position) even when they're not part of the block —
   // nobody at the net just watches. Display only: coverage and positions in the engine are unchanged.
-  const lateB = V ? defT.P.filter(p => front(ds, p) && !blockers.includes(p) && !busy(m, p, n)) : [],
+  const lateB = V ? defT.P.filter(p => front(ds, p) && !blockers.includes(p) && p !== (collide && collide.b) && !busy(m, p, n)) : [],
     taken = b1 ? [bz0, bz1] : [bz0], // spots at the net already taken: late blockers go up beside them, not inside them
     lateA = lateB.flatMap(p => {
       const q = m.pos[p.id];
@@ -309,6 +332,8 @@ function formBlock(c, x) {
   if (longB && V) a1[a1.length - 1].via = { x: sx(atk, 92), z: spZ, at: 0.38 }; // back to the end line, then the run-up
   mv(m, b0, sx(ds, 484), bz0, a1, V);
   if (b1) mv(m, b1, sx(ds, 480), bz1, a1, V);
+  // the collision: the partner arrives at the same spot, 0.3 m beside the solo blocker (they bounce apart)
+  if (collide) mv(m, partner, sx(ds, 484), clamp(bz0 + (bz0 < 0.5 ? 1 : -1) * (0.3 / UNIT_M.z), 0.05, 0.95), a1, V);
   const pj = jumpPx(spiker),
     hS = REACH_H + pj; // the hitter's contact height
   // one blocker's coverage: lane (distance along the net) × height (hands against the contact point)
@@ -334,6 +359,13 @@ function formBlock(c, x) {
   };
   scale(c0, b0, late0);
   scale(c1, b1, late1);
+  // the solo blocker's gamble: a good read makes a wall, a bad one leaves the lane open (maturity cuts the bad side)
+  const soloLog = soloP ? { act: 'solo', p: soloP.id, ok: false, mate: (DF.find(p => p !== soloP) || {}).id } : null;
+  if (soloP) {
+    c0.c *= 1 + EGO.solo.gain * readQ(soloP) - EGO.solo.loss * (1 - maturity(soloP));
+    m.egoLog.push(soloLog);
+    if (collide) m.egoLog.push({ act: 'collide', p: soloP.id, mate: collide.b.id, net: collide.net });
+  }
   if (swing) c0.c *= BLOCK.swingCov;
   else if (bitten) c0.c *= 0.5;
   let cov = Math.max(c0.c, c1.c) + (c0.c > 0.4 && c1.c > 0.4 ? 0.25 : 0) + readBonus;
@@ -346,6 +378,7 @@ function formBlock(c, x) {
   if (sync) cov *= 0.8;
   if (pipeCombo) cov *= 0.6;
   if (longB) cov *= 0.55;
+  if (collide) cov = 0; // both blocks cancel: no block touch, the attack meets an empty net
   const setTech = freak
     ? 'Freak Quick'
     : slide
@@ -372,6 +405,9 @@ function formBlock(c, x) {
     bz0,
     bz1,
     blockers,
+    soloP,
+    soloLog,
+    collide,
     lateB,
     lateA,
     a1,
@@ -394,7 +430,7 @@ function formBlock(c, x) {
 function setBeat(c, x) {
   const { m, B, V, front, atk, ds, atkT, defT, qual } = c,
     { setter, spiker, quick, bad, back, longB, freak, slide, sync, pool, callers, fakeDecoy, bitten, sq2, bumpSet } = x,
-    { setZ, spZ, b0, bz0, blockers, lateA, a1, pj, cov, readB, setTech } = x;
+    { setZ, spZ, b0, bz0, blockers, lateA, a1, pj, cov, readB, setTech, egoCall, soloP, collide } = x;
   // a bad set that stays hittable still reaches the hitter's hand (it just hits weaker: setMul in attack());
   // the two draws stay so the random sequence is unchanged
   if (bad) {
@@ -403,6 +439,11 @@ function setBeat(c, x) {
   }
   // set direction relative to the setter: quick, front set, or back set (hitter behind the setter)
   const setDir = quick ? 'quick' : spZ > setZ + 0.08 ? 'back' : 'front';
+  // a collision cuts both jumps short: a hop that comes down at ~40% of the normal hang
+  const colJump = b => {
+    const t0 = quick ? 0.3 : 0.6;
+    return { k: 'jump', p: b.id, mode: 'hop', t0, t1: t0 + 0.4 * (1 - t0), peak: jumpPx(b) * 0.5 };
+  };
   // ball calls while the set is in the air: the hitter asks for it, other confident hitters shout as decoys
   const setCalls = [];
   if (V && !bad) {
@@ -412,6 +453,11 @@ function setBeat(c, x) {
     const other = pool.find(p => p !== spiker && p !== fakeDecoy && cf(p) >= 88 && (front(atk, p) || callers.includes(p)));
     if (other) setCalls.push({ k: 'call', p: other.id, t: callLine(callers.includes(other) ? 'back' : 'decoy', other, m), soft: 1 });
   }
+  if (V && egoCall)
+    setCalls.push(
+      { k: 'call', p: egoCall.id, t: callLine('ego', egoCall, m) },
+      { k: 'log', t: `${egoCall.name} demands the set — ${setter.name} gives in`, c: 'set' }
+    );
   const combo =
     ((setter.star && spiker.star) || bondCombo(setter, spiker)) && setter !== spiker && sq2 === 'perfect' && !fakeDecoy && R() < 0.65;
   // full element gauge: this attack is guaranteed to be an element spike (a charged setter puts theirs into the set)
@@ -455,19 +501,38 @@ function setBeat(c, x) {
               ...(bitten ? [{ k: 'plabel', p: b0.id, t: '!?' }] : [])
             ]
           : []),
-        ...blockers.map(b => ({
-          k: 'jump',
-          p: b.id,
-          mode: b === b0 && bitten && fakeDecoy ? 'reup' : 'up',
-          t0: b === b0 && bitten ? 0.84 : quick ? 0.3 : 0.6,
-          t1: 1,
-          peak: jumpPx(b) * (b === b0 && bitten ? 0.45 : 0.85)
-        })),
+        ...blockers.map(b =>
+          collide
+            ? colJump(b) // the collision: up together, down early
+            : {
+                k: 'jump',
+                p: b.id,
+                mode: b === b0 && bitten && fakeDecoy ? 'reup' : 'up',
+                t0: b === b0 && bitten ? 0.84 : quick ? 0.3 : 0.6,
+                t1: 1,
+                peak: jumpPx(b) * (b === b0 && bitten ? 0.45 : 0.85)
+              }
+        ),
+        ...(collide ? [colJump(collide.b)] : []),
         { k: 'pose', p: spiker.id, pose: 'spike' },
         { k: 'spkstyle', p: spiker.id, st: quick ? 'quick' : back ? 'pipe' : 'normal' },
         // camera: slow push-in on the contest above the net when a real block is up
         ...(cov > 0.3 && !bad ? [{ k: 'cam', amt: 0.32, x: NETX, z: (spZ + bz0) / 2, h: 150, hold: 1500, t0: 0.45 }] : []),
-        ...blockers.map(b => ({ k: 'pose', p: b.id, pose: 'block' })),
+        ...blockers.map(b => ({ k: 'pose', p: b.id, pose: collide ? 'bump' : 'block' })), // a collision staggers them
+        ...(collide
+          ? [
+              { k: 'pose', p: collide.b.id, pose: 'bump' },
+              {
+                k: 'plabel',
+                p: collide.a.id,
+                p2: collide.b.id,
+                t: collide.net ? 'BLOCK COLLISION · NET' : 'BLOCK COLLISION',
+                v: collide.net ? 'err' : 'warn'
+              },
+              { k: 'log', t: `${collide.a.name} and ${collide.b.name} both go up for the block — they collide!`, c: 'err' }
+            ]
+          : []),
+        ...(soloP && !collide ? [{ k: 'plabel', p: soloP.id, t: 'SOLO!' }] : []),
         ...lateA,
         {
           k: 'ball',
@@ -519,8 +584,12 @@ function spikePower(c, x) {
   let { cov } = x;
   st(m, spiker, 'att');
   dr(m, spiker, 0.035 + pj / 4000);
-  const setMul = { perfect: 1.12, good: 1, bad: 0.72 }[sq2];
-  const tip = bad && !elSrc && R() < 0.35;
+  // ego (spec §2.12): on a bad set an ego hitter swings full power instead of rolling or tipping it
+  const hero = bad && egoRoll(m, spiker, 'swing'),
+    heroLog = hero ? { act: 'swing', p: spiker.id, ok: false } : null;
+  if (hero) m.egoLog.push(heroLog);
+  const setMul = { perfect: 1.12, good: 1, bad: hero ? EGO.swing.pow : 0.72 }[sq2];
+  const tip = bad && !elSrc && R() < 0.35 && !hero;
   let pow = tip ? rnd(18, 30) : Formula.spikePower({ spiker, team: atkT, setMul, quick, back, longB, combo, fat });
   const elS = !tip && elSrc ? elSpike(m, elSrc, spiker, setter, defT, sq2 === 'perfect') : null;
   if (elS) {
@@ -542,7 +611,7 @@ function spikePower(c, x) {
   if (elS) cov *= elS.cov;
   if (V && (tip || cov <= BLOCK_MIN_COV)) dropDefScene(m); // no block attempt: the defender's scene lines go (block() uses the same test)
   const tier = tip ? 'tip' : pow >= 100 ? 'ult' : pow >= 80 ? 'heavy' : pow >= 58 ? 'hard' : 'soft';
-  return { tip, pow, elS, el: elS ? elS.el : null, around, cutS, delayed, cov, tier };
+  return { tip, pow, elS, el: elS ? elS.el : null, around, cutS, delayed, cov, tier, hero, heroLog };
 }
 
 /**
@@ -647,6 +716,7 @@ function spikeActs(c, x) {
           { k: 'shake', amt: Math.max(0, (pow - 65) / 5) + (elS ? (elS.el === 'blast' ? 8 : 3) : 0) }
         ]),
     ...(note ? [{ k: 'label', t: note, dy: -30, set: 1 }] : []),
+    ...(x.hero ? [{ k: 'plabel', p: spiker.id, t: 'ALL ME!' }] : []),
     ...(pow >= 95
       ? [
           { k: 'lines', pow, color: atkT.color },
@@ -704,7 +774,10 @@ function landingSpot(c, x) {
 function hittingError(c, x) {
   const { m, B, V, atk, ds } = c,
     { spiker, tip, bad, pow, around, back, longB, hS, elS, hit, bdown, spZ, lz, hdur } = x;
-  const errP = Formula.spikeErrorP({ spiker, bad, pow, around, back, longB, hS }) * (elS ? 0.5 : 1);
+  const errP =
+    Formula.spikeErrorP({ spiker, bad, pow, around, back, longB, hS }) *
+    (elS ? 0.5 : 1) *
+    (x.hero ? 1 + EGO.swing.err * (1 - maturity(spiker)) : 1);
   if (tip || R() >= errP) return;
   st(m, spiker, 'err');
   const net = R() < Formula.spikeNetShare(hS, longB);

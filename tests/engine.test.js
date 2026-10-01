@@ -571,3 +571,138 @@ test.slow('engine: three touches — pop-up saves are the set', () => {
   );
   eq(log.filter(e => e.hitter === null).length, over, 'a bump over is the only scramble without a hitter');
 });
+
+test('engine: ego — acts, maturity, collisions, no draws without an opportunity', () => {
+  const run = (wit, n, seed = 91, mod) => {
+    const g = load(seed),
+      T = g.mkTeams();
+    for (const t of T) for (const p of g.squadOf(t)) if (wit) p.wit = wit;
+    if (mod) mod(g, T);
+    const acts = {},
+      okc = {},
+      tot = { k: 0, att: 0, err: 0 },
+      sig = [];
+    let crashes = 0,
+      stolen = 0;
+    for (let i = 0; i < n; i++) {
+      const a = T[i % 8],
+        b = T[(i * 3 + 1) % 8],
+        m = g.simMatch(a, b);
+      sig.push(
+        m.pts.join('-') +
+          ':' +
+          g
+            .squadOf(a)
+            .map(p => (m.stat[p.id] ? m.stat[p.id].k + '/' + m.stat[p.id].err : '0'))
+            .join(',')
+      );
+      for (const t of [a, b])
+        for (const p of g.squadOf(t)) {
+          const s = m.stat[p.id];
+          if (s) {
+            tot.k += s.k;
+            tot.att += s.att;
+            tot.err += s.err;
+          }
+        }
+      for (const e of m.egoLog) {
+        acts[e.act] = (acts[e.act] || 0) + 1;
+        if (e.ok) okc[e.act] = (okc[e.act] || 0) + 1;
+        if (e.crash) {
+          crashes++;
+          assert(e.act === 'steal', 'collisions only happen on steals');
+        }
+        if (e.act === 'steal') stolen++;
+      }
+    }
+    const per = Object.values(acts).reduce((x, y) => x + y, 0) / n / 2; // ego acts per side per set (one set per match)
+    return { per, acts, okc, crashes, stolen, kill: tot.k / tot.att, err: tot.err / tot.att, sig: sig.join('|') };
+  };
+  const avg = run(1.0, 400),
+    green = run(0.6, 400),
+    sage = run(1.9, 400);
+  assert(avg.per > 0.8 && avg.per < 4, `average wit: ${avg.per.toFixed(2)} ego acts per side per set`);
+  assert(sage.per < 0.4, `wit 1.9: almost no ego acts (${sage.per.toFixed(2)})`);
+  assert(green.per > avg.per, 'lower wit, more ego acts');
+  assert(avg.kill > 0.55 && avg.kill < 0.72 && avg.err < 0.2, `kill ${avg.kill.toFixed(3)} / error ${avg.err.toFixed(3)} stay sane`);
+  // maturity cuts the botching: fewer collisions per steal, more steals that work
+  const mid = run(1.4, 400);
+  assert(green.stolen > 50 && mid.stolen > 20, `enough steals to compare (${green.stolen} / ${mid.stolen})`);
+  assert(mid.crashes / mid.stolen < green.crashes / green.stolen, 'a more mature team collides less on steals');
+  assert((mid.okc.steal || 0) / mid.stolen > (green.okc.steal || 0) / green.stolen, 'steals succeed more often with maturity');
+  // no ego anywhere (ego 0) plays exactly like the ego rules switched off: no draw is spent without an opportunity
+  const zero = run(1.0, 30, 92, (g, T) => {
+      for (const t of T) for (const p of g.squadOf(t)) p.ego = 0;
+    }),
+    off = run(1.0, 30, 92, g => {
+      for (const k in g.EGO.base) g.EGO.base[k] = 0;
+    });
+  eq(zero.sig, off.sig, 'ego 0 everywhere = ego acts switched off, draw for draw');
+  eq(zero.per, 0, 'no ego acts without ego');
+});
+
+test('engine: block collision (T-069) — only after a solo block, no touch, net fault ends the rally', () => {
+  const g = load(77),
+    side = (m, id) => (g.squadOf(m.t[0]).some(p => p.id === id) ? 0 : 1);
+  let solo = 0,
+    col = 0,
+    net = 0;
+  for (let i = 0; i < 160; i++) {
+    const T = g.mkTeams(),
+      a = T[i % 8],
+      b = T[(i * 3 + 1) % 8];
+    for (const t of [a, b])
+      for (const p of g.squadOf(t)) {
+        p.wit = 0.6;
+        p.ego = 1;
+      }
+    const m = g.newMatch(a, b, true);
+    let guard = 0;
+    while (!m.over && guard++ < 200) {
+      const n0 = m.egoLog.length,
+        r = g.playRally(m),
+        log = m.egoLog.slice(n0);
+      solo += log.filter(e => e.act === 'solo').length;
+      log.forEach((e, k) => {
+        if (e.act !== 'collide') return;
+        col++;
+        assert(k > 0 && log[k - 1].act === 'solo' && log[k - 1].p === e.p, 'a collision follows a solo block by the same player');
+        const labs = r.beats.map((bt, bi) => (bt.acts.some(x => x.k === 'plabel' && x.v) ? bi : -1)).filter(bi => bi >= 0),
+          i0 = labs[log.slice(0, k).filter(q => q.act === 'collide').length];
+        assert(i0 != null, 'a collision shows its label');
+        const lab = r.beats[i0].acts.find(x => x.k === 'plabel' && x.v);
+        eq(lab.v, e.net ? 'err' : 'warn', 'label style follows the variant');
+        assert(lab.p === e.p && lab.p2 === e.mate, 'the label sits between the two blockers');
+        // the beats of this attack: up to the next possession's set (the ball goes to a setter)
+        let j = i0 + 1;
+        while (j < r.beats.length && !r.beats[j].acts.some(x => x.k === 'ball' && x.to && x.to.c === 'set')) j++;
+        const acts = r.beats.slice(i0, j).flatMap(bt => bt.acts);
+        assert(!acts.some(x => x.k === 'ball' && x.to && x.to.c === 'block'), 'no block touch on a collision');
+        if (e.net) {
+          net++;
+          eq(r.w, 1 - side(m, e.p), 'a net fault is a point for the attackers');
+          const f = r.beats.findIndex(bt => bt.acts.some(x => x.k === 'log' && /Net fault/.test(x.t)));
+          assert(f > i0, 'the net fault follows the collision label');
+          assert(
+            !r.beats.slice(f).some(bt => bt.acts.some(x => x.k === 'ball' || x.k === 'impact')),
+            'no ball contact after the net fault (the rally is over)'
+          );
+        }
+      });
+    }
+  }
+  assert(solo > 100 && col > 10, `enough solo blocks and collisions to judge (${solo} / ${col})`);
+  assert(col / solo > 0.08 && col / solo < 0.3, `collisions ≈ 10–20 % of solo blocks (${((100 * col) / solo).toFixed(1)} %)`);
+  assert(net / col > 0.15 && net / col < 0.5, `net faults ≈ 30 % of collisions (${((100 * net) / col).toFixed(1)} %)`);
+  // collisions off: none happen
+  const g2 = load(77);
+  g2.EGO.solo.collide = 0;
+  const [x, y] = g2.mkTeams();
+  for (const p of [...g2.squadOf(x), ...g2.squadOf(y)]) ((p.wit = 0.6), (p.ego = 1));
+  const m2 = g2.newMatch(x, y, false);
+  while (!m2.over) g2.playRally(m2);
+  assert(
+    !m2.egoLog.some(e => e.act === 'collide') && m2.egoLog.some(e => e.act === 'solo'),
+    'EGO.solo.collide 0: solo blocks, no collisions'
+  );
+});

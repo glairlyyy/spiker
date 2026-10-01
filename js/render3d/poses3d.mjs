@@ -20,7 +20,6 @@ const mixArm = (a, b, t) => [
 ];
 const mixLeg = (a, b, t) => ({ a: mixN(a.a, b.a, t), k: mixN(a.k, b.k, t), f: mixN(a.f, b.f, t), s: mixN(a.s ?? 0.1, b.s ?? 0.1, t) });
 const NUMS = ['hp', 'sp', 'cp', 'tw', 'hd', 'hy', 'hyaw', 'hroll', 'shrug', 'curl', 'curlL', 'curlR', 'sroll', 'lift'];
-/** Blend two poses (numbers, legs and arm directions). */
 /** Setter release motion by set direction: k = release progress 0..1, lean = body angle, arms = end pose. */
 function setMotion(d) {
   const dirn = d.setDir || 'front',
@@ -32,6 +31,7 @@ function setMotion(d) {
   return { k, lean: L * k, arms: E };
 }
 
+/** Blend two poses (numbers, legs and arm directions). */
 export function mix(A, B, t) {
   const o = { ...A, ...B };
   for (const k of NUMS) if (A[k] != null || B[k] != null) o[k] = mixN(A[k], B[k], t);

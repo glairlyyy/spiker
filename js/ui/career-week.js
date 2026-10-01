@@ -152,7 +152,7 @@ function matchPrep(run, cup) {
       : '';
   // the coach's pick (Run.lineup): do you start?
   const side = Cup.mine(run, cup ? 'cup' : 'eval'),
-    L = Run.lineup(run, side.T, side.region, true),
+    L = Run.lineup(run, side.T, side.region, true, cup && run.mode.story),
     lineup = `<div class="prep"><b>Lineup</b> ${L.starts ? 'Starting' : '<b>On the bench</b>'}${
       L.rival ? ` <span class="small mute">— you ${L.you.toFixed(1)} vs ${esc(L.rival.p.name)} ${L.rival.score.toFixed(1)}</span>` : ''
     }${info(`Your coach picks the best player of each role by rating + 6 × form (+ your standing with the faction ÷ ${BENCH.standingPer}). Start or finish on the bench and match rewards ×${BENCH.partMul}; never play and you only get a little Wit XP.`)}</div>`;

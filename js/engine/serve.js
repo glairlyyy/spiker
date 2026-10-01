@@ -36,7 +36,10 @@ function playRally(m) {
   // the serve is chosen up front (same random draws, same order), so the server walks straight to where it starts:
   // the service spot for a standing float, the start of the run-up for a jump serve / jump float
   let sq = Formula.serveQuality(server, ST);
-  const sType = serveType(server, sq),
+  // ego (spec §2.12): an ego server goes for the risky jump serve
+  const nat = serveType(server, sq),
+    hero = nat !== 'jump' && egoRoll(m, server, 'serve'),
+    sType = hero ? 'jump' : nat,
     jumpSrv = sType === 'jump',
     runM = runUpM(server, sType),
     endX = jumpSrv ? 60 : 44,
@@ -69,6 +72,10 @@ function playRally(m) {
           : []
     });
   if (jumpSrv) sq *= 1 + (runM - 3.2) * 0.05; // longer run-up = a bit more pace (±5%)
+  if (hero) {
+    sq *= EGO.serve.sq;
+    m.egoLog.push({ act: 'serve', p: server.id, ok: false, open: (m.stat[server.id] || blank()).ace });
+  }
   // serve techniques
   const killer = jumpSrv && hasTech(server, 'killer') && R() < 0.5,
     drive = !jumpSrv && hasTech(server, 'drive') && R() < 0.5,
@@ -110,7 +117,7 @@ function playRally(m) {
     wob = sType !== 'jump';
   if (V && server.star && sq > 74 && R() < 0.7)
     B({ dur: 1250, cut: 1, acts: [{ k: 'cut', p: server.id, title: 'Cannon Serve', sub: `Serve ${kmh(sq)} km/h` }] });
-  const serr = Formula.serveErrorP(server, ST, sq) + (killer ? 0.03 : 0);
+  const serr = Formula.serveErrorP(server, ST, sq) + (killer ? 0.03 : 0) + (hero ? EGO.serve.err * (1 - maturity(server)) : 0);
   const techName = killer ? 'Killer Jump Serve' : drive ? 'Drive Serve' : targeted ? 'Target Serve' : null;
   const hitFx = [
     { k: 'jump', p: server.id, mode: 'down' },
@@ -160,10 +167,27 @@ function playRally(m) {
     tx = clamp(q.x, Math.min(sx(r, 150), sx(r, 420)), Math.max(sx(r, 150), sx(r, 420)));
     tz = clamp(q.z + (q.z > 0.5 ? -0.16 : 0.16), 0.1, 0.9);
   }
+  // ego (spec §2.12): a teammate may steal the pass — a collision wrecks it, else they take it
+  const steal = egoSteal(
+    m,
+    RT.P.filter(p => p !== RT.s),
+    rc,
+    tx,
+    tz,
+    sw,
+    V
+  );
+  if (steal) {
+    if (steal.crash) {
+      setBusy(m, rc, 1);
+      setBusy(m, steal.thief, 1);
+    } else rc = steal.p;
+  }
   const d0 = dist(m.pos[rc.id], tx, tz);
   // Rolling Receive: dive-and-roll takes most of the sting out of a long run
   const rollR = hasTech(rc, 'roll') && d0 > 0.5;
   let rs = Formula.receiveScore(rc, RT, d0) - (drive ? 14 : 0);
+  if (steal && steal.crash) rs *= EGO.crash;
   if (rollR) rs += Math.max(0, d0 - 0.1) * 45 * (1.3 - rc.speed / 100) * 0.5;
   // a hard serve gets there sooner (SERVE_FAST: up to ×1.45 from serve 55 to 110)
   const sfast = 1 + clamp((sq - 55) / 55, 0, 1) * (SERVE_FAST - 1),

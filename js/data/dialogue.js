@@ -6,6 +6,14 @@ const CALLS = {
   set: ['Set me!', 'Up here!', 'Give me the ball!', 'Bring it!'],
   zone: ["I'm on fire!", 'Keep feeding me!', 'One more!'],
   decoy: ['Here!', 'Me!', 'Open!'],
+  // ego set calls (T-068, street voice): a hitter who wants it all demands the set
+  ego: [
+    'Give it here — I got this!',
+    'Set ME. Now!',
+    'Quit spreading it — ball to me!',
+    'Who finishes this? Me!',
+    'Stop looking at them — set me!'
+  ],
   recv: ['Mine!', 'I got it!', 'Leave it!'],
   dig: ['Got it!', 'Up!', "Don't let it drop!"]
 };

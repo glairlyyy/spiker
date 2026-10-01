@@ -43,8 +43,18 @@ function createPlayer(spec) {
     spec
   );
   for (const k of STATK) p[k] = Math.round(clamp(p[k] ?? 60, STAT_FLOOR, 99));
+  ensureEgo(p);
   return p;
 }
+/**
+ * Ego (spec §2.12): a fixed hash of the player's name, 0.2–0.7 (WS +0.1), until traits exist. Draws no random, so generation is
+ * unchanged. A value already set (a created player, a loaded save) wins.
+ */
+function ensureEgo(p) {
+  if (!Number.isFinite(p.ego)) p.ego = +clamp(0.2 + 0.5 * hstr('ego|' + p.name) + (p.role === 'WS' ? 0.1 : 0), 0, 1).toFixed(2);
+}
+/** How mature a player is (0–1) from wit: ≈ 0 at wit 0.5, 1 at 2.0. Maturity cuts how often and how badly ego acts go. */
+const maturity = p => clamp((p.wit - 0.5) / 1.5, 0, 1);
 /** The lowest a created player's stat can be. Generated players never go below 25: `rollStats` keeps its own floor; only your career player starts lower (CAREER.start). */
 const STAT_FLOOR = 1;
 /**
