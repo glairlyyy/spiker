@@ -239,10 +239,19 @@ function dig(c, x, bl) {
   const atNet = p => blockers.includes(p) || (c.front(ds, p) && !busy(m, p, c.n)),
     floor = defT.P.filter(p => !atNet(p)),
     cands = floor.length ? floor : defT.P.filter(p => !blockers.includes(p));
-  const dg = nearest(m, cands, lx, lz),
-    q0 = m.pos[dg.id],
+  let dg = nearest(m, cands, lx, lz);
+  // ego (spec §2.12): a teammate may steal the ball — a collision wrecks the dig, else they take it
+  const steal = egoSteal(m, cands, dg, lx, lz, hit, V);
+  if (steal) {
+    if (steal.crash) {
+      setBusy(m, dg, c.n + 1);
+      setBusy(m, steal.thief, c.n + 1);
+    } else dg = steal.p;
+  }
+  const q0 = m.pos[dg.id],
     dd0 = dist(q0, lx, lz);
   let dsc = Formula.digScore(dg, defT, dd0);
+  if (steal && steal.crash) dsc *= EGO.crash;
   if (touched) dsc *= softTouch ? 1.4 : 1.15;
   // Rolling Receive on defense: far balls cost much less
   const rollD = hasTech(dg, 'roll') && dd0 > 0.5;

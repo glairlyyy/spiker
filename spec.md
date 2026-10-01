@@ -80,7 +80,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   match screen is open, at 50 % of the effects volume (`BGM_GAIN` 0.5 × volume slider); follows the sound toggle and
   the volume slider; fades in on start and out on leaving. Presentation only (no effect on results). More tracks /
   crowd / voice clips later (backlog).
-- §2.12 Ego **[locked (owner), not built — T-068]**: street volleyball (§2.0) is full of players who want to be the
+- §2.12 Ego **[locked (owner), built T-068]**: street volleyball (§2.0) is full of players who want to be the
   star. Every player has an **ego** (0–1) and a **maturity** from wit (≈0 at wit 0.5, 1 at wit 2.0): new, low-wit
   players play for themselves; high-wit players still have ego but act on it less and botch it less.
   - Ego acts (each a chance per opportunity = EGO.base[act] × ego × (1 − maturity)):
@@ -104,7 +104,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     who wants to be the star; maturity comes with wit. Shown on player cards as a short tag (Show-off · Team player).
   - Presentation: "MINE!" label over the player (`plabel`), a collision as both players' bump poses + a log line,
     chatter for set calls; no new act kinds. Engine-only tallies (`m.egoLog`) feed the memories later (T-061).
-  - **Block collision** (owner) **[not built — T-069]**: when an ego blocker goes solo and the partner also commits to
+  - **Block collision** (owner) **[built T-069]**: when an ego blocker goes solo and the partner also commits to
     the same spot (the partner's maturity decides whether they hold off), the two crash at the net: both blocks are
     **cancelled early** (they come down mid-jump and stagger apart) and the attack meets an open net. Error variant: one
     of them hits the net — a **net fault**, point to the attackers at once. Floating label over the pair:

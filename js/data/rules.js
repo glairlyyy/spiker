@@ -25,3 +25,27 @@ const SUB = { max: 2, sta: 0.6, fresh: 0.9, errs: 3, back: 0.85, iq: [0.35, 0.9]
  */
 const SETTER = { beat: 1.6 };
 const rulesText = () => `First to ${RULES.pointsToWin}, win by ${RULES.winBy}`;
+/**
+ * Ego (spec §2.12, T-068): every player has `ego` 0–1; a low-wit player acts on it. Per opportunity the chance of an ego act is
+ * `base[act] × ego × (1 − maturity) × (1 − captain maturity × captain)` (maturity(p) = clamp((wit − 0.5) / 1.5, 0, 1); the
+ * captain on court calls it off). steal: a teammate who is up to `reach` × the nearest player's time to the ball still goes for
+ * it; they collide with chance `collide × (1 − the pair's mean maturity)`, a crash multiplies the touch's score by `crash`
+ * (else the thief just takes the touch). call: a hitter demands the set — the setter gives in with chance (1 − setter maturity).
+ * solo: the ego blocker ignores the defence setting and blocks alone: coverage × (1 + `solo.gain` × read − `solo.loss` ×
+ * (1 − maturity)); the other front-row defender also commits with chance `solo.collide` × (1 − their maturity) — a block collision: no block
+ * touch this attack, and in `solo.net` of collisions a net fault (point to the attackers, T-069). swing: on a bad set the ego hitter swings full power (set penalty × `swing.pow` instead of the bad-set 0.72, no
+ * tip), errors × (1 + `swing.err` × (1 − maturity)). serve: the ego server goes for a jump serve (power × `serve.sq`, +`serve.err`
+ * × (1 − maturity) service-error chance).
+ */
+const EGO = {
+  base: { steal: 0.14, call: 0.11, solo: 0.1, swing: 0.4, serve: 0.1 },
+  captain: 0.7,
+  reach: 1.6,
+  collide: 0.5,
+  crash: 0.55,
+  solo: { gain: 0.5, loss: 0.35, collide: 0.25, net: 0.3 },
+  swing: { pow: 0.95, err: 0.6 },
+  serve: { sq: 1.06, err: 0.06 },
+  mood: 0.1, // an ego act that works lifts the player's mood by this, one that fails lowers it …
+  mom: 0.04 // … and costs the team this much momentum
+};

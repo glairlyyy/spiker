@@ -253,6 +253,18 @@ function chooseAttack(c, s, h) {
           (1 + 0.6 * buffLv(p)) * // the captain told everyone to feed this player
           (elReady(m, p) ? 3 : 1) // a full element gauge: the setter looks for them
       );
+  // ego (spec §2.12): an unpicked hitter demands the set; a low-maturity setter gives in (a mature one ignores the call)
+  let egoCall = null;
+  if (!quick) {
+    const open = spiker,
+      caller = pool.find(p => p !== spiker && p !== setter && p.role !== 'S' && egoRoll(m, p, 'call'));
+    if (caller) {
+      const give = 1 - maturity(setter),
+        ok = give > 0 && R() < give;
+      m.egoLog.push({ act: 'call', p: caller.id, ok, mate: open.id });
+      if (ok) ((spiker = caller), (egoCall = caller));
+    }
+  }
   // a predictable attack is easier to read: blockers get there a little more often
   const readBonus = tac.focus && spiker.role === tac.focus ? tac.read : 0;
   // setter-driven plays (decided before the approach so the animation can show them)
@@ -262,7 +274,7 @@ function chooseAttack(c, s, h) {
   const DF = defT.P.filter(p => p.role !== 'S' && front(ds, p)),
     B0 = DF.find(p => p.role === 'MB') || DF[0] || defT.P.find(p => front(ds, p)) || defT.mb; // a front-row setter before anyone from the back
   const bad = sq2 === 'bad';
-  return { MBs, mbZ, tac, quick, pool, callers, trust, spiker, readBonus, freak, slide, sync, DF, B0, bad };
+  return { MBs, mbZ, tac, quick, pool, callers, trust, spiker, readBonus, freak, slide, sync, DF, B0, bad, egoCall };
 }
 /**
  * 5b. A bad set: most stay hittable (in place, just weaker — see setMul), but some go astray — the ball flies off
