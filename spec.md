@@ -15,6 +15,9 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 - §2.0 The sport (lore.md §4, owner): a 4v4 street game — physical and fierce. Tactics (block settings, systems, set
   plays) give an edge but stats decide most rallies: a big physical gap should beat a smart setting. Keep this in the
   balance pass (tactic effects modest vs stat gaps).
+- §2.0b Match stamina (owner, built): every touch drains stamina (`RULES.stamina.drain` 1.7); a tired player loses up
+  to 40 % power / defense and 30 % jump at 0 — a lone carry wears out. Coach subs rose from ~1.3 to ~2.9 per match
+  (the cap is 4: 2 per side); tune in the balance pass.
 - §2.1 Rules: one set to 15, win by 2; court ×1.5; zone/captain buffs, timeouts, tactics, techniques, pop-ups,
   long back attack.
   Three touches per side (a block touch is free). A pop-up off the arms saved by a teammate counts as touches 1 and 2:

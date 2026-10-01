@@ -53,7 +53,7 @@ mkTeams() ─► simBalance() ─► newMatch(a, b, record)
 
 ## Effective stats and formulas
 
-- `engine/stats.js` — what a player's stats are *right now*: wit × mood × momentum × stamina (`effP`, `effD`, `W`, `jumpPx`…).
+- `engine/stats.js` — what a player's stats are *right now*: wit × mood × momentum × stamina (`effP`, `effD`, `W`, `jumpPx`…). Stamina is tuned in `RULES.stamina` (`drain` per touch, `hit` = power/defense lost at 0, `jumpHit` = jump lost at 0): a hero who takes every touch tires first.
 - `engine/formulas.js` — `Formula.*` holds the numbers that decide outcomes (serve, receive, set, spike,
   block, dig, kill chance). Balance changes and future training effects belong here.
 
