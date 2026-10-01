@@ -1,8 +1,8 @@
 // Career panels shown in the hub's drawers and pop-ups (career-hub.js): your player, season, teammates, life, clubs,
 // Gazette, the event card, evaluation / Cup match cards and the skills shop, plus their handlers.
 
-/** Hub UI state: Hard toggle, selected place, open drawer, pan/zoom view, last diary line shown as a toast. */
-let CW = { hard: false, spot: null, drawer: null, view: null, toast: null, dossier: null, rank: 'register' };
+/** Hub UI state: Hard toggle, selected place, open drawer, last diary line shown as a toast. */
+let CW = { hard: false, spot: null, drawer: null, toast: null, dossier: null, rank: 'register' };
 
 function youCard(run) {
   const you = Run.you(run),
@@ -124,7 +124,7 @@ function leaveSquad(sure) {
   if (World.leaveAcademy(RUN)) Run.save(RUN);
   renderCareer();
 }
-/** Season timeline: 28 weeks with matches, camps, the coach's goal, and both cups. */
+/** Season timeline: 28 weeks with matches, camps, the coach's goal and the U21 Final Cup. */
 function calendar(run) {
   const pips = [],
     cur = Run.cupDef(run),
@@ -325,12 +325,12 @@ function eventCard(run) {
               k === 'chance'
                 ? `${Math.round(v * 100)}% chance: ${fxText(sub)}`
                 : k === 'main'
-                  ? `${v > 0 ? '+' : ''}${v} ${STATNAME[run.lastMain]}`
+                  ? `${signed(v)} ${STATNAME[run.lastMain]}`
                   : k.startsWith('bond')
-                    ? `${v > 0 ? '+' : ''}${v} bond${k === 'bondAll' ? ' with everyone' : ''}`
+                    ? `${signed(v)} bond${k === 'bondAll' ? ' with everyone' : ''}`
                     : k === 'mood'
                       ? `mood ${v > 0 ? 'up' : 'down'}`
-                      : `${v > 0 ? '+' : ''}${v} ${k === 'sta' ? 'stamina' : k === 'sp' ? 'skill pts' : STATNAME[k] || k}`
+                      : `${signed(v)} ${k === 'sta' ? 'stamina' : k === 'sp' ? 'skill pts' : STATNAME[k] || k}`
             )
             .join(', ');
   const kind = { sponsor: 'Sponsor', element: 'Element Trial' }[run.event.id] || 'Event',
@@ -439,7 +439,7 @@ function factionsCard(run) {
           ? MAJORS.filter(o => o !== r)
               .map(o => {
                 const m = Front.meter(run, r, o);
-                return `<span class="fm ${m > 0 ? 'up' : m < 0 ? 'dn' : ''}" ${tip(`Border pressure vs ${REGIONS[o].name}: ${FRONT.seize} net wins seize a place`)}>vs ${esc(REGIONS[o].name.split(' ')[0])} ${m > 0 ? '+' : ''}${m}</span>`;
+                return `<span class="fm ${m > 0 ? 'up' : m < 0 ? 'dn' : ''}" ${tip(`Border pressure vs ${REGIONS[o].name}: ${FRONT.seize} net wins seize a place`)}>vs ${esc(REGIONS[o].name.split(' ')[0])} ${signed(m)}</span>`;
               })
               .join('')
           : '',
@@ -454,7 +454,7 @@ function factionsCard(run) {
           major && (lost.length || took.length)
             ? `<div class="small mute">Prices ×${Front.priceMul(run, r).toFixed(1)} · facilities ×${Front.qMul(run, r).toFixed(2)}${lost.length ? ` · clubs ask −${FRONT.join * lost.length} OVR/key, fees −${Math.round(FRONT.fee * lost.length * 100)}%` : ''}</div>`
             : '';
-      return `<div class="fac ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}"><div class="fh"><b><a href="#" class="dlink" onclick="hubOpen(null);openDossier('${r}');return false">${esc(REGIONS[r].name)}</a></b> <span class="mute small">${REGIONS[r].kind}</span>${weak ? ' <span class="stk far">Weakened</span>' : ''}${info(REGIONS[r].desc)}<span class="fv">${mood(v)} <b>${v > 0 ? '+' : ''}${v}</b></span></div>
+      return `<div class="fac ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}"><div class="fh"><b><a href="#" class="dlink" onclick="hubOpen(null);openDossier('${r}');return false">${esc(REGIONS[r].name)}</a></b> <span class="mute small">${REGIONS[r].kind}</span>${weak ? ' <span class="stk far">Weakened</span>' : ''}${info(REGIONS[r].desc)}<span class="fv">${mood(v)} <b>${signed(v)}</b></span></div>
         ${fronts ? `<div class="fms">${fronts}</div>` : ''}${places}${econ}
         <div class="rbar" ${tip('Standing −100 … +100')}><i style="${v >= 0 ? `left:50%;width:${v / 2}%` : `left:${50 + v / 2}%;width:${-v / 2}%`}"></i></div>
         <div class="small">${clubs.map(t => `${chip(t)}${esc(t.name)}${t.i === run.team ? ' <i class="mute">(yours)</i>' : ''}`).join(' · ')}${

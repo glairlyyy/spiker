@@ -2,7 +2,7 @@
 // Layout: master volume → compressor → speakers; a convolution reverb ("arena") and a soft-clip
 // shaper for heavy hits feed the master; every one-shot is panned by where it happens on court.
 
-const SND = { ctx: null, on: true, master: null, noise: null, pan: 0, vol: 0.8, crowd: null };
+const SND = { ctx: null, on: true, master: null, noise: null, pan: 0, vol: 0.8 };
 SND.on = store.get(KEYS.sound) !== 'off';
 SND.vol = clamp(+(store.get(KEYS.volume) ?? 0.8), 0, 1);
 const BASE_GAIN = 0.6;
@@ -127,7 +127,6 @@ function toggleSound() {
   SND.on = !SND.on;
   store.set(KEYS.sound, SND.on ? 'on' : 'off');
   audioInit();
-  if (!SND.on) crowdLevel(0);
   bgmSync();
   const b = $('#snd');
   if (b) b.textContent = SND.on ? '🔊' : '🔇';
@@ -198,72 +197,6 @@ function nz(d, v, type, f, q, f2, a = 0.004) {
 const vary = (x, p = 0.06) => x * (1 + (Math.random() * 2 - 1) * p); // tiny pitch variety so repeats don't sound robotic
 const now = () => SND.ctx.currentTime + 0.003;
 
-/* ---------- arena crowd bed ---------- */
-function crowdStart() {
-  if (!SND.ctx || SND.crowd) return;
-  const c = SND.ctx,
-    s = c.createBufferSource(),
-    f1 = c.createBiquadFilter(),
-    f2 = c.createBiquadFilter(),
-    g = c.createGain(),
-    lfo = c.createOscillator(),
-    lg = c.createGain();
-  s.buffer = SND.noise;
-  s.loop = true;
-  f1.type = 'bandpass';
-  f1.frequency.value = 650;
-  f1.Q.value = 0.5;
-  f2.type = 'lowpass';
-  f2.frequency.value = 1800;
-  g.gain.value = 0;
-  lfo.frequency.value = 0.23; // slow "breathing" of the crowd
-  lg.gain.value = 0.015;
-  lfo.connect(lg);
-  lg.connect(g.gain);
-  s.connect(f1);
-  f1.connect(f2);
-  f2.connect(g);
-  g.connect(SND.master);
-  g.connect(SND.rev);
-  s.start();
-  lfo.start();
-  SND.crowd = { g, f1 };
-}
-/** Crowd murmur level 0–1 (0 = silent). Swells smoothly. */
-function crowdLevel(v) {
-  if (!SND.crowd) return;
-  const t = SND.ctx.currentTime,
-    on = SND.on ? 1 : 0;
-  SND.crowd.g.gain.setTargetAtTime(on * (0.035 + 0.12 * v), t, 0.6);
-  SND.crowd.f1.frequency.setTargetAtTime(560 + 380 * v, t, 0.6);
-}
-/** Crowd "voice": many detuned saws through two vowel formants, pitch contour c0 → c1. */
-function crowdVoice(t, d, v, f0, f1, formants) {
-  const c = SND.ctx,
-    g = c.createGain(),
-    fs = formants.map(([f, q]) => {
-      const b = c.createBiquadFilter();
-      b.type = 'bandpass';
-      b.frequency.value = f;
-      b.Q.value = q;
-      b.connect(g);
-      return b;
-    });
-  env(g, t, 0.08, d, v);
-  g.connect(SND.master);
-  g.connect(SND.rev);
-  for (let i = 0; i < 9; i++) {
-    const o = c.createOscillator(),
-      k = 1 + (Math.random() - 0.5) * 0.08;
-    o.type = 'sawtooth';
-    o.frequency.setValueAtTime(f0 * k, t);
-    o.frequency.linearRampToValueAtTime(f1 * k, t + d);
-    fs.forEach(b => o.connect(b));
-    o.start(t + Math.random() * 0.04);
-    o.stop(t + d + 0.15);
-  }
-}
-
 /* ---------- ball contacts ---------- */
 function boom(pow, block) {
   if (!live()) return;
@@ -285,11 +218,7 @@ function boom(pow, block) {
     noiseAt(t + 0.02, 1.2, 0.18, 'bandpass', 700, 160, 0.6, Rv, 0.02);
   }
   if (pow >= 110) [0, 0.07, 0.15].forEach((d, i) => noiseAt(t + d, 0.25, 0.22 - 0.05 * i, 'lowpass', 1400, 200, 0.8, [M, Rv]));
-  const roar = clamp(0.5 + pow / 120, 0.5, 1.2);
-  setTimeout(() => sfx.cheer(roar), 180);
 }
-/** Crowd sounds are switched off: these stay as no-ops so callers don't need to change. */
-const CROWD_ON = false;
 const sfx = {
   boom,
   toss: () => {
@@ -432,41 +361,6 @@ const sfx = {
     o.stop(t + 0.32);
   },
 
-  /* ---------- crowd ---------- */
-  cheer: s => {
-    if (!CROWD_ON || !live()) return;
-    const t = now();
-    noiseAt(t, 0.9 + s * 1.2, 0.08 + 0.2 * s, 'bandpass', 1100, 900, 0.6, [SND.master, SND.rev], 0.25);
-    if (s > 0.7)
-      crowdVoice(t + 0.05, 0.9 + s * 0.5, 0.09 * s, 190, 240, [
-        [700, 3],
-        [1150, 4]
-      ]); // "yeaaah"
-  },
-  /** Crowd gasp — "ooooh" on a great save. */
-  ooh: () =>
-    CROWD_ON &&
-    live() &&
-    crowdVoice(now(), 1.1, 0.14, 170, 230, [
-      [450, 4],
-      [850, 5]
-    ]),
-  /** Crowd groan — "awww" on an error. */
-  aww: () =>
-    CROWD_ON &&
-    live() &&
-    crowdVoice(now(), 1.0, 0.12, 230, 150, [
-      [700, 3],
-      [1100, 4]
-    ]),
-  clap: () => {
-    if (!CROWD_ON || !live()) return;
-    const t = now();
-    for (let i = 0; i < 5; i++) noiseAt(t + i * 0.01, 0.06, 0.12, 'bandpass', rnd(1100, 1900), null, 1.5, [SND.master, SND.rev]);
-  },
-  stomp: () => live() && osc('sine', 70, 40, now(), 0.18, 0.28, [SND.master, SND.rev]),
-  /** After a big moment: a second wave of cheering (no rhythmic chant). */
-  chant: () => {},
   whistle: () => {
     if (!live()) return;
     const t = now(),

@@ -8,7 +8,6 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ESC_MAP[c]);
 /** A number with an explicit plus sign when positive: "+3", "-2", "0". */
 const signed = v => `${v > 0 ? '+' : ''}${v}`;
 /** "1 run" / "3 runs". */
-const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 /** Star marker before a name: red ★ for OP players, plain ★ for stars. */
 const stag = p => (p.op ? '<span class="opstar" title="OP player">★</span> ' : p.star ? '★ ' : '');
 /** Small square in the team colour. */

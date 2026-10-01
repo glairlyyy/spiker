@@ -131,12 +131,6 @@ function startMatch(fx) {
     link: null,
     cele: null,
     staShown: {},
-    banners: Array.from({ length: 8 }, (_, i) => ({
-      x: 60 + i * 118 + rnd(-20, 20),
-      y: rnd(150, 230),
-      side: i % 2,
-      ph: R() * 6
-    })),
     coaches: [0, 1].map(side => ({
       side,
       p: { look: mkLook('S'), hair: pick(HAIR), op: false, team: m.t[side] },
@@ -146,7 +140,6 @@ function startMatch(fx) {
     trail: [],
     trailPow: 0,
     parts: [],
-    rings: [],
     labels: [],
     lines: null,
     shake: 0,
@@ -480,13 +473,10 @@ function finishMatch() {
   A.ball.vis = false;
   A.trail = [];
   hideCut();
-  sfx.cheer(1.2);
-  const myA = A;
-  setTimeout(() => A === myA && sfx.chant(), 500); // not once the player has left the match
   const stars = matchStars(m);
   const o = $('#over');
   o.style.setProperty('--tc', wt.color);
-  o.innerHTML = `<div class="ocard"><h2>${esc(wt.name)} win ${hi}-${lo}</h2><p class="small mute">Player of the match: <b>${esc(stars[0].p.name)}</b></p><div class="podium">${podium(stars)}</div>${msg ? `<p class="betline">${esc(msg)}</p>` : ''}<button class="btn hot big" onclick="leaveMatch()">${esc(A.fx.back || 'Continue')}</button></div>`;
+  o.innerHTML = `<div class="ocard"><h2>${esc(wt.name)} win ${hi}-${lo}</h2><p class="small mute">Player of the match: <b>${esc(stars[0].p.name)}</b></p><div class="podium">${podium(stars)}</div>${msg ? `<p class="resline">${esc(msg)}</p>` : ''}<button class="btn hot big" onclick="leaveMatch()">${esc(A.fx.back || 'Continue')}</button></div>`;
   setTimeout(
     () => {
       if (o.isConnected) o.hidden = false;
@@ -591,7 +581,6 @@ function leaveMatch() {
   const fx = A && A.fx;
   if (A && A.m && !A.m.over) restoreLineups(A.m); // left mid-match: the lineups go back (safe twice)
   if (document.fullscreenElement) document.exitFullscreen?.();
-  crowdLevel(0);
   if (R3D) R3D.unbind();
   A = null;
   fx && fx.onLeave ? fx.onLeave() : navigate('menu');

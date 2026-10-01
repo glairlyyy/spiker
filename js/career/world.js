@@ -44,7 +44,6 @@ const World = {
     Run.log(run, 'Academy squad: withdrawn at your request. Evaluation invitations cancelled.');
     return true;
   },
-  faction: ti => FACTIONS[ti] || null,
   /** Can you sign with team ti now? { ok, why } — why lists what's missing. */
   canJoin(run, ti) {
     const you = Run.you(run),

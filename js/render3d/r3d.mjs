@@ -210,7 +210,6 @@ function draw() {
   w.renderer.render(w.scene, cam);
   // overlay: the playback layer's screen-space pieces, now projected through this camera
   drawChant(now);
-  drawFloorFx();
   if (B.vis && !A.trailEl) drawTrail(ballScreen());
   for (const pl of w.people) {
     const d = pl.d;

@@ -271,24 +271,7 @@ h4 {
   font: 18px var(--disp);
   color: var(--mute);
 }
-.bet {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  align-items: center;
-  margin-top: 10px;
-}
-.bet input {
-  width: 90px;
-  padding: 7px 8px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--bg);
-  color: var(--ink);
-  font: inherit;
-  margin-left: 6px;
-}
-.betline {
+.resline {
   background: color-mix(in srgb, var(--gold) 18%, transparent);
   border-radius: 8px;
   padding: 8px 10px;

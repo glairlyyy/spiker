@@ -85,7 +85,7 @@ function clashPanel(run) {
       `<button class="btn ${side ? 'hot' : ''}" onclick="mapClash(${side ? `'${side}'` : 'null'})" ${late ? `disabled ${tip(late)}` : tip(t)}>${label}${dayTag(d)}</button>`,
     fight = (side, foe) =>
       `<span class="btns"><button class="btn hot" onclick="mapClash('${side}')" ${late || ban ? `disabled ${tip(ban || late)}` : tip(`A real match with their crew — XP, techniques and a grade like an evaluation. Win: +${CLASH.win} standing with ${REGIONS[side].name}, +${CLASH.fans} fans. Lose: ${CLASH.lose}, −${LOSS.sta} more stamina, mood down; a loss by ${LOSS.heavy}+ points costs fans. Either way ${CLASH.other} with ${REGIONS[foe].name}. −${CLASH.sta} stamina`)}>Fight for ${esc(REGIONS[side].name)}${dayTag(d)}</button>${late || ban ? '' : `<button class="btn" onclick="mapClash('${side}', true)" ${tip('Get the result without watching')}>⏭</button>`}<span class="small mute" ${tip('Win or lose: grows with their rating above yours, how badly you lose, low stamina and fighting again soon.')}>${ban ? esc(ban) : `Injury risk ~${Math.round(City.injuryRisk(run, City.crewOvr(run, foe)) * 100)} %`}</span></span>`,
-    st = r => `${esc(REGIONS[r].name)} <b>${City.rep(run, r) > 0 ? '+' : ''}${City.rep(run, r)}</b>`;
+    st = r => `${esc(REGIONS[r].name)} <b>${signed(City.rep(run, r))}</b>`;
   return `<div class="spot"><h4>⚔ Street battle <span class="mute small">${esc(REGIONS[c.a].name)} vs ${esc(REGIONS[c.b].name)} · ${esc(c.name)}</span>${
     trip ? ` <span class="stk ${trip >= 2 ? 'far' : ''}">Trip: ${trip} day${trip > 1 ? 's' : ''}</span>` : ''
   }</h4><p class="small">Crews from both sides are settling it on the street this week. Standing: ${st(c.a)} · ${st(c.b)}</p>
@@ -183,7 +183,7 @@ function hqPanel(run, ti) {
     : '';
   const habits = seen ? `<p class="small mute">${esc(Dossier.habitText(Dossier.habits(t)))}</p>` : '';
   return `<div class="spot" style="--tc:${t.color}"><h4>${chip(t)}${esc(t.name)} <span class="mute small">${esc(REGIONS[f.region].name)} · rating ${t.ovr}</span></h4>
-    <p class="small">${esc(f.front)}.${City.rep(run, f.region) ? ` <span ${tip(`Your standing with ${REGIONS[f.region].name}`)}>Standing <b>${City.rep(run, f.region) > 0 ? '+' : ''}${City.rep(run, f.region)}</b>.</span>` : ''}${seen ? ` <span class="mute">Word is: ${esc(f.dark.toLowerCase())}.</span>` : ''}</p>${roster}${habits}
+    <p class="small">${esc(f.front)}.${City.rep(run, f.region) ? ` <span ${tip(`Your standing with ${REGIONS[f.region].name}`)}>Standing <b>${signed(City.rep(run, f.region))}</b>.</span>` : ''}${seen ? ` <span class="mute">Word is: ${esc(f.dark.toLowerCase())}.</span>` : ''}</p>${roster}${habits}
     <div class="trow"><button class="btn" onclick="openDossier('${f.region}')" ${tip(`Everything you know about ${REGIONS[f.region].name}`)}>Dossier</button>${
       free
         ? `<button class="btn ${j.ok ? 'hot' : ''}" onclick="joinClub(${ti})" ${j.ok ? '' : `disabled ${tip('Missing: ' + j.why.join(', '))}`}>Sign</button><span class="small ${j.ok ? '' : 'mute'}">${esc(World.joinText(ti, run))}</span>`

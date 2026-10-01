@@ -1,7 +1,7 @@
 // Career mode constants: the start, trainings, mood levels, calendar, rewards, ranks.
 
 const CAREER = {
-  weeks: 28, // two blocks: weeks 1–24 → Skyline Cup, weeks 25–28 → Grand Cup
+  weeks: 28, // the season; the U21 Final Cup follows week 28 (CUPS)
   star: { ovr: 80 }, // your player becomes a ★ star at this overall
   op: { ovr: 88, key: 95, wit: 1.5 }, // …and an OP red star at this overall + key stat + wit
   start: 1, // every stat of a new player (Power / Defense / Speed / Jump); wit starts at witBase (spec §4.22)

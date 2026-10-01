@@ -72,7 +72,7 @@ const City = {
   /** Gain multiplier of a session at a place: its quality × home turf. */
   mul: (run, id) => City.quality(run, id).q * (1 + City.turf(run, id)),
   /** Where you stand on the map ([x, y]); a run starts at the airport. */
-  pos: run => (Array.isArray(run.pos) ? run.pos : (REGIONS[run.loc] || REGIONS.wu).at),
+  pos: run => (Array.isArray(run.pos) ? run.pos : REGIONS.wu.at),
   /** The region you are in. */
   loc: run => City.regionAt(City.pos(run)),
   /**
@@ -114,7 +114,6 @@ const City = {
   /** Stand at p (you've spent the days): the fog lifts around it. */
   moveTo(run, p) {
     run.pos = [Math.round(p[0]), Math.round(p[1])];
-    run.loc = City.regionAt(run.pos);
     City.reveal(run, run.pos);
   },
   reveal(run, p) {
@@ -159,7 +158,7 @@ const City = {
   /** A day at a place (after the trip there): train, rest, relax or an outing. Returns the diary line. */
   day(run, id, hard, mate) {
     if (!City.can(run, id, mate).ok) return '';
-    if (['ramen', 'arcade', 'street'].includes(SPOTS[id].act)) return City.evening(run, id, mate);
+    if (['ramen', 'arcade', 'street'].includes(SPOTS[id].act)) return City.outing(run, id, mate);
     const s = SPOTS[id],
       cost = City.price(run, id),
       out = [];
@@ -193,7 +192,7 @@ const City = {
   },
   arrive: (run, id) => City.go(run, City.at(run, id)),
   /** An outing (dinner, a night out, street hustle): returns the diary line. */
-  evening(run, id, mate) {
+  outing(run, id, mate) {
     const s = SPOTS[id],
       trip = City.arrive(run, id),
       cost = City.price(run, id),

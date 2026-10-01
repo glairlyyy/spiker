@@ -156,7 +156,7 @@ loads three from node_modules (QA recipe runs).
 QA: Monster game smoke (no pageerror).
 Result: package.json renamed spite-and-spike + espree / three 0.169.0 / three-vrm 3.5.5 declared, clean registry lockfile committed, format:check; files.json + js/vendor refs gone; --update writes only when all pass; harness catches var/class; html formatted (prettier). Fresh rm -rf node_modules && npm install → 49/49, lint, format:check clean; Monster 1500 steps via node_modules three, no pageerror.
 
-### [ ] T-072: Dead code sweep — removed features and unused helpers
+### [x] T-072: Dead code sweep — removed features and unused helpers
 Spec: — (cleanup)          Goldens: unchanged          Save: no change (old saves may keep the dropped fields)
 Goal: Delete code that nothing reaches; rename leftovers whose names describe removed systems.
 Files: js/audio/sfx.js, js/ui/match-screen.js, js/render/court.js, js/render3d/r3d.mjs, css/style.css,
@@ -178,7 +178,7 @@ Steps:
 6. Before deleting each name: grep the whole repo (js, html, tests, template strings).
 Accept: tests + lint pass; goldens untouched; grep finds none of the removed names.
 QA: career run → hub, map, a match (watch) and the end screen; Monster game; no pageerror.
-Result:
+Result: crowd audio (crowdStart/Level/Voice, cheer/ooh/aww/clap/stomp/chant) + call sites, A.banners/A.rings, drawFloorFx, .bet CSS gone; .betline → .resline; SPOTS slot field (25), run.loc + fallbacks, delete run.slot, CW.view, plural, World.faction removed; City.evening → City.outing; signed() for inline +/- (7 sites); stale cup comments fixed. 49/49 (one test now reads City.loc(back) instead of back.loc), goldens untouched, lint clean; QA career run (create → hub, 8 drawers, rest, end week) + Monster, no pageerror. −191 lines.
 
 ### [ ] T-073: Presentation randomness off the game RNG
 Spec: CLAUDE.md "Rules that bite" (presentation draws no randoms)          Goldens: unchanged          Save: no change

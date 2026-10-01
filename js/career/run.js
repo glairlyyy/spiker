@@ -98,7 +98,7 @@ const Run = {
       plays: { k: 0, blk: 0, ace: 0 },
       lastMain: KEYSTAT[role],
       result: null,
-      // v3: challenge modes, two cups, training depth, goals, sponsors, history
+      // modes, cup record, training depth, goals, sponsors, history
       mode: { hard: !!mode.hard, short: !!mode.short, story: mode.story !== false },
       cups: [],
       streak: null,
@@ -133,7 +133,6 @@ const Run = {
       scout: {},
       spotQ: {},
       xp: {}, // training experience toward each stat's next point
-      loc: 'wu', // off the plane at the airport, on the coast
       pos: CITY.airport.slice(), // where you stand on the map
       fog: [CITY.airport.slice()] // the points you've stood on (the map is dark elsewhere)
     };
@@ -345,11 +344,10 @@ const Run = {
     Eval.setup(run);
     if (!Array.isArray(run.news)) run.news = [];
     if (!Number.isFinite(run.days) || run.days < 0 || run.days > WEEK_DAYS) run.days = WEEK_DAYS;
-    delete run.slot;
     if (!run.spotQ || typeof run.spotQ !== 'object' || !Object.keys(run.spotQ).length) City.roll(run);
     if (!run.scout || typeof run.scout !== 'object') run.scout = {};
     for (const k of ['rep', 'own', 'front']) if (!run[k] || typeof run[k] !== 'object') run[k] = {};
-    if (!Array.isArray(run.pos)) run.pos = (REGIONS[run.loc] || REGIONS.wu).at.slice();
+    if (!Array.isArray(run.pos)) run.pos = CITY.airport.slice();
     if (!Array.isArray(run.fog)) run.fog = [run.pos.slice()];
     if (run.clash && !CLASH.sites[run.clash.site]) run.clash = null;
     if (!Number.isFinite(run.staMax) || run.staMax <= 0) run.staMax = CAREER.staMax;

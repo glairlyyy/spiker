@@ -1,6 +1,6 @@
 // Screen-space layer over the 3D scene (the transparent court canvas): view transform, chant, ball trail, arrows,
-// links, walls, particles, drill wall, labels, banners, cracks, slow-motion vignette and flashes.
-// The 3D renderer (js/render3d/r3d.mjs) calls applyView, drawChant, drawFloorFx, drawTrail and drawFx each frame.
+// links, walls, particles, drill wall, labels, cracks, slow-motion vignette and flashes.
+// The 3D renderer (js/render3d/r3d.mjs) calls applyView, drawChant, drawTrail and drawFx each frame.
 
 /** Canvas fonts: display (labels, banners) and rounded UI text (tags, bubbles). */
 const FONT_DISPLAY = '"Dela Gothic One","Arial Black",sans-serif',
@@ -95,8 +95,6 @@ function drawChant(now) {
   outlinedText(ch.text, 0, 0, A.m.t[ch.side].color, 6);
   ctx.restore();
 }
-/** Floor-level screen-space effects: none remain (the 3D renderer draws floor effects); kept for r3d's call. */
-function drawFloorFx() {}
 /** Everything drawn over the players, back to front. */
 function drawFx(now) {
   if (A.ghost) drawGhost(A.ghost);

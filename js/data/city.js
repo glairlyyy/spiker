@@ -126,44 +126,44 @@ const DAY_GAIN = 0.25;
 const SAND_SP = 2;
 
 /**
- * Places. Each takes a day (+ the trip there). slot: 'day' (training, rest, recreation) or 'eve' (an outing — kept
- * for the map's grouping). train: the training key done there. region: see REGIONS (null = your home: goes with your housing).
+ * Places. Each takes a day (+ the trip there). act: what a non-training place does (rest, rec, or an outing: ramen,
+ * arcade, street). train: the training key done there. region: see REGIONS (null = your home: goes with your housing).
  * cost: money for an outing (× the region's price). sand: technique training (SAND_SP).
  */
 const SPOTS = {
   // Wei — the city: premium, pricey, maybe overhyped
-  weiPower: { name: 'Dynasty Strength Center', slot: 'day', train: 'power', region: 'wei', at: [615, 330], icon: '🏋' },
-  weiSpeed: { name: 'Dome Sprint Lab', slot: 'day', train: 'speed', region: 'wei', at: [760, 330], icon: '🏃' },
-  weiWit: { name: 'Academy Film Library', slot: 'day', train: 'wit', region: 'wei', at: [680, 410], icon: '🎞' },
-  weiJump: { name: 'Skytower Plyo Gym', slot: 'day', train: 'jump', region: 'wei', at: [575, 185], icon: '🏀' },
-  gloria: { name: 'St. Gloria Private Club', slot: 'day', train: 'def', region: 'gloria', at: [735, 275], icon: '💎' },
+  weiPower: { name: 'Dynasty Strength Center', train: 'power', region: 'wei', at: [615, 330], icon: '🏋' },
+  weiSpeed: { name: 'Dome Sprint Lab', train: 'speed', region: 'wei', at: [760, 330], icon: '🏃' },
+  weiWit: { name: 'Academy Film Library', train: 'wit', region: 'wei', at: [680, 410], icon: '🎞' },
+  weiJump: { name: 'Skytower Plyo Gym', train: 'jump', region: 'wei', at: [575, 185], icon: '🏀' },
+  gloria: { name: 'St. Gloria Private Club', train: 'def', region: 'gloria', at: [735, 275], icon: '💎' },
   // Wu — the coast: mid everything; sand courts build technique
-  sand: { name: 'Sand Courts', slot: 'day', train: 'def', region: 'wu', sand: true, at: [560, 632], icon: '🏖' },
-  dunes: { name: 'Dune Sprints', slot: 'day', train: 'speed', region: 'wu', at: [975, 240], icon: '🌊' },
-  harbor: { name: 'Harbor Gym', slot: 'day', train: 'power', region: 'wu', at: [935, 385], icon: '⚓' },
-  pier: { name: 'Pier Jump Deck', slot: 'day', train: 'jump', region: 'wu', sand: true, at: [615, 646], icon: '🪂' },
+  sand: { name: 'Sand Courts', train: 'def', region: 'wu', sand: true, at: [560, 632], icon: '🏖' },
+  dunes: { name: 'Dune Sprints', train: 'speed', region: 'wu', at: [975, 240], icon: '🌊' },
+  harbor: { name: 'Harbor Gym', train: 'power', region: 'wu', at: [935, 385], icon: '⚓' },
+  pier: { name: 'Pier Jump Deck', train: 'jump', region: 'wu', sand: true, at: [615, 646], icon: '🪂' },
   // Shu — the highlands: cheap and rough, far from everything
-  trail: { name: 'Mountain Trail', slot: 'day', train: 'speed', region: 'shu', at: [215, 290], icon: '⛰' },
-  steps: { name: 'Thousand Steps', slot: 'day', train: 'jump', region: 'shu', at: [320, 235], icon: '🛕' },
-  dojo: { name: 'Highland Dojo', slot: 'day', train: 'def', region: 'shu', at: [395, 360], icon: '🥋' },
-  stone: { name: 'Stone Gym', slot: 'day', train: 'power', region: 'shu', at: [420, 475], icon: '🪨' },
-  shrine: { name: 'Shrine Library', slot: 'day', train: 'wit', region: 'shu', at: [320, 410], icon: '📜' },
+  trail: { name: 'Mountain Trail', train: 'speed', region: 'shu', at: [215, 290], icon: '⛰' },
+  steps: { name: 'Thousand Steps', train: 'jump', region: 'shu', at: [320, 235], icon: '🛕' },
+  dojo: { name: 'Highland Dojo', train: 'def', region: 'shu', at: [395, 360], icon: '🥋' },
+  stone: { name: 'Stone Gym', train: 'power', region: 'shu', at: [420, 475], icon: '🪨' },
+  shrine: { name: 'Shrine Library', train: 'wit', region: 'shu', at: [320, 410], icon: '📜' },
   // the minors and Central Academy
-  cage: { name: 'Overpass Cage', slot: 'day', train: 'power', region: 'outlaws', at: [845, 455], icon: '⛓' },
+  cage: { name: 'Overpass Cage', train: 'power', region: 'outlaws', at: [845, 455], icon: '⛓' },
   park: {
     name: 'Academy Grounds',
-    slot: 'day',
+
     act: 'rec',
     region: 'open',
     at: [540, 500],
     icon: '🏛',
     desc: 'Campus lawns, open to every student. Mood up, +10 stamina.'
   },
-  home: { name: 'Home', slot: 'day', act: 'rest', region: null, icon: '🏠', desc: 'Rest: +30–60 stamina (× how well you sleep there)' },
+  home: { name: 'Home', act: 'rest', region: null, icon: '🏠', desc: 'Rest: +30–60 stamina (× how well you sleep there)' },
   // hotels: a night's rest away from home, at the region's price
   hotelWei: {
     name: 'City Hotel',
-    slot: 'day',
+
     act: 'rest',
     hotel: true,
     region: 'wei',
@@ -171,10 +171,10 @@ const SPOTS = {
     icon: '🏨',
     desc: 'Rest at a hotel'
   },
-  hotelWu: { name: 'Seaside Inn', slot: 'day', act: 'rest', hotel: true, region: 'wu', at: [735, 525], icon: '🏨', desc: 'Rest at an inn' },
+  hotelWu: { name: 'Seaside Inn', act: 'rest', hotel: true, region: 'wu', at: [735, 525], icon: '🏨', desc: 'Rest at an inn' },
   hotelShu: {
     name: 'Mountain Lodge',
-    slot: 'day',
+
     act: 'rest',
     hotel: true,
     region: 'shu',
@@ -185,7 +185,7 @@ const SPOTS = {
   // evenings
   noodles: {
     name: 'Noodle Bar',
-    slot: 'eve',
+
     act: 'ramen',
     region: 'wei',
     at: [720, 380],
@@ -195,7 +195,7 @@ const SPOTS = {
   },
   hutNoodles: {
     name: 'Mountain Noodles',
-    slot: 'eve',
+
     act: 'ramen',
     region: 'shu',
     at: [350, 290],
@@ -205,7 +205,7 @@ const SPOTS = {
   },
   arcade: {
     name: 'Neon Arcade',
-    slot: 'eve',
+
     act: 'arcade',
     region: 'wei',
     at: [620, 262],
@@ -215,7 +215,7 @@ const SPOTS = {
   },
   bonfire: {
     name: 'Beach Bonfire',
-    slot: 'eve',
+
     act: 'arcade',
     region: 'wu',
     at: [680, 622],
@@ -225,7 +225,7 @@ const SPOTS = {
   },
   street: {
     name: 'Overpass Court',
-    slot: 'eve',
+
     act: 'street',
     region: 'outlaws',
     at: [785, 490],

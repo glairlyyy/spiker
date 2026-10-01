@@ -1223,7 +1223,7 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
       back.pos.join() === run.pos.join() &&
       g.City.scouted(back, ti) &&
       back.spotQ.trail.known &&
-      back.loc === 'wu',
+      g.City.loc(back) === 'wu',
     'days, scouting, places and location saved'
   );
 });
