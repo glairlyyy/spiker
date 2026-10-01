@@ -32,183 +32,25 @@ Result:
 - Block tactics ✓ (T-026 lane-read block, T-027 defence setting + scouting habits).
 - Substitutions ✓ (T-028 squads of 6, T-029 in-match subs, T-030 coach AI, T-031 you on the bench).
 - Growth rework ✓ (T-034 training cap 75, T-035 match XP, T-036 techniques learned in play).
-- **Living map A** (now): map life model (T-039), renderer (T-040); then the three-touch fix (T-043).
-- **Rankings** (next): model (T-041), drawer + cards (T-042). Then **Team challenges**: challenge + refusal (T-037), loss and injury (T-038).
+- Living map A ✓ (T-039, T-040) · three-touch fix ✓ (T-043) · rankings ✓ (T-041, T-042) · team challenge ✓ (T-037).
+- **Next**: rankings drawer fix (T-044); then challenge loss + injury (T-038, to be detailed); voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now — Living map, layer A (spec §4.16)
+## Now — fixes
 
-### [x] T-039: MapModel `life` — who is where this week, as plain data
-Spec: §4.16          Goldens: unchanged          Save: no change
-Goal: The map model carries the island's people and pressure so a renderer can show them: your teammates at the places
-they train this week, each faction's players at its home courts, the street-battle crowd, border pressure, seized flags.
-Files: js/career/mapmodel.js, tests/run.js, ARCHITECTURE.md
-Do not:
-- Draw R() / rnd() (positions come from a hash of ids + place; the model must stay identical for the same run state).
-- Show anything in unexplored land (`City.seen` false) except the battle site if it is this week's battle.
+### [ ] T-044: Rankings drawer table fits the drawer
+Spec: §4.17          Goldens: unchanged          Save: no change
+Goal: The Rankings drawer shows all four columns (rank, name, faction · role, value) inside the drawer; today the table
+is wider than the drawer, names are right-aligned with a big gap and the faction / value columns are cut off.
+Files: css/career.css (the "rankings drawer" block), js/ui/career-week.js (`rankCard` markup only if needed)
+Do not: change `Rank` or what the rows contain.
 Steps:
-1. `MapModel.life(run)` → `{ mates, crews, battle, borders }`, added to `build()` as `life`:
-   - `mates`: for each `run.floor[key]` id — `{ id, name, at, color: your team colour, spot }` at the explored training
-     place of that key nearest your home (`City.spotsFor(key)`), offset around it by hash.
-   - `crews`: per faction club HQ / its region's training places: `{ region, at, color, n, known }` — n = 2–6 figures by
-     pool size (`Pool.size` / 6, clamped), `known` = scouted or member (renderer: coloured vs grey silhouettes);
-     also `walk: [[x,y],…]` = that faction's places in order, when known (for figures walking between them).
-   - `battle`: this week's open clash → `{ at, a, b, colors: [ca, cb] }` else null.
-   - `borders`: per FRONT border `{ a, b, meter }` (`Front.meter`), for pulse strength and which side's patrols are
-     thicker.
-2. tests: `'career: map model life — mates, crews, battle, borders, no randoms'`: same run → identical JSON twice;
-   R() counter unchanged by `build`; a mate appears at their floor key's place; unexplored crews absent; clash present
-   while open, null after `clash.done`.
-3. ARCHITECTURE.md: MapModel `life`.
-Accept: all tests + lint; goldens untouched.
-QA: none (headless).
-Result: Done as specified; tests 36/36, lint clean, goldens untouched, headless only. `life.crews` also carries `team` (club index) and `mates` uses the nearest explored place of the key to home.
-
-### [ ] T-040: Living map — figures, battle crowd, border pulse, flags (renderer)
-Spec: §4.16          Goldens: unchanged          Save: no change
-Goal: The 3D map shows `model.life`: small low-poly figures drilling at courts (your mates in your colour, known crews in
-theirs, unknown ones as grey silhouettes), known crews walking between their places, a two-colour crowd with flags and
-dust at the week's battle site, border lines pulsing by pressure, and a flag on every seized place.
-Files: js/map3d/life3d.mjs (new ES module), js/map3d/map3d.mjs, js/map3d/pins3d.mjs, ARCHITECTURE.md
-Do not:
-- Use VRM models for anyone but your player (performance): one `InstancedMesh` per figure kind; ≤ 300 instances total.
-- Draw game randoms (use a hash for variety); read only `model.life` / `model.seized`.
-- Rebuild every frame: rebuild instances only when `life` JSON changes (like pins3d `changed`), animate in `tick`.
-Steps:
-1. life3d.mjs `createLife(scene, heightAt)` → `{ sync(model), tick(dt, t), dispose() }`: capsule-ish low-poly figure
-   (≈1.6 m), per-instance colour; idle bob / drill hop by `t` + hash phase; walkers move along `walk` paths at ~1.2 m/s
-   (loop), grounded with `heightAt`.
-2. Battle: ~12 figures per side facing each other at `battle.at`, two flags (team colours), a looping dust puff
-   (a few billboard sprites); gone when `battle` is null.
-3. Borders (pins3d border line): dash colour/opacity pulse with |meter|; 2–4 patrol figures on the side with the higher
-   meter. Seized places: a small flag pole in the holder's colour on the decal.
-4. map3d.mjs: create / sync / tick / dispose it with the rest; `info()` reports instance counts.
-5. ARCHITECTURE.md: map life layer.
-Accept: all tests + lint; goldens untouched.
-QA (career run): screenshot with mates at a court, crews (coloured after scouting, grey before), a street battle week
-showing the crowd; draw calls rise by ≤ 6; frame time not worse than +20 % in swiftshader; leave and return → no leak
-(1 canvas, geometries back to the same count); no pageerror.
-Result:
-
-### [ ] T-043: Three touches after a pop-up — the save is the set (scramble ball)
-Spec: §2.1          Goldens: update (pop-up saves no longer get a full set + attack)          Save: no change
-Goal: When a serve or spike pops off a player's arms and a teammate saves it, that save is touch 2: the team gets one
-more touch — an out-of-system hit off the save (or a bump over) — never pass → set → spike on top (today 4 touches,
-~0.7 per match). Nobody touches the ball twice in a row.
-Files: js/engine/rally.js, js/engine/rally-defense.js, js/engine/serve.js, js/engine/rally-phases.js, tests/run.js,
-tests/golden.json, ARCHITECTURE.md
-Do not:
-- Add beat act kinds or change playback (reuse the existing set / bump / spike acts; the saver's "set" is a bump-set).
-- Change any other possession path (free ball, setter dump, bad set, block cover dig, normal dig → set → spike).
-Steps:
-1. `rally(m, B, V, atk, pas, qual, scr = null)`; the possession loop reads a 4th element of `next`: `[atk, pas, qual,
-   scr]`, where `scr = { first }` (the player whose arms it popped off) marks a scramble possession. serve.js pop save
-   → `rally(m, B, V, r, P.rec, 1, { first: rc })`; rally-defense.js dig pop save → `{ next: [ds, P.rec, 1, { first: dg }] }`.
-2. rally.js, scramble possession (`scr` set, only for that possession): skip `freeBall`, `pickSetter`, `setterDump`,
-   `setHands`; build `s` with `setter = pas` (the saver), `setX` / `setZ` = the saver's position, `dual: false`, `DMB` as
-   `pickSetter` computes it; `h = { sq2: 'bad', bumpSet: true }`; then `chooseAttack` (no quick: `sq2` 'bad' already
-   blocks it) with `scr.first` and the saver excluded from the hitter pool (fallback: any other player); `badSetOver`
-   may still send it over (3 touches: pop, save, bump); the rest of the attack as usual (`setMul` for a bad set applies).
-3. Engine-only tally `m.scr = { n, over }` (scramble possessions, and how many went over as a bump) — no randoms.
-4. tests: new `'engine: three touches — pop-up saves are the set'`: over 300 sims, `m.scr.n > 0`; in recorded matches
-   every scramble possession's hitter is neither `first` nor the saver (add an engine-only log `m.scrLog` of
-   `{ first, saver, hitter }` if needed); existing invariants hold. `npm run test:update` (reason in the commit).
-5. ARCHITECTURE.md: possession paths and touch counts (a small table: normal 3, dump 2, overpass 1, bad set 3, pop-up
-   save 3, block touch free).
-Accept: all tests + lint; goldens updated for this reason only.
-QA: Monster game — watch until an "Off the arms! … Saved!" moment (or force it: `popChance` is a global; temporarily
-raise it in the console): the saver bump-sets, a third player swings (or bumps it over); no one plays twice in a row;
-no pageerror.
-Result:
-
-## Next — Rankings (spec §4.17), then team challenges (spec §4.15)
-
-### [ ] T-041: `Rank` — the three rankings as plain data
-Spec: §4.17          Goldens: unchanged          Save: RUN_VERSION 5 → 6 (`run.met`, `run.street`, `run.refused` for T-037) — older saves dropped
-Goal: A DOM-free module builds the Academy Register, the Gazette Top 20 and the Street board for the current run, with
-your rank on each and a lookup for any player's ranks.
-Files: js/career/rank.js (new — add to index.html + test3d.html), js/data/world.js, js/career/run.js,
-js/career/cup.js, js/career/city.js, tests/run.js, ARCHITECTURE.md
-Do not:
-- Draw R() (fame and street points come from data; ties broken by id).
-- Show a player's OVR on the Register unless known (rule below).
-Steps:
-1. world.js: `RANK = { top: 20, weiFame: 1.5, fame: { star: 30, op: 80, el: 20, win: 3 }, street: { fight: 10, win: 15,
-   hustle: 3, faction: 2, share: 4 } }` (doc comments).
-2. run.js: `run.met = {}` (player id → true: faced on court), `run.street = {}` (player id → points) and
-   `run.refused = {}` (club index → { week, n }: used by T-037); create + repair; `RUN_VERSION = 6`.
-3. cup.js / city.js: after any match you played (eval, cup, street battle), mark every opponent who played in `run.met`;
-   street points for you: fought a street battle +fight (+win if won), a hustle +hustle (win only); when a street battle
-   is settled (`Front.result`), the winner faction's `share` best players by OVR get +faction.
-4. rank.js `Rank`:
-   - `players(run)`: every pool player of every faction + the Academy squad (`squadOf(run.pickup)`) + you, unique.
-   - `known(run, p)`: you / your squad / member of your faction / its club or faction scouted (Dossier rule) /
-     `run.met[p.id]`.
-   - `register(run)` → sorted by OVR: `{ id, name, region, role, ovr: known ? ovr : null }` (unknown still ranked by their
-     true OVR — position is true, the number hidden).
-   - `gazette(run)` → top `RANK.top` by fame: you = `run.fans / 100`; NPC = star / op / awakened element / team wins
-     (`team.hist.w` × win) × weiFame if Wei; includes you only if you make the cut.
-   - `street(run)` → players with points > 0, sorted.
-   - `of(run, id)` → `{ register, gazette | null, street | null }` ranks (1-based).
-5. tests: `'career: rankings — register, gazette, street, known gate'` — same state twice → same lists; unknown players
-   have null OVR but true position; Wei bias lifts a Wei player above an equal non-Wei one; a fought street battle
-   adds your points; `met` marks the opponents after a simulated evaluation.
-6. ARCHITECTURE.md: rankings; save v6.
-Accept: all tests + lint; goldens untouched.
-QA: none (headless).
-Result:
-
-### [ ] T-042: Rankings drawer + ranks on match and challenge cards
-Spec: §4.17, §6 (voices)          Goldens: unchanged          Save: no change
-Goal: A Rankings drawer in the hub dock shows the three lists (tabs) with your row highlighted; the evaluation / cup
-match card shows the opponent squad's best-ranked players' ranks.
-Files: js/ui/career-hub.js, js/ui/career-week.js, css/career.css, ARCHITECTURE.md
-Do not: compute rankings in the UI (only `Rank.*`); invent lore words.
-Steps:
-1. Dock button "Rankings" → drawer with tabs Register / Gazette / Street; each list 20 rows around the top + your row
-   (with "…" gaps); headers in voice: Register (registrar: "Academy Register — U21, by rating"), Gazette (wei: "The
-   Gazette's Top 20 — the island's finest"), Street (outlaw: "Who's hot under the overpass").
-2. Unknown OVR renders "unrated"; faction chip + role; your row highlighted.
-3. Evaluation and cup cards (`evalPanel`, `cupPanel`): under the opponent, "Their best: <name> Register #n · Gazette #n"
-   for up to 2 players (skip null ranks).
+1. `table.rk`: `width: 100%; table-layout: fixed`; column widths ≈ 2.5em / auto / 40% / 3.5em; name left-aligned,
+   ellipsis on overflow (`white-space: nowrap; overflow: hidden; text-overflow: ellipsis`); value right-aligned.
+2. Your row (`tr.me`) and the "…" gap row keep their styles; the drawer gets no horizontal scrollbar.
 Accept: all tests + lint.
-QA: career run → Rankings drawer: 3 tabs, your row highlighted, unrated rows before scouting and rated after; an
-evaluation card shows opponent ranks; no pageerror.
-Result:
-
-### [ ] T-037: Team challenge — challenge a club, it may refuse you
-Spec: §4.15, §4.17, lore.md §5 (dogmas)          Goldens: unchanged          Save: no change (uses `run.refused` from T-041)
-Goal: From a club's HQ panel you can challenge its squad for a stake. The club decides by its faction's dogma whether
-you're worth it; the card shows how likely it is before you go. Accepted → the match plays like a street battle;
-winning pays the stake at odds. (Loss penalties and injury are T-038.)
-Files: js/data/world.js, js/career/cup.js, js/career/city.js, js/ui/career-map.js, tests/run.js, ARCHITECTURE.md
-Do not:
-- Add a new match flow: reuse the street-battle fixture shape (`Cup.clash` → a `Cup.challenge` sibling).
-- Let the target be your own club, or challenge while an event is open / no days left.
-Steps:
-1. world.js `CHALLENGE = { margin: 6, stakeStep: 50, odds: [1.2, 3], hire: { ovr: 50, cost: 80 }, refuseMax: 3,
-   pest: -8, wei: { gazette: 8, fansPer: 1000, stakePer: 100 }, wu: { keyPer: 5 }, shu: { repPer: 10, weekPer: 4 },
-   outlaws: { minStake: 50 }, gloria: {} }` (doc: worth terms per faction dogma, spec §4.15).
-2. city.js `City.worth(run, ti, stake)` → `{ worth, need, verdict: 'likely' | 'doubtful' | 'refuses', why }`:
-   worth = your side's rating + standing ÷ 10 + the faction term; need = club rating − margin; Outlaws: stake ≥ minStake →
-   likely, else refuses; Gloria: in the Gazette Top 20 → by worth, else refuses; 'doubtful' within 3 of need; the
-   club's `run.refused[ti]` week = this week → refuses ("not this week").
-3. `City.challenge(run, ti, stake)`: spends the trip + day; refused → log a one-line refusal (faction voice, 2 lines
-   each in `CHALLENGE_LINES` in world.js), `run.refused[ti] = week`, count per season → at `refuseMax` standing +pest;
-   accepted → returns true and the UI opens `Cup.challenge(run, ti, stake)`.
-4. cup.js `Cup.challenge(run, ti, stake)`: your side (Academy squad / your club squad / hired: Academy-style squad of
-   `hire.ovr` players, cost `hire.cost`) vs the club's squad (`squadOf` of the league team, lineup by `Run.lineup`);
-   result: win → money +stake × odds (by rating gap, clamped to `odds`), standing +, fans +; loss → −stake (full
-   loss rules in T-038); XP / techniques / met / street points as for a street battle.
-5. UI (career-map.js HQ panel): "Challenge" block with a stake stepper (0 … your money, step `stakeStep`), the verdict
-   line ("Accepts: likely — they respect strength" etc.), and the button; refusal shows the club's line.
-6. tests: `'career: team challenge — worth, refusal, stake payout'`: Gloria refuses outside the Top 20; Outlaws refuse
-   a 0 stake and accept 50; Wei worth rises with stake; a refusal blocks that club for the week; a won challenge pays
-   stake × odds; own club not challengeable. (`run.refused` comes from T-041.)
-7. ARCHITECTURE.md: challenges.
-Accept: all tests + lint; goldens untouched.
-QA: career run → HQ panel: verdicts change with the stake; a refused challenge logs the line and blocks the club this
-week; an accepted one plays (Sim ⏭) and pays out; no pageerror.
+QA: career run → Rankings drawer at 1280×800: all 4 columns visible on every tab, long names ellipsed, no horizontal
+scroll; screenshot; no pageerror.
 Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
@@ -223,6 +65,12 @@ Phase 5 — Voice pass
 
 ## Done
 (one line each; full task text is in git history)
+- [x] T-039: MapModel `life` — who is where this week, as plain data — Done as specified; tests 36/36, lint clean, goldens untouched, headless only. `life.crews` also carries `team` (club index) and `mates` uses the nearest explored place of the key to home.
+- [x] T-040: Living map — figures, battle crowd, border pulse, flags (renderer) — Done; tests 36/36, lint clean, goldens untouched. Only the Wei–Wu border has a line, so the pulse and patrols use it (other borders: no line yet). QA (swiftshader, forced state): battle crowd 24 + 2 flags + dust, unscouted crew grey / scouted coloured, mates at their court; draw calls +4 (≤ 6); leave → 0 canvases, return → 1; geometry count 19 → 20 after return (avatar model loads late); no pageerror. Frame time not measured.
+- [x] T-043: Three touches after a pop-up — the save is the set (scramble ball) — Done; tests 39/39, lint clean, goldens updated (`teams`, `sims`: pop-up saves no longer get a full set + attack). The new phase is `saveSet` (not `scramble`: hype.js already has one); tallies `m.scr` / `m.scrLog` are created lazily (match.js untouched). 300 sims: 0.85 scramble possessions per match, 86 of them went over as a bump, hitter is never the popper or the saver. QA: Monster game ran 400 steps, no pageerror (no pop-up came up in that window; the animated path is covered by the recorded-beats tests).
+- [x] T-041: `Rank` — the three rankings as plain data — Done as specified; tests 37/37, lint clean, goldens untouched, RUN_VERSION 6 (old saves dropped). Register rows hide the true OVR (only the order uses it); you get no faction-share points; Rank.settle/meet hooks also in city.js (clashEnd, watch, hustle). The Limit Break test's RUN_VERSION assert updated 5 → 6.
+- [x] T-042: Rankings drawer + ranks on match and challenge cards — Done; tests 39/39, lint clean, goldens unchanged. Drawer id `rank` in `HUB_DRAWERS` (+ `CW.rank` tab key, `rankCard`/`rankTab`/`rankBest`/`RANK_TABS` in career-week.js). QA: 3 tabs, your row highlighted, 18 unrated rows before scouting, gazette 20 rows, street empty-state, opponent line renders, no pageerror (rated-after-scouting not re-driven in browser; covered by the Rank tests).
+- [x] T-037: Team challenge — challenge a club, it may refuse you — Done; tests 38/38, lint clean, goldens untouched. Deviations: CHALLENGE also has `standPer` 10, `doubt` 3, `doubtP` 0.5 (and CHALLENGE_WHY for the card text); a doubtful club is decided by a hash of week/club/stake (not a roll); acceptance spends nothing until the match ends (refusal spends trip + day); Wu ignores the stake; odds = clamp(1.5 + gap/20, 1.2, 3). QA (career-map): verdict 'refuses — No stake, no game' at $0 → 'likely' at $50 for the Outlaws, ⏭ played and settled the stake, a $0 ask logged the refusal; no pageerror.
 - [x] T-034: Training stops at 75 — remove Limit Break — Done as specified; tests 33/33 (full run asserts ≤ max(75, start stat) until T-035), lint clean, goldens untouched; RUN_VERSION 5.
 - [x] T-035: Match experience — your performance × opponent strength — Done as specified; tests 34/34, lint clean, goldens untouched. Report (short season, 5 seeds, WS, power-only training incl. the cup): training only 75.6 avg power (ovr 67.8) vs also playing every eval 78.2 (ovr 69.0). QA: Sim ⏭ eval line shows "XP: … (×0.3 vs a weaker side)".
 - [x] T-036: Techniques learned in play (basic skills stay in the shop) — Done as specified; tests 35/35, lint clean, goldens untouched. Growth.matchXp now takes (run, m) and shares `Growth.matchGap(m)` with tryLearn. Not touched (unlisted): the encyclopedia card still says "Or learn it in career for this many skill points" (ui/encyclopedia.js:26,47) — stale now. QA: shop shows 8 techniques as "learn in matches"; scouted HQ roster and dossier list techniques; no pageerror.
@@ -260,4 +108,4 @@ Phase 5 — Voice pass
 - (recorded in spec §4.6 / §2) Street battle "Fight for X" is now a real match (watch or ⏭ sim) with match XP, techniques and grade; `City.clashP` and `MATCH_XP.clash` / `CLASH.par` removed. Files: js/career/cup.js, city.js, js/data/career.js, js/data/world.js, js/ui/career-map.js, tests/run.js, ARCHITECTURE.md.
 - (recorded in spec §4.6 / §2) Box score (player table in the match screen) gains an OVR column — js/ui/match-screen.js.
 - (recorded in spec §4.6 / §2) Added (.vrm) player models now apply to your own career player only (everyone else keeps the base model) — js/render3d/actors3d.mjs, js/ui/models.js, js/ui/menu.js, ARCHITECTURE.md.
-- Street-battle crews and your faction's evaluation squad show their real 3-letter team tag instead of 'EVL' (Eval.squad takes a `short`; 'EVL' only for the opposing evaluation squad) — js/career/eval.js, cup.js.
+- (recorded in spec §4.6) Street-battle crews and your faction's evaluation squad show their real 3-letter team tag instead of 'EVL' (Eval.squad takes a `short`; 'EVL' only for the opposing evaluation squad) — js/career/eval.js, cup.js.

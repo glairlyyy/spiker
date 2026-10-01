@@ -71,7 +71,7 @@ Build chat loop, one task at a time:
 - Seeded randomness: never change the order/count of R()/rnd()/pick() draws in engine unless the task says so
   (golden changes). Presentation code (hype, element assignment hash, chatter) must draw no randoms.
 - Beat act kinds/flags are the engine↔renderer interface; every act kind needs a `case` in playback.js (tested).
-- Saves: RUN_VERSION 5 (v5: Limit Break removed), key sns_run_v1. In development, breaking changes just bump the version (task will say).
+- Saves: RUN_VERSION 6 (v6: rankings — met / street / refused), key sns_run_v1. In development, breaking changes just bump the version (task will say).
 - Artifact host quirks: confirm()/alert() blocked (use inline confirms); localStorage may throw; blob: URLs may be
   blocked (textures are decoded in memory — keep it that way).
 - Escape all user/data strings in innerHTML with esc().

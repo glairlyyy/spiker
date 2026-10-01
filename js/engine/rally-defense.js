@@ -318,7 +318,7 @@ function dig(c, x, bl) {
               }
             ]
           });
-        return { next: [ds, P.rec, 1] };
+        return { next: [ds, P.rec, 1, { first: dg }] };
       }
       st(m, spiker, 'k');
       if (setter !== spiker) st(m, setter, 'ast');

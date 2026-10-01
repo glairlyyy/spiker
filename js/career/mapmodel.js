@@ -1,5 +1,5 @@
 // The island map as plain data: what a renderer draws, with no drawing in it (DOM-free, tested headless).
-// MapModel.build(run, sel) → { w, h, land, seized, pins, you, fog, flag, focus, sel }. Map units: CITY.w × CITY.h,
+// MapModel.build(run, sel) → { w, h, land, seized, pins, you, fog, flag, focus, sel, life }. Map units: CITY.w × CITY.h,
 // y down. A renderer (MapView: js/ui/map-view.js → js/map3d/map3d.mjs) draws a model and reports two things
 // back: a pin picked (its id) and a map point clicked ([x, y] in map units). All game rules stay in City / Front.
 
@@ -100,6 +100,68 @@ const MapModel = {
           title: `Seized by ${REGIONS[r].name} from ${REGIONS[SPOTS[id].region].name}`
         };
       }),
+  /**
+   * Who is where this week (display only: no randoms, positions come from hashes of ids + place, so the same run state gives
+   * the same model). mates: your floor mates at the explored place of their training key nearest home. crews: each known
+   * faction club's drilling squad at its HQ (n figures by pool size; known = scouted or yours, else grey silhouettes; walk = its
+   * region's explored places). battle: this week's open street battle. borders: Front pressure (+ = a's side pushing).
+   */
+  life(run) {
+    const home = City.at(run, 'home'),
+      dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]),
+      mineColor = Run.myTeam(run).color,
+      people = Run.mates(run),
+      mates = [];
+    for (const [key, ids] of Object.entries(run.floor || {})) {
+      const spots = City.spotsFor(key)
+        .filter(id => MapModel.known(run, id, City.at(run, id)))
+        .sort((a, b) => dist(City.at(run, a), home) - dist(City.at(run, b), home));
+      if (!spots.length) continue;
+      for (const id of ids) {
+        const p = people.find(q => q.id === id),
+          c = City.at(run, spots[0]),
+          ang = hstr(`${id}|${spots[0]}|a`) * Math.PI * 2,
+          rad = 14 + hstr(`${id}|${spots[0]}|r`) * 14;
+        mates.push({
+          id,
+          name: p ? p.name : String(id),
+          at: [c[0] + Math.cos(ang) * rad, c[1] + Math.sin(ang) * rad],
+          color: mineColor,
+          spot: spots[0]
+        });
+      }
+    }
+    const crews = [];
+    run.teams.forEach((t, i) => {
+      const f = FACTIONS[i];
+      if (!f || !MapModel.known(run, `hq${i}`, CITY.hq[i])) return;
+      const known = i === run.team || City.scouted(run, i),
+        walk = known
+          ? Object.keys(SPOTS)
+              .filter(id => SPOTS[id].region === f.region && SPOTS[id].train && MapModel.known(run, id, City.at(run, id)))
+              .map(id => City.at(run, id))
+          : [];
+      crews.push({
+        region: f.region,
+        team: i,
+        at: CITY.hq[i],
+        color: t.color,
+        n: clamp(Math.round(Pool.size(run, f.region) / SQUAD), 2, 6),
+        known,
+        walk
+      });
+    });
+    const c = City.clashSite(run);
+    return {
+      mates,
+      crews,
+      battle: c ? { at: c.at, a: c.a, b: c.b, colors: [REGIONS[c.a].color, REGIONS[c.b].color] } : null,
+      borders: Object.keys(FRONT.borders).map(k => {
+        const [a, b] = k.split('-');
+        return { a, b, meter: Front.meter(run, a, b) };
+      })
+    };
+  },
   build(run, sel = null) {
     return {
       w: CITY.w,
@@ -111,7 +173,8 @@ const MapModel = {
       fog: { points: run.fog || [], r: REVEAL_R },
       flag: MapModel.ptOf(sel),
       focus: City.at(run, 'home'), // where a fresh view centres
-      sel
+      sel,
+      life: MapModel.life(run)
     };
   }
 };

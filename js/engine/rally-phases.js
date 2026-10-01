@@ -1,7 +1,8 @@
 // Rally phases for one side's possession, called in order by rally() (engine/rally.js).
 // Each takes the possession context `c` (see rally()) and returns one of:
 //   { point: side }            — the rally is over, `side` wins the point
-//   { next: [atk, pas, qual] } — possession passes on (atk = side now attacking, pas = passer, qual = pass 1–3)
+//   { next: [atk, pas, qual, scr] } — possession passes on (atk = side now attacking, pas = passer, qual = pass 1–3; scr =
+//                                 { first } for the save of a pop-up: see saveSet)
 //   an object of values        — the phase finished normally; the rally continues with these values
 //   undefined                  — the phase did not happen; carry on
 // Random rolls stay in exactly the original order, so seeded matches replay identically.
@@ -64,6 +65,21 @@ function pickSetter(c) {
       ]
     });
   return { setter, dual, DMB, setX, setZ };
+}
+/**
+ * 2b. A scramble possession (the save of a serve / spike that popped off someone's arms): the saver is the team's 2nd touch
+ * and bump-sets — no free ball, setter choice, dump or double contact; a third player hits (chooseAttack skips `scr.first`
+ * and the saver). Engine-only tallies, no randoms: m.scr = { n, over (went over as a bump) }, m.scrLog = [{ first, saver, hitter }].
+ */
+function saveSet(c) {
+  const { m, front, ds, defT, pas, scr } = c,
+    at = m.pos[pas.id],
+    DMB = defT.P.filter(p => p.role !== 'S' && front(ds, p)).find(p => p.role === 'MB') || defT.mb;
+  m.scr = m.scr || { n: 0, over: 0 };
+  m.scrLog = m.scrLog || [];
+  m.scr.n++;
+  m.scrLog.push({ first: scr.first.id, saver: pas.id, hitter: null });
+  return { setter: pas, dual: false, DMB, setX: at.x, setZ: at.z };
 }
 /** 3. Setter dump: a second-touch feint (Left-hand Dump makes it more likely and deadlier). */
 function setterDump(c, s) {
@@ -205,7 +221,8 @@ function chooseAttack(c, s, h) {
   let quick =
     sq2 !== 'bad' && qual >= 2 && MBs.length > 0 && R() < clamp(atkT.S.quick * (MBs.length > 1 ? 1.4 : 1) * tac.quick, 0, tac.quickCap);
   // not-ready players (still on the floor, running back in) aren't set; the free ones call for it
-  let pool = atkT.P.filter(p => p !== setter && free(p));
+  const fresh = p => !c.scr || p !== c.scr.first; // a scramble: the player whose arms it popped off does not hit
+  let pool = atkT.P.filter(p => p !== setter && free(p) && fresh(p));
   if (!pool.length) pool = atkT.P.filter(p => p !== setter);
   // back-row wing spikers who feel strong call for a long set to the back court; a sharp setter listens
   const callers = pool.filter(p => p.role === 'WS' && !front(atk, p) && confidence(p, m, atk) >= 80),

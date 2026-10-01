@@ -1723,3 +1723,27 @@
     0 0 3px #1b1204;
   pointer-events: none;
 }
+
+/* rankings drawer */
+.hub .tabs.rk {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.hub table.rk {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.hub table.rk td {
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--line);
+}
+.hub table.rk tr.me td {
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: 700;
+}
+.hub table.rk tr.gap td {
+  text-align: center;
+  color: var(--mute);
+}

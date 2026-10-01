@@ -142,6 +142,22 @@ function trainSpot(run, id, c) {
       <button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${id}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}>Train ${TRAININGS[key].name}${dayTag(City.cost(run, id))}</button></div>`;
 }
 
+/** The challenge block of a club's card: stake stepper, the verdict ("Accepts: likely — why"), the button and Sim ⏭. */
+function challengeBlock(run, ti) {
+  const W = City.worth(run, ti, (CW.stake || {})[ti] || 0);
+  if (!W) return '';
+  const side = City.challengeSide(run),
+    st = Math.min((CW.stake || {})[ti] || 0, City.stakeMax(run)),
+    cost = City.scoutCost(run, ti),
+    late = run.event
+      ? 'answer the event first'
+      : City.noTime(run, cost) || (run.money < side.cost ? `needs $${side.cost} for a street crew` : ''),
+    hot = W.verdict === 'likely' ? 'hot' : '';
+  return `<div class="trow chal" ${tip('Challenge their squad for a stake: they may refuse. Win and the stake pays at odds; lose and it is gone. XP and techniques as in any match')}><span class="small">Stake <button class="btn" onclick="mapStake(${ti},-1)" ${st <= 0 ? 'disabled' : ''}>−</button> <b>$${st}</b> <button class="btn" onclick="mapStake(${ti},1)" ${st + CHALLENGE.stakeStep > City.stakeMax(run) ? 'disabled' : ''}>+</button></span>
+    <button class="btn ${hot}" onclick="mapChallenge(${ti})" ${late ? `disabled ${tip(late)}` : ''}>Challenge${dayTag(cost)}</button>
+    <button class="btn" onclick="mapChallenge(${ti}, true)" ${late ? 'disabled' : ''} ${tip('Get the result without watching')}>⏭</button>
+    <span class="small ${W.verdict === 'refuses' ? 'mute' : ''}">Accepts: <b>${W.verdict}</b> — ${esc(W.why)}${side.kind === 'hired' ? ` · street crew $${side.cost}` : ''}</span></div>`;
+}
 function hqPanel(run, ti) {
   const t = run.teams[ti],
     f = FACTIONS[ti],
@@ -165,7 +181,7 @@ function hqPanel(run, ti) {
       free
         ? `<button class="btn ${j.ok ? 'hot' : ''}" onclick="joinClub(${ti})" ${j.ok ? '' : `disabled ${tip('Missing: ' + j.why.join(', '))}`}>Sign</button><span class="small ${j.ok ? '' : 'mute'}">${esc(World.joinText(ti, run))}</span>`
         : ''
-    }${ti !== run.team ? `<button class="btn" onclick="mapScout(${ti})" ${late ? `disabled ${tip(late)}` : tip(`A day at their HQ${sc > 1 ? ' (+ the trip)' : ''}: see their roster and elements, hear a rumour. −${SCOUT_STA} stamina`)}>${seen ? 'Scout again' : 'Scout'}${dayTag(sc)}</button>` : ''}</div></div>`;
+    }${ti !== run.team ? `<button class="btn" onclick="mapScout(${ti})" ${late ? `disabled ${tip(late)}` : tip(`A day at their HQ${sc > 1 ? ' (+ the trip)' : ''}: see their roster and elements, hear a rumour. −${SCOUT_STA} stamina`)}>${seen ? 'Scout again' : 'Scout'}${dayTag(sc)}</button>` : ''}</div>${challengeBlock(run, ti)}</div>`;
 }
 
 /** The floating card for the selected place. */
@@ -220,6 +236,27 @@ function clashSeen(look) {
   if (look) CW.spot = 'clash';
   Run.save(RUN);
   renderCareer();
+}
+/** Step the stake of a challenge to club ti. */
+function mapStake(ti, d) {
+  const S = (CW.stake = CW.stake || {});
+  S[ti] = clamp((S[ti] || 0) + d * CHALLENGE.stakeStep, 0, City.stakeMax(RUN));
+  mapPick(`hq${ti}`);
+}
+/** Challenge club ti at the chosen stake: refused (diary line) or played (watch, or sim = the result at once). */
+function mapChallenge(ti, sim) {
+  const r = City.challenge(RUN, ti, (CW.stake || {})[ti] || 0);
+  if (!r) return;
+  CW.spot = `hq${ti}`;
+  if (r.accepted) {
+    const fx = Cup.challenge(RUN, ti, r.stake);
+    if (!fx) return;
+    if (!sim) return navigate('match', fx);
+    const m = newMatch(fx.a, fx.b, false);
+    while (!m.over) playRally(m);
+    fx.onFinish(m);
+  } else Run.log(RUN, r.line);
+  mapAfter(RUN);
 }
 function mapScout(ti) {
   const line = City.scout(RUN, ti);

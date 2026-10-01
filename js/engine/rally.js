@@ -27,7 +27,7 @@ const HIT_FAST = 1.6;
  * c = the possession context (atkT / defT = attacking / defending team; V = record animation beats via B()).
  * x = the attack context: the values of phases 2–5, filled in by each attack phase and read by block() and dig().
  */
-function rally(m, B, V, atk, pas, qual) {
+function rally(m, B, V, atk, pas, qual, scr = null) {
   const front = (side, p) => {
     const i = rotOrder(m.t[side], m.rot[side]).indexOf(p);
     return i === 1 || i === 2;
@@ -45,25 +45,30 @@ function rally(m, B, V, atk, pas, qual) {
     // long rallies heat up: +10% spike power for every possession past the 7th
     const fat = n > LONG_RALLY + 1 ? 1 + (n - LONG_RALLY - 1) * 0.1 : 1;
     /** possession context shared by the phases */
-    const c = { m, B, V, front, n, atk, ds, da, dd, atkT, defT, pas, qual };
-    let r = freeBall(c);
+    const c = { m, B, V, front, n, atk, ds, da, dd, atkT, defT, pas, qual, scr };
+    let r = scr ? null : freeBall(c);
     if (r) {
-      [atk, pas, qual] = r.next;
+      [atk, pas, qual, scr = null] = r.next;
       continue;
     }
-    const s = pickSetter(c);
-    r = setterDump(c, s);
+    // a pop-up save (scr) is the team's 2nd touch: the saver bump-sets, a third player hits (see saveSet)
+    const s = scr ? saveSet(c) : pickSetter(c);
+    r = scr ? null : setterDump(c, s);
     if (r) {
       if (r.point != null) return r.point;
-      [atk, pas, qual] = r.next;
+      [atk, pas, qual, scr = null] = r.next;
       continue;
     }
-    const h = setHands(c, s);
+    const h = scr ? { sq2: 'bad', bumpSet: true } : setHands(c, s);
     if (h.point != null) return h.point;
     const a = chooseAttack(c, s, h);
     r = badSetOver(c, s, a);
+    if (scr) {
+      m.scrLog[m.scrLog.length - 1].hitter = r ? null : a.spiker.id;
+      if (r) m.scr.over++;
+    }
     if (r) {
-      [atk, pas, qual] = r.next;
+      [atk, pas, qual, scr = null] = r.next;
       continue;
     }
     // ---- 6–8: fake set, approach & block formation, set beat, spike, hitting error ----
@@ -103,13 +108,13 @@ function rally(m, B, V, atk, pas, qual) {
     }
     if (bl.next) {
       fin();
-      [atk, pas, qual] = bl.next;
+      [atk, pas, qual, scr = null] = bl.next;
       continue;
     }
     r = dig(c, x, bl);
     fin();
     if (r.point != null) return r.point;
-    [atk, pas, qual] = r.next;
+    [atk, pas, qual, scr = null] = r.next;
   }
 }
 

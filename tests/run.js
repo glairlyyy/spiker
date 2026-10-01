@@ -157,6 +157,46 @@ test('career: map model — renderer-free data for the island map', () => {
   assert(JSON.parse(JSON.stringify(M)).pins.length === M.pins.length, 'serialisable (no DOM, no functions)');
 });
 
+test('career: map model life — mates, crews, battle, borders, no randoms', () => {
+  const g = load(12),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Life', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    next0 = g.RNG.next;
+  let draws = 0;
+  g.RNG.next = () => (draws++, next0());
+  const mate = g.Run.mates(run)[0];
+  run.floor = { wit: [mate.id] };
+  let L = g.MapModel.build(run).life;
+  eq(L.mates.length, 0, 'unexplored training places show no mates');
+  eq(L.crews.length, 0, 'unexplored clubs show no crews');
+  eq(L.battle, null, 'no battle yet');
+  run.fog.push(g.City.at(run, 'weiWit'));
+  L = g.MapModel.build(run).life;
+  eq(L.mates.length, 1, 'a mate appears once the place is explored');
+  eq(L.mates[0].spot, 'weiWit', 'at their floor key’s place');
+  assert(
+    Math.hypot(L.mates[0].at[0] - g.City.at(run, 'weiWit')[0], L.mates[0].at[1] - g.City.at(run, 'weiWit')[1]) <= 28,
+    'offset around it'
+  );
+  const hq = g.CITY.hq.findIndex((p, i) => i !== run.team && g.FRONT && g.FACTIONS[i]);
+  run.fog.push(g.CITY.hq[hq]);
+  L = g.MapModel.build(run).life;
+  const cr = L.crews.find(c => c.team === hq);
+  assert(cr && cr.n >= 2 && cr.n <= 6 && !cr.known && cr.walk.length === 0, 'an unscouted crew: grey, no walk');
+  run.scout = run.scout || {};
+  run.scout[hq] = 1;
+  L = g.MapModel.build(run).life;
+  assert(L.crews.find(c => c.team === hq).known, 'scouted: coloured');
+  eq(L.borders.length, 3, 'three borders');
+  run.clash = { site: 0, att: g.CLASH.sites[0].a, seen: false, done: false };
+  L = g.MapModel.build(run).life;
+  assert(L.battle && L.battle.colors.length === 2 && L.battle.at.length === 2, 'the open battle');
+  run.clash.done = true;
+  eq(g.MapModel.build(run).life.battle, null, 'gone once done');
+  eq(JSON.stringify(g.MapModel.build(run).life), JSON.stringify(g.MapModel.build(run).life), 'same run, same model');
+  eq(draws, 0, 'build draws no randoms');
+  g.RNG.next = next0;
+});
+
 test('career: faction dynamics — border pressure seizes places, weakens, comes back', () => {
   const g = load(9),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Front', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
@@ -295,7 +335,7 @@ test('career: training cap, facility Lv 5 and Hard training', () => {
   eq(you.power, 80, 'a stat already at 80 is not lowered by a positive bump');
   g.Training.addXp(run, 'power', 100000, 'match');
   assert(you.power > 80, 'match XP goes past the training cap');
-  assert(!('lb' in run) && g.RUN_VERSION === 5, 'no Limit Break progress in the run; RUN_VERSION 5');
+  assert(!('lb' in run) && g.RUN_VERSION === 6, 'no Limit Break progress in the run; RUN_VERSION 6');
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
   const n = g.Training.preview(run, 'power', false).main[2],
@@ -1298,6 +1338,160 @@ test('engine: coach AI — errors, returns, coach IQ', () => {
   const sharp = first(1),
     dull = first(0);
   assert(sharp < dull, `coachIQ 1 subs sooner than 0 (${sharp.toFixed(1)} vs ${dull.toFixed(1)} points)`);
+});
+
+test('engine: three touches — pop-up saves are the set', () => {
+  const g = load(13),
+    T = g.mkTeams();
+  let n = 0,
+    over = 0,
+    log = [];
+  for (let i = 0; i < 300; i++) {
+    const m = g.simMatch(T[i % 8], T[(i * 3 + 1) % 8]);
+    if (m.scr) {
+      n += m.scr.n;
+      over += m.scr.over;
+      log = log.concat(m.scrLog);
+    }
+  }
+  assert(n > 0, `pop-up saves happen (${n} in 300 sims)`);
+  eq(log.length, n, 'every scramble possession is logged');
+  assert(
+    log.every(e => e.first !== e.saver && (e.hitter === null || (e.hitter !== e.first && e.hitter !== e.saver))),
+    'nobody touches it twice in a row: the hitter is neither the first toucher nor the saver'
+  );
+  eq(log.filter(e => e.hitter === null).length, over, 'a bump over is the only scramble without a hitter');
+});
+
+test('career: rankings — register, gazette, street, known gate', () => {
+  const g = load(61),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Rank', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    you = g.Run.you(run);
+  for (const k of g.STATK) you[k] = 99;
+  run.week = 4;
+  run.eval = null;
+  run.event = null;
+  const all = Object.fromEntries(g.Rank.players(run).map(e => [e.p.id, e.p]));
+  eq(JSON.stringify(g.Rank.register(run)), JSON.stringify(g.Rank.register(run)), 'the same state gives the same register');
+  const R = g.Rank.register(run),
+    unknown = R.filter(r => r.ovr === null),
+    known = R.filter(r => r.ovr !== null);
+  assert(unknown.length > 10 && known.length > 0, 'some players are unrated, your own side is known');
+  assert(
+    R.every((r, i) => i === 0 || g.ovr(all[R[i - 1].id]) >= g.ovr(all[r.id])),
+    'the order is the true OVR order'
+  );
+  assert(known.every(r => r.ovr === g.ovr(all[r.id])) && R.every(r => !('v' in r)), 'a known rating is true; the true OVR is not exposed');
+  eq(R[0].id, g.Rank.of(run, R[0].id).register === 1 ? R[0].id : null, 'of(): first place');
+  // Wei bias: the same fame source is worth more in Wei
+  const fame = (region, p) => g.Rank.fame(run, { p, region });
+  assert(
+    fame('wei', { star: true }) > fame('wu', { star: true }) && fame('wei', { star: true }) === g.RANK.fame.star * g.RANK.weiFame,
+    'Wei fame ×weiFame'
+  );
+  assert(g.Rank.gazette(run).length <= g.RANK.top, 'the Gazette is a Top 20');
+  eq(g.Rank.street(run).length, 0, 'nobody on the street board yet');
+  // an evaluation you play: the opponents are met, their rating shows
+  const fx0 = g.Cup.fixture(run, 'eval'),
+    m0 = g.newMatch(fx0.a, fx0.b, false);
+  while (!m0.over) g.playRally(m0);
+  const foes = g.squadOf(m0.t[1]).filter(p => m0.played.has(p.id));
+  assert(m0.played.has(you.id) && foes.length > 0, 'you played');
+  fx0.onFinish(m0);
+  assert(
+    foes.every(p => run.met[p.id]) &&
+      g.Rank.register(run)
+        .filter(r => foes.some(p => p.id === r.id))
+        .every(r => r.ovr !== null),
+    'the opponents are met and rated'
+  );
+  // a street battle you fight: your points, and the winner faction's best players share
+  run.clash = { site: 0, att: g.CLASH.sites[0].a, seen: false, done: false };
+  const side = g.CLASH.sites[0].a,
+    fx = g.Cup.clash(run, side),
+    m = g.newMatch(fx.a, fx.b, false);
+  while (!m.over) g.playRally(m);
+  fx.onFinish(m);
+  const won = m.winner === 0,
+    S = g.Rank.street(run);
+  eq(run.street[you.id], g.RANK.street.fight + (won ? g.RANK.street.win : 0), 'your street points');
+  assert(S.some(r => r.id === you.id) && S.length > 1 && S.length <= 1 + g.RANK.street.share, 'you and the winner faction share the board');
+  assert(g.Rank.of(run, you.id).street >= 1, 'your place on the street board');
+  assert(JSON.stringify(g.Rank.gazette(run)) === JSON.stringify(g.Rank.gazette(run)), 'gazette is stable');
+});
+
+test('career: team challenge — worth, refusal, stake payout', () => {
+  const g = load(71),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Chal', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    you = g.Run.you(run),
+    club = r => g.FACTIONS.findIndex(f => f.region === r);
+  run.event = null;
+  run.money = 500;
+  run.fans = 0;
+  g.Rank.players(run)
+    .filter(e => e.p !== you)
+    .slice(0, 25)
+    .forEach(e => (e.p.op = true)); // twenty-five famous players keep you out of the Gazette Top 20
+  const W = (r, stake) => g.City.worth(run, club(r), stake);
+  eq(W('gloria', 500).verdict, 'refuses', 'Gloria refuses anyone outside the Top 20, whatever the stake');
+  eq(W('outlaws', 0).verdict, 'refuses', 'the Outlaws laugh off a 0 stake');
+  eq(W('outlaws', g.CHALLENGE.outlaws.minStake).verdict, 'likely', 'and accept a bet');
+  assert(W('wei', 1000).worth > W('wei', 0).worth, 'Wei: money talks');
+  eq(W('wu', 0).worth, W('wu', 1000).worth, 'Wu: the stake counts for nothing');
+  const own = run.team;
+  run.team = club('wei');
+  eq(g.City.worth(run, club('wei'), 0), null, 'your own club is not challengeable');
+  run.team = own;
+  // a refusal costs the trip + a day and blocks that club for the week
+  const d0 = run.days,
+    r0 = g.City.challenge(run, club('gloria'), 100);
+  assert(r0 && !r0.accepted && /turned your challenge down/.test(r0.line) && run.days < d0, `refused: ${r0 && r0.line}`);
+  assert(run.refused[club('gloria')].week === run.week && run.refused[club('gloria')].n === 1, 'the refusal is recorded');
+  eq(W('gloria', 100).why, g.CHALLENGE_WHY.week, 'not again this week');
+  run.days = g.WEEK_DAYS;
+  for (let i = 2; i <= g.CHALLENGE.refuseMax; i++) {
+    run.week++;
+    run.days = g.WEEK_DAYS;
+    g.City.challenge(run, club('gloria'), 100);
+  }
+  assert(g.City.rep(run, 'gloria') <= g.CHALLENGE.pest, 'refused 3 times: you are a pest (standing drops)');
+  run.days = g.WEEK_DAYS;
+  run.week = 4;
+  // accepted: a real match; a win pays the stake at odds (the club's players are weakened, yours strengthened, so it is won)
+  const ti = club('outlaws');
+  for (const p of g.squadOf(run.teams[ti])) for (const k of g.STATK) p[k] = 25;
+  for (const p of g.squadOf(run.pickup)) for (const k of g.STATK) p[k] = 99;
+  const acc = g.City.challenge(run, ti, 50);
+  assert(acc && acc.accepted && acc.stake === 50, 'the Outlaws accept a 50 stake');
+  const d1 = run.days,
+    money0 = run.money,
+    fx = g.Cup.challenge(run, ti, 50),
+    m = g.newMatch(fx.a, fx.b, false);
+  eq(run.days, d1, 'nothing is spent until it finishes');
+  while (!m.over) g.playRally(m);
+  const line = fx.onFinish(m);
+  assert(m.winner === 0 && /won/.test(line) && run.money > money0, `a won challenge pays the stake at odds: ${line}`);
+  assert(
+    run.money - money0 >= Math.round(50 * g.CHALLENGE.odds[0]) && run.days < d1,
+    'at least stake × the lowest odds; a day and the trip spent'
+  );
+  assert(run.street[you.id] === g.RANK.street.fight + g.RANK.street.win, 'and street points');
+  // alone: a street crew is hired (paid from your money) and you play in it
+  run.academy = false;
+  run.team = null;
+  const T = g.Cup.hired(run);
+  assert(g.squadOf(T).length === 6 && T.P.includes(you) && T.P.length === 4, 'the hired crew: 6 players, you on court');
+  const side = g.City.challengeSide(run);
+  eq(side.kind, 'hired', 'alone = hired crew');
+  run.days = g.WEEK_DAYS;
+  run.week = 6;
+  const m1 = run.money,
+    fx1 = g.Cup.challenge(run, ti, 50),
+    mm = g.newMatch(fx1.a, fx1.b, false);
+  while (!mm.over) g.playRally(mm);
+  fx1.onFinish(mm);
+  assert(you.team === run.pickup || you.team === g.Run.myTeam(run), 'you are back on your own team after the match');
+  assert(run.money !== m1 && /crew/.test(run.log[0].t), 'the crew is paid');
 });
 
 test('career: your coach picks the 4 — bench start, never played, part rewards', () => {

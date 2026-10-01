@@ -10,6 +10,7 @@ const HUB_DRAWERS = {
   life: ['🏠', 'Life', run => lifeCard(run)],
   clubs: ['🛡', 'Clubs', run => clubsCard(run)],
   factions: ['⚖', 'Factions', run => factionsCard(run)],
+  rank: ['🏅', 'Rankings', run => rankCard(run)],
   news: [
     '📰',
     'Gazette',

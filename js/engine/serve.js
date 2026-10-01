@@ -206,7 +206,7 @@ function playRally(m) {
               { k: 'log', t: `${server.name}'s serve pops off ${rc.name}'s arms — ${P.rec.name} saves it!`, c: 'set' }
             ]
           });
-        return end(m, rally(m, B, V, r, P.rec, 1), beats);
+        return end(m, rally(m, B, V, r, P.rec, 1, { first: rc }), beats);
       }
       st(m, server, 'ace');
       st(m, server, 'k');

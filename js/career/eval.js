@@ -33,15 +33,15 @@ const Eval = {
     }
     return (run.eval = { week: run.week, kind, region, mine, opp });
   },
-  /** A temporary squad from player ids (first 4 = court order [S, MB, WS, WS], the rest the bench). Not a real team: never call finalizeTeam on it. */
-  squad(run, ids, name, color, region = run.eval ? run.eval.region : 'wei') {
+  /** A temporary squad from player ids (short: its 3-letter tag, 'EVL' only for an evaluation; first 4 = court order [S, MB, WS, WS], the rest the bench). Not a real team: never call finalizeTeam on it. */
+  squad(run, ids, name, color, region = run.eval ? run.eval.region : 'wei', short = 'EVL') {
     const all = Pool.players(run, region).concat([Run.you(run)], run.pickup ? run.pickup.P : []),
       got = ids.map(id => all.find(p => p.id === id)).filter(Boolean),
       P = got.slice(0, 4),
       T = {
         i: -2,
         name,
-        short: 'EVL',
+        short,
         color,
         sk: 'balanced',
         S: STYLES.balanced,

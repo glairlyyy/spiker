@@ -2,7 +2,7 @@
 // terrain every frame, and terrain decals (seized patches, the contested Wei–Wu border). Reads only MapModel fields;
 // reports only pick(id). Emoji icons, badges and the flag classes (off, far, turf, gem, overhyped, hq, can, mine, clash)
 // are plain CSS on the overlay elements (css/career.css, .mpin …).
-//   createFurniture(scene, heightAt) → { layer, sync(model, on), select(id), tick(cam, w, h, dist), dispose() }
+//   createFurniture(scene, heightAt) → { layer, sync(model, on), select(id), pulse(strength, t), tick(cam, w, h, dist), dispose() }
 import * as THREE from 'three';
 import { MAP_M } from './map3d.mjs';
 
@@ -31,6 +31,7 @@ export function createFurniture(scene, heightAt) {
   const layer = document.createElement('div');
   layer.className = 'maplay';
   const decals = new THREE.Group();
+  let contest = null; // the contested-border line (pulsed by pressure)
   scene.add(decals);
   const P = { key: {}, items: [] }; // items: { el, x, y, z, label? } world points to project
 
@@ -179,9 +180,16 @@ export function createFurniture(scene, heightAt) {
           o.geometry.dispose();
           o.material.dispose();
         }
-        decals.add(border(m.land.contest.line));
+        contest = border(m.land.contest.line);
+        decals.add(contest);
       }
       this.select(m.sel);
+    },
+    /** Pulse the contested border: strength 0 (calm: steady) … 1 (at the brink of a seizure: fast, bright). */
+    pulse(strength, t) {
+      if (!contest) return;
+      contest.material.transparent = true;
+      contest.material.opacity = strength ? 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(t * (2 + 4 * strength))) : 0.7;
     },
     /** Highlight the selected pin. */
     select(id) {

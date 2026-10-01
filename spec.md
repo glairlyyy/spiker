@@ -15,7 +15,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 - §2.1 Rules: one set to 15, win by 2; court ×1.5; zone/captain buffs, timeouts, tactics, techniques, pop-ups,
   long back attack.
   Three touches per side (a block touch is free). A pop-up off the arms saved by a teammate counts as touches 1 and 2:
-  the save is an out-of-system bump-set and a third player hits (or bumps it over) **[locked, not built — T-043]**.
+  the save is an out-of-system bump-set and a third player hits (or bumps it over) **[built]**.
 - §2.2 Elements: per player, hidden; unlocked for OP, ~1/4 of star players, and the career player via the Element
   Trial. Gauge fills by element play; full gauge or captain buff → next attack is the signature element spike.
   Counter elements halve effects. Fiction: lore.md §2 (the Trial is the modern method; the ritual is forgotten).
@@ -91,7 +91,8 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 - §4.6 Street battles (CLASH, ~45% of training weeks, popup at week start): watch (scouts both sides) or fight for a
   side (win +standing / lose −; the other side always −). `run.rep` = standing per region. Fighting is a real match
   (owner, `Cup.clash`): your side's crew drawn from its pool with you on court vs the other side's crew; watch or Sim ⏭;
-  match XP, techniques and grade as in any match. Challenges (§4.15) should reuse this flow.
+  match XP, techniques and grade as in any match. Challenges (§4.15) reuse this flow. Crews and your faction's
+  evaluation squad show their real 3-letter team tag (owner).
 - §4.7 Faction war (`js/career/front.js`, FRONT): every battle (joined or settled at week end) pushes its border
   meter; 2 net wins seize a border place (2 per side per border; retakes first) → owner's price/turf/colour.
   A faction with 2 places lost is weakened (dearer, worse facilities, easier to join). Wu gets a revenge bonus.
@@ -163,7 +164,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     wit and opponent strength. Scouting shows which techniques a team's players have.
   - Save: RUN_VERSION bump (Limit Break progress removed, match XP added). Match results unchanged (goldens stay).
 
-- §4.15 Challenges **[locked, not built — T-037/T-038, after rankings §4.17]** (makes a no-training run possible; see §4.14):
+- §4.15 Challenges **[team challenge + refusal built (T-037); loss penalties + injury not built (T-038)]** (makes a no-training run possible; see §4.14):
   - Team challenge (map action at a club HQ): your side challenges that club's squad. Costs 1 day + the trip; you name a
     money **stake** (0 allowed). The match itself is the street-battle flow (`Cup.clash`-style fixture: watch or Sim ⏭).
     You play with your side: the Academy squad, or your club's squad (your club must not be the target); alone → hire
@@ -187,7 +188,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     (never ends the run) [assumed — owner to confirm].
   - Balance target: a no-training run reaches the mid-70s by ~week 20 only with well-chosen fights.
 
-- §4.16 Living map **[locked, not built — layer A: T-039/T-040; B/C wait for the lore]**: the map shows what is happening
+- §4.16 Living map **[layer A built (only the Wei–Wu border has a drawn line, so pulse / patrols show there); B/C wait for the lore]**: the map shows what is happening
   (display only, no rules, no randoms):
   - A (now): your teammates at the places they train this week; faction players drilling at their courts (more for
     bigger pools; coloured once scouted / member, grey silhouettes before) and walking between their places; the week's
@@ -197,7 +198,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     and traffic, villagers near Central Academy.
   - C (after lore, with M3): the sun moves as the week's days are spent; dusk when no days are left.
 
-- §4.17 Rankings **[locked, not built — T-041/T-042]**: three lists, each from a biased publisher (numbers true, what
+- §4.17 Rankings **[built]**: three lists, each from a biased publisher (numbers true, what
   counts is biased; lore.md §7):
   - **Academy Register** (`registrar`): every U21 player (all pools, the Academy squad, you) by true OVR. Known players
     (member / your squad / scouted club or faction / met on court) show OVR; others "unrated" (faction + role only).
