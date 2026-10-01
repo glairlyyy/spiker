@@ -80,6 +80,30 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   match screen is open, at 50 % of the effects volume (`BGM_GAIN` 0.5 × volume slider); follows the sound toggle and
   the volume slider; fades in on start and out on leaving. Presentation only (no effect on results). More tracks /
   crowd / voice clips later (backlog).
+- §2.12 Ego **[locked (owner), not built — T-068]**: street volleyball (§2.0) is full of players who want to be the
+  star. Every player has an **ego** (0–1) and a **maturity** from wit (≈0 at wit 0.5, 1 at wit 2.0): new, low-wit
+  players play for themselves; high-wit players still have ego but act on it less and botch it less.
+  - Ego acts (each a chance per opportunity = EGO.base[act] × ego × (1 − maturity)):
+    - **ball steal** — on a dig / pass that is a teammate's ball (the nearest player), an ego player goes for it too:
+      "Mine!" — a collision (the ball drops or the pass is shanked) or, if it works, their touch instead;
+    - **set call** — a hitter demands the set: a low-maturity setter gives it to them even when another hitter is
+      open (worse matchup vs the block); a mature setter ignores the call;
+    - **solo block** — an ego blocker ignores the defence setting (§2.9) and commits alone / early: gaps for the
+      other blocker, a stuff when the read is right;
+    - **hero swing** — on a bad set an ego hitter swings full power instead of rolling or tipping it: more kills,
+      more errors and stuffs;
+    - **hero serve** — an ego server goes for the risky jump serve: more aces, more errors.
+  - Success feeds it (mood up, fame for highlight plays); failure costs mood and the team's momentum. Maturity also
+    lowers the error side of every ego act (a mature player's hero swing is a calculated one).
+  - Communication: a high-wit captain on court calls it off (chances × (1 − captain maturity × EGO.captain)).
+  - Relationships (§4.23): ego acts are memories — stole_my_ball −6, collided −4 (both), hero_carried +8 (it won the
+    point: warm / loyal teammates count it, jealous ones resent it), set_hogged −4 (the open hitter who got nothing).
+    Ego toward allies is halved, toward rivals ×1.5: a feud shows up as stolen balls.
+  - Ego value: NPCs from traits once they exist (proud / reckless / jealous up; steady / calculating / warm down),
+    until then a fixed hash per player (0.2–0.8, WS a little higher); your player starts at 0.6 — you are the new kid
+    who wants to be the star; maturity comes with wit. Shown on player cards as a short tag (Show-off · Team player).
+  - Presentation: "MINE!" label over the player (`plabel`), a collision as both players' bump poses + a log line,
+    chatter for set calls; no new act kinds. Engine-only tallies (`m.egoLog`) feed the memories later (T-061).
 - §2.4 Blocks: stuff odds = full-strength block vs spike, weighted by coverage; ~14% of attacks stuffed in normal play.
 
 ## 3. Menu [built]

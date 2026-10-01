@@ -41,10 +41,10 @@ Result:
 - Free setter takes the second ball ✓ (T-054) · start from 1 ✓ (T-055).
 - Stat guard ✓ (T-056) · official venues ✓ (T-053).
 - Smarter coach ✓ (T-057).
-- **Now**: player camera: Follow (T-058), POV (T-059), Story mode cup guarantee (T-067). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
+- **Now**: player camera: Follow (T-058), POV (T-059), Story mode cup guarantee (T-067), ego (T-068). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now — Player camera (spec §4.25), Story mode (spec §4.26)
+## Now — Player camera (§4.25), Story mode (§4.26), Ego (§2.12)
 
 ### [ ] T-058: Follow camera — 3rd person behind your player
 Spec: §4.25          Goldens: unchanged (presentation only)          Save: no change
@@ -124,11 +124,43 @@ QA: new run (Story) → force week 28 end with a weak player → you are in a cu
 pageerror.
 Result:
 
+### [ ] T-068: Ego — show-offs steal balls, call sets, block alone (wit = maturity)
+Spec: §2.12, §2.0          Goldens: update (new decisions in every rally)          Save: no change
+Goal: Every player gets an ego (0–1); low-wit players act on it — ball steals, set calls, solo blocks, hero swings,
+hero serves — with maturity from wit cutting both how often and how badly. Logged for the relationship memories later.
+Files: js/data/rules.js, js/engine/players.js, js/engine/match.js, js/engine/rally.js, js/engine/rally-phases.js,
+js/engine/rally-defense.js, js/engine/serve.js, js/data/dialogue.js, js/career/run.js, tests/run.js, ARCHITECTURE.md
+Do not: add an act kind (use `plabel`, `pose`, `log`, `chat` / existing chatter); add randoms to presentation; change
+saves beyond the player field `ego` (teams save it; old saves get the hash value on load); let one ego act decide a
+rally on its own more than its EGO table says.
+Steps:
+1. rules.js `EGO = { base: { steal, call, solo, swing, serve }, captain, err: { … } }` (doc comment; start values small:
+   aim for ~1–3 ego acts per side per set among average-wit players, ~0 with wit ≥ 1.8). `maturity(p) = clamp((p.wit −
+   0.5) / 1.5, 0, 1)`.
+2. players.js: `p.ego` in createPlayer (spec value wins; else a hash of the player's id/name → 0.2–0.8, WS +0.1, no R()
+   draw so generation stays identical); your player: 0.6 (run.js create).
+3. Engine hooks, one R() each only where an opportunity exists and its chance is > 0 (no draw at chance 0): dig / pass (rally-phases / rally-defense: an ego mate
+   other than `nearest` within reach → steal: collision chance by both players' maturity, else they take it);
+   pickSetter/chooseAttack (set call: the setter's maturity resists); formBlock (solo block: the ego blocker ignores
+   `dset`); attack on quality-1 sets (hero swing instead of the safe shot); serve (hero serve → jump serve).
+   Captain call-off per §2.12. Record `m.egoLog.push({ act, p, ok, mate? })` (engine-only).
+4. Presentation: "MINE!" `plabel`, bump poses on a collision, a log line; set-call chatter lines in dialogue.js (street
+   voice, 5 lines). Hype scenes unchanged.
+5. tests `'engine: ego'`: 400 sims — ego acts per side per set in range for average wit, near zero for wit ≥ 1.8;
+   success rate rises with maturity; collisions only on steals; with ego 0 everywhere the match is identical to an
+   ego-free reference run of the same seed (no extra draws when no opportunity); T-026 stuff / kill tests still
+   pass (retune EGO, not those tests, if they don't); report kill % and error % before / after.
+6. `npm run test:update` with the reason. ARCHITECTURE.md: ego.
+Accept: all tests + lint; goldens updated for this reason only.
+QA: Monster game with all wit set to 0.6: 2000 steps — "MINE!" labels, a collision, a solo block seen; with wit 1.9:
+almost none; no pageerror.
+Result:
+
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
 Relationships — the core pillar (spec §4.23; detailed one by one after T-059)
 - T-060: NPC careers — wants, traits, status, weekly plans, activity-based growth (data + headless sim).
-- T-061: Memory log + stance + bond as a read-only summary (all bond sources become memory kinds).
+- T-061: Memory log + stance + bond as a read-only summary (all bond sources become memory kinds; ego acts from `m.egoLog`).
 - T-062: People tab — person cards, discovery of wants / traits, top memories.
 - T-063: Approaches — NPCs come to you (and to each other); you approach them.
 - T-064: Fates — cut / quit / poached / national; end-of-run "People who mattered".
