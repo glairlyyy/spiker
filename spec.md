@@ -152,7 +152,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   Text follows spec §6 (numbers true; `registrar` voice for labels). Data comes from a DOM-free model
   (`Dossier.build(run, r)`), the window only renders it.
 - §4.13 Meta progression **[built — removed]**: none. No Legacy points, unlocks, pure runs, Hall of Fame or
-  legend inheritance. Every career starts the same: free agent, base budget and caps (CAREER), no starting skill,
+  legend inheritance. Every career starts the same: free agent, all stats 1 (§4.22), no starting skill,
   no team pick. Challenge modes (Hard league, Short season) stay as plain options. The run-end screen keeps the
   result, rank and growth chart.
 - §4.14 Growth: train to a floor, fight to go higher **[built]** (Kenshi rule):
@@ -268,6 +268,13 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   - **Highland Court** (an open hillside court by Shu Peak's HQ, stone terraces for seats): Shu's evaluations.
   On a match week the venue of your match glows on the map and the match card says where it is played. Display only:
   no travel days, no change to where you stand.
+
+- §4.22 Start from 1 **[locked, not built — T-055]** (owner, Kenshi start): your player starts with Power, Defense,
+  Speed and Jump all at **1** and Wit at 1.0 — no creation points, no role bias, no wit steps. Creation keeps name,
+  role, look and the challenge modes. Low levels come fast and slow down: XP for the next point keeps growing ×1.05 per
+  point **below 50 too** (≈1 XP at 1, ≈6 at 40, 10 at 50), so a focused stat reaches ~50 in about a dozen sessions;
+  the training cap (75) and match growth (§4.14) are unchanged. Early on you are benched and lose — that is the point
+  (evaluations still pay the bench reward). Stats can fall to 1 (events, injuries), never below. NPCs are unchanged.
 
 ## 5. Open questions — do not build until decided
 - §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story

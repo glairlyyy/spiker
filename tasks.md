@@ -38,7 +38,7 @@ Result:
 - Roads + buildings ✓ (T-045 layout data, T-046 3D town).
 - Walk the roads ✓ (T-047) · town layout revamp ✓ (T-050 data, T-051 render).
 - Match history ✓ (T-052).
-- **Now**: free setter takes the second ball (T-054), official venues (T-053). Then road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
+- **Now**: free setter takes the second ball (T-054), start from 1 (T-055), official venues (T-053). Then road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now — Match history (spec §4.20), official venues (spec §4.21)
@@ -64,6 +64,38 @@ Steps:
 4. `npm run test:update`; give the reason in the commit.
 Accept: all tests + lint; goldens updated for this reason only.
 QA: Monster game 600 steps: watch 10 bad passes — the setter runs to the ball unless someone is right there; no pageerror.
+Result:
+
+### [ ] T-055: Start from 1 — every stat of your new player is 1
+Spec: §4.22, §4.14          Goldens: unchanged (NPC generation untouched)          Save: no change
+Goal: A new run's player has Power / Defense / Speed / Jump 1 and Wit 1.0; creation has no point allocation; early
+levels train fast; nothing breaks with stat-1 players in matches or the career.
+Files: js/data/career.js, js/engine/players.js, js/career/run.js, js/career/training.js, js/career/cup.js,
+js/ui/career-create.js, tests/run.js, ARCHITECTURE.md
+Do not: change NPC generation (`rollStats` keeps its 25 floor; `mkLeagueTeams`, pools, reserves untouched) or any engine
+formula; change TRAIN_CAP / runCap; bump the save version (the shape is the same).
+Steps:
+1. career.js: `CAREER.start = 1` (every stat of a new player), `CAREER.statMin = 1` (lowest any of your stats can go);
+   remove `statBase`, `budget`, `createCap`, `witStepCost`, `witCreateCap`, `witStep` once nothing uses them (grep
+   first). `TRAIN_X.xp`: need = base × grow^(v − from) for every v (no `max(0, …)`), at least 1.
+2. players.js `createPlayer`: the stat clamp floor 25 → `STAT_FLOOR` = 1 (a new const in players.js next to the clamp, doc
+   comment: generated players never go below 25 — `rollStats` keeps its own floor). Check goldens stay unchanged.
+3. run.js: `Run.create` gives every stat `CAREER.start` and wit `CAREER.witBase` (spec.alloc / witSteps ignored —
+   remove `createdStat`); `Run.bump` floor 25 → `CAREER.statMin`. cup.js line ~207 (`clamp(p[k] + d, 25, 99)`):
+   floor → `CAREER.statMin` if `p` can be you, else leave it.
+4. training.js: `need(v)` per step 1 (`Math.max(1, Math.round(…))`); `dim(v)` unchanged.
+5. career-create.js: drop the allocation rows, budget and wit stepper; show the four stats at 1 and wit 1.0 as plain
+   numbers with one registrar line: "All stats start at 1. Train to 75; matches take you further." Keep role / name /
+   look / modes. The role still sets your key stat (shown), not your numbers.
+6. tests `'career: start from 1'`: a new run's you has every stat 1, wit 1.0, ovr ≥ 0; need(1) = 1 and need rises to
+   10 at 50; one Power session at a Lv 1 place raises Power from 1 by several points; 300 sims of a squad with an all-1
+   player (vs a normal squad) finish with no NaN / Infinity in m.stat or beats and no stall; `Run.lineup` benches the
+   all-1 you behind a same-role mate; events / injuries never push a stat below 1. Update the tests that create runs
+   with `alloc` (they now get 1s) and the growth / cap tests that assume a ~50 start.
+7. ARCHITECTURE.md: creation and the XP curve.
+Accept: all tests + lint; goldens untouched.
+QA: new run → creation shows 1s, no point buttons; HUD stat bars near empty; one Power training day → Power rises by
+several points; play (⏭) the week-4 evaluation → benched or played without errors; no pageerror.
 Result:
 
 ### [ ] T-053: Official venues on the map — League Arena, Academy Hall, Beach Stadium, Highland Court
