@@ -223,6 +223,23 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     data — owner picks the pieces.
   - Your player walks along the roads (route through the network) instead of a straight line.
   - Later (T-048, optional): trips along roads cost fewer days than cross-country; Shu mountain paths stay slow.
+- §4.19 Town layout revamp **[locked, not built — T-050 data, T-051 render]** (owner: the island should feel as crowded as
+  the lore; wider beach; Wu town inland). Districts follow lore.md §3–§5:
+  - **Wei** (dense, layered): *Downtown* round Wei Gold's HQ and the league office — a tower grid, the densest place on
+    the island; *Old Town* in the north-coast pocket by the abandoned gym — the refugee town the settlers built over,
+    tight lanes, low rowhouses (homeless housing lives there); *the Ring* — mid-rise blocks out to the borders;
+    *St. Gloria* — a walled villa compound with a gatehouse.
+  - **Wu**: the beach is ~2–3× wider along the east and south coast, grown **outward** (the coastline moves out; no
+    border moves). On the sand: the faded beach-boom strip — a boardwalk along the dune line, old resort hotels, kiosks,
+    public sand courts (where the sand game was born; Wu doesn't remember it). *Wu town* sits inland behind the dunes,
+    between the beach and the Wei border (barracks, workshops, a market); the *harbor district* stays on the east coast.
+  - **The overpass**: a real elevated highway from downtown Wei down to the Wu harbor along the contested line; the
+    Outlaws' shacks, containers and cage sit under it.
+  - **Shu**: 3–4 terraced hill villages (the native villages that keep the old language — unnamed until the lore glossary
+    exists), shrines, mountain paths, few people.
+  - **Central Academy**: a campus quad on the old ritual ground; a weathered sand circle nearby, never labelled.
+  - Buildings fill districts (an area + style + density), not only rows along roads; ~1,200 buildings in all
+    (Wei ~600, Wu ~300, Shu ~150, Outlaws ~60, Academy ~40, Gloria ~30). Trip days unchanged (T-048 decides road travel).
 
 ## 5. Open questions — do not build until decided
 - §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story

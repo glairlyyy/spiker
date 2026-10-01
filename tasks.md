@@ -36,7 +36,7 @@ Result:
 - Rankings drawer fix ✓ (T-044).
 - Challenge loss + injury ✓ (T-038).
 - Roads + buildings ✓ (T-045 layout data, T-046 3D town).
-- **Now**: the player walks the roads (T-047). Then road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
+- **Now**: the player walks the roads (T-047). **Next**: town layout revamp (T-050 data, T-051 render). Then road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now — Roads, settlements and buildings (spec §4.18)
@@ -57,6 +57,80 @@ Steps:
 Accept: all tests + lint.
 QA: career run → travel from the airport to Shu: the avatar follows the coast road then the mountain path; ×N badge
 shows for a long trip; no pageerror.
+Result:
+
+## Next — Town layout revamp (spec §4.19)
+
+### [ ] T-050: Town layout data — districts, a wider beach, Wu town inland, the overpass
+Spec: §4.19, §4.18          Goldens: unchanged (career / map only)          Save: no change
+Goal: The island's layout data matches the lore: buildings fill districts (Wei downtown / Old Town / Ring, Gloria
+compound, Wu town, harbor, beach strip, Outlaws under the overpass, Shu villages, Academy campus), the Wu beach is wider
+(coast grown outward), Wu town moves inland behind the dunes, and the overpass and boardwalk exist as roads.
+Files: js/data/city.js, js/data/world.js, js/career/mapmodel.js, tests/run.js, ARCHITECTURE.md
+Do not:
+- Move any region border: freeze `CITY.inner` as literal points first (today it is computed from the coast; the Wei–Wu
+  line `wuWei` uses inner[6..8] = [854,199], [883,305], [850,412]).
+- Change trip-day rules, `NEAR_R` / `TRIP_DAY`, saves, or anything in js/map3d (T-051 draws it).
+- Draw randoms: lots stay hashes of fixed data (hstr), so the same run state gives the same model.
+- Invent names: districts get ids, not place names (old-language names wait for lore §8).
+Steps:
+1. Map frame: `CITY.w` 1060, `CITY.h` 700 (all coordinates stay as they are; the new room is sea to the east and south).
+2. Coast: push the Wu stretch outward — coast[5] → [846,68], [6] → [972,154], [7] → [1010,297], [8] → [969,441],
+   [9] → [883,564], [10] → [726,637], [11] → [545,657], [12] → [360,632], [13] → [215,573]. Add `CITY.dunes` = the old
+   coast points 6–12 ([930,170] … [380,592]): the beach's inner edge; the sand is between `dunes` and the coast.
+   `CITY.beach` becomes the new coast points 6–12.
+3. Places (SPOTS / HQ / HOME_AT / ROADS nodes move together; every one stays in its region, on land, not on a road):
+   - On the sand (between dunes and coast): `sand`, `pier` (at the new waterline), `bonfire`, `dunes`, `home:studio`
+     (the beach shack).
+   - Wu town, inland: `hotelWu`, `hq3` (Wu Fort) at least 40 units inside the dune line, south of the Wei border.
+   - Harbor district (east coast, may touch the dunes): `harbor`, `hq2`.
+   - `REGIONS.wu.at` / `CITY.label.wu` follow Wu town; `airport` stays at [470,600] (it is now on the beach band).
+4. Roads (ROADS): add kinds `boardwalk` (along the dune line, sand ↔ pier ↔ bonfire ↔ the old resort strip) and
+   `overpass` (an elevated main road from downtown Wei (`jW2` or `weiSpeed`) to the harbor (`jWu2`), passing over the
+   Outlaws patch: 2–4 edges). Reconnect the coast road through Wu town; every node still reachable from `airport`.
+5. `DISTRICTS` (new constant in city.js): `[{ id, region, style, poly or { x, y, r }, gap, density, size, kinds, tall? }]`
+   for: wei-downtown, wei-oldtown, wei-ring, gloria (compound), wu-town, wu-harbor, wu-beach (strip along the
+   boardwalk: resort, kiosk), outlaws (under the overpass), shu-village ×3–4 (round HQ7 / the highland home, HQ4 / the
+   steps, the shrine / dojo, the trail), academy (campus). New lot kinds (T-051 gives them meshes): rowhouse, barracks,
+   workshop, market, warehouse, resort, kiosk, terrace. `tall` (0–1) lets downtown lots grow taller toward its centre.
+6. MapModel.lots: fill each district with a grid (spacing `gap`, aligned to the nearest road, a hash vs `density`),
+   skipping water, other regions, roads (within setback), places / HQs (NEAR_R / 3), other lots; beach districts only
+   on the sand, others never on it. Keep the road-side lots outside districts but at density × 0.4 (countryside).
+   Each lot gains `h` (0–1: height factor) and `district`. `maxLots` 1400. Target counts (±20 %): Wei ~600, Wu ~300,
+   Shu ~150, Outlaws ~60, Academy ~40, Gloria ~30.
+7. MapModel.land gains `dunes` (the dune line), `districts` ([{ id, region, style, poly }] for walls / tinting) and a
+   `ritual` landmark (kind `ritual`, a sand circle by the Academy on the old ritual ground; no pin, no label).
+8. tests: frozen borders (regionAt of a dozen fixed points unchanged); every place / HQ / home in its region and on
+   land; beach places between dunes and coast, Wu-town places inland; all nodes reachable; lot counts per region in
+   range; lots deterministic and never on water / roads / other regions; `MapModel.build` draws no R().
+9. ARCHITECTURE.md: districts, the beach band, the new road kinds.
+Accept: all tests + lint; goldens untouched.
+QA: none needed (data only; T-051 draws it) — report the lot counts per region in the Result.
+Result:
+
+### [ ] T-051: Draw the revamped town — wide beach, boardwalk, overpass, new building kinds
+Spec: §4.19, §4.18          Goldens: unchanged          Save: no change
+Goal: The 3D island shows T-050's layout: a wide sand beach on the Wu coast, a boardwalk, the overpass on pillars with
+the Outlaws under it, the Gloria wall, the new building kinds, taller downtown towers, and the ritual sand circle.
+Files: js/map3d/map3d.mjs, js/map3d/town3d.mjs, js/map3d/kit3d.mjs, ARCHITECTURE.md
+Do not: read rules or call City / MapModel from js/map3d (model only); add a new draw call per lot or per landmark;
+load external models (procedural only; the KIT registry stays swappable).
+Steps:
+1. Terrain: sand (flat, low) between `land.dunes` and the coast on the Wu stretch; the old narrow BEACH slope elsewhere.
+2. Roads: `boardwalk` = wooden planks ribbon just above the sand; `overpass` = deck ~7 m up on pillars every ~20 m
+   (one merged mesh for decks + pillars), ramps at both ends down to the ground road.
+3. KIT: meshes for rowhouse, barracks, workshop, market, warehouse, resort (faded, pastel), kiosk, terrace (stepped
+   house on a slope); lot height × (1 + 1.5 × `h`) so downtown rises toward its centre.
+4. Districts: a wall ring round the Gloria compound with the gatehouse at its road; an optional faint ground tint per
+   district style (no new draw call if folded into the terrain colours).
+5. LANDMARKS `ritual`: a worn sand circle with a ring of low stones.
+6. Budget at default zoom vs T-046 (28 calls / ~157k tris incl. shadows): ≤ 40 draw calls, ≤ 260k tris; frame time in
+   swiftshader not more than 25 % worse; fog dimming covers every new mesh.
+Accept: all tests + lint.
+QA: career run with the whole map revealed: zoomed out, Wei reads as a dense city with a tall downtown, the Wu coast as a
+wide beach with a boardwalk and an inland town, the overpass over the Outlaws, Shu as scattered villages; zoomed in on
+downtown, the walk along a road between towers; leave / return 3× without leaks; draw calls and tris in the Result;
+no pageerror.
 Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
