@@ -32,9 +32,18 @@ function renderCreate() {
     </div>
     <div class="panel">
       <h3>Your team</h3>
-      <p class="small mute">Free agent${info('You arrive with no club: play Academy evaluations with the Academy squad and sign with a club once you meet its conditions. Free agents miss the cups.')}</p>
+      <p class="small mute">Free agent${info('You arrive with no club: play Academy evaluations with the Academy squad and sign with a club once you meet its conditions. In Story you still play the U21 Final Cup: with your faction, the Academy squad, or a hired street crew.')}</p>
+      <h4>Mode${info('Story: the U21 Final Cup always includes you. Endless comes later.')}</h4>
+      <div class="seg" role="group" aria-label="Mode">${Object.entries(MODES)
+        .filter(([, m]) => m.game)
+        .map(
+          ([k, m]) =>
+            `<button class="btn ${m.disabled ? '' : 'on'}" ${m.disabled ? 'disabled' : ''} ${tip(m.desc)}>${m.name}${m.disabled ? ' <small class="mute">(later)</small>' : ''}</button>`
+        )
+        .join('')}</div>
       <h4>Challenge${info('Optional handicaps.')}</h4>
       ${Object.entries(MODES)
+        .filter(([, m]) => !m.game)
         .map(
           ([k, m]) =>
             `<label class="opt" ${tip(m.desc)}><input type="checkbox" ${CR.mode[k] ? 'checked' : ''} onchange="CR.mode.${k}=this.checked;renderCreate()"> <b>${m.name}</b></label>`
@@ -54,7 +63,7 @@ function crStart() {
   RUN = Run.create(CR.draft, {
     role: CR.role,
     name,
-    mode: CR.mode
+    mode: { ...CR.mode, story: true }
   });
   CR = null;
   Run.save(RUN);

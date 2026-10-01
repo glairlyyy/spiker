@@ -72,7 +72,7 @@ export const getPovStats = () => povStats;
 export const povHidden = () => (pov.hide ? followId : null);
 function povPose(pl, dt, pos, look) {
   const yaw = pl.root.rotation.y,
-    bp = world.ball.position;
+    bp = lookBall();
   pf.set(Math.sin(yaw), 0, Math.cos(yaw));
   pl.bone('head').getWorldPosition(ph);
   const tx = ph.x + pf.x * POV.fwd,
@@ -85,7 +85,7 @@ function povPose(pl, dt, pos, look) {
   pt.copy(bp).sub(pov.pos).setY(0);
   // the ball is looked at up to 100° off the facing, and fades out to straight ahead by 140° (no flip at the edge)
   const cs = pt.lengthSq() > 1e-4 ? pt.normalize().dot(pf) : -1,
-    kb = Math.max(0, Math.min(1, (cs - POV.far) / (POV.cone - POV.far)));
+    kb = Math.max(0, Math.min(1, (cs - POV.far) / (POV.cone - POV.far))) * bw.v;
   pt.copy(pov.pos).addScaledVector(pf, 3).setY(pov.pos.y);
   pd.copy(pt).lerp(bp, kb);
   faceOpponent(pov.pos, pd, pl.d.side, 55);
@@ -112,7 +112,24 @@ function povPose(pl, dt, pos, look) {
   pos.copy(pov.pos);
   look.copy(pov.look);
 }
-const ZO = { max: 12, out: 14, back: 3 }, // back-off limit (m), speed backing off / returning (m/s)
+/**
+ * The point the Follow / POV cameras look toward: the ball clamped to the playable box (a ball far out of the map must not
+ * drag the view around), weighted by `bw.v` — 1 while the ball is in play and drawn, eased to 0 (~0.25 s) when it is hidden or
+ * parked, so the view returns to straight ahead instead of snapping to a stale far position.
+ */
+const BALL_BOX = [16, 9, 9], // |x|, |z|, y max (m)
+  bw = { v: 1, p: new THREE.Vector3() };
+function lookBall() {
+  const q = world.ball.position;
+  return bw.p.set(
+    Math.max(-BALL_BOX[0], Math.min(BALL_BOX[0], q.x)),
+    Math.max(0, Math.min(BALL_BOX[2], q.y)),
+    Math.max(-BALL_BOX[1], Math.min(BALL_BOX[1], q.z))
+  );
+}
+/** faceOpponent: from fade[0] to fade[1] rad off the axis the clamped look eases back to straight ahead (continuous behind the camera). */
+const FACE = { fade: [1.75, Math.PI] },
+  ZO = { max: 12, out: 14, back: 3 }, // back-off limit (m), speed backing off / returning (m/s)
   zo = { k: 0, d: 0, v: new THREE.Vector3() }; // auto zoom-out when the ball leaves the frame
 /**
  * Keep a look point within `deg` of the opponent's side (the court axis toward the net) as seen from `pos`: the camera never
@@ -126,7 +143,10 @@ function faceOpponent(pos, look, side, deg) {
   const ax = side === 0 ? 0 : Math.PI,
     rel = Math.atan2(Math.sin(Math.atan2(dz, dx) - ax), Math.cos(Math.atan2(dz, dx) - ax)),
     lim = (deg * Math.PI) / 180,
-    c = Math.max(-lim, Math.min(lim, rel));
+    t = Math.min(1, Math.max(0, (Math.abs(rel) - FACE.fade[0]) / (FACE.fade[1] - FACE.fade[0]))),
+    // a target almost straight behind (|rel| → 180°) would flip the clamp from +lim to −lim in one frame: fade the pull to 0 there
+    fade = 1 - t * t * (3 - 2 * t),
+    c = Math.max(-lim, Math.min(lim, rel)) * fade;
   if (c === rel) return;
   look.x = pos.x + Math.cos(ax + c) * len;
   look.z = pos.z + Math.sin(ax + c) * len;
@@ -138,13 +158,13 @@ function followPose(pl, pos, look) {
   const side = pl.d.side,
     dir = side === 0 ? 1 : -1, // toward the net
     hips = pl.root.position,
-    bp = world.ball.position,
+    bp = lookBall(),
     mine = Math.sign(bp.x) === -dir, // ball on your side of the net
-    lean = Math.max(-1, Math.min(1, (bp.z - hips.z) * 0.15));
+    lean = Math.max(-1, Math.min(1, (bp.z - hips.z) * 0.15)) * bw.v;
   pos.set(hips.x - dir * FOL.back, Math.max(1.2, hips.y + FOL.up), hips.z + lean);
   pos.x = dir > 0 ? Math.min(pos.x, -0.5) : Math.max(pos.x, 0.5); // never inside the net plane
   fh.set(hips.x + dir * FOL.ahead, hips.y + 1.5, hips.z);
-  look.copy(fh).lerp(bp, FOL.ball[mine ? 1 : 0]);
+  look.copy(fh).lerp(bp, FOL.ball[mine ? 1 : 0] * bw.v);
   faceOpponent(pos, look, side, 40);
 }
 /** Broadcast = the classic full-court framing; courtside = closer and lower, following the ball along the court; follow = behind your player. */
@@ -152,6 +172,7 @@ export function updateBase(dt) {
   const fig = followFig(), // tracked in every mode, so a mode switch fades from / to a live pose
     eff = (camMode === 'follow' || camMode === 'pov') && !fig ? 'courtside' : camMode;
   camState.eff = eff;
+  bw.v += ((A && A.ball.vis ? 1 : 0) - bw.v) * (1 - Math.exp(-dt / 0.25));
   const kw = 1 - Math.exp(-dt * 5); // ~0.6 s ease between modes
   for (const m in camState.w) camState.w[m] += ((m === eff ? 1 : 0) - camState.w[m]) * kw;
   const bx = A && A.ball.vis ? Math.max(-6.5, Math.min(6.5, (A.ball.x - 500) * KX * 0.75)) : 0;
@@ -235,8 +256,15 @@ export function updateBase(dt) {
   shot.k += ((shot.key ? 1 : 0) - shot.k) * (1 - Math.exp(-dt * (shot.key ? 16 : 5)));
   if (shot.k > 0.001) {
     const e = shot.k * shot.k * (3 - 2 * shot.k);
+    // turn the view through the shortest arc at an even rate (lerping the look points snaps the view when the two shots differ a lot)
+    const dg = sv1.copy(look).sub(pos),
+      ds = sv2.copy(shot.look).sub(shot.pos),
+      lg = dg.length(),
+      ls = ds.length();
+    sq.setFromUnitVectors(dg.normalize(), ds.normalize());
+    sq0.identity().slerp(sq, e);
     pos.lerp(shot.pos, e);
-    look.lerp(shot.look, e);
+    look.copy(pos).addScaledVector(dg.applyQuaternion(sq0), lg + (ls - lg) * e);
     fov += (shot.fov - fov) * e;
   }
   pov.hide = camMode === 'pov' && W3.pov * (1 - pov.fb) > 0.5 && shot.k < 0.3;
@@ -252,8 +280,12 @@ export function updateBase(dt) {
   cam.quaternion.copy(base.quaternion);
   cam.updateMatrixWorld(true);
 }
-/** Camera for a scene shot: face close-up, over the setter's shoulder at the hitter, or from behind the block. */
+const sv1 = new THREE.Vector3(),
+  sv2 = new THREE.Vector3(),
+  sq = new THREE.Quaternion(),
+  sq0 = new THREE.Quaternion();
 const shot = { k: 0, key: '', pos: new THREE.Vector3(), look: new THREE.Vector3(), fov: 30 };
+/** Camera for a scene shot: face close-up, over the setter's shoulder at the hitter, or from behind the block. */
 function shotPose(s) {
   const find = id => world.people.find(pl => pl.d && pl.d.p.id === id),
     a = find(s.p);

@@ -431,9 +431,10 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   Owner tweaks (build chat): Follow / POV always face the opponent's side (look clamped ±40° / ±55°); when the ball
   leaves the frame the view widens (and Follow backs away from the net up to 12 m) until it is back; softer screen
   shake (slow sway, off with Zooms: Off); ball trails scale with hit power and every trail fades while its object is
-  still.
+  still; a ball far out of the map never drags the view (look target clamped to the court box, eased out while
+  hidden), and a hype shot's exit turns the view smoothly.
 
-- §4.26 Game modes **[locked (owner), not built — T-067; Endless = backlog]**: a new run picks **Story** (default) or
+- §4.26 Game modes **[locked (owner), built T-067; Endless = backlog]**: a new run picks **Story** (default) or
   **Endless** (later).
   - **Story**: the run is your story, so the final stage always includes you. At the U21 Final Cup you are always in
     a squad (forced into your faction's first drawn squad over its weakest same-role player; an Academy member plays

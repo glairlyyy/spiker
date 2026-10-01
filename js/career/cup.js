@@ -27,13 +27,85 @@ const Cup = {
       const T = run.pickup;
       out.push({ name: T.name, short: T.short, color: T.color, region: null, ids: squadOf(T).map(p => p.id), academy: true });
     }
+    if (run.mode && run.mode.story && !out.some(e => e.ids.includes(run.youId))) Cup.place(run, out);
     return out;
   },
+  /**
+   * Story (spec §4.26): you are always in the cup. Signed with a faction → you take the place of the weakest same-role
+   * player (else the weakest player) of its first drawn squad; alone → the street crew entrant (`Cup.crew`). Mutates `out`.
+   */
+  place(run, out) {
+    const you = Run.you(run);
+    if (World.isFree(run)) return out.push(Cup.crew(run));
+    const r = FACTIONS[run.team].region,
+      e = out.find(x => x.region === r);
+    if (!e) return out.push(Cup.crew(run));
+    const all = Pool.players(run, r),
+      got = e.ids.map(id => all.find(p => p.id === id)),
+      weak = ps => ps.reduce((a, b) => (ovr(b) < ovr(a) ? b : a)),
+      same = got.filter(p => p && p.role === you.role),
+      out1 = weak(same.length ? same : got.filter(Boolean));
+    e.ids[got.indexOf(out1)] = you.id;
+  },
+  /**
+   * The street crew entrant for a player who is alone (Story): you + hired players of CHALLENGE.hire.ovr, stored as
+   * `run.reserve.street` (a reserve team that never includes you) so it saves with the run. Generated on a seeded side
+   * stream (RNG.next is restored), so the main random stream is untouched. Built once per run.
+   */
+  crew(run) {
+    const you = Run.you(run);
+    let T = run.reserve.street;
+    if (!T) {
+      const keep = RNG.next;
+      RNG.seed(Math.floor(hstr(`crew|${you.id}`) * 4294967296));
+      try {
+        const used = new Set(
+            run.teams.concat(Object.values(run.reserve), run.pickup ? [run.pickup] : []).flatMap(x => squadOf(x).map(p => p.name))
+          ),
+          H = squadOf(World.pickup(used)),
+          drop = H.find(p => p.role === you.role) || H[0];
+        T = {
+          i: -1,
+          name: 'Street crew',
+          short: 'STR',
+          color: '#8a90b0',
+          sk: 'balanced',
+          S: STYLES.balanced,
+          hist: { w: 0, l: 0, sw: 0, sl: 0, res: [] },
+          nStars: 0,
+          arch: 'Hired crew',
+          region: 'street',
+          P: H.filter(p => p !== drop),
+          bench: []
+        };
+        for (const p of T.P) {
+          const d = CHALLENGE.hire.ovr - ovr(p);
+          for (const k of STATK) p[k] = clamp(p[k] + d, 25, 99);
+          p.team = T;
+          p.pot = 1;
+        }
+        finalizeTeam(T);
+      } finally {
+        RNG.next = keep;
+      }
+      run.reserve.street = T;
+    }
+    const left = [you, ...T.P],
+      ids = [];
+    for (const role of ['S', 'MB', 'WS', 'WS']) {
+      const p = left.find(x => x.role === role) || left[0];
+      ids.push(p.id);
+      left.splice(left.indexOf(p), 1);
+    }
+    return { name: T.name, short: T.short, color: T.color, region: null, ids: ids.concat(left.map(p => p.id)), academy: false, crew: true };
+  },
+  /** Story and champion: you are called up to the national team, whatever your grades (spec §4.26). */
+  calledUp: run => !!(run.mode && run.mode.story && run.result && run.result.place === 'Champion'),
   /** Entrant i of the running cup as a playable squad (the Academy entrant is your real pickup squad). Lend it before a match. */
   team(run, i) {
     const e = run.cup.entrants[i];
     if (e.academy) return run.pickup;
-    return Eval.squad(run, e.ids, e.name, e.color, e.region, e.short);
+    return Eval.squad(run, e.ids, e.name, e.color, e.crew ? 'street' : e.region, e.short);
   },
   /** A cup begins: stamina refills; the squads are drawn and seeded by rating (1 plays 16, 8 plays 9, …; missing seeds are byes). */
   start(run, def) {
@@ -129,7 +201,7 @@ const Cup = {
       round = `${def.name} ${bm.round}`;
     }
     Cup.prepare(run, opp, kind, mine);
-    Run.lineup(run, mine, side.region);
+    Run.lineup(run, mine, side.region, false, kind === 'cup' && run.mode.story); // Story: you start every cup match
     return {
       a: mine,
       b: opp,

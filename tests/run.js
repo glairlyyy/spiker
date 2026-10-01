@@ -624,7 +624,7 @@ test('career: training cap, facility Lv 5 and Hard training', () => {
   eq(you.power, 80, 'a stat already at 80 is not lowered by a positive bump');
   g.Training.addXp(run, 'power', 100000, 'match');
   assert(you.power > 80, 'match XP goes past the training cap');
-  assert(!('lb' in run) && g.RUN_VERSION === 8, 'no Limit Break progress in the run; RUN_VERSION 8');
+  assert(!('lb' in run) && g.RUN_VERSION === 9, 'no Limit Break progress in the run; RUN_VERSION 9');
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
   const n = g.Training.preview(run, 'power', false).main[2],
@@ -1068,7 +1068,13 @@ test('career: free agent start, club join conditions, paydays, transfers, specta
   for (const t of run.teams) assert(t.P.length === 4 && t.P.every(p => p.team === t), 'transfers keep rosters linked');
   // a free agent who leaves the Academy and never signs watches the cup and the run still ends
   const h = load(42),
-    r2 = h.Run.create(h.Run.draft(), { role: 'MB', name: 'Loner', alloc: { power: 10, def: 20, speed: 10, jump: 20 }, witSteps: 0 });
+    r2 = h.Run.create(h.Run.draft(), {
+      role: 'MB',
+      name: 'Loner',
+      alloc: { power: 10, def: 20, speed: 10, jump: 20 },
+      witSteps: 0,
+      mode: { story: false }
+    });
   assert(h.World.leaveAcademy(r2), 'leaves the Academy squad');
   let guard = 0;
   while (!r2.result && guard++ < 200) {
@@ -1613,6 +1619,7 @@ test('career: U21 Final Cup — entrants, seeding, byes, restore', () => {
   assert(!r2.result, 'the cup is on');
   // alone: watch it from the stands
   const [g3, r3] = mk(63);
+  r3.mode.story = false; // (Story would hire a street crew: see the story test)
   g3.World.leaveAcademy(r3);
   g3.Cup.start(r3, g3.CUPS[0]);
   eq(r3.cup.me, -1, 'not in the cup');
@@ -2179,7 +2186,7 @@ test('career: challenge loss and injury', () => {
   run.sp = 99;
   assert(g.Training.physio(run) && !run.injury, 'physio heals the injury');
   assert(you[lost[0]] === before[g.STATK.indexOf(lost[0])] - g.INJURY.lose, 'but not the lost stat');
-  eq(g.RUN_VERSION, 8, 'save v8');
+  eq(g.RUN_VERSION, 9, 'save v9');
 });
 
 test('career: your coach picks the 4 — bench start, never played, part rewards', () => {
@@ -2242,6 +2249,76 @@ test('career: your coach picks the 4 — bench start, never played, part rewards
   line = fx.onFinish(m);
   assert(/bench: rewards ×0\.6/.test(line) && /grade/.test(line), `part-match line: ${line}`);
   eq(run.sp - sp0, want, 'skill points × BENCH.partMul');
+});
+
+test('career: story mode cup', () => {
+  const mk = (seed, role = 'WS') => {
+    const g = load(seed);
+    return [g, g.Run.create(g.Run.draft(), { role, name: 'Story', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 })];
+  };
+  const [g0, r0] = mk(71);
+  eq(r0.mode.story, true, 'Story is the default');
+  eq(g0.Run.create(g0.Run.draft(), { role: 'WS', name: 'E', mode: { story: false } }).mode.story, false, 'story can be switched off');
+  // signed with a faction but not drawn: forced into its first squad over the weakest same-role player
+  const [g, run] = mk(72);
+  const ti = 0,
+    reg = g.FACTIONS[ti].region;
+  g.FACTIONS[ti].join = {};
+  assert(g.World.join(run, ti), 'joins a faction');
+  const you = g.Run.you(run),
+    before = g.Pool.draw(run, reg).some(s => s.includes(you));
+  g.Cup.start(run, g.CUPS[0]);
+  assert(run.cup.me >= 0 && run.cup.entrants[run.cup.me].region === reg, 'you play for your faction' + (before ? ' (drawn)' : ' (forced)'));
+  // an undrawn you: pin the draw away from you by making you the weakest, then check the first squad
+  you.power = you.def = you.speed = you.jump = 25;
+  run.cup = null;
+  g.Cup.start(run, g.CUPS[0]);
+  const e = run.cup.entrants.find(x => x.region === reg && x.ids.includes(you.id));
+  assert(e, 'the weakest you is still in a squad');
+  eq(run.cup.entrants.filter(x => x.ids.includes(you.id)).length, 1, 'in exactly one squad');
+  // alone: the street crew entrant, saved with the run, never holds a second copy of you
+  const [g1, r1] = mk(73, 'MB');
+  g1.World.leaveAcademy(r1);
+  g1.RNG.seed(5);
+  const a = g1.R();
+  g1.RNG.seed(5);
+  g1.Cup.crew(r1);
+  eq(g1.R(), a, 'the crew is built on a side stream: the main draws are untouched');
+  g1.Cup.start(r1, g1.CUPS[0]);
+  assert(r1.cup.me >= 0 && r1.cup.entrants[r1.cup.me].name === 'Street crew', 'alone: you enter with a street crew');
+  const crew = r1.cup.entrants[r1.cup.me];
+  eq(crew.ids.length, 6, 'a crew of six');
+  eq(crew.ids.filter(id => id === g1.Run.you(r1).id).length, 1, 'you once');
+  assert(r1.reserve.street && !r1.reserve.street.P.some(p => p.id === r1.youId), 'the crew reserve never holds you');
+  // you start every cup match, even with the lowest rating; injured → benched
+  const you1 = g1.Run.you(r1);
+  you1.power = you1.def = you1.speed = you1.jump = 25;
+  const fx = g1.Cup.fixture(r1, 'cup');
+  assert(fx.a.P.includes(you1), 'you start the cup match');
+  fx.onLeave = null;
+  g1.Eval.restore();
+  r1.injury = { weeks: 2 };
+  const fx2 = g1.Cup.fixture(r1, 'cup');
+  assert(!fx2.a.P.includes(you1), 'injured: benched, injury beats Story');
+  g1.Eval.restore();
+  r1.injury = null;
+  // champion → called up; not Story keeps today's behaviour
+  r1.result = { place: 'Champion' };
+  assert(g1.Cup.calledUp(r1), 'a Story champion is called up');
+  r1.result = { place: 'Final' };
+  assert(!g1.Cup.calledUp(r1), 'a finalist is not');
+  const [g2, r2] = mk(74);
+  r2.mode.story = false;
+  g2.World.leaveAcademy(r2);
+  g2.Cup.start(r2, g2.CUPS[0]);
+  eq(r2.cup.me, -1, 'story off: not drawn → watch from the stands');
+  // save round trip keeps the crew and the mode
+  g1.Run.save(r1);
+  const back = g1.Run.load();
+  assert(
+    back && back.mode.story === true && back.reserve.street && back.cup.entrants.some(x => x.crew),
+    'the crew and mode survive a save'
+  );
 });
 
 // ---------- report ----------

@@ -42,38 +42,10 @@ Result:
 - Stat guard ✓ (T-056) · official venues ✓ (T-053).
 - Smarter coach ✓ (T-057).
 - Player camera ✓ (T-058 Follow, T-059 POV).
-- **Now**: Story mode cup guarantee (T-067), ego (T-068), block collision (T-069), POV polish (T-070). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
+- **Now**: ego (T-068), block collision (T-069), POV polish (T-070). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now — Story mode (§4.26), Ego (§2.12), POV polish (§4.25)
-
-### [ ] T-067: Story mode — you always play the U21 Final Cup (Endless kept for later)
-Spec: §4.26          Goldens: unchanged (career only)          Save: RUN_VERSION 8 → 9 (`run.mode.story`) — older saves dropped
-Goal: A run has `run.mode.story` (default true; creation offers Story, with Endless shown disabled "coming later").
-In Story, the U21 Final Cup always includes you as a starter, and winning it always calls you up.
-Files: js/data/career.js, js/career/run.js, js/career/cup.js, js/career/pool.js, js/ui/career-create.js,
-js/ui/career-end.js, tests/run.js, ARCHITECTURE.md
-Do not: change evaluations, challenges, street fights or Run.lineup outside the cup; touch js/engine; change the cup's
-bracket or seeding rules.
-Steps:
-1. career.js MODES gains `story` (name 'Story', desc in registrar voice) and `endless` (disabled, "later");
-   run.js: `run.mode.story` (create + repair: missing → true); RUN_VERSION 9.
-2. Cup.entrants (Story): if you are signed with a pool faction and no drawn squad holds you, put you into that
-   faction's first squad in place of its weakest same-role player (fallback: weakest player); Academy member → the
-   Academy entrant as today; alone → add an entrant "Street crew" of you + hired players (rating CHALLENGE.hire.ovr,
-   generated without R() draws that shift other draws — use a fixed hash for names / stats).
-3. Cup lineup (Story): before each of your cup matches you start in your role (`Run.lineup` gains an optional
-   `forceYou` used only by the cup path; injured you still sits — injury beats Story).
-4. Cup end (Story): champion → the run-end screen states the call-up ("Called up to the national team"), whatever your
-   grades; otherwise unchanged. Endless isn't playable yet: no other change.
-5. tests `'career: story mode cup'`: an undrawn signed player is forced into the first squad; an alone player gets
-   the street-crew entrant; you start every cup match even with the lowest OVR; injured → benched; champion →
-   called up; `mode.story = false` keeps today's behaviour (not drawn → watch from the stands).
-6. ARCHITECTURE.md: modes and save v9.
-Accept: all tests + lint; goldens untouched.
-QA: new run (Story) → force week 28 end with a weak player → you are in a cup squad and start; ⏭ to the end; no
-pageerror.
-Result:
+## Now — Ego + block collision (§2.12), POV polish (§4.25)
 
 ### [ ] T-068: Ego — show-offs steal balls, call sets, block alone (wit = maturity)
 Spec: §2.12, §2.0          Goldens: update (new decisions in every rally)          Save: no change
@@ -81,6 +53,8 @@ Goal: Every player gets an ego (0–1); low-wit players act on it — ball steal
 hero serves — with maturity from wit cutting both how often and how badly. Logged for the relationship memories later.
 Files: js/data/rules.js, js/engine/players.js, js/engine/match.js, js/engine/rally.js, js/engine/rally-phases.js,
 js/engine/rally-defense.js, js/engine/serve.js, js/data/dialogue.js, js/career/run.js, tests/run.js, ARCHITECTURE.md
+(T-067 follow-up, do first, same commit: js/ui/career-week.js — the pre-match Lineup line uses
+`Run.lineup(run, side.T, side.region, true, cup && run.mode.story)` so a Story cup match never reads "On the bench".)
 Do not: add an act kind (use `plabel`, `pose`, `log`, `chat` / existing chatter); add randoms to presentation; change
 saves beyond the player field `ego` (teams save it; old saves get the hash value on load); let one ego act decide a
 rally on its own more than its EGO table says.
@@ -180,6 +154,7 @@ Phase 5 — Voice pass
 
 ## Done
 
+- [x] T-067: Story mode — you always play the U21 Final Cup — Story default (`run.mode.story`, RUN_VERSION 9); forced into the first faction squad / Academy entrant / seeded street crew (`run.reserve.street`, side RNG stream); `forceYou` lineup; `Cup.calledUp`; Endless shown disabled; 49/49, lint clean, goldens untouched. Spec-chat QA: create shows Story / Endless (later), new run mode story v9, no pageerror. Lineup-line fix moved to T-068.
 - [x] T-059: POV camera — 1st person from your player's eyes — POV done as specified (+ ball look fades out 100°→140° instead of a hard edge, no flip; base near 0.1 in POV). QA Monster, 1500 steps each: head hidden every POV frame, 0 frames with the camera within 0.35 m of a visible head, restored on leaving; every air episode reached the Follow fallback (10–13 switches logged per run); max frame move ≤ 1.5 m; ball on screen when in play on your side: setter 79 %, WS 61 % (WS misses are mostly fallback jump frames; 86 % outside them) — below the 70 % bar for the WS; no pageerror; screenshot /tmp/p1.png. Earlier Follow ball-on-screen re-measured with the real ball: 96 %.
 - [x] T-058: Follow camera — 3rd person behind your player — Follow camera done as specified; mode weights replace the blend, follow pose tracked in every mode (no jump on switch). QA Monster WS 1500 steps: ball on screen 99.7 %, max frame move 1.06 m (no jump >3 m), cam y ≥ 2.3 m, mode switches ≤ 2.9 m/frame, scenes cut in/back; career eval follows you (select hidden); no pageerror; 48/48 tests, lint clean. Select list isn't refreshed after a sub (falls back to Courtside).
 - [x] T-057: Smarter coach subs, trust in your player, never sub an injured you on — worth test (`SUB.worth` [0.85, 1.05] by coachIQ), `SUB.you` 0.9, `noSub` (set in `Cup.prepare` when injured, cleared by `restoreLineups`); 48/48, lint clean. Goldens updated (teams, matches, sims): coaches now skip subs that make the side worse. Subs per match (both sides, 300 sims): default coach 3.04 → 1.97; coachIQ 0 2.94 → 2.57, coachIQ 1 3.10 → 1.76; tired 831 → 543, errors 15 → 7, back 67 → 40. The 'coachIQ 1 subs sooner' test now zeroes `SUB.worth` (the roll's effect only). `m.subLog` also records `out`, `inn`, `sta`. QA: Monster game (SUB.sta raised to 0.95 so subs show; 9000 steps) 4 subs, log lines 'Sub <team>: #13 … in for #17 … (tired)'; career eval with `run.injury`: `noSub` set, you stayed on the bench the whole match (4 subs, none for you), flag gone afterwards; no pageerror.
@@ -251,3 +226,4 @@ Phase 5 — Voice pass
 - (recorded in spec §4.25) Every trail dims out while its object is still: ribbons measure their point's speed (full ≥ 1.6 m/s, off ≤ 0.25 m/s); the ball's screen / element trails use a smoothed ball speed `A.mv` — js/render3d/trails3d.mjs, js/render/ball.js, court.js, effects.js, ARCHITECTURE.md.
 - (recorded in spec §4.25) Trails now fade fully out when still (follow-up to the line above): ribbons invisible ≤ 0.6 m/s (full ≥ 2 m/s), ball trails invisible ≤ 1.5 m/s (full ≥ 5.5 m/s), alpha squared — js/render3d/trails3d.mjs, js/render/ball.js, court.js, effects.js.
 - (recorded, presentation only) Idle (ready) / platform stance arm twist: pose field `fsplit` 0.45 moves part of the forearm twist to the wrist so the elbow no longer wraps — js/render3d/players3d.mjs, poses3d.mjs.
+- (recorded in spec §4.25) Camera jitter when the ball is far out of the map: Follow / POV look target clamped to the playable box and eased out while the ball is hidden; `faceOpponent` continuous behind the camera; scene-shot exit turns the view by slerp (72° → 12° per frame) — js/render3d/camera3d.mjs, ARCHITECTURE.md.
