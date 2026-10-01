@@ -360,8 +360,9 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
 
   **F. Competition and permanence.**
   - Four starting spots per squad: every teammate you raise can take yours. Helping is a real choice.
-  - National team call-up after the U21 Final Cup **[assumed — owner to confirm]**: the champion squad's best 4 by
-    match grades over the cup (+ fame as tie-break) are called up. An NPC you raised can take the place you wanted;
+  - National team call-up after the U21 Final Cup: **Story** — you are always called up if your squad wins (§4.26);
+    the champion squad's other call-ups are its best by match grades. **Endless** — the best 4 by match grades
+    (+ fame as tie-break), you included or not. An NPC you raised can take the place you wanted;
     winning the cup on the bench does not send you.
   - End of run: "People who mattered" — the 5 strongest stances (good or bad), each with their fate and the
     memories that made it (diary voice).
@@ -397,6 +398,19 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   **POV** (1st person from your player's head: the ball, the net, the block in your face; your own arms on spikes and
   digs, falls back to Follow during your jumps if it gets too wild). Hype scenes still cut to their shots and return.
   Only your career player (Monster games: pick any player). Comfort: no camera roll, smoothed head bob, FOV 70.
+
+- §4.26 Game modes **[locked (owner), not built — T-067; Endless = backlog]**: a new run picks **Story** (default) or
+  **Endless** (later).
+  - **Story**: the run is your story, so the final stage always includes you. At the U21 Final Cup you are always in
+    a squad (forced into your faction's first drawn squad over its weakest same-role player; an Academy member plays
+    with the Academy squad; alone → you enter with a hired street crew), and you **always start** every cup match (the
+    coach's lineup puts you first in your role; the coach may still sub you if tired — SUB.you applies). If your squad
+    wins, you are always called up to the national team (the ending). Evaluations, challenges and street fights keep
+    the normal lineup rules (you can be benched there).
+  - **Endless** (backlog, room kept): no guarantees anywhere — cup draws and lineups as for anyone, the national
+    call-up by match grades (§4.23 F); after the cup the season rolls over instead of ending (aging out of U21, the
+    senior league, NPC careers continuing: **[open]**).
+  - Code: `run.mode.story` (true for Story); every guarantee checks it, so Endless only removes them.
 
 ## 5. Open questions — do not build until decided
 - §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story

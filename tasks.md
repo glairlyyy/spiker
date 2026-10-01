@@ -41,10 +41,10 @@ Result:
 - Free setter takes the second ball ✓ (T-054) · start from 1 ✓ (T-055).
 - Stat guard ✓ (T-056) · official venues ✓ (T-053).
 - Smarter coach ✓ (T-057).
-- **Now**: player camera: Follow (T-058), POV (T-059). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
+- **Now**: player camera: Follow (T-058), POV (T-059), Story mode cup guarantee (T-067). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now — Player camera (spec §4.25)
+## Now — Player camera (spec §4.25), Story mode (spec §4.26)
 
 ### [ ] T-058: Follow camera — 3rd person behind your player
 Spec: §4.25          Goldens: unchanged (presentation only)          Save: no change
@@ -94,6 +94,34 @@ Accept: all tests + lint.
 QA: Monster game POV on a setter and on a WS: 1500 steps each — no frame shows the inside of the own head (head hidden),
 the fallback kicks in on every jump (log the switches), ball on screen ≥ 70 % of frames when it's on your side; leaving
 POV restores the head; no pageerror. Screenshots in the Result.
+Result:
+
+### [ ] T-067: Story mode — you always play the U21 Final Cup (Endless kept for later)
+Spec: §4.26          Goldens: unchanged (career only)          Save: RUN_VERSION 8 → 9 (`run.mode.story`) — older saves dropped
+Goal: A run has `run.mode.story` (default true; creation offers Story, with Endless shown disabled "coming later").
+In Story, the U21 Final Cup always includes you as a starter, and winning it always calls you up.
+Files: js/data/career.js, js/career/run.js, js/career/cup.js, js/career/pool.js, js/ui/career-create.js,
+js/ui/career-end.js, tests/run.js, ARCHITECTURE.md
+Do not: change evaluations, challenges, street fights or Run.lineup outside the cup; touch js/engine; change the cup's
+bracket or seeding rules.
+Steps:
+1. career.js MODES gains `story` (name 'Story', desc in registrar voice) and `endless` (disabled, "later");
+   run.js: `run.mode.story` (create + repair: missing → true); RUN_VERSION 9.
+2. Cup.entrants (Story): if you are signed with a pool faction and no drawn squad holds you, put you into that
+   faction's first squad in place of its weakest same-role player (fallback: weakest player); Academy member → the
+   Academy entrant as today; alone → add an entrant "Street crew" of you + hired players (rating CHALLENGE.hire.ovr,
+   generated without R() draws that shift other draws — use a fixed hash for names / stats).
+3. Cup lineup (Story): before each of your cup matches you start in your role (`Run.lineup` gains an optional
+   `forceYou` used only by the cup path; injured you still sits — injury beats Story).
+4. Cup end (Story): champion → the run-end screen states the call-up ("Called up to the national team"), whatever your
+   grades; otherwise unchanged. Endless isn't playable yet: no other change.
+5. tests `'career: story mode cup'`: an undrawn signed player is forced into the first squad; an alone player gets
+   the street-crew entrant; you start every cup match even with the lowest OVR; injured → benched; champion →
+   called up; `mode.story = false` keeps today's behaviour (not drawn → watch from the stands).
+6. ARCHITECTURE.md: modes and save v9.
+Accept: all tests + lint; goldens untouched.
+QA: new run (Story) → force week 28 end with a weak player → you are in a cup squad and start; ⏭ to the end; no
+pageerror.
 Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
