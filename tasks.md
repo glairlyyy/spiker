@@ -70,8 +70,8 @@ Result:
 Spec: §4.22, §4.14          Goldens: unchanged (NPC generation untouched)          Save: no change
 Goal: A new run's player has Power / Defense / Speed / Jump 1 and Wit 1.0; creation has no point allocation; early
 levels train fast; nothing breaks with stat-1 players in matches or the career.
-Files: js/data/career.js, js/engine/players.js, js/career/run.js, js/career/training.js, js/career/cup.js,
-js/ui/career-create.js, tests/run.js, ARCHITECTURE.md
+Files: js/data/career.js, js/engine/players.js, js/engine/save.js, js/engine/match.js, js/career/run.js,
+js/career/training.js, js/career/cup.js, js/ui/career-create.js, tests/run.js, ARCHITECTURE.md
 Do not: change NPC generation (`rollStats` keeps its 25 floor; `mkLeagueTeams`, pools, reserves untouched) or any engine
 formula; change TRAIN_CAP / runCap; bump the save version (the shape is the same).
 Steps:
@@ -92,7 +92,13 @@ Steps:
    player (vs a normal squad) finish with no NaN / Infinity in m.stat or beats and no stall; `Run.lineup` benches the
    all-1 you behind a same-role mate; events / injuries never push a stat below 1. Update the tests that create runs
    with `alloc` (they now get 1s) and the growth / cap tests that assume a ~50 start.
-7. ARCHITECTURE.md: creation and the XP curve.
+7. Stat guard (a last line of defence; every write path already clamps, but loaded saves and the engine do not check):
+   players.js `fixStats(p)` → each STATK stat: not a finite number → STAT_FLOOR, else round + clamp [STAT_FLOOR, 99];
+   wit: not finite → 1, else clamp [0.1, 3]; returns the count of fixed values. Call it (a) in
+   save.js `teamFromJSON` for every squad player, logging `DBG.log('warn', …)` when it fixed anything (a damaged save),
+   and (b) at match creation in match.js for both squads (valid stats are untouched, so no draw or golden changes).
+   Test: a player with power −40, def NaN, speed 300, wit −1 comes back 1 / 1 / 99 / 0.1 and a match with him runs.
+8. ARCHITECTURE.md: creation, the XP curve and the stat guard.
 Accept: all tests + lint; goldens untouched.
 QA: new run → creation shows 1s, no point buttons; HUD stat bars near empty; one Power training day → Power rises by
 several points; play (⏭) the week-4 evaluation → benched or played without errors; no pageerror.
