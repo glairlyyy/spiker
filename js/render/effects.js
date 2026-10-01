@@ -1,6 +1,6 @@
 // Transient effects. Contact, impact and element effects are handed to the 3D renderer (R3D.fx, js/render3d/fx3d.mjs),
 // anchored at the ball. The screen-space pieces the overlay draws (particles, labels, cracks, speed lines, banners…) are
-// spawned by the playback and aged here every frame (stepEffects, drillStep); court.js draws them.
+// spawned by the playback and aged here every frame (stepEffects, drillStep); overlay.js draws them.
 
 /** Screen-space particle budget: beyond it the oldest go first. */
 const MAX_PARTS = 900;

@@ -692,7 +692,7 @@ function landingSpot(c, x) {
   let hdur = tip
     ? 520
     : clamp(
-        Math.hypot(lx - appX, (lz - spZ) * 420, REACH_H + pj) / (kmh(pow) * (0.012 + Math.max(0, pow - 60) * 0.00005) * fast),
+        Math.hypot(lx - appX, (lz - spZ) * Z_UNITS, REACH_H + pj) / (kmh(pow) * (BALL_K + Math.max(0, pow - 60) * 0.00005) * fast),
         95,
         560
       ) * courtScale();

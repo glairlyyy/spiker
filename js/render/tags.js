@@ -1,4 +1,4 @@
-// Player and coach tags drawn above the 3D figures, and the dive timeline shared with the 3D dive pose.
+// Player and coach tags drawn above the 3D figures (screen space).
 
 /** Coach label and timeout speech bubble (screen space) for coach `c` at projected point `pr`, scale `k`. */
 function drawCoachTags(c, pr, k) {
@@ -38,41 +38,12 @@ function roundRectPath(x, y, w, h, r) {
   if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
   else ctx.rect(x, y, w, h);
 }
-/** After the dig contact the dive runs on fixed time, however short the beat was: on the floor, then back up. */
-const DIVE_POST_MS = 700;
-/** Dive phase f: 0..1 = run-in to contact over the beat, then 1 per DIVE_POST_MS (floor ≈ 1.15–1.85, up by 2.3). */
-const diveF = dv => (dv.t <= dv.dur ? dv.t / Math.max(1, dv.dur) : 1 + (dv.t - dv.dur) / DIVE_POST_MS);
-/** Still diving: not back on the feet yet. */
-const diving = d => d.pose === 'dive' && !!d.dv && diveF(d.dv) < 2.3;
-/**
- * Dive timeline (see diveF): run-in, launch, belly slide, then push back up.
- * Returns the body angle, hip height/offset, how flat the body is and how far the arms reach.
- */
-function diveShape(d) {
-  const dv = d.dv || { t: 1e9, dur: 1 },
-    f = diveF(dv),
-    L = clamp((f - 0.3) / 0.45, 0, 1), // launch → touchdown
-    el = ease(L),
-    slide = clamp((f - 0.75) / 0.6, 0, 1), // skid after touchdown
-    up = clamp((f - 2.1) / 0.5, 0, 1), // get back up
-    flat = el * (1 - up),
-    hop = Math.sin(Math.PI * L) * 16;
-  return {
-    f, // dive time / beat time (the 3D dive is keyed on this)
-    ang: lerp(0.32, 1.42, el) * (1 - up) + 0.1 * up,
-    hipH: lerp(33, 6, flat) + hop * (1 - up),
-    hipX: -34 * flat + 22 * (1 - Math.pow(1 - slide, 2)) * (1 - up),
-    flat,
-    reach: clamp(L * 1.6, 0, 1) * (1 - up),
-    rise: up
-  };
-}
 /** Everything drawn above a player in screen space: role tag, captain badge, call bubble, YOU marker, stamina bar. */
 function drawTags(d, pr, k, staV) {
   const p = d.p;
   const srv = A.srvId === p.id && !A.done;
   ctx.textAlign = 'center';
-  ctx.font = `800 ${Math.round(10 * k + 1)}px "M PLUS Rounded 1c",sans-serif`;
+  ctx.font = `800 ${Math.round(10 * k + 1)}px ${FONT_ROUND}`;
   ctx.fillStyle = p.op ? '#ff2e4d' : p.star ? '#ffd84d' : 'rgba(255,255,255,.75)';
   const tg = (p.star || p.op ? '★ ' : '') + p.role + (srv ? ' ●' : '');
   ctx.fillText(tg, pr.X, pr.Y - 113 * k);
@@ -84,8 +55,8 @@ function drawTags(d, pr, k, staV) {
     ctx.beginPath();
     ctx.arc(cx2, cy2, 5.5 * k, 0, 7);
     ctx.fill();
-    ctx.fillStyle = '#10163a';
-    ctx.font = `900 ${Math.round(8 * k + 1)}px "M PLUS Rounded 1c",sans-serif`;
+    ctx.fillStyle = INK;
+    ctx.font = `900 ${Math.round(8 * k + 1)}px ${FONT_ROUND}`;
     ctx.fillText('C', cx2, cy2 + 3 * k);
   }
   if (p.elOn && p.el) {
@@ -126,7 +97,7 @@ function drawTags(d, pr, k, staV) {
       fs = Math.round((c.soft ? 10 : 11.5) * k * pop + 1);
     ctx.save();
     ctx.globalAlpha = a * (c.soft ? 0.85 : 1);
-    ctx.font = `900 ${fs}px "M PLUS Rounded 1c",sans-serif`;
+    ctx.font = `900 ${fs}px ${FONT_ROUND}`;
     const w = ctx.measureText(c.t).width + 12 * k,
       h = fs + 8 * k,
       bx = pr.X - w / 2,
@@ -135,13 +106,13 @@ function drawTags(d, pr, k, staV) {
     ctx.strokeStyle = p.team.color;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(bx, by, w, h, 7 * k) : ctx.rect(bx, by, w, h);
+    roundRectPath(bx, by, w, h, 7 * k);
     ctx.moveTo(pr.X - 5 * k, by + h);
     ctx.lineTo(pr.X, by + h + 7 * k);
     ctx.lineTo(pr.X + 5 * k, by + h);
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = '#10163a';
+    ctx.fillStyle = INK;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(c.t, pr.X, by + h / 2 + 1);
@@ -156,7 +127,7 @@ function drawTags(d, pr, k, staV) {
     ctx.lineTo(pr.X + 5 * k, y);
     ctx.lineTo(pr.X, y + 6 * k);
     ctx.fill();
-    ctx.font = `900 ${Math.round(9 * k + 1)}px "M PLUS Rounded 1c",sans-serif`;
+    ctx.font = `900 ${Math.round(9 * k + 1)}px ${FONT_ROUND}`;
     ctx.fillText('YOU', pr.X, y - 3 * k);
   }
   if (staV != null && staV < 0.92 && !A.cele) {

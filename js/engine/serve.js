@@ -167,7 +167,7 @@ function playRally(m) {
   if (rollR) rs += Math.max(0, d0 - 0.1) * 45 * (1.3 - rc.speed / 100) * 0.5;
   // a hard serve gets there sooner (SERVE_FAST: up to ×1.45 from serve 55 to 110)
   const sfast = 1 + clamp((sq - 55) / 55, 0, 1) * (SERVE_FAST - 1),
-    sdur = clamp(Math.hypot(tx - sp.x, (tz - sp.z) * 420) / (kmh(sq) * 0.011 * sfast), 400, 1300) * courtScale();
+    sdur = clamp(Math.hypot(tx - sp.x, (tz - sp.z) * Z_UNITS) / (kmh(sq) * SERVE_K * sfast), 400, 1300) * courtScale();
   RT.P.forEach(p => {
     if (p !== rc) {
       const h = home(p, r);

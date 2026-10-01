@@ -13,7 +13,7 @@ const FY = 505,
 const VT = 80, // logical y of the top of the view (the overlay's origin)
   FIG = 1.12; // figure scale: tag and swirl sizes per projected px of height
 /** Court z (0..1 across) → x-comparable units, for on-screen distances (squeaks, gait, dust). */
-const Z_TO_X = 420;
+const Z_TO_X = Z_UNITS;
 let VCS = 1; // visual court scale of the match on screen
 /** 3D view (Monster 3D): the renderer module, and its court → screen projection that replaces P() while it is on. */
 let R3D = null,
@@ -30,7 +30,7 @@ function P(x, z, h) {
 /** Ease in-out (quadratic), 0..1 → 0..1. */
 const ease = t => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
 /** Height (court h units, 150 = 2.43 m net) of the ball's centre `k` × body height up — 1.15 = on a straight arm overhead. */
-const reachH = (d, k) => (k * 1.8 * ((d.p && d.p.look && d.p.look.hgt) || 1) * 150) / 2.43;
+const reachH = (d, k) => (k * 1.8 * ((d.p && d.p.look && d.p.look.hgt) || 1)) / UNIT_M.h;
 /**
  * Swing timing shared with the 3D poses: ms from swing start to ball contact. A jumping hitter starts the swing this long
  * before the ball arrives (and holds the contact pose through cut-ins until the hit beat); otherwise the ball waits at
@@ -38,8 +38,8 @@ const reachH = (d, k) => (k * 1.8 * ((d.p && d.p.look && d.p.look.hgt) || 1) * 1
  */
 const swingLead = d => (d.pose === 'serve' ? 70 : d.pose === 'spike' ? 150 : 0);
 /** Metres per court unit (3D scale): MX along the long axis (x/1000 of it), MZ across (z 0..1). */
-const MX = (1.5 * 2.43) / 150,
-  MZ = 12;
+const MX = UNIT_M.x,
+  MZ = UNIT_M.z;
 /** Metres a player still has to run to their move target. */
 const moveM = d => Math.hypot((d.tx - d.x) * MX, (d.tz - d.z) * MZ);
 /** Contact height per touch (court h units); spikes, serves and blocks add the jump in resolve(). */
@@ -316,7 +316,7 @@ function digChase(b) {
     d = a && A.disp[a.to.p];
   if (!d || d.via || b.cut || b.scene) return;
   // ms needed: still in the air (a blocker coming down) → the fall and the landing first, then the sprint
-  const air = d.jy > 2 ? Math.sqrt((2 * d.jy * (2.43 / 150)) / FALL_G) * 1000 + 60 : 0,
+  const air = d.jy > 2 ? Math.sqrt((2 * d.jy * UNIT_M.h) / FALL_G) * 1000 + 60 : 0,
     need = air + (Math.hypot((d.tx - d.x) * MX, (d.tz - d.z) * MZ) / sprintOf(d)) * 1000,
     k = clamp((b.dur * 0.85) / Math.max(1, need), DIG_SLOW_MIN, 1);
   if (k > 0.92) return; // reachable at normal speed
@@ -911,7 +911,7 @@ function step(dt) {
       return;
     }
     const r = playRally(A.m);
-    A.beats = r.beats;
+    A.beats = r.beats.map(b => ({ ...b })); // playback marks / trims its own copies, never the engine's beats
     A.bi = 0;
     return;
   }
@@ -959,7 +959,7 @@ function stepPlayerTimers(wdt, raw) {
         d.x = d.side === 0 ? Math.min(NETX - 8, d.x + d.airV.vx * dt) : Math.max(NETX + 8, d.x + d.airV.vx * dt);
         d.z = clamp(d.z + d.airV.vz * dt, -0.3, 1.3);
       }
-      d.jy = Math.max(0, d.fallH - (0.5 * FALL_G * Math.pow(d.fallMs / 1000, 2) * 150) / 2.43);
+      d.jy = Math.max(0, d.fallH - (0.5 * FALL_G * Math.pow(d.fallMs / 1000, 2)) / UNIT_M.h);
       if (d.jy <= 0) {
         d.fallMs = null;
         d.jmode = null;

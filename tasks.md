@@ -86,7 +86,7 @@ Spec: §2.12 (Block collision)          Goldens: update (a new outcome on solo b
 Goal: When T-068's solo block meets a partner who also commits, the two blockers collide: both blocks cancel early (an
 open net for the attack) or, in the error variant, a net fault ends the rally; a floating "BLOCK COLLISION" label in a
 warning or error style marks it.
-Files: js/data/rules.js, js/engine/rally.js, js/engine/rally-defense.js, js/render/playback.js, js/render/court.js,
+Files: js/data/rules.js, js/engine/rally.js, js/engine/rally-defense.js, js/render/playback.js, js/render/overlay.js (was court.js, renamed in T-077),
 js/render3d/actors3d.mjs (only if the stagger needs it), tests/run.js, ARCHITECTURE.md
 Do not: add an act kind (extend `plabel` with an optional style flag, and use `jump` / `slide` / `pose` / `log`);
 make collisions happen without a solo block; touch the scene shots.
@@ -100,7 +100,7 @@ Steps:
    net-fault variant: the rally ends at once, point to the attacking side, a log line "Net fault — block collision".
    Record `m.egoLog.push({ act: 'collide', p, mate, net })`. One R() for the partner, one for the net share, only when a
    solo block happens.
-3. `plabel` gains an optional `v` ('warn' | 'err'): playback passes it to the label; court.js drawLabels colours warn
+3. `plabel` gains an optional `v` ('warn' | 'err'): playback passes it to the label; overlay.js drawLabels colours warn
    orange (#ffb13d) and err red (#ff4d4d), stamped (pop-in) like big labels. Text: "BLOCK COLLISION" / "BLOCK
    COLLISION · NET", anchored between the two blockers at net height. The act-kind test still passes (no new kind).
 4. tests `'engine: block collision'`: 400 sims with ego forced high and wit low — collisions happen only after a solo
@@ -256,7 +256,7 @@ Accept: tests + lint; goldens untouched.
 QA: none (headless) + load an existing save in the browser once.
 Result: RUN_DEFAULTS (34 fields, [make, valid]) + Run.defaults(); Run.create spreads it, repair loops it then fixes academy / eval+Eval.setup / spotQ (City.roll) / fog / clash / sta / mode in the old order; run.grades declared, pushed in place and capped at MLOG.max. Behaviour note: repair now restores a broken money field to ECON.start (was 0) and also defaults rolled. Test: every key present in a new run, repair leaves a sound run byte-identical, a stripped save gets all keys back, grades capped. 52/52, goldens untouched, lint clean; browser: save → reload → career loads, no pageerror.
 
-### [ ] T-077: Render files match what they do; one source for court units
+### [x] T-077: Render files match what they do; one source for court units
 Spec: — (cleanup)          Goldens: unchanged (constants keep their values)          Save: no change
 Goal: No 2D court/character drawing is left, but files still carry those names; unit maths is copied in 3+ places.
 Files: js/render/body.js (delete), js/render/characters.js → js/render/tags.js, js/render/court.js →
@@ -275,7 +275,7 @@ Steps:
 4. Playback no longer writes onto engine beats (`b._s`, `b.dur`, `b.acts`): keep that state on `A`.
 Accept: tests + lint; goldens untouched (proves the constants are identical).
 QA: Monster game 3000 steps: tags, dives, overlay labels as before; no pageerror.
-Result:
+Result: body.js deleted (shade → faces.js, setMotion → poses3d.mjs); characters.js → tags.js (FONT_ROUND, INK, roundRectPath instead of literals), court.js → overlay.js, dive timeline → dive.js (new, after tags in both html; qa_poses loads dive.js + engine/court.js); units named in engine/court.js: Z_UNITS, UNIT_M {h,x,z}, BALL_K, SERVE_K used by court dist, rally-defense ×2, rally, serve, stats UNITS_PER_M, playback (Z_TO_X, MX/MZ, reachH, air time, fall) and units3d KH/KX/KZ; playback copies each rally's beats so it never marks engine output. T-069 file list updated for the rename. 52/52, goldens untouched (same constants), lint clean; Monster 3000 steps tags/labels/dives fine, qa_poses loads without pageerror (its canvas is blank before and after: pre-existing).
 
 ### [ ] T-078: Split playback.js (1090 lines) by concern
 Spec: — (cleanup)          Goldens: unchanged          Save: no change

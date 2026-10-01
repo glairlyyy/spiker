@@ -44,7 +44,7 @@ function block(c, x) {
       if (V) B.ins(mark, ...hypeSpikeCut(m, spiker, bb));
       V &&
         B({
-          dur: clamp(Math.hypot(sx(ds, 484) - appX, (bz0 - spZ) * 420) / (kmh(pow) * 0.012), 80, 200),
+          dur: clamp(Math.hypot(sx(ds, 484) - appX, (bz0 - spZ) * Z_UNITS) / (kmh(pow) * BALL_K), 80, 200),
           acts: [...hit, { k: 'ball', to: hands, h: 0, trail: pow, el, op: spiker.op }]
         });
       if (V && spiker.star && ratio > 1.2)
@@ -84,7 +84,7 @@ function block(c, x) {
       const bx = sx(atk, rnd(425, 470)),
         bzz = clamp(spZ + rnd(-0.12, 0.12), 0.1, 0.9),
         dp = Math.round(pow * 0.55 + bp * 0.55),
-        bd = clamp(Math.hypot(bx - sx(ds, 484), (bzz - bz0) * 420, 150) / (kmh(dp) * 0.012), 100, 260);
+        bd = clamp(Math.hypot(bx - sx(ds, 484), (bzz - bz0) * Z_UNITS, 150) / (kmh(dp) * BALL_K), 100, 260);
       // Block cover: the best-placed teammate (high defense, decent wit) may dig the kill block
       const coverScore = q => effD(q) * 0.65 + q.speed * 0.35 - dist(m.pos[q.id], bx, bzz) * 25;
       const cvr = atkT.P.filter(q => q !== spiker).reduce((best, q) => (coverScore(q) > coverScore(best) ? q : best));
@@ -100,7 +100,7 @@ function block(c, x) {
       st(m, bb, 'top', kmh(dp));
       V &&
         B({
-          dur: clamp(Math.hypot(sx(ds, 484) - appX, (bz0 - spZ) * 420) / (kmh(pow) * 0.012), 90, 220),
+          dur: clamp(Math.hypot(sx(ds, 484) - appX, (bz0 - spZ) * Z_UNITS) / (kmh(pow) * BALL_K), 90, 220),
           acts: [...hit, { k: 'ball', to: hands, h: 0, trail: pow, el, op: spiker.op }]
         });
       V &&

@@ -2,9 +2,10 @@
 import * as THREE from 'three';
 
 // x 0..1000 along the court (net at 500), z 0..1 across (0 = near side), h = height units (net tape at 150).
-export const KH = 2.43 / 150,
-  KX = 1.5 * KH, // the big court: 840 units between the end lines ≈ 20.4 m
-  KZ = 12; // 0.08..0.92 between the side lines ≈ 10.1 m
+// The factors come from the engine's UNIT_M (engine/court.js), so 2D maths and the 3D view share one scale.
+export const KH = UNIT_M.h,
+  KX = UNIT_M.x, // the big court: 840 units between the end lines ≈ 20.4 m
+  KZ = UNIT_M.z; // 0.08..0.92 between the side lines ≈ 10.1 m
 /** Court position → a new world-space vector (metres). */
 export const W = (x, z, h = 0) => new THREE.Vector3((x - 500) * KX, h * KH, (0.5 - z) * KZ);
 /** Same, written into `v` (no allocation; for per-frame use). */

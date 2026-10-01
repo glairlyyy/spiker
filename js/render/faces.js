@@ -90,3 +90,18 @@ function faceSVG(p, mood, size) {
   const hair = `<g fill="${h}" stroke="${ln}" stroke-width=".5" stroke-linejoin="round">${cap}${top}</g><path d="M12 10.5 Q20 7 28 10.5" stroke="${hi}" stroke-width="1.1" fill="none" opacity=".8" stroke-linecap="round"/>`;
   return `<svg class="face" width="${size}" height="${size}" viewBox="0 0 40 40" role="img" aria-label="${title}"><title>${title}</title>${ring}${back}${bust}${neck}${head}${hair}${face}${acc}</svg>`;
 }
+/** Colour `h` ('#rrggbb' or '#rgb') mixed towards white (a > 0) or black (a < 0) by |a| (0..1). */
+function shade(h, a) {
+  let x = String(h).replace('#', '');
+  if (x.length === 3) x = x.replace(/./g, c => c + c);
+  const n = parseInt(x, 16) || 0;
+  let r = n >> 16,
+    g = (n >> 8) & 255,
+    b = n & 255;
+  const f = a < 0 ? 0 : 255,
+    t = Math.abs(a);
+  r = Math.round(r + (f - r) * t);
+  g = Math.round(g + (f - g) * t);
+  b = Math.round(b + (f - b) * t);
+  return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
+}

@@ -96,8 +96,13 @@ The match screen takes a fixture: `navigate('match', { a, b, round, back, onFini
 The 3D renderer draws every match (career, Monster playtest) with VRM anime players. It is a **renderer only**:
 `render/playback.js` still turns beats into display state every frame (`A.disp`, `A.ball`, `A.cam`, `A.zoom`,
 particles, labels) and `draw()` hands off to `R3D.draw()`. The classic 2D court lives on as a separate legacy
-artifact; its drawing code was removed here (only the screen-space layer in `render/court.js` remains, plus
-`faceSVG` portraits for the UI).
+artifact; its drawing code was removed here. `js/render/` now holds: `playback.js` (beats → display state; engine
+beats are copied per rally so playback never marks the engine's own), `clock.js`, `camera.js`, `ball.js`,
+`scenes.js`, `effects.js`, `overlay.js` (the screen-space layer: view transform, chant, ball trail, labels, flashes;
+`FONT_ROUND` / `FONT_DISPLAY` / `INK` / `roundRectPath`), `faces.js` (`faceSVG` portraits + `shade`), `tags.js`
+(player / coach tags over the figures) and `dive.js` (the dive timeline `diveF` / `diving` / `diveShape`).
+Units are named once in `engine/court.js`: `Z_UNITS` (z 0..1 ≙ 420 x units), `UNIT_M` (metres per unit: h, x, z —
+units3d's KH / KX / KZ read it), `BALL_K` / `SERVE_K` (ball flight speed factors).
 
 - **One world, built once.** `main.js` starts `load3D()` in the background at boot: import three.js + three-vrm
   (jsDelivr, import map in `index.html`), download the model, parse 8 players + 2 coaches, build the arena. Each
@@ -124,7 +129,7 @@ artifact; its drawing code was removed here (only the screen-space layer in `ren
 - `players3d.mjs` — VRM loading, repeatable dressing, pose → normalized bones, smoothing, arm aiming at the ball
   (`torsoDir`/`bendArm`), feet on the floor, expressions.
 - `poses3d.mjs` — one pose per engine pose, driven by the same values the playback layer keeps (swing/spike
-  timers, jump arcs, `diveShape`, `setMotion`) plus **measured motion** from `actors3d.mjs` (`motion()`: speed,
+  timers, jump arcs, `diveShape` (dive.js), `setMotion` (poses3d.mjs)) plus **measured motion** from `actors3d.mjs` (`motion()`: speed,
   forward/lateral velocity, gait phase advanced by distance so feet don't slide). Locomotion blends keyframed
   walk → run cycles (Catmull-Rom over contact / mid-stance / push-off / swing), backpedal and side shuffle. The
   spike is timed off the jump: run-in → penultimate step (arms back high) → plant/load → two-arm take-off →

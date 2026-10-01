@@ -22,7 +22,7 @@ const serveType = (p, sq) => (p.role === 'WS' && sq > 55 ? 'jump' : p.speed >= 6
 /** Run-up distance in metres for a running serve: faster/stronger players take a longer approach. */
 const runUpM = (p, type) =>
   +(type === 'jump' ? 2.4 + p.speed * 0.014 + p.power * 0.006 : type === 'jumpfloat' ? 1.1 + p.speed * 0.008 : 0).toFixed(1);
-const UNITS_PER_M = 420 / 9; // half court = 9 m
+const UNITS_PER_M = Z_UNITS / 9; // half court = 9 m
 /**
  * Chance a hand set is called for a double contact. Driven by:
  * pass quality (scrambled balls are hard to set cleanly), setting technique (wit; non-setters much worse),
