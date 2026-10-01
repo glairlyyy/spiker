@@ -362,8 +362,8 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   - Four starting spots per squad: every teammate you raise can take yours. Helping is a real choice.
   - National team call-up after the U21 Final Cup: **Story** — you are always called up if your squad wins (§4.26);
     the champion squad's other call-ups are its best by match grades. **Endless** — the best 4 by match grades
-    (+ fame as tie-break), you included or not. An NPC you raised can take the place you wanted;
-    winning the cup on the bench does not send you.
+    (+ fame as tie-break), you included or not: an NPC you raised can take the place you wanted, and winning
+    the cup on the bench does not send you. In both modes NPCs compete for the other call-ups and club spots.
   - End of run: "People who mattered" — the 5 strongest stances (good or bad), each with their fate and the
     memories that made it (diary voice).
 
