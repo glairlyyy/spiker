@@ -187,7 +187,7 @@ function rankCard(run) {
     n = RANK.top,
     at = list.findIndex(r => r.id === you.id),
     row = (r, i) =>
-      `<tr class="${r.id === you.id ? 'me' : ''}"><td>${i + 1}</td><td>${esc(r.name)}</td><td>${r.region ? esc(REGIONS[r.region].name) : 'Academy'} · ${r.role}</td><td>${
+      `<tr class="${r.id === you.id ? 'you' : ''}"><td>${i + 1}</td><td>${esc(r.name)}</td><td>${r.region ? esc(REGIONS[r.region].name) : 'Academy'} · ${r.role}</td><td>${
         tab === 'register' ? (r.ovr == null ? '<i class="mute">unrated</i>' : r.ovr) : tab === 'gazette' ? Math.round(r.fame) : r.pts
       }</td></tr>`,
     gap = '<tr class="gap"><td colspan="4">…</td></tr>',

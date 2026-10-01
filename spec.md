@@ -185,7 +185,8 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   - Injury risk after every challenge (win or lose) = base + rating gap + margin of defeat + **fatigue**: low stamina
     and battles close together (days since the last match / challenge) raise it, like training on low stamina. Resting
     lowers it. Injury = days to weeks without training or matches; a severe one also costs −2 permanently on a stat
-    (never ends the run) [assumed — owner to confirm].
+    (never ends the run) [assumed — owner to confirm]. Injured: no challenges / street fights, light training only,
+    never a starter; the physio heals the weeks, not the stat loss. Evaluations and the cup carry no injury roll.
   - Balance target: a no-training run reaches the mid-70s by ~week 20 only with well-chosen fights.
 
 - §4.16 Living map **[layer A built (only the Wei–Wu border has a drawn line, so pulse / patrols show there); B/C wait for the lore]**: the map shows what is happening

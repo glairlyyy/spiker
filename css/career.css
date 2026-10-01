@@ -1732,14 +1732,29 @@
 }
 .hub table.rk {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 13px;
 }
 .hub table.rk td {
   padding: 3px 6px;
+  text-align: left;
   border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.hub table.rk tr.me td {
+.hub table.rk td:first-child {
+  width: 2.5em;
+}
+.hub table.rk td:nth-child(3) {
+  width: 40%;
+}
+.hub table.rk td:last-child {
+  width: 4.5em;
+  text-align: right;
+}
+.hub table.rk tr.you td {
   background: rgba(255, 255, 255, 0.1);
   font-weight: 700;
 }
