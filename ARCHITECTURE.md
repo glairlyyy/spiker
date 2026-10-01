@@ -350,7 +350,7 @@ league transfer (`World.transfers`) and a Gazette (`run.gazette`, news collected
 bonds, scouting, pools, promotion, transfers) and keep `t.P` for "who plays". `fillRoster` rolls the bench after the 4 (flex
 role + a wing spiker); `finalizeTeam` gives leadership, elements and shirt numbers to all 6 (numbers unique) but the captain and
 `ovr` come from `t.P`. `World.swap(x, y)` trades two players' seats (court or bench), slots, numbers and team links (join,
-transfers, promotion). Saves (RUN_VERSION 6; v5 dropped `run.lb`, v6 added `run.met` / `run.street` / `run.refused`) store `bench` next to `P`; `teamFromJSON` relinks it.
+transfers, promotion). Saves (RUN_VERSION 7; v5 dropped `run.lb`, v6 added `run.met` / `run.street` / `run.refused`, v7 `run.losses` / `run.lastFight`) store `bench` next to `P`; `teamFromJSON` relinks it.
 
 ## Faction pools
 
@@ -482,7 +482,20 @@ refusals each further one costs `pest` standing; accepted → `{ accepted, stake
 is the fixture (same shape as `Cup.clash`; your side = Academy squad / club squad / `Cup.hired` street crew lent for the
 match; the club's real squad); `Cup.challengeResult` spends the trip + day, pays the stake at odds (win) or takes it (loss),
 pays the crew, then standing / fans / match XP / techniques / street points / `Rank.meet`. UI: `challengeBlock` in
-`career-map.js` (stake stepper, verdict line, Challenge, ⏭). Loss penalties and injury are T-038.
+`career-map.js` (stake stepper, verdict line, Challenge, ⏭).
+
+### Loss and injury (T-038)
+
+After a challenge (`Cup.challengeResult`) or a street fight you fought (`Cup.clashResult`): a loss runs `Cup.lose` (`LOSS` in
+`data/world.js`: extra stamina, mood, standing with the club's region — challenges only, `run.losses[region]` counts them and from the
+`repeat`-th each one adds `repeatRep`; a street fight keeps `CLASH.lose` — and a loss by `heavy`+ points costs fans and pushes a
+`GAZETTE_JABS` line through `Run.news`); then, win or lose, `Cup.injure(run, risk)` rolls once (`R()`) against `City.injuryRisk(run,
+oppRating, margin)` (pure: `INJURY` — rating gap, points lost by, low stamina, days since `run.lastFight`; `Run.dayNo` is the clock),
+a second roll sets the severity (`run.injury = { weeks }`, longer of the old one; severe also −`lose` on one stat, picked from that
+roll). The risk is computed before the trip and the match's tiredness are counted. `City.fightBan` ("Injured — rest first") makes
+`City.challenge`, `Cup.challenge` and `Cup.clash` refuse; `Run.lineup` never starts an injured you. The physio clears `run.injury`
+but not the lost stat. Evaluations and the cup carry no injury roll. Save v7 adds `run.losses` and `run.lastFight`. UI: the challenge
+block and the street fight buttons show "Injury risk ~N %" and are disabled while injured.
 
 ## Training XP
 

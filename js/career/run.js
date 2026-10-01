@@ -89,6 +89,8 @@ const Run = {
       met: {}, // player id → true: faced on court (their rating is known)
       street: {}, // player id → street points (Rank)
       refused: {}, // club index → { week, n }: team challenges it refused (T-037)
+      losses: {}, // region → team challenges lost this run (T-038)
+      lastFight: null, // absolute day (Run.dayNo) of your last challenge / street fight
       seen: [],
       log: [],
       event: null,
@@ -165,10 +167,12 @@ const Run = {
     const you = Run.you(run),
       score = p => ovr(p) + 6 * Run.form(run, p) + (p === you && region ? City.rep(run, region) / BENCH.standingPer : 0),
       left = [...squadOf(T)],
-      P = [];
+      P = [],
+      out = p => run.injury && p === you; // an injured you never starts
     for (const role of ['S', 'MB', 'WS', 'WS']) {
-      const of = left.filter(p => p.role === role),
-        p = (of.length ? of : left).reduce((a, b) => (score(b) > score(a) ? b : a));
+      const ok = left.filter(p => !out(p)),
+        of = ok.filter(p => p.role === role),
+        p = (of.length ? of : ok).reduce((a, b) => (score(b) > score(a) ? b : a));
       P.push(p);
       left.splice(left.indexOf(p), 1);
     }
@@ -188,6 +192,8 @@ const Run = {
     }
     return { starts, you: score(you), rival: rival && { p: rival, score: score(rival) } };
   },
+  /** The absolute day of the run (week × days a week + days used this week): the clock for fatigue between fights. */
+  dayNo: run => run.week * WEEK_DAYS + (WEEK_DAYS - City.days(run)),
   /** Your team: a league club, or the pickup squad while you're a free agent (run.team null). */
   myTeam: run => (run.team == null ? run.pickup : run.teams[run.team]),
   /** League news for the next Gazette. */
@@ -331,7 +337,8 @@ const Run = {
     for (const k of ['sp', 'fans', 'trained', 'elNext', 'money']) if (!Number.isFinite(run[k])) run[k] = 0;
     if (!HOUSING[run.housing]) run.housing = 'studio';
     if (!run.reserve || typeof run.reserve !== 'object') run.reserve = {};
-    for (const k of ['met', 'street', 'refused']) if (!run[k] || typeof run[k] !== 'object') run[k] = {};
+    for (const k of ['met', 'street', 'refused', 'losses']) if (!run[k] || typeof run[k] !== 'object') run[k] = {};
+    if (!Number.isFinite(run.lastFight)) run.lastFight = null;
     if (typeof run.academy !== 'boolean') run.academy = World.isFree(run);
     if (run.eval && run.eval.week !== run.week) run.eval = null;
     Eval.setup(run);
@@ -365,8 +372,8 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 6;
-/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges) — older saves are dropped; add steps when the saved shape changes). */
+const RUN_VERSION = 7;
+/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury) — older saves are dropped; add steps when the saved shape changes). */
 const RUN_MIGRATIONS = {};
 const ROLE_NAME = { S: 'Setter', MB: 'Middle blocker', WS: 'Wing spiker' };
 /** Run rank letter for a fan count (RANKS is ordered from the top rank down). */

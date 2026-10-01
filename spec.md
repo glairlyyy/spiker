@@ -164,7 +164,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     wit and opponent strength. Scouting shows which techniques a team's players have.
   - Save: RUN_VERSION bump (Limit Break progress removed, match XP added). Match results unchanged (goldens stay).
 
-- §4.15 Challenges **[team challenge + refusal built (T-037); loss penalties + injury not built (T-038)]** (makes a no-training run possible; see §4.14):
+- §4.15 Challenges **[built: team challenge + refusal (T-037), loss penalties + injury (T-038); open: engine coach could sub an injured you on (T-049)]** (makes a no-training run possible; see §4.14):
   - Team challenge (map action at a club HQ): your side challenges that club's squad. Costs 1 day + the trip; you name a
     money **stake** (0 allowed). The match itself is the street-battle flow (`Cup.clash`-style fixture: watch or Sim ⏭).
     You play with your side: the Academy squad, or your club's squad (your club must not be the target); alone → hire

@@ -335,7 +335,7 @@ test('career: training cap, facility Lv 5 and Hard training', () => {
   eq(you.power, 80, 'a stat already at 80 is not lowered by a positive bump');
   g.Training.addXp(run, 'power', 100000, 'match');
   assert(you.power > 80, 'match XP goes past the training cap');
-  assert(!('lb' in run) && g.RUN_VERSION === 6, 'no Limit Break progress in the run; RUN_VERSION 6');
+  assert(!('lb' in run) && g.RUN_VERSION === 7, 'no Limit Break progress in the run; RUN_VERSION 7');
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
   const n = g.Training.preview(run, 'power', false).main[2],
@@ -1492,6 +1492,90 @@ test('career: team challenge — worth, refusal, stake payout', () => {
   fx1.onFinish(mm);
   assert(you.team === run.pickup || you.team === g.Run.myTeam(run), 'you are back on your own team after the match');
   assert(run.money !== m1 && /crew/.test(run.log[0].t), 'the crew is paid');
+});
+
+test('career: challenge loss and injury', () => {
+  const g = load(72),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Loser', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    you = g.Run.you(run),
+    ti = g.FACTIONS.findIndex(f => f.region === 'outlaws'),
+    r = 'outlaws',
+    fresh = () => {
+      run.sta = run.staMax;
+      run.mood = 2;
+      run.money = 500;
+      run.days = g.WEEK_DAYS;
+      run.event = null;
+      run.injury = null;
+      run.lastFight = null;
+    },
+    play = (stake = 50) => {
+      const fx = g.Cup.challenge(run, ti, stake),
+        m = g.newMatch(fx.a, fx.b, false);
+      while (!m.over) g.playRally(m);
+      return { m, line: fx.onFinish(m) };
+    };
+  // 'unlucky' rolls: R() = 0.99 → never injured; forced low → injured
+  const roll = v => (g.RNG.next = () => v);
+  roll(0.99);
+  fresh();
+  for (const p of g.squadOf(run.teams[ti])) for (const k of g.STATK) p[k] = 99;
+  for (const p of g.squadOf(run.pickup)) for (const k of g.STATK) p[k] = 25;
+  const sta0 = run.sta,
+    mood0 = run.mood,
+    rep0 = g.City.rep(run, r);
+  let res = play();
+  assert(res.m.winner === 1, 'weakened side loses');
+  assert(
+    run.sta <= sta0 - g.LOSS.sta - g.CLASH.sta + 1 && run.mood === mood0 + g.LOSS.mood && g.City.rep(run, r) <= rep0 + g.LOSS.rep,
+    `a loss costs stamina, mood and standing: ${res.line}`
+  );
+  eq(run.losses[r], 1, 'the loss is counted');
+  assert(
+    run.news.some(t => /Loser/.test(t)),
+    'a heavy loss earns a Gazette jab'
+  );
+  assert(run.lastFight === g.Run.dayNo(run), 'the fight day is recorded');
+  // the 3rd loss to a faction adds the extra standing hit
+  run.losses[r] = g.LOSS.repeat - 1;
+  fresh();
+  run.week += 1;
+  run.rep[r] = 0;
+  res = play();
+  assert(g.City.rep(run, r) <= g.LOSS.rep + g.LOSS.repeatRep, `third loss: extra standing hit (${g.City.rep(run, r)})`);
+  // risk rises with the gap, the margin, low stamina and a fight on the same day; clamped at max
+  fresh();
+  const R0 = g.City.injuryRisk(run, 60);
+  assert(g.City.injuryRisk(run, 99) > R0, 'risk rises with their rating');
+  assert(g.City.injuryRisk(run, 60, 10) > R0, 'and the margin of defeat');
+  run.sta = 20;
+  assert(g.City.injuryRisk(run, 60) > R0, 'and low stamina');
+  fresh();
+  run.lastFight = g.Run.dayNo(run);
+  assert(g.City.injuryRisk(run, 60) > R0, 'and fighting on the same day');
+  eq(g.City.injuryRisk(run, 999, 99), g.INJURY.max, 'clamped at INJURY.max');
+  // forced low: a severe injury — 3 weeks and −2 on one stat
+  fresh();
+  for (const k of g.STATK) you[k] = 60;
+  const before = g.STATK.map(k => you[k]);
+  let n = 0;
+  g.RNG.next = () => (n++ ? 0.97 : 0.0);
+  const txt = g.Cup.injure(run, 0.5);
+  assert(run.injury && run.injury.weeks === g.INJURY.weeks.severe && /severe/.test(txt), `severe: ${txt}`);
+  const lost = g.STATK.filter((k, i) => you[k] < before[i]);
+  assert(lost.length === 1 && before[g.STATK.indexOf(lost[0])] - you[lost[0]] === g.INJURY.lose, 'one stat loses INJURY.lose for good');
+  // an injured player can't challenge or fight and is benched by Run.lineup
+  roll(0.99);
+  eq(g.City.fightBan(run), 'Injured — rest first', 'the ban text');
+  eq(g.City.challenge(run, ti, 50), null, 'no challenge while injured');
+  eq(g.Cup.challenge(run, ti, 50), null, 'no challenge match while injured');
+  const L = g.Run.lineup(run, run.pickup, null, true);
+  assert(!L.starts, 'an injured you is benched');
+  // the physio clears the weeks but not the stat
+  run.sp = 99;
+  assert(g.Training.physio(run) && !run.injury, 'physio heals the injury');
+  assert(you[lost[0]] === before[g.STATK.indexOf(lost[0])] - g.INJURY.lose, 'but not the lost stat');
+  eq(g.RUN_VERSION, 7, 'save v7');
 });
 
 test('career: your coach picks the 4 — bench start, never played, part rewards', () => {

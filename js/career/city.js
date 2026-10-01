@@ -263,6 +263,28 @@ const City = {
     Rank.settle(run, w);
     return `Street battle: ${REGIONS[w].name} beat ${REGIONS[l].name}${s ? ` — ${s}` : ''}.`;
   },
+  /** Why you can't fight or challenge now ('' if you can): an injury keeps you off the street (spec §4.15). */
+  fightBan: run => (run.injury ? 'Injured — rest first' : ''),
+  /**
+   * The chance of an injury after a challenge / street fight (INJURY; pure, no roll): their rating above yours, the points you
+   * lose by (`margin`, 0 before the match), low stamina, and a fight soon after your last one.
+   */
+  injuryRisk(run, oppRating, margin = 0) {
+    const I = INJURY,
+      since = run.lastFight == null ? Infinity : Run.dayNo(run) - run.lastFight,
+      v =
+        I.base +
+        Math.max(0, oppRating - ovr(Run.you(run))) * I.perGap +
+        margin * I.perPoint +
+        (1 - run.sta / run.staMax) * I.sta +
+        Math.max(0, I.cool - since) * I.perDay;
+    return clamp(v, 0, I.max);
+  },
+  /** The rating of a faction's league clubs (their crew in a street fight), 60 if it has none. */
+  crewOvr(run, region) {
+    const ts = run.teams.filter(t => FACTIONS[t.i] && FACTIONS[t.i].region === region);
+    return ts.length ? ts.reduce((a, t) => a + t.ovr, 0) / ts.length : 60;
+  },
   /** Who you challenge with: the Academy squad, your club's squad, or (alone) a hired street crew. */
   challengeSide(run) {
     if (run.team != null) return { kind: 'club', T: Run.myTeam(run), ovr: Run.myTeam(run).ovr, cost: 0 };
@@ -310,7 +332,7 @@ const City = {
     const side = City.challengeSide(run);
     stake = clamp(Math.round(stake) || 0, 0, City.stakeMax(run));
     const W = City.worth(run, ti, stake);
-    if (!W || run.event || City.noTime(run, City.scoutCost(run, ti)) || run.money < side.cost) return null;
+    if (!W || run.event || City.fightBan(run) || City.noTime(run, City.scoutCost(run, ti)) || run.money < side.cost) return null;
     if (W.accepts) return { accepted: true, stake };
     const t = run.teams[ti],
       r = FACTIONS[ti].region,

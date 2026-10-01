@@ -34,62 +34,11 @@ Result:
 - Growth rework ✓ (T-034 training cap 75, T-035 match XP, T-036 techniques learned in play).
 - Living map A ✓ (T-039, T-040) · three-touch fix ✓ (T-043) · rankings ✓ (T-041, T-042) · team challenge ✓ (T-037).
 - Rankings drawer fix ✓ (T-044).
-- **Now**: challenge loss + injury (T-038). **Next**: roads, settlements, buildings (T-045–T-047). Then voice pass (T-022).
+- Challenge loss + injury ✓ (T-038).
+- **Now**: roads, settlements, buildings (T-045–T-047). Then road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now — Challenges, part 2 (spec §4.15)
-
-### [x] T-038: Losing is a real deal — loss penalties, fatigue and injury
-Spec: §4.15          Goldens: unchanged (career only)          Save: RUN_VERSION 6 → 7 (`run.lastFight`, `run.losses`) — older saves dropped
-Goal: Losing a team challenge or a street-battle fight costs you: stake, stamina and mood, standing (repeated losses
-become a grudge), and a heavy loss costs fans and a Gazette jab. Every challenge and street fight, won or lost, risks an
-injury that grows with the rating gap, how badly you lost and how tired you are — low stamina and fighting again soon
-after the last one. Injured, you can't fight or challenge, train light only, and sit out matches.
-Files: js/data/world.js, js/career/cup.js, js/career/city.js, js/career/run.js, js/career/training.js,
-js/ui/career-map.js, js/ui/career-week.js, tests/run.js, ARCHITECTURE.md
-Do not:
-- Touch js/engine or evaluation / cup rewards (evaluations and the cup carry no injury roll in this task).
-- Add a new injury system: extend `run.injury` (`{ weeks }`, already used by training: light sessions ×0.4, no Hard).
-- End the run or kill the player in any case.
-Steps:
-1. world.js constants (doc comments, starting values; balance pass later):
-   - `LOSS = { sta: 20, mood: -1, rep: -6, repeat: 3, repeatRep: -6, heavy: 8, fans: -150 }` — on a loss: extra stamina
-     loss, mood, standing with the faction you lost to (challenges: the club's region; street fights: `CLASH.lose`
-     stays as is, no extra rep); from the `repeat`-th loss to the same faction this season each further one adds
-     `repeatRep`; lost by `heavy`+ points → fans and a Gazette jab.
-   - `INJURY = { base: 0.03, perGap: 0.006, perPoint: 0.01, sta: 0.15, cool: 3, perDay: 0.04, max: 0.45,
-     sev: [0.65, 0.92], weeks: { minor: 1, serious: 2, severe: 3 }, lose: 2 }` — chance = base + max(0, their rating −
-     yours) × perGap + (lost by n) × perPoint + (1 − sta / staMax) × sta + max(0, cool − days since your last fight) ×
-     perDay, clamped to [0, max]; severity by a second roll: < sev[0] minor, < sev[1] serious, else severe (also −`lose`
-     permanently on one stat, picked by that roll's hash over STATK — not your key stat only).
-   - `GAZETTE_JABS` (wei voice, 3 lines with `{name}` / `{club}`), e.g. "{club} make an example of {name}. The office
-     expected nothing less."
-2. run.js: `run.lastFight = null` (the absolute day of your last challenge / street fight: `week × WEEK_DAYS + days
-   used`), `run.losses = {}` (region → losses this season); create + repair; `RUN_VERSION = 7`. A helper
-   `Run.dayNo(run)` for the absolute day. `Run.lineup`: an injured you is never a starter.
-3. city.js: `City.injuryRisk(run, oppRating, margin = 0)` → the chance (pure, no roll); `City.challenge` and the street
-   fight entry refuse while injured ("Injured — rest first"); the challenge verdict card and the street-battle fight
-   buttons show "Injury risk ~N %" (registrar voice) computed with margin 0.
-4. cup.js `challengeResult` / `clashResult`: after the existing rewards — on a loss: LOSS penalties (challenges: also the
-   stake as today), `run.losses[region]++`, heavy loss → fans + `Run.news(run, jab)`; then for both win and loss one
-   `R()` against `City.injuryRisk(…, margin)`; injured → `run.injury = { weeks }` (keep the longer of an existing one),
-   severe → the stat loss; log line ("Injured: serious — 2 weeks of light training", "Severe: −2 Speed for good");
-   finally `run.lastFight = Run.dayNo(run)`.
-5. training.js: nothing new beyond what `run.injury` already does; the physio (skill points) still heals it at once —
-   but not the permanent stat loss.
-6. UI: the result line already shows the text; the HUD clock tooltip already says "injured"; the challenge / fight
-   cards show the risk line and are disabled while injured (with the reason).
-7. tests: `'career: challenge loss and injury'` — loss costs stamina / mood / standing; the 3rd loss to a faction adds
-   the extra standing hit; a heavy loss adds a Gazette item; risk rises with the gap, the margin, low stamina and a fight
-   on the same day, and is clamped at `max`; with R() forced low a severe injury sets weeks 3 and −2 on one stat; an
-   injured player can't challenge or fight and is benched by `Run.lineup`; the physio clears the weeks but not the stat.
-8. ARCHITECTURE.md: loss and injury rules; save v7.
-Accept: all tests + lint; goldens untouched.
-QA: career run → challenge the Outlaws twice in a row on low stamina: the card's risk rises; lose → the result line
-lists the penalties; when injured, the challenge / fight buttons are disabled with "Injured — rest first"; no pageerror.
-Result: Done; tests 40/40, lint clean, goldens unchanged, RUN_VERSION 7. Deviations: street-fight losses add no `run.losses` count (only challenges, per the step); `City.crewOvr` (new, in city.js) gives the street foe's rating (mean of the region's league clubs) and `City.fightBan` the ban text; risk is computed vs your own OVR before the trip and fatigue; coach subs (engine, untouched) could still bring an injured you on in an evaluation / cup. QA: low stamina raised the card's risk 16 → 27 %, a lost challenge listed −stamina, mood, −6 standing, −150 fans and a minor injury, risk hit the 45 % cap right after, and the Challenge button disabled with “Injured — rest first”; no pageerror.
-
-## Next — Roads, settlements and buildings (spec §4.18)
+## Now — Roads, settlements and buildings (spec §4.18)
 
 ### [ ] T-045: World layout data — road network, routes, settlement lots, landmarks
 Spec: §4.18          Goldens: unchanged          Save: no change
@@ -173,11 +122,17 @@ Roads, part 2 — spec §4.18
 - T-048: Road travel — trip days from the road route length (roads faster than cross-country; Shu paths slower);
   rules + tests change (career only).
 
+Injuries, part 2 — spec §4.15
+- T-049: The engine coach never subs an injured you on (evaluations, cup): mark the player unavailable for
+  `subCandidate` (engine-only flag set by the career before the match; goldens must stay unchanged).
+
 Phase 5 — Voice pass
 - T-022: Faction `front`/`dark`, region `desc`, Gazette and event strings in lore.md §7 voices. Also fix the stale
   encyclopedia line "Or learn it in career for this many skill points" (ui/encyclopedia.js: techniques are learned in play).
 
 ## Done
+
+- [x] T-038: Losing is a real deal — loss penalties, fatigue and injury — Done; tests 40/40, lint clean, goldens unchanged, RUN_VERSION 7. Deviations: street-fight losses add no `run.losses` count; new `City.crewOvr` (street foe rating = mean of the region's league clubs) and `City.fightBan`; risk computed before the trip. Open: engine coach subs could bring an injured you on (T-049). QA: risk 16 → 27 % on low stamina, loss line lists penalties + minor injury, 45 % cap, buttons disabled "Injured — rest first"; no pageerror.
 (one line each; full task text is in git history)
 - [x] T-044: Rankings drawer table fits the drawer — Done; tests 39/39, lint clean, goldens unchanged. Also: your row's class `me` clashed with `.hub .me` (HUD player card) and broke its layout, so it is now `tr.you` (js/ui/career-week.js, one word). QA at 1280×800: 4 columns inside the 440 px drawer on Register and Gazette, no cell overflow, no horizontal scroll, your row highlighted; screenshot checked; no pageerror.
 - [x] T-039: MapModel `life` — who is where this week, as plain data — Done as specified; tests 36/36, lint clean, goldens untouched, headless only. `life.crews` also carries `team` (club index) and `mates` uses the nearest explored place of the key to home.

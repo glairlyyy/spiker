@@ -79,14 +79,11 @@ function clashPanel(run) {
   const d = City.clashCost(run),
     trip = d - 1,
     late = run.event ? 'answer the event first' : City.noTime(run, d),
+    ban = City.fightBan(run),
     btn = (side, label, t) =>
       `<button class="btn ${side ? 'hot' : ''}" onclick="mapClash(${side ? `'${side}'` : 'null'})" ${late ? `disabled ${tip(late)}` : tip(t)}>${label}${dayTag(d)}</button>`,
     fight = (side, foe) =>
-      `<span class="btns">${btn(
-        side,
-        `Fight for ${esc(REGIONS[side].name)}`,
-        `A real match with their crew — XP, techniques and a grade like an evaluation. Win: +${CLASH.win} standing with ${REGIONS[side].name}, +${CLASH.fans} fans. Lose: ${CLASH.lose}. Either way ${CLASH.other} with ${REGIONS[foe].name}. −${CLASH.sta} stamina`
-      )}${late ? '' : `<button class="btn" onclick="mapClash('${side}', true)" ${tip('Get the result without watching')}>⏭</button>`}</span>`,
+      `<span class="btns"><button class="btn hot" onclick="mapClash('${side}')" ${late || ban ? `disabled ${tip(ban || late)}` : tip(`A real match with their crew — XP, techniques and a grade like an evaluation. Win: +${CLASH.win} standing with ${REGIONS[side].name}, +${CLASH.fans} fans. Lose: ${CLASH.lose}, −${LOSS.sta} more stamina, mood down; a loss by ${LOSS.heavy}+ points costs fans. Either way ${CLASH.other} with ${REGIONS[foe].name}. −${CLASH.sta} stamina`)}>Fight for ${esc(REGIONS[side].name)}${dayTag(d)}</button>${late || ban ? '' : `<button class="btn" onclick="mapClash('${side}', true)" ${tip('Get the result without watching')}>⏭</button>`}<span class="small mute" ${tip('Win or lose: grows with their rating above yours, how badly you lose, low stamina and fighting again soon.')}>${ban ? esc(ban) : `Injury risk ~${Math.round(City.injuryRisk(run, City.crewOvr(run, foe)) * 100)} %`}</span></span>`,
     st = r => `${esc(REGIONS[r].name)} <b>${City.rep(run, r) > 0 ? '+' : ''}${City.rep(run, r)}</b>`;
   return `<div class="spot"><h4>⚔ Street battle <span class="mute small">${esc(REGIONS[c.a].name)} vs ${esc(REGIONS[c.b].name)} · ${esc(c.name)}</span>${
     trip ? ` <span class="stk ${trip >= 2 ? 'far' : ''}">Trip: ${trip} day${trip > 1 ? 's' : ''}</span>` : ''
@@ -151,12 +148,14 @@ function challengeBlock(run, ti) {
     cost = City.scoutCost(run, ti),
     late = run.event
       ? 'answer the event first'
-      : City.noTime(run, cost) || (run.money < side.cost ? `needs $${side.cost} for a street crew` : ''),
+      : City.fightBan(run) || City.noTime(run, cost) || (run.money < side.cost ? `needs $${side.cost} for a street crew` : ''),
+    risk = Math.round(City.injuryRisk(run, run.teams[ti].ovr) * 100),
     hot = W.verdict === 'likely' ? 'hot' : '';
   return `<div class="trow chal" ${tip('Challenge their squad for a stake: they may refuse. Win and the stake pays at odds; lose and it is gone. XP and techniques as in any match')}><span class="small">Stake <button class="btn" onclick="mapStake(${ti},-1)" ${st <= 0 ? 'disabled' : ''}>−</button> <b>$${st}</b> <button class="btn" onclick="mapStake(${ti},1)" ${st + CHALLENGE.stakeStep > City.stakeMax(run) ? 'disabled' : ''}>+</button></span>
     <button class="btn ${hot}" onclick="mapChallenge(${ti})" ${late ? `disabled ${tip(late)}` : ''}>Challenge${dayTag(cost)}</button>
     <button class="btn" onclick="mapChallenge(${ti}, true)" ${late ? 'disabled' : ''} ${tip('Get the result without watching')}>⏭</button>
-    <span class="small ${W.verdict === 'refuses' ? 'mute' : ''}">Accepts: <b>${W.verdict}</b> — ${esc(W.why)}${side.kind === 'hired' ? ` · street crew $${side.cost}` : ''}</span></div>`;
+    <span class="small ${W.verdict === 'refuses' ? 'mute' : ''}">Accepts: <b>${W.verdict}</b> — ${esc(W.why)}${side.kind === 'hired' ? ` · street crew $${side.cost}` : ''}</span>
+    <span class="small mute" ${tip('Before the match: grows with their rating above yours, how badly you lose, low stamina and fighting again soon. Win or lose.')}>Injury risk ~${risk} %</span></div>`;
 }
 function hqPanel(run, ti) {
   const t = run.teams[ti],
