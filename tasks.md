@@ -86,7 +86,7 @@ Spec: §2.12 (Block collision)          Goldens: update (a new outcome on solo b
 Goal: When T-068's solo block meets a partner who also commits, the two blockers collide: both blocks cancel early (an
 open net for the attack) or, in the error variant, a net fault ends the rally; a floating "BLOCK COLLISION" label in a
 warning or error style marks it.
-Files: js/data/rules.js, js/engine/rally.js, js/engine/rally-defense.js, js/render/playback.js, js/render/overlay.js (was court.js, renamed in T-077),
+Files: js/data/rules.js, js/engine/rally.js, js/engine/rally-defense.js, js/render/playback.js, js/render/acts.js (the `plabel` handler, since T-078), js/render/overlay.js (was court.js, renamed in T-077),
 js/render3d/actors3d.mjs (only if the stagger needs it), tests/run.js, ARCHITECTURE.md
 Do not: add an act kind (extend `plabel` with an optional style flag, and use `jump` / `slide` / `pose` / `log`);
 make collisions happen without a solo block; touch the scene shots.
@@ -277,7 +277,7 @@ Accept: tests + lint; goldens untouched (proves the constants are identical).
 QA: Monster game 3000 steps: tags, dives, overlay labels as before; no pageerror.
 Result: body.js deleted (shade → faces.js, setMotion → poses3d.mjs); characters.js → tags.js (FONT_ROUND, INK, roundRectPath instead of literals), court.js → overlay.js, dive timeline → dive.js (new, after tags in both html; qa_poses loads dive.js + engine/court.js); units named in engine/court.js: Z_UNITS, UNIT_M {h,x,z}, BALL_K, SERVE_K used by court dist, rally-defense ×2, rally, serve, stats UNITS_PER_M, playback (Z_TO_X, MX/MZ, reachH, air time, fall) and units3d KH/KX/KZ; playback copies each rally's beats so it never marks engine output. T-069 file list updated for the rename. 52/52, goldens untouched (same constants), lint clean; Monster 3000 steps tags/labels/dives fine, qa_poses loads without pageerror (its canvas is blank before and after: pre-existing).
 
-### [ ] T-078: Split playback.js (1090 lines) by concern
+### [x] T-078: Split playback.js (1090 lines) by concern
 Spec: — (cleanup)          Goldens: unchanged          Save: no change
 Goal: The 265-line `instant()` switch becomes a dispatch table split by concern; movement and actor timers get
 their own files.
@@ -290,7 +290,7 @@ Steps:
 3. The act-kind test checks every engine kind has an `ACTS` key (data, not a `case` regex).
 Accept: tests + lint; goldens untouched; playback.js under ~450 lines.
 QA: Monster game Max hype 3000 steps + a career watched match: subs, timeouts, scenes, cut-ins as before.
-Result:
+Result: instant() is now a 6-line lookup into ACTS (acts.js, new: ACTS_FX 21 / ACTS_UI 12 / ACTS_ROSTER 4 handlers, (a, d, bs), early breaks became returns, FLASH_* moved with them); movement.js (new: pre-dig reads, spike approach, sprint caps, dig chase, squeaks, air momentum, separation); actors.js (new: player timers, gait/dust, celebration). playback.js 1090 → 460 lines. Act-kind test reads the ACTS method keys + startBeat cases. T-069 file list gains acts.js. 52/52, goldens untouched, lint + format clean; QA Monster Max hype 6000 steps: 26 act kinds dispatched through ACTS (labels, techniques, cut-ins, combo, shots, flashes, pose/setdir/spkstyle), no pageerror (only the known hold STALL line).
 
 ### [ ] T-079: map3d hygiene — shared helpers, no hard-coded factions, clean dispose
 Spec: §4.9 (map)          Goldens: unchanged          Save: no change

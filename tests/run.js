@@ -83,12 +83,14 @@ test('render: presentation never draws from the game RNG', () => {
 });
 test('engine: every beat act kind is handled by the renderer', () => {
   const g = load(11);
-  const src = fs.readFileSync(path.join(__dirname, '..', 'js/render/playback.js'), 'utf8');
-  const known = new Set(
-    [...src.matchAll(/case '([a-zA-Z]+)'/g)]
-      .map(m => m[1])
-      .concat(['slide', 'hold', 'pose', 'jump', 'ball', 'reset', 'rot', 'score', 'point'])
-  );
+  // one-shot acts: the keys of the ACTS tables (acts.js, a method each); tweened ones: startBeat's cases (playback.js)
+  const acts = fs.readFileSync(path.join(__dirname, '..', 'js/render/acts.js'), 'utf8'),
+    pb = fs.readFileSync(path.join(__dirname, '..', 'js/render/playback.js'), 'utf8');
+  const known = new Set([
+    ...[...acts.matchAll(/^ {2}([a-zA-Z]+)\(a, d, bs\) \{/gm)].map(m => m[1]),
+    ...[...pb.matchAll(/case '([a-zA-Z]+)'/g)].map(m => m[1])
+  ]);
+  assert(known.has('burst') && known.has('slide'), 'both tables were read');
   const T = g.mkMonsterTeams(),
     seen = new Set();
   for (let i = 0; i < 6; i++) {

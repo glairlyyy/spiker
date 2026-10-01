@@ -41,7 +41,7 @@ mkTeams() ─► simBalance() ─► newMatch(a, b, record)
 - `record = true` → `playRally` also returns **beats**: timed lists of acts such as
   `{k:'slide'}`, `{k:'jump'}`, `{k:'ball'}`, `{k:'burst'}`, `{k:'log'}`.
   The engine never draws; `render/playback.js` plays the beats.
-- Adding a visual event: emit `{k:'myAct', …}` from the engine, handle it in `instant()`
+- Adding a visual event: emit `{k:'myAct', …}` from the engine, add a handler to the right `ACTS_*` table in `render/acts.js` (or a tween in `startBeat`)
   (one-shot) or `startBeat()`/`applyBeat()` (tweened) in `render/playback.js`.
 
 ## Players and teams
@@ -100,7 +100,10 @@ artifact; its drawing code was removed here. `js/render/` now holds: `playback.j
 beats are copied per rally so playback never marks the engine's own), `clock.js`, `camera.js`, `ball.js`,
 `scenes.js`, `effects.js`, `overlay.js` (the screen-space layer: view transform, chant, ball trail, labels, flashes;
 `FONT_ROUND` / `FONT_DISPLAY` / `INK` / `roundRectPath`), `faces.js` (`faceSVG` portraits + `shade`), `tags.js`
-(player / coach tags over the figures) and `dive.js` (the dive timeline `diveF` / `diving` / `diveShape`).
+(player / coach tags over the figures), `dive.js` (the dive timeline `diveF` / `diving` / `diveShape`), `acts.js`
+(one-shot act handlers in three tables — `ACTS_FX`, `ACTS_UI`, `ACTS_ROSTER`, merged as `ACTS`; `instant(a)` looks the
+kind up and calls it with `(a, d, bs)`), `movement.js` (pre-dig reads, spike approach, sprint caps, dig chases, squeaks,
+air momentum, body separation) and `actors.js` (per-player timers, free fall, gait / dust, the celebration).
 Units are named once in `engine/court.js`: `Z_UNITS` (z 0..1 ≙ 420 x units), `UNIT_M` (metres per unit: h, x, z —
 units3d's KH / KX / KZ read it), `BALL_K` / `SERVE_K` (ball flight speed factors).
 
@@ -307,7 +310,7 @@ technique). Kill blocks get a scene: a `ball` close-up on the stuff, then the bl
 
 ## Far digs (playback)
 
-`digChase` (playback.js, at a beat's start): when a dig/receive target can't be reached at a sprint in the beat's
+`digChase` (movement.js, at a beat's start): when a dig/receive target can't be reached at a sprint in the beat's
 time (including coming down from a block jump), the beat gets `_dig` = the world time scale that makes it just
 reachable (≥ `DIG_SLOW_MIN`). `timeScale` drops to it at once; the digger (`A.digHero`) runs on real time — timers,
 `capMove` sprint cap, straight-line chase, 3D posing — so they move and dive at normal speed while the ball and
