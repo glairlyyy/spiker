@@ -28,9 +28,78 @@ const MapModel = {
         big: MAJORS.includes(id),
         text: `${REGIONS[id].name}${id === mine ? ' · home turf' : ''}`
       })),
-      airport: CITY.airport
+      airport: CITY.airport,
+      roads: ROADS.edges.map(([a, b, kind]) => ({ kind, pts: [ROADS.nodes[a].slice(), ROADS.nodes[b].slice()] })),
+      lots: MapModel.lots(run),
+      landmarks: MapModel.landmarks(run)
     };
   },
+  /** Every place and club HQ with its landmark kind (LANDMARK): [{ id, at, kind, region }]. Your home sits where your housing is. */
+  landmarks: run => [
+    ...Object.keys(SPOTS).map(id => ({ id, at: City.at(run, id), kind: LANDMARK[id], region: City.region(run, id) })),
+    ...CITY.hq.map((at, i) => ({ id: `hq${i}`, at, kind: LANDMARK.hq, region: FACTIONS[i].region }))
+  ],
+  /**
+   * Settlement lots along the roads (spec §4.18): [{ at, rot, size, style, kind }]. Walking each road edge in ROADS order, a slot every
+   * SETTLE[region].gap units, a lot on each side `setback` from the road when a hash of the slot is under the region's `density`.
+   * Never on water, in another region, within NEAR_R / 3 of a place, on top of another road or lot; at most MapModel.maxLots.
+   * Deterministic: fixed data + string hashes (hstr), no randoms. Cached per home spot (the only run-dependent input).
+   */
+  lots(run) {
+    const home = City.at(run, 'home'),
+      key = home.join(',');
+    if (MapModel.lotCache && MapModel.lotCache.key === key) return MapModel.lotCache.lots;
+    const N = ROADS.nodes,
+      places = [...Object.keys(SPOTS).map(id => City.at(run, id)), ...CITY.hq],
+      segD = (p, a, b) => {
+        const dx = b[0] - a[0],
+          dy = b[1] - a[1],
+          t = clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy), 0, 1);
+        return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+      },
+      lots = [];
+    outer: for (const [ua, ub, kind] of ROADS.edges) {
+      if (kind === 'path') continue;
+      const a = N[ua],
+        b = N[ub],
+        L = Math.hypot(b[0] - a[0], b[1] - a[1]),
+        ux = (b[0] - a[0]) / L,
+        uy = (b[1] - a[1]) / L;
+      let at = 0;
+      while (at < L) {
+        const c = [a[0] + ux * at, a[1] + uy * at],
+          reg = City.regionAt(c),
+          cfg = SETTLE[reg] || SETTLE.open;
+        at += cfg.gap;
+        for (const side of [1, -1]) {
+          const id = `${ua}|${ub}|${Math.round(at)}|${side}`;
+          if (hstr(id) >= cfg.density) continue;
+          const p = [c[0] - uy * side * cfg.setback, c[1] + ux * side * cfg.setback],
+            size = cfg.size * (0.85 + 0.3 * hstr(`${id}|s`));
+          if (
+            !City.onLand(p) ||
+            City.regionAt(p) !== reg ||
+            places.some(q => Math.hypot(q[0] - p[0], q[1] - p[1]) < NEAR_R / 3) ||
+            ROADS.edges.some(([x, y]) => segD(p, N[x], N[y]) < cfg.setback * 0.8) ||
+            lots.some(l => Math.hypot(l.at[0] - p[0], l.at[1] - p[1]) < (l.size + size) * 0.55)
+          )
+            continue;
+          lots.push({
+            at: [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10],
+            rot: Math.round(Math.atan2(uy, ux) * 1000) / 1000,
+            size: Math.round(size * 10) / 10,
+            style: cfg.style,
+            kind: cfg.kinds[Math.floor(hstr(`${id}|k`) * cfg.kinds.length)]
+          });
+          if (lots.length >= MapModel.maxLots) break outer;
+        }
+      }
+    }
+    MapModel.lotCache = { key, lots };
+    return lots;
+  },
+  /** Most settlement lots on the island. */
+  maxLots: 1200,
   /**
    * Pins: places, club HQs and this week's battle. flags: off (no time left for it), far (2+ day trip), turf,
    * gem / overhyped (known quality), hq, can (a club you can sign with), mine (your club), clash.

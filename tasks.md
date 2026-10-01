@@ -35,68 +35,11 @@ Result:
 - Living map A ✓ (T-039, T-040) · three-touch fix ✓ (T-043) · rankings ✓ (T-041, T-042) · team challenge ✓ (T-037).
 - Rankings drawer fix ✓ (T-044).
 - Challenge loss + injury ✓ (T-038).
-- **Now**: roads, settlements, buildings (T-045–T-047). Then road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
+- Roads + buildings ✓ (T-045 layout data, T-046 3D town).
+- **Now**: the player walks the roads (T-047). Then road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now — Roads, settlements and buildings (spec §4.18)
-
-### [ ] T-045: World layout data — road network, routes, settlement lots, landmarks
-Spec: §4.18          Goldens: unchanged          Save: no change
-Goal: The island gets a road network and a deterministic layout of settlement lots and landmark kinds, as plain data in
-the map model, plus `City.route` (the road path between two map points). Nothing changes in the rules yet.
-Files: js/data/city.js, js/career/city.js, js/career/mapmodel.js, tests/run.js, ARCHITECTURE.md
-Do not:
-- Change trip costs, travel days or any rule (T-048 does that, later).
-- Use R() / rnd(): layout from fixed data + a hash of coordinates; the same run always gives the same layout.
-Steps:
-1. city.js data: `ROADS = { nodes: { id: [x, y] }, edges: [[a, b, kind]] }` — kind `main` (Wu coast road, Wei avenues,
-   Academy roads), `street` (Wei grid), `dirt` (Shu, Outlaws), `path` (Shu mountain trails, temple steps). Nodes at the
-   airport, every `SPOTS` place with `at`, every `CITY.hq`, `HOME_AT` spots, Central Academy, plus junctions; all on land
-   (`City.onLand`). `SETTLE = { wei: { style: 'city', density, setback }, wu: { style: 'fishing' … }, shu: { style:
-   'terrace' … }, open: { style: 'campus' … }, outlaws: { style: 'shacks' … }, gloria: { style: 'compound' … } }`.
-   `LANDMARK` kind per SPOTS id / HQ (gym, court, dojo, hq, hotel, stall, shrine, cage, campus, home).
-2. city.js `City.route(from, to)` → array of map points: nearest node to each end, shortest path (Dijkstra over the
-   small graph, deterministic tie-break by id), plus the two end legs; straight line when both ends are nearer each other
-   than to any node.
-3. mapmodel.js: `land.roads` = polylines `{ kind, pts }`; `land.lots` = settlement lots `{ at, rot, size, style, kind }`
-   placed along road edges inside their region (both sides, `setback` from the road, spacing by `density`, never within
-   NEAR_R / 3 of a place, never on water / outside the coast), capped at 1200 lots; `land.landmarks` = `{ id, at, kind,
-   region }` for every place / HQ.
-4. tests: `'career: world layout — roads, routes, lots, landmarks'`: every place / HQ / airport / home spot reachable
-   from the airport; `City.route` starts / ends at the given points and only uses edges; same run → identical
-   `land.lots` JSON twice; lots ≤ 1200, none in the water, none on a place; R() counter unchanged by `MapModel.build`.
-5. ARCHITECTURE.md: layout data.
-Accept: all tests + lint; goldens untouched.
-QA: none (headless).
-Result:
-
-### [ ] T-046: Roads and buildings on the 3D map (kit registry, procedural first)
-Spec: §4.18          Goldens: unchanged          Save: no change
-Goal: The map shows roads draped on the terrain, settlements of instanced low-poly buildings in each region's style,
-and a recognisable landmark at every place / HQ. Every building kind comes from one registry so CC0 models can replace
-any kind later.
-Files: js/map3d/kit3d.mjs (new), js/map3d/town3d.mjs (new), js/map3d/map3d.mjs, js/map3d/pins3d.mjs, ARCHITECTURE.md
-Do not:
-- Load any external model now (procedural only); keep the registry ready for it (`kit3d.mjs` kinds may later return a
-  loaded GLTF from `assets/models/`).
-- Draw game randoms; read only `model.land.roads / lots / landmarks` and `model.fog`.
-- Exceed +20 draw calls or ~60k extra triangles at the default zoom.
-Steps:
-1. kit3d.mjs: `KIT = { kind: { geo(), mat, scale } }` for filler kinds per style (city block / tower, fishing hut /
-   boat shed, terraced house, campus hall, shack, compound wall + villa) and landmark kinds (gym, court with net, dojo
-   with gate, HQ tower in faction colour, hotel, stall, shrine, cage, campus, home); simple boxes / gables / prisms,
-   flat-shaded, region palette (REGIONS colours as accents).
-2. town3d.mjs `createTown(scene, heightAt)` → `{ sync(model), dispose() }`: roads as ribbon meshes (width by kind,
-   lifted 0.1 m, slope-following), one `InstancedMesh` per filler kind, landmark meshes at `landmarks` (facing the
-   nearest road); rebuild only when the layout JSON changes; dim with fog like the terrain (vertex colour or a shared
-   uniform), unexplored land stays visible but dark.
-3. map3d.mjs: create / sync / dispose; pins still float above landmarks (pins3d `PIN_UP` above the landmark height).
-4. ARCHITECTURE.md: town layer + kit registry (how to swap a kind for a model later).
-Accept: all tests + lint; goldens untouched.
-QA (career run): screenshots at default zoom and zoomed out: roads connect the places, Wei reads as a city, Wu as a
-coast of villages, Shu as hill terraces; draw calls / triangles within the limits; leave and return → no leak; no
-pageerror.
-Result:
 
 ### [ ] T-047: The player walks along the roads
 Spec: §4.18, §4.9          Goldens: unchanged          Save: no change
@@ -132,6 +75,8 @@ Phase 5 — Voice pass
 
 ## Done
 
+- [x] T-046: Roads and buildings on the 3D map (kit registry, procedural first) — Done; tests 41/41, lint clean, goldens unchanged. kit3d.mjs (KIT + LANDMARKS registry) and town3d.mjs; +4 draw calls (28 vs 24) and +6k tris (156.7k vs 150.7k incl. shadow pass) at default zoom; 3 leave/return cycles: geos stable (24), no pageerror. Roads connect places; Wei/Wu/Shu read by style at zoom-out. Lot scale (size × MAP_M × 1.2) is a first guess.
+- [x] T-045: World layout data — road network, routes, settlement lots, landmarks — Done; tests 41/41, lint clean, goldens unchanged, headless. 49 nodes / 60 edges (all on land, all reachable from the airport; `studio` home spot is `home:studio`); 163 lots on a fresh run (far under the 1200 cap; density / gap are first guesses for T-046 to tune by eye); 0 R() draws in MapModel.build. Also exported `MapModel.maxLots` and a lot cache `MapModel.lotCache` (properties, not globals).
 - [x] T-038: Losing is a real deal — loss penalties, fatigue and injury — Done; tests 40/40, lint clean, goldens unchanged, RUN_VERSION 7. Deviations: street-fight losses add no `run.losses` count; new `City.crewOvr` (street foe rating = mean of the region's league clubs) and `City.fightBan`; risk computed before the trip. Open: engine coach subs could bring an injured you on (T-049). QA: risk 16 → 27 % on low stamina, loss line lists penalties + minor injury, 45 % cap, buttons disabled "Injured — rest first"; no pageerror.
 (one line each; full task text is in git history)
 - [x] T-044: Rankings drawer table fits the drawer — Done; tests 39/39, lint clean, goldens unchanged. Also: your row's class `me` clashed with `.hub .me` (HUD player card) and broke its layout, so it is now `tr.you` (js/ui/career-week.js, one word). QA at 1280×800: 4 columns inside the 440 px drawer on Register and Gazette, no cell overflow, no horizontal scroll, your row highlighted; screenshot checked; no pageerror.
@@ -179,3 +124,4 @@ Phase 5 — Voice pass
 - (recorded in spec §4.6 / §2) Box score (player table in the match screen) gains an OVR column — js/ui/match-screen.js.
 - (recorded in spec §4.6 / §2) Added (.vrm) player models now apply to your own career player only (everyone else keeps the base model) — js/render3d/actors3d.mjs, js/ui/models.js, js/ui/menu.js, ARCHITECTURE.md.
 - (recorded in spec §4.6) Street-battle crews and your faction's evaluation squad show their real 3-letter team tag instead of 'EVL' (Eval.squad takes a `short`; 'EVL' only for the opposing evaluation squad) — js/career/eval.js, cup.js.
+- (recorded in spec §4.2) Central Academy moved to the Wei–Wu–Shu border tri-point (540, 500), north of the airport: park r 72→60, label, `park` spot, `park` / `jAc1` / `jAc2` road nodes, Academy road `park→dojo` replaced by `park→stone` — js/data/city.js, tests/run.js (route / regionAt coordinates).

@@ -444,6 +444,15 @@ region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border mete
    animated in `tick` (drill hops, walkers looping round a crew's places at 1.2 m/s, the battle crowd shoving, waving flags).
    Mates and known crews are coloured, unscouted crews grey; patrols (2–4) stand on the stronger side of the contested Wei–Wu
    line; every seized place flies the holder's flag. `furn.pulse(strength, t)` pulses the contested line with |meter| / 2.
+   The town layer is `js/map3d/town3d.mjs` (`createTown(scene, heightAt)` → `{ sync(model), dispose() }`, display only, no randoms):
+   reads only `model.land.roads / lots / landmarks` and `model.fog`; one vertex-coloured ribbon mesh for all roads (width and
+   colour by kind, slope-following, lifted 0.15 m, polygon offset), one `InstancedMesh` per base shape for the filler lots
+   (box, gable: kind palette + size per instance), one merged mesh for all landmarks (each faces its nearest road); rebuilt only
+   when the layout JSON changes, dimmed by the same fog rule as the terrain (`FOG_DIM` / `FOG_SOFT` exported from map3d.mjs);
+   +4 draw calls, ~+6k triangles. Pins above a landmark float `PIN_UP` over its roof (`landmarkHeight(kind)`). The kit registry
+   is `js/map3d/kit3d.mjs`: `KIT[kind] = { geo(), mat, scale, colors }` (filler kinds) and `LANDMARKS[kind] = { h, w, d, build(accent) }`.
+   Swapping a kind for a model later: make `geo()` / `build()` return the model's geometry (filler: 1 × 1 footprint, height 1, feet
+   at y = 0; landmark: door on +z, feet at y = 0, vertex colours) — nothing else changes (see the header of kit3d.mjs).
    `info().life` reports the instance counts. `js/ui/career-map.js` mounts it (`mapMount`),
    turns picks into panels (`mapPick`) and land clicks into travel targets (`mapPoint`). Region colours: REGIONS.color.
 
@@ -456,6 +465,18 @@ the popper (touch 1), the saver bump-sets (touch 2, `saveSet` in `rally-phases.j
 double contact, `sq2 'bad'`, `bumpSet`), then a third player hits (`chooseAttack` skips `scr.first` and the saver) or the bad
 set goes over as a bump; a block touch is free. Engine-only tallies (no randoms): `m.scr = { n, over }`, `m.scrLog = [{ first,
 saver, hitter }]`.
+
+## World layout (T-045)
+
+Plain data for roads and settlements (spec §4.18), no rule uses it yet. `data/city.js`: `ROADS = { nodes: { id: [x, y] }, edges:
+[[a, b, kind]] }` (kind `main` / `street` / `dirt` / `path`; nodes at `airport`, every `SPOTS` place with `at` under its own id, `hq0`…`hq7`,
+`home:<housing>` for each `HOME_AT` spot, and `j…` junctions — all on land, all reachable from the airport; a test pins the coordinates to
+their source), `SETTLE` (per region: style, density, gap, setback, size, kinds) and `LANDMARK` (kind per `SPOTS` id and `hq`).
+`City.route(from, to)` → `[from, …road nodes…, to]` (Dijkstra over `ROADS`, ties by node id; a straight `[from, to]` when the ends are
+nearer each other than to any node); trips, days and prices are untouched. `MapModel.build` adds to `land`: `roads` (`{ kind, pts }` per
+edge), `lots` (`MapModel.lots`: slots every `SETTLE[region].gap` along each non-path edge, a lot on each side when `hstr(slot) < density`;
+never on water, in another region, within `NEAR_R / 3` of a place, on a road or another lot; at most `MapModel.maxLots` 1200; cached per
+home spot) and `landmarks` (`{ id, at, kind, region }` for every place and HQ). Layout uses fixed data + `hstr` only: no `R()` draws.
 
 ## Rankings
 

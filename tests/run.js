@@ -157,6 +157,96 @@ test('career: map model — renderer-free data for the island map', () => {
   assert(JSON.parse(JSON.stringify(M)).pins.length === M.pins.length, 'serialisable (no DOM, no functions)');
 });
 
+test('career: world layout — roads, routes, lots, landmarks', () => {
+  const g = load(13),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Road', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    N = g.ROADS.nodes,
+    at = (a, b) => a[0] === b[0] && a[1] === b[1];
+  // every place / HQ / airport / home spot is a node at its own coordinates, on land, and reachable from the airport
+  const want = { airport: g.CITY.airport };
+  for (const [id, sp] of Object.entries(g.SPOTS)) if (sp.at) want[id] = sp.at;
+  g.CITY.hq.forEach((p, i) => (want[`hq${i}`] = p));
+  for (const [k, p] of Object.entries(g.HOME_AT)) want[`home:${k}`] = p;
+  for (const [id, p] of Object.entries(want)) assert(N[id] && at(N[id], p), `node ${id} sits at its place`);
+  const adj = {};
+  for (const [a, b] of g.ROADS.edges) {
+    assert(N[a] && N[b], `edge ${a}–${b} joins known nodes`);
+    (adj[a] = adj[a] || []).push(b);
+    (adj[b] = adj[b] || []).push(a);
+  }
+  const seen = new Set(['airport']),
+    todo = ['airport'];
+  while (todo.length) for (const v of adj[todo.pop()] || []) if (!seen.has(v)) (seen.add(v), todo.push(v));
+  assert(
+    Object.keys(N).every(id => seen.has(id)),
+    'every node is reachable from the airport'
+  );
+  assert(
+    Object.values(N).every(p => g.City.onLand(p)),
+    'every node is on land'
+  );
+  // City.route: ends at the given points, interior only along edges; straight when both ends are closer to each other than to a node
+  const edge = (a, b) => g.ROADS.edges.some(([x, y]) => (at(N[x], a) && at(N[y], b)) || (at(N[x], b) && at(N[y], a)));
+  for (const [from, to] of [
+    [g.CITY.airport, g.CITY.hq[4]],
+    [
+      [120, 300],
+      [905, 400]
+    ],
+    [g.CITY.hq[0], g.CITY.airport],
+    [
+      [540, 500],
+      [550, 505]
+    ]
+  ]) {
+    const r = g.City.route(from, to);
+    assert(at(r[0], from) && at(r[r.length - 1], to), 'a route starts and ends at the given points');
+    const inner = r.slice(1, -1);
+    for (let i = 1; i < inner.length; i++) assert(edge(inner[i - 1], inner[i]), 'and only uses edges between');
+  }
+  eq(g.City.route([540, 500], [550, 505]).length, 2, 'two close points: a straight line');
+  eq(
+    JSON.stringify(g.City.route(g.CITY.airport, g.CITY.hq[4])),
+    JSON.stringify(g.City.route(g.CITY.airport, g.CITY.hq[4])),
+    'same route twice'
+  );
+  // the map model: roads, lots, landmarks; no randoms; deterministic
+  let draws = 0;
+  const next = g.RNG.next;
+  g.RNG.next = () => (draws++, next());
+  const M = g.MapModel.build(run, null),
+    M2 = g.MapModel.build(run, null);
+  eq(draws, 0, 'MapModel.build draws no randoms');
+  eq(JSON.stringify(M.land.lots), JSON.stringify(M2.land.lots), 'the same run gives identical lots');
+  const L = M.land.lots;
+  assert(L.length > 0 && L.length <= 1200, `lots: ${L.length} (1..1200)`);
+  const places = [...Object.keys(g.SPOTS).map(id => g.City.at(run, id)), ...g.CITY.hq];
+  assert(
+    L.every(l => g.City.onLand(l.at)),
+    'no lot in the water'
+  );
+  assert(
+    L.every(l => places.every(p => Math.hypot(p[0] - l.at[0], p[1] - l.at[1]) >= g.NEAR_R / 3)),
+    'no lot on a place'
+  );
+  assert(
+    L.every(l => l.style && l.kind && Number.isFinite(l.rot) && l.size > 0),
+    'lots are plain data'
+  );
+  eq(M.land.roads.length, g.ROADS.edges.length, 'one road polyline per edge');
+  assert(
+    M.land.roads.every(r => r.kind && r.pts.length >= 2),
+    'roads carry kind and points'
+  );
+  const lm = M.land.landmarks;
+  assert(
+    Object.keys(g.SPOTS).every(id => lm.some(m => m.id === id && m.kind)) &&
+      g.CITY.hq.every((p, i) => lm.some(m => m.id === `hq${i}` && m.kind === 'hq')),
+    'every place and HQ has a landmark kind'
+  );
+  assert(JSON.parse(JSON.stringify(M)).land.lots.length === L.length, 'serialisable');
+});
+
 test('career: map model life — mates, crews, battle, borders, no randoms', () => {
   const g = load(12),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Life', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
@@ -735,7 +825,7 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   const td = g.City.travelDays(run, [700, 300]);
   assert(g.City.travelTo(run, [700, 300]) && g.City.days(run) === 7 - td && g.City.loc(run) === 'wei', 'walked into the city');
   assert(g.City.seen(run, [720, 320]), 'the fog lifts around you');
-  eq(g.City.regionAt([500, 320]), 'open', 'Central Academy belongs to nobody');
+  eq(g.City.regionAt([540, 500]), 'open', 'Central Academy belongs to nobody');
   eq(g.City.regionAt([815, 470]), 'outlaws', 'the overpass is the Outlaws');
   g.Run.endWeek(run);
   // home turf: your faction's region

@@ -78,7 +78,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   The pickup squad (`World.pickup`) stays, reframed as the Academy squad (§4.11).
 - §4.2 Island: 3 major factions — Wei (city; north + east), Wu (beach/coast; east/south + an inland strip;
   most aggressive), Shu (mountain highlands; west) — plus borderless minor factions. No unclaimed land except the
-  neutral middle zone, region `open` = **Central Academy** **[built]** (lore.md §4): entry point,
+  neutral zone at the Wei–Wu–Shu tri-point (north of the airport), region `open` = **Central Academy** **[built]** (lore.md §4): entry point,
   fields no team, never seized. Today: 2 squads per major + 2 minor clubs = 8
   fixed teams — they stay as each faction's home squads (training, bonds, scouting, transfers); matches that
   matter (evaluations, U21 Final Cup) use squads drawn from the faction pools (§4.11).
@@ -210,7 +210,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   - A Rankings drawer shows the three lists and your rank on each; pre-match and challenge cards show the opponent's
     ranks ("Register #12 · Gazette #3 · Street —"). Display only: no match effects. Aces / the rival appear here later.
 
-- §4.18 Roads, settlements and buildings **[locked, not built — T-045–T-047; T-048 later]** (owner: hybrid look):
+- §4.18 Roads, settlements and buildings **[layout data + 3D town built (T-045, T-046); walking the roads T-047; T-048 later; lot density / scale to tune by eye]** (owner: hybrid look):
   - Data first (rules layer, plain data, no randoms): a road network (nodes at the airport, every place, club HQs,
     Central Academy + junctions; edges = main roads, Wei grid streets, Shu dirt / mountain paths); settlement lots
     generated deterministically along roads per region style — Wei dense city blocks, Wu coastal fishing villages and

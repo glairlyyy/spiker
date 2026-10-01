@@ -221,6 +221,43 @@ const City = {
     City.moveTo(run, p);
     return `Travelled to ${REGIONS[City.loc(run)].name} (${t} day${t > 1 ? 's' : ''}).`;
   },
+  /**
+   * The road path from map point `from` to `to` (spec §4.18): [from, …road nodes…, to] over ROADS — the nearest node to each end,
+   * the shortest way between them (Dijkstra; ties broken by node id, so the same call always gives the same path). A straight
+   * line [from, to] when the two ends are nearer each other than to any node. Pure data, no randoms; trips and days are unchanged.
+   */
+  route(from, to) {
+    const N = ROADS.nodes,
+      ids = Object.keys(N).sort(),
+      d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]),
+      near = p => ids.reduce((best, id) => (d(p, N[id]) < d(p, N[best]) ? id : best), ids[0]),
+      a = near(from),
+      b = near(to);
+    if (d(from, to) <= d(from, N[a]) && d(from, to) <= d(to, N[b])) return [from.slice(), to.slice()];
+    const adj = {};
+    for (const [u, v] of ROADS.edges) {
+      (adj[u] = adj[u] || []).push(v);
+      (adj[v] = adj[v] || []).push(u);
+    }
+    const dist = { [a]: 0 },
+      prev = {},
+      done = new Set();
+    for (;;) {
+      let u = null;
+      for (const id of ids) if (!done.has(id) && dist[id] != null && (u === null || dist[id] < dist[u])) u = id;
+      if (u === null || u === b) break;
+      done.add(u);
+      for (const v of adj[u] || []) {
+        const nd = dist[u] + d(N[u], N[v]);
+        if (dist[v] == null || nd < dist[v] - 1e-9 || (Math.abs(nd - dist[v]) <= 1e-9 && u < prev[v])) ((dist[v] = nd), (prev[v] = u));
+      }
+    }
+    if (dist[b] == null) return [from.slice(), to.slice()]; // (not connected: cannot happen with ROADS as shipped)
+    const path = [];
+    for (let id = b; id !== undefined; id = prev[id]) path.unshift(id);
+    const pts = [from, ...path.map(id => N[id]), to].filter((p, i, A) => !i || p[0] !== A[i - 1][0] || p[1] !== A[i - 1][1]);
+    return pts.map(p => p.slice());
+  },
   /** Days to scout club ti: the trip to its HQ + a day. */
   scoutCost: (run, ti) => City.trip(run, CITY.hq[ti]) + 1,
   /** A day at a club HQ: scout them (roster, elements, a rumour). Returns the diary line. */

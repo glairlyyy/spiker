@@ -9,8 +9,11 @@ import * as THREE from 'three';
 import { createAvatar } from './avatar3d.mjs';
 import { createFurniture } from './pins3d.mjs';
 import { createLife } from './life3d.mjs';
+import { createTown } from './town3d.mjs';
 
 export const MAP_M = 0.5;
+export const FOG_DIM = 0.3; // brightness of unexplored terrain (the town layer dims by the same rule)
+export const FOG_SOFT = 14; // fog edge softness (m)
 export const toWorld = ([x, y]) => [x * MAP_M, y * MAP_M];
 export const toMap = (x, z) => [x / MAP_M, z / MAP_M];
 
@@ -19,9 +22,7 @@ const CELL = 2, // terrain grid cell (m)
   DIST = [25, 420],
   CLICK_PX = 5,
   BEACH = 12, // beach slope width (m)
-  IDLE_S = 3, // canvas detached this long → release the renderer
-  FOG_DIM = 0.3, // brightness of unexplored terrain
-  FOG_SOFT = 14; // fog edge softness (m)
+  IDLE_S = 3; // canvas detached this long → release the renderer
 
 const lerp = (a, b, t) => a + (b - a) * t,
   clamp = (v, a, b) => Math.min(b, Math.max(a, v)),
@@ -202,6 +203,7 @@ export function create(host, onIdle) {
     dead = false,
     avatar = null,
     furn = null, // pins, labels, flag, decals (pins3d.mjs)
+    town = null, // roads, lots, landmarks (town3d.mjs)
     life = null, // figures, battle crowd, patrols, seized flags (life3d.mjs)
     pressure = 0, // the contested border's pressure 0..1 (pulse)
     clock = 0,
@@ -219,6 +221,7 @@ export function create(host, onIdle) {
     scene.add(mesh);
     water.position.set(terrain.W / 2, 0, terrain.D / 2);
     avatar = createAvatar(scene);
+    town = createTown(scene, terrain.heightAt);
     furn = createFurniture(scene, terrain.heightAt);
     life = createLife(scene, terrain.heightAt);
     furn.layer.addEventListener('wheel', onWheel, { passive: false }); // wheel over a pin still zooms
@@ -375,6 +378,7 @@ export function create(host, onIdle) {
     /** New model: first time stand at you.at, later walk there when it changed. */
     update(m) {
       if (!furn) return;
+      town.sync(m);
       furn.sync(m, on);
       life.sync(m);
       const bd = m.life && m.life.borders.find(b => b.a === 'wei' && b.b === 'wu');
@@ -404,6 +408,7 @@ export function create(host, onIdle) {
       dead = true;
       if (avatar) avatar.dispose();
       if (furn) furn.dispose();
+      if (town) town.dispose();
       if (life) life.dispose();
       if (raf) cancelAnimationFrame(raf);
       if (ro) ro.disconnect();
