@@ -240,6 +240,11 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   - **Central Academy**: a campus quad on the old ritual ground; a weathered sand circle nearby, never labelled.
   - Buildings fill districts (an area + style + density), not only rows along roads; ~1,200 buildings in all
     (Wei ~600, Wu ~300, Shu ~150, Outlaws ~60, Academy ~40, Gloria ~30). Trip days unchanged (T-048 decides road travel).
+- §4.20 Match history **[locked, not built — T-052]** (owner): the Season drawer lists every match you were in this run
+  (evaluations, U21 cup, team challenges, street fights; newest first): week / day, kind, opponent, score, won or lost,
+  your grade. Opening one shows the **snapshot**: your OVR, stats and wit at kick-off (and the change since the match
+  before), your line (kills, attacks, errors, blocks, aces, digs, assists), and the box score of everyone who played
+  (name, role, OVR, line). Numbers only (registrar voice). Bench matches are listed ("did not play").
 
 ## 5. Open questions — do not build until decided
 - §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story

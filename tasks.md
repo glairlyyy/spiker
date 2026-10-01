@@ -36,7 +36,7 @@ Result:
 - Rankings drawer fix ✓ (T-044).
 - Challenge loss + injury ✓ (T-038).
 - Roads + buildings ✓ (T-045 layout data, T-046 3D town).
-- **Now**: the player walks the roads (T-047). **Next**: town layout revamp (T-050 data, T-051 render). Then road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
+- **Now**: the player walks the roads (T-047). **Next**: match history (T-052), town layout revamp (T-050 data, T-051 render). Then road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now — Roads, settlements and buildings (spec §4.18)
@@ -59,7 +59,40 @@ QA: career run → travel from the airport to Shu: the avatar follows the coast 
 shows for a long trip; no pageerror.
 Result:
 
-## Next — Town layout revamp (spec §4.19)
+## Next — Match history (spec §4.20), town layout revamp (spec §4.19)
+
+### [ ] T-052: Match history in the Season drawer, with a stat snapshot per match
+Spec: §4.20          Goldens: unchanged (career / UI only)          Save: RUN_VERSION 7 → 8 (`run.mlog`) — older saves dropped
+Goal: Every match you are in (eval, cup, challenge, street fight) is recorded with your stats at kick-off, your line and
+the box score; the Season drawer lists them and opens one to show the snapshot.
+Files: js/data/career.js, js/career/cup.js, js/career/run.js, js/ui/career-week.js, js/ui/career-hub.js, css/career.css,
+tests/run.js, ARCHITECTURE.md
+Do not: touch js/engine or the match screen; change any reward; draw randoms; store player objects or team refs in the
+log (plain numbers and strings only — the save must stay small).
+Steps:
+1. career.js: `MLOG = { max: 80 }` (entries kept; oldest dropped).
+2. cup.js: `Cup.record(run, m, kind, extra)` → pushes onto `run.mlog` and trims to `MLOG.max`:
+   `{ week, day: Run.dayNo(run), kind: 'eval' | 'cup' | 'challenge' | 'street', vs (opponent name), short, score
+   [yours, theirs] (first set as today), win, grade (null if you did not play), played, round? (cup), stake? (challenge),
+   you: { ovr, power, def, speed, jump, wit } (BEFORE this match's XP), line: { k, att, err, blk, ace, dig, ast },
+   box: [{ name, role, side: 0 | 1, ovr, k, att, err, blk, ace, dig, ast, you? }] (everyone in m.played, both teams) }`.
+   Call it at the start of `Cup.result`, `Cup.challengeResult` and `Cup.clashResult` (before Growth.matchXp), so the
+   snapshot is the kick-off state.
+3. run.js: `mlog: []` in create + repair (array check); `RUN_VERSION = 8` with the comment line extended.
+4. career-week.js `matchLog(run)`: a panel "Match history" — one row per entry, newest first: `W12 · Challenge · vs
+   Wu Navy Fort · 21-18 · W · A` (bench: "did not play"); each row is a `fold` (key `ml<index>`) whose body shows
+   (a) your snapshot: OVR and the 5 stats, each with the change since the previous entry (+2 / −1, blank if none);
+   (b) your line; (c) the box score as a compact table (`table.rk` style: your row `tr.you`, the two sides split by a
+   heading row with the short tags). Empty state: "No matches yet."
+5. career-hub.js: the `season` drawer appends `matchLog(run)` after the season card. css: only what the table needs.
+6. tests `'career: match history'`: a sim eval, a challenge and a street fight each add one entry with the right kind,
+   score and win; `you` equals the stats before the match (compare with a copy taken before); box has every played id
+   once, plain JSON (JSON.parse(JSON.stringify(entry)) deep-equals it); trimming at MLOG.max; repair adds `mlog`.
+7. ARCHITECTURE.md: the record and save v8 (the spec chat updates CLAUDE.md at review).
+Accept: all tests + lint; goldens untouched.
+QA: career run → play (⏭) an evaluation and a challenge → Season drawer lists both, newest first; open one: snapshot,
+your line and box score fit the drawer (no horizontal scroll); no pageerror.
+Result:
 
 ### [ ] T-050: Town layout data — districts, a wider beach, Wu town inland, the overpass
 Spec: §4.19, §4.18          Goldens: unchanged (career / map only)          Save: no change
