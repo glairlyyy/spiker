@@ -647,8 +647,10 @@ the table only. `run.grades` (your match grades, newest last) is capped at `MLOG
 
 ## Testing
 
-`node tests/run.js` — no dependencies. `tests/harness.js` loads the headless scripts (core, data, engine, career) into a
-`vm` context with a seeded `Math.random` and an in-memory `localStorage`. Tests cover:
+`node tests/run.js` — no dependencies (`--quick` skips the tests marked `test.slow`; `--update` re-records the goldens,
+only from a fully green, non-quick run). `tests/harness.js` loads the headless scripts (core, data, engine, career) into a
+`vm` context with a seeded `Math.random` and an in-memory `localStorage`, and holds the runner, `goldenCheck` and
+`playRun`. The tests live in area files: `engine.test.js`, `career.test.js`, `map.test.js`, `cup.test.js`. Tests cover:
 
 - **golden** engine output (teams, recorded matches incl. beats, simulated matches, monster teams) → `tests/golden.json`;
 - rally invariants over 300 matches and that every beat act kind has a renderer handler;

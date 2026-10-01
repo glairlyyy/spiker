@@ -1,0 +1,573 @@
+// Engine, renderer contract and teams: golden hashes, rally invariants, elements, blocks, substitutions, coach.
+const fs = require('fs'),
+  path = require('path');
+const { load, hash, test, assert, eq, goldenCheck } = require('./harness');
+
+test('engine: seeded tournament teams + recorded matches are deterministic (golden)', () => {
+  const g = load(42);
+  const T = g.mkTeams();
+  g.simBalance(T);
+  const teams = JSON.stringify(T.map(t => t.P.map(p => [p.name, p.role, p.power, p.def, p.speed, p.jump, p.wit, p.lead, p.star, p.op])));
+  let out = '';
+  for (let i = 0; i < 16; i++) {
+    const m = g.newMatch(T[i % 8], T[(i + 3) % 8], true);
+    while (!m.over) out += JSON.stringify(g.playRally(m).beats);
+    out += JSON.stringify([m.setScores, m.stat]);
+  }
+  goldenCheck('teams', hash(teams));
+  goldenCheck('matches', hash(out));
+});
+
+test('engine: simulated matches (no animation) are deterministic (golden)', () => {
+  const g = load(7);
+  const T = g.mkTeams();
+  const res = [];
+  for (let i = 0; i < 40; i++) res.push(g.simMatch(T[i % 8], T[(i + 5) % 8]).setScores[0].join('-'));
+  goldenCheck('sims', hash(res.join(',')));
+});
+
+test('engine: monster + league teams (golden)', () => {
+  const g = load(9);
+  const M = g.mkMonsterTeams(),
+    L = g.mkLeagueTeams();
+  assert(
+    M.every(t => t.P.every(p => p.op)),
+    'every monster player must be OP'
+  );
+  assert(
+    L.every(t => t.P.every(p => !p.star)),
+    'league teams start without stars'
+  );
+  goldenCheck('monster', hash(JSON.stringify(M.map(t => t.P.map(p => [p.power, p.def, p.speed, p.jump, p.wit])))));
+});
+
+test('engine: rally invariants over 300 matches', () => {
+  const g = load(3);
+  const T = g.mkTeams();
+  for (let i = 0; i < 300; i++) {
+    const m = g.simMatch(T[i % 8], T[(i * 3 + 1) % 8]);
+    const [a, b] = m.setScores[0];
+    assert(m.over && Math.max(a, b) >= g.RULES.pointsToWin && Math.abs(a - b) >= g.RULES.winBy, `bad final score ${a}-${b}`);
+    for (const id in m.sta) assert(m.sta[id] >= 0.05 && m.sta[id] <= 1, 'stamina out of range');
+    for (const id in m.mood) assert(m.mood[id] >= -1 && m.mood[id] <= 1, 'mood out of range');
+  }
+});
+
+test('render: presentation never draws from the game RNG', () => {
+  // playback runs playRally lazily inside step(): a frame-rate-dependent draw here would move the engine stream
+  const root = path.join(__dirname, '..'),
+    files = [
+      ...fs.readdirSync(path.join(root, 'js/render')).map(f => 'js/render/' + f),
+      ...fs.readdirSync(path.join(root, 'js/audio')).map(f => 'js/audio/' + f),
+      'js/ui/match-screen.js'
+    ],
+    bad = [];
+  for (const f of files) {
+    const lines = fs.readFileSync(path.join(root, f), 'utf8').split('\n');
+    lines.forEach((l, i) => {
+      const code = l.replace(/\/\/.*$/, '');
+      if (/(^|[^.\w])(R\(\)|rnd\(|pick\()/.test(code) && !/FXR\.isolate/.test(code)) bad.push(`${f}:${i + 1}`);
+    });
+  }
+  eq(bad.join(' '), '', 'use FXR (core/rng.js) for presentation randomness');
+});
+
+test('engine: every beat act kind is handled by the renderer', () => {
+  const g = load(11);
+  // one-shot acts: the keys of the ACTS tables (acts.js, a method each); tweened ones: startBeat's cases (playback.js)
+  const acts = fs.readFileSync(path.join(__dirname, '..', 'js/render/acts.js'), 'utf8'),
+    pb = fs.readFileSync(path.join(__dirname, '..', 'js/render/playback.js'), 'utf8');
+  const known = new Set([
+    ...[...acts.matchAll(/^ {2}([a-zA-Z]+)\(a, d, bs\) \{/gm)].map(m => m[1]),
+    ...[...pb.matchAll(/case '([a-zA-Z]+)'/g)].map(m => m[1])
+  ]);
+  assert(known.has('burst') && known.has('slide'), 'both tables were read');
+  const T = g.mkMonsterTeams(),
+    seen = new Set();
+  for (let i = 0; i < 6; i++) {
+    const m = g.newMatch(T[0], T[1], true);
+    while (!m.over) for (const b of g.playRally(m).beats) for (const a of b.acts) seen.add(a.k);
+  }
+  const missing = [...seen].filter(k => !known.has(k));
+  assert(!missing.length, 'unhandled act kinds: ' + missing.join(', '));
+});
+
+test('render3d: every pose the engine sends has a 3D pose', () => {
+  const g = load(12);
+  const src = fs.readFileSync(path.join(__dirname, '..', 'js/render3d/poses3d.mjs'), 'utf8');
+  const known = new Set([...src.matchAll(/pose === '([a-z]+)'/g)].map(m => m[1]));
+  const T = g.mkMonsterTeams(),
+    seen = new Set(['ready', 'huddle']); // match start and timeouts set these outside rally beats
+  for (let i = 0; i < 6; i++) {
+    const m = g.newMatch(T[0], T[1], true);
+    while (!m.over) for (const b of g.playRally(m).beats) for (const a of b.acts) if (a.k === 'pose') seen.add(a.pose);
+  }
+  const missing = [...seen].filter(k => !known.has(k));
+  assert(!missing.length, 'poses with no 3D version: ' + missing.join(', '));
+});
+
+test('engine: elements — rarity, every element fires, counters, captain buff', () => {
+  const g = load(21);
+  // rarity: regular players never; OP always; roughly 1 in 4 other stars
+  let st = 0,
+    stOn = 0;
+  for (let i = 0; i < 12; i++)
+    for (const t of g.mkTeams())
+      for (const p of t.P) {
+        assert(g.ELS.includes(p.el) && p.sig && g.TWIST[p.sig.tw] && p.sig.name, 'every player has an element and a signature');
+        if (!p.star) assert(!p.elOn, 'regular players never unlock');
+        else if (p.op) assert(p.elOn, 'OP players always unlock');
+        else {
+          st++;
+          if (p.elOn) stOn++;
+        }
+      }
+  assert(stOn / st > 0.12 && stOn / st < 0.4, `star unlock share ${(stOn / st).toFixed(2)}`);
+  // assignment draws no random numbers (seeded runs stay reproducible) and is stable
+  const q = g.mkTeams()[0].P[1],
+    el0 = q.el;
+  delete q.el;
+  delete q.sig;
+  g.elAssign(q);
+  eq(q.el, el0, 'same player, same element');
+  // every element charges and fires somewhere across Monster games; element spikes win most points
+  const fired = {};
+  let won = 0,
+    n = 0;
+  for (let i = 0; i < 70; i++) {
+    const [a, b] = g.mkMonsterTeams(),
+      m = g.simMatch(a, b);
+    for (const L of m.elLog) {
+      fired[L.el] = (fired[L.el] || 0) + 1;
+      n++;
+      if (L.won) won++;
+      assert(L.won === true || L.won === false, 'element spike outcome recorded');
+    }
+  }
+  for (const e of g.ELS) assert(fired[e] > 0, `${e} never fired`);
+  assert(won / n > 0.55 && won / n < 0.85, `element spike win rate ${(won / n).toFixed(2)}`);
+  // counters: a defender whose element beats the attacker's halves the effect; Blast has no counter
+  const [A, B] = g.mkMonsterTeams(),
+    m = g.newMatch(A, B, false),
+    hit = A.P[3];
+  hit.el = 'fire';
+  for (const p of B.P) p.el = 'earth';
+  eq(g.elSpike(m, hit, hit, A.P[0], B, false).pow, 1.15, 'full fire power');
+  B.P[2].el = 'water';
+  const r = g.elSpike(m, hit, hit, A.P[0], B, false);
+  eq(r.res, B.P[2], 'water resists fire');
+  assert(Math.abs(r.pow - 1.075) < 1e-9, 'resisted: half the effect');
+  hit.el = 'blast';
+  eq(g.elSpike(m, hit, hit, A.P[0], B, false).res, null, 'blast has no counter');
+  // captain's buff fills the gauge: the next attack is guaranteed to be an element spike
+  hit.el = 'fire';
+  m.eg[hit.id] = 0;
+  assert(g.elBuff(m, hit) && g.elReady(m, hit), 'buff fills the gauge');
+  const reg = g.mkTeams()[0].P.find(p => !p.elOn);
+  assert(!g.elBuff(m, reg) && !g.elReady(m, reg), 'no element, no gauge');
+});
+
+test.slow('engine: the setter takes the second ball', () => {
+  const g = load(5);
+  let sets = 0,
+    ast = 0,
+    astNon = 0,
+    reach = 0;
+  for (let i = 0; i < 400; i++) {
+    const T = g.mkTeams(),
+      m = g.newMatch(T[i % 8], T[(i + 3) % 8], false);
+    while (!m.over) g.playRally(m);
+    for (const e of m.setBy || []) {
+      sets++;
+      if (e.why === 'reach') {
+        reach++;
+        assert(e.role !== 'S' && e.ts > g.SETTER.beat * e.tm, `a teammate sets only when out-reaching the setter (${e.ts} vs ${e.tm})`);
+      } else if (e.why === 'free') {
+        assert(e.role === 'S' && (e.tm === null || e.ts <= g.SETTER.beat * e.tm), 'otherwise the free setter sets');
+      } else assert(e.why === 'none', 'a non-setter sets with no setter free: the setter passed or is busy');
+    }
+    for (const side of m.t)
+      for (const p of [...side.P, ...side.bench]) {
+        const s = m.stat[p.id];
+        if (!s) continue;
+        ast += s.ast;
+        if (p.role !== 'S') astNon += s.ast;
+      }
+  }
+  assert(sets > 4000 && reach > 0, `sets were judged (${sets}, ${reach} won by reach)`);
+  assert(astNon / ast < 0.11, `assists by non-setters ${((100 * astNon) / ast).toFixed(1)} % (was ~12.5 %)`);
+});
+
+test('engine: staged scenes are rare and well-formed', () => {
+  const g = load(31);
+  let scenes = 0,
+    matches = 0;
+  for (let i = 0; i < 30; i++) {
+    const [a, b] = g.mkTeams(),
+      ids = new Set([...g.squadOf(a), ...g.squadOf(b)].map(p => p.id)),
+      m = g.newMatch(a, b, true);
+    while (!m.over)
+      for (const bt of g.playRally(m).beats) {
+        if (!bt.scene) continue;
+        assert(bt.scene === 1 || bt.scene === 2, 'scene level 1 or 2');
+        for (const a2 of bt.acts)
+          if ((a2.k === 'shot' && a2.kind) || a2.k === 'call') assert(ids.has(a2.p), 'scene act names a player on court');
+        if (bt.scene === 1 && bt.acts.some(a2 => a2.k === 'shot' && a2.kind === 'face')) scenes++; // what Normal Hype shows
+      }
+    matches++;
+  }
+  const per = scenes / matches;
+  assert(per >= 1 && per <= 8, `scenes per match ${per}`); // target ≈ 6–7 on average; 30 matches (10 were noisy: T-054 moved the random stream)
+});
+
+test('engine: recorded beats stay well-formed in every mode (no NaN, known players, matches end)', () => {
+  for (let s = 0; s < 24; s++) {
+    const g = load(9000 + s),
+      T = g[['mkTeams', 'mkMonsterTeams', 'mkLeagueTeams'][s % 3]](),
+      [a, b] = [T[0], T[1 + (s % (T.length - 1))]],
+      ids = new Set([...g.squadOf(a), ...g.squadOf(b)].map(p => p.id)),
+      m = g.newMatch(a, b, true);
+    let guard = 0;
+    while (!m.over && guard++ < 200)
+      for (const bt of g.playRally(m).beats) {
+        assert(bt.dur > 0 && Number.isFinite(bt.dur), 'beat duration');
+        for (const x of bt.acts) {
+          for (const f of ['p', 'p1', 'p2']) if (x[f] != null) assert(ids.has(x[f]), `${x.k} names an unknown player`);
+          if (x.k === 'sub') assert(ids.has(x.out) && ids.has(x.in), 'sub names known players');
+          for (const [k, v] of Object.entries(x)) if (typeof v === 'number') assert(Number.isFinite(v), `${x.k}.${k} is not finite`);
+        }
+      }
+    assert(m.over, 'match ends');
+  }
+});
+
+test.slow('engine: lane-read block — stuff rate and defence settings', () => {
+  // Read vs Read over five team sets: stuffs (kill blocks) and hitter kills as a share of all attacks
+  let n = 0,
+    stuffs = 0,
+    kills = 0;
+  for (const seed of [20, 37, 54, 71, 88]) {
+    const g = load(seed),
+      T = g.mkTeams();
+    for (let i = 0; i < 50; i++) {
+      const m = g.simMatch(T[i % 8], T[(i * 3 + 1) % 8]);
+      for (const a of m.att) {
+        n += a.n;
+        kills += a.k;
+      }
+      for (const id in m.stat) stuffs += m.stat[id].blk;
+    }
+  }
+  const stuffRate = stuffs / n;
+  assert(stuffRate >= 0.12 && stuffRate <= 0.16, `stuff rate ${(100 * stuffRate).toFixed(1)} % is outside 12–16 %`);
+  assert(kills / n >= 0.36 && kills / n <= 0.48, `hitter kill rate ${((100 * kills) / n).toFixed(1)} % drifted from ~42 %`);
+  // a fixed attack style against each defence setting (attacker: side 0)
+  const g = load(9),
+    T = g.mkTeams(),
+    run = (tac, dset) => {
+      const t = { q: 0, qs: 0, pin: 0, pins: 0 };
+      for (let i = 0; i < 400; i++) {
+        const a = g.simMatch(T[i % 8], T[(i * 3 + 1) % 8], { tac: [tac, 'auto'], dset: ['read', dset] }).att[0];
+        t.q += a.q;
+        t.qs += a.qs;
+        t.pin += a.pin;
+        t.pins += a.pins;
+      }
+      return { quickStuff: t.qs / t.q, pinStuff: t.pins / t.pin };
+    };
+  const mbRead = run('mb', 'read'),
+    mbCommit = run('mb', 'commit'),
+    wsRead = run('ws', 'read'),
+    wsBunch = run('ws', 'bunch');
+  assert(
+    mbCommit.quickStuff > mbRead.quickStuff + 0.03,
+    `Commit stuffs more quicks (${mbCommit.quickStuff.toFixed(3)} vs ${mbRead.quickStuff.toFixed(3)})`
+  );
+  assert(
+    wsBunch.pinStuff < wsRead.pinStuff - 0.02,
+    `Bunch leaves the pins open (${wsBunch.pinStuff.toFixed(3)} stuffed vs ${wsRead.pinStuff.toFixed(3)})`
+  );
+});
+
+test('engine: defence settings — AI default, captain switch, scouting habits', () => {
+  const g = load(9),
+    T = g.mkTeams(),
+    wall = T.find(t => t.S === g.STYLES.wall),
+    tempo = T.find(t => t.S === g.STYLES.tempo);
+  if (wall) eq(g.newMatch(wall, T[0]).dset[0], 'bunch', 'a wall team starts on Bunch');
+  if (tempo) eq(g.newMatch(tempo, T[0]).dset[0], 'commit', 'a tempo team starts on Commit');
+  eq(g.newMatch(T[0], T[1], false, { dset: ['bunch', null] }).dsetMode.join(), 'fixed,cap', 'a fixed setting is not the captain’s');
+  // a leading captain answers a quick-heavy opponent with Commit (never when the setting is fixed)
+  const cap = T.find(t => t.S !== g.STYLES.tempo && t !== T[7]) || T[1],
+    foe = T[7];
+  for (const p of cap.P) p.lead = 100;
+  let sw = 0,
+    fixedSw = 0;
+  for (let i = 0; i < 50; i++) {
+    const m = g.simMatch(foe, cap, { tac: ['mb', 'auto'] });
+    sw += m.dsetLog.filter(x => x.side === 1 && x.to === 'commit').length;
+    fixedSw += g.simMatch(foe, cap, { tac: ['mb', 'auto'], dset: ['read', 'read'] }).dsetLog.length;
+  }
+  assert(sw >= 1, 'the captain switches to Commit against an MB-focus attack');
+  eq(fixedSw, 0, 'a fixed defence setting never changes');
+});
+
+test('teams: 4 on court + 2 bench, unique numbers, captain on court', () => {
+  const g = load(77),
+    sets = {
+      tournament: g.mkTeams(),
+      league: g.mkLeagueTeams(),
+      monster: g.mkMonsterTeams(),
+      pickup: [g.World.pickup(new Set())]
+    };
+  for (const [k, T] of Object.entries(sets))
+    for (const t of T) {
+      eq(t.P.length, 4, `${k}: 4 on court`);
+      eq(t.bench.length, 2, `${k}: 2 on the bench`);
+      const all = g.squadOf(t);
+      eq(all.length, 6, `${k}: squadOf is 6`);
+      eq(new Set(all.map(p => p.num)).size, 6, `${k}: shirt numbers unique across the squad`);
+      assert(
+        all.every(p => p.team === t),
+        `${k}: everyone links to the team`
+      );
+      assert(t.P.includes(t.cap) && t.cap.cap && !t.bench.some(p => p.cap), `${k}: the captain plays`);
+      assert(
+        all.every(p => Number.isFinite(p.lead) && p.el != null),
+        `${k}: leadership and element cover the bench`
+      );
+      eq(t.ovr, g.teamOvr(t), `${k}: rating is the 4 starters`);
+    }
+  // a save keeps the bench
+  const run = g.Run.create(g.Run.draft(), { role: 'MB', name: 'Bench', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
+  g.Run.save(run);
+  const back = g.Run.load();
+  for (const [i, t] of run.teams.entries()) {
+    const b = back.teams[i];
+    eq(b.bench.map(p => p.id).join(), t.bench.map(p => p.id).join(), 'bench ids round-trip');
+    assert(
+      b.bench.every(p => p.team === b),
+      'bench players are re-linked'
+    );
+    eq(b.bench.map(p => p.num).join(), t.bench.map(p => p.num).join(), 'bench numbers round-trip');
+  }
+  eq(g.squadOf(back.pickup).length, 6, 'the Academy squad has 6');
+});
+
+test('engine: stat guard — invalid stats are repaired, valid ones untouched', () => {
+  const g = load(5);
+  const T = g.mkTeams();
+  const p = T[0].P[2];
+  const ok = T[1].P.map(q => JSON.stringify([q.power, q.def, q.speed, q.jump, q.wit]));
+  Object.assign(p, { power: -40, def: NaN, speed: 300, wit: -1 });
+  const j = p.jump;
+  assert(g.fixStats(p) === 4, 'four values fixed');
+  eq(JSON.stringify([p.power, p.def, p.speed, p.jump, p.wit]), JSON.stringify([1, 1, 99, j, 0.1]));
+  assert(
+    T[1].P.every((q, i) => g.fixStats(q) === 0 && JSON.stringify([q.power, q.def, q.speed, q.jump, q.wit]) === ok[i]),
+    'valid players untouched'
+  );
+  Object.assign(T[0].P[3], { power: 0, speed: Infinity, jump: undefined, wit: NaN });
+  const m = g.newMatch(T[0], T[1], false);
+  while (!m.over) g.playRally(m);
+  assert(
+    m.over && T[0].P.every(q => [q.power, q.def, q.speed, q.jump].every(v => v >= 1 && v <= 99) && q.wit >= 0.1 && q.wit <= 3),
+    'the match ran on repaired stats'
+  );
+  const dmg = { name: 'x', sk: T[0].sk, bench: [], P: T[0].P.map(q => Object.assign({}, q, { team: undefined, speed: -5 })) };
+  const logged = [];
+  g.DBG.log = (...a) => logged.push(a[0]); // the headless context has no timers for the real log
+  const t2 = g.teamFromJSON(dmg);
+  assert(t2.P.every(q => q.speed === 1) && logged[0] === 'warn', 'teamFromJSON repairs a damaged save and logs a warning');
+});
+
+test.slow('engine: substitutions — rule, limit, restore', () => {
+  const g = load(5),
+    T = g.mkTeams(),
+    snap = t =>
+      JSON.stringify([t.P.map(p => p.id), t.bench.map(p => p.id), squadOfSlots(t), t.cap.id, t.s.id, t.mb.id, t.ws.map(p => p.id)]),
+    squadOfSlots = t => g.squadOf(t).map(p => `${p.id}:${p.slot}:${p.cap ? 1 : 0}`);
+  let subs = 0;
+  for (let i = 0; i < 200; i++) {
+    const a = T[i % 8],
+      b = T[(i * 3 + 1) % 8],
+      before = [snap(a), snap(b)],
+      m = g.simMatch(a, b);
+    subs += m.subs[0] + m.subs[1];
+    assert(m.subs[0] <= g.SUB.max && m.subs[1] <= g.SUB.max, 'never more than SUB.max subs per side');
+    eq(snap(a), before[0], 'the lineup is back after the match (side 0)');
+    eq(snap(b), before[1], 'the lineup is back after the match (side 1)');
+  }
+  assert(subs > 20, `tired players get subbed (${subs} subs in 200 matches)`);
+  // a mid-match sub: the incoming player takes the seat and slot; leaving mid-way restores everything
+  const [a, b] = T,
+    m = g.newMatch(a, b, true),
+    out = a.P.find(p => p.role === 'WS'),
+    inn = a.bench.find(p => p.role === 'WS');
+  g.subIn(m, 0, out, inn);
+  assert(
+    a.P.includes(inn) && a.bench.includes(out) && inn.slot === m.lineup0[0].slots[out.id] && a.ws.includes(inn),
+    'the sub takes the seat and slot'
+  );
+  g.restoreLineups(m);
+  g.restoreLineups(m);
+  eq(a.P.map(p => p.id).join(), m.lineup0[0].P.map(p => p.id).join(), 'restoreLineups (twice) puts the court back');
+  assert(a.bench.includes(inn) && inn.slot === m.lineup0[0].slots[inn.id], 'and the bench and slots');
+  // recorded matches: every sub act names known players and is followed by its label and the coach's line
+  let acts = 0;
+  for (let i = 0; i < 12; i++) {
+    const x = T[i % 8],
+      y = T[(i + 3) % 8],
+      ids = new Set([...g.squadOf(x), ...g.squadOf(y)].map(p => p.id)),
+      mm = g.newMatch(x, y, true);
+    while (!mm.over)
+      for (const bt of g.playRally(mm).beats) {
+        const sb = bt.acts.find(q => q.k === 'sub');
+        if (!sb) continue;
+        acts++;
+        assert(ids.has(sb.out) && ids.has(sb.in) && sb.out !== sb.in, 'sub names two known players');
+        assert(
+          bt.acts.some(q => q.k === 'plabel' && q.t === 'SUBBED' && q.p === sb.in) &&
+            bt.acts.some(q => q.k === 'coachtalk' && /#\d+/.test(q.text)),
+          'SUBBED label and a coach line with shirt numbers'
+        );
+      }
+  }
+  assert(acts > 0, 'recorded matches contain sub acts');
+});
+
+test.slow('engine: coach AI — errors, returns, coach IQ', () => {
+  const g = load(6),
+    T = g.mkTeams(),
+    why = {};
+  for (let i = 0; i < 200; i++) {
+    const m = g.simMatch(T[i % 8], T[(i * 3 + 1) % 8]);
+    for (const x of m.subLog) why[x.why] = (why[x.why] || 0) + 1;
+  }
+  assert(why.errors > 0, `error subs happen (${JSON.stringify(why)})`);
+  assert(why.tired > 0, 'tired subs happen');
+  assert(why.back > 0, 'a rested starter returns sometimes');
+  // a sharper coach acts sooner: the first sub of side 0 comes at fewer points played (unsubbed matches count as their length)
+  const first = iq => {
+    let sum = 0,
+      n = 0;
+    for (const seed of [7, 8, 9, 10]) {
+      const g2 = load(seed),
+        T2 = g2.mkTeams();
+      g2.SUB.worth = [0, 0]; // this is the roll's IQ effect only; the worth test (smarter coach subs) has its own test
+      for (let i = 0; i < 150; i++) {
+        const a = T2[i % 8];
+        a.coachIQ = iq;
+        const m = g2.simMatch(a, T2[(i * 3 + 1) % 8]),
+          f = m.subLog.find(x => x.side === 0);
+        sum += f ? f.pts : m.pts[0] + m.pts[1];
+        n++;
+      }
+    }
+    return sum / n;
+  };
+  const sharp = first(1),
+    dull = first(0);
+  assert(sharp < dull, `coachIQ 1 subs sooner than 0 (${sharp.toFixed(1)} vs ${dull.toFixed(1)} points)`);
+});
+
+test.slow('engine: smarter coach subs', () => {
+  const g = load(6),
+    T = g.mkTeams(),
+    hit = g.RULES.stamina.hit,
+    worth = g.SUB.worth;
+  // a coachIQ 1 coach never makes a tired / erring sub that makes the team worse (bench ovr under worth[1] × the starter's current worth)
+  const run = iq => {
+    let subs = 0,
+      bad = 0,
+      n = 0;
+    for (let i = 0; i < 300; i++) {
+      const a = T[i % 8],
+        b = T[(i * 3 + 1) % 8];
+      a.coachIQ = iq;
+      const m = g.simMatch(a, b);
+      n++;
+      for (const x of m.subLog.filter(x => x.side === 0)) {
+        subs++;
+        if (x.why === 'back') continue;
+        const out = g.squadOf(a).find(p => p.id === x.out),
+          inn = g.squadOf(a).find(p => p.id === x.inn);
+        if (g.ovr(inn) < worth[iq] * g.ovr(out) * (1 - hit * (1 - x.sta)) - 1e-9) bad++;
+      }
+    }
+    return { per: subs / n, bad };
+  };
+  const sharp = run(1),
+    dull = run(0);
+  eq(sharp.bad, 0, 'a coachIQ 1 coach never subs when it makes the side worse');
+  assert(sharp.per < dull.per, `sharp coaches sub less (${sharp.per.toFixed(2)} vs ${dull.per.toFixed(2)} per match for side 0)`);
+  // the coach trusts your player: the sub-out roll is × SUB.you (2000+ seeded rolls each)
+  const g2 = load(9),
+    T2 = g2.mkTeams(),
+    m = g2.newMatch(T2[0], T2[1], false),
+    star = T2[0].P[2],
+    rate = isYou => {
+      let n = 0;
+      const N = 4000;
+      for (let i = 0; i < N; i++) {
+        star.you = isYou;
+        for (const k of g2.STATK) star[k] = 30; // a weak, tired starter: the swap always pays
+        T2[0].coachIQ = 0.7;
+        m.sta[star.id] = 0.2;
+        g2.coachSubs(m, 0);
+        if (m.subs[0]) n++;
+        g2.restoreLineups(m);
+        m.subs = [0, 0];
+        m.subbed = {};
+        m.subLog.length = 0;
+      }
+      return n / N;
+    };
+  const base = rate(false),
+    you = rate(true);
+  assert(
+    base > 0.5 && Math.abs(you - base * g2.SUB.you) <= 0.03,
+    `your player is subbed out ${(you * 100).toFixed(1)} % vs ${(base * 100).toFixed(1)} % (× ${g2.SUB.you})`
+  );
+  // a noSub bench player never comes on (an injured you): not for tiredness, not on the way back
+  star.you = false;
+  for (const q of T2[0].bench) q.noSub = true;
+  let came = 0;
+  for (let i = 0; i < 300; i++) {
+    m.sta[star.id] = 0.2;
+    g2.coachSubs(m, 0);
+    came += m.subs[0];
+    m.subs = [0, 0];
+    m.subbed = {};
+    m.subLog.length = 0;
+  }
+  eq(came, 0, 'a noSub player is never subbed on');
+  g2.restoreLineups(m);
+  assert(
+    T2[0].bench.every(q => !('noSub' in q)),
+    'restoreLineups clears the engine-only flag'
+  );
+});
+
+test.slow('engine: three touches — pop-up saves are the set', () => {
+  const g = load(13),
+    T = g.mkTeams();
+  let n = 0,
+    over = 0,
+    log = [];
+  for (let i = 0; i < 300; i++) {
+    const m = g.simMatch(T[i % 8], T[(i * 3 + 1) % 8]);
+    if (m.scr) {
+      n += m.scr.n;
+      over += m.scr.over;
+      log = log.concat(m.scrLog);
+    }
+  }
+  assert(n > 0, `pop-up saves happen (${n} in 300 sims)`);
+  eq(log.length, n, 'every scramble possession is logged');
+  assert(
+    log.every(e => e.first !== e.saver && (e.hitter === null || (e.hitter !== e.first && e.hitter !== e.saver))),
+    'nobody touches it twice in a row: the hitter is neither the first toucher nor the saver'
+  );
+  eq(log.filter(e => e.hitter === null).length, over, 'a bump over is the only scramble without a hitter');
+});

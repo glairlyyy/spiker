@@ -8,7 +8,8 @@
     "lint": "eslint .",
     "format": "prettier --write \"js/**/*.{js,mjs}\" \"css/**/*.css\" \"tests/**/*.js\" \"*.html\"",
     "serve": "python3 -m http.server 8765",
-    "format:check": "prettier --check \"js/**/*.{js,mjs}\" \"css/**/*.css\" \"tests/**/*.js\" \"*.html\""
+    "format:check": "prettier --check \"js/**/*.{js,mjs}\" \"css/**/*.css\" \"tests/**/*.js\" \"*.html\"",
+    "test:quick": "node tests/run.js --quick"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

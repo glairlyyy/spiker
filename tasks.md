@@ -314,7 +314,7 @@ QA: career run: walk, travel, fog reveal, seized patch, pins, 10 drawer open/clo
 textures before = after; screenshots before/after.
 Result: geo3d.mjs (new: MAP_M, FOG_*, toWorld/toMap, clamp/lerp/smooth, fogFactor with squared-distance early-outs) — avatar/pins/life/town import from it (no cycles; 3 smooth copies + avatar cl gone); terrain and town share fogFactor; MapModel.life.contest {a,b,meter,pressure,hold} from CITY.contestPair (data) — map3d pulse and life3d patrols read it, no 'wei'/'wu' or /2 in the renderer; dispose removes named listeners and skips userData.shared; canvas size cached (no clientWidth per frame); pins tick reuses one Vector3 + Matrix4 and skips when camera/size/distance/items (version) unchanged; life3d along() writes a reused object; map-view drop3D resets failed and nulls el/model/on; create(onIdle) (unused host dropped); SHADOW_MAP / SHADOW_BOX named; MODEL_URL exported once from players3d. New test on MapModel contest; 53/53, goldens untouched, lint clean. QA seeded career: map + travel (walk, fog reveal) screenshots identical to the old code (0.00 % pixels > 24), renderer.info geos 25→26 / tex 27 after travel and stable over 10 drawer re-mounts (same as old code); no pageerror.
 
-### [ ] T-080: Tests — split by area, shared factories, quick mode
+### [x] T-080: Tests — split by area, shared factories, quick mode
 Spec: — (tests)          Goldens: unchanged          Save: no change
 Goal: tests/run.js (2338 lines, 49 tests, ~30 s) becomes area files with shared helpers and a fast loop.
 Files: tests/run.js, tests/harness.js, tests/engine.test.js, tests/career.test.js, tests/map.test.js,
@@ -329,7 +329,7 @@ Steps:
    returned code or data field instead when one exists (do not add new return codes just for this).
 Accept: same 49 tests pass in both layouts; test:quick < 10 s.
 QA: none.
-Result:
+Result: run.js is now loader + reporter; 53 tests moved verbatim (order kept within each area) into engine.test.js (19), career.test.js (20), map.test.js (10), cup.test.js (4); goldenCheck / record / playRun moved into harness.js; test.slow + --quick (npm run test:quick) skips 7 slow tests: 9.5 s vs 29.9 s full; --update refuses with --quick. Deviations: the three mk(seed…) factories differ per test (seed / level / role) and stay local; UI-copy assertions kept (no return codes exist for them, the task forbids adding them). 53/53 both layouts, goldens untouched, lint clean.
 
 ### [ ] T-081: ARCHITECTURE.md matches the code
 Spec: —          Goldens: unchanged          Save: no change
