@@ -36,30 +36,11 @@ Result:
 - Rankings drawer fix ✓ (T-044).
 - Challenge loss + injury ✓ (T-038).
 - Roads + buildings ✓ (T-045 layout data, T-046 3D town).
-- **Now**: the player walks the roads (T-047). **Next**: match history (T-052), town layout revamp (T-050 data, T-051 render). Then road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
+- Walk the roads ✓ (T-047) · town layout revamp ✓ (T-050 data, T-051 render).
+- **Now**: match history (T-052), official venues (T-053). Then road travel (T-048), injured-sub fix (T-049), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now — Roads, settlements and buildings (spec §4.18)
-
-### [x] T-047: The player walks along the roads
-Spec: §4.18, §4.9          Goldens: unchanged          Save: no change
-Goal: When you travel, the avatar follows `you.route` (the road path) instead of a straight line, with the same 1.2–6 s
-trip time and ×N time-lapse badge (now based on the path length).
-Files: js/ui/map-view.js, js/map3d/avatar3d.mjs, js/map3d/map3d.mjs, ARCHITECTURE.md
-Do not: change rules or trip costs; let the avatar leave the terrain (keep `heightAt`); call `City` from js/map3d (the
-renderer reads only the model).
-Steps:
-1. avatar3d `setTarget(at, path)`: when `path` has 2+ points, walk the polyline at constant speed with the same
-   trapezoid speed profile over the whole length; face along the current segment (smoothed); fallback straight line.
-2. map-view.js (UI layer) remembers the last `you.at` it passed on; when it changes it adds
-   `model.you.route = City.route(last, you.at)` before `update(model)`. map3d passes `you.route` to the avatar; the camera
-   follow keeps working.
-Accept: all tests + lint.
-QA: career run → travel from the airport to Shu: the avatar follows the coast road then the mountain path; ×N badge
-shows for a long trip; no pageerror.
-Result: Done; tests 41/41, lint clean. Airport → Highland Dojo QA: the camera follows the coast road then the Shu dirt road (not the straight line), ×4 badge shown, no pageerror. `MapView.routed` adds `you.route` on mount and update (also on a remount after a move).
-
-## Next — Match history (spec §4.20), town layout revamp (spec §4.19)
+## Now — Match history (spec §4.20), official venues (spec §4.21)
 
 ### [ ] T-052: Match history in the Season drawer, with a stat snapshot per match
 Spec: §4.20          Goldens: unchanged (career / UI only)          Save: RUN_VERSION 7 → 8 (`run.mlog`) — older saves dropped
@@ -94,85 +75,40 @@ QA: career run → play (⏭) an evaluation and a challenge → Season drawer li
 your line and box score fit the drawer (no horizontal scroll); no pageerror.
 Result:
 
-### [ ] T-050: Town layout data — districts, a wider beach, Wu town inland, the overpass
-Spec: §4.19, §4.18          Goldens: unchanged (career / map only)          Save: no change
-Goal: The island's layout data matches the lore: buildings fill districts (Wei downtown / Old Town / Ring, Gloria
-compound, Wu town, harbor, beach strip, Outlaws under the overpass, Shu villages, Academy campus), the Wu beach is wider
-(coast grown outward), Wu town moves inland behind the dunes, and the overpass and boardwalk exist as roads.
-Files: js/data/city.js, js/data/world.js, js/career/mapmodel.js, tests/run.js, ARCHITECTURE.md
-Do not:
-- Move any region border: freeze `CITY.inner` as literal points first (today it is computed from the coast; the Wei–Wu
-  line `wuWei` uses inner[6..8] = [854,199], [883,305], [850,412]).
-- Change trip-day rules, `NEAR_R` / `TRIP_DAY`, saves, or anything in js/map3d (T-051 draws it).
-- Draw randoms: lots stay hashes of fixed data (hstr), so the same run state gives the same model.
-- Invent names: districts get ids, not place names (old-language names wait for lore §8).
+### [ ] T-053: Official venues on the map — League Arena, Academy Hall, Beach Stadium, Highland Court
+Spec: §4.21, §4.19          Goldens: unchanged          Save: no change
+Goal: Four venue landmarks show where official matches are played; each has a pin and a card; on a match week your
+match's venue glows and the match card names it.
+Files: js/data/city.js, js/data/world.js, js/career/city.js, js/career/mapmodel.js, js/map3d/kit3d.mjs,
+js/map3d/pins3d.mjs, js/ui/career-map.js, js/ui/career-week.js, css/career.css, tests/run.js, ARCHITECTURE.md
+Do not: add travel days, move `run.pos` on match days or change any match rule; call City from js/map3d; add a draw call
+per venue (venues join the merged landmark mesh); invent names beyond the four in the spec.
 Steps:
-1. Map frame: `CITY.w` 1060, `CITY.h` 700 (all coordinates stay as they are; the new room is sea to the east and south).
-2. Coast: push the Wu stretch outward — coast[5] → [846,68], [6] → [972,154], [7] → [1010,297], [8] → [969,441],
-   [9] → [883,564], [10] → [726,637], [11] → [545,657], [12] → [360,632], [13] → [215,573]. Add `CITY.dunes` = the old
-   coast points 6–12 ([930,170] … [380,592]): the beach's inner edge; the sand is between `dunes` and the coast.
-   `CITY.beach` becomes the new coast points 6–12.
-3. Places (SPOTS / HQ / HOME_AT / ROADS nodes move together; every one stays in its region, on land, not on a road):
-   - On the sand (between dunes and coast): `sand`, `pier` (at the new waterline), `bonfire`, `dunes`, `home:studio`
-     (the beach shack).
-   - Wu town, inland: `hotelWu`, `hq3` (Wu Fort) at least 40 units inside the dune line, south of the Wei border.
-   - Harbor district (east coast, may touch the dunes): `harbor`, `hq2`.
-   - `REGIONS.wu.at` / `CITY.label.wu` follow Wu town; `airport` stays at [470,600] (it is now on the beach band).
-4. Roads (ROADS): add kinds `boardwalk` (along the dune line, sand ↔ pier ↔ bonfire ↔ the old resort strip) and
-   `overpass` (an elevated main road from downtown Wei (`jW2` or `weiSpeed`) to the harbor (`jWu2`), passing over the
-   Outlaws patch: 2–4 edges). Wu is weakly connected (spec §4.19): its settlements (harbor, Wu town, the beach strip, an
-   inland village — new node + district `wu-village`) are separate clusters; between them only the coast road stays
-   `main`, every other link is `dirt`, at most 2 links into each cluster. Every node still reachable from `airport`.
-5. `DISTRICTS` (new constant in city.js): `[{ id, region, style, poly or { x, y, r }, gap, density, size, kinds, tall? }]`
-   for: wei-downtown, wei-oldtown, wei-ring, gloria (compound), wu-town, wu-harbor, wu-village, wu-beach (strip along the
-   boardwalk: resort, kiosk), outlaws (under the overpass), shu-village ×3–4 (round HQ7 / the highland home, HQ4 / the
-   steps, the shrine / dojo, the trail), academy (campus). New lot kinds (T-051 gives them meshes): rowhouse, barracks,
-   workshop, market, warehouse, resort, kiosk, terrace. Also `WEALTH = { weiCore: [x, y], weiEdge: n, … }` holding the step-6 numbers (doc comment).
-6. MapModel.lots: fill each district with a grid (spacing `gap`, aligned to the nearest road, a hash vs `density`),
-   skipping water, other regions, roads (within setback), places / HQs (NEAR_R / 3), other lots; beach districts only
-   on the sand, others never on it. Keep the road-side lots outside districts but at density × 0.4 (countryside).
-   Each lot gains `wealth` (0–1), `h` (0–1: height factor) and `district`. Wealth (spec §4.19), all from fixed data +
-   hashes: Wei = smoothstep falloff with distance from `WEALTH.weiCore` (the downtown centre, ~[650, 260]) to
-   `WEALTH.weiEdge` units (centre 1 → suburbs ~0.15, Old Town ≤ 0.15) + a ±0.08 hash jitter; Gloria 0.95; Wu 0.5 ± 0.1
-   everywhere; Shu 0.2 ± 0.1; Outlaws 0.05; Academy 0.55. Downtown `h` = wealth; elsewhere `h` = wealth × 0.4.
-   Lot size and spacing grow with wealth (rich: bigger lots, more space; poor: small and packed). `maxLots` 1400. Target counts (±20 %): Wei ~600, Wu ~300,
-   Shu ~150, Outlaws ~60, Academy ~40, Gloria ~30.
-7. MapModel.land gains `dunes` (the dune line), `districts` ([{ id, region, style, poly }] for walls / tinting) and a
-   `ritual` landmark (kind `ritual`, a sand circle by the Academy on the old ritual ground; no pin, no label).
-8. tests: frozen borders (regionAt of a dozen fixed points unchanged); every place / HQ / home in its region and on
-   land; beach places between dunes and coast, Wu-town places inland; all nodes reachable; lot counts per region in
-   range; lots deterministic and never on water / roads / other regions; `MapModel.build` draws no R().
-9. ARCHITECTURE.md: districts, the beach band, the new road kinds.
+1. city.js `VENUES = { arena: { name: 'League Arena', at, region: 'wei', holds: ['cup', 'eval:wei'] }, hall: { name:
+   'Academy Hall', at, region: 'open', holds: ['eval:academy'] }, beach: { name: 'Beach Stadium', at, region: 'wu',
+   holds: ['eval:wu'] }, highland: { name: 'Highland Court', at, region: 'shu', holds: ['eval:shu'] } }`. Points: arena
+   in wei-downtown near hq0 (clear of roads and places), hall on the Academy campus, beach on the sand (between the dunes
+   and the coast), highland near hq4. Each is a ROADS node `venue:<id>` joined to the nearest road by one edge (`main`
+   for arena / hall, `boardwalk` for the beach, `dirt` for highland); lots keep `placeClear` from venues.
+   world.js: `REGIONS.open.at` → the Academy's spot (it still says the old [500, 300]).
+2. city.js `City.venue(run)` (pure): this week's match venue id — a cup week → arena; an evaluation → by `run.eval`
+   (Academy → hall; a faction eval → its region's venue); otherwise null.
+3. MapModel: landmarks gain the four venues (kinds `arena`, `hall`, `stadium`, `hillcourt`); pins gain `kind: 'venue'`
+   (`id: 'venue:<id>'`, icon 🏟, title = name, flag `today` when it is `City.venue(run)`); venues are always known (no
+   fog gate: everyone knows where the league plays).
+4. kit3d LANDMARKS: `arena` (~40 × 32 m oval bowl of stepped stands, a roof ring, 4 floodlight masts — the biggest
+   building on the island), `hall` (a long gym hall with a curved roof), `stadium` (low open stands round a sand court,
+   faded pastel, flags), `hillcourt` (a court with stone terrace steps on one side). Flat-shaded, region accent.
+   pins3d: flag `today` → class `today` (a pulsing ring, CSS only).
+5. career-map.js: a venue card in the spot panel — name, "Held here: U21 Final Cup · Wei evaluations" (registrar
+   voice), and "This week: your match" when `today`. career-week.js: the eval and cup cards add "at <venue name>".
+6. tests `'map: official venues'`: four venues on land in their region (beach on the sand); venue nodes reachable from
+   the airport; landmarks / pins include them; `City.venue` → arena on a cup week, hall for an Academy eval, the
+   region's venue for a faction eval, null on a training week; no lot within `placeClear` of a venue; no R() drawn.
+7. ARCHITECTURE.md: venues.
 Accept: all tests + lint; goldens untouched.
-QA: none needed (data only; T-051 draws it) — report the lot counts per region in the Result.
-Result:
-
-### [ ] T-051: Draw the revamped town — wide beach, boardwalk, overpass, new building kinds
-Spec: §4.19, §4.18          Goldens: unchanged          Save: no change
-Goal: The 3D island shows T-050's layout: a wide sand beach on the Wu coast, a boardwalk, the overpass on pillars with
-the Outlaws under it, the Gloria wall, the new building kinds, taller downtown towers, and the ritual sand circle.
-Files: js/map3d/map3d.mjs, js/map3d/town3d.mjs, js/map3d/kit3d.mjs, ARCHITECTURE.md
-Do not: read rules or call City / MapModel from js/map3d (model only); add a new draw call per lot or per landmark;
-load external models (procedural only; the KIT registry stays swappable).
-Steps:
-1. Terrain: sand (flat, low) between `land.dunes` and the coast on the Wu stretch; the old narrow BEACH slope elsewhere.
-2. Roads: `boardwalk` = wooden planks ribbon just above the sand; `overpass` = deck ~7 m up on pillars every ~20 m
-   (one merged mesh for decks + pillars), ramps at both ends down to the ground road.
-3. KIT: meshes for rowhouse, barracks, workshop, market, warehouse, resort (faded, pastel), kiosk, terrace (stepped
-   house on a slope); lot height × (1 + 2.5 × `h`) so downtown rises toward its centre. Wealth tints each instance
-   (per-instance colour, no new draw call): rich = glass-blue / clean stone / gold trim, poor = grey, rust, patched wood;
-   Wei must read as a clear gradient from the downtown core outward, Wu as an even, middling look.
-4. Districts: a wall ring round the Gloria compound with the gatehouse at its road; an optional faint ground tint per
-   district style (no new draw call if folded into the terrain colours).
-5. LANDMARKS `ritual`: a worn sand circle with a ring of low stones.
-6. Budget at default zoom vs T-046 (28 calls / ~157k tris incl. shadows): ≤ 40 draw calls, ≤ 260k tris; frame time in
-   swiftshader not more than 25 % worse; fog dimming covers every new mesh.
-Accept: all tests + lint.
-QA: career run with the whole map revealed: zoomed out, Wei reads as a dense city with a tall, rich downtown fading to
-shabby suburbs, the Wu coast as a
-wide beach with a boardwalk and separate, modest settlements on thin roads, the overpass over the Outlaws, Shu as scattered villages; zoomed in on
-downtown, the walk along a road between towers; leave / return 3× without leaks; draw calls and tris in the Result;
-no pageerror.
+QA: career run → the four venues visible zoomed out (the arena dominates downtown); force an eval week → its venue pin
+glows and the eval card names it; the venue card opens on click; draw calls unchanged ±1; no pageerror.
 Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
@@ -191,6 +127,9 @@ Phase 5 — Voice pass
 
 ## Done
 
+- [x] T-051: Draw the revamped town — wide beach, boardwalk, overpass, new building kinds — Done; tests 42/42, lint clean, goldens untouched. Default zoom 29 draw calls / 188k tris, zoomed out 30 / 195k (limits 40 / 260k); software-GL fps unchanged (2.75); 3 leave / return cycles: geometries stable (25), no pageerror. Height × (1 + 2.5·h·rise); wealth tint per instance (glass-blue / stone / gold vs grey / rust / patched wood); fog dims every new mesh. Extra: resort scale [1.9, 5.5, 1.2].
+- [x] T-050: Town layout data — districts, a wider beach, Wu town inland, the overpass — Done; tests 42/42, lint clean, goldens untouched. Frozen `CITY.inner`; frame 1060×700; coast pushed out; `CITY.dunes`; `WEALTH` + `wu-village` (`wuVillage` [905,225]) added; Wu links: only the coast road `main`, `hotelWu–jBw3` / `hq2–wuVillage` dirt (dropped `resort–harbor`, `jBw2–hq3`; ≤ 2 links into each settlement). Lots ~1190 (Wei 572, Wu 341, Shu 158, Outlaws 65, Academy 33, Gloria 25), wealth Wei 0.07–1.0 falling outward, Wu 0.4–0.6. Deviations: `MapModel.placeClear` = 20 (spec's NEAR_R/3 cannot reach Gloria ~30 / Outlaws ~60); `arcade` → [620,262], `resort` → [908,488] (kept on land); `tall` dropped from DISTRICTS (h comes from wealth); lot size ×(0.7+0.6·wealth), grid density × (1.15−0.45·wealth); `CITY.ritual` joins the places lots keep clear of.
+- [x] T-047: The player walks along the roads — Done; tests 41/41, lint clean. Airport → Highland Dojo QA: the camera follows the coast road then the Shu dirt road (not the straight line), ×4 badge shown, no pageerror. `MapView.routed` adds `you.route` on mount and update (also on a remount after a move).
 - [x] T-046: Roads and buildings on the 3D map (kit registry, procedural first) — Done; tests 41/41, lint clean, goldens unchanged. kit3d.mjs (KIT + LANDMARKS registry) and town3d.mjs; +4 draw calls (28 vs 24) and +6k tris (156.7k vs 150.7k incl. shadow pass) at default zoom; 3 leave/return cycles: geos stable (24), no pageerror. Roads connect places; Wei/Wu/Shu read by style at zoom-out. Lot scale (size × MAP_M × 1.2) is a first guess.
 - [x] T-045: World layout data — road network, routes, settlement lots, landmarks — Done; tests 41/41, lint clean, goldens unchanged, headless. 49 nodes / 60 edges (all on land, all reachable from the airport; `studio` home spot is `home:studio`); 163 lots on a fresh run (far under the 1200 cap; density / gap are first guesses for T-046 to tune by eye); 0 R() draws in MapModel.build. Also exported `MapModel.maxLots` and a lot cache `MapModel.lotCache` (properties, not globals).
 - [x] T-038: Losing is a real deal — loss penalties, fatigue and injury — Done; tests 40/40, lint clean, goldens unchanged, RUN_VERSION 7. Deviations: street-fight losses add no `run.losses` count; new `City.crewOvr` (street foe rating = mean of the region's league clubs) and `City.fightBan`; risk computed before the trip. Open: engine coach subs could bring an injured you on (T-049). QA: risk 16 → 27 % on low stamina, loss line lists penalties + minor injury, 45 % cap, buttons disabled "Injured — rest first"; no pageerror.
@@ -241,3 +180,4 @@ Phase 5 — Voice pass
 - (recorded in spec §4.6 / §2) Added (.vrm) player models now apply to your own career player only (everyone else keeps the base model) — js/render3d/actors3d.mjs, js/ui/models.js, js/ui/menu.js, ARCHITECTURE.md.
 - (recorded in spec §4.6) Street-battle crews and your faction's evaluation squad show their real 3-letter team tag instead of 'EVL' (Eval.squad takes a `short`; 'EVL' only for the opposing evaluation squad) — js/career/eval.js, cup.js.
 - (recorded in spec §4.2) Central Academy moved to the Wei–Wu–Shu border tri-point (540, 500), north of the airport: park r 72→60, label, `park` spot, `park` / `jAc1` / `jAc2` road nodes, Academy road `park→dojo` replaced by `park→stone` — js/data/city.js, tests/run.js (route / regionAt coordinates).
+- (recorded) T-050 follow-up: `CITY.ritual` joins the places MapModel.lots keeps `placeClear` from (lots no longer cover the sand circle) — js/career/mapmodel.js.

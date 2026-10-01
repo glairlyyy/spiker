@@ -22,7 +22,7 @@ const REGIONS = {
   },
   wu: {
     color: '#3fa9f5',
-    at: [470, 585],
+    at: [680, 545],
     name: 'Wu Navy',
     kind: 'major',
     price: 1,

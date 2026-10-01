@@ -219,14 +219,14 @@ test('career: world layout — roads, routes, lots, landmarks', () => {
   eq(draws, 0, 'MapModel.build draws no randoms');
   eq(JSON.stringify(M.land.lots), JSON.stringify(M2.land.lots), 'the same run gives identical lots');
   const L = M.land.lots;
-  assert(L.length > 0 && L.length <= 1200, `lots: ${L.length} (1..1200)`);
+  assert(L.length > 0 && L.length <= g.MapModel.maxLots, `lots: ${L.length} (1..${g.MapModel.maxLots})`);
   const places = [...Object.keys(g.SPOTS).map(id => g.City.at(run, id)), ...g.CITY.hq];
   assert(
     L.every(l => g.City.onLand(l.at)),
     'no lot in the water'
   );
   assert(
-    L.every(l => places.every(p => Math.hypot(p[0] - l.at[0], p[1] - l.at[1]) >= g.NEAR_R / 3)),
+    L.every(l => places.every(p => Math.hypot(p[0] - l.at[0], p[1] - l.at[1]) >= g.MapModel.placeClear)),
     'no lot on a place'
   );
   assert(
@@ -245,6 +245,205 @@ test('career: world layout — roads, routes, lots, landmarks', () => {
     'every place and HQ has a landmark kind'
   );
   assert(JSON.parse(JSON.stringify(M)).land.lots.length === L.length, 'serialisable');
+});
+
+test('career: town layout — districts, beach, overpass, frozen borders', () => {
+  const g = load(14),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Town', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    M = g.MapModel.build(run, null),
+    C = g.CITY,
+    N = g.ROADS.nodes;
+  // no region border moved (the coast grew outward only)
+  eq(
+    JSON.stringify(
+      [
+        [160, 380],
+        [450, 200],
+        [520, 200],
+        [900, 250],
+        [700, 520],
+        [620, 420],
+        [495, 300],
+        [505, 300],
+        [860, 300],
+        [900, 300],
+        [700, 455],
+        [700, 440],
+        [440, 520],
+        [430, 545],
+        [640, 300],
+        [815, 470],
+        [690, 255],
+        [800, 150]
+      ].map(p => g.City.regionAt(p))
+    ),
+    JSON.stringify([
+      'shu',
+      'shu',
+      'wei',
+      'wu',
+      'wu',
+      'wei',
+      'shu',
+      'wei',
+      'wei',
+      'wu',
+      'wei',
+      'wei',
+      'shu',
+      'wu',
+      'wei',
+      'outlaws',
+      'gloria',
+      'wei'
+    ]),
+    'regionAt of fixed points is unchanged'
+  );
+  eq([C.w, C.h].join('x'), '1060x700', 'the map frame grew');
+  eq(
+    JSON.stringify(C.wuWei || C.contest.slice(0, 3)),
+    JSON.stringify([
+      [854, 199],
+      [883, 305],
+      [850, 412]
+    ]),
+    'the Wei–Wu line is frozen'
+  );
+  // every place / HQ / home is on land and in its region
+  const spots = Object.entries(g.SPOTS).filter(([, s]) => s.at && s.region),
+    homes = Object.entries(g.HOME_AT).map(([k, p]) => [`home:${k}`, p, g.HOUSING[k].region]);
+  for (const [id, s] of spots) assert(g.City.onLand(s.at) && g.City.regionAt(s.at) === s.region, `${id} stands in ${s.region}`);
+  C.hq.forEach((p, i) => assert(g.City.onLand(p) && g.City.regionAt(p) === g.FACTIONS[i].region, `hq${i} stands in its region`));
+  for (const [id, p, r] of homes) assert(g.City.onLand(p) && g.City.regionAt(p) === r, `${id} stands in ${r}`);
+  // the beach: sand places between the dunes and the coast, Wu town inland (≥ 40 units from the dune line)
+  for (const id of ['sand', 'pier', 'bonfire', 'dunes']) assert(g.MapModel.onSand(g.SPOTS[id].at), `${id} is on the sand`);
+  assert(g.MapModel.onSand(g.HOME_AT.studio), 'the beach shack is on the sand');
+  const dist = (p, line) => {
+    let best = Infinity;
+    for (let i = 0; i + 1 < line.length; i++) {
+      const [a, b] = [line[i], line[i + 1]],
+        dx = b[0] - a[0],
+        dy = b[1] - a[1],
+        t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy)));
+      best = Math.min(best, Math.hypot(p[0] - a[0] - dx * t, p[1] - a[1] - dy * t));
+    }
+    return best;
+  };
+  for (const p of [g.SPOTS.hotelWu.at, C.hq[3]])
+    assert(!g.MapModel.onSand(p) && dist(p, C.dunes) >= 40, 'Wu town places sit 40+ units inland');
+  assert(g.MapModel.onSand(N.resort) && g.MapModel.onSand(N.jBw3), 'the boardwalk runs over the sand');
+  eq(M.land.dunes.length, 7, 'land.dunes is the dune line');
+  eq(JSON.stringify(C.beach), JSON.stringify(C.coast.slice(6, 13)), 'the beach is the new coast points 6–12');
+  // roads: the boardwalk and the overpass (2–4 edges), all of it on land
+  const kinds = k => g.ROADS.edges.filter(e => e[2] === k);
+  assert(kinds('boardwalk').length >= 4, 'a boardwalk');
+  assert(kinds('overpass').length >= 2 && kinds('overpass').length <= 4, 'an overpass of 2–4 edges');
+  for (const [a, b] of g.ROADS.edges)
+    for (let t = 0; t <= 1; t += 0.05)
+      assert(g.City.onLand([N[a][0] + (N[b][0] - N[a][0]) * t, N[a][1] + (N[b][1] - N[a][1]) * t]), `road ${a}–${b} stays on land`);
+  // districts and the ritual ground
+  assert(
+    M.land.districts.length === g.DISTRICTS.length && M.land.districts.every(d => d.poly.length >= 3 && d.style),
+    'districts are plain polygons'
+  );
+  const rit = M.land.landmarks.find(l => l.id === 'ritual');
+  assert(rit && rit.kind === 'ritual' && !M.pins.some(p => p.id === 'ritual'), 'a ritual landmark with no pin');
+  assert(!M.land.labels.some(l => l.id === 'ritual'), 'and no label');
+  // lots: per-region counts near the targets (±20 %), never in the water / on a road / in another region / on the sand (but the beach)
+  const L = M.land.lots,
+    by = {},
+    flat = g.ROADS.edges.filter(e => e[2] !== 'overpass');
+  for (const l of L) by[g.City.regionAt(l.at)] = (by[g.City.regionAt(l.at)] || 0) + 1;
+  for (const [r, n, lo, hi] of [
+    ['wei', 600, 480, 720],
+    ['wu', 300, 240, 360],
+    ['shu', 150, 120, 180],
+    ['outlaws', 60, 48, 72],
+    ['open', 40, 32, 48],
+    ['gloria', 30, 24, 36]
+  ])
+    assert(by[r] >= lo && by[r] <= hi, `${r} has ${by[r]} lots (~${n})`);
+  assert(
+    L.length <= g.MapModel.maxLots && L.every(l => g.City.onLand(l.at) && l.h >= 0 && l.h <= 1 && l.district),
+    'lots: on land, with h and a district'
+  );
+  assert(
+    L.every(l => g.MapModel.onSand(l.at) === (l.district === 'wu-beach')),
+    'only the beach district stands on the sand'
+  );
+  assert(
+    L.every(l => flat.every(([a, b]) => dist(l.at, [N[a], N[b]]) >= l.size * 0.5 + 3.9)),
+    'no lot on a road (the overpass is elevated)'
+  );
+  const down = L.filter(l => l.district === 'wei-downtown');
+  assert(down.length > 20 && Math.max(...down.map(l => l.h)) > 0.8, 'downtown grows tall');
+  // wealth (spec §4.19): 0–1 per lot; Wei falls off steadily from the downtown core, Old Town poor; Wu even and modest
+  assert(
+    L.every(l => l.wealth >= 0 && l.wealth <= 1),
+    'wealth is 0–1'
+  );
+  const avg = f => {
+      const a = L.filter(f).map(l => l.wealth);
+      return a.reduce((x, y) => x + y, 0) / a.length;
+    },
+    core = g.WEALTH.weiCore,
+    ring = (a, b) =>
+      avg(
+        l =>
+          g.City.regionAt(l.at) === 'wei' &&
+          l.district !== 'wei-oldtown' &&
+          Math.hypot(l.at[0] - core[0], l.at[1] - core[1]) >= a &&
+          Math.hypot(l.at[0] - core[0], l.at[1] - core[1]) < b
+      );
+  assert(
+    ring(0, 70) > ring(70, 140) && ring(70, 140) > ring(140, 210) && ring(140, 210) > ring(210, 999),
+    'Wei wealth falls steadily outward'
+  );
+  assert(ring(0, 70) > 0.75 && ring(210, 999) < 0.3, 'rich downtown, shabby edges');
+  assert(Math.max(...L.filter(l => l.district === 'wei-oldtown').map(l => l.wealth)) <= g.WEALTH.oldtown, 'Old Town is poor');
+  const wuW = L.filter(l => g.City.regionAt(l.at) === 'wu').map(l => l.wealth);
+  assert(Math.min(...wuW) >= 0.4 && Math.max(...wuW) <= 0.6, 'Wu is even and modest');
+  assert(
+    avg(l => l.district === 'gloria') > 0.9 && avg(l => g.City.regionAt(l.at) === 'outlaws') < 0.1,
+    'Gloria rich, the Outlaws poorest'
+  );
+  assert(avg(l => g.City.regionAt(l.at) === 'shu') < 0.3, 'Shu is poor');
+  assert(
+    down.every(l => l.h === l.wealth) && L.filter(l => l.district !== 'wei-downtown').every(l => Math.abs(l.h - l.wealth * 0.4) < 0.01),
+    'h = wealth downtown, wealth × 0.4 elsewhere'
+  );
+  // Wu is weakly connected: four settlements, joined by few links (≤ 2 into each), only the coast road `main`
+  const cl = {
+    sand: 'b',
+    pier: 'b',
+    bonfire: 'b',
+    airport: 'b',
+    'home:studio': 'b',
+    resort: 'b',
+    hq3: 't',
+    hotelWu: 't',
+    jWu1: 't',
+    harbor: 'h',
+    hq2: 'h',
+    dunes: 'h',
+    jWu2: 'h',
+    wuVillage: 'v'
+  };
+  for (const k of Object.keys(N)) if (/^jBw/.test(k)) cl[k] = 'b';
+  const into = {};
+  for (const [a, b, k] of g.ROADS.edges)
+    if (cl[a] && cl[b] && cl[a] !== cl[b]) {
+      for (const c of [cl[a], cl[b]]) into[c] = (into[c] || 0) + 1;
+      assert(
+        k === 'dirt' || (k === 'main' && [a, b].every(n => ['hotelWu', 'jWu1', 'jWu2'].includes(n))),
+        `Wu link ${a}–${b} is dirt (or the coast road)`
+      );
+    }
+  assert(Object.values(into).every(n => n <= 2) && into.v === 1, 'at most 2 links into each Wu settlement');
+  assert(
+    g.MapModel.districtPoly(g.DISTRICTS.find(d => d.id === 'wu-village')).every(q => g.City.regionAt(q) === 'wu'),
+    'the Wu village stands inland in Wu'
+  );
 });
 
 test('career: map model life — mates, crews, battle, borders, no randoms', () => {

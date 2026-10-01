@@ -431,7 +431,7 @@ region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border mete
    from region tints; fixed-yaw camera, pitch 55°, wheel zoom 25–420 m, drag pans on the ground plane, a click (< 5 px)
    raycasts to a map point (`toMap`; 1 map unit = `MAP_M` = 0.5 m). The player is `js/map3d/avatar3d.mjs`
    (`createAvatar(scene)`: the default VRM via `loadBase` / `makeVRM`, capsule until loaded): `snap` first, `setTarget` when
-   `model.you.at` changes — straight walk at 6 m/s (trip 1.2–6 s, ramps 0.4 s; faster trips show a ×N badge), gait from
+   `model.you.at` changes — `setTarget(at, path)` walks the road polyline `model.you.route` (added by `MapView.routed` in js/ui/map-view.js from `City.route(last you.at, you.at)`; the renderer never calls `City`; straight line without it) at 6 m/s over the whole length (trip 1.2–6 s, ramps 0.4 s; faster trips show a ×N badge), facing along the current segment, gait from
    `locoPose`, idle `STAND` + breathing, feet via `groundSnap` + `heightAt`; the camera follows until the user drags.
    Furniture is `js/map3d/pins3d.mjs` (`createFurniture(scene, heightAt)`): an HTML overlay `.maplay` over the canvas holds one
    `.mpin` button per `model.pins` item (icon, badge, flag classes, click → `pick(id)`), the region / airport labels (fade out
@@ -445,14 +445,20 @@ region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border mete
    Mates and known crews are coloured, unscouted crews grey; patrols (2–4) stand on the stronger side of the contested Wei–Wu
    line; every seized place flies the holder's flag. `furn.pulse(strength, t)` pulses the contested line with |meter| / 2.
    The town layer is `js/map3d/town3d.mjs` (`createTown(scene, heightAt)` → `{ sync(model), dispose() }`, display only, no randoms):
-   reads only `model.land.roads / lots / landmarks` and `model.fog`; one vertex-coloured ribbon mesh for all roads (width and
-   colour by kind, slope-following, lifted 0.15 m, polygon offset), one `InstancedMesh` per base shape for the filler lots
-   (box, gable: kind palette + size per instance), one merged mesh for all landmarks (each faces its nearest road); rebuilt only
-   when the layout JSON changes, dimmed by the same fog rule as the terrain (`FOG_DIM` / `FOG_SOFT` exported from map3d.mjs);
-   +4 draw calls, ~+6k triangles. Pins above a landmark float `PIN_UP` over its roof (`landmarkHeight(kind)`). The kit registry
-   is `js/map3d/kit3d.mjs`: `KIT[kind] = { geo(), mat, scale, colors }` (filler kinds) and `LANDMARKS[kind] = { h, w, d, build(accent) }`.
-   Swapping a kind for a model later: make `geo()` / `build()` return the model's geometry (filler: 1 × 1 footprint, height 1, feet
-   at y = 0; landmark: door on +z, feet at y = 0, vertex colours) — nothing else changes (see the header of kit3d.mjs).
+   reads only `model.land.roads / lots / landmarks / districts` and `model.fog`. Meshes: one vertex-coloured mesh for all roads (width and
+   colour by kind, slope-following, lifted 0.15 m, polygon offset; the `boardwalk` is planks of two tones 0.3 m up); one for the
+   `overpass` (its edges chained into a deck 5.4 m wide, 7 m up with rails and sides, ramped to the ground over 28 m at both ends, T-pillars
+   every ~20 m; deck + pillars merged); one `InstancedMesh` per base shape for the filler lots (box, gable, stepped: kind palette + size per
+   instance, height × (1 + 2.5 × `lot.h` × the kind's `rise`) so downtown towers rise toward the middle; `lot.wealth` tints the instance colour in place — rich: glass-blue / clean stone / gold, poor: grey / rust / patched wood, the middle untouched — no extra draw call); one merged mesh for all landmarks
+   and the wall ring of each `compound` district (a gatehouse of two towers and a lintel where a road crosses it); each landmark faces its
+   nearest road. Rebuilt only when the layout JSON changes, dimmed by the same fog rule as the terrain (`FOG_DIM` / `FOG_SOFT` exported
+   from map3d.mjs); 5 draw calls, ~+10k triangles. Terrain (`buildTerrain`): on the Wu stretch the sand between `land.dunes` and the coast is
+   wide, flat and low (`sideDist` = signed distance to the dune line) with a dune ridge on the line; a faint tint per district style is
+   folded into the vertex colours (no draw call). Pins above a landmark float `PIN_UP` over its roof (`landmarkHeight(kind)`). The kit registry
+   is `js/map3d/kit3d.mjs`: `KIT[kind] = { geo(), mat, scale, colors, rise }` (filler kinds, incl. rowhouse, barracks, workshop, market,
+   warehouse, resort, kiosk, terrace) and `LANDMARKS[kind] = { h, w, d, build(accent), footing? }` (incl. `ritual`: a worn sand circle with a
+   ring of low stones). Swapping a kind for a model later: make `geo()` / `build()` return the model's geometry (filler: 1 × 1 footprint,
+   height 1, feet at y = 0; landmark: door on +z, feet at y = 0, vertex colours) — nothing else changes (see the header of kit3d.mjs).
    `info().life` reports the instance counts. `js/ui/career-map.js` mounts it (`mapMount`),
    turns picks into panels (`mapPick`) and land clicks into travel targets (`mapPoint`). Region colours: REGIONS.color.
 
@@ -475,8 +481,30 @@ their source), `SETTLE` (per region: style, density, gap, setback, size, kinds) 
 `City.route(from, to)` → `[from, …road nodes…, to]` (Dijkstra over `ROADS`, ties by node id; a straight `[from, to]` when the ends are
 nearer each other than to any node); trips, days and prices are untouched. `MapModel.build` adds to `land`: `roads` (`{ kind, pts }` per
 edge), `lots` (`MapModel.lots`: slots every `SETTLE[region].gap` along each non-path edge, a lot on each side when `hstr(slot) < density`;
-never on water, in another region, within `NEAR_R / 3` of a place, on a road or another lot; at most `MapModel.maxLots` 1200; cached per
+never on water, in another region, near a place, on a road or another lot — superseded by the districts below; cached per
 home spot) and `landmarks` (`{ id, at, kind, region }` for every place and HQ). Layout uses fixed data + `hstr` only: no `R()` draws.
+
+### Districts, the beach band and the overpass (T-050)
+
+The map frame is `CITY.w` × `CITY.h` = 1060 × 700; the Wu stretch of the coast (points 6–12, plus 5, 13) grew outward, nothing else moved:
+`CITY.inner` is a frozen literal (the Wei–Wu line `contest` = inner 6–8 + two points is unchanged), `CITY.dunes` = the old coast points 6–12
+(the beach's inner edge) and `CITY.beach` the new coast points 6–12. The sand is the band between them: `MapModel.onSand(p)` (Wu land
+that is not inside the old Wu polygon). Beach places (`sand`, `pier`, `bonfire`, `dunes`, `home:studio`) stand on it, Wu town (`hotelWu`,
+`hq3`) is 40+ units inland, the harbor (`harbor`, `hq2`) is on the east coast; `REGIONS.wu.at` / `CITY.label.wu` follow Wu town.
+New road kinds: `boardwalk` (airport → sand → pier / bonfire → along the dune line → `resort`) and `overpass` (`jW2` → `jO1` → `jO2` → `jWu2`,
+elevated, over the Outlaws patch). `DISTRICTS` (city.js): `{ id, region, style, poly, gap, density, size, kinds, beach? }` — `poly` is a
+polygon, a circle `{ x, y, r }`, or `'beach'` / `'wei'`. `MapModel.lots` fills each district with a grid (spacing `gap`, rotated to the road
+nearest its middle, `hstr(slot) < density`), earlier districts first, then adds a road-side row at 0.4 × `SETTLE` density outside the districts.
+A lot is never in the water, in another region, on the sand (the beach district: only on it), within `size / 2 + 4` of a road (the overpass is
+elevated: lots may stand under it), within `MapModel.placeClear` (20 units: a landmark's footprint) of a place, or on another lot; lots are
+`{ at, rot, size, style, kind, wealth, h, district }`. `wealth` (0–1, `MapModel.wealth`, numbers in `WEALTH`, city.js; fixed data + hashes):
+Wei falls smoothly from the downtown core (`weiCore`, `weiEdge`) to the suburbs, Old Town capped, Gloria rich, Wu even ~0.5, Shu poor,
+the Outlaws poorest, the Academy middling; it scales a lot's side (× 0.7–1.3) and thins the grid (rich = sparser). `h` = wealth in downtown, wealth × 0.4
+elsewhere. Wu is weakly connected: harbor, Wu town, the beach strip and the inland `wu-village` (`wuVillage`) are joined by few links
+(≤ 2 into each; only the coast road is `main`, the rest `dirt`). `maxLots` 1400
+(~1190 on a fresh run: Wei ~570, Wu ~340, Shu ~160, Outlaws ~65, Academy ~33, Gloria ~25). `land` also carries `dunes`, `districts`
+(`{ id, region, style, poly }`) and a `ritual` landmark (kind `ritual`, no pin, no label). New lot kinds (rowhouse, barracks, workshop,
+market, warehouse, resort, kiosk, terrace) and the `ritual` landmark are drawn by T-051 (the renderer skips a lot kind the kit does not know).
 
 ## Rankings
 

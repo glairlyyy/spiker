@@ -17,7 +17,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 const ACC = { wei: '#f5b82e', wu: '#3fa9f5', shu: '#4ade80', outlaws: '#ff8c42', gloria: '#ff5da2', open: '#f5e6a8' };
 
 /** A flat-shaded part: non-indexed geometry with one colour in its vertices (merging needs the same attributes everywhere). */
-const part = (geo, color) => {
+export const part = (geo, color) => {
   const g = geo.index ? geo.toNonIndexed() : geo,
     c = new THREE.Color(color),
     n = g.attributes.position.count,
@@ -28,9 +28,9 @@ const part = (geo, color) => {
   return g;
 };
 /** A box w × h × d with its feet at y, centred on (x, z). */
-const box = (w, h, d, x, y, z, color) => part(new THREE.BoxGeometry(w, h, d).translate(x, y + h / 2, z), color);
+export const box = (w, h, d, x, y, z, color) => part(new THREE.BoxGeometry(w, h, d).translate(x, y + h / 2, z), color);
 /** A four-sided hip roof (a pyramid) over w × d, its eaves at y. */
-const hip = (w, h, d, x, y, z, color) =>
+export const hip = (w, h, d, x, y, z, color) =>
   part(
     new THREE.ConeGeometry(0.7071, 1, 4)
       .rotateY(Math.PI / 4)
@@ -57,7 +57,13 @@ const shape = name => {
               '#9a9a9a'
             )
           ])
-        : part(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), '#ffffff');
+        : name === 'stepped'
+          ? // a terraced house: a wide lower floor and a narrower upper one set back (its door side is +z)
+            mergeGeometries([
+              part(new THREE.BoxGeometry(1, 0.55, 1).translate(0, 0.275, 0), '#ffffff'),
+              part(new THREE.BoxGeometry(0.72, 0.45, 0.62).translate(0, 0.775, -0.18), '#d8d8d8')
+            ])
+          : part(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), '#ffffff');
     SHAPES.set(name, g);
   }
   return SHAPES.get(name);
@@ -65,12 +71,13 @@ const shape = name => {
 const MAT = new THREE.MeshStandardMaterial({ roughness: 0.9, metalness: 0, vertexColors: true });
 
 /** Filler kinds: `scale` = [width ×, height m, depth ×] (width / depth × the lot's side in metres), `colors` = the wall palette. */
-const filler = (shp, scale, colors) => ({ geo: () => shape(shp), mat: MAT, scale, colors });
+/** rise (0–1): how much a lot's height factor `h` stretches this kind: height × (1 + 2.5 × h × rise). */
+const filler = (shp, scale, colors, rise = 0.15) => ({ geo: () => shape(shp), mat: MAT, scale, colors, rise });
 export const KIT = {
   // Wei: dense city blocks, towers, shopfronts (gold-grey)
-  block: filler('box', [1, 7, 1], ['#b9b3a4', '#a8a293', '#c4b48a']),
-  tower: filler('box', [0.8, 15, 0.8], ['#9aa3ad', '#8a94a0', '#c9b27a']),
-  shop: filler('box', [1.1, 3.4, 1], ['#cdb98d', '#d0a35a', '#b9b3a4']),
+  block: filler('box', [1, 7, 1], ['#b9b3a4', '#a8a293', '#c4b48a'], 0.7),
+  tower: filler('box', [0.8, 15, 0.8], ['#9aa3ad', '#8a94a0', '#c9b27a'], 1),
+  shop: filler('box', [1.1, 3.4, 1], ['#cdb98d', '#d0a35a', '#b9b3a4'], 0.3),
   // Wu: fishing villages (weathered wood, blue accents)
   hut: filler('gable', [1, 2.7, 1], ['#b99a6b', '#a68a5e', '#c9ad7c']),
   shed: filler('gable', [1.2, 2.2, 0.9], ['#8d7b62', '#7b6c58', '#9aa6ad']),
@@ -79,14 +86,27 @@ export const KIT = {
   house: filler('gable', [1, 3, 1], ['#a98f74', '#9b8a76', '#b5a18a']),
   barn: filler('gable', [1.3, 3.6, 1.1], ['#8a6a4c', '#7c6a55', '#9a8266']),
   // Central Academy: the campus quad
-  hall: filler('box', [1.2, 5.5, 1], ['#d9d2bd', '#cfc7ae', '#e3dcc8']),
+  hall: filler('box', [1.2, 5.5, 1], ['#d9d2bd', '#cfc7ae', '#e3dcc8'], 0.3),
   dorm: filler('box', [1, 7, 0.8], ['#cfc3a8', '#c4b898', '#d9d2bd']),
   // the Outlaws: shacks and shipping containers under the overpass
   shack: filler('box', [1, 2.2, 1], ['#7d6a56', '#6b6a66', '#8a7560']),
   container: filler('box', [1.8, 2.5, 0.8], ['#b5533c', '#3f6f8f', '#c98a2e', '#6f8f5a']),
   // St. Gloria: a walled compound of villas
   villa: filler('gable', [1.2, 4.2, 1], ['#efe3d0', '#f0d9e0', '#e6dcc8']),
-  gatehouse: filler('box', [0.8, 3.5, 0.8], ['#d8c8b8', '#c9b8a8'])
+  gatehouse: filler('box', [0.8, 3.5, 0.8], ['#d8c8b8', '#c9b8a8']),
+  // Wei Old Town: the refugees' low rowhouses, tight lanes (weathered tile, plaster)
+  rowhouse: filler('gable', [0.8, 3.2, 1.3], ['#a89580', '#9c8a76', '#b8a48c', '#8f8a82'], 0.25),
+  // Wu town: barracks (long, plain), workshops, a covered market
+  barracks: filler('box', [1.7, 3.4, 0.7], ['#8d9097', '#7f858d', '#9aa0a6']),
+  workshop: filler('gable', [1.3, 3.2, 1], ['#8f7e66', '#7c8a8c', '#a38f72']),
+  market: filler('box', [1.5, 2.6, 1.2], ['#c9803a', '#b5532f', '#4f8f8a', '#d0b04a']),
+  // the harbor: long warehouses
+  warehouse: filler('gable', [2, 4.2, 1.1], ['#7b8791', '#8a7a6a', '#6f7f86']),
+  // the faded beach-boom strip: pastel resort hotels and bright kiosks
+  resort: filler('box', [1.9, 5.5, 1.2], ['#e8c4cc', '#c4dce8', '#e8dcb0', '#cfe0c0'], 0.3),
+  kiosk: filler('box', [0.7, 2.4, 0.7], ['#f0a050', '#e86a6a', '#58b8c8', '#f0d060']),
+  // Shu: terraced hill houses (stepped, stone and tile)
+  terrace: filler('stepped', [1.1, 3.4, 1], ['#a98f74', '#9b8a76', '#b5a18a', '#8f8068'], 0.2)
 };
 
 const WOOD = '#8a6a4c',
@@ -214,6 +234,22 @@ export const LANDMARKS = {
       box(7, 0.5, 2.6, 0, 0, 4.2, STONE)
     ]
   },
+  // the old ritual ground: a worn sand circle with a ring of low stones (never labelled, no pin)
+  ritual: {
+    h: 1.2,
+    w: 16,
+    d: 16,
+    footing: false,
+    build: () => [
+      part(new THREE.CylinderGeometry(7.5, 7.8, 0.12, 28).translate(0, 0.06, 0), '#e2d3a2'),
+      part(new THREE.CylinderGeometry(3.2, 3.4, 0.14, 20).translate(0, 0.08, 0), '#d4c28c'),
+      ...Array.from({ length: 12 }, (_, i) => {
+        const a = (i / 12) * Math.PI * 2,
+          g = box(1.5, 1.3 + 0.45 * ((i * 5) % 3), 1, 0, 0, 0, '#8f8b82');
+        return g.rotateY(-a).translate(Math.cos(a) * 7.7, 0, Math.sin(a) * 7.7);
+      })
+    ]
+  },
   // your home: a small house with a hip roof and a chimney
   home: {
     h: 6,
@@ -236,7 +272,7 @@ export const landmarkDepth = kind => (LANDMARKS[kind] ? LANDMARKS[kind].d : 6);
 export const buildLandmark = (kind, accent) => {
   const L = LANDMARKS[kind] || LANDMARKS.home,
     parts = L.build(accent || ACC.open);
-  parts.push(box(L.w, 1.5, L.d, 0, -1.5, 0, '#6f6c66')); // a footing: hides the gap on a slope
+  if (L.footing !== false) parts.push(box(L.w, 1.5, L.d, 0, -1.5, 0, '#6f6c66')); // a footing: hides the gap on a slope
   return mergeGeometries(parts);
 };
 /** The accent colour of a region id. */

@@ -67,6 +67,35 @@ const edgeDist = (x, y, poly) => {
   return best;
 };
 
+/** Ground tint per district style (blended in faintly: no extra draw call). */
+const DISTRICT_TINT = {
+  city: '#8c8f96',
+  oldtown: '#8d7d68',
+  compound: '#c4b2d0',
+  shacks: '#7e6c58',
+  campus: '#86b866',
+  terrace: '#8a7b5c',
+  fishing: '#9a9172'
+};
+/** Signed distance (m) from a point to an open polyline: positive on its right-hand side (screen coordinates, y down). */
+const sideDist = (x, y, line) => {
+  let best = Infinity,
+    sign = 1;
+  for (let i = 0; i + 1 < line.length; i++) {
+    const [ax, ay] = line[i],
+      [bx, by] = line[i + 1],
+      dx = bx - ax,
+      dy = by - ay,
+      t = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1), 0, 1),
+      d = Math.hypot(x - (ax + dx * t), y - (ay + dy * t));
+    if (d < best) {
+      best = d;
+      sign = dy * (x - ax) - dx * (y - ay) >= 0 ? 1 : -1;
+    }
+  }
+  return best * sign;
+};
+
 /** The island's height grid and vertex colours (world metres), from the model's land. */
 function buildTerrain(model) {
   const L = model.land,
@@ -80,6 +109,9 @@ function buildTerrain(model) {
     coast = w(L.coast),
     shu = w((L.regions.find(r => r.id === 'shu') || { poly: [] }).poly),
     mtn = L.mountains.map(p => [p[0] * MAP_M, p[1] * MAP_M]),
+    wu = w((L.regions.find(r => r.id === 'wu') || { poly: [] }).poly),
+    dunes = L.dunes ? w(L.dunes) : [],
+    dist = L.districts ? L.districts.map(d => ({ poly: w(d.poly), tint: DISTRICT_TINT[d.style] })).filter(d => d.tint) : [],
     tint = new Map(L.regions.map(r => [r.id, new THREE.Color(r.color)])),
     pos = new Float32Array((nx + 1) * (nz + 1) * 3),
     col = new Float32Array((nx + 1) * (nz + 1) * 3),
@@ -88,6 +120,7 @@ function buildTerrain(model) {
     rock = new THREE.Color(0x7d7a70),
     sand = new THREE.Color(0xd8c690),
     seabed = new THREE.Color(0x2b5f6e),
+    tintC = new THREE.Color(),
     c = new THREE.Color();
   const regionColor = (mx, my) => {
     const p = L.park;
@@ -110,9 +143,16 @@ function buildTerrain(model) {
         k = j * (nx + 1) + i,
         land = inside(x, z, coast),
         d = edgeDist(x, z, coast);
+      // the Wu sand: between the dune line and the coast, wide and flat with a low dune ridge on the line
+      const sd0 = land && dunes.length && inside(x, z, wu) ? sideDist(x, z, dunes) : -99,
+        sd = sd0 > 45 ? -99 : sd0, // (far seaward of the line = the corner past its ends: not sand)
+        sand_ = sd > 0;
       let h;
       if (!land) h = -0.4 * Math.min(d, 10);
-      else {
+      else if (sand_ || (sd > -12 && sd <= 0)) {
+        const flat = sand_ ? 0.45 * smooth(0, 5, d) : 0.6 * smooth(0, BEACH, d);
+        h = flat + 0.9 * Math.exp(-((sd / 5) ** 2));
+      } else {
         let base = 0.6;
         if (shu.length) {
           const ds = inside(x, z, shu) ? edgeDist(x, z, shu) : 0,
@@ -134,6 +174,8 @@ function buildTerrain(model) {
         c.lerp(sand, 1 - smooth(1, BEACH, d));
         const rc = regionColor(x / MAP_M, z / MAP_M);
         if (rc) c.lerp(rc, 0.35);
+        if (sd > -99) c.lerp(sand, 0.95 * smooth(-3, 2, sd)); // the Wu sand
+        for (const q of dist) if (inside(x, z, q.poly)) c.lerp(tintC.set(q.tint), 0.16);
       }
       col.set([c.r, c.g, c.b], k * 3);
     }
@@ -389,7 +431,7 @@ export function create(host, onIdle) {
       const key = at.join(',');
       if (seen === null) avatar.snap(at);
       else if (key !== seen) {
-        avatar.setTarget(at);
+        avatar.setTarget(at, m.you.route);
         follow = true;
       }
       seen = key;

@@ -1,7 +1,7 @@
 // The island map, all claimed: Wei the city (north and east), Wu the beach (the east and south coast) and a strip
 // inland, Shu the highlands (west); Central Academy in the middle belongs to nobody, by common respect;
 // the minors sit as borderless patches inside or across them. You arrive at the airport on the south coast.
-// Coordinates are in map units (1000 × 640). Names are placeholders; balance is not tuned yet.
+// Coordinates are in map units (1060 × 700). Names are placeholders; balance is not tuned yet.
 
 const CITY = (() => {
   const coast = [
@@ -10,36 +10,64 @@ const CITY = (() => {
       [360, 48],
       [520, 60],
       [680, 40],
-      [830, 80],
+      [846, 68],
+      [972, 154],
+      [1010, 297],
+      [969, 441],
+      [883, 564],
+      [726, 637],
+      [545, 657],
+      [360, 632],
+      [215, 573],
+      [120, 480],
+      [58, 360],
+      [52, 240]
+    ],
+    // the original coast (pulled 18% toward the middle), frozen as literals: Wei's east edge follows it, no border moves
+    inner = [
+      [166, 174],
+      [256, 117],
+      [387, 99],
+      [518, 109],
+      [649, 92],
+      [772, 125],
+      [854, 199],
+      [883, 305],
+      [850, 412],
+      [785, 502],
+      [666, 551],
+      [535, 561],
+      [403, 545],
+      [280, 519],
+      [190, 453],
+      [139, 355],
+      [134, 256]
+    ],
+    // the dune line: the beach's inner edge (the old coast, points 6–12); the sand lies between it and the coast
+    dunes = [
       [930, 170],
       [965, 300],
       [925, 430],
       [845, 540],
       [700, 600],
       [540, 612],
-      [380, 592],
-      [230, 560],
-      [120, 480],
-      [58, 360],
-      [52, 240]
+      [380, 592]
     ],
-    c = [510, 330],
-    // the coast pulled 18% toward the middle (Wei's east edge follows it)
-    inner = coast.map(([x, y]) => [Math.round(c[0] + (x - c[0]) * 0.82), Math.round(c[1] + (y - c[1]) * 0.82)]),
     /** Wu's border with Wei (north → south), then inland back to the south coast. */
     wuWei = [...inner.slice(6, 9), [740, 470], [600, 450]],
     /** Shu's border with Wei, north coast → the Wu line (ends at the tri-point where Central Academy sits). */
     shuWei = [coast[3], [480, 160], [500, 250], [500, 390], [520, 450], [540, 500]];
   return {
-    w: 1000,
-    h: 640,
+    w: 1060,
+    h: 700,
     coast,
     inner,
+    dunes,
     /** Wei's city: its east and south sides are the contested border with Wu. */
     wei: [...coast.slice(3, 7), ...wuWei, ...shuWei.slice(1).reverse()],
     /** The contested Wei–Wu border. */
     contest: wuWei,
-    /** The beach: the east coast round to the south (coast points). */
+    /** The beach: the east coast round to the south (coast points 6–12; the sand is between them and `dunes`). */
     beach: coast.slice(6, 13),
     /** Wu: the beach and the land behind it up to Wei, plus a strip inland in the south. */
     wu: [...coast.slice(6, 13), [430, 540], [540, 500], ...wuWei.slice().reverse()],
@@ -47,19 +75,21 @@ const CITY = (() => {
     shu: [...coast.slice(12), ...coast.slice(0, 4), ...shuWei.slice(1), [430, 540]],
     /** Central Academy: neutral ground at the tri-point of Wei, Wu and Shu (north of the airport). */
     park: { x: 540, y: 500, r: 60 },
+    /** The old ritual ground's sand circle, by the Academy (a landmark with no pin and no label). */
+    ritual: [595, 548],
     /** Borderless minors: ellipses { x, y, rx, ry, rot }. */
     minors: {
       outlaws: { x: 815, y: 470, rx: 78, ry: 42, rot: -35 },
       gloria: { x: 690, y: 255, rx: 58, ry: 40, rot: 10 }
     },
     /** Region label anchors. */
-    label: { open: [545, 432], wei: [690, 330], shu: [300, 300], wu: [740, 628], outlaws: [835, 500], gloria: [690, 222] },
+    label: { open: [545, 432], wei: [690, 330], shu: [300, 300], wu: [680, 545], outlaws: [835, 500], gloria: [690, 222] },
     airport: [470, 600],
     /** Each club's HQ (team index → [x, y]). */
     hq: [
       [640, 210],
       [610, 400],
-      [915, 305],
+      [940, 310],
       [620, 510],
       [360, 220],
       [790, 465],
@@ -108,10 +138,10 @@ const SPOTS = {
   weiJump: { name: 'Skytower Plyo Gym', slot: 'day', train: 'jump', region: 'wei', at: [575, 185], icon: '🏀' },
   gloria: { name: 'St. Gloria Private Club', slot: 'day', train: 'def', region: 'gloria', at: [735, 275], icon: '💎' },
   // Wu — the coast: mid everything; sand courts build technique
-  sand: { name: 'Sand Courts', slot: 'day', train: 'def', region: 'wu', sand: true, at: [560, 565], icon: '🏖' },
-  dunes: { name: 'Dune Sprints', slot: 'day', train: 'speed', region: 'wu', at: [915, 240], icon: '🌊' },
-  harbor: { name: 'Harbor Gym', slot: 'day', train: 'power', region: 'wu', at: [905, 380], icon: '⚓' },
-  pier: { name: 'Pier Jump Deck', slot: 'day', train: 'jump', region: 'wu', sand: true, at: [615, 600], icon: '🪂' },
+  sand: { name: 'Sand Courts', slot: 'day', train: 'def', region: 'wu', sand: true, at: [560, 632], icon: '🏖' },
+  dunes: { name: 'Dune Sprints', slot: 'day', train: 'speed', region: 'wu', at: [975, 240], icon: '🌊' },
+  harbor: { name: 'Harbor Gym', slot: 'day', train: 'power', region: 'wu', at: [935, 385], icon: '⚓' },
+  pier: { name: 'Pier Jump Deck', slot: 'day', train: 'jump', region: 'wu', sand: true, at: [615, 646], icon: '🪂' },
   // Shu — the highlands: cheap and rough, far from everything
   trail: { name: 'Mountain Trail', slot: 'day', train: 'speed', region: 'shu', at: [215, 290], icon: '⛰' },
   steps: { name: 'Thousand Steps', slot: 'day', train: 'jump', region: 'shu', at: [320, 235], icon: '🛕' },
@@ -141,7 +171,7 @@ const SPOTS = {
     icon: '🏨',
     desc: 'Rest at a hotel'
   },
-  hotelWu: { name: 'Seaside Inn', slot: 'day', act: 'rest', hotel: true, region: 'wu', at: [765, 545], icon: '🏨', desc: 'Rest at an inn' },
+  hotelWu: { name: 'Seaside Inn', slot: 'day', act: 'rest', hotel: true, region: 'wu', at: [735, 525], icon: '🏨', desc: 'Rest at an inn' },
   hotelShu: {
     name: 'Mountain Lodge',
     slot: 'day',
@@ -178,7 +208,7 @@ const SPOTS = {
     slot: 'eve',
     act: 'arcade',
     region: 'wei',
-    at: [640, 260],
+    at: [620, 262],
     icon: '🕹',
     cost: 15,
     desc: 'Night out with the team: mood up, +3 bond with everyone'
@@ -188,7 +218,7 @@ const SPOTS = {
     slot: 'eve',
     act: 'arcade',
     region: 'wu',
-    at: [680, 572],
+    at: [680, 622],
     icon: '🔥',
     cost: 15,
     desc: 'Night out with the team: mood up, +3 bond with everyone'
@@ -208,30 +238,41 @@ const STREET = { rival: [50, 78], win: [40, 90], loss: 20, fans: 40, sta: 12 };
 /** Scouting a club at its HQ (a day): stamina cost. */
 const SCOUT_STA = 5;
 /** Where you live on the map, by housing. */
-const HOME_AT = { homeless: [600, 115], highland: [180, 330], studio: [430, 575], dorm: [640, 440], condo: [760, 395] };
+const HOME_AT = { homeless: [600, 115], highland: [180, 330], studio: [430, 622], dorm: [640, 440], condo: [760, 395] };
 
 /**
  * The road network (spec §4.18): nodes by id → [x, y] (all on land) and edges [a, b, kind]. Nodes sit at the airport
  * (`airport`), every SPOTS place with an `at` (same id), every club HQ (`hq0`…`hq7`), each housing's home spot (`home:<key>`,
  * see HOME_AT) and the junctions (`j…`). kind: `main` (Wu coast road, Wei avenues, Academy roads), `street` (Wei grid),
- * `dirt` (Shu, Outlaws), `path` (Shu mountain trails, temple steps). Plain data: City.route walks it, MapModel draws and
+ * `dirt` (Shu, Outlaws), `path` (Shu mountain trails, temple steps), `boardwalk` (the sand strip along the dune line), `overpass` (the elevated highway, downtown Wei → the harbor). Plain data: City.route walks it, MapModel draws and
  * settles it.
  */
 const ROADS = {
   nodes: {
     airport: [470, 600],
     // Wu: the coast road, east round to the harbor
-    'home:studio': [430, 575],
-    sand: [560, 565],
-    pier: [615, 600],
-    bonfire: [680, 572],
-    hotelWu: [765, 545],
+    'home:studio': [430, 622],
+    sand: [560, 632],
+    pier: [615, 646],
+    bonfire: [680, 622],
+    hotelWu: [735, 525],
     jWu1: [840, 520],
     jWu2: [885, 455],
-    harbor: [905, 380],
-    hq2: [915, 305],
-    dunes: [915, 240],
+    harbor: [935, 385],
+    hq2: [940, 310],
+    dunes: [975, 240],
+    wuVillage: [905, 225],
     hq3: [620, 510],
+    // the boardwalk along the dune line, and the old resort strip at its end
+    jBw1: [515, 626],
+    jBw2: [615, 626],
+    jBw3: [760, 598],
+    jBw4: [830, 572],
+    jBw5: [890, 535],
+    resort: [908, 488],
+    // the overpass: downtown Wei to the harbor, over the Outlaws patch
+    jO1: [845, 390],
+    jO2: [865, 440],
     // Central Academy and its roads
     park: [540, 500],
     jAc1: [575, 415],
@@ -243,7 +284,7 @@ const ROADS = {
     weiJump: [575, 185],
     hotelWei: [820, 290],
     noodles: [720, 380],
-    arcade: [640, 260],
+    arcade: [620, 262],
     hq0: [640, 210],
     hq1: [610, 400],
     'home:dorm': [640, 440],
@@ -277,17 +318,30 @@ const ROADS = {
   edges: [
     // Wu coast road and the way up to Wei
     ['airport', 'home:studio', 'main'],
-    ['airport', 'sand', 'main'],
-    ['sand', 'pier', 'main'],
-    ['pier', 'bonfire', 'main'],
-    ['bonfire', 'hotelWu', 'main'],
+    ['hq3', 'hotelWu', 'main'],
     ['hotelWu', 'jWu1', 'main'],
     ['jWu1', 'jWu2', 'main'],
     ['jWu2', 'harbor', 'main'],
     ['harbor', 'hq2', 'main'],
     ['hq2', 'dunes', 'main'],
-    ['sand', 'hq3', 'main'],
+    // Wu is weakly connected (spec §4.19): only the coast road is `main` between its settlements, the rest are dirt tracks
+    ['hotelWu', 'jBw3', 'dirt'],
+    ['hq2', 'wuVillage', 'dirt'],
     ['hq3', 'home:dorm', 'main'],
+    // the boardwalk (sand ↔ pier ↔ bonfire ↔ the resort strip)
+    ['airport', 'jBw1', 'boardwalk'],
+    ['jBw1', 'sand', 'boardwalk'],
+    ['sand', 'jBw2', 'boardwalk'],
+    ['jBw2', 'pier', 'boardwalk'],
+    ['jBw2', 'bonfire', 'boardwalk'],
+    ['bonfire', 'jBw3', 'boardwalk'],
+    ['jBw3', 'jBw4', 'boardwalk'],
+    ['jBw4', 'jBw5', 'boardwalk'],
+    ['jBw5', 'resort', 'boardwalk'],
+    // the overpass (elevated)
+    ['jW2', 'jO1', 'overpass'],
+    ['jO1', 'jO2', 'overpass'],
+    ['jO2', 'jWu2', 'overpass'],
     ['home:dorm', 'hq1', 'main'],
     ['hq1', 'weiPower', 'main'],
     // Central Academy roads
@@ -354,6 +408,186 @@ const SETTLE = {
   open: { style: 'campus', density: 0.7, gap: 14, setback: 11, size: 8, kinds: ['hall', 'hall', 'dorm'] },
   outlaws: { style: 'shacks', density: 0.8, gap: 8, setback: 6, size: 4.5, kinds: ['shack', 'shack', 'container'] },
   gloria: { style: 'compound', density: 0.7, gap: 12, setback: 9, size: 8, kinds: ['villa', 'villa', 'gatehouse'] }
+};
+/**
+ * Districts (spec §4.19): areas the settlement fills with a grid of lots (MapModel.lots), listed smallest first (earlier ones keep
+ * their ground). poly = a polygon or `{ x, y, r }` (a circle); region = the region the lots must stand in (`CITY` minors and the
+ * Academy park count as regions); gap = grid spacing (map units); density = share of the grid that is built (a hash decides);
+ * size = a lot's side; kinds = the building kinds mixed;
+ * beach = the lots stand only on the sand (all others never do). Ids, not names: old-language names wait for lore §8.
+ */
+const DISTRICTS = [
+  {
+    id: 'wei-downtown',
+    region: 'wei',
+    style: 'city',
+    poly: { x: 640, y: 225, r: 85 },
+    gap: 9,
+    density: 0.9,
+    size: 6,
+    kinds: ['tower', 'tower', 'block', 'shop']
+  },
+  {
+    id: 'wei-oldtown',
+    region: 'wei',
+    style: 'oldtown',
+    poly: { x: 590, y: 112, r: 58 },
+    gap: 8,
+    density: 0.65,
+    size: 4.5,
+    kinds: ['rowhouse', 'rowhouse', 'rowhouse', 'shop', 'market']
+  },
+  {
+    id: 'gloria',
+    region: 'gloria',
+    style: 'compound',
+    poly: { x: 690, y: 255, r: 58 },
+    gap: 11,
+    density: 1,
+    size: 6,
+    kinds: ['villa', 'villa', 'gatehouse']
+  },
+  {
+    id: 'outlaws',
+    region: 'outlaws',
+    style: 'shacks',
+    poly: { x: 815, y: 470, r: 80 },
+    gap: 9,
+    density: 0.8,
+    size: 4.5,
+    kinds: ['shack', 'shack', 'container', 'workshop']
+  },
+  {
+    id: 'academy',
+    region: 'open',
+    style: 'campus',
+    poly: { x: 540, y: 500, r: 60 },
+    gap: 13,
+    density: 0.7,
+    size: 7,
+    kinds: ['hall', 'hall', 'dorm']
+  },
+  {
+    id: 'shu-village-west',
+    region: 'shu',
+    style: 'terrace',
+    poly: { x: 205, y: 365, r: 48 },
+    gap: 9,
+    density: 0.62,
+    size: 4.5,
+    kinds: ['terrace', 'terrace', 'house', 'barn']
+  },
+  {
+    id: 'shu-village-north',
+    region: 'shu',
+    style: 'terrace',
+    poly: { x: 345, y: 225, r: 48 },
+    gap: 9,
+    density: 0.62,
+    size: 4.5,
+    kinds: ['terrace', 'terrace', 'house', 'barn']
+  },
+  {
+    id: 'shu-village-south',
+    region: 'shu',
+    style: 'terrace',
+    poly: { x: 355, y: 390, r: 48 },
+    gap: 9,
+    density: 0.62,
+    size: 4.5,
+    kinds: ['terrace', 'house', 'house', 'barn']
+  },
+  {
+    id: 'shu-village-trail',
+    region: 'shu',
+    style: 'terrace',
+    poly: { x: 215, y: 285, r: 34 },
+    gap: 9,
+    density: 0.62,
+    size: 4.5,
+    kinds: ['terrace', 'house', 'barn']
+  },
+  {
+    id: 'wu-harbor',
+    region: 'wu',
+    style: 'fishing',
+    poly: { x: 925, y: 360, r: 70 },
+    gap: 9,
+    density: 0.8,
+    size: 5,
+    kinds: ['warehouse', 'warehouse', 'shed', 'boathouse', 'hut']
+  },
+  {
+    id: 'wu-village',
+    region: 'wu',
+    style: 'fishing',
+    poly: { x: 905, y: 225, r: 34 },
+    gap: 9,
+    density: 0.8,
+    size: 4.5,
+    kinds: ['hut', 'hut', 'shed', 'house']
+  },
+  {
+    id: 'wu-town',
+    region: 'wu',
+    style: 'fishing',
+    poly: [
+      [540, 505],
+      [610, 455],
+      [738, 475],
+      [855, 425],
+      [905, 470],
+      [870, 520],
+      [800, 555],
+      [700, 580],
+      [600, 590],
+      [545, 585]
+    ],
+    gap: 9,
+    density: 0.85,
+    size: 5,
+    kinds: ['barracks', 'workshop', 'market', 'hut', 'shed', 'house']
+  },
+  {
+    id: 'wu-beach',
+    region: 'wu',
+    style: 'beach',
+    beach: true,
+    poly: 'beach',
+    gap: 15,
+    density: 0.6,
+    size: 5,
+    kinds: ['resort', 'kiosk', 'kiosk', 'resort']
+  },
+  {
+    id: 'wei-ring',
+    region: 'wei',
+    style: 'city',
+    poly: 'wei',
+    gap: 12,
+    density: 0.55,
+    size: 6.5,
+    kinds: ['block', 'block', 'tower', 'shop', 'workshop']
+  }
+];
+/**
+ * Wealth (spec §4.19), 0–1 per lot, from fixed data + hashes (MapModel.lots): it drives a lot's size, spacing, height and look.
+ * Wei: `weiFloor` + (1 − weiFloor) × (1 − smoothstep(0, `weiEdge`, distance from `weiCore`)) — rich downtown, a steady fall to the
+ * suburbs, no rich pockets (but the Gloria compound) — plus a ±`jitter` hash; Old Town is capped at `oldtown`. Elsewhere a region
+ * base ± `spread`: Gloria `gloria`, Wu `wu` (even, modest), Shu `shu`, the Outlaws `outlaws` (poorest), the Academy `academy`.
+ */
+const WEALTH = {
+  weiCore: [650, 260],
+  weiEdge: 280,
+  weiFloor: 0.15,
+  oldtown: 0.15,
+  jitter: 0.08,
+  spread: 0.1,
+  gloria: 0.95,
+  wu: 0.5,
+  shu: 0.2,
+  outlaws: 0.05,
+  academy: 0.55
 };
 /** Landmark kind of every place (SPOTS id) and club HQ (`hq`). */
 const LANDMARK = {

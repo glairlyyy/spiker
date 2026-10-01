@@ -12,6 +12,9 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   nation's national team (international career).
 
 ## 2. Match (engine + 3D playback) [built]
+- §2.0 The sport (lore.md §4, owner): a 4v4 street game — physical and fierce. Tactics (block settings, systems, set
+  plays) give an edge but stats decide most rallies: a big physical gap should beat a smart setting. Keep this in the
+  balance pass (tactic effects modest vs stat gaps).
 - §2.1 Rules: one set to 15, win by 2; court ×1.5; zone/captain buffs, timeouts, tactics, techniques, pop-ups,
   long back attack.
   Three touches per side (a block touch is free). A pop-up off the arms saved by a teammate counts as touches 1 and 2:
@@ -210,7 +213,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   - A Rankings drawer shows the three lists and your rank on each; pre-match and challenge cards show the opponent's
     ranks ("Register #12 · Gazette #3 · Street —"). Display only: no match effects. Aces / the rival appear here later.
 
-- §4.18 Roads, settlements and buildings **[layout data + 3D town built (T-045, T-046); walking the roads T-047; T-048 later; lot density / scale to tune by eye]** (owner: hybrid look):
+- §4.18 Roads, settlements and buildings **[built — T-045, T-046, T-047; T-048 later]** (owner: hybrid look):
   - Data first (rules layer, plain data, no randoms): a road network (nodes at the airport, every place, club HQs,
     Central Academy + junctions; edges = main roads, Wei grid streets, Shu dirt / mountain paths); settlement lots
     generated deterministically along roads per region style — Wei dense city blocks, Wu coastal fishing villages and
@@ -223,7 +226,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     data — owner picks the pieces.
   - Your player walks along the roads (route through the network) instead of a straight line.
   - Later (T-048, optional): trips along roads cost fewer days than cross-country; Shu mountain paths stay slow.
-- §4.19 Town layout revamp **[locked, not built — T-050 data, T-051 render]** (owner: the island should feel as crowded as
+- §4.19 Town layout revamp **[built — T-050 data, T-051 render; T-047 the walk follows the roads]** (owner: the island should feel as crowded as
   the lore; wider beach; Wu town inland). Districts follow lore.md §3–§5:
   - **Wei** (dense, layered): *Downtown* round Wei Gold's HQ and the league office — a tower grid, the densest place on
     the island; *Old Town* in the north-coast pocket by the abandoned gym — the refugee town the settlers built over,
@@ -252,6 +255,16 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   your grade. Opening one shows the **snapshot**: your OVR, stats and wit at kick-off (and the change since the match
   before), your line (kills, attacks, errors, blocks, aces, digs, assists), and the box score of everyone who played
   (name, role, OVR, line). Numbers only (registrar voice). Bench matches are listed ("did not play").
+
+- §4.21 Official venues **[locked, not built — T-053]** (owner: show where official matches are held). Four landmark
+  venues on the map, each a pin with a card (what is held there; this week's match if any):
+  - **League Arena** (Wei downtown, by the league office): the U21 Final Cup and Wei's evaluations. The biggest
+    building on the island — a stadium bowl with floodlights.
+  - **Academy Hall** (Central Academy campus): the Academy squad's evaluations.
+  - **Beach Stadium** (on the Wu sand, a beach-boom relic, faded): Wu's evaluations.
+  - **Highland Court** (an open hillside court by Shu Peak's HQ, stone terraces for seats): Shu's evaluations.
+  On a match week the venue of your match glows on the map and the match card says where it is played. Display only:
+  no travel days, no change to where you stand.
 
 ## 5. Open questions — do not build until decided
 - §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story
