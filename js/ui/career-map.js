@@ -212,10 +212,7 @@ function mapGo(id, mate) {
   mapAfter(run);
 }
 function mapAfter(run) {
-  if (!run.rolled) {
-    run.rolled = true;
-    Events.roll(run);
-  }
+  City.after(run);
   Run.save(run);
   renderCareer();
 }
@@ -225,9 +222,7 @@ function mapClash(side, sim) {
     const fx = Cup.clash(RUN, side);
     if (!fx) return;
     if (!sim) return navigate('match', fx);
-    const m = newMatch(fx.a, fx.b, false);
-    while (!m.over) playRally(m);
-    fx.onFinish(m);
+    Cup.simNow(fx);
   } else {
     const line = City.clash(RUN, null);
     if (!line) return;
@@ -259,9 +254,7 @@ function mapChallenge(ti, sim) {
     const fx = Cup.challenge(RUN, ti, r.stake);
     if (!fx) return;
     if (!sim) return navigate('match', fx);
-    const m = newMatch(fx.a, fx.b, false);
-    while (!m.over) playRally(m);
-    fx.onFinish(m);
+    Cup.simNow(fx);
   } else Run.log(RUN, r.line);
   mapAfter(RUN);
 }
@@ -282,7 +275,7 @@ function mapTravel(x, y) {
   renderCareer();
 }
 function mapEndWeek() {
-  if (RUN.event || Run.weekType(RUN) === 'cup' || Run.weekType(RUN) === 'eval') return;
+  if (!Run.canEndWeek(RUN)) return;
   Run.endWeek(RUN);
   renderCareer();
 }

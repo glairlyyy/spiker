@@ -60,19 +60,7 @@ function elementLine(run) {
 /** The season at a glance: coach's goal, cups so far, sponsors, injury. */
 function seasonCard(run) {
   const g = run.goal,
-    you = Run.you(run);
-  const prog =
-    g && g.done == null
-      ? g.kind === 'stat'
-        ? `${you[g.stat]} / ${g.target}`
-        : g.kind === 'fans'
-          ? `${run.fans.toLocaleString()} / ${g.target.toLocaleString()}`
-          : g.kind === 'bond'
-            ? `${you.bond[g.mate] || 0} / ${g.target}`
-            : run.warm.some(w => w.week === g.week && w.win)
-              ? 'won'
-              : 'to play'
-      : '';
+    prog = Goals.progress(run, g);
   return `<div class="panel season"><h3>Season${run.sponsors.length ? '' : info(`Sponsors make offers at ${SPONSOR_AT.map(f => f.toLocaleString()).join(', ')} fans.`)}</h3>
     ${g ? `<div class="goal ${g.done === true ? 'ok' : g.done === false ? 'miss' : ''}"><b>Coach's goal${info(`Reward: +${GOAL_REWARD.sp} skill pts, +${GOAL_REWARD.fans} fans, mood up. Missing it: mood down.`)}</b> ${esc(Goals.text(run, g))} <span class="mute small">by W${g.by}${prog ? ' · ' + prog : ''}${g.done === true ? ' · reached' : g.done === false ? ' · missed' : ''}</span></div>` : ''}
     ${run.cups.map(c => `<div class="small">${esc(CUPS.find(x => x.id === c.id).name)}: <b>${Cup.placeText(c.place)}</b></div>`).join('')}
@@ -281,13 +269,12 @@ function benchEval() {
   Run.endWeek(RUN);
   renderCareer();
 }
-function cupPanel(run) {
+/** The cup bracket; nm = your next match (from Cup.upcoming, prepared before rendering). */
+function cupPanel(run, nm) {
   const S = run.cup.sched,
     E = run.cup.entrants,
     me = run.cup.me,
-    def = Run.cupDef(run),
-    nm = Cup.next(run);
-  Run.save(run);
+    def = Run.cupDef(run);
   const slot = x => {
     if (x.bye) return `<div class="bm empty"><div class="br">—</div><div class="br">—</div></div>`;
     const row = ti =>
@@ -389,10 +376,7 @@ function learnSkill(id) {
 function playCareer(kind, sim) {
   const fx = Cup.fixture(RUN, kind);
   if (!sim) return navigate('match', fx);
-  const m = newMatch(fx.a, fx.b, false);
-  if (fx.setup) fx.setup(m);
-  while (!m.over) playRally(m);
-  fx.onFinish(m);
+  Cup.simNow(fx);
   renderCareer();
 }
 /** Money and housing. Rent is paid on payday (every few weeks). */
@@ -423,46 +407,39 @@ function clubsCard(run) {
 }
 /** Your standing with each faction (region), its clubs, and this week's street battle. */
 function factionsCard(run) {
-  const c = City.clashSite(run),
-    mood = v => (v >= 30 ? 'Trusted' : v > 0 ? 'Friendly' : v <= -30 ? 'Hostile' : v < 0 ? 'Wary' : 'Neutral');
-  return `<div class="panel facs">${Object.keys(REGIONS)
-    .filter(r => REGIONS[r].kind !== 'none')
-    .map(r => {
-      const v = City.rep(run, r),
-        clubs = run.teams.filter(t => FACTIONS[t.i].region === r),
-        foe = c && (c.a === r ? c.b : c.b === r ? c.a : null);
-      const major = MAJORS.includes(r),
-        lost = major ? Front.lostIds(run, r) : [],
-        took = major ? Front.takenIds(run, r) : [],
-        weak = major && Front.weak(run, r),
-        fronts = major
-          ? MAJORS.filter(o => o !== r)
-              .map(o => {
-                const m = Front.meter(run, r, o);
-                return `<span class="fm ${m > 0 ? 'up' : m < 0 ? 'dn' : ''}" ${tip(`Border pressure vs ${REGIONS[o].name}: ${FRONT.seize} net wins seize a place`)}>vs ${esc(REGIONS[o].name.split(' ')[0])} ${signed(m)}</span>`;
-              })
-              .join('')
-          : '',
-        places =
-          (took.length
-            ? `<div class="small">Took: ${took.map(id => `${esc(SPOTS[id].name)} <i class="mute">(from ${esc(REGIONS[SPOTS[id].region].name)})</i>`).join(', ')}</div>`
-            : '') +
-          (lost.length
-            ? `<div class="small">Lost: ${lost.map(id => `${esc(SPOTS[id].name)} <i class="mute">(to ${esc(REGIONS[run.own[id]].name)})</i>`).join(', ')}</div>`
-            : ''),
-        econ =
-          major && (lost.length || took.length)
-            ? `<div class="small mute">Prices ×${Front.priceMul(run, r).toFixed(1)} · facilities ×${Front.qMul(run, r).toFixed(2)}${lost.length ? ` · clubs ask −${FRONT.join * lost.length} OVR/key, fees −${Math.round(FRONT.fee * lost.length * 100)}%` : ''}</div>`
-            : '';
-      return `<div class="fac ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}"><div class="fh"><b><a href="#" class="dlink" onclick="hubOpen(null);openDossier('${r}');return false">${esc(REGIONS[r].name)}</a></b> <span class="mute small">${REGIONS[r].kind}</span>${weak ? ' <span class="stk far">Weakened</span>' : ''}${info(REGIONS[r].desc)}<span class="fv">${mood(v)} <b>${signed(v)}</b></span></div>
+  const row = r => {
+    const F = Dossier.summary(run, r),
+      v = F.standing,
+      fronts = F.fronts
+        .map(
+          ({ vs, meter: m }) =>
+            `<span class="fm ${m > 0 ? 'up' : m < 0 ? 'dn' : ''}" ${tip(`Border pressure vs ${REGIONS[vs].name}: ${FRONT.seize} net wins seize a place`)}>vs ${esc(REGIONS[vs].name.split(' ')[0])} ${signed(m)}</span>`
+        )
+        .join(''),
+      places =
+        (F.took.length
+          ? `<div class="small">Took: ${F.took.map(p => `${esc(p.name)} <i class="mute">(from ${esc(REGIONS[p.from].name)})</i>`).join(', ')}</div>`
+          : '') +
+        (F.lost.length
+          ? `<div class="small">Lost: ${F.lost.map(p => `${esc(p.name)} <i class="mute">(to ${esc(REGIONS[p.to].name)})</i>`).join(', ')}</div>`
+          : ''),
+      E = F.econ,
+      econ = E
+        ? `<div class="small mute">Prices ×${E.priceMul.toFixed(1)} · facilities ×${E.qMul.toFixed(2)}${E.joinCut ? ` · clubs ask −${E.joinCut} OVR/key, fees −${E.feeCut}%` : ''}</div>`
+        : '',
+      clubs = F.clubs.map(ti => run.teams[ti]);
+    return `<div class="fac ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}"><div class="fh"><b><a href="#" class="dlink" onclick="hubOpen(null);openDossier('${r}');return false">${esc(F.name)}</a></b> <span class="mute small">${F.kind}</span>${F.weak ? ' <span class="stk far">Weakened</span>' : ''}${info(F.desc)}<span class="fv">${F.label} <b>${signed(v)}</b></span></div>
         ${fronts ? `<div class="fms">${fronts}</div>` : ''}${places}${econ}
         <div class="rbar" ${tip('Standing −100 … +100')}><i style="${v >= 0 ? `left:50%;width:${v / 2}%` : `left:${50 + v / 2}%;width:${-v / 2}%`}"></i></div>
         <div class="small">${clubs.map(t => `${chip(t)}${esc(t.name)}${t.i === run.team ? ' <i class="mute">(yours)</i>' : ''}`).join(' · ')}${
-          foe
-            ? ` <a href="#" class="clashk" onclick="hubOpen(null);mapPick('clash');return false">⚔ vs ${esc(REGIONS[foe].name)} this week</a>`
+          F.foe
+            ? ` <a href="#" class="clashk" onclick="hubOpen(null);mapPick('clash');return false">⚔ vs ${esc(REGIONS[F.foe].name)} this week</a>`
             : ''
         }</div></div>`;
-    })
+  };
+  return `<div class="panel facs">${Object.keys(REGIONS)
+    .filter(r => REGIONS[r].kind !== 'none')
+    .map(row)
     .join(
       ''
     )}<p class="small mute">Standing moves when you pick a side in a street battle: win +${CLASH.win}, lose ${CLASH.lose}; the side you fight against always ${CLASH.other}. Every battle pushes its border: ${FRONT.seize} net wins seize a border place (lost places come back first).</p></div>`;
@@ -472,7 +449,12 @@ function gazetteCard(run) {
   const g = run.gazette;
   if (!g || g.read) return '';
   return `<div class="panel gazette"><h3>The Gazette <span class="mute small">week ${g.week}</span></h3><ul class="small">${g.items.map(t => `<li>${esc(t)}</li>`).join('')}</ul>
-    <button class="btn" onclick="RUN.gazette.read=true;Run.save(RUN);renderCareer()">Close</button></div>`;
+    <button class="btn" onclick="readGazette()">Close</button></div>`;
+}
+function readGazette() {
+  Run.readGazette(RUN);
+  Run.save(RUN);
+  renderCareer();
 }
 function setHousing(k) {
   if (World.setHousing(RUN, k)) Run.save(RUN);

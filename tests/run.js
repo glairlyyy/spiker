@@ -2339,6 +2339,58 @@ test('career: story mode cup', () => {
   );
 });
 
+test('career: rules moved out of the UI (T-075)', () => {
+  const g = load(31),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Rules', mode: { story: true } });
+  run.event = null;
+  // City.after: the week's event is rolled once, after the first action
+  run.rolled = false;
+  g.City.after(run);
+  assert(run.rolled, 'rolled after the first action');
+  const ev = run.event;
+  run.event = null;
+  g.City.after(run);
+  eq(run.event, null, 'never twice a week');
+  // Run.canEndWeek: training weeks only, never with an event open
+  run.week = 2;
+  assert(g.Run.canEndWeek(run), 'a training week can end');
+  run.event = { id: 'x' };
+  assert(!g.Run.canEndWeek(run), 'not with an event open');
+  run.event = null;
+  run.week = 4;
+  assert(!g.Run.canEndWeek(run), 'not on an evaluation week');
+  run.week = 2;
+  // Run.readGazette: true once
+  run.gazette = { week: 1, items: [], read: false };
+  assert(g.Run.readGazette(run) && run.gazette.read && !g.Run.readGazette(run), 'the Gazette is read once');
+  // Goals.progress
+  const you = g.Run.you(run);
+  eq(
+    g.Goals.progress(run, { kind: 'stat', stat: 'power', target: you.power + 3, done: null }),
+    `${you.power} / ${you.power + 3}`,
+    'stat progress'
+  );
+  eq(g.Goals.progress(run, { kind: 'win', week: 4, done: null }), 'to play', 'win goal not played yet');
+  eq(g.Goals.progress(run, { kind: 'fans', target: 100, done: true }), '', 'decided goals show no progress');
+  // Dossier.summary / standingLabel
+  run.rep = { wei: 40, wu: -5 };
+  for (let i = 0; i < g.FRONT.seize; i++) g.Front.result(run, 'wu', 'wei');
+  const W = g.Dossier.summary(run, 'wei'),
+    U = g.Dossier.summary(run, 'wu');
+  eq(W.label, 'Trusted', 'standing label');
+  eq(U.label, 'Wary', 'standing label (negative)');
+  eq(W.lost.length, 1, 'Wei lost a place');
+  eq(U.took[0].from, 'wei', 'Wu took it from Wei');
+  assert(W.econ && W.econ.joinCut === g.FRONT.join, 'a losing faction asks less');
+  eq(g.Dossier.summary(run, 'outlaws').fronts.length, 0, 'minors are not in the war');
+  // Cup.simNow: a fixture resolves at once (setup when present)
+  let setupRan = false,
+    finished = null;
+  const T = g.mkMonsterTeams(),
+    m = g.Cup.simNow({ a: T[0], b: T[1], setup: () => (setupRan = true), onFinish: mm => (finished = mm) });
+  assert(m.over && finished === m && setupRan, 'simNow plays the whole match, setup and finish');
+});
+
 // ---------- report ----------
 let fail = 0;
 for (const r of results) {

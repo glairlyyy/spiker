@@ -49,6 +49,15 @@ const Goals = {
     if (g.kind === 'fans') return run.fans >= g.target;
     return (you.bond[g.mate] || 0) >= g.target;
   },
+  /** Progress text of an open goal ('' once it is decided): "38 / 45", "won", "to play"… */
+  progress(run, g) {
+    if (!g || g.done != null) return '';
+    const you = Run.you(run);
+    if (g.kind === 'stat') return `${you[g.stat]} / ${g.target}`;
+    if (g.kind === 'fans') return `${run.fans.toLocaleString()} / ${g.target.toLocaleString()}`;
+    if (g.kind === 'bond') return `${you.bond[g.mate] || 0} / ${g.target}`;
+    return Goals.met(run, g) ? 'won' : 'to play';
+  },
   /** End of the goal's week: reward or a small mood hit. */
   check(run) {
     const g = run.goal;

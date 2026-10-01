@@ -43,7 +43,8 @@ function renderCareer() {
     toast = CW.toast !== undefined && CW.toast !== null && last !== CW.toast ? last : null;
   CW.toast = last;
   if (CW.drawer === 'clubs' && !World.isFree(run)) CW.drawer = null;
-  const card = hubCard(run);
+  const nextCup = Run.weekType(run) === 'cup' && !run.event ? Cup.upcoming(run) : null; // rules first, then draw
+  const card = hubCard(run, nextCup);
   $('#app').innerHTML = `<section class="career hub ${City.night(run) ? 'eve' : ''}" style="--tc:${team.color}">
     <div class="mapwrap" id="mapwrap"></div>
     ${hudRes(run)}${hudClock(run)}${hudMe(run)}${hudBar(run)}
@@ -57,10 +58,10 @@ function renderCareer() {
 }
 
 /** A card over the map, if the week needs one: an event, a match day, or an unread Gazette. */
-function hubCard(run) {
+function hubCard(run, nextCup) {
   const wt = Run.weekType(run);
   if (run.event) return { html: eventCard(run), dim: true };
-  if (wt === 'cup') return { html: cupPanel(run), cls: 'wide' };
+  if (wt === 'cup') return { html: cupPanel(run, nextCup), cls: 'wide' };
   if (wt === 'eval') return { html: evalPanel(run) + (World.isFree(run) ? hubClubsHint() : '') };
   const c = City.clashSite(run);
   const att = c && (run.clash.att || c.a),
@@ -142,10 +143,7 @@ function hubDrawer(run) {
 
 function hubOpen(k) {
   CW.drawer = k && CW.drawer !== k ? k : null;
-  if (k === 'news' && RUN.gazette && !RUN.gazette.read) {
-    RUN.gazette.read = true;
-    Run.save(RUN);
-  }
+  if (k === 'news' && Run.readGazette(RUN)) Run.save(RUN);
   renderCareer();
 }
 Screens.career = renderCareer;

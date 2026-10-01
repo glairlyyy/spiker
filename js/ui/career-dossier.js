@@ -2,7 +2,6 @@
 // Opens from a club HQ panel and from the Factions drawer; Esc or ✕ closes it.
 
 const DOSSIER_STATE = { weakened: 'Weakened', pressed: 'Pressed', rising: 'Rising', stable: 'Stable', minor: 'Not in the war' };
-const STAT_OF = { power: 'Power', def: 'Defense', speed: 'Speed', jump: 'Jump', wit: 'Wit' };
 
 function openDossier(r) {
   CW.dossier = r;
@@ -32,7 +31,7 @@ function dossierCard(run, r) {
         .map(
           p => `<tr class="dgo" onclick="closeDossier();mapPick('${p.id}')">
         <td>${esc(p.name)}${p.seized ? ` <i class="mute small">seized from ${esc(REGIONS[p.from].name)}</i>` : ''}</td>
-        <td>${p.train ? esc(STAT_OF[p.train] || p.train) : '—'}</td><td>${p.price ? '$' + p.price : '—'}</td>
+        <td>${p.train ? esc(STATNAME[p.train] || p.train) : '—'}</td><td>${p.price ? '$' + p.price : '—'}</td>
         <td>${p.q}${p.known ? '' : ` <span ${tip('Advertised: you have not trained here yet')}>?</span>`}</td>
         <td>${p.level == null ? '—' : p.level}</td>
         <td>${p.access.ok ? '✓' : `<span ${tip(p.access.why)}>✕</span>`}</td></tr>`

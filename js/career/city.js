@@ -125,6 +125,13 @@ const City = {
   /** Your home region (where you live). */
   homeRegion: run => City.region(run, 'home'),
   /** Does the place's owner let you in? { ok, why }: grudge, then the owner's condition; its members always pass. */
+  /** After any action on the map: the week's one event is rolled after its first action. */
+  after(run) {
+    if (!run.rolled) {
+      run.rolled = true;
+      Events.roll(run);
+    }
+  },
   access(run, id) {
     const s = SPOTS[id];
     if (!s || s.region == null || s.region === 'open') return { ok: true, why: '' };

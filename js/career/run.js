@@ -263,6 +263,14 @@ const Run = {
     you.bond[mateId] = nv;
     return d ? `${d > 0 ? '+' : '−'}${Math.abs(d)} bond with ${m.name}` : '';
   },
+  /** The player may end a training week (not with an event open, not on a match week). */
+  canEndWeek: run => !run.event && Run.weekType(run) !== 'cup' && Run.weekType(run) !== 'eval',
+  /** Mark the Gazette read; true if it was unread. */
+  readGazette(run) {
+    if (!run.gazette || run.gazette.read) return false;
+    run.gazette.read = true;
+    return true;
+  },
   /**
    * Close the week: the league grinds, the coach's goal and sponsor deals are checked, an injury heals a little;
    * then the next week (or a cup, after week 24 and week 28) begins.
@@ -375,6 +383,5 @@ const Run = {
 const RUN_VERSION = 9;
 /** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history), v9: `run.mode.story` (T-067) — older saves are dropped; add steps when the saved shape changes). */
 const RUN_MIGRATIONS = {};
-const ROLE_NAME = { S: 'Setter', MB: 'Middle blocker', WS: 'Wing spiker' };
 /** Run rank letter for a fan count (RANKS is ordered from the top rank down). */
 const rankOf = fans => RANKS.find(([, min]) => fans >= min)[0];

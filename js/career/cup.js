@@ -125,6 +125,20 @@ const Cup = {
       Cup.close(run, NO_CUP);
     }
   },
+  /** Resolve a fixture at once without watching (its setup, every rally, its finish). Returns the match. */
+  simNow(fx) {
+    const m = newMatch(fx.a, fx.b, false);
+    if (fx.setup) fx.setup(m);
+    while (!m.over) playRally(m);
+    fx.onFinish(m);
+    return m;
+  },
+  /** Before the cup screen draws: your next match (the other matches before it are simulated) and the run saved. */
+  upcoming(run) {
+    const m = Cup.next(run);
+    Run.save(run);
+    return m;
+  },
   /** Your next Cup match; other matches of earlier slots in the round are simulated first. */
   next(run) {
     const S = run.cup.sched;

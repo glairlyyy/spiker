@@ -396,7 +396,13 @@ builds a squad on demand (the Academy entrant is `run.pickup`). Every match, you
 (weakened / pressed / rising / stable / minor), border meters, places taken / lost, price and quality multipliers,
 the facilities it holds now (seized ones marked, with `City.access`), its clubs (join text, `World.canJoin`) and the pool
 roster. Ratings and elements are `null` until one of its clubs is scouted or you are a member. It reuses `City`, `Front`,
-`World`, `Pool` and `Training`; no rules live in it.
+`World`, `Pool` and `Training`; no rules live in it. `Dossier.summary(run, r)` is the short form the Factions drawer renders (standing +
+`standingLabel`, fronts, took / lost, economy, clubs, this week's foe).
+
+UI files only render and call rules: `City.after` (the week's event, once after its first action), `Run.canEndWeek`,
+`Run.readGazette`, `Goals.progress`, `Cup.simNow(fx)` (resolve a fixture without watching: setup, rallies, finish) and
+`Cup.upcoming(run)` (the cup screen's next match — other matches simulated first — called by `renderCareer` before it
+draws, so no render function changes or saves the run).
 
 The window is `ui/career-dossier.js` (`dossierCard`, `openDossier(r)` / `closeDossier()`, Esc closes; state `CW.dossier`): opened by the
 HQ panel's Dossier button and the faction names in the Factions drawer, rendered in the hub's modal layer when no event card is up.

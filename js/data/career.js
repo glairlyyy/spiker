@@ -33,6 +33,7 @@ const TRAININGS = {
   wit: { name: 'Wit', main: ['wit', 0.06], side: ['def', 2], sta: 5 }
 };
 const TRAINK = Object.keys(TRAININGS);
+const ROLE_NAME = { S: 'Setter', MB: 'Middle blocker', WS: 'Wing spiker' };
 const STATNAME = { power: 'Power', def: 'Defense', speed: 'Speed', jump: 'Jump', wit: 'Wit', lead: 'Leadership' };
 /** What each week is. Anything not listed is a training week. */
 const CALENDAR = { 4: 'eval', 8: 'eval', 12: 'eval', 16: 'eval', 20: 'eval', 24: 'eval', 26: 'camp', 27: 'camp', 28: 'camp' };

@@ -221,7 +221,7 @@ screen, end screen); css line count reported in Result.
 QA: career run through every hub drawer and a watched match; screenshots before/after.
 Result: 34 dead class selectors removed (style.css tournament/betting/menu leftovers, theme.css, career.css .tbtn/.tgrid5/.pip.warmup*/.sk-tag/.skh/.thd/.lastlog — found by a script checking every class against js+html); the SVG-map rules were already gone; dead light/dark/data-theme token blocks dropped, theme.css :root is the only token set (:root:root:root → :root); same-file duplicates merged (.over, #box, .sk, .hub .mapwrap); status tokens --good/--good-deep/--bad/--bad-rose/--bad-soft/--warn/--warn-hi (exact shades kept) replace 30 literals; section header renamed. CSS 3903 → 3541 lines. Pixel diff vs old CSS (same seeded career run): menu, create, hub, 8 drawers, spot card, week 2 all 0.00 % (one drawer differed only mid slide-in animation); Monster match screen unchanged by eye; no pageerror.
 
-### [ ] T-075: Move game rules out of the UI
+### [x] T-075: Move game rules out of the UI
 Spec: — (cleanup)          Goldens: unchanged          Save: no change
 Goal: UI files only render and call rules; each rule lives once in js/career and gets a headless test.
 Files: js/career/city.js, js/career/cup.js, js/career/goals.js, js/career/dossier.js, js/career/run.js,
@@ -241,7 +241,7 @@ Steps:
 Accept: tests + lint; goldens untouched.
 QA: career run: week actions, event once per week, sim a match from map and from the week card, Gazette read once,
 factions drawer, end week.
-Result:
+Result: City.after, Cup.simNow (replaces 3 copies; the map's challenge/clash fixtures have no setup, so no behaviour change), Cup.upcoming (renderCareer prepares the cup's next match before drawing; cupPanel no longer simulates or saves), Goals.progress, Dossier.summary + standingLabel (factionsCard renders from it), Run.canEndWeek, Run.readGazette (drawer + Gazette card share it), ROLE_NAME → data/career.js, STAT_OF → STATNAME. match-screen skipMatch is not a copy (continues the live match), left as is. New test covers each; 51/51, goldens untouched, lint clean. QA: seeded career 5 weeks (rest, end week, Gazette read, week-4 eval benched), factions + season drawers; no pageerror.
 
 ### [ ] T-076: Save model — one defaults table for new runs and repair
 Spec: — (cleanup)          Goldens: unchanged          Save: no change (repair defaults the new field)

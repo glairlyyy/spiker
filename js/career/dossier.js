@@ -17,6 +17,40 @@ const Dossier = {
       .filter(Boolean)
       .join(' · ');
   },
+  /** Standing label for a standing value (−100…100). */
+  standingLabel: v => (v >= 30 ? 'Trusted' : v > 0 ? 'Friendly' : v <= -30 ? 'Hostile' : v < 0 ? 'Wary' : 'Neutral'),
+  /** The short form for the Factions drawer: standing, war state, border pressure, places taken / lost, economy. */
+  summary(run, r) {
+    const R0 = REGIONS[r],
+      major = MAJORS.includes(r),
+      lost = major ? Front.lostIds(run, r) : [],
+      took = major ? Front.takenIds(run, r) : [],
+      c = City.clashSite(run),
+      v = City.rep(run, r);
+    return {
+      id: r,
+      name: R0.name,
+      kind: R0.kind,
+      desc: R0.desc,
+      standing: v,
+      label: Dossier.standingLabel(v),
+      weak: major && Front.weak(run, r),
+      fronts: major ? MAJORS.filter(o => o !== r).map(vs => ({ vs, meter: Front.meter(run, r, vs) })) : [],
+      took: took.map(id => ({ id, name: SPOTS[id].name, from: SPOTS[id].region })),
+      lost: lost.map(id => ({ id, name: SPOTS[id].name, to: run.own[id] })),
+      econ:
+        major && (lost.length || took.length)
+          ? {
+              priceMul: Front.priceMul(run, r),
+              qMul: Front.qMul(run, r),
+              joinCut: FRONT.join * lost.length,
+              feeCut: Math.round(FRONT.fee * lost.length * 100)
+            }
+          : null,
+      clubs: run.teams.filter(t => FACTIONS[t.i].region === r).map(t => t.i),
+      foe: c ? (c.a === r ? c.b : c.b === r ? c.a : null) : null
+    };
+  },
   /** The dossier of region r (wei, wu, shu, outlaws, gloria); ratings and elements are hidden until scouted or joined. */
   build(run, r) {
     const R0 = REGIONS[r],
