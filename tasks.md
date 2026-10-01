@@ -42,7 +42,7 @@ Result:
 - Stat guard ✓ (T-056) · official venues ✓ (T-053).
 - Smarter coach ✓ (T-057).
 - Player camera ✓ (T-058 Follow, T-059 POV).
-- **Now**: ego (T-068), block collision (T-069), POV polish (T-070). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
+- **Now**: ego (T-068), block collision (T-069), POV polish (T-070). **Next**: cleanup pass (T-071…T-081, behaviour-neutral). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now — Ego + block collision (§2.12), POV polish (§4.25)
@@ -130,7 +130,236 @@ Accept: all tests + lint.
 QA: Monster game POV on the WS and on the setter, 1500 steps each: the numbers above; screenshots; no pageerror.
 Result:
 
+## Next — Cleanup pass (no gameplay change; after Now, before relationships)
+Audit of main @ 414892f (2026-10-01). Every task here is behaviour-neutral: tests stay green, goldens unchanged unless
+a task says otherwise, no save bump. If a golden moves, stop and ask — it means behaviour changed. Order = lowest risk
+first; T-071 first because a fresh `npm install` breaks lint and QA today.
+
+### [ ] T-071: Tooling — declare every dependency, drop stale config, safer test update
+Spec: — (tooling)          Goldens: unchanged          Save: no change
+Goal: A fresh clone + `npm install` gives working lint, tests and test3d.html QA; no stale config or files.
+Files: package.json, package-lock.json (new, committed), .gitignore, eslint.config.mjs, .prettierignore, files.json
+(delete), tests/run.js (update gate only), tests/harness.js, index.html / test3d.html / qa_poses.html (formatting only)
+Do not: change three / three-vrm versions vs the CDN importmap; reformat js (already clean).
+Steps:
+1. package.json: name `spite-and-spike`; devDependencies add `espree` ^10 (eslint.config.mjs imports it directly),
+   `three` 0.169.0 and `@pixiv/three-vrm` 3.5.5 exact (test3d.html / qa_poses.html load them from /node_modules).
+   Add `"format:check"`. Commit a lockfile generated from the registry (no `../tools` / `../vrm` link paths).
+2. Delete files.json (unreferenced; lists removed files, misses ~30 current ones).
+3. Remove `js/vendor` references (eslint.config.mjs, .prettierignore, harness filters): the folder is gone.
+4. tests/run.js: `--update` writes golden.json only when every other test passed.
+5. harness.js name collection also catches `var` and `class` declarations (same rule eslint uses).
+6. Prettier: format the three .html files (or exclude them in .prettierignore — pick one, keep `npm run format` and
+   `format:check` consistent). .gitignore: QA screenshot/output dirs.
+Accept: rm -rf node_modules && npm install && npm test && npm run lint && npm run format:check all pass; test3d.html
+loads three from node_modules (QA recipe runs).
+QA: Monster game smoke (no pageerror).
+Result:
+
+### [ ] T-072: Dead code sweep — removed features and unused helpers
+Spec: — (cleanup)          Goldens: unchanged          Save: no change (old saves may keep the dropped fields)
+Goal: Delete code that nothing reaches; rename leftovers whose names describe removed systems.
+Files: js/audio/sfx.js, js/ui/match-screen.js, js/render/court.js, js/render3d/r3d.mjs, css/style.css,
+js/data/city.js, js/career/city.js, js/career/run.js, js/career/world.js, js/ui/career-week.js, js/ui/career-map.js,
+js/ui/dom.js, js/data/career.js, tests/run.js (only call sites renamed here), ARCHITECTURE.md
+Do not: touch the engine; remove `Rank.of` (tests use it) or `MODES.endless` (spec shows it disabled); rename
+`run.warm` (save field — see Later).
+Steps:
+1. Audio: crowd subsystem is off (`CROWD_ON = false`): remove crowdStart / crowdLevel / crowdVoice, sfx.ooh / aww /
+   clap / stomp / cheer / chant and their call sites (match-screen.js ~483–485, 594).
+2. Match screen: `A.banners`, `A.rings` (never read). court.js `drawFloorFx` empty stub + its call in r3d.mjs.
+3. Betting leftovers: delete `.bet`, `.bet input` (style.css); rename `.betline` → `.resline` (match-screen + css).
+4. Career: `SPOTS[*].slot` field + its doc comment (never read) and `City.evening` → `City.outing`; drop the
+   write-only `run.loc` (City.loc derives it from `pos`) and its fallbacks (city.js, run.js); `delete run.slot` in
+   repair; `CW.view`; `plural` (dom.js) — use `signed()` where career-week/map inline `${v>0?'+':''}${v}`;
+   `World.faction` (no callers).
+5. Stale comments: data/career.js "Skyline Cup … Grand Cup", run.js "two cups", career-week.js "both cups",
+   misplaced "Quality of a training place" comment (career-week.js ~424).
+6. Before deleting each name: grep the whole repo (js, html, tests, template strings).
+Accept: tests + lint pass; goldens untouched; grep finds none of the removed names.
+QA: career run → hub, map, a match (watch) and the end screen; Monster game; no pageerror.
+Result:
+
+### [ ] T-073: Presentation randomness off the game RNG
+Spec: CLAUDE.md "Rules that bite" (presentation draws no randoms)          Goldens: unchanged          Save: no change
+Goal: Display code never draws from R()/rnd()/pick(): playback calls `playRally` lazily inside `step()`, so today the
+engine stream depends on frame rate whenever a match is seeded.
+Files: js/core/rng.js, js/render/court.js, js/render/effects.js, js/render/playback.js, js/ui/match-screen.js,
+tests/run.js, ARCHITECTURE.md
+Do not: change any engine draw; touch js/render3d (fx3d/actors3d already use Math.random).
+Steps:
+1. rng.js: a presentation-only source (new global `FXR` = { r, rnd, pick } on Math.random). Allowed by this task.
+2. Switch: court.js drawTrail OP colour (every frame!); effects.js spawnShards / crackLines / drillStep / linkSparks;
+   playback.js stepGait dust, stepCelebration confetti; match-screen.js startMatch (banners go in T-072; coach hair
+   from a hash of the coach id, not pick).
+3. Test 'render: no game RNG in presentation': source scan of js/render, js/audio, js/ui/match-screen.js finds no
+   `R(`, `rnd(`, `pick(` calls; and a seeded match played through playback steps at two different dt sequences ends
+   with the same score sequence (if feasible headless; else the scan only).
+Accept: tests + lint; goldens untouched.
+QA: Monster game, Max hype: shards, sparks, confetti and OP trails still vary; no pageerror.
+Result:
+
+### [ ] T-074: CSS — dead selectors, duplicates, colour tokens
+Spec: — (cleanup)          Goldens: unchanged          Save: no change
+Goal: Smaller, consistent stylesheets with no visible change.
+Files: css/style.css, css/theme.css, css/career.css
+Do not: change layout or any colour value as rendered; remove font families (all are used by canvas text);
+merge rules across files (Later).
+Steps:
+1. style.css: the light palette, `prefers-color-scheme` and `[data-theme]` blocks are dead (theme.css `:root:root:root`
+   overrides every token; nothing sets data-theme) — keep one token set in theme.css.
+2. Dead selectors (grep html + js template strings first): style.css `.wallet`, `.vs*`, `.codds/.co`, `.tgrid/.tcard/
+   .tname/.tstyle/.trec/.tstars`, `.modal`; theme.css `.wallet .tcard .modal .tname .vsside .vsp .tbtn .mplay .b3d
+   .mclassic`; career.css `.pip.warmup*`, `.tgrid5`, `.tbtn`, `.rS`, `.rB`, `.sk-tag`, `.skh`, `.thd`, `.lastlog`, and
+   the SVG-map rules (`.city`, `.pin`, `.reg`, `.fog`, `.flag`…) left after the 3D map (Unplanned changes 2026-09-30).
+3. Same selector twice in one file: merge (career.css `.hub .mapwrap`, `.hub .dial .trk/.prg`, `.hub .dock button.on`,
+   `.hub table.rk.ml td:last-child`; style.css `.over`, `#box`, `.stage.fake-fs`).
+4. Tokens `--good` (#4ade80/#16a34a), `--bad` (#ff2e4d/#f43f5e/#ff5d6c), `--warn` (#ffb020/#ffd84d) replace the
+   literals in career.css; rename the "legacy switches" section header.
+Accept: lint + tests; before/after screenshots identical by eye (menu, create, hub + every drawer, map card, match
+screen, end screen); css line count reported in Result.
+QA: career run through every hub drawer and a watched match; screenshots before/after.
+Result:
+
+### [ ] T-075: Move game rules out of the UI
+Spec: — (cleanup)          Goldens: unchanged          Save: no change
+Goal: UI files only render and call rules; each rule lives once in js/career and gets a headless test.
+Files: js/career/city.js, js/career/cup.js, js/career/goals.js, js/career/dossier.js, js/career/run.js,
+js/data/career.js, js/ui/career-map.js, js/ui/career-week.js, js/ui/career-hub.js, js/ui/career-dossier.js,
+js/ui/match-screen.js, tests/run.js, ARCHITECTURE.md
+Do not: change any rule's outcome or its R() order (move code verbatim, then call it).
+Steps:
+1. `City.after(run)` ← career-map `mapAfter` (event rolled once after the week's first action).
+2. `Cup.simNow(fx)` ← the four "sim now" copies (career-map ×2, career-week, match-screen); always runs `fx.setup`
+   when present (the map copies skip it today — note it in Result if any test number moves).
+3. `Goals.progress(run, g)` ← seasonCard's re-implementation of Goals.met.
+4. factionsCard renders from `Dossier` (+ the standing label ladder moves into dossier.js).
+5. `Run.canEndWeek(run)` ← mapEndWeek; `Run.readGazette(run)` ← the inline onclick + hubOpen copy; no `Run.save` inside
+   render functions (cupPanel).
+6. `ROLE_NAME` → data/career.js; career-dossier `STAT_OF` → `STATNAME`.
+7. One test per new function.
+Accept: tests + lint; goldens untouched.
+QA: career run: week actions, event once per week, sim a match from map and from the week card, Gazette read once,
+factions drawer, end week.
+Result:
+
+### [ ] T-076: Save model — one defaults table for new runs and repair
+Spec: — (cleanup)          Goldens: unchanged          Save: no change (repair defaults the new field)
+Goal: A field can't be added to `Run.new` and forgotten in `repair` again (how `run.grades` slipped through).
+Files: js/career/run.js, js/career/cup.js, js/ui/career-end.js, tests/run.js, ARCHITECTURE.md
+Do not: change the order of `City.roll` / `Eval.setup` draws inside repair; bump RUN_VERSION.
+Steps:
+1. `RUN_DEFAULTS` (plain values / factories) used by both `Run.new` and `repair` for the ~30 defaulted fields.
+2. `run.grades`: declared in defaults, capped like the match log (MLOG.max), documented.
+3. Test: `repair({...minimal})` yields every defaults key; a new run passes repair unchanged (deep equal).
+Accept: tests + lint; goldens untouched.
+QA: none (headless) + load an existing save in the browser once.
+Result:
+
+### [ ] T-077: Render files match what they do; one source for court units
+Spec: — (cleanup)          Goldens: unchanged (constants keep their values)          Save: no change
+Goal: No 2D court/character drawing is left, but files still carry those names; unit maths is copied in 3+ places.
+Files: js/render/body.js (delete), js/render/characters.js → js/render/tags.js, js/render/court.js →
+js/render/overlay.js, js/render/dive.js (new), js/render/playback.js, js/render/faces.js, js/core/*, js/engine/court.js,
+js/engine/stats.js, js/engine/rally.js, js/engine/rally-defense.js, js/engine/serve.js, js/render3d/units3d.mjs,
+js/render3d/players3d.mjs, js/render3d/poses3d.mjs, js/render3d/r3d.mjs, index.html, test3d.html, qa_poses.html,
+tests/run.js, ARCHITECTURE.md, CLAUDE.md (Layout line only)
+Do not: change any numeric value; reorder any R() call.
+Steps:
+1. body.js: `shade` → core (colour util), `setMotion` → poses3d / playback; drop the script tag everywhere.
+2. Dive timeline (`diveShape`, `diveF`, `diving`, `DIVE_POST_MS`) → dive.js; characters.js → tags.js; court.js →
+   overlay.js; tags use `FONT_ROUND`, `INK`, `roundRectPath` instead of literals.
+3. Units: name `Z_UNITS = 420` and the court→metre factors once (engine/court.js) and reuse in stats.js
+   (`UNITS_PER_M`), rally*.js, serve.js, playback.js (`MX/MZ`, `2.43/150`) and units3d (re-derive, keep exports);
+   name the ball speed factors 0.012 / 0.011.
+4. Playback no longer writes onto engine beats (`b._s`, `b.dur`, `b.acts`): keep that state on `A`.
+Accept: tests + lint; goldens untouched (proves the constants are identical).
+QA: Monster game 3000 steps: tags, dives, overlay labels as before; no pageerror.
+Result:
+
+### [ ] T-078: Split playback.js (1090 lines) by concern
+Spec: — (cleanup)          Goldens: unchanged          Save: no change
+Goal: The 265-line `instant()` switch becomes a dispatch table split by concern; movement and actor timers get
+their own files.
+Files: js/render/playback.js, js/render/acts.js (new), js/render/movement.js (new), js/render/actors.js (new),
+index.html, test3d.html, qa_poses.html, tests/run.js (act-kind test reads the table), ARCHITECTURE.md
+Do not: change any act's behaviour or timing; add act kinds.
+Steps:
+1. `ACTS = { kind(a, ctx) }` grouped fx / ui / roster in acts.js; playback dispatches through it.
+2. Approach / dig-chase / pre-look → movement.js; player timers, gait, celebration → actors.js.
+3. The act-kind test checks every engine kind has an `ACTS` key (data, not a `case` regex).
+Accept: tests + lint; goldens untouched; playback.js under ~450 lines.
+QA: Monster game Max hype 3000 steps + a career watched match: subs, timeouts, scenes, cut-ins as before.
+Result:
+
+### [ ] T-079: map3d hygiene — shared helpers, no hard-coded factions, clean dispose
+Spec: §4.9 (map)          Goldens: unchanged          Save: no change
+Goal: Break the circular imports, keep faction rules in MapModel, stop per-frame allocations and layout reads.
+Files: js/map3d/*.mjs, js/map3d/geo3d.mjs (new), js/career/mapmodel.js, js/ui/map-view.js,
+js/render3d/players3d.mjs (export MODEL_URL), js/render3d/r3d.mjs, tests/run.js, ARCHITECTURE.md
+Do not: change the look (fog, lights, camera feel) beyond float noise.
+Steps:
+1. geo3d.mjs: `MAP_M`, `FOG_*`, `toWorld`, `toMap`, `clamp`, `lerp`, `smooth` (smooth copied ×3, avatar3d `cl`);
+   sub-modules import from it, not from map3d.mjs.
+2. MapModel emits `contest` (meter, pressure) for borders; map3d.mjs ~426 / life3d.mjs ~132 stop matching
+   'wei'/'wu' and the hard-coded `/2` (FRONT.seize). Test on MapModel.
+3. dispose: skip `userData.shared` (kit MAT, SHAPES) like town3d; named pointer listeners removed in dispose.
+4. Per frame: cache canvas size in the ResizeObserver; pins3d reuse one Vector3 and skip transform writes when the
+   camera didn't move; life3d `along()` without per-walker allocations.
+5. One fog function for terrain + town with squared-distance early-outs (parity screenshot before/after).
+6. map-view: `failed` resets on drop3D; drop3D nulls el / model / on. Name the shadow-map size and frustum.
+   MODEL_URL exported once from players3d.
+Accept: tests + lint; heap stable over 10 hub re-mounts (Chrome memory snapshot or renderer.info counts).
+QA: career run: walk, travel, fog reveal, seized patch, pins, 10 drawer open/close cycles; renderer.info geometries/
+textures before = after; screenshots before/after.
+Result:
+
+### [ ] T-080: Tests — split by area, shared factories, quick mode
+Spec: — (tests)          Goldens: unchanged          Save: no change
+Goal: tests/run.js (2338 lines, 49 tests, ~30 s) becomes area files with shared helpers and a fast loop.
+Files: tests/run.js, tests/harness.js, tests/engine.test.js, tests/career.test.js, tests/map.test.js,
+tests/cup.test.js (new), package.json (scripts)
+Do not: weaken a statistical assert; change golden keys.
+Steps:
+1. run.js = loader + reporter; area files register tests. `playRun` and the three `mk(seed…)` run factories →
+   harness.js.
+2. Tag the 5 slowest (coach AI, lane-read block, smarter subs, setter, start-from-1) `slow`; `npm run test:quick`
+   skips them; `npm test` runs all.
+3. Where a test asserts UI copy ('Watched from the bench', 'asks for', 'awakening', 'seized'/'retook'), assert on a
+   returned code or data field instead when one exists (do not add new return codes just for this).
+Accept: same 49 tests pass in both layouts; test:quick < 10 s.
+QA: none.
+Result:
+
+### [ ] T-081: ARCHITECTURE.md matches the code
+Spec: —          Goldens: unchanged          Save: no change
+Goal: The build doc is correct and navigable.
+Files: ARCHITECTURE.md
+Steps:
+1. Save section: RUN_VERSION 9 (v9 `run.mode.story`), every save field incl. `grades` (after T-076); drop the stale
+   "RUN_VERSION 8 / 4", warm-up and travel `zone` mentions.
+2. Layers table: current file lists (career-hub, career-map, map-view, career-dossier, map3d, new render files); the
+   Data row says "constants + small pure helpers" (CITY IIFE, callLine, epair… stay — moving them is Later).
+3. Shorten 1 KB+ bullets; one section per layer.
+Accept: every file in index.html appears once in the doc; no version / field the code doesn't have.
+QA: none.
+Result:
+
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
+
+Cleanup, part 2 (after T-071…T-081)
+- T-082: One HTML entry — drop test3d.html; pick the importmap (CDN vs node_modules) with an inline script before any
+  module; removes the "add to BOTH" rule.
+- T-083: Namespaces — sfx internals in an IIFE (expose SND, sfx, bgm*, …); the overlay API r3d calls as `Overlay`;
+  match-screen's `A`/`cv`/`ctx`/`last` globals.
+- T-084: Cross-file CSS — the ~74 selectors defined in 2–3 files: layout in style.css/career.css, surface in theme.css.
+- T-085: cup.js split (bracket/fixtures vs fight.js: challenge, clash, lose, injure, hired); data files lose their
+  logic (callLine, confidence, epair, hasTech, skillRoleOk, leadLv → engine/career); day/travel tuning grouped
+  (`WEEK_DAYS`, `DAY_GAIN`, `TRIP_*`, `TRAIN_FEE`, `TURF_BONUS`, `HOTEL`) — after T-048 road travel.
+- T-086: `run.warm` / `warmupWin|Loss` → `eval*` (RUN_VERSION bump).
+- T-087: Coverage gaps — Goals, Storage with a throwing localStorage, old-save load, map3d pure functions (heightAt,
+  toMap/toWorld, inside/edgeDist; needs three from T-071).
+- T-088: Big binaries — keep base64 for the artifact but store .glb/.mp3 in Git LFS and generate the .txt at publish.
 
 Relationships — the core pillar (spec §4.23; detailed one by one after T-059)
 - T-060: NPC careers — wants, traits, status, weekly plans, activity-based growth (data + headless sim).
