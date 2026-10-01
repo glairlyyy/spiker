@@ -41,60 +41,11 @@ Result:
 - Free setter takes the second ball ✓ (T-054) · start from 1 ✓ (T-055).
 - Stat guard ✓ (T-056) · official venues ✓ (T-053).
 - Smarter coach ✓ (T-057).
-- **Now**: player camera: Follow (T-058), POV (T-059), Story mode cup guarantee (T-067), ego (T-068), block collision (T-069). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
+- Player camera ✓ (T-058 Follow, T-059 POV).
+- **Now**: Story mode cup guarantee (T-067), ego (T-068), block collision (T-069), POV polish (T-070). **Then**: relationships — the core pillar (spec §4.23, T-060…T-066), road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now — Player camera (§4.25), Story mode (§4.26), Ego (§2.12)
-
-### [x] T-058: Follow camera — 3rd person behind your player
-Spec: §4.25          Goldens: unchanged (presentation only)          Save: no change
-Goal: A third match camera, Follow: behind and above your player, turning with your side, easing toward the ball when
-you touch it. Career: your player; Monster games: a "Follow" select lists every player on court.
-Files: js/render3d/camera3d.mjs, js/render3d/r3d.mjs, js/ui/match-screen.js, css/style.css, ARCHITECTURE.md
-Do not: touch js/engine or beats; draw randoms; break scene shots (they still cut in and ease back); change Broadcast /
-Courtside framing; move the 2D overlay's projection off `base` (P3D keeps working in every mode).
-Steps:
-1. camera3d: `camMode` gains 'follow'; `setFollow(id)` / `getFollow()` (the player to follow; null → Courtside).
-   Follow pose each frame from the followed figure (world.people, as shotPose finds them): position = the player's
-   hips + back 4.5 m (away from the net, along their side's court axis — not their facing, so it doesn't swing) + up
-   2.6 m + a small lateral lean toward the ball; look = a blend of a point 3 m in front of the player at head height and
-   the ball (ball weight 0.35, 0.6 while the ball is on your side); FOV 55. Ease position / look with exp smoothing
-   (~0.25 s) so cuts between rallies don't jump; clamp so the camera never goes below 1.2 m or inside the net plane.
-   When the followed player is subbed off / not on court: fall back to Courtside until they return.
-2. Blend: the existing courtside `blend` becomes a small mode blend (broadcast / courtside / follow weights) so a mode
-   switch eases in ~0.6 s; scene shots keep overriding as now.
-3. r3d: expose `setFollow`, `getFollow`; re-export camMode values.
-4. match-screen: the camera button cycles Broadcast → Courtside → Follow (label "Camera: Follow"); in a career match
-   Follow targets your player (`p.you`); in a Monster game a small select next to the button picks the player (shirt
-   number + name), shown only in Follow mode. The choice of mode is remembered (`sc.cam3d`, as today; try/catch).
-5. ARCHITECTURE.md: camera modes.
-Accept: all tests + lint.
-QA: Monster game, Follow on a WS: 1500 steps — the camera stays behind the player, the ball stays on screen ≥ 90 % of
-frames (project the ball through `cam`), no jump > 3 m between frames outside scene cuts; hype scenes still cut in and
-back; switch modes mid-rally smoothly; career eval: Follow targets you; no pageerror. Screenshots in the Result.
-Result: Follow camera done as specified; mode weights replace the blend, follow pose tracked in every mode (no jump on switch). QA Monster WS 1500 steps: ball on screen 99.7 %, max frame move 1.06 m (no jump >3 m), cam y ≥ 2.3 m, mode switches ≤ 2.9 m/frame, scenes cut in/back; career eval follows you (select hidden); no pageerror; 48/48 tests, lint clean. Select list isn't refreshed after a sub (falls back to Courtside).
-
-### [ ] T-059: POV camera — 1st person from your player's eyes
-Spec: §4.25          Goldens: unchanged (presentation only)          Save: no change
-Goal: A fourth mode, POV: the view from your player's head — the ball, the net, the block in your face — with your own
-head hidden, and a safe fallback to Follow during wild moments.
-Files: js/render3d/camera3d.mjs, js/render3d/r3d.mjs, js/render3d/actors3d.mjs, js/ui/match-screen.js, ARCHITECTURE.md
-Do not: touch js/engine or beats; roll the camera; let the camera clip into the followed body; break scene shots.
-Steps:
-1. camera3d 'pov': position = the followed figure's head bone + 0.08 m forward; look = toward the ball when it is in
-   front of you (within 100° of your facing), else straight ahead along your facing at head height; FOV 70; no roll;
-   position smoothed lightly (head bob ≤ 5 cm), look smoothed (~0.12 s).
-2. Fallback: while the followed player is airborne above 0.6 m (spike / block jump) or diving, or the look direction
-   turns faster than 220°/s, blend to the Follow pose (0.25 s) and back after landing — no motion sickness.
-3. actors3d: the followed player's head (and hair / accessories) hidden in POV via a per-figure flag (`setPovHidden(id)`);
-   arms stay visible so your own hands show on digs and spikes.
-4. match-screen: the camera cycle adds POV after Follow; same player rule as Follow.
-5. ARCHITECTURE.md: POV.
-Accept: all tests + lint.
-QA: Monster game POV on a setter and on a WS: 1500 steps each — no frame shows the inside of the own head (head hidden),
-the fallback kicks in on every jump (log the switches), ball on screen ≥ 70 % of frames when it's on your side; leaving
-POV restores the head; no pageerror. Screenshots in the Result.
-Result:
+## Now — Story mode (§4.26), Ego (§2.12), POV polish (§4.25)
 
 ### [ ] T-067: Story mode — you always play the U21 Final Cup (Endless kept for later)
 Spec: §4.26          Goldens: unchanged (career only)          Save: RUN_VERSION 8 → 9 (`run.mode.story`) — older saves dropped
@@ -187,6 +138,24 @@ QA: Monster game with ego 0.9 / wit 0.6 for every player: watch until a collisio
 stagger, the label shows in orange; a net-fault one in red and the point ends at once; screenshot both; no pageerror.
 Result:
 
+### [ ] T-070: POV polish — no teammate in your face, ball on screen for hitters
+Spec: §4.25          Goldens: unchanged (presentation only)          Save: no change
+Goal: Review QA of T-059 found POV frames where the camera sits inside a teammate's body / hair (near plane 0.1 m,
+players pass within arm's reach), and the ball was on screen only 61 % of a wing spiker's frames (bar 70 %).
+Files: js/render3d/camera3d.mjs, js/render3d/actors3d.mjs, ARCHITECTURE.md
+Do not: touch js/engine; hide the followed player's arms; change Follow / Broadcast / Courtside.
+Steps:
+1. actors3d: any other figure whose body (hips–head capsule, radius ~0.35 m) comes within 0.9 m of the POV camera fades
+   out (material opacity → 0 over ~0.1 s; restore after), via a per-frame hook like `setPovHidden` (no new draw calls,
+   no per-frame allocations).
+2. camera3d: while the followed player is a hitter on approach / in the air the POV look target leans toward the ball
+   (the set) instead of straight ahead (within the ±55° clamp), so the set is in view before the fallback kicks in;
+   keep the 220°/s turn limit.
+3. QA numbers as in T-059, plus: 0 frames where the camera is inside another figure's capsule; WS ball-on-screen ≥ 70 %.
+Accept: all tests + lint.
+QA: Monster game POV on the WS and on the setter, 1500 steps each: the numbers above; screenshots; no pageerror.
+Result:
+
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
 Relationships — the core pillar (spec §4.23; detailed one by one after T-059)
@@ -211,6 +180,8 @@ Phase 5 — Voice pass
 
 ## Done
 
+- [x] T-059: POV camera — 1st person from your player's eyes — POV done as specified (+ ball look fades out 100°→140° instead of a hard edge, no flip; base near 0.1 in POV). QA Monster, 1500 steps each: head hidden every POV frame, 0 frames with the camera within 0.35 m of a visible head, restored on leaving; every air episode reached the Follow fallback (10–13 switches logged per run); max frame move ≤ 1.5 m; ball on screen when in play on your side: setter 79 %, WS 61 % (WS misses are mostly fallback jump frames; 86 % outside them) — below the 70 % bar for the WS; no pageerror; screenshot /tmp/p1.png. Earlier Follow ball-on-screen re-measured with the real ball: 96 %.
+- [x] T-058: Follow camera — 3rd person behind your player — Follow camera done as specified; mode weights replace the blend, follow pose tracked in every mode (no jump on switch). QA Monster WS 1500 steps: ball on screen 99.7 %, max frame move 1.06 m (no jump >3 m), cam y ≥ 2.3 m, mode switches ≤ 2.9 m/frame, scenes cut in/back; career eval follows you (select hidden); no pageerror; 48/48 tests, lint clean. Select list isn't refreshed after a sub (falls back to Courtside).
 - [x] T-057: Smarter coach subs, trust in your player, never sub an injured you on — worth test (`SUB.worth` [0.85, 1.05] by coachIQ), `SUB.you` 0.9, `noSub` (set in `Cup.prepare` when injured, cleared by `restoreLineups`); 48/48, lint clean. Goldens updated (teams, matches, sims): coaches now skip subs that make the side worse. Subs per match (both sides, 300 sims): default coach 3.04 → 1.97; coachIQ 0 2.94 → 2.57, coachIQ 1 3.10 → 1.76; tired 831 → 543, errors 15 → 7, back 67 → 40. The 'coachIQ 1 subs sooner' test now zeroes `SUB.worth` (the roll's effect only). `m.subLog` also records `out`, `inn`, `sta`. QA: Monster game (SUB.sta raised to 0.95 so subs show; 9000 steps) 4 subs, log lines 'Sub <team>: #13 … in for #17 … (tired)'; career eval with `run.injury`: `noSub` set, you stayed on the bench the whole match (4 subs, none for you), flag gone afterwards; no pageerror.
 - [x] T-053: Official venues on the map — League Arena, Academy Hall, Beach Stadium, Highland Court — four venues as specced (`VENUES`, nodes, landmarks, pins, `City.venue`, cards, `today` pulse); 47/47, lint clean, goldens untouched. Spots: arena [720,160] (clear 52), hall [580,510] (clear 20, ~18 × 11 m so the Academy keeps 33 lots), beach [925,450] on the widest sand by the resort strip (edge `resort`–venue), highland [400,180]. Venue clearance is per venue (`VENUES[id].clear`), not `placeClear`. QA: draw calls 29–30 (baseline 29), tris ~198k, no pageerror; hall pin pulses on an Academy eval week, card + 'Played at Academy Hall' shown; cup-week card checked in tests only (a browser cup start failed in my QA script on the baseline too).
 - [x] T-056: Stat guard — repair invalid stats on load and before every match — `fixStats` in players.js, called in `teamFromJSON` (warn log) and `newMatch`; new test (−40/NaN/300/−1 → 1/1/99/0.1, match runs, damaged save repaired); 46/46, lint clean, goldens untouched.
@@ -272,3 +243,9 @@ Phase 5 — Voice pass
 - (recorded in spec §4.2) Central Academy moved to the Wei–Wu–Shu border tri-point (540, 500), north of the airport: park r 72→60, label, `park` spot, `park` / `jAc1` / `jAc2` road nodes, Academy road `park→dojo` replaced by `park→stone` — js/data/city.js, tests/run.js (route / regionAt coordinates).
 - (recorded) T-050 follow-up: `CITY.ritual` joins the places MapModel.lots keeps `placeClear` from (lots no longer cover the sand circle) — js/career/mapmodel.js.
 - (recorded in spec §2.0b) 2026-10-01: Owner: stamina matters more in matches — `RULES.stamina` { drain 1.7 (was 1.3), hit 0.4 (was 0.15), jumpHit 0.3 (was 0.15) }, so a lone carry tires and weakens; coach subs (`SUB.sta`) unchanged. Goldens updated (teams, matches, sims). Files: js/data/rules.js, js/engine/stats.js, tests/golden.json, ARCHITECTURE.md.
+- (recorded in spec §4.25) Softer screen shake: per-frame random jitter → slow two-sine sway at half amplitude, off with Zooms: Off (js/render/court.js).
+- (recorded in spec §4.25) Camera auto zoom-out: when the ball is out of frame (Courtside / Follow / POV) the FOV widens until it is back in view — js/render3d/camera3d.mjs, ARCHITECTURE.md.
+- (recorded in spec §4.25) Ball trail grows with hit power: screen trail width ×0.8 (power 60) → ×1.9 (114), longer streak (power/4 points), 3D element trail strength up to 1.8× — js/render/court.js, ball.js, js/render3d/fx3d.mjs.
+- (recorded in spec §4.25) Follow / POV always face the opponent's side: the look point is clamped to ±40° (Follow) / ±55° (POV) of the court axis toward the net; the ball only pulls the view within that, auto zoom-out covers the rest — js/render3d/camera3d.mjs.
+- (recorded in spec §4.25) Follow camera backs away from the net (up to 12 m, +0.3 m up per m) while the ball is out of view, then returns once it is well inside the frame — js/render3d/camera3d.mjs.
+- (recorded in spec §4.25) Every trail dims out while its object is still: ribbons measure their point's speed (full ≥ 1.6 m/s, off ≤ 0.25 m/s); the ball's screen / element trails use a smoothed ball speed `A.mv` — js/render3d/trails3d.mjs, js/render/ball.js, court.js, effects.js, ARCHITECTURE.md.

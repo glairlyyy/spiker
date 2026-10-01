@@ -423,11 +423,15 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   (a faction's join bar −5, its crews swarm the map), curfew (a region charges +1 day to enter), festival (Wu beach
   week: bonfire free, mood up, street battles off). Rules in Front (data table EVENTS, no randoms outside the payday
   roll); MapModel shows them; the living map animates them.
-- §4.25 Player camera **[locked, not built — T-058 Follow, T-059 POV]**: in a match, a camera toggle Broadcast / Courtside (exist) /
+- §4.25 Player camera **[built — T-058 Follow, T-059 POV; polish T-070]**: in a match, a camera toggle Broadcast / Courtside (exist) /
   **Follow** (3rd person: behind and above your player, turns with your side, eases to the ball on your touches) /
   **POV** (1st person from your player's head: the ball, the net, the block in your face; your own arms on spikes and
   digs, falls back to Follow during your jumps if it gets too wild). Hype scenes still cut to their shots and return.
   Only your career player (Monster games: pick any player). Comfort: no camera roll, smoothed head bob, FOV 70.
+  Owner tweaks (build chat): Follow / POV always face the opponent's side (look clamped ±40° / ±55°); when the ball
+  leaves the frame the view widens (and Follow backs away from the net up to 12 m) until it is back; softer screen
+  shake (slow sway, off with Zooms: Off); ball trails scale with hit power and every trail fades while its object is
+  still.
 
 - §4.26 Game modes **[locked (owner), not built — T-067; Endless = backlog]**: a new run picks **Story** (default) or
   **Endless** (later).

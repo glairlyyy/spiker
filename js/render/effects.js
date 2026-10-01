@@ -155,7 +155,7 @@ function stepEffects(dt) {
     p.life -= p.dec * dt;
   }
   A.parts = A.parts.filter(p => p.life > 0);
-  if (A.trailEl && A.trailPow && A.ball.vis) elemTrail(A.trailEl, A.trailPow, dt);
+  if (A.trailEl && A.trailPow && A.ball.vis && (A.mv ?? 1) > 0.05) elemTrail(A.trailEl, A.trailPow * (A.mv ?? 1), dt); // dims with the ball's speed
   for (const l of A.labels) {
     l.life -= dt / (l.big ? 1300 : 1000);
     l.y -= dt * 0.02; // float up

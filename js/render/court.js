@@ -55,7 +55,12 @@ function applyView() {
     V = { f: 1, ox: 0, oy: 0 },
     tr = (x, y) => ((V.ox += V.f * x), (V.oy += V.f * y)),
     sc = k => (V.f *= k);
-  if (A.shake > 0.3) tr(rnd(-A.shake, A.shake), rnd(-A.shake, A.shake) * 0.6);
+  if (A.shake > 0.3 && !G.camFixed) {
+    // a soft sway (two slow sines, half the old amplitude) instead of per-frame random jitter: far less nauseating
+    const t = performance.now() / 1000,
+      k = A.shake * 0.5;
+    tr(k * (Math.sin(t * 11) * 0.65 + Math.sin(t * 17.3) * 0.35), k * 0.6 * (Math.sin(t * 13.7) * 0.65 + Math.sin(t * 9.1) * 0.35));
+  }
   if (A.cam && A.cam.z > 0.001) {
     // smooth camera push-in (see camTo); centre kept inside the court so the edges never swing wildly
     const c = A.cam,
@@ -430,9 +435,12 @@ function drawDrill(D) {
   }
   ctx.restore();
 }
+/** Trail thickness factor by hit power: ×0.8 at 60, ×1.6 at 100, ×2.2 at 130 and up (a harder spike leaves a fatter streak). */
+const trailSize = pw => Math.min(2.4, 0.8 + Math.max(0, pw - 60) / 50);
 /** The ball's power trail (screen space) at the ball's projection `q`; colour by OP, element or power. */
 function drawTrail(q) {
-  if (A.trail.length < 2) return;
+  const mv = A.mv ?? 1;
+  if (A.trail.length < 2 || mv < 0.03) return;
   const Pw = A.trailPow,
     c = A.trailOp
       ? R() < 0.5
@@ -451,9 +459,9 @@ function drawTrail(q) {
     const a = A.trail[i - 1],
       b = A.trail[i],
       k = i / A.trail.length;
-    ctx.globalAlpha = k * 0.8;
+    ctx.globalAlpha = k * 0.8 * mv;
     ctx.strokeStyle = c;
-    ctx.lineWidth = k * (4 + Pw / 9) * q.s;
+    ctx.lineWidth = k * (4 + Pw / 9) * q.s * trailSize(Pw) * (0.4 + 0.6 * mv);
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);

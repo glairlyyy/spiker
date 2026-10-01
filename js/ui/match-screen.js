@@ -31,7 +31,8 @@ const hypeLabel = () => `Hype: ${HYPE[G.hype].name}`;
 const cutLabel = () => (G.cutMini ? 'Cut-ins: Mini' : 'Cut-ins: Full');
 const zoomLabel = () => (G.camFixed || RM ? 'Zooms: Off' : 'Zooms: On'); // reduced motion always turns zooms off
 const gfxLabel = () => `Graphics: ${GFX[G.gfx].name}`;
-const cam3Text = () => `Camera: ${R3D && R3D.camMode() === 'broadcast' ? 'Broadcast' : 'Courtside'}`;
+const CAM3 = { courtside: 'Courtside', broadcast: 'Broadcast', follow: 'Follow', pov: 'POV' };
+const cam3Text = () => `Camera: ${CAM3[(R3D && R3D.camMode()) || 'courtside'] || 'Courtside'}`;
 /** Set a button's label if it is on screen. */
 function setLabel(sel, text) {
   const b = $(sel);
@@ -43,7 +44,8 @@ function settingsMenu() {
         <button class="btn" id="cutbtn" onclick="toggleCutins()" ${tip('Full cut-ins pause play; mini shows them as a corner notification')}>${cutLabel()}</button>
         <button class="btn" id="cambtn" onclick="toggleCamera()" ${tip('On: gentle zoom on big plays at the net. Off: no zooms or pushes (motion-friendly).')}>${zoomLabel()}</button>
         <button class="btn" id="gfxbtn" onclick="cycleGfx()" ${tip('High: full resolution always. Auto: sharp, drops a little only if frames run slow. Fast: lower resolution for weaker devices.')}>${gfxLabel()}</button>
-        <button class="btn" id="cam3btn" onclick="toggleCam3D()" ${tip('Courtside: close and low, following the ball. Broadcast: the whole court from the stands.')}>Camera: Courtside</button>
+        <button class="btn" id="cam3btn" onclick="toggleCam3D()" ${tip('Courtside: close and low, following the ball. Broadcast: the whole court from the stands. Follow: behind one player. POV: through their eyes.')}>Camera: Courtside</button>
+        <select id="folsel" class="folsel" hidden onchange="pickFollow(this.value)" aria-label="Player to follow" title="The player the Follow camera stays behind"></select>
         <label class="vol">Volume<input type="range" min="0" max="100" value="${Math.round(SND.vol * 100)}" oninput="setVolume(this.value / 100)" aria-label="Volume"></label>`;
 }
 /**
@@ -210,12 +212,38 @@ function open3D() {
         l.innerHTML = `<b>3D can't run here</b><small>This device or browser has no WebGL, or the players failed to download.</small><span class="trow"><button class="btn" onclick="leaveMatch()">Back</button><a class="btn hot" href="https://claude.ai/artifact/YN2QrdmB61ZFYNwUiYafH7" target="_blank" rel="noopener">Play the classic 2D version</a></span>`;
     });
 }
+/** Follow camera: the player to stay behind (set from the select in a Monster game; your player in a career match). */
+let followPick = null;
+function followTarget() {
+  const ds = A && A.disp ? Object.values(A.disp) : [],
+    you = ds.find(d => d.p.you);
+  if (you) return { id: you.p.id, ds: [] }; // career: always you
+  const d = ds.find(q => q.p.id === followPick) || ds.find(q => q.side === 0);
+  return { id: d ? d.p.id : null, ds };
+}
 function cam3Label() {
   setLabel('#cam3btn', cam3Text());
+  if (!R3D) return;
+  const f = ['follow', 'pov'].includes(R3D.camMode()),
+    t = f ? followTarget() : { id: null, ds: [] },
+    sel = $('#folsel');
+  R3D.setFollow(t.id);
+  if (!sel) return;
+  sel.hidden = !(f && t.ds.length);
+  if (!sel.hidden)
+    sel.innerHTML = t.ds
+      .sort((a, b) => a.side - b.side || a.p.num - b.p.num)
+      .map(d => `<option value="${esc(d.p.id)}" ${d.p.id === t.id ? 'selected' : ''}>${esc(`#${d.p.num} ${d.p.name}`)}</option>`)
+      .join('');
+}
+function pickFollow(id) {
+  followPick = id;
+  cam3Label();
 }
 function toggleCam3D() {
   if (!R3D) return;
-  R3D.setCamMode(R3D.camMode() === 'courtside' ? 'broadcast' : 'courtside');
+  const next = { courtside: 'broadcast', broadcast: 'follow', follow: 'pov', pov: 'courtside' };
+  R3D.setCamMode(next[R3D.camMode()] || 'courtside');
   cam3Label();
 }
 /** Fullscreen the court. Falls back to a fixed full-viewport overlay where the Fullscreen API is missing (iPhone). */

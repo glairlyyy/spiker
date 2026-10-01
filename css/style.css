@@ -1421,3 +1421,12 @@ td i {
     transform: translateX(-50%) skewX(-6deg);
   }
 }
+.folsel {
+  font: inherit;
+  border: 0;
+  background: var(--surf);
+  color: var(--ink);
+  border-radius: 7px;
+  padding: 4px 6px;
+  max-width: 11em;
+}

@@ -12,8 +12,22 @@ import { createFx } from './fx3d.mjs';
 import { makeTrail } from './trails3d.mjs';
 import { W, lowEnd } from './units3d.mjs';
 import { buildArena, dressArena, updateBall, updateBallShadow, updateCrowd, updateNet, updatePointFlash, ballDir } from './arena3d.mjs';
-import { base, cam, updateBase, viewCamera, P3D, setCameraWorld, setCamMode, getCamMode, setDebugCam } from './camera3d.mjs';
-import { posePlayer, poseCoach, dressActors, swapActor } from './actors3d.mjs';
+import {
+  base,
+  cam,
+  updateBase,
+  viewCamera,
+  P3D,
+  setCameraWorld,
+  setCamMode,
+  getCamMode,
+  setFollow,
+  getFollow,
+  povHidden,
+  getPovStats,
+  setDebugCam
+} from './camera3d.mjs';
+import { posePlayer, poseCoach, dressActors, swapActor, setPovHidden } from './actors3d.mjs';
 
 const MODEL_URL = new URL('../../assets/vrm/base.glb.txt', import.meta.url).href;
 const N_PLAYERS = 8,
@@ -126,6 +140,7 @@ function bind() {
   lastT = performance.now();
 }
 function unbind() {
+  if (world) setPovHidden(world, null); // no head stays hidden after a POV match
   if (world && world.gl.parentNode) world.gl.remove();
   bound = null;
 }
@@ -171,6 +186,7 @@ function draw() {
   lastT = now;
   syncSize();
   updateBase(dt || 0.016);
+  setPovHidden(world, povHidden()); // POV: your own head is hidden while the camera is at your eyes
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, cv.width, cv.height);
   if (A.ball.follow) followBall(); // also shows the ball once the server starts the routine
@@ -266,6 +282,11 @@ export const api = {
   unbind,
   setCamMode,
   camMode: getCamMode,
+  setFollow,
+  follow: getFollow,
+  povStats: getPovStats,
+  syncPov: () => world && setPovHidden(world, povHidden()), // test hook: apply the POV head hiding without a draw
+  povHidden: () => povHidden(),
   debugCam: setDebugCam,
   fxAge: dt => world && world.fx.update(dt, cam, world.gl.height, base.fov), // test hook: age effects while fast-forwarding
   get res() {

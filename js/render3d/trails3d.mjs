@@ -35,6 +35,8 @@ void main() {
 }`;
 /** The strip is this much wider than o.width, so the glow inside the outline keeps its old width. */
 const OUT_W = 1.05;
+/** Trail dimming by the measured speed of the followed point (m/s): invisible at `still` and below, full at `full`. */
+const MOVE = { still: 0.25, full: 1.6 };
 const tA = new THREE.Vector3(),
   tB = new THREE.Vector3(),
   tC = new THREE.Vector3();
@@ -85,10 +87,14 @@ export function makeTrail(scene, max = 36) {
   mesh.renderOrder = 5;
   const show = v => (mesh.visible = outline.visible = v);
   const pts = []; // newest first: { p, age }
+  let mv = 0, // how much the point is moving, 0 (still) .. 1 (≥ MOVE.full m/s), smoothed: a still object's trail dims out
+    last = null;
   return {
     mesh,
     clear() {
       pts.length = 0;
+      last = null;
+      mv = 0;
       show(false);
     },
     /**
@@ -100,6 +106,12 @@ export function makeTrail(scene, max = 36) {
         if (pts.length) this.clear();
         return;
       }
+      // measured speed of the point (m/s) → motion factor: fast up, slow down; a teleport doesn't count as speed
+      const sp = last && dt > 1e-4 && last.distanceTo(p) < 1.5 ? last.distanceTo(p) / dt : 0;
+      mv +=
+        (Math.max(0, Math.min(1, (sp - MOVE.still) / (MOVE.full - MOVE.still))) - mv) *
+        (1 - Math.exp(-dt / (sp > 0 && mv < 1 ? 0.08 : 0.3)));
+      (last || (last = new THREE.Vector3())).copy(p);
       for (const q of pts) {
         q.age += dt;
         if (o.drift) q.p.addScaledVector(o.drift, dt);
@@ -109,7 +121,7 @@ export function makeTrail(scene, max = 36) {
       pts.unshift({ p: p.clone(), age: 0 });
       if (pts.length > max) pts.length = max;
       const n = pts.length;
-      if (n < 3) {
+      if (n < 3 || mv < 0.02) {
         show(false);
         return;
       }
@@ -124,8 +136,8 @@ export function makeTrail(scene, max = 36) {
         tB.subVectors(cam.position, a); // toward the camera
         tC.crossVectors(tA, tB).normalize();
         const k = 1 - pts[i].age / o.life,
-          w = o.width * OUT_W * Math.pow(Math.max(0, k), 0.7) * (i === 0 ? 0.6 : 1),
-          al = o.alpha * Math.pow(Math.max(0, k), 1.4);
+          w = o.width * OUT_W * Math.pow(Math.max(0, k), 0.7) * (i === 0 ? 0.6 : 1) * (0.4 + 0.6 * mv),
+          al = o.alpha * Math.pow(Math.max(0, k), 1.4) * mv;
         pos.set([a.x + tC.x * w, a.y + tC.y * w, a.z + tC.z * w], i * 6);
         pos.set([a.x - tC.x * w, a.y - tC.y * w, a.z - tC.z * w], i * 6 + 3);
         alpha[i * 2] = alpha[i * 2 + 1] = al;

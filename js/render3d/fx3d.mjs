@@ -446,7 +446,7 @@ export function createFx(scene) {
     trail(el, p, dir, pow, dt) {
       const E = COL(el),
         H = HOT[el] || '#fff',
-        k = Math.min(1, 0.4 + pow / 150),
+        k = Math.min(1.8, 0.4 + pow / 110), // up to 1.8×: more and thicker particles on a harder hit
         back = dir.clone().multiplyScalar(-1),
         n = Math.max(1, Math.round(60 * dt)),
         side = new THREE.Vector3().crossVectors(UP, dir).normalize(),
