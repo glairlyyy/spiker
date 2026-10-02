@@ -732,6 +732,16 @@ Factions tab's border meters. `run.dayLog` (RUN_DEFAULTS, cleared by `Run.endWee
 feeds the day track. `hubKey`: 1–4 sheets, Space End week, Esc closes ⚙ → list → sheet → place panel; `CW.endArm`
 makes End week ask twice (4 s) while days are unused.
 
+Short copy (spec §9.4–9.6): `js/data/glossary.js` `GLOSSARY = { id: { icon, short, long, glyph? } }` holds every repeated
+idea once (its `long` is built from the data constants). `term(id, n?, cls?)` (js/ui/dom.js) renders icon + signed number with
+`long` as the tooltip; `statI(k, size)` / `STAT_ICON` (js/ui/icons.js) are the stat and resource line icons; `glyph` is
+the stat's text glyph for plain-text diary lines (`Training.addXp` → `✸+1`). Encyclopedia › Glossary lists every term;
+a test checks every `term('id'` in js/ui exists.
+
+Match result (spec §10.6): `finishMatch` calls `resultSnap(RUN, m)` before a career fixture's `onFinish` and
+`resultData(RUN, m, snap, msg)` after it (career-week.js; diffs of the run only — no rule runs in the UI), then
+`resultScreen` draws it; the Monster game (no career player) gets headline + top 3.
+
 ## Code layout notes
 
 Playback is split into classic scripts loaded right after js/render/playback.js: clock.js (world clock `timeScale`,
