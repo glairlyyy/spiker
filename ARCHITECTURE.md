@@ -440,12 +440,12 @@ and a Gazette line) → star / OP breakthrough rolls (`Growth.grow`, unchanged R
 keeps ≤ REL.max entries (oldest non-scar dropped first), refreshes the cache and returns the bond change. `Rel.stance` = Σ value ×
 fade (REL.decay^weeks, scars never) × both traits' multipliers; `Rel.tag` (ally / respect / neutral / resent / enemy) and `Rel.rival`
 read it. `you.bond[id]` is only a cache: `Rel.bondOf` = clamp(round(stance × REL.bondK), 0, 100), refreshed on every add and in
-`Rel.week` (called from `Growth.week`), so combos (60), friendship (80), goals and the Team drawer read it unchanged.
+`Rel.week` (called from `Growth.week`), so combos (60), friendship (80), goals and the People sheet read it unchanged.
 Sources: `Run.bond(run, id, v, kind)` (training → trained, city outings → hung_out, events → event), `Cup.result` →
 `Rel.afterMatch` (won / lost_together, ego-log kinds), `Cup.fixture` → `Rel.spot` (spot_taken for a benched rival, once a week),
 challenge / clash wins → `Rel.beatMe`. Match rewards no longer carry bond.
 
-**People drawer (T-062).** `run.people[id].known = { want, traits[2] }` (added by `People.ensure`): `Rel.reveal` (called from `Rel.add`) flips
+**People sheet (T-062, T-123).** `run.people[id].known = { want, traits[2] }` (added by `People.ensure`): `Rel.reveal` (called from `Rel.add`) flips
 the want after REL.know.want memories and each trait at REL.know.trait[i] (one diary line each); `People.knows(run, p, 'want' | 'trait', i)`
 also counts a scouted club (`City.scouted`) for the want. `Rel.top` = the n memories with the largest |`Rel.weigh`| (same weights as the
 stance); `Rel.text` picks a `MEM_TEXT` / `MEM_ALT` diary line and `Rel.season` a `SEASON_TEXT` rumour line by `hstr` (no R()).
@@ -471,7 +471,7 @@ Evaluation weeks: `People.benchTick` (from `People.week`). Paydays (`World.payda
 faction's join bar → `People.toReserve`, a seat swap with its best same-role reserve; a cut player you took the spot from gets spot_taken again), quit
 (cut for REL.fate.quit.weeks, rolled; cynical ×1.5, loyal ×0.5; `People.remove`), poach (one a payday: want money / leave in the top REL.fate.poach.top of a faction;
 stance ≥ respect → an Asks `poach_advice` for next week — unanswered, they go anyway; money → St. Gloria's reserves, leave → off the island). `Cup.close` → `People.national`
-(the first REL.fate.national NPCs of the champion squad by OVR). `People.find` returns a snapshot `{ id, name, role, gone }` for someone who has left, so the drawer and
+(the first REL.fate.national NPCs of the champion squad by OVR). `People.find` returns a snapshot `{ id, name, role, gone }` for someone who has left, so the People sheet and
 `Rel` keep working; `People.mattered` feeds the run-end "People who mattered" panel (the 5 largest |stance|, fate line, top 2 memories). All rolls are `People.roll`.
 
 **NPC ↔ NPC (T-065).** Memory entries gain `a` (RUN_VERSION 14): the id of the one who feels it, `'*'` = both (you ↔ NPC entries are the NPC's; `'*'` entries flip
@@ -482,7 +482,7 @@ team's starters share an off-screen result (win share by team OVR vs the league 
 ≤ REL.chem.pairs (1500) in all, the oldest non-scar first. `Rel.chem(run, T)` → { cliques (3+ joined by mutual allies), feuds (both ≤ resent), ally / foe Sets }:
 `Run.lineup` adds ±REL.chem.capVouch to a player the sitting captain is an ally / enemy of; `People.fates` cuts a feud with the captain one evaluation sooner.
 A clique / feud that appears in a squad you have met is a rumour in the Gazette (`CHEM_TEXT`, stateless: chem before vs after the week). Asks `take_side`: a mate in a
-feud with another mate asks (chance weighed by your stance with both); yes = their side. The Team drawer shows `chemBlock`; a person card shows "With X · Against Y" (`Rel.sides`).
+feud with another mate asks (chance weighed by your stance with both); yes = their side. The People sheet's Squad filter shows `chemBlock`; a person card shows "With X · Against Y" (`Rel.sides`).
 
 ## Evaluations
 
@@ -510,7 +510,7 @@ builds a squad on demand (the Academy entrant is `run.pickup`). Every match, you
 (weakened / pressed / rising / stable / minor), border meters, places taken / lost, price and quality multipliers,
 the facilities it holds now (seized ones marked, with `City.access`), its clubs (join text, `World.canJoin`) and the pool
 roster. Ratings and elements are `null` until one of its clubs is scouted or you are a member. It reuses `City`, `Front`,
-`World`, `Pool` and `Training`; no rules live in it. `Dossier.summary(run, r)` is the short form the Factions drawer renders (standing +
+`World`, `Pool` and `Training`; no rules live in it. `Dossier.summary(run, r)` is the short form the World sheet's Factions tab renders (standing +
 `standingLabel`, fronts, took / lost, economy, clubs, this week's foe).
 
 UI files only render and call rules: `City.after` (the week's event, once after its first action), `Run.canEndWeek`,
@@ -519,7 +519,7 @@ UI files only render and call rules: `City.after` (the week's event, once after 
 draws, so no render function changes or saves the run).
 
 The window is `ui/career-dossier.js` (`dossierCard`, `openDossier(r)` / `closeDossier()`, Esc closes; state `CW.dossier`): opened by the
-HQ panel's Dossier button and the faction names in the Factions drawer, rendered in the hub's modal layer when no event card is up.
+HQ panel's Dossier button and the faction names on the Factions tab, rendered in place on the World sheet (← / Esc back to the list).
 
 ## Island map (training weeks)
 
@@ -662,7 +662,7 @@ street null when off the list). State: `run.met` (player id → faced on court: 
 battle — fought, watched or simulated — gives the winner faction's `share` best players `faction`: `Rank.settle`),
 `run.refused` (club index → `{ week, n }`, used by team challenges). Constants: `RANK` in `data/world.js`.
 
-UI (`ui/career-week.js`): the hub's Rankings drawer (`HUB_DRAWERS.rank`, `rankCard`, tab in `CW.rank`, `rankTab`) renders `Rank.register / gazette / street` — top `RANK.top` rows, then "…" and your row; `rankBest(run, players)` adds "Their best: …" (up to 2 players, null ranks skipped) to `evalPanel` and `cupPanel`. The UI only reads `Rank.*`.
+UI (`ui/career-week.js`): the World sheet's Rankings tab (`rankCard`, tab in `CW.rank`, `rankTab`) renders `Rank.register / gazette / street` — top `RANK.top` rows, then "…" and your row; `rankBest(run, players)` adds "Their best: …" (up to 2 players, null ranks skipped) to `evalPanel` and `cupPanel`. The UI only reads `Rank.*`.
 
 ## Team challenges
 
@@ -712,17 +712,24 @@ with "XP: …" and the factor note.
 
 ## Career hub UI
 
-`js/ui/career-hub.js` renders the whole career screen as a fixed full-screen layer (covers the page header): the
-3D island map (`MapView`, see Island map layers; it keeps its own view across re-renders) and a HUD: resources (top left), day clock + End week (top right), your player (bottom left →
-Player drawer), shortcut dock (bottom → drawers built from the panel functions in career-week.js), the selected-place
-card (`#spot`), a card over the map for events / match days / an unread Gazette (`hubCard`), and a toast with the
-newest diary line.
+`js/ui/career-hub.js` renders the whole career screen (spec §10) as a fixed full-screen layer (covers the page header):
+top bar (`topBar`: labelled resources with one-render deltas, sheet tabs Me · People · World · Season with keys 1–4, ⚙ →
+`gearPop`), week rail (`weekRail`: you + stats, `dayTrack` from `run.dayLog`, coach's goal, `inboxRows`, End week), the 3D
+island map (`MapView`, see Island map layers) with `mapBar` (Map / List segment → `placesCard` over the map area, legend
+chips), the place panel (`#spot`, `placeCard` anatomy in career-map.js) and a card over the map (`hubCard`: event → Week
+report → Week brief → cup / eval card).
 
-Consequence feedback (UI state only, nothing saved): `endWeekUI` (career-week.js) snapshots stats / $ / fans / standing /
-`run.own` / the newest log entry around `Run.endWeek` and keeps the diff in `CW.recap` → `recapCard` (shown last by
-`hubCard`). `renderCareer` diffs `run.own` against `CW.own` (`ownChanges`) for the seize banner (`.hnote`) and to select the
-place on the map. `Front.stakes(run, w, l)` is a pure preview of "w beats l" (meter, seize, place) used by the street-battle
-card and the Factions drawer's border meters. `hubKey` (career-hub.js): 1–9 drawers, Space End week, Esc; `CW.endArm`
+Sheets open over the map area (rail and top bar stay): `HUB_SHEETS` → `sheetMe` / `sheetSeason` (career-week.js),
+`sheetPeople` (career-people.js), `sheetWorld` (career-dossier.js; the dossier renders in place on its Factions tab).
+UI state lives in `CW` (career-week.js): `sheet`, `pfilter`, `wtab`, `stab`, `gear`, `mapList`, `person`, `dossier`, … —
+nothing of it is saved. There are no drawers.
+
+Consequence feedback (UI state only, nothing saved): `weekSnap` keeps a baseline per week (`CW.snap`); `endWeekUI`
+diffs it around `Run.endWeek` into `CW.recap` → `recapCard` (the Week report). `renderCareer` diffs `run.own` against
+`CW.own` (`ownChanges`); a seize becomes an inbox row for a week (`CW.seizes`) and selects the place on the map.
+`Front.stakes(run, w, l)` is a pure preview of "w beats l" (meter, seize, place) used by the street-battle panel and the
+Factions tab's border meters. `run.dayLog` (RUN_DEFAULTS, cleared by `Run.endWeek`, written by `City.go` / `logDays`)
+feeds the day track. `hubKey`: 1–4 sheets, Space End week, Esc closes ⚙ → list → sheet → place panel; `CW.endArm`
 makes End week ask twice (4 s) while days are unused.
 
 ## Code layout notes
@@ -784,7 +791,7 @@ it is called at the start of `Cup.result` (kind `eval` | `cup`, + `round`), `Fig
 `Growth.matchXp`, so `you` (OVR + the 5 stats) is the kick-off state. Entry: `{ week, day, kind, vs, short, score: [yours, theirs], win, grade (null if you did not play),
 played, you, line: { k, att, err, blk, ace, dig, ast }, box: [{ name, role, side, ovr, k, att, err, blk, ace, dig, ast, you? }] }` — numbers and strings only, no player or team
 refs. `matchLog(run)` (career-week.js) lists them newest first, each a `fold` (`ml<index>`) with your snapshot (change vs your previous entry), your line and the box score;
-the `season` drawer appends it (career-hub.js). `Run.repair` adds `mlog` to older saves of the same version (RUN_DEFAULTS).
+the Season sheet shows it (`sheetSeason`). `Run.repair` adds `mlog` to older saves of the same version (RUN_DEFAULTS).
 
 ### Start from 1 (T-055)
 
