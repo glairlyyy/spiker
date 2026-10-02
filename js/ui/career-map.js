@@ -83,8 +83,15 @@ function clashPanel(run) {
     ban = City.fightBan(run),
     btn = (side, label, t) =>
       `<button class="btn ${side ? 'hot' : ''}" onclick="mapClash(${side ? `'${side}'` : 'null'})" ${late ? `disabled ${tip(late)}` : tip(t)}>${label}${dayTag(d)}</button>`,
+    short = r => esc(REGIONS[r].name.split(' ')[0]),
+    border = (w, l) => {
+      const k = Front.stakes(run, w, l);
+      return k.seize ? `${short(w)} takes ${esc(k.place ? SPOTS[k.place].name : 'ground')}` : `${short(w)} ${k.meter}/${FRONT.seize}`;
+    },
+    stake = (side, foe) =>
+      `<span class="stake small"><b>Win</b> ${signed(CLASH.win)} ${short(side)} ${signed(CLASH.other)} ${short(foe)} · ${border(side, foe)}<br><b>Lose</b> ${signed(CLASH.lose)} ${short(side)} · ${border(foe, side)}</span>`,
     fight = (side, foe) =>
-      `<span class="btns"><button class="btn hot" onclick="mapClash('${side}')" ${late || ban ? `disabled ${tip(ban || late)}` : tip(`A real match with their crew — XP, techniques and a grade like an evaluation. Win: +${CLASH.win} standing with ${REGIONS[side].name}, +${CLASH.fans} fans. Lose: ${CLASH.lose}, −${LOSS.sta} more stamina, mood down; a loss by ${LOSS.heavy}+ points costs fans. Either way ${CLASH.other} with ${REGIONS[foe].name}. −${CLASH.sta} stamina`)}>Fight for ${esc(REGIONS[side].name)}${dayTag(d)}</button>${late || ban ? '' : `<button class="btn" onclick="mapClash('${side}', true)" ${tip('Get the result without watching')}>⏭</button>`}<span class="small mute" ${tip('Win or lose: grows with their rating above yours, how badly you lose, low stamina and fighting again soon.')}>${ban ? esc(ban) : `Injury risk ~${Math.round(City.injuryRisk(run, City.crewOvr(run, foe)) * 100)} %`}</span></span>`,
+      `<span class="btns"><button class="btn hot" onclick="mapClash('${side}')" ${late || ban ? `disabled ${tip(ban || late)}` : tip(`A real match with their crew — XP, techniques and a grade like an evaluation. +${CLASH.fans} fans for a win; a loss costs ${LOSS.sta} more stamina and mood, and fans if by ${LOSS.heavy}+ points. −${CLASH.sta} stamina`)}>Fight for ${esc(REGIONS[side].name)}${dayTag(d)}</button>${late || ban ? '' : `<button class="btn" onclick="mapClash('${side}', true)" ${tip('Get the result without watching')}>⏭</button>`}<span class="small mute" ${tip('Win or lose: grows with their rating above yours, how badly you lose, low stamina and fighting again soon.')}>${ban ? esc(ban) : `Injury risk ~${Math.round(City.injuryRisk(run, City.crewOvr(run, foe)) * 100)} %`}</span>${stake(side, foe)}</span>`,
     st = r => `${esc(REGIONS[r].name)} <b>${signed(City.rep(run, r))}</b>`;
   return `<div class="spot"><h4>⚔ Street battle <span class="mute small">${esc(REGIONS[c.a].name)} vs ${esc(REGIONS[c.b].name)} · ${esc(c.name)}</span>${
     trip ? ` <span class="stk ${trip >= 2 ? 'far' : ''}">Trip: ${trip} day${trip > 1 ? 's' : ''}</span>` : ''

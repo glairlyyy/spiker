@@ -474,10 +474,15 @@ function factionsCard(run) {
     const F = Dossier.summary(run, r),
       v = F.standing,
       fronts = F.fronts
-        .map(
-          ({ vs, meter: m }) =>
-            `<span class="fm ${m > 0 ? 'up' : m < 0 ? 'dn' : ''}" ${tip(`Border pressure vs ${REGIONS[vs].name}: ${FRONT.seize} net wins seize a place`)}>vs ${esc(REGIONS[vs].name.split(' ')[0])} ${signed(m)}</span>`
-        )
+        .map(({ vs, meter: m }) => {
+          const S = FRONT.seize,
+            k = Front.stakes(run, r, vs),
+            cells = Array.from({ length: 2 * S + 1 }, (_, i) => {
+              const c = i - S;
+              return `<b class="${c === 0 ? 'mid' : ''} ${m > 0 && c > 0 && c <= m ? 'on up' : m < 0 && c < 0 && c >= m ? 'on dn' : ''}"></b>`;
+            }).join('');
+          return `<span class="fm2" ${tip(`Border pressure vs ${REGIONS[vs].name} (${signed(m)}): ${S} net wins seize a place`)}>vs ${esc(REGIONS[vs].name.split(' ')[0])} <i class="seg">${cells}</i>${k.seize && k.place ? ` <span class="mute">next win: ${esc(SPOTS[k.place].name)}</span>` : ''}</span>`;
+        })
         .join(''),
       places =
         (F.took.length
@@ -505,7 +510,7 @@ function factionsCard(run) {
     .map(row)
     .join(
       ''
-    )}<p class="small mute">Standing moves when you pick a side in a street battle: win +${CLASH.win}, lose ${CLASH.lose}; the side you fight against always ${CLASH.other}. Every battle pushes its border: ${FRONT.seize} net wins seize a border place (lost places come back first).</p></div>`;
+    )}<p class="small mute">Pick a side in a street battle to move standing and border pressure.${info(`Standing: win +${CLASH.win}, lose ${CLASH.lose}; the side you fight against always ${CLASH.other}. Every battle pushes its border: ${FRONT.seize} net wins seize a border place (lost places come back first).`)}</p></div>`;
 }
 /** The Gazette from the last payday, until you dismiss it. */
 function gazetteCard(run) {

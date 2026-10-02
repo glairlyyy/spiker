@@ -42,6 +42,17 @@ const Front = {
     F[k] = 0;
     return Front.seize(run, w, l, k);
   },
+  /** Preview of "w beats l" (nothing changes): the meter from w's side, whether it seizes, and which place (null if none). */
+  stakes(run, w, l) {
+    const m = Front.meter(run, w, l) + 1,
+      seize = m >= FRONT.seize,
+      B = FRONT.borders[Front.key(w, l)];
+    return {
+      meter: seize ? FRONT.seize : m,
+      seize,
+      place: seize ? B[w].find(i => Front.owner(run, i) === l) || B[l].find(i => Front.owner(run, i) === l) || null : null
+    };
+  },
   /** w takes a border place from l: its own lost places first, then l's next one. */
   seize(run, w, l, k) {
     const B = FRONT.borders[k],

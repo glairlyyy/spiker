@@ -377,7 +377,12 @@ test('career: faction dynamics — border pressure seizes places, weakens, comes
   for (let i = 0; i < g.FRONT.seize - 1; i++) eq(g.Front.result(run, 'wu', 'wei'), '', 'pressure builds');
   eq(g.Front.meter(run, 'wu', 'wei'), g.FRONT.seize - 1, 'meter from the winner');
   eq(g.Front.meter(run, 'wei', 'wu'), 1 - g.FRONT.seize, 'and from the loser');
+  const sk = g.Front.stakes(run, 'wu', 'wei'),
+    pre = JSON.stringify([run.front, run.own]);
+  assert(sk.seize && sk.meter === g.FRONT.seize && sk.place, 'the next win would seize a place');
+  eq(JSON.stringify([run.front, run.own]), pre, 'stakes() changes nothing');
   assert(g.Front.result(run, 'wu', 'wei').includes('seized'), 'a place falls');
+  assert(g.Front.owner(run, sk.place) === 'wu', 'the previewed place is the one taken');
   const id = g.FRONT.borders['wei-wu'].wei[0];
   eq(g.City.region(run, id), 'wu', 'the place is Wu now');
   eq(g.Front.meter(run, 'wu', 'wei'), 0, 'the meter resets');

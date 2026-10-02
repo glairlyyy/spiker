@@ -1775,3 +1775,38 @@
   font-weight: 700;
   pointer-events: none;
 }
+
+/* border meters and battle stakes (T-092) */
+.facs .fm2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 10px 2px 0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.facs .seg {
+  display: inline-flex;
+  gap: 2px;
+}
+.facs .seg b {
+  width: 14px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.facs .seg b.mid {
+  background: #555b66;
+}
+.facs .seg b.on.up {
+  background: #7be08f;
+}
+.facs .seg b.on.dn {
+  background: #ff7a7a;
+}
+.spot .stake {
+  display: block;
+  flex-basis: 100%;
+  margin-top: 4px;
+  line-height: 1.5;
+}

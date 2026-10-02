@@ -68,7 +68,7 @@ Steps:
   QA: career run → set `RUN.own = {…}` then renderCareer(); screenshot.
   Result: done — renderCareer diffs run.own against CW.own (reset per run; `ownChanges`, career-week.js), `.hnote` banner in the winner's colour for one render, selects the place if you know it. QA: banner, gone on next render.
 
-### [ ] T-092: Stakes before a street battle, border meters
+### [x] T-092: Stakes before a street battle, border meters
 
 Spec: §4.24 Goldens: unchanged Save: no change
 Goal: before picking a side the player sees what it does; the Factions drawer shows each border as a meter instead of text chips.
@@ -84,7 +84,7 @@ Steps:
 - stakes() test: meter, seize flag and place match what Front.result then does.
 - Battle card shows the stake line for both sides.
   QA: career run → force a clash, screenshot the battle card and Factions drawer.
-  Result:
+  Result: done — `Front.stakes` (pure, tested: same place Front.result then takes); battle card shows Win / Lose lines (standing + border, or "takes {place}"); Factions drawer: 5-cell border meters + next-win place, footnote folded into an info tip. Map-line drawing left in Later. QA: both screenshots, no pageerror.
 
 ### [ ] T-093: Training card — time to the next point
 
