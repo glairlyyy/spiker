@@ -201,7 +201,7 @@ function draw() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, cv.width, cv.height);
   if (A.ball.follow) followBall(); // also shows the ball once the server starts the routine
-  const V = applyView(); // same shake / push-in / zoom as the playback layer; also sets the overlay transform
+  const V = Overlay.applyView(); // same shake / push-in / zoom as the playback layer; also sets the overlay transform
   viewCamera(V);
   const w = world,
     B = A.ball;
@@ -220,8 +220,8 @@ function draw() {
   w.fx.update(A.shot ? dt * 1.5 : dt * Math.max(A.freezeOn ? 0.15 : 0.02, Math.min(1, A.ts ?? 1)), cam, w.gl.height, base.fov);
   w.renderer.render(w.scene, cam);
   // overlay: the playback layer's screen-space pieces, now projected through this camera
-  drawChant(now);
-  if (B.vis && !A.trailEl) drawTrail(ballScreen());
+  Overlay.drawChant(now);
+  if (B.vis && !A.trailEl) Overlay.drawTrail(ballScreen());
   for (const pl of w.people) {
     const d = pl.d;
     if (!d) continue;
@@ -233,7 +233,7 @@ function draw() {
     const pr = P(sx(pl.c.side, 115), -0.035, 0);
     drawCoachTags(pl.c, pr, pr.s * FIG * 1.02);
   }
-  drawFx(now);
+  Overlay.drawFx(now);
 }
 
 const hL = new THREE.Vector3(),

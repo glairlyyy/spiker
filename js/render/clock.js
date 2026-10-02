@@ -73,7 +73,7 @@ function frame(ts) {
   }
   if (!A) return; // the step finished the match and left the screen
   try {
-    draw();
+    Overlay.frame();
   } catch (e) {
     DBG.log('error', e, 'while drawing');
   }

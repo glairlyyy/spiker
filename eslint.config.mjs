@@ -11,7 +11,10 @@ const shared = {};
 for (const f of scripts) {
   const ast = espree.parse(fs.readFileSync(new URL('./' + f, import.meta.url), 'utf8'), { ecmaVersion: 2023, sourceType: 'script' });
   for (const n of ast.body)
-    if (n.type === 'VariableDeclaration') for (const d of n.declarations) shared[d.id.name] = 'writable';
+    if (n.type === 'VariableDeclaration')
+      for (const d of n.declarations)
+        if (d.id.type === 'ObjectPattern') for (const q of d.id.properties) shared[q.value.name] = 'writable';
+        else shared[d.id.name] = 'writable';
     else if ((n.type === 'FunctionDeclaration' || n.type === 'ClassDeclaration') && n.id) shared[n.id.name] = 'writable';
 }
 shared.R3D = 'writable'; // set by the 3D module (window.R3D)

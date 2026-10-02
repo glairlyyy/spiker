@@ -29,7 +29,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
 - **engine** `court.js` (geometry, `Z_UNITS`, `UNIT_M`, `BALL_K` / `SERVE_K`), `players.js`, `teams.js`, `save.js`,
   `stats.js`, `skills.js`, `formulas.js`, `elements.js`, `hype.js`, `match.js`, `serve.js`, `rally-phases.js`,
   `rally-defense.js`, `rally.js`.
-- **audio** `sfx.js`. **game** `state.js` (G, HYPE, Screens / navigate), `bracket.js`.
+- **audio** `sfx.js` (internals in the `SOUND` closure; global: `SND`, `sfx`, `audioInit`, `toggleSound`, `setVolume`, `bgmStart`, `bgmStop`, `panAt`). **game** `state.js` (G, HYPE, Screens / navigate), `bracket.js`.
 - **career** `run.js` (Run, RUN_DEFAULTS), `training.js`, `growth.js`, `element.js`, `world.js`, `pool.js`, `eval.js`,
   `city.js`, `front.js`, `mapmodel.js`, `dossier.js`, `events.js`, `goals.js`, `skills.js`, `rank.js`, `cup.js`.
 - **ui** `dom.js` (esc, tip, info, fold, signed…), `icons.js`, `match-screen.js`, `models.js`, `menu.js`,
@@ -122,7 +122,8 @@ The 3D renderer draws every match (career, Monster playtest) with VRM anime play
 particles, labels) and `draw()` hands off to `R3D.draw()`. The classic 2D court lives on as a separate legacy
 artifact; its drawing code was removed here. `js/render/` now holds: `playback.js` (beats → display state; engine
 beats are copied per rally so playback never marks the engine's own), `clock.js`, `camera.js`, `ball.js`,
-`scenes.js`, `effects.js`, `overlay.js` (the screen-space layer: view transform, chant, ball trail, labels, flashes;
+`scenes.js`, `effects.js`, `overlay.js` (the screen-space layer behind the `Overlay` object — `applyView`, `drawChant`, `drawTrail`,
+`drawFx`, `frame` — called by r3d.mjs and the clock; view transform, chant, ball trail, labels, flashes;
 `FONT_ROUND` / `FONT_DISPLAY` / `INK` / `roundRectPath`), `faces.js` (`faceSVG` portraits + `shade`), `tags.js`
 (player / coach tags over the figures), `dive.js` (the dive timeline `diveF` / `diving` / `diveShape`), `acts.js`
 (one-shot act handlers in three tables — `ACTS_FX`, `ACTS_UI`, `ACTS_ROSTER`, merged as `ACTS`; `instant(a)` looks the
