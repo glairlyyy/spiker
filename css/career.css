@@ -1069,9 +1069,11 @@
   left: calc(var(--gap) + 292px);
   right: var(--gap);
   bottom: var(--gap);
+  height: 72px;
+  box-sizing: border-box;
   display: flex;
   justify-content: center;
-  gap: 2px;
+  gap: 24px;
   padding: 6px;
   overflow-x: auto;
   scrollbar-width: none;
@@ -2113,4 +2115,24 @@
 }
 .lt.world {
   color: var(--mute);
+}
+
+/* dock groups; drawers stop above the dock (T-103) */
+.hub .dock .dg {
+  display: flex;
+  gap: 2px;
+}
+.hub .dock .dg + .dg {
+  padding-left: 24px;
+  border-left: 1px solid var(--line);
+}
+.hub .drawer {
+  bottom: calc(var(--gap) + 80px);
+  border-bottom: 1px solid var(--line);
+  border-radius: 0 0 0 12px;
+}
+.hub .hmenu {
+  margin-top: 8px;
+  padding: 4px 8px;
+  font-size: 13px;
 }

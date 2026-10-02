@@ -118,6 +118,7 @@ function hudRes(run) {
     ${row('sp', 'Skill pts', run.sp, 'Skill points')}
     <div ${tip(`Stamina ${run.sta}/${run.staMax}`)}><span class="hl">Stamina</span><span class="sbar ${staPct < 50 ? 'low' : ''}"><i style="width:${staPct}%"></i></span><b class="${staPct < 50 ? 'warn' : ''}">${run.sta}${d('sta')}</b></div>
     ${row('mood', 'Mood', `<span class="mood m${run.mood}">${mood.name}</span>`, 'Mood')}
+    <button class="btn hmenu ${CW.drawer === 'menu' ? 'on' : ''}" onclick="hubOpen('menu')">⚙ Menu</button>
   </div>`;
 }
 /** The coach's open goal under the clock (click: Season drawer). */
@@ -193,17 +194,28 @@ function hudMe(run) {
 }
 
 /** Bottom-bar drawers in order (1–9 open them). */
-const dockKeys = run => Object.keys(HUB_DRAWERS).filter(k => k !== 'me' && (k !== 'clubs' || World.isFree(run)));
+/** The dock's three groups (Menu sits in the HUD corner). */
+const DOCK_GROUPS = [
+  ['You', ['places', 'skills', 'life']],
+  ['People', ['team', 'people', 'clubs']],
+  ['World', ['season', 'factions', 'rank', 'news', 'diary']]
+];
+const dockGroups = run => DOCK_GROUPS.map(([g, ks]) => [g, ks.filter(k => k !== 'clubs' || World.isFree(run))]);
+const dockKeys = run => dockGroups(run).flatMap(([, ks]) => ks);
+/** The printed hotkey of the i-th dock button: 1–9, then 0. */
+const dockKey = i => (i < 9 ? String(i + 1) : i === 9 ? '0' : '');
 
 function hudBar(run) {
   const you = Run.you(run),
     aff = Skills.forRole(you.role).filter(id => !you.skills.includes(id) && Skills.canLearn(run, id)).length,
     badge = { skills: aff, news: run.gazette && !run.gazette.read ? '!' : 0, clubs: 0, people: Asks.count(run) };
-  return `<nav class="hud dock" aria-label="Shortcuts">${dockKeys(run)
-    .map(
-      (k, i) =>
-        `<button class="${CW.drawer === k ? 'on' : ''}" onclick="hubOpen('${k}')" aria-label="${HUB_DRAWERS[k][1]}" ${tip(`${HUB_DRAWERS[k][1]} (${i + 1})`)}><i>${HUB_DRAWERS[k][0]}</i><span>${HUB_DRAWERS[k][1]}</span>${i < 9 ? `<kbd>${i + 1}</kbd>` : ''}${badge[k] ? `<em>${badge[k]}</em>` : ''}</button>`
-    )
+  let n = 0;
+  const btn = k => {
+    const key = dockKey(n++);
+    return `<button class="${CW.drawer === k ? 'on' : ''}" onclick="hubOpen('${k}')" aria-label="${HUB_DRAWERS[k][1]}" ${tip(`${HUB_DRAWERS[k][1]}${key ? ` (${key})` : ''}`)}><i>${HUB_DRAWERS[k][0]}</i><span>${HUB_DRAWERS[k][1]}</span>${key ? `<kbd>${key}</kbd>` : ''}${badge[k] ? `<em>${badge[k]}</em>` : ''}</button>`;
+  };
+  return `<nav class="hud dock" aria-label="Shortcuts">${dockGroups(run)
+    .map(([g, ks]) => `<div class="dg" role="group" aria-label="${g}">${ks.map(btn).join('')}</div>`)
     .join('')}</nav>`;
 }
 
@@ -212,7 +224,7 @@ function hubDrawer(run) {
   return `<aside class="drawer" aria-label="${name}"><div class="dhd"><h3>${ic} ${name}</h3><button class="btn x" onclick="hubOpen(null)" aria-label="Close">✕</button></div><div class="dbody">${body(run)}</div></aside>`;
 }
 
-/** Hub keys: 1–9 open the bottom-bar drawers, Space ends the week, Esc closes the drawer, then the place card. */
+/** Hub keys: 1–9, 0 open the bottom-bar drawers, Space ends the week, Esc closes the drawer, then the place card. */
 function hubKey(e) {
   if (A || e.ctrlKey || e.metaKey || e.altKey || !document.querySelector('.career.hub') || $('#dbg') || CW.dossier) return;
   if (e.target.closest && e.target.closest('input,select,textarea,button,a,[contenteditable]')) return;
@@ -225,8 +237,8 @@ function hubKey(e) {
   } else if (e.key === ' ' && document.querySelector('.hub .endw') && !document.querySelector('.hubmodal')) {
     e.preventDefault();
     mapEndWeek();
-  } else if (/^[1-9]$/.test(e.key) && !document.querySelector('.hubmodal')) {
-    const k = dockKeys(RUN)[+e.key - 1];
+  } else if (/^[0-9]$/.test(e.key) && !document.querySelector('.hubmodal')) {
+    const k = dockKeys(RUN)[e.key === '0' ? 9 : +e.key - 1];
     if (k) hubOpen(k);
   }
 }

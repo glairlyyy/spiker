@@ -191,14 +191,14 @@ Steps: recapCard rows ordered penalties (goal missed, mood down, money < 0 delta
 Accept: a week with "Goal missed" shows it first in `bad`. QA: career run → miss a goal (set run.goal.by = run.week), End week.
 Result: done — `LOG_TAGS` / `logTag` / `logLi` (career-week.js) tag a line by its text: ✕ bad (goal missed, mood down, sick, noise, injury…), + good, ◎ coach's goal, • world (mute); the recap lists up to 6 new lines sorted bad → good → goal → world under the delta chips (already bad-first, T-090 design pass); the Diary drawer uses the same tags. QA: forced missed goal → "Goal missed" and the noisy night first in bad; diary screenshot; no pageerror.
 
-### [ ] T-103: Dock groups and drawers above the dock
+### [x] T-103: Dock groups and drawers above the dock
 
 Spec: §9.7 Goldens: unchanged Save: no change
 Files: js/ui/career-hub.js (hudBar, dockKeys, hubKey), css/career.css
 Do not: drop any drawer.
 Steps: groups You (Places, Skills, Life) · People (Team, People, Clubs) · World (Season, Factions, Rankings, Gazette, Diary) with a gap; Menu as a small button in the top-left HUD; digit printed on each button (1–9, 0 for the 10th); `.hub .drawer` bottom = dock top so no drawer covers the dock.
 Accept: with any drawer open every dock button is clickable. QA: open Factions, click Diary.
-Result:
+Result: done — `DOCK_GROUPS` You (Places, Skills, Life) · People (Team, People, Clubs — Clubs only while free) · World (Season, Factions, Rankings, Gazette, Diary), 24px gaps with a divider; digits printed 1–9 then 0 (key 0 works); Menu moved to a `⚙ Menu` button in the top-left HUD; dock 72px tall, drawers end 8px above it. QA: Factions open → Diary clickable; key 0 opens the Gazette; no pageerror.
 
 ### [ ] T-104: Drawer clean-up — headings, Player first, calendar numbers
 
