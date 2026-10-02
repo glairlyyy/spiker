@@ -13,6 +13,8 @@ let CW = {
   sheet: null,
   pfilter: 'all',
   wtab: 'factions',
+  stab: 'diary',
+  gear: false,
   dossier: null,
   rank: 'register',
   rankAll: false,
@@ -576,6 +578,21 @@ function factionsCard(run) {
     .filter(r => REGIONS[r].kind !== 'none')
     .map(row)
     .join('')}</div>`;
+}
+/** The Season sheet (spec §10.4, SheetSeason): calendar, goal and sponsors, match history | Diary / Gazette. */
+function sheetSeason(run) {
+  const t = CW.stab === 'news' ? 'news' : 'diary',
+    g = run.gazette;
+  if (t === 'news' && g && !g.read && Run.readGazette(run)) Run.save(run);
+  return `<div class="sheet-h"><h2>Season</h2><span class="pchip">Week ${Math.min(run.week, CAREER.weeks)} / ${CAREER.weeks}</span></div>
+    <div class="sheet-cols seacols"><div class="scol"><section class="card"><div class="lab">Calendar</div>${calendar(run)}</section>${seasonCard(run)}${matchLog(run)}</div>
+    <section class="card"><div class="seg pfil"><button class="btn ${t === 'diary' ? 'on' : ''}" onclick="CW.stab='diary';renderCareer()">Diary</button><button class="btn ${t === 'news' ? 'on' : ''}" onclick="CW.stab='news';renderCareer()">Gazette${g && !g.read ? ' <em class="badge">!</em>' : ''}</button></div>${
+      t === 'news'
+        ? g
+          ? `<p class="small mute">Week ${g.week}</p><ul class="gzl">${g.items.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`
+          : '<p class="mute small">No Gazette yet — it comes out on payday.</p>'
+        : `<ol class="log tagged">${run.log.map(l => logLi(l.t, `<b>${typeof l.w === 'number' ? 'W' + l.w : esc(l.w)}</b> `)).join('')}</ol>`
+    }</section></div>`;
 }
 /** The Gazette from the last payday, until you dismiss it. */
 function gazetteCard(run) {

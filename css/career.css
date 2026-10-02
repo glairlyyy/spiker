@@ -235,11 +235,13 @@
   color: var(--gold);
 }
 .cal .pip.cup {
-  border-color: var(--hot);
-  color: var(--hot);
+  border-color: var(--ink);
+  color: var(--ink);
 }
 .cal .pip.now {
-  border-color: var(--ink);
+  background: var(--sel-bg);
+  border-color: var(--sel-line);
+  opacity: 1;
 }
 .trow {
   display: flex;
@@ -3042,4 +3044,53 @@
 }
 .hub .wsheet table.rk td {
   padding: 6px 8px;
+}
+/* Season sheet (T-125) */
+.hub .sheet-cols.seacols {
+  grid-template-columns: 1.3fr 1fr;
+}
+.hub .seacols .scol {
+  display: grid;
+  gap: 16px;
+}
+.hub .seacols .scol > .panel {
+  margin: 0;
+  background: var(--surf);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+}
+.hub .seacols .pfil {
+  margin: 0 0 12px;
+}
+.hub .seacols .cal .pip {
+  min-width: 36px;
+  height: 36px;
+  font-size: 13px;
+}
+.hub .seacols .log,
+.hub .seacols .gzl {
+  max-height: calc(100vh - 260px);
+  overflow-y: auto;
+  margin: 0;
+}
+.hub .gearpop {
+  position: absolute;
+  z-index: 60;
+  top: calc(var(--tbar) - 4px);
+  right: 16px;
+  display: grid;
+  gap: 8px;
+  min-width: 200px;
+  padding: 12px;
+  background: var(--surf);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+.hub .gearpop p {
+  margin: 0;
+}
+.hub .gearpop .btn {
+  width: 100%;
 }

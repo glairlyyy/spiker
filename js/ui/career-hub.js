@@ -1,50 +1,25 @@
 // Career hub (spec §10.1): top bar (labelled resources, week, sheet tabs Me · People · World · Season, ⚙), the week
 // rail on the left (you, the week's days, coach's goal, inbox, End week), the 3D map and the place panel over it.
-// Tabs open the drawers until the sheets exist (T-122…T-125); ⚙ reaches every other drawer. Cards (events, match days,
-// the Gazette) open over the map.
+// Tabs open the sheets (Me, People, World, Season); ⚙ is a small pop-over (Main menu, Debug log with ?dev, Abandon run).
+// Cards (events, match days, the week brief/report) open over the map.
 
 const HUB_DRAWERS = {
-  places: ['📍', 'Places', run => placesCard(run)],
-  season: ['📅', 'Season', run => `<div class="panel">${calendar(run)}</div>` + seasonCard(run) + matchLog(run)],
-  news: [
-    '📰',
-    'Gazette',
-    run =>
-      run.gazette
-        ? `<p class="small mute">Week ${run.gazette.week}</p><ul class="small">${run.gazette.items.map(t => `<li>${esc(t)}</li>`).join('')}</ul>`
-        : '<p class="mute small">No Gazette yet — it comes out on payday.</p>'
-  ],
-  diary: [
-    '📜',
-    'Diary',
-    run =>
-      `<ol class="log tagged">${run.log.map(l => logLi(l.t, `<b>${typeof l.w === 'number' ? 'W' + l.w : esc(l.w)}</b> `)).join('')}</ol>`
-  ],
-  menu: [
-    '⚙',
-    'Menu',
-    () => `<div class="menu-list"><h3>More</h3>${MORE_DRAWERS.map(
-      k => `<button class="btn" onclick="hubOpen('${k}')">${HUB_DRAWERS[k][0]} ${HUB_DRAWERS[k][1]}</button>`
-    ).join(
-      ''
-    )}<h3>Game</h3><button class="btn" onclick="navigate('menu')">Main menu</button><button class="btn" onclick="openDebug()">Debug log</button>
-      <p class="small mute" id="abandon"><button class="btn" onclick="abandonRun()" ${tip('Your run saves automatically')}>Abandon run</button></p></div>`
-  ]
+  places: ['📍', 'Places', run => placesCard(run)]
 };
 
-/** The top bar's sheet tabs (key 1–4) → the drawer each opens until its sheet is built; ⚙ lists the rest. */
+/** The top bar's sheet tabs (key 1–4). */
 const HUB_TABS = [
   ['me', 'Me'],
   ['people', 'People'],
   ['world', 'World'],
   ['season', 'Season']
 ];
-const MORE_DRAWERS = ['places', 'news', 'diary'];
 /** Sheets (spec §10.4): open over the map with the rail and top bar visible; a tab whose sheet exists opens it. */
 const HUB_SHEETS = {
   me: ['Me', run => sheetMe(run)],
   people: ['People', run => sheetPeople(run)],
-  world: ['World', run => sheetWorld(run)]
+  world: ['World', run => sheetWorld(run)],
+  season: ['Season', run => sheetSeason(run)]
 };
 /** Open the World sheet on one tab (factions / clubs / rank); never toggles. */
 function worldTab(k) {
@@ -201,7 +176,7 @@ function topBar(run) {
         `<button class="btn ${CW.drawer === k || CW.sheet === k ? 'on' : ''}" onclick="hubOpen('${k}')">${n} <kbd>${i + 1}</kbd>${k === 'people' && people ? `<em class="badge">${people}</em>` : ''}</button>`
     ).join(
       ''
-    )}<button class="btn ${CW.drawer === 'menu' || MORE_DRAWERS.includes(CW.drawer) ? 'on' : ''}" onclick="hubOpen('menu')" aria-label="Settings and more">⚙</button></nav>
+    )}<button class="btn ${CW.gear ? 'on' : ''}" onclick="gearToggle()" aria-label="Settings">⚙</button></nav>${CW.gear ? gearPop() : ''}
   </header>`;
 }
 /** The week rail: you and your 4 stats, the week's days, the coach's goal, the inbox, End week. */
@@ -353,7 +328,8 @@ function hubKey(e) {
     return;
   if (e.target.closest && e.target.closest('input,select,textarea,button,a,[contenteditable]')) return;
   if (e.key === 'Escape') {
-    if (CW.drawer || CW.sheet) hubOpen(null);
+    if (CW.gear) gearToggle();
+    else if (CW.drawer || CW.sheet) hubOpen(null);
     else if (CW.spot) {
       CW.spot = null;
       renderCareer();
@@ -400,6 +376,12 @@ function placeGo(id) {
 }
 
 function hubOpen(k) {
+  CW.gear = false;
+  if (k === 'news' || k === 'diary') {
+    CW.stab = k; // the Season sheet's Diary / Gazette tab
+    k = 'season';
+    CW.sheet = null;
+  }
   if (k && HUB_SHEETS[k]) {
     CW.sheet = CW.sheet === k ? null : k; // the tab toggles its sheet
     CW.drawer = null;
@@ -408,7 +390,16 @@ function hubOpen(k) {
     if (k) CW.sheet = null;
     if (!k) CW.sheet = null;
   }
-  if (k === 'news' && Run.readGazette(RUN)) Run.save(RUN);
   renderCareer();
+}
+/** ⚙: a small pop-over under the top bar — Main menu, Debug log (only with ?dev), Abandon run (inline confirm). */
+function gearToggle() {
+  CW.gear = !CW.gear;
+  renderCareer();
+}
+function gearPop() {
+  return `<div class="gearpop" role="menu"><button class="btn" onclick="CW.gear=false;navigate('menu')">Main menu</button>${
+    /[?&]dev\b/.test(location.search) ? '<button class="btn" onclick="CW.gear=false;openDebug()">Debug log</button>' : ''
+  }<p class="small mute" id="abandon"><button class="btn quiet danger" onclick="abandonRun()" ${tip('Your run saves automatically')}>Abandon run</button></p></div>`;
 }
 Screens.career = renderCareer;

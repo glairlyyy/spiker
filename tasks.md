@@ -130,13 +130,13 @@ Steps: tabs Factions (5 cards: standing bar −100…+100 with the number, label
 Accept: Clubs, Factions and Rankings drawers and the dossier pop-up are gone. QA: screenshots of the 3 tabs.
 Result: sheetWorld (career-dossier.js), tabs via worldTab(k) / CW.wtab; Factions = 5-card grid, faction name opens the dossier in place (← All factions / Esc back, stopImmediatePropagation so Esc does not also close the sheet); Clubs = clubsCard unfolded, first signable is the one ink primary, no buttons once signed; Rankings bigger tabs/rows. Clubs/Factions/Rankings drawers + dossier modal removed; inbox Clubs → worldTab. QA: 4 screenshots, no errors.
 
-### [ ] T-125: Season sheet and ⚙
+### [x] T-125: Season sheet and ⚙
 
 Spec: §10.4 Goldens: unchanged Save: no change
 Files: js/ui/career-week.js (calendar, seasonCard, matchLog), js/ui/career-hub.js (diary/news/menu), css/career.css
 Steps: calendar of 28 + cup cells with week number, type word (Eval / Camp), goal week mark, current week selected; goal card; sponsors; match history; Diary / Gazette tabs. ⚙ pop-over: Main menu, Debug log (only with `?dev`), Abandon run (inline confirm).
 Accept: no drawer remains; HUB_DRAWERS removed. QA: screenshot vs SheetSeason.
-Result:
+Result: sheetSeason (career-week.js): calendar (current week = selected style, cup pips ink not hot), goal + sponsors, match history | Diary / Gazette tabs (CW.stab; Gazette tab marks it read; hubOpen('news'/'diary') opens that tab). ⚙ = gearPop (Main menu, Debug log only with ?dev, Abandon run inline); Esc closes it. Season/news/diary/menu drawers removed; the last drawer (places) and HUB_DRAWERS go in T-126. QA: 3 screenshots, no errors.
 
 ### [ ] T-126: Map / List toggle
 
