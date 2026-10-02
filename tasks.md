@@ -96,13 +96,13 @@ Steps:
    QA: career run → a clash week and a payday week; screenshots.
    Result: done — `weekBrief` (once per week / cup round, `CW.briefWeek` = `briefKey`): title by week type, one line, rows for the match (eval / cup), street battle (sides, site, Seize n/2, the place a win takes), payday + Gazette, coach's goal (progress, due, warn ≤1 week), evaluation next week; `[Start the week]` or `[Go to match prep]` + `[Read the Gazette]` (opens the Gazette drawer, marks read). `briefDone` sets the old `clash.seen`. hubCard order: event → week report → brief → cup / eval card; the battle intro and Gazette pop-up are gone. Inbox (`inboxRows`, max 5): next step → battle (View → select pin) → approaches (People) → Gazette (Read) → evaluation next week → goal due ≤1 week → club would sign → places that changed hands (`CW.seizes`, kept a week). Toast and seize banner removed; a refused action shows as a bad inbox row for one render (`CW.flash`, career-people.js toastBlocked — one extra file). QA: week 1 brief with battle + payday + goal rows; inbox after closing; no pageerror.
 
-### [ ] T-121: Week report
+### [x] T-121: Week report
 
 Spec: §10.5 Goldens: unchanged Save: no change
 Files: js/ui/career-week.js (recapCard, endWeekUI), css/career.css
 Steps: rows ordered penalties (goal missed, mood down, money below 0) in `bad` → your week as chips (stats, skill pts, money, fans, bonds) → new goal → island news (battles, seizes, stars); title "Week n report"; one `Next week` button that then shows the next Week brief.
 Accept: a missed goal is the first row. QA: career run → miss a goal (set `run.goal.by = run.week`), End week.
-Result:
+Result: done — `recapCard` is the Week report (every week): "Week n report" + a headline (rough / good / quiet), penalty rows first in bad (✕), "Your week" chips over the whole week (stats, money, fans, skill pts, standing, bonds — baseline `weekSnap` taken at the week's first hub render, `CW.snap`), New goal, On the island (places that changed hands + world lines); `Next week` → the Week brief. QA: missed goal → first row in bad; chips Money −$8 · Defense +18 · Speed +7 · Skill pts +5 · Bond …; Next week opens the brief; no pageerror.
 
 ## Next
 

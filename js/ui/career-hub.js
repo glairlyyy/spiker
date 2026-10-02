@@ -56,6 +56,7 @@ function renderCareer() {
   if (RUN.result) return renderRunEnd();
   const run = RUN,
     team = Run.myTeam(run);
+  if (!CW.snap || CW.snap.run !== run || CW.snap.key !== briefKey(run)) CW.snap = weekSnap(run); // the Week report's baseline
   const armed = Date.now() - CW.endArm < 4000; // End week asked once with days left: the button asks again for 4 s
   // a place changed hands since the last render (your battle or the week's end): banner + select it on the map
   const own = run.own || {},

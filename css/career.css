@@ -2744,3 +2744,13 @@
 .hub .winbox .wit.bad {
   color: var(--bad);
 }
+/* week report (T-121) */
+.report .dn {
+  color: var(--bad);
+}
+.report .bico.dn {
+  color: var(--bad);
+}
+.report .rrows {
+  margin: 6px 0 0;
+}

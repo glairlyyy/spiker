@@ -9,6 +9,7 @@ let CW = {
   flash: null,
   briefWeek: null,
   seizes: null,
+  snap: null,
   dossier: null,
   rank: 'register',
   rankAll: false,
@@ -306,18 +307,27 @@ function benchEval() {
   endWeekUI();
 }
 /** End the week and remember what changed for the recap card (nothing changed = no card). */
+/** What the Week report compares against: your values when the week began (taken at the week's first hub render). */
+function weekSnap(run) {
+  const you = Run.you(run);
+  return {
+    key: `${run.week}:${(Run.cupDef(run) || {}).id || ''}`,
+    run,
+    stat: Object.fromEntries(STATK.map(k => [k, you[k]])),
+    money: run.money,
+    fans: run.fans,
+    rep: Object.fromEntries(Object.keys(REGIONS).map(r => [r, City.rep(run, r)])),
+    own: { ...(run.own || {}) },
+    top: run.log[0],
+    week: run.week,
+    sp: run.sp,
+    bond: { ...you.bond }
+  };
+}
 function endWeekUI() {
   const run = RUN,
-    you = Run.you(run),
     regs = Object.keys(REGIONS).filter(r => REGIONS[r].kind !== 'none'),
-    before = {
-      stat: Object.fromEntries(STATK.map(k => [k, you[k]])),
-      money: run.money,
-      fans: run.fans,
-      rep: Object.fromEntries(regs.map(r => [r, City.rep(run, r)])),
-      own: { ...(run.own || {}) },
-      top: run.log[0]
-    };
+    before = CW.snap && CW.snap.run === run && CW.snap.week === run.week ? CW.snap : weekSnap(run);
   Run.endWeek(run);
   const now = Run.you(run),
     rows = [],
@@ -326,12 +336,18 @@ function endWeekUI() {
   for (const k of STATK) d(now[k] - before.stat[k], `${STATNAME[k]} ${sg(now[k] - before.stat[k])}`);
   d(run.money - before.money, `Money ${run.money > before.money ? '+' : '−'}$${Math.abs(run.money - before.money).toLocaleString()}`);
   d(run.fans - before.fans, `Fans ${sg(run.fans - before.fans)}`);
+  d(run.sp - before.sp, `Skill pts ${sg(run.sp - before.sp)}`);
+  for (const m of Run.mates(run))
+    d(
+      (now.bond[m.id] || 0) - (before.bond[m.id] || 0),
+      `Bond ${m.name.split(' ')[0]} ${sg((now.bond[m.id] || 0) - (before.bond[m.id] || 0))}`
+    );
   for (const r of regs) d(City.rep(run, r) - before.rep[r], `⚑ ${REGIONS[r].name} ${sg(City.rep(run, r) - before.rep[r])}`);
   for (const t of ownChanges(before.own, run.own || {})) rows.push(['ch', t.text]);
   const at = before.top ? run.log.indexOf(before.top) : run.log.length,
     lines = run.log.slice(0, at < 0 ? run.log.length : at).slice(0, 6);
   rows.sort((a, b) => ['dn', 'up', 'ch'].indexOf(a[0]) - ['dn', 'up', 'ch'].indexOf(b[0])); // bad news first, then your gains, then the world
-  CW.recap = rows.length || lines.length ? { week: run.week, rows, lines: lines.map(l => l.t) } : null;
+  CW.recap = { week: before.week, rows, lines: lines.map(l => l.t) }; // the Week report, every week (spec §10.5)
   renderCareer();
 }
 /** A diary line's tag by its text (the producers stay as they are): [class, icon] — bad news, gains, the coach's goal, the world. */
@@ -360,19 +376,25 @@ function ownChanges(a, b) {
     });
 }
 /** The card after End week (hubCard shows it last, so events / cups / matches win). */
-function recapCard(run) {
-  const R2 = CW.recap;
-  return `<div class="panel recap"><span class="rk">${typeof R2.week === 'number' ? `Week ${R2.week}` : esc(R2.week)} done</span>
-    ${R2.rows.length ? `<div class="rrows">${R2.rows.map(([c, t]) => `<span class="rr ${c}">${esc(t)}</span>`).join('')}</div>` : ''}
-    ${
-      R2.lines.length
-        ? `<ul class="rlog">${[...R2.lines]
-            .sort((a, b) => LOG_TAGS.findIndex(x => x[0] === logTag(a)[0]) - LOG_TAGS.findIndex(x => x[0] === logTag(b)[0]))
-            .map(t => logLi(t))
-            .join('')}</ul>`
-        : ''
-    }
-    <div class="acts"><button class="btn hot" onclick="recapDone()">Continue</button></div></div>`;
+/** The Week report (spec §10.5): penalties first, your week as chips, the new goal, island news; Next week → the brief. */
+function recapCard() {
+  const R2 = CW.recap,
+    tagged = R2.lines.map(t => [logTag(t)[0], t]),
+    of = k => tagged.filter(([c]) => c === k).map(([, t]) => t),
+    bad = of('bad'),
+    goal = of('goal'),
+    good = of('good'),
+    world = of('world'),
+    chips = R2.rows.filter(([c]) => c !== 'ch'),
+    places = R2.rows.filter(([c]) => c === 'ch').map(([, t]) => t),
+    it = (ico, cls, title, body) =>
+      `<div class="bi"><span class="bico ${cls}">${ico}</span><div><b class="${cls}">${title}</b>${body ? `<div class="small mute">${body}</div>` : ''}</div><span></span></div>`;
+  return `<div class="panel brief report recap"><div class="lab">Week ${typeof R2.week === 'number' ? R2.week : esc(R2.week)} report</div><h2>${bad.length ? 'A rough week' : chips.some(([c]) => c === 'up') ? 'A good week' : 'A quiet week'}</h2>
+    ${bad.map(t => it('✕', 'dn', esc(t), '')).join('')}
+    ${chips.length || good.length ? `<div class="bi"><span class="bico">✸</span><div><b>Your week</b><div class="rrows">${chips.map(([c, t]) => `<span class="rr ${c}">${esc(t)}</span>`).join('')}</div>${good.length && !chips.length ? `<div class="small mute">${good.map(esc).join(' · ')}</div>` : ''}</div><span></span></div>` : ''}
+    ${goal.map(t => it('◎', '', 'New goal', esc(t.replace(/^Coach's goal: /, '')))).join('')}
+    ${world.length || places.length ? it('⚔', '', 'On the island', [...places, ...world].map(esc).join(' · ')) : ''}
+    <div class="acts"><button class="btn hot" onclick="recapDone()">Next week</button></div></div>`;
 }
 function recapDone() {
   CW.recap = null;
