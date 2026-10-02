@@ -24,6 +24,12 @@
   --glass: rgba(255, 255, 255, 0.035);
   --glass2: rgba(255, 255, 255, 0.06);
   --glow: 0 0 0 1px rgba(76, 201, 240, 0.35), 0 0 24px rgba(76, 201, 240, 0.12);
+  /* design system §9.2: HUD ground over the 3D scene, control borders, text on ink, selected state */
+  --hud: rgba(12, 14, 18, 0.9);
+  --line-strong: rgba(255, 255, 255, 0.36);
+  --on-ink: #0b0c10;
+  --sel-bg: rgba(76, 201, 240, 0.12);
+  --sel-line: var(--cyan);
   --disp: 'Rajdhani', 'Inter', system-ui, sans-serif;
   --body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   color-scheme: dark;
@@ -79,13 +85,16 @@ h3 {
   color: var(--mute);
 }
 h4 {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.14em;
 }
 .small {
   font-size: 12px;
+}
+small {
+  font-size: max(12px, 0.85em); /* type floor (§9.3) */
 }
 /* ---------- surfaces ---------- */
 .panel,
@@ -108,7 +117,7 @@ h4 {
 /* ---------- buttons & inputs ---------- */
 .btn {
   background: var(--glass2);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   padding: 8px 16px;
   font-weight: 500;
@@ -123,13 +132,13 @@ h4 {
   background: rgba(76, 201, 240, 0.08);
 }
 .btn.on {
-  background: var(--ink);
-  color: #0b0c10;
-  border-color: var(--ink);
+  background: var(--sel-bg);
+  color: var(--ink);
+  border-color: var(--sel-line);
 }
 .btn.hot {
   background: var(--ink);
-  color: #0b0c10;
+  color: var(--on-ink);
   border-color: var(--ink);
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -152,7 +161,7 @@ select,
 textarea {
   background: var(--surf2) !important;
   color: var(--ink) !important;
-  border: 1px solid var(--line) !important;
+  border: 1px solid var(--line-strong) !important;
   border-radius: 8px !important;
 }
 input[type='range'] {
@@ -225,7 +234,7 @@ input[type='range'] {
   letter-spacing: 0.04em;
 }
 .setn {
-  font: 500 11px var(--body) !important;
+  font: 500 12px var(--body) !important;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--mute);
@@ -242,7 +251,7 @@ input[type='range'] {
   box-shadow: 0 0 12px rgba(76, 201, 240, 0.15);
 }
 .zone {
-  font: 600 10px var(--body);
+  font: 600 12px var(--body);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   background: transparent;
@@ -291,7 +300,7 @@ input[type='range'] {
   border-left-color: var(--hot);
 }
 table th {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--mute);
@@ -333,8 +342,9 @@ table td {
   border: 1px solid var(--line) !important;
 }
 .cal .pip.now {
-  background: var(--ink) !important;
-  color: #0b0c10;
+  background: var(--sel-bg) !important;
+  border-color: var(--sel-line) !important;
+  color: var(--ink);
 }
 .cal .pip {
   font-family: var(--disp);
@@ -348,7 +358,7 @@ table td {
   letter-spacing: 0.06em;
 }
 .ev {
-  border-color: rgba(255, 59, 78, 0.45) !important;
+  border-color: var(--line) !important;
 }
 /* ---------- in-match overlays ---------- */
 .toast {
@@ -458,7 +468,7 @@ table td {
   border-radius: 999px;
   background: var(--hot);
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
 }
 .dbg {
   position: fixed;
@@ -523,7 +533,7 @@ table td {
   border-radius: 50%;
   border: 1px solid currentColor;
   font:
-    italic 700 10px/1 Georgia,
+    italic 700 12px/1 Georgia,
     serif;
   opacity: 0.55;
   cursor: help;

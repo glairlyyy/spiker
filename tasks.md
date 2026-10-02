@@ -36,7 +36,7 @@ UI batch 2 — orientation and preview-before-commit (spec §9; design system ht
 UI only: no engine change, no save change, goldens unchanged. Read §9 and the design-system card each task names before coding.
 Order: T-095 → T-114 → T-096 … T-101.
 
-### [ ] T-095: UI tokens, selected state, red diet
+### [x] T-095: UI tokens, selected state, red diet
 
 Spec: §9.2 §9.3 Goldens: unchanged Save: no change
 Goal: the new colour tokens exist; a selected option no longer looks like the primary button; red only means brand/danger.
@@ -54,7 +54,7 @@ Steps:
 - No css `font-size` below 12px; `.btn.hot` is the only ink-filled control; Create screen: selected role reads cyan-outlined, Start career ink-filled.
 - Skills drawer: prices not red. npm test / lint pass.
   QA: career run → Create screen, Skills drawer, a recap card; screenshots.
-  Result:
+  Result: done — tokens `--hud --line-strong --on-ink --sel-bg --sel-line`; `.btn.on` and the calendar's current week use the selected style; `.btn` / inputs on `line-strong`; red off `.pts`, `.evk`, skill prices (unaffordable / learn-in-matches → mute), `.ency-req`, `.mate.you` / `.br.mine` (→ cyan), `.bbar.f` (→ good), grade A (→ gold), `.ev` border; 24 sub-12px rules → 12px plus `small { max(12px, .85em) }`. QA: no rendered text < 12px on Create / hub / Skills / recap, no pageerror.
 
 ### [ ] T-114: Layout grid, action rows, container sizes
 
