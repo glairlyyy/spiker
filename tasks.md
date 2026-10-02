@@ -86,7 +86,7 @@ Steps:
   QA: career run → force a clash, screenshot the battle card and Factions drawer.
   Result: done — `Front.stakes` (pure, tested: same place Front.result then takes); battle card shows Win / Lose lines (standing + border, or "takes {place}"); Factions drawer: 5-cell border meters + next-win place, footnote folded into an info tip. Map-line drawing left in Later. QA: both screenshots, no pageerror.
 
-### [ ] T-093: Training card — time to the next point
+### [x] T-093: Training card — time to the next point
 
 Spec: §4.5 Goldens: unchanged Save: no change
 Goal: the training card answers "what do I get?" at a glance and hides the rest.
@@ -100,7 +100,7 @@ Steps:
 
 - Card is at most two lines before the button; N matches Training.progress.
   QA: career run → open a training spot, screenshot.
-  Result:
+  Result: done — each stat now reads "next point this session" / "+1 in ~N sessions" (N from Training.progress and the session's xp) instead of High / Mid / Low; meta line, chips and info tip unchanged (already one line + chips). QA: card text, no pageerror.
 
 ### [ ] T-094: Hotkeys and end-week guard
 

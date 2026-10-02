@@ -122,10 +122,11 @@ function trainSpot(run, id, c) {
     turf = City.turf(run, id),
     fmt = ([k, , xp]) => {
       if (pv.cap && k === pv.main[0]) return `${STATNAME[k]} at ${pv.cap} — matches only`;
-      // how much this session moves the stat, compared with what its next point costs at your level
-      const r = xp / Training.progress(run, k).need,
-        g = r >= 2.5 ? ['High', 'hi'] : r >= 1 ? ['Mid', 'md'] : ['Low', 'lo'];
-      return `${STATNAME[k]} <span class="gl ${g[1]}">${g[0]}</span>`;
+      // sessions until this stat's next point at this rate
+      const pr = Training.progress(run, k),
+        n = Math.max(1, Math.ceil((pr.need - pr.have) / Math.max(0.01, xp))),
+        g = n <= 1 ? 'hi' : n <= 3 ? 'md' : 'lo';
+      return `${STATNAME[k]} <span class="gl ${g}">${n <= 1 ? 'next point this session' : `+1 in ~${n} sessions`}</span>`;
     },
     mates = pv.mates.filter(pid => squadOf(T).some(p => p.id === pid)); // a teammate who has since left
   return `<div class="tline">${qualityTag(run, id)} <b class="g">${fmt(pv.main)}</b> <span class="g2">${fmt(pv.side)}</span> <span class="mute small">−${pv.sta} sta · $${City.price(run, id)} · Lv ${pv.lvl}</span>
