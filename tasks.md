@@ -51,7 +51,7 @@ Steps:
   QA: career run → train once, End week, screenshot the card.
   Result: done — `endWeekUI` (career-week.js) snapshots before / after; card shows stat, $, fans, standing, place changes and up to 4 new diary lines; none when nothing changed. QA: card screenshot, no pageerror.
 
-### [ ] T-091: Seize notice and map focus
+### [x] T-091: Seize notice and map focus
 
 Spec: §4.24 Goldens: unchanged Save: no change
 Goal: when a place changes hands (your battle or the week's end) a banner names it and the map jumps to it.
@@ -66,7 +66,7 @@ Steps:
 
 - Winning the 2nd net battle on a border shows the banner and selects the place; reload with no change shows nothing.
   QA: career run → set `RUN.own = {…}` then renderCareer(); screenshot.
-  Result:
+  Result: done — renderCareer diffs run.own against CW.own (reset per run; `ownChanges`, career-week.js), `.hnote` banner in the winner's colour for one render, selects the place if you know it. QA: banner, gone on next render.
 
 ### [ ] T-092: Stakes before a street battle, border meters
 

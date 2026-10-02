@@ -43,6 +43,13 @@ function renderCareer() {
     last = run.log[0] ? run.log[0].t : null,
     toast = CW.toast !== undefined && CW.toast !== null && last !== CW.toast ? last : null;
   CW.toast = last;
+  // a place changed hands since the last render (your battle or the week's end): banner + select it on the map
+  const own = run.own || {},
+    chg = CW.ownOf === run ? ownChanges(CW.own, own) : [],
+    note = chg[0] || null;
+  CW.own = { ...own };
+  CW.ownOf = run;
+  if (note && MapModel.known(run, note.id, City.at(run, note.id))) CW.spot = note.id;
   if (CW.drawer === 'clubs' && !World.isFree(run)) CW.drawer = null;
   const nextCup = Run.weekType(run) === 'cup' && !run.event ? Cup.upcoming(run) : null; // rules first, then draw
   const card = hubCard(run, nextCup);
@@ -51,6 +58,7 @@ function renderCareer() {
     ${hudRes(run)}${hudClock(run)}${hudMe(run)}${hudBar(run)}
     <div class="hud spotcard ${CW.spot && !card ? 'open' : ''}" id="spot">${CW.spot && !card ? spotCard(run) : ''}</div>
     ${toast ? `<div class="htoast" role="status">${esc(toast)}</div>` : ''}
+    ${note ? `<div class="hnote" role="status" style="--nc:${REGIONS[note.to].color}">⚔ ${esc(note.text)}</div>` : ''}
     ${CW.drawer ? hubDrawer(run) : ''}
     ${card ? `<div class="hubmodal ${card.dim ? 'dim' : ''}"><div class="hubcard ${card.cls || ''}">${card.html}</div></div>` : ''}
     ${CW.dossier && !card ? `<div class="hubmodal"><div class="hubcard wide">${dossierCard(run, CW.dossier)}</div></div>` : ''}
