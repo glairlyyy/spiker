@@ -244,14 +244,14 @@ Steps:
   QA: Monster game at the three sizes; screenshots.
   Result: done — header hidden and `.wrap` full width via `:has(.match)` (no body class needed); score band 64px (swatch + name + rotation chips, server chip gold with "serve"), Rajdhani 48px score with the rules text beside it; Momentum row 20px with a label and one "In the zone: {team}" span (`#zone`, team colour); court `min(100vw − 48px, (100vh − 168px) / 0.44)` centred; `.feeds` kept in the DOM but hidden until T-115. QA: Monster at 1280×720 / 1440×900 / 1920×1080 — no page scroll, court 1232 / 1392 / 1872 px; no pageerror.
 
-### [ ] T-108: Match labels — sides, serve, momentum
+### [x] T-108: Match labels — sides, serve, momentum
 
 Spec: §9.1 §9.9 Goldens: unchanged Save: no change
 Files: js/render/tags.js, js/ui/match-screen.js (board), css/style.css
 Do not: change OP red / star gold tag colours or tag positions.
 Steps: name tags get a 2px underline in the team colour (A.m.t[side].color) and 12px minimum text; serve marker reads "serve" in the score band; nothing on screen is an unlabeled dot or bar.
 Accept: in a Monster game (all OP) both sides are told apart by underline. QA: Monster game screenshot.
-Result:
+Result: done — tags.js: a team-colour underline under every role tag (OP red / star gold text unchanged) and a 9-court-unit font floor (≈12 CSS px on a 1392 px court); score band: server chip reads "serve", momentum bar labelled, zone as "In the zone: {team}" (T-107). QA: all-OP Monster game — sides told apart by underline; no pageerror.
 
 ### [ ] T-109: Match control bar
 

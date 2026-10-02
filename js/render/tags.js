@@ -43,10 +43,18 @@ function drawTags(d, pr, k, staV) {
   const p = d.p;
   const srv = A.srvId === p.id && !A.done;
   ctx.textAlign = 'center';
-  ctx.font = `800 ${Math.round(10 * k + 1)}px ${FONT_ROUND}`;
+  // at least 9 court units (≈ 12 CSS px on a 1392 px court, spec §9.3)
+  ctx.font = `800 ${Math.max(9, Math.round(10 * k + 1))}px ${FONT_ROUND}`;
   ctx.fillStyle = p.op ? '#ff2e4d' : p.star ? '#ffd84d' : 'rgba(255,255,255,.75)';
   const tg = (p.star || p.op ? '★ ' : '') + p.role + (srv ? ' ●' : '');
   ctx.fillText(tg, pr.X, pr.Y - 113 * k);
+  // team colour underline: tells the sides apart even when every tag is OP red (spec §9.9)
+  const tw = ctx.measureText(tg).width,
+    tc = A.m.t[d.side] && A.m.t[d.side].color;
+  if (tc) {
+    ctx.fillStyle = tc;
+    ctx.fillRect(pr.X - tw / 2, pr.Y - 113 * k + 3 * k, tw, Math.max(1.5, 2 * k));
+  }
   if (p.cap) {
     const w2 = ctx.measureText(tg).width,
       cx2 = pr.X + w2 / 2 + 7 * k,
