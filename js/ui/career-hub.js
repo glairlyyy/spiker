@@ -1,6 +1,7 @@
-// Career hub: a full-screen draggable city map with the HUD over it — resources (top left), your player (bottom
-// left), the day clock (top right), the shortcut bar (bottom). Shortcuts open a drawer; events, match days and the
-// Gazette open a card over the map; the last diary line flashes as a toast.
+// Career hub (spec §10.1): top bar (labelled resources, week, sheet tabs Me · People · World · Season, ⚙), the week
+// rail on the left (you, the week's days, coach's goal, inbox, End week), the 3D map and the place panel over it.
+// Tabs open the drawers until the sheets exist (T-122…T-125); ⚙ reaches every other drawer. Cards (events, match days,
+// the Gazette) open over the map.
 
 const HUB_DRAWERS = {
   me: ['👤', 'Player', run => youCard(run)], // the goal and sponsors live in Season
@@ -30,10 +31,23 @@ const HUB_DRAWERS = {
   menu: [
     '⚙',
     'Menu',
-    () => `<div class="menu-list"><button class="btn" onclick="navigate('menu')">Main menu</button><button class="btn" onclick="openDebug()">Debug log</button>
+    () => `<div class="menu-list"><h3>More</h3>${MORE_DRAWERS.filter(k => k !== 'clubs' || World.isFree(RUN))
+      .map(k => `<button class="btn" onclick="hubOpen('${k}')">${HUB_DRAWERS[k][0]} ${HUB_DRAWERS[k][1]}</button>`)
+      .join(
+        ''
+      )}<h3>Game</h3><button class="btn" onclick="navigate('menu')">Main menu</button><button class="btn" onclick="openDebug()">Debug log</button>
       <p class="small mute" id="abandon"><button class="btn" onclick="abandonRun()" ${tip('Your run saves automatically')}>Abandon run</button></p></div>`
   ]
 };
+
+/** The top bar's sheet tabs (key 1–4) → the drawer each opens until its sheet is built; ⚙ lists the rest. */
+const HUB_TABS = [
+  ['me', 'Me'],
+  ['people', 'People'],
+  ['factions', 'World'],
+  ['season', 'Season']
+];
+const MORE_DRAWERS = ['places', 'skills', 'life', 'team', 'clubs', 'rank', 'news', 'diary'];
 
 function renderCareer() {
   A = null;
@@ -57,8 +71,8 @@ function renderCareer() {
   const nextCup = Run.weekType(run) === 'cup' && !run.event ? Cup.upcoming(run) : null; // rules first, then draw
   const card = hubCard(run, nextCup);
   $('#app').innerHTML = `<section class="career hub ${City.night(run) ? 'eve' : ''}" style="--tc:${team.color}">
+    ${topBar(run)}${weekRail(run, armed)}
     <div class="mapwrap" id="mapwrap"></div>
-    ${hudRes(run)}${hudClock(run, armed)}${hudMe(run)}${hudBar(run)}
     <div class="hud spotcard ${CW.spot && !card ? 'open' : ''}" id="spot">${CW.spot && !card ? spotCard(run) : ''}</div>
     ${toast ? `<div class="htoast" role="status">${esc(toast)}</div>` : ''}
     ${note ? `<div class="hnote" role="status" style="--nc:${REGIONS[note.to].color}">⚔ ${esc(note.text)}</div>` : ''}
@@ -97,7 +111,8 @@ function hubCard(run, nextCup) {
 const hubClubsHint = () =>
   `<p class="small mute">Free agent — <a href="#" onclick="hubOpen('clubs');return false">find a club</a> first to play with them.</p>`;
 
-function hudRes(run) {
+/** Top bar: brand, week, labelled resources (one-render deltas), the sheet tabs and ⚙. */
+function topBar(run) {
   const staPct = Math.round((run.sta / run.staMax) * 100),
     mood = MOODS[run.mood],
     now = { money: run.money, fans: run.fans, sp: run.sp, sta: run.sta, mood: run.mood },
@@ -108,25 +123,76 @@ function hudRes(run) {
       const n = k === 'mood' ? (v > 0 ? '↑' : '↓') : `${v > 0 ? '+' : '−'}${k === 'money' ? '$' : ''}${Math.abs(v).toLocaleString()}`;
       return ` <em class="hd ${v > 0 ? 'up' : 'dn'}">${n}</em>`;
     },
-    row = (k, label, val, t) => `<div ${tip(t)}><span class="hl">${label}</span><b>${val}${k ? d(k) : ''}</b></div>`;
+    cell = (label, val, t) => `<div class="tres" ${tip(t)}><small>${label}</small><b>${val}</b></div>`,
+    cup = Run.cupDef(run),
+    people = Asks.count(run);
   CW.hudPrev = now; // deltas show for one render after a change
   CW.hudOf = run;
-  return `<div class="hud res">
-    ${row('', 'Location', esc(REGIONS[City.loc(run)].name), `You are in ${REGIONS[City.loc(run)].name}. Home: ${HOUSING[run.housing].name} (${REGIONS[City.homeRegion(run)].name})`)}
-    ${row('money', 'Money', `$${run.money.toLocaleString()}`, 'Money')}
-    ${row('fans', 'Fans', run.fans.toLocaleString(), 'Fans')}
-    ${row('sp', 'Skill pts', run.sp, 'Skill points')}
-    <div ${tip(`Stamina ${run.sta}/${run.staMax}`)}><span class="hl">Stamina</span><span class="sbar ${staPct < 50 ? 'low' : ''}"><i style="width:${staPct}%"></i></span><b class="${staPct < 50 ? 'warn' : ''}">${run.sta}${d('sta')}</b></div>
-    ${row('mood', 'Mood', `<span class="mood m${run.mood}">${mood.name}</span>`, 'Mood')}
-    <button class="btn hmenu ${CW.drawer === 'menu' ? 'on' : ''}" onclick="hubOpen('menu')">⚙ Menu</button>
-  </div>`;
+  return `<header class="tbar">
+    <span class="tbrand">Spite &amp; Spike</span>
+    <div class="tres-row">
+      ${cell('Week', `<span class="disp">${cup ? esc(cup.short) : `${run.week} / ${CAREER.weeks}`}</span>`, `Week ${run.week} of ${CAREER.weeks}`)}
+      ${cell('Money', `$${run.money.toLocaleString()}${d('money')}`, 'Money')}
+      ${cell('Fans', `${run.fans.toLocaleString()}${d('fans')}`, 'Fans')}
+      ${cell('Skill pts', `${run.sp}${d('sp')}`, 'Skill points')}
+      ${cell('Stamina', `<span class="sbar ${staPct < 50 ? 'low' : ''}"><i style="width:${staPct}%"></i></span><span class="${staPct < 50 ? 'warn' : ''}">${run.sta}</span>${d('sta')}`, `Stamina ${run.sta}/${run.staMax}`)}
+      ${cell('Mood', `<span class="mood m${run.mood}">${mood.name}</span>${d('mood')}`, 'Mood')}
+    </div>
+    <nav class="ttabs" aria-label="Sheets">${HUB_TABS.map(
+      ([k, n], i) =>
+        `<button class="btn ${CW.drawer === k ? 'on' : ''}" onclick="hubOpen('${k}')">${n} <kbd>${i + 1}</kbd>${k === 'people' && people ? `<em class="badge">${people}</em>` : ''}</button>`
+    ).join(
+      ''
+    )}<button class="btn ${CW.drawer === 'menu' || MORE_DRAWERS.includes(CW.drawer) ? 'on' : ''}" onclick="hubOpen('menu')" aria-label="Settings and more">⚙</button></nav>
+  </header>`;
 }
-/** The coach's open goal under the clock (click: Season drawer). */
-function hudGoal(run) {
+/** The week rail: you and your 4 stats, the week's days, the coach's goal, the inbox, End week. */
+function weekRail(run, armed) {
+  const you = Run.you(run),
+    team = Run.myTeam(run),
+    wt = Run.weekType(run),
+    days = City.days(run),
+    match = wt === 'cup' || wt === 'eval',
+    eve = !match && days <= 0,
+    kind = { train: 'training', camp: 'training camp', eval: 'evaluation', cup: 'cup' }[wt] || wt;
+  return `<aside class="wrail" aria-label="This week">
+    <button class="wme" onclick="hubOpen('me')" aria-label="Your player"><span class="portrait">${faceSVG(you, MOODS[run.mood].form, 44)}</span>
+      <span><b>${stag(you)}${esc(you.name)}</b><small>${ROLE_NAME[you.role]} · ${chip(team)}${esc(team.short)} · OVR ${ovr(you)}</small></span></button>
+    <div class="wstats">${STATK.map(k => `<span><small>${STATNAME[k]}</small><b>${you[k]}</b><i class="mbar4"><i style="width:${Math.min(100, you[k])}%"></i></i></span>`).join('')}</div>
+    <section class="wweek"><div class="wh"><span class="lab">This week · ${kind}</span><span class="small mute">${match ? 'Match' : `${days} of ${WEEK_DAYS} days left`}</span></div>
+      <div class="wdays" id="wdays">${match ? '<div class="dslot match">Match</div>' : Array.from({ length: WEEK_DAYS }, (_, i) => `<div class="dslot ${i < WEEK_DAYS - days ? 'done' : ''}"></div>`).join('')}</div></section>
+    ${railGoal(run)}
+    <section class="winbox"><div class="lab">Inbox</div>${inboxRows(run)}</section>
+    ${
+      !match && !run.event
+        ? `<div class="acts wend"><button class="btn ${eve ? 'hot' : ''} endw" onclick="mapEndWeek()" ${tip(eve ? 'Sleep: start the next week' : `Skip the ${days} day${days > 1 ? 's' : ''} left`)}>${
+            armed
+              ? `Skip ${days} day${days > 1 ? 's' : ''}? Click again`
+              : `End week${days > 0 ? ` · ${days} day${days > 1 ? 's' : ''} unused` : ''}`
+          } <kbd>Space</kbd></button></div>`
+        : ''
+    }
+  </aside>`;
+}
+/** Coach's goal card in the rail (click: Season). */
+function railGoal(run) {
   const g = run.goal;
   if (!g || g.done != null) return '';
-  const soon = g.by - run.week <= 1;
-  return `<button class="hgoal ${soon ? 'warn' : ''}" onclick="hubOpen('season')" ${tip("Coach's goal")}><span class="hl">Goal</span> ${esc(Goals.text(run, g))} · ${esc(Goals.progress(run, g))} · by W${g.by}</button>`;
+  const soon = g.by - run.week <= 1,
+    m = /(\d[\d,]*) \/ (\d[\d,]*)/.exec(Goals.progress(run, g) || ''),
+    pct = m ? Math.min(100, (100 * +m[1].replace(/,/g, '')) / Math.max(1, +m[2].replace(/,/g, ''))) : 0;
+  return `<button class="wgoal" onclick="hubOpen('season')"><span class="wh"><span class="lab">Coach's goal</span><span class="small ${soon ? 'warn' : 'mute'}">by week ${g.by}</span></span>
+    <span class="wg1">${esc(Goals.text(run, g))}</span>${m ? `<i class="mbar4"><i style="width:${pct}%"></i></i>` : ''}<span class="small mute">${esc(Goals.progress(run, g))}</span></button>`;
+}
+/** Inbox rows until T-120: the suggested next step, and this render's diary line / place change. */
+function inboxRows(run) {
+  const n = nextStep(run),
+    rows = [];
+  if (n)
+    rows.push(
+      `<div class="wit"><span class="wtx">${esc(n.text)}</span>${n.act ? `<button class="btn" onclick="${n.act}">Go</button>` : ''}</div>`
+    );
+  return rows.join('') || '<p class="small mute">Nothing waiting.</p>';
 }
 /**
  * One suggested next step (a suggestion only: the chip selects a place or opens a drawer, never acts). First match wins:
@@ -158,73 +224,12 @@ function nextStep(run) {
   if (wt !== 'cup' && wt !== 'eval' && City.days(run) <= 0) return { text: 'Night · end the week', act: '' };
   return null;
 }
-function hudNext(run) {
-  const n = nextStep(run);
-  return n
-    ? `<button class="hnext" ${n.act ? `onclick="${n.act}"` : 'disabled'} ${tip('Suggested next step')}><span class="hl">Next</span> ${esc(n.text)}</button>`
-    : '';
-}
-
-function hudClock(run, armed) {
-  const wt = Run.weekType(run),
-    days = City.days(run),
-    cup = Run.cupDef(run),
-    match = wt === 'cup' || wt === 'eval',
-    pay = Math.ceil(run.week / ECON.payEvery) * ECON.payEvery - run.week,
-    eve = !match && days <= 0,
-    lab = cup ? cup.short : match ? 'Match' : eve ? 'Night' : `${days} day${days > 1 ? 's' : ''} left`;
-  return `<div class="hud clock ${eve ? 'eve' : ''} ${match ? 'match' : ''}">
-    <div class="dial" ${tip(`Week ${run.week} of ${CAREER.weeks}${wt === 'camp' ? ' · training camp (×1.5)' : ''}${run.injury ? ' · injured' : ''}\nPayday ${pay ? `in ${pay} week${pay > 1 ? 's' : ''}` : 'this week'}\n${WEEK_DAYS} days a week: every action takes a day, plus the trip there (nearby 1 day · the highlands 2).\nNight falls when the days run out; the week ends only when you end it.\nTraining in your faction's region: home turf +${Math.round(TURF_BONUS * 100)}%.`)}>
-      <span class="sky">${match ? '🏐' : eve ? '🌙' : '☀'}</span><b>W${run.week}</b><small>${lab}${wt === 'camp' ? ' · camp' : ''}</small>
-      <svg viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="18"/><circle class="prg" cx="20" cy="20" r="18" style="stroke-dasharray:${((run.week / CAREER.weeks) * 113).toFixed(1)} 113"/></svg></div>
-    ${match ? '' : `<div class="days" aria-label="${days} of ${WEEK_DAYS} days left">${Array.from({ length: WEEK_DAYS }, (_, i) => `<i class="${i < WEEK_DAYS - days ? 'used' : ''}"></i>`).join('')}</div>`}
-    ${!match && !run.event ? `<button class="btn ${eve ? 'hot' : ''} endw" onclick="mapEndWeek()" ${tip(eve ? 'Sleep: start the next week (Space)' : `Skip the ${days} day${days > 1 ? 's' : ''} left (Space)`)}>${armed ? `Skip ${days} day${days > 1 ? 's' : ''}? Click again` : `End week${days > 0 ? ` — ${days} day${days > 1 ? 's' : ''} unused` : ''}`} <kbd>Space</kbd></button>` : ''}
-    ${hudGoal(run)}${hudNext(run)}
-  </div>`;
-}
-
-function hudMe(run) {
-  const you = Run.you(run),
-    team = Run.myTeam(run);
-  return `<button class="hud me" onclick="hubOpen('me')" aria-label="Your player">
-    <span class="portrait">${faceSVG(you, MOODS[run.mood].form, 56)}<b>${you.num}</b></span>
-    <span class="who"><b>${stag(you)}${esc(you.name)}</b><small>${you.role} · ${chip(team)}${esc(team.short)} · OVR ${ovr(you)}</small>
-      <span class="mini">${STATK.map(k => `<i ${tip(`${STATNAME[k]} ${you[k]}`)}><u style="width:${you[k]}%"></u></i>`).join('')}</span></span>
-  </button>`;
-}
-
-/** Bottom-bar drawers in order (1–9 open them). */
-/** The dock's three groups (Menu sits in the HUD corner). */
-const DOCK_GROUPS = [
-  ['You', ['places', 'skills', 'life']],
-  ['People', ['team', 'people', 'clubs']],
-  ['World', ['season', 'factions', 'rank', 'news', 'diary']]
-];
-const dockGroups = run => DOCK_GROUPS.map(([g, ks]) => [g, ks.filter(k => k !== 'clubs' || World.isFree(run))]);
-const dockKeys = run => dockGroups(run).flatMap(([, ks]) => ks);
-/** The printed hotkey of the i-th dock button: 1–9, then 0. */
-const dockKey = i => (i < 9 ? String(i + 1) : i === 9 ? '0' : '');
-
-function hudBar(run) {
-  const you = Run.you(run),
-    aff = Skills.forRole(you.role).filter(id => !you.skills.includes(id) && Skills.canLearn(run, id)).length,
-    badge = { skills: aff, news: run.gazette && !run.gazette.read ? '!' : 0, clubs: 0, people: Asks.count(run) };
-  let n = 0;
-  const btn = k => {
-    const key = dockKey(n++);
-    return `<button class="${CW.drawer === k ? 'on' : ''}" onclick="hubOpen('${k}')" aria-label="${HUB_DRAWERS[k][1]}" ${tip(`${HUB_DRAWERS[k][1]}${key ? ` (${key})` : ''}`)}><i>${HUB_DRAWERS[k][0]}</i><span>${HUB_DRAWERS[k][1]}</span>${key ? `<kbd>${key}</kbd>` : ''}${badge[k] ? `<em>${badge[k]}</em>` : ''}</button>`;
-  };
-  return `<nav class="hud dock" aria-label="Shortcuts">${dockGroups(run)
-    .map(([g, ks]) => `<div class="dg" role="group" aria-label="${g}">${ks.map(btn).join('')}</div>`)
-    .join('')}</nav>`;
-}
-
 function hubDrawer(run) {
   const [ic, name, body] = HUB_DRAWERS[CW.drawer];
   return `<aside class="drawer" aria-label="${name}"><div class="dhd"><h3>${ic} ${name}</h3><button class="btn x" onclick="hubOpen(null)" aria-label="Close">✕</button></div><div class="dbody">${body(run)}</div></aside>`;
 }
 
-/** Hub keys: 1–9, 0 open the bottom-bar drawers, Space ends the week, Esc closes the drawer, then the place card. */
+/** Hub keys: 1–4 open the sheet tabs, Space ends the week, Esc closes the drawer, then the place card. */
 function hubKey(e) {
   if (A || e.ctrlKey || e.metaKey || e.altKey || !document.querySelector('.career.hub') || $('#dbg') || CW.dossier) return;
   if (e.target.closest && e.target.closest('input,select,textarea,button,a,[contenteditable]')) return;
@@ -237,10 +242,7 @@ function hubKey(e) {
   } else if (e.key === ' ' && document.querySelector('.hub .endw') && !document.querySelector('.hubmodal')) {
     e.preventDefault();
     mapEndWeek();
-  } else if (/^[0-9]$/.test(e.key) && !document.querySelector('.hubmodal')) {
-    const k = dockKeys(RUN)[e.key === '0' ? 9 : +e.key - 1];
-    if (k) hubOpen(k);
-  }
+  } else if (/^[1-4]$/.test(e.key) && !document.querySelector('.hubmodal')) hubOpen(HUB_TABS[+e.key - 1][0]);
 }
 document.addEventListener('keydown', hubKey);
 

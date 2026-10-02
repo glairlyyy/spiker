@@ -2245,3 +2245,262 @@
 .acts .btn.hot small {
   color: var(--on-ink);
 }
+
+/* ---------- hub shell: top bar, week rail, map, place panel (spec §10.1, T-117) ---------- */
+.hub {
+  --tbar: 56px;
+  --rail: 340px;
+}
+.hub .tbar {
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--tbar);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 16px;
+  background: var(--surf);
+  border-bottom: 1px solid var(--line);
+}
+.hub .tbrand {
+  font: 600 15px var(--disp);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.hub .tres-row {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.hub .tres {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.hub .tres small {
+  font-size: 12px;
+  color: var(--mute);
+}
+.hub .tres b {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.hub .tres .disp {
+  font: 600 16px var(--disp);
+}
+.hub .tres .sbar {
+  width: 72px;
+}
+.hub .tres .warn {
+  color: var(--warn);
+}
+.hub .ttabs {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+.hub .ttabs .btn {
+  height: 36px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+.hub .ttabs kbd {
+  margin: 0;
+}
+.hub .badge {
+  font-style: normal;
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--hot);
+  color: #fff;
+  font: 700 12px/16px var(--body);
+}
+.hub .wrail {
+  position: absolute;
+  z-index: 4;
+  top: var(--tbar);
+  left: 0;
+  bottom: 0;
+  width: var(--rail);
+  box-sizing: border-box;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  background: var(--surf);
+  border-right: 1px solid var(--line);
+}
+.hub .wrail .lab {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.hub .wme {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.hub .wme b {
+  display: block;
+  font-size: 16px;
+}
+.hub .wme small {
+  display: block;
+  font-size: 13px;
+  color: var(--mute);
+}
+.hub .wstats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.hub .wstats span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hub .wstats small {
+  font-size: 12px;
+  color: var(--mute);
+}
+.hub .mbar4 {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surf2);
+  overflow: hidden;
+}
+.hub .mbar4 > i {
+  display: block;
+  height: 100%;
+  background: var(--cyan);
+}
+.hub .wh {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+.hub .wdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.hub .dslot {
+  height: 56px;
+  border-radius: 8px;
+  background: var(--surf2);
+  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--mute);
+  text-align: center;
+  line-height: 1.1;
+}
+.hub .dslot.done {
+  background: rgba(255, 255, 255, 0.1);
+}
+.hub .dslot.match {
+  grid-column: 1 / -1;
+  color: var(--ink);
+  font-weight: 600;
+}
+.hub .wgoal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--surf2);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.hub .wgoal .wh {
+  margin: 0;
+}
+.hub .wgoal .warn {
+  color: var(--warn);
+  font-weight: 600;
+}
+.hub .winbox .wit {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.hub .winbox .wit .btn {
+  height: 32px;
+  padding: 0 12px;
+}
+.hub .wend {
+  margin-top: auto;
+  grid-template-columns: 1fr;
+}
+.hub .wend .btn {
+  min-height: 48px;
+}
+/* the map, the place panel, drawers, cards and notes live right of the rail, under the bar */
+.hub .mapwrap {
+  top: var(--tbar);
+  left: var(--rail);
+}
+.hub .spotcard {
+  top: calc(var(--tbar) + 16px);
+  right: 16px;
+  bottom: auto;
+  width: 448px;
+  max-height: calc(100vh - var(--tbar) - 32px);
+  padding: 20px;
+  background: var(--surf);
+  border-radius: 12px;
+}
+.hub .drawer {
+  top: var(--tbar);
+  bottom: 0;
+  border-bottom: 0;
+  border-radius: 0;
+}
+.hub .hubmodal {
+  inset: var(--tbar) 0 0 var(--rail);
+  padding: 32px;
+}
+.hub .htoast,
+.hub .hnote {
+  left: calc(var(--rail) + (100vw - var(--rail)) / 2);
+  top: calc(var(--tbar) + 16px);
+  max-width: min(560px, calc(100vw - var(--rail) - 520px));
+}
+.hub .hnote {
+  top: calc(var(--tbar) + 64px);
+}

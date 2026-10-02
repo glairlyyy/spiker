@@ -36,7 +36,7 @@ Redesign (spec §10; design system pages _Redesign_, _UI inventory_; mockups in 
 no rule, number or engine change; goldens unchanged. Read §10, §9 and the mockup card each task names before coding.
 Order: T-117 … T-129. Built on UI batch 2 (T-095…T-101, T-114 done — reuse their helpers); T-102…T-106 superseded (see Done).
 
-### [ ] T-117: Hub shell — top bar, week rail, map, place panel
+### [x] T-117: Hub shell — top bar, week rail, map, place panel
 
 Spec: §10.1 Goldens: unchanged Save: no change
 Goal: the hub uses the new frame; every old drawer is still reachable while the sheets are built.
@@ -53,7 +53,7 @@ Steps:
 
 - HubRedesign mockup's frame matches at 1440×900; every old drawer opens from a tab or ⚙; no dock, no floating corners.
   QA: career run → hub, each tab, a place; screenshots.
-  Result:
+  Result: done — `topBar` (brand, Week n/28 or the cup, labelled Money/Fans/Skill pts/Stamina bar/Mood with one-render deltas, tabs Me 1 · People 2 (asks badge) · World 3 · Season 4 → me / people / factions / season drawers, ⚙ → menu which now lists every other drawer); `weekRail` (you + 4 stat bars → Me, "This week · {type}" + days left + 7 slots (T-118 fills them), coach's goal card with bar → Season, Inbox (nextStep until T-120), End week action row with the two-click arm + Space); map right of the rail under the bar; place card = 448px right panel; drawers / cards / notes over the map area; hudClock, hudMe, hudBar, the dock and its groups removed; keys 1–4 = tabs. The site header was already covered by the fixed hub (no index.html change). QA: 1440×900 hub, place panel, ⚙, key 3 → World; no pageerror.
 
 ### [ ] T-118: Day track with ghost preview
 
