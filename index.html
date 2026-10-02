@@ -34,15 +34,25 @@
   Spite & Spike — see ARCHITECTURE.md for how the pieces fit together.
   Scripts are classic (shared global scope) and must load in this order: each group only uses earlier groups at load time.
 -->
-    <!-- three.js + three-vrm for Monster 3D (loaded only when a 3D match starts) -->
-    <script type="importmap">
-      {
-        "imports": {
-          "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
-          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
-          "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.5.5/lib/three-vrm.module.min.js"
-        }
-      }
+    <!-- three.js + three-vrm for the 3D match and map. The import map must exist before any module loads, so an inline script
+         writes it: CDN builds normally, node_modules (npm install) on localhost for offline QA (add ?cdn to force the CDN). -->
+    <script>
+      (function () {
+        var local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && !/[?&]cdn\b/.test(location.search);
+        var cdn = 'https://cdn.jsdelivr.net/npm/';
+        var imports = local
+          ? {
+              three: '/node_modules/three/build/three.module.js',
+              'three/addons/': '/node_modules/three/examples/jsm/',
+              '@pixiv/three-vrm': '/node_modules/@pixiv/three-vrm/lib/three-vrm.module.js'
+            }
+          : {
+              three: cdn + 'three@0.169.0/build/three.module.js',
+              'three/addons/': cdn + 'three@0.169.0/examples/jsm/',
+              '@pixiv/three-vrm': cdn + '@pixiv/three-vrm@3.5.5/lib/three-vrm.module.min.js'
+            };
+        document.write('<script type="importmap">' + JSON.stringify({ imports: imports }) + '<\/script>');
+      })();
     </script>
     <!-- Core: random source, storage -->
     <script src="js/core/debuglog.js"></script>

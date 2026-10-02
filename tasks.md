@@ -11,7 +11,7 @@ Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x
 ### [ ] T-000: <imperative title>
 Spec: §x.y          Goldens: unchanged | update (<why>)          Save: no change | RUN_VERSION bump (<why>)
 Goal: <one or two sentences: the observable outcome>
-Files: <exact paths the build chat may edit; new files marked (new) — also add to index.html + test3d.html>
+Files: <exact paths the build chat may edit; new files marked (new) — also add to index.html>
 Do not: <things that look tempting but are wrong for this task>
 Steps:
 1. <concrete step naming functions/constants/globals>
