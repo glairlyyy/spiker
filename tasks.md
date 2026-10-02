@@ -146,13 +146,13 @@ Steps: fitView and fly-to are done (T-097). Add a Map/List segment top-left of t
 Accept: List selects places; no places drawer. QA: screenshots.
 Result: mapBar (career-hub.js): Map/List segment top-left, List = placesCard over the map area (CW.mapList), a row selects the place and returns to the map (panel opens, camera flies); legend chips bottom-left (HQ, venue, battle, faction chips). HUB_DRAWERS, hubDrawer and CW.drawer removed (no drawer remains); Esc closes ⚙ → list → sheet → place. QA: 3 screenshots, no errors.
 
-### [ ] T-127: Match prep card
+### [x] T-127: Match prep card
 
 Spec: §10.5 §9.8 Goldens: unchanged Save: no change
 Files: js/ui/career-week.js (evalPanel, cupPanel, matchPrep, rankBest), css/career.css
 Steps: two roster columns (you highlighted), lineup sentence (`On the bench — {name} rates higher (x vs y)`), focus as a selected segment labelled "Pick one", captain talk the same, rewards line, bracket on top for cups; action row (`.acts.pri`) `[Play 2fr] [Sim 1fr]`.
 Accept: fits 900px height without scroll. QA: week 4 evaluation; screenshot.
-Result:
+Result: Match prep (career-week.js): header (Week n · Match day, title, venue/opponent), two roster columns with OVR right-aligned ('?' until scouted/met; new `matchRosters` for cups), `matchPrep` rows Lineup sentence (Starting / On the bench — X rates higher (a vs b)) · Focus segment "Pick one · hit it: +sp +fans" · Team talk (captain, cup) the same; rewards as chips; notes line (scout hint + their best); `.acts.pri` Play 2fr / Sim 1fr. Cup bracket shows only the round you play next (4-column grid) so the card fits. QA 1440×900: eval card 564px, cup card 741px — no scroll; no errors.
 
 ### [ ] T-128: Match result screen
 

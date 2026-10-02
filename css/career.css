@@ -2815,7 +2815,8 @@
   border-radius: 12px;
   padding: 16px;
 }
-.hub .sheet .lab {
+.hub .sheet .lab,
+.hubcard .lab {
   margin-bottom: 8px;
   font-size: 12px;
   font-weight: 600;
@@ -3145,5 +3146,116 @@
   border-radius: 999px;
   background: var(--surf);
   border: 1px solid var(--line);
+  font-size: 12px;
+}
+/* Match prep card (T-127) */
+.hubcard .mph {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-bottom: 12px;
+}
+.hubcard .mph .lab {
+  flex-basis: 100%;
+}
+.hubcard .mpt {
+  margin: 0;
+  font: 600 22px/1.2 var(--body);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+.rosters .lab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.rosters .rp {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.rosters .rp span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mprep {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.mprow {
+  display: grid;
+  grid-template-columns: 88px auto 1fr;
+  align-items: center;
+  gap: 12px;
+}
+.mprow .lab {
+  margin: 0;
+}
+.mprow .seg {
+  display: flex;
+  gap: 4px;
+}
+.mprow .seg .btn {
+  padding: 6px 12px;
+}
+.mprow b.good {
+  color: var(--good);
+}
+.mprow b.warn {
+  color: var(--warn);
+}
+.rwchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+.rwchips .pchip {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--surf2);
+  font-size: 13px;
+  font-weight: 600;
+}
+.rwchips .pchip.good {
+  color: var(--good);
+}
+.mnotes {
+  margin: 0 0 12px;
+}
+.mnotes:empty {
+  display: none;
+}
+.hubcard .bracket.cbr {
+  display: block;
+  margin: 0 0 12px;
+  padding: 12px;
+  overflow: visible;
+}
+.hubcard .cbr .bt3 {
+  margin: 0 0 8px;
+}
+.hubcard .cbr .bcol {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  min-width: 0;
+}
+.hubcard .cbr .bcol h4 {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.hubcard .cbr .bm {
+  margin: 0;
+}
+.hubcard .cbr .br {
+  padding: 3px 8px;
   font-size: 12px;
 }
