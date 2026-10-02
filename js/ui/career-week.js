@@ -498,6 +498,53 @@ function seePhysio() {
 function learnSkill(id) {
   if (Skills.learn(RUN, id)) renderCareer();
 }
+/** Match result data (spec §10.6). The match screen calls `resultSnap` before a career fixture's onFinish and
+ * `resultData` after it: what changed for you, read from the run (no rule runs here). null = you are not in this match. */
+function resultSnap(run, m) {
+  const you = Run.you(run);
+  if (!you || !m.t.some(t => squadOf(t).includes(you))) return null;
+  const s = m.stat[you.id] || blank(),
+    f = run.focus && (FOCUS[you.role] || []).find(x => x[0] === run.focus);
+  return {
+    stats: Object.fromEntries([...STATK, 'wit'].map(k => [k, you[k]])),
+    xp: { ...(run.xp || {}) },
+    sp: run.sp,
+    fans: run.fans,
+    money: run.money,
+    mood: run.mood,
+    skills: [...you.skills],
+    focus: f ? { label: f[1], met: Cup.focusMet(run, s) } : null,
+    mlog: (run.mlog || []).length,
+    side: squadOf(m.t[0]).includes(you) ? 0 : 1
+  };
+}
+function resultData(run, m, b, msg) {
+  const you = Run.you(run),
+    s = m.stat[you.id] || blank(),
+    e = (run.mlog || []).length > b.mlog || (run.mlog || []).length === MLOG.max ? run.mlog[run.mlog.length - 1] : null,
+    d = (k, name, fmt = v => v.toLocaleString()) => {
+      const v = run[k] - b[k];
+      return v ? { v, text: `${v > 0 ? '+' : '−'}${fmt(Math.abs(v))} ${name}` } : null;
+    };
+  return {
+    win: m.winner === b.side,
+    played: m.played.has(you.id),
+    grade: e && e.played ? e.grade : null,
+    line: { k: s.k, blk: s.blk, ace: s.ace, err: s.err },
+    focus: b.focus,
+    rewards: [
+      d('sp', 'skill pts'),
+      d('fans', 'fans'),
+      d('money', '', v => '$' + v),
+      run.mood !== b.mood ? { v: run.mood - b.mood, text: `mood ${run.mood > b.mood ? 'up' : 'down'}` } : null
+    ].filter(Boolean),
+    growth: [...STATK, 'wit']
+      .filter(k => you[k] !== b.stats[k] || ((run.xp || {})[k] || 0) !== (b.xp[k] || 0))
+      .map(k => ({ k, name: STATNAME[k], from: b.stats[k], to: you[k], ...Training.progress(run, k) })),
+    techs: you.skills.filter(id => !b.skills.includes(id)).map(id => SKILLS[id].name),
+    msg
+  };
+}
 /** Play a career match on the match screen, or (sim) resolve it at once without watching. */
 function playCareer(kind, sim) {
   const fx = Cup.fixture(RUN, kind);

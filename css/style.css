@@ -1433,3 +1433,142 @@ body:has(.match) .top {
 .mrail #box {
   overflow-x: auto;
 }
+/* Match result screen (T-128) */
+.ocard.mres {
+  max-width: 860px;
+  padding: 24px 28px;
+  text-align: left;
+  background: var(--surf);
+  border: 1px solid var(--line);
+}
+.ocard.mres.mono {
+  max-width: 520px;
+}
+.mres .lab {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.mres .rhead {
+  margin-bottom: 16px;
+}
+.mres .rhead h2 {
+  margin: 0;
+  font: 600 28px/1.1 var(--disp);
+  letter-spacing: 0.04em;
+}
+.mres .rcols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+.mres .rgrade {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.mres .gtile {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  background: var(--surf2);
+  border: 1px solid var(--line-strong);
+  font: 700 44px/1 var(--disp);
+}
+.mres .gtile.gS {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+.mres .gtile.gA {
+  color: var(--good);
+}
+.mres .rline {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+.mres .rline b {
+  font-size: 20px;
+}
+.mres .good {
+  color: var(--good);
+}
+.mres .warn {
+  color: var(--warn);
+}
+.mres .rwchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mres .rwchips .pchip {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--surf2);
+  font-size: 13px;
+  font-weight: 600;
+}
+.mres .rwchips .pchip.good {
+  color: var(--good);
+}
+.mres .rwchips .pchip.bad {
+  color: var(--bad, var(--warn));
+}
+.mres .rgrow {
+  display: grid;
+  grid-template-columns: 80px 48px 48px 1fr;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+.mres .rgrow .bar {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surf2);
+  overflow: hidden;
+}
+.mres .rgrow .bar i {
+  display: block;
+  height: 100%;
+  background: var(--cyan);
+}
+.mres .rtop {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.mres .rstar {
+  display: grid;
+  grid-template-columns: 20px 32px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border-left: 3px solid var(--tc);
+  border-radius: 6px;
+  background: var(--surf2);
+  font-size: 13px;
+}
+.mres .rstar span {
+  display: flex;
+  flex-direction: column;
+}
+.mres .rmsg {
+  margin: 0 0 12px;
+}
+.mres .acts {
+  margin-top: 8px;
+}
+.stage:has(.over:not([hidden])) .ticker {
+  display: none;
+}

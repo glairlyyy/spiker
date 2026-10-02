@@ -154,12 +154,12 @@ Steps: two roster columns (you highlighted), lineup sentence (`On the bench — 
 Accept: fits 900px height without scroll. QA: week 4 evaluation; screenshot.
 Result: Match prep (career-week.js): header (Week n · Match day, title, venue/opponent), two roster columns with OVR right-aligned ('?' until scouted/met; new `matchRosters` for cups), `matchPrep` rows Lineup sentence (Starting / On the bench — X rates higher (a vs b)) · Focus segment "Pick one · hit it: +sp +fans" · Team talk (captain, cup) the same; rewards as chips; notes line (scout hint + their best); `.acts.pri` Play 2fr / Sim 1fr. Cup bracket shows only the round you play next (4-column grid) so the card fits. QA 1440×900: eval card 564px, cup card 741px — no scroll; no errors.
 
-### [ ] T-128: Match result screen
+### [x] T-128: Match result screen
 
 Spec: §10.6 Goldens: unchanged Save: no change
 Files: js/ui/match-screen.js (finishMatch, podium, matchStars), js/ui/career-week.js (playCareer onFinish message → data), css/style.css
 Do not: change rewards or XP math; the `onFinish` message stays available for Monster game.
-Steps: after the final (same delay), replace the podium overlay with a full result layout as MatchResult: headline, grade tile + your K/B/A/E + focus result, rewards chips, growth rows, techniques picked up, top 3, `[Continue] [Box score]`. Monster game: headline + top 3 + `[Back to menu]`.
+Steps: after the final (same delay), replace the podium overlay with a full result layout as MatchResult: `resultScreen` (match-screen.js) replaces the podium (podium() removed): headline (You win/lose a-b, round label), grade tile + K/B/A/E + focus met/missed, rewards chips, growth rows (value, +n, XP bar), techniques picked up, top 3 rows, `.acts.pri` [Continue][Box score B]; Monster = headline + top 3 + [Back to menu]. Data: `resultSnap` before the fixture's onFinish and `resultData` after (career-week.js; diffs the run, no rule runs; Cup/Fight results unchanged, the onFinish line still goes to the diary). The rail no longer opens itself after the final; the ticker hides under the result. QA: week-4 evaluation (Skip) and Monster at 1440×900 — card fits the court; Continue → hub (Week 5 brief); no errors.
 Accept: career match ends on the result screen; Continue returns to the hub (report or next card). QA: career evaluation (watch); screenshot.
 Result:
 

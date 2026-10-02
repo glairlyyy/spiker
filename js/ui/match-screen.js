@@ -513,16 +513,41 @@ function matchStars(m) {
     .sort((x, y) => y.v - x.v)
     .slice(0, 3);
 }
-/** Podium markup: 2nd, 1st, 3rd from left to right. */
-function podium(stars) {
-  return [1, 0, 2]
-    .map(r => {
-      const e = stars[r];
-      if (!e) return '';
-      const q = e.q;
-      return `<div class="pod pod${r + 1}" style="--tc:${e.p.team.color}"><div class="pface">${faceSVG(e.p, 0.9, r ? 52 : 66)}</div><b>${esc(e.p.name)}</b><small>${esc(e.p.team.short)} · ${q.k} K · ${q.blk} B · ${q.ace} A · ${q.dig} D</small><div class="step"><span>${r + 1}</span></div></div>`;
-    })
-    .join('');
+/** The result screen (spec §10.6): headline, then for your match the grade tile with your K/B/A/E and focus, rewards
+ * chips, growth rows and techniques picked up; top 3; [Continue] [Box score]. Monster game: headline + top 3. */
+function resultScreen(m, wt, hi, lo, stars, res) {
+  const head = `<div class="rhead"><span class="lab">${esc(A.fx.round || 'Final')}</span><h2>${res ? (res.win ? 'You win' : 'You lose') + ` ${hi}-${lo}` : `${esc(wt.name)} win ${hi}-${lo}`}</h2>${
+      res ? `<span class="small mute">${esc(wt.name)} take it</span>` : ''
+    }</div>`,
+    top = `<div class="rtop"><div class="lab">Top 3</div>${stars
+      .map(
+        (e, i) =>
+          `<div class="rstar" style="--tc:${e.p.team.color}"><b class="rn">${i + 1}</b>${faceSVG(e.p, 0.9, 32)}<span><b>${esc(e.p.name)}</b><small class="mute">${esc(e.p.team.short)} · ${e.p.role}</small></span><small>${e.q.k} K · ${e.q.blk} B · ${e.q.ace} A · ${e.q.dig} D</small></div>`
+      )
+      .join('')}</div>`,
+    acts = `<div class="acts ${res ? 'pri' : ''}"><button class="btn hot" onclick="leaveMatch()">${esc(A.fx.back || 'Continue')}</button>${res ? `<button class="btn" onclick="railOpen('box')">Box score <kbd>B</kbd></button>` : ''}</div>`;
+  if (!res) return `<div class="ocard mres mono">${head}${top}${acts}</div>`;
+  const L = res.line,
+    you = res.played
+      ? `<div class="rgrade"><div class="gtile g${res.grade || 'X'}">${res.grade || '–'}</div><div><div class="lab">Your line</div><div class="rline"><span><b>${L.k}</b> K</span><span><b>${L.blk}</b> B</span><span><b>${L.ace}</b> A</span><span><b>${L.err}</b> E</span></div>${
+          res.focus
+            ? `<div class="small ${res.focus.met ? 'good' : 'warn'}">Focus ${esc(res.focus.label)} · ${res.focus.met ? 'met' : 'missed'}</div>`
+            : ''
+        }</div></div>`
+      : '<div class="rgrade"><div class="gtile">–</div><div><div class="lab">Your line</div><p class="small mute">You watched from the bench.</p></div></div>',
+    chips = res.rewards.length
+      ? `<div class="rwchips">${res.rewards.map(r => `<span class="pchip ${r.v > 0 ? 'good' : 'bad'}">${esc(r.text)}</span>`).join('')}</div>`
+      : '',
+    grow = res.growth.length
+      ? `<div class="lab">Growth</div>${res.growth
+          .map(
+            g =>
+              `<div class="rgrow"><span>${esc(g.name)}</span><b>${g.k === 'wit' ? g.to.toFixed(2) : g.to}</b><span class="good small">${g.to !== g.from ? (g.k === 'wit' ? '+' + (g.to - g.from).toFixed(2) : '+' + (g.to - g.from)) : ''}</span><i class="bar"><i style="width:${Math.min(100, Math.round((100 * g.have) / (g.need || 1)))}%"></i></i></div>`
+          )
+          .join('')}`
+      : '',
+    techs = res.techs.length ? `<div class="lab">Techniques picked up</div><div class="small">${res.techs.map(esc).join(' · ')}</div>` : '';
+  return `<div class="ocard mres">${head}<div class="rcols"><div>${you}${chips}</div><div>${grow}${techs}</div></div>${top}${acts}</div>`;
 }
 /** The match is over: count everyone's stats, run the fixture's onFinish, and show the result card after the celebration. */
 function finishMatch() {
@@ -538,7 +563,9 @@ function finishMatch() {
       p.tour.mp++;
       if (m.stat[p.id]) addStats(p.tour, m.stat[p.id]);
     }
-  const msg = A.fx.onFinish ? A.fx.onFinish(m) || '' : '';
+  const snap = A.fx.onFinish && typeof RUN !== 'undefined' && RUN && typeof resultSnap === 'function' ? resultSnap(RUN, m) : null,
+    msg = A.fx.onFinish ? A.fx.onFinish(m) || '' : '',
+    res = snap ? resultData(RUN, m, snap, msg) : null; // career: the result screen's data (spec §10.6)
   for (const b of document.querySelectorAll('.cbar .play button, .fsb button[data-s], #fspause')) b.disabled = true; // playback is over
   updTO();
   boxScore();
@@ -549,11 +576,10 @@ function finishMatch() {
   const stars = matchStars(m);
   const o = $('#over');
   o.style.setProperty('--tc', wt.color);
-  o.innerHTML = `<div class="ocard"><h2>${esc(wt.name)} win ${hi}-${lo}</h2><p class="small mute">Player of the match: <b>${esc(stars[0].p.name)}</b></p><div class="podium">${podium(stars)}</div>${msg ? `<p class="resline">${esc(msg)}</p>` : ''}<div class="acts pri"><button class="btn hot" onclick="leaveMatch()">${esc(A.fx.back || 'Continue')}</button><button class="btn" onclick="railOpen('box')">Box score</button></div></div>`;
+  o.innerHTML = resultScreen(m, wt, hi, lo, stars, res); // the full line stays in the diary and the commentary
   setTimeout(
     () => {
       if (o.isConnected) o.hidden = false;
-      if (o.isConnected) railOpen('box');
     },
     RM ? 0 : 2600
   );
