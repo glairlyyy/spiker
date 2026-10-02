@@ -12,7 +12,8 @@ Code home: https://github.com/glairlyyy/spiker (branch main). Containers are tem
 - `ARCHITECTURE.md` — HOW the code is built: layers, engine flow, renderer, saves, testing.
 
 ## Workflow (spec-driven, two chats)
-- **Spec chat** (owner + planner model) writes `spec.md`, `lore.md` and `tasks.md`. It does not write game code.
+- **Spec chat** (owner + planner model) writes `spec.md`, `lore.md` and `tasks.md`, reviews the build chat's work, and
+  (owner, 2026-10-02) also implements the next task itself when no build chat is working; it then follows the build loop below.
 - **Build chat** (implementer model) writes code, keeps `ARCHITECTURE.md` current, and ticks tasks. It does not
   edit `spec.md`, `lore.md` or add/reword tasks; it may only change a task's status line and its `Result:` / `Question:` lines.
 
