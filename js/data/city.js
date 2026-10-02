@@ -113,7 +113,15 @@ const CITY = (() => {
 const TURF_BONUS = 0.1;
 /** A training session's fee before the region's price (one day's session). */
 const TRAIN_FEE = 8;
-/** Travel by map distance: free within NEAR_R, then a day per TRIP_DAY units, at most TRIP_MAX days. */
+/**
+ * Travel (spec §4.18, T-048): free within NEAR_R, then a day per TRIP_DAY units of travel cost, at most TRIP_MAX days. The cost is
+ * the cheaper of going cross-country (straight distance × 1) and the road route (the legs to / from the network × 1, each road
+ * edge's length × ROAD_COST[kind]): main roads and the overpass are fast, Shu mountain paths are slower than the open ground.
+ */
+const ROAD_COST = { main: 0.45, overpass: 0.35, street: 0.6, boardwalk: 0.7, dirt: 0.8, path: 1.2 };
+/** Going cross-country (off the roads) costs this × the distance by region (the Shu highlands are rough ground); others 1. */
+const GROUND_COST = { shu: 1.35 },
+  GROUND_STEP = 20;
 const NEAR_R = 110;
 const TRIP_DAY = 220;
 const TRIP_MAX = 3;

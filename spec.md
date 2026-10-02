@@ -254,7 +254,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   - A Rankings drawer shows the three lists and your rank on each; pre-match and challenge cards show the opponent's
     ranks ("Register #12 · Gazette #3 · Street —"). Display only: no match effects. Aces / the rival appear here later.
 
-- §4.18 Roads, settlements and buildings **[built — T-045, T-046, T-047; T-048 later]** (owner: hybrid look):
+- §4.18 Roads, settlements and buildings **[built — T-045, T-046, T-047, T-048]** (owner: hybrid look):
   - Data first (rules layer, plain data, no randoms): a road network (nodes at the airport, every place, club HQs,
     Central Academy + junctions; edges = main roads, Wei grid streets, Shu dirt / mountain paths); settlement lots
     generated deterministically along roads per region style — Wei dense city blocks, Wu coastal fishing villages and
@@ -266,7 +266,9 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     (Kenney City / Fantasy Town, Quaternius) can replace any kind later from `assets/models/` without touching rules or
     data — owner picks the pieces.
   - Your player walks along the roads (route through the network) instead of a straight line.
-  - Later (T-048, optional): trips along roads cost fewer days than cross-country; Shu mountain paths stay slow.
+  - Travel (built T-048): a trip costs the cheaper of the road route (main / overpass fast, Wei streets, the boardwalk and
+    dirt tracks slower, Shu mountain paths slowest) and going cross-country (the Shu highlands are rough ground). Along
+    the coast road the harbor is 2 days from the airport instead of 3; Shu's mountain trail is 3.
 - §4.19 Town layout revamp **[built — T-050 data, T-051 render; T-047 the walk follows the roads]** (owner: the island should feel as crowded as
   the lore; wider beach; Wu town inland). Districts follow lore.md §3–§5:
   - **Wei** (dense, layered): *Downtown* round Wei Gold's HQ and the league office — a tower grid, the densest place on

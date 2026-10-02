@@ -48,10 +48,11 @@ Result:
 - - NPC careers ✓ (T-060).
 - Relationships ✓ (T-060…T-066, spec §4.23).
 - Relationship review fixes ✓ (T-089).
-- **Now**: (see below) **Then**: road travel (T-048), voice pass (T-022).
+- Road travel ✓ (T-048).
+- **Now**: voice pass (T-022), then cleanup part 2 (T-082…T-088).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now — review fixes
+## Now
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
@@ -71,10 +72,6 @@ Cleanup, part 2 (after T-071…T-081)
 
 Relationships — the core pillar (spec §4.23; detailed one by one after T-059)
 
-Roads, part 2 — spec §4.18
-- T-048: Road travel — trip days from the road route length (roads faster than cross-country; Shu paths slower);
-  rules + tests change (career only).
-
 Injuries, part 2 — spec §4.15
 - (T-049 merged into T-057.)
 
@@ -84,6 +81,7 @@ Phase 5 — Voice pass
 
 ## Done
 
+- [x] T-048: Road travel — trip cost = the cheaper of the road route (ROAD_COST by kind) and cross-country (GROUND_COST: Shu ×1.35); routes follow the cheapest roads; PATH_CACHE. Airport → harbor 3 → 2 days, → trail 2 → 3; MapModel.build +2 ms. 97/97, goldens unchanged. (Done by the spec chat.)
 - [x] T-089: Relationship fixes from the T-061…T-066 review — 97/97 tests, lint clean, goldens unchanged. 1: `People.poach` returns when the next week starts a cup; `Asks.list` / `answer` skip poach_advice during a cup. 2: St. Gloria's reserve gets coachIQ 0.5 before `finalizeTeam` (test: no R() on that path). 3: `People.remove` clears the loan; `Asks.nextPay` is capped at week 28. 4: "went" only when `People.leave` returned a line (else "stayed after all"); the unanswered leave line goes to the Gazette. 5: trust label only for an ally pick, freeze only when a resent / enemy pick is replaced by a non-enemy (the relLog entries follow the same rule; the clutch test now asserts it).
 - [x] T-066: On court — trust, freeze-out, cover and rivals in the match engine — 93/93 tests, lint clean, goldens unchanged (the golden matches pass no flags; empty flags give byte-identical beats). 200 sims, one ally / one enemy WS per setter: clutch sets 1347; ally share 0.319 → 0.365, enemy 0.267 → 0.237; 9 trust / 23 freeze lines. Pop-up saves: an ally never saves less (400 draws, +12 pts). Deviations: one engine-private helper `relTag` (match.js) is a new top-level function; the flags reach the match through `fx.setup` (match-screen.js builds newMatch itself, so `opts.rel` is also supported); the talk beat is pushed from chooseAttack (rally.js, which emits the other set calls, is not in the file list); across-net rivals = your role, within 5 OVR, resent / enemy, and only the NPC gets the mood swing. QA: career match with flags → `m.rel` set, "trusts" at 9-15, no pageerror.
 - [x] T-065: NPC ↔ NPC — they remember each other; cliques, feuds, squad chemistry — RUN_VERSION 14; 89/89 tests, lint clean, goldens unchanged; QA W12 Team chemistry (clique + feud), take_side answered, no pageerror. Deviations: lineup uses the sitting captain (T.cap); off-screen result win share = clamp(0.5 + (team OVR − mean)/50, .15, .85), memories ×0.5 (REL.chem.result); spot_taken pairs are recorded at the swap (across squads, one entry); rumours are stateless (chem before vs after the week); take_side yes = the asker's side.
