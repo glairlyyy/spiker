@@ -1,506 +1,316 @@
 # Spite & Spike — spec
 
-Owned by the spec chat. The build chat reads it, never edits it. Section ids (`§2.3`) are what tasks cite.
-Status tags: **[built]** in the code now · **[locked]** decided, not built · **[open]** undecided — do not build.
+Owned by the spec chat; the build chat reads, never edits. Tasks cite section ids (`§2.3`).
+Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[open]** (do not build) · **[dropped]**.
 
 ## 1. Vision
-- 4v4 volleyball RPG / sports-life sandbox on a faction-ruled island. The player starts as a free agent, joins
-  factions, trains, and plays watch-only 3D matches with a 2D interface. Spite-driven story (later, lore-first).
-- Built from the Skyline Cup prototype; old Skyline career/modes are not kept (no save compatibility).
-- Desktop-only UI for now. Compact UI: details live in tooltips/folds.
-- Setting, history, factions and narrative voices: `lore.md` (hidden truth). Goal: win the U21 league → the major
-  nation's national team (international career).
+- 4v4 volleyball RPG / sports-life sandbox on a faction-ruled island: start a free agent, join factions, train, play
+  watch-only 3D matches with a 2D interface. Spite-driven story (lore-first, later). Lore and voices: `lore.md`.
+- Built from the Skyline Cup prototype; nothing of its career/modes/saves kept. Desktop-only; compact UI (details in
+  tooltips/folds). Goal: win the U21 Final Cup → the major nation's national team.
 
-## 2. Match (engine + 3D playback) [built]
-- §2.0 The sport (lore.md §4, owner): a 4v4 street game — physical and fierce. Tactics (block settings, systems, set
-  plays) give an edge but stats decide most rallies: a big physical gap should beat a smart setting. Keep this in the
-  balance pass (tactic effects modest vs stat gaps).
-- §2.0b Match stamina (owner, built): every touch drains stamina (`RULES.stamina.drain` 1.7); a tired player loses up
-  to 40 % power / defense and 30 % jump at 0 — a lone carry wears out. Coach subs rose from ~1.3 to ~2.9 per match
-  (the cap is 4: 2 per side); tune in the balance pass.
-- §2.1 Rules: one set to 15, win by 2; court ×1.5; zone/captain buffs, timeouts, tactics, techniques, pop-ups,
-  long back attack.
-  Three touches per side (a block touch is free). A pop-up off the arms saved by a teammate counts as touches 1 and 2:
-  the save is an out-of-system bump-set and a third player hits (or bumps it over) **[built]**.
-  Second touch (owner): a free setter (did not take the first touch, not busy) always sets when they can get there; a
-  teammate sets only when the setter took the first ball, is busy, or a bad pass lands where a teammate gets to it
-  clearly first **[built — T-054]**.
-- §2.2 Elements: per player, hidden; unlocked for OP, ~1/4 of star players, and the career player via the Element
-  Trial. Gauge fills by element play; full gauge or captain buff → next attack is the signature element spike.
-  Counter elements halve effects. Fiction: lore.md §2 (the Trial is the modern method; the ritual is forgotten).
-- §2.3 Hype (setting Off/Normal/Max, tap to skip): attack build-up scenes, blocker read mid-jump (only if a block is
-  attempted), block-break spike cut + ball close-up, kill-block scene, loose-ball slow-mo calls, personality
-  chatter. No manga panels. Slow-mo uses one world clock (A.ts) with eased ramps.
-  Target: Normal ≈ 6–7 scenes per match **[open: tuning pending]**.
-- §2.5 Spike approach **[built]** (display only, renderer): the hitter runs to a run-up point behind
-  the contact spot (skipped if already there or further back), starts heading there already in the beat before the
-  set, approaches, and takes off before the contact spot; the broad jump carries them onto the ball. Quick attacks
-  keep their short approach; jump serves have no run-up. A hitter too far to run up goes straight to the take-off
-  point. No teleporting: grounded movement stays within sprint speed.
-- §2.6 Ball marker **[built]**: a white outlined ring (no fill) on the floor always directly under the ball, while the
-  ball is visible; wider and fainter the higher the ball.
-- §2.7 Poses **[built]** (display only): jump float serve — legs tucked together in the air, run-up strides, landing
-  crouch like the jump serve; standing float serve — small dip after contact; setter — hands up in the set-ready
-  triangle while the pass travels to them (arms/head only, position unchanged).
-- §2.8 Cut-scene lines **[built]**: every LINES kind × personality has 5–6 variants. Lines are
-  picked by hash, never by R(), so results never change; only the `matches` golden (it hashes beat text) may.
-- §2.9 Block tactics **[built]** — 2 blockers at the net (front row stays 2 in 4v4):
-  - Lane read: the front-row MB is the main blocker on every attack they can reach (owner); otherwise the blocker on
-    the attack's side sets the edge; the other closes beside them on the inside. Middle bitten by a
-    quick / decoy → the far-side blocker swings across (late, weaker). Pipe / back-row attack → both close to the
-    centre. Read quality from wit + speed: good readers arrive in time with full hands; poor ones late or split.
-  - Defence setting (per team, like attack tactics; player picks theirs, AI teams have one): **Read** (default:
-    wait for the set; good on wings, late on quicks), **Commit** (middle jumps with the quick; kills quicks, beaten by
-    decoys / high outside), **Bunch** (both start central; strong vs middle / pipe, pins open).
-  - Scouting a club reveals its attack habits (lane split, pipe use) and its defence setting.
-  - Balance: stuffs 10.8 % → ~13 % of attacks (STUFF_BIAS 0.9 → 0.2 after squads of 6; ~14.7 % measured), kills unchanged (~68 %, all-player kills ÷
-    attacks). Numbers in `BLOCK` (js/data/tactics.js).
-  - Settings are derived from the team style (not saved); the captain may switch on the opponent's attack mix.
-- §2.10 Substitutions **[built]**:
-  - Teams: 4 on court + 2 on the bench (6). Faction pools grow so every faction fields ≥ 1 squad of 6 (≈ Wei 24,
-    Wu 18, Shu 12, Outlaws 6, St. Gloria 6); drawn squads are 6. Code: `t.P` = the 4 on court, `t.bench` = the 2
-    subs, `squadOf(t)` = all 6; lineups are restored after every match.
-  - At a dead ball, max 2 subs per set per team; the sub takes the replaced player's rotation spot.
-  - Presentation: no walk-on animation. The model swaps in place, a floating "SUBBED" label shows over the incoming
-    player, and the coach's line appears as chatter (shirt numbers):
-    "Subbing #{out} for #{in}. Don't let us down." · "#{out}, sit. #{in}, you're up — earn it." ·
-    "#{in} in for #{out}. Same plan, fresher legs." · "#{out}, come off. #{in} — show me why you're here."
-  - Simple coach AI: sub when a player's match stamina is under a threshold (`SUB.sta`) or after repeated errors, and
-    bring a rested starter back; a random factor scaled by `coachIQ`. Smarter coach (matchups, protecting a lead, personality hunches) = backlog.
-  - Your player is benchable: the coach picks starters by rating, form and standing, and may sub you out (tired /
-    erring). A match started or finished on the bench gives reduced rewards.
-  - Smarter coach + trust in you (owner) **[built — T-057; subs per match ~3.0 → ~2.0]**: before a tired / erring sub the coach compares what
-    the starter is worth *now* (rating × stamina loss) with the fresh bench player; a high-IQ coach only subs when the
-    bench player is actually better now, a low-IQ coach follows the rule blindly (`coachIQ` decides how strictly).
-    Your player gets the coach's trust — you grind harder than anyone — so the chance of being subbed out is 10 % lower
-    (`SUB.you` 0.9 on the coach's roll). An injured you is never subbed on.
-- Box score shows each player's OVR (owner). Loaded extra .vrm models dress your own career player only; everyone
-  else (and Monster games) uses the base model (owner).
-- §2.11 Match music **[built]**: `assets/audio/the_big_fight.mp3` loops as background music while the
-  match screen is open, at 50 % of the effects volume (`BGM_GAIN` 0.5 × volume slider); follows the sound toggle and
-  the volume slider; fades in on start and out on leaving. Presentation only (no effect on results). More tracks /
-  crowd / voice clips later (backlog).
-- §2.12 Ego **[locked (owner), built T-068]**: street volleyball (§2.0) is full of players who want to be the
-  star. Every player has an **ego** (0–1) and a **maturity** from wit (≈0 at wit 0.5, 1 at wit 2.0): new, low-wit
-  players play for themselves; high-wit players still have ego but act on it less and botch it less.
-  - Ego acts (each a chance per opportunity = EGO.base[act] × ego × (1 − maturity)):
-    - **ball steal** — on a dig / pass that is a teammate's ball (the nearest player), an ego player goes for it too:
-      "Mine!" — a collision (the ball drops or the pass is shanked) or, if it works, their touch instead;
-    - **set call** — a hitter demands the set: a low-maturity setter gives it to them even when another hitter is
-      open (worse matchup vs the block); a mature setter ignores the call;
-    - **solo block** — an ego blocker ignores the defence setting (§2.9) and commits alone / early: gaps for the
-      other blocker, a stuff when the read is right;
-    - **hero swing** — on a bad set an ego hitter swings full power instead of rolling or tipping it: more kills,
-      more errors and stuffs;
-    - **hero serve** — an ego server goes for the risky jump serve: more aces, more errors.
-  - Success feeds it (mood up, fame for highlight plays); failure costs mood and the team's momentum. Maturity also
-    lowers the error side of every ego act (a mature player's hero swing is a calculated one).
-  - Communication: a high-wit captain on court calls it off (chances × (1 − captain maturity × EGO.captain)).
-  - Relationships (§4.23): ego acts are memories — stole_my_ball −6, collided −4 (both), hero_carried +8 (it won the
-    point: warm / loyal teammates count it, jealous ones resent it), set_hogged −4 (the open hitter who got nothing).
-    Ego toward allies is halved, toward rivals ×1.5: a feud shows up as stolen balls.
-  - Ego value: NPCs from traits once they exist (proud / reckless / jealous up; steady / calculating / warm down),
-    until then a fixed hash per player (0.2–0.8, WS a little higher); your player starts at 0.6 — you are the new kid
-    who wants to be the star; maturity comes with wit. Shown on player cards as a short tag (Show-off · Team player).
-  - Presentation: "MINE!" label over the player (`plabel`), a collision as both players' bump poses + a log line,
-    chatter for set calls; no new act kinds. Engine-only tallies (`m.egoLog`) feed the memories later (T-061).
-  - **Block collision** (owner) **[built T-069]**: when an ego blocker goes solo and the partner also commits to
-    the same spot (the partner's maturity decides whether they hold off), the two crash at the net: both blocks are
-    **cancelled early** (they come down mid-jump and stagger apart) and the attack meets an open net. Error variant: one
-    of them hits the net — a **net fault**, point to the attackers at once. Floating label over the pair:
-    **BLOCK COLLISION** (warning colour) / **BLOCK COLLISION · NET** (error colour, red). Memory: collided −4 for both
-    (§4.23).
-- §2.4 Blocks: stuff odds = full-strength block vs spike, weighted by coverage; ~14% of attacks stuffed in normal play.
+## 2. Match (engine + 3D playback) [built unless tagged]
+- §2.0 Sport (lore.md §4): 4v4 street game, physical. Tactics give an edge; stats decide most rallies — a big physical
+  gap beats a smart setting. Keep tactic effects modest vs stat gaps.
+- §2.0b Stamina: every touch drains (`RULES.stamina` { drain 1.7, hit 0.4, jumpHit 0.3 }); at 0: −40 % power /
+  defense, −30 % jump. A lone carry wears out.
+- §2.1 Rules: one set to 15, win by 2; court ×1.5; zone/captain buffs, timeouts, tactics, techniques, pop-ups, long
+  back attack. 3 touches per side (block touch free). A pop-up off the arms saved by a teammate = touches 1 + 2
+  (out-of-system bump-set; a third player hits or bumps over). Second touch: a free setter (no first touch, not busy)
+  always sets if reachable; a teammate sets only if the setter took the first ball, is busy, or a bad pass lands
+  where a teammate clearly gets there first.
+- §2.2 Elements: hidden per player; unlocked for OP, ~1/4 of stars, and you via the Element Trial. Gauge fills by
+  element play; full gauge or captain buff → next attack is the signature element spike. Counter elements halve. Fiction: lore.md §2 (Trial = modern method; ritual forgotten).
+- §2.3 Hype (Off/Normal/Max, tap to skip): attack build-up, blocker read mid-jump (only if a block is attempted),
+  block-break spike cut + ball close-up, kill-block, loose-ball slow-mo, personality chatter. No manga panels. One world
+  clock (`A.ts`), eased slow-mo ramps. Target Normal ≈ 6–7 scenes/match **[open: tuning]**.
+- §2.4 Blocks: stuff odds = full-strength block vs spike, weighted by coverage (targets §2.9).
+- §2.5 Spike approach (display): hitter runs to a run-up point behind contact (skip if already there/behind), starting
+  in the beat before the set, takes off before contact; broad jump carries onto the ball. Quicks: short approach; jump
+  serves: none; too far → straight to take-off point. No teleport: ground moves ≤ sprint speed.
+- §2.6 Ball marker: white outlined ring under the visible ball; wider and fainter the higher it is.
+- §2.7 Poses (display): jump float serve — legs tucked, run-up strides, jump-serve landing crouch; standing float — dip
+  after contact; setter — set-ready hand triangle while the pass travels (arms/head only).
+- §2.8 Cut-scene lines: each LINES kind × personality has 5–6 variants, picked by hash, never R() (only the `matches`
+  golden, which hashes beat text, may change).
+- §2.9 Block tactics (2 blockers at the net):
+  - Lane read: front-row MB is main blocker on every attack they can reach; else the blocker on the attack's side sets
+    the edge, the other closes inside. Middle bitten by quick/decoy → far blocker swings across (late, weaker). Pipe /
+    back-row → both close centre. Read quality from wit + speed: good readers arrive in time, full hands; poor ones late or split.
+  - Defence setting per team (player picks; AI from team style, not saved; captain may switch on the opponent's attack
+    mix): **Read** (default; good on wings, late on quicks) · **Commit** (middle jumps with the quick; kills quicks, beaten by decoys
+    / high outside) · **Bunch** (both central; strong vs middle/pipe, pins open).
+  - Scouting a club shows its attack habits (lane split, pipe use) and defence setting.
+  - Targets: ~13–14 % of attacks stuffed, kills ~68 % (kills ÷ attacks). `BLOCK` (js/data/tactics.js), `STUFF_BIAS` 0.2.
+- §2.10 Substitutions:
+  - Squad `SQUAD` 6: `t.P` = 4 on court, `t.bench` = 2 subs, `squadOf(t)` = all 6; lineups restored after each match.
+  - Dead ball only, max 2 subs per set per team; sub takes the rotation spot.
+  - No walk-on: model swaps in place, floating "SUBBED" label, coach line as chatter: "Subbing #{out} for #{in}. Don't
+    let us down." · "#{out}, sit. #{in}, you're up — earn it." · "#{in} in for #{out}. Same plan, fresher legs." ·
+    "#{out}, come off. #{in} — show me why you're here."
+  - Your player has the coach's trust (you grind harder than anyone).
+  - Coach AI: sub at match stamina < `SUB.sta` or repeated errors; bring rested starters back; randomness scaled by
+    `coachIQ`. First compares the starter's worth now (rating × stamina loss) with the fresh sub: high IQ subs only if
+    the sub is better now, low IQ follows the rule blindly.
+  - You are benchable (starters by rating, form, standing); your sub-out roll ×`SUB.you` 0.9; an injured you is never
+    subbed on. Starting or finishing on the bench → reduced rewards.
+- Box score shows each player's OVR.
+- §2.11 Music: `assets/audio/the_big_fight.mp3` loops on the match screen at `BGM_GAIN` 0.5 × volume slider; follows
+  sound toggle; fades in/out. Presentation only.
+- §2.12 Ego: each player has **ego** 0–1 and **maturity** from wit (≈0 at wit 0.5, 1 at 2.0).
+  - Acts, chance = `EGO.base[act]` × ego × (1 − maturity): **ball steal** (goes for a teammate's dig/pass: "Mine!" →
+    collision — ball drops or shanked — or their touch) · **set call** (a low-maturity setter feeds them even when
+    another hitter is open — worse matchup; a mature setter ignores it) · **solo block** (ignores the defence setting: gaps, or a stuff if read right) · **hero
+    swing** (full power on a bad set: more kills, errors, stuffs) · **hero serve** (risky jump serve: aces, errors).
+  - Success: mood up, fame for highlights; failure: mood and team momentum down. Maturity cuts each act's error side.
+    A high-wit captain on court: chances × (1 − captain maturity × `EGO.captain`).
+  - Memories (§4.23): stole_my_ball −6, collided −4 (both), hero_carried +8 (won the point; warm/loyal count it,
+    jealous resent it), set_hogged −4 (the open hitter). Ego toward allies ×0.5, rivals ×1.5.
+  - Value: NPCs from traits (proud/reckless/jealous up; steady/calculating/warm down), else hash 0.2–0.8 (WS a bit
+    higher); you start 0.6. Card tag: Show-off · Team player.
+  - Presentation: "MINE!" label (`plabel`), collision = both bump poses + log line, set-call chatter; no new act
+    kinds. Tallies in `m.egoLog`.
+  - **Block collision**: solo ego blocker + partner committing to the same spot (partner maturity decides holding off)
+    → both blocks cancelled mid-jump, stagger apart, open net. Error variant: net fault, point to attackers. Label
+    **BLOCK COLLISION** (warning) / **BLOCK COLLISION · NET** (red). collided −4 both.
 
 ## 3. Menu [built]
-- One game (Spite & Spike) + a dev Playtest card (Monster game, `startMonster()`).
+- One game + a dev Playtest card (Monster game, `startMonster()`).
 
 ## 4. Career world [built unless tagged]
-- §4.1 Start: free agent (lore.md §4: no team, no faction); join factions through join conditions; money, housing, paydays, league transfers,
-  Gazette; Sim ⏭ button to skip a match before playing it. Calendar: 28 weeks (for now).
-  A free agent can't enter the league or cups until signed [built: watches from the stands].
-  The pickup squad (`World.pickup`) stays, reframed as the Academy squad (§4.11).
-- §4.2 Island: 3 major factions — Wei (city; north + east), Wu (beach/coast; east/south + an inland strip;
-  most aggressive), Shu (mountain highlands; west) — plus borderless minor factions. No unclaimed land except the
-  neutral zone at the Wei–Wu–Shu tri-point (north of the airport), region `open` = **Central Academy** **[built]** (lore.md §4): entry point,
-  fields no team, never seized. Today: 2 squads per major + 2 minor clubs = 8
-  fixed teams — they stay as each faction's home squads (training, bonds, scouting, transfers); matches that
-  matter (evaluations, U21 Final Cup) use squads drawn from the faction pools (§4.11).
-- §4.3 Regions set prices/quality: Wei pricey (maybe overhyped), Shu cheap (maybe a hidden gem), Wu sand = technique.
-- §4.4 Movement: the player stands at a map point (`run.pos`, start at the airport); hotels when away from home.
-  Map is dark except around visited points (`run.fog`, REVEAL_R). Click any land to travel.
-- §4.5 Week: 7 days. Every action (train/rest/outing/scout) costs 1 day + trip by distance (free within NEAR_R,
-  1 day per TRIP_DAY, max 3). Nothing spills into next week; a night costs 0 days; only the player ends the week.
-  One event roll per week. Day sessions give DAY_GAIN (0.25) of the old weekly gain.
-- §4.6 Street battles (CLASH, ~45% of training weeks, popup at week start): watch (scouts both sides) or fight for a
-  side (win +standing / lose −; the other side always −). `run.rep` = standing per region. Fighting is a real match
-  (owner, `Cup.clash`): your side's crew drawn from its pool with you on court vs the other side's crew; watch or Sim ⏭;
-  match XP, techniques and grade as in any match. Challenges (§4.15) reuse this flow. Crews and your faction's
-  evaluation squad show their real 3-letter team tag (owner).
-- §4.7 Faction war (`js/career/front.js`, FRONT): every battle (joined or settled at week end) pushes its border
-  meter; 2 net wins seize a border place (2 per side per border; retakes first) → owner's price/turf/colour.
-  A faction with 2 places lost is weakened (dearer, worse facilities, easier to join). Wu gets a revenge bonus.
-  Minor factions are not in the war. Seized places show as a patch in the holder's colour; borders don't redraw
-  **[open: moving borders]**.
-- §4.8 Hub UI: full-screen 3D map with HUD overlays, shortcut dock → drawers, cards over the map.
-- §4.9 Map architecture: rules → MapModel → MapView (see CLAUDE.md Layout). three.js island map **[built]**: terrain,
-  camera, click-to-travel, walking player, HTML-overlay pins / labels / flag, seized + border decals, vertex fog. The SVG map is removed (owner):
-  no 2D fallback — without WebGL the map area shows a notice. Contract: `mount`, `update(model)`, `select`, `dispose`.
-  Look: fixed tilted camera (Kenshi-like diorama; pan + zoom, no free rotation), low-poly procedural terrain from the
-  coast / region shapes (Shu raised highlands, Wu beach ring, CITY.mountains as peaks), water around, region tint.
-  Scale: 1 map unit = 0.5 m. The player is the default VRM model; when `you.at` changes it walks / runs there (display
-  only — rules stay instant), camera follows; trips last 1.2–6 s with a ×N time-lapse badge. Moving world entities,
-  hour clock and day/night are later (M1 / M3).
-- §4.10 Facility access **[built; condition values pending the balance pass]**: a place is usable if you can pay, your standing with its owner
-  region isn't a grudge (standing ≤ `ACCESS.grudge`, default −20, tuned in the balance pass), and you meet the owner's condition (per faction, lore.md §5 dogma; values set in
-  the balance pass). Members of the owning faction always get in. Central Academy grounds and Home are always
-  open. Ownership changes on seizure, so access can flip. Today standing is display-only.
-- §4.11 Competition structure **[locked; built: pools, draw, reserves growth, Academy squad, monthly evaluations, U21 Final Cup]** — replaces the 8 fixed teams, warm-ups and both cups:
-  - Faction pools: each faction holds a roster instead of fixed teams. Sizes: Wei 20, Wu 14, Shu 10, Street
-    Outlaws 6, St. Gloria 5 (tunable). Squads of 4 are drawn per event.
-  - Draw: weighted by rating and standing with that faction; a guaranteed spot above a high-standing threshold
-    (value set in the balance pass). A signed player may not be drawn — the price of a big pool.
-  - Monthly evaluation (weeks 4, 8, 12, 16, 20, 24 — replaces warm-ups), a benefit of your status:
-    - Free agent in the **Academy squad** (the pickup squad: 3 teammates assigned by Central Academy) → Central
-      Academy evaluation vs a squad drawn from a random major's pool. Leaving the squad is allowed anytime;
-      afterwards no evaluation invites, no rejoining.
-    - Signed with a major (Wei/Wu/Shu) → that faction's own evaluation: squads drawn from its pool
-      (floor(pool ÷ 4) squads) play each other.
-    - Signed with a minor, or alone → no evaluation matches.
-    - Rewards = today's warm-up rewards. Results feed standing and the draw weight.
-    - Signed with a major but not drawn → you watch from the bench: a little Wit XP (one day-session of Wit
-      training, `EVAL.benchDays`).
-  - Reserves train weekly like everyone; each payday a faction's best reserve replaces a clearly weaker same-role
-    squad player (`PROMOTE.gap`).
-  - **U21 Final Cup** (after week 28; replaces the Skyline and Grand Cups): the career goal. Squads drawn from every faction pool (floor(pool ÷ 4) each)
-    plus the Academy squad (13 squads with default sizes); 16-slot bracket seeded by rating, top seeds get byes.
-    Camp weeks 26–28 before it. Winning → national team (lore.md §3).
-  - Street battles (§4.6) and the faction war (§4.7) are unchanged.
-
-- §4.12 Faction dossier **[built]**: a window per faction (all 5; opened from its HQ panel and from the
-  Factions drawer) with everything the player can know about it:
-  - State: Weakened (lost ≥ FRONT.weakAt places) / Pressed (lost 1) / Rising (took more than lost) / Stable;
-    minors: "Not in the war". Border meters vs the other majors; places taken / lost; price and quality multipliers.
-  - Facilities: every place the faction holds now (incl. seized ones, marked), with stat trained, price, quality
-    (the advertised value until you've trained there), facility level, and whether it lets you in (`City.access`).
-  - Roster: every pool player (league squads + reserves) — name, role, which squad or "reserve". Ratings and awakened
-    elements only once scouted (any of its clubs scouted this run) or if you're a member. Unscouted = "unknown".
-  - Clubs: its league squads, join conditions, Sign when possible (same rules as the HQ panel).
-  - Your standing with it.
-  Text follows spec §6 (numbers true; `registrar` voice for labels). Data comes from a DOM-free model
-  (`Dossier.build(run, r)`), the window only renders it.
-- §4.13 Meta progression **[built — removed]**: none. No Legacy points, unlocks, pure runs, Hall of Fame or
-  legend inheritance. Every career starts the same: free agent, all stats 1 (§4.22), no starting skill,
-  no team pick. Challenge modes (Hard league, Short season) stay as plain options. The run-end screen keeps the
-  result, rank and growth chart.
-- §4.14 Growth: train to a floor, fight to go higher **[built]** (Kenshi rule):
-  - Training caps: gains shrink above ~60 and stop at `TRAIN_CAP` 75 per stat. Training stays the fastest early route
-    (a new run is pure self-training). The Limit Break gates (80 / 90) and trial are removed.
-  - Match experience is the only way above 75 (and still counts below): every match you play (evaluation, cup, street
-    battle you fight in) gives stat XP from **your performance**, not the result — kills → power, blocks → jump + def,
-    digs → def + speed, sets / assists → wit (exact map in the task). Scaled by the opponent's strength vs your side:
-    stronger ×1.5–2, equal ×1, weaker ×0.3. Winning or losing does not change XP.
-  - What winning pays is set by why the match was played (unchanged rules): evaluations → skill pts / fans / standing,
-    cup → placement rewards, street battle → the side's standing and money as today.
-  - Skills: basic skills (SKILLS entries without `tech`) stay buyable with skill points; techniques (`tech` entries) are
-    learned in play by chance — they still switch on by themselves once stats meet `req` —
-    by doing (e.g. 3+ blocks in a match → a chance at Read Block) and by facing a player who uses it; chance grows with
-    wit and opponent strength. Scouting shows which techniques a team's players have.
-  - Save: RUN_VERSION bump (Limit Break progress removed, match XP added). Match results unchanged (goldens stay).
-
-- §4.15 Challenges **[built: team challenge + refusal (T-037), loss penalties + injury (T-038); injured you never subbed on (T-057)]** (makes a no-training run possible; see §4.14):
-  - Team challenge (map action at a club HQ): your side challenges that club's squad. Costs 1 day + the trip; you name a
-    money **stake** (0 allowed). The match itself is the street-battle flow (`Cup.clash`-style fixture: watch or Sim ⏭).
-    You play with your side: the Academy squad, or your club's squad (your club must not be the target); alone → hire
-    street players for money (weak, rating ~50).
-  - **The club may refuse — "not worthy"**. Worth = your side's rating + your standing with them ÷ 10 + a faction term
-    from its dogma (lore.md §5), compared with the club's rating − a margin (`CHALLENGE.margin`):
-    - Wei: your Gazette rank and fans (fame) + the stake (money talks).
-    - Wu: your key stat / OVR (raw strength); stake counts little.
-    - Shu: standing and weeks on the island (hardship, elder approval); stake counts nothing.
-    - Street Outlaws: any stake ≥ their minimum is accepted (a bet is a bet); a 0-stake challenge is laughed off.
-    - St. Gloria: only if you are in the Gazette Top 20 (invitation only); otherwise always refused.
-    The worth check is shown before you commit (registrar: "Accepts: likely / doubtful / refuses") with the reason; the
-    exact numbers stay hidden. A refusal costs the trip day, gives a one-line refusal in that faction's voice, and that
-    club will not hear you again this week. Asking a club that refused 3 times in a season → −standing (you're a pest).
-  - Win: stake back at odds from the rating gap, + standing / fans; XP per §4.14 (performance × opponent strength).
-  - Loss is a real deal: stake lost; stamina and mood crash (carries over); standing − with that faction (repeated
-    losses → grudge → facility ban, §4.10); lost by 8+ → fans − and a Gazette jab. No NPC learning.
-  - Injury risk after every challenge (win or lose) = base + rating gap + margin of defeat + **fatigue**: low stamina
-    and battles close together (days since the last match / challenge) raise it, like training on low stamina. Resting
-    lowers it. Injury = days to weeks without training or matches; a severe one also costs −2 permanently on a stat
-    (never ends the run) [assumed — owner to confirm]. Injured: no challenges / street fights, light training only,
-    never a starter; the physio heals the weeks, not the stat loss. Evaluations and the cup carry no injury roll.
-  - Balance target: a no-training run reaches the mid-70s by ~week 20 only with well-chosen fights.
-
-- §4.16 Living map **[layer A built (only the Wei–Wu border has a drawn line, so pulse / patrols show there); B/C wait for the lore]**: the map shows what is happening
-  (display only, no rules, no randoms):
-  - A (now): your teammates at the places they train this week; faction players drilling at their courts (more for
-    bigger pools; coloured once scouted / member, grey silhouettes before) and walking between their places; the week's
-    street battle as a two-colour crowd with flags and dust; border lines pulse with pressure and patrols thicken on the
-    winning side; seized places fly the holder's flag. Low-poly instanced figures, VRM for your player only.
-  - B (after lore): ambient life — waves, boats, gulls, beach pickup games on Wu sand, Shu village smoke, Wei city lights
-    and traffic, villagers near Central Academy.
-  - C (after lore, with M3): the sun moves as the week's days are spent; dusk when no days are left.
-
-- §4.17 Rankings **[built]**: three lists, each from a biased publisher (numbers true, what
-  counts is biased; lore.md §7):
-  - **Academy Register** (`registrar`): every U21 player (all pools, the Academy squad, you) by true OVR. Known players
-    (member / your squad / scouted club or faction / met on court) show OVR; others "unrated" (faction + role only).
-  - **Gazette Top 20** (`wei`): fame = fans (you) or fame points (NPCs: star / OP, team results, element awakened), ×1.5
-    for Wei players — only Wei-sanctioned matches count, so Wei players sit higher and some are overhyped.
-  - **Street board** (`outlaw`): street points from street battles, hustles and challenges (you), and from their
-    faction's street-battle wins (NPCs: the faction's best players get the points).
-  - A Rankings drawer shows the three lists and your rank on each; pre-match and challenge cards show the opponent's
-    ranks ("Register #12 · Gazette #3 · Street —"). Display only: no match effects. Aces / the rival appear here later.
-
-- §4.18 Roads, settlements and buildings **[built — T-045, T-046, T-047, T-048]** (owner: hybrid look):
-  - Data first (rules layer, plain data, no randoms): a road network (nodes at the airport, every place, club HQs,
-    Central Academy + junctions; edges = main roads, Wei grid streets, Shu dirt / mountain paths); settlement lots
-    generated deterministically along roads per region style — Wei dense city blocks, Wu coastal fishing villages and
-    the harbor, Shu terraced hill villages and temple steps, Central Academy campus quad, Outlaws shacks under the
-    overpass, St. Gloria walled compound; every place / HQ gets a landmark kind (gym, sand court, dojo, HQ tower, hotel,
-    stall, shrine, cage, campus, home).
-  - Render: roads as ribbons draped on the terrain; filler buildings as instanced low-poly procedural meshes (one draw
-    call per kind); landmarks as single meshes. Every kind comes from one registry (`kit3d.mjs`), so a CC0 model pack
-    (Kenney City / Fantasy Town, Quaternius) can replace any kind later from `assets/models/` without touching rules or
-    data — owner picks the pieces.
-  - Your player walks along the roads (route through the network) instead of a straight line.
-  - Travel (built T-048): a trip costs the cheaper of the road route (main / overpass fast, Wei streets, the boardwalk and
-    dirt tracks slower, Shu mountain paths slowest) and going cross-country (the Shu highlands are rough ground). Along
-    the coast road the harbor is 2 days from the airport instead of 3; Shu's mountain trail is 3.
-- §4.19 Town layout revamp **[built — T-050 data, T-051 render; T-047 the walk follows the roads]** (owner: the island should feel as crowded as
-  the lore; wider beach; Wu town inland). Districts follow lore.md §3–§5:
-  - **Wei** (dense, layered): *Downtown* round Wei Gold's HQ and the league office — a tower grid, the densest place on
-    the island; *Old Town* in the north-coast pocket by the abandoned gym — the refugee town the settlers built over,
-    tight lanes, low rowhouses (homeless housing lives there); *the Ring* — mid-rise blocks out to the borders;
-    *St. Gloria* — a walled villa compound with a gatehouse.
-  - **Wu**: the beach is ~2–3× wider along the east and south coast, grown **outward** (the coastline moves out; no
-    border moves). On the sand: the faded beach-boom strip — a boardwalk along the dune line, old resort hotels, kiosks,
-    public sand courts (where the sand game was born; Wu doesn't remember it). *Wu town* sits inland behind the dunes,
-    between the beach and the Wei border (barracks, workshops, a market); the *harbor district* stays on the east coast.
-  - **The overpass**: a real elevated highway from downtown Wei down to the Wu harbor along the contested line; the
-    Outlaws' shacks, containers and cage sit under it.
-  - **Shu**: 3–4 terraced hill villages (the native villages that keep the old language — unnamed until the lore glossary
-    exists), shrines, mountain paths, few people.
-  - **Central Academy**: a campus quad on the old ritual ground; a weathered sand circle nearby, never labelled.
-  - **Wealth** (owner): every lot has a wealth level 0–1 that drives its look (height, size, materials, spacing).
-    *Wei*: wealth piles up in the centre and thins out steadily toward the suburbs — glass towers and stone downtown,
-    then mid-rise, then plain blocks, then shabby edges and Old Town (a smooth gradient from the downtown centre, no
-    rich pockets outside it except the walled St. Gloria compound). *Wu*: wealth is spread evenly but modest —
-    comfortable towns, none rich, none poor — and weakly connected: separate settlements (harbor, Wu town, the beach
-    strip, an inland village) joined by few roads, mostly dirt, with only the coast road as a main road (with T-048 this
-    makes Wu trips slower than Wei's). *Shu* poor and scattered; *Outlaws* the poorest; *Academy* middling and uniform.
-  - Buildings fill districts (an area + style + density), not only rows along roads; ~1,200 buildings in all
-    (Wei ~600, Wu ~300, Shu ~150, Outlaws ~60, Academy ~40, Gloria ~30). Trip days unchanged (T-048 decides road travel).
-- §4.20 Match history **[built — T-052]** (owner): the Season drawer lists every match you were in this run
-  (evaluations, U21 cup, team challenges, street fights; newest first): week / day, kind, opponent, score, won or lost,
-  your grade. Opening one shows the **snapshot**: your OVR, stats and wit at kick-off (and the change since the match
-  before), your line (kills, attacks, errors, blocks, aces, digs, assists), and the box score of everyone who played
-  (name, role, OVR, line). Numbers only (registrar voice). Bench matches are listed ("did not play").
-
-- §4.21 Official venues **[built — T-053]** (owner: show where official matches are held). Four landmark
-  venues on the map, each a pin with a card (what is held there; this week's match if any):
-  - **League Arena** (Wei downtown, by the league office): the U21 Final Cup and Wei's evaluations. The biggest
-    building on the island — a stadium bowl with floodlights.
-  - **Academy Hall** (Central Academy campus): the Academy squad's evaluations.
-  - **Beach Stadium** (on the Wu sand, a beach-boom relic, faded): Wu's evaluations.
-  - **Highland Court** (an open hillside court by Shu Peak's HQ, stone terraces for seats): Shu's evaluations.
-  On a match week the venue of your match glows on the map and the match card says where it is played. Display only:
-  no travel days, no change to where you stand.
-
-- §4.22 Start from 1 **[built — T-055, stat guard T-056]** (owner, Kenshi start): your player starts with Power, Defense,
-  Speed and Jump all at **1** and Wit at 1.0 — no creation points, no role bias, no wit steps. Creation keeps name,
-  role, look and the challenge modes. Low levels come fast and slow down: XP for the next point keeps growing ×1.05 per
-  point **below 50 too** (≈1 XP at 1, ≈6 at 40, 10 at 50), so a focused stat reaches ~50 in about a dozen sessions;
-  the training cap (75) and match growth (§4.14) are unchanged. Early on you are benched and lose — that is the point
-  (evaluations still pay the bench reward). Stats can fall to 1 (events, injuries), never below; a guard repairs any invalid stat on load and before every match (T-056). NPCs are unchanged.
-
-- §4.23 **Relationships — the core pillar** **[built T-060…T-066; review fixes T-089]**
-  Relationships are the main thing to do. Not a dating sim, not support cards: **every NPC is a career too.** They
-  want something, grind for it on the same island with the same few slots, and a relationship is the history of two
-  careers that keep colliding. You don't fill a gauge; you live through things together (or against each other).
-
-  **Anti-cliché rules (hard):** no gifts, no dates or romance mechanics, no per-character scripted story chains, no
-  friendship-rank support cards, no "max bond = stat bonus" farming, no cheerful portrait banter. Bond only grows from
-  shared, costly acts. Hanging out has fast diminishing returns. All lines go through the lore voices (lore.md §7);
-  numbers stay true, claims may be biased.
-
-  **A. Every NPC is a career (data + weekly sim).**
-  - Every league / pool player gets: `want` (1 of WANTS), `traits` (2 of TRAITS), a weekly `plan`, a season record and a
-    `status` (active · injured · benched · cut · quit · poached · national). Their careers run whether you watch or not.
-  - WANTS (what drives their choices):
-    - `national` — the national team; plays every match it can, takes risks, picks squads that win.
-    - `money` — hustles, takes paid challenges, open to St. Gloria / Outlaw offers.
-    - `spot` — keep their starting role; trains their key stat, hostile to same-role threats.
-    - `grudge` — beat a faction (Wu vs Wei by default, Outlaws vs Wei); challenges that faction, joins street battles.
-    - `prove` — prove the elders / the Academy wrong; trains Hard, overtrains, gets hurt more (Shu-leaning).
-    - `leave` — get off the island any way possible; disloyal, follows the best offer.
-  - TRAITS (how memories become feelings and choices; 2 each, no opposites): proud · loyal · jealous · warm ·
-    cynical · reckless · calculating · steady.
-  - Weekly plan (one R() roll per NPC at week start, career randomness only): train a stat at a place in their
-    region (or where their faction allows), rest, hustle, challenge someone, scout, recover. They grow from what they
-    did with the same XP rules as you (training to TRAIN_CAP, matches above), scaled by their hidden potential — this
-    replaces the random weekly `Growth` drift for pool players. Matches (off-screen league play, hustles) raise all four
-    stats (key stat weighted double); only starters and hustlers grow past the training cap, so the league's depth ends
-    the season a little weaker than its top (built T-060: week-28 mean OVR ~83, top-10 ~95). They get tired, injured (same INJURY rules when they
-    fight) and benched (same Run.lineup rules).
-  - Fates (permanent this run): **cut** (benched 3 evaluations running and under the faction's join bar → reserves,
-    then quits if `want` is unmet), **quit** (cynical + want unmet for long), **poached** (a richer club / St. Gloria
-    takes a `money` / `leave` player), **national** (called up after the U21 Final Cup — see F). Gone is gone.
-  - Shown on the living map (§4.16 layer B: individual figures, not just crews), in rumours and the Gazette.
-
-  **B. Relationships are memories, not a meter.**
-  - Each pair (you ↔ NPC, and NPC ↔ NPC inside a squad / pool) keeps a short memory log of facts:
-    `{ week, kind, value }`. Kinds and base values (data table MEMORY, tuned in the balance pass):
-    - spot_taken −30 (scar) · spot_given +20 · carried (they scored off your play / you saved their bad game) +12 ·
-      let_down (your error lost a set point) −10 · trained_together +3 (diminishing: ×0.5 each repeat in a week) ·
-      won_together +5 · lost_together +2 (−2 if jealous / cynical) · beat_me (challenge / street fight) −8 ·
-      covered_me (a dig on their bad pass, sat out for them) +8 · vouched +15 · refused_help −6 · lent_money +10 ·
-      debt_unpaid −4 per week · called_out −5 · shamed (a Gazette jab about them you caused) −12 (scar).
-  - Memories fade (×DECAY per week) except scars, which never fade. A log keeps ≤ 24 entries (same kinds merge).
-  - **Stance** = Σ value × fade × trait multipliers (proud ×2 on scars and beat_me; loyal ×0.6 on negatives; jealous
-    ×1.5 on spot_taken, and your hero plays count against you; warm ×1.3 / cynical ×0.7 on positives; calculating ×1.5 on
-    memories with a payoff — won_together, carried, vouched, lent_money — ×0.5 on the rest). Tags by stance: **ally** ·
-    **respect** · neutral · **resent** · **enemy**; **rival** is a separate flag: a same-role mate within 5 OVR in the
-    same squad, whatever the stance (a warm rival vs a bitter rival).
-  - The old `bond` (0–100) becomes a read-only summary of the stance (for goals, form and the Team drawer); every
-    current bond source becomes a memory kind instead.
-
-  **C. They come to you (initiative) — and choose others too.**
-  - At most 2 approaches a week, as a card or a figure waiting on the map; each expires. Chosen by wants + stance:
-    - invite_train (a place + day; accept → spend that day there together: both train, trained_together),
-    - ask_sitout (before an evaluation: "let me start" — accept → you bench, spot_given; refuse → proud: resent),
-    - duo_challenge (they propose a challenge together, split stake and risk),
-    - borrow (money; repaid on their payday — or not: debt_unpaid),
-    - call_out (a rival challenges you publicly; refuse → fame and standing hit with their faction),
-    - vouch (they offer to vouch for you to their club: its join bar −X for you),
-    - warn (a rumour: a scout, a raid, someone plotting to take your spot),
-    - poach_advice (an offer came; "should I go?" — your answer changes their fate and how they remember you).
-  - You can approach them too (Team drawer / their figure on the map): invite to train, ask for a vouch, lend, call
-    out, ask to sit out. They can refuse, and they approach other NPCs as well (you hear it as rumours).
-
-  **D. NPC ↔ NPC.** Pairs inside a squad / pool use the same memories. Cliques (3+ allies) and feuds form on their
-  own; they change who sets whom, who starts and who gets cut. The Team drawer shows **squad chemistry** (who is with
-  whom). Some approaches ask you to take a side.
-
-  **E. It shows on court (engine; small, visible effects; goldens update).**
-  - Set distribution: a setter feeds an ally +15 % more in the clutch and freezes out a resent / enemy hitter −15 %
-    (chatter + log line: "trusted" / "froze out").
-  - Cover: an ally covers your bad pass more often (dig / pop-up save chance +).
-  - Captain's buff goes to allies first; the coach's lineup score adds a teammate vouch.
-  - Rivals: when you face a rival, both get a mood swing (fired up / rattled) — the rivalry is felt, not just shown.
-  - No raw stat bonuses from relationships.
-
-  **F. Competition and permanence.**
-  - Four starting spots per squad: every teammate you raise can take yours. Helping is a real choice.
-  - National team call-up after the U21 Final Cup: **Story** — you are always called up if your squad wins (§4.26);
-    the champion squad's other call-ups are its best by match grades. **Endless** — the best 4 by match grades
-    (+ fame as tie-break), you included or not: an NPC you raised can take the place you wanted, and winning
-    the cup on the bench does not send you. In both modes NPCs compete for the other call-ups and club spots.
-  - End of run: "People who mattered" — the 5 strongest stances (good or bad), each with their fate and the
-    memories that made it (diary voice).
-
-  **G. Discovery and presentation.**
-  - You don't see wants and traits at first: a want is revealed after enough shared memories (or a rumour / scouting),
-    a trait after you have seen it act (e.g. proud after they held a grudge). Until then the card says "unknown".
-  - Team drawer → **People**: per person — name, role, OVR (if known), stance tag, want / traits (once known), their
-    season in one line, and the 3 memories that weigh most (diary voice: "W8 — I took her spot. She hasn't
-    forgotten."). The rankings and dossier link to the same card.
-
-  **H. Data, saves, determinism.**
-  - `run.people[id] = { want, traits, plan, status, known: { want, traits } }`, `run.mem[pairKey] = [ … ]` (pair key
-    = the two ids sorted); size budget: you-pairs for everyone met + NPC pairs within squads only (≤ ~1,500 entries).
-    RUN_VERSION bump when built. Tables WANTS, TRAITS, MEMORY, REL (thresholds, decay, caps) in js/data.
-  - People rolls use their own hash stream (`People.roll`: run seed × week × player × salt), never R(), so adding a
-    feature never reshuffles the rest of the career; the engine sees only per-match flags (who trusts / resents whom)
-    passed in, so engine goldens change only with E.
-
-  **Build decisions (2026-10-02, spec chat):** approaches wait in the People drawer (never block the map; figures on
-  the map come later with §4.16 B); a sit-out request is never offered in a Story cup; poached `money` players go to
-  St. Gloria (still in play), `leave` players go abroad (gone); NPC ↔ NPC memories carry `a` (who feels it); on-court
-  effects are gated on per-match flags, so the engine goldens never move for Monster / sims.
-
-  **As built (T-061…T-066):** bond = clamp(stance × 8, 0, 100) (60 / 80 reached at weeks ~8 / ~13 as before); at most
-  one approach per person and per kind a week; a vouch is offered only while you are a free agent; a call-out comes from
-  outside your squad; at most one poaching per payday; NPC ↔ NPC off-screen results count half; clutch trust / freeze
-  moves a setter's ally share ~32 → 37 % and enemy ~27 → 24 %.
-
-  **I. Build order (tasks after the camera, each small):**
-  T-060 NPC wants / traits / status + weekly plans and activity-based growth (data + sim, headless) ·
-  T-061 memory log + stance + bond as summary (migrate bond sources) · T-062 People tab (cards, discovery) ·
-  T-063 approaches (theirs and yours) · T-064 fates (cut / quit / poached / national) + end-of-run "People who
-  mattered" · T-065 NPC ↔ NPC memories, cliques, chemistry · T-066 on-court effects (engine, goldens update).
-- §4.24 Faction events **[draft — owner to confirm]**: once a payday, Front rolls one faction event from its state
-  (pressure, places lost, money); each changes the map for N weeks and is reported in the Gazette (and rumours in the
-  faction's own voice): border seizure (exists — gets a visible flag change + Gazette story), price hike / sale
-  (a region's prices ×1.3 / ×0.8), gym raid (a place closed 1–2 weeks: pin greyed, rubble decal), recruitment drive
-  (a faction's join bar −5, its crews swarm the map), curfew (a region charges +1 day to enter), festival (Wu beach
-  week: bonfire free, mood up, street battles off). Rules in Front (data table EVENTS, no randoms outside the payday
-  roll); MapModel shows them; the living map animates them.
-- §4.25 Player camera **[built — T-058 Follow, T-059 POV; polish T-070 built]**: in a match, a camera toggle Broadcast / Courtside (exist) /
-  **Follow** (3rd person: behind and above your player, turns with your side, eases to the ball on your touches) /
-  **POV** (1st person from your player's head: the ball, the net, the block in your face; your own arms on spikes and
-  digs, falls back to Follow during your jumps if it gets too wild). Hype scenes still cut to their shots and return.
-  Only your career player (Monster games: pick any player). Comfort: no camera roll, smoothed head bob, FOV 70.
-  Owner tweaks (build chat): Follow / POV always face the opponent's side (look clamped ±40° / ±55°); when the ball
-  leaves the frame the view widens (and Follow backs away from the net up to 12 m) until it is back; softer screen
-  shake (slow sway, off with Zooms: Off); ball trails scale with hit power and every trail fades while its object is
-  still; a ball far out of the map never drags the view (look target clamped to the court box, eased out while
-  hidden), and a hype shot's exit turns the view smoothly. In POV, figures that come within arm's reach of the eye fade out.
-  Your career player is always the owner's own model (Main_v2, kept in its own colours); loaded extra models appear only
-  in the Monster game (random per player). VRM hair / cloth springs move relative to the figure (no flinging when it
-  runs or is placed), at the model's own stiffness.
-
-- §4.26 Game modes **[locked (owner), built T-067; Endless = backlog]**: a new run picks **Story** (default) or
-  **Endless** (later).
-  - **Story**: the run is your story, so the final stage always includes you. At the U21 Final Cup you are always in
-    a squad (forced into your faction's first drawn squad over its weakest same-role player; an Academy member plays
-    with the Academy squad; alone → you enter with a hired street crew), and you **always start** every cup match (the
-    coach's lineup puts you first in your role; the coach may still sub you if tired — SUB.you applies). If your squad
-    wins, you are always called up to the national team (the ending). Evaluations, challenges and street fights keep
-    the normal lineup rules (you can be benched there).
-  - **Endless** (backlog, room kept): no guarantees anywhere — cup draws and lineups as for anyone, the national
-    call-up by match grades (§4.23 F); after the cup the season rolls over instead of ending (aging out of U21, the
-    senior league, NPC careers continuing: **[open]**).
-  - Code: `run.mode.story` (true for Story); every guarantee checks it, so Endless only removes them.
+- §4.1 Start: free agent (no team/faction); join via join conditions; money, housing, paydays, league transfers,
+  Gazette; Sim ⏭ skips a match. 28 weeks. Unsigned → no league/cups (watch from the stands). `World.pickup` = the
+  Academy squad (§4.11).
+- §4.2 Island: majors Wei (city; N + E), Wu (coast; E/S + inland strip; most aggressive), Shu (highlands; W); minors
+  Street Outlaws, St. Gloria (borderless). Only neutral land: region `open` = **Central Academy** at the Wei–Wu–Shu
+  tri-point (540, 500), north of the airport — entry point, no team, never seized. 8 fixed teams (2 per major + 2
+  minor clubs) = home squads (training, bonds, scouting, transfers); matches that matter use pool draws (§4.11).
+- §4.3 Regions set prices/quality: Wei pricey (maybe overhyped), Shu cheap (maybe hidden gem), Wu sand = technique.
+- §4.4 Movement: `run.pos` (start: airport); hotels away from home. Dark except near visited points (`run.fog`,
+  REVEAL_R). Click any land to travel.
+- §4.5 Week: 7 days. Each action (train/rest/outing/scout) = 1 day + trip (free within NEAR_R, 1 day per TRIP_DAY,
+  max 3; routing §4.18). Nothing spills over; nights free; only the player ends the week. One event roll per week.
+  Day session = DAY_GAIN (0.25) of the old weekly gain.
+- §4.6 Street battles (CLASH, ~45 % of training weeks, popup at week start): watch (scouts both) or fight for a side
+  (win +standing, lose −; other side always −). `run.rep` = standing per region. Fighting = real match (`Cup.clash`):
+  your side's pool crew with you vs theirs; watch or Sim ⏭; normal XP, techniques, grade. Crews and your evaluation
+  squad show their 3-letter tag ('EVL' only for the opposing evaluation squad).
+- §4.7 Faction war (`front.js`, FRONT): each battle (joined or settled at week end) pushes its border meter; 2 net
+  wins seize a border place (2 per side per border; retakes first) → owner's price/turf/colour. `FRONT.weakAt` (2)
+  places lost = weakened (dearer, worse facilities, easier to join). Wu revenge bonus. Minors not in the war. Seized =
+  patch in holder's colour; borders don't move **[open: moving borders]**.
+- §4.8 Hub: full-screen 3D map, HUD, shortcut dock → drawers, cards over the map.
+- §4.9 Map: rules → MapModel → MapView → three.js `js/map3d/` (`mount`, `update(model)`, `select`, `dispose`); no 2D
+  fallback (WebGL missing → notice). Terrain, pins/labels/flag as HTML overlay, seized + border decals, vertex fog.
+  Fixed tilted camera (Kenshi diorama; pan + zoom, no rotation); low-poly procedural terrain (Shu raised, Wu beach ring,
+  CITY.mountains peaks), water, region tint. 1 map unit = 0.5 m. Your VRM walks/runs when `you.at` changes (display;
+  rules instant), camera follows; trips 1.2–6 s with ×N time-lapse badge. Moving entities, hour clock, day/night later (M1 / M3).
+- §4.10 Facility access: pay + standing with owner > `ACCESS.grudge` (−20) + owner's dogma condition (lore.md §5;
+  values **[open: balance pass]**). Owner's members always in; Central Academy grounds and Home always open. Flips on
+  seizure. Standing otherwise display-only.
+- §4.11 Competition:
+  - Pools (rosters): `POOL` { wei 24, wu 18, shu 12, outlaws 6, gloria 6 }. Squads of `SQUAD` 6 drawn per event,
+    default n = floor(pool ÷ SQUAD), weighted by rating and standing; guaranteed spot above a standing threshold
+    **[open: value]**. Signed players may not be drawn.
+  - Monthly evaluation, weeks 4/8/12/16/20/24: Academy squad (free agent + 3 assigned teammates) → vs a random major's
+    drawn squad (leave anytime; then no invites, no rejoin). Signed with a major → its drawn squads play each other.
+    Minor or alone → none. Rewards: skill pts / fans / standing; results feed standing and draw weight. Major member
+    not drawn → bench, Wit XP of one day-session (`EVAL.benchDays` 1).
+  - Reserves train weekly; each payday a faction's best reserve replaces a clearly weaker same-role starter
+    (`PROMOTE.gap` 3).
+  - **U21 Final Cup** (after week 28): floor(pool ÷ SQUAD) squads per faction + Academy squad (12 by default); 16-slot
+    bracket seeded by rating (1 v 16, 8 v 9…), missing seeds = byes. Camp weeks 26–28. Win → national team (§4.26).
+- §4.12 Faction dossier (all 5; from HQ panel and Factions drawer), DOM-free `Dossier.build(run, r)`, `registrar` voice:
+  - State: Weakened (lost ≥ weakAt) / Pressed (lost 1) / Rising (took > lost) / Stable; minors "Not in the war".
+    Border meters, places taken/lost, price and quality multipliers.
+  - Facilities held (seized marked): stat, price, quality (advertised until trained there), level, access
+    (`City.access`).
+  - Roster: name, role, squad or "reserve"; ratings and awakened elements only if scouted (any club this run) or
+    member, else "unknown". Clubs: squads, join conditions, Sign. Your standing.
+- §4.13 Meta progression: none (no Legacy, unlocks, Hall of Fame, inheritance). Every run starts the same (§4.22): no
+  starting skill, no team pick. Challenge modes (Hard league, Short season) are plain options. Run end: result, rank,
+  growth chart.
+- §4.14 Growth (Kenshi rule):
+  - Training gains shrink above ~60, stop at `TRAIN_CAP` 75; the fastest early route.
+  - Match XP (`MATCH_XP`) is the only way above 75: every match you play (evaluation, cup, street fight, challenge),
+    from your performance not the result — kills → power, blocks → jump + def, digs → def + speed, sets/assists → wit.
+    × opponent strength vs your side: stronger 1.5–2, equal 1, weaker 0.3.
+  - Win rewards by match type: evaluations → skill pts / fans / standing; cup → placement; street battle → side
+    standing + money.
+  - Basic SKILLS (no `tech`) bought with skill points. Techniques (`tech`) learned in play by chance — by doing (e.g. 3+
+    blocks → chance at Read Block) and by facing a user; chance grows with wit and opponent strength; active once
+    stats meet `req`. Scouting shows a team's techniques.
+- §4.15 Challenges (make a no-training run possible):
+  - At a club HQ: 1 day + trip; you set a money **stake** (0 ok). Street-battle flow (watch / Sim ⏭). Your side:
+    Academy squad, or your club's squad (not the target); alone → hired street players (~50 rating, cost money).
+  - Refusal ("not worthy"): worth = side rating + standing ÷ 10 + dogma term vs club rating − `CHALLENGE.margin`. Wei:
+    Gazette rank, fans + stake. Wu: key stat / OVR, stake barely. Shu: standing + weeks on island, stake not at all.
+    Outlaws: any stake ≥ their minimum; 0 laughed off. St. Gloria: only if you're Gazette Top 20. Shown before
+    committing ("Accepts: likely / doubtful / refuses" + reason, numbers hidden). Refusal: trip day lost, a line in the
+    faction voice, no retry this week; 3 refusals from a club in a season → −standing.
+  - Win: stake back at odds from the rating gap, + standing / fans; XP per §4.14.
+  - Loss: stake lost; stamina and mood crash (carry over); −standing (repeated → grudge → ban, §4.10); lost by 8+ →
+    fans − and a Gazette jab. No NPC learning.
+  - Injury roll after challenges and street fights (not evaluations/cup) = base + rating gap + defeat margin + fatigue
+    (low stamina, few days since last fight); rest lowers it. Days to weeks out; severe also −2 permanent on a stat
+    (never ends the run). Injured: no fights, light training only, never starts or comes on; physio heals time, not
+    the stat. NPCs share `INJURY` rules.
+  - Target: a no-training run reaches mid-70s by ~week 20 only with well-chosen fights.
+- §4.16 Living map (display only, no randoms):
+  - A [built]: teammates at their week's training places; faction players drilling at courts (more for bigger pools;
+    coloured if scouted/member, else grey) and walking between places; street battle as a two-colour crowd with flags
+    and dust; border lines pulse with pressure, patrols thicken on the winning side (only the Wei–Wu border is drawn);
+    seized places fly the holder's flag. Low-poly instanced figures; VRM for you only.
+  - B **[locked, not built — waits on lore]**: waves, boats, gulls, Wu beach pickup games, Shu village smoke, Wei
+    lights and traffic, villagers near the Academy; individual NPC figures and approach figures (§4.23).
+  - C **[locked, not built — M3]**: sun moves as the week's days are spent; dusk when none left.
+- §4.17 Rankings (numbers true, criteria biased; display only):
+  - **Academy Register** (`registrar`): all U21 players by true OVR; unknown players (not member/squad/scouted/met on
+    court) "unrated" (faction + role).
+  - **Gazette Top 20** (`wei`): fans (you) or fame points (NPCs: star/OP, team results, awakened), ×1.5 for Wei
+    players; only Wei-sanctioned matches count.
+  - **Street board** (`outlaw`): street battles, hustles, challenges (you); faction street-battle wins credited to its
+    best players (NPCs).
+  - Rankings drawer: lists + your ranks. Pre-match / challenge cards: "Register #12 · Gazette #3 · Street —". Aces /
+    the rival appear here later.
+- §4.18 Roads and buildings:
+  - Data (plain, no randoms): road network (airport, every place, HQs, Academy, junctions; main roads, Wei grid, Shu
+    dirt/mountain paths); deterministic lots per region style; landmark kind per place/HQ (gym, sand court, dojo, HQ
+    tower, hotel, stall, shrine, cage, campus, home). Lots keep clear of `CITY.ritual`.
+  - Render: road ribbons on terrain; instanced low-poly fillers (one draw call per kind); landmarks single meshes. One
+    registry (`kit3d.mjs`) so CC0 packs (Kenney, Quaternius) in `assets/models/` can replace any kind (owner picks).
+  - You walk the road route. Trip cost = cheaper of road route (main/overpass fast; Wei streets, boardwalk, dirt
+    slower; Shu mountain paths slowest) or cross-country (Shu highlands rough). Airport → harbor 2 days by coast road;
+    Shu mountain trail 3.
+- §4.19 Town layout (crowded; lore.md §3–§5); buildings fill districts (area + style + density), ~1,200 total (Wei
+  ~600, Wu ~300, Shu ~150, Outlaws ~60, Academy ~40, Gloria ~30):
+  - **Wei**: *Downtown* (Wei Gold HQ, league office; tower grid, densest); *Old Town* (north-coast pocket by the
+    abandoned gym; refugee lanes, rowhouses, homeless housing); *the Ring* (mid-rise to the borders); *St. Gloria*
+    (walled villa compound, gatehouse).
+  - **Wu**: beach ~2–3× wider on E and S coasts, grown outward (borders fixed); faded beach-boom strip (dune-line
+    boardwalk, old resort hotels, kiosks, public sand courts); *Wu town* inland behind the dunes toward Wei (barracks,
+    workshops, market); *harbor district* on the east coast.
+  - **Overpass**: elevated highway downtown Wei → Wu harbor along the contested line; Outlaws' shacks, containers,
+    cage beneath.
+  - **Shu**: 3–4 terraced hill villages (unnamed until glossary), shrines, mountain paths, few people.
+  - **Central Academy**: campus quad on the old ritual ground; a weathered, unlabelled sand circle nearby.
+  - **Wealth** 0–1 per lot (height, size, materials, spacing). Wei: smooth gradient downtown → shabby edges / Old Town;
+    no rich pockets but St. Gloria. Wu: even, modest; separate settlements (harbor, Wu town, beach strip, inland
+    village) on few mostly-dirt roads, coast road the only main road. Shu poor, scattered; Outlaws poorest; Academy
+    middling, uniform.
+- §4.20 Match history (Season drawer): every match you were in, newest first — week/day, kind, opponent, score, W/L,
+  grade; bench matches "did not play". Snapshot: your OVR, stats, wit at kick-off (+ change since previous), your line
+  (kills, attacks, errors, blocks, aces, digs, assists), full box score (name, role, OVR, line). Registrar voice.
+- §4.21 Official venues (display only; pin + card: what's held, this week's match; your match's venue glows, the
+  match card names it): **League Arena** (Wei downtown by the league office; biggest building, floodlit bowl): U21
+  Final Cup + Wei evaluations · **Academy Hall** (campus): Academy evaluations · **Beach Stadium** (Wu sand, faded
+  relic): Wu evaluations · **Highland Court** (hillside by Shu Peak HQ, stone terraces): Shu evaluations.
+- §4.22 Start from 1: Power, Defense, Speed, Jump = 1, Wit 1.0; no creation points / role bias. Creation: name, role,
+  look, challenge modes. XP per point grows ×1.05 per point at all levels (≈1 at 1, ≈6 at 40, 10 at 50; ~a dozen
+  sessions to 50). Early benching and losses are intended (evaluations still pay the bench reward). Stats floor 1; a
+  guard repairs invalid stats on load and before every match. NPCs unchanged.
+- §4.23 **Relationships — the core pillar.** Every NPC is a career; a relationship is two careers colliding, not a
+  gauge. **Hard rules:** no gifts, dates/romance, per-character story chains, support cards, "max bond = stat bonus",
+  cheerful portrait banter. Bond grows only from shared, costly acts; hanging out has fast diminishing returns. Lines
+  in lore voices; numbers true.
+  - **A. NPC careers.** Every pool player: `want` (1), `traits` (2, no opposites), weekly `plan`, season record,
+    `status` (active · injured · benched · cut · quit · poached · national).
+    - WANTS: `national` (plays every match, takes risks, picks winning squads) · `money` (hustles, paid challenges,
+      open to Gloria/Outlaw offers) · `spot` (keeps role, trains key stat, hostile to same-role threats) · `grudge`
+      (Wu vs Wei by default, Outlaws vs Wei; challenges, street battles) · `prove` (trains Hard, overtrains, more
+      injuries; Shu-leaning) · `leave` (disloyal, best offer).
+    - TRAITS: proud · loyal · jealous · warm · cynical · reckless · calculating · steady.
+    - Plan (one roll per week): train a stat at an allowed place, rest, hustle, challenge, scout, recover. Growth by
+      your XP rules × hidden potential (no random drift); off-screen matches raise all 4 stats (key ×2); only starters
+      and hustlers pass the cap (target week 28: mean OVR ~83, top-10 ~95). Same fatigue, INJURY, Run.lineup rules.
+    - Fates (permanent): **cut** (benched 3 evaluations running + under the join bar → reserves; quits if want unmet) ·
+      **quit** (cynical + want unmet long) · **poached** (≤ 1 per payday; `money` → St. Gloria, still in play; `leave`
+      → abroad, gone) · **national** (F). Shown in rumours and the Gazette.
+  - **B. Memories.** Pairs (you ↔ NPC; NPC ↔ NPC within squad/pool, entry carries `a` = who feels it) log
+    `{ week, kind, value }`. MEMORY: spot_taken −30 (scar) · spot_given +20 · carried +12 (they scored off your play / you saved their bad game) · let_down −10 (your error lost a set
+    point) ·
+    trained_together +3 (×0.5 per repeat in a week) · won_together +5 · lost_together +2 (−2 jealous/cynical) ·
+    beat_me −8 (challenge / street fight) · covered_me +8 (dug their bad pass, sat out for them) · vouched +15 · refused_help −6 · lent_money +10 · debt_unpaid −4/week · called_out −5 ·
+    shamed −12 (scar; a Gazette jab about them you caused) · ego kinds (§2.12). Fade ×DECAY/week; scars never. ≤ 24 entries (same kinds merge).
+    - **Stance** = Σ value × fade × traits: proud ×2 on scars + beat_me; loyal ×0.6 negatives; jealous ×1.5 spot_taken
+      and your hero plays count against you; warm ×1.3 / cynical ×0.7 positives; calculating ×1.5 payoff memories
+      (won_together, carried, vouched, lent_money), ×0.5 rest. Tags: ally · respect · neutral · resent · enemy.
+      **Rival** flag: same-role squadmate within 5 OVR.
+    - `bond` = clamp(stance × 8, 0, 100), read-only summary (goals, form, Team drawer).
+  - **C. Approaches.** ≤ 2/week, ≤ 1 per person and kind; expire; wait in the People drawer (never block the map).
+    By wants + stance: invite_train (place + day → train together) · ask_sitout (before an evaluation; accept → you
+    bench, spot_given; refuse → proud resents; never in a Story cup) · duo_challenge (split stake/risk) · borrow
+    (repaid on payday or debt_unpaid) · call_out (rival outside your squad; refuse → fame + standing hit) · vouch
+    (their club's join bar −X; only while you're a free agent) · warn (rumour) · poach_advice (your answer changes
+    their fate and memory). You can approach them (Team drawer): train, ask vouch, lend, call out, ask sit-out; they
+    may refuse. They approach other NPCs (heard as rumours).
+  - **D. NPC ↔ NPC**: same memories; off-screen results count half. Cliques (3+ allies) and feuds form and change who
+    sets whom, starts, gets cut. Team drawer shows squad chemistry. Some approaches ask you to take a side.
+  - **E. On court** (gated on per-match flags; Monster/sim goldens never move): clutch sets +15 % to an ally, −15 % to
+    a resent/enemy hitter (chatter/log "trusted" / "froze out"); allies cover your bad pass more; captain's buff to
+    allies first; lineup score adds a teammate vouch; facing a rival → mood swing both (fired up / rattled). No raw
+    stat bonuses.
+  - **F. Permanence.** 4 starting spots: anyone you raise can take yours. Call-up after the cup: **Story** — you go if
+    your squad wins (§4.26), plus its best by match grades; **Endless** — best 4 by grades (+ fame tie-break), bench
+    winners don't go. NPCs compete for the rest. Run end "People who mattered": 5 strongest stances, fates, key
+    memories (diary voice).
+  - **G. Discovery.** Want revealed after enough memories (or rumour/scouting), traits after seen acting; else
+    "unknown". Team drawer → **People**: name, role, OVR if known, stance, want/traits once known, season line, top 3
+    memories (diary: "W8 — I took her spot. She hasn't forgotten."). Rankings and dossier link to it.
+  - **H. Data.** `run.people[id] = { want, traits, plan, status, known: { want, traits } }`; `run.mem[pairKey]`
+    (sorted ids). Budget: you-pairs for everyone met + in-squad NPC pairs (≤ ~1,500 entries). Tables WANTS, TRAITS,
+    MEMORY, REL in js/data. RUN_VERSION 14. Rolls via `People.roll` (seed × week × player × salt), never R(); engine
+    sees only per-match flags.
+- §4.24 Faction events **[draft]**: one per payday, rolled by Front from state (pressure, places lost, money); lasts N
+  weeks; Gazette + faction-voice rumours: border seizure (add flag change + story), price hike / sale (×1.3 / ×0.8),
+  gym raid (place closed 1–2 weeks: greyed pin, rubble), recruitment drive (join bar −5, crews swarm), curfew (+1 day
+  to enter a region), festival (Wu beach week: free bonfire, mood up, no street battles). Table EVENTS; no randoms
+  beyond the payday roll; MapModel shows, living map animates.
+- §4.25 Match camera: Broadcast / Courtside / **Follow** (behind and above you, turns with your side, eases to the
+  ball on your touches) / **POV** (from your head, own arms on spikes/digs, falls back to Follow in wild jumps). Hype
+  scenes cut away and return. Your player only (Monster: any). No roll, smoothed head bob, FOV 70.
+  - Follow/POV face the opponent (look clamped ±40° / ±55°); ball out of frame → FOV widens (Follow also backs off up
+    to 12 m, +0.3 m up per m); look target clamped to the court box, eased while the ball is hidden; hype exit turns
+    smoothly. POV fades figures within arm's reach.
+  - Shake: slow sway, off with Zooms: Off. Ball trails scale with hit power; all trails fade out when still.
+  - Models: career player always Main_v2 (own colours); extra loaded .vrm models only in Monster (random per player);
+    everyone else base model. VRM springs use the figure root as center, `HAIR` { stiff 1, drag 0, gravity 1 }.
+- §4.26 Modes (`run.mode.story`; every guarantee checks it):
+  - **Story** (default): at the U21 Final Cup you're always in a squad (forced into your faction's first drawn squad
+    over its weakest same-role player; Academy member → Academy squad; alone → hired street crew) and always start
+    (coach may still sub you tired; SUB.you applies). Squad wins → you're called up (the ending). Other matches keep
+    normal lineups.
+  - **Endless** **[locked, not built]**: no guarantees; call-up by grades; season rolls over after the cup (aging out,
+    senior league, continuing NPC careers: **[open]**).
 
 ## 5. Open questions — do not build until decided
-- §5.1 Lore gaps (lore.md §9): rival, aces, old-language glossary, names, ritual in play. Waits on them: story
-  events, club switching, what standing unlocks beyond access.
-- §5.2 Portraits: now generated 2D (`faceSVG`). Options: 3D VRM head snapshots, or hand-made 2D anime portraits
-  (unique characters mapped by hand with own model + portrait); Live2D (pixi-live2d-display) or video loops
-  (WebM / animated WebP) for special characters at big moments. When built: one call,
-  `Portrait.show(el, character, mood)`, so the kind can vary per character.
-- §5.3 Legacy / Hall of Fame: **dropped** (owner, to cut complexity) — see §4.13.
-- §5.4 Character creation rework (deferred).
+- §5.1 Lore gaps (lore.md §9): rival, aces, glossary, names, ritual in play. Blocks: story events, club switching,
+  what standing unlocks beyond access.
+- §5.2 Portraits: now 2D `faceSVG`. Options: VRM head snapshots; hand-made 2D anime portraits; Live2D
+  (pixi-live2d-display) or WebM / animated WebP loops for special characters at big moments; unique characters
+  mapped by hand (own model + portrait), so the kind varies per character. API when built: `Portrait.show(el, character,
+  mood)`.
+- §5.3 Legacy / Hall of Fame **[dropped]**. §5.4 Character creation rework (deferred).
+- §5.5 Severe injury: the permanent −2 on one stat is assumed; confirm in the balance pass.
 
-## 6. Narrative rules **[locked, not built for existing strings]**
-- Every player-facing string has one speaker from lore.md §7 (`registrar`, `wei`, `wu`, `shu`, `outlaw`, `gloria`,
+## 6. Narrative rules [locked; faction/region/Gazette/event strings built]
+- Every player-facing string has one lore.md §7 speaker (`registrar`, `wei`, `wu`, `shu`, `outlaw`, `gloria`,
   `villager`, `diary`, `rumor`). No tutorial voice.
-- Numbers are always true; claims, reasons and history may be biased or wrong. Never state lore.md truth directly.
-- Mechanics explanations (tooltips, costs) use `registrar`: terse, factual, no "why".
-- No old-language words until lore.md §8 has a glossary.
+- Numbers always true; claims and history may be biased. Never state lore.md truth directly.
+- Mechanics (tooltips, costs): `registrar` — terse, no "why". No old-language words until lore.md §8 has a glossary.
 
-## 7. Out of scope for now
-- Founding your own club (team building). Minor factions in the faction war. Ghost PvP. Mobile layout.
+## 7. Out of scope
+- Founding a club. Minors in the war. Ghost PvP. Mobile layout.
 
-## 8. Backlog (candidates — become tasks only when specced)
-- Balance pass: 7-day week × DAY_GAIN × fees × faction prices × paydays, measured with headless season sims.
-- Role identity (with the balance pass): flex-role win rates are even (±3 %, 16k sims: 2 S / 2 MB / 3 WS); make
-  setter value visible ("Perfect set!" call-outs, set quality in the box score, front-row setter attack / dump in
-  dual-setter teams) and give MBs a back-row pass / dig weakness. Re-measure win rates by flex role after.
-- Standing effects; leaving/switching clubs (needs §5.1); moving borders.
-- Smarter AI coach (matchup subs, protecting a lead, personality).
-- Ace traits (after block tactics §2.9; engine, goldens update). Aces = OP players + named aces/rival (lore.md §6),
-  1–3 per faction pool. What makes them hard is how they play, not bigger stats. Your player never gets a trait (the
-  element is enough). Each ace has:
-  - one rule-bending signature trait (cut-in on first trigger): Wall (solo block covers both lanes), Minus tempo
-    (quick lands before the block jumps), Reader (after ~5 rallies blocks your favourite lane more), Iron receive
-    (first pass never shanks except vs element spikes / float serves), Clutch (from 12 pts and set point, rolls lean
-    their way);
-  - a temper: Fired up (trailing by 3+ or just stuffed → surge for a few rallies) / Rattled (2 stuffs or aces against
-    them → more errors, trait off for a while);
-  - one weakness revealed by scouting (e.g. float serves, left lane, short fuse), shown in the match UI.
-- New-run setup + results screens. Hype scene frequency tuning (§2.3).
-- Voice pass over existing strings (§6) = T-022.
+## 8. Backlog (tasks only once specced)
+- Balance pass (headless season sims): week × DAY_GAIN × fees × prices × paydays; the [open] values above.
+- Role identity: flex roles win evenly (2 S / 2 MB / 3 WS). Show setter value ("Perfect set!", set quality in box
+  score, setter attack/dump in dual-setter teams); MB back-row pass/dig weakness; re-measure.
+- Standing effects; club switching (needs §5.1); moving borders. Smarter coach (matchups, protect a lead, hunches).
+- Ace traits (engine, goldens update): OP players + named aces/rival, 1–3 per pool; hard by play, not stats; never
+  for you. Each: a signature trait (cut-in on first trigger) — Wall (solo block covers both lanes), Minus tempo (quick
+  lands before the block jumps), Reader (after ~5 rallies blocks your favourite lane more), Iron receive (first pass
+  never shanks except vs element spikes / float serves), Clutch (from 12 pts and set point, rolls lean their way); a
+  temper — Fired up (trailing 3+ or just stuffed → surge) / Rattled (2 stuffs/aces against → errors, trait off a
+  while); a weakness revealed by scouting, shown in the match UI.
+- New-run setup + results screens. Hype scene frequency tuning (§2.3). More music, crowd, voice clips. Living map B/C. Endless mode.
