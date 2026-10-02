@@ -322,7 +322,7 @@ T-001…T-094 (no T-012…T-015, T-021, T-033, T-049; T-082…T-088 open above).
   goal, `nextStep` · T-097 `fitView`, fly-to · T-098 places drawer · T-099 costs on buttons, `joinGap` · T-100 `homeRow` housing ·
   T-101 battle intro with seize line. Superseded by the redesign (§10): T-102 recap (→ T-121), T-103 dock, T-104/T-105 drawers
   (→ sheets), T-106 eval card (→ T-127).
-  (T-102…T-106 were built before §10 landed — commits dfbadda…3734790: tagged recap/diary , dock groups, drawer
+  (T-102…T-106 were built before §10 landed — commits dfbadda…3734790: tagged recap/diary (`LOG_TAGS`), dock groups, drawer
   clean-up, Factions/Rankings labels, eval rosters; reuse what fits, the redesign replaces the rest.)
 - UX batch 1: T-090 week recap card · T-091 seize notice + map focus · T-092 battle stakes, border meters ·
   T-093 training card time-to-point · T-094 hub hotkeys, end-week guard.
