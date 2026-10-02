@@ -25,8 +25,28 @@ const Models = (() => {
     );
   /** Names loaded into the 3D world this session. */
   const live = [];
+  const KEEP = 'sns_keepcol';
+  let keep = false;
+  try {
+    keep = localStorage.getItem(KEEP) === '1';
+  } catch (e) {
+    // storage blocked: off
+  }
   return {
     live,
+    /** Loaded models keep their own colours (no team kit / hair / skin / eye tint). */
+    get keep() {
+      return keep;
+    },
+    async setKeep(on) {
+      keep = !!on;
+      try {
+        localStorage.setItem(KEEP, keep ? '1' : '0');
+      } catch (e) {
+        // storage blocked: lasts until the page is closed
+      }
+      (await load3D()).keepColors(keep);
+    },
     /** Stored models: [{ name, buf }] (empty if storage is blocked). */
     async all() {
       try {
@@ -45,6 +65,7 @@ const Models = (() => {
         // storage blocked: the model still works until the page is closed
       }
       const api = await load3D();
+      api.keepColors(keep);
       await api.addModel(buf, name);
       live.push(name);
     },
@@ -59,6 +80,7 @@ const Models = (() => {
     /** At start-up: load every stored model into the 3D world. */
     async boot() {
       const api = await load3D();
+      api.keepColors(keep);
       for (const m of await this.all())
         if (!live.includes(m.name))
           try {
@@ -87,4 +109,8 @@ async function removeModel(name) {
   await Models.remove(name);
   const note = $('#mdl-note');
   if (note) note.textContent = `${name} removed — it goes away when you reload.`;
+}
+async function toggleKeepColors() {
+  await Models.setKeep(!Models.keep);
+  renderMenu();
 }

@@ -273,8 +273,8 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     to 12 m, +0.3 m up per m); look target clamped to the court box, eased while the ball is hidden; hype exit turns
     smoothly. POV fades figures within arm's reach.
   - Shake: slow sway, off with Zooms: Off. Ball trails scale with hit power; all trails fade out when still.
-  - Models: career player always Main_v2 (own colours); extra loaded .vrm models only in Monster (random per player);
-    everyone else base model. VRM springs use the figure root as center, `HAIR` { stiff 1, drag 0, gravity 1 }.
+  - Models: career player always Main_v2 (own colours); extra loaded .vrm models only in Monster (random per player;
+    menu toggle "Model colors: Own / Team", localStorage `sns_keepcol`); everyone else base model. VRM springs use the figure root as center, `HAIR` { stiff 1, drag 0, gravity 1 }.
 - §4.26 Modes (`run.mode.story`; every guarantee checks it):
   - **Story** (default): at the U21 Final Cup you're always in a squad (forced into your faction's first drawn squad
     over its weakest same-role player; Academy member → Academy squad; alone → hired street crew) and always start

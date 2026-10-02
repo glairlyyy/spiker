@@ -27,7 +27,7 @@ import {
   getPovStats,
   setDebugCam
 } from './camera3d.mjs';
-import { posePlayer, poseCoach, dressActors, swapActor, setPovHidden } from './actors3d.mjs';
+import { posePlayer, poseCoach, dressActors, swapActor, setPovHidden, setKeepColors } from './actors3d.mjs';
 
 const N_PLAYERS = 8,
   N_COACHES = 2;
@@ -303,6 +303,11 @@ export const api = {
     return world ? +(world.gl.width / Math.max(1, cv.width)).toFixed(2) : null; // 3D render scale vs the court canvas (debug)
   },
   addModel,
+  /** Loaded models keep their own colours (re-dresses a match on screen). */
+  keepColors: on => {
+    setKeepColors(on);
+    if (world && bound && A && bound === A) dressActors(world);
+  },
   swapActor: (outId, d) => world && swapActor(world, outId, d), // a substitution: the figure of the player going off plays the incoming one
   models: () => (world && world.models) || [],
   poseAll: dt => world && world.people.forEach(pl => pl.d && posePlayer(pl, dt, W(A.ball.x, A.ball.z, A.ball.h), world.fx)), // test hook: fast-forward posing

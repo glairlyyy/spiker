@@ -128,6 +128,7 @@ export function dress(vrm, kit) {
     else if (/Shoes/.test(n)) tint(kit.shoes || '#ffffff', 0.75);
     else if (/HAIR/.test(n)) {
       if (!m.userData.grey) {
+        m.userData.map0 = { map: m.map, shade: m.shadeMultiplyTexture };
         m.map = greyTexture(m.map, 'grayscale(1) brightness(2.1) contrast(1.15)');
         if (m.shadeMultiplyTexture) m.shadeMultiplyTexture = m.map;
         m.userData.grey = true;
@@ -136,6 +137,7 @@ export function dress(vrm, kit) {
       tint(kit.hair, 0.6);
     } else if (/EyeIris/.test(n)) {
       if (!m.userData.grey) {
+        m.userData.map0 = { map: m.map };
         m.map = greyTexture(m.map, 'grayscale(1) brightness(1.7)');
         m.userData.grey = true;
         m.needsUpdate = true;
@@ -148,6 +150,24 @@ export function dress(vrm, kit) {
       const k = new THREE.Color(Math.min(1, s.r / base.r), Math.min(1, s.g / base.g), Math.min(1, s.b / base.b));
       m.color && m.color.copy(k);
       m.shadeColorFactor && m.shadeColorFactor.multiply(k);
+    }
+  });
+}
+
+/** Back to the model's own colours (undo dress): for loaded models the player wants kept as modelled. */
+export function undress(vrm) {
+  eachMat(vrm, m => {
+    const c0 = m.userData.c0,
+      t0 = m.userData.map0;
+    if (c0) {
+      if (m.color && c0.color) m.color.copy(c0.color);
+      if (m.shadeColorFactor && c0.shade) m.shadeColorFactor.copy(c0.shade);
+    }
+    if (t0 && m.userData.grey) {
+      m.map = t0.map;
+      if (t0.shade) m.shadeMultiplyTexture = t0.shade;
+      m.userData.grey = false;
+      m.needsUpdate = true;
     }
   });
 }
