@@ -7,7 +7,6 @@ function openDossier(r) {
   CW.dossier = r;
   CW.wtab = 'factions';
   CW.sheet = 'world';
-  CW.drawer = null;
   renderCareer();
 }
 function closeDossier() {

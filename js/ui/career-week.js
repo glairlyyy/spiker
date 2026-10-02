@@ -1,11 +1,10 @@
-// Career panels shown in the hub's drawers and pop-ups (career-hub.js): your player, season, teammates, life, clubs,
+// Career panels shown in the hub sheets and cards (career-hub.js): your player, season, teammates, life, clubs,
 // Gazette, the event card, evaluation / Cup match cards and the skills shop, plus their handlers.
 
-/** Hub UI state: Hard toggle, selected place, open drawer, last diary line shown as a toast. */
+/** Hub UI state: Hard toggle, selected place, open sheet and its tabs, cards, the Week report baseline. */
 let CW = {
   hard: false,
   spot: null,
-  drawer: null,
   flash: null,
   briefWeek: null,
   seizes: null,
@@ -15,6 +14,7 @@ let CW = {
   wtab: 'factions',
   stab: 'diary',
   gear: false,
+  mapList: false,
   dossier: null,
   rank: 'register',
   rankAll: false,
@@ -212,7 +212,7 @@ function matchLog(run) {
     };
   return `<div class="panel"><h3>Match history</h3>${L.length ? L.map(row).reverse().join('') : '<p class="small mute">No matches yet.</p>'}</div>`;
 }
-/** Rankings drawer: tabs for the three lists (Rank.*, js/career/rank.js), top rows then a gap and your own row. */
+/** Rankings (World sheet): tabs for the three lists (Rank.*, js/career/rank.js), top rows then a gap and your own row. */
 const RANK_TABS = {
   register: ['Register', 'Academy Register — U21, by rating'],
   gazette: ['Gazette', "The Gazette's Top 20 — the island's finest"],

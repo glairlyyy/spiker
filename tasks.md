@@ -138,13 +138,13 @@ Steps: calendar of 28 + cup cells with week number, type word (Eval / Camp), goa
 Accept: no drawer remains; HUB_DRAWERS removed. QA: screenshot vs SheetSeason.
 Result: sheetSeason (career-week.js): calendar (current week = selected style, cup pips ink not hot), goal + sponsors, match history | Diary / Gazette tabs (CW.stab; Gazette tab marks it read; hubOpen('news'/'diary') opens that tab). ⚙ = gearPop (Main menu, Debug log only with ?dev, Abandon run inline); Esc closes it. Season/news/diary/menu drawers removed; the last drawer (places) and HUB_DRAWERS go in T-126. QA: 3 screenshots, no errors.
 
-### [ ] T-126: Map / List toggle
+### [x] T-126: Map / List toggle
 
 Spec: §10.1 §4.4 Goldens: unchanged Save: no change
 Files: js/ui/career-hub.js (places drawer → list mode), js/ui/career-map.js, css/career.css
 Steps: fitView and fly-to are done (T-097). Add a Map/List segment top-left of the map: List = the T-098 places list rendered in the map area (no drawer) → click selects (panel opens, camera flies); legend chips at the bottom; remove the `places` drawer.
 Accept: List selects places; no places drawer. QA: screenshots.
-Result:
+Result: mapBar (career-hub.js): Map/List segment top-left, List = placesCard over the map area (CW.mapList), a row selects the place and returns to the map (panel opens, camera flies); legend chips bottom-left (HQ, venue, battle, faction chips). HUB_DRAWERS, hubDrawer and CW.drawer removed (no drawer remains); Esc closes ⚙ → list → sheet → place. QA: 3 screenshots, no errors.
 
 ### [ ] T-127: Match prep card
 

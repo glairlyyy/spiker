@@ -3094,3 +3094,56 @@
 .hub .gearpop .btn {
   width: 100%;
 }
+/* Map / List toggle and legend (T-126) */
+.hub .mapbar {
+  position: absolute;
+  z-index: 3;
+  top: calc(var(--tbar) + 16px);
+  left: calc(var(--rail) + 16px);
+}
+.hub .mapbar .seg {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surf);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.hub .maplist {
+  position: absolute;
+  z-index: 2;
+  top: var(--tbar);
+  left: var(--rail);
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  padding: 72px 32px 64px;
+  background: var(--bg);
+}
+.hub .maplist .places {
+  max-width: 720px;
+  margin: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+.hub .maplegend {
+  position: absolute;
+  z-index: 3;
+  left: calc(var(--rail) + 16px);
+  bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  pointer-events: none;
+}
+.hub .maplegend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surf);
+  border: 1px solid var(--line);
+  font-size: 12px;
+}

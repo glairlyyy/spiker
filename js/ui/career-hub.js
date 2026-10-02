@@ -3,10 +3,6 @@
 // Tabs open the sheets (Me, People, World, Season); ⚙ is a small pop-over (Main menu, Debug log with ?dev, Abandon run).
 // Cards (events, match days, the week brief/report) open over the map.
 
-const HUB_DRAWERS = {
-  places: ['📍', 'Places', run => placesCard(run)]
-};
-
 /** The top bar's sheet tabs (key 1–4). */
 const HUB_TABS = [
   ['me', 'Me'],
@@ -26,7 +22,6 @@ function worldTab(k) {
   CW.wtab = k;
   if (k !== 'factions') CW.dossier = null;
   CW.sheet = 'world';
-  CW.drawer = null;
   renderCareer();
 }
 function hubSheet(run) {
@@ -55,10 +50,9 @@ function renderCareer() {
   const card = hubCard(run, nextCup);
   $('#app').innerHTML = `<section class="career hub ${City.night(run) ? 'eve' : ''}" style="--tc:${team.color}">
     ${topBar(run)}${weekRail(run, armed)}
-    <div class="mapwrap" id="mapwrap"></div>
+    <div class="mapwrap" id="mapwrap"></div>${mapBar(run)}
     <div class="hud spotcard ${CW.spot && !card ? 'open' : ''}" id="spot">${CW.spot && !card ? spotCard(run) : ''}</div>
     ${CW.sheet ? hubSheet(run) : ''}
-    ${CW.drawer ? hubDrawer(run) : ''}
     ${card ? `<div class="hubmodal ${card.dim ? 'dim' : ''}"><div class="hubcard ${card.cls || ''}">${card.html}</div></div>` : ''}
   </section>`;
   mapMount(run);
@@ -131,7 +125,7 @@ function weekBrief(run) {
       run.gazette && !run.gazette.read ? '<button class="btn" onclick="briefDone(\'news\')">Read the Gazette</button>' : ''
     }</div></div>`;
 }
-/** Close the brief (the battle stays on the map and in the inbox); `open` = a drawer to open next. */
+/** Close the brief (the battle stays on the map and in the inbox); `open` = a sheet to open next. */
 function briefDone(open) {
   CW.briefWeek = briefKey(RUN);
   if (RUN.clash && !RUN.clash.seen) {
@@ -173,7 +167,7 @@ function topBar(run) {
     </div>
     <nav class="ttabs" aria-label="Sheets">${HUB_TABS.map(
       ([k, n], i) =>
-        `<button class="btn ${CW.drawer === k || CW.sheet === k ? 'on' : ''}" onclick="hubOpen('${k}')">${n} <kbd>${i + 1}</kbd>${k === 'people' && people ? `<em class="badge">${people}</em>` : ''}</button>`
+        `<button class="btn ${CW.sheet === k ? 'on' : ''}" onclick="hubOpen('${k}')">${n} <kbd>${i + 1}</kbd>${k === 'people' && people ? `<em class="badge">${people}</em>` : ''}</button>`
     ).join(
       ''
     )}<button class="btn ${CW.gear ? 'on' : ''}" onclick="gearToggle()" aria-label="Settings">⚙</button></nav>${CW.gear ? gearPop() : ''}
@@ -288,7 +282,7 @@ function inboxRows(run) {
   return rows.slice(0, 5).join('') || '<p class="small mute">Nothing waiting.</p>';
 }
 /**
- * One suggested next step (a suggestion only: the chip selects a place or opens a drawer, never acts). First match wins:
+ * One suggested next step (a suggestion only: the chip selects a place or opens a sheet, never acts). First match wins:
  * an unread Gazette; the next evaluation / cup within 3 weeks of a training week; a club that would sign you; night.
  */
 function nextStep(run) {
@@ -317,19 +311,16 @@ function nextStep(run) {
   if (wt !== 'cup' && wt !== 'eval' && City.days(run) <= 0) return { text: 'Night · end the week', act: '' };
   return null;
 }
-function hubDrawer(run) {
-  const [ic, name, body] = HUB_DRAWERS[CW.drawer];
-  return `<aside class="drawer" aria-label="${name}"><div class="dhd"><h3>${ic} ${name}</h3><button class="btn x" onclick="hubOpen(null)" aria-label="Close">✕</button></div><div class="dbody">${body(run)}</div></aside>`;
-}
 
-/** Hub keys: 1–4 open the sheet tabs, Space ends the week, Esc closes the drawer, then the place card. */
+/** Hub keys: 1–4 open the sheet tabs, Space ends the week, Esc closes ⚙, the list, the sheet, then the place card. */
 function hubKey(e) {
   if (A || e.ctrlKey || e.metaKey || e.altKey || !document.querySelector('.career.hub') || $('#dbg') || (CW.dossier && e.key === 'Escape'))
     return;
   if (e.target.closest && e.target.closest('input,select,textarea,button,a,[contenteditable]')) return;
   if (e.key === 'Escape') {
     if (CW.gear) gearToggle();
-    else if (CW.drawer || CW.sheet) hubOpen(null);
+    else if (CW.mapList && !CW.sheet) mapMode(false);
+    else if (CW.sheet) hubOpen(null);
     else if (CW.spot) {
       CW.spot = null;
       renderCareer();
@@ -341,6 +332,19 @@ function hubKey(e) {
 }
 document.addEventListener('keydown', hubKey);
 
+/** Map / List segment (top-left of the map), the list over the map area, and the legend chips at the bottom. */
+function mapMode(list) {
+  CW.mapList = list;
+  renderCareer();
+}
+function mapBar(run) {
+  const regions = Object.keys(REGIONS).filter(r => REGIONS[r].kind !== 'none');
+  return `<div class="mapbar"><div class="seg"><button class="btn ${CW.mapList ? '' : 'on'}" onclick="mapMode(false)">Map</button><button class="btn ${CW.mapList ? 'on' : ''}" onclick="mapMode(true)">List</button></div></div>
+    ${CW.mapList ? `<div class="maplist">${placesCard(run)}</div>` : ''}
+    <div class="maplegend"><span>🛡 Club HQ</span><span>🏟 Venue</span><span>⚔ Street battle</span>${regions
+      .map(r => `<span>${chip(REGIONS[r])}${esc(REGIONS[r].name)}</span>`)
+      .join('')}</div>`;
+}
 /** Every place the map shows, by region: the non-map way to find where to go (a row selects it on the map). */
 function placesCard(run) {
   const pins = MapModel.pins(run).filter(p => p.kind !== 'clash'),
@@ -370,7 +374,7 @@ function placesCard(run) {
     .join('')}</div>`;
 }
 function placeGo(id) {
-  CW.drawer = null;
+  CW.mapList = false;
   CW.spot = id;
   renderCareer(); // the map flies to the selection
 }
@@ -382,14 +386,7 @@ function hubOpen(k) {
     k = 'season';
     CW.sheet = null;
   }
-  if (k && HUB_SHEETS[k]) {
-    CW.sheet = CW.sheet === k ? null : k; // the tab toggles its sheet
-    CW.drawer = null;
-  } else {
-    CW.drawer = k && CW.drawer !== k ? k : null;
-    if (k) CW.sheet = null;
-    if (!k) CW.sheet = null;
-  }
+  CW.sheet = k && HUB_SHEETS[k] && CW.sheet !== k ? k : null; // a tab toggles its sheet; null closes
   renderCareer();
 }
 /** ⚙: a small pop-over under the top bar — Main menu, Debug log (only with ?dev), Abandon run (inline confirm). */

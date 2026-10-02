@@ -1,4 +1,4 @@
-// Career: the People drawer — everyone who matters to you, and what you know of them (want and trait once found out,
+// Career: the People sheet — everyone who matters to you, and what you know of them (want and trait once found out,
 // their stance, their season in a rumour, the three memories that weigh most in your diary voice). Display only: the logic
 // is Rel / People. Opened from the hub dock, and from names in the Rankings and the faction dossier (openPerson).
 
@@ -28,7 +28,7 @@ function sidesLine(run, id) {
     a = names(S.against);
   return w || a ? `<div class="mute">${w ? `With ${w}` : ''}${w && a ? ' · ' : ''}${a ? `Against ${a}` : ''}</div>` : '';
 }
-/** The squad's chemistry for the Team drawer: cliques, feuds (A ✕ B) and where you stand. Display only (Rel.chem). */
+/** The squad's chemistry for the People sheet (Squad): cliques, feuds (A ✕ B) and where you stand. Display only (Rel.chem). */
 function chemBlock(run) {
   const T = Run.myTeam(run),
     c = Rel.chem(run, T),
@@ -72,7 +72,6 @@ function personCard(run, id) {
 function openPerson(id) {
   CW.dossier = null;
   CW.person = id;
-  CW.drawer = null;
   CW.sheet = 'people';
   renderCareer();
 }
