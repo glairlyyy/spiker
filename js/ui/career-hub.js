@@ -4,13 +4,10 @@
 // the Gazette) open over the map.
 
 const HUB_DRAWERS = {
-  me: ['👤', 'Player', run => youCard(run)], // the goal and sponsors live in Season
   places: ['📍', 'Places', run => placesCard(run)],
   team: ['🤝', 'Team', run => bondCard(run)],
   people: ['👥', 'People', run => peopleCard(run)],
-  skills: ['✨', 'Skills', run => skillShop(run, true)],
   season: ['📅', 'Season', run => `<div class="panel">${calendar(run)}</div>` + seasonCard(run) + matchLog(run)],
-  life: ['🏠', 'Life', run => lifeCard(run)],
   clubs: ['🛡', 'Clubs', run => clubsCard(run)],
   factions: ['⚖', 'Factions', run => factionsCard(run)],
   rank: ['🏅', 'Rankings', run => rankCard(run)],
@@ -47,7 +44,13 @@ const HUB_TABS = [
   ['factions', 'World'],
   ['season', 'Season']
 ];
-const MORE_DRAWERS = ['places', 'skills', 'life', 'team', 'clubs', 'rank', 'news', 'diary'];
+const MORE_DRAWERS = ['places', 'team', 'clubs', 'rank', 'news', 'diary'];
+/** Sheets (spec §10.4): open over the map with the rail and top bar visible; a tab whose sheet exists opens it. */
+const HUB_SHEETS = { me: ['Me', run => sheetMe(run)] };
+function hubSheet(run) {
+  const [name, body] = HUB_SHEETS[CW.sheet];
+  return `<section class="sheet" aria-label="${name}"><button class="btn x" onclick="hubOpen(null)" aria-label="Close">✕</button>${body(run)}</section>`;
+}
 
 function renderCareer() {
   A = null;
@@ -73,6 +76,7 @@ function renderCareer() {
     ${topBar(run)}${weekRail(run, armed)}
     <div class="mapwrap" id="mapwrap"></div>
     <div class="hud spotcard ${CW.spot && !card ? 'open' : ''}" id="spot">${CW.spot && !card ? spotCard(run) : ''}</div>
+    ${CW.sheet ? hubSheet(run) : ''}
     ${CW.drawer ? hubDrawer(run) : ''}
     ${card ? `<div class="hubmodal ${card.dim ? 'dim' : ''}"><div class="hubcard ${card.cls || ''}">${card.html}</div></div>` : ''}
     ${CW.dossier && !card ? `<div class="hubmodal"><div class="hubcard wide">${dossierCard(run, CW.dossier)}</div></div>` : ''}
@@ -189,7 +193,7 @@ function topBar(run) {
     </div>
     <nav class="ttabs" aria-label="Sheets">${HUB_TABS.map(
       ([k, n], i) =>
-        `<button class="btn ${CW.drawer === k ? 'on' : ''}" onclick="hubOpen('${k}')">${n} <kbd>${i + 1}</kbd>${k === 'people' && people ? `<em class="badge">${people}</em>` : ''}</button>`
+        `<button class="btn ${CW.drawer === k || CW.sheet === k ? 'on' : ''}" onclick="hubOpen('${k}')">${n} <kbd>${i + 1}</kbd>${k === 'people' && people ? `<em class="badge">${people}</em>` : ''}</button>`
     ).join(
       ''
     )}<button class="btn ${CW.drawer === 'menu' || MORE_DRAWERS.includes(CW.drawer) ? 'on' : ''}" onclick="hubOpen('menu')" aria-label="Settings and more">⚙</button></nav>
@@ -343,7 +347,7 @@ function hubKey(e) {
   if (A || e.ctrlKey || e.metaKey || e.altKey || !document.querySelector('.career.hub') || $('#dbg') || CW.dossier) return;
   if (e.target.closest && e.target.closest('input,select,textarea,button,a,[contenteditable]')) return;
   if (e.key === 'Escape') {
-    if (CW.drawer) hubOpen(null);
+    if (CW.drawer || CW.sheet) hubOpen(null);
     else if (CW.spot) {
       CW.spot = null;
       renderCareer();
@@ -390,7 +394,14 @@ function placeGo(id) {
 }
 
 function hubOpen(k) {
-  CW.drawer = k && CW.drawer !== k ? k : null;
+  if (k && HUB_SHEETS[k]) {
+    CW.sheet = CW.sheet === k ? null : k; // the tab toggles its sheet
+    CW.drawer = null;
+  } else {
+    CW.drawer = k && CW.drawer !== k ? k : null;
+    if (k) CW.sheet = null;
+    if (!k) CW.sheet = null;
+  }
   if (k === 'news' && Run.readGazette(RUN)) Run.save(RUN);
   renderCareer();
 }

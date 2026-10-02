@@ -106,13 +106,13 @@ Result: done — `recapCard` is the Week report (every week): "Week n report" + 
 
 ## Next
 
-### [ ] T-122: Me sheet
+### [x] T-122: Me sheet
 
 Spec: §10.4 Goldens: unchanged Save: no change
 Files: js/ui/career-week.js (youCard, elementLine, skillShop, lifeCard → `sheetMe`), js/ui/career-hub.js (sheet host), css/career.css
 Steps: sheet host = overlay over the map area (rail and top bar stay), Esc / tab closes; three columns as SheetMe: stats with `n / cap` and next-point progress + Wit + Leadership + element; skills (passive rows with price and gap in a `.rowcta` column; techniques with requirements); life (reuse T-100's `homeRow`; payday line). Physio and sponsors where youCard/seasonCard had them.
 Accept: Player, Skills and Life drawers are gone; Me tab and key 1 open the sheet. QA: screenshot vs SheetMe.
-Result:
+Result: done — sheet host (`HUB_SHEETS`, `CW.sheet`, `hubSheet`: over the map area under the top bar, rail stays; the tab / key toggles, Esc and ✕ close); `sheetMe` (career-week.js) = header (face, name, role · team · OVR · rank line, Stamina / Mood / Skill pts chips) + three cards: stats rows (bar + thin next-point bar, `n / 75`), Wit, Leadership, element line, injury + Physio; skills (passive `.rowcta` rows with `cost · learn` or dashed `cost · need n`, techniques with their stat requirements or ✓ yours); life (payday line, T-100 home rows). Player, Skills and Life drawers and youCard / skillShop / lifeCard removed. QA: key 1 opens the sheet at 1440×900; no pageerror.
 
 ### [ ] T-123: People sheet
 

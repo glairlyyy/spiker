@@ -10,6 +10,7 @@ let CW = {
   briefWeek: null,
   seizes: null,
   snap: null,
+  sheet: null,
   dossier: null,
   rank: 'register',
   rankAll: false,
@@ -22,42 +23,63 @@ let CW = {
   hudOf: null
 };
 
-function youCard(run) {
+/** The Me sheet (spec §10.4, SheetMe): who you are, stats with caps and progress, element, skills, life. */
+function sheetMe(run) {
   const you = Run.you(run),
     team = Run.myTeam(run),
     mood = MOODS[run.mood],
-    staPct = Math.round((run.sta / run.staMax) * 100);
-  const capTag = k =>
-    `<small class="gate ${you[k] >= TRAIN_CAP ? 'at' : ''}" title="Training stops at ${TRAIN_CAP}. Matches only above.">${you[k]} / ${TRAIN_CAP}</small>`;
-  return `<div class="panel ycard">
-    <div class="phd"><span class="portrait">${faceSVG(you, mood.form, 64)}<b>${you.num}</b></span>
-      <div><div class="pn">${stag(you)}${esc(you.name)}${you.cap ? ' <span class="capb" title="Team captain">C</span>' : ''}</div>
-      <div class="small mute">${you.role} · ${chip(team)}${esc(team.short)} · OVR ${ovr(you)}</div>
-      <div class="small ${you.op ? 'opline' : 'mute'}">${
-        you.op
-          ? 'OP red star'
-          : you.star
-            ? `★ Star${info(`OP at OVR ${CAREER.op.ovr}, ${STATNAME[KEYSTAT[you.role]]} ${CAREER.op.key}, wit ${CAREER.op.wit}`)}`
-            : `Rookie${info(`★ Star at OVR ${CAREER.star.ovr}`)}`
-      }</div></div></div>
-    <div class="vitals">
-      <div><span>Stamina</span><span class="sbar big ${staPct < 50 ? 'low' : ''}"><i style="width:${staPct}%"></i></span><b>${run.sta}/${run.staMax}</b></div>
-      <div><span>Mood</span><span class="mood m${run.mood}">${mood.name}</span></div>
-      <div><span>Skill points</span><b>${run.sp}</b></div>
-      <div><span>Fans</span><b>${run.fans.toLocaleString()}</b></div>
-      <div><span>Money</span><b>$${run.money.toLocaleString()}</b></div>
-    </div>
-    ${run.goal && run.goal.done == null ? `<div class="ygoal ${run.goal.by - run.week <= 1 ? 'warn' : ''}"><span>Coach's goal</span> ${esc(Goals.text(run, run.goal))} · ${esc(Goals.progress(run, run.goal))} · by W${run.goal.by}</div>` : ''}
-    <div class="stats">${STATK.map(k => {
-      const pr = Training.progress(run, k);
-      return `<span ${tip(`${Math.round((pr.have / Math.max(1, pr.need)) * 100)}% of the way to the next point`)}>${STATNAME[k]}${capTag(k)}</span><span class="xpbar">${bar(you[k])}<i style="width:${Math.round((pr.have / Math.max(1, pr.need)) * 100)}%"></i></span>`;
-    }).join('')}
-      <span>Wit</span><span class="bar wit"><i style="width:${you.wit * 50}%"></i><b>${you.wit.toFixed(2)}</b></span>
-      <span>Leadership</span>${bar(you.lead)}</div>
-    ${elementLine(run)}
-    ${you.skills.length ? `<div class="skchips">${you.skills.map(skillChip).join('')}</div>` : ''}
-    ${run.mode.hard || run.mode.short ? `<div class="small mute runtags">${[run.mode.hard ? 'Hard league' : '', run.mode.short ? 'Short season' : ''].filter(Boolean).join(' · ')}</div>` : ''}
-  </div>`;
+    rank = you.op ? 'OP red star' : you.star ? `★ Star — OP at OVR ${CAREER.op.ovr}` : `Rookie — ★ Star at OVR ${CAREER.star.ovr}`,
+    statRow = k => {
+      const pr = Training.progress(run, k),
+        pct = Math.round((pr.have / Math.max(1, pr.need)) * 100);
+      return `<div class="mrow" ${tip(`${pct}% of the way to the next point. Training stops at ${TRAIN_CAP}; matches only above.`)}><span>${STATNAME[k]}</span><span class="mbars"><i class="mb"><i style="width:${Math.min(100, you[k])}%"></i></i><i class="mp"><i style="width:${pct}%"></i></i></span><span class="mv"><b>${you[k]}</b> <span class="mute">/ ${TRAIN_CAP}</span></span></div>`;
+    },
+    ids = Skills.forRole(you.role),
+    aff = ids.filter(id => !you.skills.includes(id) && Skills.canLearn(run, id)).length,
+    passive = ids
+      .filter(id => !SKILLS[id].tech)
+      .map(id => {
+        const sk = SKILLS[id],
+          own = you.skills.includes(id),
+          can = Skills.canLearn(run, id);
+        return `<div class="srow rowcta"><span class="nm"><b>${esc(sk.name)}</b><span class="small mute">${esc(sk.desc)}</span></span>${
+          own
+            ? '<span class="btn on here">Owned</span>'
+            : `<button class="btn ${can ? '' : 'lock'}" onclick="learnSkill('${id}')" ${can ? '' : 'disabled'}>${sk.cost}${can ? ' · learn' : ` · need ${Math.max(0, sk.cost - run.sp)}`}</button>`
+        }</div>`;
+      })
+      .join(''),
+    techs = ids
+      .filter(id => SKILLS[id].tech)
+      .map(id => {
+        const sk = SKILLS[id],
+          own = you.skills.includes(id) || hasTech(you, id),
+          req = Object.entries(sk.req || {})
+            .map(([k, v]) => `${k === 'wit' ? 'Wit' : STATNAME[k]} ${v}`)
+            .join(' · ');
+        return `<div class="srow" ${tip(`${sk.desc}\nLearned in matches: by doing it, or by facing a player who has it.`)}><b>${esc(sk.name)}</b>${own ? '<span class="ptag sel">✓ yours</span>' : `<span class="ptag">${esc(req || 'learn in matches')}</span>`}</div>`;
+      })
+      .join(''),
+    next = Math.ceil(run.week / ECON.payEvery) * ECON.payEvery;
+  return `<div class="sheet-h"><span class="portrait">${faceSVG(you, mood.form, 56)}</span><div><h2>${stag(you)}${esc(you.name)}</h2><div class="mute">${ROLE_NAME[you.role]} · ${chip(team)}${esc(team.name)} · OVR ${ovr(you)} · ${rank}</div></div>
+    <div class="sheet-chips"><span class="pchip">Stamina ${run.sta} / ${run.staMax}</span><span class="pchip">Mood ${mood.name}</span><span class="pchip">Skill pts ${run.sp}</span></div></div>
+    <div class="sheet-cols mecols">
+      <section class="card"><div class="lab">Stats · thin bar = progress to the next point</div>${STATK.map(statRow).join('')}
+        <div class="mrow"><span>Wit</span><span class="mbars"><i class="mb"><i style="width:${you.wit * 50}%"></i></i></span><span class="mv"><b>${you.wit.toFixed(2)}</b></span></div>
+        <div class="mrow"><span>Leadership</span><span class="mbars"><i class="mb lead"><i style="width:${you.lead}%"></i></i></span><span class="mv"><b>${you.lead}</b></span></div>
+        ${elementLine(run)}
+        ${
+          run.injury
+            ? `<div class="inj"><b>Injured</b> ${run.injury.weeks}w — light training only (×0.4 gains, half stamina) <button class="btn" onclick="seePhysio()" ${run.sp < TRAIN_X.physio ? 'disabled' : ''}>Physio · ${TRAIN_X.physio} pts</button></div>`
+            : ''
+        }</section>
+      <section class="card"><div class="wh"><span class="lab">Skills</span><span class="small mute">${run.sp} pts · ${aff} affordable</span></div>
+        <div class="small mute sub">Passive — buy with skill points</div>${passive}
+        <div class="small mute sub">Techniques — learned in matches, or by stats</div>${techs}</section>
+      <section class="card"><div class="lab">Life · $${run.money.toLocaleString()} · payday week ${next}${info(`Payday every ${ECON.payEvery} weeks: +$${ECON.allowance} allowance, −$${ECON.food} food, −rent. Run out of money and you're evicted to the abandoned gym.`)}</div>
+        <div class="homes">${HOUSEK.map(k => homeRow(run, k)).join('')}</div>
+        <div class="small mute">${World.isFree(run) ? 'Free agent — no club yet' : esc(FACTIONS[run.team].name)}</div></section>
+    </div>`;
 }
 /** Your element: hidden (???) until OVR 70, then the three trial steps, then the signature spike. */
 function elementLine(run) {
@@ -456,31 +478,6 @@ function eventCard(run) {
   return `<div class="panel ev ${run.event.id === 'element' ? 'lbk' : ''}"${run.event.id === 'element' ? ` style="--lbk:${ECOL[you.el]}"` : ''}><span class="evk">${kind}</span><h3>${esc(e.title)}</h3><p>${esc(Events.text(run, run.event, e.text))}</p>
     <div class="evc acts two">${[e.a, e.b].map(([label, fx], i) => `<button class="btn" onclick="chooseEvent(${i})"><b>${esc(label)}</b><small>${esc(fxText(fx))}</small></button>`).join('')}</div></div>`;
 }
-/** Skills shop in two groups: active techniques (fire in matches) and passive skills (always on). */
-function skillShop(run, open) {
-  const you = Run.you(run),
-    ids = Skills.forRole(you.role);
-  const card = id => {
-    const s = SKILLS[id],
-      own = you.skills.includes(id),
-      byStats = !own && s.tech && hasTech(you, id);
-    return `<button class="sk ${own || byStats ? 'own' : ''} ${s.tech ? 'act' : 'pas'}" onclick="learnSkill('${id}')" ${own || byStats || !Skills.canLearn(run, id) ? 'aria-disabled="true"' : ''} ${tip(s.tech && !own && !byStats ? `${s.desc}\nLearned in matches: by doing it, or by facing a player who has it.` : s.desc)}>${skillIcon(id)}<b>${esc(s.name)}</b><span>${own ? '✓' : byStats ? '✓ stats' : s.tech ? '<em class="tag">learn in matches</em>' : run.sp >= s.cost ? s.cost : `${s.cost} · need ${s.cost - run.sp}`}</span></button>`;
-  };
-  const aff = ids.filter(id => !you.skills.includes(id) && Skills.canLearn(run, id)).length;
-  return `<div class="panel">${fold(
-    'skills',
-    `<h3><span class="pts">${run.sp} skill pts</span>${aff ? ` <span class="skaff">${aff} affordable</span>` : ''}</h3>`,
-    `<p class="small mute">${svgI('active')} Active — fire in matches ${svgI('passive')} Passive — always on${info('Active techniques also switch on by themselves once your stats meet the requirement.')} <a href="#" onclick="navigate('encyclopedia');return false">Encyclopedia</a></p>
-    <div class="skills compact">${ids
-      .filter(id => SKILLS[id].tech)
-      .map(card)
-      .join('')}${ids
-      .filter(id => !SKILLS[id].tech)
-      .map(card)
-      .join('')}</div>`,
-    open || aff > 0
-  )}</div>`;
-}
 function chooseEvent(i) {
   if (!RUN.event) return;
   Run.log(RUN, Events.choose(RUN, i));
@@ -509,14 +506,6 @@ function playCareer(kind, sim) {
   if (!sim) return navigate('match', fx);
   Cup.simNow(fx);
   renderCareer();
-}
-/** Money and housing. Rent is paid on payday (every few weeks). */
-function lifeCard(run) {
-  const next = Math.ceil(run.week / ECON.payEvery) * ECON.payEvery;
-  return `<div class="panel life"><h3>Money${info(`Payday every ${ECON.payEvery} weeks: +$${ECON.allowance} allowance, −$${ECON.food} food, −rent. Run out of money and you're evicted to the abandoned gym. Prize money from matches.`)}</h3>
-    <div class="small"><b>$${run.money.toLocaleString()}</b> · next payday week ${next}</div>
-    <div class="homes">${HOUSEK.map(k => homeRow(run, k)).join('')}</div>
-    <div class="small mute">${World.isFree(run) ? 'Free agent — no club yet' : `${esc(FACTIONS[run.team].name)}${info(`${FACTIONS[run.team].front}. Word is: ${FACTIONS[run.team].dark}.`)}`}</div></div>`;
 }
 /** One housing option: rent, rest and what it does to you, then Move in (or "Home" for where you live). */
 function homeRow(run, k) {
