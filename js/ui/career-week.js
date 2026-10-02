@@ -300,14 +300,16 @@ function endWeekUI() {
   Run.endWeek(run);
   const now = Run.you(run),
     rows = [],
-    d = (n, txt) => n && rows.push([n > 0 ? 'up' : 'dn', txt]);
-  for (const k of STATK) d(now[k] - before.stat[k], `${signed(now[k] - before.stat[k])} ${STATNAME[k]}`);
-  d(run.money - before.money, `${run.money > before.money ? '+' : '−'}$${Math.abs(run.money - before.money).toLocaleString()}`);
-  d(run.fans - before.fans, `${signed(run.fans - before.fans)} fans`);
-  for (const r of regs) d(City.rep(run, r) - before.rep[r], `${REGIONS[r].name} standing ${signed(City.rep(run, r) - before.rep[r])}`);
+    d = (n, txt) => n && rows.push([n > 0 ? 'up' : 'dn', txt]),
+    sg = n => (n > 0 ? `+${n}` : `−${-n}`);
+  for (const k of STATK) d(now[k] - before.stat[k], `${STATNAME[k]} ${sg(now[k] - before.stat[k])}`);
+  d(run.money - before.money, `Money ${run.money > before.money ? '+' : '−'}$${Math.abs(run.money - before.money).toLocaleString()}`);
+  d(run.fans - before.fans, `Fans ${sg(run.fans - before.fans)}`);
+  for (const r of regs) d(City.rep(run, r) - before.rep[r], `⚑ ${REGIONS[r].name} ${sg(City.rep(run, r) - before.rep[r])}`);
   for (const t of ownChanges(before.own, run.own || {})) rows.push(['ch', t.text]);
   const at = before.top ? run.log.indexOf(before.top) : run.log.length,
     lines = run.log.slice(0, at < 0 ? run.log.length : at).slice(0, 4);
+  rows.sort((a, b) => ['dn', 'up', 'ch'].indexOf(a[0]) - ['dn', 'up', 'ch'].indexOf(b[0])); // bad news first, then your gains, then the world
   CW.recap = rows.length || lines.length ? { week: run.week, rows, lines: lines.map(l => l.t) } : null;
   renderCareer();
 }
@@ -324,7 +326,7 @@ function ownChanges(a, b) {
 /** The card after End week (hubCard shows it last, so events / cups / matches win). */
 function recapCard(run) {
   const R2 = CW.recap;
-  return `<div class="panel recap"><span class="evk">${typeof R2.week === 'number' ? `Week ${R2.week}` : esc(R2.week)} done</span>
+  return `<div class="panel recap"><span class="rk">${typeof R2.week === 'number' ? `Week ${R2.week}` : esc(R2.week)} done</span>
     ${R2.rows.length ? `<div class="rrows">${R2.rows.map(([c, t]) => `<span class="rr ${c}">${esc(t)}</span>`).join('')}</div>` : ''}
     ${R2.lines.length ? `<ul class="rlog">${R2.lines.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
     <div class="evc"><button class="btn hot" onclick="recapDone()">Continue</button></div></div>`;
@@ -482,7 +484,7 @@ function factionsCard(run) {
               const c = i - S;
               return `<b class="${c === 0 ? 'mid' : ''} ${m > 0 && c > 0 && c <= m ? 'on up' : m < 0 && c < 0 && c >= m ? 'on dn' : ''}"></b>`;
             }).join('');
-          return `<span class="fm2" ${tip(`Border pressure vs ${REGIONS[vs].name} (${signed(m)}): ${S} net wins seize a place`)}>vs ${esc(REGIONS[vs].name.split(' ')[0])} <i class="seg">${cells}</i>${k.seize && k.place ? ` <span class="mute">next win: ${esc(SPOTS[k.place].name)}</span>` : ''}</span>`;
+          return `<span class="fm2" ${tip(`Border pressure vs ${REGIONS[vs].name}: ${S} net wins seize a place`)}>Border vs ${esc(REGIONS[vs].name.split(' ')[0])} <i class="seg">${cells}</i> ${m > 0 ? '+' : m < 0 ? '−' : ''}${Math.abs(m)}/${S}${k.seize && k.place ? ` <span class="mute">next win: ${esc(SPOTS[k.place].name)}</span>` : ''}</span>`;
         })
         .join(''),
       places =

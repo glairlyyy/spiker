@@ -6,8 +6,8 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 ## 1. Vision
 - 4v4 volleyball RPG / sports-life sandbox on a faction-ruled island: start a free agent, join factions, train, play
   watch-only 3D matches with a 2D interface. Spite-driven story (lore-first, later). Lore and voices: `lore.md`.
-- Built from the Skyline Cup prototype; nothing of its career/modes/saves kept. Desktop-only; compact UI (details in
-  tooltips/folds). Goal: win the U21 Final Cup → the major nation's national team.
+- Built from the Skyline Cup prototype; nothing of its career/modes/saves kept. Desktop-only; compact UI (decision numbers on
+  the control; lore and edge cases in tooltips/folds — §9). Goal: win the U21 Final Cup → the major nation's national team.
 
 ## 2. Match (engine + 3D playback) [built unless tagged]
 - §2.0 Sport (lore.md §4): 4v4 street game, physical. Tactics give an edge; stats decide most rallies — a big physical
@@ -94,7 +94,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 - §4.6 Street battles (CLASH, ~45 % of training weeks, popup at week start): watch (scouts both) or fight for a side
   (win +standing, lose −; other side always −). `run.rep` = standing per region. Fighting = real match (`Fight.clash`):
   your side's pool crew with you vs theirs; watch or Sim ⏭; normal XP, techniques, grade. Crews and your evaluation
-  squad show their 3-letter tag ('EVL' only for the opposing evaluation squad).
+  squad show their 3-letter tag ('EVL' only for the opposing evaluation squad). "Fight for X" buttons wear X's faction colour.
 - §4.7 Faction war (`front.js`, FRONT): each battle (joined or settled at week end) pushes its border meter; 2 net
   wins seize a border place (2 per side per border; retakes first) → owner's price/turf/colour. `FRONT.weakAt` (2)
   places lost = weakened (dearer, worse facilities, easier to join). Wu revenge bonus. Minors not in the war. Seized =
@@ -292,6 +292,8 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   mood)`.
 - §5.3 Legacy / Hall of Fame **[dropped]**. §5.4 Character creation rework (deferred).
 - §5.5 Severe injury: the permanent −2 on one stat is assumed; confirm in the balance pass.
+- §5.6 Faction recolour: Shu `#4ade80` = the `good` status colour, Wu `#3fa9f5` ≈ `cyan`, Wei `#f5b82e` ≈ `gold`.
+  Proposed `wei #d08a2e` · `wu #5b8def` · `shu #2fb8a0` (design system tokens). Owner to approve before any task.
 
 ## 6. Narrative rules [locked; faction/region/Gazette/event strings built]
 - Every player-facing string has one lore.md §7 speaker (`registrar`, `wei`, `wu`, `shu`, `outlaw`, `gloria`,
@@ -314,3 +316,36 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   temper — Fired up (trailing 3+ or just stuffed → surge) / Rattled (2 stuffs/aces against → errors, trait off a
   while); a weakness revealed by scouting, shown in the match UI.
 - New-run setup + results screens. Hype scene frequency tuning (§2.3). More music, crowd, voice clips. Living map B/C. Endless mode.
+
+## 9. UI guidelines [locked, not built unless tagged]
+Source: the design system artifact https://claude.ai/artifact/DWxheHjahb7L4k8GAWbRGq — `project/README.md` (rules),
+`ui-review.md` (findings per screen), `short-copy.md` (glossary + icons), `tokens.json`, component previews (Button,
+ChoiceCard, HudStat, StatIcons). Goal: minimal reading load, full player control — the UI previews and explains, it never
+chooses or acts for the player.
+- §9.1 Principles: one suggested next step always visible (a suggestion, never an auto-action); preview before commit
+  (cost **and** result on the control); a locked control shows the gap (`Need OVR 72 · you 41`), never only "Locked";
+  bad news first; one colour = one meaning; selected ≠ primary; hotkeys printed on the control.
+- §9.2 Colour: tokens in css/theme.css. `hot` = brand + danger only (hero card, destructive, U21, failures) — never
+  neutral headings, prices, requirements. Primary button = `ink` fill + `on-ink` text; selected segment/chip =
+  `sel-bg` fill + `sel-line` border. Status: `good` +, `bad` −, `warn` at risk, `gold` stars/rewards, `cyan` info/focus.
+  Over the 3D map/court: the opaque `hud` surface. New tokens: `hud rgba(12,14,18,.9)`, `line-strong
+  rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-line = cyan`.
+- §9.3 Type: Inter body, Rajdhani display (DOM); Dela Gothic One + M PLUS Rounded 1c are canvas-only (overlay, arena). Five styles: display 26 · title 16/600 · body 14 · small 13 · label 12
+  uppercase .12em. Floor 12px. Sentence case on buttons; uppercase only for `label` headings.
+- §9.4 Short copy: every repeated idea is a glossary term (`GLOSSARY`, `term(id, n)`; §9.6) with one icon and one short
+  alias; its full text exists once (its tooltip + Encyclopedia › Glossary). Reward/cost/requirement lines are built
+  from terms, read cost → result (`☀1 ▮−20 $8 → ⛉+1`). Mechanics = icons + numbers; flavour = one `small` muted line.
+  Glossary text is `registrar` voice (§6); the next-step chip states facts, never advice ("Evaluation W4 · Power 1",
+  not "You should train").
+- §9.5 Icons: one line-icon SVG set (StatIcons card): Power burst, Defense shield, Speed double chevron, Jump up-arrow,
+  Wit eye, Leadership C, Stamina battery, Day sun, Money $, Skill pts diamond, Fans people, Mood face, Bond link,
+  Standing flag, Grade tile. Icon in `ink`; the number carries `good`/`bad`. HUD and Player drawer keep word labels
+  beside icons (players learn them there). Emoji stay only for map places.
+- §9.6 Glossary ids (aliases): `sp` skill pts · `fans` · `sta` stamina · `day` · `money` · `mood` · `bond` · `standing`
+  (⚑, −100…+100) · `grade` (S–C, reward ×1.5/1.2/1/0.8) · `seize` (border meter n/2) · `border` · `sim` (result without
+  watching) · `academy` · `cup` (U21 Cup) · `trial` (Element Trial checklist) · `quality` (★★? unrated → ★★✓) ·
+  `together` (teammates here +20%, +50% at bond 80+) · `rewards` (Win/Loss chips).
+- §9.7 Layout: hub HUD in four corners on `hud`; drawers 440px from the right and never over the dock; modals ≤560px,
+  one title, ≤3 choices, primary first. Match: the court gets the viewport; site header hidden; log + box score in a
+  collapsible side rail.
+

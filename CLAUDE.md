@@ -5,6 +5,7 @@ Published as a claude.ai artifact: https://claude.ai/artifact/4xfGDd92rAanHyThVx
 Code home: https://github.com/glairlyyy/spiker (branch main). Containers are temporary: clone, work, push.
 
 ## Docs — read in this order
+
 - `CLAUDE.md` (this file) — how to work: workflow, commands, rules that bite, QA, publishing. Stable.
 - `spec.md` — WHAT the game is: current feature state, locked decisions, open questions, out of scope. Source of truth.
 - `tasks.md` — the work queue: small tasks with files, acceptance criteria, test impact.
@@ -12,6 +13,7 @@ Code home: https://github.com/glairlyyy/spiker (branch main). Containers are tem
 - `ARCHITECTURE.md` — HOW the code is built: layers, engine flow, renderer, saves, testing.
 
 ## Workflow (spec-driven, two chats)
+
 - **Spec chat** (owner + planner model) writes `spec.md`, `lore.md` and `tasks.md`, reviews the build chat's work, and
   (owner, 2026-10-02) also implements the next task itself when no build chat is working; it then follows the build loop below.
 - **Build chat** (implementer model) writes code, keeps `ARCHITECTURE.md` current, and ticks tasks. It does not
@@ -29,6 +31,7 @@ task the build chat re-reads `tasks.md` and `spec.md` **from the artifact** (Art
 "## Unplanned changes" at the end of tasks.md (one line each: what, which files) so the spec chat records them.
 
 Build chat loop, one task at a time:
+
 1. Read `tasks.md` from the artifact; take the first `[ ]` task under **Now**, then under **Next** (unless the owner
    names one). Mark it `[~]`.
 2. Read the spec sections it cites. Touch only the files it lists. Follow its **Do not** list.
@@ -43,10 +46,12 @@ Build chat loop, one task at a time:
 7. Publish the changed files to the artifact (see Publishing). Reply to the owner in one or two lines.
 
 ## Working style (owner preferences)
+
 - Ultra-concise replies, no preamble or recaps; only raise real concerns.
 - Targeted edits, not rewrites. Max one clarifying question; assume reasonably — except the stop-and-ask cases above.
 
 ## Commands
+
 - `npm install` once after cloning.
 - `npm test` — headless tests (tests/run.js runs tests/engine|career|map|cup.test.js). Golden hashes guard engine output.
 - `npm run test:quick` — the same minus the slow statistical tests (`test.slow`), ~10 s: for the edit loop; run the full set before a commit.
@@ -55,6 +60,7 @@ Build chat loop, one task at a time:
 - `npm run serve` — http://localhost:8765 (index.html: CDN three, or node_modules three on localhost — `?cdn` forces the CDN).
 
 ## Layout
+
 - `js/core` storage, rng, debuglog (DBG, copyable debug log). `js/data` constants (rules, skills, elements, dialogue, career, city, world).
 - `js/engine` pure simulation, no DOM: match/serve/rally(-phases/-defense) emit **beats** (timed act lists);
   formulas, elements (per-player element gauge + element spikes), hype (staged scenes, chatter; presentation only).
@@ -68,6 +74,7 @@ Build chat loop, one task at a time:
   {pick, point}) / update(model) / select(id) / dispose(); avatar3d.mjs = the walking player). Panels (`js/ui/career-map.js`) only talk to City/MapModel/MapView.
 
 ## Rules that bite
+
 - Classic scripts share one global scope (index.html order). Grep repo before renaming/removing a top-level name.
   New script files go in index.html (one entry: its inline import map picks node_modules on localhost, the CDN elsewhere).
 - Seeded randomness: never change the order/count of R()/rnd()/pick() draws in engine unless the task says so
@@ -78,8 +85,14 @@ Build chat loop, one task at a time:
   blocked (textures are decoded in memory — keep it that way).
 - Escape all user/data strings in innerHTML with esc().
 - Desktop-only UI for now; don't spend effort on mobile layouts.
+- UI (owner, 2026-10-03): every UI change follows spec §9 and the design system artifact
+  https://claude.ai/artifact/DWxheHjahb7L4k8GAWbRGq (`project/README.md` rules, `tokens.json`, components, `short-copy.md`).
+  Colours only from theme.css tokens; one `ink`-filled primary per card; `hot` = brand/danger only; faction colours only
+  on chips, borders, banners; cost → result on the control; locked = the gap; bad news first; hotkeys printed; type ≥ 12px.
+  The UI QA screenshot is checked against it.
 
 ## QA recipe (Playwright, Chromium preinstalled — never `playwright install`)
+
 Launch with `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`, open http://localhost:8765/index.html (node_modules three), `startMonster()`,
 wait for `typeof R3D !== 'undefined' && R3D && A && !A.hold` (R3D is a `let`, not on window), set `A.hold=true`,
 loop `step(16); R3D.poseAll(0.016)`; check pageerror + `DBG.text()`; screenshot the page (element screenshots of
@@ -87,6 +100,7 @@ loop `step(16); R3D.poseAll(0.016)`; check pageerror + `DBG.text()`; screenshot 
 For career/UI tasks: start a new run from the menu instead of `startMonster()` and exercise the changed screen.
 
 ## Publishing (artifact = backup + playable copy)
+
 The artifact holds the full project as published files (index.html, js/, css/, tests/, docs, package.json, assets/audio,
 lint/format configs, qa_poses.html; VRM base in assets/vrm). Publish every changed file each time so
 it stays complete. Dotfiles are published renamed: `.prettierrc.json` → `prettierrc.json`, `.prettierignore` →

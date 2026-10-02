@@ -120,7 +120,7 @@ function hudClock(run, armed) {
       <span class="sky">${match ? '🏐' : eve ? '🌙' : '☀'}</span><b>W${run.week}</b><small>${lab}${wt === 'camp' ? ' · camp' : ''}</small>
       <svg viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="18"/><circle class="prg" cx="20" cy="20" r="18" style="stroke-dasharray:${((run.week / CAREER.weeks) * 113).toFixed(1)} 113"/></svg></div>
     ${match ? '' : `<div class="days" aria-label="${days} of ${WEEK_DAYS} days left">${Array.from({ length: WEEK_DAYS }, (_, i) => `<i class="${i < WEEK_DAYS - days ? 'used' : ''}"></i>`).join('')}</div>`}
-    ${!match && !run.event ? `<button class="btn ${eve ? 'hot' : ''} endw" onclick="mapEndWeek()" ${tip(eve ? 'Sleep: start the next week (Space)' : `Skip the ${days} day${days > 1 ? 's' : ''} left (Space)`)}>${armed ? `Skip ${days} day${days > 1 ? 's' : ''}? Click again` : 'End week ▸'}</button>` : ''}
+    ${!match && !run.event ? `<button class="btn ${eve ? 'hot' : ''} endw" onclick="mapEndWeek()" ${tip(eve ? 'Sleep: start the next week (Space)' : `Skip the ${days} day${days > 1 ? 's' : ''} left (Space)`)}>${armed ? `Skip ${days} day${days > 1 ? 's' : ''}? Click again` : `End week${days > 0 ? ` — ${days} day${days > 1 ? 's' : ''} unused` : ''}`} <kbd>Space</kbd></button>` : ''}
   </div>`;
 }
 
@@ -144,7 +144,7 @@ function hudBar(run) {
   return `<nav class="hud dock" aria-label="Shortcuts">${dockKeys(run)
     .map(
       (k, i) =>
-        `<button class="${CW.drawer === k ? 'on' : ''}" onclick="hubOpen('${k}')" aria-label="${HUB_DRAWERS[k][1]}" ${tip(`${HUB_DRAWERS[k][1]} (${i + 1})`)}><i>${HUB_DRAWERS[k][0]}</i><span>${HUB_DRAWERS[k][1]}</span>${badge[k] ? `<em>${badge[k]}</em>` : ''}</button>`
+        `<button class="${CW.drawer === k ? 'on' : ''}" onclick="hubOpen('${k}')" aria-label="${HUB_DRAWERS[k][1]}" ${tip(`${HUB_DRAWERS[k][1]} (${i + 1})`)}><i>${HUB_DRAWERS[k][0]}</i><span>${HUB_DRAWERS[k][1]}</span>${i < 9 ? `<kbd>${i + 1}</kbd>` : ''}${badge[k] ? `<em>${badge[k]}</em>` : ''}</button>`
     )
     .join('')}</nav>`;
 }

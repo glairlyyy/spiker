@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-095** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-114** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -24,95 +24,252 @@ Result:
 
 ## State (2026-10-02)
 
-Everything through T-089 and cleanup part 2 (T-082…T-087) is built (103 tests, RUN_VERSION 15).
+Everything through T-094 and cleanup part 2 (T-082…T-087) is built (103 tests, RUN_VERSION 15).
 Built areas: match engine (ego, block collision, subs/coach, stamina, elements, hype, 3D playback, Follow/POV cameras),
 career (free agent start at 1, pools/evaluations/U21 cup, Story mode, growth & techniques, challenges & injuries,
-rankings, roads/travel/town/venues, living map A, relationships T-060…T-066), voice pass, cleanup part 1.
+rankings, roads/travel/town/venues, living map A, relationships T-060…T-066), voice pass, cleanup part 1,
+UX batch 1 (T-090…T-094).
 
 ## Now
 
-UX / QoL batch: make consequences visible, cut text. UI only — no engine change, no save change, goldens unchanged. Order: T-090 → T-094.
+UI batch 2 — orientation and preview-before-commit (spec §9; design system https://claude.ai/artifact/DWxheHjahb7L4k8GAWbRGq).
+UI only: no engine change, no save change, goldens unchanged. Read §9 and the design-system card each task names before coding.
+Order: T-095 → T-101.
 
-### [x] T-090: Week recap card
+### [ ] T-095: UI tokens, selected state, red diet
 
-Spec: §4.2 Goldens: unchanged Save: no change
-Goal: after End week the player sees one card: what changed (stat points, $, fans, standing per faction, places that changed hands, last diary lines).
-Files: js/ui/career-week.js (CW.recap, `endWeekUI`, `recapCard`), js/ui/career-hub.js (hubCard shows it), js/ui/career-map.js (mapEndWeek), css/career.css
-Do not: change Run.endWeek or add a run field; show the card when nothing changed; block cup / event / eval cards (those win).
+Spec: §9.2 §9.3 Goldens: unchanged Save: no change
+Goal: the new colour tokens exist; a selected option no longer looks like the primary button; red only means brand/danger.
+Files: css/theme.css, css/career.css, css/style.css
+Do not: change layout or spacing; touch REGIONS colours (§5.6 is open); rename existing tokens; touch canvas fonts (Dela Gothic One / M PLUS Rounded 1c are used by render/overlay.js and arena3d.mjs).
 Steps:
 
-1. `endWeekUI()`: snapshot (stats, money, fans, City.rep per region, copy of run.own, run.log length), call Run.endWeek, store the diff in CW.recap, renderCareer(). Use it in mapEndWeek and benchEval.
-2. `recapCard(run)`: rows only for non-zero deltas (+3 Power · −$40 · Wu standing −5 · "Wei seized the Fort from Wu"), max 4 new diary lines, one Continue button (clears CW.recap).
-3. hubCard: recap comes after event / cup / eval / clash / gazette cards.
+1. theme.css `:root`: add `--hud`, `--line-strong`, `--on-ink`, `--sel-bg`, `--sel-line` (values §9.2). `.btn.hot` text `var(--on-ink)` (was #0b0c10).
+2. Selected state: `.btn.on`, `.seg .on`, `.prep .on`, `.rtabs .on` (whatever classes mark the current choice — grep `class="btn ${… 'on'`) → `background: var(--sel-bg); border-color: var(--sel-line); color: var(--ink)`. Only `.btn.hot` stays ink-filled.
+3. Control borders `.btn`, inputs, selects: `var(--line-strong)`.
+4. Red diet: grep `var(--hot)` / `--bad` uses on neutral text — recap/event kicker headings (`.evk`, recap title), skill prices (`.sk span`), encyclopedia requirement text, calendar `U21` stays hot. Neutral ones → `var(--ink)` or `var(--mute)`.
+5. Type floor: every `font-size` < 12px → 12px (11px, 10px, 9px rules in all three css files).
    Accept:
 
-- Ending a week with a stat gain shows the card; a week with no change shows none; Continue returns to the map.
-- npm test / lint pass.
-  QA: career run → train once, End week, screenshot the card.
-  Result: done — `endWeekUI` (career-week.js) snapshots before / after; card shows stat, $, fans, standing, place changes and up to 4 new diary lines; none when nothing changed. QA: card screenshot, no pageerror.
+- No css `font-size` below 12px; `.btn.hot` is the only ink-filled control; Create screen: selected role reads cyan-outlined, Start career ink-filled.
+- Skills drawer: prices not red. npm test / lint pass.
+  QA: career run → Create screen, Skills drawer, a recap card; screenshots.
+  Result:
 
-### [x] T-091: Seize notice and map focus
+### [ ] T-096: HUD rebuild — labels, coach's goal, next step
 
-Spec: §4.24 Goldens: unchanged Save: no change
-Goal: when a place changes hands (your battle or the week's end) a banner names it and the map jumps to it.
-Files: js/ui/career-hub.js (renderCareer), js/ui/career-week.js (CW.own, CW.note), css/career.css
-Do not: add a run field (diff `run.own` against CW.own at render); touch Front.
+Spec: §9.1 §9.5 §9.7 Goldens: unchanged Save: no change
+Goal: every HUD value has a word label; the coach's goal and one suggested next step are always visible under the clock.
+Files: js/ui/career-hub.js (hudRes, hudClock, new `nextStep`), css/career.css
+Do not: auto-act (the chip only selects/opens); add a run field (deltas compare against a CW snapshot); write advice ("you should").
 Steps:
 
-1. In renderCareer compare run.own with CW.own (null on first render = no notice). For each changed id build `{id, text}` from Front.owner / SPOTS (retook / seized wording as Front.seize).
-2. Show the first as a `.hnote` banner in the winner's REGIONS colour (dismiss on click or next render); set CW.spot = id so the map selects it (MapView.select).
-3. Update CW.own after every render.
+1. `hudRes`: rows `label value` (Location, Money, Fans, Skill pts, Stamina bar + number, Mood) on `var(--hud)`; keep the tips. Delta: keep `CW.hudPrev` ({money, fans, sp, sta, mood}); for one render show `+230` / `−20` in `good` / `bad` after a change.
+2. Goal row under the clock (when `run.goal` and `g.done == null`): `Goals.text(run, g)` · `Goals.progress(run, g)` · `by W{g.by}`; `warn` colour when `g.by - run.week <= 1`. Click → `hubOpen('season')`.
+3. `nextStep(run)` → `{ text, act }`, first match wins: (a) Gazette unread → "Gazette out" / open news; (b) training week and the next eval/cup is ≤ 3 weeks away → "{Evaluation|Cup} W{n} · {KEYSTAT name} {value}" / select the nearest known SPOTS entry whose `train` = KEYSTAT (MapModel.known); (c) free agent and some `World.canJoin(run, i).ok` → "{club} would sign you" / open clubs; (d) days left 0 → "Night — end the week" / none. Render as a `.hnext` chip under the clock; no chip when nothing applies.
+4. Registrar voice: facts and numbers only.
    Accept:
 
-- Winning the 2nd net battle on a border shows the banner and selects the place; reload with no change shows nothing.
-  QA: career run → set `RUN.own = {…}` then renderCareer(); screenshot.
-  Result: done — renderCareer diffs run.own against CW.own (reset per run; `ownChanges`, career-week.js), `.hnote` banner in the winner's colour for one render, selects the place if you know it. QA: banner, gone on next render.
+- New run, week 1: HUD shows labelled rows, the goal row and a chip "Evaluation W4 · Power 1"; clicking it selects a power spot; nothing else happens.
+- After training, the money/stamina deltas show for one render.
+  QA: career run → week 1 hub, click the chip, train once; screenshots.
+  Result:
 
-### [x] T-092: Stakes before a street battle, border meters
+### [ ] T-097: Map opening view and fly-to on select
 
-Spec: §4.24 Goldens: unchanged Save: no change
-Goal: before picking a side the player sees what it does; the Factions drawer shows each border as a meter instead of text chips.
-Files: js/career/front.js (`stakes`), js/ui/career-map.js (clashPanel), js/ui/career-week.js (factionsCard), css/career.css, tests/career.test.js
-Do not: change Front.result / seize / pick (draw order, goldens); add randomness.
+Spec: §4.4 §9.1 Goldens: unchanged Save: no change
+Goal: the map opens wide enough to show every known place; selecting a place (pin, list, chip, banner) moves the camera to it.
+Files: js/map3d/map3d.mjs (mount first view, select), js/map3d/geo3d.mjs (new pure `fitView`), tests/map.test.js
+Do not: change fog/reveal rules; move the camera when the player is dragging (`down` set); animate longer than 0.5 s.
 Steps:
 
-1. `Front.stakes(run, w, l)` → `{ meter, seize, place }`: meter after a win (clamped as Front.result does), `seize` = true if that win seizes, `place` = the id Front.seize would take (null if none). Pure, no run mutation, test it.
-2. clashPanel: under each fight button a line "Win → Wu 1/2 · +10 Wu, −10 Wei" and, when seize, "wins {place}". Drop the long tooltip duplicate of those numbers.
-3. factionsCard: each border = a −2…+2 segmented bar (FRONT.seize) with the place at stake; remove the long footnote (keep it as an info tip).
+1. `fitView(points, aspect, minD, maxD)` in geo3d.mjs → `{ x, z, d }` that frames all points (pad 15 %), clamped. Test it (two points, one point, empty → null).
+2. mount first view: points = model pins that are known (the model already filters by fog — use what pins3d receives) + you.at; fallback to today's 60 m view.
+3. `select(id)`: also set a camera target = the pin's ground point (keep `view.d` unless the pin is off-screen; then `d = max(view.d, 80)`); lerp `view.x/z` over ≤0.5 s in `frame`; cancel on pointerdown.
    Accept:
 
-- stakes() test: meter, seize flag and place match what Front.result then does.
-- Battle card shows the stake line for both sides.
-  QA: career run → force a clash, screenshot the battle card and Factions drawer.
-  Result: done — `Front.stakes` (pure, tested: same place Front.result then takes); battle card shows Win / Lose lines (standing + border, or "takes {place}"); Factions drawer: 5-cell border meters + next-win place, footnote folded into an info tip. Map-line drawing left in Later. QA: both screenshots, no pageerror.
+- fitView tests pass; new run opens showing Airport, home and every pin in reach; `mapPick('sand')` brings Sand Courts to the centre.
+  QA: career run → open hub, call `mapPick('pier')`; screenshots before/after.
+  Result:
 
-### [x] T-093: Training card — time to the next point
+### [ ] T-098: Places drawer
 
-Spec: §4.5 Goldens: unchanged Save: no change
-Goal: the training card answers "what do I get?" at a glance and hides the rest.
-Files: js/ui/career-map.js (trainSpot), css/career.css
-Do not: change Training.preview / progress.
+Spec: §9.1 Goldens: unchanged Save: no change
+Goal: a list of every known place as the non-map way to find where to go.
+Files: js/ui/career-hub.js (HUB_DRAWERS, `placesCard`), css/career.css
+Do not: list fogged/unknown places; duplicate spotPanel's content (the row selects; the place card does the rest).
 Steps:
 
-1. Replace High / Mid / Low with "≈ N sessions to +1 {Stat}" (N = ceil((need − have) / xp), min 1) beside the bar of progress.
-2. One muted meta line: stamina · $ · Lv; quality tag stays; streak / turf / sand / fail chips stay; the info text goes into one fold.
+1. HUB_DRAWERS `places: ['📍', 'Places', placesCard]` placed after `me` in dock order.
+2. `placesCard(run)`: known SPOTS (and venues/HQs the map shows) grouped by region; row = icon, name, trains {stat} (or venue/HQ), trip days (`City.trip`), owner faction chip. Click → close drawer, `mapPick(id)`.
    Accept:
 
-- Card is at most two lines before the button; N matches Training.progress.
-  QA: career run → open a training spot, screenshot.
-  Result: done — each stat now reads "next point this session" / "+1 in ~N sessions" (N from Training.progress and the session's xp) instead of High / Mid / Low; meta line, chips and info tip unchanged (already one line + chips). QA: card text, no pageerror.
+- Week 1 lists the places visible on the map; clicking one closes the drawer and selects it (camera moves — T-097).
+  QA: career run → open Places, click a row; screenshot.
+  Result:
 
-### [x] T-094: Hotkeys and end-week guard
+### [ ] T-099: Cost on the button, locked shows the gap
 
-Spec: §4.2 Goldens: unchanged Save: no change
-Goal: 1–9 open the bottom-bar drawers, Space ends the week, Esc closes drawer / card; End week warns (inline, no confirm()) when days are unused.
-Files: js/ui/career-hub.js, js/ui/career-week.js, js/ui/career-map.js, css/career.css
-Do not: capture keys while typing in an input or during a match.
-Accept: keys work on the hub only; unused days → button reads "End week (3 days left)" and needs a second click.
-QA: career run → press keys.
-Result: done — `hubKey` (career-hub.js): 1–9 = bottom-bar drawers, Space = End week, Esc = drawer then place card; ignored in inputs / buttons, during a match, with cards or the debug log open. End week with days left asks once more for 4 s (`CW.endArm`, no confirm()). QA: keys driven in Playwright, no pageerror.
+Spec: §9.1 §9.4 Goldens: unchanged Save: no change
+Goal: action buttons state their full cost; disabled controls say what is missing.
+Files: js/ui/career-map.js (trainSpot, challengeBlock, hqPanel), js/ui/career-week.js (clubsCard, skillShop), css/career.css
+Do not: change World.canJoin / Skills.canLearn; remove the tooltips that add place-specific detail.
+Steps:
+
+1. trainSpot button: `Train {stat} · {days}d · −{sta} sta · ${price}` (trip days included, same numbers as today's meta line); the meta line keeps only Lv and chips. Hard toggle label shows its effect inline: `Hard ×{TRAIN_X.hard.gain} · ×{TRAIN_X.hard.sta} sta · +{fail}% fail`.
+2. clubsCard: drop the repeated faction name when the club name starts with it; locked button → disabled with text from `World.canJoin(run, i).why` (e.g. `Need OVR 72 · you 1`, `$600 fee · you $200`); signable clubs sorted first.
+3. skillShop: unaffordable passive → `{cost} · need {cost − run.sp}` in mute; "learn in matches" as a neutral tag.
+   Accept:
+
+- Training button shows days, stamina and money; a locked club shows its gap; signable clubs on top.
+  QA: career run → a training spot and the Clubs drawer; screenshots.
+  Result:
+
+### [ ] T-100: Housing as rows with effects
+
+Spec: §9.1 Goldens: unchanged Save: no change
+Goal: choosing a home shows what each one does before you pick it.
+Files: js/ui/career-week.js (lifeCard), css/career.css
+Do not: change HOUSING values or setHousing.
+Steps:
+
+1. Replace the `<select>` with one row per HOUSEK: name, region chip, rent, rest (×{rest}), mood/sick/grit effects from the HOUSING fields as short chips, `desc` as the row tooltip; current home marked selected (§9.2 selected style); row click → `setHousing(k)` (rows you can't afford: disabled with the gap).
+   Accept:
+
+- Life drawer shows 5 rows with rent and effects; picking one changes home as before.
+  QA: career run → Life drawer; screenshot.
+  Result:
+
+### [ ] T-101: Street battle intro card — stakes and plain copy
+
+Spec: §4.6 §9.1 §9.7 Goldens: unchanged Save: no change
+Goal: the week-start battle card says what's at stake before "Take a look".
+Files: js/ui/career-hub.js (hubCard clash branch), css/career.css
+Do not: change Front / City.clashCost; reword the rumour line's voice.
+Steps:
+
+1. Title `{att} raid {def} · {site}`; one line `Seize {meter}/{FRONT.seize}` using `Front.meter` (+ the place at stake from `Front.stakes` if a win would seize).
+2. Body: one sentence ("Nobody shows up? They settle it themselves at the week's end.").
+3. Choice sub-text sentence case, not uppercase grey: `Take a look — {n} day{s} to join` / `Stay out — it's on the map all week`.
+   Accept:
+
+- Card ≤ 3 lines above the choices; seize meter visible; sub-text readable (≥4.5:1).
+  QA: career run → force a clash week; screenshot.
+  Result:
+
+## Next
+
+UI batch 3 — triage, match screen, short copy. Same rules as Now.
+
+### [ ] T-102: Recap and diary — bad news first, tagged lines
+
+Spec: §9.1 Goldens: unchanged Save: no change
+Files: js/ui/career-week.js (recapCard, endWeekUI diff), js/ui/career-hub.js (diary drawer), css/career.css
+Do not: change Run.log text producers (tag by matching the line or by the diff source).
+Steps: recapCard rows ordered penalties (goal missed, mood down, money < 0 delta) → your gains → new goal → world news; each row gets an icon (✕ / + / ◎ / •) and `bad`/`good`/`ink`/`mute`; card heading in `ink` ("Week 7"). Diary rows get the same tag.
+Accept: a week with "Goal missed" shows it first in `bad`. QA: career run → miss a goal (set run.goal.by = run.week), End week.
+Result:
+
+### [ ] T-103: Dock groups and drawers above the dock
+
+Spec: §9.7 Goldens: unchanged Save: no change
+Files: js/ui/career-hub.js (hudBar, dockKeys, hubKey), css/career.css
+Do not: drop any drawer.
+Steps: groups You (Places, Skills, Life) · People (Team, People, Clubs) · World (Season, Factions, Rankings, Gazette, Diary) with a gap; Menu as a small button in the top-left HUD; digit printed on each button (1–9, 0 for the 10th); `.hub .drawer` bottom = dock top so no drawer covers the dock.
+Accept: with any drawer open every dock button is clickable. QA: open Factions, click Diary.
+Result:
+
+### [ ] T-104: Drawer clean-up — headings, Player first, calendar numbers
+
+Spec: §9.3 Goldens: unchanged Save: no change
+Files: js/ui/career-week.js (youCard, seasonCard, calendar, skillShop, lifeCard), js/ui/career-people.js, css/career.css
+Steps: drop the inner `<h3>` that repeats the drawer title (Skills, Season, Life); youCard order = stamina, mood, coach's goal, then stats; cap shown as `1 / 75`; calendar pips keep the week number with the type as colour + small letter, goal week underline gets a legend; People/Team: "neutral" pill only when not neutral, bond bar inline; Leave squad as a quiet `bad` text button.
+Accept: no drawer shows its title twice; week 4 pip reads "4". QA: open each drawer.
+Result:
+
+### [ ] T-105: Factions and Rankings readable
+
+Spec: §9.1 Goldens: unchanged Save: no change
+Files: js/ui/career-week.js (factionsCard, rankCard, rankBest)
+Steps: Factions — label each meter (`Your standing`, `Border vs {X} {m}/{FRONT.seize}`), one explainer line at the top (registrar voice); Rankings — hide `unrated` rows behind "Show unrated", start at you ± 5 plus the top 5; names underlined on hover only.
+Accept: a new player can name each Factions meter from its label. QA: both drawers.
+Result:
+
+### [ ] T-106: Evaluation / match-day card
+
+Spec: §9.1 §9.7 Goldens: unchanged Save: no change
+Files: js/ui/career-week.js (evalPanel, cupPanel, matchPrep), css/career.css
+Steps: two roster columns of 4 (you highlighted); lineup sentence `On the bench — {name} rates higher ({x} vs {y})`; focus chips use the selected style with a label "Pick one"; `Sim` button sub-text "result without watching"; rewards as one chip line (until T-110: plain text `Win +40 skill pts +500 fans · Loss +20 +100`).
+Accept: the card fits without scrolling at 900px height. QA: career run → week 4.
+Result:
+
+### [ ] T-107: Match screen — court first
+
+Spec: §9.7 Goldens: unchanged Save: no change
+Files: js/ui/match-screen.js (startMatch markup, fit), css/style.css, css/theme.css
+Do not: change playback, camera or render code.
+Steps: hide `.top` header while G.view === 'match'; court height = viewport − score band − control row; commentary + box score in a right rail (collapsible, open by default ≥1400px wide, `fold` key `mrail`).
+Accept: at 1440×900 the court, score and controls fit without page scroll. QA: Monster game screenshot.
+Result:
+
+### [ ] T-108: Match labels — sides, serve, hype, zone
+
+Spec: §9.1 §9.2 Goldens: unchanged Save: no change
+Files: js/render/tags.js, js/ui/match-screen.js (board), css/theme.css
+Steps: name tag gets a 2px underline in the team colour (OP red ★ / star gold ★ unchanged, so sides are readable in all-OP games); score band: label the serve dots ("serve"), the hype bar ("Momentum"), "In the zone" pills at 12px with team colour when lit.
+Accept: in a Monster game both sides are distinguishable by tag. QA: Monster game screenshot.
+Result:
+
+### [ ] T-109: Match controls grouped
+
+Spec: §9.7 Goldens: unchanged Save: no change
+Files: js/ui/match-screen.js (startMatch control row, timeoutButton, finishMatch), css/style.css
+Steps: groups Playback (Pause, 1×/2×/4×, Skip) | Your team (Timeout, Tactics) | View (camera, fullscreen, sound, ⚙); in career only the player's team gets a Timeout button (Monster game keeps both); timeout buttons carry the team colour; after the final Pause/speed/Skip are disabled.
+Accept: career match shows one Timeout. QA: career evaluation (watch) + Monster game.
+Result:
+
+### [ ] T-110: Glossary and `term()`
+
+Spec: §9.4 §9.6 Goldens: unchanged Save: no change
+Files: js/data/glossary.js (new — add to index.html after people.js), js/ui/dom.js (`term`), js/ui/encyclopedia.js (Glossary tab), tests/career.test.js
+Do not: show old-language words (§6); write "why" text (registrar voice).
+Steps: `GLOSSARY = { id: { icon, short, long } }` for every §9.6 id; `term(id, n?, cls?)` → `<span class="term" data-tip="{long}">{icon}{signed n}</span>` (number coloured by sign); Encyclopedia tab "Glossary" listing icon · alias · long. Test: every id used by `term(` in js/ui exists in GLOSSARY.
+Accept: test passes; Glossary tab renders all ids. QA: Encyclopedia screenshot.
+Result:
+
+### [ ] T-111: StatIcons SVG set
+
+Spec: §9.5 Goldens: unchanged Save: no change
+Files: js/ui/icons.js (ICON entries + `statI(k)`), js/data/glossary.js (icon = statI key), js/ui/career-hub.js (hudRes, hudBar)
+Steps: add the 15 line icons from the StatIcons preview (16×16 viewBox, stroke currentColor, 1.6 width) to ICON; GLOSSARY icons use them; HUD rows get icon + word; Stamina and Speed never share a glyph.
+Accept: no ⚡/✨/📣 left in hudRes. QA: hub screenshot.
+Result:
+
+### [ ] T-112: Reward, cost and requirement lines as terms
+
+Spec: §9.4 Goldens: unchanged Save: no change
+Files: js/ui/career-map.js, js/ui/career-week.js, js/career/training.js (addXp label only), js/ui/career-people.js
+Do not: change any number or rule; change log text other than training labels.
+Steps: rebuild with `term()` — training button/preview and `Training.addXp` log label (`⛉+1`), coach's goal reward, evaluation/cup reward tips, street battle stakes, club join gaps, skill costs. Cost → result order. Examples: short-copy.md "Before → after".
+Accept: the coach's goal reward reads `Hit ◆+40 fans+300 mood↑ · Miss mood↓` as icons. QA: training card, Season drawer, eval card.
+Result:
+
+### [ ] T-113: Remove duplicated explanations
+
+Spec: §9.4 Goldens: unchanged Save: no change
+Files: js/ui/career-map.js, js/ui/career-week.js, js/ui/match-screen.js, js/ui/career-create.js
+Steps: replace repeated sentences with the term alias — Sim (×5), Grade (×2), seize (×3), standing (×4), border place, quality (overhyped/hidden gem), together (teammate bonus); tooltips keep only numbers specific to that place/match. Grep each phrase listed in short-copy.md "Aliases" to zero repeats.
+Accept: each listed phrase appears once (in GLOSSARY). QA: spot cards + eval card.
+Result:
 
 ## Later — outlines
+
+UI polish (spec §9, design system fix-plan Batch 7) — spec chat details when Now/Next are done:
+
+- Faction recolour (§5.6 — owner approval first).
+- Main menu: Continue as the hero card when a save exists; Playtest card + Debug-log badge behind `?dev`.
+- Create: replace the all-1 stat bars with a role explainer; hide the Mode control until Endless exists.
+- Podium and box score: spelled-out stat names. Encyclopedia: section tabs show the current section.
 
 Features (spec first):
 
@@ -131,7 +288,7 @@ Cleanup, part 2: T-082…T-087 done (see Done). Open:
 
 ## Done
 
-T-001…T-089 (no T-012…T-015, T-021, T-033, T-049; T-082…T-088 open above). One line each; full text in git history.
+T-001…T-094 (no T-012…T-015, T-021, T-033, T-049; T-082…T-088 open above). One line each; full text in git history.
 
 - Map & world: T-001 Academy rename · T-002 facility access · T-023–T-025 3D map · T-039–T-040 living map ·
   T-045–T-047 roads, buildings, walking · T-048 road travel · T-050–T-051 town revamp · T-053 venues.
@@ -144,6 +301,8 @@ T-001…T-089 (no T-012…T-015, T-021, T-033, T-049; T-082…T-088 open above).
 - Camera: T-058–T-059 Follow / POV · T-070 POV polish.
 - Relationships: T-060 NPC careers · T-061 memories & stance · T-062 People drawer · T-063 approaches · T-064 fates ·
   T-065 NPC ↔ NPC · T-066 on court · T-089 review fixes.
+- UX batch 1: T-090 week recap card · T-091 seize notice + map focus · T-092 battle stakes, border meters ·
+  T-093 training card time-to-point · T-094 hub hotkeys, end-week guard.
 - Voice: T-022 voice pass. Cleanup part 1: T-071–T-081.
 - Cleanup part 2 (branch cleanup/part2): T-082 one HTML entry (inline import map: node_modules on localhost, CDN elsewhere; test3d.html gone) ·
   T-083 sfx internals in the `SOUND` closure, `Overlay` API for r3d / clock (A, cv, ctx, last stay global: used across render and UI) ·
@@ -154,5 +313,3 @@ T-001…T-089 (no T-012…T-015, T-021, T-033, T-049; T-082…T-088 open above).
 ## Unplanned changes
 
 (build chat: owner requests made directly in the build chat — one line each; the spec chat moves them into spec.md)
-
-- Street battle "Fight for X" buttons wear the faction colour (`.btn.fac`, `--fc`) — js/ui/career-map.js, css/career.css.
