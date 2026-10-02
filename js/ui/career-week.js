@@ -9,6 +9,7 @@ let CW = {
   toast: null,
   dossier: null,
   rank: 'register',
+  rankAll: false,
   person: null,
   recap: null,
   own: null,
@@ -218,20 +219,27 @@ function rankTab(k) {
 function rankCard(run) {
   const you = Run.you(run),
     tab = RANK_TABS[CW.rank] ? CW.rank : 'register',
-    list = Rank[tab](run),
-    n = RANK.top,
+    all = Rank[tab](run),
+    rated = r => tab !== 'register' || r.ovr != null,
+    list = CW.rankAll ? all : all.filter((r, i) => rated(r) || r.id === you.id),
+    n = 5, // the top 5, then you ± 5
     at = list.findIndex(r => r.id === you.id),
-    row = (r, i) =>
-      `<tr class="${r.id === you.id ? 'you' : ''}"><td>${i + 1}</td><td>${r.id === you.id ? esc(r.name) : `<a class="plink" onclick="openPerson('${esc(String(r.id))}')">${esc(r.name)}</a>`}</td><td>${r.region ? esc(REGIONS[r.region].name) : 'Academy'} · ${r.role}</td><td>${
+    hidden = all.length - list.length,
+    row = r => {
+      const i = all.indexOf(r);
+      return `<tr class="${r.id === you.id ? 'you' : ''}"><td>${i + 1}</td><td>${r.id === you.id ? esc(r.name) : `<a class="plink" onclick="openPerson('${esc(String(r.id))}')">${esc(r.name)}</a>`}</td><td>${r.region ? esc(REGIONS[r.region].name) : 'Academy'} · ${r.role}</td><td>${
         tab === 'register' ? (r.ovr == null ? '<i class="mute">unrated</i>' : r.ovr) : tab === 'gazette' ? Math.round(r.fame) : r.pts
-      }</td></tr>`,
+      }</td></tr>`;
+    },
     gap = '<tr class="gap"><td colspan="4">…</td></tr>',
-    rows = list.slice(0, n).map(row).join('') + (at >= n ? gap + row(list[at], at) : '');
+    near = at < 0 ? [] : list.slice(Math.max(n, at - 5), at + 6),
+    rows = list.slice(0, n).map(row).join('') + (near.length ? (at - 5 > n ? gap : '') + near.map(row).join('') : '');
   return `<div class="panel"><div class="tabs rk">${Object.entries(RANK_TABS)
     .map(([k, [name]]) => `<button class="btn ${k === tab ? 'on' : ''}" onclick="rankTab('${k}')">${name}</button>`)
     .join('')}</div>
     <p class="small mute">${RANK_TABS[tab][1]}</p>
     ${list.length ? `<table class="rk"><tbody>${rows}</tbody></table>` : '<p class="small mute">Nobody on the board yet.</p>'}
+    ${hidden || CW.rankAll ? `<button class="btn quiet" onclick="CW.rankAll=!CW.rankAll;renderCareer()">${CW.rankAll ? 'Hide unrated' : `Show unrated (${hidden})`}</button>` : ''}
     ${at < 0 ? `<p class="small mute">You are not on this list${tab === 'street' ? ' — fight, hustle, or take a challenge.' : '.'}</p>` : ''}</div>`;
 }
 /** "Their best: <name> Register #n · Gazette #n" for up to 2 of a squad's players (skips null ranks). */
@@ -560,19 +568,19 @@ function factionsCard(run) {
       clubs = F.clubs.map(ti => run.teams[ti]);
     return `<div class="fac ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}"><div class="fh"><b><a href="#" class="dlink" onclick="hubOpen(null);openDossier('${r}');return false">${esc(F.name)}</a></b> <span class="mute small">${F.kind}</span>${F.weak ? ' <span class="stk far">Weakened</span>' : ''}${info(F.desc)}<span class="fv">${F.label} <b>${signed(v)}</b></span></div>
         ${fronts ? `<div class="fms">${fronts}</div>` : ''}${places}${econ}
-        <div class="rbar" ${tip('Standing −100 … +100')}><i style="${v >= 0 ? `left:50%;width:${v / 2}%` : `left:${50 + v / 2}%;width:${-v / 2}%`}"></i></div>
+        <div class="small mute stl">Your standing <b>${signed(v)}</b></div><div class="rbar" ${tip('Standing −100 … +100')}><i style="${v >= 0 ? `left:50%;width:${v / 2}%` : `left:${50 + v / 2}%;width:${-v / 2}%`}"></i></div>
         <div class="small">${clubs.map(t => `${chip(t)}${esc(t.name)}${t.i === run.team ? ' <i class="mute">(yours)</i>' : ''}`).join(' · ')}${
           F.foe
             ? ` <a href="#" class="clashk" onclick="hubOpen(null);mapPick('clash');return false">⚔ vs ${esc(REGIONS[F.foe].name)} this week</a>`
             : ''
         }</div></div>`;
   };
-  return `<div class="panel facs">${Object.keys(REGIONS)
+  return `<div class="panel facs"><p class="small mute">Pick a side in a street battle to move standing and border pressure.${info(`Standing: win +${CLASH.win}, lose ${CLASH.lose}; the side you fight against always ${CLASH.other}. Every battle pushes its border: ${FRONT.seize} net wins seize a border place (lost places come back first).`)}</p>${Object.keys(
+    REGIONS
+  )
     .filter(r => REGIONS[r].kind !== 'none')
     .map(row)
-    .join(
-      ''
-    )}<p class="small mute">Pick a side in a street battle to move standing and border pressure.${info(`Standing: win +${CLASH.win}, lose ${CLASH.lose}; the side you fight against always ${CLASH.other}. Every battle pushes its border: ${FRONT.seize} net wins seize a border place (lost places come back first).`)}</p></div>`;
+    .join('')}</div>`;
 }
 /** The Gazette from the last payday, until you dismiss it. */
 function gazetteCard(run) {

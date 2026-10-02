@@ -208,13 +208,13 @@ Steps: drop the inner `<h3>` that repeats the drawer title (Skills, Season, Life
 Accept: no drawer shows its title twice; week 4 pip reads "4". QA: open each drawer.
 Result: done — inner titles renamed so no drawer repeats its own (Season panel → "Goal and sponsors", Skills → "N skill pts", Life → "Money"); Player drawer: vitals and the coach's goal before the stats, caps as `1 / 75`, seasonCard no longer duplicated there; calendar pips keep the week number plus a small type letter (4E, 26C) with a legend line; Team: bond bar inline on the name row; People: stance pill hidden when neutral; Leave squad a quiet bad-text button. QA: Player, Season, Team, People drawers; no pageerror.
 
-### [ ] T-105: Factions and Rankings readable
+### [x] T-105: Factions and Rankings readable
 
 Spec: §9.1 Goldens: unchanged Save: no change
 Files: js/ui/career-week.js (factionsCard, rankCard, rankBest)
 Steps: Factions — label each meter (`Your standing`, `Border vs {X} {m}/{FRONT.seize}`), one explainer line at the top (registrar voice); Rankings — hide `unrated` rows behind "Show unrated", start at you ± 5 plus the top 5; names underlined on hover only.
 Accept: a new player can name each Factions meter from its label. QA: both drawers.
-Result:
+Result: done — Factions: the explainer line moved to the top (rules in its ⓘ), each faction's bar labelled "Your standing ±n", border meters already labelled `Border vs X n/2` (T-092 pass); Rankings: unrated rows hidden behind "Show unrated (n)" (`CW.rankAll`), top 5 then you ± 5 with the true rank numbers; player and faction links underline on hover only. QA: both drawers; no pageerror.
 
 ### [ ] T-106: Evaluation / match-day card
 
