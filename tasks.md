@@ -46,7 +46,7 @@ Result:
 - Ego ✓ (T-068), block collision ✓ (T-069).
 - Player camera polish ✓ (T-070).
 - - NPC careers ✓ (T-060).
-- **Now**: relationships — the core pillar (spec §4.23): T-061 memories + stance (ready); T-062…T-066 one at a time. **Then**: road travel (T-048), voice pass (T-022).
+- **Now**: relationships — the core pillar (spec §4.23): T-061 memories + stance, T-062 People drawer (ready); T-062…T-066 one at a time. **Then**: road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now — see Next (relationships)
@@ -125,6 +125,60 @@ Accept:
 QA: career run → train with mates 2 weeks, play the week-4 evaluation; the Team drawer bonds move; no pageerror.
 Result:
 
+### [ ] T-062: People drawer — person cards, discovering wants and traits, the memories that weigh most
+Spec: §4.23 G (and A, B for what a card shows), lore.md §7 (voices)          Goldens: unchanged          Save: no bump —
+`known` is added to `run.people` entries by People.ensure when missing
+Goal: A new hub drawer **People** lists everyone who matters to you; a person card shows what you know of them — role,
+OVR (if met), stance tag + rival flag, want and traits once discovered, their season in one line, and the 3 memories
+that weigh most in your diary voice. Names in the Rankings and the faction dossier roster open the same card.
+Needs T-061 (Rel) merged first.
+Files: js/data/people.js, js/career/rel.js, js/career/people.js, js/ui/career-people.js (new), js/ui/career-hub.js,
+js/ui/career-week.js (rankCard names only), js/ui/career-dossier.js (roster names only), css/career.css, index.html,
+test3d.html, tests/career.test.js, ARCHITECTURE.md
+Do not: show a want or trait before it is known, or an OVR for someone you have not met (`run.met`, as the Register
+does); invent old-language words; add approaches / buttons that act on the person (T-063); draw R() anywhere.
+Steps:
+1. Data (js/data/people.js):
+   - `REL.know` = { want: 6 (memories with you, counting merged entries once each), trait: [4, 9] (first / second trait) }.
+   - `MEM_TEXT` = kind → diary line template (voice `diary`: the MC, first person, spite and sarcasm, sometimes wrong;
+     `{n}` = their first name; no pronouns for them): e.g. spot_taken "I took {n}'s spot. {n} hasn't forgotten." ·
+     trained "Trained next to {n}. Didn't hate it." · hung_out "Ramen with {n}. {n} paid. Suspicious." · won_together
+     "We won. {n} was there for it." · lost_together "Lost with {n}. Nobody talked on the way back." · event "{n} and me —
+     you had to be there." · beat_me "I beat {n}. {n} took it personally." · stole_my_ball "Took a ball off {n}. Mine
+     anyway." · collided "Ran straight into {n}. Again." · hero_carried "Carried the point. {n} noticed." (jealous: "Carried
+     the point. {n} hated that.") · set_hogged "Called for the set over {n}. Worth it." Write 1–2 more per kind in the same
+     voice; pick by hash of (kind, week, id) — never R().
+   - `SEASON_TEXT`: their season in one line from `run.people[id].log` and `plan` — the `rumor` voice ("word is"): e.g.
+     "Word is {n} trained Hard {hard} weeks and got hurt {hurt}×." / "Word is {n} hustles more than trains." / "Word is
+     {n} hasn't missed a session." — chosen by the largest log count; numbers true.
+2. Discovery (js/career/people.js, js/career/rel.js): `run.people[id].known = { want: false, traits: [false, false] }`
+   (People.ensure adds it). `Rel.add` reveals: the want after REL.know.want memories with you; trait 1 / 2 after
+   REL.know.trait[0] / [1]; scouting a club (`run.scout[ti]` set) reveals the want of everyone on it. A reveal writes a
+   diary line (Run.log, diary voice): "Figured {n} out: wants {want name}." / "{n} is {trait name}. Should have seen it."
+3. `Rel.top(run, id, n = 3)` → the n memories with the largest |weighted value| (same weights as the stance), newest
+   first on ties: `[{ w, k, v, text }]`.
+4. js/ui/career-people.js (new): `peopleCard(run)` (the drawer) — sections **Your squad** (current mates, then bench),
+   **Others** (everyone with memories with you, then everyone met), each row: face, name, role, OVR or "unrated", stance
+   tag chip (ally / respect / neutral / resent / enemy colours from theme tokens), a "rival" chip when `Rel.rival`;
+   a row click expands `personCard(run, id)`: want ("?" until known, with WANTS desc as a tip once known), traits ("?"),
+   the season line, the 3 memories ("W8 — …"), their team and status (injured weeks from `run.people`). Escape every
+   string with esc().
+5. career-hub.js: drawer `people: ['👥', 'People', run => peopleCard(run)]` after `team`; `openPerson(id)` opens the
+   drawer with that card expanded (CW.person = id). career-week.js `rankCard` and career-dossier.js roster: names
+   become links calling `openPerson` (dossier: close it first, like its other links).
+6. css/career.css: the rows, chips and the card (desktop only; theme tokens, no new colours).
+7. ARCHITECTURE.md: discovery, MEM_TEXT / SEASON_TEXT, the People drawer.
+Accept:
+- tests/career.test.js: (a) a fresh run: no want / trait known; after REL.know.want memories the want is known and a
+  diary line was logged once; (b) scouting a club reveals its players' wants; (c) Rel.top orders by weighted value and
+  returns text containing the first name; (d) MEM_TEXT has a line for every MEMORY kind; picking a line draws no R();
+  (e) peopleCard renders for a fresh run and a 10-week run without throwing (DOM-free string check: no "undefined",
+  no "NaN").
+- All tests + lint; goldens unchanged.
+QA: career run → train with mates 3 weeks, play the week-4 evaluation, open People: squad rows with chips, expand a card
+(memories in diary voice, want "?" or revealed), click a name in Rankings → same card; screenshot; no pageerror.
+Result:
+
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
 Cleanup, part 2 (after T-071…T-081)
@@ -142,7 +196,6 @@ Cleanup, part 2 (after T-071…T-081)
 - T-088: Big binaries — keep base64 for the artifact but store .glb/.mp3 in Git LFS and generate the .txt at publish.
 
 Relationships — the core pillar (spec §4.23; detailed one by one after T-059)
-- T-062: People tab — person cards, discovery of wants / traits, top memories.
 - T-063: Approaches — NPCs come to you (and to each other); you approach them.
 - T-064: Fates — cut / quit / poached / national; end-of-run "People who mattered".
 - T-065: NPC ↔ NPC memories, cliques, squad chemistry.
