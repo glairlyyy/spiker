@@ -146,7 +146,7 @@ Steps:
   QA: career run → a training spot and the Clubs drawer; screenshots.
   Result: done — training button `Train {stat} · {d}d · −{sta} sta · ${price}` (meta line keeps Lv + chips), Hard shows `×1.6 · ×2 sta · +15% fail` inline; `joinGap` (career-week.js) puts the gap on locked Sign buttons (clubs drawer + HQ card: `OVR 72 · you 1`, `$600 · you $200`, dashed `.lock` style), signable clubs first, the faction name dropped when the club name already says it; skills: `{cost} · need {n}` and a neutral "learn in matches" tag. Also: T-114's action-row class renamed `.act` → `.acts` (it clashed with the skill cards' `.act`). QA: spot, clubs, skills screenshots, no pageerror.
 
-### [ ] T-100: Housing as rows with effects
+### [x] T-100: Housing as rows with effects
 
 Spec: §9.1 Goldens: unchanged Save: no change
 Goal: choosing a home shows what each one does before you pick it.
@@ -159,7 +159,7 @@ Steps:
 
 - Life drawer shows 5 rows with rent and effects; picking one changes home as before.
   QA: career run → Life drawer; screenshot.
-  Result:
+  Result: done — `homeRow` (career-week.js): 5 `.rowcta` rows — region chip, name, `$rent / payday`, effects (Rest ×, mood on payday %, noise %, sick %, leadership) in good/bad, desc as tooltip; current home in the selected style with "Home", others `Move in` → setHousing (never disabled: rent is only due on payday; the tip shows rent vs money when short). QA: Life drawer screenshot, Move in works, no pageerror.
 
 ### [ ] T-101: Street battle intro card — stakes and plain copy
 

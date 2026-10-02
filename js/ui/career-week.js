@@ -453,8 +453,24 @@ function lifeCard(run) {
     next = Math.ceil(run.week / ECON.payEvery) * ECON.payEvery;
   return `<div class="panel life"><h3>Life${info(`Payday every ${ECON.payEvery} weeks: +$${ECON.allowance} allowance, −$${ECON.food} food, −rent. Run out of money and you're evicted to the abandoned gym. Prize money from matches.`)}</h3>
     <div class="small"><b>$${run.money.toLocaleString()}</b> · next payday week ${next}</div>
-    <label class="small hsel">Home <select onchange="setHousing(this.value)" aria-label="Housing">${HOUSEK.map(k => `<option value="${k}" ${k === run.housing ? 'selected' : ''}>${HOUSING[k].name} — $${HOUSING[k].rent}</option>`).join('')}</select>${info(H.desc)}</label>
+    <div class="homes">${HOUSEK.map(k => homeRow(run, k)).join('')}</div>
     <div class="small mute">${World.isFree(run) ? 'Free agent — no club yet' : `${esc(FACTIONS[run.team].name)}${info(`${FACTIONS[run.team].front}. Word is: ${FACTIONS[run.team].dark}.`)}`}</div></div>`;
+}
+/** One housing option: rent, rest and what it does to you, then Move in (or "Home" for where you live). */
+function homeRow(run, k) {
+  const H = HOUSING[k],
+    cur = k === run.housing,
+    fx = [
+      `Rest ×${H.rest}`,
+      H.moodPay ? `Mood ${H.moodPay[0] > 0 ? '↑' : '↓'} on payday ${Math.round(H.moodPay[1] * 100)}%` : '',
+      H.noise ? `Noise ${Math.round(H.noise * 100)}%` : '',
+      H.sick ? `Sick ${Math.round(H.sick * 100)}%` : '',
+      H.grit ? `Leadership +${H.grit}` : ''
+    ].filter(Boolean),
+    bad = t => /↓|Noise|Sick/.test(t);
+  return `<div class="home rowcta ${cur ? 'sel' : ''}" ${tip(H.desc)}><div class="nm"><span class="n1">${chip(REGIONS[H.region])}<b>${esc(H.name)}</b> <span class="small">$${H.rent} / payday</span></span>
+    <span class="n2 small">${fx.map(t => `<span class="${bad(t) ? 'dn' : t.includes('↑') || t.includes('+') ? 'up' : 'mute'}">${t}</span>`).join(' · ')}</span></div>
+    ${cur ? '<span class="btn on here">Home</span>' : `<button class="btn" onclick="setHousing('${k}')" ${run.money < H.rent ? tip(`Rent $${H.rent} on payday · you $${run.money}`) : ''}>Move in</button>`}</div>`;
 }
 /** Clubs that would sign you (free agents only). */
 /** The first thing a club still asks of you, as your gap: "OVR 72 · you 41", "$600 · you $200". '' when you can sign. */

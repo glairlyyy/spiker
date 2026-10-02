@@ -2040,3 +2040,29 @@
   border: 1px solid var(--line-strong);
   border-radius: 6px;
 }
+/* housing rows (T-100) */
+.homes {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0;
+}
+.home {
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--surf2);
+}
+.home.sel {
+  background: var(--sel-bg);
+  border-color: var(--sel-line);
+}
+.home .up {
+  color: var(--good);
+}
+.home .dn {
+  color: var(--bad);
+}
+.home .here {
+  display: grid;
+  place-items: center;
+}
