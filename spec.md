@@ -314,7 +314,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   the training cap (75) and match growth (§4.14) are unchanged. Early on you are benched and lose — that is the point
   (evaluations still pay the bench reward). Stats can fall to 1 (events, injuries), never below; a guard repairs any invalid stat on load and before every match (T-056). NPCs are unchanged.
 
-- §4.23 **Relationships — the core pillar** **[locked design (owner); A built T-060; T-061…T-066 next]**
+- §4.23 **Relationships — the core pillar** **[locked design (owner); A built T-060; T-061…T-066 detailed in tasks.md]**
   Relationships are the main thing to do. Not a dating sim, not support cards: **every NPC is a career too.** They
   want something, grind for it on the same island with the same few slots, and a relationship is the history of two
   careers that keep colliding. You don't fill a gauge; you live through things together (or against each other).
@@ -413,6 +413,11 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   - People rolls use their own hash stream (`People.roll`: run seed × week × player × salt), never R(), so adding a
     feature never reshuffles the rest of the career; the engine sees only per-match flags (who trusts / resents whom)
     passed in, so engine goldens change only with E.
+
+  **Build decisions (2026-10-02, spec chat):** approaches wait in the People drawer (never block the map; figures on
+  the map come later with §4.16 B); a sit-out request is never offered in a Story cup; poached `money` players go to
+  St. Gloria (still in play), `leave` players go abroad (gone); NPC ↔ NPC memories carry `a` (who feels it); on-court
+  effects are gated on per-match flags, so the engine goldens never move for Monster / sims.
 
   **I. Build order (tasks after the camera, each small):**
   T-060 NPC wants / traits / status + weekly plans and activity-based growth (data + sim, headless) ·
