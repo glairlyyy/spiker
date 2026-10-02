@@ -74,19 +74,24 @@ function startMatch(fx) {
         <span class="fsb"><button onclick="togglePause()" id="fspause" aria-label="Pause">❚❚</button>${SPEEDS.map(s => `<button onclick="setSpeed(${s})" data-s="${s}" class="fsspd">${s}x</button>`).join('')}<button onclick="toggleFullscreen()" aria-label="Exit fullscreen">✕</button></span></div>
       <div class="cut" id="cut"><div class="cut-band"><div class="cut-lines"></div><span class="cut-face"></span><span class="cut-face cut-face2"></span><span class="cut-num"></span><div class="cut-txt"><div class="cut-move"></div><div class="cut-name"></div><div class="cut-sub"></div></div></div></div>
       <div class="hbanner" id="hbanner" aria-live="polite"></div><div class="hsay" id="hsay" aria-live="polite"></div>
-      <div class="toasts" id="toasts" aria-live="polite"></div><div class="over" id="over" hidden></div></div>
+      <div class="toasts" id="toasts" aria-live="polite"></div><div class="ticker" id="ticker" aria-hidden="true"></div><div class="over" id="over" hidden></div></div>
     <div class="controls cbar">
       <div class="cg play"><span class="cgl">Play</span><button class="btn" id="pause" onclick="togglePause()">Pause <kbd>Space</kbd></button>
         <div class="seg" role="group" aria-label="Speed">${SPEEDS.map(s => `<button class="btn ${s === 1 ? 'on' : ''}" data-s="${s}" onclick="setSpeed(${s})">${s}×</button>`).join('')}</div>
         <button class="btn" onclick="skipMatch()" ${tip('Skip to the final result')}>Skip ⏭</button></div>
       <div class="cg team"><span class="cgl">${mine == null ? 'Teams' : 'Your team'}</span>${sides.map(i => timeoutButton(m.t[i], i)).join('')}
-        ${pop('Tactics ▾', sides.map(i => tacticPicker(m.t[i], i)).join('') + sides.map(i => defencePicker(m.t[i], i)).join(''))}</div>
+        <button class="btn" onclick="railOpen('tac')">Tactics</button></div>
       <div class="cg view"><span class="cgl">View</span><button class="btn" id="cam3bar" onclick="toggleCam3D()" ${tip('Courtside · Broadcast · Follow · POV')}>${cam3Text()}</button>
         <button class="btn" onclick="toggleFullscreen()" ${tip('Fullscreen court (F)')} aria-label="Fullscreen">⛶</button>
+        <button class="btn" id="railbtn" onclick="railOpen()">Commentary · Box score <kbd>B</kbd></button>
         <button class="btn" id="snd" onclick="toggleSound()" aria-label="Sound">${SND.on ? '🔊' : '🔇'}</button>
         ${pop('⚙ ▾', settingsMenu())}</div>
     </div>
-    <div class="feeds" hidden><div class="panel"><h3>Commentary</h3><ol class="log" id="log"></ol></div><div class="panel"><h3>Box score</h3><div id="box"></div></div></div>
+    <aside class="mrail" id="mrail" hidden aria-label="Match details"><div class="rhd"><div class="tabs">${Object.entries(RAIL_TABS)
+      .map(([k, n]) => `<button class="btn" data-rt="${k}" onclick="railOpen('${k}')">${n}</button>`)
+      .join('')}</div><button class="btn x" onclick="railOpen(null)" aria-label="Close">✕</button></div>
+      <div class="rbody"><div class="rt" data-rt="log"><ol class="log" id="log"></ol></div><div class="rt" data-rt="box"><div id="box"></div></div>
+      <div class="rt" data-rt="tac">${sides.map(i => `<div class="trow2"><span class="cgl">Tactic</span>${tacticPicker(m.t[i], i)}</div><div class="trow2"><span class="cgl">Defence</span>${defencePicker(m.t[i], i)}</div>`).join('')}</div></div></aside>
   </section>`;
   audioInit();
   if (R3D) R3D.unbind();
@@ -266,8 +271,11 @@ addEventListener('webkitfullscreenchange', () => setTimeout(fit, 60));
 addEventListener('keydown', e => {
   if (!A || e.target.closest('input,select,textarea,button')) return;
   if (e.key === 'f' || e.key === 'F') toggleFullscreen();
-  else if (e.key === 'Escape') $('#stage')?.classList.remove('fake-fs');
-  else if (e.key === ' ') {
+  else if (e.key === 'b' || e.key === 'B') railOpen();
+  else if (e.key === 'Escape') {
+    $('#stage')?.classList.remove('fake-fs');
+    railOpen(null);
+  } else if (e.key === ' ') {
     e.preventDefault();
     togglePause();
   }
@@ -354,6 +362,7 @@ function setSpeed(s) {
 function togglePause() {
   if (!A) return;
   A.paused = !A.paused;
+  railOpen(A.paused ? A.railTab || 'log' : null); // the rail opens on pause and closes on resume
   setLabel('#pause', A.paused ? 'Resume' : 'Pause');
   setLabel('#fspause', A.paused ? '▶' : '❚❚');
 }
@@ -419,6 +428,29 @@ function logLine(t, c) {
   if (c) li.className = c;
   l.prepend(li);
   while (l.children.length > 80) l.lastChild.remove();
+  const tk = $('#ticker'); // the last two lines on the court (the newest in ink)
+  if (tk)
+    tk.innerHTML = [...l.children]
+      .slice(0, 2)
+      .map((x, i) => `<div class="${i ? 'old' : ''}">${esc(x.textContent)}</div>`)
+      .join('');
+}
+/** The match rail (Commentary · Box score · Tactics): open on a tab, toggle (no tab), or close (null). */
+const RAIL_TABS = { log: 'Commentary', box: 'Box score', tac: 'Tactics' };
+function railOpen(tab) {
+  const r = $('#mrail');
+  if (!r || !A) return;
+  if (tab === null || (tab === undefined && !r.hidden)) {
+    r.hidden = true;
+    return;
+  }
+  A.railTab = tab || A.railTab || 'log';
+  r.hidden = false;
+  for (const el of r.querySelectorAll('[data-rt]')) {
+    const on = el.dataset.rt === A.railTab;
+    if (el.classList.contains('rt')) el.hidden = !on;
+    else el.classList.toggle('on', on);
+  }
 }
 /** Redraw both box-score tables. */
 function boxScore() {
@@ -494,6 +526,7 @@ function finishMatch() {
   setTimeout(
     () => {
       if (o.isConnected) o.hidden = false;
+      if (o.isConnected) railOpen('box');
     },
     RM ? 0 : 2600
   );

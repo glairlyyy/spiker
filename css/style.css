@@ -1329,3 +1329,76 @@ body:has(.match) .top {
   right: 0;
   left: auto;
 }
+/* match rail + commentary ticker (T-115) */
+.match .ticker {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 3;
+  max-width: 520px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--hud);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.4;
+  pointer-events: none;
+}
+.match .ticker:empty {
+  display: none;
+}
+.match .ticker .old {
+  color: var(--mute);
+}
+.mrail {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(400px, 100vw);
+  background: var(--surf);
+  border-left: 1px solid var(--line);
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+.mrail[hidden] {
+  display: none;
+}
+.mrail .rhd {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.mrail .tabs {
+  display: flex;
+  gap: 4px;
+}
+.mrail .rbody {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+.mrail .log {
+  max-height: none;
+}
+.mrail #box table {
+  width: 100%;
+  font-size: 12px;
+}
+.mrail .trow2 {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.mrail .tac {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

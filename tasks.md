@@ -268,7 +268,7 @@ Steps:
    QA: career evaluation (watch) + Monster game; screenshots.
    Result: done — one 48px `.cbar`: Play (Pause with `Space` printed, 1×/2×/4× segment, Skip) · Your team (Timeout + Tactics pop-over; the side holding `Run.you(RUN)` in career fixtures, both sides labelled "Teams" in the Monster game; timeouts carry a 4px team-colour edge) · View right-aligned (Camera cycle, ⛶, sound, ⚙); 40px buttons; playback buttons disabled after the final. Deviation: the fullscreen `.fsbar` keeps its compact score + playback strip (sharing the bar's markup would duplicate the timeout ids); it shares the disabled-after-final rule. QA: 1280 wide — one line (scrollWidth = clientWidth 1232), Monster 2 timeouts, career evaluation 1; no pageerror.
 
-### [ ] T-115: Match rail and commentary ticker
+### [x] T-115: Match rail and commentary ticker
 
 Spec: §9.9 Goldens: unchanged Save: no change
 Files: js/ui/match-screen.js (startMatch, logLine, boxScore, togglePause, finishMatch, new `railOpen`), css/style.css
@@ -280,7 +280,7 @@ Steps:
 3. Opens itself on pause and after the final; closes on resume.
    Accept: the full log and box score are reachable without scrolling the page; ticker updates every point.
    QA: Monster game — pause, B, Tactics tab; screenshots.
-   Result:
+   Result: done — `#ticker` on the court (hud, bottom-left, max 520px): the last 2 log lines, older in mute, updated by logLine; `#mrail` 400px fixed overlay, tabs Commentary (`#log`) · Box score (`#box`) · Tactics (labelled Tactic / Defence rows; your side only in career, both in Monster) via `railOpen(tab|undefined toggle|null close)`; opens on pause (closes on resume) and on the Box score tab after the final; key B toggles, Esc closes; the bar's Tactics button and a `Commentary · Box score B` chip open it (the Tactics pop-over is gone — no duplicate select ids). QA: Monster — ticker, pause opens the rail, Tactics tab; no pageerror.
 
 ### [ ] T-116: Match settings as segments; results action row
 
