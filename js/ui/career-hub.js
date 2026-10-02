@@ -96,15 +96,69 @@ const hubClubsHint = () =>
 
 function hudRes(run) {
   const staPct = Math.round((run.sta / run.staMax) * 100),
-    mood = MOODS[run.mood];
+    mood = MOODS[run.mood],
+    now = { money: run.money, fans: run.fans, sp: run.sp, sta: run.sta, mood: run.mood },
+    prev = CW.hudOf === run ? CW.hudPrev : null,
+    d = k => {
+      const v = prev ? now[k] - prev[k] : 0;
+      if (!v) return '';
+      const n = k === 'mood' ? (v > 0 ? '↑' : '↓') : `${v > 0 ? '+' : '−'}${k === 'money' ? '$' : ''}${Math.abs(v).toLocaleString()}`;
+      return ` <em class="hd ${v > 0 ? 'up' : 'dn'}">${n}</em>`;
+    },
+    row = (k, label, val, t) => `<div ${tip(t)}><span class="hl">${label}</span><b>${val}${k ? d(k) : ''}</b></div>`;
+  CW.hudPrev = now; // deltas show for one render after a change
+  CW.hudOf = run;
   return `<div class="hud res">
-    <div ${tip(`You are in ${REGIONS[City.loc(run)].name}. Home: ${HOUSING[run.housing].name} (${REGIONS[City.homeRegion(run)].name})`)}><i>📍</i><b>${esc(REGIONS[City.loc(run)].name)}</b></div>
-    <div ${tip('Money')}><i>💰</i><b>$${run.money.toLocaleString()}</b></div>
-    <div ${tip('Fans')}><i>📣</i><b>${run.fans.toLocaleString()}</b></div>
-    <div ${tip('Skill points')}><i>✨</i><b>${run.sp}</b></div>
-    <div ${tip(`Stamina ${run.sta}/${run.staMax}`)}><i>⚡</i><span class="sbar ${staPct < 50 ? 'low' : ''}"><i style="width:${staPct}%"></i></span><small>${run.sta}</small></div>
-    <div ${tip('Mood')}><i>☺</i><span class="mood m${run.mood}">${mood.name}</span></div>
+    ${row('', 'Location', esc(REGIONS[City.loc(run)].name), `You are in ${REGIONS[City.loc(run)].name}. Home: ${HOUSING[run.housing].name} (${REGIONS[City.homeRegion(run)].name})`)}
+    ${row('money', 'Money', `$${run.money.toLocaleString()}`, 'Money')}
+    ${row('fans', 'Fans', run.fans.toLocaleString(), 'Fans')}
+    ${row('sp', 'Skill pts', run.sp, 'Skill points')}
+    <div ${tip(`Stamina ${run.sta}/${run.staMax}`)}><span class="hl">Stamina</span><span class="sbar ${staPct < 50 ? 'low' : ''}"><i style="width:${staPct}%"></i></span><b class="${staPct < 50 ? 'warn' : ''}">${run.sta}${d('sta')}</b></div>
+    ${row('mood', 'Mood', `<span class="mood m${run.mood}">${mood.name}</span>`, 'Mood')}
   </div>`;
+}
+/** The coach's open goal under the clock (click: Season drawer). */
+function hudGoal(run) {
+  const g = run.goal;
+  if (!g || g.done != null) return '';
+  const soon = g.by - run.week <= 1;
+  return `<button class="hgoal ${soon ? 'warn' : ''}" onclick="hubOpen('season')" ${tip("Coach's goal")}><span class="hl">Goal</span> ${esc(Goals.text(run, g))} · ${esc(Goals.progress(run, g))} · by W${g.by}</button>`;
+}
+/**
+ * One suggested next step (a suggestion only: the chip selects a place or opens a drawer, never acts). First match wins:
+ * an unread Gazette; the next evaluation / cup within 3 weeks of a training week; a club that would sign you; night.
+ */
+function nextStep(run) {
+  if (run.gazette && !run.gazette.read) return { text: 'Gazette out', act: "hubOpen('news')" };
+  const wt = Run.weekType(run),
+    you = Run.you(run),
+    key = KEYSTAT[you.role];
+  if (wt === 'train' || wt === 'camp') {
+    let w = run.week;
+    while (w <= run.week + 3 && CALENDAR[w] !== 'eval' && w <= CAREER.weeks) w++;
+    const what = w > CAREER.weeks ? 'Cup' : CALENDAR[w] === 'eval' && w <= run.week + 3 ? 'Evaluation' : '';
+    if (what && STATK.includes(key)) {
+      const spot = Object.keys(SPOTS)
+        .filter(id => SPOTS[id].train && TRAININGS[SPOTS[id].train].main[0] === key && MapModel.known(run, id, City.at(run, id)))
+        .sort((a, b) => City.cost(run, a) - City.cost(run, b))[0];
+      return {
+        text: `${what}${what === 'Cup' ? '' : ` W${w}`} · ${STATNAME[key]} ${you[key]}`,
+        act: spot ? `mapPick('${spot}')` : ''
+      };
+    }
+  }
+  if (World.isFree(run)) {
+    const t = run.teams.find(t2 => World.canJoin(run, t2.i).ok);
+    if (t) return { text: `${t.name}: signing open`, act: "hubOpen('clubs')" };
+  }
+  if (wt !== 'cup' && wt !== 'eval' && City.days(run) <= 0) return { text: 'Night · end the week', act: '' };
+  return null;
+}
+function hudNext(run) {
+  const n = nextStep(run);
+  return n
+    ? `<button class="hnext" ${n.act ? `onclick="${n.act}"` : 'disabled'} ${tip('Suggested next step')}><span class="hl">Next</span> ${esc(n.text)}</button>`
+    : '';
 }
 
 function hudClock(run, armed) {
@@ -121,6 +175,7 @@ function hudClock(run, armed) {
       <svg viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="18"/><circle class="prg" cx="20" cy="20" r="18" style="stroke-dasharray:${((run.week / CAREER.weeks) * 113).toFixed(1)} 113"/></svg></div>
     ${match ? '' : `<div class="days" aria-label="${days} of ${WEEK_DAYS} days left">${Array.from({ length: WEEK_DAYS }, (_, i) => `<i class="${i < WEEK_DAYS - days ? 'used' : ''}"></i>`).join('')}</div>`}
     ${!match && !run.event ? `<button class="btn ${eve ? 'hot' : ''} endw" onclick="mapEndWeek()" ${tip(eve ? 'Sleep: start the next week (Space)' : `Skip the ${days} day${days > 1 ? 's' : ''} left (Space)`)}>${armed ? `Skip ${days} day${days > 1 ? 's' : ''}? Click again` : `End week${days > 0 ? ` — ${days} day${days > 1 ? 's' : ''} unused` : ''}`} <kbd>Space</kbd></button>` : ''}
+    ${hudGoal(run)}${hudNext(run)}
   </div>`;
 }
 

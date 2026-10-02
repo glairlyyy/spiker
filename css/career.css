@@ -833,11 +833,12 @@
 .hub .res {
   top: var(--gap);
   left: var(--gap);
-  padding: 8px 10px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-width: 132px;
+  gap: 4px;
+  min-width: 200px;
+  background: var(--hud);
   font-size: 13px;
 }
 .hub .res > div {
@@ -849,6 +850,64 @@
   font-style: normal;
   width: 18px;
   text-align: center;
+}
+.hub .res .hl,
+.hub .hgoal .hl,
+.hub .hnext .hl {
+  font-size: 12px;
+  color: var(--mute);
+  min-width: 64px;
+}
+.hub .res > div > b {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.hub .res b.warn {
+  color: var(--warn);
+}
+.hub .hd {
+  font-style: normal;
+  font-size: 12px;
+  margin-left: 4px;
+}
+.hub .hd.up {
+  color: var(--good);
+}
+.hub .hd.dn {
+  color: var(--bad);
+}
+.hub .hgoal,
+.hub .hnext {
+  max-width: 280px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--hud);
+  color: var(--ink);
+  font: 13px/1.4 var(--body);
+  text-align: left;
+  cursor: pointer;
+}
+.hub .hgoal.warn {
+  border-color: var(--warn);
+}
+.hub .hgoal.warn .hl {
+  color: var(--warn);
+}
+.hub .hnext {
+  border-color: var(--sel-line);
+}
+.hub .hnext:disabled {
+  cursor: default;
+  border-color: var(--line);
+}
+.hub .hgoal .hl,
+.hub .hnext .hl {
+  min-width: 0;
+  margin-right: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 600;
 }
 .hub .res .sbar {
   flex: 1;

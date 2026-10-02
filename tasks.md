@@ -77,7 +77,7 @@ Steps:
   QA: career run → Create, a training spot, Clubs drawer, recap, evaluation card, Main menu; screenshots.
   Result: done — `.act` (+ `.pri` / `.two` / `.three`, 40px cards, 48px modals) and `.rowcta` (1fr 120px) in career.css; eval / cup / event / clash / recap / Gazette / training / Create end in one action row; free-agent note inside the eval card; clubs as rowcta; Rankings wrapped in a panel (tab selected = `.on`); drawer clamp(480px, 36vw, 600px) (518px at 1440), modal 640 / wide 960, place card 480, HUD inset 16px; drawer panels flat with dividers; menu hero full width, Library / Playtest halves. Also `.btn.hot` sentence case (§9.3). QA: menu, create, spot, clubs, eval screenshots, no pageerror.
 
-### [ ] T-096: HUD rebuild — labels, coach's goal, next step
+### [x] T-096: HUD rebuild — labels, coach's goal, next step
 
 Spec: §9.1 §9.5 §9.7 Goldens: unchanged Save: no change
 Goal: every HUD value has a word label; the coach's goal and one suggested next step are always visible under the clock.
@@ -94,7 +94,7 @@ Steps:
 - New run, week 1: HUD shows labelled rows, the goal row and a chip "Evaluation W4 · Power 1"; clicking it selects a power spot; nothing else happens.
 - After training, the money/stamina deltas show for one render.
   QA: career run → week 1 hub, click the chip, train once; screenshots.
-  Result:
+  Result: done — hudRes = labelled rows on `--hud` with one-render deltas (`CW.hudPrev`, good/bad, stamina warn under 50); `hudGoal` (goal · progress · by W, warn when ≤1 week, → Season) and `hudNext` / `nextStep` (Gazette → eval/cup ≤3 weeks: selects the cheapest known spot for the key stat → club that signs you → night) under the clock. QA: week 1 chip "Evaluation W4 · Power 1" selects a Power spot; training shows −$4 / +3 / −20 deltas; no pageerror.
 
 ### [ ] T-097: Map opening view and fly-to on select
 

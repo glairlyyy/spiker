@@ -13,7 +13,9 @@ let CW = {
   recap: null,
   own: null,
   ownOf: null,
-  endArm: 0
+  endArm: 0,
+  hudPrev: null,
+  hudOf: null
 };
 
 function youCard(run) {
