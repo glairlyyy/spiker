@@ -18,6 +18,8 @@ function mustDive(p, q, x, z, ms) {
   const d = Math.hypot((x - q.x) * 0.0243, (z - q.z) * 12);
   return d - 0.6 > (3 + (3 * p.speed) / 100) * Math.max(0, ms / 1000 - 0.12);
 }
+/** How a feels about b on court (T-066): 'ally' | 'respect' | 'neutral' | 'resent' | 'enemy' ('neutral' without m.rel, so nothing changes). */
+const relTag = (m, a, b) => (m.rel && m.rel.tag[`${a.id}|${b.id}`]) || 'neutral';
 /**
  * Pop-up off the arms: a defender who reaches a hard ball but can't control it may still keep it in their own court.
  * Chance grows with their defense, shrinks with the ball's power. The nearest free teammate then chases it:
@@ -33,7 +35,7 @@ function popRecovery(m, side, T, first, x, z, pow, n) {
     from = m.pos[rec.id],
     d0 = dist(from, px, pz),
     score = effD(rec) * 0.5 + rec.speed * 0.5 - d0 * 60 - pow * 0.1,
-    ok = R() < clamp(0.45 + (score - 45) / 80, 0.15, 0.85);
+    ok = R() < clamp(0.45 + (score - 45) / 80 + (relTag(m, rec, first) === 'ally' ? REL_E.cover : 0), 0.15, 0.85); // (an ally of the first touch covers a little better, T-066)
   return { rec, px, pz, from: { x: from.x, z: from.z }, ok };
 }
 /** Beat acts for the pop-up: the ball loops off the arms, the teammate runs (or dives) to it. */
@@ -87,9 +89,11 @@ const egoRoll = (m, p, act, k) => {
  */
 function egoSteal(m, cands, near, x, z, acts, V) {
   const eta = p => dist(m.pos[p.id], x, z) / (0.5 + p.speed / 100),
+    // toward an ally the steal chance is halved, toward a rival ×1.5 (REL_E.ego, T-066); 1 without m.rel
+    rel = p => (relTag(m, p, near) === 'ally' ? REL_E.ego.ally : m.rel && m.rel.rival.has(`${p.id}|${near.id}`) ? REL_E.ego.rival : 1),
     tn = eta(near);
   for (const p of cands) {
-    if (p === near || eta(p) > EGO.reach * tn || !egoRoll(m, p, 'steal')) continue;
+    if (p === near || eta(p) > EGO.reach * tn || !egoRoll(m, p, 'steal', rel(p))) continue;
     const cc = EGO.collide * (1 - (maturity(p) + maturity(near)) / 2),
       crash = cc > 0 && R() < cc;
     m.egoLog.push({ act: 'steal', p: p.id, ok: !crash, mate: near.id, crash });
@@ -107,11 +111,14 @@ function egoSteal(m, cands, near, x, z, acts, V) {
  * A fresh match between teams a and b. rec = record animation beats (playRally returns them).
  * opts.court: court size multiplier (default RULES.court); opts.tac: [tactic, tactic] fixes a side's tactic;
  * opts.dset: [setting, setting] fixes a side's defence setting (DEFSETS; default: the team's style, then the captain may switch it).
+ * opts.rel: career relationship flags { tag: { 'idA|idB': 'ally' | … }, rival: Set } (Rel.matchFlags, T-066); absent → no relationship effect at all.
  */
 function newMatch(a, b, rec, opts = {}) {
   for (const t of [a, b]) for (const p of squadOf(t)) fixStats(p); // the engine never sees a negative, NaN or huge stat (no-op for valid ones)
   const m = {
     court: opts.court || RULES.court,
+    rel: opts.rel || null, // career relationship flags (T-066); every effect is gated on this
+    relLog: [], // engine-only: clutch set choices { act: 'clutch' | 'trust' | 'freeze', p: setter, mate: hitter, tag } (only with m.rel)
     tac: [opts.tac?.[0] || 'auto', opts.tac?.[1] || 'auto'], // tactic in use per side (see TACTICS)
     tacMode: [opts.tac?.[0] ? 'fixed' : 'cap', opts.tac?.[1] ? 'fixed' : 'cap'], // 'cap' = the captain decides
     dset: [opts.dset?.[0] || defOf(a), opts.dset?.[1] || defOf(b)], // defence setting per side (see DEFSETS): how the front row blocks
@@ -241,7 +248,9 @@ function captainThink(m, side) {
   if (!t.P.some(p => m.buff[p.id]) && R() < 0.03 + 0.03 * lv) {
     const mates = t.P.filter(p => p !== cap),
       low = mates.find(p => (m.mood[p.id] || 0) < -0.35),
-      hot = mates.reduce((x, p) => (confidence(p, m, side) > confidence(x, m, side) ? p : x), mates[0]),
+      // (allies of the captain weigh REL_E.buff ×: no extra draw)
+      cw = p => confidence(p, m, side) * (relTag(m, cap, p) === 'ally' ? REL_E.buff : 1),
+      hot = mates.reduce((x, p) => (cw(p) > cw(x) ? p : x), mates[0]),
       tg = low && R() < 0.5 ? low : hot;
     m.buff[tg.id] = { lv, n: 4 };
     md(m, tg, 0.1 * lv);

@@ -143,9 +143,9 @@ const GROWTH = {
   share: 0.4 // teammates training with you gain this share of your main gain (and half of the side gain)
 };
 const REWARDS = {
-  warmupWin: { sp: 40, fans: 500, bond: 5 },
-  warmupLoss: { sp: 20, fans: 100, bond: 0 },
-  cupWin: { sp: 60, fans: 1500, bond: 5 },
+  warmupWin: { sp: 40, fans: 500 },
+  warmupLoss: { sp: 20, fans: 100 },
+  cupWin: { sp: 60, fans: 1500 },
   perPlay: { sp: 2, fans: 20 } // each of your kills, blocks and aces
 };
 /**

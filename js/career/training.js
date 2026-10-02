@@ -133,7 +133,7 @@ const Training = {
     out.push(Training.addXp(run, pv.main[0], pv.main[2]), Training.addXp(run, pv.side[0], pv.side[2]));
     out.push(Run.bump(run, 'sta', -pv.sta), Run.bump(run, 'sp', Math.round(CAREER.spPerTraining * (hard ? 1.5 : 1) * spMul)));
     for (const id of pv.mates) {
-      out.push(Run.bond(run, id, 7));
+      out.push(Run.bond(run, id, undefined, 'trained'));
       Growth.shared(run, id, pv);
     }
     const lv0 = Training.facility(run, key);

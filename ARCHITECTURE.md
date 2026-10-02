@@ -296,6 +296,8 @@ scouted — computed from data, never from match history.
 ## Ego (T-068, spec §2.12)
 Every player has `ego` 0–1 (createPlayer → `ensureEgo`: a hash of the name, 0.2–0.7, WS +0.1, no random draw; your player 0.6; saves from before get the hash on load) and `maturity(p)` = clamp((wit − 0.5) / 1.5, 0, 1). `EGO` (data/rules.js) holds the chances and effects. `egoChance(m, p, act)` = `EGO.base[act] × ego × (1 − maturity)` × (1 − captain maturity × `EGO.captain`) for a captain on court; `egoRoll` draws R() only when that is > 0, so a player without ego, or a mature one, costs no draw. Acts: **steal** (`egoSteal`, match.js, used in serve receive and `dig()`: a teammate who could still reach the ball calls "Mine!" — a collision wrecks the touch (score × `EGO.crash`, both players busy) or they take it), **call** (`chooseAttack`: an unpicked hitter demands the set; the setter gives in with chance 1 − maturity), **solo** (`formBlock`: the ego blocker ignores the defence setting and blocks alone — no second blocker, coverage × (1 + gain × read − loss × (1 − maturity))), **swing** (`spikePower`: on a bad set, full power instead of the tip or the 0.72 penalty, errors × (1 + `swing.err` × (1 − maturity))), **serve** (serve.js: a jump serve for a server who would not use one, a little more pace, more service errors). Every act is recorded on `m.egoLog = [{ act, p, ok, mate?, crash? }]` (engine-only; the relationship memories will read it); `ok` is closed when the outcome is known (`tallyAttack`, a stuff in `rally()`, the serve's ace in `end()`), and `end()` moves mood (± `EGO.mood`) and costs a failed act's team `EGO.mom` momentum. **Block collision** (T-069, in `formBlock`): after a solo block the other front-row defender also commits with chance `EGO.solo.collide` × (1 − their maturity) (no draw when it is 0, so the stream equals T-068's); the blocks cancel (`cov` 0: no block touch, the attack meets an open net), both players hop short (`jump` 'hop' at ~40% of the hang), stagger ('bump' pose) 0.3 m apart; in `EGO.solo.net` of collisions it is a net fault — `rally()` returns the point to the attackers right after the set beat, before any attack contact. Logged `{ act: 'collide', p, mate, net }` (a record only: the solo entry already moves mood). Presentation only: `plabel` takes optional `p2` (anchor between two players at net height) and `v` ('warn' orange / 'err' red, stamped; drawn by `drawLabels`); "MINE!" / "SOLO!" / "ALL ME!", a bump pose and a log line on a collision, `CALLS.ego` chatter for set calls — no new act kind.
 
+**Relationships on court (T-066).** `newMatch(a, b, rec, { rel })` → `m.rel = { tag: { 'idA|idB': band }, rival: Set }` (null in Monster, sims and the golden matches), built by `Rel.matchFlags(run, A, B)` for every pair in both squads (viewer first; you ↔ NPC is the NPC's stance both ways; only non-neutral bands stored) and handed over by the fixtures of `Cup.fixture` / `challenge` / `clash` (`fx.rel`, set on the match in `fx.setup`). **The gating rule:** every effect reads `relTag(m, a, b)` (match.js: 'neutral' without `m.rel`) and either multiplies by 1, adds 0, or sits behind `m.rel &&`, so a match without flags (or with empty ones) draws the same randoms and gives byte-identical beats (a test proves it); no effect adds a draw. `REL_E` (data/rules.js): **trust / freeze** in `chooseAttack` once either side has `clutch` points — the single `wpick` draw is read against the plain weights and the weights × (1 + trust) for an ally / × (1 − freeze) for a resent / enemy hitter; when the picks differ a talk beat (`CALLS.trust` / `CALLS.freeze` + a log line, no new act kind) is pushed before the set; `m.relLog` records every clutch pick `{ act: 'clutch' | 'trust' | 'freeze', p, mate, tag }` (engine-only, for tests); **cover** (`popRecovery`, block cover in `block()`): + `REL_E.cover` on the save chance of an ally of the first touch / blocked hitter; **buff** (`captainThink`): allies of the captain weigh `REL_E.buff` × when the hottest mate is picked; **ego** (`egoSteal`): the steal chance × `REL_E.ego.ally` / `.rival` (same-role mates / opponents within `REL.rivalOvr`). **Rivals across the net** (`Cup.prepare`, no engine change): `Rel.rivals(run, opp)` — NPCs of your role, close in OVR, resent / enemy — start with form + `REL_E.rival.fired` (proud / reckless) or `.rattled`, with a diary line. No relationship gives a stat bonus.
+
 ## Substitutions
 
 `SUB = { max, sta, fresh }` (`js/data/rules.js`). At every dead ball `end()` (engine/match.js) calls `coachSubs(m, side)` after the
@@ -419,6 +421,58 @@ league starter's off-screen play as match XP spread key 0.4 / others 0.2 up to `
 and a Gazette line) → star / OP breakthrough rolls (`Growth.grow`, unchanged R() draws) → `finalizeTeam`. The old random drift
 (`Growth.spread`) is gone. An injured NPC (`People.out`) is skipped by `Pool.draw` and `Run.lineup`.
 
+### Relationships (T-061)
+
+`js/career/rel.js` (`Rel`, no DOM, no R()); data MEMORY / REL in `js/data/people.js`. What an NPC remembers about you:
+`run.mem[Rel.key(you, npc)] = [{ w, k, v, n }]` (saved; RUN_VERSION 11). `Rel.add(run, id, kind, v?)` applies MEMORY's repeat rule
+(trained / hung_out ×0.5 per same-week repeat; same kind in a week merges into one entry), trait sign flips (jealous / cynical),
+keeps ≤ REL.max entries (oldest non-scar dropped first), refreshes the cache and returns the bond change. `Rel.stance` = Σ value ×
+fade (REL.decay^weeks, scars never) × both traits' multipliers; `Rel.tag` (ally / respect / neutral / resent / enemy) and `Rel.rival`
+read it. `you.bond[id]` is only a cache: `Rel.bondOf` = clamp(round(stance × REL.bondK), 0, 100), refreshed on every add and in
+`Rel.week` (called from `Growth.week`), so combos (60), friendship (80), goals and the Team drawer read it unchanged.
+Sources: `Run.bond(run, id, v, kind)` (training → trained, city outings → hung_out, events → event), `Cup.result` →
+`Rel.afterMatch` (won / lost_together, ego-log kinds), `Cup.fixture` → `Rel.spot` (spot_taken for a benched rival, once a week),
+challenge / clash wins → `Rel.beatMe`. Match rewards no longer carry bond.
+
+**People drawer (T-062).** `run.people[id].known = { want, traits[2] }` (added by `People.ensure`): `Rel.reveal` (called from `Rel.add`) flips
+the want after REL.know.want memories and each trait at REL.know.trait[i] (one diary line each); `People.knows(run, p, 'want' | 'trait', i)`
+also counts a scouted club (`City.scouted`) for the want. `Rel.top` = the n memories with the largest |`Rel.weigh`| (same weights as the
+stance); `Rel.text` picks a `MEM_TEXT` / `MEM_ALT` diary line and `Rel.season` a `SEASON_TEXT` rumour line by `hstr` (no R()).
+`js/ui/career-people.js` (`peopleCard`, `personRow`, `personCard`, `openPerson`; display only): your squad, then others who remember you or
+whom you met; a card shows want / traits ("?" until known), the season line and the top 3 memories. Names in the Rankings and the
+dossier roster call `openPerson` (`CW.person`).
+
+**Approaches (T-063).** `js/career/asks.js` (`Asks`, no DOM, no R(); every roll is `People.roll`; data `APPROACH` / `REL.ask` in `js/data/people.js`).
+`Asks.roll` (from `Run.nextWeek`, after `Eval.setup`): last week's unanswered asks become `ignored` memories, then per NPC and kind
+chance = REL.ask.base × weight[want] × (1 + max(0, stance) / 100) against `People.roll(id, 'ask|kind')`; the rule `Asks.need[kind]`
+decides who may ask (invite_train, ask_sitout, duo_challenge, borrow, call_out, vouch, warn); the best REL.ask.max by roll, one per
+person and kind, are stored in `run.asks` (never `run.event`: nothing blocks). `Asks.answer(run, i, yes)` applies the effect and
+memory; `Asks.moves` / `Asks.ask` are your own moves on a person (one ask a person a week, a `mine` entry in `run.asks`; acceptance =
+clamp(0.5 + stance / 100 + trait mods) rolled with `People.roll`, shown as likely / maybe / unlikely). Effects live in run fields
+(RUN_VERSION 12): `run.loans` (repaid or overdue in `Asks.week`, called from `World.week`), `run.vouch` (`World.joinReq` bars −REL.ask.vouch),
+`run.sitout` (`Run.lineup` benches that player that week only), `run.duo` (`Cup.duoIn` seats the mate in your next challenge and halves
+the stake; `Cup.challenge(..., force)` skips the club's acceptance for call-outs). UI: the Waiting section and the move buttons in
+`js/ui/career-people.js`, a count badge on the People shortcut.
+
+**Fates (T-064).** Person fields (RUN_VERSION 13): `status` 'active' | 'cut' | 'quit' | 'poached' | 'abroad' | 'national', `bench` (active: evaluations
+on the bench in a row; any other status: the week it happened), `gone` = { name, role, ovr, team, week, why } once they have left play (quit, abroad).
+Evaluation weeks: `People.benchTick` (from `People.week`). Paydays (`World.payday` after promote → `People.fates`, never during a cup): cut (bench ≥ REL.fate.cut and OVR under the
+faction's join bar → `People.toReserve`, a seat swap with its best same-role reserve; a cut player you took the spot from gets spot_taken again), quit
+(cut for REL.fate.quit.weeks, rolled; cynical ×1.5, loyal ×0.5; `People.remove`), poach (one a payday: want money / leave in the top REL.fate.poach.top of a faction;
+stance ≥ respect → an Asks `poach_advice` for next week — unanswered, they go anyway; money → St. Gloria's reserves, leave → off the island). `Cup.close` → `People.national`
+(the first REL.fate.national NPCs of the champion squad by OVR). `People.find` returns a snapshot `{ id, name, role, gone }` for someone who has left, so the drawer and
+`Rel` keep working; `People.mattered` feeds the run-end "People who mattered" panel (the 5 largest |stance|, fate line, top 2 memories). All rolls are `People.roll`.
+
+**NPC ↔ NPC (T-065).** Memory entries gain `a` (RUN_VERSION 14): the id of the one who feels it, `'*'` = both (you ↔ NPC entries are the NPC's; `'*'` entries flip
+per reader in `Rel.weigh`). `Rel.list/stance(run, id, other = you)` read id's side of any pair; `Rel.addPair` / `Rel.push` write them, `Rel.views` gives both sides.
+Sources (`People.pairs`, end of `People.week`; squadmates of one league team / reserve / pickup only): same place trained the same week → `trained`; a league
+team's starters share an off-screen result (win share by team OVR vs the league mean via `People.roll`; value × REL.chem.result) → won / lost_together;
+`World.promote` and a payday cut → `spot_taken` (a = the one who lost the seat; a poach / transfer gives nothing). Budget: `Rel.trim` keeps NPC ↔ NPC entries
+≤ REL.chem.pairs (1500) in all, the oldest non-scar first. `Rel.chem(run, T)` → { cliques (3+ joined by mutual allies), feuds (both ≤ resent), ally / foe Sets }:
+`Run.lineup` adds ±REL.chem.capVouch to a player the sitting captain is an ally / enemy of; `People.fates` cuts a feud with the captain one evaluation sooner.
+A clique / feud that appears in a squad you have met is a rumour in the Gazette (`CHEM_TEXT`, stateless: chem before vs after the week). Asks `take_side`: a mate in a
+feud with another mate asks (chance weighed by your stance with both); yes = their side. The Team drawer shows `chemBlock`; a person card shows "With X · Against Y" (`Rel.sides`).
+
 ## Evaluations
 
 `CALENDAR` weeks marked `'eval'` (4, 8 … 24) are the monthly evaluations; `Run.weekType` returns `'eval'` only if `Eval.kind(run)` is
@@ -466,7 +520,7 @@ Peak/Valley) + Street Outlaws + St. Gloria; `team` rebrands the league team in `
 `js/data/city.js`: CITY (coast, Wu's inner line, Wei and Shu polygons, minor ellipses, airport, HQs), SPOTS (several
 training places per stat across regions; sand = technique ×SAND_SP skill points; hotels; outings per region).
 `js/career/city.js` (City): `run.pos` (map point you stand on; a run starts at the airport), `regionAt` (minor patch /
-shrine park / major polygon), `trip` (days by distance, NEAR_R / TRIP_DAY / TRIP_MAX), `go`/`moveTo` (spend, stand,
+shrine park / major polygon), `trip` (days by travel cost `City.path`, NEAR_R / TRIP_DAY / TRIP_MAX), `go`/`moveTo` (spend, stand,
 `reveal` → `run.fog`), `seen` (the dark map), `travelTo` (any land point), `roll` (per-run place quality → `run.spotQ`, found out by training there),
 `price` (TRAIN_FEE / HOTEL × region price), `mul` (quality × home turf, passed to `Training.train/preview` as x),
 `can`/`day`/`scout`. Week = `run.days` (WEEK_DAYS 7): every action costs `City.cost` = trip + 1 day and is refused if
@@ -545,8 +599,10 @@ Plain data for roads and settlements (spec §4.18), no rule uses it yet. `data/c
 [[a, b, kind]] }` (kind `main` / `street` / `dirt` / `path`; nodes at `airport`, every `SPOTS` place with `at` under its own id, `hq0`…`hq7`,
 `home:<housing>` for each `HOME_AT` spot, and `j…` junctions — all on land, all reachable from the airport; a test pins the coordinates to
 their source), `SETTLE` (per region: style, density, gap, setback, size, kinds) and `LANDMARK` (kind per `SPOTS` id and `hq`).
-`City.route(from, to)` → `[from, …road nodes…, to]` (Dijkstra over `ROADS`, ties by node id; a straight `[from, to]` when the ends are
-nearer each other than to any node); trips, days and prices are untouched. `MapModel.build` adds to `land`: `roads` (`{ kind, pts }` per
+`City.path(from, to)` → `{ pts: [from, …road nodes…, to], cost }` (T-048: Dijkstra over `ROADS` on length × `ROAD_COST[kind]`, ties by
+node id; the legs to / from the network and the cross-country alternative cost `City.ground` = length × `GROUND_COST` of the region
+sampled every `GROUND_STEP`; `cost` = the cheaper of the two, `pts` stay on the roads; a straight `[from, to]` when the ends are nearer
+each other than to any node; memoised in `PATH_CACHE`, pure). `City.route` = its `pts`; `City.trip` = ceil(cost / TRIP_DAY) ≤ TRIP_MAX. `MapModel.build` adds to `land`: `roads` (`{ kind, pts }` per
 edge), `lots` (`MapModel.lots`: slots every `SETTLE[region].gap` along each non-path edge, a lot on each side when `hstr(slot) < density`;
 never on water, in another region, near a place, on a road or another lot — superseded by the districts below; cached per
 home spot) and `landmarks` (`{ id, at, kind, region }` for every place, HQ and official venue). Layout uses fixed data + `hstr` only: no `R()` draws.

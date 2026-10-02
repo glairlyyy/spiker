@@ -46,12 +46,13 @@ Result:
 - Ego ✓ (T-068), block collision ✓ (T-069).
 - Player camera polish ✓ (T-070).
 - - NPC careers ✓ (T-060).
-- **Now**: relationships — the core pillar (spec §4.23): T-061 memories + stance next (spec chat details it); T-062…T-066 one at a time. **Then**: road travel (T-048), voice pass (T-022).
+- Relationships ✓ (T-060…T-066, spec §4.23).
+- Relationship review fixes ✓ (T-089).
+- Road travel ✓ (T-048).
+- **Now**: voice pass (T-022), then cleanup part 2 (T-082…T-088).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now — see Next (relationships)
-
-## Next — Relationships, the core pillar (§4.23). One task at a time; the spec chat details each before it moves here.
+## Now
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
@@ -70,16 +71,6 @@ Cleanup, part 2 (after T-071…T-081)
 - T-088: Big binaries — keep base64 for the artifact but store .glb/.mp3 in Git LFS and generate the .txt at publish.
 
 Relationships — the core pillar (spec §4.23; detailed one by one after T-059)
-- T-061: Memory log + stance + bond as a read-only summary (all bond sources become memory kinds; ego acts from `m.egoLog`).
-- T-062: People tab — person cards, discovery of wants / traits, top memories.
-- T-063: Approaches — NPCs come to you (and to each other); you approach them.
-- T-064: Fates — cut / quit / poached / national; end-of-run "People who mattered".
-- T-065: NPC ↔ NPC memories, cliques, squad chemistry.
-- T-066: On-court effects — trust / freeze-out set distribution, cover, rival mood (engine, goldens update).
-
-Roads, part 2 — spec §4.18
-- T-048: Road travel — trip days from the road route length (roads faster than cross-country; Shu paths slower);
-  rules + tests change (career only).
 
 Injuries, part 2 — spec §4.15
 - (T-049 merged into T-057.)
@@ -90,6 +81,14 @@ Phase 5 — Voice pass
 
 ## Done
 
+- [x] T-048: Road travel — trip cost = the cheaper of the road route (ROAD_COST by kind) and cross-country (GROUND_COST: Shu ×1.35); routes follow the cheapest roads; PATH_CACHE. Airport → harbor 3 → 2 days, → trail 2 → 3; MapModel.build +2 ms. 97/97, goldens unchanged. (Done by the spec chat.)
+- [x] T-089: Relationship fixes from the T-061…T-066 review — 97/97 tests, lint clean, goldens unchanged. 1: `People.poach` returns when the next week starts a cup; `Asks.list` / `answer` skip poach_advice during a cup. 2: St. Gloria's reserve gets coachIQ 0.5 before `finalizeTeam` (test: no R() on that path). 3: `People.remove` clears the loan; `Asks.nextPay` is capped at week 28. 4: "went" only when `People.leave` returned a line (else "stayed after all"); the unanswered leave line goes to the Gazette. 5: trust label only for an ally pick, freeze only when a resent / enemy pick is replaced by a non-enemy (the relLog entries follow the same rule; the clutch test now asserts it).
+- [x] T-066: On court — trust, freeze-out, cover and rivals in the match engine — 93/93 tests, lint clean, goldens unchanged (the golden matches pass no flags; empty flags give byte-identical beats). 200 sims, one ally / one enemy WS per setter: clutch sets 1347; ally share 0.319 → 0.365, enemy 0.267 → 0.237; 9 trust / 23 freeze lines. Pop-up saves: an ally never saves less (400 draws, +12 pts). Deviations: one engine-private helper `relTag` (match.js) is a new top-level function; the flags reach the match through `fx.setup` (match-screen.js builds newMatch itself, so `opts.rel` is also supported); the talk beat is pushed from chooseAttack (rally.js, which emits the other set calls, is not in the file list); across-net rivals = your role, within 5 OVR, resent / enemy, and only the NPC gets the mood swing. QA: career match with flags → `m.rel` set, "trusts" at 9-15, no pageerror.
+- [x] T-065: NPC ↔ NPC — they remember each other; cliques, feuds, squad chemistry — RUN_VERSION 14; 89/89 tests, lint clean, goldens unchanged; QA W12 Team chemistry (clique + feud), take_side answered, no pageerror. Deviations: lineup uses the sitting captain (T.cap); off-screen result win share = clamp(0.5 + (team OVR − mean)/50, .15, .85), memories ×0.5 (REL.chem.result); spot_taken pairs are recorded at the swap (across squads, one entry); rumours are stateless (chem before vs after the week); take_side yes = the asker's side.
+- [x] T-064: Fates — cut, quit, poached, called up; "People who mattered" — Fates (cut / quit / poached / abroad / national), snapshot cards, poach_advice ask, run-end "People who mattered"; RUN_VERSION 13. Deviations: for a non-active person `bench` holds the week it happened (no extra field, so the save shape is the listed one); at most one poaching a payday; a quit rolls for every cut player after the weeks (the "spot-satisfied" clause is read as always unsatisfied once cut); an empty St. Gloria reserve is bypassed (they join it after a seat swap in their own faction); nobody is poached from St. Gloria. 82/82 tests, lint green, goldens unchanged. QA: two full headless runs: cut / quit / poached / abroad / national all occur, no crash; the run-end panel renders 5 entries in the page, no pageerror.
+- [x] T-063: Approaches — they come to you, you go to them — Asks (7 kinds) + your own moves; run.asks / loans / vouch / sitout / duo (RUN_VERSION 12); Waiting section + badge. Deviations: one approach per person and one per kind a week; vouch only offered while you are a free agent; call_out only from non-mates (the rival flag only exists inside your squad); invite_train weights lowered so it does not crowd the rest. The bond-calibration test clears asks (unanswered ones count as ignored). 77/77 tests, lint green, goldens unchanged. QA: weeks 1–7 answering every approach, week-8 sit-out move offered, People drawer shows Waiting + badge, no pageerror.
+- [x] T-062: People drawer — person cards, discovering wants and traits, the memories that weigh most — People drawer (squad + others, stance / rival chips, card with want / traits "?" until known, rumour season line, top 3 diary memories); discovery in Rel.add (+ scouting shows wants); Rankings / dossier names open the card. 71/71 tests, lint green, goldens unchanged. QA: 3 training weeks + week-4 eval, drawer rows + card render, Rankings name opens the card, no pageerror.
+- [x] T-061: Memories and stance — bond becomes what an NPC remembers about you — Rel layer + run.mem (RUN_VERSION 11); sources rewired, match rewards no longer carry bond. bondK 8: first mate reaches bond 60 / 80 at week 7.8 / 12.6 (5 seeds) vs baseline 7.6 / 12.6 (±2 held). 67/67 tests, lint green, goldens unchanged. QA: mates' bonds move after 3 training weeks + week-4 eval, no pageerror.
 - [x] T-060: NPC careers — wants, traits, weekly plans, activity-based growth — `People` (hash roll stream, no R()), `run.people` / `run.pseed`, RUN_VERSION 10; match XP spread over the 4 stats (answer a). Tuned xp 20 / hustle 100 / play 100: w12 mean 75.5 (base 75.2), top-10 83.7 (82.2), stars 5.0 (5.8); w28 mean 83.3 (86.5), top-10 94.8 (94.2), stars 10.2 (11.2). Accepted: the w28 mean sits 3 below because bench / reserve players no longer drift up — the top of the league is unchanged. 60/60, goldens unchanged.
 - [x] T-070: POV polish — no teammate in your face, ball on screen for hitters — figures within 0.9 m of the POV eye fade out (~0.1 s) and back; a hitter in a spike pose leans the look fully to the ball (hitter in frame 97–100 % of hitter frames). The overall WS ball-on-screen ≥ 70 % bar is dropped: off-ball frames face the opponent by design (§4.25). 55/55, goldens unchanged.
 - [x] T-069: Block collision — cancelled blocks and the net-fault variant — `EGO.solo.collide` 0.25 / `net` 0.3 (no draw at 0); cov 0, both hop short and stagger, net fault = point to the attackers after the set beat; `plabel` gains `p2` / `v` (warn #ffb13d, err #ff4d4d). 160 sims at ego 1 / wit 0.6: collisions 19.0 % of solo blocks, net faults 28.3 % of those. Goldens updated.
@@ -182,3 +181,5 @@ Phase 5 — Voice pass
 - (recorded, bug fix) Cup panel crash fix (owner report): `rankBest` got `squadOf(entrant)` — a cup entrant is plain data with no `.P`, so the hub threw "Cannot read properties of undefined (reading 'map')" whenever a cup match was next; it now reads `squadOf(Cup.team(run, i))` (the Street crew too); test asserts every entrant has a squad. js/ui/career-week.js, tests/cup.test.js.
 - (recorded in spec §4.25) Main_v2.vrm is your career player's permanent model (assets/vrm/main.glb.txt, README.txt, js/render3d/{players3d,r3d,actors3d}.mjs, ui/menu.js tip); loaded extra models (+ Player model) are random per player in the Monster game again, not in career.
 - (recorded, bug fix) POV fade crash fix (owner report): `povFade` read `A.rdt` while `A` was null on leaving a match (unbind → setPovHidden); guarded (js/render3d/actors3d.mjs).
+- (recorded in spec §4.25) Owner: hair springs fling / feel weightless — each VRM spring joint now uses the figure's root as its `center` (motion measured relative to the root) — js/render3d/players3d.mjs.
+- (recorded in spec §4.25) Owner: calmer hair — `HAIR` { stiff 1, drag 0, gravity 1 } (= the model as exported) on every spring joint — js/render3d/players3d.mjs.

@@ -152,6 +152,8 @@ export function dress(vrm, kit) {
   });
 }
 
+/** Hair / cloth spring tuning: stiffness ×, drag + and gravity × on top of the model's own values (more = less movement). */
+const HAIR = { stiff: 1, drag: 0, gravity: 1 };
 /** Parse a VRM from the shared buffer and wrap it in a root group scaled to `height` metres. */
 export async function makeVRM(buf, height) {
   if (!imgCache.has(buf)) imgCache.set(buf, new Map());
@@ -198,6 +200,16 @@ export async function makeVRM(buf, height) {
     footY = bone('leftFoot').getWorldPosition(v).y;
   const scale = height / headY;
   root.scale.setScalar(scale);
+  // hair / cloth springs: measure motion relative to the figure's root, so the figure running, jumping or being placed at a new spot
+  // (the root moves in world space every frame) no longer flings the hair around — it only reacts to the body's own pose
+  if (vrm.springBoneManager)
+    for (const j of vrm.springBoneManager.joints) {
+      j.center = root;
+      // calmer hair: stiffer and more damped than the model's own settings (tune HAIR; stiff 1 / drag 0 = the model as exported)
+      j.settings.stiffnessForce *= HAIR.stiff;
+      j.settings.dragForce = Math.min(1, j.settings.dragForce + HAIR.drag);
+      j.settings.gravityPower *= HAIR.gravity;
+    }
   const pl = { vrm, root, bone, footRest: footY, headY, scale, prev: new Map(), blinkT: Math.random() * 3, face: {} };
   return pl;
 }

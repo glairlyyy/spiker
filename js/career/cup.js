@@ -181,6 +181,14 @@ const Cup = {
       p.form = +Math.min(1, f).toFixed(2);
     }
     for (const p of squadOf(opp)) p.form = +(rnd(-0.2, 0.2) - (talk === 'calm' ? 0.15 : 0)).toFixed(2);
+    // rivals across the net (T-066): a proud / reckless one comes in fired up, the others rattled (a mood swing, never a stat)
+    for (const p of Rel.rivals(run, opp)) {
+      const hot = Rel.traits(run, p.id).some(t => t === 'proud' || t === 'reckless'),
+        n = p.name.split(' ')[0],
+        line = hot ? `${n} wants this one. Fired up to face me.` : `${n} looks rattled across the net.`;
+      p.form = +clamp(p.form + (hot ? REL_E.rival.fired : REL_E.rival.rattled), -1, 1).toFixed(2);
+      if (!run.log.length || run.log[0].t !== line) Run.log(run, line);
+    }
   },
   /** Your side of the next career match: { T: the squad (a temporary one for a drawn squad), region: whose standing counts for your place }. */
   mine(run, kind) {
@@ -215,14 +223,18 @@ const Cup = {
       round = `${def.name} ${bm.round}`;
     }
     Cup.prepare(run, opp, kind, mine);
-    Run.lineup(run, mine, side.region, false, kind === 'cup' && run.mode.story); // Story: you start every cup match
+    const lu = Run.lineup(run, mine, side.region, false, kind === 'cup' && run.mode.story); // Story: you start every cup match
+    if (lu.starts && lu.rival) Rel.spot(run, lu.rival.p.id); // you took a same-role mate's spot
+    const rel = Rel.matchFlags(run, mine, opp);
     return {
       a: mine,
       b: opp,
       round,
       back: 'Continue',
-      // "Feed me": a captain's buff on you for the first 8 points
+      rel,
+      // relationship flags for the engine (T-066); "Feed me": a captain's buff on you for the first 8 points
       setup: m => {
+        m.rel = rel;
         if (kind === 'cup' && you.cap && run.talk === 'feed') {
           m.buff[you.id] = { lv: 2, n: 8 };
           elBuff(m, you); // an unlocked element: the gauge starts full
@@ -267,11 +279,14 @@ const Cup = {
     Eval.lend(run, mine);
     Eval.lend(run, opp);
     Cup.prepare(run, opp, 'clash', mine);
+    const rel = Rel.matchFlags(run, mine, opp);
     return {
       a: mine,
       b: opp,
       round: `Street battle: ${REGIONS[c.a].name} vs ${REGIONS[c.b].name} · ${c.name}`,
       back: 'Continue',
+      rel,
+      setup: m => (m.rel = rel),
       onFinish: m => {
         Eval.restore();
         return Cup.clashResult(run, m, side, foe);
@@ -304,14 +319,41 @@ const Cup = {
     T.ovr = teamOvr(T);
     return T;
   },
+  /** This week's duo (T-063): the mate who asked takes a seat on your side (the lowest-OVR starter of their role, else the lowest). True if there is a duo. */
+  duoIn(run, T) {
+    const d = run.duo,
+      mate = d && d.week === run.week && squadOf(T).find(p => p.id === d.id);
+    if (!mate) return false;
+    run.duo = null; // used: it was your next challenge this week
+    if (T.P.includes(mate)) return true;
+    const you = Run.you(run),
+      pool = T.P.filter(p => p !== you),
+      same = pool.filter(p => p.role === mate.role),
+      out = (same.length ? same : pool).reduce((a, b) => (ovr(b) < ovr(a) ? b : a)),
+      k = T.P.indexOf(out);
+    T.P[k] = mate;
+    T.bench = (T.bench || []).map(p => (p === mate ? out : p));
+    T.P.forEach((p, i) => (p.slot = ['S', 'MB', 'W0', 'W1'][i]));
+    [T.s, T.mb] = T.P;
+    T.ws = [T.P[2], T.P[3]];
+    T.ovr = teamOvr(T);
+    return true;
+  },
   /**
    * A team challenge you take (spec §4.15): your side (Academy squad, your club's squad, or a hired street crew) against club
    * ti's squad, a real match like a street battle. Nothing is spent until it finishes. Null if the club wouldn't accept now.
    */
-  challenge(run, ti, stake = 0) {
+  challenge(run, ti, stake = 0, force = false) {
     const side = City.challengeSide(run),
       W = City.worth(run, ti, stake);
-    if (!W || !W.accepts || run.event || City.fightBan(run) || City.noTime(run, City.scoutCost(run, ti)) || run.money < side.cost)
+    if (
+      !W ||
+      (!force && !W.accepts) ||
+      run.event ||
+      City.fightBan(run) ||
+      City.noTime(run, City.scoutCost(run, ti)) ||
+      run.money < side.cost
+    )
       return null;
     stake = clamp(Math.round(stake) || 0, 0, City.stakeMax(run));
     const opp = run.teams[ti],
@@ -319,12 +361,16 @@ const Cup = {
     if (side.kind === 'hired') Eval.lend(run, mine);
     Cup.prepare(run, opp, 'challenge', mine);
     Run.lineup(run, mine, City.myRegion(run));
+    if (Cup.duoIn(run, mine)) stake = Math.round(stake / 2); // a mate fights beside you: the stake is split
     Run.lineup(run, opp, null);
+    const rel = Rel.matchFlags(run, mine, opp);
     return {
       a: mine,
       b: opp,
       round: `Challenge: ${mine.name} vs ${opp.name}${stake ? ` · stake $${stake}` : ''}`,
       back: 'Continue',
+      rel,
+      setup: m => (m.rel = rel),
       onFinish: m => {
         Eval.restore();
         return Cup.challengeResult(run, m, ti, stake, side);
@@ -377,6 +423,7 @@ const Cup = {
       risk = City.injuryRisk(run, t.ovr, margin), // (before the trip, the day and the match's tiredness are counted)
       trip = (Cup.record(run, m, 'challenge', { stake }), City.go(run, CITY.hq[ti])),
       out = [Growth.matchXp(run, m), Skills.tryLearn(run, m)];
+    if (win) Rel.beatMe(run, m);
     if (side.cost) {
       const pay = Math.min(run.money, side.cost);
       run.money -= pay;
@@ -422,6 +469,7 @@ const Cup = {
       risk = City.injuryRisk(run, City.crewOvr(run, foe), margin),
       trip = (Cup.record(run, m, 'street'), City.go(run, c.at)),
       out = [Growth.matchXp(run, m), Skills.tryLearn(run, m)];
+    if (win) Rel.beatMe(run, m);
     run.clash.done = true;
     const front = Front.result(run, win ? side : foe, win ? foe : side);
     Rank.points(run, you.id, RANK.street.fight + (win ? RANK.street.win : 0));
@@ -500,6 +548,7 @@ const Cup = {
       score = `${sc[0]}-${sc[1]}`,
       opp = m.t[1];
     Cup.record(run, m, kind, kind === 'cup' ? { round: bm.round } : {});
+    Rel.afterMatch(run, m, 0);
     let line,
       grade = null;
     if (!played) {
@@ -511,7 +560,7 @@ const Cup = {
         def = Run.cupDef(run),
         mul = (kind === 'cup' ? def.mul : 1) * (part ? BENCH.partMul : 1),
         [g, , gmul] = Cup.grade(s, win),
-        R0 = kind === 'cup' ? (win ? REWARDS.cupWin : { sp: 0, fans: 0, bond: 0 }) : win ? REWARDS.warmupWin : REWARDS.warmupLoss;
+        R0 = kind === 'cup' ? (win ? REWARDS.cupWin : { sp: 0, fans: 0 }) : win ? REWARDS.warmupWin : REWARDS.warmupLoss;
       grade = g;
       Rank.meet(run, m);
       const sp = Math.round((R0.sp + plays * REWARDS.perPlay.sp) * mul * gmul),
@@ -524,10 +573,6 @@ const Cup = {
         World.prize(run, Math.round((kind === 'cup' ? (win ? ECON.cupWin : 0) : win ? ECON.warmupWin : ECON.warmupLoss) * mul))
       ];
       if (grade === 'S') out.push(Run.bump(run, 'mood', 1));
-      if (R0.bond) {
-        for (const q of Run.mates(run)) Run.bond(run, q.id, R0.bond);
-        out.push(`+${R0.bond} bond with everyone`);
-      }
       const fm = Cup.focusMet(run, s);
       if (fm) out.push('focus met', Run.bump(run, 'sp', FOCUS_REWARD.sp), Run.bump(run, 'fans', FOCUS_REWARD.fans));
       else if (fm === false) out.push('focus missed');
@@ -567,6 +612,7 @@ const Cup = {
         Run.bump(run, 'sp', Math.round(P.sp * def.mul)),
         World.prize(run, Math.round((ECON.place[place] || 0) * def.mul))
       ];
+    People.national(run);
     run.cups.push({ id: def.id, place, champ });
     Run.log(
       run,

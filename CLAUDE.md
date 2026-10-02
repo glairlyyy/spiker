@@ -12,7 +12,8 @@ Code home: https://github.com/glairlyyy/spiker (branch main). Containers are tem
 - `ARCHITECTURE.md` — HOW the code is built: layers, engine flow, renderer, saves, testing.
 
 ## Workflow (spec-driven, two chats)
-- **Spec chat** (owner + planner model) writes `spec.md`, `lore.md` and `tasks.md`. It does not write game code.
+- **Spec chat** (owner + planner model) writes `spec.md`, `lore.md` and `tasks.md`, reviews the build chat's work, and
+  (owner, 2026-10-02) also implements the next task itself when no build chat is working; it then follows the build loop below.
 - **Build chat** (implementer model) writes code, keeps `ARCHITECTURE.md` current, and ticks tasks. It does not
   edit `spec.md`, `lore.md` or add/reword tasks; it may only change a task's status line and its `Result:` / `Question:` lines.
 
@@ -72,7 +73,7 @@ Build chat loop, one task at a time:
 - Seeded randomness: never change the order/count of R()/rnd()/pick() draws in engine unless the task says so
   (golden changes). Presentation code (hype, element assignment hash, chatter) must draw no randoms.
 - Beat act kinds/flags are the engine↔renderer interface; every act kind needs an `ACTS` handler (render/acts.js) or a `startBeat` case in playback.js (tested).
-- Saves: RUN_VERSION 9 (v9: run.mode.story — Story / Endless), key sns_run_v1. In development, breaking changes just bump the version (task will say).
+- Saves: RUN_VERSION 14 (v10–v14: NPC careers, memories, approaches, fates, NPC ↔ NPC — spec §4.23), key sns_run_v1. In development, breaking changes just bump the version (task will say).
 - Artifact host quirks: confirm()/alert() blocked (use inline confirms); localStorage may throw; blob: URLs may be
   blocked (textures are decoded in memory — keep it that way).
 - Escape all user/data strings in innerHTML with esc().

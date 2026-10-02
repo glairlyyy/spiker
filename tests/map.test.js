@@ -75,6 +75,22 @@ test('career: world layout — roads, routes, lots, landmarks', () => {
     JSON.stringify(g.City.route(g.CITY.airport, g.CITY.hq[4])),
     'same route twice'
   );
+  // T-048: travel cost — roads are faster than the open ground, Shu mountain paths and highland ground are slower
+  const RN = g.ROADS.nodes,
+    dd = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  for (const [a, b] of [
+    ['airport', 'harbor'],
+    ['home:studio', 'trail'],
+    ['dojo', 'cage'],
+    ['hq0', 'sand']
+  ]) {
+    const P = g.City.path(RN[a], RN[b]);
+    assert(P.cost <= g.City.ground(RN[a], RN[b]) + 1e-9, `${a}→${b}: never dearer than going cross-country`);
+    assert(P.pts.length >= 2 && at(P.pts[0], RN[a]) && at(P.pts[P.pts.length - 1], RN[b]), `${a}→${b}: ends at the given points`);
+  }
+  assert(g.City.path(RN.airport, RN.harbor).cost < 0.8 * dd(RN.airport, RN.harbor), 'the coast road: well under the straight distance');
+  assert(g.City.ground(RN.dojo, RN.trail) > dd(RN.dojo, RN.trail), 'highland ground costs more than its length');
+  eq(g.City.path([540, 500], [550, 505]).cost, g.City.ground([540, 500], [550, 505]), 'two close points: the ground cost');
   // the map model: roads, lots, landmarks; no randoms; deterministic
   let draws = 0;
   const next = g.RNG.next;
@@ -406,7 +422,8 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   // travel by distance: close by is free, far is up to 3 days
   run.housing = 'studio';
   eq(g.City.trip(run, g.City.at(run, 'sand')), 0, 'the sand courts are by the airport');
-  eq(g.City.trip(run, g.City.at(run, 'harbor')), g.TRIP_MAX, 'the far east coast: the longest trip');
+  eq(g.City.trip(run, g.City.at(run, 'harbor')), 2, 'the far east coast: the coast road makes it 2 days (T-048)');
+  eq(g.City.trip(run, g.City.at(run, 'dunes')), g.TRIP_MAX, 'the dunes past the harbor: the longest trip');
   eq(g.City.trip(run, [2000, 2000]), g.TRIP_MAX, 'never more than 3 days');
   const m0 = run.money,
     sp0 = run.sp;

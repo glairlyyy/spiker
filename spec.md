@@ -254,7 +254,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   - A Rankings drawer shows the three lists and your rank on each; pre-match and challenge cards show the opponent's
     ranks ("Register #12 · Gazette #3 · Street —"). Display only: no match effects. Aces / the rival appear here later.
 
-- §4.18 Roads, settlements and buildings **[built — T-045, T-046, T-047; T-048 later]** (owner: hybrid look):
+- §4.18 Roads, settlements and buildings **[built — T-045, T-046, T-047, T-048]** (owner: hybrid look):
   - Data first (rules layer, plain data, no randoms): a road network (nodes at the airport, every place, club HQs,
     Central Academy + junctions; edges = main roads, Wei grid streets, Shu dirt / mountain paths); settlement lots
     generated deterministically along roads per region style — Wei dense city blocks, Wu coastal fishing villages and
@@ -266,7 +266,9 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     (Kenney City / Fantasy Town, Quaternius) can replace any kind later from `assets/models/` without touching rules or
     data — owner picks the pieces.
   - Your player walks along the roads (route through the network) instead of a straight line.
-  - Later (T-048, optional): trips along roads cost fewer days than cross-country; Shu mountain paths stay slow.
+  - Travel (built T-048): a trip costs the cheaper of the road route (main / overpass fast, Wei streets, the boardwalk and
+    dirt tracks slower, Shu mountain paths slowest) and going cross-country (the Shu highlands are rough ground). Along
+    the coast road the harbor is 2 days from the airport instead of 3; Shu's mountain trail is 3.
 - §4.19 Town layout revamp **[built — T-050 data, T-051 render; T-047 the walk follows the roads]** (owner: the island should feel as crowded as
   the lore; wider beach; Wu town inland). Districts follow lore.md §3–§5:
   - **Wei** (dense, layered): *Downtown* round Wei Gold's HQ and the league office — a tower grid, the densest place on
@@ -314,7 +316,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   the training cap (75) and match growth (§4.14) are unchanged. Early on you are benched and lose — that is the point
   (evaluations still pay the bench reward). Stats can fall to 1 (events, injuries), never below; a guard repairs any invalid stat on load and before every match (T-056). NPCs are unchanged.
 
-- §4.23 **Relationships — the core pillar** **[locked design (owner); A built T-060; T-061…T-066 next]**
+- §4.23 **Relationships — the core pillar** **[built T-060…T-066; review fixes T-089]**
   Relationships are the main thing to do. Not a dating sim, not support cards: **every NPC is a career too.** They
   want something, grind for it on the same island with the same few slots, and a relationship is the history of two
   careers that keep colliding. You don't fill a gauge; you live through things together (or against each other).
@@ -357,11 +359,11 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
       covered_me (a dig on their bad pass, sat out for them) +8 · vouched +15 · refused_help −6 · lent_money +10 ·
       debt_unpaid −4 per week · called_out −5 · shamed (a Gazette jab about them you caused) −12 (scar).
   - Memories fade (×DECAY per week) except scars, which never fade. A log keeps ≤ 24 entries (same kinds merge).
-  - **Stance** = Σ value × fade × trait multipliers (proud ×2 on scars and beat_me; loyal ×0.5 on negatives once
-    allied; jealous ×1.5 on spot_taken and on your wins; warm ×1.3 on positives; cynical ×0.7 on positives; calculating
-    weighs only memories with a payoff: carried, vouched, lent_money). Tags by stance: **ally** · **respect** ·
-    neutral · **rival** · **resent** · **enemy**. A same-role mate within 5 OVR in the same squad is a rival whatever
-    the stance sign (a warm rival vs a bitter rival).
+  - **Stance** = Σ value × fade × trait multipliers (proud ×2 on scars and beat_me; loyal ×0.6 on negatives; jealous
+    ×1.5 on spot_taken, and your hero plays count against you; warm ×1.3 / cynical ×0.7 on positives; calculating ×1.5 on
+    memories with a payoff — won_together, carried, vouched, lent_money — ×0.5 on the rest). Tags by stance: **ally** ·
+    **respect** · neutral · **resent** · **enemy**; **rival** is a separate flag: a same-role mate within 5 OVR in the
+    same squad, whatever the stance (a warm rival vs a bitter rival).
   - The old `bond` (0–100) becomes a read-only summary of the stance (for goals, form and the Team drawer); every
     current bond source becomes a memory kind instead.
 
@@ -414,6 +416,16 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
     feature never reshuffles the rest of the career; the engine sees only per-match flags (who trusts / resents whom)
     passed in, so engine goldens change only with E.
 
+  **Build decisions (2026-10-02, spec chat):** approaches wait in the People drawer (never block the map; figures on
+  the map come later with §4.16 B); a sit-out request is never offered in a Story cup; poached `money` players go to
+  St. Gloria (still in play), `leave` players go abroad (gone); NPC ↔ NPC memories carry `a` (who feels it); on-court
+  effects are gated on per-match flags, so the engine goldens never move for Monster / sims.
+
+  **As built (T-061…T-066):** bond = clamp(stance × 8, 0, 100) (60 / 80 reached at weeks ~8 / ~13 as before); at most
+  one approach per person and per kind a week; a vouch is offered only while you are a free agent; a call-out comes from
+  outside your squad; at most one poaching per payday; NPC ↔ NPC off-screen results count half; clutch trust / freeze
+  moves a setter's ally share ~32 → 37 % and enemy ~27 → 24 %.
+
   **I. Build order (tasks after the camera, each small):**
   T-060 NPC wants / traits / status + weekly plans and activity-based growth (data + sim, headless) ·
   T-061 memory log + stance + bond as summary (migrate bond sources) · T-062 People tab (cards, discovery) ·
@@ -437,7 +449,8 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   still; a ball far out of the map never drags the view (look target clamped to the court box, eased out while
   hidden), and a hype shot's exit turns the view smoothly. In POV, figures that come within arm's reach of the eye fade out.
   Your career player is always the owner's own model (Main_v2, kept in its own colours); loaded extra models appear only
-  in the Monster game (random per player).
+  in the Monster game (random per player). VRM hair / cloth springs move relative to the figure (no flinging when it
+  runs or is placed), at the model's own stiffness.
 
 - §4.26 Game modes **[locked (owner), built T-067; Endless = backlog]**: a new run picks **Story** (default) or
   **Endless** (later).

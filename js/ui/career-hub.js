@@ -5,6 +5,7 @@
 const HUB_DRAWERS = {
   me: ['👤', 'Player', run => youCard(run) + seasonCard(run)],
   team: ['🤝', 'Team', run => bondCard(run)],
+  people: ['👥', 'People', run => peopleCard(run)],
   skills: ['✨', 'Skills', run => skillShop(run, true)],
   season: ['📅', 'Season', run => `<div class="panel">${calendar(run)}</div>` + seasonCard(run) + matchLog(run)],
   life: ['🏠', 'Life', run => lifeCard(run)],
@@ -126,7 +127,7 @@ function hudMe(run) {
 function hudBar(run) {
   const you = Run.you(run),
     aff = Skills.forRole(you.role).filter(id => !you.skills.includes(id) && Skills.canLearn(run, id)).length,
-    badge = { skills: aff, news: run.gazette && !run.gazette.read ? '!' : 0, clubs: 0 };
+    badge = { skills: aff, news: run.gazette && !run.gazette.read ? '!' : 0, clubs: 0, people: Asks.count(run) };
   return `<nav class="hud dock" aria-label="Shortcuts">${Object.entries(HUB_DRAWERS)
     .filter(([k]) => k !== 'me' && (k !== 'clubs' || World.isFree(run)))
     .map(

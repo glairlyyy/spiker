@@ -2,7 +2,7 @@
 // Gazette, the event card, evaluation / Cup match cards and the skills shop, plus their handlers.
 
 /** Hub UI state: Hard toggle, selected place, open drawer, last diary line shown as a toast. */
-let CW = { hard: false, spot: null, drawer: null, toast: null, dossier: null, rank: 'register' };
+let CW = { hard: false, spot: null, drawer: null, toast: null, dossier: null, rank: 'register', person: null };
 
 function youCard(run) {
   const you = Run.you(run),
@@ -96,6 +96,10 @@ function bondCard(run) {
   return `<div class="panel"><h3>Teammates${info('Training together shares your gains and raises their odds of breaking through to ★ star or OP. 60+ bond: two-player combos. 80+: friendship training (+50%).')}</h3>${
     alone ? '<p class="small mute">No squad. The Academy no longer lists you.</p>' : ''
   }${row(mates.filter(m => !onBench(m)))}${mates.some(onBench) ? `<h4>Bench</h4>${row(mates.filter(onBench))}` : ''}${
+    alone
+      ? ''
+      : `<h4>Chemistry${info('Allies who rate each other form cliques; the captain starts his friends a little more often. Feuds go the other way.')}</h4>${chemBlock(run)}`
+  }${
     World.isFree(run) && run.academy !== false
       ? `<p class="small mute" id="leaveac"><button class="btn" onclick="leaveSquad()" ${tip('The Academy will not invite you again')}>Leave squad</button></p>`
       : ''
@@ -203,7 +207,7 @@ function rankCard(run) {
     n = RANK.top,
     at = list.findIndex(r => r.id === you.id),
     row = (r, i) =>
-      `<tr class="${r.id === you.id ? 'you' : ''}"><td>${i + 1}</td><td>${esc(r.name)}</td><td>${r.region ? esc(REGIONS[r.region].name) : 'Academy'} · ${r.role}</td><td>${
+      `<tr class="${r.id === you.id ? 'you' : ''}"><td>${i + 1}</td><td>${r.id === you.id ? esc(r.name) : `<a class="plink" onclick="openPerson('${esc(String(r.id))}')">${esc(r.name)}</a>`}</td><td>${r.region ? esc(REGIONS[r.region].name) : 'Academy'} · ${r.role}</td><td>${
         tab === 'register' ? (r.ovr == null ? '<i class="mute">unrated</i>' : r.ovr) : tab === 'gazette' ? Math.round(r.fame) : r.pts
       }</td></tr>`,
     gap = '<tr class="gap"><td colspan="4">…</td></tr>',
@@ -249,7 +253,7 @@ function evalPanel(run) {
     list = (ps, showOvr) =>
       ps.map(p => `<span>${stag(p)}${esc(p.name)} <i class="mute">${p.role}${showOvr ? ' ' + ovr(p) : ''}</i></span>`).join(' · '),
     byId = ids => ids.map(id => all.find(p => p.id === id)).filter(Boolean),
-    head = `<h3>Week ${run.week}: ${esc(label)} evaluation${info(`Win: +${REWARDS.warmupWin.sp} skill pts, +${REWARDS.warmupWin.fans} fans, +${REWARDS.warmupWin.bond} bond. Loss: +${REWARDS.warmupLoss.sp} skill pts, +${REWARDS.warmupLoss.fans} fans. Each of your kills, blocks and aces adds more.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3>`;
+    head = `<h3>Week ${run.week}: ${esc(label)} evaluation${info(`Win: +${REWARDS.warmupWin.sp} skill pts, +${REWARDS.warmupWin.fans} fans; teammates who played with you remember the win. Loss: +${REWARDS.warmupLoss.sp} skill pts, +${REWARDS.warmupLoss.fans} fans. Each of your kills, blocks and aces adds more.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3>`;
   if (e.kind === 'faction' && !e.mine)
     return `<div class="panel">${head}<p>Not selected this month.</p>
     <div class="trow"><button class="btn hot big" onclick="benchEval()">Watch from the bench</button></div></div>`;

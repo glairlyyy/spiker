@@ -5,6 +5,8 @@
 // Places belong to regions (REGIONS): the region sets the price and the quality; Wei's premium places may turn out
 // overhyped and Shu's rough ones may be hidden gems (rolled per run, found out by training there). DOM-free.
 
+/** City.path results by end points (pure, so safe to keep; ROADS never changes at run time). */
+const PATH_CACHE = new Map();
 const City = {
   /** Days left this week (night falls at 0: only End week remains). */
   days: run => (Number.isFinite(run.days) ? run.days : WEEK_DAYS),
@@ -105,11 +107,10 @@ const City = {
   },
   /** On the island? */
   onLand: p => inPoly(p, CITY.coast),
-  /** Travel days from where you are to point p: 0 close by, then one per TRIP_DAY map units, at most TRIP_MAX. */
+  /** Travel days from where you are to point p: 0 close by, then one per TRIP_DAY units of travel cost (City.path), at most TRIP_MAX. */
   trip(run, p) {
-    const [x, y] = City.pos(run),
-      d = Math.hypot(p[0] - x, p[1] - y);
-    return d <= NEAR_R ? 0 : Math.min(TRIP_MAX, Math.ceil(d / TRIP_DAY));
+    const from = City.pos(run);
+    return Math.hypot(p[0] - from[0], p[1] - from[1]) <= NEAR_R ? 0 : Math.min(TRIP_MAX, Math.ceil(City.path(from, p).cost / TRIP_DAY));
   },
   /** Stand at p (you've spent the days): the fog lifts around it. */
   moveTo(run, p) {
@@ -208,10 +209,10 @@ const City = {
       run.money -= cost;
       out.push(`−$${cost}`);
     }
-    if (s.act === 'ramen') out.push(Run.bond(run, mate, 6), Run.bump(run, 'sta', 10));
+    if (s.act === 'ramen') out.push(Run.bond(run, mate, undefined, 'hung_out'), Run.bump(run, 'sta', 10));
     else if (s.act === 'arcade') {
       out.push(Run.bump(run, 'mood', 1));
-      for (const m of Run.mates(run)) out.push(Run.bond(run, m.id, 3));
+      for (const m of Run.mates(run)) out.push(Run.bond(run, m.id, undefined, 'hung_out'));
     } else if (s.act === 'street') {
       const rival = Math.round(rnd(STREET.rival[0], STREET.rival[1])),
         you = ovr(Run.you(run)),
@@ -241,23 +242,37 @@ const City = {
     City.moveTo(run, p);
     return `Travelled to ${REGIONS[City.loc(run)].name} (${t} day${t > 1 ? 's' : ''}).`;
   },
+  /** The road path from map point `from` to `to` (spec §4.18): the points of City.path. */
+  route: (from, to) => City.path(from, to).pts,
   /**
-   * The road path from map point `from` to `to` (spec §4.18): [from, …road nodes…, to] over ROADS — the nearest node to each end,
-   * the shortest way between them (Dijkstra; ties broken by node id, so the same call always gives the same path). A straight
-   * line [from, to] when the two ends are nearer each other than to any node. Pure data, no randoms; trips and days are unchanged.
+   * The way from map point `from` to `to` (spec §4.18, T-048): { pts: [from, …road nodes…, to], cost } — the nearest node to each end,
+   * the cheapest way between them over ROADS (Dijkstra on length × ROAD_COST[kind]; ties broken by node id, so the same call always
+   * gives the same path), the legs to / from the network as ground. `cost` is the cheaper of that and going cross-country (City.ground);
+   * the points stay on the roads (you walk them) unless the two ends are nearer each other than to any node. Pure data, no randoms.
    */
-  route(from, to) {
+  path(from, to) {
+    const key = `${from[0]},${from[1]}>${to[0]},${to[1]}`,
+      hit = PATH_CACHE.get(key);
+    if (hit) return { pts: hit.pts.map(p => p.slice()), cost: hit.cost };
+    if (PATH_CACHE.size > 4000) PATH_CACHE.clear();
+    const r = City.pathRaw(from, to);
+    PATH_CACHE.set(key, r);
+    return { pts: r.pts.map(p => p.slice()), cost: r.cost };
+  },
+  pathRaw(from, to) {
     const N = ROADS.nodes,
       ids = Object.keys(N).sort(),
       d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]),
       near = p => ids.reduce((best, id) => (d(p, N[id]) < d(p, N[best]) ? id : best), ids[0]),
       a = near(from),
-      b = near(to);
-    if (d(from, to) <= d(from, N[a]) && d(from, to) <= d(to, N[b])) return [from.slice(), to.slice()];
+      b = near(to),
+      straight = { pts: [from.slice(), to.slice()], cost: City.ground(from, to) };
+    if (d(from, to) <= d(from, N[a]) && d(from, to) <= d(to, N[b])) return straight;
     const adj = {};
-    for (const [u, v] of ROADS.edges) {
-      (adj[u] = adj[u] || []).push(v);
-      (adj[v] = adj[v] || []).push(u);
+    for (const [u, v, kind] of ROADS.edges) {
+      const w = d(N[u], N[v]) * (ROAD_COST[kind] ?? 1);
+      (adj[u] = adj[u] || []).push([v, w]);
+      (adj[v] = adj[v] || []).push([u, w]);
     }
     const dist = { [a]: 0 },
       prev = {},
@@ -267,16 +282,28 @@ const City = {
       for (const id of ids) if (!done.has(id) && dist[id] != null && (u === null || dist[id] < dist[u])) u = id;
       if (u === null || u === b) break;
       done.add(u);
-      for (const v of adj[u] || []) {
-        const nd = dist[u] + d(N[u], N[v]);
+      for (const [v, w] of adj[u] || []) {
+        const nd = dist[u] + w;
         if (dist[v] == null || nd < dist[v] - 1e-9 || (Math.abs(nd - dist[v]) <= 1e-9 && u < prev[v])) ((dist[v] = nd), (prev[v] = u));
       }
     }
-    if (dist[b] == null) return [from.slice(), to.slice()]; // (not connected: cannot happen with ROADS as shipped)
+    if (dist[b] == null) return straight; // (not connected: cannot happen with ROADS as shipped)
+    const cost = Math.min(straight.cost, City.ground(from, N[a]) + dist[b] + City.ground(N[b], to));
     const path = [];
     for (let id = b; id !== undefined; id = prev[id]) path.unshift(id);
     const pts = [from, ...path.map(id => N[id]), to].filter((p, i, A) => !i || p[0] !== A[i - 1][0] || p[1] !== A[i - 1][1]);
-    return pts.map(p => p.slice());
+    return { pts: pts.map(p => p.slice()), cost };
+  },
+  /** Cross-country cost from a to b: the distance, each GROUND_STEP-long stretch × GROUND_COST of the region at its middle. */
+  ground(a, b) {
+    const L = Math.hypot(b[0] - a[0], b[1] - a[1]),
+      n = Math.max(1, Math.ceil(L / GROUND_STEP));
+    let c = 0;
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n;
+      c += (L / n) * (GROUND_COST[City.regionAt([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t])] ?? 1);
+    }
+    return c;
   },
   /** Days to scout club ti: the trip to its HQ + a day. */
   scoutCost: (run, ti) => City.trip(run, CITY.hq[ti]) + 1,

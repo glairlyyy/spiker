@@ -706,3 +706,158 @@ test('engine: block collision (T-069) — only after a solo block, no touch, net
     'EGO.solo.collide 0: solo blocks, no collisions'
   );
 });
+
+// ---- Relationships on court (T-066, spec §4.23 E) ----
+// m.rel = { tag: { 'idA|idB': band }, rival: Set }; every effect is gated on it (Monster / sims / goldens pass none).
+const relAll = (g, T, band, rivals) => {
+  const rel = { tag: {}, rival: new Set() };
+  for (const t of T)
+    for (const x of g.squadOf(t))
+      for (const y of g.squadOf(t))
+        if (x !== y) {
+          if (band) rel.tag[`${x.id}|${y.id}`] = band;
+          if (rivals) rel.rival.add(`${x.id}|${y.id}`);
+        }
+  return rel;
+};
+test('rel on court: no flags — and empty flags — leave every beat byte-identical', () => {
+  const play = rel => {
+    const g = load(42),
+      T = g.mkTeams();
+    let out = '';
+    for (let i = 0; i < 3; i++) {
+      const m = g.newMatch(T[i % 8], T[(i + 3) % 8], true, rel ? { rel } : {});
+      while (!m.over) out += JSON.stringify(g.playRally(m).beats);
+      out += JSON.stringify([m.setScores, m.stat]);
+    }
+    return out;
+  };
+  const base = play(null);
+  eq(hash(play({ tag: {}, rival: new Set() })), hash(base), 'empty flags: the same beats');
+  assert(base.length > 1000, 'something was played');
+});
+test('rel on court: the clutch — a setter feeds allies more and freezes out enemies; trust / freeze lines', () => {
+  const run = flagsOn => {
+    const g = load(7),
+      T = g.mkTeams(),
+      ally = {},
+      foe = {},
+      who = {},
+      rel = { tag: {}, rival: new Set() };
+    for (const t of T) {
+      const ws = g.squadOf(t).filter(p => p.role === 'WS');
+      [ally[t.name], foe[t.name]] = ws;
+      for (const p of g.squadOf(t)) who[p.id] = t.name;
+      if (flagsOn)
+        for (const x of g.squadOf(t)) {
+          if (x !== ws[0]) rel.tag[`${x.id}|${ws[0].id}`] = 'ally';
+          if (x !== ws[1]) rel.tag[`${x.id}|${ws[1].id}`] = 'enemy';
+        }
+    }
+    const n = { all: 0, ally: 0, foe: 0, trust: 0, freeze: 0, bad: 0 };
+    let lines = 0;
+    for (let i = 0; i < 200; i++) {
+      const a = T[i % 8],
+        b = T[(i * 3 + 1) % 8],
+        m = g.newMatch(a, b, i < 20, { rel });
+      while (!m.over) {
+        const r = g.playRally(m);
+        for (const bt of r.beats || []) for (const x of bt.acts || []) if (x.k === 'log' && /trusts|freezes/.test(x.t)) lines++;
+      }
+      for (const e of m.relLog) {
+        if (e.act === 'trust') (n.trust++, e.tag !== 'ally' && n.bad++);
+        else if (e.act === 'freeze') (n.freeze++, !['resent', 'enemy'].includes(e.tag) && n.bad++);
+        else {
+          n.all++;
+          if (e.mate === ally[who[e.p]].id) n.ally++;
+          if (e.mate === foe[who[e.p]].id) n.foe++;
+        }
+      }
+    }
+    return { ...n, lines };
+  };
+  const off = run(false),
+    on = run(true);
+  assert(off.all > 500, `enough clutch sets to judge (${off.all})`);
+  assert(off.trust === 0 && off.freeze === 0 && off.lines === 0, 'no flags: no trust / freeze');
+  assert(
+    on.ally / on.all > off.ally / off.all,
+    `ally share of clutch sets up: ${(off.ally / off.all).toFixed(3)} → ${(on.ally / on.all).toFixed(3)}`
+  );
+  assert(on.foe / on.all < off.foe / off.all, `enemy share down: ${(off.foe / off.all).toFixed(3)} → ${(on.foe / on.all).toFixed(3)}`);
+  eq(on.bad, 0, 'trust is said only of an ally, freeze only of a resent / enemy hitter (T-089)');
+  assert(on.trust > 0 && on.freeze > 0 && on.lines > 0, `trust ${on.trust} / freeze ${on.freeze} noted, ${on.lines} log lines`);
+  console.log(
+    `  clutch sets ${off.all} → ally ${(off.ally / off.all).toFixed(3)} / ${(on.ally / on.all).toFixed(3)}, enemy ${(off.foe / off.all).toFixed(3)} / ${(on.foe / on.all).toFixed(3)}, trust ${on.trust}, freeze ${on.freeze}`
+  );
+});
+test('rel on court: an ally covers better (pop-up save), the captain buffs allies first, ego halves toward allies and grows toward rivals', () => {
+  // pop-up save: the same draws, +REL_E.cover on the chance for an ally of the first touch — never fewer saves
+  const pops = band => {
+    const g = load(9),
+      [a, b] = g.mkTeams(),
+      rel = relAll(g, [a, b], band);
+    g.RNG.seed(5);
+    const m = g.newMatch(a, b, false, { rel }),
+      out = [];
+    for (let i = 0; i < 400; i++) out.push(g.popRecovery(m, 0, a, a.P[0], 400, 0.5, 90, 1).ok);
+    return out;
+  };
+  const p0 = pops(null),
+    p1 = pops('ally');
+  assert(
+    p0.every((ok, i) => !ok || p1[i]),
+    'an ally never saves less'
+  );
+  assert(
+    p1.filter(Boolean).length > p0.filter(Boolean).length + 20,
+    `more saves: ${p0.filter(Boolean).length} → ${p1.filter(Boolean).length}`
+  );
+  // captain's buff: an ally of the captain (here the second-best mate) is picked over the hottest hitter
+  const buffs = ally => {
+    const g = load(10),
+      [a, b] = g.mkTeams(),
+      cap = a.P[0];
+    cap.lead = 99;
+    const mates = a.P.filter(p => p !== cap).sort((x, y) => g.confidence(y, null, 0) - g.confidence(x, null, 0)),
+      rel = { tag: ally ? { [`${cap.id}|${mates[1].id}`]: 'ally' } : {}, rival: new Set() };
+    a.cap = cap;
+    g.RNG.seed(3);
+    const m = g.newMatch(a, b, false, { rel });
+    let hit = 0,
+      tot = 0;
+    for (let i = 0; i < 600; i++) {
+      m.buff = {};
+      g.captainThink(m, 0);
+      for (const id in m.buff) {
+        tot++;
+        if (id === String(mates[1].id) || id === mates[1].id) hit++;
+      }
+    }
+    return [hit, tot];
+  };
+  const [h0, t0] = buffs(false),
+    [h1, t1] = buffs(true);
+  assert(t0 > 20 && t1 > 20, `the captain buffs (${t0} / ${t1})`);
+  assert(h1 / t1 > h0 / t0, `allies first: ${(h0 / t0).toFixed(2)} → ${(h1 / t1).toFixed(2)}`);
+  // ego steals: toward allies ×0.5, toward rivals ×1.5
+  const steals = (band, rivals) => {
+    const g = load(11),
+      T = g.mkTeams(),
+      rel = relAll(g, T, band, rivals);
+    for (const t of T) for (const p of g.squadOf(t)) ((p.wit = 0.1), (p.ego = 1));
+    let n = 0;
+    for (let i = 0; i < 80; i++) {
+      const m = g.newMatch(T[i % 8], T[(i * 3 + 1) % 8], false, { rel });
+      while (!m.over) g.playRally(m);
+      n += m.egoLog.filter(e => e.act === 'steal').length;
+    }
+    return n;
+  };
+  const s0 = steals(null, false),
+    sa = steals('ally', false),
+    sr = steals(null, true);
+  assert(s0 > 100, `enough steals to judge (${s0})`);
+  assert(sa < s0 * 0.75, `allies steal less: ${s0} → ${sa}`);
+  assert(sr > s0 * 1.2, `rivals steal more: ${s0} → ${sr}`);
+});
