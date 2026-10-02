@@ -79,13 +79,14 @@ function hubCard(run, nextCup) {
     def = c && (att === c.a ? c.b : c.a);
   if (c && !run.clash.seen)
     return {
-      html: `<div class="panel ev"><span class="evk">Street battle</span><h3>${esc(REGIONS[att].name)} raid ${esc(REGIONS[def].name)}</h3>
-      <p>Word on the street: ${esc(REGIONS[att].name)} crews are hitting ${esc(REGIONS[def].name)} at ${esc(c.name)} this week${
-        Front.meter(run, att, def) > 0
-          ? ` — pressing a border they're winning (${Front.meter(run, att, def)}/${FRONT.seize} to seize a place)`
+      html: `<div class="panel ev"><span class="evk">Street battle</span><h3>${chip(REGIONS[att])}${esc(REGIONS[att].name)} raid ${chip(REGIONS[def])}${esc(REGIONS[def].name)} · ${esc(c.name)}</h3>
+      <p class="seizeline">Seize ${Math.max(0, Front.meter(run, att, def))}/${FRONT.seize}${
+        Front.stakes(run, att, def).seize && Front.stakes(run, att, def).place
+          ? ` · a win takes ${esc(SPOTS[Front.stakes(run, att, def).place].name)}`
           : ''
-      }. Go and watch — or pick a side. Nobody shows up? They settle it themselves at the week's end.</p>
-      <div class="evc acts two"><button class="btn hot" onclick="clashSeen(true)"><b>Take a look</b><small>Show it on the map (${City.clashCost(run)} day${City.clashCost(run) > 1 ? 's' : ''} to get involved)</small></button><button class="btn" onclick="clashSeen(false)"><b>Stay out of it</b><small>It's on the map all week</small></button></div></div>`,
+      }</p>
+      <p class="small mute">Nobody shows up? They settle it themselves at the week's end.</p>
+      <div class="evc acts two"><button class="btn hot" onclick="clashSeen(true)"><b>Take a look</b><small>${City.clashCost(run)} day${City.clashCost(run) > 1 ? 's' : ''} to join</small></button><button class="btn" onclick="clashSeen(false)"><b>Stay out</b><small>It's on the map all week</small></button></div></div>`,
       dim: true
     };
   if (run.gazette && !run.gazette.read) return { html: gazetteCard(run), dim: true };

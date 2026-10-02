@@ -2066,3 +2066,20 @@
   display: grid;
   place-items: center;
 }
+/* street battle intro (T-101) */
+.evc .btn.hot small {
+  color: var(--on-ink);
+}
+.ev .seizeline {
+  margin: 4px 0;
+  font-weight: 600;
+}
+.ev h3,
+.recap h3 {
+  margin: 4px 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink);
+}

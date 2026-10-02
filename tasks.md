@@ -161,7 +161,7 @@ Steps:
   QA: career run → Life drawer; screenshot.
   Result: done — `homeRow` (career-week.js): 5 `.rowcta` rows — region chip, name, `$rent / payday`, effects (Rest ×, mood on payday %, noise %, sick %, leadership) in good/bad, desc as tooltip; current home in the selected style with "Home", others `Move in` → setHousing (never disabled: rent is only due on payday; the tip shows rent vs money when short). QA: Life drawer screenshot, Move in works, no pageerror.
 
-### [ ] T-101: Street battle intro card — stakes and plain copy
+### [x] T-101: Street battle intro card — stakes and plain copy
 
 Spec: §4.6 §9.1 §9.7 Goldens: unchanged Save: no change
 Goal: the week-start battle card says what's at stake before "Take a look".
@@ -176,7 +176,7 @@ Steps:
 
 - Card ≤ 3 lines above the choices; seize meter visible; sub-text readable (≥4.5:1).
   QA: career run → force a clash week; screenshot.
-  Result:
+  Result: done — title `{att} raid {def} · {site}` with faction chips (event-card titles now in the `title` style, not the uppercase label), `Seize n/2` line (+ "a win takes {place}" from Front.stakes), one flavour line, choices `Take a look — n days to join` / `Stay out — it's on the map all week` in sentence case (sub-text on the ink button in `on-ink`). QA: forced clash week screenshot, no pageerror.
 
 ## Next
 
