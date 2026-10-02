@@ -49,8 +49,7 @@ function renderCreate() {
             `<label class="opt" ${tip(m.desc)}><input type="checkbox" ${CR.mode[k] ? 'checked' : ''} onchange="CR.mode.${k}=this.checked;renderCreate()"> <b>${m.name}</b></label>`
         )
         .join('')}
-      <button class="btn hot big" onclick="crStart()">Start career</button>
-      <button class="btn big" onclick="CR=null;navigate('menu')">Back</button>
+      <div class="act pri"><button class="btn hot" onclick="crStart()">Start career</button><button class="btn" onclick="CR=null;navigate('menu')">Back</button></div>
     </div>
   </section>`;
 }

@@ -224,12 +224,12 @@ function rankCard(run) {
       }</td></tr>`,
     gap = '<tr class="gap"><td colspan="4">…</td></tr>',
     rows = list.slice(0, n).map(row).join('') + (at >= n ? gap + row(list[at], at) : '');
-  return `<div class="tabs rk">${Object.entries(RANK_TABS)
-    .map(([k, [name]]) => `<button class="btn ${k === tab ? 'hot' : ''}" onclick="rankTab('${k}')">${name}</button>`)
+  return `<div class="panel"><div class="tabs rk">${Object.entries(RANK_TABS)
+    .map(([k, [name]]) => `<button class="btn ${k === tab ? 'on' : ''}" onclick="rankTab('${k}')">${name}</button>`)
     .join('')}</div>
     <p class="small mute">${RANK_TABS[tab][1]}</p>
     ${list.length ? `<table class="rk"><tbody>${rows}</tbody></table>` : '<p class="small mute">Nobody on the board yet.</p>'}
-    ${at < 0 ? `<p class="small mute">You are not on this list${tab === 'street' ? ' — fight, hustle, or take a challenge.' : '.'}</p>` : ''}`;
+    ${at < 0 ? `<p class="small mute">You are not on this list${tab === 'street' ? ' — fight, hustle, or take a challenge.' : '.'}</p>` : ''}</div>`;
 }
 /** "Their best: <name> Register #n · Gazette #n" for up to 2 of a squad's players (skips null ranks). */
 function rankBest(run, ps) {
@@ -256,7 +256,7 @@ function rankBest(run, ps) {
     : '';
 }
 /** The evaluation week's card: play (or Sim) your evaluation match, or watch from the bench when not selected. */
-function evalPanel(run) {
+function evalPanel(run, note = '') {
   const e = run.eval || Eval.setup(run),
     label = e.kind === 'academy' ? 'Academy' : REGIONS[e.region].name,
     D = Dossier.build(run, e.region),
@@ -268,7 +268,7 @@ function evalPanel(run) {
     head = `<h3>Week ${run.week}: ${esc(label)} evaluation${info(`Win: +${REWARDS.evalWin.sp} skill pts, +${REWARDS.evalWin.fans} fans; teammates who played with you remember the win. Loss: +${REWARDS.evalLoss.sp} skill pts, +${REWARDS.evalLoss.fans} fans. Each of your kills, blocks and aces adds more.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3>`;
   if (e.kind === 'faction' && !e.mine)
     return `<div class="panel">${head}<p>Not selected this month.</p>
-    <div class="trow"><button class="btn hot big" onclick="benchEval()">Watch from the bench</button></div></div>`;
+    ${note}<div class="act"><button class="btn hot" onclick="benchEval()">Watch from the bench</button></div></div>`;
   const mine = e.kind === 'academy' ? club.P : byId(e.mine).slice(0, 4); // the 4 who start
   return `<div class="panel">${head}
     <p class="small"><b>${e.kind === 'academy' ? esc(club.name) : esc(club.name) + ' squad'}</b> ${list(mine, true)}</p>
@@ -277,7 +277,7 @@ function evalPanel(run) {
     ${D.scouted || D.member ? '' : '<p class="small mute">Scout one of their clubs to see ratings.</p>'}
     ${rankBest(run, byId(e.opp).slice(0, 4))}
     ${matchPrep(run, false)}
-    <div class="trow"><button class="btn hot big" onclick="playCareer('eval')">Play evaluation</button><button class="btn big" onclick="playCareer('eval', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
+    ${note}<div class="act pri"><button class="btn hot" onclick="playCareer('eval')">Play evaluation</button><button class="btn" onclick="playCareer('eval', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
 }
 /** Not selected: watch from the bench (wit XP) and end the week. */
 function benchEval() {
@@ -329,7 +329,7 @@ function recapCard(run) {
   return `<div class="panel recap"><span class="rk">${typeof R2.week === 'number' ? `Week ${R2.week}` : esc(R2.week)} done</span>
     ${R2.rows.length ? `<div class="rrows">${R2.rows.map(([c, t]) => `<span class="rr ${c}">${esc(t)}</span>`).join('')}</div>` : ''}
     ${R2.lines.length ? `<ul class="rlog">${R2.lines.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
-    <div class="evc"><button class="btn hot" onclick="recapDone()">Continue</button></div></div>`;
+    <div class="act"><button class="btn hot" onclick="recapDone()">Continue</button></div></div>`;
 }
 function recapDone() {
   CW.recap = null;
@@ -366,7 +366,7 @@ function cupPanel(run, nm) {
     <div class="panel"><h3>${nm.round}${info(`Win: +${Math.round(REWARDS.cupWin.sp * def.mul)} skill pts, +${Math.round(REWARDS.cupWin.fans * def.mul).toLocaleString()} fans. A loss ends the season.\nPlacement: round of 16 +${fans('Round of 16')} fans · quarterfinal +${fans('Quarterfinal')} · semifinal +${fans('Semifinal')} · runner-up +${fans('Final')} · champion +${fans('Champion')} — and a place on the national team.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3><p>vs <b>${esc(E[nm.a === me ? nm.b : nm.a].name)}</b>${City.venue(run) ? ` at <b>${esc(VENUES[City.venue(run)].name)}</b>` : ''}</p>
       ${rankBest(run, squadOf(Cup.team(run, nm.a === me ? nm.b : nm.a)))}
       ${matchPrep(run, true)}
-    <div class="trow"><button class="btn hot big" onclick="playCareer('cup')">Play ${nm.round.toLowerCase()}</button><button class="btn big" onclick="playCareer('cup', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
+    <div class="act pri"><button class="btn hot" onclick="playCareer('cup')">Play ${nm.round.toLowerCase()}</button><button class="btn" onclick="playCareer('cup', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
 }
 function eventCard(run) {
   const e = Events.def(run.event, run),
@@ -389,7 +389,7 @@ function eventCard(run) {
   const kind = { sponsor: 'Sponsor', element: 'Element Trial' }[run.event.id] || 'Event',
     you = Run.you(run);
   return `<div class="panel ev ${run.event.id === 'element' ? 'lbk' : ''}"${run.event.id === 'element' ? ` style="--lbk:${ECOL[you.el]}"` : ''}><span class="evk">${kind}</span><h3>${esc(e.title)}</h3><p>${esc(Events.text(run, run.event, e.text))}</p>
-    <div class="evc">${[e.a, e.b].map(([label, fx], i) => `<button class="btn" onclick="chooseEvent(${i})"><b>${esc(label)}</b><small>${esc(fxText(fx))}</small></button>`).join('')}</div></div>`;
+    <div class="evc act two">${[e.a, e.b].map(([label, fx], i) => `<button class="btn" onclick="chooseEvent(${i})"><b>${esc(label)}</b><small>${esc(fxText(fx))}</small></button>`).join('')}</div></div>`;
 }
 /** Skills shop in two groups: active techniques (fire in matches) and passive skills (always on). */
 function skillShop(run, open) {
@@ -463,8 +463,8 @@ function clubsCard(run) {
       .map(t => {
         const c = World.canJoin(run, t.i),
           f = FACTIONS[t.i];
-        return `<div class="club" style="--tc:${t.color}"><div>${chip(t)}<b>${esc(t.name)}</b> <span class="mute small">${esc(f.name)} · OVR ${t.ovr}</span>${info(`${f.front}. Word is: ${f.dark}.`)}</div>
-          <div class="small ${c.ok ? '' : 'mute'}">${World.joinText(t.i, run)}</div>
+        return `<div class="club rowcta" style="--tc:${t.color}"><div class="nm"><span class="n1">${chip(t)}<b>${esc(t.name)}</b> <span class="mute small">${esc(f.name)} · OVR ${t.ovr}</span>${info(`${f.front}. Word is: ${f.dark}.`)}</span>
+          <span class="n2 small ${c.ok ? '' : 'mute'}">${World.joinText(t.i, run)}</span></div>
           <button class="btn ${c.ok ? 'hot' : ''}" onclick="joinClub(${t.i})" ${c.ok ? '' : 'disabled'} ${c.ok ? '' : tip('Missing: ' + c.why.join(', '))}>${c.ok ? 'Sign' : 'Locked'}</button></div>`;
       })
       .join('')}</div>`,
@@ -520,7 +520,7 @@ function gazetteCard(run) {
   const g = run.gazette;
   if (!g || g.read) return '';
   return `<div class="panel gazette"><h3>The Gazette <span class="mute small">week ${g.week}</span></h3><ul class="small">${g.items.map(t => `<li>${esc(t)}</li>`).join('')}</ul>
-    <button class="btn" onclick="readGazette()">Close</button></div>`;
+    <div class="act"><button class="btn hot" onclick="readGazette()">Close</button></div></div>`;
 }
 function readGazette() {
   Run.readGazette(RUN);

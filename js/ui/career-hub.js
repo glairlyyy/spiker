@@ -72,7 +72,7 @@ function hubCard(run, nextCup) {
   const wt = Run.weekType(run);
   if (run.event) return { html: eventCard(run), dim: true };
   if (wt === 'cup') return { html: cupPanel(run, nextCup), cls: 'wide' };
-  if (wt === 'eval') return { html: evalPanel(run) + (World.isFree(run) ? hubClubsHint() : '') };
+  if (wt === 'eval') return { html: evalPanel(run, World.isFree(run) ? hubClubsHint() : '') };
   const c = City.clashSite(run);
   const att = c && (run.clash.att || c.a),
     def = c && (att === c.a ? c.b : c.a);
@@ -84,7 +84,7 @@ function hubCard(run, nextCup) {
           ? ` — pressing a border they're winning (${Front.meter(run, att, def)}/${FRONT.seize} to seize a place)`
           : ''
       }. Go and watch — or pick a side. Nobody shows up? They settle it themselves at the week's end.</p>
-      <div class="evc"><button class="btn hot" onclick="clashSeen(true)"><b>Take a look</b><small>Show it on the map (${City.clashCost(run)} day${City.clashCost(run) > 1 ? 's' : ''} to get involved)</small></button><button class="btn" onclick="clashSeen(false)"><b>Stay out of it</b><small>It's on the map all week</small></button></div></div>`,
+      <div class="evc act two"><button class="btn hot" onclick="clashSeen(true)"><b>Take a look</b><small>Show it on the map (${City.clashCost(run)} day${City.clashCost(run) > 1 ? 's' : ''} to get involved)</small></button><button class="btn" onclick="clashSeen(false)"><b>Stay out of it</b><small>It's on the map all week</small></button></div></div>`,
       dim: true
     };
   if (run.gazette && !run.gazette.read) return { html: gazetteCard(run), dim: true };

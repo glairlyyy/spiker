@@ -56,7 +56,7 @@ Steps:
   QA: career run → Create screen, Skills drawer, a recap card; screenshots.
   Result: done — tokens `--hud --line-strong --on-ink --sel-bg --sel-line`; `.btn.on` and the calendar's current week use the selected style; `.btn` / inputs on `line-strong`; red off `.pts`, `.evk`, skill prices (unaffordable / learn-in-matches → mute), `.ency-req`, `.mate.you` / `.br.mine` (→ cyan), `.bbar.f` (→ good), grade A (→ gold), `.ev` border; 24 sub-12px rules → 12px plus `small { max(12px, .85em) }`. QA: no rendered text < 12px on Create / hub / Skills / recap, no pageerror.
 
-### [ ] T-114: Layout grid, action rows, container sizes
+### [x] T-114: Layout grid, action rows, container sizes
 
 Spec: §9.8 Goldens: unchanged Save: no change
 Goal: every card, modal and drawer row ends in one aligned action row with its CTAs on one line; containers are larger on desktop.
@@ -75,7 +75,7 @@ Steps:
 - At 1440×900: drawer ≈518px, club names on one line, evaluation card fits without scrolling.
 - npm test / lint pass.
   QA: career run → Create, a training spot, Clubs drawer, recap, evaluation card, Main menu; screenshots.
-  Result:
+  Result: done — `.act` (+ `.pri` / `.two` / `.three`, 40px cards, 48px modals) and `.rowcta` (1fr 120px) in career.css; eval / cup / event / clash / recap / Gazette / training / Create end in one action row; free-agent note inside the eval card; clubs as rowcta; Rankings wrapped in a panel (tab selected = `.on`); drawer clamp(480px, 36vw, 600px) (518px at 1440), modal 640 / wide 960, place card 480, HUD inset 16px; drawer panels flat with dividers; menu hero full width, Library / Playtest halves. Also `.btn.hot` sentence case (§9.3). QA: menu, create, spot, clubs, eval screenshots, no pageerror.
 
 ### [ ] T-096: HUD rebuild — labels, coach's goal, next step
 
