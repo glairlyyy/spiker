@@ -754,7 +754,7 @@ test('rel on court: the clutch — a setter feeds allies more and freezes out en
           if (x !== ws[1]) rel.tag[`${x.id}|${ws[1].id}`] = 'enemy';
         }
     }
-    const n = { all: 0, ally: 0, foe: 0, trust: 0, freeze: 0 };
+    const n = { all: 0, ally: 0, foe: 0, trust: 0, freeze: 0, bad: 0 };
     let lines = 0;
     for (let i = 0; i < 200; i++) {
       const a = T[i % 8],
@@ -765,8 +765,8 @@ test('rel on court: the clutch — a setter feeds allies more and freezes out en
         for (const bt of r.beats || []) for (const x of bt.acts || []) if (x.k === 'log' && /trusts|freezes/.test(x.t)) lines++;
       }
       for (const e of m.relLog) {
-        if (e.act === 'trust') n.trust++;
-        else if (e.act === 'freeze') n.freeze++;
+        if (e.act === 'trust') (n.trust++, e.tag !== 'ally' && n.bad++);
+        else if (e.act === 'freeze') (n.freeze++, !['resent', 'enemy'].includes(e.tag) && n.bad++);
         else {
           n.all++;
           if (e.mate === ally[who[e.p]].id) n.ally++;
@@ -785,6 +785,7 @@ test('rel on court: the clutch — a setter feeds allies more and freezes out en
     `ally share of clutch sets up: ${(off.ally / off.all).toFixed(3)} → ${(on.ally / on.all).toFixed(3)}`
   );
   assert(on.foe / on.all < off.foe / off.all, `enemy share down: ${(off.foe / off.all).toFixed(3)} → ${(on.foe / on.all).toFixed(3)}`);
+  eq(on.bad, 0, 'trust is said only of an ally, freeze only of a resent / enemy hitter (T-089)');
   assert(on.trust > 0 && on.freeze > 0 && on.lines > 0, `trust ${on.trust} / freeze ${on.freeze} noted, ${on.lines} log lines`);
   console.log(
     `  clutch sets ${off.all} → ally ${(off.ally / off.all).toFixed(3)} / ${(on.ally / on.all).toFixed(3)}, enemy ${(off.foe / off.all).toFixed(3)} / ${(on.foe / on.all).toFixed(3)}, trust ${on.trust}, freeze ${on.freeze}`

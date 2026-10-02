@@ -7,7 +7,10 @@
 const Asks = {
   first: p => p.name.split(' ')[0],
   /** The approaches waiting this week (with their index in run.asks). */
-  list: run => (run.asks || []).map((a, i) => ({ ...a, i })).filter(a => a.week === run.week && !a.mine && People.find(run, a.id)),
+  list: run =>
+    (run.asks || [])
+      .map((a, i) => ({ ...a, i }))
+      .filter(a => a.week === run.week && !a.mine && People.find(run, a.id) && !(a.kind === 'poach_advice' && Run.cupDef(run))),
   count: run => Asks.list(run).length,
   teamOf: (run, p) => run.teams.indexOf(p.team),
   isMate: (run, p) => Run.mates(run).includes(p),
@@ -87,7 +90,10 @@ const Asks = {
   roll(run) {
     for (const a of run.asks || [])
       if (!a.mine && a.week < run.week) {
-        if (a.kind === 'poach_advice') People.leave(run, a.id, a.data.to); // unanswered: they go anyway
+        if (a.kind === 'poach_advice' && !Run.cupDef(run)) {
+          const line = People.leave(run, a.id, a.data.to); // unanswered: they go anyway (the Gazette says so, as for an answered one)
+          if (line) Run.news(run, line);
+        }
         Rel.add(run, a.id, 'ignored');
       }
     run.asks = (run.asks || []).filter(a => a.week >= run.week);
@@ -133,14 +139,14 @@ const Asks = {
     return t;
   },
   /** The next payday at or after the week after this one. */
-  nextPay: run => Math.ceil((run.week + 1) / ECON.payEvery) * ECON.payEvery,
+  nextPay: run => Math.min(CAREER.weeks, Math.ceil((run.week + 1) / ECON.payEvery) * ECON.payEvery),
   /**
    * Answer the approach at run.asks[i]. Returns { line, fx?, day? } (line = the diary line, already logged; fx = a match to start;
    * day = a training day was spent, so the week's event may roll), or { blocked } when it can't be done now (the approach stays).
    */
   answer(run, i, yes) {
     const a = (run.asks || [])[i];
-    if (!a || a.mine || a.week !== run.week) return null;
+    if (!a || a.mine || a.week !== run.week || (a.kind === 'poach_advice' && Run.cupDef(run))) return null;
     const p = People.find(run, a.id),
       n = p ? Asks.first(p) : 'Someone',
       out = { line: '' },
@@ -216,7 +222,7 @@ const Asks = {
           Rel.add(run, a.id, 'advised');
           const news = People.leave(run, a.id, a.data.to);
           if (news) Run.news(run, news);
-          return done(`Told ${n} to go. ${n} went.`);
+          return done(news ? `Told ${n} to go. ${n} went.` : `Told ${n} to go. ${n} stayed after all.`);
         }
         if (run.people[a.id].want === 'leave') Rel.add(run, a.id, 'held_back');
         else Rel.add(run, a.id, 'advised', 4);

@@ -156,6 +156,7 @@ const People = {
       me = run.people[p.id];
     me.gone = { name: p.name, role: p.role, ovr: ovr(p), team: t ? t.name : '', week: run.week, why };
     me.status = why;
+    if (run.loans) delete run.loans[p.id]; // nobody to collect from, no more debt_unpaid
     if (t) {
       t.P.splice(t.P.indexOf(p), t.P.includes(p) ? 1 : 0);
       if (t.bench && t.bench.includes(p)) t.bench.splice(t.bench.indexOf(p), 1);
@@ -178,6 +179,7 @@ const People = {
       if (rt.P.length) finalizeTeam(rt);
       gt.P.push(p);
       p.team = gt;
+      if (gt.coachIQ == null) gt.coachIQ = 0.5; // (finalizeTeam would roll it with rnd(): the main stream)
       finalizeTeam(gt);
       me.status = 'poached';
       me.bench = run.week;
@@ -228,6 +230,7 @@ const People = {
   },
   /** One poaching a payday: an active money / leave NPC in the top share of a faction's league players, by roll. */
   poach(run) {
+    if (CUPS.some(c => c.after === run.week)) return; // the next week starts a cup: nobody changes squads under it
     const F = REL.fate.poach,
       you = Run.you(run),
       byRegion = {};

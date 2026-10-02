@@ -273,11 +273,17 @@ function chooseAttack(c, s, h) {
     const u = R(),
       plain = at(hitW, u);
     spiker = at(p => hitW(p) * relMul(p), u);
-    const cold = ['resent', 'enemy'].includes(relTag(m, setter, plain));
+    const cold = p => ['resent', 'enemy'].includes(relTag(m, setter, p));
     m.relLog.push({ act: 'clutch', p: setter.id, mate: spiker.id, tag: relTag(m, setter, spiker) });
+    // said out loud only when it is plainly the relationship: a resent / enemy pick replaced by someone who is not, or an ally chosen
     if (spiker !== plain) {
-      relNote = cold ? { act: 'freeze', who: plain } : { act: 'trust', who: spiker };
-      m.relLog.push({ act: relNote.act, p: setter.id, mate: relNote.who.id, tag: relTag(m, setter, relNote.who) });
+      relNote =
+        cold(plain) && !cold(spiker)
+          ? { act: 'freeze', who: plain }
+          : relTag(m, setter, spiker) === 'ally'
+            ? { act: 'trust', who: spiker }
+            : null;
+      if (relNote) m.relLog.push({ act: relNote.act, p: setter.id, mate: relNote.who.id, tag: relTag(m, setter, relNote.who) });
     }
   }
   // ego (spec §2.12): an unpicked hitter demands the set; a low-maturity setter gives in (a mature one ignores the call)

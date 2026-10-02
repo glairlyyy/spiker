@@ -1781,3 +1781,88 @@ test('pairs: deterministic, no R(); rumours and the Team chemistry block render'
   assert(/With /.test(card) && card.includes(y.name.split(' ')[0]), 'the card says who they stand with');
   assert(g.CHEM_TEXT.clique.length && g.CHEM_TEXT.feud.length && t, 'rumour lines exist');
 });
+
+// ---- Relationship fixes (T-089) ----
+const mkPoach = (seed, want, ally) => {
+  const [g, run, t, p, me] = mkFate(seed);
+  for (const x of Object.values(run.people)) x.want = 'spot';
+  me.want = want;
+  for (const k of g.STATK) p[k] = 99;
+  run.teams.forEach(x => g.squadOf(x).forEach(q => q !== p && q.role === p.role && g.STATK.forEach(k => (q[k] = Math.min(q[k], 70)))));
+  g.REL.fate.poach.p = 1;
+  g.REL.fate.poach.top = 1;
+  if (ally) for (let i = 0; i < 4; i++) ((run.week += 1), g.Rel.add(run, p.id, 'won_together'));
+  return [g, run, t, p, me];
+};
+test('fixes: no poach (ask or direct) the week before a cup, and a poach_advice is skipped during one', () => {
+  for (const ally of [true, false]) {
+    const [g, run, , p, me] = mkPoach(161, 'money', ally);
+    run.week = 28;
+    g.People.fates(run);
+    assert(!run.asks.some(a => a.kind === 'poach_advice'), `${ally ? 'ally' : 'other'}: no ask queued`);
+    eq(me.status, 'active', 'nobody poached');
+    assert(p.team && run.teams.includes(p.team), 'still on their club');
+  }
+  const [g, run, , p] = mkPoach(161, 'money', true);
+  run.asks.push({ id: p.id, kind: 'poach_advice', week: run.week, data: { to: 'gloria' } });
+  assert(g.Asks.list(run).length === 1, 'listed outside a cup');
+  run.cup = { id: 'u21', done: false };
+  eq(g.Asks.list(run).length, 0, 'hidden during the cup');
+  eq(g.Asks.answer(run, run.asks.length - 1, true), null, 'and not answerable');
+  eq(run.people[p.id].status, 'active', 'still in play');
+});
+test('fixes: St. Gloria’s empty reserve draws no R() (coachIQ is set, not rolled)', () => {
+  const [g, run, , p, me] = mkPoach(162, 'money', false);
+  const gt = run.reserve.gloria;
+  gt.P.length = 0;
+  gt.bench = [];
+  delete gt.coachIQ;
+  g.RNG.seed(7);
+  const next = [g.R(), g.R()];
+  g.RNG.seed(7);
+  g.People.fates(run);
+  eq(me.status, 'poached', 'they went to St. Gloria');
+  assert(gt.P.includes(p) && gt.coachIQ === 0.5, 'in the reserve, coachIQ 0.5');
+  eq(JSON.stringify([g.R(), g.R()]), JSON.stringify(next), 'the main random stream is untouched');
+});
+test('fixes: a borrower who leaves play stops owing; a late loan is due on the last week', () => {
+  const [g, run, mate] = mkMate(163, ['steady', 'reckless']);
+  run.loans[mate.id] = { amt: 90, due: 8 };
+  g.People.remove(run, mate, 'quit');
+  assert(!run.loans[mate.id], 'the loan is gone');
+  run.week = 12;
+  const before = g.Rel.list(run, mate.id).length;
+  g.Asks.week(run);
+  eq(g.Rel.list(run, mate.id).length, before, 'no debt_unpaid for someone who left');
+  run.week = 27;
+  eq(g.Asks.nextPay(run), g.CAREER.weeks, 'a loan after the last payday is due on week 28');
+  run.week = 28;
+  eq(g.Asks.nextPay(run), g.CAREER.weeks, 'and week 28 too');
+  run.week = 5;
+  assert(g.Asks.nextPay(run) < g.CAREER.weeks, 'earlier loans keep the next payday');
+});
+test('fixes: poach_advice lines say what happened; an unanswered one is news too', () => {
+  const [g, run, t, , me] = mkPoach(134, 'money', true);
+  g.People.fates(run);
+  run.week += 1;
+  const i = run.asks.findIndex(a => a.kind === 'poach_advice');
+  g.REL.fate.poach.p = 0;
+  const reg = run.reserve[g.FACTIONS[t.i].region];
+  const keep = [...reg.P];
+  reg.P.length = 0; // no reserve to trade with: leaving fails
+  const r = g.Asks.answer(run, i, true);
+  assert(/stayed after all/.test(r.line) && !/ went\./.test(r.line), `line: ${r.line}`);
+  eq(me.status, 'active', 'still here');
+  reg.P.push(...keep);
+  // unanswered: the leave line reaches the Gazette
+  const [g2, run2, , p2, me2] = mkPoach(134, 'money', true);
+  g2.People.fates(run2);
+  run2.week += 2;
+  run2.news = [];
+  g2.Asks.roll(run2);
+  eq(me2.status, 'poached', 'unanswered: they go');
+  assert(
+    run2.news.some(l => l.includes(p2.name)),
+    'and the Gazette says so'
+  );
+});

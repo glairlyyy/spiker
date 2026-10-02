@@ -47,34 +47,11 @@ Result:
 - Player camera polish ✓ (T-070).
 - - NPC careers ✓ (T-060).
 - Relationships ✓ (T-060…T-066, spec §4.23).
-- **Now**: T-089 relationship review fixes. **Then**: road travel (T-048), voice pass (T-022).
+- Relationship review fixes ✓ (T-089).
+- **Now**: (see below) **Then**: road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now — review fixes
-
-### [ ] T-089: Relationship fixes from the T-061…T-066 review
-Spec: §4.23 F (fates never during a cup), H (People draws no R())          Goldens: unchanged          Save: no change
-Goal: Close the bugs the review found; nothing else changes.
-Files: js/career/people.js, js/career/asks.js, js/engine/rally-phases.js, tests/career.test.js, tests/engine.test.js
-Do not: change any number in REL / REL_E; touch other files.
-Steps:
-1. Poach during the cup: the week-28 payday queues a `poach_advice` for week 29 (the cup week) and answering it moves a
-   cup entrant. Never queue a poach (ask or direct) when the next week starts a cup (`CUPS.some(c => c.after === run.week)`),
-   and `Asks.answer` / `Asks.list` skip `poach_advice` while `Run.cupDef(run)` is set.
-2. Hidden R() draw: `People.leave` → St. Gloria calls `finalizeTeam` on an empty reserve team, which rolls `coachIQ` with
-   rnd() on the main stream. Set the reserve team's `coachIQ` (0.5) before finalizing (or recompute ovr / cap without
-   finalizeTeam). Add the seeded-sequence check to the fates test.
-3. Loans to someone who leaves play: clear `run.loans[id]` when that person quits / goes abroad (no more debt_unpaid);
-   a loan made after the last payday of the season is due on the last week instead.
-4. Log lines: `poach_advice` yes only says "…went." when `People.leave` returned a line (else "…stayed after all."); the
-   unanswered path posts the leave line to the Gazette like the answered one.
-5. rally-phases.js chooseAttack: emit the "trusts" line only when relTag(setter, spiker) is 'ally', and "freezes out" only
-   when the replaced pick is resent / enemy and the new one is not (no label for a neutral hitter).
-Accept: new tests for 1–3 (a v14 run reaching the cup with a respecting money / leave NPC: no fate during the cup; the
-St. Gloria path draws no R(); a gone borrower stops adding debt_unpaid); the trust-label test counts only ally targets;
-all tests + lint; goldens unchanged.
-QA: none.
-Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
@@ -107,6 +84,7 @@ Phase 5 — Voice pass
 
 ## Done
 
+- [x] T-089: Relationship fixes from the T-061…T-066 review — 97/97 tests, lint clean, goldens unchanged. 1: `People.poach` returns when the next week starts a cup; `Asks.list` / `answer` skip poach_advice during a cup. 2: St. Gloria's reserve gets coachIQ 0.5 before `finalizeTeam` (test: no R() on that path). 3: `People.remove` clears the loan; `Asks.nextPay` is capped at week 28. 4: "went" only when `People.leave` returned a line (else "stayed after all"); the unanswered leave line goes to the Gazette. 5: trust label only for an ally pick, freeze only when a resent / enemy pick is replaced by a non-enemy (the relLog entries follow the same rule; the clutch test now asserts it).
 - [x] T-066: On court — trust, freeze-out, cover and rivals in the match engine — 93/93 tests, lint clean, goldens unchanged (the golden matches pass no flags; empty flags give byte-identical beats). 200 sims, one ally / one enemy WS per setter: clutch sets 1347; ally share 0.319 → 0.365, enemy 0.267 → 0.237; 9 trust / 23 freeze lines. Pop-up saves: an ally never saves less (400 draws, +12 pts). Deviations: one engine-private helper `relTag` (match.js) is a new top-level function; the flags reach the match through `fx.setup` (match-screen.js builds newMatch itself, so `opts.rel` is also supported); the talk beat is pushed from chooseAttack (rally.js, which emits the other set calls, is not in the file list); across-net rivals = your role, within 5 OVR, resent / enemy, and only the NPC gets the mood swing. QA: career match with flags → `m.rel` set, "trusts" at 9-15, no pageerror.
 - [x] T-065: NPC ↔ NPC — they remember each other; cliques, feuds, squad chemistry — RUN_VERSION 14; 89/89 tests, lint clean, goldens unchanged; QA W12 Team chemistry (clique + feud), take_side answered, no pageerror. Deviations: lineup uses the sitting captain (T.cap); off-screen result win share = clamp(0.5 + (team OVR − mean)/50, .15, .85), memories ×0.5 (REL.chem.result); spot_taken pairs are recorded at the swap (across squads, one entry); rumours are stateless (chem before vs after the week); take_side yes = the asker's side.
 - [x] T-064: Fates — cut, quit, poached, called up; "People who mattered" — Fates (cut / quit / poached / abroad / national), snapshot cards, poach_advice ask, run-end "People who mattered"; RUN_VERSION 13. Deviations: for a non-active person `bench` holds the week it happened (no extra field, so the save shape is the listed one); at most one poaching a payday; a quit rolls for every cut player after the weeks (the "spot-satisfied" clause is read as always unsatisfied once cut); an empty St. Gloria reserve is bypassed (they join it after a seat swap in their own faction); nobody is poached from St. Gloria. 82/82 tests, lint green, goldens unchanged. QA: two full headless runs: cut / quit / poached / abroad / national all occur, no crash; the run-end panel renders 5 entries in the page, no pageerror.
