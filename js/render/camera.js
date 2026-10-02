@@ -1,4 +1,4 @@
-// Camera push-ins (A.cam), applied to the view by applyView() in overlay.js and by the 3D renderer.
+// Camera push-ins (A.cam), applied to the view by Overlay.applyView() in overlay.js and by the 3D renderer.
 //
 // Motion-sickness-friendly: slow eased push-ins only — no rotation, no whip pans. The zoom starts centred on its target
 // (so it never slides sideways into place), eases in over ~0.4 s and back out over ~0.7 s, and is capped at 1.95×

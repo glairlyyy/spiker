@@ -16,7 +16,7 @@ const Goals = {
       prev = run.goal && run.goal.kind;
     // the coach picks from what makes sense this block
     const stat = STATK.includes(key) && you[key] < TRAIN_CAP - 2 ? key : STATK.find(k => you[k] < TRAIN_CAP - 2);
-    const warm = Object.keys(CALENDAR)
+    const evalWeek = Object.keys(CALENDAR)
       .map(Number)
       .find(w => w >= run.week && w <= by && CALENDAR[w] === 'eval' && Eval.kind(run) === 'academy');
     const low = Run.mates(run).reduce((a, m) => ((you.bond[m.id] || 0) < (you.bond[a.id] || 0) ? m : a), Run.mates(run)[0]);
@@ -27,7 +27,7 @@ const Goals = {
         stat,
         target: Math.min(TRAIN_CAP, you[stat] + Math.max(4, Math.round((by - run.week + 1) * 1.6)))
       });
-    if (warm) opts.push({ kind: 'win', week: warm });
+    if (evalWeek) opts.push({ kind: 'win', week: evalWeek });
     opts.push({ kind: 'fans', target: Math.ceil((run.fans + 500 + (by - run.week) * 50) / 100) * 100 });
     if (low && (you.bond[low.id] || 0) < 60) opts.push({ kind: 'bond', mate: low.id, target: Math.min(100, (you.bond[low.id] || 0) + 18) });
     const pool = opts.filter(o => o.kind !== prev);
@@ -45,7 +45,7 @@ const Goals = {
   met(run, g) {
     const you = Run.you(run);
     if (g.kind === 'stat') return you[g.stat] >= g.target;
-    if (g.kind === 'win') return run.warm.some(w => w.week === g.week && w.win);
+    if (g.kind === 'win') return run.evals.some(w => w.week === g.week && w.win);
     if (g.kind === 'fans') return run.fans >= g.target;
     return (you.bond[g.mate] || 0) >= g.target;
   },

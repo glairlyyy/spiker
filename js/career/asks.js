@@ -193,7 +193,7 @@ const Asks = {
         return done(`Said no to ${n}'s loan. Not a bank.`);
       case 'call_out': {
         if (yes) {
-          const fx = Cup.challenge(run, a.data.ti, 0, true);
+          const fx = Fight.challenge(run, a.data.ti, 0, true);
           if (!fx) return { blocked: City.fightBan(run) || 'not now' };
           out.fx = fx;
           return done(`Took ${n}'s call-out: ${run.teams[a.data.ti].name}.`);
@@ -288,7 +288,7 @@ const Asks = {
       };
     run.asks.push({ id, kind, week: run.week, mine: true });
     if (kind === 'call_out') {
-      const fx = Cup.challenge(run, mv.ti, 0, true);
+      const fx = Fight.challenge(run, mv.ti, 0, true);
       Rel.add(run, id, 'called_out');
       if (fx) out.fx = fx;
       out.yes = !!fx;

@@ -253,7 +253,7 @@ function evalPanel(run) {
     list = (ps, showOvr) =>
       ps.map(p => `<span>${stag(p)}${esc(p.name)} <i class="mute">${p.role}${showOvr ? ' ' + ovr(p) : ''}</i></span>`).join(' · '),
     byId = ids => ids.map(id => all.find(p => p.id === id)).filter(Boolean),
-    head = `<h3>Week ${run.week}: ${esc(label)} evaluation${info(`Win: +${REWARDS.warmupWin.sp} skill pts, +${REWARDS.warmupWin.fans} fans; teammates who played with you remember the win. Loss: +${REWARDS.warmupLoss.sp} skill pts, +${REWARDS.warmupLoss.fans} fans. Each of your kills, blocks and aces adds more.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3>`;
+    head = `<h3>Week ${run.week}: ${esc(label)} evaluation${info(`Win: +${REWARDS.evalWin.sp} skill pts, +${REWARDS.evalWin.fans} fans; teammates who played with you remember the win. Loss: +${REWARDS.evalLoss.sp} skill pts, +${REWARDS.evalLoss.fans} fans. Each of your kills, blocks and aces adds more.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3>`;
   if (e.kind === 'faction' && !e.mine)
     return `<div class="panel">${head}<p>Not selected this month.</p>
     <div class="trow"><button class="btn hot big" onclick="benchEval()">Watch from the bench</button></div></div>`;

@@ -109,10 +109,19 @@ const CITY = (() => {
   };
 })();
 
-/** Home turf: training in your own faction's region gives this bonus. */
-const TURF_BONUS = 0.1;
+// ---- Days, fees and travel (tuning) ----
+/** Days in a training week; every action takes one (+ the trip).*/
+const WEEK_DAYS = 7;
+/** A day's session is a fraction of the old week-long one: gains and skill points ×. */
+const DAY_GAIN = 0.25;
 /** A training session's fee before the region's price (one day's session). */
 const TRAIN_FEE = 8;
+/** Home turf: training in your own faction's region gives this bonus. */
+const TURF_BONUS = 0.1;
+/** Sand courts: technique training — skill points from a session ×. */
+const SAND_SP = 2;
+/** A night at a hotel away from home: base price (× the region's price). */
+const HOTEL = { price: 12, rest: 1 };
 /**
  * Travel (spec §4.18, T-048): free within NEAR_R, then a day per TRIP_DAY units of travel cost, at most TRIP_MAX days. The cost is
  * the cheaper of going cross-country (straight distance × 1) and the road route (the legs to / from the network × 1, each road
@@ -127,12 +136,6 @@ const TRIP_DAY = 220;
 const TRIP_MAX = 3;
 /** The dark map: each point you've stood on lights up this radius. */
 const REVEAL_R = 170;
-/** Days in a training week; every action takes one (+ the trip).*/
-const WEEK_DAYS = 7;
-/** A day's session is a fraction of the old week-long one: gains and skill points ×. */
-const DAY_GAIN = 0.25;
-/** Sand courts: technique training — skill points from a session ×. */
-const SAND_SP = 2;
 
 /**
  * Places. Each takes a day (+ the trip there). act: what a non-training place does (rest, rec, or an outing: ramen,

@@ -143,8 +143,8 @@ const ECON = {
   allowance: 500, // from home, every payday
   payEvery: 4, // weeks between paydays (week 4, 8, …)
   food: 120, // per payday
-  warmupWin: 60,
-  warmupLoss: 10,
+  evalWin: 60,
+  evalLoss: 10,
   cupWin: 150, // × the cup's multiplier
   place: { 'Round of 16': 50, Quarterfinal: 100, Semifinal: 200, Final: 400, Champion: 800 } // × the cup's multiplier
 };
@@ -178,7 +178,7 @@ const HOUSING = {
 const HOUSEK = Object.keys(HOUSING);
 /**
  * Street battles between the majors: chance a training week opens with one; sites (map point).
- * Fighting is a real match (Cup.clash); standing with the side you fought for +win / +lose, and always `other`
+ * Fighting is a real match (Fight.clash); standing with the side you fought for +win / +lose, and always `other`
  * with the side you fought against. Watching scouts both sides' clubs.
  */
 const CLASH = {
@@ -228,7 +228,7 @@ const ACCESS = {
 /** Faction pool sizes (players, league-team players included): the rest are generated reserves. */
 const POOL = { wei: 24, wu: 18, shu: 12, outlaws: 6, gloria: 6 };
 /**
- * Team challenges (City.worth / City.challenge / Cup.challenge; spec §4.15). A club accepts when your worth reaches its
+ * Team challenges (City.worth / City.challenge / Fight.challenge; spec §4.15). A club accepts when your worth reaches its
  * rating − margin: worth = your side's rating + standing ÷ standPer + a term from the faction's dogma (lore.md §5):
  * Wei: +gazette in the Gazette Top 20, + fans ÷ fansPer, + stake ÷ stakePer; Wu: (key stat − 50) ÷ keyPer (the stake counts
  * for nothing); Shu: standing ÷ repPer + week ÷ weekPer (no stake); Outlaws: any stake ≥ minStake, else refused; Gloria:
@@ -254,13 +254,13 @@ const CHALLENGE = {
   gloria: {}
 };
 /**
- * Losing a team challenge or a street fight (spec §4.15), applied by Cup.lose: extra stamina `sta` and `mood` (carry over),
+ * Losing a team challenge or a street fight (spec §4.15), applied by Fight.lose: extra stamina `sta` and `mood` (carry over),
  * standing `rep` with the faction you lost to (challenges only), `repeatRep` more from the `repeat`-th loss to it (run.losses);
  * a loss by `heavy`+ points costs `fans` and earns a Gazette jab (GAZETTE_JABS).
  */
 const LOSS = { sta: 20, mood: -1, rep: -6, repeat: 3, repeatRep: -6, heavy: 8, fans: -150 };
 /**
- * Injury after every challenge / street fight, won or lost (City.injuryRisk, Cup.injure): chance = base + max(0, their rating −
+ * Injury after every challenge / street fight, won or lost (City.injuryRisk, Fight.injure): chance = base + max(0, their rating −
  * yours) × perGap + points lost by × perPoint + (1 − stamina share) × sta + max(0, cool − days since your last fight) × perDay,
  * clamped to [0, max]. A second roll gives the severity (< sev[0] minor, < sev[1] serious, else severe: also −`lose` for good on
  * one stat); `weeks` of light training per severity. Evaluations and cups carry no injury roll.
@@ -323,5 +323,3 @@ const SQUAD = 6;
 const DRAW = { floor: 40, span: 20, minW: 0.1, repPer: 50, sure: 60 };
 /** Reserve promotion on payday: a faction's best reserve replaces a weaker same-role squad player if it beats their OVR by at least `gap`. */
 const PROMOTE = { gap: 3 };
-/** A night at a hotel away from home: base price (× the region's price). */
-const HOTEL = { price: 12, rest: 1 };

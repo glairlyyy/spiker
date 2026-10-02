@@ -52,7 +52,7 @@ Build chat loop, one task at a time:
 - `npm run test:quick` — the same minus the slow statistical tests (`test.slow`), ~10 s: for the edit loop; run the full set before a commit.
 - `npm run test:update` — only when the task says Goldens: update.
 - `npm run lint` / `npm run format` — ESLint (flat config collects shared globals from index.html) / Prettier.
-- `npm run serve` — http://localhost:8765 (index.html = CDN three; test3d.html = local node_modules, for QA).
+- `npm run serve` — http://localhost:8765 (index.html: CDN three, or node_modules three on localhost — `?cdn` forces the CDN).
 
 ## Layout
 - `js/core` storage, rng, debuglog (DBG, copyable debug log). `js/data` constants (rules, skills, elements, dialogue, career, city, world).
@@ -69,18 +69,18 @@ Build chat loop, one task at a time:
 
 ## Rules that bite
 - Classic scripts share one global scope (index.html order). Grep repo before renaming/removing a top-level name.
-  New script files go in BOTH index.html and test3d.html.
+  New script files go in index.html (one entry: its inline import map picks node_modules on localhost, the CDN elsewhere).
 - Seeded randomness: never change the order/count of R()/rnd()/pick() draws in engine unless the task says so
   (golden changes). Presentation code (hype, element assignment hash, chatter) must draw no randoms.
 - Beat act kinds/flags are the engine↔renderer interface; every act kind needs an `ACTS` handler (render/acts.js) or a `startBeat` case in playback.js (tested).
-- Saves: RUN_VERSION 14 (v10–v14: NPC careers, memories, approaches, fates, NPC ↔ NPC — spec §4.23), key sns_run_v1. In development, breaking changes just bump the version (task will say).
+- Saves: RUN_VERSION 15 (v10–v15: NPC careers, memories, approaches, fates, NPC ↔ NPC — spec §4.23), key sns_run_v1. In development, breaking changes just bump the version (task will say).
 - Artifact host quirks: confirm()/alert() blocked (use inline confirms); localStorage may throw; blob: URLs may be
   blocked (textures are decoded in memory — keep it that way).
 - Escape all user/data strings in innerHTML with esc().
 - Desktop-only UI for now; don't spend effort on mobile layouts.
 
 ## QA recipe (Playwright, Chromium preinstalled — never `playwright install`)
-Launch with `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`, open test3d.html, `startMonster()`,
+Launch with `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`, open http://localhost:8765/index.html (node_modules three), `startMonster()`,
 wait for `typeof R3D !== 'undefined' && R3D && A && !A.hold` (R3D is a `let`, not on window), set `A.hold=true`,
 loop `step(16); R3D.poseAll(0.016)`; check pageerror + `DBG.text()`; screenshot the page (element screenshots of
 `#stage` time out: it never settles). A STALL line after long synchronous loops is a test artifact.
@@ -88,6 +88,6 @@ For career/UI tasks: start a new run from the menu instead of `startMonster()` a
 
 ## Publishing (artifact = backup + playable copy)
 The artifact holds the full project as published files (index.html, js/, css/, tests/, docs, package.json, assets/audio,
-lint/format configs, test3d.html, qa_poses.html; VRM base in assets/vrm). Publish every changed file each time so
+lint/format configs, qa_poses.html; VRM base in assets/vrm). Publish every changed file each time so
 it stays complete. Dotfiles are published renamed: `.prettierrc.json` → `prettierrc.json`, `.prettierignore` →
 `prettierignore.txt`. Restore without GitHub: Artifact "list" (scope "files", url above) → "read" with all `paths`.

@@ -490,7 +490,7 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
     cc = g.City.clashCost(run),
     clashSp0 = run.sp;
   for (const k of g.STATK) g.Run.you(run)[k] = 70; // (a new player starts at 1: give you a normal player's line so the match XP shows)
-  const fx = g.Cup.clash(run, c.a);
+  const fx = g.Fight.clash(run, c.a);
   assert(fx && !run.clash.done && run.days === 7, 'nothing is spent until the match ends');
   assert([...fx.a.P, ...fx.a.bench].includes(g.Run.you(run)) && fx.a.P.includes(g.Run.you(run)), 'you are on court for your side');
   const m = g.newMatch(fx.a, fx.b, false);
@@ -660,4 +660,67 @@ test('map: the contested border comes from the model (T-079)', () => {
   C = g.MapModel.build(run).life.contest;
   eq(C.hold, C.b, 'the winning side holds the line');
   eq(C.pressure, Math.min(1, 1 / g.FRONT.seize), 'pressure = net wins / FRONT.seize');
+});
+
+// ---------- T-087: map3d pure functions (geo3d.mjs; map3d.mjs polygon helpers) ----------
+test('map3d: map ↔ world units, maths helpers and the fog rule', () => {
+  const geo = require('../js/map3d/geo3d.mjs');
+  const [wx, wz] = geo.toWorld([300, 140]);
+  eq(wx, 150, 'x in metres');
+  eq(wz, 70, 'y → z in metres');
+  const back = geo.toMap(wx, wz);
+  eq(back[0] + ',' + back[1], '300,140', 'toMap undoes toWorld');
+  eq(geo.clamp(5, 0, 3), 3, 'clamp high');
+  eq(geo.clamp(-1, 0, 3), 0, 'clamp low');
+  eq(geo.lerp(10, 20, 0.25), 12.5, 'lerp');
+  eq(geo.smooth(0, 10, -5), 0, 'smooth below');
+  eq(geo.smooth(0, 10, 15), 1, 'smooth above');
+  eq(geo.smooth(0, 10, 5), 0.5, 'smooth middle');
+  assert(geo.smooth(0, 10, 2) < 0.2 && geo.smooth(0, 10, 8) > 0.8, 'smooth is S-shaped');
+  eq(geo.fogFactor(null)(1, 1), 1, 'no fog model → fully lit');
+  const k = geo.fogFactor({ points: [[100, 100]], r: 40 }),
+    [px, pz] = geo.toWorld([100, 100]);
+  eq(k(px, pz), 1, 'at a visited point');
+  eq(k(px + 20, pz), 1, 'inside the revealed radius (20 m = 40 units)');
+  eq(k(px + 20 + geo.FOG_SOFT + 1, pz), geo.FOG_DIM, 'beyond the soft edge: dim');
+  const mid = k(px + 20 + geo.FOG_SOFT / 2, pz);
+  assert(mid > geo.FOG_DIM && mid < 1, 'smooth in between');
+});
+
+test('map3d: point in polygon, distance to an outline, side of a polyline', () => {
+  const { inside, edgeDist, sideDist } = require('../js/map3d/map3d.mjs');
+  const sq = [
+    [0, 0],
+    [10, 0],
+    [10, 10],
+    [0, 10]
+  ];
+  assert(inside(5, 5, sq) && !inside(11, 5, sq) && !inside(-1, -1, sq), 'square');
+  const concave = [
+    [0, 0],
+    [10, 0],
+    [10, 10],
+    [5, 4],
+    [0, 10]
+  ];
+  assert(inside(2, 2, concave) && !inside(5, 8, concave), 'a concave notch is outside');
+  eq(edgeDist(5, 5, sq), 5, 'the centre is 5 from the nearest edge');
+  eq(edgeDist(13, 5, sq), 3, 'outside, 3 from the right edge');
+  eq(edgeDist(0, 0, sq), 0, 'on a corner');
+  eq(
+    edgeDist(3, 3, [
+      [1, 1],
+      [1, 1],
+      [1, 1]
+    ]) > 0,
+    true,
+    'a degenerate outline does not divide by zero'
+  );
+  const line = [
+    [0, 0],
+    [10, 0]
+  ];
+  const a = sideDist(5, 2, line),
+    b = sideDist(5, -2, line);
+  assert(Math.abs(a) === 2 && Math.abs(b) === 2 && Math.sign(a) !== Math.sign(b), 'signed distance: opposite sides, same magnitude');
 });

@@ -106,7 +106,7 @@ test('career: training cap, facility Lv 5 and Hard training', () => {
   eq(you.power, 80, 'a stat already at 80 is not lowered by a positive bump');
   g.Training.addXp(run, 'power', 100000, 'match');
   assert(you.power > 80, 'match XP goes past the training cap');
-  assert(!('lb' in run) && g.RUN_VERSION === 14, 'no Limit Break progress in the run; RUN_VERSION 14');
+  assert(!('lb' in run) && g.RUN_VERSION === 15, 'no Limit Break progress in the run; RUN_VERSION 15');
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
   const n = g.Training.preview(run, 'power', false).main[2],
@@ -252,7 +252,7 @@ test('career: match history', () => {
   run.money = 500;
   const ti = g.FACTIONS.findIndex(f => f.region === 'outlaws');
   const stake = g.CHALLENGE.outlaws.minStake,
-    fc = g.Cup.challenge(run, ti, stake),
+    fc = g.Fight.challenge(run, ti, stake),
     mc = play(fc);
   fc.onFinish(mc);
   eq(run.mlog.length, 2, 'a challenge adds one entry');
@@ -265,7 +265,7 @@ test('career: match history', () => {
   run.event = null;
   run.pos = [470, 600];
   run.clash = { site: 0, seen: false, done: false };
-  const fs = g.Cup.clash(run, g.CLASH.sites[0].a),
+  const fs = g.Fight.clash(run, g.CLASH.sites[0].a),
     ms = play(fs);
   fs.onFinish(ms);
   eq(run.mlog.length, 3, 'a street fight adds one entry');
@@ -689,7 +689,7 @@ test('career: rankings — register, gazette, street, known gate', () => {
   // a street battle you fight: your points, and the winner faction's best players share
   run.clash = { site: 0, att: g.CLASH.sites[0].a, seen: false, done: false };
   const side = g.CLASH.sites[0].a,
-    fx = g.Cup.clash(run, side),
+    fx = g.Fight.clash(run, side),
     m = g.newMatch(fx.a, fx.b, false);
   while (!m.over) g.playRally(m);
   fx.onFinish(m);
@@ -746,7 +746,7 @@ test('career: team challenge — worth, refusal, stake payout', () => {
   assert(acc && acc.accepted && acc.stake === 50, 'the Outlaws accept a 50 stake');
   const d1 = run.days,
     money0 = run.money,
-    fx = g.Cup.challenge(run, ti, 50),
+    fx = g.Fight.challenge(run, ti, 50),
     m = g.newMatch(fx.a, fx.b, false);
   eq(run.days, d1, 'nothing is spent until it finishes');
   while (!m.over) g.playRally(m);
@@ -760,14 +760,14 @@ test('career: team challenge — worth, refusal, stake payout', () => {
   // alone: a street crew is hired (paid from your money) and you play in it
   run.academy = false;
   run.team = null;
-  const T = g.Cup.hired(run);
+  const T = g.Fight.hired(run);
   assert(g.squadOf(T).length === 6 && T.P.includes(you) && T.P.length === 4, 'the hired crew: 6 players, you on court');
   const side = g.City.challengeSide(run);
   eq(side.kind, 'hired', 'alone = hired crew');
   run.days = g.WEEK_DAYS;
   run.week = 6;
   const m1 = run.money,
-    fx1 = g.Cup.challenge(run, ti, 50),
+    fx1 = g.Fight.challenge(run, ti, 50),
     mm = g.newMatch(fx1.a, fx1.b, false);
   while (!mm.over) g.playRally(mm);
   fx1.onFinish(mm);
@@ -791,7 +791,7 @@ test('career: challenge loss and injury', () => {
       run.lastFight = null;
     },
     play = (stake = 50) => {
-      const fx = g.Cup.challenge(run, ti, stake),
+      const fx = g.Fight.challenge(run, ti, stake),
         m = g.newMatch(fx.a, fx.b, false);
       while (!m.over) g.playRally(m);
       return { m, line: fx.onFinish(m) };
@@ -841,7 +841,7 @@ test('career: challenge loss and injury', () => {
   const before = g.STATK.map(k => you[k]);
   let n = 0;
   g.RNG.next = () => (n++ ? 0.97 : 0.0);
-  const txt = g.Cup.injure(run, 0.5);
+  const txt = g.Fight.injure(run, 0.5);
   assert(run.injury && run.injury.weeks === g.INJURY.weeks.severe && /severe/.test(txt), `severe: ${txt}`);
   const lost = g.STATK.filter((k, i) => you[k] < before[i]);
   assert(lost.length === 1 && before[g.STATK.indexOf(lost[0])] - you[lost[0]] === g.INJURY.lose, 'one stat loses INJURY.lose for good');
@@ -849,14 +849,14 @@ test('career: challenge loss and injury', () => {
   roll(0.99);
   eq(g.City.fightBan(run), 'Injured — rest first', 'the ban text');
   eq(g.City.challenge(run, ti, 50), null, 'no challenge while injured');
-  eq(g.Cup.challenge(run, ti, 50), null, 'no challenge match while injured');
+  eq(g.Fight.challenge(run, ti, 50), null, 'no challenge match while injured');
   const L = g.Run.lineup(run, run.pickup, null, true);
   assert(!L.starts, 'an injured you is benched');
   // the physio clears the weeks but not the stat
   run.sp = 99;
   assert(g.Training.physio(run) && !run.injury, 'physio heals the injury');
   assert(you[lost[0]] === before[g.STATK.indexOf(lost[0])] - g.INJURY.lose, 'but not the lost stat');
-  eq(g.RUN_VERSION, 14, 'save v14');
+  eq(g.RUN_VERSION, 15, 'save v15');
 });
 
 test('career: rules moved out of the UI (T-075)', () => {
@@ -1379,7 +1379,7 @@ test('asks: each kind writes its memory and effect', () => {
   g4.Asks.answer(run4, ask(g4, run4, m4.id, 'duo_challenge'), true);
   assert(run4.duo && memKinds(g4, run4, m4.id).includes('duo'), 'duo set');
   const tj = run4.teams.findIndex(t => t !== g4.Run.myTeam(run4)),
-    fx = g4.Cup.challenge(run4, tj, 200, true);
+    fx = g4.Fight.challenge(run4, tj, 200, true);
   assert(fx && fx.a.P.includes(m4), 'the mate is in the challenge side');
   assert(/\$100/.test(fx.round), 'stake split: ' + fx.round);
   eq(run4.duo, null, 'the duo is used up');
@@ -1638,7 +1638,7 @@ test('pairs: entries carry `a`; two squadmates training at the same place share 
   assert(!g.Rel.list(run, x.id, z.id).some(e => e.k === 'trained'), 'the one who rested has none');
   g.Run.save(run);
   const raw = JSON.parse(g.__mem[g.KEYS.career]);
-  eq(raw.v, 14, 'saved as v14');
+  eq(raw.v, 15, 'saved as v15');
   raw.v = 13;
   g.__mem[g.KEYS.career] = JSON.stringify(raw);
   eq(g.Run.load(), null, 'a v13 save is dropped');
@@ -1865,4 +1865,166 @@ test('fixes: poach_advice lines say what happened; an unanswered one is news too
     run2.news.some(l => l.includes(p2.name)),
     'and the Gazette says so'
   );
+});
+
+// ---------- T-087: coverage gaps ----------
+const mkRunG = seed => {
+  const g = load(seed);
+  return [g, g.Run.create(g.Run.draft(), { role: 'WS', name: 'Cov', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 })];
+};
+
+test('goals: blocks, a goal by the block end that never repeats its kind, reward / miss at the deadline', () => {
+  const [g, run] = mkRunG(871);
+  eq(
+    JSON.stringify([1, 6, 7, 12, 13, 18, 19, 24, 25, 28, 28].map(w => g.Goals.block(w).join('-'))),
+    JSON.stringify(['1-6', '1-6', '7-12', '7-12', '13-18', '13-18', '19-24', '19-24', '25-28', '25-28', '25-28']),
+    'block ranges'
+  );
+  run.goal = null;
+  run.week = 3;
+  g.Goals.set(run);
+  const first = run.goal;
+  eq(first.by, 6, 'the goal is due at the block end');
+  assert(first.done === null, 'open');
+  g.Goals.set(run);
+  assert(run.goal === first, 'a live goal is not replaced');
+  run.week = 7;
+  g.Goals.set(run);
+  eq(run.goal.by, 12, 'next block, next goal');
+  assert(run.goal.kind !== first.kind, 'the coach does not repeat the previous kind');
+  // reward: force a met fans goal
+  run.goal = { kind: 'fans', target: 100, by: 8, done: null };
+  run.fans = 500;
+  run.week = 7;
+  g.Goals.check(run);
+  assert(run.goal.done === null, 'nothing before the deadline week');
+  const sp0 = run.sp,
+    fans0 = run.fans;
+  run.week = 8;
+  g.Goals.check(run);
+  assert(
+    run.goal.done === true && run.sp === sp0 + g.GOAL_REWARD.sp && run.fans === fans0 + g.GOAL_REWARD.fans,
+    'a met goal pays skill points and fans'
+  );
+  g.Goals.check(run);
+  eq(run.sp, sp0 + g.GOAL_REWARD.sp, 'a decided goal pays once');
+  // miss: a mood hit
+  run.goal = { kind: 'fans', target: 10 ** 9, by: 8, done: null };
+  const mood0 = run.mood;
+  g.Goals.check(run);
+  assert(run.goal.done === false && run.mood === mood0 - 1, 'a missed goal costs a mood point');
+  // met() per kind and text()
+  const you = g.Run.you(run);
+  assert(g.Goals.met(run, { kind: 'stat', stat: 'power', target: you.power }), 'stat met at the target');
+  assert(!g.Goals.met(run, { kind: 'stat', stat: 'power', target: you.power + 1 }), 'stat not met above it');
+  assert(
+    !g.Goals.met(run, { kind: 'win', week: 4 }) && (run.evals.push({ week: 4, win: true }), g.Goals.met(run, { kind: 'win', week: 4 })),
+    'win goal follows run.evals'
+  );
+  assert(/fans/.test(g.Goals.text(run, { kind: 'fans', target: 1500 })) && g.Goals.text(run, null) === '', 'goal text');
+});
+
+test('sponsors: offers at fan milestones, perks, mood / training / win / grade conditions', () => {
+  const [g, run] = mkRunG(872);
+  run.fans = g.SPONSOR_AT[0] - 1;
+  g.Sponsors.offer(run);
+  assert(!run.event, 'no offer below the milestone');
+  run.fans = g.SPONSOR_AT[0];
+  g.Sponsors.offer(run);
+  assert(
+    run.event && run.event.id === 'sponsor' && run.event.pre && run.event.opts.length === 2 && run.sponsorN === 1,
+    'an offer of two sponsors at the milestone'
+  );
+  const ids = Object.keys(g.SPONSORS);
+  const byKind = k => ids.find(id => g.SPONSORS[id].kind === k);
+  // a win sponsor: kept after a win, lost after a loss
+  for (const [win, state] of [
+    [true, 'kept'],
+    [false, 'lost']
+  ]) {
+    run.sponsors = [];
+    g.Sponsors.sign(run, byKind('win'));
+    g.Sponsors.match(run, win, 'C');
+    eq(run.sponsors[0].state, state, `win sponsor after ${win ? 'a win' : 'a loss'}`);
+  }
+  // a grade sponsor wants S or A
+  run.sponsors = [];
+  g.Sponsors.sign(run, byKind('grade'));
+  g.Sponsors.match(run, true, 'B');
+  eq(run.sponsors[0].state, 'lost', 'grade B is not enough');
+  // a mood sponsor is lost the week mood is below 2
+  run.sponsors = [];
+  g.Sponsors.sign(run, byKind('mood'));
+  run.mood = 1;
+  g.Sponsors.tick(run);
+  eq(run.sponsors[0].state, 'lost', 'mood sponsor pulls out');
+  assert(!g.Sponsors.active(run, run.sponsors[0].id), 'a lost sponsor is not active');
+  // Aqua: stamina cap while it lasts and back when it goes
+  if (g.SPONSORS.aqua) {
+    run.sponsors = [];
+    const max0 = run.staMax;
+    g.Sponsors.sign(run, 'aqua');
+    eq(run.staMax, max0 + 15, 'Aqua raises the stamina cap');
+    g.Sponsors.lose(run, run.sponsors[0]);
+    eq(run.staMax, max0, 'and takes it back');
+  }
+});
+
+test('storage: every access survives a throwing localStorage; corrupt JSON falls back; Run.load / save do not throw', () => {
+  const [g, run] = mkRunG(873);
+  g.store.set('k', 'v');
+  eq(g.store.get('k'), 'v', 'round-trip');
+  g.store.setJSON('j', { a: [1, 2] });
+  eq(JSON.stringify(g.store.getJSON('j')), '{"a":[1,2]}', 'JSON round-trip');
+  g.store.set('bad', '{nope');
+  eq(g.store.getJSON('bad', 'fb'), 'fb', 'corrupt JSON → fallback');
+  eq(g.store.get('missing', 'dflt'), 'dflt', 'missing → fallback');
+  const ls = g.__ls,
+    orig = { ...ls },
+    boom = () => {
+      throw new Error('SecurityError');
+    };
+  try {
+    ls.getItem = ls.setItem = ls.removeItem = boom;
+    eq(g.store.get('k', 'fb'), 'fb', 'get falls back');
+    g.store.set('k', 1);
+    g.store.setJSON('k', {});
+    g.store.remove('k');
+    eq(g.store.getJSON('k', 7), 7, 'getJSON falls back');
+    g.Run.save(run);
+    eq(g.Run.load(), null, 'no saved run readable');
+    g.Run.clear();
+  } finally {
+    Object.assign(ls, orig);
+  }
+  g.Run.save(run);
+  assert(g.Run.load(), 'storage back: the run saves and loads again');
+});
+
+test('saves: a newer, unversioned or corrupt save is refused; the current one loads and repairs a stripped run', () => {
+  const [g, run] = mkRunG(874);
+  g.Run.save(run);
+  const raw = JSON.parse(g.__mem[g.KEYS.career]);
+  const put = o => (g.__mem[g.KEYS.career] = typeof o === 'string' ? o : JSON.stringify(o));
+  put({ ...raw, v: g.RUN_VERSION + 1 });
+  eq(g.Run.load(), null, 'a save from a newer version is refused (not downgraded)');
+  put({ ...raw, v: '15' });
+  eq(g.Run.load(), null, 'a non-numeric version is refused');
+  const noV = { ...raw };
+  delete noV.v;
+  put(noV);
+  eq(g.Run.load(), null, 'no version → refused');
+  put('{"v": 15, "teams": [');
+  eq(g.Run.load(), null, 'truncated JSON → refused');
+  put({ ...raw, youId: 'nobody' });
+  eq(g.Run.load(), null, 'a save whose player is missing is refused');
+  const stripped = { ...raw };
+  for (const k of ['grades', 'evals', 'mem', 'asks', 'news', 'mlog']) delete stripped[k];
+  put(stripped);
+  const back = g.Run.load();
+  assert(
+    back && Array.isArray(back.grades) && Array.isArray(back.evals) && Array.isArray(back.asks),
+    'a current save missing fields loads and is repaired'
+  );
+  eq(back.week, run.week, 'same week');
 });

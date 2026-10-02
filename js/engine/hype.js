@@ -226,3 +226,10 @@ function hypeChatter(m, w) {
   if (!m.big && !errBy && m.lastPlay !== 'killblock' && played % 3) return acts.slice(0, 1);
   return acts.slice(0, 3);
 }
+
+// Helpers for the call-out lines (data: CALLS in data/dialogue.js)
+/** Pick a line without touching the random sequence (varies by player number and rally count). */
+const callLine = (kind, p, m) => CALLS[kind][(p.num + ((m && m.pts[0] + m.pts[1]) || 0)) % CALLS[kind].length];
+/** How confident a player feels right now: attacking stats, mood and the team being in the zone. */
+const confidence = (p, m, side) =>
+  (p.power + p.jump) / 2 + ((m && m.mood[p.id]) || 0) * 15 + (m && m.zone[side] ? 12 : 0) + (p.star ? 5 : 0) + (p.op ? 8 : 0);

@@ -1,5 +1,5 @@
 // The ball on screen: net clearance of a flight, following the hand that holds it, velocity and free bounces after it
-// lands, and the power trail samples (drawn by overlay.js drawTrail).
+// lands, and the power trail samples (drawn by Overlay.drawTrail).
 
 /**
  * Net clearance: a ball that the engine sends across the net (a legal serve / attack / free ball) must pass over the

@@ -219,7 +219,7 @@ function mapAfter(run) {
 function mapClash(side, sim) {
   if (side) {
     // fighting: a real match (watch it, or sim it at once)
-    const fx = Cup.clash(RUN, side);
+    const fx = Fight.clash(RUN, side);
     if (!fx) return;
     if (!sim) return navigate('match', fx);
     Cup.simNow(fx);
@@ -251,7 +251,7 @@ function mapChallenge(ti, sim) {
   if (!r) return;
   CW.spot = `hq${ti}`;
   if (r.accepted) {
-    const fx = Cup.challenge(RUN, ti, r.stake);
+    const fx = Fight.challenge(RUN, ti, r.stake);
     if (!fx) return;
     if (!sim) return navigate('match', fx);
     Cup.simNow(fx);

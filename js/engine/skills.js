@@ -16,3 +16,14 @@ function skillMod(p, key) {
 }
 /** Bond combo: a setter and spiker with bond 60+ can trigger a two-star combo even if neither is a star. */
 const bondCombo = (a, b) => ((a.bond && a.bond[b.id]) || 0) >= 60 || ((b.bond && b.bond[a.id]) || 0) >= 60;
+/** Can this player use a technique? Learned (career) or meets the stat requirements. */
+function hasTech(p, id) {
+  const t = SKILLS[id];
+  if (!t || !t.tech) return false;
+  if (p.skills && p.skills.includes(id)) return true;
+  for (const k in t.req) if ((k === 'wit' ? p.wit : p[k]) < t.req[k]) return false;
+  return true;
+}
+const skillRoleOk = (s, role) => s.role === 'any' || s.role === role || (Array.isArray(s.role) && s.role.includes(role));
+/** Captain leadership level: 1 at 55+, 2 at 70+, 3 at 85+. */
+const leadLv = p => (p.lead >= 85 ? 3 : p.lead >= 70 ? 2 : p.lead >= 55 ? 1 : 0);

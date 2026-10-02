@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-090** (T-082…T-088 are reserved below).
+(files, steps, accept) and moves them to Now. Next free id: **T-090** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -11,7 +11,7 @@ Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x
 ### [ ] T-000: <imperative title>
 Spec: §x.y          Goldens: unchanged | update (<why>)          Save: no change | RUN_VERSION bump (<why>)
 Goal: <one or two sentences: the observable outcome>
-Files: <exact paths the build chat may edit; new files marked (new) — also add to index.html + test3d.html>
+Files: <exact paths the build chat may edit; new files marked (new) — also add to index.html>
 Do not: <things that look tempting but are wrong for this task>
 Steps:
 1. <concrete step naming functions/constants/globals>
@@ -22,7 +22,7 @@ Result:
 ```
 
 ## State (2026-10-02)
-Everything through T-089 is built and reviewed (main + branch `review/t061-t066`, 97 tests, RUN_VERSION 14).
+Everything through T-089 and cleanup part 2 (T-082…T-087) is built (103 tests, RUN_VERSION 15).
 Built areas: match engine (ego, block collision, subs/coach, stamina, elements, hype, 3D playback, Follow/POV cameras),
 career (free agent start at 1, pools/evaluations/U21 cup, Story mode, growth & techniques, challenges & injuries,
 rankings, roads/travel/town/venues, living map A, relationships T-060…T-066), voice pass, cleanup part 1.
@@ -37,19 +37,11 @@ Features (spec first):
 - Living map layers B / C (spec §4.16: individual figures, approaches on the map).
 - Balance pass (spec §4.10 condition values, §5.5 severe injury, hype frequency §2.3).
 
-Cleanup, part 2 (behaviour-neutral unless noted; T-085 can now go: T-048 is done)
-- T-082: One HTML entry — drop test3d.html; pick the importmap (CDN vs node_modules) with an inline script before any
-  module; removes the "add to BOTH" rule.
-- T-083: Namespaces — sfx internals in an IIFE (expose SND, sfx, bgm*, …); the overlay API r3d calls as `Overlay`;
-  match-screen's `A`/`cv`/`ctx`/`last` globals.
-- T-084: Cross-file CSS — the ~74 selectors defined in 2–3 files: layout in style.css/career.css, surface in theme.css.
-- T-085: cup.js split (bracket/fixtures vs fight.js: challenge, clash, lose, injure, hired); data files lose their
-  logic (callLine, confidence, epair, hasTech, skillRoleOk, leadLv → engine/career); day/travel tuning grouped
-  (`WEEK_DAYS`, `DAY_GAIN`, `TRIP_*`, `TRAIN_FEE`, `TURF_BONUS`, `HOTEL`).
-- T-086: `run.warm` / `warmupWin|Loss` → `eval*` (RUN_VERSION bump).
-- T-087: Coverage gaps — Goals, Storage with a throwing localStorage, old-save load, map3d pure functions (heightAt,
-  toMap/toWorld, inside/edgeDist; needs three from T-071).
-- T-088: Big binaries — keep base64 for the artifact but store .glb/.mp3 in Git LFS and generate the .txt at publish.
+Cleanup, part 2: T-082…T-087 done (see Done). Open:
+- T-088 [?]: Big binaries — keep base64 for the artifact but store .glb/.mp3 in Git LFS and generate the .txt at publish.
+  Question: today `assets/vrm/*.glb.txt` (18 MB of base64 text) and the .mp3 sit in plain git. Moving them to LFS means either
+  `git lfs migrate import` (rewrites history, needs a force push) or LFS only for new commits (old blobs stay). Which? Also confirm
+  LFS is enabled for glairlyyy/spiker and that the artifact publish step may decode/encode (`base64 -d` / `base64`) at publish time.
 
 ## Done
 T-001…T-089 (no T-012…T-015, T-021, T-033, T-049; T-082…T-088 open above). One line each; full text in git history.
@@ -65,6 +57,11 @@ T-001…T-089 (no T-012…T-015, T-021, T-033, T-049; T-082…T-088 open above).
 - Relationships: T-060 NPC careers · T-061 memories & stance · T-062 People drawer · T-063 approaches · T-064 fates ·
   T-065 NPC ↔ NPC · T-066 on court · T-089 review fixes.
 - Voice: T-022 voice pass. Cleanup part 1: T-071–T-081.
+- Cleanup part 2 (branch cleanup/part2): T-082 one HTML entry (inline import map: node_modules on localhost, CDN elsewhere; test3d.html gone) ·
+  T-083 sfx internals in the `SOUND` closure, `Overlay` API for r3d / clock (A, cv, ctx, last stay global: used across render and UI) ·
+  T-084 CSS: 89 declarations a later file already overrides removed, pixel diff 0.00 % · T-085 `Fight` (career/fight.js) split from `Cup`,
+  data helpers moved to the engine, day / travel / fee tuning in one block · T-086 `run.warm` → `run.evals`, `warmup*` → `eval*`
+  (RUN_VERSION 15) · T-087 tests: Goals, Sponsors, Storage, refused / repaired saves, map3d pure functions (103 tests).
 
 ## Unplanned changes
 (build chat: owner requests made directly in the build chat — one line each; the spec chat moves them into spec.md)

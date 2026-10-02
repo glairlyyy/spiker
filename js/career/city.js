@@ -409,7 +409,7 @@ const City = {
   },
   /**
    * Challenge club ti for a stake. null = can't now (event open, no days, no money for the crew). Accepted → { accepted: true,
-   * stake }: nothing is spent yet — the match is Cup.challenge and Cup.challengeResult spends the trip + day. Refused →
+   * stake }: nothing is spent yet — the match is Fight.challenge and Fight.challengeResult spends the trip + day. Refused →
    * the trip + a day are spent, the club won't hear you again this week, and { accepted: false, line } is the diary line.
    */
   challenge(run, ti, stake = 0) {
@@ -431,7 +431,7 @@ const City = {
   },
   clashSite: run => (run.clash && !run.clash.done ? CLASH.sites[run.clash.site] : null),
   clashCost: run => City.trip(run, City.clashSite(run).at) + 1,
-  /** Go to the battle and watch it (side null). Returns the diary line. Fighting is Cup.clash(run, side), a real match. */
+  /** Go to the battle and watch it (side null). Returns the diary line. Fighting is Fight.clash(run, side), a real match. */
   clash(run, side) {
     const c = City.clashSite(run);
     if (!c || run.event || City.noTime(run, City.clashCost(run)) || (side && side !== c.a && side !== c.b)) return '';
@@ -447,6 +447,6 @@ const City = {
       out.push(Run.bump(run, 'sta', -CLASH.watchSta));
       return `${trip}Watched the street battle (${vs}): ${REGIONS[w].name} won${s ? ` — ${s}` : ''}; both sides' clubs scouted. ${out.filter(Boolean).join(', ')}`;
     }
-    return ''; // fighting is a real match: Cup.clash(run, side)
+    return ''; // fighting is a real match: Fight.clash(run, side)
   }
 };

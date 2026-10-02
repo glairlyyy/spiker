@@ -113,7 +113,6 @@ const EPAIR = {
   'blast+star': 'Big Bang',
   'shadow+star': 'Eclipse'
 };
-const epair = (a, b) => (a === b ? null : EPAIR[[a, b].sort().join('+')]);
 /** Gauge tuning (0–100). */
 const EG = {
   full: 100,
