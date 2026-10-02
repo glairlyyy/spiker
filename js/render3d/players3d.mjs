@@ -128,6 +128,7 @@ export function dress(vrm, kit) {
     else if (/Shoes/.test(n)) tint(kit.shoes || '#ffffff', 0.75);
     else if (/HAIR/.test(n)) {
       if (!m.userData.grey) {
+        m.userData.map0 = { map: m.map, shade: m.shadeMultiplyTexture };
         m.map = greyTexture(m.map, 'grayscale(1) brightness(2.1) contrast(1.15)');
         if (m.shadeMultiplyTexture) m.shadeMultiplyTexture = m.map;
         m.userData.grey = true;
@@ -136,6 +137,7 @@ export function dress(vrm, kit) {
       tint(kit.hair, 0.6);
     } else if (/EyeIris/.test(n)) {
       if (!m.userData.grey) {
+        m.userData.map0 = { map: m.map };
         m.map = greyTexture(m.map, 'grayscale(1) brightness(1.7)');
         m.userData.grey = true;
         m.needsUpdate = true;
@@ -150,6 +152,59 @@ export function dress(vrm, kit) {
       m.shadeColorFactor && m.shadeColorFactor.multiply(k);
     }
   });
+}
+
+/** Back to the model's own colours (undo dress): for loaded models the player wants kept as modelled. */
+export function undress(vrm) {
+  eachMat(vrm, m => {
+    const c0 = m.userData.c0,
+      t0 = m.userData.map0;
+    if (c0) {
+      if (m.color && c0.color) m.color.copy(c0.color);
+      if (m.shadeColorFactor && c0.shade) m.shadeColorFactor.copy(c0.shade);
+    }
+    if (t0 && m.userData.grey) {
+      m.map = t0.map;
+      if (t0.shade) m.shadeMultiplyTexture = t0.shade;
+      m.userData.grey = false;
+      m.needsUpdate = true;
+    }
+  });
+}
+
+/** Cost of one figure, for the debug log: meshes, materials (≈ draw calls; shadows draw them again), triangles, bones, spring joints. */
+export function modelStats(pl) {
+  const mats = new Set();
+  let meshes = 0,
+    tris = 0,
+    bones = 0;
+  pl.vrm.scene.traverse(o => {
+    if (!o.isMesh) return;
+    meshes++;
+    const g = o.geometry;
+    tris += Math.round((g.index ? g.index.count : g.attributes.position.count) / 3);
+    if (o.skeleton) bones = Math.max(bones, o.skeleton.bones.length);
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) mats.add(m);
+  });
+  const springs = pl.vrm.springBoneManager ? (pl.vrm.springBoneManager.joints.size ?? pl.vrm.springBoneManager.joints.length) : 0;
+  return `${meshes} meshes, ${mats.size} materials, ${tris} tris, ${bones} bones, ${springs} spring joints, ≈${mats.size * 2} draws (with shadow)`;
+}
+
+/** Hair / cloth springs are stepped at this rate (Hz); bones, expressions and look-at still update every frame. 0 = every frame. */
+const SPRING_HZ = 30;
+/** vrm.update(dt) with the spring bones throttled to SPRING_HZ (stepped with the time collected since their last step); figures are staggered. */
+export function updateVrm(pl, dt) {
+  const vrm = pl.vrm,
+    sm = vrm.springBoneManager;
+  if (!sm || !SPRING_HZ) return vrm.update(dt);
+  pl.sacc = (pl.sacc ?? Math.random() / SPRING_HZ) + dt;
+  vrm.springBoneManager = null;
+  vrm.update(dt);
+  vrm.springBoneManager = sm;
+  if (pl.sacc >= 1 / SPRING_HZ - 1e-4) {
+    sm.update(Math.min(pl.sacc, 0.1));
+    pl.sacc = 0;
+  }
 }
 
 /** Hair / cloth spring tuning: stiffness ×, drag + and gravity × on top of the model's own values (more = less movement). */

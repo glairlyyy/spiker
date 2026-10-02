@@ -2,7 +2,7 @@
 // ball at contacts, hand / eye light trails, auras, floor rings (zone, captain's buff) and particles; coaches on the
 // sideline; dressing everyone for a match.
 import * as THREE from 'three';
-import { applyPose, smoothBones, torsoDir, bendArm, groundSnap, setFace, dress, mirror } from './players3d.mjs';
+import { applyPose, smoothBones, torsoDir, bendArm, groundSnap, setFace, updateVrm, dress, undress, mirror } from './players3d.mjs';
 import { poseDone, playerPose, coachPose } from './poses3d.mjs';
 import { KH, KX, KZ, W } from './units3d.mjs';
 import { cam, povFadeId } from './camera3d.mjs';
@@ -81,7 +81,7 @@ export function posePlayer(pl, dt, ballPos, fx) {
   smoothBones(pl, dt, fast ? 45 : mot.speed > 1 ? 26 : 16);
   groundSnap(pl, (d.jy || 0) * KH + (pose.lift || 0), pose.lying);
   setFace(pl, pose.face || {}, dt);
-  pl.vrm.update(dt);
+  updateVrm(pl, dt);
   lightTrails(pl, d, root, dt);
   glow(pl, d, pos, dt, fx);
 }
@@ -254,17 +254,25 @@ export function poseCoach(pl, dt, now) {
   smoothBones(pl, dt, 12);
   groundSnap(pl, hop * KH, false);
   setFace(pl, pose.face || {}, dt);
-  pl.vrm.update(dt);
+  updateVrm(pl, dt);
 }
+
+/** Loaded .vrm models keep their own colours (no kit / hair / skin / eye tint) when on. */
+let keepColors = false;
+export const setKeepColors = on => (keepColors = !!on);
 
 /** Dress one figure as display entry d: team kit, look, height, aura and trail colours; reset its per-player state. */
 function dressFigure(pl, d) {
   const p = d.p,
     team = p.team || A.m.t[d.side];
   // (Main_v2 keeps its own colours: no kit / hair / skin / eye tint)
-  if (!pl.own)
-    dress(pl.vrm, { shirt: team.color, shorts: '#1b2150', hair: p.hair, skin: p.look.skin, eyes: p.look.eyeC, shoes: '#ffffff' });
-  pl.root.scale.setScalar((pl.scale = (1.8 * (p.look.hgt || 1)) / pl.headY));
+  if (pl.own) {
+    // kept as modelled
+  } else if (keepColors && pl.model) undress(pl.vrm);
+  else dress(pl.vrm, { shirt: team.color, shorts: '#1b2150', hair: p.hair, skin: p.look.skin, eyes: p.look.eyeC, shoes: '#ffffff' });
+  // height: the model's own, not the role's (look.hgt) — base / Main_v2 are normalised to 1.8 m, a loaded .vrm keeps its exported size.
+  // Jump height (root.position.y = jy × KH, metres) does not depend on the scale, so jumps and blocks reach the same height.
+  pl.root.scale.setScalar((pl.scale = pl.model && pl.model !== 'main' ? 1 : 1.8 / pl.headY));
   pl.aura.material.color.set(p.op ? '#ff2846' : team.color);
   pl.zone.material.color.set(team.color);
   // hand trails in the player's hair colour, a touch brighter

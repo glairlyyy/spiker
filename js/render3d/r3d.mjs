@@ -7,7 +7,7 @@
 //   camera3d game camera, scene shots, P3D       actors3d  posing players and coaches, trails, auras, rings
 //   players3d VRM load / dress / pose apply      poses3d   pose library      fx3d / trails3d  effects
 import * as THREE from 'three';
-import { loadBase, makeVRM, MODEL_URL, MAIN_URL } from './players3d.mjs';
+import { loadBase, makeVRM, modelStats, updateVrm, MODEL_URL, MAIN_URL } from './players3d.mjs';
 import { createFx } from './fx3d.mjs';
 import { makeTrail } from './trails3d.mjs';
 import { W, lowEnd } from './units3d.mjs';
@@ -27,7 +27,7 @@ import {
   getPovStats,
   setDebugCam
 } from './camera3d.mjs';
-import { posePlayer, poseCoach, dressActors, swapActor, setPovHidden } from './actors3d.mjs';
+import { posePlayer, poseCoach, dressActors, swapActor, setPovHidden, setKeepColors } from './actors3d.mjs';
 
 const N_PLAYERS = 8,
   N_COACHES = 2;
@@ -78,6 +78,7 @@ async function build(onProgress) {
     scene.add(pl.root);
     prog(0.5 + (0.5 * (i + 1)) / (N_PLAYERS + N_COACHES), 'Getting players ready');
     await new Promise(r => setTimeout(r, 0));
+    if (i === 0) DBG.log('info', `Model base: ${modelStats(pl)}`);
     if (i < N_PLAYERS) people.push(kitOut(pl, scene, arena));
     else coaches.push(pl);
   }
@@ -86,6 +87,7 @@ async function build(onProgress) {
     const mb = await loadBase(MAIN_URL, f => prog(0.3 + f * 0.2, 'Downloading players')),
       pl = await makeVRM(mb, 1.8);
     pl.model = 'main';
+    DBG.log('info', `Model main: ${modelStats(pl)}`);
     pl.own = true;
     pl.root.visible = false;
     scene.add(pl.root);
@@ -125,6 +127,7 @@ async function addModel(buf, name) {
   for (let i = 0; i < EXTRA_FIGS; i++) {
     const pl = await makeVRM(buf, 1.8);
     pl.model = name;
+    if (!i) DBG.log('info', `Model ${name}: ${modelStats(pl)}`);
     pl.root.visible = false;
     w.scene.add(pl.root);
     figs.push(kitOut(pl, w.scene, w));
@@ -134,6 +137,87 @@ async function addModel(buf, name) {
   w.models = [...(w.models || []), name];
   if (bound && A && bound === A) dressActors(w); // a match on screen now: re-dress it (from the menu there is none)
   return name;
+}
+
+/**
+ * Benchmark each model on its own (menu only, no match on screen): up to 8 figures of it in a row, a fixed camera, `frames`
+ * timed renders (shadow pass included, GPU-synced) and spring-bone updates, minus an empty-arena baseline. Logs one line per
+ * model to the debug log and returns the rows: draws / triangles added, render ms and spring-bone update ms per frame.
+ */
+async function bench(frames = 40) {
+  const w = world || (building && (await building, world));
+  if (!w) throw new Error('3D not ready');
+  if (bound) throw new Error('leave the match first');
+  const r = w.renderer,
+    gl = r.getContext(),
+    cam2 = new THREE.PerspectiveCamera(40, 16 / 9, 0.1, 100),
+    all = [...w.people, ...w.coaches],
+    saved = all.map(pl => [pl.root.visible, pl.root.position.clone()]),
+    groups = new Map();
+  cam2.position.set(0, 1.6, 9);
+  cam2.lookAt(0, 1, 0);
+  for (const pl of w.people) {
+    const k = pl.model || 'base';
+    if (!groups.has(k)) groups.set(k, []);
+    if (groups.get(k).length < 8) groups.get(k).push(pl);
+  }
+  const run = (figs, n) => {
+    all.forEach(pl => (pl.root.visible = false));
+    figs.forEach((pl, i) => {
+      pl.root.visible = true;
+      pl.root.position.set((i - (figs.length - 1) / 2) * 1.2, 0, 0);
+      pl.root.updateMatrixWorld(true);
+    });
+    let upd = 0,
+      ren = 0,
+      calls = 0,
+      tris = 0;
+    for (let f = 0; f < n; f++) {
+      const t0 = performance.now();
+      figs.forEach(pl => updateVrm(pl, 0.016));
+      const t1 = performance.now();
+      r.info.reset();
+      r.render(w.scene, cam2);
+      gl.finish();
+      const t2 = performance.now();
+      upd += t1 - t0;
+      ren += t2 - t1;
+      calls = r.info.render.calls;
+      tris = r.info.render.triangles;
+    }
+    return { upd: upd / n, ren: ren / n, calls, tris };
+  };
+  const rows = [];
+  try {
+    run([], 3);
+    const b0 = run([], frames);
+    for (const [model, figs] of groups) {
+      run(figs, 3); // warm-up: shader compile, first upload
+      const s = run(figs, frames),
+        row = {
+          model,
+          figs: figs.length,
+          draws: s.calls - b0.calls,
+          tris: s.tris - b0.tris,
+          renderMs: +Math.max(0, s.ren - b0.ren).toFixed(2),
+          springMs: +s.upd.toFixed(2)
+        };
+      rows.push(row);
+      DBG.log(
+        'info',
+        `Bench ${model} ×${row.figs}: +${row.draws} draws, +${row.tris} tris, render +${row.renderMs} ms, springs ${row.springMs} ms per frame (${(
+          (row.renderMs + row.springMs) /
+          row.figs
+        ).toFixed(2)} ms per figure)`
+      );
+    }
+  } finally {
+    all.forEach((pl, i) => {
+      pl.root.visible = saved[i][0];
+      pl.root.position.copy(saved[i][1]);
+    });
+  }
+  return rows;
 }
 
 // ---------- per match ----------
@@ -226,7 +310,7 @@ function draw() {
     const d = pl.d;
     if (!d) continue;
     const pr = P(d.x, d.z, d.jy);
-    if (!A.shot) drawTags(d, pr, Math.min(1.7, pr.s * FIG * (d.p.look ? d.p.look.hgt : 1)), (A.staShown || {})[d.p.id]); // capped: close-up shots
+    if (!A.shot) drawTags(d, pr, Math.min(1.7, pr.s * FIG), (A.staShown || {})[d.p.id]); // capped: close-up shots
   }
   for (const pl of w.coaches) {
     if (!pl.c) continue;
@@ -303,6 +387,12 @@ export const api = {
     return world ? +(world.gl.width / Math.max(1, cv.width)).toFixed(2) : null; // 3D render scale vs the court canvas (debug)
   },
   addModel,
+  bench,
+  /** Loaded models keep their own colours (re-dresses a match on screen). */
+  keepColors: on => {
+    setKeepColors(on);
+    if (world && bound && A && bound === A) dressActors(world);
+  },
   swapActor: (outId, d) => world && swapActor(world, outId, d), // a substitution: the figure of the player going off plays the incoming one
   models: () => (world && world.models) || [],
   poseAll: dt => world && world.people.forEach(pl => pl.d && posePlayer(pl, dt, W(A.ball.x, A.ball.z, A.ball.h), world.fx)), // test hook: fast-forward posing
