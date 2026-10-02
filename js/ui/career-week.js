@@ -390,7 +390,7 @@ function lifeCard(run) {
   return `<div class="panel life"><h3>Life${info(`Payday every ${ECON.payEvery} weeks: +$${ECON.allowance} allowance, −$${ECON.food} food, −rent. Run out of money and you're evicted to the abandoned gym. Prize money from matches.`)}</h3>
     <div class="small"><b>$${run.money.toLocaleString()}</b> · next payday week ${next}</div>
     <label class="small hsel">Home <select onchange="setHousing(this.value)" aria-label="Housing">${HOUSEK.map(k => `<option value="${k}" ${k === run.housing ? 'selected' : ''}>${HOUSING[k].name} — $${HOUSING[k].rent}</option>`).join('')}</select>${info(H.desc)}</label>
-    <div class="small mute">${World.isFree(run) ? 'Free agent — no club yet' : `${esc(FACTIONS[run.team].name)}${info(`${FACTIONS[run.team].front}. Word is: ${FACTIONS[run.team].dark.toLowerCase()}.`)}`}</div></div>`;
+    <div class="small mute">${World.isFree(run) ? 'Free agent — no club yet' : `${esc(FACTIONS[run.team].name)}${info(`${FACTIONS[run.team].front}. Word is: ${FACTIONS[run.team].dark}.`)}`}</div></div>`;
 }
 /** Clubs that would sign you (free agents only). */
 function clubsCard(run) {
@@ -401,7 +401,7 @@ function clubsCard(run) {
       .map(t => {
         const c = World.canJoin(run, t.i),
           f = FACTIONS[t.i];
-        return `<div class="club" style="--tc:${t.color}"><div>${chip(t)}<b>${esc(t.name)}</b> <span class="mute small">${esc(f.name)} · OVR ${t.ovr}</span>${info(`${f.front}. Word is: ${f.dark.toLowerCase()}.`)}</div>
+        return `<div class="club" style="--tc:${t.color}"><div>${chip(t)}<b>${esc(t.name)}</b> <span class="mute small">${esc(f.name)} · OVR ${t.ovr}</span>${info(`${f.front}. Word is: ${f.dark}.`)}</div>
           <div class="small ${c.ok ? '' : 'mute'}">${World.joinText(t.i, run)}</div>
           <button class="btn ${c.ok ? 'hot' : ''}" onclick="joinClub(${t.i})" ${c.ok ? '' : 'disabled'} ${c.ok ? '' : tip('Missing: ' + c.why.join(', '))}>${c.ok ? 'Sign' : 'Locked'}</button></div>`;
       })

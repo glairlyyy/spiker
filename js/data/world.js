@@ -18,7 +18,7 @@ const REGIONS = {
     price: 2,
     q: 1.25,
     hype: 0.3,
-    desc: 'The city: top facilities at top prices — not all of them live up to it'
+    desc: 'The league’s seat: the finest facilities on the island at the highest prices — not every one earns its sign'
   },
   wu: {
     color: '#3fa9f5',
@@ -27,7 +27,7 @@ const REGIONS = {
     kind: 'major',
     price: 1,
     q: 1,
-    desc: 'The coastline: mid prices, mid facilities; the sand courts are the best place to build technique'
+    desc: 'The coast: honest prices, honest courts. The sand is where technique is built, whatever the office says'
   },
   shu: {
     color: '#4ade80',
@@ -37,7 +37,7 @@ const REGIONS = {
     price: 0.5,
     q: 0.8,
     gem: 0.15,
-    desc: 'Mountain towns far from the city: everything cheap and rough — now and then a hidden gem'
+    desc: 'Mountain towns, far from the city. Cheap and rough; the elders keep what they know for those who stay'
   },
   outlaws: {
     color: '#ff8c42',
@@ -46,7 +46,7 @@ const REGIONS = {
     kind: 'minor',
     price: 1,
     q: 1,
-    desc: 'Cages and courts under the overpass, on the Wei–Wu line'
+    desc: 'Cages and courts under the overpass, between Wei and Wu. Nobody here owes the office a thing'
   },
   gloria: {
     color: '#ff5da2',
@@ -55,7 +55,7 @@ const REGIONS = {
     kind: 'minor',
     price: 3,
     q: 1.35,
-    desc: 'A private club inside the city: the best money can buy'
+    desc: 'A private club inside the city. By invitation, at the highest prices on the island'
   },
   open: {
     color: '#f5e6a8',
@@ -77,64 +77,64 @@ const FACTIONS = [
     region: 'wei',
     name: 'Wei Dynasty · Gold',
     team: ['Wei Dynasty Gold', 'WDG', '#F5B82E'],
-    front: 'The academy’s elite first squad',
-    dark: 'Discards anyone who stops performing',
+    front: 'The league’s first squad: rank, order, tradition',
+    dark: 'the contracts run longer than the careers',
     join: { ovr: 72 }
   },
   {
     region: 'wei',
     name: 'Wei Dynasty · Iron',
     team: ['Wei Dynasty Iron', 'WDI', '#C98B2B'],
-    front: 'The academy’s second squad, hungry for promotion',
-    dark: 'Everyone is fighting for one spot upstairs',
+    front: 'The second squad, earning its place upstairs',
+    dark: 'six players, one seat upstairs, and nobody sleeps',
     join: { ovr: 62 }
   },
   {
     region: 'wu',
     name: 'Wu Navy · Harbor',
     team: ['Wu Navy Harbor', 'WNH', '#4EA5FF'],
-    front: 'Fast harbor crew, sand-trained',
-    dark: 'Seniority mafia and hazing',
+    front: 'The harbor crew: honest strength, sand-trained',
+    dark: 'newcomers carry the seniors’ bags, and worse, until they are “one of us”',
     join: {}
   },
   {
     region: 'wu',
     name: 'Wu Navy · Fort',
     team: ['Wu Navy Fort', 'WNF', '#2EC4B6'],
-    front: 'Beach grinders, hard work over talent',
-    dark: 'Border brawls with Wei every season',
+    front: 'Beach grinders: sweat over tricks',
+    dark: 'every season the Wei border ends in a brawl, and nobody remembers who threw first',
     join: { key: 70 }
   },
   {
     region: 'shu',
     name: 'Shu Dragon · Peak',
     team: ['Shu Dragon Peak', 'SDP', '#4ADE80'],
-    front: 'One warm mountain family',
-    dark: 'Guilt-trips anyone who leaves',
+    front: 'The pure path, taught the way the elders taught it',
+    dark: 'leave, and the elders stop saying your name; some say the tea is for the pain',
     join: { star: true }
   },
   {
     region: 'outlaws',
     name: 'Street Outlaws',
     team: ['Street Outlaws', 'SOL', '#FF8C42'],
-    front: 'Pavement courts under the overpass',
-    dark: 'Illegal betting ring',
+    front: 'Pavement courts under the overpass: no office, no forms',
+    dark: 'the betting never stops, and the ones who owe do not get to leave',
     join: { fee: 150 }
   },
   {
     region: 'gloria',
     name: 'St. Gloria International',
     team: ['St. Gloria', 'STG', '#FF5DA2'],
-    front: 'World-class facilities',
-    dark: 'Pay-to-win, sue-happy parents',
+    front: 'Every facility the island has not got',
+    dark: 'a foreign agency pays for it, and the contracts are not written for you',
     join: { fee: 600 }
   },
   {
     region: 'shu',
     name: 'Shu Dragon · Valley',
     team: ['Shu Dragon Valley', 'SDV', '#22A06B'],
-    front: 'The valley squad: raw kids from mountain villages',
-    dark: 'Nobody from the city is trusted',
+    front: 'The valley squad: raw kids, raised the hard way',
+    dark: 'they trust no one who came up by the city road',
     join: { ovr: 55 }
   }
 ];

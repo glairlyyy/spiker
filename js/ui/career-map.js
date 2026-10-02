@@ -183,7 +183,7 @@ function hqPanel(run, ti) {
     : '';
   const habits = seen ? `<p class="small mute">${esc(Dossier.habitText(Dossier.habits(t)))}</p>` : '';
   return `<div class="spot" style="--tc:${t.color}"><h4>${chip(t)}${esc(t.name)} <span class="mute small">${esc(REGIONS[f.region].name)} · rating ${t.ovr}</span></h4>
-    <p class="small">${esc(f.front)}.${City.rep(run, f.region) ? ` <span ${tip(`Your standing with ${REGIONS[f.region].name}`)}>Standing <b>${signed(City.rep(run, f.region))}</b>.</span>` : ''}${seen ? ` <span class="mute">Word is: ${esc(f.dark.toLowerCase())}.</span>` : ''}</p>${roster}${habits}
+    <p class="small">${esc(f.front)}.${City.rep(run, f.region) ? ` <span ${tip(`Your standing with ${REGIONS[f.region].name}`)}>Standing <b>${signed(City.rep(run, f.region))}</b>.</span>` : ''}${seen ? ` <span class="mute">Word is: ${esc(f.dark)}.</span>` : ''}</p>${roster}${habits}
     <div class="trow"><button class="btn" onclick="openDossier('${f.region}')" ${tip(`Everything you know about ${REGIONS[f.region].name}`)}>Dossier</button>${
       free
         ? `<button class="btn ${j.ok ? 'hot' : ''}" onclick="joinClub(${ti})" ${j.ok ? '' : `disabled ${tip('Missing: ' + j.why.join(', '))}`}>Sign</button><span class="small ${j.ok ? '' : 'mute'}">${esc(World.joinText(ti, run))}</span>`

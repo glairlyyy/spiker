@@ -100,7 +100,7 @@ const World = {
     Training.rollFloor(run); // this week's training partners are your new teammates
     finalizeTeam(P);
     Run.log(run, `Signed with ${T.name} (${FACTIONS[ti].name})${fee ? ` — $${fee} fee` : ''}. ${old.name} is out.`);
-    Run.news(run, `${you.name} signs with ${T.name}.`);
+    Run.news(run, `${you.name} signs with ${T.name}. The office takes note.`);
     return true;
   },
   setHousing(run, k) {
@@ -158,7 +158,10 @@ const World = {
       finalizeTeam(s);
       if (you.bond[star.id] != null && T[run.team] !== buyer) delete you.bond[star.id];
       if (T[run.team] === buyer || T[run.team] === s) for (const m of Run.mates(run)) if (you.bond[m.id] == null) you.bond[m.id] = 0;
-      Run.news(run, `Transfer: ${buyer.name} poach ${star.name} (${star.role}) from ${s.name}; ${mine.name} goes the other way.`);
+      Run.news(
+        run,
+        `Transfer, in good order: ${buyer.name} secure ${star.name} (${star.role}) from ${s.name}; ${mine.name} goes the other way.`
+      );
       return;
     }
   },
@@ -184,7 +187,7 @@ const World = {
         delete you.bond[weak.id];
         if (you.bond[res.id] == null) you.bond[res.id] = 0;
       }
-      Run.news(run, `${REGIONS[r].name}: ${res.name} promoted to ${wt.name}; ${weak.name} sent to the reserves.`);
+      Run.news(run, `${REGIONS[r].name}: ${res.name} rises to ${wt.name}; ${weak.name} returns to the reserves to reflect.`);
     }
   },
   /** Monthly Gazette: the news collected since the last payday plus power rankings. */

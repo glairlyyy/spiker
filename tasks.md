@@ -49,7 +49,7 @@ Result:
 - Relationships ✓ (T-060…T-066, spec §4.23).
 - Relationship review fixes ✓ (T-089).
 - Road travel ✓ (T-048).
-- **Now**: voice pass (T-022), then cleanup part 2 (T-082…T-088).
+- **Now**: cleanup part 2 (T-082…T-088). Voice pass: T-022 done (event scenes in events.js still neutral — a follow-up if wanted).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now
@@ -75,11 +75,10 @@ Relationships — the core pillar (spec §4.23; detailed one by one after T-059)
 Injuries, part 2 — spec §4.15
 - (T-049 merged into T-057.)
 
-Phase 5 — Voice pass
-- T-022: Faction `front`/`dark`, region `desc`, Gazette and event strings in lore.md §7 voices. Also fix the stale
-  encyclopedia line "Or learn it in career for this many skill points" (ui/encyclopedia.js: techniques are learned in play).
 
 ## Done
+
+- [x] T-022: Voice pass — faction `front` (own voice) / `dark` (rumor voice, no lowercasing: UI shows them after "Word is:"), region `desc` (wei / wu / shu / outlaw / gloria voices), Gazette lines (signing, transfer, promotion, cut, quit, call-up, overtrained: wei voice), scout rumour; encyclopedia technique cards say "learned in matches" (no pts). Numbers and tested words (seized / retook / quit the sport) unchanged. 97/97, lint clean, goldens unchanged. Not done: events.js scenes. (Done by the spec chat.)
 
 - [x] T-048: Road travel — trip cost = the cheaper of the road route (ROAD_COST by kind) and cross-country (GROUND_COST: Shu ×1.35); routes follow the cheapest roads; PATH_CACHE. Airport → harbor 3 → 2 days, → trail 2 → 3; MapModel.build +2 ms. 97/97, goldens unchanged. (Done by the spec chat.)
 - [x] T-089: Relationship fixes from the T-061…T-066 review — 97/97 tests, lint clean, goldens unchanged. 1: `People.poach` returns when the next week starts a cup; `Asks.list` / `answer` skip poach_advice during a cup. 2: St. Gloria's reserve gets coachIQ 0.5 before `finalizeTeam` (test: no R() on that path). 3: `People.remove` clears the loan; `Asks.nextPay` is capped at week 28. 4: "went" only when `People.leave` returned a line (else "stayed after all"); the unanswered leave line goes to the Gazette. 5: trust label only for an ally pick, freeze only when a resent / enemy pick is replaced by a non-enemy (the relLog entries follow the same rule; the clutch test now asserts it).
