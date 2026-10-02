@@ -357,11 +357,11 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
       covered_me (a dig on their bad pass, sat out for them) +8 · vouched +15 · refused_help −6 · lent_money +10 ·
       debt_unpaid −4 per week · called_out −5 · shamed (a Gazette jab about them you caused) −12 (scar).
   - Memories fade (×DECAY per week) except scars, which never fade. A log keeps ≤ 24 entries (same kinds merge).
-  - **Stance** = Σ value × fade × trait multipliers (proud ×2 on scars and beat_me; loyal ×0.5 on negatives once
-    allied; jealous ×1.5 on spot_taken and on your wins; warm ×1.3 on positives; cynical ×0.7 on positives; calculating
-    weighs only memories with a payoff: carried, vouched, lent_money). Tags by stance: **ally** · **respect** ·
-    neutral · **rival** · **resent** · **enemy**. A same-role mate within 5 OVR in the same squad is a rival whatever
-    the stance sign (a warm rival vs a bitter rival).
+  - **Stance** = Σ value × fade × trait multipliers (proud ×2 on scars and beat_me; loyal ×0.6 on negatives; jealous
+    ×1.5 on spot_taken, and your hero plays count against you; warm ×1.3 / cynical ×0.7 on positives; calculating ×1.5 on
+    memories with a payoff — won_together, carried, vouched, lent_money — ×0.5 on the rest). Tags by stance: **ally** ·
+    **respect** · neutral · **resent** · **enemy**; **rival** is a separate flag: a same-role mate within 5 OVR in the
+    same squad, whatever the stance (a warm rival vs a bitter rival).
   - The old `bond` (0–100) becomes a read-only summary of the stance (for goals, form and the Team drawer); every
     current bond source becomes a memory kind instead.
 

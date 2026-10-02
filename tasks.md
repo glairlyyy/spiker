@@ -46,12 +46,84 @@ Result:
 - Ego ✓ (T-068), block collision ✓ (T-069).
 - Player camera polish ✓ (T-070).
 - - NPC careers ✓ (T-060).
-- **Now**: relationships — the core pillar (spec §4.23): T-061 memories + stance next (spec chat details it); T-062…T-066 one at a time. **Then**: road travel (T-048), voice pass (T-022).
+- **Now**: relationships — the core pillar (spec §4.23): T-061 memories + stance (ready); T-062…T-066 one at a time. **Then**: road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
 ## Now — see Next (relationships)
 
 ## Next — Relationships, the core pillar (§4.23). One task at a time; the spec chat details each before it moves here.
+
+### [ ] T-061: Memories and stance — bond becomes what an NPC remembers about you
+Spec: §4.23 B, H          Goldens: unchanged (career only; the engine is untouched)          Save: RUN_VERSION 10 → 11 (`run.mem`)
+Goal: Every NPC keeps a short log of what you did to / with them (memories); their **stance** toward you is computed
+from it (fading, scars, their traits) and tagged ally · respect · neutral · resent · enemy, plus a **rival** flag. The
+old 0–100 `you.bond` stays as a cached read-only summary, so every current reader (combos at 60, friendship training and
+form at 80, coach's goals, the Team drawer) keeps working unchanged. You → NPC pairs only (NPC ↔ NPC is T-065).
+Files: js/data/people.js, js/career/rel.js (new), js/career/run.js, js/career/training.js, js/career/city.js,
+js/career/events.js, js/career/cup.js, js/career/growth.js, js/data/career.js, js/ui/career-week.js (two info texts only),
+index.html, test3d.html, tests/career.test.js, ARCHITECTURE.md
+Do not: touch js/engine (read `m.egoLog` / `m.played` / `m.stat` after the match, in career code); draw R() / rnd() /
+pick() in Rel; change bond thresholds (60 combos, 80 friendship) or any reader of `you.bond`; add UI cards, approaches or
+NPC ↔ NPC memories (T-062, T-063, T-065).
+Steps:
+1. js/data/people.js — add:
+   - `MEMORY` = kind → { v, scar?, pos? (counts as positive for traits) , payoff? }:
+     trained { v: 3 } (×0.5 for each repeat in the same week) · hung_out { v: 4 } (×0.5 per repeat in the week) ·
+     won_together { v: 5, payoff: 1 } · lost_together { v: 2 } (jealous / cynical: −2) · event { v: from the event } ·
+     spot_taken { v: −30, scar: 1 } · beat_me { v: −8 } · stole_my_ball { v: −6 } · collided { v: −4 } ·
+     hero_carried { v: 8, payoff: 1 } (jealous: −8) · set_hogged { v: −4 }.
+     (carried, covered_me, vouched, lent_money, debt_unpaid, refused_help, called_out, shamed, spot_given come with their
+     sources in T-063 / T-064 — add them then, not now.)
+   - `REL` = { decay: 0.93 (per week, scars never fade), max: 24 (entries per pair), tags: { ally: 40, respect: 15,
+     resent: −15, enemy: −45 }, rivalOvr: 5, bondK: <tuned, step 0.05>, trait: { proud: { scar: 2, beat_me: 2 },
+     loyal: { neg: 0.6 }, jealous: { spot_taken: 1.5 }, warm: { pos: 1.3 }, cynical: { pos: 0.7 }, calculating:
+     { payoff: 1.5, other: 0.5 } } }.
+2. js/career/rel.js — `Rel` (no DOM, no R()):
+   - `Rel.key(a, b)` = the two ids sorted, joined by '|'. Memories live in `run.mem[key] = [{ w, k, v }]` (w = run.week).
+   - `Rel.add(run, npcId, kind, v = MEMORY[kind].v)`: applies the per-week repeat rule (trained / hung_out: v × 0.5^n for
+     the n same-kind entries already this week, n counted before adding) and the jealous / cynical sign flips; the same
+     kind in the same week merges into one entry (values add); keeps ≤ REL.max entries (drop the oldest non-scar first);
+     then `Rel.refresh(run, npcId)`. Returns the change in the cached bond (for labels). No-op for you or an id without a
+     person (`run.people`).
+   - `Rel.stance(run, npcId)` = Σ v × fade × trait multipliers, fade = scar ? 1 : REL.decay^(run.week − w); multipliers
+     of both traits multiply (proud ×2 on scars and beat_me; loyal ×0.6 on negatives; jealous ×1.5 on spot_taken; warm
+     ×1.3 / cynical ×0.7 on positives; calculating ×1.5 on payoff kinds, ×0.5 on the rest). Rounded to 0.1.
+   - `Rel.tag(run, npcId)` → 'ally' | 'respect' | 'neutral' | 'resent' | 'enemy' by REL.tags; `Rel.rival(run, npcId)` →
+     true when they are in your current squad (`Run.myTeam`), same role, |ovr − yours| ≤ REL.rivalOvr.
+   - `Rel.bond(run, npcId)` = clamp(round(stance × REL.bondK), 0, 100); `Rel.refresh(run, id)` writes it to `you.bond[id]`
+     (only for ids already in `you.bond` or current mates — keep World's key bookkeeping as is).
+   - `Rel.week(run)` refreshes every cached bond (fading moves them).
+   - `Rel.afterMatch(run, m, side)` (your side index in m): for every NPC teammate who played (`m.played`) →
+     won_together / lost_together; from `m.egoLog` entries involving you: you stole (p = you, mate = npc) → stole_my_ball
+     for npc; a crash with you on either side → collided for the other; your `swing` with ok → hero_carried for each NPC
+     teammate who played; your `call` with ok → set_hogged for `mate`; a `collide` entry with you → collided for the other.
+3. Sources (replace the direct bond changes; `Run.bond(run, id, v, kind = 'event')` becomes `Rel.add(run, id, kind, v)`
+   and keeps its "+N bond with X" label from the returned change):
+   - training.js: training together → kind 'trained' (no value: MEMORY's).
+   - city.js: ramen / arcade → 'hung_out'.
+   - events.js: bondMate / bondCap / bondAll → 'event' with the event's value (unchanged numbers).
+   - cup.js `result`: drop the `R0.bond` loop (and the `bond` fields of REWARDS in data/career.js); call `Rel.afterMatch`
+     for every match you are in (eval, cup). `challengeResult` / `clashResult`: when your side wins, every opponent NPC who
+     played gets beat_me.
+   - cup.js `fixture`: after the non-dry `Run.lineup` — when you start and the returned `rival` is on the bench, the rival
+     gets spot_taken (at most once per week per pair: skip if one exists this week).
+   - growth.js `Growth.week`: `Rel.week(run)` after People.week.
+   - career-week.js: the evaluation info text drops "+N bond" (now "teammates who played with you remember the win");
+     the Team drawer info text unchanged.
+4. run.js: RUN_VERSION 11 (+ history); RUN_DEFAULTS `mem: [() => ({}), isObj]`; Run.bond as above.
+5. Tune REL.bondK (report in Result): baseline on the current code first — 5 seeds, a WS who trains Power every day with
+   the floor mates and plays every evaluation, week the first mate reaches bond 60 and 80. Pick bondK so both weeks are
+   within ±2 of the baseline. Put the baseline weeks in the test as constants.
+6. ARCHITECTURE.md: Rel layer (memory shape, stance, bond cache, sources).
+Accept:
+- tests/career.test.js: (a) a scar never fades, a non-scar fades by REL.decay per week; (b) trained ×3 in one week = 3 +
+  1.5 + 0.75 in one entry; (c) trait multipliers (proud scar ×2, warm/cynical, calculating); jealous hero_carried is
+  negative; (d) a fixture where you take a same-role mate's spot writes spot_taken once per week and their tag drops to
+  resent; (e) Rel.afterMatch from a seeded match with forced ego entries writes the expected kinds; (f) the bond-week
+  calibration (test.slow); (g) save / load keeps run.mem; a v10 save is dropped; Rel draws no R().
+- All tests + lint; engine goldens unchanged.
+QA: career run → train with mates 2 weeks, play the week-4 evaluation; the Team drawer bonds move; no pageerror.
+Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
 
@@ -70,7 +142,6 @@ Cleanup, part 2 (after T-071…T-081)
 - T-088: Big binaries — keep base64 for the artifact but store .glb/.mp3 in Git LFS and generate the .txt at publish.
 
 Relationships — the core pillar (spec §4.23; detailed one by one after T-059)
-- T-061: Memory log + stance + bond as a read-only summary (all bond sources become memory kinds; ego acts from `m.egoLog`).
 - T-062: People tab — person cards, discovery of wants / traits, top memories.
 - T-063: Approaches — NPCs come to you (and to each other); you approach them.
 - T-064: Fates — cut / quit / poached / national; end-of-run "People who mattered".
