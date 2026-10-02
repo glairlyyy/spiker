@@ -560,7 +560,7 @@ const Cup = {
         def = Run.cupDef(run),
         mul = (kind === 'cup' ? def.mul : 1) * (part ? BENCH.partMul : 1),
         [g, , gmul] = Cup.grade(s, win),
-        R0 = kind === 'cup' ? (win ? REWARDS.cupWin : { sp: 0, fans: 0 }) : win ? REWARDS.warmupWin : REWARDS.warmupLoss;
+        R0 = kind === 'cup' ? (win ? REWARDS.cupWin : { sp: 0, fans: 0 }) : win ? REWARDS.evalWin : REWARDS.evalLoss;
       grade = g;
       Rank.meet(run, m);
       const sp = Math.round((R0.sp + plays * REWARDS.perPlay.sp) * mul * gmul),
@@ -570,7 +570,7 @@ const Cup = {
         Skills.tryLearn(run, m),
         Run.bump(run, 'sp', sp),
         Run.bump(run, 'fans', fans),
-        World.prize(run, Math.round((kind === 'cup' ? (win ? ECON.cupWin : 0) : win ? ECON.warmupWin : ECON.warmupLoss) * mul))
+        World.prize(run, Math.round((kind === 'cup' ? (win ? ECON.cupWin : 0) : win ? ECON.evalWin : ECON.evalLoss) * mul))
       ];
       if (grade === 'S') out.push(Run.bump(run, 'mood', 1));
       const fm = Cup.focusMet(run, s);
@@ -588,7 +588,7 @@ const Cup = {
     }
     Run.log(run, line);
     if (kind === 'eval') {
-      run.warm.push({ week: run.week, vs: opp.i, win: played && win, score, grade });
+      run.evals.push({ week: run.week, vs: opp.i, win: played && win, score, grade });
       Run.endWeek(run);
     } else {
       run.talk = null;

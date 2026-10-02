@@ -329,7 +329,7 @@ incoming player (`dressFigure`), so no figure is ever on court twice. `byId` sea
 `s`/`mb`/`ws`, captain and `ovr`, and returns `{ starts, you, rival }`; `dry` only scores (the pre-match Lineup row). `Cup.mine(run, kind)`
 gives the side and region (cup entrant / faction-eval squad / pickup or club). The engine records `m.played` (ids who were on court at
 any time) and `m.finished` (ids on court at the end). `Cup.result`: never played → no grade, no win bonus, only `Eval.benchXp`;
-started or finished on the bench → rewards × `BENCH.partMul`; a bench win never counts for "win the evaluation" (`run.warm.win`).
+started or finished on the bench → rewards × `BENCH.partMul`; a bench win never counts for "win the evaluation" (`run.evals.win`).
 
 ## Blocks
 

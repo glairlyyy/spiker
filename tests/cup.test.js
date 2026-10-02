@@ -144,7 +144,7 @@ test('career: your coach picks the 4 — bench start, never played, part rewards
   assert(/Watched from the bench/.test(line) && !/grade/.test(line), `result line: ${line}`);
   eq((run.grades || []).length, grades0, 'no grade recorded');
   assert(/Watched from the bench: \S/.test(line), 'the bench XP label is shown');
-  eq(run.warm[run.warm.length - 1].win, false, 'a bench win is not your win');
+  eq(run.evals[run.evals.length - 1].win, false, 'a bench win is not your win');
   // a strong you starts; sent off at once → finished on the bench: rewards × BENCH.partMul, graded as usual
   [g, run, you] = mk(52, 99);
   L = g.Run.lineup(run, run.pickup, null, true);
@@ -159,7 +159,7 @@ test('career: your coach picks the 4 — bench start, never played, part rewards
   const sp0 = run.sp,
     s = m.stat[you.id] || g.blank(),
     win = m.winner === 0,
-    R0 = win ? g.REWARDS.warmupWin : g.REWARDS.warmupLoss,
+    R0 = win ? g.REWARDS.evalWin : g.REWARDS.evalLoss,
     gmul = g.Cup.grade(s, win)[2],
     want = Math.round((R0.sp + (s.k + s.blk + s.ace) * g.REWARDS.perPlay.sp) * g.BENCH.partMul * gmul);
   line = fx.onFinish(m);

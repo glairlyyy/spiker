@@ -143,8 +143,8 @@ const ECON = {
   allowance: 500, // from home, every payday
   payEvery: 4, // weeks between paydays (week 4, 8, …)
   food: 120, // per payday
-  warmupWin: 60,
-  warmupLoss: 10,
+  evalWin: 60,
+  evalLoss: 10,
   cupWin: 150, // × the cup's multiplier
   place: { 'Round of 16': 50, Quarterfinal: 100, Semifinal: 200, Final: 400, Champion: 800 } // × the cup's multiplier
 };

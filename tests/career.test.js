@@ -106,7 +106,7 @@ test('career: training cap, facility Lv 5 and Hard training', () => {
   eq(you.power, 80, 'a stat already at 80 is not lowered by a positive bump');
   g.Training.addXp(run, 'power', 100000, 'match');
   assert(you.power > 80, 'match XP goes past the training cap');
-  assert(!('lb' in run) && g.RUN_VERSION === 14, 'no Limit Break progress in the run; RUN_VERSION 14');
+  assert(!('lb' in run) && g.RUN_VERSION === 15, 'no Limit Break progress in the run; RUN_VERSION 15');
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
   const n = g.Training.preview(run, 'power', false).main[2],
@@ -856,7 +856,7 @@ test('career: challenge loss and injury', () => {
   run.sp = 99;
   assert(g.Training.physio(run) && !run.injury, 'physio heals the injury');
   assert(you[lost[0]] === before[g.STATK.indexOf(lost[0])] - g.INJURY.lose, 'but not the lost stat');
-  eq(g.RUN_VERSION, 14, 'save v14');
+  eq(g.RUN_VERSION, 15, 'save v15');
 });
 
 test('career: rules moved out of the UI (T-075)', () => {
@@ -1638,7 +1638,7 @@ test('pairs: entries carry `a`; two squadmates training at the same place share 
   assert(!g.Rel.list(run, x.id, z.id).some(e => e.k === 'trained'), 'the one who rested has none');
   g.Run.save(run);
   const raw = JSON.parse(g.__mem[g.KEYS.career]);
-  eq(raw.v, 14, 'saved as v14');
+  eq(raw.v, 15, 'saved as v15');
   raw.v = 13;
   g.__mem[g.KEYS.career] = JSON.stringify(raw);
   eq(g.Run.load(), null, 'a v13 save is dropped');
