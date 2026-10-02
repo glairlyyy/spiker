@@ -153,6 +153,8 @@ units3d's KH / KX / KZ read it), `BALL_K` / `SERVE_K` (ball flight speed factors
   pool. They appear in non-career matches (the Monster game) only: `dressActors` gives every player a model at random with equal odds
   among the base model and every loaded one (stable per player via `hu`, while figures are free). VRM 0.x models are rotated
   (`rotateVRM0`); dressing matches VRoid material names anywhere in the name.
+  Menu button "Model colors: Own / Team" (`Models.keep`, localStorage `sns_keepcol`; shown once a model is loaded) → `R3D.keepColors(on)`:
+  loaded models are `undress`ed (original colours / hair + iris textures restored) instead of `dress`ed; the base model always gets the kit.
 - One heavy pass per model file: `makeVRM` shares decoded textures (`imgCache`, clones share one image / GPU upload),
   geometry (`geoCache`, the first figure's meshes) and greyed hair textures across every figure of the same model.
 - `players3d.mjs` — VRM loading, repeatable dressing, pose → normalized bones, smoothing, arm aiming at the ball

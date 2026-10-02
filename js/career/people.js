@@ -211,7 +211,7 @@ const People = {
       if (!q || !People.toReserve(run, p, r)) continue;
       me.status = 'cut';
       me.bench = run.week;
-      Run.news(run, `${p.name} is cut from ${t.name} and sent to the reserves, where discipline is taught.`);
+      Run.news(run, `${p.name} is released from ${t.name} to the reserves.`); // voice: wei (the Gazette)
       if (Rel.list(run, p.id).some(e => e.k === 'spot_taken')) Rel.add(run, p.id, 'spot_taken');
       if (q) Rel.addPair(run, p.id, q.id, 'spot_taken', null, p.id);
     }
@@ -223,7 +223,7 @@ const People = {
       if (People.roll(run, p.id, `quit|${run.week}`) >= F.quit.p * m) continue;
       const first = p.name.split(' ')[0];
       People.remove(run, p, 'quit');
-      Run.news(run, `${p.name} quit the sport. The Gazette wishes them well.`);
+      Run.news(run, `${p.name} has quit the sport. The office wishes them well.`);
       if (Rel.list(run, p.id).length) Run.log(run, `${first} quit. I can't say I didn't see it coming.`);
     }
     People.poach(run);
@@ -273,7 +273,7 @@ const People = {
       const me = run.people[p.id];
       if (me.status !== 'active' && me.status !== 'cut') continue;
       Object.assign(me, { status: 'national', bench: run.week });
-      Run.news(run, `${p.name} is called up to the national team. The island is proud.`);
+      Run.news(run, `${p.name} is called up to the national team — the island’s pride.`);
     }
   },
   /** The people who mattered most: the n largest |stance| among everyone with memories, with their fate and top 2 memories. */
@@ -402,7 +402,7 @@ const People = {
             const [a, b] = PEOPLE.hurt.weeks;
             me.inj = a + Math.floor(People.roll(run, p.id, 'hurtw') * (b - a + 1));
             me.log.hurt++;
-            Run.news(run, `${p.name} (${t.name}) is out; the office notes a lack of discipline.`);
+            Run.news(run, `${p.name} (${t.name}) withdraws from training: overexertion.`);
             break;
           }
         }
