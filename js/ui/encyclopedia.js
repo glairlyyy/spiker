@@ -30,7 +30,7 @@ function renderEncyclopedia() {
   const passive = ids.filter(id => !SKILLS[id].tech);
   $('#app').innerHTML = `<section class="ency">
     <div class="ency-top"><h2>Encyclopedia${info(`Techniques fire automatically for any player who meets the stat requirement (or who learned it in career). ${teams.length ? 'Players shown are from your career league.' : 'Start a career to see which players can use each one.'}`)}</h2><button class="btn" onclick="navigate('menu')">Back</button></div>
-    <nav class="ency-nav">${packs.map(k => `<a href="#pk-${k}">${k}</a>`).join('')}<a href="#pk-passive">Career skills</a><a href="#pk-el">Elements</a><a href="#pk-lead">Captain</a><a href="#pk-tac">Tactics</a></nav>
+    <nav class="ency-nav">${packs.map(k => `<a href="#pk-${k}">${k}</a>`).join('')}<a href="#pk-passive">Career skills</a><a href="#pk-el">Elements</a><a href="#pk-lead">Captain</a><a href="#pk-tac">Tactics</a><a href="#pk-gloss">Glossary</a></nav>
     ${packs
       .map(
         k =>
@@ -88,6 +88,10 @@ function renderEncyclopedia() {
         )
         .join('')}
     </div>
+    <h3 id="pk-gloss">Glossary</h3>
+    <div class="gloss">${Object.keys(GLOSSARY)
+      .map(id => `<div class="grow" id="g-${id}">${term(id)}<span>${esc(GLOSSARY[id].long)}</span></div>`)
+      .join('')}</div>
   </section>`;
 }
 Screens.encyclopedia = renderEncyclopedia;

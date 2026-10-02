@@ -28,6 +28,24 @@ function line(s) {
 const tip = t => `data-tip="${esc(t)}"`;
 /** A small ⓘ dot carrying explanatory text as a tooltip instead of a paragraph. */
 const info = t => `<span class="ii" tabindex="0" role="note" aria-label="${esc(t)}" ${tip(t)}>i</span>`;
+/**
+ * A glossary term (spec §9.4): its icon (or its alias until the icon set exists) and an optional signed number, with the
+ * term's one explanation as the tooltip. The number carries the colour: `good` for +, `bad` for − (`cls` overrides, e.g.
+ * 'cost' keeps a cost neutral); a string `n` ('↑', '1/2', 'S') shows as is. term('sp', 3) → ◆ +3.
+ */
+function term(id, n, cls = '') {
+  const g = GLOSSARY[id];
+  if (!g) return '';
+  const ic = `<b class="tw">${esc(g.short)}</b>`, // the icon set comes with T-111
+    num =
+      n == null
+        ? ''
+        : typeof n === 'number'
+          ? `${n > 0 ? '+' : n < 0 ? '−' : ''}${id === 'money' ? '$' : ''}${Math.abs(n).toLocaleString()}`
+          : esc(String(n)),
+    tone = cls || (typeof n === 'number' ? (n > 0 ? 'good' : n < 0 ? 'bad' : '') : '');
+  return `<span class="term ${tone}" ${tip(g.long)} aria-label="${esc(g.short)}">${ic}${num ? `<span class="tn">${num}</span>` : ''}</span>`;
+}
 /** Collapsible block; `key` remembers open/closed for this session. `summary` and `body` are HTML. */
 const FOLD = {};
 const fold = (key, summary, body, open = false) =>

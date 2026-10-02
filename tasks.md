@@ -245,14 +245,14 @@ Steps:
    QA: Monster game — ⚙ open; screenshot.
    Result: done — `settingsMenu` = labelled segments showing every option (Hype, Cut-ins, Zooms, Graphics, Camera + the follow select, Volume); `setOpt(kind, v)` sets one directly with the same storage keys and redraws the pop-over (cycle functions kept); the pop-over opens upward, right-aligned to ⚙ (380px). Results card: one `.acts.pri` row — [Continue / fx.back] + [Box score] (opens the rail tab); timeouts and playback disabled after the final. QA: Monster — ⚙ open, Graphics → Fast applied; finished match card + rail; no pageerror.
 
-### [ ] T-110: Glossary and `term()`
+### [x] T-110: Glossary and `term()`
 
 Spec: §9.4 §9.6 Goldens: unchanged Save: no change
 Files: js/data/glossary.js (new — add to index.html after people.js), js/ui/dom.js (`term`), js/ui/encyclopedia.js (Glossary tab), tests/career.test.js
 Do not: show old-language words (§6); write "why" text (registrar voice).
 Steps: `GLOSSARY = { id: { icon, short, long } }` for every §9.6 id; `term(id, n?, cls?)` → `<span class="term" data-tip="{long}">{icon}{signed n}</span>` (number coloured by sign); Encyclopedia tab "Glossary" listing icon · alias · long. Test: every id used by `term(` in js/ui exists in GLOSSARY.
 Accept: test passes; Glossary tab renders all ids. QA: Encyclopedia screenshot.
-Result:
+Result: js/data/glossary.js (after people.js): 24 terms (the §9.6 ids + the 6 stats), `long` built from data constants (GRADES, CLASH, FRONT, CUPS, REWARDS, MOODS, WEEK_DAYS); `term(id, n?, cls?)` in dom.js (alias word until T-111's icons; number signed, good/bad by sign, money as ±$n; tooltip = long); Encyclopedia › Glossary section + nav link. Test: §9.6 ids present and complete, every `term('x'` in js/ui defined. QA: Glossary renders 24 rows; no errors.
 
 ### [ ] T-111: StatIcons SVG set
 

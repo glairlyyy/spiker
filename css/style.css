@@ -1572,3 +1572,37 @@ body:has(.match) .top {
 .stage:has(.over:not([hidden])) .ticker {
   display: none;
 }
+/* Glossary terms (T-110) */
+.term {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  font-weight: 600;
+  cursor: help;
+}
+.term .tw {
+  font-weight: 600;
+}
+.term .tw + .tn {
+  margin-left: 2px;
+}
+.term.good .tn {
+  color: var(--good);
+}
+.term.bad .tn {
+  color: var(--bad);
+}
+.gloss {
+  display: grid;
+  gap: 4px;
+  max-width: 880px;
+}
+.gloss .grow {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 16px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}

@@ -2043,3 +2043,35 @@ test('career: day track — a trip then the training day, cleared at the week st
   g.Run.endWeek(run);
   eq(run.dayLog.length, 0, 'a new week starts empty');
 });
+
+// ---- Glossary (T-110, spec §9.4 / §9.6) ----
+test('glossary: every §9.6 id exists with icon, short and long; every term( id used in js/ui is defined', () => {
+  const g = load(1);
+  for (const id of [
+    'sp',
+    'fans',
+    'sta',
+    'day',
+    'money',
+    'mood',
+    'bond',
+    'standing',
+    'grade',
+    'seize',
+    'border',
+    'sim',
+    'academy',
+    'cup',
+    'trial',
+    'quality',
+    'together',
+    'rewards'
+  ])
+    assert(g.GLOSSARY[id], 'missing ' + id);
+  for (const [id, t] of Object.entries(g.GLOSSARY))
+    assert(t.icon && t.short && t.long && !/undefined|NaN/.test(t.long), 'incomplete ' + id);
+  const dir = path.join(__dirname, '..', 'js/ui');
+  for (const f of fs.readdirSync(dir).filter(f => /\.m?js$/.test(f)))
+    for (const m of fs.readFileSync(path.join(dir, f), 'utf8').matchAll(/\bterm\(\s*'([a-z]+)'/g))
+      assert(g.GLOSSARY[m[1]], `${f}: term('${m[1]}') not in GLOSSARY`);
+});
