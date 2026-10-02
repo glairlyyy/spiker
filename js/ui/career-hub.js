@@ -24,7 +24,8 @@ const HUB_DRAWERS = {
   diary: [
     '📜',
     'Diary',
-    run => `<ol class="log">${run.log.map(l => `<li><b>${typeof l.w === 'number' ? 'W' + l.w : l.w}</b> ${esc(l.t)}</li>`).join('')}</ol>`
+    run =>
+      `<ol class="log tagged">${run.log.map(l => logLi(l.t, `<b>${typeof l.w === 'number' ? 'W' + l.w : esc(l.w)}</b> `)).join('')}</ol>`
   ],
   menu: [
     '⚙',

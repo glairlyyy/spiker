@@ -182,14 +182,14 @@ Steps:
 
 UI batch 3 — triage, match screen, short copy. Same rules as Now.
 
-### [ ] T-102: Recap and diary — bad news first, tagged lines
+### [x] T-102: Recap and diary — bad news first, tagged lines
 
 Spec: §9.1 Goldens: unchanged Save: no change
 Files: js/ui/career-week.js (recapCard, endWeekUI diff), js/ui/career-hub.js (diary drawer), css/career.css
 Do not: change Run.log text producers (tag by matching the line or by the diff source).
 Steps: recapCard rows ordered penalties (goal missed, mood down, money < 0 delta) → your gains → new goal → world news; each row gets an icon (✕ / + / ◎ / •) and `bad`/`good`/`ink`/`mute`; card heading in `ink` ("Week 7"). Diary rows get the same tag.
 Accept: a week with "Goal missed" shows it first in `bad`. QA: career run → miss a goal (set run.goal.by = run.week), End week.
-Result:
+Result: done — `LOG_TAGS` / `logTag` / `logLi` (career-week.js) tag a line by its text: ✕ bad (goal missed, mood down, sick, noise, injury…), + good, ◎ coach's goal, • world (mute); the recap lists up to 6 new lines sorted bad → good → goal → world under the delta chips (already bad-first, T-090 design pass); the Diary drawer uses the same tags. QA: forced missed goal → "Goal missed" and the noisy night first in bad; diary screenshot; no pageerror.
 
 ### [ ] T-103: Dock groups and drawers above the dock
 

@@ -2083,3 +2083,34 @@
   letter-spacing: 0;
   color: var(--ink);
 }
+/* tagged diary / recap lines (T-102) */
+.rlog,
+.log.tagged {
+  list-style: none;
+  padding-left: 0;
+}
+.lt {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 8px;
+  align-items: baseline;
+}
+.lt > i {
+  font-style: normal;
+  font-weight: 700;
+  text-align: center;
+}
+.lt.bad,
+.lt.bad > i {
+  color: var(--bad);
+}
+.lt.good > i {
+  color: var(--good);
+}
+.lt.goal,
+.lt.goal > i {
+  color: var(--ink);
+}
+.lt.world {
+  color: var(--mute);
+}

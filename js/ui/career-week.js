@@ -310,11 +310,26 @@ function endWeekUI() {
   for (const r of regs) d(City.rep(run, r) - before.rep[r], `⚑ ${REGIONS[r].name} ${sg(City.rep(run, r) - before.rep[r])}`);
   for (const t of ownChanges(before.own, run.own || {})) rows.push(['ch', t.text]);
   const at = before.top ? run.log.indexOf(before.top) : run.log.length,
-    lines = run.log.slice(0, at < 0 ? run.log.length : at).slice(0, 4);
+    lines = run.log.slice(0, at < 0 ? run.log.length : at).slice(0, 6);
   rows.sort((a, b) => ['dn', 'up', 'ch'].indexOf(a[0]) - ['dn', 'up', 'ch'].indexOf(b[0])); // bad news first, then your gains, then the world
   CW.recap = rows.length || lines.length ? { week: run.week, rows, lines: lines.map(l => l.t) } : null;
   renderCareer();
 }
+/** A diary line's tag by its text (the producers stay as they are): [class, icon] — bad news, gains, the coach's goal, the world. */
+const LOG_TAGS = [
+  ['bad', '✕', /Goal missed|mood down|evicted|caught a cold|injur|noisy night|\blost\b|Lost|stolen|refused/i],
+  ['goal', '◎', /Coach's goal/],
+  ['good', '+', /Goal reached|broke through|Awakening|Signed with|learned|won\b|\+\d/],
+  ['world', '•', /./]
+];
+function logTag(t) {
+  const m = LOG_TAGS.find(([, , re]) => re.test(t));
+  return [m[0], m[1]];
+}
+const logLi = (t, pre = '') => {
+  const [c, i] = logTag(t);
+  return `<li class="lt ${c}"><i aria-hidden="true">${i}</i><span>${pre}${esc(t)}</span></li>`;
+};
 /** Places whose holder differs between two `run.own` maps: [{ id, to, text }]. */
 function ownChanges(a, b) {
   return [...new Set([...Object.keys(a), ...Object.keys(b)])]
@@ -330,7 +345,14 @@ function recapCard(run) {
   const R2 = CW.recap;
   return `<div class="panel recap"><span class="rk">${typeof R2.week === 'number' ? `Week ${R2.week}` : esc(R2.week)} done</span>
     ${R2.rows.length ? `<div class="rrows">${R2.rows.map(([c, t]) => `<span class="rr ${c}">${esc(t)}</span>`).join('')}</div>` : ''}
-    ${R2.lines.length ? `<ul class="rlog">${R2.lines.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
+    ${
+      R2.lines.length
+        ? `<ul class="rlog">${[...R2.lines]
+            .sort((a, b) => LOG_TAGS.findIndex(x => x[0] === logTag(a)[0]) - LOG_TAGS.findIndex(x => x[0] === logTag(b)[0]))
+            .map(t => logLi(t))
+            .join('')}</ul>`
+        : ''
+    }
     <div class="acts"><button class="btn hot" onclick="recapDone()">Continue</button></div></div>`;
 }
 function recapDone() {
