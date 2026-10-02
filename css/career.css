@@ -3435,3 +3435,18 @@
   align-items: center;
   gap: 6px;
 }
+.rwchips .pchip.bad {
+  color: var(--bad);
+}
+.wl {
+  margin-right: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mute);
+}
+.term .si + .tn {
+  margin-left: 1px;
+}
+.btn .term .si {
+  vertical-align: -3px;
+}

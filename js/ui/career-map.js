@@ -139,13 +139,12 @@ function clashPanel(run) {
     late = run.event ? 'answer the event first' : City.noTime(run, d),
     ban = City.fightBan(run),
     short = r => esc(REGIONS[r].name.split(' ')[0]),
-    num = v => `<b class="${v > 0 ? 'up' : v < 0 ? 'dn' : ''}">${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v)}</b>`,
     border = (w, l) => {
       const k = Front.stakes(run, w, l);
       return k.seize ? `${short(w)} takes ${esc(k.place ? SPOTS[k.place].name : 'ground')}` : `${short(w)} ${k.meter}/${FRONT.seize}`;
     },
     stake = (side, foe) =>
-      `<div class="stake small">${chip(REGIONS[side])}<b>${short(side)}</b> · injury ~${Math.round(City.injuryRisk(run, City.crewOvr(run, foe)) * 100)}%<br><span class="wl">Win</span> ⚑${num(CLASH.win)} ${short(side)} ⚑${num(CLASH.other)} ${short(foe)} · ${border(side, foe)}<br><span class="wl">Lose</span> ⚑${num(CLASH.lose)} ${short(side)} · ${border(foe, side)}</div>`,
+      `<div class="stake small">${chip(REGIONS[side])}<b>${short(side)}</b> · ${term('sta', -CLASH.sta, 'cost')} · injury ~${Math.round(City.injuryRisk(run, City.crewOvr(run, foe)) * 100)}%<br><span class="wl">Win</span> ${term('standing', CLASH.win)} ${short(side)} ${term('standing', CLASH.other)} ${short(foe)} ${term('fans', CLASH.fans)} · ${border(side, foe)}<br><span class="wl">Lose</span> ${term('standing', CLASH.lose)} ${short(side)} · ${border(foe, side)}</div>`,
     fight = side =>
       `<button class="btn" onclick="mapClash('${side}')" ${late || ban ? `disabled ${tip(ban || late)}` : tip(`A real match with their crew — XP, techniques and a grade like an evaluation. +${CLASH.fans} fans for a win; a loss costs ${LOSS.sta} more stamina and mood, and fans if by ${LOSS.heavy}+ points. −${CLASH.sta} stamina`)}>${chip(REGIONS[side])}Fight for ${short(side)}</button>`,
     st = r => `${chip(REGIONS[r])}${esc(REGIONS[r].name)} <b>${signed(City.rep(run, r))}</b>`;
@@ -192,11 +191,11 @@ function trainSpot(run, id, c) {
     turf = City.turf(run, id),
     gain = ([k, , xp], role) => {
       if (pv.cap && k === pv.main[0])
-        return `<div class="pgain"><span class="pi">${DAY_ICON.train}</span><span>${STATNAME[k]} <i class="mute">· ${role}</i></span><b class="mute">at ${pv.cap} — matches only</b></div>`;
+        return `<div class="pgain"><span class="pi">${statI(statKey(k), 20)}</span><span>${STATNAME[k]} <i class="mute">· ${role}</i></span><b class="mute">at ${pv.cap} — matches only</b></div>`;
       // sessions until this stat's next point at this rate
       const pr = Training.progress(run, k),
         n = Math.max(1, Math.ceil((pr.need - pr.have) / Math.max(0.01, xp)));
-      return `<div class="pgain"><span class="pi">${DAY_ICON.train}</span><span>${STATNAME[k]} <i class="mute">· ${role}</i></span>${n <= 1 ? '<b class="up">+1 now</b>' : `<span class="mute">+1 in ${n} sessions</span>`}</div>`;
+      return `<div class="pgain"><span class="pi">${statI(statKey(k), 20)}</span><span>${STATNAME[k]} <i class="mute">· ${role}</i></span>${n <= 1 ? '<b class="up">+1 now</b>' : `<span class="mute">+1 in ${n}</span>`}</div>`;
     },
     mates = pv.mates.filter(pid => squadOf(T).some(p => p.id === pid)), // a teammate who has since left
     seg = `<div class="seg"><button class="btn ${hard ? '' : 'on'}" onclick="CW.hard=false;mapPick(CW.spot)">Normal</button><button class="btn ${hard ? 'on' : ''}" ${run.injury ? `disabled ${tip('Injured: light training only')}` : ''} onclick="CW.hard=true;mapPick(CW.spot)">Hard <small>×${TRAIN_X.hard.gain} · ×${TRAIN_X.hard.sta} sta · ${Math.round(TRAIN_X.hard.fail * 100)}% fail</small></button></div>`,
@@ -231,7 +230,7 @@ function trainSpot(run, id, c) {
     flavour: esc(s.desc || ''),
     body: gain(pv.main, 'main') + gain(pv.side, 'side'),
     opts: seg + chips,
-    go: `<button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${id}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}>Train ${TRAININGS[key].name} · ${City.cost(run, id)}d · −${pv.sta} sta · $${City.price(run, id)}</button>`
+    go: `<button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${id}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}>Train ${TRAININGS[key].name} · ${term('day', String(City.cost(run, id)), 'cost')} ${term('sta', -pv.sta, 'cost')} $${City.price(run, id)}</button>`
   };
 }
 

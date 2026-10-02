@@ -90,7 +90,7 @@ const Training = {
     (run.xp || (run.xp = {}))[stat] = r.have;
     if (stat === 'wit') you.wit = +(you.wit + r.pts * 0.02).toFixed(2);
     else you[stat] += r.pts;
-    return r.pts ? `+${stat === 'wit' ? (r.pts * 0.02).toFixed(2) : r.pts} ${STATNAME[stat]}` : `${STATNAME[stat]} progress`;
+    return r.pts ? `${GLOSSARY[stat].glyph}+${stat === 'wit' ? (r.pts * 0.02).toFixed(2) : r.pts}` : `${GLOSSARY[stat].glyph}…`; // ⛉+1 / ⛉… (spec §9.4)
   },
   /** XP toward the next point: { have, need } (for the stat bars). */
   progress: (run, stat) => ({ have: (run.xp && run.xp[stat]) || 0, need: Training.need(Training.level(Run.you(run), stat)) }),

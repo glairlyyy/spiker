@@ -49,7 +49,7 @@ function sheetMe(run) {
         return `<div class="srow rowcta"><span class="nm"><b>${esc(sk.name)}</b><span class="small mute">${esc(sk.desc)}</span></span>${
           own
             ? '<span class="btn on here">Owned</span>'
-            : `<button class="btn ${can ? '' : 'lock'}" onclick="learnSkill('${id}')" ${can ? '' : 'disabled'}>${sk.cost}${can ? ' · learn' : ` · need ${Math.max(0, sk.cost - run.sp)}`}</button>`
+            : `<button class="btn ${can ? '' : 'lock'}" onclick="learnSkill('${id}')" ${can ? '' : 'disabled'}>${term('sp', String(sk.cost), 'cost')}${can ? ' → learn' : ` · need ${Math.max(0, sk.cost - run.sp)}`}</button>`
         }</div>`;
       })
       .join(''),
@@ -107,7 +107,7 @@ function seasonCard(run) {
   const g = run.goal,
     prog = Goals.progress(run, g);
   return `<div class="panel season"><h3>Goal and sponsors${run.sponsors.length ? '' : info(`Sponsors make offers at ${SPONSOR_AT.map(f => f.toLocaleString()).join(', ')} fans.`)}</h3>
-    ${g ? `<div class="goal ${g.done === true ? 'ok' : g.done === false ? 'miss' : ''}"><b>Coach's goal${info(`Reward: +${GOAL_REWARD.sp} skill pts, +${GOAL_REWARD.fans} fans, mood up. Missing it: mood down.`)}</b> ${esc(Goals.text(run, g))} <span class="mute small">by W${g.by}${prog ? ' · ' + prog : ''}${g.done === true ? ' · reached' : g.done === false ? ' · missed' : ''}</span></div>` : ''}
+    ${g ? `<div class="goal ${g.done === true ? 'ok' : g.done === false ? 'miss' : ''}"><b>Coach's goal</b> ${esc(Goals.text(run, g))} <span class="mute small">by W${g.by}${prog ? ' · ' + prog : ''}${g.done === true ? ' · reached' : g.done === false ? ' · missed' : ''}</span><div class="small grw"><span class="wl">Hit</span> ${term('sp', GOAL_REWARD.sp)} ${term('fans', GOAL_REWARD.fans)} ${term('mood', '↑', 'good')} · <span class="wl">Miss</span> ${term('mood', '↓', 'bad')}</div></div>` : ''}
     ${run.cups.map(c => `<div class="small">${esc(CUPS.find(x => x.id === c.id).name)}: <b>${Cup.placeText(c.place)}</b></div>`).join('')}
     ${
       run.sponsors.length
@@ -175,7 +175,7 @@ function matchPrep(run, cup) {
       ? '<b class="good">Starting</b>'
       : `<b class="warn">On the bench</b>${L.rival ? ` — ${esc(L.rival.p.name)} rates higher (${L.rival.score.toFixed(0)} vs ${L.you.toFixed(0)})` : ''}`,
     `${info(`Your coach picks the best player of each role by rating + 6 × form (+ your standing with the faction ÷ ${BENCH.standingPer}). Start or finish on the bench and match rewards ×${BENCH.partMul}; never play and you only get a little Wit XP.`)}`
-  )}${row('Focus', seg(FOCUS[you.role], run.focus, 'setFocus'), `Pick one · hit it: +${FOCUS_REWARD.sp} skill pts +${FOCUS_REWARD.fans} fans`)}${
+  )}${row('Focus', seg(FOCUS[you.role], run.focus, 'setFocus'), `Pick one · hit it ${term('sp', FOCUS_REWARD.sp)} ${term('fans', FOCUS_REWARD.fans)}`)}${
     cup && you.cap
       ? row(
           'Team talk',
@@ -315,7 +315,7 @@ function evalPanel(run, note = '') {
   return `<div class="panel">${head}
     <div class="rosters"><div><div class="lab">${e.kind === 'academy' ? esc(club.name) : esc(club.name) + ' squad'}</div>${col(mine, true)}</div><div><div class="lab">${esc(REGIONS[e.region].name)} squad</div>${col(byId(e.opp).slice(0, 4), D.scouted || D.member)}</div></div>
     ${matchPrep(run, false)}
-    <div class="rwchips"><span class="pchip good">Win +${REWARDS.evalWin.sp} skill pts · +${REWARDS.evalWin.fans} fans</span><span class="pchip">Loss +${REWARDS.evalLoss.sp} skill pts · +${REWARDS.evalLoss.fans} fans</span></div>
+    <div class="rwchips"><span class="pchip"><span class="wl">Win</span> ${term('sp', REWARDS.evalWin.sp)} ${term('fans', REWARDS.evalWin.fans)}</span><span class="pchip"><span class="wl">Loss</span> ${term('sp', REWARDS.evalLoss.sp)} ${term('fans', REWARDS.evalLoss.fans)}</span></div>
     <div class="mnotes small mute">${D.scouted || D.member ? '' : 'Scout one of their clubs to see ratings. '}${rankBest(run, byId(e.opp).slice(0, 4)).replace(/<\/?p[^>]*>/g, '')}</div>
     ${note}<div class="acts pri"><button class="btn hot" onclick="playCareer('eval')">Play evaluation</button><button class="btn" onclick="playCareer('eval', true)" ${tip('Get the result without watching')}>Sim ⏭<small>result without watching</small></button></div></div>`;
 }
@@ -449,7 +449,7 @@ function cupPanel(run, nm) {
     <div class="panel"><div class="mph"><span class="lab">Week ${run.week} · Match day</span><h3 class="mpt">${nm.round}${info(`Win: +${Math.round(REWARDS.cupWin.sp * def.mul)} skill pts, +${Math.round(REWARDS.cupWin.fans * def.mul).toLocaleString()} fans. A loss ends the season.\nPlacement: round of 16 +${fans('Round of 16')} fans · quarterfinal +${fans('Quarterfinal')} · semifinal +${fans('Semifinal')} · runner-up +${fans('Final')} · champion +${fans('Champion')} — and a place on the national team.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3><span class="small mute">vs ${esc(E[nm.a === me ? nm.b : nm.a].name)}${City.venue(run) ? ` · at ${esc(VENUES[City.venue(run)].name)}` : ''}</span></div>
       ${matchRosters(run, Cup.team(run, me), Cup.team(run, nm.a === me ? nm.b : nm.a))}
       ${matchPrep(run, true)}
-      <div class="rwchips"><span class="pchip good">Win +${Math.round(REWARDS.cupWin.sp * def.mul)} skill pts · +${Math.round(REWARDS.cupWin.fans * def.mul).toLocaleString()} fans</span><span class="pchip">Loss ends the season</span></div>
+      <div class="rwchips"><span class="pchip"><span class="wl">Win</span> ${term('sp', Math.round(REWARDS.cupWin.sp * def.mul))} ${term('fans', Math.round(REWARDS.cupWin.fans * def.mul))}</span><span class="pchip bad">Loss ends the season</span></div>
       <div class="mnotes small mute">${rankBest(run, squadOf(Cup.team(run, nm.a === me ? nm.b : nm.a))).replace(/<\/?p[^>]*>/g, '')}</div>
     <div class="acts pri"><button class="btn hot" onclick="playCareer('cup')">Play ${nm.round.toLowerCase()}</button><button class="btn" onclick="playCareer('cup', true)" ${tip('Get the result without watching')}>Sim ⏭<small>result without watching</small></button></div></div>`;
 }

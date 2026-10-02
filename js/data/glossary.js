@@ -1,14 +1,14 @@
 // Glossary (spec §9.4, §9.6): every repeated idea once — an icon key, a short alias and the one full explanation
 // (registrar voice: what it is and the numbers, never why). `term(id, n)` (js/ui/dom.js) renders an alias chip with
-// this text as its tooltip; Encyclopedia › Glossary lists them all. `icon` is a StatIcons key (js/ui/icons.js), or 'text' for
+// this text as its tooltip; Encyclopedia › Glossary lists them all. `glyph` = the stat's text glyph for plain-text lines (diary). `icon` is a StatIcons key (js/ui/icons.js), or 'text' for
 // ideas that read as their alias word (Sim, Seize, U21 Cup…).
 
 const GLOSSARY = {
-  power: { icon: 'pow', short: 'Power', long: 'Power. Key stat of wing spikers. Kills and aces.' },
-  def: { icon: 'def', short: 'Defense', long: 'Defense. Digs and receives.' },
-  speed: { icon: 'spd', short: 'Speed', long: 'Speed. Key stat of setters. Reaching the ball.' },
-  jump: { icon: 'jmp', short: 'Jump', long: 'Jump. Key stat of middle blockers. Blocks and attack height.' },
-  wit: { icon: 'wit', short: 'Wit', long: 'Wit. Reads, sets and dumps. Counts in 0.02 steps.' },
+  power: { glyph: '✸', icon: 'pow', short: 'Power', long: 'Power. Key stat of wing spikers. Kills and aces.' },
+  def: { glyph: '⛉', icon: 'def', short: 'Defense', long: 'Defense. Digs and receives.' },
+  speed: { glyph: '»', icon: 'spd', short: 'Speed', long: 'Speed. Key stat of setters. Reaching the ball.' },
+  jump: { glyph: '⤒', icon: 'jmp', short: 'Jump', long: 'Jump. Key stat of middle blockers. Blocks and attack height.' },
+  wit: { glyph: '◉', icon: 'wit', short: 'Wit', long: 'Wit. Reads, sets and dumps. Counts in 0.02 steps.' },
   lead: {
     icon: 'led',
     short: 'Leadership',

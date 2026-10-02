@@ -262,14 +262,14 @@ Steps: add the 15 line icons from the StatIcons preview (16×16 viewBox, stroke 
 Accept: no ⚡/✨/📣 left in hudRes. QA: hub screenshot.
 Result: `STAT_ICON` (15 line icons from the StatIcons card, 20×20, stroke currentColor 1.6) + `statI(k, size)` + `statKey(id)` in icons.js; GLOSSARY icons point at them (ideas like Sim/Seize/U21 Cup use `'text'` = their alias word); `term()` renders the icon. hudRes/hudBar no longer exist after the redesign, so the top bar resources (Money, Fans, Skill pts, Stamina, Mood), the rail's 4 stats and the Me sheet stat rows get icon + word, tooltips = glossary text. Stamina = battery, Speed = double chevron. No ⚡/✨/📣 in the hub. QA: hub + Me sheet + Glossary screenshots; no errors.
 
-### [ ] T-112: Reward, cost and requirement lines as terms
+### [x] T-112: Reward, cost and requirement lines as terms
 
 Spec: §9.4 Goldens: unchanged Save: no change
 Files: js/ui/career-map.js, js/ui/career-week.js, js/career/training.js (addXp label only), js/ui/career-people.js
 Do not: change any number or rule; change log text other than training labels.
 Steps: rebuild with `term()` — training button/preview and `Training.addXp` log label (`⛉+1`), coach's goal reward, evaluation/cup reward tips, street battle stakes, club join gaps, skill costs. Cost → result order. Examples: short-copy.md "Before → after".
 Accept: the coach's goal reward reads `Hit ◆+40 fans+300 mood↑ · Miss mood↓` as icons. QA: training card, Season drawer, eval card.
-Result:
+Result: built with `term()`: training button `Train Power · ☀3 ▮−20 $16`, gain rows with the stat icon and `+1 now` / `+1 in n`; `Training.addXp` label `✸+18` / `✸…` (GLOSSARY `glyph` for the 5 stats; the match-XP test regex follows); coach's goal (Season sheet) `Hit ◆+40 👥+300 ☺↑ · Miss ☹↓` (its ⓘ removed); focus `hit it ◆+25 👥+250`; eval/cup reward chips `Win ◆+40 👥+500 · Loss ◆+20 👥+100`; street battle stakes `▮−15 · Win ⚑+10 Wei ⚑−10 Shu 👥+60`; skill buttons `◆120 → learn`. Club join gaps already read `OVR 72 · you 41` (T-095) — unchanged; career-people.js had no cost lines to convert. QA: training card, Season sheet, eval card; no errors.
 
 ### [ ] T-113: Remove duplicated explanations
 

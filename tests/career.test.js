@@ -151,7 +151,7 @@ test('career: match XP — performance, opponent strength, past the cap', () => 
   you.power = 75;
   run.xp = {};
   const label = g.Training.addXp(run, 'power', 200, 'match');
-  assert(you.power > 75 && /^\+\d+ Power/.test(label), `a stat at 75 rises from match XP (${you.power})`);
+  assert(you.power > 75 && /^✸\+\d+/.test(label), `a stat at 75 rises from match XP (${you.power})`);
   // never played → no XP line
   for (const p of foe.P) for (const k of g.STATK) p[k] = 55;
   run.week = 4;
