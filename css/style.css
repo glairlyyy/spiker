@@ -1606,3 +1606,8 @@ body:has(.match) .top {
   border-bottom: 1px solid var(--line);
   font-size: 14px;
 }
+.gloss .gn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

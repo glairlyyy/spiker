@@ -1,6 +1,7 @@
 // Glossary (spec §9.4, §9.6): every repeated idea once — an icon key, a short alias and the one full explanation
 // (registrar voice: what it is and the numbers, never why). `term(id, n)` (js/ui/dom.js) renders an alias chip with
-// this text as its tooltip; Encyclopedia › Glossary lists them all. `icon` is a StatIcons key (js/ui/icons.js) or text.
+// this text as its tooltip; Encyclopedia › Glossary lists them all. `icon` is a StatIcons key (js/ui/icons.js), or 'text' for
+// ideas that read as their alias word (Sim, Seize, U21 Cup…).
 
 const GLOSSARY = {
   power: { icon: 'pow', short: 'Power', long: 'Power. Key stat of wing spikers. Kills and aces.' },
@@ -35,31 +36,31 @@ const GLOSSARY = {
     long: `Grade S–C from your own line. Rewards ${GRADES.map(([g, , x]) => `${g} ×${x}`).join(', ')}. S: mood up.`
   },
   seize: {
-    icon: 'std',
+    icon: 'text',
     short: 'Seize',
     long: `Border meter. ${FRONT.seize} net battle wins on a border seize a place; lost places come back first.`
   },
-  border: { icon: 'std', short: 'Border', long: `Border place. Changes hands after ${FRONT.seize} net street-battle wins on its border.` },
-  sim: { icon: 'day', short: 'Sim', long: 'Sim. The result without watching. Same rules, same rewards.' },
-  academy: { icon: 'led', short: 'Academy', long: 'Academy squad. You play evaluations and the U21 Cup with it until a club signs you.' },
+  border: { icon: 'text', short: 'Border', long: `Border place. Changes hands after ${FRONT.seize} net street-battle wins on its border.` },
+  sim: { icon: 'text', short: 'Sim', long: 'Sim. The result without watching. Same rules, same rewards.' },
+  academy: { icon: 'text', short: 'Academy', long: 'Academy squad. You play evaluations and the U21 Cup with it until a club signs you.' },
   cup: {
-    icon: 'grd',
+    icon: 'text',
     short: 'U21 Cup',
     long: `${CUPS[0].name}. After week ${CUPS[0].after}. Knock-out; a loss ends the season. Rewards ×${CUPS[0].mul}.`
   },
   trial: {
-    icon: 'wit',
+    icon: 'text',
     short: 'Trial',
     long: 'Element Trial. Reveal at OVR 70; become a ★ star; grade S in a match where your team reaches the zone.'
   },
   quality: {
-    icon: 'pow',
+    icon: 'text',
     short: 'Quality',
     long: 'Training quality ×. ★★? = advertised, unrated: overhyped or a hidden gem. Known after one session there (★★✓).'
   },
-  together: { icon: 'bond', short: 'Together', long: 'Teammates training at the same place: +20% each, +50% at bond 80+.' },
+  together: { icon: 'text', short: 'Together', long: 'Teammates training at the same place: +20% each, +50% at bond 80+.' },
   rewards: {
-    icon: 'sp',
+    icon: 'text',
     short: 'Rewards',
     long: `Match rewards. Win and loss chips; +${REWARDS.perPlay.sp} skill pts +${REWARDS.perPlay.fans} fans per kill, block or ace; × Grade.`
   }

@@ -90,7 +90,10 @@ function renderEncyclopedia() {
     </div>
     <h3 id="pk-gloss">Glossary</h3>
     <div class="gloss">${Object.keys(GLOSSARY)
-      .map(id => `<div class="grow" id="g-${id}">${term(id)}<span>${esc(GLOSSARY[id].long)}</span></div>`)
+      .map(
+        id =>
+          `<div class="grow" id="g-${id}"><span class="gn">${statI(GLOSSARY[id].icon)}<b>${esc(GLOSSARY[id].short)}</b></span><span>${esc(GLOSSARY[id].long)}</span></div>`
+      )
       .join('')}</div>
   </section>`;
 }

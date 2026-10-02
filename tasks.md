@@ -254,13 +254,13 @@ Steps: `GLOSSARY = { id: { icon, short, long } }` for every §9.6 id; `term(id, 
 Accept: test passes; Glossary tab renders all ids. QA: Encyclopedia screenshot.
 Result: js/data/glossary.js (after people.js): 24 terms (the §9.6 ids + the 6 stats), `long` built from data constants (GRADES, CLASH, FRONT, CUPS, REWARDS, MOODS, WEEK_DAYS); `term(id, n?, cls?)` in dom.js (alias word until T-111's icons; number signed, good/bad by sign, money as ±$n; tooltip = long); Encyclopedia › Glossary section + nav link. Test: §9.6 ids present and complete, every `term('x'` in js/ui defined. QA: Glossary renders 24 rows; no errors.
 
-### [ ] T-111: StatIcons SVG set
+### [x] T-111: StatIcons SVG set
 
 Spec: §9.5 Goldens: unchanged Save: no change
 Files: js/ui/icons.js (ICON entries + `statI(k)`), js/data/glossary.js (icon = statI key), js/ui/career-hub.js (hudRes, hudBar)
 Steps: add the 15 line icons from the StatIcons preview (16×16 viewBox, stroke currentColor, 1.6 width) to ICON; GLOSSARY icons use them; HUD rows get icon + word; Stamina and Speed never share a glyph.
 Accept: no ⚡/✨/📣 left in hudRes. QA: hub screenshot.
-Result:
+Result: `STAT_ICON` (15 line icons from the StatIcons card, 20×20, stroke currentColor 1.6) + `statI(k, size)` + `statKey(id)` in icons.js; GLOSSARY icons point at them (ideas like Sim/Seize/U21 Cup use `'text'` = their alias word); `term()` renders the icon. hudRes/hudBar no longer exist after the redesign, so the top bar resources (Money, Fans, Skill pts, Stamina, Mood), the rail's 4 stats and the Me sheet stat rows get icon + word, tooltips = glossary text. Stamina = battery, Speed = double chevron. No ⚡/✨/📣 in the hub. QA: hub + Me sheet + Glossary screenshots; no errors.
 
 ### [ ] T-112: Reward, cost and requirement lines as terms
 

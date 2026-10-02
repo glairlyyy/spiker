@@ -150,7 +150,8 @@ function topBar(run) {
       const n = k === 'mood' ? (v > 0 ? '↑' : '↓') : `${v > 0 ? '+' : '−'}${k === 'money' ? '$' : ''}${Math.abs(v).toLocaleString()}`;
       return ` <em class="hd ${v > 0 ? 'up' : 'dn'}">${n}</em>`;
     },
-    cell = (label, val, t) => `<div class="tres" ${tip(t)}><small>${label}</small><b>${val}</b></div>`,
+    cell = (label, val, t, id) =>
+      `<div class="tres" ${tip(id ? GLOSSARY[id].long : t)}><small>${id ? statI(statKey(id), 14) : ''}${label}</small><b>${val}</b></div>`,
     cup = Run.cupDef(run),
     people = Asks.count(run);
   CW.hudPrev = now; // deltas show for one render after a change
@@ -159,11 +160,11 @@ function topBar(run) {
     <span class="tbrand">Spite &amp; Spike</span>
     <div class="tres-row">
       ${cell('Week', `<span class="disp">${cup ? esc(cup.short) : `${run.week} / ${CAREER.weeks}`}</span>`, `Week ${run.week} of ${CAREER.weeks}`)}
-      ${cell('Money', `$${run.money.toLocaleString()}${d('money')}`, 'Money')}
-      ${cell('Fans', `${run.fans.toLocaleString()}${d('fans')}`, 'Fans')}
-      ${cell('Skill pts', `${run.sp}${d('sp')}`, 'Skill points')}
-      ${cell('Stamina', `<span class="sbar ${staPct < 50 ? 'low' : ''}"><i style="width:${staPct}%"></i></span><span class="${staPct < 50 ? 'warn' : ''}">${run.sta}</span>${d('sta')}`, `Stamina ${run.sta}/${run.staMax}`)}
-      ${cell('Mood', `<span class="mood m${run.mood}">${mood.name}</span>${d('mood')}`, 'Mood')}
+      ${cell('Money', `$${run.money.toLocaleString()}${d('money')}`, 'Money', 'money')}
+      ${cell('Fans', `${run.fans.toLocaleString()}${d('fans')}`, 'Fans', 'fans')}
+      ${cell('Skill pts', `${run.sp}${d('sp')}`, 'Skill points', 'sp')}
+      ${cell('Stamina', `<span class="sbar ${staPct < 50 ? 'low' : ''}"><i style="width:${staPct}%"></i></span><span class="${staPct < 50 ? 'warn' : ''}">${run.sta}</span>${d('sta')}`, `Stamina ${run.sta}/${run.staMax}`, 'sta')}
+      ${cell('Mood', `<span class="mood m${run.mood}">${mood.name}</span>${d('mood')}`, 'Mood', 'mood')}
     </div>
     <nav class="ttabs" aria-label="Sheets">${HUB_TABS.map(
       ([k, n], i) =>
@@ -184,7 +185,7 @@ function weekRail(run, armed) {
   return `<aside class="wrail" aria-label="This week">
     <button class="wme" onclick="hubOpen('me')" aria-label="Your player"><span class="portrait">${faceSVG(you, MOODS[run.mood].form, 44)}</span>
       <span><b>${stag(you)}${esc(you.name)}</b><small>${ROLE_NAME[you.role]} · ${chip(team)}${esc(team.short)} · OVR ${ovr(you)}</small></span></button>
-    <div class="wstats">${STATK.map(k => `<span><small>${STATNAME[k]}</small><b>${you[k]}</b><i class="mbar4"><i style="width:${Math.min(100, you[k])}%"></i></i></span>`).join('')}</div>
+    <div class="wstats">${STATK.map(k => `<span ${tip(GLOSSARY[k].long)}><small>${statI(statKey(k), 14)}${STATNAME[k]}</small><b>${you[k]}</b><i class="mbar4"><i style="width:${Math.min(100, you[k])}%"></i></i></span>`).join('')}</div>
     ${weekSection(run)}
     ${railGoal(run)}
     <section class="winbox"><div class="lab">Inbox</div>${inboxRows(run)}</section>

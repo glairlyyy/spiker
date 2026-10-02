@@ -3419,3 +3419,19 @@
 .create2 .acts {
   max-width: 520px;
 }
+/* StatIcons (T-111) */
+.si {
+  flex: none;
+  vertical-align: -3px;
+}
+.hub .tres small,
+.hub .wstats small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.hub .sheet .mrow > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

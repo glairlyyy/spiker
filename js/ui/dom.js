@@ -29,14 +29,14 @@ const tip = t => `data-tip="${esc(t)}"`;
 /** A small ⓘ dot carrying explanatory text as a tooltip instead of a paragraph. */
 const info = t => `<span class="ii" tabindex="0" role="note" aria-label="${esc(t)}" ${tip(t)}>i</span>`;
 /**
- * A glossary term (spec §9.4): its icon (or its alias until the icon set exists) and an optional signed number, with the
+ * A glossary term (spec §9.4): its icon (StatIcons, js/ui/icons.js; the alias word if it has none) and an optional signed number, with the
  * term's one explanation as the tooltip. The number carries the colour: `good` for +, `bad` for − (`cls` overrides, e.g.
  * 'cost' keeps a cost neutral); a string `n` ('↑', '1/2', 'S') shows as is. term('sp', 3) → ◆ +3.
  */
 function term(id, n, cls = '') {
   const g = GLOSSARY[id];
   if (!g) return '';
-  const ic = `<b class="tw">${esc(g.short)}</b>`, // the icon set comes with T-111
+  const ic = statI(g.icon) || `<b class="tw">${esc(g.short)}</b>`,
     num =
       n == null
         ? ''

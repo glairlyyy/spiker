@@ -36,7 +36,7 @@ function sheetMe(run) {
     statRow = k => {
       const pr = Training.progress(run, k),
         pct = Math.round((pr.have / Math.max(1, pr.need)) * 100);
-      return `<div class="mrow" ${tip(`${pct}% of the way to the next point. Training stops at ${TRAIN_CAP}; matches only above.`)}><span>${STATNAME[k]}</span><span class="mbars"><i class="mb"><i style="width:${Math.min(100, you[k])}%"></i></i><i class="mp"><i style="width:${pct}%"></i></i></span><span class="mv"><b>${you[k]}</b> <span class="mute">/ ${TRAIN_CAP}</span></span></div>`;
+      return `<div class="mrow" ${tip(`${pct}% of the way to the next point. Training stops at ${TRAIN_CAP}; matches only above.`)}><span>${statI(statKey(k), 20)}${STATNAME[k]}</span><span class="mbars"><i class="mb"><i style="width:${Math.min(100, you[k])}%"></i></i><i class="mp"><i style="width:${pct}%"></i></i></span><span class="mv"><b>${you[k]}</b> <span class="mute">/ ${TRAIN_CAP}</span></span></div>`;
     },
     ids = Skills.forRole(you.role),
     aff = ids.filter(id => !you.skills.includes(id) && Skills.canLearn(run, id)).length,
@@ -69,8 +69,8 @@ function sheetMe(run) {
     <div class="sheet-chips"><span class="pchip">Stamina ${run.sta} / ${run.staMax}</span><span class="pchip">Mood ${mood.name}</span><span class="pchip">Skill pts ${run.sp}</span></div></div>
     <div class="sheet-cols mecols">
       <section class="card"><div class="lab">Stats · thin bar = progress to the next point</div>${STATK.map(statRow).join('')}
-        <div class="mrow"><span>Wit</span><span class="mbars"><i class="mb"><i style="width:${you.wit * 50}%"></i></i></span><span class="mv"><b>${you.wit.toFixed(2)}</b></span></div>
-        <div class="mrow"><span>Leadership</span><span class="mbars"><i class="mb lead"><i style="width:${you.lead}%"></i></i></span><span class="mv"><b>${you.lead}</b></span></div>
+        <div class="mrow"><span>${statI('wit', 20)}Wit</span><span class="mbars"><i class="mb"><i style="width:${you.wit * 50}%"></i></i></span><span class="mv"><b>${you.wit.toFixed(2)}</b></span></div>
+        <div class="mrow"><span>${statI('led', 20)}Leadership</span><span class="mbars"><i class="mb lead"><i style="width:${you.lead}%"></i></i></span><span class="mv"><b>${you.lead}</b></span></div>
         ${elementLine(run)}
         ${
           run.injury
