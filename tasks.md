@@ -129,7 +129,7 @@ Steps:
   QA: career run → open Places, click a row; screenshot.
   Result: done — `places` drawer (first in the dock): MapModel.pins (no battle pin) grouped by `City.regionAt`; row = icon, name, `Trains {stat}` / Club HQ / Venue / desc, owner chip, trip days; click → `placeGo(id)` closes the drawer and selects it (the map flies, T-097). QA: week 1 lists 9 places in 4 regions; clicking Pier Jump Deck selects it; no pageerror.
 
-### [ ] T-099: Cost on the button, locked shows the gap
+### [x] T-099: Cost on the button, locked shows the gap
 
 Spec: §9.1 §9.4 Goldens: unchanged Save: no change
 Goal: action buttons state their full cost; disabled controls say what is missing.
@@ -144,7 +144,7 @@ Steps:
 
 - Training button shows days, stamina and money; a locked club shows its gap; signable clubs on top.
   QA: career run → a training spot and the Clubs drawer; screenshots.
-  Result:
+  Result: done — training button `Train {stat} · {d}d · −{sta} sta · ${price}` (meta line keeps Lv + chips), Hard shows `×1.6 · ×2 sta · +15% fail` inline; `joinGap` (career-week.js) puts the gap on locked Sign buttons (clubs drawer + HQ card: `OVR 72 · you 1`, `$600 · you $200`, dashed `.lock` style), signable clubs first, the faction name dropped when the club name already says it; skills: `{cost} · need {n}` and a neutral "learn in matches" tag. Also: T-114's action-row class renamed `.act` → `.acts` (it clashed with the skill cards' `.act`). QA: spot, clubs, skills screenshots, no pageerror.
 
 ### [ ] T-100: Housing as rows with effects
 

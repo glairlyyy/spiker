@@ -56,7 +56,7 @@
   display: flex;
   flex-direction: column;
 }
-.create > .panel:last-child .act {
+.create > .panel:last-child .acts {
   margin-top: auto;
 }
 .create h4 {
@@ -1928,7 +1928,7 @@
 }
 
 /* ---------- layout grid (§9.8, design system layout.md) ---------- */
-.act {
+.acts {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(112px, 1fr);
@@ -1937,30 +1937,30 @@
   padding-top: 16px;
   margin-top: 16px;
 }
-.act.pri {
+.acts.pri {
   grid-template-columns: 2fr 1fr;
   grid-auto-flow: row;
 }
-.act.two {
+.acts.two {
   grid-template-columns: 1fr 1fr;
   grid-auto-flow: row;
 }
-.act.three {
+.acts.three {
   grid-template-columns: repeat(3, 1fr);
   grid-auto-flow: row;
 }
-.act > .btn {
+.acts > .btn {
   min-height: 40px;
   margin: 0;
 }
-.hub .hubcard .act > .btn {
+.hub .hubcard .acts > .btn {
   min-height: 48px;
 }
-.act .btn.danger {
+.acts .btn.danger {
   margin-left: auto;
   color: var(--bad);
 }
-.spot .act {
+.spot .acts {
   grid-auto-columns: auto;
   justify-content: stretch;
 }
@@ -1972,8 +1972,9 @@
 }
 .rowcta > .btn {
   height: 32px;
-  padding: 0 8px;
+  padding: 0 4px;
   font-size: 13px;
+  letter-spacing: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2021,4 +2022,21 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* locked = the gap (T-099) */
+.btn.lock:disabled {
+  opacity: 1;
+  background: transparent;
+  border-style: dashed;
+  color: var(--mute);
+}
+.sk .tag {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 500;
+  padding: 0 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
 }

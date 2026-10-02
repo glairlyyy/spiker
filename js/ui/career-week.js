@@ -270,7 +270,7 @@ function evalPanel(run, note = '') {
     head = `<h3>Week ${run.week}: ${esc(label)} evaluation${info(`Win: +${REWARDS.evalWin.sp} skill pts, +${REWARDS.evalWin.fans} fans; teammates who played with you remember the win. Loss: +${REWARDS.evalLoss.sp} skill pts, +${REWARDS.evalLoss.fans} fans. Each of your kills, blocks and aces adds more.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3>`;
   if (e.kind === 'faction' && !e.mine)
     return `<div class="panel">${head}<p>Not selected this month.</p>
-    ${note}<div class="act"><button class="btn hot" onclick="benchEval()">Watch from the bench</button></div></div>`;
+    ${note}<div class="acts"><button class="btn hot" onclick="benchEval()">Watch from the bench</button></div></div>`;
   const mine = e.kind === 'academy' ? club.P : byId(e.mine).slice(0, 4); // the 4 who start
   return `<div class="panel">${head}
     <p class="small"><b>${e.kind === 'academy' ? esc(club.name) : esc(club.name) + ' squad'}</b> ${list(mine, true)}</p>
@@ -279,7 +279,7 @@ function evalPanel(run, note = '') {
     ${D.scouted || D.member ? '' : '<p class="small mute">Scout one of their clubs to see ratings.</p>'}
     ${rankBest(run, byId(e.opp).slice(0, 4))}
     ${matchPrep(run, false)}
-    ${note}<div class="act pri"><button class="btn hot" onclick="playCareer('eval')">Play evaluation</button><button class="btn" onclick="playCareer('eval', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
+    ${note}<div class="acts pri"><button class="btn hot" onclick="playCareer('eval')">Play evaluation</button><button class="btn" onclick="playCareer('eval', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
 }
 /** Not selected: watch from the bench (wit XP) and end the week. */
 function benchEval() {
@@ -331,7 +331,7 @@ function recapCard(run) {
   return `<div class="panel recap"><span class="rk">${typeof R2.week === 'number' ? `Week ${R2.week}` : esc(R2.week)} done</span>
     ${R2.rows.length ? `<div class="rrows">${R2.rows.map(([c, t]) => `<span class="rr ${c}">${esc(t)}</span>`).join('')}</div>` : ''}
     ${R2.lines.length ? `<ul class="rlog">${R2.lines.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
-    <div class="act"><button class="btn hot" onclick="recapDone()">Continue</button></div></div>`;
+    <div class="acts"><button class="btn hot" onclick="recapDone()">Continue</button></div></div>`;
 }
 function recapDone() {
   CW.recap = null;
@@ -368,7 +368,7 @@ function cupPanel(run, nm) {
     <div class="panel"><h3>${nm.round}${info(`Win: +${Math.round(REWARDS.cupWin.sp * def.mul)} skill pts, +${Math.round(REWARDS.cupWin.fans * def.mul).toLocaleString()} fans. A loss ends the season.\nPlacement: round of 16 +${fans('Round of 16')} fans · quarterfinal +${fans('Quarterfinal')} · semifinal +${fans('Semifinal')} · runner-up +${fans('Final')} · champion +${fans('Champion')} — and a place on the national team.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3><p>vs <b>${esc(E[nm.a === me ? nm.b : nm.a].name)}</b>${City.venue(run) ? ` at <b>${esc(VENUES[City.venue(run)].name)}</b>` : ''}</p>
       ${rankBest(run, squadOf(Cup.team(run, nm.a === me ? nm.b : nm.a)))}
       ${matchPrep(run, true)}
-    <div class="act pri"><button class="btn hot" onclick="playCareer('cup')">Play ${nm.round.toLowerCase()}</button><button class="btn" onclick="playCareer('cup', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
+    <div class="acts pri"><button class="btn hot" onclick="playCareer('cup')">Play ${nm.round.toLowerCase()}</button><button class="btn" onclick="playCareer('cup', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
 }
 function eventCard(run) {
   const e = Events.def(run.event, run),
@@ -391,7 +391,7 @@ function eventCard(run) {
   const kind = { sponsor: 'Sponsor', element: 'Element Trial' }[run.event.id] || 'Event',
     you = Run.you(run);
   return `<div class="panel ev ${run.event.id === 'element' ? 'lbk' : ''}"${run.event.id === 'element' ? ` style="--lbk:${ECOL[you.el]}"` : ''}><span class="evk">${kind}</span><h3>${esc(e.title)}</h3><p>${esc(Events.text(run, run.event, e.text))}</p>
-    <div class="evc act two">${[e.a, e.b].map(([label, fx], i) => `<button class="btn" onclick="chooseEvent(${i})"><b>${esc(label)}</b><small>${esc(fxText(fx))}</small></button>`).join('')}</div></div>`;
+    <div class="evc acts two">${[e.a, e.b].map(([label, fx], i) => `<button class="btn" onclick="chooseEvent(${i})"><b>${esc(label)}</b><small>${esc(fxText(fx))}</small></button>`).join('')}</div></div>`;
 }
 /** Skills shop in two groups: active techniques (fire in matches) and passive skills (always on). */
 function skillShop(run, open) {
@@ -401,7 +401,7 @@ function skillShop(run, open) {
     const s = SKILLS[id],
       own = you.skills.includes(id),
       byStats = !own && s.tech && hasTech(you, id);
-    return `<button class="sk ${own || byStats ? 'own' : ''} ${s.tech ? 'act' : 'pas'}" onclick="learnSkill('${id}')" ${own || byStats || !Skills.canLearn(run, id) ? 'aria-disabled="true"' : ''} ${tip(s.tech && !own && !byStats ? `${s.desc}\nLearned in matches: by doing it, or by facing a player who has it.` : s.desc)}>${skillIcon(id)}<b>${esc(s.name)}</b><span>${own ? '✓' : byStats ? '✓ stats' : s.tech ? 'learn in matches' : s.cost}</span></button>`;
+    return `<button class="sk ${own || byStats ? 'own' : ''} ${s.tech ? 'act' : 'pas'}" onclick="learnSkill('${id}')" ${own || byStats || !Skills.canLearn(run, id) ? 'aria-disabled="true"' : ''} ${tip(s.tech && !own && !byStats ? `${s.desc}\nLearned in matches: by doing it, or by facing a player who has it.` : s.desc)}>${skillIcon(id)}<b>${esc(s.name)}</b><span>${own ? '✓' : byStats ? '✓ stats' : s.tech ? '<em class="tag">learn in matches</em>' : run.sp >= s.cost ? s.cost : `${s.cost} · need ${s.cost - run.sp}`}</span></button>`;
   };
   const aff = ids.filter(id => !you.skills.includes(id) && Skills.canLearn(run, id)).length;
   return `<div class="panel">${fold(
@@ -457,17 +457,35 @@ function lifeCard(run) {
     <div class="small mute">${World.isFree(run) ? 'Free agent — no club yet' : `${esc(FACTIONS[run.team].name)}${info(`${FACTIONS[run.team].front}. Word is: ${FACTIONS[run.team].dark}.`)}`}</div></div>`;
 }
 /** Clubs that would sign you (free agents only). */
+/** The first thing a club still asks of you, as your gap: "OVR 72 · you 41", "$600 · you $200". '' when you can sign. */
+function joinGap(run, ti) {
+  const you = Run.you(run),
+    j = World.joinReq(run, ti),
+    key = KEYSTAT[you.role],
+    c = World.canJoin(run, ti);
+  if (c.ok) return '';
+  if (!World.isFree(run)) return 'Already signed';
+  if (Run.cupDef(run)) return 'Not during a cup';
+  if (j.ovr && ovr(you) < j.ovr) return `OVR ${j.ovr} · you ${ovr(you)}`;
+  if (j.key && you[key] < j.key) return `${STATNAME[key]} ${j.key} · you ${you[key]}`;
+  if (j.star && !you.star) return 'Needs ★ star';
+  if (j.fans && run.fans < j.fans) return `${j.fans.toLocaleString()} fans · you ${run.fans.toLocaleString()}`;
+  if (j.fee && run.money < j.fee) return `$${j.fee} · you $${run.money}`;
+  return c.why.join(', ');
+}
 function clubsCard(run) {
   return `<div class="panel clubs">${fold(
     'clubs',
     `<h3>Find a club${info('You play Academy evaluations and the U21 Final Cup with the Academy squad until a club signs you. You take the same-role spot on the club.')}</h3>`,
-    `<div class="clist">${run.teams
+    `<div class="clist">${[...run.teams]
+      .sort((a, b) => World.canJoin(run, b.i).ok - World.canJoin(run, a.i).ok) // signable first
       .map(t => {
         const c = World.canJoin(run, t.i),
-          f = FACTIONS[t.i];
-        return `<div class="club rowcta" style="--tc:${t.color}"><div class="nm"><span class="n1">${chip(t)}<b>${esc(t.name)}</b> <span class="mute small">${esc(f.name)} · OVR ${t.ovr}</span>${info(`${f.front}. Word is: ${f.dark}.`)}</span>
+          f = FACTIONS[t.i],
+          sub = t.name.startsWith(REGIONS[f.region].name) || t.name.startsWith(f.name.split(' · ')[0]) ? '' : `${esc(f.name)} · `; // "Wei Dynasty Gold" already says Wei Dynasty
+        return `<div class="club rowcta" style="--tc:${t.color}"><div class="nm"><span class="n1">${chip(t)}<b>${esc(t.name)}</b> <span class="mute small">${sub}OVR ${t.ovr}</span>${info(`${f.front}. Word is: ${f.dark}.`)}</span>
           <span class="n2 small ${c.ok ? '' : 'mute'}">${World.joinText(t.i, run)}</span></div>
-          <button class="btn ${c.ok ? 'hot' : ''}" onclick="joinClub(${t.i})" ${c.ok ? '' : 'disabled'} ${c.ok ? '' : tip('Missing: ' + c.why.join(', '))}>${c.ok ? 'Sign' : 'Locked'}</button></div>`;
+          <button class="btn ${c.ok ? 'hot' : 'lock'}" onclick="joinClub(${t.i})" ${c.ok ? '' : 'disabled'} ${c.ok ? '' : tip('Missing: ' + c.why.join(', '))}>${c.ok ? 'Sign' : esc(joinGap(run, t.i))}</button></div>`;
       })
       .join('')}</div>`,
     true
@@ -522,7 +540,7 @@ function gazetteCard(run) {
   const g = run.gazette;
   if (!g || g.read) return '';
   return `<div class="panel gazette"><h3>The Gazette <span class="mute small">week ${g.week}</span></h3><ul class="small">${g.items.map(t => `<li>${esc(t)}</li>`).join('')}</ul>
-    <div class="act"><button class="btn hot" onclick="readGazette()">Close</button></div></div>`;
+    <div class="acts"><button class="btn hot" onclick="readGazette()">Close</button></div></div>`;
 }
 function readGazette() {
   Run.readGazette(RUN);
