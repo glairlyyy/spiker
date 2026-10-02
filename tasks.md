@@ -81,7 +81,7 @@ Accept: no place card has a CTA outside its action row; the panel never scrolls 
 QA: training spot, HQ, battle site, travel point; screenshots.
 Result: done — `placeCard({region, kind, title, tags, flavour, body, opts, row, split})` (career-map.js) = one anatomy for every kind: label (region chip · kind), 20px title, pill tags (`ptag`, `placeTags`: quality, sand, Lv, streak, turf, fail %, border/seized, trip), flavour line, body, options, ONE `.acts` row, "Uses Mon + Tue · shown on your week" from the same ghost as the day track. Training: gain rows (main / side `+1 now` / `+1 in N sessions`), Normal / Hard segment with the Hard effect inline, teammate chips (+20% / +50%), row `[Train {stat} · d · −sta · $] [Travel · d]`; rest / outing / street / travel point / venue on the same card; HQ row `[Sign or gap] [Scout · d] [Dossier]` + the challenge as its own sub-section with its own row; battle row `[Watch · d] [Fight for A] [Fight for B]` with the stakes in two columns above and Sim as an option. Class `.plc` (`.pcard` was taken by People). QA: Pier (no scroll, 254px), Wu Harbor HQ, battle site, travel point at 1440×900; no pageerror.
 
-### [ ] T-120: Inbox and Week brief
+### [x] T-120: Inbox and Week brief
 
 Spec: §10.3 §10.5 Goldens: unchanged Save: no change (brief "seen" in CW)
 Goal: one card at each week start lists what the week holds; the rail inbox keeps unhandled items with one button each.
@@ -94,7 +94,7 @@ Steps:
 3. Remove dock badges and the toast (the day track + inbox replace them).
    Accept: week start shows the brief with every applicable row; closing it leaves the items in the inbox; nothing happens until the player clicks.
    QA: career run → a clash week and a payday week; screenshots.
-   Result:
+   Result: done — `weekBrief` (once per week / cup round, `CW.briefWeek` = `briefKey`): title by week type, one line, rows for the match (eval / cup), street battle (sides, site, Seize n/2, the place a win takes), payday + Gazette, coach's goal (progress, due, warn ≤1 week), evaluation next week; `[Start the week]` or `[Go to match prep]` + `[Read the Gazette]` (opens the Gazette drawer, marks read). `briefDone` sets the old `clash.seen`. hubCard order: event → week report → brief → cup / eval card; the battle intro and Gazette pop-up are gone. Inbox (`inboxRows`, max 5): next step → battle (View → select pin) → approaches (People) → Gazette (Read) → evaluation next week → goal due ≤1 week → club would sign → places that changed hands (`CW.seizes`, kept a week). Toast and seize banner removed; a refused action shows as a bad inbox row for one render (`CW.flash`, career-people.js toastBlocked — one extra file). QA: week 1 brief with battle + payday + goal rows; inbox after closing; no pageerror.
 
 ### [ ] T-121: Week report
 

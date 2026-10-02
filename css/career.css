@@ -2675,3 +2675,72 @@
   padding: 0 6px;
   font-size: 13px;
 }
+/* week brief and inbox (T-120) */
+.brief h2 {
+  margin: 4px 0;
+  font: 600 28px/1.1 var(--disp);
+  letter-spacing: 0.04em;
+}
+.brief .lab {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.brief .bi {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.brief .bico {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--surf2);
+  display: grid;
+  place-items: center;
+}
+.brief .btag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--mute);
+  white-space: nowrap;
+}
+.brief .warn {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+.brief .hot {
+  color: var(--hot);
+  border-color: var(--hot);
+}
+.hub .winbox .wit {
+  grid-template-columns: 20px 1fr auto;
+}
+.hub .winbox .wico {
+  text-align: center;
+}
+.hub .winbox .wtx small {
+  display: block;
+  font-size: 12px;
+  color: var(--mute);
+}
+.hub .winbox .wit.next .wtx {
+  color: var(--cyan);
+}
+.hub .winbox .wit.warn .wico,
+.hub .winbox .wit.warn .wtx {
+  color: var(--warn);
+}
+.hub .winbox .wit.bad {
+  color: var(--bad);
+}

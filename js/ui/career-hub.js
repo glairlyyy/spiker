@@ -55,10 +55,7 @@ function renderCareer() {
   if (!RUN) return navigate('create');
   if (RUN.result) return renderRunEnd();
   const run = RUN,
-    team = Run.myTeam(run),
-    last = run.log[0] ? run.log[0].t : null,
-    toast = CW.toast !== undefined && CW.toast !== null && last !== CW.toast ? last : null;
-  CW.toast = last;
+    team = Run.myTeam(run);
   const armed = Date.now() - CW.endArm < 4000; // End week asked once with days left: the button asks again for 4 s
   // a place changed hands since the last render (your battle or the week's end): banner + select it on the map
   const own = run.own || {},
@@ -67,6 +64,7 @@ function renderCareer() {
   CW.own = { ...own };
   CW.ownOf = run;
   if (note && MapModel.known(run, note.id, City.at(run, note.id))) CW.spot = note.id;
+  for (const z of chg) (CW.seizes || (CW.seizes = [])).unshift({ ...z, week: run.week }); // an inbox item for a week
   if (CW.drawer === 'clubs' && !World.isFree(run)) CW.drawer = null;
   const nextCup = Run.weekType(run) === 'cup' && !run.event ? Cup.upcoming(run) : null; // rules first, then draw
   const card = hubCard(run, nextCup);
@@ -74,8 +72,6 @@ function renderCareer() {
     ${topBar(run)}${weekRail(run, armed)}
     <div class="mapwrap" id="mapwrap"></div>
     <div class="hud spotcard ${CW.spot && !card ? 'open' : ''}" id="spot">${CW.spot && !card ? spotCard(run) : ''}</div>
-    ${toast ? `<div class="htoast" role="status">${esc(toast)}</div>` : ''}
-    ${note ? `<div class="hnote" role="status" style="--nc:${REGIONS[note.to].color}">⚔ ${esc(note.text)}</div>` : ''}
     ${CW.drawer ? hubDrawer(run) : ''}
     ${card ? `<div class="hubmodal ${card.dim ? 'dim' : ''}"><div class="hubcard ${card.cls || ''}">${card.html}</div></div>` : ''}
     ${CW.dossier && !card ? `<div class="hubmodal"><div class="hubcard wide">${dossierCard(run, CW.dossier)}</div></div>` : ''}
@@ -86,27 +82,79 @@ function renderCareer() {
 /** A card over the map, if the week needs one: an event, a match day, or an unread Gazette. */
 function hubCard(run, nextCup) {
   const wt = Run.weekType(run);
-  if (run.event) return { html: eventCard(run), dim: true };
+  if (run.event) return { html: eventCard(run), dim: true }; // the only blocking card
+  if (CW.recap) return { html: recapCard(run), dim: true }; // last week's report first
+  if (CW.briefWeek !== briefKey(run)) return { html: weekBrief(run), dim: true };
   if (wt === 'cup') return { html: cupPanel(run, nextCup), cls: 'wide' };
   if (wt === 'eval') return { html: evalPanel(run, World.isFree(run) ? hubClubsHint() : '') };
-  const c = City.clashSite(run);
-  const att = c && (run.clash.att || c.a),
-    def = c && (att === c.a ? c.b : c.a);
-  if (c && !run.clash.seen)
-    return {
-      html: `<div class="panel ev"><span class="evk">Street battle</span><h3>${chip(REGIONS[att])}${esc(REGIONS[att].name)} raid ${chip(REGIONS[def])}${esc(REGIONS[def].name)} · ${esc(c.name)}</h3>
-      <p class="seizeline">Seize ${Math.max(0, Front.meter(run, att, def))}/${FRONT.seize}${
-        Front.stakes(run, att, def).seize && Front.stakes(run, att, def).place
-          ? ` · a win takes ${esc(SPOTS[Front.stakes(run, att, def).place].name)}`
-          : ''
-      }</p>
-      <p class="small mute">Nobody shows up? They settle it themselves at the week's end.</p>
-      <div class="evc acts two"><button class="btn hot" onclick="clashSeen(true)"><b>Take a look</b><small>${City.clashCost(run)} day${City.clashCost(run) > 1 ? 's' : ''} to join</small></button><button class="btn" onclick="clashSeen(false)"><b>Stay out</b><small>It's on the map all week</small></button></div></div>`,
-      dim: true
-    };
-  if (run.gazette && !run.gazette.read) return { html: gazetteCard(run), dim: true };
-  if (CW.recap) return { html: recapCard(run) };
   return null;
+}
+/** One Week brief per week (and per cup round). */
+const briefKey = run => `${run.week}:${(Run.cupDef(run) || {}).id || ''}`;
+/** The Week brief (spec §10.5): what this week holds — battle, payday, goal, match — and how to start it. Never acts. */
+function weekBrief(run) {
+  const wt = Run.weekType(run),
+    match = wt === 'cup' || wt === 'eval',
+    rows = [],
+    row = (ico, title, sub, tag, cls = '') =>
+      rows.push(
+        `<div class="bi"><span class="bico ${cls}">${ico}</span><div><b>${title}</b>${sub ? `<div class="small mute">${sub}</div>` : ''}</div>${tag ? `<span class="btag ${cls}">${tag}</span>` : '<span></span>'}</div>`
+      );
+  if (wt === 'eval') {
+    const e = run.eval || Eval.setup(run);
+    row(
+      '⚑',
+      `Evaluation · ${esc(e.kind === 'academy' ? 'Academy' : REGIONS[e.region].name)}`,
+      `${esc(Run.myTeam(run).name)} vs ${esc(REGIONS[e.region].name)}${City.venue(run) ? ` · ${esc(VENUES[City.venue(run)].name)}` : ''}`,
+      'this week'
+    );
+  } else if (wt === 'cup') row('⚑', esc((Run.cupDef(run) || {}).name || 'Cup'), 'Your next round is on the match card', 'this week', 'hot');
+  const c = City.clashSite(run);
+  if (c && !run.clash.done) {
+    const att = run.clash.att || c.a,
+      def = att === c.a ? c.b : c.a,
+      k = Front.stakes(run, att, def);
+    row(
+      '⚔',
+      `${chip(REGIONS[att])}${esc(REGIONS[att].name)} raid ${chip(REGIONS[def])}${esc(REGIONS[def].name)}`,
+      `${esc(c.name)} · Seize ${Math.max(0, Front.meter(run, att, def))}/${FRONT.seize}${k.seize && k.place ? ` · a win takes ${esc(SPOTS[k.place].name)}` : ''} · nobody shows up? they settle it at the week's end`,
+      'street battle',
+      'warn'
+    );
+  }
+  if (run.gazette && !run.gazette.read) {
+    const pay = run.log.find(l => /^Payday:/.test(l.t));
+    row('☰', 'Payday · the Gazette is out', pay ? esc(pay.t.replace(/^Payday: /, '')) : '', 'payday');
+  }
+  const g = run.goal;
+  if (g && g.done == null) {
+    const left = g.by - run.week;
+    row(
+      '◎',
+      `Coach's goal · ${esc(Goals.text(run, g))}`,
+      `${esc(Goals.progress(run, g))} · due week ${g.by}`,
+      left <= 0 ? 'this week' : `${left} week${left > 1 ? 's' : ''}`,
+      left <= 1 ? 'warn' : ''
+    );
+  }
+  if (!match && CALENDAR[run.week + 1] === 'eval') row('⚑', 'Evaluation next week', 'Match weeks have no training days', 'next week');
+  const title = { train: 'Training week', camp: 'Training camp', eval: 'Evaluation week', cup: 'Cup week' }[wt] || 'This week',
+    line = match ? 'Match weeks have no training days.' : `${WEEK_DAYS} days. Every action takes a day, plus the trip there.`;
+  return `<div class="panel brief"><div class="lab">Week ${Math.min(run.week, CAREER.weeks)} of ${CAREER.weeks}</div><h2>${title}</h2><p class="small mute">${line}</p>
+    ${rows.join('') || '<p class="small mute">A quiet week.</p>'}
+    <div class="acts ${run.gazette && !run.gazette.read ? 'pri' : ''}"><button class="btn hot" onclick="briefDone()">${match ? 'Go to match prep' : 'Start the week'}</button>${
+      run.gazette && !run.gazette.read ? '<button class="btn" onclick="briefDone(\'news\')">Read the Gazette</button>' : ''
+    }</div></div>`;
+}
+/** Close the brief (the battle stays on the map and in the inbox); `open` = a drawer to open next. */
+function briefDone(open) {
+  CW.briefWeek = briefKey(RUN);
+  if (RUN.clash && !RUN.clash.seen) {
+    RUN.clash.seen = true; // the old battle intro's flag: the brief told you
+    Run.save(RUN);
+  }
+  if (open) return hubOpen(open);
+  renderCareer();
 }
 const hubClubsHint = () =>
   `<p class="small mute">Free agent — <a href="#" onclick="hubOpen('clubs');return false">find a club</a> first to play with them.</p>`;
@@ -210,15 +258,49 @@ function railGoal(run) {
   return `<button class="wgoal" onclick="hubOpen('season')"><span class="wh"><span class="lab">Coach's goal</span><span class="small ${soon ? 'warn' : 'mute'}">by week ${g.by}</span></span>
     <span class="wg1">${esc(Goals.text(run, g))}</span>${m ? `<i class="mbar4"><i style="width:${pct}%"></i></i>` : ''}<span class="small mute">${esc(Goals.progress(run, g))}</span></button>`;
 }
-/** Inbox rows until T-120: the suggested next step, and this render's diary line / place change. */
+/** The rail inbox (spec §10.3): what waits for you, one button each, until handled. Max 5; the suggested next step first. */
 function inboxRows(run) {
-  const n = nextStep(run),
-    rows = [];
-  if (n)
-    rows.push(
-      `<div class="wit"><span class="wtx">${esc(n.text)}</span>${n.act ? `<button class="btn" onclick="${n.act}">Go</button>` : ''}</div>`
+  const rows = [],
+    item = (ico, text, sub, btn, act, cls = '') =>
+      rows.push(
+        `<div class="wit ${cls}"><span class="wico">${ico}</span><span class="wtx">${text}${sub ? `<small>${sub}</small>` : ''}</span><button class="btn" onclick="${act}">${btn}</button></div>`
+      ),
+    n = nextStep(run);
+  if (CW.flash) rows.push(`<div class="wit bad"><span class="wico">✕</span><span class="wtx">${esc(CW.flash)}</span><span></span></div>`); // a refused action, one render
+  CW.flash = null;
+  if (n && n.act && !/Gazette|signing open/.test(n.text)) item('→', esc(n.text), 'Suggested next step', 'Go', n.act, 'next');
+  const c = City.clashSite(run);
+  if (c && !run.clash.done)
+    item(
+      '⚔',
+      `${esc(REGIONS[c.a].name.split(' ')[0])} vs ${esc(REGIONS[c.b].name.split(' ')[0])} · ${esc(c.name)}`,
+      `Street battle · ${City.clashCost(run)} day${City.clashCost(run) > 1 ? 's' : ''} away`,
+      'View',
+      "mapPick('clash')"
     );
-  return rows.join('') || '<p class="small mute">Nothing waiting.</p>';
+  const asks = Asks.count(run);
+  if (asks) item('✉', `${asks} approach${asks > 1 ? 'es' : ''} waiting`, 'Expires at the end of the week', 'Answer', "hubOpen('people')");
+  if (run.gazette && !run.gazette.read) item('☰', 'The Gazette is out', `Week ${run.gazette.week}`, 'Read', "hubOpen('news')");
+  const wt = Run.weekType(run);
+  if ((wt === 'train' || wt === 'camp') && CALENDAR[run.week + 1] === 'eval')
+    item('⚑', 'Evaluation next week', 'Match weeks have no training days', 'Season', "hubOpen('season')");
+  const g = run.goal;
+  if (g && g.done == null && g.by - run.week <= 1)
+    item(
+      '◎',
+      `Goal due ${g.by === run.week ? 'this week' : 'next week'}`,
+      `${esc(Goals.text(run, g))} · ${esc(Goals.progress(run, g))}`,
+      'View',
+      "hubOpen('season')",
+      'warn'
+    );
+  if (World.isFree(run)) {
+    const t = run.teams.find(t2 => World.canJoin(run, t2.i).ok);
+    if (t) item('🛡', `${esc(t.name)} would sign you`, 'Signing open', 'Clubs', "hubOpen('clubs')");
+  }
+  for (const z of (CW.seizes || []).filter(x => run.week - x.week <= 1))
+    item('⚑', esc(z.text), 'A place changed hands', 'Show', `mapPick('${z.id}')`);
+  return rows.slice(0, 5).join('') || '<p class="small mute">Nothing waiting.</p>';
 }
 /**
  * One suggested next step (a suggestion only: the chip selects a place or opens a drawer, never acts). First match wins:

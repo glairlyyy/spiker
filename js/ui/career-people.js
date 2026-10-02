@@ -148,7 +148,7 @@ function askMove(id, kind, at) {
   renderCareer();
 }
 function toastBlocked(why) {
-  CW.toast = null;
+  CW.flash = `Can't now: ${why}.`; // shown in the inbox for one render
   Run.log(RUN, `Can't now: ${why}.`);
   renderCareer();
 }
