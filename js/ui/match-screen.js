@@ -38,15 +38,41 @@ function setLabel(sel, text) {
   const b = $(sel);
   if (b) b.textContent = text;
 }
-/** The ⚙ pop-over: hype, cut-ins, zooms, graphics, 3D camera and volume. */
+/** The ⚙ pop-over: every setting as a labelled segment showing all of its options (click = set it). */
 function settingsMenu() {
-  return `<button class="btn" id="hypebtn" onclick="cycleHype()" ${tip('Staged shonen moments before big attacks. Normal: element spikes, match points, star face-offs. Max: also long rallies and comebacks. Tap the court to skip one.')}>${hypeLabel()}</button>
-        <button class="btn" id="cutbtn" onclick="toggleCutins()" ${tip('Full cut-ins pause play; mini shows them as a corner notification')}>${cutLabel()}</button>
-        <button class="btn" id="cambtn" onclick="toggleCamera()" ${tip('On: gentle zoom on big plays at the net. Off: no zooms or pushes (motion-friendly).')}>${zoomLabel()}</button>
-        <button class="btn" id="gfxbtn" onclick="cycleGfx()" ${tip('High: full resolution always. Auto: sharp, drops a little only if frames run slow. Fast: lower resolution for weaker devices.')}>${gfxLabel()}</button>
-        <button class="btn" id="cam3btn" onclick="toggleCam3D()" ${tip('Courtside: close and low, following the ball. Broadcast: the whole court from the stands. Follow: behind one player. POV: through their eyes.')}>Camera: Courtside</button>
-        <select id="folsel" class="folsel" hidden onchange="pickFollow(this.value)" aria-label="Player to follow" title="The player the Follow camera stays behind"></select>
-        <label class="vol">Volume<input type="range" min="0" max="100" value="${Math.round(SND.vol * 100)}" oninput="setVolume(this.value / 100)" aria-label="Volume"></label>`;
+  const cam = (R3D && R3D.camMode()) || 'courtside',
+    seg = (label, kind, opts, cur, t) =>
+      `<div class="sset" ${tip(t)}><span class="cgl">${label}</span><div class="seg">${Object.entries(opts)
+        .map(([k, n]) => `<button class="btn ${k === cur ? 'on' : ''}" onclick="setOpt('${kind}','${k}')">${n}</button>`)
+        .join('')}</div></div>`;
+  return `${seg('Hype', 'hype', Object.fromEntries(Object.entries(HYPE).map(([k, h]) => [k, h.name])), G.hype, 'Staged shonen moments before big attacks. Normal: element spikes, match points, star face-offs. Max: also long rallies and comebacks. Tap the court to skip one.')}
+    ${seg('Cut-ins', 'cut', { full: 'Full', mini: 'Mini' }, G.cutMini ? 'mini' : 'full', 'Full cut-ins pause play; mini shows them as a corner notification')}
+    ${seg('Zooms', 'zoom', { on: 'On', off: 'Off' }, G.camFixed || RM ? 'off' : 'on', 'On: gentle zoom on big plays at the net. Off: no zooms or pushes (motion-friendly).')}
+    ${seg('Graphics', 'gfx', Object.fromEntries(Object.entries(GFX).map(([k, g]) => [k, g.name])), G.gfx, 'High: full resolution always. Auto: sharp, drops a little only if frames run slow. Fast: lower resolution for weaker devices.')}
+    ${seg('Camera', 'cam', CAM3, cam, 'Courtside: close and low, following the ball. Broadcast: the whole court from the stands. Follow: behind one player. POV: through their eyes.')}
+    <select id="folsel" class="folsel" hidden onchange="pickFollow(this.value)" aria-label="Player to follow" title="The player the Follow camera stays behind"></select>
+    <label class="vol sset"><span class="cgl">Volume</span><input type="range" min="0" max="100" value="${Math.round(SND.vol * 100)}" oninput="setVolume(this.value / 100)" aria-label="Volume"></label>`;
+}
+/** Set one ⚙ option directly (the cycle functions stay for anything that still cycles), then redraw the pop-over. */
+function setOpt(kind, v) {
+  if (kind === 'hype' && HYPE[v]) {
+    G.hype = v;
+    store.set(KEYS.hype, v);
+  } else if (kind === 'cut') {
+    G.cutMini = v === 'mini';
+    store.set(KEYS.cutins, v);
+    if (G.cutMini) hideCut();
+  } else if (kind === 'zoom') {
+    G.camFixed = v === 'off';
+    store.set(KEYS.camera, G.camFixed ? 'fixed' : 'dynamic');
+    if (G.camFixed && A && A.cam) A.cam.z = A.cam.tz = 0;
+  } else if (kind === 'gfx' && GFX[v]) {
+    G.gfx = v;
+    store.set(KEYS.gfx, v);
+  } else if (kind === 'cam' && R3D && CAM3[v]) R3D.setCamMode(v);
+  const pb = $('.setpop .popb');
+  if (pb) pb.innerHTML = settingsMenu();
+  cam3Label();
 }
 /**
  * Open the match screen for a fixture: { a, b, round, court?, back, setup(m)?, onFinish(m) → plain-text message, onLeave() }.
@@ -85,7 +111,7 @@ function startMatch(fx) {
         <button class="btn" onclick="toggleFullscreen()" ${tip('Fullscreen court (F)')} aria-label="Fullscreen">⛶</button>
         <button class="btn" id="railbtn" onclick="railOpen()">Commentary · Box score <kbd>B</kbd></button>
         <button class="btn" id="snd" onclick="toggleSound()" aria-label="Sound">${SND.on ? '🔊' : '🔇'}</button>
-        ${pop('⚙ ▾', settingsMenu())}</div>
+        ${pop('⚙ ▾', settingsMenu(), 'setpop')}</div>
     </div>
     <aside class="mrail" id="mrail" hidden aria-label="Match details"><div class="rhd"><div class="tabs">${Object.entries(RAIL_TABS)
       .map(([k, n]) => `<button class="btn" data-rt="${k}" onclick="railOpen('${k}')">${n}</button>`)
@@ -514,6 +540,7 @@ function finishMatch() {
     }
   const msg = A.fx.onFinish ? A.fx.onFinish(m) || '' : '';
   for (const b of document.querySelectorAll('.cbar .play button, .fsb button[data-s], #fspause')) b.disabled = true; // playback is over
+  updTO();
   boxScore();
   A.cele = { w: m.winner, t: 0 };
   A.ball.vis = false;
@@ -522,7 +549,7 @@ function finishMatch() {
   const stars = matchStars(m);
   const o = $('#over');
   o.style.setProperty('--tc', wt.color);
-  o.innerHTML = `<div class="ocard"><h2>${esc(wt.name)} win ${hi}-${lo}</h2><p class="small mute">Player of the match: <b>${esc(stars[0].p.name)}</b></p><div class="podium">${podium(stars)}</div>${msg ? `<p class="resline">${esc(msg)}</p>` : ''}<button class="btn hot big" onclick="leaveMatch()">${esc(A.fx.back || 'Continue')}</button></div>`;
+  o.innerHTML = `<div class="ocard"><h2>${esc(wt.name)} win ${hi}-${lo}</h2><p class="small mute">Player of the match: <b>${esc(stars[0].p.name)}</b></p><div class="podium">${podium(stars)}</div>${msg ? `<p class="resline">${esc(msg)}</p>` : ''}<div class="acts pri"><button class="btn hot" onclick="leaveMatch()">${esc(A.fx.back || 'Continue')}</button><button class="btn" onclick="railOpen('box')">Box score</button></div></div>`;
   setTimeout(
     () => {
       if (o.isConnected) o.hidden = false;

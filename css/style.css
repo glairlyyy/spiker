@@ -1402,3 +1402,34 @@ body:has(.match) .top {
   align-items: center;
   gap: 8px;
 }
+/* ⚙ settings as segments; results action row (T-116) */
+.match .setpop > .popb {
+  width: 380px;
+  gap: 12px;
+}
+.match .sset {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.match .sset .seg {
+  flex-wrap: wrap;
+}
+.match .sset .seg .btn {
+  height: 32px;
+  padding: 0 10px;
+  width: auto;
+}
+.match .sset.vol {
+  border: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+.ocard .acts {
+  margin-top: 12px;
+}
+.mrail #box {
+  overflow-x: auto;
+}

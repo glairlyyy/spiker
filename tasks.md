@@ -282,7 +282,7 @@ Steps:
    QA: Monster game — pause, B, Tactics tab; screenshots.
    Result: done — `#ticker` on the court (hud, bottom-left, max 520px): the last 2 log lines, older in mute, updated by logLine; `#mrail` 400px fixed overlay, tabs Commentary (`#log`) · Box score (`#box`) · Tactics (labelled Tactic / Defence rows; your side only in career, both in Monster) via `railOpen(tab|undefined toggle|null close)`; opens on pause (closes on resume) and on the Box score tab after the final; key B toggles, Esc closes; the bar's Tactics button and a `Commentary · Box score B` chip open it (the Tactics pop-over is gone — no duplicate select ids). QA: Monster — ticker, pause opens the rail, Tactics tab; no pageerror.
 
-### [ ] T-116: Match settings as segments; results action row
+### [x] T-116: Match settings as segments; results action row
 
 Spec: §9.8 §9.9 Goldens: unchanged Save: no change
 Files: js/ui/match-screen.js (settingsMenu, cycleHype, cycleGfx, toggleCutins, toggleCamera, toggleCam3D, podium / finishMatch), css/style.css
@@ -294,7 +294,7 @@ Steps:
 3. Results card: one `.act` row — `[Continue]`/`[{fx.back}]` primary + `[Box score]` (opens the rail tab).
    Accept: every setting's options visible at once; results CTAs on one line.
    QA: Monster game — ⚙ open, finish match; screenshots.
-   Result:
+   Result: done — `settingsMenu` = labelled segments showing every option (Hype, Cut-ins, Zooms, Graphics, Camera + the follow select, Volume); `setOpt(kind, v)` sets one directly with the same storage keys and redraws the pop-over (cycle functions kept); the pop-over opens upward, right-aligned to ⚙ (380px). Results card: one `.acts.pri` row — [Continue / fx.back] + [Box score] (opens the rail tab); timeouts and playback disabled after the final. QA: Monster — ⚙ open, Graphics → Fast applied; finished match card + rail; no pageerror.
 
 ### [ ] T-110: Glossary and `term()`
 
