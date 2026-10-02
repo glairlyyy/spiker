@@ -1225,10 +1225,10 @@ const mkUi = g => {
     names = Object.keys(g).filter(
       k => /^[A-Za-z_$][\w$]*$/.test(k) && !['CW', 'faceSVG', 'stag', 'tip', 'info', 'renderCareer', 'esc'].includes(k)
     ),
-    CW = { drawer: 'people', person: null },
+    CW = { sheet: 'people', person: null },
     stub = { CW, faceSVG: () => '<svg></svg>', stag: () => '', tip: () => '', info: () => '', renderCareer: () => {}, esc: x => String(x) };
   return Object.assign(
-    new Function(...names, ...Object.keys(stub), `${src}\nreturn { peopleCard, personCard, personRow, openPerson, chemBlock };`)(
+    new Function(...names, ...Object.keys(stub), `${src}\nreturn { sheetPeople, personCard, openPerson, chemBlock };`)(
       ...names.map(k => g[k]),
       ...Object.values(stub)
     ),
@@ -1282,14 +1282,14 @@ test('people drawer: Rel.top orders by weighted value and names them; every kind
   eq(JSON.stringify([g.R(), g.R()]), JSON.stringify(next), 'the main random stream is untouched');
   assert(/^Word is /.test(g.Rel.season(run, mate.id)), 'rumour voice');
 });
-test('people drawer: peopleCard renders for a fresh run and a 10-week run', () => {
+test('people sheet: sheetPeople renders for a fresh run and a 10-week run', () => {
   const [g, run] = mkPeople(104),
     ui = mkUi(g),
     clean = h => {
       assert(!/undefined|NaN|\[object/.test(h), 'no undefined / NaN: ' + (h.match(/.{0,30}(undefined|NaN|\[object).{0,30}/) || [''])[0]);
       assert(h.length > 100, 'something rendered');
     };
-  clean(ui.peopleCard(run));
+  clean(ui.sheetPeople(run));
   for (let w = 0; w < 10; w++) {
     for (let d = 0; d < g.WEEK_DAYS; d++) g.Run.log(run, g.Training.train(run, 'power', false, g.DAY_GAIN, g.DAY_GAIN));
     g.Growth.week(run);
@@ -1297,7 +1297,7 @@ test('people drawer: peopleCard renders for a fresh run and a 10-week run', () =
   }
   const mate = g.Run.mates(run)[0];
   ui.CW.person = String(mate.id);
-  const h = ui.peopleCard(run);
+  const h = ui.sheetPeople(run);
   clean(h);
   assert(h.includes('pcard') && /Word is/.test(h), 'the open card shows the season');
   assert(!/>\?<\/b>/.test(h) || true, 'unknown parts show a ?');
@@ -1503,7 +1503,7 @@ test('fates: a cut player can quit and is gone from every squad; the card render
   g.Rel.add(run, p.id, 'beat_me');
   const ui = mkUi(g);
   ui.CW.person = String(p.id);
-  const h = ui.peopleCard(run);
+  const h = ui.sheetPeople(run);
   assert(h.includes(p.name) && /quit the sport/.test(h) && !/undefined|NaN/.test(h), 'the card renders from the snapshot');
 });
 test('fates: poaching — an ally asks first and each answer applies; others just go', () => {

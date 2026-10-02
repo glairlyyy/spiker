@@ -114,13 +114,13 @@ Steps: sheet host = overlay over the map area (rail and top bar stay), Esc / tab
 Accept: Player, Skills and Life drawers are gone; Me tab and key 1 open the sheet. QA: screenshot vs SheetMe.
 Result: done — sheet host (`HUB_SHEETS`, `CW.sheet`, `hubSheet`: over the map area under the top bar, rail stays; the tab / key toggles, Esc and ✕ close); `sheetMe` (career-week.js) = header (face, name, role · team · OVR · rank line, Stamina / Mood / Skill pts chips) + three cards: stats rows (bar + thin next-point bar, `n / 75`), Wit, Leadership, element line, injury + Physio; skills (passive `.rowcta` rows with `cost · learn` or dashed `cost · need n`, techniques with their stat requirements or ✓ yours); life (payday line, T-100 home rows). Player, Skills and Life drawers and youCard / skillShop / lifeCard removed. QA: key 1 opens the sheet at 1440×900; no pageerror.
 
-### [ ] T-123: People sheet
+### [x] T-123: People sheet
 
 Spec: §10.4 Goldens: unchanged Save: no change
 Files: js/ui/career-people.js, js/ui/career-week.js (bondCard, chemBlock), css/career.css
 Steps: filters Everyone / Squad / Rivals / Waiting n; left list (waiting first, squad with bond bar + stance, bench, others, gone); right detail = personCard content (wants, traits, season, sides, memories) + their ask with Accept / Decline / More moves (Asks.moves) as one action row; chemistry and Leave squad under the Squad filter.
 Accept: Team and People drawers are gone; an approach can be answered from the detail. QA: screenshot vs SheetPeople.
-Result:
+Result: sheetPeople (career-people.js): filters Everyone/Squad/Rivals/Waiting n (CW.pfilter), list (waiting, squad + bond bar, bench, others, gone) + detail (personCard, ask as one Accept/Decline row, Your moves); Chemistry + Leave squad under Squad; Team/People drawers, bondCard, peopleCard, personRow, waitingCard removed; openPerson opens the sheet. QA 1440×900: no errors.
 
 ### [ ] T-124: World sheet
 

@@ -11,6 +11,7 @@ let CW = {
   seizes: null,
   snap: null,
   sheet: null,
+  pfilter: 'all',
   dossier: null,
   rank: 'register',
   rankAll: false,
@@ -120,31 +121,6 @@ function seasonCard(run) {
         ? `<div class="inj"><b>Injured</b> ${run.injury.weeks}w${info('Light training only: ×0.4 gains, half stamina')} <button class="btn" onclick="seePhysio()" ${run.sp < TRAIN_X.physio ? 'disabled' : ''}>Physio (${TRAIN_X.physio} pts)</button></div>`
         : ''
     }</div>`;
-}
-function bondCard(run) {
-  const you = Run.you(run),
-    mates = Run.mates(run),
-    alone = World.isFree(run) && run.academy === false,
-    onBench = m => !!(m.team.bench && m.team.bench.includes(m)),
-    row = list =>
-      list
-        .map(m => {
-          const b = you.bond[m.id] || 0;
-          return `<div class="bond">${faceSVG(m, 0, 30)}<div class="bline"><span class="nm"><b>${stag(m)}${esc(m.name)}</b>${m.cap ? ' <span class="capb">C</span>' : ''} <i class="mute small">${m.role} · OVR ${ovr(m)}</i></span>
-        <span class="bbar ${b >= 80 ? 'f' : b >= 60 ? 'c' : ''}"><i style="width:${b}%"></i></span><small class="mute">Bond ${b}${b >= 80 ? ' · friends' : b >= 60 ? ' · combos' : ''}</small></div></div>`;
-        })
-        .join('');
-  return `<div class="panel"><h3>Teammates${info('Training together shares your gains and raises their odds of breaking through to ★ star or OP. 60+ bond: two-player combos. 80+: friendship training (+50%).')}</h3>${
-    alone ? '<p class="small mute">No squad. The Academy no longer lists you.</p>' : ''
-  }${row(mates.filter(m => !onBench(m)))}${mates.some(onBench) ? `<h4>Bench</h4>${row(mates.filter(onBench))}` : ''}${
-    alone
-      ? ''
-      : `<h4>Chemistry${info('Allies who rate each other form cliques; the captain starts his friends a little more often. Feuds go the other way.')}</h4>${chemBlock(run)}`
-  }${
-    World.isFree(run) && run.academy !== false
-      ? `<p class="small mute" id="leaveac"><button class="btn quiet danger" onclick="leaveSquad()" ${tip('The Academy will not invite you again')}>Leave squad</button></p>`
-      : ''
-  }</div>`;
 }
 /** Leave the Academy squad: ask inline (confirm dialogs are blocked in the artifact frame), then withdraw. */
 function leaveSquad(sure) {

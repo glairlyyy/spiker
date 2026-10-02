@@ -5,8 +5,6 @@
 
 const HUB_DRAWERS = {
   places: ['📍', 'Places', run => placesCard(run)],
-  team: ['🤝', 'Team', run => bondCard(run)],
-  people: ['👥', 'People', run => peopleCard(run)],
   season: ['📅', 'Season', run => `<div class="panel">${calendar(run)}</div>` + seasonCard(run) + matchLog(run)],
   clubs: ['🛡', 'Clubs', run => clubsCard(run)],
   factions: ['⚖', 'Factions', run => factionsCard(run)],
@@ -44,9 +42,9 @@ const HUB_TABS = [
   ['factions', 'World'],
   ['season', 'Season']
 ];
-const MORE_DRAWERS = ['places', 'team', 'clubs', 'rank', 'news', 'diary'];
+const MORE_DRAWERS = ['places', 'clubs', 'rank', 'news', 'diary'];
 /** Sheets (spec §10.4): open over the map with the rail and top bar visible; a tab whose sheet exists opens it. */
-const HUB_SHEETS = { me: ['Me', run => sheetMe(run)] };
+const HUB_SHEETS = { me: ['Me', run => sheetMe(run)], people: ['People', run => sheetPeople(run)] };
 function hubSheet(run) {
   const [name, body] = HUB_SHEETS[CW.sheet];
   return `<section class="sheet" aria-label="${name}"><button class="btn x" onclick="hubOpen(null)" aria-label="Close">✕</button>${body(run)}</section>`;

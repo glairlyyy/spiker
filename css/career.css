@@ -2900,3 +2900,87 @@
 .hub .sheet .home .nm > span.n2 {
   white-space: normal;
 }
+/* People sheet (T-123): filters, list left, detail right */
+.hub .pfil {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.hub .sheet-cols.ppl {
+  grid-template-columns: minmax(300px, 0.9fr) 1.1fr;
+}
+.hub .plist-col .lab {
+  margin-top: 16px;
+}
+.hub .plist-col .lab:first-child {
+  margin-top: 0;
+}
+.hub .plist {
+  display: grid;
+  grid-template-columns: 28px 1fr 64px auto auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.hub .plist:hover {
+  background: var(--surf2);
+}
+.hub .plist.on {
+  background: var(--sel-bg);
+  border-color: var(--sel-line);
+}
+.hub .plist .nm {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.hub .plist .nm b {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.hub .plist .badge {
+  position: static;
+}
+.hub .pdh {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.hub .pdh h3 {
+  margin: 0 0 2px;
+  font: 600 20px/1.2 var(--body);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+.hub .pdetail .pcard {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 14px;
+}
+.hub .pask {
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid var(--sel-line);
+  border-radius: 8px;
+  background: var(--sel-bg);
+}
+.hub .pask p {
+  margin: 0 0 12px;
+}
+.hub .pdetail .pmoves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

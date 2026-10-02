@@ -7,44 +7,12 @@ const STANCE_NAME = { ally: 'ally', respect: 'respect', neutral: 'neutral', rese
 function personMet(run, p) {
   return p.id === run.youId || !!run.met[p.id] || squadOf(Run.myTeam(run)).includes(p);
 }
-/** A row: face, name, role, OVR, stance tag, rival chip; a click opens or closes their card. */
-function personRow(run, p) {
-  if (p.gone) return goneRow(run, p);
-  const id = String(p.id),
-    open = CW.person === id,
-    tag = Rel.tag(run, id),
-    out = People.out(run, p);
-  return `<div class="prow ${open ? 'open' : ''}"><div class="phd" onclick="openPerson('${esc(id)}')" role="button" tabindex="0">${faceSVG(p, 0, 28)}<span class="pn"><b>${stag(p)}${esc(p.name)}</b> <i class="mute small">${p.role} · ${personMet(run, p) ? 'OVR ' + ovr(p) : 'unrated'}${out ? ' · injured' : ''}</i></span>${tag === 'neutral' ? '' : `<span class="stc ${tag}">${STANCE_NAME[tag]}</span>`}${Rel.rival(run, id) ? '<span class="stc rival">rival</span>' : ''}</div>${open ? personCard(run, id) : ''}</div>`;
-}
 /** The moves you can make on them: a button each, with how likely they are to say yes as a word (never the number). */
 function moves(run, id) {
   const mv = Asks.moves(run, id);
   return mv.length
     ? `<div class="pmoves">${mv.map(m => `<button class="btn" onclick="askMove('${esc(String(id))}','${m.kind}','${m.at || ''}')" ${m.word ? tip('They are ' + m.word + ' to say yes') : ''}>${esc(m.label)}${m.word ? ` <i class="mute small">${m.word}</i>` : ''}</button>`).join('')}</div>`
     : '';
-}
-/** The approaches waiting this week: their line, your two answers, "until the end of the week". */
-function waitingCard(run) {
-  const L = Asks.list(run);
-  return L.length
-    ? `<div class="panel waiting"><h3>Waiting${info('They asked this week. Each approach expires at the end of the week; unanswered, it counts as ignored.')}</h3>${L.map(
-        a => {
-          const p = People.find(run, a.id),
-            A = APPROACH[a.kind];
-          return p
-            ? `<div class="ask">${faceSVG(p, 0, 28)}<div><b>${stag(p)}${esc(p.name)}</b> <i class="mute small">${p.role}</i><div class="small">“${esc(Asks.line(run, a))}”</div>
-            <div class="amoves"><button class="btn hot" onclick="askAnswer(${a.i},true)">${esc(A.a)}</button>${a.kind === 'warn' ? '' : `<button class="btn" onclick="askAnswer(${a.i},false)">${esc(A.b)}</button>`}<small class="mute">until the end of the week</small></div></div></div>`
-            : '';
-        }
-      ).join('')}</div>`
-    : '';
-}
-/** Someone who has left play: a row from their snapshot ("left the island, W19"); Rel still has their memories. */
-function goneRow(run, p) {
-  const id = String(p.id),
-    tag = Rel.tag(run, id),
-    open = CW.person === id;
-  return `<div class="prow gone ${open ? 'open' : ''}"><div class="phd" onclick="openPerson('${esc(id)}')" role="button" tabindex="0"><span class="pn"><b>${esc(p.name)}</b> <i class="mute small">${p.role} · ${esc(People.fateText(run.people[id]))}</i></span><span class="stc ${tag}">${STANCE_NAME[tag]}</span></div>${open ? personCard(run, id) : ''}</div>`;
 }
 /** "with X / against Y": who they stand with and against among the people you have met (their strongest NPC ↔ NPC stances). */
 function sidesLine(run, id) {
@@ -97,38 +65,103 @@ function personCard(run, id) {
     <div>Wants ${want} · Traits ${traits}</div>
     <div class="mute">${p.gone ? esc(`${p.gone.team} · ${People.fateText(me)}`) : `${esc(t ? t.name : 'No club')}${me.status !== 'active' ? ` · ${esc(People.fateText(me))}` : ''}${me.inj > 0 ? ` · injured ${me.inj} more week${me.inj > 1 ? 's' : ''}` : ''}`}</div>
     ${p.gone ? '' : `<div class="mute"><i>${esc(Rel.season(run, id))}</i></div>${sidesLine(run, id)}`}
-    ${moves(run, id)}
     ${mem.length ? `<ul class="pmem">${mem.map(m => `<li><b>W${m.w}</b> ${esc(m.text)}</li>`).join('')}</ul>` : '<p class="mute">Nothing between you yet.</p>'}
   </div>`;
 }
-/** The drawer: your squad (mates, then bench), then the others who remember you or whom you have met. */
-function peopleCard(run) {
-  const mates = Run.mates(run),
-    onBench = m => !!(m.team.bench && m.team.bench.includes(m)),
-    ids = new Set(mates.map(m => m.id)),
-    others = People.all(run)
-      .filter(p => !ids.has(p.id) && (Rel.list(run, p.id).length || run.met[p.id] || String(p.id) === CW.person))
-      .sort((a, b) => Rel.list(run, b.id).length - Rel.list(run, a.id).length || ovr(b) - ovr(a))
-      .slice(0, 40)
-      .concat(
-        Object.keys(run.people)
-          .filter(id => run.people[id].gone && Rel.list(run, id).length)
-          .map(id => People.find(run, id))
-      ),
-    rows = list => list.map(p => personRow(run, p)).join('');
-  return `${waitingCard(run)}<div class="panel"><h3>Your squad${info('Everyone remembers what you did with them or to them. Their want and traits show once you have been through enough together (or scouted their club).')}</h3>${
-    mates.length
-      ? rows(mates.filter(m => !onBench(m))) + (mates.some(onBench) ? `<h4>Bench</h4>${rows(mates.filter(onBench))}` : '')
-      : '<p class="small mute">No squad yet.</p>'
-  }</div>
-  <div class="panel"><h3>Others</h3>${others.length ? rows(others) : '<p class="small mute">Nobody yet — play, train, fight.</p>'}</div>`;
-}
-/** Open the People drawer on this person's card (a second click closes it). */
+/** Open the People sheet on this person. */
 function openPerson(id) {
   CW.dossier = null;
-  CW.person = CW.drawer === 'people' && CW.person === id ? null : id;
-  CW.drawer = 'people';
+  CW.person = id;
+  CW.drawer = null;
+  CW.sheet = 'people';
   renderCareer();
+}
+/** The People sheet (spec §10.4, SheetPeople): filters, the list on the left, the selected person on the right. */
+const PEOPLE_FILTERS = { all: 'Everyone', squad: 'Squad', rivals: 'Rivals', waiting: 'Waiting' };
+function sheetPeople(run) {
+  const f = PEOPLE_FILTERS[CW.pfilter] ? CW.pfilter : 'all',
+    mates = Run.mates(run),
+    onBench = m => !!(m.team.bench && m.team.bench.includes(m)),
+    waits = Asks.list(run),
+    waitIds = new Set(waits.map(a => String(a.id))),
+    mateIds = new Set(mates.map(m => m.id)),
+    others = People.all(run)
+      .filter(p => !mateIds.has(p.id) && (Rel.list(run, p.id).length || run.met[p.id] || String(p.id) === CW.person))
+      .sort((a, b) => Rel.list(run, b.id).length - Rel.list(run, a.id).length || ovr(b) - ovr(a))
+      .slice(0, 40),
+    gone = Object.keys(run.people || {})
+      .filter(id => run.people[id].gone && Rel.list(run, id).length)
+      .map(id => People.find(run, id))
+      .filter(Boolean),
+    rival = p => Rel.rival(run, String(p.id)) || ['resent', 'enemy'].includes(Rel.tag(run, String(p.id))),
+    waiting = waits.map(a => People.find(run, a.id)).filter(Boolean),
+    groups =
+      f === 'squad'
+        ? [
+            ['Squad', mates.filter(m => !onBench(m))],
+            ['Bench', mates.filter(onBench)]
+          ]
+        : f === 'rivals'
+          ? [['Rivals', [...mates, ...others].filter(rival)]]
+          : f === 'waiting'
+            ? [['Waiting', waiting]]
+            : [
+                ['Waiting', waiting],
+                ['Squad', mates.filter(m => !onBench(m) && !waitIds.has(String(m.id)))],
+                ['Bench', mates.filter(m => onBench(m) && !waitIds.has(String(m.id)))],
+                ['Others', others.filter(p => !waitIds.has(String(p.id)))],
+                ['Gone', gone]
+              ],
+    first = groups.flatMap(([, ps]) => ps)[0],
+    sel = CW.person || (first ? String(first.id) : null),
+    row = p => {
+      const id = String(p.id),
+        tag = Rel.tag(run, id),
+        b = mateIds.has(p.id) ? Run.you(run).bond[p.id] || 0 : 0;
+      return `<button class="plist ${id === sel ? 'on' : ''}" onclick="CW.person='${esc(id)}';renderCareer()">${p.gone ? '' : faceSVG(p, 0, 28)}<span class="nm"><b>${stag(p)}${esc(p.name)}</b><small class="mute">${p.role}${
+        p.gone ? ` · ${esc(People.fateText(run.people[id]))}` : ` · ${personMet(run, p) ? 'OVR ' + ovr(p) : 'unrated'}`
+      }</small></span>${mateIds.has(p.id) ? `<i class="bbar sm ${b >= 80 ? 'f' : b >= 60 ? 'c' : ''}" ${tip('Bond ' + b)}><i style="width:${b}%"></i></i>` : '<span></span>'}${tag === 'neutral' ? '' : `<span class="stc ${tag}">${STANCE_NAME[tag]}</span>`}${waitIds.has(id) ? '<em class="badge">!</em>' : ''}</button>`;
+    },
+    list = groups
+      .filter(([, ps]) => ps.length)
+      .map(([g, ps]) => `<div class="lab">${g}</div>${ps.map(row).join('')}`)
+      .join('');
+  return `<div class="sheet-h"><h2>People</h2><div class="seg pfil">${Object.entries(PEOPLE_FILTERS)
+    .map(
+      ([k, n]) =>
+        `<button class="btn ${k === f ? 'on' : ''}" onclick="CW.pfilter='${k}';CW.person=null;renderCareer()">${n}${k === 'waiting' && waits.length ? ` ${waits.length}` : ''}</button>`
+    )
+    .join('')}</div></div>
+    <div class="sheet-cols ppl"><section class="card plist-col">${list || '<p class="small mute">Nobody yet — play, train, fight.</p>'}${
+      f === 'squad'
+        ? `<div class="lab">Chemistry</div>${chemBlock(run)}${
+            World.isFree(run) && run.academy !== false
+              ? `<p class="small" id="leaveac"><button class="btn quiet danger" onclick="leaveSquad()" ${tip('The Academy will not invite you again')}>Leave squad</button></p>`
+              : ''
+          }`
+        : ''
+    }</section>
+    <section class="card pdetail">${sel ? personDetail(run, sel, waits) : '<p class="small mute">Pick someone.</p>'}</section></div>`;
+}
+/** The selected person: header, what you know, their ask (Accept / Decline as one row) and your moves. */
+function personDetail(run, id, waits) {
+  const p = People.find(run, id);
+  if (!p) return '';
+  const ask = waits.find(a => String(a.id) === String(id)),
+    A2 = ask && APPROACH[ask.kind],
+    tag = Rel.tag(run, id);
+  return `<div class="pdh">${p.gone ? '' : faceSVG(p, 0, 48)}<div><h3>${stag(p)}${esc(p.name)}</h3><div class="small mute">${p.role} · ${personMet(run, p) ? 'OVR ' + ovr(p) : 'unrated'}${
+    tag === 'neutral' ? '' : ` · <span class="stc ${tag}">${STANCE_NAME[tag]}</span>`
+  }${Rel.rival(run, id) ? ' <span class="stc rival">rival</span>' : ''}</div></div></div>
+    ${personCard(run, id)}
+    ${
+      ask
+        ? `<div class="pask"><div class="lab">Their ask · until the end of the week</div><p>“${esc(Asks.line(run, ask))}”</p><div class="acts ${ask.kind === 'warn' ? '' : 'two'}"><button class="btn hot" onclick="askAnswer(${ask.i},true)">${esc(A2.a)}</button>${
+            ask.kind === 'warn' ? '' : `<button class="btn" onclick="askAnswer(${ask.i},false)">${esc(A2.b)}</button>`
+          }</div></div>`
+        : ''
+    }
+    ${moves(run, id) ? `<div class="lab">Your moves</div>${moves(run, id)}` : ''}`;
 }
 /** Answer a waiting approach (a match to start, or a day spent, follows). */
 function askAnswer(i, yes) {
