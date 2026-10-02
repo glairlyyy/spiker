@@ -216,13 +216,13 @@ Steps: Factions — label each meter (`Your standing`, `Border vs {X} {m}/{FRONT
 Accept: a new player can name each Factions meter from its label. QA: both drawers.
 Result: done — Factions: the explainer line moved to the top (rules in its ⓘ), each faction's bar labelled "Your standing ±n", border meters already labelled `Border vs X n/2` (T-092 pass); Rankings: unrated rows hidden behind "Show unrated (n)" (`CW.rankAll`), top 5 then you ± 5 with the true rank numbers; player and faction links underline on hover only. QA: both drawers; no pageerror.
 
-### [ ] T-106: Evaluation / match-day card
+### [x] T-106: Evaluation / match-day card
 
 Spec: §9.1 §9.7 Goldens: unchanged Save: no change
 Files: js/ui/career-week.js (evalPanel, cupPanel, matchPrep), css/career.css
 Steps: two roster columns of 4 (you highlighted); lineup sentence `On the bench — {name} rates higher ({x} vs {y})`; focus chips use the selected style with a label "Pick one"; `Sim` button sub-text "result without watching"; rewards as one chip line (until T-110: plain text `Win +40 skill pts +500 fans · Loss +20 +100`).
 Accept: the card fits without scrolling at 900px height. QA: career run → week 4.
-Result:
+Result: done — evaluation card: two roster columns of 4 (you in the selected style), one plain rewards line (`Win +40 skill pts +500 fans · Loss …`, terms in T-112), lineup `On the bench — {name} rates higher (x vs y)`, focus labelled "Pick one" (selected style from T-095), `Sim ⏭ / result without watching` on eval and cup. QA: week-4 card fits at 1440×900 without scrolling (ends at y≈725); no pageerror.
 
 ### [ ] T-107: Match screen — court-first frame
 

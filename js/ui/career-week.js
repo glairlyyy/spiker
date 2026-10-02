@@ -158,7 +158,7 @@ function calendar(run) {
 /** Pre-match choices: a focus goal (everyone) and, for Cup matches, the captain's team talk. */
 function matchPrep(run, cup) {
   const you = Run.you(run);
-  const focus = `<div class="prep"><b>Your focus</b> ${FOCUS[you.role]
+  const focus = `<div class="prep"><b>Your focus</b> <span class="small mute">Pick one</span> ${FOCUS[you.role]
     .map(([id, label]) => `<button class="btn ${run.focus === id ? 'on' : ''}" onclick="setFocus('${id}')">${label}</button>`)
     .join('')}${info(`Hit it: +${FOCUS_REWARD.sp} skill pts, +${FOCUS_REWARD.fans} fans`)}</div>`;
   const talk =
@@ -173,8 +173,10 @@ function matchPrep(run, cup) {
   // the coach's pick (Run.lineup): do you start?
   const side = Cup.mine(run, cup ? 'cup' : 'eval'),
     L = Run.lineup(run, side.T, side.region, true, cup && run.mode.story),
-    lineup = `<div class="prep"><b>Lineup</b> ${L.starts ? 'Starting' : '<b>On the bench</b>'}${
-      L.rival ? ` <span class="small mute">— you ${L.you.toFixed(1)} vs ${esc(L.rival.p.name)} ${L.rival.score.toFixed(1)}</span>` : ''
+    lineup = `<div class="prep"><b>Lineup</b> ${
+      L.starts
+        ? 'Starting'
+        : `<b>On the bench</b>${L.rival ? ` — ${esc(L.rival.p.name)} rates higher (${L.rival.score.toFixed(0)} vs ${L.you.toFixed(0)})` : ''}`
     }${info(`Your coach picks the best player of each role by rating + 6 × form (+ your standing with the faction ÷ ${BENCH.standingPer}). Start or finish on the bench and match rewards ×${BENCH.partMul}; never play and you only get a little Wit XP.`)}</div>`;
   return lineup + focus + talk;
 }
@@ -273,22 +275,28 @@ function evalPanel(run, note = '') {
     D = Dossier.build(run, e.region),
     all = Pool.players(run, e.region).concat([Run.you(run)]),
     club = Run.myTeam(run),
-    list = (ps, showOvr) =>
-      ps.map(p => `<span>${stag(p)}${esc(p.name)} <i class="mute">${p.role}${showOvr ? ' ' + ovr(p) : ''}</i></span>`).join(' · '),
     byId = ids => ids.map(id => all.find(p => p.id === id)).filter(Boolean),
+    meId = Run.you(run).id,
+    col = (ps, showOvr) =>
+      ps
+        .map(
+          p =>
+            `<div class="rp ${p.id === meId ? 'you' : ''}">${stag(p)}${esc(p.name)} <i class="mute">${p.role}${showOvr ? ' ' + ovr(p) : ''}</i></div>`
+        )
+        .join(''),
     head = `<h3>Week ${run.week}: ${esc(label)} evaluation${info(`Win: +${REWARDS.evalWin.sp} skill pts, +${REWARDS.evalWin.fans} fans; teammates who played with you remember the win. Loss: +${REWARDS.evalLoss.sp} skill pts, +${REWARDS.evalLoss.fans} fans. Each of your kills, blocks and aces adds more.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3>`;
   if (e.kind === 'faction' && !e.mine)
     return `<div class="panel">${head}<p>Not selected this month.</p>
     ${note}<div class="acts"><button class="btn hot" onclick="benchEval()">Watch from the bench</button></div></div>`;
   const mine = e.kind === 'academy' ? club.P : byId(e.mine).slice(0, 4); // the 4 who start
   return `<div class="panel">${head}
-    <p class="small"><b>${e.kind === 'academy' ? esc(club.name) : esc(club.name) + ' squad'}</b> ${list(mine, true)}</p>
-    <p class="small"><b>${esc(REGIONS[e.region].name)} squad</b> ${list(byId(e.opp).slice(0, 4), D.scouted || D.member)}</p>
+    <div class="rosters"><div><h4>${e.kind === 'academy' ? esc(club.name) : esc(club.name) + ' squad'}</h4>${col(mine, true)}</div><div><h4>${esc(REGIONS[e.region].name)} squad</h4>${col(byId(e.opp).slice(0, 4), D.scouted || D.member)}</div></div>
+    <p class="small rw">Win +${REWARDS.evalWin.sp} skill pts +${REWARDS.evalWin.fans} fans · Loss +${REWARDS.evalLoss.sp} skill pts +${REWARDS.evalLoss.fans} fans</p>
     ${City.venue(run) ? `<p class="small mute">Played at <b>${esc(VENUES[City.venue(run)].name)}</b>.</p>` : ''}
     ${D.scouted || D.member ? '' : '<p class="small mute">Scout one of their clubs to see ratings.</p>'}
     ${rankBest(run, byId(e.opp).slice(0, 4))}
     ${matchPrep(run, false)}
-    ${note}<div class="acts pri"><button class="btn hot" onclick="playCareer('eval')">Play evaluation</button><button class="btn" onclick="playCareer('eval', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
+    ${note}<div class="acts pri"><button class="btn hot" onclick="playCareer('eval')">Play evaluation</button><button class="btn" onclick="playCareer('eval', true)" ${tip('Get the result without watching')}>Sim ⏭<small>result without watching</small></button></div></div>`;
 }
 /** Not selected: watch from the bench (wit XP) and end the week. */
 function benchEval() {
@@ -399,7 +407,7 @@ function cupPanel(run, nm) {
     <div class="panel"><h3>${nm.round}${info(`Win: +${Math.round(REWARDS.cupWin.sp * def.mul)} skill pts, +${Math.round(REWARDS.cupWin.fans * def.mul).toLocaleString()} fans. A loss ends the season.\nPlacement: round of 16 +${fans('Round of 16')} fans · quarterfinal +${fans('Quarterfinal')} · semifinal +${fans('Semifinal')} · runner-up +${fans('Final')} · champion +${fans('Champion')} — and a place on the national team.\nGrade (S–C) from your own line: S ×1.5 rewards and mood up, A ×1.2, B ×1, C ×0.8.`)}</h3><p>vs <b>${esc(E[nm.a === me ? nm.b : nm.a].name)}</b>${City.venue(run) ? ` at <b>${esc(VENUES[City.venue(run)].name)}</b>` : ''}</p>
       ${rankBest(run, squadOf(Cup.team(run, nm.a === me ? nm.b : nm.a)))}
       ${matchPrep(run, true)}
-    <div class="acts pri"><button class="btn hot" onclick="playCareer('cup')">Play ${nm.round.toLowerCase()}</button><button class="btn" onclick="playCareer('cup', true)" ${tip('Get the result without watching')}>Sim ⏭</button></div></div>`;
+    <div class="acts pri"><button class="btn hot" onclick="playCareer('cup')">Play ${nm.round.toLowerCase()}</button><button class="btn" onclick="playCareer('cup', true)" ${tip('Get the result without watching')}>Sim ⏭<small>result without watching</small></button></div></div>`;
 }
 function eventCard(run) {
   const e = Events.def(run.event, run),
@@ -480,8 +488,7 @@ function playCareer(kind, sim) {
 }
 /** Money and housing. Rent is paid on payday (every few weeks). */
 function lifeCard(run) {
-  const H = HOUSING[run.housing],
-    next = Math.ceil(run.week / ECON.payEvery) * ECON.payEvery;
+  const next = Math.ceil(run.week / ECON.payEvery) * ECON.payEvery;
   return `<div class="panel life"><h3>Money${info(`Payday every ${ECON.payEvery} weeks: +$${ECON.allowance} allowance, −$${ECON.food} food, −rent. Run out of money and you're evicted to the abandoned gym. Prize money from matches.`)}</h3>
     <div class="small"><b>$${run.money.toLocaleString()}</b> · next payday week ${next}</div>
     <div class="homes">${HOUSEK.map(k => homeRow(run, k)).join('')}</div>

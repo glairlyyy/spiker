@@ -2206,3 +2206,42 @@
 .dlink:hover {
   text-decoration: underline;
 }
+/* evaluation / match-day card (T-106) */
+.rosters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 8px 0 12px;
+}
+.rosters h4 {
+  margin: 0 0 4px;
+  color: var(--mute);
+}
+.rosters .rp {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rosters .rp.you {
+  background: var(--sel-bg);
+  box-shadow: inset 3px 0 0 var(--sel-line);
+  font-weight: 600;
+}
+.rosters .rp i {
+  font-style: normal;
+}
+.hubcard .rw {
+  margin: 0 0 8px;
+}
+.acts .btn small {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--mute);
+}
+.acts .btn.hot small {
+  color: var(--on-ink);
+}
