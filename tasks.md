@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-115** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-117** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -224,30 +224,77 @@ Steps: two roster columns of 4 (you highlighted); lineup sentence `On the bench 
 Accept: the card fits without scrolling at 900px height. QA: career run → week 4.
 Result:
 
-### [ ] T-107: Match screen — court first
+### [ ] T-107: Match screen — court-first frame
 
-Spec: §9.7 Goldens: unchanged Save: no change
-Files: js/ui/match-screen.js (startMatch markup, fit), css/style.css, css/theme.css
-Do not: change playback, camera or render code.
-Steps: hide `.top` header while G.view === 'match'; court height = viewport − score band − control row; commentary + box score in a right rail (collapsible, open by default ≥1400px wide, `fold` key `mrail`).
-Accept: at 1440×900 the court, score and controls fit without page scroll. QA: Monster game screenshot.
+Spec: §9.9 Goldens: unchanged Save: no change
+Goal: the match fits the viewport with no scroll; the court is as large as the space allows.
+Files: js/ui/match-screen.js (startMatch markup, fit, finishMatch), css/style.css, css/theme.css
+Do not: change playback, camera, render3d or overlay drawing; change the canvas ratio (1000:440).
+Steps:
+
+1. `.match` escapes `.wrap` (full viewport width, 24px side padding); `.top` hidden while `G.view === 'match'` (body class `inmatch`).
+2. Score band 64px: boardTeam = swatch + name + rotation chips; the server chip gets class `sv` (gold) and the word "serve" (board()); score in Rajdhani 48px with rulesText small beside it.
+3. Momentum row 20px: label "Momentum", bar, "In the zone: {team}" (z0/z1 merged into one span, team colour when lit).
+4. `.stage` width = `min(100vw - 48px, (100vh - 168px) / 0.44)`, centred; `fit()` unchanged (reads clientWidth).
+5. `.feeds` leaves the page flow: keep `#log` / `#box` in the DOM inside a hidden container (T-115 moves them into the rail) so logLine / boxScore keep working.
+   Accept:
+
+- 1280×720, 1440×900, 1920×1080: no page scroll; court 1232 / 1392 / 1872 px wide.
+- npm test / lint pass; no pageerror.
+  QA: Monster game at the three sizes; screenshots.
+  Result:
+
+### [ ] T-108: Match labels — sides, serve, momentum
+
+Spec: §9.1 §9.9 Goldens: unchanged Save: no change
+Files: js/render/tags.js, js/ui/match-screen.js (board), css/style.css
+Do not: change OP red / star gold tag colours or tag positions.
+Steps: name tags get a 2px underline in the team colour (A.m.t[side].color) and 12px minimum text; serve marker reads "serve" in the score band; nothing on screen is an unlabeled dot or bar.
+Accept: in a Monster game (all OP) both sides are told apart by underline. QA: Monster game screenshot.
 Result:
 
-### [ ] T-108: Match labels — sides, serve, hype, zone
+### [ ] T-109: Match control bar
 
-Spec: §9.1 §9.2 Goldens: unchanged Save: no change
-Files: js/render/tags.js, js/ui/match-screen.js (board), css/theme.css
-Steps: name tag gets a 2px underline in the team colour (OP red ★ / star gold ★ unchanged, so sides are readable in all-OP games); score band: label the serve dots ("serve"), the hype bar ("Momentum"), "In the zone" pills at 12px with team colour when lit.
-Accept: in a Monster game both sides are distinguishable by tag. QA: Monster game screenshot.
-Result:
+Spec: §9.8 §9.9 Goldens: unchanged Save: no change
+Files: js/ui/match-screen.js (startMatch controls, timeoutButton, updTO, finishMatch, .fsbar), css/style.css
+Do not: change reqTO / setTactic / setDefence behaviour.
+Steps:
 
-### [ ] T-109: Match controls grouped
+1. One 48px bar: `Play` (Pause, 1×/2×/4× segment with the selected style, Skip) · `Your team` (Timeout, Tactics → opens the rail's Tactics tab after T-115, the pop-over until then) · View group `margin-left:auto` (Camera, ⛶, sound, ⚙). Group labels in `label` style. All buttons 40px.
+2. Your side = the team whose squad holds `Run.you(RUN)` (career); only it gets Timeout/Tactics. No side (Monster game): both, each with a 4px team-colour edge and the team short name.
+3. After the final: Pause / speeds / Skip / Timeout disabled.
+4. Fullscreen `.fsbar` reuses the same bar markup.
+   Accept: career match shows one Timeout; Monster shows two, colour-coded; everything on one line at 1280 wide.
+   QA: career evaluation (watch) + Monster game; screenshots.
+   Result:
 
-Spec: §9.7 Goldens: unchanged Save: no change
-Files: js/ui/match-screen.js (startMatch control row, timeoutButton, finishMatch), css/style.css
-Steps: groups Playback (Pause, 1×/2×/4×, Skip) | Your team (Timeout, Tactics) | View (camera, fullscreen, sound, ⚙); in career only the player's team gets a Timeout button (Monster game keeps both); timeout buttons carry the team colour; after the final Pause/speed/Skip are disabled.
-Accept: career match shows one Timeout. QA: career evaluation (watch) + Monster game.
-Result:
+### [ ] T-115: Match rail and commentary ticker
+
+Spec: §9.9 Goldens: unchanged Save: no change
+Files: js/ui/match-screen.js (startMatch, logLine, boxScore, togglePause, finishMatch, new `railOpen`), css/style.css
+Do not: change what logLine / boxScore record; drop any log line.
+Steps:
+
+1. Ticker on the stage: the last 2 `logLine` entries, `hud` surface, bottom-left, max 520px, fades older line to `mute`.
+2. Rail: 400px overlay from the right (same look as the hub drawer), tabs Commentary (the existing `#log`) · Box score (`#box`) · Tactics (tacticPicker/defencePicker as labelled rows `Tactic` / `Defence` with the current call; your side first, or both in Monster). Key B and the "Commentary · Box score (B)" chip toggle it; Esc closes.
+3. Opens itself on pause and after the final; closes on resume.
+   Accept: the full log and box score are reachable without scrolling the page; ticker updates every point.
+   QA: Monster game — pause, B, Tactics tab; screenshots.
+   Result:
+
+### [ ] T-116: Match settings as segments; results action row
+
+Spec: §9.8 §9.9 Goldens: unchanged Save: no change
+Files: js/ui/match-screen.js (settingsMenu, cycleHype, cycleGfx, toggleCutins, toggleCamera, toggleCam3D, podium / finishMatch), css/style.css
+Do not: change what each setting does or its storage.
+Steps:
+
+1. settingsMenu: each setting a labelled `.seg` showing every option — Hype (HYPE keys), Cut-ins Full/Mini, Zooms On/Off, Graphics (GFX keys), Camera (CAM3 keys; the follow `<select>` shows under it for Follow/POV), Volume. Clicking an option sets it directly (keep the cycle functions for hotkeys if any use them).
+2. The pop-over opens upward and right-aligned to ⚙.
+3. Results card: one `.act` row — `[Continue]`/`[{fx.back}]` primary + `[Box score]` (opens the rail tab).
+   Accept: every setting's options visible at once; results CTAs on one line.
+   QA: Monster game — ⚙ open, finish match; screenshots.
+   Result:
 
 ### [ ] T-110: Glossary and `term()`
 

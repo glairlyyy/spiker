@@ -355,3 +355,12 @@ chooses or acts for the player.
   names truncate to one line. Toggles/options sit above the action row. Sizes: drawer `clamp(480px, 36vw, 600px)`,
   hub modal 640px, wide 960px, place card 480px, match rail 360px; HUD corners one inset (16px). Numbers right-aligned,
   tabular-nums.
+- §9.9 Match screen (design system `match-ui.md`, MatchLayout card): no page scroll at ≥1280×720; site header hidden.
+  Court = `min(100vw − 48px, (100vh − 168px) / 0.44)`, centred, 1000:440 kept (1440×900 → 1392×612). Bands: score
+  64px (name + swatch + rotation chips, server chip labelled "serve") · momentum 20px (labelled; "In the zone: {team}") ·
+  court (tags underlined in team colour; 2-line commentary ticker on `hud` bottom-left) · control bar 48px (Play |
+  Your team | View right-aligned). "Your side" = the team holding `Run.you(RUN)`; career shows Timeout/Tactics for it
+  only, Monster game for both. Overlay rail 400px (key B; opens on pause and after the final): Commentary · Box score ·
+  Tactics. ⚙ settings = labelled segmented controls (every option visible), opening upward from the bar. Results card
+  action row: Continue/Back + Box score; playback disabled.
+
