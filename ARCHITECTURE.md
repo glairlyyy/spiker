@@ -42,6 +42,10 @@ ES modules (loaded on demand): `js/render3d/` — `r3d.mjs` (entry), `units3d`, 
 `players3d` (VRM load / dress, `MODEL_URL`), `poses3d` (+ `setMotion`), `fx3d`, `trails3d`; `js/map3d/` — `map3d.mjs`
 (entry), `geo3d`, `avatar3d`, `pins3d`, `life3d`, `town3d`, `kit3d`.
 
+CSS (`css/`, loaded in this order): `style.css` (base + match screen layout), `career.css` (career screens layout), `theme.css`
+(the surface: colours, borders, shadows; the only `:root` token set). A selector may appear in several files; a property is declared
+in one file only (T-084) — theme.css overrides by being last, so never repeat an earlier file's property there.
+
 ## Engine flow
 
 ```

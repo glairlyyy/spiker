@@ -12,41 +12,21 @@
 .mcard {
   display: flex;
   flex-direction: column;
-  gap: 8px;
   text-align: left;
   cursor: pointer;
   background: var(--surf);
   border: 1px solid var(--line);
   border-radius: 18px;
-  padding: 22px;
-}
-.mcard:hover {
-  border-color: var(--cyan);
-}
-.mcard.hot {
-  border-color: var(--hot);
-  box-shadow: inset 0 0 0 1px var(--hot);
 }
 .mcard .mk {
   font-size: 12px;
-  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--hot);
-}
-.mcard b {
-  font: 28px/1.05 var(--disp);
 }
 .mcard .mgo {
   margin-top: 8px;
-  font-weight: 800;
 }
 .mcard .mgo::after {
   content: ' →';
-}
-.mcard.monster {
-  background: linear-gradient(160deg, var(--surf) 55%, color-mix(in srgb, var(--bad) 18%, var(--surf)));
-  border-color: var(--bad);
 }
 .mcard.monster .mk {
   color: var(--bad);
@@ -253,8 +233,6 @@
   color: var(--hot);
 }
 .cal .pip.now {
-  background: var(--ink);
-  color: var(--bg);
   border-color: var(--ink);
 }
 .trow {
@@ -268,9 +246,6 @@
   font-weight: 400;
   color: var(--mute);
   font-size: 12px;
-}
-.ev {
-  border-color: var(--hot);
 }
 .evk {
   font-size: 12px;
@@ -340,7 +315,6 @@
   flex: none;
   width: 88px;
   height: 88px;
-  border-radius: 20px;
   display: grid;
   place-items: center;
   font: 54px/1 var(--disp);
@@ -398,7 +372,6 @@
   gap: 6px;
   position: sticky;
   top: 0;
-  background: var(--bg);
   padding: 8px 0;
   z-index: 2;
 }
@@ -406,10 +379,8 @@
   padding: 5px 10px;
   border-radius: 999px;
   border: 1px solid var(--line);
-  background: var(--surf);
   color: var(--ink);
   text-decoration: none;
-  font-weight: 700;
   font-size: 13px;
 }
 .ency-grid {
@@ -438,10 +409,8 @@
 }
 .ency-tag {
   font-size: 11px;
-  font-weight: 800;
   color: var(--cyan);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
   white-space: nowrap;
 }
 .ency-req {
