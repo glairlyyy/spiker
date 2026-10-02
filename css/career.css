@@ -2543,3 +2543,135 @@
   margin: 6px 0 0;
   color: var(--mute);
 }
+/* place panel anatomy (T-119) */
+.plc .lab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.plc .ptitle {
+  margin: 4px 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+.plc .ptags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.plc .ptag,
+.plc .qt {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--mute);
+}
+.plc .ptag.warn {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+.plc .ptag.bad {
+  color: var(--bad);
+  border-color: var(--bad);
+}
+.plc .ptag.sel {
+  color: var(--ink);
+  border-color: var(--sel-line);
+  background: var(--sel-bg);
+}
+.plc .pflav {
+  margin: 12px 0 4px;
+}
+.plc .pgain {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.plc .pgain .pi {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--surf2);
+  display: grid;
+  place-items: center;
+}
+.plc .pgain i {
+  font-style: normal;
+}
+.plc .pgain .up {
+  color: var(--good);
+}
+.plc .popts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.plc .popts .seg .btn {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+.plc .popts .seg small {
+  margin-left: 4px;
+  color: var(--mute);
+}
+.plc .pmates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.plc .pchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--surf2);
+  font-size: 13px;
+  font-weight: 600;
+}
+.plc .pstakes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+.plc .puse {
+  margin: 8px 0 0;
+}
+.plc .pchal {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.plc .acts .btn {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hub .spotcard {
+  z-index: 4;
+}
+.plc .acts.three .btn {
+  padding: 0 6px;
+  font-size: 13px;
+}

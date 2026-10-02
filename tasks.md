@@ -70,7 +70,7 @@ Steps:
    QA: career run → train twice, select a place; screenshot of the rail.
    Result: done — deviation: the list is `run.dayLog` (`run.days` is already the days-left number; spec §10.2 updated) via RUN_DEFAULTS, cleared in Run.endWeek; `City.go(run, p, what)` + `City.logDays` push trip days then the day (`City.dayWhat(id)` for places; scout / refused challenge / watch in city.js; challenge and street fight in fight.js — one extra file); travel-only logs trips. `dayTrack` (Mon–Sun, spent days with icon + label, trips hatched, ghost slots dashed cyan from `spotGhost(run, CW.spot)` + "Uses Fri — shown on your week", match weeks one slot); mapPick refreshes the week section. Test: trip then train, one entry per day, empty after endWeek (105 tests). QA: 2 trainings + Pier selected → Trip · Power · Trip · Defense · ghost Jump; no pageerror.
 
-### [ ] T-119: Place panel — gains, options, one action row
+### [x] T-119: Place panel — gains, options, one action row
 
 Spec: §10.1 §9.1 §9.8 Goldens: unchanged Save: no change
 Goal: every place kind uses the HubRedesign panel anatomy: header (region · kind, name, tags), one flavour line, gain rows, options, one action row, the "uses {days}" line.
@@ -79,7 +79,7 @@ Do not: change City.can / Training.preview / Front.stakes; drop any action.
 Steps: keep T-099's button text and Hard label; gain rows from `Training.preview` (main/side `+1 now` / `+1 in N sessions`, skill points); Normal/Hard as a segment with the Hard effect inline; teammates as chips; action row `[Train {stat} · days · stamina · $] [Travel only · days]`; HQ: Dossier / Sign (gap) / Scout in one row, challenge block below as its own sub-section with its own row; battle: the two Fight-for buttons as the row, stakes under each.
 Accept: no place card has a CTA outside its action row; the panel never scrolls at 900px for a training spot.
 QA: training spot, HQ, battle site, travel point; screenshots.
-Result:
+Result: done — `placeCard({region, kind, title, tags, flavour, body, opts, row, split})` (career-map.js) = one anatomy for every kind: label (region chip · kind), 20px title, pill tags (`ptag`, `placeTags`: quality, sand, Lv, streak, turf, fail %, border/seized, trip), flavour line, body, options, ONE `.acts` row, "Uses Mon + Tue · shown on your week" from the same ghost as the day track. Training: gain rows (main / side `+1 now` / `+1 in N sessions`), Normal / Hard segment with the Hard effect inline, teammate chips (+20% / +50%), row `[Train {stat} · d · −sta · $] [Travel · d]`; rest / outing / street / travel point / venue on the same card; HQ row `[Sign or gap] [Scout · d] [Dossier]` + the challenge as its own sub-section with its own row; battle row `[Watch · d] [Fight for A] [Fight for B]` with the stakes in two columns above and Sim as an option. Class `.plc` (`.pcard` was taken by People). QA: Pier (no scroll, 254px), Wu Harbor HQ, battle site, travel point at 1440×900; no pageerror.
 
 ### [ ] T-120: Inbox and Week brief
 
