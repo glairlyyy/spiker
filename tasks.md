@@ -122,13 +122,13 @@ Steps: filters Everyone / Squad / Rivals / Waiting n; left list (waiting first, 
 Accept: Team and People drawers are gone; an approach can be answered from the detail. QA: screenshot vs SheetPeople.
 Result: sheetPeople (career-people.js): filters Everyone/Squad/Rivals/Waiting n (CW.pfilter), list (waiting, squad + bond bar, bench, others, gone) + detail (personCard, ask as one Accept/Decline row, Your moves); Chemistry + Leave squad under Squad; Team/People drawers, bondCard, peopleCard, personRow, waitingCard removed; openPerson opens the sheet. QA 1440×900: no errors.
 
-### [ ] T-124: World sheet
+### [x] T-124: World sheet
 
 Spec: §10.4 Goldens: unchanged Save: no change
 Files: js/ui/career-week.js (factionsCard, clubsCard, rankCard), js/ui/career-dossier.js, css/career.css
 Steps: tabs Factions (5 cards: standing bar −100…+100 with the number, labelled border meters, Dossier opens in place) · Clubs (reuse `clubsCard` rows with `joinGap`, signable first) · Rankings (Register / Gazette / Street; you ± 5 + top 5, "Show unrated").
 Accept: Clubs, Factions and Rankings drawers and the dossier pop-up are gone. QA: screenshots of the 3 tabs.
-Result:
+Result: sheetWorld (career-dossier.js), tabs via worldTab(k) / CW.wtab; Factions = 5-card grid, faction name opens the dossier in place (← All factions / Esc back, stopImmediatePropagation so Esc does not also close the sheet); Clubs = clubsCard unfolded, first signable is the one ink primary, no buttons once signed; Rankings bigger tabs/rows. Clubs/Factions/Rankings drawers + dossier modal removed; inbox Clubs → worldTab. QA: 4 screenshots, no errors.
 
 ### [ ] T-125: Season sheet and ⚙
 

@@ -12,6 +12,7 @@ let CW = {
   snap: null,
   sheet: null,
   pfilter: 'all',
+  wtab: 'factions',
   dossier: null,
   rank: 'register',
   rankAll: false,
@@ -517,10 +518,10 @@ function joinGap(run, ti) {
   return c.why.join(', ');
 }
 function clubsCard(run) {
-  return `<div class="panel clubs">${fold(
-    'clubs',
-    `<h3>Find a club${info('You play Academy evaluations and the U21 Final Cup with the Academy squad until a club signs you. You take the same-role spot on the club.')}</h3>`,
-    `<div class="clist">${[...run.teams]
+  const mine = World.isFree(run) ? null : Run.myTeam(run);
+  let first = true; // one ink primary per card: the first club that would sign you
+  return `<div class="panel clubs"><h3>${mine ? `You play for ${chip(mine)}${esc(mine.name)}` : 'Find a club'}${info('You play Academy evaluations and the U21 Final Cup with the Academy squad until a club signs you. You take the same-role spot on the club.')}</h3>
+    <div class="clist">${[...run.teams]
       .sort((a, b) => World.canJoin(run, b.i).ok - World.canJoin(run, a.i).ok) // signable first
       .map(t => {
         const c = World.canJoin(run, t.i),
@@ -528,11 +529,9 @@ function clubsCard(run) {
           sub = t.name.startsWith(REGIONS[f.region].name) || t.name.startsWith(f.name.split(' · ')[0]) ? '' : `${esc(f.name)} · `; // "Wei Dynasty Gold" already says Wei Dynasty
         return `<div class="club rowcta" style="--tc:${t.color}"><div class="nm"><span class="n1">${chip(t)}<b>${esc(t.name)}</b> <span class="mute small">${sub}OVR ${t.ovr}</span>${info(`${f.front}. Word is: ${f.dark}.`)}</span>
           <span class="n2 small ${c.ok ? '' : 'mute'}">${World.joinText(t.i, run)}</span></div>
-          <button class="btn ${c.ok ? 'hot' : 'lock'}" onclick="joinClub(${t.i})" ${c.ok ? '' : 'disabled'} ${c.ok ? '' : tip('Missing: ' + c.why.join(', '))}>${c.ok ? 'Sign' : esc(joinGap(run, t.i))}</button></div>`;
+          ${mine ? '' : `<button class="btn ${c.ok ? (first ? ((first = false), 'hot') : '') : 'lock'}" onclick="joinClub(${t.i})" ${c.ok ? '' : 'disabled'} ${c.ok ? '' : tip('Missing: ' + c.why.join(', '))}>${c.ok ? 'Sign' : esc(joinGap(run, t.i))}</button>`}</div>`;
       })
-      .join('')}</div>`,
-    true
-  )}</div>`;
+      .join('')}</div></div>`;
 }
 /** Your standing with each faction (region), its clubs, and this week's street battle. */
 function factionsCard(run) {
@@ -562,7 +561,7 @@ function factionsCard(run) {
         ? `<div class="small mute">Prices ×${E.priceMul.toFixed(1)} · facilities ×${E.qMul.toFixed(2)}${E.joinCut ? ` · clubs ask −${E.joinCut} OVR/key, fees −${E.feeCut}%` : ''}</div>`
         : '',
       clubs = F.clubs.map(ti => run.teams[ti]);
-    return `<div class="fac ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}"><div class="fh"><b><a href="#" class="dlink" onclick="hubOpen(null);openDossier('${r}');return false">${esc(F.name)}</a></b> <span class="mute small">${F.kind}</span>${F.weak ? ' <span class="stk far">Weakened</span>' : ''}${info(F.desc)}<span class="fv">${F.label} <b>${signed(v)}</b></span></div>
+    return `<div class="fac ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}"><div class="fh"><b><a href="#" class="dlink" onclick="openDossier('${r}');return false">${esc(F.name)}</a></b> <span class="mute small">${F.kind}</span>${F.weak ? ' <span class="stk far">Weakened</span>' : ''}${info(F.desc)}<span class="fv">${F.label}</span></div>
         ${fronts ? `<div class="fms">${fronts}</div>` : ''}${places}${econ}
         <div class="small mute stl">Your standing <b>${signed(v)}</b></div><div class="rbar" ${tip('Standing −100 … +100')}><i style="${v >= 0 ? `left:50%;width:${v / 2}%` : `left:${50 + v / 2}%;width:${-v / 2}%`}"></i></div>
         <div class="small">${clubs.map(t => `${chip(t)}${esc(t.name)}${t.i === run.team ? ' <i class="mute">(yours)</i>' : ''}`).join(' · ')}${

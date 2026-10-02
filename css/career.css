@@ -2984,3 +2984,62 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+/* World sheet (T-124) */
+.hub .wsheet > .panel {
+  margin: 0;
+  background: var(--surf);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+}
+.hub .wsheet .facs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+.hub .wsheet .facs > p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.hub .wsheet .facs .fac {
+  margin: 0;
+  padding: 16px;
+  background: var(--surf);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.hub .wsheet .dossier {
+  position: static;
+  max-width: none;
+  max-height: none;
+}
+.hub .wsheet .dossier .back {
+  margin-bottom: 12px;
+}
+.hub .wsheet.w-rank > .panel,
+.hub .wsheet.w-clubs > .panel {
+  max-width: 880px;
+}
+.hub .wsheet .dossier h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font: 600 20px/1.2 var(--body);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+.hub .wsheet .tabs.rk {
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.hub .wsheet table.rk {
+  font-size: 14px;
+}
+.hub .wsheet table.rk td {
+  padding: 6px 8px;
+}

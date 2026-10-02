@@ -6,9 +6,6 @@
 const HUB_DRAWERS = {
   places: ['📍', 'Places', run => placesCard(run)],
   season: ['📅', 'Season', run => `<div class="panel">${calendar(run)}</div>` + seasonCard(run) + matchLog(run)],
-  clubs: ['🛡', 'Clubs', run => clubsCard(run)],
-  factions: ['⚖', 'Factions', run => factionsCard(run)],
-  rank: ['🏅', 'Rankings', run => rankCard(run)],
   news: [
     '📰',
     'Gazette',
@@ -26,11 +23,11 @@ const HUB_DRAWERS = {
   menu: [
     '⚙',
     'Menu',
-    () => `<div class="menu-list"><h3>More</h3>${MORE_DRAWERS.filter(k => k !== 'clubs' || World.isFree(RUN))
-      .map(k => `<button class="btn" onclick="hubOpen('${k}')">${HUB_DRAWERS[k][0]} ${HUB_DRAWERS[k][1]}</button>`)
-      .join(
-        ''
-      )}<h3>Game</h3><button class="btn" onclick="navigate('menu')">Main menu</button><button class="btn" onclick="openDebug()">Debug log</button>
+    () => `<div class="menu-list"><h3>More</h3>${MORE_DRAWERS.map(
+      k => `<button class="btn" onclick="hubOpen('${k}')">${HUB_DRAWERS[k][0]} ${HUB_DRAWERS[k][1]}</button>`
+    ).join(
+      ''
+    )}<h3>Game</h3><button class="btn" onclick="navigate('menu')">Main menu</button><button class="btn" onclick="openDebug()">Debug log</button>
       <p class="small mute" id="abandon"><button class="btn" onclick="abandonRun()" ${tip('Your run saves automatically')}>Abandon run</button></p></div>`
   ]
 };
@@ -39,12 +36,24 @@ const HUB_DRAWERS = {
 const HUB_TABS = [
   ['me', 'Me'],
   ['people', 'People'],
-  ['factions', 'World'],
+  ['world', 'World'],
   ['season', 'Season']
 ];
-const MORE_DRAWERS = ['places', 'clubs', 'rank', 'news', 'diary'];
+const MORE_DRAWERS = ['places', 'news', 'diary'];
 /** Sheets (spec §10.4): open over the map with the rail and top bar visible; a tab whose sheet exists opens it. */
-const HUB_SHEETS = { me: ['Me', run => sheetMe(run)], people: ['People', run => sheetPeople(run)] };
+const HUB_SHEETS = {
+  me: ['Me', run => sheetMe(run)],
+  people: ['People', run => sheetPeople(run)],
+  world: ['World', run => sheetWorld(run)]
+};
+/** Open the World sheet on one tab (factions / clubs / rank); never toggles. */
+function worldTab(k) {
+  CW.wtab = k;
+  if (k !== 'factions') CW.dossier = null;
+  CW.sheet = 'world';
+  CW.drawer = null;
+  renderCareer();
+}
 function hubSheet(run) {
   const [name, body] = HUB_SHEETS[CW.sheet];
   return `<section class="sheet" aria-label="${name}"><button class="btn x" onclick="hubOpen(null)" aria-label="Close">✕</button>${body(run)}</section>`;
@@ -67,7 +76,6 @@ function renderCareer() {
   CW.ownOf = run;
   if (note && MapModel.known(run, note.id, City.at(run, note.id))) CW.spot = note.id;
   for (const z of chg) (CW.seizes || (CW.seizes = [])).unshift({ ...z, week: run.week }); // an inbox item for a week
-  if (CW.drawer === 'clubs' && !World.isFree(run)) CW.drawer = null;
   const nextCup = Run.weekType(run) === 'cup' && !run.event ? Cup.upcoming(run) : null; // rules first, then draw
   const card = hubCard(run, nextCup);
   $('#app').innerHTML = `<section class="career hub ${City.night(run) ? 'eve' : ''}" style="--tc:${team.color}">
@@ -77,7 +85,6 @@ function renderCareer() {
     ${CW.sheet ? hubSheet(run) : ''}
     ${CW.drawer ? hubDrawer(run) : ''}
     ${card ? `<div class="hubmodal ${card.dim ? 'dim' : ''}"><div class="hubcard ${card.cls || ''}">${card.html}</div></div>` : ''}
-    ${CW.dossier && !card ? `<div class="hubmodal"><div class="hubcard wide">${dossierCard(run, CW.dossier)}</div></div>` : ''}
   </section>`;
   mapMount(run);
 }
@@ -160,7 +167,7 @@ function briefDone(open) {
   renderCareer();
 }
 const hubClubsHint = () =>
-  `<p class="small mute">Free agent — <a href="#" onclick="hubOpen('clubs');return false">find a club</a> first to play with them.</p>`;
+  `<p class="small mute">Free agent — <a href="#" onclick="worldTab('clubs');return false">find a club</a> first to play with them.</p>`;
 
 /** Top bar: brand, week, labelled resources (one-render deltas), the sheet tabs and ⚙. */
 function topBar(run) {
@@ -299,7 +306,7 @@ function inboxRows(run) {
     );
   if (World.isFree(run)) {
     const t = run.teams.find(t2 => World.canJoin(run, t2.i).ok);
-    if (t) item('🛡', `${esc(t.name)} would sign you`, 'Signing open', 'Clubs', "hubOpen('clubs')");
+    if (t) item('🛡', `${esc(t.name)} would sign you`, 'Signing open', 'Clubs', "worldTab('clubs')");
   }
   for (const z of (CW.seizes || []).filter(x => run.week - x.week <= 1))
     item('⚑', esc(z.text), 'A place changed hands', 'Show', `mapPick('${z.id}')`);
@@ -330,7 +337,7 @@ function nextStep(run) {
   }
   if (World.isFree(run)) {
     const t = run.teams.find(t2 => World.canJoin(run, t2.i).ok);
-    if (t) return { text: `${t.name}: signing open`, act: "hubOpen('clubs')" };
+    if (t) return { text: `${t.name}: signing open`, act: "worldTab('clubs')" };
   }
   if (wt !== 'cup' && wt !== 'eval' && City.days(run) <= 0) return { text: 'Night · end the week', act: '' };
   return null;
@@ -342,7 +349,8 @@ function hubDrawer(run) {
 
 /** Hub keys: 1–4 open the sheet tabs, Space ends the week, Esc closes the drawer, then the place card. */
 function hubKey(e) {
-  if (A || e.ctrlKey || e.metaKey || e.altKey || !document.querySelector('.career.hub') || $('#dbg') || CW.dossier) return;
+  if (A || e.ctrlKey || e.metaKey || e.altKey || !document.querySelector('.career.hub') || $('#dbg') || (CW.dossier && e.key === 'Escape'))
+    return;
   if (e.target.closest && e.target.closest('input,select,textarea,button,a,[contenteditable]')) return;
   if (e.key === 'Escape') {
     if (CW.drawer || CW.sheet) hubOpen(null);
