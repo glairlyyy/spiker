@@ -9,7 +9,7 @@ const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const SPEEDS = [1, 2, 4];
 /** Scoreboard block for one side: name and the rotation (filled in by board()). */
 const boardTeam = (t, i) =>
-  `<div class="bt${i ? ' r' : ''}" style="--tc:${t.color}"><span class="bn">${esc(t.name)}</span><span class="rot" id="r${i}"></span></div>`;
+  `<div class="bt${i ? ' r' : ''}" style="--tc:${t.color}"><span class="bsw"></span><span class="bn">${esc(t.name)}</span><span class="rot" id="r${i}"></span></div>`;
 const timeoutButton = (t, i) =>
   `<button class="btn" id="to${i}" onclick="reqTO(${i})" ${tip(`Call ${t.name}'s one timeout at the next break`)}>Timeout ${esc(t.short)}</button>`;
 /** Coach tactic select for side `i` (captain's call or a fixed tactic). */
@@ -63,8 +63,8 @@ function startMatch(fx) {
       ${boardTeam(a, 0)}
       <div class="bsc"><span id="p0">0</span><span class="colon">:</span><span id="p1">0</span><span class="setn" id="setn">${rulesText()}</span></div>
       ${boardTeam(b, 1)}
-      <div class="mom" aria-label="Momentum"><span class="zone" id="z0">In the zone</span><div class="mbar" style="--a:${a.color};--b:${b.color}"><i id="momf"></i><em></em></div><span class="zone" id="z1">In the zone</span></div>
     </div>
+    <div class="mom"><span class="ml">Momentum</span><div class="mbar" style="--a:${a.color};--b:${b.color}"><i id="momf"></i><em></em></div><span class="zone" id="zone" aria-live="polite"></span></div>
     <div class="stage" id="stage"><canvas id="cv" aria-label="Match court"></canvas>
       <div class="fsbar" aria-label="Fullscreen controls"><span class="fss"><i style="--tc:${a.color}"></i>${esc(a.short)} <b id="fs0">0</b> : <b id="fs1">0</b> ${esc(b.short)}<i style="--tc:${b.color}"></i></span>
         <span class="fsb"><button onclick="togglePause()" id="fspause" aria-label="Pause">❚❚</button>${SPEEDS.map(s => `<button onclick="setSpeed(${s})" data-s="${s}" class="fsspd">${s}x</button>`).join('')}<button onclick="toggleFullscreen()" aria-label="Exit fullscreen">✕</button></span></div>
@@ -81,7 +81,7 @@ function startMatch(fx) {
       ${pop('Tactics ▾', [a, b].map(tacticPicker).join('') + [a, b].map(defencePicker).join(''))}
       ${pop('⚙ ▾', settingsMenu())}
     </div>
-    <div class="feeds"><div class="panel"><h3>Commentary</h3><ol class="log" id="log"></ol></div><div class="panel"><h3>Box score</h3><div id="box"></div></div></div>
+    <div class="feeds" hidden><div class="panel"><h3>Commentary</h3><ol class="log" id="log"></ol></div><div class="panel"><h3>Box score</h3><div id="box"></div></div></div>
   </section>`;
   audioInit();
   if (R3D) R3D.unbind();
@@ -378,13 +378,20 @@ function board(s) {
       r.innerHTML = s.rot[i]
         .map((id, k) => {
           const p = byId(id);
-          return `<i class="${k === 0 && s.serve === i ? 'sv' : ''} ${k === 1 || k === 2 ? 'fr' : ''}" title="${esc(p.name)}${k === 1 || k === 2 ? ' (front row)' : ' (back row)'}">${p.num}<b>${p.role}</b></i>`;
+          const sv = k === 0 && s.serve === i;
+          return `<i class="${sv ? 'sv' : ''} ${k === 1 || k === 2 ? 'fr' : ''}" title="${esc(p.name)}${k === 1 || k === 2 ? ' (front row)' : ' (back row)'}">${p.num}<b>${p.role}</b>${sv ? '<em>serve</em>' : ''}</i>`;
         })
         .join('');
   });
   if (s.mom) {
     $('#momf').style.width = 50 + 25 * (s.mom[0] - s.mom[1]) + '%';
-    [0, 1].forEach(i => $('#z' + i).classList.toggle('on', !!s.zone[i]));
+    const zs = [0, 1].filter(i => s.zone[i]),
+      zt = A ? A.m.t : null,
+      z = $('#zone');
+    if (z && zt) {
+      z.classList.toggle('on', zs.length > 0);
+      z.innerHTML = zs.length ? `In the zone: ${zs.map(i => `<b style="color:${zt[i].color}">${esc(zt[i].short)}</b>`).join(' ')}` : '';
+    }
     if (A) {
       A.moodShown = s.mood;
       A.zoneShown = s.zone;

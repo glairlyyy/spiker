@@ -1155,3 +1155,126 @@ td i {
   padding: 4px 6px;
   max-width: 11em;
 }
+
+/* ---------- match screen: court-first frame (spec §9.9, T-107) ---------- */
+.wrap:has(> #app > .match) {
+  max-width: none;
+  padding: 8px 24px 0;
+}
+body:has(.match) .top {
+  display: none;
+}
+.match {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: calc(100vh - 8px);
+  overflow: hidden;
+}
+.match .board {
+  width: min(100vw - 48px, (100vh - 168px) / 0.44);
+  height: 64px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 12px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  backdrop-filter: none;
+}
+.match .bt,
+.match .bt.r {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.match .bt.r {
+  flex-direction: row-reverse;
+}
+.match .bsw {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 28px;
+  border-radius: 3px;
+  background: var(--tc);
+}
+.match .bn {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 18px;
+}
+.match .rot {
+  flex-wrap: nowrap;
+}
+.match .rot i.sv {
+  background: var(--gold);
+  color: var(--on-ink);
+}
+.match .rot i.sv em {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 2px;
+}
+.match .bsc {
+  flex-wrap: nowrap;
+  gap: 8px;
+  font: 600 48px/1 var(--disp);
+}
+.match .bsc .srv::after {
+  display: none;
+}
+.match .setn {
+  flex-basis: auto;
+  margin-left: 8px;
+}
+.match .mom {
+  width: min(100vw - 48px, (100vh - 168px) / 0.44);
+  height: 20px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  font-size: 12px;
+}
+.match .mom .ml {
+  color: var(--mute);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+}
+.match .mbar {
+  height: 6px;
+  border-radius: 3px;
+}
+.match .zone {
+  min-width: 140px;
+  text-align: right;
+  font: 600 12px var(--body);
+  letter-spacing: 0.04em;
+  text-transform: none;
+  opacity: 1;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--mute);
+}
+.match .zone.on {
+  color: var(--ink);
+}
+.match .stage {
+  width: min(100vw - 48px, (100vh - 168px) / 0.44);
+  flex: 0 0 auto;
+  margin-top: 4px;
+}
+.match .feeds[hidden] {
+  display: none;
+}

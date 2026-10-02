@@ -224,7 +224,7 @@ Steps: two roster columns of 4 (you highlighted); lineup sentence `On the bench 
 Accept: the card fits without scrolling at 900px height. QA: career run → week 4.
 Result: done — evaluation card: two roster columns of 4 (you in the selected style), one plain rewards line (`Win +40 skill pts +500 fans · Loss …`, terms in T-112), lineup `On the bench — {name} rates higher (x vs y)`, focus labelled "Pick one" (selected style from T-095), `Sim ⏭ / result without watching` on eval and cup. QA: week-4 card fits at 1440×900 without scrolling (ends at y≈725); no pageerror.
 
-### [ ] T-107: Match screen — court-first frame
+### [x] T-107: Match screen — court-first frame
 
 Spec: §9.9 Goldens: unchanged Save: no change
 Goal: the match fits the viewport with no scroll; the court is as large as the space allows.
@@ -242,7 +242,7 @@ Steps:
 - 1280×720, 1440×900, 1920×1080: no page scroll; court 1232 / 1392 / 1872 px wide.
 - npm test / lint pass; no pageerror.
   QA: Monster game at the three sizes; screenshots.
-  Result:
+  Result: done — header hidden and `.wrap` full width via `:has(.match)` (no body class needed); score band 64px (swatch + name + rotation chips, server chip gold with "serve"), Rajdhani 48px score with the rules text beside it; Momentum row 20px with a label and one "In the zone: {team}" span (`#zone`, team colour); court `min(100vw − 48px, (100vh − 168px) / 0.44)` centred; `.feeds` kept in the DOM but hidden until T-115. QA: Monster at 1280×720 / 1440×900 / 1920×1080 — no page scroll, court 1232 / 1392 / 1872 px; no pageerror.
 
 ### [ ] T-108: Match labels — sides, serve, momentum
 
