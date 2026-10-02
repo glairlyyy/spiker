@@ -1866,3 +1866,165 @@ test('fixes: poach_advice lines say what happened; an unanswered one is news too
     'and the Gazette says so'
   );
 });
+
+// ---------- T-087: coverage gaps ----------
+const mkRunG = seed => {
+  const g = load(seed);
+  return [g, g.Run.create(g.Run.draft(), { role: 'WS', name: 'Cov', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 })];
+};
+
+test('goals: blocks, a goal by the block end that never repeats its kind, reward / miss at the deadline', () => {
+  const [g, run] = mkRunG(871);
+  eq(
+    JSON.stringify([1, 6, 7, 12, 13, 18, 19, 24, 25, 28, 28].map(w => g.Goals.block(w).join('-'))),
+    JSON.stringify(['1-6', '1-6', '7-12', '7-12', '13-18', '13-18', '19-24', '19-24', '25-28', '25-28', '25-28']),
+    'block ranges'
+  );
+  run.goal = null;
+  run.week = 3;
+  g.Goals.set(run);
+  const first = run.goal;
+  eq(first.by, 6, 'the goal is due at the block end');
+  assert(first.done === null, 'open');
+  g.Goals.set(run);
+  assert(run.goal === first, 'a live goal is not replaced');
+  run.week = 7;
+  g.Goals.set(run);
+  eq(run.goal.by, 12, 'next block, next goal');
+  assert(run.goal.kind !== first.kind, 'the coach does not repeat the previous kind');
+  // reward: force a met fans goal
+  run.goal = { kind: 'fans', target: 100, by: 8, done: null };
+  run.fans = 500;
+  run.week = 7;
+  g.Goals.check(run);
+  assert(run.goal.done === null, 'nothing before the deadline week');
+  const sp0 = run.sp,
+    fans0 = run.fans;
+  run.week = 8;
+  g.Goals.check(run);
+  assert(
+    run.goal.done === true && run.sp === sp0 + g.GOAL_REWARD.sp && run.fans === fans0 + g.GOAL_REWARD.fans,
+    'a met goal pays skill points and fans'
+  );
+  g.Goals.check(run);
+  eq(run.sp, sp0 + g.GOAL_REWARD.sp, 'a decided goal pays once');
+  // miss: a mood hit
+  run.goal = { kind: 'fans', target: 10 ** 9, by: 8, done: null };
+  const mood0 = run.mood;
+  g.Goals.check(run);
+  assert(run.goal.done === false && run.mood === mood0 - 1, 'a missed goal costs a mood point');
+  // met() per kind and text()
+  const you = g.Run.you(run);
+  assert(g.Goals.met(run, { kind: 'stat', stat: 'power', target: you.power }), 'stat met at the target');
+  assert(!g.Goals.met(run, { kind: 'stat', stat: 'power', target: you.power + 1 }), 'stat not met above it');
+  assert(
+    !g.Goals.met(run, { kind: 'win', week: 4 }) && (run.evals.push({ week: 4, win: true }), g.Goals.met(run, { kind: 'win', week: 4 })),
+    'win goal follows run.evals'
+  );
+  assert(/fans/.test(g.Goals.text(run, { kind: 'fans', target: 1500 })) && g.Goals.text(run, null) === '', 'goal text');
+});
+
+test('sponsors: offers at fan milestones, perks, mood / training / win / grade conditions', () => {
+  const [g, run] = mkRunG(872);
+  run.fans = g.SPONSOR_AT[0] - 1;
+  g.Sponsors.offer(run);
+  assert(!run.event, 'no offer below the milestone');
+  run.fans = g.SPONSOR_AT[0];
+  g.Sponsors.offer(run);
+  assert(
+    run.event && run.event.id === 'sponsor' && run.event.pre && run.event.opts.length === 2 && run.sponsorN === 1,
+    'an offer of two sponsors at the milestone'
+  );
+  const ids = Object.keys(g.SPONSORS);
+  const byKind = k => ids.find(id => g.SPONSORS[id].kind === k);
+  // a win sponsor: kept after a win, lost after a loss
+  for (const [win, state] of [
+    [true, 'kept'],
+    [false, 'lost']
+  ]) {
+    run.sponsors = [];
+    g.Sponsors.sign(run, byKind('win'));
+    g.Sponsors.match(run, win, 'C');
+    eq(run.sponsors[0].state, state, `win sponsor after ${win ? 'a win' : 'a loss'}`);
+  }
+  // a grade sponsor wants S or A
+  run.sponsors = [];
+  g.Sponsors.sign(run, byKind('grade'));
+  g.Sponsors.match(run, true, 'B');
+  eq(run.sponsors[0].state, 'lost', 'grade B is not enough');
+  // a mood sponsor is lost the week mood is below 2
+  run.sponsors = [];
+  g.Sponsors.sign(run, byKind('mood'));
+  run.mood = 1;
+  g.Sponsors.tick(run);
+  eq(run.sponsors[0].state, 'lost', 'mood sponsor pulls out');
+  assert(!g.Sponsors.active(run, run.sponsors[0].id), 'a lost sponsor is not active');
+  // Aqua: stamina cap while it lasts and back when it goes
+  if (g.SPONSORS.aqua) {
+    run.sponsors = [];
+    const max0 = run.staMax;
+    g.Sponsors.sign(run, 'aqua');
+    eq(run.staMax, max0 + 15, 'Aqua raises the stamina cap');
+    g.Sponsors.lose(run, run.sponsors[0]);
+    eq(run.staMax, max0, 'and takes it back');
+  }
+});
+
+test('storage: every access survives a throwing localStorage; corrupt JSON falls back; Run.load / save do not throw', () => {
+  const [g, run] = mkRunG(873);
+  g.store.set('k', 'v');
+  eq(g.store.get('k'), 'v', 'round-trip');
+  g.store.setJSON('j', { a: [1, 2] });
+  eq(JSON.stringify(g.store.getJSON('j')), '{"a":[1,2]}', 'JSON round-trip');
+  g.store.set('bad', '{nope');
+  eq(g.store.getJSON('bad', 'fb'), 'fb', 'corrupt JSON → fallback');
+  eq(g.store.get('missing', 'dflt'), 'dflt', 'missing → fallback');
+  const ls = g.__ls,
+    orig = { ...ls },
+    boom = () => {
+      throw new Error('SecurityError');
+    };
+  try {
+    ls.getItem = ls.setItem = ls.removeItem = boom;
+    eq(g.store.get('k', 'fb'), 'fb', 'get falls back');
+    g.store.set('k', 1);
+    g.store.setJSON('k', {});
+    g.store.remove('k');
+    eq(g.store.getJSON('k', 7), 7, 'getJSON falls back');
+    g.Run.save(run);
+    eq(g.Run.load(), null, 'no saved run readable');
+    g.Run.clear();
+  } finally {
+    Object.assign(ls, orig);
+  }
+  g.Run.save(run);
+  assert(g.Run.load(), 'storage back: the run saves and loads again');
+});
+
+test('saves: a newer, unversioned or corrupt save is refused; the current one loads and repairs a stripped run', () => {
+  const [g, run] = mkRunG(874);
+  g.Run.save(run);
+  const raw = JSON.parse(g.__mem[g.KEYS.career]);
+  const put = o => (g.__mem[g.KEYS.career] = typeof o === 'string' ? o : JSON.stringify(o));
+  put({ ...raw, v: g.RUN_VERSION + 1 });
+  eq(g.Run.load(), null, 'a save from a newer version is refused (not downgraded)');
+  put({ ...raw, v: '15' });
+  eq(g.Run.load(), null, 'a non-numeric version is refused');
+  const noV = { ...raw };
+  delete noV.v;
+  put(noV);
+  eq(g.Run.load(), null, 'no version → refused');
+  put('{"v": 15, "teams": [');
+  eq(g.Run.load(), null, 'truncated JSON → refused');
+  put({ ...raw, youId: 'nobody' });
+  eq(g.Run.load(), null, 'a save whose player is missing is refused');
+  const stripped = { ...raw };
+  for (const k of ['grades', 'evals', 'mem', 'asks', 'news', 'mlog']) delete stripped[k];
+  put(stripped);
+  const back = g.Run.load();
+  assert(
+    back && Array.isArray(back.grades) && Array.isArray(back.evals) && Array.isArray(back.asks),
+    'a current save missing fields loads and is repaired'
+  );
+  eq(back.week, run.week, 'same week');
+});

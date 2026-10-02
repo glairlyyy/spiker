@@ -35,7 +35,7 @@ const vnoise = (x, y) => {
   return lerp(lerp(hash(xi, yi), hash(xi + 1, yi), u), lerp(hash(xi, yi + 1), hash(xi + 1, yi + 1), u), v);
 };
 /** Point in polygon (poly: [[x, y]…]). */
-const inside = (x, y, poly) => {
+export const inside = (x, y, poly) => {
   let c = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
     const [xi, yi] = poly[i],
@@ -45,7 +45,7 @@ const inside = (x, y, poly) => {
   return c;
 };
 /** Distance from a point to a closed polygon's outline. */
-const edgeDist = (x, y, poly) => {
+export const edgeDist = (x, y, poly) => {
   let best = Infinity;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
     const [ax, ay] = poly[j],
@@ -69,7 +69,7 @@ const DISTRICT_TINT = {
   fishing: '#9a9172'
 };
 /** Signed distance (m) from a point to an open polyline: positive on its right-hand side (screen coordinates, y down). */
-const sideDist = (x, y, line) => {
+export const sideDist = (x, y, line) => {
   let best = Infinity,
     sign = 1;
   for (let i = 0; i + 1 < line.length; i++) {
