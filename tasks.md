@@ -96,7 +96,7 @@ Steps:
   QA: career run → week 1 hub, click the chip, train once; screenshots.
   Result: done — hudRes = labelled rows on `--hud` with one-render deltas (`CW.hudPrev`, good/bad, stamina warn under 50); `hudGoal` (goal · progress · by W, warn when ≤1 week, → Season) and `hudNext` / `nextStep` (Gazette → eval/cup ≤3 weeks: selects the cheapest known spot for the key stat → club that signs you → night) under the clock. QA: week 1 chip "Evaluation W4 · Power 1" selects a Power spot; training shows −$4 / +3 / −20 deltas; no pageerror.
 
-### [ ] T-097: Map opening view and fly-to on select
+### [x] T-097: Map opening view and fly-to on select
 
 Spec: §4.4 §9.1 Goldens: unchanged Save: no change
 Goal: the map opens wide enough to show every known place; selecting a place (pin, list, chip, banner) moves the camera to it.
@@ -111,7 +111,7 @@ Steps:
 
 - fitView tests pass; new run opens showing Airport, home and every pin in reach; `mapPick('sand')` brings Sand Courts to the centre.
   QA: career run → open hub, call `mapPick('pier')`; screenshots before/after.
-  Result:
+  Result: done — `fitView` (geo3d.mjs, tested) frames the known pins + you for the first view (d 60…340, ×1.15 and a small near-edge lift for perspective; fallback 60 m on you); `select(id)` and a model `sel` change fly the camera to the pin over 0.45 s (≥80 m if it was off-screen), cancelled by pointerdown. QA: week 1 shows all 9 known pins on screen (y 13…752 at 1440×900); `mapPick('pier')` centres the pier; no pageerror.
 
 ### [ ] T-098: Places drawer
 

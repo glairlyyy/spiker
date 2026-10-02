@@ -41,3 +41,28 @@ export function fogFactor(fog) {
     return FOG_DIM + (1 - FOG_DIM) * (1 - smooth(r, r + FOG_SOFT, Math.sqrt(d2)));
   };
 }
+
+/**
+ * The camera view { x, z, d } (world metres) that frames every point (pad 15 %), for the map camera's pitch and field of
+ * view at this aspect (width / height); d clamped to [minD, maxD]. null for no points.
+ */
+export function fitView(points, aspect, minD, maxD, fovDeg = 40, pitchDeg = 55) {
+  if (!points || !points.length) return null;
+  let x0 = Infinity,
+    x1 = -Infinity,
+    z0 = Infinity,
+    z1 = -Infinity;
+  for (const [x, z] of points) {
+    x0 = Math.min(x0, x);
+    x1 = Math.max(x1, x);
+    z0 = Math.min(z0, z);
+    z1 = Math.max(z1, z);
+  }
+  const w = (x1 - x0) * 1.15,
+    h = (z1 - z0) * 1.15,
+    tv = Math.tan(((fovDeg / 2) * Math.PI) / 180),
+    th = tv * (aspect || 1),
+    s = Math.sin((pitchDeg * Math.PI) / 180), // ground depth is foreshortened by the pitch
+    d = Math.max(w / 2 / th, (h * s) / 2 / tv);
+  return { x: (x0 + x1) / 2, z: (z0 + z1) / 2, d: clamp(d, minD, maxD) };
+}

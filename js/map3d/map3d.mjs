@@ -10,10 +10,11 @@ import { createAvatar } from './avatar3d.mjs';
 import { createFurniture } from './pins3d.mjs';
 import { createLife } from './life3d.mjs';
 import { createTown } from './town3d.mjs';
-import { MAP_M, toMap, clamp, lerp, smooth, fogFactor } from './geo3d.mjs';
+import { MAP_M, toMap, clamp, lerp, smooth, fogFactor, fitView, toWorld } from './geo3d.mjs';
 
 const CELL = 2, // terrain grid cell (m)
   PITCH = (55 * Math.PI) / 180,
+  FLY_S = 0.45, // a camera move to a selected place
   DIST = [25, 420],
   CLICK_PX = 5,
   BEACH = 12, // beach slope width (m)
@@ -245,6 +246,9 @@ export function create(onIdle) {
     follow = false, // the camera follows the avatar while it walks (until the user drags)
     seen = null, // the you.at last shown
     view = null, // { x, z, d }: the camera target on the ground and its distance (kept across re-mounts)
+    fly = null, // a camera move to a selected place: { x0, z0, d0, x1, z1, d1, t }
+    cur = null, // the last model (pins for select)
+    lastSel = null,
     cw = 0, // canvas size (px), cached by size() — never read from the DOM per frame
     ch = 0;
 
@@ -309,6 +313,7 @@ export function create(onIdle) {
     down = null;
   const onDown = e => {
     if (e.button !== 0) return;
+    fly = null; // the player takes the camera
     down = { x: e.clientX, y: e.clientY, moved: 0 };
     const g = ground(e);
     grab = g ? { x: g.x, z: g.z } : null;
@@ -354,6 +359,16 @@ export function create(onIdle) {
     ];
   for (const [k, f, o] of listeners) canvas.addEventListener(k, f, o);
 
+  /** Move the camera over a pin (≤ FLY_S): keep the zoom unless the pin is off-screen (then at least 80 m away). */
+  const flyTo = id => {
+    const p = cur && cur.pins && cur.pins.find(q => q.id === id);
+    if (!p || !view) return;
+    const [x, z] = toWorld(p.at),
+      v = new THREE.Vector3(x, 0, z).project(cam),
+      off = Math.abs(v.x) > 0.9 || Math.abs(v.y) > 0.9;
+    fly = { x0: view.x, z0: view.z, d0: view.d, x1: x, z1: z, d1: off ? Math.max(view.d, 80) : view.d, t: 0 };
+    follow = false;
+  };
   const frame = t => {
     raf = 0;
     if (dead) return;
@@ -368,7 +383,17 @@ export function create(onIdle) {
       clock += dt;
       life.tick(dt, clock);
       furn.pulse(pressure, clock);
-      if (follow && avatar.busy()) {
+      if (fly) {
+        fly.t = Math.min(1, fly.t + dt / FLY_S);
+        const k = smooth(0, 1, fly.t);
+        view.x = fly.x0 + (fly.x1 - fly.x0) * k;
+        view.z = fly.z0 + (fly.z1 - fly.z0) * k;
+        view.d = fly.d0 + (fly.d1 - fly.d0) * k;
+        clampView();
+        place();
+        if (fly.t >= 1) fly = null;
+      }
+      if (follow && avatar.busy() && !fly) {
         const [ax, az] = avatar.pos(),
           k = 1 - Math.exp(-dt * 4);
         view.x += (ax - view.x) * k;
@@ -403,8 +428,17 @@ export function create(onIdle) {
       ro.observe(el);
       if (!terrain) {
         build(m);
-        const at = m.you ? m.you.at : m.focus; // first view: on the player, ~60 m away
-        view = { x: at[0] * MAP_M, z: at[1] * MAP_M, d: 60 };
+        const at = m.you ? m.you.at : m.focus; // first view: every known place and you in frame, else on the player ~60 m away
+        size();
+        view = fitView([...(m.pins || []).map(p => toWorld(p.at)), toWorld(at)], cw / Math.max(1, ch) || 16 / 9, 60, 340) || {
+          x: at[0] * MAP_M,
+          z: at[1] * MAP_M,
+          d: 60
+        };
+        if (view.d > 60) {
+          view.d = Math.min(340, view.d * 1.15); // perspective: the far edge needs more room than the fit assumes
+          view.z += view.d * 0.08; // and the near edge stays clear of the dock
+        }
       }
       el.insertBefore(furn.layer, badge);
       clampView();
@@ -417,6 +451,9 @@ export function create(onIdle) {
     /** New model: first time stand at you.at, later walk there when it changed. */
     update(m) {
       if (!furn) return;
+      cur = m;
+      if (m.sel && m.sel !== lastSel) flyTo(m.sel); // selected from outside the map (list, chip, banner)
+      lastSel = m.sel;
       town.sync(m);
       furn.sync(m, on);
       life.sync(m);
@@ -432,7 +469,12 @@ export function create(onIdle) {
       }
       seen = key;
     },
-    select: id => furn && furn.select(id),
+    select: id => {
+      if (!furn) return;
+      furn.select(id);
+      if (id && id !== lastSel) flyTo(id);
+      lastSel = id;
+    },
     heightAt: (x, z) => (terrain ? terrain.heightAt(x, z) : 0),
     info: () => ({
       calls: renderer.info.render.calls,

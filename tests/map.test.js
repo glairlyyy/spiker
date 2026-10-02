@@ -729,3 +729,37 @@ test('map3d: point in polygon, distance to an outline, side of a polyline', () =
     b = sideDist(5, -2, line);
   assert(Math.abs(a) === 2 && Math.abs(b) === 2 && Math.sign(a) !== Math.sign(b), 'signed distance: opposite sides, same magnitude');
 });
+
+// ---------- T-097: the map's opening view ----------
+test('map3d: fitView frames every point, clamps the distance', () => {
+  const geo = require('../js/map3d/geo3d.mjs');
+  eq(geo.fitView([], 1.6, 60, 200), null, 'no points → null');
+  eq(geo.fitView(null, 1.6, 60, 200), null, 'null → null');
+  const one = geo.fitView([[50, 80]], 1.6, 60, 200);
+  eq(one.x + ',' + one.z + ',' + one.d, '50,80,60', 'one point: centred, the minimum distance');
+  const two = geo.fitView(
+    [
+      [0, 0],
+      [200, 40]
+    ],
+    1.6,
+    60,
+    400
+  );
+  eq(two.x + ',' + two.z, '100,20', 'two points: centred between them');
+  const half = Math.tan((20 * Math.PI) / 180) * 1.6 * two.d;
+  assert(half >= 114.99, 'the padded width fits the horizontal field of view');
+  eq(
+    geo.fitView(
+      [
+        [0, 0],
+        [2000, 0]
+      ],
+      1.6,
+      60,
+      200
+    ).d,
+    200,
+    'far apart: clamped to the maximum'
+  );
+});
