@@ -113,7 +113,7 @@ Steps:
   QA: career run → open hub, call `mapPick('pier')`; screenshots before/after.
   Result: done — `fitView` (geo3d.mjs, tested) frames the known pins + you for the first view (d 60…340, ×1.15 and a small near-edge lift for perspective; fallback 60 m on you); `select(id)` and a model `sel` change fly the camera to the pin over 0.45 s (≥80 m if it was off-screen), cancelled by pointerdown. QA: week 1 shows all 9 known pins on screen (y 13…752 at 1440×900); `mapPick('pier')` centres the pier; no pageerror.
 
-### [ ] T-098: Places drawer
+### [x] T-098: Places drawer
 
 Spec: §9.1 Goldens: unchanged Save: no change
 Goal: a list of every known place as the non-map way to find where to go.
@@ -127,7 +127,7 @@ Steps:
 
 - Week 1 lists the places visible on the map; clicking one closes the drawer and selects it (camera moves — T-097).
   QA: career run → open Places, click a row; screenshot.
-  Result:
+  Result: done — `places` drawer (first in the dock): MapModel.pins (no battle pin) grouped by `City.regionAt`; row = icon, name, `Trains {stat}` / Club HQ / Venue / desc, owner chip, trip days; click → `placeGo(id)` closes the drawer and selects it (the map flies, T-097). QA: week 1 lists 9 places in 4 regions; clicking Pier Jump Deck selects it; no pageerror.
 
 ### [ ] T-099: Cost on the button, locked shows the gap
 

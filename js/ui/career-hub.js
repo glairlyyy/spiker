@@ -4,6 +4,7 @@
 
 const HUB_DRAWERS = {
   me: ['👤', 'Player', run => youCard(run) + seasonCard(run)],
+  places: ['📍', 'Places', run => placesCard(run)],
   team: ['🤝', 'Team', run => bondCard(run)],
   people: ['👥', 'People', run => peopleCard(run)],
   skills: ['✨', 'Skills', run => skillShop(run, true)],
@@ -228,6 +229,40 @@ function hubKey(e) {
   }
 }
 document.addEventListener('keydown', hubKey);
+
+/** Every place the map shows, by region: the non-map way to find where to go (a row selects it on the map). */
+function placesCard(run) {
+  const pins = MapModel.pins(run).filter(p => p.kind !== 'clash'),
+    by = {};
+  for (const p of pins) (by[City.regionAt(p.at)] = by[City.regionAt(p.at)] || []).push(p);
+  const row = p => {
+    const s = SPOTS[p.id],
+      what =
+        s && s.train
+          ? `Trains ${STATNAME[TRAININGS[s.train].main[0]]}`
+          : p.kind === 'hq'
+            ? 'Club HQ'
+            : p.kind === 'venue'
+              ? 'Venue'
+              : s
+                ? esc(s.desc || '')
+                : '',
+      own = s && s.region ? Front.owner(run, p.id) : null,
+      trip = City.trip(run, p.at),
+      name = s ? s.name : p.title;
+    return `<button class="plrow" onclick="placeGo('${esc(p.id)}')"><span class="pi">${p.icon}</span><span class="nm"><b>${esc(name)}</b><span class="small mute">${what}${
+      own ? ` · ${chip(REGIONS[own])}${esc(REGIONS[own].name)}` : ''
+    }</span></span><span class="small">${trip ? `Trip ${trip}d` : 'Here'}</span></button>`;
+  };
+  return `<div class="panel places">${Object.keys(by)
+    .map(r => `<h3>${esc((REGIONS[r] || REGIONS.open).name)}</h3>${by[r].map(row).join('')}`)
+    .join('')}</div>`;
+}
+function placeGo(id) {
+  CW.drawer = null;
+  CW.spot = id;
+  renderCareer(); // the map flies to the selection
+}
 
 function hubOpen(k) {
   CW.drawer = k && CW.drawer !== k ? k : null;

@@ -1987,3 +1987,38 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Places drawer (T-098) */
+.places h3 {
+  margin: 16px 0 8px;
+}
+.places h3:first-child {
+  margin-top: 0;
+}
+.plrow {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 12px;
+  margin: 0 0 4px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--surf2);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.plrow:hover {
+  border-color: var(--cyan);
+}
+.plrow .nm {
+  display: grid;
+  min-width: 0;
+}
+.plrow .nm > * {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
