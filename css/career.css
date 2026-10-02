@@ -1729,3 +1729,33 @@
 .chem div {
   margin: 2px 0;
 }
+
+/* week recap card (T-090) */
+.recap .rrows {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+.recap .rr {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 600;
+}
+.recap .rr.up {
+  color: #7be08f;
+}
+.recap .rr.dn {
+  color: #ff7a7a;
+}
+.recap .rr.ch {
+  color: #ffd84d;
+}
+.recap .rlog {
+  margin: 6px 0 10px;
+  padding-left: 18px;
+  font-size: 12.5px;
+  opacity: 0.8;
+}

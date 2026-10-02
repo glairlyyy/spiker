@@ -2,7 +2,18 @@
 // Gazette, the event card, evaluation / Cup match cards and the skills shop, plus their handlers.
 
 /** Hub UI state: Hard toggle, selected place, open drawer, last diary line shown as a toast. */
-let CW = { hard: false, spot: null, drawer: null, toast: null, dossier: null, rank: 'register', person: null };
+let CW = {
+  hard: false,
+  spot: null,
+  drawer: null,
+  toast: null,
+  dossier: null,
+  rank: 'register',
+  person: null,
+  recap: null,
+  own: null,
+  note: null
+};
 
 function youCard(run) {
   const you = Run.you(run),
@@ -270,7 +281,55 @@ function evalPanel(run) {
 /** Not selected: watch from the bench (wit XP) and end the week. */
 function benchEval() {
   Run.log(RUN, Eval.bench(RUN));
-  Run.endWeek(RUN);
+  endWeekUI();
+}
+/** End the week and remember what changed for the recap card (nothing changed = no card). */
+function endWeekUI() {
+  const run = RUN,
+    you = Run.you(run),
+    regs = Object.keys(REGIONS).filter(r => REGIONS[r].kind !== 'none'),
+    before = {
+      stat: Object.fromEntries(STATK.map(k => [k, you[k]])),
+      money: run.money,
+      fans: run.fans,
+      rep: Object.fromEntries(regs.map(r => [r, City.rep(run, r)])),
+      own: { ...(run.own || {}) },
+      top: run.log[0]
+    };
+  Run.endWeek(run);
+  const now = Run.you(run),
+    rows = [],
+    d = (n, txt) => n && rows.push([n > 0 ? 'up' : 'dn', txt]);
+  for (const k of STATK) d(now[k] - before.stat[k], `${signed(now[k] - before.stat[k])} ${STATNAME[k]}`);
+  d(run.money - before.money, `${run.money > before.money ? '+' : '−'}$${Math.abs(run.money - before.money).toLocaleString()}`);
+  d(run.fans - before.fans, `${signed(run.fans - before.fans)} fans`);
+  for (const r of regs) d(City.rep(run, r) - before.rep[r], `${REGIONS[r].name} standing ${signed(City.rep(run, r) - before.rep[r])}`);
+  for (const t of ownChanges(before.own, run.own || {})) rows.push(['ch', t.text]);
+  const at = before.top ? run.log.indexOf(before.top) : run.log.length,
+    lines = run.log.slice(0, at < 0 ? run.log.length : at).slice(0, 4);
+  CW.recap = rows.length || lines.length ? { week: run.week, rows, lines: lines.map(l => l.t) } : null;
+  renderCareer();
+}
+/** Places whose holder differs between two `run.own` maps: [{ id, to, text }]. */
+function ownChanges(a, b) {
+  return [...new Set([...Object.keys(a), ...Object.keys(b)])]
+    .filter(id => SPOTS[id] && (a[id] || SPOTS[id].region) !== (b[id] || SPOTS[id].region))
+    .map(id => {
+      const to = b[id] || SPOTS[id].region,
+        from = a[id] || SPOTS[id].region;
+      return { id, to, text: `${REGIONS[to].name} ${b[id] ? 'seized' : 'retook'} the ${SPOTS[id].name} from ${REGIONS[from].name}` };
+    });
+}
+/** The card after End week (hubCard shows it last, so events / cups / matches win). */
+function recapCard(run) {
+  const R2 = CW.recap;
+  return `<div class="panel recap"><span class="evk">${typeof R2.week === 'number' ? `Week ${R2.week}` : esc(R2.week)} done</span>
+    ${R2.rows.length ? `<div class="rrows">${R2.rows.map(([c, t]) => `<span class="rr ${c}">${esc(t)}</span>`).join('')}</div>` : ''}
+    ${R2.lines.length ? `<ul class="rlog">${R2.lines.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
+    <div class="evc"><button class="btn hot" onclick="recapDone()">Continue</button></div></div>`;
+}
+function recapDone() {
+  CW.recap = null;
   renderCareer();
 }
 /** The cup bracket; nm = your next match (from Cup.upcoming, prepared before rendering). */

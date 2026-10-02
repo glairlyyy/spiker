@@ -276,6 +276,5 @@ function mapTravel(x, y) {
 }
 function mapEndWeek() {
   if (!Run.canEndWeek(RUN)) return;
-  Run.endWeek(RUN);
-  renderCareer();
+  endWeekUI();
 }

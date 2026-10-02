@@ -79,6 +79,7 @@ function hubCard(run, nextCup) {
       dim: true
     };
   if (run.gazette && !run.gazette.read) return { html: gazetteCard(run), dim: true };
+  if (CW.recap) return { html: recapCard(run) };
   return null;
 }
 const hubClubsHint = () =>
