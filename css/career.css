@@ -1810,3 +1810,13 @@
   margin-top: 4px;
   line-height: 1.5;
 }
+
+/* "Fight for X" buttons wear the faction's colour */
+.spot .btn.fac {
+  background: color-mix(in srgb, var(--fc) 62%, #101216);
+  border-color: var(--fc);
+  color: #fff;
+}
+.spot .btn.fac:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--fc) 80%, #101216);
+}

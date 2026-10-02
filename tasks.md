@@ -154,3 +154,5 @@ T-001…T-089 (no T-012…T-015, T-021, T-033, T-049; T-082…T-088 open above).
 ## Unplanned changes
 
 (build chat: owner requests made directly in the build chat — one line each; the spec chat moves them into spec.md)
+
+- Street battle "Fight for X" buttons wear the faction colour (`.btn.fac`, `--fc`) — js/ui/career-map.js, css/career.css.
