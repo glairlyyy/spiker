@@ -163,13 +163,13 @@ Steps: after the final (same delay), replace the podium overlay with a full resu
 Accept: career match ends on the result screen; Continue returns to the hub (report or next card). QA: career evaluation (watch); screenshot.
 Result:
 
-### [ ] T-129: Title screen and Create
+### [x] T-129: Title screen and Create
 
 Spec: §10.7 Goldens: unchanged Save: no change
 Files: js/ui/menu.js, js/ui/career-create.js, css/career.css, index.html (header)
 Steps: Title as TitleScreen (Continue hero with name · role · week; New career; Encyclopedia; Settings → match settings defaults; Playtest card only with `?dev`). Create as CreateCareer: role cards (key stat, best places from SPOTS by `train`, techniques from Skills.forRole), name + Random, challenge toggles, `[Arrive on the island] [Back]`.
 Accept: no Playtest card without `?dev`; role card data comes from game data, not hard-coded text. QA: screenshots.
-Result:
+Result: Title (menu.js): brand left; Continue hero (ink, name · role · week n of 28, Enter), New career ("replaces X's run" when one exists), Encyclopedia, Settings → inline match-settings segments (`settingsMenu`, same storage); Playtest card only with `?dev`. Create (career-create.js, `.create2`): role cards built from KEYSTAT/STATNAME, SPOTS by `train`, Skills.forRole techniques; name + Random; challenge toggles as a segment with the picked ones' descriptions; `[Arrive on the island Enter] [Back Esc]`. Site header hidden on both (CSS `:has`); index.html unchanged. QA: screenshots, no Playtest without ?dev, Graphics set from the title; no errors.
 
 ### Match screen and short copy (after T-129)
 

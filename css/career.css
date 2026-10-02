@@ -3259,3 +3259,163 @@
   padding: 3px 8px;
   font-size: 12px;
 }
+/* Title screen and Create (T-129) */
+.wrap:has(.title, .create2) > .top {
+  display: none;
+}
+.title {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 48px;
+  align-items: center;
+  min-height: calc(100vh - 64px);
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 32px;
+}
+.title .tbrand h1 {
+  margin: 0 0 12px;
+  font: 700 72px/0.95 var(--disp);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.title .tbrand p {
+  margin: 0;
+  font-size: 18px;
+  color: var(--mute);
+}
+.title .tmenu {
+  display: grid;
+  gap: 12px;
+}
+.title .tcont {
+  display: grid;
+  gap: 4px;
+  padding: 20px 24px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--ink);
+  color: var(--on-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.title .tcont .lab,
+.title .tcont .mute {
+  color: var(--on-ink);
+  opacity: 0.7;
+}
+.title .tcont b {
+  font: 600 28px/1.1 var(--disp);
+  letter-spacing: 0.04em;
+}
+.title .tcont .tgo {
+  margin-top: 8px;
+  font-weight: 600;
+}
+.title .tbig {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  min-height: 56px;
+  padding: 10px 20px;
+  font-size: 16px;
+  text-align: left;
+}
+.title .tbig small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--mute);
+}
+.title .tbig.hot small {
+  color: var(--on-ink);
+  opacity: 0.7;
+}
+.title .tset {
+  position: static;
+  padding: 12px 16px;
+  background: var(--surf);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.title .mdev {
+  grid-column: 1 / -1;
+}
+.lab {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.create2 {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 48px 32px;
+}
+.create2 .chead {
+  margin-bottom: 24px;
+}
+.create2 .chead h2 {
+  margin: 4px 0 8px;
+  font: 600 36px/1.1 var(--disp);
+  letter-spacing: 0.04em;
+}
+.create2 > .lab {
+  margin-bottom: 8px;
+}
+.create2 .rcards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.create2 .rcard {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surf);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.create2 .rcard:hover {
+  border-color: var(--line-strong);
+}
+.create2 .rcard.on {
+  background: var(--sel-bg);
+  border-color: var(--sel-line);
+}
+.create2 .rcard b {
+  font-size: 20px;
+}
+.create2 .rcard .rk {
+  font-size: 13px;
+}
+.create2 .rcard .rk .mute {
+  display: block;
+  font-size: 12px;
+}
+.create2 .crow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.create2 .crow .lab {
+  margin-bottom: 8px;
+}
+.create2 .namerow {
+  display: flex;
+  gap: 8px;
+}
+.create2 .namerow input {
+  flex: 1;
+}
+.create2 .acts {
+  max-width: 520px;
+}

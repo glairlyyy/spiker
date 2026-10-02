@@ -1,4 +1,4 @@
-// Career: create your player — role, name, and optional challenge modes (every stat starts at 1). You always start as a free agent.
+// Career: create your player (spec §10.7) — role cards from game data, name, optional challenge toggles. You always start as a free agent.
 
 let CR = null;
 function renderCreate() {
@@ -16,43 +16,46 @@ function renderCreate() {
     }, 40);
     return;
   }
-  const row = k =>
-    `<div class="alloc" style="grid-template-columns: 78px 1fr 64px"><span>${STATNAME[k]}</span>${bar(CAREER.start)}<small class="mute">${KEYSTAT[CR.role] === k ? 'key stat' : ''}</small></div>`;
-  $('#app').innerHTML = `<section class="create">
-    <div class="panel">
-      <h2>New career${info(`Every stat starts at ${CAREER.start}; training takes you to ${TRAIN_CAP}, matches up to ${CAREER.runCap}. Your look is random for now.`)}</h2>
-      <h4>Role</h4>
-      <div class="seg" role="group" aria-label="Role">${['WS', 'MB', 'S'].map(r => `<button class="btn ${CR.role === r ? 'on' : ''}" onclick="crRole('${r}')" ${tip({ WS: 'Scores and serves. Key stat: power.', MB: 'Blocks and quick attacks. Key stat: jump.', S: 'Runs the offense; wit makes better sets and dumps. Key stat: speed.' }[r])}>${ROLE_NAME[r]}</button>`).join('')}</div>
-      <h4>Name</h4>
-      <div class="namerow"><input id="crname" maxlength="24" value="${esc(CR.name)}" oninput="CR.name=this.value" aria-label="Player name"><button class="btn" onclick="CR.name=rollName(new Set());renderCreate()">Random</button></div>
-      <h4>Stats</h4>
-      ${STATK.map(row).join('')}
-      <div class="alloc" style="grid-template-columns: 78px 1fr 64px"><span>Wit</span><span class="bar wit"><i style="width:${CAREER.witBase * 50}%"></i><b>${CAREER.witBase.toFixed(1)}</b></span><small class="mute"></small></div>
-      <p class="small mute">All stats start at 1. Train to 75; matches take you further.</p>
-    </div>
-    <div class="panel">
-      <h3>Your team</h3>
-      <p class="small mute">Free agent${info('You arrive with no club: play Academy evaluations with the Academy squad and sign with a club once you meet its conditions. In Story you still play the U21 Final Cup: with your faction, the Academy squad, or a hired street crew.')}</p>
-      <h4>Mode${info('Story: the U21 Final Cup always includes you. Endless comes later.')}</h4>
-      <div class="seg" role="group" aria-label="Mode">${Object.entries(MODES)
-        .filter(([, m]) => m.game)
-        .map(
-          ([k, m]) =>
-            `<button class="btn ${m.disabled ? '' : 'on'}" ${m.disabled ? 'disabled' : ''} ${tip(m.desc)}>${m.name}${m.disabled ? ' <small class="mute">(later)</small>' : ''}</button>`
-        )
-        .join('')}</div>
-      <h4>Challenge${info('Optional handicaps.')}</h4>
-      ${Object.entries(MODES)
+  const card = r => {
+    const k = KEYSTAT[r],
+      places = Object.values(SPOTS)
+        .filter(x => x.train === k)
+        .map(x => x.name),
+      techs = Skills.forRole(r)
+        .filter(id => SKILLS[id].tech && SKILLS[id].role !== 'any')
+        .map(id => SKILLS[id].name);
+    return `<button class="rcard ${CR.role === r ? 'on' : ''}" onclick="crRole('${r}')" aria-pressed="${CR.role === r}"><span class="lab">${r}</span><b>${ROLE_NAME[r]}</b>
+      <span class="rk"><span class="mute">Key stat</span> ${STATNAME[k]}</span>
+      <span class="rk"><span class="mute">Trains at</span> ${places.slice(0, 3).map(esc).join(' · ')}</span>
+      <span class="rk"><span class="mute">Techniques</span> ${techs.length ? techs.slice(0, 4).map(esc).join(' · ') : '—'}</span></button>`;
+  };
+  $('#app').innerHTML = `<section class="create2">
+    <div class="chead"><span class="lab">New career</span><h2>Who arrives on the island?</h2><p class="mute">Every stat starts at ${CAREER.start}. Training takes you to ${TRAIN_CAP}; matches take you further. You arrive as a free agent.</p></div>
+    <div class="lab">Role</div>
+    <div class="rcards">${['WS', 'MB', 'S'].map(card).join('')}</div>
+    <div class="crow"><div><div class="lab">Name</div><div class="namerow"><input id="crname" maxlength="24" value="${esc(CR.name)}" oninput="CR.name=this.value" aria-label="Player name"><button class="btn" onclick="CR.name=rollName(new Set());renderCreate()">Random</button></div></div>
+      <div><div class="lab">Challenge</div><div class="seg">${Object.entries(MODES)
         .filter(([, m]) => !m.game)
         .map(
           ([k, m]) =>
-            `<label class="opt" ${tip(m.desc)}><input type="checkbox" ${CR.mode[k] ? 'checked' : ''} onchange="CR.mode.${k}=this.checked;renderCreate()"> <b>${m.name}</b></label>`
+            `<button class="btn ${CR.mode[k] ? 'on' : ''}" onclick="CR.mode.${k}=!CR.mode.${k};renderCreate()" ${tip(m.desc)}>${m.name}</button>`
         )
-        .join('')}
-      <div class="acts pri"><button class="btn hot" onclick="crStart()">Start career</button><button class="btn" onclick="CR=null;navigate('menu')">Back</button></div>
-    </div>
+        .join('')}</div><p class="small mute">${
+        Object.entries(MODES)
+          .filter(([k, m]) => !m.game && CR.mode[k])
+          .map(([, m]) => esc(m.desc))
+          .join(' ') || 'Optional handicaps.'
+      }</p></div></div>
+    <div class="acts pri"><button class="btn hot" onclick="crStart()">Arrive on the island <kbd>Enter</kbd></button><button class="btn" onclick="CR=null;navigate('menu')">Back <kbd>Esc</kbd></button></div>
   </section>`;
 }
+document.addEventListener('keydown', e => {
+  if (!document.querySelector('.create2') || !CR) return;
+  if (e.key === 'Escape') {
+    CR = null;
+    navigate('menu');
+  } else if (e.key === 'Enter' && !e.target.closest('button,textarea')) crStart();
+});
 function crRole(r) {
   CR.role = r;
   renderCreate();
