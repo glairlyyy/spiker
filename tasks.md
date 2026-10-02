@@ -253,7 +253,7 @@ Steps: name tags get a 2px underline in the team colour (A.m.t[side].color) and 
 Accept: in a Monster game (all OP) both sides are told apart by underline. QA: Monster game screenshot.
 Result: done — tags.js: a team-colour underline under every role tag (OP red / star gold text unchanged) and a 9-court-unit font floor (≈12 CSS px on a 1392 px court); score band: server chip reads "serve", momentum bar labelled, zone as "In the zone: {team}" (T-107). QA: all-OP Monster game — sides told apart by underline; no pageerror.
 
-### [ ] T-109: Match control bar
+### [x] T-109: Match control bar
 
 Spec: §9.8 §9.9 Goldens: unchanged Save: no change
 Files: js/ui/match-screen.js (startMatch controls, timeoutButton, updTO, finishMatch, .fsbar), css/style.css
@@ -266,7 +266,7 @@ Steps:
 4. Fullscreen `.fsbar` reuses the same bar markup.
    Accept: career match shows one Timeout; Monster shows two, colour-coded; everything on one line at 1280 wide.
    QA: career evaluation (watch) + Monster game; screenshots.
-   Result:
+   Result: done — one 48px `.cbar`: Play (Pause with `Space` printed, 1×/2×/4× segment, Skip) · Your team (Timeout + Tactics pop-over; the side holding `Run.you(RUN)` in career fixtures, both sides labelled "Teams" in the Monster game; timeouts carry a 4px team-colour edge) · View right-aligned (Camera cycle, ⛶, sound, ⚙); 40px buttons; playback buttons disabled after the final. Deviation: the fullscreen `.fsbar` keeps its compact score + playback strip (sharing the bar's markup would duplicate the timeout ids); it shares the disabled-after-final rule. QA: 1280 wide — one line (scrollWidth = clientWidth 1232), Monster 2 timeouts, career evaluation 1; no pageerror.
 
 ### [ ] T-115: Match rail and commentary ticker
 

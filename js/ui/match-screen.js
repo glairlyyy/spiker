@@ -11,7 +11,7 @@ const SPEEDS = [1, 2, 4];
 const boardTeam = (t, i) =>
   `<div class="bt${i ? ' r' : ''}" style="--tc:${t.color}"><span class="bsw"></span><span class="bn">${esc(t.name)}</span><span class="rot" id="r${i}"></span></div>`;
 const timeoutButton = (t, i) =>
-  `<button class="btn" id="to${i}" onclick="reqTO(${i})" ${tip(`Call ${t.name}'s one timeout at the next break`)}>Timeout ${esc(t.short)}</button>`;
+  `<button class="btn tob" id="to${i}" style="--tc:${t.color}" onclick="reqTO(${i})" ${tip(`Call ${t.name}'s one timeout at the next break`)}>Timeout ${esc(t.short)}</button>`;
 /** Coach tactic select for side `i` (captain's call or a fixed tactic). */
 const tacticPicker = (t, i) =>
   `<label class="tac" style="--tc:${t.color}" ${tip(`Coach tactic for ${t.name} — applies from the next rally`)}><span>${esc(t.short)}</span><select id="tac${i}" onchange="setTactic(${i},this.value)"><option value="cap">Captain's call${leadLv(t.cap) ? ` (Lv${leadLv(t.cap)})` : ''}</option>${Object.entries(
@@ -58,6 +58,10 @@ function startMatch(fx) {
   if (fx.setup) fx.setup(m); // e.g. a career captain's pre-match buff
   VCS = m.court;
   G.view = 'match';
+  // your side in a career fixture (the squad that holds your player): only it gets Timeout / Tactics; Monster game: both
+  const you = fx.onFinish && typeof RUN !== 'undefined' && RUN ? Run.you(RUN) : null,
+    mine = you ? ([0, 1].find(i => squadOf(m.t[i]).some(p => p.id === you.id)) ?? null) : null,
+    sides = mine == null ? [0, 1] : [mine];
   $('#app').innerHTML = `<section class="match">
     <div class="board">
       ${boardTeam(a, 0)}
@@ -71,15 +75,16 @@ function startMatch(fx) {
       <div class="cut" id="cut"><div class="cut-band"><div class="cut-lines"></div><span class="cut-face"></span><span class="cut-face cut-face2"></span><span class="cut-num"></span><div class="cut-txt"><div class="cut-move"></div><div class="cut-name"></div><div class="cut-sub"></div></div></div></div>
       <div class="hbanner" id="hbanner" aria-live="polite"></div><div class="hsay" id="hsay" aria-live="polite"></div>
       <div class="toasts" id="toasts" aria-live="polite"></div><div class="over" id="over" hidden></div></div>
-    <div class="controls">
-      <button class="btn" id="pause" onclick="togglePause()">Pause</button>
-      <div class="seg" role="group" aria-label="Speed">${SPEEDS.map(s => `<button class="btn ${s === 1 ? 'on' : ''}" data-s="${s}" onclick="setSpeed(${s})">${s}x</button>`).join('')}</div>
-      <button class="btn" onclick="skipMatch()" ${tip('Skip to the final result')}>Skip ⏭</button>
-      ${timeoutButton(a, 0)}${timeoutButton(b, 1)}
-      <button class="btn" onclick="toggleFullscreen()" ${tip('Fullscreen court (F)')} aria-label="Fullscreen">⛶</button>
-      <button class="btn" id="snd" onclick="toggleSound()" aria-label="Sound">${SND.on ? '🔊' : '🔇'}</button>
-      ${pop('Tactics ▾', [a, b].map(tacticPicker).join('') + [a, b].map(defencePicker).join(''))}
-      ${pop('⚙ ▾', settingsMenu())}
+    <div class="controls cbar">
+      <div class="cg play"><span class="cgl">Play</span><button class="btn" id="pause" onclick="togglePause()">Pause <kbd>Space</kbd></button>
+        <div class="seg" role="group" aria-label="Speed">${SPEEDS.map(s => `<button class="btn ${s === 1 ? 'on' : ''}" data-s="${s}" onclick="setSpeed(${s})">${s}×</button>`).join('')}</div>
+        <button class="btn" onclick="skipMatch()" ${tip('Skip to the final result')}>Skip ⏭</button></div>
+      <div class="cg team"><span class="cgl">${mine == null ? 'Teams' : 'Your team'}</span>${sides.map(i => timeoutButton(m.t[i], i)).join('')}
+        ${pop('Tactics ▾', sides.map(i => tacticPicker(m.t[i], i)).join('') + sides.map(i => defencePicker(m.t[i], i)).join(''))}</div>
+      <div class="cg view"><span class="cgl">View</span><button class="btn" id="cam3bar" onclick="toggleCam3D()" ${tip('Courtside · Broadcast · Follow · POV')}>${cam3Text()}</button>
+        <button class="btn" onclick="toggleFullscreen()" ${tip('Fullscreen court (F)')} aria-label="Fullscreen">⛶</button>
+        <button class="btn" id="snd" onclick="toggleSound()" aria-label="Sound">${SND.on ? '🔊' : '🔇'}</button>
+        ${pop('⚙ ▾', settingsMenu())}</div>
     </div>
     <div class="feeds" hidden><div class="panel"><h3>Commentary</h3><ol class="log" id="log"></ol></div><div class="panel"><h3>Box score</h3><div id="box"></div></div></div>
   </section>`;
@@ -216,6 +221,7 @@ function followTarget() {
 }
 function cam3Label() {
   setLabel('#cam3btn', cam3Text());
+  setLabel('#cam3bar', cam3Text());
   if (!R3D) return;
   const f = ['follow', 'pov'].includes(R3D.camMode()),
     t = f ? followTarget() : { id: null, ds: [] },
@@ -475,6 +481,7 @@ function finishMatch() {
       if (m.stat[p.id]) addStats(p.tour, m.stat[p.id]);
     }
   const msg = A.fx.onFinish ? A.fx.onFinish(m) || '' : '';
+  for (const b of document.querySelectorAll('.cbar .play button, .fsb button[data-s], #fspause')) b.disabled = true; // playback is over
   boxScore();
   A.cele = { w: m.winner, t: 0 };
   A.ball.vis = false;
