@@ -25,7 +25,7 @@ function dossierCard(run, r) {
     v = d.standing,
     sgn = n => (n > 0 ? '+' : '') + n;
   const fronts = d.fronts.length
-    ? `<h4>Front</h4><div class="fms">${d.fronts.map(f => `<span class="fm ${f.meter > 0 ? 'up' : f.meter < 0 ? 'dn' : ''}" ${tip(`Border pressure vs ${REGIONS[f.vs].name}: ${FRONT.seize} net wins seize a place`)}>vs ${esc(REGIONS[f.vs].name)} ${sgn(f.meter)}</span>`).join('')}</div>
+    ? `<h4>Front</h4><div class="fms">${d.fronts.map(f => `<span class="fm ${f.meter > 0 ? 'up' : f.meter < 0 ? 'dn' : ''}" ${tip(GLOSSARY.seize.long)}>vs ${esc(REGIONS[f.vs].name)} ${sgn(f.meter)}</span>`).join('')}</div>
       ${d.took.length ? `<div class="small">Took: ${d.took.map(id => `${esc(SPOTS[id].name)} <i class="mute">(from ${esc(REGIONS[SPOTS[id].region].name)})</i>`).join(', ')}</div>` : ''}
       ${d.lost.length ? `<div class="small">Lost: ${d.lost.map(id => `${esc(SPOTS[id].name)} <i class="mute">(to ${esc(REGIONS[RUN.own[id]].name)})</i>`).join(', ')}</div>` : ''}
       <div class="small mute">Prices ×${d.priceMul.toFixed(1)} · facilities ×${d.qMul.toFixed(2)}</div>`
@@ -64,8 +64,8 @@ function dossierCard(run, r) {
     <button class="btn quiet back" onclick="closeDossier()">← All factions <kbd>Esc</kbd></button>
     <h3><span class="chip" style="--tc:${d.color}"></span>${esc(d.name)} <span class="mute small">${d.kind}</span> <span class="stk ${d.state === 'weakened' || d.state === 'pressed' ? 'far' : ''}">${DOSSIER_STATE[d.state]}</span></h3>
     <p class="small mute">${esc(d.desc)}</p>
-    <div class="small">Your standing <b>${sgn(v)}</b>${d.member ? ' · <i>you play for them</i>' : ''}</div>
-    <div class="rbar" ${tip('Standing −100 … +100')}><i style="${v >= 0 ? `left:50%;width:${v / 2}%` : `left:${50 + v / 2}%;width:${-v / 2}%`}"></i></div>
+    <div class="small">${term('standing', v)}${d.member ? ' · <i>you play for them</i>' : ''}</div>
+    <div class="rbar" ${tip(GLOSSARY.standing.long)}><i style="${v >= 0 ? `left:50%;width:${v / 2}%` : `left:${50 + v / 2}%;width:${-v / 2}%`}"></i></div>
     ${fronts}${places}${clubs}${roster}
   </aside>`;
 }

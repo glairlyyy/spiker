@@ -53,7 +53,7 @@ function placeTags(run, sid, trip) {
     held
       ? ptag('Seized', `Seized from ${REGIONS[s.region].name} in the street war`, 'warn')
       : front
-        ? ptag('Border', 'A border place: it changes hands if the neighbours win enough street battles')
+        ? ptag('Border', GLOSSARY.border.long)
         : '',
     trip
       ? ptag(`Trip ${trip}d`, `Getting there takes ${trip} day${trip > 1 ? 's' : ''}, on top of the day there`, trip >= 2 ? 'warn' : '')
@@ -154,7 +154,7 @@ function clashPanel(run) {
     title: `⚔ ${esc(REGIONS[c.a].name)} vs ${esc(REGIONS[c.b].name)}`,
     tags: [ptag(esc(c.name)), trip ? ptag(`Trip ${trip}d`, '', trip >= 2 ? 'warn' : '') : ''].filter(Boolean),
     flavour: 'Crews from both sides are settling it on the street this week.',
-    body: `<p class="small">Your standing: ${st(c.a)} · ${st(c.b)}</p><div class="pstakes">${stake(c.a, c.b)}${stake(c.b, c.a)}</div>`,
+    body: `<p class="small">${term('standing')} ${st(c.a)} · ${st(c.b)}</p><div class="pstakes">${stake(c.a, c.b)}${stake(c.b, c.a)}</div>`,
     row: [
       `<button class="btn" onclick="mapClash(null)" ${late ? `disabled ${tip(late)}` : tip(`See both sides' clubs in action: scouts them. −${CLASH.watchSta} stamina`)}>Watch · ${d}d</button>`,
       fight(c.a),
@@ -173,10 +173,10 @@ function qualityTag(run, id) {
     reg = REGIONS[SPOTS[id].region];
   if (!Q.known)
     return reg.hype
-      ? `<span class="qt unk" ${tip('Advertised as top class. Some city places are overhyped — you find out by training there.')}>Premium?</span>`
-      : `<span class="qt unk" ${tip('Rough and cheap. Now and then one is a hidden gem — you find out by training there.')}>Rough?</span>`;
+      ? `<span class="qt unk" ${tip(GLOSSARY.quality.long)}>Premium?</span>`
+      : `<span class="qt unk" ${tip(GLOSSARY.quality.long)}>Rough?</span>`;
   const stars = Q.q >= 1.3 ? '★★★★' : Q.q >= 1.2 ? '★★★' : Q.q >= 0.95 ? '★★' : '★';
-  return `<span class="qt ${Q.tag}" ${tip(`Training quality ×${Q.q}${Q.tag === 'gem' ? ' — a hidden gem' : Q.tag === 'overhyped' ? ' — overhyped' : ''}`)}>${stars}${Q.tag === 'gem' ? ' gem' : Q.tag === 'overhyped' ? ' overhyped' : ''}</span>`;
+  return `<span class="qt ${Q.tag}" ${tip(`Training quality ×${Q.q}`)}>${stars}${Q.tag === 'gem' ? ' gem' : Q.tag === 'overhyped' ? ' overhyped' : ''}</span>`;
 }
 
 /** A training place's parts for placeCard: kind, tags, flavour, gain rows, options (Normal / Hard, teammates), the Train button. */
@@ -249,7 +249,7 @@ function challengeBlock(run, ti) {
   return `<section class="pchal" ${tip('Challenge their squad for a stake: they may refuse. Win and the stake pays at odds; lose and it is gone. XP and techniques as in any match')}><div class="lab">Challenge</div>
     <p class="small ${W.verdict === 'refuses' ? 'mute' : ''}">Accepts: <b>${W.verdict}</b> — ${esc(W.why)}${side.kind === 'hired' ? ` · street crew $${side.cost}` : ''} · <span ${tip('Before the match: grows with their rating above yours, how badly you lose, low stamina and fighting again soon. Win or lose.')}>injury ~${risk}%</span></p>
     <div class="popts"><span class="small">Stake</span> <button class="btn" onclick="mapStake(${ti},-1)" ${st <= 0 ? 'disabled' : ''}>−</button> <b>$${st}</b> <button class="btn" onclick="mapStake(${ti},1)" ${st + CHALLENGE.stakeStep > City.stakeMax(run) ? 'disabled' : ''}>+</button></div>
-    <div class="acts pri"><button class="btn ${hot}" onclick="mapChallenge(${ti})" ${late ? `disabled ${tip(late)}` : ''}>Challenge · ${cost}d</button><button class="btn" onclick="mapChallenge(${ti}, true)" ${late ? 'disabled' : ''} ${tip('Get the result without watching')}>Sim ⏭</button></div></section>`;
+    <div class="acts pri"><button class="btn ${hot}" onclick="mapChallenge(${ti})" ${late ? `disabled ${tip(late)}` : ''}>Challenge · ${cost}d</button><button class="btn" onclick="mapChallenge(${ti}, true)" ${late ? 'disabled' : ''} ${tip(GLOSSARY.sim.long)}>Sim ⏭</button></div></section>`;
 }
 /** An official venue's card (spec §4.21): what is held there, and whether your match is there this week. */
 function venuePanel(run, id) {
@@ -287,7 +287,7 @@ function hqPanel(run, ti) {
     title: `${chip(t)}${esc(t.name)}`,
     tags: [
       ptag(`Rating ${t.ovr}`),
-      City.rep(run, f.region) ? ptag(`⚑ ${signed(City.rep(run, f.region))}`, `Your standing with ${REGIONS[f.region].name}`) : '',
+      City.rep(run, f.region) ? ptag(`⚑ ${signed(City.rep(run, f.region))}`, GLOSSARY.standing.long) : '',
       free ? ptag(esc(World.joinText(ti, run)), 'What they ask', j.ok ? 'sel' : '') : ''
     ].filter(Boolean),
     flavour: `${esc(f.front)}.${seen ? ` Word is: ${esc(f.dark)}.` : ''}`,

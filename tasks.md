@@ -271,13 +271,13 @@ Steps: rebuild with `term()` — training button/preview and `Training.addXp` lo
 Accept: the coach's goal reward reads `Hit ◆+40 fans+300 mood↑ · Miss mood↓` as icons. QA: training card, Season drawer, eval card.
 Result: built with `term()`: training button `Train Power · ☀3 ▮−20 $16`, gain rows with the stat icon and `+1 now` / `+1 in n`; `Training.addXp` label `✸+18` / `✸…` (GLOSSARY `glyph` for the 5 stats; the match-XP test regex follows); coach's goal (Season sheet) `Hit ◆+40 👥+300 ☺↑ · Miss ☹↓` (its ⓘ removed); focus `hit it ◆+25 👥+250`; eval/cup reward chips `Win ◆+40 👥+500 · Loss ◆+20 👥+100`; street battle stakes `▮−15 · Win ⚑+10 Wei ⚑−10 Shu 👥+60`; skill buttons `◆120 → learn`. Club join gaps already read `OVR 72 · you 41` (T-095) — unchanged; career-people.js had no cost lines to convert. QA: training card, Season sheet, eval card; no errors.
 
-### [ ] T-113: Remove duplicated explanations
+### [x] T-113: Remove duplicated explanations
 
 Spec: §9.4 Goldens: unchanged Save: no change
 Files: js/ui/career-map.js, js/ui/career-week.js, js/ui/match-screen.js, js/ui/career-create.js
 Steps: replace repeated sentences with the term alias — Sim (×5), Grade (×2), seize (×3), standing (×4), border place, quality (overhyped/hidden gem), together (teammate bonus); tooltips keep only numbers specific to that place/match. Grep each phrase listed in short-copy.md "Aliases" to zero repeats.
 Accept: each listed phrase appears once (in GLOSSARY). QA: spot cards + eval card.
-Result:
+Result: repeated explanations replaced by the glossary text or a term: Sim tips (eval, cup, challenge) → GLOSSARY.sim, the "result without watching" sub-labels dropped; the two full Grade copies → "× Grade" (eval tip keeps its per-play numbers); seize tips (Factions tab, dossier) → GLOSSARY.seize; standing labels/bars (street battle, Factions, dossier, HQ tag) → `term('standing', v)` + GLOSSARY.standing; Border tag and quality (Premium?/Rough?) tips → GLOSSARY; quality tag tip keeps only ×q. Grep in js/ui: each listed phrase 0 ("overhyped" stays once as the tag word). Deviation: career-dossier.js (not listed) also edited — it held 3 of the copies. match-screen Skip keeps its own tip (it is not Sim); career-create had none. QA: Factions tab, training card, eval card; no errors.
 
 ## Later — outlines
 
