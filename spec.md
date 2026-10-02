@@ -364,3 +364,27 @@ chooses or acts for the player.
   Tactics. ⚙ settings = labelled segmented controls (every option visible), opening upward from the bar. Results card
   action row: Continue/Back + Box score; playback disabled.
 
+## 10. Redesign [locked, not built]
+Design system pages `redesign.md` + `inventory.md`, mockups in the *Redesign* group (HubRedesign, SheetMe, SheetPeople,
+SheetWorld, SheetSeason, WeekBrief, WeekReport, EventCard, MatchResult, TitleScreen, CreateCareer). Supersedes the
+floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or number changes — layout and flow only.
+- §10.1 Hub = top bar 56px (labelled resources, Week n/28, tabs Me 1 · People 2 · World 3 · Season 4, ⚙) + week rail
+  340px (you + 4 stats, day track, coach's goal, inbox, End week action row) + map (Map/List toggle, legend) + place
+  panel 448px (right, over the map). No site header, no dock, no floating HUD corners.
+- §10.2 Day track: 7 slots Mon–Sun; each spent day shows what it was (icon + label), trip days hatched, free days empty;
+  a selected place's cost shows as dashed ghost slots before you commit. Match weeks (eval/cup) show one match slot.
+  Needs `run.days` (list of `{k, label, icon}` per spent day, cleared at week start) via RUN_DEFAULTS — no version bump.
+- §10.3 Inbox (rail): items until handled — street battle, approaches waiting, Gazette unread, match next week,
+  goal due ≤ 1 week, club would sign you. One button each (opens the place / sheet / card). Replaces
+  toasts, dock badges and the seize banner (a seize becomes an inbox item for one week).
+- §10.4 Sheets open over the map (rail stays): Me (stats, element, skills, life/housing rows) · People (filters, list,
+  person detail, approaches answered in place) · World (tabs Factions · Clubs · Rankings; dossier in place) · Season
+  (calendar, goal, sponsors, history, Diary/Gazette). ⚙ = Main menu, settings, Abandon run.
+- §10.5 Cards: Week brief (every week start; lists battle, payday, goal, match; eval/cup weeks lead to Match prep) ·
+  Event (only blocking card) · Week report (after End week; penalties first) · Match prep (eval/cup; two roster
+  columns, focus segment, Play/Sim). The old battle intro, Gazette pop-up and recap cards go.
+- §10.6 Match result screen replaces the podium overlay: grade tile, your K/B/A/E + focus, rewards chips, growth,
+  techniques picked up, top 3, Continue / Box score. The 3D match itself follows §9.9.
+- §10.7 Title screen (Continue hero, New career, Encyclopedia, Settings; playtest behind `?dev`) and Create (role
+  cards with key stat, best training places, techniques; name; challenge toggles; Arrive / Back).
+
