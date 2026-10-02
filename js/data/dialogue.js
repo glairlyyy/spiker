@@ -20,12 +20,6 @@ const CALLS = {
   recv: ['Mine!', 'I got it!', 'Leave it!'],
   dig: ['Got it!', 'Up!', "Don't let it drop!"]
 };
-/** Pick a line without touching the random sequence (varies by player number and rally count). */
-const callLine = (kind, p, m) => CALLS[kind][(p.num + ((m && m.pts[0] + m.pts[1]) || 0)) % CALLS[kind].length];
-/** How confident a player feels right now: attacking stats, mood and the team being in the zone. */
-const confidence = (p, m, side) =>
-  (p.power + p.jump) / 2 + ((m && m.mood[p.id]) || 0) * 15 + (m && m.zone[side] ? 12 : 0) + (p.star ? 5 : 0) + (p.op ? 8 : 0);
-
 // ---- personalities and scene / chatter lines (shonen moments, engine/hype.js) ----
 /** Each player has a fixed personality (from a name hash) that picks their lines. */
 const PERS = ['hot', 'cool', 'cocky', 'shy', 'leader'];

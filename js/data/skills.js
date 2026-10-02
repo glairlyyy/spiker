@@ -119,17 +119,6 @@ Object.assign(SKILLS, {
     desc: 'Planned back-row play — the block arrives late'
   }
 });
-/** Can this player use a technique? Learned (career) or meets the stat requirements. */
-function hasTech(p, id) {
-  const t = SKILLS[id];
-  if (!t || !t.tech) return false;
-  if (p.skills && p.skills.includes(id)) return true;
-  for (const k in t.req) if ((k === 'wit' ? p.wit : p[k]) < t.req[k]) return false;
-  return true;
-}
-const skillRoleOk = (s, role) => s.role === 'any' || s.role === role || (Array.isArray(s.role) && s.role.includes(role));
-/** Captain leadership level: 1 at 55+, 2 at 70+, 3 at 85+. */
-const leadLv = p => (p.lead >= 85 ? 3 : p.lead >= 70 ? 2 : p.lead >= 55 ? 1 : 0);
 /** Encyclopedia notes: when a technique fires and what beats it. */
 const SKILL_HOW = {
   freak: 'On a quick set, 50% when the setter has 1.6+ wit. The block covers a quarter as much. Counter: Read Block.',

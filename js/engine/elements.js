@@ -249,3 +249,6 @@ function elFar(m, ds, defs, lx, lz, far) {
 function elAll(teams) {
   for (const t of teams) for (const p of t.P) elAssign(p);
 }
+
+/** The mixed-element pair name for two elements (null when equal); data: EPAIR. */
+const epair = (a, b) => (a === b ? null : EPAIR[[a, b].sort().join('+')]);

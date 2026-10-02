@@ -490,7 +490,7 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
     cc = g.City.clashCost(run),
     clashSp0 = run.sp;
   for (const k of g.STATK) g.Run.you(run)[k] = 70; // (a new player starts at 1: give you a normal player's line so the match XP shows)
-  const fx = g.Cup.clash(run, c.a);
+  const fx = g.Fight.clash(run, c.a);
   assert(fx && !run.clash.done && run.days === 7, 'nothing is spent until the match ends');
   assert([...fx.a.P, ...fx.a.bench].includes(g.Run.you(run)) && fx.a.P.includes(g.Run.you(run)), 'you are on court for your side');
   const m = g.newMatch(fx.a, fx.b, false);

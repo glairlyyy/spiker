@@ -10,7 +10,7 @@ earlier files **at load time** (inside functions, anything loaded is fine).
 | Layer | Folder | Rule |
 |---|---|---|
 | Core | `js/core/` | `debuglog.js` (loaded first: `DBG` collects errors, console errors/warnings and match stalls; the header's Debug log button shows and copies them), `rng.js` (all game randomness via `R()`, seedable with `RNG.seed(n)`; presentation — particles, confetti, trail flicker, coach looks — uses `FXR` on `Math.random`, `FXR.isolate(fn)` for code that calls `R()` inside, so frame rate never moves the engine stream; a test scans js/render, js/audio and match-screen for game-RNG calls), `storage.js` (all `localStorage` via `store`, keys in `KEYS`). |
-| Data | `js/data/` | Constants plus a few small pure helpers that belong to their data (`CITY` is built by an IIFE; `callLine`, `epair`, `hasTech`…). No state, no randoms, no DOM. |
+| Data | `js/data/` | Constants only (`CITY` is built by an IIFE; its day / travel / fee tuning is one block in `data/city.js`). The helpers that read them live in the engine: `callLine` / `confidence` (hype.js), `epair` (elements.js), `hasTech` / `skillRoleOk` / `leadLv` (skills.js). No state, no randoms, no DOM. |
 | Engine | `js/engine/` | Pure simulation. **No DOM, canvas or audio.** Runs headless (odds, preseason, tests). |
 | Audio | `js/audio/` | Synthesized WebAudio effects plus the match music (`sfx.js`). |
 | Game | `js/game/` | Global state `G` (settings, current screen), screen router (`Screens`, `navigate()`), bracket helpers (career Cup). |
@@ -31,7 +31,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   `rally-defense.js`, `rally.js`.
 - **audio** `sfx.js` (internals in the `SOUND` closure; global: `SND`, `sfx`, `audioInit`, `toggleSound`, `setVolume`, `bgmStart`, `bgmStop`, `panAt`). **game** `state.js` (G, HYPE, Screens / navigate), `bracket.js`.
 - **career** `run.js` (Run, RUN_DEFAULTS), `training.js`, `growth.js`, `element.js`, `world.js`, `pool.js`, `eval.js`,
-  `city.js`, `front.js`, `mapmodel.js`, `dossier.js`, `events.js`, `goals.js`, `skills.js`, `rank.js`, `cup.js`.
+  `city.js`, `front.js`, `mapmodel.js`, `dossier.js`, `events.js`, `goals.js`, `skills.js`, `rank.js`, `cup.js`, `fight.js`.
 - **ui** `dom.js` (esc, tip, info, fold, signed…), `icons.js`, `match-screen.js`, `models.js`, `menu.js`,
   `debug-panel.js`, `career-create.js`, `career-week.js`, `map-view.js`, `career-map.js`, `career-dossier.js`,
   `career-hub.js`, `career-end.js`, `encyclopedia.js`.
@@ -104,7 +104,7 @@ The match screen takes a fixture: `navigate('match', { a, b, round, back, onFini
 - **Goals and sponsors** (`career/goals.js`): the coach sets a goal per block (`BLOCKS`), checked at the block's last
   week; sponsors make offers at fan milestones (a `pre` event shown before the week's choice) with a perk kept while a
   condition holds.
-- **Matches** (`career/cup.js`): an S–C grade from your own line scales that match's rewards; a pre-match focus goal;
+- **Matches** (`career/cup.js`; street battles, challenges, loss and injury are `Fight` in `career/fight.js`): an S–C grade from your own line scales that match's rewards; a pre-match focus goal;
   a captain's team talk before Cup matches (applied in `Cup.prepare` and the fixture's `setup(m)` hook).
 - Content is data: `data/career.js` (numbers, trainings, calendar, cups, rewards, ranks, unlocks, sponsors, modes),
   `data/events.js`, `data/skills.js`. Special events ('element', 'sponsor') are built in `Events.def`.
@@ -457,8 +457,8 @@ person and kind, are stored in `run.asks` (never `run.event`: nothing blocks). `
 memory; `Asks.moves` / `Asks.ask` are your own moves on a person (one ask a person a week, a `mine` entry in `run.asks`; acceptance =
 clamp(0.5 + stance / 100 + trait mods) rolled with `People.roll`, shown as likely / maybe / unlikely). Effects live in run fields
 (RUN_VERSION 12): `run.loans` (repaid or overdue in `Asks.week`, called from `World.week`), `run.vouch` (`World.joinReq` bars −REL.ask.vouch),
-`run.sitout` (`Run.lineup` benches that player that week only), `run.duo` (`Cup.duoIn` seats the mate in your next challenge and halves
-the stake; `Cup.challenge(..., force)` skips the club's acceptance for call-outs). UI: the Waiting section and the move buttons in
+`run.sitout` (`Run.lineup` benches that player that week only), `run.duo` (`Fight.duoIn` seats the mate in your next challenge and halves
+the stake; `Fight.challenge(..., force)` skips the club's acceptance for call-outs). UI: the Waiting section and the move buttons in
 `js/ui/career-people.js`, a count badge on the People shortcut.
 
 **Fates (T-064).** Person fields (RUN_VERSION 13): `status` 'active' | 'cut' | 'quit' | 'poached' | 'abroad' | 'national', `bench` (active: evaluations
@@ -666,22 +666,22 @@ need, worth }` (worth = your side's rating + standing ÷ `CHALLENGE.standPer` + 
 `margin`; the card shows only verdict + why). Doubtful is decided by a fixed hash of week / club / stake (no randoms, so leaving
 the match and re-asking changes nothing). `City.challenge(run, ti, stake)`: refused → the trip + a day are spent, the diary gets
 the faction's line (`CHALLENGE_LINES`), `run.refused[ti] = { week, n }` blocks that club for the week, and from `refuseMax`
-refusals each further one costs `pest` standing; accepted → `{ accepted, stake }` and nothing is spent yet. `Cup.challenge`
-is the fixture (same shape as `Cup.clash`; your side = Academy squad / club squad / `Cup.hired` street crew lent for the
-match; the club's real squad); `Cup.challengeResult` spends the trip + day, pays the stake at odds (win) or takes it (loss),
+refusals each further one costs `pest` standing; accepted → `{ accepted, stake }` and nothing is spent yet. `Fight.challenge`
+is the fixture (same shape as `Fight.clash`; your side = Academy squad / club squad / `Fight.hired` street crew lent for the
+match; the club's real squad); `Fight.challengeResult` spends the trip + day, pays the stake at odds (win) or takes it (loss),
 pays the crew, then standing / fans / match XP / techniques / street points / `Rank.meet`. UI: `challengeBlock` in
 `career-map.js` (stake stepper, verdict line, Challenge, ⏭).
 
 ### Loss and injury (T-038)
 
-After a challenge (`Cup.challengeResult`) or a street fight you fought (`Cup.clashResult`): a loss runs `Cup.lose` (`LOSS` in
+After a challenge (`Fight.challengeResult`) or a street fight you fought (`Fight.clashResult`): a loss runs `Fight.lose` (`LOSS` in
 `data/world.js`: extra stamina, mood, standing with the club's region — challenges only, `run.losses[region]` counts them and from the
 `repeat`-th each one adds `repeatRep`; a street fight keeps `CLASH.lose` — and a loss by `heavy`+ points costs fans and pushes a
-`GAZETTE_JABS` line through `Run.news`); then, win or lose, `Cup.injure(run, risk)` rolls once (`R()`) against `City.injuryRisk(run,
+`GAZETTE_JABS` line through `Run.news`); then, win or lose, `Fight.injure(run, risk)` rolls once (`R()`) against `City.injuryRisk(run,
 oppRating, margin)` (pure: `INJURY` — rating gap, points lost by, low stamina, days since `run.lastFight`; `Run.dayNo` is the clock),
 a second roll sets the severity (`run.injury = { weeks }`, longer of the old one; severe also −`lose` on one stat, picked from that
 roll). The risk is computed before the trip and the match's tiredness are counted. `City.fightBan` ("Injured — rest first") makes
-`City.challenge`, `Cup.challenge` and `Cup.clash` refuse; `Run.lineup` never starts an injured you. The physio clears `run.injury`
+`City.challenge`, `Fight.challenge` and `Fight.clash` refuse; `Run.lineup` never starts an injured you. The physio clears `run.injury`
 but not the lost stat. Evaluations and the cup carry no injury roll. Save v7 adds `run.losses` and `run.lastFight`. UI: the challenge
 block and the street fight buttons show "Injury risk ~N %" and are disabled while injured.
 
@@ -699,9 +699,9 @@ Training gives XP (`Training.xpFor`: base gain × `TRAIN_X.xp.per` × every mult
 `Growth.matchXp(run, m, mine, opp)` (career/growth.js), called from `Cup.result` when you played: your `m.stat` line × `MATCH_XP.per`
 (`data/career.js`: kills → power, aces → power, blocks → jump + def, digs → def + speed, assists → wit, attempts → jump), × the gap
 factor `Growth.gapFactor(ovr of your 4 starters, opponent's)` = clamp(1 + gap × `perGap`, `gap`), each stat through
-`Training.addXp(…, 'match')` (so matches pass `TRAIN_CAP`). The winner is never read. A street battle you fight is a real match: `Cup.clash(run, side)`
+`Training.addXp(…, 'match')` (so matches pass `TRAIN_CAP`). The winner is never read. A street battle you fight is a real match: `Fight.clash(run, side)`
 builds the fixture (your side's crew from `Pool.draw`, you on court in your role, vs the other side's crew; both lent via
-`Eval.squad` / `Eval.lend`), nothing is spent until `Cup.clashResult` (trip + a day, stamina, standing, fans ×grade, match XP,
+`Eval.squad` / `Eval.lend`), nothing is spent until `Fight.clashResult` (trip + a day, stamina, standing, fans ×grade, match XP,
 techniques, `Front.result`); leaving early leaves the battle open. Watching stays `City.clash(run, null)`. The result line starts
 with "XP: …" and the factor note.
 
@@ -767,7 +767,7 @@ Pure refactors must pass **without** `--update`.
 
 ### Match history (T-052)
 `Cup.record(run, m, kind, extra)` (cup.js) pushes one plain entry onto `run.mlog` (save v8; trimmed to `MLOG.max` = 80, oldest dropped) for every match you are in:
-it is called at the start of `Cup.result` (kind `eval` | `cup`, + `round`), `Cup.challengeResult` (`challenge`, + `stake`) and `Cup.clashResult` (`street`), i.e. before
+it is called at the start of `Cup.result` (kind `eval` | `cup`, + `round`), `Fight.challengeResult` (`challenge`, + `stake`) and `Fight.clashResult` (`street`), i.e. before
 `Growth.matchXp`, so `you` (OVR + the 5 stats) is the kick-off state. Entry: `{ week, day, kind, vs, short, score: [yours, theirs], win, grade (null if you did not play),
 played, you, line: { k, att, err, blk, ace, dig, ast }, box: [{ name, role, side, ovr, k, att, err, blk, ace, dig, ast, you? }] }` — numbers and strings only, no player or team
 refs. `matchLog(run)` (career-week.js) lists them newest first, each a `fold` (`ml<index>`) with your snapshot (change vs your previous entry), your line and the box score;

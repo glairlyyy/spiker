@@ -92,7 +92,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   max 3; routing §4.18). Nothing spills over; nights free; only the player ends the week. One event roll per week.
   Day session = DAY_GAIN (0.25) of the old weekly gain.
 - §4.6 Street battles (CLASH, ~45 % of training weeks, popup at week start): watch (scouts both) or fight for a side
-  (win +standing, lose −; other side always −). `run.rep` = standing per region. Fighting = real match (`Cup.clash`):
+  (win +standing, lose −; other side always −). `run.rep` = standing per region. Fighting = real match (`Fight.clash`):
   your side's pool crew with you vs theirs; watch or Sim ⏭; normal XP, techniques, grade. Crews and your evaluation
   squad show their 3-letter tag ('EVL' only for the opposing evaluation squad).
 - §4.7 Faction war (`front.js`, FRONT): each battle (joined or settled at week end) pushes its border meter; 2 net

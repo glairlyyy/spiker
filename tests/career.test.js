@@ -252,7 +252,7 @@ test('career: match history', () => {
   run.money = 500;
   const ti = g.FACTIONS.findIndex(f => f.region === 'outlaws');
   const stake = g.CHALLENGE.outlaws.minStake,
-    fc = g.Cup.challenge(run, ti, stake),
+    fc = g.Fight.challenge(run, ti, stake),
     mc = play(fc);
   fc.onFinish(mc);
   eq(run.mlog.length, 2, 'a challenge adds one entry');
@@ -265,7 +265,7 @@ test('career: match history', () => {
   run.event = null;
   run.pos = [470, 600];
   run.clash = { site: 0, seen: false, done: false };
-  const fs = g.Cup.clash(run, g.CLASH.sites[0].a),
+  const fs = g.Fight.clash(run, g.CLASH.sites[0].a),
     ms = play(fs);
   fs.onFinish(ms);
   eq(run.mlog.length, 3, 'a street fight adds one entry');
@@ -689,7 +689,7 @@ test('career: rankings — register, gazette, street, known gate', () => {
   // a street battle you fight: your points, and the winner faction's best players share
   run.clash = { site: 0, att: g.CLASH.sites[0].a, seen: false, done: false };
   const side = g.CLASH.sites[0].a,
-    fx = g.Cup.clash(run, side),
+    fx = g.Fight.clash(run, side),
     m = g.newMatch(fx.a, fx.b, false);
   while (!m.over) g.playRally(m);
   fx.onFinish(m);
@@ -746,7 +746,7 @@ test('career: team challenge — worth, refusal, stake payout', () => {
   assert(acc && acc.accepted && acc.stake === 50, 'the Outlaws accept a 50 stake');
   const d1 = run.days,
     money0 = run.money,
-    fx = g.Cup.challenge(run, ti, 50),
+    fx = g.Fight.challenge(run, ti, 50),
     m = g.newMatch(fx.a, fx.b, false);
   eq(run.days, d1, 'nothing is spent until it finishes');
   while (!m.over) g.playRally(m);
@@ -760,14 +760,14 @@ test('career: team challenge — worth, refusal, stake payout', () => {
   // alone: a street crew is hired (paid from your money) and you play in it
   run.academy = false;
   run.team = null;
-  const T = g.Cup.hired(run);
+  const T = g.Fight.hired(run);
   assert(g.squadOf(T).length === 6 && T.P.includes(you) && T.P.length === 4, 'the hired crew: 6 players, you on court');
   const side = g.City.challengeSide(run);
   eq(side.kind, 'hired', 'alone = hired crew');
   run.days = g.WEEK_DAYS;
   run.week = 6;
   const m1 = run.money,
-    fx1 = g.Cup.challenge(run, ti, 50),
+    fx1 = g.Fight.challenge(run, ti, 50),
     mm = g.newMatch(fx1.a, fx1.b, false);
   while (!mm.over) g.playRally(mm);
   fx1.onFinish(mm);
@@ -791,7 +791,7 @@ test('career: challenge loss and injury', () => {
       run.lastFight = null;
     },
     play = (stake = 50) => {
-      const fx = g.Cup.challenge(run, ti, stake),
+      const fx = g.Fight.challenge(run, ti, stake),
         m = g.newMatch(fx.a, fx.b, false);
       while (!m.over) g.playRally(m);
       return { m, line: fx.onFinish(m) };
@@ -841,7 +841,7 @@ test('career: challenge loss and injury', () => {
   const before = g.STATK.map(k => you[k]);
   let n = 0;
   g.RNG.next = () => (n++ ? 0.97 : 0.0);
-  const txt = g.Cup.injure(run, 0.5);
+  const txt = g.Fight.injure(run, 0.5);
   assert(run.injury && run.injury.weeks === g.INJURY.weeks.severe && /severe/.test(txt), `severe: ${txt}`);
   const lost = g.STATK.filter((k, i) => you[k] < before[i]);
   assert(lost.length === 1 && before[g.STATK.indexOf(lost[0])] - you[lost[0]] === g.INJURY.lose, 'one stat loses INJURY.lose for good');
@@ -849,7 +849,7 @@ test('career: challenge loss and injury', () => {
   roll(0.99);
   eq(g.City.fightBan(run), 'Injured — rest first', 'the ban text');
   eq(g.City.challenge(run, ti, 50), null, 'no challenge while injured');
-  eq(g.Cup.challenge(run, ti, 50), null, 'no challenge match while injured');
+  eq(g.Fight.challenge(run, ti, 50), null, 'no challenge match while injured');
   const L = g.Run.lineup(run, run.pickup, null, true);
   assert(!L.starts, 'an injured you is benched');
   // the physio clears the weeks but not the stat
@@ -1379,7 +1379,7 @@ test('asks: each kind writes its memory and effect', () => {
   g4.Asks.answer(run4, ask(g4, run4, m4.id, 'duo_challenge'), true);
   assert(run4.duo && memKinds(g4, run4, m4.id).includes('duo'), 'duo set');
   const tj = run4.teams.findIndex(t => t !== g4.Run.myTeam(run4)),
-    fx = g4.Cup.challenge(run4, tj, 200, true);
+    fx = g4.Fight.challenge(run4, tj, 200, true);
   assert(fx && fx.a.P.includes(m4), 'the mate is in the challenge side');
   assert(/\$100/.test(fx.round), 'stake split: ' + fx.round);
   eq(run4.duo, null, 'the duo is used up');
