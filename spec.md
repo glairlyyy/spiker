@@ -94,7 +94,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 - §4.6 Street battles (CLASH, ~45 % of training weeks, popup at week start): watch (scouts both) or fight for a side
   (win +standing, lose −; other side always −). `run.rep` = standing per region. Fighting = real match (`Fight.clash`):
   your side's pool crew with you vs theirs; watch or Sim ⏭; normal XP, techniques, grade. Crews and your evaluation
-  squad show their 3-letter tag ('EVL' only for the opposing evaluation squad). "Fight for X" buttons wear X's faction colour.
+  squad show their 3-letter tag ('EVL' only for the opposing evaluation squad). "Fight for X" buttons carry X's swatch (faction colours only on chips, borders, banners — §9.2).
 - §4.7 Faction war (`front.js`, FRONT): each battle (joined or settled at week end) pushes its border meter; 2 net
   wins seize a border place (2 per side per border; retakes first) → owner's price/turf/colour. `FRONT.weakAt` (2)
   places lost = weakened (dearer, worse facilities, easier to join). Wu revenge bonus. Minors not in the war. Seized =
