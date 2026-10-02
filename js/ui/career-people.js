@@ -14,7 +14,7 @@ function personRow(run, p) {
     open = CW.person === id,
     tag = Rel.tag(run, id),
     out = People.out(run, p);
-  return `<div class="prow ${open ? 'open' : ''}"><div class="phd" onclick="openPerson('${esc(id)}')" role="button" tabindex="0">${faceSVG(p, 0, 28)}<span class="pn"><b>${stag(p)}${esc(p.name)}</b> <i class="mute small">${p.role} · ${personMet(run, p) ? 'OVR ' + ovr(p) : 'unrated'}${out ? ' · injured' : ''}</i></span><span class="stc ${tag}">${STANCE_NAME[tag]}</span>${Rel.rival(run, id) ? '<span class="stc rival">rival</span>' : ''}</div>${open ? personCard(run, id) : ''}</div>`;
+  return `<div class="prow ${open ? 'open' : ''}"><div class="phd" onclick="openPerson('${esc(id)}')" role="button" tabindex="0">${faceSVG(p, 0, 28)}<span class="pn"><b>${stag(p)}${esc(p.name)}</b> <i class="mute small">${p.role} · ${personMet(run, p) ? 'OVR ' + ovr(p) : 'unrated'}${out ? ' · injured' : ''}</i></span>${tag === 'neutral' ? '' : `<span class="stc ${tag}">${STANCE_NAME[tag]}</span>`}${Rel.rival(run, id) ? '<span class="stc rival">rival</span>' : ''}</div>${open ? personCard(run, id) : ''}</div>`;
 }
 /** The moves you can make on them: a button each, with how likely they are to say yes as a word (never the number). */
 function moves(run, id) {

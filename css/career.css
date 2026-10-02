@@ -140,7 +140,7 @@
   align-items: start;
 }
 .ycard .stats {
-  grid-template-columns: 76px 1fr;
+  grid-template-columns: 136px 1fr;
   margin: 8px 0 12px;
 }
 .vitals {
@@ -2135,4 +2135,58 @@
   margin-top: 8px;
   padding: 4px 8px;
   font-size: 13px;
+}
+/* drawer clean-up (T-104) */
+.cal .pip {
+  display: inline-flex;
+  gap: 1px;
+  align-items: baseline;
+  justify-content: center;
+}
+.cal .pip i,
+.callg i {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+.callg u {
+  text-decoration: none;
+  box-shadow: inset 0 -3px 0 var(--gold);
+}
+.ygoal {
+  margin: 8px 0 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--surf2);
+  font-size: 13px;
+}
+.ygoal > span {
+  color: var(--mute);
+  margin-right: 6px;
+}
+.ygoal.warn {
+  box-shadow: inset 3px 0 0 var(--warn);
+}
+.bond .bline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px auto;
+  align-items: center;
+  gap: 8px;
+}
+.bond .bline .nm {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bond .bline .bbar {
+  margin: 0;
+}
+.btn.quiet {
+  background: none;
+  border-color: transparent;
+  padding-left: 0;
+}
+.btn.quiet.danger {
+  color: var(--bad);
 }

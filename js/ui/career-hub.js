@@ -3,7 +3,7 @@
 // Gazette open a card over the map; the last diary line flashes as a toast.
 
 const HUB_DRAWERS = {
-  me: ['👤', 'Player', run => youCard(run) + seasonCard(run)],
+  me: ['👤', 'Player', run => youCard(run)], // the goal and sponsors live in Season
   places: ['📍', 'Places', run => placesCard(run)],
   team: ['🤝', 'Team', run => bondCard(run)],
   people: ['👥', 'People', run => peopleCard(run)],

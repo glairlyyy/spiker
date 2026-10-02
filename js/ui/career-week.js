@@ -24,7 +24,7 @@ function youCard(run) {
     mood = MOODS[run.mood],
     staPct = Math.round((run.sta / run.staMax) * 100);
   const capTag = k =>
-    `<small class="gate ${you[k] >= TRAIN_CAP ? 'at' : ''}" title="Training stops at ${TRAIN_CAP}. Matches only above.">⌈${TRAIN_CAP}</small>`;
+    `<small class="gate ${you[k] >= TRAIN_CAP ? 'at' : ''}" title="Training stops at ${TRAIN_CAP}. Matches only above.">${you[k]} / ${TRAIN_CAP}</small>`;
   return `<div class="panel ycard">
     <div class="phd"><span class="portrait">${faceSVG(you, mood.form, 64)}<b>${you.num}</b></span>
       <div><div class="pn">${stag(you)}${esc(you.name)}${you.cap ? ' <span class="capb" title="Team captain">C</span>' : ''}</div>
@@ -36,12 +36,6 @@ function youCard(run) {
             ? `★ Star${info(`OP at OVR ${CAREER.op.ovr}, ${STATNAME[KEYSTAT[you.role]]} ${CAREER.op.key}, wit ${CAREER.op.wit}`)}`
             : `Rookie${info(`★ Star at OVR ${CAREER.star.ovr}`)}`
       }</div></div></div>
-    <div class="stats">${STATK.map(k => {
-      const pr = Training.progress(run, k);
-      return `<span ${tip(`${Math.round((pr.have / Math.max(1, pr.need)) * 100)}% of the way to the next point`)}>${STATNAME[k]}${capTag(k)}</span><span class="xpbar">${bar(you[k])}<i style="width:${Math.round((pr.have / Math.max(1, pr.need)) * 100)}%"></i></span>`;
-    }).join('')}
-      <span>Wit</span><span class="bar wit"><i style="width:${you.wit * 50}%"></i><b>${you.wit.toFixed(2)}</b></span>
-      <span>Leadership</span>${bar(you.lead)}</div>
     <div class="vitals">
       <div><span>Stamina</span><span class="sbar big ${staPct < 50 ? 'low' : ''}"><i style="width:${staPct}%"></i></span><b>${run.sta}/${run.staMax}</b></div>
       <div><span>Mood</span><span class="mood m${run.mood}">${mood.name}</span></div>
@@ -49,6 +43,13 @@ function youCard(run) {
       <div><span>Fans</span><b>${run.fans.toLocaleString()}</b></div>
       <div><span>Money</span><b>$${run.money.toLocaleString()}</b></div>
     </div>
+    ${run.goal && run.goal.done == null ? `<div class="ygoal ${run.goal.by - run.week <= 1 ? 'warn' : ''}"><span>Coach's goal</span> ${esc(Goals.text(run, run.goal))} · ${esc(Goals.progress(run, run.goal))} · by W${run.goal.by}</div>` : ''}
+    <div class="stats">${STATK.map(k => {
+      const pr = Training.progress(run, k);
+      return `<span ${tip(`${Math.round((pr.have / Math.max(1, pr.need)) * 100)}% of the way to the next point`)}>${STATNAME[k]}${capTag(k)}</span><span class="xpbar">${bar(you[k])}<i style="width:${Math.round((pr.have / Math.max(1, pr.need)) * 100)}%"></i></span>`;
+    }).join('')}
+      <span>Wit</span><span class="bar wit"><i style="width:${you.wit * 50}%"></i><b>${you.wit.toFixed(2)}</b></span>
+      <span>Leadership</span>${bar(you.lead)}</div>
     ${elementLine(run)}
     ${you.skills.length ? `<div class="skchips">${you.skills.map(skillChip).join('')}</div>` : ''}
     ${run.mode.hard || run.mode.short ? `<div class="small mute runtags">${[run.mode.hard ? 'Hard league' : '', run.mode.short ? 'Short season' : ''].filter(Boolean).join(' · ')}</div>` : ''}
@@ -75,7 +76,7 @@ function elementLine(run) {
 function seasonCard(run) {
   const g = run.goal,
     prog = Goals.progress(run, g);
-  return `<div class="panel season"><h3>Season${run.sponsors.length ? '' : info(`Sponsors make offers at ${SPONSOR_AT.map(f => f.toLocaleString()).join(', ')} fans.`)}</h3>
+  return `<div class="panel season"><h3>Goal and sponsors${run.sponsors.length ? '' : info(`Sponsors make offers at ${SPONSOR_AT.map(f => f.toLocaleString()).join(', ')} fans.`)}</h3>
     ${g ? `<div class="goal ${g.done === true ? 'ok' : g.done === false ? 'miss' : ''}"><b>Coach's goal${info(`Reward: +${GOAL_REWARD.sp} skill pts, +${GOAL_REWARD.fans} fans, mood up. Missing it: mood down.`)}</b> ${esc(Goals.text(run, g))} <span class="mute small">by W${g.by}${prog ? ' · ' + prog : ''}${g.done === true ? ' · reached' : g.done === false ? ' · missed' : ''}</span></div>` : ''}
     ${run.cups.map(c => `<div class="small">${esc(CUPS.find(x => x.id === c.id).name)}: <b>${Cup.placeText(c.place)}</b></div>`).join('')}
     ${
@@ -103,7 +104,7 @@ function bondCard(run) {
       list
         .map(m => {
           const b = you.bond[m.id] || 0;
-          return `<div class="bond">${faceSVG(m, 0, 30)}<div><b>${stag(m)}${esc(m.name)}</b>${m.cap ? ' <span class="capb">C</span>' : ''} <i class="mute small">${m.role} · OVR ${ovr(m)}</i>
+          return `<div class="bond">${faceSVG(m, 0, 30)}<div class="bline"><span class="nm"><b>${stag(m)}${esc(m.name)}</b>${m.cap ? ' <span class="capb">C</span>' : ''} <i class="mute small">${m.role} · OVR ${ovr(m)}</i></span>
         <span class="bbar ${b >= 80 ? 'f' : b >= 60 ? 'c' : ''}"><i style="width:${b}%"></i></span><small class="mute">Bond ${b}${b >= 80 ? ' · friends' : b >= 60 ? ' · combos' : ''}</small></div></div>`;
         })
         .join('');
@@ -115,7 +116,7 @@ function bondCard(run) {
       : `<h4>Chemistry${info('Allies who rate each other form cliques; the captain starts his friends a little more often. Feuds go the other way.')}</h4>${chemBlock(run)}`
   }${
     World.isFree(run) && run.academy !== false
-      ? `<p class="small mute" id="leaveac"><button class="btn" onclick="leaveSquad()" ${tip('The Academy will not invite you again')}>Leave squad</button></p>`
+      ? `<p class="small mute" id="leaveac"><button class="btn quiet danger" onclick="leaveSquad()" ${tip('The Academy will not invite you again')}>Leave squad</button></p>`
       : ''
   }</div>`;
 }
@@ -141,7 +142,7 @@ function calendar(run) {
       skip = run.mode.short && w < 5,
       now = !cur && w === run.week;
     pips.push(
-      `<span class="pip ${w < run.week || (cur && w <= run.week) ? 'past' : now ? 'now' : ''} ${k} ${skip ? 'skip' : ''} ${g && g.by === w && g.done == null ? 'goalw' : ''}" title="Week ${w}${lab ? ': ' + lab : ''}${g && g.by === w ? ' · goal due' : ''}">${lab ? lab[0] : w}</span>`
+      `<span class="pip ${w < run.week || (cur && w <= run.week) ? 'past' : now ? 'now' : ''} ${k} ${skip ? 'skip' : ''} ${g && g.by === w && g.done == null ? 'goalw' : ''}" title="Week ${w}${lab ? ': ' + lab : ''}${g && g.by === w ? ' · goal due' : ''}">${w}${lab ? `<i>${lab[0]}</i>` : ''}</span>`
     );
     const c = CUPS.find(x => x.after === w);
     if (c) {
@@ -151,7 +152,7 @@ function calendar(run) {
       );
     }
   }
-  return `<div class="cal">${pips.join('')}</div>`;
+  return `<div class="cal">${pips.join('')}</div><p class="small mute callg"><i>E</i> evaluation · <i>C</i> camp · <u>underline</u> goal due</p>`;
 }
 /** Pre-match choices: a focus goal (everyone) and, for Cup matches, the captain's team talk. */
 function matchPrep(run, cup) {
@@ -428,7 +429,7 @@ function skillShop(run, open) {
   const aff = ids.filter(id => !you.skills.includes(id) && Skills.canLearn(run, id)).length;
   return `<div class="panel">${fold(
     'skills',
-    `<h3>Skills <span class="pts">${run.sp} pts</span>${aff ? ` <span class="skaff">${aff} affordable</span>` : ''}</h3>`,
+    `<h3><span class="pts">${run.sp} skill pts</span>${aff ? ` <span class="skaff">${aff} affordable</span>` : ''}</h3>`,
     `<p class="small mute">${svgI('active')} Active — fire in matches ${svgI('passive')} Passive — always on${info('Active techniques also switch on by themselves once your stats meet the requirement.')} <a href="#" onclick="navigate('encyclopedia');return false">Encyclopedia</a></p>
     <div class="skills compact">${ids
       .filter(id => SKILLS[id].tech)
@@ -473,7 +474,7 @@ function playCareer(kind, sim) {
 function lifeCard(run) {
   const H = HOUSING[run.housing],
     next = Math.ceil(run.week / ECON.payEvery) * ECON.payEvery;
-  return `<div class="panel life"><h3>Life${info(`Payday every ${ECON.payEvery} weeks: +$${ECON.allowance} allowance, −$${ECON.food} food, −rent. Run out of money and you're evicted to the abandoned gym. Prize money from matches.`)}</h3>
+  return `<div class="panel life"><h3>Money${info(`Payday every ${ECON.payEvery} weeks: +$${ECON.allowance} allowance, −$${ECON.food} food, −rent. Run out of money and you're evicted to the abandoned gym. Prize money from matches.`)}</h3>
     <div class="small"><b>$${run.money.toLocaleString()}</b> · next payday week ${next}</div>
     <div class="homes">${HOUSEK.map(k => homeRow(run, k)).join('')}</div>
     <div class="small mute">${World.isFree(run) ? 'Free agent — no club yet' : `${esc(FACTIONS[run.team].name)}${info(`${FACTIONS[run.team].front}. Word is: ${FACTIONS[run.team].dark}.`)}`}</div></div>`;

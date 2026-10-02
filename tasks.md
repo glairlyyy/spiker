@@ -200,13 +200,13 @@ Steps: groups You (Places, Skills, Life) · People (Team, People, Clubs) · Worl
 Accept: with any drawer open every dock button is clickable. QA: open Factions, click Diary.
 Result: done — `DOCK_GROUPS` You (Places, Skills, Life) · People (Team, People, Clubs — Clubs only while free) · World (Season, Factions, Rankings, Gazette, Diary), 24px gaps with a divider; digits printed 1–9 then 0 (key 0 works); Menu moved to a `⚙ Menu` button in the top-left HUD; dock 72px tall, drawers end 8px above it. QA: Factions open → Diary clickable; key 0 opens the Gazette; no pageerror.
 
-### [ ] T-104: Drawer clean-up — headings, Player first, calendar numbers
+### [x] T-104: Drawer clean-up — headings, Player first, calendar numbers
 
 Spec: §9.3 Goldens: unchanged Save: no change
 Files: js/ui/career-week.js (youCard, seasonCard, calendar, skillShop, lifeCard), js/ui/career-people.js, css/career.css
 Steps: drop the inner `<h3>` that repeats the drawer title (Skills, Season, Life); youCard order = stamina, mood, coach's goal, then stats; cap shown as `1 / 75`; calendar pips keep the week number with the type as colour + small letter, goal week underline gets a legend; People/Team: "neutral" pill only when not neutral, bond bar inline; Leave squad as a quiet `bad` text button.
 Accept: no drawer shows its title twice; week 4 pip reads "4". QA: open each drawer.
-Result:
+Result: done — inner titles renamed so no drawer repeats its own (Season panel → "Goal and sponsors", Skills → "N skill pts", Life → "Money"); Player drawer: vitals and the coach's goal before the stats, caps as `1 / 75`, seasonCard no longer duplicated there; calendar pips keep the week number plus a small type letter (4E, 26C) with a legend line; Team: bond bar inline on the name row; People: stance pill hidden when neutral; Leave squad a quiet bad-text button. QA: Player, Season, Team, People drawers; no pageerror.
 
 ### [ ] T-105: Factions and Rankings readable
 
