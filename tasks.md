@@ -55,7 +55,7 @@ Steps:
   QA: career run → hub, each tab, a place; screenshots.
   Result: done — `topBar` (brand, Week n/28 or the cup, labelled Money/Fans/Skill pts/Stamina bar/Mood with one-render deltas, tabs Me 1 · People 2 (asks badge) · World 3 · Season 4 → me / people / factions / season drawers, ⚙ → menu which now lists every other drawer); `weekRail` (you + 4 stat bars → Me, "This week · {type}" + days left + 7 slots (T-118 fills them), coach's goal card with bar → Season, Inbox (nextStep until T-120), End week action row with the two-click arm + Space); map right of the rail under the bar; place card = 448px right panel; drawers / cards / notes over the map area; hudClock, hudMe, hudBar, the dock and its groups removed; keys 1–4 = tabs. The site header was already covered by the fixed hub (no index.html change). QA: 1440×900 hub, place panel, ⚙, key 3 → World; no pageerror.
 
-### [ ] T-118: Day track with ghost preview
+### [x] T-118: Day track with ghost preview
 
 Spec: §10.2 Goldens: unchanged Save: `run.days` via RUN_DEFAULTS (no version bump)
 Goal: the rail shows the 7 days of the week — what each spent day was, trips hatched, free days empty — and a selected place's cost as ghost slots.
@@ -68,7 +68,7 @@ Steps:
 3. Test: training with a 1-day trip appends `trip` then `train`; a new week starts empty.
    Accept: train at a far place → slots Trip + Train fill; selecting another place shows its ghost slots.
    QA: career run → train twice, select a place; screenshot of the rail.
-   Result:
+   Result: done — deviation: the list is `run.dayLog` (`run.days` is already the days-left number; spec §10.2 updated) via RUN_DEFAULTS, cleared in Run.endWeek; `City.go(run, p, what)` + `City.logDays` push trip days then the day (`City.dayWhat(id)` for places; scout / refused challenge / watch in city.js; challenge and street fight in fight.js — one extra file); travel-only logs trips. `dayTrack` (Mon–Sun, spent days with icon + label, trips hatched, ghost slots dashed cyan from `spotGhost(run, CW.spot)` + "Uses Fri — shown on your week", match weeks one slot); mapPick refreshes the week section. Test: trip then train, one entry per day, empty after endWeek (105 tests). QA: 2 trainings + Pier selected → Trip · Power · Trip · Defense · ghost Jump; no pageerror.
 
 ### [ ] T-119: Place panel — gains, options, one action row
 

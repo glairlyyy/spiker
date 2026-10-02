@@ -173,7 +173,9 @@ const Fight = {
       sc = m.setScores[0],
       margin = win ? 0 : Math.max(0, sc[1] - sc[0]),
       risk = City.injuryRisk(run, t.ovr, margin), // (before the trip, the day and the match's tiredness are counted)
-      trip = (Cup.record(run, m, 'challenge', { stake }), City.go(run, CITY.hq[ti])),
+      trip =
+        (Cup.record(run, m, 'challenge', { stake }),
+        City.go(run, CITY.hq[ti], { k: 'challenge', label: 'Challenge', at: run.teams[ti].name })),
       out = [Growth.matchXp(run, m), Skills.tryLearn(run, m)];
     if (win) Rel.beatMe(run, m);
     if (side.cost) {
@@ -219,7 +221,7 @@ const Fight = {
       sc = m.setScores[0],
       margin = win ? 0 : Math.max(0, sc[1] - sc[0]),
       risk = City.injuryRisk(run, City.crewOvr(run, foe), margin),
-      trip = (Cup.record(run, m, 'street'), City.go(run, c.at)),
+      trip = (Cup.record(run, m, 'street'), City.go(run, c.at, { k: 'battle', label: 'Fight', at: c.name })),
       out = [Growth.matchXp(run, m), Skills.tryLearn(run, m)];
     if (win) Rel.beatMe(run, m);
     run.clash.done = true;

@@ -191,14 +191,33 @@ const City = {
     } else line = Training.recreation(run);
     return City.arrive(run, id) + line;
   },
-  /** Go to point p, spending the trip + a day there; returns the trip's diary prefix. */
-  go(run, p) {
+  /**
+   * Go to point p, spending the trip + a day there; returns the trip's diary prefix. `what` = the day's entry for the
+   * week's day track (run.dayLog, spec §10.2): { k, label, stat? }; trip days are logged as { k: 'trip' } before it.
+   */
+  go(run, p, what = { k: 'day', label: 'Out' }) {
     const t = City.trip(run, p);
     City.spend(run, t + 1);
+    City.logDays(run, t, what);
     City.moveTo(run, p);
     return t ? `(${t}-day trip) ` : '';
   },
-  arrive: (run, id) => City.go(run, City.at(run, id)),
+  /** Append to the day track: `trips` trip days, then one day of `what` (null: trips only). Display only. */
+  logDays(run, trips, what) {
+    const L = run.dayLog || (run.dayLog = []);
+    for (let i = 0; i < trips; i++) L.push({ k: 'trip', label: 'Trip' });
+    if (what) L.push(what);
+  },
+  /** The day-track entry for a day at place id. */
+  dayWhat(id) {
+    const s = SPOTS[id];
+    if (!s) return { k: 'day', label: 'Out' };
+    if (s.train) return { k: 'train', label: STATNAME[TRAININGS[s.train].main[0]], stat: TRAININGS[s.train].main[0], at: s.name };
+    if (s.act === 'rest') return { k: 'rest', label: 'Rest', at: s.name };
+    if (['ramen', 'arcade', 'street'].includes(s.act)) return { k: 'outing', label: s.act === 'street' ? 'Hustle' : 'Outing', at: s.name };
+    return { k: 'rest', label: 'Relax', at: s.name };
+  },
+  arrive: (run, id) => City.go(run, City.at(run, id), City.dayWhat(id)),
   /** An outing (dinner, a night out, street hustle): returns the diary line. */
   outing(run, id, mate) {
     const s = SPOTS[id],
@@ -239,6 +258,7 @@ const City = {
     const t = City.travelDays(run, p);
     if (run.event || !City.onLand(p) || City.noTime(run, t)) return '';
     City.spend(run, t);
+    City.logDays(run, t, null);
     City.moveTo(run, p);
     return `Travelled to ${REGIONS[City.loc(run)].name} (${t} day${t > 1 ? 's' : ''}).`;
   },
@@ -312,7 +332,7 @@ const City = {
     if (run.event || !run.teams[ti] || City.noTime(run, City.scoutCost(run, ti))) return '';
     const t = run.teams[ti],
       f = FACTIONS[ti],
-      trip = City.go(run, CITY.hq[ti]);
+      trip = City.go(run, CITY.hq[ti], { k: 'scout', label: 'Scout', at: t.name });
     (run.scout || (run.scout = {}))[ti] = run.week;
     Run.news(run, `Word on the street about ${f.name}: ${f.dark}.`); // voice: rumor
     return `${trip}Scouted ${t.name}: rating ${t.ovr}, ${squadOf(t).filter(p => p.elOn).length} element user(s). ${Run.bump(run, 'sta', -SCOUT_STA)}`;
@@ -421,7 +441,7 @@ const City = {
     const t = run.teams[ti],
       r = FACTIONS[ti].region,
       lines = CHALLENGE_LINES[r] || CHALLENGE_LINES.wei,
-      trip = City.go(run, CITY.hq[ti]),
+      trip = City.go(run, CITY.hq[ti], { k: 'challenge', label: 'Refused', at: t.name }),
       rf = (run.refused[ti] = { week: run.week, n: ((run.refused[ti] && run.refused[ti].n) || 0) + 1 }),
       pest = rf.n >= CHALLENGE.refuseMax ? City.repBump(run, r, CHALLENGE.pest) : '';
     return {
@@ -435,7 +455,7 @@ const City = {
   clash(run, side) {
     const c = City.clashSite(run);
     if (!c || run.event || City.noTime(run, City.clashCost(run)) || (side && side !== c.a && side !== c.b)) return '';
-    const trip = City.go(run, c.at),
+    const trip = City.go(run, c.at, { k: 'battle', label: 'Watch', at: c.name }),
       out = [];
     run.clash.done = true;
     const vs = `${REGIONS[c.a].name} vs ${REGIONS[c.b].name}`;

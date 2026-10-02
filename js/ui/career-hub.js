@@ -153,14 +153,12 @@ function weekRail(run, armed) {
     wt = Run.weekType(run),
     days = City.days(run),
     match = wt === 'cup' || wt === 'eval',
-    eve = !match && days <= 0,
-    kind = { train: 'training', camp: 'training camp', eval: 'evaluation', cup: 'cup' }[wt] || wt;
+    eve = !match && days <= 0;
   return `<aside class="wrail" aria-label="This week">
     <button class="wme" onclick="hubOpen('me')" aria-label="Your player"><span class="portrait">${faceSVG(you, MOODS[run.mood].form, 44)}</span>
       <span><b>${stag(you)}${esc(you.name)}</b><small>${ROLE_NAME[you.role]} · ${chip(team)}${esc(team.short)} · OVR ${ovr(you)}</small></span></button>
     <div class="wstats">${STATK.map(k => `<span><small>${STATNAME[k]}</small><b>${you[k]}</b><i class="mbar4"><i style="width:${Math.min(100, you[k])}%"></i></i></span>`).join('')}</div>
-    <section class="wweek"><div class="wh"><span class="lab">This week · ${kind}</span><span class="small mute">${match ? 'Match' : `${days} of ${WEEK_DAYS} days left`}</span></div>
-      <div class="wdays" id="wdays">${match ? '<div class="dslot match">Match</div>' : Array.from({ length: WEEK_DAYS }, (_, i) => `<div class="dslot ${i < WEEK_DAYS - days ? 'done' : ''}"></div>`).join('')}</div></section>
+    ${weekSection(run)}
     ${railGoal(run)}
     <section class="winbox"><div class="lab">Inbox</div>${inboxRows(run)}</section>
     ${
@@ -173,6 +171,34 @@ function weekRail(run, armed) {
         : ''
     }
   </aside>`;
+}
+/** "This week · {type}", days left and the day track. */
+function weekSection(run) {
+  const wt = Run.weekType(run),
+    days = City.days(run),
+    match = wt === 'cup' || wt === 'eval',
+    kind = { train: 'training', camp: 'training camp', eval: 'evaluation', cup: 'cup' }[wt] || wt;
+  return `<section class="wweek"><div class="wh"><span class="lab">This week · ${kind}</span><span class="small mute">${match ? 'Match' : `${days} of ${WEEK_DAYS} days left`}</span></div>
+      ${dayTrack(run, match)}</section>`;
+}
+/** Icons of the day-track entries (line icons come with T-111). */
+const DAY_ICON = { train: '✸', rest: '☾', outing: '◐', trip: '↗', scout: '◉', battle: '⚔', challenge: '⚔', day: '•' };
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+/** The day track (spec §10.2): what each spent day was, trips hatched, free days empty, the selected place's cost as ghost slots. */
+function dayTrack(run, match) {
+  if (match) return '<div class="wdays"><div class="dslot match">⚑ Match day</div></div>';
+  const spent = WEEK_DAYS - City.days(run),
+    log = (run.dayLog || []).slice(0, spent),
+    filled = Array.from({ length: spent }, (_, i) => log[i] || { k: 'day', label: '' }), // days spent before the log existed
+    ghost = spotGhost(run, CW.spot).slice(0, WEEK_DAYS - spent),
+    slot = (e, cls) =>
+      `<div class="dslot ${cls} ${e.k}" ${e.at ? tip(e.at) : ''}><i>${DAY_ICON[e.k] || '•'}</i><b>${esc(e.label || '')}</b></div>`,
+    free = Array.from({ length: WEEK_DAYS - spent - ghost.length }, () => '<div class="dslot">free</div>');
+  return `<div class="wdn">${WEEKDAYS.map(d => `<span>${d}</span>`).join('')}</div><div class="wdays" id="wdays">${filled
+    .map(e => slot(e, 'done'))
+    .join('')}${ghost.map(e => slot(e, 'ghost')).join('')}${free.join('')}</div>${
+    ghost.length ? `<p class="small wuse">Uses ${ghost.map((e, i) => WEEKDAYS[spent + i]).join(' + ')} — shown on your week</p>` : ''
+  }`;
 }
 /** Coach's goal card in the rail (click: Season). */
 function railGoal(run) {

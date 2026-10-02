@@ -2504,3 +2504,42 @@
 .hub .hnote {
   top: calc(var(--tbar) + 64px);
 }
+/* day track (T-118) */
+.hub .wdn {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--mute);
+  text-align: center;
+}
+.hub .dslot i {
+  font-style: normal;
+  font-size: 14px;
+  color: var(--ink);
+}
+.hub .dslot b {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hub .dslot.trip {
+  background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.07) 0 6px, transparent 6px 12px);
+}
+.hub .dslot.ghost {
+  border: 1px dashed var(--cyan);
+  background: var(--sel-bg);
+}
+.hub .dslot.ghost i,
+.hub .dslot.ghost b {
+  color: var(--cyan);
+}
+.hub .wuse {
+  margin: 6px 0 0;
+  color: var(--mute);
+}

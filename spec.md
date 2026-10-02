@@ -4,12 +4,14 @@ Owned by the spec chat; the build chat reads, never edits. Tasks cite section id
 Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[open]** (do not build) · **[dropped]**.
 
 ## 1. Vision
+
 - 4v4 volleyball RPG / sports-life sandbox on a faction-ruled island: start a free agent, join factions, train, play
   watch-only 3D matches with a 2D interface. Spite-driven story (lore-first, later). Lore and voices: `lore.md`.
 - Built from the Skyline Cup prototype; nothing of its career/modes/saves kept. Desktop-only; compact UI (decision numbers on
   the control; lore and edge cases in tooltips/folds — §9). Goal: win the U21 Final Cup → the major nation's national team.
 
 ## 2. Match (engine + 3D playback) [built unless tagged]
+
 - §2.0 Sport (lore.md §4): 4v4 street game, physical. Tactics give an edge; stats decide most rallies — a big physical
   gap beats a smart setting. Keep tactic effects modest vs stat gaps.
 - §2.0b Stamina: every touch drains (`RULES.stamina` { drain 1.7, hit 0.4, jumpHit 0.3 }); at 0: −40 % power /
@@ -75,9 +77,11 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     **BLOCK COLLISION** (warning) / **BLOCK COLLISION · NET** (red). collided −4 both.
 
 ## 3. Menu [built]
+
 - One game + a dev Playtest card (Monster game, `startMonster()`).
 
 ## 4. Career world [built unless tagged]
+
 - §4.1 Start: free agent (no team/faction); join via join conditions; money, housing, paydays, league transfers,
   Gazette; Sim ⏭ skips a match. 28 weeks. Unsigned → no league/cups (watch from the stands). `World.pickup` = the
   Academy squad (§4.11).
@@ -184,12 +188,12 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     Shu mountain trail 3.
 - §4.19 Town layout (crowded; lore.md §3–§5); buildings fill districts (area + style + density), ~1,200 total (Wei
   ~600, Wu ~300, Shu ~150, Outlaws ~60, Academy ~40, Gloria ~30):
-  - **Wei**: *Downtown* (Wei Gold HQ, league office; tower grid, densest); *Old Town* (north-coast pocket by the
-    abandoned gym; refugee lanes, rowhouses, homeless housing); *the Ring* (mid-rise to the borders); *St. Gloria*
+  - **Wei**: _Downtown_ (Wei Gold HQ, league office; tower grid, densest); _Old Town_ (north-coast pocket by the
+    abandoned gym; refugee lanes, rowhouses, homeless housing); _the Ring_ (mid-rise to the borders); _St. Gloria_
     (walled villa compound, gatehouse).
   - **Wu**: beach ~2–3× wider on E and S coasts, grown outward (borders fixed); faded beach-boom strip (dune-line
-    boardwalk, old resort hotels, kiosks, public sand courts); *Wu town* inland behind the dunes toward Wei (barracks,
-    workshops, market); *harbor district* on the east coast.
+    boardwalk, old resort hotels, kiosks, public sand courts); _Wu town_ inland behind the dunes toward Wei (barracks,
+    workshops, market); _harbor district_ on the east coast.
   - **Overpass**: elevated highway downtown Wei → Wu harbor along the contested line; Outlaws' shacks, containers,
     cage beneath.
   - **Shu**: 3–4 terraced hill villages (unnamed until glossary), shrines, mountain paths, few people.
@@ -284,27 +288,31 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     senior league, continuing NPC careers: **[open]**).
 
 ## 5. Open questions — do not build until decided
+
 - §5.1 Lore gaps (lore.md §9): rival, aces, glossary, names, ritual in play. Blocks: story events, club switching,
   what standing unlocks beyond access.
 - §5.2 Portraits: now 2D `faceSVG`. Options: VRM head snapshots; hand-made 2D anime portraits; Live2D
   (pixi-live2d-display) or WebM / animated WebP loops for special characters at big moments; unique characters
   mapped by hand (own model + portrait), so the kind varies per character. API when built: `Portrait.show(el, character,
-  mood)`.
+mood)`.
 - §5.3 Legacy / Hall of Fame **[dropped]**. §5.4 Character creation rework (deferred).
 - §5.5 Severe injury: the permanent −2 on one stat is assumed; confirm in the balance pass.
 - §5.6 Faction recolour: Shu `#4ade80` = the `good` status colour, Wu `#3fa9f5` ≈ `cyan`, Wei `#f5b82e` ≈ `gold`.
   Proposed `wei #d08a2e` · `wu #5b8def` · `shu #2fb8a0` (design system tokens). Owner to approve before any task.
 
 ## 6. Narrative rules [locked; faction/region/Gazette/event strings built]
+
 - Every player-facing string has one lore.md §7 speaker (`registrar`, `wei`, `wu`, `shu`, `outlaw`, `gloria`,
   `villager`, `diary`, `rumor`). No tutorial voice.
 - Numbers always true; claims and history may be biased. Never state lore.md truth directly.
 - Mechanics (tooltips, costs): `registrar` — terse, no "why". No old-language words until lore.md §8 has a glossary.
 
 ## 7. Out of scope
+
 - Founding a club. Minors in the war. Ghost PvP. Mobile layout.
 
 ## 8. Backlog (tasks only once specced)
+
 - Balance pass (headless season sims): week × DAY_GAIN × fees × prices × paydays; the [open] values above.
 - Role identity: flex roles win evenly (2 S / 2 MB / 3 WS). Show setter value ("Perfect set!", set quality in box
   score, setter attack/dump in dual-setter teams); MB back-row pass/dig weakness; re-measure.
@@ -318,10 +326,12 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 - New-run setup + results screens. Hype scene frequency tuning (§2.3). More music, crowd, voice clips. Living map B/C. Endless mode.
 
 ## 9. UI guidelines [locked, not built unless tagged]
+
 Source: the design system artifact https://claude.ai/artifact/DWxheHjahb7L4k8GAWbRGq — `project/README.md` (rules),
 `ui-review.md` (findings per screen), `short-copy.md` (glossary + icons), `tokens.json`, component previews (Button,
 ChoiceCard, HudStat, StatIcons). Goal: minimal reading load, full player control — the UI previews and explains, it never
 chooses or acts for the player.
+
 - §9.1 Principles: one suggested next step always visible (a suggestion, never an auto-action); preview before commit
   (cost **and** result on the control); a locked control shows the gap (`Need OVR 72 · you 41`), never only "Locked";
   bad news first; one colour = one meaning; selected ≠ primary; hotkeys printed on the control.
@@ -329,7 +339,7 @@ chooses or acts for the player.
   neutral headings, prices, requirements. Primary button = `ink` fill + `on-ink` text; selected segment/chip =
   `sel-bg` fill + `sel-line` border. Status: `good` +, `bad` −, `warn` at risk, `gold` stars/rewards, `cyan` info/focus.
   Over the 3D map/court: the opaque `hud` surface. New tokens: `hud rgba(12,14,18,.9)`, `line-strong
-  rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-line = cyan`.
+rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-line = cyan`.
 - §9.3 Type: Inter body, Rajdhani display (DOM); Dela Gothic One + M PLUS Rounded 1c are canvas-only (overlay, arena). Five styles: display 26 · title 16/600 · body 14 · small 13 · label 12
   uppercase .12em. Floor 12px. Sentence case on buttons; uppercase only for `label` headings.
 - §9.4 Short copy: every repeated idea is a glossary term (`GLOSSARY`, `term(id, n)`; §9.6) with one icon and one short
@@ -365,15 +375,18 @@ chooses or acts for the player.
   action row: Continue/Back + Box score; playback disabled.
 
 ## 10. Redesign [locked, not built]
-Design system pages `redesign.md` + `inventory.md`, mockups in the *Redesign* group (HubRedesign, SheetMe, SheetPeople,
+
+Design system pages `redesign.md` + `inventory.md`, mockups in the _Redesign_ group (HubRedesign, SheetMe, SheetPeople,
 SheetWorld, SheetSeason, WeekBrief, WeekReport, EventCard, MatchResult, TitleScreen, CreateCareer). Supersedes the
 floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or number changes — layout and flow only.
+
 - §10.1 Hub = top bar 56px (labelled resources, Week n/28, tabs Me 1 · People 2 · World 3 · Season 4, ⚙) + week rail
   340px (you + 4 stats, day track, coach's goal, inbox, End week action row) + map (Map/List toggle, legend) + place
   panel 448px (right, over the map). No site header, no dock, no floating HUD corners.
 - §10.2 Day track: 7 slots Mon–Sun; each spent day shows what it was (icon + label), trip days hatched, free days empty;
   a selected place's cost shows as dashed ghost slots before you commit. Match weeks (eval/cup) show one match slot.
-  Needs `run.days` (list of `{k, label, icon}` per spent day, cleared at week start) via RUN_DEFAULTS — no version bump.
+  Needs `run.dayLog` (list of `{k, label, stat?, at?}` per spent day, cleared at week start; `run.days` is already the
+  days-left number) via RUN_DEFAULTS — no version bump.
 - §10.3 Inbox (rail): items until handled — street battle, approaches waiting, Gazette unread, match next week,
   goal due ≤ 1 week, club would sign you. One button each (opens the place / sheet / card). Replaces
   toasts, dock badges and the seize banner (a seize becomes an inbox item for one week).
@@ -387,4 +400,3 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   techniques picked up, top 3, Continue / Box score. The 3D match itself follows §9.9.
 - §10.7 Title screen (Continue hero, New career, Encyclopedia, Settings; playtest behind `?dev`) and Create (role
   cards with key stat, best training places, techniques; name; challenge toggles; Arrive / Back).
-

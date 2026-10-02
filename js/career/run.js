@@ -260,6 +260,7 @@ const Run = {
     if (City.clashSite(run)) Run.log(run, City.clashEnd(run));
     run.trained = 0;
     run.days = WEEK_DAYS;
+    run.dayLog = [];
     run.rolled = false;
     run.clash = null;
     Run.snap(run);
@@ -392,6 +393,7 @@ const RUN_DEFAULTS = {
   plays: [() => ({ k: 0, blk: 0, ace: 0 }), isObj],
   lastFight: [() => null, v => v === null || Number.isFinite(v)], // absolute day of your last challenge / street fight
   days: [() => WEEK_DAYS, v => Number.isFinite(v) && v >= 0 && v <= WEEK_DAYS], // days left this week
+  dayLog: [() => [], Array.isArray], // what each spent day of this week was (the hub's day track, spec §10.2)
   rolled: [() => false, v => typeof v === 'boolean'], // this week's event rolled?
   pos: [() => CITY.airport.slice(), Array.isArray] // where you stand on the map
 };

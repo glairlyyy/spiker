@@ -14,6 +14,22 @@ function mapPoint(p) {
   renderCareer();
 }
 
+/** What committing to the selected place would put on the day track (ghost slots): trip days, then the day. [] if nothing. */
+function spotGhost(run, id) {
+  if (!id || run.event || Run.weekType(run) === 'cup' || Run.weekType(run) === 'eval') return [];
+  const trips = (at, what) => [...Array.from({ length: City.trip(run, at) }, () => ({ k: 'trip', label: 'Trip' })), what];
+  if (id.startsWith('hq')) {
+    const ti = +id.slice(2);
+    return ti === run.team || !run.teams[ti] ? [] : trips(CITY.hq[ti], { k: 'scout', label: 'Scout' });
+  }
+  if (id === 'clash') {
+    const c = City.clashSite(run);
+    return c ? trips(c.at, { k: 'battle', label: 'Battle' }) : [];
+  }
+  if (id.startsWith('pt:')) return Array.from({ length: City.travelDays(run, MapModel.ptOf(id)) }, () => ({ k: 'trip', label: 'Trip' }));
+  if (!SPOTS[id]) return [];
+  return trips(City.at(run, id), City.dayWhat(id));
+}
 /** The panel for the selected place: what it does and its buttons. */
 function spotPanel(run, id) {
   if (!id) return `<p class="small mute">Pick a place on the map.</p>`;
@@ -211,6 +227,8 @@ function mapPick(id) {
   el.innerHTML = id ? spotCard(RUN) : '';
   el.classList.toggle('open', !!id);
   MapView.select(id);
+  const wk = document.querySelector('.wweek'); // ghost slots follow the selection
+  if (wk) wk.outerHTML = weekSection(RUN);
 }
 
 /** Spend a day at a place (+ the trip); the week's one event may come after the first day. Never ends the week. */
