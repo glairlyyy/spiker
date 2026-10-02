@@ -49,8 +49,9 @@ Result:
 - Relationships ✓ (T-060…T-066, spec §4.23).
 - Relationship review fixes ✓ (T-089).
 - Road travel ✓ (T-048).
-- **Now**: voice pass (T-022), then cleanup part 2 (T-082…T-088).
-- **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
+- Voice pass ✓ (T-022).
+- **Now**: cleanup part 2 (T-082…T-088), detailed one at a time.
+- Phase 5 — Voice pass ✓ (T-022): faction/region/Gazette/event strings in lore.md §7 voices.
 
 ## Now
 
@@ -75,12 +76,10 @@ Relationships — the core pillar (spec §4.23; detailed one by one after T-059)
 Injuries, part 2 — spec §4.15
 - (T-049 merged into T-057.)
 
-Phase 5 — Voice pass
-- T-022: Faction `front`/`dark`, region `desc`, Gazette and event strings in lore.md §7 voices. Also fix the stale
-  encyclopedia line "Or learn it in career for this many skill points" (ui/encyclopedia.js: techniques are learned in play).
 
 ## Done
 
+- [x] T-022: Voice pass — region descs in their own region's voice (wei / wu / shu / outlaw / gloria / registrar); faction `front` = their own pitch, `dark` = street rumour ("Word on the street about …"); Gazette lines in the Wei office voice (registrations, transfers, promotions, cuts, quits, call-ups, overexertion, power rankings); all 36 events rewritten in the MC's diary voice (school-sport leftovers gone: schools, V.League, exams, middle school, nurse); encyclopedia techniques say "learned in play, never bought". Effects and numbers unchanged; 97/97, goldens unchanged. (Done by the spec chat.)
 - [x] T-048: Road travel — trip cost = the cheaper of the road route (ROAD_COST by kind) and cross-country (GROUND_COST: Shu ×1.35); routes follow the cheapest roads; PATH_CACHE. Airport → harbor 3 → 2 days, → trail 2 → 3; MapModel.build +2 ms. 97/97, goldens unchanged. (Done by the spec chat.)
 - [x] T-089: Relationship fixes from the T-061…T-066 review — 97/97 tests, lint clean, goldens unchanged. 1: `People.poach` returns when the next week starts a cup; `Asks.list` / `answer` skip poach_advice during a cup. 2: St. Gloria's reserve gets coachIQ 0.5 before `finalizeTeam` (test: no R() on that path). 3: `People.remove` clears the loan; `Asks.nextPay` is capped at week 28. 4: "went" only when `People.leave` returned a line (else "stayed after all"); the unanswered leave line goes to the Gazette. 5: trust label only for an ally pick, freeze only when a resent / enemy pick is replaced by a non-enemy (the relLog entries follow the same rule; the clutch test now asserts it).
 - [x] T-066: On court — trust, freeze-out, cover and rivals in the match engine — 93/93 tests, lint clean, goldens unchanged (the golden matches pass no flags; empty flags give byte-identical beats). 200 sims, one ally / one enemy WS per setter: clutch sets 1347; ally share 0.319 → 0.365, enemy 0.267 → 0.237; 9 trust / 23 freeze lines. Pop-up saves: an ally never saves less (400 draws, +12 pts). Deviations: one engine-private helper `relTag` (match.js) is a new top-level function; the flags reach the match through `fx.setup` (match-screen.js builds newMatch itself, so `opts.rel` is also supported); the talk beat is pushed from chooseAttack (rally.js, which emits the other set calls, is not in the file list); across-net rivals = your role, within 5 OVR, resent / enemy, and only the NPC gets the mood swing. QA: career match with flags → `m.rel` set, "trusts" at 9-15, no pageerror.

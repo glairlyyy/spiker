@@ -314,7 +314,7 @@ const City = {
       f = FACTIONS[ti],
       trip = City.go(run, CITY.hq[ti]);
     (run.scout || (run.scout = {}))[ti] = run.week;
-    Run.news(run, `Rumour from ${f.name}: ${f.dark.toLowerCase()}.`);
+    Run.news(run, `Word on the street about ${f.name}: ${f.dark}.`); // voice: rumor
     return `${trip}Scouted ${t.name}: rating ${t.ovr}, ${squadOf(t).filter(p => p.elOn).length} element user(s). ${Run.bump(run, 'sta', -SCOUT_STA)}`;
   },
   scouted: (run, ti) => !!(run.scout && run.scout[ti] != null),

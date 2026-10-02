@@ -1,4 +1,4 @@
-// Random training-week events: a short scene with two choices.
+// Random training-week events: a short scene with two choices. Voice (lore.md §7): `diary` — the MC, first person.
 // Effects (fx) are data: [key, value] pairs applied by career/events.js.
 //   keys: power/def/speed/jump/wit/lead/sta/mood/sp/fans, 'main' (the stat you trained last),
 //         'bondMate' / 'bondCap' / 'bondAll' (bond changes), and ['chance', p, [fx…]] for a gamble.
@@ -7,8 +7,8 @@
 const EVENTS = [
   {
     id: 'late',
-    title: 'Extra practice after dark',
-    text: 'The gym lights are still on after everyone leaves.',
+    title: 'Lights still on',
+    text: "Everyone went home. The gym lights didn't. Neither did I.",
     a: [
       'Keep going',
       [
@@ -21,15 +21,15 @@ const EVENTS = [
   {
     id: 'capadvice',
     need: 'notCap',
-    title: 'Captain asks for advice',
-    text: '{cap} wants your read on the lineup.',
+    title: 'The captain wants my opinion',
+    text: '{cap} asked what I think of the lineup. First time anyone here asked me anything.',
     a: ['Speak up in the huddle', [['lead', 8]]],
     b: ['Back their call', [['bondCap', 10]]]
   },
   {
     id: 'rival',
-    title: 'A rival watches your spike',
-    text: 'Someone from another school is filming from the stands.',
+    title: "Someone's filming",
+    text: 'Somebody from another faction is filming my spikes from the stands. Flattering. Annoying.',
     a: [
       'Show off',
       [
@@ -42,21 +42,21 @@ const EVENTS = [
   {
     id: 'shoulder',
     title: 'Sore shoulder',
-    text: 'Your hitting shoulder aches after practice.',
+    text: 'My hitting shoulder is complaining again. It can get in line.',
     a: ['Ice it', [['sta', -10]]],
     b: ['Play through it', [['chance', 0.3, [['power', -5]]]]]
   },
   {
     id: 'dinner',
     title: 'Team dinner',
-    text: 'The team is heading out for hot pot.',
+    text: "The squad is going out for hot pot. I wasn't sure I was invited until I was.",
     a: ['Go with everyone', [['bondAll', 5]]],
     b: ['Early night', [['sta', 20]]]
   },
   {
     id: 'fanletter',
-    title: 'A fan letter',
-    text: 'A kid from the youth club wrote you a letter.',
+    title: 'A letter',
+    text: 'A kid from the youth courts wrote me a letter. Spelled my name wrong. Still counts.',
     a: [
       'Write back',
       [
@@ -68,15 +68,15 @@ const EVENTS = [
   },
   {
     id: 'film',
-    title: 'Film session',
-    text: 'Coach offers an hour of video before training.',
+    title: 'Film before training',
+    text: 'Coach offers an hour of tape before practice. Mostly of other people doing it right.',
     a: ['Study the opponents', [['wit', 0.06]]],
     b: ['Study your own form', [['main', 4]]]
   },
   {
     id: 'reps',
     title: 'Extra reps',
-    text: '{mate} asks you to stay and run drills together.',
+    text: '{mate} wants to stay late and run drills. Fine. Someone has to keep up with me.',
     a: [
       'Stay and help',
       [
@@ -88,8 +88,8 @@ const EVENTS = [
   },
   {
     id: 'sand',
-    title: 'Gym flooded',
-    text: 'Practice moves to the beach courts today.',
+    title: 'The gym flooded',
+    text: "The gym is under water, so it's the sand courts today. The locals act like they own them. They do.",
     a: [
       'Sand sprints',
       [
@@ -102,8 +102,8 @@ const EVENTS = [
   },
   {
     id: 'tv',
-    title: 'Local TV interview',
-    text: 'A reporter asks about the Cup.',
+    title: 'Gazette interview',
+    text: "A Gazette stringer wants a quote about the Cup. Whatever I say, they'll print what they like.",
     a: [
       '"We will win it."',
       [
@@ -115,8 +115,8 @@ const EVENTS = [
   },
   {
     id: 'stuck',
-    title: 'Feeling stuck',
-    text: 'Nothing is clicking this week.',
+    title: 'Nothing clicks',
+    text: 'Nothing is working this week. Not my hands, not my legs, not my temper.',
     a: [
       'Change your routine',
       [
@@ -140,15 +140,15 @@ const EVENTS = [
   },
   {
     id: 'pro',
-    title: 'A former pro visits',
-    text: 'An old national-team player drops by practice.',
+    title: 'An old national-team player',
+    text: "A retired national-team player dropped by practice. Everyone went quiet. I didn't.",
     a: ['Ask about jumping', [['jump', 5]]],
     b: ['Ask about reading plays', [['wit', 0.05]]]
   },
   {
     id: 'cramp',
-    title: 'Leg cramps',
-    text: 'Your calves tighten up during warm-up.',
+    title: 'Calves',
+    text: 'My calves locked up in warm-up. Great timing, body.',
     a: [
       'Stretch it out properly',
       [
@@ -161,7 +161,7 @@ const EVENTS = [
   {
     id: 'arcade',
     title: 'Arcade night',
-    text: '{mate} wants to drag you to the arcade.',
+    text: "{mate} wants to drag me to the arcade. Apparently that's what friends do here.",
     a: [
       'Go',
       [
@@ -180,8 +180,8 @@ const EVENTS = [
   },
   {
     id: 'streak',
-    title: 'Hot streak in scrimmage',
-    text: 'Every ball you touch goes in today.',
+    title: "Can't miss",
+    text: 'Every ball I touched went in today. I should be suspicious.',
     a: [
       'Keep swinging',
       [
@@ -199,15 +199,15 @@ const EVENTS = [
   },
   {
     id: 'notebook',
-    title: "The setter's notebook",
-    text: '{mate} left a notebook full of opponent tendencies.',
+    title: "Someone's notebook",
+    text: '{mate} left a notebook full of opponent tendencies on the bench. Very careless. Very useful.',
     a: ['Borrow it', [['wit', 0.08]]],
     b: ['Give it back', [['bondMate', 8]]]
   },
   {
     id: 'weights',
-    title: 'New weight room',
-    text: 'The school finally fixed the weight room.',
+    title: "The weight room's fixed",
+    text: 'Somebody finally fixed the weight room. Only took the whole season.',
     a: [
       'Heavy lifts',
       [
@@ -226,8 +226,8 @@ const EVENTS = [
   },
   {
     id: 'argue',
-    title: 'Teammates argue',
-    text: 'Two teammates are shouting after a missed block.',
+    title: 'Shouting',
+    text: 'Two of my teammates are yelling about a missed block. Neither of them was the one who missed it.',
     a: [
       'Step in',
       [
@@ -240,15 +240,15 @@ const EVENTS = [
   {
     id: 'breakfast',
     title: 'Big breakfast',
-    text: "The team manager's mum cooked for everyone.",
+    text: "Somebody's mum cooked for the whole squad. I ate like a refugee. Fitting.",
     a: ['Eat it all', [['sta', 15]]],
     b: ['Light meal and a run', [['speed', 2]]]
   },
   {
     id: 'rain2',
     need: 'tired',
-    title: 'Heavy legs',
-    text: 'Your legs feel like concrete this morning.',
+    title: 'Concrete legs',
+    text: "My legs feel like concrete this morning. Training doesn't care.",
     a: [
       'Push through the session',
       [
@@ -262,8 +262,8 @@ const EVENTS = [
   {
     id: 'scout',
     need: 'late',
-    title: 'A pro scout in the stands',
-    text: 'Word is a V.League scout is watching practice.',
+    title: 'A scout in the stands',
+    text: "Word is a mainland scout is watching practice. Everyone's suddenly a hero.",
     a: [
       'Go all out',
       [
@@ -282,8 +282,8 @@ const EVENTS = [
   },
   {
     id: 'rivalmsg',
-    title: 'A message from a rival',
-    text: '"See you at the Cup. Don\'t disappoint me."',
+    title: 'A message',
+    text: '"See you at the Cup. Don\'t disappoint me." I know who sent it. I came all this way for it.',
     a: [
       'Fire back',
       [
@@ -295,8 +295,8 @@ const EVENTS = [
   },
   {
     id: 'kohai',
-    title: 'A first-year looks up to you',
-    text: 'A first-year asks you to teach them your serve.',
+    title: 'A newcomer asks',
+    text: 'A newcomer asked me to teach them my serve. A month ago that was me.',
     a: [
       'Teach them',
       [
@@ -308,8 +308,8 @@ const EVENTS = [
   },
   {
     id: 'exam',
-    title: 'Exam week',
-    text: 'Tests are coming and your grades are slipping.',
+    title: 'Academy coursework',
+    text: "The Academy wants coursework, and my grades are slipping. Apparently volleyball isn't enough for them.",
     a: [
       'Study hard',
       [
@@ -328,9 +328,9 @@ const EVENTS = [
   },
   {
     id: 'injurymate',
-    title: 'Teammate tweaks an ankle',
-    text: '{mate} rolls an ankle at practice.',
-    a: ['Help them to the nurse', [['bondMate', 10]]],
+    title: 'An ankle',
+    text: '{mate} rolled an ankle at practice. The court got very quiet.',
+    a: ['Get them to the physio', [['bondMate', 10]]],
     b: [
       'Keep training',
       [
@@ -342,8 +342,8 @@ const EVENTS = [
   {
     id: 'captalk',
     need: 'isCap',
-    title: 'Captain duties',
-    text: 'The team is flat — they look to you.',
+    title: 'Flat',
+    text: "The squad is flat today, and somehow they're all looking at me.",
     a: [
       'Give a speech',
       [
@@ -362,8 +362,8 @@ const EVENTS = [
   {
     id: 'starpress',
     need: 'star',
-    title: 'Magazine interview',
-    text: 'A volleyball magazine wants a feature on the new star.',
+    title: 'A feature',
+    text: 'A magazine wants a feature on "the new star". Funny. Last month nobody knew my name.',
     a: [
       'Do the photo shoot',
       [
@@ -376,8 +376,8 @@ const EVENTS = [
   {
     id: 'slumpd',
     need: 'low',
-    title: 'In a funk',
-    text: "You can't stop thinking about the last bad week.",
+    title: 'Still thinking about it',
+    text: "I can't stop replaying last week. It doesn't get better on replay.",
     a: ['Call home', [['mood', 1]]],
     b: [
       'Train it out',
@@ -390,8 +390,8 @@ const EVENTS = [
   },
   {
     id: 'oldball',
-    title: 'Your old middle-school ball',
-    text: 'You find your first volleyball in the storage room.',
+    title: 'My first ball',
+    text: "Found my first volleyball at the bottom of my bag. It's been everywhere I've been rejected.",
     a: [
       'Take it home',
       [
@@ -404,8 +404,8 @@ const EVENTS = [
   {
     id: 'summer',
     need: 'early',
-    title: 'Beach tournament invite',
-    text: 'A local beach 2v2 needs one more player.',
+    title: 'A beach 2v2',
+    text: 'A beach 2v2 down the coast needs one more player. Sand, sun, strangers.',
     a: [
       'Enter',
       [
@@ -419,8 +419,8 @@ const EVENTS = [
   },
   {
     id: 'coachx',
-    title: 'Coach singles you out',
-    text: "Coach says you're the weak link on defense.",
+    title: 'Weak link',
+    text: "Coach says I'm the weak link on defense. Out loud. In front of everyone.",
     a: [
       'Extra defense reps',
       [
@@ -438,8 +438,8 @@ const EVENTS = [
   },
   {
     id: 'setterduo',
-    title: 'Timing practice',
-    text: '{mate} wants to drill tempo with you after hours.',
+    title: 'Tempo',
+    text: "{mate} wants to drill tempo after hours. We're either going to click or kill each other.",
     a: [
       'Drill until it clicks',
       [
@@ -452,8 +452,8 @@ const EVENTS = [
   },
   {
     id: 'festival',
-    title: 'School festival',
-    text: 'The volleyball club runs a food stall.',
+    title: 'Food stall',
+    text: "The club is running a food stall at the market. They've put me on the grill.",
     a: [
       'Work the stall',
       [
@@ -471,8 +471,8 @@ const EVENTS = [
   },
   {
     id: 'video',
-    title: 'Your highlight goes viral',
-    text: 'Someone posted your best spike online.',
+    title: 'Gone around',
+    text: 'Someone posted my best spike. Half the island has seen it. The other half will.',
     a: [
       'Share it',
       [
@@ -485,7 +485,7 @@ const EVENTS = [
   {
     id: 'insomnia',
     title: "Can't sleep",
-    text: 'Match nerves keep you up at night.',
+    text: 'Match nerves. 3 a.m. Ceiling.',
     a: [
       'Night run',
       [
@@ -503,8 +503,8 @@ const EVENTS = [
   },
   {
     id: 'noise',
-    title: 'Crowd-noise drill',
-    text: 'Coach plays stadium noise through the speakers.',
+    title: 'Crowd noise',
+    text: "Coach is blasting stadium noise through the speakers. I can't hear myself think. That's the point.",
     a: [
       'Embrace it',
       [

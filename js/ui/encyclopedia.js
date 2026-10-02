@@ -23,7 +23,7 @@ function renderEncyclopedia() {
     return `<div class="ency-card" id="sk-${id}">
       <div class="ency-hd"><b>${skillIcon(id)}${esc(s.name)}${SKILL_HOW[id] ? info(SKILL_HOW[id]) : ''}</b><span class="ency-tag">${esc(roleTxt(s))}</span></div>
       <p>${esc(s.desc)}</p>
-      <p class="small"><span class="ency-req">${esc(reqTxt(s))}</span> <span class="mute" ${tip('Or learn it in career for this many skill points')}>· ${s.cost} pts</span></p>
+      <p class="small"><span class="ency-req">${esc(reqTxt(s))}</span> <span class="mute">· learned in play, never bought</span></p>
       ${teams.length ? (u.length ? fold('u-' + id, `<span class="small ency-users"><b>${u.length}</b> can use it</span>`, `<p class="small ency-users">${u.map(({ p, t }) => `${chip(t)}${stag(p)}${esc(p.name)}`).join(' &nbsp;')}</p>`) : '<p class="small mute">Nobody yet</p>') : ''}
     </div>`;
   };

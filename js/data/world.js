@@ -18,7 +18,7 @@ const REGIONS = {
     price: 2,
     q: 1.25,
     hype: 0.3,
-    desc: 'The city: top facilities at top prices — not all of them live up to it'
+    desc: 'The heart of the island, run properly: the best facilities money can maintain. Since the lean year, order is what keeps the lights on.' // voice: wei
   },
   wu: {
     color: '#3fa9f5',
@@ -27,7 +27,7 @@ const REGIONS = {
     kind: 'major',
     price: 1,
     q: 1,
-    desc: 'The coastline: mid prices, mid facilities; the sand courts are the best place to build technique'
+    desc: 'Our coast, our sand. Honest courts at honest prices — and the sand builds what no city gym can.' // voice: wu
   },
   shu: {
     color: '#4ade80',
@@ -37,7 +37,7 @@ const REGIONS = {
     price: 0.5,
     q: 0.8,
     gem: 0.15,
-    desc: 'Mountain towns far from the city: everything cheap and rough — now and then a hidden gem'
+    desc: 'The high country. Little money, hard ground, teachers who do not explain themselves. Some find what they came for.' // voice: shu
   },
   outlaws: {
     color: '#ff8c42',
@@ -46,7 +46,7 @@ const REGIONS = {
     kind: 'minor',
     price: 1,
     q: 1,
-    desc: 'Cages and courts under the overpass, on the Wei–Wu line'
+    desc: 'Under the overpass, between their borders. Courts that ask no questions, a crowd that bets on everything.' // voice: outlaw
   },
   gloria: {
     color: '#ff5da2',
@@ -55,7 +55,7 @@ const REGIONS = {
     kind: 'minor',
     price: 3,
     q: 1.35,
-    desc: 'A private club inside the city: the best money can buy'
+    desc: 'Membership by invitation. Facilities of an international standard.' // voice: gloria
   },
   open: {
     color: '#f5e6a8',
@@ -64,7 +64,7 @@ const REGIONS = {
     kind: 'none',
     price: 1,
     q: 0.9,
-    desc: 'Neutral ground by charter. Every newcomer enrols here. No faction may train, recruit or fight on campus.'
+    desc: 'Neutral ground by charter. All newcomers enrol here. No faction may train, recruit or fight on campus.' // voice: registrar
   }
 };
 /**
@@ -77,64 +77,64 @@ const FACTIONS = [
     region: 'wei',
     name: 'Wei Dynasty · Gold',
     team: ['Wei Dynasty Gold', 'WDG', '#F5B82E'],
-    front: 'The academy’s elite first squad',
-    dark: 'Discards anyone who stops performing',
+    front: 'The first squad of the island’s first dynasty. Results speak',
+    dark: 'they cut you the week you stop winning, and the contract keeps billing',
     join: { ovr: 72 }
   },
   {
     region: 'wei',
     name: 'Wei Dynasty · Iron',
     team: ['Wei Dynasty Iron', 'WDI', '#C98B2B'],
-    front: 'The academy’s second squad, hungry for promotion',
-    dark: 'Everyone is fighting for one spot upstairs',
+    front: 'The proving ground for Gold. Earn your place upstairs',
+    dark: 'twelve of them fighting for one seat upstairs, and the seat is already promised',
     join: { ovr: 62 }
   },
   {
     region: 'wu',
     name: 'Wu Navy · Harbor',
     team: ['Wu Navy Harbor', 'WNH', '#4EA5FF'],
-    front: 'Fast harbor crew, sand-trained',
-    dark: 'Seniority mafia and hazing',
+    front: 'Harbor crew. Sand legs, no tricks, no excuses',
+    dark: 'the seniors run it, and the first-years carry the nets until they bleed',
     join: {}
   },
   {
     region: 'wu',
     name: 'Wu Navy · Fort',
     team: ['Wu Navy Fort', 'WNF', '#2EC4B6'],
-    front: 'Beach grinders, hard work over talent',
-    dark: 'Border brawls with Wei every season',
+    front: 'We hold the line against the city. Work beats talent',
+    dark: 'every season ends in a border brawl with Wei, and they start most of them',
     join: { key: 70 }
   },
   {
     region: 'shu',
     name: 'Shu Dragon · Peak',
     team: ['Shu Dragon Peak', 'SDP', '#4ADE80'],
-    front: 'One warm mountain family',
-    dark: 'Guilt-trips anyone who leaves',
+    front: 'One family on the mountain. The path is hard; nobody walks it alone',
+    dark: 'leave the family and they make sure everyone hears why',
     join: { star: true }
   },
   {
     region: 'outlaws',
     name: 'Street Outlaws',
     team: ['Street Outlaws', 'SOL', '#FF8C42'],
-    front: 'Pavement courts under the overpass',
-    dark: 'Illegal betting ring',
+    front: 'Our courts, our rules. Bring a vouch or bring money',
+    dark: 'the betting book is older than the courts, and the house always eats',
     join: { fee: 150 }
   },
   {
     region: 'gloria',
     name: 'St. Gloria International',
     team: ['St. Gloria', 'STG', '#FF5DA2'],
-    front: 'World-class facilities',
-    dark: 'Pay-to-win, sue-happy parents',
+    front: 'International standards. A door to the mainland for the right candidate',
+    dark: 'the money is foreign, and nobody asks where the players they sign end up',
     join: { fee: 600 }
   },
   {
     region: 'shu',
     name: 'Shu Dragon · Valley',
     team: ['Shu Dragon Valley', 'SDV', '#22A06B'],
-    front: 'The valley squad: raw kids from mountain villages',
-    dark: 'Nobody from the city is trusted',
+    front: 'Village kids, raw and unbroken. The elders chose us',
+    dark: 'if you were born in the city, the valley never forgets it',
     join: { ovr: 55 }
   }
 ];
@@ -279,7 +279,7 @@ const INJURY = {
 };
 /** The Gazette's jab after a heavy loss (wei voice); {name} = you, {club} = who beat you. */
 const GAZETTE_JABS = [
-  '{club} make an example of {name}. The office expected nothing less.',
+  '{club} make an example of {name}. The office expected nothing less.', // voice: wei (the Gazette)
   '{name} went looking for a fight with {club}. The Gazette notes the result.',
   'Order holds: {club} send {name} home with a lesson.'
 ];
