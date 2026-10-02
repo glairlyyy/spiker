@@ -348,4 +348,10 @@ chooses or acts for the player.
 - §9.7 Layout: hub HUD in four corners on `hud`; drawers 440px from the right and never over the dock; modals ≤560px,
   one title, ≤3 choices, primary first. Match: the court gets the viewport; site header hidden; log + box score in a
   collapsible side rail.
-
+- §9.8 Alignment and sizes (design system `layout.md`, ActionRow card): 8px grid (spacing tokens only); one content
+  edge per container; nested panels in drawers lose their border. Every container ends in one action row: all CTAs
+  on one line, equal height (modal 48 · card 40 · list row 32), primary first at the content edge, destructive last
+  (`margin-left: auto`); never stacked while each fits 112px. List rows put their CTA in a fixed 120px right column;
+  names truncate to one line. Toggles/options sit above the action row. Sizes: drawer `clamp(480px, 36vw, 600px)`,
+  hub modal 640px, wide 960px, place card 480px, match rail 360px; HUD corners one inset (16px). Numbers right-aligned,
+  tabular-nums.

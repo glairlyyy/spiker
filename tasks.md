@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-114** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-115** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -34,7 +34,7 @@ UX batch 1 (T-090…T-094).
 
 UI batch 2 — orientation and preview-before-commit (spec §9; design system https://claude.ai/artifact/DWxheHjahb7L4k8GAWbRGq).
 UI only: no engine change, no save change, goldens unchanged. Read §9 and the design-system card each task names before coding.
-Order: T-095 → T-101.
+Order: T-095 → T-114 → T-096 … T-101.
 
 ### [ ] T-095: UI tokens, selected state, red diet
 
@@ -54,6 +54,27 @@ Steps:
 - No css `font-size` below 12px; `.btn.hot` is the only ink-filled control; Create screen: selected role reads cyan-outlined, Start career ink-filled.
 - Skills drawer: prices not red. npm test / lint pass.
   QA: career run → Create screen, Skills drawer, a recap card; screenshots.
+  Result:
+
+### [ ] T-114: Layout grid, action rows, container sizes
+
+Spec: §9.8 Goldens: unchanged Save: no change
+Goal: every card, modal and drawer row ends in one aligned action row with its CTAs on one line; containers are larger on desktop.
+Files: css/career.css, css/style.css, css/theme.css, js/ui/career-week.js, js/ui/career-hub.js, js/ui/career-map.js, js/ui/career-create.js, js/ui/menu.js
+Do not: change what any button does or its label text (T-099/T-112 own copy); add new controls; touch the match screen (T-107/T-109).
+Steps:
+
+1. CSS: one `.act` class = action row (`display:grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 16px; margin-top: 16px`), modifiers `.act.two` (1fr 1fr), `.act.pri` (2fr 1fr), `.act.three`; buttons inside get height 48 (modal) / 40 (card) via the container. `.rowcta` = list row grid `1fr 120px`, button 32px, name `text-overflow: ellipsis`.
+2. Sizes: `.hub .drawer` width `clamp(480px, 36vw, 600px)`; `.hubcard` 640px, `.hubcard.wide` 960px; `#spot` 480px; `--gap` (HUD inset) 16px. Drawer `.panel` inside `.dbody`: no border/background, `line` divider between sections.
+3. Markup — wrap CTAs in `.act`: evalPanel / cupPanel (`Play` + `Sim` → `.act.pri`, free-agent note moved above it inside the card padding), recapCard + gazetteCard (single full-width), eventCard / clash card (`.evc` → `.act.two`, stretch heights), trainSpot (Hard toggle + teammate chips above, Train button full row), renderCreate (`Start career` + `Back` → `.act.pri` at the bottom of the right panel; `.create` columns 1fr 1fr, panels stretch).
+4. Lists → `.rowcta`: clubsCard, skillShop rows that have a button, personRow (lifeCard housing rows: T-100 uses `.rowcta`). rankCard wrapped in a `.panel` so it shares the drawer content edge.
+5. Menu: hero card spans the full `.wrap`; Library + Playtest two equal columns beneath.
+   Accept:
+
+- No container shows two CTAs stacked vertically; every list's buttons line up in one column.
+- At 1440×900: drawer ≈518px, club names on one line, evaluation card fits without scrolling.
+- npm test / lint pass.
+  QA: career run → Create, a training spot, Clubs drawer, recap, evaluation card, Main menu; screenshots.
   Result:
 
 ### [ ] T-096: HUD rebuild — labels, coach's goal, next step
@@ -133,7 +154,7 @@ Files: js/ui/career-week.js (lifeCard), css/career.css
 Do not: change HOUSING values or setHousing.
 Steps:
 
-1. Replace the `<select>` with one row per HOUSEK: name, region chip, rent, rest (×{rest}), mood/sick/grit effects from the HOUSING fields as short chips, `desc` as the row tooltip; current home marked selected (§9.2 selected style); row click → `setHousing(k)` (rows you can't afford: disabled with the gap).
+1. Replace the `<select>` with one row per HOUSEK: name, region chip, rent, rest (×{rest}), mood/sick/grit effects from the HOUSING fields as short chips, `desc` as the row tooltip; current home marked selected (§9.2 selected style); each row a `.rowcta` (T-114) with a `Move in` button → `setHousing(k)` (rows you can't afford: disabled with the gap).
    Accept:
 
 - Life drawer shows 5 rows with rent and effects; picking one changes home as before.
