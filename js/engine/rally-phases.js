@@ -240,19 +240,46 @@ function chooseAttack(c, s, h) {
   // back-row wing spikers who feel strong call for a long set to the back court; a sharp setter listens
   const callers = pool.filter(p => p.role === 'WS' && !front(atk, p) && confidence(p, m, atk) >= 80),
     trust = clamp(W(setter) / 1.4, 0.5, 1.3) * (tac.focus === 'WS' ? 1.4 : tac.focus === 'MB' ? 0.6 : 1);
-  let spiker = quick
-    ? pick(MBs)
-    : wpick(
-        pool,
-        p =>
-          p.power *
-          (p.star ? 1.7 : 1) *
-          (front(atk, p) ? 1 : 0.25 * (callers.includes(p) ? 1 + 2.4 * trust : 1)) *
-          (p.role === 'MB' ? 0.5 : p.role === 'S' ? 0.45 : 1) *
-          (tac.w[p.role] || 1) *
-          (1 + 0.6 * buffLv(p)) * // the captain told everyone to feed this player
-          (elReady(m, p) ? 3 : 1) // a full element gauge: the setter looks for them
-      );
+  const hitW = p =>
+    p.power *
+    (p.star ? 1.7 : 1) *
+    (front(atk, p) ? 1 : 0.25 * (callers.includes(p) ? 1 + 2.4 * trust : 1)) *
+    (p.role === 'MB' ? 0.5 : p.role === 'S' ? 0.45 : 1) *
+    (tac.w[p.role] || 1) *
+    (1 + 0.6 * buffLv(p)) * // the captain told everyone to feed this player
+    (elReady(m, p) ? 3 : 1); // a full element gauge: the setter looks for them
+  // relationships (T-066): in the clutch the setter feeds an ally more and freezes out a resent / enemy hitter — the same single draw,
+  // read against two weightings; without m.rel (or before the clutch) this is the plain wpick
+  const clutch = !!m.rel && !quick && Math.max(m.pts[0], m.pts[1]) >= REL_E.clutch,
+    relMul = p => ({ ally: 1 + REL_E.trust, resent: 1 - REL_E.freeze, enemy: 1 - REL_E.freeze })[relTag(m, setter, p)] || 1,
+    // (exactly wpick, but with the draw handed in so two weightings can be read against the same one)
+    at = (wf, u) => {
+      let t = 0;
+      const w = pool.map(p => {
+        const v = Math.max(0.01, wf(p));
+        t += v;
+        return v;
+      });
+      let r = u * t;
+      for (let i = 0; i < pool.length; i++) {
+        r -= w[i];
+        if (r <= 0) return pool[i];
+      }
+      return pool[pool.length - 1];
+    };
+  let spiker = quick ? pick(MBs) : clutch ? null : wpick(pool, hitW),
+    relNote = null;
+  if (clutch) {
+    const u = R(),
+      plain = at(hitW, u);
+    spiker = at(p => hitW(p) * relMul(p), u);
+    const cold = ['resent', 'enemy'].includes(relTag(m, setter, plain));
+    m.relLog.push({ act: 'clutch', p: setter.id, mate: spiker.id, tag: relTag(m, setter, spiker) });
+    if (spiker !== plain) {
+      relNote = cold ? { act: 'freeze', who: plain } : { act: 'trust', who: spiker };
+      m.relLog.push({ act: relNote.act, p: setter.id, mate: relNote.who.id, tag: relTag(m, setter, relNote.who) });
+    }
+  }
   // ego (spec §2.12): an unpicked hitter demands the set; a low-maturity setter gives in (a mature one ignores the call)
   let egoCall = null;
   if (!quick) {
@@ -265,6 +292,7 @@ function chooseAttack(c, s, h) {
       if (ok) ((spiker = caller), (egoCall = caller));
     }
   }
+  if (egoCall) relNote = null; // (the hitter demanded it: not the setter's choice)
   // a predictable attack is easier to read: blockers get there a little more often
   const readBonus = tac.focus && spiker.role === tac.focus ? tac.read : 0;
   // setter-driven plays (decided before the approach so the animation can show them)
@@ -274,6 +302,17 @@ function chooseAttack(c, s, h) {
   const DF = defT.P.filter(p => p.role !== 'S' && front(ds, p)),
     B0 = DF.find(p => p.role === 'MB') || DF[0] || defT.P.find(p => front(ds, p)) || defT.mb; // a front-row setter before anyone from the back
   const bad = sq2 === 'bad';
+  if (relNote && c.V) {
+    // the setter says it out loud (a talk beat before the set; no extra draw)
+    const { act, who } = relNote;
+    c.B({
+      dur: 650,
+      acts: [
+        { k: 'call', p: setter.id, t: callLine(act, setter, m) },
+        { k: 'log', t: act === 'trust' ? `${setter.name} trusts ${who.name}` : `${setter.name} freezes ${who.name} out`, c: 'set' }
+      ]
+    });
+  }
   return { MBs, mbZ, tac, quick, pool, callers, trust, spiker, readBonus, freak, slide, sync, DF, B0, bad, egoCall };
 }
 /**

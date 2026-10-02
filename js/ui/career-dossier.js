@@ -53,7 +53,7 @@ function dossierCard(run, r) {
   }<div class="dros small">${d.roster
     .map(
       p =>
-        `<span><b>${esc(p.name)}</b> <i class="mute">${p.role}</i> <span class="mute">${esc(p.squad)}</span> ${p.ovr == null ? '<i class="mute">unknown</i>' : `<b>${p.ovr}</b>${p.el ? ` <b style="color:${ECOL[p.el]}">${ENAME[p.el]}</b>` : ''}${p.techs && p.techs.length ? ` <span class="mute">· ${esc(p.techs.join(', '))}</span>` : ''}`}</span>`
+        `<span><b><a class="plink" onclick="closeDossier();openPerson('${esc(String(p.id))}')">${esc(p.name)}</a></b> <i class="mute">${p.role}</i> <span class="mute">${esc(p.squad)}</span> ${p.ovr == null ? '<i class="mute">unknown</i>' : `<b>${p.ovr}</b>${p.el ? ` <b style="color:${ECOL[p.el]}">${ENAME[p.el]}</b>` : ''}${p.techs && p.techs.length ? ` <span class="mute">· ${esc(p.techs.join(', '))}</span>` : ''}`}</span>`
     )
     .join('')}</div>`;
   return `<aside class="panel dossier" style="--tc:${d.color}">

@@ -133,10 +133,16 @@ const Run = {
    */
   lineup(run, T, region, dry, forceYou) {
     const you = Run.you(run),
-      score = p => ovr(p) + 6 * Run.form(run, p) + (p === you && region ? City.rep(run, region) / BENCH.standingPer : 0),
+      cap = T.cap && squadOf(T).includes(T.cap) ? T.cap : null, // the sitting captain's allies gain, his enemies lose (REL.chem.capVouch)
+      chem = cap ? Rel.chem(run, T) : null,
+      score = p =>
+        ovr(p) +
+        6 * Run.form(run, p) +
+        (p === you && region ? City.rep(run, region) / BENCH.standingPer : 0) +
+        (chem ? Rel.capBonus(run, chem, cap, p) : 0),
       left = [...squadOf(T)],
       P = [],
-      out = p => (run.injury && p === you) || People.out(run, p), // an injured player (you or an NPC, spec §4.23 A) never starts
+      out = p => (run.injury && p === you) || People.out(run, p) || Asks.sits(run, p), // an injured player (you or an NPC, spec §4.23 A) or one who gave up the seat this week never starts
       forced = forceYou && !out(you) && left.includes(you);
     for (const role of ['S', 'MB', 'WS', 'WS']) {
       const fit = left.filter(p => !out(p)),
@@ -223,14 +229,11 @@ const Run = {
     }
     throw new Error('Unknown key ' + key);
   },
-  /** Change your bond with a teammate by `v` (0–100). Returns a short label such as "+7 bond with Aoi". */
-  bond(run, mateId, v) {
-    const you = Run.you(run),
-      m = squadOf(Run.myTeam(run)).find(p => p.id === mateId);
+  /** A teammate remembers something (Rel.add). Returns a short label such as "+7 bond with Aoi". */
+  bond(run, mateId, v, kind = 'event') {
+    const m = squadOf(Run.myTeam(run)).find(p => p.id === mateId);
     if (!m) return ''; // that teammate is gone (you changed club, or they were transferred)
-    const nv = clamp((you.bond[mateId] || 0) + v, 0, 100),
-      d = nv - (you.bond[mateId] || 0);
-    you.bond[mateId] = nv;
+    const d = Rel.add(run, mateId, kind, v);
     return d ? `${d > 0 ? '+' : '−'}${Math.abs(d)} bond with ${m.name}` : '';
   },
   /** The player may end a training week (not with an event open, not on a match week). */
@@ -274,6 +277,7 @@ const Run = {
     Sponsors.offer(run);
     ElTrial.offer(run);
     Eval.setup(run);
+    Asks.roll(run);
   },
   /** Save the run (teams in their compact JSON form). */
   save(run) {
@@ -339,8 +343,8 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 10;
-/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history), v9: `run.mode.story` (T-067), v10: `run.people` / `run.pseed` (NPC careers, T-060) — older saves are dropped; add steps when the saved shape changes). */
+const RUN_VERSION = 14;
+/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history), v9: `run.mode.story` (T-067), v10: `run.people` / `run.pseed` (NPC careers, T-060), v11: `run.mem` (what NPCs remember about you, T-061), v12: `run.asks` / `run.loans` / `run.vouch` / `run.sitout` / `run.duo` (approaches, T-063), v13: person `status` / `bench` / `gone` (fates, T-064), v14: memory entries gain `a` + NPC ↔ NPC pairs in `run.mem` (T-065) — older saves are dropped; add steps when the saved shape changes). */
 const RUN_MIGRATIONS = {};
 const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
 /**
@@ -368,6 +372,12 @@ const RUN_DEFAULTS = {
   reserve: [() => ({}), isObj], // faction pools (js/career/pool.js)
   people: [() => ({}), isObj], // NPC careers: player id → { want, traits, plan, sta, inj, xp, log } (js/career/people.js)
   pseed: [() => 0, Number.isFinite], // seed of the NPC rolls
+  asks: [() => [], Array.isArray], // approaches waiting (and your own asks this week): js/career/asks.js
+  loans: [() => ({}), isObj], // NPC id → { amt, due }: money you lent
+  vouch: [() => ({}), isObj], // club index → true: an ally vouched for you (World.joinReq)
+  sitout: [() => null, v => v === null || isObj(v)], // { week, sit: 'you' | id }: a seat given or asked for, that week's match only
+  duo: [() => null, v => v === null || isObj(v)], // { id, week }: a mate fights your next challenge with you
+  mem: [() => ({}), isObj], // what NPCs remember about you: pair key → [{ w, k, v, n }] (js/career/rel.js)
   met: [() => ({}), isObj], // player id → true: faced on court (their rating is known)
   street: [() => ({}), isObj], // player id → street points (Rank)
   refused: [() => ({}), isObj], // club index → { week, n }: team challenges it refused

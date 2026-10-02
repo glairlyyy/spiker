@@ -314,7 +314,7 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   the training cap (75) and match growth (§4.14) are unchanged. Early on you are benched and lose — that is the point
   (evaluations still pay the bench reward). Stats can fall to 1 (events, injuries), never below; a guard repairs any invalid stat on load and before every match (T-056). NPCs are unchanged.
 
-- §4.23 **Relationships — the core pillar** **[locked design (owner); A built T-060; T-061…T-066 detailed in tasks.md]**
+- §4.23 **Relationships — the core pillar** **[built T-060…T-066; review fixes T-089]**
   Relationships are the main thing to do. Not a dating sim, not support cards: **every NPC is a career too.** They
   want something, grind for it on the same island with the same few slots, and a relationship is the history of two
   careers that keep colliding. You don't fill a gauge; you live through things together (or against each other).
@@ -419,6 +419,11 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   St. Gloria (still in play), `leave` players go abroad (gone); NPC ↔ NPC memories carry `a` (who feels it); on-court
   effects are gated on per-match flags, so the engine goldens never move for Monster / sims.
 
+  **As built (T-061…T-066):** bond = clamp(stance × 8, 0, 100) (60 / 80 reached at weeks ~8 / ~13 as before); at most
+  one approach per person and per kind a week; a vouch is offered only while you are a free agent; a call-out comes from
+  outside your squad; at most one poaching per payday; NPC ↔ NPC off-screen results count half; clutch trust / freeze
+  moves a setter's ally share ~32 → 37 % and enemy ~27 → 24 %.
+
   **I. Build order (tasks after the camera, each small):**
   T-060 NPC wants / traits / status + weekly plans and activity-based growth (data + sim, headless) ·
   T-061 memory log + stance + bond as summary (migrate bond sources) · T-062 People tab (cards, discovery) ·
@@ -442,7 +447,8 @@ Status tags: **[built]** in the code now · **[locked]** decided, not built · *
   still; a ball far out of the map never drags the view (look target clamped to the court box, eased out while
   hidden), and a hype shot's exit turns the view smoothly. In POV, figures that come within arm's reach of the eye fade out.
   Your career player is always the owner's own model (Main_v2, kept in its own colours); loaded extra models appear only
-  in the Monster game (random per player).
+  in the Monster game (random per player). VRM hair / cloth springs move relative to the figure (no flinging when it
+  runs or is placed), at the model's own stiffness.
 
 - §4.26 Game modes **[locked (owner), built T-067; Endless = backlog]**: a new run picks **Story** (default) or
   **Endless** (later).

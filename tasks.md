@@ -46,327 +46,34 @@ Result:
 - Ego ✓ (T-068), block collision ✓ (T-069).
 - Player camera polish ✓ (T-070).
 - - NPC careers ✓ (T-060).
-- **Now**: relationships — the core pillar (spec §4.23): T-061 memories + stance → T-062 People drawer → T-063 approaches → T-064 fates → T-065 NPC ↔ NPC → T-066 on court (all ready, in order). **Then**: road travel (T-048), voice pass (T-022).
+- Relationships ✓ (T-060…T-066, spec §4.23).
+- **Now**: T-089 relationship review fixes. **Then**: road travel (T-048), voice pass (T-022).
 - **Phase 5 — Voice pass**: faction/region/Gazette strings rewritten in lore.md §7 voices.
 
-## Now — see Next (relationships)
+## Now — review fixes
 
-## Next — Relationships, the core pillar (§4.23). One task at a time; the spec chat details each before it moves here.
-
-### [ ] T-061: Memories and stance — bond becomes what an NPC remembers about you
-Spec: §4.23 B, H          Goldens: unchanged (career only; the engine is untouched)          Save: RUN_VERSION 10 → 11 (`run.mem`)
-Goal: Every NPC keeps a short log of what you did to / with them (memories); their **stance** toward you is computed
-from it (fading, scars, their traits) and tagged ally · respect · neutral · resent · enemy, plus a **rival** flag. The
-old 0–100 `you.bond` stays as a cached read-only summary, so every current reader (combos at 60, friendship training and
-form at 80, coach's goals, the Team drawer) keeps working unchanged. You → NPC pairs only (NPC ↔ NPC is T-065).
-Files: js/data/people.js, js/career/rel.js (new), js/career/run.js, js/career/training.js, js/career/city.js,
-js/career/events.js, js/career/cup.js, js/career/growth.js, js/data/career.js, js/ui/career-week.js (two info texts only),
-index.html, test3d.html, tests/career.test.js, ARCHITECTURE.md
-Do not: touch js/engine (read `m.egoLog` / `m.played` / `m.stat` after the match, in career code); draw R() / rnd() /
-pick() in Rel; change bond thresholds (60 combos, 80 friendship) or any reader of `you.bond`; add UI cards, approaches or
-NPC ↔ NPC memories (T-062, T-063, T-065).
+### [ ] T-089: Relationship fixes from the T-061…T-066 review
+Spec: §4.23 F (fates never during a cup), H (People draws no R())          Goldens: unchanged          Save: no change
+Goal: Close the bugs the review found; nothing else changes.
+Files: js/career/people.js, js/career/asks.js, js/engine/rally-phases.js, tests/career.test.js, tests/engine.test.js
+Do not: change any number in REL / REL_E; touch other files.
 Steps:
-1. js/data/people.js — add:
-   - `MEMORY` = kind → { v, scar?, pos? (counts as positive for traits) , payoff? }:
-     trained { v: 3 } (×0.5 for each repeat in the same week) · hung_out { v: 4 } (×0.5 per repeat in the week) ·
-     won_together { v: 5, payoff: 1 } · lost_together { v: 2 } (jealous / cynical: −2) · event { v: from the event } ·
-     spot_taken { v: −30, scar: 1 } · beat_me { v: −8 } · stole_my_ball { v: −6 } · collided { v: −4 } ·
-     hero_carried { v: 8, payoff: 1 } (jealous: −8) · set_hogged { v: −4 }.
-     (carried, covered_me, vouched, lent_money, debt_unpaid, refused_help, called_out, shamed, spot_given come with their
-     sources in T-063 / T-064 — add them then, not now.)
-   - `REL` = { decay: 0.93 (per week, scars never fade), max: 24 (entries per pair), tags: { ally: 40, respect: 15,
-     resent: −15, enemy: −45 }, rivalOvr: 5, bondK: <tuned, step 0.05>, trait: { proud: { scar: 2, beat_me: 2 },
-     loyal: { neg: 0.6 }, jealous: { spot_taken: 1.5 }, warm: { pos: 1.3 }, cynical: { pos: 0.7 }, calculating:
-     { payoff: 1.5, other: 0.5 } } }.
-2. js/career/rel.js — `Rel` (no DOM, no R()):
-   - `Rel.key(a, b)` = the two ids sorted, joined by '|'. Memories live in `run.mem[key] = [{ w, k, v }]` (w = run.week).
-   - `Rel.add(run, npcId, kind, v = MEMORY[kind].v)`: applies the per-week repeat rule (trained / hung_out: v × 0.5^n for
-     the n same-kind entries already this week, n counted before adding) and the jealous / cynical sign flips; the same
-     kind in the same week merges into one entry (values add); keeps ≤ REL.max entries (drop the oldest non-scar first);
-     then `Rel.refresh(run, npcId)`. Returns the change in the cached bond (for labels). No-op for you or an id without a
-     person (`run.people`).
-   - `Rel.stance(run, npcId)` = Σ v × fade × trait multipliers, fade = scar ? 1 : REL.decay^(run.week − w); multipliers
-     of both traits multiply (proud ×2 on scars and beat_me; loyal ×0.6 on negatives; jealous ×1.5 on spot_taken; warm
-     ×1.3 / cynical ×0.7 on positives; calculating ×1.5 on payoff kinds, ×0.5 on the rest). Rounded to 0.1.
-   - `Rel.tag(run, npcId)` → 'ally' | 'respect' | 'neutral' | 'resent' | 'enemy' by REL.tags; `Rel.rival(run, npcId)` →
-     true when they are in your current squad (`Run.myTeam`), same role, |ovr − yours| ≤ REL.rivalOvr.
-   - `Rel.bond(run, npcId)` = clamp(round(stance × REL.bondK), 0, 100); `Rel.refresh(run, id)` writes it to `you.bond[id]`
-     (only for ids already in `you.bond` or current mates — keep World's key bookkeeping as is).
-   - `Rel.week(run)` refreshes every cached bond (fading moves them).
-   - `Rel.afterMatch(run, m, side)` (your side index in m): for every NPC teammate who played (`m.played`) →
-     won_together / lost_together; from `m.egoLog` entries involving you: you stole (p = you, mate = npc) → stole_my_ball
-     for npc; a crash with you on either side → collided for the other; your `swing` with ok → hero_carried for each NPC
-     teammate who played; your `call` with ok → set_hogged for `mate`; a `collide` entry with you → collided for the other.
-3. Sources (replace the direct bond changes; `Run.bond(run, id, v, kind = 'event')` becomes `Rel.add(run, id, kind, v)`
-   and keeps its "+N bond with X" label from the returned change):
-   - training.js: training together → kind 'trained' (no value: MEMORY's).
-   - city.js: ramen / arcade → 'hung_out'.
-   - events.js: bondMate / bondCap / bondAll → 'event' with the event's value (unchanged numbers).
-   - cup.js `result`: drop the `R0.bond` loop (and the `bond` fields of REWARDS in data/career.js); call `Rel.afterMatch`
-     for every match you are in (eval, cup). `challengeResult` / `clashResult`: when your side wins, every opponent NPC who
-     played gets beat_me.
-   - cup.js `fixture`: after the non-dry `Run.lineup` — when you start and the returned `rival` is on the bench, the rival
-     gets spot_taken (at most once per week per pair: skip if one exists this week).
-   - growth.js `Growth.week`: `Rel.week(run)` after People.week.
-   - career-week.js: the evaluation info text drops "+N bond" (now "teammates who played with you remember the win");
-     the Team drawer info text unchanged.
-4. run.js: RUN_VERSION 11 (+ history); RUN_DEFAULTS `mem: [() => ({}), isObj]`; Run.bond as above.
-5. Tune REL.bondK (report in Result): baseline on the current code first — 5 seeds, a WS who trains Power every day with
-   the floor mates and plays every evaluation, week the first mate reaches bond 60 and 80. Pick bondK so both weeks are
-   within ±2 of the baseline. Put the baseline weeks in the test as constants.
-6. ARCHITECTURE.md: Rel layer (memory shape, stance, bond cache, sources).
-Accept:
-- tests/career.test.js: (a) a scar never fades, a non-scar fades by REL.decay per week; (b) trained ×3 in one week = 3 +
-  1.5 + 0.75 in one entry; (c) trait multipliers (proud scar ×2, warm/cynical, calculating); jealous hero_carried is
-  negative; (d) a fixture where you take a same-role mate's spot writes spot_taken once per week and their tag drops to
-  resent; (e) Rel.afterMatch from a seeded match with forced ego entries writes the expected kinds; (f) the bond-week
-  calibration (test.slow); (g) save / load keeps run.mem; a v10 save is dropped; Rel draws no R().
-- All tests + lint; engine goldens unchanged.
-QA: career run → train with mates 2 weeks, play the week-4 evaluation; the Team drawer bonds move; no pageerror.
-Result:
-
-### [ ] T-062: People drawer — person cards, discovering wants and traits, the memories that weigh most
-Spec: §4.23 G (and A, B for what a card shows), lore.md §7 (voices)          Goldens: unchanged          Save: no bump —
-`known` is added to `run.people` entries by People.ensure when missing
-Goal: A new hub drawer **People** lists everyone who matters to you; a person card shows what you know of them — role,
-OVR (if met), stance tag + rival flag, want and traits once discovered, their season in one line, and the 3 memories
-that weigh most in your diary voice. Names in the Rankings and the faction dossier roster open the same card.
-Needs T-061 (Rel) merged first.
-Files: js/data/people.js, js/career/rel.js, js/career/people.js, js/ui/career-people.js (new), js/ui/career-hub.js,
-js/ui/career-week.js (rankCard names only), js/ui/career-dossier.js (roster names only), css/career.css, index.html,
-test3d.html, tests/career.test.js, ARCHITECTURE.md
-Do not: show a want or trait before it is known, or an OVR for someone you have not met (`run.met`, as the Register
-does); invent old-language words; add approaches / buttons that act on the person (T-063); draw R() anywhere.
-Steps:
-1. Data (js/data/people.js):
-   - `REL.know` = { want: 6 (memories with you, counting merged entries once each), trait: [4, 9] (first / second trait) }.
-   - `MEM_TEXT` = kind → diary line template (voice `diary`: the MC, first person, spite and sarcasm, sometimes wrong;
-     `{n}` = their first name; no pronouns for them): e.g. spot_taken "I took {n}'s spot. {n} hasn't forgotten." ·
-     trained "Trained next to {n}. Didn't hate it." · hung_out "Ramen with {n}. {n} paid. Suspicious." · won_together
-     "We won. {n} was there for it." · lost_together "Lost with {n}. Nobody talked on the way back." · event "{n} and me —
-     you had to be there." · beat_me "I beat {n}. {n} took it personally." · stole_my_ball "Took a ball off {n}. Mine
-     anyway." · collided "Ran straight into {n}. Again." · hero_carried "Carried the point. {n} noticed." (jealous: "Carried
-     the point. {n} hated that.") · set_hogged "Called for the set over {n}. Worth it." Write 1–2 more per kind in the same
-     voice; pick by hash of (kind, week, id) — never R().
-   - `SEASON_TEXT`: their season in one line from `run.people[id].log` and `plan` — the `rumor` voice ("word is"): e.g.
-     "Word is {n} trained Hard {hard} weeks and got hurt {hurt}×." / "Word is {n} hustles more than trains." / "Word is
-     {n} hasn't missed a session." — chosen by the largest log count; numbers true.
-2. Discovery (js/career/people.js, js/career/rel.js): `run.people[id].known = { want: false, traits: [false, false] }`
-   (People.ensure adds it). `Rel.add` reveals: the want after REL.know.want memories with you; trait 1 / 2 after
-   REL.know.trait[0] / [1]; scouting a club (`run.scout[ti]` set) reveals the want of everyone on it. A reveal writes a
-   diary line (Run.log, diary voice): "Figured {n} out: wants {want name}." / "{n} is {trait name}. Should have seen it."
-3. `Rel.top(run, id, n = 3)` → the n memories with the largest |weighted value| (same weights as the stance), newest
-   first on ties: `[{ w, k, v, text }]`.
-4. js/ui/career-people.js (new): `peopleCard(run)` (the drawer) — sections **Your squad** (current mates, then bench),
-   **Others** (everyone with memories with you, then everyone met), each row: face, name, role, OVR or "unrated", stance
-   tag chip (ally / respect / neutral / resent / enemy colours from theme tokens), a "rival" chip when `Rel.rival`;
-   a row click expands `personCard(run, id)`: want ("?" until known, with WANTS desc as a tip once known), traits ("?"),
-   the season line, the 3 memories ("W8 — …"), their team and status (injured weeks from `run.people`). Escape every
-   string with esc().
-5. career-hub.js: drawer `people: ['👥', 'People', run => peopleCard(run)]` after `team`; `openPerson(id)` opens the
-   drawer with that card expanded (CW.person = id). career-week.js `rankCard` and career-dossier.js roster: names
-   become links calling `openPerson` (dossier: close it first, like its other links).
-6. css/career.css: the rows, chips and the card (desktop only; theme tokens, no new colours).
-7. ARCHITECTURE.md: discovery, MEM_TEXT / SEASON_TEXT, the People drawer.
-Accept:
-- tests/career.test.js: (a) a fresh run: no want / trait known; after REL.know.want memories the want is known and a
-  diary line was logged once; (b) scouting a club reveals its players' wants; (c) Rel.top orders by weighted value and
-  returns text containing the first name; (d) MEM_TEXT has a line for every MEMORY kind; picking a line draws no R();
-  (e) peopleCard renders for a fresh run and a 10-week run without throwing (DOM-free string check: no "undefined",
-  no "NaN").
-- All tests + lint; goldens unchanged.
-QA: career run → train with mates 3 weeks, play the week-4 evaluation, open People: squad rows with chips, expand a card
-(memories in diary voice, want "?" or revealed), click a name in Rankings → same card; screenshot; no pageerror.
-Result:
-
-### [ ] T-063: Approaches — they come to you, you go to them
-Spec: §4.23 C          Goldens: unchanged (career only)          Save: RUN_VERSION 11 → 12 (`run.asks`, `run.loans`,
-`run.vouch`, `run.sitout`, `run.duo`)
-Goal: NPCs act on their wants: up to 2 approaches a week wait for you in the People drawer (accept / refuse, each
-expires at week end), and every person card has the moves you can make on them. Every answer becomes a memory.
-Needs T-061 and T-062.
-Files: js/data/people.js, js/career/asks.js (new), js/career/rel.js, js/career/run.js, js/career/world.js,
-js/career/city.js, js/career/cup.js, js/ui/career-people.js, js/ui/career-hub.js, css/career.css, index.html,
-test3d.html, tests/career.test.js, tests/cup.test.js, ARCHITECTURE.md
-Do not: block the map or the week with an approach (it is not `run.event`; End week just expires what is left); draw R()
-(every roll is `People.roll`); touch js/engine; add the poach advice (T-064) or NPC ↔ NPC approaches (T-065).
-Steps:
-1. Data: MEMORY gains invited { v: 6 } (trained together at their invite) · refused_help { v: −6 } · ignored { v: −2 } ·
-   spot_given { v: 20, payoff: 1 } · sat_for_you { v: −10 } · duo { v: 6 } · lent_money { v: 10, payoff: 1 } ·
-   debt_unpaid { v: −4 } (each week a loan is overdue: they avoid you) · ducked { v: −5 } (you refused their call-out) ·
-   called_out { v: −5 } · vouched { v: 15, payoff: 1 } · warned { v: 4 }. MEM_TEXT lines for each (diary voice).
-   `APPROACH` = kind → { need (rule name), weight by want (table), text (their line, in the voice of their home: wei /
-   wu / shu / outlaw / gloria; Academy → registrar-dry), a / b labels }. `REL.ask` = { max: 2, base: 0.35 (chance a
-   candidate asks, × kind weight), borrow: [60, 160], repay: { calculating: 0.9, steady: 0.9, loyal: 0.85, reckless: 0.4,
-   cynical: 0.5, other: 0.7 }, vouch: 5 (OVR / key-stat bar cut), callout: { fans: 300, rep: 5 } }.
-2. js/career/asks.js — `Asks` (no DOM, no R()):
-   - `Asks.roll(run)` (called by Run.nextWeek after Eval.setup): clears last week's left-overs (each unanswered one →
-     ignored), then for every NPC with a person and a kind whose `need` holds, chance = REL.ask.base × weight[want] ×
-     (1 + max(0, stance) / 100) via `People.roll(run, id, 'ask|' + kind)`; keep the best REL.ask.max by roll; store
-     `run.asks = [{ id, kind, week, data }]`.
-   - Kinds and needs (their side):
-     - invite_train: same squad or met, stance ≥ 0; data = { at: their plan's place (or their key-stat place), day: 1 }.
-       Accept → the day is spent training there (City.day with that place, normal costs), Rel.add invited.
-     - ask_sitout: same squad, same role, an eval or cup match this week, you would start and they would not (dry
-       Run.lineup). Accept → `run.sitout = run.week`: Run.lineup benches you for that week's match (not in a Story cup —
-       the kind is never offered then); memory spot_given. Refuse → refused_help (proud: × 2 via its own weight row).
-     - duo_challenge: a teammate with want grudge / money, stance ≥ respect. Accept → `run.duo = { id, week }`: your next
-       challenge this week puts them on your side (City.challengeSide: replace the lowest-OVR non-you starter of their
-       role, else the lowest) and the stake is split (you pay half); memory duo; the result memories come from
-       Rel.afterMatch.
-     - borrow: want money / leave, stance ≥ 0, you have ≥ the amount; amount from REL.ask.borrow by roll. Accept →
-       money moves; `run.loans[id] = { amt, due: next payday week }`; on payday (World.payday) repaid with REL.ask.repay
-       by trait (roll) → lent_money and the money back, else debt_unpaid every week until repaid (re-rolled each payday).
-       Refuse → refused_help.
-     - call_out: a league-team NPC, stance ≤ resent or the rival flag; Accept → a challenge vs their club now
-       (Cup.challenge(run, ti, 0) — usual costs, days and injury rules), result memories as usual (beat_me when you win).
-       Refuse → ducked, −REL.ask.callout.fans fans, −REL.ask.callout.rep standing with their faction (City.repBump).
-     - vouch: an ally on a club you are not in; Accept → `run.vouch[ti] = true`: World.joinReq lowers that club's OVR and
-       key-stat bars by REL.ask.vouch; memory vouched (scar-free, big payoff). (Refusing costs nothing.)
-     - warn: anyone with stance ≥ respect; a rumour line (rumor voice) naming a real fact: who is ahead of you in your role
-       (Run.lineup rival), or the next clash site, or a club that will refuse you (City.worth). One button: "Noted" →
-       warned.
-   - `Asks.answer(run, i, yes)`: applies the above, removes it, saves; returns the log line (diary voice).
-3. You → them (card buttons, `Asks.mine(run, id)` lists what is possible; acceptance = clamp(0.5 + stance / 100 + trait
-   mods (warm +0.15, proud −0.1 when asked to give way, cynical −0.1), 0.05, 0.95), rolled with People.roll salt
-   'you|' + kind + week; one ask per person per week):
-   - Invite to train (a day: you pick the place you are at or theirs): yes → invited; no → nothing.
-   - Ask to sit out (a same-squad, same-role mate who would start over you; eval / cup week, not Story cup): yes →
-     `run.sitout` reversed: they sit, you start (their memory sat_for_you); no → no memory.
-   - Ask for a vouch (ally on another club): yes → as their vouch above.
-   - Call out (anyone met): a challenge vs their club now; they gain a called_out memory whatever the result.
-   - Lend (when they have a loan request open this week, from the waiting list only).
-4. UI: career-people.js — a **Waiting** section on top of the People drawer (their line in their voice, a / b buttons,
-   "until the end of the week"); the person card shows the buttons from `Asks.mine` with the acceptance shown as a word
-   (likely / maybe / unlikely — never the number). career-hub.js: the People shortcut shows a count badge while asks wait.
-5. run.js: RUN_VERSION 12; RUN_DEFAULTS asks [], loans {}, vouch {}, sitout null, duo null; nextWeek → Asks.roll;
-   Run.lineup honours `run.sitout` (you sit, or the named mate sits) for the week's match only.
-6. ARCHITECTURE.md: Asks (kinds, needs, rolls, effects), the new run fields.
-Accept:
-- tests: (a) Asks.roll is deterministic per run and ≤ 2 a week; (b) each kind's accept / refuse writes the listed
-  memory and effect (loan repaid or overdue; vouch lowers joinReq; sit-out benches you only that week; duo puts the mate
-  in the challenge side and splits the stake); (c) an unanswered ask becomes ignored at week end; (d) ask_sitout is
-  never offered in a Story cup; (e) no R() draws in Asks (seeded sequence check); (f) save / load keeps the new fields.
-- All tests + lint; goldens unchanged.
-QA: career run to week 6 answering every approach; ask a mate to sit out before the week-8 evaluation; open People; no
-pageerror; screenshot of the Waiting section.
-Result:
-
-### [ ] T-064: Fates — cut, quit, poached, called up; "People who mattered"
-Spec: §4.23 A (fates), F          Goldens: unchanged (career only)          Save: RUN_VERSION 12 → 13 (person `status`,
-`bench`, `gone`)
-Goal: NPC careers end: benched players get cut to the reserves and may quit, money / leave players get poached (and may
-ask you first), the U21 champions are called up. Gone is gone. The run-end screen lists the 5 people who mattered most.
-Needs T-061…T-063.
-Files: js/data/people.js, js/career/people.js, js/career/asks.js, js/career/world.js, js/career/cup.js,
-js/career/run.js, js/ui/career-people.js, js/ui/career-end.js, css/career.css, tests/career.test.js, ARCHITECTURE.md
-Do not: remove a player the current week's match / cup / eval still references (fates apply at payday and run end only,
-never during a cup); touch you; draw R(); touch js/engine.
-Steps:
-1. Person fields: `status` 'active' | 'cut' | 'quit' | 'poached' | 'abroad' | 'national' (injured stays `inj`),
-   `bench` (evaluations benched in a row), `gone` = { name, role, ovr, team, week, why } snapshot when they leave play.
-   `REL.fate` = { cut: 3 (evaluations), quit: { weeks: 6, p: 0.35 }, poach: { top: 0.2 (top share of their faction by
-   OVR), p: 0.25 }, national: 4 }.
-2. Bench count: at the end of each evaluation week (CALENDAR 'eval'), every league-team NPC on `t.bench` → bench++,
-   on `t.P` → 0. Payday (World.payday, after transfers / promote): **cut** — bench ≥ REL.fate.cut and ovr < their
-   faction's join OVR (World.joinReq) → World.swap with the best same-role player of that faction's reserves; status
-   'cut' (they are still in play, in the reserves); news line; a cut player you took the spot from gets spot_taken again
-   (scar). **quit** — a cut NPC whose want is not 'spot'-satisfied after REL.fate.quit.weeks in the reserves rolls
-   REL.fate.quit.p (cynical ×1.5, loyal ×0.5) → removed from the reserves (`gone`, status 'quit'); news + a diary line if
-   you have memories with them.
-3. **Poached** (payday): NPCs with want money / leave in the top REL.fate.poach.top of their faction roll REL.fate.poach.p.
-   If their stance with you ≥ respect they ask first (T-063 Asks kind `poach_advice`, offered the same day, "should I
-   go?"): Go → they go (new MEMORY kind advised { v: 10, payoff: 1 }); Stay → they stay (want
-   leave: new kind held_back { v: −8 }; otherwise advised at +4). Both kinds get MEM_TEXT lines. Going: want money → St. Gloria (swap into run.reserve.gloria,
-   status 'poached', still in play); want leave → off the island (removed, `gone`, status 'abroad'). News line.
-4. **National** (Cup.end, run end): the champion squad's starters of the final (`run.cup` final match lineup) are
-   status 'national'; with Story your call-up stays as Cup.calledUp; NPCs of the champion squad beyond the first
-   REL.fate.national by ovr stay home. News for the run-end screen.
-5. Everywhere an NPC is looked up by id (People drawer, Rel, Rank, dossier), a `gone` person shows from the snapshot
-   ("left the island, W19"); Rel.stance still works on their memories.
-6. career-end.js: **People who mattered** — the 5 largest |stance| (good or bad), each: name, role, tag, fate in one line
-   (status + week), and their top 2 memories (diary voice, Rel.top). Escape strings.
-7. ARCHITECTURE.md: fates, when they apply, the snapshot.
-Accept:
-- tests: (a) an NPC benched 3 evaluations and under the bar is cut at payday and swapped with a reserve; (b) a cut NPC
-  can quit and is gone from every squad, while their card still renders from the snapshot; (c) poaching: with stance ≥
-  respect an ask comes first and each answer applies; otherwise money → St. Gloria, leave → gone; (d) no fate during a
-  cup; (e) the run-end list has ≤ 5 entries, sorted by |stance|; (f) deterministic per run; no R().
-- All tests + lint; goldens unchanged.
-QA: career run → end weeks to the U21 cup (sim), finish the run: People who mattered shows fates; no pageerror.
-Result:
-
-### [ ] T-065: NPC ↔ NPC — they remember each other; cliques, feuds, squad chemistry
-Spec: §4.23 D          Goldens: unchanged (career only)          Save: RUN_VERSION 13 → 14 (memory entries gain `a`)
-Goal: NPCs in the same squad / pool build memories with each other from what their weeks did; allies form cliques,
-enemies form feuds, and that changes who starts and who gets cut. The Team drawer shows the squad's chemistry and some
-approaches ask you to take a side.
-Needs T-061…T-064.
-Files: js/data/people.js, js/career/rel.js, js/career/people.js, js/career/asks.js, js/career/run.js,
-js/career/world.js, js/career/cup.js, js/ui/career-week.js (bondCard: chemistry block), js/ui/career-people.js,
-css/career.css, tests/career.test.js, ARCHITECTURE.md
-Do not: store pairs across squads / pools (budget: same league team, or same reserve, ≤ ~1,500 entries total — cap and
-drop the oldest non-scar entries first); draw R(); touch js/engine.
-Steps:
-1. Memory entries gain `a`: the id of the one who feels it ('*' = both). You ↔ NPC entries are `a` = the NPC (migrate in
-   Rel.add; old saves are dropped by the version bump). `Rel.stance(run, viewer, other)` generalises (viewer's traits).
-2. Weekly sources (People.week, after plans): two NPCs of one squad who trained at the same place the same week →
-   trained ('*'); league starters of one team: off-screen result each week (win share by team ovr vs the league mean,
-   People.roll) → won_together / lost_together ('*'); a promote / cut that swaps a player in → spot_taken (a = the one
-   who lost the spot); a poach / transfer between squads → nothing.
-3. Cliques / feuds (`Rel.chem(run, T)`): mutual ally pairs (both stances ≥ REL.tags.ally) joined into groups of 3+ →
-   cliques; mutual resent-or-worse pairs → feuds. Effects: Run.lineup score + REL.chem.capVouch (2) for players the
-   captain is an ally of, − the same for the captain's enemies; the cut rule uses REL.fate.cut − 1 for an NPC feuding
-   with their captain.
-4. Asks: `take_side` — you share a squad with a feud pair: pick A or B → sided_with { v: 8 } for the chosen,
-   sided_against { v: −8 } for the other; their feud partner's stance shifts only through these memories. Weight by
-   your stances with both. Rumour lines (rumor voice) in the Gazette when a clique forms or a feud starts in a squad you
-   have met.
-5. bondCard (Team drawer): a **Chemistry** block — cliques (names), feuds (A ✕ B), your place in them. People card: "with
-   X / against Y" line from their strongest NPC stances (only names you have met).
-6. ARCHITECTURE.md: `a`, NPC pairs, budget, Rel.chem.
-Accept:
-- tests: (a) two squadmates training at the same place gain a shared memory; (b) cliques and feuds form from forced
-  memories and change Run.lineup scores by the captain rule; (c) the pair budget holds over a 28-week run (count); (d)
-  take_side writes both memories; (e) deterministic; no R().
-- All tests + lint; goldens unchanged.
-QA: career run to week 12 → Team drawer chemistry; a take-side approach answered; no pageerror.
-Result:
-
-### [ ] T-066: On court — trust, freeze-out, cover and rivals in the match engine
-Spec: §4.23 E, §2.12 (ego toward allies / rivals)          Goldens: unchanged — every effect is gated on `opts.rel`
-(career matches only); Monster / sims / the golden matches pass none          Save: no change
-Goal: Relationships show on court in small, visible ways: a setter feeds an ally in the clutch and freezes out an enemy,
-allies cover each other's bad passes, the captain buffs allies first, ego steals target rivals more and allies less,
-and rivals facing each other come in fired up or rattled.
-Needs T-061…T-065.
-Files: js/engine/match.js, js/engine/rally-phases.js, js/engine/rally-defense.js, js/engine/serve.js,
-js/data/rules.js, js/data/dialogue.js, js/career/rel.js, js/career/cup.js, tests/engine.test.js, tests/cup.test.js,
-ARCHITECTURE.md
-Do not: add draws when `m.rel` is absent (no flags → byte-identical beats; a test proves it); add an act kind (log /
-call / existing chatter only); give raw stat bonuses.
-Steps:
-1. Career → engine: `Rel.matchFlags(run, A, B)` → `{ tag: { 'idA|idB': 'ally' | 'respect' | 'neutral' | 'resent' |
-   'enemy' } (viewer first; you ↔ NPC uses the NPC's stance both ways), rival: Set of 'idA|idB' }` for every pair on court
-   (both squads). Cup.fixture / challenge / clash pass it as `newMatch(a, b, rec, { …, rel })` → `m.rel`.
-2. `REL_E` (rules.js) = { trust: 0.15, freeze: 0.15, clutch: 12 (either side's points ≥), cover: 0.12, buff: 2 (ally
-   weight in the captain's pick), ego: { ally: 0.5, rival: 1.5 }, rival: { fired: 0.3, rattled: −0.2 } }.
-3. chooseAttack: in the clutch the setter's weight for an ally hitter × (1 + trust), for a resent / enemy hitter ×
-   (1 − freeze); when the pick differs from the no-flags pick, a log line ("{setter} trusts {hitter}" / "{setter} freezes
-   {hitter} out") and a `call` chatter line from dialogue (new CALLS.trust / CALLS.freeze, street voice).
-4. Cover (rally-defense block cover and the pop-up save `popRecovery`): a teammate who is an ally of the passer / digger
-   gets + REL_E.cover on the save chance (computed into the existing roll — no extra draw).
-5. Captain's buff (match.js): the target pick weights allies × REL_E.buff (same single draw).
-6. Ego (egoSteal): the steal chance × REL_E.ego.ally when the thief is an ally of `near`, × REL_E.ego.rival when rivals.
-7. Rivals across the net (career, Cup.prepare — no engine change): proud / reckless rivals start fired up (+form), the
-   others rattled; a log line at match start.
-8. Tests (engine.test.js): no flags → beats identical to the golden match; with flags a seeded sim of 200 matches shows
-   ally share of clutch sets up and enemy share down vs flags-off; cover saves up for allies; tests/cup.test.js: flags are
-   built for both squads and passed.
-9. ARCHITECTURE.md: m.rel, REL_E, the gating rule.
-Accept: all tests + lint; goldens unchanged; the 200-sim numbers in Result.
-QA: Monster game (no flags): unchanged; career match with an ally setter: "trusts" lines appear late in the set; no
-pageerror.
+1. Poach during the cup: the week-28 payday queues a `poach_advice` for week 29 (the cup week) and answering it moves a
+   cup entrant. Never queue a poach (ask or direct) when the next week starts a cup (`CUPS.some(c => c.after === run.week)`),
+   and `Asks.answer` / `Asks.list` skip `poach_advice` while `Run.cupDef(run)` is set.
+2. Hidden R() draw: `People.leave` → St. Gloria calls `finalizeTeam` on an empty reserve team, which rolls `coachIQ` with
+   rnd() on the main stream. Set the reserve team's `coachIQ` (0.5) before finalizing (or recompute ovr / cap without
+   finalizeTeam). Add the seeded-sequence check to the fates test.
+3. Loans to someone who leaves play: clear `run.loans[id]` when that person quits / goes abroad (no more debt_unpaid);
+   a loan made after the last payday of the season is due on the last week instead.
+4. Log lines: `poach_advice` yes only says "…went." when `People.leave` returned a line (else "…stayed after all."); the
+   unanswered path posts the leave line to the Gazette like the answered one.
+5. rally-phases.js chooseAttack: emit the "trusts" line only when relTag(setter, spiker) is 'ally', and "freezes out" only
+   when the replaced pick is resent / enemy and the new one is not (no label for a neutral hitter).
+Accept: new tests for 1–3 (a v14 run reaching the cup with a respecting money / leave NPC: no fate during the cup; the
+St. Gloria path draws no R(); a gone borrower stops adding debt_unpaid); the trust-label test counts only ally targets;
+all tests + lint; goldens unchanged.
+QA: none.
 Result:
 
 ## Later — outlines (not ready: the spec chat details each before it moves to Now)
@@ -400,6 +107,12 @@ Phase 5 — Voice pass
 
 ## Done
 
+- [x] T-066: On court — trust, freeze-out, cover and rivals in the match engine — 93/93 tests, lint clean, goldens unchanged (the golden matches pass no flags; empty flags give byte-identical beats). 200 sims, one ally / one enemy WS per setter: clutch sets 1347; ally share 0.319 → 0.365, enemy 0.267 → 0.237; 9 trust / 23 freeze lines. Pop-up saves: an ally never saves less (400 draws, +12 pts). Deviations: one engine-private helper `relTag` (match.js) is a new top-level function; the flags reach the match through `fx.setup` (match-screen.js builds newMatch itself, so `opts.rel` is also supported); the talk beat is pushed from chooseAttack (rally.js, which emits the other set calls, is not in the file list); across-net rivals = your role, within 5 OVR, resent / enemy, and only the NPC gets the mood swing. QA: career match with flags → `m.rel` set, "trusts" at 9-15, no pageerror.
+- [x] T-065: NPC ↔ NPC — they remember each other; cliques, feuds, squad chemistry — RUN_VERSION 14; 89/89 tests, lint clean, goldens unchanged; QA W12 Team chemistry (clique + feud), take_side answered, no pageerror. Deviations: lineup uses the sitting captain (T.cap); off-screen result win share = clamp(0.5 + (team OVR − mean)/50, .15, .85), memories ×0.5 (REL.chem.result); spot_taken pairs are recorded at the swap (across squads, one entry); rumours are stateless (chem before vs after the week); take_side yes = the asker's side.
+- [x] T-064: Fates — cut, quit, poached, called up; "People who mattered" — Fates (cut / quit / poached / abroad / national), snapshot cards, poach_advice ask, run-end "People who mattered"; RUN_VERSION 13. Deviations: for a non-active person `bench` holds the week it happened (no extra field, so the save shape is the listed one); at most one poaching a payday; a quit rolls for every cut player after the weeks (the "spot-satisfied" clause is read as always unsatisfied once cut); an empty St. Gloria reserve is bypassed (they join it after a seat swap in their own faction); nobody is poached from St. Gloria. 82/82 tests, lint green, goldens unchanged. QA: two full headless runs: cut / quit / poached / abroad / national all occur, no crash; the run-end panel renders 5 entries in the page, no pageerror.
+- [x] T-063: Approaches — they come to you, you go to them — Asks (7 kinds) + your own moves; run.asks / loans / vouch / sitout / duo (RUN_VERSION 12); Waiting section + badge. Deviations: one approach per person and one per kind a week; vouch only offered while you are a free agent; call_out only from non-mates (the rival flag only exists inside your squad); invite_train weights lowered so it does not crowd the rest. The bond-calibration test clears asks (unanswered ones count as ignored). 77/77 tests, lint green, goldens unchanged. QA: weeks 1–7 answering every approach, week-8 sit-out move offered, People drawer shows Waiting + badge, no pageerror.
+- [x] T-062: People drawer — person cards, discovering wants and traits, the memories that weigh most — People drawer (squad + others, stance / rival chips, card with want / traits "?" until known, rumour season line, top 3 diary memories); discovery in Rel.add (+ scouting shows wants); Rankings / dossier names open the card. 71/71 tests, lint green, goldens unchanged. QA: 3 training weeks + week-4 eval, drawer rows + card render, Rankings name opens the card, no pageerror.
+- [x] T-061: Memories and stance — bond becomes what an NPC remembers about you — Rel layer + run.mem (RUN_VERSION 11); sources rewired, match rewards no longer carry bond. bondK 8: first mate reaches bond 60 / 80 at week 7.8 / 12.6 (5 seeds) vs baseline 7.6 / 12.6 (±2 held). 67/67 tests, lint green, goldens unchanged. QA: mates' bonds move after 3 training weeks + week-4 eval, no pageerror.
 - [x] T-060: NPC careers — wants, traits, weekly plans, activity-based growth — `People` (hash roll stream, no R()), `run.people` / `run.pseed`, RUN_VERSION 10; match XP spread over the 4 stats (answer a). Tuned xp 20 / hustle 100 / play 100: w12 mean 75.5 (base 75.2), top-10 83.7 (82.2), stars 5.0 (5.8); w28 mean 83.3 (86.5), top-10 94.8 (94.2), stars 10.2 (11.2). Accepted: the w28 mean sits 3 below because bench / reserve players no longer drift up — the top of the league is unchanged. 60/60, goldens unchanged.
 - [x] T-070: POV polish — no teammate in your face, ball on screen for hitters — figures within 0.9 m of the POV eye fade out (~0.1 s) and back; a hitter in a spike pose leans the look fully to the ball (hitter in frame 97–100 % of hitter frames). The overall WS ball-on-screen ≥ 70 % bar is dropped: off-ball frames face the opponent by design (§4.25). 55/55, goldens unchanged.
 - [x] T-069: Block collision — cancelled blocks and the net-fault variant — `EGO.solo.collide` 0.25 / `net` 0.3 (no draw at 0); cov 0, both hop short and stagger, net fault = point to the attackers after the set beat; `plabel` gains `p2` / `v` (warn #ffb13d, err #ff4d4d). 160 sims at ego 1 / wit 0.6: collisions 19.0 % of solo blocks, net faults 28.3 % of those. Goldens updated.
@@ -492,3 +205,5 @@ Phase 5 — Voice pass
 - (recorded, bug fix) Cup panel crash fix (owner report): `rankBest` got `squadOf(entrant)` — a cup entrant is plain data with no `.P`, so the hub threw "Cannot read properties of undefined (reading 'map')" whenever a cup match was next; it now reads `squadOf(Cup.team(run, i))` (the Street crew too); test asserts every entrant has a squad. js/ui/career-week.js, tests/cup.test.js.
 - (recorded in spec §4.25) Main_v2.vrm is your career player's permanent model (assets/vrm/main.glb.txt, README.txt, js/render3d/{players3d,r3d,actors3d}.mjs, ui/menu.js tip); loaded extra models (+ Player model) are random per player in the Monster game again, not in career.
 - (recorded, bug fix) POV fade crash fix (owner report): `povFade` read `A.rdt` while `A` was null on leaving a match (unbind → setPovHidden); guarded (js/render3d/actors3d.mjs).
+- (recorded in spec §4.25) Owner: hair springs fling / feel weightless — each VRM spring joint now uses the figure's root as its `center` (motion measured relative to the root) — js/render3d/players3d.mjs.
+- (recorded in spec §4.25) Owner: calmer hair — `HAIR` { stiff 1, drag 0, gravity 1 } (= the model as exported) on every spring joint — js/render3d/players3d.mjs.

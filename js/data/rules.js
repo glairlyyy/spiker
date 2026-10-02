@@ -26,6 +26,21 @@ const SUB = { max: 2, sta: 0.6, fresh: 0.9, errs: 3, back: 0.85, iq: [0.35, 0.9]
 const SETTER = { beat: 1.6 };
 const rulesText = () => `First to ${RULES.pointsToWin}, win by ${RULES.winBy}`;
 /**
+ * Relationships on court (T-066, spec §4.23 E; career matches only: every effect is gated on `m.rel`, so Monster / sims / the golden
+ * matches are untouched). trust / freeze: the setter's weight for an ally / a resent-or-enemy hitter once either side has `clutch`
+ * points; cover: added to an ally's save chance (block cover, pop-up); buff: the captain's buff weighs allies ×this; ego: the steal
+ * chance ×ally / ×rival; rival: the form an NPC rival starts with (fired up = proud / reckless, else rattled). No raw stat bonuses.
+ */
+const REL_E = {
+  trust: 0.15,
+  freeze: 0.15,
+  clutch: 12,
+  cover: 0.12,
+  buff: 2,
+  ego: { ally: 0.5, rival: 1.5 },
+  rival: { fired: 0.3, rattled: -0.2 }
+};
+/**
  * Ego (spec §2.12, T-068): every player has `ego` 0–1; a low-wit player acts on it. Per opportunity the chance of an ego act is
  * `base[act] × ego × (1 − maturity) × (1 − captain maturity × captain)` (maturity(p) = clamp((wit − 0.5) / 1.5, 0, 1); the
  * captain on court calls it off). steal: a teammate who is up to `reach` × the nearest player's time to the ball still goes for

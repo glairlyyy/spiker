@@ -62,6 +62,11 @@ const World = {
   joinReq(run, ti) {
     const j = Object.assign({}, (FACTIONS[ti] && FACTIONS[ti].join) || {}),
       n = run && FACTIONS[ti] ? Front.lost(run, FACTIONS[ti].region) : 0;
+    if (run && run.vouch && run.vouch[ti]) {
+      // an ally vouched for you (T-063): the OVR and key-stat bars drop
+      if (j.ovr) j.ovr = Math.max(1, j.ovr - REL.ask.vouch);
+      if (j.key) j.key = Math.max(1, j.key - REL.ask.vouch);
+    }
     if (!n) return j;
     if (j.ovr) j.ovr -= FRONT.join * n;
     if (j.key) j.key -= FRONT.join * n;
@@ -114,6 +119,7 @@ const World = {
     if (H.sick && R() < H.sick) out.push(`caught a cold (${Run.bump(run, 'sta', -15)})`);
     if (H.noise && R() < H.noise) out.push(`noisy night (${Run.bump(run, 'mood', -1)})`);
     if (out.length) Run.log(run, `Home: ${out.join(', ')}.`);
+    Asks.week(run); // loans: repaid on payday, or an overdue memory
     if (World.isPayday(run)) World.payday(run);
   },
   payday(run) {
@@ -131,6 +137,7 @@ const World = {
     Run.log(run, `Payday: ${out.filter(Boolean).join(', ')}. Balance $${run.money}.`);
     World.transfers(run);
     World.promote(run);
+    People.fates(run); // cuts, quits, poaching (T-064)
     World.gazette(run);
   },
   /** The league moves on its own: a stronger club poaches a better player of one role from a weaker club. */
@@ -170,6 +177,7 @@ const World = {
       }
       if (!weak || ovr(res) < ovr(weak) + PROMOTE.gap) continue;
       World.swap(res, weak);
+      Rel.addPair(run, weak.id, res.id, 'spot_taken', null, weak.id); // (ids only: they are in different squads now, one memory)
       finalizeTeam(wt);
       finalizeTeam(rt);
       if (Run.myTeam(run) === wt) {

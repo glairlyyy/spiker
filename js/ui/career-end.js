@@ -20,9 +20,20 @@ function renderRunEnd() {
       <p class="small mute">${run.plays.k} K · ${run.plays.blk} B · ${run.plays.ace} A${info(`Across all matches: ${run.plays.k} kills, ${run.plays.blk} blocks, ${run.plays.ace} aces. Grades: ${run.grades.join(' ') || '—'}`)}</p>
       </div>
     </div>
+    ${matteredCard(run)}
     ${growthChart(run)}
     <div class="trow"><button class="btn hot" onclick="finishRun('create')">New career</button><button class="btn" onclick="finishRun('menu')">Main menu</button></div>
   </section>`;
+}
+/** The 5 people who mattered most (largest |stance|): tag, fate and the two memories that weigh most, in your diary voice. */
+function matteredCard(run) {
+  const L = People.mattered(run, 5);
+  return L.length
+    ? `<div class="panel"><h3>People who mattered</h3>${L.map(
+        x => `<div class="mat"><b>${esc(x.name)}</b> <i class="mute small">${x.role}</i> <span class="stc ${x.tag}">${esc(x.tag)}</span> <span class="small mute">${esc(x.fate)}</span>
+        ${x.mem.length ? `<ul class="pmem small">${x.mem.map(m => `<li><b>W${m.w}</b> ${esc(m.text)}</li>`).join('')}</ul>` : ''}</div>`
+      ).join('')}</div>`
+    : '';
 }
 /** Stat growth over the season: OVR and each stat, one point per week. */
 function growthChart(run) {

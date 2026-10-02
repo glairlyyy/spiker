@@ -88,7 +88,8 @@ function block(c, x) {
       // Block cover: the best-placed teammate (high defense, decent wit) may dig the kill block
       const coverScore = q => effD(q) * 0.65 + q.speed * 0.35 - dist(m.pos[q.id], bx, bzz) * 25;
       const cvr = atkT.P.filter(q => q !== spiker).reduce((best, q) => (coverScore(q) > coverScore(best) ? q : best));
-      const saved = R() < sig((coverScore(cvr) - dp) / 12 - 2.7) * (W(cvr) < 0.8 ? 0.3 : 1);
+      const saved =
+        R() < sig((coverScore(cvr) - dp) / 12 - 2.7) * (W(cvr) < 0.8 ? 0.3 : 1) + (relTag(m, cvr, spiker) === 'ally' ? REL_E.cover : 0); // (an ally of the blocked hitter covers a little better, T-066)
       if (!saved) {
         st(m, bb, 'blk');
         st(m, bb, 'k');

@@ -208,10 +208,10 @@ const City = {
       run.money -= cost;
       out.push(`−$${cost}`);
     }
-    if (s.act === 'ramen') out.push(Run.bond(run, mate, 6), Run.bump(run, 'sta', 10));
+    if (s.act === 'ramen') out.push(Run.bond(run, mate, undefined, 'hung_out'), Run.bump(run, 'sta', 10));
     else if (s.act === 'arcade') {
       out.push(Run.bump(run, 'mood', 1));
-      for (const m of Run.mates(run)) out.push(Run.bond(run, m.id, 3));
+      for (const m of Run.mates(run)) out.push(Run.bond(run, m.id, undefined, 'hung_out'));
     } else if (s.act === 'street') {
       const rival = Math.round(rnd(STREET.rival[0], STREET.rival[1])),
         you = ovr(Run.you(run)),

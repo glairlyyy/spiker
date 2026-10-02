@@ -5,7 +5,8 @@ const Growth = {
   /** One week of growth for everyone except you, then re-finalize every team. */
   week(run) {
     const you = Run.you(run);
-    People.week(run); // NPC careers: their plans give the XP (training, matches); the breakthrough rolls below stay random
+    People.week(run);
+    Rel.week(run); // NPC careers: their plans give the XP (training, matches); the breakthrough rolls below stay random
     Growth.checkYou(run, you);
     for (const t of run.teams) {
       for (const p of squadOf(t)) if (p !== you) Growth.grow(run, p, t.i === run.team, you);

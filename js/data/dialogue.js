@@ -14,6 +14,9 @@ const CALLS = {
     'Who finishes this? Me!',
     'Stop looking at them — set me!'
   ],
+  // relationships (T-066, street voice): a setter feeds an ally in the clutch / freezes out someone they can't stand
+  trust: ["Yours. Don't waste it.", "You're up — finish it!", 'Trust you. Put it away.'],
+  freeze: ['Not you. Not now.', 'Somebody else — go!', 'Not feeding you this one.'],
   recv: ['Mine!', 'I got it!', 'Leave it!'],
   dig: ['Got it!', 'Up!', "Don't let it drop!"]
 };
