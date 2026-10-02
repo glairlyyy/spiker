@@ -12,7 +12,8 @@ let CW = {
   person: null,
   recap: null,
   own: null,
-  note: null
+  ownOf: null,
+  endArm: 0
 };
 
 function youCard(run) {

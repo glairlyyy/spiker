@@ -7,19 +7,21 @@ earlier files **at load time** (inside functions, anything loaded is fine).
 
 ## Layers
 
-| Layer | Folder | Rule |
-|---|---|---|
-| Core | `js/core/` | `debuglog.js` (loaded first: `DBG` collects errors, console errors/warnings and match stalls; the header's Debug log button shows and copies them), `rng.js` (all game randomness via `R()`, seedable with `RNG.seed(n)`; presentation — particles, confetti, trail flicker, coach looks — uses `FXR` on `Math.random`, `FXR.isolate(fn)` for code that calls `R()` inside, so frame rate never moves the engine stream; a test scans js/render, js/audio and match-screen for game-RNG calls), `storage.js` (all `localStorage` via `store`, keys in `KEYS`). |
-| Data | `js/data/` | Constants only (`CITY` is built by an IIFE; its day / travel / fee tuning is one block in `data/city.js`). The helpers that read them live in the engine: `callLine` / `confidence` (hype.js), `epair` (elements.js), `hasTech` / `skillRoleOk` / `leadLv` (skills.js). No state, no randoms, no DOM. |
-| Engine | `js/engine/` | Pure simulation. **No DOM, canvas or audio.** Runs headless (odds, preseason, tests). |
-| Audio | `js/audio/` | Synthesized WebAudio effects plus the match music (`sfx.js`). |
-| Game | `js/game/` | Global state `G` (settings, current screen), screen router (`Screens`, `navigate()`), bracket helpers (career Cup). |
-| Career | `js/career/` | Career-mode rules (run, training, events, skills, Cup). **No DOM** — testable headlessly. |
-| UI | `js/ui/` | DOM screens: menu, match screen, career create / hub / map panels / week cards / dossier / end, encyclopedia; `map-view.js` (the map renderer contract). Render and call rules only. |
-| Render | `js/render/`, `js/render3d/`, `js/map3d/` | Beat playback and the screen-space layer (canvas); the 3D match scene, players and poses (three.js + VRM); the 3D island map. Presentation randomness via `FXR` only. |
+| Layer  | Folder                                    | Rule                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------ | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Core   | `js/core/`                                | `debuglog.js` (loaded first: `DBG` collects errors, console errors/warnings and match stalls; the header's Debug log button shows and copies them), `rng.js` (all game randomness via `R()`, seedable with `RNG.seed(n)`; presentation — particles, confetti, trail flicker, coach looks — uses `FXR` on `Math.random`, `FXR.isolate(fn)` for code that calls `R()` inside, so frame rate never moves the engine stream; a test scans js/render, js/audio and match-screen for game-RNG calls), `storage.js` (all `localStorage` via `store`, keys in `KEYS`). |
+| Data   | `js/data/`                                | Constants only (`CITY` is built by an IIFE; its day / travel / fee tuning is one block in `data/city.js`). The helpers that read them live in the engine: `callLine` / `confidence` (hype.js), `epair` (elements.js), `hasTech` / `skillRoleOk` / `leadLv` (skills.js). No state, no randoms, no DOM.                                                                                                                                                                                                                                                          |
+| Engine | `js/engine/`                              | Pure simulation. **No DOM, canvas or audio.** Runs headless (odds, preseason, tests).                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Audio  | `js/audio/`                               | Synthesized WebAudio effects plus the match music (`sfx.js`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Game   | `js/game/`                                | Global state `G` (settings, current screen), screen router (`Screens`, `navigate()`), bracket helpers (career Cup).                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Career | `js/career/`                              | Career-mode rules (run, training, events, skills, Cup). **No DOM** — testable headlessly.                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| UI     | `js/ui/`                                  | DOM screens: menu, match screen, career create / hub / map panels / week cards / dossier / end, encyclopedia; `map-view.js` (the map renderer contract). Render and call rules only.                                                                                                                                                                                                                                                                                                                                                                           |
+| Render | `js/render/`, `js/render3d/`, `js/map3d/` | Beat playback and the screen-space layer (canvas); the 3D match scene, players and poses (three.js + VRM); the 3D island map. Presentation randomness via `FXR` only.                                                                                                                                                                                                                                                                                                                                                                                          |
 
 ## File map (load order)
+
 Classic scripts, in index.html order (each group only uses earlier groups at load time):
+
 - **core** `debuglog.js` (DBG), `rng.js` (R / RNG / FXR, clamp, inPoly…), `storage.js` (store, KEYS).
 - **data** `rules.js` (RULES, EGO…), `styles.js` (playstyles, team list, archetypes), `names.js` (name pools),
   `looks.js` (appearance palettes), `moves.js` (signature / combo names, coach lines), `roles.js` (role biases, key
@@ -81,7 +83,7 @@ mkTeams() ─► simBalance() ─► newMatch(a, b, record)
 
 ## Effective stats and formulas
 
-- `engine/stats.js` — what a player's stats are *right now*: wit × mood × momentum × stamina (`effP`, `effD`, `W`, `jumpPx`…). Stamina is tuned in `RULES.stamina` (`drain` per touch, `hit` = power/defense lost at 0, `jumpHit` = jump lost at 0): a hero who takes every touch tires first.
+- `engine/stats.js` — what a player's stats are _right now_: wit × mood × momentum × stamina (`effP`, `effD`, `W`, `jumpPx`…). Stamina is tuned in `RULES.stamina` (`drain` per touch, `hit` = power/defense lost at 0, `jumpHit` = jump lost at 0): a hero who takes every touch tires first.
 - `engine/formulas.js` — `Formula.*` holds the numbers that decide outcomes (serve, receive, set, spike,
   block, dig, kill chance). Balance changes and future training effects belong here.
 
@@ -294,13 +296,15 @@ tally (attacks / kills / stuffs by kind quick, mid, pin; doubles; late) used by 
 Defence settings: each style carries `dset` (wall = bunch, tempo = commit, the rest read; `defOf(team)` in data/tactics.js);
 `newMatch` starts every side on it unless `opts.dset` fixes one (`m.dsetMode[side]` = 'cap' | 'fixed', like `tacMode`; not
 saved). In 'cap' mode `captainThink` (one draw per call, only then) counts the opponent's `m.att` after 8 attacks: quick share
+
 > 35 % → commit, middle share > 45 % → bunch, else read; a switch is chatter + log + the existing `tac` act (`dset` field) and
-is kept in `m.dsetLog`. The match screen's Tactics popover has a Defence select per team (`setDefence`, `showTac` shows the
-captain's current pick). Scouting: `Dossier.habits(team)` (quick share from style × MB count, favoured wing by WS power, pipe =
-setter has `pipecombo`, defence setting) and `Dossier.habitText`; shown in the dossier's club rows and the HQ card once
-scouted — computed from data, never from match history.
+> is kept in `m.dsetLog`. The match screen's Tactics popover has a Defence select per team (`setDefence`, `showTac` shows the
+> captain's current pick). Scouting: `Dossier.habits(team)` (quick share from style × MB count, favoured wing by WS power, pipe =
+> setter has `pipecombo`, defence setting) and `Dossier.habitText`; shown in the dossier's club rows and the HQ card once
+> scouted — computed from data, never from match history.
 
 ## Ego (T-068, spec §2.12)
+
 Every player has `ego` 0–1 (createPlayer → `ensureEgo`: a hash of the name, 0.2–0.7, WS +0.1, no random draw; your player 0.6; saves from before get the hash on load) and `maturity(p)` = clamp((wit − 0.5) / 1.5, 0, 1). `EGO` (data/rules.js) holds the chances and effects. `egoChance(m, p, act)` = `EGO.base[act] × ego × (1 − maturity)` × (1 − captain maturity × `EGO.captain`) for a captain on court; `egoRoll` draws R() only when that is > 0, so a player without ego, or a mature one, costs no draw. Acts: **steal** (`egoSteal`, match.js, used in serve receive and `dig()`: a teammate who could still reach the ball calls "Mine!" — a collision wrecks the touch (score × `EGO.crash`, both players busy) or they take it), **call** (`chooseAttack`: an unpicked hitter demands the set; the setter gives in with chance 1 − maturity), **solo** (`formBlock`: the ego blocker ignores the defence setting and blocks alone — no second blocker, coverage × (1 + gain × read − loss × (1 − maturity))), **swing** (`spikePower`: on a bad set, full power instead of the tip or the 0.72 penalty, errors × (1 + `swing.err` × (1 − maturity))), **serve** (serve.js: a jump serve for a server who would not use one, a little more pace, more service errors). Every act is recorded on `m.egoLog = [{ act, p, ok, mate?, crash? }]` (engine-only; the relationship memories will read it); `ok` is closed when the outcome is known (`tallyAttack`, a stuff in `rally()`, the serve's ace in `end()`), and `end()` moves mood (± `EGO.mood`) and costs a failed act's team `EGO.mom` momentum. **Block collision** (T-069, in `formBlock`): after a solo block the other front-row defender also commits with chance `EGO.solo.collide` × (1 − their maturity) (no draw when it is 0, so the stream equals T-068's); the blocks cancel (`cov` 0: no block touch, the attack meets an open net), both players hop short (`jump` 'hop' at ~40% of the hang), stagger ('bump' pose) 0.3 m apart; in `EGO.solo.net` of collisions it is a net fault — `rally()` returns the point to the attackers right after the set beat, before any attack contact. Logged `{ act: 'collide', p, mate, net }` (a record only: the solo entry already moves mood). Presentation only: `plabel` takes optional `p2` (anchor between two players at net height) and `v` ('warn' orange / 'err' red, stamped; drawn by `drawLabels`); "MINE!" / "SOLO!" / "ALL ME!", a bump pose and a log line on a collision, `CALLS.ego` chatter for set calls — no new act kind.
 
 **Relationships on court (T-066).** `newMatch(a, b, rec, { rel })` → `m.rel = { tag: { 'idA|idB': band }, rival: Set }` (null in Monster, sims and the golden matches), built by `Rel.matchFlags(run, A, B)` for every pair in both squads (viewer first; you ↔ NPC is the NPC's stance both ways; only non-neutral bands stored) and handed over by the fixtures of `Cup.fixture` / `challenge` / `clash` (`fx.rel`, set on the match in `fx.setup`). **The gating rule:** every effect reads `relTag(m, a, b)` (match.js: 'neutral' without `m.rel`) and either multiplies by 1, adds 0, or sits behind `m.rel &&`, so a match without flags (or with empty ones) draws the same randoms and gives byte-identical beats (a test proves it); no effect adds a draw. `REL_E` (data/rules.js): **trust / freeze** in `chooseAttack` once either side has `clutch` points — the single `wpick` draw is read against the plain weights and the weights × (1 + trust) for an ally / × (1 − freeze) for a resent / enemy hitter; when the picks differ a talk beat (`CALLS.trust` / `CALLS.freeze` + a log line, no new act kind) is pushed before the set; `m.relLog` records every clutch pick `{ act: 'clutch' | 'trust' | 'freeze', p, mate, tag }` (engine-only, for tests); **cover** (`popRecovery`, block cover in `block()`): + `REL_E.cover` on the save chance of an ally of the first touch / blocked hitter; **buff** (`captainThink`): allies of the captain weigh `REL_E.buff` × when the hottest mate is picked; **ego** (`egoSteal`): the steal chance × `REL_E.ego.ally` / `.rival` (same-role mates / opponents within `REL.rivalOvr`). **Rivals across the net** (`Cup.prepare`, no engine change): `Rel.rivals(run, opp)` — NPCs of your role, close in OVR, resent / enemy — start with form + `REL_E.rival.fired` (proud / reckless) or `.rattled`, with a diary line. No relationship gives a stat bonus.
@@ -539,11 +543,12 @@ region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border mete
 `World.joinReq` lowers a weakened faction's join bar. Sessions × DAY_GAIN (gains and skill points).
 
 ### Island map layers
+
 1. Rules — City / Front (DOM-free): positions, travel, fog (`City.seen`), regions (`regionAt`), ownership.
 2. Model — `MapModel.build(run, sel)` (`js/career/mapmodel.js`, DOM-free, tested): `{ w, h, land: { coast, beach,
-   regions[{id, poly, color, mine}], contest, minors[ellipses], park, mountains, labels, airport }, seized[{at, r,
-   color}], pins[{id, kind: spot|hq|clash, at, icon, badge, title, color?, flags: off/far/turf/gem/overhyped/hq/can/
-   mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-view centre), sel, life }`. `life` (`MapModel.life`, display only, no randoms; positions from hashes of ids + place): `mates[{id, name, at, color, spot}]` (your floor mates at the explored place of their key nearest home), `crews[{region, team, at, color, n 2–6, known, walk[[x,y]…]}]` (known clubs' HQs; `known` = scouted or yours), `battle {at, a, b, colors}|null`, `borders[{a, b, meter}]`, `contest {a, b, meter, pressure 0..1, hold}` (`MapModel.contest`: the `CITY.contestPair` border; the renderer reads it, it never names factions). Map units
+regions[{id, poly, color, mine}], contest, minors[ellipses], park, mountains, labels, airport }, seized[{at, r,
+color}], pins[{id, kind: spot|hq|clash, at, icon, badge, title, color?, flags: off/far/turf/gem/overhyped/hq/can/
+mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-view centre), sel, life }`. `life` (`MapModel.life`, display only, no randoms; positions from hashes of ids + place): `mates[{id, name, at, color, spot}]` (your floor mates at the explored place of their key nearest home), `crews[{region, team, at, color, n 2–6, known, walk[[x,y]…]}]` (known clubs' HQs; `known` = scouted or yours), `battle {at, a, b, colors}|null`, `borders[{a, b, meter}]`, `contest {a, b, meter, pressure 0..1, hold}` (`MapModel.contest`: the `CITY.contestPair` border; the renderer reads it, it never names factions). Map units
    CITY.w × CITY.h, y down. Selection ids: a pin id, or `pt:x,y` (`ptId` / `ptOf`).
 3. Renderer — `MapView` (`js/ui/map-view.js`): `mount(el, model, { pick(id), point([x, y]) })`, `update(model)`,
    `select(id)`, `dispose()`. The only renderer is the three.js map: it lazy-imports `js/map3d/map3d.mjs` once (a notice
@@ -568,7 +573,7 @@ region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border mete
    is only re-projected when the camera, canvas size, distance or items changed. `dispose` removes its listeners and
    skips `userData.shared` objects (kit materials / shape caches). `MODEL_URL` (the base VRM) is exported once by players3d.mjs. First
    view: on the player, 60 m away. Life is `js/map3d/life3d.mjs` (`createLife(scene, heightAt)` → `{ sync(model), tick(dt, t),
-   count(), dispose() }`, display only, no game randoms): reads `model.life` + `model.seized`; one `InstancedMesh` per kind
+count(), dispose() }`, display only, no game randoms): reads `model.life` + `model.seized`; one `InstancedMesh` per kind
    (figure = capsule body + head, flag poles, flag cloth, dust puffs; ≤ 300 figures), rebuilt only when that JSON changes and
    animated in `tick` (drill hops, walkers looping round a crew's places at 1.2 m/s, the battle crowd shoving, waving flags).
    Mates and known crews are coloured, unscouted crews grey; patrols (2–4) stand on the stronger side of the contested Wei–Wu
@@ -713,6 +718,13 @@ Player drawer), shortcut dock (bottom → drawers built from the panel functions
 card (`#spot`), a card over the map for events / match days / an unread Gazette (`hubCard`), and a toast with the
 newest diary line.
 
+Consequence feedback (UI state only, nothing saved): `endWeekUI` (career-week.js) snapshots stats / $ / fans / standing /
+`run.own` / the newest log entry around `Run.endWeek` and keeps the diff in `CW.recap` → `recapCard` (shown last by
+`hubCard`). `renderCareer` diffs `run.own` against `CW.own` (`ownChanges`) for the seize banner (`.hnote`) and to select the
+place on the map. `Front.stakes(run, w, l)` is a pure preview of "w beats l" (meter, seize, place) used by the street-battle
+card and the Factions drawer's border meters. `hubKey` (career-hub.js): 1–9 drawers, Space End week, Esc; `CW.endArm`
+makes End week ask twice (4 s) while days are unused.
+
 ## Code layout notes
 
 Playback is split into classic scripts loaded right after js/render/playback.js: clock.js (world clock `timeScale`,
@@ -766,6 +778,7 @@ A deliberate gameplay change updates the golden file with `node tests/run.js --u
 Pure refactors must pass **without** `--update`.
 
 ### Match history (T-052)
+
 `Cup.record(run, m, kind, extra)` (cup.js) pushes one plain entry onto `run.mlog` (save v8; trimmed to `MLOG.max` = 80, oldest dropped) for every match you are in:
 it is called at the start of `Cup.result` (kind `eval` | `cup`, + `round`), `Fight.challengeResult` (`challenge`, + `stake`) and `Fight.clashResult` (`street`), i.e. before
 `Growth.matchXp`, so `you` (OVR + the 5 stats) is the kick-off state. Entry: `{ week, day, kind, vs, short, score: [yours, theirs], win, grade (null if you did not play),
@@ -774,5 +787,6 @@ refs. `matchLog(run)` (career-week.js) lists them newest first, each a `fold` (`
 the `season` drawer appends it (career-hub.js). `Run.repair` adds `mlog` to older saves of the same version (RUN_DEFAULTS).
 
 ### Start from 1 (T-055)
+
 `Run.create` gives your player `CAREER.start` (1) in every stat and `CAREER.witBase` (1.0) wit; creation (career-create.js) keeps role / name / modes and shows the stats as plain numbers (no allocation, no wit stepper). `CAREER.statMin` (1) is the floor of
 `Run.bump` (events, injuries). `createPlayer` clamps stats to `STAT_FLOOR` (1, players.js); generated players still never go below 25 (`rollStats`). NPC generation and every engine formula are unchanged (goldens untouched). Save shape unchanged (RUN_VERSION 8).

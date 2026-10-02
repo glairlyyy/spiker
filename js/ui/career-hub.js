@@ -43,6 +43,7 @@ function renderCareer() {
     last = run.log[0] ? run.log[0].t : null,
     toast = CW.toast !== undefined && CW.toast !== null && last !== CW.toast ? last : null;
   CW.toast = last;
+  const armed = Date.now() - CW.endArm < 4000; // End week asked once with days left: the button asks again for 4 s
   // a place changed hands since the last render (your battle or the week's end): banner + select it on the map
   const own = run.own || {},
     chg = CW.ownOf === run ? ownChanges(CW.own, own) : [],
@@ -55,7 +56,7 @@ function renderCareer() {
   const card = hubCard(run, nextCup);
   $('#app').innerHTML = `<section class="career hub ${City.night(run) ? 'eve' : ''}" style="--tc:${team.color}">
     <div class="mapwrap" id="mapwrap"></div>
-    ${hudRes(run)}${hudClock(run)}${hudMe(run)}${hudBar(run)}
+    ${hudRes(run)}${hudClock(run, armed)}${hudMe(run)}${hudBar(run)}
     <div class="hud spotcard ${CW.spot && !card ? 'open' : ''}" id="spot">${CW.spot && !card ? spotCard(run) : ''}</div>
     ${toast ? `<div class="htoast" role="status">${esc(toast)}</div>` : ''}
     ${note ? `<div class="hnote" role="status" style="--nc:${REGIONS[note.to].color}">⚔ ${esc(note.text)}</div>` : ''}
@@ -106,7 +107,7 @@ function hudRes(run) {
   </div>`;
 }
 
-function hudClock(run) {
+function hudClock(run, armed) {
   const wt = Run.weekType(run),
     days = City.days(run),
     cup = Run.cupDef(run),
@@ -119,7 +120,7 @@ function hudClock(run) {
       <span class="sky">${match ? '🏐' : eve ? '🌙' : '☀'}</span><b>W${run.week}</b><small>${lab}${wt === 'camp' ? ' · camp' : ''}</small>
       <svg viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="18"/><circle class="prg" cx="20" cy="20" r="18" style="stroke-dasharray:${((run.week / CAREER.weeks) * 113).toFixed(1)} 113"/></svg></div>
     ${match ? '' : `<div class="days" aria-label="${days} of ${WEEK_DAYS} days left">${Array.from({ length: WEEK_DAYS }, (_, i) => `<i class="${i < WEEK_DAYS - days ? 'used' : ''}"></i>`).join('')}</div>`}
-    ${!match && !run.event ? `<button class="btn ${eve ? 'hot' : ''} endw" onclick="mapEndWeek()" ${tip(eve ? 'Sleep: start the next week' : `Skip the ${days} day${days > 1 ? 's' : ''} left`)}>End week ▸</button>` : ''}
+    ${!match && !run.event ? `<button class="btn ${eve ? 'hot' : ''} endw" onclick="mapEndWeek()" ${tip(eve ? 'Sleep: start the next week (Space)' : `Skip the ${days} day${days > 1 ? 's' : ''} left (Space)`)}>${armed ? `Skip ${days} day${days > 1 ? 's' : ''}? Click again` : 'End week ▸'}</button>` : ''}
   </div>`;
 }
 
@@ -133,15 +134,17 @@ function hudMe(run) {
   </button>`;
 }
 
+/** Bottom-bar drawers in order (1–9 open them). */
+const dockKeys = run => Object.keys(HUB_DRAWERS).filter(k => k !== 'me' && (k !== 'clubs' || World.isFree(run)));
+
 function hudBar(run) {
   const you = Run.you(run),
     aff = Skills.forRole(you.role).filter(id => !you.skills.includes(id) && Skills.canLearn(run, id)).length,
     badge = { skills: aff, news: run.gazette && !run.gazette.read ? '!' : 0, clubs: 0, people: Asks.count(run) };
-  return `<nav class="hud dock" aria-label="Shortcuts">${Object.entries(HUB_DRAWERS)
-    .filter(([k]) => k !== 'me' && (k !== 'clubs' || World.isFree(run)))
+  return `<nav class="hud dock" aria-label="Shortcuts">${dockKeys(run)
     .map(
-      ([k, [ic, name]]) =>
-        `<button class="${CW.drawer === k ? 'on' : ''}" onclick="hubOpen('${k}')" aria-label="${name}"><i>${ic}</i><span>${name}</span>${badge[k] ? `<em>${badge[k]}</em>` : ''}</button>`
+      (k, i) =>
+        `<button class="${CW.drawer === k ? 'on' : ''}" onclick="hubOpen('${k}')" aria-label="${HUB_DRAWERS[k][1]}" ${tip(`${HUB_DRAWERS[k][1]} (${i + 1})`)}><i>${HUB_DRAWERS[k][0]}</i><span>${HUB_DRAWERS[k][1]}</span>${badge[k] ? `<em>${badge[k]}</em>` : ''}</button>`
     )
     .join('')}</nav>`;
 }
@@ -150,6 +153,26 @@ function hubDrawer(run) {
   const [ic, name, body] = HUB_DRAWERS[CW.drawer];
   return `<aside class="drawer" aria-label="${name}"><div class="dhd"><h3>${ic} ${name}</h3><button class="btn x" onclick="hubOpen(null)" aria-label="Close">✕</button></div><div class="dbody">${body(run)}</div></aside>`;
 }
+
+/** Hub keys: 1–9 open the bottom-bar drawers, Space ends the week, Esc closes the drawer, then the place card. */
+function hubKey(e) {
+  if (A || e.ctrlKey || e.metaKey || e.altKey || !document.querySelector('.career.hub') || $('#dbg') || CW.dossier) return;
+  if (e.target.closest && e.target.closest('input,select,textarea,button,a,[contenteditable]')) return;
+  if (e.key === 'Escape') {
+    if (CW.drawer) hubOpen(null);
+    else if (CW.spot) {
+      CW.spot = null;
+      renderCareer();
+    }
+  } else if (e.key === ' ' && document.querySelector('.hub .endw') && !document.querySelector('.hubmodal')) {
+    e.preventDefault();
+    mapEndWeek();
+  } else if (/^[1-9]$/.test(e.key) && !document.querySelector('.hubmodal')) {
+    const k = dockKeys(RUN)[+e.key - 1];
+    if (k) hubOpen(k);
+  }
+}
+document.addEventListener('keydown', hubKey);
 
 function hubOpen(k) {
   CW.drawer = k && CW.drawer !== k ? k : null;

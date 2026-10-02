@@ -102,7 +102,7 @@ Steps:
   QA: career run → open a training spot, screenshot.
   Result: done — each stat now reads "next point this session" / "+1 in ~N sessions" (N from Training.progress and the session's xp) instead of High / Mid / Low; meta line, chips and info tip unchanged (already one line + chips). QA: card text, no pageerror.
 
-### [ ] T-094: Hotkeys and end-week guard
+### [x] T-094: Hotkeys and end-week guard
 
 Spec: §4.2 Goldens: unchanged Save: no change
 Goal: 1–9 open the bottom-bar drawers, Space ends the week, Esc closes drawer / card; End week warns (inline, no confirm()) when days are unused.
@@ -110,7 +110,7 @@ Files: js/ui/career-hub.js, js/ui/career-week.js, js/ui/career-map.js, css/caree
 Do not: capture keys while typing in an input or during a match.
 Accept: keys work on the hub only; unused days → button reads "End week (3 days left)" and needs a second click.
 QA: career run → press keys.
-Result:
+Result: done — `hubKey` (career-hub.js): 1–9 = bottom-bar drawers, Space = End week, Esc = drawer then place card; ignored in inputs / buttons, during a match, with cards or the debug log open. End week with days left asks once more for 4 s (`CW.endArm`, no confirm()). QA: keys driven in Playwright, no pageerror.
 
 ## Later — outlines
 

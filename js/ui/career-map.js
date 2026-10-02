@@ -284,5 +284,11 @@ function mapTravel(x, y) {
 }
 function mapEndWeek() {
   if (!Run.canEndWeek(RUN)) return;
+  if (City.days(RUN) > 0 && Date.now() - CW.endArm >= 4000) {
+    CW.endArm = Date.now(); // days unused: ask once more within 4 s
+    setTimeout(() => document.querySelector('.hub .endw') && renderCareer(), 4100);
+    return renderCareer();
+  }
+  CW.endArm = 0;
   endWeekUI();
 }
