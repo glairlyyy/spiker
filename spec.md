@@ -447,3 +447,12 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   techniques picked up, top 3, Continue / Box score. The 3D match itself follows §9.9.
 - §10.7 Title screen (Continue hero, New career, Encyclopedia, Settings; playtest behind `?dev`) and Create (role
   cards with key stat, best training places, techniques; name; challenge toggles; Arrive / Back).
+- §10.8 Quiet UI (owner, 2026-10-03; design system `quiet-ui.md`, QuietUI card): show the decision, hide the explanation.
+  Four layers: L0 glance (names, numbers, icons, verbs + costs) · L1 hover (`tip` / `term`, ≤ 15 words) · L2 peek (new
+  `peek()`: click a › or ⓘ → a pinned card beside it, vertical label / value rows ≤ 8, Esc / outside click closes, never
+  over the card's action row) · L3 reference (Encyclopedia, Dossier). Budgets at L0: row ≤ 6 words, card ≤ 30, week rail
+  ≤ 45, sheet column ≤ 60. Cuts: say it once; no instructions for what the UI already shows (e.g. the "Uses …" line —
+  the ghost slots show it); hide zero / default states (standing 0, Neutral, `free` slots, `to play`, Element ???);
+  numbers over sentences (`7 left`, `W6`); flavour and rumours on the title's hover; long lists show the useful few +
+  `+n ›`; details (challenge, housing effects, facility level, faction economy, border target) in a peek; inbox items
+  one line each with a peek. Never hidden: costs on buttons, locked gaps, penalties, deadlines, the event card.

@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-159** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-165** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -30,7 +30,65 @@ evaluations, U21 Cup, Story mode, growth, relationships), UI redesign §9–§10
 
 ## Now
 
-(empty — the spec chat details the next tasks from **Later**.)
+Owner request 2026-10-03 (spec §10.8 Quiet UI): T-159 → T-164. UI text only: no rule, number or save change; goldens unchanged.
+Mockup: design system QuietUI card; per-screen budgets and cut lists in `quiet-ui.md`. File names below are after the T-154 / T-155 splits.
+
+### [ ] T-159: `peek()` and the word counter
+
+Spec: §10.8 Goldens: unchanged Save: no change
+Goal: a click-to-open detail card (L2) any screen can use, and a dev-only count of visible words per region.
+Files: js/ui/dom.js (`peek(id, label, bodyHtml)`), css/hub.css (.peek), js/ui/debug-panel.js (counter, `?dev` only)
+Do not: replace `tip()` (L1 stays); open more than one peek at a time; let a peek cover the owning card's `.acts` row.
+Steps:
+
+1. `peek(id, labelHtml, bodyHtml)` → a `›` / ⓘ trigger button + a hidden card; click toggles (`CW.peek = id`, survives re-render), Esc and outside click close; the card sits beside the trigger (left of the place panel, right of the rail), max 320px wide, body uses `kv()` rows + an optional `.acts` row.
+2. `?dev`: a small badge per region (top bar, rail, panel, modal, sheet) with its visible word count, red over the §10.8 budget.
+   Accept: a peek opens / closes by click, Esc and outside click; budgets badge shows on `?dev` only. QA: open a peek on an HQ panel; screenshot.
+   Result:
+
+### [ ] T-160: Quiet rail, inbox and week brief
+
+Spec: §10.8 §10.3 §10.5 Goldens: unchanged Save: no change
+Files: js/ui/career-hub.js (weekRail, weekSection, dayTrack, railGoal, inboxRows, weekBrief)
+Do not: hide the End week arm, the goal deadline or any inbox action.
+Steps: header `name` + `role · OVR`; stats as icon + number (word on hover); "This week" + `n left`; day slots icon-only with day initials (label on hover; empty slots show nothing); goal one line `◎ {goal} · W{by}` (progress bar kept, "to play" hidden); inbox one line per item (`⚔ Wu raid Wei · 2d`, `✉ 1 ask`, `Eval W4 · train Power`) with its facts in a `peek` (the T-137 `kv` moves there); drop "Suggested next step", "Expires at the end of the week", "Signing open" (tooltips); End week `End week · n left`. Brief: drop the "7 days…" line; each row = title + one value, facts in a peek.
+Accept: rail ≤ 45 visible words in a battle week with 4 inbox items; brief ≤ 25. QA: `?dev` counter screenshots.
+Result:
+
+### [ ] T-161: Quiet place panels
+
+Spec: §10.8 Goldens: unchanged Save: no change
+Files: js/ui/career-map.js (placeCard, placeTags, trainSpot, hqPanel, challengeBlock, clashPanel, venuePanel, pointPanel)
+Do not: remove a cost from a button, the locked-button gap or the battle facts (§10.1a — they may move to a peek only on the HQ / inbox, not on the battle card).
+Steps: flavour → tooltip of the title (`ⓘ` after the name); drop the "Uses … · shown on your week" line; tags: quality + sand only, level / streak / trip in a `Details ›` peek; Hard effect on hover of the Hard segment; HQ: Rating tag, Standing only when ≠ 0, one Join (the button), challenge collapsed to a `Challenge · {verdict} ›` row whose peek holds accepts / why / injury / stake and the Challenge / Sim row; battle: "If nobody joins" and injury move to hovers, standing rows hidden at 0.
+Accept: training panel ≤ 30 words, HQ ≤ 30 with the peek closed, battle ≤ 45. QA: three screenshots with `?dev`.
+Result:
+
+### [ ] T-162: Quiet Me sheet
+
+Spec: §10.8 §10.4 Goldens: unchanged Save: no change
+Files: js/ui/career-sheets.js (sheetMe, homeRow)
+Steps: drop the "thin bar = …" and "Passive — buy with skill points" lines (hover); hide Element ??? until revealed (one muted line `Element at OVR {n}` on hover of the portrait); skills: the 3 closest to affordable + `+n more ›` (peek), descriptions on hover; techniques: those within 10 of the requirement + `+n ›`; life: current home row + `Change home ›` (peek with all five `homeRow`s); drop "Free agent — no club yet".
+Accept: Me sheet ≤ 110 visible words at week 1. QA: `?dev` screenshot.
+Result:
+
+### [ ] T-163: Quiet People, World and Season sheets
+
+Spec: §10.8 §10.4 Goldens: unchanged Save: no change
+Files: js/ui/career-people.js (personCard, personDetail, moves), js/ui/career-sheets.js (sheetSeason, calendar, seasonCard), js/ui/career-dossier.js (factionsCard)
+Steps: People — hide `Wants ? · Traits ?` until one is known, rumour on hover, moves as short verbs (`Invite to train ›` peek picks the place); World — faction card = name, standing bar (number only ≠ 0), `vs X 0/1` meters, clubs; Tiles / value / "next: …" in a peek; drop the "Street battles move…" line (hover of the title); minors behind `Minor factions ›`; Season — calendar legend on hover, goal one line, Diary last 5 + `All ›`.
+Accept: People ≤ 60, World ≤ 60, Season ≤ 60 visible words at week 1. QA: `?dev` screenshots.
+Result:
+
+### [ ] T-164: Quiet title and create
+
+Spec: §10.8 §10.7 Goldens: unchanged Save: no change
+Files: js/ui/menu.js, js/ui/career-create.js
+Steps: title buttons without sub-lines (hover); create intro sentence → hover of the title; role card = role, key-stat icon + name, one-line pitch, `Details ›` peek (trains at, techniques); "Optional handicaps." → hover.
+Accept: create ≤ 60 visible words, title ≤ 15. QA: screenshots.
+Result:
+
+Owner requests 2026-10-03 (spec §10.1, §10.1a): T-135 → T-136 → T-137.
 
 ## Later — outlines
 
