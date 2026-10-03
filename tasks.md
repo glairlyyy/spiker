@@ -54,7 +54,7 @@ Accept: grep finds no `>K<`, `' K'`, `K/Att`, `Blk/Ace` in js/ui; box score fits
 QA: Monster game → box score (B) and result screen; career → Season sheet match history row opened; screenshots.
 Result: Box score headers spelled out (OVR, Kills, Blocks, Aces, Digs, Errors, Top km/h, Mood, Stamina), set vertically so the ten columns fit the 400px rail (the title hovers go; names truncate at 120px); statLine(q, keys) in match-result.js — "8 kills · 2 blocks · 1 ace", zeros hidden — for the result top 3 and the career end line; Your line = numbers with Kills / Blocks / Aces / Errors under them; match history table columns Kills · Attacks · Errors · Blocks · Aces · Digs · Assists (no slashes). Grep: no >K<, K/Att, Blk/Ace in js/ui. QA: Monster game box score scrollWidth 367 = clientWidth 367 at 1440px, result top 3 spelled out; no errors.
 
-### [ ] T-167: Encyclopedia section tabs
+### [x] T-167: Encyclopedia section tabs
 
 Spec: §9 Goldens: unchanged Save: no change
 Goal: the Encyclopedia's section links become tabs that show where you are.
@@ -63,7 +63,7 @@ Do not: split the page into separate views (one scroll stays); add new content.
 Steps: `.ency-nav` → a sticky `.seg` of buttons (one per section); clicking scrolls to the section; an IntersectionObserver marks the section in view `on` (the `seg` selected state); Back prints its hotkey (`Back <kbd>Esc</kbd>`) and Esc goes back to the menu; observer disconnected when the screen changes.
 Accept: scrolling updates the active tab; clicking a tab scrolls and activates it; Esc returns to the menu; no errors.
 QA: menu → Encyclopedia, scroll to Elements, screenshot.
-Result:
+Result: ENCY_SECS drives a sticky `.ency-nav.seg` of buttons; encyGo scrolls (smooth, an instant jump when the browser does not scroll smoothly) and marks the tab; an IntersectionObserver (encyWatch) marks the last heading past the tabs, the last one at the page bottom, a clicked tab holds for 1 s while its scroll runs, and it disconnects itself when the screen changes (and on re-render); headings get scroll-margin under the tabs; Back prints Esc and Esc returns to the menu (not while a peek or the debug log is open). QA: scroll to Elements → Elements on, click Tactics → scrolled (top 64) and on, Esc → title; no errors.
 
 Owner request 2026-10-03 (spec §10.8 Quiet UI): T-159 → T-164. UI text only: no rule, number or save change; goldens unchanged.
 Mockup: design system QuietUI card; per-screen budgets and cut lists in `quiet-ui.md`. File names below are after the T-154 / T-155 splits.

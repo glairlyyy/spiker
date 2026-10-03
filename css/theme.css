@@ -335,10 +335,8 @@ table td {
   background: rgba(7, 8, 11, 0.85);
   backdrop-filter: blur(10px);
 }
-.ency-nav a {
-  background: var(--glass2);
+.ency-nav .btn {
   font-weight: 500;
-  letter-spacing: 0.06em;
 }
 .ency-tag {
   letter-spacing: 0.12em;

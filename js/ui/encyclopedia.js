@@ -1,5 +1,56 @@
 // Skill encyclopedia: every technique, career skill, element, captain level and tactic — with who can use them now.
 
+/** The page's sections, in order: [heading id, tab label]. */
+const ENCY_SECS = [
+  ...['Attack', 'Serve', 'Defense', 'Setter'].map(k => [`pk-${k}`, k]),
+  ['pk-passive', 'Career skills'],
+  ['pk-el', 'Elements'],
+  ['pk-lead', 'Captain'],
+  ['pk-tac', 'Tactics'],
+  ['pk-gloss', 'Glossary']
+];
+let ENCY_IO = null, // marks the section in view; disconnected when the screen changes
+  encyHold = 0; // a clicked tab wins while its smooth scroll runs
+/** Mark one section tab `on` (the seg selected state). */
+function encyMark(id) {
+  for (const b of document.querySelectorAll('.ency-nav [data-sec]')) {
+    const on = b.dataset.sec === id;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-current', on ? 'true' : 'false');
+  }
+}
+/** A tab: scroll its section into view and mark it. */
+function encyGo(id) {
+  const h = document.getElementById(id);
+  if (!h) return;
+  const y0 = scrollY;
+  h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => scrollY === y0 && h.getBoundingClientRect().top > 100 && h.scrollIntoView({ block: 'start' }), 400); // no smooth scroll (reduced motion, some browsers): jump
+  encyHold = Date.now() + 1000;
+  encyMark(id);
+}
+/** The section in view = the last heading that has reached the top band (under the sticky tabs). */
+function encyWatch() {
+  if (ENCY_IO) ENCY_IO.disconnect();
+  if (typeof IntersectionObserver === 'undefined') return;
+  const hs = ENCY_SECS.map(([id]) => document.getElementById(id)).filter(Boolean),
+    pick = () => {
+      if (!document.querySelector('.ency')) return ENCY_IO && (ENCY_IO.disconnect(), (ENCY_IO = null)); // screen changed
+      if (Date.now() < encyHold) return;
+      const band = (document.querySelector('.ency-nav')?.getBoundingClientRect().bottom || 0) + 24;
+      let cur = hs[0];
+      for (const h of hs) if (h.getBoundingClientRect().top <= band) cur = h;
+      if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4) cur = hs[hs.length - 1]; // at the bottom: the last one
+      if (cur) encyMark(cur.id);
+    };
+  ENCY_IO = new IntersectionObserver(pick, { threshold: [0, 1], rootMargin: '0px 0px -50% 0px' });
+  hs.forEach(h => ENCY_IO.observe(h));
+  pick();
+}
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || !document.querySelector('.ency') || $('#dbg') || (typeof CW !== 'undefined' && CW.peek)) return;
+  navigate('menu');
+});
 function renderEncyclopedia() {
   A = null;
   const teams = (RUN && RUN.teams) || [],
@@ -29,8 +80,8 @@ function renderEncyclopedia() {
   };
   const passive = ids.filter(id => !SKILLS[id].tech);
   $('#app').innerHTML = `<section class="ency">
-    <div class="ency-top"><h2>Encyclopedia${info(`Techniques fire automatically for any player who meets the stat requirement (or who learned it in career). ${teams.length ? 'Players shown are from your career league.' : 'Start a career to see which players can use each one.'}`)}</h2><button class="btn" onclick="navigate('menu')">Back</button></div>
-    <nav class="ency-nav">${packs.map(k => `<a href="#pk-${k}">${k}</a>`).join('')}<a href="#pk-passive">Career skills</a><a href="#pk-el">Elements</a><a href="#pk-lead">Captain</a><a href="#pk-tac">Tactics</a><a href="#pk-gloss">Glossary</a></nav>
+    <div class="ency-top"><h2>Encyclopedia${info(`Techniques fire automatically for any player who meets the stat requirement (or who learned it in career). ${teams.length ? 'Players shown are from your career league.' : 'Start a career to see which players can use each one.'}`)}</h2><button class="btn" onclick="navigate('menu')">Back <kbd>Esc</kbd></button></div>
+    <nav class="ency-nav seg" aria-label="Sections">${ENCY_SECS.map(([id, n]) => `<button class="btn" data-sec="${id}" onclick="encyGo('${id}')">${n}</button>`).join('')}</nav>
     ${packs
       .map(
         k =>
@@ -96,5 +147,6 @@ function renderEncyclopedia() {
       )
       .join('')}</div>
   </section>`;
+  encyWatch();
 }
 Screens.encyclopedia = renderEncyclopedia;
