@@ -34,7 +34,7 @@ UX batch 1 (T-090…T-094).
 
 Owner requests 2026-10-03 (spec §10.1, §10.1a): T-135 → T-136 → T-137.
 
-### [ ] T-135: Remove the places list (Map/List)
+### [x] T-135: Remove the places list (Map/List)
 
 Spec: §10.1 Goldens: unchanged Save: no change
 Goal: no list of places anywhere; the map is the only way to find a place (desktop only).
@@ -42,7 +42,7 @@ Files: js/ui/career-hub.js (mapBar, mapMode, placesCard, placeGo, hubKey Esc cha
 Do not: touch the legend chips, MapView, the fly-to or the inbox actions that select a place.
 Steps: delete the Map/List segment, `placesCard`, `placeGo`, `mapMode`, `CW.mapList` and their CSS; Esc chain = ⚙ → sheet → place.
 Accept: no "List" button; grep finds no `placesCard` / `mapList`; inbox "View" still selects the battle pin. QA: hub screenshot.
-Result:
+Result: Map/List segment, placesCard, placeGo, CW.mapList and .mapbar/.maplist/.places/.plrow CSS removed; legend kept as mapLegend(); Esc = ⚙ → sheet → place. QA: hub 1440×900, no errors.
 
 ### [ ] T-136: Collapsible week rail
 

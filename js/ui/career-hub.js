@@ -50,7 +50,7 @@ function renderCareer() {
   const card = hubCard(run, nextCup);
   $('#app').innerHTML = `<section class="career hub ${City.night(run) ? 'eve' : ''}" style="--tc:${team.color}">
     ${topBar(run)}${weekRail(run, armed)}
-    <div class="mapwrap" id="mapwrap"></div>${mapBar(run)}
+    <div class="mapwrap" id="mapwrap"></div>${mapLegend()}
     <div class="hud spotcard ${CW.spot && !card ? 'open' : ''}" id="spot">${CW.spot && !card ? spotCard(run) : ''}</div>
     ${CW.sheet ? hubSheet(run) : ''}
     ${card ? `<div class="hubmodal ${card.dim ? 'dim' : ''}"><div class="hubcard ${card.cls || ''}">${card.html}</div></div>` : ''}
@@ -313,14 +313,13 @@ function nextStep(run) {
   return null;
 }
 
-/** Hub keys: 1–4 open the sheet tabs, Space ends the week, Esc closes ⚙, the list, the sheet, then the place card. */
+/** Hub keys: 1–4 open the sheet tabs, Space ends the week, Esc closes ⚙, the sheet, then the place card. */
 function hubKey(e) {
   if (A || e.ctrlKey || e.metaKey || e.altKey || !document.querySelector('.career.hub') || $('#dbg') || (CW.dossier && e.key === 'Escape'))
     return;
   if (e.target.closest && e.target.closest('input,select,textarea,button,a,[contenteditable]')) return;
   if (e.key === 'Escape') {
     if (CW.gear) gearToggle();
-    else if (CW.mapList && !CW.sheet) mapMode(false);
     else if (CW.sheet) hubOpen(null);
     else if (CW.spot) {
       CW.spot = null;
@@ -333,51 +332,12 @@ function hubKey(e) {
 }
 document.addEventListener('keydown', hubKey);
 
-/** Map / List segment (top-left of the map), the list over the map area, and the legend chips at the bottom. */
-function mapMode(list) {
-  CW.mapList = list;
-  renderCareer();
-}
-function mapBar(run) {
+/** The legend chips at the bottom of the map (places are found on the map only — spec §10.1). */
+function mapLegend() {
   const regions = Object.keys(REGIONS).filter(r => REGIONS[r].kind !== 'none');
-  return `<div class="mapbar"><div class="seg"><button class="btn ${CW.mapList ? '' : 'on'}" onclick="mapMode(false)">Map</button><button class="btn ${CW.mapList ? 'on' : ''}" onclick="mapMode(true)">List</button></div></div>
-    ${CW.mapList ? `<div class="maplist">${placesCard(run)}</div>` : ''}
-    <div class="maplegend"><span>🛡 Club HQ</span><span>🏟 Venue</span><span>⚔ Street battle</span>${regions
-      .map(r => `<span>${chip(REGIONS[r])}${esc(REGIONS[r].name)}</span>`)
-      .join('')}</div>`;
-}
-/** Every place the map shows, by region: the non-map way to find where to go (a row selects it on the map). */
-function placesCard(run) {
-  const pins = MapModel.pins(run).filter(p => p.kind !== 'clash'),
-    by = {};
-  for (const p of pins) (by[City.regionAt(p.at)] = by[City.regionAt(p.at)] || []).push(p);
-  const row = p => {
-    const s = SPOTS[p.id],
-      what =
-        s && s.train
-          ? `Trains ${STATNAME[TRAININGS[s.train].main[0]]}`
-          : p.kind === 'hq'
-            ? 'Club HQ'
-            : p.kind === 'venue'
-              ? 'Venue'
-              : s
-                ? esc(s.desc || '')
-                : '',
-      own = s && s.region ? Front.owner(run, p.id) : null,
-      trip = City.trip(run, p.at),
-      name = s ? s.name : p.title;
-    return `<button class="plrow" onclick="placeGo('${esc(p.id)}')"><span class="pi">${p.icon}</span><span class="nm"><b>${esc(name)}</b><span class="small mute">${what}${
-      own ? ` · ${chip(REGIONS[own])}${esc(REGIONS[own].name)}` : ''
-    }</span></span><span class="small">${trip ? `Trip ${trip}d` : 'Here'}</span></button>`;
-  };
-  return `<div class="panel places">${Object.keys(by)
-    .map(r => `<h3>${esc((REGIONS[r] || REGIONS.open).name)}</h3>${by[r].map(row).join('')}`)
+  return `<div class="maplegend"><span>🛡 Club HQ</span><span>🏟 Venue</span><span>⚔ Street battle</span>${regions
+    .map(r => `<span>${chip(REGIONS[r])}${esc(REGIONS[r].name)}</span>`)
     .join('')}</div>`;
-}
-function placeGo(id) {
-  CW.mapList = false;
-  CW.spot = id;
-  renderCareer(); // the map flies to the selection
 }
 
 function hubOpen(k) {

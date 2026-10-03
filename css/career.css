@@ -1992,41 +1992,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Places drawer (T-098) */
-.places h3 {
-  margin: 16px 0 8px;
-}
-.places h3:first-child {
-  margin-top: 0;
-}
-.plrow {
-  display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 8px 12px;
-  margin: 0 0 4px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: var(--surf2);
-  color: var(--ink);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.plrow:hover {
-  border-color: var(--cyan);
-}
-.plrow .nm {
-  display: grid;
-  min-width: 0;
-}
-.plrow .nm > * {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 /* locked = the gap (T-099) */
 .btn.lock:disabled {
   opacity: 1;
@@ -3095,39 +3060,7 @@
 .hub .gearpop .btn {
   width: 100%;
 }
-/* Map / List toggle and legend (T-126) */
-.hub .mapbar {
-  position: absolute;
-  z-index: 3;
-  top: calc(var(--tbar) + 16px);
-  left: calc(var(--rail) + 16px);
-}
-.hub .mapbar .seg {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  background: var(--surf);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-}
-.hub .maplist {
-  position: absolute;
-  z-index: 2;
-  top: var(--tbar);
-  left: var(--rail);
-  right: 0;
-  bottom: 0;
-  overflow-y: auto;
-  padding: 72px 32px 64px;
-  background: var(--bg);
-}
-.hub .maplist .places {
-  max-width: 720px;
-  margin: 0;
-  background: none;
-  border: 0;
-  padding: 0;
-}
+/* Map legend (T-126) */
 .hub .maplegend {
   position: absolute;
   z-index: 3;

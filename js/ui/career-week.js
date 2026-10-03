@@ -14,7 +14,6 @@ let CW = {
   wtab: 'factions',
   stab: 'diary',
   gear: false,
-  mapList: false,
   dossier: null,
   rank: 'register',
   rankAll: false,
