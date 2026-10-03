@@ -54,7 +54,7 @@ Build chat loop, one task at a time:
 
 - `npm install` once after cloning.
 - `npm test` — headless tests (tests/run.js runs tests/engine|career|map|cup.test.js). Golden hashes guard engine output.
-- `npm run test:quick` — the same minus the slow statistical tests (`test.slow`), ~10 s: for the edit loop; run the full set before a commit.
+- `npm run test:quick` — the same minus the slow statistical tests (`test.slow`), ~28 s on a 2-core container: for the edit loop; run the full set before a commit.
 - `npm run test:update` — only when the task says Goldens: update.
 - `npm run lint` / `npm run format` — ESLint (flat config collects shared globals from index.html) / Prettier.
 - `npm run serve` — http://localhost:8765 (index.html: CDN three, or node_modules three on localhost — `?cdn` forces the CDN).

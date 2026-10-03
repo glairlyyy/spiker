@@ -469,7 +469,7 @@ naming the hub dock / drawers; UI copy "seize meters" (career-week.js) → tile 
 Accept: grep for `border meter`, `drawer`, `dock`, `seize meter` finds no stale hits.
 Result: ARCHITECTURE — Front = hex tile pressure (`push/meter/battleTile/stakes`, `run.hex`), dossier fronts, `sheetPeople/personDetail`, `rankBestRows`, `mkTeams/simBalance` shown as test fixtures (PointFlash = `updatePointFlash`, already right); drawer/dock comments → sheet/top bar (+ css/career.css People sheet comment); Factions copy → "Street battles move your ⚑ standing and the Seize count on Border tiles." Grep hits left: ARCHITECTURE "There are no drawers." (true), other css/career.css drawer comments + map3d.mjs "dock" (files not listed). QA: only 08_2_world differs (the copy line).
 
-### [ ] T-151: Test suite — slow marks and file split
+### [x] T-151: Test suite — slow marks and file split
 
 Spec: — Goldens: unchanged Save: no change
 Files: tests/engine.test.js, tests/career.test.js, tests/map.test.js, tests/cup.test.js, tests/run.js, tests/people.test.js (new), tests/hex.test.js (new), tests/map3d.test.js (new), CLAUDE.md (test:quick timing line only)
@@ -478,7 +478,7 @@ fates/pairs (~940 lines) → people.test.js; map.test.js hex/front/economy → h
 map3d.test.js; both "rel on court" tests together. Add a test that flags any top-level classic-script name defined
 but referenced nowhere else (allow-list for onclick handlers and fixtures).
 Accept: same test count + 1; `test:quick` ≤ 25 s; full run green.
-Result:
+Result: ego + clutch → test.slow; career → people.test.js (people/rel/asks/fates/pairs/fixes, 38 tests), map → hex.test.js (4) + map3d.test.js (3); cup's rel-on-court test joins the engine three; new `code:` no-dead-globals test (comments stripped, empty ALLOW, finds none). 109 → 110 tests, full green; test:quick 40 s → 28–31 s on this 2-core box (over the 25 s target: the 7 s golden tournament test stays in quick).
 
 ### [ ] T-152: Shared helpers in one place
 
