@@ -2,8 +2,85 @@
 
 /** Mood (−1..1) → face key: fire, happy, calm, worried, panic. */
 const moodK = v => (v >= 0.6 ? 'fire' : v >= 0.2 ? 'happy' : v > -0.2 ? 'calm' : v > -0.6 ? 'worried' : 'panic');
-/** Face portrait of player `p` (look, hair, team colour) in `mood` (−1..1), as an SVG string `size` px square. */
+/**
+ * Portrait of player `p`, `size` px square, as HTML (owner, 2026-10-04): a 3D render of the actual player model
+ * (js/render3d/portrait3d.mjs — the default model in their hair and skin colour and team shirt; your own player is Main_v2)
+ * once it is ready, the drawn SVG face (faceSVG2D, which still shows `mood`) meanwhile and wherever WebGL is missing.
+ */
 function faceSVG(p, mood, size) {
+  const req = PORTRAIT.req(p);
+  if (!req) return faceSVG2D(p, mood, size);
+  const url = PORTRAIT.cache.get(req.key);
+  if (url) return PORTRAIT.img(url, p, size);
+  PORTRAIT.want(req);
+  return `<span class="face3d wait" data-pk="${esc(req.key)}" data-sz="${size}">${faceSVG2D(p, mood, size)}</span>`;
+}
+/** The 3D portrait cache and loader (display only). */
+const PORTRAIT = {
+  cache: new Map(), // look key → data URL
+  pend: new Map(), // look key → request, waiting for the renderer
+  mod: null, // the portrait3d renderer, once loaded
+  dead: typeof document === 'undefined', // no DOM / WebGL / model: drawn faces only
+  busy: false,
+  /** What to render for p (null when 3D portraits are off): the model, the kit colours and a mood expression. */
+  req(p) {
+    if (PORTRAIT.dead || !p || !p.look) return null;
+    // owner, 2026-10-04: every NPC is the default model with only what the model itself can change — hair colour, skin
+    // colour and the team shirt; your own player is Main_v2 as modelled. No mood faces, eye colours or drawn hairstyles.
+    const main = !!(p.you || (typeof RUN !== 'undefined' && RUN && p.id === RUN.youId)),
+      kit = { shirt: (p.team && p.team.color) || '#3a4a7a', hair: p.hair, skin: p.look.skin };
+    return { main, kit, key: main ? 'main' : `${kit.shirt}|${kit.hair}|${kit.skin}` };
+  },
+  img: (url, p, size) =>
+    `<img class="face face3d" src="${url}" width="${size}" height="${size}" alt="${esc(p.name || '')}" draggable="false">`,
+  want(req) {
+    if (PORTRAIT.pend.has(req.key)) return;
+    PORTRAIT.pend.set(req.key, req);
+    if (!PORTRAIT.mod) return PORTRAIT.load();
+    PORTRAIT.run();
+  },
+  load() {
+    if (PORTRAIT.loading) return;
+    PORTRAIT.loading = true;
+    import(new URL('js/render3d/portrait3d.mjs', document.baseURI).href)
+      .then(m => {
+        PORTRAIT.mod = m.create();
+        PORTRAIT.run();
+      })
+      .catch(e => PORTRAIT.fail(e));
+  },
+  /** Render the waiting looks one by one; each finished one replaces its placeholders on screen. */
+  async run() {
+    if (PORTRAIT.busy) return;
+    PORTRAIT.busy = true;
+    try {
+      while (PORTRAIT.pend.size) {
+        const [key, req] = PORTRAIT.pend.entries().next().value;
+        const url = await PORTRAIT.mod.shot(req);
+        PORTRAIT.pend.delete(key);
+        PORTRAIT.cache.set(key, url);
+        for (const el of document.querySelectorAll(`.face3d.wait[data-pk="${CSS.escape(key)}"]`)) {
+          const sz = +el.dataset.sz,
+            a = el.querySelector('svg');
+          el.outerHTML = `<img class="face face3d" src="${url}" width="${sz}" height="${sz}" alt="${esc(a ? a.getAttribute('aria-label') || '' : '')}" draggable="false">`;
+        }
+      }
+    } catch (e) {
+      PORTRAIT.fail(e);
+    } finally {
+      PORTRAIT.busy = false;
+    }
+  },
+  /** No 3D portraits here (no WebGL, model failed): drawn faces stay, logged once. */
+  fail(e) {
+    if (PORTRAIT.dead) return;
+    PORTRAIT.dead = true;
+    PORTRAIT.pend.clear();
+    if (typeof DBG !== 'undefined') DBG.log('warn', `3D portraits off: ${e && e.message ? e.message : e}`);
+  }
+};
+/** The drawn face of player `p` (look, hair, team colour) in `mood` (−1..1), as an SVG string `size` px square. */
+function faceSVG2D(p, mood, size) {
   const L = p.look,
     h = p.hair,
     mk = moodK(mood || 0),
