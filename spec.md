@@ -479,6 +479,22 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   numbers over sentences (`7 left`, `W6`); flavour and rumours on the title's hover; long lists show the useful few +
   `+n ›`; details (challenge, housing effects, facility level, faction economy, border target) in a peek; inbox items
   one line each with a peek. Never hidden: costs on buttons, locked gaps, penalties, deadlines, the event card.
+- §10.10 Dialogue box and story scenes **[draft]** (owner, 2026-10-04): the classic RPG **dialogue box** (message
+  window) for story and events — so any scene is data, not code.
+  - Box: bottom of the screen over the live map / court, ~1/4 height, full width minus the rail; **name plate** (the
+    speaker, lore.md §7 voice; faction colour only on the plate's border), **portrait** on the left (`faceSVG` now,
+    VRM head snapshot later — §5.2), text **types out** (fast; click / Space / Enter completes the line, then advances);
+    a ▼ marker when the line is done. **Choices** as a vertical list in the box (keys 1–4, never more than 4).
+    Hotkeys printed: `Space` next · `L` log · `Esc` skip scene (inline confirm). **Log**: the scene's lines so far.
+  - **Cut-scene mode**: letterbox bars, hub UI hidden, the camera may move (map fly-to, a 3D staged shot); the box
+    sits inside the bars. **Narration** (the MC's diary voice) = italic, no portrait, no plate.
+  - Scenes are **data** (`js/data/story.js`): steps `say` (speaker, text, mood) · `choice` (options → goto / set) ·
+    `cam` (map fly-to a place / pan) · `wait` · `set` (a story flag) · `diary` / `gazette` (a line) · `goto` · `end`;
+    each scene has a **trigger** (Story start, week, place visited, match result, flag). Runner `Story` (DOM-free,
+    `js/career/story.js`) plays steps; the UI only renders the current step. Seen scenes and flags live in
+    `run.story = {seen, flags}` via RUN_DEFAULTS (no version bump). No randoms; Story mode only (Endless skips).
+  - Library: none needed. Ink (inkjs, MIT, on jsDelivr) was considered for branching scripts; not now — the scenes
+    are short, and plain JS data keeps saves, flags and tests in our own format. Revisit if scenes grow long.
 - §10.9 Clubs and People, one list each (owner, 2026-10-03; design system `quiet-ui.md` § One list, cards SheetWorld,
   SheetPeople):
   - **Sign only at the club's HQ.** No Sign / join button in the World sheet, the dossier, the inbox or anywhere else;

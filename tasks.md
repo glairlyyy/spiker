@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-173** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-176** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -74,6 +74,41 @@ Steps:
   Result:
 
 Owner request 2026-10-03: remove the coach's goal (spec §10.1b).
+
+Owner request 2026-10-04 (spec §10.10 dialogue box): T-173 → T-175. Story mode only; goldens unchanged.
+
+### [ ] T-173: Story runner and scene data
+
+Spec: §10.10 Goldens: unchanged Save: no change (`run.story` via RUN_DEFAULTS)
+Goal: a DOM-free runner that plays scene data step by step and remembers what was seen.
+Files: js/career/story.js (new: `Story`), js/data/story.js (new: `SCENES`, one test scene), js/career/run.js (RUN_DEFAULTS `story`), index.html, tests/career.test.js, ARCHITECTURE.md
+Do not: draw randoms; touch Endless runs (`run.mode.story` false → no scenes); write real story lines (lore not final — use a neutral test scene).
+Steps:
+
+1. `SCENES = { id: { trigger: {on: 'start'|'week'|'place'|'result'|'flag', …}, steps: [...] } }`; step kinds `say {who, text, mood}` · `choice {opts: [{text, goto?, set?}]}` · `cam {at|place}` · `wait {ms}` · `set {flag, v}` · `diary {text}` · `gazette {text}` · `goto {step}` · `end`.
+2. `Story.due(run, on, ctx)` → the first unseen scene whose trigger matches; `Story.start(run, id)`, `Story.step(run)` (current step), `Story.next(run, choice?)` (advances, applies set / diary / gazette, marks seen at end).
+3. `who` resolves to a speaker: a voice id (lore.md §7) or a person id (portrait + name from People).
+   Accept: headless test plays the test scene through a choice branch; seen scenes never replay; Endless runs get none.
+   Result:
+
+### [ ] T-174: Dialogue box UI
+
+Spec: §10.10 §9 Goldens: unchanged Save: no change
+Goal: the RPG dialogue box over the hub: name plate, portrait, typed text, choices, log, cut-scene letterbox.
+Files: js/ui/dialogue.js (new), css/story.css (new), index.html, js/ui/career-hub.js (mount the box while `run.story.cur` is set; hub keys off while it is open), ARCHITECTURE.md
+Do not: block the artifact with alert/confirm; use colours outside theme.css tokens; put faction colour anywhere but the name plate border.
+Steps: box markup per §10.10; typewriter via rAF (~60 chars/s, completes on click / Space / Enter); choices 1–4; `L` log overlay; `Esc` → inline "Skip scene?"; `cam` steps call MapView fly-to; cut-scene mode (letterbox, `.hub` chrome hidden) when the scene says `cut: true`.
+Accept: test scene plays end to end with mouse and keys; type ≥ 12px; no errors. QA: screenshots of a say step, a choice, the log, cut-scene mode.
+Result:
+
+### [ ] T-175: Hook scenes into the career
+
+Spec: §10.10 §4.28 Goldens: unchanged Save: no change
+Goal: scenes fire from the game's moments.
+Files: js/ui/career-create.js (start), js/ui/career-hub.js (week start, place visited), js/ui/career-match.js (match result), js/career/story.js
+Steps: call `Story.due` at Story start (after Create, before the first brief), at each week start (before the brief), after a place is visited, after a match result; a due scene opens the box before the hub's own cards.
+Accept: the test scene can be triggered from each hook (test flag); the brief waits until the scene ends.
+Result:
 
 ### [x] T-172: Hide facility quality; keep the level
 
