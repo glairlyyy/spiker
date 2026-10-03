@@ -52,7 +52,7 @@ function renderCareer() {
   $('#app').innerHTML =
     `<section class="career hub ${City.night(run) ? 'eve' : ''} ${CW.railMini ? 'railmini' : ''}" style="--tc:${team.color}">
     ${topBar(run)}${CW.railMini ? railStrip(run, armed) : weekRail(run, armed)}
-    <div class="mapwrap" id="mapwrap"></div>${mapLegend()}
+    <div class="mapwrap" id="mapwrap"></div>${mapLegend()}<button class="btn mapme" onclick="MapView.centre()" aria-label="Centre the map on you (C)">◎ Me <kbd>C</kbd></button>
     <div class="hud spotcard ${CW.spot && !card ? 'open' : ''}" id="spot">${CW.spot && !card ? spotCard(run) : ''}</div>
     ${CW.sheet ? hubSheet(run) : ''}
     ${card ? `<div class="hubmodal ${card.dim ? 'dim' : ''}"><div class="hubcard ${card.cls || ''}">${card.html}</div></div>` : ''}
@@ -421,6 +421,7 @@ function hubKey(e) {
     e.preventDefault();
     mapEndWeek();
   } else if (e.key === '[') railToggle();
+  else if (e.key === 'c' || e.key === 'C') MapView.centre();
   else if (/^[1-4]$/.test(e.key) && !document.querySelector('.hubmodal')) hubOpen(HUB_TABS[+e.key - 1][0]);
 }
 document.addEventListener('keydown', hubKey);

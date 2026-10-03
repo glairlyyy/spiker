@@ -8,7 +8,7 @@ import { loadBase, makeVRM, applyPose, smoothBones, groundSnap, MODEL_URL } from
 import { STAND, locoPose, mix } from '../render3d/poses3d.mjs';
 import { toWorld, clamp as cl } from './geo3d.mjs';
 
-const HEIGHT = 1.65, // metres
+const HEIGHT = 6, // metres: drawn about 3.5× life size so you can find yourself on the island (owner, 2026-10-03)
   SPEED = 6, // m/s: the pace a trip is timed at (longer trips run faster, shown as a time-lapse)
   TIME = [1.2, 6], // trip duration limits (s)
   RAMP = 0.4, // ease-in / ease-out (s)
@@ -19,7 +19,7 @@ const wrap = a => Math.atan2(Math.sin(a), Math.cos(a)),
   segYaw = (pts, i) => Math.atan2(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]); // facing along segment i
 
 export function createAvatar(scene) {
-  const marker = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 1.1, 4, 10), new THREE.MeshStandardMaterial({ color: 0xffb020 }));
+  const marker = new THREE.Mesh(new THREE.CapsuleGeometry(1, 4, 4, 10), new THREE.MeshStandardMaterial({ color: 0xffb020 }));
   marker.castShadow = true;
   scene.add(marker);
   let pl = null,
@@ -86,10 +86,10 @@ export function createAvatar(scene) {
         if (W.t >= dur) S.walk = null;
       }
       const h = heightAt(S.x, S.z);
-      if (!pl) return marker.position.set(S.x, h + 0.85, S.z);
+      if (!pl) return marker.position.set(S.x, h + 3, S.z);
       S.t += dt;
       const gait = Math.min(v, SPEED),
-        stride = 1.6 + 0.8 * cl((gait - RUN_AT) / 1.5, 0, 1); // metres per gait cycle
+        stride = (1.6 + 0.8 * cl((gait - RUN_AT) / 1.5, 0, 1)) * (HEIGHT / 1.65); // metres per gait cycle (× the figure's size)
       S.phase += ((gait * dt) / stride) * Math.PI * 2;
       S.w += (cl(gait, 0, 1) - S.w) * (1 - Math.exp(-dt * 10));
       const sway = Math.sin(S.t * 1.7),

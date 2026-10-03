@@ -341,6 +341,13 @@ export function create(onIdle) {
     ];
   for (const [k, f, o] of listeners) canvas.addEventListener(k, f, o);
 
+  /** Fly the camera to your avatar (the map's ◎ button / key C), at most 70 m away; it then follows your walks again. */
+  const centre = () => {
+    if (!avatar || !view) return;
+    const [x, z] = avatar.pos();
+    fly = { x0: view.x, z0: view.z, d0: view.d, x1: x, z1: z, d1: Math.min(view.d, 70), t: 0 };
+    follow = true;
+  };
   /** Move the camera over a pin (≤ FLY_S): keep the zoom unless the pin is off-screen (then at least 80 m away). */
   const flyTo = id => {
     const p = cur && cur.pins && cur.pins.find(q => q.id === id);
@@ -456,6 +463,7 @@ export function create(onIdle) {
       if (id && id !== lastSel) flyTo(id);
       lastSel = id;
     },
+    centre,
     heightAt: (x, z) => (terrain ? terrain.heightAt(x, z) : 0),
     info: () => ({
       calls: renderer.info.render.calls,

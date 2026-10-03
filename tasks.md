@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-144** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-145** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -396,6 +396,12 @@ Result: design coordinates stay as written; `scaleMap` multiplies every map poin
 Spec: §4.27 Goldens: unchanged Save: no change
 Files: js/data/world.js (FRONT.prey, FRONT.push), js/career/front.js (pick), tests/map.test.js
 Result: Front.pick chooses the target with FRONT.prey (Wei → Wu 0.85 / Shu 0.15, Wu → Wei 0.85 / Shu 0.15, Shu → either 0.5) × 1.5 where the raider is already winning; always one R() draw for the target (was 0–1). 3,000 picks: Wei–Wu 70 %, Shu–Wei 15 %, Shu–Wu 15 %. Test added; full suite and calibrations pass.
+
+### [x] T-144: Light only round you and home; ◎ Me; bigger player (owner request, spec §4.18c)
+
+Spec: §4.18c Goldens: unchanged Save: no change
+Files: js/career/mapmodel.js (model.fog = your position + home), js/map3d/map3d.mjs (centre), js/ui/map-view.js (centre), js/ui/career-hub.js (◎ Me button, key C), js/map3d/avatar3d.mjs (HEIGHT 1.65 → 6 m, stride × size, bigger marker), css/career.css (.mapme)
+Result: the renderer's fog points are now [you, home] (run.fog still decides what you know: pins, scouting); ◎ Me (top-left of the map, key C) flies to the avatar at ≤ 70 m and re-enables follow; the avatar is 6 m tall with its stride scaled so the walk cycle still matches the ground speed. QA: hub, then C — the player centred and readable.
 
 ## Later — outlines
 

@@ -61,5 +61,9 @@ const MapView = {
   select(id) {
     if (MapView.m3) MapView.m3.select(id);
   },
+  /** Fly the camera to your player (◎ / key C). */
+  centre() {
+    if (MapView.m3) MapView.m3.centre();
+  },
   dispose: () => MapView.drop3D()
 };

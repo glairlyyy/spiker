@@ -3601,3 +3601,11 @@
   padding: 8px 0;
   border-top: 1px solid var(--line);
 }
+/* Centre on me (map, key C) */
+.hub .mapme {
+  position: absolute;
+  z-index: 3;
+  top: calc(var(--tbar) + 16px);
+  left: calc(var(--rail) + 16px);
+  background: var(--hud);
+}

@@ -373,7 +373,8 @@ const MapModel = {
       hexes: MapModel.hexes(run),
       pins: MapModel.pins(run),
       you: { at: City.pos(run), title: `You are in ${REGIONS[City.loc(run)].name}` },
-      fog: { points: run.fog || [], r: REVEAL_R },
+      // the dark map lifts only round you and your home (owner, 2026-10-03); what you've explored stays known (pins) but dark
+      fog: { points: [City.pos(run), City.at(run, 'home')], r: REVEAL_R },
       flag: MapModel.ptOf(sel),
       focus: City.at(run, 'home'), // where a fresh view centres
       sel,
