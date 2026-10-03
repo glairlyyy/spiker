@@ -2,7 +2,7 @@
 // terrain every frame, and terrain decals: the hex territory (spec §4.27: tile fills, holder edges, the battle tile) with
 // pressure labels. Reads only MapModel fields;
 // reports only pick(id). Emoji icons, badges and the flag classes (off, far, turf, gem, overhyped, hq, can, mine, clash)
-// are plain CSS on the overlay elements (css/career.css, .mpin …).
+// are plain CSS on the overlay elements (css/map.css, .mpin …).
 //   createFurniture(scene, heightAt) → { layer, sync(model, on), select(id), pulse(t), tick(cam, w, h, dist), dispose() }
 import * as THREE from 'three';
 import { MAP_M, smooth, esc } from './geo3d.mjs';
