@@ -13,6 +13,8 @@ function storyBox(run) {
     mode = cur.mode || {},
     layer = `<div class="sbox-layer ${mode.dark ? 'dark' : ''} ${mode.bars ? 'bars' : ''}" id="sbox" onclick="sbClick(event)">`;
   if (s.k === 'walk' || s.k === 'wait' || s.k === 'cam') return `${layer}</div>`; // the camera / the walk has the screen
+  if (s.k === 'title')
+    return `${layer}<div class="sb-title" role="status">${esc(s.text)}</div><span class="sb-keys sb-keys-t"><kbd>Space</kbd> next</span></div>`;
   const W = s.k === 'say' ? Story.who(run, s.who) : { name: Run.you(run).name, kind: 'you', person: Run.you(run) },
     face = W.person ? `<span class="sb-face">${faceSVG(W.person, 0, 72)}</span>` : '',
     text = s.k === 'say' ? s.text : '',
@@ -91,7 +93,7 @@ function sbNext() {
     $('#sbmore')?.classList.add('on');
     return;
   }
-  if (s.k === 'say') sbAdvance();
+  if (s.k === 'say' || s.k === 'title') sbAdvance();
 }
 function sbClick(e) {
   if (e.target.closest('button')) return;

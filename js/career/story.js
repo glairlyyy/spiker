@@ -3,7 +3,7 @@
 // where cur = { id, i, mode: {dark, bars}, log: [[who, text]] } while a scene plays.
 
 /** Steps the box shows and waits on; every other kind is applied at once by the runner. */
-const STORY_SHOWN = ['say', 'choice', 'walk', 'wait', 'cam'];
+const STORY_SHOWN = ['say', 'title', 'choice', 'walk', 'wait', 'cam'];
 const Story = {
   /** Scenes play in Story mode only (Endless skips them). */
   on: run => !!(run && run.mode && run.mode.story !== false && run.story),
@@ -62,6 +62,7 @@ const Story = {
       else if (s.k === 'goto') cur.i = s.step - 1;
       else if (STORY_SHOWN.includes(s.k)) {
         if (s.k === 'say') cur.log.push([s.who, s.text]);
+        if (s.k === 'title') cur.log.push(['diary', s.text]);
         if (s.k === 'walk') City.moveTo(run, s.to === 'home' ? City.at(run, 'home') : City.at(run, s.to)); // free: no days
         return;
       }

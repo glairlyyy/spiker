@@ -499,7 +499,7 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   - **Cut-scene mode**: letterbox bars, hub UI hidden, the camera may move (map fly-to, a 3D staged shot); the box
     sits inside the bars. **Narration** (the MC's diary voice) = italic, no portrait, no plate.
   - Scenes are **data** (`js/data/story.js`): steps `say` (speaker, text, mood) · `choice` (options → goto / set) ·
-    `cam` (map: onto you) · `walk` (you walk to a place / home; free, no days) · `cut` (dark / letterbox mode) · `wait` · `set` (a story flag) · `diary` / `gazette` (a line) · `goto` · `end`;
+    `cam` (map: onto you) · `walk` (you walk to a place / home; free, no days) · `cut` (dark / letterbox mode) · `title` (a big centred line) · `wait` · `set` (a story flag) · `diary` / `gazette` (a line) · `goto` · `end`;
     each scene has a **trigger** (Story start, week, place visited, match result, flag). Runner `Story` (DOM-free,
     `js/career/story.js`) plays steps; the UI only renders the current step. Seen scenes and flags live in
     `run.story = {seen, flags}` via RUN_DEFAULTS (no version bump). No randoms; Story mode only (Endless skips).

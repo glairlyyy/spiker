@@ -158,3 +158,22 @@
   top: 0;
   left: 0; /* the map takes the whole screen while a scene plays */
 }
+.sb-title {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font: 700 clamp(72px, 12vw, 160px) / 1 var(--disp);
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  animation: sbFade 1.2s ease-out both;
+}
+@keyframes sbFade {
+  from {
+    opacity: 0;
+  }
+}
+.sb-keys-t {
+  bottom: calc(9vh + 24px);
+  right: 32px;
+}
