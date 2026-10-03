@@ -387,7 +387,7 @@ Result: the terrain no longer mixes in the region colour (grass / rock / sand / 
 
 ### [x] T-142: Scale the island 1.5× (owner request, spec §4.18b)
 
-Spec: §4.18b Goldens: unchanged Save: no change (old saves hold scaled-out positions: start a new run)
+Spec: §4.18b Goldens: unchanged Save: RUN_VERSION 17 (positions and fog are in the scaled units)
 Files: js/data/city.js (MAP_SCALE, scaleMap, CITY.strip, NEAR_R / TRIP_DAY / REVEAL_R / GROUND_STEP), js/career/mapmodel.js (thinMajor, road rows ÷ MAP_SCALE, onSand strip), js/map3d/map3d.mjs (camera reach 420 → 630, fit 340 → 510), tests/map.test.js
 Result: design coordinates stay as written; `scaleMap` multiplies every map point once at load (shared points once); circle districts move but keep their radius, point districts move by their centroid, the beach / Wei ring districts thin by 1/S², points inside the park or a minor move with it; HEX.size, travel, reveal and WEALTH.weiEdge × S. Buildings 704 → 724 (majors × `thinMajor` 0.8, road rows ÷ S); tiles still 139; trip days unchanged (pier 0, Wei gyms 2, dunes 3). Terrain ~46k → ~105k vertices (built once at mount). Tests: design points × MAP_SCALE, lot targets rebased. QA: hub screenshot.
 
