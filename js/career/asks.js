@@ -1,4 +1,4 @@
-// Approaches (spec §4.23 C): NPCs act on their wants — up to REL.ask.max a week wait for you in the People drawer (accept / refuse, each
+// Approaches (spec §4.23 C): NPCs act on their wants — up to REL.ask.max a week wait for you in the People sheet (accept / refuse, each
 // expires at the week's end) — and every person card lists the moves you can make on them. Every answer becomes a memory (Rel.add).
 // No DOM. No R() / rnd() / pick(): every roll is `People.roll`. An approach is never `run.event`: it blocks nothing.
 // State: run.asks [{ id, kind, week, data, mine? }] (mine = an ask you made: it only marks "one ask per person per week"),

@@ -650,7 +650,7 @@ function factionsCard(run) {
             : ''
         }</div></div>`;
   };
-  return `<div class="panel facs"><p class="small mute">Street battles move your ${term('standing')} standing and the ${term('seize')} meters.</p>${Object.keys(
+  return `<div class="panel facs"><p class="small mute">Street battles move your ${term('standing')} standing and the ${term('seize')} count on ${term('border')} tiles.</p>${Object.keys(
     REGIONS
   )
     .filter(r => REGIONS[r].kind !== 'none')

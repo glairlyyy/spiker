@@ -19,7 +19,7 @@ const Dossier = {
   },
   /** Standing label for a standing value (−100…100). */
   standingLabel: v => (v >= 30 ? 'Trusted' : v > 0 ? 'Friendly' : v <= -30 ? 'Hostile' : v < 0 ? 'Wary' : 'Neutral'),
-  /** The short form for the Factions drawer: standing, war state, border pressure, places taken / lost, economy. */
+  /** The short form for the World sheet's Factions tab: standing, war state, tile pressure, places taken / lost, economy. */
   summary(run, r) {
     const R0 = REGIONS[r],
       major = MAJORS.includes(r),

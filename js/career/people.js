@@ -252,7 +252,7 @@ const People = {
     if (!best) return;
     const to = best.me.want === 'money' ? 'gloria' : 'abroad';
     if (Rel.stance(run, best.p.id) >= REL.tags.respect) {
-      // they ask you first: the question waits in the People drawer next week (an unanswered one lets them go)
+      // they ask you first: the question waits in the People sheet next week (an unanswered one lets them go)
       run.asks.push({ id: best.p.id, kind: 'poach_advice', week: run.week + 1, data: { to } });
       return;
     }

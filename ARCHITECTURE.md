@@ -51,7 +51,7 @@ in one file only (T-084) — theme.css overrides by being last, so never repeat 
 ## Engine flow
 
 ```
-mkTeams() ─► simBalance() ─► newMatch(a, b, record)
+                              newMatch(a, b, record)   ◄─ in tests: mkTeams() ─► simBalance() (engine/teams.js, fixtures)
                                    │
                     playRally(m) ──┤ serve → receive (engine/serve.js) → rally(m, …) loop (engine/rally.js)
                                    │   uses Formula.* (engine/formulas.js)
@@ -449,7 +449,7 @@ challenge / clash wins → `Rel.beatMe`. Match rewards no longer carry bond.
 the want after REL.know.want memories and each trait at REL.know.trait[i] (one diary line each); `People.knows(run, p, 'want' | 'trait', i)`
 also counts a scouted club (`City.scouted`) for the want. `Rel.top` = the n memories with the largest |`Rel.weigh`| (same weights as the
 stance); `Rel.text` picks a `MEM_TEXT` / `MEM_ALT` diary line and `Rel.season` a `SEASON_TEXT` rumour line by `hstr` (no R()).
-`js/ui/career-people.js` (`peopleCard`, `personRow`, `personCard`, `openPerson`; display only): your squad, then others who remember you or
+`js/ui/career-people.js` (`sheetPeople`, `personDetail`, `personCard`, `openPerson`; display only): your squad, then others who remember you or
 whom you met; a card shows want / traits ("?" until known), the season line and the top 3 memories. Names in the Rankings and the
 dossier roster call `openPerson` (`CW.person`).
 
@@ -507,7 +507,7 @@ builds a squad on demand (the Academy entrant is `run.pickup`). Every match, you
 ## Faction dossier
 
 `Dossier.build(run, r)` (`js/career/dossier.js`, DOM-free, read-only) returns one faction's window data: standing, state
-(weakened / pressed / rising / stable / minor), border meters, places taken / lost, price and quality multipliers,
+(weakened / pressed / rising / stable / minor), fronts (`Front.meter` per rival: tile pressure), places taken / lost, price and quality multipliers,
 the facilities it holds now (seized ones marked, with `City.access`), its clubs (join text, `World.canJoin`) and the pool
 roster. Ratings and elements are `null` until one of its clubs is scouted or you are a member. It reuses `City`, `Front`,
 `World`, `Pool` and `Training`; no rules live in it. `Dossier.summary(run, r)` is the short form the World sheet's Factions tab renders (standing +
@@ -538,8 +538,8 @@ shrine park / major polygon), `trip` (days by travel cost `City.path`, NEAR_R / 
 it would spill into next week (`noTime`); at 0 days it is night; only `mapEndWeek` (the player) calls `Run.endWeek`.
 Events roll once per week after the first action (`run.rolled`). Street battles: `clashRoll` in `Run.nextWeek`
 (`run.clash` with its aggressor, settled by `clashEnd` at week end if nobody joined), `clash(run, side)`; standing per
-region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border meters `run.front`, seized places `run.own`
-(City.region follows the holder), `priceMul`/`qMul`/`weak`, `pick` (aggressor + target), `sim`/`result`/`seize`;
+region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): tile pressure on the hex map (`push`/`meter`/`battleTile`, state in `run.hex`, §4.27), seized places `run.own`
+(City.region follows the holder), `econ`/`priceMul`/`qMul`/`weak`, `pick` (aggressor + target), `sim`/`result`/`stakes`;
 `World.joinReq` lowers a weakened faction's join bar. Sessions × DAY_GAIN (gains and skill points).
 
 ### Island map layers
@@ -662,7 +662,7 @@ street null when off the list). State: `run.met` (player id → faced on court: 
 battle — fought, watched or simulated — gives the winner faction's `share` best players `faction`: `Rank.settle`),
 `run.refused` (club index → `{ week, n }`, used by team challenges). Constants: `RANK` in `data/world.js`.
 
-UI (`ui/career-week.js`): the World sheet's Rankings tab (`rankCard`, tab in `CW.rank`, `rankTab`) renders `Rank.register / gazette / street` — top `RANK.top` rows, then "…" and your row; `rankBest(run, players)` adds "Their best: …" (up to 2 players, null ranks skipped) to `evalPanel` and `cupPanel`. The UI only reads `Rank.*`.
+UI (`ui/career-week.js`): the World sheet's Rankings tab (`rankCard`, tab in `CW.rank`, `rankTab`) renders `Rank.register / gazette / street` — top `RANK.top` rows, then "…" and your row; `rankBestRows(run, players)` adds "Their best: …" (up to 2 players, null ranks skipped) to `evalPanel` and `cupPanel`. The UI only reads `Rank.*`.
 
 ## Team challenges
 
@@ -729,7 +729,7 @@ Consequence feedback (UI state only, nothing saved): `weekSnap` keeps a baseline
 diffs it around `Run.endWeek` into `CW.recap` → `recapCard` (the Week report). `renderCareer` diffs `run.own` against
 `CW.own` (`ownChanges`); a seize becomes an inbox row for a week (`CW.seizes`) and selects the place on the map.
 `Front.stakes(run, w, l)` is a pure preview of "w beats l" (meter, seize, place) used by the street-battle panel and the
-Factions tab's border meters. `run.dayLog` (RUN_DEFAULTS, cleared by `Run.endWeek`, written by `City.go` / `logDays`)
+Factions tab's front rows. `run.dayLog` (RUN_DEFAULTS, cleared by `Run.endWeek`, written by `City.go` / `logDays`)
 feeds the day track. `hubKey`: 1–4 sheets, Space End week, Esc closes ⚙ → list → sheet → place panel; `CW.endArm`
 makes End week ask twice (4 s) while days are unused.
 

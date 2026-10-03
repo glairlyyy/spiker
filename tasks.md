@@ -459,7 +459,7 @@ Accept: career.css/style.css have no hex literals outside theme.css except comme
 QA: as T-148.
 Result: exact copies → tokens (#8b919c→mute, #ff3b4e→hot, #888 fallback→mute); ΔE00 ≤ 2.8 → token (#0c1016→surf 1.1, #000→on-ink/bg ≤ 2.8; career-end COL ovr→ink 1.4, power→bad-soft 1.1, def→cyan, jump→gold, cup line→hot, via style= since SVG attrs); everything else stays literal with `/* no token: … */` (tokens.json has no white token: #fff vs ink ΔE 3.5; #ffd166 gold 3.2; #f5b82e = wei-today but a faction colour on clock dots; #040b13 matches the sea fog; style.css court art #10163a/#ffe066…; speed #7ee081 vs good 4.5). No theme.css token added. QA: 16 screens vs base2 — hub/sheets px>24 = 0, match/result only confetti/3D noise (same as base2↔t148); growth chart checked separately.
 
-### [ ] T-150: Stale docs and comments
+### [x] T-150: Stale docs and comments
 
 Spec: — Goldens: unchanged Save: no change
 Files: ARCHITECTURE.md, js/ui/career-people.js, js/career/dossier.js, js/career/asks.js, js/career/people.js, js/career/rel.js, js/ui/career-week.js
@@ -467,7 +467,7 @@ Steps: ARCHITECTURE.md — drop "border meters `run.front`"/`Front.seize` (now h
 `rankBest`/`PointFlash` names, mark `mkTeams`/`simBalance` as test fixtures in the engine flow; code comments still
 naming the hub dock / drawers; UI copy "seize meters" (career-week.js) → tile wording from short-copy.md.
 Accept: grep for `border meter`, `drawer`, `dock`, `seize meter` finds no stale hits.
-Result:
+Result: ARCHITECTURE — Front = hex tile pressure (`push/meter/battleTile/stakes`, `run.hex`), dossier fronts, `sheetPeople/personDetail`, `rankBestRows`, `mkTeams/simBalance` shown as test fixtures (PointFlash = `updatePointFlash`, already right); drawer/dock comments → sheet/top bar (+ css/career.css People sheet comment); Factions copy → "Street battles move your ⚑ standing and the Seize count on Border tiles." Grep hits left: ARCHITECTURE "There are no drawers." (true), other css/career.css drawer comments + map3d.mjs "dock" (files not listed). QA: only 08_2_world differs (the copy line).
 
 ### [ ] T-151: Test suite — slow marks and file split
 

@@ -1231,7 +1231,7 @@
   width: 9em;
 }
 
-/* People drawer (T-061/T-062): rows, stance chips and the person card */
+/* People sheet (T-061/T-062): rows, stance chips and the person card */
 .prow {
   border-bottom: 1px solid var(--line);
   padding: 4px 0;

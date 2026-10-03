@@ -2,7 +2,7 @@
 // arithmetic on `run.mem`, so it never moves the random stream. Data: MEMORY / REL in js/data/people.js.
 // run.mem[key] = [{ w (week), k (kind), v (value), n (same-kind count this week), a (who feels it: an id, '*' = both) }], key = Rel.key(a, b).
 // You ↔ NPC lists are the NPC's (a = the NPC); NPC ↔ NPC lists (T-065) only exist between squadmates, capped by REL.chem.pairs in all.
-// The old 0–100 `you.bond[id]` is only a cache of Rel.bond (so combos at 60, friendship at 80, goals, the drawer work as before).
+// The old 0–100 `you.bond[id]` is only a cache of Rel.bond (so combos at 60, friendship at 80, goals, the People sheet work as before).
 
 const Rel = {
   key: (a, b) => [a, b].sort().join('|'),
