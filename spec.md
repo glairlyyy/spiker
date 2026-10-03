@@ -164,8 +164,8 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 - §4.16 Living map (display only, no randoms):
   - A [built]: teammates at their week's training places; faction players drilling at courts (more for bigger pools;
     coloured if scouted/member, else grey) and walking between places; street battle as a two-colour crowd with flags
-    and dust; border lines pulse with pressure, patrols thicken on the winning side (Wei–Wu only);
-    seized places fly the holder's flag. Low-poly instanced figures; VRM for you only.
+    and dust; patrols stand on the hex frontier facing each other (this week's battle tile first, then the most
+    pressured fronts, any pair — T-153); tile colour shows who holds a place (no seized flags). Low-poly instanced figures; VRM for you only.
   - B **[locked, not built — waits on lore]**: waves, boats, gulls, Wu beach pickup games, Shu village smoke, Wei
     lights and traffic, villagers near the Academy; individual NPC figures and approach figures (§4.23).
   - C **[locked, not built — M3]**: sun moves as the week's days are spent; dusk when none left.
