@@ -196,7 +196,7 @@ const Run = {
    */
   bump(run, key, v) {
     const you = Run.you(run);
-    const fmt = (d, name, dec = 0) => (d ? `${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(dec)} ${name}` : '');
+    const fmt = (d, name, dec = 0) => (d ? `${fmtDelta(d, { dec })} ${name}` : '');
     if (STATK.includes(key) || key === 'lead') {
       if (v > 0 && key !== 'lead') v = Math.max(1, Math.round(v * Training.dim(you[key]))); // events obey diminishing returns too
       const top = key === 'lead' ? CAREER.runCap : Math.max(you[key], TRAIN_CAP), // events stop at the training cap (never lower a stat matches raised)
@@ -234,7 +234,7 @@ const Run = {
     const m = squadOf(Run.myTeam(run)).find(p => p.id === mateId);
     if (!m) return ''; // that teammate is gone (you changed club, or they were transferred)
     const d = Rel.add(run, mateId, kind, v);
-    return d ? `${d > 0 ? '+' : '−'}${Math.abs(d)} bond with ${m.name}` : '';
+    return d ? `${fmtDelta(d)} bond with ${m.name}` : '';
   },
   /** The player may end a training week (not with an event open, not on a match week). */
   canEndWeek: run => !run.event && Run.weekType(run) !== 'cup' && Run.weekType(run) !== 'eval',

@@ -192,13 +192,15 @@ function matchPrep(run, cup) {
 const MKIND = { eval: 'Evaluation', cup: 'Cup', challenge: 'Challenge', street: 'Street fight' };
 function matchLog(run) {
   const L = run.mlog || [],
-    sgn = n => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : ''),
     row = (e, i) => {
       const prev = L[i - 1],
         res = e.played ? `${e.win ? 'W' : 'L'} · ${e.grade}` : 'did not play',
         sum = `W${e.week} · ${MKIND[e.kind] || e.kind}${e.round ? ` (${esc(e.round)})` : ''} · vs ${esc(e.vs)} · ${e.score[0]}-${e.score[1]} · ${res}`,
         stats = [['ovr', 'OVR'], ...[...STATK, 'wit'].map(k => [k, STATNAME[k].slice(0, 3)])]
-          .map(([k, n]) => `<span>${n} <b>${e.you[k]}</b> <i class="mute">${prev ? sgn(e.you[k] - prev.you[k]) : ''}</i></span>`)
+          .map(
+            ([k, n]) =>
+              `<span>${n} <b>${e.you[k]}</b> <i class="mute">${prev ? fmtDelta(e.you[k] - prev.you[k], { zero: '' }) : ''}</i></span>`
+          )
           .join(' · '),
         ln = e.line,
         side = s =>
@@ -350,18 +352,17 @@ function endWeekUI() {
   Run.endWeek(run);
   const now = Run.you(run),
     rows = [],
-    d = (n, txt) => n && rows.push([n > 0 ? 'up' : 'dn', txt]),
-    sg = n => (n > 0 ? `+${n}` : `−${-n}`);
-  for (const k of STATK) d(now[k] - before.stat[k], `${STATNAME[k]} ${sg(now[k] - before.stat[k])}`);
-  d(run.money - before.money, `Money ${run.money > before.money ? '+' : '−'}$${Math.abs(run.money - before.money).toLocaleString()}`);
-  d(run.fans - before.fans, `Fans ${sg(run.fans - before.fans)}`);
-  d(run.sp - before.sp, `Skill pts ${sg(run.sp - before.sp)}`);
+    d = (n, txt) => n && rows.push([n > 0 ? 'up' : 'dn', txt]);
+  for (const k of STATK) d(now[k] - before.stat[k], `${STATNAME[k]} ${fmtDelta(now[k] - before.stat[k])}`);
+  d(run.money - before.money, `Money ${fmtDelta(run.money - before.money, { pre: '$', loc: true })}`);
+  d(run.fans - before.fans, `Fans ${fmtDelta(run.fans - before.fans)}`);
+  d(run.sp - before.sp, `Skill pts ${fmtDelta(run.sp - before.sp)}`);
   for (const m of Run.mates(run))
     d(
       (now.bond[m.id] || 0) - (before.bond[m.id] || 0),
-      `Bond ${m.name.split(' ')[0]} ${sg((now.bond[m.id] || 0) - (before.bond[m.id] || 0))}`
+      `Bond ${m.name.split(' ')[0]} ${fmtDelta((now.bond[m.id] || 0) - (before.bond[m.id] || 0))}`
     );
-  for (const r of regs) d(City.rep(run, r) - before.rep[r], `⚑ ${REGIONS[r].name} ${sg(City.rep(run, r) - before.rep[r])}`);
+  for (const r of regs) d(City.rep(run, r) - before.rep[r], `⚑ ${REGIONS[r].name} ${fmtDelta(City.rep(run, r) - before.rep[r])}`);
   for (const t of ownChanges(before.own, run.own || {})) rows.push(['ch', t.text]);
   const at = before.top ? run.log.indexOf(before.top) : run.log.length,
     lines = run.log.slice(0, at < 0 ? run.log.length : at).slice(0, 6);
@@ -465,12 +466,12 @@ function eventCard(run) {
               k === 'chance'
                 ? `${Math.round(v * 100)}% chance: ${fxText(sub)}`
                 : k === 'main'
-                  ? `${signed(v)} ${STATNAME[run.lastMain]}`
+                  ? `${fmtDelta(v)} ${STATNAME[run.lastMain]}`
                   : k.startsWith('bond')
-                    ? `${signed(v)} bond${k === 'bondAll' ? ' with everyone' : ''}`
+                    ? `${fmtDelta(v)} bond${k === 'bondAll' ? ' with everyone' : ''}`
                     : k === 'mood'
                       ? `mood ${v > 0 ? 'up' : 'down'}`
-                      : `${signed(v)} ${k === 'sta' ? 'stamina' : k === 'sp' ? 'skill pts' : STATNAME[k] || k}`
+                      : `${fmtDelta(v)} ${k === 'sta' ? 'stamina' : k === 'sp' ? 'skill pts' : STATNAME[k] || k}`
             )
             .join(', ');
   const kind = { sponsor: 'Sponsor', element: 'Element Trial' }[run.event.id] || 'Event',
@@ -524,9 +525,9 @@ function resultData(run, m, b, msg) {
   const you = Run.you(run),
     s = m.stat[you.id] || blank(),
     e = (run.mlog || []).length > b.mlog || (run.mlog || []).length === MLOG.max ? run.mlog[run.mlog.length - 1] : null,
-    d = (k, name, fmt = v => v.toLocaleString()) => {
+    d = (k, name, o = { loc: true }) => {
       const v = run[k] - b[k];
-      return v ? { v, text: `${v > 0 ? '+' : '−'}${fmt(Math.abs(v))} ${name}` } : null;
+      return v ? { v, text: `${fmtDelta(v, o)} ${name}` } : null;
     };
   return {
     win: m.winner === b.side,
@@ -537,7 +538,7 @@ function resultData(run, m, b, msg) {
     rewards: [
       d('sp', 'skill pts'),
       d('fans', 'fans'),
-      d('money', '', v => '$' + v),
+      d('money', '', { pre: '$' }),
       run.mood !== b.mood ? { v: run.mood - b.mood, text: `mood ${run.mood > b.mood ? 'up' : 'down'}` } : null
     ].filter(Boolean),
     growth: [...STATK, 'wit']
@@ -612,7 +613,7 @@ function factionsCard(run) {
       held = T.filter(t => Hex.owner(run, t.id) === r).length,
       d = held - T.filter(t => t.region === r).length,
       e = Front.econ(run, r),
-      sg = n => (n ? ` <b class="${n > 0 ? 'up' : 'dn'}">${n > 0 ? '+' : '−'}${Math.abs(n)}</b>` : '');
+      sg = n => (n ? ` <b class="${n > 0 ? 'up' : 'dn'}">${fmtDelta(n)}</b>` : '');
     return `<div class="small">Tiles <b>${held}</b>${sg(d)} · <span ${tip(GLOSSARY.value.long)}>value <b>${Hex.worth(run, r)}</b>${sg(e)}</span></div>`;
   };
   const row = r => {

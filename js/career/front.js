@@ -3,7 +3,6 @@
 // places weakens a faction: dearer, poorer facilities, easier to join. Who starts a fight: FRONT.aggro (+ revenge).
 // DOM-free.
 
-const MAJORS = ['wei', 'wu', 'shu'];
 const Front = {
   /** Who holds a place now (seized places differ from their home region). */
   owner: (run, id) => (run.own && run.own[id]) || SPOTS[id].region,

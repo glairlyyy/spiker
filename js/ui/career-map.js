@@ -185,7 +185,7 @@ function clashPanel(run) {
     },
     std = r => {
       const v = City.rep(run, r);
-      return [`Standing · ${short(r)}`, signed(v), v > 0 ? 'up' : v < 0 ? 'dn' : ''];
+      return [`Standing · ${short(r)}`, fmtDelta(v), v > 0 ? 'up' : v < 0 ? 'dn' : ''];
     },
     card = (s, foe) =>
       `<div class="pside"><div class="lab">${chip(REGIONS[s])}Fight for ${short(s)}</div>${kv([
@@ -366,7 +366,7 @@ function hqPanel(run, ti) {
     gap = free && !j.ok ? joinGap(run, ti) : '',
     facts = kv([
       ['Rating', String(t.ovr)],
-      ['Standing', signed(rep), rep > 0 ? 'up' : rep < 0 ? 'dn' : ''],
+      ['Standing', fmtDelta(rep), rep > 0 ? 'up' : rep < 0 ? 'dn' : ''],
       free ? ['Join', esc(World.joinText(ti, run)), j.ok ? 'up' : ''] : null,
       gap ? ['', `Your gap: ${esc(gap)}`, 'wa'] : null,
       ...habits

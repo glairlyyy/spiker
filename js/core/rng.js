@@ -1,4 +1,4 @@
-// Random helpers and small math utilities. Everything random goes through R().
+// Random helpers. Everything random goes through R(). (Non-random maths: core/math.js.)
 
 /**
  * Single random source for the whole game. Defaults to Math.random.
@@ -44,19 +44,6 @@ const FXR = {
 };
 const rnd = (a, b) => a + R() * (b - a);
 const pick = a => a[Math.floor(R() * a.length)];
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-/** Is point p inside polygon poly ([[x, y], …])? (even–odd rule) */
-function inPoly([x, y], poly) {
-  let inside = false;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const [xi, yi] = poly[i],
-      [xj, yj] = poly[j];
-    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
-  }
-  return inside;
-}
-const sig = x => 1 / (1 + Math.exp(-x));
-const lerp = (a, b, t) => a + (b - a) * t;
 function wpick(arr, wf) {
   let t = 0;
   const w = arr.map(x => {

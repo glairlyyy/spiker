@@ -323,8 +323,8 @@ const MapModel = {
     };
   },
   /**
-   * The hex territory (spec §4.27, Hex): { size, tiles: [{ id, at, own, color, kind, frontier, p, by, cost, text }], target }
-   * — every land tile with its holder; frontier = touches another major's tile; p / by / cost / text only on tiles under
+   * The hex territory (spec §4.27, Hex): { size, tiles: [{ id, at, own, major, color, kind, frontier, p, by, cost, text }], target }
+   * — every land tile with its holder (major: held by one of MAJORS); frontier = touches another major's tile; p / by / cost / text only on tiles under
    * pressure; target = this week's battle tile { id, color (raider), text 'Wu 0/2' }. Display only.
    */
   hexes(run) {
@@ -343,6 +343,7 @@ const MapModel = {
           id: t.id,
           at: t.at,
           own,
+          major: major(own),
           color: REGIONS[own].color,
           kind: t.kind,
           frontier: major(own) && Hex.near(t.id).some(n => major(Hex.owner(run, n.id)) && Hex.owner(run, n.id) !== own),

@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { VRMUtils } from '@pixiv/three-vrm';
 import { loadBase, makeVRM, applyPose, smoothBones, groundSnap, MODEL_URL } from '../render3d/players3d.mjs';
 import { STAND, locoPose, mix } from '../render3d/poses3d.mjs';
-import { toWorld, clamp as cl } from './geo3d.mjs';
+import { toWorld, clamp, wrap } from './geo3d.mjs';
 
 const HEIGHT = 6, // metres: drawn about 3.5× life size so you can find yourself on the island (owner, 2026-10-03)
   SPEED = 6, // m/s: the pace a trip is timed at (longer trips run faster, shown as a time-lapse)
@@ -15,8 +15,7 @@ const HEIGHT = 6, // metres: drawn about 3.5× life size so you can find yoursel
   TURN = 0.25, // wait for the turn before setting off (s)
   RUN_AT = 2.5; // m/s: above this the gait blends into a run
 
-const wrap = a => Math.atan2(Math.sin(a), Math.cos(a)),
-  segYaw = (pts, i) => Math.atan2(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]); // facing along segment i
+const segYaw = (pts, i) => Math.atan2(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]); // facing along segment i
 
 export function createAvatar(scene) {
   const marker = new THREE.Mesh(new THREE.CapsuleGeometry(1, 4, 4, 10), new THREE.MeshStandardMaterial({ color: 0xffb020 }));
@@ -53,7 +52,7 @@ export function createAvatar(scene) {
       for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
       const dist = cum[cum.length - 1];
       if (dist < 0.5) return this.snap(at);
-      const dur = cl(dist / SPEED, TIME[0], TIME[1]),
+      const dur = clamp(dist / SPEED, TIME[0], TIME[1]),
         r = Math.min(RAMP, dur / 2);
       // trapezoid speed profile: ramp up, cruise at vc, ramp down; the area under it is the distance along the path
       S.walk = { pts, cum, i: 0, dist, dur, r, vc: dist / (dur - r), t: -TURN, s: 0, yaw: segYaw(pts, 0) };
@@ -67,7 +66,7 @@ export function createAvatar(scene) {
       let v = 0;
       if (W) {
         W.t += dt;
-        const t = cl(W.t, 0, W.dur),
+        const t = clamp(W.t, 0, W.dur),
           { dur, r, vc, dist } = W;
         let s;
         if (t >= dur) [s, v] = [dist, 0];
@@ -78,7 +77,7 @@ export function createAvatar(scene) {
         while (W.i < W.pts.length - 2 && s > W.cum[W.i + 1]) W.i++;
         const a = W.pts[W.i],
           b = W.pts[W.i + 1],
-          f = cl((s - W.cum[W.i]) / (W.cum[W.i + 1] - W.cum[W.i] || 1), 0, 1);
+          f = clamp((s - W.cum[W.i]) / (W.cum[W.i + 1] - W.cum[W.i] || 1), 0, 1);
         S.x = a[0] + (b[0] - a[0]) * f;
         S.z = a[1] + (b[1] - a[1]) * f;
         W.yaw = segYaw(W.pts, W.i);
@@ -89,9 +88,9 @@ export function createAvatar(scene) {
       if (!pl) return marker.position.set(S.x, h + 3, S.z);
       S.t += dt;
       const gait = Math.min(v, SPEED),
-        stride = (1.6 + 0.8 * cl((gait - RUN_AT) / 1.5, 0, 1)) * (HEIGHT / 1.65); // metres per gait cycle (× the figure's size)
+        stride = (1.6 + 0.8 * clamp((gait - RUN_AT) / 1.5, 0, 1)) * (HEIGHT / 1.65); // metres per gait cycle (× the figure's size)
       S.phase += ((gait * dt) / stride) * Math.PI * 2;
-      S.w += (cl(gait, 0, 1) - S.w) * (1 - Math.exp(-dt * 10));
+      S.w += (clamp(gait, 0, 1) - S.w) * (1 - Math.exp(-dt * 10));
       const sway = Math.sin(S.t * 1.7),
         idle = { ...STAND, cp: 0.02 * sway, sp: 0.02 + 0.012 * sway },
         pose = S.w > 0.01 ? mix(idle, locoPose({ speed: gait, fwd: gait, lat: 0, phase: S.phase }), S.w) : idle;

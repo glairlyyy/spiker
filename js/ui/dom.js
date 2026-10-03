@@ -5,8 +5,6 @@ const $ = s => document.querySelector(s);
 const ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 /** Escape any value for use inside HTML text or a quoted attribute. Every name or data string goes through this. */
 const esc = s => String(s).replace(/[&<>"']/g, c => ESC_MAP[c]);
-/** A number with an explicit plus sign when positive: "+3", "-2", "0". */
-const signed = v => `${v > 0 ? '+' : ''}${v}`;
 /** Star marker before a name: red ★ for OP players, plain ★ for stars. */
 const stag = p => (p.op ? '<span class="opstar" title="OP player">★</span> ' : p.star ? '★ ' : '');
 /** Small square in the team colour. */
@@ -50,7 +48,7 @@ function term(id, n, cls = '') {
       n == null
         ? ''
         : typeof n === 'number'
-          ? `${n > 0 ? '+' : n < 0 ? '−' : ''}${id === 'money' ? '$' : ''}${Math.abs(n).toLocaleString()}`
+          ? fmtDelta(n, { pre: id === 'money' ? '$' : '', loc: true, zero: id === 'money' ? '$0' : '0' })
           : esc(String(n)),
     tone = cls || (typeof n === 'number' ? (n > 0 ? 'good' : n < 0 ? 'bad' : '') : '');
   return `<span class="term ${tone}" ${tip(g.long)} aria-label="${esc(g.short)}">${ic}${num ? `<span class="tn">${num}</span>` : ''}</span>`;

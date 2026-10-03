@@ -10,7 +10,8 @@ import { createAvatar } from './avatar3d.mjs';
 import { createFurniture } from './pins3d.mjs';
 import { createLife } from './life3d.mjs';
 import { createTown } from './town3d.mjs';
-import { MAP_M, toMap, clamp, lerp, smooth, fogFactor, fitView, toWorld } from './geo3d.mjs';
+import { MAP_M, toMap, clamp, lerp, smooth, fogFactor, fitView, toWorld, inside, edgeDist, sideDist } from './geo3d.mjs';
+export { inside, edgeDist, sideDist }; // (the polygon maths live in geo3d.mjs; tests import them from here too)
 
 const CELL = 2, // terrain grid cell (m)
   PITCH = (55 * Math.PI) / 180,
@@ -23,7 +24,7 @@ const CELL = 2, // terrain grid cell (m)
   SHADOW_BOX = 120; // half-size of the sun's shadow frustum around the view (m)
 
 /** Fixed value noise: a hash of the lattice point, smoothly interpolated. */
-const hash = (x, y) => {
+const lattice = (x, y) => {
   let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263);
   h = Math.imul(h ^ (h >>> 13), 1274126177);
   return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
@@ -33,32 +34,8 @@ const vnoise = (x, y) => {
     yi = Math.floor(y),
     u = smooth(0, 1, x - xi),
     v = smooth(0, 1, y - yi);
-  return lerp(lerp(hash(xi, yi), hash(xi + 1, yi), u), lerp(hash(xi, yi + 1), hash(xi + 1, yi + 1), u), v);
+  return lerp(lerp(lattice(xi, yi), lattice(xi + 1, yi), u), lerp(lattice(xi, yi + 1), lattice(xi + 1, yi + 1), u), v);
 };
-/** Point in polygon (poly: [[x, y]…]). */
-export const inside = (x, y, poly) => {
-  let c = false;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const [xi, yi] = poly[i],
-      [xj, yj] = poly[j];
-    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
-  }
-  return c;
-};
-/** Distance from a point to a closed polygon's outline. */
-export const edgeDist = (x, y, poly) => {
-  let best = Infinity;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const [ax, ay] = poly[j],
-      [bx, by] = poly[i],
-      dx = bx - ax,
-      dy = by - ay,
-      t = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1), 0, 1);
-    best = Math.min(best, Math.hypot(x - (ax + dx * t), y - (ay + dy * t)));
-  }
-  return best;
-};
-
 /** Ground tint per district style (blended in faintly: no extra draw call). */
 const DISTRICT_TINT = {
   city: '#8c8f96',
@@ -69,25 +46,6 @@ const DISTRICT_TINT = {
   terrace: '#8a7b5c',
   fishing: '#9a9172'
 };
-/** Signed distance (m) from a point to an open polyline: positive on its right-hand side (screen coordinates, y down). */
-export const sideDist = (x, y, line) => {
-  let best = Infinity,
-    sign = 1;
-  for (let i = 0; i + 1 < line.length; i++) {
-    const [ax, ay] = line[i],
-      [bx, by] = line[i + 1],
-      dx = bx - ax,
-      dy = by - ay,
-      t = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1), 0, 1),
-      d = Math.hypot(x - (ax + dx * t), y - (ay + dy * t));
-    if (d < best) {
-      best = d;
-      sign = dy * (x - ax) - dx * (y - ay) >= 0 ? 1 : -1;
-    }
-  }
-  return best * sign;
-};
-
 /** The island's height grid and vertex colours (world metres), from the model's land. */
 function buildTerrain(model) {
   const L = model.land,

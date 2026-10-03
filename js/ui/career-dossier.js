@@ -22,10 +22,9 @@ document.addEventListener('keydown', e => {
 function dossierCard(run, r) {
   const d = Dossier.build(run, r),
     free = World.isFree(run),
-    v = d.standing,
-    sgn = n => (n > 0 ? '+' : '') + n;
+    v = d.standing;
   const fronts = d.fronts.length
-    ? `<h4>Front</h4><div class="fms">${d.fronts.map(f => `<span class="fm ${f.meter > 0 ? 'up' : f.meter < 0 ? 'dn' : ''}" ${tip(GLOSSARY.seize.long)}>vs ${esc(REGIONS[f.vs].name)} ${sgn(f.meter)}</span>`).join('')}</div>
+    ? `<h4>Front</h4><div class="fms">${d.fronts.map(f => `<span class="fm ${f.meter > 0 ? 'up' : f.meter < 0 ? 'dn' : ''}" ${tip(GLOSSARY.seize.long)}>vs ${esc(REGIONS[f.vs].name)} ${fmtDelta(f.meter)}</span>`).join('')}</div>
       ${d.took.length ? `<div class="small">Took: ${d.took.map(id => `${esc(SPOTS[id].name)} <i class="mute">(from ${esc(REGIONS[SPOTS[id].region].name)})</i>`).join(', ')}</div>` : ''}
       ${d.lost.length ? `<div class="small">Lost: ${d.lost.map(id => `${esc(SPOTS[id].name)} <i class="mute">(to ${esc(REGIONS[RUN.own[id]].name)})</i>`).join(', ')}</div>` : ''}
       <div class="small mute">Prices ×${d.priceMul.toFixed(2)} · facilities ×${d.qMul.toFixed(2)}</div>`

@@ -480,7 +480,7 @@ but referenced nowhere else (allow-list for onclick handlers and fixtures).
 Accept: same test count + 1; `test:quick` ≤ 25 s; full run green.
 Result: ego + clutch → test.slow; career → people.test.js (people/rel/asks/fates/pairs/fixes, 38 tests), map → hex.test.js (4) + map3d.test.js (3); cup's rel-on-court test joins the engine three; new `code:` no-dead-globals test (comments stripped, empty ALLOW, finds none). 109 → 110 tests, full green; test:quick 40 s → 28–31 s on this 2-core box (over the 25 s target: the 7 s golden tournament test stays in quick).
 
-### [ ] T-152: Shared helpers in one place
+### [x] T-152: Shared helpers in one place
 
 Spec: — Goldens: unchanged Save: no change
 Files: js/core/rng.js, js/core/math.js (new), index.html, js/map3d/geo3d.mjs, js/map3d/map3d.mjs, js/map3d/life3d.mjs, js/map3d/pins3d.mjs, js/render3d/poses3d.mjs, js/render3d/actors3d.mjs, js/render3d/camera3d.mjs, js/map3d/avatar3d.mjs, js/ui/dom.js, js/ui/career-dossier.js, js/ui/career-hub.js, js/ui/career-week.js, js/career/city.js, js/career/run.js, js/career/front.js, js/data/world.js, js/career/mapmodel.js
@@ -491,7 +491,7 @@ core/math.js replaces the ~9 signed-delta formatters (always `−`). pins3d uses
 `MAJORS` moves to data/world.js; hardcoded faction lists use it.
 Do not: change `wpick`/RNG or any engine call order.
 Accept: goldens unchanged; one definition each of clamp/lerp/hash/inPoly per world (classic, map3d).
-Result:
+Result: core/math.js (clamp lerp sig inPoly fmtDelta, before rng.js; lint picks it up); 10 delta formatters + dom `signed` → fmtDelta (only visible change: `−` U+2212; also career-map.js 2 `signed` callers); geo3d.mjs holds map3d's clamp lerp smooth wrap inside edgeDist sideDist hstr esc (map3d.mjs re-exports the polygon trio for tests; its 2D noise hash renamed `lattice`); poses3d imports clamp from geo3d (map3d.test loads it via avatar3d and palmTwist runs at load: the global would throw), actors3d/camera3d 18 inline clamps → global clamp; MAJORS in data/world.js, City.region uses it (polys don't overlap: checked), pins3d reads tile.major (new MapModel hex field). Goldens unchanged, 110/110, QA t152 vs t150: panels identical, only map/match 3D noise.
 
 ### [ ] T-153: Remove pre-hex leftovers on the map
 

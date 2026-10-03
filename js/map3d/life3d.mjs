@@ -7,7 +7,7 @@
 //   createLife(scene, heightAt) → { sync(model), tick(dt, t), count(), dispose() }
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { MAP_M } from './geo3d.mjs';
+import { MAP_M, hstr, clamp } from './geo3d.mjs';
 
 /** One figure (≈1.45 m, feet at the origin): a capsule body and a head. */
 const figureGeo = () => {
@@ -24,12 +24,6 @@ const CAP = { people: 300, poles: 40, cloth: 40, dust: 10 },
   WALK = 1.2, // m/s
   PER_SIDE = 12, // battle crowd
   PATROL = [2, 4];
-
-const hash = s => {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
-  return (h >>> 0) / 4294967296;
-};
 
 export function createLife(scene, heightAt) {
   const person = new THREE.InstancedMesh(figureGeo(), new THREE.MeshStandardMaterial({ roughness: 0.85 }), CAP.people),
@@ -71,13 +65,13 @@ export function createLife(scene, heightAt) {
     },
     ring = (at, id, r0, r1) => {
       const c = world(at),
-        a = hash(`${id}|a`) * Math.PI * 2,
-        r = r0 + hash(`${id}|r`) * (r1 - r0);
+        a = hstr(`${id}|a`) * Math.PI * 2,
+        r = r0 + hstr(`${id}|r`) * (r1 - r0);
       return { x: c.x + Math.cos(a) * r, z: c.z + Math.sin(a) * r };
     },
     drill = (at, id, color, r0 = 1.5, r1 = 4) => {
       const p = ring(at, id, r0, r1);
-      figs.push({ ...p, y: heightAt(p.x, p.z), yaw: hash(`${id}|y`) * 6.28, color, kind: 'drill', ph: hash(`${id}|p`) * 6.28 });
+      figs.push({ ...p, y: heightAt(p.x, p.z), yaw: hstr(`${id}|y`) * 6.28, color, kind: 'drill', ph: hstr(`${id}|p`) * 6.28 });
     };
 
   /** Rebuild the instance lists from a model. */
@@ -88,7 +82,7 @@ export function createLife(scene, heightAt) {
     puffs = [];
     for (const f of L.mates) {
       const w = world(f.at); // already offset around the place by the model
-      figs.push({ x: w.x, z: w.z, y: w.y, yaw: hash(`m${f.id}|y`) * 6.28, color: f.color, kind: 'drill', ph: hash(`m${f.id}|p`) * 6.28 });
+      figs.push({ x: w.x, z: w.z, y: w.y, yaw: hstr(`m${f.id}|y`) * 6.28, color: f.color, kind: 'drill', ph: hstr(`m${f.id}|p`) * 6.28 });
     }
     for (const c of L.crews) {
       const k = c.known ? c.color : GREY,
@@ -99,7 +93,7 @@ export function createLife(scene, heightAt) {
         if (i < walkers) {
           let len = 0;
           const seg = path.slice(1).map((p, j) => (len += Math.hypot(p.x - path[j].x, p.z - path[j].z)));
-          figs.push({ x: 0, z: 0, y: 0, yaw: 0, color: k, kind: 'walk', ph: hash(id), path, seg, len });
+          figs.push({ x: 0, z: 0, y: 0, yaw: 0, color: k, kind: 'walk', ph: hstr(id), path, seg, len });
         } else drill(c.at, id, k, 2, 6);
       }
     }
@@ -109,8 +103,8 @@ export function createLife(scene, heightAt) {
       b.colors.forEach((color, s) => {
         for (let i = 0; i < PER_SIDE; i++) {
           const id = `b${s}|${i}`,
-            dx = (s ? 1 : -1) * (1.2 + hash(`${id}|x`) * 2.6),
-            dz = (hash(`${id}|z`) - 0.5) * 9;
+            dx = (s ? 1 : -1) * (1.2 + hstr(`${id}|x`) * 2.6),
+            dz = (hstr(`${id}|z`) - 0.5) * 9;
           figs.push({
             x: c.x + dx,
             z: c.z + dz,
@@ -118,14 +112,14 @@ export function createLife(scene, heightAt) {
             yaw: s ? -Math.PI / 2 : Math.PI / 2,
             color,
             kind: 'fight',
-            ph: hash(`${id}|p`) * 6.28
+            ph: hstr(`${id}|p`) * 6.28
           });
         }
         const fx = c.x + (s ? 1 : -1) * 6.5;
         poles.push({ x: fx, z: c.z, y: heightAt(fx, c.z), color, ph: s });
       });
       for (let i = 0; i < CAP.dust; i++)
-        puffs.push({ x: c.x + (hash(`d${i}|x`) - 0.5) * 6, z: c.z + (hash(`d${i}|z`) - 0.5) * 6, ph: i / CAP.dust });
+        puffs.push({ x: c.x + (hstr(`d${i}|x`) - 0.5) * 6, z: c.z + (hstr(`d${i}|z`) - 0.5) * 6, ph: i / CAP.dust });
     }
     // patrols: on the stronger side of a border that has a line (the contested Wei–Wu one), thicker with pressure
     const line = m.land.contest && m.land.contest.line,
@@ -134,7 +128,7 @@ export function createLife(scene, heightAt) {
       const hold = bd.hold,
         reg = m.land.regions.find(r => r.id === hold),
         cen = reg ? reg.poly.reduce((s, p) => [s[0] + p[0] / reg.poly.length, s[1] + p[1] / reg.poly.length], [0, 0]) : line[0],
-        n = clampInt(PATROL[0] + Math.floor(Math.abs(bd.meter) / 2), PATROL[0], PATROL[1]),
+        n = clamp(PATROL[0] + Math.floor(Math.abs(bd.meter) / 2), PATROL[0], PATROL[1]),
         col2 = reg ? reg.color : GREY;
       for (let i = 0; i < n; i++) {
         const t = (i + 0.5) / n,
@@ -150,12 +144,12 @@ export function createLife(scene, heightAt) {
         const w = world(p),
           x = w.x + nx * 4,
           z = w.z + nz * 4;
-        figs.push({ x, z, y: heightAt(x, z), yaw: Math.atan2(-nx, -nz), color: col2, kind: 'drill', ph: hash(`p${i}`) * 6.28 });
+        figs.push({ x, z, y: heightAt(x, z), yaw: Math.atan2(-nx, -nz), color: col2, kind: 'drill', ph: hstr(`p${i}`) * 6.28 });
       }
     }
     for (const s of m.seized) {
       const w = world(s.at);
-      poles.push({ x: w.x, z: w.z, y: w.y, color: s.color, ph: hash(`s${s.id}`) * 6.28 });
+      poles.push({ x: w.x, z: w.z, y: w.y, color: s.color, ph: hstr(`s${s.id}`) * 6.28 });
     }
     figs = figs.slice(0, CAP.people);
     poles = poles.slice(0, CAP.poles);
@@ -253,5 +247,3 @@ export function createLife(scene, heightAt) {
     }
   };
 }
-
-const clampInt = (v, a, b) => Math.max(a, Math.min(b, v));

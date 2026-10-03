@@ -4,10 +4,10 @@
 // `ar` (right arm) defaults to the mirror of `al`. The right arm is the hitting arm.
 import * as THREE from 'three';
 import { mirror } from './players3d.mjs';
+import { clamp } from '../map3d/geo3d.mjs'; // a module (map3d's tests load this file): not the classic global
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z).normalize();
 const leg = (a, k, f = 0, s = 0.1) => ({ a, k, f, s });
-const cl = (v, a, b) => Math.max(a, Math.min(b, v));
 const sm = t => t * t * (3 - 2 * t);
 const mixN = (a, b, t) => (a ?? 0) + ((b ?? 0) - (a ?? 0)) * t;
 const mixV = (a, b, t) => a.clone().lerp(b, t).normalize();
@@ -171,7 +171,7 @@ export function locoPose(m) {
       R = gaitLeg(-ph + Math.PI, 0.2, 0.55, 0.35);
     return { ...READY, hp: 0.35, sp: 0.08, hd: -0.35, L, R };
   }
-  const r = cl((sp - 1.2) / 2.3, 0, 1),
+  const r = clamp((sp - 1.2) / 2.3, 0, 1),
     stride = 0.7 + 0.3 * Math.min(1, sp / 3);
   const L = gaitLeg(ph, r, stride),
     R = gaitLeg(ph + Math.PI, r, stride);
@@ -202,7 +202,7 @@ export function locoPose(m) {
   });
 }
 const moving = m => m && m.speed > 0.35;
-const moveMix = m => (m ? cl((m.speed - 0.35) / 1.1, 0, 1) : 0);
+const moveMix = m => (m ? clamp((m.speed - 0.35) / 1.1, 0, 1) : 0);
 
 // ---------- spike (and the running jump serve) ----------
 // Right arm keys carry the palm direction; palmTwist turns the forearm/hand so the palm really faces it
@@ -215,7 +215,7 @@ function palmTwist(dir, palm) {
   QT.setFromUnitVectors(REST_R, dir);
   const p0 = PALM0.clone().applyQuaternion(QT).projectOnPlane(dir).normalize(),
     want = palm.clone().projectOnPlane(dir).normalize(),
-    a = Math.acos(cl(p0.dot(want), -1, 1));
+    a = Math.acos(clamp(p0.dot(want), -1, 1));
   return TV.crossVectors(p0, want).dot(dir) < 0 ? -a : a;
 }
 /** Right-arm key: [upper, fore, hand, twistUpper, twistFore] with the palm facing `palm` (torso space). */
@@ -313,8 +313,8 @@ const ARMS_LOW = [V(0.15, -0.3, 0.94), V(0.1, -0.1, 1), V(0.1, 0.1, 1)];
 /** Landing after a swing (spike, jump serve, jump float): soft on both feet, knees bent to absorb; the hitting arm finishes across the body. */
 function landPose(d, sw) {
   const lm = d.landMs != null ? d.landMs : d.jy > 0 ? 0 : sw - 300, // ms since touchdown
-    lt = cl((lm - 200) / 420, 0, 1),
-    absorb = sm(cl(lm / 140, 0, 1));
+    lt = clamp((lm - 200) / 420, 0, 1),
+    absorb = sm(clamp(lm / 140, 0, 1));
   const LAND = C({
     hp: 0.55,
     sp: 0.22,
@@ -332,7 +332,7 @@ function spikePose(d, m) {
   const air = d.jy > 8,
     J = d.jmode,
     pk = (J && J.peak) || 60,
-    u = air ? cl(d.jy / pk, 0, 1) : 0,
+    u = air ? clamp(d.jy / pk, 0, 1) : 0,
     sw = d.spk,
     sty = d.spkStyle || 'normal',
     arch = sty === 'power' ? 1.4 : sty === 'quick' ? 0.6 : 1;
@@ -341,7 +341,7 @@ function spikePose(d, m) {
   if (!air && sw != null) return landPose(d, sw);
   if (!air) {
     // approach, timed off the jump: run → big penultimate step (arms swing back high) → plant, get low → take-off
-    const pp = J && J.mode === 'up' && d.jt != null ? cl(d.jt / Math.max(0.05, J.t0), 0, 1) : m && moving(m) ? 0.3 : 0;
+    const pp = J && J.mode === 'up' && d.jt != null ? clamp(d.jt / Math.max(0.05, J.t0), 0, 1) : m && moving(m) ? 0.3 : 0;
     const serve = sty === 'serve';
     const run = moving(m) ? locoPose({ ...m, lat: 0, fwd: Math.abs(m.fwd) + 0.5 }) : P(STAND, { hp: 0.2 });
     const armsBackRun = [V(0.15, -0.5, -0.85), V(0.15, -0.35, -0.94), V(0.1, -0.2, -0.98)];
@@ -374,7 +374,7 @@ function spikePose(d, m) {
       curl: 0.2
     });
     let out;
-    if (pp < 0.55) out = mix(run, C({ ...run, al: armsBackRun, ar: undefined }), sm(cl(pp / 0.55, 0, 1)));
+    if (pp < 0.55) out = mix(run, C({ ...run, al: armsBackRun, ar: undefined }), sm(clamp(pp / 0.55, 0, 1)));
     else if (pp < 0.82) out = mix(C({ ...run, al: armsBackRun, ar: undefined }), PEN, sm((pp - 0.55) / 0.27));
     else if (pp < 0.97) out = mix(PEN, LOAD, sm((pp - 0.82) / 0.15));
     else out = mix(LOAD, TAKE, (pp - 0.97) / 0.03);
@@ -393,8 +393,8 @@ function spikePose(d, m) {
   const bowT = { ...BOW_T, sp: BOW_T.sp * arch, cp: BOW_T.cp * arch, tw: BOW_T.tw * Math.min(1.1, arch) };
   if (sw == null) {
     // 1. rising: both arms swing up, then the bow: non-hitting arm points at the ball, hitting elbow drawn back high
-    const takeK = cl(u * 3, 0, 1),
-      draw = sty === 'quick' ? cl(u * 2.2, 0, 1) : sm(cl((u - 0.15) / 0.55, 0, 1));
+    const takeK = clamp(u * 3, 0, 1),
+      draw = sty === 'quick' ? clamp(u * 2.2, 0, 1) : sm(clamp((u - 0.15) / 0.55, 0, 1));
     const rA = draw > 0 ? mixArm(mirror(ARMS_UP), keys[0][1], draw) : mixArm(mirror(ARMS_LOW), mirror(ARMS_UP), takeK),
       lA = draw > 0 ? mixArm(ARMS_UP, UP_L, draw) : mixArm(ARMS_LOW, ARMS_UP, takeK);
     const body = mixT({ hp: -0.05, sp: 0.05, cp: 0, tw: 0, hd: -0.6 }, bowT, draw);
@@ -415,8 +415,8 @@ function spikePose(d, m) {
   const tor = track([[0, bowT], ...TORSO.slice(1)], e, mixT),
     rA = track(keys, e, mixArm),
     lA = track(LKEYS, e, mixArm);
-  const legK = sm(cl((e - 0.1) / 0.35, 0, 1)),
-    down = e > CE ? sm(cl(1 - u / 0.5, 0, 1)) : 0;
+  const legK = sm(clamp((e - 0.1) / 0.35, 0, 1)),
+    down = e > CE ? sm(clamp(1 - u / 0.5, 0, 1)) : 0;
   const legs = k => mixLeg(mixLeg(legsBow[k], legsPike[k], legK), legsDown[k], down);
   return {
     ...tor,
@@ -428,7 +428,7 @@ function spikePose(d, m) {
     curlR: e < 0.5 ? (sty === 'tip' ? 0.3 : 0) : 0.2,
     face,
     aimL: e < 0.1 ? 0.85 * (1 - e / 0.1) : 0,
-    contact: cl(1 - Math.abs(e - CE) / 0.13, 0, 1)
+    contact: clamp(1 - Math.abs(e - CE) / 0.13, 0, 1)
   };
 }
 
@@ -448,8 +448,8 @@ function servePose(d, m) {
   let legs = null;
   if (jumpy && air) {
     const pk = (d.jmode && d.jmode.peak) || 60,
-      u = cl(d.jy / pk, 0, 1),
-      down = sw != null ? sm(cl(1 - u / 0.5, 0, 1)) : 0;
+      u = clamp(d.jy / pk, 0, 1),
+      down = sw != null ? sm(clamp(1 - u / 0.5, 0, 1)) : 0;
     legs = { L: mixLeg(FLOAT_AIR.L, FLOAT_DOWN.L, down), R: mixLeg(FLOAT_AIR.R, FLOAT_DOWN.R, down) };
   } else if (jumpy && m && moving(m)) {
     const lp = locoPose(m),
@@ -458,8 +458,8 @@ function servePose(d, m) {
   }
   const fin = o => (legs ? { ...o, ...legs } : o);
   if (sw == null) {
-    const t1 = sm(cl(pt / 260, 0, 1)),
-      kk = sm(cl((pt - 120) / 300, 0, 1));
+    const t1 = sm(clamp(pt / 260, 0, 1)),
+      kk = sm(clamp((pt - 120) / 300, 0, 1));
     return fin({
       ...base,
       al: mixArm([V(0.2, -0.3, 0.93), V(0.1, -0.1, 1), V(0.1, 0, 1)], TOSS_L, t1),
@@ -471,17 +471,17 @@ function servePose(d, m) {
   const pre = swingLead(d) || 70,
     e = sw < pre ? (0.42 * sw) / pre : Math.min(1, 0.42 + (0.58 * (sw - pre)) / 110),
     // a standing serve: the body follows the punch with a small dip and settles back (some impact, no jump)
-    dip = jumpy ? 0 : sm(cl((sw - pre) / 90, 0, 1)) * (1 - sm(cl((sw - pre - 110) / 260, 0, 1)));
+    dip = jumpy ? 0 : sm(clamp((sw - pre) / 90, 0, 1)) * (1 - sm(clamp((sw - pre - 110) / 260, 0, 1)));
   return fin({
     ...base,
     hp: base.hp + 0.22 * dip,
     L: mixLeg(base.L, leg(0.5, 0.75, 0, 0.12), dip),
     R: mixLeg(base.R, leg(0.05, 0.6, 0, 0.12), dip),
-    al: mixArm(TOSS_L, PULL_L, cl(e * 1.4, 0, 1)),
+    al: mixArm(TOSS_L, PULL_L, clamp(e * 1.4, 0, 1)),
     ar: e < 0.42 ? mixArm(COCK_SERVE, FLOAT_HIT, sm(e / 0.42)) : mixArm(FLOAT_HIT, PUNCH_R, (e - 0.42) / 0.58),
     tw: e < 0.42 ? mixN(-0.5, 0, e / 0.42) : 0.2,
     sp: (e < 0.42 ? -0.1 : 0.12) + 0.08 * dip,
-    contact: cl(1 - Math.abs(e - 0.42) / 0.2, 0, 1)
+    contact: clamp(1 - Math.abs(e - 0.42) / 0.2, 0, 1)
   });
 }
 
@@ -659,7 +659,7 @@ function divePose(d, f) {
   const pc = d.pc;
   // palms: pancake flat on the floor; otherwise the reaching hand is a fist popping the ball up
   const out = armsC(k, k.R_, f > 0.7 ? DN : FW, k.L_, f > 0.85 ? DN : FW);
-  const reach = sm(cl((f - 0.66) / 0.28, 0, 1)) * (1 - sm(cl((f - 1.15) / 0.25, 0, 1)));
+  const reach = sm(clamp((f - 0.66) / 0.28, 0, 1)) * (1 - sm(clamp((f - 1.15) / 0.25, 0, 1)));
   return {
     ...out,
     lying: f > 0.7,
@@ -710,7 +710,7 @@ export function playerPose(d, mood, m) {
     const f = d.dv ? diveF(d.dv) : 3;
     out = divePose(d, f);
     // run-in: real running strides until the low base
-    const k = mk * (1 - sm(cl((f - 0.38) / 0.18, 0, 1)));
+    const k = mk * (1 - sm(clamp((f - 0.38) / 0.18, 0, 1)));
     if (k > 0.01) {
       const lp = locoPose(m);
       out = { ...out, L: mixLeg(out.L, lp.L, k), R: mixLeg(out.R, lp.R, k), lift: (lp.lift || 0) * k };
@@ -719,14 +719,14 @@ export function playerPose(d, mood, m) {
   else if (pose === 'spike') out = spikePose(d, m);
   else if (pose === 'serve') out = servePose(d, m);
   else if (pose === 'bump' && !air) {
-    const u = d.swing == null ? 0 : cl(d.swing / 170, 0, 1),
+    const u = d.swing == null ? 0 : clamp(d.swing / 170, 0, 1),
       rel = d.swing != null && d.swing > 520;
-    if (rel) out = mix(PLATFORM_UP, READY, cl((d.swing - 520) / 400, 0, 1));
+    if (rel) out = mix(PLATFORM_UP, READY, clamp((d.swing - 520) / 400, 0, 1));
     else {
       out = mix(PLATFORM, PLATFORM_UP, u);
       if (mk > 0 && d.swing == null) {
         // running to the ball: a real run while far, settling into the platform as the player arrives
-        const run = cl((m.speed - 2) / 1.5, 0, 1);
+        const run = clamp((m.speed - 2) / 1.5, 0, 1);
         const lp = locoPose(run > 0 ? m : { ...m, lat: m.lat || 0.01, fwd: 0 });
         out =
           run > 0
@@ -739,7 +739,7 @@ export function playerPose(d, mood, m) {
   } else if (pose === 'setprep') {
     // the ball is on its way: hands come up above the forehead, elbows out, fingers spread (the set-ready triangle),
     // eyes on the ball, knees soft — held until the set itself starts
-    const k = sm(cl((d.pAge || 0) / 300, 0, 1));
+    const k = sm(clamp((d.pAge || 0) / 300, 0, 1));
     out = mix(READY, { ...WINDOW, hd: -0.55, sp: 0.03 }, k);
     if (mk > 0) {
       const lp = locoPose(m); // still moving under the ball: real strides, hands already rising

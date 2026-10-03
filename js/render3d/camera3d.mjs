@@ -82,13 +82,13 @@ function povPose(pl, dt, pos, look) {
     ty = ph.y + POV.eye,
     fresh = pov.id !== followId;
   pov.y = fresh ? ty : pov.y + (ty - pov.y) * (1 - Math.exp(-dt / POV.yTau));
-  pov.y = Math.max(ty - POV.bob, Math.min(ty + POV.bob, pov.y));
+  pov.y = clamp(pov.y, ty - POV.bob, ty + POV.bob);
   pov.pos.set(tx, pov.y, tz);
   pt.copy(bp).sub(pov.pos).setY(0);
   // the ball is looked at up to 100° off the facing, and fades out to straight ahead by 140° (no flip at the edge)
   const cs = pt.lengthSq() > 1e-4 ? pt.normalize().dot(pf) : -1,
     // a hitter on the approach / in the air (pose 'spike') looks for the set: the ball pulls the view whatever the angle (faceOpponent clamps it)
-    kb = (pl.d && pl.d.pose === 'spike' ? 1 : Math.max(0, Math.min(1, (cs - POV.far) / (POV.cone - POV.far)))) * bw.v;
+    kb = (pl.d && pl.d.pose === 'spike' ? 1 : clamp((cs - POV.far) / (POV.cone - POV.far), 0, 1)) * bw.v;
   pt.copy(pov.pos).addScaledVector(pf, 3).setY(pov.pos.y);
   pd.copy(pt).lerp(bp, kb);
   faceOpponent(pov.pos, pd, pl.d.side, 55);
@@ -124,11 +124,7 @@ const BALL_BOX = [16, 9, 9], // |x|, |z|, y max (m)
   bw = { v: 1, p: new THREE.Vector3() };
 function lookBall() {
   const q = world.ball.position;
-  return bw.p.set(
-    Math.max(-BALL_BOX[0], Math.min(BALL_BOX[0], q.x)),
-    Math.max(0, Math.min(BALL_BOX[2], q.y)),
-    Math.max(-BALL_BOX[1], Math.min(BALL_BOX[1], q.z))
-  );
+  return bw.p.set(clamp(q.x, -BALL_BOX[0], BALL_BOX[0]), clamp(q.y, 0, BALL_BOX[2]), clamp(q.z, -BALL_BOX[1], BALL_BOX[1]));
 }
 /** faceOpponent: from fade[0] to fade[1] rad off the axis the clamped look eases back to straight ahead (continuous behind the camera). */
 const FACE = { fade: [1.75, Math.PI] },
@@ -146,10 +142,10 @@ function faceOpponent(pos, look, side, deg) {
   const ax = side === 0 ? 0 : Math.PI,
     rel = Math.atan2(Math.sin(Math.atan2(dz, dx) - ax), Math.cos(Math.atan2(dz, dx) - ax)),
     lim = (deg * Math.PI) / 180,
-    t = Math.min(1, Math.max(0, (Math.abs(rel) - FACE.fade[0]) / (FACE.fade[1] - FACE.fade[0]))),
+    t = clamp((Math.abs(rel) - FACE.fade[0]) / (FACE.fade[1] - FACE.fade[0]), 0, 1),
     // a target almost straight behind (|rel| → 180°) would flip the clamp from +lim to −lim in one frame: fade the pull to 0 there
     fade = 1 - t * t * (3 - 2 * t),
-    c = Math.max(-lim, Math.min(lim, rel)) * fade;
+    c = clamp(rel, -lim, lim) * fade;
   if (c === rel) return;
   look.x = pos.x + Math.cos(ax + c) * len;
   look.z = pos.z + Math.sin(ax + c) * len;
@@ -163,7 +159,7 @@ function followPose(pl, pos, look) {
     hips = pl.root.position,
     bp = lookBall(),
     mine = Math.sign(bp.x) === -dir, // ball on your side of the net
-    lean = Math.max(-1, Math.min(1, (bp.z - hips.z) * 0.15)) * bw.v;
+    lean = clamp((bp.z - hips.z) * 0.15, -1, 1) * bw.v;
   pos.set(hips.x - dir * FOL.back, Math.max(1.2, hips.y + FOL.up), hips.z + lean);
   pos.x = dir > 0 ? Math.min(pos.x, -0.5) : Math.max(pos.x, 0.5); // never inside the net plane
   fh.set(hips.x + dir * FOL.ahead, hips.y + 1.5, hips.z);
@@ -178,7 +174,7 @@ export function updateBase(dt) {
   bw.v += ((A && A.ball.vis ? 1 : 0) - bw.v) * (1 - Math.exp(-dt / 0.25));
   const kw = 1 - Math.exp(-dt * 5); // ~0.6 s ease between modes
   for (const m in camState.w) camState.w[m] += ((m === eff ? 1 : 0) - camState.w[m]) * kw;
-  const bx = A && A.ball.vis ? Math.max(-6.5, Math.min(6.5, (A.ball.x - 500) * KX * 0.75)) : 0;
+  const bx = A && A.ball.vis ? clamp((A.ball.x - 500) * KX * 0.75, -6.5, 6.5) : 0;
   camState.x += (bx - camState.x) * (1 - Math.exp(-dt * 1.6));
   const W3 = camState.w,
     pos = new THREE.Vector3(...CAM.pos).multiplyScalar(W3.broadcast),
@@ -233,11 +229,11 @@ export function updateBase(dt) {
   // Follow: the ball out of view is usually behind the camera, so keep backing the camera away from the net (and up) until the
   // ball is in view, then ease back in only once it is well inside the frame
   const vis = bv.z < 1 && Math.abs(bv.x) < 0.6 && Math.abs(bv.y) < 0.6;
-  zo.d = Math.max(0, Math.min(ZO.max, zo.d + (out ? ZO.out : vis ? -ZO.back : 0) * dt));
+  zo.d = clamp(zo.d + (out ? ZO.out : vis ? -ZO.back : 0) * dt, 0, ZO.max);
   if (zo.d > 0.001) {
     const k = W3.follow * zo.d,
       away = fig && fig.d.side === 1 ? 1 : -1; // away from the net on the followed player's side
-    pos.x = Math.max(-19, Math.min(19, pos.x + away * k));
+    pos.x = clamp(pos.x + away * k, -19, 19);
     pos.y += k * 0.3;
   }
   // staged scene shot (A.shot from playback): hard cuts between shots, a quick ease in and out of the game camera

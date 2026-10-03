@@ -67,6 +67,8 @@ const REGIONS = {
     desc: 'Neutral ground by charter. All newcomers enrol here. No faction may train, recruit or fight on campus.' // voice: registrar
   }
 };
+/** The three majors (borders, fronts, hex territory); the other regions are minors or the open academy. */
+const MAJORS = ['wei', 'wu', 'shu'];
 /**
  * One faction per league team (index = team index; styles come from TEAMDEFS). Each major fields two squads.
  * `team` rebrands the league team for the career; `join`: what the club asks of a free agent —

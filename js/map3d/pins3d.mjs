@@ -5,7 +5,7 @@
 // are plain CSS on the overlay elements (css/career.css, .mpin …).
 //   createFurniture(scene, heightAt) → { layer, sync(model, on), select(id), pulse(t), tick(cam, w, h, dist), dispose() }
 import * as THREE from 'three';
-import { MAP_M, smooth } from './geo3d.mjs';
+import { MAP_M, smooth, esc } from './geo3d.mjs';
 import { landmarkHeight } from './kit3d.mjs';
 
 const FLAGCLS = {
@@ -22,8 +22,7 @@ const FLAGCLS = {
   },
   KIND_Z = { hq: 1, spot: 2, clash: 3 },
   LABEL_FADE = [30, 70], // camera distance (m): labels vanish at the first, are fully shown at the second
-  PIN_UP = 2.2, // pins float this far above their landmark's roof, or the ground (m)
-  esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  PIN_UP = 2.2; // pins float this far above their landmark's roof, or the ground (m)
 
 export function createFurniture(scene, heightAt) {
   const layer = document.createElement('div');
@@ -90,7 +89,7 @@ export function createFurniture(scene, heightAt) {
       SUB = 8; // fan triangles split 8 × 8: ~3 m facets, close to the terrain grid, so steep ground (mountains) stays covered
     for (const t of H.tiles) {
       const c = new THREE.Color(t.color),
-        major = ['wei', 'wu', 'shu'].includes(t.own);
+        major = t.major;
       for (let i = 0; i < 6; i++) {
         // a fan triangle (centre, corner i, corner i+1), split SUB×SUB so it follows the ground
         const A = t.at,
@@ -137,7 +136,7 @@ export function createFurniture(scene, heightAt) {
             );
           }
         }
-        if (!n || n.own === t.own || !(major || ['wei', 'wu', 'shu'].includes(n.own))) continue;
+        if (!n || n.own === t.own || !(major || n.major)) continue;
         for (let k = 0; k < 4; k++) {
           const o0 = corner(t, i, 0.96),
             o1 = corner(t, i + 1, 0.96),

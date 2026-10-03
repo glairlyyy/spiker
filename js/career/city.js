@@ -102,7 +102,7 @@ const City = {
       if ((u / e.rx) ** 2 + (v / e.ry) ** 2 <= 1) return r;
     }
     if (Math.hypot(x - CITY.park.x, y - CITY.park.y) <= CITY.park.r) return 'open';
-    for (const r of ['wu', 'wei', 'shu']) if (inPoly([x, y], CITY[r])) return r;
+    for (const r of MAJORS) if (inPoly([x, y], CITY[r])) return r;
     return 'open';
   },
   /** On the island? */
@@ -343,7 +343,7 @@ const City = {
       v0 = R0[r] || 0;
     R0[r] = clamp(v0 + d, -100, 100);
     const n = R0[r] - v0;
-    return n ? `${n > 0 ? '+' : '−'}${Math.abs(n)} standing with ${REGIONS[r].name}` : '';
+    return n ? `${fmtDelta(n)} standing with ${REGIONS[r].name}` : '';
   },
   /** A training week may open with a street battle: an aggressor raids a neighbour (run.clash, over at the week's end). */
   clashRoll(run) {

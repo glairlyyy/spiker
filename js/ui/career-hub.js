@@ -157,7 +157,7 @@ function topBar(run) {
     d = k => {
       const v = prev ? now[k] - prev[k] : 0;
       if (!v) return '';
-      const n = k === 'mood' ? (v > 0 ? '↑' : '↓') : `${v > 0 ? '+' : '−'}${k === 'money' ? '$' : ''}${Math.abs(v).toLocaleString()}`;
+      const n = k === 'mood' ? (v > 0 ? '↑' : '↓') : fmtDelta(v, { pre: k === 'money' ? '$' : '', loc: true });
       return ` <em class="hd ${v > 0 ? 'up' : 'dn'}">${n}</em>`;
     },
     cell = (label, val, t, id) =>

@@ -42,7 +42,7 @@ function motion(pl, pos, face, dt) {
   m.fwd += (vf - m.fwd) * k;
   m.lat += (vl - m.lat) * k;
   m.speed = Math.hypot(m.fwd, m.lat);
-  const r = Math.max(0, Math.min(1, (m.speed - 1.2) / 2.3)),
+  const r = clamp((m.speed - 1.2) / 2.3, 0, 1),
     cycle = 1.25 + 1.25 * r; // metres per full gait cycle (two steps)
   const side = Math.abs(m.lat) > Math.abs(m.fwd) * 1.1;
   m.phase += ((side ? dist * 1.6 : dist) / cycle) * Math.PI * 2;
@@ -68,8 +68,8 @@ export function posePlayer(pl, dt, ballPos, fx) {
     root.updateMatrixWorld(true);
     const loc = root.worldToLocal(tmp.copy(ballPos)),
       headY = (1.62 / 1.8) * pl.headY;
-    const yaw = Math.max(-0.9, Math.min(0.9, Math.atan2(loc.x, Math.max(0.2, loc.z)))),
-      pitch = Math.max(-0.8, Math.min(0.45, -Math.atan2(loc.y - headY, Math.hypot(loc.x, loc.z))));
+    const yaw = clamp(Math.atan2(loc.x, Math.max(0.2, loc.z)), -0.9, 0.9),
+      pitch = clamp(-Math.atan2(loc.y - headY, Math.hypot(loc.x, loc.z)), -0.8, 0.45);
     const eye = d.pose === 'block' ? 1 : 0.7; // a blocker's eyes stay locked on the ball
     pose.hy = (pose.hy || 0) + yaw * eye;
     pose.hd = (pose.hd || 0) * (1 - eye * 0.5) + pitch * (eye * 0.85);
@@ -115,7 +115,7 @@ function steer(pl, d, pos, face, mot, ballPos, dt) {
     A.ball.vis
   ) {
     // turn toward the ball while waiting, running or passing; attackers, setters and blockers face the net
-    want = Math.max(-0.7, Math.min(0.7, toward(ballPos.x - pos.x, ballPos.z - pos.z))) * 0.8;
+    want = clamp(toward(ballPos.x - pos.x, ballPos.z - pos.z), -0.7, 0.7) * 0.8;
   }
   pl.yawOff = wrap(pl.yawOff + wrap(want - pl.yawOff) * (1 - Math.exp(-dt * rate)));
 }
@@ -137,7 +137,7 @@ function reachForBall(pl, d, pose, ballPos) {
       side = pose.hand === 'left' ? 'left' : 'right';
     const t = torsoDir(pl, ballPos, both ? 'both' : side);
     const reach = both ? (d.pose === 'bump' || d.pose === 'dive' ? 1.25 : 1.1) : 1.0;
-    const k = w * Math.max(0, Math.min(1, (reach * 1.4 - t.dist) / (reach * 0.5)));
+    const k = w * clamp((reach * 1.4 - t.dist) / (reach * 0.5), 0, 1);
     if (k > 0.01) {
       if (both) {
         const spread = d.pose === 'block' ? 0.28 : d.pose === 'set' ? 0.18 : 0.06;
@@ -328,11 +328,11 @@ function bodyDist(pl) {
     abx = fb.x - fa.x,
     aby = fb.y - fa.y,
     abz = fb.z - fa.z,
-    t = Math.max(0, Math.min(1, ((c.x - fa.x) * abx + (c.y - fa.y) * aby + (c.z - fa.z) * abz) / (abx * abx + aby * aby + abz * abz || 1)));
+    t = clamp(((c.x - fa.x) * abx + (c.y - fa.y) * aby + (c.z - fa.z) * abz) / (abx * abx + aby * aby + abz * abz || 1), 0, 1);
   return Math.hypot(c.x - (fa.x + abx * t), c.y - (fa.y + aby * t), c.z - (fa.z + abz * t));
 }
 function povFade(w, id) {
-  const dt = Math.min(0.1, Math.max(0.004, ((A && A.rdt) || 16) / 1000)), // this frame's real time (set by step())
+  const dt = clamp(((A && A.rdt) || 16) / 1000, 0.004, 0.1), // this frame's real time (set by step())
     k1 = 1 - Math.exp(-dt / FADE.tau);
   for (const pl of w.people) {
     if (!pl.d || !pl.root.visible) continue;
