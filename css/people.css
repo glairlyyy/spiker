@@ -1,0 +1,150 @@
+/* Career People sheet: rows, stance chips, the person card, filters and detail. Loaded after hub.css. */
+
+/* People sheet (T-061/T-062): rows, stance chips and the person card */
+.prow {
+  border-bottom: 1px solid var(--line);
+  padding: 4px 0;
+}
+.stc {
+  font-size: 12px;
+  padding: 1px 7px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  color: var(--mute);
+  white-space: nowrap;
+}
+.stc.ally {
+  color: var(--good);
+  border-color: var(--good);
+}
+.stc.respect {
+  color: var(--cyan);
+  border-color: var(--cyan);
+}
+.stc.resent {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+.stc.enemy,
+.stc.rival {
+  color: var(--bad);
+  border-color: var(--bad);
+}
+.pcard {
+  margin: 6px 0 4px 36px;
+  display: grid;
+  gap: 4px;
+}
+.pmem {
+  margin: 2px 0 0;
+  padding-left: 16px;
+}
+.plink {
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+.waiting .ask {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.pmoves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+}
+.mat {
+  margin-bottom: 10px;
+}
+
+.chem div {
+  margin: 2px 0;
+}
+/* People sheet (T-123): filters, list left, detail right */
+.hub .pfil {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.hub .sheet-cols.ppl {
+  grid-template-columns: minmax(300px, 0.9fr) 1.1fr;
+}
+.hub .plist-col .lab {
+  margin-top: 16px;
+}
+.hub .plist-col .lab:first-child {
+  margin-top: 0;
+}
+.hub .plist {
+  display: grid;
+  grid-template-columns: 28px 1fr 64px auto auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.hub .plist:hover {
+  background: var(--surf2);
+}
+.hub .plist.on {
+  background: var(--sel-bg);
+  border-color: var(--sel-line);
+}
+.hub .plist .nm {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.hub .plist .nm b {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.hub .plist .badge {
+  position: static;
+}
+.hub .pdh {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.hub .pdh h3 {
+  margin: 0 0 2px;
+  font: 600 20px/1.2 var(--body);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+.hub .pdetail .pcard {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 14px;
+}
+.hub .pask {
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid var(--sel-line);
+  border-radius: 8px;
+  background: var(--sel-bg);
+}
+.hub .pask p {
+  margin: 0 0 12px;
+}
+.hub .pdetail .pmoves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

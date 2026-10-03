@@ -504,14 +504,14 @@ Accept: patrols spawn only on frontier tiles; no `contest`/`seized` names left.
 QA: career run → map, a battle week: patrols on the target front.
 Result: `MapModel.patrols` (life.patrols [{id, tile, at, face, color}]): ≤ 3 hot fronts (battle tile, then tiles under pressure, any pair), holder 2 on the tile + pusher 2–4 on its adjacent frontier tile, facing across; seized poles/`MapModel.seized`/`land.contest`/`CITY.contestPair` gone, `CITY.contest` → `CITY.weiWu` (still the sand test's dry edge); life3d CAP poles 2; T-079 test rewritten (any pair, frontier-only, deterministic). QA: battle week Wu→Wei + Shu pressure on Wu: 12 figures, all on frontier tiles, screenshot ok; qa_screens vs t152: 01–09 identical, 10 3 px, 11/12 match noise. `Front.seized` kept (place tags/dossier).
 
-### [ ] T-154: Split career.css
+### [x] T-154: Split career.css
 
 Spec: §9 Goldens: unchanged Save: no change
 Files: css/career.css, css/map.css (new), css/hub.css (new), css/people.css (new), index.html
 Steps: after T-148/T-149, move the island-map/3D-overlay section → map.css, hub shell + layout grid → hub.css, people
 sections → people.css; career.css keeps menu/create/cards/sheets. Link order keeps cascade (same relative order).
 Accept: QA screenshots pixel-identical to before the split.
-Result:
+Result: career.css 2956→1774, map.css 223, hub.css 790, people.css 150 (pure line moves, verified as subsequences); link order career→map→hub→people: scripted check of every order-flipped rule pair (equal specificity, overlapping property) found 0 elements matching both across 70 UI states, static review of the rest clean; dead @keyframes drawerIn + htoast removed; ARCHITECTURE CSS list updated; QA 01–10 pixel-identical to T-153 (11/12 3D canvas noise only). pins3d.mjs header comment still says career.css (not in Files).
 
 ### [ ] T-155: Split career-week.js by job
 

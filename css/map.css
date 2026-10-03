@@ -1,0 +1,223 @@
+/* Career island map: the map frame, 3D overlay (pins, labels, flag), legend, hex tile labels. Loaded after career.css. */
+/* ---------- island map ---------- */
+/* outside the map: the same dark as the fog over the sea */
+.hub .mapwrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  background: #040b13; /* no token: matches the sea under the 3D fog */
+  top: var(--tbar);
+  left: var(--rail);
+}
+@keyframes clashp {
+  to {
+    border-color: var(--warn);
+  }
+}
+.spot .qt {
+  font-weight: 800;
+  color: var(--gold);
+}
+.spot .qt.unk {
+  color: var(--mute);
+}
+.spot .qt.gem {
+  color: var(--good);
+}
+.spot .qt.overhyped {
+  color: var(--bad-rose);
+}
+.spot .stk.far {
+  color: var(--bad-rose);
+}
+/* ---------- 3D map overlay: pins, labels, flag (js/map3d/pins3d.mjs) ---------- */
+.hub.eve .mapwrap canvas {
+  filter: saturate(0.65) brightness(0.72) hue-rotate(12deg);
+}
+.maplay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.maplay > * {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.mpin {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  border: 3px solid var(--tc, var(--cyan));
+  background: var(--surf2);
+  color: #fff; /* no token: white pin glyph (ink is visibly greyer) */
+  cursor: pointer;
+  pointer-events: auto;
+  transition: opacity 0.2s;
+}
+.mpin i {
+  font-style: normal;
+  font-size: 22px;
+  line-height: 38px;
+}
+.mpin b {
+  position: absolute;
+  right: -8px;
+  top: -8px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 10px;
+  background: var(--hot);
+  font: 800 13px/20px var(--body);
+}
+.mpin:hover,
+.mpin:focus-visible,
+.mpin.sel {
+  border-color: var(--gold);
+  border-width: 5px;
+}
+.mpin:focus {
+  outline: none;
+}
+.mpin.off {
+  opacity: 0.4;
+}
+.mpin.faraway {
+  opacity: 0.55;
+}
+.mpin.turf {
+  border-color: var(--gold);
+}
+.mpin.hq.can {
+  border-width: 5px;
+  box-shadow: 0 0 8px var(--tc);
+}
+.mpin.gem {
+  border-color: var(--good);
+  border-width: 4px;
+}
+.mpin.overhyped {
+  border-color: var(--mute);
+  border-style: dashed;
+}
+.mpin.clash {
+  background: #3a0d12; /* no token: dark red clash pin fill */
+  border-color: var(--hot);
+  border-width: 4px;
+  animation: clashp 1.2s ease-in-out infinite alternate;
+}
+/* a venue where your match is this week: a pulsing ring (CSS only) */
+.mpin.today {
+  border-color: var(--gold);
+  border-width: 5px;
+  animation: todayp 1.4s ease-in-out infinite alternate;
+}
+@keyframes todayp {
+  from {
+    box-shadow: 0 0 4px 0 var(--gold);
+  }
+  to {
+    box-shadow: 0 0 16px 6px var(--gold);
+  }
+}
+.spot .today {
+  color: var(--gold);
+}
+.mlab {
+  color: color-mix(in srgb, var(--tc, #e8d9a8) 75%, #fff); /* no token: parchment label tint */
+  font: 700 14px var(--disp);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow:
+    0 0 3px var(--bg),
+    0 0 3px var(--bg);
+}
+.mlab.big {
+  font-size: 22px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.mlab.ap {
+  color: #e8d9a8; /* no token: parchment label */
+  font: 600 12px var(--body);
+  letter-spacing: 0;
+}
+.mlab.ap i {
+  font-style: normal;
+  font-size: 20px;
+  margin-right: 4px;
+}
+.mflag {
+  font-size: 26px;
+  color: var(--warn);
+  /* no token: warm flag shadow */
+  text-shadow:
+    0 0 3px #1b1204,
+    0 0 3px #1b1204;
+  pointer-events: none;
+}
+/* Map legend (T-126) */
+.hub .maplegend {
+  position: absolute;
+  z-index: 3;
+  left: calc(var(--rail) + 16px);
+  bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  pointer-events: none;
+}
+.hub .maplegend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surf);
+  border: 1px solid var(--line);
+  font-size: 12px;
+}
+/* Hex tile labels on the map: a tile's text and this week's target tile (spec §4.27, T-130) */
+.mbord {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--hud);
+  color: var(--mute);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: help;
+}
+.mbord.lead {
+  border-color: var(--tc);
+  color: var(--ink);
+}
+.mbord.brink {
+  box-shadow: 0 0 0 2px var(--tc);
+}
+.ptile {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+/* Centre on me (map, key C) */
+.hub .mapme {
+  position: absolute;
+  z-index: 3;
+  top: calc(var(--tbar) + 16px);
+  left: calc(var(--rail) + 16px);
+  background: var(--hud);
+}
