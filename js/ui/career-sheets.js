@@ -162,16 +162,16 @@ function matchLog(run) {
           .join(' · '),
         ln = e.line,
         side = s =>
-          `<tr class="gap"><td colspan="5">${s ? esc(e.short || e.vs) : 'Your side'}</td></tr>${e.box
+          `<tr class="gap"><td colspan="10">${s ? esc(e.short || e.vs) : 'Your side'}</td></tr>${e.box
             .filter(b => b.side === s)
             .map(
               b =>
-                `<tr class="${b.you ? 'you' : ''}"><td>${esc(b.name)}</td><td>${b.role}</td><td>${b.ovr}</td><td>${b.k}/${b.att}/${b.err}</td><td>${b.blk}/${b.ace}/${b.dig}/${b.ast}</td></tr>`
+                `<tr class="${b.you ? 'you' : ''}"><td>${esc(b.name)}</td><td>${b.role}</td><td>${b.ovr}</td><td>${b.k}</td><td>${b.att}</td><td>${b.err}</td><td>${b.blk}</td><td>${b.ace}</td><td>${b.dig}</td><td>${b.ast}</td></tr>`
             )
             .join('')}`,
         body = `<p class="small">${stats}</p>
           ${e.played ? `<p class="small">Line: ${ln.k} kills, ${ln.att} attacks, ${ln.err} errors, ${ln.blk} blocks, ${ln.ace} aces, ${ln.dig} digs, ${ln.ast} assists${e.stake ? ` · stake $${e.stake}` : ''}</p>` : ''}
-          <table class="rk ml"><thead><tr class="gap"><td>Name</td><td>Role</td><td>OVR</td><td>K/Att/Err</td><td>Blk/Ace/Dig/Ast</td></tr></thead><tbody>${side(0)}${side(1)}</tbody></table>`;
+          <table class="rk ml"><thead><tr class="gap"><td>Name</td><td>Role</td><td>OVR</td><td>Kills</td><td>Attacks</td><td>Errors</td><td>Blocks</td><td>Aces</td><td>Digs</td><td>Assists</td></tr></thead><tbody>${side(0)}${side(1)}</tbody></table>`;
       return fold(`ml${i}`, sum, body);
     };
   return L.length ? `<div class="panel"><h3>Match history</h3>${L.map(row).reverse().join('')}</div>` : ''; // nothing to show yet: hidden (§10.8)

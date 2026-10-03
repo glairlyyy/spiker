@@ -43,7 +43,7 @@ Accept: no faction use of the old hexes left (grep); tests + lint green.
 QA: career run → hub map (all three majors visible), World sheet Factions, a battle card; screenshots.
 Result: REGIONS wei/wu/shu colour → #d08a2e / #5b8def / #2fb8a0, kit3d ACC to match, theme.css gains --wei / --wu / --shu (tokens.json); club kits, status tokens, tags.js stamina and minors untouched; the hub.css day-dot comment no longer calls #f5b82e a faction colour. Grep: no faction use of the old hexes left (#f5b82e stays only as the old HUD day dots and the WDG kit). Tests use REGIONS.*.color, no change. QA: hub map (tiles, ribbons, labels, legend), World sheet; no errors. Note: Wei bronze sits near Street Outlaws orange #ff8c42 on the map; readable, the labels separate them.
 
-### [ ] T-166: Spelled-out stat names
+### [x] T-166: Spelled-out stat names
 
 Spec: §9 §10.6 Goldens: unchanged Save: no change
 Goal: no single-letter stat codes (K / B / A / D / E, Blk / Ace / Dig / Ast) where a player reads them.
@@ -52,7 +52,7 @@ Do not: change the stats themselves or `m.stat`; add sentences — a word per nu
 Steps: box score headers Kills · Blocks · Aces · Digs · Errors · Top km/h · Mood · Stamina (the `title` hovers go); result top 3 `3 kills · 1 block · 2 digs` (zeros hidden); Your line labels under the numbers (Kills / Blocks / Aces / Errors); history table columns Kills · Attacks · Errors · Blocks · Aces · Digs · Assists (no `K/Att/Err` slashes); career end line `n kills · n blocks · n aces`.
 Accept: grep finds no `>K<`, `' K'`, `K/Att`, `Blk/Ace` in js/ui; box score fits the rail without horizontal scroll at 1440 px.
 QA: Monster game → box score (B) and result screen; career → Season sheet match history row opened; screenshots.
-Result:
+Result: Box score headers spelled out (OVR, Kills, Blocks, Aces, Digs, Errors, Top km/h, Mood, Stamina), set vertically so the ten columns fit the 400px rail (the title hovers go; names truncate at 120px); statLine(q, keys) in match-result.js — "8 kills · 2 blocks · 1 ace", zeros hidden — for the result top 3 and the career end line; Your line = numbers with Kills / Blocks / Aces / Errors under them; match history table columns Kills · Attacks · Errors · Blocks · Aces · Digs · Assists (no slashes). Grep: no >K<, K/Att, Blk/Ace in js/ui. QA: Monster game box score scrollWidth 367 = clientWidth 367 at 1440px, result top 3 spelled out; no errors.
 
 ### [ ] T-167: Encyclopedia section tabs
 

@@ -16,7 +16,14 @@ function matchStars(m) {
     .sort((x, y) => y.v - x.v)
     .slice(0, 3);
 }
-/** The result screen (spec §10.6): headline, then for your match the grade tile with your K/B/A/E and focus, rewards
+/** "3 kills · 1 block · 2 digs": a word per number, zeros hidden (§9 — no single-letter stat codes). `keys` = stat fields. */
+const STAT_WORD = { k: ['kill', 'kills'], blk: ['block', 'blocks'], ace: ['ace', 'aces'], dig: ['dig', 'digs'], err: ['error', 'errors'] };
+const statLine = (q, keys = ['k', 'blk', 'ace', 'dig']) =>
+  keys
+    .filter(k => q[k])
+    .map(k => `${q[k]} ${STAT_WORD[k][q[k] === 1 ? 0 : 1]}`)
+    .join(' · ') || 'no points';
+/** The result screen (spec §10.6): headline, then for your match the grade tile with your kills / blocks / aces / errors and focus, rewards
  * chips, growth rows and techniques picked up; top 3; [Continue] [Box score]. Monster game: headline + top 3. */
 function resultScreen(m, wt, hi, lo, stars, res) {
   const head = `<div class="rhead"><span class="lab">${esc(A.fx.round || 'Final')}</span><h2>${res ? (res.win ? 'You win' : 'You lose') + ` ${hi}-${lo}` : `${esc(wt.name)} win ${hi}-${lo}`}</h2>${
@@ -25,14 +32,21 @@ function resultScreen(m, wt, hi, lo, stars, res) {
     top = `<div class="rtop"><div class="lab">Top 3</div>${stars
       .map(
         (e, i) =>
-          `<div class="rstar" style="--tc:${e.p.team.color}"><b class="rn">${i + 1}</b>${faceSVG(e.p, 0.9, 32)}<span><b>${esc(e.p.name)}</b><small class="mute">${esc(e.p.team.short)} · ${e.p.role}</small></span><small>${e.q.k} K · ${e.q.blk} B · ${e.q.ace} A · ${e.q.dig} D</small></div>`
+          `<div class="rstar" style="--tc:${e.p.team.color}"><b class="rn">${i + 1}</b>${faceSVG(e.p, 0.9, 32)}<span><b>${esc(e.p.name)}</b><small class="mute">${esc(e.p.team.short)} · ${e.p.role}</small></span><small>${statLine(e.q)}</small></div>`
       )
       .join('')}</div>`,
     acts = `<div class="acts ${res ? 'pri' : ''}"><button class="btn hot" onclick="leaveMatch()">${esc(A.fx.back || 'Continue')}</button>${res ? `<button class="btn" onclick="railOpen('box')">Box score <kbd>B</kbd></button>` : ''}</div>`;
   if (!res) return `<div class="ocard mres mono">${head}${top}${acts}</div>`;
   const L = res.line,
     you = res.played
-      ? `<div class="rgrade"><div class="gtile g${res.grade || 'X'}">${res.grade || '–'}</div><div><div class="lab">Your line</div><div class="rline"><span><b>${L.k}</b> K</span><span><b>${L.blk}</b> B</span><span><b>${L.ace}</b> A</span><span><b>${L.err}</b> E</span></div>${
+      ? `<div class="rgrade"><div class="gtile g${res.grade || 'X'}">${res.grade || '–'}</div><div><div class="lab">Your line</div><div class="rline">${[
+          ['Kills', L.k],
+          ['Blocks', L.blk],
+          ['Aces', L.ace],
+          ['Errors', L.err]
+        ]
+          .map(([n, v]) => `<span><b>${v}</b><small>${n}</small></span>`)
+          .join('')}</div>${
           res.focus
             ? `<div class="small ${res.focus.met ? 'good' : 'warn'}">Focus ${esc(res.focus.label)} · ${res.focus.met ? 'met' : 'missed'}</div>`
             : ''

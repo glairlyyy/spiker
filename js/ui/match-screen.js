@@ -482,7 +482,7 @@ function boxScore() {
   el.innerHTML = m.t
     .map(
       t =>
-        `<table><caption>${chip(t)}${esc(t.name)}</caption><thead><tr><th>Player</th><th title="Overall rating">OVR</th><th title="Kills">K</th><th title="Blocks">B</th><th title="Aces">A</th><th title="Digs">D</th><th title="Errors">E</th><th title="Top spike km/h">Top</th><th title="Mood">Mood</th><th title="Stamina">Sta</th></tr></thead><tbody>${played(
+        `<table><caption>${chip(t)}${esc(t.name)}</caption><thead><tr><th>Player</th>${['OVR', 'Kills', 'Blocks', 'Aces', 'Digs', 'Errors', 'Top km/h', 'Mood', 'Stamina'].map(h => `<th class="vh"><span>${h}</span></th>`).join('')}</tr></thead><tbody>${played(
           t
         )
           .map(p => {
