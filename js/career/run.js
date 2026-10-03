@@ -101,13 +101,15 @@ const Run = {
       clash: null, // this week's street battle
       spotQ: {},
       pseed: People.seed(teams), // the seed of the NPC rolls (People.roll)
-      fog: [CITY.airport.slice()] // the points you've stood on (the map is dark elsewhere)
+      fog: [CITY.airport.slice()], // the points you've stood on (the map is dark elsewhere)
+      story: { seen: {}, flags: {}, cur: null } // story scenes (spec §10.10, js/career/story.js)
     };
     Run.log(run, `${you.name} arrives in the city as a free agent (${ROLE_NAME[role].toLowerCase()}) — find a club that will take you.`);
     People.ensure(run); // every NPC gets a want, traits and a plan slot (spec §4.23 A)
     City.roll(run); // the island's places: which premium ones are overhyped, which rough ones are gems
     Training.rollFloor(run);
     Run.snap(run);
+    Story.fire(run, 'start'); // Story mode: the intro scene (dark cold open, the walk home)
     return run;
   },
   /** The cup being played right now (or null between cups). */
@@ -392,7 +394,8 @@ const RUN_DEFAULTS = {
   days: [() => WEEK_DAYS, v => Number.isFinite(v) && v >= 0 && v <= WEEK_DAYS], // days left this week
   dayLog: [() => [], Array.isArray], // what each spent day of this week was (the hub's day track, spec §10.2)
   rolled: [() => false, v => typeof v === 'boolean'], // this week's event rolled?
-  pos: [() => CITY.airport.slice(), Array.isArray] // where you stand on the map
+  pos: [() => CITY.airport.slice(), Array.isArray], // where you stand on the map
+  story: [() => ({ seen: { intro: true }, flags: {}, cur: null }), isObj] // story scenes; a run saved before them skips the intro
 };
 /** Run rank letter for a fan count (RANKS is ordered from the top rank down). */
 const rankOf = fans => RANKS.find(([, min]) => fans >= min)[0];

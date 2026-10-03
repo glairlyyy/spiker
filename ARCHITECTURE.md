@@ -105,6 +105,9 @@ The match screen takes a fixture: `navigate('match', { a, b, round, back, onFini
 - **Training depth** (`career/training.js`, `TRAIN_X`): facility Lv 1–5 by use, Hard option, same-training streaks,
   steeper diminishing returns, the training cap `TRAIN_CAP` 75 (no Limit Break), injuries
   when a session fails while exhausted (light training until healed, or the physio).
+- **Story scenes** (spec §10.10): `career/story.js` `Story` plays `SCENES` (`data/story.js`) step by step — DOM-free, no
+  randoms, state `run.story = {seen, flags, cur}`; `ui/story-box.js` draws the dialogue box (`storyBox` / `storyMounted`,
+  called by `renderCareer`; hub cards and keys wait while a scene plays), `css/story.css`.
 - **Sponsors** (`career/sponsors.js`; the coach's goal was removed in T-170, spec §10.1b): sponsors make offers at fan milestones (a `pre` event shown before the week's choice) with a perk kept while a
   condition holds.
 - **Matches** (`career/cup.js`; street battles, challenges, loss and injury are `Fight` in `career/fight.js`): an S–C grade from your own line scales that match's rewards; a pre-match focus goal;

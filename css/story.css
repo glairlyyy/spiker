@@ -1,0 +1,160 @@
+/* ---------- the dialogue box and scene modes (spec §10.10, js/ui/story-box.js) ---------- */
+.sbox-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  cursor: pointer;
+}
+.sbox-layer.dark {
+  background: var(--bg);
+}
+.sbox-layer.bars::before,
+.sbox-layer.bars::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 9vh;
+  background: var(--bg);
+}
+.sbox-layer.bars::before {
+  top: 0;
+}
+.sbox-layer.bars::after {
+  bottom: 0;
+}
+.sbox {
+  position: absolute;
+  left: 50%;
+  bottom: calc(9vh + 24px);
+  z-index: 1;
+  transform: translateX(-50%);
+  width: min(960px, calc(100vw - 64px));
+  min-height: 132px;
+  display: flex;
+  gap: 20px;
+  padding: 20px 24px 28px;
+  background: var(--surf);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+}
+.sbox-layer.dark .sbox {
+  background: transparent;
+  border-color: transparent;
+}
+.sb-face {
+  flex: none;
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surf2);
+}
+.sb-body {
+  flex: 1;
+  min-width: 0;
+}
+.sb-name {
+  display: inline-block;
+  margin-bottom: 8px;
+  font: 600 16px/1 var(--disp);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.sb-text {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+.sbox.narration .sb-text {
+  font-style: italic;
+  color: var(--mute);
+}
+.sbox-layer.dark .sbox.narration .sb-text {
+  color: var(--ink);
+  font-size: 22px;
+  text-align: center;
+}
+.sb-opts {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.sb-opts .btn {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+.sb-keys {
+  position: absolute;
+  right: 16px;
+  bottom: 6px;
+  font-size: 12px;
+  color: var(--mute);
+}
+.sb-more {
+  position: absolute;
+  right: 24px;
+  bottom: 28px;
+  font-size: 12px;
+  font-style: normal;
+  color: var(--ink);
+  opacity: 0;
+}
+.sb-more.on {
+  opacity: 1;
+  animation: sbBob 0.9s ease-in-out infinite;
+}
+@keyframes sbBob {
+  50% {
+    transform: translateY(3px);
+  }
+}
+.sb-skip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 14px;
+}
+.sb-log {
+  position: absolute;
+  top: calc(9vh + 24px);
+  left: 50%;
+  z-index: 2;
+  transform: translateX(-50%);
+  width: min(720px, calc(100vw - 64px));
+  max-height: 60vh;
+  overflow: auto;
+  padding: 20px 24px;
+  background: var(--surf);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  cursor: default;
+}
+.sb-log ol {
+  margin: 8px 0 16px;
+  padding-left: 18px;
+}
+.sb-log li.narration {
+  font-style: italic;
+  color: var(--mute);
+}
+/* a scene plays: the hub's chrome steps back (the map stays) */
+.hub.cine .tbar,
+.hub.cine .wrail,
+.hub.cine .wrail.mini,
+.hub.cine .maplegend,
+.hub.cine .mapme,
+.hub.cine .spotcard {
+  visibility: hidden;
+}
+.hub.cine .mapwrap {
+  top: 0;
+  left: 0; /* the map takes the whole screen while a scene plays */
+}

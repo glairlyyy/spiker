@@ -929,6 +929,32 @@ const mkRunG = seed => {
   return [g, g.Run.create(g.Run.draft(), { role: 'WS', name: 'Cov', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 })];
 };
 
+test('story: the intro plays on a new Story run, applies its walk, never replays; Endless and old saves skip it (T-173)', () => {
+  const [g, run] = mkRunG(873);
+  assert(run.story.cur && run.story.cur.id === 'intro', 'a new Story run starts in the intro');
+  eq(g.Story.step(run).k, 'say', 'the first shown step is a line (the dark cut is applied)');
+  assert(run.story.cur.mode.dark, 'dark cold open');
+  const home = g.City.at(run, 'home');
+  let n = 0;
+  while (run.story.cur && n++ < 50) g.Story.next(run);
+  assert(!run.story.cur && run.story.seen.intro, 'the scene ends and is marked seen');
+  eq(JSON.stringify(run.pos), JSON.stringify(home.map(Math.round)), 'the walk leaves you at your first home');
+  eq(run.days, g.WEEK_DAYS, 'the walk home costs no days');
+  assert(!g.Story.fire(run, 'start'), 'never replays');
+  const end = g.Run.create(g.Run.draft(), { role: 'WS', name: 'E', mode: { story: false } });
+  assert(!end.story.cur, 'Endless: no scenes');
+  const old = { ...run };
+  delete old.story;
+  g.Run.repair(old);
+  assert(old.story.seen.intro && !old.story.cur, 'a run saved before scenes skips the intro');
+  const [g2, run2] = mkRunG(874);
+  g2.Story.skip(run2);
+  assert(
+    !run2.story.cur && JSON.stringify(run2.pos) === JSON.stringify(g2.City.at(run2, 'home').map(Math.round)),
+    'skip still walks you home'
+  );
+});
+
 test("no coach's goal (spec §10.1b, T-170): a run never gets one, through week ends and new weeks", () => {
   const [g, run] = mkRunG(871);
   assert(!('goal' in run) && typeof g.Goals === 'undefined', 'no goal at the start, no Goals module');

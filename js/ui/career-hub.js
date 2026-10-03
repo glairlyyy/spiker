@@ -47,18 +47,20 @@ function renderCareer() {
   if (note && MapModel.known(run, note.id, City.at(run, note.id))) CW.spot = note.id;
   for (const z of chg) (CW.seizes || (CW.seizes = [])).unshift({ ...z, week: run.week }); // an inbox item for a week
   const nextCup = Run.weekType(run) === 'cup' && !run.event ? Cup.upcoming(run) : null; // rules first, then draw
-  const card = hubCard(run, nextCup);
+  const scene = !!Story.step(run), // a story scene plays: the dialogue box has the screen (spec §10.10)
+    card = scene ? null : hubCard(run, nextCup);
   if (CW.railMini == null) CW.railMini = store.get(KEYS.rail) === '1'; // remembered per browser
   $('#app').innerHTML =
-    `<section class="career hub ${City.night(run) ? 'eve' : ''} ${CW.railMini ? 'railmini' : ''}" style="--tc:${team.color}">
+    `<section class="career hub ${City.night(run) ? 'eve' : ''} ${CW.railMini ? 'railmini' : ''} ${scene ? 'cine' : ''}" style="--tc:${team.color}">
     ${topBar(run)}${CW.railMini ? railStrip(run, armed) : weekRail(run, armed)}
     <div class="mapwrap" id="mapwrap"></div>${mapLegend()}<button class="btn mapme" onclick="MapView.centre()" aria-label="Centre the map on you (C)">◎ Me <kbd>C</kbd></button>
     <div class="hud spotcard ${CW.spot && !card ? 'open' : ''}" id="spot">${CW.spot && !card ? spotCard(run) : ''}</div>
     ${CW.sheet ? hubSheet(run) : ''}
     ${card ? `<div class="hubmodal ${card.dim ? 'dim' : ''}"><div class="hubcard ${card.cls || ''}">${card.html}</div></div>` : ''}
-    ${lockLayer()}
+    ${lockLayer()}${storyBox(run)}
   </section>`;
   mapMount(run);
+  storyMounted(run);
 }
 
 /** A card over the map, if the week needs one: an event, a match day, or an unread Gazette. */

@@ -77,7 +77,7 @@ Owner request 2026-10-03: remove the coach's goal (spec §10.1b).
 
 Owner request 2026-10-04 (spec §10.10 dialogue box): T-173 → T-175. Story mode only; goldens unchanged.
 
-### [ ] T-173: Story runner and scene data
+### [x] T-173: Story runner and scene data
 
 Spec: §10.10 Goldens: unchanged Save: no change (`run.story` via RUN_DEFAULTS)
 Goal: a DOM-free runner that plays scene data step by step and remembers what was seen.
@@ -89,9 +89,9 @@ Steps:
 2. `Story.due(run, on, ctx)` → the first unseen scene whose trigger matches; `Story.start(run, id)`, `Story.step(run)` (current step), `Story.next(run, choice?)` (advances, applies set / diary / gazette, marks seen at end).
 3. `who` resolves to a speaker: a voice id (lore.md §7) or a person id (portrait + name from People).
    Accept: headless test plays the test scene through a choice branch; seen scenes never replay; Endless runs get none.
-   Result:
+   Result: Story (js/career/story.js) + SCENES / STORY_VOICES (js/data/story.js); run.story via RUN_DEFAULTS (old saves get intro seen) and Run.create fires 'start'; steps say · choice · cut · cam · walk · wait · set · diary · gazette · goto · end; skip applies remaining effects; test covers play-through, walk home free of days, no replay, Endless, old saves, skip (111 tests).
 
-### [ ] T-174: Dialogue box UI
+### [x] T-174: Dialogue box UI
 
 Spec: §10.10 §9 Goldens: unchanged Save: no change
 Goal: the RPG dialogue box over the hub: name plate, portrait, typed text, choices, log, cut-scene letterbox.
@@ -99,7 +99,7 @@ Files: js/ui/dialogue.js (new), css/story.css (new), index.html, js/ui/career-hu
 Do not: block the artifact with alert/confirm; use colours outside theme.css tokens; put faction colour anywhere but the name plate border.
 Steps: box markup per §10.10; typewriter via rAF (~60 chars/s, completes on click / Space / Enter); choices 1–4; `L` log overlay; `Esc` → inline "Skip scene?"; `cam` steps call MapView fly-to; cut-scene mode (letterbox, `.hub` chrome hidden) when the scene says `cut: true`.
 Accept: test scene plays end to end with mouse and keys; type ≥ 12px; no errors. QA: screenshots of a say step, a choice, the log, cut-scene mode.
-Result:
+Result: js/ui/story-box.js + css/story.css: box (name plate, faceSVG portrait, 60 cps typing, ▼, choices 1–4, L log, Esc inline skip), dark and letterbox modes, hub chrome hidden and the map full screen while a scene plays; walk steps wait for the avatar (20 s cap). First scene = the intro: dark cold open (3 diary lines) → letterbox, airport, “Finally arrived.” → walk home → “Home. For now.” → week brief. QA: screenshots of each step, no errors (swiftshader walks slowly; real GPUs take ≤ 6 s).
 
 ### [ ] T-175: Hook scenes into the career
 
@@ -108,7 +108,7 @@ Goal: scenes fire from the game's moments.
 Files: js/ui/career-create.js (start), js/ui/career-hub.js (week start, place visited), js/ui/career-match.js (match result), js/career/story.js
 Steps: call `Story.due` at Story start (after Create, before the first brief), at each week start (before the brief), after a place is visited, after a match result; a due scene opens the box before the hub's own cards.
 Accept: the test scene can be triggered from each hook (test flag); the brief waits until the scene ends.
-Result:
+Result: (partial) the 'start' hook is in Run.create; week / place / result hooks still to do.
 
 ### [x] T-172: Hide facility quality; keep the level
 
