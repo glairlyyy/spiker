@@ -50,7 +50,7 @@ function resultScreen(m, wt, hi, lo, stars, res) {
           res.focus
             ? `<div class="small ${res.focus.met ? 'good' : 'warn'}">Focus ${esc(res.focus.label)} · ${res.focus.met ? 'met' : 'missed'}</div>`
             : ''
-        }</div></div>`
+        }${res.held && res.held.length ? `<div class="small mute">Held back: ${res.held.map(esc).join(', ')}</div>` : ''}</div></div>`
       : '<div class="rgrade"><div class="gtile">–</div><div><div class="lab">Your line</div><p class="small mute">You watched from the bench.</p></div></div>',
     chips = res.rewards.length
       ? `<div class="rwchips">${res.rewards.map(r => `<span class="pchip ${r.v > 0 ? 'good' : 'bad'}">${esc(r.text)}</span>`).join('')}</div>`

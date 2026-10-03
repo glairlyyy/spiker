@@ -119,6 +119,27 @@ Object.assign(SKILLS, {
     desc: 'Planned back-row play — the block arrives late'
   }
 });
+// Technique trade-offs for the switches (spec §9.10): `up` = what it buys, `down` = what it costs (only where the rules
+// have a downside: Killer Jump Serve's faults, Delayed Spike's hang-too-long §2.9a).
+{
+  const T = {
+    freak: { up: 'beats the block' },
+    delay: { up: 'block can only fingertip it', down: 'may hang too long' },
+    cutshot: { up: 'angles round the block' },
+    sync: { up: 'block has to split' },
+    drive: { up: 'passes fall apart' },
+    killer: { up: '+10% pace', down: '+3% faults' },
+    target: { up: 'serves the weakest passer' },
+    readblk: { up: 'shuts down quicks' },
+    softblk: { up: 'touches pop up' },
+    roll: { up: 'far balls cost less' },
+    save: { up: 'keeps lost balls alive' },
+    slide: { up: 'block covers less' },
+    lefty: { up: 'more setter dumps' },
+    pipecombo: { up: 'back row beats the block' }
+  };
+  for (const id in T) SKILLS[id].trade = T[id];
+}
 /** Encyclopedia notes: when a technique fires and what beats it. */
 const SKILL_HOW = {
   freak: 'On a quick set, 50% when the setter has 1.6+ wit. The block covers a quarter as much. Counter: Read Block.',

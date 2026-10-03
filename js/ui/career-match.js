@@ -17,7 +17,7 @@ function matchPrep(run, cup) {
       ? '<b class="good">Starting</b>'
       : `<b class="warn">On the bench</b>${L.rival ? ` — ${esc(L.rival.p.name)} rates higher (${L.rival.score.toFixed(0)} vs ${L.you.toFixed(0)})` : ''}`,
     `${info(`Your coach picks the best player of each role by rating + 6 × form (+ your standing with the faction ÷ ${BENCH.standingPer}). Start or finish on the bench and match rewards ×${BENCH.partMul}; never play and you only get a little Wit XP.`)}`
-  )}${row('Focus', seg(FOCUS[you.role], run.focus, 'setFocus'), `Pick one · hit it ${term('sp', FOCUS_REWARD.sp)} ${term('fans', FOCUS_REWARD.fans)}`)}${
+  )}${row('Focus', seg(FOCUS[you.role], run.focus, 'setFocus'), `Pick one · hit it ${term('sp', FOCUS_REWARD.sp)} ${term('fans', FOCUS_REWARD.fans)}`)}${prepTechRow(you, row)}${
     cup && you.cap
       ? row(
           'Team talk',
@@ -30,6 +30,31 @@ function matchPrep(run, cup) {
         )
       : ''
   }</div>`;
+}
+/** Match prep's Techniques row (spec §9.10): `n on · m off ›`, a peek with the switches and Reset. '' when you own none. */
+function prepTechRow(you, row) {
+  const ids = ownTechs(you),
+    off = new Set((you.techOff || []).filter(id => ids.includes(id)));
+  if (!ids.length) return '';
+  const body = `<div class="lab">Techniques</div>${ids.map(id => techRow(id, { off: off.has(id), act: `prepTech('${id}')` })).join('')}${
+    off.size ? `<div class="acts"><button class="btn" onclick="prepTech(null)">Reset</button></div>` : ''
+  }`;
+  return row(
+    'Techniques',
+    peek('tech', `${ids.length - off.size} on${off.size ? ` · <b class="warn">${off.size} off</b>` : ''}`, body),
+    off.size ? 'Kept for every match' : ''
+  );
+}
+/** Flip one of your techniques for the next matches (null = all back on). */
+function prepTech(id) {
+  const you = Run.you(RUN),
+    off = new Set(you.techOff || []);
+  if (id == null) off.clear();
+  else if (off.has(id)) off.delete(id);
+  else off.add(id);
+  you.techOff = [...off];
+  Run.save(RUN);
+  renderCareer();
 }
 /** kv rows "Their best": up to 2 of a squad's players, each "<name> — Register #n, Gazette #n" on its own line (skips null ranks). */
 function rankBestRows(run, ps) {
@@ -194,6 +219,7 @@ function resultData(run, m, b, msg) {
       .filter(k => you[k] !== b.stats[k] || ((run.xp || {})[k] || 0) !== (b.xp[k] || 0))
       .map(k => ({ k, name: STATNAME[k], from: b.stats[k], to: you[k], ...Training.progress(run, k) })),
     techs: you.skills.filter(id => !b.skills.includes(id)).map(id => SKILLS[id].name),
+    held: [...(m.off[you.id] || [])].filter(id => knowsTech(you, id)).map(id => SKILLS[id].name), // switched off at the end (§9.10)
     msg
   };
 }

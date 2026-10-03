@@ -173,6 +173,16 @@ function newMatch(a, b, rec, opts = {}) {
     streak: [0, 0],
     big: 0,
     zone: [0, 0],
+    // technique switches (spec §9.10): player id → Set of technique ids held back (from p.techOff: your career choice),
+    // and what each technique did this match: techUse[id][tech] = { n, won, err }; techRally = fired this rally
+    off: Object.fromEntries(
+      squadOf(a)
+        .concat(squadOf(b))
+        .filter(p => p.techOff && p.techOff.length)
+        .map(p => [p.id, new Set(p.techOff)])
+    ),
+    techUse: {},
+    techRally: [],
     zoneHit: [0, 0], // did the side reach the zone at any point (career: the Element Trial)
     eg: {}, // element gauge (0–100) per unlocked player
     elLog: [], // element spikes fired: { p, el, side, won }
@@ -414,6 +424,12 @@ function restoreLineups(m) {
  */
 function end(m, w, beats) {
   const oppWasInZone = !!m.zone[1 - w];
+  for (const [pid, id] of m.techRally) {
+    const c = m.techUse[pid][id];
+    if (squadOf(m.t[w]).some(q => q.id === pid)) c.won++;
+    if (m.errBy === pid) c.err++;
+  }
+  m.techRally = [];
   // ego acts of this rally (spec §2.12): close the serve's open entry; success feeds the ego (mood), failure costs mood and momentum
   for (const e of m.egoLog.slice(m.egoI || 0)) {
     if (e.open != null) {

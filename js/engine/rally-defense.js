@@ -205,6 +205,7 @@ function block(c, x) {
     if (!smashed && R() < sig((bp - pow) / 20 + 0.2)) {
       touched = true;
       softTouch = !late && hasTech(bb, 'softblk'); // a Soft Block needs the hands up
+      if (softTouch) techFire(m, bb, 'softblk');
       for (const b of blockers) if (b.el === 'earth') elCharge(m, b, EG.earth.touch);
       pow *= late ? LATE_TOUCH.pow : softTouch ? 0.45 : 0.55;
       V &&
@@ -267,6 +268,7 @@ function dig(c, x, bl) {
   if (touched) dsc *= softTouch ? 1.4 : 1.15;
   // Rolling Receive on defense: far balls cost much less
   const rollD = hasTech(dg, 'roll') && dd0 > 0.5;
+  if (rollD) techFire(m, dg, 'roll');
   if (rollD) dsc += Math.max(0, dd0 - 0.1) * 55 * (1.35 - dg.speed / 100) * 0.5;
   if (smashed) dsc *= 0.85; // defenders are wrong-footed by a ball blasting through the block
   if (elS) dsc *= elS.dsc;
@@ -274,6 +276,7 @@ function dig(c, x, bl) {
   const a4 = [];
   if (R() < killP && !tip && hasTech(dg, 'save') && !(elS && elS.el === 'blast') && R() < 0.18) {
     // Desperation Save: the ball was going down — a one-arm lunge keeps it alive (barely)
+    techFire(m, dg, 'save');
     st(m, dg, 'dig');
     dr(m, dg, 0.03);
     md(m, dg, 0.12);

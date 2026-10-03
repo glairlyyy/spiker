@@ -101,6 +101,7 @@ function setterDump(c, s) {
   // higher wit and higher jump make the setter a bigger dump threat
   const lefty = setter.role === 'S' && hasTech(setter, 'lefty');
   if (setter.role === 'S' && qual >= 2 && R() < atkT.S.feint * 0.5 * dumpThreat(setter, W(setter)) * (lefty ? 1.4 : 1)) {
+    if (lefty) techFire(m, setter, 'lefty');
     const sj = Math.max(24, jumpPx(setter) * 0.55);
     const lx = sx(ds, rnd(410, 465)),
       lz = clamp(setZ + rnd(-0.3, 0.3), 0.1, 0.9);
@@ -305,6 +306,9 @@ function chooseAttack(c, s, h) {
   const freak = quick && hasTech(spiker, 'freak') && W(setter) >= 1.6 && R() < 0.5,
     slide = quick && !freak && hasTech(spiker, 'slide') && W(setter) >= 1.3 && R() < 0.35,
     sync = !quick && qual === 3 && setter.role === 'S' && hasTech(setter, 'sync') && R() < 0.25;
+  if (freak) techFire(m, spiker, 'freak');
+  if (slide) techFire(m, spiker, 'slide');
+  if (sync) techFire(m, setter, 'sync');
   const DF = defT.P.filter(p => p.role !== 'S' && front(ds, p)),
     B0 = DF.find(p => p.role === 'MB') || DF[0] || defT.P.find(p => front(ds, p)) || defT.mb; // a front-row setter before anyone from the back
   const bad = sq2 === 'bad';

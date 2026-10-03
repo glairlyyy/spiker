@@ -157,6 +157,8 @@ function formBlock(c, x) {
   // techniques that beat (or read) the block
   const readB = quick && hasTech(b0, 'readblk') && W(b0) >= 1.1,
     pipeCombo = back && hasTech(setter, 'pipecombo') && (m.pts[0] + m.pts[1] + n) % 2 === 0; // planned play, not every time
+  if (readB) techFire(m, b0, 'readblk');
+  if (pipeCombo) techFire(m, setter, 'pipecombo');
   if (freak) cov *= readB ? 0.6 : 0.25;
   else if (readB) cov += 0.3;
   if (slide) cov *= 0.6;

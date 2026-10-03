@@ -122,6 +122,14 @@ The match screen takes a fixture: `navigate('match', { a, b, round, back, onFini
   don't own, one roll (`LEARN`: by doing a stat-line threshold, else by facing an opponent who played and has it; chance × wit ×
   the match gap factor, ≤ 0.5), at most one per match. Techniques still fire by stats via `hasTech`. Scouting shows them
   (`Skills.techs`; dossier roster `techs`, hidden until scouted).
+- Technique switches (spec §9.10, T-178/T-179): `knowsTech(p, id)` = owns it; `hasTech` = knows it and not `techHeld` —
+  held = in `CM.off[p.id]` (a Set) while the match runs. `newMatch` seeds `m.off` from each player's `p.techOff` (your
+  career choice, saved on your player; absent = none) and `setTechOff(m, pid, id, off)` flips it mid-match (from the next
+  rally: every technique is checked when its play happens). Every firing site calls `techFire(m, p, id)` →
+  `m.techUse[pid][id] = { n, won, err }` (won / err settled in `end()` from the rally winner and `m.errBy`). No extra
+  draws; a held technique skips its own roll, so nothing off = the same match. `SKILLS[id].trade = { up, down? }` holds
+  the switch row's copy. UI: match rail Tactics tab (`techSection` / `flipTech`, keys T and 1–9, `#tacbtn` badge),
+  Match prep `prepTechRow` peek (`prepTech`), result screen `Held back:` (`resultData.held`).
 - No meta progression: every career starts the same (free agent, every stat at `CAREER.start` = 1, wit `witBase`, `staMax`; no creation points — T-055); challenge modes (`MODES`) are plain options. Modes (T-067): `run.mode.story` (default true, save v9; `MODES.story` / disabled `endless`) — in Story the U21 Final Cup always holds you: `Cup.place` forces you into your faction's first squad (over its weakest same-role player), an Academy member plays the Academy entrant, and a player alone gets the `Cup.crew` entrant (a hired street crew stored as `run.reserve.street`, built on a seeded side stream so main draws don't shift); `Run.lineup(…, forceYou)` makes you start every cup match (injury still benches you); a Story champion is called up (`Cup.calledUp`).
 - UI: `ui/icons.js` draws the active (bolt + type) / passive (aura) skill icons used in the shop, player card and
   encyclopedia; the result screen has a season growth chart from `run.hist`.

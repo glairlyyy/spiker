@@ -32,7 +32,7 @@ evaluations, U21 Cup, Story mode, growth, relationships), UI redesign §9–§10
 
 Owner request 2026-10-04 (spec §9.10 technique switches): T-178 → T-179. Goldens unchanged (nothing off = same match).
 
-### [ ] T-178: Technique switches in the engine, with use counts
+### [x] T-178: Technique switches in the engine, with use counts
 Spec: §9.10          Goldens: unchanged          Save: no change (`run.techOff` via RUN_DEFAULTS)
 Goal: a match can hold back named techniques per player from the next rally, and counts how each technique did.
 Files: js/engine/skills.js (hasTech), js/engine/match.js (match state: `off`, `techUse`), the technique hook sites found by `hasTech(` in js/engine/serve.js, rally*.js, js/data/skills.js (`trade` field), js/career/run.js (RUN_DEFAULTS `techOff`), js/ui/career-match.js (pass `run.techOff` into the fixture), tests/engine.test.js
@@ -48,9 +48,9 @@ Accept:
 - A seeded match with `killer` off for a serving player: no killer serve fires (techUse n = 0); same seed, killer on: n > 0.
 - techUse counts appear for a 1-set headless match; tests green.
 QA: none
-Result:
+Result: `knowsTech` / `hasTech` (= knows and not held) / `techHeld` / `techFire` / `setTechOff` in engine/skills.js; `m.off` (from `p.techOff`), `m.techUse`, `m.techRally` (settled in `end()`); fire counts at every technique site (serve, rally-phases, rally-block, rally-defense, rally); `SKILLS.trade` for all 14 (downs: killer, delay). Deviation: the career off-list lives on your player (`you.techOff`, saved with the player) instead of `run.techOff` — newMatch reads it for any fixture, no per-fixture plumbing. New test (killer off → 0 fires; mid-match flip); goldens unchanged; 102 quick tests + lint green.
 
-### [ ] T-179: Technique switches UI (match prep, Tactics tab, result)
+### [x] T-179: Technique switches UI (match prep, Tactics tab, result)
 Spec: §9.10 §9.9          Goldens: unchanged          Save: no change
 Goal: the player can see each technique's trade-off and this-match record and switch it off or on, before and during the match.
 Files: js/ui/match-screen.js (rail Tactics tab section, control-bar badge, keys T and 1–9, commentary line), js/ui/career-match.js (prep row + peek, Reset, save `run.techOff`), js/ui/match-result.js (`Held back:` line), js/ui/icons.js (pack icons if missing), css/style.css (`.tsw` rows)
@@ -65,7 +65,7 @@ Accept:
 - Career eval with a player owning Killer Jump Serve: prep peek switches it off → in the match the row shows off, badge `1 off`, no killer serves; switch back on mid-match → next rally it can fire.
 - Rows line up (switch column x identical across rows); word budget of the Tactics tab ≤ 60 at 3 techniques.
 QA: career run → match prep peek, match Tactics tab (screenshots on and off), result screen.
-Result:
+Result: rail Tactics tab opens with Techniques (pack icon, name + SKILL_HOW hover, gain / cost, `used · won · faults`, switch column), one group per player in exhibitions; `Tactics n off T` badge; keys T, 1–9; commentary line on each flip; match prep `Techniques n on · m off ›` peek with Reset; result `Held back:`. QA: Monster game — key 1 holds back Freak Quick, badge `1 off`, log line, no errors; career — prep row `5 on · 1 off`, choice survives save/load. Monster teams own every technique, so their tab is long (~160 rows).
 
 Owner request 2026-10-04 (spec §10.7a, design system TitleScreen card): T-176 → T-177. UI only; goldens unchanged.
 

@@ -13,6 +13,7 @@ function playRally(m) {
   m.hero = null;
   m.busy = {};
   m.ctx = null; // attack context for the element gauge
+  m.techRally = [];
   m.errBy = null; // who made the error that ended the rally (chatter)
   m.hypeRally = 0; // at most one staged scene per rally
   m.kbScene = 0; // a kill-block scene played this rally (chatter skips the blocker's line)
@@ -81,6 +82,7 @@ function playRally(m) {
     drive = !jumpSrv && hasTech(server, 'drive') && R() < 0.5,
     targeted = hasTech(server, 'target') && R() < 0.3;
   if (killer) sq *= 1.1;
+  if (killer || drive || targeted) techFire(m, server, killer ? 'killer' : drive ? 'drive' : 'target');
   dr(m, server, jumpSrv ? 0.03 : 0.015);
   if (jumpSrv) setBusy(m, server, 2); // lands deep behind the end line: still running in on the first return
   if (sType !== 'float') {
@@ -186,6 +188,7 @@ function playRally(m) {
   const d0 = dist(m.pos[rc.id], tx, tz);
   // Rolling Receive: dive-and-roll takes most of the sting out of a long run
   const rollR = hasTech(rc, 'roll') && d0 > 0.5;
+  if (rollR) techFire(m, rc, 'roll');
   let rs = Formula.receiveScore(rc, RT, d0) - (drive ? 14 : 0);
   if (steal && steal.crash) rs *= EGO.crash;
   if (rollR) rs += Math.max(0, d0 - 0.1) * 45 * (1.3 - rc.speed / 100) * 0.5;

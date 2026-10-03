@@ -963,3 +963,38 @@ test('rel on court: Cup.fixture builds the flags for both squads and passes them
   assert(hot >= 0.1 && hot <= 0.5 && /fired up/i.test(hotLog), `proud: fired up (${hot}: ${hotLog})`);
   assert(cold >= -0.4 && cold <= 0 && /rattled/.test(coldLog), `steady: rattled (${cold}: ${coldLog})`);
 });
+
+test('engine: technique switches — a held-back technique never fires; techUse counts uses, wins and faults (T-178)', () => {
+  const count = off => {
+    const g = load(31),
+      [a, b] = g.mkMonsterTeams();
+    for (const p of [...g.squadOf(a), ...g.squadOf(b)]) {
+      p.power = Math.max(p.power, 95); // everyone can jump-serve the Killer
+      if (off) p.techOff = ['killer'];
+    }
+    const m = g.simMatch(a, b);
+    let n = 0,
+      won = 0,
+      err = 0;
+    for (const u of Object.values(m.techUse)) if (u.killer) ((n += u.killer.n), (won += u.killer.won), (err += u.killer.err));
+    assert(won <= n && err <= n, 'won and faults never exceed uses');
+    return { n, m, g };
+  };
+  const on = count(false),
+    off = count(true);
+  assert(on.n > 0, `Killer Jump Serve fired with it on (${on.n})`);
+  eq(off.n, 0, 'never with it held back');
+  // the switch flips mid-match from the next rally
+  const g = on.g,
+    [a, b] = g.mkMonsterTeams(),
+    m = g.newMatch(a, b, false),
+    p = a.P[0];
+  p.wit = 2;
+  p.power = 90; // owns Drive Serve
+  g.playRally(m); // the match is running (CM = m)
+  eq(g.hasTech(p, 'drive'), true, 'on by default');
+  g.setTechOff(m, p.id, 'drive', true);
+  eq(g.hasTech(p, 'drive'), false, 'held back while the match runs');
+  g.setTechOff(m, p.id, 'drive', false);
+  eq(g.hasTech(p, 'drive'), true, 'back on');
+});

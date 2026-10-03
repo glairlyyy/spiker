@@ -437,7 +437,7 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
   Tactics. ⚙ settings = labelled segmented controls (every option visible), opening upward from the bar. Results card
   action row: Continue/Back + Box score; playback disabled.
 - §9.10 Technique switches (owner, 2026-10-04; design system TechSwitch card): you can hold back a technique you own,
-  because some trade something for their gain (e.g. Killer Jump Serve: +10% pace, +3% faults).
+  because some trade something for their gain (e.g. Killer Jump Serve: +10% pace, +3% faults; Delayed Spike §2.9a: may hang too long).
   - **Rule**: switch any time, no cost; it applies from the **next rally** (same as tactics). Career: only your player's
     techniques; exhibition / Monster game: every player on your side(s). A switched-off technique simply never fires
     (`hasTech` false for that player in that match). Nothing switched off = the match plays exactly as today (goldens).
@@ -450,7 +450,7 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
     Full SKILL_HOW text on the name's hover. Exhibition: rows grouped under each player's name.
   - **Feedback**: flipping adds a commentary line (`{name} holds back the {tech}` / `goes back to the {tech}`); the
     result screen lists `Held back: …` under your line.
-  - **Memory**: career keeps your off-list between matches (`run.techOff`, RUN_DEFAULTS, no version bump) and match
+  - **Memory**: career keeps your off-list between matches (`you.techOff` on your player — saved with it, no version bump) and match
     prep starts from it with `Reset`; exhibition switches last one match. Passive skills (Soft Hands…) are not listed.
 
 ## 10. Redesign [built through T-129; §10.1a, rail collapse and no-list locked, not built]

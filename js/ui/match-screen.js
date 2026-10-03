@@ -101,7 +101,7 @@ function startMatch(fx) {
         <div class="seg" role="group" aria-label="Speed">${SPEEDS.map(s => `<button class="btn ${s === 1 ? 'on' : ''}" data-s="${s}" onclick="setSpeed(${s})">${s}×</button>`).join('')}</div>
         <button class="btn" onclick="skipMatch()" ${tip('Skip to the final result')}>Skip ⏭</button></div>
       <div class="cg team"><span class="cgl">${mine == null ? 'Teams' : 'Your team'}</span>${sides.map(i => timeoutButton(m.t[i], i)).join('')}
-        <button class="btn" onclick="railOpen('tac')">Tactics</button></div>
+        <button class="btn" id="tacbtn" onclick="railOpen('tac')">Tactics <kbd>T</kbd></button></div>
       <div class="cg view"><span class="cgl">View</span><button class="btn" id="cam3bar" onclick="toggleCam3D()" ${tip('Courtside · Broadcast · Follow · POV')}>${cam3Text()}</button>
         <button class="btn" onclick="toggleFullscreen()" ${tip('Fullscreen court (F)')} aria-label="Fullscreen">⛶</button>
         <button class="btn" id="railbtn" onclick="railOpen()">Commentary · Box score <kbd>B</kbd></button>
@@ -112,7 +112,7 @@ function startMatch(fx) {
       .map(([k, n]) => `<button class="btn" data-rt="${k}" onclick="railOpen('${k}')">${n}</button>`)
       .join('')}</div><button class="btn x" onclick="railOpen(null)" aria-label="Close">✕</button></div>
       <div class="rbody"><div class="rt" data-rt="log"><ol class="log" id="log"></ol></div><div class="rt" data-rt="box"><div id="box"></div></div>
-      <div class="rt" data-rt="tac">${sides.map(i => `<div class="trow2"><span class="cgl">Tactic</span>${tacticPicker(m.t[i], i)}</div><div class="trow2"><span class="cgl">Defence</span>${defencePicker(m.t[i], i)}</div>`).join('')}</div></div></aside>
+      <div class="rt" data-rt="tac"><div id="techsw"></div>${sides.map(i => `<div class="trow2"><span class="cgl">Tactic</span>${tacticPicker(m.t[i], i)}</div><div class="trow2"><span class="cgl">Defence</span>${defencePicker(m.t[i], i)}</div>`).join('')}</div></div></aside>
   </section>`;
   audioInit();
   if (R3D) R3D.unbind();
@@ -179,7 +179,10 @@ function startMatch(fx) {
     speed: 1,
     paused: false,
     done: false,
-    ptFlash: null
+    ptFlash: null,
+    techPs: techPlayers(m, fx, sides), // technique switches (spec §9.10): whose techniques you control
+    techCareer: !!you, // career: your choice is kept on your player (p.techOff) for the next match
+    techKeys: []
   };
   board(snap(m));
   boxScore();
@@ -293,6 +296,8 @@ addEventListener('keydown', e => {
   if (!A || e.target.closest('input,select,textarea,button')) return;
   if (e.key === 'f' || e.key === 'F') toggleFullscreen();
   else if (e.key === 'b' || e.key === 'B') railOpen();
+  else if (e.key === 't' || e.key === 'T') railOpen('tac');
+  else if (/^[1-9]$/.test(e.key) && A.railTab === 'tac' && !$('#mrail').hidden) flipTech(+e.key - 1);
   else if (e.key === 'Escape') {
     $('#stage')?.classList.remove('fake-fs');
     railOpen(null);
@@ -364,6 +369,67 @@ function showTac(i) {
   if (s && A) s.textContent = A.m.tacMode[i] === 'cap' ? `→ ${TACTICS[A.m.tac[i]].short}` : '';
   if (d && A) d.textContent = A.m.dsetMode[i] === 'cap' ? `→ ${DEFSETS[A.m.dset[i]].short}` : '';
 }
+/* ---------- technique switches (spec §9.10) ---------- */
+const TECH_ICON = { Attack: '⚔', Serve: '◎', Defense: '⛉', Setter: '✋' };
+/** Techniques the player owns (switched on or off), in SKILLS order. */
+const ownTechs = p => Object.keys(SKILLS).filter(id => SKILLS[id].tech && knowsTech(p, id));
+/** Career: your player; otherwise every player of the side(s) you run. */
+function techPlayers(m, fx, sides) {
+  const you = fx.onFinish && typeof RUN !== 'undefined' && RUN ? Run.you(RUN) : null,
+    ps = sides.flatMap(i => squadOf(m.t[i]));
+  return you ? ps.filter(p => p.id === you.id) : ps;
+}
+/**
+ * One switch row: pack icon, name (the full rule on hover), gain in good / cost in bad, this match's record, the switch.
+ * o = { off, use (that player's techUse), key (1–9 hint), act (onclick) }.
+ */
+function techRow(id, o) {
+  const s = SKILLS[id],
+    t = s.trade || {},
+    u = o.use && o.use[id];
+  return `<div class="tsw ${o.off ? 'off' : ''}"><span class="tpk" ${tip(s.tech)}>${TECH_ICON[s.tech] || '•'}</span><span class="tnm"><b ${tip(SKILL_HOW[id] || s.desc)}>${o.key != null && o.key < 9 ? `<kbd>${o.key + 1}</kbd> ` : ''}${esc(s.name)}</b><span class="small"><span class="good">${esc(t.up || s.desc)}</span>${t.down ? ` · <span class="bad">${esc(t.down)}</span>` : ''}</span>${
+    u ? `<span class="small mute">used ${u.n} · won ${u.won}${s.tech === 'Serve' ? ` · faults ${u.err}` : ''}</span>` : ''
+  }</span><button class="tswb ${o.off ? '' : 'on'}" role="switch" aria-checked="${!o.off}" aria-label="${esc(s.name)}" onclick="${o.act}" ${tip(o.off ? 'Use it again' : 'Hold it back')}><i></i></button></div>`;
+}
+/** The Techniques section of the rail's Tactics tab (rebuilds A.techKeys: the order of the 1–9 keys). */
+function techSection() {
+  const m = A.m,
+    ps = A.techPs.filter(p => ownTechs(p).length);
+  A.techKeys = [];
+  if (!ps.length) return '';
+  const body = ps
+    .map(
+      p =>
+        `${ps.length > 1 ? `<div class="tswp">${esc(p.name)}</div>` : ''}${ownTechs(p)
+          .map(id => {
+            const i = A.techKeys.push([p, id]) - 1;
+            return techRow(id, { off: !!(m.off[p.id] && m.off[p.id].has(id)), use: m.techUse[p.id], key: i, act: `flipTech(${i})` });
+          })
+          .join('')}`
+    )
+    .join('');
+  return `<div class="lab" ${tip('A switch applies from the next rally')}>Techniques${ps.length === 1 ? ` · ${esc(ps[0].name)}` : ''}</div>${body}`;
+}
+/** Redraw the switches and the Tactics button's "n off" badge. */
+function techSync() {
+  if (!A || !A.techPs) return;
+  const el = $('#techsw'),
+    b = $('#tacbtn');
+  if (el) el.innerHTML = techSection();
+  const n = A.techPs.reduce((s, p) => s + ownTechs(p).filter(id => A.m.off[p.id] && A.m.off[p.id].has(id)).length, 0);
+  if (b) b.innerHTML = `Tactics${n ? ` <span class="tbadge">${n} off</span>` : ''} <kbd>T</kbd>`;
+}
+/** Flip switch i (A.techKeys order) from the next rally; career keeps it on your player for the next match. */
+function flipTech(i) {
+  if (!A || A.done || !A.techKeys[i]) return;
+  const [p, id] = A.techKeys[i],
+    m = A.m,
+    off = !(m.off[p.id] && m.off[p.id].has(id));
+  setTechOff(m, p.id, id, off);
+  if (A.techCareer) p.techOff = [...m.off[p.id]];
+  logLine(`${p.name} ${off ? 'holds back the' : 'goes back to the'} ${SKILLS[id].name}`, 'set');
+  techSync();
+}
 /** Timeout buttons: disabled once used or queued. */
 function updTO() {
   if (!A) return;
@@ -401,6 +467,7 @@ function skipMatch() {
 function board(s) {
   if (!$('#p0')) return;
   updTO();
+  techSync();
   $('#p0').textContent = s.pts[0];
   $('#p1').textContent = s.pts[1];
   if ($('#fs0')) {

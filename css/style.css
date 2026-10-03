@@ -1529,3 +1529,82 @@ body:has(.match) .top {
 #box th.vh span {
   letter-spacing: 0.06em;
 }
+/* Technique switches (spec §9.10, T-180): one row per technique, switch in a fixed right column */
+.tsw {
+  display: grid;
+  grid-template-columns: 24px 1fr 48px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.tsw .tpk {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--surf2);
+  font-size: 13px;
+}
+.tsw .tnm {
+  display: grid;
+  min-width: 0;
+}
+.tsw .tnm b {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tsw .tnm kbd {
+  font-size: 12px;
+}
+.tsw.off .tpk,
+.tsw.off .tnm {
+  opacity: 0.45;
+}
+.tswb {
+  justify-self: end;
+  position: relative;
+  width: 44px;
+  height: 24px;
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--surf2);
+  cursor: pointer;
+}
+.tswb i {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--mute);
+  transition: left 0.15s;
+}
+.tswb.on {
+  background: var(--sel-bg);
+  border-color: var(--sel-line);
+}
+.tswb.on i {
+  left: 22px;
+  background: var(--cyan);
+}
+.tswp {
+  margin-top: 8px;
+  font-weight: 600;
+}
+.tbadge {
+  margin-left: 4px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--warn);
+  color: var(--on-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+.mrail #techsw:not(:empty) {
+  margin-bottom: 16px;
+}
