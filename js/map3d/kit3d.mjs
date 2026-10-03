@@ -72,7 +72,9 @@ const shape = name => {
               part(new THREE.BoxGeometry(1, 0.55, 1).translate(0, 0.275, 0), '#ffffff'),
               part(new THREE.BoxGeometry(0.72, 0.45, 0.62).translate(0, 0.775, -0.18), '#d8d8d8')
             ])
-          : part(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), '#ffffff');
+          : name === 'cyl'
+            ? part(new THREE.CylinderGeometry(0.5, 0.5, 1, 12).translate(0, 0.5, 0), '#ffffff') // tanks and chimneys
+            : part(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), '#ffffff');
     SHAPES.set(name, g);
   }
   return SHAPES.get(name);
@@ -87,6 +89,14 @@ export const KIT = {
   block: filler('box', [1, 5, 1], ['#b9b3a4', '#a8a293', '#c4b48a'], 0.7),
   tower: filler('box', [0.8, 9, 0.8], ['#9aa3ad', '#8a94a0', '#c9b27a'], 1),
   shop: filler('box', [1.1, 3.4, 1], ['#cdb98d', '#d0a35a', '#b9b3a4'], 0.3),
+  // Wei's civic core: wide office towers; the Ring: mid-rise apartment blocks (spec §4.19a)
+  office: filler('box', [1.4, 10, 1.2], ['#7f97ad', '#8fa3b5', '#a7b4bf'], 1),
+  apartment: filler('box', [1.5, 6, 1.1], ['#c9bfae', '#bfb5a2', '#d4c7b0', '#b3aa9a'], 0.4),
+  // the North works: power plant halls, tanks, chimneys, the bus depot
+  plant: filler('box', [2.2, 5.5, 1.6], ['#8e9095', '#7d8087'], 0),
+  depot: filler('gable', [2.4, 4.2, 1.4], ['#7c868f', '#6f7a83'], 0),
+  tank: filler('cyl', [1.3, 4.5, 1.3], ['#d6d6d0', '#c4c8c8', '#a9b0b4'], 0),
+  stack: filler('cyl', [0.45, 16, 0.45], ['#9c8f85', '#b35a4a'], 0),
   // Wu: fishing villages (weathered wood, blue accents)
   hut: filler('gable', [1, 2.7, 1], ['#b99a6b', '#a68a5e', '#c9ad7c']),
   shed: filler('gable', [1.2, 2.2, 0.9], ['#8d7b62', '#7b6c58', '#9aa6ad']),

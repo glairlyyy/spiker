@@ -3,7 +3,7 @@
 // come from kit3d.mjs. Display only: no rules, no randoms.
 //   createTown(scene, heightAt) → { sync(model), dispose() }
 // The layout is rebuilt only when its JSON changes; the fog dimming is recoloured when the fog changes.
-// Wealth (a lot's `wealth`, 0–1) tints each instance and, with `h`, stretches its height. Draw calls: 1 (roads) + 1 (overpass) + 3 (box / gable / stepped fillers) + 1 (landmarks + walls).
+// Wealth (a lot's `wealth`, 0–1) tints each instance and, with `h`, stretches its height. Draw calls: 1 (roads) + 1 (overpass) + 4 (box / gable / stepped / cylinder fillers) + 1 (landmarks + walls).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAP_M, smooth, fogFactor } from './geo3d.mjs';
@@ -21,8 +21,9 @@ const ROAD = {
   PLANK = 0.9, // boardwalk plank length (m): planks alternate two tones
   FOOT = 1.2, // buildings are sunk this far into the ground (m)
   FOOTPRINT = 1.2, // a lot's side in metres = size (map units) × MAP_M × this
-  DECK = { up: 7, w: 5.4, thick: 0.9, rail: 0.8, ramp: 28, every: 20, step: 2 }, // the overpass (m)
   WALL = { h: 2.4, t: 0.6, color: '#d9cdb8' }; // the Gloria wall (m)
+/** The overpass (m); life3d drives its vans along the same deck. */
+export const DECK = { up: 7, w: 5.4, thick: 0.9, rail: 0.8, ramp: 28, every: 20, step: 2 };
 
 const unit = i => (Math.imul(i + 1, 2654435761) >>> 0) / 4294967296; // a fixed hash in 0..1
 const toM = ([x, y]) => [x * MAP_M, y * MAP_M];

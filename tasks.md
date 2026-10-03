@@ -31,7 +31,7 @@ evaluations, U21 Cup, Story mode, growth, relationships), UI redesign §9–§10
 ## Now
 
 Owner request 2026-10-04 (map and facility revamp, spec §4.18d–e, §4.19a): T-181 → T-183 built by the spec chat;
-T-184 → T-186 wait for the owner's go on the §4.19a district plan.
+T-184 → T-186 built by the spec chat on the owner's go.
 
 ### [x] T-181: A real airport
 Spec: §4.18d          Goldens: unchanged          Save: no change
@@ -51,28 +51,28 @@ Goal: a fixed-level gym on the Academy ring that trains all five stats a little.
 Files: js/data/city.js (SPOTS.acaGym, road, LANDMARK), js/data/career.js (TRAININGS.all, TRAINK filter), js/career/training.js (fixed `lv`, `more` rows), js/career/city.js (day label), js/ui/career-map.js (all rows; per-stat cap line), js/ui/career-hub.js (not a key-stat suggestion), tests/career.test.js
 Result: Power/Defense/Speed/Jump 2, Wit 0.025, 15 stamina; facility always Lv 1 (tip: fixed); panel lists all five with EXP ratings; not in TRAINK (no teammates, NPC floor unchanged → goldens unchanged).
 
-### [ ] T-184: District plan in data — districts with jobs, homes where they belong
+### [x] T-184: District plan in data — districts with jobs, homes where they belong
 Spec: §4.19a          Goldens: unchanged          Save: no change (HOME_AT moves only)
 Goal: the §4.19a districts exist as DISTRICTS entries with their kinds; the four other homes move (condo → downtown by the civic core, dorm → the Ring by the training district; abandoned gym and highland room stay).
 Files: js/data/city.js (DISTRICTS, HOME_AT, ROADS nodes / edges for new homes), js/map3d/kit3d.mjs (new filler kinds: office, warehouse yard, plant, depot, net shed), tests/map.test.js (lot counts)
 Do not: change places, HQs, venues or borders; exceed MapModel.maxLots; draw randoms.
 Accept: every district of §4.19a has lots of its kinds; homes in their regions; map tests green. QA: full-island screenshot.
-Result:
+Result: §4.19a districts in DISTRICTS (wei-civic tall offices, wei-works plant / tanks / chimneys / depot, wei-ring-west / south / east apartments, harbor containers / tanks / fish market); condo by the civic core off hq0, dorm by the training district (old condo node kept as junction jWc; jWk road to the works); new fillers office, apartment, plant, depot, tank, stack (+1 cylinder shape → +1 draw call); ~960 lots (Wei ~530). QA: island and close-up screenshots.
 
-### [ ] T-185: Ground use — fields, terraces, yards, quays, parks
+### [x] T-185: Ground use — fields, terraces, yards, quays, parks
 Spec: §4.19a          Goldens: unchanged          Save: no change
 Goal: the empty land between towns reads as farmland, scrub or industry: flat ground patches (polygons in data, vertex colours or one decal mesh), no lots.
 Files: js/data/city.js (GROUND list), js/career/mapmodel.js (`land.ground`), js/map3d/map3d.mjs or town3d.mjs (draw), tests/map3d.test.js
 Accept: Shu villages ringed by terraces, Wu town by yards, the harbor by quays, a park per Ring block; ≤ 1 extra draw call. QA: full-island screenshot.
-Result:
+Result: GROUND (18 patches: Shu terraces / paddies ringing the villages, reservoir lake, quarry; Wu yards, quays, fields; Wei parks, works yard, market gardens; Academy pitch; Outlaws scrapyard) painted into the terrain colours (contour bands for terraces, a flattened lake) — 0 extra draw calls; lots stay off kept kinds (MapModel.kept). Files deviation: drawn in map3d.mjs buildTerrain; test in map.test.js.
 
-### [ ] T-186: City life — buses, vans, boats, a plane
+### [x] T-186: City life — buses, vans, boats, a plane
 Spec: §4.19a          Goldens: unchanged          Save: no change
 Goal: traffic shows how the island works: buses on main roads (airport ↔ Academy ↔ downtown ↔ harbor), vans harbor → overpass → Wei, fishing boats offshore, a plane on the runway.
 Files: js/career/mapmodel.js (`life.traffic` routes from ROADS, hashes only), js/map3d/life3d.mjs (one InstancedMesh per vehicle kind, within CAP), tests/map3d.test.js
 Do not: draw randoms; add per-frame allocations.
 Accept: vehicles move along their routes; frame time unchanged within noise. QA: map screenshot + perf note.
-Result:
+Result: TRAFFIC data → MapModel.traffic() → life3d: 4 buses, 4 vans (up the overpass deck via town3d's exported DECK), 4 boats, a plane taking off every 45 s; +4 instanced draw calls, 13 instances. Deviation: test in map.test.js (data side); QA screenshots show van on the deck, buses, the plane rolling.
 
 Owner request 2026-10-04 (spec §9.10 technique switches): T-178 → T-179. Goldens unchanged (nothing off = same match).
 

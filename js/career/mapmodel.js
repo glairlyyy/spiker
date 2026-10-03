@@ -31,6 +31,12 @@ const MapModel = {
       roads: ROADS.edges.map(([a, b, kind]) => ({ kind, pts: [ROADS.nodes[a].slice(), ROADS.nodes[b].slice()] })),
       dunes: CITY.dunes,
       districts: DISTRICTS.map(d => ({ id: d.id, region: d.region, style: d.style, poly: MapModel.districtPoly(d) })),
+      ground: GROUND.map(q => ({
+        id: q.id,
+        kind: q.kind,
+        poly: MapModel.districtPoly(q),
+        hole: q.poly.r0 ? MapModel.districtPoly({ poly: { ...q.poly, r: q.poly.r0 } }) : null
+      })),
       lots: MapModel.lots(run),
       landmarks: MapModel.landmarks(run)
     };
@@ -43,6 +49,13 @@ const MapModel = {
     { id: 'ritual', at: CITY.ritual, kind: 'ritual', region: 'open' }, // the old ritual ground: no pin, no label
     { id: 'airport', at: CITY.airport, kind: 'airport', region: 'wu', rot: AIRPORT.yaw } // on a fixed heading (spec §4.18d)
   ],
+  /** Map point p on ground no building stands on (GROUND_KEEP: fields, terraces, parks, water, the quarry)? */
+  kept: p =>
+    GROUND.some(q => {
+      if (!GROUND_KEEP.includes(q.kind)) return false;
+      const d = Math.hypot(p[0] - q.poly.x, p[1] - q.poly.y);
+      return d <= q.poly.r && !(q.poly.r0 && d < q.poly.r0);
+    }),
   /** Map point p on the airport's footprint (AIRPORT.box: u along the shore, v seaward, from the terminal)? */
   inAirport(p) {
     const [u0, v0, u1, v1] = AIRPORT.box,
@@ -89,7 +102,7 @@ const MapModel = {
    * Settlement lots (spec §4.18, §4.19): [{ at, rot, size, style, kind, wealth, h, district }]. Each DISTRICT is filled with a grid of lots
    * (spacing `gap`, rotated to the road nearest its middle, a hash of the slot vs `density`), earlier districts first. A lot never
    * stands in the water, in another region, on the sand (beach districts: only on it), within a lot's width of a road (the overpass is
-   * elevated: lots may stand under it), within `placeClear` of a place, on the airport (inAirport), or on another lot. Outside the districts a road-side row
+   * elevated: lots may stand under it), within `placeClear` of a place, on the airport (inAirport), on kept ground (kept), or on another lot. Outside the districts a road-side row
    * (every SETTLE gap, both sides) is built at 0.4 × density. `wealth` (0–1, MapModel.wealth) scales a lot's side (× 0.7–1.3)
    * and thins the grid (rich = sparser); `h` (0–1) is the height factor: = wealth in downtown, wealth × 0.4 elsewhere.
    * Deterministic: fixed data + string hashes (hstr), no randoms. Cached per home spot (the only run-dependent input).
@@ -120,6 +133,7 @@ const MapModel = {
         places.every(q => Math.hypot(q[0] - p[0], q[1] - p[1]) >= MapModel.placeClear) &&
         venues.every(v => Math.hypot(v.at[0] - p[0], v.at[1] - p[1]) >= v.clear) &&
         !MapModel.inAirport(p) &&
+        !MapModel.kept(p) &&
         lots.every(l => Math.hypot(l.at[0] - p[0], l.at[1] - p[1]) >= (l.size + size) * 0.55),
       add = (p, rot, size, d, id, w) => {
         lots.push({
@@ -129,7 +143,7 @@ const MapModel = {
           style: d.style,
           kind: d.kinds[Math.floor(hstr(`${id}|k`) * d.kinds.length)],
           wealth: Math.round(w * 100) / 100,
-          h: Math.round((d.id === 'wei-downtown' ? w : w * 0.4) * 100) / 100,
+          h: Math.round((d.tall ? w : w * 0.4) * 100) / 100,
           district: d.district || d.id
         });
       };
@@ -314,8 +328,39 @@ const MapModel = {
       mates,
       crews,
       battle: c ? { at: c.at, a: c.a, b: c.b, colors: [REGIONS[c.a].color, REGIONS[c.b].color] } : null,
-      patrols: MapModel.patrols(run)
+      patrols: MapModel.patrols(run),
+      traffic: MapModel.traffic()
     };
+  },
+  /**
+   * City life (spec §4.19a, TRAFFIC; static): lines as closed loops out and back, pts [x, y, over] (over = 1 where the leg to the next
+   * point is the overpass); boats { id, at, r, n }; the plane's take-off { from, lift, to, every } (map points on the runway's line).
+   */
+  traffic() {
+    if (MapModel.trafficCache) return MapModel.trafficCache;
+    const N = ROADS.nodes,
+      kind = (a, b) => (ROADS.edges.find(([u, v]) => (u === a && v === b) || (u === b && v === a)) || [])[2],
+      A = CITY.airport,
+      R = AIRPORT.runway,
+      on = u => {
+        const c = Math.cos(AIRPORT.yaw),
+          sn = Math.sin(AIRPORT.yaw);
+        return [Math.round((A[0] + u * c + R.v * sn) * 10) / 10, Math.round((A[1] - u * sn + R.v * c) * 10) / 10];
+      };
+    return (MapModel.trafficCache = {
+      lines: TRAFFIC.lines.map(l => {
+        const ids = [...l.nodes, ...l.nodes.slice(0, -1).reverse()];
+        return {
+          id: l.id,
+          kind: l.kind,
+          n: l.n,
+          speed: l.speed,
+          pts: ids.map((id, i) => [...N[id], i + 1 < ids.length && kind(id, ids[i + 1]) === 'overpass' ? 1 : 0])
+        };
+      }),
+      boats: TRAFFIC.boats.map(b => ({ id: b.id, at: [b.x, b.y], r: b.r, n: b.n })),
+      plane: { from: on(R.from), lift: on(R.lift), to: on(R.to), every: TRAFFIC.plane.every }
+    });
   },
   /**
    * The hex territory (spec §4.27, Hex): { size, tiles: [{ id, at, own, major, color, kind, frontier, p, by, cost, text }], target }

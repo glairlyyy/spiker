@@ -595,8 +595,15 @@ count(), dispose() }`, display only, no game randoms): reads `model.life`; one `
    animated in `tick` (drill hops, walkers looping round a crew's places at 1.2 m/s, the battle crowd shoving, waving flags).
    Mates and known crews are coloured, unscouted crews grey; patrols stand where `life.patrols` puts them,
    facing their `face` point (a seized place shows by its tile colour, no flag). `furn.pulse(t)` pulses the battle tile's outline.
+   Traffic (spec §4.19a): `life.traffic` = `MapModel.traffic()` (static, from `TRAFFIC` in js/data/city.js): lines as closed out-and-back
+   loops of road nodes `[x, y, over]`, boats `{ at, r, n }`, the plane's take-off `{ from, lift, to, every }` on `AIRPORT.runway`. life3d
+   draws one `InstancedMesh` per vehicle kind (bus, van, boat, plane; caps in `VEH`): vehicles keep 1 m right of the line and ride the
+   overpass deck with town3d's exported `DECK` ramp; boats circle at sea level; the plane rolls, climbs and shrinks away once per cycle.
    The town layer is `js/map3d/town3d.mjs` (`createTown(scene, heightAt)` → `{ sync(model), dispose() }`, display only, no randoms):
-   reads only `model.land.roads / lots / landmarks / districts` and `model.fog`. Meshes: one vertex-coloured mesh for all roads (width and
+   reads only `model.land.roads / lots / landmarks / districts` and `model.fog`. Ground use (`model.land.ground`, from `GROUND`: circles or
+   rings in map units) is painted into the terrain's vertex colours by map3d.mjs `buildTerrain` (`GROUND_TINT`: two tones, straight bands at a
+   hashed angle or contour bands by height for terraces; water patches are also flattened into a lake); lots stay off `GROUND_KEEP` kinds
+   (`MapModel.kept`). Districts may be `tall` (lots rise with wealth: downtown, the civic core). Meshes: one vertex-coloured mesh for all roads (width and
    colour by kind, slope-following, lifted 0.15 m, polygon offset; the `boardwalk` is planks of two tones 0.3 m up); one for the
    `overpass` (its edges chained into a deck 5.4 m wide, 7 m up with rails and sides, ramped to the ground over 28 m at both ends, T-pillars
    every ~20 m; deck + pillars merged); one `InstancedMesh` per base shape for the filler lots (box, gable, stepped: kind palette + size per

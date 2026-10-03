@@ -232,7 +232,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     no rich pockets but St. Gloria. Wu: even, modest; separate settlements (harbor, Wu town, beach strip, inland
     village) on few mostly-dirt roads, coast road the only main road. Shu poor, scattered; Outlaws poorest; Academy
     middling, uniform.
-- §4.19a The living island — district plan (owner, 2026-10-04) **[proposed: owner review, then T-184–T-186]**.
+- §4.19a The living island — district plan (owner, 2026-10-04) **[built, T-184–T-186]**.
   Every district has a job (what it makes, who lives there); roads carry the flow between them, and the map shows it.
   - **What keeps the island alive** (lore §3–§5): mainland money (sponsors, scouts, tourists) lands at the airport;
     food from Wu's fishing fleet and Shu's terrace farms, sold in Wu town's and Old Town's markets; mainland goods

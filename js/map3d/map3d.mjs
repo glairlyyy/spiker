@@ -10,7 +10,7 @@ import { createAvatar } from './avatar3d.mjs';
 import { createFurniture } from './pins3d.mjs';
 import { createLife } from './life3d.mjs';
 import { createTown } from './town3d.mjs';
-import { MAP_M, toMap, clamp, lerp, smooth, fogFactor, fitView, toWorld, inside, edgeDist, sideDist } from './geo3d.mjs';
+import { MAP_M, toMap, clamp, lerp, smooth, fogFactor, fitView, toWorld, inside, edgeDist, sideDist, hstr } from './geo3d.mjs';
 export { inside, edgeDist, sideDist }; // (the polygon maths live in geo3d.mjs; tests import them from here too)
 
 const CELL = 2, // terrain grid cell (m)
@@ -44,7 +44,22 @@ const DISTRICT_TINT = {
   shacks: '#7e6c58',
   campus: '#86b866',
   terrace: '#8a7b5c',
-  fishing: '#9a9172'
+  fishing: '#9a9172',
+  works: '#7f7f84'
+};
+/**
+ * Ground use (spec §4.19a, model.land.ground): two tones and a band width (m) per kind; `contour` bands follow the height (terraces),
+ * else straight bands at a hashed angle (fields); water is also flattened into a lake.
+ */
+const GROUND_TINT = {
+  terrace: { a: '#7f9a4a', b: '#68843f', band: 1.1, contour: true },
+  paddy: { a: '#79a77c', b: '#5f9470', band: 0.9, contour: true },
+  field: { a: '#b2ab5e', b: '#8fa04e', band: 5 },
+  park: { a: '#4f9a48', b: '#56a24e', band: 9 },
+  yard: { a: '#8d8c86', b: '#85847e', band: 7 },
+  quay: { a: '#a19e95', b: '#98958c', band: 6 },
+  water: { a: '#3f7f95', b: '#3f7f95', band: 9 },
+  quarry: { a: '#b6b0a2', b: '#a29c8e', band: 1.6, contour: true }
 };
 /** The island's height grid and vertex colours (world metres), from the model's land. */
 function buildTerrain(model) {
@@ -62,6 +77,27 @@ function buildTerrain(model) {
     wu = w((L.regions.find(r => r.id === 'wu') || { poly: [] }).poly),
     dunes = L.dunes ? w(L.dunes) : [],
     dist = L.districts ? L.districts.map(d => ({ poly: w(d.poly), tint: DISTRICT_TINT[d.style] })).filter(d => d.tint) : [],
+    grounds = (L.ground || [])
+      .filter(g => GROUND_TINT[g.kind])
+      .map(g => {
+        const poly = w(g.poly),
+          xs = poly.map(p => p[0]),
+          zs = poly.map(p => p[1]),
+          t = GROUND_TINT[g.kind],
+          ang = hstr(`${g.id}|g`) * Math.PI;
+        return {
+          ...t,
+          kind: g.kind,
+          poly,
+          hole: g.hole ? w(g.hole) : null,
+          box: [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)],
+          ca: Math.cos(ang),
+          sa: Math.sin(ang),
+          A: new THREE.Color(t.a),
+          B: new THREE.Color(t.b)
+        };
+      }),
+    lakes = [], // vertex indices in each water patch: flattened after the heights are known
     pos = new Float32Array((nx + 1) * (nz + 1) * 3),
     col = new Float32Array((nx + 1) * (nz + 1) * 3),
     H = new Float32Array((nx + 1) * (nz + 1)),
@@ -109,9 +145,25 @@ function buildTerrain(model) {
         c.lerp(sand, 1 - smooth(1, BEACH, d));
         if (sd > -99) c.lerp(sand, 0.95 * smooth(-3, 2, sd)); // the Wu sand
         for (const q of dist) if (inside(x, z, q.poly)) c.lerp(tintC.set(q.tint), 0.16);
+        for (const q of grounds) {
+          if (x < q.box[0] || z < q.box[1] || x > q.box[2] || z > q.box[3] || !inside(x, z, q.poly) || (q.hole && inside(x, z, q.hole)))
+            continue;
+          const v = q.contour ? h : x * q.ca + z * q.sa;
+          c.lerp(Math.floor(v / q.band) % 2 ? q.B : q.A, 0.75);
+          if (q.kind === 'water') (lakes[grounds.indexOf(q)] = lakes[grounds.indexOf(q)] || []).push(k);
+        }
       }
       col.set([c.r, c.g, c.b], k * 3);
     }
+  // a lake: its patch sinks to just under its lowest shore, so the water reads level on a slope
+  for (const ks of lakes) {
+    if (!ks) continue;
+    const lvl = Math.min(...ks.map(k => H[k])) - 0.4;
+    for (const k of ks) {
+      H[k] = lvl;
+      pos[k * 3 + 1] = lvl;
+    }
+  }
   const idx = new Uint32Array(nx * nz * 6);
   let n = 0;
   for (let j = 0; j < nz; j++)

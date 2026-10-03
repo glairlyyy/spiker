@@ -125,9 +125,9 @@ const ACADEMY = { ring: 1 };
 /**
  * The airport (spec §4.18d): one landmark at the terminal (CITY.airport) on a fixed heading. yaw = the landmark's turn (its
  * +z points seaward, its +x east along the shore); box = its footprint [u0, v0, u1, v1] in map units on those axes (u along
- * the shore, v seaward): lots keep off it. The 3D layout (runway, apron, terminal, tower) is kit3d's `airport`.
+ * the shore, v seaward): lots keep off it. runway = the plane's take-off on those axes (TRAFFIC): rolls from u `from` to `lift`, climbs out to `to`, at v. The 3D layout (runway, apron, terminal, tower) is kit3d's `airport`.
  */
-const AIRPORT = { yaw: -0.133, box: [-150, -22, 30, 46] };
+const AIRPORT = { yaw: -0.133, box: [-150, -22, 30, 46], runway: { from: 14, lift: -100, to: -420, v: 30 } };
 
 // ---- Days, fees and travel (tuning) ----
 /** Days in a training week; every action takes one (+ the trip).*/
@@ -278,7 +278,7 @@ const STREET = { rival: [50, 78], win: [40, 90], loss: 20, fans: 40, sta: 12 };
 /** Scouting a club at its HQ (a day): stamina cost. */
 const SCOUT_STA = 5;
 /** Where you live on the map, by housing. */
-const HOME_AT = { homeless: [600, 115], highland: [180, 330], studio: [484, 532], dorm: [640, 440], condo: [760, 395] };
+const HOME_AT = { homeless: [600, 115], highland: [180, 330], studio: [484, 532], dorm: [660, 400], condo: [676.7, 213.3] };
 
 /**
  * Official venues (spec §4.21): where official matches are played. Landmarks with a pin and a card, always known (no fog).
@@ -371,8 +371,10 @@ const ROADS = {
     hq0: [640, 210],
     'venue:arena': [720, 160],
     hq1: [610, 400],
-    'home:dorm': [640, 440],
-    'home:condo': [760, 395],
+    'home:dorm': [660, 400],
+    'home:condo': [676.7, 213.3],
+    jWc: [760, 395],
+    jWk: [826.7, 113.3],
     'home:homeless': [600, 115],
     jW1: [680, 330],
     jW2: [840, 330],
@@ -451,8 +453,10 @@ const ROADS = {
     ['jWn', 'home:homeless', 'street'],
     ['jW1', 'jWw', 'street'],
     ['jWw', 'noodles', 'street'],
-    ['noodles', 'home:condo', 'street'],
-    ['home:condo', 'jWs', 'street'],
+    ['noodles', 'jWc', 'street'],
+    ['jWc', 'jWs', 'street'],
+    ['hq0', 'home:condo', 'street'],
+    ['venue:arena', 'jWk', 'main'],
     ['jWw', 'home:dorm', 'street'],
     ['jW1', 'jW3', 'street'],
     ['jW3', 'hq6', 'street'],
@@ -466,7 +470,7 @@ const ROADS = {
     ['jW1', 'weiWit', 'street'],
     ['jW1', 'weiJump', 'street'],
     // the Outlaws, under the overpass
-    ['home:condo', 'hq5', 'dirt'],
+    ['jWc', 'hq5', 'dirt'],
     ['jWu1', 'street', 'dirt'],
     ['street', 'hq5', 'dirt'],
     ['hq5', 'cage', 'dirt'],
@@ -509,13 +513,37 @@ const SETTLE = {
  * their ground). poly = a polygon or `{ x, y, r }` (a circle); region = the region the lots must stand in (`CITY` minors and the
  * Academy park count as regions); gap = grid spacing (map units); density = share of the grid that is built (a hash decides);
  * size = a lot's side; kinds = the building kinds mixed;
- * beach = the lots stand only on the sand (all others never do). Ids, not names: old-language names wait for lore §8.
+ * beach = the lots stand only on the sand (all others never do); tall = its lots rise with wealth (downtown, the civic core). Ids, not names: old-language names wait for lore §8.
  */
 const DISTRICTS = [
+  {
+    // the civic core (spec §4.19a): league office, the Gazette, sponsor banks — Wei's money and paperwork
+    id: 'wei-civic',
+    region: 'wei',
+    style: 'city',
+    tall: true,
+    poly: { x: 650, y: 256.7, r: 52 },
+    gap: 9,
+    density: 0.95,
+    size: 6.5,
+    kinds: ['office', 'office', 'tower']
+  },
+  {
+    // the North works: the island's power plant, water tanks and the bus depot on Wei's north coast
+    id: 'wei-works',
+    region: 'wei',
+    style: 'works',
+    poly: { x: 833.3, y: 100, r: 60 },
+    gap: 11,
+    density: 0.85,
+    size: 7,
+    kinds: ['plant', 'tank', 'tank', 'depot', 'stack', 'warehouse']
+  },
   {
     id: 'wei-downtown',
     region: 'wei',
     style: 'city',
+    tall: true,
     poly: { x: 640, y: 225, r: 85 },
     gap: 9,
     density: 0.9,
@@ -574,6 +602,37 @@ const DISTRICTS = [
     kinds: ['dorm', 'house', 'shop', 'dorm']
   },
   {
+    // the Ring: where Wei's people live — mid-rise blocks with a corner shop (pocket parks: GROUND)
+    id: 'wei-ring-west',
+    region: 'wei',
+    style: 'city',
+    poly: { x: 580, y: 333.3, r: 70 },
+    gap: 10,
+    density: 0.7,
+    size: 6,
+    kinds: ['apartment', 'apartment', 'block', 'shop']
+  },
+  {
+    id: 'wei-ring-south',
+    region: 'wei',
+    style: 'city',
+    poly: { x: 740, y: 426.7, r: 80 },
+    gap: 10,
+    density: 0.7,
+    size: 6,
+    kinds: ['apartment', 'apartment', 'block', 'shop']
+  },
+  {
+    id: 'wei-ring-east',
+    region: 'wei',
+    style: 'city',
+    poly: { x: 833.3, y: 220, r: 100 },
+    gap: 10,
+    density: 0.7,
+    size: 6,
+    kinds: ['apartment', 'apartment', 'block', 'shop']
+  },
+  {
     id: 'shu-village-west',
     region: 'shu',
     style: 'terrace',
@@ -621,7 +680,7 @@ const DISTRICTS = [
     gap: 9,
     density: 0.8,
     size: 5,
-    kinds: ['warehouse', 'warehouse', 'shed', 'boathouse', 'hut']
+    kinds: ['warehouse', 'warehouse', 'container', 'tank', 'market', 'shed', 'boathouse', 'hut'] // fish quay and market, cargo quay
   },
   {
     id: 'wu-village',
@@ -676,6 +735,57 @@ const DISTRICTS = [
     kinds: ['block', 'block', 'tower', 'shop', 'workshop']
   }
 ];
+/**
+ * Ground use (spec §4.19a): flat patches the terrain is painted with, so the land between towns reads as farmland, water or
+ * industry. poly = `{ x, y, r, r0? }` (a circle, or a ring with the hole r0: terraces round a village); x / y in design units
+ * (× MAP_SCALE like everything else), r / r0 in map units. kind: see GROUND_KEEP (lots stay off those) and the map's tints.
+ */
+const GROUND = [
+  // Shu: terraced slopes and rice paddies round the villages, a reservoir in the hills, the quarry by the Stone Gym
+  { id: 'shu-terrace-west', kind: 'terrace', poly: { x: 205, y: 365, r: 100, r0: 50 } },
+  { id: 'shu-terrace-north', kind: 'terrace', poly: { x: 345, y: 225, r: 100, r0: 50 } },
+  { id: 'shu-paddy-south', kind: 'paddy', poly: { x: 355, y: 390, r: 105, r0: 50 } },
+  { id: 'shu-tea-trail', kind: 'terrace', poly: { x: 215, y: 285, r: 80, r0: 36 } },
+  { id: 'shu-reservoir', kind: 'water', poly: { x: 280, y: 366.7, r: 34 } },
+  { id: 'shu-quarry', kind: 'quarry', poly: { x: 393.3, y: 466.7, r: 28 } },
+  // Wu: workshop yards in Wu town, the harbor's quays, fields behind the dunes
+  { id: 'wu-yards', kind: 'yard', poly: { x: 766.7, y: 553.3, r: 35 } },
+  { id: 'wu-quay', kind: 'quay', poly: { x: 950, y: 373.3, r: 38 } },
+  { id: 'wu-fishquay', kind: 'quay', poly: { x: 956.7, y: 313.3, r: 28 } },
+  { id: 'wu-fields', kind: 'field', poly: { x: 666.7, y: 574.7, r: 40 } },
+  // Wei: pocket parks in the Ring and downtown, the North works' yard, market gardens on the west edge
+  { id: 'wei-park-east', kind: 'park', poly: { x: 820, y: 200, r: 20 } },
+  { id: 'wei-park-south', kind: 'park', poly: { x: 740, y: 426.7, r: 16 } },
+  { id: 'wei-park-west', kind: 'park', poly: { x: 580, y: 333.3, r: 16 } },
+  { id: 'wei-park-downtown', kind: 'park', poly: { x: 706.7, y: 200, r: 20 } },
+  { id: 'wei-works-yard', kind: 'yard', poly: { x: 833.3, y: 100, r: 48 } },
+  { id: 'wei-fields', kind: 'field', poly: { x: 540, y: 200, r: 45 } },
+  // the Academy's playing field; the Outlaws' scrapyard
+  { id: 'academy-pitch', kind: 'park', poly: { x: 573.3, y: 466.7, r: 18 } },
+  { id: 'outlaws-scrap', kind: 'yard', poly: { x: 826.7, y: 460, r: 28 } }
+];
+/**
+ * City life (spec §4.19a; display only: MapModel.life.traffic → life3d). `lines` drive out and back along ROADS nodes (each pair a
+ * road edge): n vehicles spread along the line at `speed` m/s. `boats` circle offshore ({ x, y } design units, r map units). The
+ * plane takes off down the runway (AIRPORT.runway) every `plane.every` seconds.
+ */
+const TRAFFIC = {
+  lines: [
+    // buses: the airport ↔ Academy ↔ downtown line, and the coast line from the Ring to the harbor
+    { id: 'bus-academy', kind: 'bus', n: 2, speed: 6, nodes: ['airport', 'jAc2', 'jAc1', 'park', 'jWp', 'arcade', 'hq0', 'venue:arena'] },
+    { id: 'bus-coast', kind: 'bus', n: 2, speed: 6, nodes: ['hq1', 'home:dorm', 'hq3', 'hotelWu', 'jWu1', 'jWu2', 'harbor', 'hq2'] },
+    // vans: the harbor's goods over the overpass into Wei; the North works' run downtown
+    { id: 'van-overpass', kind: 'van', n: 3, speed: 8, nodes: ['harbor', 'jWu2', 'jO2', 'jO1', 'jW2', 'jWs', 'jW1', 'jWp'] },
+    { id: 'van-works', kind: 'van', n: 1, speed: 7, nodes: ['jWk', 'venue:arena', 'hq0', 'arcade', 'jWp'] }
+  ],
+  boats: [
+    { id: 'boats-east', x: 1020, y: 373.3, r: 35, n: 2 },
+    { id: 'boats-south', x: 633.3, y: 686.7, r: 30, n: 2 }
+  ],
+  plane: { every: 45 }
+};
+/** Ground kinds no building stands on (yards and quays are built on). */
+const GROUND_KEEP = ['terrace', 'paddy', 'field', 'park', 'water', 'quarry'];
 /**
  * Wealth (spec §4.19), 0–1 per lot, from fixed data + hashes (MapModel.lots): it drives a lot's size, spacing, height and look.
  * Wei: `weiFloor` + (1 − weiFloor) × (1 − smoothstep(0, `weiEdge`, distance from `weiCore`)) — rich downtown, a steady fall to the
@@ -785,6 +895,10 @@ const LANDMARK = {
       q.x *= S;
       q.y *= S;
     } else d.density /= S * S; // 'beach', 'wei': the area grew
+  }
+  for (const q of [...GROUND.map(g => g.poly), ...TRAFFIC.boats]) {
+    q.x *= S;
+    q.y *= S;
   }
   pt(WEALTH.weiCore);
   WEALTH.weiEdge *= S;

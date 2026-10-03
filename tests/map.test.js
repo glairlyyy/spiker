@@ -247,7 +247,7 @@ test('career: town layout — districts, beach, overpass, frozen borders', () =>
     flat = g.ROADS.edges.filter(e => e[2] !== 'overpass');
   for (const l of L) by[g.City.regionAt(l.at)] = (by[g.City.regionAt(l.at)] || 0) + 1;
   for (const [r, n, lo, hi] of [
-    ['wei', 327, 262, 392],
+    ['wei', 549, 440, 660],
     ['wu', 210, 168, 252],
     ['shu', 75, 60, 90],
     ['outlaws', 49, 39, 59],
@@ -267,6 +267,57 @@ test('career: town layout — districts, beach, overpass, frozen borders', () =>
     L.every(l => flat.every(([a, b]) => dist(l.at, [N[a], N[b]]) >= l.size * 0.5 + 3.9)),
     'no lot on a road (the overpass is elevated)'
   );
+  // the living island (spec §4.19a): each district built, with its jobs' kinds; homes where they belong
+  for (const d of g.DISTRICTS) assert(L.filter(l => l.district === d.id).length >= 5, `${d.id} is built`);
+  for (const [id, k] of [
+    ['wei-civic', 'office'],
+    ['wei-works', 'tank'],
+    ['wei-works', 'stack'],
+    ['wei-ring-east', 'apartment'],
+    ['wu-harbor', 'container']
+  ])
+    assert(
+      L.some(l => l.district === id && l.kind === k),
+      `${id} has a ${k}`
+    );
+  // ground use (§4.19a): patches on land, plain polygons; no building on fields, terraces, parks, water or the quarry
+  assert(
+    M.land.ground.length === g.GROUND.length && g.GROUND.every(q => g.City.onLand([q.poly.x, q.poly.y])),
+    'ground patches are on land'
+  );
+  assert(!L.some(l => g.MapModel.kept(l.at)), 'no lot on kept ground');
+  for (const k of ['terrace', 'paddy', 'field', 'park', 'water', 'quarry', 'yard', 'quay'])
+    assert(
+      g.GROUND.some(q => q.kind === k),
+      `some ${k}`
+    );
+  // city life (§4.19a): every line drives along road edges and comes back; boats stay at sea; the plane rolls down the runway
+  const T = M.life.traffic,
+    edge = (a, b) => g.ROADS.edges.some(([u, v]) => (u === a && v === b) || (u === b && v === a));
+  assert(
+    g.TRAFFIC.lines.every(l => l.nodes.every((id, i) => !i || edge(l.nodes[i - 1], id))),
+    'traffic lines follow the roads'
+  );
+  assert(
+    T.lines.every(l => l.pts[0].join() === l.pts[l.pts.length - 1].join()),
+    'and are closed loops'
+  );
+  assert(
+    T.lines.find(l => l.id === 'van-overpass').pts.some(p => p[2] === 1),
+    'the vans take the overpass'
+  );
+  assert(
+    T.boats.every(b =>
+      Array.from({ length: 16 }, (_, i) => [b.at[0] + b.r * Math.cos(i / 2.5), b.at[1] + b.r * Math.sin(i / 2.5)]).every(
+        p => !g.City.onLand(p)
+      )
+    ),
+    'boats stay at sea'
+  );
+  assert(g.MapModel.inAirport(T.plane.from) && g.MapModel.inAirport(T.plane.lift), 'the plane rolls on the airport');
+  const dd = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  assert(dd(g.HOME_AT.condo, g.WEALTH.weiCore) < 100, 'the Luxury condo stands by the civic core');
+  assert(dd(g.HOME_AT.dorm, g.ROADS.nodes.jW1) < 150, 'the City dorm stands by the training district');
   const down = L.filter(l => l.district === 'wei-downtown');
   assert(down.length > 20 && Math.max(...down.map(l => l.h)) > 0.8, 'downtown grows tall');
   // wealth (spec §4.19): 0–1 per lot; Wei falls off steadily from the downtown core, Old Town poor; Wu even and modest
@@ -301,7 +352,8 @@ test('career: town layout — districts, beach, overpass, frozen borders', () =>
   );
   assert(avg(l => g.City.regionAt(l.at) === 'shu') < 0.3, 'Shu is poor');
   assert(
-    down.every(l => l.h === l.wealth) && L.filter(l => l.district !== 'wei-downtown').every(l => Math.abs(l.h - l.wealth * 0.4) < 0.01),
+    down.every(l => l.h === l.wealth) &&
+      L.filter(l => !['wei-downtown', 'wei-civic'].includes(l.district)).every(l => Math.abs(l.h - l.wealth * 0.4) < 0.01),
     'h = wealth downtown, wealth × 0.4 elsewhere'
   );
   // Wu is weakly connected: four settlements, joined by few links (≤ 2 into each), only the coast road `main`
