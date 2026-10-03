@@ -1036,3 +1036,146 @@
   margin: 0 0 8px;
   color: var(--warn);
 }
+/* action lock and training cut-in (owner, 2026-10-03): the hub waits while you walk; a training day ends in a result card */
+.hub .actlock {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: progress;
+}
+.hub .actlock.walk {
+  align-items: flex-end;
+  padding-bottom: 72px;
+  background: transparent;
+}
+.hub .actlock.dim {
+  background: rgba(0, 0, 0, 0.45);
+  cursor: default;
+  animation: lkfade 0.18s ease-out;
+}
+.hub .lkpill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: var(--rail);
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--hud);
+  border: 1px solid var(--line-strong);
+  font-size: 14px;
+  font-weight: 600;
+}
+.hub .tfx {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  min-width: 300px;
+  max-width: 380px;
+  margin-left: var(--rail);
+  padding: 28px 32px 20px;
+  border-radius: 16px;
+  background: var(--surf);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+  text-align: center;
+  animation: lkpop 0.22s ease-out;
+}
+.hub .tfx > b {
+  font: 600 22px/1.2 var(--disp);
+  letter-spacing: 0.04em;
+}
+.hub .tfx.ok {
+  border-top: 3px solid var(--good);
+}
+.hub .tfx.bad {
+  border-top: 3px solid var(--bad);
+}
+.hub .tfi {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  font-size: 28px;
+  font-weight: 700;
+  animation: lkpop 0.3s ease-out;
+}
+.hub .tfx.ok .tfi {
+  color: var(--good);
+  background: rgba(74, 222, 128, 0.12); /* good at 12% */
+  border: 2px solid var(--good);
+}
+.hub .tfx.bad .tfi {
+  color: var(--bad);
+  background: rgba(255, 46, 77, 0.12); /* bad at 12% */
+  border: 2px solid var(--bad);
+}
+.hub .tfr {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  margin: 4px 0;
+}
+.hub .tfr > div {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--surf2);
+  text-align: left;
+  font-size: 14px;
+}
+.hub .tfr b {
+  font-variant-numeric: tabular-nums;
+}
+.hub .tfr .up {
+  color: var(--good);
+}
+.hub .tfr .dn {
+  color: var(--bad);
+}
+.hub .spin {
+  display: inline-block;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid var(--line-strong);
+  border-top-color: var(--cyan);
+  animation: lkspin 0.8s linear infinite;
+}
+.hub .spin.sm {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+@keyframes lkspin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes lkfade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes lkpop {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hub .tfx,
+  .hub .tfi,
+  .hub .actlock.dim {
+    animation: none;
+  }
+  .hub .spin {
+    animation-duration: 2.4s;
+  }
+}

@@ -251,8 +251,10 @@ export function create(onIdle) {
   // input: drag pans (grab the ground point), wheel zooms, a click (< CLICK_PX) picks a map point
   let grab = null,
     down = null;
+  /** While your player walks the camera stays on them and the map takes no input (owner, 2026-10-03). */
+  const walking = () => !!(avatar && avatar.busy());
   const onDown = e => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || walking()) return;
     fly = null; // the player takes the camera
     down = { x: e.clientX, y: e.clientY, moved: 0 };
     const g = ground(e);
@@ -285,6 +287,7 @@ export function create(onIdle) {
   };
   const onWheel = e => {
     e.preventDefault();
+    if (walking()) return;
     view.d *= Math.exp(e.deltaY * 0.0012);
     clampView();
     place();
@@ -340,9 +343,9 @@ export function create(onIdle) {
         place();
         if (fly.t >= 1) fly = null;
       }
-      if (follow && avatar.busy() && !fly) {
+      if ((follow || avatar.busy()) && avatar.busy() && !fly) {
         const [ax, az] = avatar.pos(),
-          k = 1 - Math.exp(-dt * 4);
+          k = 1 - Math.exp(-dt * 8); // held on the player for the whole walk
         view.x += (ax - view.x) * k;
         view.z += (az - view.z) * k;
         clampView();
@@ -410,7 +413,10 @@ export function create(onIdle) {
       const key = at.join(',');
       if (seen === null) avatar.snap(at);
       else if (key !== seen) {
+        const [x0, z0] = avatar.pos();
         avatar.setTarget(at, m.you.route);
+        down = grab = null; // a drag in progress ends: the camera is the walk's
+        fly = { x0: view.x, z0: view.z, d0: view.d, x1: x0, z1: z0, d1: clamp(view.d, 45, 110), t: 0 }; // onto the player first
         follow = true;
       }
       seen = key;
@@ -422,6 +428,8 @@ export function create(onIdle) {
       lastSel = id;
     },
     centre,
+    /** True while your player is walking to a new place (the UI locks its actions until they arrive). */
+    busy: walking,
     heightAt: (x, z) => (terrain ? terrain.heightAt(x, z) : 0),
     info: () => ({
       calls: renderer.info.render.calls,

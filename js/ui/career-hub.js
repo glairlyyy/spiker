@@ -56,6 +56,7 @@ function renderCareer() {
     <div class="hud spotcard ${CW.spot && !card ? 'open' : ''}" id="spot">${CW.spot && !card ? spotCard(run) : ''}</div>
     ${CW.sheet ? hubSheet(run) : ''}
     ${card ? `<div class="hubmodal ${card.dim ? 'dim' : ''}"><div class="hubcard ${card.cls || ''}">${card.html}</div></div>` : ''}
+    ${lockLayer()}
   </section>`;
   mapMount(run);
 }
@@ -156,11 +157,12 @@ const hubClubsHint = () =>
   `<p class="small mute">Free agent — <a href="#" onclick="worldTab('clubs');return false">find a club</a> first to play with them.</p>`;
 
 /** Top bar: brand, week, labelled resources (one-render deltas), the sheet tabs and ⚙. */
-function topBar(run) {
-  const staPct = Math.round((run.sta / run.staMax) * 100),
+function topBar(real) {
+  const run = lockShown(real), // while a training cut-in runs, the values from before it (the reveal is the card's)
+    staPct = Math.round((run.sta / run.staMax) * 100),
     mood = MOODS[run.mood],
     now = { money: run.money, fans: run.fans, sp: run.sp, sta: run.sta, mood: run.mood },
-    prev = CW.hudOf === run ? CW.hudPrev : null,
+    prev = CW.hudOf === real ? CW.hudPrev : null,
     d = k => {
       const v = prev ? now[k] - prev[k] : 0;
       if (!v) return '';
@@ -172,11 +174,11 @@ function topBar(run) {
     cup = Run.cupDef(run),
     people = Asks.count(run);
   CW.hudPrev = now; // deltas show for one render after a change
-  CW.hudOf = run;
+  CW.hudOf = real;
   return `<header class="tbar">
     <span class="tbrand">Spite &amp; Spike</span>
     <div class="tres-row">
-      ${cell('Week', `<span class="disp">${cup ? esc(cup.short) : `${run.week} / ${CAREER.weeks}`}</span>`, `Week ${run.week} of ${CAREER.weeks}`)}
+      ${cell('Week', `<span class="disp">${cup ? esc(cup.short) : `${real.week} / ${CAREER.weeks}`}</span>`, `Week ${real.week} of ${CAREER.weeks}`)}
       ${cell('Money', `$${run.money.toLocaleString()}${d('money')}`, 'Money', 'money')}
       ${cell('Fans', `${run.fans.toLocaleString()}${d('fans')}`, 'Fans', 'fans')}
       ${cell('Skill pts', `${run.sp}${d('sp')}`, 'Skill points', 'sp')}
@@ -203,7 +205,10 @@ function weekRail(run, armed) {
     <div class="wtop"><button class="wme" onclick="hubOpen('me')" aria-label="Your player"><span class="portrait">${faceSVG(you, MOODS[run.mood].form, 44)}</span>
       <span><b>${stag(you)}${esc(you.name)}</b><small ${tip(`${ROLE_NAME[you.role]} · ${team.name}`)}>${you.role} · OVR ${ovr(you)}</small></span></button>
       <button class="btn wfold" onclick="railToggle()" aria-label="Collapse the week rail ([)">« <kbd>[</kbd></button></div>
-    <div class="wstats">${STATK.map(k => `<span ${tip(`${STATNAME[k]}: ${GLOSSARY[k].long}`)} aria-label="${STATNAME[k]} ${you[k]}"><b>${statI(statKey(k), 16)}${you[k]}</b><i class="mbar4"><i style="width:${Math.min(100, you[k])}%"></i></i></span>`).join('')}</div>
+    <div class="wstats">${STATK.map(k => {
+      const v = (lockShown(run).st || you)[k];
+      return `<span ${tip(`${STATNAME[k]}: ${GLOSSARY[k].long}`)} aria-label="${STATNAME[k]} ${v}"><b>${statI(statKey(k), 16)}${v}</b><i class="mbar4"><i style="width:${Math.min(100, v)}%"></i></i></span>`;
+    }).join('')}</div>
     ${weekSection(run)}
     ${railGoal(run)}
     <section class="winbox" aria-label="Inbox">${inboxRows(run)}</section>
@@ -433,6 +438,12 @@ function nextStep(run) {
 function hubKey(e) {
   if (A || e.ctrlKey || e.metaKey || e.altKey || !document.querySelector('.career.hub') || $('#dbg') || (CW.dossier && e.key === 'Escape'))
     return;
+  if (CW.lock) {
+    // the hub waits while you walk; the training result closes with Space / Enter / Esc
+    if (CW.lock.phase === 'done' && [' ', 'Enter', 'Escape'].includes(e.key)) lockEnd();
+    e.preventDefault();
+    return;
+  }
   if (e.target.closest && e.target.closest('input,select,textarea,button,a,[contenteditable]')) return;
   if (e.key === 'Escape') {
     if (CW.gear) gearToggle();

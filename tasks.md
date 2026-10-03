@@ -178,3 +178,6 @@ T-001…T-158 (no T-012…T-015, T-021, T-033, T-049; T-088 open above). One lin
 ## Unplanned changes
 
 (build chat: owner requests made directly in the build chat — one line each; the spec chat moves them into spec.md)
+
+- 2026-10-03 Walk lock: while your player walks to a place the map camera stays on them (flies onto them, then follows; drag / wheel / clicks ignored) and the hub takes no input — a transparent layer with a "Walking to {place}" pill, hotkeys wait; 20 s failsafe. Files: js/map3d/map3d.mjs (busy, camera hold), js/ui/map-view.js (MapView.busy), js/ui/career-map.js (actLock, lockLayer), js/ui/career-hub.js (render + hubKey), css/hub.css.
+- 2026-10-03 Training cut-in: after the walk a training day shows a spinner (1.1 s, "{Training} training · {place}"), then ✓ Training complete / ✕ Training failed (— injured) with what changed (stat points, EXP toward the next point, skill pts, stamina, money, mood); click / Space / Enter / Esc closes, auto after 3.2 s; the top bar and rail keep the before-values until the card (then their deltas show). Display only: the rules run before the walk. Files: js/ui/career-map.js (trainSnap, trainFx, lockShown), js/ui/career-hub.js (topBar / weekRail read lockShown), css/hub.css.

@@ -730,6 +730,8 @@ Sheets open over the map area (rail and top bar stay): `HUB_SHEETS` → `sheetMe
 UI state lives in `CW` (career-week.js): `sheet`, `pfilter`, `wtab`, `stab`, `gear`, `railMini`, `person`, `dossier`, … —
 nothing of it is saved except `railMini` (a browser preference in `KEYS.rail`, not the run). There are no drawers.
 
+Action lock (UI state only): `mapAfter` / `mapTravel` call `actLock(fx)` → `CW.lock` {phase walk → spin → done}; `lockLayer` renders in `renderCareer` (so it survives re-renders), `hubKey` returns while it is set, and `MapView.busy()` (map3d `busy`: the avatar is walking — the camera holds on it and map input is ignored) ends the walk phase. A training day's `trainFx` (before / after `trainSnap`) fills the result card; `lockShown(run)` keeps the top bar and rail on the before-values until then.
+
 Consequence feedback (UI state only, nothing saved): `weekSnap` keeps a baseline per week (`CW.snap`); `endWeekUI`
 diffs it around `Run.endWeek` into `CW.recap` → `recapCard` (the Week report). `renderCareer` diffs `run.own` against
 `CW.own` (`ownChanges`); a seize becomes an inbox row for a week (`CW.seizes`) and selects the place on the map.
