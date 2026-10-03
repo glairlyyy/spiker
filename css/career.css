@@ -1367,6 +1367,9 @@
   display: grid;
   place-items: center;
 }
+.hub .sheet .srow.rowcta {
+  grid-template-columns: minmax(0, 1fr) auto; /* the gap ("need n") never truncates */
+}
 .hub .sheet .home.rowcta {
   grid-template-columns: minmax(0, 1fr) 96px;
 }

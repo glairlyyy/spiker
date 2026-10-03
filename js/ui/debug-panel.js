@@ -51,7 +51,7 @@ dbgBadge();
 const WORD_REGIONS = [
   ['.hub .tbar', () => 0],
   ['.hub .wrail', () => 45],
-  ['#spot.open', el => (el.querySelector('.pside') ? 45 : 30)],
+  ['#spot.open', el => (el.querySelector('.pside') ? 70 : 30)], // battle card 70: every fact and effect stays (§10.1a)
   ['.hubmodal .hubcard', el => (el.querySelector('.brief') ? 25 : 30)],
   ['.hub .sheet', el => (el.querySelector('.mecols') ? 110 : 60)], // Me sheet 110 (T-162), others 60
   ['.create2', () => 60],
