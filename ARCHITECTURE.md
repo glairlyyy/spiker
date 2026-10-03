@@ -513,7 +513,8 @@ builds a squad on demand (the Academy entrant is `run.pickup`). Every match, you
 the facilities it holds now (seized ones marked, with `City.access`), its clubs (join text, `World.canJoin`) and the pool
 roster. Ratings and elements are `null` until one of its clubs is scouted or you are a member. It reuses `City`, `Front`,
 `World`, `Pool` and `Training`; no rules live in it. `Dossier.summary(run, r)` is the short form the World sheet's Factions tab renders (standing +
-`standingLabel`, fronts, took / lost, economy, clubs, this week's foe).
+`standingLabel`, fronts, took / lost, economy, clubs, this week's foe). Both read one block, `Dossier.front(run, r)` (major = `MAJORS.includes`, places taken /
+lost, fronts, price / quality multipliers).
 
 UI files only render and call rules: `City.after` (the week's event, once after its first action), `Run.canEndWeek`,
 `Run.readGazette`, `Goals.progress`, `Cup.simNow(fx)` (resolve a fixture without watching: setup, rallies, finish) and
@@ -538,8 +539,8 @@ shrine park / major polygon), `trip` (days by travel cost `City.path`, NEAR_R / 
 `price` (TRAIN_FEE / HOTEL × region price), `mul` (quality × home turf, passed to `Training.train/preview` as x),
 `can`/`day`/`scout`. Week = `run.days` (WEEK_DAYS 7): every action costs `City.cost` = trip + 1 day and is refused if
 it would spill into next week (`noTime`); at 0 days it is night; only `mapEndWeek` (the player) calls `Run.endWeek`.
-Events roll once per week after the first action (`run.rolled`). Street battles: `clashRoll` in `Run.nextWeek`
-(`run.clash` with its aggressor, settled by `clashEnd` at week end if nobody joined), `clash(run, side)`; standing per
+Events roll once per week after the first action (`run.rolled`). Street battles (`Fight`, career/fight.js; City keeps places, travel and standing): `clashRoll` in `Run.nextWeek`
+(`run.clash` with its aggressor, settled by `clashEnd` at week end if nobody joined), `watch(run, null)`; standing per
 region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): tile pressure on the hex map (`push`/`meter`/`battleTile`, state in `run.hex`, §4.27), seized places `run.own`
 (City.region follows the holder), `econ`/`priceMul`/`qMul`/`weak`, `pick` (aggressor + target), `sim`/`result`/`stakes`;
 `World.joinReq` lowers a weakened faction's join bar. Sessions × DAY_GAIN (gains and skill points).
@@ -667,10 +668,10 @@ UI (`ui/career-dossier.js`): the World sheet's Rankings tab (`rankCard`, tab in 
 
 ## Team challenges
 
-A map action at a club HQ (not your own): `City.worth(run, ti, stake)` → `{ verdict: likely|doubtful|refuses, why, accepts,
+A map action at a club HQ (not your own): `Fight.worth(run, ti, stake)` → `{ verdict: likely|doubtful|refuses, why, accepts,
 need, worth }` (worth = your side's rating + standing ÷ `CHALLENGE.standPer` + the faction's dogma term, vs the club's rating −
 `margin`; the card shows only verdict + why). Doubtful is decided by a fixed hash of week / club / stake (no randoms, so leaving
-the match and re-asking changes nothing). `City.challenge(run, ti, stake)`: refused → the trip + a day are spent, the diary gets
+the match and re-asking changes nothing). `Fight.offer(run, ti, stake)`: refused → the trip + a day are spent, the diary gets
 the faction's line (`CHALLENGE_LINES`), `run.refused[ti] = { week, n }` blocks that club for the week, and from `refuseMax`
 refusals each further one costs `pest` standing; accepted → `{ accepted, stake }` and nothing is spent yet. `Fight.challenge`
 is the fixture (same shape as `Fight.clash`; your side = Academy squad / club squad / `Fight.hired` street crew lent for the
@@ -683,11 +684,11 @@ pays the crew, then standing / fans / match XP / techniques / street points / `R
 After a challenge (`Fight.challengeResult`) or a street fight you fought (`Fight.clashResult`): a loss runs `Fight.lose` (`LOSS` in
 `data/world.js`: extra stamina, mood, standing with the club's region — challenges only, `run.losses[region]` counts them and from the
 `repeat`-th each one adds `repeatRep`; a street fight keeps `CLASH.lose` — and a loss by `heavy`+ points costs fans and pushes a
-`GAZETTE_JABS` line through `Run.news`); then, win or lose, `Fight.injure(run, risk)` rolls once (`R()`) against `City.injuryRisk(run,
+`GAZETTE_JABS` line through `Run.news`); then, win or lose, `Fight.injure(run, risk)` rolls once (`R()`) against `Fight.injuryRisk(run,
 oppRating, margin)` (pure: `INJURY` — rating gap, points lost by, low stamina, days since `run.lastFight`; `Run.dayNo` is the clock),
 a second roll sets the severity (`run.injury = { weeks }`, longer of the old one; severe also −`lose` on one stat, picked from that
-roll). The risk is computed before the trip and the match's tiredness are counted. `City.fightBan` ("Injured — rest first") makes
-`City.challenge`, `Fight.challenge` and `Fight.clash` refuse; `Run.lineup` never starts an injured you. The physio clears `run.injury`
+roll). The risk is computed before the trip and the match's tiredness are counted. `Fight.ban` ("Injured — rest first") makes
+`Fight.offer`, `Fight.challenge` and `Fight.clash` refuse; `Run.lineup` never starts an injured you. The physio clears `run.injury`
 but not the lost stat. Evaluations and the cup carry no injury roll. Save v7 adds `run.losses` and `run.lastFight`. UI: the challenge
 block and the street fight buttons show "Injury risk ~N %" and are disabled while injured.
 
@@ -708,7 +709,7 @@ factor `Growth.gapFactor(ovr of your 4 starters, opponent's)` = clamp(1 + gap ×
 `Training.addXp(…, 'match')` (so matches pass `TRAIN_CAP`). The winner is never read. A street battle you fight is a real match: `Fight.clash(run, side)`
 builds the fixture (your side's crew from `Pool.draw`, you on court in your role, vs the other side's crew; both lent via
 `Eval.squad` / `Eval.lend`), nothing is spent until `Fight.clashResult` (trip + a day, stamina, standing, fans ×grade, match XP,
-techniques, `Front.result`); leaving early leaves the battle open. Watching stays `City.clash(run, null)`. The result line starts
+techniques, `Front.result`); leaving early leaves the battle open. Watching is `Fight.watch(run, null)`. The result line starts
 with "XP: …" and the factor note.
 
 ## Career hub UI

@@ -461,9 +461,9 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   run.pos = g.CITY.airport.slice();
   const tg = g.Hex.target(run, 'wei', 'wu');
   run.clash = { tile: tg.id, from: tg.from, att: 'wei', def: 'wu', seen: false, done: false };
-  const c = g.City.clashSite(run),
+  const c = g.Fight.clashSite(run),
     r0 = g.City.rep(run, c.b),
-    cc = g.City.clashCost(run),
+    cc = g.Fight.clashCost(run),
     clashSp0 = run.sp;
   for (const k of g.STATK) g.Run.you(run)[k] = 70; // (a new player starts at 1: give you a normal player's line so the match XP shows)
   const fx = g.Fight.clash(run, c.a);
@@ -473,7 +473,7 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   while (!m.over) g.playRally(m);
   const line = fx.onFinish(m);
   assert(/Fought for .+ in the street battle — (won|lost) \d+-\d+, grade [SABC]/.test(line) && /XP: /.test(line), `result line: ${line}`);
-  assert(run.clash.done && !g.City.clashSite(run), 'fought');
+  assert(run.clash.done && !g.Fight.clashSite(run), 'fought');
   eq(g.City.rep(run, c.b), r0 + g.CLASH.other, 'the other side remembers');
   assert([g.CLASH.win, g.CLASH.lose].includes(g.City.rep(run, c.a)), 'standing with your side moves');
   eq(g.City.days(run), 7 - cc, 'the trip + a day');

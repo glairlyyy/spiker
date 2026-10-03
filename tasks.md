@@ -523,7 +523,7 @@ week end/recap; world cards (`rankCard clubsCard factionsCard`) → career-dossi
 Accept: no name changes; tests + lint green; QA every sheet + one evaluation.
 Result: career-week.js 695→162 (CW, End week/Week report, events, abandonRun); career-sheets.js 206 (sheetMe sheetSeason calendar seasonCard + elementLine leaveSquad matchLog/MKIND homeRow setHousing seePhysio learnSkill); career-match.js 206 (listed + benchEval setFocus setTalk); career-dossier.js +128 (RANK_TABS rankTab rankCard joinGap clubsCard factionsCard joinClub); pure moves, names unchanged, loaded right after career-week.js (no load-time top-level deps); lint/dead-globals read index.html so pick them up; tests 110/110, lint clean; QA 01–10 pixel-identical to T-153, World tabs + Me/Season + eval played to result, 0 page errors.
 
-### [ ] T-156: City vs Fight; dossier dedupe
+### [x] T-156: City vs Fight; dossier dedupe
 
 Spec: §4.23, §4.27 Goldens: unchanged Save: no change
 Files: js/career/city.js, js/career/fight.js, js/career/dossier.js, js/career/front.js, and every caller found by grep (list them in Result)
@@ -532,7 +532,7 @@ Steps: move City fight helpers (`worth challenge clashSite clash injuryRisk crew
 `build`'s front/price/quality block, "major" = `MAJORS.includes` everywhere.
 Do not: change fight odds or any random draw.
 Accept: tests + goldens green; city.js ≤ 360 lines.
-Result:
+Result: City.clash (watch) ≠ Fight.clash (fight), so not merged: City's fight block (clashRoll/End, fightBan→Fight.ban, injuryRisk, crewOvr, challengeSide, stakeMax, worth, challenge→Fight.offer, clashSite, clashCost, clash→Fight.watch) moved to fight.js; City.region → Front.owner; dossier summary/build share Dossier.front, major = MAJORS.includes (also city.js day line). Callers: asks.js, mapmodel.js, run.js, dossier.js, fight.js, career-hub.js, career-map.js, world.js (comments), tests/career+map (renames only). city.js 345 lines; before/after JSON dump (5 seeds × every week, all factions summary/build/worth/risk + forced seizures) byte-identical; 110/110, goldens unchanged.
 
 ### [ ] T-157: Split big render/engine files
 

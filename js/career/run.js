@@ -257,7 +257,7 @@ const Run = {
       Run.log(run, 'Fully recovered from the injury.');
     }
     World.week(run);
-    if (City.clashSite(run)) Run.log(run, City.clashEnd(run));
+    if (Fight.clashSite(run)) Run.log(run, Fight.clashEnd(run));
     Hex.decay(run);
     run.trained = 0;
     run.days = WEEK_DAYS;
@@ -273,7 +273,7 @@ const Run = {
   },
   /** A training week begins: who's at which training, a new coach's goal at the start of a block, sponsor offers. */
   nextWeek(run) {
-    City.clashRoll(run);
+    Fight.clashRoll(run);
     Training.rollFloor(run);
     Goals.set(run);
     Sponsors.offer(run);

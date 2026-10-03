@@ -235,7 +235,7 @@ const MapModel = {
         title: v.name,
         flags: { today: id === today }
       });
-    const c = City.clashSite(run);
+    const c = Fight.clashSite(run);
     if (c)
       out.push({
         id: 'clash',
@@ -299,7 +299,7 @@ const MapModel = {
         walk
       });
     });
-    const c = City.clashSite(run);
+    const c = Fight.clashSite(run);
     return {
       mates,
       crews,
@@ -314,7 +314,7 @@ const MapModel = {
    */
   hexes(run) {
     const H = Hex.state(run),
-      c = City.clashSite(run),
+      c = Fight.clashSite(run),
       major = r => MAJORS.includes(r),
       short = r => REGIONS[r].name.split(' ')[0],
       k = c ? Front.stakes(run, c.a, c.b) : null;
@@ -352,7 +352,7 @@ const MapModel = {
    */
   patrols(run) {
     const H = Hex.state(run),
-      c = City.clashSite(run),
+      c = Fight.clashSite(run),
       hot = Object.keys(H.p)
         .filter(id => H.p[id] > 0 && H.by[id])
         .map(id => ({ id, by: H.by[id], p: H.p[id] }));

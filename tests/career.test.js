@@ -715,7 +715,7 @@ test('career: team challenge — worth, refusal, stake payout', () => {
     .filter(e => e.p !== you)
     .slice(0, 25)
     .forEach(e => (e.p.op = true)); // twenty-five famous players keep you out of the Gazette Top 20
-  const W = (r, stake) => g.City.worth(run, club(r), stake);
+  const W = (r, stake) => g.Fight.worth(run, club(r), stake);
   eq(W('gloria', 500).verdict, 'refuses', 'Gloria refuses anyone outside the Top 20, whatever the stake');
   eq(W('outlaws', 0).verdict, 'refuses', 'the Outlaws laugh off a 0 stake');
   eq(W('outlaws', g.CHALLENGE.outlaws.minStake).verdict, 'likely', 'and accept a bet');
@@ -723,11 +723,11 @@ test('career: team challenge — worth, refusal, stake payout', () => {
   eq(W('wu', 0).worth, W('wu', 1000).worth, 'Wu: the stake counts for nothing');
   const own = run.team;
   run.team = club('wei');
-  eq(g.City.worth(run, club('wei'), 0), null, 'your own club is not challengeable');
+  eq(g.Fight.worth(run, club('wei'), 0), null, 'your own club is not challengeable');
   run.team = own;
   // a refusal costs the trip + a day and blocks that club for the week
   const d0 = run.days,
-    r0 = g.City.challenge(run, club('gloria'), 100);
+    r0 = g.Fight.offer(run, club('gloria'), 100);
   assert(r0 && !r0.accepted && /turned your challenge down/.test(r0.line) && run.days < d0, `refused: ${r0 && r0.line}`);
   assert(run.refused[club('gloria')].week === run.week && run.refused[club('gloria')].n === 1, 'the refusal is recorded');
   eq(W('gloria', 100).why, g.CHALLENGE_WHY.week, 'not again this week');
@@ -735,7 +735,7 @@ test('career: team challenge — worth, refusal, stake payout', () => {
   for (let i = 2; i <= g.CHALLENGE.refuseMax; i++) {
     run.week++;
     run.days = g.WEEK_DAYS;
-    g.City.challenge(run, club('gloria'), 100);
+    g.Fight.offer(run, club('gloria'), 100);
   }
   assert(g.City.rep(run, 'gloria') <= g.CHALLENGE.pest, 'refused 3 times: you are a pest (standing drops)');
   run.days = g.WEEK_DAYS;
@@ -744,7 +744,7 @@ test('career: team challenge — worth, refusal, stake payout', () => {
   const ti = club('outlaws');
   for (const p of g.squadOf(run.teams[ti])) for (const k of g.STATK) p[k] = 25;
   for (const p of g.squadOf(run.pickup)) for (const k of g.STATK) p[k] = 99;
-  const acc = g.City.challenge(run, ti, 50);
+  const acc = g.Fight.offer(run, ti, 50);
   assert(acc && acc.accepted && acc.stake === 50, 'the Outlaws accept a 50 stake');
   const d1 = run.days,
     money0 = run.money,
@@ -764,7 +764,7 @@ test('career: team challenge — worth, refusal, stake payout', () => {
   run.team = null;
   const T = g.Fight.hired(run);
   assert(g.squadOf(T).length === 6 && T.P.includes(you) && T.P.length === 4, 'the hired crew: 6 players, you on court');
-  const side = g.City.challengeSide(run);
+  const side = g.Fight.challengeSide(run);
   eq(side.kind, 'hired', 'alone = hired crew');
   run.days = g.WEEK_DAYS;
   run.week = 6;
@@ -828,15 +828,15 @@ test('career: challenge loss and injury', () => {
   assert(g.City.rep(run, r) <= g.LOSS.rep + g.LOSS.repeatRep, `third loss: extra standing hit (${g.City.rep(run, r)})`);
   // risk rises with the gap, the margin, low stamina and a fight on the same day; clamped at max
   fresh();
-  const R0 = g.City.injuryRisk(run, 60);
-  assert(g.City.injuryRisk(run, 99) > R0, 'risk rises with their rating');
-  assert(g.City.injuryRisk(run, 60, 10) > R0, 'and the margin of defeat');
+  const R0 = g.Fight.injuryRisk(run, 60);
+  assert(g.Fight.injuryRisk(run, 99) > R0, 'risk rises with their rating');
+  assert(g.Fight.injuryRisk(run, 60, 10) > R0, 'and the margin of defeat');
   run.sta = 20;
-  assert(g.City.injuryRisk(run, 60) > R0, 'and low stamina');
+  assert(g.Fight.injuryRisk(run, 60) > R0, 'and low stamina');
   fresh();
   run.lastFight = g.Run.dayNo(run);
-  assert(g.City.injuryRisk(run, 60) > R0, 'and fighting on the same day');
-  eq(g.City.injuryRisk(run, 999, 99), g.INJURY.max, 'clamped at INJURY.max');
+  assert(g.Fight.injuryRisk(run, 60) > R0, 'and fighting on the same day');
+  eq(g.Fight.injuryRisk(run, 999, 99), g.INJURY.max, 'clamped at INJURY.max');
   // forced low: a severe injury — 3 weeks and −2 on one stat
   fresh();
   for (const k of g.STATK) you[k] = 60;
@@ -849,8 +849,8 @@ test('career: challenge loss and injury', () => {
   assert(lost.length === 1 && before[g.STATK.indexOf(lost[0])] - you[lost[0]] === g.INJURY.lose, 'one stat loses INJURY.lose for good');
   // an injured player can't challenge or fight and is benched by Run.lineup
   roll(0.99);
-  eq(g.City.fightBan(run), 'Injured — rest first', 'the ban text');
-  eq(g.City.challenge(run, ti, 50), null, 'no challenge while injured');
+  eq(g.Fight.ban(run), 'Injured — rest first', 'the ban text');
+  eq(g.Fight.offer(run, ti, 50), null, 'no challenge while injured');
   eq(g.Fight.challenge(run, ti, 50), null, 'no challenge match while injured');
   const L = g.Run.lineup(run, run.pickup, null, true);
   assert(!L.starts, 'an injured you is benched');

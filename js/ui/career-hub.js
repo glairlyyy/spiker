@@ -90,7 +90,7 @@ function weekBrief(run) {
       'this week'
     );
   } else if (wt === 'cup') row('⚑', esc((Run.cupDef(run) || {}).name || 'Cup'), 'Your next round is on the match card', 'this week', 'hot');
-  const c = City.clashSite(run);
+  const c = Fight.clashSite(run);
   if (c && !run.clash.done) {
     const att = run.clash.att || c.a,
       def = att === c.a ? c.b : c.a,
@@ -317,11 +317,11 @@ function inboxItems(run) {
   if (CW.flash) rows.push(`<div class="wit bad"><span class="wico">✕</span><span class="wtx">${esc(CW.flash)}</span><span></span></div>`); // a refused action, one render
   CW.flash = null;
   if (n && n.act && !/Gazette|signing open/.test(n.text)) item('→', esc(n.text), 'Suggested next step', 'Go', n.act, 'next');
-  const c = City.clashSite(run);
+  const c = Fight.clashSite(run);
   if (c && !run.clash.done) {
     const att = run.clash.att || c.a,
       def = att === c.a ? c.b : c.a,
-      trip = City.clashCost(run) - 1;
+      trip = Fight.clashCost(run) - 1;
     item(
       '⚔',
       'Street battle',

@@ -75,13 +75,13 @@ const Asks = {
       const you = Run.you(run),
         facts = [],
         L = Asks.lineup(run),
-        c = City.clashSite(run);
+        c = Fight.clashSite(run);
       if (L.rival && L.rival.p !== p)
         facts.push(
           `Word is ${Asks.first(L.rival.p)} ${L.starts ? 'is breathing down your neck' : 'is the one the coach trusts ahead of you'} at ${ROLE_NAME[you.role].toLowerCase()}.`
         );
       if (c) facts.push(`Word is there will be trouble at ${c.name} this week — ${REGIONS[c.a].name} against ${REGIONS[c.b].name}.`);
-      const no = run.teams.find((t, ti) => ti !== run.team && (City.worth(run, ti, 0) || {}).verdict === 'refuses');
+      const no = run.teams.find((t, ti) => ti !== run.team && (Fight.worth(run, ti, 0) || {}).verdict === 'refuses');
       if (no) facts.push(`Word is ${no.name} won't take your challenge.`);
       return facts.length ? { text: facts[Math.floor(People.roll(run, p.id, 'warnfact') * facts.length)] } : null;
     }
@@ -194,7 +194,7 @@ const Asks = {
       case 'call_out': {
         if (yes) {
           const fx = Fight.challenge(run, a.data.ti, 0, true);
-          if (!fx) return { blocked: City.fightBan(run) || 'not now' };
+          if (!fx) return { blocked: Fight.ban(run) || 'not now' };
           out.fx = fx;
           return done(`Took ${n}'s call-out: ${run.teams[a.data.ti].name}.`);
         }
@@ -268,7 +268,7 @@ const Asks = {
     if (ti >= 0 && ti !== run.team) {
       if (World.isFree(run) && !run.vouch[ti] && Rel.tag(run, id) === 'ally')
         add('vouch', `Ask ${n} to vouch for you at ${run.teams[ti].name}`, { ti });
-      if (run.met[id] && !City.fightBan(run) && !City.noTime(run, City.scoutCost(run, ti)))
+      if (run.met[id] && !Fight.ban(run) && !City.noTime(run, City.scoutCost(run, ti)))
         add('call_out', `Call out ${run.teams[ti].name}`, { ti });
     }
     return out;

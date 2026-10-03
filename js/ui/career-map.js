@@ -23,7 +23,7 @@ function spotGhost(run, id) {
     return ti === run.team || !run.teams[ti] ? [] : trips(CITY.hq[ti], { k: 'scout', label: 'Scout' });
   }
   if (id === 'clash') {
-    const c = City.clashSite(run);
+    const c = Fight.clashSite(run);
     return c ? trips(c.at, { k: 'battle', label: 'Battle' }) : [];
   }
   if (id.startsWith('pt:')) return Array.from({ length: City.travelDays(run, MapModel.ptOf(id)) }, () => ({ k: 'trip', label: 'Trip' }));
@@ -152,7 +152,7 @@ function pointPanel(run, p) {
 /** The battle's border line: "{attacker} n/cost to seize" (+ the tile when it isn't the battle's own site), or that it can't reach. */
 function clashBorder(run, att, def) {
   const k = Front.stakes(run, att, def),
-    c = City.clashSite(run),
+    c = Fight.clashSite(run),
     short = r => esc(REGIONS[r].name.split(' ')[0]);
   return k.tile
     ? `${short(att)} ${k.meter - 1}/${k.cost} to seize${c && c.name === k.name ? '' : ` ${esc(k.name)}`}`
@@ -163,12 +163,12 @@ function clashBorder(run, att, def) {
  * effects one per line), the Play it / Sim it option, then one row: Fight for A, Fight for B, Watch.
  */
 function clashPanel(run) {
-  const c = City.clashSite(run);
+  const c = Fight.clashSite(run);
   if (!c) return `<p class="small mute">The street battle is over.</p>`;
-  const d = City.clashCost(run),
+  const d = Fight.clashCost(run),
     trip = d - 1,
     late = run.event ? 'answer the event first' : City.noTime(run, d),
-    ban = City.fightBan(run),
+    ban = Fight.ban(run),
     att = run.clash.att || c.a,
     def = att === c.a ? c.b : c.a,
     short = r => esc(REGIONS[r].name.split(' ')[0]),
@@ -190,7 +190,7 @@ function clashPanel(run) {
     card = (s, foe) =>
       `<div class="pside"><div class="lab">${chip(REGIONS[s])}Fight for ${short(s)}</div>${kv([
         ['Cost', term('sta', -CLASH.sta, 'cost')],
-        ['Injury', `~${Math.round(City.injuryRisk(run, City.crewOvr(run, foe)) * 100)}%`],
+        ['Injury', `~${Math.round(Fight.injuryRisk(run, Fight.crewOvr(run, foe)) * 100)}%`],
         ['Win', `${term('standing', CLASH.win)} ${short(s)}`],
         ['', `${term('standing', CLASH.other)} ${short(foe)}`],
         ['', term('fans', CLASH.fans)],
@@ -298,15 +298,15 @@ function trainSpot(run, id, c) {
 
 /** The challenge block of a club's card: stake stepper, the verdict ("Accepts: likely — why"), the button and Sim ⏭. */
 function challengeBlock(run, ti) {
-  const W = City.worth(run, ti, (CW.stake || {})[ti] || 0);
+  const W = Fight.worth(run, ti, (CW.stake || {})[ti] || 0);
   if (!W) return '';
-  const side = City.challengeSide(run),
-    st = Math.min((CW.stake || {})[ti] || 0, City.stakeMax(run)),
+  const side = Fight.challengeSide(run),
+    st = Math.min((CW.stake || {})[ti] || 0, Fight.stakeMax(run)),
     cost = City.scoutCost(run, ti),
     late = run.event
       ? 'answer the event first'
-      : City.fightBan(run) || City.noTime(run, cost) || (run.money < side.cost ? `needs $${side.cost} for a street crew` : ''),
-    risk = Math.round(City.injuryRisk(run, run.teams[ti].ovr) * 100),
+      : Fight.ban(run) || City.noTime(run, cost) || (run.money < side.cost ? `needs $${side.cost} for a street crew` : ''),
+    risk = Math.round(Fight.injuryRisk(run, run.teams[ti].ovr) * 100),
     hot = W.verdict === 'likely' ? 'hot' : '';
   return `<section class="pchal" ${tip('Challenge their squad for a stake: they may refuse. Win and the stake pays at odds; lose and it is gone. XP and techniques as in any match')}><div class="lab">Challenge</div>${kv(
     [
@@ -319,7 +319,7 @@ function challengeBlock(run, ti) {
       ],
       [
         'Stake',
-        `<span class="pstep"><button class="btn" onclick="mapStake(${ti},-1)" ${st <= 0 ? 'disabled' : ''} aria-label="Lower the stake">−</button><b>$${st}</b><button class="btn" onclick="mapStake(${ti},1)" ${st + CHALLENGE.stakeStep > City.stakeMax(run) ? 'disabled' : ''} aria-label="Raise the stake">+</button></span>`
+        `<span class="pstep"><button class="btn" onclick="mapStake(${ti},-1)" ${st <= 0 ? 'disabled' : ''} aria-label="Lower the stake">−</button><b>$${st}</b><button class="btn" onclick="mapStake(${ti},1)" ${st + CHALLENGE.stakeStep > Fight.stakeMax(run) ? 'disabled' : ''} aria-label="Raise the stake">+</button></span>`
       ]
     ]
   )}
@@ -425,7 +425,7 @@ function mapClash(side, sim) {
     if (!sim) return navigate('match', fx);
     Cup.simNow(fx);
   } else {
-    const line = City.clash(RUN, null);
+    const line = Fight.watch(RUN, null);
     if (!line) return;
     Run.log(RUN, line);
   }
@@ -435,12 +435,12 @@ function mapClash(side, sim) {
 /** Step the stake of a challenge to club ti. */
 function mapStake(ti, d) {
   const S = (CW.stake = CW.stake || {});
-  S[ti] = clamp((S[ti] || 0) + d * CHALLENGE.stakeStep, 0, City.stakeMax(RUN));
+  S[ti] = clamp((S[ti] || 0) + d * CHALLENGE.stakeStep, 0, Fight.stakeMax(RUN));
   mapPick(`hq${ti}`);
 }
 /** Challenge club ti at the chosen stake: refused (diary line) or played (watch, or sim = the result at once). */
 function mapChallenge(ti, sim) {
-  const r = City.challenge(RUN, ti, (CW.stake || {})[ti] || 0);
+  const r = Fight.offer(RUN, ti, (CW.stake || {})[ti] || 0);
   if (!r) return;
   CW.spot = `hq${ti}`;
   if (r.accepted) {

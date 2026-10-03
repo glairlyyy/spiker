@@ -22,10 +22,11 @@ const Dossier = {
   /** The short form for the World sheet's Factions tab: standing, war state, tile pressure, places taken / lost, economy. */
   summary(run, r) {
     const R0 = REGIONS[r],
-      major = MAJORS.includes(r),
-      lost = major ? Front.lostIds(run, r) : [],
-      took = major ? Front.takenIds(run, r) : [],
-      c = City.clashSite(run),
+      F = Dossier.front(run, r),
+      major = F.major,
+      lost = major ? F.lost : [],
+      took = major ? F.took : [],
+      c = Fight.clashSite(run),
       v = City.rep(run, r);
     return {
       id: r,
@@ -35,14 +36,14 @@ const Dossier = {
       standing: v,
       label: Dossier.standingLabel(v),
       weak: major && Front.weak(run, r),
-      fronts: major ? MAJORS.filter(o => o !== r).map(vs => ({ vs, meter: Front.meter(run, r, vs) })) : [],
+      fronts: F.fronts,
       took: took.map(id => ({ id, name: SPOTS[id].name, from: SPOTS[id].region })),
       lost: lost.map(id => ({ id, name: SPOTS[id].name, to: run.own[id] })),
       econ:
         major && Front.econ(run, r) !== 0
           ? {
-              priceMul: Front.priceMul(run, r),
-              qMul: Front.qMul(run, r),
+              priceMul: F.priceMul,
+              qMul: F.qMul,
               joinCut: FRONT.join * Front.down(run, r),
               feeCut: Math.round(FRONT.fee * Front.down(run, r) * 100),
               value: Hex.worth(run, r),
@@ -53,12 +54,23 @@ const Dossier = {
       foe: c ? (c.a === r ? c.b : c.b === r ? c.a : null) : null
     };
   },
+  /** The front / price / quality block shared by summary and build: places taken and lost, pressure on the other majors. */
+  front(run, r) {
+    const major = MAJORS.includes(r);
+    return {
+      major,
+      lost: Front.lostIds(run, r),
+      took: Front.takenIds(run, r),
+      fronts: major ? MAJORS.filter(o => o !== r).map(vs => ({ vs, meter: Front.meter(run, r, vs) })) : [],
+      priceMul: Front.priceMul(run, r),
+      qMul: Front.qMul(run, r)
+    };
+  },
   /** The dossier of region r (wei, wu, shu, outlaws, gloria); ratings and elements are hidden until scouted or joined. */
   build(run, r) {
     const R0 = REGIONS[r],
-      major = R0.kind === 'major',
-      lost = Front.lostIds(run, r),
-      took = Front.takenIds(run, r),
+      F = Dossier.front(run, r),
+      { major, lost, took } = F,
       clubs = FACTIONS.map((f, ti) => ({ f, ti })).filter(x => x.f.region === r),
       scouted = clubs.some(x => City.scouted(run, x.ti)),
       member = run.team != null && !!FACTIONS[run.team] && FACTIONS[run.team].region === r,
@@ -100,11 +112,11 @@ const Dossier = {
       desc: R0.desc,
       standing: City.rep(run, r),
       state,
-      fronts: major ? MAJORS.filter(m => m !== r).map(vs => ({ vs, meter: Front.meter(run, r, vs) })) : [],
+      fronts: F.fronts,
       took,
       lost,
-      priceMul: Front.priceMul(run, r),
-      qMul: Front.qMul(run, r),
+      priceMul: F.priceMul,
+      qMul: F.qMul,
       places,
       clubs: clubs.map(({ f, ti }) => ({
         ti,

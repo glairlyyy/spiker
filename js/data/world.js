@@ -238,7 +238,7 @@ const ACCESS = {
 /** Faction pool sizes (players, league-team players included): the rest are generated reserves. */
 const POOL = { wei: 24, wu: 18, shu: 12, outlaws: 6, gloria: 6 };
 /**
- * Team challenges (City.worth / City.challenge / Fight.challenge; spec §4.15). A club accepts when your worth reaches its
+ * Team challenges (Fight.worth / Fight.offer / Fight.challenge; spec §4.15). A club accepts when your worth reaches its
  * rating − margin: worth = your side's rating + standing ÷ standPer + a term from the faction's dogma (lore.md §5):
  * Wei: +gazette in the Gazette Top 20, + fans ÷ fansPer, + stake ÷ stakePer; Wu: (key stat − 50) ÷ keyPer (the stake counts
  * for nothing); Shu: standing ÷ repPer + week ÷ weekPer (no stake); Outlaws: any stake ≥ minStake, else refused; Gloria:
@@ -270,7 +270,7 @@ const CHALLENGE = {
  */
 const LOSS = { sta: 20, mood: -1, rep: -6, repeat: 3, repeatRep: -6, heavy: 8, fans: -150 };
 /**
- * Injury after every challenge / street fight, won or lost (City.injuryRisk, Fight.injure): chance = base + max(0, their rating −
+ * Injury after every challenge / street fight, won or lost (Fight.injuryRisk, Fight.injure): chance = base + max(0, their rating −
  * yours) × perGap + points lost by × perPoint + (1 − stamina share) × sta + max(0, cool − days since your last fight) × perDay,
  * clamped to [0, max]. A second roll gives the severity (< sev[0] minor, < sev[1] serious, else severe: also −`lose` for good on
  * one stat); `weeks` of light training per severity. Evaluations and cups carry no injury roll.
