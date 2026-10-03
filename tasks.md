@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-130** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-138** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -31,6 +31,50 @@ rankings, roads/travel/town/venues, living map A, relationships T-060…T-066), 
 UX batch 1 (T-090…T-094).
 
 ## Now
+
+Owner requests 2026-10-03 (spec §10.1, §10.1a): T-135 → T-136 → T-137.
+
+### [ ] T-135: Remove the places list (Map/List)
+
+Spec: §10.1 Goldens: unchanged Save: no change
+Goal: no list of places anywhere; the map is the only way to find a place (desktop only).
+Files: js/ui/career-hub.js (mapBar, mapMode, placesCard, placeGo, hubKey Esc chain), js/ui/career-week.js (CW.mapList), css/career.css (.mapbar, .maplist)
+Do not: touch the legend chips, MapView, the fly-to or the inbox actions that select a place.
+Steps: delete the Map/List segment, `placesCard`, `placeGo`, `mapMode`, `CW.mapList` and their CSS; Esc chain = ⚙ → sheet → place.
+Accept: no "List" button; grep finds no `placesCard` / `mapList`; inbox "View" still selects the battle pin. QA: hub screenshot.
+Result:
+
+### [ ] T-136: Collapsible week rail
+
+Spec: §10.1 Goldens: unchanged Save: no change (UI state in localStorage, try/catch)
+Goal: the player can fold the week rail to a 72px strip and back; the map takes the space.
+Files: js/ui/career-hub.js (weekRail, renderCareer, hubKey), css/career.css (.wrail, map / panel / legend offsets), js/core/storage.js (only if KEYS needs a new key)
+Do not: drop the End week arm (two clicks + Space) or any inbox action; remount the 3D map (resize it — MapView keeps one canvas).
+Steps:
+
+1. « button in the rail header (aria-label "Collapse the week rail ([)"), » in the strip; key `[` toggles (ignored in inputs, sheets keep working). State `CW.railMini`, saved with `store.set` (wrapped) and read on load.
+2. Collapsed strip (HubBattle mockup): portrait (→ Me), "n left", 7 day cells stacked (spent / trip / ghost / free, same data as `dayTrack`), goal icon (→ Season, warn colour when due ≤ 1 week), inbox icon with the item count (→ expands the rail), End week icon button (same arm).
+3. Map area, legend and the place panel follow the rail width (CSS var `--rail`); the 3D map gets a resize, not a remount.
+   Accept: `[` folds / unfolds; reload keeps the state; nothing in the rail is unreachable when folded (portrait, goal, inbox, End week).
+   QA: hub folded and unfolded with a place selected; screenshots.
+   Result:
+
+### [ ] T-137: Vertical info lists
+
+Spec: §10.1a §9.8 Goldens: unchanged Save: no change
+Goal: no fact chains joined by `·` in the hub; every block with more than two facts reads top-down, one fact per line.
+Files: js/ui/dom.js (new `kv(rows)` → `<dl class="kv">`), js/ui/career-map.js (clashPanel, challengeBlock, hqPanel, placeCard), js/ui/career-hub.js (inboxRows, weekBrief), js/ui/career-week.js (match prep notes), css/career.css (.kv)
+Do not: change any number, rule or button behaviour; reword lore lines (flavour stays one line).
+Steps:
+
+1. `kv([[label, valueHtml], …])` → `<dl class="kv"><dt>label</dt><dd>value</dd>…</dl>` (grid `auto 1fr`, label `mute`, 13px; an empty label continues the previous fact on a new line).
+2. clashPanel as HubBattle: facts list (Attacker, Defender, Border `{lead} n/2`, Standing · A, Standing · B, Trip, If nobody joins); one card per side: Cost (stamina), Injury, Win (standing A, standing B, fans, border — one per line), Lose (standing, border — one per line); a segment above the row `Fight: Play it | Sim it` (default Play it); row `[Fight for A] [Fight for B] [Watch · d]` — Watch stays the spectate-and-scout action; with Sim it picked, the Fight buttons sim (replaces the separate "Sim a fight" buttons).
+3. challengeBlock: Accepts, Why, Street crew (if hired), Injury, Stake (−/+) as rows; row `[Challenge · d] [Sim]`.
+4. hqPanel: Rating, Standing, Join (what they ask / your gap), Scouted habits (each habit its own line) as a list; the roster one player per line (name, role, OVR, element, techniques as sub-lines).
+5. inboxRows: title line + its facts as a `kv` (battle: Sides, Where, Border, Trip; goal: Goal, Progress, Due; evaluation: Opponent, Venue); weekBrief rows the same; match prep notes (venue, opponent, their best, scout hint) as a `kv`.
+   Accept: grep of the hub's rendered text shows no line with two or more `·` separators in the battle card, challenge, HQ, inbox and brief; the battle card matches HubBattle.
+   QA: battle week (card + inbox + brief), an HQ with a challenge; screenshots.
+   Result:
 
 ### [x] T-130: Border pressure lines on the 3D map
 

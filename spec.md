@@ -398,15 +398,22 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
   Tactics. ⚙ settings = labelled segmented controls (every option visible), opening upward from the bar. Results card
   action row: Continue/Back + Box score; playback disabled.
 
-## 10. Redesign [locked, not built]
+## 10. Redesign [built through T-129; §10.1a, rail collapse and no-list locked, not built]
 
 Design system pages `redesign.md` + `inventory.md`, mockups in the _Redesign_ group (HubRedesign, SheetMe, SheetPeople,
 SheetWorld, SheetSeason, WeekBrief, WeekReport, EventCard, MatchResult, TitleScreen, CreateCareer). Supersedes the
 floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or number changes — layout and flow only.
 
 - §10.1 Hub = top bar 56px (labelled resources, Week n/28, tabs Me 1 · People 2 · World 3 · Season 4, ⚙) + week rail
-  340px (you + 4 stats, day track, coach's goal, inbox, End week action row) + map (Map/List toggle, legend) + place
-  panel 448px (right, over the map). No site header, no dock, no floating HUD corners.
+  340px (you + 4 stats, day track, coach's goal, inbox, End week action row) + map (legend) + place panel 448px
+  (right, over the map). No site header, no dock, no floating HUD corners. **No list of places** (owner, 2026-10-03:
+  desktop only; places are found on the map). The rail **collapses** to 72px (« / », key `[`, remembered per browser):
+  face, days-left stack (7 cells incl. ghost), goal and inbox icons with a count, End week; the map widens.
+- §10.1a Info lists (owner, 2026-10-03): a block with more than two facts is a vertical label / value list — one fact
+  per line, label `mute` left, value right — never a `·`-joined chain. Applies to the street battle card (facts, and
+  per side: cost, injury, Win effects, Lose effects — one effect per line), challenge block, club HQ facts, inbox
+  items, week brief rows, match prep notes. Chips stay for short tag sets; `·` only between two items. Toggles and
+  options (e.g. the fight's Play it / Sim it) go above the action row (§9.8).
 - §10.2 Day track: 7 slots Mon–Sun; each spent day shows what it was (icon + label), trip days hatched, free days empty;
   a selected place's cost shows as dashed ghost slots before you commit. Match weeks (eval/cup) show one match slot.
   Needs `run.dayLog` (list of `{k, label, stat?, at?}` per spent day, cleared at week start; `run.days` is already the
