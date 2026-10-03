@@ -154,7 +154,19 @@ function dayTag(n) {
   return ` <small class="dt">${n}d</small>`;
 }
 
-/** This week's street battle: watch it or fight for a side — the three choices in one row, the stakes under the fights. */
+/** The battle's border line: "{attacker} n/cost to seize" (+ the tile when it isn't the battle's own site), or that it can't reach. */
+function clashBorder(run, att, def) {
+  const k = Front.stakes(run, att, def),
+    c = City.clashSite(run),
+    short = r => esc(REGIONS[r].name.split(' ')[0]);
+  return k.tile
+    ? `${short(att)} ${k.meter - 1}/${k.cost} to seize${c && c.name === k.name ? '' : ` ${esc(k.name)}`}`
+    : `${short(att)} can't reach ${short(def)}`;
+}
+/**
+ * This week's street battle (spec §10.1a, HubBattle): the facts top-down, one card per side (cost, injury, Win and Lose
+ * effects one per line), the Play it / Sim it option, then one row: Fight for A, Fight for B, Watch.
+ */
 function clashPanel(run) {
   const c = City.clashSite(run);
   if (!c) return `<p class="small mute">The street battle is over.</p>`;
@@ -162,36 +174,61 @@ function clashPanel(run) {
     trip = d - 1,
     late = run.event ? 'answer the event first' : City.noTime(run, d),
     ban = City.fightBan(run),
+    att = run.clash.att || c.a,
+    def = att === c.a ? c.b : c.a,
     short = r => esc(REGIONS[r].name.split(' ')[0]),
+    side = r => `${chip(REGIONS[r])}${esc(REGIONS[r].name)}`,
+    main = Front.stakes(run, att, def).tile,
     border = (w, l) => {
-      const k = Front.stakes(run, w, l);
-      return !k.tile
+      const s = Front.stakes(run, w, l),
+        on = s.tile === main ? '' : ` ${esc(s.name)}`; // the facts above name the battle's tile
+      return !s.tile
         ? `${short(w)} can't reach ${short(l)}`
-        : k.seize
-          ? `${short(w)} takes ${esc(k.name)}`
-          : `${short(w)} ${k.meter}/${k.cost} on ${esc(k.name)}`;
+        : s.seize
+          ? `${short(w)} seizes${on}`
+          : `${short(w)} ${s.meter}/${s.cost}${on}`;
     },
-    stake = (side, foe) =>
-      `<div class="stake small">${chip(REGIONS[side])}<b>${short(side)}</b> · ${term('sta', -CLASH.sta, 'cost')} · injury ~${Math.round(City.injuryRisk(run, City.crewOvr(run, foe)) * 100)}%<br><span class="wl">Win</span> ${term('standing', CLASH.win)} ${short(side)} ${term('standing', CLASH.other)} ${short(foe)} ${term('fans', CLASH.fans)} · ${border(side, foe)}<br><span class="wl">Lose</span> ${term('standing', CLASH.lose)} ${short(side)} · ${border(foe, side)}</div>`,
-    fight = side =>
-      `<button class="btn" onclick="mapClash('${side}')" ${late || ban ? `disabled ${tip(ban || late)}` : tip(`A real match with their crew — XP, techniques and a grade like an evaluation. +${CLASH.fans} fans for a win; a loss costs ${LOSS.sta} more stamina and mood, and fans if by ${LOSS.heavy}+ points. −${CLASH.sta} stamina`)}>${chip(REGIONS[side])}Fight for ${short(side)}</button>`,
-    st = r => `${chip(REGIONS[r])}${esc(REGIONS[r].name)} <b>${signed(City.rep(run, r))}</b>`;
+    std = r => {
+      const v = City.rep(run, r);
+      return [`Standing · ${short(r)}`, signed(v), v > 0 ? 'up' : v < 0 ? 'dn' : ''];
+    },
+    card = (s, foe) =>
+      `<div class="pside"><div class="lab">${chip(REGIONS[s])}Fight for ${short(s)}</div>${kv([
+        ['Cost', term('sta', -CLASH.sta, 'cost')],
+        ['Injury', `~${Math.round(City.injuryRisk(run, City.crewOvr(run, foe)) * 100)}%`],
+        ['Win', `${term('standing', CLASH.win)} ${short(s)}`],
+        ['', `${term('standing', CLASH.other)} ${short(foe)}`],
+        ['', term('fans', CLASH.fans)],
+        ['', border(s, foe)],
+        ['Lose', `${term('standing', CLASH.lose)} ${short(s)}`],
+        ['', border(foe, s)]
+      ])}</div>`,
+    sim = !!CW.clashSim,
+    fight = s =>
+      `<button class="btn" onclick="mapClash('${s}', CW.clashSim)" ${late || ban ? `disabled ${tip(ban || late)}` : tip(`A real match with their crew — XP, techniques and a grade like an evaluation. +${CLASH.fans} fans for a win; a loss costs ${LOSS.sta} more stamina and mood, and fans if by ${LOSS.heavy}+ points. −${CLASH.sta} stamina`)}>${chip(REGIONS[s])}Fight for ${short(s)}${sim ? ' ⏭' : ''}</button>`;
   return placeCard({
     region: null,
-    kind: 'Street battle',
-    title: `⚔ ${esc(REGIONS[c.a].name)} vs ${esc(REGIONS[c.b].name)}`,
-    tags: [ptag(esc(c.name)), trip ? ptag(`Trip ${trip}d`, '', trip >= 2 ? 'warn' : '') : ''].filter(Boolean),
+    kind: 'Street battle · this week',
+    title: `⚔ ${esc(c.name[0].toUpperCase() + c.name.slice(1))}`,
     flavour: 'Crews from both sides are settling it on the street this week.',
-    body: `<p class="small">${term('standing')} ${st(c.a)} · ${st(c.b)}</p><div class="pstakes">${stake(c.a, c.b)}${stake(c.b, c.a)}</div>`,
-    row: [
-      `<button class="btn" onclick="mapClash(null)" ${late ? `disabled ${tip(late)}` : tip(`See both sides' clubs in action: scouts them. −${CLASH.watchSta} stamina`)}>Watch · ${d}d</button>`,
-      fight(c.a),
-      fight(c.b)
-    ],
+    body: `${kv([
+      ['Attacker', side(att)],
+      ['Defender', side(def)],
+      ['Border', clashBorder(run, att, def)],
+      std(c.a),
+      std(c.b),
+      ['Trip', trip ? `${trip} day${trip > 1 ? 's' : ''}, then 1 day there` : 'None, 1 day there', trip >= 2 ? 'wa' : ''],
+      ['If nobody joins', "Settled at the week's end"]
+    ])}<div class="pstakes">${card(c.a, c.b)}${card(c.b, c.a)}</div>`,
     opts:
       late || ban
         ? ''
-        : `<span class="small mute">Sim a fight:</span> <button class="btn" onclick="mapClash('${c.a}', true)">⏭ ${short(c.a)}</button> <button class="btn" onclick="mapClash('${c.b}', true)">⏭ ${short(c.b)}</button>`
+        : `<span class="small mute">Fight</span><div class="seg"><button class="btn ${sim ? '' : 'on'}" onclick="CW.clashSim=false;mapPick('clash')">Play it</button><button class="btn ${sim ? 'on' : ''}" onclick="CW.clashSim=true;mapPick('clash')" ${tip(GLOSSARY.sim.long)}>Sim it</button></div>`,
+    row: [
+      fight(c.a),
+      fight(c.b),
+      `<button class="btn" onclick="mapClash(null)" ${late ? `disabled ${tip(late)}` : tip(`See both sides' clubs in action: scouts them. −${CLASH.watchSta} stamina`)}>Watch · ${d}d</button>`
+    ]
   });
 }
 
@@ -274,9 +311,21 @@ function challengeBlock(run, ti) {
       : City.fightBan(run) || City.noTime(run, cost) || (run.money < side.cost ? `needs $${side.cost} for a street crew` : ''),
     risk = Math.round(City.injuryRisk(run, run.teams[ti].ovr) * 100),
     hot = W.verdict === 'likely' ? 'hot' : '';
-  return `<section class="pchal" ${tip('Challenge their squad for a stake: they may refuse. Win and the stake pays at odds; lose and it is gone. XP and techniques as in any match')}><div class="lab">Challenge</div>
-    <p class="small ${W.verdict === 'refuses' ? 'mute' : ''}">Accepts: <b>${W.verdict}</b> — ${esc(W.why)}${side.kind === 'hired' ? ` · street crew $${side.cost}` : ''} · <span ${tip('Before the match: grows with their rating above yours, how badly you lose, low stamina and fighting again soon. Win or lose.')}>injury ~${risk}%</span></p>
-    <div class="popts"><span class="small">Stake</span> <button class="btn" onclick="mapStake(${ti},-1)" ${st <= 0 ? 'disabled' : ''}>−</button> <b>$${st}</b> <button class="btn" onclick="mapStake(${ti},1)" ${st + CHALLENGE.stakeStep > City.stakeMax(run) ? 'disabled' : ''}>+</button></div>
+  return `<section class="pchal" ${tip('Challenge their squad for a stake: they may refuse. Win and the stake pays at odds; lose and it is gone. XP and techniques as in any match')}><div class="lab">Challenge</div>${kv(
+    [
+      ['Accepts', `<b>${W.verdict}</b>`, W.verdict === 'refuses' ? 'mute' : ''],
+      ['Why', esc(W.why)],
+      side.kind === 'hired' ? ['Street crew', `$${side.cost}`] : null,
+      [
+        'Injury',
+        `<span ${tip('Before the match: grows with their rating above yours, how badly you lose, low stamina and fighting again soon. Win or lose.')}>~${risk}%</span>`
+      ],
+      [
+        'Stake',
+        `<span class="pstep"><button class="btn" onclick="mapStake(${ti},-1)" ${st <= 0 ? 'disabled' : ''} aria-label="Lower the stake">−</button><b>$${st}</b><button class="btn" onclick="mapStake(${ti},1)" ${st + CHALLENGE.stakeStep > City.stakeMax(run) ? 'disabled' : ''} aria-label="Raise the stake">+</button></span>`
+      ]
+    ]
+  )}
     <div class="acts pri"><button class="btn ${hot}" onclick="mapChallenge(${ti})" ${late ? `disabled ${tip(late)}` : ''}>Challenge · ${cost}d</button><button class="btn" onclick="mapChallenge(${ti}, true)" ${late ? 'disabled' : ''} ${tip(GLOSSARY.sim.long)}>Sim ⏭</button></div></section>`;
 }
 /** An official venue's card (spec §4.21): what is held there, and whether your match is there this week. */
@@ -301,25 +350,36 @@ function hqPanel(run, ti) {
     late = run.event ? 'answer the event first' : City.noTime(run, sc),
     seen = City.scouted(run, ti);
   const roster = seen
-    ? `<div class="roster small">${squadOf(t)
-        .map(
-          p =>
-            `<span>${faceSVG(p, 0, 22)}${stag(p)}${esc(p.name)} <i class="mute">${p.role} ${ovr(p)}${t.bench && t.bench.includes(p) ? ' · bench' : ''}</i>${p.elOn ? ` <b style="color:${ECOL[p.el]}">${ENAME[p.el]}</b>` : ''}${Skills.techs(p).length ? ` <span class="mute">· ${esc(Skills.techs(p).join(', '))}</span>` : ''}</span>`
-        )
+    ? `<div class="lab prlab">Roster</div><div class="roster">${squadOf(t)
+        .map(p => {
+          const techs = Skills.techs(p);
+          return `<div class="prow">${faceSVG(p, 0, 22)}<span class="prn"><b>${stag(p)}${esc(p.name)}</b>${p.elOn ? `<small style="color:${ECOL[p.el]}">${ENAME[p.el]}</small>` : ''}${
+            techs.length ? `<small class="mute">${esc(techs.join(', '))}</small>` : ''
+          }</span><span class="prr"><span class="mute">${p.role}${t.bench && t.bench.includes(p) ? ' bench' : ''}</span> <b>${ovr(p)}</b></span></div>`;
+        })
         .join('')}</div>`
     : '';
-  const habits = seen ? `<p class="small mute">${esc(Dossier.habitText(Dossier.habits(t)))}</p>` : '';
+  const H = seen ? Dossier.habits(t) : null,
+    habits = H
+      ? Dossier.habitText(H)
+          .split(' · ')
+          .map((h, i) => [i ? '' : 'Scouted habits', esc(h[0].toUpperCase() + h.slice(1))])
+      : [],
+    rep = City.rep(run, f.region),
+    gap = free && !j.ok ? joinGap(run, ti) : '',
+    facts = kv([
+      ['Rating', String(t.ovr)],
+      ['Standing', signed(rep), rep > 0 ? 'up' : rep < 0 ? 'dn' : ''],
+      free ? ['Join', esc(World.joinText(ti, run)), j.ok ? 'up' : ''] : null,
+      gap ? ['', `Your gap: ${esc(gap)}`, 'wa'] : null,
+      ...habits
+    ]);
   return placeCard({
     region: f.region,
     kind: ti === run.team ? 'Your club' : 'Club HQ',
     title: `${chip(t)}${esc(t.name)}`,
-    tags: [
-      ptag(`Rating ${t.ovr}`),
-      City.rep(run, f.region) ? ptag(`⚑ ${signed(City.rep(run, f.region))}`, GLOSSARY.standing.long) : '',
-      free ? ptag(esc(World.joinText(ti, run)), 'What they ask', j.ok ? 'sel' : '') : ''
-    ].filter(Boolean),
     flavour: `${esc(f.front)}.${seen ? ` Word is: ${esc(f.dark)}.` : ''}`,
-    body: roster + habits,
+    body: facts + roster,
     row: [
       free
         ? `<button class="btn ${j.ok ? 'hot' : 'lock'}" onclick="joinClub(${ti})" ${j.ok ? '' : `disabled ${tip('Missing: ' + j.why.join(', '))}`}>${j.ok ? 'Sign' : esc(joinGap(run, ti))}</button>`

@@ -49,5 +49,6 @@ const KEYS = {
   gfx: 'skyline_gfx',
   hype: 'skyline_hype',
   volume: 'skyline_volume',
+  rail: 'sns_rail_mini', // the hub's week rail folded to its strip ('1') or open (T-136)
   career: 'sns_run_v1' // Spite & Spike run (older Skyline Cup careers are not carried over)
 };
