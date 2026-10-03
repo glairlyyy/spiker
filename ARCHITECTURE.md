@@ -714,15 +714,16 @@ with "XP: …" and the factor note.
 
 `js/ui/career-hub.js` renders the whole career screen (spec §10) as a fixed full-screen layer (covers the page header):
 top bar (`topBar`: labelled resources with one-render deltas, sheet tabs Me · People · World · Season with keys 1–4, ⚙ →
-`gearPop`), week rail (`weekRail`: you + stats, `dayTrack` from `run.dayLog`, coach's goal, `inboxRows`, End week), the 3D
-island map (`MapView`, see Island map layers) with `mapBar` (Map / List segment → `placesCard` over the map area, legend
-chips), the place panel (`#spot`, `placeCard` anatomy in career-map.js) and a card over the map (`hubCard`: event → Week
+`gearPop`), week rail (`weekRail`: you + stats, `dayTrack` from `run.dayLog` via `weekCells`, coach's goal, `inboxRows`
+over `inboxItems`, End week; folded by «/» or `[` to `railStrip`, a 72px strip with the same reach — `.hub.railmini` sets
+`--rail`, which every layer right of the rail follows; `CW.railMini` is remembered in `KEYS.rail`), the 3D island map
+(`MapView`, see Island map layers; places are found only on the map, no list) with `mapLegend` chips, the place panel (`#spot`, `placeCard` anatomy in career-map.js) and a card over the map (`hubCard`: event → Week
 report → Week brief → cup / eval card).
 
 Sheets open over the map area (rail and top bar stay): `HUB_SHEETS` → `sheetMe` / `sheetSeason` (career-week.js),
 `sheetPeople` (career-people.js), `sheetWorld` (career-dossier.js; the dossier renders in place on its Factions tab).
-UI state lives in `CW` (career-week.js): `sheet`, `pfilter`, `wtab`, `stab`, `gear`, `mapList`, `person`, `dossier`, … —
-nothing of it is saved. There are no drawers.
+UI state lives in `CW` (career-week.js): `sheet`, `pfilter`, `wtab`, `stab`, `gear`, `railMini`, `person`, `dossier`, … —
+nothing of it is saved except `railMini` (a browser preference in `KEYS.rail`, not the run). There are no drawers.
 
 Consequence feedback (UI state only, nothing saved): `weekSnap` keeps a baseline per week (`CW.snap`); `endWeekUI`
 diffs it around `Run.endWeek` into `CW.recap` → `recapCard` (the Week report). `renderCareer` diffs `run.own` against

@@ -44,7 +44,7 @@ Steps: delete the Map/List segment, `placesCard`, `placeGo`, `mapMode`, `CW.mapL
 Accept: no "List" button; grep finds no `placesCard` / `mapList`; inbox "View" still selects the battle pin. QA: hub screenshot.
 Result: Map/List segment, placesCard, placeGo, CW.mapList and .mapbar/.maplist/.places/.plrow CSS removed; legend kept as mapLegend(); Esc = ⚙ → sheet → place. QA: hub 1440×900, no errors.
 
-### [ ] T-136: Collapsible week rail
+### [x] T-136: Collapsible week rail
 
 Spec: §10.1 Goldens: unchanged Save: no change (UI state in localStorage, try/catch)
 Goal: the player can fold the week rail to a 72px strip and back; the map takes the space.
@@ -57,7 +57,7 @@ Steps:
 3. Map area, legend and the place panel follow the rail width (CSS var `--rail`); the 3D map gets a resize, not a remount.
    Accept: `[` folds / unfolds; reload keeps the state; nothing in the rail is unreachable when folded (portrait, goal, inbox, End week).
    QA: hub folded and unfolded with a place selected; screenshots.
-   Result:
+   Result: railStrip + railToggle, KEYS.rail (sns_rail_mini), `.hub.railmini { --rail: 72px }`; dayTrack/inbox split into weekCells/inboxItems (shared); strip inbox icon unfolds the rail; armed End week shows "Skip?". Also fixed ARCHITECTURE for T-135. QA: fold/unfold with a place selected, reload keeps it, map canvas 1368px wide folded, no errors.
 
 ### [ ] T-137: Vertical info lists
 

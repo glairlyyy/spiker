@@ -2437,6 +2437,98 @@
 .hub .wend .btn {
   min-height: 48px;
 }
+/* collapsible week rail (spec §10.1, T-136): « / » and key [ fold it to a 72px strip; everything right of it follows --rail */
+.hub.railmini {
+  --rail: 72px;
+}
+.hub .wtop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.hub .wfold {
+  flex: none;
+  height: 32px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.hub .wfold kbd {
+  margin: 0;
+}
+.hub .wrail.mini {
+  padding: 12px;
+  gap: 12px;
+  align-items: center;
+}
+.hub .wrail.mini .wfold {
+  width: 48px;
+  justify-content: center;
+}
+.hub .wrail.mini .wme {
+  justify-content: center;
+}
+.hub .wleft {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+.hub .wleft b {
+  font: 600 20px var(--disp);
+  font-variant-numeric: tabular-nums;
+}
+.hub .wleft small {
+  font-size: 12px;
+  color: var(--mute);
+}
+.hub .wrail.mini .wdays {
+  grid-template-columns: 1fr;
+  width: 48px;
+}
+.hub .wrail.mini .dslot {
+  height: 24px;
+}
+.hub .wrail.mini .dslot.match {
+  height: 40px;
+}
+.hub .wicon {
+  position: relative;
+  width: 48px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surf2);
+  color: var(--ink);
+  font: 16px var(--body);
+  cursor: pointer;
+}
+.hub .wicon.warn {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+.hub .wicon .badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+}
+.hub .wrail.mini .endw {
+  margin-top: auto;
+  height: 56px;
+  gap: 2px;
+  font-size: 12px;
+}
+.hub .wrail.mini .endw kbd {
+  margin: 0;
+  font-size: 12px;
+}
 /* the map, the place panel, drawers, cards and notes live right of the rail, under the bar */
 .hub .mapwrap {
   top: var(--tbar);

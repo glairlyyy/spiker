@@ -48,8 +48,9 @@ function renderCareer() {
   for (const z of chg) (CW.seizes || (CW.seizes = [])).unshift({ ...z, week: run.week }); // an inbox item for a week
   const nextCup = Run.weekType(run) === 'cup' && !run.event ? Cup.upcoming(run) : null; // rules first, then draw
   const card = hubCard(run, nextCup);
-  $('#app').innerHTML = `<section class="career hub ${City.night(run) ? 'eve' : ''}" style="--tc:${team.color}">
-    ${topBar(run)}${weekRail(run, armed)}
+  if (CW.railMini == null) CW.railMini = store.get(KEYS.rail) === '1'; // remembered per browser
+  $('#app').innerHTML = `<section class="career hub ${City.night(run) ? 'eve' : ''} ${CW.railMini ? 'railmini' : ''}" style="--tc:${team.color}">
+    ${topBar(run)}${CW.railMini ? railStrip(run, armed) : weekRail(run, armed)}
     <div class="mapwrap" id="mapwrap"></div>${mapLegend()}
     <div class="hud spotcard ${CW.spot && !card ? 'open' : ''}" id="spot">${CW.spot && !card ? spotCard(run) : ''}</div>
     ${CW.sheet ? hubSheet(run) : ''}
@@ -183,15 +184,16 @@ function weekRail(run, armed) {
     match = wt === 'cup' || wt === 'eval',
     eve = !match && days <= 0;
   return `<aside class="wrail" aria-label="This week">
-    <button class="wme" onclick="hubOpen('me')" aria-label="Your player"><span class="portrait">${faceSVG(you, MOODS[run.mood].form, 44)}</span>
+    <div class="wtop"><button class="wme" onclick="hubOpen('me')" aria-label="Your player"><span class="portrait">${faceSVG(you, MOODS[run.mood].form, 44)}</span>
       <span><b>${stag(you)}${esc(you.name)}</b><small>${ROLE_NAME[you.role]} · ${chip(team)}${esc(team.short)} · OVR ${ovr(you)}</small></span></button>
+      <button class="btn wfold" onclick="railToggle()" aria-label="Collapse the week rail ([)">« <kbd>[</kbd></button></div>
     <div class="wstats">${STATK.map(k => `<span ${tip(GLOSSARY[k].long)}><small>${statI(statKey(k), 14)}${STATNAME[k]}</small><b>${you[k]}</b><i class="mbar4"><i style="width:${Math.min(100, you[k])}%"></i></i></span>`).join('')}</div>
     ${weekSection(run)}
     ${railGoal(run)}
     <section class="winbox"><div class="lab">Inbox</div>${inboxRows(run)}</section>
     ${
       !match && !run.event
-        ? `<div class="acts wend"><button class="btn ${eve ? 'hot' : ''} endw" onclick="mapEndWeek()" ${tip(eve ? 'Sleep: start the next week' : `Skip the ${days} day${days > 1 ? 's' : ''} left`)}>${
+        ? `<div class="acts wend"><button class="btn ${eve ? 'hot' : ''} endw" onclick="mapEndWeek()" ${endTip(days, eve)}>${
             armed
               ? `Skip ${days} day${days > 1 ? 's' : ''}? Click again`
               : `End week${days > 0 ? ` · ${days} day${days > 1 ? 's' : ''} unused` : ''}`
@@ -199,6 +201,45 @@ function weekRail(run, armed) {
         : ''
     }
   </aside>`;
+}
+const endTip = (days, eve) => tip(eve ? 'Sleep: start the next week' : `Skip the ${days} day${days > 1 ? 's' : ''} left`);
+/**
+ * The folded rail (spec §10.1, 72px): face (→ Me), days left, the 7 day cells stacked, goal (→ Season), inbox with
+ * its count (→ unfolds the rail), End week (same two-click arm and Space). Nothing in the rail is out of reach.
+ */
+function railStrip(run, armed) {
+  const you = Run.you(run),
+    wt = Run.weekType(run),
+    days = City.days(run),
+    match = wt === 'cup' || wt === 'eval',
+    eve = !match && days <= 0,
+    g = run.goal && run.goal.done == null ? run.goal : null,
+    soon = g && g.by - run.week <= 1,
+    n = inboxItems(run).length,
+    cells = match
+      ? '<div class="dslot match" title="Match week">⚑</div>'
+      : weekCells(run)
+          .map(([e, cls]) => `<div class="dslot ${cls} ${e ? e.k : ''}" ${e && (e.at || e.label) ? tip(e.at || e.label) : ''}>${e ? `<i>${DAY_ICON[e.k] || '•'}</i>` : ''}</div>`)
+          .join('');
+  return `<aside class="wrail mini" aria-label="This week">
+    <button class="btn wfold" onclick="railToggle()" aria-label="Expand the week rail ([)">» <kbd>[</kbd></button>
+    <button class="wme" onclick="hubOpen('me')" aria-label="Your player" ${tip(you.name)}><span class="portrait">${faceSVG(you, MOODS[run.mood].form, 40)}</span></button>
+    <div class="wleft"><b>${match ? '⚑' : days}</b><small>${match ? 'match' : 'left'}</small></div>
+    <div class="wdays">${cells}</div>
+    ${g ? `<button class="wicon ${soon ? 'warn' : ''}" onclick="hubOpen('season')" aria-label="Coach's goal" ${tip(`Coach's goal: ${Goals.text(run, g)}, by week ${g.by}`)}>◎</button>` : ''}
+    <button class="wicon" onclick="railToggle()" aria-label="Inbox: ${n} waiting" ${tip(`Inbox · ${n} waiting`)}>✉${n ? `<em class="badge">${n}</em>` : ''}</button>
+    ${
+      !match && !run.event
+        ? `<button class="btn ${eve ? 'hot' : ''} endw wicon" onclick="mapEndWeek()" aria-label="End week (Space)" ${endTip(days, eve)}>${armed ? 'Skip?' : '☾'}<kbd>Space</kbd></button>`
+        : ''
+    }
+  </aside>`;
+}
+/** Fold / unfold the week rail (« / », key `[`); the map resizes into the space (MapView keeps its one canvas). */
+function railToggle() {
+  CW.railMini = !CW.railMini;
+  store.set(KEYS.rail, CW.railMini ? '1' : '0');
+  renderCareer();
 }
 /** "This week · {type}", days left and the day track. */
 function weekSection(run) {
@@ -216,17 +257,22 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 function dayTrack(run, match) {
   if (match) return '<div class="wdays"><div class="dslot match">⚑ Match day</div></div>';
   const spent = WEEK_DAYS - City.days(run),
+    cells = weekCells(run),
+    ghost = cells.filter(c => c[1] === 'ghost');
+  return `<div class="wdn">${WEEKDAYS.map(d => `<span>${d}</span>`).join('')}</div><div class="wdays" id="wdays">${cells
+    .map(([e, cls]) => (e ? `<div class="dslot ${cls} ${e.k}" ${e.at ? tip(e.at) : ''}><i>${DAY_ICON[e.k] || '•'}</i><b>${esc(e.label || '')}</b></div>` : '<div class="dslot">free</div>'))
+    .join('')}</div>${ghost.length ? `<p class="small wuse">Uses ${ghost.map((c, i) => WEEKDAYS[spent + i]).join(' + ')} — shown on your week</p>` : ''}`;
+}
+/** The week's 7 cells as [entry, 'done' | 'ghost' | 'free'] (entry null = a free day): spent days, the selected place's ghost, free. */
+function weekCells(run) {
+  const spent = WEEK_DAYS - City.days(run),
     log = (run.dayLog || []).slice(0, spent),
-    filled = Array.from({ length: spent }, (_, i) => log[i] || { k: 'day', label: '' }), // days spent before the log existed
-    ghost = spotGhost(run, CW.spot).slice(0, WEEK_DAYS - spent),
-    slot = (e, cls) =>
-      `<div class="dslot ${cls} ${e.k}" ${e.at ? tip(e.at) : ''}><i>${DAY_ICON[e.k] || '•'}</i><b>${esc(e.label || '')}</b></div>`,
-    free = Array.from({ length: WEEK_DAYS - spent - ghost.length }, () => '<div class="dslot">free</div>');
-  return `<div class="wdn">${WEEKDAYS.map(d => `<span>${d}</span>`).join('')}</div><div class="wdays" id="wdays">${filled
-    .map(e => slot(e, 'done'))
-    .join('')}${ghost.map(e => slot(e, 'ghost')).join('')}${free.join('')}</div>${
-    ghost.length ? `<p class="small wuse">Uses ${ghost.map((e, i) => WEEKDAYS[spent + i]).join(' + ')} — shown on your week</p>` : ''
-  }`;
+    ghost = spotGhost(run, CW.spot).slice(0, WEEK_DAYS - spent);
+  return [
+    ...Array.from({ length: spent }, (_, i) => [log[i] || { k: 'day', label: '' }, 'done']), // days spent before the log existed
+    ...ghost.map(e => [e, 'ghost']),
+    ...Array.from({ length: WEEK_DAYS - spent - ghost.length }, () => [null, 'free'])
+  ];
 }
 /** Coach's goal card in the rail (click: Season). */
 function railGoal(run) {
@@ -240,6 +286,10 @@ function railGoal(run) {
 }
 /** The rail inbox (spec §10.3): what waits for you, one button each, until handled. Max 5; the suggested next step first. */
 function inboxRows(run) {
+  return inboxItems(run).slice(0, 5).join('') || '<p class="small mute">Nothing waiting.</p>';
+}
+/** The inbox items as HTML rows (all of them; the rail shows 5, the folded rail counts them). */
+function inboxItems(run) {
   const rows = [],
     item = (ico, text, sub, btn, act, cls = '') =>
       rows.push(
@@ -280,7 +330,7 @@ function inboxRows(run) {
   }
   for (const z of (CW.seizes || []).filter(x => run.week - x.week <= 1))
     item('⚑', esc(z.text), 'A place changed hands', 'Show', `mapPick('${z.id}')`);
-  return rows.slice(0, 5).join('') || '<p class="small mute">Nothing waiting.</p>';
+  return rows;
 }
 /**
  * One suggested next step (a suggestion only: the chip selects a place or opens a sheet, never acts). First match wins:
@@ -313,7 +363,7 @@ function nextStep(run) {
   return null;
 }
 
-/** Hub keys: 1–4 open the sheet tabs, Space ends the week, Esc closes ⚙, the sheet, then the place card. */
+/** Hub keys: 1–4 open the sheet tabs, `[` folds the week rail, Space ends the week, Esc closes ⚙, the sheet, then the place card. */
 function hubKey(e) {
   if (A || e.ctrlKey || e.metaKey || e.altKey || !document.querySelector('.career.hub') || $('#dbg') || (CW.dossier && e.key === 'Escape'))
     return;
@@ -328,7 +378,8 @@ function hubKey(e) {
   } else if (e.key === ' ' && document.querySelector('.hub .endw') && !document.querySelector('.hubmodal')) {
     e.preventDefault();
     mapEndWeek();
-  } else if (/^[1-4]$/.test(e.key) && !document.querySelector('.hubmodal')) hubOpen(HUB_TABS[+e.key - 1][0]);
+  } else if (e.key === '[') railToggle();
+  else if (/^[1-4]$/.test(e.key) && !document.querySelector('.hubmodal')) hubOpen(HUB_TABS[+e.key - 1][0]);
 }
 document.addEventListener('keydown', hubKey);
 
