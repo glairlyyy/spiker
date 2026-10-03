@@ -757,7 +757,7 @@
   padding: 2px 9px;
   margin: -4px -6px 0 8px;
 }
-/* drawer */
+/* sheet slide-in */
 @keyframes drawerIn {
   from {
     transform: translateX(40px);
@@ -885,7 +885,7 @@
 .spot .stk.far {
   color: var(--bad-rose);
 }
-/* factions drawer */
+/* factions sheet */
 .facs .fac {
   padding: 8px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -1170,7 +1170,7 @@
     0 0 3px #1b1204;
   pointer-events: none;
 }
-/* rankings drawer */
+/* rankings sheet */
 .hub .tabs.rk {
   display: flex;
   gap: 6px;
@@ -1327,7 +1327,7 @@
   color: var(--ink);
 }
 
-/* border meters and battle stakes (T-092) */
+/* fronts and battle stakes (T-092, hex since T-131) */
 .facs .fm2 {
   display: flex;
   align-items: center;
@@ -1519,7 +1519,7 @@
   color: var(--mute);
 }
 
-/* drawer clean-up (T-104) */
+/* sheet clean-up (T-104) */
 .cal .pip i,
 .callg i {
   font-style: normal;
@@ -1908,7 +1908,7 @@
   margin: 0;
   font-size: 12px;
 }
-/* the map, the place panel, drawers, cards and notes live right of the rail, under the bar */
+/* the map, the place panel, sheets, cards and notes live right of the rail, under the bar */
 .hub .spotcard {
   top: calc(var(--tbar) + 16px);
   right: 16px;

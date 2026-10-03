@@ -426,7 +426,7 @@ export function create(onIdle) {
         };
         if (view.d > 60) {
           view.d = Math.min(340, view.d * 1.15); // perspective: the far edge needs more room than the fit assumes
-          view.z += view.d * 0.08; // and the near edge stays clear of the dock
+          view.z += view.d * 0.08; // and the near edge stays clear of the bottom chips
         }
       }
       el.insertBefore(furn.layer, badge);
