@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-147** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-159** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -414,6 +414,142 @@ Result: tiles 139 → 169 (coast fully tiled); fill draped on ~3 m facets with p
 Spec: §4.18a Goldens: unchanged Save: no change
 Files: js/ui/career-map.js (trainSpot gain row)
 Result: per-stat row shows EXP +++ (≥ 3 points of need per session) / EXP ++ (≥ 1) / EXP + (≥ ¼) / Almost no EXP; tip says sessions to next point. Preview now includes DAY_GAIN (was 4× too high). QA: Wei Strength Center shows Power EXP ++, Jump EXP +++.
+
+## Refactor & cleanup part 3 (planned 2026-10-03, owner request)
+
+Audit at c44a718. Order = value ÷ risk. All: Goldens unchanged, Save: no change, no gameplay change; `npm test` + lint
+green after each. Splits are pure moves (same functions, same draw order). New files are listed, so no stop-and-ask
+for those; add them to index.html (and tests/run.js for test files).
+
+### [ ] T-147: Delete dead JS
+
+Spec: — Goldens: unchanged Save: no change
+Files: js/ui/match-screen.js, js/ui/career-week.js, js/ui/career-map.js, js/ui/icons.js, js/map3d/kit3d.mjs, js/career/city.js, js/career/front.js, eslint.config.mjs
+Steps: remove `toggleCamera` `cycleHype` `cycleGfx` `toggleCutins` (match-screen, replaced by settingsMenu), `gazetteCard`
+
+- global `readGazette` (keep `Run.readGazette`), `dayTag`, `clashSeen`, `skillChip`, `landmarkDepth` export,
+  `City.homeRegion`, `Front.lost`/`Front.gained`; drop the stale `shared.R3D` line in eslint config.
+  Do not: touch `mkTeams`/`simBalance` (test fixtures feeding goldens) or spread-used `ACTS_*`, `TORSO`, `PLAN`.
+  Accept: grep shows 0 refs for each removed name; tests + lint green.
+  QA: career run → hub, Season sheet (gazette), settings menu in a match.
+  Result:
+
+### [ ] T-148: Delete dead CSS, merge duplicate selectors
+
+Spec: §9 Goldens: unchanged Save: no change
+Files: css/career.css, css/style.css, css/theme.css
+Steps: remove rules whose classes appear in no js/ or index.html string (~35 classes in career.css incl. the legacy hub
+block `hgoal hnext hl htoast hmenu dial trk prg tline g2`; style.css podium `podium pod pface pod1-3`, `resline rmsg`;
+theme.css `mcard mgo alloc`; `.skc`, `.dt`, `.seizeline` after T-147). Keep dynamically built classes
+(`m1 rS rB gS gA w-rank w-clubs`) and `.gazette`. Merge the ~41 selectors defined twice in career.css. Fix the
+"Border pressure labels (T-130)" comment (now the hex target label).
+Accept: ~600 lines gone; a scripted class scan finds no unused selector; QA screenshots unchanged.
+QA: menu, create, hub, map + point panel, people, Season/World/Me sheets, match prep, result.
+Result:
+
+### [ ] T-149: Hardcoded colours → theme tokens
+
+Spec: §9 Goldens: unchanged Save: no change
+Files: css/theme.css, css/career.css, css/style.css, js/ui/career-end.js
+Steps: replace literal copies of tokens (`#8b919c`→`--mute`, `#ff3b4e`→`--hot`, `#fff`→the white token); for colours
+with no token (`#0c1016`, `#040b13`, `#ff8c42`, `#ffd166`, `#9fb0c4`, `#555b66`, canvas `#10163a`) map to the nearest
+design-system token, or add one to theme.css only if tokens.json has it. career-end.js `COL` reads tokens.
+Do not: change js/render/overlay.js canvas colours (canvas, not CSS).
+Accept: career.css/style.css have no hex literals outside theme.css except commented exceptions; QA screens unchanged.
+QA: as T-148.
+Result:
+
+### [ ] T-150: Stale docs and comments
+
+Spec: — Goldens: unchanged Save: no change
+Files: ARCHITECTURE.md, js/ui/career-people.js, js/career/dossier.js, js/career/asks.js, js/career/people.js, js/career/rel.js, js/ui/career-week.js
+Steps: ARCHITECTURE.md — drop "border meters `run.front`"/`Front.seize` (now hex §4.27), fix `peopleCard`/`personRow`/
+`rankBest`/`PointFlash` names, mark `mkTeams`/`simBalance` as test fixtures in the engine flow; code comments still
+naming the hub dock / drawers; UI copy "seize meters" (career-week.js) → tile wording from short-copy.md.
+Accept: grep for `border meter`, `drawer`, `dock`, `seize meter` finds no stale hits.
+Result:
+
+### [ ] T-151: Test suite — slow marks and file split
+
+Spec: — Goldens: unchanged Save: no change
+Files: tests/engine.test.js, tests/career.test.js, tests/map.test.js, tests/cup.test.js, tests/run.js, tests/people.test.js (new), tests/hex.test.js (new), tests/map3d.test.js (new), CLAUDE.md (test:quick timing line only)
+Steps: mark `engine: ego` (9 s) and `rel on court: the clutch` (3 s) `test.slow`; move career.test.js people/rel/asks/
+fates/pairs (~940 lines) → people.test.js; map.test.js hex/front/economy → hex.test.js, pure map3d helpers →
+map3d.test.js; both "rel on court" tests together. Add a test that flags any top-level classic-script name defined
+but referenced nowhere else (allow-list for onclick handlers and fixtures).
+Accept: same test count + 1; `test:quick` ≤ 25 s; full run green.
+Result:
+
+### [ ] T-152: Shared helpers in one place
+
+Spec: — Goldens: unchanged Save: no change
+Files: js/core/rng.js, js/core/math.js (new), index.html, js/map3d/geo3d.mjs, js/map3d/map3d.mjs, js/map3d/life3d.mjs, js/map3d/pins3d.mjs, js/render3d/poses3d.mjs, js/render3d/actors3d.mjs, js/render3d/camera3d.mjs, js/map3d/avatar3d.mjs, js/ui/dom.js, js/ui/career-dossier.js, js/ui/career-hub.js, js/ui/career-week.js, js/career/city.js, js/career/run.js, js/career/front.js, js/data/world.js, js/career/mapmodel.js
+Steps: core/math.js takes the non-random helpers from rng.js (`clamp lerp sig inPoly`) — load order before rng.js
+users; map3d keeps pure maths in geo3d.mjs (`clamp lerp smooth wrap inside edgeDist sideDist hstr`; tested .mjs can't
+read globals) and imports them; render3d uses globals (`cl`→`clamp`, inline Math.max/min clamps). One `fmtDelta` in
+core/math.js replaces the ~9 signed-delta formatters (always `−`). pins3d uses an imported escape, no faction names.
+`MAJORS` moves to data/world.js; hardcoded faction lists use it.
+Do not: change `wpick`/RNG or any engine call order.
+Accept: goldens unchanged; one definition each of clamp/lerp/hash/inPoly per world (classic, map3d).
+Result:
+
+### [ ] T-153: Remove pre-hex leftovers on the map
+
+Spec: §4.27 Goldens: unchanged Save: no change
+Files: js/data/city.js, js/career/mapmodel.js, js/map3d/life3d.mjs, tests/map.test.js
+Steps: `CITY.contest/contestPair` + `MapModel.contest` → derive "hot frontier" from `Hex.frontier` + pressure (patrols
+walk the actual hex front, any pair, not a fixed Wei–Wu line); drop `MapModel.seized` poles (tile colour already shows
+a seized place). Rewrite the T-079 test against the hex frontier.
+Accept: patrols spawn only on frontier tiles; no `contest`/`seized` names left.
+QA: career run → map, a battle week: patrols on the target front.
+Result:
+
+### [ ] T-154: Split career.css
+
+Spec: §9 Goldens: unchanged Save: no change
+Files: css/career.css, css/map.css (new), css/hub.css (new), css/people.css (new), index.html
+Steps: after T-148/T-149, move the island-map/3D-overlay section → map.css, hub shell + layout grid → hub.css, people
+sections → people.css; career.css keeps menu/create/cards/sheets. Link order keeps cascade (same relative order).
+Accept: QA screenshots pixel-identical to before the split.
+Result:
+
+### [ ] T-155: Split career-week.js by job
+
+Spec: — Goldens: unchanged Save: no change
+Files: js/ui/career-week.js, js/ui/career-sheets.js (new), js/ui/career-match.js (new), js/ui/career-dossier.js, index.html, ARCHITECTURE.md
+Steps: sheets (`sheetMe sheetSeason calendar seasonCard`) → career-sheets.js; match cards (`matchPrep evalPanel
+cupPanel matchRosters prepNotes rankBestRows resultSnap resultData playCareer`) → career-match.js; career-week.js keeps
+week end/recap; world cards (`rankCard clubsCard factionsCard`) → career-dossier.js next to `sheetWorld`.
+Accept: no name changes; tests + lint green; QA every sheet + one evaluation.
+Result:
+
+### [ ] T-156: City vs Fight; dossier dedupe
+
+Spec: §4.23, §4.27 Goldens: unchanged Save: no change
+Files: js/career/city.js, js/career/fight.js, js/career/dossier.js, js/career/front.js, and every caller found by grep (list them in Result)
+Steps: move City fight helpers (`worth challenge clashSite clash injuryRisk crewOvr`) into fight.js (rename `City.clash` →
+`Fight.street` or merge with `Fight.clash` if identical); `City.region` calls `Front.owner`; dossier `summary` reuses
+`build`'s front/price/quality block, "major" = `MAJORS.includes` everywhere.
+Do not: change fight odds or any random draw.
+Accept: tests + goldens green; city.js ≤ 360 lines.
+Result:
+
+### [ ] T-157: Split big render/engine files
+
+Spec: — Goldens: unchanged Save: no change
+Files: js/engine/rally.js, js/engine/rally-block.js (new), js/render3d/poses3d.mjs, js/render3d/poses3d-attack.mjs (new), js/ui/match-screen.js, js/ui/match-result.js (new), index.html, ARCHITECTURE.md
+Steps: `formBlock` (~200 lines) → rally-block.js (loaded before rally.js); spike/swing/serve poses (~280 lines) →
+poses3d-attack.mjs; match-screen result + cut-ins/toasts → match-result.js.
+Do not: reorder any R()/rnd() call.
+Accept: goldens byte-identical; Monster game QA looks unchanged.
+Result:
+
+### [ ] T-158: Archive tasks.md (spec chat)
+
+Spec: — Files: tasks.md
+Steps: collapse every `[x]` task into the Done one-liners; keep only open tasks in full.
+Accept: tasks.md ≤ 200 lines.
+Result:
 
 ## Later — outlines
 
