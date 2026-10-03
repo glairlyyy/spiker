@@ -1023,3 +1023,16 @@
 .sheet .goal b {
   margin-left: auto;
 }
+/* Quiet title and create (spec §10.8, T-164) */
+.create2 .rcw {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.create2 .rcw .peekt {
+  justify-self: start;
+}
+.create2 .crrep {
+  margin: 0 0 8px;
+  color: var(--warn);
+}

@@ -9,16 +9,16 @@ function renderMenu() {
   const saved = RUN || Run.load(),
     you = saved && Run.you(saved),
     hero = you
-      ? `<button class="tcont" onclick="openCareer()"><span class="lab">${saved.result ? 'Your last run' : 'Continue'}</span><b>${esc(you.name)}</b><span class="mute">${ROLE_NAME[you.role]} · ${
-          saved.result ? 'see the result' : saved.week > CAREER.weeks ? 'Cup' : `week ${saved.week} of ${CAREER.weeks}`
-        }</span><span class="tgo">${saved.result ? 'See result' : 'Continue'} <kbd>Enter</kbd></span></button>`
+      ? `<button class="tcont" onclick="openCareer()" ${tip(`${ROLE_NAME[you.role]}, ${saved.result ? 'run over: see the result' : saved.week > CAREER.weeks ? 'in the Cup' : `week ${saved.week} of ${CAREER.weeks}`}`)}><span class="lab">${saved.result ? 'Last run' : 'Continue'}</span><b>${esc(you.name)}</b><span class="mute">${you.role} · ${
+          saved.result ? 'result' : saved.week > CAREER.weeks ? 'Cup' : `W${saved.week}`
+        }</span><span class="tgo"><kbd>Enter</kbd></span></button>`
       : '';
   $('#app').innerHTML = `<section class="title">
-    <div class="tbrand"><h1>Spite &amp; Spike</h1><p>4v4 volleyball RPG. Nobody believed in you. Good.</p></div>
+    <div class="tbrand"><h1 ${tip('4v4 volleyball RPG. Nobody believed in you. Good.')} tabindex="0">Spite &amp; Spike</h1></div>
     <div class="tmenu">${hero}
-      <button class="btn ${you ? '' : 'hot'} tbig" onclick="CR=null;navigate('create')">New career${you && !saved.result ? `<small>replaces ${esc(you.name)}'s run</small>` : ''}</button>
-      <button class="btn tbig" onclick="navigate('encyclopedia')">Encyclopedia<small>every technique and who can use it</small></button>
-      <button class="btn tbig ${TS.settings ? 'on' : ''}" onclick="TS.settings=!TS.settings;renderMenu()">Settings<small>match defaults: hype, cut-ins, graphics, camera, volume</small></button>
+      <button class="btn ${you ? '' : 'hot'} tbig" onclick="CR=null;navigate('create')" ${you && !saved.result ? tip(`Replaces ${you.name}'s run`) : ''}>New career</button>
+      <button class="btn tbig" onclick="navigate('encyclopedia')" ${tip('Every technique and who can use it')}>Encyclopedia</button>
+      <button class="btn tbig ${TS.settings ? 'on' : ''}" onclick="TS.settings=!TS.settings;renderMenu()" ${tip('Match defaults: hype, cut-ins, graphics, camera, volume')}>Settings</button>
       ${TS.settings ? `<div class="tset setpop"><div class="popb">${settingsMenu()}</div></div>` : ''}
     </div>
     ${

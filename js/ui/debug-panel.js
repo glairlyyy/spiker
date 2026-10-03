@@ -55,12 +55,12 @@ const WORD_REGIONS = [
   ['.hubmodal .hubcard', el => (el.querySelector('.brief') ? 25 : 30)],
   ['.hub .sheet', el => (el.querySelector('.mecols') ? 110 : 60)], // Me sheet 110 (T-162), others 60
   ['.create2', () => 60],
-  ['.title2', () => 15]
+  ['section.title', () => 15]
 ];
-/** Words a player reads in `el`: visible text minus printed hotkeys (<kbd> — key hints, not reading). */
+/** Words a player reads in `el`: visible text minus printed hotkeys (<kbd> — key hints) and the ?dev playtest panel. */
 const wordCount = el => {
   const words = t => (t || '').split(/\s+/).filter(w => /[\p{L}\p{N}]/u.test(w)).length;
-  return words(el.innerText) - [...el.querySelectorAll('kbd')].reduce((n, k) => n + words(k.innerText), 0);
+  return words(el.innerText) - [...el.querySelectorAll('kbd, .mdev')].reduce((n, k) => n + words(k.innerText), 0);
 };
 function wordBadges() {
   let box = document.getElementById('wcnt');

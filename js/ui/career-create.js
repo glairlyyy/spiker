@@ -1,6 +1,8 @@
 // Career: create your player (spec §10.7) — role cards from game data, name, optional challenge toggles. You always start as a free agent.
 
 let CR = null;
+/** One line per role on its card (§10.8); the rest is in the card's Details peek. */
+const ROLE_PITCH = { WS: 'Hits from the wings.', MB: 'Blocks and quick attacks.', S: 'Sets up every attack.' };
 function renderCreate() {
   A = null;
   if (!CR) {
@@ -24,29 +26,30 @@ function renderCreate() {
       techs = Skills.forRole(r)
         .filter(id => SKILLS[id].tech && SKILLS[id].role !== 'any')
         .map(id => SKILLS[id].name);
-    return `<button class="rcard ${CR.role === r ? 'on' : ''}" onclick="crRole('${r}')" aria-pressed="${CR.role === r}"><span class="lab">${r}</span><b>${ROLE_NAME[r]}</b>
-      <span class="rk"><span class="mute">Key stat</span> ${STATNAME[k]}</span>
-      <span class="rk"><span class="mute">Trains at</span> ${places.slice(0, 3).map(esc).join(' · ')}</span>
-      <span class="rk"><span class="mute">Techniques</span> ${techs.length ? techs.slice(0, 4).map(esc).join(' · ') : '—'}</span></button>`;
+    return `<div class="rcw"><button class="rcard ${CR.role === r ? 'on' : ''}" onclick="crRole('${r}')" aria-pressed="${CR.role === r}"><span class="lab">${r}</span><b>${ROLE_NAME[r]}</b>
+      <span class="rk" ${tip(`Key stat: ${STATNAME[k]}`)}>${statI(statKey(k), 16)} ${STATNAME[k]}</span>
+      <span class="small mute">${ROLE_PITCH[r]}</span></button>${peek(
+        `cr:${r}`,
+        'Details',
+        `<div class="lab">${ROLE_NAME[r]}</div>${kv([
+          ...places.slice(0, 3).map((x, i) => [i ? '' : 'Trains at', esc(x)]),
+          ...(techs.length ? techs.slice(0, 4).map((x, i) => [i ? '' : 'Techniques', esc(x)]) : [['Techniques', '—']])
+        ])}`
+      )}</div>`;
   };
   $('#app').innerHTML = `<section class="create2">
-    <div class="chead"><span class="lab">New career</span><h2>Who arrives on the island?</h2><p class="mute">Every stat starts at ${CAREER.start}. Training takes you to ${TRAIN_CAP}; matches take you further. You arrive as a free agent.</p></div>
+    <div class="chead"><span class="lab">New career</span><h2 ${tip(`Every stat starts at ${CAREER.start}. Training takes you to ${TRAIN_CAP}; matches take you further. You arrive as a free agent.`)} tabindex="0">Who arrives on the island?</h2></div>
     <div class="lab">Role</div>
     <div class="rcards">${['WS', 'MB', 'S'].map(card).join('')}</div>
     <div class="crow"><div><div class="lab">Name</div><div class="namerow"><input id="crname" maxlength="24" value="${esc(CR.name)}" oninput="CR.name=this.value" aria-label="Player name"><button class="btn" onclick="CR.name=rollName(new Set());renderCreate()">Random</button></div></div>
-      <div><div class="lab">Challenge</div><div class="seg">${Object.entries(MODES)
+      <div><div class="lab" ${tip('Optional handicaps')}>Challenge</div><div class="seg">${Object.entries(MODES)
         .filter(([, m]) => !m.game)
         .map(
           ([k, m]) =>
             `<button class="btn ${CR.mode[k] ? 'on' : ''}" onclick="CR.mode.${k}=!CR.mode.${k};renderCreate()" ${tip(m.desc)}>${m.name}</button>`
         )
-        .join('')}</div><p class="small mute">${
-        Object.entries(MODES)
-          .filter(([k, m]) => !m.game && CR.mode[k])
-          .map(([, m]) => esc(m.desc))
-          .join(' ') || 'Optional handicaps.'
-      }</p></div></div>
-    <div class="acts pri"><button class="btn hot" onclick="crStart()">Arrive on the island <kbd>Enter</kbd></button><button class="btn" onclick="CR=null;navigate('menu')">Back <kbd>Esc</kbd></button></div>
+        .join('')}</div></div></div>
+    ${replaces()}<div class="acts pri"><button class="btn hot" onclick="crStart()">Arrive on the island <kbd>Enter</kbd></button><button class="btn" onclick="CR=null;navigate('menu')">Back <kbd>Esc</kbd></button></div>
   </section>`;
 }
 document.addEventListener('keydown', e => {
@@ -56,6 +59,11 @@ document.addEventListener('keydown', e => {
     navigate('menu');
   } else if (e.key === 'Enter' && !e.target.closest('button,textarea')) crStart();
 });
+/** A consequence stays visible (§10.8): arriving replaces the saved run — said where you commit. */
+function replaces() {
+  const old = RUN || Run.load();
+  return old && !old.result ? `<p class="small warn crrep">Replaces ${esc(Run.you(old).name)}'s run</p>` : '';
+}
 function crRole(r) {
   CR.role = r;
   renderCreate();
