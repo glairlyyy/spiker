@@ -291,18 +291,31 @@ Steps: replace repeated sentences with the term alias — Sim (×5), Grade (×2)
 Accept: each listed phrase appears once (in GLOSSARY). QA: spot cards + eval card.
 Result: repeated explanations replaced by the glossary text or a term: Sim tips (eval, cup, challenge) → GLOSSARY.sim, the "result without watching" sub-labels dropped; the two full Grade copies → "× Grade" (eval tip keeps its per-play numbers); seize tips (Factions tab, dossier) → GLOSSARY.seize; standing labels/bars (street battle, Factions, dossier, HQ tag) → `term('standing', v)` + GLOSSARY.standing; Border tag and quality (Premium?/Rough?) tips → GLOSSARY; quality tag tip keeps only ×q. Grep in js/ui: each listed phrase 0 ("overhyped" stays once as the tag word). Deviation: career-dossier.js (not listed) also edited — it held 3 of the copies. match-screen Skip keeps its own tip (it is not Sim); career-create had none. QA: Factions tab, training card, eval card; no errors.
 
-## Hex territory (spec §4.27 — **[draft]**: do not start until the owner confirms §4.27)
+## Hex territory (spec §4.27, confirmed 2026-10-03: targets = cheapest, then nearest)
 
-- T-131 Hex grid (new `js/career/hex.js`, data `HEX` / `HEX_COST` in js/data/world.js): grid from CITY, kinds, start
-  owners, neighbours, frontier, supply (connected to an HQ), cost per tile; pure + tests (counts per region, HQ /
-  academy / minor never takeable, deterministic).
-- T-132 Front on hexes: target tile, pressure, flip, decay; place owner from tiles (drop `run.own`); battle site from
-  the target tile; save v16; Goldens: update (career). Tests: a win moves pressure, a flip moves a place's owner,
-  supply rule blocks islands.
-- T-133 Map: hex overlay (owner fill + outline, frontier edge, target ring) in pins3d/map3d via MapModel.land.hexes;
-  remove T-130 lines and seized patches. QA screenshot.
-- T-134 UI: street battle card stakes (`Win → {tile} 2/3`), point panel tile info, Factions tab tiles held / lost,
-  glossary `hex` / `seize` text updated.
+### [x] T-131: Hex grid
+
+Spec: §4.27 Goldens: unchanged Save: no change
+Files: js/career/hex.js (new, before front.js), js/data/world.js (HEX, HEX_COST, HEX_HOME), index.html, tests/map.test.js
+Result: `Hex` — flat-top axial grid (size 36 → 139 land tiles: Wei 42, Wu 30, Shu 60, minors 6, Academy 1) built once from CITY; a tile holding a place or HQ takes that region (so no place changes owner at the start; `pier` sits on the water's edge → nearest land tile); kinds hq / academy / minor / place / land, terrain city (Wei downtown + old town only — all-Wei "city" made Wei cost 3 everywhere) / beach / highland / plain; `supply`, `cost`, `targets` (cheapest, then nearest an attacker HQ, then hash), `frontier`, `name`, `flip`, `sync` (rebuilds `run.own`), `decay`. Test: grid deterministic, places/HQs on their region's tile, centre ↔ id.
+
+### [x] T-132: Front on hexes
+
+Spec: §4.27 Goldens: unchanged (engine) Save: RUN_VERSION 16 (`run.front` → `run.hex`)
+Files: js/career/front.js, city.js (clashRoll / clashSite), run.js (v16, RUN_DEFAULTS hex, repair, Hex.decay at week end), js/data/world.js (CLASH.sites, FRONT.borders/seize removed), glossary, tests
+Result: a battle is fought on the raider's first target tile (`run.clash = { tile, from, att, def }`, site = tile centre, name = "open ground near X" or the place); `Front.result` pushes the battle tile (a defender's win clears the raid and pushes the tile it came from), flips at `Hex.cost`; `meter` = strongest push either way; `stakes` → { tile, name, meter, cost, seize, place }; `run.own` stays as the place-owner cache so prices/turf/access/dossier are unchanged. Tests rewritten (faction dynamics, dossier, contest, street fights); rel bond calibration rebased (w80 12.6 → 8.8): Front.pick's tie draw fires more often now, which shifts the random stream (checked: disabling the war changes nothing). Note: cheapest-first means plain tiles fall first; in 26-week sims ~5 tiles move and no place falls — tune HEX_COST if the war should bite sooner.
+
+### [x] T-133: Hex map
+
+Spec: §4.27 Goldens: unchanged Save: no change
+Files: js/career/mapmodel.js (hexes; T-130 borders removed), js/map3d/pins3d.mjs, js/map3d/map3d.mjs, js/data/city.js (CITY.borders removed), css/career.css, tests/map.test.js
+Result: `MapModel.hexes(run)` = { size, tiles [{ id, at, own, color, kind, frontier, p, by, cost, text }], target { id, color, text } }; pins3d draws one draped vertex-colour fill (0.2) for every major tile, inset two-colour ribbons on every edge where holders differ, a faint grid inside territories, and a pulsing outline on the battle tile; `.mbord` chips on pressured tiles and the battle tile (`Shu 0/1`, under the ⚔ pin). Seized patches and the T-130 lines are gone (life3d still flags seized places). QA: screenshot — hex borders in both colours, battle tile ring + chip; no errors.
+
+### [x] T-134: Hex UI
+
+Spec: §4.27 Goldens: unchanged Save: no change
+Files: js/ui/career-map.js (tileBlock in the point panel, battle stakes, Border tag), js/ui/career-week.js (Factions: tiles held ±, next target per rival), js/ui/career-hub.js (brief row), js/data/glossary.js (seize, border)
+Result: clicking land shows the tile: holder (and who it was taken from), ground, "Seize: Wu needs 1 · Shu needs 2" (greyed when out of reach) or "Capital — never falls", and any push; Factions cards show `Tiles 41 −1` and `vs Wu · next: open ground near … 0/1`; street battle stakes and the week brief read `Seize n/cost on {tile}`; glossary `seize` spells out the tile costs. QA: point panel + Factions tab screenshots; no errors.
 
 ## Later — outlines
 

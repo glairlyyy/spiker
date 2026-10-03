@@ -47,7 +47,8 @@ const ptag = (text, t, cls = '') => `<span class="ptag ${cls}" ${t ? tip(t) : ''
 /** The tags every place shares: border / seized, trip days. */
 function placeTags(run, sid, trip) {
   const s = SPOTS[sid],
-    front = s && s.region && Object.values(FRONT.borders).some(B => Object.values(B).some(l => l.includes(sid))),
+    tile = s && s.region && Hex.ofSpot(sid),
+    front = !!tile && Hex.frontier(run, tile.id),
     held = s && Front.seized(run, sid);
   return [
     held
@@ -109,6 +110,28 @@ function spotPanel(run, id) {
   });
 }
 /** Any point of the island: travel there (the fog lifts around it). */
+/** The hex tile under a map point (spec §4.27): holder, ground, what it takes to seize it, and any pressure on it. */
+function tileBlock(run, p) {
+  const id = Hex.idAt(p),
+    t = Hex.tile(id);
+  if (!t) return '';
+  const own = Hex.owner(run, id),
+    H = Hex.state(run),
+    short = r => esc(REGIONS[r].name.split(' ')[0]),
+    ground = t.kind === 'place' ? 'place' : t.terrain === 'plain' ? 'open ground' : t.terrain,
+    why = { hq: 'Capital — never falls', academy: 'Neutral ground — never taken', minor: 'Not in the war' }[t.kind],
+    conds = MAJORS.filter(a => a !== own)
+      .map(a => {
+        const reach = Hex.targets(run, a, own).some(x => x.id === id);
+        return `<span class="${reach ? '' : 'mute'}" ${reach ? '' : tip(`${REGIONS[a].name} can't reach it yet: no supplied tile next to it`)}>${chip(REGIONS[a])}${short(a)} needs <b>${Hex.cost(run, id, a)}</b></span>`;
+      })
+      .join(' · ');
+  return `<div class="ptile small"><div>${chip(REGIONS[own])}<b>${esc(REGIONS[own].name)}</b> tile · ${ground}${
+    t.region !== own ? ` <span class="mute">(taken from ${short(t.region)})</span>` : ''
+  }</div><div ${tip(GLOSSARY.seize.long)}>${why ? `<span class="mute">${why}</span>` : `Seize: ${conds}`}</div>${
+    H.p[id] ? `<div>${chip(REGIONS[H.by[id]])}${short(H.by[id])} pushing <b>${H.p[id]}/${Hex.cost(run, id, H.by[id])}</b></div>` : ''
+  }</div>`;
+}
 function pointPanel(run, p) {
   const d = City.travelDays(run, p),
     seen = City.seen(run, p),
@@ -120,6 +143,7 @@ function pointPanel(run, p) {
     title: `⚑ ${seen ? esc(REGIONS[r].name) : 'Unexplored land'}`,
     tags: d >= 2 ? [ptag(`Trip ${d}d`, '', 'warn')] : [],
     flavour: seen ? esc(REGIONS[r].desc) : 'Nobody you know has been out there. Go and see what you find.',
+    body: tileBlock(run, p),
     row: [
       `<button class="btn hot" onclick="mapTravel(${p[0]},${p[1]})" ${late ? `disabled ${tip(late)}` : ''}>Travel here · ${d}d</button>`
     ]
@@ -141,7 +165,11 @@ function clashPanel(run) {
     short = r => esc(REGIONS[r].name.split(' ')[0]),
     border = (w, l) => {
       const k = Front.stakes(run, w, l);
-      return k.seize ? `${short(w)} takes ${esc(k.place ? SPOTS[k.place].name : 'ground')}` : `${short(w)} ${k.meter}/${FRONT.seize}`;
+      return !k.tile
+        ? `${short(w)} can't reach ${short(l)}`
+        : k.seize
+          ? `${short(w)} takes ${esc(k.name)}`
+          : `${short(w)} ${k.meter}/${k.cost} on ${esc(k.name)}`;
     },
     stake = (side, foe) =>
       `<div class="stake small">${chip(REGIONS[side])}<b>${short(side)}</b> · ${term('sta', -CLASH.sta, 'cost')} · injury ~${Math.round(City.injuryRisk(run, City.crewOvr(run, foe)) * 100)}%<br><span class="wl">Win</span> ${term('standing', CLASH.win)} ${short(side)} ${term('standing', CLASH.other)} ${short(foe)} ${term('fans', CLASH.fans)} · ${border(side, foe)}<br><span class="wl">Lose</span> ${term('standing', CLASH.lose)} ${short(side)} · ${border(foe, side)}</div>`,

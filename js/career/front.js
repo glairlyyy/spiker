@@ -1,12 +1,10 @@
-// Faction dynamics between the three majors: street battles push a pressure meter on each border; enough net wins
-// seize one of the loser's border places (FRONT.borders) — it becomes the winner's (price, turf, map colour). Losing
+// Faction dynamics between the three majors on the hex map (spec §4.27, js/career/hex.js): a street battle is fought on a
+// tile and pushes its pressure; at the tile's cost it changes hands, with any places on it (price, turf, map colour). Losing
 // places weakens a faction: dearer, poorer facilities, easier to join. Who starts a fight: FRONT.aggro (+ revenge).
 // DOM-free.
 
 const MAJORS = ['wei', 'wu', 'shu'];
 const Front = {
-  /** The FRONT.borders key of a pair (either order). */
-  key: (a, b) => (FRONT.borders[`${a}-${b}`] ? `${a}-${b}` : `${b}-${a}`),
   /** Who holds a place now (seized places differ from their home region). */
   owner: (run, id) => (run.own && run.own[id]) || SPOTS[id].region,
   seized: (run, id) => !!(SPOTS[id] && SPOTS[id].region && Front.owner(run, id) !== SPOTS[id].region),
@@ -19,11 +17,30 @@ const Front = {
   /** Economy: prices × (fewer facilities for the same money), facility quality × (money follows the winner). */
   priceMul: (run, r) => 1 + FRONT.price * Front.lost(run, r),
   qMul: (run, r) => 1 + FRONT.q * (Front.gained(run, r) - Front.lost(run, r)),
-  /** Pressure on the a–b border from a's side (−seize … +seize). */
-  meter(run, a, b) {
-    const k = Front.key(a, b),
-      v = (run.front && run.front[k]) || 0;
-    return k.startsWith(a + '-') ? v : -v;
+  /** a's strongest push on b: the highest pressure a has built on any of b's tiles (spec §4.27). */
+  push(run, a, b) {
+    const H = Hex.state(run);
+    return Math.max(
+      0,
+      ...Object.keys(H.p)
+        .filter(id => H.by[id] === a && Hex.owner(run, id) === b)
+        .map(id => H.p[id])
+    );
+  },
+  /** Pressure between a and b from a's side: a's push on b minus b's push on a. */
+  meter: (run, a, b) => Front.push(run, a, b) - Front.push(run, b, a),
+  /**
+   * The tile a win for w over l is fought on: this week's battle tile if l holds it (the raider won), the tile the raid came
+   * from if w held the battle tile (the defender won: its counter-push), else w's next target on l.
+   */
+  battleTile(run, w, l) {
+    const c = run.clash;
+    if (c && c.tile && [c.att, c.def].includes(w) && [c.att, c.def].includes(l)) {
+      if (Hex.owner(run, c.tile) === l) return c.tile;
+      if (c.from && Hex.owner(run, c.from) === l && Hex.takeable(Hex.tile(c.from))) return c.from;
+    }
+    const t = Hex.target(run, w, l);
+    return t ? t.id : null;
   },
   /** Street strength for battles nobody decides for them. */
   strength: (run, r) => 50 + 10 * (Front.gained(run, r) - Front.lost(run, r)),
@@ -32,42 +49,50 @@ const Front = {
     const s = r => Front.strength(run, r) + (r === att ? FRONT.initiative : 0);
     return R() < clamp(0.5 + (s(a) - s(b)) / 100, 0.2, 0.8) ? a : b;
   },
-  /** w beat l on their border: push the meter; at FRONT.seize a place changes hands. Returns the news line ('' if none). */
+  /**
+   * w beat l: +1 pressure for w on the battle tile (Front.battleTile); a defender's win also clears the raid's pressure on
+   * its own tile. At the tile's cost (Hex.cost) it flips to w. Returns the news line ('' if nothing changed hands).
+   */
   result(run, w, l) {
-    const k = Front.key(w, l),
-      F = run.front || (run.front = {});
-    F[k] = (F[k] || 0) + (k.startsWith(w + '-') ? 1 : -1);
+    const H = Hex.state(run),
+      c = run.clash;
     run.lastLoser = l;
-    if (Math.abs(F[k]) < FRONT.seize) return '';
-    F[k] = 0;
-    return Front.seize(run, w, l, k);
-  },
-  /** Preview of "w beats l" (nothing changes): the meter from w's side, whether it seizes, and which place (null if none). */
-  stakes(run, w, l) {
-    const m = Front.meter(run, w, l) + 1,
-      seize = m >= FRONT.seize,
-      B = FRONT.borders[Front.key(w, l)];
-    return {
-      meter: seize ? FRONT.seize : m,
-      seize,
-      place: seize ? B[w].find(i => Front.owner(run, i) === l) || B[l].find(i => Front.owner(run, i) === l) || null : null
-    };
-  },
-  /** w takes a border place from l: its own lost places first, then l's next one. */
-  seize(run, w, l, k) {
-    const B = FRONT.borders[k],
-      own = run.own || (run.own = {});
-    let id = B[w].find(i => Front.owner(run, i) === l);
-    const back = !!id;
-    if (!id) id = B[l].find(i => Front.owner(run, i) === l);
+    if (c && c.tile && Hex.owner(run, c.tile) === w && H.by[c.tile] === l) {
+      delete H.p[c.tile];
+      delete H.by[c.tile];
+    }
+    const id = Front.battleTile(run, w, l);
     if (!id) return '';
-    if (back) delete own[id];
-    else own[id] = w;
-    const s = `${REGIONS[w].name} ${back ? 'retook' : 'seized'} the ${SPOTS[id].name} from ${REGIONS[l].name}${
+    if (H.by[id] !== w) H.p[id] = 0;
+    H.p[id] = (H.p[id] || 0) + 1;
+    H.by[id] = w;
+    H.t[id] = run.week;
+    if (H.p[id] < Hex.cost(run, id, w)) return '';
+    const back = Hex.tile(id).region === w,
+      name = Hex.name(id);
+    Hex.flip(run, id, w);
+    const s = `${REGIONS[w].name} ${back ? 'retook' : 'seized'} ${Hex.tile(id).spots.some(x => !x.startsWith('venue:')) ? 'the ' : ''}${name} from ${REGIONS[l].name}${
       Front.weak(run, l) ? ` — ${REGIONS[l].name} weakened` : ''
     }`;
     Run.news(run, s + '.');
     return s;
+  },
+  /** Preview of "w beats l" (nothing changes): { tile, name, meter (pressure after the win), cost, seize, place (a place that falls, or null) }. */
+  stakes(run, w, l) {
+    const id = Front.battleTile(run, w, l);
+    if (!id) return { tile: null, name: '', meter: 0, cost: 0, seize: false, place: null };
+    const H = Hex.state(run),
+      m = (H.by[id] === w ? H.p[id] || 0 : 0) + 1,
+      cost = Hex.cost(run, id, w),
+      seize = m >= cost;
+    return {
+      tile: id,
+      name: Hex.name(id),
+      meter: Math.min(m, cost),
+      cost,
+      seize,
+      place: seize ? Hex.tile(id).spots.find(x => !x.startsWith('venue:')) || null : null
+    };
   },
   /** This week's aggressor and target: FRONT.aggro (+ revenge for last week's loser), aiming at the border it is winning. */
   pick(run) {

@@ -258,6 +258,7 @@ const Run = {
     }
     World.week(run);
     if (City.clashSite(run)) Run.log(run, City.clashEnd(run));
+    Hex.decay(run);
     run.trained = 0;
     run.days = WEEK_DAYS;
     run.dayLog = [];
@@ -327,7 +328,7 @@ const Run = {
     Eval.setup(run);
     if (!run.spotQ || typeof run.spotQ !== 'object' || !Object.keys(run.spotQ).length) City.roll(run);
     if (!Array.isArray(run.fog)) run.fog = [run.pos.slice()];
-    if (run.clash && !CLASH.sites[run.clash.site]) run.clash = null;
+    if (run.clash && !Hex.tile(run.clash.tile)) run.clash = null;
     if (!Number.isFinite(run.sta)) run.sta = run.staMax;
     if (!run.mode || typeof run.mode !== 'object') run.mode = { hard: false, short: false, story: true };
     if (typeof run.mode.story !== 'boolean') run.mode.story = true;
@@ -344,7 +345,7 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 15;
+const RUN_VERSION = 16;
 /** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history), v9: `run.mode.story` (T-067), v10: `run.people` / `run.pseed` (NPC careers, T-060), v11: `run.mem` (what NPCs remember about you, T-061), v12: `run.asks` / `run.loans` / `run.vouch` / `run.sitout` / `run.duo` (approaches, T-063), v13: person `status` / `bench` / `gone` (fates, T-064), v14: memory entries gain `a` + NPC ↔ NPC pairs in `run.mem` (T-065), v15: `run.warm` → `run.evals`, `warmupWin|Loss` → `evalWin|Loss` (T-086) — older saves are dropped; add steps when the saved shape changes). */
 const RUN_MIGRATIONS = {};
 const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -385,7 +386,7 @@ const RUN_DEFAULTS = {
   losses: [() => ({}), isObj], // region → team challenges lost this run
   rep: [() => ({}), isObj], // standing with each region's clubs
   own: [() => ({}), isObj], // seized border places → the region holding them
-  front: [() => ({}), isObj], // pressure on each major border (FRONT.borders key → net wins)
+  hex: [() => ({ own: {}, p: {}, by: {}, t: {} }), isObj], // hex territory (spec §4.27, js/career/hex.js): changed owners, pressure, who pushes, last fought
   scout: [() => ({}), isObj], // scouted clubs: team index → week
   uses: [() => ({}), isObj],
   floor: [() => ({}), isObj],

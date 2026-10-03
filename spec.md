@@ -103,10 +103,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   wins seize a border place (2 per side per border; retakes first) → owner's price/turf/colour. `FRONT.weakAt` (2)
   places lost = weakened (dearer, worse facilities, easier to join). Wu revenge bonus. Minors not in the war. Seized =
   patch in holder's colour; borders don't move **[open: moving borders]**.
-  Border lines **[locked]**: all three major borders (Wei–Wu, Wei–Shu, Wu–Shu; `CITY.borders`) drawn as dashed lines
-  on the map: grey when even, in the leading side's colour when its meter is ≠ 0, pulsing faster at the brink (the next
-  win seizes). A label chip at each line's middle: `{Lead} 1/2` or `Even 0/2` (hover = glossary `seize`); fades with
-  distance like region labels. Display only (MapModel.land.borders from Front.meter); not pickable.
+  Superseded by §4.27 hex territory (built): tiles replace border meters, border places, the T-130 lines and patches.
 - §4.8 Hub: full-screen 3D map, HUD, shortcut dock → drawers, cards over the map.
 - §4.9 Map: rules → MapModel → MapView → three.js `js/map3d/` (`mount`, `update(model)`, `select`, `dispose`); no 2D
   fallback (WebGL missing → notice). Terrain, pins/labels/flag as HTML overlay, seized + border decals, vertex fog.
@@ -290,7 +287,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     normal lineups.
   - **Endless** **[locked, not built]**: no guarantees; call-up by grades; season rolls over after the cup (aging out,
     senior league, continuing NPC careers: **[open]**).
-- §4.27 Hex territory **[draft — owner to confirm]**: the war map becomes hex tiles; each tile has its own takeover
+- §4.27 Hex territory **[locked]** (owner, 2026-10-03): the war map becomes hex tiles; each tile has its own takeover
   condition. Changes how factions move and seize; the player's travel (roads, days, trips, fog) does not change.
   Replaces the fixed border meters and border places (§4.7 `FRONT.borders`, T-130 lines, seized patches).
   - Grid: flat-top hexes, `HEX.size` 36 map units (~140 land tiles), built deterministically from CITY (land = centre on
@@ -303,10 +300,10 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     from every defender HQ. Hard rules: the tile touches the attacker's territory, and the attacker's touching tile
     is connected to one of its HQs (supply line).
   - Movement: each week's battle (Front.pick unchanged) is fought on a target tile — the defender's cheapest takeable
-    tile (ties: nearest the attacker's HQ, then a hash). Its centre is the battle site (replaces CLASH.sites). Win: +1
+    tile, then the nearest to the attacker's HQ (then a hash) — owner: cheapest and nearest first. Its centre is the battle site (replaces CLASH.sites). Win: +1
     pressure on the tile; pressure ≥ cost → the tile flips (pressure 0). Loss: the tile's pressure → 0 and the defender
     gets +1 on the attacker's tile it came from. Untouched for 4 weeks: pressure −1.
-  - Effects: a place's owner = its tile's owner (replaces `run.own`); turf, prices, quality, access follow. Economy
+  - Effects: a place's owner = its tile's owner (`run.own` becomes a cache rebuilt from the tiles on every flip); turf, prices, quality, access follow. Economy
     and `weak` count lost places as today. Labels stay; buildings keep their original style.
   - Map: tiles drawn in the owner's colour (fill + outline), frontier edges brighter; the target tile shows a ring
     `pressure/cost`; a click on a tile (map point) shows owner, kind, condition and pressure in the point panel.

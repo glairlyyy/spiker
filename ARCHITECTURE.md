@@ -546,9 +546,9 @@ region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): border mete
 
 1. Rules — City / Front (DOM-free): positions, travel, fog (`City.seen`), regions (`regionAt`), ownership.
 2. Model — `MapModel.build(run, sel)` (`js/career/mapmodel.js`, DOM-free, tested): `{ w, h, land: { coast, beach,
-regions[{id, poly, color, mine}], contest, borders[{id, a, b, line, meter, lead, color, pressure, brink, text, title}] (`MapModel.borders`, the three `CITY.borders` lines), minors[ellipses], park, mountains, labels, airport }, seized[{at, r,
+regions[{id, poly, color, mine}], contest, minors[ellipses], park, mountains, labels, airport }, seized[{at, r,
 color}], pins[{id, kind: spot|hq|clash, at, icon, badge, title, color?, flags: off/far/turf/gem/overhyped/hq/can/
-mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-view centre), sel, life }`. `life` (`MapModel.life`, display only, no randoms; positions from hashes of ids + place): `mates[{id, name, at, color, spot}]` (your floor mates at the explored place of their key nearest home), `crews[{region, team, at, color, n 2–6, known, walk[[x,y]…]}]` (known clubs' HQs; `known` = scouted or yours), `battle {at, a, b, colors}|null`, `borders[{a, b, meter}]`, `contest {a, b, meter, pressure 0..1, hold}` (`MapModel.contest`: the `CITY.contestPair` border; the renderer reads it, it never names factions). Map units
+mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-view centre), sel, life }`. `life` (`MapModel.life`, display only, no randoms; positions from hashes of ids + place): `mates[{id, name, at, color, spot}]` (your floor mates at the explored place of their key nearest home), `crews[{region, team, at, color, n 2–6, known, walk[[x,y]…]}]` (known clubs' HQs; `known` = scouted or yours), `battle {at, a, b, colors}|null`, `contest {a, b, meter, pressure 0..1, hold}` (`MapModel.contest`: the `CITY.contestPair` border; the renderer reads it, it never names factions). Map units
    CITY.w × CITY.h, y down. Selection ids: a pin id, or `pt:x,y` (`ptId` / `ptOf`).
 3. Renderer — `MapView` (`js/ui/map-view.js`): `mount(el, model, { pick(id), point([x, y]) })`, `update(model)`,
    `select(id)`, `dispose()`. The only renderer is the three.js map: it lazy-imports `js/map3d/map3d.mjs` once (a notice
@@ -565,7 +565,7 @@ mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-vie
    Furniture is `js/map3d/pins3d.mjs` (`createFurniture(scene, heightAt)`): an HTML overlay `.maplay` over the canvas holds one
    `.mpin` button per `model.pins` item (icon, badge, flag classes, click → `pick(id)`), the region / airport labels (fade out
    below ~70 m camera distance) and the picked-point flag, all projected onto the terrain every frame after render; seized
-   patches and the three border ribbons (dashed, leader's colour or grey, a `.mbord` label chip at each midpoint) are terrain decals. `sync(model, on)` rebuilds a part only when its JSON changed;
+   the hex territory (`model.hexes`: draped owner fills, two-colour edge ribbons where holders differ, a faint grid, the pulsing battle tile, `.mbord` pressure chips) is the terrain decal layer. `sync(model, on)` rebuilds a part only when its JSON changed;
    fog is a per-vertex darkening of the terrain colours (`applyFog(model.fog)` with `fogFactor`, unexplored land dim, not hidden).
    Shared helpers live in `js/map3d/geo3d.mjs` (`MAP_M`, `FOG_DIM`, `FOG_SOFT`, `toWorld` / `toMap`, `clamp` / `lerp` /
    `smooth`, `fogFactor(fog)` → k(x, z) with squared-distance early-outs): every map3d module imports from it, never from
@@ -577,7 +577,7 @@ count(), dispose() }`, display only, no game randoms): reads `model.life` + `mod
    (figure = capsule body + head, flag poles, flag cloth, dust puffs; ≤ 300 figures), rebuilt only when that JSON changes and
    animated in `tick` (drill hops, walkers looping round a crew's places at 1.2 m/s, the battle crowd shoving, waving flags).
    Mates and known crews are coloured, unscouted crews grey; patrols (2–4) stand on the stronger side of the contested Wei–Wu
-   line (`life.contest.hold`); every seized place flies the holder's flag. `furn.pulse(t)` pulses each border ribbon by its own `pressure`.
+   line (`life.contest.hold`); every seized place flies the holder's flag. `furn.pulse(t)` pulses the battle tile's outline.
    The town layer is `js/map3d/town3d.mjs` (`createTown(scene, heightAt)` → `{ sync(model), dispose() }`, display only, no randoms):
    reads only `model.land.roads / lots / landmarks / districts` and `model.fog`. Meshes: one vertex-coloured mesh for all roads (width and
    colour by kind, slope-following, lifted 0.15 m, polygon offset; the `boardwalk` is planks of two tones 0.3 m up); one for the
@@ -741,6 +741,13 @@ a test checks every `term('id'` in js/ui exists.
 Match result (spec §10.6): `finishMatch` calls `resultSnap(RUN, m)` before a career fixture's `onFinish` and
 `resultData(RUN, m, snap, msg)` after it (career-week.js; diffs of the run only — no rule runs in the UI), then
 `resultScreen` draws it; the Monster game (no career player) gets headline + top 3.
+
+Hex territory (spec §4.27): `js/career/hex.js` `Hex` builds a flat-top axial grid once from CITY (tiles: id `q,r`, at,
+start region, kind hq/academy/minor/place/land, terrain, spots, hq) and holds the war rules on it: `supply` (BFS from a
+faction's HQ tiles), `cost` (HEX_COST), `targets` (cheapest, then nearest an attacker HQ), `flip`, `decay`. Run state
+`run.hex = { own, p, by, t }` (v16). `Front` fights a battle on `run.clash.tile` and pushes / flips tiles; `run.own` is a
+cache of place holders rebuilt by `Hex.sync`, so City prices, turf, access and Dossier read places as before. The
+player's travel never reads tiles. `MapModel.hexes(run)` is what the map draws.
 
 ## Code layout notes
 

@@ -356,8 +356,8 @@ test('career: map model life — mates, crews, battle, borders, no randoms', () 
   run.scout[hq] = 1;
   L = g.MapModel.build(run).life;
   assert(L.crews.find(c => c.team === hq).known, 'scouted: coloured');
-  eq(L.borders.length, 3, 'three borders');
-  run.clash = { site: 0, att: g.CLASH.sites[0].a, seen: false, done: false };
+  const tg = g.Hex.target(run, 'wei', 'wu');
+  run.clash = { tile: tg.id, from: tg.from, att: 'wei', def: 'wu', seen: false, done: false };
   L = g.MapModel.build(run).life;
   assert(L.battle && L.battle.colors.length === 2 && L.battle.at.length === 2, 'the open battle');
   run.clash.done = true;
@@ -367,39 +367,96 @@ test('career: map model life — mates, crews, battle, borders, no randoms', () 
   g.RNG.next = next0;
 });
 
-test('career: faction dynamics — border pressure seizes places, weakens, comes back', () => {
+test('career: faction dynamics — battles move hex tiles, places go with them, weakens, comes back (T-132)', () => {
   const g = load(9),
-    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Front', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Front', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    H = run.hex;
   const p0 = g.City.price(run, 'weiPower'),
     ti = g.FACTIONS.findIndex(f => f.region === 'wei' && f.join.ovr),
     ovr0 = g.World.joinReq(run, ti).ovr;
-  eq(g.Front.meter(run, 'wu', 'wei'), 0, 'borders start calm');
-  for (let i = 0; i < g.FRONT.seize - 1; i++) eq(g.Front.result(run, 'wu', 'wei'), '', 'pressure builds');
-  eq(g.Front.meter(run, 'wu', 'wei'), g.FRONT.seize - 1, 'meter from the winner');
-  eq(g.Front.meter(run, 'wei', 'wu'), 1 - g.FRONT.seize, 'and from the loser');
-  const sk = g.Front.stakes(run, 'wu', 'wei'),
-    pre = JSON.stringify([run.front, run.own]);
-  assert(sk.seize && sk.meter === g.FRONT.seize && sk.place, 'the next win would seize a place');
-  eq(JSON.stringify([run.front, run.own]), pre, 'stakes() changes nothing');
-  assert(g.Front.result(run, 'wu', 'wei').includes('seized'), 'a place falls');
-  assert(g.Front.owner(run, sk.place) === 'wu', 'the previewed place is the one taken');
-  const id = g.FRONT.borders['wei-wu'].wei[0];
-  eq(g.City.region(run, id), 'wu', 'the place is Wu now');
-  eq(g.Front.meter(run, 'wu', 'wei'), 0, 'the meter resets');
-  for (let i = 0; i < g.FRONT.seize; i++) g.Front.result(run, 'wu', 'wei');
+  eq(g.Front.meter(run, 'wu', 'wei'), 0, 'calm at the start');
+  // cheapest first: the first target costs no more than any other tile Wu can reach
+  const T = g.Hex.targets(run, 'wu', 'wei');
+  assert(T.length && T.every(t => t.cost >= T[0].cost), 'targets sorted cheapest first');
+  assert(
+    T.every((t, i) => !i || t.cost > T[i - 1].cost || t.d >= T[i - 1].d),
+    'then nearest to a Wu HQ'
+  );
+  const t0 = T[0],
+    sk = g.Front.stakes(run, 'wu', 'wei'),
+    pre = JSON.stringify([run.hex, run.own]);
+  eq(sk.tile, t0.id, 'stakes preview the first target');
+  eq(JSON.stringify([run.hex, run.own]), pre, 'stakes() changes nothing');
+  for (let i = 1; i < t0.cost; i++) eq(g.Front.result(run, 'wu', 'wei'), '', 'pressure builds');
+  if (t0.cost > 1) eq(g.Front.meter(run, 'wu', 'wei'), t0.cost - 1, 'meter from the winner');
+  assert(g.Front.result(run, 'wu', 'wei').includes('seized'), 'the tile falls at its cost');
+  eq(g.Hex.owner(run, t0.id), 'wu', 'Wu holds it');
+  assert(!H.p[t0.id], 'its pressure resets');
+  // a defender's win clears the raid's pressure and pushes back on the tile the raid came from
+  const t1 = g.Hex.target(run, 'wu', 'wei');
+  run.clash = { tile: t1.id, from: t1.from, att: 'wu', def: 'wei', seen: false, done: false };
+  H.p[t1.id] = 1;
+  H.by[t1.id] = 'wu';
+  g.Front.result(run, 'wei', 'wu');
+  assert(!H.p[t1.id], "the defender's win clears the raid");
+  if (g.Hex.takeable(g.Hex.tile(t1.from)))
+    assert(H.by[t1.from] === 'wei' || g.Hex.owner(run, t1.from) === 'wei', 'and pushes on the raid’s tile');
+  run.clash = null;
+  // places go with their tile
+  const pt = g.Hex.ofSpot('weiSpeed');
+  g.Hex.flip(run, pt.id, 'wu');
+  eq(g.Front.owner(run, 'weiSpeed'), 'wu', 'a place follows its tile');
+  eq(g.City.region(run, 'weiSpeed'), 'wu', 'the place is Wu now');
+  g.Hex.flip(run, g.Hex.ofSpot('weiWit').id, 'wu');
   assert(g.Front.weak(run, 'wei'), 'two places lost: Wei weakened');
   assert(g.City.price(run, 'weiPower') > p0, 'weakened: dearer');
   assert(g.World.joinReq(run, ti).ovr < ovr0, 'weakened: easier to join');
-  for (let i = 0; i < g.FRONT.seize; i++) g.Front.result(run, 'wu', 'wei');
-  eq(g.Front.lost(run, 'wei'), 2, 'only the border places can fall');
-  let line = '';
-  for (let i = 0; i < g.FRONT.seize; i++) line = g.Front.result(run, 'wei', 'wu');
-  assert(line.includes('retook') && g.Front.lost(run, 'wei') === 1, 'lost places come back first');
+  // retakes are cheaper, HQs never fall, the supply rule
+  assert(
+    g.Hex.cost(run, pt.id, 'wei') < g.Hex.cost(run, pt.id, 'shu') || g.Hex.cost(run, pt.id, 'wei') === g.HEX_COST.min,
+    'a retake costs less'
+  );
+  g.Hex.flip(run, pt.id, 'wei');
+  eq(g.Front.owner(run, 'weiSpeed'), 'wei', 'retaken');
+  assert(
+    g.Hex.grid()
+      .tiles.filter(t => t.kind === 'hq' || t.kind === 'academy' || t.kind === 'minor')
+      .every(t => !g.Hex.takeable(t)),
+    'HQs, the Academy and minors never fall'
+  );
+  for (const t of g.Hex.targets(run, 'shu', 'wu')) assert(g.Hex.supply(run, 'shu').has(t.from), 'attacks only from a supplied tile');
+  // decay: untouched for HEX.decay weeks, pressure −1
+  H.p['x'] = 0;
+  delete H.p.x;
+  const t2 = g.Hex.target(run, 'shu', 'wei');
+  H.p[t2.id] = 1;
+  H.by[t2.id] = 'shu';
+  H.t[t2.id] = run.week;
+  run.week += g.HEX.decay;
+  g.Hex.decay(run);
+  assert(!H.p[t2.id] && !H.by[t2.id], 'stale pressure fades');
   // aggression: over many weeks Wu starts most battles
   const n = { wei: 0, wu: 0, shu: 0 };
   run.lastLoser = null;
   for (let i = 0; i < 600; i++) n[g.Front.pick(run).att]++;
   assert(n.wu > n.wei && n.wei > n.shu, `Wu is the most aggressive (${JSON.stringify(n)})`);
+});
+
+test('hex: the grid is deterministic, every place and HQ sits on a tile of its region (T-131)', () => {
+  const g = load(3),
+    G = g.Hex.grid(),
+    by = {};
+  for (const t of G.tiles) by[t.region] = (by[t.region] || 0) + 1;
+  assert(G.tiles.length > 100 && by.wei > 20 && by.wu > 15 && by.shu > 30, 'tiles per region: ' + JSON.stringify(by));
+  for (const [id, s] of Object.entries(g.SPOTS)) if (s.at && s.region) eq(g.Hex.ofSpot(id).region, s.region, 'place tile region: ' + id);
+  g.CITY.hq.forEach((at, i) => {
+    const t = G.tiles.find(x => x.hq.includes(i));
+    assert(t && t.region === g.FACTIONS[i].region, 'HQ tile ' + i);
+  });
+  for (const t of G.tiles) eq(g.Hex.idAt(t.at), t.id, 'centre ↔ id');
+  const h = JSON.stringify(G.tiles);
+  g.Hex.cache = null;
+  eq(JSON.stringify(g.Hex.grid().tiles), h, 'rebuilt the same');
 });
 
 test('career: island map — regions, prices, quality, far trips, outings, scouting, 7-day weeks, saved', () => {
@@ -489,8 +546,9 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   // a street battle: fight for one side — a real match; the other side always holds it against you
   run.days = 7;
   run.pos = [470, 600];
-  run.clash = { site: 0, seen: false, done: false };
-  const c = g.CLASH.sites[0],
+  const tg = g.Hex.target(run, 'wei', 'wu');
+  run.clash = { tile: tg.id, from: tg.from, att: 'wei', def: 'wu', seen: false, done: false };
+  const c = g.City.clashSite(run),
     r0 = g.City.rep(run, c.b),
     cc = g.City.clashCost(run),
     clashSp0 = run.sp;
@@ -571,7 +629,7 @@ test('career: faction dossier — state, places, roster gate', () => {
   d = g.Dossier.build(run, 'wei');
   assert(d.scouted && d.roster.every(p => typeof p.ovr === 'number'), 'scouted: every rating shows');
   const before = JSON.stringify(run.teams.map(g.teamToJSON));
-  g.Front.seize(run, 'wu', 'wei', 'wei-wu');
+  g.Hex.flip(run, g.Hex.ofSpot('weiSpeed').id, 'wu');
   const wu = g.Dossier.build(run, 'wu');
   eq(g.Dossier.build(run, 'wei').state, 'pressed', 'one place lost: pressed');
   const seized = wu.places.find(p => p.seized);
@@ -580,7 +638,7 @@ test('career: faction dossier — state, places, roster gate', () => {
     'a seized place moves to the holder'
   );
   eq(wu.state, 'rising', 'the taker is rising');
-  g.Front.seize(run, 'wu', 'wei', 'wei-wu');
+  g.Hex.flip(run, g.Hex.ofSpot('weiWit').id, 'wu');
   eq(g.Dossier.build(run, 'wei').state, 'weakened', 'two places lost: weakened');
   eq(JSON.stringify(run.teams.map(g.teamToJSON)), before, 'building a dossier changes no team');
   const gl = g.Dossier.build(run, 'gloria');
@@ -661,33 +719,37 @@ test('map: the contested border comes from the model (T-079)', () => {
   let C = g.MapModel.build(run).life.contest;
   eq(C.a + '-' + C.b, g.CITY.contestPair.join('-'), 'the pair is data');
   assert(C.meter === 0 && C.pressure === 0 && C.hold === null, 'calm at the start');
-  g.Front.result(run, C.b, C.a);
+  const t = g.Hex.target(run, C.b, C.a);
+  run.hex.p[t.id] = 1;
+  run.hex.by[t.id] = C.b;
   C = g.MapModel.build(run).life.contest;
-  eq(C.hold, C.b, 'the winning side holds the line');
-  eq(C.pressure, Math.min(1, 1 / g.FRONT.seize), 'pressure = net wins / FRONT.seize');
+  eq(C.hold, C.b, 'the pushing side holds the line');
+  eq(C.pressure, Math.min(1, 1 / g.HEX_COST.place), 'pressure = push / HEX_COST.place');
 });
 
-test('map: all three major borders are lines whose colour and label follow Front.meter (T-130)', () => {
+test('map: hex tiles in the model follow their holder; pressure and the battle tile show (T-133)', () => {
   const g = load(52),
-    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Borders' });
-  let B = g.MapModel.build(run).land.borders;
-  eq(B.map(b => b.id).join(','), Object.keys(g.FRONT.borders).join(','), 'one per FRONT border');
-  for (const b of B) {
-    assert(Array.isArray(b.line) && b.line.length >= 2 && b.line === g.CITY.borders[b.id], 'line from CITY.borders: ' + b.id);
-    assert(b.meter === 0 && b.lead === null && b.color === null && b.text === `Even 0/${g.FRONT.seize}`, 'even at the start');
-  }
-  g.Front.result(run, 'shu', 'wei');
-  B = g.MapModel.build(run).land.borders;
-  const ws = B.find(b => b.id === 'wei-shu');
-  eq(ws.meter, g.Front.meter(run, 'wei', 'shu'), 'meter from Front');
-  eq(ws.lead, 'shu', 'Shu leads after its win');
-  eq(ws.color, g.REGIONS.shu.color, "the leader's colour");
-  assert(ws.text.startsWith('Shu 1/'), 'label');
-  eq(ws.brink, 1 >= g.FRONT.seize - 1, 'brink: the next win seizes');
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Hexes' });
+  let M = g.MapModel.build(run).hexes;
+  eq(M.tiles.length, g.Hex.grid().tiles.length, 'every land tile');
   assert(
-    B.filter(b => b.id !== 'wei-shu').every(b => b.meter === 0),
-    'other borders untouched'
+    M.tiles.every(t => t.own === g.Hex.tile(t.id).region && t.color === g.REGIONS[t.own].color && !t.p),
+    'start: own region, no pressure'
   );
+  assert(M.tiles.some(t => t.frontier) && M.tiles.every(t => !t.frontier || g.MAJORS.includes(t.own)), 'frontier tiles are majors’');
+  eq(M.target, null, 'no battle yet');
+  const tg = g.Hex.target(run, 'shu', 'wei');
+  run.clash = { tile: tg.id, from: tg.from, att: 'shu', def: 'wei', seen: false, done: false };
+  run.hex.p[tg.id] = 1;
+  run.hex.by[tg.id] = 'shu';
+  M = g.MapModel.build(run).hexes;
+  eq(M.target.id, tg.id, 'the battle tile');
+  assert(M.target.text.startsWith('Shu ') && M.target.color === g.REGIONS.shu.color, 'labelled in the raider’s colour');
+  const mt = M.tiles.find(t => t.id === tg.id);
+  assert(mt.p === 1 && mt.by === 'shu' && mt.cost === g.Hex.cost(run, tg.id, 'shu'), 'pressure, pusher, cost');
+  g.Hex.flip(run, tg.id, 'shu');
+  M = g.MapModel.build(run).hexes;
+  eq(M.tiles.find(t => t.id === tg.id).color, g.REGIONS.shu.color, "the holder's colour");
 });
 
 // ---------- T-087: map3d pure functions (geo3d.mjs; map3d.mjs polygon helpers) ----------

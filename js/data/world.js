@@ -182,12 +182,7 @@ const HOUSEK = Object.keys(HOUSING);
  * with the side you fought against. Watching scouts both sides' clubs.
  */
 const CLASH = {
-  chance: 0.45,
-  sites: [
-    { a: 'wei', b: 'wu', at: [860, 330], name: 'the contested border' },
-    { a: 'wei', b: 'shu', at: [490, 130], name: 'the northern ridge' },
-    { a: 'wu', b: 'shu', at: [395, 540], name: 'the southern plain' }
-  ],
+  chance: 0.45, // a training week opens with a battle on a tile (spec §4.27: the site is the raider's target tile)
   sta: 15,
   watchSta: 5,
   win: 10,
@@ -196,18 +191,12 @@ const CLASH = {
   fans: 60
 };
 /**
- * Faction dynamics (Front): each major border has 2 places per side that can be seized (the rest is heartland).
- * seize = net battle wins on a border to take a place; a faction with weakAt+ places lost is weakened. Per place
+ * Faction dynamics (Front): battles move tiles on the hex map (HEX below, js/career/hex.js); places go with their
+ * tile. A faction with weakAt+ places lost is weakened. Per place
  * lost: prices +price, quality −q (+q per place taken), club join needs −join (OVR / key stat), fee −fee.
  * aggro = who starts street battles (+revenge for last battle's loser; the raider gets +initiative).
  */
 const FRONT = {
-  borders: {
-    'wei-wu': { wei: ['weiSpeed', 'weiWit'], wu: ['harbor', 'dunes'] },
-    'wei-shu': { wei: ['weiPower', 'weiJump'], shu: ['dojo', 'steps'] },
-    'wu-shu': { wu: ['sand', 'pier'], shu: ['shrine', 'stone'] }
-  },
-  seize: 2,
   weakAt: 2,
   price: 0.1,
   q: 0.04,
@@ -217,6 +206,15 @@ const FRONT = {
   revenge: 0.2,
   initiative: 10 // the raiding side's edge (street strength) in a battle nobody joins
 };
+/**
+ * Hex territory (spec §4.27): the war map as flat-top hex tiles `size` map units across (centre to corner). A tile flips
+ * after `cost` net battle wins on it (HEX_COST); untouched for `decay` weeks, its pressure drops by 1.
+ */
+const HEX = { size: 36, decay: 4 };
+/** Net wins a tile needs: by kind / terrain, +home on the defender's home terrain, −retake, −cut (cut off from every defender HQ). */
+const HEX_COST = { plain: 1, city: 2, beach: 2, highland: 2, place: 2, home: 1, retake: -1, cut: -1, min: 1 };
+/** Each major's home terrain. */
+const HEX_HOME = { wei: 'city', wu: 'beach', shu: 'highland' };
 /**
  * Facility access: a place refuses you if your standing with its owner is at or below `grudge`, or you miss the
  * owner's condition (same fields as a club's `join`: ovr, key, star, fans). Members of the owner always get in.

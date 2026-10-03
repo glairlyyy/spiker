@@ -1,5 +1,5 @@
 // The island map as plain data: what a renderer draws, with no drawing in it (DOM-free, tested headless).
-// MapModel.build(run, sel) → { w, h, land, seized, pins, you, fog, flag, focus, sel, life }. Map units: CITY.w × CITY.h,
+// MapModel.build(run, sel) → { w, h, land, seized, hexes, pins, you, fog, flag, focus, sel, life }. Map units: CITY.w × CITY.h,
 // y down. A renderer (MapView: js/ui/map-view.js → js/map3d/map3d.mjs) draws a model and reports two things
 // back: a pin picked (its id) and a map point clicked ([x, y] in map units). All game rules stay in City / Front.
 
@@ -18,7 +18,6 @@ const MapModel = {
       beach: CITY.beach,
       regions: ['wu', 'shu', 'wei'].map(id => Object.assign(reg(id), { poly: CITY[id] })),
       contest: { line: CITY.contest, title: `Contested ${CITY.contestPair.map(r => REGIONS[r].name.split(' ')[0]).join('–')} border` },
-      borders: MapModel.borders(run),
       minors: Object.entries(CITY.minors).map(([id, e]) => Object.assign(reg(id), e)),
       park: Object.assign(reg('open'), CITY.park, { title: REGIONS.open.desc }),
       mountains: CITY.mountains,
@@ -264,7 +263,7 @@ const MapModel = {
    * Who is where this week (display only: no randoms, positions come from hashes of ids + place, so the same run state gives
    * the same model). mates: your floor mates at the explored place of their training key nearest home. crews: each known
    * faction club's drilling squad at its HQ (n figures by pool size; known = scouted or yours, else grey silhouettes; walk = its
-   * region's explored places). battle: this week's open street battle. borders: Front pressure (+ = a's side pushing).
+   * region's explored places). battle: this week's open street battle.
    */
   life(run) {
     const home = City.at(run, 'home'),
@@ -316,43 +315,50 @@ const MapModel = {
       mates,
       crews,
       battle: c ? { at: c.at, a: c.a, b: c.b, colors: [REGIONS[c.a].color, REGIONS[c.b].color] } : null,
-      borders: Object.keys(FRONT.borders).map(k => {
-        const [a, b] = k.split('-');
-        return { a, b, meter: Front.meter(run, a, b) };
-      }),
       contest: MapModel.contest(run)
     };
   },
   /**
-   * The three major borders as lines (spec §4.7): meter from a's side, the leading side and its colour (null when even),
-   * pressure 0..1, brink (the next win seizes) and the label text. Display only.
+   * The hex territory (spec §4.27, Hex): { size, tiles: [{ id, at, own, color, kind, frontier, p, by, cost, text }], target }
+   * — every land tile with its holder; frontier = touches another major's tile; p / by / cost / text only on tiles under
+   * pressure; target = this week's battle tile { id, color (raider), text 'Wu 0/2' }. Display only.
    */
-  borders: run =>
-    Object.keys(FRONT.borders).map(id => {
-      const [a, b] = id.split('-'),
-        meter = Front.meter(run, a, b),
-        lead = meter > 0 ? a : meter < 0 ? b : null,
-        n = Math.abs(meter),
-        short = r => REGIONS[r].name.split(' ')[0];
-      return {
-        id,
-        a,
-        b,
-        line: CITY.borders[id],
-        meter,
-        lead,
-        color: lead ? REGIONS[lead].color : null,
-        pressure: Math.min(1, n / FRONT.seize),
-        brink: n > 0 && n >= FRONT.seize - 1,
-        text: `${lead ? short(lead) : 'Even'} ${Math.min(n, FRONT.seize)}/${FRONT.seize}`,
-        title: `${short(a)}–${short(b)} border · ${lead ? `${short(lead)} ${n}/${FRONT.seize} to seize a place` : 'even'}`
-      };
-    }),
+  hexes(run) {
+    const H = Hex.state(run),
+      c = City.clashSite(run),
+      major = r => MAJORS.includes(r),
+      short = r => REGIONS[r].name.split(' ')[0],
+      k = c ? Front.stakes(run, c.a, c.b) : null;
+    return {
+      size: HEX.size,
+      target: c ? { id: c.tile, color: REGIONS[c.a].color, text: `${short(c.a)} ${k.tile === c.tile ? k.meter - 1 : 0}/${k.cost}` } : null,
+      tiles: Hex.grid().tiles.map(t => {
+        const own = Hex.owner(run, t.id),
+          p = H.p[t.id] || 0;
+        return {
+          id: t.id,
+          at: t.at,
+          own,
+          color: REGIONS[own].color,
+          kind: t.kind,
+          frontier: major(own) && Hex.near(t.id).some(n => major(Hex.owner(run, n.id)) && Hex.owner(run, n.id) !== own),
+          ...(p
+            ? {
+                p,
+                by: H.by[t.id],
+                cost: Hex.cost(run, t.id, H.by[t.id]),
+                text: `${short(H.by[t.id])} ${p}/${Hex.cost(run, t.id, H.by[t.id])}`
+              }
+            : {})
+        };
+      })
+    };
+  },
   /** The contested border (CITY.contestPair): meter from a's side, pressure 0..1 (1 = the next win seizes), holder. */
   contest(run) {
     const [a, b] = CITY.contestPair,
       meter = Front.meter(run, a, b);
-    return { a, b, meter, pressure: Math.min(1, Math.abs(meter) / FRONT.seize), hold: meter > 0 ? a : meter < 0 ? b : null };
+    return { a, b, meter, pressure: Math.min(1, Math.abs(meter) / HEX_COST.place), hold: meter > 0 ? a : meter < 0 ? b : null };
   },
   build(run, sel = null) {
     return {
@@ -360,6 +366,7 @@ const MapModel = {
       h: CITY.h,
       land: MapModel.land(run),
       seized: MapModel.seized(run),
+      hexes: MapModel.hexes(run),
       pins: MapModel.pins(run),
       you: { at: City.pos(run), title: `You are in ${REGIONS[City.loc(run)].name}` },
       fog: { points: run.fog || [], r: REVEAL_R },

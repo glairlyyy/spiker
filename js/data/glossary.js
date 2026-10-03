@@ -38,9 +38,9 @@ const GLOSSARY = {
   seize: {
     icon: 'text',
     short: 'Seize',
-    long: `Border meter. ${FRONT.seize} net battle wins on a border seize a place; lost places come back first.`
+    long: `Seize n/cost. A battle is fought on one border tile; each win +1 pressure, a defender's win clears it. The tile flips at its cost: open ground ${HEX_COST.plain}, place / city / beach / highland ${HEX_COST.place}; +${HEX_COST.home} on the defender's home terrain, ${HEX_COST.retake} to retake, ${HEX_COST.cut} if cut off from its HQs. Places go with their tile.`
   },
-  border: { icon: 'text', short: 'Border', long: `Border place. Changes hands after ${FRONT.seize} net street-battle wins on its border.` },
+  border: { icon: 'text', short: 'Border', long: 'Border tile. Touches another faction’s land: battles are fought on such tiles.' },
   sim: { icon: 'text', short: 'Sim', long: 'Sim. The result without watching. Same rules, same rewards.' },
   academy: { icon: 'text', short: 'Academy', long: 'Academy squad. You play evaluations and the U21 Cup with it until a club signs you.' },
   cup: {

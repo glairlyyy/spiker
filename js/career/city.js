@@ -353,8 +353,8 @@ const City = {
     const wt = Run.weekType(run);
     if ((wt !== 'train' && wt !== 'camp') || R() >= CLASH.chance) return;
     const { att, def } = Front.pick(run),
-      site = CLASH.sites.findIndex(s => (s.a === att && s.b === def) || (s.a === def && s.b === att));
-    run.clash = { site, att, seen: false, done: false };
+      t = Hex.target(run, att, def); // fought on the defender's cheapest, nearest tile (spec §4.27)
+    if (t) run.clash = { tile: t.id, from: t.from, att, def, seen: false, done: false };
   },
   /** A battle nobody joined is settled at the week's end. Returns the diary line. */
   clashEnd(run) {
@@ -449,7 +449,12 @@ const City = {
       line: `${trip}${t.name} turned your challenge down: “${pick(lines)}”${pest ? ` You are becoming a pest (${pest}).` : ''}`
     };
   },
-  clashSite: run => (run.clash && !run.clash.done ? CLASH.sites[run.clash.site] : null),
+  /** This week's open battle: { a: raider, b: defender, at, name, tile } (null when none or fought). */
+  clashSite(run) {
+    const c = run.clash,
+      t = c && !c.done && Hex.tile(c.tile);
+    return t ? { a: c.att, b: c.def, at: t.at, name: Hex.name(t.id), tile: t.id } : null;
+  },
   clashCost: run => City.trip(run, City.clashSite(run).at) + 1,
   /** Go to the battle and watch it (side null). Returns the diary line. Fighting is Fight.clash(run, side), a real match. */
   clash(run, side) {

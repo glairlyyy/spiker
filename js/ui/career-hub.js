@@ -96,7 +96,7 @@ function weekBrief(run) {
     row(
       '⚔',
       `${chip(REGIONS[att])}${esc(REGIONS[att].name)} raid ${chip(REGIONS[def])}${esc(REGIONS[def].name)}`,
-      `${esc(c.name)} · Seize ${Math.max(0, Front.meter(run, att, def))}/${FRONT.seize}${k.seize && k.place ? ` · a win takes ${esc(SPOTS[k.place].name)}` : ''} · nobody shows up? they settle it at the week's end`,
+      `${esc(c.name)} · Seize ${k.tile ? k.meter - 1 : 0}/${k.cost}${k.seize ? ` · a win takes ${esc(k.place ? SPOTS[k.place].name : 'the tile')}` : ''} · nobody shows up? they settle it at the week's end`,
       'street battle',
       'warn'
     );

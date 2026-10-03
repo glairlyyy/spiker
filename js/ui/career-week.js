@@ -604,18 +604,26 @@ function clubsCard(run) {
 }
 /** Your standing with each faction (region), its clubs, and this week's street battle. */
 function factionsCard(run) {
+  /** Tiles held now vs at the start (spec §4.27). */
+  const tiles = r => {
+    if (!MAJORS.includes(r)) return '';
+    const T = Hex.grid().tiles,
+      held = T.filter(t => Hex.owner(run, t.id) === r).length,
+      d = held - T.filter(t => t.region === r).length;
+    return `<div class="small">Tiles <b>${held}</b>${d ? ` <b class="${d > 0 ? 'up' : 'dn'}">${d > 0 ? '+' : '−'}${Math.abs(d)}</b>` : ''}</div>`;
+  };
   const row = r => {
     const F = Dossier.summary(run, r),
       v = F.standing,
       fronts = F.fronts
-        .map(({ vs, meter: m }) => {
-          const S = FRONT.seize,
-            k = Front.stakes(run, r, vs),
-            cells = Array.from({ length: 2 * S + 1 }, (_, i) => {
-              const c = i - S;
-              return `<b class="${c === 0 ? 'mid' : ''} ${m > 0 && c > 0 && c <= m ? 'on up' : m < 0 && c < 0 && c >= m ? 'on dn' : ''}"></b>`;
-            }).join('');
-          return `<span class="fm2" ${tip(GLOSSARY.seize.long)}>Border vs ${esc(REGIONS[vs].name.split(' ')[0])} <i class="seg">${cells}</i> ${m > 0 ? '+' : m < 0 ? '−' : ''}${Math.abs(m)}/${S}${k.seize && k.place ? ` <span class="mute">next win: ${esc(SPOTS[k.place].name)}</span>` : ''}</span>`;
+        .map(({ vs }) => {
+          const k = Front.stakes(run, r, vs),
+            cur = k.tile ? k.meter - 1 : 0;
+          return `<span class="fm2" ${tip(GLOSSARY.seize.long)}>vs ${esc(REGIONS[vs].name.split(' ')[0])} · ${
+            k.tile
+              ? `next: ${esc(k.name)} <b class="${cur ? 'up' : ''}">${cur}/${k.cost}</b>${k.seize && k.place ? ` <span class="mute">a win takes ${esc(SPOTS[k.place].name)}</span>` : ''}`
+              : '<span class="mute">no reach</span>'
+          }</span>`;
         })
         .join(''),
       places =
@@ -631,7 +639,7 @@ function factionsCard(run) {
         : '',
       clubs = F.clubs.map(ti => run.teams[ti]);
     return `<div class="fac ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}"><div class="fh"><b><a href="#" class="dlink" onclick="openDossier('${r}');return false">${esc(F.name)}</a></b> <span class="mute small">${F.kind}</span>${F.weak ? ' <span class="stk far">Weakened</span>' : ''}${info(F.desc)}<span class="fv">${F.label}</span></div>
-        ${fronts ? `<div class="fms">${fronts}</div>` : ''}${places}${econ}
+        ${tiles(r)}${fronts ? `<div class="fms">${fronts}</div>` : ''}${places}${econ}
         <div class="small mute stl">${term('standing', v)}</div><div class="rbar" ${tip(GLOSSARY.standing.long)}><i style="${v >= 0 ? `left:50%;width:${v / 2}%` : `left:${50 + v / 2}%;width:${-v / 2}%`}"></i></div>
         <div class="small">${clubs.map(t => `${chip(t)}${esc(t.name)}${t.i === run.team ? ' <i class="mute">(yours)</i>' : ''}`).join(' · ')}${
           F.foe

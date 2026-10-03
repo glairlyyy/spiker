@@ -3473,3 +3473,10 @@
 .mbord.brink {
   box-shadow: 0 0 0 2px var(--tc);
 }
+.ptile {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
