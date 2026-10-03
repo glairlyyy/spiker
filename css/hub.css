@@ -974,3 +974,18 @@
 .plc .pchal .mute {
   color: var(--mute);
 }
+/* Quiet Me sheet (spec §10.8, T-162) */
+.sheet .peekt.mmore {
+  margin-top: 8px;
+}
+.peek:has(.homes) {
+  max-width: 440px;
+}
+.peek .homes {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+.peek .srow {
+  margin-top: 6px;
+}

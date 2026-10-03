@@ -14,35 +14,42 @@ function sheetMe(run) {
     },
     ids = Skills.forRole(you.role),
     aff = ids.filter(id => !you.skills.includes(id) && Skills.canLearn(run, id)).length,
-    passive = ids
-      .filter(id => !SKILLS[id].tech)
-      .map(id => {
-        const sk = SKILLS[id],
-          own = you.skills.includes(id),
-          can = Skills.canLearn(run, id);
-        return `<div class="srow rowcta"><span class="nm"><b>${esc(sk.name)}</b><span class="small mute">${esc(sk.desc)}</span></span>${
-          own
-            ? '<span class="btn on here">Owned</span>'
-            : `<button class="btn ${can ? '' : 'lock'}" onclick="learnSkill('${id}')" ${can ? '' : 'disabled'}>${term('sp', String(sk.cost), 'cost')}${can ? ' → learn' : ` · need ${Math.max(0, sk.cost - run.sp)}`}</button>`
-        }</div>`;
-      })
-      .join(''),
-    techs = ids
-      .filter(id => SKILLS[id].tech)
-      .map(id => {
-        const sk = SKILLS[id],
-          own = you.skills.includes(id) || hasTech(you, id),
-          req = Object.entries(sk.req || {})
-            .map(([k, v]) => `${k === 'wit' ? 'Wit' : STATNAME[k]} ${v}`)
-            .join(' · ');
-        return `<div class="srow" ${tip(`${sk.desc}\nLearned in matches: by doing it, or by facing a player who has it.`)}><b>${esc(sk.name)}</b>${own ? '<span class="ptag sel">✓ yours</span>' : `<span class="ptag">${esc(req || 'learn in matches')}</span>`}</div>`;
-      })
-      .join(''),
-    next = Math.ceil(run.week / ECON.payEvery) * ECON.payEvery;
-  return `<div class="sheet-h"><span class="portrait">${faceSVG(you, mood.form, 56)}</span><div><h2>${stag(you)}${esc(you.name)}</h2><div class="mute">${ROLE_NAME[you.role]} · ${chip(team)}${esc(team.name)} · OVR ${ovr(you)} · ${rank}</div></div>
-    <div class="sheet-chips"><span class="pchip">Stamina ${run.sta} / ${run.staMax}</span><span class="pchip">Mood ${mood.name}</span><span class="pchip">Skill pts ${run.sp}</span></div></div>
+    // passive skills (§10.8): owned ones, then the 3 closest to affordable; the rest behind `+n more ›`
+    skillRow = id => {
+      const sk = SKILLS[id],
+        own = you.skills.includes(id),
+        can = Skills.canLearn(run, id);
+      return `<div class="srow rowcta" ${tip(sk.desc)}><span class="nm"><b>${esc(sk.name)}</b></span>${
+        own
+          ? '<span class="btn on here">Owned</span>'
+          : `<button class="btn ${can ? '' : 'lock'}" onclick="learnSkill('${id}')" ${can ? '' : 'disabled'}>${term('sp', String(sk.cost), 'cost')}${can ? ' → learn' : ` · need ${Math.max(0, sk.cost - run.sp)}`}</button>`
+      }</div>`;
+    },
+    pas = ids.filter(id => !SKILLS[id].tech),
+    pasOwn = pas.filter(id => you.skills.includes(id)),
+    pasNext = pas.filter(id => !you.skills.includes(id)).sort((a, b) => SKILLS[a].cost - SKILLS[b].cost),
+    passive = [...pasOwn, ...pasNext.slice(0, 3)].map(skillRow).join(''),
+    pasMore = pasNext.slice(3),
+    // techniques: yours and those within 10 of every requirement (Wit on its ×50 bar scale); the rest behind `+n ›`
+    techGap = id =>
+      Math.max(0, ...Object.entries(SKILLS[id].req || {}).map(([k, v]) => (k === 'wit' ? (v - you.wit) * 50 : v - (you[k] || 0)))),
+    techRow = id => {
+      const sk = SKILLS[id],
+        own = you.skills.includes(id) || hasTech(you, id),
+        req = Object.entries(sk.req || {})
+          .map(([k, v]) => `${k === 'wit' ? 'Wit' : STATNAME[k]} ${v}`)
+          .join(', ');
+      return `<div class="srow" ${tip(`${sk.desc}\nLearned in matches: by doing it, or by facing a player who has it.`)}><b>${esc(sk.name)}</b>${own ? '<span class="ptag sel">✓ yours</span>' : `<span class="ptag">${esc(req || 'learn in matches')}</span>`}</div>`;
+    },
+    tch = ids.filter(id => SKILLS[id].tech),
+    tchNear = tch.filter(id => you.skills.includes(id) || hasTech(you, id) || techGap(id) <= 10),
+    tchMore = tch.filter(id => !tchNear.includes(id)),
+    techs = tchNear.map(techRow).join(''),
+    next = Math.ceil(run.week / ECON.payEvery) * ECON.payEvery,
+    el = ElTrial.steps(run).seen ? '' : `Element at OVR ${ElTrial.revealAt}`;
+  return `<div class="sheet-h"><span class="portrait" ${el ? `${tip(el)} tabindex="0"` : ''}>${faceSVG(you, mood.form, 56)}</span><div><h2>${stag(you)}${esc(you.name)}</h2><div class="mute">${ROLE_NAME[you.role]} · ${chip(team)}${esc(team.short)} · <span ${tip(rank)}>OVR ${ovr(you)}</span></div></div></div>
     <div class="sheet-cols mecols">
-      <section class="card"><div class="lab">Stats · thin bar = progress to the next point</div>${STATK.map(statRow).join('')}
+      <section class="card"><div class="lab" ${tip('Thick bar: the stat. Thin bar: progress to the next point.')}>Stats</div>${STATK.map(statRow).join('')}
         <div class="mrow"><span>${statI('wit', 20)}Wit</span><span class="mbars"><i class="mb"><i style="width:${you.wit * 50}%"></i></i></span><span class="mv"><b>${you.wit.toFixed(2)}</b></span></div>
         <div class="mrow"><span>${statI('led', 20)}Leadership</span><span class="mbars"><i class="mb lead"><i style="width:${you.lead}%"></i></i></span><span class="mv"><b>${you.lead}</b></span></div>
         ${elementLine(run)}
@@ -51,20 +58,22 @@ function sheetMe(run) {
             ? `<div class="inj"><b>Injured</b> ${run.injury.weeks}w — light training only (×0.4 gains, half stamina) <button class="btn" onclick="seePhysio()" ${run.sp < TRAIN_X.physio ? 'disabled' : ''}>Physio · ${TRAIN_X.physio} pts</button></div>`
             : ''
         }</section>
-      <section class="card"><div class="wh"><span class="lab">Skills</span><span class="small mute">${run.sp} pts · ${aff} affordable</span></div>
-        <div class="small mute sub">Passive — buy with skill points</div>${passive}
-        <div class="small mute sub">Techniques — learned in matches, or by stats</div>${techs}</section>
-      <section class="card"><div class="lab">Life · $${run.money.toLocaleString()} · payday week ${next}${info(`Payday every ${ECON.payEvery} weeks: +$${ECON.allowance} allowance, −$${ECON.food} food, −rent. Run out of money and you're evicted to the abandoned gym.`)}</div>
-        <div class="homes">${HOUSEK.map(k => homeRow(run, k)).join('')}</div>
-        <div class="small mute">${World.isFree(run) ? 'Free agent — no club yet' : esc(FACTIONS[run.team].name)}</div></section>
+      <section class="card"><div class="wh"><span class="lab" ${tip('Passive skills: buy with skill points')}>Skills</span><span class="small mute">${aff} affordable</span></div>
+        ${passive}${pasMore.length ? peek('me:skills', `+${pasMore.length} more`, `<div class="lab">Skills</div>${pasMore.map(skillRow).join('')}`, 'mmore') : ''}
+        <div class="lab sub" ${tip('Learned in matches: by doing it, or by facing a player who has it')}>Techniques</div>${techs || '<p class="small mute">None within reach yet.</p>'}${
+          tchMore.length
+            ? peek('me:techs', `+${tchMore.length}`, `<div class="lab">Techniques</div>${tchMore.map(techRow).join('')}`, 'mmore')
+            : ''
+        }</section>
+      <section class="card"><div class="lab" ${tip(`Payday every ${ECON.payEvery} weeks: +$${ECON.allowance} allowance, −$${ECON.food} food, −rent. Run out of money and you're evicted to the abandoned gym.`)}>Life · payday W${next}</div>
+        <div class="homes">${homeRow(run, run.housing)}</div>${peek('me:homes', 'Change home', `<div class="lab">Homes</div><div class="homes">${HOUSEK.map(k => homeRow(run, k)).join('')}</div>`, 'mmore')}</section>
     </div>`;
 }
 /** Your element: hidden (???) until OVR 70, then the three trial steps, then the signature spike. */
 function elementLine(run) {
   const you = Run.you(run),
     S = ElTrial.steps(run);
-  if (!S.seen)
-    return `<div class="elline locked" ${tip(`Your element reveals itself at OVR ${ElTrial.revealAt}`)}><span class="elb">?</span><b>Element ???</b></div>`;
+  if (!S.seen) return ''; // hidden until revealed (§10.8): the portrait's hover says when
   const c = ECOL[you.el],
     how = `${EDESC[you.el]}.\nGauge: ${EFILL[you.el]} A captain's buff fills it at once.`;
   if (S.on)

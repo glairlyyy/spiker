@@ -71,7 +71,7 @@ function peekSync() {
   card.hidden = false;
   card.classList.add('ported');
   document.body.appendChild(card);
-  const own = (trig.closest('.spotcard, .hubcard, .sheet, .wrail, .panel, section') || trig).getBoundingClientRect(),
+  const own = (trig.closest('.spotcard, .hubcard, .sheet .card, .sheet, .wrail, .panel, section') || trig).getBoundingClientRect(),
     tr = trig.getBoundingClientRect(),
     w = card.offsetWidth,
     h = card.offsetHeight,

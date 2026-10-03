@@ -53,7 +53,7 @@ const WORD_REGIONS = [
   ['.hub .wrail', () => 45],
   ['#spot.open', el => (el.querySelector('.pside') ? 45 : 30)],
   ['.hubmodal .hubcard', el => (el.querySelector('.brief') ? 25 : 30)],
-  ['.hub .sheet', () => 60],
+  ['.hub .sheet', el => (el.querySelector('.mecols') ? 110 : 60)], // Me sheet 110 (T-162), others 60
   ['.create2', () => 60],
   ['.title2', () => 15]
 ];
