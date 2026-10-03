@@ -44,7 +44,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     / high outside) · **Bunch** (both central; strong vs middle/pipe, pins open).
   - Scouting a club shows its attack habits (lane split, pipe use) and defence setting.
   - Targets: ~13–14 % of attacks stuffed, kills ~68 % (kills ÷ attacks). `BLOCK` (js/data/tactics.js), `STUFF_BIAS` 0.2.
-- §2.9a Delayed Spike (owner, 2026-10-04, T-178): the blockers are coming down — no block break, no kill block, no tool;
+- §2.9a Delayed Spike (owner, 2026-10-04, T-180): the blockers are coming down — no block break, no kill block, no tool;
   only a **fingertip touch** at the tape (still rolled on block power; takes ×0.7 off the spike). Trade-off: the hitter
   can **hang too long** — chance `HANG_FAIL` 0.35 − 0.008 × (jump − 60) − 0.4 × (wit − 1), clamped 3–45 %; the ball drops
   on the hitter's side by the net, the best-placed teammate tries to dig it (a poor pass, rally on), else an attack error.
@@ -436,6 +436,22 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
   only, Monster game for both. Overlay rail 400px (key B; opens on pause and after the final): Commentary · Box score ·
   Tactics. ⚙ settings = labelled segmented controls (every option visible), opening upward from the bar. Results card
   action row: Continue/Back + Box score; playback disabled.
+- §9.10 Technique switches (owner, 2026-10-04; design system TechSwitch card): you can hold back a technique you own,
+  because some trade something for their gain (e.g. Killer Jump Serve: +10% pace, +3% faults).
+  - **Rule**: switch any time, no cost; it applies from the **next rally** (same as tactics). Career: only your player's
+    techniques; exhibition / Monster game: every player on your side(s). A switched-off technique simply never fires
+    (`hasTech` false for that player in that match). Nothing switched off = the match plays exactly as today (goldens).
+  - **Where**: Match prep card — a `Techniques` row (`n on · m off ›`, a peek with the switches) under Focus. In the
+    match — a `Techniques` section at the top of the rail's Tactics tab; the control bar's Tactics button carries an
+    `n off` badge while any is off; `T` opens the Tactics tab, `1`–`9` flip the rows while it is open.
+  - **Row** (fixed columns): pack icon (Attack / Serve / Defense / Setter) · name · trade line — gain in `good`, cost
+    in `bad`, one short phrase each, only what the data states (`trade` field; no `−` part when there is none) · this
+    match `used n · won n` (`· faults n` for serves) · switch in the right column. Off rows dim to `mute`, never hide.
+    Full SKILL_HOW text on the name's hover. Exhibition: rows grouped under each player's name.
+  - **Feedback**: flipping adds a commentary line (`{name} holds back the {tech}` / `goes back to the {tech}`); the
+    result screen lists `Held back: …` under your line.
+  - **Memory**: career keeps your off-list between matches (`run.techOff`, RUN_DEFAULTS, no version bump) and match
+    prep starts from it with `Reset`; exhibition switches last one match. Passive skills (Soft Hands…) are not listed.
 
 ## 10. Redesign [built through T-129; §10.1a, rail collapse and no-list locked, not built]
 

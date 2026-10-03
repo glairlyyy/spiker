@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-179** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-181** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -29,6 +29,43 @@ evaluations, U21 Cup, Story mode, growth, relationships), UI redesign §9–§10
 × 1.5, cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git history.
 
 ## Now
+
+Owner request 2026-10-04 (spec §9.10 technique switches): T-178 → T-179. Goldens unchanged (nothing off = same match).
+
+### [ ] T-178: Technique switches in the engine, with use counts
+Spec: §9.10          Goldens: unchanged          Save: no change (`run.techOff` via RUN_DEFAULTS)
+Goal: a match can hold back named techniques per player from the next rally, and counts how each technique did.
+Files: js/engine/skills.js (hasTech), js/engine/match.js (match state: `off`, `techUse`), the technique hook sites found by `hasTech(` in js/engine/serve.js, rally*.js, js/data/skills.js (`trade` field), js/career/run.js (RUN_DEFAULTS `techOff`), js/ui/career-match.js (pass `run.techOff` into the fixture), tests/engine.test.js
+Do not: draw extra randoms (the off check must come before any roll for that technique, never add a roll); change any technique's numbers; invent trade-offs.
+Steps:
+1. Match state `off: { [playerId]: Set<techId> }` and `Match.setTechOff(m, pid, id, on)` (applies at the next rally start, like setTactic).
+2. `hasTech(p, id)`: when a match is running (`CM`) and `CM.off[p.id]` has `id` → false. Outside a match unchanged.
+3. `techUse[pid][id] = { n, won, err }`: +n where the technique fires, +won when that rally goes to the player's side, +err when it ends in that player's fault.
+4. SKILLS `trade: { up, down }` short phrases from SKILL_HOW numbers only: killer `{up:'+10% pace', down:'+3% faults'}`; delay `{up:'block can only fingertip it', down:'may hang too long (low jump / wit)'}` (T-180); every other technique `{up:<its short gain>}` with no `down` until the owner adds one.
+5. Career fixtures start with `off[youId] = new Set(run.techOff)`.
+Accept:
+- A seeded match with nothing off = golden result unchanged (tests/golden.json).
+- A seeded match with `killer` off for a serving player: no killer serve fires (techUse n = 0); same seed, killer on: n > 0.
+- techUse counts appear for a 1-set headless match; tests green.
+QA: none
+Result:
+
+### [ ] T-179: Technique switches UI (match prep, Tactics tab, result)
+Spec: §9.10 §9.9          Goldens: unchanged          Save: no change
+Goal: the player can see each technique's trade-off and this-match record and switch it off or on, before and during the match.
+Files: js/ui/match-screen.js (rail Tactics tab section, control-bar badge, keys T and 1–9, commentary line), js/ui/career-match.js (prep row + peek, Reset, save `run.techOff`), js/ui/match-result.js (`Held back:` line), js/ui/icons.js (pack icons if missing), css/style.css (`.tsw` rows)
+Do not: show passive skills; hide off rows; put the switches anywhere but the right column; use colours outside theme.css.
+Steps:
+1. `techRows(m, pid)` → rows per §9.10 (pack icon, name with SKILL_HOW hover, trade chips, `used n · won n`, switch). Exhibition: one group per player of your side(s).
+2. Tactics tab: Techniques section first, then Tactic / Defence. Switch → `Match.setTechOff`, commentary line, re-render; badge `n off` on the bar's Tactics button.
+3. Keys: `T` → railOpen('tac'); with the tab open, `1`–`9` flip rows in order.
+4. Match prep: `Techniques` row `n on · m off ›` → peek with the same rows (no counts) + `Reset`; changes write `run.techOff` and save.
+5. Result screen: `Held back: Killer Jump Serve` under your line when any were off.
+Accept:
+- Career eval with a player owning Killer Jump Serve: prep peek switches it off → in the match the row shows off, badge `1 off`, no killer serves; switch back on mid-match → next rally it can fire.
+- Rows line up (switch column x identical across rows); word budget of the Tactics tab ≤ 60 at 3 techniques.
+QA: career run → match prep peek, match Tactics tab (screenshots on and off), result screen.
+Result:
 
 Owner request 2026-10-04 (spec §10.7a, design system TitleScreen card): T-176 → T-177. UI only; goldens unchanged.
 
@@ -153,7 +190,7 @@ Steps: call `Story.due` at Story start (after Create, before the first brief), a
 Accept: the test scene can be triggered from each hook (test flag); the brief waits until the scene ends.
 Result: (partial) the 'start' hook is in Run.create; week / place / result hooks still to do.
 
-### [x] T-178: Delayed Spike vs falling blockers; hang-too-long trade-off (owner request)
+### [x] T-180: Delayed Spike vs falling blockers; hang-too-long trade-off (owner request)
 
 Spec: §2.9a Goldens: update (delayed spikes no longer stuffed; hang-fail draws) Save: no change
 Files: js/engine/rally-defense.js (block: `late`, LATE_TOUCH), js/engine/rally.js (hangFail, HANG_FAIL), js/data/skills.js (SKILL_HOW), tests/engine.test.js, tests/golden.json
