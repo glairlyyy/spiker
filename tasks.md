@@ -447,7 +447,7 @@ Accept: ~600 lines gone; a scripted class scan finds no unused selector; QA scre
 QA: menu, create, hub, map + point panel, people, Season/World/Me sheets, match prep, result.
 Result: −839 lines (career.css −656, style.css −131, theme.css −52): 62 dead classes gone (scripted scan: 0 unused; dynamic `m0–4 rS/rA/rB gS/gA w-*` kept, `.gazette` live), 7 duplicate rules folded into their first copy (`.cal .pip .hub .hub .spotcard`(z-index) `.hub .mapwrap .plink .rosters .rp .hub .winbox .wit`); `.hub .spotcard`/`.hub .hubmodal` second copies kept (a max-width @media override sits between, merging would change the cascade); T-130 comment fixed; QA 14/16 screens pixel-identical, match/result differ in the 3D canvas only.
 
-### [ ] T-149: Hardcoded colours → theme tokens
+### [x] T-149: Hardcoded colours → theme tokens
 
 Spec: §9 Goldens: unchanged Save: no change
 Files: css/theme.css, css/career.css, css/style.css, js/ui/career-end.js
@@ -457,7 +457,7 @@ design-system token, or add one to theme.css only if tokens.json has it. career-
 Do not: change js/render/overlay.js canvas colours (canvas, not CSS).
 Accept: career.css/style.css have no hex literals outside theme.css except commented exceptions; QA screens unchanged.
 QA: as T-148.
-Result:
+Result: exact copies → tokens (#8b919c→mute, #ff3b4e→hot, #888 fallback→mute); ΔE00 ≤ 2.8 → token (#0c1016→surf 1.1, #000→on-ink/bg ≤ 2.8; career-end COL ovr→ink 1.4, power→bad-soft 1.1, def→cyan, jump→gold, cup line→hot, via style= since SVG attrs); everything else stays literal with `/* no token: … */` (tokens.json has no white token: #fff vs ink ΔE 3.5; #ffd166 gold 3.2; #f5b82e = wei-today but a faction colour on clock dots; #040b13 matches the sea fog; style.css court art #10163a/#ffe066…; speed #7ee081 vs good 4.5). No theme.css token added. QA: 16 screens vs base2 — hub/sheets px>24 = 0, match/result only confetti/3D noise (same as base2↔t148); growth chart checked separately.
 
 ### [ ] T-150: Stale docs and comments
 

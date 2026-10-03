@@ -246,11 +246,11 @@
   display: grid;
   place-items: center;
   font: 54px/1 var(--disp);
-  color: #fff;
+  color: #fff; /* no token: white rank letter (ink is visibly greyer) */
   background: var(--mute);
 }
 .rank.rS {
-  background: linear-gradient(135deg, #ff2e74, #ffc857);
+  background: linear-gradient(135deg, #ff2e74, #ffc857); /* no token: S-rank gradient */
 }
 .rank.rA {
   background: var(--gold);
@@ -477,12 +477,12 @@
   margin-top: 10px;
   padding: 6px 10px;
   border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--e, #888) 55%, transparent);
-  background: color-mix(in srgb, var(--e, #888) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--e, var(--mute)) 55%, transparent);
+  background: color-mix(in srgb, var(--e, var(--mute)) 10%, transparent);
   font-size: 13px;
 }
 .elline.locked {
-  --e: #8a90b0;
+  --e: #8a90b0; /* no token: locked element grey (mute too far) */
   opacity: 0.85;
 }
 .elline .elb {
@@ -609,7 +609,7 @@
   inset: 0;
   z-index: 40;
   overflow: hidden;
-  background: #0c1016;
+  background: var(--surf);
   display: block;
   --hudbg: rgba(12, 14, 20, 0.82);
   --gap: max(16px, env(safe-area-inset-left));
@@ -667,7 +667,7 @@
   right: -4px;
   bottom: -4px;
   background: var(--tc);
-  color: #000;
+  color: var(--on-ink);
   font-size: 12px;
   border-radius: 8px;
   padding: 0 5px;
@@ -726,7 +726,7 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #f5b82e;
+  background: #f5b82e; /* no token: day dots amber (gold too pale; wei-today is a faction colour) */
   box-shadow: 0 0 6px rgba(245, 184, 46, 0.6);
 }
 .hub .clock .days i.used {
@@ -860,7 +860,7 @@
   overflow: hidden;
   touch-action: none;
   cursor: grab;
-  background: #040b13;
+  background: #040b13; /* no token: matches the sea under the 3D fog */
   top: var(--tbar);
   left: var(--rail);
 }
@@ -935,7 +935,7 @@
   background: var(--bad-soft);
 }
 .facs .clashk {
-  color: #ff8c42;
+  color: #ff8c42; /* no token: Outlaws colour (js/data/world.js) */
   margin-left: 6px;
 }
 .facs .fms {
@@ -1029,7 +1029,7 @@
   padding: 4px 12px;
   border-radius: 999px;
   background: var(--hudbg, rgba(12, 14, 20, 0.82));
-  color: #ffd166;
+  color: #ffd166; /* no token: gold is visibly paler */
   font: 700 18px/1.2 var(--font-num, inherit);
   pointer-events: none;
 }
@@ -1038,7 +1038,7 @@
   max-width: 32em;
   padding: 0 16px;
   text-align: center;
-  color: #9fb0c4;
+  color: #9fb0c4; /* no token: blue-grey note over the sea (mute too far) */
 }
 /* ---------- 3D map overlay: pins, labels, flag (js/map3d/pins3d.mjs) ---------- */
 .hub.eve .mapwrap canvas {
@@ -1062,7 +1062,7 @@
   border-radius: 50%;
   border: 3px solid var(--tc, var(--cyan));
   background: var(--surf2);
-  color: #fff;
+  color: #fff; /* no token: white pin glyph (ink is visibly greyer) */
   cursor: pointer;
   pointer-events: auto;
   transition: opacity 0.2s;
@@ -1110,12 +1110,12 @@
   border-width: 4px;
 }
 .mpin.overhyped {
-  border-color: #8b919c;
+  border-color: var(--mute);
   border-style: dashed;
 }
 .mpin.clash {
-  background: #3a0d12;
-  border-color: #ff3b4e;
+  background: #3a0d12; /* no token: dark red clash pin fill */
+  border-color: var(--hot);
   border-width: 4px;
   animation: clashp 1.2s ease-in-out infinite alternate;
 }
@@ -1137,14 +1137,14 @@
   color: var(--gold);
 }
 .mlab {
-  color: color-mix(in srgb, var(--tc, #e8d9a8) 75%, #fff);
+  color: color-mix(in srgb, var(--tc, #e8d9a8) 75%, #fff); /* no token: parchment label tint */
   font: 700 14px var(--disp);
   letter-spacing: 0.06em;
   white-space: nowrap;
   pointer-events: none;
   text-shadow:
-    0 0 3px #000,
-    0 0 3px #000;
+    0 0 3px var(--bg),
+    0 0 3px var(--bg);
 }
 .mlab.big {
   font-size: 22px;
@@ -1152,7 +1152,7 @@
   letter-spacing: 0.12em;
 }
 .mlab.ap {
-  color: #e8d9a8;
+  color: #e8d9a8; /* no token: parchment label */
   font: 600 12px var(--body);
   letter-spacing: 0;
 }
@@ -1164,6 +1164,7 @@
 .mflag {
   font-size: 26px;
   color: var(--warn);
+  /* no token: warm flag shadow */
   text-shadow:
     0 0 3px #1b1204,
     0 0 3px #1b1204;
@@ -1346,7 +1347,7 @@
   background: var(--line);
 }
 .facs .seg b.mid {
-  background: #555b66;
+  background: #555b66; /* no token: mid meter step between line and mute */
 }
 .facs .seg b.on.up {
   background: var(--good);
@@ -1664,7 +1665,7 @@
   padding: 0 5px;
   border-radius: 999px;
   background: var(--hot);
-  color: #fff;
+  color: #fff; /* no token: white on hot badge (ink is visibly greyer) */
   font: 700 12px/16px var(--body);
 }
 .hub .wrail {

@@ -43,9 +43,10 @@ function growthChart(run) {
     w1 = H[H.length - 1].w,
     X = w => 30 + ((w - w0) / Math.max(1, w1 - w0)) * 560,
     Y = v => 150 - ((v - 25) / 74) * 130;
-  const COL = { ovr: '#f5f7fa', power: '#ff5a6e', def: '#4cc9f0', speed: '#7ee081', jump: '#f5c451' };
+  // theme tokens; speed keeps its literal (good is visibly darker)
+  const COL = { ovr: 'var(--ink)', power: 'var(--bad-soft)', def: 'var(--cyan)', speed: '#7ee081', jump: 'var(--gold)' };
   const line = k =>
-    `<polyline fill="none" stroke="${COL[k]}" stroke-width="${k === 'ovr' ? 3 : 1.6}" stroke-linejoin="round" points="${H.map(h => `${X(h.w).toFixed(1)},${Y(h[k]).toFixed(1)}`).join(' ')}"/>`;
+    `<polyline fill="none" style="stroke:${COL[k]}" stroke-width="${k === 'ovr' ? 3 : 1.6}" stroke-linejoin="round" points="${H.map(h => `${X(h.w).toFixed(1)},${Y(h[k]).toFixed(1)}`).join(' ')}"/>`;
   const grid = [40, 60, 80, 99]
     .map(
       v =>
@@ -55,7 +56,7 @@ function growthChart(run) {
   const cups = CUPS.filter(c => c.after >= w0 && c.after <= w1)
     .map(
       c =>
-        `<line x1="${X(c.after)}" x2="${X(c.after)}" y1="16" y2="150" stroke="#ff3b4e" stroke-dasharray="3 3" stroke-opacity=".6"/><text x="${X(c.after) - 8}" y="12" font-size="10" fill="#ff3b4e">${c.short}</text>`
+        `<line x1="${X(c.after)}" x2="${X(c.after)}" y1="16" y2="150" style="stroke:var(--hot)" stroke-dasharray="3 3" stroke-opacity=".6"/><text x="${X(c.after) - 8}" y="12" font-size="10" style="fill:var(--hot)">${c.short}</text>`
     )
     .join('');
   return `<div class="panel"><h3>Your season</h3>
