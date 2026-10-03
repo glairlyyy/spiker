@@ -6,12 +6,14 @@ consistent; it never copies lore text into the game verbatim and never invents n
 Status tags as in spec.md: **[locked]** decided · **[open]** undecided — do not write strings that settle it.
 
 ## 1. Tone [locked]
+
 - Kenshi's cruel world in volleyball terms. The island runs without you; nobody cares until you're worth something.
 - Factions seize facilities to feed their players and starve rivals. Players are assets.
 - Institutional inertia: nobody remembers why things are done this way. People follow elders and academy grading.
 - The MC's spite cuts through "that's how it's done". Discovering the truth is optional, never required story.
 
 ## 2. Elements [locked]
+
 - Elements are natural in this world. Some people have an innate element. Mastered, it serves daily life
   (warming, lifting, mending small things), but every use draws on the body's life force. Nobody throws fireballs:
   it would drain them completely. In a match, an element spike is a flash of that cost paid on purpose.
@@ -21,6 +23,7 @@ Status tags as in spec.md: **[locked]** decided · **[open]** undecided — do n
 - Most people never awaken theirs (in game: hidden elements, ~1/4 of stars awakened).
 
 ## 3. History [locked]
+
 1. **Refuge town.** In the warring-states era, refugees fled the mainland to a small island town, near collapse.
 2. **Discovery.** A major nation found the island and sent settlers to build a town. The land was beautiful and the
    beach large; the settlers took over, and the refugees' descendants became a minority.
@@ -40,6 +43,7 @@ Status tags as in spec.md: **[locked]** decided · **[open]** undecided — do n
    that matters.
 
 ## 4. The world today [locked unless tagged]
+
 - **The game itself:** island volleyball is a **street game**, not the formal 6v6 indoor sport of the mainland —
   4 a side, small courts, physical and fierce; bodies collide at the net, nobody plays it politely. Every faction keeps
   importing tactics (block reads, systems, set plays) and the coaches keep drilling them, but they rarely hold: raw
@@ -63,7 +67,9 @@ Status tags as in spec.md: **[locked]** decided · **[open]** undecided — do n
   and a perk of belonging. Minors don't; neither does anyone for a loner.
 
 ## 5. Factions — truth · public face · grading dogma
+
 Grading dogma = what the faction's join conditions and facility conditions mean in the fiction.
+
 - **Wei Dynasty** (city, north + east). Truth: the political seat — league office, official record, the Gazette.
   Meritocratic on paper, pay-to-play in reality; binds players with debt contracts; still living off the prestige
   the Rigged Year cost them. Public face: order, tradition, the island's rightful leadership.
@@ -82,32 +88,44 @@ Grading dogma = what the faction's join conditions and facility conditions mean 
 - Exact condition values: see spec (balance pass). **[open]**
 
 ## 6. People
+
 - **MC** [locked]: female newcomer. Came to the island because her rival is here. Every other academy rejected her;
   Central Academy was the only one that took her.
-- **Rival** [open]: identity, faction.
-- **Aces** Reina, Ren, Taiga [open]: from the old design doc; faction mapping and fit with this lore undecided.
+- **Ages and the arc** [locked] (owner, 2026-10-04): the MC lands on the island at 19. The game has no age system;
+  ages only set the shape of the curves. Year 1 ends with the U21 Final Cup; a second year leaves the MC room to catch up.
+- **Aces** [locked shape; names / factions open]: one year older (20). Already ★ stars with an awakened element when
+  the MC arrives; they grow on an authored curve, not the dice, and **peak at the U21 Final Cup as OP** (~95 OVR).
+  The faction's poster players. Reina, Ren, Taiga from the old design doc are candidates; which faction each belongs to
+  is still open.
+- **Rival** [locked shape; identity / faction open]: a **next ace** — also 19, arriving with the MC but far stronger.
+  Grows like an ace (authored, fast) but from lower: by the U21 Final Cup about OVR 89–90, close to the aces but **not
+  OP**. In year 2 (age 21) the rival becomes an ace, alongside new aces generated in the other factions (or a unique
+  one, future lore). Year 2 is the MC's chance to catch the rival.
 
 ## 7. Voices (unreliable narration) [locked]
+
 Every in-game string has exactly one speaker. Numbers are always true (price, days, stamina, stats once
 experienced); claims, reasons and history may be wrong. Contradictions between voices are intentional.
 No tutorial voice anywhere.
 
-| id | Speaker | Used for | Bias |
-|---|---|---|---|
-| `registrar` | Central Academy registrar | rules, costs, numbers, forms, tooltips on mechanics | dry, terse, bureaucratic; never explains why |
-| `wei` | Wei office / Gazette | league news, Wei places, official history | order and prestige; "the lean year" blames sponsors and Wu |
-| `wu` | Wu crews | Wu places, border news | contempt for tricks; Wei betrayed the sport |
-| `shu` | Shu elders | Shu places, training, hardship | the pure path; secretive; hints at old ways |
-| `outlaw` | Street Outlaws | street courts, betting, rumours | grudge against Wei; half-remembered truth |
-| `gloria` | St. Gloria agents | St. Gloria, foreign offers | polished, transactional |
-| `villager` | natives | rare lines, ritual traces | reluctant; old-language words, never translated |
-| `diary` | the MC | diary, reactions, event results | spite, sarcasm; sometimes wrong |
-| `rumor` | the street | scouting, "word is" lines | unreliable by definition |
+| id          | Speaker                   | Used for                                            | Bias                                                       |
+| ----------- | ------------------------- | --------------------------------------------------- | ---------------------------------------------------------- |
+| `registrar` | Central Academy registrar | rules, costs, numbers, forms, tooltips on mechanics | dry, terse, bureaucratic; never explains why               |
+| `wei`       | Wei office / Gazette      | league news, Wei places, official history           | order and prestige; "the lean year" blames sponsors and Wu |
+| `wu`        | Wu crews                  | Wu places, border news                              | contempt for tricks; Wei betrayed the sport                |
+| `shu`       | Shu elders                | Shu places, training, hardship                      | the pure path; secretive; hints at old ways                |
+| `outlaw`    | Street Outlaws            | street courts, betting, rumours                     | grudge against Wei; half-remembered truth                  |
+| `gloria`    | St. Gloria agents         | St. Gloria, foreign offers                          | polished, transactional                                    |
+| `villager`  | natives                   | rare lines, ritual traces                           | reluctant; old-language words, never translated            |
+| `diary`     | the MC                    | diary, reactions, event results                     | spite, sarcasm; sometimes wrong                            |
+| `rumor`     | the street                | scouting, "word is" lines                           | unreliable by definition                                   |
 
 ## 8. Old language [open]
+
 - Appears only as untranslated words in place/facility names, rituals and villager lines. The game never translates it.
 - Glossary: none yet — the build chat must not invent words until the owner defines them here.
 
 ## 9. Open
-- Rival; aces; exact faction conditions; old-language glossary; island and major-nation names; what the ritual
+
+- Rival's identity and faction; which faction each ace belongs to; how year 2 works with a U21 league (age 21); exact faction conditions; old-language glossary; island and major-nation names; what the ritual
   looks like in play; what happens if Central Academy's neutrality is broken.

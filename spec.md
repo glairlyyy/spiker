@@ -299,6 +299,15 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     normal lineups.
   - **Endless** **[locked, not built]**: no guarantees; call-up by grades; season rolls over after the cup (aging out,
     senior league, continuing NPC careers: **[open]**).
+- §4.28 Aces and the rival **[draft]** (owner, 2026-10-04; lore.md §6): growth curves are authored, not rolled.
+  - **Aces** (one per major to start): start ★ star, element on, ~OVR 75–80; follow a fixed weekly curve that slows
+    toward a ceiling and reaches OP (~95 OVR, key ≥ 95) by the U21 Final Cup. No random star / OP rolls for them.
+  - **Rival**: starts far above you (~OVR 60–65 while you start at 1), same authored-curve kind, ending ~89–90 at the
+    Cup with the key stat kept under the OP line (not OP). Not tied to your OVR (owner: grows like an ace).
+  - Year 2 (open): the rival is promoted to ace; each other major generates a new ace (procedural; a unique one may come
+    from lore later). Needs the Endless roll-over above and an answer to U21 eligibility at 21.
+  - Numbers are first guesses for the balance pass; the shape (aces > rival > field, rival close but not OP at the Cup)
+    is the decision.
 - §4.27 Hex territory **[locked]** (owner, 2026-10-03): the war map becomes hex tiles; each tile has its own takeover
   condition. Changes how factions move and seize; the player's travel (roads, days, trips, fog) does not change.
   Replaces the fixed border meters and border places (§4.7 `FRONT.borders`, T-130 lines, seized patches).
