@@ -1,10 +1,10 @@
-// The player on the 3D map: the default VRM model, idle-breathing, walking or running to wherever the rules put
+// The player on the 3D map: your own model (Main_v2, as in matches and your portrait; the default model if it fails), idle-breathing, walking or running to wherever the rules put
 // the player. Display only — the rules move instantly; this animates from the previously shown position.
 //   createAvatar(scene) → { setTarget([x, y], path?), snap([x, y]), tick(dt, heightAt), busy(), pos(), lapse(), dispose() }
 // Map points are map units (see toWorld in map3d.mjs). Until the model has loaded a capsule marks the spot.
 import * as THREE from 'three';
 import { VRMUtils } from '@pixiv/three-vrm';
-import { loadBase, makeVRM, applyPose, smoothBones, groundSnap, MODEL_URL } from '../render3d/players3d.mjs';
+import { loadBase, makeVRM, applyPose, smoothBones, groundSnap, MODEL_URL, MAIN_URL } from '../render3d/players3d.mjs';
 import { STAND, locoPose, mix } from '../render3d/poses3d.mjs';
 import { toWorld, clamp, wrap } from './geo3d.mjs';
 
@@ -25,8 +25,9 @@ export function createAvatar(scene) {
     dead = false;
   const S = { x: 0, z: 0, yaw: 0, walk: null, phase: 0, w: 0, t: 0 };
 
-  loadBase(MODEL_URL)
+  loadBase(MAIN_URL)
     .then(buf => makeVRM(buf, HEIGHT))
+    .catch(() => loadBase(MODEL_URL).then(buf => makeVRM(buf, HEIGHT))) // Main_v2 missing: the default model
     .then(p => {
       if (dead) return VRMUtils.deepDispose(p.vrm.scene);
       pl = p;
