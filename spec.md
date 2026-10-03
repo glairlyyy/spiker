@@ -439,10 +439,10 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   Needs `run.dayLog` (list of `{k, label, stat?, at?}` per spent day, cleared at week start; `run.days` is already the
   days-left number) via RUN_DEFAULTS — no version bump.
 - §10.3 Inbox (rail): items until handled — street battle, approaches waiting, Gazette unread, match next week,
-  club would sign you. One button each (opens the place / sheet / card). Replaces
+  club would sign you (opens its HQ, §10.9). One button each (opens the place / sheet / card). Replaces
   toasts, dock badges and the seize banner (a seize becomes an inbox item for one week).
-- §10.4 Sheets open over the map (rail stays): Me (stats, element, skills, life/housing rows) · People (filters, list,
-  person detail, approaches answered in place) · World (tabs Factions · Clubs · Rankings; dossier in place) · Season
+- §10.4 Sheets open over the map (rail stays): Me (stats, element, skills, life/housing rows) · People (one list with
+  markers §10.9, person detail, approaches answered in place) · World (tabs Factions · My club · Rankings; dossier in place) · Season
   (calendar, sponsors, history, Diary/Gazette). ⚙ = Main menu, settings, Abandon run.
 - §10.5 Cards: Week brief (every week start; lists battle, payday, match; eval/cup weeks lead to Match prep) ·
   Event (only blocking card) · Week report (after End week; penalties first) · Match prep (eval/cup; two roster
@@ -461,3 +461,19 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   numbers over sentences (`7 left`, `W6`); flavour and rumours on the title's hover; long lists show the useful few +
   `+n ›`; details (challenge, housing effects, facility level, faction economy, border target) in a peek; inbox items
   one line each with a peek. Never hidden: costs on buttons, locked gaps, penalties, deadlines, the event card.
+- §10.9 Clubs and People, one list each (owner, 2026-10-03; design system `quiet-ui.md` § One list, cards SheetWorld,
+  SheetPeople):
+  - **Sign only at the club's HQ.** No Sign / join button in the World sheet, the dossier, the inbox or anywhere else;
+    the HQ place panel keeps `Sign` / the locked gap (one place to commit, §9.1 rule 3). The World tab **Clubs** becomes
+    **My club**: a shortcut card for your club (chip, name, OVR, your role + squad spot, `HQ ›` → map pin, `Dossier ›`).
+    Free agent: the card says `Free agent` and lists clubs that would sign you now as links to their HQ (name + OVR, no
+    button; none → `Nobody would sign you yet` with the nearest gap on hover). Inbox / next step "would sign you" open
+    that HQ on the map (not the World sheet).
+  - **People = one list.** No Everyone / Squad / Rivals / Waiting tabs and no group headings. One list ordered: waiting
+    (`!` badge) → favourites → squad → bench → others → gone. Each row carries small markers after the name instead of
+    groups: team `🛡` in your club colour (outlined = bench), rival `⚔` (Rel.rival or stance resent / enemy), favourite
+    `★`. Bond bar for squad mates, stance tag only when not neutral (as now). Hover of a marker names it.
+  - **Favourites** (new, display only): a `☆ / ★` toggle in the person header pins them in the list. `run.fav` = list of
+    person ids via RUN_DEFAULTS (no version bump); a gone person keeps their star.
+  - Squad chemistry and `Leave squad` move from the Squad tab to a `Chemistry ›` peek in the list header (shown only
+    with a squad).
