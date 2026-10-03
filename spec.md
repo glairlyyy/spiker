@@ -187,6 +187,9 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   - You walk the road route. Trip cost = cheaper of road route (main/overpass fast; Wei streets, boardwalk, dirt
     slower; Shu mountain paths slowest) or cross-country (Shu highlands rough). Airport → harbor 2 days by coast road;
     Shu mountain trail 3.
+- §4.18b Island scale (owner, 2026-10-03) **[built]**: the island is drawn at `MAP_SCALE` 1.5 (1590 × 1050 map units,
+  ~795 × 525 m) — more room between the same towns. Towns, minors and the Academy keep their size and building count
+  (~720); travel days, the fog reveal radius, the hex tile size (still ~139 tiles) and Wei's wealth fall-off scale with it.
 - §4.18a Training layout (owner, 2026-10-03) **[built]**: Wei's four gyms stand together in one training district
   round the jW1 junction (a short walk apart: little travel inside Wei); Wu's spread thin along the coast (pier by the
   airport, sand courts on the south-east beach, harbor on the east coast, dunes in the north-east); Shu's stay scattered.

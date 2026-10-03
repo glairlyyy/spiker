@@ -15,7 +15,7 @@ import { MAP_M, toMap, clamp, lerp, smooth, fogFactor, fitView, toWorld } from '
 const CELL = 2, // terrain grid cell (m)
   PITCH = (55 * Math.PI) / 180,
   FLY_S = 0.45, // a camera move to a selected place
-  DIST = [25, 420],
+  DIST = [25, 630], // camera distance (m): the scaled island (MAP_SCALE 1.5) needs the longer reach
   CLICK_PX = 5,
   BEACH = 12, // beach slope width (m)
   IDLE_S = 3, // canvas detached this long → release the renderer
@@ -412,7 +412,7 @@ export function create(onIdle) {
         build(m);
         const at = m.you ? m.you.at : m.focus; // first view: every known place and you in frame, else on the player ~60 m away
         size();
-        view = fitView([...(m.pins || []).map(p => toWorld(p.at)), toWorld(at)], cw / Math.max(1, ch) || 16 / 9, 60, 340) || {
+        view = fitView([...(m.pins || []).map(p => toWorld(p.at)), toWorld(at)], cw / Math.max(1, ch) || 16 / 9, 60, 510) || {
           x: at[0] * MAP_M,
           z: at[1] * MAP_M,
           d: 60

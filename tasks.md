@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-142** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-143** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -384,6 +384,12 @@ Result: Wei gyms moved into a training district round jW1 ([655–705, 315–350
 Spec: §4.27 Goldens: unchanged Save: no change
 Files: js/map3d/map3d.mjs (terrain colours), js/map3d/pins3d.mjs (tile fill)
 Result: the terrain no longer mixes in the region colour (grass / rock / sand / district tints only); every land tile — minors and the Academy too — gets its holder's fill (opacity 0.2 → 0.3), so faction colour on the ground comes only from the tiles. QA: hub with places revealed.
+
+### [x] T-142: Scale the island 1.5× (owner request, spec §4.18b)
+
+Spec: §4.18b Goldens: unchanged Save: no change (old saves hold scaled-out positions: start a new run)
+Files: js/data/city.js (MAP_SCALE, scaleMap, CITY.strip, NEAR_R / TRIP_DAY / REVEAL_R / GROUND_STEP), js/career/mapmodel.js (thinMajor, road rows ÷ MAP_SCALE, onSand strip), js/map3d/map3d.mjs (camera reach 420 → 630, fit 340 → 510), tests/map.test.js
+Result: design coordinates stay as written; `scaleMap` multiplies every map point once at load (shared points once); circle districts move but keep their radius, point districts move by their centroid, the beach / Wei ring districts thin by 1/S², points inside the park or a minor move with it; HEX.size, travel, reveal and WEALTH.weiEdge × S. Buildings 704 → 724 (majors × `thinMajor` 0.8, road rows ÷ S); tiles still 139; trip days unchanged (pier 0, Wei gyms 2, dunes 3). Terrain ~46k → ~105k vertices (built once at mount). Tests: design points × MAP_SCALE, lot targets rebased. QA: hub screenshot.
 
 ## Later — outlines
 

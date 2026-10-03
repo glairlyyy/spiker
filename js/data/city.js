@@ -1,8 +1,11 @@
 // The island map, all claimed: Wei the city (north and east), Wu the beach (the east and south coast) and a strip
 // inland, Shu the highlands (west); Central Academy in the middle belongs to nobody, by common respect;
 // the minors sit as borderless patches inside or across them. You arrive at the airport on the south coast.
-// Coordinates are in map units (1060 × 700). Names are placeholders; balance is not tuned yet.
+// Coordinates are written in design units (1060 × 700) and scaled once at load by MAP_SCALE (scaleMap at the end of this
+// file): the island is MAP_SCALE × wider and taller, its towns keep their size and density. Names are placeholders.
 
+/** The island's scale (owner, 2026-10-03: 1.5 — more room between the same towns). */
+const MAP_SCALE = 1.5;
 const CITY = (() => {
   const coast = [
       [90, 140],
@@ -68,6 +71,11 @@ const CITY = (() => {
     /** The contested Wei–Wu border (its line, and the pair of regions it divides). */
     contest: wuWei,
     contestPair: ['wei', 'wu'],
+    /** The inland strip's two points on the Wu side of Central Academy (the sand test's dry polygon uses them). */
+    strip: [
+      [430, 540],
+      [540, 500]
+    ],
     /** The beach: the east coast round to the south (coast points 6–12; the sand is between them and `dunes`). */
     beach: coast.slice(6, 13),
     /** Wu: the beach and the land behind it up to Wei, plus a strip inland in the south. */
@@ -130,12 +138,12 @@ const HOTEL = { price: 12, rest: 1 };
 const ROAD_COST = { main: 0.45, overpass: 0.35, street: 0.6, boardwalk: 0.7, dirt: 0.8, path: 1.2 };
 /** Going cross-country (off the roads) costs this × the distance by region (the Shu highlands are rough ground); others 1. */
 const GROUND_COST = { shu: 1.35 },
-  GROUND_STEP = 20;
-const NEAR_R = 110;
-const TRIP_DAY = 220;
+  GROUND_STEP = 20 * MAP_SCALE;
+const NEAR_R = 110 * MAP_SCALE;
+const TRIP_DAY = 220 * MAP_SCALE;
 const TRIP_MAX = 3;
 /** The dark map: each point you've stood on lights up this radius. */
-const REVEAL_R = 170;
+const REVEAL_R = 170 * MAP_SCALE;
 
 /**
  * Places. Each takes a day (+ the trip there). act: what a non-training place does (rest, rec, or an outing: ramen,
@@ -683,3 +691,69 @@ const LANDMARK = {
   street: 'court',
   hq: 'hq'
 };
+
+/**
+ * Scale the island once (MAP_SCALE): every map point (coast, regions, places, roads, HQs, venues, homes, labels, mountains,
+ * wealth core, region anchors) × MAP_SCALE. Towns keep their size and building count: circle districts move but keep their
+ * radius, point districts move by their centroid, the area-wide ones (the beach ring, the Wei ring) thin by MAP_SCALE²; minors
+ * and the Academy park keep their size, and what stands in them moves with them. Distances that measure the map (travel, reveal, hex size, Wei's wealth fall-off) scale too.
+ */
+(function scaleMap(S) {
+  if (S === 1) return;
+  // small areas keep their size: a point inside the Academy park or a minor's patch moves with that area's centre
+  const areas = [CITY.park, ...Object.values(CITY.minors)].map(e => ({ ...e, rx: e.rx || e.r, ry: e.ry || e.r, rot: e.rot || 0 })),
+    within = ([x, y]) =>
+      areas.find(e => {
+        const a = (-e.rot * Math.PI) / 180,
+          dx = x - e.x,
+          dy = y - e.y,
+          u = dx * Math.cos(a) - dy * Math.sin(a),
+          v = dx * Math.sin(a) + dy * Math.cos(a);
+        return (u / e.rx) ** 2 + (v / e.ry) ** 2 <= 1;
+      }),
+    seen = new Set(),
+    pt = p => {
+      if (!p || seen.has(p)) return;
+      seen.add(p);
+      const e = within(p);
+      if (e) {
+        p[0] += e.x * (S - 1);
+        p[1] += e.y * (S - 1);
+      } else {
+        p[0] *= S;
+        p[1] *= S;
+      }
+    },
+    pts = a => a.forEach(pt);
+  for (const k of ['coast', 'inner', 'dunes', 'wei', 'wu', 'shu', 'beach', 'contest', 'strip', 'hq', 'mountains']) pts(CITY[k]);
+  Object.values(CITY.label).forEach(pt);
+  pt(CITY.airport);
+  pt(CITY.ritual);
+  for (const e of [CITY.park, ...Object.values(CITY.minors)]) {
+    e.x *= S;
+    e.y *= S;
+  }
+  CITY.w *= S;
+  CITY.h *= S;
+  for (const s of Object.values(SPOTS)) pt(s.at);
+  Object.values(HOME_AT).forEach(pt);
+  for (const v of Object.values(VENUES)) pt(v.at);
+  Object.values(ROADS.nodes).forEach(pt);
+  for (const d of DISTRICTS) {
+    const q = d.poly;
+    if (Array.isArray(q)) {
+      const c = q.reduce((a, p) => [a[0] + p[0] / q.length, a[1] + p[1] / q.length], [0, 0]);
+      for (const p of q) {
+        p[0] += c[0] * (S - 1);
+        p[1] += c[1] * (S - 1);
+      }
+    } else if (q && typeof q === 'object') {
+      q.x *= S;
+      q.y *= S;
+    } else d.density /= S * S; // 'beach', 'wei': the area grew
+  }
+  pt(WEALTH.weiCore);
+  WEALTH.weiEdge *= S;
+  for (const r of Object.values(REGIONS)) pt(r.at);
+  HEX.size *= S;
+})(MAP_SCALE);

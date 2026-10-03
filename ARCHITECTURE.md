@@ -743,6 +743,10 @@ Match result (spec §10.6): `finishMatch` calls `resultSnap(RUN, m)` before a ca
 `resultData(RUN, m, snap, msg)` after it (career-week.js; diffs of the run only — no rule runs in the UI), then
 `resultScreen` draws it; the Monster game (no career player) gets headline + top 3.
 
+Island scale (spec §4.18b): js/data/city.js writes every map point in design units (1060 × 700) and `scaleMap` multiplies them
+once at load by `MAP_SCALE` (1.5); towns, minors and the Academy keep their size (see its comment). Code reads CITY.w / h and
+the scaled points — never design literals; tests scale design points by `g.MAP_SCALE`.
+
 Hex territory (spec §4.27): `js/career/hex.js` `Hex` builds a flat-top axial grid once from CITY (tiles: id `q,r`, at,
 start region, kind hq/academy/minor/place/land, terrain, spots, hq) and holds the war rules on it: `supply` (BFS from a
 faction's HQ tiles), `cost` (HEX_COST), `targets` (cheapest, then nearest an attacker HQ), `flip`, `decay`. Run state

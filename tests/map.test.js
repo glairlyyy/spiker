@@ -156,7 +156,7 @@ test('career: town layout — districts, beach, overpass, frozen borders', () =>
         [815, 470],
         [690, 255],
         [800, 150]
-      ].map(p => g.City.regionAt(p))
+      ].map(p => g.City.regionAt(p.map(v => v * g.MAP_SCALE))) // design units × MAP_SCALE
     ),
     JSON.stringify([
       'shu',
@@ -180,14 +180,16 @@ test('career: town layout — districts, beach, overpass, frozen borders', () =>
     ]),
     'regionAt of fixed points is unchanged'
   );
-  eq([C.w, C.h].join('x'), '1060x700', 'the map frame grew');
+  eq([C.w, C.h].join('x'), `${1060 * g.MAP_SCALE}x${700 * g.MAP_SCALE}`, 'the map frame grew (× MAP_SCALE)');
   eq(
     JSON.stringify(C.wuWei || C.contest.slice(0, 3)),
-    JSON.stringify([
-      [854, 199],
-      [883, 305],
-      [850, 412]
-    ]),
+    JSON.stringify(
+      [
+        [854, 199],
+        [883, 305],
+        [850, 412]
+      ].map(p => p.map(v => v * g.MAP_SCALE))
+    ),
     'the Wei–Wu line is frozen'
   );
   // every place / HQ / home is on land and in its region
@@ -236,12 +238,12 @@ test('career: town layout — districts, beach, overpass, frozen borders', () =>
     flat = g.ROADS.edges.filter(e => e[2] !== 'overpass');
   for (const l of L) by[g.City.regionAt(l.at)] = (by[g.City.regionAt(l.at)] || 0) + 1;
   for (const [r, n, lo, hi] of [
-    ['wei', 330, 264, 396],
-    ['wu', 210, 168, 252],
-    ['shu', 85, 68, 102],
-    ['outlaws', 40, 32, 48],
-    ['open', 24, 19, 29],
-    ['gloria', 18, 14, 22]
+    ['wei', 327, 262, 392],
+    ['wu', 232, 186, 278],
+    ['shu', 75, 60, 90],
+    ['outlaws', 49, 39, 59],
+    ['open', 22, 18, 26],
+    ['gloria', 19, 15, 23]
   ])
     assert(by[r] >= lo && by[r] <= hi, `${r} has ${by[r]} lots (~${n})`);
   assert(
@@ -273,8 +275,8 @@ test('career: town layout — districts, beach, overpass, frozen borders', () =>
         l =>
           g.City.regionAt(l.at) === 'wei' &&
           l.district !== 'wei-oldtown' &&
-          Math.hypot(l.at[0] - core[0], l.at[1] - core[1]) >= a &&
-          Math.hypot(l.at[0] - core[0], l.at[1] - core[1]) < b
+          Math.hypot(l.at[0] - core[0], l.at[1] - core[1]) >= a * g.MAP_SCALE &&
+          Math.hypot(l.at[0] - core[0], l.at[1] - core[1]) < b * g.MAP_SCALE
       );
   assert(
     ring(0, 70) > ring(70, 140) && ring(70, 140) > ring(140, 210) && ring(140, 210) > ring(210, 999),
@@ -545,11 +547,12 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   // the dark map: only where you've been is explored; you can walk anywhere on land
   assert(g.City.seen(run, g.City.at(run, 'trail')) && !g.City.seen(run, g.City.at(run, 'weiSpeed')), 'dark where you have not been');
   assert(!g.City.travelTo(run, [5, 5]), 'only on land');
-  const td = g.City.travelDays(run, [700, 300]);
-  assert(g.City.travelTo(run, [700, 300]) && g.City.days(run) === 7 - td && g.City.loc(run) === 'wei', 'walked into the city');
-  assert(g.City.seen(run, [720, 320]), 'the fog lifts around you');
-  eq(g.City.regionAt([540, 500]), 'open', 'Central Academy belongs to nobody');
-  eq(g.City.regionAt([815, 470]), 'outlaws', 'the overpass is the Outlaws');
+  const sc = p => p.map(v => v * g.MAP_SCALE),
+    td = g.City.travelDays(run, sc([700, 300]));
+  assert(g.City.travelTo(run, sc([700, 300])) && g.City.days(run) === 7 - td && g.City.loc(run) === 'wei', 'walked into the city');
+  assert(g.City.seen(run, sc([720, 320])), 'the fog lifts around you');
+  eq(g.City.regionAt(sc([540, 500])), 'open', 'Central Academy belongs to nobody');
+  eq(g.City.regionAt(sc([815, 470])), 'outlaws', 'the overpass is the Outlaws');
   g.Run.endWeek(run);
   // home turf: your faction's region
   run.event = null;
@@ -567,7 +570,7 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   }
   // a street battle: fight for one side — a real match; the other side always holds it against you
   run.days = 7;
-  run.pos = [470, 600];
+  run.pos = g.CITY.airport.slice();
   const tg = g.Hex.target(run, 'wei', 'wu');
   run.clash = { tile: tg.id, from: tg.from, att: 'wei', def: 'wu', seen: false, done: false };
   const c = g.City.clashSite(run),
