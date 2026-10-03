@@ -31,36 +31,30 @@ function spotGhost(run, id) {
   return trips(City.at(run, id), City.dayWhat(id));
 }
 /**
- * One place-panel anatomy for every kind (spec §10.1, HubRedesign): label (region · kind), title, tags, one flavour
- * line, the body (gains / roster / stakes), options, then ONE action row and the "uses {days}" line.
+ * One place-panel anatomy for every kind (spec §10.1, HubRedesign; quiet §10.8): label (region · kind), title (its
+ * flavour — plain text — on hover, ⓘ), tags, the body (gains / roster / stakes), options, then ONE action row and any
+ * `after` rows (e.g. a peek). The days a choice takes show as ghost slots on the week rail, not as a line here.
  */
-function placeCard({ region, kind, title, tags = [], flavour = '', body = '', opts = '', row = [], split = '', uses = true }) {
-  const g = uses ? spotGhost(RUN, CW.spot) : [],
-    spent = WEEK_DAYS - City.days(RUN);
+function placeCard({ region, kind, title, tags = [], flavour = '', body = '', opts = '', row = [], split = '', after = '' }) {
   return `<div class="spot plc"><div class="lab">${region ? `${chip(REGIONS[region] || REGIONS.open)}${esc((REGIONS[region] || REGIONS.open).name)} · ` : ''}${kind}</div>
-    <h3 class="ptitle">${title}</h3>${tags.length ? `<div class="ptags">${tags.join('')}</div>` : ''}
-    ${flavour ? `<p class="small mute pflav">${flavour}</p>` : ''}${body}${opts ? `<div class="popts">${opts}</div>` : ''}
-    ${row.length ? `<div class="acts ${split || (row.length === 2 ? 'pri' : row.length === 3 ? 'three' : '')}">${row.join('')}</div>` : ''}
-    ${g.length ? `<p class="small mute puse">Uses ${g.map((e, k) => WEEKDAYS[spent + k] || '—').join(' + ')} · shown on your week</p>` : ''}</div>`;
+    <h3 class="ptitle" ${flavour ? `${tip(flavour)} tabindex="0"` : ''}>${title}${flavour ? ' <span class="pfi" aria-hidden="true">ⓘ</span>' : ''}</h3>${tags.length ? `<div class="ptags">${tags.join('')}</div>` : ''}
+    ${body}${opts ? `<div class="popts">${opts}</div>` : ''}
+    ${row.length ? `<div class="acts ${split || (row.length === 2 ? 'pri' : row.length === 3 ? 'three' : '')}">${row.join('')}</div>` : ''}${after}</div>`;
 }
 const ptag = (text, t, cls = '') => `<span class="ptag ${cls}" ${t ? tip(t) : ''}>${text}</span>`;
-/** The tags every place shares: border / seized, trip days. */
+/** What every place shares, as Details-peek rows (§10.8): border / seized, trip days. */
 function placeTags(run, sid, trip) {
   const s = SPOTS[sid],
     tile = s && s.region && Hex.ofSpot(sid),
     front = !!tile && Hex.frontier(run, tile.id),
     held = s && Front.seized(run, sid);
   return [
-    held
-      ? ptag('Seized', `Seized from ${REGIONS[s.region].name} in the street war`, 'warn')
-      : front
-        ? ptag('Border', GLOSSARY.border.long)
-        : '',
-    trip
-      ? ptag(`Trip ${trip}d`, `Getting there takes ${trip} day${trip > 1 ? 's' : ''}, on top of the day there`, trip >= 2 ? 'warn' : '')
-      : ''
+    held ? ['Seized', `from ${esc(REGIONS[s.region].name)}`, 'wa'] : front ? ['Border', 'On the front'] : null,
+    trip ? ['Trip', `${trip} day${trip > 1 ? 's' : ''}, then the day there`, trip >= 2 ? 'wa' : ''] : null
   ].filter(Boolean);
 }
+/** The "Details ›" peek of a place (facility level, streak, border, trip …); '' with nothing to show. */
+const placeDetails = (id, rows) => (rows.length ? `<div class="pdet">${peek(`pd:${id}`, 'Details', kv(rows))}</div>` : '');
 /** The panel for the selected place: what it does and its buttons. */
 function spotPanel(run, id) {
   if (!id) return `<p class="small mute">Pick a place on the map.</p>`;
@@ -79,7 +73,7 @@ function spotPanel(run, id) {
     travel = trip
       ? `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${trOk ? '' : `disabled ${tip(City.noTime(run, trip) || 'answer the event first')}`}>Travel · ${trip}d</button>`
       : '',
-    base = { region: City.region(run, sid), title: `${s.icon} ${esc(s.name)}`, tags: placeTags(run, sid, trip) };
+    base = { region: City.region(run, sid), title: `${s.icon} ${esc(s.name)}`, after: placeDetails(sid, placeTags(run, sid, trip)) };
   if (s.train) {
     const T = trainSpot(run, sid, c);
     return placeCard({ ...base, ...T, row: [T.go, travel].filter(Boolean) });
@@ -88,7 +82,7 @@ function spotPanel(run, id) {
     return placeCard({
       ...base,
       kind: 'Outing',
-      flavour: esc(s.desc),
+      flavour: s.desc,
       body: `<p class="small">Pick who comes · $${cost} · ${days}d</p><div class="pmates">${Run.mates(run)
         .map(
           m =>
@@ -101,8 +95,11 @@ function spotPanel(run, id) {
   return placeCard({
     ...base,
     kind: s.act === 'rest' ? 'Rest' : s.act === 'street' ? 'Street' : 'Place',
-    flavour: esc(s.desc),
-    body: `<p class="small">${cost ? `$${cost} · ` : ''}${days}d${sid === 'home' ? ` · ${esc(HOUSING[run.housing].name)} rest ×${World.restMul(run)}` : ''}</p>`,
+    flavour: s.desc,
+    tags:
+      sid === 'home'
+        ? [ptag(`${esc(HOUSING[run.housing].name)} · rest ×${World.restMul(run)}`, 'Your home: how much a rest day restores')]
+        : [], // cost and days are on the button
     row: [
       `<button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${sid}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}>${label} · ${days}d${cost ? ` · $${cost}` : ''}</button>`,
       travel
@@ -142,7 +139,7 @@ function pointPanel(run, p) {
     kind: 'Travel',
     title: `⚑ ${seen ? esc(REGIONS[r].name) : 'Unexplored land'}`,
     tags: d >= 2 ? [ptag(`Trip ${d}d`, '', 'warn')] : [],
-    flavour: seen ? esc(REGIONS[r].desc) : 'Nobody you know has been out there. Go and see what you find.',
+    flavour: seen ? REGIONS[r].desc : 'Nobody you know has been out there. Go and see what you find.',
     body: tileBlock(run, p),
     row: [
       `<button class="btn hot" onclick="mapTravel(${p[0]},${p[1]})" ${late ? `disabled ${tip(late)}` : ''}>Travel here · ${d}d</button>`
@@ -172,25 +169,26 @@ function clashPanel(run) {
     att = run.clash.att || c.a,
     def = att === c.a ? c.b : c.a,
     short = r => esc(REGIONS[r].name.split(' ')[0]),
-    side = r => `${chip(REGIONS[r])}${esc(REGIONS[r].name)}`,
+    side = r => `<span ${tip(REGIONS[r].name)}>${chip(REGIONS[r])}${short(r)}</span>`,
     main = Front.stakes(run, att, def).tile,
     border = (w, l) => {
       const s = Front.stakes(run, w, l),
-        on = s.tile === main ? '' : ` ${esc(s.name)}`; // the facts above name the battle's tile
-      return !s.tile
-        ? `${short(w)} can't reach ${short(l)}`
-        : s.seize
-          ? `${short(w)} seizes${on}`
-          : `${short(w)} ${s.meter}/${s.cost}${on}`;
+        other = s.tile !== main, // the facts above name the battle's tile; another tile is named on hover
+        what = !s.tile
+          ? `${short(w)} can't reach ${short(l)}`
+          : s.seize
+            ? `${short(w)} seizes${other ? ' a tile' : ''}`
+            : `${short(w)} ${s.meter}/${s.cost}${other ? ' elsewhere' : ''}`;
+      return s.tile && other ? `<span ${tip(s.name)}>${what}</span>` : what;
     },
     std = r => {
       const v = City.rep(run, r);
-      return [`Standing · ${short(r)}`, fmtDelta(v), v > 0 ? 'up' : v < 0 ? 'dn' : ''];
+      return v ? [`Standing · ${short(r)}`, fmtDelta(v), v > 0 ? 'up' : 'dn'] : null; // hidden at 0 (§10.8)
     },
+    risk = foe => Math.round(Fight.injuryRisk(run, Fight.crewOvr(run, foe)) * 100),
     card = (s, foe) =>
-      `<div class="pside"><div class="lab">${chip(REGIONS[s])}Fight for ${short(s)}</div>${kv([
+      `<div class="pside"><div class="lab">${chip(REGIONS[s])}${short(s)}</div>${kv([
         ['Cost', term('sta', -CLASH.sta, 'cost')],
-        ['Injury', `~${Math.round(Fight.injuryRisk(run, Fight.crewOvr(run, foe)) * 100)}%`],
         ['Win', `${term('standing', CLASH.win)} ${short(s)}`],
         ['', `${term('standing', CLASH.other)} ${short(foe)}`],
         ['', term('fans', CLASH.fans)],
@@ -200,25 +198,24 @@ function clashPanel(run) {
       ])}</div>`,
     sim = !!CW.clashSim,
     fight = s =>
-      `<button class="btn" onclick="mapClash('${s}', CW.clashSim)" ${late || ban ? `disabled ${tip(ban || late)}` : tip(`A real match with their crew — XP, techniques and a grade like an evaluation. +${CLASH.fans} fans for a win; a loss costs ${LOSS.sta} more stamina and mood, and fans if by ${LOSS.heavy}+ points. −${CLASH.sta} stamina`)}>${chip(REGIONS[s])}Fight for ${short(s)}${sim ? ' ⏭' : ''}</button>`;
+      `<button class="btn" onclick="mapClash('${s}', CW.clashSim)" ${late || ban ? `disabled ${tip(ban || late)}` : tip(`Injury ~${risk(s === c.a ? c.b : c.a)}%. A real match with their crew: XP, techniques and a grade. A loss costs ${LOSS.sta} more stamina and mood.`)}>${chip(REGIONS[s])}Fight for ${short(s)}${sim ? ' ⏭' : ''}</button>`;
   return placeCard({
     region: null,
-    kind: 'Street battle · this week',
+    kind: 'Street battle',
     title: `⚔ ${esc(c.name[0].toUpperCase() + c.name.slice(1))}`,
-    flavour: 'Crews from both sides are settling it on the street this week.',
+    flavour: "Crews from both sides are settling it on the street this week. If nobody joins, it is settled at the week's end.",
     body: `${kv([
       ['Attacker', side(att)],
       ['Defender', side(def)],
       ['Border', clashBorder(run, att, def)],
       std(c.a),
       std(c.b),
-      ['Trip', trip ? `${trip} day${trip > 1 ? 's' : ''}, then 1 day there` : 'None, 1 day there', trip >= 2 ? 'wa' : ''],
-      ['If nobody joins', "Settled at the week's end"]
+      ['Trip', trip ? `${trip} day${trip > 1 ? 's' : ''}` : 'None', trip >= 2 ? 'wa' : '']
     ])}<div class="pstakes">${card(c.a, c.b)}${card(c.b, c.a)}</div>`,
     opts:
       late || ban
         ? ''
-        : `<span class="small mute">Fight</span><div class="seg"><button class="btn ${sim ? '' : 'on'}" onclick="CW.clashSim=false;mapPick('clash')">Play it</button><button class="btn ${sim ? 'on' : ''}" onclick="CW.clashSim=true;mapPick('clash')" ${tip(GLOSSARY.sim.long)}>Sim it</button></div>`,
+        : `<div class="seg" aria-label="Fight"><button class="btn ${sim ? '' : 'on'}" onclick="CW.clashSim=false;mapPick('clash')">Play it</button><button class="btn ${sim ? 'on' : ''}" onclick="CW.clashSim=true;mapPick('clash')" ${tip(GLOSSARY.sim.long)}>Sim it</button></div>`,
     row: [
       fight(c.a),
       fight(c.b),
@@ -260,9 +257,13 @@ function trainSpot(run, id, c) {
       return `<div class="pgain"><span class="pi">${statI(statKey(k), 20)}</span><span>${STATNAME[k]} <i class="mute">· ${role}</i></span><b class="${cls}" ${tip(n <= 1 ? 'Next point this session' : `Next point in ${n} sessions here`)}>${label}</b></div>`;
     },
     mates = pv.mates.filter(pid => squadOf(T).some(p => p.id === pid)), // a teammate who has since left
-    seg = `<div class="seg"><button class="btn ${hard ? '' : 'on'}" onclick="CW.hard=false;mapPick(CW.spot)">Normal</button><button class="btn ${hard ? 'on' : ''}" ${run.injury ? `disabled ${tip('Injured: light training only')}` : ''} onclick="CW.hard=true;mapPick(CW.spot)">Hard <small>×${TRAIN_X.hard.gain} · ×${TRAIN_X.hard.sta} sta · ${Math.round(TRAIN_X.hard.fail * 100)}% fail</small></button></div>`,
+    seg = `<div class="seg"><button class="btn ${hard ? '' : 'on'}" onclick="CW.hard=false;mapPick(CW.spot)">Normal</button><button class="btn ${hard ? 'on' : ''}" ${
+      run.injury
+        ? `disabled ${tip('Injured: light training only')}`
+        : tip(`Hard: EXP ×${TRAIN_X.hard.gain}, stamina ×${TRAIN_X.hard.sta}, ${Math.round(TRAIN_X.hard.fail * 100)}% fail`)
+    } onclick="CW.hard=true;mapPick(CW.spot)">Hard</button></div>`,
     chips = mates.length
-      ? `<div class="pmates"><span class="small mute">Training here</span>${mates
+      ? `<div class="pmates" ${tip('Teammates training here: more EXP together')}>${mates
           .map(pid => {
             const m = squadOf(T).find(p => p.id === pid);
             return `<span class="pchip">${faceSVG(m, 0.3, 18)}${esc(m.name.split(' ')[0])} +${(Run.you(run).bond[pid] || 0) >= 80 ? 50 : 20}%</span>`;
@@ -274,29 +275,34 @@ function trainSpot(run, id, c) {
     tags: [
       qualityTag(run, id),
       s.sand ? ptag(`Sand ×${SAND_SP} pts`, `Sand training builds technique: skill points ×${SAND_SP}`) : '',
-      ptag(
-        `Lv ${pv.lvl}${pv.next != null ? ` · ${pv.next} to Lv ${pv.lvl + 1}` : ''}`,
-        `Facility level: training quality grows with use. Training stops a stat at ${TRAIN_CAP}; matches only above.`
-      ),
-      pv.streak ? ptag(`Streak +${Math.round(pv.streak * 100)}%`, 'Same training in a row') : '',
-      turf ? ptag(`Turf +${Math.round(turf * 100)}%`, "Your faction's region") : '',
-      pv.fail
+      pv.fail // a risk: stays visible (§10.8 never hides penalties)
         ? ptag(
             `${Math.round(pv.fail * 100)}% fail`,
             `Below 50 stamina training can fail — below ${TRAIN_X.injuryAt} it can injure you.`,
             pv.fail > 0.25 ? 'bad' : 'warn'
           )
-        : '',
-      ...placeTags(run, id, City.trip(run, City.at(run, id)))
+        : ''
     ].filter(Boolean),
-    flavour: esc(s.desc || ''),
+    after: placeDetails(
+      id,
+      [
+        [
+          'Level',
+          `<span ${tip(`Training quality grows with use. Training stops a stat at ${TRAIN_CAP}; matches only above.`)}>Lv ${pv.lvl}${pv.next != null ? `, ${pv.next} to Lv ${pv.lvl + 1}` : ''}</span>`
+        ],
+        pv.streak ? ['Streak', `+${Math.round(pv.streak * 100)}%`, 'up'] : null,
+        turf ? ['Turf', `+${Math.round(turf * 100)}%`, 'up'] : null,
+        ...placeTags(run, id, City.trip(run, City.at(run, id)))
+      ].filter(Boolean)
+    ),
+    flavour: s.desc || '',
     body: gain(pv.main, 'main') + gain(pv.side, 'side'),
     opts: seg + chips,
     go: `<button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${id}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}>Train ${TRAININGS[key].name} · ${term('day', String(City.cost(run, id)), 'cost')} ${term('sta', -pv.sta, 'cost')} $${City.price(run, id)}</button>`
   };
 }
 
-/** The challenge block of a club's card: stake stepper, the verdict ("Accepts: likely — why"), the button and Sim ⏭. */
+/** The challenge row of a club's card: `⚔ Challenge {verdict} ›`; its peek holds accepts / why / crew / injury / stake and Challenge / Sim ⏭. */
 function challengeBlock(run, ti) {
   const W = Fight.worth(run, ti, (CW.stake || {})[ti] || 0);
   if (!W) return '';
@@ -308,7 +314,7 @@ function challengeBlock(run, ti) {
       : Fight.ban(run) || City.noTime(run, cost) || (run.money < side.cost ? `needs $${side.cost} for a street crew` : ''),
     risk = Math.round(Fight.injuryRisk(run, run.teams[ti].ovr) * 100),
     hot = W.verdict === 'likely' ? 'hot' : '';
-  return `<section class="pchal" ${tip('Challenge their squad for a stake: they may refuse. Win and the stake pays at odds; lose and it is gone. XP and techniques as in any match')}><div class="lab">Challenge</div>${kv(
+  const body = `<div class="lab" ${tip('Challenge their squad for a stake: they may refuse. Win and the stake pays at odds; lose and it is gone.')}>Challenge</div>${kv(
     [
       ['Accepts', `<b>${W.verdict}</b>`, W.verdict === 'refuses' ? 'mute' : ''],
       ['Why', esc(W.why)],
@@ -323,7 +329,9 @@ function challengeBlock(run, ti) {
       ]
     ]
   )}
-    <div class="acts pri"><button class="btn ${hot}" onclick="mapChallenge(${ti})" ${late ? `disabled ${tip(late)}` : ''}>Challenge · ${cost}d</button><button class="btn" onclick="mapChallenge(${ti}, true)" ${late ? 'disabled' : ''} ${tip(GLOSSARY.sim.long)}>Sim ⏭</button></div></section>`;
+    <div class="acts pri"><button class="btn ${hot}" onclick="CW.peek=null;mapChallenge(${ti})" ${late ? `disabled ${tip(late)}` : ''}>Challenge · ${cost}d</button><button class="btn" onclick="CW.peek=null;mapChallenge(${ti}, true)" ${late ? 'disabled' : ''} ${tip(GLOSSARY.sim.long)}>Sim ⏭</button></div>`;
+  // collapsed to one row (§10.8): verdict at a glance, the rest in the peek
+  return `<section class="pchal">${peek(`ch:${ti}`, `⚔ Challenge <span class="${W.verdict === 'likely' ? 'up' : 'mute'}">${W.verdict}</span>`, body, 'row')}</section>`;
 }
 /** An official venue's card (spec §4.21): what is held there, and whether your match is there this week. */
 function venuePanel(run, id) {
@@ -334,8 +342,7 @@ function venuePanel(run, id) {
     kind: 'Venue',
     title: `🏟 ${esc(v.name)}`,
     tags: City.venue(run) === id ? [ptag('This week: your match', '', 'sel')] : [],
-    body: `<p class="small">Held here: ${v.held.map(esc).join(' · ')}.</p>`,
-    uses: false
+    body: kv(v.held.map((h, i) => [i ? '' : 'Held here', esc(h)]))
   });
 }
 function hqPanel(run, ti) {
@@ -346,48 +353,48 @@ function hqPanel(run, ti) {
     sc = City.scoutCost(run, ti),
     late = run.event ? 'answer the event first' : City.noTime(run, sc),
     seen = City.scouted(run, ti);
-  const roster = seen
-    ? `<div class="lab prlab">Roster</div><div class="roster">${squadOf(t)
-        .map(p => {
-          const techs = Skills.techs(p);
-          return `<div class="prow">${faceSVG(p, 0, 22)}<span class="prn"><b>${stag(p)}${esc(p.name)}</b>${p.elOn ? `<small style="color:${ECOL[p.el]}">${ENAME[p.el]}</small>` : ''}${
-            techs.length ? `<small class="mute">${esc(techs.join(', '))}</small>` : ''
-          }</span><span class="prr"><span class="mute">${p.role}${t.bench && t.bench.includes(p) ? ' bench' : ''}</span> <b>${ovr(p)}</b></span></div>`;
-        })
-        .join('')}</div>`
-    : '';
   const H = seen ? Dossier.habits(t) : null,
     habits = H
       ? Dossier.habitText(H)
           .split(' · ')
-          .map((h, i) => [i ? '' : 'Scouted habits', esc(h[0].toUpperCase() + h.slice(1))])
+          .map((h, i) => [i ? '' : 'Habits', esc(h[0].toUpperCase() + h.slice(1))])
       : [],
     rep = City.rep(run, f.region),
-    gap = free && !j.ok ? joinGap(run, ti) : '',
-    facts = kv([
-      ['Rating', String(t.ovr)],
-      ['Standing', fmtDelta(rep), rep > 0 ? 'up' : rep < 0 ? 'dn' : ''],
-      free ? ['Join', esc(World.joinText(ti, run)), j.ok ? 'up' : ''] : null,
-      gap ? ['', `Your gap: ${esc(gap)}`, 'wa'] : null,
-      ...habits
-    ]);
+    scouted = seen
+      ? `<div class="pdet">${peek(
+          `ro:${ti}`,
+          `Roster · ${squadOf(t).length}`,
+          `<div class="lab">Roster</div><div class="roster">${squadOf(t)
+            .map(p => {
+              const techs = Skills.techs(p),
+                more = [p.elOn ? ENAME[p.el] : '', techs.join(', ')].filter(Boolean).join(' — ');
+              return `<div class="prow" ${more ? tip(more) : ''}>${faceSVG(p, 0, 22)}<span class="prn"><b>${stag(p)}${esc(p.name)}</b></span><span class="prr"><span class="mute">${p.role}${t.bench && t.bench.includes(p) ? ' bench' : ''}</span> <b>${ovr(p)}</b></span></div>`;
+            })
+            .join('')}</div>`
+        )}${peek(`hb:${ti}`, 'Habits', kv(habits))}</div>`
+      : '';
   return placeCard({
     region: f.region,
     kind: ti === run.team ? 'Your club' : 'Club HQ',
     title: `${chip(t)}${esc(t.name)}`,
-    flavour: `${esc(f.front)}.${seen ? ` Word is: ${esc(f.dark)}.` : ''}`,
-    body: facts + roster,
+    flavour: `${f.front}.${seen ? ` Word is: ${f.dark}.` : ''}`,
+    tags: [
+      ptag(`Rating ${t.ovr}`),
+      rep ? ptag(`⚑ ${fmtDelta(rep)}`, GLOSSARY.standing.long, rep < 0 ? 'bad' : '') : '', // hidden at 0 (§10.8)
+      free && j.ok ? ptag('Would sign you', esc(World.joinText(ti, run)), 'sel') : ''
+    ].filter(Boolean),
     row: [
       free
-        ? `<button class="btn ${j.ok ? 'hot' : 'lock'}" onclick="joinClub(${ti})" ${j.ok ? '' : `disabled ${tip('Missing: ' + j.why.join(', '))}`}>${j.ok ? 'Sign' : esc(joinGap(run, ti))}</button>`
+        ? `<button class="btn ${j.ok ? 'hot' : 'lock'}" onclick="joinClub(${ti})" ${j.ok ? '' : `disabled ${tip(`They ask: ${World.joinText(ti, run)}. Missing: ${j.why.join(', ')}`)}`}>${j.ok ? 'Sign' : esc(joinGap(run, ti))}</button>`
         : '',
       ti !== run.team
         ? `<button class="btn" onclick="mapScout(${ti})" ${late ? `disabled ${tip(late)}` : tip(`A day at their HQ${sc > 1 ? ' (+ the trip)' : ''}: see their roster and elements, hear a rumour. −${SCOUT_STA} stamina`)}>${seen ? 'Scout again' : 'Scout'} · ${sc}d</button>`
         : '',
       `<button class="btn" onclick="openDossier('${f.region}')" ${tip(`Everything you know about ${REGIONS[f.region].name}`)}>Dossier</button>`
     ].filter(Boolean),
-    split: free ? 'three' : 'two'
-  }).replace(/<\/div>$/, `${challengeBlock(run, ti)}</div>`);
+    split: free ? 'three' : 'two',
+    after: challengeBlock(run, ti) + scouted
+  });
 }
 
 /** The floating card for the selected place. */

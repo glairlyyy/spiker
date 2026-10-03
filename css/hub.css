@@ -946,3 +946,31 @@
   padding: 0;
   justify-content: center;
 }
+/* Quiet place panels (spec §10.8, T-161) */
+.plc .ptitle .pfi {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--mute);
+  vertical-align: 2px;
+}
+.plc .pdet {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.plc .pchal {
+  margin-top: 12px;
+  padding-top: 0;
+  border-top: 0;
+}
+.plc .pchal .peekt.row {
+  gap: 8px;
+  font-size: 14px;
+}
+.plc .pchal .up {
+  color: var(--good);
+}
+.plc .pchal .mute {
+  color: var(--mute);
+}
