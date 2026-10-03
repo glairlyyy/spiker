@@ -442,6 +442,12 @@ test('career: faction dynamics — battles move hex tiles, places go with them, 
   run.lastLoser = null;
   for (let i = 0; i < 600; i++) n[g.Front.pick(run).att]++;
   assert(n.wu > n.wei && n.wei > n.shu, `Wu is the most aggressive (${JSON.stringify(n)})`);
+  let ww = 0;
+  for (let i = 0; i < 600; i++) {
+    const { att, def } = g.Front.pick(run);
+    if ([att, def].sort().join() === 'wei,wu') ww++;
+  }
+  assert(ww > 600 * 0.6, `Wei and Wu go for each other most (${ww}/600)`);
 });
 
 test('hex: tile value drives the economy — prices, quality, strength, joins (spec §4.27 value)', () => {

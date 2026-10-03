@@ -199,6 +199,12 @@ const FRONT = {
   join: 3,
   fee: 0.25,
   aggro: { wu: 0.5, wei: 0.3, shu: 0.2 },
+  /**
+   * Whom a raider goes for (owner, 2026-10-03): Wei and Wu want each other — the Shu highlands are deep in the mountains for
+   * poor facilities; Shu raids either. × `push` when the raider is already winning on that border.
+   */
+  prey: { wei: { wu: 0.85, shu: 0.15 }, wu: { wei: 0.85, shu: 0.15 }, shu: { wei: 0.5, wu: 0.5 } },
+  push: 1.5,
   revenge: 0.2,
   initiative: 10 // the raiding side's edge (street strength) in a battle nobody joins
 };

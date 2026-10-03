@@ -98,7 +98,7 @@ const Front = {
       place: seize ? Hex.tile(id).spots.find(x => !x.startsWith('venue:')) || null : null
     };
   },
-  /** This week's aggressor and target: FRONT.aggro (+ revenge for last week's loser), aiming at the border it is winning. */
+  /** This week's aggressor (FRONT.aggro + revenge for last week's loser) and its target (FRONT.prey, × FRONT.push where it is winning). */
   pick(run) {
     const w = MAJORS.map(r => FRONT.aggro[r] + (run.lastLoser === r ? FRONT.revenge : 0)),
       sum = w.reduce((a, b) => a + b, 0);
@@ -107,8 +107,8 @@ const Front = {
     while (i < MAJORS.length - 1 && (x -= w[i]) >= 0) i++;
     const att = MAJORS[i],
       [o1, o2] = MAJORS.filter(r => r !== att),
-      m1 = Front.meter(run, att, o1),
-      m2 = Front.meter(run, att, o2);
-    return { att, def: m1 > m2 ? o1 : m2 > m1 ? o2 : R() < 0.5 ? o1 : o2 };
+      p = o => FRONT.prey[att][o] * (Front.meter(run, att, o) > 0 ? FRONT.push : 1),
+      p1 = p(o1);
+    return { att, def: R() * (p1 + p(o2)) < p1 ? o1 : o2 };
   }
 };

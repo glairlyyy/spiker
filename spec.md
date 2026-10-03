@@ -305,7 +305,8 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     defender's home terrain (Wei city, Wu beach, Shu highland); −1 (min 1) for a retake; −1 when the tile is cut off
     from every defender HQ. Hard rules: the tile touches the attacker's territory, and the attacker's touching tile
     is connected to one of its HQs (supply line).
-  - Movement: each week's battle (Front.pick unchanged) is fought on a target tile — the defender's cheapest takeable
+  - Movement: each week's battle (Front.pick: the raider by FRONT.aggro; its target by FRONT.prey — owner 2026-10-03: Wei and Wu
+    go for each other 85 % (Shu is deep in the mountains for poor facilities), Shu raids either — × FRONT.push where it is winning) is fought on a target tile — the defender's cheapest takeable
     tile, then the nearest to the attacker's HQ (then a hash) — owner: cheapest and nearest first. Its centre is the battle site (replaces CLASH.sites). Win: +1
     pressure on the tile; pressure ≥ cost → the tile flips (pressure 0). Loss: the tile's pressure → 0 and the defender
     gets +1 on the attacker's tile it came from. Untouched for 4 weeks: pressure −1.

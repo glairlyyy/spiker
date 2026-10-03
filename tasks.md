@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-143** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-144** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -390,6 +390,12 @@ Result: the terrain no longer mixes in the region colour (grass / rock / sand / 
 Spec: §4.18b Goldens: unchanged Save: RUN_VERSION 17 (positions and fog are in the scaled units)
 Files: js/data/city.js (MAP_SCALE, scaleMap, CITY.strip, NEAR_R / TRIP_DAY / REVEAL_R / GROUND_STEP), js/career/mapmodel.js (thinMajor, road rows ÷ MAP_SCALE, onSand strip), js/map3d/map3d.mjs (camera reach 420 → 630, fit 340 → 510), tests/map.test.js
 Result: design coordinates stay as written; `scaleMap` multiplies every map point once at load (shared points once); circle districts move but keep their radius, point districts move by their centroid, the beach / Wei ring districts thin by 1/S², points inside the park or a minor move with it; HEX.size, travel, reveal and WEALTH.weiEdge × S. Buildings 704 → 724 (majors × `thinMajor` 0.8, road rows ÷ S); tiles still 139; trip days unchanged (pier 0, Wei gyms 2, dunes 3). Terrain ~46k → ~105k vertices (built once at mount). Tests: design points × MAP_SCALE, lot targets rebased. QA: hub screenshot.
+
+### [x] T-143: Wei and Wu fight each other most (owner request, spec §4.27 Movement)
+
+Spec: §4.27 Goldens: unchanged Save: no change
+Files: js/data/world.js (FRONT.prey, FRONT.push), js/career/front.js (pick), tests/map.test.js
+Result: Front.pick chooses the target with FRONT.prey (Wei → Wu 0.85 / Shu 0.15, Wu → Wei 0.85 / Shu 0.15, Shu → either 0.5) × 1.5 where the raider is already winning; always one R() draw for the target (was 0–1). 3,000 picks: Wei–Wu 70 %, Shu–Wei 15 %, Shu–Wu 15 %. Test added; full suite and calibrations pass.
 
 ## Later — outlines
 
