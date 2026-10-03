@@ -26,6 +26,15 @@ function line(s) {
 // ---- compact UI: tooltips, info dots, folds, pop-over menus ----
 /** Tooltip attribute for any element (shown on hover / keyboard focus / tap on focusable elements). */
 const tip = t => `data-tip="${esc(t)}"`;
+/**
+ * A vertical label / value list (spec §10.1a): one fact per line, label muted left, value right. rows = [label, valueHtml,
+ * cls?] (both HTML — escape data first); an empty label continues the fact above on a new line; falsy rows are skipped.
+ */
+const kv = rows =>
+  `<dl class="kv">${rows
+    .filter(Boolean)
+    .map(([l, v, c]) => `<dt>${l || ''}</dt><dd${c ? ` class="${c}"` : ''}>${v}</dd>`)
+    .join('')}</dl>`;
 /** A small ⓘ dot carrying explanatory text as a tooltip instead of a paragraph. */
 const info = t => `<span class="ii" tabindex="0" role="note" aria-label="${esc(t)}" ${tip(t)}>i</span>`;
 /**

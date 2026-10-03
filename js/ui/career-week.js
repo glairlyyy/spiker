@@ -252,8 +252,8 @@ function rankCard(run) {
     ${hidden || CW.rankAll ? `<button class="btn quiet" onclick="CW.rankAll=!CW.rankAll;renderCareer()">${CW.rankAll ? 'Hide unrated' : `Show unrated (${hidden})`}</button>` : ''}
     ${at < 0 ? `<p class="small mute">You are not on this list${tab === 'street' ? ' — fight, hustle, or take a challenge.' : '.'}</p>` : ''}</div>`;
 }
-/** "Their best: <name> Register #n · Gazette #n" for up to 2 of a squad's players (skips null ranks). */
-function rankBest(run, ps) {
+/** kv rows "Their best": up to 2 of a squad's players, each "<name> — Register #n, Gazette #n" on its own line (skips null ranks). */
+function rankBestRows(run, ps) {
   const L = { register: Rank.register(run), gazette: Rank.gazette(run), street: Rank.street(run) },
     at = (k, id) => {
       const i = L[k].findIndex(r => r.id === id);
@@ -263,18 +263,18 @@ function rankBest(run, ps) {
       .map(p => ({ p, r: Object.fromEntries(Object.keys(L).map(k => [k, at(k, p.id)])) }))
       .sort((a, b) => Math.min(...Object.values(b.r).map(v => v || 1e9)) - Math.min(...Object.values(a.r).map(v => v || 1e9)))
       .slice(0, 2);
-  return got.length
-    ? `<p class="small mute">Their best: ${got
-        .map(
-          ({ p, r }) =>
-            `${esc(p.name)} ` +
-            Object.entries(RANK_TABS)
-              .filter(([k]) => r[k])
-              .map(([k, [name]]) => `${name} #${r[k]}`)
-              .join(' · ')
-        )
-        .join(' — ')}</p>`
-    : '';
+  return got.map(({ p, r }, i) => [
+    i ? '' : 'Their best',
+    `${esc(p.name)} <span class="mute">${Object.entries(RANK_TABS)
+      .filter(([k]) => r[k])
+      .map(([k, [name]]) => `${name} #${r[k]}`)
+      .join(', ')}</span>`
+  ]);
+}
+/** Match prep notes (spec §10.1a): venue, opponent, their best, scouting — one fact per line. */
+function prepNotes(run, opp, best, hint) {
+  const v = City.venue(run);
+  return `<div class="mnotes">${kv([v ? ['Venue', esc(VENUES[v].name)] : null, ['Opponent', opp], ...best, hint ? ['Scouting', hint, 'mute'] : null])}</div>`;
 }
 /** Two roster columns for a cup match: the 4 starters on each side (you highlighted; their OVR once you have met them). */
 function matchRosters(run, mine, theirs) {
@@ -306,7 +306,9 @@ function evalPanel(run, note = '') {
         )
         .join(''),
     venue = City.venue(run),
-    head = `<div class="mph"><span class="lab">Week ${run.week} · Match day</span><h3 class="mpt">${esc(label)} evaluation${info(`Teammates who played with you remember the win. Per kill, block or ace: +${REWARDS.perPlay.sp} skill pts +${REWARDS.perPlay.fans} fans. × Grade.`)}</h3>${venue ? `<span class="small mute">at ${esc(VENUES[venue].name)}</span>` : ''}</div>`;
+    head = `<div class="mph"><span class="lab">Week ${run.week} · Match day</span><h3 class="mpt">${esc(label)} evaluation${info(`Teammates who played with you remember the win. Per kill, block or ace: +${REWARDS.perPlay.sp} skill pts +${REWARDS.perPlay.fans} fans. × Grade.`)}</h3>${
+      e.kind === 'faction' && !e.mine && venue ? `<span class="small mute">at ${esc(VENUES[venue].name)}</span>` : ''
+    }</div>`;
   if (e.kind === 'faction' && !e.mine)
     return `<div class="panel">${head}<p>Not selected this month.</p>
     ${note}<div class="acts"><button class="btn hot" onclick="benchEval()">Watch from the bench</button></div></div>`;
@@ -315,7 +317,7 @@ function evalPanel(run, note = '') {
     <div class="rosters"><div><div class="lab">${e.kind === 'academy' ? esc(club.name) : esc(club.name) + ' squad'}</div>${col(mine, true)}</div><div><div class="lab">${esc(REGIONS[e.region].name)} squad</div>${col(byId(e.opp).slice(0, 4), D.scouted || D.member)}</div></div>
     ${matchPrep(run, false)}
     <div class="rwchips"><span class="pchip"><span class="wl">Win</span> ${term('sp', REWARDS.evalWin.sp)} ${term('fans', REWARDS.evalWin.fans)}</span><span class="pchip"><span class="wl">Loss</span> ${term('sp', REWARDS.evalLoss.sp)} ${term('fans', REWARDS.evalLoss.fans)}</span></div>
-    <div class="mnotes small mute">${D.scouted || D.member ? '' : 'Scout one of their clubs to see ratings. '}${rankBest(run, byId(e.opp).slice(0, 4)).replace(/<\/?p[^>]*>/g, '')}</div>
+    ${prepNotes(run, `${esc(REGIONS[e.region].name)} squad`, rankBestRows(run, byId(e.opp).slice(0, 4)), D.scouted || D.member ? '' : 'Scout one of their clubs to see ratings')}
     ${note}<div class="acts pri"><button class="btn hot" onclick="playCareer('eval')">Play evaluation</button><button class="btn" onclick="playCareer('eval', true)" ${tip(GLOSSARY.sim.long)}>Sim ⏭</button></div></div>`;
 }
 /** Not selected: watch from the bench (wit XP) and end the week. */
@@ -446,11 +448,11 @@ function cupPanel(run, nm) {
         )
         .join('')}</div>
     <div class="panel"><div class="mph"><span class="lab">Week ${run.week} · Match day</span><h3 class="mpt">${nm.round}${info(`Win: +${Math.round(REWARDS.cupWin.sp * def.mul)} skill pts, +${Math.round(REWARDS.cupWin.fans * def.mul).toLocaleString()} fans. A loss ends the season.\nPlacement: round of 16 +${fans('Round of 16')} fans · quarterfinal +${fans('Quarterfinal')} · semifinal +${fans('Semifinal')} · runner-up +${fans('Final')} · champion +${fans('Champion')} — and a place on the national team.
-× Grade.`)}</h3><span class="small mute">vs ${esc(E[nm.a === me ? nm.b : nm.a].name)}${City.venue(run) ? ` · at ${esc(VENUES[City.venue(run)].name)}` : ''}</span></div>
+× Grade.`)}</h3></div>
       ${matchRosters(run, Cup.team(run, me), Cup.team(run, nm.a === me ? nm.b : nm.a))}
       ${matchPrep(run, true)}
       <div class="rwchips"><span class="pchip"><span class="wl">Win</span> ${term('sp', Math.round(REWARDS.cupWin.sp * def.mul))} ${term('fans', Math.round(REWARDS.cupWin.fans * def.mul))}</span><span class="pchip bad">Loss ends the season</span></div>
-      <div class="mnotes small mute">${rankBest(run, squadOf(Cup.team(run, nm.a === me ? nm.b : nm.a))).replace(/<\/?p[^>]*>/g, '')}</div>
+      ${prepNotes(run, esc(E[nm.a === me ? nm.b : nm.a].name), rankBestRows(run, squadOf(Cup.team(run, nm.a === me ? nm.b : nm.a))))}
     <div class="acts pri"><button class="btn hot" onclick="playCareer('cup')">Play ${nm.round.toLowerCase()}</button><button class="btn" onclick="playCareer('cup', true)" ${tip(GLOSSARY.sim.long)}>Sim ⏭</button></div></div>`;
 }
 function eventCard(run) {

@@ -59,7 +59,7 @@ Steps:
    QA: hub folded and unfolded with a place selected; screenshots.
    Result: railStrip + railToggle, KEYS.rail (sns_rail_mini), `.hub.railmini { --rail: 72px }`; dayTrack/inbox split into weekCells/inboxItems (shared); strip inbox icon unfolds the rail; armed End week shows "Skip?". Also fixed ARCHITECTURE for T-135. QA: fold/unfold with a place selected, reload keeps it, map canvas 1368px wide folded, no errors.
 
-### [ ] T-137: Vertical info lists
+### [x] T-137: Vertical info lists
 
 Spec: §10.1a §9.8 Goldens: unchanged Save: no change
 Goal: no fact chains joined by `·` in the hub; every block with more than two facts reads top-down, one fact per line.
@@ -74,7 +74,7 @@ Steps:
 5. inboxRows: title line + its facts as a `kv` (battle: Sides, Where, Border, Trip; goal: Goal, Progress, Due; evaluation: Opponent, Venue); weekBrief rows the same; match prep notes (venue, opponent, their best, scout hint) as a `kv`.
    Accept: grep of the hub's rendered text shows no line with two or more `·` separators in the battle card, challenge, HQ, inbox and brief; the battle card matches HubBattle.
    QA: battle week (card + inbox + brief), an HQ with a challenge; screenshots.
-   Result:
+   Result: kv() in dom.js; battle card per HubBattle (title = site, Attacker/Defender/Border/Standing×2/Trip/If nobody joins; side cards Cost/Injury/Win×4/Lose×2; Play it|Sim it segment → Fight buttons sim, old Sim buttons gone; row Fight A, Fight B, Watch); challenge, HQ (habits split from habitText, roster one per line), inbox, brief and eval/cup prep notes as kv (venue/opponent moved out of the prep headers). New helpers clashBorder (career-map), evalNext (career-hub), prepNotes/rankBestRows (career-week, replaces rankBest). Border lines drop the tile name when it is the battle site; End week made sticky so a tall inbox can't push it out. QA: brief/inbox/card/HQ/eval at 1440×900 — 0 lines with ≥2 `·`, no errors.
 
 ### [x] T-130: Border pressure lines on the 3D map
 

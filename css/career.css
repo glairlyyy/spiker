@@ -2431,7 +2431,11 @@
   padding: 0 12px;
 }
 .hub .wend {
-  margin-top: auto;
+  position: sticky; /* a long inbox scrolls; End week stays in reach */
+  bottom: -16px;
+  margin: auto -16px -16px;
+  padding: 12px 16px 16px;
+  background: var(--surf);
   grid-template-columns: 1fr;
 }
 .hub .wend .btn {
@@ -2722,6 +2726,86 @@
   padding-top: 12px;
   border-top: 1px solid var(--line);
 }
+/* vertical info lists (spec §10.1a, T-137): kv() → <dl class="kv">, one fact per line */
+.kv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.kv dt {
+  color: var(--mute);
+  white-space: nowrap;
+}
+.kv dd {
+  margin: 0;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.kv dd.up {
+  color: var(--good);
+}
+.kv dd.dn {
+  color: var(--bad);
+}
+.kv dd.wa {
+  color: var(--warn);
+}
+.kv dd.mute {
+  color: var(--mute);
+}
+.plc .pside {
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--surf2);
+}
+.plc .pside .kv {
+  grid-template-columns: 48px 1fr;
+}
+.plc .pstep {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.plc .pstep .btn {
+  width: 32px;
+  height: 28px;
+  padding: 0;
+}
+.plc .prlab {
+  margin-top: 16px;
+}
+.plc .roster {
+  display: grid;
+  margin: 4px 0 0;
+}
+.plc .prow {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.plc .prow .prn {
+  display: grid;
+  min-width: 0;
+}
+.plc .prow .prn > * {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.plc .prow small {
+  font-size: 12px;
+}
+.plc .prow .prr {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .plc .acts .btn {
   white-space: nowrap;
   overflow: hidden;
@@ -2787,6 +2871,18 @@
 }
 .hub .winbox .wico {
   text-align: center;
+}
+.hub .winbox .wit:has(.kv),
+.brief .bi:has(.kv) {
+  align-items: start;
+}
+.hub .winbox .wtx .kv {
+  margin-top: 4px;
+  gap: 2px 10px;
+  color: var(--ink);
+}
+.brief .bi .kv {
+  margin-top: 4px;
 }
 .hub .winbox .wtx small {
   display: block;

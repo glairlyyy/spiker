@@ -49,7 +49,8 @@ function renderCareer() {
   const nextCup = Run.weekType(run) === 'cup' && !run.event ? Cup.upcoming(run) : null; // rules first, then draw
   const card = hubCard(run, nextCup);
   if (CW.railMini == null) CW.railMini = store.get(KEYS.rail) === '1'; // remembered per browser
-  $('#app').innerHTML = `<section class="career hub ${City.night(run) ? 'eve' : ''} ${CW.railMini ? 'railmini' : ''}" style="--tc:${team.color}">
+  $('#app').innerHTML =
+    `<section class="career hub ${City.night(run) ? 'eve' : ''} ${CW.railMini ? 'railmini' : ''}" style="--tc:${team.color}">
     ${topBar(run)}${CW.railMini ? railStrip(run, armed) : weekRail(run, armed)}
     <div class="mapwrap" id="mapwrap"></div>${mapLegend()}
     <div class="hud spotcard ${CW.spot && !card ? 'open' : ''}" id="spot">${CW.spot && !card ? spotCard(run) : ''}</div>
@@ -78,14 +79,14 @@ function weekBrief(run) {
     rows = [],
     row = (ico, title, sub, tag, cls = '') =>
       rows.push(
-        `<div class="bi"><span class="bico ${cls}">${ico}</span><div><b>${title}</b>${sub ? `<div class="small mute">${sub}</div>` : ''}</div>${tag ? `<span class="btag ${cls}">${tag}</span>` : '<span></span>'}</div>`
+        `<div class="bi"><span class="bico ${cls}">${ico}</span><div><b>${title}</b>${Array.isArray(sub) ? kv(sub) : sub ? `<div class="small mute">${sub}</div>` : ''}</div>${tag ? `<span class="btag ${cls}">${tag}</span>` : '<span></span>'}</div>`
       );
   if (wt === 'eval') {
     const e = run.eval || Eval.setup(run);
     row(
       '⚑',
       `Evaluation · ${esc(e.kind === 'academy' ? 'Academy' : REGIONS[e.region].name)}`,
-      `${esc(Run.myTeam(run).name)} vs ${esc(REGIONS[e.region].name)}${City.venue(run) ? ` · ${esc(VENUES[City.venue(run)].name)}` : ''}`,
+      [['Opponent', `${esc(REGIONS[e.region].name)} squad`], City.venue(run) ? ['Venue', esc(VENUES[City.venue(run)].name)] : null],
       'this week'
     );
   } else if (wt === 'cup') row('⚑', esc((Run.cupDef(run) || {}).name || 'Cup'), 'Your next round is on the match card', 'this week', 'hot');
@@ -97,7 +98,12 @@ function weekBrief(run) {
     row(
       '⚔',
       `${chip(REGIONS[att])}${esc(REGIONS[att].name)} raid ${chip(REGIONS[def])}${esc(REGIONS[def].name)}`,
-      `${esc(c.name)} · Seize ${k.tile ? k.meter - 1 : 0}/${k.cost}${k.seize ? ` · a win takes ${esc(k.place ? SPOTS[k.place].name : 'the tile')}` : ''} · nobody shows up? they settle it at the week's end`,
+      [
+        ['Where', esc(c.name)],
+        ['Border', clashBorder(run, att, def)],
+        k.seize && k.place ? ['A win takes', esc(SPOTS[k.place].name)] : null,
+        ['If nobody joins', "Settled at the week's end"]
+      ],
       'street battle',
       'warn'
     );
@@ -112,7 +118,10 @@ function weekBrief(run) {
     row(
       '◎',
       `Coach's goal · ${esc(Goals.text(run, g))}`,
-      `${esc(Goals.progress(run, g))} · due week ${g.by}`,
+      [
+        ['Progress', esc(Goals.progress(run, g))],
+        ['Due', `Week ${g.by}`]
+      ],
       left <= 0 ? 'this week' : `${left} week${left > 1 ? 's' : ''}`,
       left <= 1 ? 'warn' : ''
     );
@@ -219,7 +228,10 @@ function railStrip(run, armed) {
     cells = match
       ? '<div class="dslot match" title="Match week">⚑</div>'
       : weekCells(run)
-          .map(([e, cls]) => `<div class="dslot ${cls} ${e ? e.k : ''}" ${e && (e.at || e.label) ? tip(e.at || e.label) : ''}>${e ? `<i>${DAY_ICON[e.k] || '•'}</i>` : ''}</div>`)
+          .map(
+            ([e, cls]) =>
+              `<div class="dslot ${cls} ${e ? e.k : ''}" ${e && (e.at || e.label) ? tip(e.at || e.label) : ''}>${e ? `<i>${DAY_ICON[e.k] || '•'}</i>` : ''}</div>`
+          )
           .join('');
   return `<aside class="wrail mini" aria-label="This week">
     <button class="btn wfold" onclick="railToggle()" aria-label="Expand the week rail ([)">» <kbd>[</kbd></button>
@@ -260,8 +272,14 @@ function dayTrack(run, match) {
     cells = weekCells(run),
     ghost = cells.filter(c => c[1] === 'ghost');
   return `<div class="wdn">${WEEKDAYS.map(d => `<span>${d}</span>`).join('')}</div><div class="wdays" id="wdays">${cells
-    .map(([e, cls]) => (e ? `<div class="dslot ${cls} ${e.k}" ${e.at ? tip(e.at) : ''}><i>${DAY_ICON[e.k] || '•'}</i><b>${esc(e.label || '')}</b></div>` : '<div class="dslot">free</div>'))
-    .join('')}</div>${ghost.length ? `<p class="small wuse">Uses ${ghost.map((c, i) => WEEKDAYS[spent + i]).join(' + ')} — shown on your week</p>` : ''}`;
+    .map(([e, cls]) =>
+      e
+        ? `<div class="dslot ${cls} ${e.k}" ${e.at ? tip(e.at) : ''}><i>${DAY_ICON[e.k] || '•'}</i><b>${esc(e.label || '')}</b></div>`
+        : '<div class="dslot">free</div>'
+    )
+    .join(
+      ''
+    )}</div>${ghost.length ? `<p class="small wuse">Uses ${ghost.map((c, i) => WEEKDAYS[spent + i]).join(' + ')} — shown on your week</p>` : ''}`;
 }
 /** The week's 7 cells as [entry, 'done' | 'ghost' | 'free'] (entry null = a free day): spent days, the selected place's ghost, free. */
 function weekCells(run) {
@@ -293,33 +311,46 @@ function inboxItems(run) {
   const rows = [],
     item = (ico, text, sub, btn, act, cls = '') =>
       rows.push(
-        `<div class="wit ${cls}"><span class="wico">${ico}</span><span class="wtx">${text}${sub ? `<small>${sub}</small>` : ''}</span><button class="btn" onclick="${act}">${btn}</button></div>`
+        `<div class="wit ${cls}"><span class="wico">${ico}</span><span class="wtx">${text}${Array.isArray(sub) ? kv(sub) : sub ? `<small>${sub}</small>` : ''}</span><button class="btn" onclick="${act}">${btn}</button></div>`
       ),
     n = nextStep(run);
   if (CW.flash) rows.push(`<div class="wit bad"><span class="wico">✕</span><span class="wtx">${esc(CW.flash)}</span><span></span></div>`); // a refused action, one render
   CW.flash = null;
   if (n && n.act && !/Gazette|signing open/.test(n.text)) item('→', esc(n.text), 'Suggested next step', 'Go', n.act, 'next');
   const c = City.clashSite(run);
-  if (c && !run.clash.done)
+  if (c && !run.clash.done) {
+    const att = run.clash.att || c.a,
+      def = att === c.a ? c.b : c.a,
+      trip = City.clashCost(run) - 1;
     item(
       '⚔',
-      `${esc(REGIONS[c.a].name.split(' ')[0])} vs ${esc(REGIONS[c.b].name.split(' ')[0])} · ${esc(c.name)}`,
-      `Street battle · ${City.clashCost(run)} day${City.clashCost(run) > 1 ? 's' : ''} away`,
+      'Street battle',
+      [
+        ['Sides', `${esc(REGIONS[c.a].name.split(' ')[0])} vs ${esc(REGIONS[c.b].name.split(' ')[0])}`],
+        ['Where', esc(c.name)],
+        ['Border', clashBorder(run, att, def)],
+        ['Trip', trip ? `${trip} day${trip > 1 ? 's' : ''}` : 'None']
+      ],
       'View',
       "mapPick('clash')"
     );
+  }
   const asks = Asks.count(run);
   if (asks) item('✉', `${asks} approach${asks > 1 ? 'es' : ''} waiting`, 'Expires at the end of the week', 'Answer', "hubOpen('people')");
   if (run.gazette && !run.gazette.read) item('☰', 'The Gazette is out', `Week ${run.gazette.week}`, 'Read', "hubOpen('news')");
   const wt = Run.weekType(run);
   if ((wt === 'train' || wt === 'camp') && CALENDAR[run.week + 1] === 'eval')
-    item('⚑', 'Evaluation next week', 'Match weeks have no training days', 'Season', "hubOpen('season')");
+    item('⚑', 'Evaluation next week', evalNext(run), 'Season', "hubOpen('season')");
   const g = run.goal;
   if (g && g.done == null && g.by - run.week <= 1)
     item(
       '◎',
       `Goal due ${g.by === run.week ? 'this week' : 'next week'}`,
-      `${esc(Goals.text(run, g))} · ${esc(Goals.progress(run, g))}`,
+      [
+        ['Goal', esc(Goals.text(run, g))],
+        ['Progress', esc(Goals.progress(run, g))],
+        ['Due', `Week ${g.by}`]
+      ],
       'View',
       "hubOpen('season')",
       'warn'
@@ -331,6 +362,17 @@ function inboxItems(run) {
   for (const z of (CW.seizes || []).filter(x => run.week - x.week <= 1))
     item('⚑', esc(z.text), 'A place changed hands', 'Show', `mapPick('${z.id}')`);
   return rows;
+}
+/** Next week's evaluation as facts (the squads are drawn that week): opponent and venue; no evaluation for you → a note. */
+function evalNext(run) {
+  const kind = Eval.kind(run);
+  if (!kind) return 'Match weeks have no training days';
+  const region = FACTIONS[run.team] && FACTIONS[run.team].region,
+    v = kind === 'academy' ? 'hall' : Object.keys(VENUES).find(id => VENUES[id].holds.includes(`eval:${region}`));
+  return [
+    ['Opponent', kind === 'academy' ? 'A faction squad, drawn that week' : `Another ${esc(REGIONS[region].name)} squad`],
+    v ? ['Venue', esc(VENUES[v].name)] : null
+  ];
 }
 /**
  * One suggested next step (a suggestion only: the chip selects a place or opens a sheet, never acts). First match wins:
