@@ -9,7 +9,7 @@ import { loadBase, makeVRM, dress, undress, MODEL_URL, MAIN_URL } from './player
 
 const PX = 160, // rendered size (px): the UI scales it down (18–120 px)
   FOV = 22,
-  DIST = 0.78, // camera distance from the head (m, figure 1.8 m tall)
+  DIST = 0.85, // camera distance from the face (m, figure 1.8 m tall): the whole head in frame, the face in the middle
   ARM = 1.25; // arms lowered from the T-pose (rad) so they stay out of the frame
 
 export function create() {
@@ -18,7 +18,10 @@ export function create() {
     scene = new THREE.Scene(),
     cam = new THREE.PerspectiveCamera(FOV, 1, 0.05, 10),
     figs = {}, // 'base' | 'main' → Promise<figure>
-    head = new THREE.Vector3();
+    head = new THREE.Vector3(),
+    eyeL = new THREE.Vector3(),
+    eyeR = new THREE.Vector3(),
+    UP = new THREE.Vector3(0, 0.08, 0);
   renderer.setPixelRatio(1);
   renderer.setSize(PX, PX, false);
   renderer.setClearColor(0x000000, 0);
@@ -55,9 +58,14 @@ export function create() {
     else dress(pl.vrm, { shirt: kit.shirt, hair: kit.hair, skin: kit.skin }); // only what the model can change
     pl.vrm.update(0);
     pl.root.updateMatrixWorld(true);
-    pl.bone('head').getWorldPosition(head);
-    cam.position.set(head.x + 0.12, head.y + 0.04, head.z + DIST);
-    cam.lookAt(head.x, head.y - 0.05, head.z);
+    // aim at the face: between the eyes (VRM eye bones), else a little above the head bone (which sits at the neck)
+    const le = pl.bone('leftEye'),
+      re = pl.bone('rightEye');
+    if (le && re) head.copy(le.getWorldPosition(eyeL)).add(re.getWorldPosition(eyeR)).multiplyScalar(0.5);
+    else pl.bone('head').getWorldPosition(head).add(UP);
+    head.y -= 0.015; // eyes sit just above the centre of a face
+    cam.position.set(head.x, head.y + 0.02, head.z + DIST);
+    cam.lookAt(head);
     renderer.render(scene, cam);
     return canvas.toDataURL('image/png');
   };
