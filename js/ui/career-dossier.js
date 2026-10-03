@@ -1,5 +1,6 @@
 // Career: the faction dossier window — one faction's facilities, fronts, clubs and roster, rendered from Dossier.build.
 // Opens in place on the World sheet's Factions tab (from a club HQ panel or a faction name); Esc or ← goes back to the list.
+// Also the World sheet's cards: Rankings (rankCard), Clubs (clubsCard, joinGap, joinClub) and Factions (factionsCard).
 
 const DOSSIER_STATE = { weakened: 'Weakened', pressed: 'Pressed', rising: 'Rising', stable: 'Stable', minor: 'Not in the war' };
 
@@ -77,4 +78,131 @@ function sheetWorld(run) {
   return `<div class="sheet-h"><h2>World</h2><div class="seg pfil">${Object.entries(WORLD_TABS)
     .map(([k, n]) => `<button class="btn ${k === t ? 'on' : ''}" onclick="worldTab('${k}')">${n}</button>`)
     .join('')}</div></div><div class="wsheet w-${t}">${body}</div>`;
+}
+/** Rankings (World sheet): tabs for the three lists (Rank.*, js/career/rank.js), top rows then a gap and your own row. */
+const RANK_TABS = {
+  register: ['Register', 'Academy Register — U21, by rating'],
+  gazette: ['Gazette', "The Gazette's Top 20 — the island's finest"],
+  street: ['Street', "Who's hot under the overpass"]
+};
+function rankTab(k) {
+  CW.rank = k;
+  renderCareer();
+}
+function rankCard(run) {
+  const you = Run.you(run),
+    tab = RANK_TABS[CW.rank] ? CW.rank : 'register',
+    all = Rank[tab](run),
+    rated = r => tab !== 'register' || r.ovr != null,
+    list = CW.rankAll ? all : all.filter((r, i) => rated(r) || r.id === you.id),
+    n = 5, // the top 5, then you ± 5
+    at = list.findIndex(r => r.id === you.id),
+    hidden = all.length - list.length,
+    row = r => {
+      const i = all.indexOf(r);
+      return `<tr class="${r.id === you.id ? 'you' : ''}"><td>${i + 1}</td><td>${r.id === you.id ? esc(r.name) : `<a class="plink" onclick="openPerson('${esc(String(r.id))}')">${esc(r.name)}</a>`}</td><td>${r.region ? esc(REGIONS[r.region].name) : 'Academy'} · ${r.role}</td><td>${
+        tab === 'register' ? (r.ovr == null ? '<i class="mute">unrated</i>' : r.ovr) : tab === 'gazette' ? Math.round(r.fame) : r.pts
+      }</td></tr>`;
+    },
+    gap = '<tr class="gap"><td colspan="4">…</td></tr>',
+    near = at < 0 ? [] : list.slice(Math.max(n, at - 5), at + 6),
+    rows = list.slice(0, n).map(row).join('') + (near.length ? (at - 5 > n ? gap : '') + near.map(row).join('') : '');
+  return `<div class="panel"><div class="tabs rk">${Object.entries(RANK_TABS)
+    .map(([k, [name]]) => `<button class="btn ${k === tab ? 'on' : ''}" onclick="rankTab('${k}')">${name}</button>`)
+    .join('')}</div>
+    <p class="small mute">${RANK_TABS[tab][1]}</p>
+    ${list.length ? `<table class="rk"><tbody>${rows}</tbody></table>` : '<p class="small mute">Nobody on the board yet.</p>'}
+    ${hidden || CW.rankAll ? `<button class="btn quiet" onclick="CW.rankAll=!CW.rankAll;renderCareer()">${CW.rankAll ? 'Hide unrated' : `Show unrated (${hidden})`}</button>` : ''}
+    ${at < 0 ? `<p class="small mute">You are not on this list${tab === 'street' ? ' — fight, hustle, or take a challenge.' : '.'}</p>` : ''}</div>`;
+}
+/** Clubs that would sign you (free agents only). */
+/** The first thing a club still asks of you, as your gap: "OVR 72 · you 41", "$600 · you $200". '' when you can sign. */
+function joinGap(run, ti) {
+  const you = Run.you(run),
+    j = World.joinReq(run, ti),
+    key = KEYSTAT[you.role],
+    c = World.canJoin(run, ti);
+  if (c.ok) return '';
+  if (!World.isFree(run)) return 'Already signed';
+  if (Run.cupDef(run)) return 'Not during a cup';
+  if (j.ovr && ovr(you) < j.ovr) return `OVR ${j.ovr} · you ${ovr(you)}`;
+  if (j.key && you[key] < j.key) return `${STATNAME[key]} ${j.key} · you ${you[key]}`;
+  if (j.star && !you.star) return 'Needs ★ star';
+  if (j.fans && run.fans < j.fans) return `${j.fans.toLocaleString()} fans · you ${run.fans.toLocaleString()}`;
+  if (j.fee && run.money < j.fee) return `$${j.fee} · you $${run.money}`;
+  return c.why.join(', ');
+}
+function clubsCard(run) {
+  const mine = World.isFree(run) ? null : Run.myTeam(run);
+  let first = true; // one ink primary per card: the first club that would sign you
+  return `<div class="panel clubs"><h3>${mine ? `You play for ${chip(mine)}${esc(mine.name)}` : 'Find a club'}${info('You play Academy evaluations and the U21 Final Cup with the Academy squad until a club signs you. You take the same-role spot on the club.')}</h3>
+    <div class="clist">${[...run.teams]
+      .sort((a, b) => World.canJoin(run, b.i).ok - World.canJoin(run, a.i).ok) // signable first
+      .map(t => {
+        const c = World.canJoin(run, t.i),
+          f = FACTIONS[t.i],
+          sub = t.name.startsWith(REGIONS[f.region].name) || t.name.startsWith(f.name.split(' · ')[0]) ? '' : `${esc(f.name)} · `; // "Wei Dynasty Gold" already says Wei Dynasty
+        return `<div class="club rowcta" style="--tc:${t.color}"><div class="nm"><span class="n1">${chip(t)}<b>${esc(t.name)}</b> <span class="mute small">${sub}OVR ${t.ovr}</span>${info(`${f.front}. Word is: ${f.dark}.`)}</span>
+          <span class="n2 small ${c.ok ? '' : 'mute'}">${World.joinText(t.i, run)}</span></div>
+          ${mine ? '' : `<button class="btn ${c.ok ? (first ? ((first = false), 'hot') : '') : 'lock'}" onclick="joinClub(${t.i})" ${c.ok ? '' : 'disabled'} ${c.ok ? '' : tip('Missing: ' + c.why.join(', '))}>${c.ok ? 'Sign' : esc(joinGap(run, t.i))}</button>`}</div>`;
+      })
+      .join('')}</div></div>`;
+}
+/** Your standing with each faction (region), its clubs, and this week's street battle. */
+function factionsCard(run) {
+  /** Tiles held now vs at the start (spec §4.27). */
+  const tiles = r => {
+    if (!MAJORS.includes(r)) return '';
+    const T = Hex.grid().tiles,
+      held = T.filter(t => Hex.owner(run, t.id) === r).length,
+      d = held - T.filter(t => t.region === r).length,
+      e = Front.econ(run, r),
+      sg = n => (n ? ` <b class="${n > 0 ? 'up' : 'dn'}">${fmtDelta(n)}</b>` : '');
+    return `<div class="small">Tiles <b>${held}</b>${sg(d)} · <span ${tip(GLOSSARY.value.long)}>value <b>${Hex.worth(run, r)}</b>${sg(e)}</span></div>`;
+  };
+  const row = r => {
+    const F = Dossier.summary(run, r),
+      v = F.standing,
+      fronts = F.fronts
+        .map(({ vs }) => {
+          const k = Front.stakes(run, r, vs),
+            cur = k.tile ? k.meter - 1 : 0;
+          return `<span class="fm2" ${tip(GLOSSARY.seize.long)}>vs ${esc(REGIONS[vs].name.split(' ')[0])} · ${
+            k.tile
+              ? `next: ${esc(k.name)} <b class="${cur ? 'up' : ''}">${cur}/${k.cost}</b>${k.seize && k.place ? ` <span class="mute">a win takes ${esc(SPOTS[k.place].name)}</span>` : ''}`
+              : '<span class="mute">no reach</span>'
+          }</span>`;
+        })
+        .join(''),
+      places =
+        (F.took.length
+          ? `<div class="small">Took: ${F.took.map(p => `${esc(p.name)} <i class="mute">(from ${esc(REGIONS[p.from].name)})</i>`).join(', ')}</div>`
+          : '') +
+        (F.lost.length
+          ? `<div class="small">Lost: ${F.lost.map(p => `${esc(p.name)} <i class="mute">(to ${esc(REGIONS[p.to].name)})</i>`).join(', ')}</div>`
+          : ''),
+      E = F.econ,
+      econ = E
+        ? `<div class="small mute">Prices ×${E.priceMul.toFixed(2)} · facilities ×${E.qMul.toFixed(2)}${E.joinCut ? ` · clubs ask −${E.joinCut} OVR/key, fees −${E.feeCut}%` : ''}</div>`
+        : '',
+      clubs = F.clubs.map(ti => run.teams[ti]);
+    return `<div class="fac ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}"><div class="fh"><b><a href="#" class="dlink" onclick="openDossier('${r}');return false">${esc(F.name)}</a></b> <span class="mute small">${F.kind}</span>${F.weak ? ' <span class="stk far">Weakened</span>' : ''}${info(F.desc)}<span class="fv">${F.label}</span></div>
+        ${tiles(r)}${fronts ? `<div class="fms">${fronts}</div>` : ''}${places}${econ}
+        <div class="small mute stl">${term('standing', v)}</div><div class="rbar" ${tip(GLOSSARY.standing.long)}><i style="${v >= 0 ? `left:50%;width:${v / 2}%` : `left:${50 + v / 2}%;width:${-v / 2}%`}"></i></div>
+        <div class="small">${clubs.map(t => `${chip(t)}${esc(t.name)}${t.i === run.team ? ' <i class="mute">(yours)</i>' : ''}`).join(' · ')}${
+          F.foe
+            ? ` <a href="#" class="clashk" onclick="hubOpen(null);mapPick('clash');return false">⚔ vs ${esc(REGIONS[F.foe].name)} this week</a>`
+            : ''
+        }</div></div>`;
+  };
+  return `<div class="panel facs"><p class="small mute">Street battles move your ${term('standing')} standing and the ${term('seize')} count on ${term('border')} tiles.</p>${Object.keys(
+    REGIONS
+  )
+    .filter(r => REGIONS[r].kind !== 'none')
+    .map(row)
+    .join('')}</div>`;
+}
+function joinClub(ti) {
+  if (World.join(RUN, ti)) Run.save(RUN);
+  renderCareer();
 }

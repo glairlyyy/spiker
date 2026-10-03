@@ -513,7 +513,7 @@ sections → people.css; career.css keeps menu/create/cards/sheets. Link order k
 Accept: QA screenshots pixel-identical to before the split.
 Result: career.css 2956→1774, map.css 223, hub.css 790, people.css 150 (pure line moves, verified as subsequences); link order career→map→hub→people: scripted check of every order-flipped rule pair (equal specificity, overlapping property) found 0 elements matching both across 70 UI states, static review of the rest clean; dead @keyframes drawerIn + htoast removed; ARCHITECTURE CSS list updated; QA 01–10 pixel-identical to T-153 (11/12 3D canvas noise only). pins3d.mjs header comment still says career.css (not in Files).
 
-### [ ] T-155: Split career-week.js by job
+### [x] T-155: Split career-week.js by job
 
 Spec: — Goldens: unchanged Save: no change
 Files: js/ui/career-week.js, js/ui/career-sheets.js (new), js/ui/career-match.js (new), js/ui/career-dossier.js, index.html, ARCHITECTURE.md
@@ -521,7 +521,7 @@ Steps: sheets (`sheetMe sheetSeason calendar seasonCard`) → career-sheets.js; 
 cupPanel matchRosters prepNotes rankBestRows resultSnap resultData playCareer`) → career-match.js; career-week.js keeps
 week end/recap; world cards (`rankCard clubsCard factionsCard`) → career-dossier.js next to `sheetWorld`.
 Accept: no name changes; tests + lint green; QA every sheet + one evaluation.
-Result:
+Result: career-week.js 695→162 (CW, End week/Week report, events, abandonRun); career-sheets.js 206 (sheetMe sheetSeason calendar seasonCard + elementLine leaveSquad matchLog/MKIND homeRow setHousing seePhysio learnSkill); career-match.js 206 (listed + benchEval setFocus setTalk); career-dossier.js +128 (RANK_TABS rankTab rankCard joinGap clubsCard factionsCard joinClub); pure moves, names unchanged, loaded right after career-week.js (no load-time top-level deps); lint/dead-globals read index.html so pick them up; tests 110/110, lint clean; QA 01–10 pixel-identical to T-153, World tabs + Me/Season + eval played to result, 0 page errors.
 
 ### [ ] T-156: City vs Fight; dossier dedupe
 

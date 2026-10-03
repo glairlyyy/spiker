@@ -35,7 +35,8 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
 - **career** `run.js` (Run, RUN_DEFAULTS), `training.js`, `growth.js`, `element.js`, `world.js`, `pool.js`, `eval.js`,
   `city.js`, `front.js`, `mapmodel.js`, `dossier.js`, `events.js`, `goals.js`, `skills.js`, `rank.js`, `cup.js`, `fight.js`.
 - **ui** `dom.js` (esc, tip, info, fold, signed, kv — the vertical label/value list of spec §10.1a…), `icons.js`, `match-screen.js`, `models.js`, `menu.js`,
-  `debug-panel.js`, `career-create.js`, `career-week.js`, `map-view.js`, `career-map.js`, `career-dossier.js`,
+  `debug-panel.js`, `career-create.js`, `career-week.js` (CW state, End week, Week report, events), `career-sheets.js` (Me / Season sheets),
+  `career-match.js` (match prep, eval / Cup cards, result data, playCareer), `map-view.js`, `career-map.js`, `career-dossier.js`,
   `career-hub.js`, `career-end.js`, `encyclopedia.js`.
 - **render** `playback.js`, `acts.js`, `movement.js`, `actors.js`, `clock.js`, `camera.js`, `ball.js`, `scenes.js`,
   `effects.js`, `overlay.js`, `faces.js`, `tags.js`, `dive.js`; then `main.js`.
@@ -662,7 +663,7 @@ street null when off the list). State: `run.met` (player id → faced on court: 
 battle — fought, watched or simulated — gives the winner faction's `share` best players `faction`: `Rank.settle`),
 `run.refused` (club index → `{ week, n }`, used by team challenges). Constants: `RANK` in `data/world.js`.
 
-UI (`ui/career-week.js`): the World sheet's Rankings tab (`rankCard`, tab in `CW.rank`, `rankTab`) renders `Rank.register / gazette / street` — top `RANK.top` rows, then "…" and your row; `rankBestRows(run, players)` adds "Their best: …" (up to 2 players, null ranks skipped) to `evalPanel` and `cupPanel`. The UI only reads `Rank.*`.
+UI (`ui/career-dossier.js`): the World sheet's Rankings tab (`rankCard`, tab in `CW.rank`, `rankTab`) renders `Rank.register / gazette / street` — top `RANK.top` rows, then "…" and your row; `rankBestRows(run, players)` adds "Their best: …" (up to 2 players, null ranks skipped) to `evalPanel` and `cupPanel` (career-match.js). The UI only reads `Rank.*`.
 
 ## Team challenges
 
@@ -720,7 +721,7 @@ over `inboxItems`, End week; folded by «/» or `[` to `railStrip`, a 72px strip
 (`MapView`, see Island map layers; places are found only on the map, no list) with `mapLegend` chips, the place panel (`#spot`, `placeCard` anatomy in career-map.js) and a card over the map (`hubCard`: event → Week
 report → Week brief → cup / eval card).
 
-Sheets open over the map area (rail and top bar stay): `HUB_SHEETS` → `sheetMe` / `sheetSeason` (career-week.js),
+Sheets open over the map area (rail and top bar stay): `HUB_SHEETS` → `sheetMe` / `sheetSeason` (career-sheets.js),
 `sheetPeople` (career-people.js), `sheetWorld` (career-dossier.js; the dossier renders in place on its Factions tab).
 UI state lives in `CW` (career-week.js): `sheet`, `pfilter`, `wtab`, `stab`, `gear`, `railMini`, `person`, `dossier`, … —
 nothing of it is saved except `railMini` (a browser preference in `KEYS.rail`, not the run). There are no drawers.
@@ -740,7 +741,7 @@ the stat's text glyph for plain-text diary lines (`Training.addXp` → `✸+1`).
 a test checks every `term('id'` in js/ui exists.
 
 Match result (spec §10.6): `finishMatch` calls `resultSnap(RUN, m)` before a career fixture's `onFinish` and
-`resultData(RUN, m, snap, msg)` after it (career-week.js; diffs of the run only — no rule runs in the UI), then
+`resultData(RUN, m, snap, msg)` after it (career-match.js; diffs of the run only — no rule runs in the UI), then
 `resultScreen` draws it; the Monster game (no career player) gets headline + top 3.
 
 Island scale (spec §4.18b): js/data/city.js writes every map point in design units (1060 × 700) and `scaleMap` multiplies them
@@ -812,7 +813,7 @@ Pure refactors must pass **without** `--update`.
 it is called at the start of `Cup.result` (kind `eval` | `cup`, + `round`), `Fight.challengeResult` (`challenge`, + `stake`) and `Fight.clashResult` (`street`), i.e. before
 `Growth.matchXp`, so `you` (OVR + the 5 stats) is the kick-off state. Entry: `{ week, day, kind, vs, short, score: [yours, theirs], win, grade (null if you did not play),
 played, you, line: { k, att, err, blk, ace, dig, ast }, box: [{ name, role, side, ovr, k, att, err, blk, ace, dig, ast, you? }] }` — numbers and strings only, no player or team
-refs. `matchLog(run)` (career-week.js) lists them newest first, each a `fold` (`ml<index>`) with your snapshot (change vs your previous entry), your line and the box score;
+refs. `matchLog(run)` (career-sheets.js) lists them newest first, each a `fold` (`ml<index>`) with your snapshot (change vs your previous entry), your line and the box score;
 the Season sheet shows it (`sheetSeason`). `Run.repair` adds `mlog` to older saves of the same version (RUN_DEFAULTS).
 
 ### Start from 1 (T-055)
