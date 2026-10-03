@@ -34,8 +34,8 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
 - **audio** `sfx.js` (internals in the `SOUND` closure; global: `SND`, `sfx`, `audioInit`, `toggleSound`, `setVolume`, `bgmStart`, `bgmStop`, `panAt`). **game** `state.js` (G, HYPE, Screens / navigate), `bracket.js`.
 - **career** `run.js` (Run, RUN_DEFAULTS), `training.js`, `growth.js`, `element.js`, `world.js`, `pool.js`, `eval.js`,
   `city.js`, `front.js`, `mapmodel.js`, `dossier.js`, `events.js`, `goals.js`, `skills.js`, `rank.js`, `cup.js`, `fight.js`.
-- **ui** `dom.js` (esc, tip, info, fold, kv — the vertical label/value list of spec §10.1a…), `icons.js`, `match-screen.js`, `match-result.js` (result card, finishMatch, cut-ins / toasts), `models.js`, `menu.js`,
-  `debug-panel.js`, `career-create.js`, `career-week.js` (CW state, End week, Week report, events), `career-sheets.js` (Me / Season sheets),
+- **ui** `dom.js` (esc, tip, info, fold, kv — the vertical label/value list of spec §10.1a, peek — the L2 detail card of §10.8: `CW.peek` holds the open id, `peekSync` (MutationObserver on #app) ports the open card to <body> beside its owner panel…), `icons.js`, `match-screen.js`, `match-result.js` (result card, finishMatch, cut-ins / toasts), `models.js`, `menu.js`,
+  `debug-panel.js` (Debug log; `?dev` word counter per region vs the §10.8 budgets), `career-create.js`, `career-week.js` (CW state, End week, Week report, events), `career-sheets.js` (Me / Season sheets),
   `career-match.js` (match prep, eval / Cup cards, result data, playCareer), `map-view.js`, `career-map.js`, `career-dossier.js`,
   `career-people.js`, `career-hub.js`, `career-end.js`, `encyclopedia.js`.
 - **render** `playback.js`, `acts.js`, `movement.js`, `actors.js`, `clock.js`, `camera.js`, `ball.js`, `scenes.js`,

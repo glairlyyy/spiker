@@ -33,6 +33,76 @@ const kv = rows =>
     .filter(Boolean)
     .map(([l, v, c]) => `<dt>${l || ''}</dt><dd${c ? ` class="${c}"` : ''}>${v}</dd>`)
     .join('')}</dl>`;
+/**
+ * L2 peek (spec §10.8): a trigger (`label` + ›) and a pinned detail card beside its owner panel — kv() rows and an
+ * optional .acts row. One open at a time (`CW.peek` = its id, so it survives re-renders); click toggles, Esc and an
+ * outside click close. The open card is moved to <body> (fixed, clear of the owner's action row) by peekSync().
+ * `cls` styles the trigger (e.g. 'row' for a full-width line).
+ */
+const peek = (id, label, body, cls = '') => {
+  const open = typeof CW !== 'undefined' && CW.peek === id;
+  return `<button class="peekt ${cls} ${open ? 'on' : ''}" data-peek="${esc(id)}" aria-expanded="${open}" onclick="peekToggle(this.dataset.peek)">${label}<i class="gt" aria-hidden="true">›</i></button><div class="peek" data-peek-of="${esc(id)}" role="dialog" hidden>${body}</div>`;
+};
+function peekToggle(id) {
+  CW.peek = CW.peek === id ? null : id;
+  peekSync();
+}
+/** Show the open peek (port it to <body> and place it beside its owner panel); drop stale or closed ones. */
+function peekSync() {
+  if (typeof CW === 'undefined') return;
+  const fresh = [...document.querySelectorAll('.peek[data-peek-of]:not(.ported)')],
+    trigOf = id => [...document.querySelectorAll('[data-peek]')].find(t => t.dataset.peek === id);
+  for (const p of document.querySelectorAll('body > .peek.ported')) {
+    if (fresh.some(f => f.dataset.peekOf === p.dataset.peekOf) || !trigOf(p.dataset.peekOf)) p.remove(); // re-rendered / screen gone
+    else p.hidden = p.dataset.peekOf !== CW.peek;
+  }
+  for (const t of document.querySelectorAll('[data-peek]')) {
+    const on = t.dataset.peek === CW.peek;
+    t.classList.toggle('on', on);
+    t.setAttribute('aria-expanded', String(on));
+  }
+  if (!CW.peek) return;
+  const trig = trigOf(CW.peek),
+    card = fresh.find(f => f.dataset.peekOf === CW.peek) || [...document.querySelectorAll('body > .peek.ported')].find(p => p.dataset.peekOf === CW.peek);
+  if (!trig || !card) return void (CW.peek = null);
+  card.hidden = false;
+  card.classList.add('ported');
+  document.body.appendChild(card);
+  const own = (trig.closest('.spotcard, .hubcard, .sheet, .wrail, .panel, section') || trig).getBoundingClientRect(),
+    tr = trig.getBoundingClientRect(),
+    w = card.offsetWidth,
+    h = card.offsetHeight,
+    x = own.right + 12 + w <= innerWidth - 8 ? own.right + 12 : own.left - 12 - w >= 8 ? own.left - 12 - w : Math.max(8, tr.left);
+  card.style.left = `${x}px`;
+  card.style.top = `${Math.max(8, Math.min(innerHeight - h - 8, tr.top - 8))}px`;
+}
+(function peekEvents() {
+  if (typeof document === 'undefined') return;
+  let q = 0;
+  const later = () => q || (q = requestAnimationFrame(() => ((q = 0), peekSync())));
+  addEventListener('DOMContentLoaded', () => {
+    const app = document.getElementById('app');
+    if (app) new MutationObserver(later).observe(app, { childList: true, subtree: true });
+  });
+  addEventListener('resize', later);
+  document.addEventListener('click', e => {
+    if (typeof CW === 'undefined' || !CW.peek || !e.target.closest) return;
+    if (e.target.closest('.peek, [data-peek]') || !e.target.isConnected) return;
+    CW.peek = null;
+    peekSync();
+  });
+  document.addEventListener(
+    'keydown',
+    e => {
+      if (e.key !== 'Escape' || typeof CW === 'undefined' || !CW.peek) return;
+      e.preventDefault();
+      e.stopImmediatePropagation(); // the peek closes first; the place card stays
+      CW.peek = null;
+      peekSync();
+    },
+    true
+  );
+})();
 /** A small ⓘ dot carrying explanatory text as a tooltip instead of a paragraph. */
 const info = t => `<span class="ii" tabindex="0" role="note" aria-label="${esc(t)}" ${tip(t)}>i</span>`;
 /**

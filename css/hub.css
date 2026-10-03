@@ -788,3 +788,88 @@
   padding-top: 12px;
   border-top: 1px solid var(--line);
 }
+/* L2 peek (spec §10.8, T-159): the trigger and the pinned card beside its owner panel */
+.peekt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.peekt:hover,
+.peekt.on {
+  border-color: var(--sel-line);
+  background: var(--sel-bg);
+}
+.peekt .gt {
+  font-style: normal;
+  color: var(--mute);
+}
+.peekt.row {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  text-align: left;
+}
+.peekt.row .gt {
+  margin-left: auto;
+}
+.peekt.row:hover,
+.peekt.row.on {
+  background: var(--sel-bg);
+}
+.peek {
+  position: fixed;
+  z-index: 80;
+  width: max-content;
+  min-width: 240px;
+  max-width: 320px;
+  padding: 14px;
+  background: var(--surf);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  color: var(--ink);
+  font-size: 13px;
+}
+.peek[hidden] {
+  display: none;
+}
+.peek .lab {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.peek .acts {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+/* ?dev word counter (T-159) */
+#wcnt .wc {
+  position: fixed;
+  z-index: 1001;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--cyan);
+  color: var(--on-ink);
+  font: 700 12px/16px var(--body);
+  pointer-events: none;
+}
+#wcnt .wc.over {
+  background: var(--bad);
+  color: #fff;
+}

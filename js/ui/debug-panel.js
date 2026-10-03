@@ -43,3 +43,35 @@ addEventListener('keydown', e => {
   if (e.key === 'Escape' && $('#dbg')) closeDebug();
 });
 dbgBadge();
+
+/**
+ * ?dev: visible words per screen region (spec §10.8 budgets), a badge at each region's corner, red over budget. Only
+ * what is on screen counts (closed peeks and tooltips don't). Budget 0 = count only.
+ */
+const WORD_REGIONS = [
+  ['.hub .tbar', () => 0],
+  ['.hub .wrail', () => 45],
+  ['#spot.open', el => (el.querySelector('.pside') ? 45 : 30)],
+  ['.hubmodal .hubcard', el => (el.querySelector('.brief') ? 25 : 30)],
+  ['.hub .sheet', () => 60],
+  ['.create2', () => 60],
+  ['.title2', () => 15]
+];
+const wordCount = el => (el.innerText || '').split(/\s+/).filter(w => /[\p{L}\p{N}]/u.test(w)).length;
+function wordBadges() {
+  let box = document.getElementById('wcnt');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'wcnt';
+    document.body.appendChild(box);
+  }
+  box.innerHTML = WORD_REGIONS.flatMap(([sel, budget]) =>
+    [...document.querySelectorAll(sel)].map(el => {
+      const r = el.getBoundingClientRect(),
+        n = wordCount(el),
+        b = budget(el);
+      return r.width ? `<span class="wc ${b && n > b ? 'over' : ''}" style="left:${Math.round(r.left + 4)}px;top:${Math.round(r.top + 4)}px">${n}${b ? `/${b}` : ''}</span>` : '';
+    })
+  ).join('');
+}
+if (typeof location !== 'undefined' && /[?&]dev\b/.test(location.search)) setInterval(wordBadges, 600);
