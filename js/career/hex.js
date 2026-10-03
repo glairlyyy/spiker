@@ -34,7 +34,7 @@ const Hex = {
   corners: ([x, y]) =>
     Array.from({ length: 6 }, (_, i) => [x + HEX.size * Math.cos((i * Math.PI) / 3), y + HEX.size * Math.sin((i * Math.PI) / 3)]),
   /**
-   * The grid (cached): { tiles: [{ id, q, r, at, region, kind, terrain, spots, hq }], byId }. A tile is land if its centre is.
+   * The grid (cached): { tiles: [{ id, q, r, at, region, kind, terrain, spots, hq }], byId }. A tile is land if its centre or a corner is.
    * region: the start owner (a place's or HQ's region wins over the polygon). kind: hq · academy · minor · place · land.
    * terrain: city (Wei downtown / old town) · beach (sand) · highland (near a mountain) · plain.
    */
@@ -47,8 +47,11 @@ const Hex = {
     for (let q = -1; q <= qMax; q++)
       for (let r = -Math.ceil(qMax / 2) - 1; r <= Math.ceil(CITY.h / (S * Math.sqrt(3))) + 1; r++) {
         const at = Hex.centre(q, r);
-        if (at[0] < 0 || at[1] < 0 || at[0] > CITY.w || at[1] > CITY.h || !City.onLand(at)) continue;
-        const t = { id: `${q},${r}`, q, r, at: at.map(v => Math.round(v * 10) / 10), region: City.regionAt(at), spots: [], hq: [] };
+        if (at[0] < -S || at[1] < -S || at[0] > CITY.w + S || at[1] > CITY.h + S) continue;
+        // a tile is land if its centre or any corner is (the coast is fully tiled); its region from the centre, or a land corner
+        const land = City.onLand(at) ? at : Hex.corners(at).find(p => City.onLand(p));
+        if (!land) continue;
+        const t = { id: `${q},${r}`, q, r, at: at.map(v => Math.round(v * 10) / 10), region: City.regionAt(land), spots: [], hq: [] };
         tiles.push(t);
         byId.set(t.id, t);
       }

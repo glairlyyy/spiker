@@ -251,16 +251,18 @@ function trainSpot(run, id, c) {
     T = Run.myTeam(run),
     hard = CW.hard && !run.injury,
     Q = City.quality(run, id),
-    x = (Q.known ? Q.q : (REGIONS[s.region] || REGIONS.open).q) * (1 + City.turf(run, id)), // preview at the advertised quality
+    x = (Q.known ? Q.q : (REGIONS[s.region] || REGIONS.open).q) * (1 + City.turf(run, id)) * DAY_GAIN, // one day's session at the advertised quality (City.day trains × DAY_GAIN)
     pv = Training.preview(run, key, hard, x),
     turf = City.turf(run, id),
     gain = ([k, , xp], role) => {
       if (pv.cap && k === pv.main[0])
         return `<div class="pgain"><span class="pi">${statI(statKey(k), 20)}</span><span>${STATNAME[k]} <i class="mute">· ${role}</i></span><b class="mute">at ${pv.cap} — matches only</b></div>`;
-      // sessions until this stat's next point at this rate
+      // the session's XP ÷ what a point of this stat costs now ≈ points this session (owner, 2026-10-03: a rating, not "+1 in n"); the count on hover
       const pr = Training.progress(run, k),
-        n = Math.max(1, Math.ceil((pr.need - pr.have) / Math.max(0.01, xp)));
-      return `<div class="pgain"><span class="pi">${statI(statKey(k), 20)}</span><span>${STATNAME[k]} <i class="mute">· ${role}</i></span>${n <= 1 ? '<b class="up">+1 now</b>' : `<span class="mute">+1 in ${n}</span>`}</div>`;
+        n = Math.max(1, Math.ceil((pr.need - pr.have) / Math.max(0.01, xp))),
+        r = xp / Math.max(1, pr.need),
+        [label, cls] = r >= 3 ? ['EXP +++', 'up'] : r >= 1 ? ['EXP ++', 'up'] : r >= 0.25 ? ['EXP +', ''] : ['Almost no EXP', 'mute']; // ≈ points this session: 3+ · 1+ · ¼+ · less
+      return `<div class="pgain"><span class="pi">${statI(statKey(k), 20)}</span><span>${STATNAME[k]} <i class="mute">· ${role}</i></span><b class="${cls}" ${tip(n <= 1 ? 'Next point this session' : `Next point in ${n} sessions here`)}>${label}</b></div>`;
     },
     mates = pv.mates.filter(pid => squadOf(T).some(p => p.id === pid)), // a teammate who has since left
     seg = `<div class="seg"><button class="btn ${hard ? '' : 'on'}" onclick="CW.hard=false;mapPick(CW.spot)">Normal</button><button class="btn ${hard ? 'on' : ''}" ${run.injury ? `disabled ${tip('Injured: light training only')}` : ''} onclick="CW.hard=true;mapPick(CW.spot)">Hard <small>×${TRAIN_X.hard.gain} · ×${TRAIN_X.hard.sta} sta · ${Math.round(TRAIN_X.hard.fail * 100)}% fail</small></button></div>`,

@@ -87,7 +87,7 @@ export function createFurniture(scene, heightAt) {
       ep = [],
       ec = [],
       gp = [],
-      SUB = 3;
+      SUB = 8; // fan triangles split 8 × 8: ~3 m facets, close to the terrain grid, so steep ground (mountains) stays covered
     for (const t of H.tiles) {
       const c = new THREE.Color(t.color),
         major = ['wei', 'wu', 'shu'].includes(t.own);
@@ -117,7 +117,7 @@ export function createFurniture(scene, heightAt) {
                 : [tri];
             for (const q of tris)
               for (const [u, v] of q) {
-                fp.push(...lift(P(u / SUB, v / SUB), 0.35));
+                fp.push(...lift(P(u / SUB, v / SUB), 0.6));
                 fc.push(c.r, c.g, c.b);
               }
           }
@@ -159,7 +159,16 @@ export function createFurniture(scene, heightAt) {
       g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
       const m = new THREE.Mesh(
         g,
-        new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide })
+        new THREE.MeshBasicMaterial({
+          vertexColors: true,
+          transparent: true,
+          opacity,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          polygonOffset: true, // drawn over the ground it hugs (no z-fighting where a facet dips into a slope)
+          polygonOffsetFactor: -4,
+          polygonOffsetUnits: -4
+        })
       );
       m.userData.hex = true;
       return m;

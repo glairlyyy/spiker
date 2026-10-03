@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-145** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-147** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -402,6 +402,18 @@ Result: Front.pick chooses the target with FRONT.prey (Wei → Wu 0.85 / Shu 0.1
 Spec: §4.18c Goldens: unchanged Save: no change
 Files: js/career/mapmodel.js (model.fog = your position + home), js/map3d/map3d.mjs (centre), js/ui/map-view.js (centre), js/ui/career-hub.js (◎ Me button, key C), js/map3d/avatar3d.mjs (HEIGHT 1.65 → 6 m, stride × size, bigger marker), css/career.css (.mapme)
 Result: the renderer's fog points are now [you, home] (run.fog still decides what you know: pins, scouting); ◎ Me (top-left of the map, key C) flies to the avatar at ≤ 70 m and re-enables follow; the avatar is 6 m tall with its stride scaled so the walk cycle still matches the ground speed. QA: hub, then C — the player centred and readable.
+
+### [x] T-145: Tile fill covers mountains and the coast (owner request, spec §4.27)
+
+Spec: §4.27 Map Goldens: unchanged Save: no change (run.hex keys tiles by id; new coastal tiles start neutral/by region)
+Files: js/career/hex.js (land = centre or any corner on land), js/map3d/pins3d.mjs (SUB 8, polygonOffset, lift 0.6)
+Result: tiles 139 → 169 (coast fully tiled); fill draped on ~3 m facets with polygon offset so slopes no longer cut through it. Slightly more tiles → war pace and value totals shift a little.
+
+### [x] T-146: Training gain as an EXP rating (owner request, spec §4.18a)
+
+Spec: §4.18a Goldens: unchanged Save: no change
+Files: js/ui/career-map.js (trainSpot gain row)
+Result: per-stat row shows EXP +++ (≥ 3 points of need per session) / EXP ++ (≥ 1) / EXP + (≥ ¼) / Almost no EXP; tip says sessions to next point. Preview now includes DAY_GAIN (was 4× too high). QA: Wei Strength Center shows Power EXP ++, Jump EXP +++.
 
 ## Later — outlines
 

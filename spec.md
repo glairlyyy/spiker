@@ -196,6 +196,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 - §4.18a Training layout (owner, 2026-10-03) **[built]**: Wei's four gyms stand together in one training district
   round the jW1 junction (a short walk apart: little travel inside Wei); Wu's spread thin along the coast (pier by the
   airport, sand courts on the south-east beach, harbor on the east coast, dunes in the north-east); Shu's stay scattered.
+  Gain per stat is shown as a rating, not a number (owner): EXP +++ / EXP ++ / EXP + / Almost no EXP (session gain vs points needed).
 - §4.19 Town layout (crowded; lore.md §3–§5); buildings fill districts (area + style + density), ~700 total (owner, 2026-10-03: thinner and lower — `MapModel.thin` 0.65, tallest towers ~half as high) (Wei
   ~330, Wu ~210, Shu ~85, Outlaws ~40, Academy ~24, Gloria ~18):
   - **Wei**: _Downtown_ (Wei Gold HQ, league office; tower grid, densest); _Old Town_ (north-coast pocket by the
@@ -299,8 +300,8 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 - §4.27 Hex territory **[locked]** (owner, 2026-10-03): the war map becomes hex tiles; each tile has its own takeover
   condition. Changes how factions move and seize; the player's travel (roads, days, trips, fog) does not change.
   Replaces the fixed border meters and border places (§4.7 `FRONT.borders`, T-130 lines, seized patches).
-  - Grid: flat-top hexes, `HEX.size` 36 map units (~140 land tiles), built deterministically from CITY (land = centre on
-    land); id = axial `q,r`. Start owner = the region at the centre (original polygons).
+  - Grid: flat-top hexes, `HEX.size` 36 map units (~170 land tiles), built deterministically from CITY (land = centre or any corner on
+    land, so the coast is fully tiled); id = axial `q,r`. Start owner = the region at the centre (or that land corner).
   - Kinds: `hq` (a club HQ: its faction's capital, never taken) · `academy` (Central Academy: neutral, never taken) ·
     `minor` (Outlaws, St. Gloria: not in the war) · `place` (holds a training place / venue) · terrain `city` (Wei
     districts), `beach` (sand), `highland` (mountains), `plain`.
@@ -320,7 +321,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     Shown on the tile panel (value) and the Factions cards (value held ± and the effects).
   - Effects: a place's owner = its tile's owner (`run.own` becomes a cache rebuilt from the tiles on every flip); turf, prices, quality, access follow. Economy
     and `weak` count lost places as today. Labels stay; buildings keep their original style.
-  - Map: tiles drawn in the owner's colour (fill + outline) — the only faction colour on the ground (the terrain itself is uncoloured, owner 2026-10-03); frontier edges brighter; the target tile shows a ring
+  - Map: tiles drawn in the owner's colour (fill + outline) — the only faction colour on the ground (the terrain itself is uncoloured, owner 2026-10-03); fill draped on the terrain (mountains included, owner 2026-10-03); frontier edges brighter; the target tile shows a ring
     `pressure/cost`; a click on a tile (map point) shows owner, kind, condition and pressure in the point panel.
   - Save: `run.hex = { own: { id: region } (changed tiles only), p: { id: n } }`; RUN_VERSION 16 (dev bump).
     Career goldens may change (battle sites); engine goldens unchanged.
