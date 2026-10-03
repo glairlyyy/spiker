@@ -478,26 +478,6 @@
   color: var(--ink);
   font-weight: 600;
 }
-.hub .wgoal {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--surf2);
-  color: var(--ink);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.hub .wgoal .wh {
-  margin: 0;
-}
-.hub .wgoal .warn {
-  color: var(--warn);
-  font-weight: 600;
-}
 .hub .winbox .wit {
   display: grid;
   gap: 12px;
@@ -664,10 +644,6 @@
 .hub .dslot.ghost b {
   color: var(--cyan);
 }
-.hub .wuse {
-  margin: 6px 0 0;
-  color: var(--mute);
-}
 /* place panel anatomy (T-119) */
 .plc .lab {
   display: flex;
@@ -716,9 +692,6 @@
   color: var(--ink);
   border-color: var(--sel-line);
   background: var(--sel-bg);
-}
-.plc .pflav {
-  margin: 12px 0 4px;
 }
 .plc .pgain {
   display: grid;
@@ -779,9 +752,6 @@
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-top: 8px;
-}
-.plc .puse {
-  margin: 8px 0 0;
 }
 .plc .pchal {
   margin-top: 16px;
@@ -887,27 +857,6 @@
   background: transparent;
   border-color: var(--line);
 }
-.hub .wgoal {
-  gap: 8px;
-  padding: 10px 12px;
-}
-.hub .wgoal .wg1 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-.hub .wgoal .gt1 {
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.hub .wgoal .mute {
-  color: var(--mute);
-  font-weight: 600;
-}
 .hub .winbox .peekt.wit {
   width: 100%;
   min-height: 40px;
@@ -1008,20 +957,6 @@
   max-height: 360px;
   overflow-y: auto;
   margin: 8px 0 0;
-}
-.sheet .goal .warn {
-  color: var(--warn);
-}
-.sheet .goal .mute {
-  color: var(--mute);
-}
-.sheet .goal {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.sheet .goal b {
-  margin-left: auto;
 }
 /* Quiet title and create (spec §10.8, T-164) */
 .create2 .rcw {

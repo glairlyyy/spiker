@@ -83,11 +83,10 @@ const Run = {
       cup: null,
       lastMain: KEYSTAT[role],
       result: null,
-      // modes, cup record, training depth, goals, sponsors, history
+      // modes, cup record, training depth, sponsors, history
       mode: { hard: !!mode.hard, short: !!mode.short, story: mode.story !== false },
       streak: null,
       injury: null,
-      goal: null,
       sponsorN: 0,
       focus: null,
       talk: null,
@@ -108,7 +107,6 @@ const Run = {
     People.ensure(run); // every NPC gets a want, traits and a plan slot (spec §4.23 A)
     City.roll(run); // the island's places: which premium ones are overhyped, which rough ones are gems
     Training.rollFloor(run);
-    Goals.set(run);
     Run.snap(run);
     return run;
   },
@@ -245,12 +243,11 @@ const Run = {
     return true;
   },
   /**
-   * Close the week: the league grinds, the coach's goal and sponsor deals are checked, an injury heals a little;
+   * Close the week: the league grinds, sponsor deals are checked, an injury heals a little;
    * then the next week (or a cup, after week 24 and week 28) begins.
    */
   endWeek(run) {
     Growth.week(run);
-    Goals.check(run);
     Sponsors.tick(run);
     if (run.injury && --run.injury.weeks <= 0) {
       run.injury = null;
@@ -271,11 +268,10 @@ const Run = {
     else Run.nextWeek(run);
     Run.save(run);
   },
-  /** A training week begins: who's at which training, a new coach's goal at the start of a block, sponsor offers. */
+  /** A training week begins: who's at which training, sponsor offers. */
   nextWeek(run) {
     Fight.clashRoll(run);
     Training.rollFloor(run);
-    Goals.set(run);
     Sponsors.offer(run);
     ElTrial.offer(run);
     Eval.setup(run);

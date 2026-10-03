@@ -69,11 +69,10 @@ function endWeekUI() {
   CW.recap = { week: before.week, rows, lines: lines.map(l => l.t) }; // the Week report, every week (spec §10.5)
   renderCareer();
 }
-/** A diary line's tag by its text (the producers stay as they are): [class, icon] — bad news, gains, the coach's goal, the world. */
+/** A diary line's tag by its text (the producers stay as they are): [class, icon] — bad news, gains, the world. */
 const LOG_TAGS = [
-  ['bad', '✕', /Goal missed|mood down|evicted|caught a cold|injur|noisy night|\blost\b|Lost|stolen|refused/i],
-  ['goal', '◎', /Coach's goal/],
-  ['good', '+', /Goal reached|broke through|Awakening|Signed with|learned|won\b|\+\d/],
+  ['bad', '✕', /mood down|evicted|caught a cold|injur|noisy night|\blost\b|Lost|stolen|refused/i],
+  ['good', '+', /broke through|Awakening|Signed with|learned|won\b|\+\d/],
   ['world', '•', /./]
 ];
 function logTag(t) {
@@ -95,13 +94,12 @@ function ownChanges(a, b) {
     });
 }
 /** The card after End week (hubCard shows it last, so events / cups / matches win). */
-/** The Week report (spec §10.5): penalties first, your week as chips, the new goal, island news; Next week → the brief. */
+/** The Week report (spec §10.5): penalties first, your week as chips, island news; Next week → the brief. */
 function recapCard() {
   const R2 = CW.recap,
     tagged = R2.lines.map(t => [logTag(t)[0], t]),
     of = k => tagged.filter(([c]) => c === k).map(([, t]) => t),
     bad = of('bad'),
-    goal = of('goal'),
     good = of('good'),
     world = of('world'),
     chips = R2.rows.filter(([c]) => c !== 'ch'),
@@ -111,7 +109,6 @@ function recapCard() {
   return `<div class="panel brief report recap"><div class="lab">Week ${typeof R2.week === 'number' ? R2.week : esc(R2.week)} report</div><h2>${bad.length ? 'A rough week' : chips.some(([c]) => c === 'up') ? 'A good week' : 'A quiet week'}</h2>
     ${bad.map(t => it('✕', 'dn', esc(t), '')).join('')}
     ${chips.length || good.length ? `<div class="bi"><span class="bico">✸</span><div><b>Your week</b><div class="rrows">${chips.map(([c, t]) => `<span class="rr ${c}">${esc(t)}</span>`).join('')}</div>${good.length && !chips.length ? `<div class="small mute">${good.map(esc).join(' · ')}</div>` : ''}</div><span></span></div>` : ''}
-    ${goal.map(t => it('◎', '', 'New goal', esc(t.replace(/^Coach's goal: /, '')))).join('')}
     ${world.length || places.length ? it('⚔', '', 'On the island', [...places, ...world].map(esc).join(' · ')) : ''}
     <div class="acts"><button class="btn hot" onclick="recapDone()">Next week</button></div></div>`;
 }

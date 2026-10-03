@@ -1,4 +1,4 @@
-// Career hub sheets (career-hub.js HUB_SHEETS): Me (you, element, skills, life, housing) and Season (calendar, goal and
+// Career hub sheets (career-hub.js HUB_SHEETS): Me (you, element, skills, life, housing) and Season (calendar,
 // sponsors, match history, Diary / Gazette), plus their handlers.
 
 /** The Me sheet (spec §10.4, SheetMe): who you are, stats with caps and progress, element, skills, life. */
@@ -85,16 +85,10 @@ function elementLine(run) {
   ];
   return `<div class="elline" style="--e:${c}" ${tip(`${how}\n\nTo unlock:\n${st.map(([ok, t]) => `${ok ? '✓' : '○'} ${t}`).join('\n')}`)}><span class="elb">${ENAME[you.el].split(' ')[0]}</span><b>${ENAME[you.el].split(' ').slice(1).join(' ')}</b><span class="elsteps">${st.map(([ok]) => `<i class="${ok ? 'ok' : ''}"></i>`).join('')}</span></div>`;
 }
-/** The season at a glance: coach's goal, cups so far, sponsors, injury. */
+/** The season at a glance: cups so far, sponsors, injury. */
 function seasonCard(run) {
-  const g = run.goal,
-    prog = Goals.progress(run, g);
-  return `<div class="panel season"><h3>Goal and sponsors${run.sponsors.length ? '' : info(`Sponsors make offers at ${SPONSOR_AT.map(f => f.toLocaleString()).join(', ')} fans.`)}</h3>
-    ${
-      g
-        ? `<div class="goal ${g.done === true ? 'ok' : g.done === false ? 'miss' : ''}" ${tip(`${prog ? `${prog}. ` : ''}Hit: +${GOAL_REWARD.sp} skill pts, +${GOAL_REWARD.fans} fans, mood up. Miss: mood down.`)}>◎ ${esc(Goals.text(run, g))} <b class="${g.done == null && g.by - run.week <= 1 ? 'warn' : 'mute'}">${g.done === true ? 'reached' : g.done === false ? 'missed' : `W${g.by}`}</b></div>`
-        : ''
-    }
+  if (!run.cups.length && !run.sponsors.length && !run.injury) return ''; // nothing yet: hidden (§10.8)
+  return `<div class="panel season"><h3>Cups and sponsors${run.sponsors.length ? '' : info(`Sponsors make offers at ${SPONSOR_AT.map(f => f.toLocaleString()).join(', ')} fans.`)}</h3>
     ${run.cups.map(c => `<div class="small">${esc(CUPS.find(x => x.id === c.id).name)}: <b>${Cup.placeText(c.place)}</b></div>`).join('')}
     ${
       run.sponsors.length
@@ -123,18 +117,17 @@ function leaveSquad(sure) {
   if (World.leaveAcademy(RUN)) Run.save(RUN);
   renderCareer();
 }
-/** Season timeline: 28 weeks with matches, camps, the coach's goal and the U21 Final Cup. */
+/** Season timeline: 28 weeks with matches, camps and the U21 Final Cup. */
 function calendar(run) {
   const pips = [],
-    cur = Run.cupDef(run),
-    g = run.goal;
+    cur = Run.cupDef(run);
   for (let w = 1; w <= CAREER.weeks; w++) {
     const k = CALENDAR[w] || 'train',
       lab = k === 'camp' ? 'Camp' : k === 'eval' ? 'Eval' : '',
       skip = run.mode.short && w < 5,
       now = !cur && w === run.week;
     pips.push(
-      `<span class="pip ${w < run.week || (cur && w <= run.week) ? 'past' : now ? 'now' : ''} ${k} ${skip ? 'skip' : ''} ${g && g.by === w && g.done == null ? 'goalw' : ''}" title="Week ${w}${lab ? ': ' + lab : ''}${g && g.by === w ? ' · goal due' : ''}">${now ? w : ''}${lab ? `<i>${lab[0]}</i>` : ''}</span>` // week numbers on hover, this week's shown (§10.8)
+      `<span class="pip ${w < run.week || (cur && w <= run.week) ? 'past' : now ? 'now' : ''} ${k} ${skip ? 'skip' : ''}" title="Week ${w}${lab ? ': ' + lab : ''}">${now ? w : ''}${lab ? `<i>${lab[0]}</i>` : ''}</span>` // week numbers on hover, this week's shown (§10.8)
     );
     const c = CUPS.find(x => x.after === w);
     if (c) {
@@ -204,7 +197,7 @@ function sheetSeason(run) {
     g = run.gazette;
   if (t === 'news' && g && !g.read && Run.readGazette(run)) Run.save(run);
   return `<div class="sheet-h"><h2>Season</h2></div>
-    <div class="sheet-cols seacols"><div class="scol"><section class="card"><div class="lab" ${tip('E evaluation · C camp · underline: goal due')}>Calendar</div>${calendar(run)}</section>${seasonCard(run)}${matchLog(run)}</div>
+    <div class="sheet-cols seacols"><div class="scol"><section class="card"><div class="lab" ${tip('E evaluation · C camp')}>Calendar</div>${calendar(run)}</section>${seasonCard(run)}${matchLog(run)}</div>
     <section class="card"><div class="seg pfil"><button class="btn ${t === 'diary' ? 'on' : ''}" onclick="CW.stab='diary';renderCareer()">Diary</button><button class="btn ${t === 'news' ? 'on' : ''}" onclick="CW.stab='news';renderCareer()">Gazette${g && !g.read ? ' <em class="badge">!</em>' : ''}</button></div>${
       t === 'news'
         ? g

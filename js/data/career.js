@@ -102,9 +102,6 @@ const TALKS = {
   feed: { name: 'Feed me', desc: 'You get a Lv2 captain buff for the first 8 points.' },
   calm: { name: 'Stay composed', desc: 'Nobody on your side starts nervous; the other team starts a little tense.' }
 };
-/** Coach's goal for each block of the season (evaluated at the block's last week). */
-const BLOCKS = [6, 12, 18, 24, 28];
-const GOAL_REWARD = { sp: 40, fans: 300 };
 /** Sponsors offered at fan milestones: a perk you keep while you meet the condition. */
 const SPONSOR_AT = [2000, 5000, 8000];
 const SPONSORS = {

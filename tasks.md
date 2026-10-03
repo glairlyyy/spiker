@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-170** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-172** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -66,6 +66,17 @@ Accept:
 - People sheet ≤ 60 visible words at week 1 (`?dev`).
 QA: career run → People: star someone, reload, open Chemistry ›.
 Result:
+
+Owner request 2026-10-03: remove the coach's goal (spec §10.1b).
+
+### [x] T-170: Remove the coach's goal
+
+Spec: §10.1b Goldens: unchanged (career only) Save: no change (old `run.goal` ignored)
+Files: js/career/goals.js → js/career/sponsors.js (Goals removed; Sponsors stay), index.html, js/career/run.js, js/data/career.js (GOAL_REWARD, BLOCKS), js/data/glossary.js (sp / fans text), js/ui/career-hub.js (brief row, rail goal, folded-rail icon), js/ui/career-sheets.js (Season goal line, calendar `goalw`, legend), js/ui/career-week.js (goal log tag, report row), css (dead `.wgoal` / `.goalw` / `.goal` rules), tests/career.test.js (goal tests removed), ARCHITECTURE.md
+Do not: touch match focus goals (`FOCUS`, pre-match), sponsors, or the engine.
+Accept: grep finds no `Goals.` / `run.goal` / "Coach's goal" in js/; dead-globals test green; tests + lint green.
+QA: career run → hub, brief, Season sheet, End week report; screenshots, no errors.
+Result: Goals removed (goals.js → sponsors.js, Sponsors only); run.goal no longer created (old saves keep a dead field); rail goal line, folded-rail ◎, brief row, Season goal line, calendar underline, Week report "New goal" and the goal log tags gone; Season card → "Cups and sponsors", hidden while empty; 13 dead CSS classes pruned (incl. Quiet UI leftovers); goal tests → one no-goal test (110 tests). QA: brief, hub, folded rail, Season, Week report — no errors.
 
 Owner request 2026-10-03 (UI polish leftovers): T-165 → T-167. UI only: no rule, number or save change; goldens unchanged.
 

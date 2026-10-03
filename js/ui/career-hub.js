@@ -1,5 +1,5 @@
 // Career hub (spec §10.1): top bar (labelled resources, week, sheet tabs Me · People · World · Season, ⚙), the week
-// rail on the left (you, the week's days, coach's goal, inbox, End week), the 3D map and the place panel over it.
+// rail on the left (you, the week's days, inbox, End week), the 3D map and the place panel over it.
 // Tabs open the sheets (Me, People, World, Season); ⚙ is a small pop-over (Main menu, Debug log with ?dev, Abandon run).
 // Cards (events, match days, the week brief/report) open over the map.
 
@@ -73,7 +73,7 @@ function hubCard(run, nextCup) {
 }
 /** One Week brief per week (and per cup round). */
 const briefKey = run => `${run.week}:${(Run.cupDef(run) || {}).id || ''}`;
-/** The Week brief (spec §10.5): what this week holds — battle, payday, goal, match — and how to start it. Never acts. */
+/** The Week brief (spec §10.5): what this week holds — battle, payday, match — and how to start it. Never acts. */
 function weekBrief(run) {
   const wt = Run.weekType(run),
     match = wt === 'cup' || wt === 'eval',
@@ -117,20 +117,6 @@ function weekBrief(run) {
     const pay = run.log.find(l => /^Payday:/.test(l.t));
     row('☰', 'Payday', 'Gazette out', pay ? [['Paid', esc(pay.t.replace(/^Payday: /, ''))]] : null, '', 'pay');
   }
-  const g = run.goal;
-  if (g && g.done == null)
-    row(
-      '◎',
-      "Coach's goal",
-      `W${g.by}`,
-      [
-        ['Goal', esc(Goals.text(run, g))],
-        ['Progress', esc(Goals.progress(run, g))],
-        ['Due', `Week ${g.by}`]
-      ],
-      g.by - run.week <= 1 ? 'warn' : '',
-      'goal'
-    );
   if (!match && CALENDAR[run.week + 1] === 'eval') {
     const ev = evalNext(run);
     row('⚑', 'Evaluation', 'next week', Array.isArray(ev) ? ev : [['Note', ev]], '', 'evaln');
@@ -193,7 +179,7 @@ function topBar(real) {
     )}<button class="btn ${CW.gear ? 'on' : ''}" onclick="gearToggle()" aria-label="Settings">⚙</button></nav>${CW.gear ? gearPop() : ''}
   </header>`;
 }
-/** The week rail: you and your 4 stats, the week's days, the coach's goal, the inbox, End week. */
+/** The week rail: you and your 4 stats, the week's days, the inbox, End week. */
 function weekRail(run, armed) {
   const you = Run.you(run),
     team = Run.myTeam(run),
@@ -210,7 +196,6 @@ function weekRail(run, armed) {
       return `<span ${tip(`${STATNAME[k]}: ${GLOSSARY[k].long}`)} aria-label="${STATNAME[k]} ${v}"><b>${statI(statKey(k), 16)}${v}</b><i class="mbar4"><i style="width:${Math.min(100, v)}%"></i></i></span>`;
     }).join('')}</div>
     ${weekSection(run)}
-    ${railGoal(run)}
     <section class="winbox" aria-label="Inbox">${inboxRows(run)}</section>
     ${
       !match && !run.event
@@ -223,7 +208,7 @@ function weekRail(run, armed) {
 }
 const endTip = (days, eve) => tip(eve ? 'Sleep: start the next week' : `Skip the ${days} day${days > 1 ? 's' : ''} left`);
 /**
- * The folded rail (spec §10.1, 72px): face (→ Me), days left, the 7 day cells stacked, goal (→ Season), inbox with
+ * The folded rail (spec §10.1, 72px): face (→ Me), days left, the 7 day cells stacked, inbox with
  * its count (→ unfolds the rail), End week (same two-click arm and Space). Nothing in the rail is out of reach.
  */
 function railStrip(run, armed) {
@@ -232,8 +217,6 @@ function railStrip(run, armed) {
     days = City.days(run),
     match = wt === 'cup' || wt === 'eval',
     eve = !match && days <= 0,
-    g = run.goal && run.goal.done == null ? run.goal : null,
-    soon = g && g.by - run.week <= 1,
     n = inboxItems(run).length,
     cells = match
       ? '<div class="dslot match" title="Match week">⚑</div>'
@@ -248,7 +231,6 @@ function railStrip(run, armed) {
     <button class="wme" onclick="hubOpen('me')" aria-label="Your player" ${tip(you.name)}><span class="portrait">${faceSVG(you, MOODS[run.mood].form, 40)}</span></button>
     <div class="wleft"><b>${match ? '⚑' : days}</b><small>${match ? 'match' : 'left'}</small></div>
     <div class="wdays">${cells}</div>
-    ${g ? `<button class="wicon ${soon ? 'warn' : ''}" onclick="hubOpen('season')" aria-label="Coach's goal" ${tip(`Coach's goal: ${Goals.text(run, g)}, by week ${g.by}`)}>◎</button>` : ''}
     <button class="wicon" onclick="railToggle()" aria-label="Inbox: ${n} waiting" ${tip(`Inbox · ${n} waiting`)}>✉${n ? `<em class="badge">${n}</em>` : ''}</button>
     ${
       !match && !run.event
@@ -297,17 +279,6 @@ function weekCells(run) {
     ...ghost.map(e => [e, 'ghost']),
     ...Array.from({ length: WEEK_DAYS - spent - ghost.length }, () => [null, 'free'])
   ];
-}
-/** Coach's goal card in the rail (click: Season). */
-function railGoal(run) {
-  const g = run.goal;
-  if (!g || g.done != null) return '';
-  const soon = g.by - run.week <= 1,
-    m = /(\d[\d,]*) \/ (\d[\d,]*)/.exec(Goals.progress(run, g) || ''),
-    pct = m ? Math.min(100, (100 * +m[1].replace(/,/g, '')) / Math.max(1, +m[2].replace(/,/g, ''))) : 0;
-  return `<button class="wgoal" onclick="hubOpen('season')" ${tip(`Coach's goal: ${Goals.progress(run, g)}, due week ${g.by}`)}><span class="wg1"><span class="gi">◎</span><span class="gt1">${esc(Goals.text(run, g))}</span><b class="${soon ? 'warn' : 'mute'}">W${g.by}</b></span>${
-    m ? `<i class="mbar4"><i style="width:${pct}%"></i></i>` : ''
-  }</button>`;
 }
 /** The rail inbox (spec §10.3): what waits for you, one button each, until handled. Max 5; the suggested next step first. */
 function inboxRows(run) {
@@ -380,7 +351,6 @@ function inboxItems(run) {
     if (Array.isArray(evNext)) facts('evaln', '⚑', `Eval W${run.week + 1}`, evNext, [['Season', "hubOpen('season')"]]);
     else act('⚑', `Eval W${run.week + 1}`, evNext, "hubOpen('season')");
   }
-  // a goal due soon: the rail's goal line turns warn (W{by}) — not repeated here (say it once, §10.8)
   if (World.isFree(run)) {
     const t = run.teams.find(t2 => World.canJoin(run, t2.i).ok);
     if (t) act('🛡', `${esc(t.name)} signs you`, 'Signing open: see Clubs', "worldTab('clubs')");

@@ -422,26 +422,29 @@ SheetWorld, SheetSeason, WeekBrief, WeekReport, EventCard, MatchResult, TitleScr
 floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or number changes — layout and flow only.
 
 - §10.1 Hub = top bar 56px (labelled resources, Week n/28, tabs Me 1 · People 2 · World 3 · Season 4, ⚙) + week rail
-  340px (you + 4 stats, day track, coach's goal, inbox, End week action row) + map (legend) + place panel 448px
+  340px (you + 4 stats, day track, inbox, End week action row) + map (legend) + place panel 448px
   (right, over the map). No site header, no dock, no floating HUD corners. **No list of places** (owner, 2026-10-03:
   desktop only; places are found on the map). The rail **collapses** to 72px (« / », key `[`, remembered per browser):
-  face, days-left stack (7 cells incl. ghost), goal and inbox icons with a count, End week; the map widens.
+  face, days-left stack (7 cells incl. ghost), inbox icon with a count, End week; the map widens.
 - §10.1a Info lists (owner, 2026-10-03): a block with more than two facts is a vertical label / value list — one fact
   per line, label `mute` left, value right — never a `·`-joined chain. Applies to the street battle card (facts, and
   per side: cost, injury, Win effects, Lose effects — one effect per line), challenge block, club HQ facts, inbox
   items, week brief rows, match prep notes. Chips stay for short tag sets; `·` only between two items. Toggles and
   options (e.g. the fight's Play it / Sim it) go above the action row (§9.8).
+- §10.1b No coach's goal (owner, 2026-10-03): the per-block goal (`Goals.set/check`, `run.goal`, `GOAL_REWARD`, `BLOCKS`)
+  is removed — no goal on the rail, brief, Season sheet, calendar or Week report. Skill points and fans come from matches,
+  battles and sponsors only. Old saves keep a dead `run.goal` (ignored, no version bump). Sponsors stay. Task T-170.
 - §10.2 Day track: 7 slots Mon–Sun; each spent day shows what it was (icon + label), trip days hatched, free days empty;
   a selected place's cost shows as dashed ghost slots before you commit. Match weeks (eval/cup) show one match slot.
   Needs `run.dayLog` (list of `{k, label, stat?, at?}` per spent day, cleared at week start; `run.days` is already the
   days-left number) via RUN_DEFAULTS — no version bump.
 - §10.3 Inbox (rail): items until handled — street battle, approaches waiting, Gazette unread, match next week,
-  goal due ≤ 1 week, club would sign you. One button each (opens the place / sheet / card). Replaces
+  club would sign you. One button each (opens the place / sheet / card). Replaces
   toasts, dock badges and the seize banner (a seize becomes an inbox item for one week).
 - §10.4 Sheets open over the map (rail stays): Me (stats, element, skills, life/housing rows) · People (filters, list,
   person detail, approaches answered in place) · World (tabs Factions · Clubs · Rankings; dossier in place) · Season
-  (calendar, goal, sponsors, history, Diary/Gazette). ⚙ = Main menu, settings, Abandon run.
-- §10.5 Cards: Week brief (every week start; lists battle, payday, goal, match; eval/cup weeks lead to Match prep) ·
+  (calendar, sponsors, history, Diary/Gazette). ⚙ = Main menu, settings, Abandon run.
+- §10.5 Cards: Week brief (every week start; lists battle, payday, match; eval/cup weeks lead to Match prep) ·
   Event (only blocking card) · Week report (after End week; penalties first) · Match prep (eval/cup; two roster
   columns, focus segment, Play/Sim). The old battle intro, Gazette pop-up and recap cards go.
 - §10.6 Match result screen replaces the podium overlay: grade tile, your K/B/A/E + focus, rewards chips, growth,

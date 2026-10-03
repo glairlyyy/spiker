@@ -21,8 +21,8 @@ const GLOSSARY = {
   },
   day: { icon: 'day', short: 'Day', long: `Day. ${WEEK_DAYS} a week. Every action takes one, plus the trip there.` },
   money: { icon: 'mon', short: '$', long: 'Money. Allowance on payday, minus food and rent. Pays for places, fees and crews.' },
-  sp: { icon: 'sp', short: 'Skill pts', long: 'Skill points. Earned in matches and goals. Spent on career skills and the physio.' },
-  fans: { icon: 'fan', short: 'Fans', long: 'Fans. Earned in matches, battles and goals. Sponsors make offers at set totals.' },
+  sp: { icon: 'sp', short: 'Skill pts', long: 'Skill points. Earned in matches. Spent on career skills and the physio.' },
+  fans: { icon: 'fan', short: 'Fans', long: 'Fans. Earned in matches and battles. Sponsors make offers at set totals.' },
   mood: { icon: 'mood', short: 'Mood', long: `Mood. ${MOODS.map(m => m.name || m).join(' · ')}. Multiplies training gains.` },
   bond: { icon: 'bond', short: 'Bond', long: 'Bond 0–100 with a teammate. 60+: two-player combos. 80+: friendship training ×1.5.' },
   standing: {

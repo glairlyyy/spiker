@@ -33,7 +33,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   `rally-defense.js`, `rally-block.js`, `rally.js`.
 - **audio** `sfx.js` (internals in the `SOUND` closure; global: `SND`, `sfx`, `audioInit`, `toggleSound`, `setVolume`, `bgmStart`, `bgmStop`, `panAt`). **game** `state.js` (G, HYPE, Screens / navigate), `bracket.js`.
 - **career** `run.js` (Run, RUN_DEFAULTS), `training.js`, `growth.js`, `element.js`, `world.js`, `pool.js`, `eval.js`,
-  `city.js`, `front.js`, `mapmodel.js`, `dossier.js`, `events.js`, `goals.js`, `skills.js`, `rank.js`, `cup.js`, `fight.js`.
+  `city.js`, `front.js`, `mapmodel.js`, `dossier.js`, `events.js`, `sponsors.js`, `skills.js`, `rank.js`, `cup.js`, `fight.js`.
 - **ui** `dom.js` (esc, tip, info, fold, kv — the vertical label/value list of spec §10.1a, peek — the L2 detail card of §10.8: `CW.peek` holds the open id, `peekSync` (MutationObserver on #app) ports the open card to <body> beside its owner panel…), `icons.js`, `match-screen.js`, `match-result.js` (result card, finishMatch, cut-ins / toasts), `models.js`, `menu.js`,
   `debug-panel.js` (Debug log; `?dev` word counter per region vs the §10.8 budgets), `career-create.js`, `career-week.js` (CW state, End week, Week report, events), `career-sheets.js` (Me / Season sheets),
   `career-match.js` (match prep, eval / Cup cards, result data, playCareer), `map-view.js`, `career-map.js`, `career-dossier.js`,
@@ -105,8 +105,7 @@ The match screen takes a fixture: `navigate('match', { a, b, round, back, onFini
 - **Training depth** (`career/training.js`, `TRAIN_X`): facility Lv 1–5 by use, Hard option, same-training streaks,
   steeper diminishing returns, the training cap `TRAIN_CAP` 75 (no Limit Break), injuries
   when a session fails while exhausted (light training until healed, or the physio).
-- **Goals and sponsors** (`career/goals.js`): the coach sets a goal per block (`BLOCKS`), checked at the block's last
-  week; sponsors make offers at fan milestones (a `pre` event shown before the week's choice) with a perk kept while a
+- **Sponsors** (`career/sponsors.js`; the coach's goal was removed in T-170, spec §10.1b): sponsors make offers at fan milestones (a `pre` event shown before the week's choice) with a perk kept while a
   condition holds.
 - **Matches** (`career/cup.js`; street battles, challenges, loss and injury are `Fight` in `career/fight.js`): an S–C grade from your own line scales that match's rewards; a pre-match focus goal;
   a captain's team talk before Cup matches (applied in `Cup.prepare` and the fixture's `setup(m)` hook).
@@ -445,7 +444,7 @@ and a Gazette line) → star / OP breakthrough rolls (`Growth.grow`, unchanged R
 keeps ≤ REL.max entries (oldest non-scar dropped first), refreshes the cache and returns the bond change. `Rel.stance` = Σ value ×
 fade (REL.decay^weeks, scars never) × both traits' multipliers; `Rel.tag` (ally / respect / neutral / resent / enemy) and `Rel.rival`
 read it. `you.bond[id]` is only a cache: `Rel.bondOf` = clamp(round(stance × REL.bondK), 0, 100), refreshed on every add and in
-`Rel.week` (called from `Growth.week`), so combos (60), friendship (80), goals and the People sheet read it unchanged.
+`Rel.week` (called from `Growth.week`), so combos (60), friendship (80) and the People sheet read it unchanged.
 Sources: `Run.bond(run, id, v, kind)` (training → trained, city outings → hung_out, events → event), `Cup.result` →
 `Rel.afterMatch` (won / lost_together, ego-log kinds), `Cup.fixture` → `Rel.spot` (spot_taken for a benched rival, once a week),
 challenge / clash wins → `Rel.beatMe`. Match rewards no longer carry bond.
@@ -520,7 +519,7 @@ roster. Ratings and elements are `null` until one of its clubs is scouted or you
 lost, fronts, price / quality multipliers).
 
 UI files only render and call rules: `City.after` (the week's event, once after its first action), `Run.canEndWeek`,
-`Run.readGazette`, `Goals.progress`, `Cup.simNow(fx)` (resolve a fixture without watching: setup, rallies, finish) and
+`Run.readGazette`, `Cup.simNow(fx)` (resolve a fixture without watching: setup, rallies, finish) and
 `Cup.upcoming(run)` (the cup screen's next match — other matches simulated first — called by `renderCareer` before it
 draws, so no render function changes or saves the run).
 
@@ -719,7 +718,7 @@ with "XP: …" and the factor note.
 
 `js/ui/career-hub.js` renders the whole career screen (spec §10) as a fixed full-screen layer (covers the page header):
 top bar (`topBar`: labelled resources with one-render deltas, sheet tabs Me · People · World · Season with keys 1–4, ⚙ →
-`gearPop`), week rail (`weekRail`: you + stats, `dayTrack` from `run.dayLog` via `weekCells`, coach's goal, `inboxRows`
+`gearPop`), week rail (`weekRail`: you + stats, `dayTrack` from `run.dayLog` via `weekCells`, `inboxRows`
 over `inboxItems`, End week; folded by «/» or `[` to `railStrip`, a 72px strip with the same reach — `.hub.railmini` sets
 `--rail`, which every layer right of the rail follows; `CW.railMini` is remembered in `KEYS.rail`), the 3D island map
 (`MapView`, see Island map layers; places are found only on the map, no list) with `mapLegend` chips, the place panel (`#spot`, `placeCard` anatomy in career-map.js) and a card over the map (`hubCard`: event → Week

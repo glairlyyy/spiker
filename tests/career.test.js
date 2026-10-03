@@ -884,15 +884,6 @@ test('career: rules moved out of the UI (T-075)', () => {
   // Run.readGazette: true once
   run.gazette = { week: 1, items: [], read: false };
   assert(g.Run.readGazette(run) && run.gazette.read && !g.Run.readGazette(run), 'the Gazette is read once');
-  // Goals.progress
-  const you = g.Run.you(run);
-  eq(
-    g.Goals.progress(run, { kind: 'stat', stat: 'power', target: you.power + 3, done: null }),
-    `${you.power} / ${you.power + 3}`,
-    'stat progress'
-  );
-  eq(g.Goals.progress(run, { kind: 'win', week: 4, done: null }), 'to play', 'win goal not played yet');
-  eq(g.Goals.progress(run, { kind: 'fans', target: 100, done: true }), '', 'decided goals show no progress');
   // Dossier.summary / standingLabel
   run.rep = { wei: 40, wu: -5 };
   g.Hex.flip(run, g.Hex.ofSpot('weiSpeed').id, 'wu');
@@ -938,55 +929,14 @@ const mkRunG = seed => {
   return [g, g.Run.create(g.Run.draft(), { role: 'WS', name: 'Cov', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 })];
 };
 
-test('goals: blocks, a goal by the block end that never repeats its kind, reward / miss at the deadline', () => {
+test('no coach\'s goal (spec §10.1b, T-170): a run never gets one, through week ends and new weeks', () => {
   const [g, run] = mkRunG(871);
-  eq(
-    JSON.stringify([1, 6, 7, 12, 13, 18, 19, 24, 25, 28, 28].map(w => g.Goals.block(w).join('-'))),
-    JSON.stringify(['1-6', '1-6', '7-12', '7-12', '13-18', '13-18', '19-24', '19-24', '25-28', '25-28', '25-28']),
-    'block ranges'
-  );
-  run.goal = null;
-  run.week = 3;
-  g.Goals.set(run);
-  const first = run.goal;
-  eq(first.by, 6, 'the goal is due at the block end');
-  assert(first.done === null, 'open');
-  g.Goals.set(run);
-  assert(run.goal === first, 'a live goal is not replaced');
-  run.week = 7;
-  g.Goals.set(run);
-  eq(run.goal.by, 12, 'next block, next goal');
-  assert(run.goal.kind !== first.kind, 'the coach does not repeat the previous kind');
-  // reward: force a met fans goal
-  run.goal = { kind: 'fans', target: 100, by: 8, done: null };
-  run.fans = 500;
-  run.week = 7;
-  g.Goals.check(run);
-  assert(run.goal.done === null, 'nothing before the deadline week');
-  const sp0 = run.sp,
-    fans0 = run.fans;
-  run.week = 8;
-  g.Goals.check(run);
-  assert(
-    run.goal.done === true && run.sp === sp0 + g.GOAL_REWARD.sp && run.fans === fans0 + g.GOAL_REWARD.fans,
-    'a met goal pays skill points and fans'
-  );
-  g.Goals.check(run);
-  eq(run.sp, sp0 + g.GOAL_REWARD.sp, 'a decided goal pays once');
-  // miss: a mood hit
-  run.goal = { kind: 'fans', target: 10 ** 9, by: 8, done: null };
-  const mood0 = run.mood;
-  g.Goals.check(run);
-  assert(run.goal.done === false && run.mood === mood0 - 1, 'a missed goal costs a mood point');
-  // met() per kind and text()
-  const you = g.Run.you(run);
-  assert(g.Goals.met(run, { kind: 'stat', stat: 'power', target: you.power }), 'stat met at the target');
-  assert(!g.Goals.met(run, { kind: 'stat', stat: 'power', target: you.power + 1 }), 'stat not met above it');
-  assert(
-    !g.Goals.met(run, { kind: 'win', week: 4 }) && (run.evals.push({ week: 4, win: true }), g.Goals.met(run, { kind: 'win', week: 4 })),
-    'win goal follows run.evals'
-  );
-  assert(/fans/.test(g.Goals.text(run, { kind: 'fans', target: 1500 })) && g.Goals.text(run, null) === '', 'goal text');
+  assert(!('goal' in run) && typeof g.Goals === 'undefined', 'no goal at the start, no Goals module');
+  for (let i = 0; i < 3; i++) {
+    run.event = null;
+    g.Run.endWeek(run);
+  }
+  assert(!run.goal && !run.log.some(l => /Coach's goal|Goal (reached|missed)/.test(l.t)), 'no goal set, checked or logged');
 });
 
 test('sponsors: offers at fan milestones, perks, mood / training / win / grade conditions', () => {
