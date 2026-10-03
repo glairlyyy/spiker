@@ -99,6 +99,10 @@ Grading dogma = what the faction's join conditions and facility conditions mean 
 - **The MC's cohort** [locked shape]: the **rival** and the named aces (**Reina, Ren, Taiga**) are the MC's age (19):
   the next aces. They arrive far stronger than the MC and grow on authored curves; the rival **matches the OP aces by
   the year-1 Cup**. In year 2 this cohort are the island's aces; the MC chases them. Factions of each: **[open]**.
+- **The ending** [locked shape]: if the MC wins the year-1 Cup, the rival takes it personally and pushes to their limit
+  (a cut-scene; the rival's growth at maximum). Beating the rival is what gets the MC picked for the international
+  team; winning the year-2 Cup is the true end — the MC, the rival and the aces are picked together for the
+  International Cup.
 
 ## 7. Voices (unreliable narration) [locked]
 
