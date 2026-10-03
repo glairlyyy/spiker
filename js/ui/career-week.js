@@ -10,7 +10,6 @@ let CW = {
   seizes: null,
   snap: null,
   sheet: null,
-  pfilter: 'all',
   wtab: 'factions',
   stab: 'diary',
   gear: false,
