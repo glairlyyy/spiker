@@ -730,7 +730,10 @@ report → Week brief → cup / eval card).
 
 Sheets open over the map area (rail and top bar stay): `HUB_SHEETS` → `sheetMe` / `sheetSeason` (career-sheets.js),
 `sheetPeople` (career-people.js), `sheetWorld` (career-dossier.js; the dossier renders in place on its Factions tab).
-UI state lives in `CW` (career-week.js): `sheet`, `pfilter`, `wtab`, `stab`, `gear`, `railMini`, `person`, `dossier`, … —
+People is one list (spec §10.9: waiting → favourites → squad → bench → others → gone, markers 🛡 / ⚔ / ★ after the name;
+`Chemistry ›` peek in its header); `run.fav` (RUN_DEFAULTS, ids as strings, display only) holds the stars (`toggleFav`).
+World › My club (`myClubCard`) is a shortcut card; signing happens only on the club HQ panel (`hqPanel` → `joinClub`).
+UI state lives in `CW` (career-week.js): `sheet`, `wtab`, `stab`, `gear`, `railMini`, `person`, `dossier`, … —
 nothing of it is saved except `railMini` (a browser preference in `KEYS.rail`, not the run). There are no drawers.
 
 Action lock (UI state only): `mapAfter` / `mapTravel` call `actLock(fx)` → `CW.lock` {phase walk → spin → done}; `lockLayer` renders in `renderCareer` (so it survives re-renders), `hubKey` returns while it is set, and `MapView.busy()` (map3d `busy`: the avatar is walking — the camera holds on it and map input is ignored) ends the walk phase. A training day's `trainFx` (before / after `trainSnap`) fills the result card; `lockShown(run)` keeps the top bar and rail on the before-values until then.

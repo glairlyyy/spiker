@@ -86,15 +86,19 @@ function openPerson(id) {
   CW.sheet = 'people';
   renderCareer();
 }
-/** The People sheet (spec §10.4, SheetPeople): filters, the list on the left, the selected person on the right. */
-const PEOPLE_FILTERS = { all: 'Everyone', squad: 'Squad', rivals: 'Rivals', waiting: 'Waiting' };
+/**
+ * The People sheet (spec §10.4 / §10.9, SheetPeople): one list on the left (waiting → favourites → squad → bench →
+ * others → gone, each person once) with small markers after the name, the selected person on the right, and
+ * `Chemistry ›` (squad cliques / feuds, Leave squad) in the header when you have a squad.
+ */
 function sheetPeople(run) {
-  const f = PEOPLE_FILTERS[CW.pfilter] ? CW.pfilter : 'all',
-    mates = Run.mates(run),
+  const mates = Run.mates(run),
+    T = Run.myTeam(run),
     onBench = m => !!(m.team.bench && m.team.bench.includes(m)),
     waits = Asks.list(run),
     waitIds = new Set(waits.map(a => String(a.id))),
     mateIds = new Set(mates.map(m => m.id)),
+    favIds = new Set((run.fav || []).map(String)),
     others = People.all(run)
       .filter(p => !mateIds.has(p.id) && (Rel.list(run, p.id).length || run.met[p.id] || String(p.id) === CW.person))
       .sort((a, b) => Rel.list(run, b.id).length - Rel.list(run, a.id).length || ovr(b) - ovr(a))
@@ -104,54 +108,59 @@ function sheetPeople(run) {
       .map(id => People.find(run, id))
       .filter(Boolean),
     rival = p => Rel.rival(run, String(p.id)) || ['resent', 'enemy'].includes(Rel.tag(run, String(p.id))),
-    waiting = waits.map(a => People.find(run, a.id)).filter(Boolean),
-    groups =
-      f === 'squad'
-        ? [
-            ['Squad', mates.filter(m => !onBench(m))],
-            ['Bench', mates.filter(onBench)]
-          ]
-        : f === 'rivals'
-          ? [['Rivals', [...mates, ...others].filter(rival)]]
-          : f === 'waiting'
-            ? [['Waiting', waiting]]
-            : [
-                ['Waiting', waiting],
-                ['Squad', mates.filter(m => !onBench(m) && !waitIds.has(String(m.id)))],
-                ['Bench', mates.filter(m => onBench(m) && !waitIds.has(String(m.id)))],
-                ['Others', others.filter(p => !waitIds.has(String(p.id)))],
-                ['Gone', gone]
-              ],
-    first = groups.flatMap(([, ps]) => ps)[0],
-    sel = CW.person || (first ? String(first.id) : null),
+    seen = new Set(),
+    order = [
+      ...waits.map(a => People.find(run, a.id)),
+      ...[...favIds].map(id => People.find(run, id)),
+      ...mates.filter(m => !onBench(m)),
+      ...mates.filter(onBench),
+      ...others,
+      ...gone
+    ].filter(p => p && !seen.has(String(p.id)) && seen.add(String(p.id))),
+    sel = CW.person || (order[0] ? String(order[0].id) : null),
+    mk = (cls, ch, t, style = '') => `<span class="${cls}" ${style} ${tip(t)}>${ch}</span>`,
+    marks = p =>
+      [
+        mateIds.has(p.id)
+          ? onBench(p)
+            ? mk('mt out', '🛡', 'Bench', `style="--tc:${T.color}"`)
+            : mk('mt', '🛡', 'Your squad', `style="--tc:${T.color}"`)
+          : '',
+        rival(p) ? mk('mr', '⚔', 'Rival') : '',
+        favIds.has(String(p.id)) ? mk('mf', '★', 'Favourite') : ''
+      ].join(''),
     row = p => {
       const id = String(p.id),
         tag = Rel.tag(run, id),
+        m = marks(p),
         b = mateIds.has(p.id) ? Run.you(run).bond[p.id] || 0 : 0;
-      return `<button class="plist ${id === sel ? 'on' : ''}" onclick="CW.person='${esc(id)}';renderCareer()">${p.gone ? '' : faceSVG(p, 0, 28)}<span class="nm"><b>${stag(p)}${esc(p.name)}</b><small class="mute">${p.role}${
+      return `<button class="plist ${id === sel ? 'on' : ''}" onclick="CW.person='${esc(id)}';renderCareer()">${p.gone ? '<span></span>' : faceSVG(p, 0, 28)}<span class="nm"><span class="n1"><b>${stag(p)}${esc(p.name)}</b>${m ? `<span class="pmk">${m}</span>` : ''}</span><small class="mute">${p.role}${
         p.gone ? ` · ${esc(People.fateText(run.people[id]))}` : ` · ${personMet(run, p) ? 'OVR ' + ovr(p) : 'unrated'}`
       }</small></span>${mateIds.has(p.id) ? `<i class="bbar sm ${b >= 80 ? 'f' : b >= 60 ? 'c' : ''}" ${tip('Bond ' + b)}><i style="width:${b}%"></i></i>` : '<span></span>'}${tag === 'neutral' ? '' : `<span class="stc ${tag}">${STANCE_NAME[tag]}</span>`}${waitIds.has(id) ? '<em class="badge">!</em>' : ''}</button>`;
     },
-    list = groups
-      .filter(([, ps]) => ps.length)
-      .map(([g, ps]) => `<div class="lab">${g}</div>${ps.map(row).join('')}`)
-      .join('');
-  return `<div class="sheet-h"><h2>People</h2><div class="seg pfil">${Object.entries(PEOPLE_FILTERS)
-    .map(
-      ([k, n]) =>
-        `<button class="btn ${k === f ? 'on' : ''}" onclick="CW.pfilter='${k}';CW.person=null;renderCareer()">${n}${k === 'waiting' && waits.length ? ` ${waits.length}` : ''}</button>`
-    )
-    .join('')}</div></div>
-    <div class="sheet-cols ppl"><section class="card plist-col">${list || '<p class="small mute">Nobody yet — play, train, fight.</p>'}${
-      f === 'squad'
-        ? `<div class="lab">Chemistry</div>${chemBlock(run)}${
+    chem = mates.length
+      ? `<div class="phr">${peek(
+          'chem',
+          'Chemistry',
+          `<div class="lab">Chemistry</div>${chemBlock(run)}${
             World.isFree(run) && run.academy !== false
               ? `<p class="small" id="leaveac"><button class="btn quiet danger" onclick="leaveSquad()" ${tip('The Academy will not invite you again')}>Leave squad</button></p>`
               : ''
           }`
-        : ''
-    }</section>
+        )}</div>`
+      : '';
+  return `<div class="sheet-h"><h2>People</h2>${chem}</div>
+    <div class="sheet-cols ppl"><section class="card plist-col">${order.map(row).join('') || '<p class="small mute">Nobody yet — play, train, fight.</p>'}</section>
     <section class="card pdetail">${sel ? personDetail(run, sel, waits) : '<p class="small mute">Pick someone.</p>'}</section></div>`;
+}
+/** Star / unstar a person (display only, spec §10.9): favourites sit just below the waiting rows. */
+function toggleFav(id) {
+  const f = RUN.fav,
+    i = f.indexOf(String(id));
+  if (i < 0) f.push(String(id));
+  else f.splice(i, 1);
+  Run.save(RUN);
+  renderCareer();
 }
 /** The selected person: header, what you know, their ask (Accept / Decline as one row) and your moves. */
 function personDetail(run, id, waits) {
@@ -162,7 +171,10 @@ function personDetail(run, id, waits) {
     tag = Rel.tag(run, id);
   return `<div class="pdh">${p.gone ? '' : faceSVG(p, 0, 48)}<div><h3 ${p.gone ? '' : `${tip(Rel.season(run, id))} tabindex="0"`}>${stag(p)}${esc(p.name)}</h3><div class="small mute">${p.role} · ${personMet(run, p) ? 'OVR ' + ovr(p) : 'unrated'}${
     tag === 'neutral' ? '' : ` · <span class="stc ${tag}">${STANCE_NAME[tag]}</span>`
-  }${Rel.rival(run, id) ? ' <span class="stc rival">rival</span>' : ''}</div></div></div>
+  }${Rel.rival(run, id) ? ' <span class="stc rival">rival</span>' : ''}</div></div>${(fav =>
+    `<button class="btn quiet pfav ${fav ? 'on' : ''}" onclick="toggleFav('${esc(String(id))}')" aria-pressed="${fav}" aria-label="Favourite" ${tip('Pin to the top')}>${fav ? '★' : '☆'}</button>`)(
+    (run.fav || []).map(String).includes(String(id))
+  )}</div>
     ${personCard(run, id)}
     ${
       ask

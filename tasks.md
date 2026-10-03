@@ -132,7 +132,7 @@ Steps:
   QA: career run → World › My club (free and signed), inbox HQ link.
   Result: My club card (signed: role · starter/bench, HQ › / Dossier ›; free: signable clubs as HQ links, none → nearest gap on hover); dossier club names link to HQ; inbox `HQ ›` + nextStep open the HQ pin; `joinClub` only in hqPanel. QA q168/1–7, no page errors.
 
-### [ ] T-169: People as one list with markers and favourites
+### [x] T-169: People as one list with markers and favourites
 
 Spec: §10.9 §10.4 Goldens: unchanged Save: no change (run.fav via RUN_DEFAULTS)
 Goal: the People sheet is one list with small team / rival / favourite markers; favourites can be starred.
@@ -151,7 +151,7 @@ Steps:
 - Squad mates show 🛡, rivals ⚔; tests pass (people.test.js stub updated if needed).
 - People sheet ≤ 60 visible words at week 1 (`?dev`).
   QA: career run → People: star someone, reload, open Chemistry ›.
-  Result:
+  Result: one deduped list (waiting → ★ → squad → bench → others → gone), markers 🛡 (club colour, outlined = bench) / ⚔ / ★ with tips, ☆/★ toggle in the person header (`run.fav`, survives reload), `Chemistry ›` peek with Leave squad; CW.pfilter default left in career-week.js (unlisted). People 39/60 words at W1; QA q169/1–3, no page errors.
 
 Owner request 2026-10-03: remove the coach's goal (spec §10.1b).
 

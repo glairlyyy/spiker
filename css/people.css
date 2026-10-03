@@ -64,7 +64,7 @@
 .chem div {
   margin: 2px 0;
 }
-/* People sheet (T-123): filters, list left, detail right */
+/* People sheet (T-123, T-169): one list left, detail right */
 .hub .pfil {
   display: flex;
   gap: 8px;
@@ -72,12 +72,6 @@
 }
 .hub .sheet-cols.ppl {
   grid-template-columns: minmax(300px, 0.9fr) 1.1fr;
-}
-.hub .plist-col .lab {
-  margin-top: 16px;
-}
-.hub .plist-col .lab:first-child {
-  margin-top: 0;
 }
 .hub .plist {
   display: grid;
@@ -110,6 +104,52 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+/* row markers after the name (T-169, spec §10.9): squad 🛡 in your club colour (outlined = bench), rival ⚔, favourite ★ */
+.hub .plist .n1 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.hub .pmk {
+  display: inline-flex;
+  flex: none;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1;
+}
+.hub .pmk .mt {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--tc);
+  border-radius: 4px;
+  background: var(--tc);
+  font-size: 12px;
+}
+.hub .pmk .mt.out {
+  background: transparent;
+}
+.hub .pmk .mr {
+  color: var(--bad);
+}
+.hub .pmk .mf {
+  color: var(--gold);
+}
+.hub .phr {
+  margin-left: auto;
+}
+.hub .pdh .pfav {
+  margin-left: auto;
+  align-self: flex-start;
+  min-width: 40px;
+  font-size: 18px;
+  color: var(--mute);
+}
+.hub .pdh .pfav.on {
+  color: var(--gold);
 }
 .hub .plist .badge {
   position: static;

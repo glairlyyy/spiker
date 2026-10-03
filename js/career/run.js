@@ -395,7 +395,8 @@ const RUN_DEFAULTS = {
   dayLog: [() => [], Array.isArray], // what each spent day of this week was (the hub's day track, spec §10.2)
   rolled: [() => false, v => typeof v === 'boolean'], // this week's event rolled?
   pos: [() => CITY.airport.slice(), Array.isArray], // where you stand on the map
-  story: [() => ({ seen: { intro: true }, flags: {}, cur: null }), isObj] // story scenes; a run saved before them skips the intro
+  story: [() => ({ seen: { intro: true }, flags: {}, cur: null }), isObj], // story scenes; a run saved before them skips the intro
+  fav: [() => [], Array.isArray] // starred people (ids as strings): pinned in the People list, display only (spec §10.9)
 };
 /** Run rank letter for a fan count (RANKS is ordered from the top rank down). */
 const rankOf = fans => RANKS.find(([, min]) => fans >= min)[0];
