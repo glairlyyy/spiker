@@ -114,6 +114,36 @@ test('career: training cap, facility Lv 5 and Hard training', () => {
   assert(h.main[2] > n && h.sta === 2 * g.Training.preview(run, 'power', false).sta, 'Hard: more gain, double stamina');
 });
 
+test('career: the Academy Gym — a fixed Lv 1, a little EXP to every stat (T-183)', () => {
+  const g = load(11),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Gym' }),
+    you = g.Run.you(run);
+  run.uses.all = 40;
+  eq(g.Training.facility(run, 'all'), 0, 'Lv 1 however often it is used');
+  eq(g.Training.toNext(run, 'all'), null, 'never levels up');
+  assert(!g.TRAINK.includes('all'), 'teammates never drill there');
+  const pv = g.Training.preview(run, 'all', false),
+    rows = [pv.main, pv.side, ...pv.more];
+  eq(
+    rows
+      .map(r => r[0])
+      .sort()
+      .join(','),
+    'def,jump,power,speed,wit',
+    'every stat'
+  );
+  const power = g.Training.preview(run, 'power', false);
+  assert(rows.every(r => r[2] > 0) && pv.main[2] < power.main[2] / 2, 'a little EXP each: well under the Power gym on Power');
+  run.sta = 100;
+  const xp0 = { ...(run.xp || {}) };
+  g.Training.train(run, 'all');
+  assert(
+    ['power', 'def', 'speed', 'jump', 'wit'].every(k => (run.xp[k] || 0) !== (xp0[k] || 0) || you[k] > 1),
+    'a session moves every stat'
+  );
+  eq(g.City.dayWhat('acaGym').label, 'All-round', 'the day track names it');
+});
+
 test('career: match XP — performance, opponent strength, past the cap', () => {
   const g = load(61),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Xp', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),

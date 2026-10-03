@@ -40,8 +40,20 @@ const MapModel = {
     ...Object.keys(SPOTS).map(id => ({ id, at: City.at(run, id), kind: LANDMARK[id], region: City.region(run, id) })),
     ...CITY.hq.map((at, i) => ({ id: `hq${i}`, at, kind: LANDMARK.hq, region: FACTIONS[i].region })),
     ...Object.entries(VENUES).map(([id, v]) => ({ id: `venue:${id}`, at: v.at, kind: v.kind, region: v.region })),
-    { id: 'ritual', at: CITY.ritual, kind: 'ritual', region: 'open' } // the old ritual ground: no pin, no label
+    { id: 'ritual', at: CITY.ritual, kind: 'ritual', region: 'open' }, // the old ritual ground: no pin, no label
+    { id: 'airport', at: CITY.airport, kind: 'airport', region: 'wu', rot: AIRPORT.yaw } // on a fixed heading (spec §4.18d)
   ],
+  /** Map point p on the airport's footprint (AIRPORT.box: u along the shore, v seaward, from the terminal)? */
+  inAirport(p) {
+    const [u0, v0, u1, v1] = AIRPORT.box,
+      dx = p[0] - CITY.airport[0],
+      dy = p[1] - CITY.airport[1],
+      c = Math.cos(AIRPORT.yaw),
+      sn = Math.sin(AIRPORT.yaw),
+      u = dx * c - dy * sn,
+      v = dx * sn + dy * c;
+    return u >= u0 && u <= u1 && v >= v0 && v <= v1;
+  },
   /** The sand: Wu land between the dune line and the coast (the old Wu polygon, with the old coast, is the dry side). */
   onSand(p) {
     const dry = [...CITY.dunes, ...CITY.strip, ...CITY.weiWu.slice().reverse()];
@@ -77,7 +89,7 @@ const MapModel = {
    * Settlement lots (spec §4.18, §4.19): [{ at, rot, size, style, kind, wealth, h, district }]. Each DISTRICT is filled with a grid of lots
    * (spacing `gap`, rotated to the road nearest its middle, a hash of the slot vs `density`), earlier districts first. A lot never
    * stands in the water, in another region, on the sand (beach districts: only on it), within a lot's width of a road (the overpass is
-   * elevated: lots may stand under it), within `placeClear` of a place, or on another lot. Outside the districts a road-side row
+   * elevated: lots may stand under it), within `placeClear` of a place, on the airport (inAirport), or on another lot. Outside the districts a road-side row
    * (every SETTLE gap, both sides) is built at 0.4 × density. `wealth` (0–1, MapModel.wealth) scales a lot's side (× 0.7–1.3)
    * and thins the grid (rich = sparser); `h` (0–1) is the height factor: = wealth in downtown, wealth × 0.4 elsewhere.
    * Deterministic: fixed data + string hashes (hstr), no randoms. Cached per home spot (the only run-dependent input).
@@ -107,6 +119,7 @@ const MapModel = {
         near(p) >= size * 0.5 + 4 &&
         places.every(q => Math.hypot(q[0] - p[0], q[1] - p[1]) >= MapModel.placeClear) &&
         venues.every(v => Math.hypot(v.at[0] - p[0], v.at[1] - p[1]) >= v.clear) &&
+        !MapModel.inAirport(p) &&
         lots.every(l => Math.hypot(l.at[0] - p[0], l.at[1] - p[1]) >= (l.size + size) * 0.55),
       add = (p, rot, size, d, id, w) => {
         lots.push({

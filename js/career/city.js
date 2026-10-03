@@ -101,7 +101,7 @@ const City = {
         v = dx * Math.sin(a) + dy * Math.cos(a);
       if ((u / e.rx) ** 2 + (v / e.ry) ** 2 <= 1) return r;
     }
-    if (Math.hypot(x - CITY.park.x, y - CITY.park.y) <= CITY.park.r) return 'open';
+    if (Hex.dist(Hex.idAt([x, y]), Hex.idAt([CITY.park.x, CITY.park.y])) <= ACADEMY.ring) return 'open'; // the Academy's tiles (§4.18e)
     for (const r of MAJORS) if (inPoly([x, y], CITY[r])) return r;
     return 'open';
   },
@@ -202,7 +202,10 @@ const City = {
   dayWhat(id) {
     const s = SPOTS[id];
     if (!s) return { k: 'day', label: 'Out' };
-    if (s.train) return { k: 'train', label: STATNAME[TRAININGS[s.train].main[0]], stat: TRAININGS[s.train].main[0], at: s.name };
+    if (s.train) {
+      const T = TRAININGS[s.train];
+      return { k: 'train', label: T.more ? T.name : STATNAME[T.main[0]], stat: T.main[0], at: s.name };
+    }
     if (s.act === 'rest') return { k: 'rest', label: 'Rest', at: s.name };
     if (['ramen', 'arcade', 'street'].includes(s.act)) return { k: 'outing', label: s.act === 'street' ? 'Hustle' : 'Outing', at: s.name };
     return { k: 'rest', label: 'Relax', at: s.name };

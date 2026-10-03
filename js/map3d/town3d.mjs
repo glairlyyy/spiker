@@ -294,7 +294,7 @@ export function createTown(scene, heightAt) {
     return out;
   };
 
-  /** Every landmark (and the Gloria wall) merged into one vertex-coloured mesh; each landmark faces its nearest road. */
+  /** Every landmark (and the Gloria wall) merged into one vertex-coloured mesh; each landmark faces its nearest road (or its fixed `rot`). */
   const buildLandmarks = (list, edges, tint, districts) => {
     const geos = [],
       mat = new THREE.Matrix4(),
@@ -317,6 +317,7 @@ export function createTown(scene, heightAt) {
           yaw = d > 0.5 ? Math.atan2(px, py) : 0;
         }
       }
+      if (L.rot != null) yaw = L.rot; // a fixed heading (the airport)
       const g = buildLandmark(L.kind, tint.get(L.region) || accentOf(L.region)),
         h = Math.min(heightAt(x - 3, z - 3), heightAt(x + 3, z - 3), heightAt(x - 3, z + 3), heightAt(x + 3, z + 3), heightAt(x, z));
       mat.makeRotationY(yaw).setPosition(x, h, z);

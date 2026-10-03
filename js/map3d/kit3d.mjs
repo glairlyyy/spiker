@@ -352,6 +352,43 @@ export const LANDMARKS = {
       box(0.8, 2.4, 6, 11.2, 0, -7.6, '#7f7c74')
     ]
   },
+  // the airport (spec §4.18d): the terminal and its tower at the origin (landside, door on −z), an apron with a parked plane,
+  // a taxiway and the runway seaward (+z) along the shore (x), a cargo shed; slabs reach below the ground for the slope
+  airport: {
+    h: 14,
+    w: 88,
+    d: 26,
+    footing: false,
+    build: a => {
+      const TAR = '#55575c',
+        CON = '#a29f96',
+        WHITE = '#eeeae0',
+        out = [
+          box(84, 2.2, 8, -32, -2, 15, TAR), // the runway (x −74…10, z 11…19)
+          box(26, 2.15, 7, -2, -2, 6, CON), // the apron
+          box(3, 2.1, 4, -12, -2, 11, TAR), // the taxiway
+          box(17, 2.1, 9, 0, -2, -1, CON), // the terminal's slab
+          box(16, 4.6, 8, 0, 0, -1, '#d9d6cc'), // the terminal
+          box(16.2, 1.6, 0.3, 0, 1.6, 3.05, '#8fb4c8'), // its glass front (airside)
+          box(16.4, 0.5, 8.4, 0, 4.6, -1, a),
+          box(3, 2.4, 0.4, 0, 0, -5.1, DARK), // the landside doors
+          box(2, 12, 2, 11, 0, -3, '#cfcac0'), // the control tower
+          box(3.6, 2, 3.6, 11, 12, -3, '#8fb4c8'),
+          box(4, 0.4, 4, 11, 14, -3, DARK),
+          box(12, 4.4, 7, -26, -1.5, -4, '#9aa3ad'), // the cargo shed
+          box(12.2, 0.4, 7.2, -26, 2.9, -4, '#7f858d'),
+          // the parked plane: fuselage, wings, tail
+          part(new THREE.CylinderGeometry(0.8, 0.8, 11, 10).rotateZ(Math.PI / 2).translate(-3, 1.3, 6.5), WHITE),
+          part(new THREE.ConeGeometry(0.8, 1.6, 10).rotateZ(-Math.PI / 2).translate(3.3, 1.3, 6.5), WHITE),
+          box(2, 0.15, 11, -3.5, 1.1, 6.5, '#d8d4ca'),
+          box(1, 0.12, 4, -8.2, 1.5, 6.5, '#d8d4ca'),
+          box(1.4, 2, 0.15, -8.4, 1.5, 6.5, a)
+        ];
+      for (let x = -70; x <= 6; x += 6) out.push(box(3, 0.06, 0.4, x, 0.2, 15, WHITE)); // the centre line
+      for (const x of [-72.5, 8.5]) for (const z of [12.5, 14, 16, 17.5]) out.push(box(2, 0.06, 0.8, x, 0.2, z, WHITE)); // the thresholds
+      return out;
+    }
+  },
   // your home: a small house with a hip roof and a chimney
   home: {
     h: 6,

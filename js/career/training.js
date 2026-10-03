@@ -6,6 +6,7 @@
 const Training = {
   /** Facility level index 0–4 (shown as Lv 1–5) from how often you have done this training. */
   facility(run, key) {
+    if (TRAININGS[key].lv) return TRAININGS[key].lv - 1; // a fixed-level facility (the Academy Gym)
     const u = run.uses[key] || 0;
     let lv = 0;
     while (lv + 1 < TRAIN_X.lvUses.length && u >= TRAIN_X.lvUses[lv + 1]) lv++;
@@ -14,6 +15,7 @@ const Training = {
   camp: run => Run.weekType(run) === 'camp',
   /** Sessions until the next facility level (null at Lv 5). */
   toNext(run, key) {
+    if (TRAININGS[key].lv) return null;
     const lv = Training.facility(run, key),
       need = TRAIN_X.lvUses[lv + 1];
     return need == null ? null : need - (run.uses[key] || 0);
@@ -96,10 +98,13 @@ const Training = {
   progress: (run, stat) => ({ have: (run.xp && run.xp[stat]) || 0, need: Training.need(Training.level(Run.you(run), stat)) }),
   preview(run, key, hard, x = 1) {
     const T = TRAININGS[key],
-      mul = Training.mul(run, key, hard, x);
+      mul = Training.mul(run, key, hard, x),
+      row = ([k, b]) => [k, Training.gain(run, k, b, mul), Training.xpFor(k, b, mul)];
     return {
-      main: [T.main[0], Training.gain(run, T.main[0], T.main[1], mul), Training.xpFor(T.main[0], T.main[1], mul)],
-      side: [T.side[0], Training.gain(run, T.side[0], T.side[1], mul), Training.xpFor(T.side[0], T.side[1], mul)],
+      main: row(T.main),
+      side: row(T.side),
+      more: (T.more || []).map(row),
+      fixed: !!T.lv,
       sta: Training.staCost(run, key, hard),
       fail: Training.failP(run, hard),
       lvl: Training.facility(run, key) + 1,
@@ -130,7 +135,7 @@ const Training = {
       out.push(Run.bump(run, pv.main[0], pv.main[0] === 'wit' ? -0.03 : -3), Run.bump(run, 'mood', -1));
       return `${name} failed: ${out.filter(Boolean).join(', ')}`;
     }
-    out.push(Training.addXp(run, pv.main[0], pv.main[2]), Training.addXp(run, pv.side[0], pv.side[2]));
+    for (const [k, , xp] of [pv.main, pv.side, ...pv.more]) out.push(Training.addXp(run, k, xp));
     out.push(Run.bump(run, 'sta', -pv.sta), Run.bump(run, 'sp', Math.round(CAREER.spPerTraining * (hard ? 1.5 : 1) * spMul)));
     for (const id of pv.mates) {
       out.push(Run.bond(run, id, undefined, 'trained'));

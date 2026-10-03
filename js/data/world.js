@@ -173,7 +173,14 @@ const HOUSING = {
     rest: 1.1,
     desc: 'Cheap, clean mountain air — but a long trip to the city and the coast.'
   },
-  studio: { name: 'Beach shack', region: 'wu', rent: 150, rest: 1, noise: 0.12, desc: 'Normal rest. Noisy beach parties now and then.' },
+  studio: {
+    name: 'Student flat',
+    region: 'open',
+    rent: 150,
+    rest: 1,
+    noise: 0.12,
+    desc: 'Normal rest, a short walk to class. Noisy dorm parties now and then.'
+  },
   dorm: { name: 'City dorm', region: 'wei', rent: 300, rest: 1.25, moodPay: [1, 0.3], desc: 'Good rest, steady mood.' },
   condo: { name: 'Luxury condo', region: 'wei', rent: 700, rest: 1.5, moodPay: [1, 1], desc: 'Best rest and mood every payday.' }
 };

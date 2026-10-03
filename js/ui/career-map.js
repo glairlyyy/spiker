@@ -235,14 +235,14 @@ function trainSpot(run, id, c) {
     pv = Training.preview(run, key, hard, x),
     turf = City.turf(run, id),
     gain = ([k, , xp], role) => {
-      if (pv.cap && k === pv.main[0])
-        return `<div class="pgain"><span class="pi">${statI(statKey(k), 20)}</span><span>${STATNAME[k]} <i class="mute">· ${role}</i></span><b class="mute">at ${pv.cap} — matches only</b></div>`;
+      if (STATK.includes(k) && Run.you(run)[k] >= TRAIN_CAP)
+        return `<div class="pgain"><span class="pi">${statI(statKey(k), 20)}</span><span>${STATNAME[k]}${role}</span><b class="mute">at ${TRAIN_CAP} — matches only</b></div>`;
       // the session's XP ÷ what a point of this stat costs now ≈ points this session (owner, 2026-10-03: a rating, not "+1 in n"); the count on hover
       const pr = Training.progress(run, k),
         n = Math.max(1, Math.ceil((pr.need - pr.have) / Math.max(0.01, xp))),
         r = xp / Math.max(1, pr.need),
         [label, cls] = r >= 3 ? ['EXP +++', 'up'] : r >= 1 ? ['EXP ++', 'up'] : r >= 0.25 ? ['EXP +', ''] : ['Almost no EXP', 'mute']; // ≈ points this session: 3+ · 1+ · ¼+ · less
-      return `<div class="pgain"><span class="pi">${statI(statKey(k), 20)}</span><span>${STATNAME[k]} <i class="mute">· ${role}</i></span><b class="${cls}" ${tip(n <= 1 ? 'Next point this session' : `Next point in ${n} sessions here`)}>${label}</b></div>`;
+      return `<div class="pgain"><span class="pi">${statI(statKey(k), 20)}</span><span>${STATNAME[k]}${role}</span><b class="${cls}" ${tip(n <= 1 ? 'Next point this session' : `Next point in ${n} sessions here`)}>${label}</b></div>`;
     },
     mates = pv.mates.filter(pid => squadOf(T).some(p => p.id === pid)), // a teammate who has since left
     seg = `<div class="seg"><button class="btn ${hard ? '' : 'on'}" onclick="CW.hard=false;mapPick(CW.spot)">Normal</button><button class="btn ${hard ? 'on' : ''}" ${
@@ -263,7 +263,9 @@ function trainSpot(run, id, c) {
     tags: [
       ptag(
         `Lv ${pv.lvl}`,
-        `Facility level: grows with use${pv.next != null ? ` — ${pv.next} more sessions to Lv ${pv.lvl + 1}` : ' — top level'}.`
+        pv.fixed
+          ? 'Facility level: fixed — the Academy keeps this gym basic.'
+          : `Facility level: grows with use${pv.next != null ? ` — ${pv.next} more sessions to Lv ${pv.lvl + 1}` : ' — top level'}.`
       ),
       s.sand ? ptag(`Sand ×${SAND_SP} pts`, `Sand training builds technique: skill points ×${SAND_SP}`) : '',
       pv.fail // a risk: stays visible (§10.8 never hides penalties)
@@ -283,7 +285,10 @@ function trainSpot(run, id, c) {
       ].filter(Boolean)
     ),
     flavour: s.desc || '',
-    body: gain(pv.main, 'main') + gain(pv.side, 'side'),
+    // a little of every stat (the Academy Gym) lists them all with no main / side
+    body: pv.more.length
+      ? [pv.main, pv.side, ...pv.more].map(r => gain(r, '')).join('')
+      : gain(pv.main, ' <i class="mute">· main</i>') + gain(pv.side, ' <i class="mute">· side</i>'),
     opts: seg + chips,
     go: `<button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${id}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}>Train ${TRAININGS[key].name} · ${term('day', String(City.cost(run, id)), 'cost')} ${term('sta', -pv.sta, 'cost')} $${City.price(run, id)}</button>`
   };

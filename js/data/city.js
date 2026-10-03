@@ -81,7 +81,10 @@ const CITY = (() => {
     wu: [...coast.slice(6, 13), [430, 540], [540, 500], ...wuWei.slice().reverse()],
     /** Shu's highlands: the whole west, coast to coast. */
     shu: [...coast.slice(12), ...coast.slice(0, 4), ...shuWei.slice(1), [430, 540]],
-    /** Central Academy: neutral ground at the tri-point of Wei, Wu and Shu (north of the airport). */
+    /**
+     * Central Academy: neutral ground at the tri-point of Wei, Wu and Shu (north of the airport). x, y = its middle; r = the
+     * campus core, which keeps its size when the map scales (scaleMap). The region is wider: the hex tiles within ACADEMY.ring.
+     */
     park: { x: 540, y: 500, r: 60 },
     /** The old ritual ground's sand circle, by the Academy (a landmark with no pin and no label). */
     ritual: [595, 548],
@@ -92,6 +95,7 @@ const CITY = (() => {
     },
     /** Region label anchors. */
     label: { open: [545, 432], wei: [800, 345], shu: [300, 300], wu: [680, 545], outlaws: [835, 500], gloria: [690, 222] },
+    /** The airport's terminal: where you arrive (the runway lies seaward of it, AIRPORT). */
     airport: [470, 600],
     /** Each club's HQ (team index → [x, y]). */
     hq: [
@@ -115,6 +119,15 @@ const CITY = (() => {
     ]
   };
 })();
+
+/** Central Academy's region (spec §4.18e): every hex tile within `ring` steps of the tile at its middle. */
+const ACADEMY = { ring: 1 };
+/**
+ * The airport (spec §4.18d): one landmark at the terminal (CITY.airport) on a fixed heading. yaw = the landmark's turn (its
+ * +z points seaward, its +x east along the shore); box = its footprint [u0, v0, u1, v1] in map units on those axes (u along
+ * the shore, v seaward): lots keep off it. The 3D layout (runway, apron, terminal, tower) is kit3d's `airport`.
+ */
+const AIRPORT = { yaw: -0.133, box: [-150, -22, 30, 46] };
 
 // ---- Days, fees and travel (tuning) ----
 /** Days in a training week; every action takes one (+ the trip).*/
@@ -169,6 +182,14 @@ const SPOTS = {
   shrine: { name: 'Shrine Library', train: 'wit', region: 'shu', at: [320, 410], icon: '📜' },
   // the minors and Central Academy
   cage: { name: 'Overpass Cage', train: 'power', region: 'outlaws', at: [845, 455], icon: '⛓' },
+  acaGym: {
+    name: 'Academy Gym',
+    train: 'all',
+    region: 'open',
+    at: [490, 460],
+    icon: '🏫',
+    desc: 'The basic gym every student may use: a little of everything.'
+  },
   park: {
     name: 'Academy Grounds',
 
@@ -257,7 +278,7 @@ const STREET = { rival: [50, 78], win: [40, 90], loss: 20, fans: 40, sta: 12 };
 /** Scouting a club at its HQ (a day): stamina cost. */
 const SCOUT_STA = 5;
 /** Where you live on the map, by housing. */
-const HOME_AT = { homeless: [600, 115], highland: [180, 330], studio: [430, 622], dorm: [640, 440], condo: [760, 395] };
+const HOME_AT = { homeless: [600, 115], highland: [180, 330], studio: [484, 532], dorm: [640, 440], condo: [760, 395] };
 
 /**
  * Official venues (spec §4.21): where official matches are played. Landmarks with a pin and a card, always known (no fog).
@@ -306,7 +327,6 @@ const ROADS = {
   nodes: {
     airport: [470, 600],
     // Wu: the coast road, east round to the harbor
-    'home:studio': [430, 622],
     sand: [790, 600],
     pier: [535, 645],
     bonfire: [680, 622],
@@ -331,6 +351,8 @@ const ROADS = {
     jO2: [865, 440],
     // Central Academy and its roads
     park: [540, 500],
+    acaGym: [490, 460],
+    'home:studio': [484, 532],
     'venue:hall': [580, 510],
     jAc1: [575, 415],
     jAc2: [505, 555],
@@ -380,7 +402,6 @@ const ROADS = {
   },
   edges: [
     // Wu coast road and the way up to Wei
-    ['airport', 'home:studio', 'main'],
     ['hq3', 'hotelWu', 'main'],
     ['hotelWu', 'jWu1', 'main'],
     ['jWu1', 'jWu2', 'main'],
@@ -415,6 +436,8 @@ const ROADS = {
     ['park', 'jWp', 'main'],
     ['park', 'stone', 'main'],
     ['park', 'venue:hall', 'main'],
+    ['jAc2', 'home:studio', 'street'],
+    ['park', 'acaGym', 'street'],
     // Wei avenues and grid
     ['jWp', 'jW1', 'main'],
     ['jW1', 'jWs', 'main'],
@@ -452,7 +475,7 @@ const ROADS = {
     ['dojo', 'shrine', 'dirt'],
     ['dojo', 'stone', 'dirt'],
     ['stone', 'jSs', 'dirt'],
-    ['jSs', 'home:studio', 'dirt'],
+    ['jSs', 'airport', 'dirt'],
     ['shrine', 'hq7', 'dirt'],
     ['hq7', 'home:highland', 'dirt'],
     ['home:highland', 'trail', 'path'],
@@ -538,6 +561,17 @@ const DISTRICTS = [
     density: 0.7,
     size: 7,
     kinds: ['hall', 'hall', 'dorm']
+  },
+  {
+    // the student quarter: the Academy's outer ring of tiles (spec §4.18e; the region test keeps it inside)
+    id: 'academy-quarter',
+    region: 'open',
+    style: 'campus',
+    poly: { x: 540, y: 500, r: 150 },
+    gap: 11,
+    density: 0.55,
+    size: 5,
+    kinds: ['dorm', 'house', 'shop', 'dorm']
   },
   {
     id: 'shu-village-west',
@@ -678,6 +712,7 @@ const LANDMARK = {
   stone: 'gym',
   shrine: 'shrine',
   cage: 'cage',
+  acaGym: 'gym',
   park: 'campus',
   home: 'home',
   hotelWei: 'hotel',

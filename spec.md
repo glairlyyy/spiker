@@ -91,7 +91,8 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   Academy squad (§4.11).
 - §4.2 Island: majors Wei (city; N + E), Wu (coast; E/S + inland strip; most aggressive), Shu (highlands; W); minors
   Street Outlaws, St. Gloria (borderless). Only neutral land: region `open` = **Central Academy** at the Wei–Wu–Shu
-  tri-point (540, 500), north of the airport — entry point, no team, never seized. 8 fixed teams (2 per major + 2
+  tri-point (540, 500), north of the airport — entry point, no team, never seized. It covers seven hex tiles: its own
+  and the ring round it (owner, 2026-10-04; §4.18e). 8 fixed teams (2 per major + 2
   minor clubs) = home squads (training, bonds, scouting, transfers); matches that matter use pool draws (§4.11).
 - §4.3 Regions set prices/quality: Wei pricey (maybe overhyped), Shu cheap (maybe hidden gem), Wu sand = technique.
   Quality is **never shown** (owner, 2026-10-03, T-172): no stars, gem / overhyped marks, Quality column or glossary
@@ -203,8 +204,20 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   round the jW1 junction (a short walk apart: little travel inside Wei); Wu's spread thin along the coast (pier by the
   airport, sand courts on the south-east beach, harbor on the east coast, dunes in the north-east); Shu's stay scattered.
   Gain per stat is shown as a rating, not a number (owner): EXP +++ / EXP ++ / EXP + / Almost no EXP (session gain vs points needed).
+- §4.18d Airport (owner, 2026-10-04) **[built, T-181]**: a real airport on the south coast where you arrive: a runway
+  along the coast (~80 m, parallel to the shore), a terminal with a control tower at the arrival point, an apron with a
+  parked plane, a cargo shed. One landmark (`airport`, fixed heading `CITY.airportRot`, no pin; the ✈ Airport label
+  stays); lots and roads keep off its footprint (`AIRPORT`). Display only: travel and the start point are unchanged.
+- §4.18e Central Academy grounds (owner, 2026-10-04) **[built, T-182–T-183]**: the Academy is its tile + the six round
+  it (`ACADEMY.ring` 1, by hex distance; `City.regionAt`), all neutral, never in the war. Campus core (halls, Academy
+  Hall, the Grounds) in the middle; a **student quarter** (student flats, cafés, laundromat) fills the ring.
+  - **Student flat** (`studio`, the start home; was the Beach shack) stands in the student quarter, west-south-west of
+    the core, a short walk from the airport road: rent 150, normal rest, noisy dorm parties now and then.
+  - **Academy Gym** (`acaGym`, ring tile toward Shu): a fixed **Lv 1** facility (never levels up) whose session gives a
+    little EXP to every stat (Power, Defense, Speed, Jump 2 each, Wit 0.025; 15 stamina) — the free-agent's all-round
+    option, worse than any specialised gym for its stat. Teammates never drill there (not in TRAINK).
 - §4.19 Town layout (crowded; lore.md §3–§5); buildings fill districts (area + style + density), ~700 total (owner, 2026-10-03: thinner and lower — `MapModel.thin` 0.65, tallest towers ~half as high) (Wei
-  ~330, Wu ~210, Shu ~85, Outlaws ~40, Academy ~24, Gloria ~18):
+  ~330, Wu ~210, Shu ~85, Outlaws ~40, Academy ~95 (seven tiles, §4.18e), Gloria ~18):
   - **Wei**: _Downtown_ (Wei Gold HQ, league office; tower grid, densest); _Old Town_ (north-coast pocket by the
     abandoned gym; refugee lanes, rowhouses, homeless housing); _the Ring_ (mid-rise to the borders); _St. Gloria_
     (walled villa compound, gatehouse).
@@ -219,6 +232,27 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     no rich pockets but St. Gloria. Wu: even, modest; separate settlements (harbor, Wu town, beach strip, inland
     village) on few mostly-dirt roads, coast road the only main road. Shu poor, scattered; Outlaws poorest; Academy
     middling, uniform.
+- §4.19a The living island — district plan (owner, 2026-10-04) **[proposed: owner review, then T-184–T-186]**.
+  Every district has a job (what it makes, who lives there); roads carry the flow between them, and the map shows it.
+  - **What keeps the island alive** (lore §3–§5): mainland money (sponsors, scouts, tourists) lands at the airport;
+    food from Wu's fishing fleet and Shu's terrace farms, sold in Wu town's and Old Town's markets; mainland goods
+    unloaded at the harbor's cargo quay, stored in warehouses, trucked over the overpass to Wei; work in Wei's offices
+    (league office, Gazette press, sponsor banks) and Wu's workshops and shipyard; each year's newcomers through the
+    Academy; power and water from a plant and water tower on Wei's north coast and a reservoir dam in Shu's hills.
+  - **Districts:** Airport zone (runway, terminal, cargo shed, bus stop) · Academy (campus core + student quarter) ·
+    Wei: civic core (league office, Gazette, bank towers, League Arena), downtown towers, training district (four gyms),
+    the Ring (mid-rise blocks, a corner shop and a pocket park per block), Old Town (rowhouses, night market), North works
+    (power plant, water tower, bus depot), St. Gloria · Wu: harbor (fish quay and market, shipyard, cargo quay,
+    warehouses), Wu town (barracks, workshops, market, family houses), beach strip (resorts, kiosks, sand courts),
+    Wu village (net sheds, drying racks) · Shu: three villages ringed by rice / tea terraces, shrine, quarry, reservoir ·
+    Outlaws: scrapyard and container stacks under the overpass, betting courts.
+  - **Homes** where people like you would live: Student flat — student quarter (start); City dorm — the Ring by the
+    training district; Luxury condo — downtown towers by the civic core (not on the Outlaws edge); Abandoned gym — Old
+    Town; Highland room — the west Shu village.
+  - **Ground use, not only buildings:** fields, terraces, yards, quays and parks as flat ground patches (no lots), so
+    the empty land between towns reads as farmland, scrub or industry. Lots stay ≤ `MapModel.maxLots`.
+  - **City life** (display only, life3d, hashes, no randoms): buses on the main roads (airport ↔ Academy ↔ downtown ↔
+    harbor), vans harbor → overpass → Wei, fishing boats offshore, a plane on the runway; within the life caps.
 - §4.20 Match history (Season drawer): every match you were in, newest first — week/day, kind, opponent, score, W/L,
   grade; bench matches "did not play". Snapshot: your OVR, stats, wit at kick-off (+ change since previous), your line
   (kills, attacks, errors, blocks, aces, digs, assists), full box score (name, role, OVR, line). Registrar voice.

@@ -15,6 +15,12 @@ const Hex = {
   ],
   /** Centre of tile (q, r) in map units. */
   centre: (q, r) => [HEX.size * 1.5 * q, HEX.size * Math.sqrt(3) * (r + q / 2)],
+  /** Steps between two tiles (ids 'q,r'). */
+  dist(a, b) {
+    const [q1, r1] = a.split(',').map(Number),
+      [q2, r2] = b.split(',').map(Number);
+    return (Math.abs(q1 - q2) + Math.abs(r1 - r2) + Math.abs(q1 + r1 - q2 - r2)) / 2;
+  },
   /** The tile id holding map point p (nearest centre: axial rounding). */
   idAt([x, y]) {
     const q = ((2 / 3) * x) / HEX.size,

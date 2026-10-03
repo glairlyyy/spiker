@@ -30,9 +30,23 @@ const TRAININGS = {
   def: { name: 'Defense', main: ['def', 7], side: ['speed', 2], sta: 20 },
   speed: { name: 'Speed', main: ['speed', 7], side: ['power', 2], sta: 20 },
   jump: { name: 'Jump', main: ['jump', 7], side: ['def', 2], sta: 20 },
-  wit: { name: 'Wit', main: ['wit', 0.06], side: ['def', 2], sta: 5 }
+  wit: { name: 'Wit', main: ['wit', 0.06], side: ['def', 2], sta: 5 },
+  // the Academy Gym (spec §4.18e): a little of every stat at a fixed Lv 1 (lv); `more` = the gains past main / side
+  all: {
+    name: 'All-round',
+    main: ['power', 2],
+    side: ['def', 2],
+    more: [
+      ['speed', 2],
+      ['jump', 2],
+      ['wit', 0.025]
+    ],
+    sta: 15,
+    lv: 1
+  }
 };
-const TRAINK = Object.keys(TRAININGS);
+/** The trainings that level up with use and that teammates drill at (the fixed-level Academy Gym is not one). */
+const TRAINK = Object.keys(TRAININGS).filter(k => !TRAININGS[k].lv);
 const ROLE_NAME = { S: 'Setter', MB: 'Middle blocker', WS: 'Wing spiker' };
 const STATNAME = { power: 'Power', def: 'Defense', speed: 'Speed', jump: 'Jump', wit: 'Wit', lead: 'Leadership' };
 /** What each week is. Anything not listed is a training week. */

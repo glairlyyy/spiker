@@ -200,7 +200,16 @@ test('career: town layout — districts, beach, overpass, frozen borders', () =>
   for (const [id, p, r] of homes) assert(g.City.onLand(p) && g.City.regionAt(p) === r, `${id} stands in ${r}`);
   // the beach: sand places between the dunes and the coast, Wu town inland (≥ 40 units from the dune line)
   for (const id of ['sand', 'pier', 'bonfire', 'dunes']) assert(g.MapModel.onSand(g.SPOTS[id].at), `${id} is on the sand`);
-  assert(g.MapModel.onSand(g.HOME_AT.studio), 'the beach shack is on the sand');
+  // Central Academy (spec §4.18e): its tile + the ring round it; the student flat stands in the ring, the gym too
+  const acaT = g.Hex.grid().tiles.filter(t => t.kind === 'academy'),
+    mid = g.Hex.idAt([C.park.x, C.park.y]);
+  eq(acaT.length, 7, 'the Academy is seven tiles');
+  assert(
+    acaT.every(t => g.Hex.dist(t.id, mid) <= 1 && !g.Hex.takeable(t)),
+    'all within a step of its middle, out of the war'
+  );
+  for (const p of [g.HOME_AT.studio, g.SPOTS.acaGym.at])
+    eq(g.Hex.dist(g.Hex.idAt(p), mid), 1, 'the student flat and the gym stand in the ring');
   const dist = (p, line) => {
     let best = Infinity;
     for (let i = 0; i + 1 < line.length; i++) {
@@ -239,10 +248,10 @@ test('career: town layout — districts, beach, overpass, frozen borders', () =>
   for (const l of L) by[g.City.regionAt(l.at)] = (by[g.City.regionAt(l.at)] || 0) + 1;
   for (const [r, n, lo, hi] of [
     ['wei', 327, 262, 392],
-    ['wu', 232, 186, 278],
+    ['wu', 210, 168, 252],
     ['shu', 75, 60, 90],
     ['outlaws', 49, 39, 59],
-    ['open', 22, 18, 26],
+    ['open', 95, 76, 114],
     ['gloria', 19, 15, 23]
   ])
     assert(by[r] >= lo && by[r] <= hi, `${r} has ${by[r]} lots (~${n})`);

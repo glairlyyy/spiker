@@ -387,7 +387,13 @@ function nextStep(run) {
     const what = w > CAREER.weeks ? 'Cup' : CALENDAR[w] === 'eval' && w <= run.week + 3 ? 'Evaluation' : '';
     if (what && STATK.includes(key)) {
       const spot = Object.keys(SPOTS)
-        .filter(id => SPOTS[id].train && TRAININGS[SPOTS[id].train].main[0] === key && MapModel.known(run, id, City.at(run, id)))
+        .filter(
+          id =>
+            SPOTS[id].train &&
+            TRAININGS[SPOTS[id].train].main[0] === key &&
+            !TRAININGS[SPOTS[id].train].more &&
+            MapModel.known(run, id, City.at(run, id))
+        )
         .sort((a, b) => City.cost(run, a) - City.cost(run, b))[0];
       return {
         text: `${what}${what === 'Cup' ? '' : ` W${w}`} · ${STATNAME[key]} ${you[key]}`,
