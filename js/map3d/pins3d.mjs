@@ -1,8 +1,8 @@
 // Map furniture for the 3D island: an HTML overlay (pins, region labels, the picked-point flag) projected onto the
-// terrain every frame, and terrain decals (seized patches, the contested Wei–Wu border). Reads only MapModel fields;
+// terrain every frame, and terrain decals (seized patches, the three major borders with their pressure labels). Reads only MapModel fields;
 // reports only pick(id). Emoji icons, badges and the flag classes (off, far, turf, gem, overhyped, hq, can, mine, clash)
 // are plain CSS on the overlay elements (css/career.css, .mpin …).
-//   createFurniture(scene, heightAt) → { layer, sync(model, on), select(id), pulse(strength, t), tick(cam, w, h, dist), dispose() }
+//   createFurniture(scene, heightAt) → { layer, sync(model, on), select(id), pulse(t), tick(cam, w, h, dist), dispose() }
 import * as THREE from 'three';
 import { MAP_M, smooth } from './geo3d.mjs';
 import { landmarkHeight } from './kit3d.mjs';
@@ -21,6 +21,7 @@ const FLAGCLS = {
   },
   KIND_Z = { hq: 1, spot: 2, clash: 3 },
   LABEL_FADE = [30, 70], // camera distance (m): labels vanish at the first, are fully shown at the second
+  BORDER_W = 1.4, // border ribbon width (m)
   PIN_UP = 2.2, // pins float this far above their landmark's roof, or the ground (m)
   esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
@@ -28,7 +29,7 @@ export function createFurniture(scene, heightAt) {
   const layer = document.createElement('div');
   layer.className = 'maplay';
   const decals = new THREE.Group();
-  let contest = null; // the contested-border line (pulsed by pressure)
+  let lines = []; // the border ribbons: { line: THREE.Mesh, pressure, brink } (pulsed by pressure)
   scene.add(decals);
   const P = { key: {}, items: [], ver: 0 }; // items: { el, x, y, z, label? } world points to project; ver bumps on change
   const V = new THREE.Vector3(), // reused by tick (no per-frame allocation)
@@ -59,8 +60,8 @@ export function createFurniture(scene, heightAt) {
     P.items.push({ el, ...world(at, up), vis: null, ...extra });
     P.ver++;
   };
-  const clearGroup = g => {
-    for (const o of [...g.children]) {
+  const clearGroup = (g, which = () => true) => {
+    for (const o of g.children.filter(which)) {
       g.remove(o);
       o.geometry.dispose();
       o.material.dispose();
@@ -106,26 +107,61 @@ export function createFurniture(scene, heightAt) {
     lg.setAttribute('position', new THREE.Float32BufferAttribute(ring, 3));
     return [fill, new THREE.LineLoop(lg, new THREE.LineBasicMaterial({ color: c }))];
   };
-  /** The contested border as a dashed red line just above the ground. */
-  const border = line => {
-    const pts = [];
+  /** A border as a dashed ribbon (BORDER_W m wide) just above the ground, in the leading side's colour (grey when even). */
+  const border = (line, color) => {
+    const pos = [],
+      dash = (a, b) => {
+        // one dash: a quad from a to b, its ends lifted to the terrain
+        const dx = b.x - a.x,
+          dz = b.z - a.z,
+          n = Math.hypot(dx, dz) || 1,
+          ox = (-dz / n) * (BORDER_W / 2),
+          oz = (dx / n) * (BORDER_W / 2),
+          q = [
+            [a.x + ox, a.z + oz],
+            [a.x - ox, a.z - oz],
+            [b.x - ox, b.z - oz],
+            [b.x + ox, b.z + oz]
+          ].map(([x, z]) => [x, heightAt(x, z) + 0.5, z]);
+        pos.push(...q[0], ...q[1], ...q[2], ...q[0], ...q[2], ...q[3]);
+      };
     for (let i = 0; i + 1 < line.length; i++) {
       const [ax, ay] = line[i],
         [bx, by] = line[i + 1],
-        n = Math.max(1, Math.ceil((Math.hypot(bx - ax, by - ay) * MAP_M) / 4));
-      for (let k = 0; k < n; k++) {
-        const w = world([ax + ((bx - ax) * k) / n, ay + ((by - ay) * k) / n], 0.5);
-        pts.push(new THREE.Vector3(w.x, w.y, w.z));
+        n = Math.max(1, Math.ceil((Math.hypot(bx - ax, by - ay) * MAP_M) / 3.5));
+      for (let k = 0; k < n; k += 2) {
+        const p = t => world([ax + (bx - ax) * t, ay + (by - ay) * t], 0);
+        dash(p(k / n), p(Math.min(1, (k + 1) / n)));
       }
     }
-    const w = world(line[line.length - 1], 0.5);
-    pts.push(new THREE.Vector3(w.x, w.y, w.z));
-    const l = new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints(pts),
-      new THREE.LineDashedMaterial({ color: 0xff3b4e, dashSize: 4, gapSize: 3 })
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    const mesh = new THREE.Mesh(
+      g,
+      new THREE.MeshBasicMaterial({
+        color: color || 0x9aa0aa,
+        transparent: true,
+        opacity: 0.6,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
     );
-    l.computeLineDistances();
-    return l;
+    mesh.userData.border = true;
+    return mesh;
+  };
+
+  /** The point halfway along a polyline (map units). */
+  const midOf = line => {
+    const seg = line.slice(1).map((p, i) => Math.hypot(p[0] - line[i][0], p[1] - line[i][1]));
+    let rest = seg.reduce((s, d) => s + d, 0) / 2;
+    for (let i = 0; i < seg.length; i++) {
+      if (rest <= seg[i]) {
+        const u = rest / (seg[i] || 1);
+        return [line[i][0] + (line[i + 1][0] - line[i][0]) * u, line[i][1] + (line[i + 1][1] - line[i][1]) * u];
+      }
+      rest -= seg[i];
+    }
+    return line[line.length - 1];
   };
 
   return {
@@ -177,25 +213,29 @@ export function createFurniture(scene, heightAt) {
         }
       }
       if (changed('seized', m.seized)) {
-        clearGroup(decals);
+        clearGroup(decals, o => !o.userData.border); // the patches only: the borders have their own key
         for (const s of m.seized) decals.add(...patch(s.at, s.r, s.color));
       }
-      if (changed('border', m.land.contest.line)) {
-        for (const o of decals.children.filter(o => o.isLine && o.material.isLineDashedMaterial)) {
-          decals.remove(o);
-          o.geometry.dispose();
-          o.material.dispose();
-        }
-        contest = border(m.land.contest.line);
-        decals.add(contest);
+      if (changed('border', m.land.borders)) {
+        clearGroup(decals, o => o.userData.border);
+        drop('mbord');
+        lines = (m.land.borders || []).map(b => {
+          const l = border(b.line, b.color);
+          decals.add(l);
+          const e = document.createElement('div');
+          e.className = `mbord ${b.lead ? 'lead' : ''} ${b.brink ? 'brink' : ''}`;
+          if (b.color) e.style.setProperty('--tc', b.color);
+          e.title = b.title;
+          e.textContent = b.text;
+          add(e, midOf(b.line), 1.5, { label: true });
+          return { line: l, pressure: b.pressure, brink: b.brink };
+        });
       }
       this.select(m.sel);
     },
-    /** Pulse the contested border: strength 0 (calm: steady) … 1 (at the brink of a seizure: fast, bright). */
-    pulse(strength, t) {
-      if (!contest) return;
-      contest.material.transparent = true;
-      contest.material.opacity = strength ? 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(t * (2 + 4 * strength))) : 0.7;
+    /** Pulse every border by its own pressure: 0 (even: steady) … 1 (at the brink of a seizure: fast, bright). */
+    pulse(t) {
+      for (const L of lines) L.line.material.opacity = L.pressure ? 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(t * (2 + 4 * L.pressure))) : 0.6;
     },
     /** Highlight the selected pin. */
     select(id) {

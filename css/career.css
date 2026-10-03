@@ -3450,3 +3450,26 @@
 .btn .term .si {
   vertical-align: -3px;
 }
+/* Border pressure labels on the map (T-130) */
+.mbord {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--hud);
+  color: var(--mute);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: help;
+}
+.mbord.lead {
+  border-color: var(--tc);
+  color: var(--ink);
+}
+.mbord.brink {
+  box-shadow: 0 0 0 2px var(--tc);
+}

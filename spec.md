@@ -103,6 +103,10 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   wins seize a border place (2 per side per border; retakes first) → owner's price/turf/colour. `FRONT.weakAt` (2)
   places lost = weakened (dearer, worse facilities, easier to join). Wu revenge bonus. Minors not in the war. Seized =
   patch in holder's colour; borders don't move **[open: moving borders]**.
+  Border lines **[locked]**: all three major borders (Wei–Wu, Wei–Shu, Wu–Shu; `CITY.borders`) drawn as dashed lines
+  on the map: grey when even, in the leading side's colour when its meter is ≠ 0, pulsing faster at the brink (the next
+  win seizes). A label chip at each line's middle: `{Lead} 1/2` or `Even 0/2` (hover = glossary `seize`); fades with
+  distance like region labels. Display only (MapModel.land.borders from Front.meter); not pickable.
 - §4.8 Hub: full-screen 3D map, HUD, shortcut dock → drawers, cards over the map.
 - §4.9 Map: rules → MapModel → MapView → three.js `js/map3d/` (`mount`, `update(model)`, `select`, `dispose`); no 2D
   fallback (WebGL missing → notice). Terrain, pins/labels/flag as HTML overlay, seized + border decals, vertex fog.
@@ -163,7 +167,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 - §4.16 Living map (display only, no randoms):
   - A [built]: teammates at their week's training places; faction players drilling at courts (more for bigger pools;
     coloured if scouted/member, else grey) and walking between places; street battle as a two-colour crowd with flags
-    and dust; border lines pulse with pressure, patrols thicken on the winning side (only the Wei–Wu border is drawn);
+    and dust; border lines pulse with pressure, patrols thicken on the winning side (Wei–Wu only);
     seized places fly the holder's flag. Low-poly instanced figures; VRM for you only.
   - B **[locked, not built — waits on lore]**: waves, boats, gulls, Wu beach pickup games, Shu village smoke, Wei
     lights and traffic, villagers near the Academy; individual NPC figures and approach figures (§4.23).

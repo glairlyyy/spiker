@@ -667,6 +667,29 @@ test('map: the contested border comes from the model (T-079)', () => {
   eq(C.pressure, Math.min(1, 1 / g.FRONT.seize), 'pressure = net wins / FRONT.seize');
 });
 
+test('map: all three major borders are lines whose colour and label follow Front.meter (T-130)', () => {
+  const g = load(52),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Borders' });
+  let B = g.MapModel.build(run).land.borders;
+  eq(B.map(b => b.id).join(','), Object.keys(g.FRONT.borders).join(','), 'one per FRONT border');
+  for (const b of B) {
+    assert(Array.isArray(b.line) && b.line.length >= 2 && b.line === g.CITY.borders[b.id], 'line from CITY.borders: ' + b.id);
+    assert(b.meter === 0 && b.lead === null && b.color === null && b.text === `Even 0/${g.FRONT.seize}`, 'even at the start');
+  }
+  g.Front.result(run, 'shu', 'wei');
+  B = g.MapModel.build(run).land.borders;
+  const ws = B.find(b => b.id === 'wei-shu');
+  eq(ws.meter, g.Front.meter(run, 'wei', 'shu'), 'meter from Front');
+  eq(ws.lead, 'shu', 'Shu leads after its win');
+  eq(ws.color, g.REGIONS.shu.color, "the leader's colour");
+  assert(ws.text.startsWith('Shu 1/'), 'label');
+  eq(ws.brink, 1 >= g.FRONT.seize - 1, 'brink: the next win seizes');
+  assert(
+    B.filter(b => b.id !== 'wei-shu').every(b => b.meter === 0),
+    'other borders untouched'
+  );
+});
+
 // ---------- T-087: map3d pure functions (geo3d.mjs; map3d.mjs polygon helpers) ----------
 test('map3d: map ↔ world units, maths helpers and the fog rule', () => {
   const geo = require('../js/map3d/geo3d.mjs');

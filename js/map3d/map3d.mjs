@@ -239,7 +239,6 @@ export function create(onIdle) {
     furn = null, // pins, labels, flag, decals (pins3d.mjs)
     town = null, // roads, lots, landmarks (town3d.mjs)
     life = null, // figures, battle crowd, patrols, seized flags (life3d.mjs)
-    pressure = 0, // the contested border's pressure 0..1 (pulse)
     clock = 0,
     fogKey = null,
     badge = null,
@@ -382,7 +381,7 @@ export function create(onIdle) {
       avatar.tick(dt, terrain.heightAt);
       clock += dt;
       life.tick(dt, clock);
-      furn.pulse(pressure, clock);
+      furn.pulse(clock);
       if (fly) {
         fly.t = Math.min(1, fly.t + dt / FLY_S);
         const k = smooth(0, 1, fly.t);
@@ -457,7 +456,6 @@ export function create(onIdle) {
       town.sync(m);
       furn.sync(m, on);
       life.sync(m);
-      pressure = m.life && m.life.contest ? m.life.contest.pressure : 0; // the model's pressure on the contested border
       applyFog(m.fog);
       const at = m.you && m.you.at;
       if (!at || !avatar) return;

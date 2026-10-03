@@ -32,6 +32,18 @@ UX batch 1 (T-090…T-094).
 
 ## Now
 
+### [x] T-130: Border pressure lines on the 3D map
+
+Spec: §4.7 (Border lines) §4.16 A Goldens: unchanged Save: no change
+Files: js/data/city.js (CITY.borders), js/career/mapmodel.js (land.borders), js/map3d/pins3d.mjs, js/map3d/map3d.mjs (pulse), css/career.css, tests/map.test.js
+Do not: change Front rules or meters; move borders; make lines pickable; change life3d patrols.
+Steps: `CITY.borders = { 'wei-wu': wuWei, 'wei-shu': shuWei, 'wu-shu': [tri-point, [430, 540], coast[12]] }`; MapModel.land.borders =
+`[{ id, a, b, line, meter, lead, color, pressure, brink, text }]`; pins3d draws one dashed line per border (grey / lead colour)
+and a label chip at the line's middle; `pulse(t)` animates each by its own pressure.
+Accept: three lines; a border's colour and label follow Front.meter; test: model borders = FRONT.borders keys, meter from Front.meter.
+QA: hub map screenshot with one border at 1/2.
+Result: `CITY.borders` (3 lines), `MapModel.borders(run)` → land.borders { id, a, b, line, meter, lead, color, pressure, brink, text, title }; pins3d draws each as a dashed ribbon (1.4 m wide, 1px lines were invisible over the terrain) in the leader's colour (grey when even) + a `.mbord` label chip at its midpoint (`Shu 1/2` / `Even 0/2`, ring at the brink, fades like labels); `pulse(t)` per border; seized-patch rebuilds no longer wipe the border decals (old bug). life3d patrols unchanged (Wei–Wu). Test: borders = FRONT keys, lines from CITY, meter/lead/colour/label follow Front. QA: Shu 1/2 on Wei–Shu after a win — green line + chip; no errors.
+
 Redesign (spec §10; design system pages _Redesign_, _UI inventory_; mockups in the _Redesign_ group). Layout and flow only:
 no rule, number or engine change; goldens unchanged. Read §10, §9 and the mockup card each task names before coding.
 Order: T-117 … T-129. Built on UI batch 2 (T-095…T-101, T-114 done — reuse their helpers); T-102…T-106 superseded (see Done).

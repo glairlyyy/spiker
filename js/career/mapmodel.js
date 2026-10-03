@@ -18,6 +18,7 @@ const MapModel = {
       beach: CITY.beach,
       regions: ['wu', 'shu', 'wei'].map(id => Object.assign(reg(id), { poly: CITY[id] })),
       contest: { line: CITY.contest, title: `Contested ${CITY.contestPair.map(r => REGIONS[r].name.split(' ')[0]).join('–')} border` },
+      borders: MapModel.borders(run),
       minors: Object.entries(CITY.minors).map(([id, e]) => Object.assign(reg(id), e)),
       park: Object.assign(reg('open'), CITY.park, { title: REGIONS.open.desc }),
       mountains: CITY.mountains,
@@ -322,6 +323,31 @@ const MapModel = {
       contest: MapModel.contest(run)
     };
   },
+  /**
+   * The three major borders as lines (spec §4.7): meter from a's side, the leading side and its colour (null when even),
+   * pressure 0..1, brink (the next win seizes) and the label text. Display only.
+   */
+  borders: run =>
+    Object.keys(FRONT.borders).map(id => {
+      const [a, b] = id.split('-'),
+        meter = Front.meter(run, a, b),
+        lead = meter > 0 ? a : meter < 0 ? b : null,
+        n = Math.abs(meter),
+        short = r => REGIONS[r].name.split(' ')[0];
+      return {
+        id,
+        a,
+        b,
+        line: CITY.borders[id],
+        meter,
+        lead,
+        color: lead ? REGIONS[lead].color : null,
+        pressure: Math.min(1, n / FRONT.seize),
+        brink: n > 0 && n >= FRONT.seize - 1,
+        text: `${lead ? short(lead) : 'Even'} ${Math.min(n, FRONT.seize)}/${FRONT.seize}`,
+        title: `${short(a)}–${short(b)} border · ${lead ? `${short(lead)} ${n}/${FRONT.seize} to seize a place` : 'even'}`
+      };
+    }),
   /** The contested border (CITY.contestPair): meter from a's side, pressure 0..1 (1 = the next win seizes), holder. */
   contest(run) {
     const [a, b] = CITY.contestPair,
