@@ -69,7 +69,7 @@ export function createFurniture(scene, heightAt) {
   };
 
   /**
-   * The hex territory (spec §4.27): one translucent fill for every major's tile in its holder's colour (vertex colours,
+   * The hex territory (spec §4.27): one translucent fill for every tile in its holder's colour (the only faction colour on the ground) (vertex colours,
    * draped on the terrain), an inset ribbon along every edge where holders differ (each side in its own colour), and a
    * faint grid line between a territory's own tiles, and a pulsing outline on this week's battle tile. Returns
    * [fill, edges, grid, target|null].
@@ -91,38 +91,37 @@ export function createFurniture(scene, heightAt) {
     for (const t of H.tiles) {
       const c = new THREE.Color(t.color),
         major = ['wei', 'wu', 'shu'].includes(t.own);
-      if (major)
-        for (let i = 0; i < 6; i++) {
-          // a fan triangle (centre, corner i, corner i+1), split SUB×SUB so it follows the ground
-          const A = t.at,
-            B = corner(t, i, 1),
-            C = corner(t, i + 1, 1),
-            P = (u, v) => [A[0] + (B[0] - A[0]) * u + (C[0] - A[0]) * v, A[1] + (B[1] - A[1]) * u + (C[1] - A[1]) * v];
-          for (let a = 0; a < SUB; a++)
-            for (let b = 0; a + b < SUB; b++) {
-              const tri = [
-                [a, b],
-                [a + 1, b],
-                [a, b + 1]
-              ];
-              const tris =
-                a + b + 1 < SUB
-                  ? [
-                      tri,
-                      [
-                        [a + 1, b],
-                        [a + 1, b + 1],
-                        [a, b + 1]
-                      ]
+      for (let i = 0; i < 6; i++) {
+        // a fan triangle (centre, corner i, corner i+1), split SUB×SUB so it follows the ground
+        const A = t.at,
+          B = corner(t, i, 1),
+          C = corner(t, i + 1, 1),
+          P = (u, v) => [A[0] + (B[0] - A[0]) * u + (C[0] - A[0]) * v, A[1] + (B[1] - A[1]) * u + (C[1] - A[1]) * v];
+        for (let a = 0; a < SUB; a++)
+          for (let b = 0; a + b < SUB; b++) {
+            const tri = [
+              [a, b],
+              [a + 1, b],
+              [a, b + 1]
+            ];
+            const tris =
+              a + b + 1 < SUB
+                ? [
+                    tri,
+                    [
+                      [a + 1, b],
+                      [a + 1, b + 1],
+                      [a, b + 1]
                     ]
-                  : [tri];
-              for (const q of tris)
-                for (const [u, v] of q) {
-                  fp.push(...lift(P(u / SUB, v / SUB), 0.35));
-                  fc.push(c.r, c.g, c.b);
-                }
-            }
-        }
+                  ]
+                : [tri];
+            for (const q of tris)
+              for (const [u, v] of q) {
+                fp.push(...lift(P(u / SUB, v / SUB), 0.35));
+                fc.push(c.r, c.g, c.b);
+              }
+          }
+      }
       for (let i = 0; i < 6; i++) {
         const ang = ((i + 0.5) * Math.PI) / 3,
           n = own.get(
@@ -193,7 +192,7 @@ export function createFurniture(scene, heightAt) {
       gg,
       new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.14, depthWrite: false })
     );
-    return [mesh(fp, fc, 0.2), mesh(ep, ec, 0.75), grid, target];
+    return [mesh(fp, fc, 0.3), mesh(ep, ec, 0.75), grid, target];
   };
 
   return {

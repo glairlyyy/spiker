@@ -313,7 +313,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     Shown on the tile panel (value) and the Factions cards (value held ± and the effects).
   - Effects: a place's owner = its tile's owner (`run.own` becomes a cache rebuilt from the tiles on every flip); turf, prices, quality, access follow. Economy
     and `weak` count lost places as today. Labels stay; buildings keep their original style.
-  - Map: tiles drawn in the owner's colour (fill + outline), frontier edges brighter; the target tile shows a ring
+  - Map: tiles drawn in the owner's colour (fill + outline) — the only faction colour on the ground (the terrain itself is uncoloured, owner 2026-10-03); frontier edges brighter; the target tile shows a ring
     `pressure/cost`; a click on a tile (map point) shows owner, kind, condition and pressure in the point panel.
   - Save: `run.hex = { own: { id: region } (changed tiles only), p: { id: n } }`; RUN_VERSION 16 (dev bump).
     Career goldens may change (battle sites); engine goldens unchanged.

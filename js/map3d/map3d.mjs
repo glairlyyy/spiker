@@ -104,7 +104,6 @@ function buildTerrain(model) {
     wu = w((L.regions.find(r => r.id === 'wu') || { poly: [] }).poly),
     dunes = L.dunes ? w(L.dunes) : [],
     dist = L.districts ? L.districts.map(d => ({ poly: w(d.poly), tint: DISTRICT_TINT[d.style] })).filter(d => d.tint) : [],
-    tint = new Map(L.regions.map(r => [r.id, new THREE.Color(r.color)])),
     pos = new Float32Array((nx + 1) * (nz + 1) * 3),
     col = new Float32Array((nx + 1) * (nz + 1) * 3),
     H = new Float32Array((nx + 1) * (nz + 1)),
@@ -114,20 +113,6 @@ function buildTerrain(model) {
     seabed = new THREE.Color(0x2b5f6e),
     tintC = new THREE.Color(),
     c = new THREE.Color();
-  const regionColor = (mx, my) => {
-    const p = L.park;
-    if (Math.hypot(mx - p.x, my - p.y) <= p.r) return new THREE.Color(L.park.color);
-    for (const e of L.minors) {
-      const a = (e.rot * Math.PI) / 180,
-        dx = mx - e.x,
-        dy = my - e.y,
-        xr = dx * Math.cos(a) + dy * Math.sin(a),
-        yr = -dx * Math.sin(a) + dy * Math.cos(a);
-      if ((xr / e.rx) ** 2 + (yr / e.ry) ** 2 <= 1) return new THREE.Color(e.color);
-    }
-    for (const r of L.regions) if (inside(mx, my, r.poly)) return tint.get(r.id);
-    return null;
-  };
   for (let j = 0; j <= nz; j++)
     for (let i = 0; i <= nx; i++) {
       const x = i * sx,
@@ -159,13 +144,11 @@ function buildTerrain(model) {
       }
       H[k] = h;
       pos.set([x, h, z], k * 3);
-      // colour: grass → rock with height, sand on the beach, the region's colour mixed in
+      // colour: grass → rock with height, sand on the beach (no faction colour: the hex tiles carry it, spec §4.27)
       if (!land) c.copy(seabed);
       else {
         c.copy(grass).lerp(rock, smooth(8, 20, h));
         c.lerp(sand, 1 - smooth(1, BEACH, d));
-        const rc = regionColor(x / MAP_M, z / MAP_M);
-        if (rc) c.lerp(rc, 0.35);
         if (sd > -99) c.lerp(sand, 0.95 * smooth(-3, 2, sd)); // the Wu sand
         for (const q of dist) if (inside(x, z, q.poly)) c.lerp(tintC.set(q.tint), 0.16);
       }

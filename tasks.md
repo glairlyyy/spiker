@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-141** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-142** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -378,6 +378,12 @@ Result: every density × 0.65 (`MapModel.thin`): 1145 → 704 lots (Wei 329, Wu 
 Spec: §4.18a Goldens: unchanged Save: no change
 Files: js/data/city.js (SPOTS at, ROADS nodes / edges, Wei label), tests/map.test.js, tests/career.test.js
 Result: Wei gyms moved into a training district round jW1 ([655–705, 315–350]), each a street off jW1; their old road nodes kept as junctions (jWp / jWs / jWw / jWj) so every avenue still runs; Wu sand courts → south-east beach [790, 600], pier → by the airport [535, 645], boardwalk reordered (airport → pier → bonfire → sand → resort); Shu unchanged; Wei label moved off the district. Trips from the airport: pier 0, Wei gyms 2 each, sand / harbor 2, dunes 3. Side effect: the district spans 3 hex tiles, so one flip can take two Wei gyms (test updated). QA: hub with places revealed.
+
+### [x] T-141: Faction colour only on the tiles (owner request, spec §4.27 Map)
+
+Spec: §4.27 Goldens: unchanged Save: no change
+Files: js/map3d/map3d.mjs (terrain colours), js/map3d/pins3d.mjs (tile fill)
+Result: the terrain no longer mixes in the region colour (grass / rock / sand / district tints only); every land tile — minors and the Academy too — gets its holder's fill (opacity 0.2 → 0.3), so faction colour on the ground comes only from the tiles. QA: hub with places revealed.
 
 ## Later — outlines
 
