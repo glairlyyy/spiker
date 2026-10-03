@@ -17,7 +17,7 @@ const DEFSETS = {
 /** A team's own defence setting: from its playstyle (Wall bunches, Tempo commits, the rest read). */
 const defOf = t => (t && t.S && t.S.dset) || 'read';
 /**
- * Block formation numbers (engine/rally.js formBlock). laneL / laneR: net position (0–1) where the pin lanes start;
+ * Block formation numbers (engine/rally-block.js formBlock). laneL / laneR: net position (0–1) where the pin lanes start;
  * lateCov / splitCov: coverage × when the blocker arrives late / hands split (poor read); swingReach / swingCov: the far
  * blocker swinging across after the middle bit; commitQuick / commitMiss / commitReach: Commit's middle on a quick (coverage ×,
  * reach ×: already up) / on anything else (coverage ×);
