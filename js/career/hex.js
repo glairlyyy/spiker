@@ -150,6 +150,11 @@ const Hex = {
       .sort((a, b) => Math.hypot(a[1].at[0] - t.at[0], a[1].at[1] - t.at[1]) - Math.hypot(b[1].at[0] - t.at[0], b[1].at[1] - t.at[1]))[0];
     return `${t.terrain === 'plain' ? 'open ground' : t.terrain} near ${near ? near[1].name : 'the Academy'}`;
   },
+  /** What a tile is worth (HEX_VALUE): HQ, place, else its terrain. */
+  value: t => (t.kind === 'hq' ? HEX_VALUE.hq : t.kind === 'place' ? HEX_VALUE.place : HEX_VALUE[t.terrain] || 0),
+  /** Value region r holds now / held at the start. */
+  worth: (run, r) => Hex.grid().tiles.reduce((s, t) => s + (Hex.owner(run, t.id) === r ? Hex.value(t) : 0), 0),
+  worth0: r => Hex.grid().tiles.reduce((s, t) => s + (t.region === r ? Hex.value(t) : 0), 0),
   /** Move a tile to region r (its start region → no entry) and rebuild the place-owner cache run.own. */
   flip(run, id, r) {
     const H = Hex.state(run);

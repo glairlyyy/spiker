@@ -13,10 +13,14 @@ const Front = {
   takenIds: (run, r) => Object.keys(run.own || {}).filter(id => run.own[id] === r && SPOTS[id].region !== r),
   lost: (run, r) => Front.lostIds(run, r).length,
   gained: (run, r) => Front.takenIds(run, r).length,
-  weak: (run, r) => Front.lost(run, r) >= FRONT.weakAt,
-  /** Economy: prices × (fewer facilities for the same money), facility quality × (money follows the winner). */
-  priceMul: (run, r) => 1 + FRONT.price * Front.lost(run, r),
-  qMul: (run, r) => 1 + FRONT.q * (Front.gained(run, r) - Front.lost(run, r)),
+  /** Economy from tile value (spec §4.27, HEX_ECON): e = value held − value at the start (0 for minors and the Academy). */
+  econ: (run, r) => (MAJORS.includes(r) ? Hex.worth(run, r) - Hex.worth0(r) : 0),
+  /** Steps down: one per HEX_ECON.step value points lost (club joins get easier). */
+  down: (run, r) => Math.floor(Math.max(0, -Front.econ(run, r)) / HEX_ECON.step),
+  weak: (run, r) => Front.econ(run, r) <= -HEX_ECON.weakAt,
+  /** Prices × (fewer facilities for the same money), facility quality × (money follows the land). */
+  priceMul: (run, r) => 1 + HEX_ECON.price * Math.max(0, -Front.econ(run, r)),
+  qMul: (run, r) => clamp(1 + HEX_ECON.q * Front.econ(run, r), HEX_ECON.qClamp[0], HEX_ECON.qClamp[1]),
   /** a's strongest push on b: the highest pressure a has built on any of b's tiles (spec §4.27). */
   push(run, a, b) {
     const H = Hex.state(run);
@@ -43,7 +47,7 @@ const Front = {
     return t ? t.id : null;
   },
   /** Street strength for battles nobody decides for them. */
-  strength: (run, r) => 50 + 10 * (Front.gained(run, r) - Front.lost(run, r)),
+  strength: (run, r) => 50 + HEX_ECON.str * Front.econ(run, r),
   /** A battle nobody joined (att = the raider, who has the initiative). */
   sim(run, a, b, att) {
     const s = r => Front.strength(run, r) + (r === att ? FRONT.initiative : 0);

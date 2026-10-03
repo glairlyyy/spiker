@@ -192,14 +192,10 @@ const CLASH = {
 };
 /**
  * Faction dynamics (Front): battles move tiles on the hex map (HEX below, js/career/hex.js); places go with their
- * tile. A faction with weakAt+ places lost is weakened. Per place
- * lost: prices +price, quality −q (+q per place taken), club join needs −join (OVR / key stat), fee −fee.
- * aggro = who starts street battles (+revenge for last battle's loser; the raider gets +initiative).
+ * tile and the economy follows tile value (HEX_VALUE / HEX_ECON). Per step down: club join needs −join (OVR / key stat),
+ * fee −fee. aggro = who starts street battles (+revenge for last battle's loser; the raider gets +initiative).
  */
 const FRONT = {
-  weakAt: 2,
-  price: 0.1,
-  q: 0.04,
   join: 3,
   fee: 0.25,
   aggro: { wu: 0.5, wei: 0.3, shu: 0.2 },
@@ -213,6 +209,14 @@ const FRONT = {
 const HEX = { size: 36, decay: 4 };
 /** Net wins a tile needs: by kind / terrain, +home on the defender's home terrain, −retake, −cut (cut off from every defender HQ). */
 const HEX_COST = { plain: 1, city: 2, beach: 2, highland: 2, place: 2, home: 1, retake: -1, cut: -1, min: 1 };
+/** What a tile is worth to its holder's economy (spec §4.27 tile value): by kind, else by terrain. */
+const HEX_VALUE = { hq: 4, place: 3, city: 3, beach: 2, highland: 1, plain: 1 };
+/**
+ * Economy from tile value (e = value held − value at the start): prices × (1 + price × points lost), quality × (1 + q × e)
+ * within qClamp, street strength 50 + str × e; every `step` points lost = one step down (club join −FRONT.join OVR / key,
+ * fee −FRONT.fee); weakened at e ≤ −weakAt.
+ */
+const HEX_ECON = { price: 0.03, q: 0.015, qClamp: [0.7, 1.3], str: 3, step: 3, weakAt: 6 };
 /** Each major's home terrain. */
 const HEX_HOME = { wei: 'city', wu: 'beach', shu: 'highland' };
 /**

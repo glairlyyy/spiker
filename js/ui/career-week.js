@@ -609,8 +609,10 @@ function factionsCard(run) {
     if (!MAJORS.includes(r)) return '';
     const T = Hex.grid().tiles,
       held = T.filter(t => Hex.owner(run, t.id) === r).length,
-      d = held - T.filter(t => t.region === r).length;
-    return `<div class="small">Tiles <b>${held}</b>${d ? ` <b class="${d > 0 ? 'up' : 'dn'}">${d > 0 ? '+' : '−'}${Math.abs(d)}</b>` : ''}</div>`;
+      d = held - T.filter(t => t.region === r).length,
+      e = Front.econ(run, r),
+      sg = n => (n ? ` <b class="${n > 0 ? 'up' : 'dn'}">${n > 0 ? '+' : '−'}${Math.abs(n)}</b>` : '');
+    return `<div class="small">Tiles <b>${held}</b>${sg(d)} · <span ${tip(GLOSSARY.value.long)}>value <b>${Hex.worth(run, r)}</b>${sg(e)}</span></div>`;
   };
   const row = r => {
     const F = Dossier.summary(run, r),
@@ -635,7 +637,7 @@ function factionsCard(run) {
           : ''),
       E = F.econ,
       econ = E
-        ? `<div class="small mute">Prices ×${E.priceMul.toFixed(1)} · facilities ×${E.qMul.toFixed(2)}${E.joinCut ? ` · clubs ask −${E.joinCut} OVR/key, fees −${E.feeCut}%` : ''}</div>`
+        ? `<div class="small mute">Prices ×${E.priceMul.toFixed(2)} · facilities ×${E.qMul.toFixed(2)}${E.joinCut ? ` · clubs ask −${E.joinCut} OVR/key, fees −${E.feeCut}%` : ''}</div>`
         : '',
       clubs = F.clubs.map(ti => run.teams[ti]);
     return `<div class="fac ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}"><div class="fh"><b><a href="#" class="dlink" onclick="openDossier('${r}');return false">${esc(F.name)}</a></b> <span class="mute small">${F.kind}</span>${F.weak ? ' <span class="stk far">Weakened</span>' : ''}${info(F.desc)}<span class="fv">${F.label}</span></div>

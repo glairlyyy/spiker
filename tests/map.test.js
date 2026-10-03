@@ -442,6 +442,26 @@ test('career: faction dynamics — battles move hex tiles, places go with them, 
   assert(n.wu > n.wei && n.wei > n.shu, `Wu is the most aggressive (${JSON.stringify(n)})`);
 });
 
+test('hex: tile value drives the economy — prices, quality, strength, joins (spec §4.27 value)', () => {
+  const g = load(11),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Value' }),
+    ti = g.FACTIONS.findIndex(f => f.region === 'wei' && f.join.ovr),
+    p0 = g.City.price(run, 'weiPower'),
+    o0 = g.World.joinReq(run, ti).ovr;
+  for (const r of g.MAJORS) eq(g.Front.econ(run, r), 0, 'even at the start: ' + r);
+  const t = g.Hex.target(run, 'wu', 'wei'),
+    v = g.Hex.value(g.Hex.tile(t.id));
+  g.Hex.flip(run, t.id, 'wu');
+  eq(g.Front.econ(run, 'wei'), -v, 'Wei loses the tile’s value');
+  eq(g.Front.econ(run, 'wu'), v, 'Wu gains it');
+  assert(g.Front.priceMul(run, 'wei') > 1 && g.Front.priceMul(run, 'wu') === 1, 'Wei gets dearer with any loss');
+  assert(g.Front.qMul(run, 'wu') > 1 && g.Front.qMul(run, 'wei') < 1, 'quality follows the value');
+  assert(g.Front.strength(run, 'wu') > g.Front.strength(run, 'wei'), 'street strength follows the value');
+  while (g.Front.econ(run, 'wei') > -g.HEX_ECON.step) g.Hex.flip(run, g.Hex.target(run, 'wu', 'wei').id, 'wu');
+  assert(g.World.joinReq(run, ti).ovr < o0, 'a step down: clubs ask less');
+  assert(g.City.price(run, 'weiPower') > p0, 'prices show it');
+});
+
 test('hex: the grid is deterministic, every place and HQ sits on a tile of its region (T-131)', () => {
   const g = load(3),
     G = g.Hex.grid(),

@@ -118,7 +118,7 @@ function tileBlock(run, p) {
   const own = Hex.owner(run, id),
     H = Hex.state(run),
     short = r => esc(REGIONS[r].name.split(' ')[0]),
-    ground = t.kind === 'place' ? 'place' : t.terrain === 'plain' ? 'open ground' : t.terrain,
+    ground = `${t.kind === 'place' ? 'place' : t.kind === 'hq' ? 'club HQ' : t.terrain === 'plain' ? 'open ground' : t.terrain} · <span ${tip(GLOSSARY.value.long)}>value <b>${Hex.value(t)}</b></span>`,
     why = { hq: 'Capital — never falls', academy: 'Neutral ground — never taken', minor: 'Not in the war' }[t.kind],
     conds = MAJORS.filter(a => a !== own)
       .map(a => {

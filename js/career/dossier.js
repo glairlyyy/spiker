@@ -39,12 +39,14 @@ const Dossier = {
       took: took.map(id => ({ id, name: SPOTS[id].name, from: SPOTS[id].region })),
       lost: lost.map(id => ({ id, name: SPOTS[id].name, to: run.own[id] })),
       econ:
-        major && (lost.length || took.length)
+        major && Front.econ(run, r) !== 0
           ? {
               priceMul: Front.priceMul(run, r),
               qMul: Front.qMul(run, r),
-              joinCut: FRONT.join * lost.length,
-              feeCut: Math.round(FRONT.fee * lost.length * 100)
+              joinCut: FRONT.join * Front.down(run, r),
+              feeCut: Math.round(FRONT.fee * Front.down(run, r) * 100),
+              value: Hex.worth(run, r),
+              valueD: Front.econ(run, r)
             }
           : null,
       clubs: run.teams.filter(t => FACTIONS[t.i].region === r).map(t => t.i),
@@ -64,9 +66,9 @@ const Dossier = {
         ? 'minor'
         : Front.weak(run, r)
           ? 'weakened'
-          : lost.length === 1
+          : Front.econ(run, r) < 0
             ? 'pressed'
-            : took.length > lost.length
+            : Front.econ(run, r) > 0
               ? 'rising'
               : 'stable',
       reserve = (run.reserve && run.reserve[r] && run.reserve[r].P) || [];

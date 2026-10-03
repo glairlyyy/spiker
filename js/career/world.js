@@ -61,7 +61,7 @@ const World = {
   /** What a club asks now: a weakened faction (places lost, Front) lowers its bar. */
   joinReq(run, ti) {
     const j = Object.assign({}, (FACTIONS[ti] && FACTIONS[ti].join) || {}),
-      n = run && FACTIONS[ti] ? Front.lost(run, FACTIONS[ti].region) : 0;
+      n = run && FACTIONS[ti] ? Front.down(run, FACTIONS[ti].region) : 0; // steps down from tile value lost (spec §4.27)
     if (run && run.vouch && run.vouch[ti]) {
       // an ally vouched for you (T-063): the OVR and key-stat bars drop
       if (j.ovr) j.ovr = Math.max(1, j.ovr - REL.ask.vouch);

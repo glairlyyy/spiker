@@ -303,6 +303,11 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     tile, then the nearest to the attacker's HQ (then a hash) — owner: cheapest and nearest first. Its centre is the battle site (replaces CLASH.sites). Win: +1
     pressure on the tile; pressure ≥ cost → the tile flips (pressure 0). Loss: the tile's pressure → 0 and the defender
     gets +1 on the attacker's tile it came from. Untouched for 4 weeks: pressure −1.
+  - Tile value (owner, 2026-10-03) **[built]**: every tile is worth `HEX_VALUE` (HQ 4, place 3, city 3, beach 2,
+    highland 1, plain 1). A major's economy = value held − value at the start (e). It drives the world economy instead
+    of the count of lost places: prices × (1 + 3% per point lost), facility quality × (1 + 1.5% × e, 0.7–1.3), street
+    strength 50 + 3 × e, club joins easier by FRONT.join OVR / key and −25% fee per 3 points lost, weakened at e ≤ −6.
+    Shown on the tile panel (value) and the Factions cards (value held ± and the effects).
   - Effects: a place's owner = its tile's owner (`run.own` becomes a cache rebuilt from the tiles on every flip); turf, prices, quality, access follow. Economy
     and `weak` count lost places as today. Labels stay; buildings keep their original style.
   - Map: tiles drawn in the owner's colour (fill + outline), frontier edges brighter; the target tile shows a ring

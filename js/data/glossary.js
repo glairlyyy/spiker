@@ -41,6 +41,11 @@ const GLOSSARY = {
     long: `Seize n/cost. A battle is fought on one border tile; each win +1 pressure, a defender's win clears it. The tile flips at its cost: open ground ${HEX_COST.plain}, place / city / beach / highland ${HEX_COST.place}; +${HEX_COST.home} on the defender's home terrain, ${HEX_COST.retake} to retake, ${HEX_COST.cut} if cut off from its HQs. Places go with their tile.`
   },
   border: { icon: 'text', short: 'Border', long: 'Border tile. Touches another faction’s land: battles are fought on such tiles.' },
+  value: {
+    icon: 'text',
+    short: 'Value',
+    long: `Tile value: HQ ${HEX_VALUE.hq}, place ${HEX_VALUE.place}, city ${HEX_VALUE.city}, beach ${HEX_VALUE.beach}, highland / open ground ${HEX_VALUE.plain}. A faction's economy follows the value it holds against its start: per point lost, prices +${Math.round(HEX_ECON.price * 100)}%; per point either way, facilities ±${HEX_ECON.q * 100}%; every ${HEX_ECON.step} lost, clubs ask less; ${HEX_ECON.weakAt} lost: weakened.`
+  },
   sim: { icon: 'text', short: 'Sim', long: 'Sim. The result without watching. Same rules, same rewards.' },
   academy: { icon: 'text', short: 'Academy', long: 'Academy squad. You play evaluations and the U21 Cup with it until a club signs you.' },
   cup: {

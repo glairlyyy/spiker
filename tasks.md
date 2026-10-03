@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-138** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-139** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -360,6 +360,12 @@ Result: `MapModel.hexes(run)` = { size, tiles [{ id, at, own, color, kind, front
 Spec: §4.27 Goldens: unchanged Save: no change
 Files: js/ui/career-map.js (tileBlock in the point panel, battle stakes, Border tag), js/ui/career-week.js (Factions: tiles held ±, next target per rival), js/ui/career-hub.js (brief row), js/data/glossary.js (seize, border)
 Result: clicking land shows the tile: holder (and who it was taken from), ground, "Seize: Wu needs 1 · Shu needs 2" (greyed when out of reach) or "Capital — never falls", and any push; Factions cards show `Tiles 41 −1` and `vs Wu · next: open ground near … 0/1`; street battle stakes and the week brief read `Seize n/cost on {tile}`; glossary `seize` spells out the tile costs. QA: point panel + Factions tab screenshots; no errors.
+
+### [x] T-138: Tile value drives the economy (owner request, spec §4.27 Tile value)
+
+Spec: §4.27 Goldens: unchanged Save: no change
+Files: js/data/world.js (HEX_VALUE, HEX_ECON; FRONT.weakAt / price / q removed), js/career/hex.js (value, worth, worth0), js/career/front.js (econ, down, weak, priceMul, qMul, strength), js/career/world.js (joinReq), js/career/dossier.js (state, econ), js/ui/career-map.js (tile value), js/ui/career-week.js (Factions value line), js/data/glossary.js (`value`), tests/map.test.js
+Result: every tile has a value (HQ 4, place 3, city 3, beach 2, highland / plain 1); a major's economy e = value held − start value replaces the lost-place count: prices +3% per point lost, facilities ±1.5% per point (0.7–1.3), street strength 50 + 3e, one step down per 3 lost (club joins −3 OVR / key, fee −25%), weakened at −6; dossier state pressed / rising follows e. Tile panel shows value; Factions cards `Tiles 41 −1 · value 69 −1` and the prices / facilities line (2 decimals). Test added. 27-week sims: e ends between −5 and +4 per faction (prices up to ×1.15, facilities 0.93–1.06) — every flip now moves the economy.
 
 ## Later — outlines
 
