@@ -99,7 +99,6 @@ small {
 /* ---------- surfaces ---------- */
 .panel,
 .bracket,
-.mcard,
 .pl,
 .ency-card,
 .ocard {
@@ -166,46 +165,6 @@ input[type='range'] {
   background: transparent !important;
   border: 0 !important;
   accent-color: var(--cyan);
-}
-/* ---------- menu ---------- */
-.mcard {
-  padding: 26px 24px;
-  gap: 10px;
-  transition:
-    border-color 0.2s,
-    transform 0.2s,
-    box-shadow 0.2s;
-}
-.mcard:hover {
-  border-color: rgba(76, 201, 240, 0.5);
-  box-shadow: var(--glow);
-  transform: translateY(-2px);
-}
-.mcard .mk {
-  font-weight: 600;
-  letter-spacing: 0.22em;
-  color: var(--cyan);
-}
-.mcard b {
-  font: 600 30px/1.05 var(--disp);
-  letter-spacing: 0.04em;
-}
-.mcard .mgo {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-.mcard.hot {
-  border-color: rgba(255, 59, 78, 0.45);
-  box-shadow: none;
-}
-.mcard.hot .mk {
-  color: var(--hot);
-}
-.mcard.monster {
-  background: linear-gradient(160deg, var(--glass) 50%, rgba(255, 46, 77, 0.1));
-  border-color: rgba(255, 46, 77, 0.45);
 }
 /* ---------- scoreboard ---------- */
 .board {
@@ -333,9 +292,7 @@ table td {
   box-shadow: var(--glow);
 }
 /* ---------- career ---------- */
-.sk,
-.pip,
-.alloc .btn {
+.pip {
   background: var(--glass2) !important;
   border: 1px solid var(--line) !important;
 }
@@ -383,15 +340,7 @@ table td {
   letter-spacing: 0.12em;
   font-weight: 600;
 }
-@media (prefers-reduced-motion: reduce) {
-  .mcard:hover {
-    transform: none;
-  }
-}
 /* ---- Monster 3D ---- */
-.mcard[role='group'] {
-  cursor: default;
-}
 #cv3 {
   position: absolute;
   display: block;
@@ -549,8 +498,7 @@ table td {
   cursor: help;
 }
 button[data-tip],
-label[data-tip],
-.sk[data-tip] {
+label[data-tip] {
   cursor: pointer;
 }
 details.fold > summary {

@@ -148,23 +148,8 @@ h4 {
   gap: 8px;
   align-items: stretch;
 }
-.resline {
-  background: color-mix(in srgb, var(--gold) 18%, transparent);
-  border-radius: 8px;
-  padding: 8px 10px;
-  margin: 10px 0 0;
-}
-.champ {
-  border-top: 8px solid var(--tc);
-}
 .teams {
   margin-top: 26px;
-}
-.mcard {
-  position: relative;
-  max-width: 860px;
-  width: 100%;
-  border-top: 10px solid var(--tc);
 }
 .x {
   position: absolute;
@@ -197,12 +182,6 @@ h4 {
   border-color: var(--gold);
   box-shadow: inset 0 0 0 1px var(--gold);
 }
-.phd {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 8px;
-}
 .num {
   width: 40px;
   height: 40px;
@@ -214,9 +193,6 @@ h4 {
   font: 18px var(--disp);
   border-bottom: 5px solid var(--hc);
   flex: none;
-}
-.pn {
-  font-weight: 800;
 }
 .stats {
   display: grid;
@@ -247,31 +223,6 @@ h4 {
 .pl p {
   margin: 6px 0 0;
 }
-.res {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  font-size: 13px;
-  display: grid;
-  gap: 4px;
-}
-.res li {
-  padding: 5px 8px;
-  border-radius: 6px;
-  background: var(--bg);
-  border-left: 4px solid var(--mute);
-}
-.res li.w {
-  border-left-color: #27c18a;
-}
-.res li.l {
-  border-left-color: var(--hot);
-}
-.res em {
-  float: right;
-  color: var(--mute);
-  font-style: normal;
-}
 .board {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -297,20 +248,6 @@ h4 {
   font-weight: 800;
   font-size: clamp(14px, 2.4vw, 20px);
   line-height: 1.1;
-}
-.pips {
-  display: flex;
-  gap: 5px;
-}
-.pips i {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid var(--mute);
-}
-.pips i.on {
-  background: var(--gold);
-  border-color: var(--gold);
 }
 .bsc {
   text-align: center;
@@ -501,62 +438,6 @@ h4 {
 .cut.combo .cut-band {
   background: linear-gradient(100deg, var(--c), var(--warn-hi) 50%, var(--c));
   padding-left: 30%;
-}
-.podium {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 8px;
-  margin: 12px 0;
-}
-.pod {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  width: 31%;
-  min-width: 0;
-}
-.pod b {
-  font-size: 13px;
-  line-height: 1.2;
-  text-align: center;
-}
-.pod small {
-  font-size: 12px;
-  color: var(--mute);
-  text-align: center;
-}
-.pface {
-  border-radius: 50%;
-  background: var(--tc);
-  padding: 3px;
-  display: grid;
-  place-items: center;
-}
-.pod .step {
-  width: 100%;
-  border-radius: 8px 8px 0 0;
-  background: var(--tc);
-  display: grid;
-  place-items: center;
-  color: #fff;
-  font: 22px var(--disp);
-  -webkit-text-stroke: 2px #10163a;
-  paint-order: stroke;
-  margin-top: 4px;
-}
-.pod1 .step {
-  height: 74px;
-  background: linear-gradient(var(--warn-hi), #e0a800);
-}
-.pod2 .step {
-  height: 52px;
-  background: linear-gradient(#e5e7eb, #9ca3af);
-}
-.pod3 .step {
-  height: 36px;
-  background: linear-gradient(#f0a868, #b8733a);
 }
 .capb {
   display: inline-grid;
@@ -783,11 +664,6 @@ h4 {
   display: flex;
   gap: 4px;
 }
-.feeds {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-  gap: 14px;
-}
 .log {
   list-style: none;
   margin: 0;
@@ -833,8 +709,7 @@ td i {
   font-size: 12px;
 }
 @media (max-width: 860px) {
-  .hub,
-  .feeds {
+  .hub {
     grid-template-columns: minmax(0, 1fr);
   }
   .players {
@@ -1275,9 +1150,6 @@ body:has(.match) .top {
   flex: 0 0 auto;
   margin-top: 4px;
 }
-.match .feeds[hidden] {
-  display: none;
-}
 /* match control bar (T-109) */
 .match .cbar {
   width: min(100vw - 48px, (100vh - 168px) / 0.44);
@@ -1562,9 +1434,6 @@ body:has(.match) .top {
 .mres .rstar span {
   display: flex;
   flex-direction: column;
-}
-.mres .rmsg {
-  margin: 0 0 12px;
 }
 .mres .acts {
   margin-top: 8px;

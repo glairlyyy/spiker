@@ -434,7 +434,7 @@ Steps: remove `toggleCamera` `cycleHype` `cycleGfx` `toggleCutins` (match-screen
   QA: career run → hub, Season sheet (gazette), settings menu in a match.
   Result: removed all listed names (64 lines, 8 files) plus the 4 setting-label helpers (`hypeLabel cutLabel zoomLabel gfxLabel`) only the removed toggles used; 0 refs left; tests 109/109 + lint green; QA screens identical to baseline (match canvas noise only).
 
-### [ ] T-148: Delete dead CSS, merge duplicate selectors
+### [x] T-148: Delete dead CSS, merge duplicate selectors
 
 Spec: §9 Goldens: unchanged Save: no change
 Files: css/career.css, css/style.css, css/theme.css
@@ -445,7 +445,7 @@ theme.css `mcard mgo alloc`; `.skc`, `.dt`, `.seizeline` after T-147). Keep dyna
 "Border pressure labels (T-130)" comment (now the hex target label).
 Accept: ~600 lines gone; a scripted class scan finds no unused selector; QA screenshots unchanged.
 QA: menu, create, hub, map + point panel, people, Season/World/Me sheets, match prep, result.
-Result:
+Result: −839 lines (career.css −656, style.css −131, theme.css −52): 62 dead classes gone (scripted scan: 0 unused; dynamic `m0–4 rS/rA/rB gS/gA w-*` kept, `.gazette` live), 7 duplicate rules folded into their first copy (`.cal .pip .hub .hub .spotcard`(z-index) `.hub .mapwrap .plink .rosters .rp .hub .winbox .wit`); `.hub .spotcard`/`.hub .hubmodal` second copies kept (a max-width @media override sits between, merging would change the cascade); T-130 comment fixed; QA 14/16 screens pixel-identical, match/result differ in the 3D canvas only.
 
 ### [ ] T-149: Hardcoded colours → theme tokens
 
