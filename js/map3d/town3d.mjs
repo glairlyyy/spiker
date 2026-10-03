@@ -222,7 +222,7 @@ export function createTown(scene, heightAt) {
         const x = l.at[0] * MAP_M,
           z = l.at[1] * MAP_M,
           f = l.size * MAP_M * FOOTPRINT,
-          h = k.scale[1] * (0.85 + 0.3 * unit(i * 3 + 1)) * (1 + 2.5 * (l.h || 0) * k.rise);
+          h = k.scale[1] * (0.85 + 0.3 * unit(i * 3 + 1)) * (1 + 1.2 * (l.h || 0) * k.rise);
         q.setFromAxisAngle(up, -l.rot);
         m4.compose(new THREE.Vector3(x, heightAt(x, z) - FOOT, z), q, new THREE.Vector3(f * k.scale[0], h + FOOT, f * k.scale[2]));
         mesh.setMatrixAt(j, m4);

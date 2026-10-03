@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-139** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-141** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -366,6 +366,12 @@ Result: clicking land shows the tile: holder (and who it was taken from), ground
 Spec: §4.27 Goldens: unchanged Save: no change
 Files: js/data/world.js (HEX_VALUE, HEX_ECON; FRONT.weakAt / price / q removed), js/career/hex.js (value, worth, worth0), js/career/front.js (econ, down, weak, priceMul, qMul, strength), js/career/world.js (joinReq), js/career/dossier.js (state, econ), js/ui/career-map.js (tile value), js/ui/career-week.js (Factions value line), js/data/glossary.js (`value`), tests/map.test.js
 Result: every tile has a value (HQ 4, place 3, city 3, beach 2, highland / plain 1); a major's economy e = value held − start value replaces the lost-place count: prices +3% per point lost, facilities ±1.5% per point (0.7–1.3), street strength 50 + 3e, one step down per 3 lost (club joins −3 OVR / key, fee −25%), weakened at −6; dossier state pressed / rising follows e. Tile panel shows value; Factions cards `Tiles 41 −1 · value 69 −1` and the prices / facilities line (2 decimals). Test added. 27-week sims: e ends between −5 and +4 per faction (prices up to ×1.15, facilities 0.93–1.06) — every flip now moves the economy.
+
+### [x] T-139: Fewer, lower buildings (owner request)
+
+Spec: §4.19 Goldens: unchanged Save: no change
+Files: js/career/mapmodel.js (MapModel.thin), js/map3d/kit3d.mjs (block / tower base heights), js/map3d/town3d.mjs (height stretch), spec.md §4.19, tests/map.test.js (lot targets)
+Result: every density × 0.65 (`MapModel.thin`): 1145 → 704 lots (Wei 329, Wu 211, Shu 83, Outlaws 40, Academy 23, Gloria 18; test targets ±20 % follow); towers 15 → 9 and blocks 7 → 5 base height, wealth stretch 2.5 → 1.2 (tallest tower ~52 → ~20 units). QA: hub screenshot.
 
 ## Later — outlines
 

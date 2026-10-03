@@ -80,12 +80,12 @@ const shape = name => {
 const MAT = new THREE.MeshStandardMaterial({ roughness: 0.9, metalness: 0, vertexColors: true });
 
 /** Filler kinds: `scale` = [width ×, height m, depth ×] (width / depth × the lot's side in metres), `colors` = the wall palette. */
-/** rise (0–1): how much a lot's height factor `h` stretches this kind: height × (1 + 2.5 × h × rise). */
+/** rise (0–1): how much a lot's height factor `h` stretches this kind: height × (1 + 1.2 × h × rise) (town3d.mjs). */
 const filler = (shp, scale, colors, rise = 0.15) => ({ geo: () => shape(shp), mat: MAT, scale, colors, rise });
 export const KIT = {
   // Wei: dense city blocks, towers, shopfronts (gold-grey)
-  block: filler('box', [1, 7, 1], ['#b9b3a4', '#a8a293', '#c4b48a'], 0.7),
-  tower: filler('box', [0.8, 15, 0.8], ['#9aa3ad', '#8a94a0', '#c9b27a'], 1),
+  block: filler('box', [1, 5, 1], ['#b9b3a4', '#a8a293', '#c4b48a'], 0.7),
+  tower: filler('box', [0.8, 9, 0.8], ['#9aa3ad', '#8a94a0', '#c9b27a'], 1),
   shop: filler('box', [1.1, 3.4, 1], ['#cdb98d', '#d0a35a', '#b9b3a4'], 0.3),
   // Wu: fishing villages (weathered wood, blue accents)
   hut: filler('gable', [1, 2.7, 1], ['#b99a6b', '#a68a5e', '#c9ad7c']),

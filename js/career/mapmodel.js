@@ -140,7 +140,7 @@ const MapModel = {
             id = `${d.id}|${gi}|${gj}`;
           if (!inPoly(p, poly) || !!MapModel.onSand(p) !== !!d.beach) continue;
           const w = MapModel.wealth(d.region, p, id, d.id);
-          if (hstr(id) >= d.density * (1.15 - 0.45 * w)) continue;
+          if (hstr(id) >= d.density * MapModel.thin * (1.15 - 0.45 * w)) continue;
           const size = d.size * (0.85 + 0.3 * hstr(`${id}|s`)) * (0.7 + 0.6 * w);
           if (!free(p, size, d.region)) continue;
           add(p, th, size, d, id, w);
@@ -161,7 +161,7 @@ const MapModel = {
         at += cfg.gap;
         for (const side of [1, -1]) {
           const id = `${ua}|${ub}|${Math.round(at)}|${side}`;
-          if (hstr(id) >= cfg.density * 0.4) continue;
+          if (hstr(id) >= cfg.density * MapModel.thin * 0.4) continue;
           const p = [c[0] - uy * side * cfg.setback, c[1] + ux * side * cfg.setback],
             w = MapModel.wealth(reg, p, id, 'country'),
             size = cfg.size * (0.85 + 0.3 * hstr(`${id}|s`)) * (0.7 + 0.6 * w);
@@ -178,6 +178,8 @@ const MapModel = {
   placeClear: 20,
   /** Most settlement lots on the island. */
   maxLots: 1400,
+  /** Every district's and road row's density × this (owner, 2026-10-03: a thinner town). */
+  thin: 0.65,
   /**
    * Pins: places, club HQs and this week's battle. flags: off (no time left for it), far (2+ day trip), turf,
    * gem / overhyped (known quality), hq, can (a club you can sign with), mine (your club), clash, today (a venue where your match is this week; venues are always known).

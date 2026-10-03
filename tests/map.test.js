@@ -236,12 +236,12 @@ test('career: town layout — districts, beach, overpass, frozen borders', () =>
     flat = g.ROADS.edges.filter(e => e[2] !== 'overpass');
   for (const l of L) by[g.City.regionAt(l.at)] = (by[g.City.regionAt(l.at)] || 0) + 1;
   for (const [r, n, lo, hi] of [
-    ['wei', 600, 480, 720],
-    ['wu', 300, 240, 360],
-    ['shu', 150, 120, 180],
-    ['outlaws', 60, 48, 72],
-    ['open', 40, 32, 48],
-    ['gloria', 30, 24, 36]
+    ['wei', 330, 264, 396],
+    ['wu', 210, 168, 252],
+    ['shu', 85, 68, 102],
+    ['outlaws', 40, 32, 48],
+    ['open', 24, 19, 29],
+    ['gloria', 18, 14, 22]
   ])
     assert(by[r] >= lo && by[r] <= hi, `${r} has ${by[r]} lots (~${n})`);
   assert(
