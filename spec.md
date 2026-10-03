@@ -304,10 +304,9 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   - **Story = two seasons** (28 weeks + U21 Final Cup, twice). MC 19 → 20, U21-eligible both years.
   - **Year-1 Cup won**: no call-up yet — a special cut-scene, then the rival's growth rate goes to its maximum for
     year 2 (the rival answers). The run goes on to year 2.
-  - **International pick**: beating the rival gets you picked for the international team (owner: "whenever the player
-    wins over the rival"). Winning the year-2 Cup = the **true end**: you, the rival and the aces are picked and the
-    **International Cup** follows (new stage, not built). Which wins over the rival count (Cup matches only, or any
-    head-to-head) and the ending when you never beat them: **[open]**.
+  - **International pick** (owner, 2026-10-04): only by winning the **year-2** U21 Final Cup — the **true end**: you,
+    the rival and the aces are picked together and the **International Cup** follows (new stage, not built). Beating the
+    rival elsewhere earns no pick. Ending when you don't win the year-2 Cup: **[open]**.
   - **Year-1 aces** (generated, one per major, not unique): start ★ star, element on, ~OVR 75–80; fixed curve that
     slows toward a ceiling, OP (~95 OVR, key ≥ 95) by the year-1 Cup; age out after it. No random star / OP rolls.
   - **Rival** and the **named aces** (Reina, Ren, Taiga — the MC's cohort): start far above you (~OVR 60–65 while you
