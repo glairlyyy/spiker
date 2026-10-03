@@ -900,7 +900,7 @@ test('career: rules moved out of the UI (T-075)', () => {
     U = g.Dossier.summary(run, 'wu');
   eq(W.label, 'Trusted', 'standing label');
   eq(U.label, 'Wary', 'standing label (negative)');
-  eq(W.lost.length, 1, 'Wei lost a place');
+  assert(W.lost.some(x => x.id === 'weiSpeed'), 'Wei lost the place on that tile (the training district may share it)');
   eq(U.took[0].from, 'wei', 'Wu took it from Wei');
   assert(W.econ && W.econ.joinCut === g.FRONT.join, 'a losing faction asks less');
   eq(g.Dossier.summary(run, 'outlaws').fronts.length, 0, 'minors are not in the war');

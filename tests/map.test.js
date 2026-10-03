@@ -503,23 +503,25 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   eq(g.City.days(run), g.WEEK_DAYS, 'a week starts with 7 days');
   // travel by distance: close by is free, far is up to 3 days
   run.housing = 'studio';
-  eq(g.City.trip(run, g.City.at(run, 'sand')), 0, 'the sand courts are by the airport');
+  eq(g.City.trip(run, g.City.at(run, 'pier')), 0, 'the pier is by the airport');
+  eq(g.City.trip(run, g.City.at(run, 'sand')), 2, 'the sand courts are down the coast (Wu spreads thin)');
   eq(g.City.trip(run, g.City.at(run, 'harbor')), 2, 'the far east coast: the coast road makes it 2 days (T-048)');
   eq(g.City.trip(run, g.City.at(run, 'dunes')), g.TRIP_MAX, 'the dunes past the harbor: the longest trip');
   eq(g.City.trip(run, [2000, 2000]), g.TRIP_MAX, 'never more than 3 days');
   const m0 = run.money,
-    sp0 = run.sp;
+    sp0 = run.sp,
+    cs = g.City.cost(run, 'sand');
   assert(g.City.day(run, 'sand', false), 'train on the sand');
   eq(run.money, m0 - g.City.price(run, 'sand'), 'the session is paid');
   assert(run.sp > sp0, 'sand builds technique (skill points)');
-  eq(g.City.days(run), 6, 'a local session takes a day');
+  eq(g.City.days(run), 7 - cs, 'the trip + the session');
   run.event = null;
   const mate = g.Run.mates(run)[0].id,
     b0 = g.Run.you(run).bond[mate] || 0,
     cb = g.City.cost(run, 'bonfire');
   assert(g.City.day(run, 'bonfire'), 'night out at the bonfire');
   assert((g.Run.you(run).bond[mate] || 0) > b0, 'the night out raises bond');
-  eq(g.City.days(run), 6 - cb, 'the trip + the night');
+  eq(g.City.days(run), 7 - cs - cb, 'the trip + the night');
   run.money = 500;
   run.days = 7;
   const ct = g.City.cost(run, 'trail');

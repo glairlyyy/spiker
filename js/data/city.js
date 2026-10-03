@@ -84,7 +84,7 @@ const CITY = (() => {
       gloria: { x: 690, y: 255, rx: 58, ry: 40, rot: 10 }
     },
     /** Region label anchors. */
-    label: { open: [545, 432], wei: [690, 330], shu: [300, 300], wu: [680, 545], outlaws: [835, 500], gloria: [690, 222] },
+    label: { open: [545, 432], wei: [800, 345], shu: [300, 300], wu: [680, 545], outlaws: [835, 500], gloria: [690, 222] },
     airport: [470, 600],
     /** Each club's HQ (team index → [x, y]). */
     hq: [
@@ -144,16 +144,16 @@ const REVEAL_R = 170;
  */
 const SPOTS = {
   // Wei — the city: premium, pricey, maybe overhyped
-  weiPower: { name: 'Dynasty Strength Center', train: 'power', region: 'wei', at: [615, 330], icon: '🏋' },
-  weiSpeed: { name: 'Dome Sprint Lab', train: 'speed', region: 'wei', at: [760, 330], icon: '🏃' },
-  weiWit: { name: 'Academy Film Library', train: 'wit', region: 'wei', at: [680, 410], icon: '🎞' },
-  weiJump: { name: 'Skytower Plyo Gym', train: 'jump', region: 'wei', at: [575, 185], icon: '🏀' },
+  weiPower: { name: 'Dynasty Strength Center', train: 'power', region: 'wei', at: [655, 315], icon: '🏋' },
+  weiSpeed: { name: 'Dome Sprint Lab', train: 'speed', region: 'wei', at: [705, 315], icon: '🏃' },
+  weiWit: { name: 'Academy Film Library', train: 'wit', region: 'wei', at: [655, 350], icon: '🎞' },
+  weiJump: { name: 'Skytower Plyo Gym', train: 'jump', region: 'wei', at: [705, 350], icon: '🏀' },
   gloria: { name: 'St. Gloria Private Club', train: 'def', region: 'gloria', at: [735, 275], icon: '💎' },
   // Wu — the coast: mid everything; sand courts build technique
-  sand: { name: 'Sand Courts', train: 'def', region: 'wu', sand: true, at: [560, 632], icon: '🏖' },
+  sand: { name: 'Sand Courts', train: 'def', region: 'wu', sand: true, at: [790, 600], icon: '🏖' },
   dunes: { name: 'Dune Sprints', train: 'speed', region: 'wu', at: [975, 240], icon: '🌊' },
   harbor: { name: 'Harbor Gym', train: 'power', region: 'wu', at: [935, 385], icon: '⚓' },
-  pier: { name: 'Pier Jump Deck', train: 'jump', region: 'wu', sand: true, at: [615, 646], icon: '🪂' },
+  pier: { name: 'Pier Jump Deck', train: 'jump', region: 'wu', sand: true, at: [535, 645], icon: '🪂' },
   // Shu — the highlands: cheap and rough, far from everything
   trail: { name: 'Mountain Trail', train: 'speed', region: 'shu', at: [215, 290], icon: '⛰' },
   steps: { name: 'Thousand Steps', train: 'jump', region: 'shu', at: [320, 235], icon: '🛕' },
@@ -300,8 +300,8 @@ const ROADS = {
     airport: [470, 600],
     // Wu: the coast road, east round to the harbor
     'home:studio': [430, 622],
-    sand: [560, 632],
-    pier: [615, 646],
+    sand: [790, 600],
+    pier: [535, 645],
     bonfire: [680, 622],
     hotelWu: [735, 525],
     jWu1: [840, 520],
@@ -327,11 +327,15 @@ const ROADS = {
     'venue:hall': [580, 510],
     jAc1: [575, 415],
     jAc2: [505, 555],
-    // Wei: avenues and the grid
-    weiPower: [615, 330],
-    weiSpeed: [760, 330],
-    weiWit: [680, 410],
-    weiJump: [575, 185],
+    // Wei: avenues and the grid; the four gyms stand together in the training district round jW1 (owner, 2026-10-03)
+    weiPower: [655, 315],
+    weiSpeed: [705, 315],
+    weiWit: [655, 350],
+    weiJump: [705, 350],
+    jWp: [615, 330],
+    jWs: [760, 330],
+    jWw: [680, 410],
+    jWj: [575, 185],
     hotelWei: [820, 290],
     noodles: [720, 380],
     arcade: [620, 262],
@@ -382,12 +386,12 @@ const ROADS = {
     ['hq3', 'home:dorm', 'main'],
     // the boardwalk (sand ↔ pier ↔ bonfire ↔ the resort strip)
     ['airport', 'jBw1', 'boardwalk'],
-    ['jBw1', 'sand', 'boardwalk'],
-    ['sand', 'jBw2', 'boardwalk'],
-    ['jBw2', 'pier', 'boardwalk'],
+    ['jBw1', 'pier', 'boardwalk'],
+    ['pier', 'jBw2', 'boardwalk'],
     ['jBw2', 'bonfire', 'boardwalk'],
     ['bonfire', 'jBw3', 'boardwalk'],
-    ['jBw3', 'jBw4', 'boardwalk'],
+    ['jBw3', 'sand', 'boardwalk'],
+    ['sand', 'jBw4', 'boardwalk'],
     ['jBw4', 'jBw5', 'boardwalk'],
     ['jBw5', 'resort', 'boardwalk'],
     ['resort', 'venue:beach', 'boardwalk'],
@@ -396,36 +400,41 @@ const ROADS = {
     ['jO1', 'jO2', 'overpass'],
     ['jO2', 'jWu2', 'overpass'],
     ['home:dorm', 'hq1', 'main'],
-    ['hq1', 'weiPower', 'main'],
+    ['hq1', 'jWp', 'main'],
     // Central Academy roads
     ['airport', 'jAc2', 'main'],
     ['jAc2', 'jAc1', 'main'],
     ['jAc1', 'park', 'main'],
-    ['park', 'weiPower', 'main'],
+    ['park', 'jWp', 'main'],
     ['park', 'stone', 'main'],
     ['park', 'venue:hall', 'main'],
     // Wei avenues and grid
-    ['weiPower', 'jW1', 'main'],
-    ['jW1', 'weiSpeed', 'main'],
-    ['weiSpeed', 'jW2', 'main'],
+    ['jWp', 'jW1', 'main'],
+    ['jW1', 'jWs', 'main'],
+    ['jWs', 'jW2', 'main'],
     ['jW2', 'hotelWei', 'street'],
-    ['weiPower', 'arcade', 'main'],
+    ['jWp', 'arcade', 'main'],
     ['arcade', 'hq0', 'main'],
     ['hq0', 'venue:arena', 'main'],
-    ['hq0', 'weiJump', 'main'],
-    ['weiJump', 'jWn', 'main'],
+    ['hq0', 'jWj', 'main'],
+    ['jWj', 'jWn', 'main'],
     ['jWn', 'home:homeless', 'street'],
-    ['jW1', 'weiWit', 'street'],
-    ['weiWit', 'noodles', 'street'],
+    ['jW1', 'jWw', 'street'],
+    ['jWw', 'noodles', 'street'],
     ['noodles', 'home:condo', 'street'],
-    ['home:condo', 'weiSpeed', 'street'],
-    ['weiWit', 'home:dorm', 'street'],
+    ['home:condo', 'jWs', 'street'],
+    ['jWw', 'home:dorm', 'street'],
     ['jW1', 'jW3', 'street'],
     ['jW3', 'hq6', 'street'],
     ['hq6', 'arcade', 'street'],
     ['hq6', 'gloria', 'street'],
     ['gloria', 'hotelWei', 'street'],
-    ['jW3', 'weiSpeed', 'street'],
+    ['jW3', 'jWs', 'street'],
+    // the training district: every Wei gym a short walk from jW1
+    ['jW1', 'weiPower', 'street'],
+    ['jW1', 'weiSpeed', 'street'],
+    ['jW1', 'weiWit', 'street'],
+    ['jW1', 'weiJump', 'street'],
     // the Outlaws, under the overpass
     ['home:condo', 'hq5', 'dirt'],
     ['jWu1', 'street', 'dirt'],
@@ -449,7 +458,7 @@ const ROADS = {
     ['hq4', 'venue:highland', 'dirt'],
     ['hotelShu', 'dojo', 'dirt'],
     ['hotelShu', 'jSn', 'dirt'],
-    ['jSn', 'weiJump', 'main']
+    ['jSn', 'jWj', 'main']
   ]
 };
 /**

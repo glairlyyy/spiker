@@ -373,6 +373,12 @@ Spec: §4.19 Goldens: unchanged Save: no change
 Files: js/career/mapmodel.js (MapModel.thin), js/map3d/kit3d.mjs (block / tower base heights), js/map3d/town3d.mjs (height stretch), spec.md §4.19, tests/map.test.js (lot targets)
 Result: every density × 0.65 (`MapModel.thin`): 1145 → 704 lots (Wei 329, Wu 211, Shu 83, Outlaws 40, Academy 23, Gloria 18; test targets ±20 % follow); towers 15 → 9 and blocks 7 → 5 base height, wealth stretch 2.5 → 1.2 (tallest tower ~52 → ~20 units). QA: hub screenshot.
 
+### [x] T-140: Training layout by faction (owner request, spec §4.18a)
+
+Spec: §4.18a Goldens: unchanged Save: no change
+Files: js/data/city.js (SPOTS at, ROADS nodes / edges, Wei label), tests/map.test.js, tests/career.test.js
+Result: Wei gyms moved into a training district round jW1 ([655–705, 315–350]), each a street off jW1; their old road nodes kept as junctions (jWp / jWs / jWw / jWj) so every avenue still runs; Wu sand courts → south-east beach [790, 600], pier → by the airport [535, 645], boardwalk reordered (airport → pier → bonfire → sand → resort); Shu unchanged; Wei label moved off the district. Trips from the airport: pier 0, Wei gyms 2 each, sand / harbor 2, dunes 3. Side effect: the district spans 3 hex tiles, so one flip can take two Wei gyms (test updated). QA: hub with places revealed.
+
 ## Later — outlines
 
 UI polish (spec §9, design system fix-plan Batch 7) — spec chat details when Now/Next are done:

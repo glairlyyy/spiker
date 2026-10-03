@@ -187,6 +187,9 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   - You walk the road route. Trip cost = cheaper of road route (main/overpass fast; Wei streets, boardwalk, dirt
     slower; Shu mountain paths slowest) or cross-country (Shu highlands rough). Airport → harbor 2 days by coast road;
     Shu mountain trail 3.
+- §4.18a Training layout (owner, 2026-10-03) **[built]**: Wei's four gyms stand together in one training district
+  round the jW1 junction (a short walk apart: little travel inside Wei); Wu's spread thin along the coast (pier by the
+  airport, sand courts on the south-east beach, harbor on the east coast, dunes in the north-east); Shu's stay scattered.
 - §4.19 Town layout (crowded; lore.md §3–§5); buildings fill districts (area + style + density), ~700 total (owner, 2026-10-03: thinner and lower — `MapModel.thin` 0.65, tallest towers ~half as high) (Wei
   ~330, Wu ~210, Shu ~85, Outlaws ~40, Academy ~24, Gloria ~18):
   - **Wei**: _Downtown_ (Wei Gold HQ, league office; tower grid, densest); _Old Town_ (north-coast pocket by the
