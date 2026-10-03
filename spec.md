@@ -338,7 +338,8 @@ mood)`.
 - §5.3 Legacy / Hall of Fame **[dropped]**. §5.4 Character creation rework (deferred).
 - §5.5 Severe injury: the permanent −2 on one stat is assumed; confirm in the balance pass.
 - §5.6 Faction recolour: Shu `#4ade80` = the `good` status colour, Wu `#3fa9f5` ≈ `cyan`, Wei `#f5b82e` ≈ `gold`.
-  Proposed `wei #d08a2e` · `wu #5b8def` · `shu #2fb8a0` (design system tokens). Owner to approve before any task.
+  **Approved (owner, 2026-10-03):** `wei #d08a2e` · `wu #5b8def` · `shu #2fb8a0` (design system tokens) everywhere a
+  faction colour shows (map tiles, chips, borders, banners, 3D accents); club kits keep their own colours. Task T-165.
 
 ## 6. Narrative rules [locked; faction/region/Gazette/event strings built]
 

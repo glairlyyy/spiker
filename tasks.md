@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-165** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-168** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -29,6 +29,41 @@ evaluations, U21 Cup, Story mode, growth, relationships), UI redesign §9–§10
 × 1.5, cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git history.
 
 ## Now
+
+Owner request 2026-10-03 (UI polish leftovers): T-165 → T-167. UI only: no rule, number or save change; goldens unchanged.
+
+### [ ] T-165: Faction recolour
+
+Spec: §5.6 (approved) §9 Goldens: unchanged Save: no change
+Goal: the three majors no longer look like status colours: Wei `#d08a2e`, Wu `#5b8def`, Shu `#2fb8a0` everywhere a faction colour shows.
+Files: js/data/world.js (REGIONS wei/wu/shu `color`), js/map3d/kit3d.mjs (`ACC`), css/theme.css (faction tokens `--wei` `--wu` `--shu` from tokens.json, if missing), css/hub.css (the `#f5b82e` day dots comment), tests (any hard-coded old hex)
+Do not: change club kit colours (FACTIONS / team colours), the `good` / `cyan` / `gold` status tokens, `js/render/tags.js` stamina colours (a status colour, not Shu), or any minor faction colour.
+Steps: grep js/, css/, tests/ for `#f5b82e` `#3fa9f5` `#4ade80` (and lowercase/uppercase variants, rgb forms); replace only the faction uses; check the hex tile fill, frontier ribbons, labels, patrols, chips and the battle card read well on the dark map (tile fill opacity unchanged).
+Accept: no faction use of the old hexes left (grep); tests + lint green.
+QA: career run → hub map (all three majors visible), World sheet Factions, a battle card; screenshots.
+Result:
+
+### [ ] T-166: Spelled-out stat names
+
+Spec: §9 §10.6 Goldens: unchanged Save: no change
+Goal: no single-letter stat codes (K / B / A / D / E, Blk / Ace / Dig / Ast) where a player reads them.
+Files: js/ui/match-screen.js (boxScore headers), js/ui/match-result.js (top-3 lines, Your line), js/ui/career-sheets.js (match history table + line), js/ui/career-end.js (career line), css/style.css (box score column widths only)
+Do not: change the stats themselves or `m.stat`; add sentences — a word per number (`3 kills`), zero values hidden in one-line summaries (`3 kills · 1 ace`), columns keep 0.
+Steps: box score headers Kills · Blocks · Aces · Digs · Errors · Top km/h · Mood · Stamina (the `title` hovers go); result top 3 `3 kills · 1 block · 2 digs` (zeros hidden); Your line labels under the numbers (Kills / Blocks / Aces / Errors); history table columns Kills · Attacks · Errors · Blocks · Aces · Digs · Assists (no `K/Att/Err` slashes); career end line `n kills · n blocks · n aces`.
+Accept: grep finds no `>K<`, `' K'`, `K/Att`, `Blk/Ace` in js/ui; box score fits the rail without horizontal scroll at 1440 px.
+QA: Monster game → box score (B) and result screen; career → Season sheet match history row opened; screenshots.
+Result:
+
+### [ ] T-167: Encyclopedia section tabs
+
+Spec: §9 Goldens: unchanged Save: no change
+Goal: the Encyclopedia's section links become tabs that show where you are.
+Files: js/ui/encyclopedia.js, css/career.css (.ency-nav), css/theme.css (.ency-nav rules)
+Do not: split the page into separate views (one scroll stays); add new content.
+Steps: `.ency-nav` → a sticky `.seg` of buttons (one per section); clicking scrolls to the section; an IntersectionObserver marks the section in view `on` (the `seg` selected state); Back prints its hotkey (`Back <kbd>Esc</kbd>`) and Esc goes back to the menu; observer disconnected when the screen changes.
+Accept: scrolling updates the active tab; clicking a tab scrolls and activates it; Esc returns to the menu; no errors.
+QA: menu → Encyclopedia, scroll to Elements, screenshot.
+Result:
 
 Owner request 2026-10-03 (spec §10.8 Quiet UI): T-159 → T-164. UI text only: no rule, number or save change; goldens unchanged.
 Mockup: design system QuietUI card; per-screen budgets and cut lists in `quiet-ui.md`. File names below are after the T-154 / T-155 splits.
@@ -91,13 +126,6 @@ Result: Title: button sub-lines and the tagline on hover, Continue hero `name ·
 Owner requests 2026-10-03 (spec §10.1, §10.1a): T-135 → T-136 → T-137.
 
 ## Later — outlines
-
-UI polish (spec §9, design system fix-plan Batch 7) — spec chat details when Now/Next are done:
-
-- Faction recolour (§5.6 — owner approval first).
-- Main menu: Continue as the hero card when a save exists; Playtest card + Debug-log badge behind `?dev`.
-- Create: replace the all-1 stat bars with a role explainer; hide the Mode control until Endless exists.
-- Podium and box score: spelled-out stat names. Encyclopedia: section tabs show the current section.
 
 Features (spec first):
 
