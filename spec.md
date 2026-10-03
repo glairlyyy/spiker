@@ -449,7 +449,8 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   columns, focus segment, Play/Sim). The old battle intro, Gazette pop-up and recap cards go.
 - §10.6 Match result screen replaces the podium overlay: grade tile, your K/B/A/E + focus, rewards chips, growth,
   techniques picked up, top 3, Continue / Box score. The 3D match itself follows §9.9.
-- §10.7 Title screen (Continue hero, New career, Encyclopedia, Settings; playtest behind `?dev`) and Create (role
+- §10.7 Title screen (Continue hero, New career, Encyclopedia, Settings, **Dev** — owner 2026-10-03: a title-screen tab, always shown, with Monster game, player models,
+  Benchmark models, the §10.8 word counter (on/off, remembered per browser) and Debug log; `?dev` opens it with the counter on) and Create (role
   cards with key stat, best training places, techniques; name; challenge toggles; Arrive / Back).
 - §10.8 Quiet UI (owner, 2026-10-03; design system `quiet-ui.md`, QuietUI card): show the decision, hide the explanation.
   Four layers: L0 glance (names, numbers, icons, verbs + costs) · L1 hover (`tip` / `term`, ≤ 15 words) · L2 peek (new

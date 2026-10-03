@@ -33,39 +33,45 @@ evaluations, U21 Cup, Story mode, growth, relationships), UI redesign §9–§10
 Owner request 2026-10-03 (spec §10.9): T-168 → T-169. UI only: no rule or number change; goldens unchanged.
 
 ### [ ] T-168: Sign only at the HQ; World tab My club
-Spec: §10.9 §10.3          Goldens: unchanged          Save: no change
+
+Spec: §10.9 §10.3 Goldens: unchanged Save: no change
 Goal: the only Sign button is on a club's HQ place panel; the World sheet's Clubs tab becomes a shortcut card for your club.
 Files: js/ui/career-dossier.js (WORLD_TABS, clubsCard, dossierCard), js/ui/career-hub.js (inboxRows, nextStep), css/people.css (if needed)
 Do not: change World.canJoin / World.join / joinGap; remove Sign from hqPanel.
 Steps:
+
 1. WORLD_TABS `clubs: 'My club'` (key unchanged so worldTab('clubs') still works).
 2. clubsCard(run) → myClubCard: with a club — chip, name, OVR, your role + `starter` / `bench`, buttons `HQ ›` (`hubOpen(null);mapPick('hq'+ti)`) and `Dossier ›`; free agent — `Free agent` + clubs with World.canJoin ok as links (chip, name, OVR) to their HQ pin, none → `Nobody would sign you yet` (hover: the smallest joinGap).
 3. dossierCard clubs: drop the Sign / gap button; club name links to its HQ pin.
 4. Inbox item and nextStep "would sign you": act = `hubOpen(null);mapPick('hq'+t.i)`, button label `HQ`.
-Accept:
+   Accept:
+
 - No element with `onclick="joinClub` outside hqPanel (grep).
 - Free agent at week 1: My club tab lists signable clubs as links; clicking one selects its HQ on the map with Sign.
 - Signed: My club card shows your club; HQ › selects the pin.
-QA: career run → World › My club (free and signed), inbox HQ link.
-Result:
+  QA: career run → World › My club (free and signed), inbox HQ link.
+  Result:
 
 ### [ ] T-169: People as one list with markers and favourites
-Spec: §10.9 §10.4          Goldens: unchanged          Save: no change (run.fav via RUN_DEFAULTS)
+
+Spec: §10.9 §10.4 Goldens: unchanged Save: no change (run.fav via RUN_DEFAULTS)
 Goal: the People sheet is one list with small team / rival / favourite markers; favourites can be starred.
 Files: js/ui/career-people.js (PEOPLE_FILTERS, sheetPeople, personDetail), js/career/run.js (RUN_DEFAULTS `fav`), css/people.css (.pmk markers)
 Do not: change Rel / Asks / People logic; drop the waiting `!` badge.
 Steps:
+
 1. Remove PEOPLE_FILTERS, the `.seg.pfil` row and CW.pfilter use.
 2. One list, no `.lab` headings, order: waiting → favourites → squad (starters) → bench → others → gone; dedupe by id.
 3. Row markers after the name (`<span class="pmk">`): `🛡` in `--tc` of your club (class `out` when bench), `⚔` if rival (as today's `rival` fn), `★` if in run.fav; each with tip (`Your squad` / `Bench` / `Rival` / `Favourite`).
 4. RUN_DEFAULTS `fav: [() => [], …]`; personDetail header gets a `☆ / ★` toggle button (`toggleFav(id)`, Run.save) with tip `Pin to the top`.
 5. Header right: `Chemistry ›` peek (chemBlock + Leave squad when allowed), only when you have a squad.
-Accept:
+   Accept:
+
 - No filter tabs, no group headings; a starred person moves to just below the waiting rows and keeps ★ after reload.
 - Squad mates show 🛡, rivals ⚔; tests pass (people.test.js stub updated if needed).
 - People sheet ≤ 60 visible words at week 1 (`?dev`).
-QA: career run → People: star someone, reload, open Chemistry ›.
-Result:
+  QA: career run → People: star someone, reload, open Chemistry ›.
+  Result:
 
 Owner request 2026-10-03: remove the coach's goal (spec §10.1b).
 
@@ -77,6 +83,12 @@ Do not: touch match focus goals (`FOCUS`, pre-match), sponsors, or the engine.
 Accept: grep finds no `Goals.` / `run.goal` / "Coach's goal" in js/; dead-globals test green; tests + lint green.
 QA: career run → hub, brief, Season sheet, End week report; screenshots, no errors.
 Result: Goals removed (goals.js → sponsors.js, Sponsors only); run.goal no longer created (old saves keep a dead field); rail goal line, folded-rail ◎, brief row, Season goal line, calendar underline, Week report "New goal" and the goal log tags gone; Season card → "Cups and sponsors", hidden while empty; 13 dead CSS classes pruned (incl. Quiet UI leftovers); goal tests → one no-goal test (110 tests). QA: brief, hub, folded rail, Season, Week report — no errors.
+
+### [x] T-171: Dev tab on the title screen
+
+Spec: §10.7 Goldens: unchanged Save: no change (one per-browser key `sns_dev_words`)
+Files: js/ui/menu.js (Dev button + panel), js/ui/debug-panel.js (`setWords` / `wordsOn`), js/core/storage.js (KEYS.words)
+Result: "Dev" title button (always shown) toggles the panel: Monster game, + Player model, Benchmark models, Model colors, Word counter On/Off (remembered per browser; ?dev opens the tab and turns it on) and Debug log. QA: title → Dev → Word counter on → badges on the title; Monster game starts; no errors.
 
 Owner request 2026-10-03 (UI polish leftovers): T-165 → T-167. UI only: no rule, number or save change; goldens unchanged.
 

@@ -45,7 +45,7 @@ addEventListener('keydown', e => {
 dbgBadge();
 
 /**
- * ?dev: visible words per screen region (spec §10.8 budgets), a badge at each region's corner, red over budget. Only
+ * Dev tab (title screen, T-171) or ?dev: visible words per screen region (spec §10.8 budgets), a badge at each region's corner, red over budget. Only
  * what is on screen counts (closed peeks and tooltips don't). Budget 0 = count only.
  */
 const WORD_REGIONS = [
@@ -80,4 +80,13 @@ function wordBadges() {
     })
   ).join('');
 }
-if (typeof location !== 'undefined' && /[?&]dev\b/.test(location.search)) setInterval(wordBadges, 600);
+/** The word counter on / off (remembered per browser; ?dev turns it on). */
+let wordTimer = 0;
+const wordsOn = () => !!wordTimer;
+function setWords(on) {
+  clearInterval(wordTimer);
+  wordTimer = on ? setInterval(wordBadges, 600) : 0;
+  if (!on) document.getElementById('wcnt')?.remove();
+  store.set(KEYS.words, on ? '1' : '0');
+}
+if (typeof location !== 'undefined' && (/[?&]dev\b/.test(location.search) || store.get(KEYS.words) === '1')) setWords(true);
