@@ -34,7 +34,7 @@ UX batch 1 (T-090…T-094).
 
 Owner requests 2026-10-03 (spec §10.1, §10.1a): T-135 → T-136 → T-137.
 
-### [ ] T-135: Remove the places list (Map/List)
+### [x] T-135: Remove the places list (Map/List)
 
 Spec: §10.1 Goldens: unchanged Save: no change
 Goal: no list of places anywhere; the map is the only way to find a place (desktop only).
@@ -42,9 +42,9 @@ Files: js/ui/career-hub.js (mapBar, mapMode, placesCard, placeGo, hubKey Esc cha
 Do not: touch the legend chips, MapView, the fly-to or the inbox actions that select a place.
 Steps: delete the Map/List segment, `placesCard`, `placeGo`, `mapMode`, `CW.mapList` and their CSS; Esc chain = ⚙ → sheet → place.
 Accept: no "List" button; grep finds no `placesCard` / `mapList`; inbox "View" still selects the battle pin. QA: hub screenshot.
-Result:
+Result: Map/List segment, placesCard, placeGo, CW.mapList and .mapbar/.maplist/.places/.plrow CSS removed; legend kept as mapLegend(); Esc = ⚙ → sheet → place. QA: hub 1440×900, no errors.
 
-### [ ] T-136: Collapsible week rail
+### [x] T-136: Collapsible week rail
 
 Spec: §10.1 Goldens: unchanged Save: no change (UI state in localStorage, try/catch)
 Goal: the player can fold the week rail to a 72px strip and back; the map takes the space.
@@ -57,9 +57,9 @@ Steps:
 3. Map area, legend and the place panel follow the rail width (CSS var `--rail`); the 3D map gets a resize, not a remount.
    Accept: `[` folds / unfolds; reload keeps the state; nothing in the rail is unreachable when folded (portrait, goal, inbox, End week).
    QA: hub folded and unfolded with a place selected; screenshots.
-   Result:
+   Result: railStrip + railToggle, KEYS.rail (sns_rail_mini), `.hub.railmini { --rail: 72px }`; dayTrack/inbox split into weekCells/inboxItems (shared); strip inbox icon unfolds the rail; armed End week shows "Skip?". Also fixed ARCHITECTURE for T-135. QA: fold/unfold with a place selected, reload keeps it, map canvas 1368px wide folded, no errors.
 
-### [ ] T-137: Vertical info lists
+### [x] T-137: Vertical info lists
 
 Spec: §10.1a §9.8 Goldens: unchanged Save: no change
 Goal: no fact chains joined by `·` in the hub; every block with more than two facts reads top-down, one fact per line.
@@ -74,7 +74,7 @@ Steps:
 5. inboxRows: title line + its facts as a `kv` (battle: Sides, Where, Border, Trip; goal: Goal, Progress, Due; evaluation: Opponent, Venue); weekBrief rows the same; match prep notes (venue, opponent, their best, scout hint) as a `kv`.
    Accept: grep of the hub's rendered text shows no line with two or more `·` separators in the battle card, challenge, HQ, inbox and brief; the battle card matches HubBattle.
    QA: battle week (card + inbox + brief), an HQ with a challenge; screenshots.
-   Result:
+   Result: kv() in dom.js; battle card per HubBattle (title = site, Attacker/Defender/Border/Standing×2/Trip/If nobody joins; side cards Cost/Injury/Win×4/Lose×2; Play it|Sim it segment → Fight buttons sim, old Sim buttons gone; row Fight A, Fight B, Watch); challenge, HQ (habits split from habitText, roster one per line), inbox, brief and eval/cup prep notes as kv (venue/opponent moved out of the prep headers). New helpers clashBorder (career-map), evalNext (career-hub), prepNotes/rankBestRows (career-week, replaces rankBest). Border lines drop the tile name when it is the battle site; End week made sticky so a tall inbox can't push it out. QA: brief/inbox/card/HQ/eval at 1440×900 — 0 lines with ≥2 `·`, no errors.
 
 ### [x] T-130: Border pressure lines on the 3D map
 
