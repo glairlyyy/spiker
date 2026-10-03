@@ -470,6 +470,16 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
 - §10.7 Title screen (Continue hero, New career, Encyclopedia, Settings, **Dev** — owner 2026-10-03: a title-screen tab, always shown, with Monster game, player models,
   Benchmark models, the §10.8 word counter (on/off, remembered per browser) and Debug log; `?dev` opens it with the counter on) and Create (role
   cards with key stat, best training places, techniques; name; challenge toggles; Arrive / Back).
+- §10.7a Title layout = the design system TitleScreen card (owner, 2026-10-04). Left column at a 96px inset, top-aligned
+  from 96px: kicker `4V4 VOLLEYBALL RPG` (label style), wordmark `SPITE & SPIKE` on **one line** (Rajdhani 700,
+  clamp(56px, 6vw, 80px), letter-spacing .14em), tagline `Nobody believed in you. Good.` visible (body, `mute`); 56px
+  below, the menu stack 440px wide, 12px gaps, buttons 52px high, label left-aligned. Continue hero = ink card, `Continue`
+  (title 16 semibold) over one `small` line `{name} · {role name} · Week {n} · {club or Academy}`, `Enter` kbd at the
+  right edge; no save → New career is the ink hero. Dev stays always available (§10.7) but leaves the stack: a quiet text
+  button bottom-left at the 96px inset (`Dev ›`), its panel opens above it. Right of the column: a 3D backdrop — the match
+  arena's empty court with a slow orbit, warm `hot` glow top-right and a `cyan` glow bottom-right over it; static frame
+  under `prefers-reduced-motion`, CSS gradients only if WebGL fails. The title word budget becomes ≤ 25 (kicker and
+  tagline are back, by owner choice).
 - §10.8 Quiet UI (owner, 2026-10-03; design system `quiet-ui.md`, QuietUI card): show the decision, hide the explanation.
   Four layers: L0 glance (names, numbers, icons, verbs + costs) · L1 hover (`tip` / `term`, ≤ 15 words) · L2 peek (new
   `peek()`: click a › or ⓘ → a pinned card beside it, vertical label / value rows ≤ 8, Esc / outside click closes, never

@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-176** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-178** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -29,6 +29,43 @@ evaluations, U21 Cup, Story mode, growth, relationships), UI redesign §9–§10
 × 1.5, cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git history.
 
 ## Now
+
+Owner request 2026-10-04 (spec §10.7a, design system TitleScreen card): T-176 → T-177. UI only; goldens unchanged.
+
+### [ ] T-176: Title screen layout as the TitleScreen mockup
+Spec: §10.7a          Goldens: unchanged          Save: no change
+Goal: the title screen matches the design system TitleScreen card: brand top-left on one line with kicker and tagline, the menu stack under it, Dev as a footer link.
+Files: js/ui/menu.js (renderMenu), css/career.css (`.title` block, ~l.1552–1640)
+Do not: change what the buttons do, the Settings pop, the Dev panel contents or the Enter shortcut; add new tokens.
+Steps:
+1. `.title`: drop the 2-column centred grid; `position: relative; min-height: 100vh; padding: 96px` with one left column (`.tcol`, width 440px … brand may overflow wider).
+2. Brand: `<div class="lab">4V4 VOLLEYBALL RPG</div><h1>Spite &amp; Spike</h1><p class="mute">Nobody believed in you. Good.</p>`; h1 `font: 700 clamp(56px, 6vw, 80px)/1 var(--disp); letter-spacing: .14em; white-space: nowrap`; tagline 16px; the h1 tooltip goes.
+3. Stack 56px under the brand: `.tbig` 52px high, padding 0 20px, text left, 12px gaps. Hero `.tcont`: padding 16px 20px; line 1 `Continue` (16px 600), line 2 small `{name} · {ROLE_NAME} · Week {n} · {club name or Academy}` (`Last run` / `result` and `Cup` cases as today); `<kbd>Enter</kbd>` vertically centred at the right; no third line.
+4. Dev: out of the stack → `<button class="btn quiet tdev">Dev ›</button>` absolutely at bottom 32px / left 96px; the `.mdev` panel opens above it (bottom 72px, left 96px, max-width 720px).
+5. Settings pop stays anchored to its button.
+Accept:
+- 1440×900 with a save: wordmark on one line at x = 96; Continue hero at y ≈ 260; four buttons; Dev link bottom-left; no element right of x = 560 except the backdrop (T-177).
+- Without a save: New career is the ink hero. 1280×720: nothing overlaps, no scroll.
+- Word counter (title) ≤ 25.
+QA: screenshots with and without a save at 1440×900 and 1280×720, side by side with the TitleScreen card.
+Result:
+
+### [ ] T-177: 3D court backdrop on the title screen
+Spec: §10.7a          Goldens: unchanged          Save: no change
+Goal: the right side of the title screen shows the empty match arena slowly orbiting behind two soft glows.
+Files: js/render3d/title3d.mjs (new: `mountTitle3D(el)` / `unmountTitle3D()` reusing `buildArena` from arena3d.mjs — no players, no ball, no crowd animation if costly), js/ui/menu.js (mount after render, unmount on navigate), css/career.css (`.tbg` layer: fixed, inset 0, z-index 0; the column above it; radial glows as CSS on `.tbg::after`), index.html (if the module needs an entry)
+Do not: load VRM models; run the match renderer's loop; block the menu on the 3D load (menu is usable at once, the canvas fades in over 400ms).
+Steps:
+1. Renderer at devicePixelRatio ≤ 1.5, camera at the court's long-side corner, orbit 360° per ~90s around the net centre, slight downward tilt; court framed in the right 60% of the screen.
+2. A left-to-right dark gradient over the canvas (bg 100% at x ≤ 640px → 0% at 60%) so the column text keeps ≥ 4.5:1.
+3. `prefers-reduced-motion`: one static frame, no loop. WebGL error → no canvas, the CSS glows only.
+4. Stop the loop and dispose on leaving the title (no GPU work in the hub or match).
+Accept:
+- Title renders the orbiting court; 60 fps-class at 1440×900 on the QA machine (frame time logged in ?dev).
+- Leaving the title disposes the renderer (no canvas left in the DOM, rAF stopped).
+- Reduced motion → static frame; no errors in the console.
+QA: screenshot at 1440×900; navigate title → hub → title twice, no leaks in the debug log.
+Result:
 
 Owner request 2026-10-03 (spec §10.9): T-168 → T-169. UI only: no rule or number change; goldens unchanged.
 
