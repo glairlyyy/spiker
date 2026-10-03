@@ -76,7 +76,10 @@ function sheetWorld(run) {
   const t = WORLD_TABS[CW.wtab] ? CW.wtab : 'factions',
     body = t === 'clubs' ? clubsCard(run) : t === 'rank' ? rankCard(run) : CW.dossier ? dossierCard(run, CW.dossier) : factionsCard(run);
   return `<div class="sheet-h"><h2>World</h2><div class="seg pfil">${Object.entries(WORLD_TABS)
-    .map(([k, n]) => `<button class="btn ${k === t ? 'on' : ''}" onclick="worldTab('${k}')">${n}</button>`)
+    .map(
+      ([k, n]) =>
+        `<button class="btn ${k === t ? 'on' : ''}" onclick="worldTab('${k}')" ${k === 'factions' ? tip(`Street battles move your standing and the seize count on border tiles.`) : ''}>${n}</button>`
+    )
     .join('')}</div></div><div class="wsheet w-${t}">${body}</div>`;
 }
 /** Rankings (World sheet): tabs for the three lists (Rank.*, js/career/rank.js), top rows then a gap and your own row. */
@@ -150,57 +153,82 @@ function clubsCard(run) {
 }
 /** Your standing with each faction (region), its clubs, and this week's street battle. */
 function factionsCard(run) {
-  /** Tiles held now vs at the start (spec §4.27). */
-  const tiles = r => {
-    if (!MAJORS.includes(r)) return '';
+  /** The faction's front in detail (spec §4.27, a peek — §10.8): tiles and value vs the start, the next tile per border, places taken / lost, economy. */
+  const front = (r, F) => {
     const T = Hex.grid().tiles,
       held = T.filter(t => Hex.owner(run, t.id) === r).length,
       d = held - T.filter(t => t.region === r).length,
       e = Front.econ(run, r),
-      sg = n => (n ? ` <b class="${n > 0 ? 'up' : 'dn'}">${fmtDelta(n)}</b>` : '');
-    return `<div class="small">Tiles <b>${held}</b>${sg(d)} · <span ${tip(GLOSSARY.value.long)}>value <b>${Hex.worth(run, r)}</b>${sg(e)}</span></div>`;
+      sg = n => (n ? ` <b class="${n > 0 ? 'up' : 'dn'}">${fmtDelta(n)}</b>` : ''),
+      E = F.econ;
+    return kv([
+      ['Tiles', `${held}${sg(d)}`],
+      ['Value', `<span ${tip(GLOSSARY.value.long)}>${Hex.worth(run, r)}${sg(e)}</span>`],
+      ...F.fronts.map(({ vs }) => {
+        const k = Front.stakes(run, r, vs);
+        return [
+          `Next vs ${esc(REGIONS[vs].name.split(' ')[0])}`,
+          k.tile ? `${esc(k.name)}${k.seize && k.place ? `, a win takes ${esc(SPOTS[k.place].name)}` : ''}` : 'no reach'
+        ];
+      }),
+      F.took.length
+        ? ['Took', F.took.map(p => `${esc(p.name)} <i class="mute">(${esc(REGIONS[p.from].name.split(' ')[0])})</i>`).join(', ')]
+        : null,
+      F.lost.length
+        ? ['Lost', F.lost.map(p => `${esc(p.name)} <i class="mute">(${esc(REGIONS[p.to].name.split(' ')[0])})</i>`).join(', ')]
+        : null,
+      E ? ['Prices', `×${E.priceMul.toFixed(2)}`] : null,
+      E ? ['Facilities', `×${E.qMul.toFixed(2)}`] : null,
+      E && E.joinCut ? ['Clubs ask', `−${E.joinCut} OVR/key, fees −${E.feeCut}%`] : null
+    ]);
   };
+  const stBar = v =>
+    `<div class="rbar" ${tip(`Standing ${fmtDelta(v)}. ${GLOSSARY.standing.long}`)}><i style="${v >= 0 ? `left:50%;width:${v / 2}%` : `left:${50 + v / 2}%;width:${-v / 2}%`}"></i></div>`;
   const row = r => {
     const F = Dossier.summary(run, r),
       v = F.standing,
+      major = MAJORS.includes(r),
       fronts = F.fronts
         .map(({ vs }) => {
           const k = Front.stakes(run, r, vs),
             cur = k.tile ? k.meter - 1 : 0;
-          return `<span class="fm2" ${tip(GLOSSARY.seize.long)}>vs ${esc(REGIONS[vs].name.split(' ')[0])} · ${
-            k.tile
-              ? `next: ${esc(k.name)} <b class="${cur ? 'up' : ''}">${cur}/${k.cost}</b>${k.seize && k.place ? ` <span class="mute">a win takes ${esc(SPOTS[k.place].name)}</span>` : ''}`
-              : '<span class="mute">no reach</span>'
-          }</span>`;
+          return `<span class="fm2" ${tip(GLOSSARY.seize.long)}>vs ${esc(REGIONS[vs].name.split(' ')[0])} ${k.tile ? `<b class="${cur ? 'up' : ''}">${cur}/${k.cost}</b>` : '<span class="mute">—</span>'}</span>`;
         })
         .join(''),
-      places =
-        (F.took.length
-          ? `<div class="small">Took: ${F.took.map(p => `${esc(p.name)} <i class="mute">(from ${esc(REGIONS[p.from].name)})</i>`).join(', ')}</div>`
-          : '') +
-        (F.lost.length
-          ? `<div class="small">Lost: ${F.lost.map(p => `${esc(p.name)} <i class="mute">(to ${esc(REGIONS[p.to].name)})</i>`).join(', ')}</div>`
-          : ''),
-      E = F.econ,
-      econ = E
-        ? `<div class="small mute">Prices ×${E.priceMul.toFixed(2)} · facilities ×${E.qMul.toFixed(2)}${E.joinCut ? ` · clubs ask −${E.joinCut} OVR/key, fees −${E.feeCut}%` : ''}</div>`
-        : '',
       clubs = F.clubs.map(ti => run.teams[ti]);
-    return `<div class="fac ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}"><div class="fh"><b><a href="#" class="dlink" onclick="openDossier('${r}');return false">${esc(F.name)}</a></b> <span class="mute small">${F.kind}</span>${F.weak ? ' <span class="stk far">Weakened</span>' : ''}${info(F.desc)}<span class="fv">${F.label}</span></div>
-        ${tiles(r)}${fronts ? `<div class="fms">${fronts}</div>` : ''}${places}${econ}
-        <div class="small mute stl">${term('standing', v)}</div><div class="rbar" ${tip(GLOSSARY.standing.long)}><i style="${v >= 0 ? `left:50%;width:${v / 2}%` : `left:${50 + v / 2}%;width:${-v / 2}%`}"></i></div>
-        <div class="small">${clubs.map(t => `${chip(t)}${esc(t.name)}${t.i === run.team ? ' <i class="mute">(yours)</i>' : ''}`).join(' · ')}${
+    return `<div class="fac ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}"><div class="fh"><b><a href="#" class="dlink" onclick="openDossier('${r}');return false" ${tip(`${F.kind}. ${F.desc}`)}>${esc(F.name)}</a></b>${F.weak ? ' <span class="stk far">Weakened</span>' : ''}${
+      v ? `<span class="fv">${fmtDelta(v)}</span>` : ''
+    }</div>
+        ${stBar(v)}${fronts ? `<div class="fms">${fronts}</div>` : ''}
+        <div class="small fclubs">${clubs.map(t => `<span>${chip(t)}${esc(t.name)}${t.i === run.team ? ' <i class="mute">(yours)</i>' : ''}</span>`).join('')}${
           F.foe
-            ? ` <a href="#" class="clashk" onclick="hubOpen(null);mapPick('clash');return false">⚔ vs ${esc(REGIONS[F.foe].name)} this week</a>`
+            ? ` <a href="#" class="clashk" onclick="hubOpen(null);mapPick('clash');return false">⚔ vs ${esc(REGIONS[F.foe].name.split(' ')[0])}</a>`
             : ''
-        }</div></div>`;
+        }</div>${major ? `<div class="fdet">${peek(`fx:${r}`, 'Front', front(r, F))}</div>` : ''}</div>`;
   };
-  return `<div class="panel facs"><p class="small mute">Street battles move your ${term('standing')} standing and the ${term('seize')} count on ${term('border')} tiles.</p>${Object.keys(
-    REGIONS
-  )
-    .filter(r => REGIONS[r].kind !== 'none')
+  const regs = Object.keys(REGIONS).filter(r => REGIONS[r].kind !== 'none'),
+    minors = regs.filter(r => !MAJORS.includes(r));
+  return `<div class="panel facs">${regs
+    .filter(r => MAJORS.includes(r))
     .map(row)
-    .join('')}</div>`;
+    .join('')}${
+    minors.length
+      ? `<div class="fminor">${peek(
+          'fx:minor',
+          'Minor factions',
+          `<div class="lab">Minor factions</div>${kv(
+            minors.map(r => {
+              const v = Dossier.summary(run, r).standing;
+              return [
+                `<a href="#" class="dlink" onclick="CW.peek=null;openDossier('${r}');return false">${esc(REGIONS[r].name)}</a>`,
+                v ? fmtDelta(v) : '<span class="mute">—</span>',
+                v > 0 ? 'up' : v < 0 ? 'dn' : ''
+              ];
+            })
+          )}`
+        )}</div>`
+      : ''
+  }</div>`;
 }
 function joinClub(ti) {
   if (World.join(RUN, ti)) Run.save(RUN);

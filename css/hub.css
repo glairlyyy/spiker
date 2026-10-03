@@ -989,3 +989,37 @@
 .peek .srow {
   margin-top: 6px;
 }
+/* Quiet People, World and Season (spec §10.8, T-163) */
+.facs .fclubs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 6px;
+}
+.facs .fdet,
+.facs .fminor {
+  margin-top: 8px;
+}
+.facs .fv {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.peek .plog {
+  max-height: 360px;
+  overflow-y: auto;
+  margin: 8px 0 0;
+}
+.sheet .goal .warn {
+  color: var(--warn);
+}
+.sheet .goal .mute {
+  color: var(--mute);
+}
+.sheet .goal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sheet .goal b {
+  margin-left: auto;
+}

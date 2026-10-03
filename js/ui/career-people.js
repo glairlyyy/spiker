@@ -7,12 +7,22 @@ const STANCE_NAME = { ally: 'ally', respect: 'respect', neutral: 'neutral', rese
 function personMet(run, p) {
   return p.id === run.youId || !!run.met[p.id] || squadOf(Run.myTeam(run)).includes(p);
 }
-/** The moves you can make on them: a button each, with how likely they are to say yes as a word (never the number). */
+/** Short verbs for the moves (§10.8); the full sentence is the button's hover. */
+const MOVE_VERB = { invite_train: 'Invite to train', ask_sitout: 'Ask to sit out', vouch: 'Ask to vouch', call_out: 'Call out' };
+/**
+ * The moves you can make on them: a short verb each, how likely they are to say yes as a word (never the number). Several
+ * training invites share one `Invite to train ›` whose peek picks the place.
+ */
 function moves(run, id) {
-  const mv = Asks.moves(run, id);
-  return mv.length
-    ? `<div class="pmoves">${mv.map(m => `<button class="btn" onclick="askMove('${esc(String(id))}','${m.kind}','${m.at || ''}')" ${m.word ? tip('They are ' + m.word + ' to say yes') : ''}>${esc(m.label)}${m.word ? ` <i class="mute small">${m.word}</i>` : ''}</button>`).join('')}</div>`
-    : '';
+  const mv = Asks.moves(run, id),
+    btn = (m, label) =>
+      `<button class="btn" onclick="CW.peek=null;askMove('${esc(String(id))}','${m.kind}','${m.at || ''}')" ${tip(m.label + (m.word ? ` — ${m.word}` : ''))}>${esc(label)}${m.word ? ` <i class="mute small">${m.word}</i>` : ''}</button>`,
+    inv = mv.filter(m => m.kind === 'invite_train');
+  if (!mv.length) return '';
+  return `<div class="pmoves">${inv.length > 1 ? peek(`mv:${id}`, 'Invite to train', `<div class="lab">Train where?</div><div class="pmoves">${inv.map(m => btn(m, SPOTS[m.at].name)).join('')}</div>`) : inv.map(m => btn(m, MOVE_VERB[m.kind])).join('')}${mv
+    .filter(m => m.kind !== 'invite_train')
+    .map(m => btn(m, MOVE_VERB[m.kind] || m.label))
+    .join('')}</div>`;
 }
 /** "with X / against Y": who they stand with and against among the people you have met (their strongest NPC ↔ NPC stances). */
 function sidesLine(run, id) {
@@ -55,17 +65,18 @@ function personCard(run, id) {
   const p = People.find(run, id),
     me = run.people && run.people[id];
   if (!p || !me) return '';
-  const want = People.knows(run, p, 'want') ? `<b ${tip(WANTS[me.want].desc)}>${esc(WANTS[me.want].name)}</b>` : '<b class="mute">?</b>',
-    traits = me.traits
-      .map((t, i) => (People.knows(run, p, 'trait', i) ? `<b ${tip(TRAITS[t].desc)}>${esc(TRAITS[t].name)}</b>` : '<b class="mute">?</b>'))
-      .join(' · '),
+  const kw = People.knows(run, p, 'want'),
+    kt = me.traits.map((t, i) => People.knows(run, p, 'trait', i)),
+    want = kw ? `<b ${tip(WANTS[me.want].desc)}>${esc(WANTS[me.want].name)}</b>` : '<b class="mute">?</b>',
+    traits = me.traits.map((t, i) => (kt[i] ? `<b ${tip(TRAITS[t].desc)}>${esc(TRAITS[t].name)}</b>` : '<b class="mute">?</b>')).join(', '),
     mem = Rel.top(run, id, 3),
     t = p.team;
+  // want / traits only once one is known; the rumour of their season is the name's hover (personDetail) — §10.8
   return `<div class="pcard small">
-    <div>Wants ${want} · Traits ${traits}</div>
-    <div class="mute">${p.gone ? esc(`${p.gone.team} · ${People.fateText(me)}`) : `${esc(t ? t.name : 'No club')}${me.status !== 'active' ? ` · ${esc(People.fateText(me))}` : ''}${me.inj > 0 ? ` · injured ${me.inj} more week${me.inj > 1 ? 's' : ''}` : ''}`}</div>
-    ${p.gone ? '' : `<div class="mute"><i>${esc(Rel.season(run, id))}</i></div>${sidesLine(run, id)}`}
-    ${mem.length ? `<ul class="pmem">${mem.map(m => `<li><b>W${m.w}</b> ${esc(m.text)}</li>`).join('')}</ul>` : '<p class="mute">Nothing between you yet.</p>'}
+    ${kw || kt.some(Boolean) ? `<div>Wants ${want} · Traits ${traits}</div>` : ''}
+    <div class="mute">${p.gone ? esc(`${p.gone.team} · ${People.fateText(me)}`) : `${esc(t ? t.name : 'No club')}${me.status !== 'active' ? ` · ${esc(People.fateText(me))}` : ''}${me.inj > 0 ? ` · injured ${me.inj}w` : ''}`}</div>
+    ${p.gone ? '' : sidesLine(run, id)}
+    ${mem.length ? `<ul class="pmem">${mem.map(m => `<li><b>W${m.w}</b> ${esc(m.text)}</li>`).join('')}</ul>` : ''}
   </div>`;
 }
 /** Open the People sheet on this person. */
@@ -149,13 +160,13 @@ function personDetail(run, id, waits) {
   const ask = waits.find(a => String(a.id) === String(id)),
     A2 = ask && APPROACH[ask.kind],
     tag = Rel.tag(run, id);
-  return `<div class="pdh">${p.gone ? '' : faceSVG(p, 0, 48)}<div><h3>${stag(p)}${esc(p.name)}</h3><div class="small mute">${p.role} · ${personMet(run, p) ? 'OVR ' + ovr(p) : 'unrated'}${
+  return `<div class="pdh">${p.gone ? '' : faceSVG(p, 0, 48)}<div><h3 ${p.gone ? '' : `${tip(Rel.season(run, id))} tabindex="0"`}>${stag(p)}${esc(p.name)}</h3><div class="small mute">${p.role} · ${personMet(run, p) ? 'OVR ' + ovr(p) : 'unrated'}${
     tag === 'neutral' ? '' : ` · <span class="stc ${tag}">${STANCE_NAME[tag]}</span>`
   }${Rel.rival(run, id) ? ' <span class="stc rival">rival</span>' : ''}</div></div></div>
     ${personCard(run, id)}
     ${
       ask
-        ? `<div class="pask"><div class="lab">Their ask · until the end of the week</div><p>“${esc(Asks.line(run, ask))}”</p><div class="acts ${ask.kind === 'warn' ? '' : 'two'}"><button class="btn hot" onclick="askAnswer(${ask.i},true)">${esc(A2.a)}</button>${
+        ? `<div class="pask"><div class="lab" ${tip('Answer by the end of the week')}>Their ask · this week</div><p>“${esc(Asks.line(run, ask))}”</p><div class="acts ${ask.kind === 'warn' ? '' : 'two'}"><button class="btn hot" onclick="askAnswer(${ask.i},true)">${esc(A2.a)}</button>${
             ask.kind === 'warn' ? '' : `<button class="btn" onclick="askAnswer(${ask.i},false)">${esc(A2.b)}</button>`
           }</div></div>`
         : ''

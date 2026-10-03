@@ -71,8 +71,9 @@ function peekSync() {
   card.hidden = false;
   card.classList.add('ported');
   document.body.appendChild(card);
-  const own = (trig.closest('.spotcard, .hubcard, .sheet .card, .sheet, .wrail, .panel, section') || trig).getBoundingClientRect(),
+  const box = (trig.closest('.spotcard, .hubcard, .sheet .card, .sheet .fac, .wrail, .panel, section') || trig).getBoundingClientRect(),
     tr = trig.getBoundingClientRect(),
+    own = box.width > innerWidth / 2 ? tr : box, // a wide owner (a whole sheet): sit beside the trigger instead
     w = card.offsetWidth,
     h = card.offsetHeight,
     x = own.right + 12 + w <= innerWidth - 8 ? own.right + 12 : own.left - 12 - w >= 8 ? own.left - 12 - w : Math.max(8, tr.left);

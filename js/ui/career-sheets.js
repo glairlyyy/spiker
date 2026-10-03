@@ -90,7 +90,11 @@ function seasonCard(run) {
   const g = run.goal,
     prog = Goals.progress(run, g);
   return `<div class="panel season"><h3>Goal and sponsors${run.sponsors.length ? '' : info(`Sponsors make offers at ${SPONSOR_AT.map(f => f.toLocaleString()).join(', ')} fans.`)}</h3>
-    ${g ? `<div class="goal ${g.done === true ? 'ok' : g.done === false ? 'miss' : ''}"><b>Coach's goal</b> ${esc(Goals.text(run, g))} <span class="mute small">by W${g.by}${prog ? ' · ' + prog : ''}${g.done === true ? ' · reached' : g.done === false ? ' · missed' : ''}</span><div class="small grw"><span class="wl">Hit</span> ${term('sp', GOAL_REWARD.sp)} ${term('fans', GOAL_REWARD.fans)} ${term('mood', '↑', 'good')} · <span class="wl">Miss</span> ${term('mood', '↓', 'bad')}</div></div>` : ''}
+    ${
+      g
+        ? `<div class="goal ${g.done === true ? 'ok' : g.done === false ? 'miss' : ''}" ${tip(`${prog ? `${prog}. ` : ''}Hit: +${GOAL_REWARD.sp} skill pts, +${GOAL_REWARD.fans} fans, mood up. Miss: mood down.`)}>◎ ${esc(Goals.text(run, g))} <b class="${g.done == null && g.by - run.week <= 1 ? 'warn' : 'mute'}">${g.done === true ? 'reached' : g.done === false ? 'missed' : `W${g.by}`}</b></div>`
+        : ''
+    }
     ${run.cups.map(c => `<div class="small">${esc(CUPS.find(x => x.id === c.id).name)}: <b>${Cup.placeText(c.place)}</b></div>`).join('')}
     ${
       run.sponsors.length
@@ -130,7 +134,7 @@ function calendar(run) {
       skip = run.mode.short && w < 5,
       now = !cur && w === run.week;
     pips.push(
-      `<span class="pip ${w < run.week || (cur && w <= run.week) ? 'past' : now ? 'now' : ''} ${k} ${skip ? 'skip' : ''} ${g && g.by === w && g.done == null ? 'goalw' : ''}" title="Week ${w}${lab ? ': ' + lab : ''}${g && g.by === w ? ' · goal due' : ''}">${w}${lab ? `<i>${lab[0]}</i>` : ''}</span>`
+      `<span class="pip ${w < run.week || (cur && w <= run.week) ? 'past' : now ? 'now' : ''} ${k} ${skip ? 'skip' : ''} ${g && g.by === w && g.done == null ? 'goalw' : ''}" title="Week ${w}${lab ? ': ' + lab : ''}${g && g.by === w ? ' · goal due' : ''}">${now ? w : ''}${lab ? `<i>${lab[0]}</i>` : ''}</span>` // week numbers on hover, this week's shown (§10.8)
     );
     const c = CUPS.find(x => x.after === w);
     if (c) {
@@ -140,7 +144,7 @@ function calendar(run) {
       );
     }
   }
-  return `<div class="cal">${pips.join('')}</div><p class="small mute callg"><i>E</i> evaluation · <i>C</i> camp · <u>underline</u> goal due</p>`;
+  return `<div class="cal">${pips.join('')}</div>`; // legend on the Calendar label's hover (§10.8)
 }
 /** Match history (T-052, Cup.record): newest first, each row a fold with the kick-off snapshot (changes vs your previous match), your line and the box score. */
 const MKIND = { eval: 'Evaluation', cup: 'Cup', challenge: 'Challenge', street: 'Street fight' };
@@ -170,7 +174,7 @@ function matchLog(run) {
           <table class="rk ml"><thead><tr class="gap"><td>Name</td><td>Role</td><td>OVR</td><td>K/Att/Err</td><td>Blk/Ace/Dig/Ast</td></tr></thead><tbody>${side(0)}${side(1)}</tbody></table>`;
       return fold(`ml${i}`, sum, body);
     };
-  return `<div class="panel"><h3>Match history</h3>${L.length ? L.map(row).reverse().join('') : '<p class="small mute">No matches yet.</p>'}</div>`;
+  return L.length ? `<div class="panel"><h3>Match history</h3>${L.map(row).reverse().join('')}</div>` : ''; // nothing to show yet: hidden (§10.8)
 }
 function seePhysio() {
   if (Training.physio(RUN)) renderCareer();
@@ -199,15 +203,28 @@ function sheetSeason(run) {
   const t = CW.stab === 'news' ? 'news' : 'diary',
     g = run.gazette;
   if (t === 'news' && g && !g.read && Run.readGazette(run)) Run.save(run);
-  return `<div class="sheet-h"><h2>Season</h2><span class="pchip">Week ${Math.min(run.week, CAREER.weeks)} / ${CAREER.weeks}</span></div>
-    <div class="sheet-cols seacols"><div class="scol"><section class="card"><div class="lab">Calendar</div>${calendar(run)}</section>${seasonCard(run)}${matchLog(run)}</div>
+  return `<div class="sheet-h"><h2>Season</h2></div>
+    <div class="sheet-cols seacols"><div class="scol"><section class="card"><div class="lab" ${tip('E evaluation · C camp · underline: goal due')}>Calendar</div>${calendar(run)}</section>${seasonCard(run)}${matchLog(run)}</div>
     <section class="card"><div class="seg pfil"><button class="btn ${t === 'diary' ? 'on' : ''}" onclick="CW.stab='diary';renderCareer()">Diary</button><button class="btn ${t === 'news' ? 'on' : ''}" onclick="CW.stab='news';renderCareer()">Gazette${g && !g.read ? ' <em class="badge">!</em>' : ''}</button></div>${
       t === 'news'
         ? g
           ? `<p class="small mute">Week ${g.week}</p><ul class="gzl">${g.items.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`
           : '<p class="mute small">No Gazette yet — it comes out on payday.</p>'
-        : `<ol class="log tagged">${run.log.map(l => logLi(l.t, `<b>${typeof l.w === 'number' ? 'W' + l.w : esc(l.w)}</b> `)).join('')}</ol>`
+        : diaryList(run)
     }</section></div>`;
+}
+/** The Diary: the last 5 lines, the rest behind `All ›` (§10.8). */
+function diaryList(run) {
+  const li = l => logLi(l.t, `<b>${typeof l.w === 'number' ? 'W' + l.w : esc(l.w)}</b> `);
+  return `<ol class="log tagged">${run.log.slice(0, 5).map(li).join('')}</ol>${
+    run.log.length > 5
+      ? peek(
+          'se:diary',
+          `All ${run.log.length}`,
+          `<div class="lab">Diary</div><ol class="log tagged plog">${run.log.map(li).join('')}</ol>`
+        )
+      : ''
+  }`;
 }
 function setHousing(k) {
   if (World.setHousing(RUN, k)) Run.save(RUN);
