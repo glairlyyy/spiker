@@ -112,7 +112,7 @@ Steps:
 
 Owner request 2026-10-03 (spec §10.9): T-168 → T-169. UI only: no rule or number change; goldens unchanged.
 
-### [ ] T-168: Sign only at the HQ; World tab My club
+### [x] T-168: Sign only at the HQ; World tab My club
 
 Spec: §10.9 §10.3 Goldens: unchanged Save: no change
 Goal: the only Sign button is on a club's HQ place panel; the World sheet's Clubs tab becomes a shortcut card for your club.
@@ -130,7 +130,7 @@ Steps:
 - Free agent at week 1: My club tab lists signable clubs as links; clicking one selects its HQ on the map with Sign.
 - Signed: My club card shows your club; HQ › selects the pin.
   QA: career run → World › My club (free and signed), inbox HQ link.
-  Result:
+  Result: My club card (signed: role · starter/bench, HQ › / Dossier ›; free: signable clubs as HQ links, none → nearest gap on hover); dossier club names link to HQ; inbox `HQ ›` + nextStep open the HQ pin; `joinClub` only in hqPanel. QA q168/1–7, no page errors.
 
 ### [ ] T-169: People as one list with markers and favourites
 

@@ -293,9 +293,9 @@ function inboxRows(run) {
 function inboxItems(run) {
   const rows = [],
     line = (ico, text) => `<span class="wico">${ico}</span><span class="wtx">${text}</span>`,
-    act = (ico, text, t, go, cls = '') =>
+    act = (ico, text, t, go, cls = '', lab = '') =>
       rows.push(
-        `<button class="peekt row wit ${cls}" onclick="${go}" ${t ? tip(t) : ''}>${line(ico, text)}<i class="gt" aria-hidden="true">›</i></button>`
+        `<button class="peekt row wit ${cls}" onclick="${go}" ${t ? tip(t) : ''}>${line(ico, text)}<i class="gt" aria-hidden="true">${lab ? `${lab} ` : ''}›</i></button>`
       ),
     // btns = [[label, onclick], …]: the item's actions, in the peek's action row
     facts = (id, ico, text, list, btns, cls = '') =>
@@ -355,7 +355,7 @@ function inboxItems(run) {
   }
   if (World.isFree(run)) {
     const t = run.teams.find(t2 => World.canJoin(run, t2.i).ok);
-    if (t) act('🛡', `${esc(t.name)} signs you`, 'Signing open: see Clubs', "worldTab('clubs')");
+    if (t) act('🛡', `${esc(t.name)} signs you`, 'Sign at their HQ', `hubOpen(null);mapPick('hq${t.i}')`, '', 'HQ');
   }
   for (const z of (CW.seizes || []).filter(x => run.week - x.week <= 1))
     act('⚑', esc(z.text), 'A place changed hands', `mapPick('${z.id}')`);
@@ -400,7 +400,7 @@ function nextStep(run) {
   }
   if (World.isFree(run)) {
     const t = run.teams.find(t2 => World.canJoin(run, t2.i).ok);
-    if (t) return { text: `${t.name}: signing open`, act: "worldTab('clubs')" };
+    if (t) return { text: `${t.name}: signing open`, act: `hubOpen(null);mapPick('hq${t.i}')` };
   }
   if (wt !== 'cup' && wt !== 'eval' && City.days(run) <= 0) return { text: 'Night · end the week', act: '' };
   return null;

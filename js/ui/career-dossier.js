@@ -1,6 +1,7 @@
 // Career: the faction dossier window — one faction's facilities, fronts, clubs and roster, rendered from Dossier.build.
 // Opens in place on the World sheet's Factions tab (from a club HQ panel or a faction name); Esc or ← goes back to the list.
-// Also the World sheet's cards: Rankings (rankCard), Clubs (clubsCard, joinGap, joinClub) and Factions (factionsCard).
+// Also the World sheet's cards: Rankings (rankCard), My club (myClubCard) and Factions (factionsCard); joinGap / joinClub
+// serve the club HQ panel, the only place to sign (spec §10.9).
 
 const DOSSIER_STATE = { weakened: 'Weakened', pressed: 'Pressed', rising: 'Rising', stable: 'Stable', minor: 'Not in the war' };
 
@@ -22,7 +23,6 @@ document.addEventListener('keydown', e => {
 
 function dossierCard(run, r) {
   const d = Dossier.build(run, r),
-    free = World.isFree(run),
     v = d.standing;
   const fronts = d.fronts.length
     ? `<h4>Front</h4><div class="fms">${d.fronts.map(f => `<span class="fm ${f.meter > 0 ? 'up' : f.meter < 0 ? 'dn' : ''}" ${tip(GLOSSARY.seize.long)}>vs ${esc(REGIONS[f.vs].name)} ${fmtDelta(f.meter)}</span>`).join('')}</div>
@@ -44,11 +44,7 @@ function dossierCard(run, r) {
   const clubs = `<h4>Clubs</h4>${d.clubs
     .map(
       c =>
-        `<div class="dclub">${chip(c)}<b>${esc(c.name)}</b> <span class="small mute">rating ${c.ovr} · ${esc(c.join)}</span>${c.habits ? `<div class="small mute">${esc(Dossier.habitText(c.habits))}</div>` : ''}${
-          free
-            ? ` <button class="btn ${c.can.ok ? 'hot' : 'lock'}" onclick="joinClub(${c.ti})" ${c.can.ok ? '' : `disabled ${tip('Missing: ' + c.can.why.join(', '))}`}>${c.can.ok ? 'Sign' : esc(joinGap(run, c.ti))}</button>`
-            : ''
-        }</div>`
+        `<div class="dclub">${chip(c)}<b><a href="#" class="dlink" onclick="CW.dossier=null;hubOpen(null);mapPick('hq${c.ti}');return false" ${tip('Their HQ on the map')}>${esc(c.name)}</a></b> <span class="small mute">rating ${c.ovr} · ${esc(c.join)}</span>${c.habits ? `<div class="small mute">${esc(Dossier.habitText(c.habits))}</div>` : ''}</div>`
     )
     .join('')}`;
   const roster = `<h4>Roster <span class="mute small">${d.roster.length} players</span></h4>${
@@ -69,11 +65,11 @@ function dossierCard(run, r) {
   </aside>`;
 }
 
-/** The World sheet (spec §10.4, SheetWorld): tabs Factions (dossier in place) · Clubs · Rankings. */
-const WORLD_TABS = { factions: 'Factions', clubs: 'Clubs', rank: 'Rankings' };
+/** The World sheet (spec §10.4, SheetWorld): tabs Factions (dossier in place) · My club · Rankings. */
+const WORLD_TABS = { factions: 'Factions', clubs: 'My club', rank: 'Rankings' }; // key `clubs` kept: worldTab('clubs')
 function sheetWorld(run) {
   const t = WORLD_TABS[CW.wtab] ? CW.wtab : 'factions',
-    body = t === 'clubs' ? clubsCard(run) : t === 'rank' ? rankCard(run) : CW.dossier ? dossierCard(run, CW.dossier) : factionsCard(run);
+    body = t === 'clubs' ? myClubCard(run) : t === 'rank' ? rankCard(run) : CW.dossier ? dossierCard(run, CW.dossier) : factionsCard(run);
   return `<div class="sheet-h"><h2>World</h2><div class="seg pfil">${Object.entries(WORLD_TABS)
     .map(
       ([k, n]) =>
@@ -117,7 +113,6 @@ function rankCard(run) {
     ${hidden || CW.rankAll ? `<button class="btn quiet" onclick="CW.rankAll=!CW.rankAll;renderCareer()">${CW.rankAll ? 'Hide unrated' : `Show unrated (${hidden})`}</button>` : ''}
     ${at < 0 ? `<p class="small mute">You are not on this list${tab === 'street' ? ' — fight, hustle, or take a challenge.' : '.'}</p>` : ''}</div>`;
 }
-/** Clubs that would sign you (free agents only). */
 /** The first thing a club still asks of you, as your gap: "OVR 72 · you 41", "$600 · you $200". '' when you can sign. */
 function joinGap(run, ti) {
   const you = Run.you(run),
@@ -134,21 +129,37 @@ function joinGap(run, ti) {
   if (j.fee && run.money < j.fee) return `$${j.fee} · you $${run.money}`;
   return c.why.join(', ');
 }
-function clubsCard(run) {
-  const mine = World.isFree(run) ? null : Run.myTeam(run);
-  let first = true; // one ink primary per card: the first club that would sign you
-  return `<div class="panel clubs"><h3>${mine ? `You play for ${chip(mine)}${esc(mine.name)}` : 'Find a club'}${info('You play Academy evaluations and the U21 Final Cup with the Academy squad until a club signs you. You take the same-role spot on the club.')}</h3>
-    <div class="clist">${[...run.teams]
-      .sort((a, b) => World.canJoin(run, b.i).ok - World.canJoin(run, a.i).ok) // signable first
-      .map(t => {
-        const c = World.canJoin(run, t.i),
-          f = FACTIONS[t.i],
-          sub = t.name.startsWith(REGIONS[f.region].name) || t.name.startsWith(f.name.split(' · ')[0]) ? '' : `${esc(f.name)} · `; // "Wei Dynasty Gold" already says Wei Dynasty
-        return `<div class="club rowcta" style="--tc:${t.color}"><div class="nm"><span class="n1">${chip(t)}<b>${esc(t.name)}</b> <span class="mute small">${sub}OVR ${t.ovr}</span>${info(`${f.front}. Word is: ${f.dark}.`)}</span>
-          <span class="n2 small ${c.ok ? '' : 'mute'}">${World.joinText(t.i, run)}</span></div>
-          ${mine ? '' : `<button class="btn ${c.ok ? (first ? ((first = false), 'hot') : '') : 'lock'}" onclick="joinClub(${t.i})" ${c.ok ? '' : 'disabled'} ${c.ok ? '' : tip('Missing: ' + c.why.join(', '))}>${c.ok ? 'Sign' : esc(joinGap(run, t.i))}</button>`}</div>`;
-      })
-      .join('')}</div></div>`;
+/**
+ * World › My club (spec §10.9): a shortcut card. Signed — your club, your role and squad spot, `HQ ›` (its map pin) and
+ * `Dossier ›`. Free agent — the clubs that would sign you now as links to their HQ (signing happens only there); none →
+ * one line with the nearest gap on hover.
+ */
+function myClubCard(run) {
+  const you = Run.you(run),
+    hq = ti => `hubOpen(null);mapPick('hq${ti}')`;
+  if (!World.isFree(run)) {
+    const t = Run.myTeam(run),
+      spot = t.bench && t.bench.includes(you) ? 'bench' : 'starter';
+    return `<div class="panel myclub" style="--tc:${t.color}"><h3 class="mct">${chip(t)}${esc(t.name)}<span class="mute small">OVR ${t.ovr}</span></h3>
+      <div class="small">${ROLE_NAME[you.role]} · ${spot}</div>
+      <div class="acts two"><button class="btn hot" onclick="${hq(run.team)}">HQ ›</button><button class="btn" onclick="openDossier('${FACTIONS[run.team].region}')">Dossier ›</button></div></div>`;
+  }
+  const open = run.teams.filter(t => World.canJoin(run, t.i).ok);
+  if (!open.length) {
+    // the nearest club: fewest things missing, then the lowest OVR bar
+    const near = [...run.teams].sort(
+      (a, b) =>
+        World.canJoin(run, a.i).why.length - World.canJoin(run, b.i).why.length ||
+        (World.joinReq(run, a.i).ovr || 0) - (World.joinReq(run, b.i).ovr || 0)
+    )[0];
+    return `<div class="panel myclub"><h3>Free agent</h3><p class="small mute" tabindex="0" ${tip(`${near.name}: ${joinGap(run, near.i)}`)}>Nobody would sign you yet</p></div>`;
+  }
+  return `<div class="panel myclub"><h3>Free agent</h3><div class="mclist">${open
+    .map(
+      t =>
+        `<a href="#" class="mclub" style="--tc:${t.color}" onclick="${hq(t.i)};return false" ${tip('Their HQ on the map')}>${chip(t)}<b>${esc(t.name)}</b><span class="mute small">OVR ${t.ovr}</span></a>`
+    )
+    .join('')}</div></div>`;
 }
 /** Your standing with each faction (region), its clubs, and this week's street battle. */
 function factionsCard(run) {
