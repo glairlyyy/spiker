@@ -44,6 +44,10 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     / high outside) · **Bunch** (both central; strong vs middle/pipe, pins open).
   - Scouting a club shows its attack habits (lane split, pipe use) and defence setting.
   - Targets: ~13–14 % of attacks stuffed, kills ~68 % (kills ÷ attacks). `BLOCK` (js/data/tactics.js), `STUFF_BIAS` 0.2.
+- §2.9a Delayed Spike (owner, 2026-10-04, T-178): the blockers are coming down — no block break, no kill block, no tool;
+  only a **fingertip touch** at the tape (still rolled on block power; takes ×0.7 off the spike). Trade-off: the hitter
+  can **hang too long** — chance `HANG_FAIL` 0.35 − 0.008 × (jump − 60) − 0.4 × (wit − 1), clamped 3–45 %; the ball drops
+  on the hitter's side by the net, the best-placed teammate tries to dig it (a poor pass, rally on), else an attack error.
 - §2.10 Substitutions:
   - Squad `SQUAD` 6: `t.P` = 4 on court, `t.bench` = 2 subs, `squadOf(t)` = all 6; lineups restored after each match.
   - Dead ball only, max 2 subs per set per team; sub takes the rotation spot.

@@ -15,10 +15,16 @@ const stuffChance = (bp, cov, pow) => sig((bp / Math.max(cov, 0.01) - pow) / 20 
 const TOOL_COV = [0.25, 0.6],
   TOOL_P = 0.05;
 
-/** 9. Block: block break (drill + hit-stop) → stuff (kill block, or a block-cover dig) → touch → tool off the hands. */
+/**
+ * 9. Block: block break (drill + hit-stop) → stuff (kill block, or a block-cover dig) → touch → tool off the hands.
+ * After a Delayed Spike the blockers are already coming down (owner, 2026-10-04): no block break, no kill block and no
+ * tool — only a fingertip touch at the tape (still rolled on block power, so the blocker's stats count).
+ */
+const LATE_TOUCH = { pow: 0.7 }; // a fingertip touch off falling hands takes less off the ball than a full touch (×0.55)
 function block(c, x) {
   const { m, B, V, atk, ds, da, atkT, defT } = c,
-    { tip, cov, c0, c1, b0, b1, spiker, appX, bz0, spZ, hit, blockers, bdown, el, elS, mark } = x;
+    { tip, cov, c0, c1, b0, b1, spiker, appX, bz0, spZ, hit, blockers, bdown, el, elS, mark } = x,
+    late = !!x.delayed;
   let { pow } = x;
   let touched = false,
     softTouch = false,
@@ -33,6 +39,7 @@ function block(c, x) {
     // when the spike beats the block's full strength by 10%+ (chance grows to 45% at +25%).
     const ratio = pow / Math.max(1, bp / cov);
     if (
+      !late &&
       cov >= 0.5 - 0.2 * brk &&
       ratio > 1.1 - 0.25 * brk &&
       R() < Math.min(0.45 + 0.4 * brk, (ratio - 1.1 + 0.25 * brk) * 3 + 0.35 * brk)
@@ -80,7 +87,7 @@ function block(c, x) {
           ]
         });
       hit.length = 0;
-    } else if (R() < stuffChance(bp, cov, pow)) {
+    } else if (!late && R() < stuffChance(bp, cov, pow)) {
       const bx = sx(atk, rnd(425, 470)),
         bzz = clamp(spZ + rnd(-0.12, 0.12), 0.1, 0.9),
         dp = Math.round(pow * 0.55 + bp * 0.55),
@@ -197,22 +204,26 @@ function block(c, x) {
     // touch or tool off the hands (not after a block break: that ball is already through)
     if (!smashed && R() < sig((bp - pow) / 20 + 0.2)) {
       touched = true;
-      softTouch = hasTech(bb, 'softblk');
+      softTouch = !late && hasTech(bb, 'softblk'); // a Soft Block needs the hands up
       for (const b of blockers) if (b.el === 'earth') elCharge(m, b, EG.earth.touch);
-      pow *= softTouch ? 0.45 : 0.55;
+      pow *= late ? LATE_TOUCH.pow : softTouch ? 0.45 : 0.55;
       V &&
         B({
           dur: 190,
           acts: [
             ...hit,
-            { k: 'ball', to: hands, h: 0, trail: pow },
+            // late: the fingertips at the tape, not the hands (they are already below it)
+            { k: 'ball', to: late ? { x: sx(ds, 490), z: bz0, h: 160 } : hands, h: 0, trail: pow },
             ...(softTouch ? [{ k: 'tech', p: bb.id, t: 'Soft Block' }] : []),
-            { k: 'call', p: bb.id, t: hypeLine('touch', bb, m) },
-            { k: 'log', t: `${bb.name} ${softTouch ? 'soft-blocks it up for the defense' : 'gets a touch on it'}` }
+            ...(late ? [{ k: 'plabel', p: bb.id, t: 'Fingertips!' }] : [{ k: 'call', p: bb.id, t: hypeLine('touch', bb, m) }]),
+            {
+              k: 'log',
+              t: `${bb.name} ${late ? 'gets a fingertip on it on the way down' : softTouch ? 'soft-blocks it up for the defense' : 'gets a touch on it'}`
+            }
           ]
         });
       hit.length = 0;
-    } else if (!smashed && cov >= TOOL_COV[0] && cov < TOOL_COV[1] && R() < TOOL_P) {
+    } else if (!smashed && !late && cov >= TOOL_COV[0] && cov < TOOL_COV[1] && R() < TOOL_P) {
       st(m, spiker, 'k');
       V && B({ dur: 190, acts: [...hit, { k: 'ball', to: hands, h: 0, trail: pow }] });
       V &&

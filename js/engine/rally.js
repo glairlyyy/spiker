@@ -105,6 +105,13 @@ function rally(m, B, V, atk, pas, qual, scr = null) {
     const k0 = (m.stat[x.spiker.id] || blank()).k,
       bk0 = sumBlk(m, defT),
       fin = () => tallyAttack(m, atk, x, k0, bk0);
+    r = x.delayed ? hangFail(c, x) : null; // a Delayed Spike can hang too long (low jump / wit): the ball drops on your side
+    if (r) {
+      fin();
+      if (r.point != null) return r.point;
+      [atk, pas, qual, scr = null] = r.next;
+      continue;
+    }
     r = hittingError(c, x);
     if (r) {
       fin();
@@ -565,6 +572,58 @@ function landingSpot(c, x) {
 }
 
 /** 8d. Hitting error (never on a tip): into the net or out. Returns { point } for the defense, or nothing. */
+/**
+ * Delayed Spike, the trade-off (owner, 2026-10-04): hang too long and the ball drops before you swing. Fail chance
+ * falls with jump and wit (HANG_FAIL); the ball drops on your side by the net and the best-placed teammate tries to
+ * dig it up (a poor pass, the rally goes on) — else the point is lost and the hitter takes an error.
+ */
+const HANG_FAIL = { base: 0.35, jumpFrom: 60, perJump: 0.008, perWit: 0.4, min: 0.03, max: 0.45 };
+function hangFail(c, x) {
+  const { m, B, V, atk, ds, da, atkT } = c,
+    { spiker, spZ, bdown } = x,
+    H = HANG_FAIL,
+    p = clamp(H.base - (spiker.jump - H.jumpFrom) * H.perJump - (W(spiker) - 1) * H.perWit, H.min, H.max);
+  if (R() >= p) return null;
+  const bx = sx(atk, 478),
+    bz = clamp(spZ, 0.1, 0.9),
+    coverScore = q => effD(q) * 0.65 + q.speed * 0.35 - dist(m.pos[q.id], bx, bz) * 25,
+    cvr = atkT.P.filter(q => q !== spiker).reduce((best, q) => (coverScore(q) > coverScore(best) ? q : best)),
+    saved = R() < sig(coverScore(cvr) / 14 - 3.2);
+  V &&
+    B({
+      dur: 420,
+      acts: [
+        ...bdown,
+        { k: 'jump', p: spiker.id, mode: 'down' },
+        { k: 'ball', to: { x: bx, z: bz, h: saved ? 30 : 0 }, h: 20 },
+        { k: 'plabel', p: spiker.id, t: 'Hung too long!' },
+        { k: 'log', t: `${spiker.name} hangs too long — the ball drops before the swing`, c: saved ? '' : 'err' }
+      ]
+    });
+  if (!saved) {
+    st(m, spiker, 'err');
+    md(m, spiker, -0.08);
+    V && B({ dur: 500, acts: [{ k: 'label', t: 'Dropped!', when: 'end', big: 1 }] });
+    return { point: ds };
+  }
+  st(m, cvr, 'dig');
+  const a5 = [],
+    dv = mustDive(cvr, m.pos[cvr.id], bx - da * 6, bz, 360);
+  if (dv) setBusy(m, cvr, c.n + 1);
+  mv(m, cvr, bx - da * 6, bz, a5, V);
+  V &&
+    B({
+      dur: 360,
+      acts: [
+        ...a5,
+        { k: 'pose', p: cvr.id, pose: dv ? 'dive' : 'bump' },
+        { k: 'ball', to: { p: cvr.id, c: dv ? 'dive' : 'bump' }, h: 40 },
+        { k: 'label', t: 'Covered!', when: 'end', big: 1 },
+        { k: 'log', t: `${cvr.name} digs it up — the rally lives`, c: 'set' }
+      ]
+    });
+  return { next: [atk, cvr, 1] };
+}
 function hittingError(c, x) {
   const { m, B, V, atk, ds } = c,
     { spiker, tip, bad, pow, around, back, longB, hS, elS, hit, bdown, spZ, lz, hdur } = x;

@@ -642,6 +642,48 @@ test.slow('engine: ego — acts, maturity, collisions, no draws without an oppor
   eq(zero.per, 0, 'no ego acts without ego');
 });
 
+test('engine: a Delayed Spike is never stuffed, broken or tooled (a fingertip touch at most); it hangs too long more with low jump / wit', () => {
+  const g = load(21);
+  const T = g.mkTeams();
+  for (const t of T) for (const p of g.squadOf(t)) (p.skills || (p.skills = [])).push('delay');
+  const has = (b, f) => (b.acts || []).some(f),
+    BAD = ['KILL BLOCK!', 'DENIED', 'Blocked!', 'BLOCK BREAK!', 'Off the block!'];
+  const run = (lowJump, n) => {
+    let delayed = 0,
+      fail = 0,
+      touch = 0;
+    for (let i = 0; i < n; i++) {
+      for (const t of T)
+        for (const p of g.squadOf(t)) {
+          p.jump = lowJump ? 60 : 95;
+          p.wit = lowJump ? 1.0 : 1.5;
+        }
+      const m = g.newMatch(T[i % 8], T[(i + 3) % 8], true);
+      while (!m.over) {
+        const beats = g.playRally(m).beats;
+        beats.forEach((b, j) => {
+          if (!has(b, a => a.k === 'tech' && a.t === 'Delayed Spike')) return;
+          delayed++;
+          const after = beats.slice(j + 1, j + 4);
+          if (after.some(q => has(q, a => a.k === 'plabel' && a.t === 'Hung too long!'))) return fail++;
+          if (after.some(q => has(q, a => a.k === 'plabel' && a.t === 'Fingertips!'))) touch++;
+          assert(!after.some(q => has(q, a => a.k === 'label' && BAD.includes(a.t))), 'a delayed spike was stopped at the block');
+          assert(!after.some(q => has(q, a => a.k === 'ball' && a.to && a.to.c === 'block')), 'the ball went to the falling hands');
+        });
+      }
+    }
+    return { delayed, fail, touch };
+  };
+  const hi = run(false, 24),
+    lo = run(true, 24);
+  assert(hi.delayed > 30 && lo.delayed > 30, `enough delayed spikes (${hi.delayed}, ${lo.delayed})`);
+  assert(hi.touch > 0, `fingertip touches happen (${hi.touch}/${hi.delayed})`);
+  assert(
+    lo.fail / lo.delayed > hi.fail / hi.delayed + 0.15,
+    `low jump / wit hangs too long more (${lo.fail}/${lo.delayed} vs ${hi.fail}/${hi.delayed})`
+  );
+});
+
 test('engine: block collision (T-069) — only after a solo block, no touch, net fault ends the rally', () => {
   const g = load(77),
     side = (m, id) => (g.squadOf(m.t[0]).some(p => p.id === id) ? 0 : 1);
@@ -676,7 +718,8 @@ test('engine: block collision (T-069) — only after a solo block, no touch, net
         assert(lab.p === e.p && lab.p2 === e.mate, 'the label sits between the two blockers');
         // the beats of this attack: up to the next possession's set (the ball goes to a setter)
         let j = i0 + 1;
-        while (j < r.beats.length && !r.beats[j].acts.some(x => x.k === 'ball' && x.to && x.to.c === 'set')) j++;
+        // (or the next spike contact: a scramble / bump-set gives no set contact before the next attack)
+        while (j < r.beats.length && !r.beats[j].acts.some(x => x.k === 'ball' && x.to && (x.to.c === 'set' || x.to.c === 'spike'))) j++;
         const acts = r.beats.slice(i0, j).flatMap(bt => bt.acts);
         assert(!acts.some(x => x.k === 'ball' && x.to && x.to.c === 'block'), 'no block touch on a collision');
         if (e.net) {

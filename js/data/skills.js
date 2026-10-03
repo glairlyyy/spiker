@@ -122,7 +122,8 @@ Object.assign(SKILLS, {
 /** Encyclopedia notes: when a technique fires and what beats it. */
 const SKILL_HOW = {
   freak: 'On a quick set, 50% when the setter has 1.6+ wit. The block covers a quarter as much. Counter: Read Block.',
-  delay: 'When a solid block is up (not on quicks), 35%. The block covers 40% as much while the hitter hangs.',
+  delay:
+    'When a solid block is up (not on quicks), 35%. The blockers come down first: no kill block, at most a fingertip touch. Low jump and wit: may hang too long — the ball drops and a teammate must dig it.',
   cutshot: '+20% chance to hit around a solid block, and the angle beats it more cleanly.',
   sync: 'On a perfect pass, 25%. All hitters jump — no double block can form and coverage drops 20%.',
   drive: 'Float and jump-float serves, 50%. Receivers lose a big chunk of passing quality.',
