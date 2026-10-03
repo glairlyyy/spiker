@@ -859,7 +859,7 @@
   border-top: 1px solid var(--line);
 }
 /* ?dev word counter (T-159) */
-#wcnt .wc {
+#wcnt .wcb {
   position: fixed;
   z-index: 1001;
   padding: 1px 6px;
@@ -869,7 +869,80 @@
   font: 700 12px/16px var(--body);
   pointer-events: none;
 }
-#wcnt .wc.over {
+#wcnt .wcb.wover {
   background: var(--bad);
   color: #fff;
+}
+/* Quiet rail, inbox and brief (spec §10.8, T-160) */
+.hub .wstats b {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.hub .wdays .dslot {
+  height: 40px;
+}
+.hub .dslot.free {
+  background: transparent;
+  border-color: var(--line);
+}
+.hub .wgoal {
+  gap: 8px;
+  padding: 10px 12px;
+}
+.hub .wgoal .wg1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.hub .wgoal .gt1 {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hub .wgoal .mute {
+  color: var(--mute);
+  font-weight: 600;
+}
+.hub .winbox .peekt.wit {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.hub .winbox .peekt.wit:hover,
+.hub .winbox .peekt.wit.on {
+  background: var(--sel-bg);
+}
+.hub .winbox .peekt.wit .wtx {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hub .winbox .peekt.wit.next .wtx {
+  color: var(--cyan);
+}
+.hub .winbox .peekt.wit.warn .wtx,
+.hub .winbox .peekt.wit.warn .wico {
+  color: var(--warn);
+}
+.brief .bi {
+  grid-template-columns: 28px 1fr auto 32px;
+}
+.brief .peekt.bpk {
+  width: 32px;
+  min-height: 32px;
+  padding: 0;
+  justify-content: center;
 }

@@ -77,19 +77,22 @@ function weekBrief(run) {
   const wt = Run.weekType(run),
     match = wt === 'cup' || wt === 'eval',
     rows = [],
-    row = (ico, title, sub, tag, cls = '') =>
+    // title + one value; the facts (§10.1a) in a peek
+    row = (ico, title, tag, facts, cls = '', id = '') =>
       rows.push(
-        `<div class="bi"><span class="bico ${cls}">${ico}</span><div><b>${title}</b>${Array.isArray(sub) ? kv(sub) : sub ? `<div class="small mute">${sub}</div>` : ''}</div>${tag ? `<span class="btag ${cls}">${tag}</span>` : '<span></span>'}</div>`
+        `<div class="bi"><span class="bico ${cls}">${ico}</span><b>${title}</b><span class="btag ${cls}">${tag}</span>${facts ? peek(`br:${id}`, '', kv(facts), 'bpk') : '<span></span>'}</div>`
       );
   if (wt === 'eval') {
     const e = run.eval || Eval.setup(run);
     row(
       '⚑',
-      `Evaluation · ${esc(e.kind === 'academy' ? 'Academy' : REGIONS[e.region].name)}`,
+      `${esc(e.kind === 'academy' ? 'Academy' : REGIONS[e.region].name)} evaluation`,
+      'this week',
       [['Opponent', `${esc(REGIONS[e.region].name)} squad`], City.venue(run) ? ['Venue', esc(VENUES[City.venue(run)].name)] : null],
-      'this week'
+      '',
+      'eval'
     );
-  } else if (wt === 'cup') row('⚑', esc((Run.cupDef(run) || {}).name || 'Cup'), 'Your next round is on the match card', 'this week', 'hot');
+  } else if (wt === 'cup') row('⚑', esc((Run.cupDef(run) || {}).name || 'Cup'), 'this week', null, 'hot');
   const c = Fight.clashSite(run);
   if (c && !run.clash.done) {
     const att = run.clash.att || c.a,
@@ -97,39 +100,43 @@ function weekBrief(run) {
       k = Front.stakes(run, att, def);
     row(
       '⚔',
-      `${chip(REGIONS[att])}${esc(REGIONS[att].name)} raid ${chip(REGIONS[def])}${esc(REGIONS[def].name)}`,
+      `${chip(REGIONS[att])}${esc(REGIONS[att].name.split(' ')[0])} raid ${chip(REGIONS[def])}${esc(REGIONS[def].name.split(' ')[0])}`,
+      'battle',
       [
         ['Where', esc(c.name)],
         ['Border', clashBorder(run, att, def)],
         k.seize && k.place ? ['A win takes', esc(SPOTS[k.place].name)] : null,
         ['If nobody joins', "Settled at the week's end"]
       ],
-      'street battle',
-      'warn'
+      'warn',
+      'battle'
     );
   }
   if (run.gazette && !run.gazette.read) {
     const pay = run.log.find(l => /^Payday:/.test(l.t));
-    row('☰', 'Payday · the Gazette is out', pay ? esc(pay.t.replace(/^Payday: /, '')) : '', 'payday');
+    row('☰', 'Payday', 'Gazette out', pay ? [['Paid', esc(pay.t.replace(/^Payday: /, ''))]] : null, '', 'pay');
   }
   const g = run.goal;
-  if (g && g.done == null) {
-    const left = g.by - run.week;
+  if (g && g.done == null)
     row(
       '◎',
-      `Coach's goal · ${esc(Goals.text(run, g))}`,
+      "Coach's goal",
+      `W${g.by}`,
       [
+        ['Goal', esc(Goals.text(run, g))],
         ['Progress', esc(Goals.progress(run, g))],
         ['Due', `Week ${g.by}`]
       ],
-      left <= 0 ? 'this week' : `${left} week${left > 1 ? 's' : ''}`,
-      left <= 1 ? 'warn' : ''
+      g.by - run.week <= 1 ? 'warn' : '',
+      'goal'
     );
+  if (!match && CALENDAR[run.week + 1] === 'eval') {
+    const ev = evalNext(run);
+    row('⚑', 'Evaluation', 'next week', Array.isArray(ev) ? ev : [['Note', ev]], '', 'evaln');
   }
-  if (!match && CALENDAR[run.week + 1] === 'eval') row('⚑', 'Evaluation next week', 'Match weeks have no training days', 'next week');
   const title = { train: 'Training week', camp: 'Training camp', eval: 'Evaluation week', cup: 'Cup week' }[wt] || 'This week',
     line = match ? 'Match weeks have no training days.' : `${WEEK_DAYS} days. Every action takes a day, plus the trip there.`;
-  return `<div class="panel brief"><div class="lab">Week ${Math.min(run.week, CAREER.weeks)} of ${CAREER.weeks}</div><h2>${title}</h2><p class="small mute">${line}</p>
+  return `<div class="panel brief"><div class="lab">Week ${Math.min(run.week, CAREER.weeks)} / ${CAREER.weeks}</div><h2 ${tip(line)}>${title}</h2>
     ${rows.join('') || '<p class="small mute">A quiet week.</p>'}
     <div class="acts ${run.gazette && !run.gazette.read ? 'pri' : ''}"><button class="btn hot" onclick="briefDone()">${match ? 'Go to match prep' : 'Start the week'}</button>${
       run.gazette && !run.gazette.read ? '<button class="btn" onclick="briefDone(\'news\')">Read the Gazette</button>' : ''
@@ -194,18 +201,16 @@ function weekRail(run, armed) {
     eve = !match && days <= 0;
   return `<aside class="wrail" aria-label="This week">
     <div class="wtop"><button class="wme" onclick="hubOpen('me')" aria-label="Your player"><span class="portrait">${faceSVG(you, MOODS[run.mood].form, 44)}</span>
-      <span><b>${stag(you)}${esc(you.name)}</b><small>${ROLE_NAME[you.role]} · ${chip(team)}${esc(team.short)} · OVR ${ovr(you)}</small></span></button>
+      <span><b>${stag(you)}${esc(you.name)}</b><small ${tip(`${ROLE_NAME[you.role]} · ${team.name}`)}>${you.role} · OVR ${ovr(you)}</small></span></button>
       <button class="btn wfold" onclick="railToggle()" aria-label="Collapse the week rail ([)">« <kbd>[</kbd></button></div>
-    <div class="wstats">${STATK.map(k => `<span ${tip(GLOSSARY[k].long)}><small>${statI(statKey(k), 14)}${STATNAME[k]}</small><b>${you[k]}</b><i class="mbar4"><i style="width:${Math.min(100, you[k])}%"></i></i></span>`).join('')}</div>
+    <div class="wstats">${STATK.map(k => `<span ${tip(`${STATNAME[k]}: ${GLOSSARY[k].long}`)} aria-label="${STATNAME[k]} ${you[k]}"><b>${statI(statKey(k), 16)}${you[k]}</b><i class="mbar4"><i style="width:${Math.min(100, you[k])}%"></i></i></span>`).join('')}</div>
     ${weekSection(run)}
     ${railGoal(run)}
-    <section class="winbox"><div class="lab">Inbox</div>${inboxRows(run)}</section>
+    <section class="winbox" aria-label="Inbox">${inboxRows(run)}</section>
     ${
       !match && !run.event
         ? `<div class="acts wend"><button class="btn ${eve ? 'hot' : ''} endw" onclick="mapEndWeek()" ${endTip(days, eve)}>${
-            armed
-              ? `Skip ${days} day${days > 1 ? 's' : ''}? Click again`
-              : `End week${days > 0 ? ` · ${days} day${days > 1 ? 's' : ''} unused` : ''}`
+            armed ? `Skip ${days} day${days > 1 ? 's' : ''}? Click again` : `End week${days > 0 ? ` · ${days} left` : ''}`
           } <kbd>Space</kbd></button></div>`
         : ''
     }
@@ -259,7 +264,7 @@ function weekSection(run) {
     days = City.days(run),
     match = wt === 'cup' || wt === 'eval',
     kind = { train: 'training', camp: 'training camp', eval: 'evaluation', cup: 'cup' }[wt] || wt;
-  return `<section class="wweek"><div class="wh"><span class="lab">This week · ${kind}</span><span class="small mute">${match ? 'Match' : `${days} of ${WEEK_DAYS} days left`}</span></div>
+  return `<section class="wweek"><div class="wh"><span class="lab" ${tip(`This week: ${kind}`)}>This week</span><span class="small mute">${match ? 'Match' : `${days} left`}</span></div>
       ${dayTrack(run, match)}</section>`;
 }
 /** Icons of the day-track entries (line icons come with T-111). */
@@ -268,18 +273,14 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 /** The day track (spec §10.2): what each spent day was, trips hatched, free days empty, the selected place's cost as ghost slots. */
 function dayTrack(run, match) {
   if (match) return '<div class="wdays"><div class="dslot match">⚑ Match day</div></div>';
-  const spent = WEEK_DAYS - City.days(run),
-    cells = weekCells(run),
-    ghost = cells.filter(c => c[1] === 'ghost');
-  return `<div class="wdn">${WEEKDAYS.map(d => `<span>${d}</span>`).join('')}</div><div class="wdays" id="wdays">${cells
-    .map(([e, cls]) =>
+  const cells = weekCells(run);
+  return `<div class="wdn">${WEEKDAYS.map(d => `<span ${tip(d)}>${d[0]}</span>`).join('')}</div><div class="wdays" id="wdays">${cells
+    .map(([e, cls], i) =>
       e
-        ? `<div class="dslot ${cls} ${e.k}" ${e.at ? tip(e.at) : ''}><i>${DAY_ICON[e.k] || '•'}</i><b>${esc(e.label || '')}</b></div>`
-        : '<div class="dslot">free</div>'
+        ? `<div class="dslot ${cls} ${e.k}" ${tip(`${WEEKDAYS[i]}: ${[e.label, e.at].filter(Boolean).join(' · ') || 'spent'}${cls === 'ghost' ? ' (if you go)' : ''}`)} aria-label="${WEEKDAYS[i]} ${esc(e.label || '')}"><i>${DAY_ICON[e.k] || '•'}</i></div>`
+        : `<div class="dslot free" ${tip(`${WEEKDAYS[i]}: free`)}></div>`
     )
-    .join(
-      ''
-    )}</div>${ghost.length ? `<p class="small wuse">Uses ${ghost.map((c, i) => WEEKDAYS[spent + i]).join(' + ')} — shown on your week</p>` : ''}`;
+    .join('')}</div>`;
 }
 /** The week's 7 cells as [entry, 'done' | 'ghost' | 'free'] (entry null = a free day): spent days, the selected place's ghost, free. */
 function weekCells(run) {
@@ -299,68 +300,88 @@ function railGoal(run) {
   const soon = g.by - run.week <= 1,
     m = /(\d[\d,]*) \/ (\d[\d,]*)/.exec(Goals.progress(run, g) || ''),
     pct = m ? Math.min(100, (100 * +m[1].replace(/,/g, '')) / Math.max(1, +m[2].replace(/,/g, ''))) : 0;
-  return `<button class="wgoal" onclick="hubOpen('season')"><span class="wh"><span class="lab">Coach's goal</span><span class="small ${soon ? 'warn' : 'mute'}">by week ${g.by}</span></span>
-    <span class="wg1">${esc(Goals.text(run, g))}</span>${m ? `<i class="mbar4"><i style="width:${pct}%"></i></i>` : ''}<span class="small mute">${esc(Goals.progress(run, g))}</span></button>`;
+  return `<button class="wgoal" onclick="hubOpen('season')" ${tip(`Coach's goal: ${Goals.progress(run, g)}, due week ${g.by}`)}><span class="wg1"><span class="gi">◎</span><span class="gt1">${esc(Goals.text(run, g))}</span><b class="${soon ? 'warn' : 'mute'}">W${g.by}</b></span>${
+    m ? `<i class="mbar4"><i style="width:${pct}%"></i></i>` : ''
+  }</button>`;
 }
 /** The rail inbox (spec §10.3): what waits for you, one button each, until handled. Max 5; the suggested next step first. */
 function inboxRows(run) {
   return inboxItems(run).slice(0, 5).join('') || '<p class="small mute">Nothing waiting.</p>';
 }
-/** The inbox items as HTML rows (all of them; the rail shows 5, the folded rail counts them). */
+/**
+ * The inbox items, one line each (spec §10.8): an item with facts opens them in a peek with its action; a plain item is
+ * one button doing its action. All of them (the rail shows 5, the folded rail counts them).
+ */
 function inboxItems(run) {
   const rows = [],
-    item = (ico, text, sub, btn, act, cls = '') =>
+    line = (ico, text) => `<span class="wico">${ico}</span><span class="wtx">${text}</span>`,
+    act = (ico, text, t, go, cls = '') =>
       rows.push(
-        `<div class="wit ${cls}"><span class="wico">${ico}</span><span class="wtx">${text}${Array.isArray(sub) ? kv(sub) : sub ? `<small>${sub}</small>` : ''}</span><button class="btn" onclick="${act}">${btn}</button></div>`
+        `<button class="peekt row wit ${cls}" onclick="${go}" ${t ? tip(t) : ''}>${line(ico, text)}<i class="gt" aria-hidden="true">›</i></button>`
       ),
-    n = nextStep(run);
+    // btns = [[label, onclick], …]: the item's actions, in the peek's action row
+    facts = (id, ico, text, list, btns, cls = '') =>
+      rows.push(
+        peek(
+          `ib:${id}`,
+          line(ico, text),
+          `${kv(list)}<div class="acts ${btns.length === 2 ? 'pri' : ''}">${btns.map(([b, go]) => `<button class="btn" onclick="CW.peek=null;${go}">${b}</button>`).join('')}</div>`,
+          `row wit ${cls}`
+        )
+      ),
+    n = nextStep(run),
+    wt = Run.weekType(run),
+    evNext = (wt === 'train' || wt === 'camp') && CALENDAR[run.week + 1] === 'eval' ? evalNext(run) : null,
+    nAct = n && n.act && !/Gazette|signing open/.test(n.text);
   if (CW.flash) rows.push(`<div class="wit bad"><span class="wico">✕</span><span class="wtx">${esc(CW.flash)}</span><span></span></div>`); // a refused action, one render
   CW.flash = null;
-  if (n && n.act && !/Gazette|signing open/.test(n.text)) item('→', esc(n.text), 'Suggested next step', 'Go', n.act, 'next');
+  // the suggested step and next week's evaluation say the same thing: one line (say it once, §10.8)
+  if (nAct && Array.isArray(evNext) && n.week === run.week + 1)
+    facts(
+      'evaln',
+      '→',
+      esc(n.short),
+      [...evNext, ['Train', esc(n.stat)]],
+      [
+        [`Train ${esc(n.stat)}`, n.act],
+        ['Season', "hubOpen('season')"]
+      ],
+      'next'
+    );
+  else if (nAct) act('→', esc(n.short || n.text), 'Suggested next step', n.act, 'next');
   const c = Fight.clashSite(run);
   if (c && !run.clash.done) {
     const att = run.clash.att || c.a,
       def = att === c.a ? c.b : c.a,
-      trip = Fight.clashCost(run) - 1;
-    item(
+      d = Fight.clashCost(run),
+      short = r => esc(REGIONS[r].name.split(' ')[0]);
+    facts(
+      'battle',
       '⚔',
-      'Street battle',
+      `${short(att)} raid ${short(def)} · ${d}d`,
       [
-        ['Sides', `${esc(REGIONS[c.a].name.split(' ')[0])} vs ${esc(REGIONS[c.b].name.split(' ')[0])}`],
+        ['Sides', `${short(c.a)} vs ${short(c.b)}`],
         ['Where', esc(c.name)],
         ['Border', clashBorder(run, att, def)],
-        ['Trip', trip ? `${trip} day${trip > 1 ? 's' : ''}` : 'None']
+        ['Trip', d - 1 ? `${d - 1} day${d > 2 ? 's' : ''}` : 'None']
       ],
-      'View',
-      "mapPick('clash')"
+      [['View', "mapPick('clash')"]]
     );
   }
   const asks = Asks.count(run);
-  if (asks) item('✉', `${asks} approach${asks > 1 ? 'es' : ''} waiting`, 'Expires at the end of the week', 'Answer', "hubOpen('people')");
-  if (run.gazette && !run.gazette.read) item('☰', 'The Gazette is out', `Week ${run.gazette.week}`, 'Read', "hubOpen('news')");
-  const wt = Run.weekType(run);
-  if ((wt === 'train' || wt === 'camp') && CALENDAR[run.week + 1] === 'eval')
-    item('⚑', 'Evaluation next week', evalNext(run), 'Season', "hubOpen('season')");
-  const g = run.goal;
-  if (g && g.done == null && g.by - run.week <= 1)
-    item(
-      '◎',
-      `Goal due ${g.by === run.week ? 'this week' : 'next week'}`,
-      [
-        ['Goal', esc(Goals.text(run, g))],
-        ['Progress', esc(Goals.progress(run, g))],
-        ['Due', `Week ${g.by}`]
-      ],
-      'View',
-      "hubOpen('season')",
-      'warn'
-    );
+  if (asks) act('✉', `${asks} ask${asks > 1 ? 's' : ''}`, 'Approaches waiting: they expire at the end of the week', "hubOpen('people')");
+  if (run.gazette && !run.gazette.read) act('☰', 'Gazette out', `The Gazette, week ${run.gazette.week}`, "hubOpen('news')");
+  if (evNext && !(nAct && Array.isArray(evNext) && n.week === run.week + 1)) {
+    if (Array.isArray(evNext)) facts('evaln', '⚑', `Eval W${run.week + 1}`, evNext, [['Season', "hubOpen('season')"]]);
+    else act('⚑', `Eval W${run.week + 1}`, evNext, "hubOpen('season')");
+  }
+  // a goal due soon: the rail's goal line turns warn (W{by}) — not repeated here (say it once, §10.8)
   if (World.isFree(run)) {
     const t = run.teams.find(t2 => World.canJoin(run, t2.i).ok);
-    if (t) item('🛡', `${esc(t.name)} would sign you`, 'Signing open', 'Clubs', "worldTab('clubs')");
+    if (t) act('🛡', `${esc(t.name)} signs you`, 'Signing open: see Clubs', "worldTab('clubs')");
   }
   for (const z of (CW.seizes || []).filter(x => run.week - x.week <= 1))
-    item('⚑', esc(z.text), 'A place changed hands', 'Show', `mapPick('${z.id}')`);
+    act('⚑', esc(z.text), 'A place changed hands', `mapPick('${z.id}')`);
   return rows;
 }
 /** Next week's evaluation as facts (the squads are drawn that week): opponent and venue; no evaluation for you → a note. */
@@ -393,6 +414,9 @@ function nextStep(run) {
         .sort((a, b) => City.cost(run, a) - City.cost(run, b))[0];
       return {
         text: `${what}${what === 'Cup' ? '' : ` W${w}`} · ${STATNAME[key]} ${you[key]}`,
+        short: `${what === 'Cup' ? 'Cup' : `Eval W${w}`} · train ${STATNAME[key]}`,
+        week: what === 'Cup' ? null : w,
+        stat: STATNAME[key],
         act: spot ? `mapPick('${spot}')` : ''
       };
     }

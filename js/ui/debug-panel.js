@@ -57,7 +57,11 @@ const WORD_REGIONS = [
   ['.create2', () => 60],
   ['.title2', () => 15]
 ];
-const wordCount = el => (el.innerText || '').split(/\s+/).filter(w => /[\p{L}\p{N}]/u.test(w)).length;
+/** Words a player reads in `el`: visible text minus printed hotkeys (<kbd> — key hints, not reading). */
+const wordCount = el => {
+  const words = t => (t || '').split(/\s+/).filter(w => /[\p{L}\p{N}]/u.test(w)).length;
+  return words(el.innerText) - [...el.querySelectorAll('kbd')].reduce((n, k) => n + words(k.innerText), 0);
+};
 function wordBadges() {
   let box = document.getElementById('wcnt');
   if (!box) {
@@ -70,7 +74,9 @@ function wordBadges() {
       const r = el.getBoundingClientRect(),
         n = wordCount(el),
         b = budget(el);
-      return r.width ? `<span class="wc ${b && n > b ? 'over' : ''}" style="left:${Math.round(r.left + 4)}px;top:${Math.round(r.top + 4)}px">${n}${b ? `/${b}` : ''}</span>` : '';
+      return r.width
+        ? `<span class="wcb ${b && n > b ? 'wover' : ''}" style="left:${Math.round(r.left + 4)}px;top:${Math.round(r.top + 4)}px">${n}${b ? `/${b}` : ''}</span>`
+        : '';
     })
   ).join('');
 }

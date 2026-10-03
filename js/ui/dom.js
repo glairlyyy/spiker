@@ -53,7 +53,8 @@ function peekSync() {
   const fresh = [...document.querySelectorAll('.peek[data-peek-of]:not(.ported)')],
     trigOf = id => [...document.querySelectorAll('[data-peek]')].find(t => t.dataset.peek === id);
   for (const p of document.querySelectorAll('body > .peek.ported')) {
-    if (fresh.some(f => f.dataset.peekOf === p.dataset.peekOf) || !trigOf(p.dataset.peekOf)) p.remove(); // re-rendered / screen gone
+    if (fresh.some(f => f.dataset.peekOf === p.dataset.peekOf) || !trigOf(p.dataset.peekOf))
+      p.remove(); // re-rendered / screen gone
     else p.hidden = p.dataset.peekOf !== CW.peek;
   }
   for (const t of document.querySelectorAll('[data-peek]')) {
@@ -63,7 +64,9 @@ function peekSync() {
   }
   if (!CW.peek) return;
   const trig = trigOf(CW.peek),
-    card = fresh.find(f => f.dataset.peekOf === CW.peek) || [...document.querySelectorAll('body > .peek.ported')].find(p => p.dataset.peekOf === CW.peek);
+    card =
+      fresh.find(f => f.dataset.peekOf === CW.peek) ||
+      [...document.querySelectorAll('body > .peek.ported')].find(p => p.dataset.peekOf === CW.peek);
   if (!trig || !card) return void (CW.peek = null);
   card.hidden = false;
   card.classList.add('ported');
