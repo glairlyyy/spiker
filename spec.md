@@ -306,7 +306,8 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     year 2 (the rival answers). The run goes on to year 2.
   - **International pick** (owner, 2026-10-04): only by winning the **year-2** U21 Final Cup — the **true end**: you,
     the rival and the aces are picked together and the **International Cup** follows (new stage, not built). Beating the
-    rival elsewhere earns no pick. Ending when you don't win the year-2 Cup: **[open]**.
+    rival elsewhere earns no pick. **Not winning the year-2 Cup** (owner): the rival and the aces are picked without
+    you; the diary closes on spite; the run can carry on into Endless (§4.26) as a hook.
   - **Year-1 aces** (generated, one per major, not unique): start ★ star, element on, ~OVR 75–80; fixed curve that
     slows toward a ceiling, OP (~95 OVR, key ≥ 95) by the year-1 Cup; age out after it. No random star / OP rolls.
   - **Rival** and the **named aces** (Reina, Ren, Taiga — the MC's cohort): start far above you (~OVR 60–65 while you

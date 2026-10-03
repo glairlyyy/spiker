@@ -102,7 +102,7 @@ Grading dogma = what the faction's join conditions and facility conditions mean 
 - **The ending** [locked shape]: if the MC wins the year-1 Cup, the rival takes it personally and pushes to their limit
   (a cut-scene; the rival's growth at maximum). The MC is picked for the international team only by
   winning the U21 Cup in year 2 — the true end — the MC, the rival and the aces are picked together for the
-  International Cup.
+  International Cup. If she doesn't win it, the rival and the aces go without her — and she isn't done.
 
 ## 7. Voices (unreliable narration) [locked]
 
