@@ -21,6 +21,10 @@
   --bad-soft: #ff5d6c;
   --warn: #ffb020;
   --warn-hi: #ffd84d;
+  /* faction colours (§5.6): chips, borders, banners only — the same values as REGIONS in js/data/world.js */
+  --wei: #d08a2e;
+  --wu: #5b8def;
+  --shu: #2fb8a0;
   --glass: rgba(255, 255, 255, 0.035);
   --glass2: rgba(255, 255, 255, 0.06);
   --glow: 0 0 0 1px rgba(76, 201, 240, 0.35), 0 0 24px rgba(76, 201, 240, 0.12);

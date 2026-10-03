@@ -32,7 +32,7 @@ evaluations, U21 Cup, Story mode, growth, relationships), UI redesign §9–§10
 
 Owner request 2026-10-03 (UI polish leftovers): T-165 → T-167. UI only: no rule, number or save change; goldens unchanged.
 
-### [ ] T-165: Faction recolour
+### [x] T-165: Faction recolour
 
 Spec: §5.6 (approved) §9 Goldens: unchanged Save: no change
 Goal: the three majors no longer look like status colours: Wei `#d08a2e`, Wu `#5b8def`, Shu `#2fb8a0` everywhere a faction colour shows.
@@ -41,7 +41,7 @@ Do not: change club kit colours (FACTIONS / team colours), the `good` / `cyan` /
 Steps: grep js/, css/, tests/ for `#f5b82e` `#3fa9f5` `#4ade80` (and lowercase/uppercase variants, rgb forms); replace only the faction uses; check the hex tile fill, frontier ribbons, labels, patrols, chips and the battle card read well on the dark map (tile fill opacity unchanged).
 Accept: no faction use of the old hexes left (grep); tests + lint green.
 QA: career run → hub map (all three majors visible), World sheet Factions, a battle card; screenshots.
-Result:
+Result: REGIONS wei/wu/shu colour → #d08a2e / #5b8def / #2fb8a0, kit3d ACC to match, theme.css gains --wei / --wu / --shu (tokens.json); club kits, status tokens, tags.js stamina and minors untouched; the hub.css day-dot comment no longer calls #f5b82e a faction colour. Grep: no faction use of the old hexes left (#f5b82e stays only as the old HUD day dots and the WDG kit). Tests use REGIONS.*.color, no change. QA: hub map (tiles, ribbons, labels, legend), World sheet; no errors. Note: Wei bronze sits near Street Outlaws orange #ff8c42 on the map; readable, the labels separate them.
 
 ### [ ] T-166: Spelled-out stat names
 

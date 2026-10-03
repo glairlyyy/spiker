@@ -14,7 +14,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /** Region accents (the REGIONS colours): the palettes below lean on them. */
-const ACC = { wei: '#f5b82e', wu: '#3fa9f5', shu: '#4ade80', outlaws: '#ff8c42', gloria: '#ff5da2', open: '#f5e6a8' };
+const ACC = { wei: '#d08a2e', wu: '#5b8def', shu: '#2fb8a0', outlaws: '#ff8c42', gloria: '#ff5da2', open: '#f5e6a8' };
 
 /** A flat-shaded part: non-indexed geometry with one colour in its vertices (merging needs the same attributes everywhere). */
 export const part = (geo, color) => {

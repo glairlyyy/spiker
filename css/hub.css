@@ -122,7 +122,7 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #f5b82e; /* no token: day dots amber (gold too pale; wei-today is a faction colour) */
+  background: #f5b82e; /* no token: day dots amber (gold too pale; not a faction colour) */
   box-shadow: 0 0 6px rgba(245, 184, 46, 0.6);
 }
 .hub .clock .days i.used {

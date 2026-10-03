@@ -11,7 +11,7 @@
  */
 const REGIONS = {
   wei: {
-    color: '#f5b82e',
+    color: '#d08a2e',
     at: [700, 300],
     name: 'Wei Dynasty',
     kind: 'major',
@@ -21,7 +21,7 @@ const REGIONS = {
     desc: 'The heart of the island, run properly: the best facilities money can maintain. Since the lean year, order is what keeps the lights on.' // voice: wei
   },
   wu: {
-    color: '#3fa9f5',
+    color: '#5b8def',
     at: [680, 545],
     name: 'Wu Navy',
     kind: 'major',
@@ -30,7 +30,7 @@ const REGIONS = {
     desc: 'Our coast, our sand. Honest courts at honest prices — and the sand builds what no city gym can.' // voice: wu
   },
   shu: {
-    color: '#4ade80',
+    color: '#2fb8a0',
     at: [300, 290],
     name: 'Shu Highlands',
     kind: 'major',
