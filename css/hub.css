@@ -668,8 +668,7 @@
   flex-wrap: wrap;
   gap: 6px;
 }
-.plc .ptag,
-.plc .qt {
+.plc .ptag {
   display: inline-flex;
   align-items: center;
   height: 22px;

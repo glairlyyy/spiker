@@ -1,7 +1,7 @@
 // Map furniture for the 3D island: an HTML overlay (pins, region labels, the picked-point flag) projected onto the
 // terrain every frame, and terrain decals: the hex territory (spec §4.27: tile fills, holder edges, the battle tile) with
 // pressure labels. Reads only MapModel fields;
-// reports only pick(id). Emoji icons, badges and the flag classes (off, far, turf, gem, overhyped, hq, can, mine, clash)
+// reports only pick(id). Emoji icons, badges and the flag classes (off, far, turf, hq, can, mine, clash)
 // are plain CSS on the overlay elements (css/map.css, .mpin …).
 //   createFurniture(scene, heightAt) → { layer, sync(model, on), select(id), pulse(t), tick(cam, w, h, dist), dispose() }
 import * as THREE from 'three';
@@ -12,8 +12,6 @@ const FLAGCLS = {
     off: 'off',
     far: 'faraway',
     turf: 'turf',
-    gem: 'gem',
-    overhyped: 'overhyped',
     hq: 'hq',
     can: 'can',
     mine: 'mine',

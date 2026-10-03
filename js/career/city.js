@@ -173,12 +173,7 @@ const City = {
       run.money -= cost;
       const Q = City.quality(run, id);
       line = Training.train(run, s.train, hard, City.mul(run, id) * DAY_GAIN, (s.sand ? SAND_SP : 1) * DAY_GAIN);
-      if (!Q.known && run.spotQ && run.spotQ[id]) {
-        run.spotQ[id].known = true;
-        if (Q.tag === 'overhyped') out.push(`${s.name} turned out overhyped — just average for the price`);
-        else if (Q.tag === 'gem') out.push(`${s.name} is a hidden gem — top quality for next to nothing!`);
-        else out.push(`${s.name}: ${MAJORS.includes(s.region) && REGIONS[s.region].hype ? 'worth every penny' : 'as rough as it looks'}`);
-      }
+      if (!Q.known && run.spotQ && run.spotQ[id]) run.spotQ[id].known = true; // quality is never shown (owner, T-172); it still scales EXP
       line = `${line} (−$${cost})${out.length ? ' · ' + out.join('; ') : ''}`;
     } else if (s.act === 'rest') {
       if (s.hotel) run.money -= cost;

@@ -224,18 +224,6 @@ function clashPanel(run) {
   });
 }
 
-/** Quality of a training place as the player knows it. */
-function qualityTag(run, id) {
-  const Q = City.quality(run, id),
-    reg = REGIONS[SPOTS[id].region];
-  if (!Q.known)
-    return reg.hype
-      ? `<span class="qt unk" ${tip(GLOSSARY.quality.long)}>Premium?</span>`
-      : `<span class="qt unk" ${tip(GLOSSARY.quality.long)}>Rough?</span>`;
-  const stars = Q.q >= 1.3 ? '★★★★' : Q.q >= 1.2 ? '★★★' : Q.q >= 0.95 ? '★★' : '★';
-  return `<span class="qt ${Q.tag}" ${tip(`Training quality ×${Q.q}`)}>${stars}${Q.tag === 'gem' ? ' gem' : Q.tag === 'overhyped' ? ' overhyped' : ''}</span>`;
-}
-
 /** A training place's parts for placeCard: kind, tags, flavour, gain rows, options (Normal / Hard, teammates), the Train button. */
 function trainSpot(run, id, c) {
   const s = SPOTS[id],
@@ -273,7 +261,10 @@ function trainSpot(run, id, c) {
   return {
     kind: 'Training',
     tags: [
-      qualityTag(run, id),
+      ptag(
+        `Lv ${pv.lvl}`,
+        `Facility level: grows with use${pv.next != null ? ` — ${pv.next} more sessions to Lv ${pv.lvl + 1}` : ' — top level'}.`
+      ),
       s.sand ? ptag(`Sand ×${SAND_SP} pts`, `Sand training builds technique: skill points ×${SAND_SP}`) : '',
       pv.fail // a risk: stays visible (§10.8 never hides penalties)
         ? ptag(
@@ -286,10 +277,6 @@ function trainSpot(run, id, c) {
     after: placeDetails(
       id,
       [
-        [
-          'Level',
-          `<span ${tip(`Training quality grows with use. Training stops a stat at ${TRAIN_CAP}; matches only above.`)}>Lv ${pv.lvl}${pv.next != null ? `, ${pv.next} to Lv ${pv.lvl + 1}` : ''}</span>`
-        ],
         pv.streak ? ['Streak', `+${Math.round(pv.streak * 100)}%`, 'up'] : null,
         turf ? ['Turf', `+${Math.round(turf * 100)}%`, 'up'] : null,
         ...placeTags(run, id, City.trip(run, City.at(run, id)))

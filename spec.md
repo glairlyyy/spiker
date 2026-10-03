@@ -90,6 +90,8 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   tri-point (540, 500), north of the airport — entry point, no team, never seized. 8 fixed teams (2 per major + 2
   minor clubs) = home squads (training, bonds, scouting, transfers); matches that matter use pool draws (§4.11).
 - §4.3 Regions set prices/quality: Wei pricey (maybe overhyped), Shu cheap (maybe hidden gem), Wu sand = technique.
+  Quality is **never shown** (owner, 2026-10-03, T-172): no stars, gem / overhyped marks, Quality column or glossary
+  term; it only scales EXP (the EXP rating reflects it). The facility **level** (Lv, grows with use) is the one visible tag.
 - §4.4 Movement: `run.pos` (start: airport); hotels away from home. Dark except near visited points (`run.fog`,
   REVEAL_R). Click any land to travel.
 - §4.5 Week: 7 days. Each action (train/rest/outing/scout) = 1 day + trip (free within NEAR_R, 1 day per TRIP_DAY,
@@ -128,7 +130,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 - §4.12 Faction dossier (all 5; from HQ panel and Factions drawer), DOM-free `Dossier.build(run, r)`, `registrar` voice:
   - State: Weakened (lost ≥ weakAt) / Pressed (lost 1) / Rising (took > lost) / Stable; minors "Not in the war".
     Border meters, places taken/lost, price and quality multipliers.
-  - Facilities held (seized marked): stat, price, quality (advertised until trained there), level, access
+  - Facilities held (seized marked): stat, price, level, access
     (`City.access`).
   - Roster: name, role, squad or "reserve"; ratings and awakened elements only if scouted (any club this run) or
     member, else "unknown". Clubs: squads, join conditions, Sign. Your standing.
@@ -394,7 +396,7 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
   beside icons (players learn them there). Emoji stay only for map places.
 - §9.6 Glossary ids (aliases): `sp` skill pts · `fans` · `sta` stamina · `day` · `money` · `mood` · `bond` · `standing`
   (⚑, −100…+100) · `grade` (S–C, reward ×1.5/1.2/1/0.8) · `seize` (border meter n/2) · `border` · `sim` (result without
-  watching) · `academy` · `cup` (U21 Cup) · `trial` (Element Trial checklist) · `quality` (★★? unrated → ★★✓) ·
+  watching) · `academy` · `cup` (U21 Cup) · `trial` (Element Trial checklist) ·
   `together` (teammates here +20%, +50% at bond 80+) · `rewards` (Win/Loss chips).
 - §9.7 Layout: hub HUD in four corners on `hud`; drawers 440px from the right and never over the dock; modals ≤560px,
   one title, ≤3 choices, primary first. Match: the court gets the viewport; site header hidden; log + box score in a

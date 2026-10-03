@@ -31,12 +31,11 @@ function dossierCard(run, r) {
       <div class="small mute">Prices ×${d.priceMul.toFixed(2)} · facilities ×${d.qMul.toFixed(2)}</div>`
     : '';
   const places = d.places.length
-    ? `<h4>Facilities</h4><table class="dtab"><thead><tr><th>Place</th><th>Trains</th><th>Price</th><th>Quality</th><th>Lv</th><th>Entry</th></tr></thead><tbody>${d.places
+    ? `<h4>Facilities</h4><table class="dtab"><thead><tr><th>Place</th><th>Trains</th><th>Price</th><th>Lv</th><th>Entry</th></tr></thead><tbody>${d.places
         .map(
           p => `<tr class="dgo" onclick="CW.dossier=null;hubOpen(null);mapPick('${p.id}')">
         <td>${esc(p.name)}${p.seized ? ` <i class="mute small">seized from ${esc(REGIONS[p.from].name)}</i>` : ''}</td>
         <td>${p.train ? esc(STATNAME[p.train] || p.train) : '—'}</td><td>${p.price ? '$' + p.price : '—'}</td>
-        <td>${p.q}${p.known ? '' : ` <span ${tip('Advertised: you have not trained here yet')}>?</span>`}</td>
         <td>${p.level == null ? '—' : p.level}</td>
         <td>${p.access.ok ? '✓' : `<span ${tip(p.access.why)}>✕</span>`}</td></tr>`
         )

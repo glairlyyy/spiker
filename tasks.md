@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-172** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-173** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -74,6 +74,12 @@ Steps:
   Result:
 
 Owner request 2026-10-03: remove the coach's goal (spec §10.1b).
+
+### [x] T-172: Hide facility quality; keep the level
+
+Spec: §4.3 Goldens: unchanged Save: no change
+Files: js/ui/career-map.js, js/ui/career-dossier.js, js/data/glossary.js, js/career/city.js, js/career/mapmodel.js, js/map3d/pins3d.mjs, css/map.css, css/hub.css, tests/career.test.js
+Result: owner request: no quality stars / Premium? / Rough? / gem / overhyped (place panel, map pins, dossier Quality column, glossary term, "turned out overhyped" diary lines); the place panel shows `Lv n` as its first tag (sessions to the next level on hover). Quality still scales EXP silently (the EXP rating shows it). QA: Wei Strength Center panel, Wei dossier — no errors.
 
 ### [x] T-170: Remove the coach's goal
 

@@ -929,7 +929,7 @@ const mkRunG = seed => {
   return [g, g.Run.create(g.Run.draft(), { role: 'WS', name: 'Cov', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 })];
 };
 
-test('no coach\'s goal (spec §10.1b, T-170): a run never gets one, through week ends and new weeks', () => {
+test("no coach's goal (spec §10.1b, T-170): a run never gets one, through week ends and new weeks", () => {
   const [g, run] = mkRunG(871);
   assert(!('goal' in run) && typeof g.Goals === 'undefined', 'no goal at the start, no Goals module');
   for (let i = 0; i < 3; i++) {
@@ -1078,7 +1078,6 @@ test('glossary: every §9.6 id exists with icon, short and long; every term( id 
     'academy',
     'cup',
     'trial',
-    'quality',
     'together',
     'rewards'
   ])

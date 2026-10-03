@@ -183,7 +183,7 @@ const MapModel = {
   thinMajor: 0.8,
   /**
    * Pins: places, club HQs and this week's battle. flags: off (no time left for it), far (2+ day trip), turf,
-   * gem / overhyped (known quality), hq, can (a club you can sign with), mine (your club), clash, today (a venue where your match is this week; venues are always known).
+   * hq, can (a club you can sign with), mine (your club), clash, today (a venue where your match is this week; venues are always known).
    */
   pins(run) {
     const floor = run.floor || {},
@@ -191,8 +191,7 @@ const MapModel = {
     for (const [id, s] of Object.entries(SPOTS)) {
       const at = City.at(run, id);
       if (!MapModel.known(run, id, at)) continue;
-      const Q = s.train ? City.quality(run, id) : null,
-        mates = s.train ? (floor[s.train] || []).length : 0;
+      const mates = s.train ? (floor[s.train] || []).length : 0;
       out.push({
         id,
         kind: 'spot',
@@ -203,9 +202,7 @@ const MapModel = {
         flags: {
           off: !!City.noTime(run, City.cost(run, id)),
           far: City.trip(run, at) >= 2,
-          turf: !!(s.train && City.turf(run, id)),
-          gem: !!(Q && Q.known && Q.tag === 'gem'),
-          overhyped: !!(Q && Q.known && Q.tag === 'overhyped')
+          turf: !!(s.train && City.turf(run, id))
         }
       });
     }

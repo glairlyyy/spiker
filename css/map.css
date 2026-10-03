@@ -16,19 +16,6 @@
     border-color: var(--warn);
   }
 }
-.spot .qt {
-  font-weight: 800;
-  color: var(--gold);
-}
-.spot .qt.unk {
-  color: var(--mute);
-}
-.spot .qt.gem {
-  color: var(--good);
-}
-.spot .qt.overhyped {
-  color: var(--bad-rose);
-}
 .spot .stk.far {
   color: var(--bad-rose);
 }
@@ -96,14 +83,6 @@
 .mpin.hq.can {
   border-width: 5px;
   box-shadow: 0 0 8px var(--tc);
-}
-.mpin.gem {
-  border-color: var(--good);
-  border-width: 4px;
-}
-.mpin.overhyped {
-  border-color: var(--mute);
-  border-style: dashed;
 }
 .mpin.clash {
   background: #3a0d12; /* no token: dark red clash pin fill */

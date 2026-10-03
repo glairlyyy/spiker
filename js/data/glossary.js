@@ -58,11 +58,6 @@ const GLOSSARY = {
     short: 'Trial',
     long: 'Element Trial. Reveal at OVR 70; become a ★ star; grade S in a match where your team reaches the zone.'
   },
-  quality: {
-    icon: 'text',
-    short: 'Quality',
-    long: 'Training quality ×. ★★? = advertised, unrated: overhyped or a hidden gem. Known after one session there (★★✓).'
-  },
   together: { icon: 'text', short: 'Together', long: 'Teammates training at the same place: +20% each, +50% at bond 80+.' },
   rewards: {
     icon: 'text',
