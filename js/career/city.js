@@ -123,8 +123,6 @@ const City = {
   },
   /** Explored: near a point you've stood on. */
   seen: (run, p) => (run.fog || []).some(q => Math.hypot(q[0] - p[0], q[1] - p[1]) <= REVEAL_R),
-  /** Your home region (where you live). */
-  homeRegion: run => City.region(run, 'home'),
   /** After any action on the map: the week's one event is rolled after its first action. */
   after(run) {
     if (!run.rolled) {

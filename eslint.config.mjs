@@ -17,7 +17,6 @@ for (const f of scripts) {
         else shared[d.id.name] = 'writable';
     else if ((n.type === 'FunctionDeclaration' || n.type === 'ClassDeclaration') && n.id) shared[n.id.name] = 'writable';
 }
-shared.R3D = 'writable'; // set by the 3D module (window.R3D)
 
 export default [
   { ignores: ['node_modules/**', 'assets/**'] },

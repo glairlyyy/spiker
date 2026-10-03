@@ -421,7 +421,7 @@ Audit at c44a718. Order = value ÷ risk. All: Goldens unchanged, Save: no change
 green after each. Splits are pure moves (same functions, same draw order). New files are listed, so no stop-and-ask
 for those; add them to index.html (and tests/run.js for test files).
 
-### [ ] T-147: Delete dead JS
+### [x] T-147: Delete dead JS
 
 Spec: — Goldens: unchanged Save: no change
 Files: js/ui/match-screen.js, js/ui/career-week.js, js/ui/career-map.js, js/ui/icons.js, js/map3d/kit3d.mjs, js/career/city.js, js/career/front.js, eslint.config.mjs
@@ -432,7 +432,7 @@ Steps: remove `toggleCamera` `cycleHype` `cycleGfx` `toggleCutins` (match-screen
   Do not: touch `mkTeams`/`simBalance` (test fixtures feeding goldens) or spread-used `ACTS_*`, `TORSO`, `PLAN`.
   Accept: grep shows 0 refs for each removed name; tests + lint green.
   QA: career run → hub, Season sheet (gazette), settings menu in a match.
-  Result:
+  Result: removed all listed names (64 lines, 8 files) plus the 4 setting-label helpers (`hypeLabel cutLabel zoomLabel gfxLabel`) only the removed toggles used; 0 refs left; tests 109/109 + lint green; QA screens identical to baseline (match canvas noise only).
 
 ### [ ] T-148: Delete dead CSS, merge duplicate selectors
 

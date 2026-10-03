@@ -26,11 +26,6 @@ const defencePicker = (t, i) =>
   )
     .map(([k, v]) => `<option value="${k}" title="${esc(v.desc)}">${esc(v.name)}</option>`)
     .join('')}</select><small class="tacnow" id="dsnow${i}"></small></label>`;
-// Setting button labels (shared by the initial render and the toggles)
-const hypeLabel = () => `Hype: ${HYPE[G.hype].name}`;
-const cutLabel = () => (G.cutMini ? 'Cut-ins: Mini' : 'Cut-ins: Full');
-const zoomLabel = () => (G.camFixed || RM ? 'Zooms: Off' : 'Zooms: On'); // reduced motion always turns zooms off
-const gfxLabel = () => `Graphics: ${GFX[G.gfx].name}`;
 const CAM3 = { courtside: 'Courtside', broadcast: 'Broadcast', follow: 'Follow', pov: 'POV' };
 const cam3Text = () => `Camera: ${CAM3[(R3D && R3D.camMode()) || 'courtside'] || 'Courtside'}`;
 /** Set a button's label if it is on screen. */
@@ -605,30 +600,6 @@ function showCut(a) {
   c.classList.toggle('op', !!p.op);
   elCut(c, a.el);
   replayCut(c);
-}
-function toggleCamera() {
-  G.camFixed = !G.camFixed;
-  store.set(KEYS.camera, G.camFixed ? 'fixed' : 'dynamic');
-  if (G.camFixed && A && A.cam) A.cam.z = A.cam.tz = 0;
-  setLabel('#cambtn', zoomLabel());
-}
-function cycleHype() {
-  const order = ['normal', 'max', 'off'];
-  G.hype = order[(order.indexOf(G.hype) + 1) % order.length];
-  store.set(KEYS.hype, G.hype);
-  setLabel('#hypebtn', hypeLabel());
-}
-function cycleGfx() {
-  const order = ['auto', 'high', 'fast'];
-  G.gfx = order[(order.indexOf(G.gfx) + 1) % order.length];
-  store.set(KEYS.gfx, G.gfx);
-  setLabel('#gfxbtn', gfxLabel());
-}
-function toggleCutins() {
-  G.cutMini = !G.cutMini;
-  store.set(KEYS.cutins, G.cutMini ? 'mini' : 'full');
-  setLabel('#cutbtn', cutLabel());
-  if (G.cutMini) hideCut();
 }
 /** Mini cut-in: a short floating card in the court's top-left corner (stacks up to 3). */
 function toast(p, p2, title, sub, elem) {

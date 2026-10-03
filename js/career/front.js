@@ -11,8 +11,6 @@ const Front = {
   /** Places a region lost / took. */
   lostIds: (run, r) => Object.keys(run.own || {}).filter(id => SPOTS[id].region === r && run.own[id] !== r),
   takenIds: (run, r) => Object.keys(run.own || {}).filter(id => run.own[id] === r && SPOTS[id].region !== r),
-  lost: (run, r) => Front.lostIds(run, r).length,
-  gained: (run, r) => Front.takenIds(run, r).length,
   /** Economy from tile value (spec §4.27, HEX_ECON): e = value held − value at the start (0 for minors and the Academy). */
   econ: (run, r) => (MAJORS.includes(r) ? Hex.worth(run, r) - Hex.worth0(r) : 0),
   /** Steps down: one per HEX_ECON.step value points lost (club joins get easier). */

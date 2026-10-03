@@ -368,8 +368,6 @@ export const LANDMARKS = {
 
 /** Height in metres of a landmark kind (pins float above it); 3 for an unknown kind. */
 export const landmarkHeight = kind => (LANDMARKS[kind] ? LANDMARKS[kind].h : 3);
-/** A landmark's depth along its door axis (m). */
-export const landmarkDepth = kind => (LANDMARKS[kind] ? LANDMARKS[kind].d : 6);
 /** Build a landmark's merged geometry (accent = a CSS colour): door on +z, centred, feet at y = 0. */
 export const buildLandmark = (kind, accent) => {
   const L = LANDMARKS[kind] || LANDMARKS.home,

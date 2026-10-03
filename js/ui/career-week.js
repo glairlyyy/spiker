@@ -672,18 +672,6 @@ function sheetSeason(run) {
         : `<ol class="log tagged">${run.log.map(l => logLi(l.t, `<b>${typeof l.w === 'number' ? 'W' + l.w : esc(l.w)}</b> `)).join('')}</ol>`
     }</section></div>`;
 }
-/** The Gazette from the last payday, until you dismiss it. */
-function gazetteCard(run) {
-  const g = run.gazette;
-  if (!g || g.read) return '';
-  return `<div class="panel gazette"><h3>The Gazette <span class="mute small">week ${g.week}</span></h3><ul class="small">${g.items.map(t => `<li>${esc(t)}</li>`).join('')}</ul>
-    <div class="acts"><button class="btn hot" onclick="readGazette()">Close</button></div></div>`;
-}
-function readGazette() {
-  Run.readGazette(RUN);
-  Run.save(RUN);
-  renderCareer();
-}
 function setHousing(k) {
   if (World.setHousing(RUN, k)) Run.save(RUN);
   renderCareer();

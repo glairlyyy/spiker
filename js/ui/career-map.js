@@ -149,11 +149,6 @@ function pointPanel(run, p) {
     ]
   });
 }
-/** " · N days" on an action button. */
-function dayTag(n) {
-  return ` <small class="dt">${n}d</small>`;
-}
-
 /** The battle's border line: "{attacker} n/cost to seize" (+ the tile when it isn't the battle's own site), or that it can't reach. */
 function clashBorder(run, att, def) {
   const k = Front.stakes(run, att, def),
@@ -436,14 +431,6 @@ function mapClash(side, sim) {
   }
   CW.spot = null;
   mapAfter(RUN);
-}
-/** Close the week-start battle popup; look = select its pin. */
-function clashSeen(look) {
-  if (!RUN.clash) return;
-  RUN.clash.seen = true;
-  if (look) CW.spot = 'clash';
-  Run.save(RUN);
-  renderCareer();
 }
 /** Step the stake of a challenge to club ti. */
 function mapStake(ti, d) {

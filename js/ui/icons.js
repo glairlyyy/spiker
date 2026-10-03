@@ -45,6 +45,3 @@ function skillIcon(id) {
     ? `<span class="ski act" title="Active technique · ${s.tech}: fires during matches">${svgI('active')}${svgI(s.tech)}</span>`
     : `<span class="ski pas" title="Passive skill: always on">${svgI('passive')}</span>`;
 }
-/** Compact chip: icon + name, description as a tooltip. */
-const skillChip = id =>
-  `<span class="skc ${SKILLS[id].tech ? 'act' : 'pas'}" title="${esc(SKILLS[id].desc)}">${skillIcon(id)}${esc(SKILLS[id].name)}</span>`;
