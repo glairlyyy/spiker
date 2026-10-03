@@ -534,7 +534,7 @@ Do not: change fight odds or any random draw.
 Accept: tests + goldens green; city.js ≤ 360 lines.
 Result: City.clash (watch) ≠ Fight.clash (fight), so not merged: City's fight block (clashRoll/End, fightBan→Fight.ban, injuryRisk, crewOvr, challengeSide, stakeMax, worth, challenge→Fight.offer, clashSite, clashCost, clash→Fight.watch) moved to fight.js; City.region → Front.owner; dossier summary/build share Dossier.front, major = MAJORS.includes (also city.js day line). Callers: asks.js, mapmodel.js, run.js, dossier.js, fight.js, career-hub.js, career-map.js, world.js (comments), tests/career+map (renames only). city.js 345 lines; before/after JSON dump (5 seeds × every week, all factions summary/build/worth/risk + forced seizures) byte-identical; 110/110, goldens unchanged.
 
-### [ ] T-157: Split big render/engine files
+### [x] T-157: Split big render/engine files
 
 Spec: — Goldens: unchanged Save: no change
 Files: js/engine/rally.js, js/engine/rally-block.js (new), js/render3d/poses3d.mjs, js/render3d/poses3d-attack.mjs (new), js/ui/match-screen.js, js/ui/match-result.js (new), index.html, ARCHITECTURE.md
@@ -542,7 +542,7 @@ Steps: `formBlock` (~200 lines) → rally-block.js (loaded before rally.js); spi
 poses3d-attack.mjs; match-screen result + cut-ins/toasts → match-result.js.
 Do not: reorder any R()/rnd() call.
 Accept: goldens byte-identical; Monster game QA looks unchanged.
-Result:
+Result: rally.js 802→596 (formBlock + readQ + BLOCK_GAP → rally-block.js 209, before rally.js; harness reads index.html); poses3d.mjs 856→576 (spike/swing/land/serve + palmTwist/RA → poses3d-attack.mjs 309; import cycle: it evaluates first, so own V/leg, rest of poses3d imports used inside functions only; node pose dump over 15.5k states identical); match-screen.js 659→505 (matchStars…showCombo → match-result.js 157, functions only; added to the game-RNG scan test). Goldens byte-identical, 110/110. QA: Monster 600 frames (spike:quick, serve:jumpfloat, block, set, combo cut-in) no errors; qa_screens t157 vs t155: panels identical, result panel identical, only canvas/confetti differ.
 
 ### [ ] T-158: Archive tasks.md (spec chat)
 
