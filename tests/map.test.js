@@ -182,7 +182,7 @@ test('career: town layout — districts, beach, overpass, frozen borders', () =>
   );
   eq([C.w, C.h].join('x'), `${1060 * g.MAP_SCALE}x${700 * g.MAP_SCALE}`, 'the map frame grew (× MAP_SCALE)');
   eq(
-    JSON.stringify(C.wuWei || C.contest.slice(0, 3)),
+    JSON.stringify(C.weiWu.slice(0, 3)),
     JSON.stringify(
       [
         [854, 199],
@@ -626,16 +626,30 @@ test('map: official venues', () => {
   eq(g.City.venue(run), 'arena', 'a cup week is played at the League Arena');
 });
 
-test('map: the contested border comes from the model (T-079)', () => {
+test('map: patrols walk the hex frontier (T-079, T-153)', () => {
   const g = load(51),
-    run = g.Run.create(g.Run.draft(), { role: 'S', name: 'Contest' });
-  let C = g.MapModel.build(run).life.contest;
-  eq(C.a + '-' + C.b, g.CITY.contestPair.join('-'), 'the pair is data');
-  assert(C.meter === 0 && C.pressure === 0 && C.hold === null, 'calm at the start');
-  const t = g.Hex.target(run, C.b, C.a);
+    run = g.Run.create(g.Run.draft(), { role: 'S', name: 'Patrol' });
+  run.clash = null;
+  run.hex = { own: {}, p: {}, by: {}, t: {} };
+  let m = g.MapModel.build(run);
+  eq(m.life.patrols.length, 0, 'calm: no patrols');
+  assert(!('seized' in m) && !('contest' in m.land) && !('contest' in m.life), 'no pre-hex leftovers in the model');
+  // any pair: Shu pushes a Wu tile; the battle this week is Wei on another Wu tile
+  const t = g.Hex.target(run, 'shu', 'wu'),
+    b = g.Hex.target(run, 'wei', 'wu');
   run.hex.p[t.id] = 1;
-  run.hex.by[t.id] = C.b;
-  C = g.MapModel.build(run).life.contest;
-  eq(C.hold, C.b, 'the pushing side holds the line');
-  eq(C.pressure, Math.min(1, 1 / g.HEX_COST.place), 'pressure = push / HEX_COST.place');
+  run.hex.by[t.id] = 'shu';
+  run.clash = { att: 'wei', def: 'wu', tile: b.id, from: b.from, done: false };
+  m = g.MapModel.build(run);
+  const P = m.life.patrols,
+    on = id => P.filter(p => p.tile === id);
+  assert(P.length > 0 && P.every(p => g.Hex.frontier(run, p.tile)), 'patrols only on frontier tiles');
+  eq(P[0].tile, b.id, 'the battle front comes first');
+  assert(on(t.id).length === 2 && on(t.id).every(p => p.color === g.REGIONS.wu.color), 'the holder guards the pushed tile');
+  assert(on(t.from).length >= 2 && on(t.from).every(p => p.color === g.REGIONS.shu.color), 'the pusher stands next to it');
+  assert(
+    P.every(p => Array.isArray(p.face) && typeof p.color === 'string' && !('region' in p)),
+    'colours and points only'
+  );
+  eq(JSON.stringify(g.MapModel.build(run).life.patrols), JSON.stringify(P), 'deterministic (hashes, no randoms)');
 });

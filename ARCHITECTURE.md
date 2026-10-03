@@ -546,9 +546,8 @@ region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): tile pressu
 
 1. Rules — City / Front (DOM-free): positions, travel, fog (`City.seen`), regions (`regionAt`), ownership.
 2. Model — `MapModel.build(run, sel)` (`js/career/mapmodel.js`, DOM-free, tested): `{ w, h, land: { coast, beach,
-regions[{id, poly, color, mine}], contest, minors[ellipses], park, mountains, labels, airport }, seized[{at, r,
-color}], pins[{id, kind: spot|hq|clash, at, icon, badge, title, color?, flags: off/far/turf/gem/overhyped/hq/can/
-mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-view centre), sel, life }`. `life` (`MapModel.life`, display only, no randoms; positions from hashes of ids + place): `mates[{id, name, at, color, spot}]` (your floor mates at the explored place of their key nearest home), `crews[{region, team, at, color, n 2–6, known, walk[[x,y]…]}]` (known clubs' HQs; `known` = scouted or yours), `battle {at, a, b, colors}|null`, `contest {a, b, meter, pressure 0..1, hold}` (`MapModel.contest`: the `CITY.contestPair` border; the renderer reads it, it never names factions). Map units
+regions[{id, poly, color, mine}], minors[ellipses], park, mountains, labels, airport }, pins[{id, kind: spot|hq|clash, at, icon, badge, title, color?, flags: off/far/turf/gem/overhyped/hq/can/
+mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-view centre), sel, life }`. `life` (`MapModel.life`, display only, no randoms; positions from hashes of ids + place): `mates[{id, name, at, color, spot}]` (your floor mates at the explored place of their key nearest home), `crews[{region, team, at, color, n 2–6, known, walk[[x,y]…]}]` (known clubs' HQs; `known` = scouted or yours), `battle {at, a, b, colors}|null`, `patrols[{id, tile, at, face, color}]` (`MapModel.patrols`: the hot hex frontier — the battle tile and tiles under pressure, ≤ 3 fronts, any pair; the holder's 2 on the tile, the pusher's 2–4 on its own frontier tile next to it, facing across; colours and points only, the renderer never names factions). Map units
    CITY.w × CITY.h, y down. Selection ids: a pin id, or `pt:x,y` (`ptId` / `ptOf`).
 3. Renderer — `MapView` (`js/ui/map-view.js`): `mount(el, model, { pick(id), point([x, y]) })`, `update(model)`,
    `select(id)`, `dispose()`. The only renderer is the three.js map: it lazy-imports `js/map3d/map3d.mjs` once (a notice
@@ -564,7 +563,7 @@ mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-vie
    `locoPose`, idle `STAND` + breathing, feet via `groundSnap` + `heightAt`; the camera follows until the user drags.
    Furniture is `js/map3d/pins3d.mjs` (`createFurniture(scene, heightAt)`): an HTML overlay `.maplay` over the canvas holds one
    `.mpin` button per `model.pins` item (icon, badge, flag classes, click → `pick(id)`), the region / airport labels (fade out
-   below ~70 m camera distance) and the picked-point flag, all projected onto the terrain every frame after render; seized
+   below ~70 m camera distance) and the picked-point flag, all projected onto the terrain every frame after render;
    the hex territory (`model.hexes`: draped owner fills, two-colour edge ribbons where holders differ, a faint grid, the pulsing battle tile, `.mbord` pressure chips) is the terrain decal layer. `sync(model, on)` rebuilds a part only when its JSON changed;
    fog is a per-vertex darkening of the terrain colours (`applyFog(model.fog)` with `fogFactor`, unexplored land dim, not hidden).
    Shared helpers live in `js/map3d/geo3d.mjs` (`MAP_M`, `FOG_DIM`, `FOG_SOFT`, `toWorld` / `toMap`, `clamp` / `lerp` /
@@ -573,11 +572,11 @@ mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-vie
    is only re-projected when the camera, canvas size, distance or items changed. `dispose` removes its listeners and
    skips `userData.shared` objects (kit materials / shape caches). `MODEL_URL` (the base VRM) is exported once by players3d.mjs. First
    view: on the player, 60 m away. Life is `js/map3d/life3d.mjs` (`createLife(scene, heightAt)` → `{ sync(model), tick(dt, t),
-count(), dispose() }`, display only, no game randoms): reads `model.life` + `model.seized`; one `InstancedMesh` per kind
+count(), dispose() }`, display only, no game randoms): reads `model.life`; one `InstancedMesh` per kind
    (figure = capsule body + head, flag poles, flag cloth, dust puffs; ≤ 300 figures), rebuilt only when that JSON changes and
    animated in `tick` (drill hops, walkers looping round a crew's places at 1.2 m/s, the battle crowd shoving, waving flags).
-   Mates and known crews are coloured, unscouted crews grey; patrols (2–4) stand on the stronger side of the contested Wei–Wu
-   line (`life.contest.hold`); every seized place flies the holder's flag. `furn.pulse(t)` pulses the battle tile's outline.
+   Mates and known crews are coloured, unscouted crews grey; patrols stand where `life.patrols` puts them,
+   facing their `face` point (a seized place shows by its tile colour, no flag). `furn.pulse(t)` pulses the battle tile's outline.
    The town layer is `js/map3d/town3d.mjs` (`createTown(scene, heightAt)` → `{ sync(model), dispose() }`, display only, no randoms):
    reads only `model.land.roads / lots / landmarks / districts` and `model.fog`. Meshes: one vertex-coloured mesh for all roads (width and
    colour by kind, slope-following, lifted 0.15 m, polygon offset; the `boardwalk` is planks of two tones 0.3 m up); one for the
@@ -622,7 +621,7 @@ home spot) and `landmarks` (`{ id, at, kind, region }` for every place, HQ and o
 ### Districts, the beach band and the overpass (T-050)
 
 The map frame is `CITY.w` × `CITY.h` = 1060 × 700; the Wu stretch of the coast (points 6–12, plus 5, 13) grew outward, nothing else moved:
-`CITY.inner` is a frozen literal (the Wei–Wu line `contest` = inner 6–8 + two points is unchanged), `CITY.dunes` = the old coast points 6–12
+`CITY.inner` is a frozen literal (the Wei–Wu line `weiWu` = inner 6–8 + two points is unchanged), `CITY.dunes` = the old coast points 6–12
 (the beach's inner edge) and `CITY.beach` the new coast points 6–12. The sand is the band between them: `MapModel.onSand(p)` (Wu land
 that is not inside the old Wu polygon). Beach places (`sand`, `pier`, `bonfire`, `dunes`, `home:studio`) stand on it, Wu town (`hotelWu`,
 `hq3`) is 40+ units inland, the harbor (`harbor`, `hq2`) is on the east coast; `REGIONS.wu.at` / `CITY.label.wu` follow Wu town.

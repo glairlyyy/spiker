@@ -1,13 +1,13 @@
 // The living island (display only, no game randoms: variety comes from a string hash): low-poly figures on the 3D map.
-// Reads only model.life and model.seized (MapModel, js/career/mapmodel.js): your mates drilling where they train, each
-// known club's crew drilling at its HQ (grey silhouettes until scouted) with a walker or two going round the region's
-// places, the week's street battle as a two-colour crowd with flags and dust, patrols on the stronger side of the
-// contested border, and a flag on every seized place. One InstancedMesh per kind (people, poles, cloth, dust), at most
+// Reads only model.life (MapModel, js/career/mapmodel.js): your mates drilling where they train, each known club's crew
+// drilling at its HQ (grey silhouettes until scouted) with a walker or two going round the region's places, the week's
+// street battle as a two-colour crowd with flags and dust, and patrols facing each other across the hot hex frontier
+// (life.patrols: positions and colours from the model, no faction names here). One InstancedMesh per kind (people, poles, cloth, dust), at most
 // CAP.people figures in all; instances are rebuilt only when the data changes, animated in tick.
 //   createLife(scene, heightAt) → { sync(model), tick(dt, t), count(), dispose() }
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { MAP_M, hstr, clamp } from './geo3d.mjs';
+import { MAP_M, hstr } from './geo3d.mjs';
 
 /** One figure (≈1.45 m, feet at the origin): a capsule body and a head. */
 const figureGeo = () => {
@@ -19,11 +19,10 @@ const figureGeo = () => {
   return g;
 };
 
-const CAP = { people: 300, poles: 40, cloth: 40, dust: 10 },
+const CAP = { people: 300, poles: 2, cloth: 2, dust: 10 },
   GREY = '#8a8f99',
   WALK = 1.2, // m/s
-  PER_SIDE = 12, // battle crowd
-  PATROL = [2, 4];
+  PER_SIDE = 12; // battle crowd
 
 export function createLife(scene, heightAt) {
   const person = new THREE.InstancedMesh(figureGeo(), new THREE.MeshStandardMaterial({ roughness: 0.85 }), CAP.people),
@@ -121,35 +120,11 @@ export function createLife(scene, heightAt) {
       for (let i = 0; i < CAP.dust; i++)
         puffs.push({ x: c.x + (hstr(`d${i}|x`) - 0.5) * 6, z: c.z + (hstr(`d${i}|z`) - 0.5) * 6, ph: i / CAP.dust });
     }
-    // patrols: on the stronger side of a border that has a line (the contested Wei–Wu one), thicker with pressure
-    const line = m.land.contest && m.land.contest.line,
-      bd = L.contest; // the contested border's pressure, from the model (no faction names here)
-    if (line && line.length > 1 && bd && bd.hold) {
-      const hold = bd.hold,
-        reg = m.land.regions.find(r => r.id === hold),
-        cen = reg ? reg.poly.reduce((s, p) => [s[0] + p[0] / reg.poly.length, s[1] + p[1] / reg.poly.length], [0, 0]) : line[0],
-        n = clamp(PATROL[0] + Math.floor(Math.abs(bd.meter) / 2), PATROL[0], PATROL[1]),
-        col2 = reg ? reg.color : GREY;
-      for (let i = 0; i < n; i++) {
-        const t = (i + 0.5) / n,
-          j = Math.min(line.length - 2, Math.floor(t * (line.length - 1))),
-          u = t * (line.length - 1) - j,
-          p = [line[j][0] + (line[j + 1][0] - line[j][0]) * u, line[j][1] + (line[j + 1][1] - line[j][1]) * u],
-          dx = line[j + 1][0] - line[j][0],
-          dy = line[j + 1][1] - line[j][1],
-          nl = Math.hypot(dx, dy) || 1;
-        let nx = -dy / nl,
-          nz = dx / nl;
-        if ((cen[0] - p[0]) * nx + (cen[1] - p[1]) * nz < 0) [nx, nz] = [-nx, -nz];
-        const w = world(p),
-          x = w.x + nx * 4,
-          z = w.z + nz * 4;
-        figs.push({ x, z, y: heightAt(x, z), yaw: Math.atan2(-nx, -nz), color: col2, kind: 'drill', ph: hstr(`p${i}`) * 6.28 });
-      }
-    }
-    for (const s of m.seized) {
-      const w = world(s.at);
-      poles.push({ x: w.x, z: w.z, y: w.y, color: s.color, ph: hstr(`s${s.id}`) * 6.28 });
+    // patrols on the hot hex frontier, facing the other side's tile
+    for (const p of L.patrols) {
+      const w = world(p.at),
+        f = world(p.face);
+      figs.push({ ...w, yaw: Math.atan2(f.x - w.x, f.z - w.z), color: p.color, kind: 'drill', ph: hstr(`p${p.id}`) * 6.28 });
     }
     figs = figs.slice(0, CAP.people);
     poles = poles.slice(0, CAP.poles);
@@ -180,10 +155,10 @@ export function createLife(scene, heightAt) {
   };
 
   return {
-    /** Bring the figures up to date with a model (rebuilt only when life / seized changed). */
+    /** Bring the figures up to date with a model (rebuilt only when life changed). */
     sync(m) {
       if (!m.life) return;
-      const k = JSON.stringify([m.life, m.seized]);
+      const k = JSON.stringify(m.life);
       if (k === key) return;
       key = k;
       build(m);

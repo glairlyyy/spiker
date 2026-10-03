@@ -66,11 +66,10 @@ const CITY = (() => {
     coast,
     inner,
     dunes,
-    /** Wei's city: its east and south sides are the contested border with Wu. */
+    /** Wei's city: its east and south sides are the Wei–Wu line. */
     wei: [...coast.slice(3, 7), ...wuWei, ...shuWei.slice(1).reverse()],
-    /** The contested Wei–Wu border (its line, and the pair of regions it divides). */
-    contest: wuWei,
-    contestPair: ['wei', 'wu'],
+    /** The Wei–Wu line (the dry side of the sand test; the war's front is the hex frontier, spec §4.27). */
+    weiWu: wuWei,
     /** The inland strip's two points on the Wu side of Central Academy (the sand test's dry polygon uses them). */
     strip: [
       [430, 540],
@@ -725,7 +724,7 @@ const LANDMARK = {
       }
     },
     pts = a => a.forEach(pt);
-  for (const k of ['coast', 'inner', 'dunes', 'wei', 'wu', 'shu', 'beach', 'contest', 'strip', 'hq', 'mountains']) pts(CITY[k]);
+  for (const k of ['coast', 'inner', 'dunes', 'wei', 'wu', 'shu', 'beach', 'weiWu', 'strip', 'hq', 'mountains']) pts(CITY[k]);
   Object.values(CITY.label).forEach(pt);
   pt(CITY.airport);
   pt(CITY.ritual);

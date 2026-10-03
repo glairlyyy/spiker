@@ -1,5 +1,5 @@
 // The island map as plain data: what a renderer draws, with no drawing in it (DOM-free, tested headless).
-// MapModel.build(run, sel) → { w, h, land, seized, hexes, pins, you, fog, flag, focus, sel, life }. Map units: CITY.w × CITY.h,
+// MapModel.build(run, sel) → { w, h, land, hexes, pins, you, fog, flag, focus, sel, life }. Map units: CITY.w × CITY.h,
 // y down. A renderer (MapView: js/ui/map-view.js → js/map3d/map3d.mjs) draws a model and reports two things
 // back: a pin picked (its id) and a map point clicked ([x, y] in map units). All game rules stay in City / Front.
 
@@ -17,7 +17,6 @@ const MapModel = {
       coast: CITY.coast,
       beach: CITY.beach,
       regions: ['wu', 'shu', 'wei'].map(id => Object.assign(reg(id), { poly: CITY[id] })),
-      contest: { line: CITY.contest, title: `Contested ${CITY.contestPair.map(r => REGIONS[r].name.split(' ')[0]).join('–')} border` },
       minors: Object.entries(CITY.minors).map(([id, e]) => Object.assign(reg(id), e)),
       park: Object.assign(reg('open'), CITY.park, { title: REGIONS.open.desc }),
       mountains: CITY.mountains,
@@ -45,7 +44,7 @@ const MapModel = {
   ],
   /** The sand: Wu land between the dune line and the coast (the old Wu polygon, with the old coast, is the dry side). */
   onSand(p) {
-    const dry = [...CITY.dunes, ...CITY.strip, ...CITY.contest.slice().reverse()];
+    const dry = [...CITY.dunes, ...CITY.strip, ...CITY.weiWu.slice().reverse()];
     return inPoly(p, CITY.wu) && !inPoly(p, dry);
   },
   /** A district's polygon: `{ x, y, r }` → a 24-gon, 'beach' → the sand ring (dunes + coast), 'wei' → Wei's land, else the points. */
@@ -249,25 +248,11 @@ const MapModel = {
       });
     return out;
   },
-  /** Seized border places you've seen: a patch in the holder's colour. */
-  seized: run =>
-    Object.keys(SPOTS)
-      .filter(id => Front.seized(run, id) && City.seen(run, City.at(run, id)))
-      .map(id => {
-        const r = Front.owner(run, id);
-        return {
-          id,
-          at: City.at(run, id),
-          r: 46,
-          color: REGIONS[r].color,
-          title: `Seized by ${REGIONS[r].name} from ${REGIONS[SPOTS[id].region].name}`
-        };
-      }),
   /**
    * Who is where this week (display only: no randoms, positions come from hashes of ids + place, so the same run state gives
    * the same model). mates: your floor mates at the explored place of their training key nearest home. crews: each known
    * faction club's drilling squad at its HQ (n figures by pool size; known = scouted or yours, else grey silhouettes; walk = its
-   * region's explored places). battle: this week's open street battle.
+   * region's explored places). battle: this week's open street battle. patrols: MapModel.patrols.
    */
   life(run) {
     const home = City.at(run, 'home'),
@@ -319,7 +304,7 @@ const MapModel = {
       mates,
       crews,
       battle: c ? { at: c.at, a: c.a, b: c.b, colors: [REGIONS[c.a].color, REGIONS[c.b].color] } : null,
-      contest: MapModel.contest(run)
+      patrols: MapModel.patrols(run)
     };
   },
   /**
@@ -359,18 +344,54 @@ const MapModel = {
       })
     };
   },
-  /** The contested border (CITY.contestPair): meter from a's side, pressure 0..1 (1 = the next win seizes), holder. */
-  contest(run) {
-    const [a, b] = CITY.contestPair,
-      meter = Front.meter(run, a, b);
-    return { a, b, meter, pressure: Math.min(1, Math.abs(meter) / HEX_COST.place), hold: meter > 0 ? a : meter < 0 ? b : null };
+  /**
+   * Patrols on the hot hex frontier (spec §4.27): this week's battle tile and every tile under pressure (at most 3 fronts:
+   * the battle first, then most pressure, then a hash). The holder guards the tile (2), the pusher stands on its own frontier
+   * tile next to it, thicker with pressure (2–4). Figures [{ id, tile, at, face, color }]: at = on the tile's side facing the
+   * other tile (hash jitter), face = the other tile's centre. Display only, no randoms.
+   */
+  patrols(run) {
+    const H = Hex.state(run),
+      c = City.clashSite(run),
+      hot = Object.keys(H.p)
+        .filter(id => H.p[id] > 0 && H.by[id])
+        .map(id => ({ id, by: H.by[id], p: H.p[id] }));
+    if (c && !hot.some(h => h.id === c.tile)) hot.push({ id: c.tile, by: c.a, p: 0 });
+    const first = h => (c && h.id === c.tile ? 0 : 1);
+    hot.sort((x, y) => first(x) - first(y) || y.p - x.p || hstr(x.id) - hstr(y.id));
+    const out = [],
+      seen = new Set(),
+      add = (t, r, n, face) => {
+        for (let i = 0; i < n; i++) {
+          const id = `${t.id}|${r}|${i}`;
+          if (seen.has(id)) continue;
+          seen.add(id);
+          const a = hstr(`${id}|a`) * Math.PI * 2,
+            d = HEX.size * (0.08 + hstr(`${id}|r`) * 0.14);
+          out.push({
+            id,
+            tile: t.id,
+            at: [t.at[0] + (face[0] - t.at[0]) * 0.3 + Math.cos(a) * d, t.at[1] + (face[1] - t.at[1]) * 0.3 + Math.sin(a) * d],
+            face: face.slice(),
+            color: REGIONS[r].color
+          });
+        }
+      };
+    for (const h of hot.slice(0, 3)) {
+      if (!Hex.frontier(run, h.id)) continue;
+      const t = Hex.tile(h.id),
+        from = Hex.near(h.id).find(n => Hex.owner(run, n.id) === h.by && Hex.frontier(run, n.id)),
+        n = 2 + Math.min(2, Math.floor((2 * h.p) / Hex.cost(run, h.id, h.by)));
+      add(t, Hex.owner(run, h.id), 2, from ? from.at : t.at);
+      if (from) add(from, h.by, n, t.at);
+    }
+    return out;
   },
   build(run, sel = null) {
     return {
       w: CITY.w,
       h: CITY.h,
       land: MapModel.land(run),
-      seized: MapModel.seized(run),
       hexes: MapModel.hexes(run),
       pins: MapModel.pins(run),
       you: { at: City.pos(run), title: `You are in ${REGIONS[City.loc(run)].name}` },

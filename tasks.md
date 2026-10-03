@@ -493,7 +493,7 @@ Do not: change `wpick`/RNG or any engine call order.
 Accept: goldens unchanged; one definition each of clamp/lerp/hash/inPoly per world (classic, map3d).
 Result: core/math.js (clamp lerp sig inPoly fmtDelta, before rng.js; lint picks it up); 10 delta formatters + dom `signed` → fmtDelta (only visible change: `−` U+2212; also career-map.js 2 `signed` callers); geo3d.mjs holds map3d's clamp lerp smooth wrap inside edgeDist sideDist hstr esc (map3d.mjs re-exports the polygon trio for tests; its 2D noise hash renamed `lattice`); poses3d imports clamp from geo3d (map3d.test loads it via avatar3d and palmTwist runs at load: the global would throw), actors3d/camera3d 18 inline clamps → global clamp; MAJORS in data/world.js, City.region uses it (polys don't overlap: checked), pins3d reads tile.major (new MapModel hex field). Goldens unchanged, 110/110, QA t152 vs t150: panels identical, only map/match 3D noise.
 
-### [ ] T-153: Remove pre-hex leftovers on the map
+### [x] T-153: Remove pre-hex leftovers on the map
 
 Spec: §4.27 Goldens: unchanged Save: no change
 Files: js/data/city.js, js/career/mapmodel.js, js/map3d/life3d.mjs, tests/map.test.js
@@ -502,7 +502,7 @@ walk the actual hex front, any pair, not a fixed Wei–Wu line); drop `MapModel.
 a seized place). Rewrite the T-079 test against the hex frontier.
 Accept: patrols spawn only on frontier tiles; no `contest`/`seized` names left.
 QA: career run → map, a battle week: patrols on the target front.
-Result:
+Result: `MapModel.patrols` (life.patrols [{id, tile, at, face, color}]): ≤ 3 hot fronts (battle tile, then tiles under pressure, any pair), holder 2 on the tile + pusher 2–4 on its adjacent frontier tile, facing across; seized poles/`MapModel.seized`/`land.contest`/`CITY.contestPair` gone, `CITY.contest` → `CITY.weiWu` (still the sand test's dry edge); life3d CAP poles 2; T-079 test rewritten (any pair, frontier-only, deterministic). QA: battle week Wu→Wei + Shu pressure on Wu: 12 figures, all on frontier tiles, screenshot ok; qa_screens vs t152: 01–09 identical, 10 3 px, 11/12 match noise. `Front.seized` kept (place tags/dossier).
 
 ### [ ] T-154: Split career.css
 

@@ -179,7 +179,7 @@ export function create(onIdle) {
     avatar = null,
     furn = null, // pins, labels, flag, decals (pins3d.mjs)
     town = null, // roads, lots, landmarks (town3d.mjs)
-    life = null, // figures, battle crowd, patrols, seized flags (life3d.mjs)
+    life = null, // figures, battle crowd, frontier patrols (life3d.mjs)
     clock = 0,
     fogKey = null,
     badge = null,
