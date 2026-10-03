@@ -291,6 +291,19 @@ Steps: replace repeated sentences with the term alias — Sim (×5), Grade (×2)
 Accept: each listed phrase appears once (in GLOSSARY). QA: spot cards + eval card.
 Result: repeated explanations replaced by the glossary text or a term: Sim tips (eval, cup, challenge) → GLOSSARY.sim, the "result without watching" sub-labels dropped; the two full Grade copies → "× Grade" (eval tip keeps its per-play numbers); seize tips (Factions tab, dossier) → GLOSSARY.seize; standing labels/bars (street battle, Factions, dossier, HQ tag) → `term('standing', v)` + GLOSSARY.standing; Border tag and quality (Premium?/Rough?) tips → GLOSSARY; quality tag tip keeps only ×q. Grep in js/ui: each listed phrase 0 ("overhyped" stays once as the tag word). Deviation: career-dossier.js (not listed) also edited — it held 3 of the copies. match-screen Skip keeps its own tip (it is not Sim); career-create had none. QA: Factions tab, training card, eval card; no errors.
 
+## Hex territory (spec §4.27 — **[draft]**: do not start until the owner confirms §4.27)
+
+- T-131 Hex grid (new `js/career/hex.js`, data `HEX` / `HEX_COST` in js/data/world.js): grid from CITY, kinds, start
+  owners, neighbours, frontier, supply (connected to an HQ), cost per tile; pure + tests (counts per region, HQ /
+  academy / minor never takeable, deterministic).
+- T-132 Front on hexes: target tile, pressure, flip, decay; place owner from tiles (drop `run.own`); battle site from
+  the target tile; save v16; Goldens: update (career). Tests: a win moves pressure, a flip moves a place's owner,
+  supply rule blocks islands.
+- T-133 Map: hex overlay (owner fill + outline, frontier edge, target ring) in pins3d/map3d via MapModel.land.hexes;
+  remove T-130 lines and seized patches. QA screenshot.
+- T-134 UI: street battle card stakes (`Win → {tile} 2/3`), point panel tile info, Factions tab tiles held / lost,
+  glossary `hex` / `seize` text updated.
+
 ## Later — outlines
 
 UI polish (spec §9, design system fix-plan Batch 7) — spec chat details when Now/Next are done:

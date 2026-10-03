@@ -290,6 +290,29 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     normal lineups.
   - **Endless** **[locked, not built]**: no guarantees; call-up by grades; season rolls over after the cup (aging out,
     senior league, continuing NPC careers: **[open]**).
+- §4.27 Hex territory **[draft — owner to confirm]**: the war map becomes hex tiles; each tile has its own takeover
+  condition. Changes how factions move and seize; the player's travel (roads, days, trips, fog) does not change.
+  Replaces the fixed border meters and border places (§4.7 `FRONT.borders`, T-130 lines, seized patches).
+  - Grid: flat-top hexes, `HEX.size` 36 map units (~140 land tiles), built deterministically from CITY (land = centre on
+    land); id = axial `q,r`. Start owner = the region at the centre (original polygons).
+  - Kinds: `hq` (a club HQ: its faction's capital, never taken) · `academy` (Central Academy: neutral, never taken) ·
+    `minor` (Outlaws, St. Gloria: not in the war) · `place` (holds a training place / venue) · terrain `city` (Wei
+    districts), `beach` (sand), `highland` (mountains), `plain`.
+  - Takeover condition (`HEX_COST`): net battle wins needed — plain 1, city / beach / highland / place 2; +1 on the
+    defender's home terrain (Wei city, Wu beach, Shu highland); −1 (min 1) for a retake; −1 when the tile is cut off
+    from every defender HQ. Hard rules: the tile touches the attacker's territory, and the attacker's touching tile
+    is connected to one of its HQs (supply line).
+  - Movement: each week's battle (Front.pick unchanged) is fought on a target tile — the defender's cheapest takeable
+    tile (ties: nearest the attacker's HQ, then a hash). Its centre is the battle site (replaces CLASH.sites). Win: +1
+    pressure on the tile; pressure ≥ cost → the tile flips (pressure 0). Loss: the tile's pressure → 0 and the defender
+    gets +1 on the attacker's tile it came from. Untouched for 4 weeks: pressure −1.
+  - Effects: a place's owner = its tile's owner (replaces `run.own`); turf, prices, quality, access follow. Economy
+    and `weak` count lost places as today. Labels stay; buildings keep their original style.
+  - Map: tiles drawn in the owner's colour (fill + outline), frontier edges brighter; the target tile shows a ring
+    `pressure/cost`; a click on a tile (map point) shows owner, kind, condition and pressure in the point panel.
+  - Save: `run.hex = { own: { id: region } (changed tiles only), p: { id: n } }`; RUN_VERSION 16 (dev bump).
+    Career goldens may change (battle sites); engine goldens unchanged.
+  - Out of scope: the player sieging tiles directly; NPC homes or region names moving.
 
 ## 5. Open questions — do not build until decided
 
