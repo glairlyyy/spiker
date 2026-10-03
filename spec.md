@@ -293,21 +293,23 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   - Models: career player always Main_v2 (own colours); extra loaded .vrm models only in Monster (random per player;
     menu toggle "Model colors: Own / Team", localStorage `sns_keepcol`); everyone else base model. VRM springs use the figure root as center, `HAIR` { stiff 1, drag 0, gravity 1 }.
 - §4.26 Modes (`run.mode.story`; every guarantee checks it):
-  - **Story** (default): at the U21 Final Cup you're always in a squad (forced into your faction's first drawn squad
+  - **Story** (default; two seasons, §4.28): at the U21 Final Cup you're always in a squad (forced into your faction's first drawn squad
     over its weakest same-role player; Academy member → Academy squad; alone → hired street crew) and always start
     (coach may still sub you tired; SUB.you applies). Squad wins → you're called up (the ending). Other matches keep
     normal lineups.
   - **Endless** **[locked, not built]**: no guarantees; call-up by grades; season rolls over after the cup (aging out,
     senior league, continuing NPC careers: **[open]**).
-- §4.28 Aces and the rival **[draft]** (owner, 2026-10-04; lore.md §6): growth curves are authored, not rolled.
-  - **Aces** (one per major to start): start ★ star, element on, ~OVR 75–80; follow a fixed weekly curve that slows
-    toward a ceiling and reaches OP (~95 OVR, key ≥ 95) by the U21 Final Cup. No random star / OP rolls for them.
-  - **Rival**: starts far above you (~OVR 60–65 while you start at 1), same authored-curve kind, ending ~89–90 at the
-    Cup with the key stat kept under the OP line (not OP). Not tied to your OVR (owner: grows like an ace).
-  - Year 2 (open): the rival is promoted to ace; each other major generates a new ace (procedural; a unique one may come
-    from lore later). Needs the Endless roll-over above and an answer to U21 eligibility at 21.
-  - Numbers are first guesses for the balance pass; the shape (aces > rival > field, rival close but not OP at the Cup)
-    is the decision.
+- §4.28 Aces, the rival and the two-year Story **[draft]** (owner, 2026-10-04; lore.md §6): growth curves are
+  authored, not rolled.
+  - **Story = two seasons** (28 weeks + U21 Final Cup, twice). MC 19 → 20, U21-eligible both years. What a year-1 Cup
+    win means (called up early vs. year 2 anyway): **[open]**.
+  - **Year-1 aces** (generated, one per major, not unique): start ★ star, element on, ~OVR 75–80; fixed curve that
+    slows toward a ceiling, OP (~95 OVR, key ≥ 95) by the year-1 Cup; age out after it. No random star / OP rolls.
+  - **Rival** and the **named aces** (Reina, Ren, Taiga — the MC's cohort): start far above you (~OVR 60–65 while you
+    start at 1), authored fast curves; the rival matches the OP aces by the year-1 Cup. In year 2 they are the aces
+    (the rival included); you have that year to catch up. Not tied to your OVR.
+  - Numbers are first guesses for the balance pass; the shape (year-1 aces ≥ rival > cohort > field; you catch up in
+    year 2) is the decision.
 - §4.27 Hex territory **[locked]** (owner, 2026-10-03): the war map becomes hex tiles; each tile has its own takeover
   condition. Changes how factions move and seize; the player's travel (roads, days, trips, fog) does not change.
   Replaces the fixed border meters and border places (§4.7 `FRONT.borders`, T-130 lines, seized patches).

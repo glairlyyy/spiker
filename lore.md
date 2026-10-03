@@ -92,15 +92,13 @@ Grading dogma = what the faction's join conditions and facility conditions mean 
 - **MC** [locked]: female newcomer. Came to the island because her rival is here. Every other academy rejected her;
   Central Academy was the only one that took her.
 - **Ages and the arc** [locked] (owner, 2026-10-04): the MC lands on the island at 19. The game has no age system;
-  ages only set the shape of the curves. Year 1 ends with the U21 Final Cup; a second year leaves the MC room to catch up.
-- **Aces** [locked shape; names / factions open]: one year older (20). Already ★ stars with an awakened element when
-  the MC arrives; they grow on an authored curve, not the dice, and **peak at the U21 Final Cup as OP** (~95 OVR).
-  The faction's poster players. Reina, Ren, Taiga from the old design doc are candidates; which faction each belongs to
-  is still open.
-- **Rival** [locked shape; identity / faction open]: a **next ace** — also 19, arriving with the MC but far stronger.
-  Grows like an ace (authored, fast) but from lower: by the U21 Final Cup about OVR 89–90, close to the aces but **not
-  OP**. In year 2 (age 21) the rival becomes an ace, alongside new aces generated in the other factions (or a unique
-  one, future lore). Year 2 is the MC's chance to catch the rival.
+  ages only set the shape of the curves. **Story is two years** (age 19 → 20, both U21-eligible): year 1 ends with
+  the U21 Final Cup; year 2 is the MC's chance to close the gap.
+- **The first aces** [locked]: one year older (20). **Generic, not unique characters**: they peak as OP at the
+  year-1 U21 Final Cup and age out — they come and go fast. Generated per run, one per major.
+- **The MC's cohort** [locked shape]: the **rival** and the named aces (**Reina, Ren, Taiga**) are the MC's age (19):
+  the next aces. They arrive far stronger than the MC and grow on authored curves; the rival **matches the OP aces by
+  the year-1 Cup**. In year 2 this cohort are the island's aces; the MC chases them. Factions of each: **[open]**.
 
 ## 7. Voices (unreliable narration) [locked]
 
@@ -127,5 +125,5 @@ No tutorial voice anywhere.
 
 ## 9. Open
 
-- Rival's identity and faction; which faction each ace belongs to; how year 2 works with a U21 league (age 21); exact faction conditions; old-language glossary; island and major-nation names; what the ritual
+- Rival's identity and faction; which faction each named ace belongs to; exact faction conditions; old-language glossary; island and major-nation names; what the ritual
   looks like in play; what happens if Central Academy's neutrality is broken.
