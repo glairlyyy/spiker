@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-197** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-198** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -56,6 +56,10 @@ Result: referee on a stand by the far post, two line judges with flags, two team
 
 Owner request 2026-10-04 (map and facility revamp, spec §4.18d–e, §4.19a): T-181 → T-183 built by the spec chat;
 T-184 → T-186 built by the spec chat on the owner's go.
+
+### [x] T-197: Average game in the Dev tab (owner request)
+
+Result: `mkAverageTeams(lo = 30, hi = 60)` (engine/teams.js): two random teams, every squad player rolled to an OVR in the range by shifting all four stats together (the rolled shape kept, 10–99), no stars / OP; Dev tab `Average game` → `startAverage()` (menu.js). Test: OVR range, spread, a match plays out. QA: the match runs, no page errors. Goldens unchanged.
 
 ### [x] T-196: Dialogue text no longer bounces (owner request; committed as "T-193" before the venue tasks took that id)
 

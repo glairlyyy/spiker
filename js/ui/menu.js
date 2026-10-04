@@ -25,6 +25,7 @@ function renderMenu() {
       TS.dev
         ? `<div class="panel mdev"><h3>Dev</h3>
       <span class="trow" style="margin:0"><button class="btn" onclick="startMonster()" ${tip('A one-off 3D match between two all-OP teams: elements, hype scenes and blocks fire often')}>Monster game</button>
+        <button class="btn" onclick="startAverage()" ${tip('A one-off 3D match between two teams of ordinary players: every player rolled at overall 30–60')}>Average game</button>
         <label class="btn" ${tip('Load a .vrm from your computer. It stays in this browser (never uploaded); in the Monster game every player picks a random model among the base one and the loaded ones (career: your player is always Main_v2).')}>+ Player model<input type="file" accept=".vrm,.glb" hidden onchange="addModelFile(this)"></label>
         <button class="btn" onclick="benchModels()" ${tip('Time every model on its own: draw calls, triangles, render and hair-spring cost per frame (also written to the debug log).')}>Benchmark models</button>
         ${Models.live.length ? `<button class="btn" onclick="toggleKeepColors()" ${tip('On: loaded models show their own colours. Off: they get the team kit, hair, skin and eye colours like the base model.')}>Model colors: ${Models.keep ? 'Own' : 'Team'}</button>` : ''}
@@ -48,5 +49,11 @@ function startMonster() {
   const [a, b] = mkMonsterTeams();
   for (const p of [...a.P, ...b.P]) p.form = +rnd(-0.1, 0.4).toFixed(2);
   navigate('match', { a, b, round: 'Monster game', back: 'Back to menu', onLeave: () => navigate('menu') });
+}
+/** Average game (dev): a one-off match between two teams of ordinary players (overall 30–60 each). */
+function startAverage() {
+  const [a, b] = mkAverageTeams();
+  for (const p of [...a.P, ...b.P]) p.form = +rnd(-0.1, 0.4).toFixed(2);
+  navigate('match', { a, b, round: 'Average game', back: 'Back to menu', onLeave: () => navigate('menu') });
 }
 Screens.menu = renderMenu;

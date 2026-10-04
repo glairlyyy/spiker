@@ -41,6 +41,21 @@ test('engine: monster + league teams (golden)', () => {
   goldenCheck('monster', hash(JSON.stringify(M.map(t => t.P.map(p => [p.power, p.def, p.speed, p.jump, p.wit])))));
 });
 
+test('engine: average teams — every player 30–60 OVR, no stars, a match plays out', () => {
+  const g = load(11),
+    T = g.mkAverageTeams(),
+    all = T.flatMap(t => g.squadOf(t));
+  assert(
+    all.every(p => g.ovr(p) >= 29 && g.ovr(p) <= 61 && !p.star && !p.op),
+    'OVR 30–60, no stars'
+  );
+  assert(new Set(all.map(p => g.ovr(p))).size > 5, 'a spread of levels');
+  const m = g.newMatch(T[0], T[1], false);
+  let n = 0;
+  while (!m.over && n++ < 5000) g.playRally(m);
+  assert(m.over, 'the match ends');
+});
+
 test('engine: rally invariants over 300 matches', () => {
   const g = load(3);
   const T = g.mkTeams();

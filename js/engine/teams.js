@@ -79,6 +79,29 @@ function mkMonsterTeams() {
   });
 }
 /**
+ * Average game (dev): two random teams of ordinary players — each player's overall rolled in `ovr` (default 30–60), their
+ * stats shifted together to it (the rolled shape kept, 10–99). No stars, no OP.
+ */
+function mkAverageTeams(lo = 30, hi = 60) {
+  const used = new Set();
+  _pid = 0;
+  const defs = [...TEAMDEFS].sort(() => R() - 0.5).slice(0, 2);
+  return defs.map(([name, short, color, sk], i) => {
+    const t = { i, name, short, color, sk, S: STYLES[sk], hist: { w: 0, l: 0, sw: 0, sl: 0, res: [] }, nStars: 0, arch: 'Average squad' };
+    fillRoster(t, {}, used);
+    for (const p of squadOf(t)) {
+      const target = Math.round(rnd(lo, hi));
+      for (let it = 0; it < 4; it++) {
+        const d = target - ovr(p);
+        for (const k of STATK) p[k] = Math.round(clamp(p[k] + d, 10, 99));
+      }
+      Object.assign(p, { star: false, op: false, bonus: 0 });
+    }
+    finalizeTeam(t);
+    return t;
+  });
+}
+/**
  * Everything that depends on a team's final roster: leadership, captain, coach, shirt numbers, rating. Leadership,
  * elements and numbers cover the whole squad (numbers unique across all 6); the captain and rating are the 4 on court.
  * Call again after changing a roster (e.g. inserting a created player).

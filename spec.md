@@ -82,7 +82,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 
 ## 3. Menu [built]
 
-- One game + a dev Playtest card (Monster game, `startMonster()`).
+- One game + a dev Playtest card (Monster game, `startMonster()`; Average game, `startAverage()`: two teams of ordinary players, each rolled at OVR 30–60 — owner, 2026-10-04).
 
 ## 4. Career world [built unless tagged]
 
