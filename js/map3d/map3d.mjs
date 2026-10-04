@@ -17,6 +17,7 @@ const CELL = 2, // terrain grid cell (m)
   PITCH = (55 * Math.PI) / 180,
   FLY_S = 0.45, // a camera move to a selected place
   DIST = [25, 630], // camera distance (m): the scaled island (MAP_SCALE 1.5) needs the longer reach
+  FENCE_D = 150, // the farthest the camera goes while the week-1 fence holds (m)
   CLICK_PX = 5,
   BEACH = 12, // beach slope width (m)
   IDLE_S = 3, // canvas detached this long → release the renderer
@@ -299,6 +300,16 @@ export function create(onIdle) {
     view.x = clamp(view.x, 0, terrain.W);
     view.z = clamp(view.z, 0, terrain.D);
     view.d = clamp(view.d, DIST[0], DIST[1]);
+    const F = cur && cur.fence; // Story week 1 (spec §10.10a): the camera stays over the campus
+    if (F) {
+      const [fx, fz] = toWorld(F.at),
+        R = F.r * MAP_M,
+        dx = view.x - fx,
+        dz = view.z - fz,
+        k = Math.hypot(dx, dz);
+      if (k > R) ((view.x = fx + (dx / k) * R), (view.z = fz + (dz / k) * R));
+      view.d = Math.min(view.d, FENCE_D);
+    }
   };
 
   // input: drag pans (grab the ground point), wheel zooms, a click (< CLICK_PX) picks a map point
@@ -361,6 +372,15 @@ export function create(onIdle) {
     const [x, z] = avatar.pos();
     fly = { x0: view.x, z0: view.z, d0: view.d, x1: x, z1: z, d1: Math.min(view.d, 70), t: 0 };
     follow = true;
+  };
+  /** Fly out over the whole island (the fence lifting). */
+  const overview = () => {
+    if (!view || !terrain || !cur) return;
+    const v = fitView(cur.land.coast.map(toWorld), cw / Math.max(1, ch) || 16 / 9, 60, DIST[1]);
+    if (!v) return;
+    const d = Math.min(DIST[1], v.d * 1.15); // perspective: the far edge needs more room than the fit assumes (as at mount)
+    fly = { x0: view.x, z0: view.z, d0: view.d, x1: v.x, z1: v.z + d * 0.08, d1: d, t: 0 };
+    follow = false;
   };
   /** Move the camera over a pin (≤ FLY_S): keep the zoom unless the pin is off-screen (then at least 80 m away). */
   const flyTo = id => {
@@ -489,6 +509,7 @@ export function create(onIdle) {
       lastSel = id;
     },
     centre,
+    overview,
     /** True while your player is walking to a new place (the UI locks its actions until they arrive). */
     busy: walking,
     heightAt: (x, z) => (terrain ? terrain.heightAt(x, z) : 0),

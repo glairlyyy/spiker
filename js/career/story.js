@@ -5,7 +5,7 @@
 /** `hub` trigger conditions (SCENES trigger.when): pure tests of the run. */
 const STORY_WHEN = {
   trained: run => Object.keys(run.uses || {}).some(k => run.uses[k] > 0),
-  clash: run => !!Fight.clashSite(run),
+  clash: run => run.week >= 2 && !!Fight.clashSite(run), // (week 1 keeps to the campus)
   week2: run => run.week >= 2,
   week3: run => run.week >= 3 && !!Stars.get(run, 'rival'),
   settled: run => run.team != null || run.week >= 6,

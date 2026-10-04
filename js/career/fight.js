@@ -257,7 +257,7 @@ const Fight = {
     return `Street battle: ${REGIONS[w].name} beat ${REGIONS[l].name}${s ? ` — ${s}` : ''}.`;
   },
   /** Why you can't fight or challenge now ('' if you can): an injury keeps you off the street (spec §4.15). */
-  ban: run => (run.injury ? 'Injured — rest first' : ''),
+  ban: run => (run.injury ? 'Injured — rest first' : City.fence(run)), // (battles and challenges are never on campus)
   /**
    * The chance of an injury after a challenge / street fight (INJURY; pure, no roll): their rating above yours, the points you
    * lose by (`margin`, 0 before the match), low stamina, and a fight soon after your last one.
@@ -348,7 +348,8 @@ const Fight = {
   /** Go to the battle and watch it (side null). Returns the diary line. Fighting is Fight.clash(run, side), a real match. */
   watch(run, side) {
     const c = Fight.clashSite(run);
-    if (!c || run.event || City.noTime(run, Fight.clashCost(run)) || (side && side !== c.a && side !== c.b)) return '';
+    if (!c || run.event || City.noTime(run, Fight.clashCost(run)) || City.outside(run, c.at) || (side && side !== c.a && side !== c.b))
+      return '';
     const trip = City.go(run, c.at, { k: 'battle', label: 'Watch', at: c.name }),
       out = [];
     run.clash.done = true;

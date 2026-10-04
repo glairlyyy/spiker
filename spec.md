@@ -580,6 +580,11 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   - **Meeting**: the intro ends with a normal first meeting at the flat (name, house rules, "last year of U21 for me"),
     one offer of a tour (`Please.` / `I'll figure it out myself.` → flag `noTour`: no lessons ever), and the one fact
     she says either way (week 4 is the evaluation; grades decide offers).
+  - **Week 1 on campus** (owner, 2026-10-04, T-192): the intro ends with Kaede pointing the camera at the Academy Gym ("stay on
+    campus this week") and its card open. Until week 2 (`City.fence`, flag `campus`; Story mode only): no place, trip, scouting,
+    battle or challenge off the Academy's seven tiles (locked = the reason "Week 1 — the campus first"), the camera stays over the
+    campus (`model.fence`, ≤ 150 m away), and the next step points at the Academy Gym. Week 2 opens with `explore`: the camera
+    pulls back over the whole island and Kaede says where things are and that trips cost days; then the island is open.
   - **On the map**: her model (the default VRM dressed: teal hair, Academy hoodie) stands by the Student flat's door with
     her name over her head (`model.guide`), whether or not you still live there; gone when `guideGone` is set (her
     leaving after the year-1 Cup: later).

@@ -387,18 +387,20 @@ function nextStep(run) {
     while (w <= run.week + 3 && CALENDAR[w] !== 'eval' && w <= CAREER.weeks) w++;
     const what = w > CAREER.weeks ? 'Cup' : CALENDAR[w] === 'eval' && w <= run.week + 3 ? 'Evaluation' : '';
     if (what && STATK.includes(key)) {
-      const spot = Object.keys(SPOTS)
-        .filter(
-          id =>
-            SPOTS[id].train &&
-            TRAININGS[SPOTS[id].train].main[0] === key &&
-            !TRAININGS[SPOTS[id].train].more &&
-            MapModel.known(run, id, City.at(run, id))
-        )
-        .sort((a, b) => City.cost(run, a) - City.cost(run, b))[0];
+      const spot = City.fence(run)
+        ? 'acaGym' // week 1 of Story: the campus gym Kaede pointed at (§10.10a)
+        : Object.keys(SPOTS)
+            .filter(
+              id =>
+                SPOTS[id].train &&
+                TRAININGS[SPOTS[id].train].main[0] === key &&
+                !TRAININGS[SPOTS[id].train].more &&
+                MapModel.known(run, id, City.at(run, id))
+            )
+            .sort((a, b) => City.cost(run, a) - City.cost(run, b))[0];
       return {
         text: `${what}${what === 'Cup' ? '' : ` W${w}`} · ${STATNAME[key]} ${you[key]}`,
-        short: `${what === 'Cup' ? 'Cup' : `Eval W${w}`} · train ${STATNAME[key]}`,
+        short: `${what === 'Cup' ? 'Cup' : `Eval W${w}`} · ${City.fence(run) ? 'the Academy Gym' : `train ${STATNAME[key]}`}`,
         week: what === 'Cup' ? null : w,
         stat: STATNAME[key],
         act: spot ? `mapPick('${spot}')` : ''

@@ -1019,6 +1019,30 @@ test('story: Kaede — met in the intro, on the map, lessons once at their momen
   assert(!g.MapModel.build(end).figures.some(f => f.id === 'senior'), 'Endless: no guide on the map');
 });
 
+test('story: week 1 keeps to the campus (Kaede points at the Academy Gym); week 2 pulls back and lets you explore (T-192)', () => {
+  const [g, run] = mkRunG(878);
+  let n = 0;
+  while (run.story.cur && n++ < 80) g.Story.next(run, 0);
+  assert(run.story.flags.campus && g.SCENES.intro.after.spot === 'acaGym', 'the intro points at the gym and fences week 1');
+  assert(
+    g.SCENES.intro.steps.some(s => s.k === 'cam' && s.to === 'acaGym'),
+    'the camera goes to the gym'
+  );
+  const w = g.City.can(run, 'weiPower');
+  assert(!w.ok && /campus/.test(w.why), 'a Wei gym is off limits in week 1');
+  assert(g.City.can(run, 'acaGym').ok && g.City.can(run, 'park').ok, 'the campus is open');
+  eq(g.City.travelTo(run, g.SPOTS.harbor.at), '', 'no travelling off campus');
+  assert(/campus/.test(g.Fight.ban(run)), 'no battles or challenges');
+  assert(g.MapModel.build(run).fence, 'the map keeps the camera on the campus');
+  run.week = 2;
+  run.dayLog = [];
+  assert(g.City.can(run, 'weiPower').ok && !g.MapModel.build(run).fence, 'week 2: the island is open');
+  assert(g.Story.fire(run, 'hub') && run.story.cur.id === 'explore', 'Kaede sends you exploring first');
+  assert(g.Story.step(run).k === 'cam' && g.Story.step(run).to === 'island', 'the camera pulls back over the island');
+  const end = g.Run.create(g.Run.draft(), { role: 'WS', name: 'E', mode: { story: false } });
+  assert(g.City.can(end, 'weiPower').ok, 'Endless: no fence');
+});
+
 test('stars: the rival, the cohort and the first aces — seated, on curves, never moved, on the map (T-189, T-190)', () => {
   const [g, run] = mkRunG(877);
   const S = g.Stars.all(run),

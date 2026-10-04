@@ -47,8 +47,11 @@ function storyMounted(run) {
   clearInterval(SB.wait);
   if (!s) return;
   if (s.k === 'cam') {
-    MapView.centre();
-    SB.wait = setTimeout(() => sbAdvance(), 900);
+    // onto you · a place's pin (Kaede pointing) · the whole island (the fence lifts)
+    if (s.to === 'island') MapView.overview();
+    else if (s.to && s.to !== 'you') MapView.select(s.to);
+    else MapView.centre();
+    SB.wait = setTimeout(() => sbAdvance(), s.to === 'island' ? 1500 : 1100);
     return;
   }
   if (s.k === 'wait') {
@@ -103,14 +106,23 @@ function sbPick(i) {
   sbAdvance(i);
 }
 function sbAdvance(pick) {
+  const id = RUN.story.cur && RUN.story.cur.id;
   Story.next(RUN, pick);
+  sbAfter(id);
   Run.save(RUN);
   renderCareer();
+}
+/** When scene `id` has just ended: open the place it points at (`after.spot`), if any. */
+function sbAfter(id) {
+  const A = id && !RUN.story.cur && SCENES[id] && SCENES[id].after;
+  if (A && A.spot) CW.spot = A.spot;
 }
 function sbSkip(yes) {
   SB.skip = false;
   if (yes) {
+    const id = RUN.story.cur && RUN.story.cur.id;
     Story.skip(RUN);
+    sbAfter(id);
     Run.save(RUN);
   }
   renderCareer();

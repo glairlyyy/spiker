@@ -147,11 +147,18 @@ const City = {
     if (c.fans && run.fans < c.fans) miss.push(`${c.fans.toLocaleString()} fans`);
     return miss.length ? { ok: false, why: `${REGIONS[owner].name} asks for ${miss.join(', ')}` } : { ok: true, why: '' };
   },
+  /**
+   * Story mode's first week (spec §10.10a, owner 2026-10-04): you stay on the Academy's grounds. The reason text while it
+   * holds ('' after week 1, in Endless, or when no scene ever runs); `outside(run, p)` = it holds and p is off campus.
+   */
+  fence: run => (Story.on(run) && run.week === 1 && run.story.flags.campus ? 'Week 1 — the campus first (Kaede: learn the routine)' : ''),
+  outside: (run, p) => !!City.fence(run) && City.regionAt(p) !== 'open',
   /** Can you do this now? { ok, why }. */
   can(run, id, mate) {
     const s = SPOTS[id];
     if (!s) return { ok: false, why: 'unknown place' };
     if (run.event) return { ok: false, why: 'answer the event first' };
+    if (s.at && City.outside(run, s.at)) return { ok: false, why: City.fence(run) };
     const acc = City.access(run, id);
     if (!acc.ok) return acc;
     const late = City.noTime(run, City.cost(run, id));
@@ -249,7 +256,7 @@ const City = {
   /** Travel to any point on the island. Returns the diary line. */
   travelTo(run, p) {
     const t = City.travelDays(run, p);
-    if (run.event || !City.onLand(p) || City.noTime(run, t)) return '';
+    if (run.event || !City.onLand(p) || City.noTime(run, t) || City.outside(run, p)) return '';
     City.spend(run, t);
     City.logDays(run, t, null);
     City.moveTo(run, p);
@@ -322,7 +329,7 @@ const City = {
   scoutCost: (run, ti) => City.trip(run, CITY.hq[ti]) + 1,
   /** A day at a club HQ: scout them (roster, elements, a rumour). Returns the diary line. */
   scout(run, ti) {
-    if (run.event || !run.teams[ti] || City.noTime(run, City.scoutCost(run, ti))) return '';
+    if (run.event || !run.teams[ti] || City.noTime(run, City.scoutCost(run, ti)) || City.outside(run, CITY.hq[ti])) return '';
     const t = run.teams[ti],
       f = FACTIONS[ti],
       trip = City.go(run, CITY.hq[ti], { k: 'scout', label: 'Scout', at: t.name });

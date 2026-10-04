@@ -10,6 +10,7 @@ const SCENES = {
   /** First Story start: a dark cold open, then the map — you land at the airport and walk to your first home. */
   intro: {
     trigger: { on: 'start' },
+    after: { spot: 'acaGym' },
     steps: [
       { k: 'cut', dark: true },
       { k: 'title', text: '25 – 4' },
@@ -51,8 +52,38 @@ const SCENES = {
         who: 'senior',
         text: 'One thing either way: week 4 is your first evaluation. The Academy grades you, and the grades decide who gets offers.'
       },
+      // she points at the campus gym; week 1 stays on campus (City.fence) — the gym's card opens when the scene ends (`after`)
+      { k: 'set', flag: 'campus' }, // City.fence: week 1 keeps to the campus
+      { k: 'cam', to: 'acaGym' },
+      {
+        k: 'say',
+        who: 'senior',
+        text: "That's the Academy Gym, right there. Lv 1, a little of everything, and nobody laughs at first-years."
+      },
+      {
+        k: 'say',
+        who: 'senior',
+        text: 'Stay on campus this week. Gym, rest, the grounds. Learn the routine before the island starts eating your days.'
+      },
       { k: 'say', who: 'senior', text: 'Get some sleep. The island looks smaller after the first week.' },
       { k: 'say', who: 'diary', text: 'She talks like someone who has been here too long. I liked her anyway.' },
+      { k: 'end' }
+    ]
+  },
+  // ---- week 2: the fence lifts; the camera pulls back over the whole island ----
+  explore: {
+    trigger: { on: 'hub', when: 'week2' },
+    steps: [
+      { k: 'cam', to: 'island' },
+      { k: 'say', who: 'senior', text: "First week done. You're still standing — better than most." },
+      {
+        k: 'say',
+        who: 'senior',
+        text: "That's the rest of it. Wei's gyms up north, the beach courts on the coast, the highlands out west."
+      },
+      { k: 'say', who: 'senior', text: 'Click anywhere to go. Trips cost days, and the far side of the island costs two or three.' },
+      { k: 'say', who: 'senior', text: 'Go and look around. Just be back in shape for week 4.' },
+      { k: 'cam', to: 'you' },
       { k: 'end' }
     ]
   },

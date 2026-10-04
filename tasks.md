@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-192** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-193** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,10 @@ evaluations, U21 Cup, Story mode, growth, relationships), UI redesign §9–§10
 
 Owner request 2026-10-04 (map and facility revamp, spec §4.18d–e, §4.19a): T-181 → T-183 built by the spec chat;
 T-184 → T-186 built by the spec chat on the owner's go.
+
+### [x] T-192: Story week 1 on campus; week 2 opens the island (owner request)
+
+Result: `City.fence` / `outside` (Story, week 1, flag `campus` set by the intro) gate City.can / travelTo / scout, Fight.ban (battles, challenges) and watch, and the place / point / HQ / battle cards (reason on the control); `model.fence` clamps the camera to the campus (≤ 150 m); intro `cam` to the Academy Gym + `after.spot` opens its card; next step → the Academy Gym; week-2 scene `explore` (`cam: island` → `MapView.overview`, fitted to the coast). Tests: fence, week 2, Endless. Files: js/career/city.js, js/career/fight.js, js/career/story.js, js/data/story.js, js/career/mapmodel.js, js/map3d/map3d.mjs, js/ui/map-view.js, js/ui/story-box.js, js/ui/career-map.js, js/ui/career-hub.js, tests/career.test.js.
 
 ### [x] T-191: Academy routing (owner request)
 

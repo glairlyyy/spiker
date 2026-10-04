@@ -69,9 +69,9 @@ function spotPanel(run, id) {
     at = City.at(run, sid),
     trip = City.trip(run, at),
     days = City.cost(run, sid),
-    trOk = trip && !run.event && !City.noTime(run, trip),
+    trOk = trip && !run.event && !City.noTime(run, trip) && !City.outside(run, at),
     travel = trip
-      ? `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${trOk ? '' : `disabled ${tip(City.noTime(run, trip) || 'answer the event first')}`}>Travel · ${trip}d</button>`
+      ? `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${trOk ? '' : `disabled ${tip(City.noTime(run, trip) || (City.outside(run, at) ? City.fence(run) : 'answer the event first'))}`}>Travel · ${trip}d</button>`
       : '',
     base = { region: City.region(run, sid), title: `${s.icon} ${esc(s.name)}`, after: placeDetails(sid, placeTags(run, sid, trip)) };
   if (s.train) {
@@ -133,7 +133,7 @@ function pointPanel(run, p) {
   const d = City.travelDays(run, p),
     seen = City.seen(run, p),
     r = City.regionAt(p),
-    late = run.event ? 'answer the event first' : City.noTime(run, d);
+    late = run.event ? 'answer the event first' : City.noTime(run, d) || (City.outside(run, p) ? City.fence(run) : '');
   return placeCard({
     region: seen ? r : null,
     kind: 'Travel',
@@ -164,7 +164,7 @@ function clashPanel(run) {
   if (!c) return `<p class="small mute">The street battle is over.</p>`;
   const d = Fight.clashCost(run),
     trip = d - 1,
-    late = run.event ? 'answer the event first' : City.noTime(run, d),
+    late = run.event ? 'answer the event first' : City.noTime(run, d) || City.fence(run),
     ban = Fight.ban(run),
     att = run.clash.att || c.a,
     def = att === c.a ? c.b : c.a,
@@ -343,7 +343,7 @@ function hqPanel(run, ti) {
     free = World.isFree(run),
     j = World.canJoin(run, ti),
     sc = City.scoutCost(run, ti),
-    late = run.event ? 'answer the event first' : City.noTime(run, sc),
+    late = run.event ? 'answer the event first' : City.noTime(run, sc) || City.fence(run),
     seen = City.scouted(run, ti);
   const H = seen ? Dossier.habits(t) : null,
     habits = H

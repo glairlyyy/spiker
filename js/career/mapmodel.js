@@ -456,7 +456,8 @@ const MapModel = {
       focus: City.at(run, 'home'), // where a fresh view centres
       sel,
       life: MapModel.life(run),
-      figures: MapModel.figures(run)
+      figures: MapModel.figures(run),
+      fence: City.fence(run) ? { at: [CITY.park.x, CITY.park.y], r: 170 } : null // Story week 1: the camera keeps to the campus
     };
   },
   /**

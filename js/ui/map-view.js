@@ -63,6 +63,10 @@ const MapView = {
   },
   /** True while your player walks on the map (actions wait for the arrival). */
   busy: () => !!(MapView.m3 && MapView.m3.busy && MapView.m3.busy()),
+  /** Fly the camera out over the whole island (a story scene lifting the week-1 fence). */
+  overview() {
+    if (MapView.m3 && MapView.m3.overview) MapView.m3.overview();
+  },
   /** Fly the camera to your player (◎ / key C). */
   centre() {
     if (MapView.m3) MapView.m3.centre();
