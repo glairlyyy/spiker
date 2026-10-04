@@ -11,7 +11,8 @@ import { loadBase, makeVRM, modelStats, updateVrm, MODEL_URL, MAIN_URL } from '.
 import { createFx } from './fx3d.mjs';
 import { makeTrail } from './trails3d.mjs';
 import { W, lowEnd } from './units3d.mjs';
-import { buildArena, dressArena, updateBall, updateBallShadow, updateCrowd, updateNet, updatePointFlash, ballDir } from './arena3d.mjs';
+import { buildArena, dressArena, updateBall, updateBallShadow, updateNet, updatePointFlash, ballDir } from './arena3d.mjs';
+import { buildVenues, dressVenue, updateVenue } from './venue3d.mjs';
 import {
   base,
   cam,
@@ -95,7 +96,9 @@ async function build(onProgress) {
   } catch (e) {
     DBG.log('warn', 'Main model could not be loaded', e);
   }
-  return { renderer, gl, scene, fx, people, coaches, ...arena };
+  const w = { renderer, gl, scene, fx, people, coaches, ...arena };
+  buildVenues(scene, w); // venue sets, cut-out crowd, officials, big screen, confetti (spec §9.11)
+  return w;
 }
 
 /** A player figure's extras: aura, zone / buff floor rings, hand and eye light trails, eyes on the ball. */
@@ -230,6 +233,7 @@ function bind() {
     cv2 = document.getElementById('cv');
   stage.insertBefore(w.gl, cv2);
   dressArena(w, A.m.t[0].color, A.m.t[1].color);
+  dressVenue(w, A.venue || 'arena', A.stakes ?? 0.9, A.m.t[0].color, A.m.t[1].color);
   dressActors(w);
   bound = A;
   lastT = performance.now();
@@ -296,7 +300,7 @@ function draw() {
   const wdt = dt * Math.max(0.02, Math.min(1, A.ts ?? 1));
   if (!A.qaFreeze) for (const pl of w.people) if (pl.d) posePlayer(pl, pl.d.p.id === A.digHero ? dt : wdt, w.ball.position, w.fx); // qaFreeze: test hook; a digger chasing a far ball poses at normal speed
   for (const pl of w.coaches) if (pl.c) poseCoach(pl, dt, now);
-  updateCrowd(w, now);
+  updateVenue(w, now, dt * 1000, cam);
   updateNet(w, now);
   updatePointFlash(w);
   // effects run on the world clock, except in a scene close-up: there they fade out at full speed so a frozen world

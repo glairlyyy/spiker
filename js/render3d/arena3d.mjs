@@ -6,7 +6,8 @@ import { KH, KX, KZ, W, Wto, canvasTex, lowEnd } from './units3d.mjs';
 /** Build everything into `scene`; returns the handles the renderer animates. */
 export function buildArena(scene) {
   // lights
-  scene.add(new THREE.HemisphereLight('#dfe8ff', '#5a3a22', 1.25));
+  const hemi = new THREE.HemisphereLight('#dfe8ff', '#5a3a22', 1.25);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight('#ffffff', 2.1);
   sun.position.set(-6, 22, 12);
   sun.castShadow = true;
@@ -122,32 +123,16 @@ export function buildArena(scene) {
   const board = new THREE.Mesh(new THREE.PlaneGeometry(34, 1.1), new THREE.MeshBasicMaterial({ map: boardTex }));
   board.position.set(0, 0.55, -8.2);
   scene.add(board);
-  const standMat = new THREE.MeshStandardMaterial({ color: '#1b2352', roughness: 0.9 });
+  // the League Arena's tiered stands (venue3d shows them only there); the crowd itself lives in venue3d.mjs
+  const stands = new THREE.Group(),
+    standMat = new THREE.MeshStandardMaterial({ color: '#1b2352', roughness: 0.9 });
   for (let r = 0; r < 6; r++) {
     const step = new THREE.Mesh(new THREE.BoxGeometry(46, 0.55, 1.3), standMat);
     step.position.set(0, 0.28 + r * 0.55, -9.4 - r * 1.3);
     step.receiveShadow = true;
-    scene.add(step);
+    stands.add(step);
   }
-  // crowd: instanced fans, coloured per match
-  const nFans = lowEnd ? 180 : 320;
-  const fanBody = new THREE.InstancedMesh(
-    new THREE.CapsuleGeometry(0.24, 0.36, 3, 8),
-    new THREE.MeshStandardMaterial({ roughness: 0.8 }),
-    nFans
-  );
-  const fanHead = new THREE.InstancedMesh(
-    new THREE.SphereGeometry(0.17, 10, 8),
-    new THREE.MeshStandardMaterial({ color: '#e9c7a4', roughness: 0.7 }),
-    nFans
-  );
-  const fans = [];
-  for (let i = 0; i < nFans; i++) {
-    const r = i % 6,
-      x = -22 + ((i * 0.618) % 1) * 44 + (Math.random() - 0.5) * 0.6;
-    fans.push({ x, y: 0.55 + r * 0.55 + 0.5, z: -9.4 - r * 1.3, ph: Math.random() * 6.3, side: -1, sx: 500 + x / KX, roll: Math.random() });
-  }
-  scene.add(fanBody, fanHead);
+  scene.add(stands);
 
   // floor rings: in the zone (team colour, pulsing) and captain's buff (gold, dashed, orbiting dots)
   const ringTex = canvasTex(256, 256, (g, w) => {
@@ -227,13 +212,17 @@ export function buildArena(scene) {
   const ballLight = new THREE.PointLight('#ffffff', 0, 4.5, 2);
   scene.add(ballLight);
   return {
+    hemi,
+    sun,
+    rim,
+    floor,
+    outer,
+    board,
+    stands,
     ball,
     ballShadow,
     ballGlow,
     ballLight,
-    fans,
-    fanBody,
-    fanHead,
     boardCanvas,
     boardTex,
     net,
@@ -248,7 +237,7 @@ export function buildArena(scene) {
   };
 }
 
-/** Per match: the LED board and the crowd in the two teams' colours. */
+/** Per match: the LED board in the two teams' colours (the crowd is dressed by venue3d.mjs). */
 export function dressArena(w, t0c, t1c) {
   const g = w.boardCanvas.getContext('2d'),
     bw = w.boardCanvas.width,
@@ -264,31 +253,6 @@ export function dressArena(w, t0c, t1c) {
   g.textAlign = 'center';
   g.fillText('SPITE & SPIKE', bw / 2, bh * 0.68);
   w.boardTex.needsUpdate = true;
-  // crowd colours: team fans and neutrals
-  const pal = ['#2a3470', '#35408a', '#3b4796', t0c, t1c, t0c, t1c, '#27306a'],
-    col = new THREE.Color();
-  w.fans.forEach((f, i) => {
-    const c = pal[Math.floor(f.roll * pal.length)];
-    f.side = c === t0c ? 0 : c === t1c ? 1 : -1;
-    w.fanBody.setColorAt(i, col.set(c));
-  });
-  w.fanBody.instanceColor.needsUpdate = true;
-}
-
-const mtx = new THREE.Matrix4();
-/** Fans bounce with their side's cheer, the whole crowd on big moments, and ride the wave. */
-export function updateCrowd(w, now) {
-  for (let i = 0; i < w.fans.length; i++) {
-    const f = w.fans[i];
-    const lvl = Math.max(f.side >= 0 ? A.cheer[f.side] : 0, A.cheerAll * 0.8, A.cele && f.side === A.cele.w ? 1 : 0);
-    let off = lvl > 0 ? Math.abs(Math.sin(now * 0.013 + f.ph)) * 0.35 * Math.min(1, lvl * 1.5) : 0;
-    if (A.wave) off += Math.exp(-Math.pow((f.sx - A.wave.x) / 55, 2)) * 0.5;
-    mtx.makeTranslation(f.x, f.y + off, f.z);
-    w.fanBody.setMatrixAt(i, mtx);
-    mtx.makeTranslation(f.x, f.y + off + 0.46, f.z);
-    w.fanHead.setMatrixAt(i, mtx);
-  }
-  w.fanBody.instanceMatrix.needsUpdate = w.fanHead.instanceMatrix.needsUpdate = true;
 }
 
 /** The net ripples after a hard hit into it (A.netShake). */

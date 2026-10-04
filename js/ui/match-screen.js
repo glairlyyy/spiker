@@ -182,7 +182,9 @@ function startMatch(fx) {
     ptFlash: null,
     techPs: techPlayers(m, fx, sides), // technique switches (spec §9.10): whose techniques you control
     techCareer: !!you, // career: your choice is kept on your player (p.techOff) for the next match
-    techKeys: []
+    techKeys: [],
+    venue: matchVenue(fx), // the 3D set (spec §9.11)
+    stakes: matchStakes(fx)
   };
   board(snap(m));
   boxScore();
@@ -368,6 +370,20 @@ function showTac(i) {
     d = $('#dsnow' + i);
   if (s && A) s.textContent = A.m.tacMode[i] === 'cap' ? `→ ${TACTICS[A.m.tac[i]].short}` : '';
   if (d && A) d.textContent = A.m.dsetMode[i] === 'cap' ? `→ ${DEFSETS[A.m.dset[i]].short}` : '';
+}
+/* ---------- venue (spec §9.11) ---------- */
+/** The venue a match is played at: fx.venue, else the career week's venue (City.venue), else the street; exhibitions: the arena. */
+function matchVenue(fx) {
+  if (fx.venue) return fx.venue;
+  if (!(fx.onFinish && typeof RUN !== 'undefined' && RUN)) return 'arena';
+  return City.venue(RUN) || 'street';
+}
+/** How full the stands are (0–1): the Cup final 1, other Cup rounds .85, evaluations .45, the street .35, exhibitions .9. */
+function matchStakes(fx) {
+  const v = matchVenue(fx);
+  if (!(fx.onFinish && typeof RUN !== 'undefined' && RUN)) return 0.9;
+  if (Run.weekType(RUN) === 'cup') return /final/i.test(fx.round || '') && !/semi|quarter/i.test(fx.round || '') ? 1 : 0.85;
+  return v === 'street' ? 0.35 : 0.45;
 }
 /* ---------- technique switches (spec §9.10) ---------- */
 const TECH_ICON = { Attack: '⚔', Serve: '◎', Defense: '⛉', Setter: '✋' };

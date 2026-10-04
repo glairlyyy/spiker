@@ -502,6 +502,26 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
     result screen lists `Held back: …` under your line.
   - **Memory**: career keeps your off-list between matches (`you.techOff` on your player — saved with it, no version bump) and match
     prep starts from it with `Reset`; exhibition switches last one match. Passive skills (Soft Hands…) are not listed.
+- §9.11 Match venues (owner, 2026-10-04): the 3D court is dressed per venue so a match feels like a place.
+  - **Venue of a match**: `fx.venue` if set; career → `City.venue(run)` (arena / hall / beach / highland), else `street`
+    (street battles, challenges, pickup games); exhibition / Monster → `arena`. **Stakes** 0–1 set the crowd size: final 1,
+    other Cup rounds .85, evaluations .45, street .35, exhibition .9.
+  - **Looks**: League Arena — glossy blue court, orange free zone, dark hall, light cones on the court, tiered stands, LED
+    board, a big screen behind the far stands. Academy Hall — wood floor with faded basketball lines, green free zone,
+    folding bleachers, back wall with windows and light shafts, banners. Beach Stadium — sand, blue rope lines, metal
+    bleachers, sea, palms, bright sun. Highland Court — outdoor teal court, grass, mountains, flags on poles, overcast
+    light, fog. Street — cracked asphalt, painted lines, chain-link fence, overpass deck and pillars with graffiti, orange
+    street lamps at night.
+  - **Floor**: free-zone and court colours, attack lines dashed past the side lines, a centre emblem (arena / hall).
+  - **Crowd**: flat cut-out fans (4 poses, team-colour tint, neutrals) instead of the capsule figures; they bounce with
+    their side's cheer and ride the wave as before; count = capacity × stakes.
+  - **Moments**: a side in the zone dims the venue light ~35 % and adds a rim light in its colour; the win drops
+    confetti (winner colour, gold, white).
+  - **Around the court**: referee on a stand by the far post, two line judges, team benches, scorer's table, ball cart
+    (no judges / table in the street). Big screen (arena) and wall board (hall): team names, score, set.
+  - **Readability**: backgrounds darker and less saturated than players and ball; nothing taller than the net within
+    3 m of the far side line except the referee stand; low-end devices drop the light cones, shafts and props; light cones and shafts
+    fade out within 6–16 m of the camera and in close-ups so no light ever covers the view (owner, 2026-10-04).
 
 ## 10. Redesign [built through T-129; §10.1a, rail collapse and no-list locked, not built]
 

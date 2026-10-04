@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-194** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-197** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -30,10 +30,34 @@ evaluations, U21 Cup, Story mode, growth, relationships), UI redesign §9–§10
 
 ## Now
 
+Owner request 2026-10-04 (spec §9.11 match venues): T-193 → T-195. Render only; goldens unchanged.
+
+### [x] T-193: Venue sets and floors
+
+Spec: §9.11 Goldens: unchanged Save: no change
+Files: js/render3d/venue3d.mjs (new), js/render3d/arena3d.mjs (return floor / lights / stands / board handles; old capsule crowd removed), js/render3d/r3d.mjs (build + dress + update), js/ui/match-screen.js (`matchVenue`, `matchStakes`, A.venue / A.stakes), ARCHITECTURE.md
+Do not: draw randoms from R() (presentation uses Math.random only); change the court lines' positions; touch the engine.
+Accept: each venue renders its floor and set (QA screenshot per venue via `A.venue`); career eval at the Beach shows the beach; no errors.
+Result: venue3d.mjs: LOOK per venue (sky, fog, light, floor), floor canvas redrawn per match (court / free zone, planks + faded basketball lines, sand, asphalt + cracks, scuffs, emblem, attack lines dashed past the side lines; beach rope lines solid blue), sets: arena (trusses, LED ribbon, big screen, spot), hall (bleachers, wall, windows + shafts, banners, wall board), beach (bleachers, sea, palms), highland (mountains with snow caps, flags), street (chain-link fence, overpass deck, graffiti pillars, sodium lamps). `matchVenue` / `matchStakes` in match-screen (fx.venue → City.venue → street; exhibitions arena). arena3d returns light / floor / stands / board handles; the capsule crowd is gone. QA: all five venues screenshotted in a Monster game, no errors.
+
+### [x] T-194: Cut-out crowd, venue light and moments
+
+Spec: §9.11 Goldens: unchanged Save: no change
+Files: js/render3d/venue3d.mjs, js/render3d/arena3d.mjs (updateCrowd → venue crowd), js/render3d/r3d.mjs
+Accept: crowd count follows stakes; zone dims + rim light; confetti on the win; low-end skips cones and shafts.
+Result: cut-out crowd (4 poses, one InstancedMesh each, team tint × venue lum, neutrals per venue; rows per venue, count = capacity × stakes), same cheer / wave bounce; zone: hemi + sun ×0.65 and a rim light in the zone team's colour (eased ~0.4 s); confetti Points on A.cele (winner colour, gold, white); low-end: no light cones / shafts, fewer palms, smaller crowd and confetti.
+
+### [x] T-195: Officials, props and the big screen
+
+Spec: §9.11 Goldens: unchanged Save: no change
+Files: js/render3d/venue3d.mjs
+Accept: referee, line judges, benches, scorer table, ball cart in place outside the court; big screen shows the score in sync with the scoreboard.
+Result: referee on a stand by the far post, two line judges with flags, two team benches, scorer's table, ball cart (judges + table hidden in the street); big screen (arena) / wall board (hall) draw team shorts + score + set from the shown scoreboard (#p0/#p1/#setn), redrawn on change. Deviation: no scorer portrait on the screen yet. Follow-up (owner): light cones / shafts get a length fade (alphaMap), lower opacity, and fade by camera distance to their axis (0 within 6 m, full at 16 m) and in scene close-ups; spot 260 → 140, zone rim 1.6 → 0.9.
+
 Owner request 2026-10-04 (map and facility revamp, spec §4.18d–e, §4.19a): T-181 → T-183 built by the spec chat;
 T-184 → T-186 built by the spec chat on the owner's go.
 
-### [x] T-193: Dialogue text no longer bounces (owner request)
+### [x] T-196: Dialogue text no longer bounces (owner request; committed as "T-193" before the venue tasks took that id)
 
 Result: the line is laid out in full from the start — typed part + the untyped rest in `.sb-ghost` (visibility: hidden) — so words never jump to the next line, centred narration never shifts and the box never grows while typing; `.sb-text` min-height two lines (say steps only), so one- and two-line speeches keep one box size. QA: box top / height and the text's left edge constant through typing (Playwright sampling). Files: js/ui/story-box.js, css/story.css.
 

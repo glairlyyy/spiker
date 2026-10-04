@@ -65,7 +65,7 @@ Build chat loop, one task at a time:
 - `js/engine` pure simulation, no DOM: match/serve/rally(-phases/-defense/-block) emit **beats** (timed act lists);
   formulas, elements (per-player element gauge + element spikes), hype (staged scenes, chatter; presentation only).
 - `js/render` playback of beats (playback, clock = world time scale / rAF loop, camera, ball, scenes, overlay drawing).
-- `js/render3d` ES modules: r3d (entry, per-frame draw, dynamic resolution), units3d, arena3d, camera3d (game camera,
+- `js/render3d` ES modules: r3d (entry, per-frame draw, dynamic resolution), units3d, arena3d, venue3d (match venues §9.11), camera3d (game camera,
   scene shots, P3D), actors3d (posing players/coaches, trails, auras), players3d (VRM load/dress), poses3d (+ poses3d-attack), fx3d, trails3d.
 - `js/career` career run (28 weeks, training, events, Element Trial, city/front/world, map model, saves).
 - `js/ui` screens (menu, create, career hub/map/week/dossier/end, match, encyclopedia), dom helpers (esc, tip/info/fold/pop).
