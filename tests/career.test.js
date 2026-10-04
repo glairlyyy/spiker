@@ -63,7 +63,10 @@ test('career: week steps are ordered lists of functions (T-202)', () => {
   const g = load(5);
   eq(g.WEEK_END.length, 6, 'six week-end steps');
   eq(g.WEEK_START.length, 6, 'six week-start steps');
-  assert([...g.WEEK_END, ...g.WEEK_START].every(f => typeof f === 'function'), 'every step is a function');
+  assert(
+    [...g.WEEK_END, ...g.WEEK_START].every(f => typeof f === 'function'),
+    'every step is a function'
+  );
 });
 
 test('career: diary lines carry their producer tag (T-203)', () => {

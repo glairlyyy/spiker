@@ -27,7 +27,7 @@ Result:
 Everything through T-200 is built except T-088 (LFS question) — 120 tests, RUN_VERSION 17: match engine and 3D playback (skill-scaled mistakes, ego moments, venues,
 technique switches), career (28 weeks, pools, evaluations, U21 Cup, Story mode with Kaede, the rival and the aces,
 growth, relationships), UI redesign §9–§10, hex territory and economy §4.27, island × 1.5 with the district plan,
-cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git history. Refactor part 4 planned (T-201–T-212, under Now).
+cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git history. Refactor part 4 (T-201–T-211) built: fixtures, week steps, tagged diary, engine steps, venue / panel / sheet / match-screen splits, CSS tokens, inline styles, recipes; T-212 (design system status page) open.
 
 ## Now
 
