@@ -99,7 +99,7 @@ const World = {
     finalizeTeam(T);
     Training.rollFloor(run); // this week's training partners are your new teammates
     finalizeTeam(P);
-    Run.log(run, `Signed with ${T.name} (${FACTIONS[ti].name})${fee ? ` — $${fee} fee` : ''}. ${old.name} is out.`);
+    Run.log(run, `Signed with ${T.name} (${FACTIONS[ti].name})${fee ? ` — $${fee} fee` : ''}. ${old.name} is out.`, 'good');
     Run.news(run, `The office registers ${you.name} with ${T.name}.`); // voice: wei (the Gazette)
     return true;
   },

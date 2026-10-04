@@ -65,22 +65,23 @@ function endWeekUI() {
   const at = before.top ? run.log.indexOf(before.top) : run.log.length,
     lines = run.log.slice(0, at < 0 ? run.log.length : at).slice(0, 6);
   rows.sort((a, b) => ['dn', 'up', 'ch'].indexOf(a[0]) - ['dn', 'up', 'ch'].indexOf(b[0])); // bad news first, then your gains, then the world
-  CW.recap = { week: before.week, rows, lines: lines.map(l => l.t) }; // the Week report, every week (spec §10.5)
+  CW.recap = { week: before.week, rows, lines }; // the Week report, every week (spec §10.5)
   renderCareer();
 }
-/** A diary line's tag by its text (the producers stay as they are): [class, icon] — bad news, gains, the world. */
+/** A diary entry's tag: its producer's `k` (Run.log), else by text for untagged producers — [class, icon]. */
+const LOG_ICON = { bad: '✕', good: '+', world: '•' };
 const LOG_TAGS = [
   ['bad', '✕', /mood down|evicted|caught a cold|injur|noisy night|\blost\b|Lost|stolen|refused/i],
   ['good', '+', /broke through|Awakening|Signed with|learned|won\b|\+\d/],
   ['world', '•', /./]
 ];
-function logTag(t) {
-  const m = LOG_TAGS.find(([, , re]) => re.test(t));
-  return [m[0], m[1]];
+function logTag(l) {
+  const c = l.k || LOG_TAGS.find(([, , re]) => re.test(l.t))[0];
+  return [c, LOG_ICON[c]];
 }
-const logLi = (t, pre = '') => {
-  const [c, i] = logTag(t);
-  return `<li class="lt ${c}"><i aria-hidden="true">${i}</i><span>${pre}${esc(t)}</span></li>`;
+const logLi = (l, pre = '') => {
+  const [c, i] = logTag(l);
+  return `<li class="lt ${c}"><i aria-hidden="true">${i}</i><span>${pre}${esc(l.t)}</span></li>`;
 };
 /** Places whose holder differs between two `run.own` maps: [{ id, to, text }]. */
 function ownChanges(a, b) {
@@ -96,7 +97,7 @@ function ownChanges(a, b) {
 /** The Week report (spec §10.5): penalties first, your week as chips, island news; Next week → the brief. */
 function recapCard() {
   const R2 = CW.recap,
-    tagged = R2.lines.map(t => [logTag(t)[0], t]),
+    tagged = R2.lines.map(l => [logTag(l)[0], l.t]),
     of = k => tagged.filter(([c]) => c === k).map(([, t]) => t),
     bad = of('bad'),
     good = of('good'),

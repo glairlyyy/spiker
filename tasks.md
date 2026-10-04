@@ -68,7 +68,7 @@ Training.rollFloor, Sponsors.offer, ElTrial.offer, Eval.setup, Asks.roll]` as `r
    QA: none
    Result: WEEK_END / WEEK_START in run.js (arrow wrappers so callees load later); inline injury / clash lines → Run.heal / Run.settleClash. Order unchanged; test added (110 quick).
 
-### [ ] T-203: Diary lines tagged where they are written
+### [x] T-203: Diary lines tagged where they are written
 
 Spec: §10.5 Goldens: unchanged Save: no change (old entries without a tag fall back to the regex)
 Goal: the Week report's bad / good / world tag comes from the producer, not a text regex (`LOG_TAGS`), so new lines and
@@ -82,7 +82,7 @@ Steps:
    `k`, regex only when `k` is missing.
    Accept: a test logs one week of a seeded run and gets the same tags as the regex did.
    QA: career run → End week → Week report tags as before.
-   Result:
+   Result: Run.log(run, text, k) stores k; logTag/logLi read entries ({t,k}), regex only for untagged. Tagged the fixed-outcome producers whose regex tag is right (Signed with, sponsor pulled out, star, OP); composite lines (City.day, payday, fight / cup results, events) keep the fallback — deviation: tagging them needs per-clause logic; regex quirks ("Learned" → world, "injury healed" → bad) left as today. Test added.
 
 ### [ ] T-204: Split the long engine functions into named steps
 

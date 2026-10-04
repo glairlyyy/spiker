@@ -785,7 +785,8 @@ nothing of it is saved except `railMini` (a browser preference in `KEYS.rail`, n
 Action lock (UI state only): `mapAfter` / `mapTravel` call `actLock(fx)` → `CW.lock` {phase walk → spin → done}; `lockLayer` renders in `renderCareer` (so it survives re-renders), `hubKey` returns while it is set, and `MapView.busy()` (map3d `busy`: the avatar is walking — the camera holds on it and map input is ignored) ends the walk phase. A training day's `trainFx` (before / after `trainSnap`) fills the result card; `lockShown(run)` keeps the top bar and rail on the before-values until then.
 
 Consequence feedback (UI state only, nothing saved): `weekSnap` keeps a baseline per week (`CW.snap`); `endWeekUI`
-diffs it around `Run.endWeek` into `CW.recap` → `recapCard` (the Week report). `renderCareer` diffs `run.own` against
+diffs it around `Run.endWeek` into `CW.recap` → `recapCard` (the Week report). Diary entries `{ w, t, k? }`: `Run.log(run, text, k)` tags a line bad / good /
+world at the producer; untagged lines fall back to the `LOG_TAGS` text match (career-week.js) — new producers pass `k`. `renderCareer` diffs `run.own` against
 `CW.own` (`ownChanges`); a seize becomes an inbox row for a week (`CW.seizes`) and selects the place on the map.
 `Front.stakes(run, w, l)` is a pure preview of "w beats l" (meter, seize, place) used by the street-battle panel and the
 Factions tab's front rows. `run.dayLog` (RUN_DEFAULTS, cleared by `Run.endWeek`, written by `City.go` / `logDays`)

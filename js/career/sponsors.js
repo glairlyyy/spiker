@@ -33,7 +33,7 @@ const Sponsors = {
       run.staMax -= 15;
       run.sta = Math.min(run.sta, run.staMax);
     }
-    Run.log(run, `${SPONSORS[s.id].name} pulled out — condition not met (${SPONSORS[s.id].perk} lost).`);
+    Run.log(run, `${SPONSORS[s.id].name} pulled out — condition not met (${SPONSORS[s.id].perk} lost).`, 'bad');
   },
   keep(run, s) {
     s.state = 'kept';

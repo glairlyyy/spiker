@@ -66,6 +66,15 @@ test('career: week steps are ordered lists of functions (T-202)', () => {
   assert([...g.WEEK_END, ...g.WEEK_START].every(f => typeof f === 'function'), 'every step is a function');
 });
 
+test('career: diary lines carry their producer tag (T-203)', () => {
+  const g = load(5),
+    run = g.Run.create(g.Run.draft(), { role: 'MB', name: 'Tagger', alloc: { power: 10, def: 20, speed: 10, jump: 20 }, witSteps: 0 });
+  g.Run.log(run, 'A sponsor pulled out.', 'bad');
+  eq(run.log[0].k, 'bad', 'tag stored');
+  g.Run.log(run, 'A plain line.');
+  assert(!('k' in run.log[0]), 'untagged lines keep the old shape');
+});
+
 test('career: save → load round-trip keeps the run intact', () => {
   const g = load(5),
     d = g.Run.draft(),

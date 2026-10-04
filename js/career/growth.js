@@ -58,12 +58,12 @@ const Growth = {
     if (!you.star && o >= C.star.ovr) {
       you.star = true;
       you.bonus = Math.max(you.bonus, 18);
-      Run.log(run, `You broke through — ${you.name} is now a ★ star!`);
+      Run.log(run, `You broke through — ${you.name} is now a ★ star!`, 'good');
     }
     if (you.star && !you.op && o >= C.op.ovr && you[KEYSTAT[you.role]] >= C.op.key && you.wit >= C.op.wit) {
       you.op = true;
       you.bonus = Math.max(you.bonus, 110);
-      Run.log(run, `Awakening! ${you.name} is now an OP player — red star!`);
+      Run.log(run, `Awakening! ${you.name} is now an OP player — red star!`, 'good');
     }
   },
   /** Breakthrough: star (key stat +8, others +3), or a star turning OP (+6 everywhere, wit up). */

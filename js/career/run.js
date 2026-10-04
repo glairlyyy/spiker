@@ -187,9 +187,10 @@ const Run = {
     const k = CALENDAR[run.week] || 'train';
     return k === 'eval' ? (Eval.kind(run) ? 'eval' : 'train') : k;
   },
-  log(run, text) {
+  /** A diary line. k: 'bad' | 'good' | 'world' — the Week report's tag (T-203); lines without one are tagged by text (logTag). */
+  log(run, text, k) {
     const c = Run.cupDef(run);
-    run.log.unshift({ w: c ? c.short : run.week, t: text });
+    run.log.unshift(k ? { w: c ? c.short : run.week, t: text, k } : { w: c ? c.short : run.week, t: text });
     run.log.length = Math.min(run.log.length, 50);
   },
   /**

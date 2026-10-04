@@ -208,7 +208,7 @@ function sheetSeason(run) {
 }
 /** The Diary: the last 5 lines, the rest behind `All ›` (§10.8). */
 function diaryList(run) {
-  const li = l => logLi(l.t, `<b>${typeof l.w === 'number' ? 'W' + l.w : esc(l.w)}</b> `);
+  const li = l => logLi(l, `<b>${typeof l.w === 'number' ? 'W' + l.w : esc(l.w)}</b> `);
   return `<ol class="log tagged">${run.log.slice(0, 5).map(li).join('')}</ol>${
     run.log.length > 5
       ? peek(
