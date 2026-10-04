@@ -24,7 +24,7 @@ function storyBox(run) {
         : '';
   return `${layer}<div class="sbox ${W.kind}" role="dialog" aria-live="polite">${face}<div class="sb-body">${
     W.name ? `<b class="sb-name">${esc(W.name)}</b>` : ''
-  }<p class="sb-text" id="sbtext" data-full="${esc(text)}"></p>${opts}${
+  }${s.k === 'say' ? `<p class="sb-text" id="sbtext" data-full="${esc(text)}"><span class="sb-on"></span><span class="sb-ghost">${esc(text)}</span></p>` : ''}${opts}${
     SB.skip
       ? `<div class="sb-skip">Skip this scene? <button class="btn hot" onclick="event.stopPropagation();sbSkip(true)">Skip <kbd>Enter</kbd></button><button class="btn" onclick="event.stopPropagation();sbSkip(false)">Keep watching <kbd>Esc</kbd></button></div>`
       : ''
@@ -77,12 +77,20 @@ function storyMounted(run) {
     more = $('#sbmore'),
     tick = now => {
       SB.shown = Math.min(SB.full.length, Math.floor(((now - t0) / 1000) * SB_CPS));
-      el.textContent = SB.full.slice(0, SB.shown);
+      sbShow(el, SB.shown);
       if (SB.shown < SB.full.length) SB.typing = requestAnimationFrame(tick);
       else if (more) more.classList.add('on');
     };
   if (more) more.classList.remove('on');
   SB.typing = requestAnimationFrame(tick);
+}
+/**
+ * Show the first n characters of the line. The rest stays laid out but invisible (`.sb-ghost`), so the text never re-wraps,
+ * shifts sideways (centred narration) or grows the box while it types.
+ */
+function sbShow(el, n) {
+  el.firstChild.textContent = SB.full.slice(0, n);
+  el.lastChild.textContent = SB.full.slice(n);
 }
 /** Finish the line if it is still typing; otherwise go on. */
 function sbNext() {
@@ -92,7 +100,7 @@ function sbNext() {
     cancelAnimationFrame(SB.typing);
     SB.shown = SB.full.length;
     const el = $('#sbtext');
-    if (el) el.textContent = SB.full;
+    if (el) sbShow(el, SB.shown);
     $('#sbmore')?.classList.add('on');
     return;
   }

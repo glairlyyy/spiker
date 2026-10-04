@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-193** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-194** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,10 @@ evaluations, U21 Cup, Story mode, growth, relationships), UI redesign §9–§10
 
 Owner request 2026-10-04 (map and facility revamp, spec §4.18d–e, §4.19a): T-181 → T-183 built by the spec chat;
 T-184 → T-186 built by the spec chat on the owner's go.
+
+### [x] T-193: Dialogue text no longer bounces (owner request)
+
+Result: the line is laid out in full from the start — typed part + the untyped rest in `.sb-ghost` (visibility: hidden) — so words never jump to the next line, centred narration never shifts and the box never grows while typing; `.sb-text` min-height two lines (say steps only), so one- and two-line speeches keep one box size. QA: box top / height and the text's left edge constant through typing (Playwright sampling). Files: js/ui/story-box.js, css/story.css.
 
 ### [x] T-192: Story week 1 on campus; week 2 opens the island (owner request)
 
