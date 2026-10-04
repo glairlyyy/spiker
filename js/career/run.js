@@ -42,7 +42,7 @@ const Run = {
       team: t,
       num: old.num,
       lead: Math.round(rnd(30, 60)),
-      ego: 0.6, // the new kid who wants to be the star (spec §2.12): maturity comes with wit
+      ego: 'selfish', // the new kid who wants to be the star (spec §2.12 personality)
       you: true,
       skills: [],
       bond: {},

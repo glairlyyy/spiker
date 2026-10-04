@@ -89,7 +89,7 @@ function formBlock(c, x) {
   // or in `solo.net` of cases the bodies hit the net: a fault. Rolled only when a solo block happens and there is a partner.
   const partner = soloP ? DF.find(p => p !== soloP) : null;
   let collide = null;
-  if (partner && EGO.solo.collide > 0 && R() < EGO.solo.collide * (1 - maturity(partner))) {
+  if (partner && EGO.solo.collide > 0 && R() < EGO.solo.collide * (1 - egoOf(partner).hold)) {
     collide = { a: soloP, b: partner, net: R() < EGO.solo.net };
   }
   // every other front-row player still goes up (late, off-position) even when they're not part of the block —
@@ -144,10 +144,10 @@ function formBlock(c, x) {
   };
   scale(c0, b0, late0);
   scale(c1, b1, late1);
-  // the solo blocker's gamble: a good read makes a wall, a bad one leaves the lane open (maturity cuts the bad side)
+  // the solo blocker's gamble: a good read makes a wall, a bad one leaves the lane open (the personality's err sets the bad side)
   const soloLog = soloP ? { act: 'solo', p: soloP.id, ok: false, mate: (DF.find(p => p !== soloP) || {}).id } : null;
   if (soloP) {
-    c0.c *= 1 + EGO.solo.gain * readQ(soloP) - EGO.solo.loss * (1 - maturity(soloP));
+    c0.c *= 1 + EGO.solo.gain * readQ(soloP) - EGO.solo.loss * egoOf(soloP).err;
     m.egoLog.push(soloLog);
     if (collide) m.egoLog.push({ act: 'collide', p: soloP.id, mate: collide.b.id, net: collide.net });
   }

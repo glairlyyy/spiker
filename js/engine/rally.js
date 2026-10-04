@@ -635,7 +635,7 @@ function hittingError(c, x) {
   const errP =
     Formula.spikeErrorP({ spiker, bad, pow, around, back, longB, hS }) *
     (elS ? 0.5 : 1) *
-    (x.hero ? 1 + EGO.swing.err * (1 - maturity(spiker)) : 1);
+    (x.hero ? 1 + EGO.swing.err * egoOf(spiker).err : 1);
   if (tip || R() >= errP) return;
   st(m, spiker, 'err');
   const net = R() < Formula.spikeNetShare(hS, longB);

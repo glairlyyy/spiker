@@ -21,7 +21,10 @@ function teamFromJSON(o) {
   t.ws = [t.P[2], t.P[3]];
   t.cap = t.P.find(p => p.cap) || t.P[0];
   let fixed = 0;
-  for (const p of squadOf(t)) fixed += fixStats(p);
+  for (const p of squadOf(t)) {
+    fixed += fixStats(p);
+    ensureEgo(p); // an old numeric ego becomes its personality level
+  }
   if (fixed) DBG.log('warn', `save: repaired ${fixed} invalid stat value(s) on ${t.name || 'a team'}`);
   // keep new ids clear of loaded ones
   for (const p of squadOf(t)) _pid = Math.max(_pid, +String(p.id).slice(1) + 1 || 0);

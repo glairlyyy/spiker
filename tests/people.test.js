@@ -303,7 +303,7 @@ test.slow('rel: calibration — the first mate reaches bond 60 / 80 about when i
 const mkUi = g => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'js/ui/career-people.js'), 'utf8'),
     names = Object.keys(g).filter(
-      k => /^[A-Za-z_$][\w$]*$/.test(k) && !['CW', 'faceSVG', 'stag', 'tip', 'info', 'renderCareer', 'esc', 'peek'].includes(k)
+      k => /^[A-Za-z_$][\w$]*$/.test(k) && !['CW', 'faceSVG', 'stag', 'tip', 'info', 'renderCareer', 'esc', 'peek', 'egoTag'].includes(k)
     ),
     CW = { sheet: 'people', person: null },
     stub = {
@@ -314,7 +314,8 @@ const mkUi = g => {
       info: () => '',
       renderCareer: () => {},
       esc: x => String(x),
-      peek: (id, label, body) => label + body
+      peek: (id, label, body) => label + body,
+      egoTag: p => p.ego
     };
   return Object.assign(
     new Function(...names, ...Object.keys(stub), `${src}\nreturn { sheetPeople, personCard, openPerson, chemBlock };`)(

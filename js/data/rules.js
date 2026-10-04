@@ -63,20 +63,33 @@ const REL_E = {
   rival: { fired: 0.3, rattled: -0.2 }
 };
 /**
- * Ego (spec §2.12, T-068): every player has `ego` 0–1; a low-wit player acts on it. Per opportunity the chance of an ego act is
- * `base[act] × ego × (1 − maturity) × (1 − captain maturity × captain)` (maturity(p) = clamp((wit − 0.5) / 1.5, 0, 1); the
- * captain on court calls it off). steal: a teammate who is up to `reach` × the nearest player's time to the ball still goes for
- * it; they collide with chance `collide × (1 − the pair's mean maturity)`, a crash multiplies the touch's score by `crash`
- * (else the thief just takes the touch). call: a hitter demands the set — the setter gives in with chance (1 − setter maturity).
- * solo: the ego blocker ignores the defence setting and blocks alone: coverage × (1 + `solo.gain` × read − `solo.loss` ×
- * (1 − maturity)); the other front-row defender also commits with chance `solo.collide` × (1 − their maturity) — a block collision: no block
- * touch this attack, and in `solo.net` of collisions a net fault (point to the attackers, T-069). swing: on a bad set the ego hitter swings full power (set penalty × `swing.pow` instead of the bad-set 0.72, no
- * tip), errors × (1 + `swing.err` × (1 − maturity)). serve: the ego server goes for a jump serve (power × `serve.sq`, +`serve.err`
- * × (1 − maturity) service-error chance).
+ * Ego (spec §2.12, T-068; personality levels — owner, 2026-10-04): every player has an ego personality `ego` — 'normal',
+ * 'selfish' or 'egoist' (EGO.lvl; wit plays no part). Per opportunity the chance of an ego act is
+ * `base[act] × lvl.k × (1 − the captain's lvl.rein)` (a captain on court who is not the player calls it off). steal: a teammate
+ * who is up to `reach` × the nearest player's time to the ball still goes for it; they collide with chance `collide × the pair's
+ * mean lvl.err`, a crash multiplies the touch's score by `crash` (else the thief just takes the touch). call: a hitter demands
+ * the set — the setter gives in with chance setter lvl.give. solo: the ego blocker ignores the defence setting and blocks alone:
+ * coverage × (1 + `solo.gain` × read − `solo.loss` × lvl.err); the other front-row defender also commits with chance
+ * `solo.collide` × (1 − their lvl.hold) — a block collision: no block touch this attack, and in `solo.net` of collisions a net
+ * fault (point to the attackers, T-069). swing: on a bad set the ego hitter swings full power (set penalty × `swing.pow` instead of
+ * the bad-set 0.72, no tip), errors × (1 + `swing.err` × lvl.err). serve: the ego server goes for a jump serve (power × `serve.sq`,
+ * +`serve.err` × lvl.err service-error chance).
  */
 const EGO = {
+  /**
+   * The personality levels: k = how often they act on ego (normal never); err = how badly an ego act can go (collisions,
+   * swing / serve errors, a solo block's gaps); give = as setter, the chance to give in to a hitter demanding the set (an egoist
+   * setter runs their own show); rein = as captain, how much of the others' ego they call off; hold = as the other front-row
+   * blocker, the chance to hold off when a teammate goes up alone.
+   */
+  lvl: {
+    normal: { k: 0, err: 0.3, give: 0.35, rein: 0.5, hold: 0.7 },
+    selfish: { k: 0.45, err: 0.6, give: 0.6, rein: 0.2, hold: 0.4 },
+    egoist: { k: 1, err: 1, give: 0.25, rein: 0, hold: 0 }
+  },
+  /** Generated players (a fixed hash of the name + ws for wing spikers): normal below `selfish`, egoist from `egoist` on. */
+  roll: { selfish: 0.58, egoist: 0.92, ws: 0.15 }, // ≈ 50 % normal · 35 % selfish · 15 % egoist
   base: { steal: 0.14, call: 0.11, solo: 0.1, swing: 0.4, serve: 0.1 },
-  captain: 0.7,
   reach: 1.6,
   collide: 0.5,
   crash: 0.55,

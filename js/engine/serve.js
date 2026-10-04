@@ -119,7 +119,7 @@ function playRally(m) {
     wob = sType !== 'jump';
   if (V && server.star && sq > 74 && R() < 0.7)
     B({ dur: 1250, cut: 1, acts: [{ k: 'cut', p: server.id, title: 'Cannon Serve', sub: `Serve ${kmh(sq)} km/h` }] });
-  const serr = Formula.serveErrorP(server, ST, sq) + (killer ? 0.03 : 0) + (hero ? EGO.serve.err * (1 - maturity(server)) : 0);
+  const serr = Formula.serveErrorP(server, ST, sq) + (killer ? 0.03 : 0) + (hero ? EGO.serve.err * egoOf(server).err : 0);
   const techName = killer ? 'Killer Jump Serve' : drive ? 'Drive Serve' : targeted ? 'Target Serve' : null;
   const hitFx = [
     { k: 'jump', p: server.id, mode: 'down' },

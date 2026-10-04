@@ -287,13 +287,13 @@ function chooseAttack(c, s, h) {
       if (relNote) m.relLog.push({ act: relNote.act, p: setter.id, mate: relNote.who.id, tag: relTag(m, setter, relNote.who) });
     }
   }
-  // ego (spec §2.12): an unpicked hitter demands the set; a low-maturity setter gives in (a mature one ignores the call)
+  // ego (spec §2.12): an unpicked hitter demands the set; the setter gives in by their own personality (EGO.lvl give)
   let egoCall = null;
   if (!quick) {
     const open = spiker,
       caller = pool.find(p => p !== spiker && p !== setter && p.role !== 'S' && egoRoll(m, p, 'call'));
     if (caller) {
-      const give = 1 - maturity(setter),
+      const give = egoOf(setter).give,
         ok = give > 0 && R() < give;
       m.egoLog.push({ act: 'call', p: caller.id, ok, mate: open.id });
       if (ok) ((spiker = caller), (egoCall = caller));

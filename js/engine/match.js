@@ -69,14 +69,14 @@ function nearest(m, arr, x, z) {
   return b;
 }
 /**
- * Chance of one ego act by p (see EGO): base × ego × (1 − maturity), reduced by a captain on court who is not p. `k` scales it.
- * 0 when there is nothing to roll — callers draw R() only for a chance above 0, so a player without ego costs no draw.
+ * Chance of one ego act by p (see EGO): base × their personality's k, reduced by a captain on court who is not p (the captain's
+ * rein). `k` scales it. 0 when there is nothing to roll — callers draw R() only for a chance above 0, so a normal player costs no draw.
  */
 function egoChance(m, p, act, k = 1) {
-  const q = EGO.base[act] * (p.ego || 0) * (1 - maturity(p)) * k;
+  const q = EGO.base[act] * egoOf(p).k * k;
   if (q <= 0) return 0;
   const cap = m.t[m.t[0].P.includes(p) ? 0 : 1].cap;
-  return cap && cap !== p ? q * (1 - maturity(cap) * EGO.captain) : q;
+  return cap && cap !== p ? q * (1 - egoOf(cap).rein) : q;
 }
 const egoRoll = (m, p, act, k) => {
   const q = egoChance(m, p, act, k);
@@ -94,7 +94,7 @@ function egoSteal(m, cands, near, x, z, acts, V) {
     tn = eta(near);
   for (const p of cands) {
     if (p === near || eta(p) > EGO.reach * tn || !egoRoll(m, p, 'steal', rel(p))) continue;
-    const cc = EGO.collide * (1 - (maturity(p) + maturity(near)) / 2),
+    const cc = (EGO.collide * (egoOf(p).err + egoOf(near).err)) / 2,
       crash = cc > 0 && R() < cc;
     m.egoLog.push({ act: 'steal', p: p.id, ok: !crash, mate: near.id, crash });
     V &&

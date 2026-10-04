@@ -169,7 +169,7 @@ function personDetail(run, id, waits) {
   const ask = waits.find(a => String(a.id) === String(id)),
     A2 = ask && APPROACH[ask.kind],
     tag = Rel.tag(run, id);
-  return `<div class="pdh">${p.gone ? '' : faceSVG(p, 0, 48)}<div><h3 ${p.gone ? '' : `${tip(Rel.season(run, id))} tabindex="0"`}>${stag(p)}${esc(p.name)}</h3><div class="small mute">${p.role} · ${personMet(run, p) ? 'OVR ' + ovr(p) : 'unrated'}${
+  return `<div class="pdh">${p.gone ? '' : faceSVG(p, 0, 48)}<div><h3 ${p.gone ? '' : `${tip(Rel.season(run, id))} tabindex="0"`}>${stag(p)}${esc(p.name)}</h3><div class="small mute">${p.role} · ${personMet(run, p) ? 'OVR ' + ovr(p) : 'unrated'}${p.gone ? '' : ` · ${egoTag(p)}`}${
     tag === 'neutral' ? '' : ` · <span class="stc ${tag}">${STANCE_NAME[tag]}</span>`
   }${Rel.rival(run, id) ? ' <span class="stc rival">rival</span>' : ''}</div></div>${(fav =>
     `<button class="btn quiet pfav ${fav ? 'on' : ''}" onclick="toggleFav('${esc(String(id))}')" aria-pressed="${fav}" aria-label="Favourite" ${tip('Pin to the top')}>${fav ? '★' : '☆'}</button>`)(

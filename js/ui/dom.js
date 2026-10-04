@@ -107,6 +107,16 @@ function peekSync() {
     true
   );
 })();
+/** The ego personality (spec §2.12) as a small tag with what it means on hover. */
+const EGO_TAG = {
+  normal: ['Normal', 'Plays for the team: never goes for an ego play. As setter, usually feeds the open hitter.'],
+  selfish: ['Selfish', 'Sometimes goes for the glory: steals balls, demands sets, swings or serves big.'],
+  egoist: ['Egoist', 'Plays for themselves: ego plays often and they go badly more often. A captain cannot rein them in.']
+};
+const egoTag = p => {
+  const [n, t] = EGO_TAG[p && p.ego] || EGO_TAG.normal;
+  return `<span class="egot e-${esc(p && EGO_TAG[p.ego] ? p.ego : 'normal')}" ${tip(t)}>${n}</span>`;
+};
 /** A small ⓘ dot carrying explanatory text as a tooltip instead of a paragraph. */
 const info = t => `<span class="ii" tabindex="0" role="note" aria-label="${esc(t)}" ${tip(t)}>i</span>`;
 /**
