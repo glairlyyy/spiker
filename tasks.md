@@ -84,7 +84,7 @@ Steps:
    QA: career run → End week → Week report tags as before.
    Result: Run.log(run, text, k) stores k; logTag/logLi read entries ({t,k}), regex only for untagged. Tagged the fixed-outcome producers whose regex tag is right (Signed with, sponsor pulled out, star, OP); composite lines (City.day, payday, fight / cup results, events) keep the fallback — deviation: tagging them needs per-clause logic; regex quirks ("Learned" → world, "injury healed" → bad) left as today. Test added.
 
-### [ ] T-204: Split the long engine functions into named steps
+### [x] T-204: Split the long engine functions into named steps
 
 Spec: §2 Goldens: unchanged Save: no change
 Goal: `playRally` (serve.js, 320 lines), `match.end` (190), `dig` (230), `block` (221), `formBlock` (198), `setBeat` (147)
@@ -95,7 +95,7 @@ functions (prefix by owner, e.g. `serveToss`, `digReach`).
 Steps: extract in place, one function per commit-able chunk; run `npm run test:quick` after each.
 Accept: goldens + full tests pass without `--update`; no function in the six files > 80 lines (the acorn length scan).
 QA: none
-Result:
+Result: Split into named steps (list in ARCHITECTURE engine flow): playRally, end, formBlock, setBeat, block, dig, plus spikeActs; every function in the five files ≤ 80 lines except rally() 110 (the possession loop that calls the phases — kept whole so the flow reads in one place) and newMatch 99 (the match-state literal). Goldens unchanged; 122/122 full suite.
 
 ### [ ] T-205: Venue sets in a registry, one file each
 

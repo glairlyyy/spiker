@@ -229,9 +229,9 @@ function fakeSet(c, x) {
  * set beat itself. `mark` = the beat index right after the set, where block() may insert a spike cut.
  */
 function setBeat(c, x) {
-  const { m, B, V, front, atk, ds, atkT, defT, qual } = c,
-    { setter, spiker, quick, bad, back, longB, freak, slide, sync, pool, callers, fakeDecoy, bitten, sq2, bumpSet } = x,
-    { setZ, spZ, b0, bz0, blockers, lateA, a1, pj, cov, readB, setTech, egoCall, soloP, collide } = x;
+  const { m, B, V, atk, ds, atkT, defT } = c,
+    { setter, spiker, quick, bad, longB, freak, fakeDecoy, bitten, sq2 } = x,
+    { setZ, spZ, b0, blockers, cov } = x;
   // a bad set that stays hittable still reaches the hitter's hand (it just hits weaker: setMul in attack());
   // the two draws stay so the random sequence is unchanged
   if (bad) {
@@ -240,26 +240,8 @@ function setBeat(c, x) {
   }
   // set direction relative to the setter: quick, front set, or back set (hitter behind the setter)
   const setDir = quick ? 'quick' : spZ > setZ + 0.08 ? 'back' : 'front';
-  // a collision cuts both jumps short: a hop that comes down at ~40% of the normal hang
-  const colJump = b => {
-    const t0 = quick ? 0.3 : 0.6;
-    return { k: 'jump', p: b.id, mode: 'hop', t0, t1: t0 + 0.4 * (1 - t0), peak: jumpPx(b) * 0.5 };
-  };
-  // ball calls while the set is in the air: the hitter asks for it, other confident hitters shout as decoys
-  const setCalls = [];
-  if (V && !bad) {
-    const cf = p => confidence(p, m, atk);
-    if (back && callers.includes(spiker)) setCalls.push({ k: 'call', p: spiker.id, t: callLine(longB ? 'long' : 'back', spiker, m) });
-    else if (!quick && cf(spiker) >= 82) setCalls.push({ k: 'call', p: spiker.id, t: callLine(m.zone[atk] ? 'zone' : 'set', spiker, m) });
-    const other = pool.find(p => p !== spiker && p !== fakeDecoy && cf(p) >= 88 && (front(atk, p) || callers.includes(p)));
-    if (other) setCalls.push({ k: 'call', p: other.id, t: callLine(callers.includes(other) ? 'back' : 'decoy', other, m), soft: 1 });
-  }
-  if (V && egoCall)
-    setCalls.push(
-      { k: 'call', p: egoCall.id, t: callLine('ego', egoCall, m) },
-      { k: 'ego', p: egoCall.id, act: 'call' },
-      { k: 'log', t: `${egoCall.name} demands the set — ${setter.name} gives in`, c: 'set' }
-    );
+  // ball calls (setCallActs) while the set is in the air: the hitter asks for it, other confident hitters shout as decoys
+  const setCalls = setCallActs(c, x);
   const combo =
     ((setter.star && spiker.star) || bondCombo(setter, spiker)) && setter !== spiker && sq2 === 'perfect' && !fakeDecoy && R() < 0.65;
   // full element gauge: this attack is guaranteed to be an element spike (a charged setter puts theirs into the set)
@@ -275,88 +257,7 @@ function setBeat(c, x) {
       // attack scene: the set after it starts in slow motion and snaps to full speed for the hit;
       // defense read: normal set, slow motion as the hitter takes off (the scene cuts in at the top of the jump)
       ...(hype && !m.hypeDef ? { sceneSlow: hype } : read ? { slow: 1, slowAt: [0.55, 1], hypeSlow: read } : {}),
-      acts: [
-        ...(hype ? [{ k: 'shot', kind: null }] : []),
-        { k: 'pose', p: setter.id, pose: bumpSet ? 'bump' : 'set' },
-        { k: 'setdir', p: setter.id, dir: setDir },
-        ...a1,
-        ...(setTech ? [{ k: 'tech', p: freak || slide || longB ? spiker.id : setter.id, t: setTech }] : []),
-        ...(readB ? [{ k: 'tech', p: b0.id, t: 'Read Block', dy: -14 }] : []),
-        // synchronized attack: every other hitter approaches and jumps too
-        ...(sync
-          ? pool
-              .filter(p => p !== spiker)
-              .flatMap(p => [
-                { k: 'pose', p: p.id, pose: 'spike' },
-                { k: 'jump', p: p.id, mode: 'hop', peak: jumpPx(p) * 0.85, t0: 0.4, t1: 1 }
-              ])
-          : []),
-        ...(combo ? [{ k: 'link', p1: setter.id, p2: spiker.id, color: atkT.color }] : []),
-        ...(!fakeDecoy && setter.role === 'S' && qual === 3 && W(setter) > 1.5
-          ? [{ k: 'jump', p: setter.id, mode: 'hop', peak: jumpPx(setter) * 0.45, t0: 0, t1: 0.6 }]
-          : []),
-        { k: 'jump', p: spiker.id, mode: 'up', t0: quick ? 0.05 : longB ? 0.64 : 0.52, t1: 1, peak: pj },
-        ...(fakeDecoy
-          ? [
-              { k: 'jump', p: fakeDecoy.id, mode: 'down', t0: 0, t1: 0.55 },
-              { k: 'jump', p: setter.id, mode: 'down', t0: 0.25, t1: 0.75 },
-              ...(bitten ? [{ k: 'plabel', p: b0.id, t: '!?' }] : [])
-            ]
-          : []),
-        ...blockers.map(b =>
-          collide
-            ? colJump(b) // the collision: up together, down early
-            : {
-                k: 'jump',
-                p: b.id,
-                mode: b === b0 && bitten && fakeDecoy ? 'reup' : 'up',
-                t0: b === b0 && bitten ? 0.84 : quick ? 0.3 : 0.6,
-                t1: 1,
-                peak: jumpPx(b) * (b === b0 && bitten ? 0.45 : 0.85)
-              }
-        ),
-        ...(collide ? [colJump(collide.b)] : []),
-        { k: 'pose', p: spiker.id, pose: 'spike' },
-        { k: 'spkstyle', p: spiker.id, st: quick ? 'quick' : back ? 'pipe' : 'normal' },
-        // camera: slow push-in on the contest above the net when a real block is up
-        ...(cov > 0.3 && !bad ? [{ k: 'cam', amt: 0.32, x: NETX, z: (spZ + bz0) / 2, h: 150, hold: 1500, t0: 0.45 }] : []),
-        ...blockers.map(b => ({ k: 'pose', p: b.id, pose: collide ? 'bump' : 'block' })), // a collision staggers them
-        ...(collide
-          ? [
-              { k: 'pose', p: collide.b.id, pose: 'bump' },
-              {
-                k: 'plabel',
-                p: collide.a.id,
-                p2: collide.b.id,
-                t: collide.net ? 'BLOCK COLLISION · NET' : 'BLOCK COLLISION',
-                v: collide.net ? 'err' : 'warn'
-              },
-              { k: 'log', t: `${collide.a.name} and ${collide.b.name} both go up for the block — they collide!`, c: 'err' }
-            ]
-          : []),
-        ...(soloP && !collide ? [{ k: 'plabel', p: soloP.id, t: 'SOLO!' }] : []),
-        ...lateA,
-        {
-          k: 'ball',
-          to: { p: spiker.id, c: 'spike' },
-          h: freak ? 8 : quick ? 30 : bad ? 250 : longB ? 300 : back ? 245 : 190,
-          wob: bad
-        },
-        ...(bad ? [{ k: 'call', p: setter.id, t: 'Sorry!', soft: 1 }] : []),
-        ...setCalls,
-        ...(fakeDecoy ? [{ k: 'real', to: { p: spiker.id, c: 'spike' } }] : []),
-        ...(sq2 === 'perfect'
-          ? [{ k: 'label', t: (setter.star ? '✦ ' : '') + (setDir === 'back' ? 'Perfect back set' : 'Perfect set'), when: 'end', set: 1 }]
-          : bad
-            ? [{ k: 'label', t: 'Bad set', when: 'end' }]
-            : []),
-        {
-          k: 'log',
-          t: quick
-            ? `${setter.name} fires a quick to ${spiker.name}`
-            : `${setter.name} ${bumpSet ? 'bump-sets' : setDir === 'back' ? 'back-sets' : 'sets'} ${spiker.name}${spiker.role === 'S' ? ' — setter-hitter attack!' : ''}${longB ? ' deep for a long back-row attack from the end line' : back ? ' for a back-row attack' : ''}${bad ? ' — but it is off target' : ''}`
-        }
-      ]
+      acts: setActs(c, x, { setDir, combo, setCalls, hype })
     });
   const mark = V ? B.len() : 0; // right after the set: the hitter is in the air (block() may stage a spike cut here)
   // defense read: the hitter is in the air — cut to the blocker, who has read it
@@ -374,6 +275,133 @@ function setBeat(c, x) {
       ]
     });
   return { combo, elSrc, mark };
+}
+/** Ball calls while the set is in the air: the hitter asks for it, other confident hitters shout as decoys; an ego demand. */
+function setCallActs(c, x) {
+  const { m, V, front, atk } = c,
+    { setter, spiker, quick, bad, back, longB, pool, callers, fakeDecoy } = x,
+    { egoCall } = x;
+  const setCalls = [];
+  if (V && !bad) {
+    const cf = p => confidence(p, m, atk);
+    if (back && callers.includes(spiker)) setCalls.push({ k: 'call', p: spiker.id, t: callLine(longB ? 'long' : 'back', spiker, m) });
+    else if (!quick && cf(spiker) >= 82) setCalls.push({ k: 'call', p: spiker.id, t: callLine(m.zone[atk] ? 'zone' : 'set', spiker, m) });
+    const other = pool.find(p => p !== spiker && p !== fakeDecoy && cf(p) >= 88 && (front(atk, p) || callers.includes(p)));
+    if (other) setCalls.push({ k: 'call', p: other.id, t: callLine(callers.includes(other) ? 'back' : 'decoy', other, m), soft: 1 });
+  }
+  if (V && egoCall)
+    setCalls.push(
+      { k: 'call', p: egoCall.id, t: callLine('ego', egoCall, m) },
+      { k: 'ego', p: egoCall.id, act: 'call' },
+      { k: 'log', t: `${egoCall.name} demands the set — ${setter.name} gives in`, c: 'set' }
+    );
+  return setCalls;
+}
+/** The set beat's acts (presentation only, no draws): setter, hitter and blockers in the air, labels and the log line. */
+function setActs(c, x, { setDir, combo, setCalls, hype }) {
+  const { atkT, qual } = c,
+    { setter, spiker, quick, bad, back, longB, freak, slide, sync, pool, fakeDecoy, bitten, sq2, bumpSet } = x,
+    { spZ, b0, bz0, a1, pj, cov, readB, setTech } = x;
+  return [
+    ...(hype ? [{ k: 'shot', kind: null }] : []),
+    { k: 'pose', p: setter.id, pose: bumpSet ? 'bump' : 'set' },
+    { k: 'setdir', p: setter.id, dir: setDir },
+    ...a1,
+    ...(setTech ? [{ k: 'tech', p: freak || slide || longB ? spiker.id : setter.id, t: setTech }] : []),
+    ...(readB ? [{ k: 'tech', p: b0.id, t: 'Read Block', dy: -14 }] : []),
+    // synchronized attack: every other hitter approaches and jumps too
+    ...(sync
+      ? pool
+          .filter(p => p !== spiker)
+          .flatMap(p => [
+            { k: 'pose', p: p.id, pose: 'spike' },
+            { k: 'jump', p: p.id, mode: 'hop', peak: jumpPx(p) * 0.85, t0: 0.4, t1: 1 }
+          ])
+      : []),
+    ...(combo ? [{ k: 'link', p1: setter.id, p2: spiker.id, color: atkT.color }] : []),
+    ...(!fakeDecoy && setter.role === 'S' && qual === 3 && W(setter) > 1.5
+      ? [{ k: 'jump', p: setter.id, mode: 'hop', peak: jumpPx(setter) * 0.45, t0: 0, t1: 0.6 }]
+      : []),
+    { k: 'jump', p: spiker.id, mode: 'up', t0: quick ? 0.05 : longB ? 0.64 : 0.52, t1: 1, peak: pj },
+    ...(fakeDecoy
+      ? [
+          { k: 'jump', p: fakeDecoy.id, mode: 'down', t0: 0, t1: 0.55 },
+          { k: 'jump', p: setter.id, mode: 'down', t0: 0.25, t1: 0.75 },
+          ...(bitten ? [{ k: 'plabel', p: b0.id, t: '!?' }] : [])
+        ]
+      : []),
+    ...blockJumpActs(c, x),
+    { k: 'pose', p: spiker.id, pose: 'spike' },
+    { k: 'spkstyle', p: spiker.id, st: quick ? 'quick' : back ? 'pipe' : 'normal' },
+    // camera: slow push-in on the contest above the net when a real block is up
+    ...(cov > 0.3 && !bad ? [{ k: 'cam', amt: 0.32, x: NETX, z: (spZ + bz0) / 2, h: 150, hold: 1500, t0: 0.45 }] : []),
+    ...blockPoseActs(x),
+    {
+      k: 'ball',
+      to: { p: spiker.id, c: 'spike' },
+      h: freak ? 8 : quick ? 30 : bad ? 250 : longB ? 300 : back ? 245 : 190,
+      wob: bad
+    },
+    ...(bad ? [{ k: 'call', p: setter.id, t: 'Sorry!', soft: 1 }] : []),
+    ...setCalls,
+    ...(fakeDecoy ? [{ k: 'real', to: { p: spiker.id, c: 'spike' } }] : []),
+    ...(sq2 === 'perfect'
+      ? [{ k: 'label', t: (setter.star ? '✦ ' : '') + (setDir === 'back' ? 'Perfect back set' : 'Perfect set'), when: 'end', set: 1 }]
+      : bad
+        ? [{ k: 'label', t: 'Bad set', when: 'end' }]
+        : []),
+    {
+      k: 'log',
+      t: quick
+        ? `${setter.name} fires a quick to ${spiker.name}`
+        : `${setter.name} ${bumpSet ? 'bump-sets' : setDir === 'back' ? 'back-sets' : 'sets'} ${spiker.name}${spiker.role === 'S' ? ' — setter-hitter attack!' : ''}${longB ? ' deep for a long back-row attack from the end line' : back ? ' for a back-row attack' : ''}${bad ? ' — but it is off target' : ''}`
+    }
+  ];
+}
+/** The blockers' jumps (a collision: up together, down early — a hop at ~40% of the normal hang). */
+function blockJumpActs(c, x) {
+  const { quick, fakeDecoy, bitten, b0, blockers, collide } = x;
+  const colJump = b => {
+    const t0 = quick ? 0.3 : 0.6;
+    return { k: 'jump', p: b.id, mode: 'hop', t0, t1: t0 + 0.4 * (1 - t0), peak: jumpPx(b) * 0.5 };
+  };
+  return [
+    ...blockers.map(b =>
+      collide
+        ? colJump(b) // the collision: up together, down early
+        : {
+            k: 'jump',
+            p: b.id,
+            mode: b === b0 && bitten && fakeDecoy ? 'reup' : 'up',
+            t0: b === b0 && bitten ? 0.84 : quick ? 0.3 : 0.6,
+            t1: 1,
+            peak: jumpPx(b) * (b === b0 && bitten ? 0.45 : 0.85)
+          }
+    ),
+    ...(collide ? [colJump(collide.b)] : [])
+  ];
+}
+/** The blockers' poses, collision / solo labels and the late jumpers. */
+function blockPoseActs(x) {
+  const { blockers, collide, soloP, lateA } = x;
+  return [
+    ...blockers.map(b => ({ k: 'pose', p: b.id, pose: collide ? 'bump' : 'block' })), // a collision staggers them
+    ...(collide
+      ? [
+          { k: 'pose', p: collide.b.id, pose: 'bump' },
+          {
+            k: 'plabel',
+            p: collide.a.id,
+            p2: collide.b.id,
+            t: collide.net ? 'BLOCK COLLISION · NET' : 'BLOCK COLLISION',
+            v: collide.net ? 'err' : 'warn'
+          },
+          { k: 'log', t: `${collide.a.name} and ${collide.b.name} both go up for the block — they collide!`, c: 'err' }
+        ]
+      : []),
+    ...(soloP && !collide ? [{ k: 'plabel', p: soloP.id, t: 'SOLO!' }] : []),
+    ...lateA
+  ];
 }
 
 /**
@@ -426,8 +454,51 @@ function spikePower(c, x) {
  */
 function spikeActs(c, x) {
   const { B, V, da, atkT } = c,
-    { setter, spiker, tip, pow, elS, elSrc, combo, quick, back, longB, around, cutS, delayed, bitten, cov, over, seam } = x,
+    { spiker, tip, pow, elS, quick, back, longB, around, delayed } = x,
     { appX, spZ, blockers, lateB } = x;
+  spikeCutIns(c, x);
+  const note = spikeNote(x);
+  const hit = [
+    {
+      k: 'spkstyle',
+      p: spiker.id,
+      st: tip ? 'tip' : quick ? 'quick' : around ? 'cut' : pow >= 95 ? 'power' : back ? 'pipe' : 'normal'
+    },
+    // broad jump: the back-row hitter flies forward (a long back attack much further)
+    ...(back ? [{ k: 'slide', p: spiker.id, x: appX + da * (longB ? 100 : 44), z: spZ, air: 1 }] : []),
+    { k: 'jump', p: spiker.id, mode: 'down' },
+    ...(tip
+      ? []
+      : [
+          { k: 'burst', pow, color: elS ? ECOL[elS.el] : atkT.color, op: spiker.op, el: elS ? elS.el : null },
+          ...(elS && elS.res ? [{ k: 'plabel', p: elS.res.id, t: 'Resist!' }] : []),
+          { k: 'label', t: `${kmh(pow)} km/h`, pow },
+          { k: 'label', t: `↑ ${jumpCm(spiker)} cm`, small: 1, dy: 26 },
+          { k: 'shake', amt: Math.max(0, (pow - 65) / 5) + (elS ? (elS.el === 'blast' ? 8 : 3) : 0) }
+        ]),
+    ...(note ? [{ k: 'label', t: note, dy: -30, set: 1 }] : []),
+    ...(x.hero ? [{ k: 'plabel', p: spiker.id, t: 'ALL ME!' }] : []),
+    ...(pow >= 95
+      ? [
+          { k: 'lines', pow, color: atkT.color },
+          { k: 'flash', a: Math.min(0.5, (pow - 90) / 80) }
+        ]
+      : [])
+  ];
+  const bdown = [...blockers, ...lateB].map(b => ({ k: 'jump', p: b.id, mode: 'down' }));
+  if (V && delayed)
+    B({
+      dur: 280,
+      slow: 1,
+      acts: [...bdown, { k: 'tech', p: spiker.id, t: 'Delayed Spike' }, { k: 'plabel', p: spiker.id, t: 'Hang time!' }]
+    });
+  return { hit, bdown };
+}
+
+/** The spike's cut-ins: element spike / element set, two-star combo, a star's move; the impact zoom. */
+function spikeCutIns(c, x) {
+  const { B, V, atkT } = c,
+    { setter, spiker, tip, pow, elS, elSrc, combo } = x;
   if (V && elS)
     B({
       dur: 1600,
@@ -478,7 +549,11 @@ function spikeActs(c, x) {
     });
   if (V && !tip && pow >= 90)
     B({ dur: Math.round(35 + (pow - 90) * 1.6), acts: [{ k: 'zoom', amt: Math.min(0.07, 0.02 + (pow - 90) / 900) }] });
-  const note = tip
+}
+/** The label over a spike: what beat the block (none on a tip). */
+function spikeNote(x) {
+  const { tip, elS, quick, back, longB, around, cutS, delayed, bitten, cov, over, seam } = x;
+  return tip
     ? null
     : elS
       ? elS.over
@@ -503,41 +578,6 @@ function spikeActs(c, x) {
                     : cov < 0.1 && quick
                       ? 'Beat the block!'
                       : null;
-  const hit = [
-    {
-      k: 'spkstyle',
-      p: spiker.id,
-      st: tip ? 'tip' : quick ? 'quick' : around ? 'cut' : pow >= 95 ? 'power' : back ? 'pipe' : 'normal'
-    },
-    // broad jump: the back-row hitter flies forward (a long back attack much further)
-    ...(back ? [{ k: 'slide', p: spiker.id, x: appX + da * (longB ? 100 : 44), z: spZ, air: 1 }] : []),
-    { k: 'jump', p: spiker.id, mode: 'down' },
-    ...(tip
-      ? []
-      : [
-          { k: 'burst', pow, color: elS ? ECOL[elS.el] : atkT.color, op: spiker.op, el: elS ? elS.el : null },
-          ...(elS && elS.res ? [{ k: 'plabel', p: elS.res.id, t: 'Resist!' }] : []),
-          { k: 'label', t: `${kmh(pow)} km/h`, pow },
-          { k: 'label', t: `↑ ${jumpCm(spiker)} cm`, small: 1, dy: 26 },
-          { k: 'shake', amt: Math.max(0, (pow - 65) / 5) + (elS ? (elS.el === 'blast' ? 8 : 3) : 0) }
-        ]),
-    ...(note ? [{ k: 'label', t: note, dy: -30, set: 1 }] : []),
-    ...(x.hero ? [{ k: 'plabel', p: spiker.id, t: 'ALL ME!' }] : []),
-    ...(pow >= 95
-      ? [
-          { k: 'lines', pow, color: atkT.color },
-          { k: 'flash', a: Math.min(0.5, (pow - 90) / 80) }
-        ]
-      : [])
-  ];
-  const bdown = [...blockers, ...lateB].map(b => ({ k: 'jump', p: b.id, mode: 'down' }));
-  if (V && delayed)
-    B({
-      dur: 280,
-      slow: 1,
-      acts: [...bdown, { k: 'tech', p: spiker.id, t: 'Delayed Spike' }, { k: 'plabel', p: spiker.id, t: 'Hang time!' }]
-    });
-  return { hit, bdown };
 }
 
 /** 8c. Where the spike lands (around the block → away from it; water / curve → away from the defenders) and its flight time. */

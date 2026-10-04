@@ -429,6 +429,46 @@ function restoreLineups(m) {
  */
 function end(m, w, beats) {
   const oppWasInZone = !!m.zone[1 - w];
+  pointTally(m, w);
+  pointMomentum(m, w);
+  const z = pointZone(m, w, oppWasInZone);
+  elPoint(m, w);
+  for (const i of [0, 1]) if (m.zone[i]) m.zoneHit[i] = 1;
+  // captain's buffs wear off after a few points
+  for (const id in m.buff) if (--m.buff[id].n <= 0) delete m.buff[id];
+  const [a, b] = m.pts;
+  if (Math.max(a, b) >= RULES.pointsToWin && Math.abs(a - b) >= RULES.winBy) {
+    m.over = true;
+    m.winner = w;
+    m.setScores = [[a, b]];
+    m.sets[w] = 1;
+  }
+  const capBeats = m.over ? [] : [...captainThink(m, 0), ...captainThink(m, 1)];
+  if (beats) pointBeats(m, w, beats, z, capBeats);
+  // substitutions at the dead ball (after the point's beats, before any timeout huddle)
+  if (!m.over)
+    for (const side of [0, 1]) {
+      const bs = coachSubs(m, side);
+      if (beats) beats.push(...bs);
+    }
+  if (!m.over) {
+    const L = 1 - w,
+      T = m.t[L],
+      avg = T.P.reduce((a, q) => a + (m.mood[q.id] || 0), 0) / T.P.length;
+    const need = m.pts[w] >= 4 && (m.streak[w] >= 3 || (m.zone[w] && m.pts[w] - m.pts[L] >= 2) || avg < -0.35);
+    if (m.toReq[L] && !m.to[L]) timeout(m, L, beats, true);
+    else if (m.toReq[w] && !m.to[w]) timeout(m, w, beats, true);
+    else if (!m.to[L] && need && R() < 0.35 + 0.6 * T.coachIQ) timeout(m, L, beats, false);
+  }
+  // the match is decided: note who is on court at the end, then every team goes back to its starting lineup
+  if (m.over) {
+    m.finished = new Set(m.t.flatMap(t => t.P.map(p => p.id)));
+    restoreLineups(m);
+  }
+  return { w, beats };
+}
+/** The rally's technique and ego records close; the point is scored (serve and rotation, streaks). */
+function pointTally(m, w) {
   for (const [pid, id] of m.techRally) {
     const c = m.techUse[pid][id];
     if (squadOf(m.t[w]).some(q => q.id === pid)) c.won++;
@@ -459,6 +499,10 @@ function end(m, w, beats) {
   }
   m.streak[w]++;
   m.streak[1 - w] = 0;
+}
+/** Element outcomes, momentum, mood and stamina after a point. */
+function pointMomentum(m, w) {
+  const LD = i => (m.t[i].cap.lead - 50) / 100;
   // element spikes: record the outcome; Starlight lifts the team's momentum when it scores
   // won = the point ended on that element spike, for its side (dug and played on → false)
   const es = m.ctx && m.ctx.el ? m.elLog[m.elLog.length - 1] : null;
@@ -468,13 +512,16 @@ function end(m, w, beats) {
   m.ctxK = null;
   m.ctx0 = m.ctx; // the last attack (chatter)
   m.ctx = null;
-  const LD = i => (m.t[i].cap.lead - 50) / 100;
   m.mom[w] = clamp(m.mom[w] * 0.85 + (0.1 + (m.streak[w] >= 3 ? 0.07 : 0) + m.big * 0.1) * (1 + LD(w) * 0.6), -1, 1);
   m.mom[1 - w] = clamp(m.mom[1 - w] * 0.85 - 0.09 - m.big * 0.05, -1, 1);
   for (const p of m.t[w].P) md(m, p, 0.03);
   for (const p of m.t[1 - w].P) md(m, p, -0.02);
   for (const id in m.mood) m.mood[id] *= 0.97;
   for (const t of m.t) for (const p of squadOf(t)) m.sta[p.id] = Math.min(1, (m.sta[p.id] == null ? 1 : m.sta[p.id]) + 0.02); // the bench recovers too
+}
+/** The zone: zone breaker, zone in / out, the losing captain's call. Returns { zoneIn, capCall, breaker }. */
+function pointZone(m, w, oppWasInZone) {
+  const LD = i => (m.t[i].cap.lead - 50) / 100;
   let zoneIn = false,
     capCall = -1,
     breaker = false;
@@ -519,103 +566,73 @@ function end(m, w, beats) {
       m.streak[w] = 0;
     }
   }
-  elPoint(m, w);
-  for (const i of [0, 1]) if (m.zone[i]) m.zoneHit[i] = 1;
-  // captain's buffs wear off after a few points
-  for (const id in m.buff) if (--m.buff[id].n <= 0) delete m.buff[id];
+  return { zoneIn, capCall, breaker };
+}
+/** The point's beats: score, chatter, captain decisions, zone breaker / captain's call / zone cut-ins. */
+function pointBeats(m, w, beats, { zoneIn, capCall, breaker }, capBeats) {
   const [a, b] = m.pts;
-  if (Math.max(a, b) >= RULES.pointsToWin && Math.abs(a - b) >= RULES.winBy) {
-    m.over = true;
-    m.winner = w;
-    m.setScores = [[a, b]];
-    m.sets[w] = 1;
-  }
-  const capBeats = m.over ? [] : [...captainThink(m, 0), ...captainThink(m, 1)];
-  if (beats) {
+  beats.push({
+    dur: m.over ? 1600 : 900,
+    acts: [
+      { k: 'point', side: w, big: m.big, streak: m.streak[w], zone: zoneIn },
+      ...hypeChatter(m, w),
+      { k: 'score', snap: snap(m) },
+      ...(m.over ? [{ k: 'log', t: `Game — ${m.t[w].name} win ${Math.max(a, b)}-${Math.min(a, b)}`, c: 'set' }] : [])
+    ]
+  });
+  for (const bt of capBeats) beats.push(bt);
+  if (breaker && !m.over) {
+    const t = m.t[w],
+      o = m.t[1 - w],
+      hero = m.hero || t.cap,
+      how = m.lastPlay === 'killblock' ? 'Kill block' : 'Fake set';
     beats.push({
-      dur: m.over ? 1600 : 900,
+      dur: 900,
       acts: [
-        { k: 'point', side: w, big: m.big, streak: m.streak[w], zone: zoneIn },
-        ...hypeChatter(m, w),
-        { k: 'score', snap: snap(m) },
-        ...(m.over ? [{ k: 'log', t: `Game — ${m.t[w].name} win ${Math.max(a, b)}-${Math.min(a, b)}`, c: 'set' }] : [])
+        { k: 'zbreak', side: 1 - w },
+        { k: 'label', t: 'ZONE BROKEN!', big: 1, stamp: 1, dy: 30 }
       ]
     });
-    for (const bt of capBeats) beats.push(bt);
-    if (breaker && !m.over) {
-      const t = m.t[w],
-        o = m.t[1 - w],
-        hero = m.hero || t.cap,
-        how = m.lastPlay === 'killblock' ? 'Kill block' : 'Fake set';
-      beats.push({
-        dur: 900,
-        acts: [
-          { k: 'zbreak', side: 1 - w },
-          { k: 'label', t: 'ZONE BROKEN!', big: 1, stamp: 1, dy: 30 }
-        ]
-      });
-      beats.push({
-        dur: 1500,
-        cut: 1,
-        acts: [
-          { k: 'zone', side: w },
-          { k: 'cut', p: hero.id, title: 'Zone Breaker', sub: `${how} by ${hero.name} shatters ${o.name}'s zone` },
-          {
-            k: 'log',
-            t: `ZONE BREAKER! ${hero.name}'s ${how.toLowerCase()} knocks ${o.name} out of the zone — ${t.name} take it over`,
-            c: 'set'
-          }
-        ]
-      });
-    }
-    if (capCall >= 0 && !m.over) {
-      const t = m.t[capCall],
-        c = t.cap;
-      beats.push({
-        dur: 1500,
-        cut: 1,
-        acts: [
-          { k: 'zone', side: capCall },
-          { k: 'cut', p: c.id, title: "Captain's call", sub: `${c.name} rallies ${t.name} — leadership ${c.lead}` },
-          { k: 'log', t: `Captain's call! ${c.name} rallies ${t.name} into the zone`, c: 'set' }
-        ]
-      });
-    }
-    if (zoneIn && !m.over) {
-      const t = m.t[w],
-        ace = t.cap.lead >= 70 ? t.cap : t.P.reduce((x, p) => ((m.mood[p.id] || 0) > (m.mood[x.id] || 0) ? p : x), t.P[0]);
-      beats.push({
-        dur: 1300,
-        cut: 1,
-        acts: [
-          { k: 'zone', side: w },
-          { k: 'cut', p: ace.id, title: 'In the zone', sub: `${t.name} momentum surge: every stat boosted` },
-          { k: 'log', t: `${t.name} are in the zone — ${m.streak[w]} straight points`, c: 'set' }
-        ]
-      });
-    }
+    beats.push({
+      dur: 1500,
+      cut: 1,
+      acts: [
+        { k: 'zone', side: w },
+        { k: 'cut', p: hero.id, title: 'Zone Breaker', sub: `${how} by ${hero.name} shatters ${o.name}'s zone` },
+        {
+          k: 'log',
+          t: `ZONE BREAKER! ${hero.name}'s ${how.toLowerCase()} knocks ${o.name} out of the zone — ${t.name} take it over`,
+          c: 'set'
+        }
+      ]
+    });
   }
-  // substitutions at the dead ball (after the point's beats, before any timeout huddle)
-  if (!m.over)
-    for (const side of [0, 1]) {
-      const bs = coachSubs(m, side);
-      if (beats) beats.push(...bs);
-    }
-  if (!m.over) {
-    const L = 1 - w,
-      T = m.t[L],
-      avg = T.P.reduce((a, q) => a + (m.mood[q.id] || 0), 0) / T.P.length;
-    const need = m.pts[w] >= 4 && (m.streak[w] >= 3 || (m.zone[w] && m.pts[w] - m.pts[L] >= 2) || avg < -0.35);
-    if (m.toReq[L] && !m.to[L]) timeout(m, L, beats, true);
-    else if (m.toReq[w] && !m.to[w]) timeout(m, w, beats, true);
-    else if (!m.to[L] && need && R() < 0.35 + 0.6 * T.coachIQ) timeout(m, L, beats, false);
+  if (capCall >= 0 && !m.over) {
+    const t = m.t[capCall],
+      c = t.cap;
+    beats.push({
+      dur: 1500,
+      cut: 1,
+      acts: [
+        { k: 'zone', side: capCall },
+        { k: 'cut', p: c.id, title: "Captain's call", sub: `${c.name} rallies ${t.name} — leadership ${c.lead}` },
+        { k: 'log', t: `Captain's call! ${c.name} rallies ${t.name} into the zone`, c: 'set' }
+      ]
+    });
   }
-  // the match is decided: note who is on court at the end, then every team goes back to its starting lineup
-  if (m.over) {
-    m.finished = new Set(m.t.flatMap(t => t.P.map(p => p.id)));
-    restoreLineups(m);
+  if (zoneIn && !m.over) {
+    const t = m.t[w],
+      ace = t.cap.lead >= 70 ? t.cap : t.P.reduce((x, p) => ((m.mood[p.id] || 0) > (m.mood[x.id] || 0) ? p : x), t.P[0]);
+    beats.push({
+      dur: 1300,
+      cut: 1,
+      acts: [
+        { k: 'zone', side: w },
+        { k: 'cut', p: ace.id, title: 'In the zone', sub: `${t.name} momentum surge: every stat boosted` },
+        { k: 'log', t: `${t.name} are in the zone — ${m.streak[w]} straight points`, c: 'set' }
+      ]
+    });
   }
-  return { w, beats };
 }
 /** Side L takes its timeout (manual = the player asked for it): mood and stamina reset, the other side cools off. */
 function timeout(m, L, beats, manual) {

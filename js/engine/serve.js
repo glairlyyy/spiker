@@ -7,6 +7,29 @@
 /** Extra flight speed of the hardest serves. */
 const SERVE_FAST = 1.45;
 function playRally(m) {
+  rallyStart(m);
+  const V = m.rec,
+    beats = V ? [] : null,
+    B = b => beats.push(b);
+  // later phases can stage something earlier in the rally once they know the outcome (e.g. a block break)
+  if (V) {
+    B.len = () => beats.length;
+    B.ins = (i, ...bs) => beats.splice(i, 0, ...bs);
+  }
+  const s = m.serve,
+    r = 1 - s,
+    c = { m, V, B, beats, s, r, ST: m.t[s], RT: m.t[r], dR: DIR(r) };
+  // the serve in steps (each draws its randoms in the same order as the one long function did — goldens unchanged)
+  serveWalk(c);
+  serveToss(c);
+  serveContact(c);
+  if (R() < c.serr) return serveFault(c);
+  serveAim(c);
+  if (R() < sig((c.sq - c.rs) / 24 - 2.4)) return serveAce(c);
+  return serveReceive(c);
+}
+/** Per-rally state, reset before every serve. */
+function rallyStart(m) {
   CM = m;
   m.big = 0;
   m.lastPlay = null; // 'killblock' | 'fake' — used by the zone breaker in end()
@@ -18,19 +41,10 @@ function playRally(m) {
   m.hypeRally = 0; // at most one staged scene per rally
   m.kbScene = 0; // a kill-block scene played this rally (chatter skips the blocker's line)
   m.defBeats = [];
-  const V = m.rec,
-    beats = V ? [] : null,
-    B = b => beats.push(b);
-  // later phases can stage something earlier in the rally once they know the outcome (e.g. a block break)
-  if (V) {
-    B.len = () => beats.length;
-    B.ins = (i, ...bs) => beats.splice(i, 0, ...bs);
-  }
-  const s = m.serve,
-    r = 1 - s,
-    ST = m.t[s],
-    RT = m.t[r],
-    dR = DIR(r);
+}
+/** Choose the serve up front and walk everyone to their spots; the reset and the server's routine beats. */
+function serveWalk(c) {
+  const { m, V, B, s, r, ST, RT } = c;
   const oS = rotOrder(ST, m.rot[s]),
     oR = rotOrder(RT, m.rot[r]),
     server = oS[0];
@@ -72,6 +86,12 @@ function playRally(m) {
           ? [{ k: 'log', t: `${server.name} paces out a ${runM} m run-up for a ${jumpSrv ? 'jump serve' : 'jump float'}` }]
           : []
     });
+  Object.assign(c, { oS, oR, server, sq, hero, sType, jumpSrv, runM, endX, startX });
+}
+/** Run-up pace, ego and serve techniques; the toss (and run-up) beat. */
+function serveToss(c) {
+  const { m, V, B, s, server, hero, jumpSrv, runM, endX, startX, sType } = c;
+  let { sq } = c;
   if (jumpSrv) sq *= 1 + (runM - 3.2) * 0.05; // longer run-up = a bit more pace (±5%)
   if (hero) {
     sq *= EGO.serve.sq;
@@ -114,6 +134,11 @@ function playRally(m) {
         ]
       });
   }
+  Object.assign(c, { sq, killer, drive, targeted });
+}
+/** The contact: the cannon cut-in, the error chance, the hit effects; the serving side goes to base. */
+function serveContact(c) {
+  const { m, V, B, s, ST, server, sq, sType, killer, drive, targeted, hero } = c;
   const sp = m.pos[server.id],
     sArc = sType === 'jump' ? 85 : sType === 'jumpfloat' ? 110 : 130,
     wob = sType !== 'jump';
@@ -133,27 +158,34 @@ function playRally(m) {
     const h = home(p, s);
     mv(m, p, h[0], h[1], sw, V);
   });
-  if (R() < serr) {
-    const net = R() < Formula.serveNetShare(server, sq, jumpSrv);
-    st(m, server, 'err');
-    V &&
-      B({
-        dur: 750,
-        acts: [
-          ...hitFx,
-          ...sw,
-          {
-            k: 'ball',
-            to: net ? { x: sx(s, 494), z: sp.z, h: 110 } : { x: sx(r, 25), z: rnd(0.2, 0.8), h: 0 },
-            h: net ? 30 : 110,
-            trail: sq
-          },
-          { k: 'label', t: net ? 'Into the net' : 'Long!', when: 'end', big: 1 },
-          { k: 'log', t: `Service error by ${server.name}`, c: 'err' }
-        ]
-      });
-    return end(m, r, beats);
-  }
+  Object.assign(c, { sp, sArc, wob, serr, hitFx, sw });
+}
+/** Service error: into the net or long. */
+function serveFault(c) {
+  const { m, V, B, beats, s, r, server, sq, jumpSrv, sp, hitFx, sw } = c;
+  const net = R() < Formula.serveNetShare(server, sq, jumpSrv);
+  st(m, server, 'err');
+  V &&
+    B({
+      dur: 750,
+      acts: [
+        ...hitFx,
+        ...sw,
+        {
+          k: 'ball',
+          to: net ? { x: sx(s, 494), z: sp.z, h: 110 } : { x: sx(r, 25), z: rnd(0.2, 0.8), h: 0 },
+          h: net ? 30 : 110,
+          trail: sq
+        },
+        { k: 'label', t: net ? 'Into the net' : 'Long!', when: 'end', big: 1 },
+        { k: 'log', t: `Service error by ${server.name}`, c: 'err' }
+      ]
+    });
+  return end(m, r, beats);
+}
+/** Where the serve goes and who takes it (target serve, ego steal, rolling receive); the receive score and flight time. */
+function serveAim(c) {
+  const { m, V, r, RT, sq, drive, targeted, sw, sp } = c;
   let tx = sx(r, rnd(150, 420)),
     tz = rnd(0.12, 0.88);
   let rc = nearest(
@@ -201,108 +233,123 @@ function playRally(m) {
       mv(m, p, h[0], h[1], sw, V);
     }
   });
-  if (R() < sig((sq - rs) / 24 - 2.4)) {
-    // the receiver got an arm on it: sometimes it pops up in their court and a teammate keeps it alive
-    const fr = Math.min(1, (0.8 / (d0 + 0.01)) * (0.3 + rc.speed / 200)),
-      p0r = m.pos[rc.id];
-    if (d0 * (1 - 0.7 * fr) < 0.1 && R() < popChance(rc, sq)) {
-      const P = popRecovery(m, r, RT, rc, tx, tz, sq, 1),
-        sp0 = mustDive(rc, p0r, tx, tz, sdur) ? 'dive' : 'bump';
-      mv(m, rc, lerp(p0r.x, tx, fr * 0.7), lerp(p0r.z, tz, fr * 0.7), sw, V);
-      setBusy(m, rc, 1);
-      V &&
-        B({
-          dur: sdur,
-          acts: [
-            ...hitFx,
-            ...sw,
-            { k: 'pose', p: rc.id, pose: sp0 },
-            { k: 'ball', to: { p: rc.id, c: sp0 }, h: sArc, wob, trail: sq, op: server.op },
-            { k: 'label', t: 'Off the arms!', small: 1, when: 'end' }
-          ]
-        });
-      const pa = popActs(m, P, dR, V, 900);
-      if (P.ok) {
-        V &&
-          B({
-            dur: 900,
-            acts: [
-              ...pa.acts,
-              { k: 'call', p: P.rec.id, t: callLine('recv', P.rec, m) },
-              { k: 'label', t: 'Saved!', when: 'end', set: 1 },
-              { k: 'log', t: `${server.name}'s serve pops off ${rc.name}'s arms — ${P.rec.name} saves it!`, c: 'set' }
-            ]
-          });
-        return end(m, rally(m, B, V, r, P.rec, 1, { first: rc }), beats);
-      }
-      st(m, server, 'ace');
-      st(m, server, 'k');
-      V &&
-        B({
-          dur: 900,
-          acts: [
-            ...pa.acts,
-            { k: 'impact', pow: 40, when: 'end', kill: 1 },
-            { k: 'label', t: 'ACE!', when: 'end', big: 1 },
-            { k: 'pose', p: server.id, pose: 'roar', when: 'end' },
-            { k: 'log', t: `Ace! ${server.name}'s serve pops off ${rc.name}'s arms and drops`, c: 'pt' }
-          ]
-        });
-      return end(m, s, beats);
-    }
-    st(m, server, 'ace');
-    st(m, server, 'k');
-    m.big = 1;
-    md(m, rc, -0.12);
-    const f = Math.min(1, (0.8 / (d0 + 0.01)) * (0.3 + rc.speed / 200)),
-      p0 = m.pos[rc.id];
-    mv(m, rc, lerp(p0.x, tx, f * 0.7), lerp(p0.z, tz, f * 0.7), sw, V);
-    // close enough to touch it: the pass shanks off the arms instead of the ball landing clean
-    // (visual only — decided from values already rolled, so it never changes the random sequence)
-    const shank = V && d0 * (1 - 0.7 * f) < 0.1 && (sq * 13.7) % 1 < 0.5,
-      rcPose = mustDive(rc, p0, tx, tz, sdur) ? 'dive' : 'bump';
-    let bx = tx,
-      bz = tz;
-    if (shank) {
-      B({
-        dur: sdur,
-        acts: [
-          ...hitFx,
-          ...sw,
-          { k: 'pose', p: rc.id, pose: rcPose },
-          { k: 'ball', to: { p: rc.id, c: rcPose }, h: sArc, wob, trail: sq, op: server.op },
-          { k: 'log', t: `${rc.name} gets an arm on it…` }
-        ]
-      });
-      sw.length = 0;
-      hitFx.length = 0;
-      bx = sx(r, Math.max(-60, sx(r, tx) - 170));
-      bz = tz > 0.5 ? 1.22 : -0.22;
-    }
+  Object.assign(c, { tx, tz, rc, steal, d0, rollR, rs, sdur });
+}
+/** The serve beats the receiver: off the arms (a teammate may save it) or a clean ace. */
+function serveAce(c) {
+  const { m, rc, d0, sq } = c;
+  // the receiver got an arm on it: sometimes it pops up in their court and a teammate keeps it alive
+  const fr = Math.min(1, (0.8 / (d0 + 0.01)) * (0.3 + rc.speed / 200)),
+    p0r = m.pos[rc.id];
+  if (d0 * (1 - 0.7 * fr) < 0.1 && R() < popChance(rc, sq)) return servePopped(c, fr, p0r);
+  return serveAceClean(c);
+}
+/** Off the receiver's arms: a teammate saves it (rally on) or it drops (ace). */
+function servePopped(c, fr, p0r) {
+  const { m, V, B, beats, s, r, RT, dR, server, sq, tx, tz, rc, sdur, hitFx, sw, sArc, wob } = c;
+  const P = popRecovery(m, r, RT, rc, tx, tz, sq, 1),
+    sp0 = mustDive(rc, p0r, tx, tz, sdur) ? 'dive' : 'bump';
+  mv(m, rc, lerp(p0r.x, tx, fr * 0.7), lerp(p0r.z, tz, fr * 0.7), sw, V);
+  setBusy(m, rc, 1);
+  V &&
+    B({
+      dur: sdur,
+      acts: [
+        ...hitFx,
+        ...sw,
+        { k: 'pose', p: rc.id, pose: sp0 },
+        { k: 'ball', to: { p: rc.id, c: sp0 }, h: sArc, wob, trail: sq, op: server.op },
+        { k: 'label', t: 'Off the arms!', small: 1, when: 'end' }
+      ]
+    });
+  const pa = popActs(m, P, dR, V, 900);
+  if (P.ok) {
     V &&
       B({
-        dur: shank ? 620 : sdur,
+        dur: 900,
         acts: [
-          ...hitFx,
-          ...sw,
-          ...(shank ? [{ k: 'label', t: 'Shanked!', small: 1 }] : [{ k: 'pose', p: rc.id, pose: 'dive' }]),
-          {
-            k: 'ball',
-            to: { x: bx, z: bz, h: 0 },
-            h: shank ? 95 : sArc,
-            wob: wob && !shank,
-            trail: shank ? 0 : sq,
-            op: server.op && !shank
-          },
-          ...RT.P.filter(p => p !== rc).map(p => ({ k: 'jump', p: p.id, mode: 'hop', peak: 7, t0: 0, t1: 0.2 })),
-          { k: 'impact', pow: sq, when: 'end', kill: 1, op: server.op },
-          { k: 'label', t: 'ACE!', when: 'end', big: 1 },
-          { k: 'pose', p: server.id, pose: 'roar', when: 'end' },
-          { k: 'log', t: `Ace! ${server.name} blasts it past ${rc.name}`, c: 'pt' }
+          ...pa.acts,
+          { k: 'call', p: P.rec.id, t: callLine('recv', P.rec, m) },
+          { k: 'label', t: 'Saved!', when: 'end', set: 1 },
+          { k: 'log', t: `${server.name}'s serve pops off ${rc.name}'s arms — ${P.rec.name} saves it!`, c: 'set' }
         ]
       });
-    return end(m, s, beats);
+    return end(m, rally(m, B, V, r, P.rec, 1, { first: rc }), beats);
   }
+  st(m, server, 'ace');
+  st(m, server, 'k');
+  V &&
+    B({
+      dur: 900,
+      acts: [
+        ...pa.acts,
+        { k: 'impact', pow: 40, when: 'end', kill: 1 },
+        { k: 'label', t: 'ACE!', when: 'end', big: 1 },
+        { k: 'pose', p: server.id, pose: 'roar', when: 'end' },
+        { k: 'log', t: `Ace! ${server.name}'s serve pops off ${rc.name}'s arms and drops`, c: 'pt' }
+      ]
+    });
+  return end(m, s, beats);
+}
+/** A clean ace (or a shanked pass that never stays up). */
+function serveAceClean(c) {
+  const { m, V, B, beats, s, r, RT, server, sq, tx, tz, rc, d0, sdur, hitFx, sw, sArc, wob } = c;
+  st(m, server, 'ace');
+  st(m, server, 'k');
+  m.big = 1;
+  md(m, rc, -0.12);
+  const f = Math.min(1, (0.8 / (d0 + 0.01)) * (0.3 + rc.speed / 200)),
+    p0 = m.pos[rc.id];
+  mv(m, rc, lerp(p0.x, tx, f * 0.7), lerp(p0.z, tz, f * 0.7), sw, V);
+  // close enough to touch it: the pass shanks off the arms instead of the ball landing clean
+  // (visual only — decided from values already rolled, so it never changes the random sequence)
+  const shank = V && d0 * (1 - 0.7 * f) < 0.1 && (sq * 13.7) % 1 < 0.5,
+    rcPose = mustDive(rc, p0, tx, tz, sdur) ? 'dive' : 'bump';
+  let bx = tx,
+    bz = tz;
+  if (shank) {
+    B({
+      dur: sdur,
+      acts: [
+        ...hitFx,
+        ...sw,
+        { k: 'pose', p: rc.id, pose: rcPose },
+        { k: 'ball', to: { p: rc.id, c: rcPose }, h: sArc, wob, trail: sq, op: server.op },
+        { k: 'log', t: `${rc.name} gets an arm on it…` }
+      ]
+    });
+    sw.length = 0;
+    hitFx.length = 0;
+    bx = sx(r, Math.max(-60, sx(r, tx) - 170));
+    bz = tz > 0.5 ? 1.22 : -0.22;
+  }
+  V &&
+    B({
+      dur: shank ? 620 : sdur,
+      acts: [
+        ...hitFx,
+        ...sw,
+        ...(shank ? [{ k: 'label', t: 'Shanked!', small: 1 }] : [{ k: 'pose', p: rc.id, pose: 'dive' }]),
+        {
+          k: 'ball',
+          to: { x: bx, z: bz, h: 0 },
+          h: shank ? 95 : sArc,
+          wob: wob && !shank,
+          trail: shank ? 0 : sq,
+          op: server.op && !shank
+        },
+        ...RT.P.filter(p => p !== rc).map(p => ({ k: 'jump', p: p.id, mode: 'hop', peak: 7, t0: 0, t1: 0.2 })),
+        { k: 'impact', pow: sq, when: 'end', kill: 1, op: server.op },
+        { k: 'label', t: 'ACE!', when: 'end', big: 1 },
+        { k: 'pose', p: server.id, pose: 'roar', when: 'end' },
+        { k: 'log', t: `Ace! ${server.name} blasts it past ${rc.name}`, c: 'pt' }
+      ]
+    });
+  return end(m, s, beats);
+}
+/** A served ball received: pass quality, the receive beat, then the rally. */
+function serveReceive(c) {
+  const { m, V, B, beats, r, RT, dR, sq, tx, tz, rc, rollR, rs, sdur, hitFx, sw, sArc, wob } = c;
   const mg = rs - sq * 0.85 + rnd(-18, 18),
     q = mg > 12 ? 3 : mg > -8 ? 2 : 1;
   const rDive = rollR || mustDive(rc, m.pos[rc.id], tx - dR * 16, tz, sdur); // run to it, or dive only when out of reach

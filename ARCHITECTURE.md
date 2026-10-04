@@ -67,6 +67,13 @@ in one file only (T-084) — theme.css overrides by being last, so never repeat 
   (`engine/rally-phases.js`), then the approach / block formation (`formBlock`, `engine/rally-block.js`) and the set / spike core inline in `rally.js`, then `block → dig`
   (`engine/rally-defense.js`). A phase returns `{ point: side }`, `{ next: [atk, pas, qual] }`, its values, or nothing.
   **Random rolls must stay in the same order** — the golden tests catch any change.
+- Long phases read as named steps (T-204; each step takes the context `c`, the attack `x` and an accumulator, and draws in
+  the original order): `playRally` = `rallyStart → serveWalk → serveToss → serveContact → serveFault | serveAim →
+serveAce (servePopped | serveAceClean) | serveReceive`; `end` = `pointTally → pointMomentum → pointZone → elPoint →
+pointBeats → subs / timeouts`; `formBlock` = `blockApproach → blockPick → blockMoves → blockCoverage (blockHands)`;
+  `setBeat` = `setCallActs`, `setActs (blockJumpActs, blockPoseActs)`; `spikeActs` = `spikeCutIns`, `spikeNote`;
+  `block` = `blockBreak | blockStuff (blockCover | blockKill) | blockTouch | blockTool`; `dig` = `digSetup → digSave |
+digPopped | digKill | digUp`. New rules (e.g. ace traits) hook into the step that owns the roll.
   `pickSetter` (T-054): the set point is rolled first, then the back-row setter sets; on a bad pass (quality 1, one setter) a free teammate takes the second
   ball only when the setter's time to the set point is over `SETTER.beat` (rules.js, 1.6) × the teammate's — a reach rule, no random in the choice. Engine-only
   record `m.setBy = [{ role, why: 'free' | 'reach' | 'none', qual, ts, tm }]` (like `m.scrLog`): `none` = no setter free (passer / busy; wit-weighted pick).
