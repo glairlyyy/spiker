@@ -108,7 +108,11 @@ The match screen takes a fixture: `navigate('match', { a, b, round, back, onFini
   when a session fails while exhausted (light training until healed, or the physio).
 - **Story scenes** (spec §10.10): `career/story.js` `Story` plays `SCENES` (`data/story.js`) step by step — DOM-free, no
   randoms, state `run.story = {seen, flags, cur}`; `ui/story-box.js` draws the dialogue box (`storyBox` / `storyMounted`,
-  called by `renderCareer`; hub cards and keys wait while a scene plays), `css/story.css`.
+  called by `renderCareer`; hub cards and keys wait while a scene plays), `css/story.css`. Triggers: `start` (Run.create) and
+  `hub` (renderCareer, with no scene / lock / event: `when` = a `STORY_WHEN` test, `off` = a cancelling flag; one scene a day via
+  `run.story.at` = `Story.clock`). Lines fill `{role}` / `{key}` (`Story.text`); `goto` takes an index or a step `id`. The guide
+  (spec §10.10a): `GUIDE` (data/story.js) is a person for the box's portrait (`Story.who('senior')`) and the map (`MapModel.guide`
+  → map3d draws a second `createAvatar(scene, { kit })` — the default VRM, dressed — and pins3d its name label).
 - **Sponsors** (`career/sponsors.js`; the coach's goal was removed in T-170, spec §10.1b): sponsors make offers at fan milestones (a `pre` event shown before the week's choice) with a perk kept while a
   condition holds.
 - **Matches** (`career/cup.js`; street battles, challenges, loss and injury are `Fight` in `career/fight.js`): an S–C grade from your own line scales that match's rewards; a pre-match focus goal;

@@ -455,7 +455,19 @@ const MapModel = {
       flag: MapModel.ptOf(sel),
       focus: City.at(run, 'home'), // where a fresh view centres
       sel,
-      life: MapModel.life(run)
+      life: MapModel.life(run),
+      guide: MapModel.guide(run)
+    };
+  },
+  /** The story guide on the map (spec §10.10a): Kaede by the student flat's door, Story mode only (null otherwise). */
+  guide(run) {
+    if (!Story.on(run) || run.story.flags.guideGone) return null;
+    const h = HOME_AT.studio;
+    return {
+      at: [h[0] + 9, h[1] + 7],
+      face: h,
+      name: GUIDE.short,
+      kit: { shirt: GUIDE.team.color, hair: GUIDE.hair, skin: GUIDE.look.skin }
     };
   }
 };

@@ -1,10 +1,11 @@
 // The player on the 3D map: your own model (Main_v2, as in matches and your portrait; the default model if it fails), idle-breathing, walking or running to wherever the rules put
 // the player. Display only — the rules move instantly; this animates from the previously shown position.
-//   createAvatar(scene) → { setTarget([x, y], path?), snap([x, y]), tick(dt, heightAt), busy(), pos(), lapse(), dispose() }
+//   createAvatar(scene, opts?) → { setTarget([x, y], path?), snap([x, y]), face([x, y]), tick(dt, heightAt), busy(), pos(), lapse(), dispose() }
+//   opts.kit (shirt / hair / skin colours): another person on the default model, dressed (the story guide, spec §10.10a); none = you.
 // Map points are map units (see toWorld in map3d.mjs). Until the model has loaded a capsule marks the spot.
 import * as THREE from 'three';
 import { VRMUtils } from '@pixiv/three-vrm';
-import { loadBase, makeVRM, applyPose, smoothBones, groundSnap, MODEL_URL, MAIN_URL } from '../render3d/players3d.mjs';
+import { loadBase, makeVRM, applyPose, smoothBones, groundSnap, dress, MODEL_URL, MAIN_URL } from '../render3d/players3d.mjs';
 import { STAND, locoPose, mix } from '../render3d/poses3d.mjs';
 import { toWorld, clamp, wrap } from './geo3d.mjs';
 
@@ -17,19 +18,22 @@ const HEIGHT = 6, // metres: drawn about 3.5× life size so you can find yoursel
 
 const segYaw = (pts, i) => Math.atan2(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]); // facing along segment i
 
-export function createAvatar(scene) {
-  const marker = new THREE.Mesh(new THREE.CapsuleGeometry(1, 4, 4, 10), new THREE.MeshStandardMaterial({ color: 0xffb020 }));
+export function createAvatar(scene, opts = {}) {
+  const marker = new THREE.Mesh(
+    new THREE.CapsuleGeometry(1, 4, 4, 10),
+    new THREE.MeshStandardMaterial({ color: opts.kit ? opts.kit.shirt : 0xffb020 })
+  );
   marker.castShadow = true;
   scene.add(marker);
   let pl = null,
     dead = false;
   const S = { x: 0, z: 0, yaw: 0, walk: null, phase: 0, w: 0, t: 0 };
 
-  loadBase(MAIN_URL)
-    .then(buf => makeVRM(buf, HEIGHT))
-    .catch(() => loadBase(MODEL_URL).then(buf => makeVRM(buf, HEIGHT))) // Main_v2 missing: the default model
+  (opts.kit ? Promise.reject(null) : loadBase(MAIN_URL).then(buf => makeVRM(buf, HEIGHT)))
+    .catch(() => loadBase(MODEL_URL).then(buf => makeVRM(buf, HEIGHT))) // Main_v2 missing (or someone else): the default model
     .then(p => {
       if (dead) return VRMUtils.deepDispose(p.vrm.scene);
+      if (opts.kit) dress(p.vrm, opts.kit);
       pl = p;
       scene.remove(marker);
       marker.geometry.dispose();
@@ -57,6 +61,11 @@ export function createAvatar(scene) {
         r = Math.min(RAMP, dur / 2);
       // trapezoid speed profile: ramp up, cruise at vc, ramp down; the area under it is the distance along the path
       S.walk = { pts, cum, i: 0, dist, dur, r, vc: dist / (dur - r), t: -TURN, s: 0, yaw: segYaw(pts, 0) };
+    },
+    /** Turn to face a map point (standing still). */
+    face(at) {
+      const [x, z] = toWorld(at);
+      S.yaw = Math.atan2(x - S.x, z - S.z);
     },
     busy: () => !!S.walk,
     pos: () => [S.x, S.z],

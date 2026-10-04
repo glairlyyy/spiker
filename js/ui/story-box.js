@@ -17,7 +17,7 @@ function storyBox(run) {
     return `${layer}<div class="sb-title" role="status">${esc(s.text)}</div><span class="sb-keys sb-keys-t"><kbd>Space</kbd> next</span></div>`;
   const W = s.k === 'say' ? Story.who(run, s.who) : { name: Run.you(run).name, kind: 'you', person: Run.you(run) },
     face = W.person ? `<span class="sb-face">${faceSVG(W.person, 0, 72)}</span>` : '',
-    text = s.k === 'say' ? s.text : '',
+    text = s.k === 'say' ? Story.text(run, s.text) : '',
     opts =
       s.k === 'choice'
         ? `<ol class="sb-opts">${s.opts.map((o, i) => `<li><button class="btn" onclick="event.stopPropagation();sbPick(${i})"><kbd>${i + 1}</kbd> ${esc(o.text)}</button></li>`).join('')}</ol>`

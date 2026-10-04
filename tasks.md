@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-187** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-189** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -33,26 +33,46 @@ evaluations, U21 Cup, Story mode, growth, relationships), UI redesign §9–§10
 Owner request 2026-10-04 (map and facility revamp, spec §4.18d–e, §4.19a): T-181 → T-183 built by the spec chat;
 T-184 → T-186 built by the spec chat on the owner's go.
 
+Owner request 2026-10-04 (spec §10.10a, lore §6–§7): the guide Kaede. Built by the spec chat.
+
+### [x] T-187: Kaede — the flatmate: intro meeting, portrait, model on the map
+
+Spec: §10.10a Goldens: unchanged Save: no change (story flags)
+Goal: the intro ends with a normal first meeting with Kaede at the Student flat; she stands by its door on the map, named.
+Files: js/data/story.js (GUIDE, intro lines), js/career/story.js (who 'senior', goto by id), js/career/mapmodel.js (`guide`), js/map3d/avatar3d.mjs (opts.kit, face), js/map3d/map3d.mjs, js/map3d/pins3d.mjs (name label), tests/career.test.js
+Result: intro + 11 lines (two choices: first-year / why; tour or `noTour`); default VRM dressed teal hair + Academy hoodie, 3D portrait from the same kit; name label at 7.5 m. QA: screenshots of the meeting, the map and a lesson.
+
+### [x] T-188: Kaede's lessons at their moments
+
+Spec: §10.10a Goldens: unchanged Save: no change
+Goal: training, the tile war, factions, payday / moving house and the first evaluation are explained once each, in her voice, when they first matter.
+Files: js/data/story.js (5 scenes), js/career/story.js (STORY_WHEN, `hub` trigger, one a day, {role}/{key}), js/ui/career-hub.js (hub hook), js/ui/story-box.js (text fill), tests/career.test.js
+Result: hub hook in renderCareer (no scene / lock / event); lessons gated by `noTour`; one scene per day (`run.story.at`); test covers order, once-only and noTour. Covers part of T-175 (the hub hook); week / place / result hooks still open there.
+
 ### [x] T-181: A real airport
-Spec: §4.18d          Goldens: unchanged          Save: no change
+
+Spec: §4.18d Goldens: unchanged Save: no change
 Goal: the arrival point reads as an airport: runway along the shore, terminal + tower, apron with a plane, cargo shed.
 Files: js/data/city.js (AIRPORT), js/career/mapmodel.js (landmark `airport` with `rot`, `inAirport`, lots keep off), js/map3d/kit3d.mjs (`airport`), js/map3d/town3d.mjs (fixed `rot`)
 Result: one landmark on `AIRPORT.yaw` (runway 84 × 8 m west of the terminal, seaward); lots keep off `AIRPORT.box`; the Beach shack's old spot freed (its roads re-linked: jSs → airport). QA screenshot: runway on the south shore, no lots on it.
 
 ### [x] T-182: Central Academy grows one tile ring; the start home moves next to it
-Spec: §4.2 §4.18e          Goldens: unchanged          Save: no change (housing key `studio` kept)
+
+Spec: §4.2 §4.18e Goldens: unchanged Save: no change (housing key `studio` kept)
 Goal: the Academy is its tile + the six round it; you start in a Student flat in that ring.
 Files: js/data/city.js (ACADEMY, HOME_AT.studio, roads, `academy-quarter` district), js/career/city.js (regionAt by hex distance), js/career/hex.js (`Hex.dist`), js/data/world.js (HOUSING.studio), tests/map.test.js
 Result: 7 academy tiles (none takeable); the student quarter adds ~76 lots (Academy ~95, Wu ~210); `studio` = Student flat (region open, same rent / rest / noise), home node off jAc2. 114 tests green.
 
 ### [x] T-183: Academy Gym — Lv 1, a little EXP to every stat
-Spec: §4.18e          Goldens: unchanged          Save: no change
+
+Spec: §4.18e Goldens: unchanged Save: no change
 Goal: a fixed-level gym on the Academy ring that trains all five stats a little.
 Files: js/data/city.js (SPOTS.acaGym, road, LANDMARK), js/data/career.js (TRAININGS.all, TRAINK filter), js/career/training.js (fixed `lv`, `more` rows), js/career/city.js (day label), js/ui/career-map.js (all rows; per-stat cap line), js/ui/career-hub.js (not a key-stat suggestion), tests/career.test.js
 Result: Power/Defense/Speed/Jump 2, Wit 0.025, 15 stamina; facility always Lv 1 (tip: fixed); panel lists all five with EXP ratings; not in TRAINK (no teammates, NPC floor unchanged → goldens unchanged).
 
 ### [x] T-184: District plan in data — districts with jobs, homes where they belong
-Spec: §4.19a          Goldens: unchanged          Save: no change (HOME_AT moves only)
+
+Spec: §4.19a Goldens: unchanged Save: no change (HOME_AT moves only)
 Goal: the §4.19a districts exist as DISTRICTS entries with their kinds; the four other homes move (condo → downtown by the civic core, dorm → the Ring by the training district; abandoned gym and highland room stay).
 Files: js/data/city.js (DISTRICTS, HOME_AT, ROADS nodes / edges for new homes), js/map3d/kit3d.mjs (new filler kinds: office, warehouse yard, plant, depot, net shed), tests/map.test.js (lot counts)
 Do not: change places, HQs, venues or borders; exceed MapModel.maxLots; draw randoms.
@@ -60,14 +80,16 @@ Accept: every district of §4.19a has lots of its kinds; homes in their regions;
 Result: §4.19a districts in DISTRICTS (wei-civic tall offices, wei-works plant / tanks / chimneys / depot, wei-ring-west / south / east apartments, harbor containers / tanks / fish market); condo by the civic core off hq0, dorm by the training district (old condo node kept as junction jWc; jWk road to the works); new fillers office, apartment, plant, depot, tank, stack (+1 cylinder shape → +1 draw call); ~960 lots (Wei ~530). QA: island and close-up screenshots.
 
 ### [x] T-185: Ground use — fields, terraces, yards, quays, parks
-Spec: §4.19a          Goldens: unchanged          Save: no change
+
+Spec: §4.19a Goldens: unchanged Save: no change
 Goal: the empty land between towns reads as farmland, scrub or industry: flat ground patches (polygons in data, vertex colours or one decal mesh), no lots.
 Files: js/data/city.js (GROUND list), js/career/mapmodel.js (`land.ground`), js/map3d/map3d.mjs or town3d.mjs (draw), tests/map3d.test.js
 Accept: Shu villages ringed by terraces, Wu town by yards, the harbor by quays, a park per Ring block; ≤ 1 extra draw call. QA: full-island screenshot.
 Result: GROUND (18 patches: Shu terraces / paddies ringing the villages, reservoir lake, quarry; Wu yards, quays, fields; Wei parks, works yard, market gardens; Academy pitch; Outlaws scrapyard) painted into the terrain colours (contour bands for terraces, a flattened lake) — 0 extra draw calls; lots stay off kept kinds (MapModel.kept). Files deviation: drawn in map3d.mjs buildTerrain; test in map.test.js.
 
 ### [x] T-186: City life — buses, vans, boats, a plane
-Spec: §4.19a          Goldens: unchanged          Save: no change
+
+Spec: §4.19a Goldens: unchanged Save: no change
 Goal: traffic shows how the island works: buses on main roads (airport ↔ Academy ↔ downtown ↔ harbor), vans harbor → overpass → Wei, fishing boats offshore, a plane on the runway.
 Files: js/career/mapmodel.js (`life.traffic` routes from ROADS, hashes only), js/map3d/life3d.mjs (one InstancedMesh per vehicle kind, within CAP), tests/map3d.test.js
 Do not: draw randoms; add per-frame allocations.
@@ -77,39 +99,45 @@ Result: TRAFFIC data → MapModel.traffic() → life3d: 4 buses, 4 vans (up the 
 Owner request 2026-10-04 (spec §9.10 technique switches): T-178 → T-179. Goldens unchanged (nothing off = same match).
 
 ### [x] T-178: Technique switches in the engine, with use counts
-Spec: §9.10          Goldens: unchanged          Save: no change (`run.techOff` via RUN_DEFAULTS)
+
+Spec: §9.10 Goldens: unchanged Save: no change (`run.techOff` via RUN_DEFAULTS)
 Goal: a match can hold back named techniques per player from the next rally, and counts how each technique did.
 Files: js/engine/skills.js (hasTech), js/engine/match.js (match state: `off`, `techUse`), the technique hook sites found by `hasTech(` in js/engine/serve.js, rally*.js, js/data/skills.js (`trade` field), js/career/run.js (RUN_DEFAULTS `techOff`), js/ui/career-match.js (pass `run.techOff` into the fixture), tests/engine.test.js
 Do not: draw extra randoms (the off check must come before any roll for that technique, never add a roll); change any technique's numbers; invent trade-offs.
 Steps:
+
 1. Match state `off: { [playerId]: Set<techId> }` and `Match.setTechOff(m, pid, id, on)` (applies at the next rally start, like setTactic).
 2. `hasTech(p, id)`: when a match is running (`CM`) and `CM.off[p.id]` has `id` → false. Outside a match unchanged.
 3. `techUse[pid][id] = { n, won, err }`: +n where the technique fires, +won when that rally goes to the player's side, +err when it ends in that player's fault.
 4. SKILLS `trade: { up, down }` short phrases from SKILL_HOW numbers only: killer `{up:'+10% pace', down:'+3% faults'}`; delay `{up:'block can only fingertip it', down:'may hang too long (low jump / wit)'}` (T-180); every other technique `{up:<its short gain>}` with no `down` until the owner adds one.
 5. Career fixtures start with `off[youId] = new Set(run.techOff)`.
-Accept:
+   Accept:
+
 - A seeded match with nothing off = golden result unchanged (tests/golden.json).
 - A seeded match with `killer` off for a serving player: no killer serve fires (techUse n = 0); same seed, killer on: n > 0.
 - techUse counts appear for a 1-set headless match; tests green.
-QA: none
-Result: `knowsTech` / `hasTech` (= knows and not held) / `techHeld` / `techFire` / `setTechOff` in engine/skills.js; `m.off` (from `p.techOff`), `m.techUse`, `m.techRally` (settled in `end()`); fire counts at every technique site (serve, rally-phases, rally-block, rally-defense, rally); `SKILLS.trade` for all 14 (downs: killer, delay). Deviation: the career off-list lives on your player (`you.techOff`, saved with the player) instead of `run.techOff` — newMatch reads it for any fixture, no per-fixture plumbing. New test (killer off → 0 fires; mid-match flip); goldens unchanged; 102 quick tests + lint green.
+  QA: none
+  Result: `knowsTech` / `hasTech` (= knows and not held) / `techHeld` / `techFire` / `setTechOff` in engine/skills.js; `m.off` (from `p.techOff`), `m.techUse`, `m.techRally` (settled in `end()`); fire counts at every technique site (serve, rally-phases, rally-block, rally-defense, rally); `SKILLS.trade` for all 14 (downs: killer, delay). Deviation: the career off-list lives on your player (`you.techOff`, saved with the player) instead of `run.techOff` — newMatch reads it for any fixture, no per-fixture plumbing. New test (killer off → 0 fires; mid-match flip); goldens unchanged; 102 quick tests + lint green.
 
 ### [x] T-179: Technique switches UI (match prep, Tactics tab, result)
-Spec: §9.10 §9.9          Goldens: unchanged          Save: no change
+
+Spec: §9.10 §9.9 Goldens: unchanged Save: no change
 Goal: the player can see each technique's trade-off and this-match record and switch it off or on, before and during the match.
 Files: js/ui/match-screen.js (rail Tactics tab section, control-bar badge, keys T and 1–9, commentary line), js/ui/career-match.js (prep row + peek, Reset, save `run.techOff`), js/ui/match-result.js (`Held back:` line), js/ui/icons.js (pack icons if missing), css/style.css (`.tsw` rows)
 Do not: show passive skills; hide off rows; put the switches anywhere but the right column; use colours outside theme.css.
 Steps:
+
 1. `techRows(m, pid)` → rows per §9.10 (pack icon, name with SKILL_HOW hover, trade chips, `used n · won n`, switch). Exhibition: one group per player of your side(s).
 2. Tactics tab: Techniques section first, then Tactic / Defence. Switch → `Match.setTechOff`, commentary line, re-render; badge `n off` on the bar's Tactics button.
 3. Keys: `T` → railOpen('tac'); with the tab open, `1`–`9` flip rows in order.
 4. Match prep: `Techniques` row `n on · m off ›` → peek with the same rows (no counts) + `Reset`; changes write `run.techOff` and save.
 5. Result screen: `Held back: Killer Jump Serve` under your line when any were off.
-Accept:
+   Accept:
+
 - Career eval with a player owning Killer Jump Serve: prep peek switches it off → in the match the row shows off, badge `1 off`, no killer serves; switch back on mid-match → next rally it can fire.
 - Rows line up (switch column x identical across rows); word budget of the Tactics tab ≤ 60 at 3 techniques.
-QA: career run → match prep peek, match Tactics tab (screenshots on and off), result screen.
-Result: rail Tactics tab opens with Techniques (pack icon, name + SKILL_HOW hover, gain / cost, `used · won · faults`, switch column), one group per player in exhibitions; `Tactics n off T` badge; keys T, 1–9; commentary line on each flip; match prep `Techniques n on · m off ›` peek with Reset; result `Held back:`. QA: Monster game — key 1 holds back Freak Quick, badge `1 off`, log line, no errors; career — prep row `5 on · 1 off`, choice survives save/load. Monster teams own every technique, so their tab is long (~160 rows).
+  QA: career run → match prep peek, match Tactics tab (screenshots on and off), result screen.
+  Result: rail Tactics tab opens with Techniques (pack icon, name + SKILL_HOW hover, gain / cost, `used · won · faults`, switch column), one group per player in exhibitions; `Tactics n off T` badge; keys T, 1–9; commentary line on each flip; match prep `Techniques n on · m off ›` peek with Reset; result `Held back:`. QA: Monster game — key 1 holds back Freak Quick, badge `1 off`, log line, no errors; career — prep row `5 on · 1 off`, choice survives save/load. Monster teams own every technique, so their tab is long (~160 rows).
 
 Owner request 2026-10-04 (spec §10.7a, design system TitleScreen card): T-176 → T-177. UI only; goldens unchanged.
 

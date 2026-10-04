@@ -47,6 +47,7 @@ function renderCareer() {
   if (note && MapModel.known(run, note.id, City.at(run, note.id))) CW.spot = note.id;
   for (const z of chg) (CW.seizes || (CW.seizes = [])).unshift({ ...z, week: run.week }); // an inbox item for a week
   const nextCup = Run.weekType(run) === 'cup' && !run.event ? Cup.upcoming(run) : null; // rules first, then draw
+  if (!Story.step(run) && !CW.lock && !run.event && Story.fire(run, 'hub')) Run.save(run); // a lesson whose moment has come (§10.10a)
   const scene = !!Story.step(run), // a story scene plays: the dialogue box has the screen (spec §10.10)
     card = scene ? null : hubCard(run, nextCup);
   if (CW.railMini == null) CW.railMini = store.get(KEYS.rail) === '1'; // remembered per browser

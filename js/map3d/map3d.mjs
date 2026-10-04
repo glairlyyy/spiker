@@ -229,6 +229,7 @@ export function create(onIdle) {
     gone = 0,
     dead = false,
     avatar = null,
+    guide = null, // the story guide standing by the student flat (model.guide; spec §10.10a)
     furn = null, // pins, labels, flag, decals (pins3d.mjs)
     town = null, // roads, lots, landmarks (town3d.mjs)
     life = null, // figures, battle crowd, frontier patrols (life3d.mjs)
@@ -382,6 +383,7 @@ export function create(onIdle) {
     } else {
       gone = 0;
       avatar.tick(dt, terrain.heightAt);
+      if (guide) guide.tick(dt, terrain.heightAt);
       clock += dt;
       life.tick(dt, clock);
       furn.pulse(clock);
@@ -460,6 +462,12 @@ export function create(onIdle) {
       furn.sync(m, on);
       life.sync(m);
       applyFog(m.fog);
+      if (m.guide && !guide) guide = createAvatar(scene, { kit: m.guide.kit });
+      if (!m.guide && guide) (guide.dispose(), (guide = null));
+      if (guide) {
+        guide.snap(m.guide.at);
+        guide.face(m.guide.face);
+      }
       const at = m.you && m.you.at;
       if (!at || !avatar) return;
       const key = at.join(',');
@@ -494,6 +502,7 @@ export function create(onIdle) {
     dispose() {
       dead = true;
       if (avatar) avatar.dispose();
+      if (guide) guide.dispose();
       if (furn) furn.dispose();
       if (town) town.dispose();
       if (life) life.dispose();

@@ -105,6 +105,12 @@ Grading dogma = what the faction's join conditions and facility conditions mean 
 - **The MC's cohort** [locked shape]: the **rival** and the named aces (**Reina, Ren, Taiga**) are the MC's age (19):
   the next aces. They arrive far stronger than the MC and grow on authored curves; the rival **matches the OP aces by
   the year-1 Cup**. In year 2 this cohort are the island's aces; the MC chases them. Factions of each: **[open]**.
+- **Sanada Kaede — the senior** [locked] (owner, 2026-10-04): the MC's flatmate in the Academy's Student flat, 20, in
+  her last U21 year. Came from the mainland the year before; no faction ever signed her (benched at her first
+  evaluation, nobody called). Knows every gym, every faction's pitch and every way to waste a week; kind under a dry,
+  tired manner; her advice is mostly right and coloured by being passed over. She teaches the MC the first weeks (spec
+  §10.10a), then goes quiet; she ages out after the year-1 U21 Final Cup and leaves the island — the guide is gone
+  when the MC no longer needs one. Teal hair, the Academy hoodie.
 - **The ending** [locked shape]: if the MC wins the year-1 Cup, the rival takes it personally and pushes to their limit
   (a cut-scene; the rival's growth at maximum). The MC is picked for the international team only by
   winning the U21 Cup in year 2 — the true end — the MC, the rival and the aces are picked together for the
@@ -114,7 +120,7 @@ Grading dogma = what the faction's join conditions and facility conditions mean 
 
 Every in-game string has exactly one speaker. Numbers are always true (price, days, stamina, stats once
 experienced); claims, reasons and history may be wrong. Contradictions between voices are intentional.
-No tutorial voice anywhere.
+No tutorial voice anywhere: the first weeks are taught by a person (`senior`), in character.
 
 | id          | Speaker                   | Used for                                            | Bias                                                       |
 | ----------- | ------------------------- | --------------------------------------------------- | ---------------------------------------------------------- |
@@ -126,6 +132,7 @@ No tutorial voice anywhere.
 | `gloria`    | St. Gloria agents         | St. Gloria, foreign offers                          | polished, transactional                                    |
 | `villager`  | natives                   | rare lines, ritual traces                           | reluctant; old-language words, never translated            |
 | `diary`     | the MC                    | diary, reactions, event results                     | spite, sarcasm; sometimes wrong                            |
+| `senior`    | Kaede, the MC's flatmate  | the first weeks' lessons (spec §10.10a)             | passed over; dry, practical, bitter about factions         |
 | `rumor`     | the street                | scouting, "word is" lines                           | unreliable by definition                                   |
 
 ## 8. Old language [open]

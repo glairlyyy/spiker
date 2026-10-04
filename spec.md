@@ -559,6 +559,20 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
     `run.story = {seen, flags}` via RUN_DEFAULTS (no version bump). No randoms; Story mode only (Endless skips).
   - Library: none needed. Ink (inkjs, MIT, on jsDelivr) was considered for branching scripts; not now — the scenes
     are short, and plain JS data keeps saves, flags and tests in our own format. Revisit if scenes grow long.
+- §10.10a The guide: Kaede (owner, 2026-10-04) **[built, T-187–T-188]**. No tutorial voice (lore §7): the first weeks are
+  taught by a person — **Sanada Kaede**, your flatmate in the Student flat (lore §6). Story mode only.
+  - **Meeting**: the intro ends with a normal first meeting at the flat (name, house rules, "last year of U21 for me"),
+    one offer of a tour (`Please.` / `I'll figure it out myself.` → flag `noTour`: no lessons ever), and the one fact
+    she says either way (week 4 is the evaluation; grades decide offers).
+  - **On the map**: her model (the default VRM dressed: teal hair, Academy hoodie) stands by the Student flat's door with
+    her name over her head (`model.guide`), whether or not you still live there; gone when `guideGone` is set (her
+    leaving after the year-1 Cup: later).
+  - **Lessons** = scenes with trigger `{on: 'hub', when, off: 'noTour'}`, each once, at most one a day (never right after
+    another scene), checked on each hub render with no scene, action lock or event open: after your first session —
+    training for what ({role} lives on {key}, gym levels, the Academy Gym, the stamina fail / injury lines); the first
+    week with a street battle — the tile war, joining vs watching; week 2 — the factions, one biased line each; signed
+    or week 6 — payday sums and moving house (Me → Change home); week 5 — her own first evaluation, then she goes quiet.
+    Numbers in her lines are true (§7); her opinions are hers.
 - §10.9 Clubs and People, one list each (owner, 2026-10-03; design system `quiet-ui.md` § One list, cards SheetWorld,
   SheetPeople):
   - **Sign only at the club's HQ.** No Sign / join button in the World sheet, the dossier, the inbox or anywhere else;

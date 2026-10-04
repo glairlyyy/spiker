@@ -985,6 +985,42 @@ test('story: the intro plays on a new Story run, applies its walk, never replays
   );
 });
 
+test('story: Kaede — met in the intro, on the map, lessons once at their moment, none after "figure it out" (T-187, T-188)', () => {
+  const [g, run] = mkRunG(875);
+  let n = 0;
+  while (run.story.cur && n++ < 80) g.Story.next(run, 0);
+  assert(!run.story.cur && run.story.seen.intro, 'intro done');
+  const lines = g.SCENES.intro.steps.filter(s => s.who === 'senior');
+  assert(lines.length >= 5 && /Kaede/.test(lines.map(s => s.text).join(' ')), 'she introduces herself by name');
+  const W = g.Story.who(run, 'senior');
+  assert(W.kind === 'person' && W.name === 'Kaede' && W.person.look, 'a person with a portrait');
+  const M = g.MapModel.build(run);
+  assert(
+    M.guide && Math.hypot(M.guide.at[0] - g.HOME_AT.studio[0], M.guide.at[1] - g.HOME_AT.studio[1]) < 20,
+    'she stands by the student flat'
+  );
+  assert(!g.Story.fire(run, 'hub'), 'no lesson straight after the intro (one scene per day)');
+  run.uses.power = 1;
+  run.dayLog.push({ k: 'train' });
+  assert(g.Story.fire(run, 'hub') && run.story.cur.id === 'tutGym', 'the gym lesson after the first session');
+  assert(
+    /wing spiker lives on Power/.test(g.Story.text(run, g.Story.step(run).text) + g.Story.text(run, g.SCENES.tutGym.steps[1].text)),
+    '{role} / {key} filled in'
+  );
+  g.Story.skip(run);
+  run.dayLog.push({ k: 'rest' });
+  assert(!g.Story.fire(run, 'hub') || run.story.cur.id !== 'tutGym', 'never twice');
+  const [g2, r2] = mkRunG(876);
+  while (r2.story.cur) g2.Story.next(r2, g2.Story.step(r2).k === 'choice' && /figure/.test(JSON.stringify(g2.Story.step(r2).opts)) ? 1 : 0);
+  assert(r2.story.flags.noTour, '"I\'ll figure it out myself" sets noTour');
+  r2.uses.power = 1;
+  r2.week = 6;
+  r2.dayLog.push({ k: 'train' });
+  assert(!g2.Story.fire(r2, 'hub'), 'and no lesson ever fires');
+  const end = g.Run.create(g.Run.draft(), { role: 'WS', name: 'E', mode: { story: false } });
+  assert(!g.MapModel.build(end).guide, 'Endless: no guide on the map');
+});
+
 test("no coach's goal (spec §10.1b, T-170): a run never gets one, through week ends and new weeks", () => {
   const [g, run] = mkRunG(871);
   assert(!('goal' in run) && typeof g.Goals === 'undefined', 'no goal at the start, no Goals module');
