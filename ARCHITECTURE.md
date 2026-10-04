@@ -54,6 +54,27 @@ sheets), `map.css` (island map frame, 3D overlay pins/labels, legend, hex tile l
 rail, day track, place panel; the layout grid `.acts`/`.rowcta`), `people.css` (People sheet), `theme.css` (the surface: colours, borders, shadows; the only `:root` token set). A selector may appear in several files; a property is declared
 in one file only (T-084) — theme.css overrides by being last, so never repeat an earlier file's property there.
 
+## How to add…
+
+Each recipe names the one list to extend; keep the rest as it is (spec + task first, as always).
+
+- **A venue** (§9.11): a `LOOK` entry (`js/render3d/venues/looks.mjs`), a case in `drawFloor` (`venues/floor.mjs`), a set builder
+  `venues/<kind>.mjs` (helpers from `venues/kit.mjs`) and one line in `VENUE_SETS` + `ROWS` (venue3d.mjs). Matches pick it via
+  `fx.venue` or `City.venue(run)` (`matchVenue`, match-screen.js). Presentation only: Math.random, never `R()`.
+- **A place kind on the map** (§10.2): one `[test(id), build(run, id)]` entry in `PANELS` (career-panels.js), its card built with
+  `placeCard`; the map side lives in MapModel / map3d. Anything else falls to `placePanel` (SPOTS places).
+- **A weekly system** (§4.5): a `run => void` step appended to `WEEK_END` or `WEEK_START` (career/run.js). Append, never reorder
+  (draw order → career goldens). Log what happened with `Run.log(run, text, k)`.
+- **A beat act kind**: emit `{ k: 'myAct', … }` from the engine (no draws in presentation), add a method to one of the `ACTS_*`
+  tables (render/acts.js) or a `startBeat` case (playback.js); the act-coverage test (engine.test.js) checks every kind has one.
+- **A career match kind**: a builder in js/career returning a fixture `{ a, b, round, back, rel?, setup?, onFinish(m) → text,
+onLeave }` (see Screens; `onLeave` only cleans up), opened by the UI with `watchCareer(fx)` or resolved by `Cup.simNow(fx)`;
+  log it with `Cup.record`.
+- **A glossary term** (§9.4): one `GLOSSARY` entry (js/data/glossary.js: `short` alias, `glyph`, `icon` = a StatIcon key, `long` text); show it with `term(id, n)`
+  (dom.js) — its long text appears once, in the tooltip and the Encyclopedia.
+- **A save field**: a plain default → one `RUN_DEFAULTS` entry `[make, valid]` (run.js; `Run.repair` fills old saves). A shape change
+  → bump `RUN_VERSION` and add the migration from the previous version (run.js), and say so in the task (Save: bump).
+
 ## Engine flow
 
 ```

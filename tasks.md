@@ -165,14 +165,14 @@ Accept: `grep -o 'style="' js/ui` only custom-property cases; emoji count per fi
 QA: career hub, sheets, a match.
 Result: 41 inline styles → custom properties only: bar fills --w (width: var(--w) on .bar / .sbar / .bbar / .mb / .mp / .mbar4 children), standing bars --l / --w, data-colour text class .tc + --c, growth chart .gline / .gcup / chartkey --c (speed colour → --chart-speed token), debug badges --x / --y, menu .trow.m0. Emoji: 136 → 136 — none are stat / resource icons (the ~85 "emoji" counted earlier are UI glyphs ✕ → ⚙ ★ ⏭ ⚑ ⚔ ✉ ☾ and map-place emoji 🛡 🏟; 🔊 / 🔇 the sound toggle), so nothing to swap for statI. QA: Me / People / World / Season sheets 0.00 % vs HEAD, hub top bar + rail 0.00 % (map = noise), match 0.07 %; no errors.
 
-### [ ] T-211: "How to add X" recipes in ARCHITECTURE.md
+### [x] T-211: "How to add X" recipes in ARCHITECTURE.md
 
 Spec: — Goldens: unchanged Save: no change
 Goal: one short recipe each, naming the files and the one list to extend: a venue (T-205), a place kind (T-206), a week
 step (T-202), a beat act kind (ACTS + test), a career match kind (fixture, T-201), a glossary term, a save field (RUN_VERSION + repair).
 Files: ARCHITECTURE.md
 Accept: each recipe ≤ 6 lines and matches the code.
-Result:
+Result: "How to add…" section before Engine flow: venue, place kind, weekly system, beat act kind, career match kind, glossary term, save field — each ≤ 6 lines, names the list to extend, checked against the code.
 
 ### [ ] T-212: Refresh the design system status page
 
