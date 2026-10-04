@@ -55,7 +55,7 @@ const WORD_REGIONS = [
   ['.hubmodal .hubcard', el => (el.querySelector('.brief') ? 25 : 30)],
   ['.hub .sheet', el => (el.querySelector('.mecols') ? 110 : 60)], // Me sheet 110 (T-162), others 60
   ['.create2', () => 60],
-  ['section.title', () => 15]
+  ['section.title', () => 25] // brand, tagline and the Continue line (T-176)
 ];
 /** Words a player reads in `el`: visible text minus printed hotkeys (<kbd> — key hints) and the ?dev playtest panel. */
 const wordCount = el => {

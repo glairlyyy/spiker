@@ -481,7 +481,7 @@ mood)`.
   while); a weakness revealed by scouting, shown in the match UI.
 - New-run setup + results screens. Hype scene frequency tuning (§2.3). More music, crowd, voice clips. Living map B/C. Endless mode.
 
-## 9. UI guidelines [locked; §9.1–§9.11 built, §10.7a not built]
+## 9. UI guidelines [locked; built]
 
 Source: the design system artifact https://claude.ai/artifact/DWxheHjahb7L4k8GAWbRGq — `project/README.md` (rules),
 `ui-review.md` (findings per screen), `short-copy.md` (glossary + icons), `tokens.json`, component previews (Button,
@@ -566,7 +566,7 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
     3 m of the far side line except the referee stand; low-end devices drop the light cones, shafts and props; light cones and shafts
     fade out within 6–16 m of the camera and in close-ups so no light ever covers the view (owner, 2026-10-04).
 
-## 10. Redesign [built, T-117–T-137, T-159–T-175, T-187–T-188, T-192, T-196; §10.7a not built]
+## 10. Redesign [built, T-117–T-137, T-159–T-177, T-187–T-188, T-192, T-196]
 
 Design system pages `redesign.md` + `inventory.md`, mockups in the _Redesign_ group (HubRedesign, SheetMe, SheetPeople,
 SheetWorld, SheetSeason, WeekBrief, WeekReport, EventCard, MatchResult, TitleScreen, CreateCareer). Supersedes the
@@ -603,7 +603,7 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
 - §10.7 Title screen (Continue hero, New career, Encyclopedia, Settings, **Dev** — owner 2026-10-03: a title-screen tab, always shown, with Monster game, player models,
   Benchmark models, the §10.8 word counter (on/off, remembered per browser) and Debug log; `?dev` opens it with the counter on) and Create (role
   cards with key stat, best training places, techniques; name; challenge toggles; Arrive / Back).
-- §10.7a Title layout = the design system TitleScreen card **[locked, not built: T-176–T-177]** (owner, 2026-10-04). Left column at a 96px inset, top-aligned
+- §10.7a Title layout = the design system TitleScreen card **[built, T-176–T-177]** (owner, 2026-10-04). Left column at a 96px inset, top-aligned
   from 96px: kicker `4V4 VOLLEYBALL RPG` (label style), wordmark `SPITE & SPIKE` on **one line** (Rajdhani 700,
   clamp(56px, 6vw, 80px), letter-spacing .14em), tagline `Nobody believed in you. Good.` visible (body, `mute`); 56px
   below, the menu stack 440px wide, 12px gaps, buttons 52px high, label left-aligned. Continue hero = ink card, `Continue`
@@ -622,7 +622,7 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   numbers over sentences (`7 left`, `W6`); flavour and rumours on the title's hover; long lists show the useful few +
   `+n ›`; details (challenge, housing effects, facility level, faction economy, border target) in a peek; inbox items
   one line each with a peek. Never hidden: costs on buttons, locked gaps, penalties, deadlines, the event card.
-- §10.10 Dialogue box and story scenes **[built: runner, box, intro, hub triggers, guide, week-1 campus — T-173/T-174, T-187/T-188, T-192, T-196; match-result hook not built (T-175)]** (owner, 2026-10-04): the classic RPG **dialogue box** (message
+- §10.10 Dialogue box and story scenes **[built: runner, box, intro, hub triggers, guide, week-1 campus — T-173–T-175, T-187/T-188, T-192, T-196]** (result trigger: the first hub after one of your matches, `when` won / lost, ahead of any lesson — no scene uses it yet) (owner, 2026-10-04): the classic RPG **dialogue box** (message
   window) for story and events — so any scene is data, not code.
   - Box: bottom of the screen over the live map / court, ~1/4 height, full width minus the rail; **name plate** (the
     speaker, lore.md §7 voice; faction colour only on the plate's border), **portrait** on the left (`faceSVG` now,

@@ -35,6 +35,7 @@ function navigate(name, ...args) {
   // leaving a match that is still running: every lineup goes back to how it started (substitutions are per match)
   if (name !== 'match' && typeof A !== 'undefined' && A && A.m && !A.m.over) restoreLineups(A.m);
   G.view = name;
+  if (name !== 'menu' && typeof titleBgOff === 'function') titleBgOff(); // no GPU work for the title backdrop off the title (T-177)
   const out = Screens[name](...args);
   if (name === 'match') bgmStart();
   else bgmStop();

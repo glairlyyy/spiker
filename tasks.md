@@ -24,8 +24,7 @@ Result:
 
 ## State (2026-10-04)
 
-Everything through T-200 is built except T-175 (match-result hook), T-176–T-177 (title layout, 3D backdrop) and T-088
-(LFS question) — 119 tests, RUN_VERSION 17: match engine and 3D playback (skill-scaled mistakes, ego moments, venues,
+Everything through T-200 is built except T-088 (LFS question) — 120 tests, RUN_VERSION 17: match engine and 3D playback (skill-scaled mistakes, ego moments, venues,
 technique switches), career (28 weeks, pools, evaluations, U21 Cup, Story mode with Kaede, the rival and the aces,
 growth, relationships), UI redesign §9–§10, hex territory and economy §4.27, island × 1.5 with the district plan,
 cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git history. A refactor is being planned in
@@ -216,7 +215,7 @@ Steps:
 
 Owner request 2026-10-04 (spec §10.7a, design system TitleScreen card): T-176 → T-177. UI only; goldens unchanged.
 
-### [ ] T-176: Title screen layout as the TitleScreen mockup
+### [x] T-176: Title screen layout as the TitleScreen mockup
 
 Spec: §10.7a Goldens: unchanged Save: no change
 Goal: the title screen matches the design system TitleScreen card: brand top-left on one line with kicker and tagline, the menu stack under it, Dev as a footer link.
@@ -235,9 +234,9 @@ Steps:
 - Without a save: New career is the ink hero. 1280×720: nothing overlaps, no scroll.
 - Word counter (title) ≤ 25.
   QA: screenshots with and without a save at 1440×900 and 1280×720, side by side with the TitleScreen card.
-  Result:
+  Result: one 440px column at x 96 (`.wrap` unpadded on the title), brand = kicker / one-line h1 / tagline, 52px stack, Continue hero `Continue` + `name · role · Week n · club` with Enter at the right, Dev › link bottom-left (panel above it), Settings pop inline under its button. 1440×900: h1 x 96, hero y 287 (not ≈260: the steps' 80px h1 + 56px gap), nothing past x 536 but the wordmark; 1280×720: no overlap, no scroll. Word budget for the title raised 15 → 25 (debug-panel.js); 23 with a save.
 
-### [ ] T-177: 3D court backdrop on the title screen
+### [x] T-177: 3D court backdrop on the title screen
 
 Spec: §10.7a Goldens: unchanged Save: no change
 Goal: the right side of the title screen shows the empty match arena slowly orbiting behind two soft glows.
@@ -255,7 +254,7 @@ Steps:
 - Leaving the title disposes the renderer (no canvas left in the DOM, rAF stopped).
 - Reduced motion → static frame; no errors in the console.
   QA: screenshot at 1440×900; navigate title → hub → title twice, no leaks in the debug log.
-  Result:
+  Result: js/render3d/title3d.mjs (`mountTitle3D` / `unmountTitle3D`): its own renderer (dpr ≤ 1.5, no shadows), buildArena minus the ball, board in --hot / --cyan, camera orbiting 90 s per turn (r 27 m, 11 m up), view offset puts the court right; fades in on the first frame; reduced motion = one frame; WebGL error = CSS glows only. Kept across Settings / Dev re-renders; `navigate` → `titleBgOff`, and the loop stops itself if its element leaves the DOM. QA: title → hub → title ×2: 1 canvas on the title, 0 in the hub, no errors.
 
 Owner request 2026-10-03 (spec §10.9): T-168 → T-169. UI only: no rule or number change; goldens unchanged.
 

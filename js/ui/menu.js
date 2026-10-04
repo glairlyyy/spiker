@@ -5,22 +5,27 @@ const TS = { settings: false, dev: /[?&]dev\b/.test(location.search) }; // title
  * settings defaults), Dev (T-171: playtest and measurement tools). */
 function renderMenu() {
   A = null;
+  const bg = document.querySelector('.title > .tbg'); // the 3D backdrop survives re-renders (Settings, Dev toggles)
   const saved = RUN || Run.load(),
     you = saved && Run.you(saved),
+    club = saved && saved.team != null && saved.teams[saved.team] ? saved.teams[saved.team].name : 'Academy',
     hero = you
-      ? `<button class="tcont" onclick="openCareer()" ${tip(`${ROLE_NAME[you.role]}, ${saved.result ? 'run over: see the result' : saved.week > CAREER.weeks ? 'in the Cup' : `week ${saved.week} of ${CAREER.weeks}`}`)}><span class="lab">${saved.result ? 'Last run' : 'Continue'}</span><b>${esc(you.name)}</b><span class="mute">${you.role} · ${
-          saved.result ? 'result' : saved.week > CAREER.weeks ? 'Cup' : `W${saved.week}`
-        }</span><span class="tgo"><kbd>Enter</kbd></span></button>`
+      ? `<button class="tcont" onclick="openCareer()"><span class="tct"><b>${saved.result ? 'Last run' : 'Continue'}</b><small>${esc(you.name)} · ${ROLE_NAME[you.role]} · ${
+          saved.result ? 'Result' : saved.week > CAREER.weeks ? 'Cup' : `Week ${saved.week}`
+        } · ${esc(club)}</small></span><kbd>Enter</kbd></button>`
       : '';
   $('#app').innerHTML = `<section class="title">
-    <div class="tbrand"><h1 ${tip('4v4 volleyball RPG. Nobody believed in you. Good.')} tabindex="0">Spite &amp; Spike</h1></div>
+    <div class="tbg"></div>
+    <div class="tcol">
+    <div class="tbrand"><div class="lab">4v4 volleyball RPG</div><h1>Spite &amp; Spike</h1><p class="mute">Nobody believed in you. Good.</p></div>
     <div class="tmenu">${hero}
       <button class="btn ${you ? '' : 'hot'} tbig" onclick="CR=null;navigate('create')" ${you && !saved.result ? tip(`Replaces ${you.name}'s run`) : ''}>New career</button>
       <button class="btn tbig" onclick="navigate('encyclopedia')" ${tip('Every technique and who can use it')}>Encyclopedia</button>
       <button class="btn tbig ${TS.settings ? 'on' : ''}" onclick="TS.settings=!TS.settings;renderMenu()" ${tip('Match defaults: hype, cut-ins, graphics, camera, volume')}>Settings</button>
       ${TS.settings ? `<div class="tset setpop"><div class="popb">${settingsMenu()}</div></div>` : ''}
-      <button class="btn tbig ${TS.dev ? 'on' : ''}" onclick="TS.dev=!TS.dev;renderMenu()" aria-expanded="${TS.dev}" ${tip('Playtest and measurement tools')}>Dev</button>
     </div>
+    </div>
+    <button class="btn quiet tdev ${TS.dev ? 'on' : ''}" onclick="TS.dev=!TS.dev;renderMenu()" aria-expanded="${TS.dev}" ${tip('Playtest and measurement tools')}>Dev ›</button>
     ${
       TS.dev
         ? `<div class="panel mdev"><h3>Dev</h3>
@@ -37,6 +42,8 @@ function renderMenu() {
         : ''
     }
   </section>`;
+  if (bg) $('.title > .tbg').replaceWith(bg);
+  else titleBg($('.title > .tbg'));
 }
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.querySelector('.title .tcont') && !e.target.closest('input,select,textarea,button')) openCareer();
@@ -44,6 +51,20 @@ document.addEventListener('keydown', e => {
 function openCareer() {
   RUN = RUN || Run.load();
   navigate(RUN ? 'career' : 'create');
+}
+/** The title backdrop (spec §10.7a, T-177): the empty arena orbiting behind the menu (js/render3d/title3d.mjs), loaded after
+ * the menu is drawn so it never holds it up; WebGL or load errors leave the CSS glows only. */
+let titleMod = null;
+function titleBg(el) {
+  const go = m => el.isConnected && G.view !== 'match' && m.mountTitle3D(el);
+  if (titleMod) return go(titleMod);
+  import(new URL('js/render3d/title3d.mjs', document.baseURI).href)
+    .then(m => go((titleMod = m)))
+    .catch(e => DBG.log('warn', 'Title backdrop could not load', e));
+}
+/** Leaving the title: stop the backdrop's loop and free its GPU memory (navigate). */
+function titleBgOff() {
+  if (titleMod) titleMod.unmountTitle3D();
 }
 /** Monster game: a one-off match between two all-OP teams. */
 function startMonster() {
