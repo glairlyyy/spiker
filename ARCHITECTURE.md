@@ -817,7 +817,7 @@ top bar (`topBar`: labelled resources with one-render deltas, sheet tabs Me · P
 `gearPop`), week rail (`weekRail`: you + stats, `dayTrack` from `run.dayLog` via `weekCells`, `inboxRows`
 over `inboxItems`, End week; folded by «/» or `[` to `railStrip`, a 72px strip with the same reach — `.hub.railmini` sets
 `--rail`, which every layer right of the rail follows; `CW.railMini` is remembered in `KEYS.rail`), the 3D island map
-(`MapView`, see Island map layers; places are found only on the map, no list) with `mapLegend` chips, the place panel (`#spot`, `placeCard` anatomy in career-panels.js) and a card over the map (`hubCard`: event → Week
+(`MapView`, see Island map layers; places are found only on the map, no list), the place panel (`#spot`, `placeCard` anatomy in career-panels.js) and a card over the map (`hubCard`: event → Week
 report → Week brief → cup / eval card).
 
 Sheets open over the map area (rail and top bar stay): `HUB_SHEETS` → `sheetMe` / `sheetSeason` (sheet-me.js / sheet-season.js),

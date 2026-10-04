@@ -1,4 +1,4 @@
-// Skill encyclopedia: every technique, career skill, element, captain level and tactic — with who can use them now.
+// Skill encyclopedia: every technique, career skill, element, captain level and tactic — with who can use them now; the map key and the glossary.
 
 /** The page's sections, in order: [heading id, tab label]. */
 const ENCY_SECS = [
@@ -7,6 +7,7 @@ const ENCY_SECS = [
   ['pk-el', 'Elements'],
   ['pk-lead', 'Captain'],
   ['pk-tac', 'Tactics'],
+  ['pk-map', 'Map key'],
   ['pk-gloss', 'Glossary']
 ];
 let ENCY_IO = null, // marks the section in view; disconnected when the screen changes
@@ -139,6 +140,8 @@ function renderEncyclopedia() {
         )
         .join('')}
     </div>
+    <h3 id="pk-map">Map key${info('Pins and tile colours on the island map.')}</h3>
+    <div class="ency-grid">${mapKey()}</div>
     <h3 id="pk-gloss">Glossary</h3>
     <div class="gloss">${Object.keys(GLOSSARY)
       .map(
@@ -150,3 +153,20 @@ function renderEncyclopedia() {
   encyWatch();
 }
 Screens.encyclopedia = renderEncyclopedia;
+/** The island map's key (was the pill row over the map): pin kinds and the faction colours on the tiles. */
+function mapKey() {
+  const pins = [
+      ['🛡', 'Club HQ', "A club's home: scout it, sign, challenge"],
+      ['🏟', 'Venue', 'Where evaluations and the Cup are played'],
+      ['⚔', 'Street battle', "This week's fight between two factions"]
+    ],
+    regions = Object.keys(REGIONS).filter(r => REGIONS[r].kind !== 'none');
+  return [
+    ...pins.map(
+      ([i, n, d]) => `<div class="ency-card"><div class="ency-hd"><b>${i} ${n}</b><span class="ency-tag">Pin</span></div><p>${d}</p></div>`
+    ),
+    `<div class="ency-card"><div class="ency-hd"><b>Faction colours</b><span class="ency-tag">Tiles</span></div><p>${regions
+      .map(r => `${chip(REGIONS[r])}${esc(REGIONS[r].name)}`)
+      .join(' &nbsp;')}</p></div>`
+  ].join('');
+}

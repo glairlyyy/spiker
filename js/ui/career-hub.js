@@ -54,7 +54,7 @@ function renderCareer() {
   $('#app').innerHTML =
     `<section class="career hub ${City.night(run) ? 'eve' : ''} ${CW.railMini ? 'railmini' : ''} ${scene ? 'cine' : ''}" style="--tc:${team.color}">
     ${topBar(run)}${CW.railMini ? railStrip(run, armed) : weekRail(run, armed)}
-    <div class="mapwrap" id="mapwrap"></div>${mapLegend()}<button class="btn mapme" onclick="MapView.centre()" aria-label="Centre the map on you (C)">◎ Me <kbd>C</kbd></button>
+    <div class="mapwrap" id="mapwrap"></div><button class="btn mapme" onclick="MapView.centre()" aria-label="Centre the map on you (C)">◎ Me <kbd>C</kbd></button>
     <div class="hud spotcard ${CW.spot && !card ? 'open' : ''}" id="spot">${CW.spot && !card ? spotCard(run) : ''}</div>
     ${CW.sheet ? hubSheet(run) : ''}
     ${card ? `<div class="hubmodal ${card.dim ? 'dim' : ''}"><div class="hubcard ${card.cls || ''}">${card.html}</div></div>` : ''}
@@ -443,12 +443,6 @@ function hubKey(e) {
 document.addEventListener('keydown', hubKey);
 
 /** The legend chips at the bottom of the map (places are found on the map only — spec §10.1). */
-function mapLegend() {
-  const regions = Object.keys(REGIONS).filter(r => REGIONS[r].kind !== 'none');
-  return `<div class="maplegend"><span>🛡 Club HQ</span><span>🏟 Venue</span><span>⚔ Street battle</span>${regions
-    .map(r => `<span>${chip(REGIONS[r])}${esc(REGIONS[r].name)}</span>`)
-    .join('')}</div>`;
-}
 
 function hubOpen(k) {
   CW.gear = false;
