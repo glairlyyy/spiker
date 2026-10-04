@@ -205,7 +205,7 @@ export function createFurniture(scene, heightAt) {
     layer,
     /** Bring the overlay and decals up to date with a model; each part is rebuilt only if its data changed. */
     sync(m, on) {
-      if (changed('labels', [m.land.labels, m.land.airport, m.guide])) {
+      if (changed('labels', [m.land.labels, m.land.airport, m.figures])) {
         drop('mlab');
         for (const l of m.land.labels) {
           const e = document.createElement('div');
@@ -218,11 +218,12 @@ export function createFurniture(scene, heightAt) {
         ap.className = 'mlab ap';
         ap.innerHTML = '<i>✈</i>Airport';
         add(ap, m.land.airport, 2, { label: true, dy: 30 }); // below the spot where you arrive
-        if (m.guide) {
-          const g = document.createElement('div'); // the story guide's name over her head
-          g.className = 'mlab';
-          g.textContent = m.guide.name;
-          add(g, m.guide.at, 7.5, { label: true });
+        for (const f of m.figures || []) {
+          const g = document.createElement('div'); // a named person's name over their head (the guide, the rival, the aces)
+          g.className = 'mlab fig';
+          g.style.setProperty('--tc', f.color);
+          g.textContent = f.tag ? `${f.name} · ${f.tag}` : f.name;
+          add(g, f.at, 7.5, { label: true });
         }
       }
       if (changed('pins', [m.pins, m.land.landmarks])) {

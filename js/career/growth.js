@@ -7,6 +7,7 @@ const Growth = {
     const you = Run.you(run);
     People.week(run);
     Rel.week(run); // NPC careers: their plans give the XP (training, matches); the breakthrough rolls below stay random
+    Stars.week(run); // the named follow their authored curves instead (spec §4.29)
     Growth.checkYou(run, you);
     for (const t of run.teams) {
       for (const p of squadOf(t)) if (p !== you) Growth.grow(run, p, t.i === run.team, you);
@@ -22,6 +23,7 @@ const Growth = {
   grow(run, p, mate, you) {
     const bf = 1 + (mate ? you.bond[p.id] || 0 : 0) / GROWTH.bondDiv,
       pot = (p.pot || 1) * (run.mode && run.mode.hard ? 1.15 : 1);
+    if (p.named) return; // the named break through on their curve (Stars.week)
     if (!p.star && R() < GROWTH.star * pot * bf) Growth.awaken(run, p, mate, false);
     else if (p.star && !p.op && R() < GROWTH.op * pot * bf) Growth.awaken(run, p, mate, true);
   },

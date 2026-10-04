@@ -995,10 +995,8 @@ test('story: Kaede — met in the intro, on the map, lessons once at their momen
   const W = g.Story.who(run, 'senior');
   assert(W.kind === 'person' && W.name === 'Kaede' && W.person.look, 'a person with a portrait');
   const M = g.MapModel.build(run);
-  assert(
-    M.guide && Math.hypot(M.guide.at[0] - g.HOME_AT.studio[0], M.guide.at[1] - g.HOME_AT.studio[1]) < 20,
-    'she stands by the student flat'
-  );
+  const K = M.figures.find(f => f.id === 'senior');
+  assert(K && Math.hypot(K.at[0] - g.HOME_AT.studio[0], K.at[1] - g.HOME_AT.studio[1]) < 20, 'she stands by the student flat');
   assert(!g.Story.fire(run, 'hub'), 'no lesson straight after the intro (one scene per day)');
   run.uses.power = 1;
   run.dayLog.push({ k: 'train' });
@@ -1016,9 +1014,50 @@ test('story: Kaede — met in the intro, on the map, lessons once at their momen
   r2.uses.power = 1;
   r2.week = 6;
   r2.dayLog.push({ k: 'train' });
-  assert(!g2.Story.fire(r2, 'hub'), 'and no lesson ever fires');
+  assert(!g2.Story.fire(r2, 'hub') || !r2.story.cur.id.startsWith('tut'), 'and no lesson ever fires (story scenes still do)');
   const end = g.Run.create(g.Run.draft(), { role: 'WS', name: 'E', mode: { story: false } });
-  assert(!g.MapModel.build(end).guide, 'Endless: no guide on the map');
+  assert(!g.MapModel.build(end).figures.some(f => f.id === 'senior'), 'Endless: no guide on the map');
+});
+
+test('stars: the rival, the cohort and the first aces — seated, on curves, never moved, on the map (T-189, T-190)', () => {
+  const [g, run] = mkRunG(877);
+  const S = g.Stars.all(run),
+    by = k => g.Stars.get(run, k);
+  eq(S.length, 7, 'rival + 3 cohort + 3 first aces');
+  eq(by('rival').team, run.teams[0], 'the rival plays for Wei Gold');
+  for (const s of g.STARS.cohort) eq(by(s.key).team, run.teams[s.club], `${s.key} on their club`);
+  for (const [ci, role] of g.STARS.aces.clubs) {
+    const p = by(`ace-${g.FACTIONS[ci].region}`);
+    assert(p && p.team === run.teams[ci] && p.role === role, `the ${g.FACTIONS[ci].region} ace`);
+  }
+  assert(
+    Math.abs(g.ovr(by('rival')) - 76) <= 1 && S.every(p => run.people[p.id].want === 'national'),
+    'week-1 OVR on the curve; all want the national team'
+  );
+  const leagueMax = Math.max(
+    ...run.teams
+      .flatMap(t => g.squadOf(t))
+      .filter(p => !p.named && p !== g.Run.you(run))
+      .map(g.ovr)
+  );
+  assert(g.ovr(by('rival')) > leagueMax, 'the rival starts far above the league');
+  run.week = 28;
+  g.Stars.week(run);
+  assert(Math.abs(g.ovr(by('rival')) - 90) <= 1 && !by('rival').op, 'the rival reaches ~90 by the Cup, not OP');
+  assert(
+    ['ace-wei', 'ace-wu', 'ace-shu'].every(k => by(k).op && g.ovr(by(k)) >= 94),
+    'the first aces peak OP'
+  );
+  for (let i = 0; i < 12; i++) g.World.transfers(run);
+  g.World.promote(run);
+  assert(g.Stars.all(run).length === 7 && g.Stars.all(run).every(p => run.teams[p.team.i] === p.team), 'nobody transfers or demotes them');
+  const F = g.MapModel.build(run).figures;
+  assert(
+    S.every(p => F.some(f => f.id === p.id && Math.hypot(f.at[0] - g.CITY.hq[p.team.i][0], f.at[1] - g.CITY.hq[p.team.i][1]) < 25)),
+    'each drawn by their HQ'
+  );
+  eq(F.find(f => f.id === by('rival').id).tag, 'Rival', 'tagged');
+  eq(g.Story.who(run, 'rival').name, 'Tachibana Sae', 'the rival speaks in scenes');
 });
 
 test("no coach's goal (spec §10.1b, T-170): a run never gets one, through week ends and new weeks", () => {

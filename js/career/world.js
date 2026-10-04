@@ -148,10 +148,10 @@ const World = {
       sellers = T.filter(t => t !== buyer);
     for (let tries = 0; tries < 4; tries++) {
       const s = pick(sellers),
-        cand = squadOf(s).filter(p => p !== you),
+        cand = squadOf(s).filter(p => p !== you && !p.named), // the named never move (spec §4.29)
         star = cand.reduce((a, p) => (!a || ovr(p) > ovr(a) ? p : a), null);
       if (!star) continue;
-      const mine = squadOf(buyer).find(p => p.role === star.role && p !== you);
+      const mine = squadOf(buyer).find(p => p.role === star.role && p !== you && !p.named);
       if (!mine || ovr(mine) >= ovr(star)) continue;
       World.swap(mine, star);
       finalizeTeam(buyer);
@@ -176,7 +176,8 @@ const World = {
         wt = null;
       for (const t of run.teams) {
         if (!FACTIONS[t.i] || FACTIONS[t.i].region !== r) continue;
-        for (const p of squadOf(t)) if (p !== you && p.role === res.role && (!weak || ovr(p) < ovr(weak))) ((weak = p), (wt = t));
+        for (const p of squadOf(t))
+          if (p !== you && !p.named && p.role === res.role && (!weak || ovr(p) < ovr(weak))) ((weak = p), (wt = t));
       }
       if (!weak || ovr(res) < ovr(weak) + PROMOTE.gap) continue;
       World.swap(res, weak);

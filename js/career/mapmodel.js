@@ -456,18 +456,42 @@ const MapModel = {
       focus: City.at(run, 'home'), // where a fresh view centres
       sel,
       life: MapModel.life(run),
-      guide: MapModel.guide(run)
+      figures: MapModel.figures(run)
     };
   },
-  /** The story guide on the map (spec §10.10a): Kaede by the student flat's door, Story mode only (null otherwise). */
-  guide(run) {
-    if (!Story.on(run) || run.story.flags.guideGone) return null;
-    const h = HOME_AT.studio;
-    return {
-      at: [h[0] + 9, h[1] + 7],
-      face: h,
-      name: GUIDE.short,
-      kit: { shirt: GUIDE.team.color, hair: GUIDE.hair, skin: GUIDE.look.skin }
-    };
+  /**
+   * People drawn as full models on the map (spec §10.10a, §4.29): Kaede by the student flat's door (Story mode), and every named
+   * player (the rival, the cohort, the first aces) by their club's HQ. [{ id, at, face, name, tag, color, kit }]; plain data.
+   */
+  figures(run) {
+    const out = [];
+    if (Story.on(run) && !run.story.flags.guideGone) {
+      const h = HOME_AT.studio;
+      out.push({
+        id: GUIDE.id,
+        at: [h[0] + 9, h[1] + 7],
+        face: h,
+        name: GUIDE.short,
+        tag: '',
+        color: REGIONS.open.color,
+        kit: { shirt: GUIDE.team.color, hair: GUIDE.hair, skin: GUIDE.look.skin }
+      });
+    }
+    for (const p of Stars.all(run)) {
+      const hq = CITY.hq[p.team.i];
+      if (!hq) continue;
+      const a = hstr(`fig|${p.id}`) * Math.PI * 2,
+        r = 16 + 6 * hstr(`figr|${p.id}`);
+      out.push({
+        id: p.id,
+        at: [Math.round((hq[0] + Math.cos(a) * r) * 10) / 10, Math.round((hq[1] + Math.sin(a) * r) * 10) / 10],
+        face: hq,
+        name: p.name,
+        tag: p.named === 'rival' ? 'Rival' : p.named === 'cohort' ? 'Next ace' : 'Ace',
+        color: p.team.color,
+        kit: { shirt: p.team.color, hair: p.hair, skin: p.look.skin }
+      });
+    }
+    return out;
   }
 };

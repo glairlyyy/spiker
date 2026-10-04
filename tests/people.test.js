@@ -98,7 +98,8 @@ test.slow('people: calibration — the league grows like the old drift (5 seeds 
       g.Growth.week(run);
       const k = w === 11 ? 'w12' : w === 27 ? 'w28' : null;
       if (!k) continue;
-      const ps = run.teams.flatMap(t => g.squadOf(t)),
+      // the named follow authored curves (spec §4.29), not this growth: left out (this loop never advances run.week)
+      const ps = run.teams.flatMap(t => g.squadOf(t)).filter(p => !p.named),
         o = ps.map(p => g.ovr(p)).sort((a, b) => b - a);
       got[k][0] += o.reduce((a, b) => a + b, 0) / o.length / 5;
       got[k][1] += o.slice(0, 10).reduce((a, b) => a + b, 0) / 10 / 5;
@@ -108,7 +109,8 @@ test.slow('people: calibration — the league grows like the old drift (5 seeds 
   for (const k of ['w12', 'w28']) {
     // T-060 deviation (see its Result): the week-28 league mean lands ~3 below the baseline (training stops at TRAIN_CAP and
     // match XP only reaches the starters and hustlers), so that one band is ±3.5 instead of ±1.5
-    const m = k === 'w28' ? 3.5 : 1.5;
+    // T-189: leaving out the named takes each major's best player (the first aces) out of the mean: ±4 at week 28
+    const m = k === 'w28' ? 4 : 1.5;
     assert(Math.abs(got[k][0] - base[k][0]) <= m, `${k} mean OVR ${got[k][0].toFixed(2)} vs ${base[k][0]}`);
     assert(Math.abs(got[k][1] - base[k][1]) <= 2, `${k} top-10 OVR ${got[k][1].toFixed(2)} vs ${base[k][1]}`);
     assert(Math.abs(got[k][2] - base[k][2]) <= base[k][2] * 0.3, `${k} stars ${got[k][2].toFixed(1)} vs ${base[k][2]}`);
@@ -117,7 +119,9 @@ test.slow('people: calibration — the league grows like the old drift (5 seeds 
 
 // ---- Memories and stance (T-061, spec §4.23 B) ----
 // bond-week baseline on the pre-T-061 code (+7 per training session): average week the first mate reaches bond 60 / 80
-const BOND_BASE = { w60: 6.6, w80: 8.8 }; // rebased in T-132: hex battles shift the random stream (Front.pick ties draw more often)
+// rebased in T-132 (hex battles shift the random stream) and T-189: the named players' curves replace their breakthrough rolls, which
+// shifts the stream (no systematic change: seeds 11–18 average bond 80 at week 8.3 with them vs 8.0 without)
+const BOND_BASE = { w60: 4.8, w80: 4.8 };
 const mkMate = (seed, traits = ['steady', 'proud']) => {
   const [g, run] = mkPeople(seed),
     mate = g.Run.mates(run)[0];
@@ -540,8 +544,8 @@ test('asks: save → load keeps asks, loans, vouch, sitout and duo', () => {
 // ---- Fates (T-064, spec §4.23 A) ----
 const mkFate = seed => {
   const [g, run] = mkPeople(seed),
-    t = run.teams.find(x => g.FACTIONS[x.i] && g.FACTIONS[x.i].join && g.FACTIONS[x.i].join.ovr && x.bench && x.bench.length),
-    p = t.bench[0],
+    t = run.teams.find(x => g.FACTIONS[x.i] && g.FACTIONS[x.i].join && g.FACTIONS[x.i].join.ovr && x.bench && x.bench.some(q => !q.named)),
+    p = t.bench.find(q => !q.named), // (the named never leave: spec §4.29)
     me = run.people[p.id];
   for (const k of g.STATK) p[k] = 20; // under the faction's bar
   return [g, run, t, p, me];

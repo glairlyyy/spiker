@@ -113,6 +113,11 @@ The match screen takes a fixture: `navigate('match', { a, b, round, back, onFini
   `run.story.at` = `Story.clock`). Lines fill `{role}` / `{key}` (`Story.text`); `goto` takes an index or a step `id`. The guide
   (spec §10.10a): `GUIDE` (data/story.js) is a person for the box's portrait (`Story.who('senior')`) and the map (`MapModel.guide`
   → map3d draws a second `createAvatar(scene, { kit })` — the default VRM, dressed — and pins3d its name label).
+- **Named players** (spec §4.29): `career/stars.js` `Stars` seats `STARS` (`data/stars.js`: the rival, the cohort, the first
+  aces) at Run.create (no randoms: fixed data + the clubs' own players), marks them `named` / `nkey` / `curve`, and
+  `Stars.week` (from Growth.week) sets their stats to the authored curve each week. World.transfers / promote and
+  People fates / poach skip `named`; Growth.grow skips their breakthrough roll. `MapModel.figures(run)` lists every person
+  drawn as a full model (Kaede + the named): map3d keeps one `createAvatar(scene, { kit })` per figure id.
 - **Sponsors** (`career/sponsors.js`; the coach's goal was removed in T-170, spec §10.1b): sponsors make offers at fan milestones (a `pre` event shown before the week's choice) with a perk kept while a
   condition holds.
 - **Matches** (`career/cup.js`; street battles, challenges, loss and injury are `Fight` in `career/fight.js`): an S–C grade from your own line scales that match's rewards; a pre-match focus goal;

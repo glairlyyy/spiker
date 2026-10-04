@@ -253,6 +253,20 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     the empty land between towns reads as farmland, scrub or industry. Lots stay ≤ `MapModel.maxLots`.
   - **City life** (display only, life3d, hashes, no randoms): buses on the main roads (airport ↔ Academy ↔ downtown ↔
     harbor), vans harbor → overpass → Wei, fishing boats offshore, a plane on the runway; within the life caps.
+- §4.29 The named players (owner, 2026-10-04; lore §6) **[built, T-189–T-190]**: `STARS` (js/data/stars.js) and `Stars`
+  (js/career/stars.js), new runs only, both modes.
+  - **Seated at the start** (no randoms): the rival (Tachibana Sae, WS, Wei · Gold) and the cohort (Reina MB St. Gloria,
+    Ren S Shu · Peak, Taiga WS Wu · Harbor) replace their club's weakest same-role player; the first aces = the best WS
+    of Wei · Iron, MB of Wu · Fort, S of Shu · Valley (renamed if they share a first name with the cohort).
+  - **Authored curves**, week 1 → week 28 (the year-1 Cup), linear: rival OVR 76 → 90 (wit 1.15 → 1.45: a star, not OP);
+    cohort 70 → 85; first aces 86 → 95 (wit 1.35 → 1.65: OP at the Cup). Stats follow a role shape (key stat highest);
+    star / OP by the career criteria. All want `national`.
+  - **Never moved**: no league transfer, promotion swap, cut, poach or breakthrough roll touches them (Stars.week replaces it).
+  - **On the map**: each drawn as a full model (the default VRM in their club shirt, their hair and skin) by their club's
+    HQ, with a name label: `Name · Rival` / `Next ace` / `Ace` (`model.figures`, with Kaede).
+  - **Story**: Kaede names them in the factions lesson; the rival meets you in week 3 (`rivalMeet`: the 25–4 flash, "Have we
+    played before?", a choice: `No.` / `Twenty-five to four.` → flag `rivalTold`; she doesn't remember; flag `rivalMet`).
+  - Later: year 2 (the cohort as the island's aces, the first aces aged out), the rival's cut-scene after a year-1 Cup loss.
 - §4.20 Match history (Season drawer): every match you were in, newest first — week/day, kind, opponent, score, W/L,
   grade; bench matches "did not play". Snapshot: your OVR, stats, wit at kick-off (+ change since previous), your line
   (kills, attacks, errors, blocks, aces, digs, assists), full box score (name, role, OVR, line). Registrar voice.

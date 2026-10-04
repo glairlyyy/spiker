@@ -97,14 +97,19 @@ Grading dogma = what the faction's join conditions and facility conditions mean 
 - **The match that sent her here** [locked] (owner, 2026-10-04): in her last high-school tournament on the mainland
   the MC's team met the rival's and lost **25–4**; the rival scored most of those points straight off her blocks and
   receives. Scouts filmed it: the tape is why every mainland academy turned her down. The same tournament earned the
-  rival an island faction's offer. **The rival doesn't remember her** — her worst day was an ordinary one for them.
+  rival an island faction's offer. **The rival** [proposed by the spec chat, 2026-10-04 — owner may rename / move]:
+  **Tachibana Sae**, wing spiker, signed by **Wei Dynasty · Gold** (Wei buying the mainland's best for prestige); black
+  hair, red eyes, easy grin. She meets the MC in week 3 and asks "Have we played before?". **The rival doesn't remember her** — her worst day was an ordinary one for them.
   Shown as: the scoreboard in the cold open; a flashback when she first meets the rival; the rival's "Have we played
   before?"; diary call-backs after heavy losses; if she beats the rival in the year-2 Cup, they finally remember.
 - **The first aces** [locked]: one year older (20). **Generic, not unique characters**: they peak as OP at the
   year-1 U21 Final Cup and age out — they come and go fast. Generated per run, one per major.
 - **The MC's cohort** [locked shape]: the **rival** and the named aces (**Reina, Ren, Taiga**) are the MC's age (19):
   the next aces. They arrive far stronger than the MC and grow on authored curves; the rival **matches the OP aces by
-  the year-1 Cup**. In year 2 this cohort are the island's aces; the MC chases them. Factions of each: **[open]**.
+  the year-1 Cup**. In year 2 this cohort are the island's aces; the MC chases them. Factions [proposed by the spec chat,
+  2026-10-04]: **Kisaragi Reina** (middle blocker, St. Gloria — white hair), **Kamiya Ren** (setter, Shu · Peak —
+  glasses), **Oboro Taiga** (wing spiker, Wu · Harbor — red hair). The first aces sit at Wei · Iron (WS), Wu · Fort (MB)
+  and Shu · Valley (S).
 - **Sanada Kaede — the senior** [locked] (owner, 2026-10-04): the MC's flatmate in the Academy's Student flat, 20, in
   her last U21 year. Came from the mainland the year before; no faction ever signed her (benched at her first
   evaluation, nobody called). Knows every gym, every faction's pitch and every way to waste a week; kind under a dry,

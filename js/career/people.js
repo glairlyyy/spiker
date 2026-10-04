@@ -205,7 +205,8 @@ const People = {
       const me = run.people[p.id],
         bar = FACTIONS[t.i] ? World.joinReq(run, t.i).ovr || 0 : 0,
         feud = !!t.cap && t.cap !== p && squadOf(t).includes(t.cap) && Rel.chem(run, t).foe[t.cap.id].has(p.id); // feuding with their captain: one evaluation sooner
-      if (me.status !== 'active' || !run.teams.includes(t) || p === you || me.bench < F.cut - (feud ? 1 : 0) || ovr(p) >= bar) continue;
+      if (me.status !== 'active' || !run.teams.includes(t) || p === you || p.named || me.bench < F.cut - (feud ? 1 : 0) || ovr(p) >= bar)
+        continue;
       const r = FACTIONS[t.i].region,
         q = People.reserveFor(run, p.role, r);
       if (!q || !People.toReserve(run, p, r)) continue;
@@ -245,7 +246,7 @@ const People = {
       for (const p of top) {
         const me = run.people[p.id],
           r = People.roll(run, p.id, `poach|${run.week}`);
-        if (p === you || !['money', 'leave'].includes(me.want) || r >= F.p) continue;
+        if (p === you || p.named || !['money', 'leave'].includes(me.want) || r >= F.p) continue;
         if (!best || r < best.r) best = { p, r, me };
       }
     }

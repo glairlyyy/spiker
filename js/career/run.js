@@ -105,7 +105,9 @@ const Run = {
       story: { seen: {}, flags: {}, cur: null } // story scenes (spec §10.10, js/career/story.js)
     };
     Run.log(run, `${you.name} arrives in the city as a free agent (${ROLE_NAME[role].toLowerCase()}) — find a club that will take you.`);
+    Stars.seat(run); // the rival, the cohort and the first aces (spec §4.29; no randoms)
     People.ensure(run); // every NPC gets a want, traits and a plan slot (spec §4.23 A)
+    for (const p of Stars.all(run)) run.people[p.id].want = 'national'; // the named all want the national team
     City.roll(run); // the island's places: which premium ones are overhyped, which rough ones are gems
     Training.rollFloor(run);
     Run.snap(run);

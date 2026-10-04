@@ -7,6 +7,7 @@ const STORY_WHEN = {
   trained: run => Object.keys(run.uses || {}).some(k => run.uses[k] > 0),
   clash: run => !!Fight.clashSite(run),
   week2: run => run.week >= 2,
+  week3: run => run.week >= 3 && !!Stars.get(run, 'rival'),
   settled: run => run.team != null || run.week >= 6,
   evaluated: run => run.week >= 5
 };
@@ -48,6 +49,8 @@ const Story = {
     if (w === 'diary') return { name: '', kind: 'narration' };
     if (w === 'you') return { name: Run.you(run).name, kind: 'you', person: Run.you(run) };
     if (w === GUIDE.id) return { name: GUIDE.short, kind: 'person', person: GUIDE };
+    const star = Stars.get(run, w); // a named player ('rival', 'reina', …)
+    if (star) return { name: star.name, kind: 'person', person: star };
     if (STORY_VOICES[w]) return { name: STORY_VOICES[w], kind: 'voice' };
     const p = People.find(run, w);
     return p ? { name: p.name, kind: 'person', person: p } : { name: String(w), kind: 'voice' };

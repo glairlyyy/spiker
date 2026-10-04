@@ -127,6 +127,10 @@
   font: 600 12px var(--body);
   letter-spacing: 0;
 }
+.mlab.fig {
+  font: 600 12px var(--body);
+  letter-spacing: 0;
+}
 .mlab.ap i {
   font-style: normal;
   font-size: 20px;

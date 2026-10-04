@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-189** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-191** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,22 @@ evaluations, U21 Cup, Story mode, growth, relationships), UI redesign §9–§10
 
 Owner request 2026-10-04 (map and facility revamp, spec §4.18d–e, §4.19a): T-181 → T-183 built by the spec chat;
 T-184 → T-186 built by the spec chat on the owner's go.
+
+Owner request 2026-10-04 (spec §4.29, lore §6): the rival and the aces, drawn on the map. Built by the spec chat.
+
+### [x] T-189: The named players — seated, authored curves, never moved
+
+Spec: §4.29 Goldens: unchanged Save: no change (new runs only)
+Goal: the rival, the cohort and the first aces exist in their clubs and grow on their curves.
+Files: js/data/stars.js (new), js/career/stars.js (new), index.html, js/career/run.js, js/career/growth.js, js/career/world.js, js/career/people.js, tests/career.test.js, tests/people.test.js
+Result: 7 named; rival 76 → 90 (★, not OP), cohort 70 → 85, first aces 86 → 95 (OP). Calibrations: league growth leaves the named out (w28 mean band ±4); bond baseline rebased (stream shift only — seeds 11–18 average 8.3 vs 8.0 without).
+
+### [x] T-190: The named on the map; the rival's first meeting
+
+Spec: §4.29 §10.10a Goldens: unchanged Save: no change
+Goal: the rival and the aces stand as full models by their HQs, named; Kaede names them; the rival meets you in week 3.
+Files: js/career/mapmodel.js (`figures` replaces `guide`), js/map3d/map3d.mjs (one avatar per figure), js/map3d/pins3d.mjs (labels), css/map.css (`.mlab.fig`), js/data/story.js (`rivalMeet`, cohort lines), js/career/story.js (`week3`, named speakers), tests/career.test.js
+Result: 8 figures (Kaede + 7) as dressed default VRMs; labels `Name · Rival / Next ace / Ace` in the club colour. QA: screenshots of the rival scene and the map by Wei Gold.
 
 Owner request 2026-10-04 (spec §10.10a, lore §6–§7): the guide Kaede. Built by the spec chat.
 
