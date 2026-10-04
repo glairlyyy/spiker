@@ -1,5 +1,5 @@
 // Career week: the hub UI state (CW), End week and the Week report, the event card, Abandon run. Sheets live in
-// career-sheets.js, match cards in career-match.js, the World sheet's cards in career-dossier.js.
+// sheet-me.js / sheet-season.js, match cards in career-match.js, the World sheet's cards in career-dossier.js.
 
 /** Hub UI state: Hard toggle, selected place, open sheet and its tabs, cards, the Week report baseline. */
 let CW = {

@@ -36,7 +36,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   `city.js`, `front.js`, `mapmodel.js`, `dossier.js`, `events.js`, `sponsors.js`, `skills.js`, `rank.js`, `cup.js`, `fight.js`.
 - **portraits** `js/render/faces.js` `faceSVG(p, mood, size)` returns a cached 3D portrait `<img>` (PORTRAIT: look key → data URL) or the drawn face (`faceSVG2D`) as a placeholder that is swapped in place when `js/render3d/portrait3d.mjs` (lazy-loaded; one offscreen renderer, the default model re-dressed in hair / skin / team shirt, Main_v2 for you) finishes it.
 - **ui** `dom.js` (esc, tip, info, fold, kv — the vertical label/value list of spec §10.1a, peek — the L2 detail card of §10.8: `CW.peek` holds the open id, `peekSync` (MutationObserver on #app) ports the open card to <body> beside its owner panel…), `icons.js`, `match-screen.js`, `match-result.js` (result card, finishMatch, cut-ins / toasts), `models.js`, `menu.js`,
-  `debug-panel.js` (Debug log; `?dev` word counter per region vs the §10.8 budgets), `career-create.js`, `career-week.js` (CW state, End week, Week report, events), `career-sheets.js` (Me / Season sheets),
+  `debug-panel.js` (Debug log; `?dev` word counter per region vs the §10.8 budgets), `career-create.js`, `career-week.js` (CW state, End week, Week report, events), `sheet-me.js` / `sheet-season.js` (the Me / Season sheets),
   `career-match.js` (match prep, eval / Cup cards, result data, playCareer, watchCareer), `map-view.js`, `career-panels.js` (place
   panels: `placeCard` anatomy, `PANELS` by kind → hq / clash / venue / map point, else `placePanel`), `career-map.js` (mount, pick, actions, walk lock), `career-dossier.js`,
   `career-people.js`, `career-hub.js`, `career-end.js`, `encyclopedia.js`.
@@ -784,7 +784,7 @@ over `inboxItems`, End week; folded by «/» or `[` to `railStrip`, a 72px strip
 (`MapView`, see Island map layers; places are found only on the map, no list) with `mapLegend` chips, the place panel (`#spot`, `placeCard` anatomy in career-panels.js) and a card over the map (`hubCard`: event → Week
 report → Week brief → cup / eval card).
 
-Sheets open over the map area (rail and top bar stay): `HUB_SHEETS` → `sheetMe` / `sheetSeason` (career-sheets.js),
+Sheets open over the map area (rail and top bar stay): `HUB_SHEETS` → `sheetMe` / `sheetSeason` (sheet-me.js / sheet-season.js),
 `sheetPeople` (career-people.js), `sheetWorld` (career-dossier.js; the dossier renders in place on its Factions tab).
 People is one list (spec §10.9: waiting → favourites → squad → bench → others → gone, markers 🛡 / ⚔ / ★ after the name;
 `Chemistry ›` peek in its header); `run.fav` (RUN_DEFAULTS, ids as strings, display only) holds the stars (`toggleFav`).
@@ -882,7 +882,7 @@ Pure refactors must pass **without** `--update`.
 it is called at the start of `Cup.result` (kind `eval` | `cup`, + `round`), `Fight.challengeResult` (`challenge`, + `stake`) and `Fight.clashResult` (`street`), i.e. before
 `Growth.matchXp`, so `you` (OVR + the 5 stats) is the kick-off state. Entry: `{ week, day, kind, vs, short, score: [yours, theirs], win, grade (null if you did not play),
 played, you, line: { k, att, err, blk, ace, dig, ast }, box: [{ name, role, side, ovr, k, att, err, blk, ace, dig, ast, you? }] }` — numbers and strings only, no player or team
-refs. `matchLog(run)` (career-sheets.js) lists them newest first, each a `fold` (`ml<index>`) with your snapshot (change vs your previous entry), your line and the box score;
+refs. `matchLog(run)` (sheet-season.js) lists them newest first, each a `fold` (`ml<index>`) with your snapshot (change vs your previous entry), your line and the box score;
 the Season sheet shows it (`sheetSeason`). `Run.repair` adds `mlog` to older saves of the same version (RUN_DEFAULTS).
 
 ### Start from 1 (T-055)

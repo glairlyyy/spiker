@@ -120,7 +120,7 @@ Accept: lint + tests pass; each panel renders the same HTML (string compare in a
 QA: career run → open a gym, an HQ, the clash, a venue, a map point.
 Result: js/ui/career-panels.js (new, before career-map.js): placeCard … hqPanel; spotPanel = PANELS [test, build] list, else placePanel (the SPOTS body). career-map.js 581 → 222 lines (mount, pick, actions, walk lock). QA: seeded new run — spotPanel HTML for all 40 ids and the four sheets identical to HEAD (3D-portrait placeholders normalised); no page errors.
 
-### [ ] T-207: Me and Season sheets in their own files
+### [x] T-207: Me and Season sheets in their own files
 
 Spec: §10.4 Goldens: unchanged Save: no change
 Goal: one file per sheet, like People and World.
@@ -128,7 +128,7 @@ Files: js/ui/career-sheets.js → js/ui/sheet-me.js + js/ui/sheet-season.js (new
 Do not: rename functions.
 Accept: lint + tests pass; both sheets open (QA).
 QA: career run → Me, Season.
-Result:
+Result: career-sheets.js → sheet-me.js (sheetMe, elementLine, seePhysio, learnSkill, homeRow, setHousing) + sheet-season.js (seasonCard, leaveSquad — also used by People —, calendar, matchLog, sheetSeason, diaryList). QA: Me / People / World / Season sheet HTML identical to HEAD; no errors.
 
 ### [ ] T-208: match-screen.js by job
 
