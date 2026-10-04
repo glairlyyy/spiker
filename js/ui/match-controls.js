@@ -242,7 +242,9 @@ function board(s) {
       z = $('#zone');
     if (z && zt) {
       z.classList.toggle('on', zs.length > 0);
-      z.innerHTML = zs.length ? `In the zone: ${zs.map(i => `<b style="color:${zt[i].color}">${esc(zt[i].short)}</b>`).join(' ')}` : '';
+      z.innerHTML = zs.length
+        ? `In the zone: ${zs.map(i => `<b class="tc" style="--c:${zt[i].color}">${esc(zt[i].short)}</b>`).join(' ')}`
+        : '';
     }
     if (A) {
       A.moodShown = s.mood;
@@ -303,7 +305,7 @@ function boxScore() {
         )
           .map(p => {
             const s = m.stat[p.id] || blank();
-            return `<tr><td>${stag(p)}${esc(p.name)}${p.cap ? ' <span class="capb">C</span>' : ''} <i>${p.role}</i></td><td>${ovr(p)}</td><td>${s.k}</td><td>${s.blk}</td><td>${s.ace}</td><td>${s.dig}</td><td>${s.err}</td><td>${s.top || '–'}</td><td>${faceSVG(p, (A.moodShown || m.mood)[p.id] || 0, 24)}</td><td><span class="sbar"><i style="width:${Math.round(((A.staShown || m.sta)[p.id] ?? 1) * 100)}%"></i></span></td></tr>`;
+            return `<tr><td>${stag(p)}${esc(p.name)}${p.cap ? ' <span class="capb">C</span>' : ''} <i>${p.role}</i></td><td>${ovr(p)}</td><td>${s.k}</td><td>${s.blk}</td><td>${s.ace}</td><td>${s.dig}</td><td>${s.err}</td><td>${s.top || '–'}</td><td>${faceSVG(p, (A.moodShown || m.mood)[p.id] || 0, 24)}</td><td><span class="sbar"><i style="--w:${Math.round(((A.staShown || m.sta)[p.id] ?? 1) * 100)}%"></i></span></td></tr>`;
           })
           .join('')}</tbody></table>`
     )

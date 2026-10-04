@@ -124,6 +124,7 @@
 }
 .bbar i {
   display: block;
+  width: var(--w);
   height: 100%;
   background: var(--cyan);
 }
@@ -180,6 +181,9 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
+}
+.trow.m0 {
+  margin: 0;
 }
 .trow .btn small {
   display: block;
@@ -421,6 +425,13 @@
   height: auto;
   color: var(--ink);
 }
+.growth .gline {
+  stroke: var(--c);
+}
+.growth .gcup {
+  stroke: var(--hot);
+  fill: var(--hot);
+}
 .chartkey {
   display: flex;
   flex-wrap: wrap;
@@ -428,6 +439,7 @@
 }
 .chartkey i {
   display: inline-block;
+  background: var(--c);
   width: 12px;
   height: 3px;
   margin-right: 5px;
@@ -622,6 +634,8 @@
 .facs .rbar i,
 .dossier .rbar i {
   position: absolute;
+  left: var(--l);
+  width: var(--w);
   top: 0;
   bottom: 0;
   border-radius: 3px;
@@ -1282,6 +1296,7 @@
 .hub .sheet .mb > i,
 .hub .sheet .mp > i {
   display: block;
+  width: var(--w);
   height: 100%;
   background: var(--cyan);
 }
@@ -1781,4 +1796,8 @@
 }
 .btn .term .si {
   vertical-align: -3px;
+}
+/* text in a data colour (element, team): style="--c:…" */
+.tc {
+  color: var(--c);
 }

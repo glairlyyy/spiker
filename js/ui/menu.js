@@ -29,7 +29,7 @@ function renderMenu() {
     ${
       TS.dev
         ? `<div class="panel mdev"><h3>Dev</h3>
-      <span class="trow" style="margin:0"><button class="btn" onclick="startMonster()" ${tip('A one-off 3D match between two all-OP teams: elements, hype scenes and blocks fire often')}>Monster game</button>
+      <span class="trow m0"><button class="btn" onclick="startMonster()" ${tip('A one-off 3D match between two all-OP teams: elements, hype scenes and blocks fire often')}>Monster game</button>
         <button class="btn" onclick="startAverage()" ${tip('A one-off 3D match between two teams of ordinary players: every player rolled at overall 30–60')}>Average game</button>
         <button class="btn" onclick="startEgoist()" ${tip('A one-off 3D match between two all-OP teams of pure egoists: negative wit (never lowers their stats), ego 1 — steals and demanded sets in slow motion')}>Egoist game</button>
         <label class="btn" ${tip('Load a .vrm from your computer. It stays in this browser (never uploaded); in the Monster game every player picks a random model among the base one and the loaded ones (career: your player is always Main_v2).')}>+ Player model<input type="file" accept=".vrm,.glb" hidden onchange="addModelFile(this)"></label>

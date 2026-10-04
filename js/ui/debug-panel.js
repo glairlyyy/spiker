@@ -75,7 +75,7 @@ function wordBadges() {
         n = wordCount(el),
         b = budget(el);
       return r.width
-        ? `<span class="wcb ${b && n > b ? 'wover' : ''}" style="left:${Math.round(r.left + 4)}px;top:${Math.round(r.top + 4)}px">${n}${b ? `/${b}` : ''}</span>`
+        ? `<span class="wcb ${b && n > b ? 'wover' : ''}" style="--x:${Math.round(r.left + 4)}px;--y:${Math.round(r.top + 4)}px">${n}${b ? `/${b}` : ''}</span>`
         : '';
     })
   ).join('');

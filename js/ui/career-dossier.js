@@ -52,7 +52,7 @@ function dossierCard(run, r) {
   }<div class="dros small">${d.roster
     .map(
       p =>
-        `<span><b><a class="plink" onclick="CW.dossier=null;openPerson('${esc(String(p.id))}')">${esc(p.name)}</a></b> <i class="mute">${p.role}</i> <span class="mute">${esc(p.squad)}</span> ${p.ovr == null ? '<i class="mute">unknown</i>' : `<b>${p.ovr}</b>${p.el ? ` <b style="color:${ECOL[p.el]}">${ENAME[p.el]}</b>` : ''}${p.techs && p.techs.length ? ` <span class="mute">· ${esc(p.techs.join(', '))}</span>` : ''}`}</span>`
+        `<span><b><a class="plink" onclick="CW.dossier=null;openPerson('${esc(String(p.id))}')">${esc(p.name)}</a></b> <i class="mute">${p.role}</i> <span class="mute">${esc(p.squad)}</span> ${p.ovr == null ? '<i class="mute">unknown</i>' : `<b>${p.ovr}</b>${p.el ? ` <b class="tc" style="--c:${ECOL[p.el]}">${ENAME[p.el]}</b>` : ''}${p.techs && p.techs.length ? ` <span class="mute">· ${esc(p.techs.join(', '))}</span>` : ''}`}</span>`
     )
     .join('')}</div>`;
   return `<aside class="panel dossier" style="--tc:${d.color}">
@@ -60,7 +60,7 @@ function dossierCard(run, r) {
     <h3><span class="chip" style="--tc:${d.color}"></span>${esc(d.name)} <span class="mute small">${d.kind}</span> <span class="stk ${d.state === 'weakened' || d.state === 'pressed' ? 'far' : ''}">${DOSSIER_STATE[d.state]}</span></h3>
     <p class="small mute">${esc(d.desc)}</p>
     <div class="small">${term('standing', v)}${d.member ? ' · <i>you play for them</i>' : ''}</div>
-    <div class="rbar" ${tip(GLOSSARY.standing.long)}><i style="${v >= 0 ? `left:50%;width:${v / 2}%` : `left:${50 + v / 2}%;width:${-v / 2}%`}"></i></div>
+    <div class="rbar" ${tip(GLOSSARY.standing.long)}><i style="${v >= 0 ? `--l:50%;--w:${v / 2}%` : `--l:${50 + v / 2}%;--w:${-v / 2}%`}"></i></div>
     ${fronts}${places}${clubs}${roster}
   </aside>`;
 }
@@ -193,7 +193,7 @@ function factionsCard(run) {
     ]);
   };
   const stBar = v =>
-    `<div class="rbar" ${tip(`Standing ${fmtDelta(v)}. ${GLOSSARY.standing.long}`)}><i style="${v >= 0 ? `left:50%;width:${v / 2}%` : `left:${50 + v / 2}%;width:${-v / 2}%`}"></i></div>`;
+    `<div class="rbar" ${tip(`Standing ${fmtDelta(v)}. ${GLOSSARY.standing.long}`)}><i style="${v >= 0 ? `--l:50%;--w:${v / 2}%` : `--l:${50 + v / 2}%;--w:${-v / 2}%`}"></i></div>`;
   const row = r => {
     const F = Dossier.summary(run, r),
       v = F.standing,

@@ -441,6 +441,7 @@
 }
 .hub .mbar4 > i {
   display: block;
+  width: var(--w);
   height: 100%;
   background: var(--cyan);
 }
@@ -830,6 +831,8 @@
 /* ?dev word counter (T-159) */
 #wcnt .wcb {
   position: fixed;
+  left: var(--x);
+  top: var(--y);
   z-index: 1001;
   padding: 1px 6px;
   border-radius: 999px;

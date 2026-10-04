@@ -59,7 +59,7 @@ function resultScreen(m, wt, hi, lo, stars, res) {
       ? `<div class="lab">Growth</div>${res.growth
           .map(
             g =>
-              `<div class="rgrow"><span>${esc(g.name)}</span><b>${g.k === 'wit' ? g.to.toFixed(2) : g.to}</b><span class="good small">${g.to !== g.from ? (g.k === 'wit' ? '+' + (g.to - g.from).toFixed(2) : '+' + (g.to - g.from)) : ''}</span><i class="bar"><i style="width:${Math.min(100, Math.round((100 * g.have) / (g.need || 1)))}%"></i></i></div>`
+              `<div class="rgrow"><span>${esc(g.name)}</span><b>${g.k === 'wit' ? g.to.toFixed(2) : g.to}</b><span class="good small">${g.to !== g.from ? (g.k === 'wit' ? '+' + (g.to - g.from).toFixed(2) : '+' + (g.to - g.from)) : ''}</span><i class="bar"><i style="--w:${Math.min(100, Math.round((100 * g.have) / (g.need || 1)))}%"></i></i></div>`
           )
           .join('')}`
       : '',

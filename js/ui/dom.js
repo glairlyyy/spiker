@@ -13,7 +13,7 @@ function chip(t) {
 }
 /** Stat bar 0–99, coloured by tier (70+ cyan, 85+ hot). */
 function bar(v) {
-  return `<span class="bar"><i style="width:${v}%;--bc:${v >= 85 ? 'var(--hot)' : v >= 70 ? 'var(--cyan)' : 'var(--mute)'}"></i><b>${v}</b></span>`;
+  return `<span class="bar"><i style="--w:${v}%;--bc:${v >= 85 ? 'var(--hot)' : v >= 70 ? 'var(--cyan)' : 'var(--mute)'}"></i><b>${v}</b></span>`;
 }
 /** One-line summary of a player's tournament stats. */
 function line(s) {

@@ -154,7 +154,7 @@ and match screenshots pixel-diff < 1 %.
 QA: career hub, Me sheet, a match.
 Result: 67 hex → 22 new theme.css tokens at the same values (no visible change): --white; court art --court-ink / -yellow / -blue / -glow / -red / -red-deep / -navy / -night; --stamina-mid, --rank-s0 / -s1, --el-locked, --outlaws, --gold-hi, --note-sea, --meter-mid, --day-dot, --sea, --clash-fill, --parchment, --parchment-shade. Hex outside theme.css: 0; the 'no token' notes dropped. Match sizes clamp(11px…) / clamp(10px…) → 12px floor. Screens vs HEAD: hub / four sheets 0.00 %, match 0.10 % (animation noise).
 
-### [ ] T-210: Inline styles and emoji icons out of js/ui
+### [x] T-210: Inline styles and emoji icons out of js/ui
 
 Spec: §9.2 §9.5 Goldens: unchanged Save: no change
 Goal: 41 `style="…"` → classes (only CSS custom properties like `--tc` / `--a` stay inline); emoji used as stat / resource
@@ -163,7 +163,7 @@ Files: js/ui/*.js (only the lines found), js/ui/icons.js (missing icons), css/hu
 Do not: change copy; add a second icon helper.
 Accept: `grep -o 'style="' js/ui` only custom-property cases; emoji count per file in the Result (before → after).
 QA: career hub, sheets, a match.
-Result:
+Result: 41 inline styles → custom properties only: bar fills --w (width: var(--w) on .bar / .sbar / .bbar / .mb / .mp / .mbar4 children), standing bars --l / --w, data-colour text class .tc + --c, growth chart .gline / .gcup / chartkey --c (speed colour → --chart-speed token), debug badges --x / --y, menu .trow.m0. Emoji: 136 → 136 — none are stat / resource icons (the ~85 "emoji" counted earlier are UI glyphs ✕ → ⚙ ★ ⏭ ⚑ ⚔ ✉ ☾ and map-place emoji 🛡 🏟; 🔊 / 🔇 the sound toggle), so nothing to swap for statI. QA: Me / People / World / Season sheets 0.00 % vs HEAD, hub top bar + rail 0.00 % (map = noise), match 0.07 %; no errors.
 
 ### [ ] T-211: "How to add X" recipes in ARCHITECTURE.md
 

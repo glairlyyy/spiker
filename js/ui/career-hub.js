@@ -171,7 +171,7 @@ function topBar(real) {
       ${cell('Money', `$${run.money.toLocaleString()}${d('money')}`, 'Money', 'money')}
       ${cell('Fans', `${run.fans.toLocaleString()}${d('fans')}`, 'Fans', 'fans')}
       ${cell('Skill pts', `${run.sp}${d('sp')}`, 'Skill points', 'sp')}
-      ${cell('Stamina', `<span class="sbar ${staPct < 50 ? 'low' : ''}"><i style="width:${staPct}%"></i></span><span class="${staPct < 50 ? 'warn' : ''}">${run.sta}</span>${d('sta')}`, `Stamina ${run.sta}/${run.staMax}`, 'sta')}
+      ${cell('Stamina', `<span class="sbar ${staPct < 50 ? 'low' : ''}"><i style="--w:${staPct}%"></i></span><span class="${staPct < 50 ? 'warn' : ''}">${run.sta}</span>${d('sta')}`, `Stamina ${run.sta}/${run.staMax}`, 'sta')}
       ${cell('Mood', `<span class="mood m${run.mood}">${mood.name}</span>${d('mood')}`, 'Mood', 'mood')}
     </div>
     <nav class="ttabs" aria-label="Sheets">${HUB_TABS.map(
@@ -196,7 +196,7 @@ function weekRail(run, armed) {
       <button class="btn wfold" onclick="railToggle()" aria-label="Collapse the week rail ([)">« <kbd>[</kbd></button></div>
     <div class="wstats">${STATK.map(k => {
       const v = (lockShown(run).st || you)[k];
-      return `<span ${tip(`${STATNAME[k]}: ${GLOSSARY[k].long}`)} aria-label="${STATNAME[k]} ${v}"><b>${statI(statKey(k), 16)}${v}</b><i class="mbar4"><i style="width:${Math.min(100, v)}%"></i></i></span>`;
+      return `<span ${tip(`${STATNAME[k]}: ${GLOSSARY[k].long}`)} aria-label="${STATNAME[k]} ${v}"><b>${statI(statKey(k), 16)}${v}</b><i class="mbar4"><i style="--w:${Math.min(100, v)}%"></i></i></span>`;
     }).join('')}</div>
     ${weekSection(run)}
     <section class="winbox" aria-label="Inbox">${inboxRows(run)}</section>
