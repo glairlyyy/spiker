@@ -216,6 +216,8 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   - **Academy Gym** (`acaGym`, ring tile toward Shu): a fixed **Lv 1** facility (never levels up) whose session gives a
     little EXP to every stat (Power, Defense, Speed, Jump 2 each, Wit 0.025; 15 stamina) — the free-agent's all-round
     option, worse than any specialised gym for its stat. Teammates never drill there (not in TRAINK).
+  - **Roads** (owner, 2026-10-04, T-191): one avenue — airport → the south gate (jAc2) → the campus → the north gate
+    (jAc1) → Wei (jWp); no loop past the campus. From the airport the Wei gyms are 1 day, the dunes 2 (trail → dunes 3).
 - §4.19 Town layout (crowded; lore.md §3–§5); buildings fill districts (area + style + density), ~700 total (owner, 2026-10-03: thinner and lower — `MapModel.thin` 0.65, tallest towers ~half as high) (Wei
   ~330, Wu ~210, Shu ~85, Outlaws ~40, Academy ~95 (seven tiles, §4.18e), Gloria ~18):
   - **Wei**: _Downtown_ (Wei Gold HQ, league office; tower grid, densest); _Old Town_ (north-coast pocket by the

@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-191** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-192** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,10 @@ evaluations, U21 Cup, Story mode, growth, relationships), UI redesign §9–§10
 
 Owner request 2026-10-04 (map and facility revamp, spec §4.18d–e, §4.19a): T-181 → T-183 built by the spec chat;
 T-184 → T-186 built by the spec chat on the owner's go.
+
+### [x] T-191: Academy routing (owner request)
+
+Result: the airport road ran past the campus to a junction north of it and back (a detour, parallel to the avenue to Wei); now airport → jAc2 → park → jAc1 (moved onto the avenue) → jWp. Trips from the airport: Wei gyms 2 → 1 day, dunes 3 → 2 (test: trail → dunes is the 3-day trip). Files: js/data/city.js, tests/map.test.js.
 
 Owner request 2026-10-04 (spec §4.29, lore §6): the rival and the aces, drawn on the map. Built by the spec chat.
 

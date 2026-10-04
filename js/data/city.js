@@ -354,7 +354,7 @@ const ROADS = {
     acaGym: [490, 460],
     'home:studio': [484, 532],
     'venue:hall': [580, 510],
-    jAc1: [575, 415],
+    jAc1: [569.3, 433.3], // the Academy's north gate, on the avenue to Wei
     jAc2: [505, 555],
     // Wei: avenues and the grid; the four gyms stand together in the training district round jW1 (owner, 2026-10-03)
     weiPower: [655, 315],
@@ -432,10 +432,11 @@ const ROADS = {
     ['home:dorm', 'hq1', 'main'],
     ['hq1', 'jWp', 'main'],
     // Central Academy roads
+    // airport → the south gate (jAc2) → the campus → the north gate (jAc1) → Wei
     ['airport', 'jAc2', 'main'],
-    ['jAc2', 'jAc1', 'main'],
-    ['jAc1', 'park', 'main'],
-    ['park', 'jWp', 'main'],
+    ['jAc2', 'park', 'main'],
+    ['park', 'jAc1', 'main'],
+    ['jAc1', 'jWp', 'main'],
     ['park', 'stone', 'main'],
     ['park', 'venue:hall', 'main'],
     ['jAc2', 'home:studio', 'street'],
@@ -772,7 +773,7 @@ const GROUND = [
 const TRAFFIC = {
   lines: [
     // buses: the airport ↔ Academy ↔ downtown line, and the coast line from the Ring to the harbor
-    { id: 'bus-academy', kind: 'bus', n: 2, speed: 6, nodes: ['airport', 'jAc2', 'jAc1', 'park', 'jWp', 'arcade', 'hq0', 'venue:arena'] },
+    { id: 'bus-academy', kind: 'bus', n: 2, speed: 6, nodes: ['airport', 'jAc2', 'park', 'jAc1', 'jWp', 'arcade', 'hq0', 'venue:arena'] },
     { id: 'bus-coast', kind: 'bus', n: 2, speed: 6, nodes: ['hq1', 'home:dorm', 'hq3', 'hotelWu', 'jWu1', 'jWu2', 'harbor', 'hq2'] },
     // vans: the harbor's goods over the overpass into Wei; the North works' run downtown
     { id: 'van-overpass', kind: 'van', n: 3, speed: 8, nodes: ['harbor', 'jWu2', 'jO2', 'jO1', 'jW2', 'jWs', 'jW1', 'jWp'] },

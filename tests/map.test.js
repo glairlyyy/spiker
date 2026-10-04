@@ -457,7 +457,11 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   eq(g.City.trip(run, g.City.at(run, 'pier')), 0, 'the pier is by the airport');
   eq(g.City.trip(run, g.City.at(run, 'sand')), 2, 'the sand courts are down the coast (Wu spreads thin)');
   eq(g.City.trip(run, g.City.at(run, 'harbor')), 2, 'the far east coast: the coast road makes it 2 days (T-048)');
-  eq(g.City.trip(run, g.City.at(run, 'dunes')), g.TRIP_MAX, 'the dunes past the harbor: the longest trip');
+  eq(g.City.trip(run, g.City.at(run, 'dunes')), 2, 'the dunes past the harbor: 2 days by the Academy avenue and the overpass');
+  const at0 = run.pos;
+  run.pos = g.SPOTS.trail.at;
+  eq(g.City.trip(run, g.City.at(run, 'dunes')), g.TRIP_MAX, 'the mountain trail to the dunes: the longest trip');
+  run.pos = at0;
   eq(g.City.trip(run, [2000, 2000]), g.TRIP_MAX, 'never more than 3 days');
   const m0 = run.money,
     sp0 = run.sp,
