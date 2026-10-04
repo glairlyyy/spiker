@@ -99,6 +99,8 @@ test('render: presentation never draws from the game RNG', () => {
       ...fs.readdirSync(path.join(root, 'js/render')).map(f => 'js/render/' + f),
       ...fs.readdirSync(path.join(root, 'js/audio')).map(f => 'js/audio/' + f),
       'js/ui/match-screen.js',
+      'js/ui/match-controls.js',
+      'js/ui/match-tech.js',
       'js/ui/match-result.js'
     ],
     bad = [];

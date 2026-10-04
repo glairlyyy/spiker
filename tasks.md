@@ -130,7 +130,7 @@ Accept: lint + tests pass; both sheets open (QA).
 QA: career run → Me, Season.
 Result: career-sheets.js → sheet-me.js (sheetMe, elementLine, seePhysio, learnSkill, homeRow, setHousing) + sheet-season.js (seasonCard, leaveSquad — also used by People —, calendar, matchLog, sheetSeason, diaryList). QA: Me / People / World / Season sheet HTML identical to HEAD; no errors.
 
-### [ ] T-208: match-screen.js by job
+### [x] T-208: match-screen.js by job
 
 Spec: §9.9 §9.10 Goldens: unchanged Save: no change
 Goal: match-screen.js holds start / leave and the playback state `A` (its one literal is the documented shape); controls,
@@ -140,7 +140,7 @@ Files: js/ui/match-screen.js, js/ui/match-controls.js (new: control bar, speeds,
 Do not: rename `A` fields; change markup.
 Accept: match-screen.js < 300 lines; lint + tests pass.
 QA: Monster game → pause, speed, settings, a technique switch.
-Result:
+Result: match-screen.js 588 → 220 (startMatch / A, 3D load + bind, fit and its listeners, venue / stakes, leave); match-controls.js (new: control bar, ⚙, camera / follow, fullscreen, timeouts, tactics, speed / pause / skip, board, commentary, rail, box score, hotkeys); match-tech.js (new: technique switches). A-field table in ARCHITECTURE Screens. RNG-scan test covers the two new files. QA: Monster game — markup after start, pause, speed, ⚙, rail tabs, a technique switch: HTML identical to HEAD, no errors.
 
 ### [ ] T-209: CSS colours → tokens; 12px floor
 

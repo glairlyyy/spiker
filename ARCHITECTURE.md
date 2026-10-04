@@ -35,7 +35,9 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
 - **career** `run.js` (Run, RUN_DEFAULTS), `training.js`, `growth.js`, `element.js`, `world.js`, `pool.js`, `eval.js`,
   `city.js`, `front.js`, `mapmodel.js`, `dossier.js`, `events.js`, `sponsors.js`, `skills.js`, `rank.js`, `cup.js`, `fight.js`.
 - **portraits** `js/render/faces.js` `faceSVG(p, mood, size)` returns a cached 3D portrait `<img>` (PORTRAIT: look key → data URL) or the drawn face (`faceSVG2D`) as a placeholder that is swapped in place when `js/render3d/portrait3d.mjs` (lazy-loaded; one offscreen renderer, the default model re-dressed in hair / skin / team shirt, Main_v2 for you) finishes it.
-- **ui** `dom.js` (esc, tip, info, fold, kv — the vertical label/value list of spec §10.1a, peek — the L2 detail card of §10.8: `CW.peek` holds the open id, `peekSync` (MutationObserver on #app) ports the open card to <body> beside its owner panel…), `icons.js`, `match-screen.js`, `match-result.js` (result card, finishMatch, cut-ins / toasts), `models.js`, `menu.js`,
+- **ui** `dom.js` (esc, tip, info, fold, kv — the vertical label/value list of spec §10.1a, peek — the L2 detail card of §10.8: `CW.peek` holds the open id, `peekSync` (MutationObserver on #app) ports the open card to <body> beside its owner panel…), `icons.js`, `match-screen.js` (startMatch → `A`, 3D load / bind, fit, venue / stakes, leaveMatch), `match-controls.js` (control bar, ⚙ settings,
+  camera / follow, fullscreen, timeouts, tactics, speed / pause / skip, scoreboard, commentary, rail, box score, hotkeys), `match-tech.js`
+  (technique switches), `match-result.js` (result card, finishMatch, cut-ins / toasts), `models.js`, `menu.js`,
   `debug-panel.js` (Debug log; `?dev` word counter per region vs the §10.8 budgets), `career-create.js`, `career-week.js` (CW state, End week, Week report, events), `sheet-me.js` / `sheet-season.js` (the Me / Season sheets),
   `career-match.js` (match prep, eval / Cup cards, result data, playCareer, watchCareer), `map-view.js`, `career-panels.js` (place
   panels: `placeCard` anatomy, `PANELS` by kind → hq / clash / venue / map point, else `placePanel`), `career-map.js` (mount, pick, actions, walk lock), `career-dossier.js`,
@@ -101,6 +103,19 @@ digPopped | digKill | digUp`. New rules (e.g. ace traits) hook into the step tha
   scales the stuff chance.
 
 ## Screens
+
+**Playback state `A`** (one object per match, built by `startMatch` in match-screen.js; `null` off the match screen). Its
+literal is the shape; other fields are created by the file that owns them:
+
+| Group             | Fields                                                                                                                                                             | Owner                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
+| Match             | `m`, `nm`, `fx`, `disp`, `bench`, `venue`, `stakes`, `done`, `hold`                                                                                                | match-screen.js, match-result.js           |
+| Beats and clock   | `beats`, `bi`, `el`, `ts`, `speed`, `paused`, `slowOn`, `slowK`, `sceneOn`, `freezeOn`, `_slowFx`, `fdt`, `rdt`, `rallyN`                                          | playback.js, clock.js, match-controls.js   |
+| Ball              | `ball`, `srvId`, `bounce`, `bp`, `bv`, `mv`, `spin`, `wob`, `dribble`, `real`, `trail`, `trailPow`, `trailEl`, `trailOp`, `hand*`, `lastC`, `lastP`                | playback.js, ball.js, acts.js              |
+| Camera and scenes | `cam`, `shot`, `zc`, `zoom`, `digHero`, `ego`, `preApp`, `preDig`, `sqT`                                                                                           | camera.js, scenes.js, movement.js, acts.js |
+| Effects           | `parts`, `labels`, `lines`, `link`, `shake`, `flash`, `flashC`, `ptFlash`, `ghost`, `drill`, `crack`, `squash`, `netShake`, `wallFx`, `toBanner`, `cele`, `pointN` | effects.js, acts.js, match-result.js       |
+| Crowd and bench   | `cheer`, `cheerAll`, `wave`, `chant`, `coaches`                                                                                                                    | effects.js, acts.js                        |
+| HUD               | `railTab`, `staShown`, `moodShown`, `buffShown`, `egShown`, `zoneShown`, `techPs`, `techCareer`, `techKeys`                                                        | match-controls.js, match-tech.js           |
 
 `menu`, `match`, `create`, `career`, `encyclopedia` — switch with `navigate(name, …args)`.
 The match screen takes a **fixture** `{ a, b, round, court?, back, rel?, setup(m)?, onFinish(m) → message, onLeave() }`
