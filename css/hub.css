@@ -122,7 +122,7 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #f5b82e; /* no token: day dots amber (gold too pale; not a faction colour) */
+  background: var(--day-dot);
   box-shadow: 0 0 6px rgba(245, 184, 46, 0.6);
 }
 .hub .clock .days i.used {
@@ -371,7 +371,7 @@
   padding: 0 5px;
   border-radius: 999px;
   background: var(--hot);
-  color: #fff; /* no token: white on hot badge (ink is visibly greyer) */
+  color: var(--white);
   font: 700 12px/16px var(--body);
 }
 .hub .wrail {
@@ -840,7 +840,7 @@
 }
 #wcnt .wcb.wover {
   background: var(--bad);
-  color: #fff;
+  color: var(--white);
 }
 /* Quiet rail, inbox and brief (spec §10.8, T-160) */
 .hub .wstats b {

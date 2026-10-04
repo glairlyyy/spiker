@@ -82,7 +82,7 @@ h4 {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: conic-gradient(#ffe066 0 33%, #2c58d6 0 45%, #ffe066 0 78%, #fff 0); /* no token: ball colours */
+  background: conic-gradient(var(--court-yellow) 0 33%, var(--court-blue) 0 45%, var(--court-yellow) 0 78%, var(--white) 0);
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin {
@@ -189,7 +189,7 @@ h4 {
   display: grid;
   place-items: center;
   background: var(--tc);
-  color: #fff; /* no token: white number on team colour */
+  color: var(--white);
   font: 18px var(--disp);
   border-bottom: 5px solid var(--hc);
   flex: none;
@@ -217,7 +217,7 @@ h4 {
   position: relative;
   font-size: 12px;
   padding-left: 6px;
-  color: #fff; /* no token: white bar label */
+  color: var(--white);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 .pl p {
@@ -263,7 +263,7 @@ h4 {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #ffe066; /* no token: court art */
+  background: var(--court-yellow);
   margin: 0 4px;
   vertical-align: super;
 }
@@ -286,11 +286,11 @@ h4 {
   font-size: 12px;
 }
 .rot i.sv {
-  background: #ffe066; /* no token: court art */
-  color: #10163a; /* no token: court art */
+  background: var(--court-yellow);
+  color: var(--court-ink);
 }
 .rot i.sv b {
-  color: #10163a; /* no token: court art */
+  color: var(--court-ink);
 }
 .mom {
   grid-column: 1/-1;
@@ -328,7 +328,7 @@ h4 {
 }
 .zone.on {
   opacity: 1;
-  color: #fff; /* no token: court art */
+  color: var(--white);
 }
 .opstar {
   color: var(--bad);
@@ -336,7 +336,7 @@ h4 {
   text-shadow: 0 0 6px rgba(255, 46, 77, 0.55);
 }
 .cut.op .cut-band {
-  background: linear-gradient(100deg, #ff1e46, #b3002a 60%, #ff1e46); /* no token: court art */
+  background: linear-gradient(100deg, var(--court-red), var(--court-red-deep) 60%, var(--court-red));
 }
 .cut.op .cut-band::after {
   content: '';
@@ -354,15 +354,15 @@ h4 {
   animation: zapf 0.12s steps(2) infinite;
 }
 .cut.op .cut-move {
-  color: #fff; /* no token: court art */
-  /* no token: court art */
+  color: var(--white);
+
   text-shadow:
-    0 0 12px #6fd6ff,
-    3px 3px 0 #10163a;
+    0 0 12px var(--court-glow),
+    3px 3px 0 var(--court-ink);
 }
 .cut.op .cut-name,
 .cut.op .cut-sub {
-  color: #fff; /* no token: court art */
+  color: var(--white);
 }
 @keyframes zapf {
   50% {
@@ -386,8 +386,8 @@ h4 {
   right: 2px;
   bottom: 1px;
   font: 12px var(--disp);
-  color: #fff; /* no token: court art */
-  -webkit-text-stroke: 2px #10163a; /* no token: court art */
+  color: var(--white);
+  -webkit-text-stroke: 2px var(--court-ink);
   paint-order: stroke;
 }
 .face {
@@ -399,9 +399,9 @@ h4 {
   flex: none;
   width: clamp(64px, 14vw, 150px);
   height: clamp(64px, 14vw, 150px);
-  background: #fff; /* no token: court art */
+  background: var(--white);
   border-radius: 50%;
-  border: 4px solid #10163a; /* no token: court art */
+  border: 4px solid var(--court-ink);
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -425,7 +425,7 @@ h4 {
 .sbar i {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, var(--bad-rose), #facc15 40%, var(--good)); /* no token: stamina mid yellow (warn-hi visibly paler) */
+  background: linear-gradient(90deg, var(--bad-rose), var(--stamina-mid) 40%, var(--good));
 }
 .cut-face2 {
   display: none;
@@ -447,7 +447,7 @@ h4 {
   height: 16px;
   border-radius: 50%;
   background: var(--warn-hi);
-  color: #10163a; /* no token: court art */
+  color: var(--court-ink);
   font: 800 12px var(--body);
   vertical-align: 1px;
 }
@@ -470,7 +470,7 @@ h4 {
   align-items: center;
   gap: 8px;
   padding: 5px 10px 5px 6px;
-  color: #fff; /* no token: white toast text */
+  color: var(--white);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
   animation: toastIn 0.25s cubic-bezier(0.2, 0.9, 0.2, 1);
   transition:
@@ -495,7 +495,7 @@ h4 {
   flex: none;
 }
 .toast .tf svg {
-  background: #fff; /* no token: court art */
+  background: var(--white);
   border-radius: 50%;
 }
 .toast .tf svg + svg {
@@ -537,7 +537,7 @@ h4 {
 .stage {
   position: relative;
   overflow: hidden;
-  background: #141b48; /* no token: court art */
+  background: var(--court-navy);
 }
 .stage canvas {
   display: block;
@@ -573,10 +573,10 @@ h4 {
   align-items: center;
   gap: clamp(10px, 2vw, 22px);
   overflow: hidden;
-  /* no token: court art */
+
   box-shadow:
-    0 0 0 6px #fff,
-    0 0 0 12px #10163a;
+    0 0 0 6px var(--white),
+    0 0 0 12px var(--court-ink);
 }
 .cut.on .cut-band {
   animation: bandIn 0.32s cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
@@ -600,8 +600,8 @@ h4 {
 .cut-num {
   position: relative;
   font: clamp(46px, 11vw, 128px)/1 var(--disp);
-  color: #fff; /* no token: court art */
-  -webkit-text-stroke: 3px #10163a; /* no token: court art */
+  color: var(--white);
+  -webkit-text-stroke: 3px var(--court-ink);
   paint-order: stroke;
 }
 .cut-txt {
@@ -610,20 +610,20 @@ h4 {
 }
 .cut-move {
   font: clamp(20px, 5.2vw, 56px)/1 var(--disp);
-  color: #10163a; /* no token: court art */
-  text-shadow: 3px 3px 0 #fff; /* no token: court art */
+  color: var(--court-ink);
+  text-shadow: 3px 3px 0 var(--white);
 }
 .cut-name {
   font-weight: 800;
-  color: #10163a; /* no token: court art */
+  color: var(--court-ink);
   font-size: clamp(12px, 2.2vw, 20px);
   margin-top: 6px;
 }
 .cut-sub {
   font-weight: 700;
-  color: #10163a; /* no token: court art */
+  color: var(--court-ink);
   opacity: 0.8;
-  font-size: clamp(11px, 1.8vw, 16px);
+  font-size: clamp(12px, 1.8vw, 16px);
 }
 .over {
   background: rgba(6, 9, 30, 0.4) !important;
@@ -791,7 +791,7 @@ td i {
 .stage.fake-fs {
   display: grid;
   place-items: center;
-  background: #0b1030; /* no token: court art */
+  background: var(--court-night);
   border-radius: 0;
 }
 .stage.fake-fs {
@@ -816,7 +816,7 @@ td i {
   padding: 6px 10px 6px 14px;
   border-radius: 999px;
   background: rgba(10, 14, 44, 0.72);
-  color: #fff; /* no token: white on court */
+  color: var(--white);
   font-weight: 800;
   z-index: 5;
   opacity: 0.85;
@@ -848,13 +848,13 @@ td i {
   border-radius: 999px;
   padding: 4px 10px;
   background: rgba(255, 255, 255, 0.14);
-  color: #fff; /* no token: white on court */
+  color: var(--white);
   font-weight: 800;
   cursor: pointer;
 }
 .fsb button.on {
-  background: #fff; /* no token: court art */
-  color: #10163a; /* no token: court art */
+  background: var(--white);
+  color: var(--court-ink);
 }
 .stage:fullscreen .over,
 .stage.fake-fs .over {
@@ -884,7 +884,7 @@ td i {
 }
 /* Element spike cut-in: band in the element colour, glowing title */
 .cut.el .cut-band {
-  background: linear-gradient(100deg, var(--e), #10163a 55%, var(--e)); /* no token: court art */
+  background: linear-gradient(100deg, var(--e), var(--court-ink) 55%, var(--e));
 }
 .cut.el .cut-band::after {
   content: '';
@@ -894,16 +894,16 @@ td i {
   animation: elpulse 0.5s ease-in-out infinite alternate;
 }
 .cut.el .cut-move {
-  color: #fff; /* no token: court art */
-  /* no token: court art */
+  color: var(--white);
+
   text-shadow:
     0 0 14px var(--e),
     0 0 28px var(--e),
-    3px 3px 0 #10163a;
+    3px 3px 0 var(--court-ink);
 }
 .cut.el .cut-name,
 .cut.el .cut-sub {
-  color: #fff; /* no token: court art */
+  color: var(--white);
 }
 .toast.el {
   border-color: var(--e);
@@ -950,11 +950,11 @@ td i {
   text-align: center;
   font: clamp(26px, 6vw, 64px) / 1 var(--disp, 'Arial Black', sans-serif);
   letter-spacing: 0.08em;
-  color: #fff; /* no token: court art */
-  /* no token: court art */
+  color: var(--white);
+
   text-shadow:
     0 0 18px var(--c),
-    4px 4px 0 #10163a;
+    4px 4px 0 var(--court-ink);
   pointer-events: none;
   opacity: 0;
 }
@@ -993,17 +993,17 @@ td i {
   padding: 10px 22px 12px;
   background: rgba(10, 13, 40, 0.88);
   border-left: 6px solid var(--c);
-  /* no token: court art */
+
   box-shadow:
-    0 0 0 2px #fff,
+    0 0 0 2px var(--white),
     0 10px 30px rgba(0, 0, 0, 0.45);
-  color: #fff; /* no token: court art */
+  color: var(--white);
   pointer-events: none;
   opacity: 0;
 }
 .hsay b {
   display: block;
-  font-size: clamp(10px, 1.3vw, 13px);
+  font-size: clamp(12px, 1.3vw, 13px);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--c);

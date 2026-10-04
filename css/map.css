@@ -7,7 +7,7 @@
   overflow: hidden;
   touch-action: none;
   cursor: grab;
-  background: #040b13; /* no token: matches the sea under the 3D fog */
+  background: var(--sea);
   top: var(--tbar);
   left: var(--rail);
 }
@@ -41,7 +41,7 @@
   border-radius: 50%;
   border: 3px solid var(--tc, var(--cyan));
   background: var(--surf2);
-  color: #fff; /* no token: white pin glyph (ink is visibly greyer) */
+  color: var(--white);
   cursor: pointer;
   pointer-events: auto;
   transition: opacity 0.2s;
@@ -85,7 +85,7 @@
   box-shadow: 0 0 8px var(--tc);
 }
 .mpin.clash {
-  background: #3a0d12; /* no token: dark red clash pin fill */
+  background: var(--clash-fill);
   border-color: var(--hot);
   border-width: 4px;
   animation: clashp 1.2s ease-in-out infinite alternate;
@@ -108,7 +108,7 @@
   color: var(--gold);
 }
 .mlab {
-  color: color-mix(in srgb, var(--tc, #e8d9a8) 75%, #fff); /* no token: parchment label tint */
+  color: color-mix(in srgb, var(--tc, var(--parchment)) 75%, var(--white));
   font: 700 14px var(--disp);
   letter-spacing: 0.06em;
   white-space: nowrap;
@@ -123,7 +123,7 @@
   letter-spacing: 0.12em;
 }
 .mlab.ap {
-  color: #e8d9a8; /* no token: parchment label */
+  color: var(--parchment);
   font: 600 12px var(--body);
   letter-spacing: 0;
 }
@@ -139,10 +139,10 @@
 .mflag {
   font-size: 26px;
   color: var(--warn);
-  /* no token: warm flag shadow */
+
   text-shadow:
-    0 0 3px #1b1204,
-    0 0 3px #1b1204;
+    0 0 3px var(--parchment-shade),
+    0 0 3px var(--parchment-shade);
   pointer-events: none;
 }
 /* Map legend (T-126) */

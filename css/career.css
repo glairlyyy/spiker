@@ -246,11 +246,11 @@
   display: grid;
   place-items: center;
   font: 54px/1 var(--disp);
-  color: #fff; /* no token: white rank letter (ink is visibly greyer) */
+  color: var(--white);
   background: var(--mute);
 }
 .rank.rS {
-  background: linear-gradient(135deg, #ff2e74, #ffc857); /* no token: S-rank gradient */
+  background: linear-gradient(135deg, var(--rank-s0), var(--rank-s1));
 }
 .rank.rA {
   background: var(--gold);
@@ -464,7 +464,7 @@
   font-size: 13px;
 }
 .elline.locked {
-  --e: #8a90b0; /* no token: locked element grey (mute too far) */
+  --e: var(--el-locked);
   opacity: 0.85;
 }
 .elline .elb {
@@ -631,7 +631,7 @@
   background: var(--bad-soft);
 }
 .facs .clashk {
-  color: #ff8c42; /* no token: Outlaws colour (js/data/world.js) */
+  color: var(--outlaws);
   margin-left: 6px;
 }
 .facs .fms {
@@ -725,7 +725,7 @@
   padding: 4px 12px;
   border-radius: 999px;
   background: var(--hudbg, rgba(12, 14, 20, 0.82));
-  color: #ffd166; /* no token: gold is visibly paler */
+  color: var(--gold-hi);
   font: 700 18px/1.2 var(--font-num, inherit);
   pointer-events: none;
 }
@@ -734,7 +734,7 @@
   max-width: 32em;
   padding: 0 16px;
   text-align: center;
-  color: #9fb0c4; /* no token: blue-grey note over the sea (mute too far) */
+  color: var(--note-sea);
 }
 /* rankings sheet */
 .hub .tabs.rk {
@@ -848,7 +848,7 @@
   background: var(--line);
 }
 .facs .seg b.mid {
-  background: #555b66; /* no token: mid meter step between line and mute */
+  background: var(--meter-mid);
 }
 .facs .seg b.on.up {
   background: var(--good);

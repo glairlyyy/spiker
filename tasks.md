@@ -142,7 +142,7 @@ Accept: match-screen.js < 300 lines; lint + tests pass.
 QA: Monster game → pause, speed, settings, a technique switch.
 Result: match-screen.js 588 → 220 (startMatch / A, 3D load + bind, fit and its listeners, venue / stakes, leave); match-controls.js (new: control bar, ⚙, camera / follow, fullscreen, timeouts, tactics, speed / pause / skip, board, commentary, rail, box score, hotkeys); match-tech.js (new: technique switches). A-field table in ARCHITECTURE Screens. RNG-scan test covers the two new files. QA: Monster game — markup after start, pause, speed, ⚙, rail tabs, a technique switch: HTML identical to HEAD, no errors.
 
-### [ ] T-209: CSS colours → tokens; 12px floor
+### [x] T-209: CSS colours → tokens; 12px floor
 
 Spec: §9.2 §9.3 Goldens: unchanged Save: no change
 Goal: the 67 hex colours outside theme.css become theme tokens (new tokens only where no existing one fits, listed in
@@ -152,7 +152,7 @@ Do not: change a visible colour by more than a token rounding (report any that m
 Accept: `grep -E '#[0-9a-fA-F]{3,8}\b'` outside theme.css → 0 (club / faction data colours excepted, listed); hub, sheets
 and match screenshots pixel-diff < 1 %.
 QA: career hub, Me sheet, a match.
-Result:
+Result: 67 hex → 22 new theme.css tokens at the same values (no visible change): --white; court art --court-ink / -yellow / -blue / -glow / -red / -red-deep / -navy / -night; --stamina-mid, --rank-s0 / -s1, --el-locked, --outlaws, --gold-hi, --note-sea, --meter-mid, --day-dot, --sea, --clash-fill, --parchment, --parchment-shade. Hex outside theme.css: 0; the 'no token' notes dropped. Match sizes clamp(11px…) / clamp(10px…) → 12px floor. Screens vs HEAD: hub / four sheets 0.00 %, match 0.10 % (animation noise).
 
 ### [ ] T-210: Inline styles and emoji icons out of js/ui
 
