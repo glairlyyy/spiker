@@ -59,7 +59,7 @@ T-184 → T-186 built by the spec chat on the owner's go.
 
 ### [x] T-198: Mistakes follow skill, like the real game (owner request)
 
-Result: SKILL (data/rules.js) + Formula.level / errK / bySkill: serve errors, hitting errors and double contacts × the mistake factor (×1.4 OP … ×4 beginner), receive − 4 × (factor − 1), stuff × blockSkill. Points (60 matches): OVR 30–60 kills 28 · errors 57 · blocks 4 · aces 11; league 40 · 41 · 11 · 8; all-OP 56 · 27 · 9 · 8 (was ~45–60 · 18–24 · 10–23 · 6–10 at every level). Goldens: update (teams / matches / sims — gameplay). Tests rebased to real-game rates: stuff 7–11 % per attack (was 12–16 %), ego err/att < 0.4 (serve errors included); the clutch test watches 50 matches (was 20) so a trust / freeze line shows.
+Result: per action from its own stats (owner: no overall level) — SKILL.use serve ← Power, spike ← Power 0.6 + Jump 0.4, set (double contact) ← Speed, pass ← Defense 0.7 + Speed 0.3, block ← Jump 0.55 + Defense 0.45; mistake factor e^((125 − level) / 75), ≤ 4 (×1.4 at 99 … ×4 beginner). Points (60 matches): OVR 30–60 kills 30 · errors 55 · blocks 4 · aces 11; league 38 · 43 · 10 · 9; all-OP 51 · 32 · 8 · 8 (was ~45–60 · 18–24 · 10–23 · 6–10 at every level). Goldens: update (teams / matches / sims — gameplay). Tests rebased to real-game rates: stuff 7–11 % per attack (was 12–16 %), ego err/att < 0.4 (serve errors included); the clutch test watches 50 matches (was 20). Stat → action table: spec §2.1b.
 
 ### [x] T-197: Average game in the Dev tab (owner request)
 

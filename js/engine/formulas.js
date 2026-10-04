@@ -3,18 +3,18 @@
 // Random rolls happen inside, in a fixed order, so seeded runs stay reproducible.
 
 const Formula = {
-  /** How good a player is overall (SKILL): the mean of the four stats + wit. */
-  level: p => (p.power + p.def + p.speed + p.jump) / 4 + (p.wit - 1) * SKILL.wit,
-  /** How often they make mistakes vs a mid player (SKILL): 1 at SKILL.mid, more below, less above. */
-  errK: p => Math.min(SKILL.max, Math.exp((SKILL.mid - Formula.level(p)) / SKILL.k)), // (a beginner tops out at SKILL.max)
-  /** An error chance scaled by the player's mistake factor (keeping SKILL.keep of the base rate for everyone). */
-  bySkill: (p, base) => base * (SKILL.keep + (1 - SKILL.keep) * Formula.errK(p)),
+  /** How good a player is at an action (SKILL.use: 'serve' | 'spike' | 'set' | 'pass' | 'block'): its stats, weighted. */
+  level: (p, act) => Object.entries(SKILL.use[act]).reduce((a, [k, w]) => a + p[k] * w, 0),
+  /** How often they make mistakes at it (SKILL): 1 at SKILL.mid, more below (at most SKILL.max), less above. */
+  errK: (p, act) => Math.min(SKILL.max, Math.exp((SKILL.mid - Formula.level(p, act)) / SKILL.k)),
+  /** An error chance at an action, scaled by the player's mistake factor for it. */
+  bySkill: (p, act, base) => base * Formula.errK(p, act),
   /** Serve strength (roughly 20–110). Wing spikers serve hardest. */
   serveQuality: (server, team) =>
     effP(server) * 0.8 * { WS: 1, MB: 0.88, S: 0.8 }[server.role] * team.S.serve * rnd(0.8, 1.2) * skillMod(server, 'serve'),
   /** Chance the serve goes into the net or out. Low wit and very hard serves miss more. */
   serveErrorP: (server, team, sq) =>
-    Formula.bySkill(server, 0.06 + Math.max(0, 1.2 - W(server)) * 0.05 + (sq > 80 ? 0.03 : 0)) * team.S.serveErr,
+    Formula.bySkill(server, 'serve', 0.06 + Math.max(0, 1.2 - W(server)) * 0.05 + (sq > 80 ? 0.03 : 0)) * team.S.serveErr,
   /** Which way a missed serve goes: a flat or tired swing clips the net, too much power sails long. */
   serveNetShare: (server, sq, jump) => clamp((jump ? 0.42 : 0.56) - (sq - 60) / 350 + (1 - staOf(server)) * 0.2, 0.15, 0.8),
   /** Which way a missed spike goes: the lower the contact over the net, the likelier it's the net. */
@@ -23,7 +23,7 @@ const Formula = {
   receiveScore: (rc, team, dist0) =>
     (effD(rc) * 0.7 + rc.speed * 0.3) * team.S.dig * skillMod(rc, 'receive') -
     Math.max(0, dist0 - 0.1) * 45 * (1.3 - rc.speed / 100) -
-    SKILL.pass * (Formula.errK(rc) - 1), // a weak passer shanks more (SKILL)
+    SKILL.pass * (Formula.errK(rc, 'pass') - 1), // a weak passer shanks more (SKILL)
   /** Chance a set is at least "good" (before the double-contact check). */
   setSuccess(setter, qual, team, dual) {
     let succ = clamp(0.5 + 0.23 * W(setter) + (qual - 2) * 0.09 + team.S.set + (dual && setter.role === 'S' ? 0.03 : 0), 0.08, 0.985);
@@ -48,7 +48,7 @@ const Formula = {
    * low contact point (little room over the net: hand height hS vs the tape at 150) all make it likelier.
    */
   spikeErrorP: ({ spiker, bad, pow, around, back, longB, hS }) =>
-    Formula.bySkill(spiker, 1) *
+    Formula.bySkill(spiker, 'spike', 1) *
     (0.045 +
       clamp((190 - (hS || 190)) / 400, 0, 0.08) +
       (bad ? 0.07 : 0) +

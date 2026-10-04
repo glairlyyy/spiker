@@ -21,11 +21,35 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   (out-of-system bump-set; a third player hits or bumps over). Second touch: a free setter (no first touch, not busy)
   always sets if reachable; a teammate sets only if the setter took the first ball, is busy, or a bad pass lands
   where a teammate clearly gets there first.
-- §2.1a Mistakes follow skill, like the real game (owner, 2026-10-04) **[built, T-198]**: a player's level (mean stat + wit)
-  sets how often they err (`SKILL`, `Formula.errK`): serve errors, hitting errors and ball-handling faults × the factor, weak
-  passers shank more, weak blockers stuff less. Share of points — OVR 30–60: kills 28 · errors 57 · blocks 4 · aces 11
-  (real amateur ~28 · 55 · 5 · 12); league start: 40 · 41 · 11 · 8; all-OP: 56 · 27 · 9 · 8 (real elite ~50 · 32 · 11 · 6).
-  Low-level games are won by whoever errs less; at the top, by kills.
+- §2.1a Mistakes follow skill, like the real game (owner, 2026-10-04) **[built, T-198]**: per action, from the stats that do
+  it (no overall level; `SKILL.use`): serve errors ← Power; hitting errors ← Power 0.6 + Jump 0.4; double contacts ← Speed;
+  shanked passes ← Defense 0.7 + Speed 0.3; stuffs ← Jump 0.55 + Defense 0.45. Share of points — OVR 30–60: kills 30 · errors
+  55 · blocks 4 · aces 11 (real amateur ~28 · 55 · 5 · 12); league start: 38 · 43 · 10 · 9; all-OP: 51 · 32 · 8 · 8 (real elite
+  ~50 · 32 · 11 · 6). Low-level games are won by whoever errs less; at the top, by kills.
+- §2.1b Which stat drives which action (reference; Wit scales Power and Defense in play, × 0.75 + 0.25 × wit, with mood,
+  momentum and stamina):
+
+  | Action             | Stats                                                                     | Decides                               |
+  | ------------------ | ------------------------------------------------------------------------- | ------------------------------------- |
+  | Serve strength     | Power (WS ×1, MB ×0.88, S ×0.8)                                           | how hard it is to receive, ace chance |
+  | Serve type         | Speed ≥ 60 or Jump ≥ 65 → jump-float; WS with a strong serve → jump serve | flight, speed                         |
+  | Serve error        | Power (skill) + Wit; serves over 80 miss more                             | into the net / long                   |
+  | Serve receive      | Defense 0.7 + Speed 0.3; Speed cuts the cost of reaching it               | ace or pass quality                   |
+  | Shanked pass       | Defense 0.7 + Speed 0.3 (skill)                                           | more aces off weak passers            |
+  | Set quality        | Wit + pass quality (non-setters × 0.75)                                   | good / poor set                       |
+  | Double contact     | Speed (skill) + Wit, stamina, nerves, pass quality                        | whistle, point lost                   |
+  | Spike power        | Power × Jump (set quality, quick / back row, combo)                       | kill vs dig                           |
+  | Contact height     | Jump                                                                      | room over the net, net errors         |
+  | Hitting error      | Power 0.6 + Jump 0.4 (skill) + Wit, bad set, low contact, over-hitting    | into the net / out                    |
+  | Setter dump        | Wit + Jump                                                                | dump threat                           |
+  | Block strength     | Defense 0.55 + Jump 0.45                                                  | stuff, touch, block break             |
+  | Stuff chance       | Jump 0.55 + Defense 0.45 (skill)                                          | kill block                            |
+  | Dig                | Defense 0.6 + Speed 0.4; Speed cuts the reach cost                        | dig vs kill                           |
+  | Block cover        | Defense 0.65 + Speed 0.35; Wit < 0.8 cuts it                              | saving a kill block                   |
+  | Delayed Spike hang | Jump + Wit                                                                | hangs too long (§9.10)                |
+  | Stamina drain      | Defense + Speed soften it                                                 | late-set power and jump               |
+  | Ego acts           | Wit (maturity)                                                            | steals, hero swings and serves        |
+
 - §2.2 Elements: hidden per player; unlocked for OP, ~1/4 of stars, and you via the Element Trial. Gauge fills by
   element play; full gauge or captain buff → next attack is the signature element spike. Counter elements halve. Fiction: lore.md §2 (Trial = modern method; ritual forgotten).
 - §2.3 Hype (Off/Normal/Max, tap to skip): attack build-up, blocker read mid-jump (only if a block is attempted),

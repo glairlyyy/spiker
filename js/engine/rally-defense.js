@@ -11,8 +11,8 @@ const BLOCK_MIN_COV = 0.12;
 const STUFF_BIAS = 0.2,
   STUFF_COV_EXP = 1.6;
 const stuffChance = (bp, cov, pow) => sig((bp / Math.max(cov, 0.01) - pow) / 20 - STUFF_BIAS) * Math.pow(Math.min(1, cov), STUFF_COV_EXP);
-/** A weak blocker stuffs less (SKILL.blk): the mean level of the blocker against SKILL.blk's scale. */
-const blockSkill = b => clamp((Formula.level(b) - SKILL.blk[0]) / SKILL.blk[1], SKILL.blk[2], SKILL.blk[3]);
+/** A weak blocker stuffs less (SKILL.blk): their block level (jump, defense) against SKILL.blk's scale. */
+const blockSkill = b => clamp((Formula.level(b, 'block') - SKILL.blk[0]) / SKILL.blk[1], SKILL.blk[2], SKILL.blk[3]);
 /** Tooling it off the hands and out: only off a real but partial block (coverage in this range), at this chance. */
 const TOOL_COV = [0.25, 0.6],
   TOOL_P = 0.05;

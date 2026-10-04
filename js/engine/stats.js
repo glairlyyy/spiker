@@ -33,7 +33,7 @@ function doubleContactP(setter, qual, w) {
   const passF = [0, 0.06, 0.03, 0.005][qual];
   const tired = 1 + (1 - staOf(setter)) * 1.5;
   const nerves = 1 + Math.max(0, -((CM && CM.mood[setter.id]) || 0)) * 0.8;
-  return Formula.bySkill(setter, passF * (2.2 - tech) * tired * nerves); // (a weak setter's hands are worse: SKILL)
+  return Formula.bySkill(setter, 'set', passF * (2.2 - tech) * tired * nerves); // (a weak setter's hands are worse: SKILL)
 }
 /** Setter dump/feint multiplier from wit and jump (0.15–2.2). */
 const dumpThreat = (p, wit = p.wit) => clamp(0.25 + (wit - 1) * 0.6 + (p.jump - 50) / 60, 0.15, 2.2);
