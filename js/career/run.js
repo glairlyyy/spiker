@@ -251,15 +251,7 @@ const Run = {
    * then the next week (or a cup, after week 24 and week 28) begins.
    */
   endWeek(run) {
-    Growth.week(run);
-    Sponsors.tick(run);
-    if (run.injury && --run.injury.weeks <= 0) {
-      run.injury = null;
-      Run.log(run, 'Fully recovered from the injury.');
-    }
-    World.week(run);
-    if (Fight.clashSite(run)) Run.log(run, Fight.clashEnd(run));
-    Hex.decay(run);
+    for (const step of WEEK_END) step(run);
     run.trained = 0;
     run.days = WEEK_DAYS;
     run.dayLog = [];
@@ -274,12 +266,18 @@ const Run = {
   },
   /** A training week begins: who's at which training, sponsor offers. */
   nextWeek(run) {
-    Fight.clashRoll(run);
-    Training.rollFloor(run);
-    Sponsors.offer(run);
-    ElTrial.offer(run);
-    Eval.setup(run);
-    Asks.roll(run);
+    for (const step of WEEK_START) step(run);
+  },
+  /** An injury heals a week. */
+  heal(run) {
+    if (run.injury && --run.injury.weeks <= 0) {
+      run.injury = null;
+      Run.log(run, 'Fully recovered from the injury.');
+    }
+  },
+  /** An open street battle nobody fought is settled at week end. */
+  settleClash(run) {
+    if (Fight.clashSite(run)) Run.log(run, Fight.clashEnd(run));
   },
   /** Save the run (teams in their compact JSON form). */
   save(run) {
@@ -402,3 +400,23 @@ const RUN_DEFAULTS = {
 };
 /** Run rank letter for a fan count (RANKS is ordered from the top rank down). */
 const rankOf = fans => RANKS.find(([, min]) => fans >= min)[0];
+/**
+ * The week's steps, in order (each `run => void`; the order is the draw order — never reorder, only append).
+ * A new weekly system adds one line here. Entries call through so every callee can load later than this file.
+ */
+const WEEK_END = [
+  run => Growth.week(run),
+  run => Sponsors.tick(run),
+  run => Run.heal(run),
+  run => World.week(run),
+  run => Run.settleClash(run),
+  run => Hex.decay(run)
+];
+const WEEK_START = [
+  run => Fight.clashRoll(run),
+  run => Training.rollFloor(run),
+  run => Sponsors.offer(run),
+  run => ElTrial.offer(run),
+  run => Eval.setup(run),
+  run => Asks.roll(run)
+];

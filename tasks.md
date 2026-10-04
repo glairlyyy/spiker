@@ -52,7 +52,7 @@ Steps:
    QA: career run → Sim ⏭ a street fight and a challenge; leave a match mid-way.
    Result: Career fixtures' onLeave only runs Eval.restore; UI opens them with watchCareer(fx) (career-match.js: map clash / challenge, playCareer, People approaches). grep navigate js/career → empty. Fixture paragraph in ARCHITECTURE Screens.
 
-### [ ] T-202: Week steps as one ordered list
+### [x] T-202: Week steps as one ordered list
 
 Spec: §4.5 Goldens: unchanged Save: no change
 Goal: adding a weekly system (§4.24 faction events, year 2) = one line. `Run.endWeek` / `Run.nextWeek` read two arrays.
@@ -66,7 +66,7 @@ Training.rollFloor, Sponsors.offer, ElTrial.offer, Eval.setup, Asks.roll]` as `r
 2. endWeek = steps → reset week fields → week++ → cup or WEEK_START → save.
    Accept: career goldens and sims unchanged; a test asserts both arrays are functions.
    QA: none
-   Result:
+   Result: WEEK_END / WEEK_START in run.js (arrow wrappers so callees load later); inline injury / clash lines → Run.heal / Run.settleClash. Order unchanged; test added (110 quick).
 
 ### [ ] T-203: Diary lines tagged where they are written
 

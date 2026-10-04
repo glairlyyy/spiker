@@ -580,6 +580,9 @@ Central Academy = the hex tiles within `ACADEMY.ring` of its middle (`Hex.dist`)
 `price` (TRAIN_FEE / HOTEL × region price), `mul` (quality × home turf, passed to `Training.train/preview` as x),
 `can`/`day`/`scout`. Week = `run.days` (WEEK_DAYS 7): every action costs `City.cost` = trip + 1 day and is refused if
 it would spill into next week (`noTime`); at 0 days it is night; only `mapEndWeek` (the player) calls `Run.endWeek`.
+`Run.endWeek` runs `WEEK_END` (run.js: growth, sponsors, heal, world, settle the clash, hex decay), resets the week, then the cup
+or `Run.nextWeek` = `WEEK_START` (clash roll, training floor, sponsor offers, Trial offer, eval setup, approaches). The
+order is the draw order: append new weekly systems, never reorder.
 Events roll once per week after the first action (`run.rolled`). Street battles (`Fight`, career/fight.js; City keeps places, travel and standing): `clashRoll` in `Run.nextWeek`
 (`run.clash` with its aggressor, settled by `clashEnd` at week end if nobody joined), `watch(run, null)`; standing per
 region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): tile pressure on the hex map (`push`/`meter`/`battleTile`, state in `run.hex`, §4.27), seized places `run.own`

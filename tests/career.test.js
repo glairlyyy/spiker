@@ -59,6 +59,13 @@ test('career: a full run reaches a result with sane values', () => {
   }
 });
 
+test('career: week steps are ordered lists of functions (T-202)', () => {
+  const g = load(5);
+  eq(g.WEEK_END.length, 6, 'six week-end steps');
+  eq(g.WEEK_START.length, 6, 'six week-start steps');
+  assert([...g.WEEK_END, ...g.WEEK_START].every(f => typeof f === 'function'), 'every step is a function');
+});
+
 test('career: save → load round-trip keeps the run intact', () => {
   const g = load(5),
     d = g.Run.draft(),
