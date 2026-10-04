@@ -184,8 +184,10 @@ units3d's KH / KX / KZ read it), `BALL_K` / `SERVE_K` (ball flight speed factors
 - Modules: `r3d.mjs` (entry: build once, bind per match, per-frame `draw`, dynamic resolution, `api` = `R3D`),
   `units3d.mjs` (court units → metres `W`/`Wto`, `canvasTex`, `lowEnd`), `arena3d.mjs` (lights, court, net, board,
   arena stands, ball + glow; `dressArena`, `updateBall/Net/PointFlash`; returns `hemi`/`sun`/`rim`/`floor`/`outer`/
-  `board`/`stands` for the venues), `venue3d.mjs` (spec §9.11: `LOOK` per venue — sky, fog, light, floor colours;
-  `buildVenues` builds every set hidden + the cut-out crowd (4 instanced pose planes, tinted per instance), officials
+  `board`/`stands` for the venues), `venue3d.mjs` (spec §9.11: `VENUE_SETS` registry;
+  `js/render3d/venues/`: `looks.mjs` (`LOOK` per venue — sky, fog, light, floor colours), `floor.mjs` (`drawFloor`),
+  one set builder per venue `arena|hall|beach|highland|street.mjs`, `props.mjs` (officials, benches, table, cart), `kit.mjs`
+  (box, figure, light beams `BEAMS`, bleachers). `buildVenues` builds every set hidden + the cut-out crowd (4 instanced pose planes, tinted per instance), officials
   and props, big screen canvas, zone rim light, confetti; `dressVenue(w, kind, stakes, c0, c1)` per match redraws the
   floor canvas, shows one set, fills the crowd rows × stakes; `updateVenue` per frame: crowd bounce / wave, zone dim +
   rim, confetti on `A.cele`, highland flags, big screen from the shown scoreboard. The venue and stakes come from

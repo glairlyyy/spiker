@@ -97,7 +97,7 @@ Accept: goldens + full tests pass without `--update`; no function in the six fil
 QA: none
 Result: Split into named steps (list in ARCHITECTURE engine flow): playRally, end, formBlock, setBeat, block, dig, plus spikeActs; every function in the five files ≤ 80 lines except rally() 110 (the possession loop that calls the phases — kept whole so the flow reads in one place) and newMatch 99 (the match-state literal). Goldens unchanged; 122/122 full suite.
 
-### [ ] T-205: Venue sets in a registry, one file each
+### [x] T-205: Venue sets in a registry, one file each
 
 Spec: §9.11 Goldens: unchanged Save: no change
 Goal: a new venue = one file + one registry line.
@@ -106,7 +106,7 @@ Do not: change LOOK values or any mesh; add Math.random draws.
 Steps: move `setArena`… `setStreet` and `setOfficials` out; venue3d keeps LOOK, floor, crowd and `VENUE_SETS = { arena, hall, … }`.
 Accept: venue3d.mjs < 350 lines; all five venues screenshot identical (pixel diff ≈ 0 on a held frame).
 QA: Monster game, each `A.venue`.
-Result:
+Result: js/render3d/venues/: kit (shared builders, BEAMS), looks (LOOK), floor (drawFloor), arena / hall / beach / highland / street, props; venue3d keeps build / dress / update / screen with VENUE_SETS — 847 → 309 lines. QA: Monster game, all five venues, seeded Math.random; pixel diff vs HEAD equals HEAD-vs-HEAD noise (0.35 / 7.1 / 0.6 / 2.0 / 8.5 % — animation timing); no page errors.
 
 ### [ ] T-206: Place panels by kind
 
