@@ -108,7 +108,7 @@ Accept: venue3d.mjs < 350 lines; all five venues screenshot identical (pixel dif
 QA: Monster game, each `A.venue`.
 Result: js/render3d/venues/: kit (shared builders, BEAMS), looks (LOOK), floor (drawFloor), arena / hall / beach / highland / street, props; venue3d keeps build / dress / update / screen with VENUE_SETS — 847 → 309 lines. QA: Monster game, all five venues, seeded Math.random; pixel diff vs HEAD equals HEAD-vs-HEAD noise (0.35 / 7.1 / 0.6 / 2.0 / 8.5 % — animation timing); no page errors.
 
-### [ ] T-206: Place panels by kind
+### [x] T-206: Place panels by kind
 
 Spec: §10.2 §10.3 Goldens: unchanged Save: no change
 Goal: a new place kind = one entry in `PANELS`. career-map.js keeps actions / walk lock; panels move out.
@@ -118,7 +118,7 @@ Do not: change markup or hotkeys.
 Steps: move; `spotPanel` dispatch becomes `PANELS = [[test, fn], …]` (hq, clash, venue:, pt:, else trainSpot).
 Accept: lint + tests pass; each panel renders the same HTML (string compare in a quick headless check or QA screenshots).
 QA: career run → open a gym, an HQ, the clash, a venue, a map point.
-Result:
+Result: js/ui/career-panels.js (new, before career-map.js): placeCard … hqPanel; spotPanel = PANELS [test, build] list, else placePanel (the SPOTS body). career-map.js 581 → 222 lines (mount, pick, actions, walk lock). QA: seeded new run — spotPanel HTML for all 40 ids and the four sheets identical to HEAD (3D-portrait placeholders normalised); no page errors.
 
 ### [ ] T-207: Me and Season sheets in their own files
 

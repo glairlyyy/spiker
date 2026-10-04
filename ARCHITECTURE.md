@@ -37,7 +37,8 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
 - **portraits** `js/render/faces.js` `faceSVG(p, mood, size)` returns a cached 3D portrait `<img>` (PORTRAIT: look key → data URL) or the drawn face (`faceSVG2D`) as a placeholder that is swapped in place when `js/render3d/portrait3d.mjs` (lazy-loaded; one offscreen renderer, the default model re-dressed in hair / skin / team shirt, Main_v2 for you) finishes it.
 - **ui** `dom.js` (esc, tip, info, fold, kv — the vertical label/value list of spec §10.1a, peek — the L2 detail card of §10.8: `CW.peek` holds the open id, `peekSync` (MutationObserver on #app) ports the open card to <body> beside its owner panel…), `icons.js`, `match-screen.js`, `match-result.js` (result card, finishMatch, cut-ins / toasts), `models.js`, `menu.js`,
   `debug-panel.js` (Debug log; `?dev` word counter per region vs the §10.8 budgets), `career-create.js`, `career-week.js` (CW state, End week, Week report, events), `career-sheets.js` (Me / Season sheets),
-  `career-match.js` (match prep, eval / Cup cards, result data, playCareer), `map-view.js`, `career-map.js`, `career-dossier.js`,
+  `career-match.js` (match prep, eval / Cup cards, result data, playCareer, watchCareer), `map-view.js`, `career-panels.js` (place
+  panels: `placeCard` anatomy, `PANELS` by kind → hq / clash / venue / map point, else `placePanel`), `career-map.js` (mount, pick, actions, walk lock), `career-dossier.js`,
   `career-people.js`, `career-hub.js`, `career-end.js`, `encyclopedia.js`.
 - **render** `playback.js`, `acts.js`, `movement.js`, `actors.js`, `clock.js`, `camera.js`, `ball.js`, `scenes.js`,
   `effects.js`, `overlay.js`, `faces.js`, `tags.js`, `dive.js`; then `main.js`.
@@ -710,7 +711,7 @@ to the nearest road by one edge, a landmark of kind `arena` / `hall` / `stadium`
 (`kind: 'venue'`, 🏟, always known — no fog gate); lots keep `VENUES[id].clear` map units away (the arena's is 52: it is ~40 × 32 m). `City.venue(run)`
 (pure) is the venue of this week's match: a cup week → the arena, an evaluation → the Academy Hall for the Academy's, else the venue that holds
 `eval:<your faction's region>`; null otherwise. Its pin gets the flag `today` (class `today`, a CSS-only pulsing ring). The spot card
-(`venuePanel`, career-map.js) lists what is held there; the eval and cup cards say "at <venue>". Display only: no travel, no match rule, no save field.
+(`venuePanel`, career-panels.js) lists what is held there; the eval and cup cards say "at <venue>". Display only: no travel, no match rule, no save field.
 The four meshes (kit3d `LANDMARKS`, an elliptical-ring helper for the stands) join the one merged landmark mesh: draw calls unchanged.
 
 ## Rankings
@@ -738,7 +739,7 @@ refusals each further one costs `pest` standing; accepted → `{ accepted, stake
 is the fixture (same shape as `Fight.clash`; your side = Academy squad / club squad / `Fight.hired` street crew lent for the
 match; the club's real squad); `Fight.challengeResult` spends the trip + day, pays the stake at odds (win) or takes it (loss),
 pays the crew, then standing / fans / match XP / techniques / street points / `Rank.meet`. UI: `challengeBlock` in
-`career-map.js` (stake stepper, verdict line, Challenge, ⏭).
+`career-panels.js` (stake stepper, verdict line, Challenge, ⏭; actions `mapStake` / `mapChallenge` in career-map.js).
 
 ### Loss and injury (T-038)
 
@@ -780,7 +781,7 @@ top bar (`topBar`: labelled resources with one-render deltas, sheet tabs Me · P
 `gearPop`), week rail (`weekRail`: you + stats, `dayTrack` from `run.dayLog` via `weekCells`, `inboxRows`
 over `inboxItems`, End week; folded by «/» or `[` to `railStrip`, a 72px strip with the same reach — `.hub.railmini` sets
 `--rail`, which every layer right of the rail follows; `CW.railMini` is remembered in `KEYS.rail`), the 3D island map
-(`MapView`, see Island map layers; places are found only on the map, no list) with `mapLegend` chips, the place panel (`#spot`, `placeCard` anatomy in career-map.js) and a card over the map (`hubCard`: event → Week
+(`MapView`, see Island map layers; places are found only on the map, no list) with `mapLegend` chips, the place panel (`#spot`, `placeCard` anatomy in career-panels.js) and a card over the map (`hubCard`: event → Week
 report → Week brief → cup / eval card).
 
 Sheets open over the map area (rail and top bar stay): `HUB_SHEETS` → `sheetMe` / `sheetSeason` (career-sheets.js),
