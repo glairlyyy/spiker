@@ -392,6 +392,12 @@ reachable (≥ `DIG_SLOW_MIN`). `timeScale` drops to it at once; the digger (`A.
 everyone else slow down. Presentation only (no engine change). Before that, `preDigLook`/`preDigGo` let the
 digger read the attack: halfway through the beat before a far dig they already start running for it.
 
+Ego moments (T-199, spec §2.12) reuse that clock: `egoFocus(b)` (movement.js, end of `startBeat`, after `digChase` and
+the approach set-up) reads the beat's `ego` act (engine: egoSteal / a demanded set), sets `b.slow` 0.3 with a `slowAt`
+window, makes the ego player `A.digHero` and sets `A.shot` = { kind 'ego', track } — camera3d re-frames a tracked shot
+every frame (eased) from the player's feet and the ball. `A.ego` { p, til, own }: on a demanded set `egoRelease(t)`
+(applyBeat) hands the hitter back to the world clock at `til`, so the run-up, jump and hit stay in sync with the ball.
+
 Dives: after the contact the dive runs on fixed time (`diveF`, `DIVE_POST_MS`: on the floor, then back up) and
 passive poses (`DIVE_KEEP`: ready / bump / huddle) wait for it (`afterDive`); a player on the floor doesn't move
 until back up. Collision (`separate`, playback): teammates' feet stay ≥ `BODY_GAP` apart (display only). In the

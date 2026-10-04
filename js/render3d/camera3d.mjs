@@ -239,15 +239,19 @@ export function updateBase(dt) {
   // staged scene shot (A.shot from playback): hard cuts between shots, a quick ease in and out of the game camera
   const want = A && A.shot && world ? A.shot : null,
     key = want ? `${want.kind}|${want.p}|${want.p2 || ''}` : '';
-  if (key && (key !== shot.key || shot.age < 0.2)) {
-    // (re)frame: on a new shot, and for its first moments while the players settle into their poses
+  if (key && (key !== shot.key || shot.age < 0.2 || want.track)) {
+    // (re)frame: on a new shot, for its first moments while the players settle into their poses, and every frame for a tracked one
     const sp = shotPose(want);
     if (sp) {
       if (key !== shot.key) {
         if (shot.k > 0.5) shot.k = 1; // cut
         shot.age = 0;
       }
-      Object.assign(shot, sp, { key });
+      if (want.track && key === shot.key && shot.age >= 0.2) {
+        const k = 1 - Math.exp(-dt * 7); // a tracked shot glides after its player
+        shot.pos.lerp(sp.pos, k);
+        shot.look.lerp(sp.look, k);
+      } else Object.assign(shot, sp, { key });
     }
   }
   shot.age = (shot.age || 0) + dt;
@@ -291,6 +295,25 @@ function shotPose(s) {
   if (!a) return null;
   const up = new THREE.Vector3(0, 1, 0),
     H = a.bone('head').getWorldPosition(new THREE.Vector3());
+  if (s.kind === 'ego') {
+    // the ego moment (T-199): behind and beside the player, the ball ahead of them — tracked from the feet (no head bob)
+    const F = a.root.position.clone().setY(0),
+      bp = world.ball.position.clone().setY(0),
+      d = bp.clone().sub(F);
+    if (d.length() < 0.5) d.set(Math.sin(a.root.rotation.y), 0, Math.cos(a.root.rotation.y));
+    d.normalize();
+    const r = new THREE.Vector3().crossVectors(d, up).normalize();
+    return {
+      pos: F.clone()
+        .addScaledVector(d, -3.6)
+        .addScaledVector(r, 1.3)
+        .add(new THREE.Vector3(0, 1.9, 0)),
+      look: F.clone()
+        .addScaledVector(d, 1.2)
+        .add(new THREE.Vector3(0, 1.1, 0)),
+      fov: 50
+    };
+  }
   if (s.kind === 'face') {
     const f = new THREE.Vector3(Math.sin(a.root.rotation.y), 0, Math.cos(a.root.rotation.y)),
       r = new THREE.Vector3().crossVectors(f, up).normalize();

@@ -181,6 +181,7 @@ function startBeat(b) {
         ap.t0 * b.dur * 0.8;
     hd.app = ap;
   }
+  egoFocus(b);
 }
 /** Gravity for players coming down from a jump (m/s²): 1.6× real, so landings feel snappy, not floaty. */
 const FALL_G = 9.81 * 1.6;
@@ -280,6 +281,7 @@ function flashScreen(alpha, rgb) {
 const NO_JUMP = { t0: 0, t1: 1, peak: 0, start: 0 };
 /** Tween the beat's acts to progress t (0..1): ball flight, jump arcs, swing timing, and every player's move. */
 function applyBeat(b, t) {
+  egoRelease(t);
   for (const a of b.acts) {
     if (a.when === 'end') continue;
     if (a.k === 'ball') tweenBall(a, b, t);

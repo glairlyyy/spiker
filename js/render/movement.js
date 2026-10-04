@@ -111,6 +111,10 @@ function approachMove(d, t) {
     return true;
   }
   if (t < g.at) {
+    if (d.p && d.p.id === A.digHero) {
+      capMove(d, g.rx, g.rz); // an ego hitter (egoFocus): to the run-up point at a real sprint while the world slows
+      return true;
+    }
     const k = ease(t / g.at);
     capMove(d, lerp(d.sx, g.rx, k), lerp(d.sz, g.rz, k));
     return true;
@@ -141,6 +145,34 @@ function digChase(b) {
   b._dig = k;
   A.digHero = a.to.p;
   if (d.dv) d.dv.dur /= k; // the dive plays out over the stretched beat, on the digger's own (real) clock
+}
+/** Ego moment (T-199): world time while it lasts; the window of the beat it covers on a steal (from the hit) and on a demanded set (to the run). */
+const EGO_FX = { slow: 0.3, steal: 0.2, call: [0.3, 0.6] };
+/**
+ * Ego moment (spec §2.12, T-199): a beat with an `ego` act (a "Mine!" steal, a demanded set) slows the world while the ego
+ * player plays on at normal speed (A.digHero: real-time timers, sprint and posing) and the camera follows them (A.shot
+ * 'ego', tracked). On a steal from the hit to the touch; on a demanded set while the hitter gets to the run-up point —
+ * the run, the jump and the hit are back in sync with the ball. Off with Hype off. Call after digChase / the approach.
+ */
+function egoFocus(b) {
+  A.ego = null;
+  const a = b.acts.find(x => x.k === 'ego'),
+    d = a && A.disp[a.p];
+  if (!d || b.cut || b.scene || HYPE[G.hype].max < 1) return;
+  const g = a.act === 'call' && d.app,
+    til = g ? clamp(Math.max(g.at || 0, g.t0 * 0.5), EGO_FX.call[0], EGO_FX.call[1]) : 1;
+  if (!b.slow) {
+    b.slow = EGO_FX.slow;
+    b.slowAt = g ? [0, til] : [EGO_FX.steal, 1];
+  }
+  const own = !A.digHero || A.digHero === a.p; // (a far dig of someone else keeps its own chase clock)
+  if (own) A.digHero = a.p;
+  A.ego = { p: a.p, til: g ? til : 2, own };
+  A.shot = { kind: 'ego', p: a.p, track: true };
+}
+/** The demanded set's window is over: the hitter back on the world clock (the run-up and jump meet the ball). */
+function egoRelease(t) {
+  if (A.ego && A.ego.own && t > A.ego.til && A.digHero === A.ego.p) A.digHero = null;
 }
 /** A long, hard cut sometimes squeaks (throttled, a little delayed). Math.random: sound only, never the game RNG. */
 function maybeSqueak(d, a) {

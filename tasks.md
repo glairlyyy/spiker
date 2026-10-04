@@ -22,11 +22,14 @@ QA: none | Monster game | career run → <screen and action>
 Result:
 ```
 
-## State (2026-10-03)
+## State (2026-10-04)
 
-Everything through T-158 is built (110 tests, RUN_VERSION 17): match engine and 3D playback, career (28 weeks, pools,
-evaluations, U21 Cup, Story mode, growth, relationships), UI redesign §9–§10, hex territory and economy §4.27, island
-× 1.5, cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git history.
+Everything through T-200 is built except T-175 (match-result hook), T-176–T-177 (title layout, 3D backdrop) and T-088
+(LFS question) — 119 tests, RUN_VERSION 17: match engine and 3D playback (skill-scaled mistakes, ego moments, venues,
+technique switches), career (28 weeks, pools, evaluations, U21 Cup, Story mode with Kaede, the rival and the aces,
+growth, relationships), UI redesign §9–§10, hex territory and economy §4.27, island × 1.5 with the district plan,
+cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git history. A refactor is being planned in
+another chat (owner, 2026-10-04).
 
 ## Now
 
@@ -56,6 +59,18 @@ Result: referee on a stand by the far post, two line judges with flags, two team
 
 Owner request 2026-10-04 (map and facility revamp, spec §4.18d–e, §4.19a): T-181 → T-183 built by the spec chat;
 T-184 → T-186 built by the spec chat on the owner's go.
+
+### [x] T-200: Egoist game in the Dev tab; negative wit (owner request)
+
+Spec: §2.12a §3 Goldens: unchanged by this part Save: no change
+Files: js/engine/teams.js (`mkEgoistTeams`), js/engine/players.js (`WIT_MIN`, fixStats, ovr), js/engine/stats.js (`witBody`), js/ui/menu.js (`startEgoist`, Dev button), tests/engine.test.js
+Result: Monster teams with ego 1 and wit −0.2…−1; negative wit counts as 1 for power / defense and OVR, W() floors at 0.1, maturity 0. ~20 ego acts per match (3.6 steals, 5.5 demanded sets). Stat-guard test: wit floor −1. QA: Egoist game, no errors.
+
+### [x] T-199: Ego moment — slow motion and a chase camera on the ego player (owner request)
+
+Spec: §2.12 Goldens: update (beats gain the `ego` act) Save: no change
+Files: js/engine/match.js (egoSteal), js/engine/rally.js (setCalls), js/render/movement.js (`egoFocus`, `egoRelease`, approach phase A), js/render/playback.js, js/render/acts.js (`ego`), js/render/overlay.js (labels in the ego shot), js/render3d/camera3d.mjs (shot kind `ego`, tracked shots)
+Result: steal: world ×0.3 from 20 % of the beat, thief on real time; demanded set: slow until the run-up (A.ts 0.3 then back to ~0.75 at 40 %), hitter sprints in real time, then back on the world clock. QA (Egoist game): both kinds seen, chase cam framed behind the player, "MINE!" label visible, no errors.
 
 ### [x] T-198: Mistakes follow skill, like the real game (owner request)
 
@@ -320,7 +335,7 @@ Goal: scenes fire from the game's moments.
 Files: js/ui/career-create.js (start), js/ui/career-hub.js (week start, place visited), js/ui/career-match.js (match result), js/career/story.js
 Steps: call `Story.due` at Story start (after Create, before the first brief), at each week start (before the brief), after a place is visited, after a match result; a due scene opens the box before the hub's own cards.
 Accept: the test scene can be triggered from each hook (test flag); the brief waits until the scene ends.
-Result: (partial) the 'start' hook is in Run.create; week / place / result hooks still to do.
+Result: (partial) the 'start' hook is in Run.create; T-188's 'hub' trigger with STORY_WHEN keys (week n, trained, clash, settled, evaluated) covers the week / place moments; the match-result hook is still to do.
 
 ### [x] T-180: Delayed Spike vs falling blockers; hang-too-long trade-off (owner request)
 

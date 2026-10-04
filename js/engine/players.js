@@ -55,11 +55,13 @@ function ensureEgo(p) {
 }
 /** How mature a player is (0–1) from wit: ≈ 0 at wit 0.5, 1 at 2.0. Maturity cuts how often and how badly ego acts go. */
 const maturity = p => clamp((p.wit - 0.5) / 1.5, 0, 1);
+/** The lowest wit: negative wit is the Egoist game's (T-200) — maturity 0, the match's wit W() floors at 0.1, the body untouched (witBody). */
+const WIT_MIN = -1;
 /** The lowest a created player's stat can be. Generated players never go below 25: `rollStats` keeps its own floor; only your career player starts lower (CAREER.start). */
 const STAT_FLOOR = 1;
 /**
  * Repair a player's stats in place: a stat that is not a finite number becomes STAT_FLOOR, one outside [STAT_FLOOR, 99] is clamped,
- * wit not finite → 1 else clamped to [0.1, 3]. In-range values are left exactly as they are (no rounding, no draws). Returns how many were fixed.
+ * wit not finite → 1 else clamped to [WIT_MIN, 3]. In-range values are left exactly as they are (no rounding, no draws). Returns how many were fixed.
  */
 function fixStats(p) {
   let n = 0;
@@ -67,7 +69,7 @@ function fixStats(p) {
     const v = Number.isFinite(p[k]) ? clamp(p[k], STAT_FLOOR, 99) : STAT_FLOOR;
     if (v !== p[k]) ((p[k] = v), n++);
   }
-  const w = Number.isFinite(p.wit) ? clamp(p.wit, 0.1, 3) : 1;
+  const w = Number.isFinite(p.wit) ? clamp(p.wit, WIT_MIN, 3) : 1;
   if (w !== p.wit) ((p.wit = w), n++);
   return n;
 }
@@ -133,8 +135,10 @@ function mkPlayer(role, slot, bonus, team, used) {
     ...st
   });
 }
-/** Overall rating: the stats weighted by role, plus wit. */
+/** Overall rating: the stats weighted by role, plus wit (a negative wit counts as 1, like witBody). */
 function ovr(p) {
   const w = { S: [0.1, 0.3, 0.35, 0.25], MB: [0.2, 0.35, 0.15, 0.3], WS: [0.4, 0.2, 0.15, 0.25] }[p.role];
-  return Math.round(p.power * w[0] + p.def * w[1] + p.speed * w[2] + p.jump * w[3] + (p.wit - 1) * (p.role === 'S' ? 12 : 6));
+  return Math.round(
+    p.power * w[0] + p.def * w[1] + p.speed * w[2] + p.jump * w[3] + ((p.wit < 0 ? 1 : p.wit) - 1) * (p.role === 'S' ? 12 : 6)
+  );
 }

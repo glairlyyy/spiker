@@ -313,7 +313,7 @@ const Overlay = (() => {
   }
   /** Floating play labels (Kill!, Ace, technique names…): size by importance, colour by kind, stamps pop in. */
   function drawLabels() {
-    if (A.shot) return; // scene close-ups: court-anchored labels would land on the face / the subtitle
+    if (A.shot && A.shot.kind !== 'ego') return; // scene close-ups: court-anchored labels would land on the face / the subtitle
     for (const l of A.labels) {
       ctx.save();
       ctx.globalAlpha = Math.min(1, l.life * 2);

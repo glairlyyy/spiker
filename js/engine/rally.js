@@ -257,6 +257,7 @@ function setBeat(c, x) {
   if (V && egoCall)
     setCalls.push(
       { k: 'call', p: egoCall.id, t: callLine('ego', egoCall, m) },
+      { k: 'ego', p: egoCall.id, act: 'call' },
       { k: 'log', t: `${egoCall.name} demands the set — ${setter.name} gives in`, c: 'set' }
     );
   const combo =

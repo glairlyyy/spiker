@@ -98,11 +98,16 @@ function egoSteal(m, cands, near, x, z, acts, V) {
       crash = cc > 0 && R() < cc;
     m.egoLog.push({ act: 'steal', p: p.id, ok: !crash, mate: near.id, crash });
     V &&
-      acts.push({ k: 'plabel', p: p.id, t: 'MINE!' }, ...(crash ? [{ k: 'pose', p: p.id, pose: 'bump' }] : []), {
-        k: 'log',
-        t: crash ? `${p.name} and ${near.name} both go for it — they crash!` : `${p.name} calls "Mine!" and takes it off ${near.name}`,
-        c: crash ? 'err' : 'set'
-      });
+      acts.push(
+        { k: 'plabel', p: p.id, t: 'MINE!' },
+        { k: 'ego', p: p.id, act: 'steal' },
+        ...(crash ? [{ k: 'pose', p: p.id, pose: 'bump' }] : []),
+        {
+          k: 'log',
+          t: crash ? `${p.name} and ${near.name} both go for it — they crash!` : `${p.name} calls "Mine!" and takes it off ${near.name}`,
+          c: crash ? 'err' : 'set'
+        }
+      );
     return { p: crash ? near : p, crash, thief: p };
   }
   return null;

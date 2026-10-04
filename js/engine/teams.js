@@ -79,6 +79,20 @@ function mkMonsterTeams() {
   });
 }
 /**
+ * Egoist game (dev, T-200): two all-OP teams (as mkMonsterTeams) where everyone is a pure egoist — ego 1 and a negative wit
+ * (−0.2 to −1): maturity 0, so ego acts come at their full rate and no captain reins them in. Negative wit never lowers
+ * the body (witBody: power / defense count it as 1); the reads, sets and calls play like the lowest wit.
+ */
+function mkEgoistTeams() {
+  const T = mkMonsterTeams();
+  for (const t of T) {
+    for (const p of squadOf(t)) Object.assign(p, { wit: -+rnd(0.2, 1).toFixed(2), ego: 1 });
+    t.arch = 'Egoist squad';
+    finalizeTeam(t);
+  }
+  return T;
+}
+/**
  * Average game (dev): two random teams of ordinary players — each player's overall rolled in `ovr` (default 30–60), their
  * stats shifted together to it (the rolled shape kept, 10–99). No stars, no OP.
  */

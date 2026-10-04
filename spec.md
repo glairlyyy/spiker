@@ -27,7 +27,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   55 · blocks 4 · aces 11 (real amateur ~28 · 55 · 5 · 12); league start: 38 · 43 · 10 · 9; all-OP: 51 · 32 · 8 · 8 (real elite
   ~50 · 32 · 11 · 6). Low-level games are won by whoever errs less; at the top, by kills.
 - §2.1b Which stat drives which action (reference; Wit scales Power and Defense in play, × 0.75 + 0.25 × wit, with mood,
-  momentum and stamina):
+  momentum and stamina; a negative wit counts as 1 there and in OVR — §2.12a):
 
   | Action             | Stats                                                                     | Decides                               |
   | ------------------ | ------------------------------------------------------------------------- | ------------------------------------- |
@@ -103,15 +103,27 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     jealous resent it), set_hogged −4 (the open hitter). Ego toward allies ×0.5, rivals ×1.5.
   - Value: NPCs from traits (proud/reckless/jealous up; steady/calculating/warm down), else hash 0.2–0.8 (WS a bit
     higher); you start 0.6. Card tag: Show-off · Team player.
-  - Presentation: "MINE!" label (`plabel`), collision = both bump poses + log line, set-call chatter; no new act
-    kinds. Tallies in `m.egoLog`.
+  - Presentation: "MINE!" label (`plabel`), collision = both bump poses + log line, set-call chatter. Tallies in `m.egoLog`.
+  - **Ego moment** (owner, 2026-10-04) **[built, T-199]**: a steal (tried, crash or not) and a demanded set that the setter
+    gives in to mark their beat with act `ego` { p, act: 'steal' | 'call' } (recorded beats only, no draws). Playback
+    (`egoFocus`, movement.js): the world slows to ×0.3 while the ego player plays on at normal speed (the far-dig
+    `A.digHero` clock: real-time sprint, timers, posing) and a tracked chase camera follows them (`A.shot` kind `ego`,
+    behind and beside the player, the ball ahead; labels stay on). Steal: slow from 20 % of the beat (after the hit) to
+    the touch. Demanded set: slow while the hitter sprints to the run-up point (to 30–60 % of the set beat); the run,
+    jump and hit are back in sync with the ball. Off with Hype Off; a far dig of another player keeps its own clock.
   - **Block collision**: solo ego blocker + partner committing to the same spot (partner maturity decides holding off)
     → both blocks cancelled mid-jump, stagger apart, open net. Error variant: net fault, point to attackers. Label
     **BLOCK COLLISION** (warning) / **BLOCK COLLISION · NET** (red). collided −4 both.
+- §2.12a Negative wit (owner, 2026-10-04) **[built, T-200]**: wit may be below 0 (`WIT_MIN` −1; fixStats clamps to
+  [−1, 3]). It never lowers the body: power / defense in play (`witBody`) and OVR count it as 1. Everything else reads it
+  as the lowest wit (match wit `W()` floors at 0.1; maturity 0 → ego acts at full rate, no captain rein). Only the
+  Egoist game makes such players today.
 
 ## 3. Menu [built]
 
-- One game + a dev Playtest card (Monster game, `startMonster()`; Average game, `startAverage()`: two teams of ordinary players, each rolled at OVR 30–60 — owner, 2026-10-04).
+- One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two
+  teams of ordinary players, each rolled at OVR 30–60 — owner, 2026-10-04); **Egoist game** (`startEgoist()`,
+  `mkEgoistTeams`: the Monster teams with ego 1 and wit −0.2 to −1 each — §2.12a; owner, 2026-10-04).
 
 ## 4. Career world [built unless tagged]
 
@@ -202,8 +214,9 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     coloured if scouted/member, else grey) and walking between places; street battle as a two-colour crowd with flags
     and dust; patrols stand on the hex frontier facing each other (this week's battle tile first, then the most
     pressured fronts, any pair — T-153); tile colour shows who holds a place (no seized flags). Low-poly instanced figures; VRM for you only.
-  - B **[locked, not built — waits on lore]**: waves, boats, gulls, Wu beach pickup games, Shu village smoke, Wei
-    lights and traffic, villagers near the Academy; individual NPC figures and approach figures (§4.23).
+  - B: boats, buses, vans, a plane (§4.19a, T-186) and full models for Kaede and the named (T-187, T-190) **[built]**;
+    waves, gulls, Wu beach pickup games, Shu village smoke, Wei lights, villagers near the Academy, individual NPC and
+    approach figures (§4.23) **[locked, not built]**.
   - C **[locked, not built — M3]**: sun moves as the week's days are spent; dusk when none left.
 - §4.17 Rankings (numbers true, criteria biased; display only):
   - **Academy Register** (`registrar`): all U21 players by true OVR; unknown players (not member/squad/scouted/met on
@@ -383,7 +396,8 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   - **Endless** **[locked, not built]**: no guarantees; call-up by grades; season rolls over after the cup (aging out,
     senior league, continuing NPC careers: **[open]**).
 - §4.28 Aces, the rival and the two-year Story **[draft]** (owner, 2026-10-04; lore.md §6): growth curves are
-  authored, not rolled.
+  authored, not rolled. **The year-1 curves are built as §4.29, whose numbers supersede the guesses below**; two seasons,
+  the year-1 cut-scene, aging out and the International pick are not built (the run ends after the year-1 Cup).
   - **Story = two seasons** (28 weeks + U21 Final Cup, twice). MC 19 → 20, U21-eligible both years.
   - **Year-1 Cup won**: no call-up yet — a special cut-scene, then the rival's growth rate goes to its maximum for
     year 2 (the rival answers). The run goes on to year 2.
@@ -398,7 +412,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     (the rival included); you have that year to catch up. Not tied to your OVR.
   - Numbers are first guesses for the balance pass; the shape (year-1 aces ≥ rival > cohort > field; you catch up in
     year 2) is the decision.
-- §4.27 Hex territory **[locked]** (owner, 2026-10-03): the war map becomes hex tiles; each tile has its own takeover
+- §4.27 Hex territory **[built, T-131–T-134, T-138, T-153]** (owner, 2026-10-03): the war map becomes hex tiles; each tile has its own takeover
   condition. Changes how factions move and seize; the player's travel (roads, days, trips, fog) does not change.
   Replaces the fixed border meters and border places (§4.7 `FRONT.borders`, T-130 lines, seized patches).
   - Grid: flat-top hexes, `HEX.size` 36 map units (~170 land tiles), built deterministically from CITY (land = centre or any corner on
@@ -467,7 +481,7 @@ mood)`.
   while); a weakness revealed by scouting, shown in the match UI.
 - New-run setup + results screens. Hype scene frequency tuning (§2.3). More music, crowd, voice clips. Living map B/C. Endless mode.
 
-## 9. UI guidelines [locked, not built unless tagged]
+## 9. UI guidelines [locked; §9.1–§9.11 built, §10.7a not built]
 
 Source: the design system artifact https://claude.ai/artifact/DWxheHjahb7L4k8GAWbRGq — `project/README.md` (rules),
 `ui-review.md` (findings per screen), `short-copy.md` (glossary + icons), `tokens.json`, component previews (Button,
@@ -515,7 +529,7 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
   only, Monster game for both. Overlay rail 400px (key B; opens on pause and after the final): Commentary · Box score ·
   Tactics. ⚙ settings = labelled segmented controls (every option visible), opening upward from the bar. Results card
   action row: Continue/Back + Box score; playback disabled.
-- §9.10 Technique switches (owner, 2026-10-04; design system TechSwitch card): you can hold back a technique you own,
+- §9.10 Technique switches **[built, T-178–T-179]** (owner, 2026-10-04; design system TechSwitch card): you can hold back a technique you own,
   because some trade something for their gain (e.g. Killer Jump Serve: +10% pace, +3% faults; Delayed Spike §2.9a: may hang too long).
   - **Rule**: switch any time, no cost; it applies from the **next rally** (same as tactics). Career: only your player's
     techniques; exhibition / Monster game: every player on your side(s). A switched-off technique simply never fires
@@ -531,7 +545,7 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
     result screen lists `Held back: …` under your line.
   - **Memory**: career keeps your off-list between matches (`you.techOff` on your player — saved with it, no version bump) and match
     prep starts from it with `Reset`; exhibition switches last one match. Passive skills (Soft Hands…) are not listed.
-- §9.11 Match venues (owner, 2026-10-04): the 3D court is dressed per venue so a match feels like a place.
+- §9.11 Match venues **[built, T-193–T-195]** (owner, 2026-10-04): the 3D court is dressed per venue so a match feels like a place.
   - **Venue of a match**: `fx.venue` if set; career → `City.venue(run)` (arena / hall / beach / highland), else `street`
     (street battles, challenges, pickup games); exhibition / Monster → `arena`. **Stakes** 0–1 set the crowd size: final 1,
     other Cup rounds .85, evaluations .45, street .35, exhibition .9.
@@ -552,7 +566,7 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
     3 m of the far side line except the referee stand; low-end devices drop the light cones, shafts and props; light cones and shafts
     fade out within 6–16 m of the camera and in close-ups so no light ever covers the view (owner, 2026-10-04).
 
-## 10. Redesign [built through T-129; §10.1a, rail collapse and no-list locked, not built]
+## 10. Redesign [built, T-117–T-137, T-159–T-175, T-187–T-188, T-192, T-196; §10.7a not built]
 
 Design system pages `redesign.md` + `inventory.md`, mockups in the _Redesign_ group (HubRedesign, SheetMe, SheetPeople,
 SheetWorld, SheetSeason, WeekBrief, WeekReport, EventCard, MatchResult, TitleScreen, CreateCareer). Supersedes the
@@ -589,7 +603,7 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
 - §10.7 Title screen (Continue hero, New career, Encyclopedia, Settings, **Dev** — owner 2026-10-03: a title-screen tab, always shown, with Monster game, player models,
   Benchmark models, the §10.8 word counter (on/off, remembered per browser) and Debug log; `?dev` opens it with the counter on) and Create (role
   cards with key stat, best training places, techniques; name; challenge toggles; Arrive / Back).
-- §10.7a Title layout = the design system TitleScreen card (owner, 2026-10-04). Left column at a 96px inset, top-aligned
+- §10.7a Title layout = the design system TitleScreen card **[locked, not built: T-176–T-177]** (owner, 2026-10-04). Left column at a 96px inset, top-aligned
   from 96px: kicker `4V4 VOLLEYBALL RPG` (label style), wordmark `SPITE & SPIKE` on **one line** (Rajdhani 700,
   clamp(56px, 6vw, 80px), letter-spacing .14em), tagline `Nobody believed in you. Good.` visible (body, `mute`); 56px
   below, the menu stack 440px wide, 12px gaps, buttons 52px high, label left-aligned. Continue hero = ink card, `Continue`
@@ -608,7 +622,7 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   numbers over sentences (`7 left`, `W6`); flavour and rumours on the title's hover; long lists show the useful few +
   `+n ›`; details (challenge, housing effects, facility level, faction economy, border target) in a peek; inbox items
   one line each with a peek. Never hidden: costs on buttons, locked gaps, penalties, deadlines, the event card.
-- §10.10 Dialogue box and story scenes **[built: runner, box, intro — T-173/T-174]** (owner, 2026-10-04): the classic RPG **dialogue box** (message
+- §10.10 Dialogue box and story scenes **[built: runner, box, intro, hub triggers, guide, week-1 campus — T-173/T-174, T-187/T-188, T-192, T-196; match-result hook not built (T-175)]** (owner, 2026-10-04): the classic RPG **dialogue box** (message
   window) for story and events — so any scene is data, not code.
   - Box: bottom of the screen over the live map / court, ~1/4 height, full width minus the rail; **name plate** (the
     speaker, lore.md §7 voice; faction colour only on the plate's border), **portrait** on the left (`faceSVG` now,

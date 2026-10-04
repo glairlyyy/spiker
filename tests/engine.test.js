@@ -56,6 +56,31 @@ test('engine: average teams — every player 30–60 OVR, no stars, a match play
   assert(m.over, 'the match ends');
 });
 
+test('engine: egoist teams — all OP, negative wit that never lowers the body, ego acts everywhere (T-200)', () => {
+  const g = load(13),
+    T = g.mkEgoistTeams(),
+    all = T.flatMap(t => g.squadOf(t));
+  assert(
+    all.every(p => p.op && p.ego === 1 && p.wit < 0 && p.wit >= -1),
+    'OP, ego 1, wit in [−1, −0.2]'
+  );
+  const m = g.newMatch(T[0], T[1], true),
+    p = T[0].P[2];
+  g.CM = m;
+  const raw = (p.power * g.boost(p)).toFixed(6);
+  eq(g.effP(p).toFixed(6), raw, 'negative wit leaves power as wit 1 would');
+  eq(g.maturity(p), 0, 'maturity 0');
+  const ovr0 = g.ovr(p);
+  p.wit = 1;
+  eq(g.ovr(p), ovr0, 'OVR as wit 1');
+  p.wit = -0.5;
+  let n = 0,
+    ego = 0;
+  while (!m.over && n++ < 5000) for (const b of g.playRally(m).beats) ego += b.acts.filter(a => a.k === 'ego').length;
+  assert(m.over, 'the match ends');
+  assert(m.egoLog.length >= 8 && ego >= 3, `ego acts are frequent (${m.egoLog.length} logged, ${ego} ego beats)`);
+});
+
 test('engine: rally invariants over 300 matches', () => {
   const g = load(3);
   const T = g.mkTeams();
@@ -376,10 +401,10 @@ test('engine: stat guard — invalid stats are repaired, valid ones untouched', 
   const T = g.mkTeams();
   const p = T[0].P[2];
   const ok = T[1].P.map(q => JSON.stringify([q.power, q.def, q.speed, q.jump, q.wit]));
-  Object.assign(p, { power: -40, def: NaN, speed: 300, wit: -1 });
+  Object.assign(p, { power: -40, def: NaN, speed: 300, wit: -5 });
   const j = p.jump;
   assert(g.fixStats(p) === 4, 'four values fixed');
-  eq(JSON.stringify([p.power, p.def, p.speed, p.jump, p.wit]), JSON.stringify([1, 1, 99, j, 0.1]));
+  eq(JSON.stringify([p.power, p.def, p.speed, p.jump, p.wit]), JSON.stringify([1, 1, 99, j, g.WIT_MIN]));
   assert(
     T[1].P.every((q, i) => g.fixStats(q) === 0 && JSON.stringify([q.power, q.def, q.speed, q.jump, q.wit]) === ok[i]),
     'valid players untouched'
@@ -388,7 +413,7 @@ test('engine: stat guard — invalid stats are repaired, valid ones untouched', 
   const m = g.newMatch(T[0], T[1], false);
   while (!m.over) g.playRally(m);
   assert(
-    m.over && T[0].P.every(q => [q.power, q.def, q.speed, q.jump].every(v => v >= 1 && v <= 99) && q.wit >= 0.1 && q.wit <= 3),
+    m.over && T[0].P.every(q => [q.power, q.def, q.speed, q.jump].every(v => v >= 1 && v <= 99) && q.wit >= g.WIT_MIN && q.wit <= 3),
     'the match ran on repaired stats'
   );
   const dmg = { name: 'x', sk: T[0].sk, bench: [], P: T[0].P.map(q => Object.assign({}, q, { team: undefined, speed: -5 })) };
