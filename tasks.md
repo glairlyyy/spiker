@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-199** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-213** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -27,10 +27,160 @@ Result:
 Everything through T-200 is built except T-088 (LFS question) — 120 tests, RUN_VERSION 17: match engine and 3D playback (skill-scaled mistakes, ego moments, venues,
 technique switches), career (28 weeks, pools, evaluations, U21 Cup, Story mode with Kaede, the rival and the aces,
 growth, relationships), UI redesign §9–§10, hex territory and economy §4.27, island × 1.5 with the district plan,
-cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git history. A refactor is being planned in
-another chat (owner, 2026-10-04).
+cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git history. Refactor part 4 planned (T-201–T-212, under Now).
 
 ## Now
+
+Refactor part 4 (owner, 2026-10-04): keep it simple, open for the next features (§4.24 faction events, §4.26 Endless,
+§4.28 year 2, §8 ace traits, more venues / place kinds). Rules for every task below: **pure refactor** — goldens
+unchanged (tests pass **without** `--update`), save unchanged, no draw-order change, no new framework / module system /
+build step, no behaviour or UI change unless the task says so; top-level names kept (or every caller updated in the same
+task); one seam per task. Order: T-201 → T-212 (each stands alone; stop after any).
+
+### [ ] T-201: Career returns fixtures; the UI decides where to go
+
+Spec: §4.6 §4.11 §4.15 Goldens: unchanged Save: no change
+Goal: `js/career` has no `navigate()` left (layer rule: career = no DOM / screens). Fixture shape documented once.
+Files: js/career/cup.js, js/career/fight.js, js/ui/career-match.js, js/ui/career-map.js, ARCHITECTURE.md
+Do not: change `startMatch(fx)`'s fixture fields or the onFinish return text.
+Steps:
+
+1. `Cup.fixture` / `Fight.*` fixtures drop `onLeave`; the UI callers add `onLeave: () => navigate('career')` (one helper
+   `careerFx(fx)` in career-match.js).
+2. ARCHITECTURE: one "Fixture" paragraph — `{ a, b, round, court?, back, setup(m)?, onFinish(m) → text, onLeave() }`, who fills which field.
+   Accept: `grep -n navigate js/career` empty; cup tie, street fight, challenge all return to the hub (QA).
+   QA: career run → Sim ⏭ a street fight and a challenge; leave a match mid-way.
+   Result:
+
+### [ ] T-202: Week steps as one ordered list
+
+Spec: §4.5 Goldens: unchanged Save: no change
+Goal: adding a weekly system (§4.24 faction events, year 2) = one line. `Run.endWeek` / `Run.nextWeek` read two arrays.
+Files: js/career/run.js, ARCHITECTURE.md
+Do not: reorder any step (R() / People.roll order); move the cup start or save out of endWeek.
+Steps:
+
+1. `WEEK_END = [Growth.week, Sponsors.tick, Run.heal, World.week, Fight.settle, Hex.decay]` and `WEEK_START = [Fight.clashRoll,
+Training.rollFloor, Sponsors.offer, ElTrial.offer, Eval.setup, Asks.roll]` as `run => void` (wrap the inline injury
+   and clash lines as `Run.heal` / `Fight.settle`), declared in run.js (all callees exist at call time, not load time).
+2. endWeek = steps → reset week fields → week++ → cup or WEEK_START → save.
+   Accept: career goldens and sims unchanged; a test asserts both arrays are functions.
+   QA: none
+   Result:
+
+### [ ] T-203: Diary lines tagged where they are written
+
+Spec: §10.5 Goldens: unchanged Save: no change (old entries without a tag fall back to the regex)
+Goal: the Week report's bad / good / world tag comes from the producer, not a text regex (`LOG_TAGS`), so new lines and
+re-voiced text never mis-tag.
+Files: js/career/run.js (`Run.log(run, text, tag = 'world')`, entry `{ w, t, k }`), the js/career files whose lines are
+`bad` / `good` today (grep the LOG_TAGS patterns), js/ui/career-week.js, tests/career.test.js
+Do not: change any line's text.
+Steps:
+
+1. `Run.log` stores `k` when given. 2. Pass `'bad'` / `'good'` at each producer the regex catches today. 3. career-week reads
+   `k`, regex only when `k` is missing.
+   Accept: a test logs one week of a seeded run and gets the same tags as the regex did.
+   QA: career run → End week → Week report tags as before.
+   Result:
+
+### [ ] T-204: Split the long engine functions into named steps
+
+Spec: §2 Goldens: unchanged Save: no change
+Goal: `playRally` (serve.js, 320 lines), `match.end` (190), `dig` (230), `block` (221), `formBlock` (198), `setBeat` (147)
+each read as a short list of named steps (≤ ~60 lines each), so ace traits (§8) have obvious places to hook.
+Files: js/engine/serve.js, js/engine/match.js, js/engine/rally-defense.js, js/engine/rally-block.js, js/engine/rally.js, ARCHITECTURE.md (engine flow)
+Do not: move, add or drop any R() call or change its order; change beat/act shapes; add globals beyond the new step
+functions (prefix by owner, e.g. `serveToss`, `digReach`).
+Steps: extract in place, one function per commit-able chunk; run `npm run test:quick` after each.
+Accept: goldens + full tests pass without `--update`; no function in the six files > 80 lines (the acorn length scan).
+QA: none
+Result:
+
+### [ ] T-205: Venue sets in a registry, one file each
+
+Spec: §9.11 Goldens: unchanged Save: no change
+Goal: a new venue = one file + one registry line.
+Files: js/render3d/venue3d.mjs, js/render3d/venues/arena.mjs, hall.mjs, beach.mjs, highland.mjs, street.mjs, props.mjs (new: officials, benches, cart, big screen), ARCHITECTURE.md
+Do not: change LOOK values or any mesh; add Math.random draws.
+Steps: move `setArena`… `setStreet` and `setOfficials` out; venue3d keeps LOOK, floor, crowd and `VENUE_SETS = { arena, hall, … }`.
+Accept: venue3d.mjs < 350 lines; all five venues screenshot identical (pixel diff ≈ 0 on a held frame).
+QA: Monster game, each `A.venue`.
+Result:
+
+### [ ] T-206: Place panels by kind
+
+Spec: §10.2 §10.3 Goldens: unchanged Save: no change
+Goal: a new place kind = one entry in `PANELS`. career-map.js keeps actions / walk lock; panels move out.
+Files: js/ui/career-map.js, js/ui/career-panels.js (new: `placeCard`, `ptag`, `placeTags`, `placeDetails`, `spotPanel`,
+`tileBlock`, `pointPanel`, `clashPanel`, `trainSpot`, `challengeBlock`, `venuePanel`, `hqPanel`), index.html, ARCHITECTURE.md
+Do not: change markup or hotkeys.
+Steps: move; `spotPanel` dispatch becomes `PANELS = [[test, fn], …]` (hq, clash, venue:, pt:, else trainSpot).
+Accept: lint + tests pass; each panel renders the same HTML (string compare in a quick headless check or QA screenshots).
+QA: career run → open a gym, an HQ, the clash, a venue, a map point.
+Result:
+
+### [ ] T-207: Me and Season sheets in their own files
+
+Spec: §10.4 Goldens: unchanged Save: no change
+Goal: one file per sheet, like People and World.
+Files: js/ui/career-sheets.js → js/ui/sheet-me.js + js/ui/sheet-season.js (new; career-sheets.js removed), index.html, ARCHITECTURE.md
+Do not: rename functions.
+Accept: lint + tests pass; both sheets open (QA).
+QA: career run → Me, Season.
+Result:
+
+### [ ] T-208: match-screen.js by job
+
+Spec: §9.9 §9.10 Goldens: unchanged Save: no change
+Goal: match-screen.js holds start / leave and the playback state `A` (its one literal is the documented shape); controls,
+settings menu and technique switches move out.
+Files: js/ui/match-screen.js, js/ui/match-controls.js (new: control bar, speeds, settings menu, cam label), js/ui/match-tech.js
+(new: `techSection`, `flipTech`), index.html, ARCHITECTURE.md (list every `A` field group in one table)
+Do not: rename `A` fields; change markup.
+Accept: match-screen.js < 300 lines; lint + tests pass.
+QA: Monster game → pause, speed, settings, a technique switch.
+Result:
+
+### [ ] T-209: CSS colours → tokens; 12px floor
+
+Spec: §9.2 §9.3 Goldens: unchanged Save: no change
+Goal: the 67 hex colours outside theme.css become theme tokens (new tokens only where no existing one fits, listed in
+the Result); the two `clamp(10px…)` / `clamp(11px…)` sizes reach 12px.
+Files: css/style.css, css/career.css, css/hub.css, css/map.css, css/people.css, css/story.css, css/theme.css
+Do not: change a visible colour by more than a token rounding (report any that move); touch canvas/3D colours.
+Accept: `grep -E '#[0-9a-fA-F]{3,8}\b'` outside theme.css → 0 (club / faction data colours excepted, listed); hub, sheets
+and match screenshots pixel-diff < 1 %.
+QA: career hub, Me sheet, a match.
+Result:
+
+### [ ] T-210: Inline styles and emoji icons out of js/ui
+
+Spec: §9.2 §9.5 Goldens: unchanged Save: no change
+Goal: 41 `style="…"` → classes (only CSS custom properties like `--tc` / `--a` stay inline); emoji used as stat / resource
+icons → `statI` / `STAT_ICON` (map-place emoji stay).
+Files: js/ui/*.js (only the lines found), js/ui/icons.js (missing icons), css/hub.css, css/career.css, css/style.css
+Do not: change copy; add a second icon helper.
+Accept: `grep -o 'style="' js/ui` only custom-property cases; emoji count per file in the Result (before → after).
+QA: career hub, sheets, a match.
+Result:
+
+### [ ] T-211: "How to add X" recipes in ARCHITECTURE.md
+
+Spec: — Goldens: unchanged Save: no change
+Goal: one short recipe each, naming the files and the one list to extend: a venue (T-205), a place kind (T-206), a week
+step (T-202), a beat act kind (ACTS + test), a career match kind (fixture, T-201), a glossary term, a save field (RUN_VERSION + repair).
+Files: ARCHITECTURE.md
+Accept: each recipe ≤ 6 lines and matches the code.
+Result:
+
+### [ ] T-212: Refresh the design system status page
+
+Spec: §9 Goldens: unchanged Save: no change
+Goal: the design system's `project/status.md` matches the build after T-205–T-210 (TitleScreen is built since T-176 / T-177;
+new file homes; drift counts).
+Files: the design system artifact `project/status.md` only (spec chat publishes it).
+Result:
 
 Owner request 2026-10-04 (spec §9.11 match venues): T-193 → T-195. Render only; goldens unchanged.
 
@@ -466,6 +616,13 @@ Features (spec first):
 - Endless mode (spec §4.26: no guarantees; national call-up by grades).
 - Living map layers B / C (spec §4.16: individual figures, approaches on the map).
 - Balance pass (spec §4.10 condition values, §5.5 severe injury, hype frequency §2.3).
+
+Refactor seams to cut only when the feature is specced (not now — YAGNI):
+
+- Year 2 / Endless (§4.26, §4.28): `run.year` + a `Season` helper for week-of-season checks (story gates, Stars curves,
+  CALENDAR / CUPS) — needs a save bump.
+- Ace traits (§8): one roll-modifier hook at the stuff / receive / clutch / hang rolls, on top of T-204's named steps.
+- Big render closures (`createFx` 540, `Overlay` 481, map3d `create` 354, `createTown` 343): split by effect / layer when next touched.
 
 Cleanup, part 2: T-082…T-087 done (see Done). Open:
 
