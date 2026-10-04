@@ -286,6 +286,7 @@ const Cup = {
       box
     });
     if (run.mlog.length > MLOG.max) run.mlog.splice(0, run.mlog.length - MLOG.max);
+    Story.matched(run, kind, win, played); // the hub's next scene may be about this match (T-175)
   },
   /** Your grade for one match (S–C) from your own line. */
   grade(s, win) {

@@ -1,6 +1,7 @@
 // Story scenes (spec §10.10): data the Story runner (js/career/story.js) plays and the dialogue box (js/ui/dialogue.js)
 // shows. Story mode only. Lines follow the lore.md §7 voices: `diary` = the MC's narration, `you` = the MC speaking.
-// Triggers: {on: 'start'} (Run.create) · {on: 'hub', when: STORY_WHEN key, off?: flag} (each hub render with no scene, lock or event
+// Triggers: {on: 'start'} (Run.create) · {on: 'result', when?: 'won' | 'lost' …} (the first hub after one of your matches, before
+// any lesson) · {on: 'hub', when: STORY_WHEN key, off?: flag} (each hub render with no scene, lock or event
 // open; `off` = a flag that cancels it). Lines may hold {role} / {key} (your role, its key stat). Steps may carry an `id` for goto.
 // Step kinds: say {who, text} · title {text} (a big centred line: a score, a place, a date) · choice {opts: [{text, goto?, set?}]} · cut {dark?, bars?} (presentation mode until the
 // next cut) · cam {to: 'you'} · walk {to: place id | 'home'} (you walk there; free, no days) · wait {ms} · set {flag, v} ·

@@ -328,14 +328,14 @@ Steps: box markup per §10.10; typewriter via rAF (~60 chars/s, completes on cli
 Accept: test scene plays end to end with mouse and keys; type ≥ 12px; no errors. QA: screenshots of a say step, a choice, the log, cut-scene mode.
 Result: js/ui/story-box.js + css/story.css: box (name plate, faceSVG portrait, 60 cps typing, ▼, choices 1–4, L log, Esc inline skip), dark and letterbox modes, hub chrome hidden and the map full screen while a scene plays; walk steps wait for the avatar (20 s cap). First scene = the intro: dark cold open (3 diary lines) → letterbox, airport, “Finally arrived.” → walk home → “Home. For now.” → week brief. QA: screenshots of each step, no errors (swiftshader walks slowly; real GPUs take ≤ 6 s).
 
-### [ ] T-175: Hook scenes into the career
+### [x] T-175: Hook scenes into the career
 
 Spec: §10.10 §4.28 Goldens: unchanged Save: no change
 Goal: scenes fire from the game's moments.
 Files: js/ui/career-create.js (start), js/ui/career-hub.js (week start, place visited), js/ui/career-match.js (match result), js/career/story.js
 Steps: call `Story.due` at Story start (after Create, before the first brief), at each week start (before the brief), after a place is visited, after a match result; a due scene opens the box before the hub's own cards.
 Accept: the test scene can be triggered from each hook (test flag); the brief waits until the scene ends.
-Result: (partial) the 'start' hook is in Run.create; T-188's 'hub' trigger with STORY_WHEN keys (week n, trained, clash, settled, evaluated) covers the week / place moments; the match-result hook is still to do.
+Result: (partial) the 'start' hook is in Run.create; T-188's 'hub' trigger with STORY_WHEN keys (week n, trained, clash, settled, evaluated) covers the week / place moments; match result (T-175 close): `Cup.record` → `Story.matched` sets `run.story.res`; the first hub after it (`Story.hub`) plays a due `result` scene (when: won / lost) ahead of any lesson, then the moment is dropped. No scene uses it yet (hook only, tested with test scenes).
 
 ### [x] T-180: Delayed Spike vs falling blockers; hang-too-long trade-off (owner request)
 

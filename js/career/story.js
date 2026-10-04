@@ -1,6 +1,7 @@
 // Story runner (spec §10.10): plays SCENES (js/data/story.js) step by step. DOM-free; draws no randoms. The dialogue
 // box (js/ui/dialogue.js) renders `Story.step(run)` and calls `Story.next`. State: run.story = { seen, flags, cur }
-// where cur = { id, i, mode: {dark, bars}, log: [[who, text]] } while a scene plays.
+// where cur = { id, i, mode: {dark, bars}, log: [[who, text]] } while a scene plays; res = { kind, win, played, week }: your
+// last match until the hub has shown its moment (the `result` trigger, T-175).
 
 /** `hub` trigger conditions (SCENES trigger.when): pure tests of the run. */
 const STORY_WHEN = {
@@ -9,16 +10,20 @@ const STORY_WHEN = {
   week2: run => run.week >= 2,
   week3: run => run.week >= 3 && !!Stars.get(run, 'rival'),
   settled: run => run.team != null || run.week >= 6,
-  evaluated: run => run.week >= 5
+  evaluated: run => run.week >= 5,
+  // `result` trigger (T-175): the match you just played (run.story.res, set by Cup.record, cleared by the first hub after it)
+  won: run => !!(run.story.res && run.story.res.win),
+  lost: run => !!(run.story.res && !run.story.res.win)
 };
 /** Steps the box shows and waits on; every other kind is applied at once by the runner. */
 const STORY_SHOWN = ['say', 'title', 'choice', 'walk', 'wait', 'cam'];
 const Story = {
   /** Scenes play in Story mode only (Endless skips them). */
   on: run => !!(run && run.mode && run.mode.story !== false && run.story),
-  /** The first unseen scene whose trigger matches `on` ('start', 'hub', …) and its `when` / `off` (STORY_WHEN, a flag), or null. */
+  /** The first unseen scene whose trigger matches `on` ('start', 'hub', 'result') and its `when` / `off` (STORY_WHEN, a flag), or null. */
   due(run, on) {
     if (!Story.on(run) || run.story.cur) return null;
+    if (on === 'result' && !run.story.res) return null; // no match since the last hub
     if (on === 'hub' && run.story.at === Story.clock(run)) return null; // one scene per day: a lesson never follows another at once
     return (
       Object.keys(SCENES).find(id => {
@@ -34,6 +39,20 @@ const Story = {
     String(t).replace('{role}', ROLE_NAME[Run.you(run).role].toLowerCase()).replace('{key}', STATNAME[KEYSTAT[Run.you(run).role]]),
   /** Index of step `g` (an index or a step id) in scene sid. */
   idx: (sid, g) => (typeof g === 'number' ? g : SCENES[sid].steps.findIndex(s => s.id === g)),
+  /** A match of yours just ended (Cup.record): its moment for the `result` trigger. */
+  matched(run, kind, win, played) {
+    if (Story.on(run)) run.story.res = { kind, win: !!win, played: !!played, week: run.week };
+  },
+  /**
+   * The hub opens with no scene, lock or event (career-hub.js): the last match's scene first (`result`), else a lesson whose
+   * moment has come (`hub`, one per day). The match's moment passes with this first hub after it. True when one started.
+   */
+  hub(run) {
+    if (!Story.on(run)) return false;
+    const r = !!run.story.res && Story.fire(run, 'result');
+    delete run.story.res;
+    return r || Story.fire(run, 'hub');
+  },
   /** Start the first due scene for `on` (if any); true when one started. */
   fire(run, on) {
     const id = Story.due(run, on);

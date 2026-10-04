@@ -985,6 +985,37 @@ test('story: the intro plays on a new Story run, applies its walk, never replays
   );
 });
 
+test('story: the result hook — the first hub after your match plays its scene, before any lesson (T-175)', () => {
+  const [g, run] = mkRunG(877);
+  g.Story.skip(run);
+  g.SCENES.zWon = { trigger: { on: 'result', when: 'won' }, steps: [{ k: 'say', who: 'diary', text: 'Won.' }, { k: 'end' }] };
+  g.SCENES.zAny = { trigger: { on: 'result' }, steps: [{ k: 'say', who: 'diary', text: 'Played.' }, { k: 'end' }] };
+  run.uses.power = 1; // a lesson is due too
+  run.dayLog.push({ k: 'train' });
+  assert(!g.Story.due(run, 'result'), 'nothing without a match');
+  const T = g.mkTeams(),
+    m = g.simMatch(T[0], T[1]);
+  g.Cup.record(run, m, 'eval');
+  assert(run.story.res && run.story.res.kind === 'eval', 'Cup.record marks the match');
+  run.story.res.win = false;
+  assert(g.Story.hub(run) && run.story.cur.id === 'zAny', 'a lost match: the any-result scene, ahead of the lesson');
+  assert(!run.story.res, 'the moment passes with the first hub');
+  g.Story.skip(run);
+  g.Story.matched(run, 'cup', true, true);
+  run.dayLog.push({ k: 'rest' });
+  assert(g.Story.hub(run) && run.story.cur.id === 'zWon', 'a won match: its scene');
+  g.Story.skip(run);
+  run.dayLog.push({ k: 'rest' });
+  assert(g.Story.hub(run) && run.story.cur.id === 'tutGym', 'then the lesson on a later hub');
+  g.Story.skip(run);
+  g.Story.matched(run, 'cup', true, true);
+  run.dayLog.push({ k: 'rest' });
+  g.Story.hub(run);
+  assert(!run.story.res && (!run.story.cur || !run.story.cur.id.startsWith('z')), 'each scene once; the unused moment is dropped');
+  delete g.SCENES.zWon;
+  delete g.SCENES.zAny;
+});
+
 test('story: Kaede — met in the intro, on the map, lessons once at their moment, none after "figure it out" (T-187, T-188)', () => {
   const [g, run] = mkRunG(875);
   let n = 0;
