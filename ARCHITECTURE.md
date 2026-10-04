@@ -95,8 +95,11 @@ in one file only (T-084) — theme.css overrides by being last, so never repeat 
 ## Screens
 
 `menu`, `match`, `create`, `career`, `encyclopedia` — switch with `navigate(name, …args)`.
-The match screen takes a fixture: `navigate('match', { a, b, round, back, onFinish(m) → message, onLeave() })`
+The match screen takes a **fixture** `{ a, b, round, court?, back, rel?, setup(m)?, onFinish(m) → message, onLeave() }`
 (career Cup and league games, the Monster exhibition). There is no stand-alone tournament/betting mode.
+Career fixtures (`Cup.fixture`, `Fight.clash`, `Fight.challenge`, approaches via `Asks`) fill everything but screens:
+their `onLeave` only cleans up (`Eval.restore`). The UI opens them with `watchCareer(fx)` (career-match.js), which wraps
+`onLeave` to return to the hub, or resolves them with `Cup.simNow(fx)`. js/career never calls `navigate`.
 
 ## Career mode
 

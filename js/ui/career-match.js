@@ -223,10 +223,21 @@ function resultData(run, m, b, msg) {
     msg
   };
 }
+/** Watch a career fixture (from js/career) on the match screen; leaving runs its own clean-up, then back to the hub. */
+function watchCareer(fx) {
+  const done = fx.onLeave;
+  navigate('match', {
+    ...fx,
+    onLeave: () => {
+      if (done) done();
+      navigate('career');
+    }
+  });
+}
 /** Play a career match on the match screen, or (sim) resolve it at once without watching. */
 function playCareer(kind, sim) {
   const fx = Cup.fixture(RUN, kind);
-  if (!sim) return navigate('match', fx);
+  if (!sim) return watchCareer(fx);
   Cup.simNow(fx);
   renderCareer();
 }

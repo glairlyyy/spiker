@@ -244,10 +244,7 @@ const Cup = {
         Eval.restore();
         return Cup.result(run, m, kind, bm);
       },
-      onLeave: () => {
-        Eval.restore();
-        navigate('career');
-      }
+      onLeave: () => Eval.restore() // the UI then returns to the hub (watchCareer)
     };
   },
   /**

@@ -43,10 +43,7 @@ const Fight = {
         Eval.restore();
         return Fight.clashResult(run, m, side, foe);
       },
-      onLeave: () => {
-        Eval.restore();
-        navigate('career');
-      }
+      onLeave: () => Eval.restore() // the UI then returns to the hub (watchCareer)
     };
   },
   /** A street crew for hire (alone): an Academy-style squad of CHALLENGE.hire.ovr players with you in your role's seat. */
@@ -120,10 +117,7 @@ const Fight = {
         Eval.restore();
         return Fight.challengeResult(run, m, ti, stake, side);
       },
-      onLeave: () => {
-        Eval.restore();
-        navigate('career');
-      }
+      onLeave: () => Eval.restore() // the UI then returns to the hub (watchCareer)
     };
   },
   /** The price of a lost challenge / street fight (LOSS): stamina and mood; standing with `region` (challenges: null for a street fight, which keeps CLASH.lose); a heavy loss costs fans and a Gazette jab. Pushes labels onto `out`. */

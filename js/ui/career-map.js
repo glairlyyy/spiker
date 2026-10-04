@@ -522,7 +522,7 @@ function mapClash(side, sim) {
     // fighting: a real match (watch it, or sim it at once)
     const fx = Fight.clash(RUN, side);
     if (!fx) return;
-    if (!sim) return navigate('match', fx);
+    if (!sim) return watchCareer(fx);
     Cup.simNow(fx);
   } else {
     const line = Fight.watch(RUN, null);
@@ -546,7 +546,7 @@ function mapChallenge(ti, sim) {
   if (r.accepted) {
     const fx = Fight.challenge(RUN, ti, r.stake);
     if (!fx) return;
-    if (!sim) return navigate('match', fx);
+    if (!sim) return watchCareer(fx);
     Cup.simNow(fx);
   } else Run.log(RUN, r.line);
   mapAfter(RUN);

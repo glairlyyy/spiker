@@ -37,7 +37,7 @@ unchanged (tests pass **without** `--update`), save unchanged, no draw-order cha
 build step, no behaviour or UI change unless the task says so; top-level names kept (or every caller updated in the same
 task); one seam per task. Order: T-201 → T-212 (each stands alone; stop after any).
 
-### [ ] T-201: Career returns fixtures; the UI decides where to go
+### [x] T-201: Career returns fixtures; the UI decides where to go
 
 Spec: §4.6 §4.11 §4.15 Goldens: unchanged Save: no change
 Goal: `js/career` has no `navigate()` left (layer rule: career = no DOM / screens). Fixture shape documented once.
@@ -50,7 +50,7 @@ Steps:
 2. ARCHITECTURE: one "Fixture" paragraph — `{ a, b, round, court?, back, setup(m)?, onFinish(m) → text, onLeave() }`, who fills which field.
    Accept: `grep -n navigate js/career` empty; cup tie, street fight, challenge all return to the hub (QA).
    QA: career run → Sim ⏭ a street fight and a challenge; leave a match mid-way.
-   Result:
+   Result: Career fixtures' onLeave only runs Eval.restore; UI opens them with watchCareer(fx) (career-match.js: map clash / challenge, playCareer, People approaches). grep navigate js/career → empty. Fixture paragraph in ARCHITECTURE Screens.
 
 ### [ ] T-202: Week steps as one ordered list
 
