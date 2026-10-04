@@ -88,7 +88,9 @@ in one file only (T-084) — theme.css overrides by being last, so never repeat 
 
 - `engine/stats.js` — what a player's stats are _right now_: wit × mood × momentum × stamina (`effP`, `effD`, `W`, `jumpPx`…). Stamina is tuned in `RULES.stamina` (`drain` per touch, `hit` = power/defense lost at 0, `jumpHit` = jump lost at 0): a hero who takes every touch tires first.
 - `engine/formulas.js` — `Formula.*` holds the numbers that decide outcomes (serve, receive, set, spike,
-  block, dig, kill chance). Balance changes and future training effects belong here.
+  block, dig, kill chance). Balance changes and future training effects belong here. `Formula.level` / `errK` /
+  `bySkill` scale the error chances by absolute skill (`SKILL` in data/rules.js, spec §2.1a); `blockSkill` (rally-defense.js)
+  scales the stuff chance.
 
 ## Screens
 

@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-198** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-199** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -56,6 +56,10 @@ Result: referee on a stand by the far post, two line judges with flags, two team
 
 Owner request 2026-10-04 (map and facility revamp, spec §4.18d–e, §4.19a): T-181 → T-183 built by the spec chat;
 T-184 → T-186 built by the spec chat on the owner's go.
+
+### [x] T-198: Mistakes follow skill, like the real game (owner request)
+
+Result: SKILL (data/rules.js) + Formula.level / errK / bySkill: serve errors, hitting errors and double contacts × the mistake factor (×1.4 OP … ×4 beginner), receive − 4 × (factor − 1), stuff × blockSkill. Points (60 matches): OVR 30–60 kills 28 · errors 57 · blocks 4 · aces 11; league 40 · 41 · 11 · 8; all-OP 56 · 27 · 9 · 8 (was ~45–60 · 18–24 · 10–23 · 6–10 at every level). Goldens: update (teams / matches / sims — gameplay). Tests rebased to real-game rates: stuff 7–11 % per attack (was 12–16 %), ego err/att < 0.4 (serve errors included); the clutch test watches 50 matches (was 20) so a trust / freeze line shows.
 
 ### [x] T-197: Average game in the Dev tab (owner request)
 

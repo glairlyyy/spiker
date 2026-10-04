@@ -275,7 +275,8 @@ test.slow('engine: lane-read block — stuff rate and defence settings', () => {
     }
   }
   const stuffRate = stuffs / n;
-  assert(stuffRate >= 0.12 && stuffRate <= 0.16, `stuff rate ${(100 * stuffRate).toFixed(1)} % is outside 12–16 %`);
+  // real-game rates (SKILL, owner 2026-10-04): a good side stuffs ~7–11 % of attacks (was 12–16 % before skill-scaled blocking)
+  assert(stuffRate >= 0.07 && stuffRate <= 0.11, `stuff rate ${(100 * stuffRate).toFixed(1)} % is outside 7–11 %`);
   assert(kills / n >= 0.36 && kills / n <= 0.48, `hitter kill rate ${((100 * kills) / n).toFixed(1)} % drifted from ~42 %`);
   // a fixed attack style against each defence setting (attacker: side 0)
   const g = load(9),
@@ -640,7 +641,8 @@ test.slow('engine: ego — acts, maturity, collisions, no draws without an oppor
   assert(avg.per > 0.8 && avg.per < 4, `average wit: ${avg.per.toFixed(2)} ego acts per side per set`);
   assert(sage.per < 0.4, `wit 1.9: almost no ego acts (${sage.per.toFixed(2)})`);
   assert(green.per > avg.per, 'lower wit, more ego acts');
-  assert(avg.kill > 0.55 && avg.kill < 0.72 && avg.err < 0.2, `kill ${avg.kill.toFixed(3)} / error ${avg.err.toFixed(3)} stay sane`);
+  // errors per attack include serve errors and ball-handling faults; with real-game error rates (SKILL) that is ~0.3 at wit 1.0
+  assert(avg.kill > 0.5 && avg.kill < 0.72 && avg.err < 0.4, `kill ${avg.kill.toFixed(3)} / error ${avg.err.toFixed(3)} stay sane`);
   // maturity cuts the botching: fewer collisions per steal, more steals that work
   const mid = run(1.4, 400);
   assert(green.stolen > 50 && mid.stolen > 20, `enough steals to compare (${green.stolen} / ${mid.stolen})`);
@@ -818,7 +820,7 @@ test.slow('rel on court: the clutch — a setter feeds allies more and freezes o
     for (let i = 0; i < 200; i++) {
       const a = T[i % 8],
         b = T[(i * 3 + 1) % 8],
-        m = g.newMatch(a, b, i < 20, { rel });
+        m = g.newMatch(a, b, i < 50, { rel }); // (enough visual matches that a trust / freeze line shows up)
       while (!m.over) {
         const r = g.playRally(m);
         for (const bt of r.beats || []) for (const x of bt.acts || []) if (x.k === 'log' && /trusts|freezes/.test(x.t)) lines++;

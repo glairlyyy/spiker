@@ -18,6 +18,17 @@ const RULES = {
  * worth[1] (coachIQ 1) — a dull coach subs almost anyone in, a sharp one only when it helps. `you`: the coach's sub-out roll for your career
  * player is × this (the coach trusts you). A player flagged `noSub` (engine-only: an injured you) is never brought on.
  */
+/**
+ * Skill and mistakes (owner, 2026-10-04: as close to the real game as possible). A player's level = the mean of the four
+ * stats + (wit − 1) × `wit`; their mistake factor = e^((mid − level) / k), at most `max`: ×1.4 for an OP (level ~100), ×2.3 at
+ * league level (~63), ×3 at 40, ×4 for a beginner. Serve errors, hitting errors and ball-handling faults are × it (`keep` of the
+ * old rate is kept regardless, 0 now), and a weak
+ * blocker stuffs less (× clamp((level − blk[0]) / blk[1], blk[2], blk[3])); a weak passer shanks more (receive − `pass` × (factor − 1)).
+ * Targets (share of points, real game): elite ~ kills 50 · errors 32 · blocks 11 · aces 6; amateur ~ kills 28 · errors 55 · blocks 5 · aces 12.
+ * Measured (60 matches each): OVR 30–60 29 · 57 · 3 · 11; league 40 · 41 · 11 · 8; all-OP 55 · 28 · 9 · 8. Per contact: serve errors
+ * 22 % (OVR 30–60) → 11 % (OP), hitting errors per swing 31 % → 12 %, stuffs per attack 5 % → 8–11 %.
+ */
+const SKILL = { mid: 125, k: 75, max: 4, wit: 10, keep: 0, blk: [30, 60, 0.2, 1], pass: 4 };
 const SUB = { max: 2, sta: 0.6, fresh: 0.9, errs: 3, back: 0.85, iq: [0.35, 0.9], you: 0.9, worth: [0.85, 1.05] };
 /**
  * The second ball (spec §2.1): on a bad pass (quality 1) a free teammate sets instead of the setter only when the setter's time

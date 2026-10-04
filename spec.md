@@ -21,6 +21,11 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   (out-of-system bump-set; a third player hits or bumps over). Second touch: a free setter (no first touch, not busy)
   always sets if reachable; a teammate sets only if the setter took the first ball, is busy, or a bad pass lands
   where a teammate clearly gets there first.
+- §2.1a Mistakes follow skill, like the real game (owner, 2026-10-04) **[built, T-198]**: a player's level (mean stat + wit)
+  sets how often they err (`SKILL`, `Formula.errK`): serve errors, hitting errors and ball-handling faults × the factor, weak
+  passers shank more, weak blockers stuff less. Share of points — OVR 30–60: kills 28 · errors 57 · blocks 4 · aces 11
+  (real amateur ~28 · 55 · 5 · 12); league start: 40 · 41 · 11 · 8; all-OP: 56 · 27 · 9 · 8 (real elite ~50 · 32 · 11 · 6).
+  Low-level games are won by whoever errs less; at the top, by kills.
 - §2.2 Elements: hidden per player; unlocked for OP, ~1/4 of stars, and you via the Element Trial. Gauge fills by
   element play; full gauge or captain buff → next attack is the signature element spike. Counter elements halve. Fiction: lore.md §2 (Trial = modern method; ritual forgotten).
 - §2.3 Hype (Off/Normal/Max, tap to skip): attack build-up, blocker read mid-jump (only if a block is attempted),
