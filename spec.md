@@ -152,7 +152,8 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   places lost = weakened (dearer, worse facilities, easier to join). Wu revenge bonus. Minors not in the war. Seized =
   patch in holder's colour; borders don't move **[open: moving borders]**.
   Superseded by §4.27 hex territory (built): tiles replace border meters, border places, the T-130 lines and patches.
-- §4.8 Hub: full-screen 3D map, HUD, shortcut dock → drawers, cards over the map.
+- §4.8 Hub: see §10.1 — top bar, week rail, full-screen 3D map, place panel; sheets Me / People / World / Season over the
+  map; cards for the week brief, events, the week report and match prep. (The first build's dock and drawers are gone.)
 - §4.9 Map: rules → MapModel → MapView → three.js `js/map3d/` (`mount`, `update(model)`, `select`, `dispose`); no 2D
   fallback (WebGL missing → notice). Terrain, pins/labels/flag as HTML overlay, seized + border decals, vertex fog.
   Fixed tilted camera (Kenshi diorama; pan + zoom, no rotation); low-poly procedural terrain (Shu raised, Wu beach ring,
@@ -173,7 +174,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     (`PROMOTE.gap` 3).
   - **U21 Final Cup** (after week 28): floor(pool ÷ SQUAD) squads per faction + Academy squad (12 by default); 16-slot
     bracket seeded by rating (1 v 16, 8 v 9…), missing seeds = byes. Camp weeks 26–28. Win → national team (§4.26).
-- §4.12 Faction dossier (all 5; from HQ panel and Factions drawer), DOM-free `Dossier.build(run, r)`, `registrar` voice:
+- §4.12 Faction dossier (all 5; from the HQ panel and the World sheet's Factions tab), DOM-free `Dossier.build(run, r)`, `registrar` voice:
   - State: Weakened (lost ≥ weakAt) / Pressed (lost 1) / Rising (took > lost) / Stable; minors "Not in the war".
     Border meters, places taken/lost, price and quality multipliers.
   - Facilities held (seized marked): stat, price, level, access
@@ -311,13 +312,14 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   - **Story**: Kaede names them in the factions lesson; the rival meets you in week 3 (`rivalMeet`: the 25–4 flash, "Have we
     played before?", a choice: `No.` / `Twenty-five to four.` → flag `rivalTold`; she doesn't remember; flag `rivalMet`).
   - Later: year 2 (the cohort as the island's aces, the first aces aged out), the rival's cut-scene after a year-1 Cup loss.
-- §4.20 Match history (Season drawer): every match you were in, newest first — week/day, kind, opponent, score, W/L,
+- §4.20 Match history (Season sheet): every match you were in, newest first — week/day, kind, opponent, score, W/L,
   grade; bench matches "did not play". Snapshot: your OVR, stats, wit at kick-off (+ change since previous), your line
   (kills, attacks, errors, blocks, aces, digs, assists), full box score (name, role, OVR, line). Registrar voice.
 - §4.21 Official venues (display only; pin + card: what's held, this week's match; your match's venue glows, the
   match card names it): **League Arena** (Wei downtown by the league office; biggest building, floodlit bowl): U21
   Final Cup + Wei evaluations · **Academy Hall** (campus): Academy evaluations · **Beach Stadium** (Wu sand, faded
-  relic): Wu evaluations · **Highland Court** (hillside by Shu Peak HQ, stone terraces): Shu evaluations.
+  relic): Wu evaluations · **Highland Court** (hillside by Shu Peak HQ, stone terraces): Shu evaluations. Each also
+  dresses the 3D match court (§9.11).
 - §4.22 Start from 1: Power, Defense, Speed, Jump = 1, Wit 1.0; no creation points / role bias. Creation: name, role,
   look, challenge modes. XP per point grows ×1.05 per point at all levels (≈1 at 1, ≈6 at 40, 10 at 50; ~a dozen
   sessions to 50). Early benching and losses are intended (evaluations still pay the bench reward). Stats floor 1; a
@@ -446,13 +448,15 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 
 - §5.1 Lore gaps (lore.md §9): rival, aces, glossary, names, ritual in play. Blocks: story events, club switching,
   what standing unlocks beyond access.
-- §5.2 Portraits: now 2D `faceSVG`. Options: VRM head snapshots; hand-made 2D anime portraits; Live2D
+- §5.2 Portraits **[partly answered]**: 3D head portraits rendered from the player model (owner request;
+  js/render3d/portrait3d.mjs via render/faces.js) are built; `faceSVG` stays the fallback. Still open: 2D anime art /
+  Live2D for special characters. Original note: now 2D `faceSVG`. Options: VRM head snapshots; hand-made 2D anime portraits; Live2D
   (pixi-live2d-display) or WebM / animated WebP loops for special characters at big moments; unique characters
   mapped by hand (own model + portrait), so the kind varies per character. API when built: `Portrait.show(el, character,
 mood)`.
 - §5.3 Legacy / Hall of Fame **[dropped]**. §5.4 Character creation rework (deferred).
 - §5.5 Severe injury: the permanent −2 on one stat is assumed; confirm in the balance pass.
-- §5.6 Faction recolour: Shu `#4ade80` = the `good` status colour, Wu `#3fa9f5` ≈ `cyan`, Wei `#f5b82e` ≈ `gold`.
+- §5.6 Faction recolour **[closed — built, T-165]**: Shu `#4ade80` = the `good` status colour, Wu `#3fa9f5` ≈ `cyan`, Wei `#f5b82e` ≈ `gold`.
   **Approved (owner, 2026-10-03):** `wei #d08a2e` · `wu #5b8def` · `shu #2fb8a0` (design system tokens) everywhere a
   faction colour shows (map tiles, chips, borders, banners, 3D accents); club kits keep their own colours. Task T-165.
 
@@ -484,8 +488,9 @@ mood)`.
 ## 9. UI guidelines [locked; built]
 
 Source: the design system artifact https://claude.ai/artifact/DWxheHjahb7L4k8GAWbRGq — `project/README.md` (rules),
-`ui-review.md` (findings per screen), `short-copy.md` (glossary + icons), `tokens.json`, component previews (Button,
-ChoiceCard, HudStat, StatIcons). Goal: minimal reading load, full player control — the UI previews and explains, it never
+`status.md` (which card is built, where it lives in the code, open drift and refactor targets — checked 2026-10-04),
+`short-copy.md` (glossary + icons), `tokens.json`, component previews; `ui-review.md` / `inventory.md` / `fix-plan.md`
+are the pre-redesign record. Goal: minimal reading load, full player control — the UI previews and explains, it never
 chooses or acts for the player.
 
 - §9.1 Principles: one suggested next step always visible (a suggestion, never an auto-action); preview before commit
@@ -511,7 +516,7 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
   (⚑, −100…+100) · `grade` (S–C, reward ×1.5/1.2/1/0.8) · `seize` (border meter n/2) · `border` · `sim` (result without
   watching) · `academy` · `cup` (U21 Cup) · `trial` (Element Trial checklist) ·
   `together` (teammates here +20%, +50% at bond 80+) · `rewards` (Win/Loss chips).
-- §9.7 Layout: hub HUD in four corners on `hud`; drawers 440px from the right and never over the dock; modals ≤560px,
+- §9.7 Layout **[superseded by §10.1 for the hub — no HUD corners, dock or drawers]**: modals ≤560px,
   one title, ≤3 choices, primary first. Match: the court gets the viewport; site header hidden; log + box score in a
   collapsible side rail.
 - §9.8 Alignment and sizes (design system `layout.md`, ActionRow card): 8px grid (spacing tokens only); one content
@@ -545,7 +550,7 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
     result screen lists `Held back: …` under your line.
   - **Memory**: career keeps your off-list between matches (`you.techOff` on your player — saved with it, no version bump) and match
     prep starts from it with `Reset`; exhibition switches last one match. Passive skills (Soft Hands…) are not listed.
-- §9.11 Match venues **[built, T-193–T-195]** (owner, 2026-10-04): the 3D court is dressed per venue so a match feels like a place.
+- §9.11 Match venues **[built, T-193–T-195]** (owner, 2026-10-04; design system MatchVenues card): the 3D court is dressed per venue so a match feels like a place.
   - **Venue of a match**: `fx.venue` if set; career → `City.venue(run)` (arena / hall / beach / highland), else `street`
     (street battles, challenges, pickup games); exhibition / Monster → `arena`. **Stakes** 0–1 set the crowd size: final 1,
     other Cup rounds .85, evaluations .45, street .35, exhibition .9.
@@ -613,7 +618,7 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   arena's empty court with a slow orbit, warm `hot` glow top-right and a `cyan` glow bottom-right over it; static frame
   under `prefers-reduced-motion`, CSS gradients only if WebGL fails. The title word budget becomes ≤ 25 (kicker and
   tagline are back, by owner choice).
-- §10.8 Quiet UI (owner, 2026-10-03; design system `quiet-ui.md`, QuietUI card): show the decision, hide the explanation.
+- §10.8 Quiet UI **[built, T-159–T-164]** (owner, 2026-10-03; design system `quiet-ui.md`, QuietUI card): show the decision, hide the explanation.
   Four layers: L0 glance (names, numbers, icons, verbs + costs) · L1 hover (`tip` / `term`, ≤ 15 words) · L2 peek (new
   `peek()`: click a › or ⓘ → a pinned card beside it, vertical label / value rows ≤ 8, Esc / outside click closes, never
   over the card's action row) · L3 reference (Encyclopedia, Dossier). Budgets at L0: row ≤ 6 words, card ≤ 30 (street battle card ≤ 70:
@@ -622,6 +627,22 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   numbers over sentences (`7 left`, `W6`); flavour and rumours on the title's hover; long lists show the useful few +
   `+n ›`; details (challenge, housing effects, facility level, faction economy, border target) in a peek; inbox items
   one line each with a peek. Never hidden: costs on buttons, locked gaps, penalties, deadlines, the event card.
+- §10.9 Clubs and People, one list each **[built, T-168–T-169]** (owner, 2026-10-03; design system `quiet-ui.md` § One list, cards SheetWorld,
+  SheetPeople):
+  - **Sign only at the club's HQ.** No Sign / join button in the World sheet, the dossier, the inbox or anywhere else;
+    the HQ place panel keeps `Sign` / the locked gap (one place to commit, §9.1 rule 3). The World tab **Clubs** becomes
+    **My club**: a shortcut card for your club (chip, name, OVR, your role + squad spot, `HQ ›` → map pin, `Dossier ›`).
+    Free agent: the card says `Free agent` and lists clubs that would sign you now as links to their HQ (name + OVR, no
+    button; none → `Nobody would sign you yet` with the nearest gap on hover). Inbox / next step "would sign you" open
+    that HQ on the map (not the World sheet).
+  - **People = one list.** No Everyone / Squad / Rivals / Waiting tabs and no group headings. One list ordered: waiting
+    (`!` badge) → favourites → squad → bench → others → gone. Each row carries small markers after the name instead of
+    groups: team `🛡` in your club colour (outlined = bench), rival `⚔` (Rel.rival or stance resent / enemy), favourite
+    `★`. Bond bar for squad mates, stance tag only when not neutral (as now). Hover of a marker names it.
+  - **Favourites** (new, display only): a `☆ / ★` toggle in the person header pins them in the list. `run.fav` = list of
+    person ids via RUN_DEFAULTS (no version bump); a gone person keeps their star.
+  - Squad chemistry and `Leave squad` move from the Squad tab to a `Chemistry ›` peek in the list header (shown only
+    with a squad).
 - §10.10 Dialogue box and story scenes **[built: runner, box, intro, hub triggers, guide, week-1 campus — T-173–T-175, T-187/T-188, T-192, T-196]** (result trigger: the first hub after one of your matches, `when` won / lost, ahead of any lesson — no scene uses it yet) (owner, 2026-10-04): the classic RPG **dialogue box** (message
   window) for story and events — so any scene is data, not code.
   - Box: bottom of the screen over the live map / court, ~1/4 height, full width minus the rail; **name plate** (the
@@ -657,19 +678,3 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
     week with a street battle — the tile war, joining vs watching; week 2 — the factions, one biased line each; signed
     or week 6 — payday sums and moving house (Me → Change home); week 5 — her own first evaluation, then she goes quiet.
     Numbers in her lines are true (§7); her opinions are hers.
-- §10.9 Clubs and People, one list each (owner, 2026-10-03; design system `quiet-ui.md` § One list, cards SheetWorld,
-  SheetPeople):
-  - **Sign only at the club's HQ.** No Sign / join button in the World sheet, the dossier, the inbox or anywhere else;
-    the HQ place panel keeps `Sign` / the locked gap (one place to commit, §9.1 rule 3). The World tab **Clubs** becomes
-    **My club**: a shortcut card for your club (chip, name, OVR, your role + squad spot, `HQ ›` → map pin, `Dossier ›`).
-    Free agent: the card says `Free agent` and lists clubs that would sign you now as links to their HQ (name + OVR, no
-    button; none → `Nobody would sign you yet` with the nearest gap on hover). Inbox / next step "would sign you" open
-    that HQ on the map (not the World sheet).
-  - **People = one list.** No Everyone / Squad / Rivals / Waiting tabs and no group headings. One list ordered: waiting
-    (`!` badge) → favourites → squad → bench → others → gone. Each row carries small markers after the name instead of
-    groups: team `🛡` in your club colour (outlined = bench), rival `⚔` (Rel.rival or stance resent / enemy), favourite
-    `★`. Bond bar for squad mates, stance tag only when not neutral (as now). Hover of a marker names it.
-  - **Favourites** (new, display only): a `☆ / ★` toggle in the person header pins them in the list. `run.fav` = list of
-    person ids via RUN_DEFAULTS (no version bump); a gone person keeps their star.
-  - Squad chemistry and `Leave squad` move from the Squad tab to a `Chemistry ›` peek in the list header (shown only
-    with a squad).
