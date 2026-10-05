@@ -6,29 +6,41 @@
 /** `hub` trigger conditions (SCENES trigger.when): pure tests of the run. */
 const STORY_WHEN = {
   trained: run => Object.keys(run.uses || {}).some(k => run.uses[k] > 0),
-  clash: run => run.week >= 2 && !!Fight.clashSite(run), // (week 1 keeps to the campus)
   week2: run => run.week >= 2,
   week3: run => run.week >= 3 && !!Stars.get(run, 'rival'),
-  settled: run => run.team != null || run.week >= 6,
-  evaluated: run => run.week >= 5,
   // `result` trigger (T-175): the match you just played (run.story.res, set by Cup.record, cleared by the first hub after it)
   won: run => !!(run.story.res && run.story.res.win),
   lost: run => !!(run.story.res && !run.story.res.win)
+};
+/** `pick` trigger conditions (owner, 2026-10-05): what the place you just clicked on the map is (MapModel pick ids). */
+const STORY_PICK = {
+  faction: id => /^hq\d/.test(id) || id.startsWith('pt:'), // a club HQ or any tile of the island
+  clash: id => id === 'clash',
+  home: id => id === 'home' || id.startsWith('home:'),
+  venue: id => id.startsWith('venue:')
 };
 /** Steps the box shows and waits on; every other kind is applied at once by the runner. */
 const STORY_SHOWN = ['say', 'title', 'choice', 'walk', 'wait', 'cam'];
 const Story = {
   /** Scenes play in Story mode only (Endless skips them). */
   on: run => !!(run && run.mode && run.mode.story !== false && run.story),
-  /** The first unseen scene whose trigger matches `on` ('start', 'hub', 'result') and its `when` / `off` (STORY_WHEN, a flag), or null. */
-  due(run, on) {
+  /**
+   * The first unseen scene whose trigger matches `on` ('start', 'hub', 'result', 'pick') and its `when` / `off` (STORY_WHEN, or
+   * STORY_PICK for a pick of map id `pick`; `off` = a flag), or null.
+   */
+  due(run, on, pick) {
     if (!Story.on(run) || run.story.cur) return null;
     if (on === 'result' && !run.story.res) return null; // no match since the last hub
     if (on === 'hub' && run.story.at === Story.clock(run)) return null; // one scene per day: a lesson never follows another at once
     return (
       Object.keys(SCENES).find(id => {
         const T = SCENES[id].trigger;
-        return !run.story.seen[id] && T.on === on && (!T.off || !run.story.flags[T.off]) && (!T.when || STORY_WHEN[T.when](run));
+        return (
+          !run.story.seen[id] &&
+          T.on === on &&
+          (!T.off || !run.story.flags[T.off]) &&
+          (!T.when || (on === 'pick' ? !!pick && STORY_PICK[T.when](pick) : STORY_WHEN[T.when](run)))
+        );
       }) || null
     );
   },
@@ -53,9 +65,11 @@ const Story = {
     delete run.story.res;
     return r || Story.fire(run, 'hub');
   },
-  /** Start the first due scene for `on` (if any); true when one started. */
-  fire(run, on) {
-    const id = Story.due(run, on);
+  /** You clicked map id `pick` (career-map.js): a lesson about that kind of place, the first time only. True when one started. */
+  pick: (run, pick) => Story.fire(run, 'pick', pick),
+  /** Start the first due scene for `on` (if any; `pick` = the clicked map id for a pick); true when one started. */
+  fire(run, on, pick) {
+    const id = Story.due(run, on, pick);
     if (!id) return false;
     run.story.cur = { id, i: -1, mode: {}, log: [] };
     Story.advance(run);

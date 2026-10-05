@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-220** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-221** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,11 @@ cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git 
 ## Now
 
 Owner request 2026-10-05 (spec §9.12 motion; design system `motion.md`, Motion card): T-216 → T-219. UI only; goldens unchanged.
+
+### [x] T-220: Kaede's lessons on the first click of a place (owner request)
+Spec: §10.10a          Goldens: unchanged          Save: no change
+Files: js/career/story.js (`STORY_PICK`, `Story.pick`, `due(run, on, pick)`; unused hub keys clash / settled / evaluated gone), js/data/story.js (tutClash / tutFactions / tutHouse / tutEval → `on: 'pick'`; tutEval lines for a venue), js/ui/career-map.js (mapPick / mapPoint call `Story.pick`), tests/career.test.js
+Result: tutGym (facilities) stays on the hub after the first session; battle pin → tutClash, HQ or any tile → tutFactions, home → tutHouse, venue → tutEval, each once, none after noTour; the card opens after the scene. QA: Story run, click home → tutHouse plays, again → card only; tests green.
 
 ### [x] T-216: Motion tokens, the Motion helper and the screen veil
 Spec: §9.12          Goldens: unchanged          Save: no change (one per-browser key `sns_motion`)

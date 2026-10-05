@@ -711,9 +711,11 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   - **On the map**: her model (the default VRM dressed: teal hair, Academy hoodie) stands by the Student flat's door with
     her name over her head (`model.guide`), whether or not you still live there; gone when `guideGone` is set (her
     leaving after the year-1 Cup: later).
-  - **Lessons** = scenes with trigger `{on: 'hub', when, off: 'noTour'}`, each once, at most one a day (never right after
-    another scene), checked on each hub render with no scene, action lock or event open: after your first session —
-    training for what ({role} lives on {key}, gym levels, the Academy Gym, the stamina fail / injury lines); the first
-    week with a street battle — the tile war, joining vs watching; week 2 — the factions, one biased line each; signed
-    or week 6 — payday sums and moving house (Me → Change home); week 5 — her own first evaluation, then she goes quiet.
+  - **Lessons**, each once, never after `noTour`. The facility lesson stays a hub moment (`{on: 'hub', when: 'trained'}`, at
+    most one scene a day): after your first session — training for what ({role} lives on {key}, gym levels, the Academy
+    Gym, the stamina fail / injury lines). **Every other lesson comes the first time you click that kind of place on the
+    map** (owner, 2026-10-05, T-220; trigger `{on: 'pick', when: STORY_PICK key}`, `Story.pick` from mapPick / mapPoint;
+    the place's card waits behind the scene): the street battle pin — the tile war, joining vs watching; a club HQ or any
+    tile — the factions, one biased line each, and the named players; your home — payday sums and moving house; a match
+    venue — evaluations and her own first one on the bench.
     Numbers in her lines are true (§7); her opinions are hers.

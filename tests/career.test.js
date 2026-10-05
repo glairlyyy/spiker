@@ -1001,6 +1001,30 @@ test('story: the result hook — the first hub after your match plays its scene,
   delete g.SCENES.zAny;
 });
 
+test("story: Kaede's lessons come the first time you click that kind of place (owner, 2026-10-05)", () => {
+  const [g, run] = mkRunG(878);
+  g.Story.skip(run);
+  run.week = 6;
+  run.dayLog.push({ k: 'rest' });
+  for (const id of ['tutClash', 'tutFactions', 'tutHouse', 'tutEval']) assert(g.SCENES[id].trigger.on === 'pick', id + ' is a pick lesson');
+  assert(!g.Story.hub(run) || !/^tut(Clash|Factions|House|Eval)$/.test(run.story.cur.id), 'no click lesson from the hub');
+  if (run.story.cur) g.Story.skip(run);
+  const pick = (id, want) => {
+    assert(g.Story.pick(run, id) && run.story.cur.id === want, `${id} → ${want}`);
+    g.Story.skip(run);
+    assert(!g.Story.pick(run, id), `${id}: once only`);
+  };
+  pick('venue:hall', 'tutEval');
+  pick('pt:400,500', 'tutFactions');
+  assert(!g.Story.pick(run, 'hq1'), 'an HQ after a tile: the faction lesson was already given');
+  pick('home', 'tutHouse');
+  pick('clash', 'tutClash');
+  assert(!g.Story.pick(run, 'acaGym'), 'a gym is not a click lesson');
+  const [g2, r2] = mkRunG(879);
+  while (r2.story.cur) g2.Story.next(r2, g2.Story.step(r2).k === 'choice' && /figure/.test(JSON.stringify(g2.Story.step(r2).opts)) ? 1 : 0);
+  assert(!g2.Story.pick(r2, 'hq0'), '"figure it out" → no lessons');
+});
+
 test('story: Kaede — met in the intro, on the map, lessons once at their moment, none after "figure it out" (T-187, T-188)', () => {
   const [g, run] = mkRunG(875);
   let n = 0;

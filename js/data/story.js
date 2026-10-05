@@ -1,6 +1,7 @@
 // Story scenes (spec §10.10): data the Story runner (js/career/story.js) plays and the dialogue box (js/ui/dialogue.js)
 // shows. Story mode only. Lines follow the lore.md §7 voices: `diary` = the MC's narration, `you` = the MC speaking.
-// Triggers: {on: 'start'} (Run.create) · {on: 'result', when?: 'won' | 'lost' …} (the first hub after one of your matches, before
+// Triggers: {on: 'pick', when: STORY_PICK key, off?: flag} (the first time you click that kind of place on the map) ·
+// {on: 'start'} (Run.create) · {on: 'result', when?: 'won' | 'lost' …} (the first hub after one of your matches, before
 // any lesson) · {on: 'hub', when: STORY_WHEN key, off?: flag} (each hub render with no scene, lock or event
 // open; `off` = a flag that cancels it). Lines may hold {role} / {key} (your role, its key stat). Steps may carry an `id` for goto.
 // Step kinds: say {who, text} · title {text} (a big centred line: a score, a place, a date) · choice {opts: [{text, goto?, set?}]} · cut {dark?, bars?} (presentation mode until the
@@ -88,7 +89,8 @@ const SCENES = {
       { k: 'end' }
     ]
   },
-  // ---- Kaede's lessons (spec §10.10a): each once, when its moment first comes; never after "I'll figure it out myself" ----
+  // ---- Kaede's lessons (spec §10.10a): each once; never after "I'll figure it out myself". The gym lesson comes after your first
+  // session; every other one the first time you click that kind of place on the map (owner, 2026-10-05) ----
   tutGym: {
     trigger: { on: 'hub', when: 'trained', off: 'noTour' },
     steps: [
@@ -109,7 +111,7 @@ const SCENES = {
     ]
   },
   tutClash: {
-    trigger: { on: 'hub', when: 'clash', off: 'noTour' },
+    trigger: { on: 'pick', when: 'clash', off: 'noTour' },
     steps: [
       { k: 'say', who: 'senior', text: 'Hear that? Street battle this week. Wei, Wu and Shu fight over the island one tile at a time.' },
       { k: 'say', who: 'senior', text: 'Win enough on a tile and it changes hands — the gyms on it too, and their prices.' },
@@ -119,7 +121,7 @@ const SCENES = {
     ]
   },
   tutFactions: {
-    trigger: { on: 'hub', when: 'week2', off: 'noTour' },
+    trigger: { on: 'pick', when: 'faction', off: 'noTour' },
     steps: [
       { k: 'say', who: 'senior', text: "Offers will come, or they won't. Either way, know who's asking." },
       { k: 'say', who: 'senior', text: 'Wei runs the league and the paper. They sign you now and send the bill later.' },
@@ -160,7 +162,7 @@ const SCENES = {
     ]
   },
   tutHouse: {
-    trigger: { on: 'hub', when: 'settled', off: 'noTour' },
+    trigger: { on: 'pick', when: 'home', off: 'noTour' },
     steps: [
       { k: 'say', who: 'senior', text: 'Payday is every 4 weeks. Home sends 500, food takes 120, this flat takes 150.' },
       { k: 'say', who: 'senior', text: 'Signed players move nearer their club, or somewhere nicer if they can pay. Me, then Change home.' },
@@ -169,12 +171,11 @@ const SCENES = {
     ]
   },
   tutEval: {
-    trigger: { on: 'hub', when: 'evaluated', off: 'noTour' },
+    trigger: { on: 'pick', when: 'venue', off: 'noTour' },
     steps: [
-      { k: 'say', who: 'senior', text: 'So. First evaluation done.' },
-      { k: 'say', who: 'senior', text: 'Mine, I sat on the bench the whole match. Nobody called after, either.' },
+      { k: 'say', who: 'senior', text: "That's where they grade us. Every 4 weeks, one match, and the clubs watch it." },
+      { k: 'say', who: 'senior', text: 'My first one, I sat on the bench the whole match. Nobody called after, either.' },
       { k: 'say', who: 'senior', text: 'Benched or not, it counts. You still learn from the stands.' },
-      { k: 'say', who: 'senior', text: "That's everything I know. You'll figure the rest out faster than I did." },
       { k: 'end' }
     ]
   }
