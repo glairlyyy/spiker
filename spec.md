@@ -315,7 +315,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     highland hexes = centre higher than `HIGHLAND_M` (18 m).
   - Hidden (lore, never stated): the Peak's summit holds a weathered stone circle — the old ritual ground; Shu climb it as
     a hardship test and call it a lookout. **[not built: the stone circle, the Thousand Steps' stair line, the dam wall]**
-- §4.19c Nature on the island (owner, 2026-10-05) **[locked, not built — T-223]**: the land between towns is alive, not bare.
+- §4.19c Nature on the island (owner, 2026-10-05) **[built, T-223; not yet: density by zoom]**: the land between towns is alive, not bare.
   Display only (map3d), fixed hashes (no randoms), instanced, within a draw-call / triangle budget; nothing on roads, pads,
   lots, water or the hex labels' anchors.
   - **Objects per biome**: Shu — pines and cedars thick on the Peak's flanks thinning to bare rock and scree above ~60 m,

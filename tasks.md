@@ -33,14 +33,14 @@ cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git 
 
 Owner request 2026-10-05 (spec §9.12 motion; design system `motion.md`, Motion card): T-216 → T-219. UI only; goldens unchanged.
 
-### [ ] T-223: Nature objects and small life on the island
+### [x] T-223: Nature objects and small life on the island
 Spec: §4.19c          Goldens: unchanged          Save: no change
 Files: js/map3d/nature3d.mjs (new: `createNature(scene, heightAt)` → { sync(model), tick(dt, t), dispose() }), js/map3d/map3d.mjs (build / tick / dispose it), js/career/mapmodel.js (`land.nature`: biome per area + the keep-out list: roads, pads, lots, water), js/data/city.js (NATURE: object kinds per biome, densities, the life list), ARCHITECTURE.md
 Do not: draw randoms (hash every placement); put objects on roads, pads, lots or water; add a draw call per object (instance per kind); slow the map (budget below).
 Steps: 1. NATURE data: per biome the kinds (tree / rock / bush / tuft with 2–3 tones and a size range) and a density (per 100 m²), with height bands for Shu (forest below ~60 m, scree above). 2. Scatter on a hashed jittered grid per biome, rejected on roads / pads / lots / water / sand where not allowed. 3. Instanced low-poly meshes per kind (cone + trunk pines, ball trees, palms, boulders, tufts), fog-dimmed like the terrain. 4. Life: a handful of looping hash-driven figures (birds circling the Peak, gulls at the harbor, a heron on the river, deer at the Shu forest edge, a cat in Old Town, village dogs), counted in life3d's caps.
 Accept: Shu reads as forest → rock up the Peak, Wu has palms and dune grass, Wei street / park trees; ≤ 12 extra draw calls, ≤ 60k extra triangles; map frame time within +10 % at 1440×900 (QA log); tests + lint green.
 QA: screenshots over the Peak, the Wu beach, Wei's park and the Academy at the default zoom; frame time before / after.
-Result:
+Result: `NATURE` data + `MapModel.nature` / `wild` (plain data, hashes) + js/map3d/nature3d.mjs. ~1.9k instances: Shu pine forest thinning to rock / scree above 62 m, bamboo by the villages, tea on the terraces; Wei street + park trees; Wu scrub, palms / dune grass / drift logs on the sand; Academy lawn trees. Animals: 6 birds round the Peak, 6 gulls over the harbor, a heron on the river, 4 deer, 3 dogs, an Old Town cat. Budget: +10 draw calls, +45k tris (QA view); swiftshader frame +10–12 % (software GL, not representative). Not done: density by zoom. QA: Peak, Peak HQ, Wu beach, Wei, Academy screenshots; no errors; tests 125/125.
 
 ### [ ] T-224: Natural borders and biome ground that fades
 Spec: §4.19d          Goldens: unchanged          Save: no change

@@ -22,6 +22,47 @@ test('career: map model — renderer-free data for the island map', () => {
   assert(JSON.parse(JSON.stringify(M)).pins.length === M.pins.length, 'serialisable (no DOM, no functions)');
 });
 
+test('map: nature — trees, rocks, grass and animals by biome, never on roads, lots or pads (spec §4.19c, T-223)', () => {
+  const g = load(11),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Nat', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    N = g.MapModel.nature(run),
+    W = g.MapModel.wild(run),
+    by = k => N.filter(o => o.k === k);
+  assert(N.length > 1000 && N.length < 4000, `a scattered island (${N.length})`);
+  eq(JSON.stringify(N), JSON.stringify(((g.MapModel.natCache = null), g.MapModel.nature(run))), 'deterministic (hashes, no randoms)');
+  assert(
+    by('pine').every(o => g.City.regionAt(o.at) === 'shu' && g.reliefAt(o.at) <= g.NATURE.treeline),
+    'pines: Shu, below the tree line'
+  );
+  assert(
+    N.filter(o => g.reliefAt(o.at) > g.NATURE.treeline).every(o => ['rock', 'tuft', 'tea'].includes(o.k)), // (tea: the terraces)
+    'scree above it'
+  );
+  assert(by('palm').length > 10 && by('palm').every(o => g.MapModel.onSand(o.at)), 'palms on the Wu sand');
+  const lots = g.MapModel.lots(run),
+    pads = g.MapModel.pads(),
+    RN = g.ROADS.nodes,
+    seg = (p, a, b) => {
+      const dx = b[0] - a[0],
+        dy = b[1] - a[1],
+        t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy)));
+      return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+    };
+  assert(
+    N.every(o => lots.every(l => Math.hypot(o.at[0] - l.at[0], o.at[1] - l.at[1]) >= l.size * 0.75 + 3)),
+    'off the lots'
+  );
+  assert(
+    N.every(o => pads.every(q => Math.hypot(o.at[0] - q.at[0], o.at[1] - q.at[1]) >= q.r + 4)),
+    'off the level pads'
+  );
+  assert(
+    N.filter(o => o.k !== 'broad').every(o => g.ROADS.edges.every(([a, b]) => seg(o.at, RN[a], RN[b]) >= 4)),
+    'off the roads (street trees stand beside them)'
+  );
+  eq([...new Set(W.map(w => w.k))].sort().join(), 'bird,cat,deer,dog,gull,heron', 'the animals');
+});
+
 test('career: world layout — roads, routes, lots, landmarks', () => {
   const g = load(13),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Road', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),

@@ -815,6 +815,96 @@ const TRAFFIC = {
 /** Ground kinds no building stands on (yards and quays are built on). */
 const GROUND_KEEP = ['terrace', 'paddy', 'field', 'park', 'water', 'quarry'];
 /**
+ * Nature on the island (owner, 2026-10-05; spec §4.19c, MapModel.nature): a hashed, jittered grid of `cell` map units; at each
+ * point the biome's chance `p` keeps it and its `kinds` ([kind, weight]) pick what grows there. Shu: forest up to `treeline`
+ * metres of the highlands (reliefAt), bare rock and scree above it; bamboo round its villages; tea on its terraces. Wei: a few
+ * trees, park trees, a street tree every `street.every` along its main roads. Wu: scrub inland; palms, dune grass and drift
+ * logs on the sand. The Academy: lawn trees. Ground kinds: `park` grows `park`; `terrace` grows tea; fields / paddies / yards /
+ * quays / water grow nothing; the quarry is rock. `life`: the few animals that loop on the map (display only).
+ */
+const NATURE = {
+  cell: 13,
+  treeline: 62,
+  shu: {
+    p: 0.66,
+    kinds: [
+      ['pine', 7],
+      ['broad', 1],
+      ['rock', 0.8],
+      ['tuft', 2.5]
+    ]
+  },
+  scree: {
+    p: 0.45,
+    kinds: [
+      ['rock', 3],
+      ['tuft', 1]
+    ]
+  },
+  village: {
+    p: 0.6,
+    kinds: [
+      ['bamboo', 3],
+      ['broad', 1],
+      ['tuft', 1]
+    ]
+  },
+  tea: { p: 0.55, kinds: [['tea', 1]] },
+  wei: {
+    p: 0.08,
+    kinds: [
+      ['broad', 2],
+      ['blossom', 1],
+      ['tuft', 2]
+    ]
+  },
+  park: {
+    p: 0.45,
+    kinds: [
+      ['broad', 2],
+      ['blossom', 2],
+      ['bush', 1],
+      ['tuft', 1]
+    ]
+  },
+  wu: {
+    p: 0.35,
+    kinds: [
+      ['broad', 1],
+      ['bush', 2],
+      ['tuft', 3],
+      ['rock', 0.5]
+    ]
+  },
+  sand: {
+    p: 0.2,
+    kinds: [
+      ['palm', 3],
+      ['dune', 4],
+      ['log', 0.6]
+    ]
+  },
+  open: {
+    p: 0.25,
+    kinds: [
+      ['broad', 2],
+      ['blossom', 1],
+      ['tuft', 2]
+    ]
+  },
+  quarry: { p: 0.3, kinds: [['rock', 1]] },
+  street: { every: 16, off: 7, kind: 'broad' },
+  /** Animals: where (an anchor), how many, the loop radius (map units), height above the ground (m). */
+  life: [
+    { kind: 'bird', at: 'peak', n: 6, r: [30, 80], up: 26 },
+    { kind: 'gull', at: 'wu-harbor', n: 6, r: [20, 55], up: 12 },
+    { kind: 'heron', at: 'river', n: 1, r: [0, 0], up: 0 },
+    { kind: 'deer', at: 'forest', n: 4, r: [6, 12], up: 0 },
+    { kind: 'dog', at: 'villages', n: 3, r: [5, 10], up: 0 },
+    { kind: 'cat', at: 'wei-oldtown', n: 1, r: [4, 8], up: 0 }
+  ]
+};
+/**
  * Wealth (spec §4.19), 0–1 per lot, from fixed data + hashes (MapModel.lots): it drives a lot's size, spacing, height and look.
  * Wei: `weiFloor` + (1 − weiFloor) × (1 − smoothstep(0, `weiEdge`, distance from `weiCore`)) — rich downtown, a steady fall to the
  * suburbs, no rich pockets (but the Gloria compound) — plus a ±`jitter` hash; Old Town is capped at `oldtown`. Elsewhere a region

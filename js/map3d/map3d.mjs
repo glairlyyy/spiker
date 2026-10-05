@@ -10,6 +10,7 @@ import { createAvatar } from './avatar3d.mjs';
 import { createFurniture } from './pins3d.mjs';
 import { createLife } from './life3d.mjs';
 import { createTown } from './town3d.mjs';
+import { createNature } from './nature3d.mjs';
 import { MAP_M, toMap, clamp, lerp, smooth, fogFactor, fitView, toWorld, inside, edgeDist, sideDist, hstr } from './geo3d.mjs';
 export { inside, edgeDist, sideDist }; // (the polygon maths live in geo3d.mjs; tests import them from here too)
 
@@ -266,6 +267,7 @@ export function create(onIdle) {
     furn = null, // pins, labels, flag, decals (pins3d.mjs)
     town = null, // roads, lots, landmarks (town3d.mjs)
     life = null, // figures, battle crowd, frontier patrols (life3d.mjs)
+    nature = null, // trees, rocks, grass and the animals (nature3d.mjs, spec §4.19c)
     clock = 0,
     fogKey = null,
     badge = null,
@@ -290,6 +292,7 @@ export function create(onIdle) {
     town = createTown(scene, terrain.heightAt);
     furn = createFurniture(scene, terrain.heightAt);
     life = createLife(scene, terrain.heightAt);
+    nature = createNature(scene, terrain.heightAt);
     furn.layer.addEventListener('wheel', onWheel, { passive: false }); // wheel over a pin still zooms
   };
   /** Darken the terrain where nothing you have visited lies within fog.r (unexplored land stays visible, dim). */
@@ -439,6 +442,7 @@ export function create(onIdle) {
       for (const f of figs.values()) f.tick(dt, terrain.heightAt);
       clock += dt;
       life.tick(dt, clock);
+      nature.tick(dt, clock);
       furn.pulse(clock);
       if (fly) {
         fly.t = Math.min(1, fly.t + dt / FLY_S);
@@ -512,6 +516,7 @@ export function create(onIdle) {
       if (m.sel && m.sel !== lastSel) flyTo(m.sel); // selected from outside the map (list, chip, banner)
       lastSel = m.sel;
       town.sync(m);
+      nature.sync(m);
       furn.sync(m, on);
       life.sync(m);
       applyFog(m.fog);
@@ -556,6 +561,7 @@ export function create(onIdle) {
       geos: renderer.info.memory.geometries,
       tex: renderer.info.memory.textures,
       life: life && life.count(),
+      nature: nature && nature.count(),
       view: view && { ...view }
     }),
     dispose() {
@@ -566,6 +572,7 @@ export function create(onIdle) {
       if (furn) furn.dispose();
       if (town) town.dispose();
       if (life) life.dispose();
+      if (nature) nature.dispose();
       if (raf) cancelAnimationFrame(raf);
       if (ro) ro.disconnect();
       for (const [k, f, o] of listeners) canvas.removeEventListener(k, f, o);

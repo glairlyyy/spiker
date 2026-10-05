@@ -8,6 +8,153 @@ const MapModel = {
   known: (run, id, p) => id === 'home' || id === `hq${run.team}` || id === 'clash' || City.seen(run, p),
   /** A picked map point, as the selection id 'pt:x,y' ↔ [x, y]. */
   /**
+   * Nature on the island (spec §4.19c, NATURE): trees, rocks, bushes and grass as plain data — [{ k, at, s (size ×), r (yaw), c
+   * (shade) }]. A jittered grid (string hashes, no randoms); each point's biome (region, sand, ground kind, Shu's height and
+   * villages) decides the chance and the kind. Never on roads, lots, places, venues, level pads, the airport or water / fields.
+   * Cached with the lots (they move with your home).
+   */
+  nature(run) {
+    const lots = MapModel.lots(run);
+    if (MapModel.natCache && MapModel.natCache.lots === lots) return MapModel.natCache.items;
+    const N = NATURE,
+      C = N.cell,
+      BK = 40, // bucket size (map units) for the keep-out tests
+      buckets = new Map(),
+      put = (p, rad, kind) => {
+        const x0 = Math.floor((p[0] - rad) / BK),
+          x1 = Math.floor((p[0] + rad) / BK),
+          y0 = Math.floor((p[1] - rad) / BK),
+          y1 = Math.floor((p[1] + rad) / BK);
+        for (let x = x0; x <= x1; x++)
+          for (let y = y0; y <= y1; y++) {
+            const k = `${x},${y}`;
+            if (!buckets.has(k)) buckets.set(k, []);
+            buckets.get(k).push(kind);
+          }
+      },
+      RN = ROADS.nodes;
+    for (const l of lots) put(l.at, l.size * 0.75 + 3, { c: l.at, r: l.size * 0.75 + 3 });
+    for (const m of MapModel.landmarks(run)) put(m.at, 30, { c: m.at, r: 30 });
+    for (const v of Object.values(VENUES)) put(v.at, v.clear + 10, { c: v.at, r: v.clear + 10 });
+    for (const q of MapModel.pads()) put(q.at, q.r + 4, { c: q.at, r: q.r + 4 });
+    for (const [a, b, kind] of ROADS.edges) {
+      const A = RN[a],
+        B = RN[b],
+        w = kind === 'main' || kind === 'overpass' ? 9 : kind === 'path' ? 4 : 7,
+        L = Math.hypot(B[0] - A[0], B[1] - A[1]);
+      for (let s = 0; s <= L; s += BK / 2) put([A[0] + ((B[0] - A[0]) * s) / L, A[1] + ((B[1] - A[1]) * s) / L], w, { a: A, b: B, r: w });
+    }
+    const blocked = p =>
+        (buckets.get(`${Math.floor(p[0] / BK)},${Math.floor(p[1] / BK)}`) || []).some(o => {
+          if (o.c) return Math.hypot(p[0] - o.c[0], p[1] - o.c[1]) < o.r;
+          const dx = o.b[0] - o.a[0],
+            dy = o.b[1] - o.a[1],
+            t = clamp(((p[0] - o.a[0]) * dx + (p[1] - o.a[1]) * dy) / (dx * dx + dy * dy || 1), 0, 1);
+          return Math.hypot(p[0] - o.a[0] - t * dx, p[1] - o.a[1] - t * dy) < o.r;
+        }) || MapModel.inAirport(p),
+      groundAt = p =>
+        GROUND.find(q => {
+          const d = Math.hypot(p[0] - q.poly.x, p[1] - q.poly.y);
+          return d <= q.poly.r && !(q.poly.r0 && d < q.poly.r0);
+        }),
+      village = DISTRICTS.filter(d => d.region === 'shu' && d.poly && d.poly.r),
+      biome = p => {
+        const g = groundAt(p);
+        if (g) return g.kind === 'park' ? N.park : g.kind === 'terrace' ? N.tea : g.kind === 'quarry' ? N.quarry : null;
+        const reg = City.regionAt(p);
+        if (reg === 'shu') {
+          if (village.some(d => Math.hypot(p[0] - d.poly.x, p[1] - d.poly.y) < d.poly.r * 1.15)) return N.village;
+          return reliefAt(p) > N.treeline ? N.scree : N.shu;
+        }
+        if (reg === 'wu') return MapModel.onSand(p) ? N.sand : N.wu;
+        return N[reg] || null; // wei, open (the minors: none)
+      },
+      pick = (kinds, u) => {
+        const tot = kinds.reduce((a, k) => a + k[1], 0);
+        let x = u * tot;
+        for (const [k, w] of kinds) if ((x -= w) < 0) return k;
+        return kinds[kinds.length - 1][0];
+      },
+      out = [],
+      add = (k, p, id) =>
+        out.push({
+          k,
+          at: [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10],
+          s: Math.round((0.75 + 0.6 * hstr(`${id}|s`)) * 100) / 100,
+          r: Math.round(hstr(`${id}|r`) * 628) / 100,
+          c: Math.round((0.86 + 0.28 * hstr(`${id}|c`)) * 100) / 100
+        });
+    for (let y = C / 2; y < CITY.h; y += C)
+      for (let x = C / 2; x < CITY.w; x += C) {
+        const id = `n${x}|${y}`,
+          p = [x + (hstr(`${id}|x`) - 0.5) * C * 0.8, y + (hstr(`${id}|y`) - 0.5) * C * 0.8];
+        if (!City.onLand(p)) continue;
+        const B = biome(p);
+        if (!B || hstr(`${id}|p`) >= B.p || blocked(p)) continue;
+        add(pick(B.kinds, hstr(`${id}|k`)), p, id);
+      }
+    // street trees along Wei's main roads
+    for (const [a, b, kind] of ROADS.edges) {
+      if (kind !== 'main') continue;
+      const A = RN[a],
+        B = RN[b],
+        L = Math.hypot(B[0] - A[0], B[1] - A[1]),
+        nx = -(B[1] - A[1]) / L,
+        ny = (B[0] - A[0]) / L;
+      for (let s = N.street.every / 2; s < L; s += N.street.every)
+        for (const side of [-1, 1]) {
+          const p = [A[0] + ((B[0] - A[0]) * s) / L + nx * N.street.off * side, A[1] + ((B[1] - A[1]) * s) / L + ny * N.street.off * side],
+            id = `st${a}|${b}|${s}|${side}`;
+          if (City.regionAt(p) !== 'wei' || groundAt(p)) continue;
+          const lot = (buckets.get(`${Math.floor(p[0] / BK)},${Math.floor(p[1] / BK)}`) || []).some(
+            o => o.c && Math.hypot(p[0] - o.c[0], p[1] - o.c[1]) < o.r
+          );
+          if (!lot && !MapModel.inAirport(p)) add(N.street.kind, p, id);
+        }
+    }
+    MapModel.natCache = { lots, items: out };
+    return out;
+  },
+  /**
+   * The island's animals (spec §4.19c, NATURE.life): [{ k, at (loop centre), r (loop radius, map units), up (m), ph, sp }] — birds
+   * circling the Peak, gulls over the harbor, a heron on the river, deer at the Shu forest edge, village dogs, an Old Town cat.
+   */
+  wild(run) {
+    const nat = MapModel.nature(run),
+      dist = id => {
+        const d = DISTRICTS.find(x => x.id === id);
+        return d && d.poly && d.poly.x != null ? [d.poly.x, d.poly.y] : null;
+      },
+      R = CITY.relief,
+      forest = nat.filter(o => o.k === 'pine' && reliefAt(o.at) < 30),
+      villages = ['shu-village-north', 'shu-village-south', 'wu-village'].map(dist).filter(Boolean),
+      out = [];
+    for (const L of NATURE.life)
+      for (let i = 0; i < L.n; i++) {
+        const id = `${L.kind}|${i}`,
+          at =
+            L.at === 'peak'
+              ? R.peak.at
+              : L.at === 'river'
+                ? R.river.line[1]
+                : L.at === 'forest'
+                  ? forest.length && forest[Math.floor(hstr(id) * forest.length)].at
+                  : L.at === 'villages'
+                    ? villages[i % villages.length]
+                    : dist(L.at);
+        if (!at) continue;
+        out.push({
+          k: L.kind,
+          at: at.slice(),
+          r: Math.round(L.r[0] + (L.r[1] - L.r[0]) * hstr(`${id}|r`)),
+          up: L.up,
+          ph: Math.round(hstr(`${id}|p`) * 628) / 100,
+          sp: Math.round((0.7 + 0.6 * hstr(`${id}|v`)) * 100) / 100
+        });
+      }
+    return out;
+  },
+  /**
    * Level ground in the highlands (owner, 2026-10-05; spec §4.19b): every Shu place, HQ, venue, home and village stands on a
    * flat pad (`at`, radius `r`, then `blend` to the slope) — the 3D terrain levels it to the height at its centre. Data only.
    */
@@ -55,7 +202,9 @@ const MapModel = {
         hole: q.poly.r0 ? MapModel.districtPoly({ poly: { ...q.poly, r: q.poly.r0 } }) : null
       })),
       lots: MapModel.lots(run),
-      landmarks: MapModel.landmarks(run)
+      landmarks: MapModel.landmarks(run),
+      nature: MapModel.nature(run),
+      wild: MapModel.wild(run)
     };
   },
   /** Every place and club HQ with its landmark kind (LANDMARK): [{ id, at, kind, region }]. Your home sits where your housing is. */

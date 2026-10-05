@@ -47,7 +47,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
 
 ES modules (loaded on demand): `js/render3d/` — `r3d.mjs` (entry), `units3d`, `arena3d`, `camera3d`, `actors3d`,
 `players3d` (VRM load / dress, `MODEL_URL`), `poses3d` (+ `setMotion`; spike / swing / serve poses in `poses3d-attack`), `fx3d`, `trails3d`, `title3d` (the title backdrop: its own small renderer — `mountTitle3D(el)` / `unmountTitle3D()`, buildArena without players or ball, orbiting; menu.js `titleBg` / `titleBgOff`, navigate stops it); `js/map3d/` — `map3d.mjs`
-(entry), `geo3d`, `avatar3d`, `pins3d`, `life3d`, `town3d`, `kit3d`.
+(entry), `geo3d`, `avatar3d`, `pins3d`, `life3d`, `town3d`, `kit3d`, `nature3d`.
 
 CSS (`css/`, loaded in this order): `style.css` (base + match screen layout), `career.css` (career screens layout: menu, create, cards,
 sheets), `map.css` (island map frame, 3D overlay pins/labels, legend, hex tile labels), `hub.css` (hub HUD + shell: top bar, week
@@ -676,6 +676,13 @@ count(), dispose() }`, display only, no game randoms): reads `model.life`; one `
    loops of road nodes `[x, y, over]`, boats `{ at, r, n }`, the plane's take-off `{ from, lift, to, every }` on `AIRPORT.runway`. life3d
    draws one `InstancedMesh` per vehicle kind (bus, van, boat, plane; caps in `VEH`): vehicles keep 1 m right of the line and ride the
    overpass deck with town3d's exported `DECK` ramp; boats circle at sea level; the plane rolls, climbs and shrinks away once per cycle.
+   Nature (spec §4.19c, T-223) is `js/map3d/nature3d.mjs` (`createNature(scene, heightAt)` → `{ sync(model), tick(dt, t), count(),
+   dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }] from `NATURE` — a hashed jittered grid, the biome
+   by region / sand / ground kind / Shu height (`reliefAt` vs `treeline`) / villages, kept off roads, lots, landmarks, venues, pads,
+   the airport and water / fields via a bucket grid; street trees along Wei's main roads; cached with the lots) and
+   `model.land.wild` (`MapModel.wild`: the animals' loop centres from NATURE.life anchors). One InstancedMesh per shape (9: pine,
+   broad, blossom, palm, rock, bush + tea, tuft + dune grass, bamboo, log) + 3 animal bodies (bird, beast, heron); vertex tones ×
+   instance tint × the fog's dimming; animals move in tick. ~1.9k instances, ~45k triangles.
    The town layer is `js/map3d/town3d.mjs` (`createTown(scene, heightAt)` → `{ sync(model), dispose() }`, display only, no randoms):
    reads only `model.land.roads / lots / landmarks / districts` and `model.fog`. Ground use (`model.land.ground`, from `GROUND`: circles or
    rings in map units) is painted into the terrain's vertex colours by map3d.mjs `buildTerrain` (`GROUND_TINT`: two tones, straight bands at a
