@@ -54,7 +54,7 @@ function renderCareer() {
   $('#app').innerHTML =
     `<section class="career hub ${City.night(run) ? 'eve' : ''} ${CW.railMini ? 'railmini' : ''} ${scene ? 'cine' : ''}" style="--tc:${team.color}">
     ${topBar(run)}${CW.railMini ? railStrip(run, armed) : weekRail(run, armed)}
-    <div class="mapwrap" id="mapwrap"></div><button class="btn mapme" onclick="MapView.centre()" aria-label="Centre the map on you (C)">◎ Me <kbd>C</kbd></button>
+    <div class="mapwrap" id="mapwrap"></div><button class="btn mapme" onclick="MapView.centre()" aria-label="Centre the map on you (C)">◎ Me <kbd>C</kbd></button>${walkSpeed()}
     <div class="hud spotcard ${CW.spot && !card ? 'open' : ''}" id="spot">${CW.spot && !card ? spotCard(run) : ''}</div>
     ${CW.sheet ? hubSheet(run) : ''}
     ${card ? `<div class="hubmodal ${card.dim ? 'dim' : ''}"><div class="hubcard ${card.cls || ''}">${card.html}</div></div>` : ''}
@@ -243,6 +243,21 @@ function railStrip(run, armed) {
   </aside>`;
 }
 /** Fold / unfold the week rail (« / », key `[`); the map resizes into the space (MapView keeps its one canvas). */
+/** The map's walking-speed selector (T-214): top right of the map, usable while you walk (above the walk lock). */
+function walkSpeed() {
+  const k = MapView.walkK();
+  return `<div class="mapwalk" role="group" aria-label="Walking speed" ${tip('Walking speed on the map')}><span class="lab">Walk</span>${MapView.WALKS.map(
+    n => `<button class="btn ${n === k ? 'on' : ''}" aria-pressed="${n === k}" onclick="walkSet(${n}, this)">${n}×</button>`
+  ).join('')}</div>`;
+}
+function walkSet(k, b) {
+  MapView.setWalk(k);
+  for (const x of b.parentNode.querySelectorAll('.btn')) {
+    const on = x === b;
+    x.classList.toggle('on', on);
+    x.setAttribute('aria-pressed', on);
+  }
+}
 function railToggle() {
   CW.railMini = !CW.railMini;
   store.set(KEYS.rail, CW.railMini ? '1' : '0');

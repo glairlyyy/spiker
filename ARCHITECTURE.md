@@ -643,7 +643,7 @@ regions[{id, poly, color, mine}], minors[ellipses], park, mountains, labels, air
 mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-view centre), sel, life }`. `life` (`MapModel.life`, display only, no randoms; positions from hashes of ids + place): `mates[{id, name, at, color, spot}]` (your floor mates at the explored place of their key nearest home), `crews[{region, team, at, color, n 2–6, known, walk[[x,y]…]}]` (known clubs' HQs; `known` = scouted or yours), `battle {at, a, b, colors}|null`, `patrols[{id, tile, at, face, color}]` (`MapModel.patrols`: the hot hex frontier — the battle tile and tiles under pressure, ≤ 3 fronts, any pair; the holder's 2 on the tile, the pusher's 2–4 on its own frontier tile next to it, facing across; colours and points only, the renderer never names factions). Map units
    CITY.w × CITY.h, y down. Selection ids: a pin id, or `pt:x,y` (`ptId` / `ptOf`).
 3. Renderer — `MapView` (`js/ui/map-view.js`): `mount(el, model, { pick(id), point([x, y]) })`, `update(model)`,
-   `select(id)`, `dispose()`. The only renderer is the three.js map: it lazy-imports `js/map3d/map3d.mjs` once (a notice
+   `select(id)`, `dispose()`, `setWalk(k)` (your walking speed ×1/×2/×4, remembered as `sns_walk`; map3d ticks your avatar ×k). The only renderer is the three.js map: it lazy-imports `js/map3d/map3d.mjs` once (a notice
    shows while loading; on import / WebGL failure it logs `DBG.log('error')` and shows the failure text — there is no 2D
    fallback). `map3d.create(onIdle)` → `{ mount, update, select, dispose, heightAt, info }`: one renderer +
    canvas that survive `renderCareer()` (each mount re-attaches the canvas into the new `#mapwrap`); it releases itself

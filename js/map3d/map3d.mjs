@@ -237,6 +237,7 @@ export function create(onIdle) {
     clock = 0,
     fogKey = null,
     badge = null,
+    walkK = 1, // your walking speed (×1 / ×2 / ×4 — the map's speed selector, T-214)
     follow = false, // the camera follows the avatar while it walks (until the user drags)
     seen = null, // the you.at last shown
     view = null, // { x, z, d }: the camera target on the ground and its distance (kept across re-mounts)
@@ -402,7 +403,7 @@ export function create(onIdle) {
       if (gone > IDLE_S) return onIdle && onIdle(); // the career screen is gone: release the GPU objects
     } else {
       gone = 0;
-      avatar.tick(dt, terrain.heightAt);
+      avatar.tick(dt * walkK, terrain.heightAt); // your walk at the chosen speed (setWalk; the others keep theirs)
       for (const f of figs.values()) f.tick(dt, terrain.heightAt);
       clock += dt;
       life.tick(dt, clock);
@@ -510,6 +511,10 @@ export function create(onIdle) {
     },
     centre,
     overview,
+    /** Your walking speed on the map: ×k (1, 2, 4). */
+    setWalk(k) {
+      walkK = k > 0 ? k : 1;
+    },
     /** True while your player is walking to a new place (the UI locks its actions until they arrive). */
     busy: walking,
     heightAt: (x, z) => (terrain ? terrain.heightAt(x, z) : 0),

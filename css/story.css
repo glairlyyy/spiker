@@ -154,6 +154,7 @@
 .hub.cine .wrail,
 .hub.cine .wrail.mini,
 .hub.cine .mapme,
+.hub.cine .mapwalk,
 .hub.cine .spotcard {
   visibility: hidden;
 }

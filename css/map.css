@@ -184,3 +184,26 @@
   left: calc(var(--rail) + 16px);
   background: var(--hud);
 }
+/* Walking speed (map, top right, T-214): above the walk lock so it works mid-walk */
+.hub .mapwalk {
+  position: absolute;
+  z-index: 71;
+  top: calc(var(--tbar) + 16px);
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 4px 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--hud);
+}
+.hub .mapwalk .lab {
+  margin-right: 4px;
+}
+.hub .mapwalk .btn {
+  min-width: 36px;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
+}

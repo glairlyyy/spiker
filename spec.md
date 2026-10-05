@@ -143,7 +143,8 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   Quality is **never shown** (owner, 2026-10-03, T-172): no stars, gem / overhyped marks, Quality column or glossary
   term; it only scales EXP (the EXP rating reflects it). The facility **level** (Lv, grows with use) is the one visible tag.
 - §4.4 Movement: `run.pos` (start: airport); hotels away from home. Dark except near visited points (`run.fog`,
-  REVEAL_R). Click any land to travel.
+  REVEAL_R). Click any land to travel. **Walking speed** (owner, 2026-10-05, T-214): a small `Walk 1× 2× 4×` selector at
+  the map's top right (usable mid-walk; remembered per browser, `sns_walk`) speeds up your walk on the map — display only.
 - §4.5 Week: 7 days. Each action (train/rest/outing/scout) = 1 day + trip (free within NEAR_R, 1 day per TRIP_DAY,
   max 3; routing §4.18). Nothing spills over; nights free; only the player ends the week. One event roll per week.
   Day session = DAY_GAIN (0.25) of the old weekly gain.

@@ -35,6 +35,7 @@ const MapView = {
         MapView.loading = false;
         if (!MapView.el || !MapView.el.isConnected) return; // the screen changed meanwhile: the next mount loads it
         MapView.m3 = mod.create(() => MapView.drop3D());
+        if (MapView.m3.setWalk) MapView.m3.setWalk(MapView.walkK());
         MapView.m3.mount(MapView.el, MapView.model, MapView.on);
       })
       .catch(e => {
@@ -66,6 +67,13 @@ const MapView = {
   /** Fly the camera out over the whole island (a story scene lifting the week-1 fence). */
   overview() {
     if (MapView.m3 && MapView.m3.overview) MapView.m3.overview();
+  },
+  /** Your walking speed on the map (the speed selector, T-214): ×1 / ×2 / ×4, remembered per browser. */
+  WALKS: [1, 2, 4],
+  walkK: () => (MapView.WALKS.includes(+store.get(KEYS.walk)) ? +store.get(KEYS.walk) : 1),
+  setWalk(k) {
+    store.set(KEYS.walk, String(k));
+    if (MapView.m3 && MapView.m3.setWalk) MapView.m3.setWalk(k);
   },
   /** Fly the camera to your player (◎ / key C). */
   centre() {

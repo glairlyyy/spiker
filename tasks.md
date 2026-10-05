@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-214** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-215** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -173,6 +173,12 @@ step (T-202), a beat act kind (ACTS + test), a career match kind (fixture, T-201
 Files: ARCHITECTURE.md
 Accept: each recipe ≤ 6 lines and matches the code.
 Result: "How to add…" section before Engine flow: venue, place kind, weekly system, beat act kind, career match kind, glossary term, save field — each ≤ 6 lines, names the list to extend, checked against the code.
+
+### [x] T-214: Walking speed selector on the map (owner request)
+
+Spec: §4.4 Goldens: unchanged Save: no change (browser key `sns_walk`)
+Files: js/ui/career-hub.js (`walkSpeed`, `walkSet`), js/ui/map-view.js (`walkK`, `setWalk`), js/map3d/map3d.mjs (`setWalk`: your avatar ticks ×k), js/core/storage.js (KEYS.walk), css/map.css, css/story.css
+Result: `Walk 1× 2× 4×` top right of the map, above the walk lock (z 71) so it works mid-walk, hidden in scenes; display only (rules move instantly). QA: the same trip ×1 vs ×4 took ~4.2× longer; no errors.
 
 ### [x] T-213: Reminders only — no suggested next step (owner request)
 
