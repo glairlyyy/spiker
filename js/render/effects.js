@@ -33,6 +33,8 @@ function burst(pow, color) {
 function airImpact(pow, color, dx) {
   const f = fx3();
   if (f && f.airImpact) f.airImpact(pow, color, dx);
+  // hold the moment (owner, 2026-10-06): the world all but stops while the air splits — 1 s on a heavy hit, 0.5 s on a hard one
+  if (HYPE[G.hype].max >= 1) A.airHold = performance.now() + (pow >= 80 ? AIR_HOLD.heavy : AIR_HOLD.hard);
   if (pow >= 100 && !RM && HYPE[G.hype].max >= 1) {
     const st = document.getElementById('stage');
     if (st) {

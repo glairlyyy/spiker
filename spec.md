@@ -58,7 +58,11 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 - §2.3a Air impact (owner, 2026-10-06, the Kuroko look) **[built, T-236]**: every spike (not a tip; power ≥ 58) splits the air
   at the contact — pressure rings stacked along the shot (2 / 3 / 4 by power: hard / heavy 80+ / 95+), white wind lines
   thrown out sideways, a jet of air down the line; 95+ adds a pressure dome ballooning out; 100+ (with Hype on, not reduced
-  motion) an **impact frame** — the court in negative for ~70 ms. Display only (no beats or draws change).
+  motion) an **impact frame** — the court in negative for ~70 ms. The moment **holds** (owner, 2026-10-06): the world slows to
+  ~6 % for 1 s real time on a heavy hit (80+), 0.5 s on a hard one, so the air impact hangs in the air (off with Hype off).
+  The hitter's body bends with the power (owner, 2026-10-06): the bow before the swing (back arch, chest open, head back) and the
+  jack-knife after contact scale with the spike's power (×0.85 at 60 … ×1.85 at 140; tips unchanged).
+  Display only (no beats or draws change).
 - §2.4 Blocks: stuff odds = full-strength block vs spike, weighted by coverage (targets §2.9).
 - §2.5 Spike approach (display): hitter runs to a run-up point behind contact (skip if already there/behind), starting
   in the beat before the set, takes off before contact; broad jump carries onto the ball. Quicks: short approach; jump

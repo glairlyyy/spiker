@@ -184,8 +184,8 @@ Result: `resultData.calls` (your `m.calls`), `callsRow` on the card's right colu
 
 ### [x] T-236: Spike air impact — the Kuroko look (owner request)
 Spec: §2.3a          Goldens: unchanged (display only)          Save: no change
-Files: js/render3d/fx3d.mjs (`airImpact`, rings facing a direction / delayed, the pressure dome), js/render3d/r3d.mjs (fx api), js/render/effects.js (`airImpact` + impact frame), js/render/acts.js (burst on a spike beat → airImpact), css/style.css (.impactf)
-Result: a spike beat's burst (the beat carries the hitter's `spkstyle`, not a tip, power ≥ 58) calls airImpact toward the far court; QA Monster game: a 104 and a 138 km/h-power spike (screenshots: rings + wind lines + dome; the negative impact frame), no errors.
+Files: js/render3d/fx3d.mjs (`airImpact`, rings facing a direction / delayed, the pressure dome), js/render3d/r3d.mjs (fx api), js/render/effects.js (`airImpact` + impact frame + hold), js/render/clock.js (AIR_HOLD), js/render/acts.js (burst on a spike beat → airImpact; spkPow), js/render/playback.js (spike power read ahead), js/render3d/poses3d-attack.mjs (bow × power), css/style.css (.impactf)
+Result: a spike beat's burst (the beat carries the hitter's `spkstyle`, not a tip, power ≥ 58) calls airImpact toward the far court; QA Monster game: a 104 and a 138 km/h-power spike (screenshots: rings + wind lines + dome; the negative impact frame), no errors. Follow-ups (owner): the moment holds (A.airHold → clock: ts 0.06 for 1 s on 80+, 0.5 s on a hard hit; Hype off: none); the hitter's bow and post-contact jack-knife scale with power (d.spkPow read ahead by playback; poses3d-attack powK 0.85–1.85). QA: hold ts 0.06 / 959 ms left; a 135-power bow, no errors.
 
 ### [x] T-231: Docs diet and a UI smoke test (owner request)
 Spec: —          Goldens: unchanged          Save: no change

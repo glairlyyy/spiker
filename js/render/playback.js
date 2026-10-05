@@ -483,6 +483,12 @@ function step(dt) {
     }
     if (!b.scene) endScene();
     startBeat(b);
+    // read the next spike ahead (display only): its hitter bows deeper the harder the coming hit (poses3d-attack)
+    for (const nb of [A.beats[A.bi + 1], A.beats[A.bi + 2]]) {
+      const s = nb && nb.acts.find(x => x.k === 'spkstyle'),
+        dd = s && A.disp[s.p];
+      if (dd) dd.spkPow = spikePowIn(nb);
+    }
   }
   A.el += b.cut || b.scene ? playDt(raw) : b.freeze ? raw : dt;
   if (!(b.dur > 0)) {
