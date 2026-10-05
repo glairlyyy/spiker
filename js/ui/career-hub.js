@@ -161,6 +161,8 @@ function hubCard(run, nextCup) {
   if (CW.briefWeek !== briefKey(run)) return { html: weekBrief(run), dim: true, key: `brief:${briefKey(run)}` };
   if (wt === 'cup') return { html: cupPanel(run, nextCup), cls: 'wide', key: `cup:${briefKey(run)}` };
   if (wt === 'eval') return { html: evalPanel(run, World.isFree(run) ? hubClubsHint() : ''), key: `eval:${run.week}` };
+  if (City.night(run) && Run.canEndWeek(run) && !CW.lock && CW.nightAsk !== run.week)
+    return { html: nightCard(), dim: true, key: `night:${run.week}` };
   return null;
 }
 /** One Week brief per week (and per cup round). */
@@ -489,7 +491,9 @@ function hubKey(e) {
   }
   if (e.target.closest && e.target.closest('input,select,textarea,button,a,[contenteditable]')) return;
   if (e.key === 'Escape') {
-    if (CW.gear) gearToggle();
+    if (document.querySelector('.hubmodal .night'))
+      nightAnswer(false); // the out-of-days ask: Esc = I'll stay
+    else if (CW.gear) gearToggle();
     else if (CW.sheet) hubOpen(null);
     else if (CW.spot) {
       CW.spot = null;

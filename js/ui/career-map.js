@@ -227,6 +227,20 @@ function lockEnd() {
   if (L && L.phase === 'res') return renderCareer(); // the hub catches up (and the match's scene, if any, may play)
   const el = $('#actlock');
   if (el) el.remove();
+  if (L && typeof RUN !== 'undefined' && RUN && City.night(RUN)) renderCareer(); // the last day is spent: the End week ask
+}
+/**
+ * Out of days (owner, 2026-10-05): once the lock ends with no days left, a card asks to end the week — never forced.
+ * "I'll stay" closes it for this week (End week stays on the rail).
+ */
+function nightCard() {
+  return `<div class="panel night"><h3>No days left</h3><p class="mute">The week is spent. End it?</p>
+    <div class="acts two"><button class="btn hot" onclick="nightAnswer(true)">Yes, end the week</button><button class="btn" onclick="nightAnswer(false)">I'll stay</button></div></div>`;
+}
+function nightAnswer(yes) {
+  CW.nightAsk = RUN.week;
+  if (yes && Run.canEndWeek(RUN)) return endWeekUI();
+  renderCareer();
 }
 /** The run as the top bar and rail show it: before a training day's changes until its result card (then the real run). */
 function lockShown(run) {
