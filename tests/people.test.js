@@ -90,7 +90,8 @@ test('people: save → load keeps run.people; a v9 save is dropped', () => {
 });
 test.slow('people: calibration — the league grows like the old drift (5 seeds × 28 weeks)', () => {
   // baseline on the pre-T-060 code (random weekly drift), after 11 / 27 growth ticks: [league mean OVR, top-10 mean OVR, stars]
-  const base = { w12: [75.21, 82.22, 5.8], w28: [86.47, 94.16, 11.2] },
+  // rebased 2026-10-05 (the league starts at OVR 40–50, CAREER.npcStart): it grows faster from lower and ends ~10 below
+  const base = { w12: [65.26, 75.14, 5.2], w28: [75.86, 89.62, 9.6] },
     got = { w12: [0, 0, 0], w28: [0, 0, 0] };
   for (const seed of [1, 2, 3, 4, 5]) {
     const [g, run] = mkPeople(seed);
@@ -121,7 +122,7 @@ test.slow('people: calibration — the league grows like the old drift (5 seeds 
 // bond-week baseline on the pre-T-061 code (+7 per training session): average week the first mate reaches bond 60 / 80
 // rebased in T-132 (hex battles shift the random stream) and T-189: the named players' curves replace their breakthrough rolls, which
 // shifts the stream (no systematic change: seeds 11–18 average bond 80 at week 8.3 with them vs 8.0 without)
-const BOND_BASE = { w60: 4.8, w80: 4.8 };
+const BOND_BASE = { w60: 6.8, w80: 7.2 }; // rebased 2026-10-05 (league at OVR 40–50: mates' plans pick other gyms more often)
 const mkMate = (seed, traits = ['steady', 'proud']) => {
   const [g, run] = mkPeople(seed),
     mate = g.Run.mates(run)[0];

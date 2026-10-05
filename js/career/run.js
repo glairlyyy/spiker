@@ -13,7 +13,22 @@ const Run = {
     for (const t of teams) if (FACTIONS[t.i] && FACTIONS[t.i].team) [t.name, t.short, t.color] = FACTIONS[t.i].team;
     const used = new Set(teams.flatMap(t => squadOf(t).map(p => p.name)));
     const reserve = Pool.build(teams, used);
+    for (const t of [...teams, ...Object.values(reserve)]) Run.lower(t);
     return { teams, team: Math.floor(R() * teams.length), reserve };
+  },
+  /** A generated squad at the run's start level (CAREER.npcStart): each player's OVR mapped onto 40–50, stats shifted together (no draws). */
+  lower(t) {
+    const { from, to } = CAREER.npcStart;
+    for (const p of squadOf(t)) {
+      if (p.named) continue;
+      const target = Math.round(to[0] + ((clamp(ovr(p), from[0], from[1]) - from[0]) / (from[1] - from[0])) * (to[1] - to[0]));
+      for (let it = 0; it < 4; it++) {
+        const d = target - ovr(p);
+        if (!d) break;
+        for (const k of STATK) p[k] = Math.round(clamp(p[k] + d, 10, 99));
+      }
+    }
+    if (t.P && t.P.length) t.ovr = teamOvr(t); // (the rating only: no captain / number / leadership re-roll)
   },
   /**
    * Start a run. spec = { role, name, mode? ({hard, short, story}; story defaults to true) } (every stat starts at CAREER.start, wit at CAREER.witBase: spec §4.22).
@@ -24,7 +39,7 @@ const Run = {
     const teams = draft.teams,
       reserve = draft.reserve || Pool.build(teams, new Set(teams.flatMap(x => squadOf(x).map(p => p.name)))),
       pickup = World.pickup(new Set(teams.concat(Object.values(reserve)).flatMap(x => squadOf(x).map(p => p.name)))),
-      t = pickup,
+      t = (Run.lower(pickup), pickup),
       role = spec.role,
       slot = role === 'S' ? 'S' : role === 'MB' ? 'MB' : 'W0',
       old = t.P.find(p => p.slot === slot),

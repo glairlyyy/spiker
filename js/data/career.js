@@ -11,7 +11,13 @@ const CAREER = {
   witRunCap: 2.0,
   staMax: 100,
   floorChance: 0.7, // chance each teammate shows up at some training this week
-  spPerTraining: 10
+  spPerTraining: 10,
+  /**
+   * The island's players at the start of a run (owner, 2026-10-05: an easier first weeks): every generated player's rolled
+   * OVR (`from`, ~55–78) is mapped linearly onto `to` (40–50) — the same order, the same stat shape, all stats shifted together.
+   * The named players (rival, cohort, aces) keep their own curves.
+   */
+  npcStart: { from: [55, 78], to: [40, 50] }
 };
 /** Five mood levels, Awful → Great: training multiplier and the match-day form (mood face). */
 const MOODS = [

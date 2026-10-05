@@ -361,6 +361,10 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   Final Cup + Wei evaluations · **Academy Hall** (campus): Academy evaluations · **Beach Stadium** (Wu sand, faded
   relic): Wu evaluations · **Highland Court** (hillside by Shu Peak HQ, stone terraces): Shu evaluations. Each also
   dresses the 3D match court (§9.11).
+- §4.22a The island at the start (owner, 2026-10-05) **[built, T-226]**: every generated player (clubs, reserves, the Academy
+  squad) starts at OVR 40–50 — the rolled OVR (~55–78) mapped linearly onto 40–50 (`CAREER.npcStart`), order and stat shape
+  kept; the named keep their curves. Street hustlers 35–60. The league then grows faster from lower: mean ~65 at week 12,
+  ~76 at week 28 (was 75 / 86). Join requirements (§4.10) are unchanged **[open: lower them with the league?]**.
 - §4.22 Start from 1: Power, Defense, Speed, Jump = 1, Wit 1.0; no creation points / role bias. Creation: name, role,
   look, challenge modes. XP per point grows ×1.05 per point at all levels (≈1 at 1, ≈6 at 40, 10 at 50; ~a dozen
   sessions to 50). Early benching and losses are intended (evaluations still pay the bench reward). Stats floor 1; a

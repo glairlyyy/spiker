@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-226** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-227** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,11 @@ cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git 
 ## Now
 
 Owner request 2026-10-05 (spec §9.12 motion; design system `motion.md`, Motion card): T-216 → T-219. UI only; goldens unchanged.
+
+### [x] T-226: An easier start — the island's players at OVR 40–50 (owner request)
+Spec: §4.22a          Goldens: unchanged (engine)          Save: no change
+Files: js/data/career.js (CAREER.npcStart), js/career/run.js (`Run.lower`: draft teams + reserves, the Academy squad), js/data/city.js (STREET.rival 35–60), tests/people.test.js (league / bond calibration rebased)
+Result: start OVR clubs 41–48 (median 44), reserves 40–50, Academy squad 43–44 (was 58–77, median 65); no random draws added. League mean w12 65 / w28 76 (was 75 / 86); first bond 60 at week ~6.8 (was 4.8: mates' plans pick other gyms). Tests 125/125.
 
 ### [x] T-225: The island × 1.5 again (owner request)
 Spec: §4.18b          Goldens: unchanged          Save: RUN_VERSION 18 (positions and fog are in map units: older saves dropped)

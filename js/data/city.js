@@ -301,7 +301,7 @@ const SPOTS = {
   }
 };
 /** Street hustle tuning: rival OVR range, stake won / lost, fans on a win. */
-const STREET = { rival: [50, 78], win: [40, 90], loss: 20, fans: 40, sta: 12 };
+const STREET = { rival: [35, 60], win: [40, 90], loss: 20, fans: 40, sta: 12 };
 /** Scouting a club at its HQ (a day): stamina cost. */
 const SCOUT_STA = 5;
 /** Where you live on the map, by housing. */
