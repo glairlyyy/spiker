@@ -8,9 +8,11 @@ Code home: https://github.com/glairlyyy/spiker (branch main). Containers are tem
 
 - `CLAUDE.md` (this file) — how to work: workflow, commands, rules that bite, QA, publishing. Stable.
 - `spec.md` — WHAT the game is: current feature state, locked decisions, open questions, out of scope. Source of truth.
-- `tasks.md` — the work queue: small tasks with files, acceptance criteria, test impact.
+- `tasks.md` — the work queue: open tasks with files, acceptance criteria, test impact (done ones: one line each;
+  their full text is in `tasks-done.md` — read it only when a task points there).
 - `lore.md` — the hidden truth (setting, history, factions) and the voice list every in-game string must use.
-- `ARCHITECTURE.md` — HOW the code is built: layers, engine flow, renderer, saves, testing.
+- `ARCHITECTURE.md` — HOW the code is built: layers, file map, recipes, engine flow, saves, testing. Per-feature notes are in
+  `ARCHITECTURE-details.md` (read only the section for the code you touch).
 
 ## Workflow (spec-driven, two chats)
 
@@ -41,7 +43,8 @@ Build chat loop, one task at a time:
    change the task doesn't state, or the spec is ambiguous/contradicts the code.
 4. `npm test` and `npm run lint` must pass. Golden hashes change only if the task says **Goldens: update** (then
    `npm run test:update` and give the reason in the commit). Run the QA recipe when the task touches render/UI.
-5. Update `ARCHITECTURE.md` for structural changes (new file, new layer contract, new save field).
+5. Update `ARCHITECTURE.md` for structural changes (new file → file map, new layer contract, new save field) and the feature's
+   section in `ARCHITECTURE-details.md` for anything finer. Keep both short: what is, not how it got there.
 6. Mark `[x]` and fill the task's own `Result:` line (only that line — never rewrite or re-insert other text; edit
    tasks.md with a targeted replace, never by regenerating the file): one line, deviations and QA numbers. One local commit per task: `T-012: <title>`.
 7. Publish the changed files to the artifact (see Publishing). Reply to the owner in one or two lines.
@@ -54,7 +57,10 @@ Build chat loop, one task at a time:
 ## Commands
 
 - `npm install` once after cloning.
-- `npm test` — headless tests (tests/run.js runs tests/engine|career|map|cup.test.js). Golden hashes guard engine output.
+- `npm test` — headless tests (tests/run.js runs every tests/*.test.js area file). Golden hashes guard engine output.
+- `npm run test:ui` — UI smoke (tests/ui-smoke.js, ~1 min): real page in headless Chromium — title, a new career's hub, the
+  four sheets, every place card, a simmed court match's result card, the Encyclopedia, a Monster game to its result; fails
+  on any page error. Run it for every task that touches js/ui, css or render code; extend it when you add a screen or card.
 - `npm run test:quick` — the same minus the slow statistical tests (`test.slow`), ~28 s on a 2-core container: for the edit loop; run the full set before a commit.
 - `npm run test:update` — only when the task says Goldens: update.
 - `npm run lint` / `npm run format` — ESLint (flat config collects shared globals from index.html) / Prettier.
@@ -98,7 +104,7 @@ Launch with `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`
 wait for `typeof R3D !== 'undefined' && R3D && A && !A.hold` (R3D is a `let`, not on window), set `A.hold=true`,
 loop `step(16); R3D.poseAll(0.016)`; check pageerror + `DBG.text()`; screenshot the page (element screenshots of
 `#stage` time out: it never settles). A STALL line after long synchronous loops is a test artifact.
-For career/UI tasks: start a new run from the menu instead of `startMonster()` and exercise the changed screen.
+For career/UI tasks: start a new run from the menu instead of `startMonster()` and exercise the changed screen (after `npm run test:ui` passes).
 
 ## Publishing (artifact = backup + playable copy)
 

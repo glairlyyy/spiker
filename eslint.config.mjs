@@ -38,5 +38,10 @@ export default [
   {
     files: ['tests/**/*.js'],
     languageOptions: { ecmaVersion: 2023, sourceType: 'commonjs', globals: { ...globals.node } }
+  },
+  // the UI smoke test's page.evaluate callbacks run in the page: the browser and the game's shared globals too
+  {
+    files: ['tests/ui-smoke.js'],
+    languageOptions: { ecmaVersion: 2023, sourceType: 'commonjs', globals: { ...globals.node, ...globals.browser, ...shared } }
   }
 ];

@@ -694,6 +694,11 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
 - §10.1b No coach's goal (owner, 2026-10-03): the per-block goal (`Goals.set/check`, `run.goal`, `GOAL_REWARD`, `BLOCKS`)
   is removed — no goal on the rail, brief, Season sheet, calendar or Week report. Skill points and fans come from matches,
   battles and sponsors only. Old saves keep a dead `run.goal` (ignored, no version bump). Sponsors stay. Task T-170.
+- §10.1d Action lock (owner, 2026-10-03): while your player walks to a place the map camera holds on them and the hub takes no
+  input (a "Walking to {place}" pill; 20 s failsafe). A training day then shows a cut-in — spinner, then ✓ Training complete /
+  ✕ failed with what changed (click / Space / Enter / Esc, auto after 3.2 s; the top bar keeps the before-values until then);
+  a simmed match shows the §10.6 card instead. The map key (Club HQ / Venue / Street battle, faction colours) lives in the
+  Encyclopedia (Map key), not over the map.
 - §10.2 Day track: 7 slots Mon–Sun; each spent day shows what it was (icon + label), trip days hatched, free days empty;
   a selected place's cost shows as dashed ghost slots before you commit. Match weeks (eval/cup) show one match slot.
   Needs `run.dayLog` (list of `{k, label, stat?, at?}` per spent day, cleared at week start; `run.days` is already the
