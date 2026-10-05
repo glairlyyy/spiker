@@ -34,7 +34,7 @@ function load(seed = 123456789) {
     .map(f => fs.readFileSync(path.join(ROOT, f), 'utf8'))
     .join('\n;\n');
   // classic scripts share one global scope: run as a single script, then expose top-level bindings
-  const names = [...code.matchAll(/^(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)/gm)].map(m => m[1]);
+  const names = [...code.matchAll(/^(?:const|let|var|class|function\s*\*?)\s+([A-Za-z_$][\w$]*)/gm)].map(m => m[1]);
   vm.runInContext(`${code}\n;globalThis.__api={${[...new Set(names)].join(',')}};`, ctx, { filename: 'game.js' });
   return Object.assign(ctx.__api, { __mem: mem, __ls: ctx.localStorage });
 }

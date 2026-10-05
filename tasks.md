@@ -116,7 +116,7 @@ Result:
 
 **Calls — decisions in a played match (owner, 2026-10-05; spec §2.13): T-232 → T-235, one at a time, in order.**
 
-### [ ] T-232: The rally is pausable — one engine, two pickers
+### [x] T-232: The rally is pausable — one engine, two pickers
 Spec: §2.13          Goldens: unchanged (the AI picker draws exactly as today)          Save: no change
 Goal: `playRallyGen(m)` can stop at a decision point and resume with a pick; `playRally(m)` runs it to the end with the AI.
 Files: js/engine/serve.js, rally.js, rally-phases.js, rally-defense.js, rally-block.js (only the functions on the path from
@@ -135,7 +135,7 @@ Steps:
    a yield happens at your serve and your attack when `m.human` is set (engine-only flag), never without it.
 Accept: goldens unchanged; npm test + lint pass; headless match speed within 10 % of before (report ms per match).
 QA: Monster game plays as before.
-Result:
+Result: `playRallyGen` + `decide` (engine/decide.js, new); 5 functions became generators (serveWalk, serveAce, servePopped, serveReceive, rally); yields at your serve (before the walk) and attack (after spikePower). Goldens unchanged; a human answered with the AI picks = the sim flow beat for beat (test); headless 4.7 vs 5.2 ms / match (noise). Harness now exposes `function*` names. No B.ins fix needed beyond the clamp: the only insert lands at `mark` = the attack decision point.
 
 ### [ ] T-233: Decision options with odds and the stats behind them
 Spec: §2.13          Goldens: unchanged (options are computed without draws; the AI pick is unchanged)          Save: no change

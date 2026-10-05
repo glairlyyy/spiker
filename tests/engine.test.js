@@ -18,6 +18,39 @@ test('engine: seeded tournament teams + recorded matches are deterministic (gold
   goldenCheck('matches', hash(out));
 });
 
+test('engine: the rally is pausable (T-232) — a human answered with the AI picks plays the sim flow beat for beat', () => {
+  const play = human => {
+    const g = load(42),
+      T = g.mkTeams(),
+      m = g.newMatch(T[1], T[4], true),
+      you = T[1].P[2];
+    if (human) m.human = you.id;
+    let out = '',
+      asks = { serve: 0, attack: 0 },
+      other = 0,
+      rallies = 0;
+    while (!m.over && rallies++ < 400) {
+      const gen = g.playRallyGen(m);
+      let r = gen.next();
+      while (!r.done) {
+        const q = r.value;
+        if (q.p.id === you.id) asks[q.kind]++;
+        else other++;
+        assert(Array.isArray(m.beats) && m.askAt === m.beats.length, 'suspended: the beats so far are readable, askAt marks them');
+        r = gen.next(q.ai);
+      }
+      out += JSON.stringify(r.value.beats);
+    }
+    return { out: out + JSON.stringify([m.setScores, m.stat]), asks, other };
+  };
+  const sim = play(false),
+    hum = play(true);
+  eq(sim.asks.serve + sim.asks.attack + sim.other, 0, 'no human: never suspends');
+  assert(hum.out === sim.out, 'answering every call with the AI pick = the sim flow, beat for beat');
+  eq(hum.other, 0, 'only your own player is asked');
+  assert(hum.asks.serve > 0 && hum.asks.attack > 0, `asked at your serves and attacks (${JSON.stringify(hum.asks)})`);
+});
+
 test('engine: simulated matches (no animation) are deterministic (golden)', () => {
   const g = load(7);
   const T = g.mkTeams();

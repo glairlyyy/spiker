@@ -1,32 +1,46 @@
 // Serve and serve receive: starts every rally, then hands over to rally() (engine/rally.js).
 
-/**
- * Play one rally of match m: the reset and serve, serve receive (ace, error, pop-up), then rally() until the point
- * is decided, and end() scores it. Returns { w, beats } (beats = null unless the match records animation).
- */
 /** Extra flight speed of the hardest serves. */
 const SERVE_FAST = 1.45;
+/**
+ * Play one rally of match m to the end with the AI picking at every decision point (spec §2.13: the sim flow — the same
+ * draws as before the rally became pausable). Returns { w, beats } (beats = null unless the match records animation).
+ */
 function playRally(m) {
+  const g = playRallyGen(m);
+  let r = g.next();
+  while (!r.done) r = g.next(r.value.ai);
+  return r.value;
+}
+/**
+ * The rally as a generator (spec §2.13, T-232): the reset and serve, serve receive (ace, error, pop-up), then rally() until
+ * the point is decided, and end() scores it. At a decision point of `m.human`'s player it yields `{ kind, p, options, ai }`
+ * (see decide()) and resumes with the pick; everyone else's choices never stop. Returns { w, beats }. While it is
+ * suspended, `beats` holds the rally so far (the caller may play it): later inserts never land before that point.
+ */
+function* playRallyGen(m) {
   rallyStart(m);
   const V = m.rec,
     beats = V ? [] : null,
     B = b => beats.push(b);
-  // later phases can stage something earlier in the rally once they know the outcome (e.g. a block break)
+  // later phases can stage something earlier in the rally once they know the outcome (e.g. a block break) — never
+  // before a decision point that was already shown (m.askAt: what the player may have seen played)
   if (V) {
     B.len = () => beats.length;
-    B.ins = (i, ...bs) => beats.splice(i, 0, ...bs);
+    B.ins = (i, ...bs) => beats.splice(Math.max(i, m.askAt), 0, ...bs);
   }
+  m.beats = beats; // the rally so far, for a caller holding a suspended rally (decide)
   const s = m.serve,
     r = 1 - s,
     c = { m, V, B, beats, s, r, ST: m.t[s], RT: m.t[r], dR: DIR(r) };
   // the serve in steps (each draws its randoms in the same order as the one long function did — goldens unchanged)
-  serveWalk(c);
+  yield* serveWalk(c);
   serveToss(c);
   serveContact(c);
   if (R() < c.serr) return serveFault(c);
   serveAim(c);
-  if (R() < sig((c.sq - c.rs) / 24 - 2.4)) return serveAce(c);
-  return serveReceive(c);
+  if (R() < sig((c.sq - c.rs) / 24 - 2.4)) return yield* serveAce(c);
+  return yield* serveReceive(c);
 }
 /** Per-rally state, reset before every serve. */
 function rallyStart(m) {
@@ -41,9 +55,10 @@ function rallyStart(m) {
   m.hypeRally = 0; // at most one staged scene per rally
   m.kbScene = 0; // a kill-block scene played this rally (chatter skips the blocker's line)
   m.defBeats = [];
+  m.askAt = 0; // beats index of the last decision point shown this rally (B.ins never inserts before it)
 }
 /** Choose the serve up front and walk everyone to their spots; the reset and the server's routine beats. */
-function serveWalk(c) {
+function* serveWalk(c) {
   const { m, V, B, s, r, ST, RT } = c;
   const oS = rotOrder(ST, m.rot[s]),
     oR = rotOrder(RT, m.rot[r]),
@@ -53,8 +68,11 @@ function serveWalk(c) {
   let sq = Formula.serveQuality(server, ST);
   // ego (spec §2.12): an ego server goes for the risky jump serve
   const nat = serveType(server, sq),
-    hero = nat !== 'jump' && egoRoll(m, server, 'serve'),
-    sType = hero ? 'jump' : nat,
+    egoHero = nat !== 'jump' && egoRoll(m, server, 'serve'),
+    ai = egoHero ? 'jump' : nat,
+    // a decision point (spec §2.13): your serve — the AI's pick is the one drawn above (T-233 fills the options)
+    sType = yield* decide(m, { kind: 'serve', p: server, options: [], ai }),
+    hero = egoHero && sType === ai,
     jumpSrv = sType === 'jump',
     runM = runUpM(server, sType),
     endX = jumpSrv ? 60 : 44,
@@ -236,16 +254,16 @@ function serveAim(c) {
   Object.assign(c, { tx, tz, rc, steal, d0, rollR, rs, sdur });
 }
 /** The serve beats the receiver: off the arms (a teammate may save it) or a clean ace. */
-function serveAce(c) {
+function* serveAce(c) {
   const { m, rc, d0, sq } = c;
   // the receiver got an arm on it: sometimes it pops up in their court and a teammate keeps it alive
   const fr = Math.min(1, (0.8 / (d0 + 0.01)) * (0.3 + rc.speed / 200)),
     p0r = m.pos[rc.id];
-  if (d0 * (1 - 0.7 * fr) < 0.1 && R() < popChance(rc, sq)) return servePopped(c, fr, p0r);
+  if (d0 * (1 - 0.7 * fr) < 0.1 && R() < popChance(rc, sq)) return yield* servePopped(c, fr, p0r);
   return serveAceClean(c);
 }
 /** Off the receiver's arms: a teammate saves it (rally on) or it drops (ace). */
-function servePopped(c, fr, p0r) {
+function* servePopped(c, fr, p0r) {
   const { m, V, B, beats, s, r, RT, dR, server, sq, tx, tz, rc, sdur, hitFx, sw, sArc, wob } = c;
   const P = popRecovery(m, r, RT, rc, tx, tz, sq, 1),
     sp0 = mustDive(rc, p0r, tx, tz, sdur) ? 'dive' : 'bump';
@@ -274,7 +292,7 @@ function servePopped(c, fr, p0r) {
           { k: 'log', t: `${server.name}'s serve pops off ${rc.name}'s arms — ${P.rec.name} saves it!`, c: 'set' }
         ]
       });
-    return end(m, rally(m, B, V, r, P.rec, 1, { first: rc }), beats);
+    return end(m, yield* rally(m, B, V, r, P.rec, 1, { first: rc }), beats);
   }
   st(m, server, 'ace');
   st(m, server, 'k');
@@ -348,7 +366,7 @@ function serveAceClean(c) {
   return end(m, s, beats);
 }
 /** A served ball received: pass quality, the receive beat, then the rally. */
-function serveReceive(c) {
+function* serveReceive(c) {
   const { m, V, B, beats, r, RT, dR, sq, tx, tz, rc, rollR, rs, sdur, hitFx, sw, sArc, wob } = c;
   const mg = rs - sq * 0.85 + rnd(-18, 18),
     q = mg > 12 ? 3 : mg > -8 ? 2 : 1;
@@ -371,5 +389,5 @@ function serveReceive(c) {
         { k: 'log', t: `${rc.name} ${q === 3 ? 'receives perfectly' : q === 2 ? 'receives' : 'barely digs out the serve'}` }
       ]
     });
-  return end(m, rally(m, B, V, r, rc, q), beats);
+  return end(m, yield* rally(m, B, V, r, rc, q), beats);
 }

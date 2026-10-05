@@ -25,7 +25,7 @@ const HIT_FAST = 1.6;
  * c = the possession context (atkT / defT = attacking / defending team; V = record animation beats via B()).
  * x = the attack context: the values of phases 2–5, filled in by each attack phase and read by block() and dig().
  */
-function rally(m, B, V, atk, pas, qual, scr = null) {
+function* rally(m, B, V, atk, pas, qual, scr = null) {
   const front = (side, p) => {
     const i = rotOrder(m.t[side], m.rot[side]).indexOf(p);
     return i === 1 || i === 2;
@@ -87,6 +87,9 @@ function rally(m, B, V, atk, pas, qual, scr = null) {
       return atk;
     }
     Object.assign(x, spikePower(c, x));
+    // a decision point (spec §2.13): your attack — the AI's shot is the one spikePower drew (T-233 fills the options)
+    const ai = x.tip ? 'tip' : x.delayed ? 'delay' : x.around ? 'cut' : 'power';
+    x.shot = yield* decide(m, { kind: 'attack', p: x.spiker, options: [], ai });
     Object.assign(x, spikeActs(c, x));
     Object.assign(x, landingSpot(c, x));
     // the attack in play, for the element gauges (kills, digs and blocks are credited against it)
