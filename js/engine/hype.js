@@ -4,7 +4,7 @@
 
 const persOf = p => PERS[Math.floor(hu(p, 'pers') * PERS.length)];
 /** A player's given name (the last word of their name), as teammates call them. */
-const firstName = p => p.name.split(' ').pop();
+const firstName = p => p.name.split(' ')[0]; // the nickname (names are `<nickname> <family>`)
 /** A line for `kind` in this player's voice. vars: { sig, mate, opp } (players or strings). */
 function hypeLine(kind, p, m, vars = {}) {
   const L = LINES[kind][persOf(p)],

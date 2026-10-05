@@ -185,7 +185,7 @@ their `onLeave` only cleans up (`Eval.restore`). The UI opens them with `watchCa
   aces) at Run.create (no randoms: fixed data + the clubs' own players), marks them `named` / `nkey` / `curve`, and
   `Stars.week` (from Growth.week) sets their stats to the authored curve each week. World.transfers / promote and
   People fates / poach skip `named`; Growth.grow skips their breakthrough roll. `MapModel.figures(run)` lists every person
-  drawn as a full model (Kaede + the named): map3d keeps one `createAvatar(scene, { kit })` per figure id.
+  drawn as a full model (Fern + the named): map3d keeps one `createAvatar(scene, { kit })` per figure id.
 - **Sponsors** (`career/sponsors.js`; the coach's goal was removed in T-170, spec §10.1b): sponsors make offers at fan milestones (a `pre` event shown before the week's choice) with a perk kept while a
   condition holds.
 - **Matches** (`career/cup.js`; street battles, challenges, loss and injury are `Fight` in `career/fight.js`): an S–C grade from your own line scales that match's rewards; a pre-match focus goal;

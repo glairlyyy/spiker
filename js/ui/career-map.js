@@ -11,7 +11,7 @@ function mapMount(run) {
 function mapPoint(p) {
   if (!City.onLand(p)) return mapPick(null);
   CW.spot = MapModel.ptId(p);
-  if (Story.pick(RUN, CW.spot)) Run.save(RUN); // Kaede's lesson for the first tile you click (spec §10.10a)
+  if (Story.pick(RUN, CW.spot)) Run.save(RUN); // Fern's lesson for the first tile you click (spec §10.10a)
   renderCareer();
 }
 
@@ -89,7 +89,7 @@ function mapPick(id) {
   CW.spot = id;
   if (id && Story.pick(RUN, id)) {
     Run.save(RUN);
-    return renderCareer(); // Kaede's lesson for the first place of its kind you click (spec §10.10a); its card waits behind
+    return renderCareer(); // Fern's lesson for the first place of its kind you click (spec §10.10a); its card waits behind
   }
   if (!el) return renderCareer();
   const hub = el.closest('.hub'),

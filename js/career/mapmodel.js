@@ -714,7 +714,7 @@ const MapModel = {
     };
   },
   /**
-   * People drawn as full models on the map (spec §10.10a, §4.29): Kaede by the student flat's door (Story mode), and every named
+   * People drawn as full models on the map (spec §10.10a, §4.29): Fern by the student flat's door (Story mode), and every named
    * player (the rival, the cohort, the first aces) by their club's HQ. [{ id, at, face, name, tag, color, kit }]; plain data.
    */
   figures(run) {

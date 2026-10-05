@@ -37,17 +37,17 @@ const Stars = {
       Stars.shape(p, s.ovr[0]);
       finalizeTeam(t);
     }
-    const given = STARS.cohort.map(s => s.given || s.name.split(' ')[1]);
+    const given = STARS.cohort.map(s => s.name.split(' ')[0]); // nicknames (names are `<nickname> <family>`)
     for (const [ci, role] of STARS.aces.clubs) {
       const t = run.teams[ci];
       if (!t) continue;
       const free = squadOf(t).filter(q => !q.named),
         of = free.filter(q => q.role === role),
         p = (of.length ? of : free).reduce((a, q) => (ovr(q) > ovr(a) ? q : a)),
-        [fam, giv] = p.name.split(' ');
+        [giv, fam] = p.name.split(' ');
       if (given.includes(giv)) {
         const alt = GIV.filter(n => !given.includes(n)); // no first ace shares a first name with the cohort
-        p.name = `${fam} ${alt[Math.floor(hstr(p.name) * alt.length)]}`;
+        p.name = `${alt[Math.floor(hstr(p.name) * alt.length)]} ${fam}`;
       }
       Object.assign(p, { named: 'ace', nkey: `ace-${FACTIONS[ci].region}`, pot: 1, curve: { ovr: STARS.aces.ovr, wit: STARS.aces.wit } });
       p.wit = STARS.aces.wit[0];

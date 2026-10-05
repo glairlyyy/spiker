@@ -89,6 +89,8 @@ Grading dogma = what the faction's join conditions and facility conditions mean 
 
 ## 6. People
 
+- **Names** [locked] (owner, 2026-10-05): island players carry Thai names, written and called `<nickname> <family name>` ("Mint Srisawat"); the rival keeps her own name for now.
+
 - **MC** [locked]: female newcomer. Came to the island because her rival is here. Every other academy rejected her;
   Central Academy was the only one that took her.
 - **Ages and the arc** [locked] (owner, 2026-10-04): the MC lands on the island at 19. The game has no age system;
@@ -104,13 +106,13 @@ Grading dogma = what the faction's join conditions and facility conditions mean 
   before?"; diary call-backs after heavy losses; if she beats the rival in the year-2 Cup, they finally remember.
 - **The first aces** [locked]: one year older (20). **Generic, not unique characters**: they peak as OP at the
   year-1 U21 Final Cup and age out — they come and go fast. Generated per run, one per major.
-- **The MC's cohort** [locked shape]: the **rival** and the named aces (**Reina, Ren, Taiga**) are the MC's age (19):
+- **The MC's cohort** [locked shape]: the **rival** and the named aces (**Praew, Pond, Fai**) are the MC's age (19):
   the next aces. They arrive far stronger than the MC and grow on authored curves; the rival **matches the OP aces by
   the year-1 Cup**. In year 2 this cohort are the island's aces; the MC chases them. Factions [proposed by the spec chat,
-  2026-10-04]: **Kisaragi Reina** (middle blocker, St. Gloria — white hair), **Kamiya Ren** (setter, Shu · Peak —
-  glasses), **Oboro Taiga** (wing spiker, Wu · Harbor — red hair). The first aces sit at Wei · Iron (WS), Wu · Fort (MB)
+  2026-10-04]: **Praew Siriwong** (middle blocker, St. Gloria — white hair), **Pond Thammasak** (setter, Shu · Peak —
+  glasses), **Fai Wongsakul** (wing spiker, Wu · Harbor — red hair). The first aces sit at Wei · Iron (WS), Wu · Fort (MB)
   and Shu · Valley (S).
-- **Sanada Kaede — the senior** [locked] (owner, 2026-10-04): the MC's flatmate in the Academy's Student flat, 20, in
+- **Fern Kittisak — the senior** [locked] (owner, 2026-10-04): the MC's flatmate in the Academy's Student flat, 20, in
   her last U21 year. Came from the mainland the year before; no faction ever signed her (benched at her first
   evaluation, nobody called). Knows every gym, every faction's pitch and every way to waste a week; kind under a dry,
   tired manner; her advice is mostly right and coloured by being passed over. She teaches the MC the first weeks (spec
@@ -137,7 +139,7 @@ No tutorial voice anywhere: the first weeks are taught by a person (`senior`), i
 | `gloria`    | St. Gloria agents         | St. Gloria, foreign offers                          | polished, transactional                                    |
 | `villager`  | natives                   | rare lines, ritual traces                           | reluctant; old-language words, never translated            |
 | `diary`     | the MC                    | diary, reactions, event results                     | spite, sarcasm; sometimes wrong                            |
-| `senior`    | Kaede, the MC's flatmate  | the first weeks' lessons (spec §10.10a)             | passed over; dry, practical, bitter about factions         |
+| `senior`    | Fern, the MC's flatmate  | the first weeks' lessons (spec §10.10a)             | passed over; dry, practical, bitter about factions         |
 | `rumor`     | the street                | scouting, "word is" lines                           | unreliable by definition                                   |
 
 ## 8. Old language [open]

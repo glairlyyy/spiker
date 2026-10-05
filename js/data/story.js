@@ -29,7 +29,7 @@ const SCENES = {
       // the flatmate (lore §6): a normal first meeting, then one offer of a tour
       { k: 'say', who: 'senior', text: "Oh — you're the new one? They said Monday." },
       { k: 'say', who: 'you', text: 'Sorry. Is this the student flat?' },
-      { k: 'say', who: 'senior', text: "It is. I'm Kaede. Sanada Kaede. The second room's yours — the one with the window that sticks." },
+      { k: 'say', who: 'senior', text: "It is. I'm Fern. Fern Kittisak. The second room's yours — the one with the window that sticks." },
       { k: 'say', who: 'senior', text: 'Last year of U21 for me. You?' },
       {
         k: 'choice',
@@ -89,7 +89,7 @@ const SCENES = {
       { k: 'end' }
     ]
   },
-  // ---- Kaede's lessons (spec §10.10a): each once; never after "I'll figure it out myself". The gym lesson comes after your first
+  // ---- Fern's lessons (spec §10.10a): each once; never after "I'll figure it out myself". The gym lesson comes after your first
   // session; every other one the first time you click that kind of place on the map (owner, 2026-10-05) ----
   tutGym: {
     trigger: { on: 'hub', when: 'trained', off: 'noTour' },
@@ -129,8 +129,8 @@ const SCENES = {
       { k: 'say', who: 'senior', text: 'Shu lives up in the hills. They break you to build you. Some people like that.' },
       { k: 'say', who: 'senior', text: "The Outlaws bet on players, not for them. And if St. Gloria ever calls, ask who's paying." },
       { k: 'say', who: 'senior', text: "The Academy belongs to nobody. That's why it can't protect you either." },
-      { k: 'say', who: 'senior', text: "And the names you'll hear all season: Haewon Bae at Wei Gold, Kisaragi Reina at St. Gloria," },
-      { k: 'say', who: 'senior', text: 'Kamiya Ren up at Peak, Oboro Taiga at Harbor. Your age. Nothing like your age.' },
+      { k: 'say', who: 'senior', text: "And the names you'll hear all season: Haewon Bae at Wei Gold, Praew Siriwong at St. Gloria," },
+      { k: 'say', who: 'senior', text: 'Pond Thammasak up at Peak, Fai Wongsakul at Harbor. Your age. Nothing like your age.' },
       {
         k: 'say',
         who: 'senior',
@@ -201,8 +201,8 @@ const MEET = {
 /** Your flatmate in the Student flat (lore §6): the story's guide for the first weeks. A person for the box's portrait and the map. */
 const GUIDE = {
   id: 'senior',
-  name: 'Sanada Kaede',
-  short: 'Kaede',
+  name: 'Fern Kittisak',
+  short: 'Fern',
   hair: '#1e7f86',
   look: { hs: 6, skin: '#eec39a', eyeC: '#5b3a1e', eye: 'sharp', acc: 'band', accC: '#10163a', hgt: 1 },
   team: { color: '#e8dfc8' } // the Academy hoodie

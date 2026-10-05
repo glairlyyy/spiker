@@ -257,7 +257,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     coloured if scouted/member, else grey) and walking between places; street battle as a two-colour crowd with flags
     and dust; patrols stand on the hex frontier facing each other (this week's battle tile first, then the most
     pressured fronts, any pair — T-153); tile colour shows who holds a place (no seized flags). Low-poly instanced figures; VRM for you only.
-  - B: boats, buses, vans, a plane (§4.19a, T-186) and full models for Kaede and the named (T-187, T-190) **[built]**;
+  - B: boats, buses, vans, a plane (§4.19a, T-186) and full models for Fern and the named (T-187, T-190) **[built]**;
     waves, gulls, Wu beach pickup games, Shu village smoke, Wei lights, villagers near the Academy, individual NPC and
     approach figures (§4.23) **[locked, not built]**.
   - C **[locked, not built — M3]**: sun moves as the week's days are spent; dusk when none left.
@@ -378,16 +378,16 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   - **Clarity check**: with the tile fill hidden, a screenshot shows where Shu, Wei, Wu and the Academy are.
 - §4.29 The named players (owner, 2026-10-04; lore §6) **[built, T-189–T-190]**: `STARS` (js/data/stars.js) and `Stars`
   (js/career/stars.js), new runs only, both modes.
-  - **Seated at the start** (no randoms): the rival (Haewon Bae — owner 2026-10-05, her name orange in the dialogue box; WS, Wei · Gold) and the cohort (Reina MB St. Gloria,
-    Ren S Shu · Peak, Taiga WS Wu · Harbor) replace their club's weakest same-role player; the first aces = the best WS
+  - **Seated at the start** (no randoms): the rival (Haewon Bae — owner 2026-10-05, her name orange in the dialogue box; WS, Wei · Gold) and the cohort (Praew MB St. Gloria,
+    Pond S Shu · Peak, Fai WS Wu · Harbor) replace their club's weakest same-role player; the first aces = the best WS
     of Wei · Iron, MB of Wu · Fort, S of Shu · Valley (renamed if they share a first name with the cohort).
   - **Authored curves**, week 1 → week 28 (the year-1 Cup), linear: rival OVR 76 → 90 (wit 1.15 → 1.45: a star, not OP);
     cohort 70 → 85; first aces 86 → 95 (wit 1.35 → 1.65: OP at the Cup). Stats follow a role shape (key stat highest);
     star / OP by the career criteria. All want `national`.
   - **Never moved**: no league transfer, promotion swap, cut, poach or breakthrough roll touches them (Stars.week replaces it).
   - **On the map**: each drawn as a full model (the default VRM in their club shirt, their hair and skin) by their club's
-    HQ, with a name label: `Name · Rival` / `Next ace` / `Ace` (`model.figures`, with Kaede).
-  - **Story**: Kaede names them in the factions lesson; the rival meets you in week 3 (`rivalMeet`: "15 – 4." as a diary line in the box, owner 2026-10-05; "Have we
+    HQ, with a name label: `Name · Rival` / `Next ace` / `Ace` (`model.figures`, with Fern).
+  - **Story**: Fern names them in the factions lesson; the rival meets you in week 3 (`rivalMeet`: "15 – 4." as a diary line in the box, owner 2026-10-05; "Have we
     played before?", a choice: `No.` / `Fifteen to four.` → flag `rivalTold`; she doesn't remember; flag `rivalMet`).
   - Later: year 2 (the cohort as the island's aces, the first aces aged out), the rival's cut-scene after a year-1 Cup loss.
 - §4.20 Match history (Season sheet): every match you were in, newest first — week/day, kind, opponent, score, W/L,
@@ -406,7 +406,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   | Elite | $200 | league mean +5             | 15 %       | 2.5 × fee    | +80      |
   - Opponents: 6 league players (clubs + reserves; never your side, never you) nearest the target OVR — a random pick of the
     nearest 12 — lent like a street crew (`Eval.squad` / `lend` / `restore`), named "<venue> regulars". An ace: one seat goes
-    to a named ace / the rival (§4.24) not on your side; the card says so after the draw ("An ace showed up: Reina").
+    to a named ace / the rival (§4.24) not on your side; the card says so after the draw ("An ace showed up: Praew").
   - Your side: the challenge side (`Fight.challengeSide`: club squad / Academy squad / hired crew — whose cost is paid); it is
     your entry, so **you always start** in your role's seat (Run.lineup forceYou).
   - Play or Sim ⏭ (the T-227 result card either way). Every match: stamina `COURT.sta` 10, match XP (§4.14, the gap factor
@@ -506,7 +506,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     you; the diary closes on spite; the run can carry on into Endless (§4.26) as a hook.
   - **Year-1 aces** (generated, one per major, not unique): start ★ star, element on, ~OVR 75–80; fixed curve that
     slows toward a ceiling, OP (~95 OVR, key ≥ 95) by the year-1 Cup; age out after it. No random star / OP rolls.
-  - **Rival** and the **named aces** (Reina, Ren, Taiga — the MC's cohort): start far above you (~OVR 60–65 while you
+  - **Rival** and the **named aces** (Praew, Pond, Fai — the MC's cohort): start far above you (~OVR 60–65 while you
     start at 1), authored fast curves; the rival matches the OP aces by the year-1 Cup. In year 2 they are the aces
     (the rival included); you have that year to catch up. Not tied to your OVR.
   - Numbers are first guesses for the balance pass; the shape (year-1 aces ≥ rival > cohort > field; you catch up in
@@ -802,16 +802,16 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   Academy squad. Five strangers…" / "{club}. New shirt, new faces."), then each teammate in turn (captain first, the bench
   last; their portrait and name) says their role (captain / on the bench) and one line in their first trait's voice (two
   lines per trait, `MEET`; hints, never the trait's name), then a closing diary line. Once per squad; Story mode only.
-- §10.10a The guide: Kaede (owner, 2026-10-04) **[built, T-187–T-188]**. No tutorial voice (lore §7): the first weeks are
-  taught by a person — **Sanada Kaede**, your flatmate in the Student flat (lore §6). Story mode only.
+- §10.10a The guide: Fern (owner, 2026-10-04) **[built, T-187–T-188]**. No tutorial voice (lore §7): the first weeks are
+  taught by a person — **Fern Kittisak**, your flatmate in the Student flat (lore §6). Story mode only.
   - **Meeting**: the intro ends with a normal first meeting at the flat (name, house rules, "last year of U21 for me"),
     one offer of a tour (`Please.` / `I'll figure it out myself.` → flag `noTour`: no lessons ever), and the one fact
     she says either way (week 4 is the evaluation; grades decide offers).
-  - **Week 1 on campus** (owner, 2026-10-04, T-192): the intro ends with Kaede pointing the camera at the Academy Gym ("stay on
+  - **Week 1 on campus** (owner, 2026-10-04, T-192): the intro ends with Fern pointing the camera at the Academy Gym ("stay on
     campus this week") and its card open. Until week 2 (`City.fence`, flag `campus`; Story mode only): no place, trip, scouting,
     battle or challenge off the Academy's seven tiles (locked = the reason "Week 1 — the campus first"), the camera stays over the
     campus (`model.fence`, ≤ 150 m away), and the intro's card opens on the Academy Gym. Week 2 opens with `explore`: the camera
-    pulls back over the whole island and Kaede says where things are and that trips cost days; then the island is open.
+    pulls back over the whole island and Fern says where things are and that trips cost days; then the island is open.
   - **On the map**: her model (the default VRM dressed: teal hair, Academy hoodie) stands by the Student flat's door with
     her name over her head (`model.guide`), whether or not you still live there; gone when `guideGone` is set (her
     leaving after the year-1 Cup: later).

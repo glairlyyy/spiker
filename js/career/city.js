@@ -144,7 +144,7 @@ const City = {
    * Story mode's first week (spec §10.10a, owner 2026-10-04): you stay on the Academy's grounds. The reason text while it
    * holds ('' after week 1, in Endless, or when no scene ever runs); `outside(run, p)` = it holds and p is off campus.
    */
-  fence: run => (Story.on(run) && run.week === 1 && run.story.flags.campus ? 'Week 1 — the campus first (Kaede: learn the routine)' : ''),
+  fence: run => (Story.on(run) && run.week === 1 && run.story.flags.campus ? 'Week 1 — the campus first (Fern: learn the routine)' : ''),
   outside: (run, p) => !!City.fence(run) && City.regionAt(p) !== 'open',
   /** Can you do this now? { ok, why }. */
   can(run, id, mate) {

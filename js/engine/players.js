@@ -113,7 +113,7 @@ function rollWit(role, bonus) {
 function rollName(used) {
   let name;
   do {
-    name = pick(FAM) + ' ' + pick(GIV);
+    name = ((f, g) => `${g} ${f}`)(pick(FAM), pick(GIV)); // nickname first (owner, 2026-10-05); same draws, same order
   } while (used.has(name));
   used.add(name);
   return name;

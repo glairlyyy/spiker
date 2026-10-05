@@ -47,7 +47,7 @@ function storyMounted(run) {
   clearInterval(SB.wait);
   if (!s) return;
   if (s.k === 'cam') {
-    // onto you · a place's pin (Kaede pointing) · the whole island (the fence lifts)
+    // onto you · a place's pin (Fern pointing) · the whole island (the fence lifts)
     if (s.to === 'island') MapView.overview();
     else if (s.to && s.to !== 'you') MapView.select(s.to);
     else MapView.centre();
@@ -93,12 +93,12 @@ function sbShow(el, n) {
   el.lastChild.textContent = SB.full.slice(n);
 }
 /**
- * The rival's name in orange (owner, 2026-10-05): HTML for text[a, b) with every part of her full name or her given name that
+ * The rival's name in orange (owner, 2026-10-05): HTML for text[a, b) with every part of her full name or her nickname that
  * falls inside wrapped in `.sb-rival` (a name cut mid-typing is orange so far).
  */
 function sbMark(text, a, b) {
   const rv = typeof STARS !== 'undefined' && STARS.cohort.find(c => c.kind === 'rival'),
-    names = rv ? [rv.name, rv.given || rv.name.split(' ')[1]] : [],
+    names = rv ? [rv.name, rv.name.split(' ')[0]] : [],
     hits = [];
   for (const nm of names)
     for (let i = text.indexOf(nm); i >= 0; i = text.indexOf(nm, i + nm.length))

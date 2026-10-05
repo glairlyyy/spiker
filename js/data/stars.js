@@ -9,7 +9,6 @@ const STARS = {
       key: 'rival',
       kind: 'rival',
       name: 'Haewon Bae', // (owner, 2026-10-05: was Tachibana Sae; her name shows orange in the dialogue box)
-      given: 'Haewon', // her name is given-first (the others: family-first, given = the second word)
       role: 'WS',
       club: 0, // Wei Dynasty · Gold: Wei bought the mainland's best (the 15–4 tournament)
       ovr: [76, 90],
@@ -22,7 +21,7 @@ const STARS = {
     {
       key: 'reina',
       kind: 'cohort',
-      name: 'Kisaragi Reina',
+      name: 'Praew Siriwong',
       role: 'MB',
       club: 6, // St. Gloria International
       ovr: [70, 85],
@@ -35,7 +34,7 @@ const STARS = {
     {
       key: 'ren',
       kind: 'cohort',
-      name: 'Kamiya Ren',
+      name: 'Pond Thammasak',
       role: 'S',
       club: 4, // Shu Dragon · Peak
       ovr: [70, 85],
@@ -48,7 +47,7 @@ const STARS = {
     {
       key: 'taiga',
       kind: 'cohort',
-      name: 'Oboro Taiga',
+      name: 'Fai Wongsakul',
       role: 'WS',
       club: 2, // Wu Navy · Harbor
       ovr: [70, 85],

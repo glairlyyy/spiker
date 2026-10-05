@@ -193,8 +193,8 @@ test('career: match XP — performance, opponent strength, past the cap', () => 
   m2.played.add(you.id);
   m2.stat[you.id] = { ...g.blank(), k: 5, blk: 1 };
   g.Training.tally = {}; // the result card's XP count (resultSnap → resultData)
+  const f = g.Growth.matchGap(m2); // before the finish (a point gained in it moves your side's OVR)
   assert(/XP: /.test(fx2.onFinish(m2)), 'the result line shows the XP labels');
-  const f = g.Growth.matchGap(m2);
   eq(g.Training.tally.power, Math.round(5 * g.MATCH_XP.per.k.power * f), 'the tally counts the power XP of 5 kills');
   eq(g.Training.tally.jump, Math.round(g.MATCH_XP.per.blk.jump * f), 'and the jump XP of a block');
   g.Training.tally = null;
@@ -952,7 +952,11 @@ const mkRunG = seed => {
 test('story: the intro plays on a new Story run, applies its walk, never replays; Endless and old saves skip it (T-173)', () => {
   const [g, run] = mkRunG(873);
   assert(run.story.cur && run.story.cur.id === 'intro', 'a new Story run starts in the intro');
-  eq(g.Story.step(run).k, 'say', 'the first shown step is the 15–4 diary line — no big scoreboard (owner, 2026-10-05; the dark cut is applied)');
+  eq(
+    g.Story.step(run).k,
+    'say',
+    'the first shown step is the 15–4 diary line — no big scoreboard (owner, 2026-10-05; the dark cut is applied)'
+  );
   assert(run.story.cur.mode.dark, 'dark cold open');
   const home = g.City.at(run, 'home');
   let n = 0;
@@ -1031,7 +1035,7 @@ test('story: a new squad introduces itself — the Academy squad at the start, e
   assert(!g.Story.hub(end), 'Endless: no scenes');
 });
 
-test("story: Kaede's lessons come the first time you click that kind of place (owner, 2026-10-05)", () => {
+test("story: Fern's lessons come the first time you click that kind of place (owner, 2026-10-05)", () => {
   const [g, run] = mkRunG(878);
   g.Story.skip(run);
   run.week = 6;
@@ -1055,15 +1059,15 @@ test("story: Kaede's lessons come the first time you click that kind of place (o
   assert(!g2.Story.pick(r2, 'hq0'), '"figure it out" → no lessons');
 });
 
-test('story: Kaede — met in the intro, on the map, lessons once at their moment, none after "figure it out" (T-187, T-188)', () => {
+test('story: Fern — met in the intro, on the map, lessons once at their moment, none after "figure it out" (T-187, T-188)', () => {
   const [g, run] = mkRunG(875);
   let n = 0;
   while (run.story.cur && n++ < 80) g.Story.next(run, 0);
   assert(!run.story.cur && run.story.seen.intro, 'intro done');
   const lines = g.SCENES.intro.steps.filter(s => s.who === 'senior');
-  assert(lines.length >= 5 && /Kaede/.test(lines.map(s => s.text).join(' ')), 'she introduces herself by name');
+  assert(lines.length >= 5 && /Fern/.test(lines.map(s => s.text).join(' ')), 'she introduces herself by name');
   const W = g.Story.who(run, 'senior');
-  assert(W.kind === 'person' && W.name === 'Kaede' && W.person.look, 'a person with a portrait');
+  assert(W.kind === 'person' && W.name === 'Fern' && W.person.look, 'a person with a portrait');
   const M = g.MapModel.build(run);
   const K = M.figures.find(f => f.id === 'senior');
   assert(K && Math.hypot(K.at[0] - g.HOME_AT.studio[0], K.at[1] - g.HOME_AT.studio[1]) < 20, 'she stands by the student flat');
@@ -1089,7 +1093,7 @@ test('story: Kaede — met in the intro, on the map, lessons once at their momen
   assert(!g.MapModel.build(end).figures.some(f => f.id === 'senior'), 'Endless: no guide on the map');
 });
 
-test('story: week 1 keeps to the campus (Kaede points at the Academy Gym); week 2 pulls back and lets you explore (T-192)', () => {
+test('story: week 1 keeps to the campus (Fern points at the Academy Gym); week 2 pulls back and lets you explore (T-192)', () => {
   const [g, run] = mkRunG(878);
   let n = 0;
   while (run.story.cur && n++ < 80) g.Story.next(run, 0);
@@ -1107,7 +1111,7 @@ test('story: week 1 keeps to the campus (Kaede points at the Academy Gym); week 
   run.week = 2;
   run.dayLog = [];
   assert(g.City.can(run, 'weiPower').ok && !g.MapModel.build(run).fence, 'week 2: the island is open');
-  assert(g.Story.fire(run, 'hub') && run.story.cur.id === 'explore', 'Kaede sends you exploring first');
+  assert(g.Story.fire(run, 'hub') && run.story.cur.id === 'explore', 'Fern sends you exploring first');
   assert(g.Story.step(run).k === 'cam' && g.Story.step(run).to === 'island', 'the camera pulls back over the island');
   const end = g.Run.create(g.Run.draft(), { role: 'WS', name: 'E', mode: { story: false } });
   assert(g.City.can(end, 'weiPower').ok, 'Endless: no fence');
