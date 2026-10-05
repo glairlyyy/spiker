@@ -89,7 +89,7 @@ Grading dogma = what the faction's join conditions and facility conditions mean 
 
 ## 6. People
 
-- **Names** [locked] (owner, 2026-10-05): island players carry Thai names, written and called `<nickname> <family name>` ("Mint Srisawat"); the rival keeps her own name for now.
+- **Names** [locked] (owner, 2026-10-05): island players carry Thai names, written and called `<nickname> <family name>` ("Mint Srisawat"); the rival is the exception — **Haewon Bae** is a mainland name, the only foreign name in the league, and it marks her: Wei bought her from the mainland (owner, 2026-10-06).
 
 - **MC** [locked]: female newcomer. Came to the island because her rival is here. Every other academy rejected her;
   Central Academy was the only one that took her.

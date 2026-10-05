@@ -129,7 +129,11 @@ const SCENES = {
       { k: 'say', who: 'senior', text: 'Shu lives up in the hills. They break you to build you. Some people like that.' },
       { k: 'say', who: 'senior', text: "The Outlaws bet on players, not for them. And if St. Gloria ever calls, ask who's paying." },
       { k: 'say', who: 'senior', text: "The Academy belongs to nobody. That's why it can't protect you either." },
-      { k: 'say', who: 'senior', text: "And the names you'll hear all season: Haewon Bae at Wei Gold, Praew Siriwong at St. Gloria," },
+      {
+        k: 'say',
+        who: 'senior',
+        text: "And the names you'll hear all season: Haewon Bae at Wei Gold — the only mainland import on the island — Praew Siriwong at St. Gloria,"
+      },
       { k: 'say', who: 'senior', text: 'Pond Thammasak up at Peak, Fai Wongsakul at Harbor. Your age. Nothing like your age.' },
       {
         k: 'say',
