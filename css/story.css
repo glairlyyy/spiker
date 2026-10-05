@@ -76,26 +76,14 @@
   color: var(--ink);
   white-space: pre-wrap;
 }
-.sbox.narration .sb-rival {
-  color: var(--rival); /* colour only — the same width, so the typed line never re-wraps */
-}
-.sbox .sb-name.sb-rival {
-  color: var(--rival);
-}
-.sb-text {
+.sbox.narration .sb-text {
   font-style: italic;
   color: var(--mute);
 }
-.sbox-layer.dark .sbox.narration .sb-rival {
-  color: var(--rival); /* colour only — the same width, so the typed line never re-wraps */
-}
-.sbox .sb-name.sb-rival {
-  color: var(--rival);
-}
-.sb-text {
+.sbox-layer.dark .sbox.narration .sb-text {
   color: var(--ink);
   font-size: 22px;
-  text-align: center;
+  text-align: left; /* (owner, 2026-10-05: left-aligned like every other line) */
 }
 .sb-ghost {
   visibility: hidden; /* the untyped rest keeps its place: no re-wrap or growth while typing */
