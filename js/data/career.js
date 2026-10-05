@@ -169,6 +169,22 @@ const REWARDS = {
  * (wit counts in 0.02 steps like training). The XP is scaled by the opponent: factor = clamp(1 + (opponent ovr − your side's
  * ovr) × perGap, gap[0], gap[1]).
  */
+/**
+ * Court matches at the official venues (spec §4.21a, T-229): a tier's entry `fee`, the opponents' OVR = the week's league mean + `off`,
+ * the chance an ace (a named player) takes a seat, the fans a win brings. A win pays `prize` × the fee; a loss costs only the fee.
+ * `sta` per match; injury risk = the street risk × `injury`; opponents are drawn from the `pool` league players nearest the target.
+ */
+const COURT = {
+  tiers: [
+    { id: 'open', name: 'Open', fee: 20, off: -5, ace: 0.03, fans: 20 },
+    { id: 'pro', name: 'Pro', fee: 80, off: 0, ace: 0.06, fans: 40 },
+    { id: 'elite', name: 'Elite', fee: 200, off: 5, ace: 0.15, fans: 80 }
+  ],
+  prize: 2.5,
+  sta: 10,
+  injury: 0.5,
+  pool: 12
+};
 const MATCH_XP = {
   per: { k: { power: 12 }, ace: { power: 8 }, blk: { jump: 8, def: 8 }, dig: { def: 6, speed: 6 }, ast: { wit: 2 }, att: { jump: 1 } },
   gap: [0.3, 2],

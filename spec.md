@@ -382,7 +382,8 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   - Opponents: 6 league players (clubs + reserves; never your side, never you) nearest the target OVR — a random pick of the
     nearest 12 — lent like a street crew (`Eval.squad` / `lend` / `restore`), named "<venue> regulars". An ace: one seat goes
     to a named ace / the rival (§4.24) not on your side; the card says so after the draw ("An ace showed up: Reina").
-  - Your side: the challenge side (`Fight.challengeSide`: club squad / Academy squad / hired crew — whose cost is paid).
+  - Your side: the challenge side (`Fight.challengeSide`: club squad / Academy squad / hired crew — whose cost is paid); it is
+    your entry, so **you always start** in your role's seat (Run.lineup forceYou).
   - Play or Sim ⏭ (the T-227 result card either way). Every match: stamina `COURT.sta` 10, match XP (§4.14, the gap factor
     makes Elite pay), technique learning, `Cup.record(run, m, 'court')`.
   - Win: the prize and the fans. **Lose: only the fee** — no mood, no extra stamina, no standing, no Gazette jab; injury roll

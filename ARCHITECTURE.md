@@ -864,7 +864,7 @@ Match result (spec §10.6): `finishMatch` calls `resultSnap(RUN, m)` before a ca
 `resultData(RUN, m, snap, msg)` after it (career-match.js; diffs of the run only — no rule runs in the UI), then
 `resultScreen` draws it; the Monster game (no career player) gets headline + top 3. `resultSnap` opens `Training.tally` (every
 `Training.addXp` adds to it while it is set; display only, never saved) and `resultData` reads and closes it for the `+N XP` column.
-A simmed fixture goes through `simCareer(fx)` (Cup.simNow with the same snap / data around onFinish) → the card HTML → the hub's
+Court matches (spec §4.21a, T-229): `Court` (js/career/court.js) draws a temporary `<venue> regulars` squad from the league (lent like a street crew), builds the fixture on the challenge side and settles it in `Court.result` (mlog kind `court`); `courtCard` / `mapCourt` (js/ui/career-court.js) hang off `venuePanel` through the placeCard spread. A simmed fixture goes through `simCareer(fx)` (Cup.simNow with the same snap / data around onFinish) → the card HTML → the hub's
 action lock, phase `res` (`actLock(fx, greet, res)` after a map walk; `CW.lock = { phase: 'res' }` for eval / cup); closing it re-renders the hub.
 
 Island scale (spec §4.18b): js/data/city.js writes every map point in design units (1060 × 700) and `scaleMap` multiplies them

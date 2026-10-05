@@ -58,7 +58,7 @@ Accept:
 QA: career run → train at two Shu places on consecutive days: no trip slot between them.
 Result: NEAR_R 110 → 280 × MAP_SCALE (comment fixed). Seed 7: Wei 6/6 and Shu 10/10 pairs free, Wu 3/6 (sand–dunes 911, dunes–pier, harbor–pier are 2 days: the island grew in T-225) — owner chose to keep 280 over 410 (which frees Wu 4/6 but 70 % of cross-faction hops vs 30 %); no place reaches every other faction's places free. Ghost slots and Travel use City.trip (agree by construction). Bond / league calibration unmoved. QA (headless): trail → steps in Shu = two train slots, no trip; tests 125/125.
 
-### [ ] T-229: Court matches at the official venues (Agent A)
+### [x] T-229: Court matches at the official venues (Agent A)
 Spec: §4.21a (+ §4.14, §4.15)          Goldens: unchanged (engine)          Save: no change (mlog kind 'court')
 Goal: a venue card offers Open / Pro / Elite court matches: a real match for XP and money whose loss costs only the fee.
 Files: js/data/career.js (COURT), js/career/court.js, js/ui/career-court.js, tests/court.test.js
@@ -81,7 +81,7 @@ Accept:
 - Headless: Elite opponents average within ±3 of target; ace in ~15 % of 400 Elite draws; Open in ~3 %.
 - Sim and watched both end on the T-227 card with XP rows.
 QA: career run → a venue → Pro, Sim ⏭ → result card; then Open, watched → result card.
-Result:
+Result: built by the spec chat. `COURT` (career.js), `Court.why / draw / fixture / result` (court.js), `courtCard` + `mapCourt` (career-court.js): Play it / Sim it + Open $20→50 · Pro $80→200 · Elite $200→500 (level, ace %, injury on hover). Deviations: the league mean leaves the named out (they are never drawn; at week 6 an Elite target was above every drawable player); you always start (forceYou — a benched you earned nothing). Tests: draws by role, Pro mean ±3 of target, aces 6 % / 15 % / ≤ 3 %, loss = fee only, win = 2.5 × fee, risk × 0.5, no eval week / injured / short of money. QA: venue card, Pro sim → result card, Open watched → result card; no errors.
 
 ### [ ] T-230: Study — a private tutor and bookstores (Agent B, after T-228)
 Spec: §4.14b          Goldens: unchanged          Save: no change (new `run.study` via the defaults table, no RUN_VERSION bump)
