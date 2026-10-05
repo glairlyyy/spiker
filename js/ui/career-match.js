@@ -224,6 +224,7 @@ function resultData(run, m, b, msg) {
       .filter(k => xp[k] || you[k] !== b.stats[k] || ((run.xp || {})[k] || 0) !== (b.xp[k] || 0))
       .map(k => ({ k, name: STATNAME[k], from: b.stats[k], to: you[k], xp: Math.round(xp[k] || 0), ...Training.progress(run, k) })),
     techs: you.skills.filter(id => !b.skills.includes(id)).map(id => SKILLS[id].name),
+    calls: (m.calls || []).filter(c => c.p === you.id), // your calls in a played match (spec §2.13)
     held: [...(m.off[you.id] || [])].filter(id => knowsTech(you, id)).map(id => SKILLS[id].name), // switched off at the end (§9.10)
     msg
   };

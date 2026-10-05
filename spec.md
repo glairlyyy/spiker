@@ -123,7 +123,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   as the lowest wit (match wit `W()` floors at 0.1). Ego no longer reads wit (§2.12). Only the Egoist game makes such
   players today.
 
-- §2.13 Calls — decisions in a played match (owner, 2026-10-05; T-232–T-235). **One engine, two pickers**: every rule, roll
+- §2.13 Calls — decisions in a played match (owner, 2026-10-05) **[built, T-232–T-235]**. **One engine, two pickers**: every rule, roll
   and touch is the same code for a simmed and a played match; at a **decision point** the engine asks a picker. Sim (Sim ⏭,
   headless, NPCs, the Monster game) → the AI picks at once, exactly as today (same draws: results and goldens unchanged).
   Played career match → **you** pick for your own player (5 s; then your player takes the suggested move — the option with

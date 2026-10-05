@@ -1701,3 +1701,14 @@ body:has(.match) .top {
 .calls .callo.sug {
   border-color: var(--good);
 }
+.mres .rcall {
+  display: grid;
+  grid-template-columns: 1fr 48px 90px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+.mres .bad {
+  color: var(--bad);
+}

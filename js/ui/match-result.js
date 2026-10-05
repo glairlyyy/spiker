@@ -65,7 +65,31 @@ function resultScreen(m, wt, hi, lo, stars, res, o = { round: A.fx.round, back: 
           .join('')}`
       : '',
     techs = res.techs.length ? `<div class="lab">Techniques picked up</div><div class="small">${res.techs.map(esc).join(' · ')}</div>` : '';
-  return `<div class="ocard mres">${head}<div class="rcols"><div>${you}${chips}</div><div>${grow}${techs}</div></div>${top}${acts}</div>`;
+  return `<div class="ocard mres">${head}<div class="rcols"><div>${you}${chips}</div><div>${grow}${techs}${callsRow(res.calls)}</div></div>${top}${acts}</div>`;
+}
+/** CALL_OUT: what came of a call — made (the point), missed (lost it), or the rally went on. */
+const CALL_OUT = { win: ['✓', 'good', 'made'], lose: ['✕', 'bad', 'missed'], err: ['✕', 'bad', 'missed'], on: ['·', 'mute', 'rally on'] };
+/**
+ * The result card's Calls row (spec §2.13, T-235): each call — what you chose (auto = the suggested move on time-out), its
+ * chance, made / missed — and the stat that held you back: the weak stat seen most in your missed calls.
+ */
+function callsRow(calls) {
+  if (!calls || !calls.length) return '';
+  const miss = calls.filter(c => c.out === 'lose' || c.out === 'err'),
+    count = {};
+  for (const c of miss) count[c.weak.k] = (count[c.weak.k] || 0) + 1;
+  const k = Object.keys(count).sort((a, b) => count[b] - count[a])[0];
+  const made = calls.filter(c => c.out === 'win').length,
+    more = calls.length - 6;
+  return `<div class="lab">Calls · ${made} of ${calls.length} made</div>${calls
+    .slice(-6)
+    .map(c => {
+      const [mk, cls, word] = CALL_OUT[c.out] || CALL_OUT.on;
+      return `<div class="rcall"><span>${esc(c.label)}${c.auto ? ' <small class="mute">auto</small>' : ''}</span><b>${c.odds.win}%</b><span class="${cls} small">${mk} ${word}</span></div>`;
+    })
+    .join(
+      ''
+    )}${more > 0 ? `<div class="small mute">+${more} earlier</div>` : ''}${k ? `<div class="small warn">Held back by: ${statI(statKey(k), 14)} ${esc(STATNAME[k])}</div>` : ''}`;
 }
 /** The match is over: count everyone's stats, run the fixture's onFinish, and show the result card after the celebration. */
 function finishMatch() {

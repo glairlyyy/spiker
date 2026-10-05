@@ -173,14 +173,14 @@ Accept: npm run test:ui passes (incl. one call answered); QA screenshot of a cal
 QA: career run → evaluation, Play → a call appears at your serve / attack; pick; play continues.
 Result: js/ui/match-calls.js (new: callWanted / callStep / callShow / callPlace / callPick / callHide), playback `rallyPull` / `rallyFlush`, `m.human` in startMatch, ⚙ Calls (Key moments / All / Off, `sns_calls`), keys 1–4, Skip flushes a waiting rally. Slow = 0.1 (eases in; 0.05 snaps). Key moments = set point either side, a rally of LONG_RALLY+ possessions, the first serve / attack of the match; cap 8. Found and fixed on the way: `CALLS` already existed (dialogue.js) — a duplicate top-level name stops the page; new test in career.test catches any. test:ui gains a played court match answering a call (11 steps, 0 errors). QA: call at your serve (screenshot), pick → resumes; timeout → suggested (auto) — real-time play on the software GPU is too slow to watch, frames stepped by hand.
 
-### [ ] T-235: Calls on the result card — what held you back
+### [x] T-235: Calls on the result card — what held you back
 Spec: §2.13, §10.6          Goldens: unchanged          Save: no change (calls kept on the match only)
 Goal: the result card lists your calls and the stat that limited you most.
 Files: js/ui/match-result.js, js/ui/career-match.js (resultData: `calls`), css/style.css
 Steps: record each answered call on `m.calls` ({ kind, id, odds, made, weak }); the card's Calls row; "Held back by: ⤒ Jump".
 Accept: the row shows after a played match with calls; nothing after a sim.
 QA: career run → a played match with 2+ calls → result card.
-Result:
+Result: `resultData.calls` (your `m.calls`), `callsRow` on the card's right column: "Calls · N of M made", the last 6 (label, auto on a time-out, chance, ✓ made / ✕ missed / · rally on), "Held back by: <icon> <stat>" = the weak stat seen most in missed calls. Nothing after a sim (no m.human). QA: a played Pro court match with 3 calls → card (screenshot), no errors.
 
 ### [x] T-231: Docs diet and a UI smoke test (owner request)
 Spec: —          Goldens: unchanged          Save: no change
