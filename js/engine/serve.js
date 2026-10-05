@@ -39,7 +39,12 @@ function* playRallyGen(m) {
   serveContact(c);
   if (R() < c.serr) return serveFault(c);
   serveAim(c);
-  if (R() < sig((c.sq - c.rs) / 24 - 2.4)) return yield* serveAce(c);
+  if (R() < sig((c.sq - c.rs) / 24 - 2.4)) {
+    const res = yield* serveAce(c);
+    Decide.out(m, 'serve', c.server.id, 'on'); // (an ace already said 'win')
+    return res;
+  }
+  Decide.out(m, 'serve', c.server.id, 'on');
   return yield* serveReceive(c);
 }
 /** Per-rally state, reset before every serve. */
@@ -70,9 +75,11 @@ function* serveWalk(c) {
   const nat = serveType(server, sq),
     egoHero = nat !== 'jump' && egoRoll(m, server, 'serve'),
     ai = egoHero ? 'jump' : nat,
-    // a decision point (spec §2.13): your serve — the AI's pick is the one drawn above (T-233 fills the options)
-    sType = yield* decide(m, { kind: 'serve', p: server, options: [], ai }),
-    hero = egoHero && sType === ai,
+    // a decision point (spec §2.13): your serve — the AI's pick is the one drawn above; your call sets type, pace, risk, aim
+    pick = yield* decide(m, { kind: 'serve', p: server, options: () => Decide.serve(c, server, sq), ai }),
+    call = DECIDE.serve[pick] ? pick : null,
+    sType = call ? DECIDE.serve[call].type || nat : ai,
+    hero = egoHero && !call,
     jumpSrv = sType === 'jump',
     runM = runUpM(server, sType),
     endX = jumpSrv ? 60 : 44,
@@ -104,13 +111,14 @@ function* serveWalk(c) {
           ? [{ k: 'log', t: `${server.name} paces out a ${runM} m run-up for a ${jumpSrv ? 'jump serve' : 'jump float'}` }]
           : []
     });
-  Object.assign(c, { oS, oR, server, sq, hero, sType, jumpSrv, runM, endX, startX });
+  Object.assign(c, { oS, oR, server, sq, hero, sType, jumpSrv, runM, endX, startX, call });
 }
 /** Run-up pace, ego and serve techniques; the toss (and run-up) beat. */
 function serveToss(c) {
   const { m, V, B, s, server, hero, jumpSrv, runM, endX, startX, sType } = c;
   let { sq } = c;
   if (jumpSrv) sq *= 1 + (runM - 3.2) * 0.05; // longer run-up = a bit more pace (±5%)
+  if (c.call) sq *= DECIDE.serve[c.call].sq; // your call (spec §2.13)
   if (hero) {
     sq *= EGO.serve.sq;
     m.egoLog.push({ act: 'serve', p: server.id, ok: false, open: (m.stat[server.id] || blank()).ace });
@@ -162,7 +170,9 @@ function serveContact(c) {
     wob = sType !== 'jump';
   if (V && server.star && sq > 74 && R() < 0.7)
     B({ dur: 1250, cut: 1, acts: [{ k: 'cut', p: server.id, title: 'Cannon Serve', sub: `Serve ${kmh(sq)} km/h` }] });
-  const serr = Formula.serveErrorP(server, ST, sq) + (killer ? 0.03 : 0) + (hero ? EGO.serve.err * egoOf(server).err : 0);
+  const serr =
+    (Formula.serveErrorP(server, ST, sq) + (killer ? 0.03 : 0) + (hero ? EGO.serve.err * egoOf(server).err : 0)) *
+    (c.call ? DECIDE.serve[c.call].err : 1);
   const techName = killer ? 'Killer Jump Serve' : drive ? 'Drive Serve' : targeted ? 'Target Serve' : null;
   const hitFx = [
     { k: 'jump', p: server.id, mode: 'down' },
@@ -183,6 +193,7 @@ function serveFault(c) {
   const { m, V, B, beats, s, r, server, sq, jumpSrv, sp, hitFx, sw } = c;
   const net = R() < Formula.serveNetShare(server, sq, jumpSrv);
   st(m, server, 'err');
+  Decide.out(m, 'serve', server.id, 'err');
   V &&
     B({
       dur: 750,
@@ -212,7 +223,7 @@ function serveAim(c) {
     tx,
     tz
   );
-  if (targeted) {
+  if (targeted || (c.call && DECIDE.serve[c.call].aim)) {
     // aim just beside the weakest passer so they have to move for it
     rc = RT.P.filter(p => p !== RT.s).reduce((a, p) => (effD(p) + p.speed * 0.3 < effD(a) + a.speed * 0.3 ? p : a));
     const q = m.pos[rc.id];
@@ -296,6 +307,7 @@ function* servePopped(c, fr, p0r) {
   }
   st(m, server, 'ace');
   st(m, server, 'k');
+  Decide.out(m, 'serve', server.id, 'win');
   V &&
     B({
       dur: 900,
@@ -314,6 +326,7 @@ function serveAceClean(c) {
   const { m, V, B, beats, s, r, RT, server, sq, tx, tz, rc, d0, sdur, hitFx, sw, sArc, wob } = c;
   st(m, server, 'ace');
   st(m, server, 'k');
+  Decide.out(m, 'serve', server.id, 'win');
   m.big = 1;
   md(m, rc, -0.12);
   const f = Math.min(1, (0.8 / (d0 + 0.01)) * (0.3 + rc.speed / 200)),

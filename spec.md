@@ -126,17 +126,22 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 - §2.13 Calls — decisions in a played match (owner, 2026-10-05; T-232–T-235). **One engine, two pickers**: every rule, roll
   and touch is the same code for a simmed and a played match; at a **decision point** the engine asks a picker. Sim (Sim ⏭,
   headless, NPCs, the Monster game) → the AI picks at once, exactly as today (same draws: results and goldens unchanged).
-  Played career match → **you** pick for your own player (5 s; then your player takes the suggested move — the AI's pick);
+  Played career match → **you** pick for your own player (5 s; then your player takes the suggested move — the option with
+  the best odds: win − lose − error);
   the engine pauses there and resumes from that point with the pick.
   - Engine: the rally is pausable (`playRallyGen(m)`, a generator; `playRally(m)` = run it to the end with the AI picker).
     A decision point yields `{ kind, p, options, ai }`; options are pure data computed from the engine's own formulas (no
     draws): `{ id, label, odds: { win, lose, err } (%), stats: [stat keys it leans on], weak: the stat that limits it most }`.
-  - Decision points (first set): **Serve** (you serve): safe float · jump serve · aim at their weakest passer (ace % / fault %).
-    **Attack** (the set is yours): power spike · placed shot · tip · tool the block (kill % / blocked % / error %).
+  - Decision points (first set, `DECIDE` in rules.js) **[built, T-233]**: **Serve** (you serve): Safe serve (pace × 0.85,
+    faults × 0.45) · Power serve (jump serve, pace × 1.12, faults × 1.6) · Target {their weakest passer} (pace × 0.95) — ace %
+    / fault %. **Attack** (the set is yours): Power spike · Placed shot (the cut-shot rule; only with a block up) · Tip —
+    kill % / blocked % / error %, the rest is dug. Odds are sampled (300) from the engine's formulas on a private generator,
+    with measured corrections (`cal`), and stay within ±6 of what is played (test). "Tool the block" is not an option (it is
+    an outcome of a power spike).
     Later: **Set** (you are the setter: which hitter, each with their kill %), **Block** (MB: read · commit · swing).
   - On screen: the world slows to ~5 % over ~0.4 s, the camera holds on you (the ego chase shot), a vignette darkens the
     edges, and 2–4 option chips appear beside your player (screen-projected like the name tags): label, success % and the
-    stat icons it uses, your weakest of them marked ("⤒ Jump 48"); the AI's pick is marked **suggested**. Keys 1–4, click.
+    stat icons it uses, your weakest of them marked ("⤒ Jump 48"); the best-odds option is marked **suggested**. Keys 1–4, click.
     A 5 s ring (real time) runs down; at 0 your player takes the suggested move by themselves (owner, 2026-10-05). Esc opens
     the pause menu as now (the ring stops while it is open).
   - How often: setting **Calls: Key moments (default) · All · Off** (remembered per browser). Key moments = set point either

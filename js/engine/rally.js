@@ -86,10 +86,13 @@ function* rally(m, B, V, atk, pas, qual, scr = null) {
         });
       return atk;
     }
+    x.cov0 = x.cov; // the block's coverage before the shot choice (Decide)
     Object.assign(x, spikePower(c, x));
-    // a decision point (spec §2.13): your attack — the AI's shot is the one spikePower drew (T-233 fills the options)
-    const ai = x.tip ? 'tip' : x.delayed ? 'delay' : x.around ? 'cut' : 'power';
-    x.shot = yield* decide(m, { kind: 'attack', p: x.spiker, options: [], ai });
+    x.pow0 = x.tip ? 0 : x.pow / (x.elS ? x.elS.pow : 1);
+    // a decision point (spec §2.13): your attack — the AI's shot is the one spikePower drew; your pick rewrites it
+    const ai = x.tip ? 'tip' : x.delayed ? 'delay' : x.around ? 'cut' : 'power',
+      shot = yield* decide(m, { kind: 'attack', p: x.spiker, options: () => Decide.attack(c, x), ai });
+    if (shot !== ai) Decide.applyShot(c, x, shot);
     Object.assign(x, spikeActs(c, x));
     Object.assign(x, landingSpot(c, x));
     // the attack in play, for the element gauges (kills, digs and blocks are credited against it)
@@ -111,6 +114,7 @@ function* rally(m, B, V, atk, pas, qual, scr = null) {
     r = x.delayed ? hangFail(c, x) : null; // a Delayed Spike can hang too long (low jump / wit): the ball drops on your side
     if (r) {
       fin();
+      Decide.out(m, 'attack', x.spiker.id, r.point != null ? 'lose' : 'on');
       if (r.point != null) return r.point;
       [atk, pas, qual, scr = null] = r.next;
       continue;
@@ -118,6 +122,7 @@ function* rally(m, B, V, atk, pas, qual, scr = null) {
     r = hittingError(c, x);
     if (r) {
       fin();
+      Decide.out(m, 'attack', x.spiker.id, 'err');
       return r.point;
     }
     // ---- 9–10: block, then dig or kill ----
@@ -125,15 +130,18 @@ function* rally(m, B, V, atk, pas, qual, scr = null) {
     if (x.soloLog && bl.point === ds) x.soloLog.ok = true; // the solo block stuffed it
     if (bl.point != null) {
       fin();
+      Decide.out(m, 'attack', x.spiker.id, bl.point === atk ? 'win' : 'lose');
       return bl.point;
     }
     if (bl.next) {
       fin();
+      Decide.out(m, 'attack', x.spiker.id, 'on');
       [atk, pas, qual, scr = null] = bl.next;
       continue;
     }
     r = dig(c, x, bl);
     fin();
+    Decide.out(m, 'attack', x.spiker.id, r.point === atk ? 'win' : r.point != null ? 'lose' : 'on');
     if (r.point != null) return r.point;
     [atk, pas, qual, scr = null] = r.next;
   }

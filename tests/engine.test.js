@@ -51,6 +51,45 @@ test('engine: the rally is pausable (T-232) — a human answered with the AI pic
   assert(hum.asks.serve > 0 && hum.asks.attack > 0, `asked at your serves and attacks (${JSON.stringify(hum.asks)})`);
 });
 
+test.slow('engine: calls (T-233) — the odds shown are the odds played (±6), and the options change the outcome', () => {
+  const g = load(17),
+    rate = (kind, opt) => {
+      const shown = { win: 0, lose: 0, err: 0 },
+        got = { win: 0, lose: 0, err: 0, on: 0 };
+      let n = 0,
+        games = 0;
+      while (n < 200 && games++ < 200) {
+        const T = g.mkTeams(),
+          m = g.newMatch(T[games % 8], T[(games + 3) % 8], false);
+        m.human = T[games % 8].P.find(p => p.role === 'WS').id;
+        while (!m.over) {
+          const gen = g.playRallyGen(m);
+          let r = gen.next();
+          while (!r.done) r = gen.next(r.value.kind === kind && r.value.options.some(o => o.id === opt) ? opt : r.value.ai);
+        }
+        for (const c of m.calls || [])
+          if (c.kind === kind && c.id === opt && c.out) {
+            n++;
+            for (const k of ['win', 'lose', 'err']) shown[k] += c.odds[k];
+            got[c.out]++;
+          }
+      }
+      for (const k of ['win', 'lose', 'err']) {
+        const a = shown[k] / n,
+          b = (100 * got[k]) / n;
+        assert(Math.abs(a - b) <= 6, `${kind} ${opt} ${k}: shown ${a.toFixed(1)} vs played ${b.toFixed(1)} (n ${n})`);
+      }
+      return got.err / n;
+    };
+  const safe = rate('serve', 'safe'),
+    power = rate('serve', 'power');
+  rate('serve', 'target');
+  assert(safe < power, `a safe serve faults less than a power serve (${safe.toFixed(2)} < ${power.toFixed(2)})`);
+  rate('attack', 'power');
+  rate('attack', 'cut');
+  rate('attack', 'tip');
+});
+
 test('engine: simulated matches (no animation) are deterministic (golden)', () => {
   const g = load(7);
   const T = g.mkTeams();

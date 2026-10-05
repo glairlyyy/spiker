@@ -99,3 +99,23 @@ const EGO = {
   mood: 0.1, // an ego act that works lifts the player's mood by this, one that fails lowers it …
   mom: 0.04 // … and costs the team this much momentum
 };
+/**
+ * Calls (spec §2.13): the options of your decision points in a played match. serve: `sq` × serve quality, `err` × the fault
+ * chance, `type` the serve it is (null = your usual), `aim` at their weakest passer. attack: `pow` × spike power, `cov` × what
+ * is left of the block (`cut`: the cut-shot rule), `tip` a soft roll shot. `stats` = what the option leans on (shown as icons;
+ * the lowest is marked as what holds you back). `need` = when it is offered. `cal` = measured corrections of the sampled odds
+ * where the quick model misses the full engine (tests/engine.test.js keeps shown vs played within ±5). `odds` samples per option.
+ */
+const DECIDE = {
+  serve: {
+    safe: { label: 'Safe serve', sq: 0.85, err: 0.45, type: 'float', stats: ['wit'], cal: { win: 1.25 } },
+    power: { label: 'Power serve', sq: 1.12, err: 1.6, type: 'jump', stats: ['power', 'jump'], cal: { win: 1.0, err: 1.3 } },
+    target: { label: 'Target {name}', sq: 0.95, err: 1, type: null, aim: true, stats: ['power', 'wit'], cal: { err: 1.2 } }
+  },
+  attack: {
+    power: { label: 'Power spike', pow: 1, stats: ['power', 'jump'] },
+    cut: { label: 'Placed shot', pow: 0.92, cut: true, stats: ['wit', 'jump'], need: 'block', cal: { win: 0.8, lose: 0.65, err: 1.25 } },
+    tip: { label: 'Tip', tip: true, stats: ['wit'] }
+  },
+  odds: 300
+};

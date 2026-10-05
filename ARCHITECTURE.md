@@ -91,7 +91,11 @@ onLeave }` (see Screens; `onLeave` only cleans up), opened by the UI with `watch
   yield with the AI's pick — the sim flow, identical draws. A decision point computes the AI's pick first, then
   `yield* decide(m, { kind, p, options, ai })` (engine/decide.js): it suspends only for `m.human`'s player (an engine-only
   flag the UI sets for a played career match), with `m.beats` = the rally so far and `m.askAt` = its length (`B.ins` never
-  inserts before it). Points: `serve` (serveWalk, before the walk beats) and `attack` (rally, after spikePower).
+  inserts before it). Points: `serve` (serveWalk, before the walk beats) and `attack` (rally, after spikePower). Options are a
+  thunk (`Decide.serve` / `Decide.attack`) evaluated only when asking, sampled on `Decide.isolate` (a private mulberry32 keyed by
+  the moment — the game stream and Math.random untouched); a pick other than the AI's rewrites the serve (`c.call`: type, pace,
+  faults, aim) or the shot (`Decide.applyShot`). Every answered call lands on `m.calls` `{ kind, id, label, odds, weak, auto, out }`
+  (`out` = win / lose / err / on, set by `Decide.out` where the outcome is known).
 - `rally()` runs one possession per loop turn through phases that take a possession context `c`
   (`{ m, B, V, atk, ds, pas, qual, … }`): `freeBall → pickSetter → setterDump → setHands → chooseAttack → badSetOver`
   (`engine/rally-phases.js`), then the approach / block formation (`formBlock`, `engine/rally-block.js`) and the set / spike core inline in `rally.js`, then `block → dig`

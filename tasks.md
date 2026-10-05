@@ -137,7 +137,7 @@ Accept: goldens unchanged; npm test + lint pass; headless match speed within 10 
 QA: Monster game plays as before.
 Result: `playRallyGen` + `decide` (engine/decide.js, new); 5 functions became generators (serveWalk, serveAce, servePopped, serveReceive, rally); yields at your serve (before the walk) and attack (after spikePower). Goldens unchanged; a human answered with the AI picks = the sim flow beat for beat (test); headless 4.7 vs 5.2 ms / match (noise). Harness now exposes `function*` names. No B.ins fix needed beyond the clamp: the only insert lands at `mark` = the attack decision point.
 
-### [ ] T-233: Decision options with odds and the stats behind them
+### [x] T-233: Decision options with odds and the stats behind them
 Spec: §2.13          Goldens: unchanged (options are computed without draws; the AI pick is unchanged)          Save: no change
 Goal: the serve and attack decision points offer real options whose odds come from the engine's formulas and change the outcome.
 Files: js/engine/*.js (the two decision sites + a pure `Decide` helper, new file js/engine/decide.js — add to index.html),
@@ -153,7 +153,7 @@ Steps:
    lowers faults vs "jump serve"; options never draw (RNG call count unchanged by computing them).
 Accept: odds honest (±5); goldens unchanged.
 QA: none (engine).
-Result:
+Result: `DECIDE` (rules.js) + `Decide` (decide.js): serve Safe / Power / Target {name}, attack Power / Placed (with a block up) / Tip; odds sampled 300× on a private generator keyed by the moment (Math.random and the game stream untouched — the T-232 equality test now computes options too), measured `cal` corrections; slow test: shown vs played within ±6 on all six options (seed 17, n 200), safe faults < power faults. Deviations: no 'tool the block' option (it's an outcome); suggested = best odds (win − lose − err), not the AI's pick (the AI's pick is today's behaviour, not an option); `m.calls` + `Decide.out` built here (T-235 reads them). Goldens unchanged.
 
 ### [ ] T-234: Calls on screen — slow down, vignette, options beside your player
 Spec: §2.13          Goldens: unchanged          Save: no change (the Calls setting is per browser: KEYS.calls)
