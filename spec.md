@@ -55,6 +55,10 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 - §2.3 Hype (Off/Normal/Max, tap to skip): attack build-up, blocker read mid-jump (only if a block is attempted),
   block-break spike cut + ball close-up, kill-block, loose-ball slow-mo, personality chatter. No manga panels. One world
   clock (`A.ts`), eased slow-mo ramps. Target Normal ≈ 6–7 scenes/match **[open: tuning]**.
+- §2.3a Air impact (owner, 2026-10-06, the Kuroko look) **[built, T-236]**: every spike (not a tip; power ≥ 58) splits the air
+  at the contact — pressure rings stacked along the shot (2 / 3 / 4 by power: hard / heavy 80+ / 95+), white wind lines
+  thrown out sideways, a jet of air down the line; 95+ adds a pressure dome ballooning out; 100+ (with Hype on, not reduced
+  motion) an **impact frame** — the court in negative for ~70 ms. Display only (no beats or draws change).
 - §2.4 Blocks: stuff odds = full-strength block vs spike, weighted by coverage (targets §2.9).
 - §2.5 Spike approach (display): hitter runs to a run-up point behind contact (skip if already there/behind), starting
   in the beat before the set, takes off before contact; broad jump carries onto the ball. Quicks: short approach; jump

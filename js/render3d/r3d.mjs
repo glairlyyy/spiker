@@ -365,6 +365,8 @@ function handTouch(w, now) {
 const ballW = () => (A && A.ball ? W(A.ball.x, A.ball.z, Math.max(10, A.ball.h)) : new THREE.Vector3());
 const fxApi = {
   burst: (pow, color) => world && world.fx.burst(ballW(), pow, color),
+  /** dx: the attack's direction along the court (+1 / −1, court x): down into the far court. */
+  airImpact: (pow, color, dx) => world && world.fx.airImpact(ballW(), new THREE.Vector3(dx, -0.55, 0).normalize(), pow, color),
   elemBurst: (el, pow) => world && world.fx.elemBurst(el, ballW(), pow, A.ball.h > 60 ? ballDir.clone() : null),
   impact: pow => world && world.fx.impact(ballW(), pow),
   elemImpact: (el, pow) => world && world.fx.elemImpact(el, ballW(), pow),

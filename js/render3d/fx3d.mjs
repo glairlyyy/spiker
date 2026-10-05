@@ -57,6 +57,7 @@ void main(){ vec4 t = texture2D(map, gl_PointCoord); gl_FragColor = vec4(vC * t.
 
 const R = (a, b) => a + Math.random() * (b - a);
 const rv = s => new THREE.Vector3().randomDirection().multiplyScalar(s);
+const Z_AXIS = new THREE.Vector3(0, 0, 1);
 const UP = new THREE.Vector3(0, 1, 0);
 
 export function createFx(scene) {
@@ -244,7 +245,8 @@ export function createFx(scene) {
   const rings = [],
     RING = new THREE.RingGeometry(0.82, 1, 64);
   let camera = null;
-  function ring(p, col, size, life = 0.45, floor = false) {
+  /** `o.dir` (unit vector): the ring faces along it instead of the camera; `o.delay` s before it shows; `o.op` peak opacity. */
+  function ring(p, col, size, life = 0.45, floor = false, o = {}) {
     const m = new THREE.Mesh(
       RING,
       new THREE.MeshBasicMaterial({
@@ -260,9 +262,11 @@ export function createFx(scene) {
       m.rotation.x = -Math.PI / 2;
       m.position.y = 0.025;
     }
+    if (o.dir) m.quaternion.setFromUnitVectors(Z_AXIS, o.dir);
     m.renderOrder = 5;
+    m.visible = !o.delay;
     scene.add(m);
-    rings.push({ m, size, life, age: 0, floor });
+    rings.push({ m, size, life, age: -(o.delay || 0), floor, fixed: !!o.dir, op: o.op ?? 0.9 });
   }
   function updateRings(dt) {
     let w = 0;
@@ -273,10 +277,15 @@ export function createFx(scene) {
         r.m.material.dispose();
         continue;
       }
+      if (r.age < 0) {
+        rings[w++] = r; // still waiting to show
+        continue;
+      }
+      r.m.visible = true;
       const u = r.age / r.life;
       r.m.scale.setScalar(0.05 + r.size * (1 - Math.pow(1 - u, 3)));
-      r.m.material.opacity = (1 - u) * 0.9;
-      if (!r.floor && camera) r.m.quaternion.copy(camera.quaternion);
+      r.m.material.opacity = (1 - u) * r.op;
+      if (!r.floor && !r.fixed && camera) r.m.quaternion.copy(camera.quaternion);
       rings[w++] = r;
     }
     rings.length = w;
@@ -294,7 +303,90 @@ export function createFx(scene) {
     star: '#ffffff'
   };
 
+  // the air impact's pressure dome (spec §2.3a): a thin additive shell that balloons out from a heavy spike
+  const DOME = new THREE.SphereGeometry(1, 24, 16),
+    domes = [];
+  function updateDomes(dt) {
+    let w = 0;
+    for (const d of domes) {
+      d.age += dt;
+      if (d.age > d.life) {
+        scene.remove(d.m);
+        d.m.material.dispose();
+        continue;
+      }
+      const u = d.age / d.life;
+      d.m.scale.setScalar(0.1 + d.size * (1 - Math.pow(1 - u, 2.5)));
+      d.m.material.opacity = (1 - u) * 0.28;
+      domes[w++] = d;
+    }
+    domes.length = w;
+  }
+
   const fx = {
+    /**
+     * Air impact (spec §2.3a, owner 2026-10-06 — the Kuroko look): a spike splits the air at the contact. Pressure rings stacked
+     * along the shot (`dir`, unit vector), wind lines thrown out sideways in the ring plane, a jet of air down the line and, on a
+     * heavy hit, a dome of pressure ballooning out. Scaled by power (hard 58 → ult 100+).
+     */
+    airImpact(p, dir, pow, color) {
+      const k = Math.min(1.5, Math.max(0.35, (pow - 50) / 45)),
+        n = pow >= 95 ? 4 : pow >= 80 ? 3 : 2;
+      for (let i = 0; i < n; i++) {
+        const q = p.clone().addScaledVector(dir, 0.18 + i * 0.32 * k);
+        ring(q, i % 2 ? color : '#ffffff', (0.7 + i * 0.55) * k, 0.32 + i * 0.07, false, { dir, delay: i * 0.035, op: i ? 0.75 : 1 });
+      }
+      // wind lines: fast, thin sparks out from the contact, perpendicular to the shot
+      const u = new THREE.Vector3()
+          .crossVectors(dir, Math.abs(dir.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0))
+          .normalize(),
+        v = new THREE.Vector3().crossVectors(dir, u).normalize();
+      for (let i = 0; i < 26 * k; i++) {
+        const a = Math.random() * Math.PI * 2,
+          side = u.clone().multiplyScalar(Math.cos(a)).addScaledVector(v, Math.sin(a));
+        SPARK.spawn(
+          p,
+          side.multiplyScalar(R(6, 11) * k).addScaledVector(dir, R(-1, 2)),
+          '#ffffff',
+          '#cfe8ff',
+          R(0.08, 0.14),
+          0.012,
+          R(0.14, 0.24),
+          { drag: 5 }
+        );
+      }
+      // the jet of displaced air down the line of the shot
+      for (let i = 0; i < 14 * k; i++)
+        GLOW.spawn(
+          p,
+          dir
+            .clone()
+            .multiplyScalar(R(5, 10) * k)
+            .add(rv(R(0.3, 1.2))),
+          '#ffffff',
+          color,
+          R(0.12, 0.24),
+          0.02,
+          R(0.18, 0.3),
+          { drag: 4 }
+        );
+      if (pow >= 95) {
+        const m = new THREE.Mesh(
+          DOME,
+          new THREE.MeshBasicMaterial({
+            color: '#dff1ff',
+            transparent: true,
+            opacity: 0.28,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+          })
+        );
+        m.position.copy(p);
+        m.renderOrder = 4;
+        scene.add(m);
+        domes.push({ m, size: 1.6 * k, life: 0.3, age: 0 });
+      }
+    },
     /** Generic contact burst at a point (spike, serve, block): team-coloured ring and sparks. */
     burst(p, pow, color) {
       const k = Math.min(1.4, pow / 100);
@@ -595,6 +687,7 @@ export function createFx(scene) {
       updateRocks(dt);
       updateBolts(dt);
       updateRings(dt);
+      updateDomes(dt);
     }
   };
   return fx;

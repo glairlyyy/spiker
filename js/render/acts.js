@@ -11,6 +11,10 @@ const ACTS_FX = {
   burst(a, d, bs) {
     burst(a.pow, a.color);
     sfx.hit(a.pow);
+    // a spike (its beat carries the hitter's swing style) splits the air — not a tip, not a soft one (spec §2.3a)
+    const cb = A.beats && A.beats[A.bi],
+      sw = cb && cb.acts.find(x => x.k === 'spkstyle');
+    if (sw && sw.st !== 'tip' && a.pow >= 58) airImpact(a.pow, a.color, A.ball.x < 500 ? 1 : -1);
     if (a.el) elemBurst(a.el, a.pow);
     if (a.op) {
       zap(a.pow);

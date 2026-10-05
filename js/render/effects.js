@@ -26,6 +26,21 @@ function burst(pow, color) {
   const f = fx3();
   if (f) f.burst(pow, color);
 }
+/**
+ * A spike splits the air (spec §2.3a): pressure rings, wind lines, a dome on a heavy hit — and on an ult hit (power 100+) an
+ * impact frame: two frames of the court in negative, the anime cut. `dx` = the attack's direction along the court.
+ */
+function airImpact(pow, color, dx) {
+  const f = fx3();
+  if (f && f.airImpact) f.airImpact(pow, color, dx);
+  if (pow >= 100 && !RM && HYPE[G.hype].max >= 1) {
+    const st = document.getElementById('stage');
+    if (st) {
+      st.classList.add('impactf');
+      setTimeout(() => st.classList.remove('impactf'), 70);
+    }
+  }
+}
 /** Ball hits the floor: dust and shockwave, plus a screen shake by power. */
 function impact(pow) {
   const f = fx3();

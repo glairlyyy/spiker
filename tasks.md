@@ -182,6 +182,11 @@ Accept: the row shows after a played match with calls; nothing after a sim.
 QA: career run → a played match with 2+ calls → result card.
 Result: `resultData.calls` (your `m.calls`), `callsRow` on the card's right column: "Calls · N of M made", the last 6 (label, auto on a time-out, chance, ✓ made / ✕ missed / · rally on), "Held back by: <icon> <stat>" = the weak stat seen most in missed calls. Nothing after a sim (no m.human). QA: a played Pro court match with 3 calls → card (screenshot), no errors.
 
+### [x] T-236: Spike air impact — the Kuroko look (owner request)
+Spec: §2.3a          Goldens: unchanged (display only)          Save: no change
+Files: js/render3d/fx3d.mjs (`airImpact`, rings facing a direction / delayed, the pressure dome), js/render3d/r3d.mjs (fx api), js/render/effects.js (`airImpact` + impact frame), js/render/acts.js (burst on a spike beat → airImpact), css/style.css (.impactf)
+Result: a spike beat's burst (the beat carries the hitter's `spkstyle`, not a tip, power ≥ 58) calls airImpact toward the far court; QA Monster game: a 104 and a 138 km/h-power spike (screenshots: rings + wind lines + dome; the negative impact frame), no errors.
+
 ### [x] T-231: Docs diet and a UI smoke test (owner request)
 Spec: —          Goldens: unchanged          Save: no change
 Files: tasks.md, tasks-done.md (new), ARCHITECTURE.md, ARCHITECTURE-details.md (new), CLAUDE.md, spec.md (§10.1d: the walk lock, training cut-in and map key recorded from Unplanned changes), tests/ui-smoke.js (new), package.json (test:ui), eslint.config.mjs

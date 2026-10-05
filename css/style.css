@@ -1712,3 +1712,7 @@ body:has(.match) .top {
 .mres .bad {
   color: var(--bad);
 }
+/* the impact frame (spec §2.3a): an ult spike flips the court to negative for two frames */
+.stage.impactf canvas {
+  filter: invert(1) contrast(1.6) grayscale(1);
+}
