@@ -142,7 +142,7 @@ const Asks = {
   nextPay: run => Math.min(CAREER.weeks, Math.ceil((run.week + 1) / ECON.payEvery) * ECON.payEvery),
   /**
    * Answer the approach at run.asks[i]. Returns { line, fx?, day? } (line = the diary line, already logged; fx = a match to start;
-   * day = a training day was spent, so the week's event may roll), or { blocked } when it can't be done now (the approach stays).
+   * day = a training day was spent; dayLine = its diary line), or { blocked } when it can't be done now (the approach stays).
    */
   answer(run, i, yes) {
     const a = (run.asks || [])[i];
@@ -162,7 +162,7 @@ const Asks = {
         if (!yes) return done(`Not today, ${n}. I have a schedule. Sort of.`);
         const can = City.can(run, a.data.at);
         if (!can.ok) return { blocked: can.why };
-        Run.log(run, City.day(run, a.data.at, false, null));
+        Run.log(run, (out.dayLine = City.day(run, a.data.at, false, null)));
         Rel.add(run, a.id, 'invited');
         out.day = true;
         return done(`Trained with ${n} at ${SPOTS[a.data.at].name}.`);
@@ -297,7 +297,7 @@ const Asks = {
     out.yes = People.roll(run, id, `you|${kind}|${run.week}`) < Asks.accept(run, id, kind);
     if (!out.yes) return end(`Asked ${n}. ${n} said no.`);
     if (kind === 'invite_train') {
-      Run.log(run, City.day(run, mv.at, false, null));
+      Run.log(run, (out.dayLine = City.day(run, mv.at, false, null)));
       Rel.add(run, id, 'invited');
       out.day = true;
       return end(`${n} came to ${SPOTS[mv.at].name}.`);

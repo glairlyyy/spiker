@@ -358,7 +358,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
       **Rival** flag: same-role squadmate within 5 OVR.
     - `bond` = clamp(stance × 8, 0, 100), read-only summary (goals, form, Team drawer).
   - **C. Approaches.** ≤ 2/week, ≤ 1 per person and kind; expire; wait in the People drawer (never block the map).
-    By wants + stance: invite_train (place + day → train together) · ask_sitout (before an evaluation; accept → you
+    By wants + stance: invite_train (place + day → train together; owner 2026-10-05: the People sheet closes, you walk there on the map with the hub locked, they greet you in the dialogue box — "Oh, you're here! Let's start." — then the training cut-in) · ask_sitout (before an evaluation; accept → you
     bench, spot_given; refuse → proud resents; never in a Story cup) · duo_challenge (split stake/risk) · borrow
     (repaid on payday or debt_unpaid) · call_out (rival outside your squad; refuse → fame + standing hit) · vouch
     (their club's join bar −X; only while you're a free agent) · warn (rumour) · poach_advice (your answer changes

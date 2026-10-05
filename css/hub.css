@@ -988,6 +988,10 @@
   padding-bottom: 72px;
   background: transparent;
 }
+.hub .actlock.greet {
+  background: transparent;
+  cursor: pointer; /* a friend's greeting in the dialogue box (training together, owner 2026-10-05): click / Space goes on */
+}
 .hub .actlock.dim {
   background: rgba(0, 0, 0, 0.45);
   cursor: default;

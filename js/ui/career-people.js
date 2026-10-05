@@ -187,19 +187,43 @@ function personDetail(run, id, waits) {
 }
 /** Answer a waiting approach (a match to start, or a day spent, follows). */
 function askAnswer(i, yes) {
-  const r = Asks.answer(RUN, i, yes);
+  const a = (RUN.asks || [])[i],
+    snap = trainBefore(a && a.kind === 'invite_train' && a.data ? a.data.at : null),
+    r = Asks.answer(RUN, i, yes);
   if (!r) return renderCareer();
   if (r.blocked) return toastBlocked(r.blocked);
   if (r.fx) return watchCareer(r.fx);
+  if (r.day && trainWithFriend(a.id, a.data.at, snap, r.dayLine)) return;
   renderCareer();
 }
 /** Make one of your moves on a person. */
 function askMove(id, kind, at) {
-  const r = Asks.ask(RUN, id, kind, { at: at || null });
+  const snap = trainBefore(kind === 'invite_train' ? at : null),
+    r = Asks.ask(RUN, id, kind, { at: at || null });
   if (!r) return renderCareer();
   if (r.fx) return watchCareer(r.fx);
+  if (r.day && trainWithFriend(id, at, snap, r.dayLine)) return;
   renderCareer();
 }
+/** The training cut-in's "before" for a session at place `at` (null if it isn't a training place). */
+const trainBefore = at => (at && SPOTS[at] && SPOTS[at].train ? trainSnap(RUN, TRAININGS[SPOTS[at].train].main[0]) : null);
+/**
+ * Training with a friend (owner, 2026-10-05): the People sheet closes, you walk to the place on the map with the hub locked,
+ * they greet you in the dialogue box, then the usual training cut-in. Returns false when there is nothing to show.
+ */
+function trainWithFriend(id, at, snap, line) {
+  const s = SPOTS[at];
+  if (!s) return false;
+  const p = People.find(RUN, id);
+  CW.sheet = null;
+  CW.peek = null;
+  CW.spot = at;
+  Run.save(RUN);
+  actLock(snap && s.train ? trainFx(RUN, s, snap, line || '') : null, { person: p, text: FRIEND_HI });
+  renderCareer();
+  return true;
+}
+const FRIEND_HI = "Oh, you're here! Let's start.";
 function toastBlocked(why) {
   CW.flash = `Can't now: ${why}.`; // shown in the inbox for one render
   Run.log(RUN, `Can't now: ${why}.`);

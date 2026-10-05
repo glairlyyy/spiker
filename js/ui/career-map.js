@@ -184,22 +184,34 @@ function trainFx(run, s, a, line) {
   return { ok, injured: b.injury && !a.injury, name: TRAININGS[s.train].name, place: s.name, rows, was: a };
 }
 const LOCK = { min: 250, max: 20000, spin: 1100, show: 3200 }; // ms: wait for the walk to start · give up · spinner · result
-/** Lock the hub until your player arrives; then the training cut-in (if any), then unlock. */
-function actLock(fx) {
+/**
+ * Lock the hub until your player arrives; then a greeting (training with a friend: their line in the dialogue box, owner
+ * 2026-10-05), then the training cut-in (if any), then unlock. greet = { person, text } or null.
+ */
+function actLock(fx, greet = null) {
   const t0 = Date.now(),
-    L = (CW.lock = { phase: 'walk', fx, to: CW.spot && SPOTS[CW.spot] ? SPOTS[CW.spot].name : '' });
+    L = (CW.lock = { phase: 'walk', fx, greet, to: CW.spot && SPOTS[CW.spot] ? SPOTS[CW.spot].name : '' });
   clearInterval(actLock.iv);
   actLock.iv = setInterval(() => {
     if (CW.lock !== L) return clearInterval(actLock.iv);
     const t = Date.now() - t0;
     if (L.phase === 'walk' && t > LOCK.min && (!MapView.busy() || t > LOCK.max)) {
       clearInterval(actLock.iv);
-      if (!fx) return lockEnd();
-      lockPhase('spin');
-      setTimeout(() => CW.lock === L && lockPhase('done'), LOCK.spin);
-      setTimeout(() => CW.lock === L && L.phase === 'done' && lockEnd(), LOCK.spin + LOCK.show);
+      if (greet) return lockPhase('greet'); // Space / click moves on to the cut-in
+      lockTrain(L);
     }
   }, 120);
+}
+/** The training cut-in: spinner, then the result, then unlock (no cut-in: unlock now). */
+function lockTrain(L) {
+  if (!L.fx) return lockEnd();
+  lockPhase('spin');
+  setTimeout(() => CW.lock === L && lockPhase('done'), LOCK.spin);
+  setTimeout(() => CW.lock === L && L.phase === 'done' && lockEnd(), LOCK.spin + LOCK.show);
+}
+/** The friend's greeting was read: on to the cut-in. */
+function lockGreetDone() {
+  if (CW.lock && CW.lock.phase === 'greet') lockTrain(CW.lock);
 }
 /** Show a lock phase: in place while the spinner runs; the result re-renders the hub so the top bar and rail catch up (with their deltas). */
 function lockPhase(p) {
@@ -225,6 +237,10 @@ function lockLayer() {
   if (!L) return '';
   if (L.phase === 'walk')
     return `<div class="actlock walk" id="actlock" role="status" aria-live="polite"><span class="lkpill"><i class="spin sm" aria-hidden="true"></i>${L.to ? `Walking to ${esc(L.to)}` : 'On the way'}</span></div>`;
+  if (L.phase === 'greet') {
+    const P = L.greet.person;
+    return `<div class="actlock greet" id="actlock" role="dialog" aria-live="polite" onclick="lockGreetDone()"><div class="sbox">${P ? `<span class="sb-face">${faceSVG(P, 0, 72)}</span>` : ''}<div class="sb-body">${P ? `<b class="sb-name">${esc(P.name)}</b>` : ''}<p class="sb-text">${esc(L.greet.text)}</p></div><span class="sb-keys"><kbd>Space</kbd> next</span></div></div>`;
+  }
   const F = L.fx;
   if (L.phase === 'spin')
     return `<div class="actlock dim" id="actlock" role="status" aria-live="polite"><div class="tfx"><i class="spin" aria-hidden="true"></i><b>${esc(F.name)} training</b><small class="mute">${esc(F.place)}</small></div></div>`;
