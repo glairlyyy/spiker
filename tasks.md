@@ -44,7 +44,7 @@ your publish because the other agent published first, re-read the refused files 
 - **Agent B** — T-228 then T-230. Owns: js/data/city.js, js/career/city.js, js/career/study.js, js/ui/career-study.js,
   js/career/run.js, js/career/mapmodel.js, tests/study.test.js, tests/map.test.js, tests/people.test.js.
 
-### [ ] T-228: Hops inside a faction are free — NEAR_R covers its district (Agent B)
+### [x] T-228: Hops inside a faction are free — NEAR_R covers its district (Agent B)
 Spec: §4.5          Goldens: unchanged          Save: no change
 Goal: training in Shu or Wu no longer loses a day per facility hop.
 Files: js/data/city.js (NEAR_R), tests/map.test.js / tests/people.test.js only if an assertion moves
@@ -56,7 +56,7 @@ Accept:
 - Trip days between one faction's training places: Wei all 0, Shu all 0, Wu ≥ 4 of 6 pairs 0 (headless, seed 7).
 - Crossing to another faction's far side still costs ≥ 1 day; the ghost slots and Travel buttons agree.
 QA: career run → train at two Shu places on consecutive days: no trip slot between them.
-Result:
+Result: NEAR_R 110 → 280 × MAP_SCALE (comment fixed). Seed 7: Wei 6/6 and Shu 10/10 pairs free, Wu 3/6 (sand–dunes 911, dunes–pier, harbor–pier are 2 days: the island grew in T-225) — owner chose to keep 280 over 410 (which frees Wu 4/6 but 70 % of cross-faction hops vs 30 %); no place reaches every other faction's places free. Ghost slots and Travel use City.trip (agree by construction). Bond / league calibration unmoved. QA (headless): trail → steps in Shu = two train slots, no trip; tests 125/125.
 
 ### [ ] T-229: Court matches at the official venues (Agent A)
 Spec: §4.21a (+ §4.14, §4.15)          Goldens: unchanged (engine)          Save: no change (mlog kind 'court')

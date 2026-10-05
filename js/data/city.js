@@ -178,7 +178,8 @@ const GROUND_COST = { shu: 1.35 },
   /** A hex whose centre stands higher than this (m, reliefAt) is highland terrain (spec §4.27). */
   HIGHLAND_M = 18,
   GROUND_STEP = 20 * MAP_SCALE;
-const NEAR_R = 110 * MAP_SCALE;
+/** Free hops (spec §4.5, T-228): a place within this straight distance costs no trip day — about one faction's district (was 110). */
+const NEAR_R = 280 * MAP_SCALE;
 const TRIP_DAY = 220 * MAP_SCALE;
 const TRIP_MAX = 3;
 /** The dark map: each point you've stood on lights up this radius. */
