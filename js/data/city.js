@@ -108,15 +108,38 @@ const CITY = (() => {
       [700, 262],
       [230, 400]
     ],
-    mountains: [
-      [220, 250],
-      [270, 205],
-      [330, 190],
-      [390, 240],
-      [205, 330],
-      [420, 330],
-      [320, 420]
-    ]
+    /**
+     * The Shu highlands' shape (owner, 2026-10-05; reliefAt): the Peak — the island's highest point, NW above Shu · Peak —,
+     * the Spine — the ridge running south from it (the dragon's back the Shu clubs are named for: Peak on its high side,
+     * Valley below) — and the river that comes down off the Peak into the reservoir and on to the south coast, carving the
+     * valley. Heights in metres; r / w in design units. Display (terrain) and the cost of crossing rough ground.
+     */
+    relief: {
+      peak: { at: [262, 178], h: 110, r: 120 },
+      spine: {
+        line: [
+          [262, 178],
+          [305, 262],
+          [338, 330],
+          [372, 410],
+          [402, 488]
+        ],
+        h: [55, 14],
+        w: 34
+      },
+      river: {
+        line: [
+          [250, 236],
+          [262, 300],
+          [280, 367],
+          [274, 430],
+          [282, 520],
+          [290, 600]
+        ],
+        d: 7,
+        w: 26
+      }
+    }
   };
 })();
 
@@ -150,6 +173,10 @@ const HOTEL = { price: 12, rest: 1 };
 const ROAD_COST = { main: 0.45, overpass: 0.35, street: 0.6, boardwalk: 0.7, dirt: 0.8, path: 1.2 };
 /** Going cross-country (off the roads) costs this × the distance by region (the Shu highlands are rough ground); others 1. */
 const GROUND_COST = { shu: 1.35 },
+  /** …and × (1 + height / RELIEF_COST) up the Peak and the Spine (reliefAt): going over the ridge costs more than the valley road. */
+  RELIEF_COST = 60,
+  /** A hex whose centre stands higher than this (m, reliefAt) is highland terrain (spec §4.27). */
+  HIGHLAND_M = 18,
   GROUND_STEP = 20 * MAP_SCALE;
 const NEAR_R = 110 * MAP_SCALE;
 const TRIP_DAY = 220 * MAP_SCALE;
@@ -870,7 +897,11 @@ const LANDMARK = {
       }
     },
     pts = a => a.forEach(pt);
-  for (const k of ['coast', 'inner', 'dunes', 'wei', 'wu', 'shu', 'beach', 'weiWu', 'strip', 'hq', 'mountains']) pts(CITY[k]);
+  for (const k of ['coast', 'inner', 'dunes', 'wei', 'wu', 'shu', 'beach', 'weiWu', 'strip', 'hq']) pts(CITY[k]);
+  pt(CITY.relief.peak.at);
+  pts(CITY.relief.spine.line);
+  pts(CITY.relief.river.line);
+  for (const k of ['peak', 'spine', 'river']) for (const f of ['r', 'w']) if (CITY.relief[k][f]) CITY.relief[k][f] *= S;
   Object.values(CITY.label).forEach(pt);
   pt(CITY.airport);
   pt(CITY.ritual);
@@ -906,3 +937,35 @@ const LANDMARK = {
   for (const r of Object.values(REGIONS)) pt(r.at);
   HEX.size *= S;
 })(MAP_SCALE);
+/** Distance from p to the polyline `line`, and how far along it (0–1) the nearest point is. */
+function lineDist(p, line) {
+  let best = Infinity,
+    at = 0,
+    run = 0;
+  const L = line.reduce((n, q, i) => (i ? n + Math.hypot(q[0] - line[i - 1][0], q[1] - line[i - 1][1]) : 0), 0);
+  for (let i = 1; i < line.length; i++) {
+    const a = line[i - 1],
+      b = line[i],
+      dx = b[0] - a[0],
+      dy = b[1] - a[1],
+      len = Math.hypot(dx, dy) || 1,
+      t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (len * len))),
+      d = Math.hypot(p[0] - a[0] - dx * t, p[1] - a[1] - dy * t);
+    if (d < best) ((best = d), (at = (run + t * len) / L));
+    run += len;
+  }
+  return { d: best, at };
+}
+/**
+ * The highlands' designed height at map point p (metres, ≥ 0; spec §4.19b): the Peak and the Spine (the higher of the two),
+ * minus the river's valley. Pure, no noise: the 3D terrain adds its own roughness; City.ground prices the climb.
+ */
+function reliefAt(p) {
+  const R = CITY.relief,
+    dp = Math.hypot(p[0] - R.peak.at[0], p[1] - R.peak.at[1]) / R.peak.r,
+    peak = dp < 1 ? R.peak.h * (1 - dp * dp) ** 2 : 0,
+    s = lineDist(p, R.spine.line),
+    spine = (R.spine.h[0] + (R.spine.h[1] - R.spine.h[0]) * s.at) * Math.exp(-((s.d / R.spine.w) ** 2)),
+    r = lineDist(p, R.river.line);
+  return Math.max(0, Math.max(peak, spine) - R.river.d * Math.exp(-((r.d / R.river.w) ** 2)) * (r.d < R.river.w * 3 ? 1 : 0));
+}

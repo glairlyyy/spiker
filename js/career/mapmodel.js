@@ -7,6 +7,22 @@ const MapModel = {
   /** What you know of: explored places, your home, your club's HQ, this week's battle. */
   known: (run, id, p) => id === 'home' || id === `hq${run.team}` || id === 'clash' || City.seen(run, p),
   /** A picked map point, as the selection id 'pt:x,y' ↔ [x, y]. */
+  /**
+   * Level ground in the highlands (owner, 2026-10-05; spec §4.19b): every Shu place, HQ, venue, home and village stands on a
+   * flat pad (`at`, radius `r`, then `blend` to the slope) — the 3D terrain levels it to the height at its centre. Data only.
+   */
+  pads() {
+    const shu = p => City.regionAt(p) === 'shu',
+      out = [];
+    for (const id of Object.keys(SPOTS)) if (SPOTS[id].at && shu(SPOTS[id].at)) out.push({ at: SPOTS[id].at, r: 22, blend: 14 });
+    CITY.hq.forEach(at => shu(at) && out.push({ at, r: 26, blend: 14 }));
+    for (const v of Object.values(VENUES)) if (shu(v.at)) out.push({ at: v.at, r: (v.clear || 20) + 8, blend: 16 });
+    for (const at of Object.values(HOME_AT)) if (shu(at)) out.push({ at, r: 16, blend: 12 });
+    for (const d of DISTRICTS)
+      if (d.region === 'shu' && d.poly && !Array.isArray(d.poly) && d.poly.r)
+        out.push({ at: [d.poly.x, d.poly.y], r: d.poly.r * 0.8, blend: 18 });
+    return out;
+  },
   ptId: p => `pt:${Math.round(p[0])},${Math.round(p[1])}`,
   ptOf: sel => (sel && sel.startsWith('pt:') ? sel.slice(3).split(',').map(Number) : null),
   /** Land: the island, the majors' territories, minors' patches, Central Academy, labels, landmarks. */
@@ -19,7 +35,8 @@ const MapModel = {
       regions: ['wu', 'shu', 'wei'].map(id => Object.assign(reg(id), { poly: CITY[id] })),
       minors: Object.entries(CITY.minors).map(([id, e]) => Object.assign(reg(id), e)),
       park: Object.assign(reg('open'), CITY.park, { title: REGIONS.open.desc }),
-      mountains: CITY.mountains,
+      relief: CITY.relief,
+      pads: MapModel.pads(),
       labels: ['wei', 'shu', 'wu', 'outlaws', 'gloria', 'open'].map(id => ({
         id,
         at: CITY.label[id],

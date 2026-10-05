@@ -42,7 +42,7 @@ const Hex = {
   /**
    * The grid (cached): { tiles: [{ id, q, r, at, region, kind, terrain, spots, hq }], byId }. A tile is land if its centre or a corner is.
    * region: the start owner (a place's or HQ's region wins over the polygon). kind: hq · academy · minor · place · land.
-   * terrain: city (Wei downtown / old town) · beach (sand) · highland (near a mountain) · plain.
+   * terrain: city (Wei downtown / old town) · beach (sand) · highland (on the Peak or the Spine: reliefAt > HIGHLAND_M) · plain.
    */
   grid() {
     if (Hex.cache) return Hex.cache;
@@ -77,7 +77,7 @@ const Hex = {
           ? 'city'
           : MapModel.onSand(t.at)
             ? 'beach'
-            : CITY.mountains.some(m => Math.hypot(m[0] - t.at[0], m[1] - t.at[1]) < S * 1.2)
+            : reliefAt(t.at) > HIGHLAND_M // the Peak and the Spine (spec §4.19b)
               ? 'highland'
               : 'plain';
       t.kind =

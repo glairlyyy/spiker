@@ -53,14 +53,14 @@ const DISTRICT_TINT = {
  * else straight bands at a hashed angle (fields); water is also flattened into a lake.
  */
 const GROUND_TINT = {
-  terrace: { a: '#7f9a4a', b: '#68843f', band: 1.1, contour: true },
-  paddy: { a: '#79a77c', b: '#5f9470', band: 0.9, contour: true },
+  terrace: { a: '#7f9a4a', b: '#68843f', band: 1.1, contour: true, step: 1.8 },
+  paddy: { a: '#79a77c', b: '#5f9470', band: 0.9, contour: true, step: 1.2 },
   field: { a: '#b2ab5e', b: '#8fa04e', band: 5 },
   park: { a: '#4f9a48', b: '#56a24e', band: 9 },
   yard: { a: '#8d8c86', b: '#85847e', band: 7 },
   quay: { a: '#a19e95', b: '#98958c', band: 6 },
   water: { a: '#3f7f95', b: '#3f7f95', band: 9 },
-  quarry: { a: '#b6b0a2', b: '#a29c8e', band: 1.6, contour: true }
+  quarry: { a: '#b6b0a2', b: '#a29c8e', band: 1.6, contour: true, step: 2.5, dig: 3 }
 };
 /** The island's height grid and vertex colours (world metres), from the model's land. */
 function buildTerrain(model) {
@@ -74,7 +74,9 @@ function buildTerrain(model) {
     w = poly => poly.map(p => [p[0] * MAP_M, p[1] * MAP_M]),
     coast = w(L.coast),
     shu = w((L.regions.find(r => r.id === 'shu') || { poly: [] }).poly),
-    mtn = L.mountains.map(p => [p[0] * MAP_M, p[1] * MAP_M]),
+    // the highlands' flat ground (spec §4.19b): facilities, HQs, venues, homes and villages sit on level pads cut into the slope
+    pads = (L.pads || []).map(q => ({ x: q.at[0] * MAP_M, z: q.at[1] * MAP_M, r: q.r * MAP_M, b: (q.blend || 10) * MAP_M, h: 0 })),
+    river = L.relief ? L.relief.river : null,
     wu = w((L.regions.find(r => r.id === 'wu') || { poly: [] }).poly),
     dunes = L.dunes ? w(L.dunes) : [],
     dist = L.districts ? L.districts.map(d => ({ poly: w(d.poly), tint: DISTRICT_TINT[d.style] })).filter(d => d.tint) : [],
@@ -107,7 +109,25 @@ function buildTerrain(model) {
     sand = new THREE.Color(0xd8c690),
     seabed = new THREE.Color(0x2b5f6e),
     tintC = new THREE.Color(),
-    c = new THREE.Color();
+    riverC = new THREE.Color(0x3f7f95),
+    c = new THREE.Color(),
+    /** Land height (m) off the beach: the low plateau, Shu's rough upland, the designed highlands (reliefAt) with some roughness. */
+    landH = (x, z, d) => {
+      let base = 0.6;
+      if (shu.length) {
+        const ds = inside(x, z, shu) ? edgeDist(x, z, shu) : 0,
+          n = 0.6 * vnoise(x / 40, z / 40) + 0.4 * vnoise(x / 15, z / 15);
+        base += (3 + 4 * n) * smooth(0, 20, ds);
+      }
+      if (typeof reliefAt === 'function') {
+        const p = [x / MAP_M, z / MAP_M],
+          rel = reliefAt(p);
+        if (rel > 0) base += rel * (0.88 + 0.24 * vnoise(x / 22, z / 22));
+        if (river) base -= Math.min(base - 0.3, 3 * Math.exp(-((lineDist(p, river.line).d / river.w) ** 2))); // the valley floor
+      }
+      return base * smooth(0, BEACH, d);
+    };
+  for (const q of pads) q.h = landH(q.x, q.z, edgeDist(q.x, q.z, coast));
   for (let j = 0; j <= nz; j++)
     for (let i = 0; i <= nx; i++) {
       const x = i * sx,
@@ -125,17 +145,25 @@ function buildTerrain(model) {
         const flat = sand_ ? 0.45 * smooth(0, 5, d) : 0.6 * smooth(0, BEACH, d);
         h = flat + 0.9 * Math.exp(-((sd / 5) ** 2));
       } else {
-        let base = 0.6;
-        if (shu.length) {
-          const ds = inside(x, z, shu) ? edgeDist(x, z, shu) : 0,
-            n = 0.6 * vnoise(x / 40, z / 40) + 0.4 * vnoise(x / 15, z / 15);
-          base += (4 + 6 * n) * smooth(0, 20, ds);
+        h = landH(x, z, d);
+        for (const q of pads) {
+          const dq = Math.hypot(x - q.x, z - q.z);
+          if (dq < q.r + q.b) h = lerp(h, q.h, 1 - smooth(q.r, q.r + q.b, dq));
         }
-        for (const [px, pz] of mtn) {
-          const r = Math.hypot(x - px, z - pz) / 40;
-          if (r < 1) base += 25 * (1 - r * r) ** 2;
+        // terraces and paddies step down the slope in shelves; the quarry is cut in benches
+        for (const q of grounds) {
+          if (
+            !q.step ||
+            x < q.box[0] ||
+            z < q.box[1] ||
+            x > q.box[2] ||
+            z > q.box[3] ||
+            !inside(x, z, q.poly) ||
+            (q.hole && inside(x, z, q.hole))
+          )
+            continue;
+          h = lerp(h, Math.floor(h / q.step) * q.step - (q.dig || 0), 0.85);
         }
-        h = base * smooth(0, BEACH, d);
       }
       H[k] = h;
       pos.set([x, h, z], k * 3);
@@ -145,6 +173,10 @@ function buildTerrain(model) {
         c.copy(grass).lerp(rock, smooth(8, 20, h));
         c.lerp(sand, 1 - smooth(1, BEACH, d));
         if (sd > -99) c.lerp(sand, 0.95 * smooth(-3, 2, sd)); // the Wu sand
+        if (river && typeof lineDist === 'function') {
+          const rd = lineDist([x / MAP_M, z / MAP_M], river.line).d / river.w;
+          if (rd < 0.22) c.lerp(riverC, 0.85); // the river off the Peak
+        }
         for (const q of dist) if (inside(x, z, q.poly)) c.lerp(tintC.set(q.tint), 0.16);
         for (const q of grounds) {
           if (x < q.box[0] || z < q.box[1] || x > q.box[2] || z > q.box[3] || !inside(x, z, q.poly) || (q.hole && inside(x, z, q.hole)))

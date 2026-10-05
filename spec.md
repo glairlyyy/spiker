@@ -303,6 +303,40 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     the empty land between towns reads as farmland, scrub or industry. Lots stay ≤ `MapModel.maxLots`.
   - **City life** (display only, life3d, hashes, no randoms): buses on the main roads (airport ↔ Academy ↔ downtown ↔
     harbor), vans harbor → overpass → Wei, fishing boats offshore, a plane on the runway; within the life caps.
+- §4.19b The Shu highlands (owner, 2026-10-05) **[built, T-222]**: one designed mountain range instead of random bumps
+  (`CITY.relief`, global `reliefAt(p)`). **The Peak** — the island's highest point (~110 m), north-west above Shu · Peak;
+  Shu just call it "the Peak" (the villagers' old name: **[open]**). **The Spine** — the ridge running south from it (the
+  dragon's back the Shu Dragon clubs are named for: Peak on the high side, Valley below), falling from ~55 m to ~14 m.
+  **The river** off the Peak's south flank through the reservoir to the south coast, carving the valley floor.
+  - **Level ground**: every Shu place, club HQ, venue, home and village stands on a flat pad cut into the slope
+    (`MapModel.pads`: centre height, radius + blend), so buildings never sit on a slope; terraces and paddies step down in
+    shelves; the quarry is cut in benches.
+  - **Rules**: cross-country cost × (1 + height / `RELIEF_COST` 60) — over the Spine costs more than the valley road;
+    highland hexes = centre higher than `HIGHLAND_M` (18 m).
+  - Hidden (lore, never stated): the Peak's summit holds a weathered stone circle — the old ritual ground; Shu climb it as
+    a hardship test and call it a lookout. **[not built: the stone circle, the Thousand Steps' stair line, the dam wall]**
+- §4.19c Nature on the island (owner, 2026-10-05) **[locked, not built — T-223]**: the land between towns is alive, not bare.
+  Display only (map3d), fixed hashes (no randoms), instanced, within a draw-call / triangle budget; nothing on roads, pads,
+  lots, water or the hex labels' anchors.
+  - **Objects per biome**: Shu — pines and cedars thick on the Peak's flanks thinning to bare rock and scree above ~60 m,
+    bamboo by the villages, boulders on the Spine, tea bushes on the terraces; Wei — street trees on main roads, park trees
+    (ginkgo, cherry), clipped hedges in the civic core; Wu — palms and sea-pines along the beach strip, dune grass, drift
+    logs, rocks at the headlands; the Academy — lawn trees round the campus; everywhere — small stones and grass tufts.
+  - **Random life** (hash-driven, looping, display only): birds circling the Peak, gulls over the harbor, a heron on the
+    river, deer at the forest edge in Shu, a cat on Old Town roofs, dogs in the villages. Few, small, readable from the
+    default zoom; none in the week-1 campus fence view when the camera is close (density by zoom).
+  - **Look**: low-poly, two or three tones per object (no textures), the existing shadow and fog; unexplored land dims them
+    with the terrain.
+- §4.19d Borders and biomes (owner, 2026-10-05) **[locked, not built — T-224]**: where one region meets another the map
+  shows it with nature, not only the hex colour.
+  - **Natural border lines**: the Shu–Wei line is the Spine's eastern foothills — a tree line, then a dirt / gravel strip;
+    the river is edged with a narrow sand / pebble bank and reeds; Wu's inland edge is the dune grass line; the Academy's
+    tiles are ringed by a low hedge and its lawn; the Outlaws' patch under the overpass by fence and scrap.
+  - **Biome ground that fades**: each biome has its own ground palette — Shu: moss green → rock grey with height; Wei:
+    paving grey and trimmed lawn; Wu: sand → salt-grass; Academy: bright lawn; between two biomes the colours cross-fade
+    over ~40–60 m (no hard seam), so the terrain reads at a glance even with the hex fill off. The hex fill stays the only
+    faction colour (§4.27); biome tones are neutral nature colours.
+  - **Clarity check**: with the tile fill hidden, a screenshot shows where Shu, Wei, Wu and the Academy are.
 - §4.29 The named players (owner, 2026-10-04; lore §6) **[built, T-189–T-190]**: `STARS` (js/data/stars.js) and `Stars`
   (js/career/stars.js), new runs only, both modes.
   - **Seated at the start** (no randoms): the rival (Tachibana Sae, WS, Wei · Gold) and the cohort (Reina MB St. Gloria,

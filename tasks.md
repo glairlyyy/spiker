@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-222** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-225** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,29 @@ cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git 
 ## Now
 
 Owner request 2026-10-05 (spec §9.12 motion; design system `motion.md`, Motion card): T-216 → T-219. UI only; goldens unchanged.
+
+### [ ] T-223: Nature objects and small life on the island
+Spec: §4.19c          Goldens: unchanged          Save: no change
+Files: js/map3d/nature3d.mjs (new: `createNature(scene, heightAt)` → { sync(model), tick(dt, t), dispose() }), js/map3d/map3d.mjs (build / tick / dispose it), js/career/mapmodel.js (`land.nature`: biome per area + the keep-out list: roads, pads, lots, water), js/data/city.js (NATURE: object kinds per biome, densities, the life list), ARCHITECTURE.md
+Do not: draw randoms (hash every placement); put objects on roads, pads, lots or water; add a draw call per object (instance per kind); slow the map (budget below).
+Steps: 1. NATURE data: per biome the kinds (tree / rock / bush / tuft with 2–3 tones and a size range) and a density (per 100 m²), with height bands for Shu (forest below ~60 m, scree above). 2. Scatter on a hashed jittered grid per biome, rejected on roads / pads / lots / water / sand where not allowed. 3. Instanced low-poly meshes per kind (cone + trunk pines, ball trees, palms, boulders, tufts), fog-dimmed like the terrain. 4. Life: a handful of looping hash-driven figures (birds circling the Peak, gulls at the harbor, a heron on the river, deer at the Shu forest edge, a cat in Old Town, village dogs), counted in life3d's caps.
+Accept: Shu reads as forest → rock up the Peak, Wu has palms and dune grass, Wei street / park trees; ≤ 12 extra draw calls, ≤ 60k extra triangles; map frame time within +10 % at 1440×900 (QA log); tests + lint green.
+QA: screenshots over the Peak, the Wu beach, Wei's park and the Academy at the default zoom; frame time before / after.
+Result:
+
+### [ ] T-224: Natural borders and biome ground that fades
+Spec: §4.19d          Goldens: unchanged          Save: no change
+Files: js/map3d/map3d.mjs (terrain colours: biome palettes + cross-fade; river banks), js/map3d/nature3d.mjs (border rows: tree line, hedge, reeds, fence and scrap — after T-223), js/career/mapmodel.js (`land.biomes`: region → palette; the border lines as polylines), js/data/city.js (BIOME palettes, border kinds), ARCHITECTURE.md
+Do not: use faction colours on the ground (the hex fill stays the only one, §4.27); move any border or rule; add a draw call per border segment.
+Steps: 1. BIOME palettes (neutral nature tones) per region; the terrain colour = a distance-weighted blend of the nearest biomes over 40–60 m (no seam). 2. River banks: a sand / pebble strip each side of the river, reeds in rows. 3. Border rows along the region lines: Shu–Wei tree line + gravel strip, Wu's dune grass line, the Academy hedge, the Outlaws' fence and scrap.
+Accept: with the hex fill hidden (dev flag) a screenshot shows Shu, Wei, Wu and the Academy apart; no hard colour seam at any region line; tests + lint green.
+QA: screenshots with the tile fill on and off at the Shu–Wei line, the Academy and the river.
+Result:
+
+### [x] T-222: The Shu highlands — the Peak, the Spine, the river; level ground for every facility (owner request)
+Spec: §4.19b          Goldens: unchanged          Save: no change
+Files: js/data/city.js (`CITY.relief`, `reliefAt`, `lineDist`, RELIEF_COST, HIGHLAND_M; random `mountains` gone), js/map3d/map3d.mjs (`landH`, pads levelled, terraces / paddies / quarry stepped, river tint), js/career/mapmodel.js (`land.relief`, `pads`), js/career/city.js (ground cost × height), js/career/hex.js (highland = reliefAt), ARCHITECTURE.md
+Result: one ~110 m Peak NW, the Spine south (55 → 14 m), the river through the reservoir to the south coast; every Shu place / HQ / venue / home / village on a flat pad; terrace shelves; crossing the ridge costs more; 11 highland hexes (was 9). QA: Peak, trail, shrine, Peak HQ screenshots — pads level under the buildings, no errors; tests 124/124.
 
 ### [x] T-221: Your new squad introduces itself (owner request)
 Spec: §10.10b          Goldens: unchanged          Save: no change (`run.story.meet` while pending; a generated scene keeps its steps on `cur.steps`)

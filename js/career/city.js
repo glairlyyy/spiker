@@ -307,14 +307,15 @@ const City = {
     const pts = [from, ...path.map(id => N[id]), to].filter((p, i, A) => !i || p[0] !== A[i - 1][0] || p[1] !== A[i - 1][1]);
     return { pts: pts.map(p => p.slice()), cost };
   },
-  /** Cross-country cost from a to b: the distance, each GROUND_STEP-long stretch × GROUND_COST of the region at its middle. */
+  /** Cross-country cost from a to b: the distance, each GROUND_STEP-long stretch × GROUND_COST of the region at its middle × the climb (reliefAt). */
   ground(a, b) {
     const L = Math.hypot(b[0] - a[0], b[1] - a[1]),
       n = Math.max(1, Math.ceil(L / GROUND_STEP));
     let c = 0;
     for (let i = 0; i < n; i++) {
       const t = (i + 0.5) / n;
-      c += (L / n) * (GROUND_COST[City.regionAt([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t])] ?? 1);
+      const p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+      c += (L / n) * (GROUND_COST[City.regionAt(p)] ?? 1) * (1 + reliefAt(p) / RELIEF_COST); // climbing the Peak / Spine costs more
     }
     return c;
   },
