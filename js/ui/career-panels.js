@@ -72,6 +72,8 @@ function placePanel(run, id) {
         .join('')}</div>${c.ok || c.why === 'pick a teammate' ? '' : `<p class="small mute">${esc(c.why)}</p>`}`,
       row: [travel].filter(Boolean)
     });
+  const study = studyPanel(run, sid, base, travel); // the tutor / a bookstore (T-230)
+  if (study) return study;
   const label = s.act === 'rest' ? 'Rest' : s.act === 'rec' ? 'Relax' : 'Go';
   return placeCard({
     ...base,
@@ -315,7 +317,8 @@ function venuePanel(run, id) {
     kind: 'Venue',
     title: `🏟 ${esc(v.name)}`,
     tags: City.venue(run) === id ? [ptag('This week: your match', '', 'sel')] : [],
-    body: kv(v.held.map((h, i) => [i ? '' : 'Held here', esc(h)]))
+    body: kv(v.held.map((h, i) => [i ? '' : 'Held here', esc(h)])),
+    ...courtCard(run, id) // court matches (T-229)
   });
 }
 function hqPanel(run, ti) {

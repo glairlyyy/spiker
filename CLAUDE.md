@@ -19,7 +19,8 @@ Code home: https://github.com/glairlyyy/spiker (branch main). Containers are tem
 - **Build chat** (implementer model) writes code, keeps `ARCHITECTURE.md` current, and ticks tasks. It does not
   edit `spec.md`, `lore.md` or add/reword tasks; it may only change a task's status line and its `Result:` / `Question:` lines.
 
-Exactly one build chat works at a time (no parallel implementers, so no merge conflicts).
+Exactly one build chat works at a time, unless tasks.md's **Now** assigns agents by file ownership (owner, 2026-10-05): then each
+agent edits only the files it owns, and on an artifact publish refusal re-reads the refused files, re-applies its edit and publishes again.
 
 **Sync (the build chat has no GitHub access):** the artifact is the hand-off. The build chat starts from the artifact
 (or its own container if it has the latest), works, and publishes every changed file to the artifact. It never

@@ -146,7 +146,8 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   REVEAL_R). Click any land to travel. **Walking speed** (owner, 2026-10-05, T-214): a small `Walk 1× 2× 4×` selector at
   the map's top right (usable mid-walk; remembered per browser, `sns_walk`) speeds up your walk on the map — display only.
 - §4.5 Week: 7 days. Each action (train/rest/outing/scout) = 1 day + trip (free within NEAR_R, 1 day per TRIP_DAY,
-  max 3; routing §4.18). Nothing spills over; nights free; only the player ends the week. No random training events (owner, 2026-10-05: every variant removed).
+  max 3; routing §4.18). **NEAR_R covers a faction's district** (owner, 2026-10-05, T-228): 110 → 280 design units (× MAP_SCALE),
+  so hopping between one faction's places is free (Wei, Shu all; Wu all but its far ends); crossing the island still costs days. Nothing spills over; nights free; only the player ends the week. No random training events (owner, 2026-10-05: every variant removed).
   Day session = DAY_GAIN (0.25) of the old weekly gain.
 - §4.6 Street battles (CLASH, ~45 % of training weeks, popup at week start): watch (scouts both) or fight for a side
   (win +standing, lose −; other side always −). `run.rep` = standing per region. Fighting = real match (`Fight.clash`):
@@ -199,6 +200,17 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   - Basic SKILLS (no `tech`) bought with skill points. Techniques (`tech`) learned in play by chance — by doing (e.g. 3+
     blocks → chance at Read Block) and by facing a user; chance grows with wit and opponent strength; active once
     stats meet `req`. Scouting shows a team's techniques.
+- §4.14b Study (owner, 2026-10-05, T-230) — wit for money, a late-season money sink:
+  - **Private tutor** (one per major: Wei, Wu, Shu; a SPOTS place, act `tutor`): a day (+ trip) of Wit training at facility
+    Lv 5 (the region's price and quality apply as for training), plus your role's key stat (KEYSTAT) as the side gain (base 2).
+    Fee `STUDY.tutor.fee` 150 + `step` 40 per session you have ever booked (`run.study.tutor`); **once a week**
+    (`run.study.week`); stamina as Wit training. Training caps apply (TRAIN_CAP for the key stat, the wit cap for wit).
+  - **Bookstore** (one per major, act `books`): a day (+ trip), no stamina, `STUDY.books.fee` 60 × the region's price. The
+    store stocks 3 of `BOOKS` each week (picked by a hash of week + store — no random draws); you buy one, read it that day:
+    wit XP = half a Wit day-session (Lv 1) × the book's `mul`, plus its `side` stat XP if it has one. Each book read once
+    per run (`run.study.read`). ~12 books: scouting reports, a famous setter's memoir, a blocking manual, an old rulebook…
+    (titles follow lore.md's voices). A store with nothing left you haven't read: "Nothing new this week."
+  - Both are SPOTS places with pins like the others; names follow lore.md's voice list.
 - §4.15 Challenges (make a no-training run possible):
   - At a club HQ: 1 day + trip; you set a money **stake** (0 ok). Street-battle flow (watch / Sim ⏭). Your side:
     Academy squad, or your club's squad (not the target); alone → hired street players (~50 rating, cost money).
@@ -361,6 +373,20 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   Final Cup + Wei evaluations · **Academy Hall** (campus): Academy evaluations · **Beach Stadium** (Wu sand, faded
   relic): Wu evaluations · **Highland Court** (hillside by Shu Peak HQ, stone terraces): Shu evaluations. Each also
   dresses the 3D match court (§9.11).
+- §4.21a Court matches (owner, 2026-10-05, T-229): at any official venue, in a training week (not a cup / evaluation week),
+  **Play a court match** — a day (+ trip) and an entry fee, three tiers on the venue card (`COURT`):
+  | Tier  | Fee  | Opponents' OVR             | Ace chance | Win prize    | Win fans |
+  | Open  | $20  | league mean of the week −5 | 3 %        | 2.5 × fee    | +20      |
+  | Pro   | $80  | league mean                | 6 %        | 2.5 × fee    | +40      |
+  | Elite | $200 | league mean +5             | 15 %       | 2.5 × fee    | +80      |
+  - Opponents: 6 league players (clubs + reserves; never your side, never you) nearest the target OVR — a random pick of the
+    nearest 12 — lent like a street crew (`Eval.squad` / `lend` / `restore`), named "<venue> regulars". An ace: one seat goes
+    to a named ace / the rival (§4.24) not on your side; the card says so after the draw ("An ace showed up: Reina").
+  - Your side: the challenge side (`Fight.challengeSide`: club squad / Academy squad / hired crew — whose cost is paid).
+  - Play or Sim ⏭ (the T-227 result card either way). Every match: stamina `COURT.sta` 10, match XP (§4.14, the gap factor
+    makes Elite pay), technique learning, `Cup.record(run, m, 'court')`.
+  - Win: the prize and the fans. **Lose: only the fee** — no mood, no extra stamina, no standing, no Gazette jab; injury roll
+    at **half** the street risk (`Fight.injuryRisk` × `COURT.injury` 0.5 — the venue has medics). Injured → no court matches (Fight.ban).
 - §4.22a The island at the start (owner, 2026-10-05) **[built, T-226]**: every generated player (clubs, reserves, the Academy
   squad) starts at OVR 40–50 — the rolled OVR (~55–78) mapped linearly onto 40–50 (`CAREER.npcStart`), order and stat shape
   kept; the named keep their curves. Street hustlers 35–60. The league then grows faster from lower: mean ~65 at week 12,

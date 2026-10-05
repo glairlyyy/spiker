@@ -31,6 +31,81 @@ cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git 
 
 ## Now
 
+**Balance batch (owner, 2026-10-05): two build agents at once, by file ownership — never edit a file the other owns.**
+The shared seams are already in place (spec chat): index.html entries, stubs `js/career/court.js` (`Court`),
+`js/career/study.js` (`Study.acts`), `js/ui/career-court.js` (`courtCard`), `js/ui/career-study.js` (`studyPanel`),
+`tests/court.test.js` / `tests/study.test.js` (in tests/run.js), the hooks in `venuePanel` / `placePanel` (career-panels.js)
+and `City.day` (city.js), MKIND `court` (sheet-season.js). Neither agent edits career-panels.js, index.html, tests/run.js,
+ARCHITECTURE.md (put the structural note in your Result line; the spec chat merges it) or another agent's task text.
+tasks.md: change only your own task's status and Result lines, each with a targeted replace; if the artifact refuses
+your publish because the other agent published first, re-read the refused files from the artifact, re-apply your edit and publish again.
+
+- **Agent A** — T-229. Owns: js/career/court.js, js/ui/career-court.js, js/data/career.js, tests/court.test.js.
+- **Agent B** — T-228 then T-230. Owns: js/data/city.js, js/career/city.js, js/career/study.js, js/ui/career-study.js,
+  js/career/run.js, js/career/mapmodel.js, tests/study.test.js, tests/map.test.js, tests/people.test.js.
+
+### [ ] T-228: Hops inside a faction are free — NEAR_R covers its district (Agent B)
+Spec: §4.5          Goldens: unchanged          Save: no change
+Goal: training in Shu or Wu no longer loses a day per facility hop.
+Files: js/data/city.js (NEAR_R), tests/map.test.js / tests/people.test.js only if an assertion moves
+Do not: change TRIP_DAY, TRIP_MAX, REVEAL_R or road costs; add half-days.
+Steps:
+1. `NEAR_R = 280 * MAP_SCALE` (was 110); fix its comment.
+2. Run the full tests; if the bond calibration (people.test) moves, rebase it like T-226 did and say by how much.
+Accept:
+- Trip days between one faction's training places: Wei all 0, Shu all 0, Wu ≥ 4 of 6 pairs 0 (headless, seed 7).
+- Crossing to another faction's far side still costs ≥ 1 day; the ghost slots and Travel buttons agree.
+QA: career run → train at two Shu places on consecutive days: no trip slot between them.
+Result:
+
+### [ ] T-229: Court matches at the official venues (Agent A)
+Spec: §4.21a (+ §4.14, §4.15)          Goldens: unchanged (engine)          Save: no change (mlog kind 'court')
+Goal: a venue card offers Open / Pro / Elite court matches: a real match for XP and money whose loss costs only the fee.
+Files: js/data/career.js (COURT), js/career/court.js, js/ui/career-court.js, tests/court.test.js
+Do not: edit fight.js / cup.js / career-map.js / career-panels.js (call Fight, Eval, Cup, City, Growth, Skills, simCareer,
+watchCareer, mapAfter as they are); touch the street hustle; draw R() anywhere but the opponent draw and the ace roll.
+Steps:
+1. `COURT = { tiers: [{ id, name, fee, off, ace, fans }…], prize: 2.5, sta: 10, injury: 0.5, pool: 12 }` per §4.21a.
+2. `Court.why(run, id)` ('' = can play): training week, not injured (Fight.ban), time (City.noTime), money ≥ fee + hired crew.
+   `Court.target(run, tier)`: the league mean OVR of the week + off. `Court.fixture(run, id, tier)` → the match fixture
+   (opponents per §4.21a, ace roll, your side, `Cup.prepare` as Fight.clash does; onFinish → `Court.result`, onLeave → Eval.restore).
+3. `Court.result(run, m, id, tier)`: City.go to the venue (day track `{ k: 'battle', label: 'Court' }`), fee, stamina,
+   `Cup.record(run, m, 'court')`, Growth.matchXp, Skills.tryLearn, win → prize + fans; Fight.injure(run, risk × COURT.injury);
+   run.lastFight; diary line; save.
+4. `courtCard(run, id)` → `{ after }`: a "Court match" block with the three tiers as buttons (`Open · $20 · 1d`), Sim ⏭
+   (CW.courtSim toggle or a second button), disabled with Court.why as tip; the ace line once drawn.
+   `mapCourt(id, tier, sim)`: watchCareer(fx) or `mapAfter(RUN, null, simCareer(fx))`.
+5. Tests: fixture sides and target band; a loss costs only the fee (mood, standing, fans unchanged); win pays 2.5 × fee;
+   injury risk = half the street risk; no matches in eval / cup weeks; mlog kind 'court'.
+Accept:
+- Headless: Elite opponents average within ±3 of target; ace in ~15 % of 400 Elite draws; Open in ~3 %.
+- Sim and watched both end on the T-227 card with XP rows.
+QA: career run → a venue → Pro, Sim ⏭ → result card; then Open, watched → result card.
+Result:
+
+### [ ] T-230: Study — a private tutor and bookstores (Agent B, after T-228)
+Spec: §4.14b          Goldens: unchanged          Save: no change (new `run.study` via the defaults table, no RUN_VERSION bump)
+Goal: wit has two more sources and late-season money has somewhere to go.
+Files: js/data/city.js (SPOTS × 6, STUDY, BOOKS), js/career/study.js, js/career/city.js (City.can, City.dayWhat; City.day
+already hands acts `tutor` / `books` to `Study.day`), js/career/run.js (defaults: `study: { tutor: 0, week: -1, read: [] }`),
+js/career/mapmodel.js (only if the new places need a lot / keep-out), js/ui/career-study.js, tests/study.test.js
+Do not: add a building kind in js/map3d (use the generic place pin; ask if that looks wrong); draw R() (book stock is a hash).
+Steps:
+1. Data: 3 tutors + 3 bookstores in SPOTS (region wei / wu / shu, on land in each faction's town, names from lore.md's voices),
+   `STUDY = { tutor: { fee: 150, step: 40, side: 2 }, books: { fee: 60, stock: 3, xp: 0.5 } }`, `BOOKS` ~12 `{ id, name, mul, side? }`.
+2. `Study.can(run, id)` → { ok, why } (fee, once a week for the tutor, nothing new on the shelf); `Study.stock(run, id)` (hash);
+   `Study.day(run, id)` → diary line (City.arrive, fee, the XP via Training.addXp / Training.train-style session at Lv 5 for the tutor).
+   City.can calls Study.can for those acts; City.dayWhat → `{ k: 'train', label: 'Tutor' | 'Read', stat: 'wit' }`.
+3. `studyPanel(run, id, base, travel)`: placeCard with the fee and gains on the button (`Book a session · $230 · 1d`); the
+   bookstore lists this week's 3 titles as buttons (read ones struck through, disabled).
+4. Tests: fee climbs per session; once a week; book read once; stock is stable for a week and changes the next; no R() draws.
+Accept:
+- A tutor session gives ≥ a Lv 5 Wit day's wit and the key-stat side gain; a book gives half a Lv 1 day × mul.
+- Headless 28-week play (harness playRun or a scripted run that books the tutor weekly from week 10): report money at
+  weeks 20 / 28 before and after.
+QA: career run → each new place's card; book a session; read a book; the day track shows the slot.
+Result:
+
 Owner request 2026-10-05 (spec §9.12 motion; design system `motion.md`, Motion card): T-216 → T-219. UI only; goldens unchanged.
 
 ### [x] T-227: A result card after every match, simmed ones too, with the XP each stat got (owner request)

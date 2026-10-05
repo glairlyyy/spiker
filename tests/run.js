@@ -2,7 +2,7 @@
 // Run: node tests/run.js            (all tests)
 //      node tests/run.js --quick    (skip the slow statistical tests: test.slow)
 //      node tests/run.js --update   (re-record the engine golden hashes after an intended gameplay change)
-// The tests live in the area files below (engine, career, people, map, hex, map3d, cup); harness.js has the loader, runner and helpers.
+// The tests live in the area files below (engine, career, people, map, hex, map3d, cup, court, study); harness.js has the loader, runner and helpers.
 const fs = require('fs');
 const { results, record, update, GOLDEN } = require('./harness');
 require('./engine.test');
@@ -12,6 +12,8 @@ require('./map.test');
 require('./hex.test');
 require('./map3d.test');
 require('./cup.test');
+require('./court.test');
+require('./study.test');
 
 // ---------- report ----------
 let fail = 0,

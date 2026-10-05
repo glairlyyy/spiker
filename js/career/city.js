@@ -165,6 +165,7 @@ const City = {
   day(run, id, hard, mate) {
     if (!City.can(run, id, mate).ok) return '';
     if (['ramen', 'arcade', 'street'].includes(SPOTS[id].act)) return City.outing(run, id, mate);
+    if (Study.acts.includes(SPOTS[id].act)) return Study.day(run, id); // the tutor / a bookstore (T-230)
     const s = SPOTS[id],
       cost = City.price(run, id),
       out = [];
