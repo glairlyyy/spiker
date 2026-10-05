@@ -112,6 +112,69 @@ const MapModel = {
           if (!lot && !MapModel.inAirport(p)) add(N.street.kind, p, id);
         }
     }
+    // border rows (spec §4.19d, T-224; BORDERS kinds, NATURE.rows spacing): a tree line on the Shu side of the Shu–Wei line, reeds
+    // along both river banks, dune grass on the inland side of the dune line, a hedge round the Academy, fence and scrap round the
+    // Outlaws' patch. Same keep-outs as the scatter; a fence panel turns along its line (r).
+    const RW = N.rows,
+      walk = (pts, step, f) => {
+        for (let i = 0; i + 1 < pts.length; i++) {
+          const A = pts[i],
+            B = pts[i + 1],
+            L = Math.hypot(B[0] - A[0], B[1] - A[1]);
+          for (let s = step / 2; s < L; s += step)
+            f(
+              [A[0] + ((B[0] - A[0]) * s) / L, A[1] + ((B[1] - A[1]) * s) / L],
+              (B[0] - A[0]) / L,
+              (B[1] - A[1]) / L,
+              `${i}|${Math.round(s)}`
+            );
+        }
+      },
+      ring = (e, n) =>
+        Array.from({ length: n + 1 }, (_, i) => {
+          const t = (i / n) * Math.PI * 2,
+            a = ((e.rot || 0) * Math.PI) / 180,
+            u = Math.cos(t) * e.rx,
+            v = Math.sin(t) * e.ry;
+          return [e.x + u * Math.cos(a) - v * Math.sin(a), e.y + u * Math.sin(a) + v * Math.cos(a)];
+        }),
+      put2 = (k, p, id, r) => {
+        if (!City.onLand(p) || blocked(p) || hstr(`${id}|gap`) < RW.gap) return;
+        add(k, p, id);
+        if (r != null) out[out.length - 1].r = Math.round(r * 100) / 100;
+      };
+    for (const b of MapModel.borders()) {
+      if (b.row === 'treeline')
+        walk(b.pts, RW.tree, (p, tx, ty, id) => {
+          const side = City.regionAt([p[0] - ty * 10, p[1] + tx * 10]) === 'shu' ? 1 : -1;
+          for (let j = 0; j < 2; j++) {
+            const q = [p[0] - ty * side * (8 + 9 * j), p[1] + tx * side * (8 + 9 * j)];
+            if (City.regionAt(q) === 'shu' && reliefAt(q) <= N.treeline) put2('pine', q, `bt${id}|${j}`);
+          }
+        });
+      if (b.row === 'reeds')
+        walk(b.pts, RW.reed, (p, tx, ty, id) => {
+          for (const side of [-1, 1]) {
+            const o = b.w * 0.3 + 3,
+              q = [p[0] - ty * side * o, p[1] + tx * side * o];
+            if (reliefAt(q) <= N.treeline) put2('reed', q, `br${id}|${side}`);
+          }
+        });
+      if (b.row === 'dunegrass')
+        walk(b.pts, RW.dune, (p, tx, ty, id) => {
+          const side = MapModel.onSand([p[0] - ty * 6, p[1] + tx * 6]) ? -1 : 1,
+            q = [p[0] - ty * side * 5, p[1] + tx * side * 5];
+          if (City.regionAt(q) === 'wu' && !MapModel.onSand(q)) put2('dune', q, `bd${id}`);
+        });
+    }
+    const aR = HEX.size * BIOME.academyR * RW.hedgeAt;
+    walk(ring({ x: CITY.park.x, y: CITY.park.y, rx: aR, ry: aR }, Math.round((2 * Math.PI * aR) / RW.hedge)), RW.hedge, (p, tx, ty, id) =>
+      put2('hedge', p, `bh${id}`)
+    );
+    if (CITY.minors.outlaws)
+      walk(ring(CITY.minors.outlaws, 48), RW.fence, (p, tx, ty, id) =>
+        hstr(`bf${id}|s`) < RW.scrap ? put2('scrap', p, `bf${id}`) : put2('fence', p, `bf${id}`, Math.atan2(-ty, tx))
+      );
     MapModel.natCache = { lots, items: out };
     return out;
   },
@@ -204,9 +267,33 @@ const MapModel = {
       lots: MapModel.lots(run),
       landmarks: MapModel.landmarks(run),
       nature: MapModel.nature(run),
-      wild: MapModel.wild(run)
+      wild: MapModel.wild(run),
+      biomes: MapModel.biomes(),
+      bioPal: BIOME,
+      borders: MapModel.borders()
     };
   },
+  /**
+   * Biome ground (spec §4.19d): region → its BIOME palette and shape — the majors' polygons, the minors' ellipses and the
+   * Academy's lawn (a disc round the park). The renderer cross-fades between them; no faction colour.
+   */
+  biomes: () => [
+    ...MAJORS.map(id => ({ id, poly: CITY[id], pal: BIOME[id] })),
+    { id: 'open', x: CITY.park.x, y: CITY.park.y, rx: HEX.size * BIOME.academyR, ry: HEX.size * BIOME.academyR, rot: 0, pal: BIOME.open },
+    ...Object.entries(CITY.minors)
+      .filter(([id]) => BIOME[id])
+      .map(([id, e]) => ({ id, x: e.x, y: e.y, rx: e.rx, ry: e.ry, rot: e.rot || 0, pal: BIOME[id] }))
+  ],
+  /**
+   * The region lines as polylines (spec §4.19d; BORDERS kinds): the Shu–Wei line (the points the two polygons share, in
+   * Shu's order), the dune line and the river. The Academy's and the Outlaws' rings are their biome shapes.
+   */
+  borders: () =>
+    [
+      { kind: 'shuWei', pts: CITY.shu.filter(p => CITY.wei.some(q => q[0] === p[0] && q[1] === p[1])) },
+      { kind: 'dunes', pts: CITY.dunes },
+      ...(CITY.relief && CITY.relief.river ? [{ kind: 'river', pts: CITY.relief.river.line, w: CITY.relief.river.w }] : [])
+    ].map(b => ({ ...b, ...BORDERS[b.kind] })),
   /** Every place and club HQ with its landmark kind (LANDMARK): [{ id, at, kind, region }]. Your home sits where your housing is. */
   landmarks: run => [
     ...Object.keys(SPOTS).map(id => ({ id, at: City.at(run, id), kind: LANDMARK[id], region: City.region(run, id) })),

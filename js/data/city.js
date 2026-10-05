@@ -894,6 +894,8 @@ const NATURE = {
   },
   quarry: { p: 0.3, kinds: [['rock', 1]] },
   street: { every: 16, off: 7, kind: 'broad' },
+  /** Border rows (spec §4.19d, T-224): spacing along each line (map units), the share left as gaps, the hedge's ring (× the lawn disc), scrap share. */
+  rows: { tree: 13, reed: 6, dune: 8, hedge: 6, hedgeAt: 0.85, fence: 7, scrap: 0.25, gap: 0.12 },
   /** Animals: where (an anchor), how many, the loop radius (map units), height above the ground (m). */
   life: [
     { kind: 'bird', at: 'peak', n: 6, r: [30, 80], up: 26 },
@@ -1059,3 +1061,36 @@ function reliefAt(p) {
     r = lineDist(p, R.river.line);
   return Math.max(0, Math.max(peak, spine) - R.river.d * Math.exp(-((r.d / R.river.w) ** 2)) * (r.d < R.river.w * 3 ? 1 : 0));
 }
+/**
+ * Biome ground (spec §4.19d, T-224): neutral nature tones per region — never the faction colour (the hex fill carries that).
+ * a / b = two tones mixed by a soft noise (Wei: paving grey / trimmed lawn in patches, `patch` m across); Shu climbs from
+ * moss to rock grey between `rock[0]` and `rock[1]` m of height. Between two biomes the ground cross-fades over `fade` m
+ * (minors over `fadeMinor`); the Academy's lawn is a disc of `academyR` hex sizes round the park.
+ * Strips: `gravel` along the Shu–Wei line (`gravelW` m wide), `bank` (sand / pebble) beside the river (`bankW` × its width).
+ */
+const BIOME = {
+  fade: 50,
+  fadeMinor: 18,
+  academyR: 2.3,
+  shu: { a: '#4f7d3c', b: '#5a8645', rock: [10, 48], rockC: '#807b70', patch: 30 },
+  wei: { a: '#8b8c84', b: '#6f9650', patch: 16 },
+  wu: { a: '#aaa56a', b: '#bcb078', patch: 26 },
+  open: { a: '#68b046', b: '#73ba4f', patch: 22 },
+  outlaws: { a: '#86775e', b: '#6f6a5c', patch: 8 },
+  gloria: { a: '#6aa253', b: '#7aae5c', patch: 12 },
+  gravel: '#a39a86',
+  gravelW: 4,
+  bank: '#c2b58f',
+  bankW: 0.3
+};
+/**
+ * Region border kinds (spec §4.19d): the ground strip (BIOME) and the row of nature objects along each line. The rows are
+ * drawn by the nature layer (T-223, js/map3d/nature3d.mjs) — not built yet: the model carries the lines (`land.borders`).
+ */
+const BORDERS = {
+  shuWei: { strip: 'gravel', row: 'treeline' },
+  river: { strip: 'bank', row: 'reeds' },
+  dunes: { row: 'dunegrass' },
+  academy: { row: 'hedge' },
+  outlaws: { row: 'fence' }
+};

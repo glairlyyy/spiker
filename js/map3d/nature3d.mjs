@@ -3,7 +3,8 @@
 // Display only: placement is plain data from MapModel (string hashes, no randoms); one InstancedMesh per shape, low-poly,
 // two or three vertex tones per shape × an instance tint (kind tone × shade × the fog's dimming).
 //   createNature(scene, heightAt) → { sync(model), tick(dt, t), count(), dispose() }
-// Draw calls: 9 (pine, broad, blossom, palm, rock, bush + tea, tuft + dune grass, bamboo, log) + 3 animals (bird, beast, heron).
+// Draw calls: 10 (pine, broad, blossom, palm, rock + scrap, bush + tea + hedge, tuft + dune grass + reeds, bamboo, log, fence) + 3 animals
+// (bird, beast, heron). The border rows (T-224) come in model.land.nature like the rest.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAP_M, fogFactor } from './geo3d.mjs';
@@ -65,6 +66,14 @@ const SHAPE = {
         part(cone(0.55, 1.6, 4).translate(x, h - 0.3, z), '#6e9a3e')
       ])
     ),
+  fence: () =>
+    merge([
+      box(3.4, 0.14, 0.08, 0, 0.55, 0, '#8d8a84'),
+      box(3.4, 0.14, 0.08, 0, 1.15, 0, '#8d8a84'),
+      box(0.14, 1.5, 0.14, -1.6, 0, 0, '#6e5a46'),
+      box(0.14, 1.5, 0.14, 1.6, 0, 0, '#6e5a46'),
+      box(3.2, 0.9, 0.04, 0, 0.35, 0, '#9a8f7c')
+    ]),
   log: () =>
     part(
       cyl(0.28, 0.32, 3.2, 6)
@@ -85,7 +94,12 @@ const KIND = {
   tuft: { shape: 'tuft', tint: [0.72, 0.95, 0.55], size: 1.2 },
   dune: { shape: 'tuft', tint: [1.05, 0.98, 0.72], size: 1.3 },
   bamboo: { shape: 'bamboo', tint: [1, 1, 1], size: 1, shadow: true },
-  log: { shape: 'log', tint: [1, 1, 1], size: 1 }
+  log: { shape: 'log', tint: [1, 1, 1], size: 1 },
+  // border rows (spec §4.19d, T-224)
+  reed: { shape: 'tuft', tint: [0.6, 0.85, 0.45], size: 1.5, flat: 1.9 },
+  hedge: { shape: 'bush', tint: [0.75, 0.95, 0.7], size: 1.05, flat: 0.85 },
+  fence: { shape: 'fence', tint: [1, 1, 1], size: 1 },
+  scrap: { shape: 'rock', tint: [1.05, 0.72, 0.5], size: 0.75, flat: 0.8 }
 };
 /** Animals (m): a bird (two wing triangles round a tiny body), a four-legged beast (deer / dog / cat by scale), a heron. */
 const beastGeo = () =>

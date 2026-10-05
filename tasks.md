@@ -42,14 +42,14 @@ Accept: Shu reads as forest → rock up the Peak, Wu has palms and dune grass, W
 QA: screenshots over the Peak, the Wu beach, Wei's park and the Academy at the default zoom; frame time before / after.
 Result: `NATURE` data + `MapModel.nature` / `wild` (plain data, hashes) + js/map3d/nature3d.mjs. ~1.9k instances: Shu pine forest thinning to rock / scree above 62 m, bamboo by the villages, tea on the terraces; Wei street + park trees; Wu scrub, palms / dune grass / drift logs on the sand; Academy lawn trees. Animals: 6 birds round the Peak, 6 gulls over the harbor, a heron on the river, 4 deer, 3 dogs, an Old Town cat. Budget: +10 draw calls, +45k tris (QA view); swiftshader frame +10–12 % (software GL, not representative). Not done: density by zoom. QA: Peak, Peak HQ, Wu beach, Wei, Academy screenshots; no errors; tests 125/125.
 
-### [ ] T-224: Natural borders and biome ground that fades
+### [x] T-224: Natural borders and biome ground that fades
 Spec: §4.19d          Goldens: unchanged          Save: no change
 Files: js/map3d/map3d.mjs (terrain colours: biome palettes + cross-fade; river banks), js/map3d/nature3d.mjs (border rows: tree line, hedge, reeds, fence and scrap — after T-223), js/career/mapmodel.js (`land.biomes`: region → palette; the border lines as polylines), js/data/city.js (BIOME palettes, border kinds), ARCHITECTURE.md
 Do not: use faction colours on the ground (the hex fill stays the only one, §4.27); move any border or rule; add a draw call per border segment.
 Steps: 1. BIOME palettes (neutral nature tones) per region; the terrain colour = a distance-weighted blend of the nearest biomes over 40–60 m (no seam). 2. River banks: a sand / pebble strip each side of the river, reeds in rows. 3. Border rows along the region lines: Shu–Wei tree line + gravel strip, Wu's dune grass line, the Academy hedge, the Outlaws' fence and scrap.
 Accept: with the hex fill hidden (dev flag) a screenshot shows Shu, Wei, Wu and the Academy apart; no hard colour seam at any region line; tests + lint green.
 QA: screenshots with the tile fill on and off at the Shu–Wei line, the Academy and the river.
-Result:
+Result: `BIOME` palettes + `BORDERS` kinds (city.js), `land.biomes` / `land.borders` / `bioPal` (mapmodel); terrain = majors cross-faded over 50 m, Academy lawn disc + minors over 18 m, Shu moss → rock with height, gravel strip on the Shu–Wei line, river sand / pebble banks; border rows in MapModel.nature (`NATURE.rows`): Shu tree line, river reeds, dune grass, Academy hedge, Outlaws fence + scrap (nature3d: reed / hedge / fence / scrap kinds, +1 draw call); dev `MapView.m3.hexFill(false)` / `?nohex`. QA: fill off at overview → Shu forest moss, Academy bright lawn, Wu straw, Wei paving grey, no seam; 2306 nature items, 210 draw calls; tests 125/125.
 
 ### [x] T-222: The Shu highlands — the Peak, the Spine, the river; level ground for every facility (owner request)
 Spec: §4.19b          Goldens: unchanged          Save: no change

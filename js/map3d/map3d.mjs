@@ -1,6 +1,6 @@
 // The 3D island map (three.js). Draws a MapModel (see js/career/mapmodel.js) as low-poly terrain with water, a fixed
 // tilted camera and pan / zoom, and reports clicks as map points.
-//   create(onIdle) → { mount(el, model, on), update(model), select(id), dispose(), heightAt(x, z), info() }
+//   create(onIdle) → { mount(el, model, on), update(model), select(id), dispose(), heightAt(x, z), info(), hexFill(on) }
 // The player's avatar (avatar3d.mjs) stands at model.you.at and walks when it changes; the camera follows it.
 // Units: map (x, y) → world (x·MAP_M, 0, y·MAP_M) metres (1 map unit = 0.5 m). One renderer and canvas live across
 // re-mounts (the career screen re-creates its #mapwrap each render); the view (target, distance) survives them.
@@ -101,6 +101,66 @@ function buildTerrain(model) {
           B: new THREE.Color(t.b)
         };
       }),
+    // biome ground (spec §4.19d, T-224): each region's neutral palette, cross-faded over BIOME.fade m at its edges
+    BIO = L.bioPal || {},
+    fadeM = (BIO.fade || 50) / 2,
+    fadeN = (BIO.fadeMinor || 18) / 2,
+    biomes = (L.biomes || []).map(b => ({
+      ...b,
+      poly: b.poly ? w(b.poly) : null,
+      x: (b.x || 0) * MAP_M,
+      z: (b.y || 0) * MAP_M,
+      rx: (b.rx || 1) * MAP_M,
+      rz: (b.ry || 1) * MAP_M,
+      ca: Math.cos((-(b.rot || 0) * Math.PI) / 180),
+      sa: Math.sin((-(b.rot || 0) * Math.PI) / 180),
+      A: new THREE.Color(b.pal.a),
+      B: new THREE.Color(b.pal.b),
+      R: b.pal.rockC ? new THREE.Color(b.pal.rockC) : null
+    })),
+    majors = biomes.filter(b => b.poly),
+    minorsB = biomes.filter(b => !b.poly),
+    gravelLine = ((L.borders || []).find(b => b.kind === 'shuWei') || { pts: [] }).pts.map(p => [p[0] * MAP_M, p[1] * MAP_M]),
+    gravelC = new THREE.Color(BIO.gravel || '#a39a86'),
+    bankC = new THREE.Color(BIO.bank || '#c2b58f'),
+    bc = new THREE.Color(),
+    /** A biome's own colour at (x, z, height h): its two tones in soft patches; Shu climbs to rock grey. */
+    bioCol = (b, x, z, h, out) => {
+      const n = vnoise(x / (b.pal.patch || 20) + b.x, z / (b.pal.patch || 20));
+      out.copy(b.A).lerp(b.B, b.id === 'wei' ? smooth(0.42, 0.58, n) : n);
+      if (b.R) out.lerp(b.R, smooth(b.pal.rock[0], b.pal.rock[1], h));
+      return out;
+    },
+    /** The ground colour from the biomes: majors weighted by a smoothstep across their edges, then the minors on top. */
+    biomeAt = (x, z, h, out) => {
+      let sum = 0,
+        best = null,
+        bestD = -Infinity;
+      out.setRGB(0, 0, 0);
+      for (const b of majors) {
+        const sd = inside(x, z, b.poly) ? edgeDist(x, z, b.poly) : -edgeDist(x, z, b.poly),
+          wgt = smooth(-fadeM, fadeM, sd);
+        if (sd > bestD) ((bestD = sd), (best = b));
+        if (wgt <= 0) continue;
+        bioCol(b, x, z, h, bc);
+        out.r += bc.r * wgt;
+        out.g += bc.g * wgt;
+        out.b += bc.b * wgt;
+        sum += wgt;
+      }
+      if (sum > 0) out.multiplyScalar(1 / sum);
+      else if (best) bioCol(best, x, z, h, out);
+      for (const b of minorsB) {
+        const dx = x - b.x,
+          dz = z - b.z,
+          u = dx * b.ca - dz * b.sa,
+          v = dx * b.sa + dz * b.ca,
+          sd = (1 - Math.hypot(u / b.rx, v / b.rz)) * Math.min(b.rx, b.rz),
+          wgt = smooth(-fadeN, fadeN, sd);
+        if (wgt > 0) out.lerp(bioCol(b, x, z, h, bc), wgt);
+      }
+      return out;
+    },
     lakes = [], // vertex indices in each water patch: flattened after the heights are known
     pos = new Float32Array((nx + 1) * (nz + 1) * 3),
     col = new Float32Array((nx + 1) * (nz + 1) * 3),
@@ -171,12 +231,17 @@ function buildTerrain(model) {
       // colour: grass → rock with height, sand on the beach (no faction colour: the hex tiles carry it, spec §4.27)
       if (!land) c.copy(seabed);
       else {
-        c.copy(grass).lerp(rock, smooth(8, 20, h));
+        if (biomes.length) biomeAt(x, z, h, c);
+        else c.copy(grass).lerp(rock, smooth(8, 20, h));
+        if (gravelLine.length > 1)
+          c.lerp(gravelC, 0.8 * (1 - smooth((BIO.gravelW || 4) / 2, (BIO.gravelW || 4) / 2 + 1.5, Math.abs(sideDist(x, z, gravelLine)))));
         c.lerp(sand, 1 - smooth(1, BEACH, d));
         if (sd > -99) c.lerp(sand, 0.95 * smooth(-3, 2, sd)); // the Wu sand
         if (river && typeof lineDist === 'function') {
           const rd = lineDist([x / MAP_M, z / MAP_M], river.line).d / river.w;
-          if (rd < 0.22) c.lerp(riverC, 0.85); // the river off the Peak
+          if (rd < 0.22)
+            c.lerp(riverC, 0.85); // the river off the Peak
+          else c.lerp(bankC, 0.75 * (1 - smooth(0.22 + (BIO.bankW || 0.5) * 0.6, 0.22 + (BIO.bankW || 0.5), rd))); // its sand / pebble banks
         }
         for (const q of dist) if (inside(x, z, q.poly)) c.lerp(tintC.set(q.tint), 0.16);
         for (const q of grounds) {
@@ -281,6 +346,8 @@ export function create(onIdle) {
     cw = 0, // canvas size (px), cached by size() — never read from the DOM per frame
     ch = 0;
 
+  let hexOn = !(typeof location !== 'undefined' && /[?&]nohex\b/.test(location.search));
+  const showHex = () => scene.traverse(o => o.userData && o.userData.hex && (o.visible = hexOn));
   const build = m => {
     terrain = buildTerrain(m);
     mesh = new THREE.Mesh(terrain.geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }));
@@ -518,6 +585,7 @@ export function create(onIdle) {
       town.sync(m);
       nature.sync(m);
       furn.sync(m, on);
+      showHex();
       life.sync(m);
       applyFog(m.fog);
       const want = new Map((m.figures || []).map(f => [f.id, f]));
@@ -551,6 +619,11 @@ export function create(onIdle) {
     /** Your walking speed on the map: ×k (1, 2, 4). */
     setWalk(k) {
       walkK = k > 0 ? k : 1;
+    },
+    /** Dev (QA, spec §4.19d clarity check): show / hide the hex tile fill; `?nohex` starts with it hidden. */
+    hexFill(v) {
+      hexOn = !!v;
+      showHex();
     },
     /** True while your player is walking to a new place (the UI locks its actions until they arrive). */
     busy: walking,

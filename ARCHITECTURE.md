@@ -651,7 +651,13 @@ mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-vie
    canvas that survive `renderCareer()` (each mount re-attaches the canvas into the new `#mapwrap`); it releases itself
    (`onIdle` → `MapView.drop3D`) when its canvas has been detached for 3 s (left the career screen). Terrain: 2 m grid
    over the island box from `land.coast` / Shu region / `land.relief` (the designed highlands: global `reliefAt`, levelled under `land.pads`; terraces stepped; fixed-hash noise, no randoms), vertex colours
-   from region tints; fixed-yaw camera, pitch 55°, wheel zoom 25–420 m, drag pans on the ground plane, a click (< 5 px)
+   from the biome ground (T-224, spec §4.19d: `land.biomes` = MapModel.biomes() — the majors' polygons, the Academy's lawn disc
+   and the minors' ellipses, each with its `BIOME` palette (js/data/city.js; neutral tones, never the faction colour) — majors weighted
+   by a smoothstep across their edges over `BIOME.fade` m, minors laid on top over `fadeMinor`; two tones per biome in a soft value-noise
+   patchwork, Shu climbing to rock grey with height; a gravel strip along the Shu–Wei line and sand / pebble banks beside the river),
+   then the beach sand, district and ground tints; `land.borders` (MapModel.borders(): the Shu–Wei line, the dune line, the river,
+   each with its `BORDERS` strip / row kind) drives the border rows MapModel.nature adds (`NATURE.rows`): pines on the Shu side of the Shu–Wei line, reeds on both river banks, dune grass inland of the dune line, a hedge ring round the Academy, fence panels (turned along the ring) and scrap round the Outlaws — drawn by nature3d.mjs like the scatter (+1 draw call: fence). Dev:
+   `MapView.m3.hexFill(false)` or `?nohex` hides the hex tile fill (the clarity check). Fixed-yaw camera, pitch 55°, wheel zoom 25–420 m, drag pans on the ground plane, a click (< 5 px)
    raycasts to a map point (`toMap`; 1 map unit = `MAP_M` = 0.5 m). The player is `js/map3d/avatar3d.mjs`
    (`createAvatar(scene)`: the default VRM via `loadBase` / `makeVRM`, capsule until loaded): `snap` first, `setTarget` when
    `model.you.at` changes — `setTarget(at, path)` walks the road polyline `model.you.route` (added by `MapView.routed` in js/ui/map-view.js from `City.route(last you.at, you.at)`; the renderer never calls `City`; straight line without it) at 6 m/s over the whole length (trip 1.2–6 s, ramps 0.4 s; faster trips show a ×N badge), facing along the current segment, gait from
