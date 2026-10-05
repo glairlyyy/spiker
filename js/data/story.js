@@ -178,6 +178,26 @@ const SCENES = {
     ]
   }
 };
+/**
+ * A new squad introduces itself (owner, 2026-10-05; Story.meetSteps): the opening diary line, one line per teammate by their
+ * first trait (the n-th teammate with the same trait gets the n-th line), and the closing diary line. Hints, never the trait's name.
+ */
+const MEET = {
+  academy: 'The Academy squad. Five strangers who got stuck with me, same as I got stuck with them.',
+  club: '{club}. New shirt, new faces.',
+  close: "Names first. The rest I'll learn on court.",
+  plain: ['Hey. Welcome.', 'Good to meet you.'],
+  trait: {
+    proud: ["I don't come second. Remember that.", "Try to keep up. Most people here don't."],
+    loyal: ["You're one of us now. That means something here.", 'Stick with the squad and the squad sticks with you.'],
+    jealous: ["New faces always get the attention. We'll see if it lasts.", 'Funny. Nobody gave me a welcome like this.'],
+    warm: ['Good to have you. Shout if you need anything.', 'Welcome! We eat together after practice — come.'],
+    cynical: ["Don't unpack yet. People don't last long here.", "Another one. Let's see how long this lasts."],
+    reckless: ["If it's in the air, it's mine. You'll get used to it.", "Fast and hard, that's how I play. Keep up."],
+    calculating: ["I've read your numbers. We'll see if they mean anything.", "Show me what you're good for and I'll use it."],
+    steady: ['Practice is at seven. Every day.', "Do the work and we'll get along fine."]
+  }
+};
 /** Your flatmate in the Student flat (lore §6): the story's guide for the first weeks. A person for the box's portrait and the map. */
 const GUIDE = {
   id: 'senior',

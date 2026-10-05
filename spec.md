@@ -698,6 +698,11 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
     `run.story = {seen, flags}` via RUN_DEFAULTS (no version bump). No randoms; Story mode only (Endless skips).
   - Library: none needed. Ink (inkjs, MIT, on jsDelivr) was considered for branching scripts; not now — the scenes
     are short, and plain JS data keeps saves, flags and tests in our own format. Revisit if scenes grow long.
+- §10.10b Squad introductions (owner, 2026-10-05) **[built, T-221]**: every time you join a squad — the Academy squad at
+  the start (right after the intro) and every club you sign with — the next hub plays a short scene: a diary line ("The
+  Academy squad. Five strangers…" / "{club}. New shirt, new faces."), then each teammate in turn (captain first, the bench
+  last; their portrait and name) says their role (captain / on the bench) and one line in their first trait's voice (two
+  lines per trait, `MEET`; hints, never the trait's name), then a closing diary line. Once per squad; Story mode only.
 - §10.10a The guide: Kaede (owner, 2026-10-04) **[built, T-187–T-188]**. No tutorial voice (lore §7): the first weeks are
   taught by a person — **Sanada Kaede**, your flatmate in the Student flat (lore §6). Story mode only.
   - **Meeting**: the intro ends with a normal first meeting at the flat (name, house rules, "last year of U21 for me"),

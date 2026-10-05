@@ -51,6 +51,51 @@ const Story = {
     String(t).replace('{role}', ROLE_NAME[Run.you(run).role].toLowerCase()).replace('{key}', STATNAME[KEYSTAT[Run.you(run).role]]),
   /** Index of step `g` (an index or a step id) in scene sid. */
   idx: (sid, g) => (typeof g === 'number' ? g : SCENES[sid].steps.findIndex(s => s.id === g)),
+  /** The steps of the scene playing: its own (a generated scene, e.g. meeting a squad) or its SCENES entry. */
+  steps: cur => cur.steps || SCENES[cur.id].steps,
+  /** You joined a squad (Run.create: the Academy squad; World.join: a club): its players introduce themselves at the next hub. */
+  joined(run, key) {
+    if (Story.on(run)) run.story.meet = key;
+  },
+  /**
+   * The squad's introductions (owner, 2026-10-05): a generated scene — a diary line, then every teammate (captain first, the
+   * bench last) says who they are and one line in their first trait's voice (MEET), then a closing line. Hash-free, no randoms.
+   */
+  meetSteps(run) {
+    const T = Run.myTeam(run),
+      you = Run.you(run),
+      mates = squadOf(T).filter(p => p !== you),
+      order = [
+        ...mates.filter(p => p === T.cap),
+        ...mates.filter(p => p !== T.cap && !T.bench.includes(p)),
+        ...mates.filter(p => T.bench.includes(p))
+      ],
+      used = {},
+      line = p => {
+        const tr = Rel.traits(run, p.id)[0],
+          L = MEET.trait[tr] || MEET.plain,
+          n = (used[tr] = (used[tr] || 0) + 1) - 1;
+        return L[n % L.length];
+      },
+      who = p => `${ROLE_NAME[p.role]}${p === T.cap ? ', captain' : ''}${T.bench.includes(p) ? ', on the bench for now' : ''}.`;
+    return [
+      { k: 'cut', bars: true },
+      { k: 'say', who: 'diary', text: run.team == null ? MEET.academy : MEET.club.replace('{club}', T.name) },
+      ...order.map(p => ({ k: 'say', who: p.id, text: `${who(p)} ${line(p)}` })),
+      { k: 'say', who: 'diary', text: MEET.close },
+      { k: 'end' }
+    ];
+  },
+  /** Start the squad's introductions if you joined one since the last hub (once per squad). True when it started. */
+  meet(run) {
+    const key = run.story.meet;
+    delete run.story.meet;
+    const id = `meet:${key}`;
+    if (key == null || run.story.cur || run.story.seen[id]) return false;
+    run.story.cur = { id, i: -1, mode: {}, log: [], steps: Story.meetSteps(run) };
+    Story.advance(run);
+    return true;
+  },
   /** A match of yours just ended (Cup.record): its moment for the `result` trigger. */
   matched(run, kind, win, played) {
     if (Story.on(run)) run.story.res = { kind, win: !!win, played: !!played, week: run.week };
@@ -61,6 +106,7 @@ const Story = {
    */
   hub(run) {
     if (!Story.on(run)) return false;
+    if (run.story.meet != null && Story.meet(run)) return true; // a new squad first: its players introduce themselves
     const r = !!run.story.res && Story.fire(run, 'result');
     delete run.story.res;
     return r || Story.fire(run, 'hub');
@@ -76,7 +122,7 @@ const Story = {
     return true;
   },
   /** The step on screen now (null when no scene plays). */
-  step: run => (run.story && run.story.cur ? SCENES[run.story.cur.id].steps[run.story.cur.i] || null : null),
+  step: run => (run.story && run.story.cur ? Story.steps(run.story.cur)[run.story.cur.i] || null : null),
   /** The speaker of a say step: { name, kind: 'narration' | 'you' | 'voice' | 'person', person? }. */
   who(run, w) {
     if (w === 'diary') return { name: '', kind: 'narration' };
@@ -109,7 +155,7 @@ const Story = {
   /** Apply the instant steps after the current one until a shown step or the end. */
   advance(run) {
     const cur = run.story.cur,
-      steps = SCENES[cur.id].steps;
+      steps = Story.steps(cur);
     for (let guard = 0; guard < 500; guard++) {
       const s = steps[++cur.i];
       if (!s || s.k === 'end') return Story.finish(run);

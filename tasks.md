@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-221** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-222** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,11 @@ cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git 
 ## Now
 
 Owner request 2026-10-05 (spec §9.12 motion; design system `motion.md`, Motion card): T-216 → T-219. UI only; goldens unchanged.
+
+### [x] T-221: Your new squad introduces itself (owner request)
+Spec: §10.10b          Goldens: unchanged          Save: no change (`run.story.meet` while pending; a generated scene keeps its steps on `cur.steps`)
+Files: js/career/story.js (`joined`, `meetSteps`, `meet`, `steps`; `hub` plays a pending meet first), js/data/story.js (`MEET` lines), js/career/run.js (Academy squad at the start), js/career/world.js (join), tests/career.test.js, ARCHITECTURE.md
+Result: after the intro the Academy squad (captain first, bench last) and after every signing the club's squad say role + one trait-voiced line each; once per squad, Story only. QA: new Story run → meet:academy box with the captain's portrait; no errors; tests 124/124.
 
 ### [x] T-220: Kaede's lessons on the first click of a place (owner request)
 Spec: §10.10a          Goldens: unchanged          Save: no change

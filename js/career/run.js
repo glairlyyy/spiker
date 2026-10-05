@@ -112,6 +112,7 @@ const Run = {
     Training.rollFloor(run);
     Run.snap(run);
     Story.fire(run, 'start'); // Story mode: the intro scene (dark cold open, the walk home)
+    Story.joined(run, 'academy'); // …then the Academy squad introduces itself at the first hub
     return run;
   },
   /** The cup being played right now (or null between cups). */

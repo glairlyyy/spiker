@@ -973,6 +973,7 @@ test('story: the intro plays on a new Story run, applies its walk, never replays
 test('story: the result hook — the first hub after your match plays its scene, before any lesson (T-175)', () => {
   const [g, run] = mkRunG(877);
   g.Story.skip(run);
+  delete run.story.meet; // (the squad's introductions: their own test)
   g.SCENES.zWon = { trigger: { on: 'result', when: 'won' }, steps: [{ k: 'say', who: 'diary', text: 'Won.' }, { k: 'end' }] };
   g.SCENES.zAny = { trigger: { on: 'result' }, steps: [{ k: 'say', who: 'diary', text: 'Played.' }, { k: 'end' }] };
   run.uses.power = 1; // a lesson is due too
@@ -999,6 +1000,30 @@ test('story: the result hook — the first hub after your match plays its scene,
   assert(!run.story.res && (!run.story.cur || !run.story.cur.id.startsWith('z')), 'each scene once; the unused moment is dropped');
   delete g.SCENES.zWon;
   delete g.SCENES.zAny;
+});
+
+test('story: a new squad introduces itself — the Academy squad at the start, every club you join (owner, 2026-10-05)', () => {
+  const [g, run] = mkRunG(880);
+  g.Story.skip(run);
+  assert(g.Story.hub(run) && run.story.cur.id === 'meet:academy', 'after the intro: the Academy squad');
+  const T = g.Run.myTeam(run),
+    mates = g.squadOf(T).filter(p => p !== g.Run.you(run)),
+    says = g.Story.steps(run.story.cur).filter(s => s.k === 'say' && s.who !== 'diary');
+  eq(says.length, mates.length, 'one line per teammate');
+  eq(says[0].who, T.cap.id, 'the captain first');
+  assert(
+    says.every(s => g.Story.who(run, s.who).kind === 'person' && /^(Setter|Middle blocker|Wing spiker)/.test(s.text)),
+    'role first, a portrait each'
+  );
+  g.Story.skip(run);
+  assert(!g.Story.hub(run) || !run.story.cur.id.startsWith('meet:'), 'once');
+  if (run.story.cur) g.Story.skip(run);
+  const ti = run.teams.findIndex((t, i) => g.World.canJoin(run, i).ok);
+  assert(ti >= 0 && g.World.join(run, ti), 'joined a club');
+  assert(g.Story.hub(run) && run.story.cur.id === `meet:${ti}`, 'the new club introduces itself');
+  assert(/New shirt/.test(g.Story.step(run).text), 'the club opening line');
+  const end = g.Run.create(g.Run.draft(), { role: 'WS', name: 'E', mode: { story: false } });
+  assert(!g.Story.hub(end), 'Endless: no scenes');
 });
 
 test("story: Kaede's lessons come the first time you click that kind of place (owner, 2026-10-05)", () => {

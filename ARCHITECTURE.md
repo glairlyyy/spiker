@@ -159,7 +159,9 @@ their `onLeave` only cleans up (`Eval.restore`). The UI opens them with `watchCa
   randoms, state `run.story = {seen, flags, cur}`; `ui/story-box.js` draws the dialogue box (`storyBox` / `storyMounted`,
   called by `renderCareer`; hub cards and keys wait while a scene plays), `css/story.css`. Triggers: `start` (Run.create) and
   `hub` (renderCareer, with no scene / lock / event: `when` = a `STORY_WHEN` test, `off` = a cancelling flag; one scene a day via
-  `run.story.at` = `Story.clock`). Lines fill `{role}` / `{key}` (`Story.text`); `goto` takes an index or a step `id`. The guide
+  `run.story.at` = `Story.clock`), `result` (first hub after a match), `pick` (first click of a kind of place, `STORY_PICK`).
+  Generated scenes carry their own steps on `cur.steps` (`Story.steps(cur)`): the squad introductions (`Story.joined(run, key)`
+  from Run.create / World.join → `run.story.meet` → `Story.meet` at the next hub, id `meet:<key>`, lines from `MEET`). Lines fill `{role}` / `{key}` (`Story.text`); `goto` takes an index or a step `id`. The guide
   (spec §10.10a): `GUIDE` (data/story.js) is a person for the box's portrait (`Story.who('senior')`) and the map (`MapModel.guide`
   → map3d draws a second `createAvatar(scene, { kit })` — the default VRM, dressed — and pins3d its name label).
 - **Named players** (spec §4.29): `career/stars.js` `Stars` seats `STARS` (`data/stars.js`: the rival, the cohort, the first

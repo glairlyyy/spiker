@@ -101,6 +101,7 @@ const World = {
     finalizeTeam(P);
     Run.log(run, `Signed with ${T.name} (${FACTIONS[ti].name})${fee ? ` — $${fee} fee` : ''}. ${old.name} is out.`, 'good');
     Run.news(run, `The office registers ${you.name} with ${T.name}.`); // voice: wei (the Gazette)
+    Story.joined(run, ti); // your new teammates introduce themselves at the next hub (Story mode)
     return true;
   },
   setHousing(run, k) {
