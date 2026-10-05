@@ -15,8 +15,7 @@ const SCENES = {
     after: { spot: 'acaGym' },
     steps: [
       { k: 'cut', dark: true },
-      { k: 'title', text: '25 – 4' },
-      { k: 'say', who: 'diary', text: 'Twenty-five to four. My last high-school match.' },
+      { k: 'say', who: 'diary', text: 'Fifteen to four. My last high-school match.' },
       { k: 'say', who: 'diary', text: 'Most of those points came straight off my hands.' },
       { k: 'say', who: 'diary', text: 'Every academy on the mainland watched the tape. Every one said no.' },
       { k: 'say', who: 'diary', text: 'One academy, on an island nobody visits, said yes.' },
@@ -149,9 +148,9 @@ const SCENES = {
         who: 'diary',
         text: 'Wei Gold were drilling on the street court when I walked past. I knew the swing before I saw the face.'
       },
-      { k: 'say', who: 'diary', text: '25 – 4.' }, // (the second time: just a line in the box, no cut-in — owner, 2026-10-05)
+      { k: 'say', who: 'diary', text: '15 – 4.' }, // (just a line in the box, no cut-in — owner, 2026-10-05)
       { k: 'say', who: 'rival', text: 'Hey — you, with the Academy bag. Have we played before? You look familiar.' },
-      { k: 'choice', opts: [{ text: 'No.' }, { text: 'Twenty-five to four.', goto: 'score', set: 'rivalTold' }] },
+      { k: 'choice', opts: [{ text: 'No.' }, { text: 'Fifteen to four.', goto: 'score', set: 'rivalTold' }] },
       { k: 'say', who: 'rival', text: 'Huh. My mistake. See you at the Cup — if you get that far.', goto: 'after' },
       { id: 'score', k: 'say', who: 'rival', text: "…Sorry. I don't keep score of every warm-up. Good luck at the Academy." },
       { id: 'after', k: 'say', who: 'diary', text: "She doesn't remember. Fine. Then I'll make her." },

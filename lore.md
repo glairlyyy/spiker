@@ -95,7 +95,7 @@ Grading dogma = what the faction's join conditions and facility conditions mean 
   ages only set the shape of the curves. **Story is two years** (age 19 → 20, both U21-eligible): year 1 ends with
   the U21 Final Cup; year 2 is the MC's chance to close the gap.
 - **The match that sent her here** [locked] (owner, 2026-10-04): in her last high-school tournament on the mainland
-  the MC's team met the rival's and lost **25–4**; the rival scored most of those points straight off her blocks and
+  the MC's team met the rival's and lost **15–4**; the rival scored most of those points straight off her blocks and
   receives. Scouts filmed it: the tape is why every mainland academy turned her down. The same tournament earned the
   rival an island faction's offer. **The rival** [proposed by the spec chat, 2026-10-04 — owner may rename / move]:
   **Tachibana Sae**, wing spiker, signed by **Wei Dynasty · Gold** (Wei buying the mainland's best for prestige); black

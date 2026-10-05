@@ -382,8 +382,8 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   - **Never moved**: no league transfer, promotion swap, cut, poach or breakthrough roll touches them (Stars.week replaces it).
   - **On the map**: each drawn as a full model (the default VRM in their club shirt, their hair and skin) by their club's
     HQ, with a name label: `Name · Rival` / `Next ace` / `Ace` (`model.figures`, with Kaede).
-  - **Story**: Kaede names them in the factions lesson; the rival meets you in week 3 (`rivalMeet`: "25 – 4." as a diary line in the box — no cut-in the second time, owner 2026-10-05; "Have we
-    played before?", a choice: `No.` / `Twenty-five to four.` → flag `rivalTold`; she doesn't remember; flag `rivalMet`).
+  - **Story**: Kaede names them in the factions lesson; the rival meets you in week 3 (`rivalMeet`: "15 – 4." as a diary line in the box, owner 2026-10-05; "Have we
+    played before?", a choice: `No.` / `Fifteen to four.` → flag `rivalTold`; she doesn't remember; flag `rivalMet`).
   - Later: year 2 (the cohort as the island's aces, the first aces aged out), the rival's cut-scene after a year-1 Cup loss.
 - §4.20 Match history (Season sheet): every match you were in, newest first — week/day, kind, opponent, score, W/L,
   grade; bench matches "did not play". Snapshot: your OVR, stats, wit at kick-off (+ change since previous), your line

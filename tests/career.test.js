@@ -952,7 +952,7 @@ const mkRunG = seed => {
 test('story: the intro plays on a new Story run, applies its walk, never replays; Endless and old saves skip it (T-173)', () => {
   const [g, run] = mkRunG(873);
   assert(run.story.cur && run.story.cur.id === 'intro', 'a new Story run starts in the intro');
-  eq(g.Story.step(run).k, 'title', 'the first shown step is the 25–4 scoreboard (the dark cut is applied)');
+  eq(g.Story.step(run).k, 'say', 'the first shown step is the 15–4 diary line — no big scoreboard (owner, 2026-10-05; the dark cut is applied)');
   assert(run.story.cur.mode.dark, 'dark cold open');
   const home = g.City.at(run, 'home');
   let n = 0;

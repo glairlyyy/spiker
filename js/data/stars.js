@@ -10,7 +10,7 @@ const STARS = {
       kind: 'rival',
       name: 'Tachibana Sae',
       role: 'WS',
-      club: 0, // Wei Dynasty · Gold: Wei bought the mainland's best (the 25–4 tournament)
+      club: 0, // Wei Dynasty · Gold: Wei bought the mainland's best (the 15–4 tournament)
       ovr: [76, 90],
       wit: [1.15, 1.45],
       lead: 72,
