@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-227** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-236** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -106,8 +106,6 @@ Accept:
 QA: career run → each new place's card; book a session; read a book; the day track shows the slot.
 Result:
 
-Owner request 2026-10-05 (spec §9.12 motion; design system `motion.md`, Motion card): T-216 → T-219. UI only; goldens unchanged.
-
 ### [ ] T-212: Refresh the design system status page
 
 Spec: §9 Goldens: unchanged Save: no change
@@ -115,8 +113,6 @@ Goal: the design system's `project/status.md` matches the build after T-205–T-
 new file homes; drift counts).
 Files: the design system artifact `project/status.md` only (spec chat publishes it).
 Result:
-
-Owner request 2026-10-04 (spec §9.11 match venues): T-193 → T-195. Render only; goldens unchanged.
 
 **Calls — decisions in a played match (owner, 2026-10-05; spec §2.13): T-232 → T-235, one at a time, in order.**
 
