@@ -18,8 +18,6 @@ const TS_SLOWFX = 0.75;
  * @param {object|undefined} cb the current beat
  * @param {number} raw real (speed-scaled) ms this frame
  */
-/** The air impact's hold: the world's time scale during it, and how long (real ms) by spike power (hard / heavy 80+). */
-const AIR_HOLD = { ts: 0.06, hard: 500, heavy: 1000 };
 function timeScale(cb, raw) {
   const hype = HYPE[G.hype].max,
     on = !!(cb && cb._s),
@@ -32,9 +30,7 @@ function timeScale(cb, raw) {
   A.sceneOn = !!(on && cb.scene);
   A.slowK = A.slowOn ? (build ? TS_BUILD : cb.slow < 1 ? cb.slow : TS_SLOW) : 1;
   if (on && cb._dig) A.slowK = Math.min(A.slowK, cb._dig); // a far dig: just slow enough for the digger to get there
-  // the air impact's hold (spec §2.3a): the world all but stops for a beat at a spike's contact (real time, AIR_HOLD)
-  const air = A.airHold && performance.now() < A.airHold,
-    tgt = Math.min(A.freezeOn ? TS_FREEZE : A.sceneOn ? TS_SCENE : A.slowK, air ? AIR_HOLD.ts : 1);
+  const tgt = A.freezeOn ? TS_FREEZE : A.sceneOn ? TS_SCENE : A.slowK;
   if (!Number.isFinite(A.ts)) A.ts = 1; // first frame (or a bad value): normal speed
   if (tgt < 0.1 || (on && cb._dig && A.slowK === cb._dig))
     A.ts = Math.min(A.ts, tgt); // hit-stop / scene / far dig: instant (the digger's time budget starts now)

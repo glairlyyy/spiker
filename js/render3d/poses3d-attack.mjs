@@ -159,10 +159,10 @@ export function spikePose(d, m) {
     u = air ? clamp(d.jy / pk, 0, 1) : 0,
     sw = d.spk,
     sty = d.spkStyle || 'normal',
-    // the harder the hit, the deeper the bow (owner, 2026-10-06): spike power (d.spkPow, read ahead of the hit by playback)
-    // 60 → ×0.85 … 100 → ×1.35 … 140 → ×1.85, on top of the style's own arch
-    powK = d.spkPow ? clamp(0.85 + (d.spkPow - 60) / 80, 0.85, 1.85) : 1,
-    arch = (sty === 'power' ? 1.4 : sty === 'quick' ? 0.6 : 1) * (sty === 'tip' ? 1 : powK);
+    arch = sty === 'power' ? 1.4 : sty === 'quick' ? 0.6 : 1,
+    // the harder the hit, the deeper the bend (owner, 2026-10-06): spike power (d.spkPow, read ahead of the hit by playback)
+    // 0 at power 60 … 1 at 140 — the back arches (spine + chest up to ~40° more), head thrown back, then a full jack-knife
+    bend = d.spkPow && sty !== 'tip' ? clamp((d.spkPow - 60) / 80, 0, 1) : 0;
   const face = { angry: 0.85 };
   // 3. landing: soft on both feet, knees bent to absorb; the hitting arm finishes across the body
   if (!air && sw != null) return landPose(d, sw);
@@ -218,11 +218,11 @@ export function spikePose(d, m) {
         : { L: leg(0.6, 0.85, 0.5, 0.12), R: leg(0.48, 0.75, 0.5, 0.12) },
     legsDown = { L: leg(0.3, 0.4, 0.25, 0.16), R: leg(0.24, 0.35, 0.25, 0.16) };
   const bowT = {
-    ...BOW_T,
-    sp: BOW_T.sp * arch,
-    cp: BOW_T.cp * arch,
-    hd: BOW_T.hd * Math.min(1.3, arch),
-    tw: BOW_T.tw * Math.min(1.25, arch)
+    hp: BOW_T.hp - 0.14 * bend,
+    sp: BOW_T.sp * arch - 0.34 * bend,
+    cp: BOW_T.cp * arch - 0.34 * bend,
+    hd: BOW_T.hd - 0.3 * bend,
+    tw: BOW_T.tw * Math.min(1.1, arch) * (1 + 0.35 * bend)
   };
   if (sw == null) {
     // 1. rising: both arms swing up, then the bow: non-hitting arm points at the ball, hitting elbow drawn back high
@@ -247,8 +247,8 @@ export function spikePose(d, m) {
   const e = swingE(d);
   const tor0 = track([[0, bowT], ...TORSO.slice(1)], e, mixT),
     // …and the harder it is, the more the body jack-knifes over after contact
-    pike = e > CE && sty !== 'tip' ? 1 + (powK - 1) * 0.7 * sm(clamp((e - CE) / 0.2, 0, 1)) : 1,
-    tor = pike === 1 ? tor0 : { ...tor0, hp: tor0.hp * pike, sp: tor0.sp * pike, cp: tor0.cp * pike },
+    pike = e > CE ? bend * sm(clamp((e - CE) / 0.2, 0, 1)) : 0,
+    tor = pike ? { ...tor0, hp: tor0.hp + 0.3 * pike, sp: tor0.sp + 0.34 * pike, cp: tor0.cp + 0.24 * pike } : tor0,
     rA = track(keys, e, mixArm),
     lA = track(LKEYS, e, mixArm);
   const legK = sm(clamp((e - 0.1) / 0.35, 0, 1)),
