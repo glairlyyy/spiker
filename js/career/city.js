@@ -123,13 +123,6 @@ const City = {
   },
   /** Explored: near a point you've stood on. */
   seen: (run, p) => (run.fog || []).some(q => Math.hypot(q[0] - p[0], q[1] - p[1]) <= REVEAL_R),
-  /** After any action on the map: the week's one event is rolled after its first action. */
-  after(run) {
-    if (!run.rolled) {
-      run.rolled = true;
-      Events.roll(run);
-    }
-  },
   /** Does the place's owner let you in? { ok, why }: grudge, then the owner's condition; its members always pass. */
   access(run, id) {
     const s = SPOTS[id];

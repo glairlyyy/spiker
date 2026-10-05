@@ -3,39 +3,9 @@ const fs = require('fs');
 const path = require('path');
 const { load, test, assert, eq, playRun } = require('./harness');
 
-test('data: events, skills, unlocks and calendar are well-formed', () => {
+test('data: skills, unlocks and calendar are well-formed', () => {
   const g = load(1);
-  const fxKeys = new Set([
-    'power',
-    'def',
-    'speed',
-    'jump',
-    'wit',
-    'lead',
-    'sta',
-    'mood',
-    'sp',
-    'fans',
-    'main',
-    'bondMate',
-    'bondCap',
-    'bondAll',
-    'chance'
-  ]);
-  const ids = new Set();
-  const checkFx = (fx, where) => {
-    for (const f of fx) {
-      assert(fxKeys.has(f[0]), `${where}: unknown effect ${f[0]}`);
-      if (f[0] === 'chance') checkFx(f[2], where);
-    }
-  };
-  for (const e of g.EVENTS) {
-    assert(!ids.has(e.id), 'duplicate event ' + e.id);
-    ids.add(e.id);
-    assert(!e.need || g.EVENT_NEED[e.need], `${e.id}: unknown need ${e.need}`);
-    checkFx(e.a[1], e.id);
-    checkFx(e.b[1], e.id);
-  }
+  assert(typeof g.EVENTS === 'undefined', 'the random training events are gone');
   for (const [id, s] of Object.entries(g.SKILLS)) {
     assert(s.name && s.desc && s.cost > 0, 'skill fields missing: ' + id);
     assert(s.tech ? s.req && g.SKILL_HOW[id] : s.key && s.val, 'skill shape wrong: ' + id);
@@ -914,13 +884,9 @@ test('career: rules moved out of the UI (T-075)', () => {
   const g = load(31),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Rules', mode: { story: true } });
   run.event = null;
-  // City.after: the week's event is rolled once, after the first action
-  run.rolled = false;
-  g.City.after(run);
-  assert(run.rolled, 'rolled after the first action');
-  run.event = null;
-  g.City.after(run);
-  eq(run.event, null, 'never twice a week');
+  // no random training events any more (owner, 2026-10-05): a stale one from an old save clears on load
+  assert(!g.City.after && !g.Events.roll, 'no week event roll');
+  eq(g.Events.def({ id: 'late' }, run), null, 'an old random event has no card');
   // Run.canEndWeek: training weeks only, never with an event open
   run.week = 2;
   assert(g.Run.canEndWeek(run), 'a training week can end');

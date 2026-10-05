@@ -118,7 +118,7 @@ function playRun(g, role = 'WS') {
     }
     const c = run.sta < 45 ? 'rest' : run.mood < 2 ? 'rec' : g.KEYSTAT[role];
     g.Run.log(run, c === 'rest' ? g.Training.rest(run) : c === 'rec' ? g.Training.recreation(run) : g.Training.train(run, c, run.sta > 85));
-    if (!g.Events.roll(run)) g.Run.endWeek(run);
+    g.Run.endWeek(run);
   }
   return run;
 }

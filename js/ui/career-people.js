@@ -191,7 +191,6 @@ function askAnswer(i, yes) {
   if (!r) return renderCareer();
   if (r.blocked) return toastBlocked(r.blocked);
   if (r.fx) return watchCareer(r.fx);
-  if (r.day) City.after(RUN);
   renderCareer();
 }
 /** Make one of your moves on a person. */
@@ -199,7 +198,6 @@ function askMove(id, kind, at) {
   const r = Asks.ask(RUN, id, kind, { at: at || null });
   if (!r) return renderCareer();
   if (r.fx) return watchCareer(r.fx);
-  if (r.day) City.after(RUN);
   renderCareer();
 }
 function toastBlocked(why) {

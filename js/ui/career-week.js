@@ -118,26 +118,10 @@ function recapDone() {
 }
 function eventCard(run) {
   const e = Events.def(run.event, run),
-    fxText = fx =>
-      typeof fx === 'string'
-        ? fx
-        : fx
-            .map(([k, v, sub]) =>
-              k === 'chance'
-                ? `${Math.round(v * 100)}% chance: ${fxText(sub)}`
-                : k === 'main'
-                  ? `${fmtDelta(v)} ${STATNAME[run.lastMain]}`
-                  : k.startsWith('bond')
-                    ? `${fmtDelta(v)} bond${k === 'bondAll' ? ' with everyone' : ''}`
-                    : k === 'mood'
-                      ? `mood ${v > 0 ? 'up' : 'down'}`
-                      : `${fmtDelta(v)} ${k === 'sta' ? 'stamina' : k === 'sp' ? 'skill pts' : STATNAME[k] || k}`
-            )
-            .join(', ');
-  const kind = { sponsor: 'Sponsor', element: 'Element Trial' }[run.event.id] || 'Event',
+    kind = { sponsor: 'Sponsor', element: 'Element Trial' }[run.event.id] || 'Event',
     you = Run.you(run);
   return `<div class="panel ev ${run.event.id === 'element' ? 'lbk' : ''}"${run.event.id === 'element' ? ` style="--lbk:${ECOL[you.el]}"` : ''}><span class="evk">${kind}</span><h3>${esc(e.title)}</h3><p>${esc(Events.text(run, run.event, e.text))}</p>
-    <div class="evc acts two">${[e.a, e.b].map(([label, fx], i) => `<button class="btn" onclick="chooseEvent(${i})"><b>${esc(label)}</b><small>${esc(fxText(fx))}</small></button>`).join('')}</div></div>`;
+    <div class="evc acts two">${[e.a, e.b].map(([label, fx], i) => `<button class="btn" onclick="chooseEvent(${i})"><b>${esc(label)}</b><small>${esc(fx)}</small></button>`).join('')}</div></div>`;
 }
 function chooseEvent(i) {
   if (!RUN.event) return;

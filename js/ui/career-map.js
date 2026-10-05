@@ -58,7 +58,6 @@ function mapGo(id, mate) {
 }
 /** After an action on the map: rules, save, render — then the action lock while you walk there (and a training cut-in). */
 function mapAfter(run, fx = null) {
-  City.after(run);
   Run.save(run);
   actLock(fx);
   renderCareer();

@@ -10,7 +10,6 @@ const CAREER = {
   runCap: 99,
   witRunCap: 2.0,
   staMax: 100,
-  eventChance: 0.3,
   floorChance: 0.7, // chance each teammate shows up at some training this week
   spPerTraining: 10
 };

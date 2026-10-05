@@ -290,7 +290,7 @@ test.slow('rel: calibration — the first mate reaches bond 60 / 80 about when i
         if (mx >= 60 && w60 === 99) w60 = run.week;
         if (mx >= 80 && w80 === 99) w80 = run.week;
       }
-      if (!g.Events.roll(run)) g.Run.endWeek(run);
+      g.Run.endWeek(run);
     }
     got.w60 += w60 / 5;
     got.w80 += w80 / 5;

@@ -146,7 +146,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   REVEAL_R). Click any land to travel. **Walking speed** (owner, 2026-10-05, T-214): a small `Walk 1× 2× 4×` selector at
   the map's top right (usable mid-walk; remembered per browser, `sns_walk`) speeds up your walk on the map — display only.
 - §4.5 Week: 7 days. Each action (train/rest/outing/scout) = 1 day + trip (free within NEAR_R, 1 day per TRIP_DAY,
-  max 3; routing §4.18). Nothing spills over; nights free; only the player ends the week. One event roll per week.
+  max 3; routing §4.18). Nothing spills over; nights free; only the player ends the week. No random training events (owner, 2026-10-05: every variant removed).
   Day session = DAY_GAIN (0.25) of the old weekly gain.
 - §4.6 Street battles (CLASH, ~45 % of training weeks, popup at week start): watch (scouts both) or fight for a side
   (win +standing, lose −; other side always −). `run.rep` = standing per region. Fighting = real match (`Fight.clash`):
@@ -608,7 +608,7 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   markers §10.9, person detail, approaches answered in place) · World (tabs Factions · My club · Rankings; dossier in place) · Season
   (calendar, sponsors, history, Diary/Gazette). ⚙ = Main menu, settings, Abandon run.
 - §10.5 Cards: Week brief (every week start; lists battle, payday, match; eval/cup weeks lead to Match prep) ·
-  Event (only blocking card) · Week report (after End week; penalties first) · Match prep (eval/cup; two roster
+  Event (only blocking card: Element Trial or sponsor offer — the random training events are gone) · Week report (after End week; penalties first) · Match prep (eval/cup; two roster
   columns, focus segment, Play/Sim). The old battle intro, Gazette pop-up and recap cards go.
 - §10.6 Match result screen replaces the podium overlay: grade tile, your K/B/A/E + focus, rewards chips, growth,
   techniques picked up, top 3, Continue / Box score. The 3D match itself follows §9.9.

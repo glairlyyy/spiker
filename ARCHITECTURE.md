@@ -27,7 +27,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   `looks.js` (appearance palettes), `moves.js` (signature / combo names, coach lines), `roles.js` (role biases, key
   stats, mood deltas), `elements.js`, `tactics.js`, `dialogue.js` (lines, `callLine`), `skills.js`, `career.js`
   (CAREER, CALENDAR, ROLE_NAME, STATNAME, MLOG…), `world.js` (REGIONS, FACTIONS, ECON, HOUSING, CLASH, FRONT…), `city.js`
-  (CITY geometry, SPOTS, travel constants, layout data), `events.js`.
+  (CITY geometry, SPOTS, travel constants, layout data).
 - **engine** `court.js` (geometry, `Z_UNITS`, `UNIT_M`, `BALL_K` / `SERVE_K`), `players.js`, `teams.js`, `save.js`,
   `stats.js`, `skills.js`, `formulas.js`, `elements.js`, `hype.js`, `match.js`, `serve.js`, `rally-phases.js`,
   `rally-defense.js`, `rally-block.js`, `rally.js`.
@@ -172,7 +172,7 @@ their `onLeave` only cleans up (`Eval.restore`). The UI opens them with `watchCa
 - **Matches** (`career/cup.js`; street battles, challenges, loss and injury are `Fight` in `career/fight.js`): an S–C grade from your own line scales that match's rewards; a pre-match focus goal;
   a captain's team talk before Cup matches (applied in `Cup.prepare` and the fixture's `setup(m)` hook).
 - Content is data: `data/career.js` (numbers, trainings, calendar, cups, rewards, ranks, unlocks, sponsors, modes),
-  `data/events.js`, `data/skills.js`. Special events ('element', 'sponsor') are built in `Events.def`.
+  `data/skills.js`. The only event cards are the Element Trial and sponsor offers, built in `Events.def` (the random training events were removed, owner 2026-10-05).
 - Skills reach the engine only through `skillMod(p, key)` and bonds through `bondCombo(a, b)` (`engine/skills.js`);
   both are neutral for normal players and draw no random numbers.
 - Skills in the shop vs in play (T-036): basic skills (no `tech`) are bought with skill points (`Skills.learn`); techniques can't be
@@ -529,7 +529,7 @@ keeps ≤ REL.max entries (oldest non-scar dropped first), refreshes the cache a
 fade (REL.decay^weeks, scars never) × both traits' multipliers; `Rel.tag` (ally / respect / neutral / resent / enemy) and `Rel.rival`
 read it. `you.bond[id]` is only a cache: `Rel.bondOf` = clamp(round(stance × REL.bondK), 0, 100), refreshed on every add and in
 `Rel.week` (called from `Growth.week`), so combos (60), friendship (80) and the People sheet read it unchanged.
-Sources: `Run.bond(run, id, v, kind)` (training → trained, city outings → hung_out, events → event), `Cup.result` →
+Sources: `Run.bond(run, id, v, kind)` (training → trained, city outings → hung_out), `Cup.result` →
 `Rel.afterMatch` (won / lost_together, ego-log kinds), `Cup.fixture` → `Rel.spot` (spot_taken for a benched rival, once a week),
 challenge / clash wins → `Rel.beatMe`. Match rewards no longer carry bond.
 
@@ -602,7 +602,7 @@ roster. Ratings and elements are `null` until one of its clubs is scouted or you
 `standingLabel`, fronts, took / lost, economy, clubs, this week's foe). Both read one block, `Dossier.front(run, r)` (major = `MAJORS.includes`, places taken /
 lost, fronts, price / quality multipliers).
 
-UI files only render and call rules: `City.after` (the week's event, once after its first action), `Run.canEndWeek`,
+UI files only render and call rules: `Run.canEndWeek`,
 `Run.readGazette`, `Cup.simNow(fx)` (resolve a fixture without watching: setup, rallies, finish) and
 `Cup.upcoming(run)` (the cup screen's next match — other matches simulated first — called by `renderCareer` before it
 draws, so no render function changes or saves the run).
@@ -629,7 +629,7 @@ it would spill into next week (`noTime`); at 0 days it is night; only `mapEndWee
 `Run.endWeek` runs `WEEK_END` (run.js: growth, sponsors, heal, world, settle the clash, hex decay), resets the week, then the cup
 or `Run.nextWeek` = `WEEK_START` (clash roll, training floor, sponsor offers, Trial offer, eval setup, approaches). The
 order is the draw order: append new weekly systems, never reorder.
-Events roll once per week after the first action (`run.rolled`). Street battles (`Fight`, career/fight.js; City keeps places, travel and standing): `clashRoll` in `Run.nextWeek`
+No random week events (removed, owner 2026-10-05). Street battles (`Fight`, career/fight.js; City keeps places, travel and standing): `clashRoll` in `Run.nextWeek`
 (`run.clash` with its aggressor, settled by `clashEnd` at week end if nobody joined), `watch(run, null)`; standing per
 region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): tile pressure on the hex map (`push`/`meter`/`battleTile`, state in `run.hex`, §4.27), seized places `run.own`
 (City.region follows the holder), `econ`/`priceMul`/`qMul`/`weak`, `pick` (aggressor + target), `sim`/`result`/`stakes`;
@@ -797,7 +797,7 @@ Training gives XP (`Training.xpFor`: base gain × `TRAIN_X.xp.per` × every mult
 `Training.need(v)` = max(1, round(base × grow^(v − from))) for every v, below 50 too (≈1 XP at 1, 10 at 50; T-055); leftovers bank in `run.xp`; nothing banks past the top.
 `Training.top(run, stat, src)`: 'train' (sessions, the default) → `TRAIN_CAP` 75; 'match' → `CAREER.runCap`; wit its own cap. `sim` /
 `gain` / `addXp` take the same `src`; a stat already above the top gains nothing from that source. Wit counts in 0.02 steps
-(level = wit × 50). Events still change stats directly, but stop at `TRAIN_CAP` (`Run.bump` never lowers a stat that matches raised).
+(level = wit × 50). Injuries still change stats directly, but stop at `TRAIN_CAP` (`Run.bump` never lowers a stat that matches raised).
 
 ### Match XP (T-035)
 
@@ -907,7 +907,7 @@ only from a fully green, non-quick run). `tests/harness.js` loads the headless s
 
 - **golden** engine output (teams, recorded matches incl. beats, simulated matches, monster teams) → `tests/golden.json`;
 - rally invariants over 300 matches and that every beat act kind has a renderer handler;
-- data integrity (events, skills, calendar), full career runs, save round-trip, save migration.
+- data integrity (skills, calendar), full career runs, save round-trip, save migration.
 
 A deliberate gameplay change updates the golden file with `node tests/run.js --update` — review the diff first.
 Pure refactors must pass **without** `--update`.

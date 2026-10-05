@@ -1,27 +1,6 @@
-// Random events: roll after a week's choice, then apply the chosen effects.
+// Event cards: the Element Trial and sponsor offers (the random training events are gone, owner 2026-10-05).
 
-const EVENT_NEED = {
-  notCap: run => !Run.you(run).cap,
-  isCap: run => !!Run.you(run).cap,
-  star: run => !!Run.you(run).star,
-  tired: run => run.sta < 45,
-  low: run => run.mood <= 1,
-  late: run => run.week >= 13,
-  early: run => run.week <= 8
-};
 const Events = {
-  /** Maybe start an event (sets run.event). Each event happens at most once per run. */
-  roll(run) {
-    if (run.event) return run.event; // a special event (Element Trial, sponsor offer) is already waiting
-    if (R() >= CAREER.eventChance) return null;
-    const alone = !Run.mates(run).length,
-      pool = EVENTS.filter(e => !run.seen.includes(e.id) && (!e.need || EVENT_NEED[e.need](run)) && !(alone && e.text.includes('{mate}')));
-    if (!pool.length) return null;
-    const e = pick(pool);
-    run.seen.push(e.id);
-    run.event = { id: e.id, mate: (pick(Run.mates(run)) || {}).id }; // alone: no teammate
-    return run.event;
-  },
   /** Event definition. Special events: 'element' (Element Trial), 'sponsor' (offer at a fan milestone). */
   def(ev, run) {
     if (ev.id === 'element') {
@@ -47,7 +26,7 @@ const Events = {
         b: o[1] ? [`Sign ${o[1].name}`, `${o[1].perk}. Condition: ${o[1].cond.toLowerCase()}`] : ['Decline', 'No deal']
       };
     }
-    return EVENTS.find(e => e.id === ev.id);
+    return null; // the random training events are gone (owner, 2026-10-05); an old save's leftover clears on load
   },
   /** Fill {mate} and {cap}. */
   text(run, ev, s) {
@@ -68,26 +47,7 @@ const Events = {
       const id = ev.opts[i];
       return id ? Sponsors.sign(run, id) : 'Declined the sponsor offers.';
     }
-    const e = Events.def(ev),
-      [label, fx] = i ? e.b : e.a;
-    const out = Events.apply(run, ev, fx);
     run.event = null;
-    return `${e.title} — ${label}: ${out.filter(Boolean).join(', ') || 'nothing happened'}`;
-  },
-  /** Apply a list of event effects ([key, value] or ['chance', p, effects]); returns the change labels. */
-  apply(run, ev, fx) {
-    const out = [],
-      T = Run.myTeam(run);
-    for (const f of fx) {
-      const [k, v] = f;
-      if (k === 'chance') {
-        if (R() < v) out.push(...Events.apply(run, ev, f[2]));
-      } else if (k === 'main') out.push(Run.bump(run, run.lastMain, run.lastMain === 'wit' ? v / 100 : v));
-      else if (k === 'bondMate') out.push(Run.bond(run, ev.mate, v));
-      else if (k === 'bondCap') out.push(Run.bond(run, T.cap.id === run.youId ? ev.mate : T.cap.id, v));
-      else if (k === 'bondAll') for (const m of Run.mates(run)) out.push(Run.bond(run, m.id, v));
-      else out.push(Run.bump(run, k, v));
-    }
-    return out;
+    return '';
   }
 };
