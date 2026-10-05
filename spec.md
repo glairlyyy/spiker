@@ -682,8 +682,10 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
 - §10.5 Cards: Week brief (every week start; lists battle, payday, match; eval/cup weeks lead to Match prep) ·
   Event (only blocking card: Element Trial or sponsor offer — the random training events are gone) · Week report (after End week; penalties first) · Match prep (eval/cup; two roster
   columns, focus segment, Play/Sim). The old battle intro, Gazette pop-up and recap cards go.
-- §10.6 Match result screen replaces the podium overlay: grade tile, your K/B/A/E + focus, rewards chips, growth,
-  techniques picked up, top 3, Continue / Box score. The 3D match itself follows §9.9.
+- §10.6 Match result screen replaces the podium overlay: grade tile, your K/B/A/E + focus, rewards chips (incl. stamina), growth
+  (each stat with the XP it got: `+N XP`), techniques picked up, top 3, Continue / Box score. The 3D match itself follows §9.9.
+  **Every** match you are in ends on it (owner, 2026-10-05, T-227): a simmed street battle / challenge / evaluation / cup tie shows the
+  same card over the hub (after the walk there; Continue / Space; no Box score).
 - §10.7 Title screen (Continue hero, New career, Encyclopedia, Settings, **Dev** — owner 2026-10-03: a title-screen tab, always shown, with Monster game, player models,
   Benchmark models, the §10.8 word counter (on/off, remembered per browser) and Debug log; `?dev` opens it with the counter on) and Create (role
   cards with key stat, best training places, techniques; name; challenge toggles; Arrive / Back).

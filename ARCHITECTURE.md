@@ -862,7 +862,10 @@ a test checks every `term('id'` in js/ui exists.
 
 Match result (spec §10.6): `finishMatch` calls `resultSnap(RUN, m)` before a career fixture's `onFinish` and
 `resultData(RUN, m, snap, msg)` after it (career-match.js; diffs of the run only — no rule runs in the UI), then
-`resultScreen` draws it; the Monster game (no career player) gets headline + top 3.
+`resultScreen` draws it; the Monster game (no career player) gets headline + top 3. `resultSnap` opens `Training.tally` (every
+`Training.addXp` adds to it while it is set; display only, never saved) and `resultData` reads and closes it for the `+N XP` column.
+A simmed fixture goes through `simCareer(fx)` (Cup.simNow with the same snap / data around onFinish) → the card HTML → the hub's
+action lock, phase `res` (`actLock(fx, greet, res)` after a map walk; `CW.lock = { phase: 'res' }` for eval / cup); closing it re-renders the hub.
 
 Island scale (spec §4.18b): js/data/city.js writes every map point in design units (1060 × 700) and `scaleMap` multiplies them
 once at load by `MAP_SCALE` (1.5); towns, minors and the Academy keep their size (see its comment). Code reads CITY.w / h and

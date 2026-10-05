@@ -192,7 +192,12 @@ test('career: match XP — performance, opponent strength, past the cap', () => 
   while (!m2.over) g.playRally(m2);
   m2.played.add(you.id);
   m2.stat[you.id] = { ...g.blank(), k: 5, blk: 1 };
+  g.Training.tally = {}; // the result card's XP count (resultSnap → resultData)
   assert(/XP: /.test(fx2.onFinish(m2)), 'the result line shows the XP labels');
+  const f = g.Growth.matchGap(m2);
+  eq(g.Training.tally.power, Math.round(5 * g.MATCH_XP.per.k.power * f), 'the tally counts the power XP of 5 kills');
+  eq(g.Training.tally.jump, Math.round(g.MATCH_XP.per.blk.jump * f), 'and the jump XP of a block');
+  g.Training.tally = null;
 });
 
 test.slow('career: start from 1', () => {

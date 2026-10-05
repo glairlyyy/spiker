@@ -481,8 +481,8 @@ function hubKey(e) {
   if (A || e.ctrlKey || e.metaKey || e.altKey || !document.querySelector('.career.hub') || $('#dbg') || (CW.dossier && e.key === 'Escape'))
     return;
   if (CW.lock) {
-    // the hub waits while you walk; the training result closes with Space / Enter / Esc
-    if (CW.lock.phase === 'done' && [' ', 'Enter', 'Escape'].includes(e.key)) lockEnd();
+    // the hub waits while you walk; the training / sim match result closes with Space / Enter / Esc
+    if ((CW.lock.phase === 'done' || CW.lock.phase === 'res') && [' ', 'Enter', 'Escape'].includes(e.key)) lockEnd();
     else if (CW.lock.phase === 'greet' && [' ', 'Enter', 'Escape'].includes(e.key)) lockGreetDone();
     e.preventDefault();
     return;

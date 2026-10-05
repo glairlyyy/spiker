@@ -133,9 +133,9 @@ function mapGo(id, mate) {
   mapAfter(run, fx);
 }
 /** After an action on the map: rules, save, render — then the action lock while you walk there (and a training cut-in). */
-function mapAfter(run, fx = null) {
+function mapAfter(run, fx = null, res = null) {
   Run.save(run);
-  actLock(fx);
+  actLock(fx, null, res);
   renderCareer();
 }
 
@@ -188,9 +188,9 @@ const LOCK = { min: 250, max: 20000, spin: 1100, show: 3200 }; // ms: wait for t
  * Lock the hub until your player arrives; then a greeting (training with a friend: their line in the dialogue box, owner
  * 2026-10-05), then the training cut-in (if any), then unlock. greet = { person, text } or null.
  */
-function actLock(fx, greet = null) {
+function actLock(fx, greet = null, res = null) {
   const t0 = Date.now(),
-    L = (CW.lock = { phase: 'walk', fx, greet, to: CW.spot && SPOTS[CW.spot] ? SPOTS[CW.spot].name : '' });
+    L = (CW.lock = { phase: 'walk', fx, greet, res, to: CW.spot && SPOTS[CW.spot] ? SPOTS[CW.spot].name : '' });
   clearInterval(actLock.iv);
   actLock.iv = setInterval(() => {
     if (CW.lock !== L) return clearInterval(actLock.iv);
@@ -204,6 +204,7 @@ function actLock(fx, greet = null) {
 }
 /** The training cut-in: spinner, then the result, then unlock (no cut-in: unlock now). */
 function lockTrain(L) {
+  if (L.res) return lockPhase('res'); // a simmed match: its result card, until you close it
   if (!L.fx) return lockEnd();
   lockPhase('spin');
   setTimeout(() => CW.lock === L && lockPhase('done'), LOCK.spin);
@@ -221,7 +222,9 @@ function lockPhase(p) {
   if (el) el.outerHTML = lockLayer();
 }
 function lockEnd() {
+  const L = CW.lock;
   CW.lock = null;
+  if (L && L.phase === 'res') return renderCareer(); // the hub catches up (and the match's scene, if any, may play)
   const el = $('#actlock');
   if (el) el.remove();
 }
@@ -231,7 +234,7 @@ function lockShown(run) {
     w = L && L.phase !== 'done' && L.fx && L.fx.was;
   return w ? { ...run, money: w.money, fans: w.fans, sp: w.sp, sta: w.sta, staMax: w.staMax, mood: w.mood, st: w.st } : run;
 }
-/** The lock layer: transparent while walking (a pill says where to), dimmed with the cut-in card for a training day. */
+/** The lock layer: transparent while walking (a pill says where to), dimmed with the cut-in card for a training day or the result card of a simmed match. */
 function lockLayer() {
   const L = CW.lock;
   if (!L) return '';
@@ -241,6 +244,7 @@ function lockLayer() {
     const P = L.greet.person;
     return `<div class="actlock greet" id="actlock" role="dialog" aria-live="polite" onclick="lockGreetDone()"><div class="sbox">${P ? `<span class="sb-face">${faceSVG(P, 0, 72)}</span>` : ''}<div class="sb-body">${P ? `<b class="sb-name">${esc(P.name)}</b>` : ''}<p class="sb-text">${esc(L.greet.text)}</p></div><span class="sb-keys"><kbd>Space</kbd> next</span></div></div>`;
   }
+  if (L.phase === 'res') return `<div class="actlock dim res" id="actlock" role="dialog" aria-live="polite">${L.res}</div>`;
   const F = L.fx;
   if (L.phase === 'spin')
     return `<div class="actlock dim" id="actlock" role="status" aria-live="polite"><div class="tfx"><i class="spin" aria-hidden="true"></i><b>${esc(F.name)} training</b><small class="mute">${esc(F.place)}</small></div></div>`;
@@ -250,19 +254,20 @@ function lockLayer() {
     <small class="mute">Click or press Space</small></div></div>`;
 }
 function mapClash(side, sim) {
+  let res = null;
   if (side) {
     // fighting: a real match (watch it, or sim it at once)
     const fx = Fight.clash(RUN, side);
     if (!fx) return;
     if (!sim) return watchCareer(fx);
-    Cup.simNow(fx);
+    res = simCareer(fx);
   } else {
     const line = Fight.watch(RUN, null);
     if (!line) return;
     Run.log(RUN, line);
   }
   CW.spot = null;
-  mapAfter(RUN);
+  mapAfter(RUN, null, res);
 }
 /** Step the stake of a challenge to club ti. */
 function mapStake(ti, d) {
@@ -273,15 +278,16 @@ function mapStake(ti, d) {
 /** Challenge club ti at the chosen stake: refused (diary line) or played (watch, or sim = the result at once). */
 function mapChallenge(ti, sim) {
   const r = Fight.offer(RUN, ti, (CW.stake || {})[ti] || 0);
+  let res = null;
   if (!r) return;
   CW.spot = `hq${ti}`;
   if (r.accepted) {
     const fx = Fight.challenge(RUN, ti, r.stake);
     if (!fx) return;
     if (!sim) return watchCareer(fx);
-    Cup.simNow(fx);
+    res = simCareer(fx);
   } else Run.log(RUN, r.line);
-  mapAfter(RUN);
+  mapAfter(RUN, null, res);
 }
 function mapScout(ti) {
   const line = City.scout(RUN, ti);

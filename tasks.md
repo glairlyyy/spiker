@@ -33,6 +33,11 @@ cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git 
 
 Owner request 2026-10-05 (spec §9.12 motion; design system `motion.md`, Motion card): T-216 → T-219. UI only; goldens unchanged.
 
+### [x] T-227: A result card after every match, simmed ones too, with the XP each stat got (owner request)
+Spec: §10.6          Goldens: unchanged          Save: no change
+Files: js/career/training.js (`Training.tally`, display only), js/ui/career-match.js (resultSnap opens the tally, resultData reads it + stamina delta; `simCareer`; playCareer sim), js/ui/match-result.js (`resultScreen` options; `+N XP` column), js/ui/career-map.js (sim clash / challenge → lock phase `res`), js/ui/career-hub.js (Space closes it), css/style.css, css/hub.css, tests/career.test.js
+Result: street battles, challenges, evaluations and cup ties that are simmed now end in the same §10.6 card in the hub (after the walk; Continue / Space, then the hub re-renders so the match's scene can play); every growth row shows `+N XP`; rewards gain a stamina chip. The street hustle is still a dice roll (no card). QA: simmed eval card, no errors; tests pass.
+
 ### [x] T-226: An easier start — the island's players at OVR 40–50 (owner request)
 Spec: §4.22a          Goldens: unchanged (engine)          Save: no change
 Files: js/data/career.js (CAREER.npcStart), js/career/run.js (`Run.lower`: draft teams + reserves, the Academy squad), js/data/city.js (STREET.rival 35–60), tests/people.test.js (league / bond calibration rebased)

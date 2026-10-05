@@ -4,6 +4,8 @@
 // injure you (light training only until it heals).
 
 const Training = {
+  /** While a match result is being counted ({} from resultSnap to resultData): XP given per stat. Display only, never saved. */
+  tally: null,
   /** Facility level index 0–4 (shown as Lv 1–5) from how often you have done this training. */
   facility(run, key) {
     if (TRAININGS[key].lv) return TRAININGS[key].lv - 1; // a fixed-level facility (the Academy Gym)
@@ -89,6 +91,7 @@ const Training = {
   addXp(run, stat, xp, src = 'train') {
     const you = Run.you(run),
       r = Training.sim(run, stat, xp, src);
+    if (Training.tally) Training.tally[stat] = (Training.tally[stat] || 0) + xp; // the result card's "+N XP" (opened by resultSnap)
     (run.xp || (run.xp = {}))[stat] = r.have;
     if (stat === 'wit') you.wit = +(you.wit + r.pts * 0.02).toFixed(2);
     else you[stat] += r.pts;

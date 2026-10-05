@@ -1120,3 +1120,7 @@
     animation-duration: 2.4s;
   }
 }
+/* a simmed match's result card (the §10.6 card, owner 2026-10-05) */
+.hub .actlock.res .ocard.mres {
+  max-height: calc(100% - 48px);
+}

@@ -182,6 +182,7 @@ function resultSnap(run, m) {
   if (!you || !m.t.some(t => squadOf(t).includes(you))) return null;
   const s = m.stat[you.id] || blank(),
     f = run.focus && (FOCUS[you.role] || []).find(x => x[0] === run.focus);
+  Training.tally = {}; // counts the XP the fixture's onFinish gives (closed by resultData)
   return {
     stats: Object.fromEntries([...STATK, 'wit'].map(k => [k, you[k]])),
     xp: { ...(run.xp || {}) },
@@ -189,6 +190,7 @@ function resultSnap(run, m) {
     fans: run.fans,
     money: run.money,
     mood: run.mood,
+    sta: run.sta,
     skills: [...you.skills],
     focus: f ? { label: f[1], met: Cup.focusMet(run, s) } : null,
     mlog: (run.mlog || []).length,
@@ -202,7 +204,9 @@ function resultData(run, m, b, msg) {
     d = (k, name, o = { loc: true }) => {
       const v = run[k] - b[k];
       return v ? { v, text: `${fmtDelta(v, o)} ${name}` } : null;
-    };
+    },
+    xp = Training.tally || {};
+  Training.tally = null;
   return {
     win: m.winner === b.side,
     played: m.played.has(you.id),
@@ -213,15 +217,37 @@ function resultData(run, m, b, msg) {
       d('sp', 'skill pts'),
       d('fans', 'fans'),
       d('money', '', { pre: '$' }),
+      d('sta', 'stamina'),
       run.mood !== b.mood ? { v: run.mood - b.mood, text: `mood ${run.mood > b.mood ? 'up' : 'down'}` } : null
     ].filter(Boolean),
     growth: [...STATK, 'wit']
-      .filter(k => you[k] !== b.stats[k] || ((run.xp || {})[k] || 0) !== (b.xp[k] || 0))
-      .map(k => ({ k, name: STATNAME[k], from: b.stats[k], to: you[k], ...Training.progress(run, k) })),
+      .filter(k => xp[k] || you[k] !== b.stats[k] || ((run.xp || {})[k] || 0) !== (b.xp[k] || 0))
+      .map(k => ({ k, name: STATNAME[k], from: b.stats[k], to: you[k], xp: Math.round(xp[k] || 0), ...Training.progress(run, k) })),
     techs: you.skills.filter(id => !b.skills.includes(id)).map(id => SKILLS[id].name),
     held: [...(m.off[you.id] || [])].filter(id => knowsTech(you, id)).map(id => SKILLS[id].name), // switched off at the end (§9.10)
     msg
   };
+}
+/** Sim a career fixture at once (Cup.simNow) and return its result card (the same card as after a watched match, §10.6) for the hub's lock layer. */
+function simCareer(fx) {
+  let snap = null,
+    msg = '';
+  const fin = fx.onFinish,
+    m = Cup.simNow({
+      ...fx,
+      onFinish: mm => {
+        snap = resultSnap(RUN, mm);
+        return (msg = fin(mm) || '');
+      }
+    }),
+    sc = m.setScores[0];
+  return resultScreen(m, m.t[m.winner], Math.max(...sc), Math.min(...sc), matchStars(m), snap ? resultData(RUN, m, snap, msg) : null, {
+    round: fx.round,
+    back: 'Continue',
+    leave: 'lockEnd()',
+    box: false,
+    key: true
+  });
 }
 /** Watch a career fixture (from js/career) on the match screen; leaving runs its own clean-up, then back to the hub. */
 function watchCareer(fx) {
@@ -238,6 +264,6 @@ function watchCareer(fx) {
 function playCareer(kind, sim) {
   const fx = Cup.fixture(RUN, kind);
   if (!sim) return watchCareer(fx);
-  Cup.simNow(fx);
+  CW.lock = { phase: 'res', res: simCareer(fx) };
   renderCareer();
 }

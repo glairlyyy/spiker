@@ -24,9 +24,10 @@ const statLine = (q, keys = ['k', 'blk', 'ace', 'dig']) =>
     .map(k => `${q[k]} ${STAT_WORD[k][q[k] === 1 ? 0 : 1]}`)
     .join(' · ') || 'no points';
 /** The result screen (spec §10.6): headline, then for your match the grade tile with your kills / blocks / aces / errors and focus, rewards
- * chips, growth rows and techniques picked up; top 3; [Continue] [Box score]. Monster game: headline + top 3. */
-function resultScreen(m, wt, hi, lo, stars, res) {
-  const head = `<div class="rhead"><span class="lab">${esc(A.fx.round || 'Final')}</span><h2>${res ? (res.win ? 'You win' : 'You lose') + ` ${hi}-${lo}` : `${esc(wt.name)} win ${hi}-${lo}`}</h2>${
+ * chips, growth rows (with the XP each stat got) and techniques picked up; top 3; [Continue] [Box score]. Monster game: headline + top 3.
+ * o: { round, back, leave (onclick), box (the Box score button), key (print Space) } — the hub's sim result card passes its own. */
+function resultScreen(m, wt, hi, lo, stars, res, o = { round: A.fx.round, back: A.fx.back, leave: 'leaveMatch()', box: true }) {
+  const head = `<div class="rhead"><span class="lab">${esc(o.round || 'Final')}</span><h2>${res ? (res.win ? 'You win' : 'You lose') + ` ${hi}-${lo}` : `${esc(wt.name)} win ${hi}-${lo}`}</h2>${
       res ? `<span class="small mute">${esc(wt.name)} take it</span>` : ''
     }</div>`,
     top = `<div class="rtop"><div class="lab">Top 3</div>${stars
@@ -35,7 +36,7 @@ function resultScreen(m, wt, hi, lo, stars, res) {
           `<div class="rstar" style="--tc:${e.p.team.color}"><b class="rn">${i + 1}</b>${faceSVG(e.p, 0.9, 32)}<span><b>${esc(e.p.name)}</b><small class="mute">${esc(e.p.team.short)} · ${e.p.role}</small></span><small>${statLine(e.q)}</small></div>`
       )
       .join('')}</div>`,
-    acts = `<div class="acts ${res ? 'pri' : ''}"><button class="btn hot" onclick="leaveMatch()">${esc(A.fx.back || 'Continue')}</button>${res ? `<button class="btn" onclick="railOpen('box')">Box score <kbd>B</kbd></button>` : ''}</div>`;
+    acts = `<div class="acts ${res ? 'pri' : ''}"><button class="btn hot" onclick="${o.leave}">${esc(o.back || 'Continue')}${o.key ? ' <kbd>Space</kbd>' : ''}</button>${res && o.box ? `<button class="btn" onclick="railOpen('box')">Box score <kbd>B</kbd></button>` : ''}</div>`;
   if (!res) return `<div class="ocard mres mono">${head}${top}${acts}</div>`;
   const L = res.line,
     you = res.played
@@ -59,7 +60,7 @@ function resultScreen(m, wt, hi, lo, stars, res) {
       ? `<div class="lab">Growth</div>${res.growth
           .map(
             g =>
-              `<div class="rgrow"><span>${esc(g.name)}</span><b>${g.k === 'wit' ? g.to.toFixed(2) : g.to}</b><span class="good small">${g.to !== g.from ? (g.k === 'wit' ? '+' + (g.to - g.from).toFixed(2) : '+' + (g.to - g.from)) : ''}</span><i class="bar"><i style="--w:${Math.min(100, Math.round((100 * g.have) / (g.need || 1)))}%"></i></i></div>`
+              `<div class="rgrow"><span>${esc(g.name)}</span><b>${g.k === 'wit' ? g.to.toFixed(2) : g.to}</b><span class="good small">${g.to !== g.from ? (g.k === 'wit' ? '+' + (g.to - g.from).toFixed(2) : '+' + (g.to - g.from)) : ''}</span><span class="small mute">${g.xp ? `+${g.xp} XP` : ''}</span><i class="bar"><i style="--w:${Math.min(100, Math.round((100 * g.have) / (g.need || 1)))}%"></i></i></div>`
           )
           .join('')}`
       : '',
