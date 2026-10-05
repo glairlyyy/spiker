@@ -348,6 +348,9 @@ const Run = {
     if (typeof run.mode.story !== 'boolean') run.mode.story = true;
     // an event this version no longer knows (removed / renamed) would leave the week stuck on a blank card
     if (run.event && !Events.def(run.event, run)) run.event = null;
+    // the rival was renamed (owner, 2026-10-05): a save from before keeps her, under her new name
+    for (const p of Stars.all(run))
+      if (p.nkey === 'rival' && p.name === 'Tachibana Sae') p.name = STARS.cohort.find(c => c.key === 'rival').name;
   },
   /** Delete the saved run. */
   clear() {

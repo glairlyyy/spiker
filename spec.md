@@ -373,7 +373,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   - **Clarity check**: with the tile fill hidden, a screenshot shows where Shu, Wei, Wu and the Academy are.
 - §4.29 The named players (owner, 2026-10-04; lore §6) **[built, T-189–T-190]**: `STARS` (js/data/stars.js) and `Stars`
   (js/career/stars.js), new runs only, both modes.
-  - **Seated at the start** (no randoms): the rival (Tachibana Sae, WS, Wei · Gold) and the cohort (Reina MB St. Gloria,
+  - **Seated at the start** (no randoms): the rival (Haewon Bae — owner 2026-10-05, her name orange in the dialogue box; WS, Wei · Gold) and the cohort (Reina MB St. Gloria,
     Ren S Shu · Peak, Taiga WS Wu · Harbor) replace their club's weakest same-role player; the first aces = the best WS
     of Wei · Iron, MB of Wu · Fort, S of Shu · Valley (renamed if they share a first name with the cohort).
   - **Authored curves**, week 1 → week 28 (the year-1 Cup), linear: rival OVR 76 → 90 (wit 1.15 → 1.45: a star, not OP);

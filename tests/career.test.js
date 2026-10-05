@@ -1151,7 +1151,7 @@ test('stars: the rival, the cohort and the first aces — seated, on curves, nev
     'each drawn by their HQ'
   );
   eq(F.find(f => f.id === by('rival').id).tag, 'Rival', 'tagged');
-  eq(g.Story.who(run, 'rival').name, 'Tachibana Sae', 'the rival speaks in scenes');
+  eq(g.Story.who(run, 'rival').name, 'Haewon Bae', 'the rival speaks in scenes');
 });
 
 test("no coach's goal (spec §10.1b, T-170): a run never gets one, through week ends and new weeks", () => {

@@ -8,7 +8,8 @@ const STARS = {
     {
       key: 'rival',
       kind: 'rival',
-      name: 'Tachibana Sae',
+      name: 'Haewon Bae', // (owner, 2026-10-05: was Tachibana Sae; her name shows orange in the dialogue box)
+      given: 'Haewon', // her name is given-first (the others: family-first, given = the second word)
       role: 'WS',
       club: 0, // Wei Dynasty · Gold: Wei bought the mainland's best (the 15–4 tournament)
       ovr: [76, 90],

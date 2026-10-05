@@ -62,6 +62,12 @@
   text-transform: uppercase;
   color: var(--ink);
 }
+.sb-rival {
+  color: var(--rival); /* colour only — the same width, so the typed line never re-wraps */
+}
+.sbox .sb-name.sb-rival {
+  color: var(--rival);
+}
 .sb-text {
   margin: 0;
   min-height: 3.2em; /* two lines: one- and two-line speeches keep the same box */
@@ -70,11 +76,23 @@
   color: var(--ink);
   white-space: pre-wrap;
 }
-.sbox.narration .sb-text {
+.sbox.narration .sb-rival {
+  color: var(--rival); /* colour only — the same width, so the typed line never re-wraps */
+}
+.sbox .sb-name.sb-rival {
+  color: var(--rival);
+}
+.sb-text {
   font-style: italic;
   color: var(--mute);
 }
-.sbox-layer.dark .sbox.narration .sb-text {
+.sbox-layer.dark .sbox.narration .sb-rival {
+  color: var(--rival); /* colour only — the same width, so the typed line never re-wraps */
+}
+.sbox .sb-name.sb-rival {
+  color: var(--rival);
+}
+.sb-text {
   color: var(--ink);
   font-size: 22px;
   text-align: center;

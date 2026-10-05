@@ -98,7 +98,7 @@ Grading dogma = what the faction's join conditions and facility conditions mean 
   the MC's team met the rival's and lost **15–4**; the rival scored most of those points straight off her blocks and
   receives. Scouts filmed it: the tape is why every mainland academy turned her down. The same tournament earned the
   rival an island faction's offer. **The rival** [proposed by the spec chat, 2026-10-04 — owner may rename / move]:
-  **Tachibana Sae**, wing spiker, signed by **Wei Dynasty · Gold** (Wei buying the mainland's best for prestige); black
+  **Haewon Bae** (owner, 2026-10-05; was Tachibana Sae), wing spiker, signed by **Wei Dynasty · Gold** (Wei buying the mainland's best for prestige); black
   hair, red eyes, easy grin. She meets the MC in week 3 and asks "Have we played before?". **The rival doesn't remember her** — her worst day was an ordinary one for them.
   Shown as: the score in the cold open's first diary line; a flashback when she first meets the rival; the rival's "Have we played
   before?"; diary call-backs after heavy losses; if she beats the rival in the year-2 Cup, they finally remember.

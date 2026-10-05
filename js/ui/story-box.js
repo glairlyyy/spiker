@@ -23,7 +23,7 @@ function storyBox(run) {
         ? `<ol class="sb-opts">${s.opts.map((o, i) => `<li><button class="btn" onclick="event.stopPropagation();sbPick(${i})"><kbd>${i + 1}</kbd> ${esc(o.text)}</button></li>`).join('')}</ol>`
         : '';
   return `${layer}<div class="sbox ${W.kind}" role="dialog" aria-live="polite">${face}<div class="sb-body">${
-    W.name ? `<b class="sb-name">${esc(W.name)}</b>` : ''
+    W.name ? `<b class="sb-name ${s.who === 'rival' ? 'sb-rival' : ''}">${esc(W.name)}</b>` : ''
   }${s.k === 'say' ? `<p class="sb-text" id="sbtext" data-full="${esc(text)}"><span class="sb-on"></span><span class="sb-ghost">${esc(text)}</span></p>` : ''}${opts}${
     SB.skip
       ? `<div class="sb-skip">Skip this scene? <button class="btn hot" onclick="event.stopPropagation();sbSkip(true)">Skip <kbd>Enter</kbd></button><button class="btn" onclick="event.stopPropagation();sbSkip(false)">Keep watching <kbd>Esc</kbd></button></div>`
@@ -36,7 +36,7 @@ function sbLog(run) {
   return `<div class="sb-log" onclick="event.stopPropagation()"><div class="lab">Log</div><ol>${run.story.cur.log
     .map(([w, t]) => {
       const W = Story.who(run, w);
-      return `<li class="${W.kind}">${W.name ? `<b>${esc(W.name)}</b> ` : ''}${esc(t)}</li>`;
+      return `<li class="${W.kind}">${W.name ? `<b class="${w === 'rival' ? 'sb-rival' : ''}">${esc(W.name)}</b> ` : ''}${sbMark(t, 0, t.length)}</li>`;
     })
     .join('')}</ol><button class="btn" onclick="SB.log=false;renderCareer()">Close <kbd>L</kbd></button></div>`;
 }
@@ -89,8 +89,31 @@ function storyMounted(run) {
  * shifts sideways (centred narration) or grows the box while it types.
  */
 function sbShow(el, n) {
-  el.firstChild.textContent = SB.full.slice(0, n);
+  el.firstChild.innerHTML = sbMark(SB.full, 0, n);
   el.lastChild.textContent = SB.full.slice(n);
+}
+/**
+ * The rival's name in orange (owner, 2026-10-05): HTML for text[a, b) with every part of her full name or her given name that
+ * falls inside wrapped in `.sb-rival` (a name cut mid-typing is orange so far).
+ */
+function sbMark(text, a, b) {
+  const rv = typeof STARS !== 'undefined' && STARS.cohort.find(c => c.kind === 'rival'),
+    names = rv ? [rv.name, rv.given || rv.name.split(' ')[1]] : [],
+    hits = [];
+  for (const nm of names)
+    for (let i = text.indexOf(nm); i >= 0; i = text.indexOf(nm, i + nm.length))
+      if (!hits.some(([s, e]) => i < e && i + nm.length > s)) hits.push([i, i + nm.length]);
+  hits.sort((x, y) => x[0] - y[0]);
+  let out = '',
+    at = a;
+  for (const [s, e] of hits) {
+    const s1 = Math.max(s, a),
+      e1 = Math.min(e, b);
+    if (e1 <= s1) continue;
+    out += esc(text.slice(at, s1)) + `<span class="sb-rival">${esc(text.slice(s1, e1))}</span>`;
+    at = e1;
+  }
+  return out + esc(text.slice(at, b));
 }
 /** Finish the line if it is still typing; otherwise go on. */
 function sbNext() {

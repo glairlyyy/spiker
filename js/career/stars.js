@@ -37,7 +37,7 @@ const Stars = {
       Stars.shape(p, s.ovr[0]);
       finalizeTeam(t);
     }
-    const given = STARS.cohort.map(s => s.name.split(' ')[1]);
+    const given = STARS.cohort.map(s => s.given || s.name.split(' ')[1]);
     for (const [ci, role] of STARS.aces.clubs) {
       const t = run.teams[ci];
       if (!t) continue;

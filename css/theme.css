@@ -21,6 +21,7 @@
   --bad-soft: #ff5d6c;
   --warn: #ffb020;
   --warn-hi: #ffd84d;
+  --rival: #ff8a2a; /* the rival's name in the dialogue box (owner, 2026-10-05) */
   /* faction colours (§5.6): chips, borders, banners only — the same values as REGIONS in js/data/world.js */
   --wei: #d08a2e;
   --wu: #5b8def;
