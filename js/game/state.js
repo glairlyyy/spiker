@@ -34,6 +34,9 @@ function navigate(name, ...args) {
   if (!Screens[name]) throw new Error('Unknown screen ' + name);
   // leaving a match that is still running: every lineup goes back to how it started (substitutions are per match)
   if (name !== 'match' && typeof A !== 'undefined' && A && A.m && !A.m.over) restoreLineups(A.m);
+  // a screen change passes through the veil (spec §9.12); hub → match shows the round title first
+  if (G.view && G.view !== name && typeof Motion !== 'undefined')
+    Motion.veil(name === 'match' && args[0] && args[0].round ? args[0].round : '');
   G.view = name;
   if (name !== 'menu' && typeof titleBgOff === 'function') titleBgOff(); // no GPU work for the title backdrop off the title (T-177)
   const out = Screens[name](...args);

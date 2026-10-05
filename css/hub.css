@@ -595,14 +595,17 @@
   margin: 0;
   font-size: 12px;
 }
-/* the map, the place panel, sheets, cards and notes live right of the rail, under the bar */
+/* the map, the place popup, sheets, cards and notes live right of the rail, under the bar */
+/* place popup (spec §10.1c): sized by its content, placed beside its pin by spotFollow (career-map.js) */
 .hub .spotcard {
   top: calc(var(--tbar) + 16px);
   right: 16px;
   bottom: auto;
-  width: 448px;
+  width: max-content;
+  min-width: 280px;
+  max-width: min(440px, calc(100vw - var(--rail) - 32px));
   max-height: calc(100vh - var(--tbar) - 32px);
-  padding: 20px;
+  padding: 16px;
   background: var(--surf);
   border-radius: 12px;
 }

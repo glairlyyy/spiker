@@ -46,6 +46,7 @@ const peek = (id, label, body, cls = '') => {
 function peekToggle(id) {
   CW.peek = CW.peek === id ? null : id;
   peekSync();
+  if (CW.peek) Motion.play(document.querySelector('body > .peek.ported:not([hidden])'), 'in'); // opened by you: fades in once
 }
 /** Show the open peek (port it to <body> and place it beside its owner panel); drop stale or closed ones. */
 function peekSync() {
@@ -106,6 +107,139 @@ function peekSync() {
     },
     true
   );
+})();
+/**
+ * UI motion (spec §9.12): helpers that only add a class for one render or move a leaving copy — state never waits on them.
+ * `reduced` = the OS setting or Settings › Motion: Reduced (`html.reduced`, css/theme.css turns moves into short fades).
+ */
+const Motion = (() => {
+  const mq = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null,
+    flags = new Set(),
+    FAST = 140;
+  let pref = 'full';
+  const M = {
+    get reduced() {
+      return pref === 'reduced' || !!(mq && mq.matches);
+    },
+    get pref() {
+      return pref;
+    },
+    /** Apply the stored setting (load) or a new one ('full' | 'reduced'). */
+    set(v) {
+      if (v) {
+        pref = v === 'reduced' ? 'reduced' : 'full';
+        store.set(KEYS.motion, pref);
+      } else pref = store.get(KEYS.motion) === 'reduced' ? 'reduced' : 'full';
+      if (typeof document !== 'undefined') document.documentElement.classList.toggle('reduced', M.reduced);
+    },
+    /** A surface just opened / changed: the next render that draws it takes the flag once. */
+    mark: k => void flags.add(k),
+    take: k => flags.delete(k),
+    /** Add `cls` to `el` until its own animation ends (re-adding restarts it). */
+    play(el, cls) {
+      if (!el) return;
+      el.classList.remove(cls);
+      void el.offsetWidth;
+      el.classList.add(cls);
+      const done = e => {
+        if (e.target !== el) return;
+        el.classList.remove(cls);
+        el.removeEventListener('animationend', done);
+      };
+      el.addEventListener('animationend', done);
+      setTimeout(() => el.classList.remove(cls), 1200); // safety: animations paused (hidden tab)
+    },
+    /**
+     * `el` leaves: put a dead copy of it (no ids, no peeks, no clicks) back into `parent` with `.out`; it is removed after
+     * dur-fast. The state has already changed, so the next render simply doesn't draw it.
+     */
+    leave(el, parent) {
+      if (!el || !parent || !parent.isConnected || M.reduced) return;
+      const g = el.cloneNode(true);
+      g.removeAttribute('id');
+      for (const n of g.querySelectorAll('[id]')) n.removeAttribute('id');
+      for (const n of g.querySelectorAll('.peek')) n.remove();
+      for (const n of g.querySelectorAll('[data-peek]')) n.removeAttribute('data-peek');
+      g.setAttribute('aria-hidden', 'true');
+      g.inert = true;
+      g.classList.remove('in', 'swap', 'glide');
+      g.classList.add('out', 'ghost-out');
+      parent.appendChild(g);
+      setTimeout(() => g.remove(), FAST + 20);
+    },
+    /** Count a number shown in `el` from `from` to `to` over 400 ms (`fmt` formats it). */
+    tick(el, from, to, fmt = String) {
+      if (!el || from === to || !isFinite(from) || !isFinite(to)) return;
+      if (M.reduced) return void (el.textContent = fmt(to));
+      const t0 = performance.now(),
+        step = now => {
+          if (!el.isConnected) return;
+          const k = Math.min(1, (now - t0) / 400),
+            e = 1 - Math.pow(1 - k, 3);
+          el.textContent = fmt(Math.round(from + (to - from) * e));
+          if (k < 1) requestAnimationFrame(step);
+        };
+      el.textContent = fmt(from);
+      requestAnimationFrame(step);
+      setTimeout(() => (el.textContent = fmt(to)), 450); // frames starved (hidden tab, slow GPU): land on the value anyway
+    },
+    /** Rows with `data-flip`: their offsets in the old DOM (call before a re-render). */
+    flipFirst(root = document) {
+      const o = new Map();
+      for (const e of root.querySelectorAll('[data-flip]'))
+        o.set(e.dataset.flip, { top: e.offsetTop, i: [...e.parentNode.children].indexOf(e) });
+      return o;
+    },
+    /** …and after it: a row whose place in its list changed slides from where it was (dur-base). */
+    flip(first, root = document) {
+      if (!first || !first.size || M.reduced) return;
+      for (const e of root.querySelectorAll('[data-flip]')) {
+        const f = first.get(e.dataset.flip);
+        if (!f || f.i === [...e.parentNode.children].indexOf(e)) continue;
+        const dy = f.top - e.offsetTop;
+        if (!dy) continue;
+        e.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 200, easing: 'cubic-bezier(0.2, 0, 0, 1)' });
+      }
+    },
+    /**
+     * The screen veil: on at once (before the new screen renders), off over dur-scene / 2. With `title`, the round title on
+     * black for 600 ms first (a click or Space skips it). Never blocks input except that title tap.
+     */
+    veil(title) {
+      if (typeof document === 'undefined') return;
+      let v = document.getElementById('veil');
+      if (!v) {
+        v = document.createElement('div');
+        v.id = 'veil';
+        v.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(v);
+      }
+      clearTimeout(v._t);
+      v.innerHTML = title ? `<b>${esc(title)}</b>` : '';
+      v.classList.toggle('title', !!title && !M.reduced);
+      v.classList.add('on');
+      const off = () => {
+        clearTimeout(v._t);
+        removeEventListener('keydown', key, true);
+        v.onclick = null;
+        v.classList.remove('on', 'title');
+      };
+      const key = e => {
+        if (e.code === 'Space' || e.key === 'Escape') {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          off();
+        }
+      };
+      if (title && !M.reduced) {
+        v.onclick = off;
+        addEventListener('keydown', key, true);
+        v._t = setTimeout(off, 600);
+      } else requestAnimationFrame(() => requestAnimationFrame(off)); // after the new screen's first paint
+    }
+  };
+  if (mq && mq.addEventListener) mq.addEventListener('change', () => M.set());
+  return M;
 })();
 /** The ego personality (spec §2.12) as a small tag with what it means on hover. */
 const EGO_TAG = {

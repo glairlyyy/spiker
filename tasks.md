@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-215** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-220** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -30,6 +30,54 @@ growth, relationships), UI redesign §9–§10, hex territory and economy §4.27
 cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git history. Refactor part 4 (T-201–T-211) built: fixtures, week steps, tagged diary, engine steps, venue / panel / sheet / match-screen splits, CSS tokens, inline styles, recipes; T-212 (design system status page) open.
 
 ## Now
+
+Owner request 2026-10-05 (spec §9.12 motion; design system `motion.md`, Motion card): T-216 → T-219. UI only; goldens unchanged.
+
+### [x] T-216: Motion tokens, the Motion helper and the screen veil
+Spec: §9.12          Goldens: unchanged          Save: no change (one per-browser key `sns_motion`)
+Goal: the motion tokens and helper exist; every screen change passes through a veil; reduced motion works.
+Files: css/theme.css (tokens as custom properties; keyframes `in-rise`, `in-pop`, `out-fade`, `xfade`; `.in` / `.out` / `.swap`; a `@media (prefers-reduced-motion)` block), js/ui/dom.js (`Motion`: mark / take / leave / tick / flip / reduced), js/game/state.js (`navigate` → veil), js/ui/match-controls.js (Settings › Motion: Full / Reduced), js/core/storage.js (KEYS.motion), index.html (the veil element), ARCHITECTURE.md
+Do not: delay any state change or click behind an animation; animate the 3D canvases with CSS; use durations outside the tokens.
+Steps:
+1. Tokens + keyframes + classes in theme.css; `Motion.reduced` = media query OR the stored setting (`html.reduced` class).
+2. `Motion.mark(key)` sets a one-render flag; `Motion.take(key)` returns it once (renderers add `in`). `Motion.leave(el)` adds `.out`, removes the node after `dur-fast` (ignored if the node is already gone).
+3. `navigate`: veil fades in (`dur-scene` / 2), the screen renders, veil fades out; hub → match shows the round title on black for 600 ms (click / Space skips); match → result untouched.
+Accept: screen changes show the veil and never drop a click; reduced motion (OS or setting) = fades ≤ 120 ms; tests + lint green.
+QA: title → create → hub → match → result → hub; screenshots mid-veil; the setting on and off.
+Result: tokens / `mv-*` keyframes / classes + `html.reduced` overrides at the end of theme.css; `Motion` (dom.js: set / mark / take / play / leave / tick / flipFirst / flip / veil); `KEYS.motion`; `navigate` veils every screen change (hub → match: the round title 600 ms, click / Space skips); Motion: Full / Reduced in the match ⚙ and the hub ⚙. Deviation: the veil element is created by `Motion.veil` (index.html untouched); the new screen renders synchronously under an instant veil that fades out (no fade-in of the old screen). QA: veil on → off around create / match; reduced = no hub classes move; tests 111/111, lint green.
+
+### [x] T-217: Hub surfaces move
+Spec: §9.12 §10.1c          Goldens: unchanged          Save: no change
+Goal: the place popup, sheets, peeks, tooltips, cards over the map, the rail fold, the dialogue box, the walk pill and the training cut-in enter and leave as §9.12 says.
+Files: js/ui/career-hub.js (render: `Motion.take` per surface), js/ui/career-map.js (popup: grow from its pin, glide to a new pin, cross-fade content), js/ui/dom.js (peek / tooltip timing), js/ui/story-box.js, css/hub.css, css/story.css, css/people.css
+Do not: replay an animation on a re-render of the same state; resize the map canvas every frame during the rail fold.
+Steps: one `Motion.mark` where each surface opens or closes (mapPick, hubOpen / sheet tabs, card show / done, railToggle, story start / end, lock phases); CSS per surface from the §9.12 table; popup `transform-origin` = the pin side.
+Accept: each surface animates once per open / close; switching sheet tabs only cross-fades the content; selecting another pin glides the popup; the rail fold resizes the map once.
+QA: screen recording (GIF) of each surface.
+Result: `renderCareer` brackets the render with `motionBefore` / `motionAfter` (`CW.mv` = last shown spot / sheet + sub-view / card key / rail / lock / story) instead of `Motion.mark` at each call site; `hubCard` returns a `key`; open → `.in`, change → `.swap`, close → a `Motion.leave` copy; `mapPick` + `spotSwap` (popup grows from its pin side via `--mv-origin`, glides to a new pin, cross-fades); rail `fold` / `unfold`; lock pill / cut-in `.in`; peek fades in once on open; tooltip fades in. Not done: tooltip 300 ms delay, dialogue-box exit, match-rail tab cross-fade. QA: sheet in → re-render (no class) → tab swap → close ghost; popup in → glide → close ghost; no page errors.
+
+### [x] T-218: Values that change
+Spec: §9.12          Goldens: unchanged          Save: no change
+Goal: numbers count, bars ease, the day track fills, inbox rows slide, moved rows slide, a selected pin pulses once.
+Files: js/ui/career-hub.js (topBar ticks via `Motion.tick`, deltas, day track, inbox), js/ui/sheet-me.js, js/ui/career-people.js (FLIP on the list), js/map3d/pins3d.mjs (selected ring pulse class), css/hub.css, css/map.css
+Do not: tick numbers on a plain re-render (only when the value differs from the last shown one); animate under reduced motion.
+Accept: payday counts the money up with a `+$n` chip; a spent day fills left → right; End week empties the track right → left; a starred person slides to the top.
+QA: GIF of a training day, payday and End week.
+Result: top-bar money / fans / skill pts tick from the last shown value (`.tk`, 400 ms, a 450 ms fallback lands the value when frames starve); stamina bar eases from `--w0`; day slots `fillin` / `gin` / right → left `clear` on a new week (`dayMotion`); new inbox rows slide (max 3); People rows FLIP (`data-flip`); `pins3d.select` rings a newly selected pin (`.pulse`, box-shadow — the pin's transform is its position). Not done: stat number flip in Me, loss flash on bars. QA: money +230 ticks to $430; one ghost slot `gin` on pick; pin `pulse` on the second pick.
+
+### [x] T-219: Match screen motion
+Spec: §9.12 §9.9          Goldens: unchanged          Save: no change
+Goal: the score bumps, momentum eases, the rail slides in, technique switches slide; the result card rises over the court.
+Files: js/ui/match-screen.js (board), js/ui/match-controls.js (rail), js/ui/match-tech.js, js/ui/match-result.js, css/style.css
+Do not: touch beat timing, cut-ins or hype scenes; slow the match clock.
+Accept: each point bumps the scorer's digit once; the result card rises (`dur-slow`); reduced motion → fades only.
+QA: Monster game GIF: a few points, the rail, the result.
+Result: `board` bumps the digit that went up (`.bump`, dur-base); momentum width eases dur-slow; `.mrail` slides in when shown; the result `.ocard` rises; all css in theme.css, reduced → fades / none. Technique switch: existing transitions kept. QA: Monster game, `#p0` gets `bump`; no page errors.
+
+### [x] T-215: Place panel → popup beside its pin (owner request)
+Spec: §10.1c          Goldens: unchanged          Save: no change
+Files: js/ui/career-map.js (spotFollow / spotPlace, mapPick), css/hub.css (.spotcard)
+Result: `.spotcard` is content-sized (280–440px, `width: max-content`); `spotPlace()` puts it right of `.maplay .mpin.sel` (or the `.mflag` of a picked point) with a 24px gap, flips left at the map edge, centres it on the pin and clamps it inside the map (rail / top bar / 16px); one rAF loop (`spotFollow`) keeps it on the pin while the map moves; no visible pin → top-right as before. QA: HQ and home popups beside their pins, off-screen pin falls back; tests + lint green.
 
 Refactor part 4 (owner, 2026-10-04): keep it simple, open for the next features (§4.24 faction events, §4.26 Endless,
 §4.28 year 2, §8 ace traits, more venues / place kinds). Rules for every task below: **pure refactor** — goldens

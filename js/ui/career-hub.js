@@ -51,6 +51,7 @@ function renderCareer() {
   const scene = !!Story.step(run), // a story scene plays: the dialogue box has the screen (spec §10.10)
     card = scene ? null : hubCard(run, nextCup);
   if (CW.railMini == null) CW.railMini = store.get(KEYS.rail) === '1'; // remembered per browser
+  const was = motionBefore(); // what the last render showed: surfaces that open, close or change move once (spec §9.12)
   $('#app').innerHTML =
     `<section class="career hub ${City.night(run) ? 'eve' : ''} ${CW.railMini ? 'railmini' : ''} ${scene ? 'cine' : ''}" style="--tc:${team.color}">
     ${topBar(run)}${CW.railMini ? railStrip(run, armed) : weekRail(run, armed)}
@@ -62,16 +63,104 @@ function renderCareer() {
   </section>`;
   mapMount(run);
   storyMounted(run);
+  motionAfter(was, card);
+}
+/** The hub's motion state before a render: the surfaces it showed, their nodes (for exits), rows and slots. */
+function motionBefore() {
+  const hub = document.querySelector('#app > .hub'),
+    q = s => hub && hub.querySelector(s);
+  return hub
+    ? {
+        hub,
+        spot: q('#spot.open'),
+        sheet: q(':scope > .sheet'),
+        modal: q(':scope > .hubmodal'),
+        lock: q('#actlock'),
+        story: q('#sbox'),
+        rows: new Set([...hub.querySelectorAll('.winbox .wit')].map(e => e.textContent)),
+        slots: [...hub.querySelectorAll('#wdays .dslot')].map(e =>
+          e.classList.contains('done') ? 'done' : e.classList.contains('ghost') ? 'ghost' : 'free'
+        ),
+        flip: Motion.flipFirst(hub),
+        mv: CW.mv || {}
+      }
+    : null;
+}
+/** …and after it: one class per surface that just opened (`in`), changed (`swap`) or closed (a leaving copy). */
+function motionAfter(was, card) {
+  const hub = document.querySelector('#app > .hub');
+  if (!hub) return;
+  const q = s => hub.querySelector(s),
+    lk = CW.lock,
+    now = {
+      spot: q('#spot.open') ? CW.spot : null,
+      sheet: CW.sheet || null,
+      sub: CW.sheet ? [CW.sheet, CW.wtab, CW.dossier, CW.person, CW.stab, CW.rank, CW.rankAll].join('|') : null,
+      card: card ? card.key || card.html.length : null,
+      rail: !!CW.railMini,
+      lock: lk ? lk.phase : null,
+      story: !!q('#sbox')
+    };
+  CW.mv = now;
+  if (!was) return; // (reduced motion: the css turns these classes into short fades; leave / tick / flip check it)
+  const o = was.mv,
+    on = (sel, cls) => q(sel) && q(sel).classList.add(cls);
+  // place popup: same pin → keep its place (no jump to the corner until it is placed again); new pin → glide + cross-fade
+  const sp = q('#spot.open');
+  if (sp && was.spot && was.spot.classList.contains('pinned')) {
+    sp.style.left = was.spot.style.left;
+    sp.style.top = was.spot.style.top;
+    sp.style.right = 'auto';
+    sp.classList.add('pinned');
+  }
+  if (now.spot && !o.spot) Motion.play(sp, 'in');
+  else if (now.spot && o.spot !== now.spot) spotSwap(sp);
+  else if (!now.spot && o.spot && was.spot) Motion.leave(was.spot, hub);
+  // sheets: open drops from the top bar, another tab / sub-view cross-fades, close leaves
+  if (now.sheet && !o.sheet) on(':scope > .sheet', 'in');
+  else if (now.sheet && o.sub !== now.sub) on(':scope > .sheet', 'swap');
+  else if (!now.sheet && o.sheet && was.sheet) Motion.leave(was.sheet, hub);
+  // cards over the map: open rises, card → card cross-fades, close leaves
+  if (now.card && !o.card) on(':scope > .hubmodal', 'in');
+  else if (now.card && o.card !== now.card) on(':scope > .hubmodal', 'swap');
+  else if (!now.card && o.card && was.modal) Motion.leave(was.modal, hub);
+  if (now.rail !== o.rail && o.rail != null) on('.wrail', now.rail ? 'fold' : 'unfold');
+  if (now.lock && now.lock !== o.lock) on('#actlock', 'in');
+  else if (!now.lock && o.lock && was.lock) Motion.leave(was.lock, hub);
+  if (now.story && !o.story) on('#sbox', 'in');
+  // values: new inbox rows slide in (max 3), a spent day fills, a new week empties the track right → left
+  [...hub.querySelectorAll('.winbox .wit')]
+    .filter(e => !was.rows.has(e.textContent))
+    .slice(0, 3)
+    .forEach(e => e.classList.add('new'));
+  dayMotion(hub, was.slots);
+  for (const e of hub.querySelectorAll('.tbar .tk'))
+    Motion.tick(e, +e.dataset.from, +e.dataset.to, v =>
+      e.dataset.k === 'money' ? `$${v.toLocaleString()}` : e.dataset.k === 'fans' ? v.toLocaleString() : String(v)
+    );
+  Motion.flip(was.flip, hub);
+}
+/** Day track: newly spent days fill, newly shown ghost days fade in, a week reset clears the 7 slots right → left. */
+function dayMotion(root, old) {
+  const slots = [...root.querySelectorAll('#wdays .dslot')];
+  if (!old || !old.length || old.length !== slots.length || Motion.reduced) return;
+  const doneNow = slots.filter(e => e.classList.contains('done')).length;
+  if (!doneNow && old.includes('done')) return slots.forEach(e => e.classList.add('clear'));
+  slots.forEach((e, i) => {
+    if (e.classList.contains('done') && old[i] !== 'done') e.classList.add('fillin');
+    else if (e.classList.contains('ghost') && old[i] !== 'ghost') e.classList.add('gin');
+  });
 }
 
 /** A card over the map, if the week needs one: an event, a match day, or an unread Gazette. */
 function hubCard(run, nextCup) {
   const wt = Run.weekType(run);
-  if (run.event) return { html: eventCard(run), dim: true }; // the only blocking card
-  if (CW.recap) return { html: recapCard(run), dim: true }; // last week's report first
-  if (CW.briefWeek !== briefKey(run)) return { html: weekBrief(run), dim: true };
-  if (wt === 'cup') return { html: cupPanel(run, nextCup), cls: 'wide' };
-  if (wt === 'eval') return { html: evalPanel(run, World.isFree(run) ? hubClubsHint() : '') };
+  // key: which card it is (motion: a new key cross-fades, the same key re-renders quietly)
+  if (run.event) return { html: eventCard(run), dim: true, key: `event:${run.week}:${run.event.id || run.event.k || ''}` }; // the only blocking card
+  if (CW.recap) return { html: recapCard(run), dim: true, key: `recap:${run.week}` }; // last week's report first
+  if (CW.briefWeek !== briefKey(run)) return { html: weekBrief(run), dim: true, key: `brief:${briefKey(run)}` };
+  if (wt === 'cup') return { html: cupPanel(run, nextCup), cls: 'wide', key: `cup:${briefKey(run)}` };
+  if (wt === 'eval') return { html: evalPanel(run, World.isFree(run) ? hubClubsHint() : ''), key: `eval:${run.week}` };
   return null;
 }
 /** One Week brief per week (and per cup round). */
@@ -158,6 +247,9 @@ function topBar(real) {
       const n = k === 'mood' ? (v > 0 ? '↑' : '↓') : fmtDelta(v, { pre: k === 'money' ? '$' : '', loc: true });
       return ` <em class="hd ${v > 0 ? 'up' : 'dn'}">${n}</em>`;
     },
+    // a number that changed since the last render counts up to its new value (spec §9.12; motionAfter runs the tick)
+    num = (k, txt) =>
+      prev && prev[k] !== now[k] ? `<span class="tk" data-k="${k}" data-from="${prev[k]}" data-to="${now[k]}">${txt}</span>` : txt,
     cell = (label, val, t, id) =>
       `<div class="tres" ${tip(id ? GLOSSARY[id].long : t)}><small>${id ? statI(statKey(id), 14) : ''}${label}</small><b>${val}</b></div>`,
     cup = Run.cupDef(run),
@@ -168,10 +260,10 @@ function topBar(real) {
     <span class="tbrand">Spite &amp; Spike</span>
     <div class="tres-row">
       ${cell('Week', `<span class="disp">${cup ? esc(cup.short) : `${real.week} / ${CAREER.weeks}`}</span>`, `Week ${real.week} of ${CAREER.weeks}`)}
-      ${cell('Money', `$${run.money.toLocaleString()}${d('money')}`, 'Money', 'money')}
-      ${cell('Fans', `${run.fans.toLocaleString()}${d('fans')}`, 'Fans', 'fans')}
-      ${cell('Skill pts', `${run.sp}${d('sp')}`, 'Skill points', 'sp')}
-      ${cell('Stamina', `<span class="sbar ${staPct < 50 ? 'low' : ''}"><i style="--w:${staPct}%"></i></span><span class="${staPct < 50 ? 'warn' : ''}">${run.sta}</span>${d('sta')}`, `Stamina ${run.sta}/${run.staMax}`, 'sta')}
+      ${cell('Money', `${num('money', `$${run.money.toLocaleString()}`)}${d('money')}`, 'Money', 'money')}
+      ${cell('Fans', `${num('fans', run.fans.toLocaleString())}${d('fans')}`, 'Fans', 'fans')}
+      ${cell('Skill pts', `${num('sp', run.sp)}${d('sp')}`, 'Skill points', 'sp')}
+      ${cell('Stamina', `<span class="sbar ${staPct < 50 ? 'low' : ''}"><i ${prev && prev.sta !== run.sta ? `class="mv" style="--w:${staPct}%;--w0:${Math.round((prev.sta / run.staMax) * 100)}%"` : `style="--w:${staPct}%"`}></i></span><span class="${staPct < 50 ? 'warn' : ''}">${run.sta}</span>${d('sta')}`, `Stamina ${run.sta}/${run.staMax}`, 'sta')}
       ${cell('Mood', `<span class="mood m${run.mood}">${mood.name}</span>${d('mood')}`, 'Mood', 'mood')}
     </div>
     <nav class="ttabs" aria-label="Sheets">${HUB_TABS.map(
@@ -429,7 +521,7 @@ function gearToggle() {
   renderCareer();
 }
 function gearPop() {
-  return `<div class="gearpop" role="menu"><button class="btn" onclick="CW.gear=false;navigate('menu')">Main menu</button>${
+  return `<div class="gearpop" role="menu"><button class="btn" onclick="CW.gear=false;navigate('menu')">Main menu</button><button class="btn" onclick="Motion.set(Motion.pref === 'reduced' ? 'full' : 'reduced');renderCareer()" ${tip('Full: panels slide and fade, numbers count. Reduced: short fades only (also follows your system setting).')}>Motion: ${Motion.pref === 'reduced' ? 'Reduced' : 'Full'}</button>${
     /[?&]dev\b/.test(location.search) ? '<button class="btn" onclick="CW.gear=false;openDebug()">Debug log</button>' : ''
   }<p class="small mute" id="abandon"><button class="btn quiet danger" onclick="abandonRun()" ${tip('Your run saves automatically')}>Abandon run</button></p></div>`;
 }

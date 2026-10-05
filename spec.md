@@ -575,6 +575,33 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
   - **Readability**: backgrounds darker and less saturated than players and ball; nothing taller than the net within
     3 m of the far side line except the referee stand; low-end devices drop the light cones, shafts and props; light cones and shafts
     fade out within 6–16 m of the camera and in close-ups so no light ever covers the view (owner, 2026-10-04).
+- §9.12 Motion (owner, 2026-10-05; design system `motion.md`, Motion card, motion tokens) **[built — T-216–T-219; not yet: tooltip delay, dialogue-box exit, match-rail tab fade, stat flip, bar loss flash]**:
+  motion shows where a thing came from and went; never decoration, never a wait.
+  - **Rules**: input is never blocked (a click during an exit commits at once); exits ≈ 70 % of enters (ease-in), enters
+    ease-out; only a surface that just opened / closed / changed animates — a re-render of the same state never replays;
+    one surface moves at a time (lists stagger ≤ 3 items, 30 ms); moves 4 / 8 / 12 px, scale 0.96 → 1; origin = pin,
+    trigger, tab, centre or bottom edge. Reduced motion (`prefers-reduced-motion` or Settings › Motion: Reduced): fades
+    ≤ 120 ms only, no number ticking or pulses, camera cuts instead of flights.
+  - **Tokens**: `dur-instant` 80 · `dur-fast` 140 · `dur-base` 200 · `dur-slow` 280 · `dur-scene` 480 ms; `ease-out`
+    (.2,.8,.2,1) · `ease-in` (.4,0,1,1) · `ease-move` (.2,0,0,1).
+  - **Screens**: a `bg` veil between screens (fade in / out, `dur-scene`), the 3D keeps running under it; hub → match:
+    the round title on black ~600 ms while the court binds (skippable); match → result: the result card rises over the
+    frozen court (no veil).
+  - **Hub surfaces**: place popup — fade + scale from its pin (`dur-base`), another pin = glide + content cross-fade;
+    sheets — fade + 8 px from the top bar, tab change = content cross-fade; peeks — 4 px from the trigger
+    (`dur-fast`); tooltips — 300 ms hover delay; cards over the map — backdrop fade + card rise 12 px (`dur-slow`),
+    card → card = one cross-fade; event choice flashes `sel` before the card leaves; rail fold — width with
+    `ease-move`, the map canvas resizes once at the end; dialogue box — slide up 24 px, letterbox `dur-scene`; walk pill
+    and training cut-in — fade / pop 0.9 → 1.
+  - **Values**: top-bar numbers count over 400 ms with the delta chip rising 8 px over 900 ms; stat numbers flip; bars
+    ease (`dur-base`), a loss flashes `bad` first; day track — ghosts fade in, a spent day fills left → right, End week
+    empties right → left; inbox rows slide in 8 px / collapse; moved list rows slide (FLIP); a selected pin's ring
+    scales 1.15 → 1 once.
+  - **Match**: the scoring digit bumps 1.15 (`dur-base`); momentum width `dur-slow`; the rail slides 12 px from the
+    right; technique switch knob `dur-fast`. Cut-ins and hype scenes keep their own timing.
+  - **Shape**: tokens as CSS properties in theme.css; keyframes `in-rise`, `in-pop`, `out-fade`, `xfade` on classes
+    `.in` / `.out` / `.swap`; a `Motion` helper in dom.js — `mark(key)` / `take(key)` (one-render enter flags),
+    `leave(el)` (exit then remove; state already changed), `tick(el, from, to)`, `flip(list)`, `reduced`.
 
 ## 10. Redesign [built, T-117–T-137, T-159–T-177, T-187–T-188, T-192, T-196]
 
@@ -583,10 +610,15 @@ SheetWorld, SheetSeason, WeekBrief, WeekReport, EventCard, MatchResult, TitleScr
 floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or number changes — layout and flow only.
 
 - §10.1 Hub = top bar 56px (labelled resources, Week n/28, tabs Me 1 · People 2 · World 3 · Season 4, ⚙) + week rail
-  340px (you + 4 stats, day track, inbox, End week action row) + map (legend) + place panel 448px
-  (right, over the map). No site header, no dock, no floating HUD corners. **No list of places** (owner, 2026-10-03:
+  340px (you + 4 stats, day track, inbox, End week action row) + map + place popup (§10.1c, beside the selected
+  pin). No site header, no dock, no floating HUD corners. **No list of places** (owner, 2026-10-03:
   desktop only; places are found on the map). The rail **collapses** to 72px (« / », key `[`, remembered per browser):
   face, days-left stack (7 cells incl. ghost), inbox icon with a count, End week; the map widens.
+- §10.1c Place popup (owner, 2026-10-05) **[built, T-215]**: the selected place opens as a popup beside its pin, not a
+  fixed right panel. Sized by its content (min 280px, max 440px wide, max the map's height, scrolls inside); placed right
+  of the pin with a 24px gap, flipped left when it would leave the map, vertically centred on the pin, kept inside the
+  map area (right of the rail, under the top bar, 16px margins); it follows the pin as the map pans or zooms. A pin off
+  screen → the popup waits in the map's top-right corner. Same anatomy and action row as before (§10.1, §9.8).
 - §10.1a Info lists (owner, 2026-10-03): a block with more than two facts is a vertical label / value list — one fact
   per line, label `mute` left, value right — never a `·`-joined chain. Applies to the street battle card (facts, and
   per side: cost, injury, Win effects, Lose effects — one effect per line), challenge block, club HQ facts, inbox

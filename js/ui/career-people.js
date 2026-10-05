@@ -134,7 +134,7 @@ function sheetPeople(run) {
         tag = Rel.tag(run, id),
         m = marks(p),
         b = mateIds.has(p.id) ? Run.you(run).bond[p.id] || 0 : 0;
-      return `<button class="plist ${id === sel ? 'on' : ''}" onclick="CW.person='${esc(id)}';renderCareer()">${p.gone ? '<span></span>' : faceSVG(p, 0, 28)}<span class="nm"><span class="n1"><b>${stag(p)}${esc(p.name)}</b>${m ? `<span class="pmk">${m}</span>` : ''}</span><small class="mute">${p.role}${
+      return `<button class="plist ${id === sel ? 'on' : ''}" data-flip="p:${esc(id)}" onclick="CW.person='${esc(id)}';renderCareer()">${p.gone ? '<span></span>' : faceSVG(p, 0, 28)}<span class="nm"><span class="n1"><b>${stag(p)}${esc(p.name)}</b>${m ? `<span class="pmk">${m}</span>` : ''}</span><small class="mute">${p.role}${
         p.gone ? ` · ${esc(People.fateText(run.people[id]))}` : ` · ${personMet(run, p) ? 'OVR ' + ovr(p) : 'unrated'}`
       }</small></span>${mateIds.has(p.id) ? `<i class="bbar sm ${b >= 80 ? 'f' : b >= 60 ? 'c' : ''}" ${tip('Bond ' + b)}><i style="--w:${b}%"></i></i>` : '<span></span>'}${tag === 'neutral' ? '' : `<span class="stc ${tag}">${STANCE_NAME[tag]}</span>`}${waitIds.has(id) ? '<em class="badge">!</em>' : ''}</button>`;
     },

@@ -34,15 +34,86 @@ function spotGhost(run, id) {
 function spotCard(run) {
   return `<button class="btn x" onclick="mapPick(null)" aria-label="Close">✕</button>${spotPanel(run, CW.spot)}`;
 }
+/**
+ * The place popup follows its pin (spec §10.1c): beside the selected pin (or the picked-point flag), right of it when it
+ * fits, else left; vertically centred on it; kept inside the map area (right of the rail, under the top bar). No pin on
+ * screen → the top-right corner. One rAF loop for the page; it only measures while a popup is open.
+ */
+const SPOT_GAP = 24;
+function spotFollow() {
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(spotFollow);
+  try {
+    spotPlace();
+  } catch (e) {
+    /* a frame mid-render: try again next frame */
+  }
+}
+/** Place the open popup beside its pin now. */
+function spotPlace() {
+  const card = document.querySelector('.hub .spotcard.open'),
+    hub = card && card.closest('.hub');
+  if (card && hub) {
+    const pin = hub.querySelector(CW.spot && CW.spot.startsWith('pt:') ? '.maplay .mflag' : '.maplay .mpin.sel'),
+      H = hub.getBoundingClientRect(),
+      cs = getComputedStyle(hub),
+      L = H.left + (parseFloat(cs.getPropertyValue('--rail')) || 0) + 16,
+      T = H.top + (parseFloat(cs.getPropertyValue('--tbar')) || 0) + 16,
+      R = H.right - 16,
+      B = H.bottom - 16,
+      w = card.offsetWidth,
+      h = card.offsetHeight,
+      p = pin && pin.style.display !== 'none' ? pin.getBoundingClientRect() : null;
+    if (p && p.width) {
+      const ax = p.left + p.width / 2,
+        ay = p.top + p.height / 2;
+      let x = ax + SPOT_GAP;
+      if (x + w > R) x = ax - SPOT_GAP - w; // flip to the left of the pin
+      x = Math.max(L, Math.min(x, R - w));
+      const y = Math.max(T, Math.min(ay - h / 2, B - h));
+      card.style.left = `${Math.round(x - H.left)}px`;
+      card.style.top = `${Math.round(y - H.top)}px`;
+      card.style.right = 'auto';
+      card.style.setProperty('--mv-origin', x < ax ? 'right center' : 'left center'); // it grows from its pin's side
+      card.classList.add('pinned');
+    } else if (card.classList.contains('pinned')) {
+      card.style.left = card.style.top = card.style.right = '';
+      card.classList.remove('pinned');
+    }
+  }
+}
+if (typeof requestAnimationFrame === 'function' && typeof document !== 'undefined') requestAnimationFrame(spotFollow);
 function mapPick(id) {
+  const prev = CW.spot,
+    el = $('#spot');
   CW.spot = id;
-  const el = $('#spot');
   if (!el) return renderCareer();
+  const hub = el.closest('.hub'),
+    shown = el.classList.contains('open');
+  // motion (spec §9.12): open grows from the pin, another pin glides + cross-fades, close leaves
+  if (shown && !id && hub) Motion.leave(el, hub);
   el.innerHTML = id ? spotCard(RUN) : '';
   el.classList.toggle('open', !!id);
   MapView.select(id);
+  spotPlace();
+  if (id && !shown) Motion.play(el, 'in');
+  else if (id && prev !== id) spotSwap(el);
+  if (CW.mv) CW.mv.spot = id;
   const wk = document.querySelector('.wweek'); // ghost slots follow the selection
-  if (wk) wk.outerHTML = weekSection(RUN);
+  if (wk) {
+    const old = [...wk.querySelectorAll('#wdays .dslot')].map(e =>
+      e.classList.contains('done') ? 'done' : e.classList.contains('ghost') ? 'ghost' : 'free'
+    );
+    wk.outerHTML = weekSection(RUN);
+    dayMotion(document, old);
+  }
+}
+/** The popup moves to another pin: it glides there (ease-move) while its content cross-fades. */
+function spotSwap(el) {
+  if (!el || Motion.reduced) return;
+  el.classList.add('glide');
+  Motion.play(el, 'swap');
+  clearTimeout(el._glide);
+  el._glide = setTimeout(() => el.classList.remove('glide'), 260);
 }
 
 /** Spend a day at a place (+ the trip); the week's one event may come after the first day. Never ends the week. */

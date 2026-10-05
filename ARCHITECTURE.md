@@ -925,3 +925,18 @@ the Season sheet shows it (`sheetSeason`). `Run.repair` adds `mlog` to older sav
 
 `Run.create` gives your player `CAREER.start` (1) in every stat and `CAREER.witBase` (1.0) wit; creation (career-create.js) keeps role / name / modes and shows the stats as plain numbers (no allocation, no wit stepper). `CAREER.statMin` (1) is the floor of
 `Run.bump` (events, injuries). `createPlayer` clamps stats to `STAT_FLOOR` (1, players.js); generated players still never go below 25 (`rollStats`). NPC generation and every engine formula are unchanged (goldens untouched). Save shape unchanged (RUN_VERSION 8).
+
+## UI motion (spec §9.12, T-216–T-219)
+
+Tokens (`--dur-*`, `--ease-*`), keyframes (`mv-*`) and every motion class live at the end of `css/theme.css`.
+`Motion` (js/ui/dom.js) never delays state: `set(v?)` applies `sns_motion` + the OS setting as `html.reduced` (the css
+turns moves into ≤ 120 ms fades or nothing); `play(el, cls)` adds a class until its animation ends; `leave(el, parent)`
+re-attaches a dead copy (no ids / peeks, inert) with `.out` for dur-fast; `tick` counts a number; `flipFirst` / `flip`
+slide `[data-flip]` rows whose index changed; `veil(title?)` covers a screen change (`navigate`, js/game/state.js; hub →
+match shows the round title 600 ms, click / Space skips). The hub re-renders whole, so `renderCareer` brackets the render
+with `motionBefore()` / `motionAfter()` (career-hub.js): `CW.mv` = what the last render showed (spot, sheet + sub-view,
+card `key` from `hubCard`, rail, lock phase, story); a surface that opened gets `.in`, changed `.swap`, closed a `leave`
+copy; new inbox rows `.new`, day slots `fillin` / `gin` / `clear` (`dayMotion`), top-bar numbers `.tk` tick. `mapPick`
+does the same for the popup (`spotSwap` = glide + cross-fade) and the ghost slots; `pins3d.select` rings a newly selected
+pin (`.pulse`). Match: `board` bumps the scorer's digit; `.mrail` / `.over .ocard` animate when un-hidden (css only).
+

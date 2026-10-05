@@ -27,6 +27,7 @@ export function createFurniture(scene, heightAt) {
   layer.className = 'maplay';
   const decals = new THREE.Group();
   let target = null; // this week's battle tile outline (pulsed)
+  let lastSel; // the last selected pin (undefined until the first select: a fresh layer never rings)
   scene.add(decals);
   const P = { key: {}, items: [], ver: 0 }; // items: { el, x, y, z, label? } world points to project; ver bumps on change
   const V = new THREE.Vector3(), // reused by tick (no per-frame allocation)
@@ -282,7 +283,17 @@ export function createFurniture(scene, heightAt) {
     },
     /** Highlight the selected pin. */
     select(id) {
-      for (const e of layer.querySelectorAll('.mpin')) e.classList.toggle('sel', e.dataset.spot === id);
+      for (const e of layer.querySelectorAll('.mpin')) {
+        const on = e.dataset.spot === id;
+        if (on && lastSel !== undefined && !e.classList.contains('sel') && id !== lastSel) {
+          e.classList.remove('pulse'); // a newly selected pin rings once (spec §9.12; css/theme.css)
+          void e.offsetWidth;
+          e.classList.add('pulse');
+          setTimeout(() => e.classList.remove('pulse'), 400);
+        }
+        e.classList.toggle('sel', on);
+      }
+      lastSel = id;
     },
     /** Place every overlay element at its projected ground point (call after the frame is rendered). */
     tick(cam, w, h, dist) {

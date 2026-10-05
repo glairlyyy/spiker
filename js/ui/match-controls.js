@@ -35,6 +35,7 @@ function settingsMenu() {
   return `${seg('Hype', 'hype', Object.fromEntries(Object.entries(HYPE).map(([k, h]) => [k, h.name])), G.hype, 'Staged shonen moments before big attacks. Normal: element spikes, match points, star face-offs. Max: also long rallies and comebacks. Tap the court to skip one.')}
     ${seg('Cut-ins', 'cut', { full: 'Full', mini: 'Mini' }, G.cutMini ? 'mini' : 'full', 'Full cut-ins pause play; mini shows them as a corner notification')}
     ${seg('Zooms', 'zoom', { on: 'On', off: 'Off' }, G.camFixed || RM ? 'off' : 'on', 'On: gentle zoom on big plays at the net. Off: no zooms or pushes (motion-friendly).')}
+    ${seg('Motion', 'motion', { full: 'Full', reduced: 'Reduced' }, Motion.pref, 'Full: panels slide and fade, numbers count. Reduced: short fades only (also follows your system setting).')}
     ${seg('Graphics', 'gfx', Object.fromEntries(Object.entries(GFX).map(([k, g]) => [k, g.name])), G.gfx, 'High: full resolution always. Auto: sharp, drops a little only if frames run slow. Fast: lower resolution for weaker devices.')}
     ${seg('Camera', 'cam', CAM3, cam, 'Courtside: close and low, following the ball. Broadcast: the whole court from the stands. Follow: behind one player. POV: through their eyes.')}
     <select id="folsel" class="folsel" hidden onchange="pickFollow(this.value)" aria-label="Player to follow" title="The player the Follow camera stays behind"></select>
@@ -57,6 +58,7 @@ function setOpt(kind, v) {
     G.gfx = v;
     store.set(KEYS.gfx, v);
   } else if (kind === 'cam' && R3D && CAM3[v]) R3D.setCamMode(v);
+  else if (kind === 'motion') Motion.set(v);
   const pb = $('.setpop .popb');
   if (pb) pb.innerHTML = settingsMenu();
   cam3Label();
@@ -217,8 +219,11 @@ function board(s) {
   if (!$('#p0')) return;
   updTO();
   techSync();
-  $('#p0').textContent = s.pts[0];
-  $('#p1').textContent = s.pts[1];
+  for (const i of [0, 1]) {
+    const el = $('#p' + i);
+    if (s.pts[i] > +el.textContent) Motion.play(el, 'bump'); // the scorer's digit bumps once (spec §9.12)
+    el.textContent = s.pts[i];
+  }
   if ($('#fs0')) {
     $('#fs0').textContent = s.pts[0];
     $('#fs1').textContent = s.pts[1];

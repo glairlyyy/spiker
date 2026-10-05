@@ -590,3 +590,305 @@ details.pop > .popb label {
   margin: 0;
   justify-content: space-between;
 }
+/* ---------- motion (spec §9.12; design system motion.md, Motion card) ---------- */
+:root {
+  --dur-instant: 80ms;
+  --dur-fast: 140ms;
+  --dur-base: 200ms;
+  --dur-slow: 280ms;
+  --dur-scene: 480ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-move: cubic-bezier(0.2, 0, 0, 1);
+}
+@keyframes mv-rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--mv-dy, 8px));
+  }
+}
+@keyframes mv-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+@keyframes mv-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@keyframes mv-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes mv-out {
+  to {
+    opacity: 0;
+    transform: translateY(var(--mv-oy, 0));
+  }
+}
+@keyframes mv-slide {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+}
+@keyframes mv-right {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}
+@keyframes mv-up {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 24px);
+  }
+}
+@keyframes mv-chip {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+@keyframes mv-bump {
+  50% {
+    transform: scale(1.15);
+  }
+}
+@keyframes mv-ring {
+  from {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--gold) 55%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@keyframes mv-fill {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+@keyframes mv-clear {
+  from {
+    background: var(--sel-bg);
+  }
+}
+@keyframes mv-fold {
+  from {
+    width: 340px;
+  }
+}
+@keyframes mv-unfold {
+  from {
+    width: 72px;
+  }
+}
+@keyframes mv-bar {
+  from {
+    width: var(--w0);
+  }
+}
+/* screen veil (Motion.veil): on top of everything, fades out once the new screen is drawn */
+#veil {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity calc(var(--dur-scene) / 2) var(--ease-out);
+}
+#veil.on {
+  opacity: 1;
+  transition: none;
+}
+#veil.title {
+  pointer-events: auto;
+  cursor: pointer;
+}
+#veil b {
+  font: 700 clamp(28px, 4vw, 48px) / 1.1 var(--disp);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-align: center;
+  padding: 0 32px;
+  animation: mv-rise var(--dur-slow) var(--ease-out);
+}
+/* hub surfaces: one class for the render they open on (.in), the content swap (.swap), the leaving copy (.out) */
+.hub .spotcard.in {
+  animation: mv-pop var(--dur-base) var(--ease-out);
+  transform-origin: var(--mv-origin, left center);
+}
+.hub .spotcard.glide {
+  transition:
+    left var(--dur-base) var(--ease-move),
+    top var(--dur-base) var(--ease-move);
+}
+.hub .spotcard.swap > * {
+  animation: mv-fade var(--dur-fast) var(--ease-out);
+}
+.hub .sheet.in {
+  animation: mv-drop var(--dur-base) var(--ease-out);
+}
+.hub .sheet.swap > *:not(.x) {
+  animation: mv-fade var(--dur-fast) var(--ease-out);
+}
+.hub .hubmodal.in {
+  animation: mv-fade var(--dur-base) var(--ease-out);
+}
+.hub .hubmodal.in .hubcard {
+  --mv-dy: 12px;
+  animation: mv-rise var(--dur-slow) var(--ease-out);
+}
+.hub .hubmodal.swap .hubcard > * {
+  animation: mv-fade var(--dur-base) var(--ease-out);
+}
+.hub .hubmodal.in .evc > :nth-child(2) {
+  animation: mv-rise var(--dur-slow) var(--ease-out) 30ms both;
+}
+.hub .out {
+  --mv-oy: 4px;
+  animation: mv-out var(--dur-fast) var(--ease-in) forwards !important;
+  pointer-events: none !important;
+}
+.hub .wrail.fold,
+.hub .wrail.unfold {
+  overflow: hidden;
+}
+.hub .wrail.fold {
+  animation: mv-fold var(--dur-base) var(--ease-move);
+}
+.hub .wrail.unfold {
+  animation: mv-unfold var(--dur-base) var(--ease-move);
+}
+.hub .wrail.unfold > * {
+  animation: mv-fade var(--dur-base) var(--ease-out) var(--dur-fast) both;
+}
+.sbox-layer.in .sbox {
+  animation: mv-up var(--dur-slow) var(--ease-out);
+}
+.sbox-layer.in.bars::before,
+.sbox-layer.in.bars::after {
+  animation: mv-fade var(--dur-scene) var(--ease-out);
+}
+.actlock.in .lkpill {
+  --mv-dy: 4px;
+  animation: mv-rise var(--dur-fast) var(--ease-out);
+}
+.actlock.in .tfx {
+  animation: mv-pop var(--dur-base) var(--ease-out);
+}
+.peek.ported.in {
+  animation: mv-fade var(--dur-fast) var(--ease-out);
+}
+.tipbox {
+  animation: mv-fade var(--dur-fast) var(--ease-out);
+}
+/* values that change */
+.hub .tbar .hd {
+  display: inline-block;
+  animation: mv-chip 900ms var(--ease-out) forwards;
+}
+.hub .sbar i.mv {
+  animation: mv-bar var(--dur-base) var(--ease-move);
+}
+.hub .dslot.fillin {
+  animation: mv-fill var(--dur-base) var(--ease-move);
+}
+.hub .dslot.clear {
+  animation: mv-clear var(--dur-base) var(--ease-in) both;
+}
+.hub .dslot.clear:nth-child(7) {
+  animation-delay: 0ms;
+}
+.hub .dslot.clear:nth-child(6) {
+  animation-delay: 30ms;
+}
+.hub .dslot.clear:nth-child(5) {
+  animation-delay: 60ms;
+}
+.hub .dslot.clear:nth-child(4) {
+  animation-delay: 90ms;
+}
+.hub .dslot.clear:nth-child(3) {
+  animation-delay: 120ms;
+}
+.hub .dslot.clear:nth-child(2) {
+  animation-delay: 150ms;
+}
+.hub .dslot.clear:nth-child(1) {
+  animation-delay: 180ms;
+}
+.hub .dslot.gin {
+  animation: mv-fade var(--dur-fast) var(--ease-out);
+}
+.hub .winbox .new {
+  animation: mv-slide var(--dur-base) var(--ease-out);
+}
+.mpin.pulse {
+  animation: mv-ring var(--dur-base) var(--ease-out);
+}
+/* match */
+.bsc .bump {
+  display: inline-block;
+  animation: mv-bump var(--dur-base) var(--ease-out);
+}
+.mbar i {
+  transition: width var(--dur-slow) var(--ease-move);
+}
+.mrail:not([hidden]) {
+  animation: mv-right var(--dur-base) var(--ease-out);
+}
+.over:not([hidden]) .ocard {
+  --mv-dy: 12px;
+  animation: mv-rise var(--dur-slow) var(--ease-out);
+}
+/* reduced motion (OS setting or Settings › Motion: Reduced → html.reduced, Motion.set): fades of 120 ms or less, nothing moves or pulses */
+html.reduced .hub .spotcard.in,
+html.reduced .hub .sheet.in,
+html.reduced .hub .hubmodal.in .hubcard,
+html.reduced .over:not([hidden]) .ocard,
+html.reduced .sbox-layer.in .sbox,
+html.reduced .mrail:not([hidden]),
+html.reduced .actlock.in .lkpill,
+html.reduced .actlock.in .tfx,
+html.reduced .hub .winbox .new,
+html.reduced .hub .dslot.fillin,
+html.reduced .hub .dslot.gin {
+  animation: mv-fade 120ms linear !important;
+}
+html.reduced .hub .wrail.fold,
+html.reduced .hub .wrail.unfold,
+html.reduced .hub .wrail.unfold > *,
+html.reduced .hub .dslot.clear,
+html.reduced .hub .sbar i.mv,
+html.reduced .mpin.pulse,
+html.reduced .bsc .bump,
+html.reduced .hub .tbar .hd,
+html.reduced .hub .spotcard.swap > *,
+html.reduced .hub .sheet.swap > *,
+html.reduced .hub .hubmodal.swap .hubcard > *,
+html.reduced .hub .hubmodal.in .evc > :nth-child(2) {
+  animation: none !important;
+}
+html.reduced .hub .spotcard.glide,
+html.reduced .mbar i {
+  transition: none !important;
+}
+html.reduced #veil {
+  transition: opacity 120ms linear !important;
+}
