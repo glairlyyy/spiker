@@ -161,16 +161,16 @@ Result:
 
 ### [ ] T-234: Calls on screen — slow down, vignette, options beside your player
 Spec: §2.13          Goldens: unchanged          Save: no change (the Calls setting is per browser: KEYS.calls)
-Goal: in a played career match your decision points slow the world, show the options by your player and wait for your pick.
+Goal: in a played career match your decision points slow the world and show the options by your player for 5 s; then the suggested move.
 Files: js/render/playback.js (drive the generator: on a yield, hold), js/render/movement.js (reuse egoFocus for the slow + chase
 shot), js/render/overlay.js (chip anchor = your player's screen position), js/ui/match-screen.js / match-controls.js (chips,
 keys 1–4, the Calls setting in ⚙), js/core/storage.js (KEYS.calls), css/style.css, tests/ui-smoke.js (a played match answers one call)
-Do not: auto-pick on a timer; ask in a simmed match, for NPCs or in the Monster game; draw R() in presentation.
+Do not: freeze without a timer; ask in a simmed match, for NPCs or in the Monster game; draw R() in presentation.
 Steps:
 1. Playback pulls beats from `playRallyGen(A.m)` (with `m.human` = your id in a career fixture, Calls not Off); on a yield it
-   plays the beats so far, then: slow to ~5 % over 0.4 s, chase shot, vignette, chips; ~3 s later freeze (A.ts 0).
-2. Chips: label, success %, stat icons (statI), the weak stat marked, "auto" on the AI's pick; 1–4 / click resumes the
-   generator with the pick; the world eases back to speed.
+   plays the beats so far, then: slow to ~5 % over 0.4 s, chase shot, vignette, chips and a 5 s ring (real time; stops while paused).
+2. Chips: label, success %, stat icons (statI), the weak stat marked, "suggested" on the AI's pick; 1–4 / click — or the ring
+   running out (→ the suggested move) — resumes the generator with the pick; the world eases back to speed.
 3. Key moments filter (set point, deuce, rally 6+ touches, first ball of a set; cap 8 a match) — below the cap and outside key
    moments the generator is answered with `ai` at once.
 Accept: npm run test:ui passes (incl. one call answered); QA screenshot of a call against the design system.
