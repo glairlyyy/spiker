@@ -18,6 +18,8 @@ const TS_SLOWFX = 0.75;
  * @param {object|undefined} cb the current beat
  * @param {number} raw real (speed-scaled) ms this frame
  */
+/** The world's time scale during an impact frame (the court in negative after an ult spike). */
+const IMPACT_SLOW = 0.15;
 function timeScale(cb, raw) {
   const hype = HYPE[G.hype].max,
     on = !!(cb && cb._s),
@@ -30,7 +32,9 @@ function timeScale(cb, raw) {
   A.sceneOn = !!(on && cb.scene);
   A.slowK = A.slowOn ? (build ? TS_BUILD : cb.slow < 1 ? cb.slow : TS_SLOW) : 1;
   if (on && cb._dig) A.slowK = Math.min(A.slowK, cb._dig); // a far dig: just slow enough for the digger to get there
-  const tgt = A.freezeOn ? TS_FREEZE : A.sceneOn ? TS_SCENE : A.slowK;
+  // the impact frame's slow motion (spec §2.3a): while the court is in negative the world runs at IMPACT_SLOW, then back
+  const imp = A.impactUntil && performance.now() < A.impactUntil,
+    tgt = Math.min(A.freezeOn ? TS_FREEZE : A.sceneOn ? TS_SCENE : A.slowK, imp ? IMPACT_SLOW : 1);
   if (!Number.isFinite(A.ts)) A.ts = 1; // first frame (or a bad value): normal speed
   if (tgt < 0.1 || (on && cb._dig && A.slowK === cb._dig))
     A.ts = Math.min(A.ts, tgt); // hit-stop / scene / far dig: instant (the digger's time budget starts now)

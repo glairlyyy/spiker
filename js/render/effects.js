@@ -28,7 +28,8 @@ function burst(pow, color) {
 }
 /**
  * A spike splits the air (spec §2.3a): pressure rings, wind lines, a dome on a heavy hit — and on an ult hit (power 100+) an
- * impact frame: the court in negative for IMPACT_FRAME_MS (owner, 2026-10-06: a full second). `dx` = the attack's direction.
+ * impact frame: the court in negative, in slow motion, for IMPACT_FRAME_MS (owner, 2026-10-06: a full second), then normal speed.
+ * `dx` = the attack's direction.
  */
 const IMPACT_FRAME_MS = 1000;
 function airImpact(pow, color, dx) {
@@ -40,6 +41,7 @@ function airImpact(pow, color, dx) {
       st.classList.add('impactf');
       clearTimeout(airImpact.t);
       airImpact.t = setTimeout(() => st.classList.remove('impactf'), IMPACT_FRAME_MS);
+      A.impactUntil = performance.now() + IMPACT_FRAME_MS; // slow motion for as long as it lasts (clock.js), then normal speed
     }
   }
 }
