@@ -100,7 +100,7 @@ Grading dogma = what the faction's join conditions and facility conditions mean 
   rival an island faction's offer. **The rival** [proposed by the spec chat, 2026-10-04 — owner may rename / move]:
   **Tachibana Sae**, wing spiker, signed by **Wei Dynasty · Gold** (Wei buying the mainland's best for prestige); black
   hair, red eyes, easy grin. She meets the MC in week 3 and asks "Have we played before?". **The rival doesn't remember her** — her worst day was an ordinary one for them.
-  Shown as: the scoreboard in the cold open; a flashback when she first meets the rival; the rival's "Have we played
+  Shown as: the score in the cold open's first diary line; a flashback when she first meets the rival; the rival's "Have we played
   before?"; diary call-backs after heavy losses; if she beats the rival in the year-2 Cup, they finally remember.
 - **The first aces** [locked]: one year older (20). **Generic, not unique characters**: they peak as OP at the
   year-1 U21 Final Cup and age out — they come and go fast. Generated per run, one per major.
