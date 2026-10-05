@@ -24,7 +24,7 @@ const SCENES = {
       { k: 'cam', to: 'you' },
       { k: 'say', who: 'you', text: 'Finally arrived.' },
       { k: 'walk', to: 'home' },
-      { k: 'say', who: 'you', text: 'Home. For now.' },
+      { k: 'say', who: 'you', text: "I followed the Academy's directions. So this is my new place, huh?" },
       // the flatmate (lore §6): a normal first meeting, then one offer of a tour
       { k: 'say', who: 'senior', text: "Oh — you're the new one? They said Monday." },
       { k: 'say', who: 'you', text: 'Sorry. Is this the student flat?' },
