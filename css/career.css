@@ -1183,9 +1183,6 @@
   font-size: 12px;
   color: var(--mute);
 }
-.hub .winbox .wit.next .wtx {
-  color: var(--cyan);
-}
 .hub .winbox .wit.warn .wico,
 .hub .winbox .wit.warn .wtx {
   color: var(--warn);

@@ -497,7 +497,7 @@ Source: the design system artifact https://claude.ai/artifact/DWxheHjahb7L4k8GAW
 are the pre-redesign record. Goal: minimal reading load, full player control — the UI previews and explains, it never
 chooses or acts for the player.
 
-- §9.1 Principles: one suggested next step always visible (a suggestion, never an auto-action); preview before commit
+- §9.1 Principles: no suggested next step (owner, 2026-10-05: the game reminds, it never suggests); preview before commit
   (cost **and** result on the control); a locked control shows the gap (`Need OVR 72 · you 41`), never only "Locked";
   bad news first; one colour = one meaning; selected ≠ primary; hotkeys printed on the control.
 - §9.2 Colour: tokens in css/theme.css. `hot` = brand + danger only (hero card, destructive, U21, failures) — never
@@ -598,8 +598,10 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   a selected place's cost shows as dashed ghost slots before you commit. Match weeks (eval/cup) show one match slot.
   Needs `run.dayLog` (list of `{k, label, stat?, at?}` per spent day, cleared at week start; `run.days` is already the
   days-left number) via RUN_DEFAULTS — no version bump.
-- §10.3 Inbox (rail): items until handled — street battle, approaches waiting, Gazette unread, match next week,
-  club would sign you (opens its HQ, §10.9). One button each (opens the place / sheet / card). Replaces
+- §10.3 Inbox (rail) **[reminders only — owner, 2026-10-05, T-213]**: items until handled — street battle, `N friends
+  need attention` (approaches waiting), Gazette unread, the evaluation / Cup countdown (`Eval in 4 weeks`, `Eval next
+  week` with opponent and venue, `Cup in 3 weeks`), a seize. No suggestions: no "train X" step, no "club signs you", no
+  "end the week". One button each (opens the place / sheet / card). Replaces
   toasts, dock badges and the seize banner (a seize becomes an inbox item for one week).
 - §10.4 Sheets open over the map (rail stays): Me (stats, element, skills, life/housing rows) · People (one list with
   markers §10.9, person detail, approaches answered in place) · World (tabs Factions · My club · Rankings; dossier in place) · Season
@@ -637,8 +639,8 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
     the HQ place panel keeps `Sign` / the locked gap (one place to commit, §9.1 rule 3). The World tab **Clubs** becomes
     **My club**: a shortcut card for your club (chip, name, OVR, your role + squad spot, `HQ ›` → map pin, `Dossier ›`).
     Free agent: the card says `Free agent` and lists clubs that would sign you now as links to their HQ (name + OVR, no
-    button; none → `Nobody would sign you yet` with the nearest gap on hover). Inbox / next step "would sign you" open
-    that HQ on the map (not the World sheet).
+    button; none → `Nobody would sign you yet` with the nearest gap on hover). (The inbox no longer
+    lists signable clubs — §10.3.)
   - **People = one list.** No Everyone / Squad / Rivals / Waiting tabs and no group headings. One list ordered: waiting
     (`!` badge) → favourites → squad → bench → others → gone. Each row carries small markers after the name instead of
     groups: team `🛡` in your club colour (outlined = bench), rival `⚔` (Rel.rival or stance resent / enemy), favourite
@@ -671,7 +673,7 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   - **Week 1 on campus** (owner, 2026-10-04, T-192): the intro ends with Kaede pointing the camera at the Academy Gym ("stay on
     campus this week") and its card open. Until week 2 (`City.fence`, flag `campus`; Story mode only): no place, trip, scouting,
     battle or challenge off the Academy's seven tiles (locked = the reason "Week 1 — the campus first"), the camera stays over the
-    campus (`model.fence`, ≤ 150 m away), and the next step points at the Academy Gym. Week 2 opens with `explore`: the camera
+    campus (`model.fence`, ≤ 150 m away), and the intro's card opens on the Academy Gym. Week 2 opens with `explore`: the camera
     pulls back over the whole island and Kaede says where things are and that trips cost days; then the island is open.
   - **On the map**: her model (the default VRM dressed: teal hair, Academy hoodie) stands by the Student flat's door with
     her name over her head (`model.guide`), whether or not you still live there; gone when `guideGone` is set (her

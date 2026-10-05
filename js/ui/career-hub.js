@@ -283,7 +283,7 @@ function weekCells(run) {
     ...Array.from({ length: WEEK_DAYS - spent - ghost.length }, () => [null, 'free'])
   ];
 }
-/** The rail inbox (spec §10.3): what waits for you, one button each, until handled. Max 5; the suggested next step first. */
+/** The rail inbox (spec §10.3): reminders only — what waits for you, one button each, until handled. Max 5. */
 function inboxRows(run) {
   return inboxItems(run).slice(0, 5).join('') || '<p class="small mute">Nothing waiting.</p>';
 }
@@ -308,26 +308,9 @@ function inboxItems(run) {
           `row wit ${cls}`
         )
       ),
-    n = nextStep(run),
-    wt = Run.weekType(run),
-    evNext = (wt === 'train' || wt === 'camp') && CALENDAR[run.week + 1] === 'eval' ? evalNext(run) : null,
-    nAct = n && n.act && !/Gazette|signing open/.test(n.text);
+    ev = evalCountdown(run);
   if (CW.flash) rows.push(`<div class="wit bad"><span class="wico">✕</span><span class="wtx">${esc(CW.flash)}</span><span></span></div>`); // a refused action, one render
   CW.flash = null;
-  // the suggested step and next week's evaluation say the same thing: one line (say it once, §10.8)
-  if (nAct && Array.isArray(evNext) && n.week === run.week + 1)
-    facts(
-      'evaln',
-      '→',
-      esc(n.short),
-      [...evNext, ['Train', esc(n.stat)]],
-      [
-        [`Train ${esc(n.stat)}`, n.act],
-        ['Season', "hubOpen('season')"]
-      ],
-      'next'
-    );
-  else if (nAct) act('→', esc(n.short || n.text), 'Suggested next step', n.act, 'next');
   const c = Fight.clashSite(run);
   if (c && !run.clash.done) {
     const att = run.clash.att || c.a,
@@ -348,19 +331,32 @@ function inboxItems(run) {
     );
   }
   const asks = Asks.count(run);
-  if (asks) act('✉', `${asks} ask${asks > 1 ? 's' : ''}`, 'Approaches waiting: they expire at the end of the week', "hubOpen('people')");
+  if (asks)
+    act(
+      '✉',
+      `${asks} friend${asks > 1 ? 's' : ''} need${asks > 1 ? '' : 's'} attention`,
+      'Approaches waiting: they expire at the end of the week',
+      "hubOpen('people')"
+    );
   if (run.gazette && !run.gazette.read) act('☰', 'Gazette out', `The Gazette, week ${run.gazette.week}`, "hubOpen('news')");
-  if (evNext && !(nAct && Array.isArray(evNext) && n.week === run.week + 1)) {
-    if (Array.isArray(evNext)) facts('evaln', '⚑', `Eval W${run.week + 1}`, evNext, [['Season', "hubOpen('season')"]]);
-    else act('⚑', `Eval W${run.week + 1}`, evNext, "hubOpen('season')");
-  }
-  if (World.isFree(run)) {
-    const t = run.teams.find(t2 => World.canJoin(run, t2.i).ok);
-    if (t) act('🛡', `${esc(t.name)} signs you`, 'Sign at their HQ', `hubOpen(null);mapPick('hq${t.i}')`, '', 'HQ');
+  if (ev) {
+    const f1 = ev.w === run.week + 1 ? evalNext(run) : null;
+    if (Array.isArray(f1)) facts('evaln', '⚑', ev.text, f1, [['Season', "hubOpen('season')"]]);
+    else act('⚑', ev.text, f1 || `Week ${ev.w}`, "hubOpen('season')");
   }
   for (const z of (CW.seizes || []).filter(x => run.week - x.week <= 1))
     act('⚑', esc(z.text), 'A place changed hands', `mapPick('${z.id}')`);
   return rows;
+}
+/** The next evaluation (or the Cup) from a training week, as a countdown: { w, text } — 'Eval in 4 weeks', 'Eval next week', 'Cup in 3 weeks'; null in match weeks. */
+function evalCountdown(run) {
+  const wt = Run.weekType(run);
+  if (wt !== 'train' && wt !== 'camp') return null;
+  let w = run.week + 1;
+  while (w <= CAREER.weeks && CALENDAR[w] !== 'eval') w++;
+  const n = w - run.week,
+    what = w > CAREER.weeks ? 'Cup' : 'Eval';
+  return { w, text: `${what} ${n === 1 ? 'next week' : `in ${n} weeks`}` };
 }
 /** Next week's evaluation as facts (the squads are drawn that week): opponent and venue; no evaluation for you → a note. */
 function evalNext(run) {
@@ -373,48 +369,6 @@ function evalNext(run) {
     v ? ['Venue', esc(VENUES[v].name)] : null
   ];
 }
-/**
- * One suggested next step (a suggestion only: the chip selects a place or opens a sheet, never acts). First match wins:
- * an unread Gazette; the next evaluation / cup within 3 weeks of a training week; a club that would sign you; night.
- */
-function nextStep(run) {
-  if (run.gazette && !run.gazette.read) return { text: 'Gazette out', act: "hubOpen('news')" };
-  const wt = Run.weekType(run),
-    you = Run.you(run),
-    key = KEYSTAT[you.role];
-  if (wt === 'train' || wt === 'camp') {
-    let w = run.week;
-    while (w <= run.week + 3 && CALENDAR[w] !== 'eval' && w <= CAREER.weeks) w++;
-    const what = w > CAREER.weeks ? 'Cup' : CALENDAR[w] === 'eval' && w <= run.week + 3 ? 'Evaluation' : '';
-    if (what && STATK.includes(key)) {
-      const spot = City.fence(run)
-        ? 'acaGym' // week 1 of Story: the campus gym Kaede pointed at (§10.10a)
-        : Object.keys(SPOTS)
-            .filter(
-              id =>
-                SPOTS[id].train &&
-                TRAININGS[SPOTS[id].train].main[0] === key &&
-                !TRAININGS[SPOTS[id].train].more &&
-                MapModel.known(run, id, City.at(run, id))
-            )
-            .sort((a, b) => City.cost(run, a) - City.cost(run, b))[0];
-      return {
-        text: `${what}${what === 'Cup' ? '' : ` W${w}`} · ${STATNAME[key]} ${you[key]}`,
-        short: `${what === 'Cup' ? 'Cup' : `Eval W${w}`} · ${City.fence(run) ? 'the Academy Gym' : `train ${STATNAME[key]}`}`,
-        week: what === 'Cup' ? null : w,
-        stat: STATNAME[key],
-        act: spot ? `mapPick('${spot}')` : ''
-      };
-    }
-  }
-  if (World.isFree(run)) {
-    const t = run.teams.find(t2 => World.canJoin(run, t2.i).ok);
-    if (t) return { text: `${t.name}: signing open`, act: `hubOpen(null);mapPick('hq${t.i}')` };
-  }
-  if (wt !== 'cup' && wt !== 'eval' && City.days(run) <= 0) return { text: 'Night · end the week', act: '' };
-  return null;
-}
-
 /** Hub keys: 1–4 open the sheet tabs, `[` folds the week rail, Space ends the week, Esc closes ⚙, the sheet, then the place card. */
 function hubKey(e) {
   if (A || e.ctrlKey || e.metaKey || e.altKey || !document.querySelector('.career.hub') || $('#dbg') || (CW.dossier && e.key === 'Escape'))

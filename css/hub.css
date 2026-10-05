@@ -881,9 +881,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.hub .winbox .peekt.wit.next .wtx {
-  color: var(--cyan);
-}
 .hub .winbox .peekt.wit.warn .wtx,
 .hub .winbox .peekt.wit.warn .wico {
   color: var(--warn);
