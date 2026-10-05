@@ -4,8 +4,8 @@
 // Coordinates are written in design units (1060 × 700) and scaled once at load by MAP_SCALE (scaleMap at the end of this
 // file): the island is MAP_SCALE × wider and taller, its towns keep their size and density. Names are placeholders.
 
-/** The island's scale (owner, 2026-10-03: 1.5 — more room between the same towns). */
-const MAP_SCALE = 1.5;
+/** The island's scale (owner, 2026-10-03: 1.5; owner, 2026-10-05: × 1.5 again = 2.25 — more room between the same towns). */
+const MAP_SCALE = 2.25;
 const CITY = (() => {
   const coast = [
       [90, 140],
@@ -823,7 +823,7 @@ const GROUND_KEEP = ['terrace', 'paddy', 'field', 'park', 'water', 'quarry'];
  * quays / water grow nothing; the quarry is rock. `life`: the few animals that loop on the map (display only).
  */
 const NATURE = {
-  cell: 13,
+  cell: 18,
   treeline: 62,
   shu: {
     p: 0.66,

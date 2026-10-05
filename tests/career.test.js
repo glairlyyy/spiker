@@ -95,7 +95,7 @@ test('career: training cap, facility Lv 5 and Hard training', () => {
   eq(you.power, 80, 'a stat already at 80 is not lowered by a positive bump');
   g.Training.addXp(run, 'power', 100000, 'match');
   assert(you.power > 80, 'match XP goes past the training cap');
-  assert(!('lb' in run) && g.RUN_VERSION === 17, 'no Limit Break progress in the run; RUN_VERSION 17');
+  assert(!('lb' in run) && g.RUN_VERSION === 18, 'no Limit Break progress in the run; RUN_VERSION 18');
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
   const n = g.Training.preview(run, 'power', false).main[2],
@@ -877,7 +877,7 @@ test('career: challenge loss and injury', () => {
   run.sp = 99;
   assert(g.Training.physio(run) && !run.injury, 'physio heals the injury');
   assert(you[lost[0]] === before[g.STATK.indexOf(lost[0])] - g.INJURY.lose, 'but not the lost stat');
-  eq(g.RUN_VERSION, 17, 'save v17');
+  eq(g.RUN_VERSION, 18, 'save v18');
 });
 
 test('career: rules moved out of the UI (T-075)', () => {

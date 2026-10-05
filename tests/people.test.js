@@ -728,7 +728,7 @@ test('pairs: entries carry `a`; two squadmates training at the same place share 
   assert(!g.Rel.list(run, x.id, z.id).some(e => e.k === 'trained'), 'the one who rested has none');
   g.Run.save(run);
   const raw = JSON.parse(g.__mem[g.KEYS.career]);
-  eq(raw.v, 17, 'saved as v17');
+  eq(raw.v, 18, 'saved as v18');
   raw.v = 13;
   g.__mem[g.KEYS.career] = JSON.stringify(raw);
   eq(g.Run.load(), null, 'a v13 save is dropped');

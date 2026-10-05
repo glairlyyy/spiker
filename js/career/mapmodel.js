@@ -46,7 +46,7 @@ const MapModel = {
     }
     const blocked = p =>
         (buckets.get(`${Math.floor(p[0] / BK)},${Math.floor(p[1] / BK)}`) || []).some(o => {
-          if (o.c) return Math.hypot(p[0] - o.c[0], p[1] - o.c[1]) < o.r;
+          if (o.c) return Math.hypot(p[0] - o.c[0], p[1] - o.c[1]) < o.r + 0.5; // (+ the rounding of the saved point)
           const dx = o.b[0] - o.a[0],
             dy = o.b[1] - o.a[1],
             t = clamp(((p[0] - o.a[0]) * dx + (p[1] - o.a[1]) * dy) / (dx * dx + dy * dy || 1), 0, 1);

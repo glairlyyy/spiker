@@ -288,12 +288,12 @@ test('career: town layout — districts, beach, overpass, frozen borders', () =>
     flat = g.ROADS.edges.filter(e => e[2] !== 'overpass');
   for (const l of L) by[g.City.regionAt(l.at)] = (by[g.City.regionAt(l.at)] || 0) + 1;
   for (const [r, n, lo, hi] of [
-    ['wei', 549, 440, 660],
-    ['wu', 210, 168, 252],
-    ['shu', 75, 60, 90],
-    ['outlaws', 49, 39, 59],
-    ['open', 95, 76, 114],
-    ['gloria', 19, 15, 23]
+    ['wei', 670, 536, 804], // (island × 2.25, owner 2026-10-05: the towns fill out where roads and places had squeezed them)
+    ['wu', 260, 208, 312],
+    ['shu', 91, 73, 109],
+    ['outlaws', 48, 38, 58],
+    ['open', 138, 110, 166],
+    ['gloria', 20, 16, 24]
   ])
     assert(by[r] >= lo && by[r] <= hi, `${r} has ${by[r]} lots (~${n})`);
   assert(
@@ -358,7 +358,7 @@ test('career: town layout — districts, beach, overpass, frozen borders', () =>
   assert(g.MapModel.inAirport(T.plane.from) && g.MapModel.inAirport(T.plane.lift), 'the plane rolls on the airport');
   const dd = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
   assert(dd(g.HOME_AT.condo, g.WEALTH.weiCore) < 100, 'the Luxury condo stands by the civic core');
-  assert(dd(g.HOME_AT.dorm, g.ROADS.nodes.jW1) < 150, 'the City dorm stands by the training district');
+  assert(dd(g.HOME_AT.dorm, g.ROADS.nodes.jW1) < 100 * g.MAP_SCALE, 'the City dorm stands by the training district');
   const down = L.filter(l => l.district === 'wei-downtown');
   assert(down.length > 20 && Math.max(...down.map(l => l.h)) > 0.8, 'downtown grows tall');
   // wealth (spec §4.19): 0–1 per lot; Wei falls off steadily from the downtown core, Old Town poor; Wu even and modest

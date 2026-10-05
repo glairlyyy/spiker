@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-225** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-226** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,11 @@ cleanup parts 1–3. Done tasks are one-liners under **Done**; full text in git 
 ## Now
 
 Owner request 2026-10-05 (spec §9.12 motion; design system `motion.md`, Motion card): T-216 → T-219. UI only; goldens unchanged.
+
+### [x] T-225: The island × 1.5 again (owner request)
+Spec: §4.18b          Goldens: unchanged          Save: RUN_VERSION 18 (positions and fog are in map units: older saves dropped)
+Files: js/data/city.js (MAP_SCALE 2.25, NATURE.cell 18, shu p 0.78), js/career/run.js (RUN_VERSION 18), js/career/mapmodel.js (keep-out rounding margin), js/map3d/map3d.mjs (DIST 1300), tests (v18, lot targets, the dorm distance × MAP_SCALE), CLAUDE.md
+Result: 2385 × 1575 map units; travel days, fog radius, hex size (still 169 tiles) and relief scale with it; lots 966 → 1227 (towns keep their size, fill out where they were squeezed); nature ~3.3k instances (with T-224's borders). QA: overview + Wei close-up, no errors; tests 125/125.
 
 ### [x] T-223: Nature objects and small life on the island
 Spec: §4.19c          Goldens: unchanged          Save: no change

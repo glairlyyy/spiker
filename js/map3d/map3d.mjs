@@ -17,7 +17,7 @@ export { inside, edgeDist, sideDist }; // (the polygon maths live in geo3d.mjs; 
 const CELL = 2, // terrain grid cell (m)
   PITCH = (55 * Math.PI) / 180,
   FLY_S = 0.45, // a camera move to a selected place
-  DIST = [25, 630], // camera distance (m): the scaled island (MAP_SCALE 1.5) needs the longer reach
+  DIST = [25, 1300], // camera distance (m): the scaled island (MAP_SCALE 2.25) needs the longer reach
   FENCE_D = 150, // the farthest the camera goes while the week-1 fence holds (m)
   CLICK_PX = 5,
   BEACH = 12, // beach slope width (m)
