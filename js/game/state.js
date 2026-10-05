@@ -23,6 +23,9 @@ const HYPE = {
   max: { name: 'Max', max: 2 }
 };
 G.hype = savedOption(KEYS.hype, HYPE, 'normal');
+/** Calls (spec §2.13): when a played career match asks you at your decision points. */
+const CALL_MODES = { key: 'Key moments', all: 'All', off: 'Off' };
+G.calls = savedOption(KEYS.calls, CALL_MODES, 'key');
 /** Screen registry: each screen registers its entry function; navigate() switches between them. */
 const Screens = {};
 /**

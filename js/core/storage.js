@@ -53,5 +53,6 @@ const KEYS = {
   rail: 'sns_rail_mini', // the hub's week rail folded to its strip ('1') or open (T-136)
   walk: 'sns_walk', // the map's walking speed: '1' | '2' | '4' (T-214)
   motion: 'sns_motion', // UI motion: 'full' | 'reduced' (spec §9.12, T-216)
+  calls: 'sns_calls', // match calls: 'key' | 'all' | 'off' (spec §2.13, T-234)
   career: 'sns_run_v1' // Spite & Spike run (older Skyline Cup careers are not carried over)
 };

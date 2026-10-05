@@ -123,6 +123,31 @@ const step = async (name, fn) => {
     await pg.keyboard.press('Space');
     if (await ev(() => !!CW.lock)) throw new Error('Space did not close the card');
   });
+  await step('played court match → a call answered → skip → result card', async () => {
+    await ev(() => {
+      RUN.days = 7;
+      RUN.injury = null;
+      G.calls = 'all';
+      mapCourt('arena', 'open', false);
+    });
+    await pg.waitForFunction(() => typeof R3D !== 'undefined' && R3D && A && A.m && !A.hold, null, { timeout: 120000 });
+    const shown = await ev(() => {
+      A.hold = true; // frames by hand (the 3D clock is slow on a software GPU)
+      for (let i = 0; i < 60000 && !(A.ask && A.ask.shown); i++) {
+        step(16);
+        R3D.poseAll(0.016);
+      }
+      return !!(A.ask && A.ask.shown && document.querySelector('#calls'));
+    });
+    if (!shown) throw new Error('no call shown');
+    await pg.keyboard.press('1');
+    const n = await ev(() => (A.m.calls || []).length);
+    if (n !== 1 || (await ev(() => !!A.ask))) throw new Error(`the call was not answered (${n})`);
+    await ev(() => skipMatch());
+    await pg.waitForFunction(() => /Top 3/i.test((document.querySelector('#over') || {}).textContent || ''), null, { timeout: 10000 });
+    await ev(() => leaveMatch());
+    return `${n} call`;
+  });
   await step('encyclopedia', async () => {
     await ev(() => navigate('encyclopedia'));
     await pg.waitForFunction(() => document.querySelector('#app').textContent.length > 100);

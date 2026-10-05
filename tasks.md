@@ -155,7 +155,7 @@ Accept: odds honest (±5); goldens unchanged.
 QA: none (engine).
 Result: `DECIDE` (rules.js) + `Decide` (decide.js): serve Safe / Power / Target {name}, attack Power / Placed (with a block up) / Tip; odds sampled 300× on a private generator keyed by the moment (Math.random and the game stream untouched — the T-232 equality test now computes options too), measured `cal` corrections; slow test: shown vs played within ±6 on all six options (seed 17, n 200), safe faults < power faults. Deviations: no 'tool the block' option (it's an outcome); suggested = best odds (win − lose − err), not the AI's pick (the AI's pick is today's behaviour, not an option); `m.calls` + `Decide.out` built here (T-235 reads them). Goldens unchanged.
 
-### [ ] T-234: Calls on screen — slow down, vignette, options beside your player
+### [x] T-234: Calls on screen — slow down, vignette, options beside your player
 Spec: §2.13          Goldens: unchanged          Save: no change (the Calls setting is per browser: KEYS.calls)
 Goal: in a played career match your decision points slow the world and show the options by your player for 5 s; then the suggested move.
 Files: js/render/playback.js (drive the generator: on a yield, hold), js/render/movement.js (reuse egoFocus for the slow + chase
@@ -171,7 +171,7 @@ Steps:
    moments the generator is answered with `ai` at once.
 Accept: npm run test:ui passes (incl. one call answered); QA screenshot of a call against the design system.
 QA: career run → evaluation, Play → a call appears at your serve / attack; pick; play continues.
-Result:
+Result: js/ui/match-calls.js (new: callWanted / callStep / callShow / callPlace / callPick / callHide), playback `rallyPull` / `rallyFlush`, `m.human` in startMatch, ⚙ Calls (Key moments / All / Off, `sns_calls`), keys 1–4, Skip flushes a waiting rally. Slow = 0.1 (eases in; 0.05 snaps). Key moments = set point either side, a rally of LONG_RALLY+ possessions, the first serve / attack of the match; cap 8. Found and fixed on the way: `CALLS` already existed (dialogue.js) — a duplicate top-level name stops the page; new test in career.test catches any. test:ui gains a played court match answering a call (11 steps, 0 errors). QA: call at your serve (screenshot), pick → resumes; timeout → suggested (auto) — real-time play on the software GPU is too slow to watch, frames stepped by hand.
 
 ### [ ] T-235: Calls on the result card — what held you back
 Spec: §2.13, §10.6          Goldens: unchanged          Save: no change (calls kept on the match only)

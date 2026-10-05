@@ -405,6 +405,45 @@ function endBeat(b) {
   }
 }
 
+/* ---------- the rally source ---------- */
+
+/**
+ * Get beats to play (spec §2.13, T-234). A match without a human player plays each rally whole (playRally). A career match
+ * you play runs the pausable rally: it stops at your decision points — the ones callWanted() keeps are shown (A.ask), the
+ * rest are answered with the AI's play at once. `pick` resumes a suspended rally. Playback keeps its own shallow copies of
+ * the beats (it re-times / trims them; acts are shared and get playback marks); a resumed rally only adds beats after the
+ * ones already copied (the engine never inserts before a decision point).
+ */
+function rallyPull(pick) {
+  const m = A.m;
+  if (!m.human) {
+    const r = playRally(m);
+    A.beats = r.beats.map(b => ({ ...b }));
+    A.bi = 0;
+    return;
+  }
+  let r;
+  if (!A.gen) {
+    A.gen = playRallyGen(m);
+    A.beats = [];
+    A.bi = 0;
+    r = A.gen.next();
+  } else r = A.gen.next(pick);
+  while (!r.done && !callWanted(r.value)) r = A.gen.next(r.value.ai);
+  if (r.done) A.gen = A.ask = null;
+  else A.ask = { q: r.value, left: CALL.ms, shown: false };
+  const src = m.beats || [];
+  for (let i = A.beats.length; i < src.length; i++) A.beats.push({ ...src[i] });
+}
+/** Play out a suspended rally at once with the AI's choices (skip to the result, leaving): the engine never stays half-way. */
+function rallyFlush() {
+  if (!A || !A.gen) return;
+  let r = A.gen.next(A.ask ? A.ask.q.ai : undefined);
+  while (!r.done) r = A.gen.next(r.value.ai);
+  A.gen = A.ask = null;
+  callHide();
+}
+
 /* ---------- per frame ---------- */
 
 /** Advance playback by dt ms of (speed-scaled) real time: timers, effects, the current beat, then the next. */
@@ -423,14 +462,14 @@ function step(dt) {
     if (A.cele) stepCelebration(dt);
     return;
   }
+  if (A.ask) callStep(cb); // a call of yours (spec §2.13): the slow world, the options, the 5 s ring
   if (!A.beats || A.bi >= A.beats.length) {
+    if (A.ask) return; // the rally waits at your decision point
     if (A.m.over) {
       finishMatch();
       return;
     }
-    const r = playRally(A.m);
-    A.beats = r.beats.map(b => ({ ...b })); // a shallow copy: playback re-times / trims its own beat list (acts are shared and get playback marks)
-    A.bi = 0;
+    rallyPull();
     return;
   }
   const b = A.beats[A.bi];

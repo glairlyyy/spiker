@@ -76,7 +76,7 @@ function* serveWalk(c) {
     egoHero = nat !== 'jump' && egoRoll(m, server, 'serve'),
     ai = egoHero ? 'jump' : nat,
     // a decision point (spec §2.13): your serve — the AI's pick is the one drawn above; your call sets type, pace, risk, aim
-    pick = yield* decide(m, { kind: 'serve', p: server, options: () => Decide.serve(c, server, sq), ai }),
+    pick = yield* decide(m, { kind: 'serve', p: server, options: () => Decide.serve(c, server, sq), ai, n: 0 }),
     call = DECIDE.serve[pick] ? pick : null,
     sType = call ? DECIDE.serve[call].type || nat : ai,
     hero = egoHero && !call,

@@ -91,7 +91,7 @@ function* rally(m, B, V, atk, pas, qual, scr = null) {
     x.pow0 = x.tip ? 0 : x.pow / (x.elS ? x.elS.pow : 1);
     // a decision point (spec §2.13): your attack — the AI's shot is the one spikePower drew; your pick rewrites it
     const ai = x.tip ? 'tip' : x.delayed ? 'delay' : x.around ? 'cut' : 'power',
-      shot = yield* decide(m, { kind: 'attack', p: x.spiker, options: () => Decide.attack(c, x), ai });
+      shot = yield* decide(m, { kind: 'attack', p: x.spiker, options: () => Decide.attack(c, x), ai, n: c.n });
     if (shot !== ai) Decide.applyShot(c, x, shot);
     Object.assign(x, spikeActs(c, x));
     Object.assign(x, landingSpot(c, x));

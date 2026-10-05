@@ -33,6 +33,7 @@ function settingsMenu() {
         .map(([k, n]) => `<button class="btn ${k === cur ? 'on' : ''}" onclick="setOpt('${kind}','${k}')">${n}</button>`)
         .join('')}</div></div>`;
   return `${seg('Hype', 'hype', Object.fromEntries(Object.entries(HYPE).map(([k, h]) => [k, h.name])), G.hype, 'Staged shonen moments before big attacks. Normal: element spikes, match points, star face-offs. Max: also long rallies and comebacks. Tap the court to skip one.')}
+    ${seg('Calls', 'calls', CALL_MODES, G.calls, 'Your decisions in a career match you play: serve and attack options with their odds. Key moments: set point, deuce, long rallies, the first ball. Off: your player decides.')}
     ${seg('Cut-ins', 'cut', { full: 'Full', mini: 'Mini' }, G.cutMini ? 'mini' : 'full', 'Full cut-ins pause play; mini shows them as a corner notification')}
     ${seg('Zooms', 'zoom', { on: 'On', off: 'Off' }, G.camFixed || RM ? 'off' : 'on', 'On: gentle zoom on big plays at the net. Off: no zooms or pushes (motion-friendly).')}
     ${seg('Motion', 'motion', { full: 'Full', reduced: 'Reduced' }, Motion.pref, 'Full: panels slide and fade, numbers count. Reduced: short fades only (also follows your system setting).')}
@@ -46,6 +47,9 @@ function setOpt(kind, v) {
   if (kind === 'hype' && HYPE[v]) {
     G.hype = v;
     store.set(KEYS.hype, v);
+  } else if (kind === 'calls' && CALL_MODES[v]) {
+    G.calls = v;
+    store.set(KEYS.calls, v);
   } else if (kind === 'cut') {
     G.cutMini = v === 'mini';
     store.set(KEYS.cutins, v);
@@ -119,6 +123,8 @@ addEventListener('keydown', e => {
   if (e.key === 'f' || e.key === 'F') toggleFullscreen();
   else if (e.key === 'b' || e.key === 'B') railOpen();
   else if (e.key === 't' || e.key === 'T') railOpen('tac');
+  else if (/^[1-4]$/.test(e.key) && A.ask && A.ask.shown)
+    callPick(+e.key - 1); // a call of yours (spec §2.13)
   else if (/^[1-9]$/.test(e.key) && A.railTab === 'tac' && !$('#mrail').hidden) flipTech(+e.key - 1);
   else if (e.key === 'Escape') {
     $('#stage')?.classList.remove('fake-fs');
@@ -208,6 +214,7 @@ function togglePause() {
 function skipMatch() {
   if (!A || A.done) return;
   const m = A.m;
+  rallyFlush(); // a rally waiting at your call finishes with the AI's play first
   m.rec = false;
   while (!m.over) playRally(m);
   hideCut();

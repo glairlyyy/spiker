@@ -25,6 +25,7 @@ function startMatch(fx) {
   const you = fx.onFinish && typeof RUN !== 'undefined' && RUN ? Run.you(RUN) : null,
     mine = you ? ([0, 1].find(i => squadOf(m.t[i]).some(p => p.id === you.id)) ?? null) : null,
     sides = mine == null ? [0, 1] : [mine];
+  if (mine != null) m.human = you.id; // your calls (spec §2.13): the rally pauses at your decision points
   $('#app').innerHTML = `<section class="match">
     <div class="board">
       ${boardTeam(a, 0)}

@@ -1342,4 +1342,13 @@ test('code: every top-level classic-script name is used somewhere else (no dead 
       if (uses < 2) dead.push(`${n} (${s})`);
     }
   eq(dead.join(', '), '', 'defined but never referenced');
+  // one shared scope: a name declared twice (const / let / class) stops the page loading — lint does not catch it
+  const seen = {},
+    twice = [];
+  for (const s of scripts)
+    for (const [, n] of read(s).matchAll(/^(?:const|let|class)\s+([A-Za-z_$][\w$]*)/gm)) {
+      if (seen[n]) twice.push(`${n} (${seen[n]}, ${s})`);
+      seen[n] = s;
+    }
+  eq(twice.join(', '), '', 'top-level names declared in two scripts');
 });
