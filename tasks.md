@@ -118,6 +118,74 @@ Result:
 
 Owner request 2026-10-04 (spec §9.11 match venues): T-193 → T-195. Render only; goldens unchanged.
 
+**Calls — decisions in a played match (owner, 2026-10-05; spec §2.13): T-232 → T-235, one at a time, in order.**
+
+### [ ] T-232: The rally is pausable — one engine, two pickers
+Spec: §2.13          Goldens: unchanged (the AI picker draws exactly as today)          Save: no change
+Goal: `playRallyGen(m)` can stop at a decision point and resume with a pick; `playRally(m)` runs it to the end with the AI.
+Files: js/engine/serve.js, rally.js, rally-phases.js, rally-defense.js, rally-block.js (only the functions on the path from
+the serve to the serve-type choice and to the hitter's choice), js/engine/match.js (if the driver lives there), tests/engine.test.js, ARCHITECTURE.md
+Do not: change any draw, its order or count; copy engine code into a second "decision" version; touch render or UI.
+Steps:
+1. Convert the call path playRally → serve steps → serveReceive → rally() → … → chooseAttack / the hitter's shot choice into
+   generator functions (`function*`, calls → `yield*`). Functions off that path stay plain.
+2. A decision point: `const pick = yield { kind, p, options, ai }` where `ai` is what the code picks today (computed with the same
+   draws, before the yield). Resume value null/undefined → `ai`. This task adds the yield sites with `options: []` placeholders
+   at the serve type and the attack choice; T-233 fills them.
+3. `playRally(m)` = drive `playRallyGen(m)` to the end answering every yield with `ai` (same return value as today).
+4. The late insert (`B.ins` in rally-defense.js, the block-break cut) may land before a decision beat: when a decision was
+   asked this rally, put it after the decision beat instead (presentation only).
+5. Tests: goldens unchanged; a match driven through the generator with explicit `ai` answers equals `playRally` beat for beat;
+   a yield happens at your serve and your attack when `m.human` is set (engine-only flag), never without it.
+Accept: goldens unchanged; npm test + lint pass; headless match speed within 10 % of before (report ms per match).
+QA: Monster game plays as before.
+Result:
+
+### [ ] T-233: Decision options with odds and the stats behind them
+Spec: §2.13          Goldens: unchanged (options are computed without draws; the AI pick is unchanged)          Save: no change
+Goal: the serve and attack decision points offer real options whose odds come from the engine's formulas and change the outcome.
+Files: js/engine/*.js (the two decision sites + a pure `Decide` helper, new file js/engine/decide.js — add to index.html),
+js/data/rules.js (DECIDE: option ids, labels, stat keys), tests/engine.test.js
+Do not: draw R() while computing options; change what the AI picks.
+Steps:
+1. `Decide.serve(c)` / `Decide.attack(c, x)` → options `{ id, label, odds: { win, lose, err }, stats, weak }` from the same
+   formulas the roll uses (sig(…) terms with the current server / hitter, blockers, defenders); `weak` = the stat in `stats`
+   with the lowest value relative to the opponent it is rolled against.
+2. Each option maps onto the engine's existing branches (serve type / aim; spike power, placement, tip, tool) — a pick sets
+   the branch the AI would otherwise choose by draw.
+3. Tests: headless, 400 rallies per option: the measured rates are within ±5 points of the shown odds; picking "safe float"
+   lowers faults vs "jump serve"; options never draw (RNG call count unchanged by computing them).
+Accept: odds honest (±5); goldens unchanged.
+QA: none (engine).
+Result:
+
+### [ ] T-234: Calls on screen — slow down, vignette, options beside your player
+Spec: §2.13          Goldens: unchanged          Save: no change (the Calls setting is per browser: KEYS.calls)
+Goal: in a played career match your decision points slow the world, show the options by your player and wait for your pick.
+Files: js/render/playback.js (drive the generator: on a yield, hold), js/render/movement.js (reuse egoFocus for the slow + chase
+shot), js/render/overlay.js (chip anchor = your player's screen position), js/ui/match-screen.js / match-controls.js (chips,
+keys 1–4, the Calls setting in ⚙), js/core/storage.js (KEYS.calls), css/style.css, tests/ui-smoke.js (a played match answers one call)
+Do not: auto-pick on a timer; ask in a simmed match, for NPCs or in the Monster game; draw R() in presentation.
+Steps:
+1. Playback pulls beats from `playRallyGen(A.m)` (with `m.human` = your id in a career fixture, Calls not Off); on a yield it
+   plays the beats so far, then: slow to ~5 % over 0.4 s, chase shot, vignette, chips; ~3 s later freeze (A.ts 0).
+2. Chips: label, success %, stat icons (statI), the weak stat marked, "auto" on the AI's pick; 1–4 / click resumes the
+   generator with the pick; the world eases back to speed.
+3. Key moments filter (set point, deuce, rally 6+ touches, first ball of a set; cap 8 a match) — below the cap and outside key
+   moments the generator is answered with `ai` at once.
+Accept: npm run test:ui passes (incl. one call answered); QA screenshot of a call against the design system.
+QA: career run → evaluation, Play → a call appears at your serve / attack; pick; play continues.
+Result:
+
+### [ ] T-235: Calls on the result card — what held you back
+Spec: §2.13, §10.6          Goldens: unchanged          Save: no change (calls kept on the match only)
+Goal: the result card lists your calls and the stat that limited you most.
+Files: js/ui/match-result.js, js/ui/career-match.js (resultData: `calls`), css/style.css
+Steps: record each answered call on `m.calls` ({ kind, id, odds, made, weak }); the card's Calls row; "Held back by: ⤒ Jump".
+Accept: the row shows after a played match with calls; nothing after a sim.
+QA: career run → a played match with 2+ calls → result card.
+Result:
+
 ### [x] T-231: Docs diet and a UI smoke test (owner request)
 Spec: —          Goldens: unchanged          Save: no change
 Files: tasks.md, tasks-done.md (new), ARCHITECTURE.md, ARCHITECTURE-details.md (new), CLAUDE.md, spec.md (§10.1d: the walk lock, training cut-in and map key recorded from Unplanned changes), tests/ui-smoke.js (new), package.json (test:ui), eslint.config.mjs

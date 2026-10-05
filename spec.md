@@ -123,6 +123,24 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   as the lowest wit (match wit `W()` floors at 0.1). Ego no longer reads wit (§2.12). Only the Egoist game makes such
   players today.
 
+- §2.13 Calls — decisions in a played match (owner, 2026-10-05; T-232–T-235). **One engine, two pickers**: every rule, roll
+  and touch is the same code for a simmed and a played match; at a **decision point** the engine asks a picker. Sim (Sim ⏭,
+  headless, NPCs, the Monster game) → the AI picks at once, exactly as today (same draws: results and goldens unchanged).
+  Played career match → **you** pick for your own player; the engine pauses there and resumes from that point with your pick.
+  - Engine: the rally is pausable (`playRallyGen(m)`, a generator; `playRally(m)` = run it to the end with the AI picker).
+    A decision point yields `{ kind, p, options, ai }`; options are pure data computed from the engine's own formulas (no
+    draws): `{ id, label, odds: { win, lose, err } (%), stats: [stat keys it leans on], weak: the stat that limits it most }`.
+  - Decision points (first set): **Serve** (you serve): safe float · jump serve · aim at their weakest passer (ace % / fault %).
+    **Attack** (the set is yours): power spike · placed shot · tip · tool the block (kill % / blocked % / error %).
+    Later: **Set** (you are the setter: which hitter, each with their kill %), **Block** (MB: read · commit · swing).
+  - On screen: the world slows to ~5 % over ~0.4 s, the camera holds on you (the ego chase shot), a vignette darkens the
+    edges, and 2–4 option chips appear beside your player (screen-projected like the name tags): label, success % and the
+    stat icons it uses, your weakest of them marked ("⤒ Jump 48"); the AI's pick is marked "auto". Keys 1–4, click. After ~3 s
+    of slow motion the world **freezes** and waits — no timeout, no auto-pick. Esc opens the pause menu as now.
+  - How often: setting **Calls: Key moments (default) · All · Off** (remembered per browser). Key moments = set point either
+    side, deuce, a rally with 6+ touches, the first ball of a set — at most ~8 a match. Off = the AI picks (as in sim).
+  - After: the result card (§10.6) gains a **Calls** row: each call — what you chose, its %, made / missed — and "held back by:
+    ⤒ Jump" (the weak stat that appeared most in your missed calls), so the match points at the training.
 ## 3. Menu [built]
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two
