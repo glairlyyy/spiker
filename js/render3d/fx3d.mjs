@@ -90,6 +90,8 @@ void main(){ float x = 1.0 - abs(vU.x), a = x * pow(vU.y, 1.2) * vA; if (a < 0.0
 const R = (a, b) => a + Math.random() * (b - a);
 const rv = s => new THREE.Vector3().randomDirection().multiplyScalar(s);
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
+/** Air impact (Doppler): the ring stack and the jet reach this many times further down the shot than the classic one. */
+const AIR_LEN = 2;
 /** Size of a contact burst's rings (× the old size). */
 const BURST_RING = 0.2;
 const UP = new THREE.Vector3(0, 1, 0);
@@ -575,7 +577,7 @@ export function createFx(scene) {
         const q = p.clone().addScaledVector(dir, at),
           size = (0.7 + (classic ? i : n - 1 - i) * 0.55) * k;
         ring(q, i % 2 ? color : '#ffffff', size, 0.32 + i * 0.07, false, { dir, delay: i * 0.035, op: i ? 0.75 : 1 });
-        at += 0.32 * k * (classic ? 1 : 1 - i * 0.18);
+        at += 0.32 * k * (classic ? 1 : AIR_LEN * (1 - i * 0.18));
       }
       // wind lines: fast, thin sparks out from the contact, perpendicular to the shot
       const u = new THREE.Vector3()
@@ -602,7 +604,7 @@ export function createFx(scene) {
           p,
           dir
             .clone()
-            .multiplyScalar(R(5, 10) * k)
+            .multiplyScalar(R(5, 10) * k * (classic ? 1 : AIR_LEN))
             .add(rv(R(0.3, 1.2))),
           '#ffffff',
           color,
