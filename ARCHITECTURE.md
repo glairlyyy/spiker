@@ -41,12 +41,12 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   `debug-panel.js` (Debug log; `?dev` word counter per region vs the §10.8 budgets), `career-create.js`, `career-week.js` (CW state, End week, Week report, events), `sheet-me.js` / `sheet-season.js` (the Me / Season sheets),
   `career-match.js` (match prep, eval / Cup cards, result data, playCareer, watchCareer), `map-view.js`, `career-panels.js` (place
   panels: `placeCard` anatomy, `PANELS` by kind → hq / clash / venue / map point, else `placePanel`), `career-map.js` (mount, pick, actions, walk lock), `career-dossier.js`,
-  `career-people.js`, `career-hub.js`, `career-end.js`, `encyclopedia.js`.
+  `career-people.js`, `career-hub.js`, `career-end.js`, `encyclopedia.js`, `vfx-lab.js` (dev: the VFX lab screen → `render3d/vfxlab3d.mjs`).
 - **render** `playback.js`, `acts.js`, `movement.js`, `actors.js`, `clock.js`, `camera.js`, `ball.js`, `scenes.js`,
   `effects.js`, `overlay.js`, `faces.js`, `tags.js`, `dive.js`; then `main.js`.
 
 ES modules (loaded on demand): `js/render3d/` — `r3d.mjs` (entry), `units3d`, `arena3d`, `camera3d`, `actors3d`,
-`players3d` (VRM load / dress, `MODEL_URL`), `poses3d` (+ `setMotion`; spike / swing / serve poses in `poses3d-attack`), `fx3d`, `trails3d`, `title3d` (the title backdrop: its own small renderer — `mountTitle3D(el)` / `unmountTitle3D()`, buildArena without players or ball, orbiting; menu.js `titleBg` / `titleBgOff`, navigate stops it); `js/map3d/` — `map3d.mjs`
+`players3d` (VRM load / dress, `MODEL_URL`), `poses3d` (+ `setMotion`; spike / swing / serve poses in `poses3d-attack`), `fx3d`, `trails3d`, `title3d` (the title backdrop: its own small renderer — `mountTitle3D(el)` / `unmountTitle3D()`, buildArena without players or ball, orbiting; menu.js `titleBg` / `titleBgOff`, navigate stops it), `vfxlab3d` (dev VFX lab: own renderer + OrbitControls + `createFx`; `mountLab` / `labPlay` / `labSet` / `labStats` / `labAdvance` (QA stepping); stops itself when its element leaves the page); `js/map3d/` — `map3d.mjs`
 (entry), `geo3d`, `avatar3d`, `pins3d`, `life3d`, `town3d`, `kit3d`, `nature3d`.
 
 CSS (`css/`, loaded in this order): `style.css` (base + match screen layout), `career.css` (career screens layout: menu, create, cards,
@@ -155,7 +155,7 @@ literal is the shape; other fields are created by the file that owns them:
 | HUD               | `railTab`, `staShown`, `moodShown`, `buffShown`, `egShown`, `zoneShown`, `techPs`, `techCareer`, `techKeys`                                                        | match-controls.js, match-tech.js           |
 | Calls (§2.13)     | `gen` (the suspended rally), `ask` (`{ q, left, shown, shot }`), `callsShown`                                                                                      | playback.js (rallyPull), match-calls.js    |
 
-`menu`, `match`, `create`, `career`, `encyclopedia` — switch with `navigate(name, …args)`.
+`menu`, `match`, `create`, `career`, `encyclopedia`, `vfxlab` — switch with `navigate(name, …args)`.
 The match screen takes a **fixture** `{ a, b, round, court?, back, rel?, setup(m)?, onFinish(m) → message, onLeave() }`
 (career Cup and league games, the Monster exhibition). There is no stand-alone tournament/betting mode.
 Career fixtures (`Cup.fixture`, `Fight.clash`, `Fight.challenge`, approaches via `Asks`) fill everything but screens:

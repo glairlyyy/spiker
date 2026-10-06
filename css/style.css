@@ -1731,3 +1731,78 @@ body:has(.match) .top {
 .stage.impactf canvas {
   filter: invert(1) contrast(1.6) grayscale(1);
 }
+
+/* VFX lab (dev, T-238): the canvas left, the controls right */
+.vlab {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 12px;
+  height: calc(100vh - 120px);
+  min-height: 560px;
+}
+.vlab .vstage {
+  position: relative;
+  min-height: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg);
+}
+.vlab .vlab3d {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.vlab .vside {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+  margin: 0;
+}
+.vlab .vtop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.vlab .vtop h3 {
+  margin: 0;
+}
+.vlab .vfx {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.vlab .vfx .btn {
+  justify-content: flex-start;
+  text-align: left;
+}
+.vlab .vfx small {
+  color: var(--mute);
+}
+.vlab .vrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  font-size: 13px;
+}
+.vlab .vrow input[type='range'] {
+  flex: 1;
+}
+.vlab .vels {
+  flex-wrap: wrap;
+}
+.vlab .vels .btn {
+  border-left: 3px solid;
+  text-transform: capitalize;
+}
+.vlab .vstat {
+  margin: 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--glass);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}

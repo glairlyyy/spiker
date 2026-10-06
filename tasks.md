@@ -182,6 +182,11 @@ Accept: the row shows after a played match with calls; nothing after a sim.
 QA: career run → a played match with 2+ calls → result card.
 Result: `resultData.calls` (your `m.calls`), `callsRow` on the card's right column: "Calls · N of M made", the last 6 (label, auto on a time-out, chance, ✓ made / ✕ missed / · rally on), "Held back by: <icon> <stat>" = the weak stat seen most in missed calls. Nothing after a sim (no m.human). QA: a played Pro court match with 3 calls → card (screenshot), no errors.
 
+### [x] T-238: VFX lab and a ground blast (owner request)
+Spec: §10.7 (Dev tab)          Goldens: unchanged (display only)          Save: no change
+Files: js/ui/vfx-lab.js (new), js/render3d/vfxlab3d.mjs (new), js/render3d/fx3d.mjs (streaks, puffs, discs, `blast`, `stats`), js/ui/menu.js (Dev → VFX lab), index.html, css/style.css, tests/ui-smoke.js
+Result: Dev → VFX lab: 10 effects (keys 1–0), power, element, speed 1 / 0.25 / 0.1 / pause, repeat, stress 2–30/s, orbit camera, readout (fps, frame / fx ms, draw calls, live particles). New `fx.blast` (the owner's Niagara reference: hot core, streak sparks that skip off the floor, embers, billowing smoke lit red inside, debris, floor glow) — lab only, not in matches yet; the lab's "Spike" previews air impact → trail → floor (+ blast at 100+). QA: stepped frames 0.1–1.6 s, ~700 particles at 2 extra draw calls, fx 0.3 ms; UI smoke + a lab step.
+
 ### [x] T-237: Match control bar that fits (owner request)
 Spec: §9.9          Goldens: unchanged          Save: no change
 Files: js/ui/match-screen.js (bar markup), js/ui/match-controls.js (timeout / pause labels, key C, ⚙ Camera C), css/style.css

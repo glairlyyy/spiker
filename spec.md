@@ -730,7 +730,9 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   **Every** match you are in ends on it (owner, 2026-10-05, T-227): a simmed street battle / challenge / evaluation / cup tie shows the
   same card over the hub (after the walk there; Continue / Space; no Box score).
 - §10.7 Title screen (Continue hero, New career, Encyclopedia, Settings, **Dev** — owner 2026-10-03: a title-screen tab, always shown, with Monster game, player models,
-  Benchmark models, the §10.8 word counter (on/off, remembered per browser) and Debug log; `?dev` opens it with the counter on) and Create (role
+  Benchmark models, **VFX lab** (owner 2026-10-06: every 3D effect on an empty tiled floor — fire one (keys 1–0, Space again), power,
+  element, speed 1× / 0.25× / 0.1× / pause, repeat, a stress rate, orbit camera, and the cost readout: fps, frame and fx ms, draw calls,
+  live particles; Esc back), the §10.8 word counter (on/off, remembered per browser) and Debug log; `?dev` opens it with the counter on) and Create (role
   cards with key stat, best training places, techniques; name; challenge toggles; Arrive / Back).
 - §10.7a Title layout = the design system TitleScreen card **[built, T-176–T-177]** (owner, 2026-10-04). Left column at a 96px inset, top-aligned
   from 96px: kicker `4V4 VOLLEYBALL RPG` (label style), wordmark `SPITE & SPIKE` on **one line** (Rajdhani 700,

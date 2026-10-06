@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // UI smoke test (T-231): opens the real page in headless Chromium and walks every screen once — title, a new career's hub,
-// the four sheets, every place card, the Encyclopedia, a simmed court match's result card and a Monster game to its result.
+// the four sheets, every place card, the Encyclopedia, the VFX lab, a simmed court match's result card and a Monster game to its result.
 // Fails on any page error or Debug-log error line. Not part of `npm test` (it needs Chromium): `npm run test:ui`.
 // Playwright is the preinstalled one (local node_modules, else the global install) — never `playwright install`.
 const http = require('http'),
@@ -151,6 +151,25 @@ const step = async (name, fn) => {
   await step('encyclopedia', async () => {
     await ev(() => navigate('encyclopedia'));
     await pg.waitForFunction(() => document.querySelector('#app').textContent.length > 100);
+  });
+  await step('VFX lab: every effect', async () => {
+    await ev(() => navigate('vfxlab'));
+    await pg.waitForFunction(() => document.querySelector('.vlab3d') && labMod, null, { timeout: 30000 });
+    const n = await ev(() => {
+      labOpt('speed', 0);
+      for (const [id] of LAB_FX) {
+        labFire(id);
+        labMod.labAdvance(0.2);
+      }
+      labOpt('el', 'flash');
+      labFire('spike');
+      labMod.labAdvance(0.6);
+      const s = labMod.labStats();
+      return s.glow + s.spark + s.streak + s.smoke;
+    });
+    if (!n) throw new Error('no particles alive');
+    await ev(() => navigate('menu'));
+    return `${n} particles`;
   });
   await step('Monster game → result', async () => {
     await ev(() => navigate('menu'));
