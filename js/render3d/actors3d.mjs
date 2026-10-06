@@ -164,13 +164,15 @@ function lightTrails(pl, d, root, dt) {
   const tier = d.p.op ? 2 : d.p.star ? 1 : 0,
     zk = A.zoneShown && A.zoneShown[side] ? 1.25 : 1,
     charged = !!(d.p.elOn && (A.egShown || {})[d.p.id] >= EG.full), // full element gauge: trails turn the element colour
+    ink = G.trail === 'ink', // ⚙ Trails: Ink — a wider, longer black brush stroke burning crimson (or the element colour)
     o =
       tier || charged
         ? {
-            width: Math.max(tier === 2 ? 0.12 : tier ? 0.065 : 0, charged ? 0.1 : 0) * zk,
-            life: (tier === 2 || charged ? 0.34 : 0.2) * zk,
+            width: Math.max(tier === 2 ? 0.12 : tier ? 0.065 : 0, charged ? 0.1 : 0) * zk * (ink ? 1.7 : 1),
+            life: (tier === 2 || charged ? 0.34 : 0.2) * zk * (ink ? 1.4 : 1),
             alpha: charged ? 0.9 : tier === 2 ? 0.8 : 0.7,
-            color: charged ? ECOL[d.p.el] : pl.trailCol
+            color: charged ? ECOL[d.p.el] : ink ? '#ff1630' : pl.trailCol,
+            style: ink ? 'ink' : ''
           }
         : { width: 0 },
     hands = ['leftHand', 'rightHand'];

@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createFx } from './fx3d.mjs';
+import { makeTrail } from './trails3d.mjs';
 
 let L = null; // { renderer, scene, camera, ctl, fx, el, raf, last, o, acc, auto, stress, ms, frames, fps, t0, ball }
 
@@ -85,9 +86,11 @@ export function mountLab(el) {
     el,
     ball,
     fx: createFx(scene),
+    hand: makeTrail(scene, 48),
+    swing: null, // a weapon sweep in flight: { t }
     raf: 0,
     last: performance.now(),
-    o: { name: 'blast', pow: 110, el: 'fire', speed: 1, auto: false, stress: 0 },
+    o: { name: 'blast', pow: 110, el: 'fire', speed: 1, auto: false, stress: 0, trail: 'ink' },
     acc: 0,
     autoT: 0,
     run: null, // a trail in flight: { t, dur, a, b, el, pow }
@@ -126,6 +129,7 @@ export function mountLab(el) {
       for (; L.acc >= 1; L.acc--) play(L.o.name, true);
     }
     if (L.run) flyBall(dt);
+    sweep(dt);
     ctl.update();
     const f0 = performance.now();
     L.fx.update(dt, camera, renderer.domElement.height, camera.fov);
@@ -159,6 +163,32 @@ function flyBall(dt) {
       if (r.pow >= 100) L.fx.blast(p, r.pow, (typeof ECOL !== 'undefined' && ECOL[r.el]) || '#ff7a2e');
     }
   }
+}
+
+/** The hand of a weapon sweep: a wide slash, a beat, the back-swing (0.95 s); the hand trail follows it, then fades. */
+const SWEEP = { r: 1.7, c: new THREE.Vector3(0, 1.3, 0), dur: 0.95 };
+function sweep(dt) {
+  const s = L.swing,
+    ease = u => 1 - Math.pow(1 - Math.min(1, Math.max(0, u)), 3);
+  let p;
+  if (s) {
+    s.t += dt;
+    const t = s.t,
+      a = t < 0.35 ? -2.4 + 3.6 * ease(t / 0.35) : t < 0.5 ? 1.2 : 1.2 - 3.2 * ease((t - 0.5) / 0.3),
+      tilt = t < 0.5 ? 0.35 : -0.25;
+    p = new THREE.Vector3(Math.cos(a) * SWEEP.r, Math.sin(a) * SWEEP.r * tilt, Math.sin(a) * SWEEP.r * 0.6).add(SWEEP.c);
+    L.handAt = p;
+    if (t > SWEEP.dur) L.swing = null;
+  } else p = L.handAt || SWEEP.c;
+  const ink = L.o.trail === 'ink',
+    col = ink ? '#ff1630' : (typeof ECOL !== 'undefined' && ECOL[L.o.el]) || '#ffffff';
+  L.hand.update(p, Math.max(dt, 1e-4), L.camera, {
+    width: 0.12 * (ink ? 1.7 : 1) * Math.max(0.5, L.o.pow / 100),
+    life: 0.34 * (ink ? 1.4 : 1),
+    alpha: 0.85,
+    color: col,
+    style: ink ? 'ink' : ''
+  });
 }
 
 const RAND = s => (Math.random() * 2 - 1) * s;
@@ -201,6 +231,9 @@ function play(name, stray) {
       };
       return;
     }
+    case 'sweep':
+      L.swing = { t: 0 };
+      return;
     case 'zap':
       return fx.zap(at(2), o.pow);
     case 'skyBolt':
@@ -213,6 +246,7 @@ export function labAdvance(sec) {
   if (!L) return;
   for (let t = 0; t < sec; t += 1 / 60) {
     if (L.run) flyBall(1 / 60);
+    sweep(1 / 60);
     L.fx.update(1 / 60, L.camera, L.renderer.domElement.height, L.camera.fov);
   }
 }
@@ -222,7 +256,7 @@ export function labPlay(name) {
   L.o.name = name;
   play(name);
 }
-/** Change the lab's options: { pow, el, speed, auto, stress }. */
+/** Change the lab's options: { pow, el, speed, auto, stress, trail }. */
 export function labSet(o) {
   if (L) Object.assign(L.o, o);
 }

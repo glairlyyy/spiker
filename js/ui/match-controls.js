@@ -38,6 +38,7 @@ function settingsMenu() {
         .join('')}</div></div>`;
   return `${seg('Hype', 'hype', Object.fromEntries(Object.entries(HYPE).map(([k, h]) => [k, h.name])), G.hype, 'Staged shonen moments before big attacks. Normal: element spikes, match points, star face-offs. Max: also long rallies and comebacks. Tap the court to skip one.')}
     ${seg('Calls', 'calls', CALL_MODES, G.calls, 'Your decisions in a career match you play: serve and attack options with their odds. Key moments: set point, deuce, long rallies, the first ball. Off: your player decides.')}
+    ${seg('Trails', 'trail', TRAIL_STYLES, G.trail, 'Hand trails of stars and OP players. Light: a streak in their hair colour. Ink: a black brush stroke burning crimson.')}
     ${seg('Cut-ins', 'cut', { full: 'Full', mini: 'Mini' }, G.cutMini ? 'mini' : 'full', 'Full cut-ins pause play; mini shows them as a corner notification')}
     ${seg('Zooms', 'zoom', { on: 'On', off: 'Off' }, G.camFixed || RM ? 'off' : 'on', 'On: gentle zoom on big plays at the net. Off: no zooms or pushes (motion-friendly).')}
     ${seg('Motion', 'motion', { full: 'Full', reduced: 'Reduced' }, Motion.pref, 'Full: panels slide and fade, numbers count. Reduced: short fades only (also follows your system setting).')}
@@ -54,6 +55,9 @@ function setOpt(kind, v) {
   } else if (kind === 'calls' && CALL_MODES[v]) {
     G.calls = v;
     store.set(KEYS.calls, v);
+  } else if (kind === 'trail' && TRAIL_STYLES[v]) {
+    G.trail = v;
+    store.set(KEYS.trail, v);
   } else if (kind === 'cut') {
     G.cutMini = v === 'mini';
     store.set(KEYS.cutins, v);

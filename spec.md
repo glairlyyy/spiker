@@ -467,7 +467,9 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   - Follow/POV face the opponent (look clamped ±40° / ±55°); ball out of frame → FOV widens (Follow also backs off up
     to 12 m, +0.3 m up per m); look target clamped to the court box, eased while the ball is hidden; hype exit turns
     smoothly. POV fades figures within arm's reach.
-  - Shake: slow sway, off with Zooms: Off. Ball trails scale with hit power; all trails fade out when still.
+  - Shake: slow sway, off with Zooms: Off. Ball trails scale with hit power; all trails fade out when still. Hand trails
+    (stars, OP, full element gauge) have a ⚙ Trails style (owner 2026-10-06): Light (hair colour) or Ink — the Lu Bu halberd look: a wider,
+    longer black brush stroke with a crimson glow inside (the element colour when charged), fraying into strands as it fades.
   - Models: career player always Main_v2 (own colours); extra loaded .vrm models only in Monster (random per player;
     menu toggle "Model colors: Own / Team", localStorage `sns_keepcol`); everyone else base model. VRM springs use the figure root as center, `HAIR` { stiff 1, drag 0, gravity 1 }.
 - §4.26 Modes (`run.mode.story`; every guarantee checks it):

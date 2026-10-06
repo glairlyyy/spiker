@@ -1,10 +1,11 @@
 // VFX lab (dev, T-238): the title's Dev tab → every 3D effect on an empty floor, with power, element, repeat, slow motion,
 // a stress rate and a cost readout. The 3D side is js/render3d/vfxlab3d.mjs (its own renderer; stops when the screen goes).
 
-const LAB = { fx: 'blast', pow: 110, el: 'fire', speed: 1, auto: false, stress: 0 };
+const LAB = { fx: 'blast', pow: 110, el: 'fire', speed: 1, auto: false, stress: 0, trail: 'ink' };
 /** [effect id, label, uses the element]. */
 const LAB_FX = [
   ['blast', 'Ground blast', false],
+  ['sweep', 'Hand trail: weapon sweep', false],
   ['spike', 'Spike: air → trail → floor (+ blast at 100+)', true],
   ['airImpact', 'Air impact', false],
   ['burst', 'Contact burst', false],
@@ -27,7 +28,7 @@ function labSide() {
   return `<div class="vtop"><h3>VFX lab</h3><button class="btn" onclick="navigate('menu')">Back <kbd>Esc</kbd></button></div>
       <div class="vfx">${LAB_FX.map(
         ([id, label, el], i) =>
-          `<button class="btn ${LAB.fx === id ? 'on' : ''}" onclick="labFire('${id}')"><kbd>${(i + 1) % 10}</kbd> ${esc(label)}${el ? ' <small>element</small>' : ''}</button>`
+          `<button class="btn ${LAB.fx === id ? 'on' : ''}" onclick="labFire('${id}')">${i < 10 ? `<kbd>${(i + 1) % 10}</kbd> ` : ''}${esc(label)}${el ? ' <small>element</small>' : ''}</button>`
       ).join('')}</div>
       <label class="vrow">Power <b id="vpow">${LAB.pow}</b><input type="range" min="40" max="150" value="${LAB.pow}" oninput="labOpt('pow', +this.value, true)"></label>
       <div class="vrow">Element<div class="seg vels">${Object.keys(ECOL)
@@ -36,6 +37,7 @@ function labSide() {
             `<button class="btn ${LAB.el === e ? 'on' : ''}" style="border-color:${ECOL[e]}" onclick="labOpt('el','${e}')">${esc(e)}</button>`
         )
         .join('')}</div></div>
+      <div class="vrow">Trail ${seg('trail', ['light', 'ink'], v => TRAIL_STYLES[v])}</div>
       <div class="vrow">Speed ${seg('speed', [1, 0.25, 0.1, 0], v => (v ? `${v}×` : '❚❚'))}</div>
       <div class="vrow">Repeat <kbd>R</kbd> ${seg('auto', [false, true], v => (v ? 'On' : 'Off'))}</div>
       <div class="vrow">Stress ${seg('stress', [0, 2, 10, 30], v => (v ? `${v}/s` : 'Off'))}</div>

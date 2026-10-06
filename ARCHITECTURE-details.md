@@ -95,7 +95,7 @@ units3d's KH / KX / KZ read it), `BALL_K` / `SERVE_K` (ball flight speed factors
   the stylised screen layer.
 - `trails3d.mjs` — light trails (camera-facing ribbons that taper and fade with age; every trail measures its point's speed and dims out when it stands still — `MOVE`; the ball's screen and element trails use `A.mv`, 0..1 from the ball's speed, set in ball.js `ballPhysics`): hands in the player's hair
   colour (stars a narrower, shorter streak, OP players a wide long one, stronger in the zone), and Kuroko-style eye
-  streaks in the eye colour that flow back behind the head (`drift`) — anyone while their team is in the zone or they carry a captain's buff.
+  streaks in the eye colour that flow back behind the head (`drift`) — anyone while their team is in the zone or they carry a captain's buff. Style `ink` (`o.style`, ⚙ Trails / `G.trail`): FS_INK (normal: black ragged stroke, value-noise strands seeded by each sample's birth time, fraying with age) + FS_BLOOD (additive crimson core + halo).
 - Model: `assets/vrm/` (licence, and how to swap in VRoid characters, in its README). `qa_poses.html` (not
   published) renders single poses for visual checks.
 

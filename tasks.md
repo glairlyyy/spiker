@@ -182,6 +182,11 @@ Accept: the row shows after a played match with calls; nothing after a sim.
 QA: career run → a played match with 2+ calls → result card.
 Result: `resultData.calls` (your `m.calls`), `callsRow` on the card's right column: "Calls · N of M made", the last 6 (label, auto on a time-out, chance, ✓ made / ✕ missed / · rally on), "Held back by: <icon> <stat>" = the weak stat seen most in missed calls. Nothing after a sim (no m.human). QA: a played Pro court match with 3 calls → card (screenshot), no errors.
 
+### [x] T-239: Ink hand trails — the Lu Bu look (owner request)
+Spec: §6 (trails), §9.9 (⚙)          Goldens: unchanged (display only)          Save: no change (new browser key sns_trail)
+Files: js/render3d/trails3d.mjs (style 'ink': FS_INK + FS_BLOOD, `seed` attribute), js/render3d/actors3d.mjs (G.trail → o.style, ×1.7 width, ×1.4 life, crimson), js/game/state.js (TRAIL_STYLES, G.trail), js/core/storage.js (KEYS.trail), js/ui/match-controls.js (⚙ Trails), js/render3d/vfxlab3d.mjs + js/ui/vfx-lab.js (weapon-sweep preview, Trail Light / Ink)
+Result: ⚙ Trails: Light (default) / Ink. Ink = black ragged brush stroke, crimson core and halo, strands fray as it fades; charged players burn their element colour. QA: VFX lab sweep frames (zoomed), Monster game with Ink, no errors.
+
 ### [x] T-238: VFX lab and a ground blast (owner request)
 Spec: §10.7 (Dev tab)          Goldens: unchanged (display only)          Save: no change
 Files: js/ui/vfx-lab.js (new), js/render3d/vfxlab3d.mjs (new), js/render3d/fx3d.mjs (streaks, puffs, discs, `blast`, `stats`), js/ui/menu.js (Dev → VFX lab), index.html, css/style.css, tests/ui-smoke.js
