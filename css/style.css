@@ -1160,18 +1160,33 @@ body:has(.match) .top {
 /* match control bar (T-109) */
 .match .cbar {
   width: min(100vw - 48px, (100vh - 168px) / 0.44);
-  height: 48px;
+  min-height: 48px;
   margin: 8px 0 0;
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap; /* never overflows: a narrow court wraps the groups instead */
   align-items: center;
-  gap: 24px;
+  gap: 8px 12px;
 }
 .match .cg {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   white-space: nowrap;
+}
+.match .cg + .cg {
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+}
+.match .cg.view {
+  border-left: 0;
+}
+.match .cbar .seg .btn {
+  min-width: 40px;
+  justify-content: center;
+}
+.match .tob small {
+  font-size: 12px;
+  color: var(--mute);
 }
 .match .cg.view {
   margin-left: auto;
@@ -1186,7 +1201,7 @@ body:has(.match) .top {
 .match .cbar .btn,
 .match .cbar summary.btn {
   height: 40px;
-  padding: 0 12px;
+  padding: 0 10px;
   display: inline-flex;
   align-items: center;
   gap: 6px;

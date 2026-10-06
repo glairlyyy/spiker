@@ -182,6 +182,11 @@ Accept: the row shows after a played match with calls; nothing after a sim.
 QA: career run → a played match with 2+ calls → result card.
 Result: `resultData.calls` (your `m.calls`), `callsRow` on the card's right column: "Calls · N of M made", the last 6 (label, auto on a time-out, chance, ✓ made / ✕ missed / · rally on), "Held back by: <icon> <stat>" = the weak stat seen most in missed calls. Nothing after a sim (no m.human). QA: a played Pro court match with 3 calls → card (screenshot), no errors.
 
+### [x] T-237: Match control bar that fits (owner request)
+Spec: §9.9          Goldens: unchanged          Save: no change
+Files: js/ui/match-screen.js (bar markup), js/ui/match-controls.js (timeout / pause labels, key C, ⚙ Camera C), css/style.css
+Result: group labels gone, hairline separators, Camera moved into ⚙ (key C), "Commentary · Box score" → "Details B", ⛶ gets F, timeout state as a small suffix (used / next break), bar wraps instead of overflowing. QA Monster game (two teams' timeouts, the widest bar): one row at 1440 and 1280 (no button past the edge), two clean rows at 1024; no errors.
+
 ### [x] T-236: Spike air impact — the Kuroko look (owner request)
 Spec: §2.3a          Goldens: unchanged (display only)          Save: no change
 Files: js/render3d/fx3d.mjs (`airImpact`, rings facing a direction / delayed, the pressure dome), js/render3d/r3d.mjs (fx api), js/render/effects.js (`airImpact` + impact frame + hold), js/render/acts.js (burst on a spike beat → airImpact), js/render3d/poses3d-attack.mjs (BEND, UP_L), css/style.css (.impactf)

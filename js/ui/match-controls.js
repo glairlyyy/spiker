@@ -2,8 +2,12 @@
 // modes and follow target, fullscreen, speed / pause / skip, the scoreboard, commentary, the rail and box score; hotkeys.
 // The screen itself (startMatch, A, the 3D world, leaving) is match-screen.js.
 
-const timeoutButton = (t, i) =>
-  `<button class="btn tob" id="to${i}" style="--tc:${t.color}" onclick="reqTO(${i})" ${tip(`Call ${t.name}'s one timeout at the next break`)}>Timeout ${esc(t.short)}</button>`;
+/** A side's timeout button; `both` (a Monster game: two sides) names the team on it, else just "Timeout". */
+const timeoutButton = (t, i, both) =>
+  `<button class="btn tob" id="to${i}" data-both="${both ? 1 : ''}" style="--tc:${t.color}" onclick="reqTO(${i})" ${tip(`Call ${t.name}'s one timeout at the next break`)}>${toLabel(t, both, '')}</button>`;
+const toLabel = (t, both, state) => `Timeout${both ? ` ${esc(t.short)}` : ''}${state ? ` <small>${state}</small>` : ''}`;
+/** The pause button's label (hotkey printed). */
+const pauseLabel = paused => `${paused ? '▶ Resume' : '❚❚ Pause'} <kbd>Space</kbd>`;
 /** Coach tactic select for side `i` (captain's call or a fixed tactic). */
 const tacticPicker = (t, i) =>
   `<label class="tac" style="--tc:${t.color}" ${tip(`Coach tactic for ${t.name} — applies from the next rally`)}><span>${esc(t.short)}</span><select id="tac${i}" onchange="setTactic(${i},this.value)"><option value="cap">Captain's call${leadLv(t.cap) ? ` (Lv${leadLv(t.cap)})` : ''}</option>${Object.entries(
@@ -38,7 +42,7 @@ function settingsMenu() {
     ${seg('Zooms', 'zoom', { on: 'On', off: 'Off' }, G.camFixed || RM ? 'off' : 'on', 'On: gentle zoom on big plays at the net. Off: no zooms or pushes (motion-friendly).')}
     ${seg('Motion', 'motion', { full: 'Full', reduced: 'Reduced' }, Motion.pref, 'Full: panels slide and fade, numbers count. Reduced: short fades only (also follows your system setting).')}
     ${seg('Graphics', 'gfx', Object.fromEntries(Object.entries(GFX).map(([k, g]) => [k, g.name])), G.gfx, 'High: full resolution always. Auto: sharp, drops a little only if frames run slow. Fast: lower resolution for weaker devices.')}
-    ${seg('Camera', 'cam', CAM3, cam, 'Courtside: close and low, following the ball. Broadcast: the whole court from the stands. Follow: behind one player. POV: through their eyes.')}
+    ${seg('Camera <kbd>C</kbd>', 'cam', CAM3, cam, 'Courtside: close and low, following the ball. Broadcast: the whole court from the stands. Follow: behind one player. POV: through their eyes.')}
     <select id="folsel" class="folsel" hidden onchange="pickFollow(this.value)" aria-label="Player to follow" title="The player the Follow camera stays behind"></select>
     <label class="vol sset"><span class="cgl">Volume</span><input type="range" min="0" max="100" value="${Math.round(SND.vol * 100)}" oninput="setVolume(this.value / 100)" aria-label="Volume"></label>`;
 }
@@ -78,7 +82,6 @@ function followTarget() {
 }
 function cam3Label() {
   setLabel('#cam3btn', cam3Text());
-  setLabel('#cam3bar', cam3Text());
   if (!R3D) return;
   const f = ['follow', 'pov'].includes(R3D.camMode()),
     t = f ? followTarget() : { id: null, ds: [] },
@@ -101,6 +104,8 @@ function toggleCam3D() {
   const next = { courtside: 'broadcast', broadcast: 'follow', follow: 'pov', pov: 'courtside' };
   R3D.setCamMode(next[R3D.camMode()] || 'courtside');
   cam3Label();
+  const pb = $('.setpop .popb');
+  if (pb) pb.innerHTML = settingsMenu(); // the ⚙ Camera segment follows
 }
 /** Fullscreen the court. Falls back to a fixed full-viewport overlay where the Fullscreen API is missing (iPhone). */
 function toggleFullscreen() {
@@ -123,6 +128,8 @@ addEventListener('keydown', e => {
   if (e.key === 'f' || e.key === 'F') toggleFullscreen();
   else if (e.key === 'b' || e.key === 'B') railOpen();
   else if (e.key === 't' || e.key === 'T') railOpen('tac');
+  else if (e.key === 'c' || e.key === 'C')
+    toggleCam3D(); // cycle the camera (its modes are in ⚙ too)
   else if (/^[1-4]$/.test(e.key) && A.ask && A.ask.shown)
     callPick(+e.key - 1); // a call of yours (spec §2.13)
   else if (/^[1-9]$/.test(e.key) && A.railTab === 'tac' && !$('#mrail').hidden) flipTech(+e.key - 1);
@@ -195,7 +202,7 @@ function updTO() {
     if (!b) return;
     const used = A.m.to[i] && !A.m.toReq[i];
     b.disabled = !!(A.m.to[i] || A.m.toReq[i] || A.done);
-    b.textContent = `Timeout ${A.m.t[i].short}${used ? ' (used)' : A.m.toReq[i] ? ' (queued)' : ''}`;
+    b.innerHTML = toLabel(A.m.t[i], !!b.dataset.both, used ? 'used' : A.m.toReq[i] ? 'next break' : '');
   });
 }
 function setSpeed(s) {
@@ -207,7 +214,8 @@ function togglePause() {
   if (!A) return;
   A.paused = !A.paused;
   railOpen(A.paused ? A.railTab || 'log' : null); // the rail opens on pause and closes on resume
-  setLabel('#pause', A.paused ? 'Resume' : 'Pause');
+  const pb = $('#pause');
+  if (pb) pb.innerHTML = pauseLabel(A.paused);
   setLabel('#fspause', A.paused ? '▶' : '❚❚');
 }
 /** Simulate the rest of the match at once and show the result. */

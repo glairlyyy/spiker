@@ -635,9 +635,12 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
 - §9.9 Match screen (design system `match-ui.md`, MatchLayout card): no page scroll at ≥1280×720; site header hidden.
   Court = `min(100vw − 48px, (100vh − 168px) / 0.44)`, centred, 1000:440 kept (1440×900 → 1392×612). Bands: score
   64px (name + swatch + rotation chips, server chip labelled "serve") · momentum 20px (labelled; "In the zone: {team}") ·
-  court (tags underlined in team colour; 2-line commentary ticker on `hud` bottom-left) · control bar 48px (Play |
-  Your team | View right-aligned). "Your side" = the team holding `Run.you(RUN)`; career shows Timeout/Tactics for it
-  only, Monster game for both. Overlay rail 400px (key B; opens on pause and after the final): Commentary · Box score ·
+  court (tags underlined in team colour; 2-line commentary ticker on `hud` bottom-left) · control bar 48px, three groups
+  split by a hairline, no group labels (owner, 2026-10-06 — it overflowed): **Play** `❚❚ Pause Space` · `1× 2× 4×` ·
+  `Skip ⏭` | **Team** `Timeout` (the team's short name only when both sides show) · `Tactics T` | **View** (right)
+  `Details B` · `⛶ F` · sound · `⚙`. The camera lives in ⚙ (`Camera C`, key C cycles it). The bar wraps onto a second row
+  rather than overflow (fits one row from ~1100px). "Your side" = the team holding `Run.you(RUN)`; career shows
+  Timeout/Tactics for it only, Monster game for both. Overlay rail 400px (key B; opens on pause and after the final): Commentary · Box score ·
   Tactics. ⚙ settings = labelled segmented controls (every option visible), opening upward from the bar. Results card
   action row: Continue/Back + Box score; playback disabled.
 - §9.10 Technique switches **[built, T-178–T-179]** (owner, 2026-10-04; design system TechSwitch card): you can hold back a technique you own,

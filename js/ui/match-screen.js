@@ -39,17 +39,16 @@ function startMatch(fx) {
       <div class="cut" id="cut"><div class="cut-band"><div class="cut-lines"></div><span class="cut-face"></span><span class="cut-face cut-face2"></span><span class="cut-num"></span><div class="cut-txt"><div class="cut-move"></div><div class="cut-name"></div><div class="cut-sub"></div></div></div></div>
       <div class="hbanner" id="hbanner" aria-live="polite"></div><div class="hsay" id="hsay" aria-live="polite"></div>
       <div class="toasts" id="toasts" aria-live="polite"></div><div class="ticker" id="ticker" aria-hidden="true"></div><div class="over" id="over" hidden></div></div>
-    <div class="controls cbar">
-      <div class="cg play"><span class="cgl">Play</span><button class="btn" id="pause" onclick="togglePause()">Pause <kbd>Space</kbd></button>
+    <div class="controls cbar" role="toolbar" aria-label="Match controls">
+      <div class="cg play"><button class="btn" id="pause" onclick="togglePause()">${pauseLabel(false)}</button>
         <div class="seg" role="group" aria-label="Speed">${SPEEDS.map(s => `<button class="btn ${s === 1 ? 'on' : ''}" data-s="${s}" onclick="setSpeed(${s})">${s}×</button>`).join('')}</div>
         <button class="btn" onclick="skipMatch()" ${tip('Skip to the final result')}>Skip ⏭</button></div>
-      <div class="cg team"><span class="cgl">${mine == null ? 'Teams' : 'Your team'}</span>${sides.map(i => timeoutButton(m.t[i], i)).join('')}
+      <div class="cg team">${sides.map(i => timeoutButton(m.t[i], i, sides.length > 1)).join('')}
         <button class="btn" id="tacbtn" onclick="railOpen('tac')">Tactics <kbd>T</kbd></button></div>
-      <div class="cg view"><span class="cgl">View</span><button class="btn" id="cam3bar" onclick="toggleCam3D()" ${tip('Courtside · Broadcast · Follow · POV')}>${cam3Text()}</button>
-        <button class="btn" onclick="toggleFullscreen()" ${tip('Fullscreen court (F)')} aria-label="Fullscreen">⛶</button>
-        <button class="btn" id="railbtn" onclick="railOpen()">Commentary · Box score <kbd>B</kbd></button>
+      <div class="cg view"><button class="btn" id="railbtn" onclick="railOpen()" ${tip('Commentary, box score and tactics')}>Details <kbd>B</kbd></button>
+        <button class="btn" onclick="toggleFullscreen()" ${tip('Fullscreen court')} aria-label="Fullscreen">⛶ <kbd>F</kbd></button>
         <button class="btn" id="snd" onclick="toggleSound()" aria-label="Sound">${SND.on ? '🔊' : '🔇'}</button>
-        ${pop('⚙ ▾', settingsMenu(), 'setpop')}</div>
+        ${pop('⚙', settingsMenu(), 'setpop')}</div>
     </div>
     <aside class="mrail" id="mrail" hidden aria-label="Match details"><div class="rhd"><div class="tabs">${Object.entries(RAIL_TABS)
       .map(([k, n]) => `<button class="btn" data-rt="${k}" onclick="railOpen('${k}')">${n}</button>`)
