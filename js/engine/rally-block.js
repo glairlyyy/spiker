@@ -21,7 +21,7 @@ function formBlock(c, x) {
 /** Where the hitter attacks from (slide, quick, wing, back row, long back attack), the lane, and the defence setting. */
 function blockApproach(c, x) {
   const { m, front, n, atk, ds } = c,
-    { setZ, quick, spiker, bad, callers, slide, mbZ, DF } = x;
+    { setZ, quick, spiker, bad, callers, slide, mbZ } = x;
   const back = !front(atk, spiker);
   // Long back attack: a high-flying back-row wing who called for it runs back to the end line, attacks from deep
   // and broad-jumps in; the ball crosses far above the block. (No extra randomness: picked from rolled values.)
@@ -45,9 +45,7 @@ function blockApproach(c, x) {
   const tAv = (quick ? 0.3 : bad ? 1.05 : 0.8) + (back ? 0.15 : 0) + (longB ? 0.1 : 0),
     reach = b => ((b.speed / 100) * tAv * 0.6) / courtScale();
   // defence setting (see DEFSETS): Bunch starts both front-row defenders near the middle (they drift there while the ball is set, as far as their speed allows)
-  // ego (spec §2.12): a front-row blocker who wants to be the wall ignores the defence setting and blocks alone
-  const soloP = DF.find(p => egoRoll(m, p, 'solo')) || null,
-    dset = soloP ? 'read' : m.dset[ds] || 'read',
+  const dset = m.dset[ds] || 'read',
     commit = dset === 'commit',
     bunch = dset === 'bunch',
     midAtk = quick || pipe || lane === 'M',
@@ -58,13 +56,13 @@ function blockApproach(c, x) {
       return z + clamp(t - z, -reach(p), reach(p));
     },
     byLane = (list, z) => list.reduce((a, p) => (Math.abs(startZ(p) - z) < Math.abs(startZ(a) - z) ? p : a), list[0]);
-  return { back, longB, spZ, lane, pipe, appX, tAv, reach, soloP, dset, commit, bunch, midAtk, startZ, byLane };
+  return { back, longB, spZ, lane, pipe, appX, tAv, reach, dset, commit, bunch, midAtk, startZ, byLane };
 }
 /** Who blocks: b0 (the middle when they can get there, the pin-side defender, the swinging far blocker) and maybe b1. */
 function blockPick(c, x, f) {
   const { defT } = c,
     { quick, sync, DF, B0, bitten } = x,
-    { spZ, reach, soloP, commit, bunch, midAtk, startZ, byLane } = f;
+    { spZ, reach, commit, bunch, midAtk, startZ, byLane } = f;
   // who blocks: the pin-side defender sets the edge on a wing attack; the middle takes a quick / pipe / middle ball;
   // a middle who bit on the fake is gone — the far defender swings across late
   const others = DF.filter(p => p !== B0),
@@ -73,7 +71,7 @@ function blockPick(c, x, f) {
   // stand deeper): the other defender only fills the gap beside them. A pin too far out for the middle falls to the pin-side defender.
   const mb = DF.find(p => p.role === 'MB'),
     mbCan = mb && Math.abs(startZ(mb) - spZ) <= reach(mb) * 1.3;
-  const b0 = soloP || (swing ? byLane(others, spZ) : !DF.length ? B0 : midAtk ? mb || byLane(DF, spZ) : mbCan ? mb : byLane(DF, spZ)),
+  const b0 = swing ? byLane(others, spZ) : !DF.length ? B0 : midAtk ? mb || byLane(DF, spZ) : mbCan ? mb : byLane(DF, spZ),
     p0z = startZ(b0),
     r0 = reach(b0) * (swing ? BLOCK.swingReach : bitten ? 0.3 : commit && quick ? BLOCK.commitReach : 1), // Commit: the blocker on a quick is already up
     bz0 = clamp(p0z + clamp(spZ - p0z, -r0, r0), 0.05, 0.95),
@@ -84,7 +82,7 @@ function blockPick(c, x, f) {
   // the second blocker closes in beside the first on the court-inside side — if the roll passes and they can get there.
   // Sync attacks leave no time for a double; quicks only get one when the defence is set for them (Commit / Bunch).
   const cand = DF.find(p => p !== b0);
-  if (cand && !sync && !swing && !soloP && (!quick || commit || bunch)) {
+  if (cand && !sync && !swing && (!quick || commit || bunch)) {
     const roll = R() < defT.S.dbl * (0.6 + 0.8 * readQ(cand)),
       p1z = startZ(cand),
       inward = bz0 < 0.5 ? 1 : -1,
@@ -102,21 +100,14 @@ function blockPick(c, x, f) {
   const blockers = b1 ? [b0, b1] : [b0];
   return { others, swing, mb, mbCan, b0, p0z, r0, bz0, late0, b1, bz1, late1, blockers };
 }
-/** Block collision (T-069), the late front-row jumpers (display), and the moves to the net. */
+/** The late front-row jumpers (display) and the moves to the net. */
 function blockMoves(c, x, f) {
   const { m, V, front, n, atk, ds, defT } = c,
-    { quick, spiker, DF } = x,
-    { longB, spZ, appX, soloP, b0, bz0, b1, bz1, blockers } = f;
-  // block collision (T-069): the other front-row defender also commits to the same ball — both blocks cancel (no block touch),
-  // or in `solo.net` of cases the bodies hit the net: a fault. Rolled only when a solo block happens and there is a partner.
-  const partner = soloP ? DF.find(p => p !== soloP) : null;
-  let collide = null;
-  if (partner && EGO.solo.collide > 0 && R() < EGO.solo.collide * (1 - egoOf(partner).hold)) {
-    collide = { a: soloP, b: partner, net: R() < EGO.solo.net };
-  }
+    { quick, spiker } = x,
+    { longB, spZ, appX, b0, bz0, b1, bz1, blockers } = f;
   // every other front-row player still goes up (late, off-position) even when they're not part of the block —
   // nobody at the net just watches. Display only: coverage and positions in the engine are unchanged.
-  const lateB = V ? defT.P.filter(p => front(ds, p) && !blockers.includes(p) && p !== (collide && collide.b) && !busy(m, p, n)) : [],
+  const lateB = V ? defT.P.filter(p => front(ds, p) && !blockers.includes(p) && !busy(m, p, n)) : [],
     taken = b1 ? [bz0, bz1] : [bz0], // spots at the net already taken: late blockers go up beside them, not inside them
     lateA = lateB.flatMap(p => {
       const q = m.pos[p.id];
@@ -139,16 +130,14 @@ function blockMoves(c, x, f) {
   if (longB && V) a1[a1.length - 1].via = { x: sx(atk, 92), z: spZ, at: 0.38 }; // back to the end line, then the run-up
   mv(m, b0, sx(ds, 484), bz0, a1, V);
   if (b1) mv(m, b1, sx(ds, 480), bz1, a1, V);
-  // the collision: the partner arrives at the same spot, 0.3 m beside the solo blocker (they bounce apart)
-  if (collide) mv(m, partner, sx(ds, 484), clamp(bz0 + (bz0 < 0.5 ? 1 : -1) * (0.3 / UNIT_M.z), 0.05, 0.95), a1, V);
-  return { partner, collide, lateB, taken, lateA, a1 };
+  return { lateB, taken, lateA, a1 };
 }
-/** Coverage: lane × height per blocker, reading and the defence setting, the solo gamble, techniques; seam and over. */
+/** Coverage: lane × height per blocker, reading and the defence setting, techniques; seam and over. */
 function blockCoverage(c, x, f) {
   const { m, n } = c,
     { setter, quick, slide, sync, freak, readBonus } = x,
-    { back, longB, spZ, lane, pipe, appX, soloP, b0, bz0, late0, b1, bz1, late1, blockers, collide, lateB, lateA, a1 } = f;
-  const { pj, hS, c0, c1, soloLog } = blockHands(c, x, f);
+    { back, longB, spZ, lane, pipe, appX, b0, bz0, late0, b1, bz1, late1, blockers, lateB, lateA, a1 } = f;
+  const { pj, hS, c0, c1 } = blockHands(c, x, f);
   let cov = Math.max(c0.c, c1.c) + (c0.c > 0.4 && c1.c > 0.4 ? 0.25 : 0) + readBonus;
   // techniques that beat (or read) the block
   const readB = quick && hasTech(b0, 'readblk') && W(b0) >= 1.1,
@@ -161,7 +150,6 @@ function blockCoverage(c, x, f) {
   if (sync) cov *= 0.8;
   if (pipeCombo) cov *= 0.6;
   if (longB) cov *= 0.55;
-  if (collide) cov = 0; // both blocks cancel: no block touch, the attack meets an empty net
   const setTech = freak
     ? 'Freak Quick'
     : slide
@@ -188,9 +176,6 @@ function blockCoverage(c, x, f) {
     bz0,
     bz1,
     blockers,
-    soloP,
-    soloLog,
-    collide,
     lateB,
     lateA,
     a1,
@@ -205,11 +190,10 @@ function blockCoverage(c, x, f) {
     over
   };
 }
-/** Each blocker's hands: lane × height coverage, scaled by reading and the defence setting; the solo gamble (ego log). */
+/** Each blocker's hands: lane × height coverage, scaled by reading and the defence setting. */
 function blockHands(c, x, f) {
-  const { m } = c,
-    { quick, spiker, DF, bitten } = x,
-    { soloP, commit, bunch, midAtk, swing, b0, bz0, late0, b1, bz1, late1, collide, spZ } = f;
+  const { quick, spiker, bitten } = x,
+    { commit, bunch, midAtk, swing, b0, bz0, late0, b1, bz1, late1, spZ } = f;
   const pj = jumpPx(spiker),
     hS = REACH_H + pj; // the hitter's contact height
   // one blocker's coverage: lane (distance along the net) × height (hands against the contact point)
@@ -235,14 +219,7 @@ function blockHands(c, x, f) {
   };
   scale(c0, b0, late0);
   scale(c1, b1, late1);
-  // the solo blocker's gamble: a good read makes a wall, a bad one leaves the lane open (the personality's err sets the bad side)
-  const soloLog = soloP ? { act: 'solo', p: soloP.id, ok: false, mate: (DF.find(p => p !== soloP) || {}).id } : null;
-  if (soloP) {
-    c0.c *= 1 + EGO.solo.gain * readQ(soloP) - EGO.solo.loss * egoOf(soloP).err;
-    m.egoLog.push(soloLog);
-    if (collide) m.egoLog.push({ act: 'collide', p: soloP.id, mate: collide.b.id, net: collide.net });
-  }
   if (swing) c0.c *= BLOCK.swingCov;
   else if (bitten) c0.c *= 0.5;
-  return { pj, hS, c0, c1, soloLog };
+  return { pj, hS, c0, c1 };
 }

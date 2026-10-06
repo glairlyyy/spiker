@@ -43,27 +43,9 @@ function createPlayer(spec) {
     spec
   );
   for (const k of STATK) p[k] = Math.round(clamp(p[k] ?? 60, STAT_FLOOR, 99));
-  ensureEgo(p);
   return p;
 }
-/** The ego personality levels (spec §2.12), lowest first. */
-const EGO_LVLS = ['normal', 'selfish', 'egoist'];
-/** An old numeric ego (0–1, saves from before the levels) as a level. */
-const egoFromNum = v => (v >= 0.62 ? 'egoist' : v >= 0.42 ? 'selfish' : 'normal');
-/**
- * Ego personality (spec §2.12; owner, 2026-10-04): 'normal' | 'selfish' | 'egoist'. Generated players get a fixed hash of
- * their name (EGO.roll; wing spikers lean selfish) — no random drawn, so generation is unchanged. A level already set (a
- * created player, a loaded save) wins; an old numeric ego becomes its level.
- */
-function ensureEgo(p) {
-  if (EGO_LVLS.includes(p.ego)) return;
-  if (Number.isFinite(p.ego)) return void (p.ego = egoFromNum(p.ego));
-  const h = hstr('ego|' + p.name) + (p.role === 'WS' ? EGO.roll.ws : 0);
-  p.ego = h >= EGO.roll.egoist ? 'egoist' : h >= EGO.roll.selfish ? 'selfish' : 'normal';
-}
-/** The EGO.lvl entry of a player's personality (normal when unknown; an old number is read as its level). */
-const egoOf = p => EGO.lvl[EGO_LVLS.includes(p.ego) ? p.ego : Number.isFinite(p.ego) ? egoFromNum(p.ego) : 'normal'];
-/** The lowest wit: negative wit is the Egoist game's (T-200) — the match's wit W() floors at 0.1, the body untouched (witBody). */
+/** The lowest wit: a negative wit (none is generated now) — the match's wit W() floors at 0.1, the body untouched (witBody). */
 const WIT_MIN = -1;
 /** The lowest a created player's stat can be. Generated players never go below 25: `rollStats` keeps its own floor; only your career player starts lower (CAREER.start). */
 const STAT_FLOOR = 1;

@@ -116,9 +116,6 @@ const ACTS_FX = {
     sfx.swish();
     A.ghost = { f: { X: bs.X, Y: bs.Y }, t: P(a.to.x, a.to.z, a.to.h), life: 1 };
   },
-  ego(a, d, bs) {
-    // the ego moment's slow motion and camera: egoFocus (movement.js), after the beat's moves are set up
-  },
   shot(a, d, bs) {
     // staged scene camera (r3d frames it; null = back to the game camera)
     if (a.hype && a.hype > HYPE[G.hype].max) return; // an optional close-up (Hype off)

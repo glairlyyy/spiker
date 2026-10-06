@@ -295,8 +295,8 @@ function shotPose(s) {
   if (!a) return null;
   const up = new THREE.Vector3(0, 1, 0),
     H = a.bone('head').getWorldPosition(new THREE.Vector3());
-  if (s.kind === 'ego') {
-    // the ego moment (T-199): behind and beside the player, the ball ahead of them — tracked from the feet (no head bob)
+  if (s.kind === 'follow') {
+    // a followed player (a decision point, §2.13): behind and beside the player, the ball ahead of them — tracked from the feet (no head bob)
     const F = a.root.position.clone().setY(0),
       bp = world.ball.position.clone().setY(0),
       d = bp.clone().sub(F);

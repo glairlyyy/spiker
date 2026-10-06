@@ -12,7 +12,7 @@ const boost = p =>
     ? (1 + 0.06 * CM.mom[sideOf(p)] + 0.05 * (CM.mood[p.id] || 0)) * (1 - RULES.stamina.hit * (1 - staOf(p))) * (1 + 0.05 * buffLv(p))
     : 1;
 const witMul = w => 0.75 + 0.25 * w;
-/** Wit's share of power / defense: a negative wit (Egoist game, T-200) counts as a plain 1 — it never lowers the body. */
+/** Wit's share of power / defense: a negative wit counts as a plain 1 — it never lowers the body. */
 const witBody = p => witMul(p.wit < 0 ? 1 : W(p));
 const effP = p => p.power * witBody(p) * boost(p);
 const effD = p => p.def * witBody(p) * boost(p);

@@ -6,14 +6,6 @@ const CALLS = {
   set: ['Set me!', 'Up here!', 'Give me the ball!', 'Bring it!'],
   zone: ["I'm on fire!", 'Keep feeding me!', 'One more!'],
   decoy: ['Here!', 'Me!', 'Open!'],
-  // ego set calls (T-068, street voice): a hitter who wants it all demands the set
-  ego: [
-    'Give it here — I got this!',
-    'Set ME. Now!',
-    'Quit spreading it — ball to me!',
-    'Who finishes this? Me!',
-    'Stop looking at them — set me!'
-  ],
   // relationships (T-066, street voice): a setter feeds an ally in the clutch / freezes out someone they can't stand
   trust: ["Yours. Don't waste it.", "You're up — finish it!", 'Trust you. Put it away.'],
   freeze: ['Not you. Not now.', 'Somebody else — go!', 'Not feeding you this one.'],

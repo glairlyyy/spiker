@@ -242,14 +242,3 @@
   color: inherit;
   text-decoration: underline dotted;
 }
-/* ego personality tag (spec §2.12) */
-.egot {
-  font-weight: 600;
-  color: var(--mute);
-}
-.egot.e-selfish {
-  color: var(--warn);
-}
-.egot.e-egoist {
-  color: var(--bad);
-}

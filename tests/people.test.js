@@ -149,7 +149,7 @@ test('rel: trained ×3 in a week is one entry worth 3 + 1.5 + 0.75', () => {
   assert(Math.abs(l[0].v - 5.25) < 1e-9, 'value 5.25, got ' + l[0].v);
   eq(g.Run.you(run).bond[mate.id], g.Rel.bondOf(run, mate.id), 'cached bond follows');
 });
-test('rel: trait multipliers; jealous hero_carried is negative', () => {
+test('rel: trait multipliers; cynical lost_together is negative', () => {
   const st = (traits, kind) => {
     const [g, run, mate] = mkMate(93, traits);
     g.Rel.add(run, mate.id, kind);
@@ -164,7 +164,6 @@ test('rel: trait multipliers; jealous hero_carried is negative', () => {
   eq(st(['cynical', 'reckless'], 'won_together'), 3.5, 'cynical ×0.7');
   eq(st(['calculating', 'reckless'], 'won_together'), 7.5, 'calculating ×1.5 on payoff');
   eq(st(['calculating', 'reckless'], 'trained'), 1.5, 'calculating ×0.5 on the rest');
-  assert(st(['jealous', 'steady'], 'hero_carried') < 0, 'jealous hero_carried is negative');
   assert(st(['cynical', 'steady'], 'lost_together') < 0, 'cynical lost_together is negative');
 });
 test('rel: taking a same-role mate’s spot writes spot_taken once a week; their tag drops to resent', () => {
@@ -203,12 +202,6 @@ test('rel: afterMatch writes the expected kinds from a played match', () => {
   m.played.add(you.id);
   for (const mt of mates) m.played.add(mt.id);
   m.winner = 0;
-  m.egoLog.push(
-    { act: 'steal', p: you.id, ok: true, mate: mates[0].id, crash: false },
-    { act: 'swing', p: you.id, ok: true },
-    { act: 'call', p: you.id, ok: true, mate: mates[1].id },
-    { act: 'collide', p: mates[0].id, mate: you.id, net: 1 }
-  );
   g.Rel.afterMatch(run, m, 0);
   const ks = id =>
     g.Rel.list(run, id)
@@ -216,11 +209,7 @@ test('rel: afterMatch writes the expected kinds from a played match', () => {
       .sort()
       .join(',');
   assert(ks(mates[0].id).split(',').includes('won_together'), 'won_together');
-  assert(
-    ks(mates[0].id).includes('stole_my_ball') && ks(mates[0].id).includes('collided') && ks(mates[0].id).includes('hero_carried'),
-    'steal, collide, hero_carried: ' + ks(mates[0].id)
-  );
-  assert(ks(mates[1].id).includes('set_hogged') && ks(mates[1].id).includes('hero_carried'), 'call + swing: ' + ks(mates[1].id));
+  assert(ks(mates[1].id).split(',').includes('won_together'), 'both mates');
   m.winner = 1;
   const [g2, run2] = mkPeople(96),
     t2 = g2.Run.myTeam(run2),
@@ -304,7 +293,7 @@ test.slow('rel: calibration — the first mate reaches bond 60 / 80 about when i
 const mkUi = g => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'js/ui/career-people.js'), 'utf8'),
     names = Object.keys(g).filter(
-      k => /^[A-Za-z_$][\w$]*$/.test(k) && !['CW', 'faceSVG', 'stag', 'tip', 'info', 'renderCareer', 'esc', 'peek', 'egoTag'].includes(k)
+      k => /^[A-Za-z_$][\w$]*$/.test(k) && !['CW', 'faceSVG', 'stag', 'tip', 'info', 'renderCareer', 'esc', 'peek'].includes(k)
     ),
     CW = { sheet: 'people', person: null },
     stub = {
@@ -315,8 +304,7 @@ const mkUi = g => {
       info: () => '',
       renderCareer: () => {},
       esc: x => String(x),
-      peek: (id, label, body) => label + body,
-      egoTag: p => p.ego
+      peek: (id, label, body) => label + body
     };
   return Object.assign(
     new Function(...names, ...Object.keys(stub), `${src}\nreturn { sheetPeople, personCard, openPerson, chemBlock };`)(
@@ -355,7 +343,7 @@ test('people drawer: Rel.top orders by weighted value and names them; every kind
   const [g, run, mate] = mkMate(103, ['steady', 'reckless']);
   g.Rel.add(run, mate.id, 'hung_out');
   g.Rel.add(run, mate.id, 'spot_taken');
-  g.Rel.add(run, mate.id, 'collided');
+  g.Rel.add(run, mate.id, 'beat_me');
   g.Rel.add(run, mate.id, 'won_together');
   const top = g.Rel.top(run, mate.id, 3);
   eq(top.length, 3, 'three');

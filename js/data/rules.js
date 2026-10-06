@@ -50,8 +50,7 @@ const rulesText = () => `First to ${RULES.pointsToWin}, win by ${RULES.winBy}`;
 /**
  * Relationships on court (T-066, spec §4.23 E; career matches only: every effect is gated on `m.rel`, so Monster / sims / the golden
  * matches are untouched). trust / freeze: the setter's weight for an ally / a resent-or-enemy hitter once either side has `clutch`
- * points; cover: added to an ally's save chance (block cover, pop-up); buff: the captain's buff weighs allies ×this; ego: the steal
- * chance ×ally / ×rival; rival: the form an NPC rival starts with (fired up = proud / reckless, else rattled). No raw stat bonuses.
+ * points; cover: added to an ally's save chance (block cover, pop-up); buff: the captain's buff weighs allies ×this; rival: the form an NPC rival starts with (fired up = proud / reckless, else rattled). No raw stat bonuses.
  */
 const REL_E = {
   trust: 0.15,
@@ -59,45 +58,7 @@ const REL_E = {
   clutch: 12,
   cover: 0.12,
   buff: 2,
-  ego: { ally: 0.5, rival: 1.5 },
   rival: { fired: 0.3, rattled: -0.2 }
-};
-/**
- * Ego (spec §2.12, T-068; personality levels — owner, 2026-10-04): every player has an ego personality `ego` — 'normal',
- * 'selfish' or 'egoist' (EGO.lvl; wit plays no part). Per opportunity the chance of an ego act is
- * `base[act] × lvl.k × (1 − the captain's lvl.rein)` (a captain on court who is not the player calls it off). steal: a teammate
- * who is up to `reach` × the nearest player's time to the ball still goes for it; they collide with chance `collide × the pair's
- * mean lvl.err`, a crash multiplies the touch's score by `crash` (else the thief just takes the touch). call: a hitter demands
- * the set — the setter gives in with chance setter lvl.give. solo: the ego blocker ignores the defence setting and blocks alone:
- * coverage × (1 + `solo.gain` × read − `solo.loss` × lvl.err); the other front-row defender also commits with chance
- * `solo.collide` × (1 − their lvl.hold) — a block collision: no block touch this attack, and in `solo.net` of collisions a net
- * fault (point to the attackers, T-069). swing: on a bad set the ego hitter swings full power (set penalty × `swing.pow` instead of
- * the bad-set 0.72, no tip), errors × (1 + `swing.err` × lvl.err). serve: the ego server goes for a jump serve (power × `serve.sq`,
- * +`serve.err` × lvl.err service-error chance).
- */
-const EGO = {
-  /**
-   * The personality levels: k = how often they act on ego (normal never); err = how badly an ego act can go (collisions,
-   * swing / serve errors, a solo block's gaps); give = as setter, the chance to give in to a hitter demanding the set (an egoist
-   * setter runs their own show); rein = as captain, how much of the others' ego they call off; hold = as the other front-row
-   * blocker, the chance to hold off when a teammate goes up alone.
-   */
-  lvl: {
-    normal: { k: 0, err: 0.3, give: 0.35, rein: 0.5, hold: 0.7 },
-    selfish: { k: 0.45, err: 0.6, give: 0.6, rein: 0.2, hold: 0.4 },
-    egoist: { k: 1, err: 1, give: 0.25, rein: 0, hold: 0 }
-  },
-  /** Generated players (a fixed hash of the name + ws for wing spikers): normal below `selfish`, egoist from `egoist` on. */
-  roll: { selfish: 0.58, egoist: 0.92, ws: 0.15 }, // ≈ 50 % normal · 35 % selfish · 15 % egoist
-  base: { steal: 0.14, call: 0.11, solo: 0.1, swing: 0.4, serve: 0.1 },
-  reach: 1.6,
-  collide: 0.5,
-  crash: 0.55,
-  solo: { gain: 0.5, loss: 0.35, collide: 0.25, net: 0.3 },
-  swing: { pow: 0.95, err: 0.6 },
-  serve: { sq: 1.06, err: 0.06 },
-  mood: 0.1, // an ego act that works lifts the player's mood by this, one that fails lowers it …
-  mom: 0.04 // … and costs the team this much momentum
 };
 /**
  * Calls (spec §2.13): the options of your decision points in a played match. serve: `sq` × serve quality, `err` × the fault
@@ -114,7 +75,7 @@ const DECIDE = {
   },
   attack: {
     power: { label: 'Power spike', pow: 1, stats: ['power', 'jump'] },
-    cut: { label: 'Placed shot', pow: 0.92, cut: true, stats: ['wit', 'jump'], need: 'block', cal: { win: 0.8, lose: 0.65, err: 1.25 } },
+    cut: { label: 'Placed shot', pow: 0.92, cut: true, stats: ['wit', 'jump'], need: 'block', cal: { win: 0.8, lose: 0.65, err: 0.8 } }, // err re-measured without the ego acts (2026-10-06)
     tip: { label: 'Tip', tip: true, stats: ['wit'] }
   },
   odds: 300

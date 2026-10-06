@@ -48,7 +48,6 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   | Block cover        | Defense 0.65 + Speed 0.35; Wit < 0.8 cuts it                              | saving a kill block                   |
   | Delayed Spike hang | Jump + Wit                                                                | hangs too long (§9.10)                |
   | Stamina drain      | Defense + Speed soften it                                                 | late-set power and jump               |
-  | Ego acts           | Ego personality (normal / selfish / egoist) — not wit                     | steals, hero swings and serves        |
 
 - §2.2 Elements: hidden per player; unlocked for OP, ~1/4 of stars, and you via the Element Trial. Gauge fills by
   element play; full gauge or captain buff → next attack is the signature element spike. Counter elements halve. Fiction: lore.md §2 (Trial = modern method; ritual forgotten).
@@ -101,36 +100,12 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 - Box score shows each player's OVR.
 - §2.11 Music: `assets/audio/the_big_fight.mp3` loops on the match screen at `BGM_GAIN` 0.5 × volume slider; follows
   sound toggle; fades in/out. Presentation only.
-- §2.12 Ego: each player has an **ego personality** (owner, 2026-10-04): **normal** · **selfish** · **egoist** (`p.ego`,
-  `EGO.lvl`). Wit plays no part in ego any more. Per level: k (how often: normal 0, selfish 0.45, egoist 1), err (how
-  badly an act goes: 0.3 / 0.6 / 1), give (as setter, gives in to a demanded set: 0.35 / 0.6 / 0.25 — an egoist setter runs
-  their own show), rein (as captain, calls off the others' ego: 0.5 / 0.2 / 0), hold (as the other blocker, holds off a
-  solo block: 0.7 / 0.4 / 0). Generated players: a fixed hash of the name (WS lean selfish) → ≈ 50 % normal, 35 % selfish,
-  15 % egoist; you start **selfish**. Old saves: a numeric ego becomes its level (≥ 0.62 egoist, ≥ 0.42 selfish). Shown as
-  a tag on the Me sheet and a person's card (Normal / Selfish / Egoist, meaning on hover).
-  - Acts, chance = `EGO.base[act]` × level k: **ball steal** (goes for a teammate's dig/pass: "Mine!" →
-    collision — ball drops or shanked — or their touch) · **set call** (the setter feeds them even when
-    another hitter is open, by the setter's give — worse matchup) · **solo block** (ignores the defence setting: gaps, or a stuff if read right) · **hero
-    swing** (full power on a bad set: more kills, errors, stuffs) · **hero serve** (risky jump serve: aces, errors).
-  - Success: mood up, fame for highlights; failure: mood and team momentum down. The level's err sets each act's error side.
-    A captain on court: the others' chances × (1 − captain's rein).
-  - Memories (§4.23): stole_my_ball −6, collided −4 (both), hero_carried +8 (won the point; warm/loyal count it,
-    jealous resent it), set_hogged −4 (the open hitter). Ego toward allies ×0.5, rivals ×1.5.
-  - Presentation: "MINE!" label (`plabel`), collision = both bump poses + log line, set-call chatter. Tallies in `m.egoLog`.
-  - **Ego moment** (owner, 2026-10-04) **[built, T-199]**: a steal (tried, crash or not) and a demanded set that the setter
-    gives in to mark their beat with act `ego` { p, act: 'steal' | 'call' } (recorded beats only, no draws). Playback
-    (`egoFocus`, movement.js): the world slows to ×0.3 while the ego player plays on at normal speed (the far-dig
-    `A.digHero` clock: real-time sprint, timers, posing) and a tracked chase camera follows them (`A.shot` kind `ego`,
-    behind and beside the player, the ball ahead; labels stay on). Steal: slow from 20 % of the beat (after the hit) to
-    the touch. Demanded set: slow while the hitter sprints to the run-up point (to 30–60 % of the set beat); the run,
-    jump and hit are back in sync with the ball. Off with Hype Off; a far dig of another player keeps its own clock.
-  - **Block collision**: solo ego blocker + partner committing to the same spot (the partner's hold decides holding off)
-    → both blocks cancelled mid-jump, stagger apart, open net. Error variant: net fault, point to attackers. Label
-    **BLOCK COLLISION** (warning) / **BLOCK COLLISION · NET** (red). collided −4 both.
+- §2.12 Ego **[removed]** (owner, 2026-10-06): no ego personality, no ego acts (steals, demanded sets, solo blocks and
+  block collisions, hero swings / serves), no ego moment, no ego memories, no Egoist game. Old saves drop the field and the memories on load.
 - §2.12a Negative wit (owner, 2026-10-04) **[built, T-200]**: wit may be below 0 (`WIT_MIN` −1; fixStats clamps to
   [−1, 3]). It never lowers the body: power / defense in play (`witBody`) and OVR count it as 1. Everything else reads it
-  as the lowest wit (match wit `W()` floors at 0.1). Ego no longer reads wit (§2.12). Only the Egoist game makes such
-  players today.
+  as the lowest wit (match wit `W()` floors at 0.1). No generator makes such players today (the Egoist game went with
+  ego, §2.12).
 
 - §2.13 Calls — decisions in a played match (owner, 2026-10-05) **[built, T-232–T-235]**. **One engine, two pickers**: every rule, roll
   and touch is the same code for a simmed and a played match; at a **decision point** the engine asks a picker. Sim (Sim ⏭,
@@ -148,7 +123,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     with measured corrections (`cal`), and stay within ±6 of what is played (test). "Tool the block" is not an option (it is
     an outcome of a power spike).
     Later: **Set** (you are the setter: which hitter, each with their kill %), **Block** (MB: read · commit · swing).
-  - On screen: the world slows to ~5 % over ~0.4 s, the camera holds on you (the ego chase shot), a vignette darkens the
+  - On screen: the world slows to ~5 % over ~0.4 s, the camera holds on you (a tracked chase shot, `A.shot` kind `follow`), a vignette darkens the
     edges, and 2–4 option chips appear beside your player (screen-projected like the name tags): label, success % and the
     stat icons it uses, your weakest of them marked ("⤒ Jump 48"); the best-odds option is marked **suggested**. Keys 1–4, click.
     A 5 s ring (real time) runs down; at 0 your player takes the suggested move by themselves (owner, 2026-10-05). Esc opens
@@ -160,8 +135,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 ## 3. Menu [built]
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two
-  teams of ordinary players, each rolled at OVR 30–60 — owner, 2026-10-04); **Egoist game** (`startEgoist()`,
-  `mkEgoistTeams`: the Monster teams, everyone egoist, wit −0.2 to −1 each — §2.12a; owner, 2026-10-04).
+  teams of ordinary players, each rolled at OVR 30–60 — owner, 2026-10-04).
 
 ## 4. Career world [built unless tagged]
 
@@ -452,7 +426,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     point) ·
     trained_together +3 (×0.5 per repeat in a week) · won_together +5 · lost_together +2 (−2 jealous/cynical) ·
     beat_me −8 (challenge / street fight) · covered_me +8 (dug their bad pass, sat out for them) · vouched +15 · refused_help −6 · lent_money +10 · debt_unpaid −4/week · called_out −5 ·
-    shamed −12 (scar; a Gazette jab about them you caused) · ego kinds (§2.12). Fade ×DECAY/week; scars never. ≤ 24 entries (same kinds merge).
+    shamed −12 (scar; a Gazette jab about them you caused) Fade ×DECAY/week; scars never. ≤ 24 entries (same kinds merge).
     - **Stance** = Σ value × fade × traits: proud ×2 on scars + beat_me; loyal ×0.6 negatives; jealous ×1.5 spot_taken
       and your hero plays count against you; warm ×1.3 / cynical ×0.7 positives; calculating ×1.5 payoff memories
       (won_together, carried, vouched, lent_money), ×0.5 rest. Tags: ally · respect · neutral · resent · enemy.

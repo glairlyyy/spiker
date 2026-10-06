@@ -74,18 +74,6 @@ function* rally(m, B, V, atk, pas, qual, scr = null) {
     Object.assign(x, fakeSet(c, x));
     Object.assign(x, formBlock(c, x));
     Object.assign(x, setBeat(c, x));
-    if (x.collide && x.collide.net) {
-      // the two blockers hit the net together: a fault, point to the attackers (no attack contact follows)
-      V &&
-        B({
-          dur: 900,
-          acts: [
-            { k: 'label', t: 'Net fault', when: 'end', big: 1 },
-            { k: 'log', t: 'Net fault — block collision', c: 'pt' }
-          ]
-        });
-      return atk;
-    }
     x.cov0 = x.cov; // the block's coverage before the shot choice (Decide)
     Object.assign(x, spikePower(c, x));
     x.pow0 = x.tip ? 0 : x.pow / (x.elS ? x.elS.pow : 1);
@@ -127,7 +115,6 @@ function* rally(m, B, V, atk, pas, qual, scr = null) {
     }
     // ---- 9–10: block, then dig or kill ----
     const bl = block(c, x);
-    if (x.soloLog && bl.point === ds) x.soloLog.ok = true; // the solo block stuffed it
     if (bl.point != null) {
       fin();
       Decide.out(m, 'attack', x.spiker.id, bl.point === atk ? 'win' : 'lose');
@@ -153,7 +140,6 @@ function tallyAttack(m, side, x, k0, bk0) {
   const a = m.att[side],
     kind = x.quick ? 'q' : x.pipe || x.lane === 'M' ? 'mid' : 'pin',
     kill = (m.stat[x.spiker.id] || blank()).k > k0;
-  if (x.heroLog) x.heroLog.ok = kill;
   a.n++;
   a[kind]++;
   if (x.b1) a.dbl++;
@@ -287,11 +273,10 @@ function setBeat(c, x) {
     });
   return { combo, elSrc, mark };
 }
-/** Ball calls while the set is in the air: the hitter asks for it, other confident hitters shout as decoys; an ego demand. */
+/** Ball calls while the set is in the air: the hitter asks for it, other confident hitters shout as decoys. */
 function setCallActs(c, x) {
   const { m, V, front, atk } = c,
-    { setter, spiker, quick, bad, back, longB, pool, callers, fakeDecoy } = x,
-    { egoCall } = x;
+    { spiker, quick, bad, back, longB, pool, callers, fakeDecoy } = x;
   const setCalls = [];
   if (V && !bad) {
     const cf = p => confidence(p, m, atk);
@@ -300,12 +285,6 @@ function setCallActs(c, x) {
     const other = pool.find(p => p !== spiker && p !== fakeDecoy && cf(p) >= 88 && (front(atk, p) || callers.includes(p)));
     if (other) setCalls.push({ k: 'call', p: other.id, t: callLine(callers.includes(other) ? 'back' : 'decoy', other, m), soft: 1 });
   }
-  if (V && egoCall)
-    setCalls.push(
-      { k: 'call', p: egoCall.id, t: callLine('ego', egoCall, m) },
-      { k: 'ego', p: egoCall.id, act: 'call' },
-      { k: 'log', t: `${egoCall.name} demands the set — ${setter.name} gives in`, c: 'set' }
-    );
   return setCalls;
 }
 /** The set beat's acts (presentation only, no draws): setter, hitter and blockers in the air, labels and the log line. */
@@ -369,50 +348,22 @@ function setActs(c, x, { setDir, combo, setCalls, hype }) {
     }
   ];
 }
-/** The blockers' jumps (a collision: up together, down early — a hop at ~40% of the normal hang). */
+/** The blockers' jumps. */
 function blockJumpActs(c, x) {
-  const { quick, fakeDecoy, bitten, b0, blockers, collide } = x;
-  const colJump = b => {
-    const t0 = quick ? 0.3 : 0.6;
-    return { k: 'jump', p: b.id, mode: 'hop', t0, t1: t0 + 0.4 * (1 - t0), peak: jumpPx(b) * 0.5 };
-  };
-  return [
-    ...blockers.map(b =>
-      collide
-        ? colJump(b) // the collision: up together, down early
-        : {
-            k: 'jump',
-            p: b.id,
-            mode: b === b0 && bitten && fakeDecoy ? 'reup' : 'up',
-            t0: b === b0 && bitten ? 0.84 : quick ? 0.3 : 0.6,
-            t1: 1,
-            peak: jumpPx(b) * (b === b0 && bitten ? 0.45 : 0.85)
-          }
-    ),
-    ...(collide ? [colJump(collide.b)] : [])
-  ];
+  const { quick, fakeDecoy, bitten, b0, blockers } = x;
+  return blockers.map(b => ({
+    k: 'jump',
+    p: b.id,
+    mode: b === b0 && bitten && fakeDecoy ? 'reup' : 'up',
+    t0: b === b0 && bitten ? 0.84 : quick ? 0.3 : 0.6,
+    t1: 1,
+    peak: jumpPx(b) * (b === b0 && bitten ? 0.45 : 0.85)
+  }));
 }
-/** The blockers' poses, collision / solo labels and the late jumpers. */
+/** The blockers' poses and the late jumpers. */
 function blockPoseActs(x) {
-  const { blockers, collide, soloP, lateA } = x;
-  return [
-    ...blockers.map(b => ({ k: 'pose', p: b.id, pose: collide ? 'bump' : 'block' })), // a collision staggers them
-    ...(collide
-      ? [
-          { k: 'pose', p: collide.b.id, pose: 'bump' },
-          {
-            k: 'plabel',
-            p: collide.a.id,
-            p2: collide.b.id,
-            t: collide.net ? 'BLOCK COLLISION · NET' : 'BLOCK COLLISION',
-            v: collide.net ? 'err' : 'warn'
-          },
-          { k: 'log', t: `${collide.a.name} and ${collide.b.name} both go up for the block — they collide!`, c: 'err' }
-        ]
-      : []),
-    ...(soloP && !collide ? [{ k: 'plabel', p: soloP.id, t: 'SOLO!' }] : []),
-    ...lateA
-  ];
+  const { blockers, lateA } = x;
+  return [...blockers.map(b => ({ k: 'pose', p: b.id, pose: 'block' })), ...lateA];
 }
 
 /**
@@ -425,12 +376,8 @@ function spikePower(c, x) {
   let { cov } = x;
   st(m, spiker, 'att');
   dr(m, spiker, 0.035 + pj / 4000);
-  // ego (spec §2.12): on a bad set an ego hitter swings full power instead of rolling or tipping it
-  const hero = bad && egoRoll(m, spiker, 'swing'),
-    heroLog = hero ? { act: 'swing', p: spiker.id, ok: false } : null;
-  if (hero) m.egoLog.push(heroLog);
-  const setMul = { perfect: 1.12, good: 1, bad: hero ? EGO.swing.pow : 0.72 }[sq2];
-  const tip = bad && !elSrc && R() < 0.35 && !hero;
+  const setMul = { perfect: 1.12, good: 1, bad: 0.72 }[sq2];
+  const tip = bad && !elSrc && R() < 0.35;
   let pow = tip ? rnd(18, 30) : Formula.spikePower({ spiker, team: atkT, setMul, quick, back, longB, combo, fat });
   const elS = !tip && elSrc ? elSpike(m, elSrc, spiker, setter, defT, sq2 === 'perfect') : null;
   if (elS) {
@@ -456,7 +403,7 @@ function spikePower(c, x) {
   if (elS) cov *= elS.cov;
   if (V && (tip || cov <= BLOCK_MIN_COV)) dropDefScene(m); // no block attempt: the defender's scene lines go (block() uses the same test)
   const tier = tip ? 'tip' : pow >= 100 ? 'ult' : pow >= 80 ? 'heavy' : pow >= 58 ? 'hard' : 'soft';
-  return { tip, pow, elS, el: elS ? elS.el : null, around, cutS, delayed, cov, tier, hero, heroLog };
+  return { tip, pow, elS, el: elS ? elS.el : null, around, cutS, delayed, cov, tier };
 }
 
 /**
@@ -488,7 +435,6 @@ function spikeActs(c, x) {
           { k: 'shake', amt: Math.max(0, (pow - 65) / 5) + (elS ? (elS.el === 'blast' ? 8 : 3) : 0) }
         ]),
     ...(note ? [{ k: 'label', t: note, dy: -30, set: 1 }] : []),
-    ...(x.hero ? [{ k: 'plabel', p: spiker.id, t: 'ALL ME!' }] : []),
     ...(pow >= 95
       ? [
           { k: 'lines', pow, color: atkT.color },
@@ -683,10 +629,7 @@ function hangFail(c, x) {
 function hittingError(c, x) {
   const { m, B, V, atk, ds } = c,
     { spiker, tip, bad, pow, around, back, longB, hS, elS, hit, bdown, spZ, lz, hdur } = x;
-  const errP =
-    Formula.spikeErrorP({ spiker, bad, pow, around, back, longB, hS }) *
-    (elS ? 0.5 : 1) *
-    (x.hero ? 1 + EGO.swing.err * egoOf(spiker).err : 1);
+  const errP = Formula.spikeErrorP({ spiker, bad, pow, around, back, longB, hS }) * (elS ? 0.5 : 1);
   if (tip || R() >= errP) return;
   st(m, spiker, 'err');
   const net = R() < Formula.spikeNetShare(hS, longB);

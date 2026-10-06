@@ -69,50 +69,6 @@ function nearest(m, arr, x, z) {
   return b;
 }
 /**
- * Chance of one ego act by p (see EGO): base × their personality's k, reduced by a captain on court who is not p (the captain's
- * rein). `k` scales it. 0 when there is nothing to roll — callers draw R() only for a chance above 0, so a normal player costs no draw.
- */
-function egoChance(m, p, act, k = 1) {
-  const q = EGO.base[act] * egoOf(p).k * k;
-  if (q <= 0) return 0;
-  const cap = m.t[m.t[0].P.includes(p) ? 0 : 1].cap;
-  return cap && cap !== p ? q * (1 - egoOf(cap).rein) : q;
-}
-const egoRoll = (m, p, act, k) => {
-  const q = egoChance(m, p, act, k);
-  return q > 0 && R() < q;
-};
-/**
- * Ball steal (spec §2.12) on a touch the player `near` would take at (x, z): a teammate in `cands` who could still reach it
- * (EGO.reach × near's time) may call "Mine!" — a collision with `near` (crash: the touch goes badly) or just takes the touch.
- * Pushes the label / pose / log onto `acts` when recording. Returns null | { p: who touches it, crash, thief }.
- */
-function egoSteal(m, cands, near, x, z, acts, V) {
-  const eta = p => dist(m.pos[p.id], x, z) / (0.5 + p.speed / 100),
-    // toward an ally the steal chance is halved, toward a rival ×1.5 (REL_E.ego, T-066); 1 without m.rel
-    rel = p => (relTag(m, p, near) === 'ally' ? REL_E.ego.ally : m.rel && m.rel.rival.has(`${p.id}|${near.id}`) ? REL_E.ego.rival : 1),
-    tn = eta(near);
-  for (const p of cands) {
-    if (p === near || eta(p) > EGO.reach * tn || !egoRoll(m, p, 'steal', rel(p))) continue;
-    const cc = (EGO.collide * (egoOf(p).err + egoOf(near).err)) / 2,
-      crash = cc > 0 && R() < cc;
-    m.egoLog.push({ act: 'steal', p: p.id, ok: !crash, mate: near.id, crash });
-    V &&
-      acts.push(
-        { k: 'plabel', p: p.id, t: 'MINE!' },
-        { k: 'ego', p: p.id, act: 'steal' },
-        ...(crash ? [{ k: 'pose', p: p.id, pose: 'bump' }] : []),
-        {
-          k: 'log',
-          t: crash ? `${p.name} and ${near.name} both go for it — they crash!` : `${p.name} calls "Mine!" and takes it off ${near.name}`,
-          c: crash ? 'err' : 'set'
-        }
-      );
-    return { p: crash ? near : p, crash, thief: p };
-  }
-  return null;
-}
-/**
  * A fresh match between teams a and b. rec = record animation beats (playRally returns them).
  * opts.court: court size multiplier (default RULES.court); opts.tac: [tactic, tactic] fixes a side's tactic;
  * opts.dset: [setting, setting] fixes a side's defence setting (DEFSETS; default: the team's style, then the captain may switch it).
@@ -191,7 +147,6 @@ function newMatch(a, b, rec, opts = {}) {
     zoneHit: [0, 0], // did the side reach the zone at any point (career: the Element Trial)
     eg: {}, // element gauge (0–100) per unlocked player
     elLog: [], // element spikes fired: { p, el, side, won }
-    egoLog: [], // ego acts (T-068, engine-only, feeds the relationship memories): { act, p, ok, mate?, crash? }
     ctx: null, // the attack being played (element gauge context)
     ctx0: null, // the attack the last point ended on (chatter)
     ctxK: null, // who scored a kill this rally (→ lastK)
@@ -467,7 +422,7 @@ function end(m, w, beats) {
   }
   return { w, beats };
 }
-/** The rally's technique and ego records close; the point is scored (serve and rotation, streaks). */
+/** The rally's technique records close; the point is scored (serve and rotation, streaks). */
 function pointTally(m, w) {
   for (const [pid, id] of m.techRally) {
     const c = m.techUse[pid][id];
@@ -475,23 +430,6 @@ function pointTally(m, w) {
     if (m.errBy === pid) c.err++;
   }
   m.techRally = [];
-  // ego acts of this rally (spec §2.12): close the serve's open entry; success feeds the ego (mood), failure costs mood and momentum
-  for (const e of m.egoLog.slice(m.egoI || 0)) {
-    if (e.open != null) {
-      e.ok = (m.stat[e.p] || blank()).ace > e.open;
-      delete e.open;
-    }
-    const pl = squadOf(m.t[0])
-      .concat(squadOf(m.t[1]))
-      .find(q => q.id === e.p);
-    if (!pl || e.act === 'collide') continue; // a collision is a record only: its solo entry already counts
-    md(m, pl, e.ok ? EGO.mood : -EGO.mood);
-    if (!e.ok) {
-      const sd = squadOf(m.t[0]).includes(pl) ? 0 : 1;
-      m.mom[sd] = clamp(m.mom[sd] - EGO.mom, -1, 1);
-    }
-  }
-  m.egoI = m.egoLog.length;
   m.pts[w]++;
   if (w !== m.serve) {
     m.serve = w;

@@ -71,15 +71,12 @@ function* serveWalk(c) {
   // the serve is chosen up front (same random draws, same order), so the server walks straight to where it starts:
   // the service spot for a standing float, the start of the run-up for a jump serve / jump float
   let sq = Formula.serveQuality(server, ST);
-  // ego (spec §2.12): an ego server goes for the risky jump serve
   const nat = serveType(server, sq),
-    egoHero = nat !== 'jump' && egoRoll(m, server, 'serve'),
-    ai = egoHero ? 'jump' : nat,
+    ai = nat,
     // a decision point (spec §2.13): your serve — the AI's pick is the one drawn above; your call sets type, pace, risk, aim
     pick = yield* decide(m, { kind: 'serve', p: server, options: () => Decide.serve(c, server, sq), ai, n: 0 }),
     call = DECIDE.serve[pick] ? pick : null,
     sType = call ? DECIDE.serve[call].type || nat : ai,
-    hero = egoHero && !call,
     jumpSrv = sType === 'jump',
     runM = runUpM(server, sType),
     endX = jumpSrv ? 60 : 44,
@@ -111,18 +108,14 @@ function* serveWalk(c) {
           ? [{ k: 'log', t: `${server.name} paces out a ${runM} m run-up for a ${jumpSrv ? 'jump serve' : 'jump float'}` }]
           : []
     });
-  Object.assign(c, { oS, oR, server, sq, hero, sType, jumpSrv, runM, endX, startX, call });
+  Object.assign(c, { oS, oR, server, sq, sType, jumpSrv, runM, endX, startX, call });
 }
-/** Run-up pace, ego and serve techniques; the toss (and run-up) beat. */
+/** Run-up pace and serve techniques; the toss (and run-up) beat. */
 function serveToss(c) {
-  const { m, V, B, s, server, hero, jumpSrv, runM, endX, startX, sType } = c;
+  const { m, V, B, s, server, jumpSrv, runM, endX, startX, sType } = c;
   let { sq } = c;
   if (jumpSrv) sq *= 1 + (runM - 3.2) * 0.05; // longer run-up = a bit more pace (±5%)
   if (c.call) sq *= DECIDE.serve[c.call].sq; // your call (spec §2.13)
-  if (hero) {
-    sq *= EGO.serve.sq;
-    m.egoLog.push({ act: 'serve', p: server.id, ok: false, open: (m.stat[server.id] || blank()).ace });
-  }
   // serve techniques
   const killer = jumpSrv && hasTech(server, 'killer') && R() < 0.5,
     drive = !jumpSrv && hasTech(server, 'drive') && R() < 0.5,
@@ -164,15 +157,13 @@ function serveToss(c) {
 }
 /** The contact: the cannon cut-in, the error chance, the hit effects; the serving side goes to base. */
 function serveContact(c) {
-  const { m, V, B, s, ST, server, sq, sType, killer, drive, targeted, hero } = c;
+  const { m, V, B, s, ST, server, sq, sType, killer, drive, targeted } = c;
   const sp = m.pos[server.id],
     sArc = sType === 'jump' ? 85 : sType === 'jumpfloat' ? 110 : 130,
     wob = sType !== 'jump';
   if (V && server.star && sq > 74 && R() < 0.7)
     B({ dur: 1250, cut: 1, acts: [{ k: 'cut', p: server.id, title: 'Cannon Serve', sub: `Serve ${kmh(sq)} km/h` }] });
-  const serr =
-    (Formula.serveErrorP(server, ST, sq) + (killer ? 0.03 : 0) + (hero ? EGO.serve.err * egoOf(server).err : 0)) *
-    (c.call ? DECIDE.serve[c.call].err : 1);
+  const serr = (Formula.serveErrorP(server, ST, sq) + (killer ? 0.03 : 0)) * (c.call ? DECIDE.serve[c.call].err : 1);
   const techName = killer ? 'Killer Jump Serve' : drive ? 'Drive Serve' : targeted ? 'Target Serve' : null;
   const hitFx = [
     { k: 'jump', p: server.id, mode: 'down' },
@@ -212,7 +203,7 @@ function serveFault(c) {
     });
   return end(m, r, beats);
 }
-/** Where the serve goes and who takes it (target serve, ego steal, rolling receive); the receive score and flight time. */
+/** Where the serve goes and who takes it (target serve, rolling receive); the receive score and flight time. */
 function serveAim(c) {
   const { m, V, r, RT, sq, drive, targeted, sw, sp } = c;
   let tx = sx(r, rnd(150, 420)),
@@ -230,28 +221,11 @@ function serveAim(c) {
     tx = clamp(q.x, Math.min(sx(r, 150), sx(r, 420)), Math.max(sx(r, 150), sx(r, 420)));
     tz = clamp(q.z + (q.z > 0.5 ? -0.16 : 0.16), 0.1, 0.9);
   }
-  // ego (spec §2.12): a teammate may steal the pass — a collision wrecks it, else they take it
-  const steal = egoSteal(
-    m,
-    RT.P.filter(p => p !== RT.s),
-    rc,
-    tx,
-    tz,
-    sw,
-    V
-  );
-  if (steal) {
-    if (steal.crash) {
-      setBusy(m, rc, 1);
-      setBusy(m, steal.thief, 1);
-    } else rc = steal.p;
-  }
   const d0 = dist(m.pos[rc.id], tx, tz);
   // Rolling Receive: dive-and-roll takes most of the sting out of a long run
   const rollR = hasTech(rc, 'roll') && d0 > 0.5;
   if (rollR) techFire(m, rc, 'roll');
   let rs = Formula.receiveScore(rc, RT, d0) - (drive ? 14 : 0);
-  if (steal && steal.crash) rs *= EGO.crash;
   if (rollR) rs += Math.max(0, d0 - 0.1) * 45 * (1.3 - rc.speed / 100) * 0.5;
   // a hard serve gets there sooner (SERVE_FAST: up to ×1.45 from serve 55 to 110)
   const sfast = 1 + clamp((sq - 55) / 55, 0, 1) * (SERVE_FAST - 1),
@@ -262,7 +236,7 @@ function serveAim(c) {
       mv(m, p, h[0], h[1], sw, V);
     }
   });
-  Object.assign(c, { tx, tz, rc, steal, d0, rollR, rs, sdur });
+  Object.assign(c, { tx, tz, rc, d0, rollR, rs, sdur });
 }
 /** The serve beats the receiver: off the arms (a teammate may save it) or a clean ace. */
 function* serveAce(c) {

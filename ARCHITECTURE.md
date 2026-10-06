@@ -23,7 +23,7 @@ earlier files **at load time** (inside functions, anything loaded is fine).
 Classic scripts, in index.html order (each group only uses earlier groups at load time):
 
 - **core** `debuglog.js` (DBG), `math.js` (clamp, lerp, inPoly, fmtDelta…), `rng.js` (R / RNG / FXR), `storage.js` (store, KEYS).
-- **data** `rules.js` (RULES, EGO…), `styles.js` (playstyles, team list, archetypes), `names.js` (name pools),
+- **data** `rules.js` (RULES, DECIDE…), `styles.js` (playstyles, team list, archetypes), `names.js` (name pools),
   `looks.js` (appearance palettes), `moves.js` (signature / combo names, coach lines), `roles.js` (role biases, key
   stats, mood deltas), `elements.js`, `tactics.js`, `dialogue.js` (lines, `callLine`), `skills.js`, `career.js`
   (CAREER, CALENDAR, ROLE_NAME, STATNAME, MLOG…), `world.js` (REGIONS, FACTIONS, ECON, HOUSING, CLASH, FRONT…), `city.js`
@@ -149,7 +149,7 @@ literal is the shape; other fields are created by the file that owns them:
 | Match             | `m`, `nm`, `fx`, `disp`, `bench`, `venue`, `stakes`, `done`, `hold`                                                                                                | match-screen.js, match-result.js           |
 | Beats and clock   | `beats`, `bi`, `el`, `ts`, `speed`, `paused`, `slowOn`, `slowK`, `sceneOn`, `freezeOn`, `_slowFx`, `fdt`, `rdt`, `rallyN`                                          | playback.js, clock.js, match-controls.js   |
 | Ball              | `ball`, `srvId`, `bounce`, `bp`, `bv`, `mv`, `spin`, `wob`, `dribble`, `real`, `trail`, `trailPow`, `trailEl`, `trailOp`, `hand*`, `lastC`, `lastP`                | playback.js, ball.js, acts.js              |
-| Camera and scenes | `cam`, `shot`, `zc`, `zoom`, `digHero`, `ego`, `preApp`, `preDig`, `sqT`                                                                                           | camera.js, scenes.js, movement.js, acts.js |
+| Camera and scenes | `cam`, `shot`, `zc`, `zoom`, `digHero`, `preApp`, `preDig`, `sqT`                                                                                           | camera.js, scenes.js, movement.js, acts.js |
 | Effects           | `parts`, `labels`, `lines`, `link`, `shake`, `flash`, `flashC`, `ptFlash`, `ghost`, `drill`, `crack`, `squash`, `netShake`, `wallFx`, `toBanner`, `cele`, `pointN` | effects.js, acts.js, match-result.js       |
 | Crowd and bench   | `cheer`, `cheerAll`, `wave`, `chant`, `coaches`                                                                                                                    | effects.js, acts.js                        |
 | HUD               | `railTab`, `staShown`, `moodShown`, `buffShown`, `egShown`, `zoneShown`, `techPs`, `techCareer`, `techKeys`                                                        | match-controls.js, match-tech.js           |

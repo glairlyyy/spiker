@@ -45,7 +45,7 @@ function callShow(C) {
   const st = $('#stage');
   if (!st) return;
   st.classList.add('calling');
-  if (!A.shot) A.shot = C.shot = { kind: 'ego', p: C.q.p.id, track: true };
+  if (!A.shot) A.shot = C.shot = { kind: 'follow', p: C.q.p.id, track: true };
   const q = C.q,
     head = q.kind === 'serve' ? 'Your serve' : 'Your attack',
     odds = o =>

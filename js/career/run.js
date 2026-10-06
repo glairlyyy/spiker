@@ -57,7 +57,6 @@ const Run = {
       team: t,
       num: old.num,
       lead: Math.round(rnd(30, 60)),
-      ego: 'selfish', // the new kid who wants to be the star (spec §2.12 personality)
       you: true,
       skills: [],
       bond: {},
@@ -322,7 +321,9 @@ const Run = {
         reserve: Object.fromEntries(Object.entries(d.reserve || {}).map(([r, t]) => [r, teamFromJSON(t)]))
       });
       if (!Run.myTeam(run) || !Run.you(run)) return null; // corrupt save: your player is missing
-      for (const t of run.teams.concat(run.pickup || [], Object.values(run.reserve))) for (const p of squadOf(t)) ensureEgo(p); // saves from before ego
+      // the ego feature is gone (owner, 2026-10-06): drop an old save's ego field and its memories
+      for (const t of run.teams.concat(run.pickup || [], Object.values(run.reserve))) for (const p of squadOf(t)) delete p.ego;
+      for (const k of Object.keys(run.mem || {})) run.mem[k] = run.mem[k].filter(e => MEMORY[e.k]);
       Run.repair(run);
       People.ensure(run); // players added since the last save (transfers, the street crew) get a career
       elAll(run.teams); // players from older saves get their element

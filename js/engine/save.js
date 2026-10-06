@@ -23,7 +23,6 @@ function teamFromJSON(o) {
   let fixed = 0;
   for (const p of squadOf(t)) {
     fixed += fixStats(p);
-    ensureEgo(p); // an old numeric ego becomes its personality level
   }
   if (fixed) DBG.log('warn', `save: repaired ${fixed} invalid stat value(s) on ${t.name || 'a team'}`);
   // keep new ids clear of loaded ones

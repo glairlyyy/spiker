@@ -287,19 +287,6 @@ function chooseAttack(c, s, h) {
       if (relNote) m.relLog.push({ act: relNote.act, p: setter.id, mate: relNote.who.id, tag: relTag(m, setter, relNote.who) });
     }
   }
-  // ego (spec §2.12): an unpicked hitter demands the set; the setter gives in by their own personality (EGO.lvl give)
-  let egoCall = null;
-  if (!quick) {
-    const open = spiker,
-      caller = pool.find(p => p !== spiker && p !== setter && p.role !== 'S' && egoRoll(m, p, 'call'));
-    if (caller) {
-      const give = egoOf(setter).give,
-        ok = give > 0 && R() < give;
-      m.egoLog.push({ act: 'call', p: caller.id, ok, mate: open.id });
-      if (ok) ((spiker = caller), (egoCall = caller));
-    }
-  }
-  if (egoCall) relNote = null; // (the hitter demanded it: not the setter's choice)
   // a predictable attack is easier to read: blockers get there a little more often
   const readBonus = tac.focus && spiker.role === tac.focus ? tac.read : 0;
   // setter-driven plays (decided before the approach so the animation can show them)
@@ -323,7 +310,7 @@ function chooseAttack(c, s, h) {
       ]
     });
   }
-  return { MBs, mbZ, tac, quick, pool, callers, trust, spiker, readBonus, freak, slide, sync, DF, B0, bad, egoCall };
+  return { MBs, mbZ, tac, quick, pool, callers, trust, spiker, readBonus, freak, slide, sync, DF, B0, bad };
 }
 /**
  * 5b. A bad set: most stay hittable (in place, just weaker — see setMul), but some go astray — the ball flies off

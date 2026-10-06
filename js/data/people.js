@@ -93,10 +93,6 @@ const MEMORY = {
   event: { v: 0 },
   spot_taken: { v: -30, scar: 1 },
   beat_me: { v: -8 },
-  stole_my_ball: { v: -6 },
-  collided: { v: -4 },
-  hero_carried: { v: 8, payoff: 1, flip: ['jealous'] },
-  set_hogged: { v: -4 },
   invited: { v: 6 },
   refused_help: { v: -6 },
   ignored: { v: -2 },
@@ -181,22 +177,6 @@ const MEM_TEXT = {
     "Started over {n}. The coach didn't blink. {n} did."
   ],
   beat_me: ['I beat {n}. {n} took it personally.', "{n} lost to me. I'll hear about it.", 'Won against {n}. Not sorry.'],
-  stole_my_ball: [
-    'Took a ball off {n}. Mine anyway.',
-    "{n} called it. I took it. We'll see who's right.",
-    "Grabbed {n}'s ball. Instinct. Mostly."
-  ],
-  collided: [
-    'Ran straight into {n}. Again.',
-    '{n} and I met in mid-air. Nobody won.',
-    'Crashed into {n}. We both said sorry. Neither meant it.'
-  ],
-  hero_carried: [
-    'Carried the point. {n} noticed.',
-    'Swung when it was ugly. {n} saw it land.',
-    'Took the bad set and made it good. {n} noticed.'
-  ],
-  set_hogged: ['Called for the set over {n}. Worth it.', "Took the set from {n}. They'll live.", '{n} wanted it. I called it first.'],
   invited: [
     '{n} asked me to train. I went. Said nothing about it.',
     "A day at {n}'s place of choice. Fine. Better than fine, don't tell anyone."
@@ -220,9 +200,7 @@ const MEM_TEXT = {
   sided_against: ['Sided against {n}. They know.', '{n} lost the argument, and noticed who made sure of it.'],
   held_back: ["Talked {n} out of leaving. {n} hasn't thanked me.", '{n} stayed because I said so. They will remember who to blame.']
 };
-const MEM_ALT = {
-  hero_carried: { jealous: ['Carried the point. {n} hated that.', "Swung and it landed. {n}'s face said everything."] }
-};
+const MEM_ALT = {}; // (kind → trait → lines; none now — the ego memories went with the ego feature, owner 2026-10-06)
 /** Their season in one line (voice `rumor`: "word is", unreliable by definition — but the numbers are true). Chosen by the largest log count. */
 const SEASON_TEXT = {
   hard: [

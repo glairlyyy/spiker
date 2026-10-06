@@ -128,30 +128,6 @@ test('engine: average teams — every player 30–60 OVR, no stars, a match play
   assert(m.over, 'the match ends');
 });
 
-test('engine: egoist teams — all OP, negative wit that never lowers the body, ego acts everywhere (T-200)', () => {
-  const g = load(13),
-    T = g.mkEgoistTeams(),
-    all = T.flatMap(t => g.squadOf(t));
-  assert(
-    all.every(p => p.op && p.ego === 'egoist' && p.wit < 0 && p.wit >= -1),
-    'OP, egoist, wit in [−1, −0.2]'
-  );
-  const m = g.newMatch(T[0], T[1], true),
-    p = T[0].P[2];
-  g.CM = m;
-  const raw = (p.power * g.boost(p)).toFixed(6);
-  eq(g.effP(p).toFixed(6), raw, 'negative wit leaves power as wit 1 would');
-  const ovr0 = g.ovr(p);
-  p.wit = 1;
-  eq(g.ovr(p), ovr0, 'OVR as wit 1');
-  p.wit = -0.5;
-  let n = 0,
-    ego = 0;
-  while (!m.over && n++ < 5000) for (const b of g.playRally(m).beats) ego += b.acts.filter(a => a.k === 'ego').length;
-  assert(m.over, 'the match ends');
-  assert(m.egoLog.length >= 8 && ego >= 3, `ego acts are frequent (${m.egoLog.length} logged, ${ego} ego beats)`);
-});
-
 test('engine: rally invariants over 300 matches', () => {
   const g = load(3);
   const T = g.mkTeams();
@@ -687,87 +663,6 @@ test.slow('engine: three touches — pop-up saves are the set', () => {
   eq(log.filter(e => e.hitter === null).length, over, 'a bump over is the only scramble without a hitter');
 });
 
-test.slow('engine: ego — personality levels drive the acts, not wit; collisions; no draws without an opportunity', () => {
-  const run = (lvl, n, seed = 91, mod) => {
-    const g = load(seed),
-      T = g.mkTeams();
-    for (const t of T) for (const p of g.squadOf(t)) if (lvl) p.ego = lvl;
-    if (mod) mod(g, T);
-    const acts = {},
-      okc = {},
-      tot = { k: 0, att: 0, err: 0 },
-      sig = [];
-    let crashes = 0,
-      stolen = 0;
-    for (let i = 0; i < n; i++) {
-      const a = T[i % 8],
-        b = T[(i * 3 + 1) % 8],
-        m = g.simMatch(a, b);
-      sig.push(
-        m.pts.join('-') +
-          ':' +
-          g
-            .squadOf(a)
-            .map(p => (m.stat[p.id] ? m.stat[p.id].k + '/' + m.stat[p.id].err : '0'))
-            .join(',')
-      );
-      for (const t of [a, b])
-        for (const p of g.squadOf(t)) {
-          const s = m.stat[p.id];
-          if (s) {
-            tot.k += s.k;
-            tot.att += s.att;
-            tot.err += s.err;
-          }
-        }
-      for (const e of m.egoLog) {
-        acts[e.act] = (acts[e.act] || 0) + 1;
-        if (e.ok) okc[e.act] = (okc[e.act] || 0) + 1;
-        if (e.crash) {
-          crashes++;
-          assert(e.act === 'steal', 'collisions only happen on steals');
-        }
-        if (e.act === 'steal') stolen++;
-      }
-    }
-    const per = Object.values(acts).reduce((x, y) => x + y, 0) / n / 2; // ego acts per side per set (one set per match)
-    return { per, acts, okc, crashes, stolen, kill: tot.k / tot.att, err: tot.err / tot.att, sig: sig.join('|') };
-  };
-  const mixed = run(null, 400),
-    selfish = run('selfish', 400),
-    egoist = run('egoist', 400);
-  assert(mixed.per > 0.5 && mixed.per < 4, `generated mix: ${mixed.per.toFixed(2)} ego acts per side per set`);
-  assert(
-    egoist.per > selfish.per * 1.5,
-    `egoists act on ego more than selfish players (${egoist.per.toFixed(2)} / ${selfish.per.toFixed(2)})`
-  );
-  // errors per attack include serve errors and ball-handling faults (SKILL)
-  assert(
-    mixed.kill > 0.5 && mixed.kill < 0.72 && mixed.err < 0.4,
-    `kill ${mixed.kill.toFixed(3)} / error ${mixed.err.toFixed(3)} stay sane`
-  );
-  // the personality sets the botching: egoists collide more per steal, selfish players' steals work more often
-  assert(egoist.stolen > 50 && selfish.stolen > 20, `enough steals to compare (${egoist.stolen} / ${selfish.stolen})`);
-  assert(selfish.crashes / selfish.stolen < egoist.crashes / egoist.stolen, 'selfish players collide less on steals than egoists');
-  assert((selfish.okc.steal || 0) / selfish.stolen > (egoist.okc.steal || 0) / egoist.stolen, 'selfish steals succeed more often');
-  // wit no longer matters: the same egoists at wit 0.6 and 1.9 take the same number of ego acts per opportunity (one seed, so equal draw for draw)
-  const lo = run('egoist', 40, 93, (g, T) => T.forEach(t => g.squadOf(t).forEach(p => (p.wit = 0.6)))),
-    hi = run('egoist', 40, 93, (g, T) => T.forEach(t => g.squadOf(t).forEach(p => (p.wit = 1.9))));
-  assert(lo.per > 0 && Math.abs(lo.per - hi.per) / lo.per < 0.5, `wit leaves ego alone (${lo.per.toFixed(2)} / ${hi.per.toFixed(2)})`);
-  // all normal plays exactly like the ego rules switched off: no draw is spent without an opportunity
-  const zero = run('normal', 30, 92),
-    off = run('normal', 30, 92, g => {
-      for (const k in g.EGO.base) g.EGO.base[k] = 0;
-    });
-  eq(zero.sig, off.sig, 'all normal = ego acts switched off, draw for draw');
-  eq(zero.per, 0, 'no ego acts from normal players');
-  // old saves: a numeric ego reads as its level
-  const g = load(5),
-    q = { name: 'x', role: 'WS', ego: 0.7 };
-  g.ensureEgo(q);
-  eq(q.ego, 'egoist', 'ego 0.7 → egoist');
-});
-
 test('engine: a Delayed Spike is never stuffed, broken or tooled (a fingertip touch at most); it hangs too long more with low jump / wit', () => {
   const g = load(21);
   const T = g.mkTeams();
@@ -807,73 +702,6 @@ test('engine: a Delayed Spike is never stuffed, broken or tooled (a fingertip to
   assert(
     lo.fail / lo.delayed > hi.fail / hi.delayed + 0.15,
     `low jump / wit hangs too long more (${lo.fail}/${lo.delayed} vs ${hi.fail}/${hi.delayed})`
-  );
-});
-
-test('engine: block collision (T-069) — only after a solo block, no touch, net fault ends the rally', () => {
-  const g = load(77),
-    side = (m, id) => (g.squadOf(m.t[0]).some(p => p.id === id) ? 0 : 1);
-  let solo = 0,
-    col = 0,
-    net = 0;
-  for (let i = 0; i < 160; i++) {
-    const T = g.mkTeams(),
-      a = T[i % 8],
-      b = T[(i * 3 + 1) % 8];
-    for (const t of [a, b])
-      for (const p of g.squadOf(t)) {
-        p.wit = 0.6;
-        p.ego = 'egoist';
-      }
-    const m = g.newMatch(a, b, true);
-    let guard = 0;
-    while (!m.over && guard++ < 200) {
-      const n0 = m.egoLog.length,
-        r = g.playRally(m),
-        log = m.egoLog.slice(n0);
-      solo += log.filter(e => e.act === 'solo').length;
-      log.forEach((e, k) => {
-        if (e.act !== 'collide') return;
-        col++;
-        assert(k > 0 && log[k - 1].act === 'solo' && log[k - 1].p === e.p, 'a collision follows a solo block by the same player');
-        const labs = r.beats.map((bt, bi) => (bt.acts.some(x => x.k === 'plabel' && x.v) ? bi : -1)).filter(bi => bi >= 0),
-          i0 = labs[log.slice(0, k).filter(q => q.act === 'collide').length];
-        assert(i0 != null, 'a collision shows its label');
-        const lab = r.beats[i0].acts.find(x => x.k === 'plabel' && x.v);
-        eq(lab.v, e.net ? 'err' : 'warn', 'label style follows the variant');
-        assert(lab.p === e.p && lab.p2 === e.mate, 'the label sits between the two blockers');
-        // the beats of this attack: up to the next possession's set (the ball goes to a setter)
-        let j = i0 + 1;
-        // (or the next spike contact: a scramble / bump-set gives no set contact before the next attack)
-        while (j < r.beats.length && !r.beats[j].acts.some(x => x.k === 'ball' && x.to && (x.to.c === 'set' || x.to.c === 'spike'))) j++;
-        const acts = r.beats.slice(i0, j).flatMap(bt => bt.acts);
-        assert(!acts.some(x => x.k === 'ball' && x.to && x.to.c === 'block'), 'no block touch on a collision');
-        if (e.net) {
-          net++;
-          eq(r.w, 1 - side(m, e.p), 'a net fault is a point for the attackers');
-          const f = r.beats.findIndex(bt => bt.acts.some(x => x.k === 'log' && /Net fault/.test(x.t)));
-          assert(f > i0, 'the net fault follows the collision label');
-          assert(
-            !r.beats.slice(f).some(bt => bt.acts.some(x => x.k === 'ball' || x.k === 'impact')),
-            'no ball contact after the net fault (the rally is over)'
-          );
-        }
-      });
-    }
-  }
-  assert(solo > 100 && col > 10, `enough solo blocks and collisions to judge (${solo} / ${col})`);
-  assert(col / solo > 0.08 && col / solo < 0.3, `collisions ≈ 10–20 % of solo blocks (${((100 * col) / solo).toFixed(1)} %)`);
-  assert(net / col > 0.15 && net / col < 0.5, `net faults ≈ 30 % of collisions (${((100 * net) / col).toFixed(1)} %)`);
-  // collisions off: none happen
-  const g2 = load(77);
-  g2.EGO.solo.collide = 0;
-  const [x, y] = g2.mkTeams();
-  for (const p of [...g2.squadOf(x), ...g2.squadOf(y)]) ((p.wit = 0.6), (p.ego = 'egoist'));
-  const m2 = g2.newMatch(x, y, false);
-  while (!m2.over) g2.playRally(m2);
-  assert(
-    !m2.egoLog.some(e => e.act === 'collide') && m2.egoLog.some(e => e.act === 'solo'),
-    'EGO.solo.collide 0: solo blocks, no collisions'
   );
 });
 
@@ -961,7 +789,7 @@ test.slow('rel on court: the clutch — a setter feeds allies more and freezes o
     `  clutch sets ${off.all} → ally ${(off.ally / off.all).toFixed(3)} / ${(on.ally / on.all).toFixed(3)}, enemy ${(off.foe / off.all).toFixed(3)} / ${(on.foe / on.all).toFixed(3)}, trust ${on.trust}, freeze ${on.freeze}`
   );
 });
-test('rel on court: an ally covers better (pop-up save), the captain buffs allies first, ego halves toward allies and grows toward rivals', () => {
+test('rel on court: an ally covers better (pop-up save), the captain buffs allies first', () => {
   // pop-up save: the same draws, +REL_E.cover on the chance for an ally of the first touch — never fewer saves
   const pops = band => {
     const g = load(9),
@@ -1010,26 +838,6 @@ test('rel on court: an ally covers better (pop-up save), the captain buffs allie
     [h1, t1] = buffs(true);
   assert(t0 > 20 && t1 > 20, `the captain buffs (${t0} / ${t1})`);
   assert(h1 / t1 > h0 / t0, `allies first: ${(h0 / t0).toFixed(2)} → ${(h1 / t1).toFixed(2)}`);
-  // ego steals: toward allies ×0.5, toward rivals ×1.5
-  const steals = (band, rivals) => {
-    const g = load(11),
-      T = g.mkTeams(),
-      rel = relAll(g, T, band, rivals);
-    for (const t of T) for (const p of g.squadOf(t)) ((p.wit = 0.1), (p.ego = 'egoist'));
-    let n = 0;
-    for (let i = 0; i < 80; i++) {
-      const m = g.newMatch(T[i % 8], T[(i * 3 + 1) % 8], false, { rel });
-      while (!m.over) g.playRally(m);
-      n += m.egoLog.filter(e => e.act === 'steal').length;
-    }
-    return n;
-  };
-  const s0 = steals(null, false),
-    sa = steals('ally', false),
-    sr = steals(null, true);
-  assert(s0 > 100, `enough steals to judge (${s0})`);
-  assert(sa < s0 * 0.75, `allies steal less: ${s0} → ${sa}`);
-  assert(sr > s0 * 1.2, `rivals steal more: ${s0} → ${sr}`);
 });
 
 test('rel on court: Cup.fixture builds the flags for both squads and passes them; rivals across the net come in fired up / rattled', () => {

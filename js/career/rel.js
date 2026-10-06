@@ -262,21 +262,12 @@ const Rel = {
   beatMe(run, m) {
     for (const p of squadOf(m.t[1])) if (m.played.has(p.id)) Rel.add(run, p.id, 'beat_me');
   },
-  /** After a match you played in (`side` = your side): teammates who played, and what the ego log says about you. */
+  /** After a match you played in (`side` = your side): the teammates who played. */
   afterMatch(run, m, side) {
     const you = Run.you(run);
     if (!you || !m.played.has(you.id)) return;
     const mates = squadOf(m.t[side]).filter(p => p !== you && m.played.has(p.id)),
       won = m.winner === side;
     for (const p of mates) Rel.add(run, p.id, won ? 'won_together' : 'lost_together');
-    for (const e of m.egoLog) {
-      const me = e.p === you.id,
-        other = me ? e.mate : e.mate === you.id ? e.p : null;
-      if (e.act === 'steal' && me) Rel.add(run, e.mate, 'stole_my_ball');
-      if (e.act === 'steal' && e.crash && other) Rel.add(run, other, 'collided');
-      if (e.act === 'collide' && other) Rel.add(run, other, 'collided');
-      if (e.act === 'swing' && e.ok && me) for (const p of mates) Rel.add(run, p.id, 'hero_carried');
-      if (e.act === 'call' && e.ok && me) Rel.add(run, e.mate, 'set_hogged');
-    }
   }
 };

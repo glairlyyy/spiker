@@ -46,7 +46,7 @@ function sheetMe(run) {
     techs = tchNear.map(techRow).join(''),
     next = Math.ceil(run.week / ECON.payEvery) * ECON.payEvery,
     el = ElTrial.steps(run).seen ? '' : `Element at OVR ${ElTrial.revealAt}`;
-  return `<div class="sheet-h"><span class="portrait" ${el ? `${tip(el)} tabindex="0"` : ''}>${faceSVG(you, mood.form, 56)}</span><div><h2>${stag(you)}${esc(you.name)}</h2><div class="mute">${ROLE_NAME[you.role]} · ${chip(team)}${esc(team.short)} · <span ${tip(rank)}>OVR ${ovr(you)}</span> · ${egoTag(you)}</div></div></div>
+  return `<div class="sheet-h"><span class="portrait" ${el ? `${tip(el)} tabindex="0"` : ''}>${faceSVG(you, mood.form, 56)}</span><div><h2>${stag(you)}${esc(you.name)}</h2><div class="mute">${ROLE_NAME[you.role]} · ${chip(team)}${esc(team.short)} · <span ${tip(rank)}>OVR ${ovr(you)}</span></div></div></div>
     <div class="sheet-cols mecols">
       <section class="card"><div class="lab" ${tip('Thick bar: the stat. Thin bar: progress to the next point.')}>Stats</div>${STATK.map(statRow).join('')}
         <div class="mrow"><span>${statI('wit', 20)}Wit</span><span class="mbars"><i class="mb"><i style="--w:${you.wit * 50}%"></i></i></span><span class="mv"><b>${you.wit.toFixed(2)}</b></span></div>
