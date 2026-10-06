@@ -182,6 +182,16 @@ Accept: the row shows after a played match with calls; nothing after a sim.
 QA: career run → a played match with 2+ calls → result card.
 Result: `resultData.calls` (your `m.calls`), `callsRow` on the card's right column: "Calls · N of M made", the last 6 (label, auto on a time-out, chance, ✓ made / ✕ missed / · rally on), "Held back by: <icon> <stat>" = the weak stat seen most in missed calls. Nothing after a sim (no m.human). QA: a played Pro court match with 3 calls → card (screenshot), no errors.
 
+### [x] T-243: Hand trail style in the VFX panel (owner request)
+Spec: §10.7b          Goldens: unchanged          Save: no change
+Files: js/data/vfx.js (`hand.style`, choice params), js/ui/vfx-panel.js, js/game/state.js (G.trail default = VFX.hand.style, kept in sync), js/ui/match-controls.js (⚙ Trails sets both), js/render3d/vfxlab3d.mjs + js/ui/vfx-lab.js (the sweep reads VFX.hand; the lab's own Trail switch removed)
+Result: VFX panel → Hand trails → Style Light / Ink (live; same setting as ⚙ Trails; exported, so a baked style becomes the default for new players). QA: switch in the panel → G.trail, saved, export, ⚙ in sync; Reset all; no errors.
+
+### [x] T-242: The air impact follows the ball (owner request)
+Spec: §2.3a          Goldens: unchanged (display only)          Save: no change
+Files: js/render/acts.js (burst → A.airPend), js/render/playback.js (startBeat → airFlush), js/render/effects.js (`airFlush`, `airImpact(pow, color, path)`), js/render3d/r3d.mjs (path → direction, speed, span), js/render3d/fx3d.mjs (`o.speed`, `o.lag`, `o.span`), js/data/vfx.js (`air.follow`)
+Result: the rings line up along the ball's real flight (contact → landing point, from the drawn ball at the hand), spread over VFX.air.follow (0.5) of it, each appearing as the ball reaches it (ring delay = distance / ball speed + the hand's lag); follow 0 = the old fixed reach. QA: Monster game spike (path logged, frames: rings from the hitter's hand down to the digger), no errors.
+
 ### [x] T-241: Live VFX tuning in the Monster game, with export (owner request)
 Spec: §10.7b          Goldens: unchanged (display only)          Save: no change (browser key sns_vfx)
 Files: js/data/vfx.js (new: VFX_DEF, VFX, vfxReset / vfxExport / vfxImport), js/ui/vfx-panel.js (new), js/render3d/fx3d.mjs (`vx` reads), js/render/effects.js (frame values, `groundBlast`), js/render/acts.js (air min, blast on a kill), js/render/clock.js (frame slow), js/render3d/r3d.mjs (fx `blast`), js/render3d/actors3d.mjs (hand width / life / ink), js/ui/match-screen.js + match-controls.js (VFX V in dev games), js/ui/menu.js (vfx: true), js/ui/vfx-lab.js, js/core/storage.js, index.html, css/style.css, tests/ui-smoke.js

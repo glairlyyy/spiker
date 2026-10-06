@@ -56,8 +56,9 @@ function setOpt(kind, v) {
     G.calls = v;
     store.set(KEYS.calls, v);
   } else if (kind === 'trail' && TRAIL_STYLES[v]) {
-    G.trail = v;
+    G.trail = VFX.hand.style = v; // the VFX panel shows the same choice
     store.set(KEYS.trail, v);
+    if (typeof vfxSave === 'function') vfxSave();
   } else if (kind === 'cut') {
     G.cutMini = v === 'mini';
     store.set(KEYS.cutins, v);

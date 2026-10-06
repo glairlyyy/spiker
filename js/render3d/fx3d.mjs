@@ -568,7 +568,7 @@ export function createFx(scene) {
      * heavy hit, a dome of pressure ballooning out. Scaled by power (hard 58 → ult 100+)
      * The rings run large → small away from the hand (a Doppler cone); `classic`: small → large (the first version).
      */
-    airImpact(p, dir, pow, color, classic = false) {
+    airImpact(p, dir, pow, color, classic = false, o = {}) {
       const k = Math.min(1.5, Math.max(0.35, (pow - 50) / 45)),
         R4 = vx('air', 'rings', 4),
         n = Math.max(1, pow >= 95 ? R4 : pow >= 80 ? R4 - 1 : R4 - 2),
@@ -578,11 +578,17 @@ export function createFx(scene) {
         lf = vx('air', 'life', 1);
       // the Doppler look (owner 2026-10-06): the biggest ring at the hand, smaller and closer together down the shot;
       // `classic` = the first version, small at the hand → large down the shot (kept in the VFX lab)
+      // the gaps between rings; o.span (m): the stack is stretched over that much of the ball's flight (it follows the ball)
+      const gap = i => 0.32 * k * (dop ? len * Math.max(0.15, 1 - i * (0.72 / Math.max(1, n))) : 1),
+        sum = Array.from({ length: Math.max(0, n - 1) }, (_, i) => gap(i)).reduce((a, b) => a + b, 0),
+        g = o.span && sum > 0 ? Math.max(0, o.span - 0.18) / sum : 1;
       for (let i = 0, at = 0.18; i < n; i++) {
         const q = p.clone().addScaledVector(dir, at),
           size = (0.7 + (dop ? n - 1 - i : i) * 0.55) * k * sz;
-        ring(q, i % 2 ? color : '#ffffff', size, (0.32 + i * 0.07) * lf, false, { dir, delay: i * 0.035, op: i ? 0.75 : 1 });
-        at += 0.32 * k * (dop ? len * Math.max(0.15, 1 - i * (0.72 / Math.max(1, n))) : 1);
+        // o.speed (m/s): each ring appears as the ball passes it (after o.lag s on the hand); else a fixed stagger
+        const delay = o.speed ? (o.lag || 0) + at / o.speed : i * 0.035;
+        ring(q, i % 2 ? color : '#ffffff', size, (0.32 + i * 0.07) * lf, false, { dir, delay, op: i ? 0.75 : 1 });
+        at += gap(i) * g;
       }
       // wind lines: fast, thin sparks out from the contact, perpendicular to the shot
       const u = new THREE.Vector3()

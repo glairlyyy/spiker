@@ -160,6 +160,7 @@ function startBeat(b) {
         instant(a);
     }
   }
+  if (A.airPend) airFlush(b); // a spike's air impact, along the flight just set up
   // the pass is on its way to the setter: they raise their hands early, ready for the ball (display only)
   for (const a of b.acts) {
     const sd = a.k === 'ball' && a.when !== 'end' && a.to && a.to.c === 'set' && a.to.p ? A.disp[a.to.p] : null;

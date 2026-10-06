@@ -28,7 +28,8 @@ const CALL_MODES = { key: 'Key moments', all: 'All', off: 'Off' };
 G.calls = savedOption(KEYS.calls, CALL_MODES, 'key');
 /** Hand trails of stars and OP players: Light (their hair colour) or Ink (black brush stroke, crimson inside — owner 2026-10-06). */
 const TRAIL_STYLES = { light: 'Light', ink: 'Ink' };
-G.trail = savedOption(KEYS.trail, TRAIL_STYLES, 'light');
+G.trail = savedOption(KEYS.trail, TRAIL_STYLES, VFX.hand.style); // the shipped default: js/data/vfx.js
+VFX.hand.style = G.trail; // the VFX panel shows (and sets) the same choice
 /** Screen registry: each screen registers its entry function; navigate() switches between them. */
 const Screens = {};
 /**

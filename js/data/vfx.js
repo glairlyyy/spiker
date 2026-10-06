@@ -3,14 +3,18 @@
 // the VFX lab) edits VFX live, keeps the edits in this browser, and Export gives the JSON to bake in here as the new defaults.
 // Display only: no engine code reads VFX, so goldens never move.
 
-/** group → { name, p: key → [default, min, max, step, label] } (a 0/1 with step 1 is an on/off; a '#rrggbb' default is a colour). */
+/**
+ * group → { name, p: key → [default, min, max, step, label] } (a 0/1 with step 1 is an on/off; a '#rrggbb' default is a colour;
+ * an array in place of min is a choice of options).
+ */
 const VFX_DEF = {
   air: {
     name: 'Air impact (spike)',
     p: {
       min: [58, 0, 150, 1, 'From power'],
       doppler: [1, 0, 1, 1, 'Doppler (big at the hand)'],
-      len: [2, 0.5, 4, 0.1, 'Reach'],
+      follow: [0.5, 0, 1, 0.05, 'Along the flight (0 = fixed reach)'],
+      len: [2, 0.5, 4, 0.1, 'Reach (fixed)'],
       size: [1, 0.2, 3, 0.05, 'Ring size'],
       rings: [4, 1, 8, 1, 'Rings (at power 95+)'],
       life: [1, 0.3, 3, 0.05, 'Ring life'],
@@ -57,6 +61,7 @@ const VFX_DEF = {
     p: {
       width: [1, 0.2, 4, 0.05, 'Width'],
       life: [1, 0.3, 3, 0.05, 'Length'],
+      style: ['light', ['light', 'ink'], 0, 0, 'Style (the default for new players; ⚙ Trails)'],
       ink: ['#ff1630', 0, 0, 0, 'Ink glow colour']
     }
   }
@@ -81,6 +86,7 @@ function vfxImport(json) {
     for (const k in o[g]) {
       const d = VFX_DEF[g] && VFX_DEF[g].p[k];
       if (!d) continue;
+      if (Array.isArray(d[1]) && !d[1].includes(o[g][k])) continue; // a choice: only its options
       VFX[g][k] = typeof d[0] === 'string' ? String(o[g][k]) : Math.min(d[2], Math.max(d[1], +o[g][k] || 0));
     }
 }

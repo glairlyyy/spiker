@@ -365,8 +365,25 @@ function handTouch(w, now) {
 const ballW = () => (A && A.ball ? W(A.ball.x, A.ball.z, Math.max(10, A.ball.h)) : new THREE.Vector3());
 const fxApi = {
   burst: (pow, color) => world && world.fx.burst(ballW(), pow, color),
-  /** dx: the attack's direction along the court (+1 / −1, court x): down into the far court. */
-  airImpact: (pow, color, dx) => world && world.fx.airImpact(ballW(), new THREE.Vector3(dx, -0.55, 0).normalize(), pow, color),
+  /**
+   * path: the ball's flight { f, t (court points), sec, lag (s) } — the rings follow it from the hitter's hand, each appearing
+   * as the ball passes; or ±1 (court x): just down into the far court.
+   */
+  airImpact: (pow, color, path) => {
+    if (!world) return;
+    if (typeof path === 'number') return world.fx.airImpact(ballW(), new THREE.Vector3(path, -0.55, 0).normalize(), pow, color);
+    const f0 = W(path.f.x, path.f.z, Math.max(10, path.f.h)),
+      from = world.ball.visible && world.ball.position.distanceTo(f0) < 1.5 ? world.ball.position.clone() : f0, // at the hand when drawn there
+      d = W(path.t.x, path.t.z, path.t.h).sub(from),
+      len = d.length();
+    if (len < 1e-3) return world.fx.airImpact(from, new THREE.Vector3(1, -0.55, 0).normalize(), pow, color);
+    const follow = typeof VFX !== 'undefined' ? VFX.air.follow : 0.5; // share of the flight the rings spread over (0: fixed reach)
+    world.fx.airImpact(from, d.normalize(), pow, color, false, {
+      speed: len / Math.max(0.05, path.sec),
+      lag: path.lag,
+      span: follow > 0 ? len * follow : 0
+    });
+  },
   elemBurst: (el, pow) => world && world.fx.elemBurst(el, ballW(), pow, A.ball.h > 60 ? ballDir.clone() : null),
   impact: pow => world && world.fx.impact(ballW(), pow),
   blast: (pow, color) => world && world.fx.blast(W(A.ball.x, A.ball.z, 0), pow, color || undefined),

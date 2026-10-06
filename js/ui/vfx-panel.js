@@ -8,6 +8,12 @@ function vfxRow(g, k) {
     v = VFX[g][k],
     id = `vfx-${g}-${k}`,
     changed = v !== def ? ' changed' : '';
+  if (Array.isArray(min))
+    return `<div class="vrow${changed}"><span>${esc(label)}</span><div class="seg">${min
+      .map(
+        o => `<button class="btn ${v === o ? 'on' : ''}" onclick="vfxSet('${g}','${k}','${o}',true)">${esc(VFX_OPT_NAME[o] || o)}</button>`
+      )
+      .join('')}</div></div>`;
   if (typeof def === 'string')
     return `<label class="vrow${changed}"><span>${esc(label)}</span><input type="color" value="${esc(v)}" oninput="vfxSet('${g}','${k}',this.value)"></label>`;
   if (min === 0 && max === 1 && step === 1)
@@ -39,9 +45,15 @@ function vfxPanel() {
       )
       .join('')}`;
 }
+/** Display names of choice options. */
+const VFX_OPT_NAME = { light: 'Light', ink: 'Ink' };
 /** Set one value (live); `redraw`: re-render the panel (segments). Saved to this browser. */
 function vfxSet(g, k, v, redraw) {
   VFX[g][k] = v;
+  if (g === 'hand' && k === 'style' && TRAIL_STYLES[v]) {
+    G.trail = v; // the hand trail style is also the ⚙ Trails setting
+    store.set(KEYS.trail, v);
+  }
   const out = $(`#vfx-${g}-${k}`);
   if (out) out.textContent = v;
   vfxSave();
@@ -105,6 +117,8 @@ function vfxImportFile(input) {
 }
 function vfxResetAll() {
   vfxReset();
+  G.trail = VFX.hand.style;
+  store.set(KEYS.trail, G.trail);
   vfxSave();
   vfxRedraw();
 }

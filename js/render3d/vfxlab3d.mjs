@@ -90,7 +90,7 @@ export function mountLab(el) {
     swing: null, // a weapon sweep in flight: { t }
     raf: 0,
     last: performance.now(),
-    o: { name: 'blast', pow: 110, el: 'fire', speed: 1, auto: false, stress: 0, trail: 'ink' },
+    o: { name: 'blast', pow: 110, el: 'fire', speed: 1, auto: false, stress: 0 },
     acc: 0,
     autoT: 0,
     run: null, // a trail in flight: { t, dur, a, b, el, pow }
@@ -180,11 +180,12 @@ function sweep(dt) {
     L.handAt = p;
     if (t > SWEEP.dur) L.swing = null;
   } else p = L.handAt || SWEEP.c;
-  const ink = L.o.trail === 'ink',
-    col = ink ? '#ff1630' : (typeof ECOL !== 'undefined' && ECOL[L.o.el]) || '#ffffff';
+  const H = typeof VFX !== 'undefined' ? VFX.hand : { style: 'ink', width: 1, life: 1, ink: '#ff1630' },
+    ink = H.style === 'ink',
+    col = ink ? H.ink : (typeof ECOL !== 'undefined' && ECOL[L.o.el]) || '#ffffff';
   L.hand.update(p, Math.max(dt, 1e-4), L.camera, {
-    width: 0.12 * (ink ? 1.7 : 1) * Math.max(0.5, L.o.pow / 100),
-    life: 0.34 * (ink ? 1.4 : 1),
+    width: 0.12 * (ink ? 1.7 : 1) * Math.max(0.5, L.o.pow / 100) * H.width,
+    life: 0.34 * (ink ? 1.4 : 1) * H.life,
     alpha: 0.85,
     color: col,
     style: ink ? 'ink' : ''

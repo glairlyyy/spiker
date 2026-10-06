@@ -56,7 +56,8 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   clock (`A.ts`), eased slow-mo ramps. Target Normal ≈ 6–7 scenes/match **[open: tuning]**.
 - §2.3a Air impact (owner, 2026-10-06, the Kuroko look) **[built, T-236]**: every spike (not a tip; power ≥ 58) splits the air
   at the contact — pressure rings stacked along the shot (2 / 3 / 4 by power: hard / heavy 80+ / 95+; owner 2026-10-06: a Doppler cone — the
-  biggest at the hand, smaller and closer together down the shot), white wind lines
+  biggest at the hand, smaller and closer together down the shot; owner 2026-10-07: they follow the ball — lined up along its
+  real flight from the hitter's hand, spread over half of it, each appearing as the ball passes), white wind lines
   thrown out sideways, a jet of air down the line; 95+ adds a pressure dome ballooning out; 100+ (with Hype on, not reduced
   motion) an **impact frame** — the court in negative and in slow motion (×0.15) for 1 s real time, then back to normal speed
   (owner, 2026-10-06; ordinary spikes get no slow-down).
@@ -739,7 +740,8 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   cards with key stat, best training places, techniques; name; challenge toggles; Arrive / Back).
 - §10.7b VFX tuning (dev, owner 2026-10-06): every effect value (air impact: from power, Doppler, reach, ring size / count / life,
   wind, jet, dome; impact frame: on, from power, length, slow motion; contact burst; element particles; ground blast on a kill:
-  on (off by default), from power, size, sparks, smoke; hand trails: width, length, ink colour) as live controls — in the Monster
+  on (off by default), from power, size, sparks, smoke; hand trails: style Light / Ink (= ⚙ Trails; the export's style is the
+  default for new players), width, length, ink colour; air impact also: share of the flight the rings follow) as live controls — in the Monster
   and Average games (VFX V: a panel at the right, the game keeps playing; Test at the ball: air impact, blast) and in the VFX
   lab. Edits apply to the next effect and stay in this browser; Export = Copy (all values as JSON; the JSON box when the
   clipboard is blocked), Download vfx.json, Import, Reset all. Exported values are baked into js/data/vfx.js to ship.

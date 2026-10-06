@@ -29,11 +29,12 @@ function burst(pow, color) {
 /**
  * A spike splits the air (spec §2.3a): pressure rings, wind lines, a dome on a heavy hit — and on an ult hit (VFX.frame.min,
  * power 100+) an impact frame: the court in negative, in slow motion (VFX.frame.slow), for VFX.frame.ms (owner, 2026-10-06: a
- * full second), then normal speed. `dx` = the attack's direction. Live values: js/data/vfx.js.
+ * full second), then normal speed. `path` = the ball's flight { f, t, sec, lag } (court points; fx seconds), or ±1 = just the
+ * attack's side. Live values: js/data/vfx.js.
  */
-function airImpact(pow, color, dx) {
+function airImpact(pow, color, path) {
   const f = fx3();
-  if (f && f.airImpact) f.airImpact(pow, color, dx);
+  if (f && f.airImpact) f.airImpact(pow, color, path);
   if (VFX.frame.on && pow >= VFX.frame.min && !RM && HYPE[G.hype].max >= 1) {
     const st = document.getElementById('stage');
     if (st) {
@@ -43,6 +44,18 @@ function airImpact(pow, color, dx) {
       A.impactUntil = performance.now() + VFX.frame.ms; // slow motion for as long as it lasts (clock.js), then normal speed
     }
   }
+}
+/**
+ * The spike beat's air impact, once its ball flight is set up (startBeat): the rings line up along the ball's real path and
+ * appear as the ball passes them (owner 2026-10-07: the air impact follows the ball).
+ */
+function airFlush(b) {
+  const p = A.airPend;
+  A.airPend = null;
+  const ba = b.acts.find(x => x.k === 'ball' && x._t && x.when !== 'end');
+  if (!ba) return airImpact(p.pow, p.color, A.ball.x < 500 ? 1 : -1);
+  const k = 1000 * (A.speed || 1) * PACE; // beat ms → seconds on the effects clock
+  airImpact(p.pow, p.color, { f: ba._f, t: ba._t, sec: Math.max(1, b.dur - (ba._lag || 0)) / k, lag: (ba._lag || 0) / k });
 }
 /** A kill on the floor (VFX.blast: off by default): the ground blast — sparks, embers, smoke, debris — in the element's colour. */
 function groundBlast(pow, el) {
