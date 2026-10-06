@@ -137,7 +137,7 @@ export function dressVenue(w, kind, stakes, t0c, t1c) {
   w.sun.intensity = L.sun;
   w.rim.intensity = L.rim;
   const spot = w.sets.arena.userData.spot;
-  spot.intensity = kind === 'arena' ? 140 : 0;
+  spot.intensity = kind === 'arena' ? 60 : 0; // (owner, 2026-10-06: 140 was too bright)
   // floor
   drawFloor(w.floorCanvas.getContext('2d'), w.floorCanvas.width, w.floorCanvas.height, kind);
   w.floorTexV.needsUpdate = true;

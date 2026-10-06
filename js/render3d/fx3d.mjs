@@ -58,6 +58,8 @@ void main(){ vec4 t = texture2D(map, gl_PointCoord); gl_FragColor = vec4(vC * t.
 const R = (a, b) => a + Math.random() * (b - a);
 const rv = s => new THREE.Vector3().randomDirection().multiplyScalar(s);
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
+/** Size of a contact burst's rings (× the old size). */
+const BURST_RING = 0.2;
 const UP = new THREE.Vector3(0, 1, 0);
 
 export function createFx(scene) {
@@ -390,8 +392,9 @@ export function createFx(scene) {
     /** Generic contact burst at a point (spike, serve, block): team-coloured ring and sparks. */
     burst(p, pow, color) {
       const k = Math.min(1.4, pow / 100);
-      ring(p, color, 1.3 * k + 0.3, 0.4);
-      if (pow > 80) ring(p, '#ffffff', 0.8 * k, 0.25);
+      // the contact rings are small (owner, 2026-10-06: 0.2× — the spike's air impact carries the big shape)
+      ring(p, color, (1.3 * k + 0.3) * BURST_RING, 0.4);
+      if (pow > 80) ring(p, '#ffffff', 0.8 * k * BURST_RING, 0.25);
       for (let i = 0; i < 30 * k; i++) GLOW.spawn(p, rv(R(1.5, 4.5) * k), '#ffffff', color, R(0.15, 0.3), 0.03, R(0.25, 0.45), { drag: 4 });
       for (let i = 0; i < 12 * k; i++) SPARK.spawn(p, rv(R(3, 6) * k), '#ffffff', color, R(0.1, 0.18), 0.02, R(0.2, 0.3), { drag: 3 });
     },
