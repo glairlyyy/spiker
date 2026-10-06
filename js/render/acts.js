@@ -273,18 +273,10 @@ const ACTS_ROSTER = {
     }
   },
   spkstyle(a, d, bs) {
-    if (d) {
-      d.spkStyle = a.st;
-      d.spkPow = spikePowIn(A.beats && A.beats[A.bi]); // the bow follows the hit's power (poses3d-attack)
-    }
+    if (d) d.spkStyle = a.st;
   },
   setdir(a, d, bs) {
     if (d) d.setDir = a.dir;
   }
 };
 const ACTS = { ...ACTS_FX, ...ACTS_UI, ...ACTS_ROSTER };
-/** The spike power of a beat's contact burst (0 without one: a tip, a dump). */
-const spikePowIn = b => {
-  const bu = b && b.acts.find(x => x.k === 'burst');
-  return bu ? bu.pow : 0;
-};

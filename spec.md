@@ -60,9 +60,9 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   thrown out sideways, a jet of air down the line; 95+ adds a pressure dome ballooning out; 100+ (with Hype on, not reduced
   motion) an **impact frame** — the court in negative and in slow motion (×0.15) for 1 s real time, then back to normal speed
   (owner, 2026-10-06; ordinary spikes get no slow-down).
-  The hitter's body bends with the power (owner, 2026-10-06): before the swing the back arches up to ~50° more (spine + chest),
-  head thrown back, hips back, and **stays bent through the whip until contact**; after contact the body jack-knifes over —
-  a little on every spike (from power 40), full at 130; tips unchanged.
+  The hitter's body bends (owner, 2026-10-06): one moderate back arch for every spike (BEND, the look picked from the
+  power-50 render — the deeper power-scaled bends were removed), held through the whip until contact, then a small jack-knife;
+  the non-hitting arm points at the ball 45° lower than before (not at the sky). Tips unchanged.
   Display only (no beats or draws change).
 - §2.4 Blocks: stuff odds = full-strength block vs spike, weighted by coverage (targets §2.9).
 - §2.5 Spike approach (display): hitter runs to a run-up point behind contact (skip if already there/behind), starting

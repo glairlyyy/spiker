@@ -107,13 +107,15 @@ const SWING = {
   ]
 };
 // non-hitting arm: points straight up at the ball → pulls down hard to close the shoulders → tucks in
-const UP_L = [V(0.12, 0.95, 0.28), V(0.08, 0.96, 0.26), V(0.06, 0.92, 0.38)];
+const UP_L = [V(0.12, 0.47, 0.87), V(0.08, 0.49, 0.86), V(0.06, 0.38, 0.92)]; // (owner, 2026-10-06: 45° lower — pointing at the ball, not the sky)
 const LKEYS = [
   [0, UP_L],
   [0.14, [V(0.3, 0.55, 0.78), V(0.1, 0.6, 0.8), V(0.05, 0.5, 0.86)]],
   [CE, [V(0.32, -0.5, 0.8), V(-0.25, -0.15, 0.96), V(-0.3, -0.1, 0.95)]],
   [1, [V(0.22, -0.88, 0.42), V(-0.35, -0.45, 0.82), V(-0.4, -0.5, 0.77)]]
 ];
+/** The spike's back bend (0–1 of the deepest arch): the owner's pick, the power-50 look. */
+const BEND = 0.15;
 // torso: chest opened to the hitting side, upper back arched → uncoils square to the net at contact → pikes over
 const BOW_T = { hp: 0, sp: -0.12, cp: -0.12, tw: -0.78, hd: -0.5 };
 const TORSO = [
@@ -160,10 +162,9 @@ export function spikePose(d, m) {
     sw = d.spk,
     sty = d.spkStyle || 'normal',
     arch = sty === 'power' ? 1.4 : sty === 'quick' ? 0.6 : 1,
-    // the harder the hit, the deeper the bend (owner, 2026-10-06): spike power (d.spkPow, read ahead of the hit by playback)
-    // 0.15 … 1 (power 40 … 130): the back arches (spine + chest up to ~50° more) and stays bent through the whip until the hit,
-    // head thrown back; then a full jack-knife
-    bend = d.spkPow && sty !== 'tip' ? clamp((d.spkPow - 40) / 90, 0.15, 1) : 0;
+    // one bend for every spike (owner, 2026-10-06: the power-50 pose — deeper ones were taken out): the back arches and stays
+    // bent through the whip until the hit, head back; then a small jack-knife
+    bend = sty === 'tip' ? 0 : BEND;
   const face = { angry: 0.85 };
   // 3. landing: soft on both feet, knees bent to absorb; the hitting arm finishes across the body
   if (!air && sw != null) return landPose(d, sw);
