@@ -161,8 +161,9 @@ export function spikePose(d, m) {
     sty = d.spkStyle || 'normal',
     arch = sty === 'power' ? 1.4 : sty === 'quick' ? 0.6 : 1,
     // the harder the hit, the deeper the bend (owner, 2026-10-06): spike power (d.spkPow, read ahead of the hit by playback)
-    // 0 at power 60 … 1 at 140 — the back arches (spine + chest up to ~40° more), head thrown back, then a full jack-knife
-    bend = d.spkPow && sty !== 'tip' ? clamp((d.spkPow - 60) / 80, 0, 1) : 0;
+    // 0.15 … 1 (power 40 … 130): the back arches (spine + chest up to ~50° more) and stays bent through the whip until the hit,
+    // head thrown back; then a full jack-knife
+    bend = d.spkPow && sty !== 'tip' ? clamp((d.spkPow - 40) / 90, 0.15, 1) : 0;
   const face = { angry: 0.85 };
   // 3. landing: soft on both feet, knees bent to absorb; the hitting arm finishes across the body
   if (!air && sw != null) return landPose(d, sw);
@@ -218,10 +219,10 @@ export function spikePose(d, m) {
         : { L: leg(0.6, 0.85, 0.5, 0.12), R: leg(0.48, 0.75, 0.5, 0.12) },
     legsDown = { L: leg(0.3, 0.4, 0.25, 0.16), R: leg(0.24, 0.35, 0.25, 0.16) };
   const bowT = {
-    hp: BOW_T.hp - 0.14 * bend,
-    sp: BOW_T.sp * arch - 0.34 * bend,
-    cp: BOW_T.cp * arch - 0.34 * bend,
-    hd: BOW_T.hd - 0.3 * bend,
+    hp: BOW_T.hp - 0.22 * bend,
+    sp: BOW_T.sp * arch - 0.45 * bend,
+    cp: BOW_T.cp * arch - 0.42 * bend,
+    hd: BOW_T.hd - 0.35 * bend,
     tw: BOW_T.tw * Math.min(1.1, arch) * (1 + 0.35 * bend)
   };
   if (sw == null) {
@@ -245,10 +246,18 @@ export function spikePose(d, m) {
   }
   // 2. the swing: uncoil → contact on a straight arm → wrist snap → follow-through; legs pike, then reach for the floor
   const e = swingE(d);
-  const tor0 = track([[0, bowT], ...TORSO.slice(1)], e, mixT),
+  const tor0 = track([[0, { ...bowT, hp: BOW_T.hp, sp: BOW_T.sp * arch, cp: BOW_T.cp * arch, hd: BOW_T.hd }], ...TORSO.slice(1)], e, mixT),
     // …and the harder it is, the more the body jack-knifes over after contact
     pike = e > CE ? bend * sm(clamp((e - CE) / 0.2, 0, 1)) : 0,
-    tor = pike ? { ...tor0, hp: tor0.hp + 0.3 * pike, sp: tor0.sp + 0.34 * pike, cp: tor0.cp + 0.24 * pike } : tor0,
+    // the back stays bent through the whip until the hit (the bow lets go only at contact), then the jack-knife
+    held = e < CE ? bend * (1 - sm(e / CE)) : 0,
+    tor = {
+      ...tor0,
+      hp: tor0.hp - 0.22 * held + 0.3 * pike,
+      sp: tor0.sp - 0.45 * held + 0.34 * pike,
+      cp: tor0.cp - 0.42 * held + 0.24 * pike,
+      hd: tor0.hd - 0.35 * held
+    },
     rA = track(keys, e, mixArm),
     lA = track(LKEYS, e, mixArm);
   const legK = sm(clamp((e - 0.1) / 0.35, 0, 1)),
