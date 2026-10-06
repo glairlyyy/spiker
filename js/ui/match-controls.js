@@ -132,6 +132,7 @@ addEventListener('keydown', e => {
   if (e.key === 'f' || e.key === 'F') toggleFullscreen();
   else if (e.key === 'b' || e.key === 'B') railOpen();
   else if (e.key === 't' || e.key === 'T') railOpen('tac');
+  else if ((e.key === 'v' || e.key === 'V') && $('#vfxp')) vfxToggle();
   else if (e.key === 'c' || e.key === 'C')
     toggleCam3D(); // cycle the camera (its modes are in ⚙ too)
   else if (/^[1-4]$/.test(e.key) && A.ask && A.ask.shown)

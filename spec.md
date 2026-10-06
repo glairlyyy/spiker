@@ -735,8 +735,14 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
 - §10.7 Title screen (Continue hero, New career, Encyclopedia, Settings, **Dev** — owner 2026-10-03: a title-screen tab, always shown, with Monster game, player models,
   Benchmark models, **VFX lab** (owner 2026-10-06: every 3D effect on an empty tiled floor — fire one (keys 1–0, Space again), power,
   element, speed 1× / 0.25× / 0.1× / pause, repeat, a stress rate, orbit camera, and the cost readout: fps, frame and fx ms, draw calls,
-  live particles; Esc back), the §10.8 word counter (on/off, remembered per browser) and Debug log; `?dev` opens it with the counter on) and Create (role
+  live particles; Esc back; owner 2026-10-06: also the VFX tuning panel below), the §10.8 word counter (on/off, remembered per browser) and Debug log; `?dev` opens it with the counter on) and Create (role
   cards with key stat, best training places, techniques; name; challenge toggles; Arrive / Back).
+- §10.7b VFX tuning (dev, owner 2026-10-06): every effect value (air impact: from power, Doppler, reach, ring size / count / life,
+  wind, jet, dome; impact frame: on, from power, length, slow motion; contact burst; element particles; ground blast on a kill:
+  on (off by default), from power, size, sparks, smoke; hand trails: width, length, ink colour) as live controls — in the Monster
+  and Average games (VFX V: a panel at the right, the game keeps playing; Test at the ball: air impact, blast) and in the VFX
+  lab. Edits apply to the next effect and stay in this browser; Export = Copy (all values as JSON; the JSON box when the
+  clipboard is blocked), Download vfx.json, Import, Reset all. Exported values are baked into js/data/vfx.js to ship.
 - §10.7a Title layout = the design system TitleScreen card **[built, T-176–T-177]** (owner, 2026-10-04). Left column at a 96px inset, top-aligned
   from 96px: kicker `4V4 VOLLEYBALL RPG` (label style), wordmark `SPITE & SPIKE` on **one line** (Rajdhani 700,
   clamp(56px, 6vw, 80px), letter-spacing .14em), tagline `Nobody believed in you. Good.` visible (body, `mute`); 56px

@@ -27,23 +27,27 @@ function burst(pow, color) {
   if (f) f.burst(pow, color);
 }
 /**
- * A spike splits the air (spec §2.3a): pressure rings, wind lines, a dome on a heavy hit — and on an ult hit (power 100+) an
- * impact frame: the court in negative, in slow motion, for IMPACT_FRAME_MS (owner, 2026-10-06: a full second), then normal speed.
- * `dx` = the attack's direction.
+ * A spike splits the air (spec §2.3a): pressure rings, wind lines, a dome on a heavy hit — and on an ult hit (VFX.frame.min,
+ * power 100+) an impact frame: the court in negative, in slow motion (VFX.frame.slow), for VFX.frame.ms (owner, 2026-10-06: a
+ * full second), then normal speed. `dx` = the attack's direction. Live values: js/data/vfx.js.
  */
-const IMPACT_FRAME_MS = 1000;
 function airImpact(pow, color, dx) {
   const f = fx3();
   if (f && f.airImpact) f.airImpact(pow, color, dx);
-  if (pow >= 100 && !RM && HYPE[G.hype].max >= 1) {
+  if (VFX.frame.on && pow >= VFX.frame.min && !RM && HYPE[G.hype].max >= 1) {
     const st = document.getElementById('stage');
     if (st) {
       st.classList.add('impactf');
       clearTimeout(airImpact.t);
-      airImpact.t = setTimeout(() => st.classList.remove('impactf'), IMPACT_FRAME_MS);
-      A.impactUntil = performance.now() + IMPACT_FRAME_MS; // slow motion for as long as it lasts (clock.js), then normal speed
+      airImpact.t = setTimeout(() => st.classList.remove('impactf'), VFX.frame.ms);
+      A.impactUntil = performance.now() + VFX.frame.ms; // slow motion for as long as it lasts (clock.js), then normal speed
     }
   }
+}
+/** A kill on the floor (VFX.blast: off by default): the ground blast — sparks, embers, smoke, debris — in the element's colour. */
+function groundBlast(pow, el) {
+  const f = fx3();
+  if (f && f.blast && VFX.blast.on && pow >= VFX.blast.min) f.blast(pow, el && ECOL[el]);
 }
 /** Ball hits the floor: dust and shockwave, plus a screen shake by power. */
 function impact(pow) {

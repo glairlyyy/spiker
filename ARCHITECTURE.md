@@ -25,7 +25,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
 - **core** `debuglog.js` (DBG), `math.js` (clamp, lerp, inPoly, fmtDelta…), `rng.js` (R / RNG / FXR), `storage.js` (store, KEYS).
 - **data** `rules.js` (RULES, DECIDE…), `styles.js` (playstyles, team list, archetypes), `names.js` (name pools),
   `looks.js` (appearance palettes), `moves.js` (signature / combo names, coach lines), `roles.js` (role biases, key
-  stats, mood deltas), `elements.js`, `tactics.js`, `dialogue.js` (lines, `callLine`), `skills.js`, `career.js`
+  stats, mood deltas), `elements.js`, `vfx.js` (VFX_DEF / live `VFX` effect tuning, read by render code only; saved dev edits in `sns_vfx`), `tactics.js`, `dialogue.js` (lines, `callLine`), `skills.js`, `career.js`
   (CAREER, CALENDAR, ROLE_NAME, STATNAME, MLOG…), `world.js` (REGIONS, FACTIONS, ECON, HOUSING, CLASH, FRONT…), `city.js`
   (CITY geometry, SPOTS, travel constants, layout data).
 - **engine** `court.js` (geometry, `Z_UNITS`, `UNIT_M`, `BALL_K` / `SERVE_K`), `players.js`, `teams.js`, `save.js`,
@@ -41,7 +41,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   `debug-panel.js` (Debug log; `?dev` word counter per region vs the §10.8 budgets), `career-create.js`, `career-week.js` (CW state, End week, Week report, events), `sheet-me.js` / `sheet-season.js` (the Me / Season sheets),
   `career-match.js` (match prep, eval / Cup cards, result data, playCareer, watchCareer), `map-view.js`, `career-panels.js` (place
   panels: `placeCard` anatomy, `PANELS` by kind → hq / clash / venue / map point, else `placePanel`), `career-map.js` (mount, pick, actions, walk lock), `career-dossier.js`,
-  `career-people.js`, `career-hub.js`, `career-end.js`, `encyclopedia.js`, `vfx-lab.js` (dev: the VFX lab screen → `render3d/vfxlab3d.mjs`).
+  `career-people.js`, `career-hub.js`, `career-end.js`, `encyclopedia.js`, `vfx-lab.js` (dev: the VFX lab screen → `render3d/vfxlab3d.mjs`), `vfx-panel.js` (dev: live VFX tuning panel — Monster / Average game key V and the lab; export / import JSON).
 - **render** `playback.js`, `acts.js`, `movement.js`, `actors.js`, `clock.js`, `camera.js`, `ball.js`, `scenes.js`,
   `effects.js`, `overlay.js`, `faces.js`, `tags.js`, `dive.js`; then `main.js`.
 

@@ -1806,3 +1806,85 @@ body:has(.match) .top {
   line-height: 1.5;
   white-space: pre-wrap;
 }
+
+/* the dev VFX panel (js/ui/vfx-panel.js): a column of live controls — over the match's right edge, or in the VFX lab */
+.vfxp {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  width: 330px;
+  z-index: 60;
+  overflow: auto;
+  margin: 0;
+  background: var(--hud);
+}
+.vfxpanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+.vfxpanel .vfxh,
+.vfxpanel .vexp {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.vfxpanel .vfxh {
+  justify-content: space-between;
+}
+.vfxpanel h3,
+.vfxpanel h4 {
+  margin: 0;
+}
+.vfxpanel h4 {
+  font-size: 12px;
+  color: var(--mute);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.vfxpanel .vgrp {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.vfxpanel .vrow {
+  display: grid;
+  grid-template-columns: 1fr 120px 44px;
+  align-items: center;
+  gap: 6px;
+}
+.vfxpanel .vrow .seg,
+.vfxpanel .vrow input[type='color'] {
+  grid-column: 2 / 4;
+  justify-self: start;
+}
+.vfxpanel .vrow input[type='range'] {
+  width: 100%;
+}
+.vfxpanel .vrow b {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.vfxpanel .vrow.changed > span {
+  color: var(--cyan);
+}
+.vfxpanel .vrow > .btn {
+  justify-self: start;
+}
+.vfxpanel .vjson {
+  min-height: 48px;
+  max-height: 120px;
+  resize: vertical;
+  background: var(--glass);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font:
+    12px/1.4 ui-monospace,
+    monospace;
+}

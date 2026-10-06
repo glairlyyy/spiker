@@ -182,6 +182,11 @@ Accept: the row shows after a played match with calls; nothing after a sim.
 QA: career run → a played match with 2+ calls → result card.
 Result: `resultData.calls` (your `m.calls`), `callsRow` on the card's right column: "Calls · N of M made", the last 6 (label, auto on a time-out, chance, ✓ made / ✕ missed / · rally on), "Held back by: <icon> <stat>" = the weak stat seen most in missed calls. Nothing after a sim (no m.human). QA: a played Pro court match with 3 calls → card (screenshot), no errors.
 
+### [x] T-241: Live VFX tuning in the Monster game, with export (owner request)
+Spec: §10.7b          Goldens: unchanged (display only)          Save: no change (browser key sns_vfx)
+Files: js/data/vfx.js (new: VFX_DEF, VFX, vfxReset / vfxExport / vfxImport), js/ui/vfx-panel.js (new), js/render3d/fx3d.mjs (`vx` reads), js/render/effects.js (frame values, `groundBlast`), js/render/acts.js (air min, blast on a kill), js/render/clock.js (frame slow), js/render3d/r3d.mjs (fx `blast`), js/render3d/actors3d.mjs (hand width / life / ink), js/ui/match-screen.js + match-controls.js (VFX V in dev games), js/ui/menu.js (vfx: true), js/ui/vfx-lab.js, js/core/storage.js, index.html, css/style.css, tests/ui-smoke.js
+Result: 26 live controls in 6 groups (air impact, impact frame, contact burst, elements, ground blast, hand trails); Monster / Average game: VFX V opens the panel at the right while the game plays, Test at the ball (air impact, blast); the lab shows the same panel. Export: Copy (all values; the JSON box when the clipboard is blocked), Download vfx.json (data: link), Import, Reset all; edits persist per browser. Ground blast on a floor kill now exists in matches but is Off by default. QA: Monster game panel (21 sliders), edit → export JSON → saved → reset; lab ring size 2 / 7 rings live; UI smoke step; no errors.
+
 ### [x] T-240: Air impact, reversed ring order — the Doppler look (owner request)
 Spec: §2.3a          Goldens: unchanged (display only)          Save: no change
 Files: js/render3d/fx3d.mjs (`airImpact(…, rev)`), js/render3d/vfxlab3d.mjs, js/ui/vfx-lab.js

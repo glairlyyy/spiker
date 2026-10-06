@@ -55,5 +55,6 @@ const KEYS = {
   motion: 'sns_motion', // UI motion: 'full' | 'reduced' (spec §9.12, T-216)
   calls: 'sns_calls', // match calls: 'key' | 'all' | 'off' (spec §2.13, T-234)
   trail: 'sns_trail', // hand trails: 'light' | 'ink' (T-239)
+  vfx: 'sns_vfx', // dev VFX panel edits (JSON of changed values; js/data/vfx.js)
   career: 'sns_run_v1' // Spite & Spike run (older Skyline Cup careers are not carried over)
 };

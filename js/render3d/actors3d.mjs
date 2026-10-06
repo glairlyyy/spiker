@@ -168,10 +168,10 @@ function lightTrails(pl, d, root, dt) {
     o =
       tier || charged
         ? {
-            width: Math.max(tier === 2 ? 0.12 : tier ? 0.065 : 0, charged ? 0.1 : 0) * zk * (ink ? 1.7 : 1),
-            life: (tier === 2 || charged ? 0.34 : 0.2) * zk * (ink ? 1.4 : 1),
+            width: Math.max(tier === 2 ? 0.12 : tier ? 0.065 : 0, charged ? 0.1 : 0) * zk * (ink ? 1.7 : 1) * VFX.hand.width,
+            life: (tier === 2 || charged ? 0.34 : 0.2) * zk * (ink ? 1.4 : 1) * VFX.hand.life,
             alpha: charged ? 0.9 : tier === 2 ? 0.8 : 0.7,
-            color: charged ? ECOL[d.p.el] : ink ? '#ff1630' : pl.trailCol,
+            color: charged ? ECOL[d.p.el] : ink ? VFX.hand.ink : pl.trailCol,
             style: ink ? 'ink' : ''
           }
         : { width: 0 },

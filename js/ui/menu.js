@@ -70,12 +70,12 @@ function titleBgOff() {
 function startMonster() {
   const [a, b] = mkMonsterTeams();
   for (const p of [...a.P, ...b.P]) p.form = +rnd(-0.1, 0.4).toFixed(2);
-  navigate('match', { a, b, round: 'Monster game', back: 'Back to menu', onLeave: () => navigate('menu') });
+  navigate('match', { a, b, round: 'Monster game', vfx: true, back: 'Back to menu', onLeave: () => navigate('menu') });
 }
 /** Average game (dev): a one-off match between two teams of ordinary players (overall 30–60 each). */
 function startAverage() {
   const [a, b] = mkAverageTeams();
   for (const p of [...a.P, ...b.P]) p.form = +rnd(-0.1, 0.4).toFixed(2);
-  navigate('match', { a, b, round: 'Average game', back: 'Back to menu', onLeave: () => navigate('menu') });
+  navigate('match', { a, b, round: 'Average game', vfx: true, back: 'Back to menu', onLeave: () => navigate('menu') });
 }
 Screens.menu = renderMenu;

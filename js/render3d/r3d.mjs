@@ -369,6 +369,7 @@ const fxApi = {
   airImpact: (pow, color, dx) => world && world.fx.airImpact(ballW(), new THREE.Vector3(dx, -0.55, 0).normalize(), pow, color),
   elemBurst: (el, pow) => world && world.fx.elemBurst(el, ballW(), pow, A.ball.h > 60 ? ballDir.clone() : null),
   impact: pow => world && world.fx.impact(ballW(), pow),
+  blast: (pow, color) => world && world.fx.blast(W(A.ball.x, A.ball.z, 0), pow, color || undefined),
   elemImpact: (el, pow) => world && world.fx.elemImpact(el, ballW(), pow),
   trail: (el, pow, dt) => world && world.fx.trail(el, ballW(), ballDir.clone(), pow, dt),
   zap: pow => world && world.fx.zap(ballW(), pow),

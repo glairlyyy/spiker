@@ -43,7 +43,8 @@ function labSide() {
       <div class="vrow">Repeat <kbd>R</kbd> ${seg('auto', [false, true], v => (v ? 'On' : 'Off'))}</div>
       <div class="vrow">Stress ${seg('stress', [0, 2, 10, 30], v => (v ? `${v}/s` : 'Off'))}</div>
       <pre class="vstat" id="vstat">loading…</pre>
-      <p class="small mute">Drag to orbit, wheel to zoom. Space fires again.</p>`;
+      <p class="small mute">Drag to orbit, wheel to zoom. Space fires again.</p>
+      <div class="vfxpanel">${vfxPanel()}</div>`;
 }
 function renderVfxLab() {
   A = null;

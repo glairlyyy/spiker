@@ -175,6 +175,15 @@ const step = async (name, fn) => {
     await ev(() => navigate('menu'));
     await ev(() => startMonster());
     await pg.waitForFunction(() => typeof A !== 'undefined' && A && A.m, null, { timeout: 60000 });
+    await pg.keyboard.press('v'); // the VFX panel: live controls over the running game
+    const n = await ev(() => ($('#vfxp') && !$('#vfxp').hidden ? $('#vfxp').querySelectorAll('input').length : 0));
+    if (n < 15) throw new Error(`VFX panel: ${n} controls`);
+    await ev(() => {
+      vfxSet('air', 'len', 3);
+      if (!/"len": 3/.test($('#vfxjson').value)) throw new Error('VFX export did not follow the edit');
+      vfxResetAll();
+      vfxToggle();
+    });
     await ev(() => {
       A.hold = true;
       while (!A.m.over) playRally(A.m);
