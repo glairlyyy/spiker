@@ -101,6 +101,7 @@ export function createFx(scene) {
     constructor(tex, additive, max) {
       this.max = max;
       this.P = [];
+      this.wait = [];
       const g = new THREE.BufferGeometry();
       this.pos = new Float32Array(max * 3);
       this.col = new Float32Array(max * 3);
@@ -129,9 +130,11 @@ export function createFx(scene) {
       this.obj.renderOrder = additive ? 3 : 2;
       scene.add(this.obj);
     }
+    /** o.delay (s): the particle waits unseen, then starts. */
     spawn(p, v, c1, c2, s0, s1, life, o = {}) {
-      if (this.P.length >= this.max) return;
-      this.P.push({
+      if (this.P.length + this.wait.length >= this.max) return;
+      (o.delay ? this.wait : this.P).push({
+        delay: o.delay || 0,
         p: p.clone(),
         v: v.clone(),
         c1: new THREE.Color(c1),
@@ -153,6 +156,7 @@ export function createFx(scene) {
       const P = this.P,
         c = new THREE.Color();
       let w = 0;
+      if (this.wait.length) this.wait = this.wait.filter(q => (q.delay -= dt) > 0 || (P.push(q), false));
       for (const q of P) {
         q.age += dt;
         if (q.age >= q.life) continue;
@@ -402,7 +406,7 @@ export function createFx(scene) {
     m.renderOrder = 5;
     m.visible = !o.delay;
     scene.add(m);
-    rings.push({ m, size, life, age: -(o.delay || 0), floor, fixed: !!o.dir, op: o.op ?? 0.9 });
+    rings.push({ m, size, life, age: -(o.delay || 0), floor, fixed: !!o.dir, op: o.op ?? 0.9, rev: !!o.rev });
   }
   function updateRings(dt) {
     let w = 0;
@@ -419,8 +423,14 @@ export function createFx(scene) {
       }
       r.m.visible = true;
       const u = r.age / r.life;
-      r.m.scale.setScalar(0.05 + r.size * (1 - Math.pow(1 - u, 3)));
-      r.m.material.opacity = (1 - u) * r.op;
+      if (r.rev) {
+        // reverse: the ring closes in on its centre, brightening as it shrinks
+        r.m.scale.setScalar(0.05 + r.size * Math.pow(1 - u, 1.6));
+        r.m.material.opacity = Math.min(1, u / 0.25) * r.op;
+      } else {
+        r.m.scale.setScalar(0.05 + r.size * (1 - Math.pow(1 - u, 3)));
+        r.m.material.opacity = (1 - u) * r.op;
+      }
       if (!r.floor && !r.fixed && camera) r.m.quaternion.copy(camera.quaternion);
       rings[w++] = r;
     }
@@ -482,8 +492,8 @@ export function createFx(scene) {
         continue;
       }
       const u = d.age / d.life;
-      d.m.scale.setScalar(0.1 + d.size * (1 - Math.pow(1 - u, 2.5)));
-      d.m.material.opacity = (1 - u) * 0.28;
+      d.m.scale.setScalar(0.1 + d.size * (d.rev ? Math.pow(1 - u, 1.6) : 1 - Math.pow(1 - u, 2.5)));
+      d.m.material.opacity = d.rev ? Math.min(1, u / 0.3) * 0.16 : (1 - u) * 0.28;
       domes[w++] = d;
     }
     domes.length = w;
@@ -622,6 +632,68 @@ export function createFx(scene) {
         scene.add(m);
         domes.push({ m, size: 1.6 * k, life: 0.3, age: 0 });
       }
+    },
+    /**
+     * Air impact, reversed (owner 2026-10-06): the air is sucked in. Rings close in on the contact (the far ones first), wind
+     * lines rush inward and die at the point, the jet flows back up the line of the shot, a heavy hit's dome collapses — then
+     * one small white pop as it all meets. Same scale by power as airImpact; ~0.32 s from start to the pop.
+     */
+    airImplode(p, dir, pow, color) {
+      const k = Math.min(1.5, Math.max(0.35, (pow - 50) / 45)),
+        n = pow >= 95 ? 4 : pow >= 80 ? 3 : 2,
+        T = 0.32;
+      for (let i = 0; i < n; i++) {
+        const q = p.clone().addScaledVector(dir, 0.18 + i * 0.32 * k),
+          life = 0.22 + i * 0.03;
+        ring(q, i % 2 ? color : '#ffffff', (0.9 + i * 0.6) * k, life, false, { dir, delay: T - life, op: i ? 0.75 : 1, rev: true });
+      }
+      const u = new THREE.Vector3()
+          .crossVectors(dir, Math.abs(dir.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0))
+          .normalize(),
+        v = new THREE.Vector3().crossVectors(dir, u).normalize();
+      // wind lines: start out on a wide circle, rush in, die at the contact
+      for (let i = 0; i < 26 * k; i++) {
+        const a = Math.random() * Math.PI * 2,
+          r = R(1.1, 2.2) * k,
+          from = p
+            .clone()
+            .addScaledVector(u, Math.cos(a) * r)
+            .addScaledVector(v, Math.sin(a) * r)
+            .addScaledVector(dir, R(-0.3, 0.6)),
+          life = R(0.16, T),
+          vel = p.clone().sub(from).divideScalar(life);
+        STREAK.spawn(from, vel, '#9fd4ff', '#ffffff', R(0.015, 0.03), 0.07, life);
+      }
+      // the jet runs backward: from down the line of the shot into the contact
+      for (let i = 0; i < 14 * k; i++) {
+        const from = p
+            .clone()
+            .addScaledVector(dir, R(1, 2.6) * k)
+            .add(rv(R(0.1, 0.4))),
+          life = R(0.18, T);
+        GLOW.spawn(from, p.clone().sub(from).divideScalar(life), color, '#ffffff', 0.02, R(0.12, 0.24), life);
+      }
+      if (pow >= 95) {
+        const m = new THREE.Mesh(
+          DOME,
+          new THREE.MeshBasicMaterial({
+            color: '#dff1ff',
+            transparent: true,
+            opacity: 0,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+          })
+        );
+        m.position.copy(p);
+        m.renderOrder = 4;
+        scene.add(m);
+        domes.push({ m, size: 1.6 * k, life: T, age: 0, rev: true });
+      }
+      // the pop where it all meets
+      ring(p, '#ffffff', 0.6 * k, 0.18, false, { delay: T, op: 0.7 });
+      for (let i = 0; i < 18 * k; i++)
+        GLOW.spawn(p, rv(R(1.5, 4) * k), '#ffffff', color, R(0.2, 0.4), 0.03, R(0.2, 0.35), { drag: 4, delay: T });
+      ring(p, color, 1.4 * k, 0.28, false, { dir, delay: T + 0.02, op: 0.6 });
     },
     /** Generic contact burst at a point (spike, serve, block): team-coloured ring and sparks. */
     burst(p, pow, color) {

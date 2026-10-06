@@ -89,7 +89,7 @@ units3d's KH / KX / KZ read it), `BALL_K` / `SERVE_K` (ball flight speed factors
   chin up, back arched, the other hand cushioning like a push-up → momentum slide, legs slightly bent → squat → ready.
 - `fx3d.mjs` — 3D effects: GPU particles (glow / spark / smoke / billowing puffs, per-particle spin), velocity-stretched
   streak sparks (instanced quads, floor bounce), floor glow discs, lightning tubes, shockwave rings, bouncing rocks (per-instance
-  colour), one style per team element. `blast` (the ground blast) is only fired from the VFX lab so far; `stats()` = live counts. `render/effects.js` hands its entry points (`burst`, `impact`, `elemBurst`,
+  colour), one style per team element. `blast` (the ground blast) and `airImplode` (the reversed air impact; rings / domes take `rev`, particles `delay`) are only fired from the VFX lab so far; `stats()` = live counts. `render/effects.js` hands its entry points (`burst`, `impact`, `elemBurst`,
   `elemImpact`, `elemTrail`, `zap`, `bolt`) to `R3D.fx`, anchored at the ball; powered balls also glow and light
   the players; OP players crackle with arcs in the air. Labels, speed lines, the drill wall and cut-ins stay as
   the stylised screen layer.
