@@ -205,7 +205,7 @@ function play(name, stray) {
     case 'airImpact':
       return fx.airImpact(at(2.8), shot, o.pow, col);
     case 'airRev':
-      return fx.airImpact(at(2.8), shot, o.pow, col, true);
+      return fx.airImpact(at(2.8), shot, o.pow, col, true); // classic
     case 'burst':
       return fx.burst(at(2.2), o.pow, col);
     case 'elemBurst':

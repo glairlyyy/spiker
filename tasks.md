@@ -185,7 +185,7 @@ Result: `resultData.calls` (your `m.calls`), `callsRow` on the card's right colu
 ### [x] T-240: Air impact, reversed ring order — the Doppler look (owner request)
 Spec: §2.3a          Goldens: unchanged (display only)          Save: no change
 Files: js/render3d/fx3d.mjs (`airImpact(…, rev)`), js/render3d/vfxlab3d.mjs, js/ui/vfx-lab.js
-Result: `airImpact(p, dir, pow, color, true)`: the biggest ring at the hand, smaller and closer together down the shot (a Doppler cone); same timing, wind lines, jet and dome. Lab only (Dev → VFX lab, "Air impact: reversed (Doppler)"); matches still use the normal order. (A first misread — an implosion, `airImplode` — was dropped.) QA: lab frames side by side at 0.18 s, no errors.
+Result: `airImpact` (default now): the biggest ring at the hand, smaller and closer together down the shot (a Doppler cone); same timing, wind lines, jet and dome. Owner then adopted it: matches use the Doppler order; the first order stays in the lab as `classic` ("Air impact: classic"). (A first misread — an implosion, `airImplode` — was dropped.) QA: lab frames side by side at 0.18 s, no errors.
 
 ### [x] T-239: Ink hand trails — the Lu Bu look (owner request)
 Spec: §6 (trails), §9.9 (⚙)          Goldens: unchanged (display only)          Save: no change (new browser key sns_trail)

@@ -8,7 +8,7 @@ const LAB_FX = [
   ['sweep', 'Hand trail: weapon sweep', false],
   ['spike', 'Spike: air → trail → floor (+ blast at 100+)', true],
   ['airImpact', 'Air impact', false],
-  ['airRev', 'Air impact: reversed (Doppler)', false],
+  ['airRev', 'Air impact: classic (small → large)', false],
   ['burst', 'Contact burst', false],
   ['elemBurst', 'Element burst', true],
   ['impact', 'Floor impact', false],

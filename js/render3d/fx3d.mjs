@@ -564,17 +564,18 @@ export function createFx(scene) {
      * Air impact (spec §2.3a, owner 2026-10-06 — the Kuroko look): a spike splits the air at the contact. Pressure rings stacked
      * along the shot (`dir`, unit vector), wind lines thrown out sideways in the ring plane, a jet of air down the line and, on a
      * heavy hit, a dome of pressure ballooning out. Scaled by power (hard 58 → ult 100+)
-     * `rev`: the rings run large → small away from the hand (a Doppler cone) instead of small → large.
+     * The rings run large → small away from the hand (a Doppler cone); `classic`: small → large (the first version).
      */
-    airImpact(p, dir, pow, color, rev = false) {
+    airImpact(p, dir, pow, color, classic = false) {
       const k = Math.min(1.5, Math.max(0.35, (pow - 50) / 45)),
         n = pow >= 95 ? 4 : pow >= 80 ? 3 : 2;
-      // rev (owner 2026-10-06, the Doppler look): the biggest ring at the hand, smaller and closer together down the shot
+      // the Doppler look (owner 2026-10-06): the biggest ring at the hand, smaller and closer together down the shot;
+      // `classic` = the first version, small at the hand → large down the shot (kept in the VFX lab)
       for (let i = 0, at = 0.18; i < n; i++) {
         const q = p.clone().addScaledVector(dir, at),
-          size = (0.7 + (rev ? n - 1 - i : i) * 0.55) * k;
+          size = (0.7 + (classic ? i : n - 1 - i) * 0.55) * k;
         ring(q, i % 2 ? color : '#ffffff', size, 0.32 + i * 0.07, false, { dir, delay: i * 0.035, op: i ? 0.75 : 1 });
-        at += 0.32 * k * (rev ? 1 - i * 0.18 : 1);
+        at += 0.32 * k * (classic ? 1 : 1 - i * 0.18);
       }
       // wind lines: fast, thin sparks out from the contact, perpendicular to the shot
       const u = new THREE.Vector3()
