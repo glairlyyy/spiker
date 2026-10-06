@@ -182,10 +182,10 @@ Accept: the row shows after a played match with calls; nothing after a sim.
 QA: career run → a played match with 2+ calls → result card.
 Result: `resultData.calls` (your `m.calls`), `callsRow` on the card's right column: "Calls · N of M made", the last 6 (label, auto on a time-out, chance, ✓ made / ✕ missed / · rally on), "Held back by: <icon> <stat>" = the weak stat seen most in missed calls. Nothing after a sim (no m.human). QA: a played Pro court match with 3 calls → card (screenshot), no errors.
 
-### [x] T-240: Air impact, reversed (owner request)
+### [x] T-240: Air impact, reversed ring order — the Doppler look (owner request)
 Spec: §2.3a          Goldens: unchanged (display only)          Save: no change
-Files: js/render3d/fx3d.mjs (`airImplode`; rings / domes `rev`; particles `delay`), js/render3d/vfxlab3d.mjs, js/ui/vfx-lab.js
-Result: `fx.airImplode` — rings close in on the contact (far ones first), wind streaks rush inward, the jet flows back up the shot line, a heavy hit's dome collapses, then a white pop at 0.32 s. Lab only (Dev → VFX lab, "Air impact: reverse"); not in matches. QA: lab frames 0.08–0.36 s, no errors.
+Files: js/render3d/fx3d.mjs (`airImpact(…, rev)`), js/render3d/vfxlab3d.mjs, js/ui/vfx-lab.js
+Result: `airImpact(p, dir, pow, color, true)`: the biggest ring at the hand, smaller and closer together down the shot (a Doppler cone); same timing, wind lines, jet and dome. Lab only (Dev → VFX lab, "Air impact: reversed (Doppler)"); matches still use the normal order. (A first misread — an implosion, `airImplode` — was dropped.) QA: lab frames side by side at 0.18 s, no errors.
 
 ### [x] T-239: Ink hand trails — the Lu Bu look (owner request)
 Spec: §6 (trails), §9.9 (⚙)          Goldens: unchanged (display only)          Save: no change (new browser key sns_trail)
