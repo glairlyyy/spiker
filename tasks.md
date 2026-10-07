@@ -199,7 +199,7 @@ Result: `resultData.calls` (your `m.calls`), `callsRow` on the card's right colu
 ### [x] T-251: Rally touch counter — the combo counter (owner request)
 Spec: §2.3b          Goldens: unchanged (display only)          Save: no change
 Files: js/ui/match-combo.js (new: `comboTouch`, `comboEnd`, COMBO_TIERS), index.html, js/render/playback.js (startBall → comboTouch(A.rallyN); reset → comboEnd(true)), js/render/acts.js (point → comboEnd), js/data/vfx.js (`combo` group), css/style.css (.combo), tests/ui-smoke.js, ARCHITECTURE.md
-Result: a big tilted number right of the court counts the rally's touches (from 3), popping and growing each touch (34 px + 2.4 px per touch, to 30); tiers 6 Rally (gold) · 10 Long rally (warn) · 15 Marathon (hot) · 20 Legendary (hot, pulsing glow); on the point it holds 1.3 s then fades over 0.9 s; a new rally clears it. QA: Monster game rally to 7 ("7 touches · Rally"); tier frames 12 and 22; UI smoke checks it; no errors.
+Result: a big tilted number right of the court counts the rally's touches (from 3), popping and growing each touch (34 px + 2.4 px per touch, to 30); tiers 6 Rally (gold) · 10 Long rally (warn) · 15 Marathon (hot) · 20 Legendary (hot, pulsing glow); on the point it holds 1.3 s then fades over 0.9 s; a new rally clears it. QA: Monster game rally to 7 ("7 touches · Rally"); tier frames 12 and 22; UI smoke checks it; no errors. Fix (owner): the server's toss counted as a touch (the counter showed 3 at the receive) — startBall skips a held ball; now serve 1, receive 2, set 3 (first shown), spike 4.
 
 ### [x] T-250: Camera shake — spike kick and floor rumble (owner request)
 Spec: §10.7b          Goldens: unchanged (display only)          Save: no change

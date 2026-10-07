@@ -221,8 +221,8 @@ const BALL_ACC_MAX = 0.7;
 /** A `ball` act: the ball leaves the last toucher (or the hand holding it) for resolve(a.to); sets up the tween. */
 function startBall(a) {
   A.dribble = false;
-  A.rallyN = (A.rallyN || 0) + 1;
-  comboTouch(A.rallyN); // the rally counter
+  // the rally counter: one per touch — the server's toss leaves their own hand (the ball is held), so it isn't one
+  if (!A.ball.follow) comboTouch((A.rallyN = (A.rallyN || 0) + 1));
   panAt(ballScreen().X);
   if (A.ball.follow) {
     followBall();
