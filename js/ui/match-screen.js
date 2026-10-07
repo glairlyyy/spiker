@@ -16,7 +16,7 @@ const boardTeam = (t, i) =>
  * the stage lines (`STAGES[*].from`, fire −1..1 → 0..100 % of the half). board() fills it.
  */
 function fireRow(a, b) {
-  const ticks = (side) =>
+  const ticks = side =>
       STAGE_IDS.slice(1)
         .map(id => `<b style="${side ? 'right' : 'left'}:${(((STAGES[id].from + 1) / 2) * 100).toFixed(1)}%"></b>`)
         .join(''),
@@ -38,7 +38,8 @@ function startMatch(fx) {
   const you = fx.onFinish && typeof RUN !== 'undefined' && RUN ? Run.you(RUN) : null,
     mine = you ? ([0, 1].find(i => squadOf(m.t[i]).some(p => p.id === you.id)) ?? null) : null,
     sides = mine == null ? [0, 1] : [mine];
-  if (mine != null) m.human = you.id; // your prompts (spec §2.16): your decision points in a career match you play
+  if (mine != null)
+    m.human = you.id; // your prompts (spec §2.16): your decision points in a career match you play
   else if (fx.human != null) m.human = fx.human; // the Monster game's Play as
   if (m.human != null && G.prompts !== 'off') m.read = {}; // Prompts On: the read meter and your prompts (T-257 contract)
   // the full-court screen (spec §9.9): the stage fills the screen; the panels below float over it

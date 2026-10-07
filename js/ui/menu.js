@@ -74,12 +74,22 @@ function startMonster() {
   const pa = /^([ab]):(\d)$/.exec(TS.playAs || ''), // Play as (spec §2.16): a seat of either team → your prompts in it
     T = pa ? (pa[1] === 'a' ? a : b) : null,
     you = T ? [T.s, T.mb, T.ws[0], T.ws[1]][+pa[2]] : null;
-  navigate('match', { a, b, round: 'Monster game', vfx: true, human: you ? you.id : null, back: 'Back to menu', onLeave: () => navigate('menu') });
+  navigate('match', {
+    a,
+    b,
+    round: 'Monster game',
+    vfx: true,
+    human: you ? you.id : null,
+    back: 'Back to menu',
+    onLeave: () => navigate('menu')
+  });
 }
 /** The Monster game's Play as choices: none, or a seat of either team (the squads are drawn when the game starts). */
 const PLAY_AS = [
   ['', 'Nobody (watch)'],
-  ...['a', 'b'].flatMap(t => ['Setter', 'Middle', 'Wing 1', 'Wing 2'].map((n, i) => [`${t}:${i}`, `${t === 'a' ? 'Left' : 'Right'} team · ${n}`]))
+  ...['a', 'b'].flatMap(t =>
+    ['Setter', 'Middle', 'Wing 1', 'Wing 2'].map((n, i) => [`${t}:${i}`, `${t === 'a' ? 'Left' : 'Right'} team · ${n}`])
+  )
 ];
 /** Average game (dev): a one-off match between two teams of ordinary players (overall 30–60 each). */
 function startAverage() {

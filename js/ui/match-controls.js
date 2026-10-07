@@ -37,7 +37,7 @@ function settingsMenu() {
         .map(([k, n]) => `<button class="btn ${k === cur ? 'on' : ''}" onclick="setOpt('${kind}','${k}')">${n}</button>`)
         .join('')}</div></div>`;
   return `${seg('Hype', 'hype', Object.fromEntries(Object.entries(HYPE).map(([k, h]) => [k, h.name])), G.hype, 'Staged shonen moments before big attacks. Normal: element spikes, match points, star face-offs. Max: also long rallies and comebacks. Tap the court to skip one.')}
-    ${seg('Prompts', 'prompts', { on: 'On', off: 'Off' }, G.prompts, 'In a match you play: Call, Fake, Block, the setter\'s pick and the captain\'s calls appear under your player while you can use them (E, R, 1–3). Off: the AI plays you.')}
+    ${seg('Prompts', 'prompts', { on: 'On', off: 'Off' }, G.prompts, "In a match you play: Call, Fake, Block, the setter's pick and the captain's calls appear under your player while you can use them (E, R, 1–3). Off: the AI plays you.")}
     ${seg('Trails', 'trail', TRAIL_STYLES, G.trail, 'Hand trails of stars and OP players. Light: a streak in their hair colour. Ink: a black brush stroke burning crimson.')}
     ${seg('Cut-ins', 'cut', { full: 'Full', mini: 'Mini' }, G.cutMini ? 'mini' : 'full', 'Full cut-ins pause play; mini shows them as a corner notification')}
     ${seg('Zooms', 'zoom', { on: 'On', off: 'Off' }, G.camFixed || RM ? 'off' : 'on', 'On: gentle zoom on big plays at the net. Off: no zooms or pushes (motion-friendly).')}
