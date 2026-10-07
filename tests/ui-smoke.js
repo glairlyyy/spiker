@@ -179,6 +179,9 @@ const step = async (name, fn) => {
     const n = await ev(() => ($('#vfxp') && !$('#vfxp').hidden ? $('#vfxp').querySelectorAll('input').length : 0));
     if (n < 15) throw new Error(`VFX panel: ${n} controls`);
     await ev(() => {
+      comboTouch(12); // the rally counter
+      if (!/12\s*touches/i.test(($('#combo.on') || {}).textContent || '')) throw new Error('no rally counter');
+      comboEnd(true);
       vfxSet('air', 'len', 3);
       if (!/"len": 3/.test($('#vfxjson').value)) throw new Error('VFX export did not follow the edit');
       vfxResetAll();

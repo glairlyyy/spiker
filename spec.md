@@ -55,6 +55,10 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   wall / read lines only when the block gets a hand on it — kill block, touch, soft block; beaten, broken or tooled: dropped),
   block-break spike cut + ball close-up, kill-block, loose-ball slow-mo, personality chatter. No manga panels. One world
   clock (`A.ts`), eased slow-mo ramps. Target Normal ≈ 6–7 scenes/match **[open: tuning]**.
+- §2.3b Rally counter (owner 2026-10-07, the Devil May Cry / Dynasty Warriors combo counter) **[built, T-251]**: every touch of the
+  ball in a rally (the serve too) pops a number right of the court — "N touches", bigger with every touch; tiers by colour and a
+  word: 6 Rally (gold), 10 Long rally (warn), 15 Marathon (hot), 20 Legendary (hot, pulsing). Shows from touch 3; holds on the
+  point, then fades; a new rally clears it. VFX panel → Rally counter: on, shows from, size. No motion with reduced motion.
 - §2.3a Air impact (owner, 2026-10-06, the Kuroko look) **[built, T-236]**: every spike (not a tip; power ≥ 58) splits the air
   at the contact — pressure rings stacked along the shot (2 / 3 / 4 by power: hard / heavy 80+ / 95+; owner 2026-10-06: a Doppler cone — the
   biggest at the hand, smaller and closer together down the shot; owner 2026-10-07: they follow the ball — lined up along its

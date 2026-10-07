@@ -105,6 +105,7 @@ function startBeat(b) {
       case 'reset':
         camRelease();
         A.rallyN = 0;
+        comboEnd(true);
         for (const id in A.disp) {
           const q = A.disp[id];
           q.pose = 'ready';
@@ -219,6 +220,7 @@ const BALL_ACC_MAX = 0.7;
 function startBall(a) {
   A.dribble = false;
   A.rallyN = (A.rallyN || 0) + 1;
+  comboTouch(A.rallyN); // the rally counter
   panAt(ballScreen().X);
   if (A.ball.follow) {
     followBall();

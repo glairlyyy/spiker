@@ -235,6 +235,7 @@ const ACTS_UI = {
     A.srvId = a.snap.rot[a.snap.serve][0];
   },
   point(a, d, bs) {
+    comboEnd(); // the rally counter holds its final count, then fades
     A.ptFlash = { side: a.side, life: 1 };
     sfx.whistle();
     A.cheer[a.side] = 1;

@@ -1888,3 +1888,108 @@ body:has(.match) .top {
     12px/1.4 ui-monospace,
     monospace;
 }
+
+/* the rally counter (js/ui/match-combo.js): right of the court, grows with the count, tiers by colour */
+.stage .combo {
+  position: absolute;
+  right: 4%;
+  top: 30%;
+  z-index: 6;
+  display: none;
+  flex-direction: column;
+  align-items: flex-end;
+  pointer-events: none;
+  font-family: 'Dela Gothic One', 'Rajdhani', sans-serif;
+  color: var(--ink);
+  text-shadow:
+    0 2px 0 var(--on-ink),
+    0 0 18px rgba(0, 0, 0, 0.6);
+  transform: rotate(-6deg);
+  transform-origin: right center;
+}
+.stage .combo.on {
+  display: flex;
+}
+.stage .combo b {
+  font-size: calc((34px + var(--n, 3) * 2.4px) * var(--k, 1));
+  line-height: 1;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.stage .combo span {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: calc(14px * var(--k, 1));
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.stage .combo em {
+  font-style: normal;
+  font-size: calc(18px * var(--k, 1));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+.stage .combo.t2 b,
+.stage .combo.t2 em {
+  color: var(--gold);
+}
+.stage .combo.t3 b,
+.stage .combo.t3 em {
+  color: var(--warn);
+}
+.stage .combo.t4 b,
+.stage .combo.t4 em,
+.stage .combo.t5 b,
+.stage .combo.t5 em {
+  color: var(--hot);
+}
+.stage .combo.t5 b {
+  animation: comboPulse 0.5s ease-in-out infinite alternate;
+}
+.stage .combo.pop b {
+  animation: comboPop 0.22s ease-out;
+}
+.stage .combo.t5.pop b {
+  animation:
+    comboPop 0.22s ease-out,
+    comboPulse 0.5s 0.22s ease-in-out infinite alternate;
+}
+.stage .combo.done {
+  animation: comboOut 2.2s ease-in forwards;
+}
+@keyframes comboPop {
+  0% {
+    transform: scale(1.6);
+  }
+  60% {
+    transform: scale(0.92);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes comboPulse {
+  to {
+    text-shadow:
+      0 2px 0 var(--on-ink),
+      0 0 28px var(--hot);
+  }
+}
+@keyframes comboOut {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage .combo b,
+  .stage .combo.pop b,
+  .stage .combo.t5 b {
+    animation: none;
+  }
+}

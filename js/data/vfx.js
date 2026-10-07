@@ -56,6 +56,14 @@ const VFX_DEF = {
       smoke: [1, 0, 3, 0.1, 'Smoke']
     }
   },
+  combo: {
+    name: 'Rally counter (touches)',
+    p: {
+      on: [1, 0, 1, 1, 'On'],
+      min: [3, 1, 10, 1, 'Shows from touch'],
+      size: [1, 0.5, 2, 0.05, 'Size']
+    }
+  },
   shake: {
     name: 'Camera shake (off with Zooms: Off)',
     p: {

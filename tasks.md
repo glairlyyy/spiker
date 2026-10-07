@@ -182,6 +182,11 @@ Accept: the row shows after a played match with calls; nothing after a sim.
 QA: career run → a played match with 2+ calls → result card.
 Result: `resultData.calls` (your `m.calls`), `callsRow` on the card's right column: "Calls · N of M made", the last 6 (label, auto on a time-out, chance, ✓ made / ✕ missed / · rally on), "Held back by: <icon> <stat>" = the weak stat seen most in missed calls. Nothing after a sim (no m.human). QA: a played Pro court match with 3 calls → card (screenshot), no errors.
 
+### [x] T-251: Rally touch counter — the combo counter (owner request)
+Spec: §2.3b          Goldens: unchanged (display only)          Save: no change
+Files: js/ui/match-combo.js (new: `comboTouch`, `comboEnd`, COMBO_TIERS), index.html, js/render/playback.js (startBall → comboTouch(A.rallyN); reset → comboEnd(true)), js/render/acts.js (point → comboEnd), js/data/vfx.js (`combo` group), css/style.css (.combo), tests/ui-smoke.js, ARCHITECTURE.md
+Result: a big tilted number right of the court counts the rally's touches (from 3), popping and growing each touch (34 px + 2.4 px per touch, to 30); tiers 6 Rally (gold) · 10 Long rally (warn) · 15 Marathon (hot) · 20 Legendary (hot, pulsing glow); on the point it holds 1.3 s then fades over 0.9 s; a new rally clears it. QA: Monster game rally to 7 ("7 touches · Rally"); tier frames 12 and 22; UI smoke checks it; no errors.
+
 ### [x] T-250: Camera shake — spike kick and floor rumble (owner request)
 Spec: §10.7b          Goldens: unchanged (display only)          Save: no change
 Files: js/render/effects.js (`camKick`, `camRumble`, impact(pow, kill)), js/render/acts.js (a spike beat's shake → kick; impact passes kill), js/render/overlay.js (`camShake` in applyView), js/data/vfx.js (`shake` group), js/ui/vfx-panel.js (Spike kick / Kill rumble tests)
