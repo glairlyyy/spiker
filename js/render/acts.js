@@ -23,13 +23,24 @@ const ACTS_FX = {
   },
   impact(a, d, bs) {
     // ball keeps its travel direction and bounces away, losing energy each hop
-    const v = A.bv || { x: 0, z: 0, h: 0 };
-    A.bounce = {
-      vx: clamp(v.x * 0.42, -0.5, 0.5),
-      vz: clamp(v.z * 0.42, -0.0012, 0.0012),
-      vh: clamp(Math.abs(v.h) * 0.42, 0.12, 0.42),
-      t: 0
-    };
+    const v = A.bv || { x: 0, z: 0, h: 0 },
+      Bv = VFX.bounce;
+    A.bounce =
+      a.kill && !a.blk && Bv.on && a.pow >= Bv.min
+        ? // a kill hit too hard to stay down (VFX.bounce, owner 2026-10-07): it rebounds high and flies off the court, the harder the further
+          {
+            vx: (Math.sign(v.x) || 1) * clamp(Math.abs(v.x) * 0.35, 0.3, 0.45) * (1 + (a.pow - Bv.min) / 150) * Bv.dist, // ≤ ~11 m/s × the power bonus
+            vz: clamp(v.z * 0.4, -0.0006, 0.0006) * Bv.dist, // 1 z unit = 12 m: ≤ ~7 m/s sideways
+            vh: (0.6 + Math.min(0.45, (a.pow - Bv.min) / 120)) * Bv.height,
+            t: 0,
+            far: true
+          }
+        : {
+            vx: clamp(v.x * 0.42, -0.5, 0.5),
+            vz: clamp(v.z * 0.42, -0.0012, 0.0012),
+            vh: clamp(Math.abs(v.h) * 0.42, 0.12, 0.42),
+            t: 0
+          };
     impact(a.pow);
     if (a.kill && !a.blk) groundBlast(a.pow, a.el);
     if (a.kill) sfx.boom(a.pow, a.blk);

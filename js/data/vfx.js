@@ -56,6 +56,15 @@ const VFX_DEF = {
       smoke: [1, 0, 3, 0.1, 'Smoke']
     }
   },
+  bounce: {
+    name: 'Kill bounce (ball flies off the court)',
+    p: {
+      on: [1, 0, 1, 1, 'On'],
+      min: [95, 0, 200, 1, 'From power'],
+      height: [1, 0.3, 3, 0.05, 'Height'],
+      dist: [1, 0.3, 3, 0.05, 'Distance']
+    }
+  },
   found: {
     name: 'Every player (foundation)',
     p: {

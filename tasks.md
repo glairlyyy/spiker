@@ -182,6 +182,11 @@ Accept: the row shows after a played match with calls; nothing after a sim.
 QA: career run → a played match with 2+ calls → result card.
 Result: `resultData.calls` (your `m.calls`), `callsRow` on the card's right column: "Calls · N of M made", the last 6 (label, auto on a time-out, chance, ✓ made / ✕ missed / · rally on), "Held back by: <icon> <stat>" = the weak stat seen most in missed calls. Nothing after a sim (no m.human). QA: a played Pro court match with 3 calls → card (screenshot), no errors.
 
+### [x] T-248: A hard kill bounces off the court (owner request)
+Spec: §10.7b          Goldens: unchanged (display only)          Save: no change
+Files: js/render/acts.js (impact → far bounce), js/render/ball.js (`far`: no court-side walls, 2.6 s, then the ball is hidden), js/data/vfx.js (`bounce` group)
+Result: a kill (not a block) at power ≥ VFX.bounce.min (95) rebounds high (vh 0.6–1.05 → ~2.7–7 m) and keeps going along its line (≤ ~11 m/s, sideways ≤ ~7 m/s, more with power) over the end line into the stands, hops twice, then disappears until the next serve; softer kills keep the old small bounce. VFX panel → Kill bounce: on, from power, height, distance. QA: Monster game kill at 157 km/h: x 798 → 1168+ (end line → beyond), peak h ≈ 400 (6.5 m); camera stays; no errors.
+
 ### [x] T-247: Foundation VFX for every player (owner request)
 Spec: §10.7b          Goldens: unchanged (display only)          Save: no change
 Files: js/render3d/actors3d.mjs (`foundation` per frame: jump / sprint / dive / breath), js/render3d/fx3d.mjs (`dust`, `skid`, `touch`, `breath`), js/render/playback.js (startBall → touchFx on bump / dive / set), js/render/effects.js (`touchFx`), js/render3d/r3d.mjs (fx `touch`), js/data/vfx.js (`found` group), js/render3d/vfxlab3d.mjs + js/ui/vfx-lab.js ("Every player" preview)

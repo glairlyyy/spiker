@@ -82,15 +82,16 @@ function preServe(f) {
 }
 /** Free-bounce physics after the ball lands (court units per ms): gravity, energy lost per hop, ends after 1.6 s. */
 const BOUNCE_G = 0.0011,
-  BOUNCE_MS = 1600;
+  BOUNCE_MS = 1600,
+  BOUNCE_FAR_MS = 2600; // a kill flying off the court (VFX.bounce): longer, and no court-side walls
 /** Ball velocity from the tween (for bounces) and free bounces after the ball hits the floor. */
 function ballPhysics(dt) {
   const B = A.ball,
     q = A.bounce;
   if (q && B.vis) {
     q.t += dt;
-    B.x = clamp(B.x + q.vx * dt, -90, 1090);
-    B.z = clamp(B.z + q.vz * dt, -0.4, 1.4);
+    B.x = q.far ? B.x + q.vx * dt : clamp(B.x + q.vx * dt, -90, 1090);
+    B.z = q.far ? B.z + q.vz * dt : clamp(B.z + q.vz * dt, -0.4, 1.4);
     q.vh -= BOUNCE_G * dt;
     B.h += q.vh * dt;
     if (B.h <= 0) {
@@ -106,7 +107,10 @@ function ballPhysics(dt) {
         q.vz *= 0.9;
       }
     }
-    if (q.t > BOUNCE_MS) A.bounce = null;
+    if (q.t > (q.far ? BOUNCE_FAR_MS : BOUNCE_MS)) {
+      A.bounce = null;
+      if (q.far) B.vis = false; // gone into the stands (the next serve brings it back)
+    }
   }
   const p = A.bp;
   if (p && dt > 0) A.bv = { x: (B.x - p.x) / dt, z: (B.z - p.z) / dt, h: (B.h - p.h) / dt };
