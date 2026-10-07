@@ -196,7 +196,7 @@ function reachForBall(pl, d, pose, ballPos) {
   }
 }
 
-/** Hand trails (stars thin, OP wide, element colour on a full gauge) and eye streaks (in the zone / captain's buff). */
+/** Hand trails (stars thin, OP wide, element colour on a full gauge) and eye streaks (Fever). */
 function lightTrails(pl, d, root, dt) {
   const side = d.side;
   const tier = d.p.op ? 2 : d.p.star ? 1 : 0,
@@ -216,8 +216,8 @@ function lightTrails(pl, d, root, dt) {
     hands = ['leftHand', 'rightHand'];
   for (let i = 0; i < 2; i++) pl.trails[i].update(pl.bone(hands[i]).getWorldPosition(tmp2), dt, cam, o);
   // eyes (Kuroko's zone): a thin streak of light from each eye that flows back behind the head, in the eye colour —
-  // only while the team is in the zone or the player has a captain's buff
-  const eyesOn = zk > 1 || !!(A.buffShown && A.buffShown[d.p.id]), // in the zone, or carrying a captain's buff
+  // only while the team is in Fever (spec §2.15; the director off: in the zone or with a captain's buff, as before)
+  const eyesOn = zk > 1 || (!Dir.on() && !!(A.buffShown && A.buffShown[d.p.id])),
     head = pl.bone('head'),
     fwd = tmp.set(Math.sin(root.rotation.y), 0, Math.cos(root.rotation.y)),
     eo = eyesOn

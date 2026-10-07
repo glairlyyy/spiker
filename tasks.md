@@ -207,7 +207,7 @@ impact, Fever shows 4 rings + dome; fx count readout per stage in Result.
 QA: Monster game → V → Director → Force stage.
 Result: `DIR_ROWS` (the §2.15 table) + `Dir` in director.js: `Dir.beat` marks the play (the spiker's side, +1 stage for OP / element, looks ahead for the kill); `Dir.k()` scales every fx3d particle / streak / ring / dome; `airMin / airRings / airDome`, `shakeK`, `ballStyle`, `bounceOn`, `blastOn`, `frameOk` (kill, floor, once per N points per side) replace the raw VFX reads in acts / effects / overlay / r3d; `Dir.aura(side)` drives actors3d (Loose grey haze, Focused faint, Fever = the old zone look: rings, eye streaks, motes). VFX group `dir` (On, Force stage) first in the panel; Off = the raw panel values as before. QA (Monster, Force stage, 12 points; every Monster player is OP so each row shows one stage up): forced Loose → Composed row: 9 air impacts, 2 rings, no frame / bounce / blast; Composed → Focused: 24 air, 3 rings, 4 frames, 6 bounces; Focused / Fever → Fever: ~20 air, 4 rings + dome, 5 frames, 4 bounces, 3–4 blasts. Average game (no OP, 15 points): Loose / Composed / Focused 0 air impacts (powers < 70), Fever 2 (4 rings + dome). Per air impact ~7 meshes / ~130 particles at Composed vs ~10 / ~150 at Fever (sizes × 0.7 / × 1.3). Structural note for ARCHITECTURE: director.js sits between playback and every effect (renderers ask `Dir` for floors / sizes; VFX values stay the Focused row). `R3D.fxStats()` added (QA).
 
-### [ ] T-262: The arena follows the hotter team; auras by stage (Agent C)
+### [x] T-262: The arena follows the hotter team; auras by stage (Agent C)
 Spec: §2.15 (arena row), §9.11 Moments, §2.11          Goldens: unchanged          Save: no change
 Goal: lights, crowd and music follow the hotter team's stage; the old zone look becomes Fever's.
 Files: js/render/director.js, js/render3d/venue3d.mjs, venues/*.mjs, actors3d.mjs (zone rings / eye streaks → Fever), js/audio/sfx.js (music gain)
@@ -218,7 +218,7 @@ Steps:
 2. Eye streaks and zone rings: Fever only; Focused: the faint aura.
 Accept: QA screenshots in each venue at Composed and Fever (Force stage); tests pass.
 QA: Monster game; career court match (hall).
-Result:
+Result: `DIR_ARENA` + `Dir.arena()` (hotter team = higher stage, ties: higher fire — `m.fire`, else `m.mom` until T-259): house light × 0.85 Loose / × 0.65 Fever, Focused warms the sun (35 % toward #ffc58a), Fever brings up the hot team's rim light; crowd bounce × 0.4 / 1 / 1.3 / 1.5 and a standing baseline for the hot team's (and neutral) fans at Focused 0.15 / Fever 0.45; music via new `musicMood(k)` in sfx.js (× 0.8 / 1 / 1.05 / 1.15, eased ~1 s; `Dir.hush` → × 0.5 for T-263). Eye streaks: Fever only (the captain's-buff eyes only with the director off); zone rings / motes Fever, faint aura Focused, grey haze Loose (T-261's `Dir.aura`). Director off = the old zone look. QA (Force stage, Monster teams, broadcast camera): arena, hall, street, beach, highland at Composed and Fever — Fever dims the house light, rings under every player, crowd up, music 1.15; no errors. Structural note: venue3d reads `Dir.arena()` each frame; sfx exports `musicMood`.
 
 ### [ ] T-263: Cinematic lines between points (Agent C)
 Spec: §2.18          Goldens: unchanged (presentation; lines by hash)          Save: no change

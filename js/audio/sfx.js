@@ -17,7 +17,8 @@ const SOUND = (() => {
   SND.bgmWant = false; // a match is open (guards a load that finishes after leaving)
   SND.bgmLoad = false; // fetch + decode in flight
   /** Music level for the current volume slider and sound toggle. */
-  const bgmLevel = () => BGM_GAIN * SND.vol * (SND.on ? 1 : 0);
+  SND.mood = 1; // the director's music level (spec §2.15: × 0.8 Loose … × 1.15 Fever; the hush at set point × 0.5)
+  const bgmLevel = () => BGM_GAIN * SND.vol * (SND.on ? 1 : 0) * SND.mood;
   /** Start the match music (fades in over 1 s). Needs SND.ctx (audioInit first); safe to call while playing or loading. */
   async function bgmStart() {
     const c = SND.ctx;
@@ -72,6 +73,12 @@ const SOUND = (() => {
   /** Follow the sound toggle / volume slider. */
   function bgmSync() {
     if (SND.bgm) SND.bgm.gain.setTargetAtTime(bgmLevel(), SND.ctx.currentTime, 0.03);
+  }
+  /** The director's music level × (eased over ~1 s; only a change is sent to the audio graph). */
+  function musicMood(k) {
+    if (Math.abs(k - SND.mood) < 0.001) return;
+    SND.mood = k;
+    if (SND.bgm) SND.bgm.gain.setTargetAtTime(bgmLevel(), SND.ctx.currentTime, 0.33);
   }
   function audioInit() {
     try {
@@ -484,6 +491,6 @@ const SOUND = (() => {
       [523, 659, 784, 1047].forEach((f, i) => osc('triangle', f, f, t + 0.35 + i * 0.08, 0.35, 0.07, [SND.master, R]));
     }
   };
-  return { SND, sfx, audioInit, toggleSound, setVolume, bgmStart, bgmStop, panAt };
+  return { SND, sfx, audioInit, toggleSound, setVolume, bgmStart, bgmStop, panAt, musicMood };
 })();
-const { SND, sfx, audioInit, toggleSound, setVolume, bgmStart, bgmStop, panAt } = SOUND;
+const { SND, sfx, audioInit, toggleSound, setVolume, bgmStart, bgmStop, panAt, musicMood } = SOUND;

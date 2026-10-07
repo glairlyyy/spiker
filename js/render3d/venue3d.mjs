@@ -176,6 +176,7 @@ export function dressVenue(w, kind, stakes, t0c, t1c) {
   w.confetti.visible = false;
 }
 
+const WARM = new THREE.Color('#ffc58a'); // Focused: the house light warms
 const mtx = new THREE.Matrix4(),
   scl = new THREE.Vector3(),
   pos = new THREE.Vector3(),
@@ -184,11 +185,21 @@ const mtx = new THREE.Matrix4(),
 /** Per frame: crowd bounce and wave, the venue's zone light, confetti on the win, flags, the big screen. */
 export function updateVenue(w, now, dt, camera) {
   if (camera) fadeBeams(camera);
+  // the arena follows the hotter team (spec §2.15): lights, rim, crowd; the hush at set / match point quiets the crowd
+  const ar = Dir.arena(),
+    crowdK = ar.crowd * (Dir.hush ? 0.5 : 1);
   // crowd
   for (const c of w.crowd) {
     for (let i = 0; i < c.fans.length; i++) {
       const f = c.fans[i],
-        lvl = Math.max(f.side >= 0 ? A.cheer[f.side] : 0, A.cheerAll * 0.8, A.cele && f.side === A.cele.w ? 1 : 0);
+        // the hotter team's fans (all of them in a neutral stand) stand up as it heats up; the crowd follows the arena row
+        hotFan = f.side === ar.side || f.side < 0,
+        lvl = Math.max(
+          (f.side >= 0 ? A.cheer[f.side] : 0) * crowdK,
+          A.cheerAll * 0.8 * crowdK,
+          hotFan ? ar.stand : 0,
+          A.cele && f.side === A.cele.w ? 1 : 0
+        );
       let off = lvl > 0 ? Math.abs(Math.sin(now * 0.013 + f.ph)) * 0.35 * Math.min(1, lvl * 1.5) : 0;
       if (A.wave) off += Math.exp(-Math.pow((f.sx - A.wave.x) / 55, 2)) * 0.5;
       pos.set(f.x, f.y + 0.8 * f.sc + off, f.z);
@@ -198,16 +209,17 @@ export function updateVenue(w, now, dt, camera) {
     }
     c.mesh.instanceMatrix.needsUpdate = true;
   }
-  // zone: the house light dims, a rim light in the zone team's colour comes up
-  const zs = A.zoneShown || [false, false],
-    zi = zs[0] ? 0 : zs[1] ? 1 : -1,
-    k = Math.min(1, dt / 400),
-    dim = zi >= 0 ? 0.65 : 1;
+  // lights: the house light dims (Loose 85 %, Fever 65 %), Focused warms it, Fever brings up a rim light in the hot team's colour
+  const k = Math.min(1, dt / 1000) * 2.5,
+    rimOn = ar.rim && ar.side >= 0;
   if (w.base) {
-    w.hemi.intensity += (w.base.hemi * dim - w.hemi.intensity) * k;
-    w.sun.intensity += (w.base.sun * dim - w.sun.intensity) * k;
-    if (zi >= 0) w.zoneRim.color.copy(tint.set(A.m.t[zi].color));
-    w.zoneRim.intensity += ((zi >= 0 ? 0.9 : 0) - w.zoneRim.intensity) * k;
+    w.hemi.intensity += (w.base.hemi * ar.dim - w.hemi.intensity) * k;
+    w.sun.intensity += (w.base.sun * ar.dim - w.sun.intensity) * k;
+    w.warm = (w.warm || 0) + ((ar.warm || 0) - (w.warm || 0)) * k;
+    w.sunCol0 = w.sunCol0 || w.sun.color.clone(); // the light's own colour, warmed toward WARM
+    w.sun.color.copy(w.sunCol0).lerp(WARM, 0.35 * w.warm);
+    if (rimOn) w.zoneRim.color.copy(tint.set(A.m.t[ar.side].color));
+    w.zoneRim.intensity += ((rimOn ? 0.9 : 0) - w.zoneRim.intensity) * k;
   }
   // confetti on the win
   const P = w.confetti,

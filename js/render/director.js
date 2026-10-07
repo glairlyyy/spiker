@@ -32,6 +32,17 @@ const DIR_ROWS = {
   }
 };
 
+/**
+ * The arena row (spec §2.15, last line) for the hotter team's stage: house light × (dim), a warm tint (0–1), the team rim
+ * light (0/1), crowd bounce × and a standing baseline (on its feet), music gain ×.
+ */
+const DIR_ARENA = {
+  loose: { dim: 0.85, warm: 0, rim: 0, crowd: 0.4, stand: 0, music: 0.8 },
+  composed: { dim: 1, warm: 0, rim: 0, crowd: 1, stand: 0, music: 1 },
+  focused: { dim: 1, warm: 1, rim: 0, crowd: 1.3, stand: 0.15, music: 1.05 },
+  fever: { dim: 0.65, warm: 0, rim: 1, crowd: 1.5, stand: 0.45, music: 1.15 }
+};
+
 const Dir = {
   /** The play being staged: { side, stage (with the OP / element step), kill (the attack ends in a kill), atk }; null = none yet. */
   cur: null,
@@ -156,8 +167,27 @@ const Dir = {
     if (!this.on()) return typeof A !== 'undefined' && A && A.zoneShown && A.zoneShown[side] ? 'full' : '';
     return DIR_ROWS[this.stageOf(side)].aura;
   },
-  /** Every frame (real time, ms). */
+  /**
+   * The arena follows the hotter team (spec §2.15): the higher stage (ties: the higher fire). → { side, stage, ...DIR_ARENA row };
+   * director off: the old zone look (the zone team's rim, lights at 65 %).
+   */
+  arena() {
+    if (!this.on()) {
+      const zs = (A && A.zoneShown) || [false, false],
+        zi = zs[0] ? 0 : zs[1] ? 1 : -1;
+      return zi >= 0
+        ? { side: zi, stage: 'fever', ...DIR_ARENA.fever, warm: 0, crowd: 1, stand: 0, music: 1 }
+        : { side: -1, stage: 'composed', ...DIR_ARENA.composed };
+    }
+    const i = [0, 1].map(s => STAGE_IDS.indexOf(this.stageOf(s))),
+      f = (A && A.m && (A.m.fire || A.m.mom)) || [0, 0],
+      side = i[0] !== i[1] ? (i[0] > i[1] ? 0 : 1) : f[0] >= f[1] ? 0 : 1,
+      stage = STAGE_IDS[i[side]] || 'composed';
+    return { side, stage, ...DIR_ARENA[stage] };
+  },
+  /** Every frame (real time, ms): the music follows the arena, the lines run. */
   step(raw) {
+    if (typeof musicMood === 'function') musicMood(this.hush ? 0.5 : this.arena().music);
     this.stepLines(raw);
     return raw;
   },
@@ -172,8 +202,11 @@ const Dir = {
   },
   // ---------- lines (T-263) ----------
   talk: null,
+  /** Set / match point: the crowd and music go down (spec §2.18). */
+  hush: false,
   resetLines() {
     this.talk = null;
+    this.hush = false;
   },
   beatLines() {},
   stepLines() {},
