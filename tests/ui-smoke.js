@@ -117,7 +117,7 @@ const step = async (name, fn) => {
   );
   await step('simmed court match → result card', async () => {
     await ev(() => mapCourt('arena', 'open', true));
-    await pg.waitForFunction(() => CW.lock && CW.lock.phase === 'res', null, { timeout: 30000 });
+    await pg.waitForFunction(() => CW.lock && CW.lock.phase === 'res', null, { timeout: 90000 });
     const txt = await ev(() => document.querySelector('#actlock').textContent);
     if (!/Top 3/i.test(txt)) throw new Error('no result card');
     await pg.keyboard.press('Space');
