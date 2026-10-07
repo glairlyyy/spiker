@@ -498,6 +498,9 @@ Features (spec first):
 - Balance pass (spec §4.10 condition values, §5.5 severe injury, hype frequency §2.3).
 - Match revamp, parked (owner, 2026-10-07): the match remembers your choices ("AI memory"); back-row defensive commands;
   temperament changing how a team plays; the read meter for AI hitters; pre- and post-match lines (§2.18).
+- Off-hand line shot (owner, 2026-10-07): a right-hander attacking from the right side who hits down the line (to their right)
+  gets ~15 % less power and picks that shot less often; an ace trait "Wrist-away" removes the penalty (blockers don't expect it).
+  Then the display: torso turns toward the shot, wrist rolls out on the line shot. Left-handers later flip it. Engine → goldens.
 
 Refactor seams to cut only when the feature is specced (not now — YAGNI):
 
