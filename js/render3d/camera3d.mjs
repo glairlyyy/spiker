@@ -5,7 +5,18 @@ import * as THREE from 'three';
 import { KH, KX, KZ } from './units3d.mjs';
 
 const CAM = { pos: [-2.59, 14.011, 33.007], look: [-0.059, 3.294, 0.012], fov: 20.357 }; // fitted to the classic framing
-export const ASPECT = 1000 / 440;
+export const ASPECT = 1000 / 440; // the classic court framing; the full-court screen (spec §9.9, T-252) keeps its width
+let aspect = ASPECT, // the court canvas's width / height (the viewport since T-252)
+  vh = 220; // the overlay's logical half-height: the logical screen is 1000 wide, 2·vh tall
+/** The court canvas's aspect (r3d syncSize, every frame). A taller screen widens the vertical FOV so the court keeps its width. */
+export function setAspect(a) {
+  if (!(a > 0) || a === aspect) return;
+  aspect = a;
+  vh = 500 / a;
+  base.aspect = cam.aspect = a;
+}
+/** A shot's FOV (designed for the 1000:440 frame) → the vertical FOV that keeps its horizontal extent on this screen. */
+const vfov = f => (aspect >= ASPECT ? f : (2 * Math.atan(Math.tan((f * Math.PI) / 360) * (ASPECT / aspect)) * 180) / Math.PI);
 let world = null; // the built world (players, ball) for scene shots
 export const setCameraWorld = w => (world = w);
 
@@ -274,11 +285,11 @@ export function updateBase(dt) {
   base.near = W3.pov > 0.02 ? POV.near : 0.5; // eyes are close to the hands and the ball
   base.position.copy(pos);
   base.lookAt(look);
-  base.fov = fov;
+  base.fov = vfov(fov);
   base.updateMatrixWorld(true);
   base.updateProjectionMatrix();
   base.getWorldDirection(fwd);
-  focal = 220 / Math.tan((base.fov * Math.PI) / 360);
+  focal = vh / Math.tan((base.fov * Math.PI) / 360);
   cam.position.copy(base.position);
   cam.quaternion.copy(base.quaternion);
   cam.updateMatrixWorld(true);
@@ -381,12 +392,12 @@ function shotPose(s) {
 updateBase(1);
 const pv = new THREE.Vector3(),
   pw = new THREE.Vector3();
-/** Court → logical screen (the P() contract): X 0..1000, Y from VT, s = screen px per height unit. */
+/** Court → logical screen (the P() contract): X 0..1000, Y from VT to VT + 2·vh, s = screen px per height unit. */
 export function P3D(x, z, h) {
   pw.set((x - 500) * KX, h * KH, (0.5 - z) * KZ);
   pv.copy(pw).project(base);
   const depth = Math.max(1, pw.sub(base.position).dot(fwd));
-  return { X: (pv.x + 1) * 500, Y: VT + (1 - pv.y) * 220, s: (focal * KH) / depth };
+  return { X: (pv.x + 1) * 500, Y: VT + (1 - pv.y) * vh, s: (focal * KH) / depth };
 }
 /** Apply the 2D view transform (screen = f·p + o in logical units: shake, push-in, zoom) to the render projection. */
 const M = new THREE.Matrix4();
@@ -399,14 +410,14 @@ export function viewCamera(V) {
     cam.position.set(...dbg.pos);
     cam.lookAt(...dbg.look);
     cam.updateMatrixWorld(true);
-    const pc = new THREE.PerspectiveCamera(dbg.fov || 30, ASPECT, 0.05, 200);
+    const pc = new THREE.PerspectiveCamera(dbg.fov || 30, aspect, 0.05, 200);
     cam.projectionMatrix.copy(pc.projectionMatrix);
     cam.projectionMatrixInverse.copy(pc.projectionMatrixInverse);
     return;
   }
   const f = V.f,
     bx = f - 1 + V.ox / 500,
-    by = 1 - f - (VT * (f - 1) + V.oy) / 220;
+    by = 1 - f - (VT * (f - 1) + V.oy) / vh;
   M.set(f, 0, 0, bx, 0, f, 0, by, 0, 0, 1, 0, 0, 0, 0, 1);
   cam.projectionMatrix.copy(base.projectionMatrix).premultiply(M);
   cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert();

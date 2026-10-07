@@ -611,17 +611,23 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
   names truncate to one line. Toggles/options sit above the action row. Sizes: drawer `clamp(480px, 36vw, 600px)`,
   hub modal 640px, wide 960px, place card 480px, match rail 360px; HUD corners one inset (16px). Numbers right-aligned,
   tabular-nums.
-- §9.9 Match screen (design system `match-ui.md`, MatchLayout card): no page scroll at ≥1280×720; site header hidden.
-  Court = `min(100vw − 48px, (100vh − 168px) / 0.44)`, centred, 1000:440 kept (1440×900 → 1392×612). Bands: score
-  64px (name + swatch + rotation chips, server chip labelled "serve") · momentum 20px (labelled; "In the zone: {team}") ·
-  court (tags underlined in team colour; 2-line commentary ticker on `hud` bottom-left) · control bar 48px, three groups
-  split by a hairline, no group labels (owner, 2026-10-06 — it overflowed): **Play** `❚❚ Pause Space` · `1× 2× 4×` ·
-  `Skip ⏭` | **Team** `Timeout` (the team's short name only when both sides show) · `Tactics T` | **View** (right)
-  `Details B` · `⛶ F` · sound · `⚙`. The camera lives in ⚙ (`Camera C`, key C cycles it). The bar wraps onto a second row
-  rather than overflow (fits one row from ~1100px). "Your side" = the team holding `Run.you(RUN)`; career shows
-  Timeout/Tactics for it only, Monster game for both. Overlay rail 400px (key B; opens on pause and after the final): Box score ·
-  Tactics (Commentary tab cut, owner 2026-10-07 — the court ticker stays). ⚙ settings = labelled segmented controls (every option visible), opening upward from the bar. Results card
-  action row: Continue/Back + Box score; playback disabled.
+- §9.9 Match screen (design system `match-ui.md`, MatchLayout card) — **full-court layout** (owner, 2026-10-07; T-252): the 3D
+  court fills the viewport; every control is an HTML glass panel (`hud` ground, `line` border, 12px radius) floating over
+  it, like the hub over the map. Nothing UI is drawn in three.js (name tags, ball trail, the venue's big screen stay in-world).
+  - **Court**: `.match` is fixed full-screen (site header covered); the court canvas = the viewport. The camera keeps the
+    old **horizontal** framing (the 1000:440 shot's width): a taller screen shows more stands above and floor below, never
+    less court; a wider one shows more sides. The overlay's logical space stays 1000 wide, its height follows the screen.
+  - **Top** (centred, ≤ 1120px, 16px from the top): score bar 64px — name + swatch + rotation chips each side, score and
+    set line in the middle — with the momentum line (labelled; "In the zone: {team}") under it, in one panel.
+  - **Bottom** (centred, 16px from the bottom): the control bar 48px, groups as before — **Play** `❚❚ Pause Space` ·
+    `1× 2× 4×` · `Skip ⏭` | **Team** `Timeout` · `Tactics T` | **View** `Details B` · `⛶ F` (browser fullscreen of the
+    whole match screen, HUD kept) · sound · `⚙`. ⚙ ends with `Leave match` (quiet, danger, last). Wraps rather than overflows.
+  - **Left**: toasts top-left under nothing (16px); the 2-line commentary ticker bottom-left, above the control bar.
+  - **Right**: the rail (Box score · Tactics — Commentary tab cut, owner 2026-10-07, the court ticker stays; key B; opens on pause and after the final) floats 400px wide
+    from under the top panel to above the control bar, 16px from the edge.
+  - **Over the court**: cut-ins, hype banners, calls and the result card as before (the result card centred over the court).
+  - "Your side" = the team holding `Run.you(RUN)`; career shows Timeout/Tactics for it only, Monster game for both. ⚙
+    settings = labelled segmented controls opening upward. Results card action row: Continue/Back + Box score.
 - §9.10 Technique switches **[built, T-178–T-179]** (owner, 2026-10-04; design system TechSwitch card): you can hold back a technique you own,
   because some trade something for their gain (e.g. Killer Jump Serve: +10% pace, +3% faults; Delayed Spike §2.9a: may hang too long).
   - **Rule**: switch any time, no cost; it applies from the **next rally** (same as tactics). Career: only your player's

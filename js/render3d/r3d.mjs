@@ -26,7 +26,8 @@ import {
   getFollow,
   povHidden,
   getPovStats,
-  setDebugCam
+  setDebugCam,
+  setAspect
 } from './camera3d.mjs';
 import { posePlayer, poseCoach, dressActors, swapActor, setPovHidden, setKeepColors } from './actors3d.mjs';
 
@@ -269,6 +270,7 @@ function syncSize() {
     scale = Math.min(1, Math.sqrt(Q.px3d / Math.max(1, w * h))) * dyn.res;
   if (gl.width !== Math.round(w * scale) || gl.height !== Math.round(h * scale))
     world.renderer.setSize(Math.round(w * scale), Math.round(h * scale), false);
+  setAspect(w / Math.max(1, h)); // the full-court screen (spec §9.9): the camera follows the canvas's shape
   const s = gl.style;
   s.left = cv.offsetLeft + 'px';
   s.top = cv.offsetTop + 'px';

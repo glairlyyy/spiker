@@ -10,6 +10,8 @@
 const FY = 505,
   DEPTH = 175,
   SK = -45;
+/** The overlay's logical half-height: the view is 1000 wide and 2·VH tall (220 = the classic 1000:440; fit() sets it, spec §9.9). */
+let VH = 220;
 const VT = 80, // logical y of the top of the view (the overlay's origin)
   FIG = 1.12; // figure scale: tag and swirl sizes per projected px of height
 /** Court z (0..1 across) → x-comparable units, for on-screen distances (squeaks, gait, dust). */

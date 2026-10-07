@@ -45,7 +45,8 @@ function settingsMenu() {
     ${seg('Graphics', 'gfx', Object.fromEntries(Object.entries(GFX).map(([k, g]) => [k, g.name])), G.gfx, 'High: full resolution always. Auto: sharp, drops a little only if frames run slow. Fast: lower resolution for weaker devices.')}
     ${seg('Camera <kbd>C</kbd>', 'cam', CAM3, cam, 'Courtside: close and low, following the ball. Broadcast: the whole court from the stands. Follow: behind one player. POV: through their eyes.')}
     <select id="folsel" class="folsel" hidden onchange="pickFollow(this.value)" aria-label="Player to follow" title="The player the Follow camera stays behind"></select>
-    <label class="vol sset"><span class="cgl">Volume</span><input type="range" min="0" max="100" value="${Math.round(SND.vol * 100)}" oninput="setVolume(this.value / 100)" aria-label="Volume"></label>`;
+    <label class="vol sset"><span class="cgl">Volume</span><input type="range" min="0" max="100" value="${Math.round(SND.vol * 100)}" oninput="setVolume(this.value / 100)" aria-label="Volume"></label>
+    <button class="btn quiet danger" onclick="leaveMatch()" ${tip('Leave without finishing the match')}>Leave match</button>`;
 }
 /** Set one ⚙ option directly (the cycle functions stay for anything that still cycles), then redraw the pop-over. */
 function setOpt(kind, v) {
@@ -114,7 +115,7 @@ function toggleCam3D() {
 }
 /** Fullscreen the court. Falls back to a fixed full-viewport overlay where the Fullscreen API is missing (iPhone). */
 function toggleFullscreen() {
-  const st = $('#stage');
+  const st = $('#match'); // the whole match screen, HUD included (spec §9.9)
   if (!st) return;
   const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
   if (fsEl) (document.exitFullscreen || document.webkitExitFullscreen).call(document);

@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-236** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-253** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -82,6 +82,20 @@ Accept:
 - Sim and watched both end on the T-227 card with XP rows.
 QA: career run → a venue → Pro, Sim ⏭ → result card; then Open, watched → result card.
 Result: built by the spec chat. `COURT` (career.js), `Court.why / draw / fixture / result` (court.js), `courtCard` + `mapCourt` (career-court.js): Play it / Sim it + Open $20→50 · Pro $80→200 · Elite $200→500 (level, ace %, injury on hover). Deviations: the league mean leaves the named out (they are never drawn; at week 6 an Elite target was above every drawable player); you always start (forceYou — a benched you earned nothing). Tests: draws by role, Pro mean ±3 of target, aces 6 % / 15 % / ≤ 3 %, loss = fee only, win = 2.5 × fee, risk × 0.5, no eval week / injured / short of money. QA: venue card, Pro sim → result card, Open watched → result card; no errors.
+
+### [x] T-252: Full-court match screen — the 3D court fills the screen, the HUD floats over it (owner request, spec chat)
+Spec: §9.9          Goldens: unchanged          Save: no change
+Goal: the match is one full-screen 3D court with glass panels over it (score + momentum top, controls bottom, rail right).
+Files: js/ui/match-screen.js (markup: `.mtop` wraps board + momentum; `fit` = the viewport), js/ui/match-controls.js
+(fullscreen = the `.match` section; ⚙ `Leave match`), js/ui/match-calls.js (chips: the overlay's VT offset),
+js/render/playback.js (`VH`, the overlay's logical half-height), js/render/overlay.js (zoom clamps / timeout banner follow VH),
+js/render3d/camera3d.mjs (aspect from the canvas; vertical FOV widened to keep the horizontal framing; P3D / viewCamera use VH),
+js/render3d/r3d.mjs (syncSize passes the aspect), css/style.css, ARCHITECTURE-details.md
+Do not: draw UI in three.js; change beat timing or the engine; change the camera modes' positions / look targets.
+Accept: at 1440×900 and 1280×720 the court spans the screen width as before, no page scroll, HUD panels clear of each
+other; name tags and calls sit on their players; F fullscreens with the HUD; tests + test:ui green.
+QA: Monster game screenshots at 1440×900 and 1280×720 (rally, rail open, result card).
+Result: `.match` fixed full-screen; `.mtop` (board + momentum, ≤ 1120px) and `.cbar` float top / bottom on `hud` glass, the rail floats right between them, ticker above the bar; `fit` = the viewport + `VH`; camera3d `setAspect` / `vfov` keep the classic horizontal framing (P3D, focal, viewCamera on the same half-height); overlay zoom clamps + timeout banner shift by VH − 220; call chips fixed for the VT offset (were 80 logical px low); F fullscreens `#match`; ⚙ `Leave match` (the site header with Menu is covered now). QA: 1440×900 and 1280×720 — court full width, no scroll, panels clear (top 16–110, bar 648/828–), tags on players, rail and result card fine; tests 115/115, test:ui 12/12, lint green.
 
 ### [ ] T-230: Study — a private tutor and bookstores (Agent B, after T-228)
 Spec: §4.14b          Goldens: unchanged          Save: no change (new `run.study` via the defaults table, no RUN_VERSION bump)
