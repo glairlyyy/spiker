@@ -1,5 +1,5 @@
 // Match screen: open a fixture (startMatch → A, the markup, the 3D world), size the court, venue and stakes, leave. Controls and
-// HUD: match-controls.js; technique switches: match-tech.js; the result and cut-ins / toasts: match-result.js.
+// HUD: match-controls.js; technique switches: match-tech.js; the result: match-result.js.
 
 let A = null,
   cv,
@@ -53,9 +53,8 @@ function startMatch(fx) {
     <div class="stage" id="stage"><canvas id="cv" aria-label="Match court"></canvas>
       <div class="fsbar" aria-label="Fullscreen controls"><span class="fss"><i style="--tc:${a.color}"></i>${esc(a.short)} <b id="fs0">0</b> : <b id="fs1">0</b> ${esc(b.short)}<i style="--tc:${b.color}"></i></span>
         <span class="fsb"><button onclick="togglePause()" id="fspause" aria-label="Pause">❚❚</button>${SPEEDS.map(s => `<button onclick="setSpeed(${s})" data-s="${s}" class="fsspd">${s}x</button>`).join('')}<button onclick="toggleFullscreen()" aria-label="Exit fullscreen">✕</button></span></div>
-      <div class="cut" id="cut"><div class="cut-band"><div class="cut-lines"></div><span class="cut-face"></span><span class="cut-face cut-face2"></span><span class="cut-num"></span><div class="cut-txt"><div class="cut-move"></div><div class="cut-name"></div><div class="cut-sub"></div></div></div></div>
       <div class="hbanner" id="hbanner" aria-live="polite"></div><div class="fevb" id="fevb" aria-live="polite"></div><div class="hsay" id="hsay" aria-live="polite"></div>
-      <div class="toasts" id="toasts" aria-live="polite"></div><div class="ticker" id="ticker" aria-hidden="true"></div><div class="over" id="over" hidden></div></div>
+      <div class="over" id="over" hidden></div></div>
     <div class="controls cbar" role="toolbar" aria-label="Match controls">
       <div class="cg play"><button class="btn" id="pause" onclick="togglePause()">${pauseLabel(false)}</button>
         <div class="seg" role="group" aria-label="Speed">${SPEEDS.map(s => `<button class="btn ${s === 1 ? 'on' : ''}" data-s="${s}" onclick="setSpeed(${s})">${s}×</button>`).join('')}</div>
@@ -152,10 +151,6 @@ function startMatch(fx) {
   boxScore();
   showTac(0);
   showTac(1);
-  logLine(
-    `${a.name} vs ${b.name} — ${nm.round}. One set to ${RULES.pointsToWin}, win by ${RULES.winBy}. Everyone rotates through serve.`,
-    'set'
-  );
   open3D();
 }
 /** Load the 3D renderer module and build its world once (the menu starts this in the background). */

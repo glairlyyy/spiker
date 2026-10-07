@@ -100,8 +100,7 @@ function matchState() {
     r3d: !!R3D,
     res: R3D ? R3D.res : null, // 3D dynamic resolution
     px: cv ? `${cv.width}x${cv.height}` : null,
-    cut: !!(b && b.cut),
-    mini: !!G.cutMini
+    cut: !!(b && b.cut)
   };
 }
 /** Stall thresholds (ms): no progress at all, no progress while the 3D players load, one beat playing. */

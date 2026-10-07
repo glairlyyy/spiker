@@ -336,35 +336,6 @@ h4 {
   font-weight: 800;
   text-shadow: 0 0 6px rgba(255, 46, 77, 0.55);
 }
-.cut.op .cut-band {
-  background: linear-gradient(100deg, var(--court-red), var(--court-red-deep) 60%, var(--court-red));
-}
-.cut.op .cut-band::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    115deg,
-    transparent 40%,
-    rgba(191, 244, 255, 0.9) 41%,
-    transparent 43%,
-    transparent 60%,
-    rgba(255, 242, 122, 0.85) 61%,
-    transparent 62.5%
-  );
-  animation: zapf 0.12s steps(2) infinite;
-}
-.cut.op .cut-move {
-  color: var(--white);
-
-  text-shadow:
-    0 0 12px var(--court-glow),
-    3px 3px 0 var(--court-ink);
-}
-.cut.op .cut-name,
-.cut.op .cut-sub {
-  color: var(--white);
-}
 @keyframes zapf {
   50% {
     opacity: 0.2;
@@ -395,23 +366,6 @@ h4 {
   display: inline-block;
   vertical-align: middle;
 }
-.cut-face {
-  position: relative;
-  flex: none;
-  width: clamp(64px, 14vw, 150px);
-  height: clamp(64px, 14vw, 150px);
-  background: var(--white);
-  border-radius: 50%;
-  border: 4px solid var(--court-ink);
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  transform: skewY(7deg);
-}
-.cut-face svg {
-  width: 100%;
-  height: 100%;
-}
 .rot i.fr {
   box-shadow: inset 0 -2px 0 var(--cyan);
 }
@@ -429,19 +383,6 @@ h4 {
   height: 100%;
   background: linear-gradient(90deg, var(--bad-rose), var(--stamina-mid) 40%, var(--good));
 }
-.cut-face2 {
-  display: none;
-}
-.cut.combo .cut-face2 {
-  display: grid;
-}
-.cut.combo .cut-num {
-  display: none;
-}
-.cut.combo .cut-band {
-  background: linear-gradient(100deg, var(--c), var(--warn-hi) 50%, var(--c));
-  padding-left: 30%;
-}
 .capb {
   display: inline-grid;
   place-items: center;
@@ -455,80 +396,6 @@ h4 {
 }
 .btn:disabled {
   cursor: not-allowed;
-}
-.toasts {
-  position: absolute;
-  left: 10px;
-  top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  pointer-events: none;
-  z-index: 2;
-  max-width: min(360px, 70%);
-}
-.toast {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 10px 5px 6px;
-  color: var(--white);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-  animation: toastIn 0.25s cubic-bezier(0.2, 0.9, 0.2, 1);
-  transition:
-    opacity 0.35s,
-    transform 0.35s;
-}
-.toast.out {
-  opacity: 0;
-  transform: translateX(-12px);
-}
-.toast.op {
-  border-left-color: var(--bad);
-  box-shadow:
-    0 0 0 1px rgba(255, 46, 77, 0.6),
-    0 4px 14px rgba(0, 0, 0, 0.35);
-}
-.toast.combo {
-  background: linear-gradient(90deg, rgba(16, 22, 58, 0.9), rgba(120, 90, 10, 0.85));
-}
-.toast .tf {
-  display: flex;
-  flex: none;
-}
-.toast .tf svg {
-  background: var(--white);
-  border-radius: 50%;
-}
-.toast .tf svg + svg {
-  margin-left: -8px;
-}
-.toast .tt {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.15;
-}
-.toast b {
-  font: 14px var(--disp);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.toast small {
-  font-size: 12px;
-  opacity: 0.85;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-@keyframes toastIn {
-  from {
-    opacity: 0;
-    transform: translateX(-24px) scale(0.96);
-  }
 }
 .colon {
   color: var(--mute);
@@ -547,85 +414,15 @@ h4 {
   height: auto;
   aspect-ratio: 1000/440;
 }
-.cut {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  display: grid;
-  place-items: center;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-.cut.on {
-  opacity: 1;
-}
-.cut::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(5, 8, 30, 0.55);
-}
-.cut-band {
-  position: relative;
-  width: 140%;
-  transform: skewY(-7deg) translateX(-110%);
-  background: var(--c);
-  padding: clamp(10px, 3vw, 28px) 22%;
-  display: flex;
-  align-items: center;
-  gap: clamp(10px, 2vw, 22px);
-  overflow: hidden;
-
-  box-shadow:
-    0 0 0 6px var(--white),
-    0 0 0 12px var(--court-ink);
-}
-.cut.on .cut-band {
-  animation: bandIn 0.32s cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
-}
 @keyframes bandIn {
   to {
     transform: skewY(-7deg) translateX(0);
   }
 }
-.cut-lines {
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.4) 0 3px, transparent 3px 46px);
-  animation: lines 0.18s linear infinite;
-}
 @keyframes lines {
   to {
     background-position: -49px 0;
   }
-}
-.cut-num {
-  position: relative;
-  font: clamp(46px, 11vw, 128px)/1 var(--disp);
-  color: var(--white);
-  -webkit-text-stroke: 3px var(--court-ink);
-  paint-order: stroke;
-}
-.cut-txt {
-  position: relative;
-  transform: skewY(7deg);
-}
-.cut-move {
-  font: clamp(20px, 5.2vw, 56px)/1 var(--disp);
-  color: var(--court-ink);
-  text-shadow: 3px 3px 0 var(--white);
-}
-.cut-name {
-  font-weight: 800;
-  color: var(--court-ink);
-  font-size: clamp(12px, 2.2vw, 20px);
-  margin-top: 6px;
-}
-.cut-sub {
-  font-weight: 700;
-  color: var(--court-ink);
-  opacity: 0.8;
-  font-size: clamp(12px, 1.8vw, 16px);
 }
 .over {
   background: rgba(6, 9, 30, 0.4) !important;
@@ -730,19 +527,10 @@ td i {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cut.on .cut-band {
-    animation: none;
-    transform: skewY(-7deg);
-  }
-  .cut.op .cut-band::after {
-    animation: none;
-  }
   .mbar i {
     transition: none;
   }
-  .cut-lines,
-  .ball-spin,
-  .toast {
+  .ball-spin {
     animation: none;
   }
 }
@@ -885,40 +673,9 @@ td i {
   accent-color: var(--hot);
 }
 /* Element spike cut-in: band in the element colour, glowing title */
-.cut.el .cut-band {
-  background: linear-gradient(100deg, var(--e), var(--court-ink) 55%, var(--e));
-}
-.cut.el .cut-band::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 30% 50%, color-mix(in srgb, var(--e) 55%, transparent), transparent 60%);
-  animation: elpulse 0.5s ease-in-out infinite alternate;
-}
-.cut.el .cut-move {
-  color: var(--white);
-
-  text-shadow:
-    0 0 14px var(--e),
-    0 0 28px var(--e),
-    3px 3px 0 var(--court-ink);
-}
-.cut.el .cut-name,
-.cut.el .cut-sub {
-  color: var(--white);
-}
-.toast.el {
-  border-color: var(--e);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--e) 60%, transparent);
-}
 @keyframes elpulse {
   to {
     opacity: 0.35;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .cut.el .cut-band::after {
-    animation: none;
   }
 }
 .ency-card.elc {
@@ -1379,27 +1136,7 @@ html.reduced .fevb.on {
   right: 0;
   left: auto;
 }
-/* match rail + commentary ticker (T-115) */
-.match .ticker {
-  position: absolute;
-  left: 16px;
-  bottom: 88px; /* above the control bar */
-  z-index: 3;
-  max-width: 520px;
-  padding: 8px 12px;
-  border-radius: 12px;
-  background: var(--hud);
-  border: 1px solid var(--line);
-  font-size: 13px;
-  line-height: 1.4;
-  pointer-events: none;
-}
-.match .ticker:empty {
-  display: none;
-}
-.match .ticker .old {
-  color: var(--mute);
-}
+/* match rail (T-115) */
 .mrail {
   position: fixed;
   z-index: 50;
@@ -1615,9 +1352,6 @@ html.reduced .fevb.on {
 }
 .mres .acts {
   margin-top: 8px;
-}
-.stage:has(.over:not([hidden])) .ticker {
-  display: none;
 }
 /* Glossary terms (T-110) */
 .term {
@@ -2135,9 +1869,6 @@ html.reduced .fevb.on {
 html.reduced .xbox,
 html.reduced .xl {
   animation: mv-fade 120ms linear;
-}
-.stage:has(.xbox) .ticker {
-  visibility: hidden; /* the exchange takes the commentary's place while it shows */
 }
 
 /* one-press prompts (spec §2.16, §2.17; js/ui/match-prompts.js): key caps under your player's feet, setter markers, the read eye */

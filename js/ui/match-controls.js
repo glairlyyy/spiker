@@ -1,5 +1,5 @@
 // Match screen controls and HUD (spec §9.9): timeouts, tactic and defence pickers, the ⚙ settings pop-over, camera
-// modes and follow target, fullscreen, speed / pause / skip, the scoreboard, the commentary ticker, the rail and box score; hotkeys.
+// modes and follow target, fullscreen, speed / pause / skip, the scoreboard, the rail and box score; hotkeys.
 // The screen itself (startMatch, A, the 3D world, leaving) is match-screen.js.
 
 /** A side's timeout button; `both` (a Monster game: two sides) names the team on it, else just "Timeout". */
@@ -39,7 +39,6 @@ function settingsMenu() {
   return `${seg('Hype', 'hype', Object.fromEntries(Object.entries(HYPE).map(([k, h]) => [k, h.name])), G.hype, 'Staged shonen moments before big attacks. Normal: element spikes, match points, star face-offs. Max: also long rallies and comebacks. Tap the court to skip one.')}
     ${seg('Prompts', 'prompts', { on: 'On', off: 'Off' }, G.prompts, "In a match you play: Call, Fake, Block, the setter's pick and the captain's calls appear under your player while you can use them (E, R, 1–3). Off: the AI plays you.")}
     ${seg('Trails', 'trail', TRAIL_STYLES, G.trail, 'Hand trails of stars and OP players. Light: a streak in their hair colour. Ink: a black brush stroke burning crimson.')}
-    ${seg('Cut-ins', 'cut', { full: 'Full', mini: 'Mini' }, G.cutMini ? 'mini' : 'full', 'Full cut-ins pause play; mini shows them as a corner notification')}
     ${seg('Zooms', 'zoom', { on: 'On', off: 'Off' }, G.camFixed || RM ? 'off' : 'on', 'On: gentle zoom on big plays at the net. Off: no zooms or pushes (motion-friendly).')}
     ${seg('Motion', 'motion', { full: 'Full', reduced: 'Reduced' }, Motion.pref, 'Full: panels slide and fade, numbers count. Reduced: short fades only (also follows your system setting).')}
     ${seg('Graphics', 'gfx', Object.fromEntries(Object.entries(GFX).map(([k, g]) => [k, g.name])), G.gfx, 'High: full resolution always. Auto: sharp, drops a little only if frames run slow. Fast: lower resolution for weaker devices.')}
@@ -60,10 +59,6 @@ function setOpt(kind, v) {
     G.trail = VFX.hand.style = v; // the VFX panel shows the same choice
     store.set(KEYS.trail, v);
     if (typeof vfxSave === 'function') vfxSave();
-  } else if (kind === 'cut') {
-    G.cutMini = v === 'mini';
-    store.set(KEYS.cutins, v);
-    if (G.cutMini) hideCut();
   } else if (kind === 'zoom') {
     G.camFixed = v === 'off';
     store.set(KEYS.camera, G.camFixed ? 'fixed' : 'dynamic');
@@ -152,47 +147,34 @@ addEventListener('keydown', e => {
 function reqTO(i) {
   if (!A || A.done || A.m.to[i] || A.m.toReq[i]) return;
   A.m.toReq[i] = 1;
-  logLine(`Timeout requested for ${A.m.t[i].name} — it starts at the next break`, 'set');
   updTO();
 }
 /** Coach tactic change for one side; takes effect from the next set of the ball. */
 function setTactic(i, v) {
   if (!A || A.done) return;
-  const t = A.m.t[i];
   if (v === 'cap') {
     A.m.tacMode[i] = 'cap';
     showTac(i);
-    logLine(
-      `${t.name} coach: captain ${t.cap.name} calls the plays${leadLv(t.cap) ? '' : ' (leadership too low to change anything)'}`,
-      'set'
-    );
     return;
   }
   if (!TACTICS[v]) return;
   A.m.tacMode[i] = 'fixed';
   A.m.tac[i] = v;
   showTac(i);
-  logLine(
-    `${t.name} coach: ${TACTICS[v].name}${v === 'auto' ? ' — the setter reads the block' : ` — feed the ${v.toUpperCase()}s`}`,
-    'set'
-  );
   instant({ k: 'coachtalk', side: i, text: v === 'auto' ? 'Your call, setter!' : v === 'ws' ? 'Feed the wings!' : 'Go quick, middles!' });
 }
 /** Defence setting change for one side; takes effect from the next rally. */
 function setDefence(i, v) {
   if (!A || A.done) return;
-  const t = A.m.t[i];
   if (v === 'cap') {
     A.m.dsetMode[i] = 'cap';
     showTac(i);
-    logLine(`${t.name} defence: captain ${t.cap.name} calls it${leadLv(t.cap) ? '' : ' (leadership too low to change anything)'}`, 'set');
     return;
   }
   if (!DEFSETS[v]) return;
   A.m.dsetMode[i] = 'fixed';
   A.m.dset[i] = v;
   showTac(i);
-  logLine(`${t.name} defence: ${DEFSETS[v].name} — ${DEFSETS[v].desc}`, 'set');
 }
 /** In captain mode, show which tactic and defence setting the captain is running right now. */
 function showTac(i) {
@@ -233,7 +215,6 @@ function skipMatch() {
   rallyFlush(); // a rally waiting at your call finishes with the AI's play first
   m.rec = false;
   while (!m.over) playRally(m);
-  hideCut();
   board(snap(m));
   finishMatch();
 }
@@ -341,13 +322,6 @@ function board(s) {
   const mx = Math.max(...s.pts),
     mn = Math.min(...s.pts);
   $('#setn').textContent = s.over ? 'Final' : mx >= RULES.pointsToWin - 1 && mx > mn ? 'Match point' : rulesText();
-}
-/** Show a commentary line in the court ticker (plain text; `c` is the line kind, unused since the log tab went): the last two, newest in ink. */
-function logLine(t, c) {
-  const tk = $('#ticker');
-  if (!tk) return;
-  const old = tk.firstElementChild;
-  tk.innerHTML = `<div>${esc(t)}</div>${old ? `<div class="old">${old.innerHTML}</div>` : ''}`;
 }
 /** The match rail (Box score · Tactics): open on a tab, toggle (no tab), or close (null). */
 const RAIL_TABS = { box: 'Box score', tac: 'Tactics' };

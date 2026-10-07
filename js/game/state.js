@@ -1,6 +1,6 @@
 // Global game state (settings, current screen) and small shared helpers.
 
-const G = { view: 'menu', cutMini: store.get(KEYS.cutins) === 'mini', camFixed: store.get(KEYS.camera) === 'fixed' };
+const G = { view: 'menu', camFixed: store.get(KEYS.camera) === 'fixed' };
 /** A saved option name, if it is one of `table`'s own keys (a stray value like "constructor" falls back to `def`). */
 const savedOption = (key, table, def) => {
   const v = store.get(key);

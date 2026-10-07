@@ -708,7 +708,7 @@ pin (`.pulse`). Match: `board` bumps the scorer's digit; `.mrail` / `.over .ocar
 
 ## Full-court match screen (spec §9.9, T-252)
 
-`.match` is fixed full-screen; `#stage` (court canvases, cut-ins, toasts, ticker, result `.over`) fills it and the HUD floats
+`.match` is fixed full-screen; `#stage` (court canvases, result `.over`) fills it and the HUD floats
 over it: `.mtop` (board + momentum, top centre), `.cbar` (bottom centre), `.mrail` (right, between them). `fit()`
 (match-screen.js) sizes `#cv` to the viewport (pixel budget `COURT_PX`) and sets `VH` (playback.js) = 500·h/w — the overlay's
 logical half-height (the logical view is 1000 × 2·VH from `VT`; 220 = the classic 1000:440). r3d `syncSize` passes the

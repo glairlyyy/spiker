@@ -176,15 +176,13 @@ const ACTS_FX = {
     A.link = { p1: a.p1, p2: a.p2, life: 1, c: a.color };
   }
 };
-/** Match-screen UI: cut-ins, banners, calls, the log, the scoreboard, coaches. */
+/** Match-screen UI: banners, calls, the scoreboard, coaches. */
 const ACTS_UI = {
   tech(a, d, bs) {
     // technique name pops over the player who used it
     if (!d) return;
     const q = P(d.x, d.z, d.jy + 175);
     A.labels.push({ t: `✦ ${a.t}`, x: q.X, y: q.Y - (a.dy || 0), life: 1, big: 1, set: 1, pow: 100 });
-    logLine(`✦ ${d.p.name} — ${a.t}`, 'set');
-    if (G.cutMini) toast(d.p, null, a.t, 'Technique');
     const def = Object.values(SKILLS).find(s => s.name === a.t);
     sfx.tech(def && def.tech);
   },
@@ -220,16 +218,9 @@ const ACTS_UI = {
   banner(a, d, bs) {
     showBanner(a);
   },
-  cut(a, d, bs) {
-    if (G.cutMini) toast(byId(a.p), null, a.title, a.sub, a.el);
-    else showCut(a);
-    if (a.el) sfx.zone();
-    sfx.whoosh();
-    if (!G.cutMini) sfx.stinger();
-  },
-  log(a, d, bs) {
-    logLine(a.t, a.c);
-  },
+  // cut-ins and the commentary are gone (owner, 2026-10-08): the engine's `cut` / `combo` / `log` acts stay as data only
+  cut(a, d, bs) {},
+  log(a, d, bs) {},
   score(a, d, bs) {
     board(a.snap);
     boxScore();
@@ -261,13 +252,7 @@ const ACTS_UI = {
     stageShow(a);
     Dir.stage(a);
   },
-  combo(a, d, bs) {
-    if (G.cutMini) toast(byId(a.p1), byId(a.p2), a.title, a.sub, a.el);
-    else showCombo(a);
-    sfx.whoosh();
-    sfx.stinger();
-    sfx.zone();
-  }
+  combo(a, d, bs) {}
 };
 /** Players on court: substitutions and display state (poses, spike style, set direction). */
 const ACTS_ROSTER = {

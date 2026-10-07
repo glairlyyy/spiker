@@ -1,4 +1,4 @@
-// Match screen, the end and the moments: the stars, the result card and finishMatch, and the cut-ins / mini toasts.
+// Match screen, the end: the stars, the result card and finishMatch.
 // Split from ui/match-screen.js (shares its state A); function declarations only, nothing runs at load.
 
 /** The three best players of a finished match (a simple impact score; the winners get a bonus). */
@@ -127,7 +127,6 @@ function finishMatch() {
   A.cele = { w: m.winner, t: 0 };
   A.ball.vis = false;
   A.trail = [];
-  hideCut();
   const stars = matchStars(m);
   const o = $('#over');
   o.style.setProperty('--tc', wt.color);
@@ -138,72 +137,4 @@ function finishMatch() {
     },
     RM ? 0 : 2600
   );
-}
-/** Restart the cut-in animation (drop the class, force a reflow, add it back). */
-function replayCut(c) {
-  c.classList.remove('on');
-  void c.offsetWidth;
-  c.classList.add('on');
-}
-/** Full cut-in for one player's move: { p, title, sub, el? }. */
-function showCut(a) {
-  const p = byId(a.p),
-    c = $('#cut');
-  if (!c) return;
-  c.classList.remove('combo');
-  c.style.setProperty('--c', p.team.color);
-  c.querySelector('.cut-num').textContent = p.num;
-  c.querySelector('.cut-face').innerHTML = faceSVG(p, A && A.moodShown ? A.moodShown[p.id] || 0.3 : 0.3, 120);
-  c.querySelector('.cut-move').textContent = a.title.toUpperCase();
-  c.querySelector('.cut-name').textContent = `${p.name} · ${p.team.name}`;
-  c.querySelector('.cut-sub').textContent = a.sub;
-  c.classList.toggle('op', !!p.op);
-  elCut(c, a.el);
-  replayCut(c);
-}
-/** Mini cut-in: a short floating card in the court's top-left corner (stacks up to 3). */
-function toast(p, p2, title, sub, elem) {
-  const box = $('#toasts');
-  if (!box || !p) return;
-  const el = document.createElement('div');
-  el.className = 'toast' + (p.op || (p2 && p2.op) ? ' op' : '') + (p2 ? ' combo' : '') + (elem ? ' el' : '');
-  el.style.setProperty('--c', p.team.color);
-  if (elem) el.style.setProperty('--e', ECOL[elem]);
-  const mood = q => (A && A.moodShown ? A.moodShown[q.id] || 0.4 : 0.4);
-  el.innerHTML = `<span class="tf">${faceSVG(p, mood(p), 30)}${p2 ? faceSVG(p2, mood(p2), 30) : ''}</span><span class="tt"><b>${esc(title)}</b><small>${esc(p2 ? `${p.name} × ${p2.name}` : p.name)}${sub ? ` · ${esc(sub)}` : ''}</small></span>`;
-  box.prepend(el);
-  while (box.children.length > 3) box.lastChild.remove();
-  setTimeout(() => el.classList.add('out'), 2600);
-  setTimeout(() => el.remove(), 3000);
-}
-/** Element cut-in: the band takes the element's colour and glow. */
-function elCut(c, el) {
-  c.classList.toggle('el', !!el);
-  if (el) {
-    c.style.setProperty('--e', ECOL[el]);
-    c.dataset.el = el;
-  } else delete c.dataset.el;
-}
-/** Hide the full cut-in. */
-function hideCut() {
-  const c = $('#cut');
-  if (c) c.classList.remove('on');
-}
-/** Full cut-in for a two-player combo: { p1, p2, title, sub, el? }. */
-function showCombo(a) {
-  const p1 = byId(a.p1),
-    p2 = byId(a.p2),
-    c = $('#cut');
-  if (!c) return;
-  c.style.setProperty('--c', p1.team.color);
-  c.classList.add('combo');
-  c.classList.toggle('op', !!(p1.op || p2.op));
-  elCut(c, a.el);
-  c.querySelector('.cut-num').textContent = '';
-  c.querySelector('.cut-face').innerHTML = faceSVG(p1, 0.9, 120);
-  c.querySelector('.cut-face2').innerHTML = faceSVG(p2, 0.9, 120);
-  c.querySelector('.cut-move').textContent = a.title.toUpperCase();
-  c.querySelector('.cut-name').textContent = `${p1.name} × ${p2.name}`;
-  c.querySelector('.cut-sub').textContent = a.sub;
-  replayCut(c);
 }

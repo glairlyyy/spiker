@@ -413,7 +413,6 @@ function endBeat(b) {
     d.z = d.sz = d.tz;
   }
   for (const a of b.acts) {
-    if (a.k === 'cut' || a.k === 'combo') hideCut();
     const d = a.k === 'jump' ? A.disp[a.p] : null;
     if (d && a.mode !== 'up' && a.mode !== 'reup' && !(a.mode === 'down' && d.fallMs != null)) {
       d.jy = 0;
@@ -515,7 +514,7 @@ function step(dt) {
   if (!b._s) {
     b._s = 1;
     A.el = 0;
-    if (b.cut && G.cutMini) b.dur = 1; // mini cut-ins don't hold up play
+    if (b.cut) b.dur = 1; // cut-in beats (owner, 2026-10-08: cut-ins removed): their other acts run, no hold
     if (b.scene && b.scene > HYPE[G.hype].max) {
       b.dur = 1; // Hype setting: this staged scene is skipped
       b.acts = [];

@@ -44,7 +44,6 @@ const store = {
 /** Storage keys in one place so save formats are easy to find and version. */
 const KEYS = {
   sound: 'skyline_sound',
-  cutins: 'skyline_cutins',
   camera: 'skyline_camera',
   gfx: 'skyline_gfx',
   hype: 'skyline_hype',

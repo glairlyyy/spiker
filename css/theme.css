@@ -345,13 +345,6 @@ table td {
   border-color: var(--line) !important;
 }
 /* ---------- in-match overlays ---------- */
-.toast {
-  background: rgba(10, 12, 18, 0.78);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--c);
-  border-radius: 10px;
-}
 .fsbar {
   backdrop-filter: blur(10px);
   border: 1px solid var(--line);
@@ -380,10 +373,6 @@ table td {
   background: transparent;
 }
 /* everything on top of the court (cut-ins, result card, fullscreen bar) stays above the overlay canvas and takes clicks */
-.stage.r3d-on .cut,
-.stage.r3d-on .toasts {
-  z-index: 3;
-}
 .stage.r3d-on .over {
   z-index: 6;
 }

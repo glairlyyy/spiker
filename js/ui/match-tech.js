@@ -58,6 +58,5 @@ function flipTech(i) {
     off = !(m.off[p.id] && m.off[p.id].has(id));
   setTechOff(m, p.id, id, off);
   if (A.techCareer) p.techOff = [...m.off[p.id]];
-  logLine(`${p.name} ${off ? 'holds back the' : 'goes back to the'} ${SKILLS[id].name}`, 'set');
   techSync();
 }
