@@ -114,7 +114,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   as the lowest wit (match wit `W()` floors at 0.1). No generator makes such players today (the Egoist game went with
   ego, §2.12).
 
-- §2.13 Calls — decisions in a played match (owner, 2026-10-05) **[built, T-232–T-235]**. **One engine, two pickers**: every rule, roll
+- §2.13 Calls — decisions in a played match (owner, 2026-10-05) **[built, T-232–T-235; the serve / attack choices and their chips are replaced by §2.16 (T-257, T-258, T-256); the pausable engine stays]**. **One engine, two pickers**: every rule, roll
   and touch is the same code for a simmed and a played match; at a **decision point** the engine asks a picker. Sim (Sim ⏭,
   headless, NPCs, the Monster game) → the AI picks at once, exactly as today (same draws: results and goldens unchanged).
   Played career match → **you** pick for your own player (5 s; then your player takes the suggested move — the option with
@@ -139,6 +139,117 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
     side, deuce, a rally with 6+ touches, the first ball of a set — at most ~8 a match. Off = the AI picks (as in sim).
   - After: the result card (§10.6) gains a **Calls** row: each call — what you chose, its %, made / missed — and "held back by:
     ⤒ Jump" (the weak stat that appeared most in your missed calls), so the match points at the training.
+**Match revamp (owner, 2026-10-07): every match tells a story.** Momentum has stages, the director stages each play by its
+team's stage (epic effects only on epic moments), you take part with one-press commands (no menus, no rock-paper-scissors,
+fire never unlocks a technique), lines are spoken between points. Built by three agents at once (tasks.md **Now**).
+Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-row defensive commands, temperament changing how a team plays.
+
+- §2.14 Momentum stages **[open: T-259, T-260; HUD T-254]** — replace "In the zone". Each team has **fire** −1..1 (`m.fire`, was `m.mom`;
+  same rises and falls as today's momentum, shaped by temperament) and a **stage** (`m.stage[side]`, ids in `STAGE_IDS`,
+  data in js/data/momentum.js):
+
+  | Stage    | Fire          | Buff (in play)                              | Target (point win rate vs Composed) |
+  | -------- | ------------- | ------------------------------------------- | ----------------------------------- |
+  | Loose    | < −0.25       | −5 % attack, defence, serve                 | −4 points                           |
+  | Composed | −0.25 .. 0.35 | +5 % defence                                | 0                                   |
+  | Focused  | 0.35 .. 0.8   | +5 % attack, +5 % speed                     | +4                                  |
+  | Fever    | ≥ 0.8 + a trigger | +10 % attack, −10 % defence, +5 % speed, +5 % jump | +7 attacking                |
+
+  - **Fever** needs fire ≥ 0.8 **and** a trigger: an 8+ touch rally won, a 4-point streak, or a called kill at set point.
+    Lasts at most 4 points; an error by that team ends it (→ Focused). The **zone breaker** (a kill block or a fake that scores
+    against a Fever team) drops it to Composed; a stuff (kill block) at any other time drops Fever to Focused.
+  - **Out of Loose**: a won rally (+fire), a timeout (→ Composed at once), the captain's Settle (§2.17).
+  - Buffs replace the old momentum and zone multipliers in `boost()`; mood, stamina and the captain's personal buff stay.
+  - **Temperament** (`m.temper[side]`, from the squad's personalities, the captain counting double; hot / cocky → Hot-headed,
+    shy → Slow burner, leader → Steady, cool → Ice; ties → Steady):
+    Hot-headed — Focused from 0.25, Loose from −0.15 · Slow burner — never Loose before 8 points played, Fever lasts 5 ·
+    Steady — Loose from −0.35 and Fever from 0.85 · Ice — never Loose or Fever; the opponent's Fever lasts 2 points less.
+    Shown in the stage chip's tooltip ("Hot-headed: heats up fast, cracks fast").
+  - Beats: act `{ k: 'stage', side, from, to, why }` on every change (why: 'streak' | 'rally' | 'setpoint' | 'error' | 'breaker'
+    | 'stuff' | 'timeout' | 'settle' | 'fire'); the snapshot carries `fire` and `stage` (scoreboard, director). `m.zone` /
+    `m.zoneHit` stay as aliases (zone = Fever) for elements, hype and the Element Trial.
+  - Balance: `npm run balance` (tests/balance.js) — point win rate per stage, time share per stage (target: Composed ~50 %,
+    Focused ~30 %, Loose ~12 %, Fever ~8 %; Fever in ~40 % of matches), per temperament, per captain call. Numbers stay in steps of 5.
+  - **HUD** (§9.9 top panel): a stage chip at each end of the momentum line (the stage name in the team's side; the buffs, the
+    temperament and how to leave the stage in its tooltip, never on the chip); each team's fire fills from its own end with
+    ticks at the stage lines. Entering Fever: a "FEVER" banner over the court (team colour, 1.2 s); entering Loose: a
+    "Rattled" tag on the team's chip for 3 s. The "In the zone" text goes.
+
+- §2.15 The director — effects follow the story **[open: T-261, T-262]**. A play's effects scale with **its own team's stage**;
+  the arena (lights, crowd, music) follows the **hotter** team. OP players and element spikes count one stage higher (for
+  effects only). Presentation only (js/render/director.js `Dir`; no draws, goldens unchanged).
+
+  | Effect                  | Loose       | Composed           | Focused                        | Fever                         |
+  | ----------------------- | ----------- | ------------------ | ------------------------------ | ----------------------------- |
+  | Size (every effect)     | × 0.5       | × 0.7              | × 1.0                          | × 1.3                         |
+  | Air impact              | —           | power ≥ 90, 2 rings | ≥ 70, 3 rings                 | ≥ 58, 4 rings + dome          |
+  | Camera shake            | 0           | × 0.5              | × 1                            | × 1.5                         |
+  | Ball trail              | streak      | streak             | ribbon                         | ink / element                 |
+  | Impact frame            | —           | —                  | kills ≥ 100, once per 4 points | kills ≥ 90, once per point    |
+  | Kill bounce / blast     | —           | —                  | bounce                         | bounce + blast                |
+  | Aura                    | grey haze   | —                  | faint                          | full                          |
+  | Arena (hotter team)     | lights dim to 85 %, crowd quiet | normal | lights warm, crowd up | lights dim 35 % + team rim light, crowd on its feet, music up |
+
+  - The VFX panel (§10.7b) keeps working: its values are the Focused row; the director multiplies them. Dev: VFX panel →
+    **Director**: on / off, and "Force stage" (Loose … Fever, both teams) to test each row in the Monster game.
+  - Hype Off: Fever still gets its effects (they are the reward); impact frames and slow-mo only with Hype on (as now).
+
+- §2.16 Taking part — one-press prompts **[open: T-257, T-258; UI T-256]** (replaces the §2.13 serve / attack choices; serve is
+  automatic again). In a played career match (and the Monster game's **Play as**), a prompt button appears **under your
+  player's feet** (a console-style key cap + one word, like the name tags) only while it can be used. Two contextual keys,
+  like a console's buttons: `E` the main action, `R` the second; the setter adds `1` `2` `3`. No menus, no odds, no
+  limit on how often; every press has a consequence the other team answers. ⚙ **Prompts: On / Off** (Off = the AI plays you,
+  as in a sim; per browser, replaces ⚙ Calls).
+  - **Read meter** (per player, 0–100, shown as an eye icon with a fill over your player when ≥ 20): how well the other team
+    reads you. +20 a call, +10 a kill, +5 each set to you (+10 for the second in a row), −30 a fake that worked, −5 every
+    point. **≥ 40**: their best blocker shifts toward your lane (+10 % block coverage on you); **≥ 70**: +20 %, and the Fake
+    prompt appears. (Built for your player only — AI hitters later with the balance pass, so sims and goldens don't move.)
+  - **Wing / middle (WS, MB)**:
+    - **Call** `E` "Call" (from the pass until the setter's touch): the setter sets you, unless the pass is poor or you're out
+      of position — then they shout "Not now!" and play on. Cost: read +20, no quick and no dump that ball, extra stamina on
+      the swing. The spike is the engine's as always.
+    - **Fake** `R` "Fake" (read ≥ 70, same window): you sell the approach as a decoy. The read blocker bites (chance from your
+      read vs their wit) → the set goes elsewhere against a single block, your read −30. A low-wit setter (wit < 1.0) may set
+      you anyway (chance 50 % − 40 % × (wit − 0.5)) — and then it is a **bad set** into the block (owner: a failed fake is a
+      bad set, so it can't be farmed).
+    - **Block** `E` "Block" (front row, from their pass until their set): you commit on the hitter in front of you — better
+      timing (block +10 % when the attack comes to your lane); if it goes elsewhere you crossed: your lane opens (the other
+      blocker is alone) — a late commit (pressed after their setter's touch) is a gap (block −10 %).
+  - **Setter**: when the pass reaches you, numbered markers `1` `2` `3` hang over your hitters, each with the block icons
+    waiting for them (0–2) and "Mine!" over a hitter who is calling (AI hitters call when hot: confidence ≥ 70, no draws).
+    Press a number to set that hitter, or **Dump** `R` (shown when the pass is tight; better the higher the read on your
+    hitters; each dump +20 read on you). No press within the window = your usual AI choice. Ignoring a calling teammate:
+    their mood −0.1, and a small relationship dip in career (no more than once a set per teammate).
+  - Every outcome feeds fire (a called kill +, a stuffed call −) and the director stages it (§2.15, §2.18).
+  - Engine: decision points yield `{ kind: 'call' | 'block' | 'setter', p, options: [{ id, key, label }], ai }` from
+    `playRallyGen`; the beats before the yield play while the prompt shows (the window), and the rally resumes with the
+    press (an option id) or null (no press = `ai`) when they end — no pause, no slow-down. Only for `m.human`'s player.
+  - Result card: the Calls row becomes **Your plays**: calls made / kills off them, fakes that worked, blocks committed /
+    stuffs, (setter) sets per hitter. Monster game **Play as**: pick a player of either team on the title's Monster tab (default none).
+
+- §2.17 Captain's calls **[open: T-260; UI T-256]** — replace the captain's random personal buff. Between points (the
+  scoreboard beat) the captain may call, at most once every 5 points (leadership Lv1), 4 (Lv2), 3 (Lv3):
+  - **Fire up** `E` (any stage but Fever): team fire +0.2 (cannot trigger Fever by itself); the hottest teammate gets the old
+    personal buff (+5 %/lvl power and defence, 4 points) and, with an element, a full gauge.
+  - **Settle** `R`: Loose → Composed at once and no Loose for 3 points; costs 0.1 fire (Focused may drop to Composed).
+  - AI captains use the same calls (Settle when Loose; Fire up on a 2-point deficit or at set point). You as captain: the two
+    chips show between points while ready (prompt style, 3 s); otherwise the AI captain calls. The coach's timeout stays the other tool.
+  - The captain's call that rallied a team into the zone (`capCall` in pointZone) goes; the tactic and defence switches stay.
+
+- §2.18 Cinematic lines **[open: T-263; box T-255]** — the story told in words, from events, never from timers. The director
+  (`Dir`) picks the moment and the speaker; js/data/match-lines.js (`MLINES`, kind × personality, 5–6 variants, picked by
+  hash, lore.md voice) gives the words; js/ui/match-exchange.js shows them.
+  - **During a rally**: short bubbles only (existing `call` act), never a pause — "Mine!", "Not now!", "He's reading you!".
+  - **Staged moment**: the existing scene shot (close-up + subtitle) before a decisive hit — Focused and up, ≤ 1 per 3 points.
+  - **Between points** (the main slot): a 1–2 line exchange with face cut-ins, skippable (click / Space). Budget by the hotter
+    team's stage: Composed 0 · Focused 1 per 4 points · Fever every point if there is an event. Events: stage change (Fever,
+    Loose), captain's call, fake that worked / failed, refused call ("Not now!"), stuffed call, duel (the same hitter vs the
+    same blocker for the third time), 8+ touch rally, comeback (3+ points back from 3+ down). Speakers: the player it
+    happened to, plus whoever has a stake — rival / ally (relationship tags), the captain, the coach.
+  - **Set / match point**: a hush (crowd and music down) and one line each side before the serve.
+  - Hype Off: bubbles only; Normal: the budget above; Max: the budget × 2. Holds the next rally while shown (`Dir.busy()`).
+  - Pre- and post-match lines (story box before, one line on the result card): later (tasks.md Later).
+
 ## 3. Menu [built]
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two
@@ -622,7 +733,7 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
     old **horizontal** framing (the 1000:440 shot's width): a taller screen shows more stands above and floor below, never
     less court; a wider one shows more sides. The overlay's logical space stays 1000 wide, its height follows the screen.
   - **Top** (centred, ≤ 1120px, 16px from the top): score bar 64px — name + swatch + rotation chips each side, score and
-    set line in the middle — with the momentum line (labelled; "In the zone: {team}") under it, in one panel.
+    set line in the middle — with the momentum line (stage chips at each end, §2.14) under it, in one panel.
   - **Bottom** (centred, 16px from the bottom): the control bar 48px, groups as before — **Play** `❚❚ Pause Space` ·
     `1× 2× 4×` · `Skip ⏭` | **Team** `Timeout` · `Tactics T` | **View** `Details B` · `⛶ F` (browser fullscreen of the
     whole match screen, HUD kept) · sound · `⚙`. ⚙ ends with `Leave match` (quiet, danger, last). Wraps rather than overflows.
@@ -662,7 +773,7 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
   - **Floor**: free-zone and court colours, attack lines dashed past the side lines, a centre emblem (arena / hall).
   - **Crowd**: flat cut-out fans (4 poses, team-colour tint, neutrals) instead of the capsule figures; they bounce with
     their side's cheer and ride the wave as before; count = capacity × stakes.
-  - **Moments**: a side in the zone dims the venue light ~35 % and adds a rim light in its colour; the win drops
+  - **Moments**: the arena follows the hotter team's stage (§2.15; Fever = the old zone look: light −35 % and a rim light in its colour); the win drops
     confetti (winner colour, gold, white).
   - **Around the court**: referee on a stand by the far post, two line judges, team benches, scorer's table, ball cart
     (no judges / table in the street). Big screen (arena) and wall board (hall): team names, score, set.

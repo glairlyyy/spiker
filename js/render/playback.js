@@ -95,6 +95,7 @@ function resolve(to) {
 const PLAYER_ACTS = new Set(['slide', 'pose', 'jump']);
 /** Start of a beat: set up the tweened acts (slide, jump, ball…) and fire the one-shot ones (instant()). */
 function startBeat(b) {
+  Dir.beat(b); // the director (spec §2.15): stages this beat's effects, queues lines
   for (const a of b.acts) {
     if (a.when === 'end') continue;
     if (a.k === 'ball' || a.k === 'hold' || a.k === 'reset') A.bounce = null; // a new touch takes the ball back
@@ -464,6 +465,7 @@ function step(dt) {
   stepPlayerTimers(dt, raw);
   stepEffects(dt);
   camStep(raw);
+  Dir.step(raw);
   if (A.done) {
     if (A.cele) stepCelebration(dt);
     return;
@@ -471,6 +473,7 @@ function step(dt) {
   if (A.ask) callStep(cb); // a call of yours (spec §2.13): the slow world, the options, the 5 s ring
   if (!A.beats || A.bi >= A.beats.length) {
     if (A.ask) return; // the rally waits at your decision point
+    if (Dir.busy()) return; // a between-point exchange (spec §2.18) holds the next rally
     if (A.m.over) {
       finishMatch();
       return;

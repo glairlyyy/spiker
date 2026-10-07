@@ -21,6 +21,7 @@ function startMatch(fx) {
   if (fx.setup) fx.setup(m); // e.g. a career captain's pre-match buff
   VCS = m.court;
   G.view = 'match';
+  Dir.reset();
   // your side in a career fixture (the squad that holds your player): only it gets Timeout / Tactics; Monster game: both
   const you = fx.onFinish && typeof RUN !== 'undefined' && RUN ? Run.you(RUN) : null,
     mine = you ? ([0, 1].find(i => squadOf(m.t[i]).some(p => p.id === you.id)) ?? null) : null,

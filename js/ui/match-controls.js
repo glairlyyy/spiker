@@ -237,6 +237,10 @@ function skipMatch() {
   board(snap(m));
   finishMatch();
 }
+/** A team changes momentum stage (act `stage`, spec §2.14): the chip and the FEVER / Rattled banner. Stub until T-254. */
+function stageShow(a) {
+  return a;
+}
 /** Update the scoreboard from a match snapshot: points, serve, rotations, momentum and zone. */
 function board(s) {
   if (!$('#p0')) return;
@@ -277,6 +281,7 @@ function board(s) {
     if (A) {
       A.moodShown = s.mood;
       A.zoneShown = s.zone;
+      A.stageShown = [0, 1].map(i => stageOfSnap(s, i)); // spec §2.14: the director and the auras read it
       A.buffShown = s.buff;
       A.egShown = s.eg || {};
       A.staShown = s.sta || {};

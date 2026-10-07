@@ -252,6 +252,11 @@ const ACTS_UI = {
     if (a.streak >= 3 && !A.chant) A.chant = { side: a.side, life: 1, text: `${A.m.t[a.side].short}!  ${A.m.t[a.side].short}!` };
     if ((a.zone || A.pointN % 11 === 0) && !A.wave) A.wave = { x: -120 };
   },
+  /** A team changes momentum stage (spec §2.14): the HUD's chip / banner, then the director. */
+  stage(a) {
+    stageShow(a);
+    Dir.stage(a);
+  },
   combo(a, d, bs) {
     if (G.cutMini) toast(byId(a.p1), byId(a.p2), a.title, a.sub, a.el);
     else showCombo(a);

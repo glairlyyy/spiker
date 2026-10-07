@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-253** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-264** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -30,6 +30,213 @@ rival and the aces, growth, relationships, court matches), UI §9–§10, hex te
 the Shu highlands. Done tasks: one line under **Done** here, full text in tasks-done.md.
 
 ## Now
+
+**Match revamp (owner, 2026-10-07; spec §2.14–§2.18): three build agents at once, by file ownership — never edit a file another
+agent owns.** Agent A = UI; Agents B and C split the rest. Seams already in place (spec chat, T-253): index.html entries; stubs
+`js/data/momentum.js` (`STAGES`, `STAGE_IDS`, `stageOfSnap`), `js/engine/fire.js` (`capReady`, `capCall`), `js/render/director.js`
+(`Dir`: reset / beat / step / stage / busy / tier), `js/data/match-lines.js` (`MLINES`), `js/ui/match-exchange.js` (`exchangeShow`,
+`exchangeHide`), `js/ui/match-prompts.js` (`PROMPT_KINDS`), `stageShow(a)` in match-controls.js; act `stage` → `stageShow` + `Dir.stage`
+(acts.js); playback calls `Dir.beat` / `Dir.step` and waits on `Dir.busy()`; `startMatch` calls `Dir.reset()`; `board()` sets
+`A.stageShown`; tests `read.test.js`, `momentum.test.js`, `lines.test.js` (in run.js); `npm run balance` (tests/balance.js).
+Keep every seam's name and signature; fill the bodies. Nobody edits index.html, tests/run.js, package.json, ARCHITECTURE*.md
+(put the structural note in your Result line; the spec chat merges it), spec.md, lore.md or another agent's task text.
+tasks.md: change only your own task's status and Result lines, each with a targeted replace. If the artifact refuses your
+publish because another agent published first, re-read the refused files from the artifact, re-apply your edit, publish again.
+A task that needs a file outside your list: stop and ask (`[?]`).
+
+- **Agent A — UI** — T-254 → T-255 → T-256 (T-256 after B's T-258 is published; build it against a hand-made yield first).
+  Owns: js/ui/match-screen.js, match-controls.js, match-calls.js, match-prompts.js, match-exchange.js, match-result.js,
+  match-combo.js, menu.js, career-match.js, js/render/playback.js, js/core/storage.js, css/style.css, tests/ui-smoke.js.
+- **Agent B — engine** — T-257 → T-258 → T-259 → T-260. Owns: js/engine/*.js, js/data/rules.js, js/data/momentum.js,
+  js/data/dialogue.js, js/career/rel.js, tests/engine.test.js, read.test.js, momentum.test.js, balance.js, golden.json
+  (B is the only agent that may change goldens).
+- **Agent C — director and lines** — T-261 → T-262 → T-263. Owns: js/render/director.js, acts.js, effects.js, clock.js,
+  ball.js, scenes.js, overlay.js, js/render3d/** (incl. venues), js/audio/sfx.js, js/data/vfx.js, js/ui/vfx-panel.js,
+  js/data/match-lines.js, tests/lines.test.js. C has no UI-smoke file: QA by a Monster-game Playwright script, numbers in Result.
+
+Contracts (spec): stage act `{ k: 'stage', side, from, to, why }`; snapshot `fire`, `stage` (B, T-259; until then `stageOfSnap`
+reads mom / zone); decision yield `{ kind: 'call' | 'block' | 'setter', p, options: [{ id, key, label, ... }], ai }` answered with
+an option id or null (B, T-257 / T-258; A, T-256); `capReady(m, side)` / `capCall(m, side, 'fire' | 'settle')` → beats (B, T-260;
+A wires the chips); `Dir.tier(side)` → the §2.15 row (C); `exchangeShow([{ p, t, side }], done)` (A, T-255; C calls it).
+
+### [x] T-253: Seams for the match revamp (spec chat)
+Result: the stubs, hooks, tests and script listed above; goldens unchanged; 130 tests, UI smoke 12/12.
+
+### [ ] T-254: Stage chips and the fire meter replace "In the zone" (Agent A)
+Spec: §2.14 (HUD), §9.9          Goldens: unchanged          Save: no change
+Goal: the momentum line shows each team's stage as a chip at its end and its fire filling from its end; Fever / Loose are announced.
+Files: js/ui/match-screen.js, match-controls.js (board, stageShow), css/style.css, tests/ui-smoke.js
+Do not: put buff numbers on the chip (tooltip only); draw it in three.js; read `m` — only the snapshot (`stageOfSnap`).
+Steps:
+1. match-screen: the `.mom` row → `[chip A] [fire meter] [chip B]`; drop `#zone` ("In the zone").
+2. board(s): fill each team's half from its own end (`s.fire` when present, else `s.mom`), ticks at `STAGES[*].from`; chip =
+   `STAGES[id].name` in the team's side colour border; tooltip (§9 `tip`) = buff lines ("+5 % attack"), the temperament line
+   when `s.temper` exists, and `STAGES[id].tip`.
+3. stageShow(a): `to === 'fever'` → "FEVER" banner over the court (team colour, 1.2 s, no motion with reduced motion);
+   `to === 'loose'` → "Rattled" tag on that team's chip for 3 s; the chip updates.
+4. ui-smoke: the Monster step checks both chips exist and their text is a stage name.
+Accept: npm test, lint, test:ui pass; QA screenshot of the top panel with a Focused and a Loose chip (force with a hand-made
+`stageShow` / snapshot in the page) against the design system.
+QA: Monster game → top panel.
+Result:
+
+### [ ] T-255: The between-point exchange box (Agent A)
+Spec: §2.18          Goldens: unchanged          Save: no change
+Goal: `exchangeShow(lines, done)` shows 1–2 lines with the speaker's face cut-in over the court and calls `done` when they end or are skipped.
+Files: js/ui/match-exchange.js, js/ui/match-controls.js (Space / click skips while it shows), css/style.css, tests/ui-smoke.js
+Do not: choose lines or timing (the director's job); pause the world (the director holds the next rally via `Dir.busy()`).
+Steps:
+1. A glass panel low-centre above the control bar: per line the face (the existing cut-in face / portrait helper used by
+   `cut`), name in team colour, the text typed in (§9.12 motion tokens); left side for team 0, right for team 1.
+2. Each line holds 1.6 s + 40 ms per character (real time, stops while paused); click / Space skips the current line; Skip ⏭
+   and leaving call exchangeHide().
+3. ui-smoke: call exchangeShow with two lines in the Monster step, assert it shows and `done` fires after a skip.
+Accept: tests pass; QA screenshot against the design system.
+QA: Monster game → `exchangeShow([...])` from the console.
+Result:
+
+### [ ] T-256: Prompts on screen — Call / Fake / Block, setter markers, captain chips; the old calls UI goes (Agent A)
+Spec: §2.16, §2.17          Goldens: unchanged          Save: no change (⚙ Prompts per browser: `KEYS.prompts`)
+Goal: in a played career match (and Monster **Play as**) your prompts appear under your player's feet while they can be used, one key press answers the engine.
+Files: js/ui/match-prompts.js, match-calls.js (delete its body; keep the file empty with a header until the spec chat removes
+it from index.html), match-screen.js, match-controls.js, match-result.js, career-match.js (resultData `plays`), menu.js (Play as),
+js/render/playback.js (rallyPull), js/core/storage.js, css/style.css, tests/ui-smoke.js
+Do not: slow the world or pause the rally; show odds; answer kinds outside `PROMPT_KINDS` (answer them with `ai` at once).
+Steps:
+1. rallyPull: on a yield of a kind in PROMPT_KINDS (for `m.human`, Prompts On), keep playing the beats already queued while the
+   prompt shows; when they run out, resume the generator with the press (option id) or null. Other kinds → `ai` at once (the old
+   serve / attack yields until B removes them).
+2. Prompt button: key cap + label anchored under your player's feet (project like the name tags), `E` / `R` / `1`–`3`; pressed →
+   lit and locked; gone when the window ends. Setter: markers over each hitter with block icons and "Mine!" from the option data.
+3. Captain: when you are captain and `capReady(m, side) === 0`, between points show `E Fire up` / `R Settle` for 3 s;
+   a press → `capCall(A.m, side, kind)` beats appended to the queue.
+4. Read eye over your player when `m.read[you] >= 20` (fill = read / 100).
+5. ⚙ Prompts On / Off (replaces ⚙ Calls; `KEYS.prompts`); remove the call chips, the vignette and the 5 s ring (match-calls.js),
+   and the Calls row; the result card's **Your plays** row from `resultData.plays` (spec §2.16).
+6. Monster tab: **Play as** (none / a player of either team) → `m.human`.
+7. ui-smoke: a Monster game with Play as a WS shows a Call prompt and answers it; Prompts Off shows none.
+Accept: tests pass; QA screenshots: a Call prompt, the setter markers, the captain chips — against the design system.
+QA: career run → evaluation, Play; Monster Play as.
+Result:
+
+### [ ] T-257: The read meter and Call / Fake / Block (Agent B)
+Spec: §2.16          Goldens: unchanged (everything gated on `m.human`)          Save: no change
+Goal: the engine asks your WS / MB for Call (and Fake at read ≥ 70) before the setter's choice, and Block before the
+opponent's set when you are front row; each answer changes the play as specced.
+Files: js/engine/rally.js, rally-phases.js, rally-block.js, rally-defense.js, decide.js, match.js (init `m.read`), js/data/rules.js
+(`READ`: gains, thresholds, coverage, fake chances — steps of 5), js/data/dialogue.js ("Not now!" / "He's reading you!" call lines),
+tests/read.test.js, tests/engine.test.js
+Do not: change a draw when `m.human` is unset; add new act kinds (use `call`, `plabel`, `log`); compute any odds for display.
+Steps:
+1. `m.read = {}` (player id → 0–100), gains / decay per §2.16 (decay in the point end), only for `m.human`.
+2. Yield `call` at the setter's decision when your player can be set (options: call, and fake when read ≥ 70; ai null). Call →
+   the setter's target is you unless pass quality ≤ 1 or you are busy / out of position (then a "Not now!" call act); no quick
+   or dump; stamina × 1.5 on the swing. Fake → §2.16 rules; a failed fake is the worst set quality to you.
+3. Read ≥ 40 / 70: the opponent's best blocker (Defense 0.55 + Jump 0.45) takes your lane, coverage +10 / +20 %.
+4. Yield `block` when the opponent's pass is up and you are front row: commit = +10 % block in your lane, your lane open if it
+   goes elsewhere; a press after their setter's touch (the late window — answer `late`) = −10 %.
+5. Tests: no yields and identical beats without `m.human`; with it, called rallies set you ≥ 90 % on good passes; a failed
+   fake is always a poor set; read ≥ 70 raises the stuff rate on you (headless, 2000 rallies).
+Accept: goldens unchanged; npm test, lint pass.
+QA: none (engine).
+Result:
+
+### [ ] T-258: The setter's pick and Dump; AI "Mine!"; the serve / attack choices go (Agent B)
+Spec: §2.16, §2.13          Goldens: unchanged          Save: no change
+Goal: as setter you pick the hitter (or dump); AI hitters call when hot; the old serve / attack decision points are removed.
+Files: js/engine/rally.js, rally-phases.js, serve.js, decide.js, js/data/rules.js (`DECIDE` trimmed), js/data/dialogue.js,
+js/career/rel.js (the snub), tests/read.test.js, tests/engine.test.js
+Do not: change the AI setter's choice or its draws; keep `Decide.serve` / `Decide.attack` (remove them and their test).
+Steps:
+1. Yield `setter` at the setter's choice when your player is the setter: options = each hitter `{ id, key: '1'…'3', blocks: 0–2,
+   mine }` + `dump` when the pass is tight (quality 3); `ai` = today's choice.
+2. AI hitters' "Mine!" (`mine` on the option and a `call` act) when confidence ≥ 70 — no draws.
+3. Ignoring a calling hitter: mood −0.1, and record `m.snub` (once a set per teammate) for the career relationship dip (rel.js).
+4. Remove the serve and attack yields, `Decide.serve` / `Decide.attack`, their `DECIDE` entries and the T-233 odds test.
+5. Tests: the setter yield's options match the hitters on court; dump repeated raises your read.
+Accept: goldens unchanged; tests pass.
+QA: none (engine).
+Result:
+
+### [ ] T-259: Fire, stages and temperament replace momentum and the zone (Agent B)
+Spec: §2.14          Goldens: update (stages change the buffs and draws of every match)          Save: no change
+Goal: every match tracks fire and a stage per team with the §2.14 buffs, triggers, exits and temperaments; the beats announce changes.
+Files: js/engine/fire.js, match.js (pointMomentum, pointZone, snap), stats.js (boost: stage buffs), elements.js / hype.js (zone →
+Fever reads), js/data/momentum.js, tests/momentum.test.js, tests/engine.test.js, tests/golden.json
+Do not: rename `m.zone` / `m.zoneHit` (aliases of Fever); change the coach's timeout logic beyond "timeout → Composed".
+Steps:
+1. `m.fire` (= today's mom rules), `m.stage`, `m.temper` (from personalities, §2.14); `fireStage(m, side)` with the temperament
+   thresholds; Fever only with a trigger; Fever timer; exits (error, breaker, stuff, timeout, settle).
+2. boost(): replace `0.06 × mom` with the stage buffs (atk → power in play, def → defense in play, spd, jump, serve).
+3. Emit `{ k: 'stage', side, from, to, why }` beats on every change (only when `m.rec`); `snap` gains `fire`, `stage`, `temper`.
+4. Zone-breaker cut-in and the old "In the zone" cut-in: keep the breaker; "In the zone" → "FEVER" (cut title).
+5. Tests: every stage reachable; Ice never Loose / Fever; Fever ≤ 4 points; buffs applied (effective stats at each stage).
+Accept: goldens updated with the reason; tests pass; report stage time shares from a 400-match headless run in Result.
+QA: none (engine).
+Result:
+
+### [ ] T-260: Captain's calls and the balance check (Agent B)
+Spec: §2.17, §2.14 (balance)          Goldens: update (the random captain buff goes)          Save: no change
+Goal: captains call Fire up / Settle on a leadership cooldown (AI and you); `npm run balance` prints the stage numbers and the stage buffs hit their targets.
+Files: js/engine/fire.js (capReady, capCall), match.js (captainThink: the buff → AI calls; drop the zone captain's call),
+js/data/momentum.js (tuning), tests/balance.js, tests/momentum.test.js, tests/golden.json
+Do not: touch the captain's tactic / defence switches; tune off steps of 5.
+Steps:
+1. capReady / capCall per §2.17 (cooldown 5 / 4 / 3 points by leadLv); beats: the captain's `call` line, `plabel`, `log`, `stage`.
+2. AI captains: Settle when Loose; Fire up when 2+ down or at set point; skip when `m.human` is the captain (the UI calls).
+3. tests/balance.js: 1000 headless matches of league teams → table: point win rate per stage vs Composed, stage time share,
+   Fevers per match, per temperament, with / without captain calls. Tune momentum.js to the §2.14 targets (±2 points).
+Accept: goldens updated; the balance table in Result; tests pass.
+QA: none (engine).
+Result:
+
+### [ ] T-261: The director — effects by stage (Agent C)
+Spec: §2.15, §10.7b          Goldens: unchanged (display only)          Save: no change
+Goal: a play's effects follow its team's stage per the §2.15 table; OP players and element spikes count one stage higher.
+Files: js/render/director.js, effects.js, acts.js, clock.js, ball.js, overlay.js, js/render3d/fx3d.mjs, r3d.mjs, actors3d.mjs,
+js/data/vfx.js (a `dir` group: on, force), js/ui/vfx-panel.js
+Do not: change engine code or draw randoms; drop the VFX panel values (they are the Focused row; the director multiplies).
+Steps:
+1. `Dir.tier(side)`: the §2.15 row from `A.stageShown[side]` (VFX.dir.force overrides for dev), +1 stage for an OP hitter or an
+   element spike (Dir.beat sees the attack beat).
+2. Apply: size multiplier to every fx3d call; air impact power floor and ring count; shake ×; ball trail style override;
+   impact frame gate (power floor + once per N points); kill bounce / blast gates; aura look (actors3d).
+3. VFX panel → Director: On / Off, Force stage (Off · Loose · Composed · Focused · Fever).
+Accept: tests, lint pass; QA (Monster, Force stage each value): screenshots of one spike per stage; Loose shows no air
+impact, Fever shows 4 rings + dome; fx count readout per stage in Result.
+QA: Monster game → V → Director → Force stage.
+Result:
+
+### [ ] T-262: The arena follows the hotter team; auras by stage (Agent C)
+Spec: §2.15 (arena row), §9.11 Moments, §2.11          Goldens: unchanged          Save: no change
+Goal: lights, crowd and music follow the hotter team's stage; the old zone look becomes Fever's.
+Files: js/render/director.js, js/render3d/venue3d.mjs, venues/*.mjs, actors3d.mjs (zone rings / eye streaks → Fever), js/audio/sfx.js (music gain)
+Do not: change venue geometry or the crowd count by stakes; add new audio files.
+Steps:
+1. Hotter team = the higher stage (ties: higher fire); venue light / rim / crowd cheer per §2.15; music gain × 0.8 Loose
+   … × 1.15 Fever (eased over 1 s).
+2. Eye streaks and zone rings: Fever only; Focused: the faint aura.
+Accept: QA screenshots in each venue at Composed and Fever (Force stage); tests pass.
+QA: Monster game; career court match (hall).
+Result:
+
+### [ ] T-263: Cinematic lines between points (Agent C)
+Spec: §2.18          Goldens: unchanged (presentation; lines by hash)          Save: no change
+Goal: the director speaks 1–2 line exchanges between points on story events, within the budget, and a hush with a line each side at set / match point.
+Files: js/render/director.js, js/data/match-lines.js, js/render/scenes.js (the staged moment), tests/lines.test.js
+Do not: draw R() or Math.random; speak on a timer; write lines outside lore.md's voice; edit the exchange box (Agent A, T-255).
+Steps:
+1. MLINES kinds: fever, loose, settle, fireup, fake_ok, fake_fail, refused, stuffed_call, duel, long_rally, comeback, setpoint
+   (+ the reply kinds `_reply`) × personality (5–6 variants; 'any' allowed), placeholders {me} {them} {team} {score}.
+2. Dir: collect events from beats (stage acts, call acts, plabels, point acts), pick at most one exchange per point by priority
+   (stage change > captain's call > fake > duel > rally > comeback), speakers per §2.18 (relationship tags from `A.m.rel`), budget by
+   the hotter team's stage and the Hype setting; `busy()` true while exchangeShow runs.
+3. Set / match point: hush (music and crowd down 50 %) + one line each side.
+4. tests/lines.test.js: every kind covers every personality; no unknown placeholder; the pick is the same for the same event.
+Accept: tests pass; QA: a Monster game at Hype Max played to the end — exchanges counted per stage in Result (target: 0 at
+Composed, ~1 per 4 points Focused).
+QA: Monster game, Hype Max.
+Result:
 
 **Balance batch (owner, 2026-10-05): two build agents at once, by file ownership — never edit a file the other owns.**
 The shared seams are already in place (spec chat): index.html entries, stubs `js/career/court.js` (`Court`),
@@ -289,6 +496,8 @@ Features (spec first):
 - Endless mode (spec §4.26: no guarantees; national call-up by grades).
 - Living map layers B / C (spec §4.16: individual figures, approaches on the map).
 - Balance pass (spec §4.10 condition values, §5.5 severe injury, hype frequency §2.3).
+- Match revamp, parked (owner, 2026-10-07): the match remembers your choices ("AI memory"); back-row defensive commands;
+  temperament changing how a team plays; the read meter for AI hitters; pre- and post-match lines (§2.18).
 
 Refactor seams to cut only when the feature is specced (not now — YAGNI):
 
