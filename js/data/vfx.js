@@ -42,14 +42,14 @@ const VFX_DEF = {
   burst: {
     name: 'Contact burst',
     p: {
-      ring: [0.2, 0, 1.5, 0.05, 'Ring size'],
+      ring: [0.05, 0, 1.5, 0.05, 'Ring size'],
       parts: [1, 0, 3, 0.1, 'Particles']
     }
   },
   elem: {
     name: 'Elements',
     p: {
-      parts: [1, 0, 3, 0.1, 'Burst + floor particles'],
+      parts: [0.4, 0, 3, 0.1, 'Burst + floor particles'],
       trail: [1, 0, 3, 0.1, 'Ball trail particles']
     }
   },
@@ -113,7 +113,7 @@ const VFX_DEF = {
   ball: {
     name: 'Ball trail',
     p: {
-      style: ['streak', ['streak', 'ribbon', 'ink', 'off'], 0, 0, 'Style'],
+      style: ['ribbon', ['streak', 'ribbon', 'ink', 'off'], 0, 0, 'Style'],
       min: [0, 0, 150, 1, 'From power'],
       width: [1, 0.2, 4, 0.05, 'Width'],
       life: [1, 0.3, 3, 0.05, 'Length'],
@@ -123,7 +123,7 @@ const VFX_DEF = {
   hand: {
     name: 'Hand trails',
     p: {
-      width: [1, 0.2, 4, 0.05, 'Width'],
+      width: [0.3, 0.2, 4, 0.05, 'Width'],
       life: [1, 0.3, 3, 0.05, 'Length'],
       style: ['light', ['light', 'ink'], 0, 0, 'Style (the default for new players; ⚙ Trails)'],
       ink: ['#ff1630', 0, 0, 0, 'Ink glow colour']
