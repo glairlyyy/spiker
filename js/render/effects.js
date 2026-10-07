@@ -67,11 +67,25 @@ function touchFx(kind, save) {
   const f = fx3();
   if (f && f.touch) f.touch(kind, save);
 }
-/** Ball hits the floor: dust and shockwave, plus a screen shake by power. */
-function impact(pow) {
+/** Ball hits the floor: dust and shockwave, plus a camera rumble by power (VFX.shake.floor; a kill × VFX.shake.kill). */
+function impact(pow, kill) {
   const f = fx3();
   if (f) f.impact(pow);
-  if (!RM) A.shake = Math.max(A.shake, pow / 12);
+  camRumble(pow, kill);
+}
+/**
+ * Camera shake (owner 2026-10-07; VFX.shake; none with reduced motion or Zooms: Off — Overlay.applyView). Spike contact: a
+ * short sharp kick along the shot. The ball on the floor: trauma (0–1) that rumbles as trauma² and decays (a kill hits harder).
+ */
+function camKick(pow, dir) {
+  const S = VFX.shake;
+  if (RM || pow < S.min || S.spike <= 0) return;
+  A.kick = { t0: performance.now(), amt: Math.min(1.6, (pow - S.min + 25) / 60) * S.spike, dir };
+}
+function camRumble(pow, kill) {
+  const S = VFX.shake;
+  if (RM || pow < S.min * 0.6 || S.floor <= 0) return; // softer balls on the floor still rumble a little (from 60 % of the min)
+  A.trauma = Math.min(1, (A.trauma || 0) + (pow / 140) * S.floor * (kill ? S.kill : 0.5));
 }
 /** Element burst at the ball (fire, water, earth, wind, flash, blast, shadow, star). */
 function elemBurst(el, pow) {

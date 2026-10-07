@@ -742,7 +742,8 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
 - §10.7b VFX tuning (dev, owner 2026-10-06): every effect value (air impact: from power, Doppler, reach, ring size / count / life,
   wind, jet, dome; impact frame: on, from power, length, slow motion; contact burst; element particles; ground blast on a kill:
   on (off by default), from power, size, sparks, smoke; hand trails: style Light / Ink (= ⚙ Trails; the export's style is the
-  default for new players), width, length, ink colour; kill bounce (owner 2026-10-07: a kill at power 95+ rebounds high and flies off the
+  default for new players), width, length, ink colour; camera shake (owner 2026-10-07: both — a sharp kick along the shot at spike
+  contact, a rumble when the ball hits the floor, bigger on a kill; from power; none with reduced motion or Zooms: Off; panel tests); kill bounce (owner 2026-10-07: a kill at power 95+ rebounds high and flies off the
   court — height and distance by power, the ball is gone until the next serve; on, from power, height, distance); every player (owner 2026-10-07: foundation effects whatever the stats —
   takeoff / landing dust by jump height, sprint dust, a dive's skid, a pop on every bump / dig / set, a save spark when a ball is dug
   off the floor, a tired player's breath; each a 0–3 scale, dust colour); rings (owner 2026-10-07: every ring effect — air impact, bursts, floor

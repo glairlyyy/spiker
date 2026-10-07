@@ -56,6 +56,15 @@ const VFX_DEF = {
       smoke: [1, 0, 3, 0.1, 'Smoke']
     }
   },
+  shake: {
+    name: 'Camera shake (off with Zooms: Off)',
+    p: {
+      spike: [1, 0, 3, 0.1, 'Spike contact: a sharp kick'],
+      floor: [1, 0, 3, 0.1, 'Ball on the floor: a rumble'],
+      kill: [1.5, 0, 3, 0.1, 'A kill on the floor: rumble ×'],
+      min: [70, 0, 150, 1, 'From power']
+    }
+  },
   bounce: {
     name: 'Kill bounce (ball flies off the court)',
     p: {

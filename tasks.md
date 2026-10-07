@@ -182,6 +182,11 @@ Accept: the row shows after a played match with calls; nothing after a sim.
 QA: career run → a played match with 2+ calls → result card.
 Result: `resultData.calls` (your `m.calls`), `callsRow` on the card's right column: "Calls · N of M made", the last 6 (label, auto on a time-out, chance, ✓ made / ✕ missed / · rally on), "Held back by: <icon> <stat>" = the weak stat seen most in missed calls. Nothing after a sim (no m.human). QA: a played Pro court match with 3 calls → card (screenshot), no errors.
 
+### [x] T-250: Camera shake — spike kick and floor rumble (owner request)
+Spec: §10.7b          Goldens: unchanged (display only)          Save: no change
+Files: js/render/effects.js (`camKick`, `camRumble`, impact(pow, kill)), js/render/acts.js (a spike beat's shake → kick; impact passes kill), js/render/overlay.js (`camShake` in applyView), js/data/vfx.js (`shake` group), js/ui/vfx-panel.js (Spike kick / Kill rumble tests)
+Result: the owner couldn't pick, so both, with different feel: spike contact = a short sharp kick along the shot (~0.16 s, up to ~19 logical px by power); the ball on the floor = trauma rumble (trauma² × 16 px, fast, decays ~1.6/s; a kill × 1.5, other balls × 0.5). VFX panel → Camera shake: spike, floor, kill ×, from power (70); 0 = off; none with reduced motion or Zooms: Off (camera follows the same view transform, so the 3D and labels shake together). The old soft sway stays for blocks and the glass flash. QA: kick (−15, 9) at contact → 0 by 0.16 s; rumble 14 px → ~1 px over 0.5 s; Monster play: 7 kicks, 5 rumbles in 6000 steps; no errors.
+
 ### [x] T-249: Blockers only talk when they touch the ball (owner request)
 Spec: §2.3          Goldens: update (`matches` only — animation beats; teams / sims / monster unchanged: no gameplay change)          Save: no change
 Files: js/engine/rally-defense.js (block(): dropDefScene unless a stuff / touch / soft block; also on a tool)

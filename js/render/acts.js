@@ -41,7 +41,7 @@ const ACTS_FX = {
             vh: clamp(Math.abs(v.h) * 0.42, 0.12, 0.42),
             t: 0
           };
-    impact(a.pow);
+    impact(a.pow, a.kill && !a.blk);
     if (a.kill && !a.blk) groundBlast(a.pow, a.el);
     if (a.kill) sfx.boom(a.pow, a.blk);
     else sfx.floor(a.pow);
@@ -67,7 +67,13 @@ const ACTS_FX = {
     });
   },
   shake(a, d, bs) {
-    if (!RM) A.shake = Math.max(A.shake, a.amt);
+    if (RM) return;
+    // the spike's own shake (its beat carries the hitter's swing style) is the camera kick (VFX.shake.spike)
+    const cb = A.beats && A.beats[A.bi],
+      sw = cb && cb.acts.find(x => x.k === 'spkstyle'),
+      pow = cb && (cb.acts.find(x => x.k === 'burst') || {}).pow;
+    if (sw && sw.st !== 'tip') camKick(pow || 60, A.ball.x < 500 ? 1 : -1);
+    else A.shake = Math.max(A.shake, a.amt);
   },
   lines(a, d, bs) {
     if (!RM) A.lines = { x: bs.X, y: bs.Y, life: 1, pow: a.pow };

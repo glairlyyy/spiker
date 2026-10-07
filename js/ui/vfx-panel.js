@@ -34,7 +34,7 @@ function vfxPanel() {
     <textarea class="vjson" id="vfxjson" readonly aria-label="Changed values (JSON)" onclick="this.select()">${esc(vfxExport())}</textarea>
     ${
       inMatch
-        ? `<div class="vexp"><span>Test at the ball</span><button class="btn" onclick="vfxTest('air')">Air impact</button><button class="btn" onclick="vfxTest('blast')">Blast</button></div>`
+        ? `<div class="vexp"><span>Test at the ball</span><button class="btn" onclick="vfxTest('air')">Air impact</button><button class="btn" onclick="vfxTest('blast')">Blast</button><button class="btn" onclick="vfxTest('kick')">Spike kick</button><button class="btn" onclick="vfxTest('rumble')">Kill rumble</button></div>`
         : ''
     }
     ${Object.entries(VFX_DEF)
@@ -137,6 +137,8 @@ function vfxTest(kind) {
   if (!f) return;
   if (kind === 'air') airImpact(110, '#ff7a2e', A.ball.x < 500 ? 1 : -1);
   else if (kind === 'blast') f.blast(110, ECOL.fire);
+  else if (kind === 'kick') camKick(110, A.ball.x < 500 ? 1 : -1);
+  else if (kind === 'rumble') camRumble(110, true);
 }
 /** Open / close the panel in a dev match. */
 function vfxToggle() {

@@ -49,6 +49,34 @@ const Overlay = (() => {
     ctx.fillText(t, x, y);
   }
   /**
+   * The camera shake (effects.js camKick / camRumble): a spike's kick — a fast jolt along the shot that settles in ~0.16 s —
+   * and the floor rumble — trauma² × up to 16 logical px of fast shake, the trauma bleeding off ~1.6 per second (real time).
+   */
+  function camShake(tr) {
+    const now = performance.now(),
+      dt = Math.min(0.1, (now - (A.shT || now)) / 1000);
+    A.shT = now;
+    if (G.camFixed || RM) {
+      A.kick = null;
+      A.trauma = 0;
+      return;
+    }
+    if (A.kick) {
+      const u = (now - A.kick.t0) / 160;
+      if (u >= 1) A.kick = null;
+      else {
+        const a = A.kick.amt * 12 * Math.pow(1 - u, 2) * Math.cos(u * Math.PI * 3);
+        tr(-A.kick.dir * a, a * 0.6);
+      }
+    }
+    if (A.trauma > 0.002) {
+      const t = now / 1000,
+        s = A.trauma * A.trauma * 16;
+      tr(s * (Math.sin(t * 47) * 0.6 + Math.sin(t * 71.3) * 0.4), s * 0.8 * (Math.sin(t * 53.7) * 0.6 + Math.sin(t * 38.9) * 0.4));
+      A.trauma = Math.max(0, A.trauma - dt * 1.6);
+    }
+  }
+  /**
    * Canvas transform for the court: logical 1000-wide view, shake, camera push-in and block-contest zoom.
    * Returns the combined view as screen = f·p + (ox, oy) in logical units (the 3D renderer applies the same view).
    */
@@ -63,6 +91,7 @@ const Overlay = (() => {
         k = A.shake * 0.5;
       tr(k * (Math.sin(t * 11) * 0.65 + Math.sin(t * 17.3) * 0.35), k * 0.6 * (Math.sin(t * 13.7) * 0.65 + Math.sin(t * 9.1) * 0.35));
     }
+    camShake(tr);
     if (A.cam && A.cam.z > 0.001) {
       // smooth camera push-in (see camTo); centre kept inside the court so the edges never swing wildly
       const c = A.cam,
