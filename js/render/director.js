@@ -54,6 +54,8 @@ const Dir = {
   reset() {
     this.cur = null;
     this.lastFrame = [-99, -99];
+    this.sceneOn = null;
+    this.lastScene = -99;
     this.count = {};
     this.resetLines();
   },
@@ -84,6 +86,7 @@ const Dir = {
   /** A beat starts: whose play it is. A spike beat (it carries `spkstyle`) looks ahead for the kill. */
   beat(b) {
     if (!b || !b.acts || typeof A === 'undefined' || !A) return b;
+    this.sceneGate(b);
     this.beatLines(b);
     const sw = b.acts.find(x => x.k === 'spkstyle'),
       who = sw ? sw.p : (b.acts.find(x => x.p && A.disp[x.p]) || {}).p,
@@ -102,6 +105,26 @@ const Dir = {
       this.cur = { side: d.side, stage: this.tier(d.side, !!(d.p.op || (br && br.el))).stage, kill, atk: true };
     } else if (!this.cur || this.cur.side !== d.side) this.cur = { side: d.side, stage: this.stageOf(d.side), kill: false, atk: false };
     return b;
+  },
+  /**
+   * Staged moments (spec §2.18): a scene (engine/hype.js — close-up + subtitle before a decisive hit) plays only when its
+   * team is Focused or hotter (an OP player one stage up) and at most once per 3 points; otherwise its beats are dropped,
+   * as the Hype setting drops them. Decided on a scene's first beat for the whole scene.
+   */
+  sceneGate(b) {
+    if (!b.scene) return (this.sceneOn = null);
+    if (this.sceneOn == null) {
+      const a = b.acts.find(x => x.p && A.disp[x.p]),
+        d = a && A.disp[a.p],
+        st = d ? STAGE_IDS.indexOf(this.tier(d.side, !!d.p.op).stage) : 0,
+        n = A.pointN || 0;
+      this.sceneOn = !this.on() || (st >= STAGE_IDS.indexOf('focused') && n - (this.lastScene ?? -99) >= 3);
+      if (this.sceneOn && this.on()) this.lastScene = n;
+    }
+    if (!this.sceneOn) {
+      b.dur = 1;
+      b.acts = [];
+    }
   },
   /** Every effect's size × (1 with the director off). */
   k() {
@@ -200,15 +223,178 @@ const Dir = {
   busy() {
     return !!this.talk;
   },
-  // ---------- lines (T-263) ----------
+  // ---------- lines (T-263, spec §2.18) ----------
+  /** The exchange on screen (holds the next rally): { t: ms shown } — cleared when the box ends (a safety cap of 12 s). */
   talk: null,
-  /** Set / match point: the crowd and music go down (spec §2.18). */
+  /** Set / match point: the crowd and music go down until the serve (spec §2.18). */
   hush: false,
   resetLines() {
     this.talk = null;
     this.hush = false;
+    this.ev = []; // this rally's events: { kind, side, p, q } (p / q player ids where the beats name them)
+    this.rally = {}; // called (your call for the ball), hit (the last spiker), blk (their blocker)
+    this.duels = {}; // 'hitter|blocker' → times met
+    this.pend = null; // the rally's point { side, streak } — the exchange comes once its beats have played
+    this.snapPts = [0, 0];
+    this.mpSide = -1; // who held set point at the last point (a new holder = a new hush)
+    this.lastTalk = -99; // the point number of the last exchange (the budget)
+    this.said = []; // QA: every exchange { n, kind, stage } this match
   },
-  beatLines() {},
-  stepLines() {},
-  stageLine() {}
+  /** A beat starts: read its acts for the story's events (a refused call, a fake, a stuffed call, a duel, the point). */
+  beatLines(b) {
+    if (!this.ev) this.resetLines();
+    const acts = b.acts,
+      P = id => A.disp[id] && A.disp[id].p,
+      byName = n => (Object.values(A.disp).find(d => d.p.name === n) || {}).p;
+    for (let i = 0; i < acts.length; i++) {
+      const a = acts[i];
+      if (a.k === 'reset') {
+        this.ev = [];
+        this.rally = {};
+        this.hush = false;
+      } else if (a.k === 'call' && CALLS.notnow.includes(a.t)) {
+        const c = acts
+          .slice(0, i)
+          .reverse()
+          .find(x => x.k === 'call');
+        if (c) this.ev.push({ kind: 'refused', p: c.p, q: a.p });
+      } else if (a.k === 'log' && typeof a.t === 'string') {
+        if (/calls for the ball$/.test(a.t)) this.rally.called = (acts.find(x => x.k === 'call') || {}).p;
+        const fk = acts.find(x => x.k === 'pose' && x.pose === 'spike'),
+          ok = / sells the fake — .+ bites$/.test(a.t),
+          home = a.t.match(/ fakes, but (.+) stays home$/);
+        if (fk && ok) this.ev.push({ kind: 'fake_ok', p: fk.p, q: (acts.find(x => x.k === 'pose' && x.pose === 'block') || {}).p });
+        else if (fk && home) this.ev.push({ kind: 'fake_fail', p: fk.p, q: (byName(home[1]) || {}).id });
+      } else if (a.k === 'spkstyle' && P(a.p)) {
+        // the blocker who rises against this spike (this beat or the next two): the duel count
+        const side = A.disp[a.p].side;
+        let blk = null;
+        for (let j = A.bi; j < Math.min(A.beats.length, A.bi + 3) && !blk; j++)
+          blk = A.beats[j].acts.find(x => x.k === 'pose' && x.pose === 'block' && A.disp[x.p] && A.disp[x.p].side !== side);
+        this.rally.hit = a.p;
+        this.rally.blk = blk ? blk.p : null;
+        if (blk) {
+          const key = `${a.p}|${blk.p}`,
+            n = (this.duels[key] = (this.duels[key] || 0) + 1);
+          if (n % 3 === 0) this.ev.push({ kind: 'duel', p: a.p, q: blk.p });
+        }
+      } else if (a.k === 'impact' && a.kill && a.blk && this.rally.called && this.rally.called === this.rally.hit)
+        this.ev.push({ kind: 'stuffed_call', p: this.rally.hit, q: this.rally.blk });
+      else if (a.k === 'point') this.pend = { side: a.side, streak: a.streak || 0, touches: A.rallyN || 0 };
+      else if (a.k === 'score' && a.snap) this.snapPts = a.snap.pts.slice();
+    }
+  },
+  /** A stage change: Fever / Loose, or a captain's Settle / Fire up (spec §2.14, §2.17). */
+  stageLine(a) {
+    if (!this.ev) this.resetLines();
+    const kind =
+      a.why === 'settle' ? 'settle' : a.why === 'fire' ? 'fireup' : a.to === 'fever' ? 'fever' : a.to === 'loose' ? 'loose' : null;
+    if (kind) this.ev.push({ kind, side: a.side });
+  },
+  /** Every frame: once a point's beats have played, the between-point exchange (if the budget allows one). */
+  stepLines(raw) {
+    if (typeof A === 'undefined' || !A) return;
+    if (!this.ev) this.resetLines();
+    if (this.talk) {
+      if ((this.talk.t += raw) > 12000) this.talk = null; // the box never answered: never hold the match
+      return;
+    }
+    if (!this.pend || !A.beats || A.bi < A.beats.length || A.ask) return;
+    const pp = this.pend,
+      s = this.snapPts,
+      w = pp.side;
+    this.pend = null;
+    if (A.done || (A.m && A.m.over)) return (this.ev = []);
+    // events the point itself makes: a long rally, a comeback, a new set point
+    if (pp.touches >= 8) this.ev.push({ kind: 'long_rally', side: w });
+    if (pp.streak === 3 && s[1 - w] - (s[w] - 3) >= 3) this.ev.push({ kind: 'comeback', side: w });
+    const hi = Math.max(s[0], s[1]),
+      mp = hi >= RULES.pointsToWin - 1 && s[0] !== s[1] ? (s[0] > s[1] ? 0 : 1) : -1;
+    if (mp >= 0 && mp !== this.mpSide) this.ev.push({ kind: 'setpoint', side: mp });
+    this.mpSide = mp;
+    const ev = this.ev;
+    this.ev = [];
+    const hype = HYPE[G.hype] ? HYPE[G.hype].max : 1;
+    if (!hype || !ev.length) return; // Hype Off: bubbles only
+    const sp = ev.find(e => e.kind === 'setpoint'),
+      stage = this.arena().stage,
+      gap = hype >= 2 ? 2 : 4, // Focused: 1 per 4 points (Max: 1 per 2); Fever: every point with an event
+      open = stage === 'fever' || (stage === 'focused' && A.pointN - this.lastTalk >= gap);
+    let e = sp;
+    if (!e && open) for (const k of MLINE_KINDS) if ((e = ev.find(x => x.kind === k))) break;
+    if (!e) return;
+    const lines = this.exchange(e);
+    if (!lines.length) return;
+    if (e.kind === 'setpoint') this.hush = true;
+    this.lastTalk = A.pointN;
+    this.said.push({ n: A.pointN, kind: e.kind, stage });
+    this.talk = { t: 0 };
+    exchangeShow(lines, () => (this.talk = null));
+  },
+  /** The two speakers of an event and their lines: [{ p, t, side }] (the reply only when someone has a stake). */
+  exchange(e) {
+    const P = id => (id && A.disp[id] ? A.disp[id].p : null),
+      sideOf = p => (p && A.disp[p.id] ? A.disp[p.id].side : -1),
+      on = side =>
+        Object.values(A.disp)
+          .filter(d => d.side === side)
+          .map(d => d.p),
+      mood = p => ((A.moodShown || {})[p.id] || 0) + p.num / 1000,
+      hottest = (side, not) =>
+        on(side)
+          .filter(p => p !== not)
+          .sort((a, b) => mood(b) - mood(a))[0] || null,
+      coldest = side => on(side).sort((a, b) => mood(a) - mood(b))[0] || null,
+      cap = (side, not) => {
+        const c = A.m.t[side].cap;
+        return c && A.disp[c.id] && c !== not ? c : hottest(side, not);
+      },
+      tag = (a, b) => (A.m.rel && A.m.rel.tag && A.m.rel.tag[`${a.id}|${b.id}`]) || 'neutral',
+      // whoever on `side` has a stake in p: an ally / respect (good) or a rival / resent / enemy (bad)
+      stake = (side, p, good) =>
+        on(side).find(q => q !== p && (good ? ['ally', 'respect'] : ['enemy', 'resent']).includes(tag(q, p))) || null;
+    let p = P(e.p),
+      q = P(e.q),
+      side = e.side ?? sideOf(p);
+    if (side < 0) return [];
+    const o = 1 - side;
+    switch (e.kind) {
+      case 'fever':
+      case 'long_rally':
+        p = (e.kind === 'long_rally' && P(this.rally.hit) && sideOf(P(this.rally.hit)) === side && P(this.rally.hit)) || hottest(side);
+        q = stake(o, p, false) || cap(o);
+        break;
+      case 'loose':
+        p = coldest(side);
+        q = stake(side, p, true) || cap(side, p);
+        break;
+      case 'settle':
+      case 'fireup':
+        p = cap(side);
+        q = stake(side, p, true) || hottest(side, p);
+        break;
+      case 'comeback':
+        p = hottest(side);
+        q = cap(o);
+        break;
+      case 'setpoint':
+        p = hottest(side);
+        q = stake(o, p, false) || cap(o);
+        break;
+      case 'fake_fail':
+        q = q || cap(o);
+        break;
+    }
+    if (!p) return [];
+    const pts = this.snapPts,
+      sc = s => `${pts[s]}–${pts[1 - s]}`,
+      name = s => A.m.t[s].short || A.m.t[s].name,
+      n = A.pointN,
+      out = [{ p: p.id, t: mlinePick(e.kind, p, q, name(side), sc(side), n, name(o)), side }];
+    if (q && q !== p) {
+      const qs = sideOf(q);
+      out.push({ p: q.id, t: mlinePick(e.kind + '_reply', q, p, name(qs), sc(qs), n, name(1 - qs)), side: qs });
+    }
+    return out.filter(l => l.t);
+  }
 };
