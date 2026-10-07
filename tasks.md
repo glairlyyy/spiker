@@ -182,6 +182,11 @@ Accept: the row shows after a played match with calls; nothing after a sim.
 QA: career run → a played match with 2+ calls → result card.
 Result: `resultData.calls` (your `m.calls`), `callsRow` on the card's right column: "Calls · N of M made", the last 6 (label, auto on a time-out, chance, ✓ made / ✕ missed / · rally on), "Held back by: <icon> <stat>" = the weak stat seen most in missed calls. Nothing after a sim (no m.human). QA: a played Pro court match with 3 calls → card (screenshot), no errors.
 
+### [x] T-247: Foundation VFX for every player (owner request)
+Spec: §10.7b          Goldens: unchanged (display only)          Save: no change
+Files: js/render3d/actors3d.mjs (`foundation` per frame: jump / sprint / dive / breath), js/render3d/fx3d.mjs (`dust`, `skid`, `touch`, `breath`), js/render/playback.js (startBall → touchFx on bump / dive / set), js/render/effects.js (`touchFx`), js/render3d/r3d.mjs (fx `touch`), js/data/vfx.js (`found` group), js/render3d/vfxlab3d.mjs + js/ui/vfx-lab.js ("Every player" preview)
+Result: every player, any stats: dust at takeoff and landing (landing cloud by jump height), dust off alternate feet when sprinting (> 3.2 m/s), a skid trail while diving, a small pop on every bump / dig (forearm ring + glints) and set (fingertip twinkle), a save spark (floor ring, sparks, dust) when the ball is dug below ~0.65 m, a breath puff every ~1.5 s for a tired player standing still. VFX panel → Every player: a 0–3 scale each (0 = off) and the dust colour. QA: lab preview; Average game (ordinary players) 2500 steps — touch pops fired (3 bumps, 3 sets), no errors.
+
 ### [x] T-246: Partial ink rings — the ensō (owner request)
 Spec: §10.7b          Goldens: unchanged (display only)          Save: no change
 Files: js/render3d/fx3d.mjs (RING_ENSO, ENSO_FS / ENSO_FS_GLOW, `inkRing(glow, partial)`), js/data/vfx.js (ring style `partial`), js/ui/vfx-panel.js (option names per group: Ink full / Ink partial)

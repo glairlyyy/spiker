@@ -266,6 +266,17 @@ function play(name, stray) {
     case 'sweep':
       L.swing = { t: 0 };
       return;
+    case 'found': {
+      // every player's foundation set, left to right: landing dust, a dive skid, a bump, a set, a save, a tired breath
+      const F = typeof VFX !== 'undefined' ? VFX.found : { jump: 1, dive: 1, breath: 1 };
+      fx.dust(new THREE.Vector3(-4, 0, 0), 1.1 * F.jump);
+      for (let i = 0; i < 8; i++) fx.skid(new THREE.Vector3(-2.6 + i * 0.12, 0, 0.4), new THREE.Vector3(1, 0, 0), F.dive);
+      fx.touch('bump', new THREE.Vector3(-0.8, 1, 0), false);
+      fx.touch('set', new THREE.Vector3(0.8, 2.6, 0), false);
+      fx.touch('dive', new THREE.Vector3(2.4, 0.3, 0), true);
+      fx.breath(new THREE.Vector3(4, 1.6, 0), new THREE.Vector3(-1, 0, 0), F.breath);
+      return;
+    }
     case 'zap':
       return fx.zap(at(2), o.pow);
     case 'skyBolt':

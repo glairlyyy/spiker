@@ -56,6 +56,18 @@ const VFX_DEF = {
       smoke: [1, 0, 3, 0.1, 'Smoke']
     }
   },
+  found: {
+    name: 'Every player (foundation)',
+    p: {
+      jump: [1, 0, 3, 0.1, 'Takeoff / landing dust'],
+      run: [1, 0, 3, 0.1, 'Sprint dust'],
+      dive: [1, 0, 3, 0.1, 'Dive skid'],
+      touch: [1, 0, 3, 0.1, 'Touch pops (bump, dig, set)'],
+      save: [1, 0, 3, 0.1, 'Save spark (dug off the floor)'],
+      breath: [1, 0, 3, 0.1, 'Tired breath'],
+      dust: ['#e9dfcf', 0, 0, 0, 'Dust colour']
+    }
+  },
   ring: {
     name: 'Rings (every ring effect)',
     p: {

@@ -226,7 +226,10 @@ function startBall(a) {
   } else {
     const lc = A.lastC,
       lp = A.lastP && A.disp[A.lastP];
-    if ((lc === 'bump' || lc === 'dive' || lc === 'set') && lp) lp.swing = 0;
+    if ((lc === 'bump' || lc === 'dive' || lc === 'set') && lp) {
+      lp.swing = 0;
+      touchFx(lc, A.ball.h < 40); // every player's touch pop; dug off the floor: a save spark (VFX.found)
+    }
     const hd = (lc === 'spike' || lc === 'serve') && lp;
     if (hd) a._lag = Math.max(0, swingLead(hd) - (hd.spk || 0));
     // a hard hit leaves the hand and keeps accelerating (topspin + gravity): the harder, the stronger

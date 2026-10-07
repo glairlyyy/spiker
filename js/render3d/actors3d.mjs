@@ -84,6 +84,44 @@ export function posePlayer(pl, dt, ballPos, fx) {
   updateVrm(pl, dt);
   lightTrails(pl, d, root, dt);
   glow(pl, d, pos, dt, fx);
+  foundation(pl, d, mot, pos, dt, fx);
+}
+
+/**
+ * Foundation effects for every player (VFX.found, owner 2026-10-07 — whatever their stats): dust at takeoff and landing (by the
+ * jump's height), sprint dust off alternate feet, a dive's skid, a tired player's breath. Display only, Math.random only.
+ */
+const FND_UP = 4, // jy (court h units) above which a player is airborne
+  SPRINT = 3.2; // m/s
+function foundation(pl, d, mot, pos, dt, fx) {
+  if (!fx || !fx.dust || A.shot || dt <= 0) return;
+  const F = VFX.found,
+    s = pl.fnd || (pl.fnd = { air: false, peak: 0, step: 0, foot: 0, br: Math.random() }),
+    jy = d.jy || 0,
+    air = jy > FND_UP;
+  if (air) s.peak = Math.max(s.peak, jy);
+  if (air && !s.air && d.pose !== 'dive') fx.dust(pos, 0.7 * F.jump); // takeoff
+  if (!air && s.air) {
+    fx.dust(pos, clamp(s.peak / 90, 0.4, 1.4) * F.jump); // landing: the higher the jump, the bigger the cloud
+    s.peak = 0;
+  }
+  s.air = air;
+  if (!air && d.pose !== 'dive' && mot.speed > SPRINT && (s.step -= dt) <= 0) {
+    s.step = 0.16;
+    s.foot ^= 1;
+    fx.dust(pl.bone(s.foot ? 'leftFoot' : 'rightFoot').getWorldPosition(tmp2), 0.3 * F.run);
+  }
+  if (d.pose === 'dive' && !air && mot.speed > 1 && (s.step -= dt) <= 0) {
+    s.step = 0.05;
+    fx.skid(pl.bone('hips').getWorldPosition(tmp2), tmp.set(mot.vx, 0, mot.vz).normalize(), F.dive);
+  }
+  const sta = (A.staShown || {})[d.p.id];
+  if (sta != null && sta < 0.3 && !air && mot.speed < 1 && (s.br -= dt) <= 0) {
+    s.br = 1.3 + Math.random() * 0.6;
+    const head = pl.bone('head').getWorldPosition(tmp2),
+      fwd = tmp.set(Math.sin(pl.root.rotation.y), 0, Math.cos(pl.root.rotation.y));
+    fx.breath(head.addScaledVector(fwd, 0.12).setY(head.y - 0.05), fwd, F.breath);
+  }
 }
 
 /** Body yaw (pl.yawOff, relative to facing the net): toward a dive, the way you run, the coach in a huddle, or the ball. */

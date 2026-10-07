@@ -672,6 +672,73 @@ export function createFx(scene) {
       // debris: dark chunks thrown out
       for (let i = 0; i < 12 * k; i++) spawnRock(f, up(0.3, 1, R(2.5, 6) * k), 0.45, '#2b2626');
     },
+    /**
+     * Foundation (owner 2026-10-07: effects every player gets, whatever their stats). Dust off the floor at `p` (takeoff,
+     * landing, a sprint step): `k` scales size and count (0 = nothing).
+     */
+    dust(p, k) {
+      if (k <= 0.01) return;
+      const c = vx('found', 'dust', '#e9dfcf'),
+        f = new THREE.Vector3(p.x, 0.04, p.z);
+      for (let i = 0; i < Math.round(3 + 7 * k); i++) {
+        const a = Math.random() * Math.PI * 2,
+          v = R(0.5, 1.6) * Math.sqrt(k);
+        SMOKE.spawn(
+          f,
+          new THREE.Vector3(Math.cos(a) * v, R(0.1, 0.5) * k, Math.sin(a) * v),
+          c,
+          c,
+          R(0.12, 0.2) * k + 0.05,
+          R(0.35, 0.6) * k + 0.1,
+          R(0.4, 0.7),
+          {
+            a: 0.5,
+            drag: 3,
+            spin: R(-1, 1)
+          }
+        );
+      }
+    },
+    /** A dive's skid: a puff and a scuff spark behind the sliding body, `dir` the slide (unit, xz). */
+    skid(p, dir, k) {
+      if (k <= 0.01) return;
+      const c = vx('found', 'dust', '#e9dfcf'),
+        f = new THREE.Vector3(p.x, 0.05, p.z);
+      SMOKE.spawn(f, dir.clone().multiplyScalar(-R(0.3, 0.8)).setY(R(0.1, 0.4)), c, c, 0.12 * k, 0.45 * k, R(0.4, 0.7), {
+        a: 0.3,
+        drag: 2.5,
+        spin: R(-1, 1)
+      });
+      if (Math.random() < 0.5) SPARK.spawn(f, rv(R(0.5, 1.5)).setY(R(0.3, 1)), '#ffffff', c, 0.06 * k, 0.01, 0.25, { g: 4 });
+    },
+    /** A touch on the ball: 'bump' / 'dive' (forearm pop), 'set' (fingertip twinkle); `save`: dug off the floor (a spark ring). */
+    touch(kind, p, save) {
+      const k = vx('found', 'touch', 1);
+      if (kind === 'set') {
+        for (let i = 0; i < 8 * k; i++)
+          SPARK.spawn(p, rv(R(0.4, 1.2)), '#ffffff', '#ffe7a8', R(0.14, 0.22) * k, 0.02, R(0.3, 0.45), { tw: 30, drag: 3 });
+      } else if (k > 0.01) {
+        ring(p, '#ffffff', 0.45 * k, 0.22, false, { op: 0.55 });
+        for (let i = 0; i < 6 * k; i++) GLOW.spawn(p, rv(R(1, 2.5)), '#ffffff', '#cfe8ff', R(0.08, 0.14), 0.02, R(0.15, 0.25), { drag: 5 });
+      }
+      const s = save ? vx('found', 'save', 1) : 0;
+      if (s > 0.01) {
+        const f = new THREE.Vector3(p.x, 0.03, p.z);
+        ring(f, '#fff2b0', 1.1 * s, 0.35, true, { op: 0.8 });
+        for (let i = 0; i < 16 * s; i++)
+          SPARK.spawn(f, rv(R(1, 3)).setY(R(1, 3)), '#ffffff', '#ffd27a', R(0.08, 0.14), 0.01, R(0.3, 0.5), { g: 6, drag: 1.5 });
+        this.dust(f, 0.8 * s);
+      }
+    },
+    /** A tired player's breath: one small white puff from the mouth, drifting forward and up. */
+    breath(p, fwd, k) {
+      if (k <= 0.01) return;
+      SMOKE.spawn(p, fwd.clone().multiplyScalar(0.35).setY(0.15), '#ffffff', '#dfe8f0', 0.04 * k, 0.22 * k, R(0.8, 1.1), {
+        a: 0.28,
+        drag: 1.2,
+        spin: R(-1, 1)
+      });
+    },
     /** Live particle counts (the VFX lab's readout). */
     stats() {
       return {

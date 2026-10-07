@@ -741,7 +741,9 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
 - §10.7b VFX tuning (dev, owner 2026-10-06): every effect value (air impact: from power, Doppler, reach, ring size / count / life,
   wind, jet, dome; impact frame: on, from power, length, slow motion; contact burst; element particles; ground blast on a kill:
   on (off by default), from power, size, sparks, smoke; hand trails: style Light / Ink (= ⚙ Trails; the export's style is the
-  default for new players), width, length, ink colour; rings (owner 2026-10-07: every ring effect — air impact, bursts, floor
+  default for new players), width, length, ink colour; every player (owner 2026-10-07: foundation effects whatever the stats —
+  takeoff / landing dust by jump height, sprint dust, a dive's skid, a pop on every bump / dig / set, a save spark when a ball is dug
+  off the floor, a tired player's breath; each a 0–3 scale, dust colour); rings (owner 2026-10-07: every ring effect — air impact, bursts, floor
   shockwaves, element rings): style Light / Ink full (black brush ring, glow inside: the ink colour or the effect's own) / Ink
   partial (an ensō: one brush stroke round most of the circle in the glow colour, pressed then lifting into dry strands, a loose
   outer strand, splatter), ink life; ball trail (owner 2026-10-07): style Streak (the 2D line) / Ribbon /

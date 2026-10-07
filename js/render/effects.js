@@ -62,6 +62,11 @@ function groundBlast(pow, el) {
   const f = fx3();
   if (f && f.blast && VFX.blast.on && pow >= VFX.blast.min) f.blast(pow, el && ECOL[el]);
 }
+/** A touch on the ball by anyone (bump / dive / set): a small pop; `save`: dug off the floor. Foundation VFX (VFX.found). */
+function touchFx(kind, save) {
+  const f = fx3();
+  if (f && f.touch) f.touch(kind, save);
+}
 /** Ball hits the floor: dust and shockwave, plus a screen shake by power. */
 function impact(pow) {
   const f = fx3();
