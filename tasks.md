@@ -190,7 +190,7 @@ Accept: goldens updated; the balance table in Result; tests pass.
 QA: none (engine).
 Result:
 
-### [ ] T-261: The director — effects by stage (Agent C)
+### [x] T-261: The director — effects by stage (Agent C)
 Spec: §2.15, §10.7b          Goldens: unchanged (display only)          Save: no change
 Goal: a play's effects follow its team's stage per the §2.15 table; OP players and element spikes count one stage higher.
 Files: js/render/director.js, effects.js, acts.js, clock.js, ball.js, overlay.js, js/render3d/fx3d.mjs, r3d.mjs, actors3d.mjs,
@@ -205,7 +205,7 @@ Steps:
 Accept: tests, lint pass; QA (Monster, Force stage each value): screenshots of one spike per stage; Loose shows no air
 impact, Fever shows 4 rings + dome; fx count readout per stage in Result.
 QA: Monster game → V → Director → Force stage.
-Result:
+Result: `DIR_ROWS` (the §2.15 table) + `Dir` in director.js: `Dir.beat` marks the play (the spiker's side, +1 stage for OP / element, looks ahead for the kill); `Dir.k()` scales every fx3d particle / streak / ring / dome; `airMin / airRings / airDome`, `shakeK`, `ballStyle`, `bounceOn`, `blastOn`, `frameOk` (kill, floor, once per N points per side) replace the raw VFX reads in acts / effects / overlay / r3d; `Dir.aura(side)` drives actors3d (Loose grey haze, Focused faint, Fever = the old zone look: rings, eye streaks, motes). VFX group `dir` (On, Force stage) first in the panel; Off = the raw panel values as before. QA (Monster, Force stage, 12 points; every Monster player is OP so each row shows one stage up): forced Loose → Composed row: 9 air impacts, 2 rings, no frame / bounce / blast; Composed → Focused: 24 air, 3 rings, 4 frames, 6 bounces; Focused / Fever → Fever: ~20 air, 4 rings + dome, 5 frames, 4 bounces, 3–4 blasts. Average game (no OP, 15 points): Loose / Composed / Focused 0 air impacts (powers < 70), Fever 2 (4 rings + dome). Per air impact ~7 meshes / ~130 particles at Composed vs ~10 / ~150 at Fever (sizes × 0.7 / × 1.3). Structural note for ARCHITECTURE: director.js sits between playback and every effect (renderers ask `Dir` for floors / sizes; VFX values stay the Focused row). `R3D.fxStats()` added (QA).
 
 ### [ ] T-262: The arena follows the hotter team; auras by stage (Agent C)
 Spec: §2.15 (arena row), §9.11 Moments, §2.11          Goldens: unchanged          Save: no change

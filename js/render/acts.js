@@ -14,7 +14,10 @@ const ACTS_FX = {
     // a spike (its beat carries the hitter's swing style) splits the air — not a tip, not a soft one (spec §2.3a)
     const cb = A.beats && A.beats[A.bi],
       sw = cb && cb.acts.find(x => x.k === 'spkstyle');
-    if (sw && sw.st !== 'tip' && a.pow >= VFX.air.min) A.airPend = { pow: a.pow, color: a.color }; // fired with the ball's path (airFlush)
+    if (sw && sw.st !== 'tip' && a.pow >= Dir.airMin()) {
+      A.airPend = { pow: a.pow, color: a.color }; // fired with the ball's path (airFlush); the floor is the director's (spec §2.15)
+      Dir.tally('air');
+    }
     if (a.el) elemBurst(a.el, a.pow);
     if (a.op) {
       zap(a.pow);
@@ -26,7 +29,7 @@ const ACTS_FX = {
     const v = A.bv || { x: 0, z: 0, h: 0 },
       Bv = VFX.bounce;
     A.bounce =
-      a.kill && !a.blk && Bv.on && a.pow >= Bv.min
+      a.kill && !a.blk && Dir.bounceOn() && a.pow >= Bv.min
         ? // a kill hit too hard to stay down (VFX.bounce, owner 2026-10-07): it rebounds high and flies off the court, the harder the further
           {
             vx: (Math.sign(v.x) || 1) * clamp(Math.abs(v.x) * 0.35, 0.3, 0.45) * (1 + (a.pow - Bv.min) / 150) * Bv.dist, // ≤ ~11 m/s × the power bonus
@@ -41,6 +44,7 @@ const ACTS_FX = {
             vh: clamp(Math.abs(v.h) * 0.42, 0.12, 0.42),
             t: 0
           };
+    if (A.bounce.far) Dir.tally('bounce');
     impact(a.pow, a.kill && !a.blk);
     if (a.kill && !a.blk) groundBlast(a.pow, a.el);
     if (a.kill) sfx.boom(a.pow, a.blk);

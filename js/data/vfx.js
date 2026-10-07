@@ -8,6 +8,13 @@
  * an array in place of min is a choice of options).
  */
 const VFX_DEF = {
+  dir: {
+    name: 'Director (effects by stage, spec §2.15)',
+    p: {
+      on: [1, 0, 1, 1, 'On (off: the raw values below)'],
+      force: ['off', ['off', 'loose', 'composed', 'focused', 'fever'], 0, 0, 'Force stage (both teams)']
+    }
+  },
   air: {
     name: 'Air impact (spike)',
     p: {

@@ -200,7 +200,7 @@ function reachForBall(pl, d, pose, ballPos) {
 function lightTrails(pl, d, root, dt) {
   const side = d.side;
   const tier = d.p.op ? 2 : d.p.star ? 1 : 0,
-    zk = A.zoneShown && A.zoneShown[side] ? 1.25 : 1,
+    zk = Dir.aura(side) === 'full' ? 1.25 : 1, // Fever (the old zone look; spec §2.15 aura)
     charged = !!(d.p.elOn && (A.egShown || {})[d.p.id] >= EG.full), // full element gauge: trails turn the element colour
     ink = G.trail === 'ink', // ⚙ Trails: Ink — a wider, longer black brush stroke burning crimson (or the element colour)
     o =
@@ -243,8 +243,10 @@ function glow(pl, d, pos, dt, fx) {
   const air = d.jy > 12 || d.pose === 'spike' || d.pose === 'block' || d.pose === 'serve';
   pl.aura.position.set(root.position.x, root.position.y + 1.1, root.position.z);
   const full = !!(d.p.elOn && (A.egShown || {})[d.p.id] >= EG.full),
-    targ = full ? (air ? 0.65 : 0.4) : d.p.op ? (air ? 0.55 : 0.22) : d.p.star && air ? 0.35 : 0;
-  pl.aura.material.color.set(full ? ECOL[d.p.el] : d.p.op ? '#ff2846' : d.p.team.color);
+    look = Dir.aura(side), // the team's stage (spec §2.15): Loose a grey haze, Focused faint, Fever full
+    own = full ? (air ? 0.65 : 0.4) : d.p.op ? (air ? 0.55 : 0.22) : d.p.star && air ? 0.35 : 0,
+    targ = Math.max(own, look === 'full' ? 0.3 : look === 'faint' ? 0.14 : look === 'haze' ? 0.18 : 0);
+  pl.aura.material.color.set(full ? ECOL[d.p.el] : d.p.op ? '#ff2846' : look === 'haze' && !own ? '#8b9099' : d.p.team.color);
   pl.aura.material.opacity += (targ - pl.aura.material.opacity) * (1 - Math.exp(-dt * 8));
   const elc = d.p.elOn ? ECOL[d.p.el] : null, // unlocked element: the aura takes its colour
     col = elc || (d.p.team && d.p.team.color) || '#ff2846',
@@ -257,14 +259,14 @@ function glow(pl, d, pos, dt, fx) {
       Math.random() < 0.5 ? '#6fd6ff' : '#fff27a'
     );
   }
-  if (!A.shot && (chg || (air && (d.p.op || d.p.star)) || (A.zoneShown && A.zoneShown[side] && Math.random() < 0.35)))
+  if (!A.shot && (chg || (air && (d.p.op || d.p.star)) || (look === 'full' && Math.random() < 0.35)))
     if (Math.random() < dt * (air || chg ? 30 : 8))
       fx.mote(
         pl.bone(AURA[(Math.random() * AURA.length) | 0]).getWorldPosition(new THREE.Vector3()),
         d.p.op && !chg ? '#ff2846' : col,
         elc ? '#ffffff' : null
       );
-  const zone = A.zoneShown && A.zoneShown[side],
+  const zone = look === 'full',
     bl = (A.buffShown && A.buffShown[d.p.id]) || 0,
     now = performance.now();
   pl.zone.visible = !!zone;

@@ -167,6 +167,8 @@ void main() {
 /** A live tuning value (js/data/vfx.js — the dev VFX panel edits it while effects play); `d` if the table is missing. */
 const vx = (g, k, d) => (typeof VFX !== 'undefined' && VFX[g] && VFX[g][k] != null ? VFX[g][k] : d);
 const UP = new THREE.Vector3(0, 1, 0);
+/** The director's size × for the play on screen (spec §2.15; 1 outside a match or with the director off). */
+const dk = () => (typeof Dir !== 'undefined' && Dir.k ? Dir.k() : 1);
 
 export function createFx(scene) {
   const pScale = { value: 800 };
@@ -210,8 +212,8 @@ export function createFx(scene) {
         v: v.clone(),
         c1: new THREE.Color(c1),
         c2: new THREE.Color(c2 ?? c1),
-        s0,
-        s1,
+        s0: s0 * dk(),
+        s1: s1 * dk(),
         life,
         age: 0,
         g: o.g ?? 0,
@@ -302,8 +304,8 @@ export function createFx(scene) {
         v: v.clone(),
         c1: new THREE.Color(c1),
         c2: new THREE.Color(c2 ?? c1),
-        w,
-        len,
+        w: w * dk(),
+        len: len * dk(),
         life,
         age: 0,
         g: o.g ?? 0,
@@ -485,7 +487,7 @@ export function createFx(scene) {
     scene.add(m);
     rings.push({
       m,
-      size,
+      size: size * dk(),
       life: life * (ink ? vx('ring', 'life', 1.3) : 1),
       age: -(o.delay || 0),
       floor,
@@ -758,7 +760,7 @@ export function createFx(scene) {
      */
     airImpact(p, dir, pow, color, classic = false, o = {}) {
       const k = Math.min(1.5, Math.max(0.35, (pow - 50) / 45)),
-        R4 = vx('air', 'rings', 4),
+        R4 = typeof Dir !== 'undefined' && Dir.airRings ? Dir.airRings() : vx('air', 'rings', 4), // the director's rings (spec §2.15)
         n = Math.max(1, pow >= 95 ? R4 : pow >= 80 ? R4 - 1 : R4 - 2),
         dop = !classic && vx('air', 'doppler', 1),
         len = dop ? vx('air', 'len', 2) : 1,
@@ -812,7 +814,7 @@ export function createFx(scene) {
           R(0.18, 0.3),
           { drag: 4 }
         );
-      if (pow >= vx('air', 'dome', 95)) {
+      if (pow >= (typeof Dir !== 'undefined' && Dir.airDome ? Dir.airDome() : vx('air', 'dome', 95))) {
         const m = new THREE.Mesh(
           DOME,
           new THREE.MeshBasicMaterial({
@@ -826,7 +828,7 @@ export function createFx(scene) {
         m.position.copy(p);
         m.renderOrder = 4;
         scene.add(m);
-        domes.push({ m, size: 1.6 * k * sz, life: 0.3 * lf, age: 0 });
+        domes.push({ m, size: 1.6 * k * sz * dk(), life: 0.3 * lf, age: 0 });
       }
     },
     /** Generic contact burst at a point (spike, serve, block): team-coloured ring and sparks. */

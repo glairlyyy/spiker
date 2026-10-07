@@ -53,6 +53,10 @@ const VFX_OPT_NAME = {
   streak: 'Streak',
   ribbon: 'Ribbon',
   off: 'Off',
+  loose: 'Loose',
+  composed: 'Composed',
+  focused: 'Focused',
+  fever: 'Fever',
   'ring.ink': 'Ink full',
   'ring.partial': 'Ink partial'
 };

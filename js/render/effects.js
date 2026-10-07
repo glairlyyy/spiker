@@ -35,7 +35,8 @@ function burst(pow, color) {
 function airImpact(pow, color, path) {
   const f = fx3();
   if (f && f.airImpact) f.airImpact(pow, color, path);
-  if (VFX.frame.on && pow >= VFX.frame.min && !RM && HYPE[G.hype].max >= 1) {
+  if (!RM && HYPE[G.hype].max >= 1 && Dir.frameOk(pow)) {
+    Dir.tally('frame'); // the director's floor and once-per-N-points (spec §2.15)
     const st = document.getElementById('stage');
     if (st) {
       st.classList.add('impactf');
@@ -60,7 +61,10 @@ function airFlush(b) {
 /** A kill on the floor (VFX.blast: off by default): the ground blast — sparks, embers, smoke, debris — in the element's colour. */
 function groundBlast(pow, el) {
   const f = fx3();
-  if (f && f.blast && VFX.blast.on && pow >= VFX.blast.min) f.blast(pow, el && ECOL[el]);
+  if (f && f.blast && Dir.blastOn() && pow >= VFX.blast.min) {
+    Dir.tally('blast');
+    f.blast(pow, el && ECOL[el]);
+  }
 }
 /** A touch on the ball by anyone (bump / dive / set): a small pop; `save`: dug off the floor. Foundation VFX (VFX.found). */
 function touchFx(kind, save) {
@@ -79,13 +83,13 @@ function impact(pow, kill) {
  */
 function camKick(pow, dir) {
   const S = VFX.shake;
-  if (RM || pow < S.min || S.spike <= 0) return;
-  A.kick = { t0: performance.now(), amt: Math.min(1.6, (pow - S.min + 25) / 60) * S.spike, dir };
+  if (RM || pow < S.min || S.spike * Dir.shakeK() <= 0) return;
+  A.kick = { t0: performance.now(), amt: Math.min(1.6, (pow - S.min + 25) / 60) * S.spike * Dir.shakeK(), dir }; // × the director's shake
 }
 function camRumble(pow, kill) {
   const S = VFX.shake;
-  if (RM || pow < S.min * 0.6 || S.floor <= 0) return; // softer balls on the floor still rumble a little (from 60 % of the min)
-  A.trauma = Math.min(1, (A.trauma || 0) + (pow / 140) * S.floor * (kill ? S.kill : 0.5));
+  if (RM || pow < S.min * 0.6 || S.floor * Dir.shakeK() <= 0) return; // softer balls on the floor still rumble a little (from 60 % of the min)
+  A.trauma = Math.min(1, (A.trauma || 0) + (pow / 140) * S.floor * Dir.shakeK() * (kill ? S.kill : 0.5));
 }
 /** Element burst at the ball (fire, water, earth, wind, flash, blast, shadow, star). */
 function elemBurst(el, pow) {

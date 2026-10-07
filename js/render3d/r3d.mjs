@@ -382,10 +382,11 @@ function handTouch(w, now) {
  */
 function ballRibbon(w, dt) {
   const V = VFX.ball,
-    on = (V.style === 'ribbon' || V.style === 'ink') && A.ball.vis && A.trailPow >= Math.max(1, V.min) && (A.mv ?? 1) > 0.05;
+    st = Dir.ballStyle(), // the director's style for the play (spec §2.15)
+    on = (st === 'ribbon' || st === 'ink') && A.ball.vis && A.trailPow >= Math.max(1, V.min) && (A.mv ?? 1) > 0.05;
   if (!on) return w.ballTrail.update(w.ball.position, dt, cam, { width: 0 });
   const Pw = A.trailPow,
-    ink = V.style === 'ink',
+    ink = st === 'ink',
     col = A.trailOp ? '#fff27a' : A.trailEl ? ECOL[A.trailEl] : ink ? V.ink : Pw >= 100 ? '#ff3d7f' : Pw >= 80 ? '#ffb13d' : '#9fe8ff';
   w.ballTrail.update(w.ball.position, dt, cam, {
     width: (0.06 + Pw / 900) * (ink ? 1.5 : 1) * V.width,
@@ -449,6 +450,7 @@ export const api = {
   },
   addModel,
   bench,
+  fxStats: () => world && world.fx.stats(), // live particle / mesh counts (director QA)
   /** Loaded models keep their own colours (re-dresses a match on screen). */
   keepColors: on => {
     setKeepColors(on);
