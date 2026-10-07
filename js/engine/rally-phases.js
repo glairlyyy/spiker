@@ -64,7 +64,7 @@ function pickSetter(c) {
   for (const t of [atkT, defT])
     for (const p of t.P)
       if (p !== pas && p !== setter) {
-        const h = home(p, t === atkT ? atk : ds);
+        const h = playHome(m, p, t === atkT ? atk : ds);
         mv(m, p, h[0], h[1], sl, V);
       }
   V &&

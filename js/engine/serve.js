@@ -174,7 +174,7 @@ function serveContact(c) {
   // serving team switches to base positions
   const sw = [];
   ST.P.forEach(p => {
-    const h = home(p, s);
+    const h = playHome(m, p, s);
     mv(m, p, h[0], h[1], sw, V);
   });
   Object.assign(c, { sp, sArc, wob, serr, hitFx, sw });
@@ -232,7 +232,7 @@ function serveAim(c) {
     sdur = clamp(Math.hypot(tx - sp.x, (tz - sp.z) * Z_UNITS) / (kmh(sq) * SERVE_K * sfast), 400, 1300) * courtScale();
   RT.P.forEach(p => {
     if (p !== rc) {
-      const h = home(p, r);
+      const h = playHome(m, p, r);
       mv(m, p, h[0], h[1], sw, V);
     }
   });

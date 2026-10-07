@@ -28,6 +28,30 @@ const sx = (side, x) => (side === 0 ? x : 1000 - x);
 const DIR = s => (s === 0 ? 1 : -1);
 /** A player's base position [x, z] for their side. */
 const home = (p, side) => [sx(side, HOME[p.slot][0]), HOME[p.slot][1]];
+/** In play (after the serve), players switch to their role's spot but stay in their row (owner, 2026-10-08): the two front-row
+ * players (rotation index 1, 2) stand at the net, the two back-row players deep — so who blocks / attacks from the front
+ * row is who you see there. x: at least ROW_X.front for the front row, at most ROW_X.back for the back row (a setter ROW_X.setter); z: the role's
+ * side of the court, a front pair spread at least ROW_X.gap apart. */
+const ROW_X = { front: 440, back: 320, setter: 400, gap: 0.3 }; // setter: a back-row setter waits closer, ready to run in and set
+function playHome(m, p, side) {
+  const t = m.t[side],
+    order = rotOrder(t, m.rot[side]),
+    i = order.indexOf(p);
+  if (i < 0) return home(p, side);
+  const fr = i === 1 || i === 2,
+    [hx, hz] = HOME[p.slot];
+  let z = hz;
+  if (fr) {
+    const o = order[i === 1 ? 2 : 1],
+      oz = o ? HOME[o.slot][1] : hz;
+    if (Math.abs(hz - oz) < ROW_X.gap) {
+      const mid = (hz + oz) / 2,
+        lo = hz < oz || (hz === oz && i === 1);
+      z = clamp(mid + (lo ? -1 : 1) * (ROW_X.gap / 2), 0.15, 0.85);
+    }
+  }
+  return [sx(side, fr ? Math.max(hx, ROW_X.front) : Math.min(hx, p.role === 'S' ? ROW_X.setter : ROW_X.back)), z];
+}
 /** Court size multiplier for the match being played (RULES.court). */
 const courtScale = () => (CM && CM.court) || RULES.court;
 /** Distance in court units, scaled by court size: on a bigger court everyone has further to run. */

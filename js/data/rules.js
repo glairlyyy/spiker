@@ -108,7 +108,7 @@ const DECIDE = {
   },
   attack: {
     power: { label: 'Power spike', pow: 1, stats: ['power', 'jump'] },
-    cut: { label: 'Placed shot', pow: 0.92, cut: true, stats: ['wit', 'jump'], need: 'block', cal: { win: 0.8, lose: 0.65, err: 0.8 } }, // err re-measured without the ego acts (2026-10-06)
+    cut: { label: 'Placed shot', pow: 0.92, cut: true, stats: ['wit', 'jump'], need: 'block', cal: { win: 1.0, lose: 0.65, err: 1.15 } }, // re-measured with the in-play rows (2026-10-08)
     tip: { label: 'Tip', tip: true, stats: ['wit'] }
   },
   odds: 300
