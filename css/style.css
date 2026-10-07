@@ -1144,6 +1144,126 @@ body:has(.match) .top {
   align-items: center;
   font-size: 12px;
 }
+/* the momentum line (spec §2.14): [stage chip] [fire, each team from its own end, ticks at the stage lines] [stage chip] */
+.match .schip {
+  min-width: 88px;
+  height: 22px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--tc);
+  border-radius: 999px;
+  font: 600 12px/1 var(--body);
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  white-space: nowrap;
+  cursor: help;
+}
+.match .schip.st-loose {
+  border-style: dashed;
+  color: var(--mute);
+}
+.match .schip.st-focused {
+  background: color-mix(in srgb, var(--tc) 18%, transparent);
+}
+.match .schip.st-fever {
+  background: color-mix(in srgb, var(--tc) 45%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tc) 60%, transparent);
+  font-weight: 700;
+}
+.match .schip .rat {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--bad);
+}
+.match .fmeter {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  height: 6px;
+}
+.match .fh {
+  position: relative;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--glass2);
+}
+.match .fh i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background: var(--tc);
+  transition: width var(--dur-slow, 280ms) var(--ease-move, ease);
+}
+.match .fh.l i {
+  left: 0;
+}
+.match .fh.r i {
+  right: 0;
+}
+.match .fh b {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line-strong);
+}
+/* entering Fever: the banner over the court in the team's colour (spec §2.14), 1.2 s */
+.fevb {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 24%;
+  z-index: 5;
+  text-align: center;
+  font: clamp(32px, 6vw, 72px) / 1 var(--disp);
+  letter-spacing: 0.16em;
+  color: var(--white);
+  text-shadow:
+    0 0 18px var(--c),
+    0 0 4px var(--c);
+  pointer-events: none;
+  opacity: 0;
+}
+.fevb.on {
+  animation: fevb 1.2s var(--ease-out, ease-out) forwards;
+}
+@keyframes fevb {
+  0% {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+  15%,
+  80% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes fevbStill {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  10%,
+  85% {
+    opacity: 1;
+  }
+}
+html.reduced .fevb.on {
+  animation-name: fevbStill;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fevb.on {
+    animation-name: fevbStill;
+  }
+}
 .match .mom .ml {
   color: var(--mute);
   text-transform: uppercase;
@@ -1661,97 +1781,6 @@ body:has(.match) .top {
 .mrail #techsw:not(:empty) {
   margin-bottom: 16px;
 }
-/* Calls (spec §2.13, T-234): the vignette, and your options beside your player */
-.stage.calling::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.72) 100%);
-  animation: lkfade var(--dur-base, 0.2s) var(--ease-out, ease-out);
-}
-.calls {
-  position: absolute;
-  z-index: 6;
-  display: grid;
-  gap: 6px;
-  width: 300px;
-  padding: 10px;
-  border-radius: 12px;
-  background: var(--hud);
-  border: 1px solid var(--line-strong);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-}
-.calls .chd {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.calls .cring {
-  --left: 1;
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: conic-gradient(var(--white) calc(var(--left) * 360deg), var(--line) 0);
-}
-.calls .cring b {
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--hud);
-  font-size: 12px;
-}
-.calls .callo {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  grid-template-areas: 'k l p' 'k s s';
-  align-items: center;
-  gap: 2px 10px;
-  padding: 8px 10px;
-  text-align: left;
-}
-.calls .callo kbd {
-  grid-area: k;
-}
-.calls .callo .cl {
-  grid-area: l;
-  display: grid;
-}
-.calls .callo .cl em {
-  font-size: 12px;
-  font-style: normal;
-  color: var(--good);
-}
-.calls .callo .cl small,
-.calls .callo .cwk {
-  font-size: 12px;
-  color: var(--mute);
-}
-.calls .callo .cpct {
-  grid-area: p;
-  font: 600 22px/1 var(--disp);
-}
-.calls .callo .cst {
-  grid-area: s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.calls .callo .cwk {
-  margin-left: auto;
-  color: var(--warn);
-}
-.calls .callo.sug {
-  border-color: var(--good);
-}
 .mres .rcall {
   display: grid;
   grid-template-columns: 1fr 48px 90px;
@@ -2046,4 +2075,165 @@ body:has(.match) .top {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+}
+
+/* the between-point exchange (spec §2.18, js/ui/match-exchange.js): low-centre over the court, above the control bar */
+.xbox {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  width: min(720px, calc(100vw - 32px));
+  display: grid;
+  gap: 8px;
+  padding: 12px 16px;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--hud);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  animation: mv-rise var(--dur-slow, 280ms) var(--ease-out, ease-out);
+}
+.xl {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: mv-fade var(--dur-fast, 140ms) var(--ease-out, ease-out);
+}
+.xl.r {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+.xl .xf {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid var(--tc);
+  background: var(--surf2);
+}
+.xl .xb {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.xl .xb b {
+  font: 600 12px/1.2 var(--disp);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tc);
+}
+.xl .xt {
+  min-height: 1.4em;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--ink);
+}
+html.reduced .xbox,
+html.reduced .xl {
+  animation: mv-fade 120ms linear;
+}
+.stage:has(.xbox) .ticker {
+  visibility: hidden; /* the exchange takes the commentary's place while it shows */
+}
+
+/* one-press prompts (spec §2.16, §2.17; js/ui/match-prompts.js): key caps under your player's feet, setter markers, the read eye */
+.prompts {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+.pchip {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px 0 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--hud);
+  color: var(--ink);
+  font: 600 13px/1 var(--body);
+  white-space: nowrap;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+  cursor: pointer;
+  animation: mv-pop var(--dur-fast, 140ms) var(--ease-out, ease-out);
+}
+.pchip kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--on-ink);
+  font: 700 12px/1 var(--body);
+}
+.pchip.on {
+  border-color: var(--sel-line);
+  background: var(--sel-bg);
+}
+.pchip.on kbd {
+  background: var(--cyan);
+}
+.pchip.off {
+  opacity: 0.4;
+}
+.pchip.mark {
+  transform: translate(-50%, -100%);
+  flex-direction: column;
+  height: auto;
+  padding: 4px 8px;
+  gap: 2px;
+  border-radius: 8px;
+}
+.pchip.mark .pblk {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--mute);
+}
+.pchip.mark .pmine {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+}
+.pgrp {
+  position: absolute;
+  display: flex;
+  gap: 6px;
+  transform: translate(-50%, 0);
+}
+.pgrp .pchip {
+  position: static;
+  transform: none;
+}
+.peye {
+  position: absolute;
+  width: 26px;
+  height: 16px;
+  transform: translate(-50%, -100%);
+  border: 2px solid var(--warn);
+  border-radius: 50% / 60%;
+  overflow: hidden;
+  background: var(--hud);
+}
+.peye i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: calc(var(--r, 0) * 100%);
+  background: var(--warn);
+  opacity: 0.8;
+}
+.mres .rplays {
+  margin-bottom: 8px;
+  font-size: 14px;
 }

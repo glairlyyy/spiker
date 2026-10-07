@@ -65,31 +65,44 @@ function resultScreen(m, wt, hi, lo, stars, res, o = { round: A.fx.round, back: 
           .join('')}`
       : '',
     techs = res.techs.length ? `<div class="lab">Techniques picked up</div><div class="small">${res.techs.map(esc).join(' · ')}</div>` : '';
-  return `<div class="ocard mres">${head}<div class="rcols"><div>${you}${chips}</div><div>${grow}${techs}${callsRow(res.calls)}</div></div>${top}${acts}</div>`;
+  return `<div class="ocard mres">${head}<div class="rcols"><div>${you}${chips}</div><div>${grow}${techs}${playsRow(res.plays)}</div></div>${top}${acts}</div>`;
 }
-/** CALL_OUT: what came of a call — made (the point), missed (lost it), or the rally went on. */
-const CALL_OUT = { win: ['✓', 'good', 'made'], lose: ['✕', 'bad', 'missed'], err: ['✕', 'bad', 'missed'], on: ['·', 'mute', 'rally on'] };
 /**
- * The result card's Calls row (spec §2.13, T-235): each call — what you chose (auto = the suggested move on time-out), its
- * chance, made / missed — and the stat that held you back: the weak stat seen most in your missed calls.
+ * Your plays in a match you played (spec §2.16): the engine's tallies `m.plays` (decide.js `plays`; only m.human's player has
+ * them): calls / kills off them, fakes / worked, blocks committed / stuffs, sets per hitter and dumps. null when you weren't m.human.
  */
-function callsRow(calls) {
-  if (!calls || !calls.length) return '';
-  const miss = calls.filter(c => c.out === 'lose' || c.out === 'err'),
-    count = {};
-  for (const c of miss) count[c.weak.k] = (count[c.weak.k] || 0) + 1;
-  const k = Object.keys(count).sort((a, b) => count[b] - count[a])[0];
-  const made = calls.filter(c => c.out === 'win').length,
-    more = calls.length - 6;
-  return `<div class="lab">Calls · ${made} of ${calls.length} made</div>${calls
-    .slice(-6)
-    .map(c => {
-      const [mk, cls, word] = CALL_OUT[c.out] || CALL_OUT.on;
-      return `<div class="rcall"><span>${esc(c.label)}${c.auto ? ' <small class="mute">auto</small>' : ''}</span><b>${c.odds.win}%</b><span class="${cls} small">${mk} ${word}</span></div>`;
-    })
-    .join(
-      ''
-    )}${more > 0 ? `<div class="small mute">+${more} earlier</div>` : ''}${k ? `<div class="small warn">Held back by: ${statI(statKey(k), 14)} ${esc(STATNAME[k])}</div>` : ''}`;
+function playsOf(m, id) {
+  const P = m.plays;
+  if (!P || m.human !== id) return null;
+  return {
+    calls: P.call || 0,
+    kills: P.callK || 0,
+    fakes: P.fake || 0,
+    faked: P.fakeOk || 0,
+    blocks: P.block || 0,
+    stuffs: P.stuff || 0,
+    sets: P.sets || {},
+    dumps: P.dump || 0
+  };
+}
+/** The result card's Your plays row (spec §2.16): only what you did; empty when you pressed nothing. */
+function playsRow(P) {
+  if (!P) return '';
+  const nm = id => {
+      const p = typeof byId === 'function' ? byId(id) : null;
+      return p ? p.name.split(' ')[0] : String(id);
+    },
+    sets = Object.entries(P.sets || {})
+      .sort((a, b) => b[1] - a[1])
+      .map(([id, n]) => `${esc(nm(id))} ×${n}`),
+    parts = [
+      P.calls ? `Calls ${P.calls} · ${P.kills} kill${P.kills === 1 ? '' : 's'}` : '',
+      P.fakes ? `Fakes ${P.faked} of ${P.fakes} worked` : '',
+      P.blocks ? `Blocks ${P.blocks} · ${P.stuffs} stuff${P.stuffs === 1 ? '' : 's'}` : '',
+      sets.length ? `Sets ${sets.join(', ')}` : '',
+      P.dumps ? `Dumps ${P.dumps}` : ''
+    ].filter(Boolean);
+  return parts.length ? `<div class="lab">Your plays</div><div class="rplays">${parts.join('<br>')}</div>` : '';
 }
 /** The match is over: count everyone's stats, run the fixture's onFinish, and show the result card after the celebration. */
 function finishMatch() {

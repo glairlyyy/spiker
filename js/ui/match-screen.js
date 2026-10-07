@@ -12,6 +12,18 @@ const SPEEDS = [1, 2, 4];
 const boardTeam = (t, i) =>
   `<div class="bt${i ? ' r' : ''}" style="--tc:${t.color}"><span class="bsw"></span><span class="bn">${esc(t.name)}</span><span class="rot" id="r${i}"></span></div>`;
 /**
+ * The momentum line (spec §2.14 HUD): a stage chip at each end and each team's fire filling from its own end, with ticks at
+ * the stage lines (`STAGES[*].from`, fire −1..1 → 0..100 % of the half). board() fills it.
+ */
+function fireRow(a, b) {
+  const ticks = (side) =>
+      STAGE_IDS.slice(1)
+        .map(id => `<b style="${side ? 'right' : 'left'}:${(((STAGES[id].from + 1) / 2) * 100).toFixed(1)}%"></b>`)
+        .join(''),
+    chip = (t, i) => `<span class="schip" id="sc${i}" style="--tc:${t.color}" tabindex="0" aria-live="polite"></span>`;
+  return `<div class="mom" aria-label="Momentum">${chip(a, 0)}<div class="fmeter"><div class="fh l" style="--tc:${a.color}"><i id="ff0"></i>${ticks(0)}</div><div class="fh r" style="--tc:${b.color}"><i id="ff1"></i>${ticks(1)}</div></div>${chip(b, 1)}</div>`;
+}
+/**
  * Open the match screen for a fixture: { a, b, round, court?, back, setup(m)?, onFinish(m) → plain-text message, onLeave() }.
  */
 function startMatch(fx) {
@@ -26,7 +38,9 @@ function startMatch(fx) {
   const you = fx.onFinish && typeof RUN !== 'undefined' && RUN ? Run.you(RUN) : null,
     mine = you ? ([0, 1].find(i => squadOf(m.t[i]).some(p => p.id === you.id)) ?? null) : null,
     sides = mine == null ? [0, 1] : [mine];
-  if (mine != null) m.human = you.id; // your calls (spec §2.13): the rally pauses at your decision points
+  if (mine != null) m.human = you.id; // your prompts (spec §2.16): your decision points in a career match you play
+  else if (fx.human != null) m.human = fx.human; // the Monster game's Play as
+  if (m.human != null && G.prompts !== 'off') m.read = {}; // Prompts On: the read meter and your prompts (T-257 contract)
   // the full-court screen (spec §9.9): the stage fills the screen; the panels below float over it
   $('#app').innerHTML = `<section class="match" id="match">
     <div class="mtop"><div class="board">
@@ -34,12 +48,12 @@ function startMatch(fx) {
       <div class="bsc"><span id="p0">0</span><span class="colon">:</span><span id="p1">0</span><span class="setn" id="setn">${rulesText()}</span></div>
       ${boardTeam(b, 1)}
     </div>
-    <div class="mom"><span class="ml">Momentum</span><div class="mbar" style="--a:${a.color};--b:${b.color}"><i id="momf"></i><em></em></div><span class="zone" id="zone" aria-live="polite"></span></div></div>
+    ${fireRow(a, b)}</div>
     <div class="stage" id="stage"><canvas id="cv" aria-label="Match court"></canvas>
       <div class="fsbar" aria-label="Fullscreen controls"><span class="fss"><i style="--tc:${a.color}"></i>${esc(a.short)} <b id="fs0">0</b> : <b id="fs1">0</b> ${esc(b.short)}<i style="--tc:${b.color}"></i></span>
         <span class="fsb"><button onclick="togglePause()" id="fspause" aria-label="Pause">❚❚</button>${SPEEDS.map(s => `<button onclick="setSpeed(${s})" data-s="${s}" class="fsspd">${s}x</button>`).join('')}<button onclick="toggleFullscreen()" aria-label="Exit fullscreen">✕</button></span></div>
       <div class="cut" id="cut"><div class="cut-band"><div class="cut-lines"></div><span class="cut-face"></span><span class="cut-face cut-face2"></span><span class="cut-num"></span><div class="cut-txt"><div class="cut-move"></div><div class="cut-name"></div><div class="cut-sub"></div></div></div></div>
-      <div class="hbanner" id="hbanner" aria-live="polite"></div><div class="hsay" id="hsay" aria-live="polite"></div>
+      <div class="hbanner" id="hbanner" aria-live="polite"></div><div class="fevb" id="fevb" aria-live="polite"></div><div class="hsay" id="hsay" aria-live="polite"></div>
       <div class="toasts" id="toasts" aria-live="polite"></div><div class="ticker" id="ticker" aria-hidden="true"></div><div class="over" id="over" hidden></div></div>
     <div class="controls cbar" role="toolbar" aria-label="Match controls">
       <div class="cg play"><button class="btn" id="pause" onclick="togglePause()">${pauseLabel(false)}</button>
@@ -131,7 +145,7 @@ function startMatch(fx) {
     techKeys: [],
     venue: matchVenue(fx), // the 3D set (spec §9.11)
     stakes: matchStakes(fx),
-    mySide: mine ?? 0 // your team's side (exhibition: the left team)
+    mySide: mine ?? (m.human != null ? (m.t[1].P.some(p => p.id === m.human) ? 1 : 0) : 0) // your team's side (exhibition: Play as, else the left team)
   };
   board(snap(m));
   boxScore();
@@ -221,6 +235,7 @@ function matchStakes(fx) {
 /** Leave the match screen: back to wherever the fixture came from. */
 function leaveMatch() {
   const fx = A && A.fx;
+  exchangeHide();
   if (A && A.m && !A.m.over) restoreLineups(A.m); // left mid-match: the lineups go back (safe twice)
   if (document.fullscreenElement) document.exitFullscreen?.();
   if (R3D) R3D.unbind();

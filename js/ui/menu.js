@@ -30,6 +30,7 @@ function renderMenu() {
       TS.dev
         ? `<div class="panel mdev"><h3>Dev</h3>
       <span class="trow m0"><button class="btn" onclick="startMonster()" ${tip('A one-off 3D match between two all-OP teams: elements, hype scenes and blocks fire often')}>Monster game</button>
+        <label class="sset" ${tip('Play the Monster game as one player: their Call / Fake / Block, setter and captain prompts appear under them (spec §2.16)')}><span class="cgl">Play as</span><select onchange="TS.playAs=this.value" aria-label="Play as">${PLAY_AS.map(([v, n]) => `<option value="${v}" ${(TS.playAs || '') === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
         <button class="btn" onclick="startAverage()" ${tip('A one-off 3D match between two teams of ordinary players: every player rolled at overall 30–60')}>Average game</button>
         <label class="btn" ${tip('Load a .vrm from your computer. It stays in this browser (never uploaded); in the Monster game every player picks a random model among the base one and the loaded ones (career: your player is always Main_v2).')}>+ Player model<input type="file" accept=".vrm,.glb" hidden onchange="addModelFile(this)"></label>
         <button class="btn" onclick="navigate('vfxlab')" ${tip('Every 3D effect on an empty floor: power, element, slow motion, repeat, a stress rate and the cost per frame')}>VFX lab</button>
@@ -70,8 +71,16 @@ function titleBgOff() {
 function startMonster() {
   const [a, b] = mkMonsterTeams();
   for (const p of [...a.P, ...b.P]) p.form = +rnd(-0.1, 0.4).toFixed(2);
-  navigate('match', { a, b, round: 'Monster game', vfx: true, back: 'Back to menu', onLeave: () => navigate('menu') });
+  const pa = /^([ab]):(\d)$/.exec(TS.playAs || ''), // Play as (spec §2.16): a seat of either team → your prompts in it
+    T = pa ? (pa[1] === 'a' ? a : b) : null,
+    you = T ? [T.s, T.mb, T.ws[0], T.ws[1]][+pa[2]] : null;
+  navigate('match', { a, b, round: 'Monster game', vfx: true, human: you ? you.id : null, back: 'Back to menu', onLeave: () => navigate('menu') });
 }
+/** The Monster game's Play as choices: none, or a seat of either team (the squads are drawn when the game starts). */
+const PLAY_AS = [
+  ['', 'Nobody (watch)'],
+  ...['a', 'b'].flatMap(t => ['Setter', 'Middle', 'Wing 1', 'Wing 2'].map((n, i) => [`${t}:${i}`, `${t === 'a' ? 'Left' : 'Right'} team · ${n}`]))
+];
 /** Average game (dev): a one-off match between two teams of ordinary players (overall 30–60 each). */
 function startAverage() {
   const [a, b] = mkAverageTeams();

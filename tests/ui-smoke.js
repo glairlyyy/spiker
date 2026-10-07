@@ -123,30 +123,42 @@ const step = async (name, fn) => {
     await pg.keyboard.press('Space');
     if (await ev(() => !!CW.lock)) throw new Error('Space did not close the card');
   });
-  await step('played court match → a call answered → skip → result card', async () => {
+  await step('played court match → a real prompt pressed → skip → result card', async () => {
     await ev(() => {
       RUN.days = 7;
       RUN.injury = null;
-      G.calls = 'all';
+      G.prompts = 'on';
       mapCourt('arena', 'open', false);
     });
     await pg.waitForFunction(() => typeof R3D !== 'undefined' && R3D && A && A.m && !A.hold, null, { timeout: 120000 });
-    const shown = await ev(() => {
+    const kind = await ev(() => {
       A.hold = true; // frames by hand (the 3D clock is slow on a software GPU)
-      for (let i = 0; i < 60000 && !(A.ask && A.ask.shown); i++) {
+      if (!A.m.read) throw new Error('Prompts On did not turn the read meter on');
+      for (let i = 0; i < 60000 && !A.ask; i++) {
         step(16);
         R3D.poseAll(0.016);
       }
-      return !!(A.ask && A.ask.shown && document.querySelector('#calls'));
+      return A.ask ? A.ask.q.kind : null;
     });
-    if (!shown) throw new Error('no call shown');
-    await pg.keyboard.press('1');
-    const n = await ev(() => (A.m.calls || []).length);
-    if (n !== 1 || (await ev(() => !!A.ask))) throw new Error(`the call was not answered (${n})`);
+    if (!kind) throw new Error('no prompt in the match');
+    await pg.keyboard.press('e');
+    const n = await ev(() => {
+      if (!$('#prompts .pchip.on')) throw new Error('E did not light the chip');
+      for (let i = 0; i < 6000 && A.ask; i++) {
+        step(16);
+        R3D.poseAll(0.016);
+      }
+      if (A.ask) throw new Error('the prompt never closed');
+      const P = A.m.plays || {};
+      return (P.call || 0) + (P.block || 0);
+    });
+    if (!n) throw new Error(`the ${kind} press did not reach the engine`);
     await ev(() => skipMatch());
     await pg.waitForFunction(() => /Top 3/i.test((document.querySelector('#over') || {}).textContent || ''), null, { timeout: 10000 });
+    const row = await ev(() => document.querySelector('#over').textContent);
+    if (!/Your plays/.test(row)) throw new Error('no Your plays row');
     await ev(() => leaveMatch());
-    return `${n} call`;
+    return `${kind} pressed`;
   });
   await step('encyclopedia', async () => {
     await ev(() => navigate('encyclopedia'));
@@ -173,8 +185,65 @@ const step = async (name, fn) => {
   });
   await step('Monster game → result', async () => {
     await ev(() => navigate('menu'));
-    await ev(() => startMonster());
+    await ev(() => {
+      TS.playAs = 'a:2'; // Play as the left team's first wing (spec §2.16)
+      startMonster();
+    });
     await pg.waitForFunction(() => typeof A !== 'undefined' && A && A.m, null, { timeout: 60000 });
+    // prompts (spec §2.16, T-256) against a hand-made decision point: E answers Call, the chip lights, the window's end resumes
+    const pr = await ev(() => {
+      const you = A.m.t[0].ws[0];
+      if (A.m.human !== you.id) throw new Error('Play as did not set your player');
+      const q = { kind: 'call', p: you, options: [{ id: 'call', key: 'E', label: 'Call' }, { id: 'fake', key: 'R', label: 'Fake' }], ai: null };
+      G.prompts = 'off';
+      if (promptWanted(q)) throw new Error('Prompts Off still shows one');
+      G.prompts = 'on';
+      if (!promptWanted(q)) throw new Error('no prompt for a call');
+      window.__pk = 'none';
+      A.hold = true; // frames by hand: the window lasts until we step
+      A.gen = (function* () {
+        window.__pk = yield q;
+      })();
+      A.gen.next();
+      A.beats = [];
+      A.bi = 0;
+      promptOpen(q);
+      return $('#prompts .pchip') ? $('#prompts').textContent : '';
+    });
+    if (!/Call/.test(pr) || !/Fake/.test(pr)) throw new Error(`no Call / Fake chips: ${pr}`);
+    await pg.keyboard.press('e');
+    const lit = await ev(() => !!$('#prompts .pchip.on') && A.ask.pressed === 'call');
+    if (!lit) throw new Error('E did not light the Call chip');
+    await ev(() => step(16)); // the window's beats are gone: the rally resumes with the press
+    if ((await ev(() => window.__pk)) !== 'call' || (await ev(() => !!A.ask))) throw new Error('the press did not reach the engine');
+    await ev(() => {
+      // the momentum line (spec §2.14, T-254): a stage chip at each end naming a stage
+      const names = STAGE_IDS.map(id => STAGES[id].name);
+      for (const i of [0, 1]) {
+        const c = $('#sc' + i);
+        if (!c || !names.some(n => c.textContent.startsWith(n))) throw new Error(`stage chip ${i}: ${c ? c.textContent : 'missing'}`);
+      }
+      stageShow({ k: 'stage', side: 0, from: 'focused', to: 'loose', why: 'error' });
+      if (!/Rattled/.test($('#sc0').textContent)) throw new Error('no Rattled tag');
+      stageShow({ k: 'stage', side: 1, from: 'focused', to: 'fever', why: 'streak' });
+      if (!$('#fevb').classList.contains('on') || $('#sc1').textContent !== 'Fever') throw new Error('no FEVER banner / chip');
+    });
+    // the between-point exchange (spec §2.18, T-255): two lines, Space skips each, `done` fires
+    await ev(() => {
+      const [p, q] = [A.m.t[0].P[0], A.m.t[1].P[0]];
+      window.__xd = 0;
+      exchangeShow(
+        [
+          { p: p.id, t: 'Not this time.', side: 0 },
+          { p: q.id, t: 'We will see.', side: 1 }
+        ],
+        () => (window.__xd = 1)
+      );
+      if (!$('#xbox .xl')) throw new Error('no exchange box');
+    });
+    await pg.keyboard.press('Space');
+    await pg.keyboard.press('Space');
+    if (!(await ev(() => window.__xd === 1 && !$('#xbox') && !A.paused))) throw new Error('the exchange did not end on skip');
     await pg.keyboard.press('v'); // the VFX panel: live controls over the running game
     const n = await ev(() => ($('#vfxp') && !$('#vfxp').hidden ? $('#vfxp').querySelectorAll('input').length : 0));
     if (n < 15) throw new Error(`VFX panel: ${n} controls`);

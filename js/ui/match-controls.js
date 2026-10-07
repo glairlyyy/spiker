@@ -37,7 +37,7 @@ function settingsMenu() {
         .map(([k, n]) => `<button class="btn ${k === cur ? 'on' : ''}" onclick="setOpt('${kind}','${k}')">${n}</button>`)
         .join('')}</div></div>`;
   return `${seg('Hype', 'hype', Object.fromEntries(Object.entries(HYPE).map(([k, h]) => [k, h.name])), G.hype, 'Staged shonen moments before big attacks. Normal: element spikes, match points, star face-offs. Max: also long rallies and comebacks. Tap the court to skip one.')}
-    ${seg('Calls', 'calls', CALL_MODES, G.calls, 'Your decisions in a career match you play: serve and attack options with their odds. Key moments: set point, deuce, long rallies, the first ball. Off: your player decides.')}
+    ${seg('Prompts', 'prompts', { on: 'On', off: 'Off' }, G.prompts, 'In a match you play: Call, Fake, Block, the setter\'s pick and the captain\'s calls appear under your player while you can use them (E, R, 1–3). Off: the AI plays you.')}
     ${seg('Trails', 'trail', TRAIL_STYLES, G.trail, 'Hand trails of stars and OP players. Light: a streak in their hair colour. Ink: a black brush stroke burning crimson.')}
     ${seg('Cut-ins', 'cut', { full: 'Full', mini: 'Mini' }, G.cutMini ? 'mini' : 'full', 'Full cut-ins pause play; mini shows them as a corner notification')}
     ${seg('Zooms', 'zoom', { on: 'On', off: 'Off' }, G.camFixed || RM ? 'off' : 'on', 'On: gentle zoom on big plays at the net. Off: no zooms or pushes (motion-friendly).')}
@@ -53,9 +53,9 @@ function setOpt(kind, v) {
   if (kind === 'hype' && HYPE[v]) {
     G.hype = v;
     store.set(KEYS.hype, v);
-  } else if (kind === 'calls' && CALL_MODES[v]) {
-    G.calls = v;
-    store.set(KEYS.calls, v);
+  } else if (kind === 'prompts' && (v === 'on' || v === 'off')) {
+    G.prompts = v;
+    store.set(KEYS.prompts, v);
   } else if (kind === 'trail' && TRAIL_STYLES[v]) {
     G.trail = VFX.hand.style = v; // the VFX panel shows the same choice
     store.set(KEYS.trail, v);
@@ -132,21 +132,20 @@ function toggleFullscreen() {
 }
 addEventListener('keydown', e => {
   if (!A || e.target.closest('input,select,textarea,button')) return;
+  if (promptKey(e)) return e.preventDefault(); // your prompt: E / R / 1–3 (spec §2.16)
   if (e.key === 'f' || e.key === 'F') toggleFullscreen();
   else if (e.key === 'b' || e.key === 'B') railOpen();
   else if (e.key === 't' || e.key === 'T') railOpen('tac');
   else if ((e.key === 'v' || e.key === 'V') && $('#vfxp')) vfxToggle();
   else if (e.key === 'c' || e.key === 'C')
     toggleCam3D(); // cycle the camera (its modes are in ⚙ too)
-  else if (/^[1-4]$/.test(e.key) && A.ask && A.ask.shown)
-    callPick(+e.key - 1); // a call of yours (spec §2.13)
   else if (/^[1-9]$/.test(e.key) && A.railTab === 'tac' && !$('#mrail').hidden) flipTech(+e.key - 1);
   else if (e.key === 'Escape') {
     $('#stage')?.classList.remove('fake-fs');
     railOpen(null);
   } else if (e.key === ' ') {
     e.preventDefault();
-    togglePause();
+    if (!exchangeSkip()) togglePause(); // a between-point exchange on screen: Space skips its line (spec §2.18)
   }
 });
 /** Queue side `i`'s one timeout for the next break. */
@@ -230,6 +229,7 @@ function togglePause() {
 function skipMatch() {
   if (!A || A.done) return;
   const m = A.m;
+  exchangeHide();
   rallyFlush(); // a rally waiting at your call finishes with the AI's play first
   m.rec = false;
   while (!m.over) playRally(m);
@@ -237,11 +237,64 @@ function skipMatch() {
   board(snap(m));
   finishMatch();
 }
-/** A team changes momentum stage (act `stage`, spec §2.14): the chip and the FEVER / Rattled banner. Stub until T-254. */
+/** Buff names for the stage chip's tooltip (spec §2.14: numbers only in the tooltip, never on the chip). */
+const BUFF_NAME = { atk: 'attack', def: 'defence', spd: 'speed', jump: 'jump', serve: 'serve' };
+/** The temperament line of a chip's tooltip (`TEMPERS` from the engine when it exists, else the id). */
+const temperLine = id => {
+  // eslint-disable-next-line no-undef -- TEMPERS arrives with the engine's temperaments (T-259); until then the id is shown
+  const T = typeof TEMPERS !== 'undefined' && TEMPERS[id];
+  return T ? `${T.name}: ${T.tip || ''}`.replace(/: $/, '') : id ? String(id) : '';
+};
+/** One team's stage chip: the name on the chip; buffs, temperament and how to leave it in the tooltip. */
+function stageChip(i, id, temper) {
+  const el = $('#sc' + i),
+    S = STAGES[id];
+  if (!el || !S) return;
+  const buffs = Object.entries(S.buff || {}).map(([k, v]) => `${v > 0 ? '+' : '−'}${Math.abs(v)} % ${BUFF_NAME[k] || k}`),
+    t = [S.name, buffs.join(', '), temperLine(temper), S.tip].filter(Boolean).join('\n');
+  if (el.dataset.st !== id) {
+    el.dataset.st = id;
+    el.className = `schip st-${id}`;
+    const rat = el.querySelector('.rat');
+    el.textContent = S.name;
+    if (rat) el.appendChild(rat);
+  }
+  el.setAttribute('data-tip', t);
+  el.setAttribute('aria-label', `${A && A.m ? A.m.t[i].name : ''}: ${S.name}`);
+}
+/** A team changes momentum stage (act `stage`, spec §2.14): the chip; entering Fever → the FEVER banner, Loose → "Rattled" 3 s. */
 function stageShow(a) {
+  if (!a || !A || !A.m) return a;
+  const i = a.side;
+  if (A.stageShown) A.stageShown[i] = a.to;
+  stageChip(i, a.to, A.temperShown && A.temperShown[i]);
+  if (a.to === 'fever') {
+    const b = $('#fevb');
+    if (b) {
+      b.textContent = 'FEVER';
+      b.style.setProperty('--c', A.m.t[i].color);
+      b.classList.remove('on');
+      void b.offsetWidth;
+      b.classList.add('on');
+      clearTimeout(b._t);
+      b._t = setTimeout(() => b.classList.remove('on'), 1200);
+    }
+  }
+  const el = $('#sc' + i);
+  if (el) {
+    const old = el.querySelector('.rat');
+    if (a.to === 'loose') {
+      if (!old) el.insertAdjacentHTML('beforeend', '<em class="rat">Rattled</em>');
+      clearTimeout(el._rat);
+      el._rat = setTimeout(() => {
+        const r = el.querySelector('.rat');
+        if (r) r.remove();
+      }, 3000);
+    } else if (old) old.remove();
+  }
   return a;
 }
-/** Update the scoreboard from a match snapshot: points, serve, rotations, momentum and zone. */
+/** Update the scoreboard from a match snapshot: points, serve, rotations, the momentum line (fire + stage chips). */
 function board(s) {
   if (!$('#p0')) return;
   updTO();
@@ -268,20 +321,18 @@ function board(s) {
         .join('');
   });
   if (s.mom) {
-    $('#momf').style.width = 50 + 25 * (s.mom[0] - s.mom[1]) + '%';
-    const zs = [0, 1].filter(i => s.zone[i]),
-      zt = A ? A.m.t : null,
-      z = $('#zone');
-    if (z && zt) {
-      z.classList.toggle('on', zs.length > 0);
-      z.innerHTML = zs.length
-        ? `In the zone: ${zs.map(i => `<b class="tc" style="--c:${zt[i].color}">${esc(zt[i].short)}</b>`).join(' ')}`
-        : '';
+    // the momentum line (spec §2.14): each team's fire fills its half from its own end; the stage chip at each end
+    for (const i of [0, 1]) {
+      const f = s.fire ? s.fire[i] : s.mom[i],
+        fill = $('#ff' + i);
+      if (fill) fill.style.width = `${(clamp((f + 1) / 2, 0, 1) * 100).toFixed(1)}%`;
+      stageChip(i, stageOfSnap(s, i), s.temper && s.temper[i]);
     }
     if (A) {
       A.moodShown = s.mood;
       A.zoneShown = s.zone;
       A.stageShown = [0, 1].map(i => stageOfSnap(s, i)); // spec §2.14: the director and the auras read it
+      A.temperShown = s.temper || null;
       A.buffShown = s.buff;
       A.egShown = s.eg || {};
       A.staShown = s.sta || {};
