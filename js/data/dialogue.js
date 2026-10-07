@@ -10,6 +10,9 @@ const CALLS = {
   trust: ["Yours. Don't waste it.", "You're up — finish it!", 'Trust you. Put it away.'],
   freeze: ['Not you. Not now.', 'Somebody else — go!', 'Not feeding you this one.'],
   recv: ['Mine!', 'I got it!', 'Leave it!'],
+  // your prompts (spec §2.16): the setter turns a call down; a teammate warns that the block is on you
+  notnow: ['Not now!', 'Not this one!', 'Wait — not yet!'],
+  readyou: ["They're reading you!", "Block's on you!", "They know it's you!"],
   dig: ['Got it!', 'Up!', "Don't let it drop!"]
 };
 // ---- personalities and scene / chatter lines (shonen moments, engine/hype.js) ----

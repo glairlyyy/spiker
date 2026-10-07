@@ -25,6 +25,7 @@ test('engine: the rally is pausable (T-232) — a human answered with the AI pic
       m = g.newMatch(T[1], T[4], true),
       you = T[1].P[2];
     if (human) m.human = you.id;
+    // (m.read stays null: prompts and the read meter off, T-257)
     let out = '',
       asks = { serve: 0, attack: 0 },
       other = 0,

@@ -238,6 +238,7 @@ function chooseAttack(c, s, h) {
   const fresh = p => !c.scr || p !== c.scr.first; // a scramble: the player whose arms it popped off does not hit
   let pool = atkT.P.filter(p => p !== setter && free(p) && fresh(p));
   if (!pool.length) pool = atkT.P.filter(p => p !== setter);
+  if (c.fakeYou && pool.length > 1) pool = pool.filter(p => p !== c.fakeYou); // your fake (spec §2.16): the set goes elsewhere
   // back-row wing spikers who feel strong call for a long set to the back court; a sharp setter listens
   const callers = pool.filter(p => p.role === 'WS' && !front(atk, p) && confidence(p, m, atk) >= 80),
     trust = clamp(W(setter) / 1.4, 0.5, 1.3) * (tac.focus === 'WS' ? 1.4 : tac.focus === 'MB' ? 0.6 : 1);
@@ -286,6 +287,12 @@ function chooseAttack(c, s, h) {
             : null;
       if (relNote) m.relLog.push({ act: relNote.act, p: setter.id, mate: relNote.who.id, tag: relTag(m, setter, relNote.who) });
     }
+  }
+  if (c.callYou) {
+    // your call (spec §2.16): the setter sets you — no quick, no relationship call-out (the draws above stay)
+    quick = false;
+    spiker = c.callYou;
+    relNote = null;
   }
   // a predictable attack is easier to read: blockers get there a little more often
   const readBonus = tac.focus && spiker.role === tac.focus ? tac.read : 0;

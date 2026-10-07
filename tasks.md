@@ -62,7 +62,7 @@ A wires the chips); `Dir.tier(side)` → the §2.15 row (C); `exchangeShow([{ p,
 ### [x] T-253: Seams for the match revamp (spec chat)
 Result: the stubs, hooks, tests and script listed above; goldens unchanged; 130 tests, UI smoke 12/12.
 
-### [ ] T-254: Stage chips and the fire meter replace "In the zone" (Agent A)
+### [x] T-254: Stage chips and the fire meter replace "In the zone" (Agent A)
 Spec: §2.14 (HUD), §9.9          Goldens: unchanged          Save: no change
 Goal: the momentum line shows each team's stage as a chip at its end and its fire filling from its end; Fever / Loose are announced.
 Files: js/ui/match-screen.js, match-controls.js (board, stageShow), css/style.css, tests/ui-smoke.js
@@ -78,9 +78,9 @@ Steps:
 Accept: npm test, lint, test:ui pass; QA screenshot of the top panel with a Focused and a Loose chip (force with a hand-made
 `stageShow` / snapshot in the page) against the design system.
 QA: Monster game → top panel.
-Result:
+Result: `fireRow` (match-screen.js) = `[chip] [fire halves with ticks at STAGES.from] [chip]`, `#zone` and the Momentum label gone; board fills each half from its own end (`s.fire` else `s.mom`, −1..1 → 0–100 %) and sets the chips via `stageChip` (name on the chip; buffs, temperament — `TEMPERS[id]` once T-259 adds it, else the id — and `STAGES.tip` in the tooltip); `stageShow`: Fever → `#fevb` banner in the team colour 1.2 s (opacity-only under reduced motion), Loose → `Rattled` on the chip 3 s; `A.temperShown`. Chip styles: Loose dashed / mute, Focused tinted, Fever filled + glow (team colour only). ui-smoke checks both chips, Rattled and FEVER. QA: Focused vs Loose and Fever vs Composed screenshots at 1440×900, no errors; tests + lint + test:ui 12/12 green.
 
-### [ ] T-255: The between-point exchange box (Agent A)
+### [x] T-255: The between-point exchange box (Agent A)
 Spec: §2.18          Goldens: unchanged          Save: no change
 Goal: `exchangeShow(lines, done)` shows 1–2 lines with the speaker's face cut-in over the court and calls `done` when they end or are skipped.
 Files: js/ui/match-exchange.js, js/ui/match-controls.js (Space / click skips while it shows), css/style.css, tests/ui-smoke.js
@@ -93,7 +93,7 @@ Steps:
 3. ui-smoke: call exchangeShow with two lines in the Monster step, assert it shows and `done` fires after a skip.
 Accept: tests pass; QA screenshot against the design system.
 QA: Monster game → `exchangeShow([...])` from the console.
-Result:
+Result: `exchangeShow(lines, done)` builds `#xbox` in the stage (glass, 720px, 96px above the bottom): per line the face (`faceSVG`, 48px, team-colour frame), name in team colour, text typed at 60 cps (reduced motion: at once); team 0 left, team 1 right (row-reverse); max 2 lines, each holds 1.6 s + 40 ms/char of real time, paused time not counted; `exchangeSkip()` (click on the box, Space — before pause) skips a line; `exchangeHide(silent?)` runs `done` once; Skip ⏭ and leaveMatch hide it; the ticker hides while it shows. Structural note: match-exchange.js adds `XCH` (timings) and `exchangeSkip`. ui-smoke: two lines, Space ×2 → done, not paused. QA screenshot 1440×900, no errors; tests + lint + test:ui 12/12 green.
 
 ### [ ] T-256: Prompts on screen — Call / Fake / Block, setter markers, captain chips; the old calls UI goes (Agent A)
 Spec: §2.16, §2.17          Goldens: unchanged          Save: no change (⚙ Prompts per browser: `KEYS.prompts`)
@@ -119,7 +119,7 @@ Accept: tests pass; QA screenshots: a Call prompt, the setter markers, the capta
 QA: career run → evaluation, Play; Monster Play as.
 Result:
 
-### [ ] T-257: The read meter and Call / Fake / Block (Agent B)
+### [x] T-257: The read meter and Call / Fake / Block (Agent B)
 Spec: §2.16          Goldens: unchanged (everything gated on `m.human`)          Save: no change
 Goal: the engine asks your WS / MB for Call (and Fake at read ≥ 70) before the setter's choice, and Block before the
 opponent's set when you are front row; each answer changes the play as specced.
@@ -139,7 +139,7 @@ Steps:
    fake is always a poor set; read ≥ 70 raises the stuff rate on you (headless, 2000 rallies).
 Accept: goldens unchanged; npm test, lint pass.
 QA: none (engine).
-Result:
+Result: Prompts are opt-in: `m.read` = null by default (sims, goldens, Prompts Off); the match screen sets `m.read = {}` for Prompts On (A, T-256) — contract change from the task: `m.human` alone no longer prompts. Yields from `ask()` (decide.js; no odds, no draws) in rally() after pickSetter, before the setter's dump: `call` (WS / MB; options call `E`, fake `R` at read ≥ 70; `q.read`) and `block` (front row, defending; option block `E`, hidden answer `'late'` — A sends it for a press in the window's last quarter). Read meter `m.read[you]` + tallies `m.plays` (call, refused, callSet, callK, fake, fakeOk, fakeBad, anywaySet, block, late, crossed, stuff, att, attK, stuffed; `sets` / `dump` for T-258) for the result card. Deviation: "best blocker takes your lane" = they key on you — the best blocker (or a second, when the best is already b0) always joins the block, reach × 1.5 (`READ.reach`), coverage +10 / +20 %; swapping b0 measured worse for the block (late). A committed in-lane block also leaves early (reach × 1.5). New: READ (rules.js), CALLS notnow / readyou, prompts / callPress / fakePress / fakeYou / readSet / readAttack (rally.js), readCov / commitLane / bestBlocker (rally-block.js), ask / readOf / readAdd / readOn / plays / readPoint (decide.js). Measured (headless, 120 matches): your WS at read 0 / 50 / 80 → kills 62.7 / 60.8 / 56.9 %, stuffed 9.8 / 11.9 / 13.0 %; always calling → 29 % turned down ("Not now!"), set you on 98 % of the rest; MB always committing → your stuffs 0.72 → 1.07 a match. Goldens unchanged; 133/133.
 
 ### [ ] T-258: The setter's pick and Dump; AI "Mine!"; the serve / attack choices go (Agent B)
 Spec: §2.16, §2.13          Goldens: unchanged          Save: no change

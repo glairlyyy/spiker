@@ -134,6 +134,7 @@ function newMatch(a, b, rec, opts = {}) {
     streak: [0, 0],
     big: 0,
     zone: [0, 0],
+    read: null, // your read meter (spec §2.16): player id → 0–100 for m.human's player; {} = prompts on (the match screen sets it), null = off
     // technique switches (spec §9.10): player id → Set of technique ids held back (from p.techOff: your career choice),
     // and what each technique did this match: techUse[id][tech] = { n, won, err }; techRally = fired this rally
     off: Object.fromEntries(
@@ -386,6 +387,7 @@ function end(m, w, beats) {
   const oppWasInZone = !!m.zone[1 - w];
   pointTally(m, w);
   pointMomentum(m, w);
+  readPoint(m);
   const z = pointZone(m, w, oppWasInZone);
   elPoint(m, w);
   for (const i of [0, 1]) if (m.zone[i]) m.zoneHit[i] = 1;

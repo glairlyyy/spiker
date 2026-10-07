@@ -182,3 +182,51 @@ const Decide = {
     if (e && e.kind === kind && e.p === pid && e.out == null) e.out = out;
   }
 };
+
+/* ---------- one-press prompts and the read meter (spec §2.16, T-257) ---------- */
+
+/**
+ * Ask your prompt: yields { kind, p, options, ai } only for m.human's own player (and only with the read meter on: m.read);
+ * returns the press (an option id, or one of q.also: hidden answers such as a late block) or q.ai when nothing was pressed.
+ * No odds, no draws: the beats before the yield are the prompt's window.
+ */
+function* ask(m, q) {
+  if (!m.human || !m.read || !q.p || q.p.id !== m.human || !q.options.length) return q.ai;
+  m.askAt = m.beats ? m.beats.length : 0;
+  const pick = yield q;
+  CM = m; // something else may have run while suspended
+  return q.options.some(o => o.id === pick) || (q.also || []).includes(pick) ? pick : q.ai;
+}
+/** Your read meter (0–100; 0 for everyone else, in sims and with m.read off). */
+const readOf = (m, p) => (m.human && m.read && p && p.id === m.human ? m.read[p.id] || 0 : 0);
+/** Move your read meter by v (only m.human's player). */
+function readAdd(m, p, v) {
+  if (readOn(m, p)) m.read[p.id] = clamp((m.read[p.id] || 0) + v, 0, 100);
+}
+const readOn = (m, p) => !!(m.human && m.read && p && p.id === m.human);
+/** Your plays this match (the result card's Your plays row): engine tallies, no draws. */
+const plays = m =>
+  m.plays ||
+  (m.plays = {
+    call: 0, // you called (refused: "Not now!"; callSet: the set came to you; callK: kills off them)
+    refused: 0,
+    callSet: 0,
+    callK: 0,
+    fake: 0, // you faked (fakeOk: the blocker bit; fakeBad: the setter set you anyway, anywaySet: as a bad set)
+    fakeOk: 0,
+    fakeBad: 0,
+    anywaySet: 0,
+    block: 0, // you committed a block (late, crossed: out of your lane; stuff: you stuffed the attack)
+    late: 0,
+    crossed: 0,
+    stuff: 0,
+    att: 0, // your attacks: kills, stuffed
+    attK: 0,
+    stuffed: 0,
+    sets: {}, // (setter, T-258) sets per hitter id
+    dump: 0
+  });
+/** Every point: the read fades (READ.point). */
+function readPoint(m) {
+  if (m.human && m.read && m.read[m.human]) readAdd(m, { id: m.human }, READ.point);
+}

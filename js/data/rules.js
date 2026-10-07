@@ -61,6 +61,35 @@ const REL_E = {
   rival: { fired: 0.3, rattled: -0.2 }
 };
 /**
+ * The read meter and your one-press prompts (spec §2.16), for `m.human`'s player only: how well the other team reads you
+ * (0–100). Gains per call / kill / set to you (`set2`: the second set in a row), a fake that worked and every point;
+ * `shift` / `fake`: read at which their best blocker cheats toward your lane (always in the block, reach × `reach`,
+ * coverage + `cov`) and the Fake prompt appears.
+ * `bite`: chance the read blocker bites on your fake (+ `biteRead` per read point over `fake`, − `biteWit` per wit over 1);
+ * `anyway`: a low-wit setter (wit < `anywayWit`) sets you anyway (a bad set) with chance anyway[0] − anyway[1] × (wit − 0.5).
+ * `commit` / `late`: your block in your lane when you commit / commit late; `sta`: extra stamina for a called swing.
+ */
+const READ = {
+  call: 20,
+  kill: 10,
+  set: 5,
+  set2: 10,
+  fakeOk: -30,
+  point: -5,
+  shift: 40,
+  fake: 70,
+  cov: [0.1, 0.2],
+  reach: 1.5,
+  bite: 0.5,
+  biteRead: 0.01,
+  biteWit: 0.4,
+  anywayWit: 1,
+  anyway: [0.5, 0.4],
+  commit: 0.1,
+  late: -0.1,
+  sta: 0.02
+};
+/**
  * Calls (spec §2.13): the options of your decision points in a played match. serve: `sq` × serve quality, `err` × the fault
  * chance, `type` the serve it is (null = your usual), `aim` at their weakest passer. attack: `pow` × spike power, `cov` × what
  * is left of the block (`cut`: the cut-shot rule), `tip` a soft roll shot. `stats` = what the option leans on (shown as icons;
