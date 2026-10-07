@@ -619,8 +619,8 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
   `Skip ⏭` | **Team** `Timeout` (the team's short name only when both sides show) · `Tactics T` | **View** (right)
   `Details B` · `⛶ F` · sound · `⚙`. The camera lives in ⚙ (`Camera C`, key C cycles it). The bar wraps onto a second row
   rather than overflow (fits one row from ~1100px). "Your side" = the team holding `Run.you(RUN)`; career shows
-  Timeout/Tactics for it only, Monster game for both. Overlay rail 400px (key B; opens on pause and after the final): Commentary · Box score ·
-  Tactics. ⚙ settings = labelled segmented controls (every option visible), opening upward from the bar. Results card
+  Timeout/Tactics for it only, Monster game for both. Overlay rail 400px (key B; opens on pause and after the final): Box score ·
+  Tactics (Commentary tab cut, owner 2026-10-07 — the court ticker stays). ⚙ settings = labelled segmented controls (every option visible), opening upward from the bar. Results card
   action row: Continue/Back + Box score; playback disabled.
 - §9.10 Technique switches **[built, T-178–T-179]** (owner, 2026-10-04; design system TechSwitch card): you can hold back a technique you own,
   because some trade something for their gain (e.g. Killer Jump Serve: +10% pace, +3% faults; Delayed Spike §2.9a: may hang too long).

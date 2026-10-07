@@ -118,7 +118,7 @@ function finishMatch() {
   const stars = matchStars(m);
   const o = $('#over');
   o.style.setProperty('--tc', wt.color);
-  o.innerHTML = resultScreen(m, wt, hi, lo, stars, res); // the full line stays in the diary and the commentary
+  o.innerHTML = resultScreen(m, wt, hi, lo, stars, res); // the full line stays in the diary
   setTimeout(
     () => {
       if (o.isConnected) o.hidden = false;

@@ -1,5 +1,5 @@
 // Match screen controls and HUD (spec §9.9): timeouts, tactic and defence pickers, the ⚙ settings pop-over, camera
-// modes and follow target, fullscreen, speed / pause / skip, the scoreboard, commentary, the rail and box score; hotkeys.
+// modes and follow target, fullscreen, speed / pause / skip, the scoreboard, the commentary ticker, the rail and box score; hotkeys.
 // The screen itself (startMatch, A, the 3D world, leaving) is match-screen.js.
 
 /** A side's timeout button; `both` (a Monster game: two sides) names the team on it, else just "Timeout". */
@@ -219,7 +219,7 @@ function setSpeed(s) {
 function togglePause() {
   if (!A) return;
   A.paused = !A.paused;
-  railOpen(A.paused ? A.railTab || 'log' : null); // the rail opens on pause and closes on resume
+  railOpen(A.paused ? A.railTab || 'box' : null); // the rail opens on pause and closes on resume
   const pb = $('#pause');
   if (pb) pb.innerHTML = pauseLabel(A.paused);
   setLabel('#fspause', A.paused ? '▶' : '❚❚');
@@ -284,24 +284,15 @@ function board(s) {
     mn = Math.min(...s.pts);
   $('#setn').textContent = s.over ? 'Final' : mx >= RULES.pointsToWin - 1 && mx > mn ? 'Match point' : rulesText();
 }
-/** Add a commentary line (plain text; class `c` = 'pt' | 'err' | 'set'). Keeps the newest 80. */
+/** Show a commentary line in the court ticker (plain text; `c` is the line kind, unused since the log tab went): the last two, newest in ink. */
 function logLine(t, c) {
-  const l = $('#log');
-  if (!l) return;
-  const li = document.createElement('li');
-  li.textContent = t;
-  if (c) li.className = c;
-  l.prepend(li);
-  while (l.children.length > 80) l.lastChild.remove();
-  const tk = $('#ticker'); // the last two lines on the court (the newest in ink)
-  if (tk)
-    tk.innerHTML = [...l.children]
-      .slice(0, 2)
-      .map((x, i) => `<div class="${i ? 'old' : ''}">${esc(x.textContent)}</div>`)
-      .join('');
+  const tk = $('#ticker');
+  if (!tk) return;
+  const old = tk.firstElementChild;
+  tk.innerHTML = `<div>${esc(t)}</div>${old ? `<div class="old">${old.innerHTML}</div>` : ''}`;
 }
-/** The match rail (Commentary · Box score · Tactics): open on a tab, toggle (no tab), or close (null). */
-const RAIL_TABS = { log: 'Commentary', box: 'Box score', tac: 'Tactics' };
+/** The match rail (Box score · Tactics): open on a tab, toggle (no tab), or close (null). */
+const RAIL_TABS = { box: 'Box score', tac: 'Tactics' };
 function railOpen(tab) {
   const r = $('#mrail');
   if (!r || !A) return;
@@ -309,7 +300,7 @@ function railOpen(tab) {
     r.hidden = true;
     return;
   }
-  A.railTab = tab || A.railTab || 'log';
+  A.railTab = tab || A.railTab || 'box';
   r.hidden = false;
   for (const el of r.querySelectorAll('[data-rt]')) {
     const on = el.dataset.rt === A.railTab;

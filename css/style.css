@@ -1277,9 +1277,6 @@ body:has(.match) .top {
   overflow: auto;
   padding: 16px;
 }
-.mrail .log {
-  max-height: none;
-}
 .mrail #box table {
   width: 100%;
   font-size: 12px;
