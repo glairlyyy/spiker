@@ -123,7 +123,7 @@ function stepTrail() {
   if (A.trailPow) {
     const q = ballScreen();
     A.trail.push({ x: q.X, y: q.Y });
-    const max = Math.round(8 + A.trailPow / 4); // a harder hit leaves a longer streak too
+    const max = Math.round((8 + A.trailPow / 4) * VFX.ball.life); // a harder hit leaves a longer streak too (× the VFX length)
     if (A.trail.length > max) A.trail.splice(0, A.trail.length - max);
   } else if (A.trail.length) A.trail.shift();
 }

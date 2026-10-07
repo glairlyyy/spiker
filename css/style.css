@@ -1819,6 +1819,9 @@ body:has(.match) .top {
   margin: 0;
   background: var(--hud);
 }
+.vfxp[hidden] {
+  display: none; /* .vfxpanel's display: flex would override the hidden attribute */
+}
 .vfxpanel {
   display: flex;
   flex-direction: column;

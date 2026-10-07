@@ -56,6 +56,16 @@ const VFX_DEF = {
       smoke: [1, 0, 3, 0.1, 'Smoke']
     }
   },
+  ball: {
+    name: 'Ball trail',
+    p: {
+      style: ['streak', ['streak', 'ribbon', 'ink', 'off'], 0, 0, 'Style'],
+      min: [0, 0, 150, 1, 'From power'],
+      width: [1, 0.2, 4, 0.05, 'Width'],
+      life: [1, 0.3, 3, 0.05, 'Length'],
+      ink: ['#ff1630', 0, 0, 0, 'Ink glow colour (no element)']
+    }
+  },
   hand: {
     name: 'Hand trails',
     p: {

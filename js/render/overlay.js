@@ -453,7 +453,7 @@ const Overlay = (() => {
   /** The ball's power trail (screen space) at the ball's projection `q`; colour by OP, element or power. */
   function drawTrail(q) {
     const mv = A.mv ?? 1;
-    if (A.trail.length < 2 || mv < 0.05) return;
+    if (A.trail.length < 2 || mv < 0.05 || VFX.ball.style !== 'streak' || A.trailPow < VFX.ball.min) return; // other styles: 3D (r3d)
     const Pw = A.trailPow,
       c = A.trailOp
         ? FXR.r() < 0.5
@@ -474,7 +474,7 @@ const Overlay = (() => {
         k = i / A.trail.length;
       ctx.globalAlpha = k * 0.8 * mv * mv;
       ctx.strokeStyle = c;
-      ctx.lineWidth = k * (4 + Pw / 9) * q.s * trailSize(Pw) * (0.4 + 0.6 * mv);
+      ctx.lineWidth = k * (4 + Pw / 9) * q.s * trailSize(Pw) * (0.4 + 0.6 * mv) * VFX.ball.width;
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);

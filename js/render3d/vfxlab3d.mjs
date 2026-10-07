@@ -87,6 +87,7 @@ export function mountLab(el) {
     ball,
     fx: createFx(scene),
     hand: makeTrail(scene, 48),
+    ballTrail: makeTrail(scene, 40),
     swing: null, // a weapon sweep in flight: { t }
     raf: 0,
     last: performance.now(),
@@ -129,6 +130,7 @@ export function mountLab(el) {
       for (; L.acc >= 1; L.acc--) play(L.o.name, true);
     }
     if (L.run) flyBall(dt);
+    ballTrail(dt);
     sweep(dt);
     ctl.update();
     const f0 = performance.now();
@@ -154,7 +156,7 @@ function flyBall(dt) {
   const dir = p.clone().sub(L.ball.position);
   L.ball.position.copy(p);
   L.ball.visible = true;
-  if (dir.lengthSq() > 1e-8) L.fx.trail(r.el, p, dir.normalize(), r.pow, dt);
+  if (r.el && dir.lengthSq() > 1e-8) L.fx.trail(r.el, p, dir.normalize(), r.pow, dt);
   if (u >= 1) {
     L.ball.visible = false;
     L.run = null;
@@ -163,6 +165,32 @@ function flyBall(dt) {
       if (r.pow >= 100) L.fx.blast(p, r.pow, (typeof ECOL !== 'undefined' && ECOL[r.el]) || '#ff7a2e');
     }
   }
+}
+
+/**
+ * The ball's ribbon (VFX ball style): Ribbon or Ink as in a match; Streak (the match's 2D line) shows as a plain ribbon here.
+ */
+function ballTrail(dt) {
+  const V = typeof VFX !== 'undefined' ? VFX.ball : { style: 'ribbon', min: 0, width: 1, life: 1, ink: '#ff1630' },
+    r = L.run;
+  if (V.style === 'off' || (r && r.pow < V.min)) return L.ballTrail.update(L.ball.position, 1e-4, L.camera, { width: 0 });
+  // landed: the ribbon stays where the ball stopped and fades out (it dims when its point is still)
+  if (!r) return L.btO && L.ballTrail.update(L.ball.position, Math.max(dt, 1e-4), L.camera, L.btO);
+  const ink = V.style === 'ink',
+    col = r.el ? ECOL[r.el] : ink ? V.ink : r.pow >= 100 ? '#ff3d7f' : r.pow >= 80 ? '#ffb13d' : '#9fe8ff';
+  L.ballTrail.update(
+    L.ball.position,
+    Math.max(dt, 1e-4),
+    L.camera,
+    (L.btO = {
+      width: (0.06 + r.pow / 900) * (ink ? 1.5 : 1) * V.width,
+      life: (0.12 + r.pow / 1000) * V.life,
+      alpha: 0.9,
+      color: col,
+      style: ink ? 'ink' : '',
+      jump: 6
+    })
+  );
 }
 
 /** The hand of a weapon sweep: a wide slash, a beat, the back-swing (0.95 s); the hand trail follows it, then fades. */
@@ -216,6 +244,7 @@ function play(name, stray) {
     case 'elemImpact':
       return fx.elemImpact(o.el, at(), o.pow);
     case 'trail':
+    case 'ballPlain':
     case 'spike': {
       const a = at(name === 'spike' ? 3 : 1),
         b = a.clone().add(new THREE.Vector3(name === 'spike' ? -5.5 : -7, name === 'spike' ? -3 : 0, 0));
@@ -228,7 +257,7 @@ function play(name, stray) {
         a,
         b,
         h: name === 'spike' ? 0 : 1.5,
-        el: o.el,
+        el: name === 'ballPlain' ? null : o.el,
         pow: o.pow,
         land: name === 'spike'
       };
@@ -249,6 +278,7 @@ export function labAdvance(sec) {
   if (!L) return;
   for (let t = 0; t < sec; t += 1 / 60) {
     if (L.run) flyBall(1 / 60);
+    ballTrail(1 / 60);
     sweep(1 / 60);
     L.fx.update(1 / 60, L.camera, L.renderer.domElement.height, L.camera.fov);
   }

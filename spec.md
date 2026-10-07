@@ -741,7 +741,8 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
 - §10.7b VFX tuning (dev, owner 2026-10-06): every effect value (air impact: from power, Doppler, reach, ring size / count / life,
   wind, jet, dome; impact frame: on, from power, length, slow motion; contact burst; element particles; ground blast on a kill:
   on (off by default), from power, size, sparks, smoke; hand trails: style Light / Ink (= ⚙ Trails; the export's style is the
-  default for new players), width, length, ink colour; air impact also: share of the flight the rings follow) as live controls — in the Monster
+  default for new players), width, length, ink colour; ball trail (owner 2026-10-07): style Streak (the 2D line) / Ribbon /
+  Ink (3D ribbons on the ball, element colour when charged) / Off, from power, width, length, ink colour; air impact also: share of the flight the rings follow) as live controls — in the Monster
   and Average games (VFX V: a panel at the right, the game keeps playing; Test at the ball: air impact, blast) and in the VFX
   lab. Edits apply to the next effect and stay in this browser; Export = Copy (all values as JSON; the JSON box when the
   clipboard is blocked), Download vfx.json, Import, Reset all. Exported values are baked into js/data/vfx.js to ship.

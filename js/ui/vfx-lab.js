@@ -13,7 +13,8 @@ const LAB_FX = [
   ['elemBurst', 'Element burst', true],
   ['impact', 'Floor impact', false],
   ['elemImpact', 'Element floor impact', true],
-  ['trail', 'Ball trail', true],
+  ['trail', 'Ball trail: element', true],
+  ['ballPlain', 'Ball trail: power (no element)', false],
   ['zap', 'OP sparks', false],
   ['skyBolt', 'Sky bolt', false]
 ];

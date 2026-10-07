@@ -96,7 +96,7 @@ async function build(onProgress) {
   } catch (e) {
     DBG.log('warn', 'Main model could not be loaded', e);
   }
-  const w = { renderer, gl, scene, fx, people, coaches, ...arena };
+  const w = { renderer, gl, scene, fx, people, coaches, ...arena, ballTrail: makeTrail(scene, 40) }; // ballTrail: VFX ball style ribbon / ink
   buildVenues(scene, w); // venue sets, cut-out crowd, officials, big screen, confetti (spec §9.11)
   return w;
 }
@@ -300,6 +300,7 @@ function draw() {
   const wdt = dt * Math.max(0.02, Math.min(1, A.ts ?? 1));
   if (!A.qaFreeze) for (const pl of w.people) if (pl.d) posePlayer(pl, pl.d.p.id === A.digHero ? dt : wdt, w.ball.position, w.fx); // qaFreeze: test hook; a digger chasing a far ball poses at normal speed
   for (const pl of w.coaches) if (pl.c) poseCoach(pl, dt, now);
+  ballRibbon(w, wdt);
   updateVenue(w, now, dt * 1000, cam);
   updateNet(w, now);
   updatePointFlash(w);
@@ -360,6 +361,27 @@ function handTouch(w, now) {
   w.ball.position.lerp(hL, k);
   w.ballGlow.position.copy(w.ball.position);
   w.ballLight.position.copy(w.ball.position);
+}
+/**
+ * The ball's 3D trail (VFX ball style Ribbon or Ink; Streak is the 2D overlay line): a ribbon behind a powered ball in the
+ * overlay's colours (OP yellow, the element's, pink 100+, orange 80+, cyan), Ink = the black stroke burning that colour
+ * (VFX.ball.ink with no element). Width and length scale with power and the VFX sliders.
+ */
+function ballRibbon(w, dt) {
+  const V = VFX.ball,
+    on = (V.style === 'ribbon' || V.style === 'ink') && A.ball.vis && A.trailPow >= Math.max(1, V.min) && (A.mv ?? 1) > 0.05;
+  if (!on) return w.ballTrail.update(w.ball.position, dt, cam, { width: 0 });
+  const Pw = A.trailPow,
+    ink = V.style === 'ink',
+    col = A.trailOp ? '#fff27a' : A.trailEl ? ECOL[A.trailEl] : ink ? V.ink : Pw >= 100 ? '#ff3d7f' : Pw >= 80 ? '#ffb13d' : '#9fe8ff';
+  w.ballTrail.update(w.ball.position, dt, cam, {
+    width: (0.06 + Pw / 900) * (ink ? 1.5 : 1) * V.width,
+    life: (0.12 + Pw / 1000) * V.life,
+    alpha: 0.9,
+    color: col,
+    style: ink ? 'ink' : '',
+    jump: 6
+  });
 }
 /** Effect entry points for render/effects.js: anchored at the ball (or the floor under it). */
 const ballW = () => (A && A.ball ? W(A.ball.x, A.ball.z, Math.max(10, A.ball.h)) : new THREE.Vector3());

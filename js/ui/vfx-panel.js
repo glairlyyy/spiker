@@ -46,7 +46,7 @@ function vfxPanel() {
       .join('')}`;
 }
 /** Display names of choice options. */
-const VFX_OPT_NAME = { light: 'Light', ink: 'Ink' };
+const VFX_OPT_NAME = { light: 'Light', ink: 'Ink', streak: 'Streak', ribbon: 'Ribbon', off: 'Off' };
 /** Set one value (live); `redraw`: re-render the panel (segments). Saved to this browser. */
 function vfxSet(g, k, v, redraw) {
   VFX[g][k] = v;

@@ -181,6 +181,7 @@ export function makeTrail(scene, max = 36) {
      * p: the point this frame (world); cam: the camera; o = { width, life, alpha, color, drift?, style? } (width 0 → off).
      * style 'ink': black brush stroke with `color` burning inside (crimson by default).
      * drift (m/s, a Vector3): older samples float this way, so the streak flows out even when the point is still.
+     * jump (m): the per-frame hop that counts as a teleport (default 1.5).
      */
     update(p, dt, cam, o) {
       if (!o.width) {
@@ -188,7 +189,8 @@ export function makeTrail(scene, max = 36) {
         return;
       }
       // measured speed of the point (m/s) → motion factor: fast up, slow down; a teleport doesn't count as speed
-      const sp = last && dt > 1e-4 && last.distanceTo(p) < 1.5 ? last.distanceTo(p) / dt : 0;
+      const J = o.jump || 1.5, // a bigger hop than this between frames is a teleport, not speed (a fast ball: more)
+        sp = last && dt > 1e-4 && last.distanceTo(p) < J ? last.distanceTo(p) / dt : 0;
       mv +=
         (Math.max(0, Math.min(1, (sp - MOVE.still) / (MOVE.full - MOVE.still))) - mv) *
         (1 - Math.exp(-dt / (sp > MOVE.still ? 0.08 : 0.15)));
@@ -200,7 +202,7 @@ export function makeTrail(scene, max = 36) {
         if (o.drift) q.p.addScaledVector(o.drift, dt);
       }
       while (pts.length && pts[pts.length - 1].age > o.life) pts.pop();
-      if (pts.length && pts[0].p.distanceTo(p) > (o.drift ? 3 : 1.5)) pts.length = 0; // teleported (new rally): start fresh
+      if (pts.length && pts[0].p.distanceTo(p) > (o.drift ? 3 : J)) pts.length = 0; // teleported (new rally): start fresh
       pts.unshift({ p: p.clone(), age: 0, t: clock });
       if (pts.length > max) pts.length = max;
       const n = pts.length;
