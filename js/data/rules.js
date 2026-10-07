@@ -67,7 +67,9 @@ const REL_E = {
  * coverage + `cov`) and the Fake prompt appears.
  * `bite`: chance the read blocker bites on your fake (+ `biteRead` per read point over `fake`, − `biteWit` per wit over 1);
  * `anyway`: a low-wit setter (wit < `anywayWit`) sets you anyway (a bad set) with chance anyway[0] − anyway[1] × (wit − 0.5).
- * `commit` / `late`: your block in your lane when you commit / commit late; `sta`: extra stamina for a called swing.
+ * Your block is timing: you jump when you press; `blockTol` ms around the AI blocker's take-off lead is perfect (× 0.8–1.4 by
+ * Jump and Wit), earlier up to × `blockGood` good, earlier still early (coming down); `blockCov` / `blockStuff` scale the
+ * block's coverage and stuff chance per grade. `sta`: extra stamina for a called swing.
  */
 const READ = {
   call: 20,
@@ -85,8 +87,10 @@ const READ = {
   biteWit: 0.4,
   anywayWit: 1,
   anyway: [0.5, 0.4],
-  commit: 0.1,
-  late: -0.1,
+  blockTol: 80,
+  blockGood: 2.5,
+  blockCov: { perfect: 1.25, good: 1.1, early: 0.5 },
+  blockStuff: { perfect: 1.5, good: 1, early: 0 },
   sta: 0.02
 };
 /**

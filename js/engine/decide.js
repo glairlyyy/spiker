@@ -187,7 +187,7 @@ const Decide = {
 
 /**
  * Ask your prompt: yields { kind, p, options, ai } only for m.human's own player (and only with the read meter on: m.read);
- * returns the press (an option id, or one of q.also: hidden answers such as a late block) or q.ai when nothing was pressed.
+ * returns the press (an option id, or { id, ... } when the answer carries data, e.g. your block's timing) or q.ai when nothing was pressed.
  * No odds, no draws: the beats before the yield are the prompt's window.
  */
 function* ask(m, q) {
@@ -195,7 +195,8 @@ function* ask(m, q) {
   m.askAt = m.beats ? m.beats.length : 0;
   const pick = yield q;
   CM = m; // something else may have run while suspended
-  return q.options.some(o => o.id === pick) || (q.also || []).includes(pick) ? pick : q.ai;
+  const id = pick && typeof pick === 'object' ? pick.id : pick; // an answer may carry data: { id, t } (your block's timing)
+  return q.options.some(o => o.id === id) ? pick : q.ai;
 }
 /** Your read meter (0–100; 0 for everyone else, in sims and with m.read off). */
 const readOf = (m, p) => (m.human && m.read && p && p.id === m.human ? m.read[p.id] || 0 : 0);
@@ -216,9 +217,10 @@ const plays = m =>
     fakeOk: 0,
     fakeBad: 0,
     anywaySet: 0,
-    block: 0, // you committed a block (late, crossed: out of your lane; stuff: you stuffed the attack)
-    late: 0,
-    crossed: 0,
+    block: 0, // you jumped to block: perfect / good / early timing; stuff: you stuffed the attack
+    perfect: 0,
+    good: 0,
+    early: 0,
     stuff: 0,
     att: 0, // your attacks: kills, stuffed
     attK: 0,

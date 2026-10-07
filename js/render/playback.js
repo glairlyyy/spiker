@@ -146,6 +146,17 @@ function startBeat(b) {
         startPose(d, a.pose, !!a.pc, b.dur);
         break;
       case 'jump':
+        if (a.prompt === 'block' && (d.ownJ || (A.ask && A.ask.q.kind === 'block'))) {
+          a._skip = true; // yours: you jump on your press (blockJump), not on the beat
+          break;
+        }
+        if (d.ownJ) {
+          if (a.mode !== 'down') {
+            a._skip = true;
+            break;
+          }
+          d.ownJ = null; // your block jump: the landing act takes it from here
+        }
         d.jt = 0;
         d.jmode = { mode: a.mode, t0: a.t0 || 0, t1: a.t1 || 1, peak: a.peak || d.jy, start: d.jy };
         d.fallMs = null;
@@ -294,7 +305,7 @@ function applyBeat(b, t) {
     if (a.k === 'ball') tweenBall(a, b, t);
     else if (a.k === 'jump') {
       const d = A.disp[a.p];
-      if (d) tweenJump(d, a, b, t);
+      if (d && !a._skip) tweenJump(d, a, b, t);
     }
   }
   if (A.preDig && !A.preDig.go && t >= PREDIG_AT) preDigGo();
@@ -412,6 +423,23 @@ function endBeat(b) {
   }
 }
 
+/** Your block jump (blockJump): rise over `up` ms of game time, then free fall from the top (stepPlayerTimers lands you). */
+function ownJumps(dt) {
+  for (const id in A.disp) {
+    const d = A.disp[id],
+      J = d.ownJ;
+    if (!J) continue;
+    J.t += dt;
+    const l = Math.min(1, J.t / J.up);
+    d.jy = J.peak * (1 - Math.pow(1 - l, 2));
+    if (l >= 1) {
+      d.ownJ = null;
+      d.fallMs = 0;
+      d.fallH = d.jy;
+    }
+  }
+}
+
 /* ---------- the rally source ---------- */
 
 /**
@@ -463,6 +491,7 @@ function step(dt) {
   A.rdt = raw; // real time: the digger chasing a far ball (A.digHero) runs on it
   drillStep(raw);
   stepPlayerTimers(dt, raw);
+  ownJumps(dt);
   stepEffects(dt);
   camStep(raw);
   Dir.step(raw);
@@ -500,6 +529,7 @@ function step(dt) {
     b.dur = 1;
   }
   const t = Math.min(1, A.el / b.dur);
+  if (A.ask) blockAuto(b, t); // your block: no press by the AI's take-off → the AI jumps you (spec §2.16)
   applyBeat(b, t);
   ballPhysics(dt);
   stepTrail();

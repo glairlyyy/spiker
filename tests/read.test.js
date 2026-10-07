@@ -111,13 +111,31 @@ test.slow('read: a call gets you the set; a high read draws the block; a fake ca
   assert(sum(fk.ms, 'anywaySet') <= sum(fk.ms, 'fakeBad'), 'every set-anyway is a bad set (a double contact ends it first)');
 });
 
-test('read: committing a block in your lane is tallied; a late commit counts', () => {
-  const p = playAs(
-    9,
-    6,
-    t => t.P.find(q => q.role === 'MB'),
-    (q, m) => (q.kind === 'block' ? (m.pts[0] % 2 ? 'late' : 'block') : null)
+test('read: your block is timing — on the AI take-off is perfect, far too soon is early (coming down)', () => {
+  const mb = t => t.P.find(q => q.role === 'MB'),
+    run = ans => playAs(9, 8, mb, (q, m) => (q.kind === 'block' ? ans(q, m) : null)),
+    perfect = run(q => ({ id: 'block', t: q.ideal })),
+    early = run(q => ({ id: 'block', t: q.ideal + 1000 }));
+  assert(perfect.asks.block > 10 && perfect.asks.block === sum(perfect.ms, 'perfect'), `perfect ${sum(perfect.ms, 'perfect')}`);
+  assert(
+    perfect.ms.every(m => !m.plays || !m.plays.early),
+    'no early grade on the ideal take-off'
   );
-  assert(sum(p.ms, 'block') > 10, `committed ${sum(p.ms, 'block')}`);
-  assert(sum(p.ms, 'late') > 0 && sum(p.ms, 'late') < sum(p.ms, 'block'), 'late commits counted');
+  eq(sum(early.ms, 'early'), sum(early.ms, 'block'), 'a second early: always early');
+  assert(sum(perfect.ms, 'block') > 0 && !perfect.ms.some(m => m.plays && m.plays.call), 'only blocks pressed');
+});
+
+test.slow('read: block timing — perfect stuffs more than no press, early stuffs nothing of yours', () => {
+  const mb = t => t.P.find(q => q.role === 'MB'),
+    rate = ans => {
+      const p = playAs(19, 120, mb, (q, m) => (q.kind === 'block' ? ans(q, m) : null));
+      let blk = 0;
+      for (const m of p.ms) blk += (m.stat[m.human] || {}).blk || 0;
+      return blk / p.ms.length;
+    },
+    none = rate(() => null),
+    perfect = rate(q => ({ id: 'block', t: q.ideal })),
+    early = rate(q => ({ id: 'block', t: q.ideal + 1000 }));
+  assert(perfect > none * 1.2, `stuffs a match: perfect ${perfect.toFixed(2)} vs no press ${none.toFixed(2)}`);
+  assert(early < none, `early ${early.toFixed(2)} < no press ${none.toFixed(2)}`);
 });

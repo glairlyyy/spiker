@@ -49,7 +49,7 @@ function block(c, x) {
     ) {
       smashed = true;
       blockBreak(c, x, k);
-    } else if (!late && R() < stuffChance(bp, cov, pow) * blockSkill(bb)) return blockStuff(c, x, k);
+    } else if (!late && R() < stuffChance(bp, cov, pow) * blockSkill(bb) * (x.stuffK ?? 1)) return blockStuff(c, x, k); // × your block timing (spec §2.16)
     // touch or tool off the hands (not after a block break: that ball is already through)
     if (!smashed && R() < sig((bp - pow) / 20 + 0.2)) {
       touched = true;

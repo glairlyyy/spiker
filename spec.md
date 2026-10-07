@@ -212,9 +212,13 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
       read vs their wit) → the set goes elsewhere against a single block, your read −30. A low-wit setter (wit < 1.0) may set
       you anyway (chance 50 % − 40 % × (wit − 0.5)) — and then it is a **bad set** into the block (owner: a failed fake is a
       bad set, so it can't be farmed).
-    - **Block** `E` "Block" (front row, from their pass until their set): you commit on the hitter in front of you — better
-      timing (block +10 % when the attack comes to your lane); if it goes elsewhere you crossed: your lane opens (the other
-      blocker is alone) — a late commit (pressed after their setter's touch) is a gap (block −10 %).
+    - **Block** `E` "Block" — timing (owner, 2026-10-08): when you are one of the blockers on their attack, the chip shows
+      while their hitter runs in; **your player jumps the moment you press**. Graded against the AI blocker's own take-off
+      (contact at the end of the set): **perfect** (± 80 ms, × 0.8–1.4 by Jump and Wit) block coverage × 1.25 and stuff × 1.5 ·
+      **good** (earlier, up to 2.5 × that) coverage × 1.1 · **early** (coming down at contact) coverage × 0.5, no stuff. No
+      press by the AI's take-off + 80 ms → the AI jumps you (its block, unchanged); a later press does nothing. Where you block
+      is where you stand (the engine's lane choice). Measured (your MB, 120 matches): stuffs a match 0.91 none · 1.45 perfect
+      · 1.05 good · 0 early.
   - **Setter**: when the pass reaches you, numbered markers `1` `2` `3` hang over your hitters, each with the block icons
     waiting for them (0–2) and "Mine!" over a hitter who is calling (AI hitters call when hot: confidence ≥ 70, no draws).
     Press a number to set that hitter, or **Dump** `R` (shown when the pass is tight; better the higher the read on your

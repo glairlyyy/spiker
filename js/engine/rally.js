@@ -80,7 +80,9 @@ function* rally(m, B, V, atk, pas, qual, scr = null) {
     const x = { ...s, ...h, ...a, fat };
     Object.assign(x, fakeSet(c, x));
     Object.assign(x, formBlock(c, x));
+    x.youBlk = blockYou(c, x); // you are in this block (spec §2.16): your jump is your press
     Object.assign(x, setBeat(c, x));
+    yield* blockPrompt(c, x); // the set is up, their hitter runs in: press E to jump — the timing is yours
     x.cov0 = x.cov; // the block's coverage before the shot choice (Decide)
     Object.assign(x, spikePower(c, x));
     x.pow0 = x.tip ? 0 : x.pow / (x.elS ? x.elS.pow : 1);
@@ -105,10 +107,9 @@ function* rally(m, B, V, atk, pas, qual, scr = null) {
     elAttack(m, x.spiker, m.ctx);
     const k0 = (m.stat[x.spiker.id] || blank()).k,
       bk0 = sumBlk(m, defT),
-      cb0 = c.commit ? (m.stat[c.commit.p.id] || blank()).blk : 0,
       fin = () => {
         tallyAttack(m, atk, x, k0, bk0);
-        readAttack(c, x, k0, cb0, bk0);
+        readAttack(c, x, k0, bk0);
       };
     r = x.delayed ? hangFail(c, x) : null; // a Delayed Spike can hang too long (low jump / wit): the ball drops on your side
     if (r) {
@@ -240,7 +241,7 @@ function fakeSet(c, x) {
  */
 function setBeat(c, x) {
   const { m, B, V, atk, ds, atkT, defT } = c,
-    { setter, spiker, quick, bad, longB, freak, fakeDecoy, bitten, sq2 } = x,
+    { setter, spiker, quick, bad, fakeDecoy, bitten, sq2 } = x,
     { setZ, spZ, b0, blockers, cov } = x;
   // a bad set that stays hittable still reaches the hitter's hand (it just hits weaker: setMul in attack());
   // the two draws stay so the random sequence is unchanged
@@ -263,7 +264,7 @@ function setBeat(c, x) {
   const read = V ? readLevel(m, b0, cov, bitten, hype) : 0; // the blocker is confident: their scene mid-jump
   V &&
     B({
-      dur: freak ? 330 : quick ? 430 : bad ? 900 : longB ? 1150 : 800,
+      dur: setDurOf(x),
       // attack scene: the set after it starts in slow motion and snaps to full speed for the hit;
       // defense read: normal set, slow motion as the hitter takes off (the scene cuts in at the top of the jump)
       ...(hype && !m.hypeDef ? { sceneSlow: hype } : read ? { slow: 1, slowAt: [0.55, 1], hypeSlow: read } : {}),
@@ -362,16 +363,21 @@ function setActs(c, x, { setDir, combo, setCalls, hype }) {
     }
   ];
 }
+/** The set beat's length (ms): the hitter's approach; contact at its end. */
+const setDurOf = x => (x.freak ? 330 : x.quick ? 430 : x.bad ? 900 : x.longB ? 1150 : 800);
+/** A blocker's take-off in the set beat (fraction of it; contact at its end). */
+const blockT0 = (x, b) => (b === x.b0 && x.bitten ? 0.84 : x.quick ? 0.3 : 0.6);
 /** The blockers' jumps. */
 function blockJumpActs(c, x) {
-  const { quick, fakeDecoy, bitten, b0, blockers } = x;
+  const { fakeDecoy, bitten, b0, blockers } = x;
   return blockers.map(b => ({
     k: 'jump',
     p: b.id,
     mode: b === b0 && bitten && fakeDecoy ? 'reup' : 'up',
-    t0: b === b0 && bitten ? 0.84 : quick ? 0.3 : 0.6,
+    t0: blockT0(x, b),
     t1: 1,
-    peak: jumpPx(b) * (b === b0 && bitten ? 0.45 : 0.85)
+    peak: jumpPx(b) * (b === b0 && bitten ? 0.45 : 0.85),
+    ...(b === x.youBlk ? { prompt: 'block' } : {}) // yours (spec §2.16): the match screen jumps you when you press instead
   }));
 }
 /** The blockers' poses and the late jumpers. */
@@ -671,30 +677,54 @@ function hittingError(c, x) {
 
 /**
  * 2c. Your prompt while the pass flies to the setter: Call (and Fake at read ≥ READ.fake) when you are a wing / middle of the
- * attacking side, Block when you are front row on the defending side. Sets c.callYou / c.fakeYou / c.commit for the phases
- * after; returns { call, anyway } or null.
+ * attacking side. Sets c.callYou / c.fakeYou for the phases after; returns { call, anyway } or null. (Block: blockPrompt.)
  */
 function* prompts(c, s) {
-  const { m, front, ds, atkT, defT } = c;
+  const { m, atkT } = c;
   if (!m.human || !m.read) return null;
   const me = atkT.P.find(p => p.id === m.human);
-  if (me) {
-    if (me === s.setter || (me.role !== 'WS' && me.role !== 'MB')) return null;
-    const rd = readOf(m, me),
-      options = [{ id: 'call', key: 'E', label: 'Call' }, ...(rd >= READ.fake ? [{ id: 'fake', key: 'R', label: 'Fake' }] : [])],
-      pick = yield* ask(m, { kind: 'call', p: me, options, ai: null, read: rd });
-    if (pick === 'call') return callPress(c, s, me);
-    if (pick === 'fake') return fakePress(c, s, me);
-    return null;
-  }
-  const bl = defT.P.find(p => p.id === m.human);
-  if (!bl || !front(ds, bl) || busy(m, bl, c.n)) return null;
-  const pick = yield* ask(m, { kind: 'block', p: bl, options: [{ id: 'block', key: 'E', label: 'Block' }], also: ['late'], ai: null });
-  if (!pick) return null;
-  c.commit = { p: bl, late: pick === 'late' };
-  plays(m).block++;
-  if (c.commit.late) plays(m).late++;
+  if (!me || me === s.setter || (me.role !== 'WS' && me.role !== 'MB')) return null;
+  const rd = readOf(m, me),
+    options = [{ id: 'call', key: 'E', label: 'Call' }, ...(rd >= READ.fake ? [{ id: 'fake', key: 'R', label: 'Fake' }] : [])],
+    pick = yield* ask(m, { kind: 'call', p: me, options, ai: null, read: rd });
+  if (pick === 'call') return callPress(c, s, me);
+  if (pick === 'fake') return fakePress(c, s, me);
   return null;
+}
+/** You (m.human, prompts on) when you are one of this attack's blockers, else null. */
+const blockYou = (c, x) => (c.m.human && c.m.read ? x.blockers.find(b => b.id === c.m.human) || null : null);
+/**
+ * 7c. Your block (spec §2.16): the set is up and their hitter runs in. Press = you jump at that moment; the answer is
+ * { id: 'block', t } with t = ms of beat time before their contact (the end of the set beat) when you left the floor. Graded
+ * against the AI blocker's own take-off lead (x.blkIdeal), the window wider with Jump and Wit: perfect (± READ.blockTol) /
+ * good (earlier, up to × READ.blockGood) / early (already coming down). Each grade scales the block (READ.blockCov /
+ * blockStuff). No press = the AI's jump (no change). Draws nothing.
+ */
+function* blockPrompt(c, x) {
+  const { m } = c,
+    me = x.youBlk;
+  if (!me) return;
+  x.blkIdeal = (1 - blockT0(x, me)) * setDurOf(x); // the AI blocker leaves the floor this long before contact
+  x.blk0 = (m.stat[me.id] || blank()).blk;
+  const pick = yield* ask(m, {
+    kind: 'block',
+    p: me,
+    options: [{ id: 'block', key: 'E', label: 'Block' }],
+    ai: null,
+    ideal: x.blkIdeal
+  });
+  if (!pick) return;
+  const left = pick && typeof pick === 'object' && Number.isFinite(+pick.t) ? +pick.t : x.blkIdeal,
+    k = clamp(1 + (me.jump - 50) / 200 + (me.wit - 1) * 0.2, 0.8, 1.4),
+    tol = READ.blockTol * k,
+    err = left - x.blkIdeal, // > 0: you went up before the ideal moment
+    grade = Math.abs(err) <= tol ? 'perfect' : err > 0 && err > tol * READ.blockGood ? 'early' : 'good';
+  x.blkGrade = grade;
+  x.cov *= READ.blockCov[grade];
+  x.stuffK = READ.blockStuff[grade];
+  const P = plays(m);
+  P.block++;
+  P[grade]++;
 }
 /** You call for the ball: the setter sets you — unless the pass is poor or you are out of position ("Not now!"). */
 function callPress(c, s, me) {
@@ -782,7 +812,7 @@ function readSet(c, spiker) {
   (m.readLast || (m.readLast = {}))[atk] = spiker.id;
 }
 /** After your attack / your committed block: kills raise the read; tallies for the result card; a fake that scored = 'fake'. */
-function readAttack(c, x, k0, cb0, bk0) {
+function readAttack(c, x, k0, bk0) {
   const { m } = c,
     me = x.spiker;
   if (readOn(m, me)) {
@@ -796,5 +826,5 @@ function readAttack(c, x, k0, cb0, bk0) {
     if (kill && c.callYou === me) plays(m).callK++;
   }
   if (c.fakeYou && x.bitten && (m.stat[me.id] || blank()).k > k0) m.lastPlay = 'fake'; // the zone breaker reads it
-  if (c.commit && (m.stat[c.commit.p.id] || blank()).blk > cb0) plays(m).stuff++;
+  if (x.blkGrade && (m.stat[x.youBlk.id] || blank()).blk > x.blk0) plays(m).stuff++;
 }

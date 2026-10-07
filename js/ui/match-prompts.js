@@ -6,7 +6,7 @@
 /** Decision kinds the prompts answer (the rest are answered with the AI's pick at once). */
 const PROMPT_KINDS = new Set(['call', 'block', 'setter']);
 /** Prompt timings and thresholds (ms; read meter 0–100). */
-const PROMPT = { cap: 3000, eye: 20, late: 0.25 }; // late: a Block pressed in the window's last quarter (spec §2.16)
+const PROMPT = { cap: 3000, eye: 20, auto: 80 }; // auto: no Block press by the AI's take-off + this (ms): the AI jumps you
 G.prompts = store.get(KEYS.prompts) === 'off' ? 'off' : 'on';
 /** Should this decision point be shown? (yours, a prompt kind, Prompts On) */
 function promptWanted(q) {
@@ -70,7 +70,10 @@ function promptDraw() {
         );
     }
     const feet = q.options.filter(o => q.kind !== 'setter' || o.id === 'dump');
-    if (feet.length) out.push(`<div class="pgrp" data-at="${esc(String(q.p.id))}">${feet.map(o => pchip(o.key, o.label, `promptPress('${esc(String(o.key))}')`, (a.lit ?? a.pressed) === o.id ? 'on' : locked ? 'off' : '')).join('')}</div>`);
+    if (feet.length)
+      out.push(
+        `<div class="pgrp" data-at="${esc(String(q.p.id))}">${feet.map(o => pchip(o.key, o.label, `promptPress('${esc(String(o.key))}')`, (a.lit ?? a.pressed) === o.id ? 'on' : locked ? 'off' : '')).join('')}</div>`
+      );
   } else if (cap)
     out.push(
       `<div class="pgrp" data-at="${esc(String(A.m.human))}">${pchip('E', 'Fire up', "promptPress('E')", cap.stage === 'fever' ? 'off' : '')}${pchip('R', 'Settle', "promptPress('R')")}</div>`
@@ -130,11 +133,11 @@ function promptPress(key) {
   if (A.ask) {
     const o = A.ask.q.options.find(x => String(x.key).toUpperCase() === K);
     if (!o) return false;
-    if (A.ask.pressed === undefined) {
-      // a Block pressed after their setter's touch — the window's last quarter — is a late commit (the engine's hidden 'late')
-      const late = o.id === 'block' && (A.ask.q.also || []).includes('late') && A.ask.win > 0 && promptLeft() < A.ask.win * PROMPT.late;
-      A.ask.pressed = late ? 'late' : o.id;
+    if (A.ask.pressed === undefined && !A.ask.auto) {
+      // Block is timing (spec §2.16): you jump now; the engine grades how long before their contact you left the floor
+      A.ask.pressed = o.id === 'block' && A.ask.q.kind === 'block' ? { id: 'block', t: blockLeft() } : o.id;
       A.ask.lit = o.id;
+      if (A.ask.q.kind === 'block') blockJump(A.ask.q);
       promptDraw();
     }
     return true;
@@ -164,4 +167,38 @@ function promptCaptain() {
 function promptKey(e) {
   if (!A || !(A.ask || A.capChip) || e.ctrlKey || e.metaKey || e.altKey) return false;
   return /^[erER1-3]$/.test(e.key) && promptPress(e.key);
+}
+
+/** Beat time (ms) from now to their hitter's contact: the end of the set beat that carries your prompted jump act. */
+function blockLeft() {
+  let t = 0;
+  for (let i = A.bi; i < (A.beats || []).length; i++) {
+    const b = A.beats[i];
+    t += Math.max(0, (b.dur || 0) - (i === A.bi && b._s ? A.el : 0));
+    if (b.acts.some(a => a.k === 'jump' && a.prompt === 'block')) return t;
+  }
+  return promptLeft();
+}
+/**
+ * Your block jump, now (a press, or the AI's when you let it pass): you rise over the AI blocker's own take-off time
+ * (q.ideal) and fall from the top — press on time and your hands are highest at their contact. Playback drives it (ownJumps).
+ */
+function blockJump(q) {
+  const d = A.disp[q.p.id];
+  if (!d) return;
+  startPose(d, 'block', false, 600);
+  d.jmode = null;
+  d.fallMs = null;
+  d.landMs = null;
+  d.ownJ = { t: 0, up: Math.max(120, q.ideal || 320), peak: jumpPx(q.p) * 0.85 };
+}
+/** The AI's jump for you when the press didn't come (its take-off + PROMPT.auto): you go up, the engine plays its own block. */
+function blockAuto(b, t) {
+  const a = A.ask;
+  if (!a || a.q.kind !== 'block' || a.pressed !== undefined || a.auto) return;
+  const act = b.acts.find(x => x.k === 'jump' && x.prompt === 'block');
+  if (!act || t * b.dur < (act.t0 || 0) * b.dur + PROMPT.auto) return;
+  a.auto = true; // a press now is too late: the AI's block stands
+  blockJump(a.q);
+  promptDraw();
 }

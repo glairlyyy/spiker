@@ -194,7 +194,15 @@ const step = async (name, fn) => {
     const pr = await ev(() => {
       const you = A.m.t[0].ws[0];
       if (A.m.human !== you.id) throw new Error('Play as did not set your player');
-      const q = { kind: 'call', p: you, options: [{ id: 'call', key: 'E', label: 'Call' }, { id: 'fake', key: 'R', label: 'Fake' }], ai: null };
+      const q = {
+        kind: 'call',
+        p: you,
+        options: [
+          { id: 'call', key: 'E', label: 'Call' },
+          { id: 'fake', key: 'R', label: 'Fake' }
+        ],
+        ai: null
+      };
       G.prompts = 'off';
       if (promptWanted(q)) throw new Error('Prompts Off still shows one');
       G.prompts = 'on';
@@ -216,6 +224,36 @@ const step = async (name, fn) => {
     if (!lit) throw new Error('E did not light the Call chip');
     await ev(() => step(16)); // the window's beats are gone: the rally resumes with the press
     if ((await ev(() => window.__pk)) !== 'call' || (await ev(() => !!A.ask))) throw new Error('the press did not reach the engine');
+    // Block is timing (spec §2.16): a hand-made set beat with your prompted jump; E mid-beat jumps you at once and answers
+    // { id: 'block', t } = ms to their contact (the set beat's end); no press → the AI jumps you at its take-off
+    const bk = await ev(() => {
+      const you = A.m.t[0].ws[0],
+        q = { kind: 'block', p: you, options: [{ id: 'block', key: 'E', label: 'Block' }], ai: null, ideal: 320 },
+        beat = () => ({ dur: 800, acts: [{ k: 'jump', p: you.id, mode: 'up', t0: 0.6, t1: 1, peak: 60, prompt: 'block' }] });
+      const run = press => {
+        A.disp[you.id].ownJ = null;
+        A.disp[you.id].jy = 0;
+        window.__bk = 'none';
+        A.gen = (function* () {
+          window.__bk = yield q;
+        })();
+        A.gen.next();
+        A.beats = [beat()];
+        A.bi = 0;
+        A.el = 0;
+        promptOpen(q);
+        for (let i = 0; i < 50 && A.bi < 1; i++) {
+          if (press && i === 15) promptPress('E');
+          step(16);
+        }
+        for (let i = 0; i < 5 && A.ask; i++) step(16);
+        return { ans: window.__bk, jumped: A.disp[you.id].jy > 0 || !!A.disp[you.id].ownJ || A.disp[you.id].fallMs != null };
+      };
+      return { pressed: run(true), none: run(false) };
+    });
+    if (!bk.pressed.ans || bk.pressed.ans.id !== 'block' || !(bk.pressed.ans.t > 0 && bk.pressed.ans.t < 800) || !bk.pressed.jumped)
+      throw new Error(`block press: ${JSON.stringify(bk.pressed)}`);
+    if (bk.none.ans !== null || !bk.none.jumped) throw new Error(`no press: ${JSON.stringify(bk.none)}`);
     await ev(() => {
       // the momentum line (spec §2.14, T-254): a stage chip at each end naming a stage
       const names = STAGE_IDS.map(id => STAGES[id].name);
