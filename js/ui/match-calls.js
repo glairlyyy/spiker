@@ -79,7 +79,7 @@ function callPlace(el, id) {
     sw = cv.clientWidth,
     sh = cv.clientHeight;
   let x = q.X * k + 28,
-    y = q.Y * k - H / 2;
+    y = (q.Y - VT) * k - H / 2; // logical Y starts at VT
   if (x + W > sw - 8) x = q.X * k - 28 - W; // no room on the right: the other side of the player
   el.style.left = `${Math.round(clamp(x, 8, Math.max(8, sw - W - 8)))}px`;
   el.style.top = `${Math.round(clamp(y, 8, Math.max(8, sh - H - 8)))}px`;

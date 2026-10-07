@@ -96,7 +96,7 @@ const Overlay = (() => {
       // smooth camera push-in (see camTo); centre kept inside the court so the edges never swing wildly
       const c = A.cam,
         zx = clamp(c.x, 260, 740),
-        zy = clamp(c.y, VT + 130, VT + 320);
+        zy = clamp(c.y, VT + 130 + (VH - 220), VT + 320 + (VH - 220)); // (VH: a taller screen moves the court's middle down)
       tr(zx, zy);
       sc(1 + c.z);
       tr(-zx, -zy);
@@ -104,7 +104,7 @@ const Overlay = (() => {
     if (A.zoom > 0.002 && A.zc) {
       const c = A.zc,
         zx = clamp(c.X, 300, 700),
-        zy = clamp(c.Y, VT + 150, VT + 300);
+        zy = clamp(c.Y, VT + 150 + (VH - 220), VT + 300 + (VH - 220));
       tr(zx, zy);
       sc(1 + A.zoom);
       tr(-zx, -zy);
@@ -374,17 +374,18 @@ const Overlay = (() => {
     ctx.save();
     ctx.globalAlpha = Math.min(1, b.life * 3, (1 - b.life) * 8);
     ctx.fillStyle = 'rgba(16,22,58,.85)';
-    ctx.fillRect(250, VT + 18, 500, 62);
+    const y = VT + 18 + (VH - 220); // clear of the top HUD panel on the full-court screen
+    ctx.fillRect(250, y, 500, 62);
     ctx.fillStyle = t.color;
-    ctx.fillRect(250, VT + 18, 10, 62);
-    ctx.fillRect(740, VT + 18, 10, 62);
+    ctx.fillRect(250, y, 10, 62);
+    ctx.fillRect(740, y, 10, 62);
     ctx.textAlign = 'center';
     ctx.font = `30px ${FONT_DISPLAY}`;
     ctx.fillStyle = '#fff';
-    ctx.fillText('TIMEOUT', 500, VT + 52);
+    ctx.fillText('TIMEOUT', 500, y + 34);
     ctx.font = `700 13px ${FONT_ROUND}`;
     ctx.fillStyle = t.color;
-    ctx.fillText(`${t.name}${b.manual ? ' · your call' : ''} · mentality reset`, 500, VT + 72);
+    ctx.fillText(`${t.name}${b.manual ? ' · your call' : ''} · mentality reset`, 500, y + 54);
     ctx.restore();
   }
   /** Glass cracks over the side that lost its zone. */

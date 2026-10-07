@@ -26,13 +26,14 @@ function startMatch(fx) {
     mine = you ? ([0, 1].find(i => squadOf(m.t[i]).some(p => p.id === you.id)) ?? null) : null,
     sides = mine == null ? [0, 1] : [mine];
   if (mine != null) m.human = you.id; // your calls (spec §2.13): the rally pauses at your decision points
-  $('#app').innerHTML = `<section class="match">
-    <div class="board">
+  // the full-court screen (spec §9.9): the stage fills the screen; the panels below float over it
+  $('#app').innerHTML = `<section class="match" id="match">
+    <div class="mtop"><div class="board">
       ${boardTeam(a, 0)}
       <div class="bsc"><span id="p0">0</span><span class="colon">:</span><span id="p1">0</span><span class="setn" id="setn">${rulesText()}</span></div>
       ${boardTeam(b, 1)}
     </div>
-    <div class="mom"><span class="ml">Momentum</span><div class="mbar" style="--a:${a.color};--b:${b.color}"><i id="momf"></i><em></em></div><span class="zone" id="zone" aria-live="polite"></span></div>
+    <div class="mom"><span class="ml">Momentum</span><div class="mbar" style="--a:${a.color};--b:${b.color}"><i id="momf"></i><em></em></div><span class="zone" id="zone" aria-live="polite"></span></div></div>
     <div class="stage" id="stage"><canvas id="cv" aria-label="Match court"></canvas>
       <div class="fsbar" aria-label="Fullscreen controls"><span class="fss"><i style="--tc:${a.color}"></i>${esc(a.short)} <b id="fs0">0</b> : <b id="fs1">0</b> ${esc(b.short)}<i style="--tc:${b.color}"></i></span>
         <span class="fsb"><button onclick="togglePause()" id="fspause" aria-label="Pause">❚❚</button>${SPEEDS.map(s => `<button onclick="setSpeed(${s})" data-s="${s}" class="fsspd">${s}x</button>`).join('')}<button onclick="toggleFullscreen()" aria-label="Exit fullscreen">✕</button></span></div>
@@ -191,10 +192,13 @@ addEventListener('webkitfullscreenchange', () => setTimeout(fit, 60));
 const COURT_PX = 9e6;
 function fit() {
   if (!cv) return;
+  // the full-court screen (spec §9.9): the canvas is the viewport; the overlay's logical height follows its shape (VH)
   const w = cv.clientWidth || 800,
-    d = Math.min(2, window.devicePixelRatio || 1, Math.sqrt(COURT_PX / (w * w * 0.44)));
+    h = cv.clientHeight || w * 0.44,
+    d = Math.min(2, window.devicePixelRatio || 1, Math.sqrt(COURT_PX / (w * h)));
   cv.width = Math.round(w * d);
-  cv.height = Math.round(w * d * 0.44);
+  cv.height = Math.round(h * d);
+  VH = (500 * h) / w;
 }
 addEventListener('resize', fit);
 /* ---------- venue (spec §9.11) ---------- */

@@ -705,3 +705,13 @@ card `key` from `hubCard`, rail, lock phase, story); a surface that opened gets 
 copy; new inbox rows `.new`, day slots `fillin` / `gin` / `clear` (`dayMotion`), top-bar numbers `.tk` tick. `mapPick`
 does the same for the popup (`spotSwap` = glide + cross-fade) and the ghost slots; `pins3d.select` rings a newly selected
 pin (`.pulse`). Match: `board` bumps the scorer's digit; `.mrail` / `.over .ocard` animate when un-hidden (css only).
+
+## Full-court match screen (spec §9.9, T-252)
+
+`.match` is fixed full-screen; `#stage` (court canvases, cut-ins, toasts, ticker, result `.over`) fills it and the HUD floats
+over it: `.mtop` (board + momentum, top centre), `.cbar` (bottom centre), `.mrail` (right, between them). `fit()`
+(match-screen.js) sizes `#cv` to the viewport (pixel budget `COURT_PX`) and sets `VH` (playback.js) = 500·h/w — the overlay's
+logical half-height (the logical view is 1000 × 2·VH from `VT`; 220 = the classic 1000:440). r3d `syncSize` passes the
+canvas's aspect to camera3d `setAspect`: a screen taller than 1000:440 widens every shot's vertical FOV (`vfov`) so its
+horizontal extent stays the classic one; `focal`, `P3D` and `viewCamera` use the same half-height. Overlay pieces placed in
+absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 220`. F fullscreens `#match` (HUD kept).
