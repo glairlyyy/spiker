@@ -129,7 +129,8 @@ function startMatch(fx) {
     techCareer: !!you, // career: your choice is kept on your player (p.techOff) for the next match
     techKeys: [],
     venue: matchVenue(fx), // the 3D set (spec §9.11)
-    stakes: matchStakes(fx)
+    stakes: matchStakes(fx),
+    mySide: mine ?? 0 // your team's side (exhibition: the left team)
   };
   board(snap(m));
   boxScore();
@@ -159,6 +160,7 @@ function open3D() {
     R3D = api;
     P3D = api.P3D;
     st.classList.add('r3d-on');
+    api.setBirdSide(myA.mySide); // bird's-eye: your side at the bottom
     cam3Label();
   };
   if (R3D) return ready(R3D);

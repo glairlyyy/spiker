@@ -630,6 +630,7 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
   - **Right**: the rail (Box score · Tactics — Commentary tab cut, owner 2026-10-07, the court ticker stays; key B; opens on pause and after the final) floats 400px wide
     from under the top panel to above the control bar, 16px from the edge.
   - **Over the court**: cut-ins, hype banners, calls and the result card as before (the result card centred over the court).
+  - **Bird's-eye camera** (owner, 2026-10-07; ⚙ Camera / key C): 45° down from behind your end line, like watching from a nearby building — your side at the bottom, the opponent on top, the whole court fitted to the screen's shape (a phone held upright gets a tall court); the arena's roof trusses hide; tags sit just over the heads.
   - "Your side" = the team holding `Run.you(RUN)`; career shows Timeout/Tactics for it only, Monster game for both. ⚙
     settings = labelled segmented controls opening upward. Results card action row: Continue/Back + Box score.
 - §9.10 Technique switches **[built, T-178–T-179]** (owner, 2026-10-04; design system TechSwitch card): you can hold back a technique you own,

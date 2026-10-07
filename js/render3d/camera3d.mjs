@@ -23,7 +23,35 @@ export const setCameraWorld = w => (world = w);
 export const base = new THREE.PerspectiveCamera(CAM.fov, ASPECT, 0.5, 200),
   cam = base.clone(),
   fwd = new THREE.Vector3();
-let focal = 220 / Math.tan((CAM.fov * Math.PI) / 360); // logical px per unit at distance 1
+let focal = vh / Math.tan((CAM.fov * Math.PI) / 360); // logical px per unit at distance 1
+/**
+ * Bird's-eye (spec §9.9): 45° down from behind your end line, like watching from a nearby building — your side at the bottom,
+ * the net across the screen. The field of view fits the whole court (+ pad) every frame, for a wide or a tall stage. `side` = your team's side.
+ */
+const BIRD = { dist: 30, pitch: 45, aim: 1.2, pad: 1.4, len: 10.2, wid: 5.05 };
+let birdDir = 1; // +1: side 0 at the bottom (world −x down the screen), −1: side 1
+export const setBirdSide = side => (birdDir = side === 1 ? -1 : 1);
+export const birdW = () => camState.w.bird * (1 - shot.k); // how much of the view is bird's-eye (0..1)
+const bCam = new THREE.PerspectiveCamera(),
+  bv = new THREE.Vector3();
+/** Bird's-eye pose into pos / look (world) and the vertical fov that fits the court. */
+function birdPose(pos, look) {
+  const a = (BIRD.pitch * Math.PI) / 180;
+  look.set(-birdDir * BIRD.aim, 0, 0); // a little toward your side: the near half looks bigger, this evens the margins
+  pos.set(look.x - birdDir * BIRD.dist * Math.cos(a), BIRD.dist * Math.sin(a), 0);
+  bCam.position.copy(pos);
+  bCam.lookAt(look);
+  bCam.updateMatrixWorld(true);
+  let t = 0;
+  for (const sx of [-1, 1])
+    for (const sz of [-1, 1]) {
+      bv.set(sx * (BIRD.len + BIRD.pad), 0, sz * (BIRD.wid + BIRD.pad)).applyMatrix4(bCam.matrixWorldInverse);
+      t = Math.max(t, Math.abs(bv.y) / -bv.z, Math.abs(bv.x) / -bv.z / base.aspect);
+    }
+  return (360 / Math.PI) * Math.atan(t);
+}
+const bPos = new THREE.Vector3(),
+  bLook = new THREE.Vector3();
 let camMode = (() => {
   try {
     return localStorage.getItem('sc.cam3d') || 'courtside';
@@ -31,8 +59,8 @@ let camMode = (() => {
     return 'courtside';
   }
 })();
-const camState = { x: 0, w: { broadcast: 0, courtside: 0, follow: 0, pov: 0 }, eff: '' };
-if (!['broadcast', 'courtside', 'follow', 'pov'].includes(camMode)) camMode = 'courtside';
+const camState = { x: 0, w: { broadcast: 0, courtside: 0, follow: 0, pov: 0, bird: 0 }, eff: '' };
+if (!['broadcast', 'courtside', 'follow', 'pov', 'bird'].includes(camMode)) camMode = 'courtside';
 camState.w[camMode === 'follow' || camMode === 'pov' ? 'courtside' : camMode] = 1; // Follow / POV start from Courtside until a player is picked
 let followId = null;
 /** The player the Follow camera tracks (a player id; null → Courtside). */
@@ -177,7 +205,8 @@ function followPose(pl, pos, look) {
   look.copy(fh).lerp(bp, FOL.ball[mine ? 1 : 0] * bw.v);
   faceOpponent(pos, look, side, 40);
 }
-/** Broadcast = the classic full-court framing; courtside = closer and lower, following the ball along the court; follow = behind your player. */
+/** Broadcast = the classic full-court framing; courtside = closer and lower, following the ball along the court; follow = behind your player;
+ * bird = 45° from behind your end line, your side at the bottom. */
 export function updateBase(dt) {
   const fig = followFig(), // tracked in every mode, so a mode switch fades from / to a live pose
     eff = (camMode === 'follow' || camMode === 'pov') && !fig ? 'courtside' : camMode;
@@ -193,6 +222,12 @@ export function updateBase(dt) {
   pos.addScaledVector(fv.set(camState.x * 0.85, 3.3, 14.5), W3.courtside);
   look.addScaledVector(fv.set(camState.x, 1.55, -0.8), W3.courtside);
   let fov = CAM.fov * W3.broadcast + 31 * W3.courtside + FOL.fov * W3.follow + POV.fov * W3.pov;
+  // bird's-eye: above the centre, tipped a little toward your side; the field of view fits the whole court in either orientation
+  if (W3.bird > 0.001) {
+    fov += birdPose(bPos, bLook) * W3.bird;
+    pos.addScaledVector(bPos, W3.bird);
+    look.addScaledVector(bLook, W3.bird);
+  }
   if (fig && world) {
     const tp = new THREE.Vector3(),
       tl = new THREE.Vector3();
@@ -285,7 +320,8 @@ export function updateBase(dt) {
   base.near = W3.pov > 0.02 ? POV.near : 0.5; // eyes are close to the hands and the ball
   base.position.copy(pos);
   base.lookAt(look);
-  base.fov = vfov(fov);
+  const wb = W3.bird * (1 - shot.k); // bird's-eye already fits the court to the screen's shape: no widening
+  base.fov = vfov(fov) * (1 - wb) + fov * wb;
   base.updateMatrixWorld(true);
   base.updateProjectionMatrix();
   base.getWorldDirection(fwd);

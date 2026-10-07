@@ -7,7 +7,11 @@ import { box, at, beam } from './kit.mjs';
 export function setArena(w) {
   const g = new THREE.Group();
   // roof trusses and the big screen behind the far stands
-  for (const x of [-15, -5, 5, 15]) g.add(at(box(0.4, 0.4, 30, '#141826'), x, 14, -4));
+  for (const x of [-15, -5, 5, 15]) {
+    const t = at(box(0.4, 0.4, 30, '#141826'), x, 14, -4);
+    t.userData.overhead = true; // hidden in the bird's-eye view (it would cross the court)
+    g.add(t);
+  }
   const scr = new THREE.Mesh(new THREE.PlaneGeometry(8, 4), new THREE.MeshBasicMaterial({ map: w.screenTex, fog: false }));
   scr.position.set(0, 7.4, -18.2);
   const frame = at(box(8.5, 4.5, 0.4, '#0d1020'), 0, 7.4, -18.45);

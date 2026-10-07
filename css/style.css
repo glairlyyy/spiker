@@ -2032,3 +2032,18 @@ body:has(.match) .top {
     animation: none;
   }
 }
+/* a phone: the scoreboard keeps the names and the score (the rotation chips and the rules line don't fit) */
+@media (max-width: 600px) {
+  .match .board .rot,
+  .match .setn {
+    display: none;
+  }
+  .match .board {
+    gap: 8px;
+  }
+  .match .bn {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

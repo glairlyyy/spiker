@@ -22,6 +22,8 @@ import {
   setCameraWorld,
   setCamMode,
   getCamMode,
+  setBirdSide,
+  birdW,
   setFollow,
   getFollow,
   povHidden,
@@ -31,6 +33,7 @@ import {
 } from './camera3d.mjs';
 import { posePlayer, poseCoach, dressActors, swapActor, setPovHidden, setKeepColors } from './actors3d.mjs';
 
+const TAG_DROP = 30; // bird's-eye: how far (figure units) the tags come down toward the figure (seen from 45°, a body looks shorter)
 const N_PLAYERS = 8,
   N_COACHES = 2;
 
@@ -286,6 +289,11 @@ function draw() {
   if (!document.hidden) adaptRes(now - lastT);
   lastT = now;
   syncSize();
+  const hideTop = birdW() > 0.3; // bird's-eye: the roof trusses would cross the court
+  if (world.hideTop !== hideTop) {
+    world.hideTop = hideTop;
+    world.scene.traverse(o => o.userData.overhead && (o.visible = !hideTop));
+  }
   updateBase(dt || 0.016);
   setPovHidden(world, povHidden()); // POV: your own head is hidden while the camera is at your eyes
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -316,12 +324,15 @@ function draw() {
   for (const pl of w.people) {
     const d = pl.d;
     if (!d) continue;
-    const pr = P(d.x, d.z, d.jy);
-    if (!A.shot) drawTags(d, pr, Math.min(1.7, pr.s * FIG), (A.staShown || {})[d.p.id]); // capped: close-up shots
+    const pr = P(d.x, d.z, d.jy),
+      k = Math.min(1.7, pr.s * FIG);
+    pr.Y += TAG_DROP * k * birdW(); // bird's-eye: a figure seen from above looks shorter, so its tag comes down to just over its head
+    if (!A.shot) drawTags(d, pr, k, (A.staShown || {})[d.p.id]); // capped: close-up shots
   }
   for (const pl of w.coaches) {
     if (!pl.c) continue;
     const pr = P(sx(pl.c.side, 115), -0.035, 0);
+    pr.Y += TAG_DROP * pr.s * FIG * 1.02 * birdW();
     drawCoachTags(pl.c, pr, pr.s * FIG * 1.02);
   }
   Overlay.drawFx(now);
@@ -424,6 +435,7 @@ export const api = {
   bind,
   unbind,
   setCamMode,
+  setBirdSide,
   camMode: getCamMode,
   setFollow,
   follow: getFollow,

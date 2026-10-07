@@ -22,7 +22,7 @@ const defencePicker = (t, i) =>
   )
     .map(([k, v]) => `<option value="${k}" title="${esc(v.desc)}">${esc(v.name)}</option>`)
     .join('')}</select><small class="tacnow" id="dsnow${i}"></small></label>`;
-const CAM3 = { courtside: 'Courtside', broadcast: 'Broadcast', follow: 'Follow', pov: 'POV' };
+const CAM3 = { courtside: 'Courtside', broadcast: 'Broadcast', follow: 'Follow', pov: 'POV', bird: "Bird's-eye" };
 const cam3Text = () => `Camera: ${CAM3[(R3D && R3D.camMode()) || 'courtside'] || 'Courtside'}`;
 /** Set a button's label if it is on screen. */
 function setLabel(sel, text) {
@@ -43,7 +43,7 @@ function settingsMenu() {
     ${seg('Zooms', 'zoom', { on: 'On', off: 'Off' }, G.camFixed || RM ? 'off' : 'on', 'On: gentle zoom on big plays at the net. Off: no zooms or pushes (motion-friendly).')}
     ${seg('Motion', 'motion', { full: 'Full', reduced: 'Reduced' }, Motion.pref, 'Full: panels slide and fade, numbers count. Reduced: short fades only (also follows your system setting).')}
     ${seg('Graphics', 'gfx', Object.fromEntries(Object.entries(GFX).map(([k, g]) => [k, g.name])), G.gfx, 'High: full resolution always. Auto: sharp, drops a little only if frames run slow. Fast: lower resolution for weaker devices.')}
-    ${seg('Camera <kbd>C</kbd>', 'cam', CAM3, cam, 'Courtside: close and low, following the ball. Broadcast: the whole court from the stands. Follow: behind one player. POV: through their eyes.')}
+    ${seg('Camera <kbd>C</kbd>', 'cam', CAM3, cam, "Courtside: close and low, following the ball. Broadcast: the whole court from the stands. Follow: behind one player. POV: through their eyes. Bird's-eye: from straight above, your side at the bottom.")}
     <select id="folsel" class="folsel" hidden onchange="pickFollow(this.value)" aria-label="Player to follow" title="The player the Follow camera stays behind"></select>
     <label class="vol sset"><span class="cgl">Volume</span><input type="range" min="0" max="100" value="${Math.round(SND.vol * 100)}" oninput="setVolume(this.value / 100)" aria-label="Volume"></label>
     <button class="btn quiet danger" onclick="leaveMatch()" ${tip('Leave without finishing the match')}>Leave match</button>`;
@@ -71,8 +71,9 @@ function setOpt(kind, v) {
   } else if (kind === 'gfx' && GFX[v]) {
     G.gfx = v;
     store.set(KEYS.gfx, v);
-  } else if (kind === 'cam' && R3D && CAM3[v]) R3D.setCamMode(v);
-  else if (kind === 'motion') Motion.set(v);
+  } else if (kind === 'cam' && R3D && CAM3[v]) {
+    R3D.setCamMode(v);
+  } else if (kind === 'motion') Motion.set(v);
   const pb = $('.setpop .popb');
   if (pb) pb.innerHTML = settingsMenu();
   cam3Label();
@@ -107,7 +108,7 @@ function pickFollow(id) {
 }
 function toggleCam3D() {
   if (!R3D) return;
-  const next = { courtside: 'broadcast', broadcast: 'follow', follow: 'pov', pov: 'courtside' };
+  const next = { courtside: 'broadcast', broadcast: 'follow', follow: 'pov', pov: 'bird', bird: 'courtside' };
   R3D.setCamMode(next[R3D.camMode()] || 'courtside');
   cam3Label();
   const pb = $('.setpop .popb');
