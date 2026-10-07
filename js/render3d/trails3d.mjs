@@ -38,7 +38,8 @@ void main() {
   gl_FragColor = vec4(ink, band * min(1.0, vA * 1.4) * 0.9);
 }`;
 // ink: value noise on (birth time of the sample, across) — the grain moves with the stroke, not the screen
-const NOISE = `
+/** Value noise and brush strands for the ink look (shared with fx3d's ink rings). */
+export const NOISE = `
 float h1(float n) { return fract(sin(n) * 43758.5453); }
 float vn(vec2 p) {
   vec2 i = floor(p), f = fract(p);

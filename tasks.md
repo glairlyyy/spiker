@@ -182,6 +182,11 @@ Accept: the row shows after a played match with calls; nothing after a sim.
 QA: career run → a played match with 2+ calls → result card.
 Result: `resultData.calls` (your `m.calls`), `callsRow` on the card's right column: "Calls · N of M made", the last 6 (label, auto on a time-out, chance, ✓ made / ✕ missed / · rally on), "Held back by: <icon> <stat>" = the weak stat seen most in missed calls. Nothing after a sim (no m.human). QA: a played Pro court match with 3 calls → card (screenshot), no errors.
 
+### [x] T-245: Ink style for every ring effect (owner request)
+Spec: §10.7b          Goldens: unchanged (display only)          Save: no change
+Files: js/render3d/fx3d.mjs (`inkRing`, RING_INK, ring shaders), js/render3d/trails3d.mjs (exports NOISE), js/data/vfx.js (`ring` group)
+Result: VFX panel → Rings: Style Light / Ink, glow in the ink colour or the effect's own, ink ring life ×1.3; Ink = a ragged black brush ring (strands round it, fraying as it fades) with the glow burning inside, on every ring (air impact, contact burst, floor and element rings, the blast's ring, sky bolt). QA: lab frames (air impact ×2, element floor impact, blast), no shader errors.
+
 ### [x] T-244: Ball trail options (owner request)
 Spec: §10.7b          Goldens: unchanged (display only)          Save: no change
 Files: js/data/vfx.js (`ball` group), js/render3d/r3d.mjs (`ballRibbon`: a makeTrail on the ball), js/render3d/trails3d.mjs (`o.jump`), js/render/overlay.js + ball.js (Streak honours style / min / width / length), js/render3d/vfxlab3d.mjs + js/ui/vfx-lab.js (ball ribbon, "Ball trail: power"), js/ui/vfx-panel.js (option names), css/style.css (hidden VFX panel fix)

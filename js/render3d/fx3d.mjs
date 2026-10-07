@@ -2,6 +2,7 @@
 // style per team element (fire, flash, water, wind, earth, blast, shadow, star). Positions are world metres.
 // Called from render/effects.js when the 3D view is on (see R3D.fx), and each frame by r3d.mjs.
 import * as THREE from 'three';
+import { NOISE } from './trails3d.mjs';
 
 function canvasTex(draw, n = 64) {
   const c = document.createElement('canvas');
@@ -90,6 +91,35 @@ void main(){ float x = 1.0 - abs(vU.x), a = x * pow(vU.y, 1.2) * vA; if (a < 0.0
 const R = (a, b) => a + Math.random() * (b - a);
 const rv = s => new THREE.Vector3().randomDirection().multiplyScalar(s);
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
+// ink rings: the trail's ink look wrapped round a ring — along = the angle, across = the band (−1 inner … +1 outer)
+const RING_VS = `varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+const RING_HEAD = `uniform float op; uniform float seed; uniform float inner; varying vec2 vP;
+${NOISE}
+void band(out float e, out float sE, out float s) {
+  float r = length(vP), mid = (1.0 + inner) * 0.5, hw = (1.0 - inner) * 0.5;
+  sE = (r - mid) / hw; e = abs(sE); s = atan(vP.y, vP.x) * 0.8 + seed;
+}`;
+const RING_FS_INK = `uniform vec3 ink; uniform vec3 blood; ${RING_HEAD}
+void main() {
+  float e, sE, s; band(e, sE, s);
+  float n = strands(s, sE), fade = min(1.0, op * 1.5),
+    edge = 0.72 + 0.28 * vn(vec2(s * 9.0, 0.5)),
+    body = 1.0 - smoothstep(edge - 0.18, edge, e),
+    t0 = 0.12 + 0.55 * (1.0 - fade),
+    hair = smoothstep(t0, t0 + 0.12, n),
+    a = body * hair * min(1.0, op * 2.2);
+  if (a < 0.01) discard;
+  gl_FragColor = vec4(mix(blood * 0.22, ink, smoothstep(0.05, 0.5, e)), a * 0.95);
+}`;
+const RING_FS_BLOOD = `uniform vec3 blood; ${RING_HEAD}
+void main() {
+  float e, sE, s; band(e, sE, s);
+  float n = strands(s + 3.7, sE * 0.8),
+    core = (1.0 - smoothstep(0.04, 0.3 + 0.22 * n, e)) * (0.45 + 0.9 * n) * smoothstep(0.03, 0.3, op),
+    halo = pow(1.0 - e, 2.0) * 0.35 * smoothstep(0.03, 0.3, op);
+  if (core + halo < 0.01) discard;
+  gl_FragColor = vec4((mix(blood, vec3(1.0, 0.7, 0.7), core * 0.25) * core * 2.2 + blood * halo) * op, (core + halo) * op);
+}`;
 /** A live tuning value (js/data/vfx.js — the dev VFX panel edits it while effects play); `d` if the table is missing. */
 const vx = (g, k, d) => (typeof VFX !== 'undefined' && VFX[g] && VFX[g][k] != null ? VFX[g][k] : d);
 const UP = new THREE.Vector3(0, 1, 0);
@@ -379,20 +409,25 @@ export function createFx(scene) {
 
   // shockwave rings: billboard in the air or flat on the floor
   const rings = [],
-    RING = new THREE.RingGeometry(0.82, 1, 64);
+    RING = new THREE.RingGeometry(0.82, 1, 64),
+    INK_IN = 0.66,
+    RING_INK = new THREE.RingGeometry(INK_IN, 1, 96, 2);
   let camera = null;
   /** `o.dir` (unit vector): the ring faces along it instead of the camera; `o.delay` s before it shows; `o.op` peak opacity. */
   function ring(p, col, size, life = 0.45, floor = false, o = {}) {
-    const m = new THREE.Mesh(
-      RING,
-      new THREE.MeshBasicMaterial({
-        color: col,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        side: THREE.DoubleSide
-      })
-    );
+    const ink = vx('ring', 'style', 'light') === 'ink',
+      m = ink
+        ? inkRing(vx('ring', 'own', 0) ? col : vx('ring', 'ink', '#ff1630'))
+        : new THREE.Mesh(
+            RING,
+            new THREE.MeshBasicMaterial({
+              color: col,
+              transparent: true,
+              blending: THREE.AdditiveBlending,
+              depthWrite: false,
+              side: THREE.DoubleSide
+            })
+          );
     m.position.copy(p);
     if (floor) {
       m.rotation.x = -Math.PI / 2;
@@ -402,7 +437,44 @@ export function createFx(scene) {
     m.renderOrder = 5;
     m.visible = !o.delay;
     scene.add(m);
-    rings.push({ m, size, life, age: -(o.delay || 0), floor, fixed: !!o.dir, op: o.op ?? 0.9 });
+    rings.push({
+      m,
+      size,
+      life: life * (ink ? vx('ring', 'life', 1.3) : 1),
+      age: -(o.delay || 0),
+      floor,
+      fixed: !!o.dir,
+      op: o.op ?? 0.9,
+      ink
+    });
+  }
+  /**
+   * An ink ring (VFX ring style Ink, owner 2026-10-07): a ragged black brush circle with a glow in `glow` burning inside it; as it
+   * fades the stroke frays into strands. Two meshes on one ring geometry (the glow is the child), opacity through `op`.
+   */
+  function inkRing(glow) {
+    const u = {
+        op: { value: 1 },
+        seed: { value: Math.random() * 50 },
+        inner: { value: INK_IN },
+        ink: { value: new THREE.Color('#050204') },
+        blood: { value: new THREE.Color(glow) }
+      },
+      mk = (fs, add) =>
+        new THREE.ShaderMaterial({
+          uniforms: u,
+          vertexShader: RING_VS,
+          fragmentShader: fs,
+          transparent: true,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          blending: add ? THREE.AdditiveBlending : THREE.NormalBlending
+        }),
+      m = new THREE.Mesh(RING_INK, mk(RING_FS_INK, false)),
+      g = new THREE.Mesh(RING_INK, mk(RING_FS_BLOOD, true));
+    g.renderOrder = 6;
+    m.add(g);
+    return m;
   }
   function updateRings(dt) {
     let w = 0;
@@ -411,6 +483,7 @@ export function createFx(scene) {
       if (r.age > r.life) {
         scene.remove(r.m);
         r.m.material.dispose();
+        if (r.ink) r.m.children[0].material.dispose();
         continue;
       }
       if (r.age < 0) {
@@ -420,7 +493,8 @@ export function createFx(scene) {
       r.m.visible = true;
       const u = r.age / r.life;
       r.m.scale.setScalar(0.05 + r.size * (1 - Math.pow(1 - u, 3)));
-      r.m.material.opacity = (1 - u) * r.op;
+      if (r.ink) r.m.material.uniforms.op.value = (1 - u) * Math.min(1, r.op + 0.2);
+      else r.m.material.opacity = (1 - u) * r.op;
       if (!r.floor && !r.fixed && camera) r.m.quaternion.copy(camera.quaternion);
       rings[w++] = r;
     }
