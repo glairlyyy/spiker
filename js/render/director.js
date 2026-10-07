@@ -244,8 +244,7 @@ const Dir = {
   beatLines(b) {
     if (!this.ev) this.resetLines();
     const acts = b.acts,
-      P = id => A.disp[id] && A.disp[id].p,
-      byName = n => (Object.values(A.disp).find(d => d.p.name === n) || {}).p;
+      P = id => A.disp[id] && A.disp[id].p;
     for (let i = 0; i < acts.length; i++) {
       const a = acts[i];
       if (a.k === 'reset') {
@@ -258,13 +257,10 @@ const Dir = {
           .reverse()
           .find(x => x.k === 'call');
         if (c) this.ev.push({ kind: 'refused', p: c.p, q: a.p });
-      } else if (a.k === 'log' && typeof a.t === 'string') {
-        if (/calls for the ball$/.test(a.t)) this.rally.called = (acts.find(x => x.k === 'call') || {}).p;
-        const fk = acts.find(x => x.k === 'pose' && x.pose === 'spike'),
-          ok = / sells the fake — .+ bites$/.test(a.t),
-          home = a.t.match(/ fakes, but (.+) stays home$/);
-        if (fk && ok) this.ev.push({ kind: 'fake_ok', p: fk.p, q: (acts.find(x => x.k === 'pose' && x.pose === 'block') || {}).p });
-        else if (fk && home) this.ev.push({ kind: 'fake_fail', p: fk.p, q: (byName(home[1]) || {}).id });
+      } else if (a.k === 'ev') {
+        // the engine's story events (spec §2.18): your accepted call, your fake that worked / didn't
+        if (a.kind === 'called') this.rally.called = a.p;
+        else if (a.kind === 'fake_ok' || a.kind === 'fake_fail') this.ev.push({ kind: a.kind, p: a.p, q: a.q });
       } else if (a.k === 'spkstyle' && P(a.p)) {
         // the blocker who rises against this spike (this beat or the next two): the duel count
         const side = A.disp[a.p].side;

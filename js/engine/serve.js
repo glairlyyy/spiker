@@ -92,21 +92,12 @@ function* serveWalk(c) {
   V &&
     B({
       dur: 1250,
-      acts: [
-        { k: 'reset' },
-        ...sl,
-        { k: 'hold', p: server.id },
-        { k: 'rot', snap: snap(m) },
-        { k: 'log', t: `Rotation ${(m.rot[s] % 4) + 1}: ${server.name} (${server.role}) to serve` }
-      ]
+      acts: [{ k: 'reset' }, ...sl, { k: 'hold', p: server.id }, { k: 'rot', snap: snap(m) }]
     });
   V &&
     B({
       dur: 1100, // the server's routine (bounce it / spin and aim, see preServe): a beat before the serve
-      acts:
-        sType !== 'float'
-          ? [{ k: 'log', t: `${server.name} paces out a ${runM} m run-up for a ${jumpSrv ? 'jump serve' : 'jump float'}` }]
-          : []
+      acts: []
     });
   Object.assign(c, { oS, oR, server, sq, sType, jumpSrv, runM, endX, startX, call });
 }
@@ -155,14 +146,12 @@ function serveToss(c) {
   }
   Object.assign(c, { sq, killer, drive, targeted });
 }
-/** The contact: the cannon cut-in, the error chance, the hit effects; the serving side goes to base. */
+/** The contact: the error chance, the hit effects; the serving side goes to base. */
 function serveContact(c) {
-  const { m, V, B, s, ST, server, sq, sType, killer, drive, targeted } = c;
+  const { m, V, s, ST, server, sq, sType, killer, drive, targeted } = c;
   const sp = m.pos[server.id],
     sArc = sType === 'jump' ? 85 : sType === 'jumpfloat' ? 110 : 130,
     wob = sType !== 'jump';
-  if (V && server.star && sq > 74 && R() < 0.7)
-    B({ dur: 1250, cut: 1, acts: [{ k: 'cut', p: server.id, title: 'Cannon Serve', sub: `Serve ${kmh(sq)} km/h` }] });
   const serr = (Formula.serveErrorP(server, ST, sq) + (killer ? 0.03 : 0)) * (c.call ? DECIDE.serve[c.call].err : 1);
   const techName = killer ? 'Killer Jump Serve' : drive ? 'Drive Serve' : targeted ? 'Target Serve' : null;
   const hitFx = [
@@ -197,8 +186,7 @@ function serveFault(c) {
           h: net ? 30 : 110,
           trail: sq
         },
-        { k: 'label', t: net ? 'Into the net' : 'Long!', when: 'end', big: 1 },
-        { k: 'log', t: `Service error by ${server.name}`, c: 'err' }
+        { k: 'label', t: net ? 'Into the net' : 'Long!', when: 'end', big: 1 }
       ]
     });
   return end(m, r, beats);
@@ -270,12 +258,7 @@ function* servePopped(c, fr, p0r) {
     V &&
       B({
         dur: 900,
-        acts: [
-          ...pa.acts,
-          { k: 'call', p: P.rec.id, t: callLine('recv', P.rec, m) },
-          { k: 'label', t: 'Saved!', when: 'end', set: 1 },
-          { k: 'log', t: `${server.name}'s serve pops off ${rc.name}'s arms — ${P.rec.name} saves it!`, c: 'set' }
-        ]
+        acts: [...pa.acts, { k: 'call', p: P.rec.id, t: callLine('recv', P.rec, m) }, { k: 'label', t: 'Saved!', when: 'end', set: 1 }]
       });
     return end(m, yield* rally(m, B, V, r, P.rec, 1, { first: rc }), beats);
   }
@@ -289,8 +272,7 @@ function* servePopped(c, fr, p0r) {
         ...pa.acts,
         { k: 'impact', pow: 40, when: 'end', kill: 1 },
         { k: 'label', t: 'ACE!', when: 'end', big: 1 },
-        { k: 'pose', p: server.id, pose: 'roar', when: 'end' },
-        { k: 'log', t: `Ace! ${server.name}'s serve pops off ${rc.name}'s arms and drops`, c: 'pt' }
+        { k: 'pose', p: server.id, pose: 'roar', when: 'end' }
       ]
     });
   return end(m, s, beats);
@@ -319,8 +301,7 @@ function serveAceClean(c) {
         ...hitFx,
         ...sw,
         { k: 'pose', p: rc.id, pose: rcPose },
-        { k: 'ball', to: { p: rc.id, c: rcPose }, h: sArc, wob, trail: sq, op: server.op },
-        { k: 'log', t: `${rc.name} gets an arm on it…` }
+        { k: 'ball', to: { p: rc.id, c: rcPose }, h: sArc, wob, trail: sq, op: server.op }
       ]
     });
     sw.length = 0;
@@ -346,8 +327,7 @@ function serveAceClean(c) {
         ...RT.P.filter(p => p !== rc).map(p => ({ k: 'jump', p: p.id, mode: 'hop', peak: 7, t0: 0, t1: 0.2 })),
         { k: 'impact', pow: sq, when: 'end', kill: 1, op: server.op },
         { k: 'label', t: 'ACE!', when: 'end', big: 1 },
-        { k: 'pose', p: server.id, pose: 'roar', when: 'end' },
-        { k: 'log', t: `Ace! ${server.name} blasts it past ${rc.name}`, c: 'pt' }
+        { k: 'pose', p: server.id, pose: 'roar', when: 'end' }
       ]
     });
   return end(m, s, beats);
@@ -372,8 +352,7 @@ function* serveReceive(c) {
         ...(rollR ? [{ k: 'tech', p: rc.id, t: 'Rolling Receive', when: 'end' }] : []),
         { k: 'ball', to: { p: rc.id, c: rDive ? 'dive' : 'bump' }, h: sArc, wob, trail: sq > 60 ? sq : 0 },
         ...RT.P.filter(p => p !== rc).map(p => ({ k: 'jump', p: p.id, mode: 'hop', peak: 7, t0: 0, t1: 0.2 })),
-        ...(rc.elOn ? [{ k: 'efx', el: rc.el, pow: 35, when: 'end' }] : []),
-        { k: 'log', t: `${rc.name} ${q === 3 ? 'receives perfectly' : q === 2 ? 'receives' : 'barely digs out the serve'}` }
+        ...(rc.elOn ? [{ k: 'efx', el: rc.el, pow: 35, when: 'end' }] : [])
       ]
     });
   return end(m, yield* rally(m, B, V, r, rc, q), beats);

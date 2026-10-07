@@ -1,4 +1,4 @@
-// Signature move names, combo names and coach timeout lines.
+// Signature move names and coach timeout lines.
 
 const MOVES = {
   WS: ['Meteor Drive', 'Crimson Lance', 'Thunder Fang', 'Skybreaker', 'Dragon Tail Smash', 'Comet Hammer', 'Blazing Cross', 'Gale Piercer'],
@@ -6,26 +6,6 @@ const MOVES = {
   S: ['Phantom Dump', 'Zero-Gravity Toss', 'Moonlight Dump']
 };
 const BMOVES = ['Iron Curtain', "Heaven's Gate", 'Great Wall', 'Guillotine Block', 'Frost Barrier'];
-const COMBO = {
-  power: 'Twin Inferno',
-  wall: 'Tectonic Duo',
-  tempo: 'Lightning Relay',
-  counter: 'Tidal Link',
-  sky: 'Twin Tempest',
-  bombers: 'Double Detonation',
-  mind: 'Eclipse Pair',
-  balanced: 'Constellation Strike'
-};
-const CBLK = {
-  power: 'Firewall',
-  wall: 'Great Mountain',
-  tempo: 'Flash Barrier',
-  counter: 'Tsunami Wall',
-  sky: 'Heaven Gate',
-  bombers: 'Blast Shield',
-  mind: 'Shadow Prison',
-  balanced: 'Starlight Wall'
-};
 const TOLINES = [
   'Breathe. One point at a time.',
   'Forget the last run — reset!',

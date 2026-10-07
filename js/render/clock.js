@@ -47,7 +47,7 @@ function timeScale(cb, raw) {
   }
 }
 /**
- * Time for things that play at (near) real speed whatever the match speed — cut-ins, staged scenes, the ghost arrow:
+ * Time for things that play at (near) real speed whatever the match speed — staged scenes, the ghost arrow:
  * the speed-scaled `ms` undone, then at most 1.5× faster.
  */
 function playDt(ms) {
@@ -99,8 +99,7 @@ function matchState() {
     speed: A.speed,
     r3d: !!R3D,
     res: R3D ? R3D.res : null, // 3D dynamic resolution
-    px: cv ? `${cv.width}x${cv.height}` : null,
-    cut: !!(b && b.cut)
+    px: cv ? `${cv.width}x${cv.height}` : null
   };
 }
 /** Stall thresholds (ms): no progress at all, no progress while the 3D players load, one beat playing. */

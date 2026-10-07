@@ -23,8 +23,7 @@ function freeBall(c) {
           { k: 'pose', p: pas.id, pose: 'bump' },
           ...sl,
           { k: 'ball', to: { p: dg.id, c: 'bump' }, h: 230 },
-          { k: 'pose', p: dg.id, pose: 'bump' },
-          { k: 'log', t: `${pas.name}'s touch floats over — free ball` }
+          { k: 'pose', p: dg.id, pose: 'bump' }
         ]
       });
     return { next: [ds, dg, 3] };
@@ -130,9 +129,6 @@ function setterDump(c, s) {
           { k: 'label', t: 'Fake set!', dy: 60, set: 1, big: 1 }
         ]
       });
-    V &&
-      setter.star &&
-      B({ dur: 1150, cut: 1, acts: [{ k: 'cut', p: setter.id, title: setter.move, sub: 'Fake set, second-touch dump' }] });
     st(m, setter, 'att');
     const a2 = [];
     if (kill) {
@@ -151,8 +147,7 @@ function setterDump(c, s) {
             ...a2,
             { k: 'pose', p: dg.id, pose: 'dive' },
             { k: 'ball', to: { x: lx, z: lz, h: 0 }, h: 40 },
-            { k: 'label', t: lefty ? 'Left-hand dump!' : 'Dump!', when: 'end', big: 1 },
-            { k: 'log', t: `${setter.name} dumps it on the second touch!`, c: 'pt' }
+            { k: 'label', t: lefty ? 'Left-hand dump!' : 'Dump!', when: 'end', big: 1 }
           ]
         });
       return { point: atk };
@@ -168,8 +163,7 @@ function setterDump(c, s) {
           { k: 'jump', p: setter.id, mode: 'down' },
           ...a2,
           { k: 'pose', p: dg.id, pose: dDive ? 'dive' : 'bump' },
-          { k: 'ball', to: { p: dg.id, c: dDive ? 'dive' : 'bump' }, h: 40 },
-          { k: 'log', t: `${dg.name} reads the fake and digs the dump` }
+          { k: 'ball', to: { p: dg.id, c: dDive ? 'dive' : 'bump' }, h: 40 }
         ]
       });
     st(m, dg, 'dig');
@@ -192,16 +186,6 @@ function setHands(c, s) {
     sq2 = roll < succ ? (roll < succ * 0.4 ? 'perfect' : 'good') : 'bad';
   }
   if (sq2 === 'fault') {
-    const why =
-      qual === 1
-        ? 'off a scrambled pass'
-        : setter.role !== 'S'
-          ? `— ${setter.role} is no setter`
-          : staOf(setter) < 0.5
-            ? '— tired hands'
-            : (CM.mood[setter.id] || 0) < -0.3
-              ? '— nerves'
-              : 'on a tight ball';
     st(m, setter, 'err');
     V &&
       B({
@@ -209,8 +193,7 @@ function setHands(c, s) {
         acts: [
           { k: 'pose', p: setter.id, pose: 'set' },
           { k: 'ball', to: { x: setX + da * 10, z: setZ, h: 0 }, h: 60 },
-          { k: 'label', t: 'Double contact', big: 1 },
-          { k: 'log', t: `Whistle — ${setter.name} double-contacts the set ${why}`, c: 'err' }
+          { k: 'label', t: 'Double contact', big: 1 }
         ]
       });
     return { point: ds };
@@ -308,13 +291,10 @@ function chooseAttack(c, s, h) {
   const bad = sq2 === 'bad';
   if (relNote && c.V) {
     // the setter says it out loud (a talk beat before the set; no extra draw)
-    const { act, who } = relNote;
+    const { act } = relNote;
     c.B({
       dur: 650,
-      acts: [
-        { k: 'call', p: setter.id, t: callLine(act, setter, m) },
-        { k: 'log', t: act === 'trust' ? `${setter.name} trusts ${who.name}` : `${setter.name} freezes ${who.name} out`, c: 'set' }
-      ]
+      acts: [{ k: 'call', p: setter.id, t: callLine(act, setter, m) }]
     });
   }
   return { MBs, mbZ, tac, quick, pool, callers, trust, spiker, readBonus, freak, slide, sync, DF, B0, bad };
@@ -351,12 +331,7 @@ function badSetOver(c, s, a) {
           { k: 'pose', p: rec.id, pose: dive ? 'dive' : 'bump' },
           { k: 'call', p: rec.id, t: callLine('recv', rec, m) },
           { k: 'ball', to: { p: rec.id, c: dive ? 'dive' : 'bump' }, h: 170, wob: true },
-          { k: 'label', t: 'Bad set', when: 'end' },
-          {
-            k: 'log',
-            t: `${setter.name}'s set goes astray — ${rec.name} ${dive ? 'dives' : 'races'} after it and bumps it over`,
-            c: 'err'
-          }
+          { k: 'label', t: 'Bad set', when: 'end' }
         ]
       });
     const a3 = [];

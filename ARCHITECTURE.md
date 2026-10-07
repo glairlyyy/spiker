@@ -111,7 +111,7 @@ onLeave }` (see Screens; `onLeave` only cleans up), opened by the UI with `watch
   the original order): `playRally` = `rallyStart → serveWalk → serveToss → serveContact → serveFault | serveAim →
 serveAce (servePopped | serveAceClean) | serveReceive`; `end` = `pointTally → pointMomentum → pointZone → elPoint →
 pointBeats → subs / timeouts`; `formBlock` = `blockApproach → blockPick → blockMoves → blockCoverage (blockHands)`;
-  `setBeat` = `setCallActs`, `setActs (blockJumpActs, blockPoseActs)`; `spikeActs` = `spikeCutIns`, `spikeNote`;
+  `setBeat` = `setCallActs`, `setActs (blockJumpActs, blockPoseActs)`; `spikeActs` = `spikeZoom`, `spikeNote`;
   `block` = `blockBreak | blockStuff (blockCover | blockKill) | blockTouch | blockTool`; `dig` = `digSetup → digSave |
 digPopped | digKill | digUp`. New rules (e.g. ace traits) hook into the step that owns the roll.
   `pickSetter` (T-054): the set point is rolled first, then the back-row setter sets; on a bad pass (quality 1, one setter) a free teammate takes the second

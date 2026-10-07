@@ -456,7 +456,7 @@ const SOUND = (() => {
       fm.stop(t + d + 0.05);
       noiseAt(t, d, 0.12, 'bandpass', 1200, 4200, 2, o, 0.02);
     },
-    /** Cut-in stinger: impact + bright chord. */
+    /** Stinger: impact + bright chord (banners). */
     stinger: () => {
       if (!live()) return;
       const t = now(),

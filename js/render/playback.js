@@ -35,7 +35,7 @@ const ease = t => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
 const reachH = (d, k) => (k * 1.8 * ((d.p && d.p.look && d.p.look.hgt) || 1)) / UNIT_M.h;
 /**
  * Swing timing shared with the 3D poses: ms from swing start to ball contact. A jumping hitter starts the swing this long
- * before the ball arrives (and holds the contact pose through cut-ins until the hit beat); otherwise the ball waits at
+ * before the ball arrives (and holds the contact pose until the hit beat); otherwise the ball waits at
  * the contact point this long at the start of the hit beat, so the hand really meets it.
  */
 const swingLead = d => (d.pose === 'serve' ? 70 : d.pose === 'spike' ? 150 : 0);
@@ -514,7 +514,6 @@ function step(dt) {
   if (!b._s) {
     b._s = 1;
     A.el = 0;
-    if (b.cut) b.dur = 1; // cut-in beats (owner, 2026-10-08: cut-ins removed): their other acts run, no hold
     if (b.scene && b.scene > HYPE[G.hype].max) {
       b.dur = 1; // Hype setting: this staged scene is skipped
       b.acts = [];
@@ -522,7 +521,7 @@ function step(dt) {
     if (!b.scene) endScene();
     startBeat(b);
   }
-  A.el += b.cut || b.scene ? playDt(raw) : b.freeze ? raw : dt;
+  A.el += b.scene ? playDt(raw) : b.freeze ? raw : dt;
   if (!(b.dur > 0)) {
     DBG.log('warn', `Beat ${A.bi} has no valid duration (${b.dur}) — skipped`, b.acts.map(a => a.k).join(','));
     b.dur = 1;

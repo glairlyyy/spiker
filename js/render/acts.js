@@ -218,9 +218,8 @@ const ACTS_UI = {
   banner(a, d, bs) {
     showBanner(a);
   },
-  // cut-ins and the commentary are gone (owner, 2026-10-08): the engine's `cut` / `combo` / `log` acts stay as data only
-  cut(a, d, bs) {},
-  log(a, d, bs) {},
+  /** A story event for the director's lines ({ kind, p, q }): data only, nothing on screen. */
+  ev(a, d, bs) {},
   score(a, d, bs) {
     board(a.snap);
     boxScore();
@@ -251,8 +250,7 @@ const ACTS_UI = {
   stage(a) {
     stageShow(a);
     Dir.stage(a);
-  },
-  combo(a, d, bs) {}
+  }
 };
 /** Players on court: substitutions and display state (poses, spike style, set direction). */
 const ACTS_ROSTER = {

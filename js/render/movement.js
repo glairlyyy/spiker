@@ -11,7 +11,7 @@ const PREDIG_AT = 0.5;
 function preDigLook(b) {
   A.preDig = null;
   const nb = A.beats && A.beats[A.bi + 1];
-  if (!nb || nb.cut || nb.scene || b.cut || b.scene) return;
+  if (!nb || nb.scene || b.scene) return;
   const a = nb.acts.find(x => x.k === 'ball' && x.to && x.to.p && (x.to.c === 'bump' || x.to.c === 'dive') && x.when !== 'end'),
     mvA = a && nb.acts.find(x => x.k === 'slide' && x.p === a.to.p);
   if (mvA) A.preDig = { p: a.to.p, x: mvA.x, z: mvA.z, dur: nb.dur };
@@ -41,7 +41,7 @@ const PREAPP_AT = 0.35;
  * cut / scene beats have none. Derived from the set beat's acts only.
  */
 function approachOf(b) {
-  if (!b || b.cut || b.scene) return null;
+  if (!b || b.scene) return null;
   const ba = b.acts.find(x => x.k === 'ball' && x.to && x.to.p && x.to.c === 'spike' && x.when !== 'end'),
     sl = ba && b.acts.find(x => x.k === 'slide' && x.p === ba.to.p),
     jp = ba && b.acts.find(x => x.k === 'jump' && x.p === ba.to.p && x.mode === 'up');
@@ -64,7 +64,7 @@ function approachOf(b) {
 function preApproachLook(b) {
   A.preApp = null;
   const nb = A.beats && A.beats[A.bi + 1],
-    ap = nb && !b.cut && !b.scene ? approachOf(nb) : null;
+    ap = nb && !b.scene ? approachOf(nb) : null;
   if (!ap || ap.rx == null) return;
   A.preApp = { p: ap.p, rx: ap.rx, rz: ap.rz, touch: b.acts.some(x => x.k === 'ball' && x.to && x.to.p === ap.p && x.when !== 'end') };
 }
@@ -136,7 +136,7 @@ function digChase(b) {
   A.digHero = null;
   const a = b.acts.find(x => x.k === 'ball' && x.to && x.to.p && (x.to.c === 'bump' || x.to.c === 'dive') && x.when !== 'end'),
     d = a && A.disp[a.to.p];
-  if (!d || d.via || b.cut || b.scene) return;
+  if (!d || d.via || b.scene) return;
   // ms needed: still in the air (a blocker coming down) → the fall and the landing first, then the sprint
   const air = d.jy > 2 ? Math.sqrt((2 * d.jy * UNIT_M.h) / FALL_G) * 1000 + 60 : 0,
     need = air + (Math.hypot((d.tx - d.x) * MX, (d.tz - d.z) * MZ) / sprintOf(d)) * 1000,

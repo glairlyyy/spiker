@@ -225,11 +225,10 @@ function captainThink(m, side) {
       tg = low && R() < 0.5 ? low : hot;
     m.buff[tg.id] = { lv, n: 4 };
     md(m, tg, 0.1 * lv);
-    const first = tg.name.split(' ').pop(),
-      charged = elBuff(m, tg); // an unlocked element: the gauge fills — the next attack is an element spike
+    const first = tg.name.split(' ').pop();
+    elBuff(m, tg); // an unlocked element: the gauge fills — the next attack is an element spike
     say(low === tg ? `${first}, shake it off — I need you!` : `${first}, it's yours — take over!`, [
-      { k: 'plabel', p: tg.id, t: `BUFF Lv${lv}` },
-      { k: 'log', t: `Captain ${cap.name} fires up ${tg.name} (buff Lv${lv})${charged ? ` — ${ENAME[tg.el]} gauge full!` : ''}`, c: 'set' }
+      { k: 'plabel', p: tg.id, t: `BUFF Lv${lv}` }
     ]);
   }
   // tactic
@@ -251,8 +250,7 @@ function captainThink(m, side) {
     if (pickT !== m.tac[side]) {
       m.tac[side] = pickT;
       say(pickT === 'ws' ? 'Feed the wings!' : pickT === 'mb' ? 'Middles, go quick!' : 'Setter, your call!', [
-        { k: 'tac', side, tac: pickT },
-        { k: 'log', t: `Captain ${cap.name} switches ${t.name} to ${TACTICS[pickT].name}`, c: 'set' }
+        { k: 'tac', side, tac: pickT }
       ]);
     }
   }
@@ -265,8 +263,7 @@ function captainThink(m, side) {
         m.dsetLog.push({ side, from: m.dset[side], to: pick });
         m.dset[side] = pick;
         say(pick === 'commit' ? 'Commit on the quick!' : pick === 'bunch' ? 'Bunch the middle!' : 'Read and react!', [
-          { k: 'tac', side, tac: m.tac[side], dset: pick },
-          { k: 'log', t: `Captain ${cap.name} switches ${t.name} defence to ${DEFSETS[pick].name}`, c: 'set' }
+          { k: 'tac', side, tac: m.tac[side], dset: pick }
         ]);
       }
     }
@@ -352,12 +349,7 @@ function coachSubs(m, side) {
         { k: 'sub', side, out: out.id, in: inn.id },
         { k: 'rot', snap: snap(m) },
         { k: 'plabel', p: inn.id, t: 'SUBBED' },
-        { k: 'coachtalk', side, text },
-        {
-          k: 'log',
-          t: `Sub ${t.name}: #${inn.num} ${inn.name} in for #${out.num} ${out.name} (${why === 'tired' ? 'tired' : why === 'errors' ? 'too many errors' : 'fresh legs back'})`,
-          c: 'set'
-        }
+        { k: 'coachtalk', side, text }
       ]
     }
   ];
@@ -513,24 +505,14 @@ function pointZone(m, w, oppWasInZone) {
   }
   return { zoneIn, capCall, breaker };
 }
-/** The point's beats: score, chatter, captain decisions, zone breaker / captain's call / zone cut-ins. */
+/** The point's beats: score, chatter, captain decisions, zone breaker / captain's call / zone flashes. */
 function pointBeats(m, w, beats, { zoneIn, capCall, breaker }, capBeats) {
-  const [a, b] = m.pts;
   beats.push({
     dur: m.over ? 1600 : 900,
-    acts: [
-      { k: 'point', side: w, big: m.big, streak: m.streak[w], zone: zoneIn },
-      ...hypeChatter(m, w),
-      { k: 'score', snap: snap(m) },
-      ...(m.over ? [{ k: 'log', t: `Game — ${m.t[w].name} win ${Math.max(a, b)}-${Math.min(a, b)}`, c: 'set' }] : [])
-    ]
+    acts: [{ k: 'point', side: w, big: m.big, streak: m.streak[w], zone: zoneIn }, ...hypeChatter(m, w), { k: 'score', snap: snap(m) }]
   });
   for (const bt of capBeats) beats.push(bt);
   if (breaker && !m.over) {
-    const t = m.t[w],
-      o = m.t[1 - w],
-      hero = m.hero || t.cap,
-      how = m.lastPlay === 'killblock' ? 'Kill block' : 'Fake set';
     beats.push({
       dur: 900,
       acts: [
@@ -539,43 +521,20 @@ function pointBeats(m, w, beats, { zoneIn, capCall, breaker }, capBeats) {
       ]
     });
     beats.push({
-      dur: 1500,
-      cut: 1,
-      acts: [
-        { k: 'zone', side: w },
-        { k: 'cut', p: hero.id, title: 'Zone Breaker', sub: `${how} by ${hero.name} shatters ${o.name}'s zone` },
-        {
-          k: 'log',
-          t: `ZONE BREAKER! ${hero.name}'s ${how.toLowerCase()} knocks ${o.name} out of the zone — ${t.name} take it over`,
-          c: 'set'
-        }
-      ]
+      dur: 400,
+      acts: [{ k: 'zone', side: w }]
     });
   }
   if (capCall >= 0 && !m.over) {
-    const t = m.t[capCall],
-      c = t.cap;
     beats.push({
-      dur: 1500,
-      cut: 1,
-      acts: [
-        { k: 'zone', side: capCall },
-        { k: 'cut', p: c.id, title: "Captain's call", sub: `${c.name} rallies ${t.name} — leadership ${c.lead}` },
-        { k: 'log', t: `Captain's call! ${c.name} rallies ${t.name} into the zone`, c: 'set' }
-      ]
+      dur: 400,
+      acts: [{ k: 'zone', side: capCall }]
     });
   }
   if (zoneIn && !m.over) {
-    const t = m.t[w],
-      ace = t.cap.lead >= 70 ? t.cap : t.P.reduce((x, p) => ((m.mood[p.id] || 0) > (m.mood[x.id] || 0) ? p : x), t.P[0]);
     beats.push({
-      dur: 1300,
-      cut: 1,
-      acts: [
-        { k: 'zone', side: w },
-        { k: 'cut', p: ace.id, title: 'In the zone', sub: `${t.name} momentum surge: every stat boosted` },
-        { k: 'log', t: `${t.name} are in the zone — ${m.streak[w]} straight points`, c: 'set' }
-      ]
+      dur: 400,
+      acts: [{ k: 'zone', side: w }]
     });
   }
 }
@@ -606,10 +565,7 @@ function timeout(m, L, beats, manual) {
   const line = manual ? 'You called it — reset and refocus!' : pick(TOLINES);
   beats.push({
     dur: 700,
-    acts: [
-      { k: 'tobanner', side: L, manual },
-      { k: 'log', t: `Timeout ${T.name}${manual ? ' (your call)' : ''} — coach calls the huddle`, c: 'set' }
-    ]
+    acts: [{ k: 'tobanner', side: L, manual }]
   });
   beats.push({ dur: 1300, acts: [...s1] });
   beats.push({
@@ -618,8 +574,7 @@ function timeout(m, L, beats, manual) {
       ...T.P.map(q => ({ k: 'pose', p: q.id, pose: 'huddle' })),
       ...m.t[O].P.map(q => ({ k: 'pose', p: q.id, pose: 'ready' })),
       { k: 'coachtalk', side: L, text: line },
-      { k: 'score', snap: snap(m) },
-      { k: 'log', t: `Coach: “${line}”` }
+      { k: 'score', snap: snap(m) }
     ]
   });
 }

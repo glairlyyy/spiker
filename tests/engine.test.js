@@ -722,7 +722,8 @@ test.slow('rel on court: the clutch — a setter feeds allies more and freezes o
         m = g.newMatch(a, b, i < 50, { rel }); // (enough visual matches that a trust / freeze line shows up)
       while (!m.over) {
         const r = g.playRally(m);
-        for (const bt of r.beats || []) for (const x of bt.acts || []) if (x.k === 'log' && /trusts|freezes/.test(x.t)) lines++;
+        for (const bt of r.beats || [])
+          for (const x of bt.acts || []) if (x.k === 'call' && (g.CALLS.trust.includes(x.t) || g.CALLS.freeze.includes(x.t))) lines++;
       }
       for (const e of m.relLog) {
         if (e.act === 'trust') (n.trust++, e.tag !== 'ally' && n.bad++);
@@ -747,7 +748,7 @@ test.slow('rel on court: the clutch — a setter feeds allies more and freezes o
   assert(on.foe < on.foe0, `enemy picks down on the same draws: ${on.foe0} → ${on.foe}`);
   eq(off.ally, off.ally0, 'no flags: the plain pick');
   eq(on.bad, 0, 'trust is said only of an ally, freeze only of a resent / enemy hitter (T-089)');
-  assert(on.trust > 0 && on.freeze > 0 && on.lines > 0, `trust ${on.trust} / freeze ${on.freeze} noted, ${on.lines} log lines`);
+  assert(on.trust > 0 && on.freeze > 0 && on.lines > 0, `trust ${on.trust} / freeze ${on.freeze} noted, ${on.lines} lines said`);
   console.log(
     `  clutch sets ${off.all} → ally ${(off.ally / off.all).toFixed(3)} / ${(on.ally / on.all).toFixed(3)}, enemy ${(off.foe / off.all).toFixed(3)} / ${(on.foe / on.all).toFixed(3)}, trust ${on.trust}, freeze ${on.freeze}`
   );

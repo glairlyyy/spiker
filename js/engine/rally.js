@@ -18,7 +18,7 @@ const HIT_FAST = 1.6;
  *   5. choose attack: quick, pipe, setter-hitter; bad set → push over
  *   6. multi-attack fake set (decoys, blocker may bite)                                   fakeSet
  *   7. approach, block formation (depth + height coverage), set beat                     formBlock, setBeat
- *   8. spike power, cut-ins, shot choice (around / seam / over), landing spot, hitting error
+ *   8. spike power, shot choice (around / seam / over), landing spot, hitting error
  *                                                    spikePower, spikeActs, landingSpot, hittingError
  *   9. block: block break → stuff (kill block, or block cover dig) → touch → tool
  *  10. dig or kill; a dig hands possession to the other side
@@ -223,11 +223,7 @@ function fakeSet(c, x) {
                 ]
               : []),
             { k: 'ghost', to: { x: xOf(decoy) + da * 12, z: dz, h: REACH_H + jumpPx(decoy) } },
-            { k: 'label', t: 'Fake set!', dy: 60, set: 1, big: 1 },
-            {
-              k: 'log',
-              t: `Multi-attack! ${decoy.name} is up for the kill... but ${setter.name} sets ${spiker.name}${bitten ? ` — ${db.name} bit on the fake` : ''}`
-            }
+            { k: 'label', t: 'Fake set!', dy: 60, set: 1, big: 1 }
           ]
         });
     }
@@ -354,13 +350,7 @@ function setActs(c, x, { setDir, combo, setCalls, hype }) {
       ? [{ k: 'label', t: (setter.star ? '✦ ' : '') + (setDir === 'back' ? 'Perfect back set' : 'Perfect set'), when: 'end', set: 1 }]
       : bad
         ? [{ k: 'label', t: 'Bad set', when: 'end' }]
-        : []),
-    {
-      k: 'log',
-      t: quick
-        ? `${setter.name} fires a quick to ${spiker.name}`
-        : `${setter.name} ${bumpSet ? 'bump-sets' : setDir === 'back' ? 'back-sets' : 'sets'} ${spiker.name}${spiker.role === 'S' ? ' — setter-hitter attack!' : ''}${longB ? ' deep for a long back-row attack from the end line' : back ? ' for a back-row attack' : ''}${bad ? ' — but it is off target' : ''}`
-    }
+        : [])
   ];
 }
 /** The set beat's length (ms): the hitter's approach; contact at its end. */
@@ -427,14 +417,14 @@ function spikePower(c, x) {
 }
 
 /**
- * 8b. The spike's presentation (no random draws): element / combo / star cut-ins, the impact zoom, and the hit acts
+ * 8b. The spike's presentation (no random draws): the impact zoom and the hit acts
  * (`hit`) and blockers coming down (`bdown`) that the outcome beat plays with.
  */
 function spikeActs(c, x) {
   const { B, V, da, atkT } = c,
     { spiker, tip, pow, elS, quick, back, longB, around, delayed } = x,
     { appX, spZ, blockers, lateB } = x;
-  spikeCutIns(c, x);
+  spikeZoom(c, x);
   const note = spikeNote(x);
   const hit = [
     {
@@ -472,58 +462,10 @@ function spikeActs(c, x) {
   return { hit, bdown };
 }
 
-/** The spike's cut-ins: element spike / element set, two-star combo, a star's move; the impact zoom. */
-function spikeCutIns(c, x) {
-  const { B, V, atkT } = c,
-    { setter, spiker, tip, pow, elS, elSrc, combo } = x;
-  if (V && elS)
-    B({
-      dur: 1600,
-      cut: 1,
-      acts: elS.pair
-        ? [
-            {
-              k: 'combo',
-              p1: setter.id,
-              p2: spiker.id,
-              title: elS.pair,
-              sub: `${ENAME[setter.el]} × ${ENAME[elS.el]}  ·  Power ${Math.round(pow)}`,
-              el: elS.el
-            },
-            { k: 'log', t: `ELEMENT COMBO! ${setter.name} and ${spiker.name} unleash ${elS.pair}`, c: 'set' }
-          ]
-        : [
-            {
-              k: 'cut',
-              p: elSrc.id,
-              el: elS.el,
-              title: elS.name,
-              sub: `${ENAME[elS.el]} · ${TWIST[elS.tw].name}${elS.viaSet ? ` set for ${spiker.name}` : ''}  ·  Power ${Math.round(pow)}${elS.res ? `  ·  resisted by ${elS.res.name}` : ''}`
-            },
-            {
-              k: 'log',
-              t: elS.viaSet
-                ? `ELEMENT SET! ${setter.name} pours ${elS.name} (${ENAME[elS.el]}) into the set for ${spiker.name}${elS.res ? ` — ${elS.res.name}'s ${ENAME[elS.res.el]} resists it` : ''}`
-                : `ELEMENT SPIKE! ${spiker.name} unleashes ${elS.name} (${ENAME[elS.el]})${elS.res ? ` — ${elS.res.name}'s ${ENAME[elS.res.el]} resists it` : ''}`,
-              c: 'set'
-            }
-          ]
-    });
-  else if (V && !tip && combo)
-    B({
-      dur: 1700,
-      cut: 1,
-      acts: [
-        { k: 'combo', p1: setter.id, p2: spiker.id, title: COMBO[atkT.sk], sub: `Two-star combo  ·  Power ${Math.round(pow)}` },
-        { k: 'log', t: `COMBO! ${setter.name} and ${spiker.name} unleash ${COMBO[atkT.sk]}`, c: 'set' }
-      ]
-    });
-  else if (V && !tip && pow >= 100 && (spiker.star || pow >= 118))
-    B({
-      dur: 1300,
-      cut: 1,
-      acts: [{ k: 'cut', p: spiker.id, title: spiker.move, sub: `Power ${Math.round(pow)}  ·  Vertical ${jumpCm(spiker)} cm` }]
-    });
+/** The impact zoom on a hard spike. */
+function spikeZoom(c, x) {
+  const { B, V } = c,
+    { tip, pow } = x;
   if (V && !tip && pow >= 90)
     B({ dur: Math.round(35 + (pow - 90) * 1.6), acts: [{ k: 'zoom', amt: Math.min(0.07, 0.02 + (pow - 90) / 900) }] });
 }
@@ -618,8 +560,7 @@ function hangFail(c, x) {
         ...bdown,
         { k: 'jump', p: spiker.id, mode: 'down' },
         { k: 'ball', to: { x: bx, z: bz, h: saved ? 30 : 0 }, h: 20 },
-        { k: 'plabel', p: spiker.id, t: 'Hung too long!' },
-        { k: 'log', t: `${spiker.name} hangs too long — the ball drops before the swing`, c: saved ? '' : 'err' }
+        { k: 'plabel', p: spiker.id, t: 'Hung too long!' }
       ]
     });
   if (!saved) {
@@ -640,8 +581,7 @@ function hangFail(c, x) {
         ...a5,
         { k: 'pose', p: cvr.id, pose: dv ? 'dive' : 'bump' },
         { k: 'ball', to: { p: cvr.id, c: dv ? 'dive' : 'bump' }, h: 40 },
-        { k: 'label', t: 'Covered!', when: 'end', big: 1 },
-        { k: 'log', t: `${cvr.name} digs it up — the rally lives`, c: 'set' }
+        { k: 'label', t: 'Covered!', when: 'end', big: 1 }
       ]
     });
   return { next: [atk, cvr, 1] };
@@ -666,8 +606,7 @@ function hittingError(c, x) {
           trail: pow,
           el: elS ? elS.el : null
         },
-        { k: 'label', t: net ? 'Net!' : 'Out!', when: 'end', big: 1 },
-        { k: 'log', t: `${spiker.name} ${net ? 'hits it into the net' : 'sends it out'}`, c: 'err' }
+        { k: 'label', t: net ? 'Net!' : 'Out!', when: 'end', big: 1 }
       ]
     });
   return { point: ds };
@@ -740,12 +679,7 @@ function callPress(c, s, me) {
       dur: no ? 520 : 300,
       acts: [
         { k: 'call', p: me.id, t: callLine('set', me, m) },
-        ...(no
-          ? [
-              { k: 'call', p: setter.id, t: callLine('notnow', setter, m) },
-              { k: 'log', t: `${me.name} calls for it — ${setter.name}: not now` }
-            ]
-          : [{ k: 'log', t: `${me.name} calls for the ball` }])
+        ...(no ? [{ k: 'call', p: setter.id, t: callLine('notnow', setter, m) }] : [{ k: 'ev', kind: 'called', p: me.id }])
       ]
     });
   return { call: !no, refused: no };
@@ -797,7 +731,7 @@ function fakeYou(c, x) {
           : []),
         { k: 'ghost', to: { x: sx(atk, mid ? 466 : 420) + da * 12, z: dz, h: REACH_H + jumpPx(me) } },
         { k: 'label', t: 'Fake!', dy: 60, set: 1, big: 1 },
-        { k: 'log', t: bitten ? `${me.name} sells the fake — ${B0.name} bites` : `${me.name} fakes, but ${B0.name} stays home` }
+        { k: 'ev', kind: bitten ? 'fake_ok' : 'fake_fail', p: me.id, q: B0.id } // the story's event (director, spec §2.18)
       ]
     });
   return { quick, spiker, bitten, fakeDecoy: me };

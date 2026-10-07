@@ -79,12 +79,6 @@ function blockBreak(c, x, { bb, ratio, hands, pow }) {
       dur: clamp(Math.hypot(sx(ds, 484) - appX, (bz0 - spZ) * Z_UNITS) / (kmh(pow) * BALL_K), 80, 200),
       acts: [...hit, { k: 'ball', to: hands, h: 0, trail: pow, el, op: spiker.op }]
     });
-  if (V && spiker.star && ratio > 1.2)
-    B({
-      dur: 1100,
-      cut: 1,
-      acts: [{ k: 'cut', p: spiker.id, title: 'Block Breaker', sub: `${kmh(pow)} km/h through ${bb.name}'s hands` }]
-    });
   // hit-stop: the world pauses while the ball spins into the block like a drill and cracks the wall
   V &&
     B({
@@ -107,8 +101,7 @@ function blockBreak(c, x, { bb, ratio, hands, pow }) {
         { k: 'flash', a: 0.3 },
         { k: 'shake', amt: 3 },
         ...blockers.map(b => ({ k: 'plabel', p: b.id, t: 'Ugh!' })),
-        { k: 'label', t: 'BLOCK BREAK!', big: 1, stamp: 1, dy: 40, pow: 120 },
-        { k: 'log', t: `${spiker.name} smashes straight through ${bb.name}'s block!`, c: 'pt' }
+        { k: 'label', t: 'BLOCK BREAK!', big: 1, stamp: 1, dy: 40, pow: 120 }
       ]
     });
   hit.length = 0;
@@ -187,40 +180,15 @@ function blockCover(c, x, { bb, bel }, { bx, bzz, dp, bd, coverScore, cvr }) {
         { k: 'pose', p: cvr.id, pose: cDive ? 'dive' : 'bump' },
         { k: 'ball', to: { p: cvr.id, c: cDive ? 'dive' : 'bump' }, h: 40, trail: Math.max(80, dp), el: bel, op: bb.op },
         { k: 'efx', el: cvr.elOn ? cvr.el : null, pow: 60, when: 'end' },
-        { k: 'label', t: 'BLOCK COVER!', when: 'end', big: 1, stamp: 1 },
-        { k: 'log', t: `${cvr.name} digs ${bb.name}'s kill block — the rally lives!`, c: 'pt' }
+        { k: 'label', t: 'BLOCK COVER!', when: 'end', big: 1, stamp: 1 }
       ]
-    });
-  if (V && (cvr.star || dp >= 90))
-    B({
-      dur: 1100,
-      cut: 1,
-      acts: [{ k: 'cut', p: cvr.id, title: 'Miracle Cover', sub: `Dug a ${kmh(dp)} km/h kill block` }]
     });
   return { next: [atk, cvr, mg > 15 ? 2 : 1] };
 }
-/** The stuff stands: combo / star cut-ins, the kill-block beat. */
+/** The stuff stands: the kill-block beat. */
 function blockKill(c, x, { bb, bel }, { bx, bzz, dp, bd }) {
   const { m, B, V, ds, defT } = c,
-    { b0, b1, spiker, blockers, bdown } = x;
-  const cblk = b1 && b0.elOn && b1.elOn && epair(b0.el, b1.el) ? `${epair(b0.el, b1.el)} Wall` : CBLK[defT.sk];
-  if (V && b1 && b0.star && b1.star)
-    B({
-      dur: 1600,
-      cut: 1,
-      acts: [
-        { k: 'combo', p1: b0.id, p2: b1.id, title: cblk, sub: 'Two-star combo block', el: bel },
-        { k: 'log', t: `COMBO BLOCK! ${b0.name} and ${b1.name} raise ${cblk}`, c: 'set' }
-      ]
-    });
-  else
-    V &&
-      bb.star &&
-      B({
-        dur: 1200,
-        cut: 1,
-        acts: [{ k: 'cut', p: bb.id, title: bb.bmove, sub: `Block reach ${Math.round(2.4 * 100 + jumpCm(bb) + 20) / 100} m` }]
-      });
+    { spiker, blockers, bdown } = x;
   V &&
     B({
       dur: bd,
@@ -235,8 +203,7 @@ function blockKill(c, x, { bb, bel }, { bx, bzz, dp, bd }) {
         { k: 'impact', pow: dp + 30, when: 'end', kill: 1, blk: 1, el: bel, op: bb.op },
         { k: 'label', t: 'KILL BLOCK!', when: 'end', big: 1, stamp: 1 },
         ...blockers.map(b => ({ k: 'pose', p: b.id, pose: 'roar', when: 'end' })),
-        { k: 'pose', p: spiker.id, pose: 'slump', when: 'end' },
-        { k: 'log', t: `Stuffed! ${bb.name} shuts down ${spiker.name}${b1 ? ' with a double block' : ''}`, c: 'pt' }
+        { k: 'pose', p: spiker.id, pose: 'slump', when: 'end' }
       ]
     });
   V && B(hypeKillBlock(m, bb, spiker));
@@ -260,11 +227,7 @@ function blockTouch(c, x, k) {
         // late: the fingertips at the tape, not the hands (they are already below it)
         { k: 'ball', to: late ? { x: sx(ds, 490), z: bz0, h: 160 } : hands, h: 0, trail: pow },
         ...(softTouch ? [{ k: 'tech', p: bb.id, t: 'Soft Block' }] : []),
-        ...(late ? [{ k: 'plabel', p: bb.id, t: 'Fingertips!' }] : [{ k: 'call', p: bb.id, t: hypeLine('touch', bb, m) }]),
-        {
-          k: 'log',
-          t: `${bb.name} ${late ? 'gets a fingertip on it on the way down' : softTouch ? 'soft-blocks it up for the defense' : 'gets a touch on it'}`
-        }
+        ...(late ? [{ k: 'plabel', p: bb.id, t: 'Fingertips!' }] : [{ k: 'call', p: bb.id, t: hypeLine('touch', bb, m) }])
       ]
     });
   hit.length = 0;
@@ -284,8 +247,7 @@ function blockTool(c, x, { hands, pow }) {
       acts: [
         ...bdown,
         { k: 'ball', to: { x: sx(ds, 15), z: bz0 > 0.5 ? 1.08 : -0.08, h: 0 }, h: 90 },
-        { k: 'label', t: 'Off the block!', when: 'end', big: 1 },
-        { k: 'log', t: `${spiker.name} tools the block — off the hands and out`, c: 'pt' }
+        { k: 'label', t: 'Off the block!', when: 'end', big: 1 }
       ]
     });
   return { point: atk };
@@ -353,8 +315,7 @@ function digSave(c, x, bl, { dg, q0, a4 }) {
         ...sd.acts,
         { k: 'pose', p: dg.id, pose: 'dive', pc: 1 },
         { k: 'ball', to: { p: dg.id, c: 'dive' }, h: touched ? 60 : 0, trail: pow, el },
-        { k: 'tech', p: dg.id, t: 'Desperation Save', when: 'end' },
-        { k: 'log', t: `${dg.name} flings an arm out — desperation save!`, c: 'set' }
+        { k: 'tech', p: dg.id, t: 'Desperation Save', when: 'end' }
       ]
     });
   return { next: [ds, dg, 1] };
@@ -391,16 +352,7 @@ function digPopped(c, x, bl, { dg, q0, a4 }, fReach) {
       B({
         dur: 900,
         ...sp.beat,
-        acts: [
-          ...pa.acts,
-          ...sp.acts,
-          { k: 'label', t: 'Saved!', when: 'end', set: 1 },
-          {
-            k: 'log',
-            t: `${spiker.name}'s spike blasts off ${dg.name}'s arms — ${P.rec.name} chases it down and keeps it alive!`,
-            c: 'set'
-          }
-        ]
+        acts: [...pa.acts, ...sp.acts, { k: 'label', t: 'Saved!', when: 'end', set: 1 }]
       });
     return { next: [ds, P.rec, 1, { first: dg }] };
   }
@@ -415,8 +367,7 @@ function digPopped(c, x, bl, { dg, q0, a4 }, fReach) {
         ...sp.acts,
         { k: 'impact', pow: 40, when: 'end', kill: 1 },
         { k: 'pose', p: spiker.id, pose: 'roar', when: 'end' },
-        { k: 'label', t: 'Just out of reach!', when: 'end', big: 1 },
-        { k: 'log', t: `${spiker.name}'s spike pops off ${dg.name}'s arms — ${P.rec.name} can't get there`, c: 'pt' }
+        { k: 'label', t: 'Just out of reach!', when: 'end', big: 1 }
       ]
     });
   return { point: atk };
@@ -482,14 +433,7 @@ function digKill(c, x, bl, { dg, q0, dd0, a4 }, fReach) {
         ...(el && !shank ? [{ k: 'label', t: ENAME[el].split(' ').pop().toUpperCase() + '!', when: 'end', big: 1, stamp: 1, dy: 40 }] : []),
         { k: 'impact', pow: tip ? 20 : pow, when: 'end', kill: !tip, op: spiker.op && !tip, el: tip ? null : el },
         { k: 'pose', p: spiker.id, pose: 'roar', when: 'end' },
-        { k: 'label', t: word, when: 'end', big: 1 },
-        {
-          k: 'log',
-          t: tip
-            ? `${spiker.name} tips it into the open court`
-            : `${spiker.name} ${tier === 'ult' ? `unleashes ${spiker.move}` : tier === 'heavy' ? 'hammers it down' : 'puts it away'} — ${kmh(pow)} km/h`,
-          c: 'pt'
-        }
+        { k: 'label', t: word, when: 'end', big: 1 }
       ]
     });
   return { point: atk };
@@ -535,8 +479,7 @@ function digUp(c, x, bl, { dg, q0, dd0, dsc, rollD, a4 }) {
           el
         },
         ...(dg.elOn ? [{ k: 'efx', el: dg.el, pow: pow > 85 ? 55 : 35, when: 'end' }] : []),
-        ...(pow > 85 ? [{ k: 'label', t: 'Great dig!', when: 'end' }] : []),
-        { k: 'log', t: `${dg.name} ${pow > 85 ? 'digs a monster spike' : 'digs it up'}` }
+        ...(pow > 85 ? [{ k: 'label', t: 'Great dig!', when: 'end' }] : [])
       ]
     });
   return { next: [ds, dg, nq] };
