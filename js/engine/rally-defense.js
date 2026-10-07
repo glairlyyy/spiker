@@ -55,7 +55,13 @@ function block(c, x) {
       touched = true;
       softTouch = blockTouch(c, x, k);
       pow = k.pow;
-    } else if (!smashed && !late && cov >= TOOL_COV[0] && cov < TOOL_COV[1] && R() < TOOL_P) return blockTool(c, x, k);
+    } else if (!smashed && !late && cov >= TOOL_COV[0] && cov < TOOL_COV[1] && R() < TOOL_P) {
+      if (c.V) dropDefScene(c.m); // tooled: the blocker's scene line goes too (owner 2026-10-07)
+      return blockTool(c, x, k);
+    }
+    // the blockers' scene lines ("I read you") only when the block got a hand on it — a kill block, a touch or a soft
+    // block (owner 2026-10-07): beaten or broken through, they have nothing to say (no random draws)
+    if (c.V && !touched) dropDefScene(c.m);
   }
   return { touched, softTouch, smashed, pow };
 }

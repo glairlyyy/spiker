@@ -182,6 +182,11 @@ Accept: the row shows after a played match with calls; nothing after a sim.
 QA: career run → a played match with 2+ calls → result card.
 Result: `resultData.calls` (your `m.calls`), `callsRow` on the card's right column: "Calls · N of M made", the last 6 (label, auto on a time-out, chance, ✓ made / ✕ missed / · rally on), "Held back by: <icon> <stat>" = the weak stat seen most in missed calls. Nothing after a sim (no m.human). QA: a played Pro court match with 3 calls → card (screenshot), no errors.
 
+### [x] T-249: Blockers only talk when they touch the ball (owner request)
+Spec: §2.3          Goldens: update (`matches` only — animation beats; teams / sims / monster unchanged: no gameplay change)          Save: no change
+Files: js/engine/rally-defense.js (block(): dropDefScene unless a stuff / touch / soft block; also on a tool)
+Result: the defense's scene beats (the "wall" shot and the mid-jump read with the blocker's line) are emptied when the block is beaten, broken through or tooled; a kill block, touch or soft block keeps them. No random draws (dropDefScene), so outcomes are identical; with Calls on, a scene already shown before the decision can't be taken back.
+
 ### [x] T-248: A hard kill bounces off the court (owner request)
 Spec: §10.7b          Goldens: unchanged (display only)          Save: no change
 Files: js/render/acts.js (impact → far bounce), js/render/ball.js (`far`: no court-side walls, 2.6 s, then the ball is hidden), js/data/vfx.js (`bounce` group)

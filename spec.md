@@ -51,7 +51,8 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 
 - §2.2 Elements: hidden per player; unlocked for OP, ~1/4 of stars, and you via the Element Trial. Gauge fills by
   element play; full gauge or captain buff → next attack is the signature element spike. Counter elements halve. Fiction: lore.md §2 (Trial = modern method; ritual forgotten).
-- §2.3 Hype (Off/Normal/Max, tap to skip): attack build-up, blocker read mid-jump (only if a block is attempted),
+- §2.3 Hype (Off/Normal/Max, tap to skip): attack build-up, blocker read mid-jump (only if a block is attempted; owner 2026-10-07: the blocker's
+  wall / read lines only when the block gets a hand on it — kill block, touch, soft block; beaten, broken or tooled: dropped),
   block-break spike cut + ball close-up, kill-block, loose-ball slow-mo, personality chatter. No manga panels. One world
   clock (`A.ts`), eased slow-mo ramps. Target Normal ≈ 6–7 scenes/match **[open: tuning]**.
 - §2.3a Air impact (owner, 2026-10-06, the Kuroko look) **[built, T-236]**: every spike (not a tip; power ≥ 58) splits the air
