@@ -182,6 +182,11 @@ Accept: the row shows after a played match with calls; nothing after a sim.
 QA: career run → a played match with 2+ calls → result card.
 Result: `resultData.calls` (your `m.calls`), `callsRow` on the card's right column: "Calls · N of M made", the last 6 (label, auto on a time-out, chance, ✓ made / ✕ missed / · rally on), "Held back by: <icon> <stat>" = the weak stat seen most in missed calls. Nothing after a sim (no m.human). QA: a played Pro court match with 3 calls → card (screenshot), no errors.
 
+### [x] T-246: Partial ink rings — the ensō (owner request)
+Spec: §10.7b          Goldens: unchanged (display only)          Save: no change
+Files: js/render3d/fx3d.mjs (RING_ENSO, ENSO_FS / ENSO_FS_GLOW, `inkRing(glow, partial)`), js/data/vfx.js (ring style `partial`), js/ui/vfx-panel.js (option names per group: Ink full / Ink partial)
+Result: VFX panel → Rings → Style: Light / Ink full (T-245, unchanged) / Ink partial = the owner's reference: one red brush stroke from a random start round ~84–96 % of the circle, pressed in then lifting into dry-brush strands, a thin loose outer strand, splatter drops outside (they dry first), a faint glow along the stroke. QA: close-up lab frames 0.06–0.34 s, no shader errors.
+
 ### [x] T-245: Ink style for every ring effect (owner request)
 Spec: §10.7b          Goldens: unchanged (display only)          Save: no change
 Files: js/render3d/fx3d.mjs (`inkRing`, RING_INK, ring shaders), js/render3d/trails3d.mjs (exports NOISE), js/data/vfx.js (`ring` group)

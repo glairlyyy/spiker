@@ -59,7 +59,7 @@ const VFX_DEF = {
   ring: {
     name: 'Rings (every ring effect)',
     p: {
-      style: ['light', ['light', 'ink'], 0, 0, 'Style'],
+      style: ['light', ['light', 'ink', 'partial'], 0, 0, 'Style'],
       own: [0, 0, 1, 1, 'Ink glows in the effect colour'],
       ink: ['#ff1630', 0, 0, 0, 'Ink glow colour'],
       life: [1.3, 0.5, 3, 0.05, 'Ink ring life ×']

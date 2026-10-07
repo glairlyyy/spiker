@@ -11,7 +11,8 @@ function vfxRow(g, k) {
   if (Array.isArray(min))
     return `<div class="vrow${changed}"><span>${esc(label)}</span><div class="seg">${min
       .map(
-        o => `<button class="btn ${v === o ? 'on' : ''}" onclick="vfxSet('${g}','${k}','${o}',true)">${esc(VFX_OPT_NAME[o] || o)}</button>`
+        o =>
+          `<button class="btn ${v === o ? 'on' : ''}" onclick="vfxSet('${g}','${k}','${o}',true)">${esc(VFX_OPT_NAME[`${g}.${o}`] || VFX_OPT_NAME[o] || o)}</button>`
       )
       .join('')}</div></div>`;
   if (typeof def === 'string')
@@ -46,7 +47,15 @@ function vfxPanel() {
       .join('')}`;
 }
 /** Display names of choice options. */
-const VFX_OPT_NAME = { light: 'Light', ink: 'Ink', streak: 'Streak', ribbon: 'Ribbon', off: 'Off' };
+const VFX_OPT_NAME = {
+  light: 'Light',
+  ink: 'Ink',
+  streak: 'Streak',
+  ribbon: 'Ribbon',
+  off: 'Off',
+  'ring.ink': 'Ink full',
+  'ring.partial': 'Ink partial'
+};
 /** Set one value (live); `redraw`: re-render the panel (segments). Saved to this browser. */
 function vfxSet(g, k, v, redraw) {
   VFX[g][k] = v;

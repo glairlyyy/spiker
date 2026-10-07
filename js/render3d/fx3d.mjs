@@ -111,6 +111,50 @@ void main() {
   if (a < 0.01) discard;
   gl_FragColor = vec4(mix(blood * 0.22, ink, smoothstep(0.05, 0.5, e)), a * 0.95);
 }`;
+// the partial ink ring (owner 2026-10-07, an ensō brush circle): one stroke from a random start round most of the circle —
+// pressed in, full, then lifting into dry strands — a thin outer strand, splatter outside; the glow colour is the ink
+const ENSO_HEAD = `uniform float op; uniform float seed; varying vec2 vP;
+${NOISE}
+void stroke(out float a, out float n, out float e) {
+  float r = length(vP), ang = atan(vP.y, vP.x),
+    t = fract(ang / 6.2831853 + 0.5 + seed * 0.137),
+    span = 0.84 + 0.12 * h1(seed),
+    u = t / span,
+    on = step(u, 1.0),
+    w = smoothstep(0.0, 0.06, u) * (1.0 - 0.8 * smoothstep(0.3, 1.0, u)),
+    mid = 0.84 + 0.025 * sin(u * 3.0 + seed),
+    sE = (r - mid) / max(0.17 * w, 1e-3),
+    s = u * 7.0 + seed;
+  e = abs(sE);
+  n = strands(s, sE);
+  float dry = 0.12 + 0.45 * u + 0.55 * (1.0 - min(1.0, op * 1.5)),
+    hair = smoothstep(dry, dry + 0.12, n),
+    edge = 0.75 + 0.25 * vn(vec2(s * 6.0, 0.5)),
+    body = on * (1.0 - smoothstep(edge - 0.2, edge, e)) * step(0.001, w);
+  a = body * hair;
+  // a thin loose strand just outside the main stroke
+  float o2 = abs((r - mid - 0.14 - 0.02 * sin(u * 5.0)) / 0.018);
+  a = max(a, (1.0 - smoothstep(0.5, 1.0, o2)) * step(u, 0.93) * smoothstep(0.5, 0.65, vn(vec2(u * 18.0 + seed, 1.3))) * 0.85);
+  // splatter: a few drops outside the circle (they dry up first)
+  vec2 c = vec2(ang * 7.0, r * 11.0), ci = floor(c), f = fract(c);
+  float hs = h1(ci.x * 13.1 + ci.y * 71.7 + seed),
+    drop = step(0.9, hs) * step(1.02, r) * (1.0 - smoothstep(0.1, 0.16 + 0.12 * h1(hs * 7.0), length(f - vec2(h1(hs * 91.0), h1(hs * 37.0)) * 0.6 - 0.2)));
+  a = max(a, drop * smoothstep(0.3, 0.5, op));
+  a *= min(1.0, op * 2.0);
+}`;
+const ENSO_FS = `uniform vec3 blood; ${ENSO_HEAD}
+void main() {
+  float a, n, e; stroke(a, n, e);
+  if (a < 0.01) discard;
+  gl_FragColor = vec4(mix(blood * 0.5, blood, 0.35 + 0.65 * n) * (1.0 - 0.25 * min(e, 1.0)), a * 0.96); // (drops lie far outside the stroke: e ≫ 1)
+}`;
+const ENSO_FS_GLOW = `uniform vec3 blood; ${ENSO_HEAD}
+void main() {
+  float a, n, e; stroke(a, n, e);
+  float g = a * (1.0 - smoothstep(0.0, 0.6, e)) * 0.45;
+  if (g < 0.01) discard;
+  gl_FragColor = vec4(blood * g, g);
+}`;
 const RING_FS_BLOOD = `uniform vec3 blood; ${RING_HEAD}
 void main() {
   float e, sE, s; band(e, sE, s);
@@ -411,13 +455,15 @@ export function createFx(scene) {
   const rings = [],
     RING = new THREE.RingGeometry(0.82, 1, 64),
     INK_IN = 0.66,
-    RING_INK = new THREE.RingGeometry(INK_IN, 1, 96, 2);
+    RING_INK = new THREE.RingGeometry(INK_IN, 1, 96, 2),
+    RING_ENSO = new THREE.RingGeometry(0.45, 1.25, 128, 3); // room round the stroke for the outer strand and the splatter
   let camera = null;
   /** `o.dir` (unit vector): the ring faces along it instead of the camera; `o.delay` s before it shows; `o.op` peak opacity. */
   function ring(p, col, size, life = 0.45, floor = false, o = {}) {
-    const ink = vx('ring', 'style', 'light') === 'ink',
+    const st = vx('ring', 'style', 'light'),
+      ink = st === 'ink' || st === 'partial',
       m = ink
-        ? inkRing(vx('ring', 'own', 0) ? col : vx('ring', 'ink', '#ff1630'))
+        ? inkRing(vx('ring', 'own', 0) ? col : vx('ring', 'ink', '#ff1630'), st === 'partial')
         : new THREE.Mesh(
             RING,
             new THREE.MeshBasicMaterial({
@@ -452,7 +498,7 @@ export function createFx(scene) {
    * An ink ring (VFX ring style Ink, owner 2026-10-07): a ragged black brush circle with a glow in `glow` burning inside it; as it
    * fades the stroke frays into strands. Two meshes on one ring geometry (the glow is the child), opacity through `op`.
    */
-  function inkRing(glow) {
+  function inkRing(glow, partial) {
     const u = {
         op: { value: 1 },
         seed: { value: Math.random() * 50 },
@@ -470,8 +516,9 @@ export function createFx(scene) {
           side: THREE.DoubleSide,
           blending: add ? THREE.AdditiveBlending : THREE.NormalBlending
         }),
-      m = new THREE.Mesh(RING_INK, mk(RING_FS_INK, false)),
-      g = new THREE.Mesh(RING_INK, mk(RING_FS_BLOOD, true));
+      geo = partial ? RING_ENSO : RING_INK,
+      m = new THREE.Mesh(geo, mk(partial ? ENSO_FS : RING_FS_INK, false)),
+      g = new THREE.Mesh(geo, mk(partial ? ENSO_FS_GLOW : RING_FS_BLOOD, true));
     g.renderOrder = 6;
     m.add(g);
     return m;
