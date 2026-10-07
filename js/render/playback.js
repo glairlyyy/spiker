@@ -499,7 +499,7 @@ function step(dt) {
     if (A.cele) stepCelebration(dt);
     return;
   }
-  if (A.m.human != null) promptStep(); // your prompts (spec §2.16): under your feet, the setter's markers, the read eye
+  if (A.m.human != null) promptStep(); // your prompts (spec §2.16): under your feet, the setter's markers
   if (!A.beats || A.bi >= A.beats.length) {
     if (A.ask) return rallyPull(promptClose()); // the window ended: the press (or null) resumes the rally
     if (Dir.busy()) return; // a between-point exchange (spec §2.18) holds the next rally

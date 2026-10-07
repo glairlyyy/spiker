@@ -6,7 +6,7 @@
 /** Decision kinds the prompts answer (the rest are answered with the AI's pick at once). */
 const PROMPT_KINDS = new Set(['call', 'block', 'setter']);
 /** Prompt timings and thresholds (ms; read meter 0–100). */
-const PROMPT = { cap: 3000, eye: 20, auto: 80 }; // auto: no Block press by the AI's take-off + this (ms): the AI jumps you
+const PROMPT = { cap: 3000, auto: 80 }; // auto: no Block press by the AI's take-off + this (ms): the AI jumps you
 G.prompts = store.get(KEYS.prompts) === 'off' ? 'off' : 'on';
 /** Should this decision point be shown? (yours, a prompt kind, Prompts On) */
 function promptWanted(q) {
@@ -78,7 +78,6 @@ function promptDraw() {
     out.push(
       `<div class="pgrp" data-at="${esc(String(A.m.human))}">${pchip('E', 'Fire up', "promptPress('E')", cap.stage === 'fever' ? 'off' : '')}${pchip('R', 'Settle', "promptPress('R')")}</div>`
     );
-  out.push(`<span class="peye" id="peye" hidden><i></i></span>`);
   el.innerHTML = out.join('');
   promptStep();
 }
@@ -91,7 +90,7 @@ function promptAt(id, h) {
     q = P(d.x, d.z, h + (d.jy || 0));
   return { x: q.X * k, y: (q.Y - VT) * k };
 }
-/** Each frame: keep the chips under your player's feet (markers over the hitters), time the captain's chips, the read eye. */
+/** Each frame: keep the chips under your player's feet (markers over the hitters), time the captain's chips. */
 function promptStep() {
   if (!A || !A.m) return;
   if (A.capChip && performance.now() > A.capChip.until) {
@@ -109,21 +108,6 @@ function promptStep() {
     const hw = g.offsetWidth / 2; // kept on screen: a player at the edge still shows the whole prompt
     g.style.left = `${Math.round(clamp(at.x, hw + 8, Math.max(hw + 8, W - hw - 8)))}px`;
     g.style.top = `${Math.round(clamp(at.y + (mark ? 0 : 6), 8, Math.max(8, H - g.offsetHeight - 96)))}px`;
-  }
-  // the read meter (spec §2.16): an eye over your player once the other team reads you (≥ 20), filling with it
-  const eye = $('#peye'),
-    r = A.m.read && A.m.human != null ? A.m.read[A.m.human] || 0 : 0;
-  if (eye) {
-    eye.hidden = r < PROMPT.eye;
-    if (!eye.hidden) {
-      const at = promptAt(A.m.human, 125);
-      if (at) {
-        eye.style.left = `${Math.round(at.x)}px`;
-        eye.style.top = `${Math.round(at.y - 8)}px`;
-      }
-      eye.style.setProperty('--r', (Math.min(100, r) / 100).toFixed(2));
-      eye.title = `They read you: ${Math.round(r)}`;
-    }
   }
 }
 /** A key (E / R / 1–3) or a chip click: answer the open prompt once (lit and locked), or make the captain's call. */

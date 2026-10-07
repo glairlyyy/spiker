@@ -440,6 +440,8 @@ function pointTally(m, w) {
   m.streak[w]++;
   m.streak[1 - w] = 0;
 }
+/** Momentum fade outside the zone: × this of the zone's per-point fade and lost-point drop. */
+const MOM_FADE = 0.5;
 /** Element outcomes, momentum, mood and stamina after a point. */
 function pointMomentum(m, w) {
   const LD = i => (m.t[i].cap.lead - 50) / 100;
@@ -452,8 +454,11 @@ function pointMomentum(m, w) {
   m.ctxK = null;
   m.ctx0 = m.ctx; // the last attack (chatter)
   m.ctx = null;
-  m.mom[w] = clamp(m.mom[w] * 0.85 + (0.1 + (m.streak[w] >= 3 ? 0.07 : 0) + m.big * 0.1) * (1 + LD(w) * 0.6), -1, 1);
-  m.mom[1 - w] = clamp(m.mom[1 - w] * 0.85 - 0.09 - m.big * 0.05, -1, 1);
+  // momentum fades every point and drops on a lost one — half as fast outside the zone (owner 2026-10-08: Fever was too rare);
+  // a team in the zone (Fever) burns it at the full rate
+  const fade = i => (m.zone[i] ? 1 : MOM_FADE);
+  m.mom[w] = clamp(m.mom[w] * (1 - 0.15 * fade(w)) + (0.1 + (m.streak[w] >= 3 ? 0.07 : 0) + m.big * 0.1) * (1 + LD(w) * 0.6), -1, 1);
+  m.mom[1 - w] = clamp(m.mom[1 - w] * (1 - 0.15 * fade(1 - w)) - (0.09 + m.big * 0.05) * fade(1 - w), -1, 1);
   for (const p of m.t[w].P) md(m, p, 0.03);
   for (const p of m.t[1 - w].P) md(m, p, -0.02);
   for (const id in m.mood) m.mood[id] *= 0.97;

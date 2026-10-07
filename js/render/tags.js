@@ -46,7 +46,9 @@ function drawTags(d, pr, k, staV) {
   // at least 9 court units (≈ 12 CSS px on a 1392 px court, spec §9.3)
   ctx.font = `800 ${Math.max(9, Math.round(10 * k + 1))}px ${FONT_ROUND}`;
   ctx.fillStyle = p.op ? '#ff2e4d' : p.star ? '#ffd84d' : 'rgba(255,255,255,.75)';
-  const tg = (p.star || p.op ? '★ ' : '') + p.role + (srv ? ' ●' : '');
+  // they read you (spec §2.16): an eye after the role once the read meter is full (READ.fake: they key on you, Fake is up)
+  const readFull = A.m.read && (A.m.read[p.id] || 0) >= READ.fake,
+    tg = (p.star || p.op ? '★ ' : '') + p.role + (readFull ? ' 👁' : '') + (srv ? ' ●' : '');
   ctx.fillText(tg, pr.X, pr.Y - 113 * k);
   // team colour underline: tells the sides apart even when every tag is OP red (spec §9.9)
   const tw = ctx.measureText(tg).width,

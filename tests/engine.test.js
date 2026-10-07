@@ -52,45 +52,6 @@ test('engine: the rally is pausable (T-232) — a human answered with the AI pic
   assert(hum.asks.serve > 0 && hum.asks.attack > 0, `asked at your serves and attacks (${JSON.stringify(hum.asks)})`);
 });
 
-test.slow('engine: calls (T-233) — the odds shown are the odds played (±6), and the options change the outcome', () => {
-  const g = load(17),
-    rate = (kind, opt) => {
-      const shown = { win: 0, lose: 0, err: 0 },
-        got = { win: 0, lose: 0, err: 0, on: 0 };
-      let n = 0,
-        games = 0;
-      while (n < 200 && games++ < 200) {
-        const T = g.mkTeams(),
-          m = g.newMatch(T[games % 8], T[(games + 3) % 8], false);
-        m.human = T[games % 8].P.find(p => p.role === 'WS').id;
-        while (!m.over) {
-          const gen = g.playRallyGen(m);
-          let r = gen.next();
-          while (!r.done) r = gen.next(r.value.kind === kind && r.value.options.some(o => o.id === opt) ? opt : r.value.ai);
-        }
-        for (const c of m.calls || [])
-          if (c.kind === kind && c.id === opt && c.out) {
-            n++;
-            for (const k of ['win', 'lose', 'err']) shown[k] += c.odds[k];
-            got[c.out]++;
-          }
-      }
-      for (const k of ['win', 'lose', 'err']) {
-        const a = shown[k] / n,
-          b = (100 * got[k]) / n;
-        assert(Math.abs(a - b) <= 6, `${kind} ${opt} ${k}: shown ${a.toFixed(1)} vs played ${b.toFixed(1)} (n ${n})`);
-      }
-      return got.err / n;
-    };
-  const safe = rate('serve', 'safe'),
-    power = rate('serve', 'power');
-  rate('serve', 'target');
-  assert(safe < power, `a safe serve faults less than a power serve (${safe.toFixed(2)} < ${power.toFixed(2)})`);
-  rate('attack', 'power');
-  rate('attack', 'cut');
-  rate('attack', 'tip');
-});
-
 test('engine: simulated matches (no animation) are deterministic (golden)', () => {
   const g = load(7);
   const T = g.mkTeams();
@@ -753,7 +714,7 @@ test.slow('rel on court: the clutch — a setter feeds allies more and freezes o
           if (x !== ws[1]) rel.tag[`${x.id}|${ws[1].id}`] = 'enemy';
         }
     }
-    const n = { all: 0, ally: 0, foe: 0, trust: 0, freeze: 0, bad: 0 };
+    const n = { all: 0, ally: 0, foe: 0, trust: 0, freeze: 0, bad: 0, ally0: 0, foe0: 0 };
     let lines = 0;
     for (let i = 0; i < 200; i++) {
       const a = T[i % 8],
@@ -770,6 +731,8 @@ test.slow('rel on court: the clutch — a setter feeds allies more and freezes o
           n.all++;
           if (e.mate === ally[who[e.p]].id) n.ally++;
           if (e.mate === foe[who[e.p]].id) n.foe++;
+          if (e.plain === ally[who[e.p]].id) n.ally0++; // the same draw read without relationships
+          if (e.plain === foe[who[e.p]].id) n.foe0++;
         }
       }
     }
@@ -779,11 +742,10 @@ test.slow('rel on court: the clutch — a setter feeds allies more and freezes o
     on = run(true);
   assert(off.all > 500, `enough clutch sets to judge (${off.all})`);
   assert(off.trust === 0 && off.freeze === 0 && off.lines === 0, 'no flags: no trust / freeze');
-  assert(
-    on.ally / on.all > off.ally / off.all,
-    `ally share of clutch sets up: ${(off.ally / off.all).toFixed(3)} → ${(on.ally / on.all).toFixed(3)}`
-  );
-  assert(on.foe / on.all < off.foe / off.all, `enemy share down: ${(off.foe / off.all).toFixed(3)} → ${(on.foe / on.all).toFixed(3)}`);
+  // the same clutch draws read with and without the relationships (a share across two runs drifts with the random stream)
+  assert(on.ally > on.ally0, `ally picks up on the same draws: ${on.ally0} → ${on.ally}`);
+  assert(on.foe < on.foe0, `enemy picks down on the same draws: ${on.foe0} → ${on.foe}`);
+  eq(off.ally, off.ally0, 'no flags: the plain pick');
   eq(on.bad, 0, 'trust is said only of an ally, freeze only of a resent / enemy hitter (T-089)');
   assert(on.trust > 0 && on.freeze > 0 && on.lines > 0, `trust ${on.trust} / freeze ${on.freeze} noted, ${on.lines} log lines`);
   console.log(

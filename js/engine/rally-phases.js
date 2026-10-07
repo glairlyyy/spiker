@@ -276,7 +276,7 @@ function chooseAttack(c, s, h) {
       plain = at(hitW, u);
     spiker = at(p => hitW(p) * relMul(p), u);
     const cold = p => ['resent', 'enemy'].includes(relTag(m, setter, p));
-    m.relLog.push({ act: 'clutch', p: setter.id, mate: spiker.id, tag: relTag(m, setter, spiker) });
+    m.relLog.push({ act: 'clutch', p: setter.id, mate: spiker.id, plain: plain.id, tag: relTag(m, setter, spiker) }); // plain: the pick without them
     // said out loud only when it is plainly the relationship: a resent / enemy pick replaced by someone who is not, or an ally chosen
     if (spiker !== plain) {
       relNote =

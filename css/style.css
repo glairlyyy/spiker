@@ -2214,25 +2214,6 @@ html.reduced .xl {
   position: static;
   transform: none;
 }
-.peye {
-  position: absolute;
-  width: 26px;
-  height: 16px;
-  transform: translate(-50%, -100%);
-  border: 2px solid var(--warn);
-  border-radius: 50% / 60%;
-  overflow: hidden;
-  background: var(--hud);
-}
-.peye i {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  height: calc(var(--r, 0) * 100%);
-  background: var(--warn);
-  opacity: 0.8;
-}
 .mres .rplays {
   margin-bottom: 8px;
   font-size: 14px;
