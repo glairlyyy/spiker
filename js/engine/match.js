@@ -434,6 +434,37 @@ function pointTally(m, w) {
 }
 /** Momentum fade outside the zone: × this of the zone's per-point fade and lost-point drop. */
 const MOM_FADE = 0.5;
+/**
+ * A lost point (owner, 2026-10-08): the drop grows with the fire the team has (heat: × (heat + fire), within [min, max]) —
+ * a team that stays Composed barely moves, a hot one falls hard. Only two things shake a team toward Loose: losing a
+ * marathon (≥ `long` possessions: −drop, −step per extra one) and taking a hard kill (power `hit` → `top`: up to −shake,
+ * × how low the team's wit is: avg wit `wit` − `span` … `wit` → full … none).
+ */
+const MOM_LOSS = {
+  heat: 0.7,
+  hot: 0.6,
+  min: 0.4,
+  max: 1.3,
+  long: 5,
+  drop: 0.25,
+  step: 0.05,
+  hit: 90,
+  top: 130,
+  shake: 0.8,
+  wit: 1.6,
+  span: 0.6
+};
+/** Extra fire the losing side `L` loses to a marathon or a hard kill (no randoms). */
+function momShaken(m, L) {
+  const K = MOM_LOSS,
+    n = m.rallyN || 0,
+    long = n >= K.long ? K.drop + K.step * (n - K.long) : 0,
+    c = m.lastK && m.ctx0 && !m.ctx0.tip ? m.ctx0 : null,
+    hard = c ? clamp((c.pow - K.hit) / (K.top - K.hit), 0, 1) : 0,
+    P = m.t[L].P,
+    wit = hard ? P.reduce((a, p) => a + W(p), 0) / P.length : K.wit;
+  return long + K.shake * hard * clamp((K.wit - wit) / K.span, 0, 1);
+}
 /** Element outcomes, momentum, mood and stamina after a point. */
 function pointMomentum(m, w) {
   const LD = i => (m.t[i].cap.lead - 50) / 100;
@@ -450,7 +481,9 @@ function pointMomentum(m, w) {
   // a team in the zone (Fever) burns it at the full rate
   const fade = i => (m.zone[i] ? 1 : MOM_FADE);
   m.mom[w] = clamp(m.mom[w] * (1 - 0.15 * fade(w)) + (0.1 + (m.streak[w] >= 3 ? 0.07 : 0) + m.big * 0.1) * (1 + LD(w) * 0.6), -1, 1);
-  m.mom[1 - w] = clamp(m.mom[1 - w] * (1 - 0.15 * fade(1 - w)) - (0.09 + m.big * 0.05) * fade(1 - w), -1, 1);
+  const L = 1 - w,
+    heat = clamp(MOM_LOSS.heat + MOM_LOSS.hot * m.mom[L], MOM_LOSS.min, MOM_LOSS.max);
+  m.mom[L] = clamp(m.mom[L] * (1 - 0.15 * fade(L)) - (0.09 + m.big * 0.05) * fade(L) * heat - momShaken(m, L), -1, 1);
   for (const p of m.t[w].P) md(m, p, 0.03);
   for (const p of m.t[1 - w].P) md(m, p, -0.02);
   for (const id in m.mood) m.mood[id] *= 0.97;

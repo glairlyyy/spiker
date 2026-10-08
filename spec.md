@@ -159,6 +159,10 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     Lasts at most 4 points; an error by that team ends it (→ Focused). The **zone breaker** (a kill block or a fake that scores
     against a Fever team) drops it to Composed; a stuff (kill block) at any other time drops Fever to Focused.
   - **Out of Loose**: a won rally (+fire), a timeout (→ Composed at once), the captain's Settle (§2.17).
+  - **Into Loose** (owner, 2026-10-08): a lost point costs more the more fire the team has (× 0.7 + 0.6 × fire, 0.4–1.3: a team
+    that stays Composed barely moves, a hot one falls hard); only two shakes push a team toward Loose — losing a marathon
+    (5+ possessions: −0.25, −0.05 per extra one) and taking a hard kill (power 90 → 130: up to −0.8, × how low the team's
+    average wit is, full at ≤ 1.0, none at ≥ 1.6). `MOM_LOSS` in js/engine/match.js.
   - Buffs replace the old momentum and zone multipliers in `boost()`; mood, stamina and the captain's personal buff stay.
   - **Temperament** (`m.temper[side]`, from the squad's personalities, the captain counting double; hot / cocky → Hot-headed,
     shy → Slow burner, leader → Steady, cool → Ice; ties → Steady):

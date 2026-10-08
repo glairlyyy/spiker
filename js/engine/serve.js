@@ -51,6 +51,7 @@ function* playRallyGen(m) {
 function rallyStart(m) {
   CM = m;
   m.big = 0;
+  m.rallyN = 0;
   m.lastPlay = null; // 'killblock' | 'fake' — used by the zone breaker in end()
   m.hero = null;
   m.busy = {};

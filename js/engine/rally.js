@@ -31,6 +31,7 @@ function* rally(m, B, V, atk, pas, qual, scr = null) {
     return i === 1 || i === 2;
   };
   for (let n = 1; ; n++) {
+    m.rallyN = n; // possessions so far (a lost marathon shakes the team: pointMomentum)
     if (n > LONG_RALLY) {
       for (const t of m.t) for (const p of t.P) dr(m, p, 0.004);
       elLong(m);
