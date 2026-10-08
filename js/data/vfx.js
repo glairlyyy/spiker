@@ -128,6 +128,61 @@ const VFX_DEF = {
       style: ['light', ['light', 'ink'], 0, 0, 'Style (the default for new players; ⚙ Trails)'],
       ink: ['#ff1630', 0, 0, 0, 'Ink glow colour']
     }
+  },
+  // the ace cut-scene camera (render/cine.js, camera3d acePose), tuned in the Cut-scene lab (lab: 'cine'); metres from the
+  // server (fwd: along their facing, toward the net; side: to their side) or from the ball; glide: how fast it follows (1/s)
+  cbounce: {
+    name: 'Ace 1 · bounce (ball in the hands)',
+    lab: 'cine',
+    p: {
+      fwd: [2.9, 0.5, 6, 0.1, 'Camera ahead (m)'],
+      side: [0.9, -3, 3, 0.1, 'Camera to the side (m)'],
+      up: [1.15, 0.1, 3, 0.05, 'Camera height (m)'],
+      look: [1, 0, 2.5, 0.05, 'Look at height (m)'],
+      ball: [0.25, 0, 1, 0.05, 'Look toward the ball'],
+      fov: [36, 15, 80, 1, 'Field of view'],
+      glide: [4, 1, 20, 0.5, 'Glide in']
+    }
+  },
+  crun: {
+    name: 'Ace 2 · run-up (feet)',
+    lab: 'cine',
+    p: {
+      fwd: [2.2, 0.3, 6, 0.1, 'Camera ahead (m)'],
+      side: [2, -4, 4, 0.1, 'Camera to the side (m)'],
+      up: [0.3, 0.05, 2, 0.05, 'Camera height (m)'],
+      look: [0.25, 0, 2, 0.05, 'Look at height (m)'],
+      ahead: [0.3, -1, 2, 0.05, 'Look ahead of the feet (m)'],
+      fov: [40, 15, 80, 1, 'Field of view'],
+      glide: [7, 1, 20, 0.5, 'Glide in']
+    }
+  },
+  chit: {
+    name: 'Ace 3 · the hit',
+    lab: 'cine',
+    p: {
+      fwd: [0.6, -3, 3, 0.1, 'Camera ahead of the hand (m)'],
+      side: [3.2, -5, 5, 0.1, 'Camera to the side (m)'],
+      up: [-0.4, -2, 2, 0.05, 'Camera above the hand (m)'],
+      look: [-0.3, -1.5, 1.5, 0.05, 'Look above the hand (m)'],
+      ball: [0.5, 0, 1, 0.05, 'Look toward the ball'],
+      fov: [44, 15, 80, 1, 'Field of view'],
+      glide: [6, 1, 20, 0.5, 'Glide in'],
+      far: [3, 0.5, 8, 0.1, 'Until the ball is this far (m)']
+    }
+  },
+  cball: {
+    name: 'Ace 4 · riding the ball',
+    lab: 'cine',
+    p: {
+      back: [2.6, 0.5, 8, 0.1, 'Camera behind the ball (m)'],
+      up: [0.5, -1, 3, 0.05, 'Camera above the ball (m)'],
+      ahead: [3, 0.5, 8, 0.1, 'Look ahead (m)'],
+      drop: [0.6, -1, 3, 0.05, 'Look below the ball (m)'],
+      fov: [48, 15, 80, 1, 'Field of view'],
+      glide: [14, 1, 30, 0.5, 'Glide in'],
+      hold: [500, 0, 3000, 50, 'Stay on the landing (ms)']
+    }
   }
 };
 /** The live values: defaults, then this browser's saved edits (dev). */

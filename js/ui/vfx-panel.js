@@ -23,21 +23,25 @@ function vfxRow(g, k) {
       .join('')}</div></div>`;
   return `<label class="vrow${changed}"><span>${esc(label)}</span><input type="range" min="${min}" max="${max}" step="${step}" value="${v}" oninput="vfxSet('${g}','${k}',+this.value)"><b id="${id}">${v}</b></label>`;
 }
-/** The panel body: export row, the test buttons (in a match), every group. */
+/** The panel body: export row, the test buttons (in a match), every group. In the Cut-scene lab (A.cineForce) only the
+ * cut-scene groups (VFX_DEF lab 'cine'), with the kind and a slow speed; everywhere else every other group. */
 function vfxPanel() {
-  const inMatch = typeof A !== 'undefined' && A && A.m;
-  return `<div class="vfxh"><h3>VFX tuning</h3>${inMatch ? '<button class="btn" onclick="vfxToggle()">Close <kbd>V</kbd></button>' : ''}</div>
+  const inMatch = typeof A !== 'undefined' && A && A.m,
+    cine = !!(inMatch && A.cineForce),
+    groups = Object.entries(VFX_DEF).filter(([, d]) => (d.lab === 'cine') === cine);
+  return `<div class="vfxh"><h3>${cine ? 'Cut-scene lab' : 'VFX tuning'}</h3>${inMatch ? '<button class="btn" onclick="vfxToggle()">Close <kbd>V</kbd></button>' : ''}</div>
+    ${cine ? cineLabRow() : ''}
     <div class="vexp"><button class="btn" onclick="vfxCopy()">Copy</button><button class="btn" onclick="vfxDownload()">Download</button>
       <label class="btn">Import<input type="file" accept=".json,application/json" hidden onchange="vfxImportFile(this)"></label>
       <button class="btn" onclick="vfxResetAll()">Reset all</button></div>
     <p class="small mute" id="vfxnote">Changed values below (saved in this browser).</p>
     <textarea class="vjson" id="vfxjson" readonly aria-label="Changed values (JSON)" onclick="this.select()">${esc(vfxExport())}</textarea>
     ${
-      inMatch
+      inMatch && !cine
         ? `<div class="vexp"><span>Test at the ball</span><button class="btn" onclick="vfxTest('air')">Air impact</button><button class="btn" onclick="vfxTest('blast')">Blast</button><button class="btn" onclick="vfxTest('kick')">Spike kick</button><button class="btn" onclick="vfxTest('rumble')">Kill rumble</button></div>`
         : ''
     }
-    ${Object.entries(VFX_DEF)
+    ${groups
       .map(
         ([g, d]) =>
           `<section class="vgrp"><h4>${esc(d.name)}</h4>${Object.keys(d.p)
@@ -45,6 +49,11 @@ function vfxPanel() {
             .join('')}</section>`
       )
       .join('')}`;
+}
+/** Cut-scene lab: which cut-scene every rally stages, and the game speed to watch it at. */
+function cineLabRow() {
+  return `<div class="vexp"><span>Cut-scene</span><div class="seg">${CINE_KINDS.map(c => `<button class="btn ${A.cineForce === c.id ? 'on' : ''}" ${tip(c.tip)}>${esc(c.name)}</button>`).join('')}</div></div>
+    <div class="vexp"><span>Speed</span><div class="seg">${[0.25, 0.5, 1].map(s => `<button class="btn ${A.speed === s ? 'on' : ''}" data-s="${s}" onclick="setSpeed(${s})">${s === 1 ? '1' : s === 0.5 ? '½' : '¼'}×</button>`).join('')}</div></div>`;
 }
 /** Display names of choice options. */
 const VFX_OPT_NAME = {

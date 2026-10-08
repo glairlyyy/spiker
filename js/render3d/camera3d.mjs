@@ -341,7 +341,6 @@ const shot = { k: 0, key: '', pos: new THREE.Vector3(), look: new THREE.Vector3(
  * pans over smoothly. bounce: in front of the server, the ball in their hands; run: low at the feet, from the front and side;
  * hit: beside the hitting arm at contact height; ball: riding behind the ball to where it lands.
  */
-const ACE = { bounce: 4, run: 7, hit: 6, ball: 14 };
 function acePose(a, ph, up) {
   const F = a.root.position.clone().setY(0),
     f = new THREE.Vector3(Math.sin(a.root.rotation.y), 0, Math.cos(a.root.rotation.y)),
@@ -353,23 +352,31 @@ function acePose(a, ph, up) {
         .clone()
         .addScaledVector(f, fw)
         .addScaledVector(r, rt)
-        .add(new THREE.Vector3(0, y, 0)),
-    glide = ACE[ph];
-  if (ph === 'bounce') return { pos: at(F, 2.9, 0.9, 1.15), look: at(F, 0, 0, 1).lerp(B, 0.25), fov: 36, glide };
-  if (ph === 'run') return { pos: at(F, 2.2, 2, 0.3), look: at(F, 0.3, 0, 0.25), fov: 40, glide };
+        .add(new THREE.Vector3(0, y, 0));
+  // the numbers: VFX cbounce / crun / chit / cball (js/data/vfx.js), tuned live in the Cut-scene lab
+  if (ph === 'bounce') {
+    const c = VFX.cbounce;
+    return { pos: at(F, c.fwd, c.side, c.up), look: at(F, 0, 0, c.look).lerp(B, c.ball), fov: c.fov, glide: c.glide };
+  }
+  if (ph === 'run') {
+    const c = VFX.crun;
+    return { pos: at(F, c.fwd, c.side, c.up), look: at(F, c.ahead, 0, c.look), fov: c.fov, glide: c.glide };
+  }
   if (ph === 'hit') {
-    const h = a.bone('rightHand').getWorldPosition(new THREE.Vector3());
-    return { pos: at(h, 0.6, 3.2, -0.4), look: at(h.clone().lerp(B, 0.5), 0, 0, -0.3), fov: 44, glide };
+    const c = VFX.chit,
+      h = a.bone('rightHand').getWorldPosition(new THREE.Vector3());
+    return { pos: at(h, c.fwd, c.side, c.up), look: at(h.clone().lerp(B, c.ball), 0, 0, c.look), fov: c.fov, glide: c.glide };
   }
   // ball: behind it on the line from the server, a little above, looking ahead and down to where it comes down
-  const d = B.clone().sub(F).setY(0);
+  const c = VFX.cball,
+    d = B.clone().sub(F).setY(0);
   if (d.length() < 0.5) d.copy(f);
   d.normalize();
-  const pos = B.clone().addScaledVector(d, -2.6),
-    look = B.clone().addScaledVector(d, 3);
-  pos.y = Math.max(B.y + 0.5, 0.9);
-  look.y = Math.max(0.2, B.y - 0.6);
-  return { pos, look, fov: 48, glide };
+  const pos = B.clone().addScaledVector(d, -c.back),
+    look = B.clone().addScaledVector(d, c.ahead);
+  pos.y = Math.max(B.y + c.up, 0.3);
+  look.y = Math.max(0.2, B.y - c.drop);
+  return { pos, look, fov: c.fov, glide: c.glide };
 }
 /** Camera for a scene shot: face close-up, over the setter's shoulder at the hitter, or from behind the block. */
 function shotPose(s) {

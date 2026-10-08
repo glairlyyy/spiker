@@ -3,9 +3,9 @@
 // First moment: the serve ace — the ball in the server's hands as they bounce it, down to the feet for the run-up, a side view
 // of the hit, then the camera rides the ball to the floor. Budget: one per CINE.every points a side scores (per side).
 
-/** every: points a side scores between its cinematics; hold: ms the camera stays on the landing after the ace beat. */
-const CINE = { every: 2, hold: 500, hype: 1, hitM: 3 };
-/** The cut-scene kinds, for the Dev preview list (menu › Dev › Cut-scenes: a Monster game where every rally stages it). */
+/** every: points a side scores between its cinematics; hype: the Hype setting it needs. Camera numbers: VFX cbounce … cball. */
+const CINE = { every: 2, hype: 1 };
+/** The cut-scene kinds, for the Cut-scene lab (menu › Dev: a Monster game where every rally stages one, its camera values live). */
 const CINE_KINDS = [{ id: 'ace', name: 'Ace', tip: 'Every serve is an ace: bounce, run-up, the hit, riding the ball to the floor' }];
 const Cine = {
   /** At a beat's start (playback startBeat): count points for the budget; at a rally's reset, end the last one and pick. */
@@ -36,7 +36,7 @@ const Cine = {
     const c = A.cine;
     if (!c) return;
     if (A.bi > c.end) c.after = (c.after || 0) + dt; // the ball is down: stay on it a moment
-    if (A.done || c.after > CINE.hold) return Cine.stop();
+    if (A.done || c.after > VFX.cball.hold) return Cine.stop();
     const d = A.disp[c.p];
     if (!d) return Cine.stop();
     if (!A.shot && d.pose === 'preserve' && d.psv && d.psv.t > 0 && moveM(d) <= 0.15) A.shot = { kind: 'ace', p: c.p, track: true };
@@ -50,7 +50,7 @@ const Cine = {
           ? d.jy > 8 || d.spkStyle === 'float'
             ? 'hit'
             : 'run'
-          : far < CINE.hitM && A.ball.h > 20
+          : far < VFX.chit.far && A.ball.h > 20
             ? 'hit'
             : 'ball';
   },

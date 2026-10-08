@@ -33,8 +33,7 @@ function renderMenu() {
         <label class="sset" ${tip('Play the Monster game as one player: their Call / Fake / Block, setter and captain prompts appear under them (spec §2.16)')}><span class="cgl">Play as</span><select onchange="TS.playAs=this.value" aria-label="Play as">${PLAY_AS.map(([v, n]) => `<option value="${v}" ${(TS.playAs || '') === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
         <button class="btn" onclick="startAverage()" ${tip('A one-off 3D match between two teams of ordinary players: every player rolled at overall 30–60')}>Average game</button>
         <label class="btn" ${tip('Load a .vrm from your computer. It stays in this browser (never uploaded); in the Monster game every player picks a random model among the built-in ones (Main_v2, Rival_v2–v4, male1, male2) and the loaded ones (career: your player is always Main_v2).')}>+ Player model<input type="file" accept=".vrm,.glb" hidden onchange="addModelFile(this)"></label>
-        <button class="btn ${TS.cine ? 'on' : ''}" onclick="TS.cine=!TS.cine;renderMenu()" aria-expanded="${!!TS.cine}" ${tip('Preview a cut-scene: a Monster game where every rally stages it')}>Cut-scenes</button>
-        ${TS.cine ? CINE_KINDS.map(c => `<button class="btn" onclick="startMonster({ cine: '${c.id}' })" ${tip(c.tip)}>▶ ${esc(c.name)}</button>`).join('') : ''}
+        <button class="btn" onclick="startMonster({ cine: '${CINE_KINDS[0].id}' })" ${tip('A Monster game where every rally stages a cut-scene, with its camera values live beside it (Copy to bake them in)')}>Cut-scene lab</button>
         <button class="btn" onclick="navigate('vfxlab')" ${tip('Every 3D effect on an empty floor: power, element, slow motion, repeat, a stress rate and the cost per frame')}>VFX lab</button>
         <button class="btn" onclick="benchModels()" ${tip('Time every model on its own: draw calls, triangles, render and hair-spring cost per frame (also written to the debug log).')}>Benchmark models</button>
         <button class="btn" onclick="toggleKeepColors()" ${tip('Monster game models (yours and loaded ones). Own: their own colours. Team: the team kit, hair, skin and eye colours like the base model.')}>Model colors: ${Models.keep ? 'Own' : 'Team'}</button>
@@ -83,7 +82,7 @@ function startMonster({ cine = null } = {}) {
     bundled: true, // every player is one of the owner's models (assets/vrm, players3d BUNDLED)
     human: you ? you.id : null,
     cine,
-    round: cine ? `Cut-scene · ${CINE_KINDS.find(c => c.id === cine).name}` : 'Monster game',
+    round: cine ? `Cut-scene lab · ${CINE_KINDS.find(c => c.id === cine).name}` : 'Monster game',
     back: 'Back to menu',
     onLeave: () => navigate('menu')
   });

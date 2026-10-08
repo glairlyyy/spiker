@@ -154,6 +154,7 @@ function startMatch(fx) {
   showTac(0);
   showTac(1);
   open3D();
+  if (fx.cine) vfxToggle(); // the Cut-scene lab: its panel open from the start
 }
 /** Load the 3D renderer module and build its world once (the menu starts this in the background). */
 let load3DP = null;
