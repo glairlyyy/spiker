@@ -86,7 +86,8 @@ function resolve(to) {
       return { x: d.tx + (((d.dv.dx * MX) / L) * m) / MX + dx, z: d.tz + (((d.dv.dz * MZ) / L) * m) / MZ, h: H + dh };
     }
   }
-  return { x: d.tx + dir * off + dx, z: d.tz, h: H + dh };
+  // a block: at the hand the engine picked (hz, ≈ 0.25 m off the head), not between the two
+  return { x: d.tx + dir * off + dx, z: d.tz + (c === 'block' && to.hz ? to.hz * 0.02 : 0), h: H + dh };
 }
 
 /* ---------- acts ---------- */
@@ -259,7 +260,7 @@ function startBall(a) {
   // (see handTouch in r3d)
   const bt =
     a.to.p && (a.to.c === 'block' || a.to.c === 'spike' || a.to.c === 'serve')
-      ? { p: a.to.p, c: a.to.c, b: A.beats && A.beats[A.bi] } // b: the beat of this flight (its progress drives the pull)
+      ? { p: a.to.p, c: a.to.c, hz: a.to.hz, b: A.beats && A.beats[A.bi] } // b: the beat of this flight (its progress drives the pull); hz: block hand
       : null;
   if (!bt && A.handTouch) {
     A.handLast = A.handTouch;

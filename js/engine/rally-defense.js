@@ -34,7 +34,11 @@ function block(c, x) {
   if (!tip && cov > BLOCK_MIN_COV) {
     const bb = c1.c > c0.c ? b1 : b0;
     const bp = Formula.blockPower(b0, b1, defT, cov);
-    const hands = { p: bb.id, c: 'block' },
+    // which hand the ball meets (presentation, no draws): the side of the blocker its path crosses the net on
+    // (spiker → landing spot, a fifth of the way: the hitter is near the net); hz = +1 / −1 along court z
+    const bz = bb === b1 ? x.bz1 : x.bz0,
+      zNet = x.spZ + (x.lz - x.spZ) * 0.2,
+      hands = { p: bb.id, c: 'block', hz: zNet >= bz ? 1 : -1 },
       bel = bb.elOn ? bb.el : null, // the blocker's own element shows on the wall (unlocked players only)
       brk = elS ? elS.brk : 0; // Earth element spike: breaks through blocks far more often
     // Block break: a solid block (coverage ≥ 0.5) can still be blasted through

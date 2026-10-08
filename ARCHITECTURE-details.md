@@ -283,8 +283,8 @@ timeline: it places the ball (two bounces off the right hand → catch to the ch
 in the left hand at eye height toward the other court) and stores the phase in `d.psvB`, which `preservePose`
 (poses3d) follows; `pose.hand` tells `reachForBall` which hand(s) meet the ball.
 
-Contacts at the hand: `A.handTouch` ({ p, c, b }, playback `startBall`) → `handTouch` in r3d pulls the drawn ball
-onto the real hand(s) over the last 35% of the flight (block: between both palms; spike / serve: the right hand).
+Contacts at the hand: `A.handTouch` ({ p, c, hz, b }, playback `startBall`) → `handTouch` in r3d pulls the drawn ball
+onto the real hand(s) over the last 35% of the flight (block: the hand on the engine's `hz` side — rally-defense `block()` tags the target with the court-z side the spike crosses on, no draws; spike / serve: the right hand).
 Jumps keep momentum (`airMomentum`, playback): a share of the take-off ground speed (`AIR_KEEP`, ≤ `AIR_MAX` m/s)
 carries a player while they fall (never over the net); they run back afterwards. Bad sets: most stay hittable
 (weaker, `setMul`); a stray one (`badSetOver`) is chased by the nearest teammate and bumped / dived over.

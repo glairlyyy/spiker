@@ -390,8 +390,14 @@ function handTouch(w, now) {
   if (t.c === 'block') {
     pl.bone('leftHand').getWorldPosition(hL);
     pl.bone('rightHand').getWorldPosition(hR);
-    hL.add(hR).multiplyScalar(0.5);
-    hL.x += fw * 0.2; // in front of the palms, toward the hitter
+    if (t.hz) {
+      // the engine's pick (hz: the court-z side the ball crosses on): the hand on that side; world z = (0.5 − z) × KZ
+      if ((hR.z - hL.z) * -t.hz > 0) hL.copy(hR);
+      hL.x += fw * 0.14; // against that palm, toward the hitter
+    } else {
+      hL.add(hR).multiplyScalar(0.5);
+      hL.x += fw * 0.2; // in front of the palms, toward the hitter
+    }
     hL.y += 0.05;
   } else {
     pl.bone('rightHand').getWorldPosition(hL);
