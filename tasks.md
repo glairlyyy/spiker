@@ -501,6 +501,9 @@ Features (spec first):
 - Off-hand line shot (owner, 2026-10-07): a right-hander attacking from the right side who hits down the line (to their right)
   gets ~15 % less power and picks that shot less often; an ace trait "Wrist-away" removes the penalty (blockers don't expect it).
   Then the display: torso turns toward the shot, wrist rolls out on the line shot. Left-handers later flip it. Engine → goldens.
+- Smaller player models (owner, 2026-10-08): the 6 Monster VRMs are ~9 MB each (63 MB of base64, mostly PNG textures). gltf-transform
+  them — textures resized to 1024 and KTX2 (or WebP), meshopt geometry; three's KTX2Loader / MeshoptDecoder decode — target 1.5–2.5 MB
+  each; cache the decoded files in IndexedDB so a second visit downloads nothing. Goes with T-088.
 
 Refactor seams to cut only when the feature is specced (not now — YAGNI):
 
