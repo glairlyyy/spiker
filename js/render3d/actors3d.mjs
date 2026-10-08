@@ -158,6 +158,16 @@ function steer(pl, d, pos, face, mot, ballPos, dt) {
   pl.yawOff = wrap(pl.yawOff + wrap(want - pl.yawOff) * (1 - Math.exp(-dt * rate)));
 }
 
+const hLw = new THREE.Vector3(),
+  hRw = new THREE.Vector3();
+/** The block hand the ball is sent to ('left' | 'right'; null when not a one-hand block): the hand on the engine's hz side. */
+function blockHand(pl, d) {
+  const t = A.handTouch || A.handLast;
+  if (d.pose !== 'block' || !t || t.c !== 'block' || !t.hz || t.p !== d.p.id) return null;
+  pl.bone('leftHand').getWorldPosition(hLw);
+  pl.bone('rightHand').getWorldPosition(hRw);
+  return (hRw.z - hLw.z) * -t.hz > 0 ? 'right' : 'left'; // world z = (0.5 − court z) × KZ
+}
 /** Contacts: the hands reach for the ball (hitting arm for spike / serve / dive, both arms otherwise). */
 function reachForBall(pl, d, pose, ballPos) {
   const root = pl.root;
@@ -170,9 +180,11 @@ function reachForBall(pl, d, pose, ballPos) {
   }
   if (w > 0.01 && A.ball.vis) {
     root.updateMatrixWorld(true);
-    // one hand for spikes, serves and dives; a pose may say which (pose.hand: 'left' | 'right' | 'both')
-    const both = pose.hand ? pose.hand === 'both' : d.pose !== 'spike' && d.pose !== 'serve' && d.pose !== 'dive',
-      side = pose.hand === 'left' ? 'left' : 'right';
+    // one hand for spikes, serves and dives; a pose may say which (pose.hand: 'left' | 'right' | 'both');
+    // a block the ball meets on one hand (the engine's hz, r3d handTouch): only that arm reaches, the other stays up
+    const bh = blockHand(pl, d),
+      both = bh ? false : pose.hand ? pose.hand === 'both' : d.pose !== 'spike' && d.pose !== 'serve' && d.pose !== 'dive',
+      side = bh || (pose.hand === 'left' ? 'left' : 'right');
     const t = torsoDir(pl, ballPos, both ? 'both' : side);
     const reach = both ? (d.pose === 'bump' || d.pose === 'dive' ? 1.25 : 1.1) : 1.0;
     const k = w * clamp((reach * 1.4 - t.dist) / (reach * 0.5), 0, 1);
