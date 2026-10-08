@@ -50,7 +50,11 @@ units3d's KH / KX / KZ read it), `BALL_K` / `SERVE_K` (ball flight speed factors
   pool. They appear in non-career matches (the Monster game) only: `dressActors` gives every player a model at random with equal odds
   among the base model and every loaded one (stable per player via `hu`, while figures are free). VRM 0.x models are rotated
   (`rotateVRM0`); dressing matches VRoid material names anywhere in the name.
-  Menu button "Model colors: Own / Team" (`Models.keep`, localStorage `sns_keepcol`; shown once a model is loaded) → `R3D.keepColors(on)`:
+- Bundled models (owner, 2026-10-08): `players3d.mjs` `BUNDLED` = the owner's VRMs (Main_v2, Rival_v2, Rivar_v3, Rivar_v4, male1,
+  male2; `assets/vrm/*.glb.txt`, ~63 MB of text). `R3D.loadBundled(onProgress)` downloads and adds them once (4 figures each,
+  `w.bundled`) on the first Monster game (`fx.bundled`; match-screen `open3D` holds play behind the loader); `dressActors` then
+  picks only among them (another bundled model when one's figures are taken), never the base model.
+  Menu button "Model colors: Own / Team" (`Models.keep`, localStorage `sns_keepcol`; always shown) → `R3D.keepColors(on)`:
   loaded models are `undress`ed (original colours / hair + iris textures restored) instead of `dress`ed; the base model always gets the kit.
 - One heavy pass per model file: `makeVRM` shares decoded textures (`imgCache`, clones share one image / GPU upload),
   geometry (`geoCache`, the first figure's meshes) and greyed hair textures across every figure of the same model.

@@ -8,3 +8,8 @@ MODEL_URL in js/render3d/r3d.mjs at it (or extend it to a list picked by hairsty
 
 main.glb.txt — base64 of Main_v2.vrm (VRM 1.0, by glairly, the project owner): your own career player's model.
 It keeps its own colours (no kit / skin tint). Source file ~8.8 MB.
+
+Monster game models (owner, 2026-10-08; VRM 1.0 by glairly, the project owner — base64 text like the others): every Monster game
+player picks one of these at random (js/render3d/players3d.mjs BUNDLED; loaded on the first Monster game, 4 figures each):
+Main_v2 (main.glb.txt), Rival_v2 (rival2.glb.txt), Rivar_v3 (rival3.glb.txt), Rivar_v4 (rival4.glb.txt), male1 (male1.glb.txt),
+male2 (male2.glb.txt). Source files 8.8–9.9 MB each.

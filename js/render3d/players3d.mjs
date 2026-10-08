@@ -56,6 +56,19 @@ const bufCache = new Map();
 export const MODEL_URL = new URL('../../assets/vrm/base.glb.txt', import.meta.url).href;
 /** Your own player in career matches (Main_v2.vrm, base64 text like the base model). */
 export const MAIN_URL = new URL('../../assets/vrm/main.glb.txt', import.meta.url).href;
+/**
+ * The owner's own models (VRM 1.0 by glairly, base64 text like the base model): every Monster game player picks one of these at
+ * random (owner, 2026-10-08). Loaded on the first Monster game, not at start-up (~63 MB of text).
+ */
+const vrmUrl = f => new URL(`../../assets/vrm/${f}.glb.txt`, import.meta.url).href;
+export const BUNDLED = [
+  { name: 'Main_v2', url: MAIN_URL },
+  { name: 'Rival_v2', url: vrmUrl('rival2') },
+  { name: 'Rivar_v3', url: vrmUrl('rival3') },
+  { name: 'Rivar_v4', url: vrmUrl('rival4') },
+  { name: 'male1', url: vrmUrl('male1') },
+  { name: 'male2', url: vrmUrl('male2') }
+];
 export async function loadBase(url, onProgress) {
   if (bufCache.has(url)) return bufCache.get(url);
   const res = await fetch(url);

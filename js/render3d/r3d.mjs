@@ -7,7 +7,7 @@
 //   camera3d game camera, scene shots, P3D       actors3d  posing players and coaches, trails, auras, rings
 //   players3d VRM load / dress / pose apply      poses3d   pose library      fx3d / trails3d  effects
 import * as THREE from 'three';
-import { loadBase, makeVRM, modelStats, updateVrm, MODEL_URL, MAIN_URL } from './players3d.mjs';
+import { loadBase, makeVRM, modelStats, updateVrm, MODEL_URL, MAIN_URL, BUNDLED } from './players3d.mjs';
 import { createFx } from './fx3d.mjs';
 import { makeTrail } from './trails3d.mjs';
 import { W, lowEnd } from './units3d.mjs';
@@ -127,11 +127,11 @@ const EXTRA_FIGS = 8;
  * join the pool (enough for every player on court), and dressActors spreads players evenly over all models at random
  * (stable per player). Re-dresses a match on screen.
  */
-async function addModel(buf, name) {
+async function addModel(buf, name, n = EXTRA_FIGS) {
   const w = world || (building && (await building, world));
   if (!w) throw new Error('3D not ready');
   const figs = [];
-  for (let i = 0; i < EXTRA_FIGS; i++) {
+  for (let i = 0; i < n; i++) {
     const pl = await makeVRM(buf, 1.8);
     pl.model = name;
     if (!i) DBG.log('info', `Model ${name}: ${modelStats(pl)}`);
@@ -144,6 +144,39 @@ async function addModel(buf, name) {
   w.models = [...(w.models || []), name];
   if (bound && A && bound === A) dressActors(w); // a match on screen now: re-dress it (from the menu there is none)
   return name;
+}
+
+/** Figures per bundled model: 6 models × 4 cover the 8 players on court (dressActors falls back to another bundled model). */
+const BUNDLED_FIGS = 4;
+let bundledP = null;
+/**
+ * The owner's models (players3d BUNDLED): downloaded and added once, on the first Monster game (onProgress 0..1). Every
+ * Monster player then picks one of them at random (dressActors). A model that fails to load is skipped (logged).
+ */
+function loadBundled(onProgress) {
+  if (!bundledP)
+    bundledP = (async () => {
+      const w = world || (building && (await building, world));
+      if (!w) throw new Error('3D not ready');
+      w.bundled = w.bundled || [];
+      for (let k = 0; k < BUNDLED.length; k++) {
+        const { name, url } = BUNDLED[k];
+        try {
+          const buf = await loadBase(url, f => onProgress && onProgress((k + f * 0.7) / BUNDLED.length, 'Downloading players'));
+          onProgress && onProgress((k + 0.7) / BUNDLED.length, 'Getting players ready');
+          await addModel(buf, name, BUNDLED_FIGS);
+          w.bundled.push(name);
+        } catch (e) {
+          DBG.log('warn', `Model ${name} could not be loaded`, e);
+        }
+      }
+      onProgress && onProgress(1, 'Ready');
+      return w.bundled;
+    })().catch(e => {
+      bundledP = null;
+      throw e;
+    });
+  return bundledP;
 }
 
 /**
@@ -449,6 +482,7 @@ export const api = {
     return world ? +(world.gl.width / Math.max(1, cv.width)).toFixed(2) : null; // 3D render scale vs the court canvas (debug)
   },
   addModel,
+  loadBundled,
   bench,
   fxStats: () => world && world.fx.stats(), // live particle / mesh counts (director QA)
   /** Loaded models keep their own colours (re-dresses a match on screen). */

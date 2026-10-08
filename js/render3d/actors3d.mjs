@@ -424,18 +424,24 @@ export function dressActors(w) {
   const disp = Object.values(A.disp),
     career = disp.some(d => d.p.you),
     models = career ? [] : w.models || [], // loaded extra models: Monster game / playtest only
+    // the Monster game: every player is one of the owner's models (players3d BUNDLED), never the base one
+    own = !career && A.fx && A.fx.bundled && (w.bundled || []).length > 0,
     free = w.people.slice(),
     take = model => {
       const i = free.findIndex(pl => (pl.model || null) === model);
+      return i < 0 ? null : free.splice(i, 1)[0];
+    },
+    takeAny = () => {
+      const i = free.findIndex(pl => pl.model && pl.model !== 'main' && models.includes(pl.model)); // all figures of one model in use: another
       return i < 0 ? null : free.splice(i, 1)[0];
     };
   for (const pl of w.people) pl.d = null;
   // career: your own player (p.you) is always Main_v2, everyone else the base model. Monster game: each player picks one
   // model at random with equal odds among the base model and every loaded one (stable per player, while figures are free)
   for (const d of disp) {
-    const all = [null, ...models],
+    const all = own ? models : [null, ...models],
       want = d.p.you ? 'main' : all[Math.min(all.length - 1, Math.floor(hu(d.p, 'model') * all.length))],
-      pl = (want && take(want)) || take(null) || free.shift();
+      pl = (want && take(want)) || (own && takeAny()) || take(null) || free.shift();
     if (pl) pl.d = d;
   }
   w.people.forEach(pl => {

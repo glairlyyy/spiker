@@ -174,20 +174,40 @@ function open3D() {
     api.setBirdSide(myA.mySide); // bird's-eye: your side at the bottom
     cam3Label();
   };
-  if (R3D) return ready(R3D);
+  const prog = (f, t) => {
+      const b = $('#ld3bar'),
+        tx = $('#ld3txt');
+      if (b) b.style.width = Math.round(f * 100) + '%';
+      if (tx && t) tx.textContent = t;
+    },
+    // the Monster game's models (the owner's VRMs, downloaded on the first one): play holds behind the loader until they are in
+    owners = api =>
+      myA.fx.bundled && api.loadBundled
+        ? api.loadBundled((f, t) => prog(f, `${t} (models)`)).catch(e => DBG.log('warn', 'Monster models could not be loaded', e))
+        : null;
+  if (R3D) {
+    ready(R3D);
+    const w = owners(R3D);
+    if (!w) return;
+    A.hold = true;
+    st.insertAdjacentHTML(
+      'beforeend',
+      `<div class="ld3" id="ld3" role="status"><b>Loading players</b><i><span id="ld3bar"></span></i><small id="ld3txt">Starting</small></div>`
+    );
+    return w.then(() => {
+      if (A === myA) A.hold = false;
+      $('#ld3')?.remove();
+    });
+  }
   A.hold = true;
   st.insertAdjacentHTML(
     'beforeend',
     `<div class="ld3" id="ld3" role="status"><b>Loading 3D players</b><i><span id="ld3bar"></span></i><small id="ld3txt">Starting</small></div>`
   );
-  load3D((f, t) => {
-    const b = $('#ld3bar'),
-      tx = $('#ld3txt');
-    if (b) b.style.width = Math.round(f * 100) + '%';
-    if (tx && t) tx.textContent = t;
-  })
-    .then(api => {
+  load3D(prog)
+    .then(async api => {
       ready(api);
+      await owners(api);
       if (A === myA) A.hold = false;
       $('#ld3')?.remove();
     })
