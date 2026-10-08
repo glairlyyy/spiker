@@ -24,11 +24,13 @@ function timeScale(cb, raw) {
     t = on ? Math.min(1, (A.el || 0) / Math.max(1, cb.dur)) : 0,
     win = !on || !cb.slowAt || (t >= cb.slowAt[0] && t <= cb.slowAt[1]),
     build = on && cb.sceneSlow && cb.sceneSlow <= hype && t < 0.55; // after a scene: slow build-up, fast hit
-  // hypeSlow: scramble drama, off with Hype
-  A.slowOn = !!((on && cb.slow && win && (!cb.hypeSlow || hype >= cb.hypeSlow)) || build);
+  // hypeSlow: scramble drama, off with Hype — and over once the player taking the ball is already set there (owner 2026-10-08)
+  const set = on && cb.hypeSlow && cb._rcv && digArrived(cb._rcv);
+  A.slowOn = !!((on && cb.slow && win && (!cb.hypeSlow || hype >= cb.hypeSlow) && !set) || build);
   A.freezeOn = !!(on && cb.freeze);
   A.sceneOn = !!(on && cb.scene);
   A.slowK = A.slowOn ? (build ? TS_BUILD : cb.slow < 1 ? cb.slow : TS_SLOW) : 1;
+  if (on && cb._dig && digArrived()) cb._dig = 0; // the digger is in place and set: no more slow motion (owner 2026-10-08)
   if (on && cb._dig) A.slowK = Math.min(A.slowK, cb._dig); // a far dig: just slow enough for the digger to get there
   // the impact frame's slow motion (spec §2.3a): while the court is in negative the world runs at VFX.frame.slow, then back
   const imp = A.impactUntil && performance.now() < A.impactUntil,
@@ -36,7 +38,7 @@ function timeScale(cb, raw) {
   if (!Number.isFinite(A.ts)) A.ts = 1; // first frame (or a bad value): normal speed
   if (tgt < 0.1 || (on && cb._dig && A.slowK === cb._dig))
     A.ts = Math.min(A.ts, tgt); // hit-stop / scene / far dig: instant (the digger's time budget starts now)
-  else A.ts += (tgt - A.ts) * (1 - Math.exp(-raw / (tgt < A.ts ? 90 : 160)));
+  else A.ts += (tgt - A.ts) * (1 - Math.exp(-raw / (tgt < A.ts ? 90 : set || (on && cb._dig === 0) ? 50 : 160))); // a set digger: back quickly
   if (Math.abs(A.ts - tgt) < 0.004) A.ts = tgt;
   const slow = A.ts < TS_SLOWFX;
   if (slow !== !!A._slowFx) {

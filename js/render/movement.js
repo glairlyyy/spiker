@@ -137,6 +137,7 @@ function digChase(b) {
   const a = b.acts.find(x => x.k === 'ball' && x.to && x.to.p && (x.to.c === 'bump' || x.to.c === 'dive') && x.when !== 'end'),
     d = a && A.disp[a.to.p];
   if (!d || d.via || b.scene) return;
+  b._rcv = a.to.p; // who takes this ball (a scramble's slow motion ends once they are set: clock.js)
   // ms needed: still in the air (a blocker coming down) → the fall and the landing first, then the sprint
   const air = d.jy > 2 ? Math.sqrt((2 * d.jy * UNIT_M.h) / FALL_G) * 1000 + 60 : 0,
     need = air + (Math.hypot((d.tx - d.x) * MX, (d.tz - d.z) * MZ) / sprintOf(d)) * 1000,
@@ -145,6 +146,13 @@ function digChase(b) {
   b._dig = k;
   A.digHero = a.to.p;
   if (d.dv) d.dv.dur /= k; // the dive plays out over the stretched beat, on the digger's own (real) clock
+}
+/** A dig's player (default: the far-dig chaser A.digHero) has got there: on their feet, not mid-dive, within DIG_SET_M of the spot. */
+const DIG_SET_M = 0.35;
+function digArrived(id = A.digHero) {
+  const d = id && A.disp[id];
+  if (!d) return true;
+  return !diving(d) && d.jy <= 1 && Math.hypot((d.tx - d.x) * MX, (d.tz - d.z) * MZ) <= DIG_SET_M;
 }
 /** A long, hard cut sometimes squeaks (throttled, a little delayed). Math.random: sound only, never the game RNG. */
 function maybeSqueak(d, a) {
