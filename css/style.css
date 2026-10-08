@@ -692,13 +692,7 @@ td i {
 .ency-card .fold > summary {
   margin-top: 4px;
 }
-/* slow motion: the 3D view desaturates a little while time is slowed (playback toggles .slowmo) */
-.stage > canvas:not(#cv) {
-  transition: filter 0.18s ease;
-}
-.stage.slowmo > canvas:not(#cv) {
-  filter: saturate(0.55) contrast(1.08) brightness(0.96);
-}
+/* slow motion: only the dark vignette at the edges (overlay.js); the court keeps its colours (owner 2026-10-08) */
 /* ---------- staged scenes: MATCH POINT banner and manga panels ---------- */
 .hbanner {
   position: absolute;

@@ -9,7 +9,7 @@ const TS_SLOW = 0.3,
   TS_FREEZE = 0.04,
   TS_SCENE = 0.03,
   DIG_SLOW_MIN = 0.15; // a far dig never slows the world below this
-/** Below this A.ts the mix is muffled and the stage desaturated (sfx.slowmo, .slowmo class). */
+/** Below this A.ts the mix is muffled (sfx.slowmo; the stage gets the .slowmo class) and the edge vignette shows (overlay.js). */
 const TS_SLOWFX = 0.75;
 /**
  * World time scale A.ts (1 = normal). A slow beat (slow: 1 → ×0.3, or a factor; optional window slowAt: [t0, t1] of the
