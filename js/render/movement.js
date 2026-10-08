@@ -147,6 +147,23 @@ function digChase(b) {
   A.digHero = a.to.p;
   if (d.dv) d.dv.dur /= k; // the dive plays out over the stretched beat, on the digger's own (real) clock
 }
+/**
+ * A slow-motion scramble beat (hypeSlow) that ends with the ball on the floor (a kill): could the diving defender get there?
+ * Sets b._miss = 'near' (they reach the spot in the beat's time — it just beats them: a short, light slow motion) or 'clear'
+ * (they can't get there: no slow motion), owner 2026-10-08 (clock.js). Display only.
+ */
+function missCheck(b) {
+  if (!b.hypeSlow || !b.slow) return;
+  const a = b.acts.find(x => x.k === 'ball' && x.to && x.to.p == null && x.to.h === 0 && x.when !== 'end'),
+    kill = b.acts.some(x => x.k === 'impact' && x.kill);
+  if (!a || !kill) return;
+  const need = d => (Math.hypot((d.tx - d.x) * MX, (d.tz - d.z) * MZ) / sprintOf(d)) * 1000 + (d.jy > 2 ? 300 : 0),
+    divers = b.acts
+      .filter(x => x.k === 'pose' && (x.pose === 'dive' || x.pose === 'bump'))
+      .map(x => A.disp[x.p])
+      .filter(Boolean);
+  b._miss = divers.some(d => need(d) <= b.dur * 0.9) ? 'near' : 'clear';
+}
 /** A dig's player (default: the far-dig chaser A.digHero) has got there: on their feet, not mid-dive, within DIG_SET_M of the spot. */
 const DIG_SET_M = 0.35;
 function digArrived(id = A.digHero) {

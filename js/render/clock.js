@@ -9,6 +9,8 @@ const TS_SLOW = 0.3,
   TS_FREEZE = 0.04,
   TS_SCENE = 0.03,
   DIG_SLOW_MIN = 0.15; // a far dig never slows the world below this
+/** A near-miss dig's slow motion: [world speed, from this fraction of the beat] — lighter and later than a save's. */
+const NEAR_MISS_SLOW = [0.6, 0.75];
 /** Below this A.ts the mix is muffled (sfx.slowmo; the stage gets the .slowmo class) and the edge vignette shows (overlay.js). */
 const TS_SLOWFX = 0.75;
 /**
@@ -25,11 +27,13 @@ function timeScale(cb, raw) {
     win = !on || !cb.slowAt || (t >= cb.slowAt[0] && t <= cb.slowAt[1]),
     build = on && cb.sceneSlow && cb.sceneSlow <= hype && t < 0.55; // after a scene: slow build-up, fast hit
   // hypeSlow: scramble drama, off with Hype — and over once the player taking the ball is already set there (owner 2026-10-08)
-  const set = on && cb.hypeSlow && cb._rcv && digArrived(cb._rcv);
-  A.slowOn = !!((on && cb.slow && win && (!cb.hypeSlow || hype >= cb.hypeSlow) && !set) || build);
+  const set = on && cb.hypeSlow && cb._rcv && digArrived(cb._rcv),
+    miss = on && cb._miss, // a failed dig (movement.js missCheck): clear → no slow motion, near → a short, light one
+    winM = miss === 'near' ? t >= NEAR_MISS_SLOW[1] : win;
+  A.slowOn = !!((on && cb.slow && winM && miss !== 'clear' && (!cb.hypeSlow || hype >= cb.hypeSlow) && !set) || build);
   A.freezeOn = !!(on && cb.freeze);
   A.sceneOn = !!(on && cb.scene);
-  A.slowK = A.slowOn ? (build ? TS_BUILD : cb.slow < 1 ? cb.slow : TS_SLOW) : 1;
+  A.slowK = A.slowOn ? (build ? TS_BUILD : miss === 'near' ? NEAR_MISS_SLOW[0] : cb.slow < 1 ? cb.slow : TS_SLOW) : 1;
   if (on && cb._dig && digArrived()) cb._dig = 0; // the digger is in place and set: no more slow motion (owner 2026-10-08)
   if (on && cb._dig) A.slowK = Math.min(A.slowK, cb._dig); // a far dig: just slow enough for the digger to get there
   // the impact frame's slow motion (spec §2.3a): while the court is in negative the world runs at VFX.frame.slow, then back

@@ -182,6 +182,7 @@ function startBeat(b) {
     if (sd && sd.pose === 'ready' && sd.jy <= 2 && !diving(sd) && !sd.afterDive) startPose(sd, 'setprep', false, b.dur);
   }
   digChase(b);
+  missCheck(b);
   preDigLook(b);
   preApproachLook(b);
   const ap = approachOf(b),
