@@ -37,9 +37,9 @@ function* playRallyGen(m) {
   yield* serveWalk(c);
   serveToss(c);
   serveContact(c);
-  if (R() < c.serr) return serveFault(c);
+  if (R() < c.serr && m.dev !== 'ace') return serveFault(c); // (m.dev 'ace': the Dev cut-scene preview — same draws)
   serveAim(c);
-  if (R() < sig((c.sq - c.rs) / 24 - 2.4)) {
+  if (R() < sig((c.sq - c.rs) / 24 - 2.4) || m.dev === 'ace') {
     const res = yield* serveAce(c);
     Decide.out(m, 'serve', c.server.id, 'on'); // (an ace already said 'win')
     return res;
@@ -233,7 +233,7 @@ function* serveAce(c) {
   // the receiver got an arm on it: sometimes it pops up in their court and a teammate keeps it alive
   const fr = Math.min(1, (0.8 / (d0 + 0.01)) * (0.3 + rc.speed / 200)),
     p0r = m.pos[rc.id];
-  if (d0 * (1 - 0.7 * fr) < 0.1 && R() < popChance(rc, sq)) return yield* servePopped(c, fr, p0r);
+  if (d0 * (1 - 0.7 * fr) < 0.1 && R() < popChance(rc, sq) && m.dev !== 'ace') return yield* servePopped(c, fr, p0r);
   return serveAceClean(c);
 }
 /** Off the receiver's arms: a teammate saves it (rally on) or it drops (ace). */

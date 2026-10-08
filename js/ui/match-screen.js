@@ -31,6 +31,7 @@ function startMatch(fx) {
     nm = { round: fx.round };
   const m = newMatch(a, b, true, { court: fx.court });
   if (fx.setup) fx.setup(m); // e.g. a career captain's pre-match buff
+  if (fx.cine) m.dev = fx.cine; // Dev cut-scene preview (render/cine.js CINE.kinds): every rally stages that moment
   VCS = m.court;
   G.view = 'match';
   Dir.reset();
@@ -145,6 +146,7 @@ function startMatch(fx) {
     techKeys: [],
     venue: matchVenue(fx), // the 3D set (spec §9.11)
     stakes: matchStakes(fx),
+    cineForce: fx.cine || null, // Dev cut-scene preview: that cut-scene every time (no budget, any Hype setting)
     mySide: mine ?? (m.human != null ? (m.t[1].P.some(p => p.id === m.human) ? 1 : 0) : 0) // your team's side (exhibition: Play as, else the left team)
   };
   board(snap(m));

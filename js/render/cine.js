@@ -5,6 +5,8 @@
 
 /** every: points a side scores between its cinematics; hold: ms the camera stays on the landing after the ace beat. */
 const CINE = { every: 2, hold: 500, hype: 1, hitM: 3 };
+/** The cut-scene kinds, for the Dev preview list (menu › Dev › Cut-scenes: a Monster game where every rally stages it). */
+const CINE_KINDS = [{ id: 'ace', name: 'Ace', tip: 'Every serve is an ace: bounce, run-up, the hit, riding the ball to the floor' }];
 const Cine = {
   /** At a beat's start (playback startBeat): count points for the budget; at a rally's reset, end the last one and pick. */
   beat(b) {
@@ -17,10 +19,11 @@ const Cine = {
   },
   /** A rally that ends in an ace by a side with budget: the cinematic for its server (Hype off / reduced motion / fixed camera: none). */
   choose(b) {
-    if (RM || G.camFixed || HYPE[G.hype].max < CINE.hype) return;
+    const dev = A.cineForce === 'ace'; // the Dev preview: every time, whatever the settings
+    if (!dev && (RM || G.camFixed || HYPE[G.hype].max < CINE.hype)) return;
     const hold = b.acts.find(a => a.k === 'hold'),
       d = hold && A.disp[hold.p];
-    if (!d || A.cineCool[d.side] < CINE.every) return;
+    if (!d || (!dev && A.cineCool[d.side] < CINE.every)) return;
     let end = -1;
     for (let i = A.bi; i < (A.beats || []).length && end < 0; i++)
       if (A.beats[i].acts.some(a => a.k === 'label' && a.t === 'ACE!')) end = i;
