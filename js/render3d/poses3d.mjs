@@ -204,7 +204,8 @@ export function locoPose(m) {
     return { ...READY, hp: 0.35, sp: 0.08, hd: -0.35, L, R };
   }
   const r = clamp((sp - 1.2) / 2.3, 0, 1),
-    stride = 0.7 + 0.3 * Math.min(1, sp / 3);
+    // short hop of a run: small steps; a long run: long strides (m.far 0..1, actors3d motion)
+    stride = (0.7 + 0.3 * Math.min(1, sp / 3)) * (0.65 + 0.5 * (m.far ?? 0.7));
   const L = gaitLeg(ph, r, stride),
     R = gaitLeg(ph + Math.PI, r, stride);
   // arms swing opposite to the legs: left arm forward when the left leg is back

@@ -21,6 +21,11 @@ function moodOf(d) {
   return m0;
 }
 /**
+ * Stride by distance left to run (m): at `near` or closer small steps, from `far` full strides. Gait cycle (m, two steps)
+ * = c0 + c1 × run share, each lerped short → long; the leg swing scales the same way (poses3d locoPose, m.far).
+ */
+const STRIDE = { near: 1, far: 5, c0: [0.8, 1.25], c1: [0.5, 1.6] };
+/**
  * Measured motion for locomotion: velocity (m/s) from the player's court position, split into forward / lateral
  * relative to where they face, and a gait phase advanced by distance so feet don't slide.
  */
@@ -42,8 +47,13 @@ function motion(pl, pos, face, dt) {
   m.fwd += (vf - m.fwd) * k;
   m.lat += (vl - m.lat) * k;
   m.speed = Math.hypot(m.fwd, m.lat);
+  // how far there is still to go (owner, 2026-10-08): a long run takes long strides, the last metre or two small quick steps
+  const d = pl.d,
+    rem = d ? Math.hypot((d.tx - d.x) * KX, (d.tz - d.z) * KZ) : 0;
+  m.far = (m.far || 0) + (clamp((rem - STRIDE.near) / (STRIDE.far - STRIDE.near), 0, 1) - (m.far || 0)) * k;
   const r = clamp((m.speed - 1.2) / 2.3, 0, 1),
-    cycle = 1.25 + 1.25 * r; // metres per full gait cycle (two steps)
+    g = m.far,
+    cycle = STRIDE.c0[0] + (STRIDE.c0[1] - STRIDE.c0[0]) * g + (STRIDE.c1[0] + (STRIDE.c1[1] - STRIDE.c1[0]) * g) * r; // metres per full gait cycle (two steps)
   const side = Math.abs(m.lat) > Math.abs(m.fwd) * 1.1;
   m.phase += ((side ? dist * 1.6 : dist) / cycle) * Math.PI * 2;
   return m;

@@ -292,6 +292,8 @@ timeline: it places the ball (two bounces off the right hand → catch to the ch
 in the left hand at eye height toward the other court) and stores the phase in `d.psvB`, which `preservePose`
 (poses3d) follows; `pose.hand` tells `reachForBall` which hand(s) meet the ball.
 
+Stride by distance (display only): actors3d `motion` keeps `m.far` (0..1, distance left to the target, `STRIDE.near` 1 m … `far` 5 m, smoothed); the gait cycle length and poses3d `locoPose` leg swing scale with it — long runs take long strides, the last metre small quick steps.
+
 Back bump (display only): `backBumpLook` (playback, at a beat's start) sets `d.bb` when the ball comes to a bumping player who must move ≥ 2 m mostly away from the net; then steer turns them away from the net (yaw π until the swing is done), the bump swings up to `BACK_UP` (poses3d: platform over the head, body leaning back) and resolve meets the ball in front of the turned body. The pass beat restating the bump keeps the decision.
 
 Contacts at the hand: `A.handTouch` ({ p, c, hz, b }, playback `startBall`) → `handTouch` in r3d pulls the drawn ball
