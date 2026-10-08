@@ -294,9 +294,10 @@ export function updateBase(dt) {
         shot.age = 0;
       }
       if (want.track && key === shot.key && shot.age >= 0.2) {
-        const k = 1 - Math.exp(-dt * 7); // a tracked shot glides after its player
+        const k = 1 - Math.exp(-dt * (sp.glide || 7)); // a tracked shot glides after its player (and pans between phases)
         shot.pos.lerp(sp.pos, k);
         shot.look.lerp(sp.look, k);
+        shot.fov += (sp.fov - shot.fov) * k;
       } else Object.assign(shot, sp, { key });
     }
   }
@@ -335,6 +336,41 @@ const sv1 = new THREE.Vector3(),
   sq = new THREE.Quaternion(),
   sq0 = new THREE.Quaternion();
 const shot = { k: 0, key: '', pos: new THREE.Vector3(), look: new THREE.Vector3(), fov: 30 };
+/**
+ * The ace cinematic (render/cine.js), one tracked shot by phase — glide: how fast the camera follows (1/s), so a new phase
+ * pans over smoothly. bounce: in front of the server, the ball in their hands; run: low at the feet, from the front and side;
+ * hit: beside the hitting arm at contact height; ball: riding behind the ball to where it lands.
+ */
+const ACE = { bounce: 4, run: 7, hit: 6, ball: 14 };
+function acePose(a, ph, up) {
+  const F = a.root.position.clone().setY(0),
+    f = new THREE.Vector3(Math.sin(a.root.rotation.y), 0, Math.cos(a.root.rotation.y)),
+    r = new THREE.Vector3().crossVectors(f, up).normalize(),
+    B = world.ball.position.clone(),
+    // a point from `o`: `fw` m along the server's facing, `rt` m to the side, `y` m up
+    at = (o, fw, rt, y) =>
+      o
+        .clone()
+        .addScaledVector(f, fw)
+        .addScaledVector(r, rt)
+        .add(new THREE.Vector3(0, y, 0)),
+    glide = ACE[ph];
+  if (ph === 'bounce') return { pos: at(F, 2.9, 0.9, 1.15), look: at(F, 0, 0, 1).lerp(B, 0.25), fov: 36, glide };
+  if (ph === 'run') return { pos: at(F, 2.2, 2, 0.3), look: at(F, 0.3, 0, 0.25), fov: 40, glide };
+  if (ph === 'hit') {
+    const h = a.bone('rightHand').getWorldPosition(new THREE.Vector3());
+    return { pos: at(h, 0.6, 3.2, -0.4), look: at(h.clone().lerp(B, 0.5), 0, 0, -0.3), fov: 44, glide };
+  }
+  // ball: behind it on the line from the server, a little above, looking ahead and down to where it comes down
+  const d = B.clone().sub(F).setY(0);
+  if (d.length() < 0.5) d.copy(f);
+  d.normalize();
+  const pos = B.clone().addScaledVector(d, -2.6),
+    look = B.clone().addScaledVector(d, 3);
+  pos.y = Math.max(B.y + 0.5, 0.9);
+  look.y = Math.max(0.2, B.y - 0.6);
+  return { pos, look, fov: 48, glide };
+}
 /** Camera for a scene shot: face close-up, over the setter's shoulder at the hitter, or from behind the block. */
 function shotPose(s) {
   const find = id => world.people.find(pl => pl.d && pl.d.p.id === id),
@@ -342,6 +378,7 @@ function shotPose(s) {
   if (!a) return null;
   const up = new THREE.Vector3(0, 1, 0),
     H = a.bone('head').getWorldPosition(new THREE.Vector3());
+  if (s.kind === 'ace') return acePose(a, s.ph || 'bounce', up);
   if (s.kind === 'follow') {
     // a followed player (a decision point, §2.13): behind and beside the player, the ball ahead of them — tracked from the feet (no head bob)
     const F = a.root.position.clone().setY(0),

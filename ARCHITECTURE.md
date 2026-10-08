@@ -42,7 +42,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   `career-match.js` (match prep, eval / Cup cards, result data, playCareer, watchCareer), `map-view.js`, `career-panels.js` (place
   panels: `placeCard` anatomy, `PANELS` by kind → hq / clash / venue / map point, else `placePanel`), `career-map.js` (mount, pick, actions, walk lock), `career-dossier.js`,
   `career-people.js`, `career-hub.js`, `career-end.js`, `encyclopedia.js`, `vfx-lab.js` (dev: the VFX lab screen → `render3d/vfxlab3d.mjs`), `vfx-panel.js` (dev: live VFX tuning panel — Monster / Average game key V and the lab; export / import JSON).
-- **render** `playback.js`, `acts.js`, `movement.js`, `actors.js`, `clock.js`, `camera.js`, `ball.js`, `scenes.js`,
+- **render** `playback.js`, `acts.js`, `director.js`, `cine.js` (heroic camera for a big moment: the ace), `movement.js`, `actors.js`, `clock.js`, `camera.js`, `ball.js`, `scenes.js`,
   `effects.js`, `overlay.js`, `faces.js`, `tags.js`, `dive.js`; then `main.js`.
 
 ES modules (loaded on demand): `js/render3d/` — `r3d.mjs` (entry), `units3d`, `arena3d`, `camera3d`, `actors3d`,
@@ -144,16 +144,16 @@ digPopped | digKill | digUp`. New rules (e.g. ace traits) hook into the step tha
 **Playback state `A`** (one object per match, built by `startMatch` in match-screen.js; `null` off the match screen). Its
 literal is the shape; other fields are created by the file that owns them:
 
-| Group             | Fields                                                                                                                                                             | Owner                                      |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
-| Match             | `m`, `nm`, `fx`, `disp`, `bench`, `venue`, `stakes`, `done`, `hold`                                                                                                | match-screen.js, match-result.js           |
-| Beats and clock   | `beats`, `bi`, `el`, `ts`, `speed`, `paused`, `slowOn`, `slowK`, `sceneOn`, `freezeOn`, `_slowFx`, `fdt`, `rdt`, `rallyN`                                          | playback.js, clock.js, match-controls.js   |
-| Ball              | `ball`, `srvId`, `bounce`, `bp`, `bv`, `mv`, `spin`, `wob`, `dribble`, `real`, `trail`, `trailPow`, `trailEl`, `trailOp`, `hand*`, `lastC`, `lastP`                | playback.js, ball.js, acts.js              |
-| Camera and scenes | `cam`, `shot`, `zc`, `zoom`, `digHero`, `preApp`, `preDig`, `sqT`                                                                                                  | camera.js, scenes.js, movement.js, acts.js |
-| Effects           | `parts`, `labels`, `lines`, `link`, `shake`, `flash`, `flashC`, `ptFlash`, `ghost`, `drill`, `crack`, `squash`, `netShake`, `wallFx`, `toBanner`, `cele`, `pointN` | effects.js, acts.js, match-result.js       |
-| Crowd and bench   | `cheer`, `cheerAll`, `wave`, `chant`, `coaches`                                                                                                                    | effects.js, acts.js                        |
-| HUD               | `railTab`, `staShown`, `moodShown`, `buffShown`, `egShown`, `zoneShown`, `techPs`, `techCareer`, `techKeys`                                                        | match-controls.js, match-tech.js           |
-| Calls (§2.13)     | `gen` (the suspended rally), `ask` (`{ q, left, shown, shot }`), `callsShown`                                                                                      | playback.js (rallyPull), match-calls.js    |
+| Group             | Fields                                                                                                                                                             | Owner                                               |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| Match             | `m`, `nm`, `fx`, `disp`, `bench`, `venue`, `stakes`, `done`, `hold`                                                                                                | match-screen.js, match-result.js                    |
+| Beats and clock   | `beats`, `bi`, `el`, `ts`, `speed`, `paused`, `slowOn`, `slowK`, `sceneOn`, `freezeOn`, `_slowFx`, `fdt`, `rdt`, `rallyN`                                          | playback.js, clock.js, match-controls.js            |
+| Ball              | `ball`, `srvId`, `bounce`, `bp`, `bv`, `mv`, `spin`, `wob`, `dribble`, `real`, `trail`, `trailPow`, `trailEl`, `trailOp`, `hand*`, `lastC`, `lastP`                | playback.js, ball.js, acts.js                       |
+| Camera and scenes | `cam`, `shot`, `zc`, `zoom`, `digHero`, `preApp`, `preDig`, `sqT`, `cine`, `cineCool`                                                                              | camera.js, scenes.js, movement.js, acts.js, cine.js |
+| Effects           | `parts`, `labels`, `lines`, `link`, `shake`, `flash`, `flashC`, `ptFlash`, `ghost`, `drill`, `crack`, `squash`, `netShake`, `wallFx`, `toBanner`, `cele`, `pointN` | effects.js, acts.js, match-result.js                |
+| Crowd and bench   | `cheer`, `cheerAll`, `wave`, `chant`, `coaches`                                                                                                                    | effects.js, acts.js                                 |
+| HUD               | `railTab`, `staShown`, `moodShown`, `buffShown`, `egShown`, `zoneShown`, `techPs`, `techCareer`, `techKeys`                                                        | match-controls.js, match-tech.js                    |
+| Calls (§2.13)     | `gen` (the suspended rally), `ask` (`{ q, left, shown, shot }`), `callsShown`                                                                                      | playback.js (rallyPull), match-calls.js             |
 
 `menu`, `match`, `create`, `career`, `encyclopedia`, `vfxlab` — switch with `navigate(name, …args)`.
 The match screen takes a **fixture** `{ a, b, round, court?, back, rel?, setup(m)?, onFinish(m) → message, onLeave() }`

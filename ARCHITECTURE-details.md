@@ -292,6 +292,8 @@ timeline: it places the ball (two bounces off the right hand → catch to the ch
 in the left hand at eye height toward the other court) and stores the phase in `d.psvB`, which `preservePose`
 (poses3d) follows; `pose.hand` tells `reachForBall` which hand(s) meet the ball.
 
+Cinematics (render/cine.js, display only): `Cine.beat` at a rally's reset scans the queued beats for an `ACE!` label; if the server's side has scored `CINE.every` (2) points since its last cinematic (`A.cineCool`), `A.cine` is set. `Cine.step` puts up one tracked shot `A.shot = { kind: 'ace', track }` once the serve routine starts and sets its phase `ph` (bounce → run → hit → ball) from the display state; camera3d `acePose` frames each phase and glides between them (`ACE` rates; tracked shots now also ease their fov). `shot` acts and endScene leave it alone (`Cine.busy`); it ends `CINE.hold` ms after the ace beat. Off with Hype off, reduced motion or the fixed camera. Court labels show again in the `ball` phase; coach tags are hidden in every close-up.
+
 Stride by distance (display only): actors3d `motion` keeps `m.far` (0..1, distance left to the target, `STRIDE.near` 1 m … `far` 5 m, smoothed); the gait cycle length and poses3d `locoPose` leg swing scale with it — long runs take long strides, the last metre small quick steps.
 
 Back bump (display only): `backBumpLook` (playback, at a beat's start) sets `d.bb` when the ball comes to a bumping player who must move ≥ 2 m mostly away from the net; then steer turns them away from the net (yaw π until the swing is done), the bump swings up to `BACK_UP` (poses3d: platform over the head, body leaning back) and resolve meets the ball in front of the turned body. The pass beat restating the bump keeps the decision.

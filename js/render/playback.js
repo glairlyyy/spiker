@@ -99,6 +99,7 @@ const PLAYER_ACTS = new Set(['slide', 'pose', 'jump']);
 /** Start of a beat: set up the tweened acts (slide, jump, ball…) and fire the one-shot ones (instant()). */
 function startBeat(b) {
   Dir.beat(b); // the director (spec §2.15): stages this beat's effects, queues lines
+  Cine.beat(b); // a heroic camera for a big moment (an ace)
   backBumpLook(b);
   for (const a of b.acts) {
     if (a.when === 'end') continue;
@@ -532,6 +533,7 @@ function step(dt) {
   stepEffects(dt);
   camStep(raw);
   Dir.step(raw);
+  Cine.step(raw);
   if (A.done) {
     if (A.cele) stepCelebration(dt);
     return;

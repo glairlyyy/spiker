@@ -27,7 +27,7 @@ function showSay(a) {
 }
 /** Leave a scene: game camera back, lines away. */
 function endScene() {
-  if (A && A.shot) A.shot = null;
+  if (A && A.shot && !Cine.busy()) A.shot = null; // (the cinematic camera ends on its own: render/cine.js)
   const say = document.getElementById('hsay');
   if (say && say.classList.contains('on')) say.classList.remove('on');
 }

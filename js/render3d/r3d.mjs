@@ -366,7 +366,7 @@ function draw() {
     if (!pl.c) continue;
     const pr = P(sx(pl.c.side, 115), -0.035, 0);
     pr.Y += TAG_DROP * pr.s * FIG * 1.02 * birdW();
-    drawCoachTags(pl.c, pr, pr.s * FIG * 1.02);
+    if (!A.shot) drawCoachTags(pl.c, pr, pr.s * FIG * 1.02); // (not in close-up shots)
   }
   Overlay.drawFx(now);
 }

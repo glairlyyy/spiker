@@ -141,6 +141,7 @@ const ACTS_FX = {
   shot(a, d, bs) {
     // staged scene camera (r3d frames it; null = back to the game camera)
     if (a.hype && a.hype > HYPE[G.hype].max) return; // an optional close-up (Hype off)
+    if (Cine.busy()) return; // the cinematic camera has the view
     A.shot = a.kind ? { kind: a.kind, p: a.p, p2: a.p2, el: a.el || null } : null;
     if (a.kind) {
       camRelease();
