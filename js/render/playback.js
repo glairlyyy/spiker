@@ -117,6 +117,7 @@ function startBeat(b) {
           const q = A.disp[id];
           q.pose = 'ready';
           q.bb = null;
+          q.curve = null;
           q.jy = 0;
           q.jmode = null;
           q.fallMs = null;
@@ -202,6 +203,8 @@ function startBeat(b) {
         1000 >
         ap.t0 * b.dur * 0.8;
     hd.app = ap;
+    // a back-row attack with no curve from the beat before: curve round in this beat if there is time (else as above)
+    if (ap.back && !hd.curve && !diving(hd) && hd.jy <= 2) hd.curve = backCurve(hd, ap, ap.t0 * b.dur);
   }
 }
 /** Gravity for players coming down from a jump (m/s²): 1.6× real, so landings feel snappy, not floaty. */
@@ -347,6 +350,10 @@ function applyBeat(b, t) {
     if (d.fallMs != null && d.airV) continue; // coming down from a jump: momentum carries them (stepPlayerTimers)
     if (diving(d) && d.dv.t > d.dv.dur) continue; // on the floor: runs on only once back up (endBeat carries the move)
     if (d.app && !d.waitLand && approachMove(d, t)) continue; // spike approach: run-up, take-off, broad jump
+    if (d.curve && !d.waitLand) {
+      curveMove(d); // a back-row hitter curving round to their run-up (from the beat before the set)
+      continue;
+    }
     if (d.tx === d.sx && d.tz === d.sz) continue;
     if (id === A.digHero && d.waitLand && d.jy <= 1 && (d.landMs == null || d.landMs > 60)) d.waitLand = false; // feet down: go
     if ((d.carry || id === A.digHero) && !d.waitLand) {

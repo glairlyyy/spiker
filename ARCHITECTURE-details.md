@@ -272,6 +272,15 @@ set, `preApproachLook` / `preApproachGo` (at `PREAPP_AT`) send the hitter toward
 spot, away from the net). In the set beat `d.app` drives `approachMove`: run-up → accelerating run to the take-off
 point (a hitter too far to do both goes straight to it: `direct`; a `via` back attack runs its second leg to it) →
 from `t0` a broad jump onto the contact spot, arriving at t = 1. Cleared in `endBeat`.
+Back-row attacks (`spkstyle` pipe — pipe and long back attack; `ap.back`, `ap.deep` = run-up point or end-line `via`) by a
+hitter in front of that depth curve instead (owner, 2026-10-08): `backCurve` builds a cubic Bezier from where they stand —
+out to their side and back, round behind the depth, in to the take-off point — with an arc-length table; `curveMove` runs it
+over the time to `t0` (from `PREAPP_AT` of the beat before, else the set beat) at `s = τ^e`, `e = min(2, fit)` so it
+accelerates but never ends past a sprint. No curve when there isn't time (`fit` < 1.05): the straight run as above.
+`d.curve` is cleared at `t0`, on `reset`, and when the approach ends.
+Facing (actors3d `steer`, `longRun`): a fast (> 2.2 m/s), long (> 2 m left, or of the curve) run that isn't forward turns
+the body to the run direction instead of backpedalling; blockers, setters and a hitter's short retreat to the run-up
+point keep facing the net.
 
 ## Pre-serve routine
 
@@ -495,7 +504,7 @@ count(), dispose() }`, display only, no game randoms): reads `model.life`; one `
    draws one `InstancedMesh` per vehicle kind (bus, van, boat, plane; caps in `VEH`): vehicles keep 1 m right of the line and ride the
    overpass deck with town3d's exported `DECK` ramp; boats circle at sea level; the plane rolls, climbs and shrinks away once per cycle.
    Nature (spec §4.19c, T-223) is `js/map3d/nature3d.mjs` (`createNature(scene, heightAt)` → `{ sync(model), tick(dt, t), count(),
-   dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }] from `NATURE` — a hashed jittered grid, the biome
+dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }] from `NATURE` — a hashed jittered grid, the biome
    by region / sand / ground kind / Shu height (`reliefAt` vs `treeline`) / villages, kept off roads, lots, landmarks, venues, pads,
    the airport and water / fields via a bucket grid; street trees along Wei's main roads; cached with the lots) and
    `model.land.wild` (`MapModel.wild`: the animals' loop centres from NATURE.life anchors). One InstancedMesh per shape (9: pine,

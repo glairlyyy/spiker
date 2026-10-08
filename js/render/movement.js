@@ -51,6 +51,8 @@ function approachOf(b) {
     run = !sl.via;
   return {
     p: ba.to.p,
+    back: b.acts.some(x => x.k === 'spkstyle' && x.p === ba.to.p && x.st === 'pipe'), // back-row attack (pipe / long back)
+    deep: run ? clamp(sl.x + (dir * RUNUP_M) / MX, 20, 980) : sl.via.x, // the run-up depth: run-up point, or the end line
     cx: sl.x,
     cz: sl.z,
     rx: run ? clamp(sl.x + (dir * RUNUP_M) / MX, 20, 980) : null,
@@ -65,14 +67,30 @@ function preApproachLook(b) {
   A.preApp = null;
   const nb = A.beats && A.beats[A.bi + 1],
     ap = nb && !b.scene ? approachOf(nb) : null;
-  if (!ap || ap.rx == null) return;
-  A.preApp = { p: ap.p, rx: ap.rx, rz: ap.rz, touch: b.acts.some(x => x.k === 'ball' && x.to && x.to.p === ap.p && x.when !== 'end') };
+  if (!ap || (ap.rx == null && !ap.back)) return;
+  A.preApp = {
+    p: ap.p,
+    rx: ap.rx,
+    rz: ap.rz,
+    ap,
+    ms: (1 - PREAPP_AT) * b.dur + ap.t0 * nb.dur, // from the go to the take-off (world ms)
+    touch: b.acts.some(x => x.k === 'ball' && x.to && x.to.p === ap.p && x.when !== 'end')
+  };
 }
 function preApproachGo() {
   const g = A.preApp,
     d = A.disp[g.p];
   g.go = true;
   if (g.touch || !d || d.jy > 2 || diving(d)) return; // busy with their own play
+  if (g.ap.back && (d.curve = backCurve(d, g.ap, g.ms))) {
+    d.sx = d.x;
+    d.sz = d.z;
+    d.tx = g.ap.ox; // the move ends at the take-off point (so the beat's end doesn't settle them anywhere else)
+    d.tz = g.ap.oz;
+    d.carry = false;
+    return;
+  }
+  if (g.rx == null) return;
   d.sx = d.x;
   d.sz = d.z;
   d.tx = g.rx;
@@ -87,6 +105,11 @@ function preApproachGo() {
 function approachMove(d, t) {
   const g = d.app,
     dm = g.t0 > g.at ? g.t0 - g.at : 0.01;
+  if (d.curve && t < g.t0) {
+    curveMove(d);
+    return true;
+  }
+  d.curve = null;
   if (t >= g.t0) {
     if (g.fx == null) {
       g.fx = d.x;
@@ -124,6 +147,58 @@ function approachMove(d, t) {
     z0 = g.at > 0 ? g.rz : d.sz;
   capMove(d, lerp(x0, g.ox, k * k), lerp(z0, g.oz, k * k));
   return true;
+}
+/** Back-row curve (owner, 2026-10-08): how far out to the hitter's side and back from the start it swings (m). */
+const CURVE = { side: 1.2, back: 1.5, inSide: 0.5 };
+/**
+ * A back-row attack (pipe, long back attack) by a hitter in front of the run-up depth: instead of backpedalling straight
+ * back and running straight in, a curved sprint — out and back on their side, round behind the run-up point, and in
+ * toward the net — so they take off with momentum. A cubic Bezier from where they stand to the take-off point, followed
+ * by arc length over `ms` (accelerating). null when already at / behind the depth, or when the curve can't be run in time.
+ */
+function backCurve(d, ap, ms) {
+  const dir = Math.sign(ap.cx - NETX) || 1;
+  if (dir * (d.x - ap.deep) > -0.5 / MX) return null; // already at the run-up depth: straight in
+  const side = Math.sign(d.z - ap.oz) || (ap.oz < 0.5 ? 1 : -1),
+    cx = x => clamp(x, 20, 980),
+    cz = z => clamp(z, 0.02, 0.98),
+    pts = [
+      { x: d.x, z: d.z },
+      { x: cx(d.x + (dir * CURVE.back) / MX), z: cz(d.z + (side * CURVE.side) / MZ) },
+      { x: cx(ap.deep + (ap.deep - ap.ox) * 0.8), z: cz(ap.oz + (side * CURVE.inSide) / MZ) },
+      { x: ap.ox, z: ap.oz }
+    ],
+    at = u => {
+      const v = 1 - u,
+        a = v * v * v,
+        b = 3 * v * v * u,
+        c = 3 * v * u * u,
+        e = u * u * u;
+      return { x: a * pts[0].x + b * pts[1].x + c * pts[2].x + e * pts[3].x, z: a * pts[0].z + b * pts[1].z + c * pts[2].z + e * pts[3].z };
+    },
+    lut = [{ u: 0, s: 0, ...pts[0] }];
+  for (let i = 1; i <= 32; i++) {
+    const p = at(i / 32),
+      q = lut[i - 1];
+    lut.push({ u: i / 32, s: q.s + Math.hypot((p.x - q.x) * MX, (p.z - q.z) * MZ), ...p });
+  }
+  const len = lut[32].s,
+    fit = (sprintOf(d) * ms) / 1000 / Math.max(0.1, len); // sprint distance in the time ÷ the loop's length
+  if (fit < 1.05) return null; // no time for the loop: the straight run
+  return { lut, len, ms: Math.max(1, ms), t: 0, e: Math.min(2, fit), s: 0 }; // accelerating, never past a sprint at the end
+}
+/** One frame along the back-row curve: progress accelerates (s = τ^e, e ≤ 2: building momentum) toward the take-off. */
+function curveMove(d) {
+  const c = d.curve;
+  c.t += A.fdt || 16;
+  const s = (c.s = Math.pow(clamp(c.t / c.ms, 0, 1), c.e) * c.len),
+    L = c.lut;
+  let i = 1;
+  while (i < L.length - 1 && L[i].s < s) i++;
+  const a = L[i - 1],
+    b = L[i],
+    k = clamp((s - a.s) / Math.max(1e-6, b.s - a.s), 0, 1);
+  capMove(d, lerp(a.x, b.x, k), lerp(a.z, b.z, k));
 }
 /** Top running speed in m/s (a dive launches ×1.35 faster). */
 const sprintOf = d => (6.5 + 3.5 * (((d.p && d.p.speed) || 60) / 100)) * (d.pose === 'dive' ? 1.35 : 1);

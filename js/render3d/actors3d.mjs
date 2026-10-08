@@ -124,6 +124,17 @@ function foundation(pl, d, mot, pos, dt, fx) {
   }
 }
 
+/**
+ * Running far and fast, on the ground, not blocking or setting (left: metres still to go; along a back-row curve, what is
+ * left of the curve). A hitter's short retreat to the run-up point stays a backpedal.
+ */
+const longRun = (d, mot, left) =>
+  mot.speed > 2.2 &&
+  (d.curve ? d.curve.len - d.curve.s : left) > 2 &&
+  d.jy <= 2 &&
+  d.pose !== 'block' &&
+  d.pose !== 'set' &&
+  !(d.app && !d.curve);
 /** Body yaw (pl.yawOff, relative to facing the net): toward a dive, the way you run, the coach in a huddle, or the ball. */
 function steer(pl, d, pos, face, mot, ballPos, dt) {
   const side = d.side,
@@ -144,6 +155,10 @@ function steer(pl, d, pos, face, mot, ballPos, dt) {
     // dive: the whole body turns to where it launches
     want = toward(d.dv.dx * KX, -d.dv.dz * KZ);
     rate = 14;
+  } else if (longRun(d, mot, left) && Math.abs(toward(mot.vx, mot.vz)) > 0.8) {
+    // a long run that isn't forward (back, or across): turn and run, don't backpedal or shuffle (owner, 2026-10-08)
+    want = toward(mot.vx, mot.vz);
+    rate = 8;
   } else if (free && mot.speed > 0.9 && left > (A.ball.vis ? 2.5 : 0.8)) {
     // going somewhere (back to position, to the bench, to the coach): face the way you run
     want = toward(mot.vx, mot.vz);
