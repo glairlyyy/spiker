@@ -87,7 +87,9 @@ function resolve(to) {
     }
   }
   // a block: at the hand the engine picked (hz, ≈ 0.25 m off the head), not between the two
-  return { x: d.tx + dir * off + dx, z: d.tz + (c === 'block' && to.hz ? to.hz * 0.02 : 0), h: H + dh };
+  // a back bump meets the ball in front of a body turned away from the net (backBumpLook)
+  const fw = c === 'bump' && d.bb ? -dir : dir;
+  return { x: d.tx + fw * off + dx, z: d.tz + (c === 'block' && to.hz ? to.hz * 0.02 : 0), h: H + dh };
 }
 
 /* ---------- acts ---------- */
@@ -97,6 +99,7 @@ const PLAYER_ACTS = new Set(['slide', 'pose', 'jump']);
 /** Start of a beat: set up the tweened acts (slide, jump, ball…) and fire the one-shot ones (instant()). */
 function startBeat(b) {
   Dir.beat(b); // the director (spec §2.15): stages this beat's effects, queues lines
+  backBumpLook(b);
   for (const a of b.acts) {
     if (a.when === 'end') continue;
     if (a.k === 'ball' || a.k === 'hold' || a.k === 'reset') A.bounce = null; // a new touch takes the ball back
@@ -113,6 +116,7 @@ function startBeat(b) {
         for (const id in A.disp) {
           const q = A.disp[id];
           q.pose = 'ready';
+          q.bb = null;
           q.jy = 0;
           q.jmode = null;
           q.fallMs = null;
@@ -226,9 +230,34 @@ function startPose(d, pose, pc, dur) {
   // dive heading: where the player is going, fixed at take-off
   d.dv = pose === 'dive' ? { t: 0, dur, dx: d.tx - d.x, dz: d.tz - d.z } : null;
   if (pose !== 'set') d.setDir = null;
+  if (pose !== 'bump') d.bb = null; // (a bump keeps what backBumpLook decided for this beat)
   d.pose = pose;
   d.pAge = 0;
   if (d.jy <= 0) d.landMs = null;
+}
+/**
+ * Back bump (owner, 2026-10-08; display only): a passer whose ball is well behind them doesn't backpedal to it — they turn,
+ * run back and bump it over their head toward the net. Decided per bump at the start of its beat (before the ball act
+ * resolves its contact): the move is mostly away from the net and at least BACK_BUMP.m metres. Sets d.bb.
+ */
+const BACK_BUMP = { m: 2, lat: 1.2 };
+function backBumpLook(b) {
+  for (const a of b.acts) {
+    if (a.k !== 'pose' || a.pose !== 'bump' || a.when === 'end') continue;
+    const d = A.disp[a.p];
+    // only where the ball comes to them (the pass beat restates the bump: it keeps the decision)
+    if (!d || !b.acts.some(x => x.k === 'ball' && x.to && x.to.p === a.p)) continue;
+    if (d.jy > 2 || diving(d)) {
+      d.bb = false;
+      continue;
+    }
+    const sl = b.acts.find(x => x.k === 'slide' && x.p === a.p),
+      tx = sl ? sl.x : d.tx,
+      tz = sl ? sl.z : d.tz,
+      back = -(tx - d.x) * DIR(d.side) * MX, // metres away from the net
+      lat = Math.abs(tz - d.z) * MZ;
+    d.bb = back >= BACK_BUMP.m && back >= lat * BACK_BUMP.lat;
+  }
 }
 /** Strongest speed-up of a hard hit along its flight (u − acc·u·(1−u): must stay < 1 to keep the ball moving forward). */
 const BALL_ACC_MAX = 0.7;

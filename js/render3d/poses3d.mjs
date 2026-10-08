@@ -133,6 +133,19 @@ const PLATFORM_UP = C({
   al: [V(-0.28, -0.22, 0.93), V(-0.28, -0.2, 0.94), V(-0.28, -0.16, 0.95), 0, -2.2],
   ar: undefined
 });
+// back bump: turned away from the net, the platform swings up past the face and the body extends and leans back,
+// sending the ball over the head
+const BACK_UP = C({
+  ...PLATFORM,
+  hp: 0.05,
+  sp: -0.22,
+  cp: -0.12,
+  hd: -0.85,
+  L: leg(0.25, 0.35, 0, 0.26),
+  R: leg(0.2, 0.3, 0, 0.26),
+  al: [V(-0.28, 0.62, 0.73), V(-0.28, 0.7, 0.66), V(-0.28, 0.78, 0.56), 0, -2.2],
+  ar: undefined
+});
 const WINDOW = {
   hp: 0.14,
   sp: 0,
@@ -458,10 +471,11 @@ export function playerPose(d, mood, m) {
   else if (pose === 'serve') out = servePose(d, m);
   else if (pose === 'bump' && !air) {
     const u = d.swing == null ? 0 : clamp(d.swing / 170, 0, 1),
-      rel = d.swing != null && d.swing > 520;
-    if (rel) out = mix(PLATFORM_UP, READY, clamp((d.swing - 520) / 400, 0, 1));
+      rel = d.swing != null && d.swing > 520,
+      UP = d.bb ? BACK_UP : PLATFORM_UP; // a back bump: the platform swings up over the head
+    if (rel) out = mix(UP, READY, clamp((d.swing - 520) / 400, 0, 1));
     else {
-      out = mix(PLATFORM, PLATFORM_UP, u);
+      out = mix(PLATFORM, UP, u);
       if (mk > 0 && d.swing == null) {
         // running to the ball: a real run while far, settling into the platform as the player arrives
         const run = clamp((m.speed - 2) / 1.5, 0, 1);

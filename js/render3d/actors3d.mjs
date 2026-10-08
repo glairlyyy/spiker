@@ -136,7 +136,11 @@ function steer(pl, d, pos, face, mot, ballPos, dt) {
     free = !d.pose || d.pose === 'ready' || d.pose === 'huddle' || d.pose === 'preserve' || poseDone(d);
   let want = 0,
     rate = 6;
-  if (d.pose === 'dive' && d.dv && !poseDone(d) && Math.hypot(d.dv.dx * KX, d.dv.dz * KZ) > 0.4) {
+  if (d.pose === 'bump' && d.bb && !poseDone(d) && (d.swing == null || d.swing < 520)) {
+    // back bump (playback backBumpLook): turned away from the net — run back, bump it over the head; turns round after
+    want = Math.PI;
+    rate = 10;
+  } else if (d.pose === 'dive' && d.dv && !poseDone(d) && Math.hypot(d.dv.dx * KX, d.dv.dz * KZ) > 0.4) {
     // dive: the whole body turns to where it launches
     want = toward(d.dv.dx * KX, -d.dv.dz * KZ);
     rate = 14;

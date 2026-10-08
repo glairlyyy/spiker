@@ -283,6 +283,8 @@ timeline: it places the ball (two bounces off the right hand → catch to the ch
 in the left hand at eye height toward the other court) and stores the phase in `d.psvB`, which `preservePose`
 (poses3d) follows; `pose.hand` tells `reachForBall` which hand(s) meet the ball.
 
+Back bump (display only): `backBumpLook` (playback, at a beat's start) sets `d.bb` when the ball comes to a bumping player who must move ≥ 2 m mostly away from the net; then steer turns them away from the net (yaw π until the swing is done), the bump swings up to `BACK_UP` (poses3d: platform over the head, body leaning back) and resolve meets the ball in front of the turned body. The pass beat restating the bump keeps the decision.
+
 Contacts at the hand: `A.handTouch` ({ p, c, hz, b }, playback `startBall`) → `handTouch` in r3d pulls the drawn ball
 onto the real hand(s) over the last 35% of the flight (block: the hand on the engine's `hz` side — rally-defense `block()` tags the target with the court-z side the spike crosses on, no draws; actors3d `reachForBall` then bends only that arm (`blockHand`), the other stays in the block pose; spike / serve: the right hand).
 Jumps keep momentum (`airMomentum`, playback): a share of the take-off ground speed (`AIR_KEEP`, ≤ `AIR_MAX` m/s)
