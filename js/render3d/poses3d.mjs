@@ -10,6 +10,19 @@ import { RA, spikePose, servePose } from './poses3d-attack.mjs'; // spike / swin
 const V = (x, y, z) => new THREE.Vector3(x, y, z).normalize();
 const leg = (a, k, f = 0, s = 0.1) => ({ a, k, f, s });
 export const sm = t => t * t * (3 - 2 * t);
+/**
+ * The crouch before a jump goes deeper the higher the player jumps (owner 2026-10-08): × 1 up to Jump 40, × 1.5 at Jump 99.
+ * `deepen(pose, k)` scales the hip drop and both legs' hip / knee bend of a load pose (knees capped at 2.3 rad).
+ */
+export const squatK = d => 1 + 0.5 * clamp((((d.p && d.p.jump) || 50) - 40) / 59, 0, 1);
+const deepLeg = (l, k) => (l ? { ...l, a: l.a * k, k: Math.min(2.3, l.k * k) } : l);
+// (the joint angles take a share of k: hip drop and bent knees compound, and the body should end up ~k × as low, not more)
+export const deepen = (p, k) => {
+  if (k === 1) return p;
+  const j = 1 + (k - 1) * SQUAT_JOINT;
+  return { ...p, hp: p.hp * k, L: deepLeg(p.L, j), R: deepLeg(p.R, j) };
+};
+const SQUAT_JOINT = 0.3;
 export const mixN = (a, b, t) => (a ?? 0) + ((b ?? 0) - (a ?? 0)) * t;
 const mixV = (a, b, t) => a.clone().lerp(b, t).normalize();
 export const mixArm = (a, b, t) => [
@@ -486,7 +499,10 @@ export function playerPose(d, mood, m) {
     out.face = { relaxed: 0.3 };
   } else if (pose === 'block') {
     const pr = Math.min(1, d.jy / 40),
-      prep = { hp: 0.12, sp: 0.02, hd: -0.2, L: leg(0.4, 0.75, 0, 0.16), R: leg(0.4, 0.75, 0, 0.16), al: BLOCK_PREP, curl: 0.05 },
+      prep = deepen(
+        { hp: 0.12, sp: 0.02, hd: -0.2, L: leg(0.4, 0.75, 0, 0.16), R: leg(0.4, 0.75, 0, 0.16), al: BLOCK_PREP, curl: 0.05 },
+        squatK(d)
+      ),
       up = { hp: 0.05, sp: 0.08, hd: -0.1, L: leg(0.05, 0.1, 0.7, 0.14), R: leg(0.05, 0.1, 0.7, 0.14), al: BLOCK_UP, curl: 0.02 };
     out = mix(prep, up, pr);
     if (mk > 0 && pr < 0.1) {

@@ -13,6 +13,8 @@ import {
   mixLeg,
   mix,
   C,
+  deepen,
+  squatK,
   track,
   STAND,
   DOWN_ARM,
@@ -183,16 +185,22 @@ export function spikePose(d, m) {
       al: [V(0.15, 0.35, -0.92), V(0.12, 0.45, -0.88), V(0.1, 0.5, -0.86)],
       curl: 0.2
     });
-    const LOAD = C({
-      hp: 0.62,
-      sp: 0.28,
-      cp: 0.08,
-      hd: -0.8,
-      L: leg(1.1, 1.65, -0.1, 0.14),
-      R: leg(1.0, 1.6, -0.1, 0.14),
-      al: [V(0.15, -0.6, -0.78), V(0.12, -0.55, -0.83), V(0.1, -0.4, -0.9)],
-      curl: 0.2
-    });
+    // (deeper for higher jumpers: squatK)
+    const LOAD = C(
+      deepen(
+        {
+          hp: 0.62,
+          sp: 0.28,
+          cp: 0.08,
+          hd: -0.8,
+          L: leg(1.1, 1.65, -0.1, 0.14),
+          R: leg(1.0, 1.6, -0.1, 0.14),
+          al: [V(0.15, -0.6, -0.78), V(0.12, -0.55, -0.83), V(0.1, -0.4, -0.9)],
+          curl: 0.2
+        },
+        squatK(d)
+      )
+    );
     const TAKE = C({
       hp: 0.25,
       sp: 0.1,
