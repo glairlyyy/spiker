@@ -7,6 +7,7 @@ import { poseDone, playerPose, coachPose } from './poses3d.mjs';
 import { celeMs } from './poses3d-cele.mjs';
 import { KH, KX, KZ, W } from './units3d.mjs';
 import { cam, povFadeId } from './camera3d.mjs';
+import { footIK, armIK } from './ik3d.mjs';
 
 const tmp = new THREE.Vector3(),
   tmp2 = new THREE.Vector3();
@@ -152,8 +153,13 @@ export function posePlayer(pl, dt, ballPos, fx) {
   const fast = ((d.pose === 'spike' || d.pose === 'serve') && d.spk != null) || d.pose === 'dive';
   smoothBones(pl, dt, fast ? 45 : mot.speed > 1 ? 26 : 16);
   groundSnap(pl, (d.jy || 0) * KH + (pose.lift || 0), pose.lying);
+  footIK(pl, d, pose, dt); // feet planted on the floor (ik3d.mjs)
+  // hands / forearms on the ball (ik3d.mjs): one hand for spikes, serves, dives and a one-hand block, else both
+  const bh = blockHand(pl, d);
+  armIK(pl, d, pose, ballPos, bh || (pose.hand ? pose.hand : ['spike', 'serve', 'dive'].includes(d.pose) ? 'right' : 'both'));
+  pl.lastPose = pose; // (the Animation lab and the QA hooks read it)
   if (A.animLab) {
-    pl.lastPose = pose; // the Animation lab keeps it (anim3d animCapture)
+    // the Animation lab keeps it (anim3d animCapture)
     pl.lastLift = (d.jy || 0) * KH + (pose.lift || 0);
   }
   setFace(pl, pose.face || {}, dt);
@@ -273,7 +279,8 @@ function reachForBall(pl, d, pose, ballPos) {
     pose.al = bendArm(pose.al, torsoDir(pl, ballPos, 'left').dir, pose.aimL);
     applyPose(pl, pose);
   }
-  if (w > 0.01 && A.ball.vis) {
+  if (w > 0.01 && A.ball.vis && !VFX.ik.arms) {
+    // (with VFX.ik.arms the hands go to the ball by IK after the grounding instead: armIK)
     root.updateMatrixWorld(true);
     // one hand for spikes, serves and dives; a pose may say which (pose.hand: 'left' | 'right' | 'both');
     // a block the ball meets on one hand (the engine's hz, r3d handTouch): only that arm reaches, the other stays up

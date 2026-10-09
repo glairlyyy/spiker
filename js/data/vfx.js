@@ -120,6 +120,17 @@ const VFX_DEF = {
       ink: ['#ff1630', 0, 0, 0, 'Ink glow colour (no element)']
     }
   },
+  ik: {
+    name: 'IK (feet planted, hands on the ball)',
+    p: {
+      feet: [1, 0, 1, 1, 'Foot planting'],
+      slip: [0.16, 0.04, 0.5, 0.01, 'A planted foot steps after sliding (m)'],
+      step: [0.12, 0.04, 0.4, 0.01, 'Step time (s)'],
+      arc: [0.05, 0, 0.2, 0.01, 'Step lift (m)'],
+      down: [0.035, 0.005, 0.12, 0.005, 'A foot is down below (m)'],
+      arms: [1, 0, 1, 1, 'Hands / forearms on the ball']
+    }
+  },
   slowcd: {
     name: 'Slow-motion cooldown (per team, per kind)',
     p: {

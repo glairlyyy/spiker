@@ -508,6 +508,31 @@ export const api = {
   },
   swapActor: (outId, d) => world && swapActor(world, outId, d), // a substitution: the figure of the player going off plays the incoming one
   models: () => (world && world.models) || [],
+  // test hook: every player's feet (world) and the foot's height when standing (QA of the foot planting)
+  qaFeet: () =>
+    world
+      ? world.people
+          .filter(pl => pl.d && pl.root.visible)
+          .map(pl => ({
+            id: pl.d.p.id,
+            c: pl.footRest * pl.scale,
+            y: pl.root.position.y,
+            f: ['leftFoot', 'rightFoot'].map(n => pl.bone(n).getWorldPosition(new THREE.Vector3()).toArray())
+          }))
+      : [],
+  // test hook: players at a contact (pose.contact > 0.6): their pose and the nearest hand's distance to the ball (m)
+  qaHands: () => {
+    if (!world || !A.ball.vis) return [];
+    const b = W(A.ball.x, A.ball.z, A.ball.h),
+      cb = A.beats && A.beats[A.bi],
+      at = cb && A.el / Math.max(1, cb.dur) > 0.6; // the ball is arriving (the touch is the closest point)
+    return world.people
+      .filter(pl => at && pl.d && pl.d.p.id === A.lastP && pl.lastPose)
+      .map(pl => ({
+        pose: pl.d.pose,
+        dist: Math.min(...['leftHand', 'rightHand'].map(n => pl.bone(n).getWorldPosition(new THREE.Vector3()).distanceTo(b)))
+      }));
+  },
   poseAll: dt => world && world.people.forEach(pl => pl.d && posePlayer(pl, dt, W(A.ball.x, A.ball.z, A.ball.h), world.fx)), // test hook: fast-forward posing
   get ballPos() {
     return world ? world.ball.position : null; // the drawn ball (test hook)
