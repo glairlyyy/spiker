@@ -295,7 +295,7 @@ function legDirs(l) {
   const s = l.s ?? 0.08;
   return [
     new THREE.Vector3(s, -Math.cos(l.a), Math.sin(l.a)).normalize(),
-    new THREE.Vector3(s * 0.4, -Math.cos(l.a - l.k), Math.sin(l.a - l.k)).normalize()
+    new THREE.Vector3(l.ss ?? s * 0.4, -Math.cos(l.a - l.k), Math.sin(l.a - l.k)).normalize() // ss: the shin's own splay
   ];
 }
 /** Rotation taking `rest` onto `dir`, then a twist of `tw` radians about `dir`. */

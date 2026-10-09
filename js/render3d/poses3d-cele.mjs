@@ -6,18 +6,13 @@
 import * as THREE from 'three';
 import { mirror } from './players3d.mjs';
 import { clamp } from '../map3d/geo3d.mjs';
-import { mixArm } from './poses3d.mjs'; // (import cycle: used inside functions only — twists blend by the real roll)
+import { mixArm, mixLeg } from './poses3d.mjs'; // (import cycle: used inside functions only — twists blend by the real roll)
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z).normalize();
 const leg = (a, k, f = 0, s = 0.12) => ({ a, k, f, s });
 const sm = t => t * t * (3 - 2 * t);
 const lerp = (a, b, t) => a + (b - a) * t;
-const lg = (a, b, t) => ({
-  a: lerp(a.a, b.a, t),
-  k: lerp(a.k, b.k, t),
-  f: lerp(a.f || 0, b.f || 0, t),
-  s: lerp(a.s ?? 0.12, b.s ?? 0.12, t)
-});
+const lg = (a, b, t) => mixLeg(a, b, t); // (poses3d: also the shin splay)
 const NUM = ['hp', 'sp', 'cp', 'hd', 'hy', 'hroll', 'tw', 'shrug', 'curl', 'curlL', 'curlR', 'lift', 'yaw'];
 /** Blend two key poses (numbers, legs, arms; `ar` falls back to the mirror of `al`). */
 function mixK(A, B, t) {

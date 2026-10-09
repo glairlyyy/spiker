@@ -209,7 +209,7 @@ function animCode() {
   if (!p) return '';
   const n = v => animR(v),
     V3 = v => `V(${n(v.x)}, ${n(v.y)}, ${n(v.z)})`,
-    leg = l => `leg(${n(l.a)}, ${n(l.k)}, ${n(l.f || 0)}, ${n(l.s ?? 0.08)})`,
+    leg = l => `leg(${n(l.a)}, ${n(l.k)}, ${n(l.f || 0)}, ${n(l.s ?? 0.08)}${l.ss != null ? `, ${n(l.ss)}` : ''})`,
     arm = a => `[${a.slice(0, 3).map(V3).join(', ')}${a[3] || a[4] ? `, ${n(a[3] || 0)}, ${n(a[4] || 0)}` : ''}]`,
     parts = [];
   for (const [k] of ANIM_NUM) if (p[k] != null && typeof p[k] === 'number') parts.push(`${k}: ${n(p[k])}`);

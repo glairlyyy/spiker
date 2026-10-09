@@ -277,6 +277,10 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     dive / one-hand block — the palm on it; not when the arm would have to swing round (then the pose's own arm).
   - **No hand spin**: arm twists blend by the real rotation (shortest turn), never a full circle between two keys.
   - Tuning: VFX panel → IK (feet / arms on-off, slip, step time and lift, down heights walking / standing, plant-below speed).
+  - **Idle stances** (owner, 2026-10-10) **[built]**: ready — feet wider than the shoulders, right foot a little ahead, knees
+    over the toes, heels light, hips back with a flat back leaning forward, arms relaxed in front with the hands apart (the
+    grip forms on the pass), a soft bounce in the knees and a slow weight shift; standing — weight on one leg, the other knee
+    soft, arms hanging loose with a slight bend, breathing and a slow sway. Each player on their own rhythm.
   - **Secondary motion** (owner, 2026-10-10) **[built]**: walking, the hips shift over the foot carrying the weight and the
     pelvis drops on the swing side (chest level; less when running); on a sudden turn the hips lead and the shoulders follow,
     and a runner leans into the turn; running, the head stays level and on the ball (the gait's bob and twist filtered out);

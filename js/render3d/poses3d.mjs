@@ -9,7 +9,7 @@ import { RA, spikePose, servePose } from './poses3d-attack.mjs'; // spike / swin
 import { celePose } from './poses3d-cele.mjs'; // point celebrations (owner, 2026-10-09)
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z).normalize();
-const leg = (a, k, f = 0, s = 0.1) => ({ a, k, f, s });
+const leg = (a, k, f = 0, s = 0.1, ss) => (ss == null ? { a, k, f, s } : { a, k, f, s, ss }); // ss: the shin's own splay
 export const sm = t => t * t * (3 - 2 * t);
 /**
  * The crouch before a jump goes deeper the higher the player jumps (owner 2026-10-08): × 1 up to Jump 40, × 1.5 at Jump 99.
@@ -73,12 +73,11 @@ export const mixArm = (a, b, t, side = 1) => {
   ];
 };
 export const mixArmR = (a, b, t) => mixArm(a, b, t, -1);
-export const mixLeg = (a, b, t) => ({
-  a: mixN(a.a, b.a, t),
-  k: mixN(a.k, b.k, t),
-  f: mixN(a.f, b.f, t),
-  s: mixN(a.s ?? 0.1, b.s ?? 0.1, t)
-});
+export const mixLeg = (a, b, t) => {
+  const o = { a: mixN(a.a, b.a, t), k: mixN(a.k, b.k, t), f: mixN(a.f, b.f, t), s: mixN(a.s ?? 0.1, b.s ?? 0.1, t) };
+  if (a.ss != null || b.ss != null) o.ss = mixN(a.ss ?? (a.s ?? 0.1) * 0.4, b.ss ?? (b.s ?? 0.1) * 0.4, t);
+  return o;
+};
 const NUMS = ['hp', 'sp', 'cp', 'tw', 'hd', 'hy', 'hyaw', 'hroll', 'shrug', 'curl', 'curlL', 'curlR', 'sroll', 'lift', 'sway'];
 /** Setter release motion by set direction: k = release progress 0..1, lean = body angle, arms = end pose. */
 function setMotion(d) {
@@ -138,19 +137,35 @@ function cyc(keys, ph) {
 
 // ---------- base poses ----------
 export const DOWN_ARM = [V(0.22, -1, 0.05), V(0.16, -1, 0.3), V(0.1, -1, 0.35)];
-export const STAND = { hp: 0.04, sp: 0.02, L: leg(0.1, 0.16), R: leg(0.02, 0.1), al: DOWN_ARM, curl: 0.4 };
-// receive-ready: low, weight forward, arms long and low in front already in the passing grip — one hand laid in the
-// other, the fingers of the bottom hand wrapped over it, thumbs side by side (curlR wraps, curlL lies flat)
+// standing idle (owner, 2026-10-10: it looked like a mannequin): weight on the right leg, the left knee soft and a little
+// forward, the pelvis dropping on the free side with the chest straight over it, arms hanging loose with a slight bend
+export const STAND = {
+  hp: 0.03,
+  sp: 0.04,
+  cp: -0.02,
+  hd: 0.05,
+  hroll: -0.05,
+  sroll: 0.07,
+  hyaw: 0.06,
+  tw: -0.06,
+  L: leg(0.14, 0.3, 0.06, 0.16, 0.05),
+  R: leg(-0.02, 0.06, 0, 0.1, 0.06),
+  al: [V(0.26, -1, 0), V(0.14, -0.92, 0.36), V(0.08, -0.9, 0.42)],
+  ar: [V(-0.22, -1, -0.02), V(-0.12, -0.94, 0.3), V(-0.08, -0.92, 0.36)],
+  curl: 0.45
+};
+// receive-ready (owner, 2026-10-10: the old one sat in a deep squat, feet narrow, knees in, arms locked straight out in the
+// grip): feet wider than the shoulders, the right foot a little ahead, knees bent over the toes and heels light, hips back
+// with a flat back leaning well forward, arms relaxed out in front, hands apart and open (the grip forms on the pass)
 export const READY = C({
-  hp: 0.62,
+  hp: 0.7,
   sp: 0.16,
-  cp: 0.05,
-  hd: -0.55,
-  L: leg(1.05, 1.5, 0, 0.24),
-  R: leg(0.9, 1.4, 0, 0.24),
-  al: [V(-0.1, -0.72, 0.68), V(-0.3, -0.6, 0.74), V(-0.3, -0.52, 0.8), 0, -2.2],
-  curlL: 0.2,
-  curlR: 0.6,
+  cp: 0.06,
+  hd: -0.7,
+  L: leg(0.9, 1.35, 0.15, 0.28, 0.26),
+  R: leg(1.02, 1.42, 0.15, 0.28, 0.26),
+  al: [V(0.16, -0.62, 0.76), V(-0.02, -0.38, 0.92), V(-0.05, -0.33, 0.94), 0, -0.7],
+  curl: 0.35,
   fsplit: 0.45
 });
 const PLATFORM = C({
@@ -310,6 +325,39 @@ function forwardGait(m, sp, ph) {
   });
 }
 const SHUFFLE = { side: 1, back: 0 };
+/**
+ * Alive while waiting (owner, 2026-10-10; was a quick hip pump): ready — a soft bounce in the knees (the feet stay planted;
+ * the hips ride it) and a slow weight shift side to side; standing — breathing and a slow sway. Each player on their own
+ * phase (shirt number); wall-clock time, presentation only.
+ */
+function idleReady(d) {
+  const t = performance.now() / 1000,
+    ph = (d.p.num || 0) * 1.7,
+    b = Math.sin(t * 5.2 + ph), // the bounce, ~0.8 Hz
+    w = Math.sin(t * 0.9 + ph); // the weight shift, ~7 s
+  return {
+    ...READY,
+    hp: READY.hp + 0.03 * b,
+    L: { ...READY.L, k: READY.L.k + 0.07 * b + 0.05 * w, a: READY.L.a + 0.04 * b },
+    R: { ...READY.R, k: READY.R.k + 0.07 * b - 0.05 * w, a: READY.R.a + 0.04 * b },
+    hroll: 0.025 * w,
+    sroll: -0.025 * w
+  };
+}
+function idleStand(d) {
+  const t = performance.now() / 1000,
+    ph = (d.p.num || 0) * 1.7,
+    br = Math.sin(t * 1.6 + ph), // breathing, ~4 s
+    sw = Math.sin(t * 0.45 + ph); // a slow sway
+  return {
+    ...STAND,
+    sp: STAND.sp + 0.012 * br,
+    cp: STAND.cp - 0.012 * br,
+    shrug: 0.015 * br,
+    hroll: STAND.hroll + 0.015 * sw,
+    sroll: STAND.sroll - 0.015 * sw
+  };
+}
 export const moving = m => m && m.speed > 0.35;
 export const moveMix = m => (m ? clamp((m.speed - 0.35) / 1.1, 0, 1) : 0);
 
@@ -647,8 +695,7 @@ export function playerPose(d, mood, m) {
     };
   else if (air) out = { hp: 0, sp: 0, L: leg(0.4, 0.9, 0.5), R: leg(0.1, 1.1, 0.5), al: [V(0.6, 0.2, 0.3), V(0.5, 0.3, 0.5)], curl: 0.4 };
   else {
-    const stance =
-      pose === 'ready' ? P(READY, { hp: READY.hp + Math.abs(Math.sin(performance.now() * 0.007 + d.p.num * 0.9)) * 0.06 }) : STAND;
+    const stance = pose === 'ready' ? idleReady(d) : idleStand(d);
     out = mk > 0 ? mix(stance, locoPose(m), mk) : stance;
   }
   // get back up after a dive
