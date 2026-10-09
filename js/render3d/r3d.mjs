@@ -533,6 +533,23 @@ export const api = {
         dist: Math.min(...['leftHand', 'rightHand'].map(n => pl.bone(n).getWorldPosition(new THREE.Vector3()).distanceTo(b)))
       }));
   },
+  // test hook: the world rotation of each hand of the player the ball is going to (QA of hand spin at contacts)
+  qaHandRot: () => {
+    const pl = world && world.people.find(q => q.d && q.d.p.id === A.lastP);
+    if (!pl) return null;
+    // each hand: its world rotation and the forearm direction (elbow → wrist), to tell a twist about the arm from a swing
+    return ['left', 'right'].map(s => {
+      const e = pl.bone(s + 'LowerArm').getWorldPosition(new THREE.Vector3()),
+        h = pl.bone(s + 'Hand').getWorldPosition(new THREE.Vector3());
+      return [
+        ...pl
+          .bone(s + 'Hand')
+          .getWorldQuaternion(new THREE.Quaternion())
+          .toArray(),
+        ...h.sub(e).normalize().toArray()
+      ];
+    });
+  },
   poseAll: dt => world && world.people.forEach(pl => pl.d && posePlayer(pl, dt, W(A.ball.x, A.ball.z, A.ball.h), world.fx)), // test hook: fast-forward posing
   get ballPos() {
     return world ? world.ball.position : null; // the drawn ball (test hook)

@@ -10,6 +10,7 @@ import {
   sm,
   mixN,
   mixArm,
+  mixArmR,
   mixLeg,
   mix,
   C,
@@ -46,7 +47,8 @@ function palmTwist(dir, palm) {
 }
 /** Right-arm key: [upper, fore, hand, twistUpper, twistFore] with the palm facing `palm` (torso space). */
 export const RA = (u, f, h, palm) => {
-  const t = palmTwist(h, palm);
+  let t = palmTwist(h, palm);
+  if (t < -Math.PI / 2) t += 2 * Math.PI; // one branch for every key (−π/2..3π/2): the upper-arm half-twist then agrees between keys
   return [u, f, h, t * 0.5, t];
 };
 // Swing progress e (0..1) with ball contact at CE. Before contact the swing takes swingLead(d) ms (the playback starts
@@ -238,7 +240,7 @@ export function spikePose(d, m) {
     // 1. rising: both arms swing up, then the bow: non-hitting arm points at the ball, hitting elbow drawn back high
     const takeK = clamp(u * 3, 0, 1),
       draw = sty === 'quick' ? clamp(u * 2.2, 0, 1) : sm(clamp((u - 0.15) / 0.55, 0, 1));
-    const rA = draw > 0 ? mixArm(mirror(ARMS_UP), keys[0][1], draw) : mixArm(mirror(ARMS_LOW), mirror(ARMS_UP), takeK),
+    const rA = draw > 0 ? mixArm(mirror(ARMS_UP), keys[0][1], draw, -1) : mixArm(mirror(ARMS_LOW), mirror(ARMS_UP), takeK, -1),
       lA = draw > 0 ? mixArm(ARMS_UP, UP_L, draw) : mixArm(ARMS_LOW, ARMS_UP, takeK);
     const body = mixT({ hp: -0.05, sp: 0.05, cp: 0, tw: 0, hd: -0.6 }, bowT, draw);
     return {
@@ -267,7 +269,7 @@ export function spikePose(d, m) {
       cp: tor0.cp - 0.42 * held + 0.24 * pike,
       hd: tor0.hd - 0.35 * held
     },
-    rA = track(keys, e, mixArm),
+    rA = track(keys, e, mixArmR),
     lA = track(LKEYS, e, mixArm);
   const legK = sm(clamp((e - 0.1) / 0.35, 0, 1)),
     down = e > CE ? sm(clamp(1 - u / 0.5, 0, 1)) : 0;
@@ -317,7 +319,7 @@ export function servePose(d, m) {
     return fin({
       ...base,
       al: mixArm([V(0.2, -0.3, 0.93), V(0.1, -0.1, 1), V(0.1, 0, 1)], TOSS_L, t1),
-      ar: mixArm(mirror(DOWN_ARM), COCK_SERVE, kk),
+      ar: mixArm(mirror(DOWN_ARM), COCK_SERVE, kk, -1),
       tw: -0.5 * kk,
       hd: -0.35 - 0.3 * t1
     });
@@ -332,7 +334,7 @@ export function servePose(d, m) {
     L: mixLeg(base.L, leg(0.5, 0.75, 0, 0.12), dip),
     R: mixLeg(base.R, leg(0.05, 0.6, 0, 0.12), dip),
     al: mixArm(TOSS_L, PULL_L, clamp(e * 1.4, 0, 1)),
-    ar: e < 0.42 ? mixArm(COCK_SERVE, FLOAT_HIT, sm(e / 0.42)) : mixArm(FLOAT_HIT, PUNCH_R, (e - 0.42) / 0.58),
+    ar: e < 0.42 ? mixArm(COCK_SERVE, FLOAT_HIT, sm(e / 0.42), -1) : mixArm(FLOAT_HIT, PUNCH_R, (e - 0.42) / 0.58, -1),
     tw: e < 0.42 ? mixN(-0.5, 0, e / 0.42) : 0.2,
     sp: (e < 0.42 ? -0.1 : 0.12) + 0.08 * dip,
     contact: clamp(1 - Math.abs(e - 0.42) / 0.2, 0, 1)

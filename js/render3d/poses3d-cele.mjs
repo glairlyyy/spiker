@@ -6,19 +6,12 @@
 import * as THREE from 'three';
 import { mirror } from './players3d.mjs';
 import { clamp } from '../map3d/geo3d.mjs';
+import { mixArm } from './poses3d.mjs'; // (import cycle: used inside functions only — twists blend by the real roll)
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z).normalize();
 const leg = (a, k, f = 0, s = 0.12) => ({ a, k, f, s });
 const sm = t => t * t * (3 - 2 * t);
 const lerp = (a, b, t) => a + (b - a) * t;
-const lv = (a, b, t) => a.clone().lerp(b, t).normalize();
-const arm = (a, b, t) => [
-  lv(a[0], b[0], t),
-  lv(a[1], b[1], t),
-  lv(a[2] || a[1], b[2] || b[1], t),
-  lerp(a[3] || 0, b[3] || 0, t),
-  lerp(a[4] || 0, b[4] || 0, t)
-];
 const lg = (a, b, t) => ({
   a: lerp(a.a, b.a, t),
   k: lerp(a.k, b.k, t),
@@ -32,8 +25,8 @@ function mixK(A, B, t) {
   for (const k of NUM) o[k] = lerp(A[k] ?? 0, B[k] ?? 0, t);
   o.L = lg(A.L, B.L, t);
   o.R = lg(A.R, B.R, t);
-  o.al = arm(A.al, B.al, t);
-  o.ar = arm(A.ar || mirror(A.al), B.ar || mirror(B.al), t);
+  o.al = mixArm(A.al, B.al, t);
+  o.ar = mixArm(A.ar || mirror(A.al), B.ar || mirror(B.al), t, -1);
   o.face = t < 0.5 ? A.face : B.face;
   return o;
 }

@@ -26,13 +26,53 @@ export const deepen = (p, k) => {
 const SQUAT_JOINT = 0.3;
 export const mixN = (a, b, t) => (a ?? 0) + ((b ?? 0) - (a ?? 0)) * t;
 const mixV = (a, b, t) => a.clone().lerp(b, t).normalize();
-export const mixArm = (a, b, t) => [
-  mixV(a[0], b[0], t),
-  mixV(a[1], b[1], t),
-  mixV(a[2] || a[1], b[2] || b[1], t),
-  mixN(a[3], b[3], t),
-  mixN(a[4], b[4], t)
-];
+// Arm twists blend by the bone's real roll, not by the number (owner, 2026-10-09: hands spun at touches and spikes): the
+// twist is a roll about a direction that is itself moving, and two keys can hold the same palm with twists far apart, so
+// lerping the numbers could turn a hand a full circle. mixTwist slerps the two end rotations (the shortest roll) and reads
+// the twist back about the blended direction, taking the value nearest the plain lerp (the ends stay exactly the keys').
+const RESTS = { 1: new THREE.Vector3(1, 0, 0), '-1': new THREE.Vector3(-1, 0, 0) }, // VRM rest: left arm +x, right −x; palm down
+  PALM0 = new THREE.Vector3(0, -1, 0),
+  qa = new THREE.Quaternion(),
+  qb = new THREE.Quaternion(),
+  qr = new THREE.Quaternion(),
+  pv = new THREE.Vector3(),
+  p0 = new THREE.Vector3(),
+  dn = new THREE.Vector3();
+const wrapPi = x => x - 2 * Math.PI * Math.round(x / (2 * Math.PI));
+/** applyPose's bone rotation (players3d aim): rest onto dir, then `tw` about dir. Into q. */
+function aimQ(q, rest, dir, tw) {
+  dn.copy(dir).normalize();
+  q.setFromUnitVectors(rest, dn);
+  if (tw) q.premultiply(qr.setFromAxisAngle(dn, tw));
+  return q;
+}
+function mixTwist(rest, da, ta = 0, db, tb = 0, d, t) {
+  const lin = ta + (tb - ta) * t;
+  if (t <= 0 || t >= 1 || Math.abs(wrapPi(tb - ta)) < 1e-4) return lin;
+  aimQ(qa, rest, da, ta).slerp(aimQ(qb, rest, db, tb), t);
+  pv.copy(PALM0).applyQuaternion(qa).projectOnPlane(d);
+  aimQ(qb, rest, d, 0);
+  p0.copy(PALM0).applyQuaternion(qb).projectOnPlane(d);
+  if (pv.lengthSq() < 1e-6 || p0.lengthSq() < 1e-6) return lin;
+  pv.normalize();
+  p0.normalize();
+  const tw = Math.atan2(dn.crossVectors(p0, pv).dot(d), p0.dot(pv));
+  return lin + wrapPi(tw - lin);
+}
+/** Blend two arms ([upper, fore, hand, twistUpper, twistFore]); side: 1 the left arm (`al`), −1 the right (`ar`). */
+export const mixArm = (a, b, t, side = 1) => {
+  const rest = RESTS[side],
+    u = mixV(a[0], b[0], t),
+    h = mixV(a[2] || a[1], b[2] || b[1], t);
+  return [
+    u,
+    mixV(a[1], b[1], t),
+    h,
+    mixTwist(rest, a[0], a[3], b[0], b[3], u, t),
+    mixTwist(rest, a[2] || a[1], a[4], b[2] || b[1], b[4], h, t)
+  ];
+};
+export const mixArmR = (a, b, t) => mixArm(a, b, t, -1);
 export const mixLeg = (a, b, t) => ({
   a: mixN(a.a, b.a, t),
   k: mixN(a.k, b.k, t),
@@ -58,7 +98,7 @@ export function mix(A, B, t) {
   o.L = mixLeg(A.L, B.L, t);
   o.R = mixLeg(A.R, B.R, t);
   o.al = mixArm(A.al, B.al, t);
-  o.ar = mixArm(A.ar || mirror(A.al), B.ar || mirror(B.al), t);
+  o.ar = mixArm(A.ar || mirror(A.al), B.ar || mirror(B.al), t, -1);
   return o;
 }
 export const P = (base, over) => ({ ...base, ...over });
@@ -262,7 +302,7 @@ const AIM_ST = {
   L: leg(0.35, 0.3, 0, 0.12),
   R: leg(-0.25, 0.25, 0, 0.12),
   al: [V(0.1, 0.1, 1), V(0.05, 0.15, 1), V(0.05, 0.2, 1)],
-  ar: mixArm(mirror(DOWN_ARM), COCK_SERVE, 0.35),
+  ar: mixArm(mirror(DOWN_ARM), COCK_SERVE, 0.35, -1),
   curl: 0.15
 };
 function preservePose(d, m) {

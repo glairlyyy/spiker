@@ -4,6 +4,7 @@
 // the pose, the smoothing and the grounding (actors3d posePlayer), so it works on the final world positions. Tuned by
 // VFX `ik` (js/data/vfx.js): on / off for each, slip and step time; the Animation lab's foot marks show the planting.
 import * as THREE from 'three';
+import { Wto } from './units3d.mjs';
 
 const vH = new THREE.Vector3(),
   vK = new THREE.Vector3(),
@@ -154,17 +155,26 @@ const sh = new THREE.Vector3(),
  * `hand`: 'left' | 'right' | 'both' (actors3d decides: the pose's own hand, the one-hand block, else by the move). Fades
  * out when the ball is out of reach. ball: world position.
  */
-export function armIK(pl, d, pose, ball, hand) {
-  const w0 = pose.contact || 0;
-  if (!VFX.ik.arms || w0 <= 0.01 || !A.ball.vis || !ball) return;
-  const yaw = pl.root.rotation.y;
+const TURN = [40, 85];
+const flight = new THREE.Vector3(),
+  fwdA = new THREE.Vector3();
+export function armIK(pl, d, pose, hand, dt) {
+  const ws = pl.ikW || (pl.ikW = { left: 0, right: 0 }),
+    w0 = VFX.ik.arms && A.ball.vis ? pose.contact || 0 : 0;
+  if (w0 <= 0.01 && ws.left < 0.01 && ws.right < 0.01) return;
+  // the ball on its flight (not the drawn one: r3d handTouch pulls that onto the hand, which would chase itself)
+  const ball = Wto(flight, A.ball.x, A.ball.z, A.ball.h),
+    yaw = pl.root.rotation.y;
   left.set(Math.cos(yaw), 0, -Math.sin(yaw)); // the player's left (VRM: +x of the body)
-  const sides = hand === 'both' ? ['left', 'right'] : [hand];
-  for (const s of sides) {
+  fwdA.set(Math.sin(yaw), 0, Math.cos(yaw));
+  const sides = w0 > 0.01 ? (hand === 'both' ? ['left', 'right'] : [hand]) : [];
+  for (const s of ['left', 'right']) {
+    if (!sides.includes(s) && ws[s] < 0.01) continue;
     const up = pl.bone(s + 'UpperArm'),
       lo = pl.bone(s + 'LowerArm'),
       hd = pl.bone(s + 'Hand');
     up.getWorldPosition(sh);
+    hd.getWorldPosition(wr);
     const len = pl['arm_' + s] || (pl['arm_' + s] = sh.distanceTo(lo.getWorldPosition(elb)) + elb.distanceTo(hd.getWorldPosition(wr)));
     if (hand === 'both') {
       const g = GRIP[d.pose] || GRIP.other;
@@ -177,14 +187,27 @@ export function armIK(pl, d, pose, ball, hand) {
         .add(new THREE.Vector3(0, -g[1], 0))
         .addScaledVector(left, (s === 'left' ? 1 : -1) * g[2]);
     } else aTgt.copy(ball).addScaledVector(toB.copy(ball).sub(sh).normalize(), -GRIP.one);
-    const dist = sh.distanceTo(aTgt),
-      w = w0 * Math.min(1, Math.max(0, (1.35 * len - dist) / (0.35 * len)));
+    // how far the arm would have to turn: the pose's shoulder → wrist line against shoulder → target. A big turn (the pose's
+    // arm still swinging up or round while the ball is elsewhere) is left to the pose: bending a whole arm round by IK rolls
+    // the forearm and spins the hand. Full IK up to TURN[0] degrees, none from TURN[1].
+    const turnDeg = Math.acos(Math.min(1, Math.max(-1, vA.copy(wr).sub(sh).normalize().dot(vB.copy(aTgt).sub(sh).normalize())))) * 57.3,
+      dist = sh.distanceTo(aTgt),
+      want = sides.includes(s)
+        ? w0 *
+          Math.min(1, Math.max(0, (1.35 * len - dist) / (0.35 * len))) *
+          Math.min(1, Math.max(0, (TURN[1] - turnDeg) / (TURN[1] - TURN[0])))
+        : 0;
+    // eased in and out (no pop when the ball comes into reach or the contact ends)
+    ws[s] += (want - ws[s]) * (1 - Math.exp(-dt * 18));
+    const w = ws[s];
     if (w <= 0.01) continue;
-    // the elbow bends where the pose has it, else down and out
-    lo.getWorldPosition(elb);
-    hd.getWorldPosition(wr);
-    pole.copy(elb).sub(vA.copy(sh).lerp(wr, 0.5));
-    if (pole.lengthSq() < 4e-4) pole.set(0, -1, 0).addScaledVector(left, s === 'left' ? 0.5 : -0.5);
-    twoBone(up, lo, hd, aTgt, pole, w, true);
+    // the elbow bends out to the side, a little down and back: one fixed direction for the body, so a nearly straight arm
+    // (a spike at full reach) never flips its elbow from frame to frame (that spun the hand)
+    pole
+      .copy(left)
+      .multiplyScalar(s === 'left' ? 1 : -1)
+      .add(vA.set(0, -0.45, 0))
+      .addScaledVector(fwdA, -0.25);
+    twoBone(up, lo, hd, aTgt, pole, w, false); // the hand follows the forearm (keeping its world rotation twisted the wrist)
   }
 }

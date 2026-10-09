@@ -156,7 +156,7 @@ export function posePlayer(pl, dt, ballPos, fx) {
   footIK(pl, d, pose, dt); // feet planted on the floor (ik3d.mjs)
   // hands / forearms on the ball (ik3d.mjs): one hand for spikes, serves, dives and a one-hand block, else both
   const bh = blockHand(pl, d);
-  armIK(pl, d, pose, ballPos, bh || (pose.hand ? pose.hand : ['spike', 'serve', 'dive'].includes(d.pose) ? 'right' : 'both'));
+  armIK(pl, d, pose, bh || (pose.hand ? pose.hand : ['spike', 'serve', 'dive'].includes(d.pose) ? 'right' : 'both'), dt);
   pl.lastPose = pose; // (the Animation lab and the QA hooks read it)
   if (A.animLab) {
     // the Animation lab keeps it (anim3d animCapture)
