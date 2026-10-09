@@ -202,7 +202,7 @@ function setSpeed(s) {
 function togglePause() {
   if (!A) return;
   A.paused = !A.paused;
-  railOpen(A.paused ? A.railTab || 'box' : null); // the rail opens on pause and closes on resume
+  if (!A.cineForce) railOpen(A.paused ? A.railTab || 'box' : null); // the rail opens on pause and closes on resume (not over the Cut-scene lab panel)
   const pb = $('#pause');
   if (pb) pb.innerHTML = pauseLabel(A.paused);
   setLabel('#fspause', A.paused ? '▶' : '❚❚');

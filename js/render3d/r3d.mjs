@@ -318,7 +318,8 @@ function draw() {
   if (!world || !A) return;
   if (bound !== A || !world.gl.isConnected) bind();
   const now = performance.now(),
-    dt = Math.min(0.05, (now - lastT) / 1000) * (A.paused ? 0 : 1) || 1e-4;
+    rdt = Math.min(0.05, (now - lastT) / 1000) || 1e-4, // real time: the camera keeps easing while paused (Cut-scene lab edits show)
+    dt = rdt * (A.paused ? 0 : 1) || 1e-4;
   if (!document.hidden) adaptRes(now - lastT);
   lastT = now;
   syncSize();
@@ -327,7 +328,7 @@ function draw() {
     world.hideTop = hideTop;
     world.scene.traverse(o => o.userData.overhead && (o.visible = !hideTop));
   }
-  updateBase(dt || 0.016);
+  updateBase(A.paused ? rdt : dt || 0.016);
   setPovHidden(world, povHidden()); // POV: your own head is hidden while the camera is at your eyes
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, cv.width, cv.height);
