@@ -146,6 +146,7 @@ function startMatch(fx) {
     techKeys: [],
     venue: matchVenue(fx), // the 3D set (spec §9.11)
     stakes: matchStakes(fx),
+    animLab: fx.anim ? animLabInit(m) : null, // the Animation lab (js/ui/anim-lab.js, js/render3d/anim3d.mjs)
     cineForce: fx.cine || null, // Dev cut-scene preview: that cut-scene every time (no budget, any Hype setting)
     mySide: mine ?? (m.human != null ? (m.t[1].P.some(p => p.id === m.human) ? 1 : 0) : 0) // your team's side (exhibition: Play as, else the left team)
   };
@@ -154,7 +155,10 @@ function startMatch(fx) {
   showTac(0);
   showTac(1);
   open3D();
-  if (fx.cine) vfxToggle(); // the Cut-scene lab: its panel open from the start
+  if (fx.cine || fx.anim) vfxToggle(); // the Cut-scene / Animation lab: its panel open from the start
+  if (fx.anim)
+    for (const ev of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'wheel'])
+      $('#stage').addEventListener(ev, animPointer, { passive: false });
 }
 /** Load the 3D renderer module and build its world once (the menu starts this in the background). */
 let load3DP = null;

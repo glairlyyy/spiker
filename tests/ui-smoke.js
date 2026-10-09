@@ -183,6 +183,26 @@ const step = async (name, fn) => {
     await ev(() => navigate('menu'));
     return `${n} particles`;
   });
+  await step('Animation lab: record, freeze, scrub, edit, copy', async () => {
+    await ev(() => navigate('menu'));
+    await ev(() => startAnimLab());
+    await pg.waitForFunction(() => typeof R3D !== 'undefined' && R3D && A && A.animLab && !A.hold, null, { timeout: 120000 });
+    await pg.waitForFunction(() => R3D.anim.info(0).n > 5, null, { timeout: 60000 });
+    const r = await ev(() => {
+      animFreezeUI(true);
+      const n = R3D.anim.info(0).n;
+      animSeek(Math.floor(n / 2));
+      animEdit('L.k', 1.8);
+      animEdit('al.0.az', 0.5);
+      const code = animCode();
+      if (!A.animLab.replay || !document.querySelector('#vfxp #animT')) throw new Error('not frozen with a timeline');
+      if (!/L: leg\(/.test(code)) throw new Error('no pose code: ' + code.slice(0, 80));
+      animFreezeUI(false);
+      return n;
+    });
+    await ev(() => leaveMatch());
+    return `${r} frames`;
+  });
   await step('Monster game → result', async () => {
     await ev(() => navigate('menu'));
     await ev(() => {

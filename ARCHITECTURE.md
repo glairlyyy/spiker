@@ -42,7 +42,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   `career-match.js` (match prep, eval / Cup cards, result data, playCareer, watchCareer), `map-view.js`, `career-panels.js` (place
   panels: `placeCard` anatomy, `PANELS` by kind → hq / clash / venue / map point, else `placePanel`), `career-map.js` (mount, pick, actions, walk lock), `career-dossier.js`,
   `career-people.js`, `career-hub.js`, `career-end.js`, `encyclopedia.js`, `vfx-lab.js` (dev: the VFX lab screen → `render3d/vfxlab3d.mjs`), `vfx-panel.js` (dev: live VFX tuning panel — Monster / Average game key V and the lab; export / import JSON).
-- **render** `playback.js`, `acts.js`, `director.js`, `cine.js` (cut-scenes: the ace, a WS kill, an MB quick kill), `slowmo.js` (slow-motion cooldown per team), `movement.js`, `actors.js`, `clock.js`, `camera.js`, `ball.js`, `scenes.js`,
+- **render** `playback.js`, `acts.js`, `director.js`, `cine.js` (cut-scenes: the ace, a WS kill, an MB quick kill), `slowmo.js` (slow-motion cooldown per team); `js/ui/anim-lab.js` + `js/render3d/anim3d.mjs` (Animation lab: record, scrub, edit poses), `movement.js`, `actors.js`, `clock.js`, `camera.js`, `ball.js`, `scenes.js`,
   `effects.js`, `overlay.js`, `faces.js`, `tags.js`, `dive.js`; then `main.js`.
 
 ES modules (loaded on demand): `js/render3d/` — `r3d.mjs` (entry), `units3d`, `arena3d`, `camera3d`, `actors3d`,

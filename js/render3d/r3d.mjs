@@ -11,6 +11,7 @@ import { loadBase, makeVRM, modelStats, updateVrm, MODEL_URL, MAIN_URL, BUNDLED 
 import { createFx } from './fx3d.mjs';
 import { makeTrail } from './trails3d.mjs';
 import { W, lowEnd } from './units3d.mjs';
+import { animCapture, animReplay, animFreeze, animOrbit, animInfo, animClear } from './anim3d.mjs';
 import { buildArena, dressArena, updateBall, updateBallShadow, updateNet, updatePointFlash, ballDir } from './arena3d.mjs';
 import { buildVenues, dressVenue, updateVenue } from './venue3d.mjs';
 import {
@@ -337,12 +338,19 @@ function draw() {
   viewCamera(V);
   const w = world,
     B = A.ball;
+  if (A.animLab && A.animLab.replay) {
+    // Animation lab, frozen: the recording plays instead of the game (anim3d.mjs)
+    animReplay(w, rdt);
+    w.renderer.render(w.scene, cam);
+    return;
+  }
   updateBall(w, now);
   handTouch(w, now);
   updateBallShadow(w); // after handTouch: it moves the ball
   // bodies, hair springs and trails run on the world clock (A.ts): in slow motion everything slows together
   const wdt = dt * Math.max(0.02, Math.min(1, A.ts ?? 1));
   if (!A.qaFreeze) for (const pl of w.people) if (pl.d) posePlayer(pl, pl.d.p.id === A.digHero ? dt : wdt, w.ball.position, w.fx); // qaFreeze: test hook; a digger chasing a far ball poses at normal speed
+  if (A.animLab) animCapture(w, wdt); // Animation lab: keep this frame
   for (const pl of w.coaches) if (pl.c) poseCoach(pl, dt, now);
   ballRibbon(w, wdt);
   updateVenue(w, now, dt * 1000, cam);
@@ -490,6 +498,7 @@ export const api = {
   },
   addModel,
   loadBundled,
+  anim: { freeze: animFreeze, orbit: animOrbit, info: animInfo, clear: animClear }, // the Animation lab (anim3d.mjs)
   bench,
   fxStats: () => world && world.fx.stats(), // live particle / mesh counts (director QA)
   /** Loaded models keep their own colours (re-dresses a match on screen). */

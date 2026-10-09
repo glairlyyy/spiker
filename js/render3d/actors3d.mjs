@@ -152,6 +152,10 @@ export function posePlayer(pl, dt, ballPos, fx) {
   const fast = ((d.pose === 'spike' || d.pose === 'serve') && d.spk != null) || d.pose === 'dive';
   smoothBones(pl, dt, fast ? 45 : mot.speed > 1 ? 26 : 16);
   groundSnap(pl, (d.jy || 0) * KH + (pose.lift || 0), pose.lying);
+  if (A.animLab) {
+    pl.lastPose = pose; // the Animation lab keeps it (anim3d animCapture)
+    pl.lastLift = (d.jy || 0) * KH + (pose.lift || 0);
+  }
   setFace(pl, pose.face || {}, dt);
   updateVrm(pl, dt);
   lightTrails(pl, d, root, dt);

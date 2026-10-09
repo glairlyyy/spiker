@@ -367,7 +367,7 @@ export function applyPose(pl, P) {
   }
 }
 /** Every bone the poses drive (for smoothing). */
-const DRIVEN = [
+export const DRIVEN = [
   'hips',
   'spine',
   'chest',
