@@ -271,6 +271,9 @@ const ACTS_ROSTER = {
     if (R3D && R3D.swapActor) R3D.swapActor(a.out, A.disp[a.in]);
   },
   pose(a, d, bs) {
+    // the scorer's roar becomes a celebration (owner, 2026-10-09): pending until they have landed (actors3d celeStep)
+    if (d && a.pose === 'roar' && R3D) return void (d.cele = { t: -1 });
+    if (d && d.cele) d.cele = d.celeYaw = null; // any other pose: the moment is over
     // a pose change at the end of a beat (no swing / dive set-up)
     if (d && diving(d) && DIVE_KEEP.has(a.pose)) d.afterDive = a.pose;
     else if (d) {

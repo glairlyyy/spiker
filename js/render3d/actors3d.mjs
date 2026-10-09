@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { applyPose, smoothBones, torsoDir, bendArm, groundSnap, setFace, updateVrm, dress, undress, mirror } from './players3d.mjs';
 import { poseDone, playerPose, coachPose } from './poses3d.mjs';
+import { celeMs } from './poses3d-cele.mjs';
 import { KH, KX, KZ, W } from './units3d.mjs';
 import { cam, povFadeId } from './camera3d.mjs';
 
@@ -15,7 +16,7 @@ function moodOf(d) {
   const p = d.p,
     staV = (A.staShown || {})[p.id],
     m0 = A.cele ? (d.side === A.cele.w ? 1 : -0.8) : (A.moodShown || {})[p.id] || 0;
-  if (d.pose === 'roar') return 1;
+  if (d.pose === 'roar' || d.pose === 'cele') return 1;
   if (d.pose === 'slump' && !A.cele) return -0.8;
   if (staV != null && staV < 0.3 && m0 < 0.6 && !A.cele) return Math.min(m0, -0.3);
   return m0;
@@ -58,6 +59,66 @@ function motion(pl, pos, face, dt) {
   m.phase += ((side ? dist * 1.6 : dist) / cycle) * Math.PI * 2;
   return m;
 }
+/**
+ * Point celebrations (owner, 2026-10-09; poses3d-cele.mjs). The engine's 'roar' leaves a pending d.cele (acts.js); it starts
+ * only once the player is properly down (feet on the floor, the landing absorbed, the swing finished) and ends early if
+ * the player is sent somewhere. The move: by personality, bigger on a big point (a dramatic kill, a 3+ streak, Fever);
+ * the jump-spin at most once per 4 points. The nearest teammate high-fives, the others clap (always on a big point).
+ */
+const CELE = {
+  small: { hot: 'fist', cool: 'point', cocky: 'taunt', shy: 'hop', leader: 'sky' },
+  big: { hot: 'siu', cool: 'sky', cocky: 'siu', shy: 'fist', leader: 'siu' }
+};
+function celeStep(d, dt) {
+  const c = d.cele;
+  if (!c) return;
+  const away = Math.hypot((d.tx - d.x) * KX, (d.tz - d.z) * KZ) > 0.6; // sent somewhere: the moment is over
+  if (c.t < 0) {
+    c.wait = (c.wait || 0) + dt * 1000;
+    if (c.wait > 2500 || away || A.cele) return void (d.cele = null);
+    const down = d.jy <= 1 && !d.jmode && (d.landMs == null || d.landMs > 300) && (poseDone(d) || d.pose === 'ready' || d.pose === 'walk');
+    if (down) celeStart(d);
+    return;
+  }
+  c.t += dt * 1000;
+  if (c.t >= celeMs(c.kind) || (away && c.t > 150) || A.cele) {
+    d.cele = null;
+    d.celeYaw = 0;
+    if (d.pose === 'cele') d.pose = 'ready';
+  }
+}
+function celeStart(d) {
+  const p = d.p,
+    n = A.pointN || 0,
+    h = typeof mlineHash === 'function' ? mlineHash(`cele|${p.id}|${n}`) : p.num + n;
+  let pt = null;
+  for (let i = Math.max(0, A.bi - 3); i < Math.min(A.beats ? A.beats.length : 0, A.bi + 4) && !pt; i++)
+    pt = A.beats[i].acts.find(x => x.k === 'point');
+  const big = !!(pt && (pt.big || pt.streak >= 3)) || (typeof Dir !== 'undefined' && Dir.stageOf(d.side) === 'fever'),
+    pers = typeof persOf === 'function' ? persOf(p) : 'hot';
+  let kind = (big ? CELE.big : CELE.small)[pers] || 'fist';
+  if (!big && h % 4 === 0) kind = 'fist'; // everyone's everyday "Yes!" now and then
+  if (kind === 'siu' && n - (A.lastSiu ?? -99) < 4) kind = 'sky';
+  if (kind === 'siu') A.lastSiu = n;
+  d.cele = { kind, t: 0, alt: h % 2, mir: d.side === 0 ? -1 : 1 };
+  d.pose = 'cele';
+  // teammates on their feet join in: the nearest (within 3.5 m) turns and high-fives, the others clap
+  const face = d.side === 0 ? Math.PI / 2 : -Math.PI / 2,
+    mates = Object.values(A.disp)
+      .filter(
+        q => q !== d && q.side === d.side && !q.cele && q.jy <= 1 && !q.jmode && (poseDone(q) || q.pose === 'ready' || q.pose === 'walk')
+      )
+      .map(q => ({ q, m: Math.hypot((q.x - d.x) * KX, (q.z - d.z) * KZ) }))
+      .sort((a, b) => a.m - b.m);
+  mates.forEach(({ q, m }, i) => {
+    if (i === 0 && m <= 3.5) {
+      const yaw0 = wrap(Math.atan2((d.x - q.x) * KX, (q.z - d.z) * KZ) - face);
+      q.cele = { kind: 'five', t: 0, yaw0, mir: 1 };
+    } else if (big || (h >> (i + 1)) % 2) q.cele = { kind: 'clap', t: 0, mir: 1 };
+    else return;
+    q.pose = 'cele';
+  });
+}
 const AURA = ['hips', 'chest', 'head', 'leftHand', 'rightHand', 'leftLowerLeg', 'rightLowerLeg', 'leftUpperArm', 'rightUpperArm'];
 
 /** Pose one player for this frame (dt on the world clock). fx: the particle system. */
@@ -68,10 +129,11 @@ export function posePlayer(pl, dt, ballPos, fx) {
   const pos = W(d.x, d.z, 0);
   // gait is measured against where the body actually faces, so a player turned to run forward runs, not backpedals
   const mot = motion(pl, pos, face + pl.yawOff, dt);
+  celeStep(d, dt);
   const pose = playerPose(d, moodOf(d), mot);
   root.position.copy(pos);
   steer(pl, d, pos, face, mot, ballPos, dt);
-  root.rotation.set(0, face + pl.yawOff, 0);
+  root.rotation.set(0, face + pl.yawOff + (d.celeYaw || 0), 0);
   if (pose.slide) root.position.add(tmp.set(Math.sin(face + pl.yawOff), 0, Math.cos(face + pl.yawOff)).multiplyScalar(pose.slide));
   // head follows the ball
   if (A.ball.vis && !pose.lying) {

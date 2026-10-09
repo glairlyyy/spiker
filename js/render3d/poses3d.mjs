@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { mirror } from './players3d.mjs';
 import { clamp } from '../map3d/geo3d.mjs'; // a module (map3d's tests load this file): not the classic global
 import { RA, spikePose, servePose } from './poses3d-attack.mjs'; // spike / swing / serve poses
+import { celePose } from './poses3d-cele.mjs'; // point celebrations (owner, 2026-10-09)
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z).normalize();
 const leg = (a, k, f = 0, s = 0.1) => ({ a, k, f, s });
@@ -445,11 +446,13 @@ export function poseDone(d) {
       return !d.jmode && (d.landMs == null || d.landMs > 250);
     case 'roar':
       return true;
+    case 'cele':
+      return !d.cele;
   }
   return false;
 }
 /** Poses that stay as they are when done (celebrations, the huddle, the stance itself, the serve routine). */
-const HELD = new Set(['ready', 'roar', 'slump', 'huddle', 'preserve']);
+const HELD = new Set(['ready', 'roar', 'slump', 'huddle', 'preserve', 'cele']);
 export function playerPose(d, mood, m) {
   const air = d.jy > 8,
     done = poseDone(d),
@@ -526,7 +529,9 @@ export function playerPose(d, mood, m) {
     }
     out.contact = pr;
     out.face = A.cele ? { happy: 1 } : { angry: 0.7 };
-  } else if (pose === 'roar')
+  } else if (pose === 'cele')
+    out = celePose(d) || STAND; // a point celebration (poses3d-cele.mjs)
+  else if (pose === 'roar')
     out = {
       hp: -0.05,
       sp: -0.25,
