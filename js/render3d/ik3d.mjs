@@ -147,6 +147,7 @@ export function footIK(pl, d, pose, dt) {
       if (st.step) tgt.set(F.x + st.step.off.x, F.y, F.z + st.step.off.z);
       else tgt.copy(F);
     }
+    if (!air && tgt.y < contact) tgt.y = contact; // never under the floor (a landing's settle sinks the hips: the knees bend)
     // a lock / step / release never moves the foot in one frame: on a change of state the jump is kept as a residual that
     // fades out (a locked foot itself stays exactly on its spot)
     const sig = st.lock || st.step || null,
