@@ -33,6 +33,8 @@ task the build chat re-reads `tasks.md` and `spec.md` **from the artifact** (Art
 **Owner requests made directly in the build chat** (not in tasks.md) are fine: do them, then list them under
 "## Unplanned changes" at the end of tasks.md (one line each: what, which files) so the spec chat records them.
 
+**Every change the owner accepts goes into `spec.md`** (owner, 2026-10-10), in the same commit, by whichever chat made it: the feature's § (new or existing), what it does in plain words, tagged **[built]** with the date; removals too. This overrides "the build chat does not edit spec.md" for accepted changes.
+
 Build chat loop, one task at a time:
 
 1. Read `tasks.md` from the artifact; take the first `[ ]` task under **Now**, then under **Next** (unless the owner

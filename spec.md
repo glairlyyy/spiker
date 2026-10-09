@@ -258,6 +258,45 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   - Hype Off: bubbles only; Normal: the budget above; Max: the budget × 2. Holds the next rally while shown (`Dir.busy()`).
   - Pre- and post-match lines (story box before, one line on the result card): later (tasks.md Later).
 
+- §2.19 Movement and poses (display only; goldens unchanged) **[built, owner 2026-10-08 – 10-10]**:
+  - **In-play spots** follow the rotation (engine, goldens updated): after the serve each player goes to their role's spot but
+    stays in their row — the front pair at the net, the back row deep (a back-row setter waits to run in).
+  - **Gait**: stride by distance (long runs long strides, the last metre small quick steps); a long fast run that isn't forward
+    turns the body and runs (no long backpedal); back-row hitters curve round to the take-off point; walk / backpedal / side
+    shuffle blend by weight; the body turns with a damped spring; the walk stops when the body stops.
+  - **Back bump**: a ball ≥ 2 m behind the passer (away from the net) → turn, run back, bump it over the head.
+  - **Crouch before a jump** deeper the higher the player jumps (× 1 at Jump ≤ 40 → × 1.5 at 99; spike load, block prep).
+  - **One-hand block**: the engine tags which hand the spike meets (`hz`, no draws); the ball meets that palm, only that arm
+    reaches, the other stays in the block.
+  - **Point celebrations** start once the scorer has landed: fist pump, jump-spin-stomp (big points, ≤ 1 per 4 points), sky
+    roar, finger to the sky, taunt, shy hop — by personality, hash-picked; the nearest teammate high-fives, the others clap.
+  - **Feet on the ground**: standing still, both feet are planted flat on the floor; a planted foot stays on its spot until the
+    pose lifts it, it slides 16 cm or it is out of reach, then steps (one foot at a time, a small lift); faster than 4 m/s the
+    gait keeps the feet; hops / jumps lift them with the body; every change is blended (no snaps).
+  - **Hands on the ball** at every contact (two-bone IK): bump — forearms under it; set — both hands around it; spike / serve /
+    dive / one-hand block — the palm on it; not when the arm would have to swing round (then the pose's own arm).
+  - **No hand spin**: arm twists blend by the real rotation (shortest turn), never a full circle between two keys.
+  - Tuning: VFX panel → IK (feet / arms on-off, slip, step time and lift, down heights walking / standing, plant-below speed).
+- §2.20 Cut-scenes (display only) **[built, owner 2026-10-08 – 10-09]**: a heroic tracked camera for a big point, picked from the
+  rally's beats before they play. **Ace** — the ball in the server's hands as they bounce it, the feet on the run-up, a side
+  view of the hit, riding the ball to the floor. **WS kill** — over the hitter's shoulder as the set goes up, low at the feet
+  for the approach, beside the arm at the swing (× 0.5 slow motion set → swing), riding the ball. **MB quick** — over the
+  setter's shoulder as the pass comes in, beside the middle's arm for the set and the hit (× 0.4), riding the ball. Budget:
+  one per 2 points a side scores (per side, any kind). Off with Hype off, reduced motion or the fixed camera. Kill block: no
+  cut-scene (its zoom-in already does it). Camera numbers are VFX groups, tuned in the Cut-scene lab (§2.22).
+- §2.21 Slow motion **[built, owner 2026-10-08 – 10-09]**: keeps the court's colours (only the edge vignette). A team gets slow
+  motion at most once every 3 points (one cooldown for all kinds; per kind optional; VFX → Slow-motion cooldown): staged hype
+  scenes (skipped like Hype off), impact frame, fake set, scramble, kill block / block break, Delayed Spike. Exempt: the
+  far-dig chase (it hides the animation) and the cut-scenes. Dig / free-ball slow motion ends once the player taking the ball
+  is set; a failed dig gets none when the diver can't get there, a short light one (× 0.6) when it just beats them.
+- §2.22 Dev labs (menu › Dev; dev only) **[built]**: **Cut-scene lab** — a Monster game where every rally stages the chosen
+  cut-scene (Ace / WS kill / MB quick), its camera values live in a side panel, ¼ / ½ / 1×, Force rotate, Copy / Download;
+  the owner's values are baked in as defaults. **Animation lab** — keeps the last 8 s of every player; Freeze, scrub, step,
+  play at ¼–1×, orbit a chosen player, foot marks (a sliding foot smears), edit the frame's pose values live, Copy as pose
+  code. **Models**: Monster games use the owner's six VRMs (random per player).
+- §2.23 Removed (owner, 2026-10-08): cut-ins (full banner and mini notification) and the commentary ticker, engine acts too;
+  the read eye gauge (a full read shows 👁 after the role in your name tag); the team-colour line under the role tag.
+
 ## 3. Menu [built]
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two
@@ -691,6 +730,12 @@ mood)`.
   never shanks except vs element spikes / float serves), Clutch (from 12 pts and set point, rolls lean their way); a
   temper — Fired up (trailing 3+ or just stuffed → surge) / Rattled (2 stuffs/aces against → errors, trait off a
   while); a weakness revealed by scouting, shown in the match UI.
+- Animation, next (owner's rigging list, 2026-10-09; 1 foot IK, 2 arm IK, 3 the lab are built — §2.19, §2.22):
+  4 recorded clips (VRMA / retargeted Mixamo) for idle, walk / run, celebrations, huddle — contacts stay procedural;
+  5 secondary motion (weight shift and hip sway, torso lagging the hips on a turn, head steady on the ball, landing springs);
+  6 collision for hair and clothes (body colliders for the spring bones); the lab's drag-a-joint editing. Still shaky from the
+  poses themselves: dives, the jump-serve landing, the server reversing straight back after landing.
+- Smaller player models (tasks.md, owner 2026-10-08).
 - New-run setup + results screens. Hype scene frequency tuning (§2.3). More music, crowd, voice clips. Living map B/C. Endless mode.
 
 ## 9. UI guidelines [locked; built]
