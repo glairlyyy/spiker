@@ -306,7 +306,7 @@ hands the feet over at 0.8. Heading eased (`pl.gDir`).
 
 Landings (display only): poses3d-attack `landBlend` mixes the spike / jump-serve air pose (jy ≥ 9) into its landing pose as
 jy falls from 18 to 2. playback `capMove` holds a body for `LAND_ABSORB` ms after touchdown, then catches up at ≤ `RUN_ACC`
-m/s² (`d.cv`, reset at touchdown in actors.js). ik3d `footIK` keeps a diver's feet planted until `diveF` > 0.36.
+m/s² (`d.cv`, reset at touchdown in actors.js) and slows into the spot at `RUN_DEC` m/s². ik3d `footIK` keeps a diver's feet planted until `diveF` > 0.36.
 
 Secondary motion (js/render3d/secondary3d.mjs, display only, VFX `sec`), in actors3d `posePlayer`: the gait's weight shift is
 part of the pose (poses3d `forwardGait`: `sway` m to the left — applied to the root like `slide` — and `hroll` with a counter

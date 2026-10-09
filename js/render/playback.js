@@ -481,11 +481,12 @@ function tweenJump(d, a, b, t) {
 /** Move toward (x, z) no faster than a real sprint: a move the beat is too short for carries into the next beat. */
 const LAND_ABSORB = 120; // ms after a touchdown before a catch-up move starts
 const RUN_ACC = 16; // m/s² — a catch-up move builds up to a sprint (display only)
+const RUN_DEC = 10; // m/s² — and slows into its spot instead of stopping dead from a sprint
 function capMove(d, x, z, accel) {
   const ms = (d.p && d.p.id === A.digHero ? A.rdt : A.fdt) || 16, // the digger runs on real time
     dm = Math.hypot((x - d.x) * MX, (z - d.z) * MZ);
   let v = sprintOf(d);
-  if (accel) v = Math.min(v, (d.cv || 0) + (RUN_ACC * ms) / 1000);
+  if (accel) v = Math.min(v, (d.cv || 0) + (RUN_ACC * ms) / 1000, Math.max(1, Math.sqrt(2 * RUN_DEC * dm)));
   const lim = (v * ms) / 1000,
     k = dm > lim ? lim / dm : 1;
   d.x += (x - d.x) * k;

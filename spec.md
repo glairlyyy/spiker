@@ -306,7 +306,7 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     planted foot needs. Planted-foot slide while running: ~0.6 → ~0.1–0.2 of the body's speed. VFX panel → Planted gait.
   - **Steady landings and dives** (owner, 2026-10-10) **[built]**: a spiker or jump server lands by blending the air pose into
     the landing one over the last part of the fall (no snap at touchdown); after a landing the body absorbs it (~120 ms) and
-    then accelerates into its next run instead of jerking toward it; a diver's run-in feet stay planted until the launch, and
+    then accelerates into its next run instead of jerking toward it, and slows into its spot instead of stopping dead; a diver's run-in feet stay planted until the launch, and
     the dive turns smoothly toward the ball. The arms swing again only once the landing is done.
   - **Secondary motion** (owner, 2026-10-10) **[built]**: walking, the hips shift over the foot carrying the weight and the
     pelvis drops on the swing side (chest level; less when running); on a sudden turn the hips lead and the shoulders follow,
