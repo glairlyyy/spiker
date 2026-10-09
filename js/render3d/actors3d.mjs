@@ -9,6 +9,7 @@ import { KH, KX, KZ, W } from './units3d.mjs';
 import { cam, povFadeId } from './camera3d.mjs';
 import { footIK, armIK, kneeHands } from './ik3d.mjs';
 import { turnLag, landSpring, headSteady } from './secondary3d.mjs';
+import { gaitIK } from './gait3d.mjs';
 
 const tmp = new THREE.Vector3(),
   tmp2 = new THREE.Vector3();
@@ -172,6 +173,8 @@ export function posePlayer(pl, dt, ballPos, fx) {
   groundSnap(pl, (d.jy || 0) * KH + (pose.lift || 0), pose.lying);
   if (sink && VFX.ik.feet) root.position.y -= sink; // landing: the hips settle, the foot IK bends the knees for it
   footIK(pl, d, pose, dt); // feet planted on the floor (ik3d.mjs)
+  // walking / running: the feet planted by the gait's own steps (gait3d.mjs), the forward-gait share of the legs
+  gaitIK(pl, d, pose, mot, mot.gw ? 1 - mot.gw.side - mot.gw.back : 1, dt);
   // resting: the hands on the knees (ik3d.mjs); eased here too, so leaving it for any other move (a walk, a pass) never
   // snaps the hands off the knees (the IK comes after the smoothing)
   pl.khW = (pl.khW || 0) + ((pose.kneeHands || 0) - (pl.khW || 0)) * (1 - Math.exp(-dt * 8));

@@ -78,7 +78,25 @@ export const mixLeg = (a, b, t) => {
   if (a.ss != null || b.ss != null) o.ss = mixN(a.ss ?? (a.s ?? 0.1) * 0.4, b.ss ?? (b.s ?? 0.1) * 0.4, t);
   return o;
 };
-const NUMS = ['hp', 'sp', 'cp', 'tw', 'hd', 'hy', 'hyaw', 'hroll', 'shrug', 'curl', 'curlL', 'curlR', 'sroll', 'lift', 'sway', 'kneeHands'];
+const NUMS = [
+  'hp',
+  'sp',
+  'cp',
+  'tw',
+  'hd',
+  'hy',
+  'hyaw',
+  'hroll',
+  'shrug',
+  'curl',
+  'curlL',
+  'curlR',
+  'sroll',
+  'lift',
+  'sway',
+  'kneeHands',
+  'gaitW'
+];
 /** Setter release motion by set direction: k = release progress 0..1, lean = body angle, arms = end pose. */
 function setMotion(d) {
   const dirn = d.setDir || 'front',
@@ -293,6 +311,7 @@ export function locoPose(m) {
       side
     );
   }
+  out.gaitW = 1; // (the legs are the walk / run: gait3d plants the feet)
   return out;
 }
 /**
@@ -688,7 +707,7 @@ export function playerPose(d, mood, m) {
         out =
           run > 0
             ? { ...mix(out, lp, run * 0.85), contact: 1 }
-            : { ...out, L: mixLeg(out.L, lp.L, mk), R: mixLeg(out.R, lp.R, mk), lift: lp.lift };
+            : { ...out, L: mixLeg(out.L, lp.L, mk), R: mixLeg(out.R, lp.R, mk), lift: lp.lift, gaitW: mk };
         out = runArms(out, m, mk);
       }
     }
@@ -701,7 +720,7 @@ export function playerPose(d, mood, m) {
     out = mix(READY, { ...WINDOW, hd: -0.55, sp: 0.03 }, k);
     if (mk > 0) {
       const lp = locoPose(m); // still moving under the ball: real strides, hands already rising
-      out = { ...out, L: mixLeg(out.L, lp.L, mk), R: mixLeg(out.R, lp.R, mk), hp: mixN(out.hp, lp.hp, mk * 0.6), lift: lp.lift };
+      out = { ...out, L: mixLeg(out.L, lp.L, mk), R: mixLeg(out.R, lp.R, mk), hp: mixN(out.hp, lp.hp, mk * 0.6), lift: lp.lift, gaitW: mk };
       out = runArms(out, m, mk);
     }
     out.contact = 1;
@@ -714,7 +733,7 @@ export function playerPose(d, mood, m) {
     if (mk > 0 && sm2.k < 0.05) {
       // running under the ball with the hands already up
       const lp = locoPose(m);
-      out = { ...out, L: mixLeg(out.L, lp.L, mk), R: mixLeg(out.R, lp.R, mk), hp: mixN(out.hp, lp.hp, mk * 0.6), lift: lp.lift };
+      out = { ...out, L: mixLeg(out.L, lp.L, mk), R: mixLeg(out.R, lp.R, mk), hp: mixN(out.hp, lp.hp, mk * 0.6), lift: lp.lift, gaitW: mk };
     }
     out.contact = 1 - sm2.k;
     out.face = { relaxed: 0.3 };
@@ -793,6 +812,7 @@ export function playerPose(d, mood, m) {
       tw: mixN(out.tw, lp.tw, mk),
       hyaw: mixN(out.hyaw, lp.hyaw, mk),
       kneeHands: mixN(out.kneeHands, 0, mk),
+      gaitW: mixN(out.gaitW, 1, mk),
       contact: (out.contact || 0) * (1 - mk)
     };
   }

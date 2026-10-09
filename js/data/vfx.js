@@ -133,6 +133,15 @@ const VFX_DEF = {
       arms: [1, 0, 1, 1, 'Hands / forearms on the ball']
     }
   },
+  gait: {
+    name: 'Planted gait (walking / running feet never slide)',
+    p: {
+      on: [1, 0, 1, 1, 'On'],
+      from: [1.2, 0.3, 4, 0.1, 'From speed (m/s)'],
+      minDuty: [0.2, 0.1, 0.5, 0.01, 'Shortest share of the cycle a foot is down (sprint)'],
+      lift: [0.45, 0.05, 0.7, 0.01, 'Swing foot lift at a sprint (m)']
+    }
+  },
   sec: {
     name: 'Secondary motion (the body follows the legs)',
     p: {

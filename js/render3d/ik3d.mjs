@@ -83,7 +83,8 @@ export function footIK(pl, d, pose, dt) {
   if (!C.feet) return void (pl.feet = null);
   const root = pl.root,
     feet = pl.feet || (pl.feet = [{}, {}]);
-  if (A.animLab?.replay) {
+  // (the Animation lab's playback, or the planted gait — gait3d — has the feet fully: start fresh afterwards)
+  if (A.animLab?.replay || (pl.gW || 0) >= 0.8) {
     feet[0] = {};
     feet[1] = {};
     return;
@@ -93,7 +94,8 @@ export function footIK(pl, d, pose, dt) {
   const air = pose.lying || d.pose === 'dive' || root.position.y > 0.12 || (d.jy || 0) > 1,
     // running fast the gait itself keeps the feet (its stride follows the distance run): nothing new is planted
     spd = (pl.mot && pl.mot.speed) || 0,
-    run = (pl.ikRun = spd > C.run + 0.3 || (pl.ikRun && spd > C.run - 0.3)), // (VFX.ik.run, with a little hysteresis)
+    // (VFX.ik.run, with a little hysteresis; while the planted gait blends in, nothing new is planted here either)
+    run = (pl.ikRun = spd > C.run + 0.3 || (pl.ikRun && spd > C.run - 0.3)) || (pl.gW || 0) > 0.2,
     standing = ((pl.mot && pl.mot.now) || 0) < 0.4 && spd < 1.5; // (the body still right now, not just slowing)
   const contact = pl.footRest * pl.scale,
     yaw = root.rotation.y;

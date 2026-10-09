@@ -300,6 +300,10 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   - **Run stride** (owner, 2026-10-10) **[built]**: step length grows with speed like a real runner's (~0.65 m walking,
     ~1.25 m at 4 m/s, ~2.2 m sprinting; ~4.5 steps a second at a sprint, was ~9 of ~1 m); the leg swing is sized to the step,
     more flight and forward lean sprinting; the last ~2 m before the spot small quick steps.
+  - **Planted gait** (owner, 2026-10-10) **[built]**: walking and running feet never slide — each foot is on the floor for a
+    share of the cycle that shrinks with speed (~60 % walking, ~20 % sprinting: a real flight between steps), locked where it
+    lands, then swings heel-up first and knee through to where the body will be at its next step; the hips dip as far as a
+    planted foot needs. Planted-foot slide while running: ~0.6 → ~0.1–0.2 of the body's speed. VFX panel → Planted gait.
   - **Secondary motion** (owner, 2026-10-10) **[built]**: walking, the hips shift over the foot carrying the weight and the
     pelvis drops on the swing side (chest level; less when running); on a sudden turn the hips lead and the shoulders follow,
     and a runner leans into the turn; running, the head stays level and on the ball (the gait's bob and twist filtered out);

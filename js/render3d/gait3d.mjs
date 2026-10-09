@@ -1,0 +1,148 @@
+// Planted gait (owner, 2026-10-10; display only): walking and running feet that never slide. The pose's walk / run keys only
+// shape the legs; where each foot actually is comes from a stepping plan tied to the gait phase (actors3d motion: m.phase,
+// m.step): each foot is on the floor for a share of the cycle (the duty) — about 60 % walking, under 25 % sprinting, the
+// rest of the time in the air, so a long sprint stride has a real flight — and locked to its spot while it is; in the swing
+// it travels to where the body will be at its next contact, lifted over the floor (higher when running). Two-bone IK puts
+// the legs on those targets (ik3d twoBone). Blended in by the forward-gait share and speed (pl.gW), out when the body stops,
+// turns to a shuffle / backpedal, jumps or dives. Tuned by VFX `gait`.
+import * as THREE from 'three';
+import { twoBone } from './ik3d.mjs';
+
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const ease = t => t * t * (3 - 2 * t);
+const hip = new THREE.Vector3(),
+  kn = new THREE.Vector3(),
+  ft = new THREE.Vector3(),
+  pole = new THREE.Vector3(),
+  dir = new THREE.Vector3(),
+  fwd = new THREE.Vector3();
+
+/** The foot's travel relative to the hips while it is down, as a share of the leg's length (sets the duty). */
+const SWEEP = 0.8;
+
+/**
+ * After the grounding and the foot planting (actors3d posePlayer); may lower the root (a planted foot must be reachable).
+ * gw: the forward-gait share 0..1 (poses3d gaitW: 1 − side − back); pose.gaitW: how much of the pose's legs are the walk /
+ * run (locoPose sets 1, blends carry it). dt: world seconds.
+ */
+export function gaitIK(pl, d, pose, mot, gw, dt) {
+  const C = VFX.gait,
+    root = pl.root,
+    sp = mot.speed || 0,
+    air = pose.lying || d.pose === 'dive' || (d.jy || 0) > 1,
+    want = C.on && !air && !A.animLab?.replay ? gw * (pose.gaitW || 0) * clamp((sp - C.from) / 0.8, 0, 1) : 0;
+  pl.gW = (pl.gW || 0) + (want - (pl.gW || 0)) * (1 - Math.exp(-Math.min(dt, 0.05) * (want < (pl.gW || 0) ? 14 : 12)));
+  const W = pl.gW;
+  if (W < 0.01) return void (pl.gait = null);
+  const st = pl.gait || (pl.gait = [{}, {}]),
+    contact = pl.footRest * pl.scale,
+    step = Math.max(0.3, mot.step || 0.7),
+    upL = pl.bone('leftUpperLeg'),
+    loL = pl.bone('leftLowerLeg');
+  const leg =
+    pl.legLenG ||
+    (pl.legLenG = upL.getWorldPosition(hip).distanceTo(loL.getWorldPosition(kn)) + kn.distanceTo(pl.bone('leftFoot').getWorldPosition(ft)));
+  // the share of the cycle a foot is down: the body must not outrun the foot's sweep (walk ~0.6, sprint ~0.2)
+  const duty = clamp((SWEEP * leg) / (2 * step), C.minDuty, 0.62),
+    ph = ((((mot.phase || 0) / (Math.PI * 2)) % 1) + 1) % 1,
+    yaw = root.rotation.y;
+  fwd.set(Math.sin(yaw), 0, Math.cos(yaw));
+  // where the body is going (the measured velocity), else the facing
+  dir.set(mot.vx || 0, 0, mot.vz || 0);
+  if (dir.lengthSq() < 0.04) dir.copy(fwd);
+  dir.normalize();
+  // eased (pl.gDir): the landing spots are metres ahead, so a twitch in the measured heading would throw the feet about
+  const gd = pl.gDir || (pl.gDir = dir.clone());
+  gd.lerp(dir, 1 - Math.exp(-Math.min(dt, 0.05) * 7)).normalize();
+  dir.copy(gd);
+  const lift = C.lift * (0.25 + 0.75 * clamp((sp - 1.5) / 6, 0, 1)); // the swing foot's clearance (knee drive when sprinting)
+  // 1. this frame's targets
+  const T = ['left', 'right'].map((s, i) => {
+    const f = st[i],
+      u = (((ph - (i ? 0.5 : 0)) % 1) + 1) % 1, // 0 = this foot's contact
+      up = pl.bone(s + 'UpperLeg'),
+      t = new THREE.Vector3();
+    up.getWorldPosition(hip);
+    pl.bone(s + 'Foot').getWorldPosition(ft);
+    const hy = hip.y;
+    hip.y = contact;
+    // the stance ends at the duty fixed at its contact (slowing down would stretch it), or once the foot is as far behind
+    // the hip as the leg sweeps (it is lifted, not dragged)
+    const behind = f.stance && f.plant ? -(f.plant.x - hip.x) * dir.x - (f.plant.z - hip.z) * dir.z : 0,
+      side = f.stance && f.plant ? Math.hypot(f.plant.x - hip.x, f.plant.z - hip.z) : 0,
+      wrapped = f.uPrev == null || u < f.uPrev - 0.5 || !!f.cycle, // a new contact only once per cycle (after the phase wraps)
+      stance = !!(f.stance ? u < f.duty && behind < 0.55 * SWEEP * leg && side < 0.6 * leg : wrapped && u < duty);
+    if (!f.stance && u < f.uPrev - 0.5) f.cycle = true;
+    f.uPrev = u;
+    if (stance && !f.stance) {
+      f.duty = duty;
+      f.cycle = false;
+    }
+    if (stance) {
+      if (!f.stance || !f.plant) {
+        // contact: where the swing came down (its end point), else ahead of the hip by half the stance's travel, so the
+        // hip passes over it at mid-stance
+        f.plant = f.lastT && f.uPrevSet ? f.lastT.clone() : hip.clone().addScaledVector(dir, step * duty);
+        f.plant.y = contact;
+      }
+      t.copy(f.plant);
+    } else {
+      if (f.stance || f.uLift == null) f.uLift = u; // (lifted early or on time: the swing runs from here to the next contact)
+      const s01 = clamp((u - f.uLift) / Math.max(0.05, 1 - f.uLift), 0, 1),
+        // to where the hip will be at the next contact, plus half the next stance's travel: re-aimed live early in the swing,
+        // fixed on the floor late in it (so the foot comes to rest on its spot, not on the moving body)
+        live = hip.clone().addScaledVector(dir, (1 - u) * 2 * step + step * duty);
+      if (f.stance || !f.from) {
+        f.from = (f.from || new THREE.Vector3()).copy(f.plant || ft);
+        f.next = live.clone();
+      }
+      f.from.y = contact;
+      // (a change of speed or heading still moves the landing, smoothly, less and less as the foot comes down)
+      f.next.lerp(live, (1 - s01) * (1 - Math.exp(-Math.min(dt, 0.05) * 12)));
+      f.next.y = contact;
+      // and it lands where the leg can reach: never further than ~0.6 leg from where the hip is (slowing down)
+      const ox = f.next.x - hip.x,
+        oz = f.next.z - hip.z,
+        ol = Math.hypot(ox, oz),
+        lim = 0.6 * leg + (1 - u) * 2 * step; // (the body still travels until the contact)
+      if (ol > lim) {
+        f.next.x = hip.x + (ox / ol) * lim;
+        f.next.z = hip.z + (oz / ol) * lim;
+      }
+      // the heel comes up behind first, then the knee drives the foot through and down onto its spot
+      t.lerpVectors(f.from, f.next, ease(Math.pow(s01, 1.5)));
+      t.y = contact + lift * (s01 < 0.4 ? ease(s01 / 0.4) : 1 - ease((s01 - 0.4) / 0.6)); // up early, smoothly off / onto the floor
+    }
+    f.stance = stance;
+    f.uPrevSet = true;
+    (f.lastT || (f.lastT = new THREE.Vector3())).copy(t);
+    if (t.y < contact) t.y = contact; // never under the floor
+    // the highest the hip may be for this foot's target to be reachable with a bent knee (only a foot that is down counts)
+    const hd = Math.hypot(t.x - hip.x, t.z - hip.z),
+      allow = stance ? t.y + Math.sqrt(Math.max(0, (0.95 * leg) ** 2 - hd * hd)) : Infinity;
+    return { s, t, drop: Math.max(0, hy - allow) };
+  });
+  // 2. the hips come down as far as a planted foot needs (a running stride's knees bend), eased so it bobs, never jumps
+  const want2 = Math.min(0.22, Math.max(T[0].drop, T[1].drop));
+  pl.gDrop = (pl.gDrop || 0) + (want2 - (pl.gDrop || 0)) * (1 - Math.exp(-Math.min(dt, 0.05) * 10));
+  if (pl.gDrop > 1e-4) {
+    root.position.y -= pl.gDrop * W;
+    root.updateMatrixWorld(true);
+  }
+  // 3. the legs onto the targets
+  for (const { s, t } of T) {
+    const up = pl.bone(s + 'UpperLeg'),
+      lo = pl.bone(s + 'LowerLeg'),
+      foot = pl.bone(s + 'Foot');
+    foot.getWorldPosition(ft);
+    pole
+      .copy(lo.getWorldPosition(kn))
+      .sub(ft.lerp(up.getWorldPosition(hip), 0.5))
+      .addScaledVector(fwd, 0.08);
+    // blended as positions (the pose's foot → the planned spot), then solved fully: one smooth path, never two mixed
+    const w = Math.min(1, W * 1.25); // (a planted foot fully planted once the gait is mostly on)
+    if (w < 1) t.lerpVectors(ft.copy(foot.getWorldPosition(ft)), t, w);
+    if (t.y < contact) t.y = contact; // (the hips may have come down: never through the floor)
+    twoBone(up, lo, foot, t, pole, 1, true);
+  }
+}
