@@ -135,12 +135,12 @@ const VFX_DEF = {
     name: 'Ace 1 · bounce (ball in the hands)',
     lab: 'cine',
     p: {
-      fwd: [2.9, 0.5, 6, 0.1, 'Camera ahead (m)'],
-      side: [0.9, -3, 3, 0.1, 'Camera to the side (m)'],
+      fwd: [4.3, 0.5, 8, 0.1, 'Camera ahead (m)'],
+      side: [3, -5, 5, 0.1, 'Camera to the side (m)'],
       up: [1.15, 0.1, 3, 0.05, 'Camera height (m)'],
-      look: [1, 0, 2.5, 0.05, 'Look at height (m)'],
-      ball: [0.25, 0, 1, 0.05, 'Look toward the ball'],
-      fov: [36, 15, 80, 1, 'Field of view'],
+      look: [2.5, 0, 4, 0.05, 'Look at height (m)'],
+      ball: [1, 0, 1, 0.05, 'Look toward the ball'],
+      fov: [15, 8, 80, 1, 'Field of view'],
       glide: [4, 1, 20, 0.5, 'Glide in']
     }
   },
@@ -152,7 +152,7 @@ const VFX_DEF = {
       side: [2, -4, 4, 0.1, 'Camera to the side (m)'],
       up: [0.3, 0.05, 2, 0.05, 'Camera height (m)'],
       look: [0.25, 0, 2, 0.05, 'Look at height (m)'],
-      ahead: [0.3, -1, 2, 0.05, 'Look ahead of the feet (m)'],
+      ahead: [2, -1, 4, 0.05, 'Look ahead of the feet (m)'],
       fov: [40, 15, 80, 1, 'Field of view'],
       glide: [7, 1, 20, 0.5, 'Glide in']
     }
@@ -165,10 +165,10 @@ const VFX_DEF = {
       side: [3.2, -5, 5, 0.1, 'Camera to the side (m)'],
       up: [-0.4, -2, 2, 0.05, 'Camera above the hand (m)'],
       look: [-0.3, -1.5, 1.5, 0.05, 'Look above the hand (m)'],
-      ball: [0.5, 0, 1, 0.05, 'Look toward the ball'],
+      ball: [1, 0, 1, 0.05, 'Look toward the ball'],
       fov: [44, 15, 80, 1, 'Field of view'],
       glide: [6, 1, 20, 0.5, 'Glide in'],
-      far: [3, 0.5, 8, 0.1, 'Until the ball is this far (m)']
+      far: [1.1, 0.5, 8, 0.1, 'Until the ball is this far (m)']
     }
   },
   cball: {

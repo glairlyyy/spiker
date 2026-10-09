@@ -53,6 +53,7 @@ function vfxPanel() {
 /** Cut-scene lab: which cut-scene every rally stages, and the game speed to watch it at. */
 function cineLabRow() {
   return `<div class="vexp"><span>Cut-scene</span><div class="seg">${CINE_KINDS.map(c => `<button class="btn ${A.cineForce === c.id ? 'on' : ''}" ${tip(c.tip)}>${esc(c.name)}</button>`).join('')}</div></div>
+    <div class="vexp"><span ${tip('Every rally the serve goes to the other team and it rotates: each server in turn, from both ends')}>Force rotate</span><div class="seg">${[1, 0].map(o => `<button class="btn ${!!A.m.devRot === !!o ? 'on' : ''}" onclick="A.m.devRot=${o};vfxRedraw()">${o ? 'On' : 'Off'}</button>`).join('')}</div></div>
     <div class="vexp"><span>Speed</span><div class="seg">${[0.25, 0.5, 1].map(s => `<button class="btn ${A.speed === s ? 'on' : ''}" data-s="${s}" onclick="setSpeed(${s})">${s === 1 ? '1' : s === 0.5 ? '½' : '¼'}×</button>`).join('')}</div></div>`;
 }
 /** Display names of choice options. */

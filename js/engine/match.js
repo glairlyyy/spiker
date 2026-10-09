@@ -425,7 +425,11 @@ function pointTally(m, w) {
   }
   m.techRally = [];
   m.pts[w]++;
-  if (w !== m.serve) {
+  if (m.devRot) {
+    // Cut-scene lab, Force rotate (dev only): the serve changes sides every rally and that side rotates — every server in turn
+    m.serve = 1 - m.serve;
+    m.rot[m.serve]++;
+  } else if (w !== m.serve) {
     m.serve = w;
     m.rot[w]++;
   }
