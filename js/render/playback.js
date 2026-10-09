@@ -100,6 +100,7 @@ const PLAYER_ACTS = new Set(['slide', 'pose', 'jump']);
 function startBeat(b) {
   Dir.beat(b); // the director (spec §2.15): stages this beat's effects, queues lines
   Cine.beat(b); // a heroic camera for a big moment (an ace)
+  diveLook(b);
   backBumpLook(b);
   for (const a of b.acts) {
     if (a.when === 'end') continue;
@@ -245,7 +246,45 @@ function startPose(d, pose, pc, dur) {
  * run back and bump it over their head toward the net. Decided per bump at the start of its beat (before the ball act
  * resolves its contact): the move is mostly away from the net and at least BACK_BUMP.m metres. Sets d.bb.
  */
-const BACK_BUMP = { m: 2, lat: 1.2 };
+const BACK_BUMP = { m: 2, lat: 1.2, turn: 1.5, angle: 2.0 };
+/**
+ * No needless dives (owner, 2026-10-10; display only): a dig the engine plays as a dive is shown as a run-and-bump when the
+ * ball comes (nearly) straight to the player or they can get there on their feet — the spot within DIVE_MIN.m metres, or
+ * reachable at DIVE_MIN.run × their sprint in the beat's time. The act becomes a bump (its ball contact follows the pose);
+ * a "Pancake!" label of that beat is dropped. The engine's outcome is untouched.
+ */
+const DIVE_MIN = { m: 1.8, run: 0.7, max: 4 };
+function diveLook(b) {
+  for (const a of b.acts) {
+    if (a.k !== 'pose' || a.pose !== 'dive' || a.when === 'end') continue;
+    const d = A.disp[a.p];
+    if (!d || d.jy > 2) continue;
+    const sl = b.acts.find(x => x.k === 'slide' && x.p === a.p),
+      tx = sl ? sl.x : d.tx,
+      tz = sl ? sl.z : d.tz,
+      dist = Math.hypot((tx - d.x) * MX, (tz - d.z) * MZ),
+      t = Math.max(0, (b.dur || 0) / 1000 - 0.15),
+      onFeet = dist < DIVE_MIN.m || (dist < DIVE_MIN.max && dist <= DIVE_MIN.run * sprintOf({ ...d, pose: 'bump' }) * t);
+    if (!onFeet) continue;
+    a.pose = 'bump';
+    a.pc = 0;
+    for (const x of b.acts) {
+      if (x.k === 'ball' && x.to && x.to.p === a.p && x.to.c === 'dive') x.to = { ...x.to, c: 'bump' };
+      if (x.k === 'label' && x.t === 'Pancake!') x._skip = true;
+    }
+  }
+}
+/**
+ * Where a passer sends the ball next (the next beat's ball act leaving them), as court x / z; null if not known.
+ */
+function passTarget(b, id) {
+  const nb = A.beats && A.beats[A.beats.indexOf(b) + 1];
+  const a = nb && nb.acts.find(x => x.k === 'ball' && x.to && x.when !== 'end');
+  if (!a) return null;
+  if (a.to.x != null) return { x: a.to.x, z: a.to.z };
+  const q = A.disp[a.to.p];
+  return q && q.p.id !== id ? { x: q.tx ?? q.x, z: q.tz ?? q.z } : null;
+}
 function backBumpLook(b) {
   for (const a of b.acts) {
     if (a.k !== 'pose' || a.pose !== 'bump' || a.when === 'end') continue;
@@ -260,8 +299,20 @@ function backBumpLook(b) {
       tx = sl ? sl.x : d.tx,
       tz = sl ? sl.z : d.tz,
       back = -(tx - d.x) * DIR(d.side) * MX, // metres away from the net
-      lat = Math.abs(tz - d.z) * MZ;
-    d.bb = back >= BACK_BUMP.m && back >= lat * BACK_BUMP.lat;
+      lat = Math.abs(tz - d.z) * MZ,
+      run = Math.hypot(back, lat);
+    // the direction decides (owner, 2026-10-10): a player who turns to run to the ball faces where they run; if the ball
+    // has to go back the way they came (behind them) it is a back bump over the head, else a normal bump forward
+    const pt = passTarget(b, a.p);
+    if (pt && run >= BACK_BUMP.turn) {
+      const rx = (tx - d.x) * MX,
+        rz = (tz - d.z) * MZ,
+        px = (pt.x - tx) * MX,
+        pz = (pt.z - tz) * MZ,
+        ang = Math.acos(Math.max(-1, Math.min(1, (rx * px + rz * pz) / (Math.hypot(rx, rz) * Math.hypot(px, pz) || 1))));
+      // (~115°+: behind them; the back bump turns the body away from the net, so only for a run that goes mostly away from it)
+      d.bb = ang >= BACK_BUMP.angle && back >= BACK_BUMP.turn * 0.8 && back >= lat * 0.6;
+    } else d.bb = back >= BACK_BUMP.m && back >= lat * BACK_BUMP.lat;
   }
 }
 /** Strongest speed-up of a hard hit along its flight (u − acc·u·(1−u): must stay < 1 to keep the ball moving forward). */

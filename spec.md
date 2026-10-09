@@ -265,6 +265,13 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     turns the body and runs (no long backpedal); back-row hitters curve round to the take-off point; walk / backpedal / side
     shuffle blend by weight; the body turns with a damped spring; the walk stops when the body stops.
   - **Back bump**: a ball ≥ 2 m behind the passer (away from the net) → turn, run back, bump it over the head.
+    Decided by direction (owner, 2026-10-10) **[built]**: a passer who turns to run to the ball faces where they run; if the pass
+    has to go back behind them (≥ ~115° from the run, and the run is mostly away from the net) it is a back bump, otherwise a
+    normal bump.
+  - **No needless dives** (owner, 2026-10-10) **[built]**: a dig the engine plays as a dive is shown as a run-and-bump when the
+    ball comes (nearly) straight to the player or they can get there on their feet (the spot within 1.8 m, or reachable at
+    0.7 × their sprint in the time); the outcome is unchanged (display only). Monster game: dives 24 in 13 rallies (5 at
+    < 1.8 m) → 10 in 19 (none).
   - **Crouch before a jump** deeper the higher the player jumps (× 1 at Jump ≤ 40 → × 1.5 at 99; spike load, block prep).
   - **One-hand block**: the engine tags which hand the spike meets (`hz`, no draws); the ball meets that palm, only that arm
     reaches, the other stays in the block.

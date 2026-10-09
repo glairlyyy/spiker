@@ -58,6 +58,7 @@ const ACTS_FX = {
     }
   },
   label(a, d, bs) {
+    if (a._skip) return; // (playback diveLook: a "Pancake!" of a dive shown as a bump)
     A.labels.push({
       t: a.t,
       x: bs.X,
