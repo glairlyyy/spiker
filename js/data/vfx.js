@@ -133,6 +133,17 @@ const VFX_DEF = {
       arms: [1, 0, 1, 1, 'Hands / forearms on the ball']
     }
   },
+  sec: {
+    name: 'Secondary motion (the body follows the legs)',
+    p: {
+      on: [1, 0, 1, 1, 'On'],
+      sway: [1, 0, 3, 0.1, 'Weight shift when walking ×'],
+      lag: [1, 0, 3, 0.1, 'Torso lags the hips on a turn ×'],
+      lean: [1, 0, 3, 0.1, 'Lean into a turn when running ×'],
+      head: [0.8, 0, 1, 0.05, 'Head steady on the ball when running'],
+      settle: [1, 0, 3, 0.1, 'Landing settle spring ×']
+    }
+  },
   slowcd: {
     name: 'Slow-motion cooldown (per team, per kind)',
     p: {

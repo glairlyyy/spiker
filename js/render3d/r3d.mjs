@@ -534,6 +534,7 @@ export const api = {
       }));
   },
   // test hook: the world rotation of each hand of the player the ball is going to (QA of hand spin at contacts)
+  qaBallW: () => W(A.ball.x, A.ball.z, A.ball.h), // the ball on its flight (world.ball lags in synchronous QA stepping)
   qaHandRot: () => {
     const pl = world && world.people.find(q => q.d && q.d.p.id === A.lastP);
     if (!pl) return null;

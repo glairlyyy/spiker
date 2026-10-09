@@ -8,6 +8,7 @@ import { celeMs } from './poses3d-cele.mjs';
 import { KH, KX, KZ, W } from './units3d.mjs';
 import { cam, povFadeId } from './camera3d.mjs';
 import { footIK, armIK } from './ik3d.mjs';
+import { turnLag, landSpring, headSteady } from './secondary3d.mjs';
 
 const tmp = new THREE.Vector3(),
   tmp2 = new THREE.Vector3();
@@ -145,6 +146,11 @@ export function posePlayer(pl, dt, ballPos, fx) {
   steer(pl, d, pos, face, mot, ballPos, dt);
   root.rotation.set(0, face + pl.yawOff + (d.celeYaw || 0), 0);
   if (pose.slide) root.position.add(tmp.set(Math.sin(face + pl.yawOff), 0, Math.cos(face + pl.yawOff)).multiplyScalar(pose.slide));
+  // weight shift: the hips over the foot that carries the weight (the gait's sway, metres to the player's left)
+  if (pose.sway && VFX.sec.on)
+    root.position.add(tmp.set(Math.cos(face + pl.yawOff), 0, -Math.sin(face + pl.yawOff)).multiplyScalar(pose.sway * VFX.sec.sway));
+  turnLag(pl, d, pose, mot); // secondary motion (secondary3d.mjs)
+  const sink = landSpring(pl, d, pose, dt);
   // head follows the ball
   if (A.ball.vis && !pose.lying) {
     root.updateMatrixWorld(true);
@@ -162,10 +168,12 @@ export function posePlayer(pl, dt, ballPos, fx) {
   const fast = ((d.pose === 'spike' || d.pose === 'serve') && d.spk != null) || d.pose === 'dive';
   smoothBones(pl, dt, fast ? 45 : mot.speed > 1 ? 26 : 16);
   groundSnap(pl, (d.jy || 0) * KH + (pose.lift || 0), pose.lying);
+  if (sink && VFX.ik.feet) root.position.y -= sink; // landing: the hips settle, the foot IK bends the knees for it
   footIK(pl, d, pose, dt); // feet planted on the floor (ik3d.mjs)
   // hands / forearms on the ball (ik3d.mjs): one hand for spikes, serves, dives and a one-hand block, else both
   const bh = blockHand(pl, d);
   armIK(pl, d, pose, bh || (pose.hand ? pose.hand : ['spike', 'serve', 'dive'].includes(d.pose) ? 'right' : 'both'), dt);
+  headSteady(pl, d, pose, ballPos, mot, dt); // running: the head level and on the ball
   pl.lastPose = pose; // (the Animation lab and the QA hooks read it)
   if (A.animLab) {
     // the Animation lab keeps it (anim3d animCapture)

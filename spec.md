@@ -277,6 +277,11 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     dive / one-hand block — the palm on it; not when the arm would have to swing round (then the pose's own arm).
   - **No hand spin**: arm twists blend by the real rotation (shortest turn), never a full circle between two keys.
   - Tuning: VFX panel → IK (feet / arms on-off, slip, step time and lift, down heights walking / standing, plant-below speed).
+  - **Secondary motion** (owner, 2026-10-10) **[built]**: walking, the hips shift over the foot carrying the weight and the
+    pelvis drops on the swing side (chest level; less when running); on a sudden turn the hips lead and the shoulders follow,
+    and a runner leans into the turn; running, the head stays level and on the ball (the gait's bob and twist filtered out);
+    landing from a jump, the hips settle with a small spring (up to ~4 cm, the knees bend, the feet stay on the floor).
+    VFX panel → Secondary motion (on, weight shift, torso lag, lean, head steady, landing settle).
 - §2.20 Cut-scenes (display only) **[built, owner 2026-10-08 – 10-09]**: a heroic tracked camera for a big point, picked from the
   rally's beats before they play. **Ace** — the ball in the server's hands as they bounce it, the feet on the run-up, a side
   view of the hit, riding the ball to the floor. **WS kill** — over the hitter's shoulder as the set goes up, low at the feet
@@ -730,9 +735,9 @@ mood)`.
   never shanks except vs element spikes / float serves), Clutch (from 12 pts and set point, rolls lean their way); a
   temper — Fired up (trailing 3+ or just stuffed → surge) / Rattled (2 stuffs/aces against → errors, trait off a
   while); a weakness revealed by scouting, shown in the match UI.
-- Animation, next (owner's rigging list, 2026-10-09; 1 foot IK, 2 arm IK, 3 the lab are built — §2.19, §2.22):
-  4 recorded clips (VRMA / retargeted Mixamo) for idle, walk / run, celebrations, huddle — contacts stay procedural;
-  5 secondary motion (weight shift and hip sway, torso lagging the hips on a turn, head steady on the ball, landing springs);
+- Animation, next (owner's rigging list, 2026-10-09; 1 foot IK, 2 arm IK, 3 the lab, 5 secondary motion are built — §2.19, §2.22):
+  4 recorded clips (VRMA / retargeted Mixamo) for idle, walk / run, celebrations, huddle — contacts stay procedural (best
+  value: idles and celebrations); 5 secondary motion is built (§2.19);
   6 collision for hair and clothes (body colliders for the spring bones); the lab's drag-a-joint editing. Still shaky from the
   poses themselves: dives, the jump-serve landing, the server reversing straight back after landing.
 - Smaller player models (tasks.md, owner 2026-10-08).

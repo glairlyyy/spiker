@@ -79,7 +79,7 @@ export const mixLeg = (a, b, t) => ({
   f: mixN(a.f, b.f, t),
   s: mixN(a.s ?? 0.1, b.s ?? 0.1, t)
 });
-const NUMS = ['hp', 'sp', 'cp', 'tw', 'hd', 'hy', 'hyaw', 'hroll', 'shrug', 'curl', 'curlL', 'curlR', 'sroll', 'lift'];
+const NUMS = ['hp', 'sp', 'cp', 'tw', 'hd', 'hy', 'hyaw', 'hroll', 'shrug', 'curl', 'curlL', 'curlR', 'sroll', 'lift', 'sway'];
 /** Setter release motion by set direction: k = release progress 0..1, lean = body angle, arms = end pose. */
 function setMotion(d) {
   const dirn = d.setDir || 'front',
@@ -294,7 +294,11 @@ function forwardGait(m, sp, ph) {
     hd: -(0.06 + 0.2 * r) * 0.7,
     tw: 0.14 * (0.4 + r) * Math.cos(ph),
     hyaw: -0.1 * (0.4 + r) * Math.cos(ph),
-    hroll: 0,
+    // weight shift (secondary motion, owner 2026-10-10): the hips over the stance foot (left in the first half of the cycle)
+    // and the pelvis dropping on the swing side, the chest staying level; less as the walk becomes a run
+    sway: (0.03 - 0.018 * r) * Math.sin(ph),
+    hroll: (0.07 - 0.035 * r) * Math.sin(ph),
+    sroll: -(0.07 - 0.035 * r) * Math.sin(ph),
     L,
     R,
     al: arm(swL),
