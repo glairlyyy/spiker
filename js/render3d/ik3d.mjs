@@ -93,7 +93,8 @@ export function footIK(pl, d, pose, dt) {
   const air = pose.lying || d.pose === 'dive' || root.position.y > 0.12 || (d.jy || 0) > 1,
     // running fast the gait itself keeps the feet (its stride follows the distance run): nothing new is planted
     spd = (pl.mot && pl.mot.speed) || 0,
-    run = (pl.ikRun = spd > C.run + 0.3 || (pl.ikRun && spd > C.run - 0.3)); // (VFX.ik.run, with a little hysteresis)
+    run = (pl.ikRun = spd > C.run + 0.3 || (pl.ikRun && spd > C.run - 0.3)), // (VFX.ik.run, with a little hysteresis)
+    standing = ((pl.mot && pl.mot.now) || 0) < 0.4 && spd < 1.5; // (the body still right now, not just slowing)
   const contact = pl.footRest * pl.scale,
     yaw = root.rotation.y;
   fwd.set(Math.sin(yaw), 0, Math.cos(yaw));
@@ -104,7 +105,13 @@ export function footIK(pl, d, pose, dt) {
       ft = pl.bone(s + 'Foot'),
       F = ft.getWorldPosition(new THREE.Vector3()),
       // down / up with hysteresis (a pose foot hovering at the threshold locked and let go every other frame: shaky feet)
-      down = !air && !run && F.y - contact < (st.lock || st.step ? C.down * 1.6 : C.down);
+      // standing (not travelling): a foot near the floor is a foot on the floor (C.stand) — the poses' two legs are rarely
+      // the same height, so the higher foot hovered a few cm and flickered between planted and lifted
+      hop = (pose.lift || 0) > 0.005, // the pose lifts the body (a hop, a clap bounce): the feet go up with it
+      thr = standing && !hop ? C.stand : C.down,
+      down = !air && !run && F.y - contact < (st.lock || st.step ? thr * 1.6 : thr),
+      flat = Math.abs((pose[i ? 'R' : 'L'] || {}).f || 0) < 0.25, // a foot pitched onto its toes keeps its own height
+      floorY = flat && !hop ? contact : F.y;
     up.getWorldPosition(hip);
     const reach = (pl.legLen || (pl.legLen = hip.distanceTo(lo.getWorldPosition(vA)) + vA.distanceTo(F))) * 0.98,
       held = st.lock;
@@ -118,17 +125,22 @@ export function footIK(pl, d, pose, dt) {
       // the step closes the gap to the pose's foot, measured from the pose's foot (the body may run on meanwhile)
       const k = ease(Math.min(1, st.step.t));
       tgt.set(F.x + st.step.off.x * (1 - k), 0, F.z + st.step.off.z * (1 - k));
-      tgt.y = Math.max(F.y, contact + (air ? 0 : C.arc * Math.sin(Math.PI * k))); // a small arc over the floor (the pose's lift if higher)
+      // a small arc over the floor (the pose's lift if higher), landing flat when the foot is coming down
+      tgt.y = Math.max(down ? floorY : F.y, contact + (air || !st.step.arc ? 0 : C.arc * Math.sin(Math.PI * k)));
       if (st.step.t >= 1) st.step = null;
     } else if (down) {
-      if (!st.lock) st.lock = new THREE.Vector3(F.x, contact, F.z); // (x, z held; the height stays the pose's own)
-      const slid = Math.hypot(F.x - st.lock.x, F.z - st.lock.z) > C.slip,
-        far = hip.distanceTo(st.lock) > reach;
+      if (!st.lock) st.lock = new THREE.Vector3(F.x, contact, F.z); // (x, z held; the foot flat on the floor)
+      // one foot at a time: a foot that has slid waits while the other one is stepping (unless it is out of reach)
+      const other = feet[1 - i],
+        slid = Math.hypot(F.x - st.lock.x, F.z - st.lock.z) > C.slip && !(other && other.step && other.step.arc),
+        // out of reach: the spot (at the height the foot goes to) further than the leg reaches — a straight-legged pose's own
+        // foot is already near full reach, so only what the lock adds counts (else it stepped forever on the spot)
+        far = hip.distanceTo(vT.set(st.lock.x, floorY, st.lock.z)) > Math.max(reach, hip.distanceTo(F) + 0.03);
       if (slid || far) {
-        tgt.set(st.lock.x, F.y, st.lock.z);
-        st.step = { off: new THREE.Vector3(st.lock.x - F.x, 0, st.lock.z - F.z), t: 0 };
+        tgt.set(st.lock.x, floorY, st.lock.z);
+        st.step = { off: new THREE.Vector3(st.lock.x - F.x, 0, st.lock.z - F.z), t: 0, arc: true }; // (a real step: lifted)
         st.lock = null;
-      } else tgt.set(st.lock.x, F.y, st.lock.z);
+      } else tgt.set(st.lock.x, floorY, st.lock.z);
     } else {
       if (st.lock) st.step = { off: new THREE.Vector3(st.lock.x - F.x, 0, st.lock.z - F.z), t: 0 }; // the pose lifts it: off the lock smoothly
       st.lock = null;

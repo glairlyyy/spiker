@@ -339,14 +339,17 @@ const AIM_ST = {
 function preservePose(d, m) {
   const b = d.psvB || { ph: 'carry', k: 1 },
     mk = moveMix(m);
-  if (b.ph === 'carry' || mk > 0.05) {
-    // walking to where they serve from (no ball yet)
-    return mk > 0 ? mix(STAND, locoPose(m), mk) : STAND;
-  }
+  // walking to where they serve from (no ball yet), and the routine eased in from the stand and blended with the walk by
+  // how much they still move (a switch at a speed threshold flicked the legs between the walk and the routine's stance)
+  if (b.ph === 'carry') return mk > 0 ? mix(STAND, locoPose(m), mk) : STAND;
+  const r = routinePose(b, sm(clamp(((d.psv && d.psv.t) || 0) / 250, 0, 1)));
+  return mk > 0 ? mix(r, locoPose(m), mk) : r;
+}
+function routinePose(b, e) {
   const k = b.k ?? 1;
   switch (b.ph) {
     case 'bounce':
-      return { ...BOUNCE_ST, hand: 'right', contact: 1, face: { relaxed: 0.3 } };
+      return { ...mix(STAND, BOUNCE_ST, e), hand: 'right', contact: 1, face: { relaxed: 0.3 } };
     case 'chest':
       return { ...mix(BOUNCE_ST, CHEST_ST, k), hand: k > 0.3 ? 'both' : 'right', contact: 1, face: { angry: 0.25 * k } };
     case 'spin':

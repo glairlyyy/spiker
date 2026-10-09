@@ -39,7 +39,10 @@ function motion(pl, pos, face, dt) {
     dist = Math.hypot(dx, dz);
   m.last.copy(pos);
   if (dist > 1.5) return m; // teleport (rotation / reset)
-  const k = 1 - Math.exp(-dt * 9),
+  // eased: quick to speed up, quicker to stop (a body that has stopped kept its walking legs going for a third of a second:
+  // feet stepping in place); m.now: the speed right now (lightly eased), what foot planting asks for "standing"
+  const inst = dist / dt,
+    k = 1 - Math.exp(-dt * (inst < m.speed ? 35 : 9)),
     fx = Math.sin(face),
     fz = Math.cos(face);
   m.vx += (dx / dt - (m.vx || 0)) * k;
@@ -49,6 +52,7 @@ function motion(pl, pos, face, dt) {
   m.fwd += (vf - m.fwd) * k;
   m.lat += (vl - m.lat) * k;
   m.speed = Math.hypot(m.fwd, m.lat);
+  m.now = (m.now || 0) + (inst - (m.now || 0)) * (1 - Math.exp(-dt * 30));
   // how far there is still to go (owner, 2026-10-08): a long run takes long strides, the last metre or two small quick steps
   const d = pl.d,
     rem = d ? Math.hypot((d.tx - d.x) * KX, (d.tz - d.z) * KZ) : 0;
