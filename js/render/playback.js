@@ -410,7 +410,11 @@ function applyBeat(b, t) {
     if (d.tx === d.sx && d.tz === d.sz) continue;
     if (id === A.digHero && d.waitLand && d.jy <= 1 && (d.landMs == null || d.landMs > 60)) d.waitLand = false; // feet down: go
     if ((d.carry || id === A.digHero) && !d.waitLand) {
-      capMove(d, d.tx, d.tz); // catching up from the last beat, or chasing a far dig: straight there at a sprint
+      // catching up from the last beat, or chasing a far dig: straight there at a sprint — a catch-up move just after a
+      // landing (back to base after a jump serve…) lets the knees absorb first and then builds up speed (owner, 2026-10-10:
+      // the server snapped from the landing into a backwards sprint)
+      if (id !== A.digHero && d.landMs != null && d.landMs < LAND_ABSORB) continue;
+      capMove(d, d.tx, d.tz, id !== A.digHero);
       continue;
     }
     if (d.via && !d.waitLand) {
@@ -475,12 +479,18 @@ function tweenJump(d, a, b, t) {
   } else d.jy = (a.peak || 0) * Math.sin(Math.PI * l);
 }
 /** Move toward (x, z) no faster than a real sprint: a move the beat is too short for carries into the next beat. */
-function capMove(d, x, z) {
-  const dm = Math.hypot((x - d.x) * MX, (z - d.z) * MZ),
-    lim = (sprintOf(d) * ((d.p && d.p.id === A.digHero ? A.rdt : A.fdt) || 16)) / 1000; // the digger runs on real time
-  const k = dm > lim ? lim / dm : 1;
+const LAND_ABSORB = 120; // ms after a touchdown before a catch-up move starts
+const RUN_ACC = 16; // m/s² — a catch-up move builds up to a sprint (display only)
+function capMove(d, x, z, accel) {
+  const ms = (d.p && d.p.id === A.digHero ? A.rdt : A.fdt) || 16, // the digger runs on real time
+    dm = Math.hypot((x - d.x) * MX, (z - d.z) * MZ);
+  let v = sprintOf(d);
+  if (accel) v = Math.min(v, (d.cv || 0) + (RUN_ACC * ms) / 1000);
+  const lim = (v * ms) / 1000,
+    k = dm > lim ? lim / dm : 1;
   d.x += (x - d.x) * k;
   d.z += (z - d.z) * k;
+  d.cv = (Math.min(dm, lim) * 1000) / Math.max(1, ms); // (the speed it now runs at, m/s)
 }
 /** End of a beat: settle or carry unfinished moves, end jumps, hide cut-ins, fire `when: 'end'` acts. */
 function endBeat(b) {

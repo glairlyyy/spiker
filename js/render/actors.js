@@ -23,6 +23,7 @@ function stepPlayerTimers(wdt, raw) {
         d.fallMs = null;
         d.jmode = null;
         d.landMs = 0; // touchdown
+        d.cv = 0; // (a catch-up move from here starts from standing: playback capMove)
         if (d.airV && d.airV.sn === (d.slideN || 0)) {
           // no new move ordered while in the air: where they landed is where they now stand (no walking back)
           d.sx = d.tx = d.x;

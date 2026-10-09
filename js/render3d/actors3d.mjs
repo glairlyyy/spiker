@@ -262,7 +262,7 @@ function steer(pl, d, pos, face, mot, ballPos, dt) {
   } else if (d.pose === 'dive' && d.dv && !poseDone(d) && Math.hypot(d.dv.dx * KX, d.dv.dz * KZ) > 0.4) {
     // dive: the whole body turns to where it launches
     want = toward(d.dv.dx * KX, -d.dv.dz * KZ);
-    rate = 14;
+    rate = 10;
   } else if (longRun(d, mot, left) && Math.abs(toward(mot.vx, mot.vz)) > 0.8) {
     // a long run that isn't forward (back, or across): turn and run, don't backpedal or shuffle (owner, 2026-10-08)
     want = toward(mot.vx, mot.vz);

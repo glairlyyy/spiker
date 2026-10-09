@@ -15,7 +15,8 @@ const hip = new THREE.Vector3(),
   ft = new THREE.Vector3(),
   pole = new THREE.Vector3(),
   dir = new THREE.Vector3(),
-  fwd = new THREE.Vector3();
+  fwd = new THREE.Vector3(),
+  vLeft = new THREE.Vector3();
 
 /** The foot's travel relative to the hips while it is down, as a share of the leg's length (sets the duty). */
 const SWEEP = 0.8;
@@ -30,7 +31,7 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
     root = pl.root,
     sp = mot.speed || 0,
     air = pose.lying || d.pose === 'dive' || (d.jy || 0) > 1,
-    want = C.on && !air && !A.animLab?.replay ? gw * (pose.gaitW || 0) * clamp((sp - C.from) / 0.8, 0, 1) : 0;
+    want = C.on && !air && !A.animLab?.replay ? (pose.gaitW || 0) * clamp((sp - C.from) / 0.8, 0, 1) * (sp > 3 ? 1 : 0.4 + 0.6 * gw) : 0; // (fast, it steps any way the body goes)
   pl.gW = (pl.gW || 0) + (want - (pl.gW || 0)) * (1 - Math.exp(-Math.min(dt, 0.05) * (want < (pl.gW || 0) ? 14 : 12)));
   const W = pl.gW;
   if (W < 0.01) return void (pl.gait = null);
@@ -64,7 +65,20 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
       t = new THREE.Vector3();
     up.getWorldPosition(hip);
     pl.bone(s + 'Foot').getWorldPosition(ft);
-    const hy = hip.y;
+    const hy = hip.y,
+      hx = hip.x,
+      hz = hip.z;
+    // planning from the root (steady), at this hip's side offset (the gait's hip twist would wobble the landing spots)
+    const sideOff =
+      pl.hipSide ||
+      (pl.hipSide =
+        Math.abs(
+          new THREE.Vector3()
+            .copy(hip)
+            .sub(root.position)
+            .dot(vLeft.set(Math.cos(yaw), 0, -Math.sin(yaw)))
+        ) || 0.09);
+    hip.copy(root.position).addScaledVector(vLeft.set(Math.cos(yaw), 0, -Math.sin(yaw)), i ? -sideOff : sideOff);
     hip.y = contact;
     // the stance ends at the duty fixed at its contact (slowing down would stretch it), or once the foot is as far behind
     // the hip as the leg sweeps (it is lifted, not dragged)
@@ -118,7 +132,7 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
     (f.lastT || (f.lastT = new THREE.Vector3())).copy(t);
     if (t.y < contact) t.y = contact; // never under the floor
     // the highest the hip may be for this foot's target to be reachable with a bent knee (only a foot that is down counts)
-    const hd = Math.hypot(t.x - hip.x, t.z - hip.z),
+    const hd = Math.hypot(t.x - hx, t.z - hz),
       allow = stance ? t.y + Math.sqrt(Math.max(0, (0.95 * leg) ** 2 - hd * hd)) : Infinity;
     return { s, t, drop: Math.max(0, hy - allow) };
   });
@@ -135,10 +149,8 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
       lo = pl.bone(s + 'LowerLeg'),
       foot = pl.bone(s + 'Foot');
     foot.getWorldPosition(ft);
-    pole
-      .copy(lo.getWorldPosition(kn))
-      .sub(ft.lerp(up.getWorldPosition(hip), 0.5))
-      .addScaledVector(fwd, 0.08);
+    // the knee bends forward (the facing, a touch outward): fixed, so a fast leg never flips it frame to frame
+    pole.copy(fwd).addScaledVector(vLeft.set(Math.cos(yaw), 0, -Math.sin(yaw)), s === 'left' ? 0.15 : -0.15);
     // blended as positions (the pose's foot → the planned spot), then solved fully: one smooth path, never two mixed
     const w = Math.min(1, W * 1.25); // (a planted foot fully planted once the gait is mostly on)
     if (w < 1) t.lerpVectors(ft.copy(foot.getWorldPosition(ft)), t, w);

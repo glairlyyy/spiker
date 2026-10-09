@@ -158,7 +158,22 @@ function landPose(d, sw) {
   const TOUCH = { ...LAND, hp: 0.3, sp: 0.2, L: leg(0.45, 0.6, 0, 0.2), R: leg(0.4, 0.55, 0, 0.2), ar: HIP_R };
   return { ...mix(mix(TOUCH, LAND, absorb), STAND, lt), face: { angry: 0.4 * (1 - lt) } };
 }
+/**
+ * Coming down after the swing (owner, 2026-10-10: the landing pose snapped in at a height): over the last LAND_FROM jump units
+ * the air pose (as at that height) blends into the landing pose, so the legs reach for the floor instead of switching.
+ */
+const LAND_FROM = 18;
+function landBlend(d, m, poseFn) {
+  if (d.spk == null || d._lb || d.jy >= LAND_FROM) return null;
+  const k = d.jy > 0 ? sm(clamp((LAND_FROM - d.jy) / (LAND_FROM - 2), 0, 1)) : 1;
+  if (k >= 1) return null;
+  const airP = poseFn({ ...d, jy: Math.max(9, d.jy), _lb: 1 }, m),
+    landP = poseFn({ ...d, jy: 0, landMs: d.landMs ?? 0, _lb: 1 }, m); // (not down yet: the touchdown frame)
+  return { ...mix(airP, landP, k), face: landP.face };
+}
 export function spikePose(d, m) {
+  const lb = landBlend(d, m, spikePose);
+  if (lb) return lb;
   const air = d.jy > 8,
     J = d.jmode,
     pk = (J && J.peak) || 60,
@@ -294,6 +309,8 @@ const FLOAT_AIR = { L: leg(0.12, 1.0, 0.75, 0.1), R: leg(0.02, 1.15, 0.8, 0.1) }
   FLOAT_DOWN = { L: leg(0.3, 0.4, 0.25, 0.16), R: leg(0.24, 0.35, 0.25, 0.16) };
 /** Float serve (standing, or with a jump): toss, cock, short punch through the ball; then the landing / a small dip. */
 export function servePose(d, m) {
+  const lb = d.spkStyle === 'jumpfloat' ? landBlend(d, m, servePose) : null;
+  if (lb) return lb;
   const sw = d.spk,
     pt = d.pt || 0,
     air = d.jy > 8,

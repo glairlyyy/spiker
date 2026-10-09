@@ -91,7 +91,9 @@ export function footIK(pl, d, pose, dt) {
   }
   // in the air or lying down nothing new is planted; a foot still locked steps off its lock like a lifted one (dropping the
   // locks at once snapped the feet back to the pose by up to half a metre)
-  const air = pose.lying || d.pose === 'dive' || root.position.y > 0.12 || (d.jy || 0) > 1,
+  // a dive's run-in keeps its feet on the floor until the launch (owner, 2026-10-10: the dive shook before it left the floor)
+  const launched = d.pose === 'dive' && (!d.dv || typeof diveF !== 'function' || diveF(d.dv) > 0.36),
+    air = pose.lying || launched || root.position.y > 0.12 || (d.jy || 0) > 1,
     // running fast the gait itself keeps the feet (its stride follows the distance run): nothing new is planted
     spd = (pl.mot && pl.mot.speed) || 0,
     // (VFX.ik.run, with a little hysteresis; while the planted gait blends in, nothing new is planted here either)

@@ -386,7 +386,10 @@ function armsFree(d, pose) {
     case 'block':
     case 'spike':
     case 'serve':
-      return d.upAge != null && d.upAge <= (d.pAge || 0) && (d.jy || 0) <= 1; // landed from this move's jump
+      // landed from this move's jump, and the landing absorbed (not while the knees still take it)
+      return (
+        d.upAge != null && (d.jy || 0) <= 1 && (d.landMs != null ? d.landMs > 300 : (d.pAge || 0) - d.upAge > 450) // (touchdown frame: landMs not set yet)
+      );
     case 'set':
       return d.swing != null && d.swing > 260; // released
     case 'bump':
