@@ -247,6 +247,52 @@ const VFX_DEF = {
       glide: [14, 1, 30, 0.5, 'Glide in'],
       hold: [600, 0, 3000, 50, 'Stay on the landing (ms)']
     }
+  },
+  // the MB quick cut-scene camera (render/cine.js): on the setter (from their feet), then the middle's hitting hand, then the ball
+  qset: {
+    name: 'Quick 1 · the setter takes the pass',
+    lab: 'cine',
+    cut: 'quick',
+    p: {
+      fwd: [-1.8, -6, 6, 0.1, 'Camera ahead of the setter (m; − = behind)'],
+      side: [1, -5, 5, 0.1, 'Camera to the side (m)'],
+      up: [2, 0.1, 4, 0.05, 'Camera height (m)'],
+      look: [2, 0, 4, 0.05, 'Look at height (m)'],
+      ahead: [1.5, -2, 5, 0.05, 'Look ahead of the setter (m)'],
+      ball: [0.3, 0, 1, 0.05, 'Look toward the ball'],
+      fov: [42, 8, 80, 1, 'Field of view'],
+      glide: [5, 1, 20, 0.5, 'Glide in']
+    }
+  },
+  qhit: {
+    name: 'Quick 2 · the middle in the air',
+    lab: 'cine',
+    cut: 'quick',
+    p: {
+      fwd: [1, -4, 4, 0.1, 'Camera ahead of the hand (m)'],
+      side: [2.6, -5, 5, 0.1, 'Camera to the side (m)'],
+      up: [-0.2, -2, 2, 0.05, 'Camera above the hand (m)'],
+      look: [0, -1.5, 1.5, 0.05, 'Look above the hand (m)'],
+      ball: [0.6, 0, 1, 0.05, 'Look toward the ball'],
+      fov: [40, 8, 80, 1, 'Field of view'],
+      glide: [8, 1, 20, 0.5, 'Glide in'],
+      far: [1.5, 0.5, 8, 0.1, 'Until the ball is this far (m)'],
+      slow: [0.4, 0.1, 1, 0.05, 'Slow motion, pass → hit (× speed)']
+    }
+  },
+  qball: {
+    name: 'Quick 3 · riding the ball',
+    lab: 'cine',
+    cut: 'quick',
+    p: {
+      back: [2.2, 0.5, 8, 0.1, 'Camera behind the ball (m)'],
+      up: [0.4, -1, 3, 0.05, 'Camera above the ball (m)'],
+      ahead: [2.5, 0.5, 8, 0.1, 'Look ahead (m)'],
+      drop: [0.6, -1, 3, 0.05, 'Look below the ball (m)'],
+      fov: [50, 8, 80, 1, 'Field of view'],
+      glide: [16, 1, 30, 0.5, 'Glide in'],
+      hold: [600, 0, 3000, 50, 'Stay on the landing (ms)']
+    }
   }
 };
 /** The live values: defaults, then this browser's saved edits (dev). */

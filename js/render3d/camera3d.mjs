@@ -344,9 +344,10 @@ const shot = { k: 0, key: '', pos: new THREE.Vector3(), look: new THREE.Vector3(
  */
 function cinePose(a, s, up) {
   const K = CINE_KINDS.find(k => k.id === s.cut),
-    [g, how] = (K && K.ph[s.ph]) || [],
+    [g, how, who] = (K && K.ph[s.ph]) || [],
     c = VFX[g];
   if (!c) return null;
+  if (who === 'p2') a = (s.p2 && world.people.find(pl => pl.d && pl.d.p.id === s.p2)) || a; // framed on the setter
   const F = a.root.position.clone().setY(0),
     f = new THREE.Vector3(Math.sin(a.root.rotation.y), 0, Math.cos(a.root.rotation.y)),
     r = new THREE.Vector3().crossVectors(f, up).normalize(),
