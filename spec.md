@@ -281,6 +281,13 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     over the toes, heels light, hips back with a flat back leaning forward, arms relaxed in front with the hands apart (the
     grip forms on the pass), a soft bounce in the knees and a slow weight shift; standing — weight on one leg, the other knee
     soft, arms hanging loose with a slight bend, breathing and a slow sway. Each player on their own rhythm.
+  - **Waiting stance varies** (owner, 2026-10-10) **[built]**: each rally every player takes one of three — hands apart,
+    palms open to the sky, or hands on the knees (bent over, head up) — picked by a hash of shirt number and rally (no random
+    draws; not tied to stamina). Hands on the knees only while it is calm (ball dead or the server still in the routine);
+    when the ball is tossed they come up into their ready.
+  - **Run stride** (owner, 2026-10-10) **[built]**: step length grows with speed like a real runner's (~0.65 m walking,
+    ~1.25 m at 4 m/s, ~2.2 m sprinting; ~4.5 steps a second at a sprint, was ~9 of ~1 m); the leg swing is sized to the step,
+    more flight and forward lean sprinting; the last ~2 m before the spot small quick steps.
   - **Secondary motion** (owner, 2026-10-10) **[built]**: walking, the hips shift over the foot carrying the weight and the
     pelvis drops on the swing side (chest level; less when running); on a sudden turn the hips lead and the shoulders follow,
     and a runner leans into the turn; running, the head stays level and on the ball (the gait's bob and twist filtered out);

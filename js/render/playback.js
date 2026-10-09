@@ -113,6 +113,7 @@ function startBeat(b) {
       case 'reset':
         camRelease();
         A.rallyN = 0;
+        A.rallyNo = (A.rallyNo || 0) + 1; // (display: which idle stance each player takes this rally, poses3d)
         comboEnd(true);
         for (const id in A.disp) {
           const q = A.disp[id];

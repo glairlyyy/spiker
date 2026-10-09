@@ -168,6 +168,31 @@ export const READY = C({
   curl: 0.35,
   fsplit: 0.45
 });
+// ready, the other look (owner, 2026-10-10): arms long and low in front, hands open with the palms to the sky
+export const READY_PALMS = C({
+  hp: 0.62,
+  sp: 0.16,
+  cp: 0.06,
+  hd: -0.65,
+  L: leg(0.8, 1.2, 0.12, 0.26, 0.24),
+  R: leg(0.92, 1.28, 0.12, 0.26, 0.24),
+  al: [V(0.14, -0.66, 0.74), V(0.07, -0.52, 0.85), V(0.06, -0.44, 0.9), -0.96, -2.4],
+  curl: 0.12,
+  fsplit: 0.6
+});
+// resting before the serve (owner, 2026-10-10): bent over, legs nearly straight, hands on the knees (actors3d puts the hands
+// on this player's own knees: pose.kneeHands), head up on the server
+export const REST_KNEES = C({
+  hp: 0.78,
+  sp: 0.18,
+  cp: 0.08,
+  hd: -0.95,
+  L: leg(0.45, 0.62, 0.05, 0.22, 0.2),
+  R: leg(0.5, 0.66, 0.05, 0.22, 0.2),
+  al: [V(0.14, -0.96, 0.22), V(0.02, -0.95, 0.3), V(-0.15, -0.7, 0.7), 0, -1.4],
+  curl: 0.3,
+  fsplit: 0.6
+});
 const PLATFORM = C({
   hp: 0.68,
   sp: 0.12,
@@ -287,8 +312,9 @@ export function gaitNow(m) {
 }
 function forwardGait(m, sp, ph) {
   const r = clamp((sp - 1.2) / 2.3, 0, 1),
-    // short hop of a run: small steps; a long run: long strides (m.far 0..1, actors3d motion)
-    stride = (0.7 + 0.3 * Math.min(1, sp / 3)) * (0.65 + 0.5 * (m.far ?? 0.7));
+    // the leg swing sized to the step (m.step, actors3d motion: long strides when sprinting, small steps arriving), against
+    // the step the walk / run keys are drawn for
+    stride = clamp((m.step ?? 0.7 + 0.6 * r) / (0.7 + 0.6 * r), 0.5, 1.6);
   const L = gaitLeg(ph, r, stride),
     R = gaitLeg(ph + Math.PI, r, stride);
   // arms swing opposite to the legs: left arm forward when the left leg is back
@@ -304,7 +330,7 @@ function forwardGait(m, sp, ph) {
     };
   const swL = -Math.cos(ph);
   return C({
-    hp: 0.06 + 0.2 * r,
+    hp: 0.06 + 0.2 * r + 0.08 * clamp((sp - 5) / 4, 0, 1), // a sprint leans further forward
     sp: 0.04 + 0.06 * r,
     hd: -(0.06 + 0.2 * r) * 0.7,
     tw: 0.14 * (0.4 + r) * Math.cos(ph),
@@ -321,7 +347,7 @@ function forwardGait(m, sp, ph) {
     curl: 0.35 + 0.35 * r,
     curlL: 0.35 + 0.35 * r, // (set, so blending toward READY's own curlL / curlR starts from here, not from 0)
     curlR: 0.35 + 0.35 * r,
-    lift: r * 0.06 * Math.max(0, Math.cos(2 * ph + 0.7))
+    lift: r * (0.05 + 0.04 * clamp((sp - 4) / 5, 0, 1)) * Math.max(0, Math.cos(2 * ph + 0.7)) // more flight sprinting
   });
 }
 const SHUFFLE = { side: 1, back: 0 };
@@ -330,19 +356,38 @@ const SHUFFLE = { side: 1, back: 0 };
  * the hips ride it) and a slow weight shift side to side; standing — breathing and a slow sway. Each player on their own
  * phase (shirt number); wall-clock time, presentation only.
  */
+/**
+ * The waiting stance varies (owner, 2026-10-10): each rally every player takes one of three — hands apart (READY), palms to
+ * the sky (READY_PALMS) or hands on the knees (REST_KNEES) — by a hash of their number and the rally (A.rallyNo; no
+ * randoms). Hands on the knees only while it is calm (the ball dead, or a server still in the routine): when the ball is
+ * tossed they come up into their ready (eased, d.restW).
+ */
+const IDLE = [READY, READY_PALMS, 'rest'];
 function idleReady(d) {
   const t = performance.now() / 1000,
     ph = (d.p.num || 0) * 1.7,
-    b = Math.sin(t * 5.2 + ph), // the bounce, ~0.8 Hz
-    w = Math.sin(t * 0.9 + ph); // the weight shift, ~7 s
-  return {
-    ...READY,
-    hp: READY.hp + 0.03 * b,
-    L: { ...READY.L, k: READY.L.k + 0.07 * b + 0.05 * w, a: READY.L.a + 0.04 * b },
-    R: { ...READY.R, k: READY.R.k + 0.07 * b - 0.05 * w, a: READY.R.a + 0.04 * b },
+    pick = IDLE[(((d.p.num || 0) * 7 + ((globalThis.A && globalThis.A.rallyNo) || 0) * 13) >>> 0) % 3],
+    G = globalThis.A || { ball: {} },
+    calm = !G.ball.vis || Object.values(G.disp || {}).some(q => q.pose === 'preserve'),
+    base = pick === 'rest' ? ((d.p.num || 0) % 2 ? READY_PALMS : READY) : pick, // its ready once the ball is live
+    want = pick === 'rest' && calm ? 1 : 0,
+    dt = Math.min(0.1, t - (d.restT ?? t) || 0);
+  d.restT = t;
+  d.restW = (d.restW || 0) + (want - (d.restW || 0)) * (1 - Math.exp(-dt * 6));
+  const rw = d.restW,
+    b = Math.sin(t * 5.2 + ph) * (1 - rw), // the bounce, ~0.8 Hz (none resting)
+    w = Math.sin(t * 0.9 + ph), // the weight shift, ~7 s
+    br = Math.sin(t * 1.6 + ph) * rw; // resting: breathing
+  let o = {
+    ...base,
+    hp: base.hp + 0.03 * b,
+    L: { ...base.L, k: base.L.k + 0.07 * b + 0.05 * w, a: base.L.a + 0.04 * b },
+    R: { ...base.R, k: base.R.k + 0.07 * b - 0.05 * w, a: base.R.a + 0.04 * b },
     hroll: 0.025 * w,
     sroll: -0.025 * w
   };
+  if (rw > 0.01) o = { ...mix(o, { ...REST_KNEES, sp: REST_KNEES.sp + 0.02 * br, hroll: 0.02 * w, sroll: -0.02 * w }, rw), kneeHands: rw };
+  return o;
 }
 function idleStand(d) {
   const t = performance.now() / 1000,

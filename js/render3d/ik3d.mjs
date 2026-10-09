@@ -250,3 +250,31 @@ export function armIK(pl, d, pose, hand, dt) {
     twoBone(up, lo, hd, aTgt, pole, w, false); // the hand follows the forearm (keeping its world rotation twisted the wrist)
   }
 }
+
+// ---------- hands on the knees (resting) ----------
+const kn = new THREE.Vector3(),
+  hpK = new THREE.Vector3();
+/**
+ * Resting with the hands on the knees (poses3d REST_KNEES, pose.kneeHands 0..1): each hand goes to the top of its own
+ * thigh just above the knee — this player's real knees, whatever their build — the elbows bending out to the side.
+ */
+export function kneeHands(pl, w) {
+  if (!(w > 0.01)) return;
+  const yaw = pl.root.rotation.y;
+  fwdA.set(Math.sin(yaw), 0, Math.cos(yaw));
+  left.set(Math.cos(yaw), 0, -Math.sin(yaw));
+  for (const s of ['left', 'right']) {
+    pl.bone(s + 'LowerLeg').getWorldPosition(kn);
+    pl.bone(s + 'UpperLeg').getWorldPosition(hpK);
+    aTgt
+      .copy(kn)
+      .lerp(hpK, 0.18)
+      .addScaledVector(fwdA, 0.05)
+      .add(vA.set(0, 0.04, 0));
+    pole
+      .copy(left)
+      .multiplyScalar(s === 'left' ? 1 : -1)
+      .addScaledVector(fwdA, -0.3);
+    twoBone(pl.bone(s + 'UpperArm'), pl.bone(s + 'LowerArm'), pl.bone(s + 'Hand'), aTgt, pole, w, false);
+  }
+}

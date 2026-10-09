@@ -7,7 +7,7 @@ import { poseDone, playerPose, coachPose, gaitNow } from './poses3d.mjs';
 import { celeMs } from './poses3d-cele.mjs';
 import { KH, KX, KZ, W } from './units3d.mjs';
 import { cam, povFadeId } from './camera3d.mjs';
-import { footIK, armIK } from './ik3d.mjs';
+import { footIK, armIK, kneeHands } from './ik3d.mjs';
 import { turnLag, landSpring, headSteady } from './secondary3d.mjs';
 
 const tmp = new THREE.Vector3(),
@@ -27,7 +27,10 @@ function moodOf(d) {
  * Stride by distance left to run (m): at `near` or closer small steps, from `far` full strides. Gait cycle (m, two steps)
  * = c0 + c1 × run share, each lerped short → long; the leg swing scales the same way (poses3d locoPose, m.far).
  */
-const STRIDE = { near: 1, far: 5, c0: [0.8, 1.25], c1: [0.5, 1.6] };
+// Step length (owner, 2026-10-10: sprints took ~9 steps a second of ~1 m): grows with speed like a real runner's — ~0.65 m
+// walking, ~1.25 m at 4 m/s, ~2.3 m sprinting (≈ 2–4 steps a second) — and shrinks to × short over the last `far` metres
+// before the spot (small quick steps to arrive). poses3d locoPose sizes the leg swing from it (m.step).
+const STRIDE = { near: 0.3, far: 2, base: 0.35, perMs: 0.22, min: 0.45, max: 2.4, short: 0.6 };
 /**
  * Measured motion for locomotion: velocity (m/s) from the player's court position, split into forward / lateral
  * relative to where they face, and a gait phase advanced by distance so feet don't slide.
@@ -58,9 +61,8 @@ function motion(pl, pos, face, dt) {
   const d = pl.d,
     rem = d ? Math.hypot((d.tx - d.x) * KX, (d.tz - d.z) * KZ) : 0;
   m.far = (m.far || 0) + (clamp((rem - STRIDE.near) / (STRIDE.far - STRIDE.near), 0, 1) - (m.far || 0)) * k;
-  const r = clamp((m.speed - 1.2) / 2.3, 0, 1),
-    g = m.far,
-    cycle = STRIDE.c0[0] + (STRIDE.c0[1] - STRIDE.c0[0]) * g + (STRIDE.c1[0] + (STRIDE.c1[1] - STRIDE.c1[0]) * g) * r; // metres per full gait cycle (two steps)
+  m.step = clamp(STRIDE.base + STRIDE.perMs * m.speed, STRIDE.min, STRIDE.max) * (STRIDE.short + (1 - STRIDE.short) * m.far);
+  const cycle = 2 * m.step; // metres per full gait cycle (two steps)
   // the gait weights, eased (poses3d gaitW): a turn swaps fwd and lat within a few frames and flicked the legs between gaits
   const gn = gaitNow(m),
     gw = m.gw || (m.gw = { ...gn }),
@@ -170,6 +172,7 @@ export function posePlayer(pl, dt, ballPos, fx) {
   groundSnap(pl, (d.jy || 0) * KH + (pose.lift || 0), pose.lying);
   if (sink && VFX.ik.feet) root.position.y -= sink; // landing: the hips settle, the foot IK bends the knees for it
   footIK(pl, d, pose, dt); // feet planted on the floor (ik3d.mjs)
+  kneeHands(pl, pose.kneeHands); // resting: the hands on the knees (ik3d.mjs)
   // hands / forearms on the ball (ik3d.mjs): one hand for spikes, serves, dives and a one-hand block, else both
   const bh = blockHand(pl, d);
   armIK(pl, d, pose, bh || (pose.hand ? pose.hand : ['spike', 'serve', 'dive'].includes(d.pose) ? 'right' : 'both'), dt);
