@@ -78,7 +78,7 @@ export const mixLeg = (a, b, t) => {
   if (a.ss != null || b.ss != null) o.ss = mixN(a.ss ?? (a.s ?? 0.1) * 0.4, b.ss ?? (b.s ?? 0.1) * 0.4, t);
   return o;
 };
-const NUMS = ['hp', 'sp', 'cp', 'tw', 'hd', 'hy', 'hyaw', 'hroll', 'shrug', 'curl', 'curlL', 'curlR', 'sroll', 'lift', 'sway'];
+const NUMS = ['hp', 'sp', 'cp', 'tw', 'hd', 'hy', 'hyaw', 'hroll', 'shrug', 'curl', 'curlL', 'curlR', 'sroll', 'lift', 'sway', 'kneeHands'];
 /** Setter release motion by set direction: k = release progress 0..1, lean = body angle, arms = end pose. */
 function setMotion(d) {
   const dirn = d.setDir || 'front',
@@ -352,6 +352,36 @@ function forwardGait(m, sp, ph) {
 }
 const SHUFFLE = { side: 1, back: 0 };
 /**
+ * Running to the ball (a pass, the setter under it): the arms swing with the run while it is still more than ~1 m away and
+ * form the platform / the hands-up window over the last metre (m.far, actors3d motion).
+ */
+function runArms(out, m, mk) {
+  const w = mk * clamp((m.far ?? 1) * 1.4, 0, 1);
+  if (w < 0.02) return out;
+  const lp = locoPose({ ...m, lat: 0, fwd: Math.max(m.fwd, m.speed), gw: { side: 0, back: 0 } });
+  return { ...out, al: mixArm(out.al, lp.al, w), ar: mixArm(out.ar || mirror(out.al), lp.ar, w, -1) };
+}
+/** Is the move done with the arms (so a run swings them)? Contact moves only once they are over. */
+function armsFree(d, pose) {
+  switch (pose) {
+    case 'block':
+    case 'spike':
+    case 'serve':
+      return d.upAge != null && d.upAge <= (d.pAge || 0) && (d.jy || 0) <= 1; // landed from this move's jump
+    case 'set':
+      return d.swing != null && d.swing > 260; // released
+    case 'bump':
+      return d.swing != null && d.swing > 520; // played
+    case 'cele':
+    case 'roar':
+    case 'slump':
+    case 'huddle':
+      return true;
+    default:
+      return false; // ready / walk / pre-serve blend with the run themselves; setprep runs with the hands up; dive
+  }
+}
+/**
  * Alive while waiting (owner, 2026-10-10; was a quick hip pump): ready — a soft bounce in the knees (the feet stay planted;
  * the hips ride it) and a slow weight shift side to side; standing — breathing and a slow sway. Each player on their own
  * phase (shirt number); wall-clock time, presentation only.
@@ -363,14 +393,14 @@ const SHUFFLE = { side: 1, back: 0 };
  * tossed they come up into their ready (eased, d.restW).
  */
 const IDLE = [READY, READY_PALMS, 'rest'];
-function idleReady(d) {
+function idleReady(d, m) {
   const t = performance.now() / 1000,
     ph = (d.p.num || 0) * 1.7,
     pick = IDLE[(((d.p.num || 0) * 7 + ((globalThis.A && globalThis.A.rallyNo) || 0) * 13) >>> 0) % 3],
     G = globalThis.A || { ball: {} },
     calm = !G.ball.vis || Object.values(G.disp || {}).some(q => q.pose === 'preserve'),
     base = pick === 'rest' ? ((d.p.num || 0) % 2 ? READY_PALMS : READY) : pick, // its ready once the ball is live
-    want = pick === 'rest' && calm ? 1 : 0,
+    want = pick === 'rest' && calm && !(moveMix(m) > 0.05) ? 1 : 0, // (moving: up off the knees, the arms free to swing)
     dt = Math.min(0.1, t - (d.restT ?? t) || 0);
   d.restT = t;
   d.restW = (d.restW || 0) + (want - (d.restW || 0)) * (1 - Math.exp(-dt * 6));
@@ -659,6 +689,7 @@ export function playerPose(d, mood, m) {
           run > 0
             ? { ...mix(out, lp, run * 0.85), contact: 1 }
             : { ...out, L: mixLeg(out.L, lp.L, mk), R: mixLeg(out.R, lp.R, mk), lift: lp.lift };
+        out = runArms(out, m, mk);
       }
     }
     out.contact = d.swing == null ? 1 : 1 - u;
@@ -671,6 +702,7 @@ export function playerPose(d, mood, m) {
     if (mk > 0) {
       const lp = locoPose(m); // still moving under the ball: real strides, hands already rising
       out = { ...out, L: mixLeg(out.L, lp.L, mk), R: mixLeg(out.R, lp.R, mk), hp: mixN(out.hp, lp.hp, mk * 0.6), lift: lp.lift };
+      out = runArms(out, m, mk);
     }
     out.contact = 1;
     out.face = { relaxed: 0.3 };
@@ -740,8 +772,29 @@ export function playerPose(d, mood, m) {
     };
   else if (air) out = { hp: 0, sp: 0, L: leg(0.4, 0.9, 0.5), R: leg(0.1, 1.1, 0.5), al: [V(0.6, 0.2, 0.3), V(0.5, 0.3, 0.5)], curl: 0.4 };
   else {
-    const stance = pose === 'ready' ? idleReady(d) : idleStand(d);
+    const stance = pose === 'ready' ? idleReady(d, m) : idleStand(d);
     out = mk > 0 ? mix(stance, locoPose(m), mk) : stance;
+  }
+  // walking / running off once the move is over (owner, 2026-10-10): the arms swing with the run (and the legs run) instead
+  // of staying in the move — after a block / spike / serve landing, a set released, a pass played, a celebration,
+  // the rest on the knees, the huddle. The ready stance and the pre-serve walk already blend with the run themselves.
+  if ((d.pAge || 0) < (d.lastPAge || 0)) d.upAge = null; // a new move: forget the last one's jump
+  d.lastPAge = d.pAge || 0;
+  if (d.jy > 8) d.upAge = d.pAge || 0; // (jumped during this move: its landing counts as the move being over)
+  if (mk > 0.05 && !out.lying && !air && armsFree(d, pose)) {
+    const lp = locoPose(m);
+    out = {
+      ...out,
+      al: mixArm(out.al, lp.al, mk),
+      ar: mixArm(out.ar || mirror(out.al), lp.ar, mk, -1),
+      L: mixLeg(out.L, lp.L, mk),
+      R: mixLeg(out.R, lp.R, mk),
+      lift: mixN(out.lift, lp.lift, mk),
+      tw: mixN(out.tw, lp.tw, mk),
+      hyaw: mixN(out.hyaw, lp.hyaw, mk),
+      kneeHands: mixN(out.kneeHands, 0, mk),
+      contact: (out.contact || 0) * (1 - mk)
+    };
   }
   // get back up after a dive
   if (pose !== 'dive' && d.gu && d.gu.t < 260 && d.gu.s.f < 2.3) out = mix(divePose(d, d.gu.s.f), out, sm(d.gu.t / 260));

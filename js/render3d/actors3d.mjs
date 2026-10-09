@@ -172,7 +172,10 @@ export function posePlayer(pl, dt, ballPos, fx) {
   groundSnap(pl, (d.jy || 0) * KH + (pose.lift || 0), pose.lying);
   if (sink && VFX.ik.feet) root.position.y -= sink; // landing: the hips settle, the foot IK bends the knees for it
   footIK(pl, d, pose, dt); // feet planted on the floor (ik3d.mjs)
-  kneeHands(pl, pose.kneeHands); // resting: the hands on the knees (ik3d.mjs)
+  // resting: the hands on the knees (ik3d.mjs); eased here too, so leaving it for any other move (a walk, a pass) never
+  // snaps the hands off the knees (the IK comes after the smoothing)
+  pl.khW = (pl.khW || 0) + ((pose.kneeHands || 0) - (pl.khW || 0)) * (1 - Math.exp(-dt * 8));
+  kneeHands(pl, pl.khW);
   // hands / forearms on the ball (ik3d.mjs): one hand for spikes, serves, dives and a one-hand block, else both
   const bh = blockHand(pl, d);
   armIK(pl, d, pose, bh || (pose.hand ? pose.hand : ['spike', 'serve', 'dive'].includes(d.pose) ? 'right' : 'both'), dt);

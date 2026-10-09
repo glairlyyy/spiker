@@ -285,6 +285,11 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     palms open to the sky, or hands on the knees (bent over, head up) — picked by a hash of shirt number and rally (no random
     draws; not tied to stamina). Hands on the knees only while it is calm (ball dead or the server still in the routine);
     when the ball is tossed they come up into their ready.
+  - **Arms swing whenever a player walks or runs** (owner, 2026-10-10) **[built]**: once a move is over — landed from a block,
+    spike or serve, a set released, a pass played, a celebration, the rest on the knees, the huddle — moving blends the
+    whole body (arms too) into the walk / run; running to a pass or under a set the arms swing until the last ~1 m, then form
+    the platform / hands-up window. Kept on purpose: a blocker's hands stay up shuffling along the net, a spiker's
+    approach arms, a side shuffle's ready arms.
   - **Run stride** (owner, 2026-10-10) **[built]**: step length grows with speed like a real runner's (~0.65 m walking,
     ~1.25 m at 4 m/s, ~2.2 m sprinting; ~4.5 steps a second at a sprint, was ~9 of ~1 m); the leg swing is sized to the step,
     more flight and forward lean sprinting; the last ~2 m before the spot small quick steps.
