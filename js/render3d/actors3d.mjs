@@ -3,7 +3,7 @@
 // sideline; dressing everyone for a match.
 import * as THREE from 'three';
 import { applyPose, smoothBones, torsoDir, bendArm, groundSnap, setFace, updateVrm, dress, undress, mirror } from './players3d.mjs';
-import { poseDone, playerPose, coachPose } from './poses3d.mjs';
+import { poseDone, playerPose, coachPose, gaitNow } from './poses3d.mjs';
 import { celeMs } from './poses3d-cele.mjs';
 import { KH, KX, KZ, W } from './units3d.mjs';
 import { cam, povFadeId } from './camera3d.mjs';
@@ -56,8 +56,13 @@ function motion(pl, pos, face, dt) {
   const r = clamp((m.speed - 1.2) / 2.3, 0, 1),
     g = m.far,
     cycle = STRIDE.c0[0] + (STRIDE.c0[1] - STRIDE.c0[0]) * g + (STRIDE.c1[0] + (STRIDE.c1[1] - STRIDE.c1[0]) * g) * r; // metres per full gait cycle (two steps)
-  const side = Math.abs(m.lat) > Math.abs(m.fwd) * 1.1;
-  m.phase += ((side ? dist * 1.6 : dist) / cycle) * Math.PI * 2;
+  // the gait weights, eased (poses3d gaitW): a turn swaps fwd and lat within a few frames and flicked the legs between gaits
+  const gn = gaitNow(m),
+    gw = m.gw || (m.gw = { ...gn }),
+    kg = 1 - Math.exp(-dt * 7);
+  gw.side += (gn.side - gw.side) * kg;
+  gw.back += (gn.back - gw.back) * kg;
+  m.phase += ((dist * (1 + 0.6 * gw.side)) / cycle) * Math.PI * 2; // a shuffle steps quicker (blended like the gait)
   return m;
 }
 /**
@@ -256,7 +261,12 @@ function steer(pl, d, pos, face, mot, ballPos, dt) {
     // turn toward the ball while waiting, running or passing; attackers, setters and blockers face the net
     want = clamp(toward(ballPos.x - pos.x, ballPos.z - pos.z), -0.7, 0.7) * 0.8;
   }
-  pl.yawOff = wrap(pl.yawOff + wrap(want - pl.yawOff) * (1 - Math.exp(-dt * rate)));
+  // a critically damped spring (not a plain ease): a turn speeds up and slows down instead of starting at full speed, which
+  // kicked the body round in one frame and dragged the planted feet with it
+  const w = rate * 1.6,
+    h = Math.min(dt, 0.05);
+  pl.yawV = (pl.yawV || 0) + (w * w * wrap(want - pl.yawOff) - 2 * w * (pl.yawV || 0)) * h;
+  pl.yawOff = wrap(pl.yawOff + pl.yawV * h);
 }
 
 const hLw = new THREE.Vector3(),
@@ -436,7 +446,7 @@ function dressFigure(pl, d) {
   pl.eyeCol = '#' + new THREE.Color(p.look.eyeC || '#4cc9f0').offsetHSL(0, 0.2, 0.18).getHexString();
   for (const t of [...pl.trails, ...pl.eyeTrails]) t.clear();
   pl.prev.clear();
-  Object.assign(pl, { yawOff: 0, mot: null });
+  Object.assign(pl, { yawOff: 0, yawV: 0, mot: null });
   if (pl.fadeMats) {
     // a figure reused for the next match starts fully visible
     pl.fade = 1;

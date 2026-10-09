@@ -176,7 +176,7 @@ export function spikePose(d, m) {
     // approach, timed off the jump: run → big penultimate step (arms swing back high) → plant, get low → take-off
     const pp = J && J.mode === 'up' && d.jt != null ? clamp(d.jt / Math.max(0.05, J.t0), 0, 1) : m && moving(m) ? 0.3 : 0;
     const serve = sty === 'serve';
-    const run = moving(m) ? locoPose({ ...m, lat: 0, fwd: Math.abs(m.fwd) + 0.5 }) : P(STAND, { hp: 0.2 });
+    const run = moving(m) ? locoPose({ ...m, lat: 0, fwd: Math.abs(m.fwd) + 0.5, gw: { side: 0, back: 0 } }) : P(STAND, { hp: 0.2 });
     const armsBackRun = [V(0.15, -0.5, -0.85), V(0.15, -0.35, -0.94), V(0.1, -0.2, -0.98)];
     const PEN = C({
       hp: 0.45,

@@ -76,19 +76,24 @@ const ease = t => t * t * (3 - 2 * t);
 /**
  * Foot planting after the pose is grounded: on the floor (not jumping, not lying), a foot the pose has down is locked where
  * it touched; when the pose lifts it, or it would slide more than `slip` m, it steps from the lock to where the pose wants
- * it over `step` s (a small arc). In the air or lying down the locks are dropped. dt: world seconds.
+ * it over `step` s (a small arc). In the air or lying down nothing is planted (locked feet step off). dt: world seconds.
  */
 export function footIK(pl, d, pose, dt) {
   const C = VFX.ik;
   if (!C.feet) return void (pl.feet = null);
   const root = pl.root,
-    feet = pl.feet || (pl.feet = [{}, {}]),
-    grounded = !pose.lying && d.pose !== 'dive' && root.position.y < 0.03 && (d.jy || 0) <= 1 && !A.animLab?.replay;
-  if (!grounded) {
+    feet = pl.feet || (pl.feet = [{}, {}]);
+  if (A.animLab?.replay) {
     feet[0] = {};
     feet[1] = {};
     return;
   }
+  // in the air or lying down nothing new is planted; a foot still locked steps off its lock like a lifted one (dropping the
+  // locks at once snapped the feet back to the pose by up to half a metre)
+  const air = pose.lying || d.pose === 'dive' || root.position.y > 0.12 || (d.jy || 0) > 1,
+    // running fast the gait itself keeps the feet (its stride follows the distance run): nothing new is planted
+    spd = (pl.mot && pl.mot.speed) || 0,
+    run = (pl.ikRun = spd > C.run + 0.3 || (pl.ikRun && spd > C.run - 0.3)); // (VFX.ik.run, with a little hysteresis)
   const contact = pl.footRest * pl.scale,
     yaw = root.rotation.y;
   fwd.set(Math.sin(yaw), 0, Math.cos(yaw));
@@ -98,33 +103,54 @@ export function footIK(pl, d, pose, dt) {
       lo = pl.bone(s + 'LowerLeg'),
       ft = pl.bone(s + 'Foot'),
       F = ft.getWorldPosition(new THREE.Vector3()),
-      down = F.y - contact < C.down;
+      // down / up with hysteresis (a pose foot hovering at the threshold locked and let go every other frame: shaky feet)
+      down = !air && !run && F.y - contact < (st.lock || st.step ? C.down * 1.6 : C.down);
     up.getWorldPosition(hip);
-    const reach = (pl.legLen || (pl.legLen = hip.distanceTo(lo.getWorldPosition(vA)) + vA.distanceTo(F))) * 0.98;
+    const reach = (pl.legLen || (pl.legLen = hip.distanceTo(lo.getWorldPosition(vA)) + vA.distanceTo(F))) * 0.98,
+      held = st.lock;
+    if (held && Math.hypot(held.x - F.x, held.z - F.z) > reach * 2.5) {
+      // the player was moved (a rotation, a new rally): forget the old spot instead of stepping across the court
+      feet[i] = {};
+      return;
+    }
     if (st.step) {
       st.step.t += dt / Math.max(0.02, C.step);
+      // the step closes the gap to the pose's foot, measured from the pose's foot (the body may run on meanwhile)
       const k = ease(Math.min(1, st.step.t));
-      tgt.lerpVectors(st.step.from, F, k);
-      tgt.y = Math.max(F.y, contact) + (down ? C.arc * Math.sin(Math.PI * k) : 0);
+      tgt.set(F.x + st.step.off.x * (1 - k), 0, F.z + st.step.off.z * (1 - k));
+      tgt.y = Math.max(F.y, contact + (air ? 0 : C.arc * Math.sin(Math.PI * k))); // a small arc over the floor (the pose's lift if higher)
       if (st.step.t >= 1) st.step = null;
     } else if (down) {
-      if (!st.lock) st.lock = new THREE.Vector3(F.x, contact, F.z);
+      if (!st.lock) st.lock = new THREE.Vector3(F.x, contact, F.z); // (x, z held; the height stays the pose's own)
       const slid = Math.hypot(F.x - st.lock.x, F.z - st.lock.z) > C.slip,
         far = hip.distanceTo(st.lock) > reach;
       if (slid || far) {
-        st.step = { from: st.lock.clone(), t: 0 };
+        tgt.set(st.lock.x, F.y, st.lock.z);
+        st.step = { off: new THREE.Vector3(st.lock.x - F.x, 0, st.lock.z - F.z), t: 0 };
         st.lock = null;
-        tgt.copy(st.step.from);
-      } else tgt.copy(st.lock);
+      } else tgt.set(st.lock.x, F.y, st.lock.z);
     } else {
-      if (st.lock) st.step = { from: st.lock.clone(), t: 0 }; // the pose lifts it: leave the lock smoothly
+      if (st.lock) st.step = { off: new THREE.Vector3(st.lock.x - F.x, 0, st.lock.z - F.z), t: 0 }; // the pose lifts it: off the lock smoothly
       st.lock = null;
-      tgt.copy(st.step ? st.step.from : F);
+      if (st.step) tgt.set(F.x + st.step.off.x, F.y, F.z + st.step.off.z);
+      else tgt.copy(F);
     }
-    if (tgt.distanceToSquared(F) < 1e-5) return;
-    // knees bend forward (and a little out): the current knee offset, else the facing
-    pole.copy(lo.getWorldPosition(vA)).sub(vB.copy(hip).lerp(F, 0.5));
-    if (pole.lengthSq() < 4e-4) pole.copy(fwd);
+    // a lock / step / release never moves the foot in one frame: on a change of state the jump is kept as a residual that
+    // fades out (a locked foot itself stays exactly on its spot)
+    const sig = st.lock || st.step || null,
+      res = st.res || (st.res = new THREE.Vector3());
+    if (sig !== st.sig && st.last) {
+      res.copy(st.last).sub(tgt);
+    }
+    if (res.lengthSq() > 0.25) res.set(0, 0, 0); // (a teleport: nothing to blend)
+    st.sig = sig;
+    res.multiplyScalar(Math.exp(-dt * 25));
+    tgt.add(res);
+    (st.last || (st.last = new THREE.Vector3())).copy(tgt);
+    if (tgt.distanceToSquared(F) < 1e-6) return;
+    // knees bend forward (and a little out): the pose's knee offset plus a steady bit of the facing, so a nearly straight leg
+    // (offset ~0, its direction noise) never flips the knee from frame to frame
+    pole.copy(lo.getWorldPosition(vA)).sub(vB.copy(hip).lerp(F, 0.5)).addScaledVector(fwd, 0.04);
     twoBone(up, lo, ft, tgt, pole, 1, true);
   });
 }

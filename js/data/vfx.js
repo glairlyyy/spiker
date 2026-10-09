@@ -128,6 +128,7 @@ const VFX_DEF = {
       step: [0.12, 0.04, 0.4, 0.01, 'Step time (s)'],
       arc: [0.05, 0, 0.2, 0.01, 'Step lift (m)'],
       down: [0.035, 0.005, 0.12, 0.005, 'A foot is down below (m)'],
+      run: [4, 0, 12, 0.5, 'Plant only below this speed (m/s; faster the gait keeps the feet)'],
       arms: [1, 0, 1, 1, 'Hands / forearms on the ball']
     }
   },

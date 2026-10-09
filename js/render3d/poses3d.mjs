@@ -224,26 +224,53 @@ function gaitLeg(ph, r, stride, knee = 0) {
  */
 export function locoPose(m) {
   const sp = m.speed,
-    ph = m.phase;
-  if (Math.abs(m.lat) > Math.abs(m.fwd) * 1.1 && sp < 6) {
-    // side shuffle: low, feet slide apart and together with a small hop, arms ready
-    const o = 0.5 + 0.5 * Math.sin(ph * 2),
-      lead = Math.sign(m.lat);
-    return {
-      ...READY,
-      hp: 0.5,
-      L: leg(0.85, 1.3, 0, 0.14 + (lead > 0 ? 0.24 : 0.1) * o),
-      R: leg(0.8, 1.25, 0, 0.14 + (lead < 0 ? 0.24 : 0.1) * o),
-      lift: 0.05 * Math.abs(Math.sin(ph * 2)),
-      hroll: 0.06 * lead * o
-    };
-  }
-  if (m.fwd < -0.3) {
+    ph = m.phase,
+    { side, back } = gaitW(m);
+  // the three gaits blend by weight (a hard switch at a threshold flickered between them: shaky legs)
+  let out = forwardGait(m, sp, ph);
+  if (back > 0) {
     // backpedal: short quick steps, sitting back, arms in front
     const L = gaitLeg(-ph, 0.2, 0.55, 0.35),
       R = gaitLeg(-ph + Math.PI, 0.2, 0.55, 0.35);
-    return { ...READY, hp: 0.35, sp: 0.08, hd: -0.35, L, R };
+    out = mix(out, { ...READY, hp: 0.35, sp: 0.08, hd: -0.35, L, R, lift: 0 }, back);
   }
+  if (side > 0) {
+    // side shuffle: low, feet slide apart and together with a small hop, arms ready
+    const o = 0.5 + 0.5 * Math.sin(ph * 2),
+      lead = clamp((m.lat || 0) / 0.5, -1, 1); // (continuous: a sign flip swapped the leading foot in one frame)
+    out = mix(
+      out,
+      {
+        ...READY,
+        hp: 0.5,
+        tw: 0,
+        hyaw: 0,
+        L: leg(0.85, 1.3, 0, 0.14 + (0.17 + 0.07 * lead) * o),
+        R: leg(0.8, 1.25, 0, 0.14 + (0.17 - 0.07 * lead) * o),
+        lift: 0.05 * Math.abs(Math.sin(ph * 2)),
+        hroll: 0.06 * lead * o
+      },
+      side
+    );
+  }
+  return out;
+}
+/**
+ * Gait weights 0..1: sideways (shuffle) and backwards (backpedal); the rest is the forward gait. `m.gw` when set (actors3d
+ * motion keeps them eased over time — read off fwd / lat at once they jumped while the body turned; a caller can force one).
+ */
+export function gaitW(m) {
+  return m.gw || gaitNow(m);
+}
+/** The weights straight from the measured fwd / lat (m/s). */
+export function gaitNow(m) {
+  const fw = m.fwd || 0,
+    lt = Math.abs(m.lat || 0),
+    side = sm(clamp((lt / (Math.abs(fw) + 0.05) - 0.85) / 0.5, 0, 1)) * (1 - sm(clamp((m.speed - 5.5) / 1, 0, 1))),
+    back = sm(clamp((-fw - 0.15) / 0.35, 0, 1));
+  return { side, back: back * (1 - side) };
+}
+function forwardGait(m, sp, ph) {
   const r = clamp((sp - 1.2) / 2.3, 0, 1),
     // short hop of a run: small steps; a long run: long strides (m.far 0..1, actors3d motion)
     stride = (0.7 + 0.3 * Math.min(1, sp / 3)) * (0.65 + 0.5 * (m.far ?? 0.7));
@@ -267,14 +294,18 @@ export function locoPose(m) {
     hd: -(0.06 + 0.2 * r) * 0.7,
     tw: 0.14 * (0.4 + r) * Math.cos(ph),
     hyaw: -0.1 * (0.4 + r) * Math.cos(ph),
+    hroll: 0,
     L,
     R,
     al: arm(swL),
     ar: mirror(arm(-swL)),
     curl: 0.35 + 0.35 * r,
+    curlL: 0.35 + 0.35 * r, // (set, so blending toward READY's own curlL / curlR starts from here, not from 0)
+    curlR: 0.35 + 0.35 * r,
     lift: r * 0.06 * Math.max(0, Math.cos(2 * ph + 0.7))
   });
 }
+const SHUFFLE = { side: 1, back: 0 };
 export const moving = m => m && m.speed > 0.35;
 export const moveMix = m => (m ? clamp((m.speed - 0.35) / 1.1, 0, 1) : 0);
 
@@ -523,7 +554,7 @@ export function playerPose(d, mood, m) {
       if (mk > 0 && d.swing == null) {
         // running to the ball: a real run while far, settling into the platform as the player arrives
         const run = clamp((m.speed - 2) / 1.5, 0, 1);
-        const lp = locoPose(run > 0 ? m : { ...m, lat: m.lat || 0.01, fwd: 0 });
+        const lp = locoPose(run > 0 ? m : { ...m, lat: m.lat || 0.01, fwd: 0, gw: SHUFFLE });
         out =
           run > 0
             ? { ...mix(out, lp, run * 0.85), contact: 1 }
@@ -564,7 +595,7 @@ export function playerPose(d, mood, m) {
       up = { hp: 0.05, sp: 0.08, hd: -0.1, L: leg(0.05, 0.1, 0.7, 0.14), R: leg(0.05, 0.1, 0.7, 0.14), al: BLOCK_UP, curl: 0.02 };
     out = mix(prep, up, pr);
     if (mk > 0 && pr < 0.1) {
-      const lp = locoPose({ ...m, lat: m.lat || 0.01, fwd: 0 });
+      const lp = locoPose({ ...m, lat: m.lat || 0.01, fwd: 0, gw: SHUFFLE });
       out = { ...out, L: mixLeg(out.L, lp.L, mk), R: mixLeg(out.R, lp.R, mk), lift: lp.lift };
     }
     out.contact = pr;
