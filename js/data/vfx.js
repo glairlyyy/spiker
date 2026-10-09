@@ -120,6 +120,14 @@ const VFX_DEF = {
       ink: ['#ff1630', 0, 0, 0, 'Ink glow colour (no element)']
     }
   },
+  slowcd: {
+    name: 'Slow-motion cooldown (per team, per kind)',
+    p: {
+      on: [1, 0, 1, 1, 'On (off: every slow motion plays)'],
+      pts: [3, 1, 12, 1, 'Points between two (per team)'],
+      shared: [1, 0, 1, 1, 'One cooldown for all kinds (off: per kind)']
+    }
+  },
   hand: {
     name: 'Hand trails',
     p: {

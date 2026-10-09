@@ -554,6 +554,7 @@ function step(dt) {
   if (!b._s) {
     b._s = 1;
     A.el = 0;
+    SlowMo.beat(b); // the slow-motion cooldown per team (render/slowmo.js)
     if (b.scene && b.scene > HYPE[G.hype].max) {
       b.dur = 1; // Hype setting: this staged scene is skipped
       b.acts = [];

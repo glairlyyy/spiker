@@ -170,8 +170,9 @@ const Dir = {
   /** The impact frame for a spike of power `pow`: the row's floor on a kill, once per `every` points per side. */
   frameOk(pow) {
     const r = this.row();
-    if (!r) return !!VFX.frame.on && pow >= VFX.frame.min;
+    if (!r) return !!VFX.frame.on && pow >= VFX.frame.min && SlowMo.take('impact', SlowMo.sideOf());
     if (!r.frame || !this.cur.kill || pow < r.frame.min || !VFX.frame.on) return false;
+    if (!SlowMo.take('impact', this.cur.side)) return false; // the slow-motion cooldown per team
     const s = this.cur.side,
       n = A.pointN || 0;
     if (n - this.lastFrame[s] < r.frame.every) return false;
