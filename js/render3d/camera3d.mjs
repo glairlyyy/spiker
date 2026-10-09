@@ -337,39 +337,34 @@ const sv1 = new THREE.Vector3(),
   sq0 = new THREE.Quaternion();
 const shot = { k: 0, key: '', pos: new THREE.Vector3(), look: new THREE.Vector3(), fov: 30 };
 /**
- * The ace cinematic (render/cine.js), one tracked shot by phase — glide: how fast the camera follows (1/s), so a new phase
- * pans over smoothly. bounce: in front of the server, the ball in their hands; run: low at the feet, from the front and side;
- * hit: beside the hitting arm at contact height; ball: riding behind the ball to where it lands.
+ * A cut-scene's camera (render/cine.js), one tracked shot by phase: the phase's VFX group (CINE_KINDS) frames it — feet: from
+ * the player's feet (fwd along their facing, side, up; looking at `look` m up, `ahead` m ahead, `ball` of the way to the ball);
+ * hand: the same from the hitting hand; ride: behind the ball on the line from the player, looking ahead and down. glide: how
+ * fast the camera follows (1/s), so a new phase pans over smoothly.
  */
-function acePose(a, ph, up) {
+function cinePose(a, s, up) {
+  const K = CINE_KINDS.find(k => k.id === s.cut),
+    [g, how] = (K && K.ph[s.ph]) || [],
+    c = VFX[g];
+  if (!c) return null;
   const F = a.root.position.clone().setY(0),
     f = new THREE.Vector3(Math.sin(a.root.rotation.y), 0, Math.cos(a.root.rotation.y)),
     r = new THREE.Vector3().crossVectors(f, up).normalize(),
     B = world.ball.position.clone(),
-    // a point from `o`: `fw` m along the server's facing, `rt` m to the side, `y` m up
+    // a point from `o`: `fw` m along the player's facing, `rt` m to the side, `y` m up
     at = (o, fw, rt, y) =>
       o
         .clone()
         .addScaledVector(f, fw)
         .addScaledVector(r, rt)
         .add(new THREE.Vector3(0, y, 0));
-  // the numbers: VFX cbounce / crun / chit / cball (js/data/vfx.js), tuned live in the Cut-scene lab
-  if (ph === 'bounce') {
-    const c = VFX.cbounce;
-    return { pos: at(F, c.fwd, c.side, c.up), look: at(F, 0, 0, c.look).lerp(B, c.ball), fov: c.fov, glide: c.glide };
-  }
-  if (ph === 'run') {
-    const c = VFX.crun;
-    return { pos: at(F, c.fwd, c.side, c.up), look: at(F, c.ahead, 0, c.look), fov: c.fov, glide: c.glide };
-  }
-  if (ph === 'hit') {
-    const c = VFX.chit,
-      h = a.bone('rightHand').getWorldPosition(new THREE.Vector3());
+  if (how === 'feet')
+    return { pos: at(F, c.fwd, c.side, c.up), look: at(F, c.ahead || 0, 0, c.look).lerp(B, c.ball || 0), fov: c.fov, glide: c.glide };
+  if (how === 'hand') {
+    const h = a.bone('rightHand').getWorldPosition(new THREE.Vector3());
     return { pos: at(h, c.fwd, c.side, c.up), look: at(h.clone().lerp(B, c.ball), 0, 0, c.look), fov: c.fov, glide: c.glide };
   }
-  // ball: behind it on the line from the server, a little above, looking ahead and down to where it comes down
-  const c = VFX.cball,
-    d = B.clone().sub(F).setY(0);
+  const d = B.clone().sub(F).setY(0);
   if (d.length() < 0.5) d.copy(f);
   d.normalize();
   const pos = B.clone().addScaledVector(d, -c.back),
@@ -385,7 +380,7 @@ function shotPose(s) {
   if (!a) return null;
   const up = new THREE.Vector3(0, 1, 0),
     H = a.bone('head').getWorldPosition(new THREE.Vector3());
-  if (s.kind === 'ace') return acePose(a, s.ph || 'bounce', up);
+  if (s.kind === 'cine') return cinePose(a, s, up);
   if (s.kind === 'follow') {
     // a followed player (a decision point, §2.13): behind and beside the player, the ball ahead of them — tracked from the feet (no head bob)
     const F = a.root.position.clone().setY(0),

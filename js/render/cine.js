@@ -1,64 +1,130 @@
 // Cinematic camera for a big moment (owner, 2026-10-08; display only): picked from the rally's beats before they play, framed
-// by the 3D renderer as one tracked shot (A.shot kind 'ace', phase A.shot.ph — camera3d shotPose) that glides between phases.
-// First moment: the serve ace — the ball in the server's hands as they bounce it, down to the feet for the run-up, a side view
-// of the hit, then the camera rides the ball to the floor. Budget: one per CINE.every points a side scores (per side).
+// by the 3D renderer as one tracked shot (A.shot kind 'cine', its cut-scene `cut` and phase `ph` — camera3d cinePose) that
+// glides between phases. Budget: one per CINE.every points a side scores (per side), whichever cut-scene it is.
+//   ace — the ball in the server's hands as they bounce it, down to the feet for the run-up, a side view of the hit, then the
+//         camera rides the ball to the floor;
+//   ws  — a wing spiker's kill: over the hitter's shoulder as the set goes up, low at the feet for the approach, beside the
+//         arm at the swing, then riding the ball to the floor.
 
-/** every: points a side scores between its cinematics; hype: the Hype setting it needs. Camera numbers: VFX cbounce … cball. */
+/** every: points a side scores between its cinematics; hype: the Hype setting it needs. Camera numbers: VFX groups by `cut`. */
 const CINE = { every: 2, hype: 1 };
-/** The cut-scene kinds, for the Cut-scene lab (menu › Dev: a Monster game where every rally stages one, its camera values live). */
-const CINE_KINDS = [{ id: 'ace', name: 'Ace', tip: 'Every serve is an ace: bounce, run-up, the hit, riding the ball to the floor' }];
+/**
+ * The cut-scenes (the Cut-scene lab lists them; menu › Dev). For each: its phases → the VFX group with the camera numbers
+ * (js/data/vfx.js, `lab: 'cine'`, `cut`) and how that group frames (feet: from the player's feet; hand: from the hitting
+ * hand; ride: behind the ball), the hand → ball hand-off group and the group holding the landing time.
+ */
+const CINE_KINDS = [
+  {
+    id: 'ace',
+    name: 'Ace',
+    tip: 'Every serve is an ace: bounce, run-up, the hit, riding the ball to the floor',
+    ph: { bounce: ['cbounce', 'feet'], run: ['crun', 'feet'], hit: ['chit', 'hand'], ball: ['cball', 'ride'] }
+  },
+  {
+    id: 'ws',
+    name: 'WS kill',
+    tip: "Every wing spiker's kill: the set over the hitter's shoulder, the approach, the swing, riding the ball to the floor",
+    ph: { set: ['wset', 'feet'], run: ['wrun', 'feet'], hit: ['whit', 'hand'], ball: ['wball', 'ride'] }
+  }
+];
+const cineKind = id => CINE_KINDS.find(k => k.id === id);
 const Cine = {
-  /** At a beat's start (playback startBeat): count points for the budget; at a rally's reset, end the last one and pick. */
+  /** At a beat's start (playback startBeat): count points for the budget; at a rally's reset end the last one; look for one. */
   beat(b) {
     if (!A.cineCool) A.cineCool = [CINE.every, CINE.every];
     for (const a of b.acts) if (a.k === 'point' && a.side != null) A.cineCool[a.side]++;
     if (b.acts.some(a => a.k === 'reset')) {
       Cine.stop();
-      Cine.choose(b);
+      A.cineSeen = 0; // beats of this rally already looked at
+    }
+    // the rally's beats so far (a played match with prompts gets them in parts): look again when there are new ones
+    if (!A.cine && (A.beats || []).length > (A.cineSeen || 0)) {
+      Cine.choose();
+      A.cineSeen = A.beats.length;
     }
   },
-  /** A rally that ends in an ace by a side with budget: the cinematic for its server (Hype off / reduced motion / fixed camera: none). */
-  choose(b) {
-    const dev = A.cineForce === 'ace'; // the Dev preview: every time, whatever the settings
+  /** A rally that ends in an ace, or a WS kill, by a side with budget (Hype off / reduced motion / fixed camera: none). */
+  choose() {
+    const dev = A.cineForce; // the Cut-scene lab: that cut-scene every time, whatever the settings
     if (!dev && (RM || G.camFixed || HYPE[G.hype].max < CINE.hype)) return;
-    const hold = b.acts.find(a => a.k === 'hold'),
-      d = hold && A.disp[hold.p];
+    const c = Cine.ace() || Cine.ws();
+    if (!c || (dev && c.kind !== dev)) return;
+    const d = A.disp[c.p];
     if (!d || (!dev && A.cineCool[d.side] < CINE.every)) return;
-    let end = -1;
-    for (let i = A.bi; i < (A.beats || []).length && end < 0; i++)
-      if (A.beats[i].acts.some(a => a.k === 'label' && a.t === 'ACE!')) end = i;
-    if (end < 0) return;
     A.cineCool[d.side] = 0;
-    A.cine = { kind: 'ace', p: hold.p, end };
+    A.cine = c;
   },
-  /** Each frame (dt: real ms): start the shot once the server begins the routine, set its phase, end it after the landing. */
+  /** From this rally's reset: an ace → { kind, p: the server, end: the ace beat }. */
+  ace() {
+    const B = A.beats || [],
+      r = B.findIndex((b, i) => i >= A.bi && b.acts.some(a => a.k === 'reset'));
+    if (r < 0) return null;
+    const hold = B[r].acts.find(a => a.k === 'hold');
+    for (let i = r; i < B.length && hold; i++)
+      if (B[i].acts.some(a => a.k === 'label' && a.t === 'ACE!')) return { kind: 'ace', p: hold.p, end: i };
+    return null;
+  },
+  /**
+   * From the current beat: a wing spiker's kill → { kind, p: the hitter, set: the set beat, end: the kill beat } — the last set
+   * to a hitter before a killing landing, and the point goes to the hitter's side (not a stuff).
+   */
+  ws() {
+    const B = A.beats || [];
+    let set = null;
+    for (let i = A.bi; i < B.length; i++) {
+      const acts = B[i].acts,
+        s = acts.find(a => a.k === 'ball' && a.to && a.to.c === 'spike' && a.to.p && a.when !== 'end');
+      if (s) set = { p: s.to.p, i };
+      if (set && i > set.i && acts.some(a => a.k === 'impact' && a.kill)) {
+        const pt = B.slice(i).find(b => b.acts.some(a => a.k === 'point')),
+          side = pt && pt.acts.find(a => a.k === 'point').side,
+          d = A.disp[set.p];
+        // the shot starts with the pass to the setter when there is one (the set seen coming), else with the set
+        const pass = set.i > 0 && B[set.i - 1].acts.some(a => a.k === 'ball' && a.to && a.to.c === 'set'),
+          start = pass && set.i - 1 >= A.bi ? set.i - 1 : set.i;
+        return d && d.p.role === 'WS' && side === d.side ? { kind: 'ws', p: set.p, set: set.i, start, end: i } : null;
+      }
+      if (acts.some(a => a.k === 'point')) return null;
+    }
+    return null;
+  },
+  /** Each frame (dt: real ms): start the shot when its moment begins, set its phase, end it after the landing. */
   step(dt) {
     const c = A.cine;
     if (!c) return;
+    const K = cineKind(c.kind),
+      ride = VFX[K.ph.ball[0]];
     if (A.bi > c.end) c.after = (c.after || 0) + dt; // the ball is down: stay on it a moment
-    if (A.done || c.after > VFX.cball.hold) return Cine.stop();
+    if (A.done || c.after > ride.hold) return Cine.stop();
     const d = A.disp[c.p];
     if (!d) return Cine.stop();
-    if (!A.shot && d.pose === 'preserve' && d.psv && d.psv.t > 0 && moveM(d) <= 0.15) A.shot = { kind: 'ace', p: c.p, track: true };
-    if (!A.shot || A.shot.kind !== 'ace') return;
+    if (!A.shot) {
+      const go = c.kind === 'ace' ? d.pose === 'preserve' && d.psv && d.psv.t > 0 && moveM(d) <= 0.15 : A.bi >= c.start;
+      if (go) A.shot = { kind: 'cine', cut: c.kind, p: c.p, track: true };
+    }
+    if (!Cine.busy()) return;
     camRelease(); // no push-ins on top of the cinematic
-    const far = Math.hypot((A.ball.x - d.x) * MX, (A.ball.z - d.z) * MZ);
-    A.shot.ph =
-      d.pose === 'preserve'
-        ? 'bounce'
-        : A.lastP === c.p
-          ? d.jy > 8 || d.spkStyle === 'float'
-            ? 'hit'
-            : 'run'
-          : far < VFX.chit.far && A.ball.h > 20
-            ? 'hit'
-            : 'ball';
+    const far = Math.hypot((A.ball.x - d.x) * MX, (A.ball.z - d.z) * MZ),
+      handOff = VFX[K.ph.hit[0]].far,
+      after = far < handOff && A.ball.h > 20 ? 'hit' : 'ball'; // the ball has left the hand
+    if (c.kind === 'ace')
+      A.shot.ph = d.pose === 'preserve' ? 'bounce' : A.lastP === c.p ? (d.jy > 8 || d.spkStyle === 'float' ? 'hit' : 'run') : after;
+    else {
+      const b = A.beats[A.bi],
+        early = A.bi === c.set && b && A.el < b.dur * VFX.wset.until; // the set is still going up
+      A.shot.ph = A.bi < c.set ? 'set' : A.lastP === c.p ? (d.jy > 8 ? 'hit' : early ? 'set' : 'run') : A.bi <= c.set ? 'set' : after;
+    }
+  },
+  /** World time scale for the cinematic (clock.js timeScale): WS kill — slow motion from the set to the swing (VFX.wrun.slow). */
+  slow() {
+    const s = Cine.busy() && A.shot.cut === 'ws' && A.shot.ph !== 'ball' ? VFX.wrun.slow : 1;
+    return s > 0 ? s : 1;
   },
   /** Back to the game camera. */
   stop() {
-    if (A.shot && A.shot.kind === 'ace') A.shot = null;
+    if (Cine.busy()) A.shot = null;
     A.cine = null;
   },
-  /** A `shot` act is ignored while a cinematic runs. */
-  busy: () => !!(A && A.cine && A.shot && A.shot.kind === 'ace')
+  /** The cinematic has the camera (a `shot` act and endScene leave it alone). */
+  busy: () => !!(A && A.cine && A.shot && A.shot.kind === 'cine')
 };

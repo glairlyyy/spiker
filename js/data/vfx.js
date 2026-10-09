@@ -134,6 +134,7 @@ const VFX_DEF = {
   cbounce: {
     name: 'Ace 1 · bounce (ball in the hands)',
     lab: 'cine',
+    cut: 'ace',
     p: {
       fwd: [4.3, 0.5, 8, 0.1, 'Camera ahead (m)'],
       side: [3, -5, 5, 0.1, 'Camera to the side (m)'],
@@ -147,6 +148,7 @@ const VFX_DEF = {
   crun: {
     name: 'Ace 2 · run-up (feet)',
     lab: 'cine',
+    cut: 'ace',
     p: {
       fwd: [2.5, 0.3, 6, 0.1, 'Camera ahead (m)'],
       side: [2.1, -4, 4, 0.1, 'Camera to the side (m)'],
@@ -160,6 +162,7 @@ const VFX_DEF = {
   chit: {
     name: 'Ace 3 · the hit',
     lab: 'cine',
+    cut: 'ace',
     p: {
       fwd: [-1.8, -3, 3, 0.1, 'Camera ahead of the hand (m)'],
       side: [-0.5, -5, 5, 0.1, 'Camera to the side (m)'],
@@ -174,6 +177,7 @@ const VFX_DEF = {
   cball: {
     name: 'Ace 4 · riding the ball',
     lab: 'cine',
+    cut: 'ace',
     p: {
       back: [2.6, 0.5, 8, 0.1, 'Camera behind the ball (m)'],
       up: [0.5, -1, 3, 0.05, 'Camera above the ball (m)'],
@@ -182,6 +186,66 @@ const VFX_DEF = {
       fov: [48, 15, 80, 1, 'Field of view'],
       glide: [14, 1, 30, 0.5, 'Glide in'],
       hold: [500, 0, 3000, 50, 'Stay on the landing (ms)']
+    }
+  },
+  // the WS kill cut-scene camera (render/cine.js): from the hitter's feet / hitting hand, then riding the ball
+  wset: {
+    name: 'WS 1 · the set (over the shoulder)',
+    lab: 'cine',
+    cut: 'ws',
+    p: {
+      fwd: [-2.5, -6, 6, 0.1, 'Camera ahead (m; − = behind)'],
+      side: [0.8, -5, 5, 0.1, 'Camera to the side (m)'],
+      up: [1.7, 0.1, 4, 0.05, 'Camera height (m)'],
+      look: [1.5, 0, 4, 0.05, 'Look at height (m)'],
+      ball: [1, 0, 1, 0.05, 'Look toward the ball'],
+      fov: [40, 8, 80, 1, 'Field of view'],
+      glide: [4, 1, 20, 0.5, 'Glide in'],
+      until: [0.15, 0, 1, 0.05, 'Share of the set before the approach shot']
+    }
+  },
+  wrun: {
+    name: 'WS 2 · the approach (feet)',
+    lab: 'cine',
+    cut: 'ws',
+    p: {
+      fwd: [1.5, -4, 6, 0.1, 'Camera ahead (m)'],
+      side: [2.2, -5, 5, 0.1, 'Camera to the side (m)'],
+      up: [0.35, 0.05, 2, 0.05, 'Camera height (m)'],
+      look: [0.4, 0, 2, 0.05, 'Look at height (m)'],
+      ahead: [0.8, -1, 4, 0.05, 'Look ahead of the feet (m)'],
+      fov: [32, 8, 80, 1, 'Field of view'],
+      glide: [7, 1, 20, 0.5, 'Glide in'],
+      slow: [0.5, 0.1, 1, 0.05, 'Slow motion, set → swing (× speed)']
+    }
+  },
+  whit: {
+    name: 'WS 3 · the swing',
+    lab: 'cine',
+    cut: 'ws',
+    p: {
+      fwd: [0.8, -4, 4, 0.1, 'Camera ahead of the hand (m)'],
+      side: [3, -5, 5, 0.1, 'Camera to the side (m)'],
+      up: [-0.3, -2, 2, 0.05, 'Camera above the hand (m)'],
+      look: [0, -1.5, 1.5, 0.05, 'Look above the hand (m)'],
+      ball: [0.5, 0, 1, 0.05, 'Look toward the ball'],
+      fov: [38, 8, 80, 1, 'Field of view'],
+      glide: [6, 1, 20, 0.5, 'Glide in'],
+      far: [2, 0.5, 8, 0.1, 'Until the ball is this far (m)']
+    }
+  },
+  wball: {
+    name: 'WS 4 · riding the ball',
+    lab: 'cine',
+    cut: 'ws',
+    p: {
+      back: [2.6, 0.5, 8, 0.1, 'Camera behind the ball (m)'],
+      up: [0.5, -1, 3, 0.05, 'Camera above the ball (m)'],
+      ahead: [3, 0.5, 8, 0.1, 'Look ahead (m)'],
+      drop: [0.6, -1, 3, 0.05, 'Look below the ball (m)'],
+      fov: [48, 8, 80, 1, 'Field of view'],
+      glide: [14, 1, 30, 0.5, 'Glide in'],
+      hold: [600, 0, 3000, 50, 'Stay on the landing (ms)']
     }
   }
 };

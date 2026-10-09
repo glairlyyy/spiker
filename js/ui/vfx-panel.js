@@ -28,7 +28,7 @@ function vfxRow(g, k) {
 function vfxPanel() {
   const inMatch = typeof A !== 'undefined' && A && A.m,
     cine = !!(inMatch && A.cineForce),
-    groups = Object.entries(VFX_DEF).filter(([, d]) => (d.lab === 'cine') === cine);
+    groups = Object.entries(VFX_DEF).filter(([, d]) => (d.lab === 'cine') === cine && (!cine || d.cut === A.cineForce));
   return `<div class="vfxh"><h3>${cine ? 'Cut-scene lab' : 'VFX tuning'}</h3>${inMatch ? '<button class="btn" onclick="vfxToggle()">Close <kbd>V</kbd></button>' : ''}</div>
     ${cine ? cineLabRow() : ''}
     <div class="vexp"><button class="btn" onclick="vfxCopy()">Copy</button><button class="btn" onclick="vfxDownload()">Download</button>
@@ -52,9 +52,15 @@ function vfxPanel() {
 }
 /** Cut-scene lab: which cut-scene every rally stages, and the game speed to watch it at. */
 function cineLabRow() {
-  return `<div class="vexp"><span>Cut-scene</span><div class="seg">${CINE_KINDS.map(c => `<button class="btn ${A.cineForce === c.id ? 'on' : ''}" ${tip(c.tip)}>${esc(c.name)}</button>`).join('')}</div></div>
+  return `<div class="vexp"><span>Cut-scene</span><div class="seg">${CINE_KINDS.map(c => `<button class="btn ${A.cineForce === c.id ? 'on' : ''}" onclick="cineLabKind('${c.id}')" ${tip(c.tip)}>${esc(c.name)}</button>`).join('')}</div></div>
     <div class="vexp"><span ${tip('Every rally the serve goes to the other team and it rotates: each server in turn, from both ends')}>Force rotate</span><div class="seg">${[1, 0].map(o => `<button class="btn ${!!A.m.devRot === !!o ? 'on' : ''}" onclick="A.m.devRot=${o};vfxRedraw()">${o ? 'On' : 'Off'}</button>`).join('')}</div></div>
     <div class="vexp"><span>Speed</span><div class="seg">${[0.25, 0.5, 1].map(s => `<button class="btn ${A.speed === s ? 'on' : ''}" data-s="${s}" onclick="setSpeed(${s})">${s === 1 ? '1' : s === 0.5 ? '½' : '¼'}×</button>`).join('')}</div></div>`;
+}
+/** Cut-scene lab: switch the cut-scene (from the next rally). Ace forces every serve to be an ace (m.dev); WS kill plays on every WS kill. */
+function cineLabKind(id) {
+  A.cineForce = id;
+  A.m.dev = id === 'ace' ? 'ace' : null;
+  vfxRedraw();
 }
 /** Display names of choice options. */
 const VFX_OPT_NAME = {
