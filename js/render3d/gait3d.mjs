@@ -109,10 +109,13 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
       if (f.stance || !f.from) {
         f.from = (f.from || new THREE.Vector3()).copy(f.plant || ft);
         f.next = live.clone();
+        // the lift-off spot relative to the hip: the swing is planned in the body's frame, so the foot travels with the body
+        // (owner, 2026-10-10: planned on the floor, the feet trailed half a metre behind a sprinting body)
+        f.rel = (f.rel || new THREE.Vector3()).set(f.from.x - hip.x, 0, f.from.z - hip.z);
       }
       f.from.y = contact;
       // (a change of speed or heading still moves the landing, smoothly, less and less as the foot comes down)
-      f.next.lerp(live, (1 - s01) * (1 - Math.exp(-Math.min(dt, 0.05) * 12)));
+      f.next.lerp(live, (1 - s01) * (1 - Math.exp(-Math.min(dt, 0.05) * 30)));
       f.next.y = contact;
       // and it lands where the leg can reach: never further than ~0.6 leg from where the hip is (slowing down)
       const ox = f.next.x - hip.x,
@@ -123,8 +126,15 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
         f.next.x = hip.x + (ox / ol) * lim;
         f.next.z = hip.z + (oz / ol) * lim;
       }
-      // the heel comes up behind first, then the knee drives the foot through and down onto its spot
-      t.lerpVectors(f.from, f.next, ease(Math.pow(s01, 1.5)));
+      // from behind the hip to ahead of it (half the stance's travel), in the body's frame; plus how far the landing spot is
+      // off where the body is headed (a change of speed or heading), so the foot comes down exactly on f.next
+      const e = ease(s01),
+        ahead = step * duty;
+      t.set(
+        hip.x + f.rel.x * (1 - e) + (dir.x * ahead + f.next.x - live.x) * e,
+        0,
+        hip.z + f.rel.z * (1 - e) + (dir.z * ahead + f.next.z - live.z) * e
+      );
       t.y = contact + lift * (s01 < 0.4 ? ease(s01 / 0.4) : 1 - ease((s01 - 0.4) / 0.6)); // up early, smoothly off / onto the floor
     }
     f.stance = stance;

@@ -302,7 +302,8 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     more flight and forward lean sprinting; the last ~2 m before the spot small quick steps.
   - **Planted gait** (owner, 2026-10-10) **[built]**: walking and running feet never slide — each foot is on the floor for a
     share of the cycle that shrinks with speed (~60 % walking, ~20 % sprinting: a real flight between steps), locked where it
-    lands, then swings heel-up first and knee through to where the body will be at its next step; the hips dip as far as a
+    lands, then swings heel-up first and knee through to where the body will be at its next step, travelling with the body (the
+    feet stay under it, never trailing behind a sprinting torso — owner, 2026-10-10); the hips dip as far as a
     planted foot needs. Planted-foot slide while running: ~0.6 → ~0.1–0.2 of the body's speed. VFX panel → Planted gait.
   - **Steady landings and dives** (owner, 2026-10-10) **[built]**: a spiker or jump server lands by blending the air pose into
     the landing one over the last part of the fall (no snap at touchdown); after a landing the body absorbs it (~120 ms) and
