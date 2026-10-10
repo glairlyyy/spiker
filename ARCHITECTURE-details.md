@@ -299,8 +299,10 @@ each foot from the gait phase (`m.phase`, `m.step`): a foot is down for the duty
 (~0.6 walking → `minDuty` sprinting; fixed at its contact; a foot as far behind as the leg sweeps, or out to the side, lifts
 early; one contact per cycle), locked where its swing landed (`f.lastT`); in the swing it travels from the lift-off to where the
 hip will be at the next contact plus half the next stance's travel (re-aimed less and less, kept within reach), planned in the
-hip's frame (`f.rel` → half a stance ahead, plus the landing's drift `f.next − live`) so the foot travels with the body, heel up
-first then the knee through (lift `gait.lift` × speed). The hips come down as far as a planted foot needs (`pl.gDrop`,
+hip's frame (`f.rel` → half a stance ahead, plus the landing's drift `f.next − live`) so the foot travels with the body, landing `ahead` = min(step × duty, ½ SWEEP × leg) in front; a stance foot behind the hip
+raises its heel (≤ 12 cm); the hip height is the gait's own (`pl.gHip`: 0.95 leg, down to what a foot down or landing next can
+reach, ≤ 12 cm, eased; + pose.lift), replacing the pose's FK height; heel up
+first then the knee through (lift `gait.lift` × speed). The hips come down as far as a planted foot needs (`pl.gHip`; `pl.gDrop` = how far below 0.95 leg, for QA;
 eased). Targets blend from the pose's foot by the weight `pl.gW` (forward-gait share × `pose.gaitW` — 1 from locoPose, carried
 by `mix` — × speed from `gait.from`; eased) and are solved fully (ik3d `twoBone`). `footIK` plants nothing new from gW 0.2 and
 hands the feet over at 0.8. Heading eased (`pl.gDir`).

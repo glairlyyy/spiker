@@ -349,9 +349,11 @@ function forwardGait(m, sp, ph) {
     };
   const swL = -Math.cos(ph);
   return C({
-    hp: 0.06 + 0.2 * r + 0.08 * clamp((sp - 5) / 4, 0, 1), // a sprint leans further forward
-    sp: 0.04 + 0.06 * r,
-    hd: -(0.06 + 0.2 * r) * 0.7,
+    // upright hips under the body, a slight lean from the waist, a little more sprinting (owner, 2026-10-10: a ~25° lean
+    // with the pelvis tipped forward put the body ahead of the legs, bottom out; now ~12° at most)
+    hp: 0.04 + 0.05 * r,
+    sp: 0.03 + 0.07 * r + 0.04 * clamp((sp - 5) / 4, 0, 1),
+    hd: -(0.04 + 0.08 * r),
     tw: 0.14 * (0.4 + r) * Math.cos(ph),
     hyaw: -0.1 * (0.4 + r) * Math.cos(ph),
     // weight shift (secondary motion, owner 2026-10-10): the hips over the stance foot (left in the first half of the cycle)
@@ -814,6 +816,13 @@ export function playerPose(d, mood, m) {
       lift: mixN(out.lift, lp.lift, mk),
       tw: mixN(out.tw, lp.tw, mk),
       hyaw: mixN(out.hyaw, lp.hyaw, mk),
+      // and the body comes up with the run (owner, 2026-10-10: a bump's or a landing's deep forward bend ran on over the
+      // running legs — the torso far ahead of the hips)
+      hp: mixN(out.hp, lp.hp, mk),
+      sp: mixN(out.sp, lp.sp, mk),
+      hd: mixN(out.hd, lp.hd, mk),
+      hroll: mixN(out.hroll, lp.hroll, mk),
+      sroll: mixN(out.sroll, lp.sroll, mk),
       kneeHands: mixN(out.kneeHands, 0, mk),
       gaitW: mixN(out.gaitW, 1, mk),
       contact: (out.contact || 0) * (1 - mk)

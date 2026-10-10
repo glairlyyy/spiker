@@ -34,7 +34,7 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
     want = C.on && !air && !A.animLab?.replay ? (pose.gaitW || 0) * clamp((sp - C.from) / 0.8, 0, 1) * (sp > 3 ? 1 : 0.4 + 0.6 * gw) : 0; // (fast, it steps any way the body goes)
   pl.gW = (pl.gW || 0) + (want - (pl.gW || 0)) * (1 - Math.exp(-Math.min(dt, 0.05) * (want < (pl.gW || 0) ? 14 : 12)));
   const W = pl.gW;
-  if (W < 0.01) return void (pl.gait = null);
+  if (W < 0.01) return void (pl.gait = pl.gHip = null);
   const st = pl.gait || (pl.gait = [{}, {}]),
     contact = pl.footRest * pl.scale,
     step = Math.max(0.3, mot.step || 0.7),
@@ -56,6 +56,9 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
   const gd = pl.gDir || (pl.gDir = dir.clone());
   gd.lerp(dir, 1 - Math.exp(-Math.min(dt, 0.05) * 7)).normalize();
   dir.copy(gd);
+  // where a foot lands: half the stance's travel ahead of the hip, but no further than half the leg's sweep (sprinting, the
+  // stance's travel outgrows the leg; the foot lifts once it is as far behind)
+  const ahead = Math.min(step * duty, 0.5 * SWEEP * leg);
   const lift = C.lift * (0.25 + 0.75 * clamp((sp - 1.5) / 6, 0, 1)); // the swing foot's clearance (knee drive when sprinting)
   // 1. this frame's targets
   const T = ['left', 'right'].map((s, i) => {
@@ -96,16 +99,20 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
       if (!f.stance || !f.plant) {
         // contact: where the swing came down (its end point), else ahead of the hip by half the stance's travel, so the
         // hip passes over it at mid-stance
-        f.plant = f.lastT && f.uPrevSet ? f.lastT.clone() : hip.clone().addScaledVector(dir, step * duty);
+        f.plant = f.lastT && f.uPrevSet ? f.lastT.clone() : hip.clone().addScaledVector(dir, ahead);
         f.plant.y = contact;
       }
       t.copy(f.plant);
+      // pushing off: behind the hip the heel comes up (the foot rolls onto its toes; the toes stay on the spot), so a leg
+      // that sweeps back reaches without the hips sinking (owner, 2026-10-10: the run sat down)
+      const back = -(t.x - hip.x) * dir.x - (t.z - hip.z) * dir.z;
+      t.y = contact + Math.min(0.12, Math.max(0, back - 0.05) * 0.45);
     } else {
       if (f.stance || f.uLift == null) f.uLift = u; // (lifted early or on time: the swing runs from here to the next contact)
       const s01 = clamp((u - f.uLift) / Math.max(0.05, 1 - f.uLift), 0, 1),
         // to where the hip will be at the next contact, plus half the next stance's travel: re-aimed live early in the swing,
         // fixed on the floor late in it (so the foot comes to rest on its spot, not on the moving body)
-        live = hip.clone().addScaledVector(dir, (1 - u) * 2 * step + step * duty);
+        live = hip.clone().addScaledVector(dir, (1 - u) * 2 * step + ahead);
       if (f.stance || !f.from) {
         f.from = (f.from || new THREE.Vector3()).copy(f.plant || ft);
         f.next = live.clone();
@@ -128,8 +135,7 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
       }
       // from behind the hip to ahead of it (half the stance's travel), in the body's frame; plus how far the landing spot is
       // off where the body is headed (a change of speed or heading), so the foot comes down exactly on f.next
-      const e = ease(s01),
-        ahead = step * duty;
+      const e = ease(s01);
       t.set(
         hip.x + f.rel.x * (1 - e) + (dir.x * ahead + f.next.x - live.x) * e,
         0,
@@ -142,17 +148,22 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
     (f.lastT || (f.lastT = new THREE.Vector3())).copy(t);
     if (t.y < contact) t.y = contact; // never under the floor
     // the highest the hip may be for this foot's target to be reachable with a bent knee (only a foot that is down counts)
-    const hd = Math.hypot(t.x - hx, t.z - hz),
-      allow = stance ? t.y + Math.sqrt(Math.max(0, (0.95 * leg) ** 2 - hd * hd)) : Infinity;
-    return { s, t, drop: Math.max(0, hy - allow) };
+    // (and a swinging foot's next contact, half a stance ahead: the hips are down before it lands, so it can reach ahead of
+    // them instead of coming down under the body — owner, 2026-10-10)
+    const hd = stance ? Math.hypot(t.x - hx, t.z - hz) : ahead,
+      allow = (stance ? t.y : contact) + Math.sqrt(Math.max(0, (0.97 * leg) ** 2 - hd * hd));
+    return { s, t, hy, allow };
   });
-  // 2. the hips come down as far as a planted foot needs (a running stride's knees bend), eased so it bobs, never jumps
-  const want2 = Math.min(0.22, Math.max(T[0].drop, T[1].drop));
-  pl.gDrop = (pl.gDrop || 0) + (want2 - (pl.gDrop || 0)) * (1 - Math.exp(-Math.min(dt, 0.05) * 10));
-  if (pl.gDrop > 1e-4) {
-    root.position.y -= pl.gDrop * W;
-    root.updateMatrixWorld(true);
-  }
+  // 2. the hips' height is the gait's, not the pose's (owner, 2026-10-10: the walk / run keys' bent knees sat the body down
+  // into a wide crouch): nearly straight legs, down only as far as a foot that is (or is about to be) down needs, eased so
+  // it bobs, never jumps; the run's flight (pose.lift) on top
+  const stand = contact + 0.95 * leg,
+    want2 = Math.max(stand - 0.12, Math.min(stand, T[0].allow, T[1].allow)),
+    hyNow = (T[0].hy + T[1].hy) / 2;
+  pl.gHip = pl.gHip == null ? want2 : pl.gHip + (want2 - pl.gHip) * (1 - Math.exp(-Math.min(dt, 0.05) * 10));
+  pl.gDrop = stand - pl.gHip; // (read by QA)
+  root.position.y += (pl.gHip + (pose.lift || 0) - hyNow) * W;
+  root.updateMatrixWorld(true);
   // 3. the legs onto the targets
   for (const { s, t } of T) {
     const up = pl.bone(s + 'UpperLeg'),
