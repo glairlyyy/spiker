@@ -792,11 +792,11 @@ mood)`.
   never shanks except vs element spikes / float serves), Clutch (from 12 pts and set point, rolls lean their way); a
   temper — Fired up (trailing 3+ or just stuffed → surge) / Rattled (2 stuffs/aces against → errors, trait off a
   while); a weakness revealed by scouting, shown in the match UI.
-- Animation, next (owner's rigging list, 2026-10-09; 1 foot IK, 2 arm IK, 3 the lab, 5 secondary motion are built — §2.19, §2.22):
-  4 recorded clips (VRMA / retargeted Mixamo) for idle, walk / run, celebrations, huddle — contacts stay procedural (best
-  value: idles and celebrations); 5 secondary motion is built (§2.19);
-  6 collision for hair and clothes (body colliders for the spring bones); the lab's drag-a-joint editing. Still shaky from the
-  poses themselves: dives, the jump-serve landing, the server reversing straight back after landing.
+- Animation, next (owner's rigging list, 2026-10-09; 1 foot IK, 2 arm IK, 3 the lab, 5 secondary motion, the planted gait,
+  steady landings / dives, legs leading turns are built — §2.19, §2.22): 4 recorded clips (VRMA / retargeted Mixamo) for idle,
+  celebrations, huddle — contacts stay procedural; the lab's drag-a-joint editing. 6 hair / clothes collision: **not wanted**
+  (owner, 2026-10-10: the clipping is funny, keep it). Known leftovers (measured, QA): a sprinting server's legs still jolt more
+  than with the gait off; feet trail the hips ~0.15 m on average while sprinting (mostly acceleration).
 - Smaller player models (tasks.md, owner 2026-10-08).
 - New-run setup + results screens. Hype scene frequency tuning (§2.3). More music, crowd, voice clips. Living map B/C. Endless mode.
 

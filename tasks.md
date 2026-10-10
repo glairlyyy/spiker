@@ -30,8 +30,11 @@ rival and the aces, growth, relationships, court matches), UI §9–§10, hex te
 the Shu highlands. Done tasks: one line under **Done** here, full text in tasks-done.md.
 
 **2026-10-10:** match animation polish built (spec §2.19–§2.23: foot / arm IK, secondary motion, idle stances, planted gait,
-no needless dives, steady landings). Next (owner): a design session in a new spec chat on player agency and strategy
-(spec §5.7) before new tasks; T-258–T-260 stay open.
+no needless dives, steady landings, lower body under the body, legs leading turns, low jogging knees; tunable in the VFX panel
+groups `ik`, `sec`, `gait`). Next (owner): a design session in a new spec chat on player agency and strategy (spec §5.7) before
+new tasks; T-258–T-260 stay open. Motion QA scripts were scratch (not in the repo): re-measure with Playwright (seed
+`RNG.seed(7)` + a seeded Math.random init script; metrics: stance slip vs body speed, feet vs hips along travel, feet outside a
+turn, standing slide, leg zigzag).
 
 ## Now
 
