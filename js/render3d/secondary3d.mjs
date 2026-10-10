@@ -19,15 +19,22 @@ const UP = new THREE.Vector3(0, 1, 0),
  * A sudden turn: the hips lead, the shoulders follow (the spine twists against the body's turn speed, pl.yawV), and running
  * the body leans into the turn. The head keeps its aim (it is turned back by the same twist). Before applyPose.
  */
-export function turnLag(pl, d, pose, mot) {
+export function turnLag(pl, d, pose, mot, dt) {
   const C = VFX.sec;
-  if (!C.on || pose.lying || d.pose === 'dive') return;
+  if (!C.on || pose.lying || d.pose === 'dive') return void (pl.hipLead = 0);
   const v = pl.yawV || 0,
     lag = clamp(-v * 0.08 * C.lag, -0.4, 0.4),
     lean = clamp(-v * clamp(mot.speed - 1, 0, 6) * 0.025 * C.lean, -0.22, 0.22);
   pose.tw = (pose.tw || 0) + lag;
   pose.hy = (pose.hy || 0) - lag;
   pose.hroll = (pose.hroll || 0) + lean;
+  // the legs lead (owner, 2026-10-10: the body turned before the legs): the hips — and the legs with them — turn ahead into
+  // the turn still to come (pl.yawErr), the spine twists back so the chest keeps the body's facing and follows (eased:
+  // pl.hipLead, also the knees' direction in gait3d)
+  const want = (pose.lying || (d.jy || 0) > 1 ? 0 : clamp((pl.yawErr || 0) * 0.5, -0.5, 0.5)) * C.lead;
+  pl.hipLead = (pl.hipLead || 0) + (want - (pl.hipLead || 0)) * (1 - Math.exp(-Math.min(dt, 0.05) * 14));
+  pose.hyaw = (pose.hyaw || 0) + pl.hipLead;
+  pose.tw = pose.tw - pl.hipLead;
 }
 
 /**

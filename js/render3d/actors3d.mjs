@@ -152,7 +152,7 @@ export function posePlayer(pl, dt, ballPos, fx) {
   // weight shift: the hips over the foot that carries the weight (the gait's sway, metres to the player's left)
   if (pose.sway && VFX.sec.on)
     root.position.add(tmp.set(Math.cos(face + pl.yawOff), 0, -Math.sin(face + pl.yawOff)).multiplyScalar(pose.sway * VFX.sec.sway));
-  turnLag(pl, d, pose, mot); // secondary motion (secondary3d.mjs)
+  turnLag(pl, d, pose, mot, dt); // secondary motion (secondary3d.mjs)
   const sink = landSpring(pl, d, pose, dt);
   // head follows the ball
   if (A.ball.vis && !pose.lying) {
@@ -288,6 +288,7 @@ function steer(pl, d, pos, face, mot, ballPos, dt) {
     h = Math.min(dt, 0.05);
   pl.yawV = (pl.yawV || 0) + (w * w * wrap(want - pl.yawOff) - 2 * w * (pl.yawV || 0)) * h;
   pl.yawOff = wrap(pl.yawOff + pl.yawV * h);
+  pl.yawErr = wrap(want - pl.yawOff); // (the turn still to come: the legs lead into it — secondary3d turnLag)
 }
 
 const hLw = new THREE.Vector3(),

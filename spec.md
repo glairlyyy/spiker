@@ -307,7 +307,9 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     of the hips and leaves the floor heel-first as it passes behind; the hips stay high (nearly straight legs, dipping only as
     far as a landing foot needs) and square under an upright body leaning ≤ ~12° from the waist; after a dig, landing or any
     move the whole upper body comes up into the run, not only the arms (owner, 2026-10-10: the run sat down into a lunge with
-    the body ahead of the legs); the hips dip as far as a
+    the body ahead of the legs); on a turn the hips and legs turn first and the chest follows; on a curve the feet land along
+    it, never left out to the side; a catch-up run going fast curves round (≤ ~1.8 g sideways, braking on a sharp turn)
+    instead of snapping its direction; jogging knees stay low, the knee drive only sprinting (owner, 2026-10-10); the hips dip as far as a
     planted foot needs. Planted-foot slide while running: ~0.6 → ~0.1–0.2 of the body's speed. VFX panel → Planted gait.
   - **Steady landings and dives** (owner, 2026-10-10) **[built]**: a spiker or jump server lands by blending the air pose into
     the landing one over the last part of the fall (no snap at touchdown); after a landing the body absorbs it (~120 ms) and

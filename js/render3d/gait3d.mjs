@@ -16,7 +16,8 @@ const hip = new THREE.Vector3(),
   pole = new THREE.Vector3(),
   dir = new THREE.Vector3(),
   fwd = new THREE.Vector3(),
-  vLeft = new THREE.Vector3();
+  vLeft = new THREE.Vector3(),
+  arc0 = new THREE.Vector3();
 
 /** The foot's travel relative to the hips while it is down, as a share of the leg's length (sets the duty). */
 const SWEEP = 0.8;
@@ -34,7 +35,12 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
     want = C.on && !air && !A.animLab?.replay ? (pose.gaitW || 0) * clamp((sp - C.from) / 0.8, 0, 1) * (sp > 3 ? 1 : 0.4 + 0.6 * gw) : 0; // (fast, it steps any way the body goes)
   pl.gW = (pl.gW || 0) + (want - (pl.gW || 0)) * (1 - Math.exp(-Math.min(dt, 0.05) * (want < (pl.gW || 0) ? 14 : 12)));
   const W = pl.gW;
-  if (W < 0.01) return void (pl.gait = pl.gHip = null);
+  if (W < 0.01) {
+    // (off: the heading starts afresh next time — a stale one planned the first steps in an old direction, off to the side)
+    pl.gait = pl.gHip = pl.gHv = pl.gDir = null;
+    pl.gOm = 0;
+    return;
+  }
   const st = pl.gait || (pl.gait = [{}, {}]),
     contact = pl.footRest * pl.scale,
     step = Math.max(0.3, mot.step || 0.7),
@@ -54,12 +60,26 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
   dir.normalize();
   // eased (pl.gDir): the landing spots are metres ahead, so a twitch in the measured heading would throw the feet about
   const gd = pl.gDir || (pl.gDir = dir.clone());
-  gd.lerp(dir, 1 - Math.exp(-Math.min(dt, 0.05) * 7)).normalize();
+  gd.lerp(dir, 1 - Math.exp(-Math.min(dt, 0.05) * 12)).normalize();
   dir.copy(gd);
+  // how fast the heading turns (rad/s, eased): a run on a curve lands its feet along the curve, not on its tangent (owner,
+  // 2026-10-10: on a wide turn the feet landed half a metre outside it — the body leading, the legs dragged out)
+  const hv = Math.atan2(gd.x, gd.z),
+    dh = pl.gHv == null ? 0 : Math.atan2(Math.sin(hv - pl.gHv), Math.cos(hv - pl.gHv)) / Math.max(1e-3, Math.min(dt, 0.05));
+  pl.gHv = hv;
+  pl.gOm = (pl.gOm || 0) + (clamp(dh, -6, 6) - (pl.gOm || 0)) * (1 - Math.exp(-Math.min(dt, 0.05) * 10));
+  const arc = D => {
+    // the point D metres on along the curve: the chord, turned by half the heading change
+    const th = clamp((pl.gOm * D) / Math.max(1, sp), -1.4, 1.4),
+      h = hv + th / 2,
+      L = Math.abs(th) > 1e-3 ? (D * Math.sin(th / 2)) / (th / 2) : D;
+    return arc0.set(Math.sin(h) * L, 0, Math.cos(h) * L);
+  };
   // where a foot lands: half the stance's travel ahead of the hip, but no further than half the leg's sweep (sprinting, the
   // stance's travel outgrows the leg; the foot lifts once it is as far behind)
   const ahead = Math.min(step * duty, 0.5 * SWEEP * leg);
-  const lift = C.lift * (0.25 + 0.75 * clamp((sp - 1.5) / 6, 0, 1)); // the swing foot's clearance (knee drive when sprinting)
+  // the swing foot's clearance: low jogging, the knee drive only when sprinting (owner, 2026-10-10: jogging knees too high)
+  const lift = C.lift * (0.15 + 0.85 * Math.pow(clamp((sp - 2) / 7, 0, 1), 1.5));
   // 1. this frame's targets
   const T = ['left', 'right'].map((s, i) => {
     const f = st[i],
@@ -112,13 +132,14 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
       const s01 = clamp((u - f.uLift) / Math.max(0.05, 1 - f.uLift), 0, 1),
         // to where the hip will be at the next contact, plus half the next stance's travel: re-aimed live early in the swing,
         // fixed on the floor late in it (so the foot comes to rest on its spot, not on the moving body)
-        live = hip.clone().addScaledVector(dir, (1 - u) * 2 * step + ahead);
+        live = hip.clone().add(arc((1 - u) * 2 * step + ahead));
       if (f.stance || !f.from) {
         f.from = (f.from || new THREE.Vector3()).copy(f.plant || ft);
         f.next = live.clone();
         // the lift-off spot relative to the hip: the swing is planned in the body's frame, so the foot travels with the body
         // (owner, 2026-10-10: planned on the floor, the feet trailed half a metre behind a sprinting body)
         f.rel = (f.rel || new THREE.Vector3()).set(f.from.x - hip.x, 0, f.from.z - hip.z);
+        f.relH = hv; // (and turned with the heading: on a curve the body's frame turns)
       }
       f.from.y = contact;
       // (a change of speed or heading still moves the landing, smoothly, less and less as the foot comes down)
@@ -135,11 +156,13 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
       }
       // from behind the hip to ahead of it (half the stance's travel), in the body's frame; plus how far the landing spot is
       // off where the body is headed (a change of speed or heading), so the foot comes down exactly on f.next
-      const e = ease(s01);
+      const e = ease(s01),
+        rc = Math.cos(hv - (f.relH ?? hv)),
+        rs = Math.sin(hv - (f.relH ?? hv));
       t.set(
-        hip.x + f.rel.x * (1 - e) + (dir.x * ahead + f.next.x - live.x) * e,
+        hip.x + (f.rel.x * rc + f.rel.z * rs) * (1 - e) + (dir.x * ahead + f.next.x - live.x) * e,
         0,
-        hip.z + f.rel.z * (1 - e) + (dir.z * ahead + f.next.z - live.z) * e
+        hip.z + (f.rel.z * rc - f.rel.x * rs) * (1 - e) + (dir.z * ahead + f.next.z - live.z) * e
       );
       t.y = contact + lift * (s01 < 0.4 ? ease(s01 / 0.4) : 1 - ease((s01 - 0.4) / 0.6)); // up early, smoothly off / onto the floor
     }
@@ -171,7 +194,9 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
       foot = pl.bone(s + 'Foot');
     foot.getWorldPosition(ft);
     // the knee bends forward (the facing, a touch outward): fixed, so a fast leg never flips it frame to frame
-    pole.copy(fwd).addScaledVector(vLeft.set(Math.cos(yaw), 0, -Math.sin(yaw)), s === 'left' ? 0.15 : -0.15);
+    // (the hips' facing: they lead into a turn — secondary3d turnLag)
+    const ly = yaw + (pl.hipLead || 0);
+    pole.set(Math.sin(ly), 0, Math.cos(ly)).addScaledVector(vLeft.set(Math.cos(ly), 0, -Math.sin(ly)), s === 'left' ? 0.15 : -0.15);
     // blended as positions (the pose's foot → the planned spot), then solved fully: one smooth path, never two mixed
     const w = Math.min(1, W * 1.25); // (a planted foot fully planted once the gait is mostly on)
     if (w < 1) t.lerpVectors(ft.copy(foot.getWorldPosition(ft)), t, w);

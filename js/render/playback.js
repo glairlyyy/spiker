@@ -482,16 +482,32 @@ function tweenJump(d, a, b, t) {
 const LAND_ABSORB = 120; // ms after a touchdown before a catch-up move starts
 const RUN_ACC = 16; // m/s² — a catch-up move builds up to a sprint (display only)
 const RUN_DEC = 10; // m/s² — and slows into its spot instead of stopping dead from a sprint
+const RUN_TURN = 18; // m/s² — the sideways grip of a catch-up run: it curves round, not snapping its direction at a sprint
 function capMove(d, x, z, accel) {
   const ms = (d.p && d.p.id === A.digHero ? A.rdt : A.fdt) || 16, // the digger runs on real time
     dm = Math.hypot((x - d.x) * MX, (z - d.z) * MZ);
   let v = sprintOf(d);
   if (accel) v = Math.min(v, (d.cv || 0) + (RUN_ACC * ms) / 1000, Math.max(1, Math.sqrt(2 * RUN_DEC * dm)));
+  // a catch-up run already going fast turns at most as fast as its grip allows (owner, 2026-10-10: on a wide turn the body
+  // swung round and the legs were left out to the side) and brakes while the turn is sharp; the last metre goes straight in
+  const want = Math.atan2((z - d.z) * MZ, (x - d.x) * MX);
+  if (accel && dm > 1 && (d.cv || 0) > 2 && d.ch != null) {
+    const err = Math.atan2(Math.sin(want - d.ch), Math.cos(want - d.ch)),
+      turn = ((RUN_TURN / d.cv) * ms) / 1000;
+    if (Math.abs(err) > 1) v = Math.min(v, Math.max(1.5, d.cv - (RUN_DEC * ms) / 1000));
+    d.ch += Math.max(-turn, Math.min(turn, err));
+    const step = (Math.min(v, dm * 0.999 * 1000) * ms) / 1000;
+    d.x += (Math.cos(d.ch) * step) / MX;
+    d.z += (Math.sin(d.ch) * step) / MZ;
+    d.cv = (step * 1000) / Math.max(1, ms);
+    return;
+  }
   const lim = (v * ms) / 1000,
     k = dm > lim ? lim / dm : 1;
   d.x += (x - d.x) * k;
   d.z += (z - d.z) * k;
   d.cv = (Math.min(dm, lim) * 1000) / Math.max(1, ms); // (the speed it now runs at, m/s)
+  d.ch = dm > 1e-4 ? want : d.ch; // (the heading it runs on)
 }
 /** End of a beat: settle or carry unfinished moves, end jumps, hide cut-ins, fire `when: 'end'` acts. */
 function endBeat(b) {

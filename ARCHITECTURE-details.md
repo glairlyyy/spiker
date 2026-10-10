@@ -301,7 +301,9 @@ early; one contact per cycle), locked where its swing landed (`f.lastT`); in the
 hip will be at the next contact plus half the next stance's travel (re-aimed less and less, kept within reach), planned in the
 hip's frame (`f.rel` → half a stance ahead, plus the landing's drift `f.next − live`) so the foot travels with the body, landing `ahead` = min(step × duty, ½ SWEEP × leg) in front; a stance foot behind the hip
 raises its heel (≤ 12 cm); the hip height is the gait's own (`pl.gHip`: 0.95 leg, down to what a foot down or landing next can
-reach, ≤ 12 cm, eased; + pose.lift), replacing the pose's FK height; heel up
+reach, ≤ 12 cm, eased; + pose.lift), replacing the pose's FK height; landings follow the curve (heading rate `pl.gOm`, `arc(D)`), the swing's body frame turns with
+the heading (`f.relH`), the heading restarts with the gait (`pl.gDir` null when off); knees point the hips' way (`pl.hipLead`,
+secondary3d turnLag: hips turn ahead by ½ the turn to come, ≤ 0.5 rad, the spine twists back); heel up
 first then the knee through (lift `gait.lift` × speed). The hips come down as far as a planted foot needs (`pl.gHip`; `pl.gDrop` = how far below 0.95 leg, for QA;
 eased). Targets blend from the pose's foot by the weight `pl.gW` (forward-gait share × `pose.gaitW` — 1 from locoPose, carried
 by `mix` — × speed from `gait.from`; eased) and are solved fully (ik3d `twoBone`). `footIK` plants nothing new from gW 0.2 and
@@ -309,7 +311,7 @@ hands the feet over at 0.8. Heading eased (`pl.gDir`).
 
 Landings (display only): poses3d-attack `landBlend` mixes the spike / jump-serve air pose (jy ≥ 9) into its landing pose as
 jy falls from 18 to 2. playback `capMove` holds a body for `LAND_ABSORB` ms after touchdown, then catches up at ≤ `RUN_ACC`
-m/s² (`d.cv`, reset at touchdown in actors.js) and slows into the spot at `RUN_DEC` m/s². ik3d `footIK` keeps a diver's feet planted until `diveF` > 0.36.
+m/s² (`d.cv`, reset at touchdown in actors.js) and slows into the spot at `RUN_DEC` m/s². A fast catch-up turns at most `RUN_TURN` (18 m/s²) sideways (`d.ch`, its heading), braking while the turn is over 1 rad; the last metre goes straight. ik3d `footIK` keeps a diver's feet planted until `diveF` > 0.36.
 
 Secondary motion (js/render3d/secondary3d.mjs, display only, VFX `sec`), in actors3d `posePlayer`: the gait's weight shift is
 part of the pose (poses3d `forwardGait`: `sway` m to the left — applied to the root like `slide` — and `hroll` with a counter
