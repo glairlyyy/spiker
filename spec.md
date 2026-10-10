@@ -6,7 +6,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 ## 1. Vision
 
 - 4v4 volleyball RPG / sports-life sandbox on a faction-ruled island: start a free agent, join factions, train, play
-  3D matches you take part in with one-press prompts (§2.16) over a 2D interface. Spite-driven story (lore-first, later). Lore and voices: `lore.md`.
+  3D matches (how you take part: §5.7, open) over a 2D interface. Spite-driven story (lore-first, later). Lore and voices: `lore.md`.
 - Built from the Skyline Cup prototype; nothing of its career/modes/saves kept. Desktop-only; compact UI (decision numbers on
   the control; lore and edge cases in tooltips/folds — §9). Goal: win the U21 Final Cup → the major nation's national team.
 
@@ -114,7 +114,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   as the lowest wit (match wit `W()` floors at 0.1). No generator makes such players today (the Egoist game went with
   ego, §2.12).
 
-- §2.13 Calls — decisions in a played match (owner, 2026-10-05) **[built, T-232–T-235; the serve / attack choices and their chips are replaced by §2.16 (T-257, T-258, T-256); the pausable engine stays]**. **One engine, two pickers**: every rule, roll
+- §2.13 Calls — decisions in a played match (owner, 2026-10-05) **[removed — T-264; the serve / attack choices went with §2.16; `playRallyGen` stays as the pausable engine, with no decision points]**. **One engine, two pickers**: every rule, roll
   and touch is the same code for a simmed and a played match; at a **decision point** the engine asks a picker. Sim (Sim ⏭,
   headless, NPCs, the Monster game) → the AI picks at once, exactly as today (same draws: results and goldens unchanged).
   Played career match → **you** pick for your own player (5 s; then your player takes the suggested move — the option with
@@ -140,8 +140,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   - After: the result card (§10.6) gains a **Calls** row: each call — what you chose, its %, made / missed — and "held back by:
     ⤒ Jump" (the weak stat that appeared most in your missed calls), so the match points at the training.
 **Match revamp (owner, 2026-10-07): every match tells a story.** Momentum has stages, the director stages each play by its
-team's stage (epic effects only on epic moments), you take part with one-press commands (no menus, no rock-paper-scissors,
-fire never unlocks a technique), lines are spoken between points. Built by three agents at once (tasks.md **Now**).
+team's stage (epic effects only on epic moments), you take part with one-press commands (removed 2026-10-10, §2.16; captain's calls stay), lines are spoken between points. Built by three agents at once (tasks.md **Now**).
 Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-row defensive commands, temperament changing how a team plays.
 
 - §2.14 Momentum stages **[open: T-259, T-260; HUD T-254]** — replace "In the zone". Each team has **fire** −1..1 (`m.fire`, was `m.mom`;
@@ -155,9 +154,8 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   | Focused  | 0.35 .. 0.8   | +5 % attack, +5 % speed                     | +4                                  |
   | Fever    | ≥ 0.8 + a trigger | +10 % attack, −10 % defence, +5 % speed, +5 % jump | +7 attacking                |
 
-  - **Fever** needs fire ≥ 0.8 **and** a trigger: an 8+ touch rally won, a 4-point streak, or a called kill at set point.
-    Lasts at most 4 points; an error by that team ends it (→ Focused). The **zone breaker** (a kill block or a fake that scores
-    against a Fever team) drops it to Composed; a stuff (kill block) at any other time drops Fever to Focused.
+  - **Fever** needs fire ≥ 0.8 **and** a trigger: an 8+ touch rally won, a 4-point streak, or a kill at set point.
+    Lasts at most 4 points; an error by that team ends it (→ Focused). The **zone breaker** (a kill block against a Fever team) drops it to Composed; a stuff (kill block) at any other time drops Fever to Focused.
   - **Out of Loose**: a won rally (+fire), a timeout (→ Composed at once), the captain's Settle (§2.17).
   - **Into Loose** (owner, 2026-10-08): a lost point costs more the more fire the team has (× 0.7 + 0.6 × fire, 0.4–1.3: a team
     that stays Composed barely moves, a hot one falls hard); only two shakes push a team toward Loose — losing a marathon
@@ -198,42 +196,10 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     **Director**: on / off, and "Force stage" (Loose … Fever, both teams) to test each row in the Monster game.
   - Hype Off: Fever still gets its effects (they are the reward); impact frames and slow-mo only with Hype on (as now).
 
-- §2.16 Taking part — one-press prompts **[open: T-257, T-258; UI T-256]** (replaces the §2.13 serve / attack choices; serve is
-  automatic again). In a played career match (and the Monster game's **Play as**), a prompt button appears **under your
-  player's feet** (a console-style key cap + one word, like the name tags) only while it can be used. Two contextual keys,
-  like a console's buttons: `E` the main action, `R` the second; the setter adds `1` `2` `3`. No menus, no odds, no
-  limit on how often; every press has a consequence the other team answers. ⚙ **Prompts: On / Off** (Off = the AI plays you,
-  as in a sim; per browser, replaces ⚙ Calls).
-  - **Read meter** (per player, 0–100, shown as an eye icon with a fill over your player when ≥ 20): how well the other team
-    reads you. +20 a call, +10 a kill, +5 each set to you (+10 for the second in a row), −30 a fake that worked, −5 every
-    point. **≥ 40**: their best blocker shifts toward your lane (+10 % block coverage on you); **≥ 70**: +20 %, and the Fake
-    prompt appears. (Built for your player only — AI hitters later with the balance pass, so sims and goldens don't move.)
-  - **Wing / middle (WS, MB)**:
-    - **Call** `E` "Call" (from the pass until the setter's touch): the setter sets you, unless the pass is poor or you're out
-      of position — then they shout "Not now!" and play on. Cost: read +20, no quick and no dump that ball, extra stamina on
-      the swing. The spike is the engine's as always.
-    - **Fake** `R` "Fake" (read ≥ 70, same window): you sell the approach as a decoy. The read blocker bites (chance from your
-      read vs their wit) → the set goes elsewhere against a single block, your read −30. A low-wit setter (wit < 1.0) may set
-      you anyway (chance 50 % − 40 % × (wit − 0.5)) — and then it is a **bad set** into the block (owner: a failed fake is a
-      bad set, so it can't be farmed).
-    - **Block** `E` "Block" — timing (owner, 2026-10-08): when you are one of the blockers on their attack, the chip shows
-      while their hitter runs in; **your player jumps the moment you press**. Graded against the AI blocker's own take-off
-      (contact at the end of the set): **perfect** (± 80 ms, × 0.8–1.4 by Jump and Wit) block coverage × 1.25 and stuff × 1.5 ·
-      **good** (earlier, up to 2.5 × that) coverage × 1.1 · **early** (coming down at contact) coverage × 0.5, no stuff. No
-      press by the AI's take-off + 80 ms → the AI jumps you (its block, unchanged); a later press does nothing. Where you block
-      is where you stand (the engine's lane choice). Measured (your MB, 120 matches): stuffs a match 0.91 none · 1.45 perfect
-      · 1.05 good · 0 early.
-  - **Setter**: when the pass reaches you, numbered markers `1` `2` `3` hang over your hitters, each with the block icons
-    waiting for them (0–2) and "Mine!" over a hitter who is calling (AI hitters call when hot: confidence ≥ 70, no draws).
-    Press a number to set that hitter, or **Dump** `R` (shown when the pass is tight; better the higher the read on your
-    hitters; each dump +20 read on you). No press within the window = your usual AI choice. Ignoring a calling teammate:
-    their mood −0.1, and a small relationship dip in career (no more than once a set per teammate).
-  - Every outcome feeds fire (a called kill +, a stuffed call −) and the director stages it (§2.15, §2.18).
-  - Engine: decision points yield `{ kind: 'call' | 'block' | 'setter', p, options: [{ id, key, label }], ai }` from
-    `playRallyGen`; the beats before the yield play while the prompt shows (the window), and the rally resumes with the
-    press (an option id) or null (no press = `ai`) when they end — no pause, no slow-down. Only for `m.human`'s player.
-  - Result card: the Calls row becomes **Your plays**: calls made / kills off them, fakes that worked, blocks committed /
-    stuffs, (setter) sets per hitter. Monster game **Play as**: pick a player of either team on the title's Monster tab (default none).
+- §2.16 Taking part — one-press prompts **[removed]** (owner, 2026-10-10: hard to scale): Call / Fake / Block under your feet,
+  the setter's 1-2-3 / Dump, AI "Mine!" calls, the read meter, ⚙ Prompts and the result card's **Your plays** row go (T-264).
+  A played match plays itself like a sim, except the captain's calls (§2.17). The AI's own decoy fake set (multi-attack) stays.
+  How the player takes part instead: §5.7.
 
 - §2.17 Captain's calls **[open: T-260; UI T-256]** — replace the captain's random personal buff. Between points (the
   scoreboard beat) the captain may call, at most once every 5 points (leadership Lv1), 4 (Lv2), 3 (Lv3):
@@ -241,17 +207,17 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     personal buff (+5 %/lvl power and defence, 4 points) and, with an element, a full gauge.
   - **Settle** `R`: Loose → Composed at once and no Loose for 3 points; costs 0.1 fire (Focused may drop to Composed).
   - AI captains use the same calls (Settle when Loose; Fire up on a 2-point deficit or at set point). You as captain: the two
-    chips show between points while ready (prompt style, 3 s); otherwise the AI captain calls. The coach's timeout stays the other tool.
+    chips show between points while ready (`E` / `R` key caps, 3 s); otherwise the AI captain calls. The coach's timeout stays the other tool.
   - The captain's call that rallied a team into the zone (`capCall` in pointZone) goes; the tactic and defence switches stay.
 
 - §2.18 Cinematic lines **[open: T-263; box T-255]** — the story told in words, from events, never from timers. The director
   (`Dir`) picks the moment and the speaker; js/data/match-lines.js (`MLINES`, kind × personality, 5–6 variants, picked by
   hash, lore.md voice) gives the words; js/ui/match-exchange.js shows them.
-  - **During a rally**: short bubbles only (existing `call` act), never a pause — "Mine!", "Not now!", "He's reading you!".
+  - **During a rally**: short bubbles only (existing `call` act), never a pause.
   - **Staged moment**: the existing scene shot (close-up + subtitle) before a decisive hit — Focused and up, ≤ 1 per 3 points.
   - **Between points** (the main slot): a 1–2 line exchange with face cut-ins, skippable (click / Space). Budget by the hotter
     team's stage: Composed 0 · Focused 1 per 4 points · Fever every point if there is an event. Events: stage change (Fever,
-    Loose), captain's call, fake that worked / failed, refused call ("Not now!"), stuffed call, duel (the same hitter vs the
+    Loose), captain's call, duel (the same hitter vs the
     same blocker for the third time), 8+ touch rally, comeback (3+ points back from 3+ down). Speakers: the player it
     happened to, plus whoever has a stake — rival / ally (relationship tags), the captain, the coach.
   - **Set / match point**: a hush (crowd and music down) and one line each side before the serve.
@@ -752,8 +718,7 @@ mood)`.
 
 - §5.7 **Player agency and strategy** (owner, 2026-10-10) **[open — next design session, a new spec chat]**: how the player
   takes more part and plans more, in matches and in the career, without turning the sport into menus. Design first, then tasks.
-  - **What the player decides today.** Match: one-press prompts for your player only (§2.16: Call / Fake / Block built; setter
-    pick + Dump T-258 open), captain's calls Fire up / Settle (§2.17, T-260 open), block and defence tactics (§2.9), technique
+  - **What the player decides today.** Match: captain's calls Fire up / Settle (§2.17, T-260 open), block and defence tactics (§2.9), technique
     switches (§9.10), timeouts, substitutions (§2.10), Sim ⏭. Before a match: Match prep (focus, techniques). Career: each day's
     action and where (train which stat where / rest / outing / scout / study — §4.5, §4.14b), street battles watch or fight a
     side (§4.6), challenges with a stake (§4.15), faction war and hex territory through battles (§4.7, §4.27), approaches and
@@ -762,7 +727,7 @@ mood)`.
     "which stat today". Look for decisions with real trade-offs, made with information the player had to earn (scouting,
     reads, rivals' habits), whose results show in the match and on the island.
   - **Rules any answer keeps:** one engine, two pickers — every human decision is also an AI decision, sims unchanged (§2.13,
-    goldens); no menus or odds during a rally, no rock-paper-scissors (§2.16); tactics stay modest vs a big stat gap (§2.0);
+    goldens); no menus or odds during a rally, no rock-paper-scissors; per-rally button prompts were tried and removed (§2.16, hard to scale); tactics stay modest vs a big stat gap (§2.0);
     the game reminds, never suggests (§9.1); no tutorial voice, lore voices only (§6); numbers true; relationships only from
     costly shared acts (§4.23); desktop only.
   - **Parked ideas to weigh (not decided):** the match remembering your choices ("AI memory": they read your favourite lane

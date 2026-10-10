@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-264** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-265** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -54,7 +54,7 @@ A task that needs a file outside your list: stop and ask (`[?]`).
 - **Agent A — UI** — T-254 → T-255 → T-256 (T-256 after B's T-258 is published; build it against a hand-made yield first).
   Owns: js/ui/match-screen.js, match-controls.js, match-calls.js, match-prompts.js, match-exchange.js, match-result.js,
   match-combo.js, menu.js, career-match.js, js/render/playback.js, js/core/storage.js, css/style.css, tests/ui-smoke.js.
-- **Agent B — engine** — T-257 → T-258 → T-259 → T-260. Owns: js/engine/*.js, js/data/rules.js, js/data/momentum.js,
+- **T-264 first, solo** (owner, 2026-10-10: the prompts go; T-258 dropped). Then **Agent B — engine** — T-259 → T-260. Owns: js/engine/*.js, js/data/rules.js, js/data/momentum.js,
   js/data/dialogue.js, js/career/rel.js, tests/engine.test.js, read.test.js, momentum.test.js, balance.js, golden.json
   (B is the only agent that may change goldens).
 - **Agent C — director and lines** — T-261 → T-262 → T-263. Owns: js/render/director.js, acts.js, effects.js, clock.js,
@@ -148,21 +148,32 @@ Accept: goldens unchanged; npm test, lint pass.
 QA: none (engine).
 Result: Prompts are opt-in: `m.read` = null by default (sims, goldens, Prompts Off); the match screen sets `m.read = {}` for Prompts On (A, T-256) — contract change from the task: `m.human` alone no longer prompts. Yields from `ask()` (decide.js; no odds, no draws) in rally() after pickSetter, before the setter's dump: `call` (WS / MB; options call `E`, fake `R` at read ≥ 70; `q.read`) and `block` (front row, defending; option block `E`, hidden answer `'late'` — A sends it for a press in the window's last quarter). Read meter `m.read[you]` + tallies `m.plays` (call, refused, callSet, callK, fake, fakeOk, fakeBad, anywaySet, block, late, crossed, stuff, att, attK, stuffed; `sets` / `dump` for T-258) for the result card. Deviation: "best blocker takes your lane" = they key on you — the best blocker (or a second, when the best is already b0) always joins the block, reach × 1.5 (`READ.reach`), coverage +10 / +20 %; swapping b0 measured worse for the block (late). A committed in-lane block also leaves early (reach × 1.5). New: READ (rules.js), CALLS notnow / readyou, prompts / callPress / fakePress / fakeYou / readSet / readAttack (rally.js), readCov / commitLane / bestBlocker (rally-block.js), ask / readOf / readAdd / readOn / plays / readPoint (decide.js). Measured (headless, 120 matches): your WS at read 0 / 50 / 80 → kills 62.7 / 60.8 / 56.9 %, stuffed 9.8 / 11.9 / 13.0 %; always calling → 29 % turned down ("Not now!"), set you on 98 % of the rest; MB always committing → your stuffs 0.72 → 1.07 a match. Goldens unchanged; 133/133.
 
-### [ ] T-258: The setter's pick and Dump; AI "Mine!"; the serve / attack choices go (Agent B)
-Spec: §2.16, §2.13          Goldens: unchanged          Save: no change
-Goal: as setter you pick the hitter (or dump); AI hitters call when hot; the old serve / attack decision points are removed.
-Files: js/engine/rally.js, rally-phases.js, serve.js, decide.js, js/data/rules.js (`DECIDE` trimmed), js/data/dialogue.js,
-js/career/rel.js (the snub), tests/read.test.js, tests/engine.test.js
-Do not: change the AI setter's choice or its draws; keep `Decide.serve` / `Decide.attack` (remove them and their test).
+### [ ] T-264: Remove the one-press prompts and the calls; keep the captain's calls (solo — no other agent meanwhile)
+Spec: §2.16 (removed), §2.13 (removed), §2.17, §2.14, §2.18          Goldens: unchanged          Save: no change
+Goal: a played match has no Call / Fake / Block, setter markers, read meter, ⚙ Prompts, Your plays row or decision odds; the
+captain's Fire up / Settle chips still show for you as captain (career and the Monster game's Play as).
+Files: js/engine/decide.js (remove), rally.js, rally-phases.js, rally-block.js, rally-defense.js, serve.js, match.js, js/data/rules.js
+(`DECIDE`, `READ`), js/data/dialogue.js (prompt-only lines: readyou, notnow…), js/data/match-lines.js (fake / refused / stuffed-call
+kinds), js/render/director.js (those events), js/ui/match-prompts.js (keep only the captain chips + their key handler), match-calls.js
+(remove), match-screen.js, match-controls.js, match-result.js, menu.js (Play as tooltip), career-match.js (`plays`), js/render/playback.js,
+js/core/storage.js (`calls`, `prompts` keys), css/style.css, index.html (drop decide.js, match-calls.js), tests/read.test.js (remove),
+tests/run.js, tests/engine.test.js, tests/lines.test.js, tests/ui-smoke.js, ARCHITECTURE.md, ARCHITECTURE-details.md
+Do not: touch the AI's own multi-attack fake set (`fakeSet` / `fakeDecoy`), the tactics `read` bonus (rally-phases `tac.focus`), the
+captain's calls (fire.js, T-260), timeouts, subs, technique switches, Sim ⏭; change any R() draw (sims never reached the prompts).
 Steps:
-1. Yield `setter` at the setter's choice when your player is the setter: options = each hitter `{ id, key: '1'…'3', blocks: 0–2,
-   mine }` + `dump` when the pass is tight (quality 3); `ai` = today's choice.
-2. AI hitters' "Mine!" (`mine` on the option and a `call` act) when confidence ≥ 70 — no draws.
-3. Ignoring a calling hitter: mood −0.1, and record `m.snub` (once a set per teammate) for the career relationship dip (rel.js).
-4. Remove the serve and attack yields, `Decide.serve` / `Decide.attack`, their `DECIDE` entries and the T-233 odds test.
-5. Tests: the setter yield's options match the hitters on court; dump repeated raises your read.
-Accept: goldens unchanged; tests pass.
-QA: none (engine).
+1. Engine: drop `decide`, `promptAsk`, `prompts`, `blockPrompt`, `fakePress`, `readOf` / `readAdd` / `readOn`, `plays`, `m.read`, `m.calls`,
+   `c.callYou` / `c.fakeYou` and every branch on them; `Decide.*`, `DECIDE`, `READ`. `playRallyGen` stays (no yields left);
+   `playRally` unchanged. `m.human` stays (captain chips).
+2. Playback: every match plays its rallies whole (`playRally`); remove `A.ask`, `promptWanted` / `promptOpen` / `promptClose` /
+   `promptStep`; keep `promptCaptain` between points when `A.m.human` is the captain.
+3. UI: remove ⚙ Prompts, the eye / read fill, the chips under feet, setter markers, the Your plays row (`playsOf`, `playsRow`, res.plays)
+   and the empty match-calls.js; storage keys `calls` / `prompts` go (old values are ignored).
+4. Lines / director: remove the fake, refused-call ("Not now!"), stuffed-call and "reading you" kinds and their triggers.
+5. Tests: read.test.js out of run.js; lines / engine tests lose the removed kinds; ui-smoke checks no `.prompt` chip and no ⚙ Prompts.
+   grep the repo for every removed name — zero hits outside tasks-done.md and spec.md.
+Accept: goldens unchanged; `npm test`, `npm run lint`, `npm run test:ui` pass; Monster game with Play as = a captain shows the
+Fire up / Settle chips between points and nothing during rallies.
+QA: Monster game (Play as the captain) → screenshot mid-rally (no chips) and between points (captain chips).
 Result:
 
 ### [ ] T-259: Fire, stages and temperament replace momentum and the zone (Agent B)
@@ -527,6 +538,8 @@ Cleanup, part 2: T-082…T-087 done (see Done). Open:
   LFS is enabled for glairlyyy/spiker and that the artifact publish step may decode/encode (`base64 -d` / `base64`) at publish time.
 
 ## Done
+
+- T-258: dropped (owner, 2026-10-10) — the setter's pick / Dump / AI "Mine!" went with the prompts (§2.16 removed); its serve / attack removal is in T-264.
 
 Full text of every done task, newest first: **tasks-done.md** (read it only when a task points there). Recent:
 
