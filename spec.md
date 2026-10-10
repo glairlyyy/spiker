@@ -6,7 +6,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 ## 1. Vision
 
 - 4v4 volleyball RPG / sports-life sandbox on a faction-ruled island: start a free agent, join factions, train, play
-  watch-only 3D matches with a 2D interface. Spite-driven story (lore-first, later). Lore and voices: `lore.md`.
+  3D matches you take part in with one-press prompts (§2.16) over a 2D interface. Spite-driven story (lore-first, later). Lore and voices: `lore.md`.
 - Built from the Skyline Cup prototype; nothing of its career/modes/saves kept. Desktop-only; compact UI (decision numbers on
   the control; lore and edge cases in tooltips/folds — §9). Goal: win the U21 Final Cup → the major nation's national team.
 
@@ -742,6 +742,25 @@ mood)`.
 - §5.6 Faction recolour **[closed — built, T-165]**: Shu `#4ade80` = the `good` status colour, Wu `#3fa9f5` ≈ `cyan`, Wei `#f5b82e` ≈ `gold`.
   **Approved (owner, 2026-10-03):** `wei #d08a2e` · `wu #5b8def` · `shu #2fb8a0` (design system tokens) everywhere a
   faction colour shows (map tiles, chips, borders, banners, 3D accents); club kits keep their own colours. Task T-165.
+
+- §5.7 **Player agency and strategy** (owner, 2026-10-10) **[open — next design session, a new spec chat]**: how the player
+  takes more part and plans more, in matches and in the career, without turning the sport into menus. Design first, then tasks.
+  - **What the player decides today.** Match: one-press prompts for your player only (§2.16: Call / Fake / Block built; setter
+    pick + Dump T-258 open), captain's calls Fire up / Settle (§2.17, T-260 open), block and defence tactics (§2.9), technique
+    switches (§9.10), timeouts, substitutions (§2.10), Sim ⏭. Before a match: Match prep (focus, techniques). Career: each day's
+    action and where (train which stat where / rest / outing / scout / study — §4.5, §4.14b), street battles watch or fight a
+    side (§4.6), challenges with a stake (§4.15), faction war and hex territory through battles (§4.7, §4.27), approaches and
+    relationships (§4.23), joining a club or faction (§4.1, §4.10), court matches (§4.21a).
+  - **The gap (owner's question):** most of a match is watched; stats decide most rallies (§2.0); the career's choices are mostly
+    "which stat today". Look for decisions with real trade-offs, made with information the player had to earn (scouting,
+    reads, rivals' habits), whose results show in the match and on the island.
+  - **Rules any answer keeps:** one engine, two pickers — every human decision is also an AI decision, sims unchanged (§2.13,
+    goldens); no menus or odds during a rally, no rock-paper-scissors (§2.16); tactics stay modest vs a big stat gap (§2.0);
+    the game reminds, never suggests (§9.1); no tutorial voice, lore voices only (§6); numbers true; relationships only from
+    costly shared acts (§4.23); desktop only.
+  - **Parked ideas to weigh (not decided):** the match remembering your choices ("AI memory": they read your favourite lane
+    over a match / a season); back-row defensive commands; temperament changing how a team plays (T-259); scouting that
+    reveals an ace's weakness shown in the match UI (§8 ace traits); a smarter coach (§8).
 
 ## 6. Narrative rules [locked; faction/region/Gazette/event strings built]
 

@@ -29,6 +29,10 @@ RUN_VERSION 18: match engine and 3D playback, career (28 weeks, pools, evaluatio
 rival and the aces, growth, relationships, court matches), UI §9–§10, hex territory §4.27, the island × 2.25 with nature and
 the Shu highlands. Done tasks: one line under **Done** here, full text in tasks-done.md.
 
+**2026-10-10:** match animation polish built (spec §2.19–§2.23: foot / arm IK, secondary motion, idle stances, planted gait,
+no needless dives, steady landings). Next (owner): a design session in a new spec chat on player agency and strategy
+(spec §5.7) before new tasks; T-258–T-260 stay open.
+
 ## Now
 
 **Match revamp (owner, 2026-10-07; spec §2.14–§2.18): three build agents at once, by file ownership — never edit a file another
