@@ -104,14 +104,14 @@ Files: tasks.md (targeted moves only — never regenerate or reflow it), tasks-d
 Accept: tasks.md < 350 lines; no task text lost (diff: every moved block is in tasks-done.md).
 Result: tasks.md 711 → 341 lines: 33 done tasks + the three batch preambles moved verbatim to tasks-done.md (asserted), one line each under Done; a short T-259 / T-260 seam note replaces the revamp preamble; State refreshed (2026-10-12). ARCHITECTURE How to add…: a team plan, a lane read rule, a venue's air, a director event / line. T-212 done (design system status page). Also: the last two non-custom-property inline styles (fire-meter ticks → --at, VFX lab element buttons → --ec), computed styles identical.
 
-### [ ] T-275: Engine — rally loop and match state in named parts (after T-259, T-260)
+### [x] T-275: Engine — rally loop and match state in named parts (after T-259, T-260)
 Spec: §2          Goldens: unchanged          Save: no change
 Goal: `rally()` (124 lines) reads as a list of phase calls; `newMatch` (110) builds its state from small makers (`teamState`,
 `rallyState`, `logs`), so new per-match state (ace traits, AI memory §5.7) has one obvious home.
 Files: js/engine/rally.js, js/engine/match.js, ARCHITECTURE.md (engine flow)
 Do not: move, add or drop any R() draw; change beat / act shapes or snapshot fields.
 Accept: goldens unchanged; no function in the two files > 80 lines; `npm test` full.
-Result:
+Result: Done before T-259 / T-260 (no agent was on them; deviation from the order note — they now hook into the named parts). rally() 124 → 17 lines: possessionStart, setPhases ({ end } | { s, h, a }), attackPhases, endOf. newMatch 110 → 69: matchTallies, lineupOf, rallyState, matchPlans (key order kept; the serve R() draw in place). Goldens unchanged; 131/131 full; nothing in the two files > 80 lines.
 
 ### [ ] T-276: Refresh the refactor notes
 Spec: —          Goldens: unchanged          Save: no change

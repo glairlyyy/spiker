@@ -31,105 +31,97 @@ function rally(m, B, V, atk, pas, qual, scr = null) {
     return i === 1 || i === 2;
   };
   for (let n = 1; ; n++) {
-    m.rallyN = n; // possessions so far (a lost marathon shakes the team: pointMomentum)
-    for (const id in m.down)
-      if (m.down[id] < n) {
-        delete m.down[id]; // back on the feet (spec §2.28): shown on the next beat
-        if (V) m.upQ.push({ k: 'getup', p: id });
-      }
-    if (n > LONG_RALLY) {
-      for (const t of m.t) for (const p of t.P) dr(m, p, 0.004);
-      elLong(m);
-    }
+    possessionStart(m, V, n);
     const atkT = m.t[atk],
-      defT = m.t[1 - atk],
-      ds = 1 - atk,
-      da = DIR(atk),
-      dd = DIR(ds);
-    // long rallies heat up: +10% spike power for every possession past the 7th
-    const fat = n > LONG_RALLY + 1 ? 1 + (n - LONG_RALLY - 1) * 0.1 : 1;
+      ds = 1 - atk;
     /** possession context shared by the phases */
-    const c = { m, B, V, front, n, atk, ds, da, dd, atkT, defT, pas, qual, scr };
-    let r = scr ? null : recover(c) || freeBall(c); // a teammate on the floor: recover, don't force it (spec §2.28)
-    if (r) {
-      [atk, pas, qual, scr = null] = r.next;
-      continue;
-    }
-    // a pop-up save (scr) is the team's 2nd touch: the saver bump-sets, a third player hits (see saveSet)
-    const s = scr ? saveSet(c) : pickSetter(c);
-    r = scr ? null : setterDump(c, s);
-    if (r) {
-      if (r.point != null) return r.point;
-      [atk, pas, qual, scr = null] = r.next;
-      continue;
-    }
-    const h = scr ? { sq2: 'bad', bumpSet: true } : setHands(c, s);
-    if (h.point != null) return h.point;
-    const a = chooseAttack(c, s, h);
-    r = badSetOver(c, s, a);
-    if (scr) {
-      m.scrLog[m.scrLog.length - 1].hitter = r ? null : a.spiker.id;
-      if (r) m.scr.over++;
-    }
-    if (r) {
-      [atk, pas, qual, scr = null] = r.next;
-      continue;
-    }
-    // ---- 6–8: fake set, approach & block formation, set beat, spike, hitting error ----
-    const x = { ...s, ...h, ...a, fat };
-    Object.assign(x, fakeSet(c, x));
-    Object.assign(x, formBlock(c, x));
-    Object.assign(x, laneRead(c, x)); // laning (spec §2.24): the block reads a channel, the hitter aims
-    Object.assign(x, laneAim(c, x));
-    Object.assign(x, setBeat(c, x));
-    Object.assign(x, spikePower(c, x));
-    Object.assign(x, spikeActs(c, x));
-    Object.assign(x, landingSpot(c, x));
-    // the attack in play, for the element gauges (kills, digs and blocks are credited against it)
-    m.ctx = {
-      spiker: x.spiker,
-      pow: x.pow,
-      quick: x.quick,
-      back: x.back,
-      over: x.over && !x.around,
-      around: x.around || x.delayed,
-      tip: x.tip,
-      fake: !!x.fakeDecoy,
-      el: x.elS
-    };
-    elAttack(m, x.spiker, m.ctx);
-    const k0 = (m.stat[x.spiker.id] || blank()).k,
-      e0 = (m.stat[x.spiker.id] || blank()).err,
-      bk0 = sumBlk(m, defT),
-      fin = () => tallyAttack(m, atk, x, k0, bk0, e0);
-    r = x.delayed ? hangFail(c, x) : null; // a Delayed Spike can hang too long (low jump / wit): the ball drops on your side
-    if (r) {
-      fin();
-      if (r.point != null) return r.point;
-      [atk, pas, qual, scr = null] = r.next;
-      continue;
-    }
-    r = hittingError(c, x);
-    if (r) {
-      fin();
-      return r.point;
-    }
-    // ---- 9–10: block, then dig or kill ----
-    const bl = block(c, x);
-    if (bl.point != null) {
-      fin();
-      return bl.point;
-    }
-    if (bl.next) {
-      fin();
-      [atk, pas, qual, scr = null] = bl.next;
-      continue;
-    }
-    r = dig(c, x, bl);
-    fin();
-    if (r.point != null) return r.point;
-    [atk, pas, qual, scr = null] = r.next;
+    const c = { m, B, V, front, n, atk, ds, da: DIR(atk), dd: DIR(ds), atkT, defT: m.t[ds], pas, qual, scr };
+    const p = setPhases(c),
+      e = p.end || attackPhases(c, p);
+    if (!e.next) return e.point;
+    [atk, pas, qual, scr = null] = e.next;
   }
+}
+/** A possession ends: { point } (the rally is over) or { next: [atk, pas, qual, scr?] } (the ball goes on). */
+const endOf = r => (r.point != null ? { point: r.point } : { next: r.next });
+/** Each possession: players knocked down get up (spec §2.28); past LONG_RALLY everyone tires and the element gauges heat. */
+function possessionStart(m, V, n) {
+  m.rallyN = n; // possessions so far (a lost marathon shakes the team: pointMomentum)
+  for (const id in m.down)
+    if (m.down[id] < n) {
+      delete m.down[id]; // back on the feet (spec §2.28): shown on the next beat
+      if (V) m.upQ.push({ k: 'getup', p: id });
+    }
+  if (n > LONG_RALLY) {
+    for (const t of m.t) for (const p of t.P) dr(m, p, 0.004);
+    elLong(m);
+  }
+}
+/**
+ * 1–5: recover / free ball, the setter (or a pop-up save's bump-set), the dump, the set, the attack choice and a bad set pushed
+ * over. Returns { end } when the possession ends here, else { s, h, a } for the attack.
+ */
+function setPhases(c) {
+  const { m, scr } = c;
+  let r = scr ? null : recover(c) || freeBall(c); // a teammate on the floor: recover, don't force it (spec §2.28)
+  if (r) return { end: { next: r.next } };
+  // a pop-up save (scr) is the team's 2nd touch: the saver bump-sets, a third player hits (see saveSet)
+  const s = scr ? saveSet(c) : pickSetter(c);
+  r = scr ? null : setterDump(c, s);
+  if (r) return { end: endOf(r) };
+  const h = scr ? { sq2: 'bad', bumpSet: true } : setHands(c, s);
+  if (h.point != null) return { end: { point: h.point } };
+  const a = chooseAttack(c, s, h);
+  r = badSetOver(c, s, a);
+  if (scr) {
+    m.scrLog[m.scrLog.length - 1].hitter = r ? null : a.spiker.id;
+    if (r) m.scr.over++;
+  }
+  if (r) return { end: { next: r.next } };
+  return { s, h, a };
+}
+/**
+ * 6–10: fake set, approach & block formation, laning, set beat, spike, landing, hitting error, block, dig or kill.
+ * Returns { point } or { next } (endOf).
+ */
+function attackPhases(c, { s, h, a }) {
+  const { m, n, atk, defT } = c,
+    fat = n > LONG_RALLY + 1 ? 1 + (n - LONG_RALLY - 1) * 0.1 : 1; // long rallies heat up: +10% spike power per possession past the 7th
+  const x = { ...s, ...h, ...a, fat };
+  Object.assign(x, fakeSet(c, x));
+  Object.assign(x, formBlock(c, x));
+  Object.assign(x, laneRead(c, x)); // laning (spec §2.24): the block reads a channel, the hitter aims
+  Object.assign(x, laneAim(c, x));
+  Object.assign(x, setBeat(c, x));
+  Object.assign(x, spikePower(c, x));
+  Object.assign(x, spikeActs(c, x));
+  Object.assign(x, landingSpot(c, x));
+  // the attack in play, for the element gauges (kills, digs and blocks are credited against it)
+  m.ctx = {
+    spiker: x.spiker,
+    pow: x.pow,
+    quick: x.quick,
+    back: x.back,
+    over: x.over && !x.around,
+    around: x.around || x.delayed,
+    tip: x.tip,
+    fake: !!x.fakeDecoy,
+    el: x.elS
+  };
+  elAttack(m, x.spiker, m.ctx);
+  const k0 = (m.stat[x.spiker.id] || blank()).k,
+    e0 = (m.stat[x.spiker.id] || blank()).err,
+    bk0 = sumBlk(m, defT),
+    fin = r => (tallyAttack(m, atk, x, k0, bk0, e0), r);
+  let r = x.delayed ? hangFail(c, x) : null; // a Delayed Spike can hang too long (low jump / wit): the ball drops on your side
+  if (r) return fin(endOf(r));
+  r = hittingError(c, x);
+  if (r) return fin({ point: r.point });
+  // ---- 9–10: block, then dig or kill ----
+  const bl = block(c, x);
+  if (bl.point != null) return fin({ point: bl.point });
+  if (bl.next) return fin({ next: bl.next });
+  return fin(endOf(dig(c, x, bl)));
 }
 
 /** Engine-only tally of one attack (no randoms): by kind (quick / middle or pipe / pins) and whether the hitter scored. */

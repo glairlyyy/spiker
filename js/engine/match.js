@@ -105,30 +105,7 @@ function newMatch(a, b, rec, opts = {}) {
     dset: [opts.dset?.[0] || defOf(a), opts.dset?.[1] || defOf(b)], // defence setting per side (see DEFSETS): how the front row blocks
     dsetMode: [opts.dset?.[0] ? 'fixed' : 'cap', opts.dset?.[1] ? 'fixed' : 'cap'], // 'cap' = the captain may switch it
     dsetLog: [], // engine-only: every captain switch { side, from, to }
-    att: [0, 1].map(() => ({
-      n: 0,
-      k: 0,
-      q: 0,
-      qk: 0,
-      mid: 0,
-      midk: 0,
-      pin: 0,
-      pink: 0,
-      dbl: 0,
-      late: 0,
-      stf: 0,
-      qs: 0,
-      mids: 0,
-      pins: 0,
-      rd: 0, // laning (spec §2.24): attacks into a block that read a channel; right reads; right reads that still lost the ball
-      rdOk: 0,
-      rdBeat: 0,
-      rdWk: 0 // kills off a block that read the wrong channel
-    })), // attacks per side by kind and their kills (engine-only tally, no randoms)
-    ko: { n: [0, 0], rec: [0, 0], free: [0, 0], on: [0, 0] }, // knockdowns and what the team did next (spec §2.28)
-    lanes: {}, // laning (spec §2.24): hitter id → { line, cross } shots this match (what the blockers have seen)
-    hit: {}, // the coach panel (spec §2.25): hitter id → { n, k, err, stf, line, cross, tip, rd, rdOk } this match
-    recv: {}, // the coach panel: receiver id → { n, ace } serves taken / aced
+    ...matchTallies(), // engine-only tallies (no randoms): attacks, knockdowns, lanes, the coach panel's numbers
     buff: {}, // player id → { lv, n } captain's buff (n = points left)
     t: [a, b],
     subs: [0, 0], // substitutions made this set per side (SUB.max)
@@ -137,12 +114,7 @@ function newMatch(a, b, rec, opts = {}) {
     subbed: {}, // engine-only: id of a player sent to the bench → id of whoever took their place (a rested starter may return)
     subLog: [], // engine-only: every substitution { side, pts, why, out, inn, sta (the outgoing player's stamina) }
     setErr: {}, // engine-only: errors this set per player id (the coach's erring rule)
-    lineup0: [a, b].map(t => ({
-      P: [...t.P],
-      bench: [...(t.bench || [])],
-      slots: Object.fromEntries(squadOf(t).map(p => [p.id, p.slot])),
-      cap: t.cap
-    })), // the starting lineups, put back by restoreLineups()
+    lineup0: [a, b].map(lineupOf), // the starting lineups, put back by restoreLineups()
     sets: [0, 0],
     pts: [0, 0],
     setNo: 1,
@@ -179,7 +151,63 @@ function newMatch(a, b, rec, opts = {}) {
     ctx0: null, // the attack the last point ended on (chatter)
     ctxK: null, // who scored a kill this rally (→ lastK)
     lastK: null,
-    // per-rally state, reset by playRally()
+    ...rallyState() // per-rally state (rallyStart resets most of it) and the staged scenes' memory
+  };
+  [a, b].forEach((t, side) =>
+    squadOf(t).forEach(p => {
+      const h = home(p, side);
+      m.pos[p.id] = { x: h[0], z: h[1] };
+      m.mood[p.id] = p.form || 0;
+    })
+  );
+  matchPlans(m, opts);
+  return m;
+}
+/** Team plans (spec §2.26): from match prep (opts.plan[side]) or the coach's own pick; who runs each; the log. */
+function matchPlans(m, opts) {
+  m.plan = [0, 1].map(i => ({ ...(opts.plan?.[i] || planPick(m.t[i], m.t[1 - i])) }));
+  m.planBy = [0, 1].map(i => (opts.plan?.[i] ? 'you' : 'ai')); // who runs each side's plan: 'you' (match prep) or the AI coach
+  m.planLog = m.plan.map((p, i) => ({ side: i, at: [0, 0], atk: p.atk, def: p.def, by: m.planBy[i] }));
+}
+/** A side's starting lineup (restoreLineups puts it back). */
+const lineupOf = t => ({
+  P: [...t.P],
+  bench: [...(t.bench || [])],
+  slots: Object.fromEntries(squadOf(t).map(p => [p.id, p.slot])),
+  cap: t.cap
+});
+/** Engine-only tallies of a match (no randoms). */
+function matchTallies() {
+  return {
+    att: [0, 1].map(() => ({
+      n: 0,
+      k: 0,
+      q: 0,
+      qk: 0,
+      mid: 0,
+      midk: 0,
+      pin: 0,
+      pink: 0,
+      dbl: 0,
+      late: 0,
+      stf: 0,
+      qs: 0,
+      mids: 0,
+      pins: 0,
+      rd: 0, // laning (spec §2.24): attacks into a block that read a channel; right reads; right reads that still lost the ball
+      rdOk: 0,
+      rdBeat: 0,
+      rdWk: 0 // kills off a block that read the wrong channel
+    })), // attacks per side by kind and their kills (engine-only tally, no randoms)
+    ko: { n: [0, 0], rec: [0, 0], free: [0, 0], on: [0, 0] }, // knockdowns and what the team did next (spec §2.28)
+    lanes: {}, // laning (spec §2.24): hitter id → { line, cross } shots this match (what the blockers have seen)
+    hit: {}, // the coach panel (spec §2.25): hitter id → { n, k, err, stf, line, cross, tip, rd, rdOk } this match
+    recv: {} // the coach panel: receiver id → { n, ace } serves taken / aced
+  };
+}
+/** Per-rally state (rallyStart resets most of it each serve) and the staged scenes' memory (engine/hype.js). */
+function rallyState() {
+  return {
     busy: {}, // player id → last possession they are still busy for (see busy())
     down: {}, // player id → last possession they are on the floor for (knock(), spec §2.28)
     upQ: [], // get-up acts waiting for the next beat (the beat recorder adds them)
@@ -193,18 +221,6 @@ function newMatch(a, b, rec, opts = {}) {
     hypeDef: false, // the current scene follows the defense
     defBeats: [] // the defense's scene beats this possession (dropDefScene)
   };
-  [a, b].forEach((t, side) =>
-    squadOf(t).forEach(p => {
-      const h = home(p, side);
-      m.pos[p.id] = { x: h[0], z: h[1] };
-      m.mood[p.id] = p.form || 0;
-    })
-  );
-  // team plans (spec §2.26): from match prep (opts.plan[side]) or the coach's own pick
-  m.plan = [0, 1].map(i => ({ ...(opts.plan?.[i] || planPick(m.t[i], m.t[1 - i])) }));
-  m.planBy = [0, 1].map(i => (opts.plan?.[i] ? 'you' : 'ai')); // who runs each side's plan: 'you' (match prep) or the AI coach
-  m.planLog = m.plan.map((p, i) => ({ side: i, at: [0, 0], atk: p.atk, def: p.def, by: m.planBy[i] }));
-  return m;
 }
 /** Record stat `k` for a player ('top' keeps the maximum); moves mood (MOODD) and element gauges with it. */
 function st(m, p, k, v = 1) {

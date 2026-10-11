@@ -99,6 +99,10 @@ onLeave }` (see Screens; `onLeave` only cleans up), opened by the UI with `watch
 - **One rally at a time**: `playRally(m)` plays a rally whole for every match; playback copies its beats (`rallyPull`). The
   in-rally decision points and one-press prompts (§2.13, §2.16) were removed (T-264); `m.human` (your player in a match you
   play, or the Monster game's Play as) only drives the captain's chips between points (match-prompts.js, §2.17).
+- `rally()` (T-275) loops possessions: `possessionStart` (get-ups, the long-rally tire) → `setPhases(c)` (recover / free ball,
+  setter or save-set, dump, set, attack choice, bad set over: `{ end }` or `{ s, h, a }`) → `attackPhases(c, …)` (fake set … dig);
+  each possession ends `{ point }` or `{ next }` (`endOf`). `newMatch` builds its state from `matchTallies()`, `lineupOf(t)`,
+  `rallyState()` and `matchPlans(m, opts)` — new per-match state (ace traits, AI memory §5.7) goes in the maker it belongs to.
 - `rally()` runs one possession per loop turn through phases that take a possession context `c`
   (`{ m, B, V, atk, ds, pas, qual, … }`): `freeBall → pickSetter → setterDump → setHands → chooseAttack → badSetOver`
   (`engine/rally-phases.js`), then the approach / block formation (`formBlock`, `engine/rally-block.js`), the lane read and aim (`laneRead → laneAim`, `engine/lanes.js`) and the set / spike core inline in `rally.js`, then `block → dig`
