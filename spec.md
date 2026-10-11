@@ -317,7 +317,8 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     through); the other channel → × 0.4 (single) / × 0.65 (double), and the back row covers it (dig distance × 0.85). A double
     block's hand that meets the ball counts its own strength (± 20 %). A cut shot around a right read = the hitter beat the read.
   - **You see it**: during the set a floor **arrow** in the hitter's colour shows the projected spike direction, and a **fan** in
-    the block's colour shows the channel the block read (act `lane`, render/acts.js → arena3d `updateLane`). After the hit a
+    the block's colour shows the channel the block read (act `lane`, render/acts.js → arena3d `updateLane`); a **sword** hovers
+    over the arrow and a **shield** over the fan (team-tinted icons, owner 2026-10-12) so it is clear whose is whose. After the hit a
     tag over the first blocker: **Read it!** (stuffed / touched) · **Too strong!** (read right, still through) · **Wrong way!**.
   - Measured (Read vs Read, 250 league matches): block reads 68 % of attacks, right 49 %; kills off a right read ~33 % vs ~55 %
     off a wrong one; stuffs 8.1 % (was 9.4), kills 42 % (was 40) — inside the 7–11 % / 36–48 % targets. Tallies per side in

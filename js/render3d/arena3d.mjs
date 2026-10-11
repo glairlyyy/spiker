@@ -224,9 +224,57 @@ export function buildArena(scene) {
   };
   const laneArrow = laneMesh(9),
     laneFan = laneMesh(3);
+  // whose is whose: a sword over the attack arrow, a shield over the block's fan (white glyph, tinted by team colour)
+  const glyph = draw =>
+    canvasTex(128, 128, (g, w) => {
+      g.lineJoin = 'round';
+      g.lineWidth = 10;
+      g.strokeStyle = 'rgba(0,0,0,.75)';
+      g.fillStyle = '#fff';
+      g.beginPath();
+      draw(g, w);
+      g.stroke();
+      g.fill();
+    });
+  const swordTex = glyph(g => {
+      g.moveTo(64, 8); // blade tip
+      g.lineTo(74, 22);
+      g.lineTo(74, 78);
+      g.lineTo(96, 78); // crossguard
+      g.lineTo(96, 90);
+      g.lineTo(71, 90);
+      g.lineTo(71, 108); // grip
+      g.arc(64, 112, 9, 0, Math.PI); // pommel
+      g.lineTo(57, 90);
+      g.lineTo(32, 90);
+      g.lineTo(32, 78);
+      g.lineTo(54, 78);
+      g.lineTo(54, 22);
+      g.closePath();
+    }),
+    shieldTex = glyph(g => {
+      g.moveTo(64, 10);
+      g.quadraticCurveTo(88, 22, 108, 20);
+      g.quadraticCurveTo(110, 82, 64, 118);
+      g.quadraticCurveTo(18, 82, 20, 20);
+      g.quadraticCurveTo(40, 22, 64, 10);
+      g.closePath();
+    });
+  const laneIcon = tex => {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0 }));
+    sp.scale.setScalar(0.9);
+    sp.renderOrder = 4;
+    sp.visible = false;
+    scene.add(sp);
+    return sp;
+  };
+  const laneSword = laneIcon(swordTex),
+    laneShield = laneIcon(shieldTex);
   return {
     laneArrow,
     laneFan,
+    laneSword,
+    laneShield,
     hemi,
     sun,
     rim,
@@ -346,8 +394,10 @@ const lp0 = new THREE.Vector3(),
 export function updateLane(w) {
   const L = A.lane,
     ar = w.laneArrow,
-    fan = w.laneFan;
-  ar.visible = fan.visible = !!L;
+    fan = w.laneFan,
+    sw = w.laneSword,
+    sh = w.laneShield;
+  ar.visible = fan.visible = sw.visible = sh.visible = !!L;
   if (!L) return;
   const op = Math.min(1, (1 - L.life) * 8) * Math.min(1, L.life * 3),
     y = 0.02;
@@ -374,8 +424,12 @@ export function updateLane(w) {
   a.needsUpdate = true;
   ar.material.color.set(L.col || '#ffffff');
   ar.material.opacity = 0.8 * op;
+  // the sword hovers over the arrow, 60 % of the way to its head
+  sw.position.copy(lp0).lerp(lp1, 0.6).setY(0.45);
+  sw.material.color.set(L.col || '#ffffff');
+  sw.material.opacity = op;
   // the fan: from the block at the net to the channel it read (none when there was no real block)
-  fan.visible = L.bz != null;
+  fan.visible = sh.visible = L.bz != null;
   if (!fan.visible) return;
   const f = fan.geometry.attributes.position,
     zNet = L.z0 + (L.bz - L.z0) * 0.2,
@@ -389,4 +443,8 @@ export function updateLane(w) {
   f.needsUpdate = true;
   fan.material.color.set(L.bcol || '#ffffff');
   fan.material.opacity = 0.28 * op;
+  // the shield hovers over the fan's middle (the centroid of its three corners)
+  sh.position.set((f.getX(0) + f.getX(1) + f.getX(2)) / 3, 0.45, (f.getZ(0) + f.getZ(1) + f.getZ(2)) / 3);
+  sh.material.color.set(L.bcol || '#ffffff');
+  sh.material.opacity = op;
 }
