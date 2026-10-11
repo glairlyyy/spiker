@@ -313,7 +313,7 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     match (`m.lanes[id]` = { line, cross }), trusted × the sharper blocker's read quality (wit + speed, `readQ`). No history → a guess.
   - **The hitter aims**: a habit (line share 0.3–0.7 per player, a hash — power hitters lean cross), bent away from the block's
     read as far as they see it (`see` = 0.5 × (hitter wit − blocker wit), 0–0.6), toward the weaker hand of a double block.
-  - **Resolve — read first, then stats**: shot into the read channel → block coverage × 1.25 (the stats decide stuff / touch /
+  - **Resolve — read first, then stats**: shot into the read channel → block coverage × 1.32 (the stats decide stuff / touch /
     through); the other channel → × 0.4 (single) / × 0.65 (double), and the back row covers it (dig distance × 0.85). A double
     block's hand that meets the ball counts its own strength (± 20 %). A cut shot around a right read = the hitter beat the read.
   - **You see it**: during the set a floor **arrow** in the hitter's colour shows the projected spike direction, and a **fan** in
@@ -336,11 +336,45 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     other block read them right. **Block**: reads · right · beaten anyway · stuffs. **Serve receive**: who was served at, aced.
   - Engine: `m.hit` (per hitter), `m.recv` (per passer) logged with no draws (lanes.js `hitLog`, `recvLog`); `Coach.side(m, i)` /
     `Coach.tags(m, i)` (js/engine/coach.js, pure data — the AI coach can read the same tags); UI js/ui/match-coach.js.
-  - Monster game first (both sides); career shows it too. **Next**: team plans in match prep (attack: Hunt the passer / Beat the
+  - Monster game first (both sides); career shows it too. **Then (built, §2.26)**: team plans in match prep (attack: Hunt the passer / Beat the
     block / Power through; defence: Read & react / Cover the weak link / Wall their ace / Dig deep), hidden from the other
     side, leaking through these tags; the AI coach answers a tag at its timeout (coach IQ: notices after 4 / 6 / 8 cases);
     the captain picks the team plan, you always pick your own (owner, 2026-10-12: option B); hitters adapt when read; clubs
     remember you across matches (save bump). Monster game first, career later.
+
+- §2.26 Team plans and match prep (owner, 2026-10-12) **[built 2026-10-12]**: every side plays one **attack plan** and one
+  **defence plan** (`PLANS`, js/data/tactics.js; engine js/engine/plans.js). Plans are hidden from the other side, leak
+  through the coach panel's tags (§2.25), change only at a timeout, and tilt points — none decides one (§2.0).
+
+  | Attack           | Effect                                                                                       | Cost                                                 |
+  | ---------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+  | Play it straight | every hitter plays their own game                                                            | —                                                    |
+  | Hunt the passer  | every serve and a lean of every spike at their weakest passer; their receive −8              | the block reads you × 1.5 faster; serve errors × 1.1 |
+  | Beat the block   | hitters watch the block × 2.2, cut shots +12 %, block × 0.88, seam shots beat the back row | hitting errors × 1.1                                 |
+  | Power through    | spike power × 1.15, the block ignored                                                        | hitting errors × 1.1                                 |
+
+  | Defence             | Effect                                                         | Cost                                                   |
+  | ------------------- | -------------------------------------------------------------- | ------------------------------------------------------ |
+  | Read & react        | the block reads what it has seen (§2.24)                       | —                                                      |
+  | Cover the weak link | weakest passer: receive +14, dig distance × 0.75               | everyone else: receive −5, dig distance × 1.12         |
+  | Wall their ace      | their best hitter: block × 1.35, read × 1.6                    | everyone else: block × 0.85                            |
+  | Dig deep            | the block takes the line; hard hits (power ≥ 70) kill × 0.75   | stuffs × 0.85; tips, cut shots, seam shots kill × 1.25 |
+
+  - **Who picks**: the coach (AI) picks from the team's playstyle (`PLAN_STYLE`); a sharp coach (IQ ≥ 0.7) also scouts the
+    other side — a standout ace (≥ 8 above the rest) → Wall their ace, a weak passer (≥ 10 under the rest) → Hunt the passer.
+    No draws. In a career match **you pick when you captain your side** (owner, 2026-10-12, option B); otherwise you see your
+    coach's plan. Monster game: both sides, each "You decide" or "Coach decides" (hidden).
+  - **The AI coach adapts** at its timeout (`planCounter`): it notices a tag once it has 8 (dull) … 4 (sharp) cases — they serve
+    at our weak passer → Cover; their ace keeps one channel → Wall; our block keeps being fooled → Deep; their block reads us →
+    Power; our serves find their weak passer → Hunt. It also calls its timeout when 2+ down with a pattern noticed. Its huddle
+    line says that there is a new plan, never which (`PLAN_LINES`). Measured: ~0.4 plan changes a match.
+  - **Match prep** (js/ui/match-prep.js) is the intro of every played match (not the labs): both teams (OVR, style, lineup in
+    rotation order, captain), your plan pickers (effect and cost on each), the other plan hidden; **Start match** (Enter) — play
+    waits (`A.prep`). **Your timeout reopens it** for your side (the huddle; rotation stays).
+  - The **result card** reveals both sides' plans and every change with its score; the coach panel shows your side's plan.
+  - Measured (league teams, 600 matches a pairing, point share for the plan's side; base 49.7 %): Hunt +1.4, Beat +0.8,
+    Power +0.5, Cover +0.6, Wall +0.6, Deep +0.2; Hunt vs Cover −0.8 (countered), Power vs Deep 0.2, Beat vs Deep +0.8. Modest by
+    design (§2.0); the balance pass may raise them. Not yet: hitters adapting when read, clubs remembering you (save bump).
 
 ## 3. Menu [built]
 

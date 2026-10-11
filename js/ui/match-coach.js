@@ -24,7 +24,9 @@ function coachSide(m, i) {
           .map(r => `<tr><td>#${r.p.num} ${esc(r.p.name.split(' ')[0])}</td><td>${r.n + r.ace}</td><td>${r.ace}</td></tr>`)
           .join('')}</tbody></table>`
       : '';
-  return `<section class="cside"><h4>${chip(t)}${esc(t.name)}</h4>${tags}
+  const shown = m.over || (A.prepS && A.prepS.who[i] === 'you') || (typeof prepMine === 'function' && prepMine(m) === i),
+    plan = shown ? `${esc(PLANS.atk[planOf(m, i).atk].name)} · ${esc(PLANS.def[planOf(m, i).def].name)}` : 'hidden';
+  return `<section class="cside"><h4>${chip(t)}${esc(t.name)}</h4><p class="cline">Plan: <b>${plan}</b></p>${tags}
     <div class="lab">Attack</div><p class="cline">${att.n} attacks · ${att.k} kills (${coachPct(att.k, att.n)}) · ${att.err} errors · ${att.stf} stuffed</p>${hit}
     <div class="lab">Block</div><p class="cline" ${tip('Their attacks into a real block: the channel the block read, right, and right but still a kill')}>${block.n} reads · ${block.ok} right (${coachPct(block.ok, block.n)}) · ${block.beat} beaten anyway · ${block.stf} stuffs</p>
     <div class="lab">Serve receive</div>${rec || '<p class="small mute">No serves yet.</p>'}</section>`;

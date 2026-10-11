@@ -193,6 +193,7 @@ const ACTS_UI = {
   },
   tobanner(a, d, bs) {
     A.toBanner = { side: a.side, life: 1, manual: a.manual };
+    if (a.manual && A.prepS && A.prepS.who[a.side] === 'you') prepOpen(a.side); // your timeout: the huddle reopens match prep (spec §2.26)
     sfx.whistle();
     setTimeout(() => sfx.whistle(), 220);
     updTO();

@@ -178,6 +178,10 @@ function newMatch(a, b, rec, opts = {}) {
       m.mood[p.id] = p.form || 0;
     })
   );
+  // team plans (spec §2.26): from match prep (opts.plan[side]) or the coach's own pick
+  m.plan = [0, 1].map(i => ({ ...(opts.plan?.[i] || planPick(m.t[i], m.t[1 - i])) }));
+  m.planBy = [0, 1].map(i => (opts.plan?.[i] ? 'you' : 'ai')); // who runs each side's plan: 'you' (match prep) or the AI coach
+  m.planLog = m.plan.map((p, i) => ({ side: i, at: [0, 0], atk: p.atk, def: p.def, by: m.planBy[i] }));
   return m;
 }
 /** Record stat `k` for a player ('top' keeps the maximum); moves mood (MOODD) and element gauges with it. */
@@ -411,7 +415,9 @@ function end(m, w, beats) {
     const L = 1 - w,
       T = m.t[L],
       avg = T.P.reduce((a, q) => a + (m.mood[q.id] || 0), 0) / T.P.length;
-    const need = m.pts[w] >= 4 && (m.streak[w] >= 3 || (m.zone[w] && m.pts[w] - m.pts[L] >= 2) || avg < -0.35);
+    const need =
+      (m.pts[w] >= 4 && (m.streak[w] >= 3 || (m.zone[w] && m.pts[w] - m.pts[L] >= 2) || avg < -0.35)) ||
+      (m.pts[w] - m.pts[L] >= 2 && m.planBy[L] === 'ai' && !!planCounter(m, L)); // a pattern against them, noticed (spec §2.26)
     if (m.toReq[L] && !m.to[L]) timeout(m, L, beats, true);
     else if (m.toReq[w] && !m.to[w]) timeout(m, w, beats, true);
     else if (!m.to[L] && need && R() < 0.35 + 0.6 * T.coachIQ) timeout(m, L, beats, false);
@@ -597,6 +603,9 @@ function timeout(m, L, beats, manual) {
   m.mom[L] = Math.max(m.mom[L], 0);
   m.streak[O] = 0;
   if (m.zone[O] && m.mom[O] < 0.5) m.zone[O] = 0;
+  // the AI coach's huddle answers what it has noticed (spec §2.26); a side you run changes plan in match prep instead
+  const np = m.planBy[L] === 'ai' ? planCounter(m, L) : null;
+  if (np) planSet(m, L, np, 'ai');
   if (!beats) return;
   const hx = (side, i) => sx(side, 80 + i * 24),
     hz = i => [0.04, 0.11, 0.02, 0.13][i];
@@ -606,7 +615,8 @@ function timeout(m, L, beats, manual) {
       s1.push({ k: 'slide', p: q.id, x: hx(side, i), z: hz(i) });
       m.pos[q.id] = { x: hx(side, i), z: hz(i) };
     });
-  const line = manual ? 'You called it — reset and refocus!' : pick(TOLINES);
+  let line = manual ? 'You called it — reset and refocus!' : pick(TOLINES);
+  if (np) line = PLAN_LINES[(m.pts[0] + m.pts[1]) % PLAN_LINES.length]; // the new plan stays hidden: only that there is one
   beats.push({
     dur: 700,
     acts: [{ k: 'tobanner', side: L, manual }]

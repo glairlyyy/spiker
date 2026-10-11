@@ -153,7 +153,8 @@ function serveContact(c) {
   const sp = m.pos[server.id],
     sArc = sType === 'jump' ? 85 : sType === 'jumpfloat' ? 110 : 130,
     wob = sType !== 'jump';
-  const serr = (Formula.serveErrorP(server, ST, sq) + (killer ? 0.03 : 0)) * (c.call ? DECIDE.serve[c.call].err : 1);
+  const serr =
+    (Formula.serveErrorP(server, ST, sq) + (killer ? 0.03 : 0)) * (c.call ? DECIDE.serve[c.call].err : 1) * (atkPlan(m, s).serveErr ?? 1); // Hunt the passer: riskier serves (spec §2.26)
   const techName = killer ? 'Killer Jump Serve' : drive ? 'Drive Serve' : targeted ? 'Target Serve' : null;
   const hitFx = [
     { k: 'jump', p: server.id, mode: 'down' },
@@ -203,7 +204,8 @@ function serveAim(c) {
     tx,
     tz
   );
-  if (targeted || (c.call && DECIDE.serve[c.call].aim)) {
+  if (targeted || (c.call && DECIDE.serve[c.call].aim) || atkPlan(m, c.s).huntK) {
+    // (Hunt the passer, spec §2.26: every serve goes at their weakest passer)
     // aim just beside the weakest passer so they have to move for it
     rc = RT.P.filter(p => p !== RT.s).reduce((a, p) => (effD(p) + p.speed * 0.3 < effD(a) + a.speed * 0.3 ? p : a));
     const q = m.pos[rc.id];
@@ -215,6 +217,9 @@ function serveAim(c) {
   const rollR = hasTech(rc, 'roll') && d0 > 0.5;
   if (rollR) techFire(m, rc, 'roll');
   let rs = Formula.receiveScore(rc, RT, d0) - (drive ? 14 : 0);
+  const cp = defPlan(m, r); // Cover the weak link (spec §2.26): the weakest passer is helped, the rest a little more open
+  if (cp.weakRs) rs += rc === weakPasser(RT) ? cp.weakRs : cp.otherRs;
+  if (atkPlan(m, c.s).press && rc === weakPasser(RT)) rs -= atkPlan(m, c.s).press; // Hunt the passer: the pressure tells on them
   if (rollR) rs += Math.max(0, d0 - 0.1) * 45 * (1.3 - rc.speed / 100) * 0.5;
   // a hard serve gets there sooner (SERVE_FAST: up to ×1.45 from serve 55 to 110)
   const sfast = 1 + clamp((sq - 55) / 55, 0, 1) * (SERVE_FAST - 1),

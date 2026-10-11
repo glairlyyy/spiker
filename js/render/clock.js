@@ -67,7 +67,7 @@ function frame(ts) {
   last = ts;
   if (!A || !cv || !document.body.contains(cv)) return;
   try {
-    if (!A.paused && !A.hold) step(dt * A.speed * PACE);
+    if (!A.paused && !A.hold && !A.prep) step(dt * A.speed * PACE); // match prep (spec §2.26) holds play too
     frame.err = 0;
   } catch (e) {
     DBG.log('error', e, matchState());

@@ -127,6 +127,10 @@ function toggleFullscreen() {
 }
 addEventListener('keydown', e => {
   if (!A || e.target.closest('input,select,textarea,button')) return;
+  if (A.prep) {
+    if (e.key === 'Enter') prepStart(); // match prep (spec §2.26): Enter starts / resumes
+    return;
+  }
   if (promptKey(e)) return e.preventDefault(); // your prompt: E / R / 1–3 (spec §2.16)
   if (e.key === 'f' || e.key === 'F') toggleFullscreen();
   else if (e.key === 'b' || e.key === 'B') railOpen();

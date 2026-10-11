@@ -156,6 +156,7 @@ function startMatch(fx) {
   showTac(0);
   showTac(1);
   open3D();
+  if (!fx.cine && !fx.anim) prepOpen(); // match prep: the intro before every match (spec §2.26)
   if (fx.cine || fx.anim) vfxToggle(); // the Cut-scene / Animation lab: its panel open from the start
   if (fx.anim)
     for (const ev of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'wheel'])

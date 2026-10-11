@@ -248,8 +248,9 @@ test.slow('engine: the setter takes the second ball', () => {
       }
   }
   assert(sets > 4000 && reach > 0, `sets were judged (${sets}, ${reach} won by reach)`);
-  // (≈ 10.4–11.2 % since the Loose shakes, owner 2026-10-08: a colder team passes worse; the guard is against ~12.5 %)
-  assert(astNon / ast < 0.115, `assists by non-setters ${((100 * astNon) / ast).toFixed(1)} % (was ~12.5 %)`);
+  // (≈ 10.4–11.2 % since the Loose shakes, owner 2026-10-08: a colder team passes worse; ≈ 11.6 % since team plans, 2026-10-12:
+  // Hunt the passer forces more bad passes; the guard is against ~12.5 %)
+  assert(astNon / ast < 0.12, `assists by non-setters ${((100 * astNon) / ast).toFixed(1)} % (was ~12.5 %)`);
 });
 
 test('engine: staged scenes are rare and well-formed', () => {
@@ -378,6 +379,43 @@ test.slow('engine: laning — the block reads a channel, a right read stops more
     acts = [];
   while (!m.over) for (const b of g.playRally(m).beats) for (const a of b.acts) if (a.k === 'lane') acts.push(a);
   assert(acts.length > 10 && acts.some(a => a.bz != null) && acts.every(a => Number.isFinite(a.x1) && Number.isFinite(a.z1)), 'lane acts');
+});
+
+test('engine: team plans — given plans hold, the coach picks from its style, Hunt serves at the weak passer, the coach answers at its timeout (spec §2.26)', () => {
+  const g = load(41),
+    T = g.mkTeams();
+  // the coach's own pick: its playstyle's default (a sharp coach may answer the other side's ace / weak passer)
+  for (const t of T) {
+    const p = g.planPick(t, T[0] === t ? T[1] : T[0]);
+    assert(g.PLANS.atk[p.atk] && g.PLANS.def[p.def], `pick for ${t.name}`);
+    if ((t.coachIQ ?? 0.6) < g.PLAN_AI.iq) eq(`${p.atk}/${p.def}`, g.PLAN_STYLE[t.sk].join('/'), `${t.name} plays its style`);
+  }
+  // given plans are played; Hunt the passer sends most serves at their weakest passer
+  let at = 0,
+    all = 0,
+    changed = 0;
+  for (let i = 0; i < 60; i++) {
+    const a = T[i % 8],
+      b = T[(i * 3 + 1) % 8],
+      m = g.simMatch(a, b, { plan: [{ atk: 'hunt', def: 'read' }, null] });
+    eq(m.planBy[0], 'you');
+    eq(m.planLog.filter(e => e.side === 0).length, 1, 'your plan only changes when you change it');
+    const wp = g.weakPasser(m.t[1]);
+    for (const p of g.squadOf(m.t[1])) {
+      const r = m.recv[p.id];
+      if (!r) continue;
+      all += r.n + r.ace;
+      if (p === wp) at += r.n + r.ace;
+    }
+    if (m.planLog.some(e => e.side === 1 && (e.at[0] || e.at[1]))) changed++;
+  }
+  assert(at / all > 0.6, `Hunt: ${((100 * at) / all).toFixed(0)} % of serves at the weakest passer`);
+  assert(changed > 3, `the AI coach changed plan at its timeout in ${changed} of 60 matches`);
+  // planSet at the same score replaces the entry; the coach panel tags carry true counts
+  const m = g.newMatch(T[0], T[1], false);
+  g.planSet(m, 0, { atk: 'power', def: 'deep' }, 'you');
+  eq(m.planLog.filter(e => e.side === 0).length, 1);
+  eq(m.plan[0].atk + m.plan[0].def, 'powerdeep');
 });
 
 test('engine: defence settings — AI default, captain switch, scouting habits', () => {
@@ -549,7 +587,8 @@ test.slow('engine: coach AI — errors, returns, coach IQ', () => {
       for (let i = 0; i < 150; i++) {
         const a = T2[i % 8];
         a.coachIQ = iq;
-        const m = g2.simMatch(a, T2[(i * 3 + 1) % 8]),
+        // plans fixed (spec §2.26): a sharp coach's plan timeouts would rest the team and blur the sub roll measured here
+        const m = g2.simMatch(a, T2[(i * 3 + 1) % 8], { plan: [g2.planOf({}, 0), g2.planOf({}, 1)] }),
           f = m.subLog.find(x => x.side === 0);
         sum += f ? f.pts : m.pts[0] + m.pts[1];
         n++;

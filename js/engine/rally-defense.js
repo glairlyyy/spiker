@@ -53,7 +53,7 @@ function block(c, x) {
     ) {
       smashed = true;
       blockBreak(c, x, k);
-    } else if (!late && R() < stuffChance(bp, cov, pow) * blockSkill(bb) * (x.stuffK ?? 1)) {
+    } else if (!late && R() < stuffChance(bp, cov, pow) * blockSkill(bb) * (x.stuffK ?? 1) * (x.planStuff ?? 1)) {
       laneTag(c, x, 'stuff');
       return blockStuff(c, x, k); // × your block timing (spec §2.16)
     }
@@ -288,7 +288,11 @@ function digSetup(c, x, bl) {
     cands = floor.length ? floor : defT.P.filter(p => !blockers.includes(p));
   const dg = nearest(m, cands, lx, lz);
   const q0 = m.pos[dg.id],
-    dd0 = dist(q0, lx, lz) * (x.read === 'wrong' && !tip && !x.around ? LANE.shade : 1); // the back row covers where the block was not (spec §2.24)
+    dp = defPlan(m, ds),
+    dd0 =
+      dist(q0, lx, lz) *
+      (x.read === 'wrong' && !tip && !x.around ? (atkPlan(m, 1 - ds).seam ?? LANE.shade) : 1) * // the back row covers where the block was not (spec §2.24) — unless they Beat the block through the seam (§2.26)
+      (dp.weakDd ? (dg === weakPasser(defT) ? dp.weakDd : dp.otherDd) : 1); // Cover the weak link (spec §2.26)
   let dsc = Formula.digScore(dg, defT, dd0);
   if (touched) dsc *= softTouch ? 1.4 : 1.15;
   // Rolling Receive on defense: far balls cost much less
@@ -297,7 +301,11 @@ function digSetup(c, x, bl) {
   if (rollD) dsc += Math.max(0, dd0 - 0.1) * 55 * (1.35 - dg.speed / 100) * 0.5;
   if (smashed) dsc *= 0.85; // defenders are wrong-footed by a ball blasting through the block
   if (elS) dsc *= elS.dsc;
-  const killP = Formula.killChance(pow, dsc, tip, dd0);
+  // Dig deep (spec §2.26): the back row sits deep — hard hits are dug; tips, cut shots and Beat the block's seam shots
+  // drop in short
+  const short = tip || x.around || (x.read === 'wrong' && atkPlan(m, 1 - ds).seam);
+  const deepK = !dp.hardKill ? 1 : short ? dp.tipKill : pow >= dp.powFrom ? dp.hardKill : 1,
+    killP = Math.min(0.98, Formula.killChance(pow, dsc, tip, dd0) * deepK);
   const a4 = [];
   return { dg, q0, dd0, dsc, rollD, killP, a4 };
 }

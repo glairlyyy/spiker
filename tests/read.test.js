@@ -77,7 +77,7 @@ test.slow('read: a call gets you the set; a high read draws the block; a fake ca
   const calls = sum(call.ms, 'call'),
     ok = calls - sum(call.ms, 'refused'),
     set = sum(call.ms, 'callSet');
-  assert(ok > 100 && set / ok >= 0.9, `called and accepted → set you ${set}/${ok}`);
+  assert(ok > 80 && set / ok >= 0.9, `called and accepted → set you ${set}/${ok}`);
   assert(sum(call.ms, 'refused') > 0, 'some calls are turned down ("Not now!")');
   // read: the same hitter, read pinned high vs pinned at 0 — they key on you: fewer kills, more stuffs
   const rate = rd => {

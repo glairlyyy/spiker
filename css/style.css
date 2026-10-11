@@ -2003,3 +2003,93 @@ html.reduced .xl {
 #coach .ctags li.ct-read {
   border-left-color: var(--good);
 }
+/* Match prep (spec §2.26): the intro before every match, and your timeout's huddle */
+.prepo {
+  z-index: 6;
+}
+.ocard.prep {
+  max-width: 880px;
+  text-align: left;
+  background: var(--surf);
+  border: 1px solid var(--line);
+  padding: 24px;
+}
+.ocard.prep.one {
+  max-width: 480px;
+}
+.prep .pcols {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+  margin: 8px 0 16px;
+}
+.prep .pteam {
+  flex: 1;
+  min-width: 0;
+  border-top: 3px solid var(--tc);
+  padding-top: 8px;
+}
+.prep .pteam h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+.prep .pvs {
+  align-self: center;
+  color: var(--mute);
+  font-size: 13px;
+}
+.prep .lineup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0 12px;
+}
+.prep .pl {
+  font-size: 12px;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.prep .pl.fr {
+  border-color: var(--line-strong);
+}
+.prep .pplan {
+  margin-bottom: 12px;
+}
+.prep .pplan .seg {
+  flex-wrap: wrap;
+  margin: 4px 0;
+}
+.prep .seg .btn {
+  height: 32px;
+  padding: 0 10px;
+}
+.prep .seg.who {
+  margin-bottom: 8px;
+}
+.prep .pdesc {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+.mres .rplans {
+  margin: 12px 0;
+  text-align: left;
+}
+.mres .rplan {
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+  margin-top: 4px;
+}
+.mres .rplan .rpt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 64px;
+}
+.prep .acts {
+  width: 100%; /* the card lays its children out as wrapped flex items: the action row spans it (one action row per container) */
+}

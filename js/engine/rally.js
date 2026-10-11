@@ -395,7 +395,7 @@ function spikePower(c, x) {
   dr(m, spiker, 0.035 + pj / 4000);
   const setMul = { perfect: 1.12, good: 1, bad: 0.72 }[sq2];
   const tip = bad && !elSrc && R() < 0.35;
-  let pow = tip ? rnd(18, 30) : Formula.spikePower({ spiker, team: atkT, setMul, quick, back, longB, combo, fat });
+  let pow = tip ? rnd(18, 30) : Formula.spikePower({ spiker, team: atkT, setMul, quick, back, longB, combo, fat }) * (x.powK ?? 1); // × Power through (spec §2.26)
   const elS = !tip && elSrc ? elSpike(m, elSrc, spiker, setter, defT, sq2 === 'perfect') : null;
   if (elS) {
     pow *= elS.pow;
@@ -404,7 +404,7 @@ function spikePower(c, x) {
   st(m, spiker, 'top', kmh(pow));
   let around = false;
   const cutS = hasTech(spiker, 'cutshot');
-  if (!tip && cov > 0.5 && R() < clamp((W(spiker) - 0.4) * 0.45 + (cutS ? 0.2 : 0), 0, 0.75)) {
+  if (!tip && cov > 0.5 && R() < clamp((W(spiker) - 0.4) * 0.45 + (cutS ? 0.2 : 0) + (x.cutK || 0), 0, 0.75)) {
     around = true;
     if (cutS) techFire(m, spiker, 'cutshot');
     // a blocker at least as sharp as the hitter reads the cut and keeps part of the block on it
@@ -590,7 +590,7 @@ function hangFail(c, x) {
 function hittingError(c, x) {
   const { m, B, V, atk, ds } = c,
     { spiker, tip, bad, pow, around, back, longB, hS, elS, hit, bdown, spZ, lz, hdur } = x;
-  const errP = Formula.spikeErrorP({ spiker, bad, pow, around, back, longB, hS }) * (elS ? 0.5 : 1);
+  const errP = Formula.spikeErrorP({ spiker, bad, pow, around, back, longB, hS }) * (elS ? 0.5 : 1) * (x.errK ?? 1); // the attack plan (spec §2.26)
   if (tip || R() >= errP) return;
   st(m, spiker, 'err');
   const net = R() < Formula.spikeNetShare(hS, longB);

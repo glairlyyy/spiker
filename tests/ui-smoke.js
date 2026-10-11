@@ -131,6 +131,11 @@ const step = async (name, fn) => {
       mapCourt('arena', 'open', false);
     });
     await pg.waitForFunction(() => typeof R3D !== 'undefined' && R3D && A && A.m && !A.hold, null, { timeout: 120000 });
+    // match prep (spec §2.26): the intro shows both teams; the other side's plan is hidden; Enter starts
+    const pre = await ev(() => (A.prep && $('#prep') && !$('#prep').hidden ? $('#prep').textContent : ''));
+    if (!/Their plan: hidden/.test(pre)) throw new Error(`career match prep: ${pre.slice(0, 160)}`);
+    await pg.keyboard.press('Enter');
+    if (await ev(() => A.prep)) throw new Error('Enter did not start the match');
     const kind = await ev(() => {
       A.hold = true; // frames by hand (the 3D clock is slow on a software GPU)
       if (!A.m.read) throw new Error('Prompts On did not turn the read meter on');
@@ -210,6 +215,16 @@ const step = async (name, fn) => {
       startMonster();
     });
     await pg.waitForFunction(() => typeof A !== 'undefined' && A && A.m, null, { timeout: 60000 });
+    // match prep (spec §2.26): both sides yours in a Monster game; pick Hunt the passer / Wall their ace for the left team
+    await ev(() => {
+      if (!A.prep || $('#prep').querySelectorAll('.pteam').length !== 2) throw new Error('no Monster match prep');
+      prepPick(0, 'atk', 'hunt');
+      prepPick(0, 'def', 'wall');
+      prepStart();
+      const p = A.m.plan[0];
+      if (A.prep || p.atk !== 'hunt' || p.def !== 'wall' || A.m.planBy[0] !== 'you' || A.m.planBy[1] !== 'ai')
+        throw new Error(`plans not set: ${JSON.stringify(A.m.plan)} ${A.m.planBy}`);
+    });
     // prompts (spec §2.16, T-256) against a hand-made decision point: E answers Call, the chip lights, the window's end resumes
     const pr = await ev(() => {
       const you = A.m.t[0].ws[0];
@@ -326,6 +341,7 @@ const step = async (name, fn) => {
       finishMatch();
     });
     await pg.waitForFunction(() => /Top 3/i.test((document.querySelector('#over') || {}).textContent || ''), null, { timeout: 10000 });
+    if (!/Plans[\s\S]*Hunt the passer/.test(await ev(() => $('#over').textContent))) throw new Error('no Plans row on the result card');
   });
   const dbg = await ev(() => (typeof DBG !== 'undefined' ? DBG.text() : '')).catch(() => '');
   for (const l of dbg.split('\n')) if (/\berror\b/i.test(l) && !/STALL/.test(l)) errors.push(`DBG: ${l.slice(0, 200)}`);

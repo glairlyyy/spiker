@@ -23,13 +23,16 @@ const laneSeen = (m, p) => (m.lanes || (m.lanes = {}))[p.id] || (m.lanes[p.id] =
 
 /** 7b. The block reads a channel (no real block → none). The sharper blocker calls it from what they've seen. */
 function laneRead(c, x) {
-  const { m } = c,
+  const { m, atk, ds, atkT } = c,
     { spiker, b0, b1, cov } = x;
   if (cov <= BLOCK_MIN_COV) return { bch: null };
-  const s = laneSeen(m, spiker),
+  if (defPlan(m, ds).stuff) return { bch: 'line' }; // Dig deep (spec §2.26): the block takes the line, no guessing
+  const dp = defPlan(m, ds),
+    k = LANE.readK * (atkPlan(m, atk).readK ?? 1) * (dp.aceRead && spiker === aceOf(atkT) ? dp.aceRead : 1), // Hunt is predictable; Wall reads the ace
+    s = laneSeen(m, spiker),
     est = (s.line + 1) / (s.line + s.cross + 2),
     q = Math.max(readQ(b0), b1 ? readQ(b1) : 0),
-    pLine = clamp(0.5 + (est - 0.5) * LANE.readK * q, 0.05, 0.95);
+    pLine = clamp(0.5 + (est - 0.5) * k * q, 0.05, 0.95);
   return { bch: R() < pLine ? 'line' : 'cross' };
 }
 
@@ -39,11 +42,20 @@ function laneRead(c, x) {
  * block's read channel (act `lane`, during the set).
  */
 function laneAim(c, x) {
-  const { V, atk, ds, atkT, defT } = c,
-    { spiker, b0, b1, bch, spZ, appX } = x;
+  const { m, V, atk, ds, atkT, defT } = c,
+    { spiker, b0, b1, bch, spZ, appX, blockers } = x,
+    ap = atkPlan(m, atk),
+    dp = defPlan(m, ds);
   let p = habitLine(spiker);
+  // Hunt the passer (spec §2.26): lean toward the channel their weakest passer stands in (unless they are up at the net)
+  const wp = ap.huntK ? weakPasser(defT) : null;
+  if (wp && !blockers.includes(wp)) {
+    const wz = m.pos[wp.id].z;
+    p += (Math.abs(laneZ(spZ, 'line') - wz) <= Math.abs(laneZ(spZ, 'cross') - wz) ? 1 : -1) * ap.huntK;
+  }
   if (bch) {
-    const see = clamp(LANE.see0 + LANE.seeK * (W(spiker) - W(b0)), 0, LANE.seeMax);
+    // Beat the block watches it harder; Power through ignores it
+    const see = clamp(clamp(LANE.see0 + LANE.seeK * (W(spiker) - W(b0)), 0, LANE.seeMax) * (ap.see ?? 1), 0, 0.9);
     p = lerp(p, bch === 'line' ? LANE.away : 1 - LANE.away, see);
     if (b1) p += (blkStr(laneHand(x, 'cross')) - blkStr(laneHand(x, 'line'))) * LANE.weakK * see;
   }
@@ -53,6 +65,8 @@ function laneAim(c, x) {
     cov *= ch === bch ? LANE.on : b1 ? LANE.offDbl : LANE.off;
     if (b1) cov *= clamp(1 + (blkStr(laneHand(x, ch)) - (blkStr(b0) + blkStr(b1)) / 2) * LANE.handK, 0.8, 1.2);
   }
+  if (dp.aceCov) cov *= spiker === aceOf(atkT) ? dp.aceCov : dp.otherCov; // Wall their ace
+  cov *= ap.cov ?? 1; // Beat the block: they find the holes
   if (V)
     x.a1.push({
       k: 'lane',
@@ -66,7 +80,16 @@ function laneAim(c, x) {
       col: atkT.color,
       bcol: defT.color
     });
-  return { ch, cov, read: bch ? (ch === bch ? 'right' : 'wrong') : null };
+  // the plans' other dials, read later in the attack: power, cut-shot chance, hitting errors, the stuff roll
+  return {
+    ch,
+    cov,
+    read: bch ? (ch === bch ? 'right' : 'wrong') : null,
+    powK: ap.pow ?? 1,
+    cutK: ap.cutK ?? 0,
+    errK: ap.err ?? 1,
+    planStuff: dp.stuff ?? 1
+  };
 }
 
 /** The block's tag over its first blocker once the hit is resolved (presentation; no draws). out: stuff | touch | beaten. */
