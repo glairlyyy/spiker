@@ -81,14 +81,14 @@ Accept: a fresh load defines no `LAB` / `animLab*` globals; each lab opens from 
 QA: menu › Dev › VFX lab, Animation lab, VFX panel in a Monster game.
 Result: js/ui/dev.js: DEV_TOOLS { vfx, lab, anim } + devLoad / devOpen (scripts injected once, in order); vfx-panel.js, vfx-lab.js, anim-lab.js out of index.html; menu (VFX lab, Animation lab), the match's VFX button / V key and the Cut-scene / Animation lab panels go through devOpen; eslint.config.mjs reads the dev file list for shared globals. UI smoke 13/13 (asserts no lab globals before the lab opens).
 
-### [ ] T-272: Island map — camera and input out of `create`
+### [x] T-272: Island map — camera and input out of `create`
 Spec: §4.9 §4.18c          Goldens: unchanged          Save: no change
 Goal: map3d `create` (373 lines) keeps the scene and `api`; pan / zoom / grab / fly-to / follow / walk lock move to a controller.
 Files: js/map3d/map3d.mjs, js/map3d/mapcam3d.mjs (new: `createMapCam(cam, canvas, { ground, clampView, onPick })` → `{ centre,
 overview, flyTo, frame, busy, dispose }`), ARCHITECTURE-details.md
 Do not: change camera feel (speeds, clamps, easing) or the `MapView` API.
 Accept: map3d.mjs `create` < 200 lines; map / map3d tests pass; career QA: pan, zoom, ◎ Me (C), click a place, walk lock.
-Result:
+Result: js/map3d/mapcam3d.mjs (new): createMapCam(cam, canvas, sun, parts) → view, initView, fit, centre, overview, flyTo, walkFrom, step, walking, onWheel, dispose — the pan / zoom / click / fly / follow / fence code moved verbatim; map3d create also lost the lights + sea (lightScene) and the GPU release (releaseScene) to module helpers: 373 → 205 lines (deviation: target < 200; the rest is the model sync and the frame). QA (career hub, Playwright): wheel, drag, ◎ Me, pick a place, overview behave as HEAD (views within the run-to-run timing spread); map tests pass; no errors.
 
 ### [ ] T-273: style.css split — base and match
 Spec: §9          Goldens: unchanged          Save: no change

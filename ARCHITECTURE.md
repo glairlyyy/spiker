@@ -47,7 +47,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
 
 ES modules (loaded on demand): `js/render3d/` — `r3d.mjs` (entry), `units3d`, `arena3d`, `camera3d`, `actors3d`,
 `players3d` (VRM load / dress, `MODEL_URL`), `poses3d` (+ `setMotion`; spike / swing / serve poses in `poses3d-attack`), `fx3d`, `trails3d`, `ambient3d` (the venue's air by crowd heat `Dir.heat`: wind, embers, flames — spec §2.27), `title3d` (the title backdrop: its own small renderer — `mountTitle3D(el)` / `unmountTitle3D()`, buildArena without players or ball, orbiting; menu.js `titleBg` / `titleBgOff`, navigate stops it), `vfxlab3d` (dev VFX lab: own renderer + OrbitControls + `createFx`; `mountLab` / `labPlay` / `labSet` / `labStats` / `labAdvance` (QA stepping); stops itself when its element leaves the page); `js/map3d/` — `map3d.mjs`
-(entry), `geo3d`, `avatar3d`, `pins3d`, `life3d`, `town3d`, `kit3d`, `nature3d`.
+(entry: scene, terrain, the model sync, `api`), `mapcam3d` (camera + input: pan, zoom, click a point, fly to a pin / to you / over the island, follow the walk, the week-1 fence — T-272), `geo3d`, `avatar3d`, `pins3d`, `life3d`, `town3d`, `kit3d`, `nature3d`.
 
 CSS (`css/`, loaded in this order): `style.css` (base + match screen layout), `career.css` (career screens layout: menu, create, cards,
 sheets), `map.css` (island map frame, 3D overlay pins/labels, legend, hex tile labels), `hub.css` (hub HUD + shell: top bar, week

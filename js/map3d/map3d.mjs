@@ -11,15 +11,11 @@ import { createFurniture } from './pins3d.mjs';
 import { createLife } from './life3d.mjs';
 import { createTown } from './town3d.mjs';
 import { createNature } from './nature3d.mjs';
-import { MAP_M, toMap, clamp, lerp, smooth, fogFactor, fitView, toWorld, inside, edgeDist, sideDist, hstr } from './geo3d.mjs';
+import { createMapCam } from './mapcam3d.mjs';
+import { MAP_M, clamp, lerp, smooth, fogFactor, inside, edgeDist, sideDist, hstr } from './geo3d.mjs';
 export { inside, edgeDist, sideDist }; // (the polygon maths live in geo3d.mjs; tests import them from here too)
 
 const CELL = 2, // terrain grid cell (m)
-  PITCH = (55 * Math.PI) / 180,
-  FLY_S = 0.45, // a camera move to a selected place
-  DIST = [25, 1300], // camera distance (m): the scaled island (MAP_SCALE 2.25) needs the longer reach
-  FENCE_D = 150, // the farthest the camera goes while the week-1 fence holds (m)
-  CLICK_PX = 5,
   BEACH = 12, // beach slope width (m)
   IDLE_S = 3, // canvas detached this long → release the renderer
   SHADOW_MAP = 2048, // sun shadow map size (px)
@@ -292,15 +288,8 @@ function buildTerrain(model) {
   return { geo, heightAt, W, D, base: col.slice() };
 }
 
-export function create(onIdle) {
-  const canvas = document.createElement('canvas'),
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: true }),
-    scene = new THREE.Scene(),
-    cam = new THREE.PerspectiveCamera(40, 1, 1, 3000),
-    ray = new THREE.Raycaster(),
-    ndc = new THREE.Vector2(),
-    plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
-    hit = new THREE.Vector3();
+/** Renderer settings, sky, hemisphere light, the sun with its shadow, and the sea. */
+function lightScene(renderer, scene) {
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -317,6 +306,26 @@ export function create(onIdle) {
     new THREE.MeshPhongMaterial({ color: 0x1d5f8f, specular: 0x9bc4e0, shininess: 90, transparent: true, opacity: 0.92 })
   );
   scene.add(water);
+  return { sun, water };
+}
+/** Free every geometry / material the map made (shared kit caches — userData.shared — survive a re-create), the GPU context. */
+function releaseScene(scene, renderer, sun) {
+  scene.traverse(o => {
+    if (o.userData && o.userData.shared) return;
+    if (o.geometry && !(o.geometry.userData && o.geometry.userData.shared)) o.geometry.dispose();
+    const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+    for (const m of mats) if (!(m.userData && m.userData.shared)) m.dispose();
+  });
+  sun.shadow.map && sun.shadow.map.dispose();
+  renderer.dispose();
+  renderer.forceContextLoss();
+}
+export function create(onIdle) {
+  const canvas = document.createElement('canvas'),
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true }),
+    scene = new THREE.Scene(),
+    cam = new THREE.PerspectiveCamera(40, 1, 1, 3000);
+  const { sun, water } = lightScene(renderer, scene);
 
   let terrain = null,
     mesh = null,
@@ -337,15 +346,14 @@ export function create(onIdle) {
     fogKey = null,
     badge = null,
     walkK = 1, // your walking speed (×1 / ×2 / ×4 — the map's speed selector, T-214)
-    follow = false, // the camera follows the avatar while it walks (until the user drags)
     seen = null, // the you.at last shown
-    view = null, // { x, z, d }: the camera target on the ground and its distance (kept across re-mounts)
-    fly = null, // a camera move to a selected place: { x0, z0, d0, x1, z1, d1, t }
     cur = null, // the last model (pins for select)
     lastSel = null,
     cw = 0, // canvas size (px), cached by size() — never read from the DOM per frame
     ch = 0;
 
+  // camera and input (mapcam3d.mjs): it reads the parts below as they appear
+  const C = createMapCam(cam, canvas, sun, () => ({ terrain, mesh, avatar, cur, on, cw, ch }));
   let hexOn = !(typeof location !== 'undefined' && /[?&]nohex\b/.test(location.search));
   const showHex = () => scene.traverse(o => o.userData && o.userData.hex && (o.visible = hexOn));
   const build = m => {
@@ -360,7 +368,7 @@ export function create(onIdle) {
     furn = createFurniture(scene, terrain.heightAt);
     life = createLife(scene, terrain.heightAt);
     nature = createNature(scene, terrain.heightAt);
-    furn.layer.addEventListener('wheel', onWheel, { passive: false }); // wheel over a pin still zooms
+    furn.layer.addEventListener('wheel', C.onWheel, { passive: false }); // wheel over a pin still zooms
   };
   /** Darken the terrain where nothing you have visited lies within fog.r (unexplored land stays visible, dim). */
   const applyFog = f => {
@@ -377,13 +385,6 @@ export function create(onIdle) {
     }
     attr.needsUpdate = true;
   };
-  const place = () => {
-    const { x, z, d } = view;
-    cam.position.set(x, d * Math.sin(PITCH), z + d * Math.cos(PITCH));
-    cam.lookAt(x, 0, z);
-    sun.target.position.set(x, 0, z);
-    sun.position.set(x + 70, 130, z + 45);
-  };
   const size = () => {
     if (!el || !el.clientWidth || !el.clientHeight) return;
     cw = el.clientWidth;
@@ -391,109 +392,6 @@ export function create(onIdle) {
     renderer.setSize(cw, ch, false);
     cam.aspect = cw / ch;
     cam.updateProjectionMatrix();
-  };
-  /** Ground point (y = 0) under a pointer event, or null (sky). */
-  const ground = e => {
-    const r = canvas.getBoundingClientRect();
-    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-    ray.setFromCamera(ndc, cam);
-    return ray.ray.intersectPlane(plane, hit) ? hit : null; // the shared vector: read it before the next call
-  };
-  const clampView = () => {
-    view.x = clamp(view.x, 0, terrain.W);
-    view.z = clamp(view.z, 0, terrain.D);
-    view.d = clamp(view.d, DIST[0], DIST[1]);
-    const F = cur && cur.fence; // Story week 1 (spec §10.10a): the camera stays over the campus
-    if (F) {
-      const [fx, fz] = toWorld(F.at),
-        R = F.r * MAP_M,
-        dx = view.x - fx,
-        dz = view.z - fz,
-        k = Math.hypot(dx, dz);
-      if (k > R) ((view.x = fx + (dx / k) * R), (view.z = fz + (dz / k) * R));
-      view.d = Math.min(view.d, FENCE_D);
-    }
-  };
-
-  // input: drag pans (grab the ground point), wheel zooms, a click (< CLICK_PX) picks a map point
-  let grab = null,
-    down = null;
-  /** While your player walks the camera stays on them and the map takes no input (owner, 2026-10-03). */
-  const walking = () => !!(avatar && avatar.busy());
-  const onDown = e => {
-    if (e.button !== 0 || walking()) return;
-    fly = null; // the player takes the camera
-    down = { x: e.clientX, y: e.clientY, moved: 0 };
-    const g = ground(e);
-    grab = g ? { x: g.x, z: g.z } : null;
-    canvas.setPointerCapture(e.pointerId);
-  };
-  const onMove = e => {
-    if (!down) return;
-    down.moved = Math.max(down.moved, Math.hypot(e.clientX - down.x, e.clientY - down.y));
-    if (down.moved < CLICK_PX || !grab) return;
-    const g = ground(e);
-    if (!g) return;
-    view.x += grab.x - g.x;
-    view.z += grab.z - g.z;
-    clampView();
-    place();
-    follow = false;
-  };
-  const onUp = e => {
-    if (!down) return;
-    const click = down.moved < CLICK_PX;
-    down = grab = null;
-    if (!click || !on || !mesh) return;
-    const r = canvas.getBoundingClientRect();
-    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-    ray.setFromCamera(ndc, cam);
-    const h = ray.intersectObject(mesh)[0],
-      p = h ? h.point : ray.ray.intersectPlane(plane, hit);
-    if (p) on.point(toMap(p.x, p.z).map(Math.round));
-  };
-  const onWheel = e => {
-    e.preventDefault();
-    if (walking()) return;
-    view.d *= Math.exp(e.deltaY * 0.0012);
-    clampView();
-    place();
-  };
-  const onCancel = () => (down = grab = null),
-    listeners = [
-      ['pointerdown', onDown],
-      ['pointermove', onMove],
-      ['pointerup', onUp],
-      ['pointercancel', onCancel],
-      ['wheel', onWheel, { passive: false }]
-    ];
-  for (const [k, f, o] of listeners) canvas.addEventListener(k, f, o);
-
-  /** Fly the camera to your avatar (the map's ◎ button / key C), at most 70 m away; it then follows your walks again. */
-  const centre = () => {
-    if (!avatar || !view) return;
-    const [x, z] = avatar.pos();
-    fly = { x0: view.x, z0: view.z, d0: view.d, x1: x, z1: z, d1: Math.min(view.d, 70), t: 0 };
-    follow = true;
-  };
-  /** Fly out over the whole island (the fence lifting). */
-  const overview = () => {
-    if (!view || !terrain || !cur) return;
-    const v = fitView(cur.land.coast.map(toWorld), cw / Math.max(1, ch) || 16 / 9, 60, DIST[1]);
-    if (!v) return;
-    const d = Math.min(DIST[1], v.d * 1.15); // perspective: the far edge needs more room than the fit assumes (as at mount)
-    fly = { x0: view.x, z0: view.z, d0: view.d, x1: v.x, z1: v.z + d * 0.08, d1: d, t: 0 };
-    follow = false;
-  };
-  /** Move the camera over a pin (≤ FLY_S): keep the zoom unless the pin is off-screen (then at least 80 m away). */
-  const flyTo = id => {
-    const p = cur && cur.pins && cur.pins.find(q => q.id === id);
-    if (!p || !view) return;
-    const [x, z] = toWorld(p.at),
-      v = new THREE.Vector3(x, 0, z).project(cam),
-      off = Math.abs(v.x) > 0.9 || Math.abs(v.y) > 0.9;
-    fly = { x0: view.x, z0: view.z, d0: view.d, x1: x, z1: z, d1: off ? Math.max(view.d, 80) : view.d, t: 0 };
-    follow = false;
   };
   const frame = t => {
     raf = 0;
@@ -511,24 +409,7 @@ export function create(onIdle) {
       life.tick(dt, clock);
       nature.tick(dt, clock);
       furn.pulse(clock);
-      if (fly) {
-        fly.t = Math.min(1, fly.t + dt / FLY_S);
-        const k = smooth(0, 1, fly.t);
-        view.x = fly.x0 + (fly.x1 - fly.x0) * k;
-        view.z = fly.z0 + (fly.z1 - fly.z0) * k;
-        view.d = fly.d0 + (fly.d1 - fly.d0) * k;
-        clampView();
-        place();
-        if (fly.t >= 1) fly = null;
-      }
-      if ((follow || avatar.busy()) && avatar.busy() && !fly) {
-        const [ax, az] = avatar.pos(),
-          k = 1 - Math.exp(-dt * 8); // held on the player for the whole walk
-        view.x += (ax - view.x) * k;
-        view.z += (az - view.z) * k;
-        clampView();
-        place();
-      }
+      C.step(dt);
       const n = avatar.lapse(),
         txt = n ? `×${n < 2 ? n.toFixed(1) : Math.round(n)}` : '';
       if (badge && badge.textContent !== txt) {
@@ -536,7 +417,7 @@ export function create(onIdle) {
         badge.hidden = !txt;
       }
       renderer.render(scene, cam);
-      furn.tick(cam, cw, ch, view.d);
+      furn.tick(cam, cw, ch, C.view.d);
     }
     raf = requestAnimationFrame(frame);
   };
@@ -556,22 +437,12 @@ export function create(onIdle) {
       ro.observe(el);
       if (!terrain) {
         build(m);
-        const at = m.you ? m.you.at : m.focus; // first view: every known place and you in frame, else on the player ~60 m away
         size();
-        view = fitView([...(m.pins || []).map(p => toWorld(p.at)), toWorld(at)], cw / Math.max(1, ch) || 16 / 9, 60, 510) || {
-          x: at[0] * MAP_M,
-          z: at[1] * MAP_M,
-          d: 60
-        };
-        if (view.d > 60) {
-          view.d = Math.min(340, view.d * 1.15); // perspective: the far edge needs more room than the fit assumes
-          view.z += view.d * 0.08; // and the near edge stays clear of the bottom chips
-        }
+        C.initView(m);
       }
       el.insertBefore(furn.layer, badge);
-      clampView();
       size();
-      place();
+      C.fit();
       api.update(m);
       gone = 0;
       if (!raf) raf = requestAnimationFrame(frame);
@@ -580,7 +451,7 @@ export function create(onIdle) {
     update(m) {
       if (!furn) return;
       cur = m;
-      if (m.sel && m.sel !== lastSel) flyTo(m.sel); // selected from outside the map (list, chip, banner)
+      if (m.sel && m.sel !== lastSel) C.flyTo(m.sel); // selected from outside the map (list, chip, banner)
       lastSel = m.sel;
       town.sync(m);
       nature.sync(m);
@@ -602,20 +473,18 @@ export function create(onIdle) {
       else if (key !== seen) {
         const [x0, z0] = avatar.pos();
         avatar.setTarget(at, m.you.route);
-        down = grab = null; // a drag in progress ends: the camera is the walk's
-        fly = { x0: view.x, z0: view.z, d0: view.d, x1: x0, z1: z0, d1: clamp(view.d, 45, 110), t: 0 }; // onto the player first
-        follow = true;
+        C.walkFrom(x0, z0); // a drag in progress ends: the camera is the walk's, onto the player first
       }
       seen = key;
     },
     select: id => {
       if (!furn) return;
       furn.select(id);
-      if (id && id !== lastSel) flyTo(id);
+      if (id && id !== lastSel) C.flyTo(id);
       lastSel = id;
     },
-    centre,
-    overview,
+    centre: () => C.centre(),
+    overview: () => C.overview(),
     /** Your walking speed on the map: ×k (1, 2, 4). */
     setWalk(k) {
       walkK = k > 0 ? k : 1;
@@ -626,7 +495,7 @@ export function create(onIdle) {
       showHex();
     },
     /** True while your player is walking to a new place (the UI locks its actions until they arrive). */
-    busy: walking,
+    busy: () => C.walking(),
     heightAt: (x, z) => (terrain ? terrain.heightAt(x, z) : 0),
     info: () => ({
       calls: renderer.info.render.calls,
@@ -635,7 +504,7 @@ export function create(onIdle) {
       tex: renderer.info.memory.textures,
       life: life && life.count(),
       nature: nature && nature.count(),
-      view: view && { ...view }
+      view: C.view && { ...C.view }
     }),
     dispose() {
       dead = true;
@@ -648,19 +517,10 @@ export function create(onIdle) {
       if (nature) nature.dispose();
       if (raf) cancelAnimationFrame(raf);
       if (ro) ro.disconnect();
-      for (const [k, f, o] of listeners) canvas.removeEventListener(k, f, o);
-      if (furn) furn.layer.removeEventListener('wheel', onWheel);
+      C.dispose();
+      if (furn) furn.layer.removeEventListener('wheel', C.onWheel);
       canvas.remove();
-      // shared kit materials / geometry caches (userData.shared) belong to their module and survive a re-create
-      scene.traverse(o => {
-        if (o.userData && o.userData.shared) return;
-        if (o.geometry && !(o.geometry.userData && o.geometry.userData.shared)) o.geometry.dispose();
-        const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
-        for (const m of mats) if (!(m.userData && m.userData.shared)) m.dispose();
-      });
-      sun.shadow.map && sun.shadow.map.dispose();
-      renderer.dispose();
-      renderer.forceContextLoss();
+      releaseScene(scene, renderer, sun);
     }
   };
   return api;
