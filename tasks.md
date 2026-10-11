@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-269** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-277** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -37,6 +37,91 @@ new tasks; T-258–T-260 stay open. Motion QA scripts were scratch (not in the r
 turn, standing slide, leg zigzag).
 
 ## Now
+
+**Refactor part 5 (owner, 2026-10-12): simple, open for §5.7 (agency / prep), ace traits (§8) and more effects.** Pure
+refactors — goldens unchanged (tests pass **without** `--update`), save unchanged, no draw-order change, no behaviour or UI change,
+no build step / framework; one seam per task, top-level names kept or every caller updated in the task. **Order and ownership:**
+T-264 (open, solo) goes first — it is the biggest cleanup (dead prompt code). T-269–T-274 touch no file of T-259 / T-260 and may
+run beside Agent B; T-275 waits for T-259 + T-260; T-276 last.
+
+### [ ] T-269: fx3d — primitives and effects apart
+Spec: §2.15 §2.22          Goldens: unchanged          Save: no change
+Goal: a new effect = one function in one effects file; `createFx` (977 lines, one closure) becomes a short assembler.
+Files: js/render3d/fx3d.mjs, js/render3d/fx/kit.mjs (new: textures, shaders, `Particles`, `Streaks`, rocks, bolts, rings, discs, domes
+and their updates — `createKit(scene)` returns them), js/render3d/fx/ground.mjs (blast, dust, skid, touch, breath), fx/hits.mjs
+(airImpact, burst, impact, zap, skyBolt, arc, mote), fx/elements.mjs (elemBurst, elemImpact), fx/trail.mjs (trail), ARCHITECTURE-details.md
+Do not: change any effect's look or particle counts; add Math.random draws or reorder them inside an effect (lab screenshots compare);
+touch VFX tuning names (js/data/vfx.js).
+Steps:
+1. Move the primitives into `fx/kit.mjs`; each effect becomes `export function blast(kit, p, pow, col, hot)` etc.
+2. `createFx(scene)` = `const kit = createKit(scene)` + `{ blast: (...a) => blast(kit, ...a), …, update, stats }` — same API.
+3. Rename fx3d's local `R(a, b)` (Math.random range) to `rr`: it shadows the game RNG's global `R()`.
+Accept: fx3d.mjs < 150 lines; lint + tests pass; VFX lab: every effect fired with `Math.random` seeded, screenshots vs HEAD ≈ noise.
+QA: menu › Dev › VFX lab → each effect.
+Result:
+
+### [ ] T-270: One small math module for the 3D code
+Spec: —          Goldens: unchanged          Save: no change
+Goal: `clamp / lerp / ease / smooth / wrap` defined once for js/render3d and js/map3d (today 2–3 copies; two `ease` curves).
+Files: js/render3d/m3d.mjs (new), secondary3d.mjs, gait3d.mjs, ik3d.mjs, poses3d-cele.mjs, actors3d.mjs, js/map3d/geo3d.mjs (re-exports)
+Do not: unify playback.js's `ease` (a different curve, classic script); change a curve — keep both as `easeS` (smoothstep) and
+`easeIO` only if both are used.
+Accept: grep shows one definition each under js/render3d + js/map3d; lint + tests pass; Monster QA no errors.
+Result:
+
+### [ ] T-271: Dev tools load on demand
+Spec: §2.22          Goldens: unchanged          Save: no change
+Goal: the game loads no dev code until a dev tool opens; a new dev tool = one file + one `DEV_TOOLS` entry.
+Files: index.html (drop vfx-lab.js, vfx-panel.js, anim-lab.js), js/ui/dev.js (new: `DEV_TOOLS = { vfx: [...files], anim: [...] }`,
+`devOpen(name, fn)` injects the scripts once, then calls `fn`), js/ui/menu.js (Dev buttons → `devOpen`), js/ui/match-screen.js
+(`animLabInit` only via `fx.anim`, guarded), tests/ui-smoke.js, ARCHITECTURE.md
+Do not: move debug-panel.js (the Debug log is for players' bug reports); change what the labs do.
+Accept: a fresh load defines no `LAB` / `animLab*` globals; each lab opens from the Dev tab and works (ui-smoke + QA); lint passes
+(ESLint globals: add the lazy files to the shared list in eslint.config.mjs).
+QA: menu › Dev › VFX lab, Animation lab, VFX panel in a Monster game.
+Result:
+
+### [ ] T-272: Island map — camera and input out of `create`
+Spec: §4.9 §4.18c          Goldens: unchanged          Save: no change
+Goal: map3d `create` (373 lines) keeps the scene and `api`; pan / zoom / grab / fly-to / follow / walk lock move to a controller.
+Files: js/map3d/map3d.mjs, js/map3d/mapcam3d.mjs (new: `createMapCam(cam, canvas, { ground, clampView, onPick })` → `{ centre,
+overview, flyTo, frame, busy, dispose }`), ARCHITECTURE-details.md
+Do not: change camera feel (speeds, clamps, easing) or the `MapView` API.
+Accept: map3d.mjs `create` < 200 lines; map / map3d tests pass; career QA: pan, zoom, ◎ Me (C), click a place, walk lock.
+Result:
+
+### [ ] T-273: style.css split — base and match
+Spec: §9          Goldens: unchanged          Save: no change
+Goal: style.css (2 095 lines) = page base only; the match screen's rules live in match.css, so match UI work touches one file.
+Files: css/style.css, css/match.css (new, loaded right after style.css), index.html, ARCHITECTURE.md (CSS list)
+Do not: change a selector or a value; reorder rules inside a file (cascade).
+Accept: computed styles identical — hub, four sheets, match (rail open), menu screenshots 0.00 % vs HEAD (match = noise).
+Result:
+
+### [ ] T-274: tasks.md and docs trim
+Spec: —          Goldens: unchanged          Save: no change
+Goal: tasks.md shows only open work: done revamp tasks (T-253–T-263, T-250–T-252) and part 4 become one line each under Done,
+full text appended to tasks-done.md; the Now preamble shrinks to the open tasks' ownership. ARCHITECTURE "How to add…" gains: a
+team plan (§2.26), a lane read (§2.24), a venue's air (§2.27), a director event (§2.15). T-212 done here (design system status).
+Files: tasks.md (targeted moves only — never regenerate or reflow it), tasks-done.md, ARCHITECTURE.md, the design system artifact `project/status.md`
+Accept: tasks.md < 350 lines; no task text lost (diff: every moved block is in tasks-done.md).
+Result:
+
+### [ ] T-275: Engine — rally loop and match state in named parts (after T-259, T-260)
+Spec: §2          Goldens: unchanged          Save: no change
+Goal: `rally()` (124 lines) reads as a list of phase calls; `newMatch` (110) builds its state from small makers (`teamState`,
+`rallyState`, `logs`), so new per-match state (ace traits, AI memory §5.7) has one obvious home.
+Files: js/engine/rally.js, js/engine/match.js, ARCHITECTURE.md (engine flow)
+Do not: move, add or drop any R() draw; change beat / act shapes or snapshot fields.
+Accept: goldens unchanged; no function in the two files > 80 lines; `npm test` full.
+Result:
+
+### [ ] T-276: Refresh the refactor notes
+Spec: —          Goldens: unchanged          Save: no change
+Goal: the "Refactor seams to cut only when the feature is specced" list under Later matches the code after T-269–T-275 (drop the
+done ones; add what remains: `Overlay` 511, `SOUND` 490, town / life / pins builders ~300 each, `startBeat` 113).
+Files: tasks.md (that list only)
+Result:
 
 **Match revamp (owner, 2026-10-07; spec §2.14–§2.18): three build agents at once, by file ownership — never edit a file another
 agent owns.** Agent A = UI; Agents B and C split the rest. Seams already in place (spec chat, T-253): index.html entries; stubs
