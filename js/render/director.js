@@ -50,8 +50,40 @@ const Dir = {
   lastFrame: [-99, -99],
   /** fx counts per stage this match (QA readout): stage → { air, frame, bounce, blast } */
   count: {},
+  /**
+   * Crowd heat (spec §2.27): 0–1, how fired up the venue is. Rises with long rallies, a team's Fever, big points and streaks;
+   * a floor that climbs as the match goes on (the game warms the crowd); drifts back to the floor in about 20 s; held high
+   * through a set / match point. Presentation only: the crowd, the music and the venue's air (wind outside, embers and
+   * flames inside — js/render3d/ambient3d.mjs) follow it.
+   */
+  heat: 0,
+  /** The heat's floor now (it climbs with the points played: up to HEAT.floor by 30 points). */
+  heatFloor() {
+    const p = typeof A !== 'undefined' && A && A.m ? A.m.pts[0] + A.m.pts[1] : 0;
+    return Math.max(Math.min(HEAT.floor, (p / 30) * HEAT.floor), this.hush ? HEAT.hush : 0);
+  },
+  /** Heat up by v (capped at 1). */
+  heatAdd(v) {
+    this.heat = Math.min(1, Math.max(this.heat, this.heatFloor()) + v);
+  },
+  /** A point is scored (act `point`): its rally's length, a big point, a streak. */
+  heatPoint(a, touches) {
+    const H = HEAT;
+    this.heatAdd(
+      H.point +
+        (a.big ? H.big : 0) +
+        (a.streak >= 3 ? H.streak : 0) +
+        (touches >= 15 ? H.marathon : touches >= 12 ? H.long : touches >= 8 ? H.rally : 0)
+    );
+  },
+  /** The heat's tier: calm · buzzing · roaring · inferno. */
+  heatTier() {
+    const h = this.heat;
+    return h >= HEAT.inferno ? 'inferno' : h >= HEAT.roaring ? 'roaring' : h >= HEAT.buzzing ? 'buzzing' : 'calm';
+  },
   /** A new match (or a restart). */
   reset() {
+    this.heat = 0;
     this.cur = null;
     this.lastFrame = [-99, -99];
     this.sceneOn = null;
@@ -211,12 +243,16 @@ const Dir = {
   },
   /** Every frame (real time, ms): the music follows the arena, the lines run. */
   step(raw) {
-    if (typeof musicMood === 'function') musicMood(this.hush ? 0.5 : this.arena().music);
+    if (typeof musicMood === 'function') musicMood(this.hush ? 0.5 : this.arena().music * (1 + HEAT.music * this.heat));
+    // the heat drifts back toward its floor (real time: about 20 s)
+    const fl = this.heatFloor();
+    this.heat = this.heat > fl ? fl + (this.heat - fl) * Math.exp(-(raw || 0) / HEAT.decayMs) : fl;
     this.stepLines(raw);
     return raw;
   },
   /** A stage change act { k: 'stage', side, to, from, why }. */
   stage(a) {
+    if (a.to === 'fever') this.heatAdd(HEAT.fever); // a team catches fire: so does the crowd (spec §2.27)
     this.stageLine(a);
     return a;
   },
@@ -394,4 +430,27 @@ const Dir = {
     }
     return out.filter(l => l.t);
   }
+};
+
+/**
+ * Crowd heat numbers (spec §2.27). Per point: point (every point), big (a big point: ult kill, block break, combo), streak (3+ in
+ * a row), rally / long / marathon (8 / 12 / 15+ touches); fever: a team enters Fever. floor: the heat the match reaches by 30
+ * points; hush: the floor through a set / match point; decayMs: the drift back to the floor; tiers buzzing / roaring / inferno;
+ * music: the music gain × at full heat.
+ */
+const HEAT = {
+  point: 0.02,
+  big: 0.06,
+  streak: 0.05,
+  rally: 0.1,
+  long: 0.16,
+  marathon: 0.26,
+  fever: 0.25,
+  floor: 0.4,
+  hush: 0.6,
+  decayMs: 20000,
+  buzzing: 0.3,
+  roaring: 0.55,
+  inferno: 0.8,
+  music: 0.12
 };

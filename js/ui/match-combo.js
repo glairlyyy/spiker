@@ -12,6 +12,7 @@ const COMBO_TIERS = [
 ];
 /** One more touch in this rally: show / bump the counter (from VFX.combo.min touches). */
 function comboTouch(n) {
+  if (A) A.touchN = n; // the rally's length so far (crowd heat, spec §2.27)
   const C = VFX.combo,
     st = $('#stage');
   if (!C.on || n < C.min || !st) return;

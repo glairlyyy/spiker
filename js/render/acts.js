@@ -233,6 +233,8 @@ const ACTS_UI = {
     A.srvId = a.snap.rot[a.snap.serve][0];
   },
   point(a, d, bs) {
+    Dir.heatPoint(a, A.touchN || 0); // crowd heat (spec §2.27): this rally's length, a big point, a streak
+    A.touchN = 0;
     comboEnd(); // the rally counter holds its final count, then fades
     A.ptFlash = { side: a.side, life: 1 };
     sfx.whistle();

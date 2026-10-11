@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-268** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-269** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -538,6 +538,8 @@ Cleanup, part 2: T-082…T-087 done (see Done). Open:
   LFS is enabled for glairlyyy/spiker and that the artifact publish step may decode/encode (`base64 -d` / `base64`) at publish time.
 
 ## Done
+
+- T-268: Crowd heat and the venue's air — wind outdoors, embers indoors, flames at Inferno; Monster venue picker (spec §2.27; spec chat, owner request 2026-10-12)
 
 - T-267: Team plans, the AI coach's counters and match prep before every match (spec §2.26; spec chat, owner request 2026-10-12; goldens updated)
 

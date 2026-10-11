@@ -14,6 +14,7 @@ import { W, lowEnd } from './units3d.mjs';
 import { animCapture, animReplay, animFreeze, animOrbit, animInfo, animClear } from './anim3d.mjs';
 import { buildArena, dressArena, updateBall, updateBallShadow, updateLane, updateNet, updatePointFlash, ballDir } from './arena3d.mjs';
 import { buildVenues, dressVenue, updateVenue } from './venue3d.mjs';
+import { buildAmbient, updateAmbient } from './ambient3d.mjs';
 import {
   base,
   cam,
@@ -103,6 +104,7 @@ async function build(onProgress) {
   }
   const w = { renderer, gl, scene, fx, people, coaches, ...arena, ballTrail: makeTrail(scene, 40) }; // ballTrail: VFX ball style ribbon / ink
   buildVenues(scene, w); // venue sets, cut-out crowd, officials, big screen, confetti (spec §9.11)
+  w.amb = buildAmbient(scene, arena.glowTex); // the venue's air: wind, embers, corner flames (spec §2.27)
   return w;
 }
 
@@ -355,6 +357,8 @@ function draw() {
   for (const pl of w.coaches) if (pl.c) poseCoach(pl, dt, now);
   ballRibbon(w, wdt);
   updateVenue(w, now, dt * 1000, cam);
+  const arn = Dir.arena(); // the venue's air follows the crowd heat (spec §2.27)
+  updateAmbient(w.amb, dt, w.venue, Dir.heat || 0, arn.side >= 0 ? A.m.t[arn.side].color : null);
   updateNet(w, now);
   updatePointFlash(w);
   // effects run on the world clock, except in a scene close-up: there they fade out at full speed so a frozen world

@@ -31,6 +31,11 @@ function renderMenu() {
         ? `<div class="panel mdev"><h3>Dev</h3>
       <span class="trow m0"><button class="btn" onclick="startMonster()" ${tip('A one-off 3D match between two all-OP teams: elements, hype scenes and blocks fire often')}>Monster game</button>
         <label class="sset" ${tip('Play the Monster game as one player: their Call / Fake / Block, setter and captain prompts appear under them (spec §2.16)')}><span class="cgl">Play as</span><select onchange="TS.playAs=this.value" aria-label="Play as">${PLAY_AS.map(([v, n]) => `<option value="${v}" ${(TS.playAs || '') === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+        <label class="sset" ${tip('Where the Monster game is played: every venue has its own air as the crowd heats up — wind outdoors, embers indoors (spec §2.27)')}><span class="cgl">Venue</span><select onchange="TS.venue=this.value" aria-label="Venue">${Object.entries(
+          MONSTER_VENUES
+        )
+          .map(([v, n]) => `<option value="${v}" ${(TS.venue || 'arena') === v ? 'selected' : ''}>${n}</option>`)
+          .join('')}</select></label>
         <button class="btn" onclick="startAverage()" ${tip('A one-off 3D match between two teams of ordinary players: every player rolled at overall 30–60')}>Average game</button>
         <label class="btn" ${tip('Load a .vrm from your computer. It stays in this browser (never uploaded); in the Monster game every player picks a random model among the built-in ones (Main_v2, Rival_v2–v4, male1, male2) and the loaded ones (career: your player is always Main_v2).')}>+ Player model<input type="file" accept=".vrm,.glb" hidden onchange="addModelFile(this)"></label>
         <button class="btn" onclick="startAnimLab()" ${tip('A Monster game that records every player: freeze, scrub frame by frame, orbit, foot marks, edit the pose values and Copy them')}>Animation lab</button>
@@ -84,11 +89,20 @@ function startMonster({ cine = null, anim = false } = {}) {
     human: you ? you.id : null,
     cine,
     anim,
+    venue: TS.venue || 'arena', // the Monster tab's Venue (spec §2.27)
     round: cine ? `Cut-scene lab · ${CINE_KINDS.find(c => c.id === cine).name}` : anim ? 'Animation lab' : 'Monster game',
     back: 'Back to menu',
     onLeave: () => navigate('menu')
   });
 }
+/** The Monster tab's venues (spec §9.11 sets; §2.27 their air). */
+const MONSTER_VENUES = {
+  arena: 'League Arena',
+  hall: 'Academy Hall',
+  beach: 'Beach Stadium',
+  highland: 'Highland Court',
+  street: 'Street court'
+};
 /** The Monster game's Play as choices: none, or a seat of either team (the squads are drawn when the game starts). */
 const PLAY_AS = [
   ['', 'Nobody (watch)'],

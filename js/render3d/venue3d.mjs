@@ -187,7 +187,9 @@ export function updateVenue(w, now, dt, camera) {
   if (camera) fadeBeams(camera);
   // the arena follows the hotter team (spec §2.15): lights, rim, crowd; the hush at set / match point quiets the crowd
   const ar = Dir.arena(),
-    crowdK = ar.crowd * (Dir.hush ? 0.5 : 1);
+    heat = Dir.heat || 0,
+    crowdK = ar.crowd * (Dir.hush ? 0.5 : 1) * (1 + 0.8 * heat), // crowd heat (spec §2.27): the hotter, the bigger the bounce
+    standAll = heat >= HEAT.roaring ? 0.25 + 0.6 * (heat - HEAT.roaring) : 0; // …and everyone gets up
   // crowd
   for (const c of w.crowd) {
     for (let i = 0; i < c.fans.length; i++) {
@@ -198,6 +200,7 @@ export function updateVenue(w, now, dt, camera) {
           (f.side >= 0 ? A.cheer[f.side] : 0) * crowdK,
           A.cheerAll * 0.8 * crowdK,
           hotFan ? ar.stand : 0,
+          standAll,
           A.cele && f.side === A.cele.w ? 1 : 0
         );
       let off = lvl > 0 ? Math.abs(Math.sin(now * 0.013 + f.ph)) * 0.35 * Math.min(1, lvl * 1.5) : 0;

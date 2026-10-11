@@ -376,6 +376,21 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     Power +0.5, Cover +0.6, Wall +0.6, Deep +0.2; Hunt vs Cover −0.8 (countered), Power vs Deep 0.2, Beat vs Deep +0.8. Modest by
     design (§2.0); the balance pass may raise them. Not yet: hitters adapting when read, clubs remembering you (save bump).
 
+- §2.27 Crowd heat and the venue's air (owner, 2026-10-12) **[built 2026-10-12]**: the venue gets fired up as the match goes on.
+  Presentation only (no draws; goldens unchanged); not annoying by design — nothing changes play.
+  - **Heat** (`Dir.heat`, 0–1, js/render/director.js; numbers `HEAT`): every point +0.02; a big point +0.06; a 3+ streak +0.05;
+    a rally of 8 / 12 / 15+ touches +0.1 / +0.16 / +0.26; a team entering Fever +0.25. A floor climbs with the points played (0.4
+    by 30 points: the game warms the crowd); a set / match point holds it at 0.6; it drifts back to the floor in about 20 s.
+    Tiers: calm · buzzing (0.3) · roaring (0.55) · inferno (0.8).
+  - **The crowd** bounces harder with the heat; from roaring everyone is on their feet; the music rises up to +12 %.
+  - **The air** (js/render3d/ambient3d.mjs): outdoors (street, beach, highland) the **wind** — a breeze always, streaks blowing
+    across the court that lengthen and speed up with the heat, dust / sand / grass in the gusts from buzzing; indoors (arena,
+    hall) **embers** rise from buzzing; every venue from roaring. **Inferno**: **flames** rise behind the far side line and at
+    both ends, white-hot to orange to the hotter team's colour.
+  - Monster game: a **Venue** picker on the Dev tab (League Arena, Academy Hall, Beach Stadium, Highland Court, Street court).
+  - Not yet: tuning in the VFX panel; a gentle effect on play per venue (wind on float serves, sand on speed) — only if it stays
+    unannoying (owner).
+
 ## 3. Menu [built]
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two
