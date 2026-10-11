@@ -23,7 +23,7 @@ earlier files **at load time** (inside functions, anything loaded is fine).
 Classic scripts, in index.html order (each group only uses earlier groups at load time):
 
 - **core** `debuglog.js` (DBG), `math.js` (clamp, lerp, inPoly, fmtDelta…), `rng.js` (R / RNG / FXR), `storage.js` (store, KEYS).
-- **data** `rules.js` (RULES, DECIDE…), `styles.js` (playstyles, team list, archetypes), `names.js` (name pools),
+- **data** `rules.js` (RULES, EGO…), `styles.js` (playstyles, team list, archetypes), `names.js` (name pools),
   `looks.js` (appearance palettes), `moves.js` (signature / combo names, coach lines), `roles.js` (role biases, key
   stats, mood deltas), `elements.js`, `vfx.js` (VFX_DEF / live `VFX` effect tuning, read by render code only; saved dev edits in `sns_vfx`), `tactics.js`, `dialogue.js` (lines, `callLine`), `skills.js`, `career.js`
   (CAREER, CALENDAR, ROLE_NAME, STATNAME, MLOG…), `world.js` (REGIONS, FACTIONS, ECON, HOUSING, CLASH, FRONT…), `city.js`
@@ -37,7 +37,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
 - **portraits** `js/render/faces.js` `faceSVG(p, mood, size)` returns a cached 3D portrait `<img>` (PORTRAIT: look key → data URL) or the drawn face (`faceSVG2D`) as a placeholder that is swapped in place when `js/render3d/portrait3d.mjs` (lazy-loaded; one offscreen renderer, the default model re-dressed in hair / skin / team shirt, Main_v2 for you) finishes it.
 - **ui** `dom.js` (esc, tip, info, fold, kv — the vertical label/value list of spec §10.1a, peek — the L2 detail card of §10.8: `CW.peek` holds the open id, `peekSync` (MutationObserver on #app) ports the open card to <body> beside its owner panel…), `icons.js`, `match-screen.js` (startMatch → `A`, 3D load / bind, fit, venue / stakes, leaveMatch), `match-controls.js` (control bar, ⚙ settings,
   camera / follow, fullscreen, timeouts, tactics, speed / pause / skip, scoreboard, commentary, rail, box score, hotkeys), `match-tech.js`
-  (technique switches), `match-result.js` (result card, finishMatch), `match-coach.js` (the rail's Coach tab, `coachPanel`, spec §2.25), `match-prep.js` (match prep: the intro before every match and your timeout's huddle, `prepOpen` / `prepStart`, `A.prep` holds play, spec §2.26), `match-calls.js` (your calls on screen, §2.13), `match-combo.js` (the rally touch counter: `comboTouch` from startBall, `comboEnd` on point / reset), `models.js`, `menu.js`,
+  (technique switches), `match-result.js` (result card, finishMatch), `match-coach.js` (the rail's Coach tab, `coachPanel`, spec §2.25), `match-prep.js` (match prep: the intro before every match and your timeout's huddle, `prepOpen` / `prepStart`, `A.prep` holds play, spec §2.26), `match-prompts.js` (the captain's Fire up / Settle chips between points when you captain, §2.17), `match-combo.js` (the rally touch counter: `comboTouch` from startBall, `comboEnd` on point / reset), `models.js`, `menu.js`,
   `debug-panel.js` (Debug log; `?dev` word counter per region vs the §10.8 budgets), `career-create.js`, `career-week.js` (CW state, End week, Week report, events), `sheet-me.js` / `sheet-season.js` (the Me / Season sheets),
   `career-match.js` (match prep, eval / Cup cards, result data, playCareer, watchCareer), `map-view.js`, `career-panels.js` (place
   panels: `placeCard` anatomy, `PANELS` by kind → hq / clash / venue / map point, else `placePanel`), `career-map.js` (mount, pick, actions, walk lock), `career-dossier.js`,
@@ -86,22 +86,9 @@ onLeave }` (see Screens; `onLeave` only cleans up), opened by the UI with `watch
                               end(m, winner)  scoring, momentum, zone, captain's call, timeouts
 ```
 
-- **Pausable rally** (spec §2.13, T-232): `playRallyGen(m)` is the rally as a generator (`serveWalk`, `serveAce`, `servePopped`,
-  `serveReceive` and `rally` are `function*`, everything else stays plain); `playRally(m)` drives it to the end answering every
-  yield with the AI's pick — the sim flow, identical draws. A decision point computes the AI's pick first, then
-  `yield* decide(m, { kind, p, options, ai })` (engine/decide.js): it suspends only for `m.human`'s player (an engine-only
-  flag the UI sets for a played career match), with `m.beats` = the rally so far and `m.askAt` = its length (`B.ins` never
-  inserts before it). Points: `serve` (serveWalk, before the walk beats) and `attack` (rally, after spikePower). Options are a
-  thunk (`Decide.serve` / `Decide.attack`) evaluated only when asking, sampled on `Decide.isolate` (a private mulberry32 keyed by
-  the moment — the game stream and Math.random untouched); a pick other than the AI's rewrites the serve (`c.call`: type, pace,
-  faults, aim) or the shot (`Decide.applyShot`). Every answered call lands on `m.calls` `{ kind, id, label, odds, weak, auto, out }`
-  (`out` = win / lose / err / on, set by `Decide.out` where the outcome is known).
-- **Calls on screen** (T-234): with `m.human` set (startMatch, a career match you are in) playback pulls beats through
-  `rallyPull(pick)` (playback.js): it runs `playRallyGen`, answers the decision points `callWanted` (match-calls.js, setting
-  `G.calls`) skips with the AI's play, and holds on the rest (`A.ask`) — `callStep` opens the chips on the last beat before the
-  decision (that beat's `slow` → CALL.slow), runs the 5 s ring on real time, and `callPick(i | null)` resumes the generator
-  with the pick (null → the suggested option). `rallyFlush()` finishes a suspended rally with the AI (Skip). The playback
-  copies only beats after the ones it has: the engine never inserts before a decision point.
+- **One rally at a time**: `playRally(m)` plays a rally whole for every match; playback copies its beats (`rallyPull`). The
+  in-rally decision points and one-press prompts (§2.13, §2.16) were removed (T-264); `m.human` (your player in a match you
+  play, or the Monster game's Play as) only drives the captain's chips between points (match-prompts.js, §2.17).
 - `rally()` runs one possession per loop turn through phases that take a possession context `c`
   (`{ m, B, V, atk, ds, pas, qual, … }`): `freeBall → pickSetter → setterDump → setHands → chooseAttack → badSetOver`
   (`engine/rally-phases.js`), then the approach / block formation (`formBlock`, `engine/rally-block.js`), the lane read and aim (`laneRead → laneAim`, `engine/lanes.js`) and the set / spike core inline in `rally.js`, then `block → dig`
@@ -153,7 +140,7 @@ literal is the shape; other fields are created by the file that owns them:
 | Effects           | `parts`, `labels`, `lines`, `link`, `shake`, `flash`, `flashC`, `ptFlash`, `ghost`, `drill`, `crack`, `squash`, `netShake`, `wallFx`, `toBanner`, `cele`, `pointN` | effects.js, acts.js, match-result.js                |
 | Crowd and bench   | `cheer`, `cheerAll`, `wave`, `chant`, `coaches`                                                                                                                    | effects.js, acts.js                                 |
 | HUD               | `railTab`, `staShown`, `moodShown`, `buffShown`, `egShown`, `zoneShown`, `techPs`, `techCareer`, `techKeys`                                                        | match-controls.js, match-tech.js                    |
-| Calls (§2.13)     | `gen` (the suspended rally), `ask` (`{ q, left, shown, shot }`), `callsShown`                                                                                      | playback.js (rallyPull), match-calls.js             |
+| Captain's chips   | `capChip` (`{ side, until, stage }`)                                                                                                                               | match-prompts.js                                    |
 
 `menu`, `match`, `create`, `career`, `encyclopedia`, `vfxlab` — switch with `navigate(name, …args)`.
 The match screen takes a **fixture** `{ a, b, round, court?, back, rel?, setup(m)?, onFinish(m) → message, onLeave() }`

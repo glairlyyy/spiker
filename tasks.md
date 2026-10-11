@@ -233,7 +233,7 @@ Accept: goldens unchanged; npm test, lint pass.
 QA: none (engine).
 Result: Prompts are opt-in: `m.read` = null by default (sims, goldens, Prompts Off); the match screen sets `m.read = {}` for Prompts On (A, T-256) — contract change from the task: `m.human` alone no longer prompts. Yields from `ask()` (decide.js; no odds, no draws) in rally() after pickSetter, before the setter's dump: `call` (WS / MB; options call `E`, fake `R` at read ≥ 70; `q.read`) and `block` (front row, defending; option block `E`, hidden answer `'late'` — A sends it for a press in the window's last quarter). Read meter `m.read[you]` + tallies `m.plays` (call, refused, callSet, callK, fake, fakeOk, fakeBad, anywaySet, block, late, crossed, stuff, att, attK, stuffed; `sets` / `dump` for T-258) for the result card. Deviation: "best blocker takes your lane" = they key on you — the best blocker (or a second, when the best is already b0) always joins the block, reach × 1.5 (`READ.reach`), coverage +10 / +20 %; swapping b0 measured worse for the block (late). A committed in-lane block also leaves early (reach × 1.5). New: READ (rules.js), CALLS notnow / readyou, prompts / callPress / fakePress / fakeYou / readSet / readAttack (rally.js), readCov / commitLane / bestBlocker (rally-block.js), ask / readOf / readAdd / readOn / plays / readPoint (decide.js). Measured (headless, 120 matches): your WS at read 0 / 50 / 80 → kills 62.7 / 60.8 / 56.9 %, stuffed 9.8 / 11.9 / 13.0 %; always calling → 29 % turned down ("Not now!"), set you on 98 % of the rest; MB always committing → your stuffs 0.72 → 1.07 a match. Goldens unchanged; 133/133.
 
-### [ ] T-264: Remove the one-press prompts and the calls; keep the captain's calls (solo — no other agent meanwhile)
+### [x] T-264: Remove the one-press prompts and the calls; keep the captain's calls (solo — no other agent meanwhile)
 Spec: §2.16 (removed), §2.13 (removed), §2.17, §2.14, §2.18          Goldens: unchanged          Save: no change
 Goal: a played match has no Call / Fake / Block, setter markers, read meter, ⚙ Prompts, Your plays row or decision odds; the
 captain's Fire up / Settle chips still show for you as captain (career and the Monster game's Play as).
@@ -259,7 +259,7 @@ Steps:
 Accept: goldens unchanged; `npm test`, `npm run lint`, `npm run test:ui` pass; Monster game with Play as = a captain shows the
 Fire up / Settle chips between points and nothing during rallies.
 QA: Monster game (Play as the captain) → screenshot mid-rally (no chips) and between points (captain chips).
-Result:
+Result: Engine: decide.js gone; serve / rally are plain functions again (no generators: playRallyGen removed too — deviation, nothing yields any more), the read meter, Call / Fake / Block, plays tallies, READ / DECIDE, m.read / m.calls / m.askAt out; engine test: m.human plays beat-identical to the sim flow. Playback: rallyPull = playRally; A.ask / gen / ownJ / blockAuto / rallyFlush out. UI: match-prompts.js = the captain's chips only; ⚙ Prompts, the read eye, setter markers, Your plays row, match-calls.js, storage keys calls / prompts, G.calls out. Lines: fake / refused / stuffed-call / readyou / notnow kinds and the director's triggers; the dead 'follow' camera shot and 'ev' act handler. Goldens unchanged; 130/130, UI smoke 13/13 (no chip during a rally; captain chips Fire up / Settle).
 
 ### [ ] T-259: Fire, stages and temperament replace momentum and the zone (Agent B)
 Spec: §2.14          Goldens: update (stages change the buffs and draws of every match)          Save: no change

@@ -25,7 +25,7 @@ const HIT_FAST = 1.6;
  * c = the possession context (atkT / defT = attacking / defending team; V = record animation beats via B()).
  * x = the attack context: the values of phases 2–5, filled in by each attack phase and read by block() and dig().
  */
-function* rally(m, B, V, atk, pas, qual, scr = null) {
+function rally(m, B, V, atk, pas, qual, scr = null) {
   const front = (side, p) => {
     const i = rotOrder(m.t[side], m.rot[side]).indexOf(p);
     return i === 1 || i === 2;
@@ -52,9 +52,7 @@ function* rally(m, B, V, atk, pas, qual, scr = null) {
     }
     // a pop-up save (scr) is the team's 2nd touch: the saver bump-sets, a third player hits (see saveSet)
     const s = scr ? saveSet(c) : pickSetter(c);
-    // your prompts (spec §2.16): Call / Fake when you hit for this side, Block when you defend — the pass is the window
-    const pr = scr ? null : yield* prompts(c, s);
-    r = scr || c.callYou ? null : setterDump(c, s); // a called ball: no dump
+    r = scr ? null : setterDump(c, s);
     if (r) {
       if (r.point != null) return r.point;
       [atk, pas, qual, scr = null] = r.next;
@@ -62,12 +60,7 @@ function* rally(m, B, V, atk, pas, qual, scr = null) {
     }
     const h = scr ? { sq2: 'bad', bumpSet: true } : setHands(c, s);
     if (h.point != null) return h.point;
-    if (pr && pr.anyway) {
-      h.sq2 = 'bad'; // a failed fake (spec §2.16): the setter sets you anyway — a bad set into the block
-      plays(m).anywaySet++;
-    }
     const a = chooseAttack(c, s, h);
-    if (!scr) readSet(c, a.spiker);
     r = badSetOver(c, s, a);
     if (scr) {
       m.scrLog[m.scrLog.length - 1].hitter = r ? null : a.spiker.id;
@@ -81,18 +74,10 @@ function* rally(m, B, V, atk, pas, qual, scr = null) {
     const x = { ...s, ...h, ...a, fat };
     Object.assign(x, fakeSet(c, x));
     Object.assign(x, formBlock(c, x));
-    x.youBlk = blockYou(c, x); // you are in this block (spec §2.16): your jump is your press
     Object.assign(x, laneRead(c, x)); // laning (spec §2.24): the block reads a channel, the hitter aims
     Object.assign(x, laneAim(c, x));
     Object.assign(x, setBeat(c, x));
-    yield* blockPrompt(c, x); // the set is up, their hitter runs in: press E to jump — the timing is yours
-    x.cov0 = x.cov; // the block's coverage before the shot choice (Decide)
     Object.assign(x, spikePower(c, x));
-    x.pow0 = x.tip ? 0 : x.pow / (x.elS ? x.elS.pow : 1);
-    // a decision point (spec §2.13): your attack — the AI's shot is the one spikePower drew; your pick rewrites it
-    const ai = x.tip ? 'tip' : x.delayed ? 'delay' : x.around ? 'cut' : 'power',
-      shot = yield* decide(m, { kind: 'attack', p: x.spiker, options: () => Decide.attack(c, x), ai, n: c.n });
-    if (shot !== ai) Decide.applyShot(c, x, shot);
     Object.assign(x, spikeActs(c, x));
     Object.assign(x, landingSpot(c, x));
     // the attack in play, for the element gauges (kills, digs and blocks are credited against it)
@@ -111,14 +96,10 @@ function* rally(m, B, V, atk, pas, qual, scr = null) {
     const k0 = (m.stat[x.spiker.id] || blank()).k,
       e0 = (m.stat[x.spiker.id] || blank()).err,
       bk0 = sumBlk(m, defT),
-      fin = () => {
-        tallyAttack(m, atk, x, k0, bk0, e0);
-        readAttack(c, x, k0, bk0);
-      };
+      fin = () => tallyAttack(m, atk, x, k0, bk0, e0);
     r = x.delayed ? hangFail(c, x) : null; // a Delayed Spike can hang too long (low jump / wit): the ball drops on your side
     if (r) {
       fin();
-      Decide.out(m, 'attack', x.spiker.id, r.point != null ? 'lose' : 'on');
       if (r.point != null) return r.point;
       [atk, pas, qual, scr = null] = r.next;
       continue;
@@ -126,25 +107,21 @@ function* rally(m, B, V, atk, pas, qual, scr = null) {
     r = hittingError(c, x);
     if (r) {
       fin();
-      Decide.out(m, 'attack', x.spiker.id, 'err');
       return r.point;
     }
     // ---- 9–10: block, then dig or kill ----
     const bl = block(c, x);
     if (bl.point != null) {
       fin();
-      Decide.out(m, 'attack', x.spiker.id, bl.point === atk ? 'win' : 'lose');
       return bl.point;
     }
     if (bl.next) {
       fin();
-      Decide.out(m, 'attack', x.spiker.id, 'on');
       [atk, pas, qual, scr = null] = bl.next;
       continue;
     }
     r = dig(c, x, bl);
     fin();
-    Decide.out(m, 'attack', x.spiker.id, r.point === atk ? 'win' : r.point != null ? 'lose' : 'on');
     if (r.point != null) return r.point;
     [atk, pas, qual, scr = null] = r.next;
   }
@@ -182,9 +159,7 @@ function fakeSet(c, x) {
   let { quick, spiker } = x,
     bitten = false,
     fakeDecoy = null;
-  if (c.fakeYou) return fakeYou(c, x); // your fake (spec §2.16)
   if (
-    !c.callYou && // a called ball: no multi-attack fake
     !bad &&
     qual >= 2 &&
     setter.role === 'S' &&
@@ -297,7 +272,6 @@ function setCallActs(c, x) {
   const setCalls = [];
   if (V && !bad) {
     const cf = p => confidence(p, m, atk);
-    if (x.readWarn) setCalls.push({ k: 'call', p: x.setter.id, t: callLine('readyou', x.setter, m) }); // your read (spec §2.16)
     if (back && callers.includes(spiker)) setCalls.push({ k: 'call', p: spiker.id, t: callLine(longB ? 'long' : 'back', spiker, m) });
     else if (!quick && cf(spiker) >= 82) setCalls.push({ k: 'call', p: spiker.id, t: callLine(m.zone[atk] ? 'zone' : 'set', spiker, m) });
     const other = pool.find(p => p !== spiker && p !== fakeDecoy && cf(p) >= 88 && (front(atk, p) || callers.includes(p)));
@@ -373,8 +347,7 @@ function blockJumpActs(c, x) {
     mode: b === b0 && bitten && fakeDecoy ? 'reup' : 'up',
     t0: blockT0(x, b),
     t1: 1,
-    peak: jumpPx(b) * (b === b0 && bitten ? 0.45 : 0.85),
-    ...(b === x.youBlk ? { prompt: 'block' } : {}) // yours (spec §2.16): the match screen jumps you when you press instead
+    peak: jumpPx(b) * (b === b0 && bitten ? 0.45 : 0.85)
   }));
 }
 /** The blockers' poses and the late jumpers. */
@@ -611,155 +584,4 @@ function hittingError(c, x) {
       ]
     });
   return { point: ds };
-}
-
-/* ---------- your prompts (spec §2.16, T-257): only for m.human's player; the AI flow never reaches a draw here ---------- */
-
-/**
- * 2c. Your prompt while the pass flies to the setter: Call (and Fake at read ≥ READ.fake) when you are a wing / middle of the
- * attacking side. Sets c.callYou / c.fakeYou for the phases after; returns { call, anyway } or null. (Block: blockPrompt.)
- */
-function* prompts(c, s) {
-  const { m, atkT } = c;
-  if (!m.human || !m.read) return null;
-  const me = atkT.P.find(p => p.id === m.human);
-  if (!me || me === s.setter || (me.role !== 'WS' && me.role !== 'MB')) return null;
-  const rd = readOf(m, me),
-    options = [{ id: 'call', key: 'E', label: 'Call' }, ...(rd >= READ.fake ? [{ id: 'fake', key: 'R', label: 'Fake' }] : [])],
-    pick = yield* ask(m, { kind: 'call', p: me, options, ai: null, read: rd });
-  if (pick === 'call') return callPress(c, s, me);
-  if (pick === 'fake') return fakePress(c, s, me);
-  return null;
-}
-/** You (m.human, prompts on) when you are one of this attack's blockers, else null. */
-const blockYou = (c, x) => (c.m.human && c.m.read ? x.blockers.find(b => b.id === c.m.human) || null : null);
-/**
- * 7c. Your block (spec §2.16): the set is up and their hitter runs in. Press = you jump at that moment; the answer is
- * { id: 'block', t } with t = ms of beat time before their contact (the end of the set beat) when you left the floor. Graded
- * against the AI blocker's own take-off lead (x.blkIdeal), the window wider with Jump and Wit: perfect (± READ.blockTol) /
- * good (earlier, up to × READ.blockGood) / early (already coming down). Each grade scales the block (READ.blockCov /
- * blockStuff). No press = the AI's jump (no change). Draws nothing.
- */
-function* blockPrompt(c, x) {
-  const { m } = c,
-    me = x.youBlk;
-  if (!me) return;
-  x.blkIdeal = (1 - blockT0(x, me)) * setDurOf(x); // the AI blocker leaves the floor this long before contact
-  x.blk0 = (m.stat[me.id] || blank()).blk;
-  const pick = yield* ask(m, {
-    kind: 'block',
-    p: me,
-    options: [{ id: 'block', key: 'E', label: 'Block' }],
-    ai: null,
-    ideal: x.blkIdeal
-  });
-  if (!pick) return;
-  const left = pick && typeof pick === 'object' && Number.isFinite(+pick.t) ? +pick.t : x.blkIdeal,
-    k = clamp(1 + (me.jump - 50) / 200 + (me.wit - 1) * 0.2, 0.8, 1.4),
-    tol = READ.blockTol * k,
-    err = left - x.blkIdeal, // > 0: you went up before the ideal moment
-    grade = Math.abs(err) <= tol ? 'perfect' : err > 0 && err > tol * READ.blockGood ? 'early' : 'good';
-  x.blkGrade = grade;
-  x.cov *= READ.blockCov[grade];
-  x.stuffK = READ.blockStuff[grade];
-  const P = plays(m);
-  P.block++;
-  P[grade]++;
-}
-/** You call for the ball: the setter sets you — unless the pass is poor or you are out of position ("Not now!"). */
-function callPress(c, s, me) {
-  const { m, B, V, qual } = c,
-    { setter } = s,
-    no = qual <= 1 || busy(m, me, c.n);
-  readAdd(m, me, READ.call);
-  plays(m).call++;
-  if (no) plays(m).refused++;
-  else c.callYou = me;
-  V &&
-    B({
-      dur: no ? 520 : 300,
-      acts: [
-        { k: 'call', p: me.id, t: callLine('set', me, m) },
-        ...(no ? [{ k: 'call', p: setter.id, t: callLine('notnow', setter, m) }] : [{ k: 'ev', kind: 'called', p: me.id }])
-      ]
-    });
-  return { call: !no, refused: no };
-}
-/** You sell a fake: a low-wit setter may set you anyway (a bad set); else the set goes elsewhere and the blocker may bite. */
-function fakePress(c, s, me) {
-  const { m } = c,
-    { setter } = s;
-  plays(m).fake++;
-  if (setter.wit < READ.anywayWit && R() < READ.anyway[0] - READ.anyway[1] * (setter.wit - 0.5)) {
-    plays(m).fakeBad++;
-    c.callYou = me;
-    return { call: true, anyway: true };
-  }
-  c.fakeYou = me;
-  return { fake: true };
-}
-/** 6b. Your fake approach: their reading blocker bites (read vs their wit) — a single block on the real hitter. */
-function fakeYou(c, x) {
-  const { m, B, V, atk, ds, da } = c,
-    { B0, MBs, mbZ, quick, spiker } = x,
-    me = c.fakeYou,
-    rd = readOf(m, me),
-    bitten = R() < clamp(READ.bite + READ.biteRead * (rd - READ.fake) - READ.biteWit * (W(B0) - 1), 0.15, 0.85);
-  if (bitten) {
-    readAdd(m, me, READ.fakeOk);
-    plays(m).fakeOk++;
-  }
-  dr(m, me, 0.02);
-  const mid = me.role === 'MB' && MBs.includes(me),
-    dz = mid ? mbZ(me) : clamp(HOME[me.slot][1] + (me.slot === 'W0' ? -0.05 : 0.05), 0.1, 0.9),
-    fk = [];
-  mv(m, me, sx(atk, mid ? 466 : 420), dz, fk, V);
-  if (bitten) mv(m, B0, sx(ds, 484), dz, fk, V);
-  V &&
-    B({
-      dur: 600,
-      slow: 0.3,
-      slowAt: [0.4, 0.7],
-      acts: [
-        ...fk,
-        { k: 'pose', p: me.id, pose: 'spike' },
-        { k: 'jump', p: me.id, mode: 'up', peak: jumpPx(me), t0: 0.15, t1: 0.95 },
-        ...(bitten
-          ? [
-              { k: 'pose', p: B0.id, pose: 'block' },
-              { k: 'jump', p: B0.id, mode: 'up', peak: jumpPx(B0) * 0.85, t0: 0.35, t1: 1 }
-            ]
-          : []),
-        { k: 'ghost', to: { x: sx(atk, mid ? 466 : 420) + da * 12, z: dz, h: REACH_H + jumpPx(me) } },
-        { k: 'label', t: 'Fake!', dy: 60, set: 1, big: 1 },
-        { k: 'ev', kind: bitten ? 'fake_ok' : 'fake_fail', p: me.id, q: B0.id } // the story's event (director, spec §2.18)
-      ]
-    });
-  return { quick, spiker, bitten, fakeDecoy: me };
-}
-/** A set to you raises your read (the second in a row more); the setter's sets per hitter when you set (T-258). */
-function readSet(c, spiker) {
-  const { m, atk } = c;
-  if (!readOn(m, spiker)) return;
-  const last = m.readLast && m.readLast[atk];
-  readAdd(m, spiker, last === spiker.id ? READ.set2 : READ.set);
-  if (c.callYou === spiker) plays(m).callSet++;
-  (m.readLast || (m.readLast = {}))[atk] = spiker.id;
-}
-/** After your attack / your committed block: kills raise the read; tallies for the result card; a fake that scored = 'fake'. */
-function readAttack(c, x, k0, bk0) {
-  const { m } = c,
-    me = x.spiker;
-  if (readOn(m, me)) {
-    plays(m).att++;
-    if (sumBlk(m, c.defT) > bk0) plays(m).stuffed++;
-    const kill = (m.stat[me.id] || blank()).k > k0;
-    if (kill) {
-      readAdd(m, me, READ.kill);
-      plays(m).attK++;
-    }
-    if (kill && c.callYou === me) plays(m).callK++;
-  }
-  if (c.fakeYou && x.bitten && (m.stat[me.id] || blank()).k > k0) m.lastPlay = 'fake'; // the zone breaker reads it
-  if (x.blkGrade && (m.stat[x.youBlk.id] || blank()).blk > x.blk0) plays(m).stuff++;
 }

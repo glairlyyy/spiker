@@ -155,17 +155,6 @@ function startBeat(b) {
         startPose(d, a.pose, !!a.pc, b.dur);
         break;
       case 'jump':
-        if (a.prompt === 'block' && (d.ownJ || (A.ask && A.ask.q.kind === 'block'))) {
-          a._skip = true; // yours: you jump on your press (blockJump), not on the beat
-          break;
-        }
-        if (d.ownJ) {
-          if (a.mode !== 'down') {
-            a._skip = true;
-            break;
-          }
-          d.ownJ = null; // your block jump: the landing act takes it from here
-        }
         d.jt = 0;
         d.jmode = { mode: a.mode, t0: a.t0 || 0, t1: a.t1 || 1, peak: a.peak || d.jy, start: d.jy };
         d.fallMs = null;
@@ -540,60 +529,13 @@ function endBeat(b) {
   }
 }
 
-/** Your block jump (blockJump): rise over `up` ms of game time, then free fall from the top (stepPlayerTimers lands you). */
-function ownJumps(dt) {
-  for (const id in A.disp) {
-    const d = A.disp[id],
-      J = d.ownJ;
-    if (!J) continue;
-    J.t += dt;
-    const l = Math.min(1, J.t / J.up);
-    d.jy = J.peak * (1 - Math.pow(1 - l, 2));
-    if (l >= 1) {
-      d.ownJ = null;
-      d.fallMs = 0;
-      d.fallH = d.jy;
-    }
-  }
-}
-
 /* ---------- the rally source ---------- */
 
-/**
- * Get beats to play (spec §2.16, T-256). A match without a human player plays each rally whole (playRally). A match you play
- * (career, or the Monster game's Play as) runs the pausable rally: at your decision points of a prompt kind (promptWanted)
- * the prompt opens (A.ask) and the beats already queued keep playing — the window; the rest are answered with the AI's play
- * at once. `pick` (the press or null) resumes it when the window's beats ran out. Playback keeps its own shallow copies of
- * the beats; a resumed rally only adds beats after the ones already copied (the engine never inserts before a decision point).
- */
-function rallyPull(pick) {
-  const m = A.m;
-  if (!m.human) {
-    const r = playRally(m);
-    A.beats = r.beats.map(b => ({ ...b }));
-    A.bi = 0;
-    return;
-  }
-  let r;
-  if (!A.gen) {
-    A.gen = playRallyGen(m);
-    A.beats = [];
-    A.bi = 0;
-    r = A.gen.next();
-  } else r = A.gen.next(pick);
-  while (!r.done && !promptWanted(r.value)) r = A.gen.next(r.value.ai);
-  if (r.done) A.gen = null;
-  else promptOpen(r.value);
-  const src = m.beats || [];
-  for (let i = A.beats.length; i < src.length; i++) A.beats.push({ ...src[i] });
-}
-/** Play out a suspended rally at once with the AI's choices (skip to the result, leaving): the engine never stays half-way. */
-function rallyFlush() {
-  if (!A || !A.gen) return;
-  let r = A.gen.next(A.ask ? A.ask.q.ai : undefined);
-  while (!r.done) r = A.gen.next(r.value.ai);
-  A.gen = null;
-  promptClose();
+/** Get the next rally's beats: the engine plays it whole (playRally); playback keeps its own shallow copies. */
+function rallyPull() {
+  const r = playRally(A.m);
+  A.beats = r.beats.map(b => ({ ...b }));
+  A.bi = 0;
 }
 
 /* ---------- per frame ---------- */
@@ -608,7 +550,6 @@ function step(dt) {
   A.rdt = raw; // real time: the digger chasing a far ball (A.digHero) runs on it
   drillStep(raw);
   stepPlayerTimers(dt, raw);
-  ownJumps(dt);
   stepEffects(dt);
   camStep(raw);
   Dir.step(raw);
@@ -617,15 +558,14 @@ function step(dt) {
     if (A.cele) stepCelebration(dt);
     return;
   }
-  if (A.m.human != null) promptStep(); // your prompts (spec §2.16): under your feet, the setter's markers
+  if (A.m.human != null) promptStep(); // the captain's chips under your feet (spec §2.17)
   if (!A.beats || A.bi >= A.beats.length) {
-    if (A.ask) return rallyPull(promptClose()); // the window ended: the press (or null) resumes the rally
     if (Dir.busy()) return; // a between-point exchange (spec §2.18) holds the next rally
     if (A.m.over) {
       finishMatch();
       return;
     }
-    if (A.m.human != null && !A.gen) promptCaptain(); // between points: the captain's Fire up / Settle (spec §2.17)
+    if (A.m.human != null) promptCaptain(); // between points: the captain's Fire up / Settle (spec §2.17)
     rallyPull();
     return;
   }
@@ -647,7 +587,6 @@ function step(dt) {
     b.dur = 1;
   }
   const t = Math.min(1, A.el / b.dur);
-  if (A.ask) blockAuto(b, t); // your block: no press by the AI's take-off → the AI jumps you (spec §2.16)
   applyBeat(b, t);
   ballPhysics(dt);
   stepTrail();

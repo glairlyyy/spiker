@@ -382,25 +382,6 @@ function shotPose(s) {
   const up = new THREE.Vector3(0, 1, 0),
     H = a.bone('head').getWorldPosition(new THREE.Vector3());
   if (s.kind === 'cine') return cinePose(a, s, up);
-  if (s.kind === 'follow') {
-    // a followed player (a decision point, §2.13): behind and beside the player, the ball ahead of them — tracked from the feet (no head bob)
-    const F = a.root.position.clone().setY(0),
-      bp = world.ball.position.clone().setY(0),
-      d = bp.clone().sub(F);
-    if (d.length() < 0.5) d.set(Math.sin(a.root.rotation.y), 0, Math.cos(a.root.rotation.y));
-    d.normalize();
-    const r = new THREE.Vector3().crossVectors(d, up).normalize();
-    return {
-      pos: F.clone()
-        .addScaledVector(d, -3.6)
-        .addScaledVector(r, 1.3)
-        .add(new THREE.Vector3(0, 1.9, 0)),
-      look: F.clone()
-        .addScaledVector(d, 1.2)
-        .add(new THREE.Vector3(0, 1.1, 0)),
-      fov: 50
-    };
-  }
   if (s.kind === 'face') {
     const f = new THREE.Vector3(Math.sin(a.root.rotation.y), 0, Math.cos(a.root.rotation.y)),
       r = new THREE.Vector3().crossVectors(f, up).normalize();

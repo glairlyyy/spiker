@@ -65,44 +65,7 @@ function resultScreen(m, wt, hi, lo, stars, res, o = { round: A.fx.round, back: 
           .join('')}`
       : '',
     techs = res.techs.length ? `<div class="lab">Techniques picked up</div><div class="small">${res.techs.map(esc).join(' · ')}</div>` : '';
-  return `<div class="ocard mres">${head}<div class="rcols"><div>${you}${chips}</div><div>${grow}${techs}${playsRow(res.plays)}</div></div>${planRow(m)}${top}${acts}</div>`;
-}
-/**
- * Your plays in a match you played (spec §2.16): the engine's tallies `m.plays` (decide.js `plays`; only m.human's player has
- * them): calls / kills off them, fakes / worked, blocks committed / stuffs, sets per hitter and dumps. null when you weren't m.human.
- */
-function playsOf(m, id) {
-  const P = m.plays;
-  if (!P || m.human !== id) return null;
-  return {
-    calls: P.call || 0,
-    kills: P.callK || 0,
-    fakes: P.fake || 0,
-    faked: P.fakeOk || 0,
-    blocks: P.block || 0,
-    stuffs: P.stuff || 0,
-    sets: P.sets || {},
-    dumps: P.dump || 0
-  };
-}
-/** The result card's Your plays row (spec §2.16): only what you did; empty when you pressed nothing. */
-function playsRow(P) {
-  if (!P) return '';
-  const nm = id => {
-      const p = typeof byId === 'function' ? byId(id) : null;
-      return p ? p.name.split(' ')[0] : String(id);
-    },
-    sets = Object.entries(P.sets || {})
-      .sort((a, b) => b[1] - a[1])
-      .map(([id, n]) => `${esc(nm(id))} ×${n}`),
-    parts = [
-      P.calls ? `Calls ${P.calls} · ${P.kills} kill${P.kills === 1 ? '' : 's'}` : '',
-      P.fakes ? `Fakes ${P.faked} of ${P.fakes} worked` : '',
-      P.blocks ? `Blocks ${P.blocks} · ${P.stuffs} stuff${P.stuffs === 1 ? '' : 's'}` : '',
-      sets.length ? `Sets ${sets.join(', ')}` : '',
-      P.dumps ? `Dumps ${P.dumps}` : ''
-    ].filter(Boolean);
-  return parts.length ? `<div class="lab">Your plays</div><div class="rplays">${parts.join('<br>')}</div>` : '';
+  return `<div class="ocard mres">${head}<div class="rcols"><div>${you}${chips}</div><div>${grow}${techs}</div></div>${planRow(m)}${top}${acts}</div>`;
 }
 /**
  * Both sides' plans (spec §2.26), revealed now the match is over: what each side opened with and every change (at its score).

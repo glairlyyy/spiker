@@ -37,7 +37,6 @@ function settingsMenu() {
         .map(([k, n]) => `<button class="btn ${k === cur ? 'on' : ''}" onclick="setOpt('${kind}','${k}')">${n}</button>`)
         .join('')}</div></div>`;
   return `${seg('Hype', 'hype', Object.fromEntries(Object.entries(HYPE).map(([k, h]) => [k, h.name])), G.hype, 'Staged shonen moments before big attacks. Normal: element spikes, match points, star face-offs. Max: also long rallies and comebacks. Tap the court to skip one.')}
-    ${seg('Prompts', 'prompts', { on: 'On', off: 'Off' }, G.prompts, "In a match you play: Call, Fake, Block, the setter's pick and the captain's calls appear under your player while you can use them (E, R, 1–3). Off: the AI plays you.")}
     ${seg('Trails', 'trail', TRAIL_STYLES, G.trail, 'Hand trails of stars and OP players. Light: a streak in their hair colour. Ink: a black brush stroke burning crimson.')}
     ${seg('Zooms', 'zoom', { on: 'On', off: 'Off' }, G.camFixed || RM ? 'off' : 'on', 'On: gentle zoom on big plays at the net. Off: no zooms or pushes (motion-friendly).')}
     ${seg('Motion', 'motion', { full: 'Full', reduced: 'Reduced' }, Motion.pref, 'Full: panels slide and fade, numbers count. Reduced: short fades only (also follows your system setting).')}
@@ -52,9 +51,6 @@ function setOpt(kind, v) {
   if (kind === 'hype' && HYPE[v]) {
     G.hype = v;
     store.set(KEYS.hype, v);
-  } else if (kind === 'prompts' && (v === 'on' || v === 'off')) {
-    G.prompts = v;
-    store.set(KEYS.prompts, v);
   } else if (kind === 'trail' && TRAIL_STYLES[v]) {
     G.trail = VFX.hand.style = v; // the VFX panel shows the same choice
     store.set(KEYS.trail, v);
@@ -131,7 +127,7 @@ addEventListener('keydown', e => {
     if (e.key === 'Enter') prepStart(); // match prep (spec §2.26): Enter starts / resumes
     return;
   }
-  if (promptKey(e)) return e.preventDefault(); // your prompt: E / R / 1–3 (spec §2.16)
+  if (promptKey(e)) return e.preventDefault(); // the captain's call: E / R (spec §2.17)
   if (e.key === 'f' || e.key === 'F') toggleFullscreen();
   else if (e.key === 'b' || e.key === 'B') railOpen();
   else if (e.key === 't' || e.key === 'T') railOpen('tac');
@@ -218,7 +214,6 @@ function skipMatch() {
   if (!A || A.done) return;
   const m = A.m;
   exchangeHide();
-  rallyFlush(); // a rally waiting at your call finishes with the AI's play first
   m.rec = false;
   while (!m.over) playRally(m);
   board(snap(m));

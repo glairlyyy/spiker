@@ -16,17 +16,7 @@ function formBlock(c, x) {
   const f = blockApproach(c, x);
   Object.assign(f, blockPick(c, x, f));
   Object.assign(f, blockMoves(c, x, f));
-  const out = blockCoverage(c, x, f);
-  out.cov *= readCov(c, x); // your read (spec §2.16)
-  out.readWarn = f.readWarn;
-  return out;
-}
-/** Their best blocker (Defense 0.55 + Jump 0.45) of the front row — the one who takes your lane when your read is high. */
-const bestBlocker = DF => DF.reduce((a, p) => (p.def * 0.55 + p.jump * 0.45 > a.def * 0.55 + a.jump * 0.45 ? p : a), DF[0]);
-/** Coverage factor from your read (spec §2.16: +10 % at READ.shift, +20 % at READ.fake). */
-function readCov(c, x) {
-  const rd = readOf(c.m, x.spiker);
-  return rd >= READ.fake ? 1 + READ.cov[1] : rd >= READ.shift ? 1 + READ.cov[0] : 1;
+  return blockCoverage(c, x, f);
 }
 /** Where the hitter attacks from (slide, quick, wing, back row, long back attack), the lane, and the defence setting. */
 function blockApproach(c, x) {
@@ -82,17 +72,8 @@ function blockPick(c, x, f) {
   const mb = DF.find(p => p.role === 'MB'),
     mbCan = mb && Math.abs(startZ(mb) - spZ) <= reach(mb) * 1.3;
   let b0 = swing ? byLane(others, spZ) : !DF.length ? B0 : midAtk ? mb || byLane(DF, spZ) : mbCan ? mb : byLane(DF, spZ);
-  // your read (spec §2.16): their best blocker cheats toward your lane — always in the block, early
-  const rd = readOf(c.m, x.spiker),
-    readShift = !swing && DF.length > 1 && rd >= READ.shift,
-    best = readShift ? bestBlocker(DF) : null;
-  const readWarn = readShift && !c.m.readWarn; // a teammate warns once each time your read climbs past READ.shift
-  if (readOn(c.m, x.spiker)) c.m.readWarn = readOf(c.m, x.spiker) >= READ.shift;
   const p0z = startZ(b0),
-    r0 =
-      reach(b0) *
-      (swing ? BLOCK.swingReach : bitten ? 0.3 : commit && quick ? BLOCK.commitReach : 1) * // Commit: the blocker on a quick is already up
-      (best === b0 ? READ.reach : 1), // they read you: the best blocker leaves early
+    r0 = reach(b0) * (swing ? BLOCK.swingReach : bitten ? 0.3 : commit && quick ? BLOCK.commitReach : 1), // Commit: the blocker on a quick is already up
     bz0 = clamp(p0z + clamp(spZ - p0z, -r0, r0), 0.05, 0.95),
     late0 = Math.abs(spZ - p0z) > r0;
   let b1 = null,
@@ -100,16 +81,15 @@ function blockPick(c, x, f) {
     late1 = false;
   // the second blocker closes in beside the first on the court-inside side — if the roll passes and they can get there.
   // Sync attacks leave no time for a double; quicks only get one when the defence is set for them (Commit / Bunch).
-  // Your read: they key on you — the best blocker joins (or a second one, when the best is already up), reach × READ.reach.
-  const cand = best && best !== b0 ? best : DF.find(p => p !== b0);
+  const cand = DF.find(p => p !== b0);
   if (cand && !sync && !swing && (!quick || commit || bunch)) {
     const roll = R() < defT.S.dbl * (0.6 + 0.8 * readQ(cand)),
       p1z = startZ(cand),
       inward = bz0 < 0.5 ? 1 : -1,
       t1 = clamp(bz0 + inward * BLOCK_GAP, 0.05, 0.95);
     if (
-      (roll || (bunch && midAtk) || (commit && quick) || readShift) &&
-      Math.abs(t1 - p1z) <= reach(cand) * (commit && quick ? BLOCK.commitReach : 1.3) * (readShift ? READ.reach : 1)
+      (roll || (bunch && midAtk) || (commit && quick)) &&
+      Math.abs(t1 - p1z) <= reach(cand) * (commit && quick ? BLOCK.commitReach : 1.3)
     ) {
       b1 = cand;
       bz1 = t1;
@@ -118,7 +98,7 @@ function blockPick(c, x, f) {
     }
   }
   const blockers = b1 ? [b0, b1] : [b0];
-  return { others, swing, mb, mbCan, b0, p0z, r0, bz0, late0, b1, bz1, late1, blockers, readWarn };
+  return { others, swing, mb, mbCan, b0, p0z, r0, bz0, late0, b1, bz1, late1, blockers };
 }
 /** The late front-row jumpers (display) and the moves to the net. */
 function blockMoves(c, x, f) {

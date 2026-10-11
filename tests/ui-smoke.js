@@ -123,11 +123,10 @@ const step = async (name, fn) => {
     await pg.keyboard.press('Space');
     if (await ev(() => !!CW.lock)) throw new Error('Space did not close the card');
   });
-  await step('played court match → a real prompt pressed → skip → result card', async () => {
+  await step('played court match → no prompts in a rally → skip → result card', async () => {
     await ev(() => {
       RUN.days = 7;
       RUN.injury = null;
-      G.prompts = 'on';
       mapCourt('arena', 'open', false);
     });
     await pg.waitForFunction(() => typeof R3D !== 'undefined' && R3D && A && A.m && !A.hold, null, { timeout: 120000 });
@@ -136,34 +135,19 @@ const step = async (name, fn) => {
     if (!/Their plan: hidden/.test(pre)) throw new Error(`career match prep: ${pre.slice(0, 160)}`);
     await pg.keyboard.press('Enter');
     if (await ev(() => A.prep)) throw new Error('Enter did not start the match');
-    const kind = await ev(() => {
+    await ev(() => {
       A.hold = true; // frames by hand (the 3D clock is slow on a software GPU)
-      if (!A.m.read) throw new Error('Prompts On did not turn the read meter on');
-      for (let i = 0; i < 60000 && !A.ask; i++) {
+      for (let i = 0; i < 3000; i++) {
         step(16);
         R3D.poseAll(0.016);
+        if (A.beats && A.bi < A.beats.length && $('#prompts .pchip')) throw new Error('a chip during a rally (T-264: no rally prompts)');
       }
-      return A.ask ? A.ask.q.kind : null;
     });
-    if (!kind) throw new Error('no prompt in the match');
-    await pg.keyboard.press('e');
-    const n = await ev(() => {
-      if (!$('#prompts .pchip.on')) throw new Error('E did not light the chip');
-      for (let i = 0; i < 6000 && A.ask; i++) {
-        step(16);
-        R3D.poseAll(0.016);
-      }
-      if (A.ask) throw new Error('the prompt never closed');
-      const P = A.m.plays || {};
-      return (P.call || 0) + (P.block || 0);
-    });
-    if (!n) throw new Error(`the ${kind} press did not reach the engine`);
     await ev(() => skipMatch());
     await pg.waitForFunction(() => /Top 3/i.test((document.querySelector('#over') || {}).textContent || ''), null, { timeout: 10000 });
     const row = await ev(() => document.querySelector('#over').textContent);
-    if (!/Your plays/.test(row)) throw new Error('no Your plays row');
+    if (/Your plays/.test(row)) throw new Error('the removed Your plays row is back');
     await ev(() => leaveMatch());
-    return `${kind} pressed`;
   });
   await step('encyclopedia', async () => {
     await ev(() => navigate('encyclopedia'));
@@ -211,7 +195,7 @@ const step = async (name, fn) => {
   await step('Monster game → result', async () => {
     await ev(() => navigate('menu'));
     await ev(() => {
-      TS.playAs = 'a:2'; // Play as the left team's first wing (spec §2.16)
+      TS.playAs = 'a:2'; // Play as the left team's first wing
       startMonster();
     });
     await pg.waitForFunction(() => typeof A !== 'undefined' && A && A.m, null, { timeout: 60000 });
@@ -225,70 +209,21 @@ const step = async (name, fn) => {
       if (A.prep || p.atk !== 'hunt' || p.def !== 'wall' || A.m.planBy[0] !== 'you' || A.m.planBy[1] !== 'ai')
         throw new Error(`plans not set: ${JSON.stringify(A.m.plan)} ${A.m.planBy}`);
     });
-    // prompts (spec §2.16, T-256) against a hand-made decision point: E answers Call, the chip lights, the window's end resumes
-    const pr = await ev(() => {
+    // the captain's chips (spec §2.17): between points, when you captain, E / R under your feet; no ⚙ Prompts
+    const cc = await ev(() => {
       const you = A.m.t[0].ws[0];
       if (A.m.human !== you.id) throw new Error('Play as did not set your player');
-      const q = {
-        kind: 'call',
-        p: you,
-        options: [
-          { id: 'call', key: 'E', label: 'Call' },
-          { id: 'fake', key: 'R', label: 'Fake' }
-        ],
-        ai: null
-      };
-      G.prompts = 'off';
-      if (promptWanted(q)) throw new Error('Prompts Off still shows one');
-      G.prompts = 'on';
-      if (!promptWanted(q)) throw new Error('no prompt for a call');
-      window.__pk = 'none';
-      A.hold = true; // frames by hand: the window lasts until we step
-      A.gen = (function* () {
-        window.__pk = yield q;
-      })();
-      A.gen.next();
-      A.beats = [];
-      A.bi = 0;
-      promptOpen(q);
-      return $('#prompts .pchip') ? $('#prompts').textContent : '';
+      if (/Prompts/.test(settingsMenu())) throw new Error('⚙ Prompts is still there');
+      const cap0 = A.m.t[0].cap;
+      A.m.t[0].cap = you; // you captain (the chips need it)
+      A.capChip = null;
+      promptCaptain();
+      const txt = $('#prompts') ? $('#prompts').textContent : '';
+      promptPress('R'); // Settle: the chips go
+      A.m.t[0].cap = cap0;
+      return { txt, gone: !A.capChip };
     });
-    if (!/Call/.test(pr) || !/Fake/.test(pr)) throw new Error(`no Call / Fake chips: ${pr}`);
-    await pg.keyboard.press('e');
-    const lit = await ev(() => !!$('#prompts .pchip.on') && A.ask.pressed === 'call');
-    if (!lit) throw new Error('E did not light the Call chip');
-    await ev(() => step(16)); // the window's beats are gone: the rally resumes with the press
-    if ((await ev(() => window.__pk)) !== 'call' || (await ev(() => !!A.ask))) throw new Error('the press did not reach the engine');
-    // Block is timing (spec §2.16): a hand-made set beat with your prompted jump; E mid-beat jumps you at once and answers
-    // { id: 'block', t } = ms to their contact (the set beat's end); no press → the AI jumps you at its take-off
-    const bk = await ev(() => {
-      const you = A.m.t[0].ws[0],
-        q = { kind: 'block', p: you, options: [{ id: 'block', key: 'E', label: 'Block' }], ai: null, ideal: 320 },
-        beat = () => ({ dur: 800, acts: [{ k: 'jump', p: you.id, mode: 'up', t0: 0.6, t1: 1, peak: 60, prompt: 'block' }] });
-      const run = press => {
-        A.disp[you.id].ownJ = null;
-        A.disp[you.id].jy = 0;
-        window.__bk = 'none';
-        A.gen = (function* () {
-          window.__bk = yield q;
-        })();
-        A.gen.next();
-        A.beats = [beat()];
-        A.bi = 0;
-        A.el = 0;
-        promptOpen(q);
-        for (let i = 0; i < 50 && A.bi < 1; i++) {
-          if (press && i === 15) promptPress('E');
-          step(16);
-        }
-        for (let i = 0; i < 5 && A.ask; i++) step(16);
-        return { ans: window.__bk, jumped: A.disp[you.id].jy > 0 || !!A.disp[you.id].ownJ || A.disp[you.id].fallMs != null };
-      };
-      return { pressed: run(true), none: run(false) };
-    });
-    if (!bk.pressed.ans || bk.pressed.ans.id !== 'block' || !(bk.pressed.ans.t > 0 && bk.pressed.ans.t < 800) || !bk.pressed.jumped)
-      throw new Error(`block press: ${JSON.stringify(bk.pressed)}`);
-    if (bk.none.ans !== null || !bk.none.jumped) throw new Error(`no press: ${JSON.stringify(bk.none)}`);
+    if (!/Fire up/.test(cc.txt) || !/Settle/.test(cc.txt) || !cc.gone) throw new Error(`captain's chips: ${JSON.stringify(cc)}`);
     await ev(() => {
       // the momentum line (spec §2.14, T-254): a stage chip at each end naming a stage
       const names = STAGE_IDS.map(id => STAGES[id].name);

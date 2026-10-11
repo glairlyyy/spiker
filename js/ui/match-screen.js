@@ -40,9 +40,8 @@ function startMatch(fx) {
     mine = you ? ([0, 1].find(i => squadOf(m.t[i]).some(p => p.id === you.id)) ?? null) : null,
     sides = mine == null ? [0, 1] : [mine];
   if (mine != null)
-    m.human = you.id; // your prompts (spec §2.16): your decision points in a career match you play
+    m.human = you.id; // you (spec §2.17): the captain's chips when you captain a career match you play
   else if (fx.human != null) m.human = fx.human; // the Monster game's Play as
-  if (m.human != null && G.prompts !== 'off') m.read = {}; // Prompts On: the read meter and your prompts (T-257 contract)
   // the full-court screen (spec §9.9): the stage fills the screen; the panels below float over it
   $('#app').innerHTML = `<section class="match" id="match">
     <div class="mtop"><div class="board">

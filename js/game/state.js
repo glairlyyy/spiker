@@ -23,9 +23,6 @@ const HYPE = {
   max: { name: 'Max', max: 2 }
 };
 G.hype = savedOption(KEYS.hype, HYPE, 'normal');
-/** Calls (spec §2.13): when a played career match asks you at your decision points. */
-const CALL_MODES = { key: 'Key moments', all: 'All', off: 'Off' };
-G.calls = savedOption(KEYS.calls, CALL_MODES, 'key');
 /** Hand trails of stars and OP players: Light (their hair colour) or Ink (black brush stroke, crimson inside — owner 2026-10-06). */
 const TRAIL_STYLES = { light: 'Light', ink: 'Ink' };
 G.trail = savedOption(KEYS.trail, TRAIL_STYLES, VFX.hand.style); // the shipped default: js/data/vfx.js

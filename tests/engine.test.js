@@ -18,38 +18,18 @@ test('engine: seeded tournament teams + recorded matches are deterministic (gold
   goldenCheck('matches', hash(out));
 });
 
-test('engine: the rally is pausable (T-232) — a human answered with the AI picks plays the sim flow beat for beat', () => {
+test('engine: a human player (m.human) plays the same rallies as the sim flow, beat for beat (T-264)', () => {
   const play = human => {
     const g = load(42),
       T = g.mkTeams(),
-      m = g.newMatch(T[1], T[4], true),
-      you = T[1].P[2];
-    if (human) m.human = you.id;
-    // (m.read stays null: prompts and the read meter off, T-257)
+      m = g.newMatch(T[1], T[4], true);
+    if (human) m.human = T[1].P[2].id;
     let out = '',
-      asks = { serve: 0, attack: 0 },
-      other = 0,
       rallies = 0;
-    while (!m.over && rallies++ < 400) {
-      const gen = g.playRallyGen(m);
-      let r = gen.next();
-      while (!r.done) {
-        const q = r.value;
-        if (q.p.id === you.id) asks[q.kind]++;
-        else other++;
-        assert(Array.isArray(m.beats) && m.askAt === m.beats.length, 'suspended: the beats so far are readable, askAt marks them');
-        r = gen.next(q.ai);
-      }
-      out += JSON.stringify(r.value.beats);
-    }
-    return { out: out + JSON.stringify([m.setScores, m.stat]), asks, other };
+    while (!m.over && rallies++ < 400) out += JSON.stringify(g.playRally(m).beats);
+    return out + JSON.stringify([m.setScores, m.stat]);
   };
-  const sim = play(false),
-    hum = play(true);
-  eq(sim.asks.serve + sim.asks.attack + sim.other, 0, 'no human: never suspends');
-  assert(hum.out === sim.out, 'answering every call with the AI pick = the sim flow, beat for beat');
-  eq(hum.other, 0, 'only your own player is asked');
-  assert(hum.asks.serve > 0 && hum.asks.attack > 0, `asked at your serves and attacks (${JSON.stringify(hum.asks)})`);
+  assert(play(true) === play(false), 'm.human changes nothing in the engine (only the captain chips read it)');
 });
 
 test('engine: simulated matches (no animation) are deterministic (golden)', () => {

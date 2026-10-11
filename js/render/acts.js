@@ -222,7 +222,6 @@ const ACTS_UI = {
     showBanner(a);
   },
   /** A story event for the director's lines ({ kind, p, q }): data only, nothing on screen. */
-  ev(a, d, bs) {},
   score(a, d, bs) {
     board(a.snap);
     boxScore();

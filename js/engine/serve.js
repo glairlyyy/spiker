@@ -3,49 +3,30 @@
 /** Extra flight speed of the hardest serves. */
 const SERVE_FAST = 1.45;
 /**
- * Play one rally of match m to the end with the AI picking at every decision point (spec §2.13: the sim flow — the same
- * draws as before the rally became pausable). Returns { w, beats } (beats = null unless the match records animation).
+ * Play one rally of match m: the reset and serve, serve receive (ace, error, pop-up), then rally() until the point is
+ * decided, and end() scores it. Returns { w, beats } (beats = null unless the match records animation).
  */
 function playRally(m) {
-  const g = playRallyGen(m);
-  let r = g.next();
-  while (!r.done) r = g.next(r.value.ai);
-  return r.value;
-}
-/**
- * The rally as a generator (spec §2.13, T-232): the reset and serve, serve receive (ace, error, pop-up), then rally() until
- * the point is decided, and end() scores it. At a decision point of `m.human`'s player it yields `{ kind, p, options, ai }`
- * (see decide()) and resumes with the pick; everyone else's choices never stop. Returns { w, beats }. While it is
- * suspended, `beats` holds the rally so far (the caller may play it): later inserts never land before that point.
- */
-function* playRallyGen(m) {
   rallyStart(m);
   const V = m.rec,
     beats = V ? [] : null,
     B = b => beats.push(b);
-  // later phases can stage something earlier in the rally once they know the outcome (e.g. a block break) — never
-  // before a decision point that was already shown (m.askAt: what the player may have seen played)
+  // later phases can stage something earlier in the rally once they know the outcome (e.g. a block break)
   if (V) {
     B.len = () => beats.length;
-    B.ins = (i, ...bs) => beats.splice(Math.max(i, m.askAt), 0, ...bs);
+    B.ins = (i, ...bs) => beats.splice(i, 0, ...bs);
   }
-  m.beats = beats; // the rally so far, for a caller holding a suspended rally (decide)
   const s = m.serve,
     r = 1 - s,
     c = { m, V, B, beats, s, r, ST: m.t[s], RT: m.t[r], dR: DIR(r) };
   // the serve in steps (each draws its randoms in the same order as the one long function did — goldens unchanged)
-  yield* serveWalk(c);
+  serveWalk(c);
   serveToss(c);
   serveContact(c);
   if (R() < c.serr && m.dev !== 'ace') return serveFault(c); // (m.dev 'ace': the Dev cut-scene preview — same draws)
   serveAim(c);
-  if (R() < sig((c.sq - c.rs) / 24 - 2.4) || m.dev === 'ace') {
-    const res = yield* serveAce(c);
-    Decide.out(m, 'serve', c.server.id, 'on'); // (an ace already said 'win')
-    return res;
-  }
-  Decide.out(m, 'serve', c.server.id, 'on');
-  return yield* serveReceive(c);
+  if (R() < sig((c.sq - c.rs) / 24 - 2.4) || m.dev === 'ace') return serveAce(c);
+  return serveReceive(c);
 }
 /** Per-rally state, reset before every serve. */
 function rallyStart(m) {
@@ -61,10 +42,9 @@ function rallyStart(m) {
   m.hypeRally = 0; // at most one staged scene per rally
   m.kbScene = 0; // a kill-block scene played this rally (chatter skips the blocker's line)
   m.defBeats = [];
-  m.askAt = 0; // beats index of the last decision point shown this rally (B.ins never inserts before it)
 }
 /** Choose the serve up front and walk everyone to their spots; the reset and the server's routine beats. */
-function* serveWalk(c) {
+function serveWalk(c) {
   const { m, V, B, s, r, ST, RT } = c;
   const oS = rotOrder(ST, m.rot[s]),
     oR = rotOrder(RT, m.rot[r]),
@@ -72,12 +52,7 @@ function* serveWalk(c) {
   // the serve is chosen up front (same random draws, same order), so the server walks straight to where it starts:
   // the service spot for a standing float, the start of the run-up for a jump serve / jump float
   let sq = Formula.serveQuality(server, ST);
-  const nat = serveType(server, sq),
-    ai = nat,
-    // a decision point (spec §2.13): your serve — the AI's pick is the one drawn above; your call sets type, pace, risk, aim
-    pick = yield* decide(m, { kind: 'serve', p: server, options: () => Decide.serve(c, server, sq), ai, n: 0 }),
-    call = DECIDE.serve[pick] ? pick : null,
-    sType = call ? DECIDE.serve[call].type || nat : ai,
+  const sType = serveType(server, sq),
     jumpSrv = sType === 'jump',
     runM = runUpM(server, sType),
     endX = jumpSrv ? 60 : 44,
@@ -100,14 +75,13 @@ function* serveWalk(c) {
       dur: 1100, // the server's routine (bounce it / spin and aim, see preServe): a beat before the serve
       acts: []
     });
-  Object.assign(c, { oS, oR, server, sq, sType, jumpSrv, runM, endX, startX, call });
+  Object.assign(c, { oS, oR, server, sq, sType, jumpSrv, runM, endX, startX });
 }
 /** Run-up pace and serve techniques; the toss (and run-up) beat. */
 function serveToss(c) {
   const { m, V, B, s, server, jumpSrv, runM, endX, startX, sType } = c;
   let { sq } = c;
   if (jumpSrv) sq *= 1 + (runM - 3.2) * 0.05; // longer run-up = a bit more pace (±5%)
-  if (c.call) sq *= DECIDE.serve[c.call].sq; // your call (spec §2.13)
   // serve techniques
   const killer = jumpSrv && hasTech(server, 'killer') && R() < 0.5,
     drive = !jumpSrv && hasTech(server, 'drive') && R() < 0.5,
@@ -153,8 +127,7 @@ function serveContact(c) {
   const sp = m.pos[server.id],
     sArc = sType === 'jump' ? 85 : sType === 'jumpfloat' ? 110 : 130,
     wob = sType !== 'jump';
-  const serr =
-    (Formula.serveErrorP(server, ST, sq) + (killer ? 0.03 : 0)) * (c.call ? DECIDE.serve[c.call].err : 1) * (atkPlan(m, s).serveErr ?? 1); // Hunt the passer: riskier serves (spec §2.26)
+  const serr = (Formula.serveErrorP(server, ST, sq) + (killer ? 0.03 : 0)) * (atkPlan(m, s).serveErr ?? 1); // Hunt the passer: riskier serves (spec §2.26)
   const techName = killer ? 'Killer Jump Serve' : drive ? 'Drive Serve' : targeted ? 'Target Serve' : null;
   const hitFx = [
     { k: 'jump', p: server.id, mode: 'down' },
@@ -175,7 +148,6 @@ function serveFault(c) {
   const { m, V, B, beats, s, r, server, sq, jumpSrv, sp, hitFx, sw } = c;
   const net = R() < Formula.serveNetShare(server, sq, jumpSrv);
   st(m, server, 'err');
-  Decide.out(m, 'serve', server.id, 'err');
   V &&
     B({
       dur: 750,
@@ -204,7 +176,7 @@ function serveAim(c) {
     tx,
     tz
   );
-  if (targeted || (c.call && DECIDE.serve[c.call].aim) || atkPlan(m, c.s).huntK) {
+  if (targeted || atkPlan(m, c.s).huntK) {
     // (Hunt the passer, spec §2.26: every serve goes at their weakest passer)
     // aim just beside the weakest passer so they have to move for it
     rc = RT.P.filter(p => p !== RT.s).reduce((a, p) => (effD(p) + p.speed * 0.3 < effD(a) + a.speed * 0.3 ? p : a));
@@ -234,16 +206,16 @@ function serveAim(c) {
   Object.assign(c, { tx, tz, rc, d0, rollR, rs, sdur });
 }
 /** The serve beats the receiver: off the arms (a teammate may save it) or a clean ace. */
-function* serveAce(c) {
+function serveAce(c) {
   const { m, rc, d0, sq } = c;
   // the receiver got an arm on it: sometimes it pops up in their court and a teammate keeps it alive
   const fr = Math.min(1, (0.8 / (d0 + 0.01)) * (0.3 + rc.speed / 200)),
     p0r = m.pos[rc.id];
-  if (d0 * (1 - 0.7 * fr) < 0.1 && R() < popChance(rc, sq) && m.dev !== 'ace') return yield* servePopped(c, fr, p0r);
+  if (d0 * (1 - 0.7 * fr) < 0.1 && R() < popChance(rc, sq) && m.dev !== 'ace') return servePopped(c, fr, p0r);
   return serveAceClean(c);
 }
 /** Off the receiver's arms: a teammate saves it (rally on) or it drops (ace). */
-function* servePopped(c, fr, p0r) {
+function servePopped(c, fr, p0r) {
   const { m, V, B, beats, s, r, RT, dR, server, sq, tx, tz, rc, sdur, hitFx, sw, sArc, wob } = c;
   const P = popRecovery(m, r, RT, rc, tx, tz, sq, 1),
     sp0 = mustDive(rc, p0r, tx, tz, sdur) ? 'dive' : 'bump';
@@ -267,12 +239,11 @@ function* servePopped(c, fr, p0r) {
         dur: 900,
         acts: [...pa.acts, { k: 'call', p: P.rec.id, t: callLine('recv', P.rec, m) }, { k: 'label', t: 'Saved!', when: 'end', set: 1 }]
       });
-    return end(m, yield* rally(m, B, V, r, P.rec, 1, { first: rc }), beats);
+    return end(m, rally(m, B, V, r, P.rec, 1, { first: rc }), beats);
   }
   st(m, server, 'ace');
   st(m, server, 'k');
   recvLog(m, c.rc, true);
-  Decide.out(m, 'serve', server.id, 'win');
   V &&
     B({
       dur: 900,
@@ -291,7 +262,6 @@ function serveAceClean(c) {
   st(m, server, 'ace');
   st(m, server, 'k');
   recvLog(m, c.rc, true);
-  Decide.out(m, 'serve', server.id, 'win');
   m.big = 1;
   md(m, rc, -0.12);
   const f = Math.min(1, (0.8 / (d0 + 0.01)) * (0.3 + rc.speed / 200)),
@@ -342,7 +312,7 @@ function serveAceClean(c) {
   return end(m, s, beats);
 }
 /** A served ball received: pass quality, the receive beat, then the rally. */
-function* serveReceive(c) {
+function serveReceive(c) {
   const { m, V, B, beats, r, RT, dR, sq, tx, tz, rc, rollR, rs, sdur, hitFx, sw, sArc, wob } = c;
   const mg = rs - sq * 0.85 + rnd(-18, 18),
     q = mg > 12 ? 3 : mg > -8 ? 2 : 1;
@@ -364,5 +334,5 @@ function* serveReceive(c) {
         ...(rc.elOn ? [{ k: 'efx', el: rc.el, pow: 35, when: 'end' }] : [])
       ]
     });
-  return end(m, yield* rally(m, B, V, r, rc, q), beats);
+  return end(m, rally(m, B, V, r, rc, q), beats);
 }

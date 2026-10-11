@@ -21,7 +21,7 @@ function renderMenu() {
     <div class="tmenu">${hero}
       <button class="btn ${you ? '' : 'hot'} tbig" onclick="CR=null;navigate('create')" ${you && !saved.result ? tip(`Replaces ${you.name}'s run`) : ''}>New career</button>
       <button class="btn tbig" onclick="navigate('encyclopedia')" ${tip('Every technique and who can use it')}>Encyclopedia</button>
-      <button class="btn tbig ${TS.settings ? 'on' : ''}" onclick="TS.settings=!TS.settings;renderMenu()" ${tip('Match defaults: hype, prompts, graphics, camera, volume')}>Settings</button>
+      <button class="btn tbig ${TS.settings ? 'on' : ''}" onclick="TS.settings=!TS.settings;renderMenu()" ${tip('Match defaults: hype, graphics, camera, volume')}>Settings</button>
       ${TS.settings ? `<div class="tset setpop"><div class="popb">${settingsMenu()}</div></div>` : ''}
     </div>
     </div>
@@ -30,7 +30,7 @@ function renderMenu() {
       TS.dev
         ? `<div class="panel mdev"><h3>Dev</h3>
       <span class="trow m0"><button class="btn" onclick="startMonster()" ${tip('A one-off 3D match between two all-OP teams: elements, hype scenes and blocks fire often')}>Monster game</button>
-        <label class="sset" ${tip('Play the Monster game as one player: their Call / Fake / Block, setter and captain prompts appear under them (spec §2.16)')}><span class="cgl">Play as</span><select onchange="TS.playAs=this.value" aria-label="Play as">${PLAY_AS.map(([v, n]) => `<option value="${v}" ${(TS.playAs || '') === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+        <label class="sset" ${tip("Play the Monster game as one player: when they captain, the captain's Fire up / Settle chips appear under them between points (spec §2.17)")}><span class="cgl">Play as</span><select onchange="TS.playAs=this.value" aria-label="Play as">${PLAY_AS.map(([v, n]) => `<option value="${v}" ${(TS.playAs || '') === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
         <label class="sset" ${tip('Where the Monster game is played: every venue has its own air as the crowd heats up — wind outdoors, embers indoors (spec §2.27)')}><span class="cgl">Venue</span><select onchange="TS.venue=this.value" aria-label="Venue">${Object.entries(
           MONSTER_VENUES
         )
@@ -78,7 +78,7 @@ function titleBgOff() {
 function startMonster({ cine = null, anim = false } = {}) {
   const [a, b] = mkMonsterTeams();
   for (const p of [...a.P, ...b.P]) p.form = +rnd(-0.1, 0.4).toFixed(2);
-  const pa = /^([ab]):(\d)$/.exec(TS.playAs || ''), // Play as (spec §2.16): a seat of either team → your prompts in it
+  const pa = /^([ab]):(\d)$/.exec(TS.playAs || ''), // Play as: a seat of either team → you (the captain's chips when that seat captains)
     T = pa ? (pa[1] === 'a' ? a : b) : null,
     you = T ? [T.s, T.mb, T.ws[0], T.ws[1]][+pa[2]] : null;
   navigate('match', {

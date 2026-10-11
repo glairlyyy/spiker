@@ -273,7 +273,7 @@ const Dir = {
     this.talk = null;
     this.hush = false;
     this.ev = []; // this rally's events: { kind, side, p, q } (p / q player ids where the beats name them)
-    this.rally = {}; // called (your call for the ball), hit (the last spiker), blk (their blocker)
+    this.rally = {}; // hit (the last spiker), blk (their blocker)
     this.duels = {}; // 'hitter|blocker' → times met
     this.pend = null; // the rally's point { side, streak } — the exchange comes once its beats have played
     this.snapPts = [0, 0];
@@ -281,7 +281,7 @@ const Dir = {
     this.lastTalk = -99; // the point number of the last exchange (the budget)
     this.said = []; // QA: every exchange { n, kind, stage } this match
   },
-  /** A beat starts: read its acts for the story's events (a refused call, a fake, a stuffed call, a duel, the point). */
+  /** A beat starts: read its acts for the story's events (a duel, the point). */
   beatLines(b) {
     if (!this.ev) this.resetLines();
     const acts = b.acts,
@@ -292,16 +292,6 @@ const Dir = {
         this.ev = [];
         this.rally = {};
         this.hush = false;
-      } else if (a.k === 'call' && CALLS.notnow.includes(a.t)) {
-        const c = acts
-          .slice(0, i)
-          .reverse()
-          .find(x => x.k === 'call');
-        if (c) this.ev.push({ kind: 'refused', p: c.p, q: a.p });
-      } else if (a.k === 'ev') {
-        // the engine's story events (spec §2.18): your accepted call, your fake that worked / didn't
-        if (a.kind === 'called') this.rally.called = a.p;
-        else if (a.kind === 'fake_ok' || a.kind === 'fake_fail') this.ev.push({ kind: a.kind, p: a.p, q: a.q });
       } else if (a.k === 'spkstyle' && P(a.p)) {
         // the blocker who rises against this spike (this beat or the next two): the duel count
         const side = A.disp[a.p].side;
@@ -315,9 +305,7 @@ const Dir = {
             n = (this.duels[key] = (this.duels[key] || 0) + 1);
           if (n % 3 === 0) this.ev.push({ kind: 'duel', p: a.p, q: blk.p });
         }
-      } else if (a.k === 'impact' && a.kill && a.blk && this.rally.called && this.rally.called === this.rally.hit)
-        this.ev.push({ kind: 'stuffed_call', p: this.rally.hit, q: this.rally.blk });
-      else if (a.k === 'point') this.pend = { side: a.side, streak: a.streak || 0, touches: A.rallyN || 0 };
+      } else if (a.k === 'point') this.pend = { side: a.side, streak: a.streak || 0, touches: A.rallyN || 0 };
       else if (a.k === 'score' && a.snap) this.snapPts = a.snap.pts.slice();
     }
   },
@@ -336,7 +324,7 @@ const Dir = {
       if ((this.talk.t += raw) > 12000) this.talk = null; // the box never answered: never hold the match
       return;
     }
-    if (!this.pend || !A.beats || A.bi < A.beats.length || A.ask) return;
+    if (!this.pend || !A.beats || A.bi < A.beats.length) return;
     const pp = this.pend,
       s = this.snapPts,
       w = pp.side;
@@ -417,9 +405,6 @@ const Dir = {
       case 'setpoint':
         p = hottest(side);
         q = stake(o, p, false) || cap(o);
-        break;
-      case 'fake_fail':
-        q = q || cap(o);
         break;
     }
     if (!p) return [];
