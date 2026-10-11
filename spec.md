@@ -737,12 +737,27 @@ mood)`.
     (auto-battler feel); the thrill is outsmarting the other side; each choice tilts points, never decides one alone. No QTE, no
     in-rally input (§2.16 removed). The captain's calls stay (§2.17).
     - **Match prep = starting rotation**: you place the 4 starters in the rotation order (who serves first, who starts front row,
-      who stands opposite whom) and the 2 on the bench. AI teams set theirs with the same function (today's order = its default).
-      **[open: who may set it — always you, or captain / coach trust]**
+      who stands opposite whom). AI teams set theirs with the same function (today's order = its default).
     - **Team momentum type** (temperament, §2.14) is not selectable: it comes from the **captain's personality** (Hot-headed /
       Slow burner / Steady / Ice) and the **team OVR** — a stronger team swings less (fire gains and losses × smaller), a weaker
       one swings more. Shown on match prep as a fact with its tooltip. Replaces §2.14's squad-vote rule when built.
-    - More prep features: under discussion.
+    - **You are the player-coach** in career matches (owner, 2026-10-11): you set your side's prep and call its timeout. **Who
+      starts** stays the coach's pick (rating, form, standing — §2.10), so your spot can still be lost (§4.23 F); you set
+      everything else. Sim ⏭, NPC and Monster matches: the AI sets both sides' prep (same function).
+    - **Prep items** (one screen, every item has an AI default = today's play, so skipping prep is fine):
+      1. **Rotation** — order of the 4 starters (who serves first, who starts front row).
+      2. **Matchup preview** — your rotation beside theirs (shown if scouted, else grey): who faces whom at the net in each of
+         the 4 rotations.
+      3. **Serve target** — one of their passers, or none; aiming costs a few more serve errors. Their weakest passer is a fact
+         only if scouted.
+      4. **Defence setting** — Read / Commit / Bunch (§2.9); their attack habits shown if scouted.
+      5. **Attack focus** — lean sets left / middle / right / none; their blockers adjust after a few points if it keeps scoring.
+      6. **Pairs** — bonded setter + hitter or allies side by side in the rotation: a small edge; a feuding pair: a small cost (§4.23 E).
+      7. **Sub plan** — one bench rule (bring #n in when #m is tired / when down 4); the coach follows it.
+      8. **After the match** — the result card shows their prep too, and what tilted points either way (net points per item).
+    - **Timeout = the huddle** (`timeoutsPerTeam` 1): calling it reopens prep mid-match (the match waits). Rotation order is
+      locked once the set starts; everything else, and subs (max 2, §2.10), can change. It still resets mood / stamina and
+      Loose → Composed (§2.14). The AI coach calls the AI side's timeout as today.
 
 ## 6. Narrative rules [locked; faction/region/Gazette/event strings built]
 
