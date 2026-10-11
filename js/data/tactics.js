@@ -65,3 +65,9 @@ const LANE = {
   shade: 0.85,
   crossMin: 0.3
 };
+
+/**
+ * Coach panel (spec §2.25): a pattern becomes a tag once it is clear — at least `min` cases and `share` of them one way
+ * (a hitter's channel), `serve` of a side's serves at one receiver, `read` of the block's reads right or wrong.
+ */
+const COACH = { min: 5, share: 0.7, serve: 0.5, read: 0.65 };

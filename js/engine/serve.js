@@ -225,6 +225,7 @@ function serveAim(c) {
       mv(m, p, h[0], h[1], sw, V);
     }
   });
+  recvLog(m, rc, false); // the coach panel: who was served at (spec §2.25)
   Object.assign(c, { tx, tz, rc, d0, rollR, rs, sdur });
 }
 /** The serve beats the receiver: off the arms (a teammate may save it) or a clean ace. */
@@ -265,6 +266,7 @@ function* servePopped(c, fr, p0r) {
   }
   st(m, server, 'ace');
   st(m, server, 'k');
+  recvLog(m, c.rc, true);
   Decide.out(m, 'serve', server.id, 'win');
   V &&
     B({
@@ -283,6 +285,7 @@ function serveAceClean(c) {
   const { m, V, B, beats, s, r, RT, server, sq, tx, tz, rc, d0, sdur, hitFx, sw, sArc, wob } = c;
   st(m, server, 'ace');
   st(m, server, 'k');
+  recvLog(m, c.rc, true);
   Decide.out(m, 'serve', server.id, 'win');
   m.big = 1;
   md(m, rc, -0.12);

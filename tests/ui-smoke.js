@@ -317,6 +317,12 @@ const step = async (name, fn) => {
     await ev(() => {
       A.hold = true;
       while (!A.m.over) playRally(A.m);
+      // the coach panel (spec §2.25): both sides, hitters and passers after a whole match
+      railOpen('coach');
+      const c = $('#coach');
+      if (!c || c.querySelectorAll('.cside').length !== 2 || !/attacks/.test(c.textContent) || !c.querySelector('table'))
+        throw new Error(`coach panel: ${c ? c.textContent.slice(0, 120) : 'missing'}`);
+      railOpen(null);
       finishMatch();
     });
     await pg.waitForFunction(() => /Top 3/i.test((document.querySelector('#over') || {}).textContent || ''), null, { timeout: 10000 });

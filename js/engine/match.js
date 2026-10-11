@@ -106,6 +106,8 @@ function newMatch(a, b, rec, opts = {}) {
       rdWk: 0 // kills off a block that read the wrong channel
     })), // attacks per side by kind and their kills (engine-only tally, no randoms)
     lanes: {}, // laning (spec §2.24): hitter id → { line, cross } shots this match (what the blockers have seen)
+    hit: {}, // the coach panel (spec §2.25): hitter id → { n, k, err, stf, line, cross, tip, rd, rdOk } this match
+    recv: {}, // the coach panel: receiver id → { n, ace } serves taken / aced
     buff: {}, // player id → { lv, n } captain's buff (n = points left)
     t: [a, b],
     subs: [0, 0], // substitutions made this set per side (SUB.max)

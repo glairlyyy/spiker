@@ -131,6 +131,8 @@ addEventListener('keydown', e => {
   if (e.key === 'f' || e.key === 'F') toggleFullscreen();
   else if (e.key === 'b' || e.key === 'B') railOpen();
   else if (e.key === 't' || e.key === 'T') railOpen('tac');
+  else if (e.key === 'h' || e.key === 'H')
+    railOpen(A.railTab === 'coach' && !$('#mrail').hidden ? null : 'coach'); // the coach panel (spec §2.25)
   else if ((e.key === 'v' || e.key === 'V') && $('#vfxp')) vfxToggle();
   else if (e.key === 'c' || e.key === 'C')
     toggleCam3D(); // cycle the camera (its modes are in ⚙ too)
@@ -324,7 +326,7 @@ function board(s) {
   $('#setn').textContent = s.over ? 'Final' : mx >= RULES.pointsToWin - 1 && mx > mn ? 'Match point' : rulesText();
 }
 /** The match rail (Box score · Tactics): open on a tab, toggle (no tab), or close (null). */
-const RAIL_TABS = { box: 'Box score', tac: 'Tactics' };
+const RAIL_TABS = { box: 'Box score', coach: 'Coach', tac: 'Tactics' };
 function railOpen(tab) {
   const r = $('#mrail');
   if (!r || !A) return;
@@ -334,6 +336,7 @@ function railOpen(tab) {
   }
   A.railTab = tab || A.railTab || 'box';
   r.hidden = false;
+  if (A.railTab === 'coach') coachPanel(); // spec §2.25
   for (const el of r.querySelectorAll('[data-rt]')) {
     const on = el.dataset.rt === A.railTab;
     if (el.classList.contains('rt')) el.hidden = !on;

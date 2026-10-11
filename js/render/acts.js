@@ -225,6 +225,7 @@ const ACTS_UI = {
   score(a, d, bs) {
     board(a.snap);
     boxScore();
+    if (A.railTab === 'coach') coachPanel(); // spec §2.25: refreshed at the dead ball
   },
   rot(a, d, bs) {
     board(a.snap);

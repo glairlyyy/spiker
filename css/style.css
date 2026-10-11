@@ -1943,3 +1943,63 @@ html.reduced .xl {
   margin-bottom: 8px;
   font-size: 14px;
 }
+/* Coach panel (spec §2.25): the match rail's Coach tab */
+#coach .cside {
+  margin-bottom: 24px;
+}
+#coach h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+#coach .lab {
+  margin: 12px 0 4px;
+}
+#coach .cline {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+#coach table {
+  font-size: 12px;
+}
+#coach th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mute);
+  text-align: left;
+}
+#coach th,
+#coach td {
+  padding: 4px 3px;
+  font-variant-numeric: tabular-nums;
+}
+#coach td:first-child {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#coach .ctags {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+#coach .ctags li {
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--gold);
+  border-radius: 4px;
+  font-size: 13px;
+}
+#coach .ctags li.ct-fooled {
+  border-left-color: var(--bad);
+}
+#coach .ctags li.ct-read {
+  border-left-color: var(--good);
+}

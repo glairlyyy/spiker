@@ -109,9 +109,10 @@ function* rally(m, B, V, atk, pas, qual, scr = null) {
     };
     elAttack(m, x.spiker, m.ctx);
     const k0 = (m.stat[x.spiker.id] || blank()).k,
+      e0 = (m.stat[x.spiker.id] || blank()).err,
       bk0 = sumBlk(m, defT),
       fin = () => {
-        tallyAttack(m, atk, x, k0, bk0);
+        tallyAttack(m, atk, x, k0, bk0, e0);
         readAttack(c, x, k0, bk0);
       };
     r = x.delayed ? hangFail(c, x) : null; // a Delayed Spike can hang too long (low jump / wit): the ball drops on your side
@@ -151,14 +152,16 @@ function* rally(m, B, V, atk, pas, qual, scr = null) {
 
 /** Engine-only tally of one attack (no randoms): by kind (quick / middle or pipe / pins) and whether the hitter scored. */
 const sumBlk = (m, t) => t.P.reduce((n, p) => n + (m.stat[p.id] ? m.stat[p.id].blk : 0), 0);
-function tallyAttack(m, side, x, k0, bk0) {
+function tallyAttack(m, side, x, k0, bk0, e0) {
   const a = m.att[side],
     kind = x.quick ? 'q' : x.pipe || x.lane === 'M' ? 'mid' : 'pin',
-    kill = (m.stat[x.spiker.id] || blank()).k > k0;
+    kill = (m.stat[x.spiker.id] || blank()).k > k0,
+    stuffed = sumBlk(m, m.t[1 - side]) > bk0;
   a.n++;
   a[kind]++;
   if (x.b1) a.dbl++;
-  if (sumBlk(m, m.t[1 - side]) > bk0) {
+  hitLog(m, x, kill, stuffed, (m.stat[x.spiker.id] || blank()).err > e0); // the coach panel's per-hitter numbers (spec §2.25)
+  if (stuffed) {
     a.stf++;
     a[kind + 's']++;
   }

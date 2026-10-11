@@ -327,6 +327,21 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     (their mix shifts); scouting gives the block a prior on a hitter; serve zones and serve habits; ⚙ to hide the projection;
     reads remembered across matches **[open]**.
 
+- §2.25 Coach panel (owner, 2026-10-12) **[built 2026-10-12]**: the match rail's **Coach** tab (`H`, button beside Tactics) —
+  everything this match has shown, per side, true numbers, refreshed at every dead ball (never ahead of the rally on screen):
+  - **Tags** — a pattern once it is clear (`COACH` in js/data/tactics.js: ≥ 5 cases and ≥ 70 % one way): "#4 goes cross: 5 of
+    6" (a hitter's channel), "Serves at #18: 5 of 10" (≥ 50 % of a side's serves at one passer), "Block reads right: 7 of 10" /
+    "Block fooled: 7 of 10" (≥ 65 %). Facts, not advice (§9.1).
+  - **Attack**: attacks · kills (%) · errors · stuffed; **hitters**: attacks, kills, errors, line / cross / tip, and how often the
+    other block read them right. **Block**: reads · right · beaten anyway · stuffs. **Serve receive**: who was served at, aced.
+  - Engine: `m.hit` (per hitter), `m.recv` (per passer) logged with no draws (lanes.js `hitLog`, `recvLog`); `Coach.side(m, i)` /
+    `Coach.tags(m, i)` (js/engine/coach.js, pure data — the AI coach can read the same tags); UI js/ui/match-coach.js.
+  - Monster game first (both sides); career shows it too. **Next**: team plans in match prep (attack: Hunt the passer / Beat the
+    block / Power through; defence: Read & react / Cover the weak link / Wall their ace / Dig deep), hidden from the other
+    side, leaking through these tags; the AI coach answers a tag at its timeout (coach IQ: notices after 4 / 6 / 8 cases);
+    the captain picks the team plan, you always pick your own (owner, 2026-10-12: option B); hitters adapt when read; clubs
+    remember you across matches (save bump). Monster game first, career later.
+
 ## 3. Menu [built]
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two
