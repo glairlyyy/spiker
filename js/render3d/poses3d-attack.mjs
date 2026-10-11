@@ -228,10 +228,11 @@ export function spikePose(d, m) {
       curl: 0.2
     });
     let out;
-    if (pp < 0.55) out = mix(run, C({ ...run, al: armsBackRun, ar: undefined }), sm(clamp(pp / 0.55, 0, 1)));
-    else if (pp < 0.82) out = mix(C({ ...run, al: armsBackRun, ar: undefined }), PEN, sm((pp - 0.55) / 0.27));
-    else if (pp < 0.97) out = mix(PEN, LOAD, sm((pp - 0.82) / 0.15));
-    else out = mix(LOAD, TAKE, (pp - 0.97) / 0.03);
+    // (the plant comes earlier and lasts longer: both feet are down and loaded well before the take-off — no scissor in the air)
+    if (pp < 0.5) out = mix(run, C({ ...run, al: armsBackRun, ar: undefined }), sm(clamp(pp / 0.5, 0, 1)));
+    else if (pp < 0.68) out = mix(C({ ...run, al: armsBackRun, ar: undefined }), PEN, sm((pp - 0.5) / 0.18));
+    else if (pp < 0.88) out = mix(PEN, LOAD, sm((pp - 0.68) / 0.2));
+    else out = mix(LOAD, TAKE, sm((pp - 0.88) / 0.12));
     if (serve) out = { ...out, al: TOSS_L, hd: -0.8 }; // running jump serve: toss arm stays up
     return { ...out, face };
   }

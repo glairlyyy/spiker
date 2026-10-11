@@ -168,8 +168,12 @@ export function posePlayer(pl, dt, ballPos, fx) {
   root.position.y = (d.jy || 0) * KH;
   applyPose(pl, pose);
   reachForBall(pl, d, pose, ballPos);
-  const fast = ((d.pose === 'spike' || d.pose === 'serve') && d.spk != null) || d.pose === 'dive';
-  smoothBones(pl, dt, fast ? 45 : mot.speed > 1 ? 26 : 16);
+  // the approach and take-off of a jump spike / jump serve are quick changes too: the legs must reach the two-foot take-off
+  // before the feet leave the floor, or the run's stride is still split in the air (a scissor jump — owner, 2026-10-12)
+  const takeoff = (d.pose === 'spike' || d.pose === 'serve') && d.jmode && d.jmode.mode === 'up' && (d.jt != null || d.jy > 0),
+    fast = ((d.pose === 'spike' || d.pose === 'serve') && (d.spk != null || takeoff)) || d.pose === 'dive',
+    spd = Math.min(4, Math.max(1, A.speed || 1)); // at 2× / 4× the moves change faster: the bones follow as fast
+  smoothBones(pl, dt, spd * (fast ? 45 : mot.speed > 1 ? 26 : 16));
   groundSnap(pl, (d.jy || 0) * KH + (pose.lift || 0), pose.lying);
   if (sink && VFX.ik.feet) root.position.y -= sink; // landing: the hips settle, the foot IK bends the knees for it
   footIK(pl, d, pose, dt); // feet planted on the floor (ik3d.mjs)

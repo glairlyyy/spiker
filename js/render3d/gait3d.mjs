@@ -33,7 +33,13 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
     sp = mot.speed || 0,
     air = pose.lying || d.pose === 'dive' || (d.jy || 0) > 1,
     want = C.on && !air && !A.animLab?.replay ? (pose.gaitW || 0) * clamp((sp - C.from) / 0.8, 0, 1) * (sp > 3 ? 1 : 0.4 + 0.6 * gw) : 0; // (fast, it steps any way the body goes)
-  pl.gW = (pl.gW || 0) + (want - (pl.gW || 0)) * (1 - Math.exp(-Math.min(dt, 0.05) * (want < (pl.gW || 0) ? 14 : 12)));
+  // a jump's plant and take-off (spike / jump serve approach timed off the jump) and the air: the run's planted feet let go at
+  // once — still weighted, they pinned one foot to its stride while the body rose (a scissor jump — owner, 2026-10-12)
+  const takeoff =
+      air ||
+      ((d.pose === 'spike' || d.pose === 'serve') && d.jmode && d.jmode.mode === 'up' && d.jt != null && d.jt >= 0.6 * (d.jmode.t0 || 0)),
+    rate = takeoff ? 45 : want < (pl.gW || 0) ? 14 : 12;
+  pl.gW = (pl.gW || 0) + ((takeoff ? 0 : want) - (pl.gW || 0)) * (1 - Math.exp(-Math.min(dt, 0.05) * rate));
   const W = pl.gW;
   if (W < 0.01) {
     // (off: the heading starts afresh next time — a stale one planned the first steps in an old direction, off to the side)
