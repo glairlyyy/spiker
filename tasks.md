@@ -44,7 +44,7 @@ no build step / framework; one seam per task, top-level names kept or every call
 T-264 (open, solo) goes first — it is the biggest cleanup (dead prompt code). T-269–T-274 touch no file of T-259 / T-260 and may
 run beside Agent B; T-275 waits for T-259 + T-260; T-276 last.
 
-### [ ] T-269: fx3d — primitives and effects apart
+### [x] T-269: fx3d — primitives and effects apart
 Spec: §2.15 §2.22          Goldens: unchanged          Save: no change
 Goal: a new effect = one function in one effects file; `createFx` (977 lines, one closure) becomes a short assembler.
 Files: js/render3d/fx3d.mjs, js/render3d/fx/kit.mjs (new: textures, shaders, `Particles`, `Streaks`, rocks, bolts, rings, discs, domes
@@ -58,7 +58,7 @@ Steps:
 3. Rename fx3d's local `R(a, b)` (Math.random range) to `rr`: it shadows the game RNG's global `R()`.
 Accept: fx3d.mjs < 150 lines; lint + tests pass; VFX lab: every effect fired with `Math.random` seeded, screenshots vs HEAD ≈ noise.
 QA: menu › Dev › VFX lab → each effect.
-Result:
+Result: fx3d.mjs 1149 → 15 lines (createFx = createKit + groundFx / hitsFx / elementsFx / trailFx, same API). fx/kit.mjs 662 (textures, shaders, pools, rocks / bolts / rings / discs / domes + update / stats), ground 139, hits 150, elements 143, trail 133. Local R → rr. Effect bodies moved verbatim. QA: VFX lab, seeded Math.random — blast particle counts identical to HEAD; later effects within ±few (the lab's live rAF ages leftovers); no errors.
 
 ### [ ] T-270: One small math module for the 3D code
 Spec: —          Goldens: unchanged          Save: no change

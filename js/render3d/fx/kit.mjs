@@ -1,0 +1,662 @@
+// The effects' building blocks (fx3d.mjs assembles them): textures, shaders, particle / streak pools, rocks, bolts,
+// rings, discs and domes, with their per-frame updates. Effects (fx/ground, hits, elements, trail) only spawn into these.
+import * as THREE from 'three';
+import { NOISE } from '../trails3d.mjs';
+
+export function canvasTex(draw, n = 64) {
+  const c = document.createElement('canvas');
+  c.width = c.height = n;
+  draw(c.getContext('2d'), n);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+export const radial = stops => (g, n) => {
+  const r = g.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
+  for (const [o, c] of stops) r.addColorStop(o, c);
+  g.fillStyle = r;
+  g.fillRect(0, 0, n, n);
+};
+export const TEX_GLOW = canvasTex(
+  radial([
+    [0, 'rgba(255,255,255,1)'],
+    [0.25, 'rgba(255,255,255,.75)'],
+    [1, 'rgba(255,255,255,0)']
+  ])
+);
+export const TEX_SMOKE = canvasTex(
+  radial([
+    [0, 'rgba(255,255,255,.9)'],
+    [0.6, 'rgba(255,255,255,.35)'],
+    [1, 'rgba(255,255,255,0)']
+  ])
+);
+export const TEX_STAR = canvasTex((g, n) => {
+  const c = n / 2;
+  radial([
+    [0, 'rgba(255,255,255,1)'],
+    [0.18, 'rgba(255,255,255,0)']
+  ])(g, n);
+  g.fillStyle = '#fff';
+  for (const [w, h] of [
+    [3, c],
+    [c, 3]
+  ]) {
+    g.beginPath();
+    g.moveTo(c - w, c);
+    g.lineTo(c, c - h);
+    g.lineTo(c + w, c);
+    g.lineTo(c, c + h);
+    g.fill();
+  }
+});
+/** A billowing smoke puff: soft blobs clustered round the centre (a fixed pattern — no game randoms). */
+export const TEX_PUFF = canvasTex((g, n) => {
+  let s = 7;
+  const r = () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
+  for (let i = 0; i < 22; i++) {
+    const a = r() * Math.PI * 2,
+      d = r() * n * 0.2,
+      x = n / 2 + Math.cos(a) * d,
+      y = n / 2 + Math.sin(a) * d,
+      rad = n * (0.12 + r() * 0.16),
+      gr = g.createRadialGradient(x, y, 0, x, y, rad);
+    gr.addColorStop(0, `rgba(255,255,255,${0.35 + r() * 0.25})`);
+    gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, n, n);
+  }
+}, 128);
+export const PVS = `attribute float size; attribute float alpha; attribute float rot; attribute vec3 pcol; varying vec3 vC; varying float vA; varying float vR; uniform float scale;
+void main(){ vC = pcol; vA = alpha; vR = rot; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = size * scale / max(0.1, -mv.z); gl_Position = projectionMatrix * mv; }`;
+export const PFS = `uniform sampler2D map; varying vec3 vC; varying float vA; varying float vR;
+void main(){ vec2 c = gl_PointCoord - 0.5; float s = sin(vR), k = cos(vR); c = mat2(k, -s, s, k) * c + 0.5;
+  vec4 t = texture2D(map, c); gl_FragColor = vec4(vC * t.rgb, t.a * vA); if (gl_FragColor.a < 0.004) discard; }`;
+// streaks: a quad per spark stretched from where it was (pos − vel·len) to where it is, facing the camera; hot white core
+export const SVS = `attribute vec3 ipos; attribute vec3 ivel; attribute vec3 icol; attribute float ia; attribute float iw; attribute float il;
+varying vec3 vC; varying float vA; varying vec2 vU;
+void main(){
+  vec4 h = modelViewMatrix * vec4(ipos, 1.0), t = modelViewMatrix * vec4(ipos - ivel * il, 1.0);
+  vec3 d = h.xyz - t.xyz, s = cross(d, normalize(h.xyz));
+  s = length(s) < 1e-6 ? vec3(1.0, 0.0, 0.0) : normalize(s);
+  vec3 p = mix(t.xyz, h.xyz, position.y) + s * position.x * iw;
+  vC = icol; vA = ia; vU = vec2(position.x * 2.0, position.y);
+  gl_Position = projectionMatrix * vec4(p, 1.0);
+}`;
+export const SFS = `varying vec3 vC; varying float vA; varying vec2 vU;
+void main(){ float x = 1.0 - abs(vU.x), a = x * pow(vU.y, 1.2) * vA; if (a < 0.004) discard;
+  gl_FragColor = vec4(mix(vC, vec3(1.0), pow(x, 4.0) * 0.6) * a, a); }`;
+
+export const rr = (a, b) => a + Math.random() * (b - a);
+export const rv = s => new THREE.Vector3().randomDirection().multiplyScalar(s);
+export const Z_AXIS = new THREE.Vector3(0, 0, 1);
+// ink rings: the trail's ink look wrapped round a ring — along = the angle, across = the band (−1 inner … +1 outer)
+export const RING_VS = `varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+export const RING_HEAD = `uniform float op; uniform float seed; uniform float inner; varying vec2 vP;
+${NOISE}
+void band(out float e, out float sE, out float s) {
+  float r = length(vP), mid = (1.0 + inner) * 0.5, hw = (1.0 - inner) * 0.5;
+  sE = (r - mid) / hw; e = abs(sE); s = atan(vP.y, vP.x) * 0.8 + seed;
+}`;
+export const RING_FS_INK = `uniform vec3 ink; uniform vec3 blood; ${RING_HEAD}
+void main() {
+  float e, sE, s; band(e, sE, s);
+  float n = strands(s, sE), fade = min(1.0, op * 1.5),
+    edge = 0.72 + 0.28 * vn(vec2(s * 9.0, 0.5)),
+    body = 1.0 - smoothstep(edge - 0.18, edge, e),
+    t0 = 0.12 + 0.55 * (1.0 - fade),
+    hair = smoothstep(t0, t0 + 0.12, n),
+    a = body * hair * min(1.0, op * 2.2);
+  if (a < 0.01) discard;
+  gl_FragColor = vec4(mix(blood * 0.22, ink, smoothstep(0.05, 0.5, e)), a * 0.95);
+}`;
+// the partial ink ring (owner 2026-10-07, an ensō brush circle): one stroke from a random start round most of the circle —
+// pressed in, full, then lifting into dry strands — a thin outer strand, splatter outside; the glow colour is the ink
+export const ENSO_HEAD = `uniform float op; uniform float seed; varying vec2 vP;
+${NOISE}
+void stroke(out float a, out float n, out float e) {
+  float r = length(vP), ang = atan(vP.y, vP.x),
+    t = fract(ang / 6.2831853 + 0.5 + seed * 0.137),
+    span = 0.84 + 0.12 * h1(seed),
+    u = t / span,
+    on = step(u, 1.0),
+    w = smoothstep(0.0, 0.06, u) * (1.0 - 0.8 * smoothstep(0.3, 1.0, u)),
+    mid = 0.84 + 0.025 * sin(u * 3.0 + seed),
+    sE = (r - mid) / max(0.17 * w, 1e-3),
+    s = u * 7.0 + seed;
+  e = abs(sE);
+  n = strands(s, sE);
+  float dry = 0.12 + 0.45 * u + 0.55 * (1.0 - min(1.0, op * 1.5)),
+    hair = smoothstep(dry, dry + 0.12, n),
+    edge = 0.75 + 0.25 * vn(vec2(s * 6.0, 0.5)),
+    body = on * (1.0 - smoothstep(edge - 0.2, edge, e)) * step(0.001, w);
+  a = body * hair;
+  // a thin loose strand just outside the main stroke
+  float o2 = abs((r - mid - 0.14 - 0.02 * sin(u * 5.0)) / 0.018);
+  a = max(a, (1.0 - smoothstep(0.5, 1.0, o2)) * step(u, 0.93) * smoothstep(0.5, 0.65, vn(vec2(u * 18.0 + seed, 1.3))) * 0.85);
+  // splatter: a few drops outside the circle (they dry up first)
+  vec2 c = vec2(ang * 7.0, r * 11.0), ci = floor(c), f = fract(c);
+  float hs = h1(ci.x * 13.1 + ci.y * 71.7 + seed),
+    drop = step(0.9, hs) * step(1.02, r) * (1.0 - smoothstep(0.1, 0.16 + 0.12 * h1(hs * 7.0), length(f - vec2(h1(hs * 91.0), h1(hs * 37.0)) * 0.6 - 0.2)));
+  a = max(a, drop * smoothstep(0.3, 0.5, op));
+  a *= min(1.0, op * 2.0);
+}`;
+export const ENSO_FS = `uniform vec3 blood; ${ENSO_HEAD}
+void main() {
+  float a, n, e; stroke(a, n, e);
+  if (a < 0.01) discard;
+  gl_FragColor = vec4(mix(blood * 0.5, blood, 0.35 + 0.65 * n) * (1.0 - 0.25 * min(e, 1.0)), a * 0.96); // (drops lie far outside the stroke: e ≫ 1)
+}`;
+export const ENSO_FS_GLOW = `uniform vec3 blood; ${ENSO_HEAD}
+void main() {
+  float a, n, e; stroke(a, n, e);
+  float g = a * (1.0 - smoothstep(0.0, 0.6, e)) * 0.45;
+  if (g < 0.01) discard;
+  gl_FragColor = vec4(blood * g, g);
+}`;
+export const RING_FS_BLOOD = `uniform vec3 blood; ${RING_HEAD}
+void main() {
+  float e, sE, s; band(e, sE, s);
+  float n = strands(s + 3.7, sE * 0.8),
+    core = (1.0 - smoothstep(0.04, 0.3 + 0.22 * n, e)) * (0.45 + 0.9 * n) * smoothstep(0.03, 0.3, op),
+    halo = pow(1.0 - e, 2.0) * 0.35 * smoothstep(0.03, 0.3, op);
+  if (core + halo < 0.01) discard;
+  gl_FragColor = vec4((mix(blood, vec3(1.0, 0.7, 0.7), core * 0.25) * core * 2.2 + blood * halo) * op, (core + halo) * op);
+}`;
+/** A live tuning value (js/data/vfx.js — the dev VFX panel edits it while effects play); `d` if the table is missing. */
+export const vx = (g, k, d) => (typeof VFX !== 'undefined' && VFX[g] && VFX[g][k] != null ? VFX[g][k] : d);
+export const UP = new THREE.Vector3(0, 1, 0);
+/** The director's size × for the play on screen (spec §2.15; 1 outside a match or with the director off). */
+export const dk = () => (typeof Dir !== 'undefined' && Dir.k ? Dir.k() : 1);
+
+/** Build the pools and meshes into `scene`; returns them, `update(dt, cam, heightPx, fov)` and `stats()`. */
+export function createKit(scene) {
+  const pScale = { value: 800 };
+  /** Pool of camera-facing particles: position, velocity, colour ramp, size ramp, life, gravity, drag, twinkle. */
+  class Particles {
+    constructor(tex, additive, max) {
+      this.max = max;
+      this.P = [];
+      const g = new THREE.BufferGeometry();
+      this.pos = new Float32Array(max * 3);
+      this.col = new Float32Array(max * 3);
+      this.size = new Float32Array(max);
+      this.alpha = new Float32Array(max);
+      this.rot = new Float32Array(max);
+      for (const [k, a, n] of [
+        ['position', this.pos, 3],
+        ['pcol', this.col, 3],
+        ['size', this.size, 1],
+        ['alpha', this.alpha, 1],
+        ['rot', this.rot, 1]
+      ])
+        g.setAttribute(k, new THREE.BufferAttribute(a, n).setUsage(THREE.DynamicDrawUsage));
+      this.geo = g;
+      const m = new THREE.ShaderMaterial({
+        uniforms: { map: { value: tex }, scale: pScale },
+        vertexShader: PVS,
+        fragmentShader: PFS,
+        transparent: true,
+        depthWrite: false,
+        blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending
+      });
+      this.obj = new THREE.Points(g, m);
+      this.obj.frustumCulled = false;
+      this.obj.renderOrder = additive ? 3 : 2;
+      scene.add(this.obj);
+    }
+    spawn(p, v, c1, c2, s0, s1, life, o = {}) {
+      if (this.P.length >= this.max) return;
+      this.P.push({
+        p: p.clone(),
+        v: v.clone(),
+        c1: new THREE.Color(c1),
+        c2: new THREE.Color(c2 ?? c1),
+        s0: s0 * dk(),
+        s1: s1 * dk(),
+        life,
+        age: 0,
+        g: o.g ?? 0,
+        drag: o.drag ?? 0,
+        a: o.a ?? 1,
+        tw: o.tw || 0,
+        floor: o.floor,
+        r: o.spin != null ? Math.random() * 6.28 : 0,
+        spin: o.spin || 0
+      });
+    }
+    update(dt) {
+      const P = this.P,
+        c = new THREE.Color();
+      let w = 0;
+      for (const q of P) {
+        q.age += dt;
+        if (q.age >= q.life) continue;
+        q.v.y -= q.g * dt;
+        q.v.multiplyScalar(Math.max(0, 1 - q.drag * dt));
+        q.p.addScaledVector(q.v, dt);
+        if (q.floor && q.p.y < 0.03) {
+          q.p.y = 0.03;
+          q.v.y *= -0.3;
+        }
+        const u = q.age / q.life;
+        c.copy(q.c1).lerp(q.c2, u);
+        this.pos[w * 3] = q.p.x;
+        this.pos[w * 3 + 1] = q.p.y;
+        this.pos[w * 3 + 2] = q.p.z;
+        this.col[w * 3] = c.r;
+        this.col[w * 3 + 1] = c.g;
+        this.col[w * 3 + 2] = c.b;
+        this.size[w] = (q.s0 + (q.s1 - q.s0) * u) * (q.tw ? 0.6 + 0.4 * Math.sin(q.age * q.tw) : 1);
+        this.alpha[w] = q.a * (u < 0.1 ? u / 0.1 : 1 - (u - 0.1) / 0.9);
+        this.rot[w] = q.r += q.spin * dt;
+        P[w++] = q;
+      }
+      P.length = w;
+      this.geo.setDrawRange(0, w);
+      for (const k of ['position', 'pcol', 'size', 'alpha', 'rot']) this.geo.attributes[k].needsUpdate = true;
+    }
+  }
+  const GLOW = new Particles(TEX_GLOW, true, 3000),
+    SPARK = new Particles(TEX_STAR, true, 1200),
+    SMOKE = new Particles(TEX_SMOKE, false, 1500),
+    PUFF = new Particles(TEX_PUFF, false, 400);
+
+  /** Pool of velocity-stretched sparks (instanced quads): width `w` m, tail = `len` s of travel; gravity, drag, floor bounce. */
+  class Streaks {
+    constructor(max) {
+      this.max = max;
+      this.P = [];
+      const g = new THREE.InstancedBufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute([-0.5, 0, 0, 0.5, 0, 0, 0.5, 1, 0, -0.5, 1, 0], 3));
+      g.setIndex([0, 1, 2, 0, 2, 3]);
+      this.A = {};
+      for (const [k, n] of [
+        ['ipos', 3],
+        ['ivel', 3],
+        ['icol', 3],
+        ['ia', 1],
+        ['iw', 1],
+        ['il', 1]
+      ])
+        g.setAttribute(k, (this.A[k] = new THREE.InstancedBufferAttribute(new Float32Array(max * n), n).setUsage(THREE.DynamicDrawUsage)));
+      g.instanceCount = 0;
+      this.geo = g;
+      this.obj = new THREE.Mesh(
+        g,
+        new THREE.ShaderMaterial({
+          vertexShader: SVS,
+          fragmentShader: SFS,
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          side: THREE.DoubleSide
+        })
+      );
+      this.obj.frustumCulled = false;
+      this.obj.renderOrder = 3;
+      scene.add(this.obj);
+    }
+    spawn(p, v, c1, c2, w, len, life, o = {}) {
+      if (this.P.length >= this.max) return;
+      this.P.push({
+        p: p.clone(),
+        v: v.clone(),
+        c1: new THREE.Color(c1),
+        c2: new THREE.Color(c2 ?? c1),
+        w: w * dk(),
+        len: len * dk(),
+        life,
+        age: 0,
+        g: o.g ?? 0,
+        drag: o.drag ?? 0,
+        floor: o.floor
+      });
+    }
+    update(dt) {
+      const P = this.P,
+        A = this.A,
+        c = new THREE.Color();
+      let w = 0;
+      for (const q of P) {
+        q.age += dt;
+        if (q.age >= q.life) continue;
+        q.v.y -= q.g * dt;
+        q.v.multiplyScalar(Math.max(0, 1 - q.drag * dt));
+        q.p.addScaledVector(q.v, dt);
+        if (q.floor && q.p.y < 0.02 && q.v.y < 0) {
+          q.p.y = 0.02;
+          q.v.set(q.v.x * 0.6, -q.v.y * 0.35, q.v.z * 0.6);
+        }
+        const u = q.age / q.life;
+        c.copy(q.c1).lerp(q.c2, Math.min(1, u * 1.6));
+        A.ipos.array.set([q.p.x, q.p.y, q.p.z], w * 3);
+        A.ivel.array.set([q.v.x, q.v.y, q.v.z], w * 3);
+        A.icol.array.set([c.r, c.g, c.b], w * 3);
+        A.ia.array[w] = u < 0.4 ? 1 : 1 - (u - 0.4) / 0.6;
+        A.iw.array[w] = q.w;
+        A.il.array[w] = q.len;
+        P[w++] = q;
+      }
+      P.length = w;
+      this.geo.instanceCount = w;
+      for (const k in A) A[k].needsUpdate = true;
+    }
+  }
+  const STREAK = new Streaks(1500);
+
+  // rocks: tumbling chunks that bounce on the floor
+  const ROCKS = new THREE.InstancedMesh(
+    new THREE.DodecahedronGeometry(0.07),
+    new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 1, flatShading: true }),
+    240
+  );
+  ROCKS.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(240 * 3), 3);
+  ROCKS.castShadow = true;
+  ROCKS.count = 0;
+  ROCKS.frustumCulled = false;
+  scene.add(ROCKS);
+  const rocks = [];
+  const ROCK_COL = new THREE.Color('#8a7658');
+  const spawnRock = (p, v, s = 1, col) =>
+    rocks.length < 240 &&
+    rocks.push({
+      p: p.clone(),
+      v: v.clone(),
+      r: new THREE.Euler(rr(0, 6), rr(0, 6), 0),
+      w: rv(12),
+      s: s * rr(0.6, 1.4),
+      life: 1.6,
+      age: 0,
+      c: col ? new THREE.Color(col) : ROCK_COL
+    });
+  const M = new THREE.Matrix4(),
+    Q = new THREE.Quaternion(),
+    S = new THREE.Vector3();
+  function updateRocks(dt) {
+    let w = 0;
+    for (const k of rocks) {
+      k.age += dt;
+      if (k.age > k.life) continue;
+      k.v.y -= 9.8 * dt;
+      k.p.addScaledVector(k.v, dt);
+      if (k.p.y < 0.05) {
+        k.p.y = 0.05;
+        k.v.y *= -0.35;
+        k.v.x *= 0.7;
+        k.v.z *= 0.7;
+      }
+      k.r.x += k.w.x * dt;
+      k.r.y += k.w.y * dt;
+      const f = k.age > k.life - 0.3 ? (k.life - k.age) / 0.3 : 1;
+      M.compose(k.p, Q.setFromEuler(k.r), S.setScalar(k.s * f));
+      ROCKS.setMatrixAt(w, M);
+      ROCKS.setColorAt(w, k.c);
+      rocks[w++] = k;
+    }
+    rocks.length = w;
+    ROCKS.count = w;
+    ROCKS.instanceMatrix.needsUpdate = true;
+    ROCKS.instanceColor.needsUpdate = true;
+  }
+
+  // lightning: jagged tubes, a white core and a coloured glow
+  class Poly extends THREE.Curve {
+    constructor(pts) {
+      super();
+      this.pts = pts;
+    }
+    getPoint(t, o = new THREE.Vector3()) {
+      const n = this.pts.length - 1,
+        f = Math.min(n - 1e-6, t * n),
+        i = Math.floor(f);
+      return o.lerpVectors(this.pts[i], this.pts[i + 1], f - i);
+    }
+  }
+  const bolts = [];
+  function bolt(a, b, col, life = 0.12, amp = 0.25, r = 0.014) {
+    const n = Math.max(4, Math.round(a.distanceTo(b) * 5)),
+      pts = [a.clone()];
+    for (let i = 1; i < n; i++) pts.push(new THREE.Vector3().lerpVectors(a, b, i / n).add(rv(amp * (Math.sin((i / n) * Math.PI) + 0.2))));
+    pts.push(b.clone());
+    const curve = new Poly(pts),
+      seg = pts.length * 2;
+    const core = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, seg, r, 5),
+      new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    const glow = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, seg, r * 4.5, 6),
+      new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    core.renderOrder = glow.renderOrder = 4;
+    scene.add(core, glow);
+    bolts.push({ core, glow, life, age: 0 });
+  }
+  function updateBolts(dt) {
+    let w = 0;
+    for (const b of bolts) {
+      b.age += dt;
+      if (b.age > b.life) {
+        for (const m of [b.core, b.glow]) {
+          scene.remove(m);
+          m.geometry.dispose();
+          m.material.dispose();
+        }
+        continue;
+      }
+      const f = (1 - b.age / b.life) * (Math.random() < 0.3 ? 0.4 : 1);
+      b.core.material.opacity = f;
+      b.glow.material.opacity = 0.35 * f;
+      bolts[w++] = b;
+    }
+    bolts.length = w;
+  }
+
+  // shockwave rings: billboard in the air or flat on the floor
+  const rings = [],
+    RING = new THREE.RingGeometry(0.82, 1, 64),
+    INK_IN = 0.66,
+    RING_INK = new THREE.RingGeometry(INK_IN, 1, 96, 2),
+    RING_ENSO = new THREE.RingGeometry(0.45, 1.25, 128, 3); // room round the stroke for the outer strand and the splatter
+  let camera = null;
+  /** `o.dir` (unit vector): the ring faces along it instead of the camera; `o.delay` s before it shows; `o.op` peak opacity. */
+  function ring(p, col, size, life = 0.45, floor = false, o = {}) {
+    const st = vx('ring', 'style', 'light'),
+      ink = st === 'ink' || st === 'partial',
+      m = ink
+        ? inkRing(vx('ring', 'own', 0) ? col : vx('ring', 'ink', '#ff1630'), st === 'partial')
+        : new THREE.Mesh(
+            RING,
+            new THREE.MeshBasicMaterial({
+              color: col,
+              transparent: true,
+              blending: THREE.AdditiveBlending,
+              depthWrite: false,
+              side: THREE.DoubleSide
+            })
+          );
+    m.position.copy(p);
+    if (floor) {
+      m.rotation.x = -Math.PI / 2;
+      m.position.y = 0.025;
+    }
+    if (o.dir) m.quaternion.setFromUnitVectors(Z_AXIS, o.dir);
+    m.renderOrder = 5;
+    m.visible = !o.delay;
+    scene.add(m);
+    rings.push({
+      m,
+      size: size * dk(),
+      life: life * (ink ? vx('ring', 'life', 1.3) : 1),
+      age: -(o.delay || 0),
+      floor,
+      fixed: !!o.dir,
+      op: o.op ?? 0.9,
+      ink
+    });
+  }
+  /**
+   * An ink ring (VFX ring style Ink, owner 2026-10-07): a ragged black brush circle with a glow in `glow` burning inside it; as it
+   * fades the stroke frays into strands. Two meshes on one ring geometry (the glow is the child), opacity through `op`.
+   */
+  function inkRing(glow, partial) {
+    const u = {
+        op: { value: 1 },
+        seed: { value: Math.random() * 50 },
+        inner: { value: INK_IN },
+        ink: { value: new THREE.Color('#050204') },
+        blood: { value: new THREE.Color(glow) }
+      },
+      mk = (fs, add) =>
+        new THREE.ShaderMaterial({
+          uniforms: u,
+          vertexShader: RING_VS,
+          fragmentShader: fs,
+          transparent: true,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          blending: add ? THREE.AdditiveBlending : THREE.NormalBlending
+        }),
+      geo = partial ? RING_ENSO : RING_INK,
+      m = new THREE.Mesh(geo, mk(partial ? ENSO_FS : RING_FS_INK, false)),
+      g = new THREE.Mesh(geo, mk(partial ? ENSO_FS_GLOW : RING_FS_BLOOD, true));
+    g.renderOrder = 6;
+    m.add(g);
+    return m;
+  }
+  function updateRings(dt) {
+    let w = 0;
+    for (const r of rings) {
+      r.age += dt;
+      if (r.age > r.life) {
+        scene.remove(r.m);
+        r.m.material.dispose();
+        if (r.ink) r.m.children[0].material.dispose();
+        continue;
+      }
+      if (r.age < 0) {
+        rings[w++] = r; // still waiting to show
+        continue;
+      }
+      r.m.visible = true;
+      const u = r.age / r.life;
+      r.m.scale.setScalar(0.05 + r.size * (1 - Math.pow(1 - u, 3)));
+      if (r.ink) r.m.material.uniforms.op.value = (1 - u) * Math.min(1, r.op + 0.2);
+      else r.m.material.opacity = (1 - u) * r.op;
+      if (!r.floor && !r.fixed && camera) r.m.quaternion.copy(camera.quaternion);
+      rings[w++] = r;
+    }
+    rings.length = w;
+  }
+
+  // floor glow: a flat additive disc that lights the floor under a blast, then fades
+  const DISC = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
+    discs = [];
+  function disc(p, col, size, life) {
+    const m = new THREE.Mesh(
+      DISC,
+      new THREE.MeshBasicMaterial({ map: TEX_GLOW, color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    m.position.set(p.x, 0.015, p.z);
+    m.scale.setScalar(size);
+    m.renderOrder = 1;
+    scene.add(m);
+    discs.push({ m, life, age: 0 });
+  }
+  function updateDiscs(dt) {
+    let w = 0;
+    for (const d of discs) {
+      d.age += dt;
+      if (d.age > d.life) {
+        scene.remove(d.m);
+        d.m.material.dispose();
+        continue;
+      }
+      const u = d.age / d.life;
+      d.m.material.opacity = 0.7 * (u < 0.08 ? u / 0.08 : Math.pow(1 - (u - 0.08) / 0.92, 1.6));
+      discs[w++] = d;
+    }
+    discs.length = w;
+  }
+
+  const COL = el => (typeof ECOL !== 'undefined' && ECOL[el]) || '#ffffff';
+  const HOT = {
+    fire: '#ffd24a',
+    flash: '#7fd8ff',
+    water: '#d4f4ff',
+    wind: '#6fe3ff',
+    earth: '#6b5a44',
+    blast: '#fff0a0',
+    shadow: '#2a0f4a',
+    star: '#ffffff'
+  };
+
+  // the air impact's pressure dome (spec §2.3a): a thin additive shell that balloons out from a heavy spike
+  const DOME = new THREE.SphereGeometry(1, 24, 16),
+    domes = [];
+  function updateDomes(dt) {
+    let w = 0;
+    for (const d of domes) {
+      d.age += dt;
+      if (d.age > d.life) {
+        scene.remove(d.m);
+        d.m.material.dispose();
+        continue;
+      }
+      const u = d.age / d.life;
+      d.m.scale.setScalar(0.1 + d.size * (1 - Math.pow(1 - u, 2.5)));
+      d.m.material.opacity = (1 - u) * 0.28;
+      domes[w++] = d;
+    }
+    domes.length = w;
+  }
+
+  return {
+    scene,
+    GLOW,
+    SPARK,
+    SMOKE,
+    PUFF,
+    STREAK,
+    ROCKS,
+    rocks,
+    spawnRock,
+    bolt,
+    bolts,
+    ring,
+    rings,
+    inkRing,
+    disc,
+    discs,
+    DOME,
+    domes,
+    COL,
+    HOT,
+    /** Live particle counts (the VFX lab's readout). */
+    stats() {
+      return {
+        glow: GLOW.P.length,
+        spark: SPARK.P.length,
+        smoke: SMOKE.P.length + PUFF.P.length,
+        streak: STREAK.P.length,
+        rocks: rocks.length,
+        meshes: rings.length + bolts.length + domes.length + discs.length
+      };
+    },
+    update(dt, cam, heightPx, fov) {
+      camera = cam;
+      pScale.value = heightPx / (2 * Math.tan(((fov || cam.fov) * Math.PI) / 360));
+      GLOW.update(dt);
+      SPARK.update(dt);
+      SMOKE.update(dt);
+      PUFF.update(dt);
+      STREAK.update(dt);
+      updateRocks(dt);
+      updateDiscs(dt);
+      updateBolts(dt);
+      updateRings(dt);
+      updateDomes(dt);
+    }
+  };
+}
