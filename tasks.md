@@ -69,7 +69,7 @@ Do not: unify playback.js's `ease` (a different curve, classic script); change a
 Accept: grep shows one definition each under js/render3d + js/map3d; lint + tests pass; Monster QA no errors.
 Result: js/render3d/m3d.mjs (clamp, lerp, ease = smoothstep, smooth, wrap); geo3d imports + re-exports them; secondary3d, gait3d, ik3d, poses3d, poses3d-attack, poses3d-cele, actors3d import from it — one definition each under js/render3d + js/map3d (playback.js's ease-in-out stays: a different curve in a classic script). Monster QA no errors; tests pass.
 
-### [ ] T-271: Dev tools load on demand
+### [x] T-271: Dev tools load on demand
 Spec: §2.22          Goldens: unchanged          Save: no change
 Goal: the game loads no dev code until a dev tool opens; a new dev tool = one file + one `DEV_TOOLS` entry.
 Files: index.html (drop vfx-lab.js, vfx-panel.js, anim-lab.js), js/ui/dev.js (new: `DEV_TOOLS = { vfx: [...files], anim: [...] }`,
@@ -79,7 +79,7 @@ Do not: move debug-panel.js (the Debug log is for players' bug reports); change 
 Accept: a fresh load defines no `LAB` / `animLab*` globals; each lab opens from the Dev tab and works (ui-smoke + QA); lint passes
 (ESLint globals: add the lazy files to the shared list in eslint.config.mjs).
 QA: menu › Dev › VFX lab, Animation lab, VFX panel in a Monster game.
-Result:
+Result: js/ui/dev.js: DEV_TOOLS { vfx, lab, anim } + devLoad / devOpen (scripts injected once, in order); vfx-panel.js, vfx-lab.js, anim-lab.js out of index.html; menu (VFX lab, Animation lab), the match's VFX button / V key and the Cut-scene / Animation lab panels go through devOpen; eslint.config.mjs reads the dev file list for shared globals. UI smoke 13/13 (asserts no lab globals before the lab opens).
 
 ### [ ] T-272: Island map — camera and input out of `create`
 Spec: §4.9 §4.18c          Goldens: unchanged          Save: no change

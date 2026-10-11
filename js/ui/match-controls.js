@@ -133,7 +133,7 @@ addEventListener('keydown', e => {
   else if (e.key === 't' || e.key === 'T') railOpen('tac');
   else if (e.key === 'h' || e.key === 'H')
     railOpen(A.railTab === 'coach' && !$('#mrail').hidden ? null : 'coach'); // the coach panel (spec §2.25)
-  else if ((e.key === 'v' || e.key === 'V') && $('#vfxp')) vfxToggle();
+  else if ((e.key === 'v' || e.key === 'V') && $('#vfxp')) devOpen('vfx', () => vfxToggle());
   else if (e.key === 'c' || e.key === 'C')
     toggleCam3D(); // cycle the camera (its modes are in ⚙ too)
   else if (/^[1-9]$/.test(e.key) && A.railTab === 'tac' && !$('#mrail').hidden) flipTech(+e.key - 1);

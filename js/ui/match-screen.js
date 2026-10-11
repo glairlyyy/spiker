@@ -65,7 +65,7 @@ function startMatch(fx) {
       <div class="cg view"><button class="btn" id="railbtn" onclick="railOpen()" ${tip('Box score and tactics')}>Details <kbd>B</kbd></button>
         <button class="btn" onclick="toggleFullscreen()" ${tip('Fullscreen court')} aria-label="Fullscreen">⛶ <kbd>F</kbd></button>
         <button class="btn" id="snd" onclick="toggleSound()" aria-label="Sound">${SND.on ? '🔊' : '🔇'}</button>
-        ${fx.vfx ? `<button class="btn" onclick="vfxToggle()" ${tip('Tune every effect live while the game plays; Export the values')}>VFX <kbd>V</kbd></button>` : ''}
+        ${fx.vfx ? `<button class="btn" onclick="devOpen('vfx', () => vfxToggle())" ${tip('Tune every effect live while the game plays; Export the values')}>VFX <kbd>V</kbd></button>` : ''}
         ${pop('⚙', settingsMenu(), 'setpop')}</div>
     </div>
     ${fx.vfx ? '<aside class="panel vfxpanel vfxp" id="vfxp" hidden aria-label="VFX tuning"></aside>' : ''}
@@ -156,7 +156,7 @@ function startMatch(fx) {
   showTac(1);
   open3D();
   if (!fx.cine && !fx.anim) prepOpen(); // match prep: the intro before every match (spec §2.26)
-  if (fx.cine || fx.anim) vfxToggle(); // the Cut-scene / Animation lab: its panel open from the start
+  if (fx.cine || fx.anim) devOpen('vfx', () => vfxToggle()); // the Cut-scene / Animation lab: its panel open from the start
   if (fx.anim)
     for (const ev of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'wheel'])
       $('#stage').addEventListener(ev, animPointer, { passive: false });

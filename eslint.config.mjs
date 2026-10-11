@@ -6,7 +6,9 @@ import fs from 'node:fs';
 import * as espree from 'espree';
 
 const html = fs.readFileSync(new URL('./index.html', import.meta.url), 'utf8');
-const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
+// the dev tools (js/ui/dev.js DEV_TOOLS) load on demand, but their names are shared globals all the same
+const devFiles = [...fs.readFileSync(new URL('./js/ui/dev.js', import.meta.url), 'utf8').matchAll(/'(js\/[^']+\.js)'/g)].map(m => m[1]);
+const scripts = [...new Set([...[...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]), ...devFiles])];
 const shared = {};
 for (const f of scripts) {
   const ast = espree.parse(fs.readFileSync(new URL('./' + f, import.meta.url), 'utf8'), { ecmaVersion: 2023, sourceType: 'script' });

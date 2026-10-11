@@ -154,7 +154,9 @@ const step = async (name, fn) => {
     await pg.waitForFunction(() => document.querySelector('#app').textContent.length > 100);
   });
   await step('VFX lab: every effect', async () => {
-    await ev(() => navigate('vfxlab'));
+    // dev tools load on demand (T-271): nothing of the lab before it opens
+    if (await ev(() => typeof LAB !== 'undefined' || typeof vfxToggle !== 'undefined')) throw new Error('dev tools loaded up front');
+    await ev(() => devOpen('lab', () => navigate('vfxlab')));
     await pg.waitForFunction(() => document.querySelector('.vlab3d') && labMod, null, { timeout: 30000 });
     const n = await ev(() => {
       labOpt('speed', 0);
@@ -174,7 +176,7 @@ const step = async (name, fn) => {
   });
   await step('Animation lab: record, freeze, scrub, edit, copy', async () => {
     await ev(() => navigate('menu'));
-    await ev(() => startAnimLab());
+    await ev(() => devOpen('anim', () => startAnimLab()));
     await pg.waitForFunction(() => typeof R3D !== 'undefined' && R3D && A && A.animLab && !A.hold, null, { timeout: 120000 });
     await pg.waitForFunction(() => R3D.anim.info(0).n > 5, null, { timeout: 60000 });
     const r = await ev(() => {
@@ -253,6 +255,7 @@ const step = async (name, fn) => {
     await pg.keyboard.press('Space');
     if (!(await ev(() => window.__xd === 1 && !$('#xbox') && !A.paused))) throw new Error('the exchange did not end on skip');
     await pg.keyboard.press('v'); // the VFX panel: live controls over the running game
+    await pg.waitForFunction(() => $('#vfxp') && !$('#vfxp').hidden, null, { timeout: 10000 }); // (loads on demand, T-271)
     const n = await ev(() => ($('#vfxp') && !$('#vfxp').hidden ? $('#vfxp').querySelectorAll('input').length : 0));
     if (n < 15) throw new Error(`VFX panel: ${n} controls`);
     await ev(() => {
