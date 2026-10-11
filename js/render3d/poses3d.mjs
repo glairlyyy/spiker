@@ -4,7 +4,7 @@
 // `ar` (right arm) defaults to the mirror of `al`. The right arm is the hitting arm.
 import * as THREE from 'three';
 import { mirror } from './players3d.mjs';
-import { clamp } from '../map3d/geo3d.mjs'; // a module (map3d's tests load this file): not the classic global
+import { clamp } from './m3d.mjs';
 import { RA, spikePose, servePose } from './poses3d-attack.mjs'; // spike / swing / serve poses
 import { celePose } from './poses3d-cele.mjs'; // point celebrations (owner, 2026-10-09)
 

@@ -4,7 +4,7 @@
 // mirror and clamp (hence its own V and leg); everything imported from poses3d.mjs is used inside functions only.
 import * as THREE from 'three';
 import { mirror } from './players3d.mjs';
-import { clamp } from '../map3d/geo3d.mjs';
+import { clamp } from './m3d.mjs';
 import {
   P,
   sm,

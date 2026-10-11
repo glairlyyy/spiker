@@ -9,16 +9,8 @@ export const FOG_SOFT = 14; // fog edge softness (m)
 export const toWorld = ([x, y]) => [x * MAP_M, y * MAP_M];
 export const toMap = (x, z) => [x / MAP_M, z / MAP_M];
 
-export const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-export const lerp = (a, b, t) => a + (b - a) * t;
-/** Smoothstep of v between a and b (0..1). */
-export const smooth = (a, b, v) => {
-  const t = clamp((v - a) / (b - a), 0, 1);
-  return t * t * (3 - 2 * t);
-};
-
-/** An angle wrapped to −π … π. */
-export const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+import { clamp, lerp, smooth, wrap } from '../render3d/m3d.mjs'; // the 3D code's one math module
+export { clamp, lerp, smooth, wrap };
 /** Stable 0..1 hash of a string (FNV-1a; the same as hstr in js/engine/elements.js). */
 export const hstr = s => {
   let h = 2166136261;

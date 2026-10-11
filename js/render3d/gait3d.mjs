@@ -7,9 +7,8 @@
 // turns to a shuffle / backpedal, jumps or dives. Tuned by VFX `gait`.
 import * as THREE from 'three';
 import { twoBone } from './ik3d.mjs';
+import { clamp, ease } from './m3d.mjs';
 
-const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-const ease = t => t * t * (3 - 2 * t);
 const hip = new THREE.Vector3(),
   kn = new THREE.Vector3(),
   ft = new THREE.Vector3(),

@@ -4,8 +4,8 @@
 // turnLag before the pose is applied, settleSink after the grounding (before the foot IK, which bends the knees for it),
 // headSteady last. Tuned by VFX `sec` (js/data/vfx.js).
 import * as THREE from 'three';
+import { clamp } from './m3d.mjs';
 
-const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const UP = new THREE.Vector3(0, 1, 0),
   hp = new THREE.Vector3(),
   dir = new THREE.Vector3(),

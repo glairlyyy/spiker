@@ -60,14 +60,14 @@ Accept: fx3d.mjs < 150 lines; lint + tests pass; VFX lab: every effect fired wit
 QA: menu › Dev › VFX lab → each effect.
 Result: fx3d.mjs 1149 → 15 lines (createFx = createKit + groundFx / hitsFx / elementsFx / trailFx, same API). fx/kit.mjs 662 (textures, shaders, pools, rocks / bolts / rings / discs / domes + update / stats), ground 139, hits 150, elements 143, trail 133. Local R → rr. Effect bodies moved verbatim. QA: VFX lab, seeded Math.random — blast particle counts identical to HEAD; later effects within ±few (the lab's live rAF ages leftovers); no errors.
 
-### [ ] T-270: One small math module for the 3D code
+### [x] T-270: One small math module for the 3D code
 Spec: —          Goldens: unchanged          Save: no change
 Goal: `clamp / lerp / ease / smooth / wrap` defined once for js/render3d and js/map3d (today 2–3 copies; two `ease` curves).
 Files: js/render3d/m3d.mjs (new), secondary3d.mjs, gait3d.mjs, ik3d.mjs, poses3d-cele.mjs, actors3d.mjs, js/map3d/geo3d.mjs (re-exports)
 Do not: unify playback.js's `ease` (a different curve, classic script); change a curve — keep both as `easeS` (smoothstep) and
 `easeIO` only if both are used.
 Accept: grep shows one definition each under js/render3d + js/map3d; lint + tests pass; Monster QA no errors.
-Result:
+Result: js/render3d/m3d.mjs (clamp, lerp, ease = smoothstep, smooth, wrap); geo3d imports + re-exports them; secondary3d, gait3d, ik3d, poses3d, poses3d-attack, poses3d-cele, actors3d import from it — one definition each under js/render3d + js/map3d (playback.js's ease-in-out stays: a different curve in a classic script). Monster QA no errors; tests pass.
 
 ### [ ] T-271: Dev tools load on demand
 Spec: §2.22          Goldens: unchanged          Save: no change

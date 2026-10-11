@@ -2,6 +2,7 @@
 // ball at contacts, hand / eye light trails, auras, floor rings (zone, captain's buff) and particles; coaches on the
 // sideline; dressing everyone for a match.
 import * as THREE from 'three';
+import { wrap } from './m3d.mjs';
 import { applyPose, smoothBones, torsoDir, bendArm, groundSnap, setFace, updateVrm, dress, undress, mirror } from './players3d.mjs';
 import { poseDone, playerPose, coachPose, gaitNow } from './poses3d.mjs';
 import { celeMs } from './poses3d-cele.mjs';
@@ -13,7 +14,6 @@ import { gaitIK } from './gait3d.mjs';
 
 const tmp = new THREE.Vector3(),
   tmp2 = new THREE.Vector3();
-const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 
 function moodOf(d) {
   const p = d.p,

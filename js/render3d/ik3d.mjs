@@ -5,6 +5,7 @@
 // VFX `ik` (js/data/vfx.js): on / off for each, slip and step time; the Animation lab's foot marks show the planting.
 import * as THREE from 'three';
 import { Wto } from './units3d.mjs';
+import { ease } from './m3d.mjs';
 
 const vH = new THREE.Vector3(),
   vK = new THREE.Vector3(),
@@ -72,7 +73,6 @@ const fwd = new THREE.Vector3(),
   tgt = new THREE.Vector3(),
   pole = new THREE.Vector3(),
   hip = new THREE.Vector3();
-const ease = t => t * t * (3 - 2 * t);
 /**
  * Foot planting after the pose is grounded: on the floor (not jumping, not lying), a foot the pose has down is locked where
  * it touched; when the pose lifts it, or it would slide more than `slip` m, it steps from the lock to where the pose wants
