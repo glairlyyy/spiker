@@ -113,12 +113,12 @@ Do not: move, add or drop any R() draw; change beat / act shapes or snapshot fie
 Accept: goldens unchanged; no function in the two files > 80 lines; `npm test` full.
 Result: Done before T-259 / T-260 (no agent was on them; deviation from the order note — they now hook into the named parts). rally() 124 → 17 lines: possessionStart, setPhases ({ end } | { s, h, a }), attackPhases, endOf. newMatch 110 → 69: matchTallies, lineupOf, rallyState, matchPlans (key order kept; the serve R() draw in place). Goldens unchanged; 131/131 full; nothing in the two files > 80 lines.
 
-### [ ] T-276: Refresh the refactor notes
+### [x] T-276: Refresh the refactor notes
 Spec: —          Goldens: unchanged          Save: no change
 Goal: the "Refactor seams to cut only when the feature is specced" list under Later matches the code after T-269–T-275 (drop the
 done ones; add what remains: `Overlay` 511, `SOUND` 490, town / life / pins builders ~300 each, `startBeat` 113).
 Files: tasks.md (that list only)
-Result:
+Result: Later › refactor seams rewritten with today's sizes: done ones dropped (createFx, map3d create, engine loop); added Overlay 511, SOUND 490, fx createKit 490, map3d builders, buildArena, startBeat, career-hub.js, career.css / match.css; ace-trait / AI-memory hooks point at the T-204 / T-275 seams; right-click actions stay unbuilt until decided.
 
 **Open from the match revamp (spec §2.14, §2.17): T-259 → T-260, one engine agent.** Seams in place: `js/data/momentum.js`
 (`STAGES`, `STAGE_IDS`, `stageOfSnap`), `js/engine/fire.js` (`capReady`, `capCall` stubs), act `stage` → `stageShow` + `Dir.stage`, the
@@ -205,12 +205,18 @@ Features (spec first):
   them — textures resized to 1024 and KTX2 (or WebP), meshopt geometry; three's KTX2Loader / MeshoptDecoder decode — target 1.5–2.5 MB
   each; cache the decoded files in IndexedDB so a second visit downloads nothing. Goes with T-088.
 
-Refactor seams to cut only when the feature is specced (not now — YAGNI):
+Refactor seams to cut only when the feature is specced or the file is next touched (not now — YAGNI; sizes 2026-10-12):
 
 - Year 2 / Endless (§4.26, §4.28): `run.year` + a `Season` helper for week-of-season checks (story gates, Stars curves,
   CALENDAR / CUPS) — needs a save bump.
-- Ace traits (§8): one roll-modifier hook at the stuff / receive / clutch / hang rolls, on top of T-204's named steps.
-- Big render closures (`createFx` 540, `Overlay` 481, map3d `create` 354, `createTown` 343): split by effect / layer when next touched.
+- Ace traits (§8) / AI memory (§5.7): a roll-modifier hook at the stuff / receive / clutch / hang rolls on top of the named
+  engine steps (T-204, T-275); per-match state in `newMatch`'s makers (`matchTallies`, `rallyState`).
+- Kenshi-style right-click actions (§5.7, proposed): an action list per picked thing once decided — not before.
+- Big closures, split by layer when next touched: `Overlay` 511 (render/overlay.js), `SOUND` 490 (audio/sfx.js), fx `createKit`
+  490 (the pools and meshes: one file per primitive), map3d builders `createTown` 343, `createLife` 309, `createFurniture` 304,
+  `buildTerrain` 227, arena3d `buildArena` 295; `startBeat` (playback.js) by act group.
+- UI files: `career-hub.js` 533 (top bar / rail / inbox / brief), `css/career.css` 1800 by screen, `css/match.css` 1494 (HUD /
+  rail / result / dev lab).
 
 Cleanup, part 2: T-082…T-087 done (see Done). Open:
 
