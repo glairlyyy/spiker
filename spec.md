@@ -733,6 +733,16 @@ mood)`.
   - **Parked ideas to weigh (not decided):** the match remembering your choices ("AI memory": they read your favourite lane
     over a match / a season); back-row defensive commands; temperament changing how a team plays (T-259); scouting that
     reveals an ace's weakness shown in the match UI (§8 ace traits); a smarter coach (§8).
+  - **Decided (owner, 2026-10-11)** — agency is **prep, not presses**: choices made before the match play out on their own
+    (auto-battler feel); the thrill is outsmarting the other side; each choice tilts points, never decides one alone. No QTE, no
+    in-rally input (§2.16 removed). The captain's calls stay (§2.17).
+    - **Match prep = starting rotation**: you place the 4 starters in the rotation order (who serves first, who starts front row,
+      who stands opposite whom) and the 2 on the bench. AI teams set theirs with the same function (today's order = its default).
+      **[open: who may set it — always you, or captain / coach trust]**
+    - **Team momentum type** (temperament, §2.14) is not selectable: it comes from the **captain's personality** (Hot-headed /
+      Slow burner / Steady / Ice) and the **team OVR** — a stronger team swings less (fire gains and losses × smaller), a weaker
+      one swings more. Shown on match prep as a fact with its tooltip. Replaces §2.14's squad-vote rule when built.
+    - More prep features: under discussion.
 
 ## 6. Narrative rules [locked; faction/region/Gazette/event strings built]
 
