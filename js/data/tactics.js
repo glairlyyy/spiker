@@ -37,3 +37,31 @@ const BLOCK = {
   bunchStartZ: [0.42, 0.58],
   bunchPin: 0.65
 };
+
+/**
+ * Laning (spec §2.24): the hitter aims at a channel — `line` (down their own side) or `cross` (to the far side) — and the
+ * block reads one before the hit. habit: a hitter's line share [min, max] (a hash of the player; power hitters lean cross by
+ * powerCross per power point). readK: how far a blocker trusts what they've seen this match (× their read quality, readQ).
+ * see0 / seeK / seeMax: how much the hitter reacts to the block's shade (wit vs the blocker's wit); away: the hitter's line share
+ * when they react fully (away from a line read; 1 − away from a cross read). weakK: a double block — the
+ * lean toward the weaker blocker's hand, per point of block strength. on / off / offDbl: the block's coverage × when the shot
+ * goes into the read channel / the other one (a single block, a double). handK: the hand that meets the ball, its strength
+ * against the pair's average (± per point). shade: the dig distance × when the shot goes where the block was not (the back row
+ * covers it). crossMin: the cross target is at least this far across (a middle attack angles to a corner).
+ */
+const LANE = {
+  habit: [0.3, 0.7],
+  powerCross: 0.002,
+  readK: 2.2,
+  see0: 0,
+  seeK: 0.5,
+  seeMax: 0.6,
+  away: 0.25,
+  weakK: 0.012,
+  on: 1.25,
+  off: 0.4,
+  offDbl: 0.65,
+  handK: 0.008,
+  shade: 0.85,
+  crossMin: 0.3
+};

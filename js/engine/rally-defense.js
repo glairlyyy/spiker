@@ -53,7 +53,10 @@ function block(c, x) {
     ) {
       smashed = true;
       blockBreak(c, x, k);
-    } else if (!late && R() < stuffChance(bp, cov, pow) * blockSkill(bb) * (x.stuffK ?? 1)) return blockStuff(c, x, k); // × your block timing (spec §2.16)
+    } else if (!late && R() < stuffChance(bp, cov, pow) * blockSkill(bb) * (x.stuffK ?? 1)) {
+      laneTag(c, x, 'stuff');
+      return blockStuff(c, x, k); // × your block timing (spec §2.16)
+    }
     // touch or tool off the hands (not after a block break: that ball is already through)
     if (!smashed && R() < sig((bp - pow) / 20 + 0.2)) {
       touched = true;
@@ -66,7 +69,8 @@ function block(c, x) {
     // the blockers' scene lines ("I read you") only when the block got a hand on it — a kill block, a touch or a soft
     // block (owner 2026-10-07): beaten or broken through, they have nothing to say (no random draws)
     if (c.V && !touched) dropDefScene(c.m);
-  }
+    if (!smashed) laneTag(c, x, touched ? 'touch' : 'beaten');
+  } else if (cov <= BLOCK_MIN_COV && x.read === 'wrong') laneTag(c, x, 'beaten'); // read the wrong way: no block left
   return { touched, softTouch, smashed, pow };
 }
 /** Block break: drill, hit-stop, the wall cracks; the ball is through (the dig follows). */
@@ -284,7 +288,7 @@ function digSetup(c, x, bl) {
     cands = floor.length ? floor : defT.P.filter(p => !blockers.includes(p));
   const dg = nearest(m, cands, lx, lz);
   const q0 = m.pos[dg.id],
-    dd0 = dist(q0, lx, lz);
+    dd0 = dist(q0, lx, lz) * (x.read === 'wrong' && !tip && !x.around ? LANE.shade : 1); // the back row covers where the block was not (spec §2.24)
   let dsc = Formula.digScore(dg, defT, dd0);
   if (touched) dsc *= softTouch ? 1.4 : 1.15;
   // Rolling Receive on defense: far balls cost much less

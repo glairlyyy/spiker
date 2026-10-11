@@ -202,7 +202,7 @@ function drillStep(dt) {
   }
 }
 /** Lifetimes (ms of world time) of the one-off overlay pieces faded by stepEffects. */
-const FX_LIFE = { real: 750, lines: 380, wallFx: 650, ptFlash: 900, chant: 2400, link: 1100, crack: 2600, toBanner: 2600 };
+const FX_LIFE = { real: 750, lines: 380, wallFx: 650, ptFlash: 900, chant: 2400, link: 1100, crack: 2600, toBanner: 2600, lane: 2400 };
 /** Age the screen-space effects by dt ms of world time (particles, labels, overlays, shake, flash, crowd, coaches). */
 function stepEffects(dt) {
   for (const p of A.parts) {

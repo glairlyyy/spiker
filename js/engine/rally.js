@@ -82,6 +82,8 @@ function* rally(m, B, V, atk, pas, qual, scr = null) {
     Object.assign(x, fakeSet(c, x));
     Object.assign(x, formBlock(c, x));
     x.youBlk = blockYou(c, x); // you are in this block (spec §2.16): your jump is your press
+    Object.assign(x, laneRead(c, x)); // laning (spec §2.24): the block reads a channel, the hitter aims
+    Object.assign(x, laneAim(c, x));
     Object.assign(x, setBeat(c, x));
     yield* blockPrompt(c, x); // the set is up, their hitter runs in: press E to jump — the timing is yours
     x.cov0 = x.cov; // the block's coverage before the shot choice (Decide)
@@ -165,6 +167,7 @@ function tallyAttack(m, side, x, k0, bk0) {
     a.k++;
     a[kind + 'k']++;
   }
+  laneRecord(m, side, x, kill);
 }
 /**
  * 6. Multi-attack fake set: several hitters approach, the setter shows one and sets another — the first blocker
@@ -505,13 +508,7 @@ function landingSpot(c, x) {
   const { m, ds, defT } = c,
     { tip, around, b1, bz0, bz1, spZ, elS, blockers, appX, pj, pow } = x;
   const bMean = b1 ? (bz0 + bz1) / 2 : bz0;
-  let lz = around
-    ? bMean > 0.5
-      ? rnd(0.1, 0.35)
-      : rnd(0.65, 0.9)
-    : R() < 0.5
-      ? clamp(spZ + rnd(-0.12, 0.12), 0.1, 0.9)
-      : clamp(1 - spZ + rnd(-0.12, 0.12), 0.1, 0.9);
+  let lz = around ? (bMean > 0.5 ? rnd(0.1, 0.35) : rnd(0.65, 0.9)) : clamp(laneZ(spZ, x.ch) + rnd(-0.12, 0.12), 0.1, 0.9); // the channel the hitter aimed at (spec §2.24)
   let lx = sx(ds, tip ? rnd(390, 460) : rnd(170, 400));
   if (elS && elS.far)
     [lx, lz] = elFar(

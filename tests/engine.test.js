@@ -344,6 +344,42 @@ test.slow('engine: lane-read block — stuff rate and defence settings', () => {
   );
 });
 
+test.slow('engine: laning — the block reads a channel, a right read stops more, the hitter aims (spec §2.24)', () => {
+  const g = load(31),
+    T = g.mkTeams();
+  let rd = 0,
+    ok = 0,
+    okK = 0,
+    wk = 0;
+  for (let i = 0; i < 120; i++) {
+    const m = g.simMatch(T[i % 8], T[(i * 5 + 2) % 8]);
+    for (const a of m.att) {
+      rd += a.rd;
+      ok += a.rdOk;
+      okK += a.rdBeat;
+      wk += a.rdWk;
+    }
+  }
+  const right = ok / rd,
+    kRight = okK / ok,
+    kWrong = wk / (rd - ok);
+  assert(right > 0.4 && right < 0.6, `right reads ${(100 * right).toFixed(1)} % (40–60)`);
+  assert(kWrong > kRight + 0.1, `kills off a right read ${(100 * kRight).toFixed(1)} % vs a wrong one ${(100 * kWrong).toFixed(1)} %`);
+  // channels: line stays on the hitter's side, cross goes to the far side (a middle attack angles to a corner)
+  for (const z of [0.15, 0.3, 0.5, 0.7, 0.85]) {
+    assert(g.laneOf(z, g.laneZ(z, 'line')) === 'line' && g.laneOf(z, g.laneZ(z, 'cross')) === 'cross', `channels at ${z}`);
+    assert(Math.abs(g.laneZ(z, 'cross') - 0.5) >= g.LANE.crossMin - 1e-9, `cross angles away at ${z}`);
+  }
+  // habits differ by player and stay in range
+  const hs = T.flatMap(t => g.squadOf(t)).map(g.habitLine);
+  assert(Math.min(...hs) >= 0.15 && Math.max(...hs) <= 0.85 && Math.max(...hs) - Math.min(...hs) > 0.2, 'habits spread');
+  // a recorded match shows the projected direction during the set: act `lane` with the block's read channel when it read one
+  const m = g.newMatch(T[0], T[1], true),
+    acts = [];
+  while (!m.over) for (const b of g.playRally(m).beats) for (const a of b.acts) if (a.k === 'lane') acts.push(a);
+  assert(acts.length > 10 && acts.some(a => a.bz != null) && acts.every(a => Number.isFinite(a.x1) && Number.isFinite(a.z1)), 'lane acts');
+});
+
 test('engine: defence settings — AI default, captain switch, scouting habits', () => {
   const g = load(9),
     T = g.mkTeams(),

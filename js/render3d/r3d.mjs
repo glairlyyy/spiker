@@ -12,7 +12,7 @@ import { createFx } from './fx3d.mjs';
 import { makeTrail } from './trails3d.mjs';
 import { W, lowEnd } from './units3d.mjs';
 import { animCapture, animReplay, animFreeze, animOrbit, animInfo, animClear } from './anim3d.mjs';
-import { buildArena, dressArena, updateBall, updateBallShadow, updateNet, updatePointFlash, ballDir } from './arena3d.mjs';
+import { buildArena, dressArena, updateBall, updateBallShadow, updateLane, updateNet, updatePointFlash, ballDir } from './arena3d.mjs';
 import { buildVenues, dressVenue, updateVenue } from './venue3d.mjs';
 import {
   base,
@@ -347,6 +347,7 @@ function draw() {
   updateBall(w, now);
   handTouch(w, now);
   updateBallShadow(w); // after handTouch: it moves the ball
+  updateLane(w); // laning (spec §2.24): projected spike direction and the block's read
   // bodies, hair springs and trails run on the world clock (A.ts): in slow motion everything slows together
   const wdt = dt * Math.max(0.02, Math.min(1, A.ts ?? 1));
   if (!A.qaFreeze) for (const pl of w.people) if (pl.d) posePlayer(pl, pl.d.p.id === A.digHero ? dt : wdt, w.ball.position, w.fx); // qaFreeze: test hook; a digger chasing a far ball poses at normal speed

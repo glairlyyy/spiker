@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-265** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-266** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -538,6 +538,8 @@ Cleanup, part 2: T-082…T-087 done (see Done). Open:
   LFS is enabled for glairlyyy/spiker and that the artifact publish step may decode/encode (`base64 -d` / `base64`) at publish time.
 
 ## Done
+
+- T-265: Laning — channels, the block's read, the hitter's aim, the projected spike direction (spec §2.24; spec chat, owner request 2026-10-12; goldens updated)
 
 - T-258: dropped (owner, 2026-10-10) — the setter's pick / Dump / AI "Mine!" went with the prompts (§2.16 removed); its serve / attack removal is in T-264.
 

@@ -211,7 +211,22 @@ export function buildArena(scene) {
   scene.add(ballGlow);
   const ballLight = new THREE.PointLight('#ffffff', 0, 4.5, 2);
   scene.add(ballLight);
+  // laning (spec §2.24): the hitter's projected direction (an arrow) and the block's read channel (a fan), flat on the floor
+  const laneMesh = n => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+    const me = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
+    me.renderOrder = 2;
+    me.frustumCulled = false;
+    me.visible = false;
+    scene.add(me);
+    return me;
+  };
+  const laneArrow = laneMesh(9),
+    laneFan = laneMesh(3);
   return {
+    laneArrow,
+    laneFan,
     hemi,
     sun,
     rim,
@@ -320,4 +335,58 @@ export function updateBall(w, now) {
   w.ballLight.position.copy(ball.position);
   w.ballLight.color.set(gc);
   w.ballLight.intensity = 2.6 * gk * Math.min(1, Math.max(0, (ball.position.y - 0.3) / 1.2)); // fades near the floor: no hotspot
+}
+
+const lp0 = new THREE.Vector3(),
+  lp1 = new THREE.Vector3(),
+  ld = new THREE.Vector3(),
+  ln = new THREE.Vector3(),
+  lh = new THREE.Vector3();
+/** Laning (spec §2.24): A.lane (act `lane`) → the attack arrow (hitter → aimed channel) and the block's read fan, fading with its life. */
+export function updateLane(w) {
+  const L = A.lane,
+    ar = w.laneArrow,
+    fan = w.laneFan;
+  ar.visible = fan.visible = !!L;
+  if (!L) return;
+  const op = Math.min(1, (1 - L.life) * 8) * Math.min(1, L.life * 3),
+    y = 0.02;
+  // the arrow: a shaft and a head, from the hitter's take-off spot to the channel's landing area
+  Wto(lp0, L.x0, L.z0, 0);
+  Wto(lp1, L.x1, L.z1, 0);
+  ld.subVectors(lp1, lp0).setY(0).normalize();
+  ln.set(-ld.z, 0, ld.x);
+  const hw = 0.12,
+    hhw = 0.4,
+    hl = 0.8;
+  lh.copy(lp1).addScaledVector(ld, -hl);
+  const a = ar.geometry.attributes.position,
+    put = (i, v, n, k) => a.setXYZ(i, v.x + n.x * k, y, v.z + n.z * k);
+  put(0, lp0, ln, hw);
+  put(1, lp0, ln, -hw);
+  put(2, lh, ln, -hw);
+  put(3, lp0, ln, hw);
+  put(4, lh, ln, -hw);
+  put(5, lh, ln, hw);
+  put(6, lh, ln, hhw);
+  put(7, lh, ln, -hhw);
+  put(8, lp1, ln, 0);
+  a.needsUpdate = true;
+  ar.material.color.set(L.col || '#ffffff');
+  ar.material.opacity = 0.8 * op;
+  // the fan: from the block at the net to the channel it read (none when there was no real block)
+  fan.visible = L.bz != null;
+  if (!fan.visible) return;
+  const f = fan.geometry.attributes.position,
+    zNet = L.z0 + (L.bz - L.z0) * 0.2,
+    set = (i, x, z) => {
+      Wto(lp0, x, z, 0);
+      f.setXYZ(i, lp0.x, y - 0.004, lp0.z);
+    };
+  set(0, 500, zNet);
+  set(1, L.x1, Math.max(0, L.bz - 0.14));
+  set(2, L.x1, Math.min(1, L.bz + 0.14));
+  f.needsUpdate = true;
+  fan.material.color.set(L.bcol || '#ffffff');
+  fan.material.opacity = 0.28 * op;
 }

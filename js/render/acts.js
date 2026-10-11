@@ -290,6 +290,10 @@ const ACTS_ROSTER = {
   },
   setdir(a, d, bs) {
     if (d) d.setDir = a.dir;
+  },
+  /** Laning (spec §2.24): the hitter's projected direction and the block's read channel, on the floor while the set is up. */
+  lane(a, d, bs) {
+    A.lane = { ...a, life: 1 };
   }
 };
 const ACTS = { ...ACTS_FX, ...ACTS_UI, ...ACTS_ROSTER };

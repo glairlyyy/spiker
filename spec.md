@@ -306,6 +306,26 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
 - §2.23 Removed (owner, 2026-10-08): cut-ins (full banner and mini notification) and the commentary ticker, engine acts too;
   the read eye gauge (a full read shows 👁 after the role in your name tag); the team-colour line under the role tag.
 
+- §2.24 Laning (owner, 2026-10-12) **[built 2026-10-12, phase 1–2 + projection]**: every spike goes down a **channel** — **line**
+  (along the hitter's own side) or **cross** (to the far side; a middle attack angles to a corner, `LANE.crossMin`). No more
+  coin flip. Engine: js/engine/lanes.js, tuning `LANE` (js/data/tactics.js). Same code for every match (sims, AI, Monster).
+  - **The block reads** a channel before the hit (only when a real block forms): from what it has seen this hitter do this
+    match (`m.lanes[id]` = { line, cross }), trusted × the sharper blocker's read quality (wit + speed, `readQ`). No history → a guess.
+  - **The hitter aims**: a habit (line share 0.3–0.7 per player, a hash — power hitters lean cross), bent away from the block's
+    read as far as they see it (`see` = 0.5 × (hitter wit − blocker wit), 0–0.6), toward the weaker hand of a double block.
+  - **Resolve — read first, then stats**: shot into the read channel → block coverage × 1.25 (the stats decide stuff / touch /
+    through); the other channel → × 0.4 (single) / × 0.65 (double), and the back row covers it (dig distance × 0.85). A double
+    block's hand that meets the ball counts its own strength (± 20 %). A cut shot around a right read = the hitter beat the read.
+  - **You see it**: during the set a floor **arrow** in the hitter's colour shows the projected spike direction, and a **fan** in
+    the block's colour shows the channel the block read (act `lane`, render/acts.js → arena3d `updateLane`). After the hit a
+    tag over the first blocker: **Read it!** (stuffed / touched) · **Too strong!** (read right, still through) · **Wrong way!**.
+  - Measured (Read vs Read, 250 league matches): block reads 68 % of attacks, right 49 %; kills off a right read ~33 % vs ~55 %
+    off a wrong one; stuffs 8.1 % (was 9.4), kills 42 % (was 40) — inside the 7–11 % / 36–48 % targets. Tallies per side in
+    `m.att[side]`: `rd`, `rdOk`, `rdBeat`, `rdWk`.
+  - **Next (not built)**: reads on the result card ("Reads 7/11 · stuffed 2 · beaten by power 4"); hitters adapt when read
+    (their mix shifts); scouting gives the block a prior on a hitter; serve zones and serve habits; ⚙ to hide the projection;
+    reads remembered across matches **[open]**.
+
 ## 3. Menu [built]
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two
@@ -733,7 +753,10 @@ mood)`.
   - **Parked ideas to weigh (not decided):** the match remembering your choices ("AI memory": they read your favourite lane
     over a match / a season); back-row defensive commands; temperament changing how a team plays (T-259); scouting that
     reveals an ace's weakness shown in the match UI (§8 ace traits); a smarter coach (§8).
-  - **Decided (owner, 2026-10-11)** — agency is **prep, not presses**: choices made before the match play out on their own
+  - **Current direction (owner, 2026-10-11 – 12)**: (1) **Laning first** (§2.24, built) so reads and aims are real and visible;
+    (2) a Kenshi-style **right-click** on any player / thing lists what you may ask or do (requests as a player — teammates and the
+    coach answer by bond / trust; nothing is required; locked options show the gap), proposed, not decided.
+  - **Earlier (owner, 2026-10-11)** — agency is **prep, not presses**: choices made before the match play out on their own
     (auto-battler feel); the thrill is outsmarting the other side; each choice tilts points, never decides one alone. No QTE, no
     in-rally input (§2.16 removed). The captain's calls stay (§2.17).
     - **Match prep = starting rotation**: you place the 4 starters in the rotation order (who serves first, who starts front row,
@@ -741,7 +764,7 @@ mood)`.
     - **Team momentum type** (temperament, §2.14) is not selectable: it comes from the **captain's personality** (Hot-headed /
       Slow burner / Steady / Ice) and the **team OVR** — a stronger team swings less (fire gains and losses × smaller), a weaker
       one swings more. Shown on match prep as a fact with its tooltip. Replaces §2.14's squad-vote rule when built.
-    - **You are the player-coach** in career matches (owner, 2026-10-11): you set your side's prep and call its timeout. **Who
+    - **[dropped 2026-10-11 — breaks "you are a player"; too much for casual players]** **You are the player-coach** in career matches (owner, 2026-10-11): you set your side's prep and call its timeout. **Who
       starts** stays the coach's pick (rating, form, standing — §2.10), so your spot can still be lost (§4.23 F); you set
       everything else. Sim ⏭, NPC and Monster matches: the AI sets both sides' prep (same function).
     - **Prep items** (one screen, every item has an AI default = today's play, so skipping prep is fine):

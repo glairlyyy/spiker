@@ -99,8 +99,13 @@ function newMatch(a, b, rec, opts = {}) {
       stf: 0,
       qs: 0,
       mids: 0,
-      pins: 0
+      pins: 0,
+      rd: 0, // laning (spec §2.24): attacks into a block that read a channel; right reads; right reads that still lost the ball
+      rdOk: 0,
+      rdBeat: 0,
+      rdWk: 0 // kills off a block that read the wrong channel
     })), // attacks per side by kind and their kills (engine-only tally, no randoms)
+    lanes: {}, // laning (spec §2.24): hitter id → { line, cross } shots this match (what the blockers have seen)
     buff: {}, // player id → { lv, n } captain's buff (n = points left)
     t: [a, b],
     subs: [0, 0], // substitutions made this set per side (SUB.max)
