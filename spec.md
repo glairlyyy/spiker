@@ -386,7 +386,7 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   - **The air** (js/render3d/ambient3d.mjs) keeps the **highest heat of the match** (`Dir.heatMax`; owner, 2026-10-12: once it
     has appeared it stays — the crowd's bounce follows the heat of the moment). Outdoors (street, beach, highland) the **wind**
     as **incense-smoke wisps** (owner, 2026-10-12, the Dynasty Warriors look): soft curling ribbons that drift, twist and
-    dissolve, more and faster with the heat — pale smoke at night (street), an ink wash in daylight (beach, highland); dust /
+    dissolve, more and faster with the heat — pale white smoke in every venue (owner: white only); dust /
     sand / grass in the gusts from buzzing; indoors (arena,
     hall) **embers** rise from buzzing; every venue from roaring. **Inferno**: **flames** rise behind the far side line and at
     both ends, white-hot to orange to the hotter team's colour.

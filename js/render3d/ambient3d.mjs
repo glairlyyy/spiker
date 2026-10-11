@@ -164,8 +164,8 @@ const EMBER = [new THREE.Color('#ffd27a'), new THREE.Color('#ff8a2a'), new THREE
   FLAME_CORE = new THREE.Color('#fff2b0'),
   FLAME_MID = new THREE.Color('#ff9a2a'),
   DUST = { street: '#b8b0a0', beach: '#f1d9a0', highland: '#9fb07a' },
-  /** The smoke's colour: pale incense smoke at night (street), a soft ink wash in daylight (beach, highland) so it reads on a bright set. */
-  SMOKE = { street: '#f4f1ea', beach: '#2a2726', highland: '#262a28' },
+  /** The smoke's colour: pale incense smoke in every venue (owner, 2026-10-12: white only). */
+  SMOKE = { street: '#f4f1ea', beach: '#f4f1ea', highland: '#f4f1ea' },
   tmp = new THREE.Color();
 
 /**
