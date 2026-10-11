@@ -90,13 +90,13 @@ Do not: change camera feel (speeds, clamps, easing) or the `MapView` API.
 Accept: map3d.mjs `create` < 200 lines; map / map3d tests pass; career QA: pan, zoom, ◎ Me (C), click a place, walk lock.
 Result: js/map3d/mapcam3d.mjs (new): createMapCam(cam, canvas, sun, parts) → view, initView, fit, centre, overview, flyTo, walkFrom, step, walking, onWheel, dispose — the pan / zoom / click / fly / follow / fence code moved verbatim; map3d create also lost the lights + sea (lightScene) and the GPU release (releaseScene) to module helpers: 373 → 205 lines (deviation: target < 200; the rest is the model sync and the frame). QA (career hub, Playwright): wheel, drag, ◎ Me, pick a place, overview behave as HEAD (views within the run-to-run timing spread); map tests pass; no errors.
 
-### [ ] T-273: style.css split — base and match
+### [x] T-273: style.css split — base and match
 Spec: §9          Goldens: unchanged          Save: no change
 Goal: style.css (2 095 lines) = page base only; the match screen's rules live in match.css, so match UI work touches one file.
 Files: css/style.css, css/match.css (new, loaded right after style.css), index.html, ARCHITECTURE.md (CSS list)
 Do not: change a selector or a value; reorder rules inside a file (cascade).
 Accept: computed styles identical — hub, four sheets, match (rail open), menu screenshots 0.00 % vs HEAD (match = noise).
-Result:
+Result: style.css 2 069 → 575 lines (page base + glossary terms); css/match.css (new, 1 494, loaded right after style.css): everything from the result-card / small-screen block on except the glossary, in the same order. QA: computed styles of every element (sorted properties) vs HEAD on menu, settings, create, encyclopedia, hub, four sheets, a place panel, a Monster match (rail box / tactics) and the result card: identical — the only differences are runtime timing (map labels, 3D portraits loading, a fade mid-animation).
 
 ### [ ] T-274: tasks.md and docs trim
 Spec: —          Goldens: unchanged          Save: no change
