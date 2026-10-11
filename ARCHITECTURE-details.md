@@ -581,6 +581,13 @@ double contact, `sq2 'bad'`, `bumpSet`), then a third player hits (`chooseAttack
 set goes over as a bump; a block touch is free. Engine-only tallies (no randoms): `m.scr = { n, over }`, `m.scrLog = [{ first,
 saver, hitter }]`.
 
+Knockdowns (spec §2.28): `knock(m, p, pow, mg, until)` sets `m.down[id]` (last possession on the floor) and busy one past it;
+`onFloor(m, p, n)` guards dig candidates (`digSetup`), the block (`DF`) and `nearest`. At the top of each possession `rally()`
+clears expired entries and queues a `getup` act in `m.upQ`; the rally's beat recorder `B` prepends queued acts to the next
+beat. `recover(c)` runs before `freeBall`: forced free ball (loose) or the high ball over (clears `m.down`, emits `getup`).
+Tallies `m.ko = { n, rec, free, on }` per side. Render: pose `fall` → `d.ko = { t, dur, up }` (dive.js `downed`, `koUp`);
+startPose / the pose act defer other poses to `d.afterKo`; movement holds while down (playback); poses3d `koPose`.
+
 ## World layout (T-045)
 
 Plain data for roads and settlements (spec §4.18), no rule uses it yet. `data/city.js`: `ROADS = { nodes: { id: [x, y] }, edges:

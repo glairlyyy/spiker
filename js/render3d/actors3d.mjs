@@ -171,7 +171,7 @@ export function posePlayer(pl, dt, ballPos, fx) {
   // the approach and take-off of a jump spike / jump serve are quick changes too: the legs must reach the two-foot take-off
   // before the feet leave the floor, or the run's stride is still split in the air (a scissor jump — owner, 2026-10-12)
   const takeoff = (d.pose === 'spike' || d.pose === 'serve') && d.jmode && d.jmode.mode === 'up' && (d.jt != null || d.jy > 0),
-    fast = ((d.pose === 'spike' || d.pose === 'serve') && (d.spk != null || takeoff)) || d.pose === 'dive',
+    fast = ((d.pose === 'spike' || d.pose === 'serve') && (d.spk != null || takeoff)) || d.pose === 'dive' || d.pose === 'fall',
     spd = Math.min(4, Math.max(1, A.speed || 1)); // at 2× / 4× the moves change faster: the bones follow as fast
   smoothBones(pl, dt, spd * (fast ? 45 : mot.speed > 1 ? 26 : 16));
   groundSnap(pl, (d.jy || 0) * KH + (pose.lift || 0), pose.lying);

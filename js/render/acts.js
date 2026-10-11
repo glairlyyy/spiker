@@ -232,6 +232,7 @@ const ACTS_UI = {
     A.srvId = a.snap.rot[a.snap.serve][0];
   },
   point(a, d, bs) {
+    for (const id in A.disp) koUp(A.disp[id]); // the rally is over: everyone on the floor gets up
     Dir.heatPoint(a, A.touchN || 0); // crowd heat (spec §2.27): this rally's length, a big point, a streak
     A.touchN = 0;
     comboEnd(); // the rally counter holds its final count, then fades
@@ -279,7 +280,9 @@ const ACTS_ROSTER = {
     if (d && a.pose === 'roar' && R3D) return void (d.cele = { t: -1 });
     if (d && d.cele) d.cele = d.celeYaw = null; // any other pose: the moment is over
     // a pose change at the end of a beat (no swing / dive set-up)
-    if (d && diving(d) && DIVE_KEEP.has(a.pose)) d.afterDive = a.pose;
+    if (d && downed(d) && a.pose !== 'fall')
+      d.afterKo = a.pose; // knocked down (spec §2.28): after the get-up
+    else if (d && diving(d) && DIVE_KEEP.has(a.pose)) d.afterDive = a.pose;
     else if (d) {
       d.pose = a.pose;
       if (a.pose !== 'dive' && d.dv) {
@@ -287,6 +290,10 @@ const ACTS_ROSTER = {
         d.dv = null;
       }
     }
+  },
+  /** Back on the feet after a knockdown (spec §2.28). */
+  getup(a, d, bs) {
+    koUp(d);
   },
   spkstyle(a, d, bs) {
     if (d) d.spkStyle = a.st;

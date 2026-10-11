@@ -81,7 +81,7 @@ function preApproachGo() {
   const g = A.preApp,
     d = A.disp[g.p];
   g.go = true;
-  if (g.touch || !d || d.jy > 2 || diving(d)) return; // busy with their own play
+  if (g.touch || !d || d.jy > 2 || diving(d) || downed(d)) return; // busy with their own play
   if (g.ap.back && (d.curve = backCurve(d, g.ap, g.ms))) {
     d.sx = d.x;
     d.sz = d.z;
@@ -244,7 +244,7 @@ const DIG_SET_M = 0.35;
 function digArrived(id = A.digHero) {
   const d = id && A.disp[id];
   if (!d) return true;
-  return !diving(d) && d.jy <= 1 && Math.hypot((d.tx - d.x) * MX, (d.tz - d.z) * MZ) <= DIG_SET_M;
+  return !diving(d) && !downed(d) && d.jy <= 1 && Math.hypot((d.tx - d.x) * MX, (d.tz - d.z) * MZ) <= DIG_SET_M;
 }
 /** A long, hard cut sometimes squeaks (throttled, a little delayed). Math.random: sound only, never the game RNG. */
 function maybeSqueak(d, a) {
@@ -318,7 +318,7 @@ function separate() {
       }
       const n = Math.max(dm, 1e-4),
         push = BODY_GAP - dm,
-        la = diving(a) ? 0 : diving(b) ? 1 : 0.5,
+        la = diving(a) || downed(a) ? 0 : diving(b) || downed(b) ? 1 : 0.5,
         lb = 1 - la;
       a.x -= ((dx / n) * push * la) / MX;
       a.z -= ((dz / n) * push * la) / MZ;

@@ -284,8 +284,9 @@ function digSetup(c, x, bl) {
   // blockers — and every other free front-row player, who went up late (see formBlock's lateB) — are still in the
   // air or landing at the net: the dig goes to someone on the floor behind them (a front-row player only if nobody is)
   const atNet = p => blockers.includes(p) || (c.front(ds, p) && !busy(m, p, c.n)),
-    floor = defT.P.filter(p => !atNet(p)),
-    cands = floor.length ? floor : defT.P.filter(p => !blockers.includes(p));
+    floor = defT.P.filter(p => !atNet(p) && !onFloor(m, p, c.n)), // (a knocked-down player can't dig: spec §2.28)
+    rest = defT.P.filter(p => !blockers.includes(p) && !onFloor(m, p, c.n)),
+    cands = floor.length ? floor : rest.length ? rest : defT.P.filter(p => !blockers.includes(p));
   const dg = nearest(m, cands, lx, lz);
   const q0 = m.pos[dg.id],
     dp = defPlan(m, ds),
@@ -466,6 +467,7 @@ function digUp(c, x, bl, { dg, q0, dd0, dsc, rollD, a4 }) {
   // run to it and dig on the feet; dive only when it's out of reach
   const dive = rollD || mustDive(dg, q0, lx - dd * 16, lz, hdur + (touched ? 200 : 0));
   if (dive) setBusy(m, dg, c.n + 1); // on the floor: can't attack the transition ball
+  const ko = !tip && knock(m, dg, pow, mg, c.n + 2); // a hard hit barely kept up: knocked flat (spec §2.28)
   mv(m, dg, lx - dd * 16, lz, a4, V);
   const dram =
     V && !tip && (smashed || (touched && dive && (m.pts[0] + m.pts[1] + c.n) % 2 === 0))
@@ -480,22 +482,24 @@ function digUp(c, x, bl, { dg, q0, dd0, dsc, rollD, a4 }) {
         ...bdown,
         ...a4,
         ...(dram ? dram.acts : []),
-        { k: 'pose', p: dg.id, pose: dive ? 'dive' : 'bump', pc: dive && dd0 > 0.22 ? 1 : 0 },
+        { k: 'pose', p: dg.id, pose: ko ? 'fall' : dive ? 'dive' : 'bump', pc: dive && dd0 > 0.22 ? 1 : 0 },
         ...(!dram && (dg.def >= 85 || (m.zone[ds] && dg.def >= 70)) ? [{ k: 'call', p: dg.id, t: callLine('dig', dg, m) }] : []),
-        ...(rollD
-          ? [{ k: 'tech', p: dg.id, t: 'Rolling Receive', when: 'end' }]
-          : dive && dd0 > 0.22
-            ? [{ k: 'label', t: 'Pancake!', when: 'end', set: 1 }]
-            : []),
+        ...(ko
+          ? [{ k: 'label', t: 'Knocked down!', when: 'end' }]
+          : rollD
+            ? [{ k: 'tech', p: dg.id, t: 'Rolling Receive', when: 'end' }]
+            : dive && dd0 > 0.22
+              ? [{ k: 'label', t: 'Pancake!', when: 'end', set: 1 }]
+              : []),
         {
           k: 'ball',
-          to: { p: dg.id, c: dive ? 'dive' : 'bump' },
+          to: { p: dg.id, c: dive && !ko ? 'dive' : 'bump' },
           h: touched ? 80 : tip ? 70 : 0,
           trail: tip ? 0 : pow,
           el
         },
         ...(dg.elOn ? [{ k: 'efx', el: dg.el, pow: pow > 85 ? 55 : 35, when: 'end' }] : []),
-        ...(pow > 85 ? [{ k: 'label', t: 'Great dig!', when: 'end' }] : [])
+        ...(pow > 85 && !ko ? [{ k: 'label', t: 'Great dig!', when: 'end' }] : [])
       ]
     });
   return { next: [ds, dg, nq] };

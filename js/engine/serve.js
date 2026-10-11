@@ -10,7 +10,10 @@ function playRally(m) {
   rallyStart(m);
   const V = m.rec,
     beats = V ? [] : null,
-    B = b => beats.push(b);
+    B = b => {
+      if (m.upQ.length && b.acts) b.acts.unshift(...m.upQ.splice(0)); // back on the feet (spec §2.28)
+      beats.push(b);
+    };
   // later phases can stage something earlier in the rally once they know the outcome (e.g. a block break)
   if (V) {
     B.len = () => beats.length;
@@ -36,6 +39,8 @@ function rallyStart(m) {
   m.lastPlay = null; // 'killblock' | 'fake' — used by the zone breaker in end()
   m.hero = null;
   m.busy = {};
+  m.down = {};
+  m.upQ = [];
   m.ctx = null; // attack context for the element gauge
   m.techRally = [];
   m.errBy = null; // who made the error that ended the rally (chatter)
@@ -318,6 +323,7 @@ function serveReceive(c) {
     q = mg > 12 ? 3 : mg > -8 ? 2 : 1;
   const rDive = rollR || mustDive(rc, m.pos[rc.id], tx - dR * 16, tz, sdur); // run to it, or dive only when out of reach
   if (rDive) setBusy(m, rc, 1); // still on the floor while the team sets
+  const ko = knock(m, rc, sq * KNOCK.srvK, mg, 2); // a hard serve barely kept up: knocked flat (spec §2.28)
   mv(m, rc, tx - dR * 16, tz, sw, V);
   dr(m, rc, 0.015);
   V &&
@@ -326,10 +332,11 @@ function serveReceive(c) {
       acts: [
         ...hitFx,
         ...sw,
-        { k: 'pose', p: rc.id, pose: rDive ? 'dive' : 'bump' },
+        { k: 'pose', p: rc.id, pose: ko ? 'fall' : rDive ? 'dive' : 'bump' },
         ...(rc.def >= 82 || (m.zone[r] && rc.def >= 65) ? [{ k: 'call', p: rc.id, t: callLine('recv', rc, m) }] : []),
-        ...(rollR ? [{ k: 'tech', p: rc.id, t: 'Rolling Receive', when: 'end' }] : []),
-        { k: 'ball', to: { p: rc.id, c: rDive ? 'dive' : 'bump' }, h: sArc, wob, trail: sq > 60 ? sq : 0 },
+        ...(rollR && !ko ? [{ k: 'tech', p: rc.id, t: 'Rolling Receive', when: 'end' }] : []),
+        ...(ko ? [{ k: 'label', t: 'Knocked down!', small: 1, when: 'end' }] : []),
+        { k: 'ball', to: { p: rc.id, c: rDive && !ko ? 'dive' : 'bump' }, h: sArc, wob, trail: sq > 60 ? sq : 0 },
         ...RT.P.filter(p => p !== rc).map(p => ({ k: 'jump', p: p.id, mode: 'hop', peak: 7, t0: 0, t1: 0.2 })),
         ...(rc.elOn ? [{ k: 'efx', el: rc.el, pow: 35, when: 'end' }] : [])
       ]

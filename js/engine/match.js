@@ -13,6 +13,22 @@ const busy = (m, p, n) => ((m.busy && m.busy[p.id]) || 0) >= n;
 function setBusy(m, p, until) {
   m.busy[p.id] = Math.max(m.busy[p.id] || 0, until);
 }
+/** Knocked down (spec §2.28): on the floor through possession m.down[id] — no dig, block, set or hit (nearest() skips them). */
+const onFloor = (m, p, n) => ((m.down && m.down[p.id]) || 0) >= n;
+/**
+ * A hard ball barely kept up (pass margin mg) may knock `p` down (spec §2.28): on the floor through possession `until`.
+ * Draws one R() only past the impact gap with a low margin. Returns true when knocked down.
+ */
+function knock(m, p, pow, mg, until) {
+  const imp = pow - (effD(p) * KNOCK.defK + p.power * KNOCK.powK);
+  if (imp <= KNOCK.gap || mg >= KNOCK.mg) return false;
+  if (R() >= Math.min(KNOCK.max, (imp - KNOCK.gap) / KNOCK.span)) return false;
+  m.down[p.id] = until;
+  m.ko.mg = mg; // how loose the ball came off them (recover(): a loose ball can only go over)
+  setBusy(m, p, until + 1); // back on the feet, still a step behind the play
+  m.ko.n[m.t[0].P.includes(p) ? 0 : 1]++;
+  return true;
+}
 /** Can a player at `q` run to (x, z) within `ms` and play it on their feet, or must they dive? (metres: 3D scale) */
 function mustDive(p, q, x, z, ms) {
   const d = Math.hypot((x - q.x) * 0.0243, (z - q.z) * 12);
@@ -57,6 +73,10 @@ function mv(m, p, x, z, arr, V) {
 }
 /** The player in `arr` who gets to (x, z) first (distance over speed). `arr` must not be empty. */
 function nearest(m, arr, x, z) {
+  if (m.down && arr.some(p => onFloor(m, p, m.rallyN))) {
+    const up = arr.filter(p => !onFloor(m, p, m.rallyN)); // a knocked-down player can't get to it (spec §2.28)
+    if (up.length) arr = up;
+  }
   let b = arr[0],
     bv = 1e9;
   for (const p of arr) {
@@ -105,6 +125,7 @@ function newMatch(a, b, rec, opts = {}) {
       rdBeat: 0,
       rdWk: 0 // kills off a block that read the wrong channel
     })), // attacks per side by kind and their kills (engine-only tally, no randoms)
+    ko: { n: [0, 0], rec: [0, 0], free: [0, 0], on: [0, 0] }, // knockdowns and what the team did next (spec §2.28)
     lanes: {}, // laning (spec §2.24): hitter id → { line, cross } shots this match (what the blockers have seen)
     hit: {}, // the coach panel (spec §2.25): hitter id → { n, k, err, stf, line, cross, tip, rd, rdOk } this match
     recv: {}, // the coach panel: receiver id → { n, ace } serves taken / aced
@@ -160,6 +181,8 @@ function newMatch(a, b, rec, opts = {}) {
     lastK: null,
     // per-rally state, reset by playRally()
     busy: {}, // player id → last possession they are still busy for (see busy())
+    down: {}, // player id → last possession they are on the floor for (knock(), spec §2.28)
+    upQ: [], // get-up acts waiting for the next beat (the beat recorder adds them)
     lastPlay: null, // 'killblock' | 'fake' — for the zone breaker
     hero: null,
     errBy: null,

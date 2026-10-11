@@ -29,3 +29,17 @@ function diveShape(d) {
     rise: up
   };
 }
+
+/**
+ * Knockdown (spec §2.28): pose 'fall' — the ball arrives at ko.dur; knocked back and down, on the floor until ko.up (the
+ * engine's get-up act — at least KO_MIN_MS after the contact — or KO_MAX_MS as a safety), on the feet KO_UP_MS later.
+ */
+const KO_MIN_MS = 1200,
+  KO_MAX_MS = 7000,
+  KO_UP_MS = 800;
+/** Still knocked down: not back on the feet yet. */
+const downed = d => d.pose === 'fall' && !!d.ko && !(d.ko.up != null && d.ko.t >= d.ko.up + KO_UP_MS);
+/** The engine says they're up (getup act): they start getting up now, or once they've been down KO_MIN_MS. */
+function koUp(d) {
+  if (d && d.ko && d.ko.up == null) d.ko.up = Math.max(d.ko.t, d.ko.dur + KO_MIN_MS);
+}

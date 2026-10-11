@@ -393,6 +393,20 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   - Monster game: a **Venue** picker on the Dev tab (League Arena, Academy Hall, Beach Stadium, Highland Court, Street court).
   - Not yet: tuning in the VFX panel; a gentle effect on play per venue (wind on float serves, sand on speed) — only if it stays
     unannoying (owner).
+- §2.28 Knockdowns and recovery (owner, 2026-10-12) **[built 2026-10-12]**: a hard ball can knock the receiver flat, and the
+  team then recovers instead of forcing the play.
+  - **Knockdown** (`knock`, js/engine/match.js; numbers `KNOCK` in js/data/tactics.js): on a serve receive or a dig, impact =
+    the ball's power − (Defense × 0.55 + Power × 0.35); past 18 the chance climbs to 50 % (one draw, only then). The player
+    still gets the ball up (the pass quality is the normal roll), then is **on the floor through the team's next defence**: no
+    set, hit, block or dig (`onFloor`; `nearest` skips them). About 5 per 100 points in league matches.
+  - **Recovery** (`recover`, js/engine/rally-phases.js, no draws): the team's next touch decides. A **loose ball** (pass margin
+    under −32) can only go over — "Free ball": the other side gets an easy ball while the fallen player is still down.
+    Otherwise the setter (or nearest teammate) sends a **high ball over** — "Buying time": 1.8 s in the air, the fallen
+    player gets up and the team defends with everyone; the other side gets an easy ball. Only a perfect pass with two
+    front-row hitters up plays on, a player short. League sims: about 1 recovery ball for every 2 forced free balls.
+  - **Shown**: a knockdown pose (`fall`: knocked back, sat down hard, flat on the back, knees up; the "Knocked down!" label),
+    held on the floor until the engine's `getup` act (or the point ends), then sit up → squat → ready; no running while down.
+  - Not yet: attackers aiming at the hole the fallen player leaves; a coach-panel line for knockdowns (`m.ko` has the counts).
 
 ## 3. Menu [built]
 

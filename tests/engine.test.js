@@ -361,6 +361,45 @@ test.slow('engine: laning — the block reads a channel, a right read stops more
   assert(acts.length > 10 && acts.some(a => a.bz != null) && acts.every(a => Number.isFinite(a.x1) && Number.isFinite(a.z1)), 'lane acts');
 });
 
+test('engine: knockdowns — the fallen player sits out until the get-up; a loose ball goes over, else a high ball buys time (spec §2.28)', () => {
+  const g = load(43),
+    T = g.mkTeams();
+  const ko = { n: 0, rec: 0, free: 0 };
+  let falls = 0,
+    ups = 0;
+  for (let i = 0; i < 40; i++) {
+    const m = g.newMatch(T[i % 8], T[(i * 3 + 1) % 8], true);
+    while (!m.over) {
+      const { beats } = g.playRally(m),
+        floor = new Set(); // players on the floor: knocked down, no get-up yet
+      for (const bt of beats) {
+        for (const a of bt.acts) {
+          if (a.k === 'getup') {
+            assert(floor.has(a.p), 'a get-up follows a knockdown');
+            floor.delete(a.p);
+            ups++;
+          }
+        }
+        for (const a of bt.acts) {
+          const who = a.k === 'pose' ? a.p : a.k === 'ball' && a.to ? a.to.p : null;
+          if (who && floor.has(who) && !(a.k === 'pose' && /ready|slump|roar|huddle|cele/.test(a.pose)))
+            assert(false, `a knocked-down player plays (${a.k} ${a.pose || a.to.c})`);
+        }
+        for (const a of bt.acts)
+          if (a.k === 'pose' && a.pose === 'fall') {
+            floor.add(a.p);
+            falls++;
+          }
+      }
+    }
+    for (const k of ['n', 'rec', 'free']) ko[k] += m.ko[k][0] + m.ko[k][1];
+  }
+  eq(falls, ko.n, 'every knockdown is shown as a fall');
+  assert(ko.n >= 15, `knockdowns ${ko.n}`);
+  assert(ko.rec > 0 && ko.free > 0, `recovery balls ${ko.rec}, forced free balls ${ko.free}`);
+  assert(ups > 0, 'players get back up within the rally');
+});
+
 test('engine: team plans — given plans hold, the coach picks from its style, Hunt serves at the weak passer, the coach answers at its timeout (spec §2.26)', () => {
   const g = load(41),
     T = g.mkTeams();

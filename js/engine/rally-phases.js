@@ -29,6 +29,67 @@ function freeBall(c) {
     return { next: [ds, dg, 3] };
   }
 }
+/**
+ * 1b. Recovery (spec §2.28): a teammate is on the floor and would miss the next defence. A loose pass can't be attacked —
+ * the nearest teammate just gets it over (a free ball; the fallen player is still down when they hit back). Otherwise,
+ * unless the pass is perfect with KNOCK.hitters front-row hitters up (then they play on, a player short), the second touch
+ * goes high over the net — the hang time gets the fallen player back up; the other side gets an easy ball. No draws.
+ */
+function recover(c) {
+  const { m, B, V, atk, ds, da, dd, atkT, defT, pas, qual, n } = c;
+  const fl = atkT.P.filter(p => onFloor(m, p, n + 1));
+  if (!fl.length) return null;
+  const side = atk,
+    up = atkT.P.filter(p => p !== pas && !busy(m, p, n) && !onFloor(m, p, n));
+  const hitters = up.filter(p => p.role !== 'S' && c.front(atk, p));
+  if (qual === 3 && hitters.length >= KNOCK.hitters) {
+    m.ko.on[side]++;
+    return null; // a perfect pass and hitters ready: play on, a player short
+  }
+  const forced = qual === 1 && m.ko.mg < KNOCK.loose; // the ball is loose: nobody can do more than get it over
+  m.ko[forced ? 'free' : 'rec'][side]++;
+  // the second touch: the setter if free, else whoever is nearest the ball
+  const q = m.pos[pas.id],
+    bx = sx(atk, forced ? clamp(Math.abs(q.x - sx(atk, 0)), 220, 400) : 420),
+    bz = forced ? q.z : clamp(0.5 + (q.z - 0.5) * 0.4, 0.2, 0.8),
+    cand = up.length ? up : atkT.P.filter(p => p !== pas),
+    rec = (!forced && cand.find(p => p.role === 'S')) || nearest(m, cand, bx, bz),
+    tx = sx(ds, forced ? 330 : 230), // a recovery ball goes deep: their hitters have further to come
+    tz = clamp(1 - bz, 0.2, 0.8),
+    dg = nearest(m, defT.P, tx, tz),
+    a1 = [],
+    a2 = [];
+  mv(m, rec, bx - da * 10, bz, a1, V);
+  mv(m, dg, tx - dd * 16, tz, a2, V);
+  const ups = forced ? [] : fl.map(p => p.id);
+  if (!forced)
+    for (const p of fl) {
+      delete m.down[p.id]; // the hang time: back up for the defence
+      m.busy[p.id] = n;
+    }
+  V &&
+    B({
+      dur: 750,
+      acts: [
+        ...a1,
+        { k: 'pose', p: rec.id, pose: 'bump' },
+        { k: 'call', p: rec.id, t: forced ? 'Just get it over!' : 'High ball — get up!' },
+        { k: 'ball', to: { p: rec.id, c: 'bump' }, h: forced ? 110 : 140, wob: forced }
+      ]
+    });
+  V &&
+    B({
+      dur: forced ? KNOCK.free : KNOCK.hang,
+      acts: [
+        ...a2,
+        ...ups.map(id => ({ k: 'getup', p: id })),
+        { k: 'ball', to: { p: dg.id, c: 'bump' }, h: forced ? 210 : 420 },
+        { k: 'pose', p: dg.id, pose: 'bump' },
+        { k: 'label', t: forced ? 'Free ball' : 'Buying time', small: 1 }
+      ]
+    });
+  return { next: [ds, dg, 3] };
+}
 /** 2. Choose the setter (back-row setter first; on a scramble someone else may take it) and move to the pass. */
 function pickSetter(c) {
   const { m, B, V, front, atk, ds, da, atkT, defT, pas, qual } = c;
@@ -279,7 +340,7 @@ function chooseAttack(c, s, h) {
   if (freak) techFire(m, spiker, 'freak');
   if (slide) techFire(m, spiker, 'slide');
   if (sync) techFire(m, setter, 'sync');
-  const DF = defT.P.filter(p => p.role !== 'S' && front(ds, p)),
+  const DF = defT.P.filter(p => p.role !== 'S' && front(ds, p) && !onFloor(m, p, c.n)), // (not one who is on the floor: spec §2.28)
     B0 = DF.find(p => p.role === 'MB') || DF[0] || defT.P.find(p => front(ds, p)) || defT.mb; // a front-row setter before anyone from the back
   const bad = sq2 === 'bad';
   if (relNote && c.V) {

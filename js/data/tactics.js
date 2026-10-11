@@ -165,3 +165,11 @@ const PLAN_STYLE = {
 const PLAN_AI = { iq: 0.7, aceGap: 8, passGap: 10 };
 /** The AI coach's huddle line when it changes plan (spec §2.26): that there is a new plan, never what it is. */
 const PLAN_LINES = ['New plan. Listen up.', 'We change it. Now.', "They've shown us enough. Here's what we do.", 'Forget the old plan.'];
+/**
+ * Knockdowns and recovery (spec §2.28). A hard ball barely kept up knocks the receiver flat: impact = power − (Defense ×
+ * defK + Power × powK); past `gap` the chance climbs over `span` to `max` (only when the pass margin is under `mg`). On the
+ * floor through the team's next defence (can't set, hit, block or dig). The team then recovers instead of forcing it: a
+ * loose pass (margin under `loose`) goes straight over as a free ball; otherwise, unless the pass is perfect with `hitters` front-row hitters up,
+ * a high ball over (`hang` ms in the air) buys the time to get up — the other side gets an easy ball.
+ */
+const KNOCK = { defK: 0.55, powK: 0.35, gap: 18, span: 45, max: 0.5, mg: 30, loose: -32, srvK: 0.95, hitters: 2, hang: 1800, free: 1000 };

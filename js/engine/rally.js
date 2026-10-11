@@ -32,6 +32,11 @@ function rally(m, B, V, atk, pas, qual, scr = null) {
   };
   for (let n = 1; ; n++) {
     m.rallyN = n; // possessions so far (a lost marathon shakes the team: pointMomentum)
+    for (const id in m.down)
+      if (m.down[id] < n) {
+        delete m.down[id]; // back on the feet (spec §2.28): shown on the next beat
+        if (V) m.upQ.push({ k: 'getup', p: id });
+      }
     if (n > LONG_RALLY) {
       for (const t of m.t) for (const p of t.P) dr(m, p, 0.004);
       elLong(m);
@@ -45,7 +50,7 @@ function rally(m, B, V, atk, pas, qual, scr = null) {
     const fat = n > LONG_RALLY + 1 ? 1 + (n - LONG_RALLY - 1) * 0.1 : 1;
     /** possession context shared by the phases */
     const c = { m, B, V, front, n, atk, ds, da, dd, atkT, defT, pas, qual, scr };
-    let r = scr ? null : freeBall(c);
+    let r = scr ? null : recover(c) || freeBall(c); // a teammate on the floor: recover, don't force it (spec §2.28)
     if (r) {
       [atk, pas, qual, scr = null] = r.next;
       continue;

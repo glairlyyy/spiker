@@ -177,7 +177,7 @@ function startBeat(b) {
   // the pass is on its way to the setter: they raise their hands early, ready for the ball (display only)
   for (const a of b.acts) {
     const sd = a.k === 'ball' && a.when !== 'end' && a.to && a.to.c === 'set' && a.to.p ? A.disp[a.to.p] : null;
-    if (sd && sd.pose === 'ready' && sd.jy <= 2 && !diving(sd) && !sd.afterDive) startPose(sd, 'setprep', false, b.dur);
+    if (sd && sd.pose === 'ready' && sd.jy <= 2 && !diving(sd) && !sd.afterDive && !downed(sd)) startPose(sd, 'setprep', false, b.dur);
   }
   digChase(b);
   missCheck(b);
@@ -206,6 +206,11 @@ const DIVE_KEEP = new Set(['ready', 'bump', 'huddle']);
 /** A new pose at the start of a beat of `dur` ms (dig/receive: the engine already chose run-and-bump vs dive). */
 function startPose(d, pose, pc, dur) {
   if (pose !== 'preserve') d.psv = null;
+  // knocked down (spec §2.28): nothing else until they're back up (the engine gives them no play meanwhile)
+  if (downed(d) && pose !== 'fall') {
+    d.afterKo = pose;
+    return;
+  }
   // a player still on the floor from a dive finishes it (lie, push back up) before a passive pose takes over
   if (diving(d) && DIVE_KEEP.has(pose)) {
     d.afterDive = pose;
@@ -224,6 +229,8 @@ function startPose(d, pose, pc, dur) {
   if (d.dv && pose !== 'dive') d.gu = { t: 0, s: diveShape(d) };
   // dive heading: where the player is going, fixed at take-off
   d.dv = pose === 'dive' ? { t: 0, dur, dx: d.tx - d.x, dz: d.tz - d.z } : null;
+  d.ko = pose === 'fall' ? { t: 0, dur, up: null } : null; // knocked down at the contact (end of this beat)
+  d.afterKo = null;
   if (pose !== 'set') d.setDir = null;
   if (pose !== 'bump') d.bb = null; // (a bump keeps what backBumpLook decided for this beat)
   d.pose = pose;
@@ -280,7 +287,7 @@ function backBumpLook(b) {
     const d = A.disp[a.p];
     // only where the ball comes to them (the pass beat restates the bump: it keeps the decision)
     if (!d || !b.acts.some(x => x.k === 'ball' && x.to && x.to.p === a.p)) continue;
-    if (d.jy > 2 || diving(d)) {
+    if (d.jy > 2 || diving(d) || downed(d)) {
       d.bb = false;
       continue;
     }
@@ -391,6 +398,7 @@ function applyBeat(b, t) {
     const d = A.disp[id];
     if (d.fallMs != null && d.airV) continue; // coming down from a jump: momentum carries them (stepPlayerTimers)
     if (diving(d) && d.dv.t > d.dv.dur) continue; // on the floor: runs on only once back up (endBeat carries the move)
+    if (downed(d) && d.ko.t > d.ko.dur) continue; // knocked down: the same, until the get-up (spec §2.28)
     if (d.app && !d.waitLand && approachMove(d, t)) continue; // spike approach: run-up, take-off, broad jump
     if (d.curve && !d.waitLand) {
       curveMove(d); // a back-row hitter curving round to their run-up (from the beat before the set)

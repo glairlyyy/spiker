@@ -649,6 +649,112 @@ function divePose(d, f) {
   };
 }
 
+// ---------- knockdown (spec §2.28) ----------
+// Keys over u = ms since the contact: the ball knocks the platform up and the player back → a stumble → sat down hard
+// → flat on the back, knees up, arms out. Getting up (g = 0..1 over KO_UP_MS): sit up → squat → ready.
+const RU = (x, y, z) => [V(x, y, z), V(x * 0.9, y, z * 1.05), V(x * 0.8, y * 0.9, z * 1.1)];
+const KO_KEYS = [
+  [
+    0,
+    {
+      hp: 0.15,
+      sp: -0.05,
+      cp: 0,
+      hd: -0.25,
+      L: leg(0.9, 1.35, 0, 0.3),
+      R: leg(0.8, 1.3, 0, 0.3),
+      lift: 0,
+      slide: 0,
+      R_: RU(-0.5, -0.1, 0.85),
+      L_: RU(0.5, -0.1, 0.85)
+    }
+  ],
+  [
+    170,
+    {
+      hp: -0.3,
+      sp: -0.25,
+      cp: -0.1,
+      hd: 0.25,
+      L: leg(1.25, 1.75, 0.1, 0.32),
+      R: leg(1.0, 1.5, 0.1, 0.3),
+      lift: 0,
+      slide: -0.25,
+      R_: RU(-0.6, 0.4, 0.7),
+      L_: RU(0.6, 0.4, 0.7)
+    }
+  ],
+  [
+    400,
+    {
+      hp: -0.65,
+      sp: -0.25,
+      cp: -0.12,
+      hd: 0.35,
+      L: leg(1.8, 1.3, 0.15, 0.3),
+      R: leg(1.7, 1.1, 0.15, 0.3),
+      lift: 0,
+      slide: -0.5,
+      R_: RU(-0.45, -0.7, -0.55),
+      L_: RU(0.45, -0.7, -0.55)
+    }
+  ],
+  [
+    680,
+    {
+      hp: -1.35,
+      sp: -0.1,
+      cp: -0.05,
+      hd: 0.45,
+      L: leg(2.1, 1.85, 0.2, 0.28),
+      R: leg(1.9, 1.55, 0.15, 0.26),
+      lift: 0,
+      slide: -0.6,
+      R_: RU(-0.75, -0.12, -0.65),
+      L_: RU(0.75, -0.12, -0.65)
+    }
+  ]
+];
+const KO_UP_KEYS = [
+  [0, KO_KEYS[3][1]],
+  [
+    0.35,
+    {
+      hp: -0.35,
+      sp: 0.1,
+      cp: 0.05,
+      hd: -0.1,
+      L: leg(1.95, 2.35, 0.2, 0.3),
+      R: leg(1.85, 2.25, 0.2, 0.3),
+      lift: 0,
+      slide: -0.5,
+      R_: RU(-0.4, -0.8, -0.45),
+      L_: RU(0.4, -0.8, -0.45)
+    }
+  ],
+  [0.7, DIVE_KEYS[DIVE_KEYS.length - 1][1]]
+];
+/** Knocked down: u = ms since the contact (see downed / koUp in render/dive.js). */
+function koPose(d, u) {
+  const up = d.ko && d.ko.up != null ? clamp((d.ko.t - d.ko.up) / KO_UP_MS, 0, 1) : 0;
+  if (up >= 0.7) {
+    const t = sm((up - 0.7) / 0.3),
+      k = KO_UP_KEYS[2][1],
+      sq = armsC(k, k.R_, DN, k.L_, DN);
+    return { ...mix(sq, { ...READY, lift: 0 }, t), slide: mixN(k.slide, 0, t), lying: false, contact: 0, face: { angry: 0.4 } };
+  }
+  const k = up > 0 ? track(KO_UP_KEYS, up, mixDive) : track(KO_KEYS, u, mixDive),
+    UPW = V(0, 1, 0);
+  return {
+    ...armsC(k, k.R_, u < 300 ? DN : UPW, k.L_, u < 300 ? DN : UPW),
+    lying: u > 250 && up < 0.6,
+    contact: u < 120 ? 1 - u / 120 : 0,
+    curlR: 0.4,
+    curlL: 0.4,
+    face: up > 0 ? { angry: 0.5 } : u < 400 ? { surprised: 0.8 } : { sad: 0.5, angry: 0.3 }
+  };
+}
+
 /**
  * Pose for one player. `mood` −1 rattled … +1 fired up; `m` = measured motion (see locoPose). Returns a pose plus
  * `contact` (0..1: how strongly the arms aim at the ball), `lying`, `slide` (metres forward), `lift`, `face`.
@@ -656,10 +762,12 @@ function divePose(d, f) {
 /** The play is over for this player (landed, back up, follow-through done): moving now is just running. */
 export function poseDone(d) {
   if (d.jy > 1) return false;
-  if (d.pose !== 'ready' && d.pose !== 'huddle' && (d.pAge || 0) > 1600) return true; // stale: nothing new since
+  if (d.pose !== 'ready' && d.pose !== 'huddle' && d.pose !== 'fall' && (d.pAge || 0) > 1600) return true; // stale: nothing new since
   switch (d.pose) {
     case 'dive':
       return !!d.dv && diveF(d.dv) > 2.3;
+    case 'fall':
+      return !downed(d);
     case 'bump':
       return d.swing != null && d.swing > 800;
     case 'set':
@@ -686,7 +794,12 @@ export function playerPose(d, mood, m) {
     pose = done && moving(m) ? 'walk' : done && !HELD.has(d.pose) ? 'ready' : d.pose,
     mk = moveMix(m);
   let out;
-  if (pose === 'dive') {
+  if (pose === 'fall') {
+    // knocked down (spec §2.28): a plain bump until the ball arrives, then knocked flat
+    const u = d.ko ? d.ko.t - d.ko.dur : 1e9;
+    if (u < 0) return playerPose({ ...d, pose: 'bump' }, mood, m);
+    out = koPose(d, u);
+  } else if (pose === 'dive') {
     const f = d.dv ? diveF(d.dv) : 3;
     out = divePose(d, f);
     // run-in: real running strides until the low base
