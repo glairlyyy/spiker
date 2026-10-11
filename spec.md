@@ -383,8 +383,11 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     by 30 points: the game warms the crowd); a set / match point holds it at 0.6; it drifts back to the floor in about 20 s.
     Tiers: calm · buzzing (0.3) · roaring (0.55) · inferno (0.8).
   - **The crowd** bounces harder with the heat; from roaring everyone is on their feet; the music rises up to +12 %.
-  - **The air** (js/render3d/ambient3d.mjs): outdoors (street, beach, highland) the **wind** — a breeze always, streaks blowing
-    across the court that lengthen and speed up with the heat, dust / sand / grass in the gusts from buzzing; indoors (arena,
+  - **The air** (js/render3d/ambient3d.mjs) keeps the **highest heat of the match** (`Dir.heatMax`; owner, 2026-10-12: once it
+    has appeared it stays — the crowd's bounce follows the heat of the moment). Outdoors (street, beach, highland) the **wind**
+    as **incense-smoke wisps** (owner, 2026-10-12, the Dynasty Warriors look): soft curling ribbons that drift, twist and
+    dissolve, more and faster with the heat — pale smoke at night (street), an ink wash in daylight (beach, highland); dust /
+    sand / grass in the gusts from buzzing; indoors (arena,
     hall) **embers** rise from buzzing; every venue from roaring. **Inferno**: **flames** rise behind the far side line and at
     both ends, white-hot to orange to the hotter team's colour.
   - Monster game: a **Venue** picker on the Dev tab (League Arena, Academy Hall, Beach Stadium, Highland Court, Street court).

@@ -357,8 +357,8 @@ function draw() {
   for (const pl of w.coaches) if (pl.c) poseCoach(pl, dt, now);
   ballRibbon(w, wdt);
   updateVenue(w, now, dt * 1000, cam);
-  const arn = Dir.arena(); // the venue's air follows the crowd heat (spec §2.27)
-  updateAmbient(w.amb, dt, w.venue, Dir.heat || 0, arn.side >= 0 ? A.m.t[arn.side].color : null);
+  const arn = Dir.arena(); // the venue's air keeps the highest crowd heat of the match (spec §2.27)
+  updateAmbient(w.amb, dt, w.venue, Dir.heatMax || 0, arn.side >= 0 ? A.m.t[arn.side].color : null);
   updateNet(w, now);
   updatePointFlash(w);
   // effects run on the world clock, except in a scene close-up: there they fade out at full speed so a frozen world

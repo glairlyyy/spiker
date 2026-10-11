@@ -1,5 +1,5 @@
 // The venue's air (spec §2.27): what the crowd heat (Dir.heat, 0–1) does to the space around the court. Outdoors (street,
-// beach, highland) the wind picks up — streaks blowing across the court, dust or sand in the gusts; indoors (arena, hall)
+// beach, highland) the wind picks up — incense-smoke wisps curling across the court, dust or sand in the gusts; indoors (arena, hall)
 // embers rise into the air. Roaring and up, embers fill every venue; at Inferno flames rise behind the far side line and at
 // both ends of the court, in the hotter team's colour. Presentation only: Math.random, never the game's randoms.
 import * as THREE from 'three';
@@ -18,20 +18,35 @@ const CORNERS = [
   [11.8, 0]
 ];
 
-/** Build the wind streaks, the dust, the embers and the corner flames (all hidden) into `scene`. */
+/** Build the wind's smoke wisps, the dust, the embers and the corner flames (all hidden) into `scene`. */
 export function buildAmbient(scene, glowTex) {
   const k = lowEnd || RM ? 0.45 : 1;
-  // wind: thin streaks, each a segment that rides the gust
-  const nW = Math.round(140 * k),
-    wGeo = new THREE.BufferGeometry();
-  wGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(nW * 6), 3));
-  wGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(nW * 6), 3));
-  const wind = new THREE.LineSegments(
-    wGeo,
-    new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending })
-  );
-  wind.frustumCulled = false;
-  wind.userData.p = Array.from({ length: nW }, () => ({ x: rr(-18, 18), y: rr(0.2, 3.2), z: rr(-9, 9), v: rr(0.7, 1.3), l: rr(0.9, 2.2) }));
+  // wind: incense-smoke wisps (owner, 2026-10-12, the Dynasty Warriors look) — soft curling ribbons riding the gust
+  const wTex = smokeTex(),
+    nW = Math.round(26 * k),
+    wind = new THREE.Group();
+  for (let i = 0; i < nW; i++) {
+    const g = new THREE.BufferGeometry(),
+      n = (WISP_SEG + 1) * 2,
+      uv = new Float32Array(n * 2),
+      idx = [];
+    for (let j = 0; j <= WISP_SEG; j++) {
+      uv.set([j / WISP_SEG, 0, j / WISP_SEG, 1], j * 4);
+      if (j < WISP_SEG) idx.push(j * 2, j * 2 + 1, j * 2 + 2, j * 2 + 1, j * 2 + 3, j * 2 + 2);
+    }
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    const me = new THREE.Mesh(
+      g,
+      new THREE.MeshBasicMaterial({ map: wTex, color: '#f4f1ea', transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })
+    );
+    me.frustumCulled = false;
+    me.renderOrder = 3;
+    me.userData.q = wispNew(true);
+    wind.add(me);
+  }
+  wind.visible = false;
   // dust / sand: small points tumbling in the same gust
   const dust = points(Math.round(160 * k), glowTex, 0.12, false);
   dust.userData.p = Array.from({ length: dust.userData.n }, () => ({
@@ -56,6 +71,72 @@ export function buildAmbient(scene, glowTex) {
   flames.userData.p = Array.from({ length: flames.userData.n }, (_, i) => ({ c: i % CORNERS.length, life: rr(0, 1), dx: 0, dz: 0, v: 1 }));
   for (const o of [wind, dust, embers, flames]) scene.add(o);
   return { wind, dust, embers, flames, col: new THREE.Color(), hot: new THREE.Color(), gust: 0 };
+}
+/** Segments along a wisp. */
+const WISP_SEG = 28;
+/** A fresh wisp (somewhere upwind; `anywhere`: along the whole run, for the first frame). */
+function wispNew(anywhere) {
+  return {
+    x: anywhere ? rr(-14, 24) : rr(-26, -19),
+    y: rr(0.4, 2.8),
+    z: rr(-7, 5),
+    len: rr(4, 9),
+    amp: rr(0.25, 0.8),
+    k: rr(0.8, 1.8),
+    ph: rr(0, 6.3),
+    w: rr(0.5, 1.3),
+    v: rr(0.7, 1.25),
+    op: rr(0.5, 1)
+  };
+}
+/**
+ * The smoke texture: a few soft wavy strands of incense smoke (u along the wisp, v across), faded at both ends and edges.
+ * White, so the material colour tints it.
+ */
+function smokeTex() {
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 64;
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, 512, 64);
+  g.strokeStyle = '#fff';
+  g.shadowColor = '#fff';
+  g.lineCap = 'round';
+  for (let j = 0; j < 9; j++) {
+    const a = rr(3, 9),
+      f = rr(0.01, 0.025),
+      ph = rr(0, 6.3),
+      y0 = rr(18, 46);
+    g.globalAlpha = rr(0.35, 0.85);
+    g.lineWidth = rr(2, 9);
+    g.shadowBlur = rr(4, 12);
+    g.beginPath();
+    for (let x = 0; x <= 512; x += 4) {
+      const y = y0 + Math.sin(x * f + ph) * a * (0.4 + x / 512);
+      x ? g.lineTo(x, y) : g.moveTo(x, y);
+    }
+    g.stroke();
+  }
+  // fade the ends (thin, fresh head on the right; a long dissolving tail on the left) and the edges
+  g.globalAlpha = 1;
+  g.shadowBlur = 0;
+  g.globalCompositeOperation = 'destination-in';
+  const gu = g.createLinearGradient(0, 0, 512, 0);
+  gu.addColorStop(0, 'rgba(255,255,255,0)');
+  gu.addColorStop(0.35, 'rgba(255,255,255,0.8)');
+  gu.addColorStop(0.85, 'rgba(255,255,255,1)');
+  gu.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gu;
+  g.fillRect(0, 0, 512, 64);
+  const gv = g.createLinearGradient(0, 0, 0, 64);
+  gv.addColorStop(0, 'rgba(255,255,255,0)');
+  gv.addColorStop(0.5, 'rgba(255,255,255,1)');
+  gv.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gv;
+  g.fillRect(0, 0, 512, 64);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
 }
 /** n additive glow points (per-point colour; brightness = visibility). */
 function points(n, tex, size, glow) {
@@ -83,6 +164,8 @@ const EMBER = [new THREE.Color('#ffd27a'), new THREE.Color('#ff8a2a'), new THREE
   FLAME_CORE = new THREE.Color('#fff2b0'),
   FLAME_MID = new THREE.Color('#ff9a2a'),
   DUST = { street: '#b8b0a0', beach: '#f1d9a0', highland: '#9fb07a' },
+  /** The smoke's colour: pale incense smoke at night (street), a soft ink wash in daylight (beach, highland) so it reads on a bright set. */
+  SMOKE = { street: '#f4f1ea', beach: '#2a2726', highland: '#262a28' },
   tmp = new THREE.Color();
 
 /**
@@ -100,26 +183,38 @@ export function updateAmbient(amb, dt, kind, heat, hotCol) {
     speed = (5 + 14 * wv) * gust;
   amb.wind.visible = wv > 0.01;
   if (amb.wind.visible) {
-    const P = amb.wind.userData.p,
-      pos = amb.wind.geometry.attributes.position.array,
-      col = amb.wind.geometry.attributes.color.array;
-    for (let i = 0; i < P.length; i++) {
-      const q = P[i];
-      q.x += speed * q.v * s;
-      q.z += Math.sin(amb.gust * 1.3 + i) * 0.3 * s;
-      if (q.x > 19) {
-        q.x = -19;
-        q.y = rr(0.2, 3.2);
-        q.z = rr(-9, 9);
+    // each wisp drifts downwind, its body curling (the wave travels along it) and twisting; more wisps the harder it blows
+    const W = amb.wind.children,
+      shown = Math.round(W.length * (0.3 + 0.7 * wv)),
+      t = amb.gust;
+    for (let i = 0; i < W.length; i++) {
+      const me = W[i],
+        q = me.userData.q;
+      me.visible = i < shown;
+      if (!me.visible) continue;
+      q.x += speed * 0.55 * q.v * s;
+      if (q.x - q.len > 19) me.userData.q = wispNew(false);
+      const a = me.geometry.attributes.position.array,
+        L = q.len * (0.7 + 0.5 * wv);
+      for (let j = 0; j <= WISP_SEG; j++) {
+        const u = j / WISP_SEG, // 0 = the tail (upwind), 1 = the head
+          tail = 1 - u,
+          px = q.x - tail * L,
+          wave = Math.sin(tail * q.k * 6.283 + q.ph - t * 1.7),
+          py = q.y + wave * q.amp * 0.5 * (0.3 + tail) + Math.sin(tail * 3 + t * 0.6 + q.ph) * 0.25 * tail,
+          pz = q.z + Math.cos(tail * q.k * 4 + q.ph * 0.7 - t * 1.1) * q.amp * 0.8 * tail,
+          w = q.w * (0.25 + 0.75 * Math.sin(Math.PI * Math.min(1, u * 1.15))) * (0.8 + 0.6 * tail),
+          tw = Math.sin(tail * 4 + t * 0.9 + q.ph) * 0.7, // the ribbon twists as it curls
+          oy = Math.cos(tw) * w * 0.5,
+          oz = Math.sin(tw) * w * 0.5;
+        a.set([px, py - oy, pz - oz, px, py + oy, pz + oz], j * 6);
       }
-      const L = q.l * (0.4 + 1.6 * wv),
-        b = 0.35 + 0.65 * Math.min(1, Math.abs(19 - Math.abs(q.x)) / 4); // fades at the ends of its run
-      pos.set([q.x - L, q.y, q.z, q.x, q.y + 0.05, q.z], i * 6);
-      col.set([0, 0, 0, b, b, b], i * 6);
+      me.geometry.attributes.position.needsUpdate = true;
+      // fade in at the start of its run and out at the end
+      const edge = Math.min(1, (q.x + 19) / 6, (19 - (q.x - L)) / 6);
+      me.material.color.set(SMOKE[kind] || SMOKE.street);
+      me.material.opacity = Math.max(0, edge) * q.op * (0.32 + 0.45 * wv) * (kind === 'street' ? 1 : 1.25);
     }
-    amb.wind.geometry.attributes.position.needsUpdate = true;
-    amb.wind.geometry.attributes.color.needsUpdate = true;
-    amb.wind.material.opacity = 0.22 + 0.6 * wv;
   }
   // dust / sand in the gusts (outdoors, from Buzzing)
   const dv = out ? Math.max(0, (heat - 0.2) / 0.8) : 0;

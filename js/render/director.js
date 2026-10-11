@@ -57,6 +57,8 @@ const Dir = {
    * flames inside — js/render3d/ambient3d.mjs) follow it.
    */
   heat: 0,
+  /** The highest heat this match: the venue's air keeps what it reached (owner, 2026-10-12: it stays once it has appeared). */
+  heatMax: 0,
   /** The heat's floor now (it climbs with the points played: up to HEAT.floor by 30 points). */
   heatFloor() {
     const p = typeof A !== 'undefined' && A && A.m ? A.m.pts[0] + A.m.pts[1] : 0;
@@ -65,6 +67,7 @@ const Dir = {
   /** Heat up by v (capped at 1). */
   heatAdd(v) {
     this.heat = Math.min(1, Math.max(this.heat, this.heatFloor()) + v);
+    this.heatMax = Math.max(this.heatMax, this.heat);
   },
   /** A point is scored (act `point`): its rally's length, a big point, a streak. */
   heatPoint(a, touches) {
@@ -83,7 +86,7 @@ const Dir = {
   },
   /** A new match (or a restart). */
   reset() {
-    this.heat = 0;
+    this.heat = this.heatMax = 0;
     this.cur = null;
     this.lastFrame = [-99, -99];
     this.sceneOn = null;
@@ -247,6 +250,7 @@ const Dir = {
     // the heat drifts back toward its floor (real time: about 20 s)
     const fl = this.heatFloor();
     this.heat = this.heat > fl ? fl + (this.heat - fl) * Math.exp(-(raw || 0) / HEAT.decayMs) : fl;
+    this.heatMax = Math.max(this.heatMax, this.heat);
     this.stepLines(raw);
     return raw;
   },
