@@ -430,6 +430,12 @@ body:has(.match) .top {
   width: 1px;
   background: var(--line-strong);
 }
+.match .fh.l b {
+  left: var(--at);
+}
+.match .fh.r b {
+  right: var(--at);
+}
 /* entering Fever: the banner over the court in the team's colour (spec §2.14), 1.2 s */
 .fevb {
   position: absolute;
@@ -1016,6 +1022,9 @@ html.reduced .fevb.on {
 .vlab .vels .btn {
   border-left: 3px solid;
   text-transform: capitalize;
+}
+.vlab .vels .btn[style] {
+  border-color: var(--ec); /* the element's colour (was an inline border-color) */
 }
 .vlab .vstat {
   margin: 0;

@@ -36,8 +36,7 @@ function labSide() {
       <label class="vrow">Power <b id="vpow">${LAB.pow}</b><input type="range" min="40" max="150" value="${LAB.pow}" oninput="labOpt('pow', +this.value, true)"></label>
       <div class="vrow">Element<div class="seg vels">${Object.keys(ECOL)
         .map(
-          e =>
-            `<button class="btn ${LAB.el === e ? 'on' : ''}" style="border-color:${ECOL[e]}" onclick="labOpt('el','${e}')">${esc(e)}</button>`
+          e => `<button class="btn ${LAB.el === e ? 'on' : ''}" style="--ec:${ECOL[e]}" onclick="labOpt('el','${e}')">${esc(e)}</button>`
         )
         .join('')}</div></div>
       <div class="vrow">Speed ${seg('speed', [1, 0.25, 0.1, 0], v => (v ? `${v}×` : '❚❚'))}</div>
