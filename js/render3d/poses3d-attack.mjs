@@ -239,9 +239,10 @@ export function spikePose(d, m) {
   const legsUp = { L: leg(0.1, 0.12, 0.7, 0.1), R: leg(0.04, 0.08, 0.7, 0.1) },
     // knees bent slightly behind: the loaded spring
     legsBow = { L: leg(0.12, 1.05, 0.8, 0.12), R: leg(-0.06, 1.25, 0.85, 0.12) },
+    // a pipe (back-row attack): a two-foot broad jump, both knees tucked under with a slight stagger — not a one-legged scissor (owner, 2026-10-12)
     legsPike =
       sty === 'pipe'
-        ? { L: leg(0.75, 0.5, 0.6, 0.1), R: leg(-0.5, 0.4, 0.6, 0.1) }
+        ? { L: leg(0.55, 0.95, 0.6, 0.12), R: leg(0.32, 1.05, 0.6, 0.12) }
         : { L: leg(0.6, 0.85, 0.5, 0.12), R: leg(0.48, 0.75, 0.5, 0.12) },
     legsDown = { L: leg(0.3, 0.4, 0.25, 0.16), R: leg(0.24, 0.35, 0.25, 0.16) };
   const bowT = {

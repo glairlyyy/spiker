@@ -78,8 +78,8 @@ const MOVES = {
     ms: 1600,
     keys: () => [
       [0, P({})],
-      [0.07, P({ lift: 0.05, L: leg(0.5, 0.6), R: leg(-0.2, 0.2), al: TUCK, ar: R(LOOSE) })],
-      [0.14, P({ lift: 0.06, L: leg(-0.2, 0.2), R: leg(0.5, 0.6), al: LOOSE, ar: R(TUCK) })],
+      [0.07, P({ hp: 0.12, L: leg(0.35, 0.5), R: leg(0.05, 0.25), al: TUCK, ar: R(LOOSE) })],
+      [0.14, P({ hp: 0.12, L: leg(0.05, 0.25), R: leg(0.35, 0.5), al: LOOSE, ar: R(TUCK) })],
       [0.2, dip({ hp: 0.45, sp: 0.3, L: leg(0.7, 1.2, 0, 0.16), R: leg(0.7, 1.2, 0, 0.16), al: DOWN, curl: 0.6 })],
       [
         0.32,
