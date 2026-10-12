@@ -313,7 +313,7 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     match (`m.lanes[id]` = { line, cross }), trusted × the sharper blocker's read quality (wit + speed, `readQ`). No history → a guess.
   - **The hitter aims**: a habit (line share 0.3–0.7 per player, a hash — power hitters lean cross), bent away from the block's
     read as far as they see it (`see` = 0.5 × (hitter wit − blocker wit), 0–0.6), toward the weaker hand of a double block.
-  - **Resolve — read first, then stats**: shot into the read channel → block coverage × 1.32 (the stats decide stuff / touch /
+  - **Resolve — read first, then stats**: shot into the read channel → block coverage × 1.36 (the stats decide stuff / touch /
     through); the other channel → × 0.4 (single) / × 0.65 (double), and the back row covers it (dig distance × 0.85). A double
     block's hand that meets the ball counts its own strength (± 20 %). A cut shot around a right read = the hitter beat the read.
   - **You see it**: during the set a floor **arrow** in the hitter's colour shows the projected spike direction, and a **fan** in
@@ -376,6 +376,12 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     Power +0.5, Cover +0.6, Wall +0.6, Deep +0.2; Hunt vs Cover −0.8 (countered), Power vs Deep 0.2, Beat vs Deep +0.8. Modest by
     design (§2.0); the balance pass may raise them. Not yet: hitters adapting when read, clubs remembering you (save bump).
 
+  - **Measured** (2026-10-12; paired sims, the same seed with the change undone, 4,000 matches per level): AI timeouts
+    ~1.5 a match, called ~2.7 down after losing ~70 % of the last 6 points; a third change the plan (mostly the defence to
+    Cover the weak link). Most of the bounce-back is chance (the next 6 points ~48 % even when the timeout does nothing);
+    the reset adds +1.5–3 % of points and +1–3.5 % match wins; a plan change adds +0.5–1.5 % points and +0–3 % wins
+    (average teams most, career league least). The coach's plan pick now reads base stats (it read the previous match's
+    mood and momentum).
 - §2.27 Crowd heat and the venue's air (owner, 2026-10-12) **[built 2026-10-12]**: the venue gets fired up as the match goes on.
   Presentation only (no draws; goldens unchanged); not annoying by design — nothing changes play.
   - **Heat** (`Dir.heat`, 0–1, js/render/director.js; numbers `HEAT`): every point +0.02; a big point +0.06; a 3+ streak +0.05;
@@ -421,6 +427,7 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     Firm and up: knocked back along the ball (to 0.9 m; a knockdown 1.2 m) with both feet skidding and dust; **shockwave
     rings** through the arms along the ball's line (the air impact's Doppler look — biggest at the arms), wind lines, a floor
     ripple from hard; hard and knockdowns add a **hit-stop** (up to 90 ms) and a camera shake. Soft balls show nothing new.
+  - A setter's fake never makes a knocked-down middle jump (`fakeMB`).
   - Not yet: attackers aiming at the hole the fallen player leaves; a coach-panel line for knockdowns (`m.ko` has the counts).
   - Direction (owner, 2026-10-12): finding the weakest passer — by scouting before the match, or by watching stamina drop in it
     — may become the game's main tactic (Hunt the passer, §2.26, is the first piece).

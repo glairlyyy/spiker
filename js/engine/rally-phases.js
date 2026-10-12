@@ -90,6 +90,12 @@ function recover(c) {
     });
   return { next: [ds, dg, 3] };
 }
+/** The middle who jumps with a setter's fake (setterDump): their front-row MB, not one who is on the floor (spec §2.28). */
+function fakeMB(c) {
+  const { m, front, ds, defT, n } = c,
+    up = defT.P.filter(p => !onFloor(m, p, n));
+  return up.filter(p => p.role !== 'S' && front(ds, p)).find(p => p.role === 'MB') || (up.includes(defT.mb) ? defT.mb : up[0]);
+}
 /** 2. Choose the setter (back-row setter first; on a scramble someone else may take it) and move to the pass. */
 function pickSetter(c) {
   const { m, B, V, front, atk, ds, da, atkT, defT, pas, qual } = c;
@@ -118,7 +124,7 @@ function pickSetter(c) {
     }
   }
   (m.setBy = m.setBy || []).push({ role: setter.role, why, qual, ts, tm });
-  const DMB = defT.P.filter(p => p.role !== 'S' && front(ds, p)).find(p => p.role === 'MB') || defT.mb;
+  const DMB = fakeMB(c);
   let sl = [];
   mv(m, setter, setX - da * 6, setZ, sl, V);
   for (const t of [atkT, defT])
@@ -147,7 +153,7 @@ function pickSetter(c) {
 function saveSet(c) {
   const { m, front, ds, defT, pas, scr } = c,
     at = m.pos[pas.id],
-    DMB = defT.P.filter(p => p.role !== 'S' && front(ds, p)).find(p => p.role === 'MB') || defT.mb;
+    DMB = fakeMB(c);
   m.scr = m.scr || { n: 0, over: 0 };
   m.scrLog = m.scrLog || [];
   m.scr.n++;

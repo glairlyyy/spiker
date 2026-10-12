@@ -168,7 +168,12 @@ function newMatch(a, b, rec, opts = {}) {
 }
 /** Team plans (spec §2.26): from match prep (opts.plan[side]) or the coach's own pick; who runs each; the log. */
 function matchPlans(m, opts) {
+  // the coach scouts base stats: CM (the match the stat boosts read) is still the previous match here — its mood and
+  // momentum leaked into this pick (found 2026-10-12: the same two teams picked different plans after different matches)
+  const cm0 = CM;
+  CM = null;
   m.plan = [0, 1].map(i => ({ ...(opts.plan?.[i] || planPick(m.t[i], m.t[1 - i])) }));
+  CM = cm0;
   m.planBy = [0, 1].map(i => (opts.plan?.[i] ? 'you' : 'ai')); // who runs each side's plan: 'you' (match prep) or the AI coach
   m.planLog = m.plan.map((p, i) => ({ side: i, at: [0, 0], atk: p.atk, def: p.def, by: m.planBy[i] }));
 }

@@ -58,7 +58,7 @@ const LANE = {
   seeMax: 0.6,
   away: 0.25,
   weakK: 0.012,
-  on: 1.32,
+  on: 1.36,
   off: 0.4,
   offDbl: 0.65,
   handK: 0.008,
