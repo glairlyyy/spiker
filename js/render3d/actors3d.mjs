@@ -142,7 +142,11 @@ export function posePlayer(pl, dt, ballPos, fx) {
     root = pl.root;
   const pos = W(d.x, d.z, 0);
   // gait is measured against where the body actually faces, so a player turned to run forward runs, not backpedals
-  const mot = motion(pl, pos, face + pl.yawOff, dt);
+  const mot0 = motion(pl, pos, face + pl.yawOff, dt),
+    // knocked back / down by the ball (VFX.recv, spec §2.28): the body is moved, it isn't running — no run legs, no gait,
+    // no turning to face the slide (owner, 2026-10-12: the kneel's legs ran)
+    hitMove = !!d.kb || downed(d) || (d.rcv && !d.rcv.ko && recvTier(d) === 'hard'),
+    mot = hitMove ? { ...mot0, speed: 0, now: 0, fwd: 0, lat: 0, gw: null, far: 0 } : mot0;
   celeStep(d, dt);
   const pose = playerPose(d, moodOf(d), mot);
   root.position.copy(pos);

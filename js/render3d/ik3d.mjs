@@ -84,7 +84,8 @@ export function footIK(pl, d, pose, dt) {
   const root = pl.root,
     feet = pl.feet || (pl.feet = [{}, {}]);
   // (the Animation lab's playback, or the planted gait — gait3d — has the feet fully: start fresh afterwards)
-  if (A.animLab?.replay || (pl.gW || 0) >= 0.8) {
+  if (A.animLab?.replay || (pl.gW || 0) >= 0.8 || d.kb) {
+    // (knocked back by the ball, d.kb: both feet slide with the body — nothing stays planted)
     feet[0] = {};
     feet[1] = {};
     return;
