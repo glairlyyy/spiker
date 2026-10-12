@@ -754,7 +754,7 @@ const KO_KNEE = {
   cp: 0.05,
   hd: -0.45,
   L: leg(1.55, 1.75, 0.1, 0.3),
-  R: leg(0.05, 2.1, 0, 0.24),
+  R: leg(-0.05, 1.6, 1.2, 0.24), // (the knee on the floor, the shin flat behind, the instep down — owner, 2026-10-13: the foot stuck up)
   lift: 0,
   slide: -0.1,
   R_: RU(-0.25, -0.9, 0.3),
