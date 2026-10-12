@@ -362,10 +362,10 @@ test.slow('engine: laning — the block reads a channel, a right read stops more
   assert(acts.length > 10 && acts.some(a => a.bz != null) && acts.every(a => Number.isFinite(a.x1) && Number.isFinite(a.z1)), 'lane acts');
 });
 
-test('engine: knockdowns — the fallen player sits out until the get-up; a loose ball goes over, else a high ball buys time (spec §2.28)', () => {
+test('engine: knockdowns — the fallen player sits out until the get-up; a loose ball goes over, else they attack off a high ball (spec §2.28)', () => {
   const g = load(43),
     T = g.mkTeams();
-  const ko = { n: 0, rec: 0, free: 0 };
+  const ko = { n: 0, rec: 0, free: 0, high: 0 };
   let falls = 0,
     ups = 0;
   for (let i = 0; i < 40; i++) {
@@ -393,11 +393,12 @@ test('engine: knockdowns — the fallen player sits out until the get-up; a loos
           }
       }
     }
-    for (const k of ['n', 'rec', 'free']) ko[k] += m.ko[k][0] + m.ko[k][1];
+    for (const k of ['n', 'rec', 'free', 'high']) ko[k] += m.ko[k][0] + m.ko[k][1];
   }
   eq(falls, ko.n, 'every knockdown is shown as a fall');
   assert(ko.n >= 15, `knockdowns ${ko.n}`);
-  assert(ko.rec > 0 && ko.free > 0, `recovery balls ${ko.rec}, forced free balls ${ko.free}`);
+  assert(ko.free > 0, `forced free balls ${ko.free}`);
+  assert(ko.high > ko.free, `mostly they still attack, off a high ball: ${ko.high} high balls, ${ko.free} free balls, ${ko.rec} over`);
   assert(ups > 0, 'players get back up within the rally');
 });
 

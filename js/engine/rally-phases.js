@@ -10,7 +10,7 @@
 /** 1. Free ball: a scrambled pass floats straight over the net. */
 function freeBall(c) {
   const { m, B, V, ds, dd, defT, pas, qual } = c;
-  if (qual === 1 && R() < 0.14) {
+  if (!c.high && qual === 1 && R() < 0.14) {
     const tx = sx(ds, rnd(260, 420)),
       tz = rnd(0.15, 0.85),
       dg = nearest(m, defT.P, tx, tz),
@@ -31,9 +31,10 @@ function freeBall(c) {
 }
 /**
  * 1b. Recovery (spec §2.28): a teammate is on the floor and would miss the next defence. A loose pass can't be attacked —
- * the nearest teammate just gets it over (a free ball; the fallen player is still down when they hit back). Otherwise,
- * unless the pass is perfect with KNOCK.hitters front-row hitters up (then they play on, a player short), the second touch
- * goes high over the net — the hang time gets the fallen player back up; the other side gets an easy ball. No draws.
+ * the nearest teammate just gets it over (a free ball; the fallen player is still down when they hit back). A perfect pass
+ * with KNOCK.hitters front-row hitters up plays on fast, a player short. Otherwise the team still attacks — off a high ball
+ * (c.high): a slow, high set whose hang time gets the fallen player back up for the defence (owner, 2026-10-12: not a free
+ * ball whenever someone falls). Only with nobody up to hit does a high ball go over. No draws.
  */
 function recover(c) {
   const { m, B, V, atk, ds, da, dd, atkT, defT, pas, qual, n } = c;
@@ -46,7 +47,19 @@ function recover(c) {
     m.ko.on[side]++;
     return null; // a perfect pass and hitters ready: play on, a player short
   }
-  const forced = qual === 1 && m.ko.mg < KNOCK.loose; // the ball is loose: nobody can do more than get it over
+  const loose = qual === 1 && m.ko.mg < KNOCK.loose, // the ball is loose: nobody can do more than get it over
+    canHit = up.filter(p => p.role !== 'S').length >= 2; // a setter and someone to hit (a back-row wing will do)
+  if (!loose && canHit) {
+    m.ko.high[side]++;
+    c.high = true; // a high, slow set: they get up while it hangs
+    for (const p of fl) {
+      delete m.down[p.id];
+      m.busy[p.id] = n;
+      if (V) m.upQ.push({ k: 'getup', p: p.id });
+    }
+    return null;
+  }
+  const forced = loose;
   m.ko[forced ? 'free' : 'rec'][side]++;
   // the second touch: the setter if free, else whoever is nearest the ball
   const q = m.pos[pas.id],
@@ -166,7 +179,7 @@ function setterDump(c, s) {
     { setter, DMB, setZ } = s;
   // higher wit and higher jump make the setter a bigger dump threat
   const lefty = setter.role === 'S' && hasTech(setter, 'lefty');
-  if (setter.role === 'S' && qual >= 2 && R() < atkT.S.feint * 0.5 * dumpThreat(setter, W(setter)) * (lefty ? 1.4 : 1)) {
+  if (!c.high && setter.role === 'S' && qual >= 2 && R() < atkT.S.feint * 0.5 * dumpThreat(setter, W(setter)) * (lefty ? 1.4 : 1)) {
     if (lefty) techFire(m, setter, 'lefty');
     const sj = Math.max(24, jumpPx(setter) * 0.55);
     const lx = sx(ds, rnd(410, 465)),
@@ -175,7 +188,8 @@ function setterDump(c, s) {
       dd0 = dist(m.pos[dg.id], lx, lz);
     const kill = R() < 0.25 + 0.18 * (W(setter) - 1.3) + (setter.jump - 60) / 250 - (defT.S.dig - 1) + dd0 * 0.3 + (lefty ? 0.1 : 0);
     // the fake: a decoy hitter approaches, the middle blocker jumps with them
-    const dec = pick(atkT.P.filter(p => p !== pas && p !== setter)),
+    const decs = atkT.P.filter(p => p !== pas && p !== setter && !onFloor(m, p, c.n)), // (not one who is on the floor: spec §2.28)
+      dec = pick(decs.length ? decs : atkT.P.filter(p => p !== pas && p !== setter)),
       dz = clamp(HOME[dec.slot][1], 0.1, 0.9),
       fk = [];
     mv(m, dec, sx(atk, 420), dz, fk, V);
@@ -283,7 +297,11 @@ function chooseAttack(c, s, h) {
   // coach tactic: 'ws' / 'mb' focus shifts who gets the ball; 'auto' = setter's call (the default)
   const tac = TACTICS[(m.tac && m.tac[atk]) || 'auto'];
   let quick =
-    sq2 !== 'bad' && qual >= 2 && MBs.length > 0 && R() < clamp(atkT.S.quick * (MBs.length > 1 ? 1.4 : 1) * tac.quick, 0, tac.quickCap);
+    !c.high && // (a high ball for a fallen teammate: no quick — spec §2.28)
+    sq2 !== 'bad' &&
+    qual >= 2 &&
+    MBs.length > 0 &&
+    R() < clamp(atkT.S.quick * (MBs.length > 1 ? 1.4 : 1) * tac.quick, 0, tac.quickCap);
   // not-ready players (still on the floor, running back in) aren't set; the free ones call for it
   const fresh = p => !c.scr || p !== c.scr.first; // a scramble: the player whose arms it popped off does not hit
   let pool = atkT.P.filter(p => p !== setter && free(p) && fresh(p));
@@ -357,7 +375,7 @@ function chooseAttack(c, s, h) {
       acts: [{ k: 'call', p: setter.id, t: callLine(act, setter, m) }]
     });
   }
-  return { MBs, mbZ, tac, quick, pool, callers, trust, spiker, readBonus, freak, slide, sync, DF, B0, bad };
+  return { MBs, mbZ, tac, quick, pool, callers, trust, spiker, readBonus, freak, slide, sync, DF, B0, bad, high: !!c.high };
 }
 /**
  * 5b. A bad set: most stay hittable (in place, just weaker — see setMul), but some go astray — the ball flies off

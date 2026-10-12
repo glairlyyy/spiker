@@ -90,6 +90,7 @@ function attackPhases(c, { s, h, a }) {
   const x = { ...s, ...h, ...a, fat };
   Object.assign(x, fakeSet(c, x));
   Object.assign(x, formBlock(c, x));
+  if (x.high) x.cov *= KNOCK.highCov; // a high ball (spec §2.28): their block has all the time it needs
   Object.assign(x, laneRead(c, x)); // laning (spec §2.24): the block reads a channel, the hitter aims
   Object.assign(x, laneAim(c, x));
   Object.assign(x, setBeat(c, x));
@@ -158,6 +159,7 @@ function fakeSet(c, x) {
     fakeDecoy = null;
   if (
     !bad &&
+    !x.high && // (a high ball for a fallen teammate: no tricks — spec §2.28)
     qual >= 2 &&
     setter.role === 'S' &&
     R() < clamp(0.12 * W(setter) * (atkT.sk === 'mind' ? 2 : atkT.sk === 'tempo' ? 1.5 : 1), 0, 0.55)
@@ -166,7 +168,7 @@ function fakeSet(c, x) {
       quick = true;
       spiker = pick(MBs);
     }
-    const others = atkT.P.filter(p => p !== setter && p !== spiker);
+    const others = atkT.P.filter(p => p !== setter && p !== spiker && !busy(m, p, c.n)); // (not one still on the floor)
     if (others.length) {
       const decoy = wpick(others, p => p.power * (p.star ? 1.6 : 1)),
         db = B0;
@@ -318,10 +320,11 @@ function setActs(c, x, { setDir, combo, setCalls, hype }) {
     {
       k: 'ball',
       to: { p: spiker.id, c: 'spike' },
-      h: freak ? 8 : quick ? 30 : bad ? 250 : longB ? 300 : back ? 245 : 190,
+      h: freak ? 8 : quick ? 30 : x.high ? 330 : bad ? 250 : longB ? 300 : back ? 245 : 190,
       wob: bad
     },
     ...(bad ? [{ k: 'call', p: setter.id, t: 'Sorry!', soft: 1 }] : []),
+    ...(x.high && !bad ? [{ k: 'call', p: setter.id, t: 'High ball — get up!' }] : []),
     ...setCalls,
     ...(fakeDecoy ? [{ k: 'real', to: { p: spiker.id, c: 'spike' } }] : []),
     ...(sq2 === 'perfect'
@@ -332,7 +335,7 @@ function setActs(c, x, { setDir, combo, setCalls, hype }) {
   ];
 }
 /** The set beat's length (ms): the hitter's approach; contact at its end. */
-const setDurOf = x => (x.freak ? 330 : x.quick ? 430 : x.bad ? 900 : x.longB ? 1150 : 800);
+const setDurOf = x => (x.freak ? 330 : x.quick ? 430 : x.high ? 1250 : x.bad ? 900 : x.longB ? 1150 : 800);
 /** A blocker's take-off in the set beat (fraction of it; contact at its end). */
 const blockT0 = (x, b) => (b === x.b0 && x.bitten ? 0.84 : x.quick ? 0.3 : 0.6);
 /** The blockers' jumps. */

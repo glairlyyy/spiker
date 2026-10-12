@@ -414,11 +414,14 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     costs 3 % stamina, so a tired passer goes down easier. The player still gets the ball up (the pass quality is the normal
     roll), then is **on the floor through the team's next defence**: no set, hit, block or dig (`onFloor`; `nearest` skips
     them). Per 100 points: average teams ~0.6 · career league ~1.4 · tournament ~9 · Monster ~18. Tallies `m.ko.p` per player.
-  - **Recovery** (`recover`, js/engine/rally-phases.js, no draws): the team's next touch decides. A **loose ball** (pass margin
-    under −32) can only go over — "Free ball": the other side gets an easy ball while the fallen player is still down.
-    Otherwise the setter (or nearest teammate) sends a **high ball over** — "Buying time": 1.8 s in the air, the fallen
-    player gets up and the team defends with everyone; the other side gets an easy ball. Only a perfect pass with two
-    front-row hitters up plays on, a player short. League sims: about 1 recovery ball for every 2 forced free balls.
+  - **Recovery** (`recover`, js/engine/rally-phases.js, no draws): the team's next touch decides, and it still plays when it
+    can (owner, 2026-10-12: not a free ball whenever someone falls). A **loose ball** (pass margin under −45) can only go
+    over — "Free ball": the other side gets an easy ball while the fallen player is still down. A perfect pass with two
+    front-row hitters up plays on fast, a player short. Otherwise the team **attacks off a high ball**: the setter sends a
+    slow, high set ("High ball — get up!") whose hang time gets the fallen player back up for the defence — no quick, no
+    fake, no dump, and their block is fully set (coverage × 1.15). Only with nobody up to hit does a high ball go over
+    ("Buying time"). Tournament sims: ~62 % attack off the high ball, ~32 % free ball (loose), ~7 % over, ~1 % fast. A
+    player still on the floor never runs a decoy approach.
   - **Shown**: a knockdown pose (`fall`: knocked back, sat down hard, flat on the back, knees up; the "Knocked down!" label),
     held on the floor until the engine's `getup` act (or the point ends), then sit up → one knee → push up → ready; no running
     while down. Flowing keys (owner, 2026-10-12: not robotic): the pose passes through its keys without stopping, the fall

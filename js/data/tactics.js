@@ -171,8 +171,9 @@ const PLAN_LINES = ['New plan. Listen up.', 'We change it. Now.', "They've shown
  * (0 at power `from`, full at `full` — soft balls floor nobody, so it grows with the level); only when the pass margin is
  * under `mg`. A knockdown costs `sta` stamina. On the floor through the team's next defence (no set, hit, block or dig). The
  * team then recovers instead of forcing it: a loose pass (margin under `loose`) goes straight over as a free ball; otherwise,
- * unless the pass is perfect with `hitters` front-row hitters up, a high ball over (`hang` ms in the air) buys the time to
- * get up — the other side gets an easy ball.
+ * unless the pass is perfect with `hitters` front-row hitters up, the team **attacks off a high ball**: a slow, high set
+ * that buys the time to get up (no quick; their block is fully set: coverage × `highCov`). Only with nobody up to hit
+ * does a high ball go over (`hang` ms in the air) — the other side gets an easy ball.
  */
 const KNOCK = {
   defK: 0.6,
@@ -183,9 +184,10 @@ const KNOCK = {
   full: 100,
   sta: 0.03,
   mg: 30,
-  loose: -32,
+  loose: -45,
   srvK: 0.95,
   hitters: 2,
   hang: 1800,
-  free: 1000
+  free: 1000,
+  highCov: 1.15
 };

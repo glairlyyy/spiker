@@ -207,7 +207,7 @@ function matchTallies() {
       rdBeat: 0,
       rdWk: 0 // kills off a block that read the wrong channel
     })), // attacks per side by kind and their kills (engine-only tally, no randoms)
-    ko: { n: [0, 0], rec: [0, 0], free: [0, 0], on: [0, 0], p: {} }, // knockdowns and what the team did next (spec §2.28)
+    ko: { n: [0, 0], rec: [0, 0], free: [0, 0], on: [0, 0], high: [0, 0], p: {} }, // knockdowns and what the team did next (spec §2.28)
     lanes: {}, // laning (spec §2.24): hitter id → { line, cross } shots this match (what the blockers have seen)
     hit: {}, // the coach panel (spec §2.25): hitter id → { n, k, err, stf, line, cross, tip, rd, rdOk } this match
     recv: {} // the coach panel: receiver id → { n, ace } serves taken / aced
