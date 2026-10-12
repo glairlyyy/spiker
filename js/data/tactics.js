@@ -80,9 +80,9 @@ const COACH = { min: 5, share: 0.7, serve: 0.5, read: 0.65 };
 /** The state words shown over a player on court (the clear ones, strongest first); the rest stay in the Coach panel. */
 const COND_COURT = ['Passes breaking', 'Shaken', 'Hot hand'];
 const COND = {
-  tiring: 0.7,
-  spent: 0.4,
-  up: 0.35,
+  tiring: 0.5,
+  spent: 0.25,
+  up: 0.75,
   down: -0.35,
   min: 4,
   served: 0.4,

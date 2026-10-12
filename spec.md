@@ -349,6 +349,12 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     knockdowns count as broken), Hot hand / Cold hand (last 5 attacks), Being read (their block), Knocked down; Steady when
     nothing stands out. On court the clear ones show as one coloured word under the player's tag (Passes breaking, Shaken,
     Hot hand; `COND_COURT`), refreshed at every dead ball.
+  - **Simpler panel** (owner, 2026-10-13): each side reads top-down — a status line (on a run / lost the last n / trading
+    points · passing n of m clean · knocked down · plan), then only the players who stand out (most bad news first, up to 3
+    words each, bad first), "Steady:" for the rest, the patterns in plain words ("#8 hits cross-court", "Serving at their #13",
+    "Block reading them" / "guessing wrong", with n of m), and **Numbers** folded away (attack, hitters, block, serve receive).
+    Your side first in a career match. Quieter words: Tiring under 50 % stamina, Spent under 25 %, Fired up from mood 0.75
+    (they showed in nearly every match before).
 - §2.26 Team plans and match prep (owner, 2026-10-12) **[built 2026-10-12]**: every side plays one **attack plan** and one
   **defence plan** (`PLANS`, js/data/tactics.js; engine js/engine/plans.js). Plans are hidden from the other side, leak
   through the coach panel's tags (§2.25), change only at a timeout, and tilt points — none decides one (§2.0).

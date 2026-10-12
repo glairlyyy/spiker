@@ -288,7 +288,8 @@ const step = async (name, fn) => {
         c.querySelectorAll('.cside').length !== 2 ||
         !/attacks/.test(c.textContent) ||
         !c.querySelector('table') ||
-        c.querySelectorAll('.ccond li').length < 8 // the team's condition: every player on court, both sides
+        c.querySelectorAll('.cstat').length !== 2 || // each side's status line
+        !c.querySelector('details.fold') // the numbers, folded away
       )
         throw new Error(`coach panel: ${c ? c.textContent.slice(0, 120) : 'missing'}`);
       railOpen(null);
