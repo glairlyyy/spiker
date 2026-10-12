@@ -130,7 +130,9 @@ function hitLog(m, x, kill, stuffed, err) {
 /** The coach panel: a serve taken by p (aced: it beat them). */
 function recvLog(m, p, aced) {
   const V = m.recv || (m.recv = {}),
-    r = V[p.id] || (V[p.id] = { n: 0, ace: 0 });
-  if (aced) r.ace++;
+    r = V[p.id] || (V[p.id] = { n: 0, ace: 0, bad: 0 });
+  if (aced === 'bad')
+    r.bad++; // a loose pass (quality 1): the coach sees who is being broken (subCandidate 'targeted')
+  else if (aced) r.ace++;
   else r.n++;
 }

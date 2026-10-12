@@ -40,7 +40,20 @@ const SKILL = {
   blk: [30, 60, 0.2, 1],
   pass: 4
 };
-const SUB = { max: 2, sta: 0.6, fresh: 0.9, errs: 3, back: 0.85, iq: [0.35, 0.9], you: 0.9, worth: [0.85, 1.05] };
+const SUB = {
+  max: 2,
+  sta: 0.6,
+  fresh: 0.9,
+  errs: 3,
+  back: 0.85,
+  iq: [0.35, 0.9],
+  you: 0.9,
+  worth: [0.85, 1.05],
+  // the targeted passer (owner, 2026-10-12): they serve at one of ours (`share` of their serves, at least noticeAt(T) of them)
+  // and it hurts (aces + loose passes + knockdowns ≥ `hurt` of those serves) → a bench player who passes at least `pass` ×
+  // as well comes in — their hunt has to start over; a passer taken off for this does not come straight back
+  hunt: { share: 0.5, hurt: 0.4, pass: 0.97 }
+};
 /**
  * The second ball (spec §2.1): on a bad pass (quality 1) a free teammate sets instead of the setter only when the setter's time
  * to the set point (distance ÷ (0.5 + speed / 100), as `nearest`) is more than `beat` × that teammate's. No randoms in the choice.

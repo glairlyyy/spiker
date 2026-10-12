@@ -23,6 +23,12 @@ const SUBLINES = [
   '#{in} in for #{out}. Same plan, fresher legs.',
   "#{out}, come off. #{in} — show me why you're here."
 ];
+/** The coach takes off the passer the other side keeps serving at (SUB.hunt): {out} / {in} = shirt numbers. */
+const HUNT_SUBLINES = [
+  "They're hunting #{out}. #{in}, you take those balls.",
+  '#{out}, sit — they found you. #{in}, make them start over.',
+  '#{in} in for #{out}. Let them serve at someone who passes.'
+];
 const LINES = {
   ask: {
     hot: [

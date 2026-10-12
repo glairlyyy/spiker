@@ -365,7 +365,8 @@ function subCandidate(m, side) {
       const same = list.filter(q => q.role === out.role);
       return (same.length ? same : list).reduce((a, q) => (ovr(q) > ovr(a) ? q : a));
     },
-    rested = out => t.bench.filter(q => !q.noSub && sta(q) >= SUB.fresh && fit(out, q)),
+    hunted = q => m.subLog.some(e => e.out === q.id && e.why === 'targeted'), // pulled off as their target: stays off
+    rested = out => t.bench.filter(q => !q.noSub && !hunted(q) && sta(q) >= SUB.fresh && fit(out, q)),
     need = lerp(SUB.worth[0], SUB.worth[1], t.coachIQ == null ? 0.7 : t.coachIQ),
     pays = (out, inn) => ovr(inn) >= need * ovr(out) * (1 - RULES.stamina.hit * (1 - sta(out))); // a smart coach only subs when it helps
   for (const out of t.P.filter(p => sta(p) < SUB.sta).sort((a, b) => sta(a) - sta(b))) {
@@ -379,7 +380,22 @@ function subCandidate(m, side) {
     const r = rested(out);
     if (r.length && pays(out, best(out, r))) return { out, inn: best(out, r), why: 'errors' };
   }
+  // the targeted passer (SUB.hunt, owner 2026-10-12): they keep serving at one of ours and it hurts — a better (or as good)
+  // passer from the bench breaks their hunt (their coach's read on the receiver starts over)
+  const H = SUB.hunt,
+    V = m.recv || {},
+    rv = p => V[p.id] || { n: 0, ace: 0, bad: 0 },
+    served = squadOf(t).reduce((a, p) => a + rv(p).n, 0),
+    passQ = p => effD(p) + p.speed * 0.3;
+  for (const out of t.P.filter(p => p.role !== 'S')) {
+    const r = rv(out),
+      hurt = r.ace + r.bad + ((m.ko && m.ko.p[out.id]) || 0);
+    if (r.n < noticeAt(t) || r.n < H.share * served || hurt < H.hurt * r.n) continue;
+    const opts = rested(out).filter(q => q.role !== 'S' && passQ(q) >= H.pass * passQ(out) && pays(out, q));
+    if (opts.length) return { out, inn: opts.reduce((a, q) => (passQ(q) > passQ(a) ? q : a)), why: 'targeted' };
+  }
   for (const s of m.lineup0[side].P) {
+    if (hunted(s)) continue;
     const r = t.P.find(p => p.id === m.subbed[s.id]);
     if (r && t.bench.includes(s) && !s.noSub && sta(s) >= SUB.back && fit(r, s) && ovr(s) > ovr(r)) return { out: r, inn: s, why: 'back' };
   }
@@ -398,7 +414,8 @@ function coachSubs(m, side) {
   subIn(m, side, out, inn);
   m.subLog.push({ side, pts: m.pts[0] + m.pts[1], why, out: out.id, inn: inn.id, sta: m.sta[out.id] == null ? 1 : m.sta[out.id] });
   if (!m.rec) return [];
-  const text = SUBLINES[(out.num + inn.num + m.pts[0] + m.pts[1]) % SUBLINES.length].replace('{out}', out.num).replace('{in}', inn.num);
+  const LS = why === 'targeted' ? HUNT_SUBLINES : SUBLINES,
+    text = LS[(out.num + inn.num + m.pts[0] + m.pts[1]) % LS.length].replace('{out}', out.num).replace('{in}', inn.num);
   return [
     {
       dur: 1500,

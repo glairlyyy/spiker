@@ -324,6 +324,7 @@ function serveReceive(c) {
   const rDive = rollR || mustDive(rc, m.pos[rc.id], tx - dR * 16, tz, sdur); // run to it, or dive only when out of reach
   if (rDive) setBusy(m, rc, 1); // still on the floor while the team sets
   const ko = knock(m, rc, sq * KNOCK.srvK, mg, 2); // a hard serve barely kept up: knocked flat (spec §2.28)
+  if (q === 1) recvLog(m, rc, 'bad');
   mv(m, rc, tx - dR * 16, tz, sw, V);
   dr(m, rc, 0.015);
   V &&

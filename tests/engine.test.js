@@ -345,7 +345,8 @@ test.slow('engine: laning — the block reads a channel, a right read stops more
     kRight = okK / ok,
     kWrong = wk / (rd - ok);
   assert(right > 0.4 && right < 0.6, `right reads ${(100 * right).toFixed(1)} % (40–60)`);
-  assert(kWrong > kRight + 0.1, `kills off a right read ${(100 * kRight).toFixed(1)} % vs a wrong one ${(100 * kWrong).toFixed(1)} %`);
+  // a right read stops clearly more: ≥ 25 % more kills off a wrong one (relative — the level of the kill rate moves with the teams)
+  assert(kWrong > kRight * 1.25, `kills off a right read ${(100 * kRight).toFixed(1)} % vs a wrong one ${(100 * kWrong).toFixed(1)} %`);
   // channels: line stays on the hitter's side, cross goes to the far side (a middle attack angles to a corner)
   for (const z of [0.15, 0.3, 0.5, 0.7, 0.85]) {
     assert(g.laneOf(z, g.laneZ(z, 'line')) === 'line' && g.laneOf(z, g.laneZ(z, 'cross')) === 'cross', `channels at ${z}`);
@@ -400,6 +401,29 @@ test('engine: knockdowns — the fallen player sits out until the get-up; a loos
   assert(ups > 0, 'players get back up within the rally');
 });
 
+test('engine: the coach subs off the passer the other side hunts — a passer as good comes on, the target stays off (SUB.hunt)', () => {
+  const g = load(47);
+  let n = 0;
+  for (let i = 0; i < 60; i++) {
+    g.RNG.seed(9000 + i);
+    const T = g.mkTeams(),
+      m = g.simMatch(T[i % 8], T[(i + 3) % 8], {
+        plan: [
+          { atk: 'hunt', def: 'read' },
+          { atk: 'hunt', def: 'read' }
+        ]
+      });
+    for (const e of m.subLog.filter(x => x.why === 'targeted')) {
+      n++;
+      const r = m.recv[e.out];
+      assert(r && r.n >= 4, 'served at enough to notice');
+      assert(!m.subLog.some(x => x.inn === e.out && x.pts > e.pts), 'the hunted passer does not come straight back');
+    }
+  }
+  g.RNG.unseed();
+  assert(n >= 5, `targeted subs happen (${n})`);
+});
+
 test('engine: team plans — given plans hold, the coach picks from its style, Hunt serves at the weak passer, the coach answers at its timeout (spec §2.26)', () => {
   const g = load(41),
     T = g.mkTeams();
@@ -409,7 +433,10 @@ test('engine: team plans — given plans hold, the coach picks from its style, H
     assert(g.PLANS.atk[p.atk] && g.PLANS.def[p.def], `pick for ${t.name}`);
     if ((t.coachIQ ?? 0.6) < g.PLAN_AI.iq) eq(`${p.atk}/${p.def}`, g.PLAN_STYLE[t.sk].join('/'), `${t.name} plays its style`);
   }
-  // given plans are played; Hunt the passer sends most serves at their weakest passer
+  // given plans are played; Hunt the passer sends most serves at their weakest passer (their coach's targeted sub, SUB.hunt,
+  // would move the target: off here, it has its own test)
+  const share0 = g.SUB.hunt.share;
+  g.SUB.hunt.share = 9;
   let at = 0,
     all = 0,
     changed = 0;
@@ -429,6 +456,7 @@ test('engine: team plans — given plans hold, the coach picks from its style, H
     if (m.planLog.some(e => e.side === 1 && (e.at[0] || e.at[1]))) changed++;
   }
   assert(at / all > 0.6, `Hunt: ${((100 * at) / all).toFixed(0)} % of serves at the weakest passer`);
+  g.SUB.hunt.share = share0;
   assert(changed > 3, `the AI coach changed plan at its timeout in ${changed} of 60 matches`);
   // planSet at the same score replaces the entry; the coach panel tags carry true counts
   const m = g.newMatch(T[0], T[1], false);

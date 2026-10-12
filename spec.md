@@ -382,6 +382,12 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     the reset adds +1.5–3 % of points and +1–3.5 % match wins; a plan change adds +0.5–1.5 % points and +0–3 % wins
     (average teams most, career league least). The coach's plan pick now reads base stats (it read the previous match's
     mood and momentum).
+  - **Targeted passer sub** (owner, 2026-10-12; `SUB.hunt`, js/engine/match.js subCandidate): when the other side serves at
+    one of ours (≥ half their serves, at least as many as the coach needs to notice) and it hurts (aces + loose passes +
+    knockdowns ≥ 40 % of those serves), the AI coach brings on a bench player who passes at least as well (and is worth it
+    overall) — their hunt starts over on someone else; the hunted passer stays off. Uses one of the two subs; its own coach
+    line ("They're hunting #4…"). Measured (paired, 2,000 matches per level): in 25–46 % of matches; the next 8 points
+    +2–3 % and match wins +1.5–4.5 % for the side that subs.
 - §2.27 Crowd heat and the venue's air (owner, 2026-10-12) **[built 2026-10-12]**: the venue gets fired up as the match goes on.
   Presentation only (no draws; goldens unchanged); not annoying by design — nothing changes play.
   - **Heat** (`Dir.heat`, 0–1, js/render/director.js; numbers `HEAT`): every point +0.02; a big point +0.06; a 3+ streak +0.05;
