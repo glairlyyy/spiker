@@ -63,6 +63,29 @@ function stepPlayerTimers(wdt, raw) {
       sfx.land(d._air);
       d._air = 0;
     }
+    if (d.rcv && (d.rcv.t += dt) > (RECV_MS[recvTier(d)] || 0) && !d.rcv.ko) d.rcv = null; // the receive recoil is over
+    if (d.rcv && d.rcv.ko && !d.ko) d.rcv = null;
+    if (d.kb) {
+      // knocked back by the ball (recvHit): decelerating along kb (metres), the planned move shifted with the body
+      const kb = d.kb;
+      kb.t += dt;
+      const u = clamp(kb.t / kb.dur, 0, 1),
+        sNow = kb.D * (1 - (1 - u) * (1 - u)),
+        dm = sNow - kb.s,
+        dx = (kb.ux * dm) / MX,
+        dz = (kb.uz * dm) / MZ,
+        still = d.tx === d.sx && d.tz === d.sz;
+      kb.s = sNow;
+      d.x += dx;
+      d.z += dz;
+      d.sx += dx;
+      d.sz += dz;
+      if (still) {
+        d.tx += dx;
+        d.tz += dz;
+      }
+      if (u >= 1) d.kb = null;
+    }
     if (d.ko) {
       // knocked down (spec §2.28): the back hits the floor, then up on the engine's get-up (or the safety timeout)
       d.ko.t += dt;

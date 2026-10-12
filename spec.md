@@ -408,7 +408,15 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     player gets up and the team defends with everyone; the other side gets an easy ball. Only a perfect pass with two
     front-row hitters up plays on, a player short. League sims: about 1 recovery ball for every 2 forced free balls.
   - **Shown**: a knockdown pose (`fall`: knocked back, sat down hard, flat on the back, knees up; the "Knocked down!" label),
-    held on the floor until the engine's `getup` act (or the point ends), then sit up → squat → ready; no running while down.
+    held on the floor until the engine's `getup` act (or the point ends), then sit up → one knee → push up → ready; no running
+    while down. Flowing keys (owner, 2026-10-12: not robotic): the pose passes through its keys without stopping, the fall
+    speeds up into the floor with a small bounce, and the body is really knocked back (it gets up where it landed).
+  - **Receive power tiers** (owner, 2026-10-12; display only, `VFX.recv`, panel "Receive impact"): every receive / dig takes
+    the incoming ball's power against the receiver's Defense (as the knockdown, × the ball's weight) → **firm** (the platform
+    jolts up, rocked back a step), **hard** (rocked back, down on one knee, back up — held there ~0.7 s), or the knockdown.
+    Firm and up: knocked back along the ball (to 0.9 m; a knockdown 1.2 m) with both feet skidding and dust; **shockwave
+    rings** through the arms along the ball's line (the air impact's Doppler look — biggest at the arms), wind lines, a floor
+    ripple from hard; hard and knockdowns add a **hit-stop** (up to 90 ms) and a camera shake. Soft balls show nothing new.
   - Not yet: attackers aiming at the hole the fallen player leaves; a coach-panel line for knockdowns (`m.ko` has the counts).
   - Direction (owner, 2026-10-12): finding the weakest passer — by scouting before the match, or by watching stamina drop in it
     — may become the game's main tactic (Hunt the passer, §2.26, is the first piece).

@@ -1,4 +1,4 @@
-// The dive timeline: one shape over time, shared by the playback (movement, poses) and the 3D dive pose.
+// The dive, knockdown and receive-impact timelines: shared by the playback (movement, poses) and the 3D poses.
 
 /** After the dig contact the dive runs on fixed time, however short the beat was: on the floor, then back up. */
 const DIVE_POST_MS = 700;
@@ -36,10 +36,32 @@ function diveShape(d) {
  */
 const KO_MIN_MS = 1200,
   KO_MAX_MS = 7000,
-  KO_UP_MS = 800;
+  KO_UP_MS = 1100;
 /** Still knocked down: not back on the feet yet. */
 const downed = d => d.pose === 'fall' && !!d.ko && !(d.ko.up != null && d.ko.t >= d.ko.up + KO_UP_MS);
 /** The engine says they're up (getup act): they start getting up now, or once they've been down KO_MIN_MS. */
 function koUp(d) {
   if (d && d.ko && d.ko.up == null) d.ko.up = Math.max(d.ko.t, d.ko.dur + KO_MIN_MS);
 }
+
+/**
+ * Receive impact (owner, 2026-10-12; display only — VFX.recv): how hard the incoming ball hits this receiver, 0..1 — the
+ * ball's power against their Defense (as knock() in the engine), × the ball's own weight (soft balls jolt nobody).
+ */
+function recvK(d, pow) {
+  const R = typeof VFX !== 'undefined' ? VFX.recv : null;
+  if (!R || !R.on || !pow) return 0;
+  const def = (d.p && d.p.def) || 60;
+  return clamp((pow - def * R.defK - R.gap) / R.span, 0, 1) * clamp((pow - 30) / 70, 0, 1);
+}
+/** The receive tier now playing: 'ko' (knocked down), 'hard' (stagger, one knee), 'firm' (jolt, a step back) or null. */
+function recvTier(d) {
+  const r = d.rcv;
+  if (!r) return null;
+  if (r.ko) return 'ko';
+  const R = VFX.recv;
+  return r.k >= R.hard ? 'hard' : r.k >= R.firm ? 'firm' : null;
+}
+/** How long (ms after the contact) each tier plays; a hard receive holds the player there until RECV_HOLD. */
+const RECV_MS = { firm: 650, hard: 1250 },
+  RECV_HOLD = 700;

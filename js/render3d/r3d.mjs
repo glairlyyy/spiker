@@ -476,6 +476,7 @@ const fxApi = {
   elemBurst: (el, pow) => world && world.fx.elemBurst(el, ballW(), pow, A.ball.h > 60 ? ballDir.clone() : null),
   impact: pow => world && world.fx.impact(ballW(), pow),
   touch: (kind, save) => world && world.fx.touch(kind, ballW(), save),
+  recv: (k, ko) => world && world.fx.recv(ballW(), ballDir.clone(), k, ko),
   blast: (pow, color) => world && world.fx.blast(W(A.ball.x, A.ball.z, 0), pow, color || undefined),
   elemImpact: (el, pow) => world && world.fx.elemImpact(el, ballW(), pow),
   trail: (el, pow, dt) => world && world.fx.trail(el, ballW(), ballDir.clone(), pow, dt),

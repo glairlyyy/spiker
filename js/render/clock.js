@@ -38,7 +38,10 @@ function timeScale(cb, raw) {
   if (on && cb._dig) A.slowK = Math.min(A.slowK, cb._dig); // a far dig: just slow enough for the digger to get there
   // the impact frame's slow motion (spec §2.3a): while the court is in negative the world runs at VFX.frame.slow, then back
   const imp = A.impactUntil && performance.now() < A.impactUntil,
-    tgt = Math.min(A.freezeOn ? TS_FREEZE : A.sceneOn ? TS_SCENE : A.slowK, imp ? VFX.frame.slow : 1, Cine.slow()); // a cut-scene's slow motion
+    hs = !!(A.hitStopUntil && performance.now() < A.hitStopUntil), // a hard receive's hit-stop (recvHit, VFX.recv.stop)
+    tgt = Math.min(A.freezeOn ? TS_FREEZE : A.sceneOn ? TS_SCENE : A.slowK, imp ? VFX.frame.slow : 1, Cine.slow(), hs ? 0.03 : 1); // a cut-scene's slow motion
+  if (A._hs && !hs) A.ts = tgt; // the hit-stop lets go at once
+  A._hs = hs;
   if (!Number.isFinite(A.ts)) A.ts = 1; // first frame (or a bad value): normal speed
   if (tgt < 0.1 || (on && cb._dig && A.slowK === cb._dig))
     A.ts = Math.min(A.ts, tgt); // hit-stop / scene / far dig: instant (the digger's time budget starts now)

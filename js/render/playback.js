@@ -328,6 +328,7 @@ function startBall(a) {
     if ((lc === 'bump' || lc === 'dive' || lc === 'set') && lp) {
       lp.swing = 0;
       touchFx(lc, A.ball.h < 40); // every player's touch pop; dug off the floor: a save spark (VFX.found)
+      if (lc !== 'set') recvHit(lp, A.trailPow || 0); // how hard it hit them: recoil, knock-back, shockwave (VFX.recv)
     }
     const hd = (lc === 'spike' || lc === 'serve') && lp;
     if (hd) a._lag = Math.max(0, swingLead(hd) - (hd.spk || 0));
@@ -353,6 +354,7 @@ function startBall(a) {
   A.ball.follow = null;
   A.ball.vis = true;
   a._f = { x: A.ball.x, z: A.ball.z, h: A.ball.h };
+  A.inFrom = a._f; // where this flight started (the next receive is knocked back along it)
   a._t = resolve(a.to);
   clearNet(a);
   A.trailPow = a.trail || 0;
@@ -399,6 +401,7 @@ function applyBeat(b, t) {
     if (d.fallMs != null && d.airV) continue; // coming down from a jump: momentum carries them (stepPlayerTimers)
     if (diving(d) && d.dv.t > d.dv.dur) continue; // on the floor: runs on only once back up (endBeat carries the move)
     if (downed(d) && d.ko.t > d.ko.dur) continue; // knocked down: the same, until the get-up (spec §2.28)
+    if (d.rcv && recvTier(d) === 'hard' && d.rcv.t < RECV_HOLD) continue; // staggered, down on one knee: not running yet
     if (d.app && !d.waitLand && approachMove(d, t)) continue; // spike approach: run-up, take-off, broad jump
     if (d.curve && !d.waitLand) {
       curveMove(d); // a back-row hitter curving round to their run-up (from the beat before the set)

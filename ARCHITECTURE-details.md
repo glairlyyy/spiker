@@ -587,6 +587,9 @@ clears expired entries and queues a `getup` act in `m.upQ`; the rally's beat rec
 beat. `recover(c)` runs before `freeBall`: forced free ball (loose) or the high ball over (clears `m.down`, emits `getup`).
 Tallies `m.ko = { n, rec, free, on }` per side. Render: pose `fall` → `d.ko = { t, dur, up }` (dive.js `downed`, `koUp`);
 startPose / the pose act defer other poses to `d.afterKo`; movement holds while down (playback); poses3d `koPose`.
+Receive tiers (display, `VFX.recv`): playback `startBall` → `recvHit(d, A.trailPow)` (effects.js) at the contact: `recvK`
+(dive.js) → `d.rcv = { k, t, ko }`, knock-back `d.kb` (stepped in actors.js, shifts x / sx and a standing tx), `R3D.fx.recv`
+(hits.mjs rings), `A.hitStopUntil` (clock.js) and `A.shake`; poses3d `recvPose` over the bump (firm / hard), `flow` keys.
 
 ## World layout (T-045)
 

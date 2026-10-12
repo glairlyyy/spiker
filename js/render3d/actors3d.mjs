@@ -171,9 +171,11 @@ export function posePlayer(pl, dt, ballPos, fx) {
   // the approach and take-off of a jump spike / jump serve are quick changes too: the legs must reach the two-foot take-off
   // before the feet leave the floor, or the run's stride is still split in the air (a scissor jump — owner, 2026-10-12)
   const takeoff = (d.pose === 'spike' || d.pose === 'serve') && d.jmode && d.jmode.mode === 'up' && (d.jt != null || d.jy > 0),
-    fast = ((d.pose === 'spike' || d.pose === 'serve') && (d.spk != null || takeoff)) || d.pose === 'dive' || d.pose === 'fall',
+    fast = ((d.pose === 'spike' || d.pose === 'serve') && (d.spk != null || takeoff)) || d.pose === 'dive',
     spd = Math.min(4, Math.max(1, A.speed || 1)); // at 2× / 4× the moves change faster: the bones follow as fast
-  smoothBones(pl, dt, spd * (fast ? 45 : mot.speed > 1 ? 26 : 16));
+  // knocked down / a hard receive: a middle rate — the bones round off the keys' corners (owner, 2026-10-12: not robotic)
+  const hit = d.pose === 'fall' || (d.rcv && !d.rcv.ko && recvTier(d) === 'hard');
+  smoothBones(pl, dt, spd * (fast ? 45 : hit ? 20 : mot.speed > 1 ? 26 : 16));
   groundSnap(pl, (d.jy || 0) * KH + (pose.lift || 0), pose.lying);
   if (sink && VFX.ik.feet) root.position.y -= sink; // landing: the hips settle, the foot IK bends the knees for it
   footIK(pl, d, pose, dt); // feet planted on the floor (ik3d.mjs)
@@ -208,7 +210,7 @@ const FND_UP = 4, // jy (court h units) above which a player is airborne
 function foundation(pl, d, mot, pos, dt, fx) {
   if (!fx || !fx.dust || A.shot || dt <= 0) return;
   const F = VFX.found,
-    s = pl.fnd || (pl.fnd = { air: false, peak: 0, step: 0, foot: 0, br: Math.random() }),
+    s = pl.fnd || (pl.fnd = { air: false, peak: 0, step: 0, kb: 0, foot: 0, br: Math.random() }),
     jy = d.jy || 0,
     air = jy > FND_UP;
   if (air) s.peak = Math.max(s.peak, jy);
@@ -222,6 +224,14 @@ function foundation(pl, d, mot, pos, dt, fx) {
     s.step = 0.16;
     s.foot ^= 1;
     fx.dust(pl.bone(s.foot ? 'leftFoot' : 'rightFoot').getWorldPosition(tmp2), 0.3 * F.run);
+  }
+  if (d.kb && !air && (s.kb -= dt) <= 0) {
+    // knocked back by a hard receive (VFX.recv): both feet skid, kicking up dust
+    s.kb = 0.04;
+    const K = VFX.recv.dust * (0.4 + d.kb.D * 0.5);
+    tmp.set(d.kb.ux, 0, -d.kb.uz).normalize(); // the slide in world axes (court z runs to −Z)
+    for (const f of ['leftFoot', 'rightFoot']) fx.skid(pl.bone(f).getWorldPosition(tmp2), tmp, K);
+    if (d.kb.t < 40) fx.dust(pos, 0.5 * K);
   }
   if (d.pose === 'dive' && !air && mot.speed > 1 && (s.step -= dt) <= 0) {
     s.step = 0.05;

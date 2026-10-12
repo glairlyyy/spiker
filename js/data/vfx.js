@@ -101,6 +101,22 @@ const VFX_DEF = {
       dust: ['#e9dfcf', 0, 0, 0, 'Dust colour']
     }
   },
+  recv: {
+    name: 'Receive impact (power tiers, spec §2.28)',
+    p: {
+      on: [1, 0, 1, 1, 'On'],
+      defK: [0.6, 0, 1.5, 0.05, 'Defense × (impact = ball power − Defense × this)'],
+      gap: [5, -40, 60, 1, 'Impact from'],
+      span: [45, 5, 100, 1, 'Impact span (to full)'],
+      firm: [0.2, 0, 1, 0.01, 'Firm from (jolt, a step back)'],
+      hard: [0.7, 0, 1, 0.01, 'Hard from (stagger, one knee)'],
+      slide: [0.9, 0, 3, 0.05, 'Knocked back (m at full)'],
+      ring: [1, 0, 3, 0.1, 'Shockwave rings'],
+      dust: [1, 0, 3, 0.1, 'Skid + dust'],
+      stop: [90, 0, 300, 5, 'Hit-stop (ms at full; hard and knockdown)'],
+      shake: [6, 0, 20, 0.5, 'Camera shake (at full)']
+    }
+  },
   ring: {
     name: 'Rings (every ring effect)',
     p: {

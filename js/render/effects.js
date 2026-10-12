@@ -71,6 +71,35 @@ function touchFx(kind, save) {
   const f = fx3();
   if (f && f.touch) f.touch(kind, save);
 }
+/**
+ * A receive takes the ball (owner, 2026-10-12; display only — VFX.recv): by how hard it hits (recvK; a knockdown = full) the
+ * receiver is knocked back along the ball (d.kb, stepped in actors.js), plays the firm / hard recoil (d.rcv, poses3d), and the
+ * contact gets shockwave rings, skid dust, and on a hard one a hit-stop and a camera shake. `pow`: the incoming ball's power.
+ */
+function recvHit(d, pow) {
+  const R = VFX.recv;
+  if (!R.on || !d) return;
+  const ko = d.pose === 'fall',
+    k = ko ? 1 : recvK(d, pow);
+  if (k < R.firm) return;
+  d.rcv = { k, t: 0, ko };
+  // knocked back along the incoming ball (metres), leaning away from the net
+  const f = A.inFrom,
+    away = d.side === 0 ? -1 : 1;
+  let ux = f ? (d.x - f.x) * MX : away,
+    uz = f ? (d.z - f.z) * MZ : 0;
+  const L = Math.hypot(ux, uz) || 1;
+  ux = (ux / L) * 0.5 + away * 0.5;
+  uz = (uz / L) * 0.5;
+  const L2 = Math.hypot(ux, uz) || 1;
+  d.kb = { ux: ux / L2, uz: uz / L2, D: R.slide * k * (ko ? 1.35 : 1), t: 0, dur: 220 + 260 * k, s: 0 };
+  const f3 = fx3();
+  if (f3 && f3.recv) f3.recv(k, ko);
+  if (ko || k >= R.hard) {
+    A.hitStopUntil = performance.now() + R.stop * k;
+    A.shake = Math.max(A.shake || 0, R.shake * k);
+  }
+}
 /** Ball hits the floor: dust and shockwave, plus a camera rumble by power (VFX.shake.floor; a kill × VFX.shake.kill). */
 function impact(pow, kill) {
   const f = fx3();

@@ -85,6 +85,50 @@ export function hitsFx(K) {
         domes.push({ m, size: 1.6 * k * sz * dk(), life: 0.3 * lf, age: 0 });
       }
     },
+    /**
+     * A receive takes a hard ball (owner, 2026-10-12 — VFX.recv): the shock goes through the receiver. Pressure rings stacked
+     * along the ball's line through the arms, biggest at the arms and smaller behind (the Doppler look of the air impact),
+     * wind lines out sideways, and on a hard one (or a knockdown) a ripple on the floor. `k` 0..1 how hard.
+     */
+    recv(p, dir, k, ko) {
+      const RG = vx('recv', 'ring', 1);
+      if (RG <= 0.01 || k <= 0.01) return;
+      const d = dir.lengthSq() > 1e-6 ? dir.clone().normalize() : new THREE.Vector3(1, -0.3, 0).normalize(),
+        n = ko ? 3 : k >= vx('recv', 'hard', 0.55) ? 2 : 1;
+      for (let i = 0, at = 0; i < n; i++) {
+        const q = p.clone().addScaledVector(d, at);
+        ring(q, '#ffffff', (0.55 + 0.75 * k) * (1 - i * 0.28) * RG, 0.26 + i * 0.05, false, {
+          dir: d,
+          delay: i * 0.03,
+          op: i ? 0.6 : 0.95
+        });
+        at += (0.22 + 0.25 * k) * (1 - i * 0.2);
+      }
+      const u = new THREE.Vector3()
+          .crossVectors(d, Math.abs(d.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0))
+          .normalize(),
+        v = new THREE.Vector3().crossVectors(d, u).normalize();
+      for (let i = 0; i < 14 * k * RG; i++) {
+        const a = Math.random() * Math.PI * 2,
+          side = u.clone().multiplyScalar(Math.cos(a)).addScaledVector(v, Math.sin(a));
+        SPARK.spawn(
+          p,
+          side.multiplyScalar(rr(3, 6) * (0.5 + k)).addScaledVector(d, rr(0, 2)),
+          '#ffffff',
+          '#dfefff',
+          rr(0.06, 0.1),
+          0.01,
+          rr(0.12, 0.2),
+          {
+            drag: 5
+          }
+        );
+      }
+      if (ko || k >= vx('recv', 'hard', 0.55)) {
+        const f = new THREE.Vector3(p.x, 0.03, p.z);
+        ring(f, '#ffffff', (0.9 + 0.7 * k) * RG, 0.4, true, { op: 0.55 });
+      }
+    },
     /** Generic contact burst at a point (spike, serve, block): team-coloured ring and sparks. */
     burst(p, pow, color) {
       const k = Math.min(1.4, pow / 100);

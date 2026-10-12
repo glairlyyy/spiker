@@ -649,110 +649,175 @@ function divePose(d, f) {
   };
 }
 
-// ---------- knockdown (spec §2.28) ----------
-// Keys over u = ms since the contact: the ball knocks the platform up and the player back → a stumble → sat down hard
-// → flat on the back, knees up, arms out. Getting up (g = 0..1 over KO_UP_MS): sit up → squat → ready.
+// ---------- knockdown and receive recoil (spec §2.28) ----------
+// Flowing keys (owner, 2026-10-12: "like a robot"): the pose moves straight through each key instead of stopping on it
+// (linear between keys on a timeline that is itself eased), and the body travels — the knock-back (d.kb, actors.js) carries
+// the root, so nothing slides back into place at the end. The bones smooth the corners (actors3d).
 const RU = (x, y, z) => [V(x, y, z), V(x * 0.9, y, z * 1.05), V(x * 0.8, y * 0.9, z * 1.1)];
+/** Keyframes passed through without stopping: linear between keys (mixF), `t` on the keys' own scale. */
+function flow(keys, t, mixF) {
+  if (t <= keys[0][0]) return keys[0][1];
+  for (let i = 1; i < keys.length; i++)
+    if (t <= keys[i][0]) {
+      const [t0, a] = keys[i - 1],
+        [t1, b] = keys[i];
+      return mixF(a, b, (t - t0) / (t1 - t0));
+    }
+  return keys[keys.length - 1][1];
+}
+// knocked down — u = ms since the contact: the platform blown up and the body back (recoil) → the legs go, sat down hard
+// (falling: the drop speeds up) → rolled onto the back, a small bounce → settled, knees up, arms out
+const KO_LIE = {
+  hp: -1.35,
+  sp: -0.1,
+  cp: -0.05,
+  hd: 0.4,
+  L: leg(2.1, 1.85, 0.2, 0.28),
+  R: leg(1.9, 1.55, 0.15, 0.26),
+  lift: 0,
+  slide: -0.1,
+  R_: RU(-0.75, -0.12, -0.65),
+  L_: RU(0.75, -0.12, -0.65)
+};
 const KO_KEYS = [
   [
     0,
     {
-      hp: 0.15,
+      hp: 0.2,
       sp: -0.05,
       cp: 0,
-      hd: -0.25,
-      L: leg(0.9, 1.35, 0, 0.3),
-      R: leg(0.8, 1.3, 0, 0.3),
+      hd: -0.3,
+      L: leg(0.95, 1.4, 0, 0.3),
+      R: leg(0.85, 1.35, 0, 0.3),
       lift: 0,
       slide: 0,
-      R_: RU(-0.5, -0.1, 0.85),
-      L_: RU(0.5, -0.1, 0.85)
+      R_: RU(-0.45, -0.25, 0.85),
+      L_: RU(0.45, -0.25, 0.85)
     }
   ],
   [
-    170,
+    130,
+    {
+      hp: -0.25,
+      sp: -0.3,
+      cp: -0.12,
+      hd: 0.3,
+      L: leg(1.15, 1.6, 0.1, 0.32),
+      R: leg(0.95, 1.4, 0.1, 0.3),
+      lift: 0,
+      slide: 0,
+      R_: RU(-0.6, 0.45, 0.66),
+      L_: RU(0.6, 0.45, 0.66)
+    }
+  ],
+  [
+    330,
+    {
+      hp: -0.55,
+      sp: -0.2,
+      cp: -0.1,
+      hd: 0.35,
+      L: leg(1.75, 1.25, 0.15, 0.3),
+      R: leg(1.6, 1.0, 0.15, 0.3),
+      lift: 0,
+      slide: -0.05,
+      R_: RU(-0.5, -0.55, -0.6),
+      L_: RU(0.5, -0.55, -0.6)
+    }
+  ],
+  [470, { ...KO_LIE, hp: -1.45, hd: 0.25, L: leg(2.25, 1.6, 0.2, 0.28), R: leg(2.0, 1.35, 0.15, 0.26) }],
+  [600, { ...KO_LIE, hp: -1.25, hd: 0.5 }],
+  [760, KO_LIE]
+];
+// getting up — g = 0..1 over KO_UP_MS: sit up on the hands → roll onto one knee → push up off the knee → ready
+const KO_KNEE = {
+  hp: 0.55,
+  sp: 0.12,
+  cp: 0.05,
+  hd: -0.45,
+  L: leg(1.55, 1.75, 0.1, 0.3),
+  R: leg(0.05, 2.1, 0, 0.24),
+  lift: 0,
+  slide: -0.1,
+  R_: RU(-0.25, -0.9, 0.3),
+  L_: RU(0.2, -0.75, 0.6)
+};
+const KO_UP_KEYS = [
+  [0, KO_LIE],
+  [
+    0.28,
     {
       hp: -0.3,
-      sp: -0.25,
-      cp: -0.1,
-      hd: 0.25,
-      L: leg(1.25, 1.75, 0.1, 0.32),
-      R: leg(1.0, 1.5, 0.1, 0.3),
-      lift: 0,
-      slide: -0.25,
-      R_: RU(-0.6, 0.4, 0.7),
-      L_: RU(0.6, 0.4, 0.7)
-    }
-  ],
-  [
-    400,
-    {
-      hp: -0.65,
-      sp: -0.25,
-      cp: -0.12,
-      hd: 0.35,
-      L: leg(1.8, 1.3, 0.15, 0.3),
-      R: leg(1.7, 1.1, 0.15, 0.3),
-      lift: 0,
-      slide: -0.5,
-      R_: RU(-0.45, -0.7, -0.55),
-      L_: RU(0.45, -0.7, -0.55)
-    }
-  ],
-  [
-    680,
-    {
-      hp: -1.35,
-      sp: -0.1,
-      cp: -0.05,
-      hd: 0.45,
-      L: leg(2.1, 1.85, 0.2, 0.28),
-      R: leg(1.9, 1.55, 0.15, 0.26),
-      lift: 0,
-      slide: -0.6,
-      R_: RU(-0.75, -0.12, -0.65),
-      L_: RU(0.75, -0.12, -0.65)
-    }
-  ]
-];
-const KO_UP_KEYS = [
-  [0, KO_KEYS[3][1]],
-  [
-    0.35,
-    {
-      hp: -0.35,
       sp: 0.1,
       cp: 0.05,
       hd: -0.1,
-      L: leg(1.95, 2.35, 0.2, 0.3),
-      R: leg(1.85, 2.25, 0.2, 0.3),
+      L: leg(1.95, 2.3, 0.2, 0.3),
+      R: leg(1.75, 2.2, 0.2, 0.3),
       lift: 0,
-      slide: -0.5,
+      slide: -0.1,
       R_: RU(-0.4, -0.8, -0.45),
       L_: RU(0.4, -0.8, -0.45)
     }
   ],
-  [0.7, DIVE_KEYS[DIVE_KEYS.length - 1][1]]
+  [0.55, KO_KNEE],
+  [0.78, { ...KO_KNEE, hp: 0.75, hd: -0.6, L: leg(1.2, 1.5, 0.1, 0.3), R: leg(0.7, 1.4, 0, 0.28), slide: -0.05 }]
 ];
+const eio = t => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2); // ease in-out
 /** Knocked down: u = ms since the contact (see downed / koUp in render/dive.js). */
 function koPose(d, u) {
   const up = d.ko && d.ko.up != null ? clamp((d.ko.t - d.ko.up) / KO_UP_MS, 0, 1) : 0;
-  if (up >= 0.7) {
-    const t = sm((up - 0.7) / 0.3),
-      k = KO_UP_KEYS[2][1],
+  if (up >= 0.78) {
+    const t = eio((up - 0.78) / 0.22),
+      k = KO_UP_KEYS[3][1],
       sq = armsC(k, k.R_, DN, k.L_, DN);
-    return { ...mix(sq, { ...READY, lift: 0 }, t), slide: mixN(k.slide, 0, t), lying: false, contact: 0, face: { angry: 0.4 } };
+    return { ...mix(sq, { ...READY, lift: 0 }, t), slide: mixN(k.slide, 0, t), lying: false, contact: 0, face: { angry: 0.45 } };
   }
-  const k = up > 0 ? track(KO_UP_KEYS, up, mixDive) : track(KO_KEYS, u, mixDive),
-    UPW = V(0, 1, 0);
+  // the fall speeds up (gravity): the timeline runs slow → fast up to the floor, then settles
+  const uu = u < 470 ? 470 * Math.pow(u / 470, 1.25) : u,
+    k = up > 0 ? flow(KO_UP_KEYS, eio(up / 0.78) * 0.78, mixDive) : flow(KO_KEYS, uu, mixDive),
+    UPW = V(0, 1, 0),
+    palm = up > 0.3 || u < 260 ? DN : UPW;
   return {
-    ...armsC(k, k.R_, u < 300 ? DN : UPW, k.L_, u < 300 ? DN : UPW),
-    lying: u > 250 && up < 0.6,
+    ...armsC(k, k.R_, palm, k.L_, palm),
+    lying: (u > 220 && up === 0) || (up > 0 && up < 0.7),
     contact: u < 120 ? 1 - u / 120 : 0,
-    curlR: 0.4,
-    curlL: 0.4,
-    face: up > 0 ? { angry: 0.5 } : u < 400 ? { surprised: 0.8 } : { sad: 0.5, angry: 0.3 }
+    curlR: 0.35,
+    curlL: 0.35,
+    face: up > 0 ? { angry: 0.55, sad: 0.2 } : u < 380 ? { surprised: 0.85 } : { sad: 0.5, angry: 0.35 }
   };
+}
+// receive recoil below a knockdown (VFX.recv tiers): firm = the platform jolts up and the body rocks back a step;
+// hard = rocked back, then down onto one knee with a hand to the floor, and back up
+const RECOIL = C({
+  ...PLATFORM,
+  hp: 0.05,
+  sp: -0.2,
+  cp: -0.08,
+  hd: -0.05,
+  L: leg(1.25, 1.75, 0, 0.32),
+  R: leg(0.95, 1.45, 0, 0.3),
+  al: [V(-0.3, 0.05, 0.95), V(-0.3, 0.1, 0.95), V(-0.3, 0.15, 0.94), 0, -2.2],
+  ar: undefined
+});
+const KNEEL = {
+  ...KO_KNEE,
+  hp: 0.4,
+  hd: -0.3,
+  slide: 0
+};
+/** The firm / hard recoil over the bump pose `out` (d.rcv: t ms since the contact, k how hard). */
+function recvPose(d, out, tier) {
+  const t = d.rcv.t,
+    k = d.rcv.k;
+  if (tier === 'firm') {
+    const w = (t < 70 ? t / 70 : 1 - eio(clamp((t - 70) / (RECV_MS.firm - 70), 0, 1))) * Math.min(1, 0.45 + k);
+    return { ...mix(out, RECOIL, w), face: { surprised: 0.4 * w, angry: 0.3 * w } };
+  }
+  const kn = armsC(KNEEL, KNEEL.R_, DN, KNEEL.L_, DN);
+  if (t < 110) return { ...mix(out, RECOIL, t / 110), face: { surprised: 0.7 } };
+  if (t < 380) return { ...mix(RECOIL, kn, eio((t - 110) / 270)), lying: t > 250, face: { angry: 0.6, sad: 0.3 } };
+  if (t < 760) return { ...kn, lying: true, face: { angry: 0.6, sad: 0.3 } };
+  return { ...mix(kn, READY, eio(clamp((t - 760) / (RECV_MS.hard - 760), 0, 1))), lying: t < 900, face: { angry: 0.4 } };
 }
 
 /**
@@ -769,7 +834,7 @@ export function poseDone(d) {
     case 'fall':
       return !downed(d);
     case 'bump':
-      return d.swing != null && d.swing > 800;
+      return d.swing != null && d.swing > 800 && recvTier(d) !== 'hard'; // (a hard receive: back up off the knee first)
     case 'set':
       return d.swing != null && d.swing > 600 && d.jy <= 1; // hands down once the set is away and the feet are down
     case 'spike':
@@ -831,6 +896,8 @@ export function playerPose(d, mood, m) {
     }
     out.contact = d.swing == null ? 1 : 1 - u;
     out.face = { surprised: 0.25 };
+    const tier = recvTier(d);
+    if (tier === 'firm' || tier === 'hard') out = { ...recvPose(d, out, tier), contact: tier === 'hard' ? 0 : out.contact };
   } else if (pose === 'setprep') {
     // the ball is on its way: hands come up above the forehead, elbows out, fingers spread (the set-ready triangle),
     // eyes on the ball, knees soft — held until the set itself starts

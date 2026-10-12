@@ -261,6 +261,7 @@ Cleanup, part 2: T-082…T-087 done (see Done). Open:
 - T-236: Spike air impact — the Kuroko look (owner request)
 - T-231: Docs diet and a UI smoke test (owner request)
 - Knockdowns and recovery — a hard ball knocks the receiver down; loose → forced free ball, else a high ball over buys time to get up (spec §2.28; spec chat, owner request 2026-10-12)
+- Receive power tiers (firm / hard / knockdown) with knock-back, shockwave rings, skid dust, hit-stop; flowing knockdown and get-up (spec §2.28; spec chat, owner request 2026-10-12)
 - T-268: Crowd heat and the venue's air — wind outdoors, embers indoors, flames at Inferno; Monster venue picker (spec §2.27; spec chat, owner request 2026-10-12)
 
 - T-267: Team plans, the AI coach's counters and match prep before every match (spec §2.26; spec chat, owner request 2026-10-12; goldens updated)
