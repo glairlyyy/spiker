@@ -83,6 +83,7 @@ function recvHit(d, pow) {
     k = ko ? 1 : recvK(d, pow);
   if (k < R.firm) return;
   d.rcv = { k, t: 0, ko };
+  if (ko && d.ko && d.ko.c == null) d.ko.c = d.ko.t; // the ball is here: the knockdown starts now
   // knocked back along the incoming ball (metres), leaning away from the net
   const f = A.inFrom,
     away = d.side === 0 ? -1 : 1;
@@ -92,7 +93,8 @@ function recvHit(d, pow) {
   ux = (ux / L) * 0.5 + away * 0.5;
   uz = (uz / L) * 0.5;
   const L2 = Math.hypot(ux, uz) || 1;
-  d.kb = { ux: ux / L2, uz: uz / L2, D: R.slide * k * (ko ? 1.35 : 1), t: 0, dur: 220 + 260 * k, s: 0 };
+  // a knockdown blows them off their feet: a flight back and a slide on the back (KO_FLY in poses3d)
+  d.kb = { ux: ux / L2, uz: uz / L2, D: R.slide * k * (ko ? 2.4 : 1), t: 0, dur: ko ? 760 : 220 + 260 * k, s: 0 };
   const f3 = fx3();
   if (f3 && f3.recv) f3.recv(k, ko);
   if (ko || k >= R.hard) {

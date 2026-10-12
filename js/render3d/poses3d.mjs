@@ -665,8 +665,9 @@ function flow(keys, t, mixF) {
     }
   return keys[keys.length - 1][1];
 }
-// knocked down — u = ms since the contact: the platform blown up and the body back (recoil) → the legs go, sat down hard
-// (falling: the drop speeds up) → rolled onto the back, a small bounce → settled, knees up, arms out
+// knocked down — u = ms since the ball reached them (owner, 2026-10-12: "flew away"): the impact jolts the platform up →
+// blown off the feet, the legs thrown up, flying back (KO_FLY lifts the body) → lands on the back with a small bounce →
+// slides (the knock-back, d.kb) → settled, knees up, arms out
 const KO_LIE = {
   hp: -1.35,
   sp: -0.1,
@@ -696,39 +697,56 @@ const KO_KEYS = [
     }
   ],
   [
-    130,
+    70,
     {
-      hp: -0.25,
+      hp: -0.3,
       sp: -0.3,
       cp: -0.12,
-      hd: 0.3,
-      L: leg(1.15, 1.6, 0.1, 0.32),
-      R: leg(0.95, 1.4, 0.1, 0.3),
+      hd: 0.45,
+      L: leg(0.7, 0.9, 0.3, 0.3),
+      R: leg(0.5, 0.7, 0.3, 0.3),
       lift: 0,
       slide: 0,
-      R_: RU(-0.6, 0.45, 0.66),
-      L_: RU(0.6, 0.45, 0.66)
+      R_: RU(-0.5, 0.5, 0.7),
+      L_: RU(0.5, 0.5, 0.7)
     }
   ],
   [
-    330,
+    230,
     {
-      hp: -0.55,
-      sp: -0.2,
+      hp: -0.85,
+      sp: -0.25,
       cp: -0.1,
-      hd: 0.35,
-      L: leg(2.0, 1.25, 0.15, 0.3),
-      R: leg(1.85, 1.05, 0.15, 0.3),
+      hd: 0.5,
+      L: leg(1.4, 0.7, 0.4, 0.3),
+      R: leg(1.15, 0.9, 0.4, 0.3),
       lift: 0,
-      slide: -0.05,
-      R_: RU(-0.5, -0.55, -0.6),
-      L_: RU(0.5, -0.55, -0.6)
+      slide: 0,
+      R_: RU(-0.75, 0.45, 0.3),
+      L_: RU(0.75, 0.45, 0.3)
     }
   ],
-  [470, { ...KO_LIE, hp: -1.45, hd: 0.25, L: leg(2.25, 1.45, 0.2, 0.28), R: leg(2.0, 1.2, 0.15, 0.26) }],
-  [600, { ...KO_LIE, hp: -1.25, hd: 0.5 }],
-  [760, KO_LIE]
+  [
+    400,
+    {
+      hp: -1.45,
+      sp: -0.15,
+      cp: -0.08,
+      hd: 0.35,
+      L: leg(2.0, 0.9, 0.3, 0.28),
+      R: leg(1.8, 1.1, 0.3, 0.26),
+      lift: 0,
+      slide: -0.05,
+      R_: RU(-0.8, 0.05, -0.5),
+      L_: RU(0.8, 0.05, -0.5)
+    }
+  ],
+  [520, { ...KO_LIE, hp: -1.3, hd: 0.5, L: leg(2.35, 1.5, 0.2, 0.28), R: leg(2.1, 1.3, 0.15, 0.26) }],
+  [780, KO_LIE]
 ];
+/** How high the knocked-down body flies (m) u ms after the contact: off the floor at 60, back down at 400, a small bounce. */
+const KO_FLY = u =>
+  u < 60 ? 0 : u < 400 ? 0.5 * Math.sin((Math.PI * (u - 60)) / 340) : u < 540 ? 0.07 * Math.sin((Math.PI * (u - 400)) / 140) : 0;
 // getting up — g = 0..1 over KO_UP_MS: sit up on the hands → roll onto one knee → push up off the knee → ready
 const KO_KNEE = {
   hp: 0.55,
@@ -772,14 +790,13 @@ function koPose(d, u) {
       sq = armsC(k, k.R_, DN, k.L_, DN);
     return { ...mix(sq, { ...READY, lift: 0 }, t), slide: mixN(k.slide, 0, t), lying: false, contact: 0, face: { angry: 0.45 } };
   }
-  // the fall speeds up (gravity): the timeline runs slow → fast up to the floor, then settles
-  const uu = u < 470 ? 470 * Math.pow(u / 470, 1.25) : u,
-    k = up > 0 ? flow(KO_UP_KEYS, eio(up / 0.78) * 0.78, mixDive) : flow(KO_KEYS, uu, mixDive),
+  const k = up > 0 ? flow(KO_UP_KEYS, eio(up / 0.78) * 0.78, mixDive) : flow(KO_KEYS, u, mixDive),
     UPW = V(0, 1, 0),
     palm = up > 0.3 || u < 260 ? DN : UPW;
   return {
     ...armsC(k, k.R_, palm, k.L_, palm),
-    lying: (u > 220 && up === 0) || (up > 0 && up < 0.7),
+    lying: (u > 60 && up === 0) || (up > 0 && up < 0.7), // (in the air too: the lowest point is the floor, KO_FLY lifts it)
+    fly: up === 0 ? KO_FLY(u) : 0,
     contact: u < 120 ? 1 - u / 120 : 0,
     curlR: 0.35,
     curlL: 0.35,
@@ -814,8 +831,9 @@ function recvPose(d, out, tier) {
     return { ...mix(out, RECOIL, w), face: { surprised: 0.4 * w, angry: 0.3 * w } };
   }
   const kn = armsC(KNEEL, KNEEL.R_, DN, KNEEL.L_, DN);
-  if (t < 110) return { ...mix(out, RECOIL, t / 110), face: { surprised: 0.7 } };
-  if (t < 380) return { ...mix(RECOIL, kn, eio((t - 110) / 270)), lying: t > 250, face: { angry: 0.6, sad: 0.3 } };
+  const hop = t > 40 && t < 260 ? 0.1 * k * Math.sin((Math.PI * (t - 40)) / 220) : 0; // knocked off the feet a moment
+  if (t < 110) return { ...mix(out, RECOIL, t / 110), fly: hop, face: { surprised: 0.7 } };
+  if (t < 380) return { ...mix(RECOIL, kn, eio((t - 110) / 270)), fly: hop, lying: t > 250, face: { angry: 0.6, sad: 0.3 } };
   if (t < 760) return { ...kn, lying: true, face: { angry: 0.6, sad: 0.3 } };
   return { ...mix(kn, READY, eio(clamp((t - 760) / (RECV_MS.hard - 760), 0, 1))), lying: t < 900, face: { angry: 0.4 } };
 }
@@ -861,8 +879,8 @@ export function playerPose(d, mood, m) {
   let out;
   if (pose === 'fall') {
     // knocked down (spec §2.28): a plain bump until the ball arrives, then knocked flat
-    const u = d.ko ? d.ko.t - d.ko.dur : 1e9;
-    if (u < 0) return playerPose({ ...d, pose: 'bump' }, mood, m);
+    const u = koU(d);
+    if (u < 0) return playerPose({ ...d, pose: 'bump' }, mood, m); // the ball has not reached them yet
     out = koPose(d, u);
   } else if (pose === 'dive') {
     const f = d.dv ? diveF(d.dv) : 3;

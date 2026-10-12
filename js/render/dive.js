@@ -31,17 +31,22 @@ function diveShape(d) {
 }
 
 /**
- * Knockdown (spec §2.28): pose 'fall' — the ball arrives at ko.dur; knocked back and down, on the floor until ko.up (the
- * engine's get-up act — at least KO_MIN_MS after the contact — or KO_MAX_MS as a safety), on the feet KO_UP_MS later.
+ * Knockdown (spec §2.28): pose 'fall' — a plain bump until the ball reaches the player (ko.c: set by recvHit at the real
+ * contact); then blown off the feet, on the floor until ko.up (the engine's get-up act — at least KO_MIN_MS after the
+ * contact — or KO_MAX_MS as a safety), on the feet KO_UP_MS later.
  */
 const KO_MIN_MS = 1200,
   KO_MAX_MS = 7000,
   KO_UP_MS = 1100;
+/** ms since the ball reached a knocked-down player (−1 before; if the contact was never seen: from the beat's end + 400). */
+const koU = d => (!d.ko ? -1 : d.ko.c != null ? d.ko.t - d.ko.c : d.ko.t > d.ko.dur + 400 ? d.ko.t - d.ko.dur - 400 : -1);
+/** When the contact was (ko.t clock). */
+const koC = ko => (ko.c != null ? ko.c : ko.dur + 400);
 /** Still knocked down: not back on the feet yet. */
 const downed = d => d.pose === 'fall' && !!d.ko && !(d.ko.up != null && d.ko.t >= d.ko.up + KO_UP_MS);
 /** The engine says they're up (getup act): they start getting up now, or once they've been down KO_MIN_MS. */
 function koUp(d) {
-  if (d && d.ko && d.ko.up == null) d.ko.up = Math.max(d.ko.t, d.ko.dur + KO_MIN_MS);
+  if (d && d.ko && d.ko.up == null) d.ko.up = Math.max(d.ko.t, koC(d.ko) + KO_MIN_MS);
 }
 
 /**

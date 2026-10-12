@@ -412,7 +412,9 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     while down. Flowing keys (owner, 2026-10-12: not robotic): the pose passes through its keys without stopping, the fall
     speeds up into the floor with a small bounce, and the body is really knocked back (it gets up where it landed). Flat on the
     back on the floor (knees up, feet planted); while knocked back, kneeling or down the body is moved, not running — no run
-    legs, gait or foot planting (owner, 2026-10-12: the kneel's legs were misplaced, the body floated).
+    legs, gait or foot planting (owner, 2026-10-12: the kneel's legs were misplaced, the body floated). A knockdown **blows the player off their
+    feet** (owner, 2026-10-12): from the moment the ball reaches them (never before) they fly back ~0.5 m high, land on the
+    back with a small bounce and slide (~2 m in all); a hard receive hops back off the feet before the knee.
   - **Receive power tiers** (owner, 2026-10-12; display only, `VFX.recv`, panel "Receive impact"): every receive / dig takes
     the incoming ball's power against the receiver's Defense (as the knockdown, × the ball's weight) → **firm** (the platform
     jolts up, rocked back a step), **hard** (rocked back, down on one knee, back up — held there ~0.7 s), or the knockdown.

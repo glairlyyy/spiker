@@ -89,12 +89,12 @@ function stepPlayerTimers(wdt, raw) {
     if (d.ko) {
       // knocked down (spec §2.28): the back hits the floor, then up on the engine's get-up (or the safety timeout)
       d.ko.t += dt;
-      if (!d.ko.hit && d.ko.t >= d.ko.dur + 420) {
+      if (!d.ko.hit && koU(d) >= 420) {
         d.ko.hit = 1;
         panAt(P(d.x, d.z, 0).X);
         sfx.slide();
       }
-      if (d.ko.up == null && d.ko.t > d.ko.dur + KO_MAX_MS) d.ko.up = d.ko.t;
+      if (d.ko.up == null && d.ko.t > koC(d.ko) + KO_MAX_MS) d.ko.up = d.ko.t;
       if (d.pose === 'fall' && !downed(d)) {
         d.pose = d.afterKo && d.afterKo !== 'bump' && d.afterKo !== 'fall' ? d.afterKo : 'ready';
         d.afterKo = null;

@@ -181,6 +181,7 @@ export function posePlayer(pl, dt, ballPos, fx) {
   const hit = d.pose === 'fall' || (d.rcv && !d.rcv.ko && recvTier(d) === 'hard');
   smoothBones(pl, dt, spd * (fast ? 45 : hit ? 20 : mot.speed > 1 ? 26 : 16));
   groundSnap(pl, (d.jy || 0) * KH + (pose.lift || 0), pose.lying);
+  if (pose.fly) root.position.y += pose.fly; // blown off the feet by a hard ball (knockdown, hard receive)
   if (sink && VFX.ik.feet) root.position.y -= sink; // landing: the hips settle, the foot IK bends the knees for it
   footIK(pl, d, pose, dt); // feet planted on the floor (ik3d.mjs)
   // walking / running: the feet planted by the gait's own steps (gait3d.mjs), the forward-gait share of the legs

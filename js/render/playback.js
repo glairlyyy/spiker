@@ -229,7 +229,7 @@ function startPose(d, pose, pc, dur) {
   if (d.dv && pose !== 'dive') d.gu = { t: 0, s: diveShape(d) };
   // dive heading: where the player is going, fixed at take-off
   d.dv = pose === 'dive' ? { t: 0, dur, dx: d.tx - d.x, dz: d.tz - d.z } : null;
-  d.ko = pose === 'fall' ? { t: 0, dur, up: null } : null; // knocked down at the contact (end of this beat)
+  d.ko = pose === 'fall' ? { t: 0, dur, up: null, c: null } : null; // knocked down once the ball reaches them (recvHit sets c)
   d.afterKo = null;
   if (pose !== 'set') d.setDir = null;
   if (pose !== 'bump') d.bb = null; // (a bump keeps what backBumpLook decided for this beat)
@@ -400,7 +400,7 @@ function applyBeat(b, t) {
     const d = A.disp[id];
     if (d.fallMs != null && d.airV) continue; // coming down from a jump: momentum carries them (stepPlayerTimers)
     if (diving(d) && d.dv.t > d.dv.dur) continue; // on the floor: runs on only once back up (endBeat carries the move)
-    if (downed(d) && d.ko.t > d.ko.dur) continue; // knocked down: the same, until the get-up (spec §2.28)
+    if (downed(d) && koU(d) >= 0) continue; // knocked down: the same, until the get-up (spec §2.28)
     if (d.rcv && recvTier(d) === 'hard' && d.rcv.t < RECV_HOLD) continue; // staggered, down on one knee: not running yet
     if (d.app && !d.waitLand && approachMove(d, t)) continue; // spike approach: run-up, take-off, broad jump
     if (d.curve && !d.waitLand) {
