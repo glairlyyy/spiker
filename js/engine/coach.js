@@ -21,6 +21,63 @@ const Coach = {
       tags: Coach.tags(m, i)
     };
   },
+  /**
+   * Side i's condition (owner, 2026-10-12): how each player is doing right now, in plain words — legs, head, passing under
+   * fire, the hitting hand, being read, knocked down — and the team's passing and run. States, never advice. `sta` / `mood`:
+   * what the screen has shown (default the engine's own). Each word: { t, tone: 'good' | 'warn' | 'bad', why }.
+   */
+  condition(m, i, sta = m.sta, mood = m.mood) {
+    const t = m.t[i],
+      C = COND,
+      served = t.P.reduce((s, p) => s + ((m.recv[p.id] && m.recv[p.id].n + m.recv[p.id].ace) || 0), 0);
+    let ok = 0,
+      tot = 0;
+    const players = t.P.map(p => {
+      const w = [],
+        st = sta[p.id] ?? 1,
+        md = mood[p.id] || 0,
+        r = m.recv[p.id],
+        h = m.hit[p.id],
+        ko = (m.ko && m.ko.p[p.id]) || 0;
+      if (st < C.spent) w.push({ t: 'Spent', tone: 'bad', why: `Stamina ${Math.round(st * 100)} %` });
+      else if (st < C.tiring) w.push({ t: 'Tiring', tone: 'warn', why: `Stamina ${Math.round(st * 100)} %` });
+      if (md >= C.up) w.push({ t: 'Fired up', tone: 'good', why: 'Mood high' });
+      else if (md <= C.down) w.push({ t: 'Shaken', tone: 'bad', why: 'Mood low' });
+      if (r) {
+        const n = r.n + r.ace,
+          broke = r.ace + (r.bad || 0) + ko;
+        ok += n - broke;
+        tot += n;
+        if (n >= C.min && broke / n >= C.broken) w.push({ t: 'Passes breaking', tone: 'bad', why: `${broke} of ${n} serves beat them` });
+        else if (n >= C.min && served && n / served >= C.served) w.push({ t: 'Served at', tone: 'warn', why: `${n} of ${served} serves` });
+        else if (n >= C.min && broke / n <= C.steady) w.push({ t: 'Passing well', tone: 'good', why: `${n - broke} of ${n} passed` });
+      }
+      if (h && h.last && h.last.length >= 3) {
+        const k = [...h.last].filter(c => c === 'k').length,
+          x = [...h.last].filter(c => c === 'x').length;
+        if (k >= C.hot) w.push({ t: 'Hot hand', tone: 'good', why: `${k} kills in the last ${h.last.length}` });
+        else if (x >= C.cold) w.push({ t: 'Cold hand', tone: 'bad', why: `${x} errors or blocks in the last ${h.last.length}` });
+      }
+      if (h && h.rd >= C.min && h.rdOk / h.rd >= C.read)
+        w.push({ t: 'Being read', tone: 'warn', why: `Their block read ${h.rdOk} of ${h.rd}` });
+      if (ko) w.push({ t: ko > 1 ? `Knocked down ×${ko}` : 'Knocked down', tone: 'warn', why: 'Hard balls put them on the floor' });
+      return { p, words: w };
+    });
+    return {
+      players,
+      team: { pass: { ok, n: tot }, run: m.streak[i] || 0, theirRun: m.streak[1 - i] || 0, kos: (m.ko && m.ko.n[i]) || 0 }
+    };
+  },
+  /** On court: each player's strongest state word (both sides), or none — only the clear ones (COND_COURT, in that order). */
+  flags(m, sta, mood) {
+    const out = {};
+    for (const i of [0, 1])
+      for (const { p, words } of Coach.condition(m, i, sta, mood).players) {
+        const w = COND_COURT.map(t => words.find(x => x.t === t)).find(Boolean);
+        if (w) out[p.id] = w;
+      }
+    return out;
+  },
   /** The patterns side i has shown (true numbers, once clear — COACH). Each: { kind, p?, text, n, of }. */
   tags(m, i) {
     const t = m.t[i],

@@ -1411,6 +1411,46 @@ html.reduced .xl {
 #coach .ctags li.ct-read {
   border-left-color: var(--good);
 }
+/* the team's condition (owner, 2026-10-12): each player's state words */
+#coach .ccond {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+#coach .ccond li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+#coach .ccond .cnm {
+  min-width: 96px;
+  font-size: 13px;
+}
+#coach .cw {
+  font-style: normal;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  color: var(--mute);
+  font-size: 12px;
+}
+#coach .cw-good {
+  color: var(--good);
+  border-color: var(--good);
+}
+#coach .cw-warn {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+#coach .cw-bad {
+  color: var(--bad-soft);
+  border-color: var(--bad-soft);
+}
 /* Match prep (spec §2.26): the intro before every match, and your timeout's huddle */
 .prepo {
   z-index: 6;

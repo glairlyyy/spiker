@@ -283,7 +283,13 @@ const step = async (name, fn) => {
       // the coach panel (spec §2.25): both sides, hitters and passers after a whole match
       railOpen('coach');
       const c = $('#coach');
-      if (!c || c.querySelectorAll('.cside').length !== 2 || !/attacks/.test(c.textContent) || !c.querySelector('table'))
+      if (
+        !c ||
+        c.querySelectorAll('.cside').length !== 2 ||
+        !/attacks/.test(c.textContent) ||
+        !c.querySelector('table') ||
+        c.querySelectorAll('.ccond li').length < 8 // the team's condition: every player on court, both sides
+      )
         throw new Error(`coach panel: ${c ? c.textContent.slice(0, 120) : 'missing'}`);
       railOpen(null);
       finishMatch();

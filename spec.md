@@ -342,6 +342,13 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     the captain picks the team plan, you always pick your own (owner, 2026-10-12: option B); hitters adapt when read; clubs
     remember you across matches (save bump). Monster game first, career later.
 
+  - **Condition** (owner, 2026-10-12: help a player with no volleyball knowledge read the match — tell the state of the team,
+    never what to do; `Coach.condition`, numbers `COND`): first in each side's section, a team line (on a run / lost the last
+    n / trading points · passing n of m clean · knocked down n×) and every player's state words, each with its numbers on
+    hover — Tiring / Spent (stamina), Fired up / Shaken (mood), Served at / Passes breaking / Passing well (serve receive,
+    knockdowns count as broken), Hot hand / Cold hand (last 5 attacks), Being read (their block), Knocked down; Steady when
+    nothing stands out. On court the clear ones show as one coloured word under the player's tag (Passes breaking, Shaken,
+    Hot hand; `COND_COURT`), refreshed at every dead ball.
 - §2.26 Team plans and match prep (owner, 2026-10-12) **[built 2026-10-12]**: every side plays one **attack plan** and one
   **defence plan** (`PLANS`, js/data/tactics.js; engine js/engine/plans.js). Plans are hidden from the other side, leak
   through the coach panel's tags (§2.25), change only at a timeout, and tilt points — none decides one (§2.0).

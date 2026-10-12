@@ -225,6 +225,7 @@ const ACTS_UI = {
   score(a, d, bs) {
     board(a.snap);
     boxScore();
+    A.cond = Coach.flags(A.m, A.staShown && Object.keys(A.staShown).length ? A.staShown : A.m.sta, A.moodShown || A.m.mood); // on court (tags.js)
     if (A.railTab === 'coach') coachPanel(); // spec §2.25: refreshed at the dead ball
   },
   rot(a, d, bs) {

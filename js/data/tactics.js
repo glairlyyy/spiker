@@ -71,6 +71,28 @@ const LANE = {
  * (a hitter's channel), `serve` of a side's serves at one receiver, `read` of the block's reads right or wrong.
  */
 const COACH = { min: 5, share: 0.7, serve: 0.5, read: 0.65 };
+/**
+ * The team's condition (spec §2.25, owner 2026-10-12: tell the state of the team, not what to do). Stamina under `tiring` /
+ * `spent`; mood over `up` / under `down`; a passer served at (`served` of the side's serves, at least `min`) and broken
+ * (aces + loose passes + knockdowns ≥ `broken` of them; ≤ `steady` reads as passing well); a hitter's last `last` attacks:
+ * `hot` kills or more, `cold` errors + stuffs or more; read right by the block ≥ `read` of at least `min` reads.
+ */
+/** The state words shown over a player on court (the clear ones, strongest first); the rest stay in the Coach panel. */
+const COND_COURT = ['Passes breaking', 'Shaken', 'Hot hand'];
+const COND = {
+  tiring: 0.7,
+  spent: 0.4,
+  up: 0.35,
+  down: -0.35,
+  min: 4,
+  served: 0.4,
+  broken: 0.4,
+  steady: 0.15,
+  last: 5,
+  hot: 3,
+  cold: 2,
+  read: 0.65
+};
 
 /**
  * Team plans (spec §2.26): one attack plan and one defence plan per side, picked at match prep (the captain or the coach;

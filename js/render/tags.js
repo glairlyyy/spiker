@@ -131,6 +131,13 @@ function drawTags(d, pr, k, staV) {
     ctx.font = `900 ${Math.round(9 * k + 1)}px ${FONT_ROUND}`;
     ctx.fillText('YOU', pr.X, y - 3 * k);
   }
+  const cw = A.cond && A.cond[p.id];
+  if (cw && !A.cele && !A.done) {
+    // the player's state, in a word (Coach.flags: the clear ones only — owner, 2026-10-12)
+    ctx.font = `700 ${Math.max(9, Math.round(8.5 * k + 1))}px ${FONT_ROUND}`;
+    ctx.fillStyle = cw.tone === 'good' ? '#4ade80' : cw.tone === 'bad' ? '#ff5d6c' : '#ffb020';
+    ctx.fillText(cw.t, pr.X, pr.Y - (staV != null && staV < 0.92 ? 96 : 102) * k);
+  }
   if (staV != null && staV < 0.92 && !A.cele) {
     const w = 24 * k,
       x = pr.X - w / 2,

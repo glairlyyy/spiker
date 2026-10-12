@@ -115,8 +115,9 @@ function laneRecord(m, side, x, kill) {
 /** The coach panel's per-hitter numbers (spec §2.25; no draws): attacks, kills, errors, stuffed, channels, the block's reads. */
 function hitLog(m, x, kill, stuffed, err) {
   const H = m.hit || (m.hit = {}),
-    h = H[x.spiker.id] || (H[x.spiker.id] = { n: 0, k: 0, err: 0, stf: 0, line: 0, cross: 0, tip: 0, rd: 0, rdOk: 0 });
+    h = H[x.spiker.id] || (H[x.spiker.id] = { n: 0, k: 0, err: 0, stf: 0, line: 0, cross: 0, tip: 0, rd: 0, rdOk: 0, last: '' });
   h.n++;
+  h.last = (h.last + (kill ? 'k' : err || stuffed ? 'x' : 'o')).slice(-COND.last); // the latest attacks (the condition)
   if (kill) h.k++;
   if (err) h.err++;
   if (stuffed) h.stf++;

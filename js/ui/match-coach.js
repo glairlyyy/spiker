@@ -3,6 +3,23 @@
 // the block's reads, who was served at. Redrawn at every point (the `score` act) and when the tab opens.
 
 const coachPct = (a, b) => (b ? `${Math.round((100 * a) / b)} %` : '–');
+/** Side i's condition (Coach.condition): the team line, then each player's state words (states only, never advice). */
+function coachCond(m, i) {
+  const c = Coach.condition(m, i, A.staShown && Object.keys(A.staShown).length ? A.staShown : m.sta, A.moodShown || m.mood),
+    T = c.team,
+    run = T.run >= 2 ? `On a ${T.run}-point run` : T.theirRun >= 2 ? `Lost the last ${T.theirRun}` : 'Trading points',
+    rows = c.players
+      .map(
+        ({ p, words }) =>
+          `<li><span class="cnm">${stag(p)}#${p.num} ${esc(p.name.split(' ')[0])}</span>${
+            words.length ? words.map(w => `<i class="cw cw-${w.tone}" ${tip(w.why)}>${esc(w.t)}</i>`).join('') : '<i class="cw">Steady</i>'
+          }</li>`
+      )
+      .join('');
+  return `<div class="lab">Condition</div><p class="cline">${run} · Passing ${T.pass.n ? `${T.pass.ok} of ${T.pass.n} clean` : '–'}${
+    T.kos ? ` · Knocked down ${T.kos}×` : ''
+  }</p><ul class="ccond">${rows}</ul>`;
+}
 /** One side's section. */
 function coachSide(m, i) {
   const C = Coach.side(m, i),
@@ -26,7 +43,7 @@ function coachSide(m, i) {
       : '';
   const shown = m.over || (A.prepS && A.prepS.who[i] === 'you') || (typeof prepMine === 'function' && prepMine(m) === i),
     plan = shown ? `${esc(PLANS.atk[planOf(m, i).atk].name)} · ${esc(PLANS.def[planOf(m, i).def].name)}` : 'hidden';
-  return `<section class="cside"><h4>${chip(t)}${esc(t.name)}</h4><p class="cline">Plan: <b>${plan}</b></p>${tags}
+  return `<section class="cside"><h4>${chip(t)}${esc(t.name)}</h4><p class="cline">Plan: <b>${plan}</b></p>${coachCond(m, i)}${tags}
     <div class="lab">Attack</div><p class="cline">${att.n} attacks · ${att.k} kills (${coachPct(att.k, att.n)}) · ${att.err} errors · ${att.stf} stuffed</p>${hit}
     <div class="lab">Block</div><p class="cline" ${tip('Their attacks into a real block: the channel the block read, right, and right but still a kill')}>${block.n} reads · ${block.ok} right (${coachPct(block.ok, block.n)}) · ${block.beat} beaten anyway · ${block.stf} stuffs</p>
     <div class="lab">Serve receive</div>${rec || '<p class="small mute">No serves yet.</p>'}</section>`;
