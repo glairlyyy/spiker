@@ -131,7 +131,7 @@ function pickSetter(c) {
     B({
       dur: qual === 1 ? 800 : 640,
       acts: [
-        { k: 'pose', p: pas.id, pose: 'bump' },
+        ...(onFloor(m, pas, c.n) ? [] : [{ k: 'pose', p: pas.id, pose: 'bump' }]), // (knocked down: the pass came off the floor)
         ...sl,
         { k: 'pose', p: setter.id, pose: 'ready' },
         { k: 'ball', to: { p: setter.id, c: 'set' }, h: qual === 1 ? 230 : 160 }

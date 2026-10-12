@@ -396,9 +396,12 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
 - §2.28 Knockdowns and recovery (owner, 2026-10-12) **[built 2026-10-12]**: a hard ball can knock the receiver flat, and the
   team then recovers instead of forcing the play.
   - **Knockdown** (`knock`, js/engine/match.js; numbers `KNOCK` in js/data/tactics.js): on a serve receive or a dig, impact =
-    the ball's power − (Defense × 0.55 + Power × 0.35); past 18 the chance climbs to 50 % (one draw, only then). The player
-    still gets the ball up (the pass quality is the normal roll), then is **on the floor through the team's next defence**: no
-    set, hit, block or dig (`onFloor`; `nearest` skips them). About 5 per 100 points in league matches.
+    the ball's power − the receiver's Defense as played (stamina, mood, momentum) × 0.6; past 20 the chance climbs to 50 %, ×
+    the ball's own weight (none at power 30, full at 100) — so it **grows with the level** and hits low-Defense players: wing
+    spikers take ~70 % of knockdowns (owner, 2026-10-12: WS / setters build other stats; a build can buy Defense). A knockdown
+    costs 3 % stamina, so a tired passer goes down easier. The player still gets the ball up (the pass quality is the normal
+    roll), then is **on the floor through the team's next defence**: no set, hit, block or dig (`onFloor`; `nearest` skips
+    them). Per 100 points: average teams ~0.6 · career league ~1.4 · tournament ~9 · Monster ~18. Tallies `m.ko.p` per player.
   - **Recovery** (`recover`, js/engine/rally-phases.js, no draws): the team's next touch decides. A **loose ball** (pass margin
     under −32) can only go over — "Free ball": the other side gets an easy ball while the fallen player is still down.
     Otherwise the setter (or nearest teammate) sends a **high ball over** — "Buying time": 1.8 s in the air, the fallen
@@ -407,6 +410,8 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   - **Shown**: a knockdown pose (`fall`: knocked back, sat down hard, flat on the back, knees up; the "Knocked down!" label),
     held on the floor until the engine's `getup` act (or the point ends), then sit up → squat → ready; no running while down.
   - Not yet: attackers aiming at the hole the fallen player leaves; a coach-panel line for knockdowns (`m.ko` has the counts).
+  - Direction (owner, 2026-10-12): finding the weakest passer — by scouting before the match, or by watching stamina drop in it
+    — may become the game's main tactic (Hunt the passer, §2.26, is the first piece).
 
 ## 3. Menu [built]
 

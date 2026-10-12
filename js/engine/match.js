@@ -20,13 +20,16 @@ const onFloor = (m, p, n) => ((m.down && m.down[p.id]) || 0) >= n;
  * Draws one R() only past the impact gap with a low margin. Returns true when knocked down.
  */
 function knock(m, p, pow, mg, until) {
-  const imp = pow - (effD(p) * KNOCK.defK + p.power * KNOCK.powK);
-  if (imp <= KNOCK.gap || mg >= KNOCK.mg) return false;
-  if (R() >= Math.min(KNOCK.max, (imp - KNOCK.gap) / KNOCK.span)) return false;
+  const imp = pow - effD(p) * KNOCK.defK,
+    ch = Math.min(KNOCK.max, (imp - KNOCK.gap) / KNOCK.span) * clamp((pow - KNOCK.from) / (KNOCK.full - KNOCK.from), 0, 1);
+  if (imp <= KNOCK.gap || mg >= KNOCK.mg || ch <= 0) return false;
+  if (R() >= ch) return false;
   m.down[p.id] = until;
   m.ko.mg = mg; // how loose the ball came off them (recover(): a loose ball can only go over)
   setBusy(m, p, until + 1); // back on the feet, still a step behind the play
+  dr(m, p, KNOCK.sta); // it takes it out of you: a tired passer goes down easier next time
   m.ko.n[m.t[0].P.includes(p) ? 0 : 1]++;
+  m.ko.p[p.id] = (m.ko.p[p.id] || 0) + 1;
   return true;
 }
 /** Can a player at `q` run to (x, z) within `ms` and play it on their feet, or must they dive? (metres: 3D scale) */
@@ -199,7 +202,7 @@ function matchTallies() {
       rdBeat: 0,
       rdWk: 0 // kills off a block that read the wrong channel
     })), // attacks per side by kind and their kills (engine-only tally, no randoms)
-    ko: { n: [0, 0], rec: [0, 0], free: [0, 0], on: [0, 0] }, // knockdowns and what the team did next (spec §2.28)
+    ko: { n: [0, 0], rec: [0, 0], free: [0, 0], on: [0, 0], p: {} }, // knockdowns and what the team did next (spec §2.28)
     lanes: {}, // laning (spec §2.24): hitter id → { line, cross } shots this match (what the blockers have seen)
     hit: {}, // the coach panel (spec §2.25): hitter id → { n, k, err, stf, line, cross, tip, rd, rdOk } this match
     recv: {} // the coach panel: receiver id → { n, ace } serves taken / aced
