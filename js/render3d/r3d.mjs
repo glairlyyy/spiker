@@ -11,7 +11,7 @@ import { loadBase, makeVRM, modelStats, updateVrm, MODEL_URL, MAIN_URL, BUNDLED 
 import { createFx } from './fx3d.mjs';
 import { makeTrail } from './trails3d.mjs';
 import { W, lowEnd } from './units3d.mjs';
-import { animCapture, animReplay, animFreeze, animOrbit, animInfo, animClear } from './anim3d.mjs';
+import { animCapture, animReplay, animFreeze, animOrbit, animInfo, animClear, animFollow, animUnfollow } from './anim3d.mjs';
 import { buildArena, dressArena, updateBall, updateBallShadow, updateLane, updateNet, updatePointFlash, ballDir } from './arena3d.mjs';
 import { buildVenues, dressVenue, updateVenue } from './venue3d.mjs';
 import { buildAmbient, updateAmbient } from './ambient3d.mjs';
@@ -336,6 +336,7 @@ function draw() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, cv.width, cv.height);
   if (A.ball.follow) followBall(); // also shows the ball once the server starts the routine
+  if (A.clip && A.animLab && !A.animLab.replay) animFollow(world); // Animation lab clip: the camera on the player
   const V = Overlay.applyView(); // same shake / push-in / zoom as the playback layer; also sets the overlay transform
   viewCamera(V);
   const w = world,
@@ -504,7 +505,7 @@ export const api = {
   },
   addModel,
   loadBundled,
-  anim: { freeze: animFreeze, orbit: animOrbit, info: animInfo, clear: animClear }, // the Animation lab (anim3d.mjs)
+  anim: { freeze: animFreeze, orbit: animOrbit, info: animInfo, clear: animClear, unfollow: animUnfollow }, // the Animation lab (anim3d.mjs)
   bench,
   fxStats: () => world && world.fx.stats(), // live particle / mesh counts (director QA)
   /** Loaded models keep their own colours (re-dresses a match on screen). */

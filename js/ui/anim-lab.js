@@ -1,5 +1,7 @@
 // Animation lab (owner, 2026-10-09; dev): menu › Dev › Animation lab = a Monster game that keeps the last 8 s of every
-// player (js/render3d/anim3d.mjs). Freeze it to scrub that recording frame by frame, play it at ¼–1×, orbit around a player
+// player (js/render3d/anim3d.mjs). Clips (owner, 2026-10-12): pick an animation (a soft / firm / hard receive, a knockdown,
+// a dive, a set, a spike, a serve, a block, a celebration) and the lab finds a real rally that has it, then plays just that
+// moment again and again, the camera on the player (A.clip; clipLoop). Freeze it to scrub that recording frame by frame, play it at ¼–1×, orbit around a player
 // (drag the court, wheel to zoom), see where the feet were (foot marks: a sliding foot smears), read the pose values of the
 // frame and edit them live; Copy gives that frame's pose as code to bake into js/render3d/poses3d*.mjs. In the VFX panel
 // (#vfxp, key V) when A.animLab is on.
@@ -30,6 +32,198 @@ const ANIM_LEG = [
 const ANIM_SEG = ['Upper arm', 'Forearm', 'Hand'];
 const animR = (v, n = 3) => +(+v).toFixed(n);
 
+/**
+ * The clips: [id, label, find(beats) → { i: the beat it happens in, p: the player } | null]. Each is looked for in real
+ * engine rallies (animClipFind), so it plays exactly as in a match.
+ */
+const ANIM_CLIPS = [
+  ['recvSoft', 'Receive · soft', b => animFindRecv(b, t => t === null)],
+  ['recvFirm', 'Receive · firm (jolt)', b => animFindRecv(b, t => t === 'firm')],
+  ['recvHard', 'Receive · hard (one knee)', b => animFindRecv(b, t => t === 'hard')],
+  ['fall', 'Knockdown (blown off the feet)', b => animFindAct(b, a => a.k === 'pose' && a.pose === 'fall')],
+  [
+    'dive',
+    'Dive (pancake)',
+    b =>
+      animFindBeat(
+        b,
+        x => x.acts.some(a => a.k === 'label' && a.t === 'Pancake!'),
+        x => x.acts.find(a => a.k === 'pose' && a.pose === 'dive')
+      )
+  ],
+  [
+    'set',
+    'Set',
+    b =>
+      animFindBeat(
+        b,
+        x => x.acts.some(a => a.k === 'ball' && a.to && a.to.c === 'spike'),
+        x => x.acts.find(a => a.k === 'pose' && a.pose === 'set')
+      )
+  ],
+  [
+    'spike',
+    'Spike (approach, jump, hit)',
+    b =>
+      animFindAct(
+        b,
+        a => a.k === 'ball' && a.to && a.to.c === 'spike' && !a.to.dh,
+        a => a.to.p
+      )
+  ],
+  ['serve', 'Serve', b => animFindAct(b, a => a.k === 'pose' && a.pose === 'serve')],
+  ['block', 'Block', b => animFindAct(b, a => a.k === 'pose' && a.pose === 'block')],
+  ['cele', 'Point celebration', b => animFindAct(b, a => a.k === 'pose' && a.pose === 'roar')]
+];
+/** The first beat with an act matching `f` (and its player: who(a), or a.p). */
+function animFindAct(beats, f, who = a => a.p) {
+  for (let i = 0; i < beats.length; i++) {
+    const a = beats[i].acts.find(f);
+    if (a) return { i, p: who(a) };
+  }
+  return null;
+}
+/** The first beat passing `f` that has the act `act(beat)` (its player is the clip's). */
+function animFindBeat(beats, f, act) {
+  for (let i = 0; i < beats.length; i++) {
+    const a = f(beats[i]) && act(beats[i]);
+    if (a) return { i, p: a.p };
+  }
+  return null;
+}
+/** A receive (a ball to a bump or a dive) whose tier — by the incoming ball's power, as recvHit plays it — passes `want`. */
+function animFindRecv(beats, want) {
+  const all = A.m.t.flatMap(t => squadOf(t));
+  for (let i = 1; i < beats.length; i++) {
+    const a = beats[i].acts.find(x => x.k === 'ball' && x.to && x.to.p && x.to.c === 'bump'),
+      p = a && all.find(q => q.id === a.to.p);
+    if (!p || beats[i].acts.some(x => x.k === 'pose' && x.pose === 'fall')) continue;
+    const k = recvK({ p }, a.trail || 0),
+      R = VFX.recv;
+    if (want(k >= R.hard ? 'hard' : k >= R.firm ? 'firm' : null)) return { i, p: p.id };
+  }
+  return null;
+}
+/**
+ * Find a clip: real rallies of a fresh lab match between the same teams (no subs: everyone on court has a body) until one
+ * has it; a knockdown is made likely while looking. Returns { beats, i, p } or null.
+ */
+function animClipFind(id) {
+  const c = ANIM_CLIPS.find(x => x[0] === id);
+  if (!c) return null;
+  const K0 = { ...KNOCK };
+  if (id === 'fall') Object.assign(KNOCK, { gap: -200, max: 1, from: 0 });
+  let m = null,
+    found = null;
+  try {
+    for (let n = 0; n < 300 && !found; n++) {
+      if (!m || m.over) {
+        if (m) restoreLineups(m);
+        m = newMatch(A.m.t[0], A.m.t[1], true, { plan: A.m.plan });
+        m.subs = [SUB.max, SUB.max];
+      }
+      const beats = playRally(m).beats,
+        f = c[2](beats);
+      if (f) found = { beats, ...f };
+    }
+  } finally {
+    Object.assign(KNOCK, K0);
+    if (m) restoreLineups(m);
+  }
+  return found;
+}
+/** Play a clip (id), or back to the live game (null). */
+function animClip(id) {
+  const L = A.animLab;
+  if (!id) return animClipOff();
+  const f = animClipFind(id);
+  if (!f) {
+    L.clipMsg = 'Not found in 300 rallies — try again.';
+    return vfxRedraw();
+  }
+  const start = Math.max(0, f.i - (id === 'spike' ? 2 : 1));
+  let end = Math.min(f.beats.length, f.i + 4);
+  if (id !== 'cele') for (let j = f.i; j < end; j++) if (f.beats[j].acts.some(a => a.k === 'point')) end = j; // stop before the point
+  if (id === 'fall') {
+    // to the get-up (the engine's getup act, a few beats on), still before the point
+    const up = f.beats.findIndex((b, j) => j > f.i && b.acts.some(a => a.k === 'getup' && a.p === f.p));
+    if (up > 0 && up < f.i + 12 && !f.beats.slice(f.i, up + 1).some(b => b.acts.some(a => a.k === 'point'))) end = up + 1;
+  }
+  if (id === 'cele') end = f.i + 1; // the point itself: the celebration plays out in the hold
+  end = Math.max(end, f.i + 1);
+  // play the rally up to the clip at once (silent, nothing drawn), then keep that moment's state to come back to
+  A.clip = null;
+  A.beats = f.beats.map(b => ({ ...b, acts: b.acts.map(a => ({ ...a })) }));
+  A.bi = 0;
+  const on = SND.on;
+  SND.on = false;
+  try {
+    for (let g = 0; g < 4000 && A.bi < start; g++) step(32);
+  } finally {
+    SND.on = on;
+  }
+  A.clip = {
+    id,
+    // a beat to hold the end (a celebration, getting up: longer), then again
+    beats: JSON.stringify(
+      f.beats
+        .slice(start, end)
+        .concat([{ dur: id === 'cele' || id === 'fall' ? 2600 : 700, acts: id === 'fall' ? [{ k: 'getup', p: f.p }] : [] }])
+    ),
+    snap: animSnap()
+  };
+  L.sel = f.p;
+  L.clipMsg = null;
+  L.over = null;
+  if (R3D && R3D.anim) R3D.anim.clear();
+  const cv = document.getElementById('cv');
+  if (cv) cv.style.visibility = 'hidden'; // the 2D overlay is drawn for the game camera
+  clipLoop();
+  vfxRedraw();
+}
+/** The display state at the clip's start: every player (not the body link), the ball, the last touch. */
+function animSnap() {
+  const disp = {};
+  for (const id in A.disp) {
+    const rest = { ...A.disp[id] };
+    delete rest.p; // (the player: kept on the live object)
+    disp[id] = JSON.parse(JSON.stringify(rest));
+  }
+  return {
+    disp,
+    ball: JSON.parse(JSON.stringify(A.ball)),
+    misc: { lastP: A.lastP, lastC: A.lastC, trailPow: A.trailPow, inFrom: A.inFrom, dribble: A.dribble, wob: A.wob, trailEl: A.trailEl }
+  };
+}
+/** The clip from the top: the state back as it was (the same objects — the 3D bodies hold them), fresh beats. */
+function clipLoop() {
+  const C = A.clip,
+    S = C.snap;
+  for (const id in S.disp) {
+    const d = A.disp[id];
+    if (!d) continue;
+    for (const k of Object.keys(d)) if (k !== 'p') delete d[k];
+    Object.assign(d, JSON.parse(JSON.stringify(S.disp[id])));
+  }
+  Object.assign(A.ball, JSON.parse(JSON.stringify(S.ball)));
+  Object.assign(A, S.misc);
+  A.handTouch = null;
+  A.labels = [];
+  A.parts = [];
+  A.beats = JSON.parse(C.beats);
+  A.bi = 0;
+  A.el = 0;
+}
+/** Back to the live game (the next rally of the lab match). */
+function animClipOff() {
+  A.clip = null;
+  A.beats = [];
+  A.bi = 0;
+  const cv = document.getElementById('cv');
+  if (cv) cv.style.visibility = '';
+  if (R3D && R3D.anim && R3D.anim.unfollow) R3D.anim.unfollow();
+  vfxRedraw();
+}
 /** Start the lab: a Monster game with recording on (menu › Dev). */
 function startAnimLab() {
   startMonster({ anim: true });
@@ -52,12 +246,26 @@ function animPanel() {
           `<option value="${esc(p.id)}" ${p.id === L.sel ? 'selected' : ''}>${s ? 'Right' : 'Left'} · ${esc(p.role)} · ${esc(p.name)}</option>`
       )
       .join('')}</select></label>
+    <label class="vrow"><span>Clip</span><select onchange="animClip(this.value)" aria-label="Clip"><option value="">Live game</option>${ANIM_CLIPS.map(
+      ([id, label]) => `<option value="${id}" ${A.clip && A.clip.id === id ? 'selected' : ''}>${esc(label)}</option>`
+    ).join('')}</select></label>
+    ${
+      A.clip
+        ? `<div class="vexp"><button class="btn" onclick="animClip(A.clip.id)">Another one</button><div class="seg">${[0.25, 0.5, 1]
+            .map(
+              s =>
+                `<button class="btn ${A.speed === s ? 'on' : ''}" onclick="A.speed=${s};vfxRedraw()">${s === 1 ? '1' : s === 0.5 ? '½' : '¼'}×</button>`
+            )
+            .join('')}</div></div>`
+        : ''
+    }
+    ${L.clipMsg ? `<p class="small mute">${esc(L.clipMsg)}</p>` : ''}
     <div class="vexp">${
       L.replay
         ? `<button class="btn hot" onclick="animFreezeUI(false)">Back to the game</button>`
         : `<button class="btn hot" onclick="animFreezeUI(true)" ${tip('Pause and play back the last 8 s of every player')}>Freeze · scrub the last 8 s</button>`
     }</div>
-    ${L.replay && inf ? animScrubber(L, inf) + animEditor(L, inf) : `<p class="small mute">The game records every player while it plays. Freeze to scrub it; drag the court to orbit, wheel to zoom.</p>`}`;
+    ${L.replay && inf ? animScrubber(L, inf) + animEditor(L, inf) : `<p class="small mute">${A.clip ? 'The clip plays again and again, the camera on the player: drag the court to orbit, wheel to zoom. Freeze to scrub it.' : 'The game records every player while it plays. Freeze to scrub it; drag the court to orbit, wheel to zoom.'}</p>`}`;
 }
 /** Timeline, play / step, speed, foot marks, and the frame's display state. */
 function animScrubber(L, inf) {
@@ -245,7 +453,7 @@ function animCopy() {
 /** Orbit while frozen: drag the court, wheel to zoom (match-screen wires these to #stage). */
 function animPointer(e) {
   const L = A && A.animLab;
-  if (!L || !L.replay) return;
+  if (!L || !(L.replay || A.clip)) return; // (orbit while frozen, or while a clip plays)
   const api = animApi();
   if (e.type === 'pointerdown') {
     L.drag = { x: e.clientX, y: e.clientY };

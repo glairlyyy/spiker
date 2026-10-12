@@ -164,7 +164,7 @@ function pickSetter(c) {
  * and the saver). Engine-only tallies, no randoms: m.scr = { n, over (went over as a bump) }, m.scrLog = [{ first, saver, hitter }].
  */
 function saveSet(c) {
-  const { m, front, ds, defT, pas, scr } = c,
+  const { m, pas, scr } = c,
     at = m.pos[pas.id],
     DMB = fakeMB(c);
   m.scr = m.scr || { n: 0, over: 0 };

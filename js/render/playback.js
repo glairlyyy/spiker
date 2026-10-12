@@ -570,6 +570,7 @@ function step(dt) {
     return;
   }
   if (A.m.human != null) promptStep(); // the captain's chips under your feet (spec §2.17)
+  if (A.clip && A.bi >= A.beats.length) return void clipLoop(); // Animation lab: the clip again (js/ui/anim-lab.js)
   if (!A.beats || A.bi >= A.beats.length) {
     if (Dir.busy()) return; // a between-point exchange (spec §2.18) holds the next rally
     if (A.m.over) {

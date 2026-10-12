@@ -300,7 +300,7 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   is set; a failed dig gets none when the diver can't get there, a short light one (× 0.6) when it just beats them.
 - §2.22 Dev labs (menu › Dev; dev only) **[built]**: **Cut-scene lab** — a Monster game where every rally stages the chosen
   cut-scene (Ace / WS kill / MB quick), its camera values live in a side panel, ¼ / ½ / 1×, Force rotate, Copy / Download;
-  the owner's values are baked in as defaults. **Animation lab** — keeps the last 8 s of every player; Freeze, scrub, step,
+  the owner's values are baked in as defaults. **Animation lab** — **Clips** (owner, 2026-10-12): pick an animation (receive soft / firm / hard, knockdown, dive, set, spike, serve, block, point celebration) and the lab finds a real rally with it and plays just that moment on a loop, the camera on the player (¼–1×, Another one); it also keeps the last 8 s of every player; Freeze, scrub, step,
   play at ¼–1×, orbit a chosen player, foot marks (a sliding foot smears), edit the frame's pose values live, Copy as pose
   code. **Models**: Monster games use the owner's six VRMs (random per player).
 - §2.23 Removed (owner, 2026-10-08): cut-ins (full banner and mini notification) and the commentary ticker, engine acts too;

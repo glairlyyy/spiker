@@ -109,6 +109,22 @@ export function animReplay(w, rdt) {
   setDebugCam({ pos: pos.toArray(), look: orbit.look.toArray(), fov: ANIM.fov });
   showMarks(w, L);
 }
+/** A clip playing (anim-lab.js A.clip): the orbit camera follows the selected player live (drag / wheel still orbit). */
+export function animFollow(w) {
+  const L = A.animLab,
+    sel = L && w.people.find(pl => pl.d && pl.d.p.id === L.sel);
+  if (!sel) return;
+  sel.bone('hips').getWorldPosition(orbit.look);
+  const cp = Math.cos(orbit.pitch),
+    pos = orbit.look
+      .clone()
+      .add(new THREE.Vector3(Math.sin(orbit.yaw) * cp, Math.sin(orbit.pitch), Math.cos(orbit.yaw) * cp).multiplyScalar(orbit.dist));
+  setDebugCam({ pos: pos.toArray(), look: orbit.look.toArray(), fov: ANIM.fov });
+}
+/** Leave clip mode: the game camera again. */
+export function animUnfollow() {
+  setDebugCam(null);
+}
 /** Foot marks: every recorded foot position of the selected player (left blue, right pink); a sliding foot smears. */
 function showMarks(w, L) {
   if (!L.marks) {

@@ -174,7 +174,7 @@ const step = async (name, fn) => {
     await ev(() => navigate('menu'));
     return `${n} particles`;
   });
-  await step('Animation lab: record, freeze, scrub, edit, copy', async () => {
+  await step('Animation lab: record, freeze, scrub, edit, copy, a clip', async () => {
     await ev(() => navigate('menu'));
     await ev(() => devOpen('anim', () => startAnimLab()));
     await pg.waitForFunction(() => typeof R3D !== 'undefined' && R3D && A && A.animLab && !A.hold, null, { timeout: 120000 });
@@ -191,8 +191,18 @@ const step = async (name, fn) => {
       animFreezeUI(false);
       return n;
     });
+    // a clip (owner, 2026-10-12): the lab finds a real rally with it and plays just that moment, again and again
+    const clip = await ev(() => {
+      animClip('fall');
+      if (!A.clip || !document.querySelector('#vfxp select[aria-label="Clip"]')) throw new Error('no clip');
+      for (let i = 0; i < 400; i++) step(16);
+      const d = A.disp[A.animLab.sel];
+      animClip(null);
+      return d ? A.clip === null && 'knockdown clip' : null;
+    });
+    if (!clip) throw new Error('clip did not play');
     await ev(() => leaveMatch());
-    return `${r} frames`;
+    return `${r} frames, ${clip}`;
   });
   await step('Monster game → result', async () => {
     await ev(() => navigate('menu'));
