@@ -411,20 +411,20 @@ function armsFree(d, pose) {
  * phase (shirt number); wall-clock time, presentation only.
  */
 /**
- * The waiting stance varies (owner, 2026-10-10): each rally every player takes one of three — hands apart (READY), palms to
- * the sky (READY_PALMS) or hands on the knees (REST_KNEES) — by a hash of their number and the rally (A.rallyNo; no
- * randoms). Hands on the knees only while it is calm (the ball dead, or a server still in the routine): when the ball is
- * tossed they come up into their ready (eased, d.restW).
+ * The waiting stance varies (owner, 2026-10-10; hands apart dropped 2026-10-12): each rally every player takes palms to the
+ * sky (READY_PALMS) or hands on the knees (REST_KNEES) by a hash of their number and the rally (A.rallyNo; no randoms).
+ * Hands on the knees only while it is calm (the ball dead, or a server still in the routine): when the ball is tossed they
+ * come up into the palms-up ready (eased, d.restW). Each entry: `live` = its pose, `rest` = on the knees while calm.
  */
-const IDLE = [READY, READY_PALMS, 'rest'];
+const IDLE = [{ live: READY_PALMS }, { live: READY_PALMS, rest: true }];
 function idleReady(d, m) {
   const t = performance.now() / 1000,
     ph = (d.p.num || 0) * 1.7,
-    pick = IDLE[(((d.p.num || 0) * 7 + ((globalThis.A && globalThis.A.rallyNo) || 0) * 13) >>> 0) % 3],
+    pick = IDLE[(((d.p.num || 0) * 7 + ((globalThis.A && globalThis.A.rallyNo) || 0) * 13) >>> 0) % IDLE.length],
     G = globalThis.A || { ball: {} },
     calm = !G.ball.vis || Object.values(G.disp || {}).some(q => q.pose === 'preserve'),
-    base = pick === 'rest' ? ((d.p.num || 0) % 2 ? READY_PALMS : READY) : pick, // its ready once the ball is live
-    want = pick === 'rest' && calm && !(moveMix(m) > 0.05) ? 1 : 0, // (moving: up off the knees, the arms free to swing)
+    base = pick.live, // its ready once the ball is live
+    want = pick.rest && calm && !(moveMix(m) > 0.05) ? 1 : 0, // (moving: up off the knees, the arms free to swing)
     dt = Math.min(0.1, t - (d.restT ?? t) || 0);
   d.restT = t;
   d.restW = (d.restW || 0) + (want - (d.restW || 0)) * (1 - Math.exp(-dt * 6));

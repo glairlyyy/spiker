@@ -254,10 +254,10 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     over the toes, heels light, hips back with a flat back leaning forward, arms relaxed in front with the hands apart (the
     grip forms on the pass), a soft bounce in the knees and a slow weight shift; standing — weight on one leg, the other knee
     soft, arms hanging loose with a slight bend, breathing and a slow sway. Each player on their own rhythm.
-  - **Waiting stance varies** (owner, 2026-10-10) **[built]**: each rally every player takes one of three — hands apart,
-    palms open to the sky, or hands on the knees (bent over, head up) — picked by a hash of shirt number and rally (no random
+  - **Waiting stance varies** (owner, 2026-10-10; hands apart dropped 2026-10-12) **[built]**: each rally every player takes
+    one of two — palms open to the sky, or hands on the knees (bent over, head up) — picked by a hash of shirt number and rally (no random
     draws; not tied to stamina). Hands on the knees only while it is calm (ball dead or the server still in the routine);
-    when the ball is tossed they come up into their ready.
+    when the ball is tossed they come up into the palms-up ready.
   - **Arms swing whenever a player walks or runs** (owner, 2026-10-10) **[built]**: once a move is over — landed from a block,
     spike or serve, a set released, a pass played, a celebration, the rest on the knees, the huddle — moving blends the
     whole body (arms too) into the walk / run; running to a pass or under a set the arms swing until the last ~1 m, then form
