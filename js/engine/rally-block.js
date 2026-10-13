@@ -45,7 +45,9 @@ function blockApproach(c, x) {
   const tAv = (quick ? 0.3 : bad ? 1.05 : 0.8) + (back ? 0.15 : 0) + (longB ? 0.1 : 0),
     reach = b => ((b.speed / 100) * tAv * 0.6) / courtScale();
   // defence setting (see DEFSETS): Bunch starts both front-row defenders near the middle (they drift there while the ball is set, as far as their speed allows)
-  const dset = m.dset[ds] || 'read',
+  // a front-row middle's own block order (spec §2.29) replaces the team's setting for this attack (Stay back: they don't block)
+  const mo = c.defT.P.map(p => p.role === 'MB' && c.front(ds, p) && ordOf(m, p, 'blk')).find(o => o && o !== 'back'),
+    dset = mo || m.dset[ds] || 'read',
     commit = dset === 'commit',
     bunch = dset === 'bunch',
     midAtk = quick || pipe || lane === 'M',
@@ -107,7 +109,7 @@ function blockMoves(c, x, f) {
     { longB, spZ, appX, b0, bz0, b1, bz1, blockers } = f;
   // every other front-row player still goes up (late, off-position) even when they're not part of the block —
   // nobody at the net just watches. Display only: coverage and positions in the engine are unchanged.
-  const lateB = V ? defT.P.filter(p => front(ds, p) && !blockers.includes(p) && !busy(m, p, n)) : [],
+  const lateB = V ? defT.P.filter(p => front(ds, p) && !blockers.includes(p) && !busy(m, p, n) && !stayBack(m, p)) : [],
     taken = b1 ? [bz0, bz1] : [bz0], // spots at the net already taken: late blockers go up beside them, not inside them
     lateA = lateB.flatMap(p => {
       const q = m.pos[p.id];
@@ -126,6 +128,9 @@ function blockMoves(c, x, f) {
     });
   for (const b of blockers) dr(m, b, 0.025);
   const a1 = [];
+  // a middle on Stay back (spec §2.29) drops off the net to dig and cover
+  for (const p of defT.P)
+    if (front(ds, p) && stayBack(m, p) && !busy(m, p, n)) mv(m, p, sx(ds, ORDERS.blk.backX), clamp(spZ, 0.3, 0.7), a1, V);
   mv(m, spiker, appX, spZ, a1, V);
   if (longB && V) a1[a1.length - 1].via = { x: sx(atk, 92), z: spZ, at: 0.38 }; // back to the end line, then the run-up
   mv(m, b0, sx(ds, 484), bz0, a1, V);

@@ -285,7 +285,7 @@ function digSetup(c, x, bl) {
     { touched, softTouch, smashed, pow } = bl;
   // blockers — and every other free front-row player, who went up late (see formBlock's lateB) — are still in the
   // air or landing at the net: the dig goes to someone on the floor behind them (a front-row player only if nobody is)
-  const atNet = p => blockers.includes(p) || (c.front(ds, p) && !busy(m, p, c.n)),
+  const atNet = p => blockers.includes(p) || (c.front(ds, p) && !busy(m, p, c.n) && !stayBack(m, p)), // (Stay back digs: §2.29)
     floor = defT.P.filter(p => !atNet(p) && !onFloor(m, p, c.n)), // (a knocked-down player can't dig: spec §2.28)
     rest = defT.P.filter(p => !blockers.includes(p) && !onFloor(m, p, c.n)),
     cands = floor.length ? floor : rest.length ? rest : defT.P.filter(p => !blockers.includes(p));
@@ -295,7 +295,8 @@ function digSetup(c, x, bl) {
     dd0 =
       dist(q0, lx, lz) *
       (x.read === 'wrong' && !tip && !x.around ? (atkPlan(m, 1 - ds).seam ?? LANE.shade) : 1) * // the back row covers where the block was not (spec §2.24) — unless they Beat the block through the seam (§2.26)
-      (dp.weakDd ? (dg === weakPasser(defT) ? dp.weakDd : dp.otherDd) : 1); // Cover the weak link (spec §2.26)
+      (dp.weakDd ? (dg === weakPasser(defT) ? dp.weakDd : dp.otherDd) : 1) * // Cover the weak link (spec §2.26)
+      (stayBack(m, dg) && c.front(ds, dg) ? ORDERS.blk.backDd : 1); // a middle on Stay back is set for it (§2.29)
   let dsc = Formula.digScore(dg, defT, dd0);
   if (touched) dsc *= softTouch ? 1.4 : 1.15;
   // Rolling Receive on defense: far balls cost much less

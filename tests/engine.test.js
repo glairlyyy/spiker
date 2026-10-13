@@ -628,6 +628,37 @@ test.slow('engine: setter orders — the fed hitter takes the ball; fake off mea
   assert(auto.fakes > 0 && fed.fakes1 > 0, `fakes still happen elsewhere (${auto.fakes}, ${fed.fakes1})`);
 });
 
+test.slow('engine: middle orders — Commit stuffs more quicks and leaves the pins; Stay back never blocks and digs (spec §2.29)', () => {
+  const g = load(53),
+    T = g.mkTeams();
+  const run = o => {
+    const r = { q: 0, qs: 0, pin: 0, pink: 0, blk: 0, dig: 0 };
+    for (let i = 0; i < 60; i++) {
+      const m = g.newMatch(T[i % 8], T[(i * 3 + 1) % 8], false, { dset: ['read', null] });
+      const mbs = g.squadOf(m.t[0]).filter(q => q.role === 'MB');
+      if (o) for (const q of mbs) g.ordSet(m, q, 'blk', o);
+      while (!m.over) g.playRally(m);
+      const a = m.att[1];
+      r.q += a.q;
+      r.qs += a.qs;
+      r.pin += a.pin;
+      r.pink += a.pink;
+      for (const q of mbs) {
+        const st = m.stat[q.id];
+        if (st) ((r.blk += st.blk), (r.dig += st.dig));
+      }
+    }
+    return r;
+  };
+  const read = run('read'),
+    com = run('commit'),
+    back = run('back');
+  assert(com.qs / com.q > (read.qs / read.q) * 1.2, `Commit: quicks stuffed ${com.qs}/${com.q} vs Read ${read.qs}/${read.q}`);
+  assert(com.pink / com.pin > read.pink / read.pin, `Commit: pins score more ${com.pink}/${com.pin} vs ${read.pink}/${read.pin}`);
+  eq(back.blk, 0, 'Stay back: the middle never blocks');
+  assert(back.dig > read.dig * 1.3, `Stay back digs more: ${back.dig} vs ${read.dig}`);
+});
+
 test('engine: defence settings — AI default, captain switch, scouting habits', () => {
   const g = load(9),
     T = g.mkTeams(),

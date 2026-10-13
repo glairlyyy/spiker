@@ -292,3 +292,15 @@ const fakeOpts = () => [
   { v: 'auto', label: 'On' },
   { v: 'off', label: 'Off' }
 ];
+
+// ---- Middle orders (T-280): Read / Commit (their own §2.9 setting) / Stay back (no block: dig and cover) ----
+
+/** A middle on Stay back. */
+const stayBack = (m, p) => p.role === 'MB' && ordOf(m, p, 'blk') === 'back';
+/** Block options for a middle (Auto = the team's §2.9 setting). */
+const blkOpts = () => [
+  { v: 'auto', label: 'Auto' },
+  { v: 'read', label: 'Read' },
+  { v: 'commit', label: 'Commit' },
+  { v: 'back', label: 'Stay back' }
+];

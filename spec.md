@@ -455,7 +455,7 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   - Direction (owner, 2026-10-12): finding the weakest passer — by scouting before the match, or by watching stamina drop in it
     — may become the game's main tactic (Hunt the passer, §2.26, is the first piece).
 
-- §2.29 Plan board — role orders (owner, 2026-10-13) **[built 2026-10-13–14: the board + serve orders, T-277; spike orders, T-278; setter orders, T-279; open: T-280–T-281]**: you set how each player plays their part;
+- §2.29 Plan board — role orders (owner, 2026-10-13) **[built 2026-10-13–14: the board + serve orders, T-277; spike orders, T-278; setter orders, T-279; middle orders, T-280; open: T-281]**: you set how each player plays their part;
   the engine plays it out (§5.7: prep, not presses — the strategy made visible). The team plan (§2.26) stays the coach layer;
   the board adds the player layer under it.
   - **Where**: match prep shows the board under the teams (a row of four player cards per side you run, options listed
@@ -494,8 +494,10 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
       open; not a hitter who just dived or is on the bench); a fake set keeps the ball on them; their block reads a fed
       hitter × 1.5 faster. Fake off: no decoy fake set and no setter dump. Odds: Feed shows that hitter's kill · error when
       fed, Auto / Fake the side's attack (the setter's own pick).
-    - Block: Commit — vs the quick stuff × 1.4, vs a high ball late (coverage × 0.6); Stay back — no block, digs as a
-      back-row player (dig distance × 0.8).
+    - Block (a front-row middle's own order replaces the team's §2.9 setting for them): Read / Commit play §2.9's settings
+      (Commit: up with the quick — coverage × 1.6, reach × 3.5 — but × 0.6 on everything else, and a fake always bites);
+      Stay back — no block (not even late), drops off the net to dig and cover (dig distance × 0.8). Odds: stuff · their kill
+      for their attack (from a perfect pass) into your block.
   - **Locked** options show the gap (§9: locked = the gap): "Jump — Power 56+ as WS", "Seam — learn Target Serve".
   - **Odds** (true numbers): each option shows its outcome as % — serve: ace or broken pass · miss, from the engine's own
     formulas on a fixed grid (no draws); spike: kill · error, the engine playing the attack itself 160 times from now (a good

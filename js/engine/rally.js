@@ -180,7 +180,7 @@ function fakeSet(c, x) {
       for (const q of others) dr(m, q, 0.02);
       bitten =
         R() < clamp(0.8 - (W(db) - 0.8) * 0.45 + (W(setter) - 1.5) * 0.3 + (skillMod(setter, 'decoy') - 1) - readBonus, 0.15, 0.9) ||
-        (m.dset[ds] === 'commit' && db.role === 'MB'); // a Commit middle is already jumping
+        ((ordOf(m, db, 'blk') || m.dset[ds]) === 'commit' && db.role === 'MB'); // a Commit middle is already jumping (their own order first: §2.29)
       const zOf = p => (p.role === 'MB' && MBs.includes(p) ? mbZ(p) : clamp(HOME[p.slot][1] + (p.slot === 'W0' ? -0.05 : 0.05), 0.1, 0.9)),
         xOf = p => sx(atk, p.role === 'MB' && MBs.includes(p) ? 466 : 420);
       const fk = [];

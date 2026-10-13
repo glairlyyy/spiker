@@ -77,13 +77,13 @@ hitter), js/ui/plan-board.js, tests/engine.test.js
 Accept: fed hitter takes ≥ 85 % of 3 / 2 sets; a 1 pass still goes high to whoever is open; fake off = no fake sets (test).
 Result: Built. Feed: the fed hitter gets every 3 / 2 pass they are free for (test, subs off: share 37 → 60 %+; not after a dive or from the bench); a fake set no longer switches away from them. Fake off also stops the setter dump (its decoy reads "Fake set!" too) — spec says so. atkOdds now takes a list of orders to try and a null hitter (the side's attack) for Auto feed / fake odds. Also rally.js (fakeSet), tactics.js (`ORDERS.set`), plan-board.js. Goldens unchanged.
 
-### [ ] T-280: Middle orders — Read / Commit / Stay back
+### [x] T-280: Middle orders — Read / Commit / Stay back
 Spec: §2.29, §2.9          Goldens: unchanged          Save: no change
 Goal: a middle's own block order overrides the team setting for them.
 Files: js/engine/orders.js, js/engine/rally-block.js, js/engine/rally-defense.js, js/ui/plan-board.js, tests/engine.test.js
 Accept: Commit raises stuffs on quicks and lowers coverage on high balls; Stay back never blocks and digs (test); odds within
 3 points.
-Result:
+Result: Built on §2.9's own Commit (coverage × 1.6 / reach × 3.5 on a quick, × 0.6 otherwise) instead of new stuff × 1.4 / coverage × 0.6 numbers — spec updated. Stay back: out of the block and the late jumps, drops to dig (× 0.8 distance). Test (60 matches): Commit stuffs quicks ≥ × 1.2 vs Read and their pins score more; Stay back: 0 blocks, ≥ × 1.3 digs. Odds: stuff · their kill (atkOdds of their attack). Also rally.js (fakeSet bite), rally-phases.js (DF / B0), tactics.js (`ORDERS.blk`). Goldens unchanged.
 
 ### [ ] T-281: Orders on the result card and the balance check
 Spec: §2.29          Goldens: unchanged          Save: no change

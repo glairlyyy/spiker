@@ -806,3 +806,7 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   pass is a 3 / 2, they are in the free pool and it is no high ball (`fed`, `feedOrd` on the attack; laneRead × `ORDERS.set.readK`
   with `feedOrd`); fakeSet keeps a fed spiker (no switch to a quick). `.fake = 'off'`: fakeSet and setterDump skip (no draw).
   The probe's own feed (`m.probe.p`) uses the same swap; `atkOdds(m, side, null, …)` measures the side's attack.
+- Middle orders (T-280): `m.ord[mb].blk`. blockApproach: a front-row middle's Read / Commit replaces `m.dset[ds]` for the
+  attack (bunch / commit flags follow); fakeSet's bite test reads the decoy blocker's own order first. Stay back (`stayBack`):
+  out of DF and the B0 fallback, no late jump, moved to `ORDERS.blk.backX` in blockMoves, a floor digger in digSetup
+  (dig distance × `backDd`). Board odds: `atkOdds(m, their side, null, [[mb, 'blk', v]])` shown as stuff · their kill.

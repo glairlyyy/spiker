@@ -25,17 +25,17 @@ function boardRow(p, kind, label, opts, cur, odds, can) {
     })
     .join('')}</div>`;
 }
-/** Spike odds text: kill · error. */
-const boardAtkTxt = o => `${BOARD_PCT(o.kill)} · ${BOARD_PCT(o.err)}`;
+/** Spike odds text: kill · error; their attack into your block (a middle's order): stuff · their kill. */
+const boardAtkTxt = o => (o.vs ? `${BOARD_PCT(o.stf)} · ${BOARD_PCT(o.kill)}` : `${BOARD_PCT(o.kill)} · ${BOARD_PCT(o.err)}`);
 const BOARD_Q = [];
 let boardBusy = false;
 /** Attack odds (hitter p, or the side's attack when p is null) with some orders tried (set: [[player, kind, v], …]): cached
  * for this point and these orders, else queued (atkOdds plays it out: ~0.1 s each). */
-function boardAtk(m, i, p, set) {
-  const key = `${p ? p.id : 'side' + i}|${set.map(([q, k, v]) => `${q.id}.${k}=${v}`).join(',')}|${JSON.stringify(m.ord)}|${m.pts}|${m.rot}|${m.setNo}`,
+function boardAtk(m, i, p, set, vs) {
+  const key = `${vs ? 'vs' : ''}${p ? p.id : 'side' + i}|${set.map(([q, k, v]) => `${q.id}.${k}=${v}`).join(',')}|${JSON.stringify(m.ord)}|${m.pts}|${m.rot}|${m.setNo}`,
     c = (A.prepS.odds || (A.prepS.odds = {}))[key];
   if (c) return { txt: boardAtkTxt(c), key };
-  if (!BOARD_Q.some(q => q.key === key)) BOARD_Q.push({ key, i, p, set });
+  if (!BOARD_Q.some(q => q.key === key)) BOARD_Q.push({ key, i, p, set, vs });
   boardWork();
   return { txt: '…', key };
 }
@@ -50,13 +50,13 @@ function boardWork() {
       BOARD_Q.length = 0;
       return;
     }
-    const o = (A.prepS.odds[q.key] = atkOdds(A.m, q.i, q.p, q.set));
+    const o = (A.prepS.odds[q.key] = { ...atkOdds(A.m, q.i, q.p, q.set), vs: !!q.vs });
     for (const el of document.querySelectorAll('[data-odds]')) if (el.dataset.odds === q.key) el.textContent = boardAtkTxt(o);
     setTimeout(tick, 0);
   };
   setTimeout(tick, 0);
 }
-/** A player's card: bad news first, then the serve choices, then hitters' aim and shot or the setter's feed and fake. */
+/** A player's card: bad news first, the serve choices, hitters' aim and shot or the setter's feed and fake, a middle's block. */
 function boardCard(m, i, p, can) {
   const K = Coach.condition(m, i).players.find(r => r.p === p),
     bad = K ? K.words.filter(w => w.tone !== 'good') : [],
@@ -92,7 +92,7 @@ function boardCard(m, i, p, can) {
           ) + boardRow(p, 'fake', 'Fake', fakeOpts(), fake, v => boardAtk(m, i, null, [[p, 'fake', v]]), can)
         : boardRow(p, 'aim', 'Aim', aimOpts(p, m.t[1 - i]), aim, v => boardAtk(m, i, p, [[p, 'aim', v]]), can) +
           boardRow(p, 'shot', 'Shot', shotOpts(), shot, v => boardAtk(m, i, p, [[p, 'shot', v]]), can)
-    }</div>`;
+    }${p.role === 'MB' ? boardRow(p, 'blk', 'Block', blkOpts(), ordOf(m, p, 'blk') || 'auto', v => boardAtk(m, 1 - i, null, [[p, 'blk', v]], true), can) : ''}</div>`;
 }
 /** Side i's board (empty when you set nothing there): its four cards in a row. */
 function boardSide(i) {
@@ -100,7 +100,7 @@ function boardSide(i) {
     who = boardEdit(m, i),
     t = m.t[i];
   if (!who) return '';
-  return `<section class="pboard" style="--tc:${t.color}"><div class="lab">${chip(t)}${esc(t.short)} · players <span class="mute">— serve: ace or broken pass · miss; spike: kill · error</span></div><div class="bcards">${rotOrder(
+  return `<section class="pboard" style="--tc:${t.color}"><div class="lab">${chip(t)}${esc(t.short)} · players <span class="mute">— serve: ace or broken pass · miss; spike: kill · error; block: stuff · their kill</span></div><div class="bcards">${rotOrder(
     t,
     m.rot[i]
   )
