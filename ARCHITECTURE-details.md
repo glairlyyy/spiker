@@ -794,3 +794,11 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
 - UI (plan-board.js): `boardSide(i)` renders four cards (rotation order) under match prep's columns; `prepOpen(null, true)`
   (Tab, `boardToggle`) shows the board alone with the plan read-only (`A.prepS.board`; prepStart then applies no plans).
   Keys: Tab / Esc close, also with a board button focused. `boardMark` draws the ◆ on the court tag (tags.js).
+- Spike orders (T-278): `m.ord[pid].aim` ('line' | 'cross' | 'open' | a passer's id) and `.shot` ('power' | 'cut' | 'tip').
+  laneRead reads a forced channel × `ORDERS.atk.readK`; laneAim takes `atkApply` (channel lean, pace / error / cut dials);
+  spikePower: an ordered Tip always tips, another ordered shot never (the same draw); landingSpot: `atkLand` pulls the ball
+  toward the player or the biggest gap; an ordered tip's kill chance falls with each one seen (`laneSeen(..).tip`, digSetup).
+- Spike odds (`atkOdds`): `ORDERS.odds.atkN` possessions from a perfect pass with the hitter fed (`m.probe` in chooseAttack),
+  each from a copy of the match (`stCopy`: plain state deep-copied, teams and players by reference — a rally does not change
+  them), RNG.next swapped for a seed of the score; `probeHit` (tallyAttack) throws `PROBE_STOP` at the hitter's first attack.
+  ~0.1 s a probe: the board queues them (`boardAtk` / `boardWork`, one per tick, cached per point) and fills each in place.

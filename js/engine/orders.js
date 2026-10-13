@@ -153,3 +153,127 @@ function srvOdds(m, server, s, srv, tgt) {
   else if (m.ord) delete m.ord[server.id];
   return { err: err / G.roll.length, hit: hit / G.roll.length };
 }
+
+// ---- Spike orders (T-278): aim (line / cross / a player / open court) and shot (power / cut / tip) ----
+
+/** Aim options against side T: Auto, the two channels, each of their passers, the open court (Wit 1.2+). */
+function aimOpts(p, T) {
+  return [
+    { v: 'auto', label: 'Auto' },
+    { v: 'line', label: 'Line' },
+    { v: 'cross', label: 'Cross' },
+    ...passersOf(T).map(q => ({ v: q.id, label: `At #${q.num} ${q.name.split(' ')[0]}` })),
+    { v: 'open', label: 'Open court', lock: W(p) >= ORDERS.atk.openWit ? null : `Wit ${ORDERS.atk.openWit}+` }
+  ];
+}
+/** Shot options. */
+const shotOpts = () => [
+  { v: 'auto', label: 'Auto' },
+  { v: 'power', label: 'Power' },
+  { v: 'cut', label: 'Cut' },
+  { v: 'tip', label: 'Tip' }
+];
+/** The aim and shot orders bent into laneAim's channel lean and the attack's dials: { p, powK, errK, cutK, cutMax }. */
+function atkApply(m, spiker, defT, spZ, p) {
+  const aim = ordOf(m, spiker, 'aim'),
+    shot = ordOf(m, spiker, 'shot'),
+    A = ORDERS.atk,
+    r = { p, powK: 1, errK: 1, cutK: 0, cutMax: 0.75 };
+  if (aim === 'line' || aim === 'cross') r.p = aim === 'line' ? A.force : 1 - A.force;
+  else if (aim && aim !== 'open') {
+    const q = defT.P.find(x => x.id === aim);
+    if (q) {
+      const z = m.pos[q.id].z;
+      r.p += (Math.abs(laneZ(spZ, 'line') - z) <= Math.abs(laneZ(spZ, 'cross') - z) ? 1 : -1) * A.lean;
+      r.errK *= A.aimErr;
+    }
+  } else if (aim === 'open') r.errK *= A.openErr;
+  if (shot === 'power') Object.assign(r, { powK: A.pow, errK: r.errK * A.powErr, cutK: -1 });
+  if (shot === 'cut') Object.assign(r, { cutK: A.cut, cutMax: 0.9 });
+  return r;
+}
+/** Where an aimed ball lands (landingSpot): toward the chosen player, or the biggest gap among their floor defenders. */
+function atkLand(m, spiker, defT, blockers, ds, lx, lz) {
+  const aim = ordOf(m, spiker, 'aim'),
+    A = ORDERS.atk;
+  if (!aim || aim === 'line' || aim === 'cross') return [lx, lz];
+  if (aim === 'open') {
+    const D = defT.P.filter(q => !blockers.includes(q));
+    let best = null,
+      bd = -1;
+    for (const gx of [190, 260, 330, 400])
+      for (const gz of [0.15, 0.3, 0.5, 0.7, 0.85]) {
+        const d = Math.min(9, ...D.map(q => dist(m.pos[q.id], sx(ds, gx), gz)));
+        if (d > bd) [bd, best] = [d, [sx(ds, gx), gz]];
+      }
+    return best ? [lerp(lx, best[0], A.openK), lerp(lz, best[1], A.openK)] : [lx, lz];
+  }
+  const q = defT.P.find(x => x.id === aim);
+  if (!q || blockers.includes(q)) return [lx, lz];
+  return [lerp(lx, m.pos[q.id].x, A.atK), clamp(lerp(lz, m.pos[q.id].z, A.atK), 0.08, 0.92)];
+}
+
+// ---- The odds probe: the engine itself plays the attack from now, on an isolated random stream ----
+
+/** Deep copy of match state, keeping teams and players by reference (they are not changed inside a rally). */
+const isEnt = v => Array.isArray(v.P) || (typeof v.id === 'string' && 'role' in v);
+function stCopy(v) {
+  if (!v || typeof v !== 'object' || isEnt(v)) return v;
+  if (Array.isArray(v)) return v.map(stCopy);
+  if (v instanceof Set) return new Set(v);
+  if (v instanceof Map) return new Map(v);
+  const pr = Object.getPrototypeOf(v);
+  if (pr !== Object.prototype && pr !== null) return v;
+  const o = {};
+  for (const k in v) o[k] = stCopy(v[k]);
+  return o;
+}
+const PROBE_STOP = { probe: 1 };
+/**
+ * Side's attack odds for hitter p with the given aim / shot ('auto' or an id; undefined = the current order): { kill,
+ * err, stf, n } over `ORDERS.odds.atkN` possessions from a good pass, the hitter fed. The match is restored afterwards and
+ * the game's random stream is untouched (RNG.next swapped for a seeded one) — the same numbers at the same moment.
+ */
+function atkOdds(m, side, p, aim, shot) {
+  const T = m.t[side],
+    pas = T.P.find(q => q !== p && q !== T.s) || T.P.find(q => q !== p),
+    snap = stCopy(m),
+    next0 = RNG.next,
+    cm0 = CM;
+  if (aim !== undefined) ordSet(m, p, 'aim', aim);
+  if (shot !== undefined) ordSet(m, p, 'shot', shot);
+  const ord = stCopy(m.ord),
+    o = { kill: 0, err: 0, stf: 0, n: 0 };
+  RNG.seed(ORDERS.odds.seed + m.pts[0] * 31 + m.pts[1]);
+  CM = m;
+  try {
+    for (let i = 0; i < ORDERS.odds.atkN; i++) {
+      for (const k of Object.keys(m)) if (!(k in snap)) delete m[k];
+      Object.assign(m, stCopy(snap), { ord: stCopy(ord), rec: false, probe: { p, out: null } });
+      try {
+        rally(m, null, false, side, pas, 3);
+      } catch (e) {
+        if (e !== PROBE_STOP) throw e;
+      }
+      const r = m.probe.out;
+      if (!r) continue;
+      o.n++;
+      if (r.kill) o.kill++;
+      else if (r.err) o.err++;
+      else if (r.stf) o.stf++;
+    }
+  } finally {
+    for (const k of Object.keys(m)) if (!(k in snap)) delete m[k];
+    Object.assign(m, snap);
+    RNG.next = next0;
+    CM = cm0;
+  }
+  const n = Math.max(1, o.n);
+  return { kill: o.kill / n, err: o.err / n, stf: o.stf / n, n: o.n };
+}
+/** tallyAttack's probe hook: the probed hitter's first attack ends the probe possession. */
+function probeHit(m, x, kill, err, stf) {
+  if (!m.probe || x.spiker !== m.probe.p) return;
+  m.probe.out = { kill, err, stf };
+  throw PROBE_STOP;
+}

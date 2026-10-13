@@ -529,6 +529,59 @@ test.slow(
   }
 );
 
+test.slow(
+  'engine: spike orders — a forced channel holds and gets read; the odds probe leaves the match and the stream untouched (spec §2.29)',
+  () => {
+    const g = load(31),
+      T = g.mkTeams();
+    const run = aim => {
+      let line = 0,
+        all = 0,
+        rd = 0,
+        ok = 0;
+      for (let i = 0; i < 40; i++) {
+        const m = g.newMatch(T[i % 8], T[(i * 5 + 2) % 8], false);
+        for (const p of g.squadOf(m.t[0])) if (aim) g.ordSet(m, p, 'aim', aim);
+        while (!m.over) g.playRally(m);
+        for (const p of g.squadOf(m.t[0])) {
+          const s = m.lanes[p.id];
+          if (s) ((line += s.line), (all += s.line + s.cross));
+        }
+        rd += m.att[0].rd;
+        ok += m.att[0].rdOk;
+      }
+      return { line: line / all, right: ok / rd };
+    };
+    const auto = run(null),
+      fl = run('line');
+    // (cut shots around the block still go where the block is not, and the landing spreads: ~75 % lands in the line channel)
+    assert(
+      fl.line > 0.65 && fl.line > auto.line + 0.25,
+      `forced line: ${(100 * fl.line).toFixed(0)} % down the line (Auto ${(100 * auto.line).toFixed(0)} %)`
+    );
+    assert(
+      fl.right > auto.right + 0.1,
+      `the block reads a forced channel: ${(100 * fl.right).toFixed(0)} % vs ${(100 * auto.right).toFixed(0)} %`
+    );
+    // the probe: same numbers twice, the match state and the game stream as before, no order left behind
+    const m = g.newMatch(T[0], T[1], false);
+    for (let i = 0; i < 8; i++) g.playRally(m);
+    const p = m.t[0].P.find(q => q.role === 'WS'),
+      before = JSON.stringify([m.pts, m.stat, m.pos, m.sta, m.mood, m.hit, m.lanes]);
+    g.RNG.seed(5);
+    const a = g.atkOdds(m, 0, p, 'auto', 'power'),
+      b = g.atkOdds(m, 0, p, 'auto', 'power'),
+      r1 = g.R();
+    g.RNG.seed(5);
+    eq(g.R(), r1, 'the game stream is untouched');
+    eq(JSON.stringify(a), JSON.stringify(b), 'the same odds at the same moment');
+    eq(JSON.stringify([m.pts, m.stat, m.pos, m.sta, m.mood, m.hit, m.lanes]), before, 'the match is restored');
+    eq(g.ordOf(m, p, 'shot'), undefined, 'no order left behind');
+    assert(a.n > 100 && g.atkOdds(m, 0, p, 'auto', 'tip').err === 0, 'a tip never errs');
+    g.RNG.unseed();
+  }
+);
+
 test('engine: defence settings — AI default, captain switch, scouting habits', () => {
   const g = load(9),
     T = g.mkTeams(),

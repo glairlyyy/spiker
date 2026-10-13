@@ -308,7 +308,12 @@ function digSetup(c, x, bl) {
   // drop in short
   const short = tip || x.around || (x.read === 'wrong' && atkPlan(m, 1 - ds).seam);
   const deepK = !dp.hardKill ? 1 : short ? dp.tipKill : pow >= dp.powFrom ? dp.hardKill : 1,
-    killP = Math.min(0.98, Formula.killChance(pow, dsc, tip, dd0) * deepK);
+    // an ordered tip (spec §2.29): they come up short for it, and more so each time it has been seen this match
+    tipK =
+      tip && ordOf(m, x.spiker, 'shot') === 'tip'
+        ? clamp(ORDERS.atk.tip0 - (laneSeen(m, x.spiker).tip || 0) * ORDERS.atk.tipSeen, ORDERS.atk.tipMin, 1)
+        : 1,
+    killP = Math.min(0.98, Formula.killChance(pow, dsc, tip, dd0) * deepK * tipK);
   const a4 = [];
   return { dg, q0, dd0, dsc, rollD, killP, a4 };
 }

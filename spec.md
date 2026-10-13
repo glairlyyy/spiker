@@ -455,7 +455,7 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   - Direction (owner, 2026-10-12): finding the weakest passer — by scouting before the match, or by watching stamina drop in it
     — may become the game's main tactic (Hunt the passer, §2.26, is the first piece).
 
-- §2.29 Plan board — role orders (owner, 2026-10-13) **[built 2026-10-13: the board + serve orders, T-277; open: T-278–T-281]**: you set how each player plays their part;
+- §2.29 Plan board — role orders (owner, 2026-10-13) **[built 2026-10-13–14: the board + serve orders, T-277; spike orders, T-278; open: T-279–T-281]**: you set how each player plays their part;
   the engine plays it out (§5.7: prep, not presses — the strategy made visible). The team plan (§2.26) stays the coach layer;
   the board adds the player layer under it.
   - **Where**: match prep shows the board under the teams (a row of four player cards per side you run, options listed
@@ -484,17 +484,22 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
       server late to the first defence (as now) — floating keeps them in it. Drive / Killer (learned): always fire instead of 50 %.
     - Target a passer: without Target Serve a lean (the Hunt lean) and errors × 1.1; with Target Serve exact. The seam (needs
       Target Serve): the weaker of the two passers takes it, receive −6.
-    - Aim / shot: the hitter tries the chosen channel, player or seam, and shot; skill and the block decide (a read block takes
-      a channel away; the laning read learns a forced channel × 1.5 faster). Power: power × 1.08, errors × 1.15. Tip: good vs a
-      deep floor, poor vs a read block.
+    - Aim / shot: the hitter tries the chosen channel, player or open court, and shot; skill and the block decide (a read block
+      takes a channel away; the laning read learns a forced channel × 1.5 faster). At a player (one of their passers): the ball
+      goes toward them (errors × 1.05); Open court (Wit 1.2+): toward the biggest gap (errors × 1.12). Power: power × 1.08,
+      errors × 1.15, no cut shot. Cut: more cut shots around the block. Tip: always tips, never errs — they come up short for
+      it (kill chance × 0.65), less each time they have seen one this match (−0.05 each, to × 0.3). Cut shots still go around
+      the block, so a forced line lands in the line channel ~75 % of the time.
     - Feed: the setter sets that hitter on a 3 or 2 pass (a 1 is still the high ball to whoever is open); their block reads a
       fed hitter × 1.5 faster. Fake off: no decoy fake set.
     - Block: Commit — vs the quick stuff × 1.4, vs a high ball late (coverage × 0.6); Stay back — no block, digs as a
       back-row player (dig distance × 0.8).
   - **Locked** options show the gap (§9: locked = the gap): "Jump — Power 56+ as WS", "Seam — learn Target Serve".
-  - **Odds** (true numbers): each option shows its outcome as words + % ("Ace or broken pass 34 % · miss 12 %", "Kill 41 %",
-    "Stuff 22 %") from the engine's own formulas on a fixed grid (no R() draws), for the current rotation, their passers /
-    block now and this match's reads; recomputed at every point. Bad news first ("Their block reads your line 3 of 4").
+  - **Odds** (true numbers): each option shows its outcome as % — serve: ace or broken pass · miss, from the engine's own
+    formulas on a fixed grid (no draws); spike: kill · error, the engine playing the attack itself 160 times from now (a good
+    pass, the hitter fed) on its own random stream, then putting the match back — the game's draws untouched; filled in a
+    moment after the board opens (one option per tick), the same numbers at the same point. For the current rotation, their
+    passers / block now and this match's reads; recomputed at every point. Bad news first ("Their block reads your line 3 of 4").
   - **Remembered**: orders stand for the match (`m.ord`); a small mark on the court tag shows a standing order. Not saved
     between matches (later: the career keeps your own card's defaults). Hidden from the other side; they leak as patterns
     (§2.25, the laning read).

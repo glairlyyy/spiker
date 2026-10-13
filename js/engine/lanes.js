@@ -28,7 +28,12 @@ function laneRead(c, x) {
   if (cov <= BLOCK_MIN_COV) return { bch: null };
   if (defPlan(m, ds).stuff) return { bch: 'line' }; // Dig deep (spec §2.26): the block takes the line, no guessing
   const dp = defPlan(m, ds),
-    k = LANE.readK * (atkPlan(m, atk).readK ?? 1) * (dp.aceRead && spiker === aceOf(atkT) ? dp.aceRead : 1), // Hunt is predictable; Wall reads the ace
+    ao = ordOf(m, spiker, 'aim'),
+    k =
+      LANE.readK *
+      (atkPlan(m, atk).readK ?? 1) * // Hunt is predictable; Wall reads the ace; a forced channel (spec §2.29) too
+      (dp.aceRead && spiker === aceOf(atkT) ? dp.aceRead : 1) *
+      (ao === 'line' || ao === 'cross' ? ORDERS.atk.readK : 1),
     s = laneSeen(m, spiker),
     est = (s.line + 1) / (s.line + s.cross + 2),
     q = Math.max(readQ(b0), b1 ? readQ(b1) : 0),
@@ -59,6 +64,8 @@ function laneAim(c, x) {
     p = lerp(p, bch === 'line' ? LANE.away : 1 - LANE.away, see);
     if (b1) p += (blkStr(laneHand(x, 'cross')) - blkStr(laneHand(x, 'line'))) * LANE.weakK * see;
   }
+  const o = m.ord[spiker.id] ? atkApply(m, spiker, defT, spZ, p) : null; // role orders (spec §2.29): aim and shot
+  if (o) p = o.p;
   const ch = R() < clamp(p, 0.05, 0.95) ? 'line' : 'cross';
   let cov = x.cov;
   if (bch) {
@@ -85,9 +92,10 @@ function laneAim(c, x) {
     ch,
     cov,
     read: bch ? (ch === bch ? 'right' : 'wrong') : null,
-    powK: ap.pow ?? 1,
-    cutK: ap.cutK ?? 0,
-    errK: ap.err ?? 1,
+    powK: (ap.pow ?? 1) * (o ? o.powK : 1),
+    cutK: (ap.cutK ?? 0) + (o ? o.cutK : 0),
+    cutMax: o ? o.cutMax : 0.75,
+    errK: (ap.err ?? 1) * (o ? o.errK : 1),
     planStuff: dp.stuff ?? 1
   };
 }
@@ -101,6 +109,7 @@ function laneTag(c, x, out) {
 
 /** After the attack: what the blockers saw (the channel it really went), and the side's read tallies (spec §2.24). */
 function laneRecord(m, side, x, kill) {
+  if (x.tip && ordOf(m, x.spiker, 'shot') === 'tip') laneSeen(m, x.spiker).tip = (laneSeen(m, x.spiker).tip || 0) + 1; // ordered tips get read (§2.29)
   if (x.tip || x.lz == null) return;
   laneSeen(m, x.spiker)[laneOf(x.spZ, x.lz)]++;
   if (!x.read) return;

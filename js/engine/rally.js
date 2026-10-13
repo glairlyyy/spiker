@@ -135,7 +135,9 @@ function tallyAttack(m, side, x, k0, bk0, e0) {
   a.n++;
   a[kind]++;
   if (x.b1) a.dbl++;
-  hitLog(m, x, kill, stuffed, (m.stat[x.spiker.id] || blank()).err > e0); // the coach panel's per-hitter numbers (spec §2.25)
+  const err = (m.stat[x.spiker.id] || blank()).err > e0;
+  hitLog(m, x, kill, stuffed, err); // the coach panel's per-hitter numbers (spec §2.25)
+  probeHit(m, x, kill, err, stuffed); // the Plan board's odds probe (spec §2.29): ends the probe here
   if (stuffed) {
     a.stf++;
     a[kind + 's']++;
@@ -367,7 +369,9 @@ function spikePower(c, x) {
   st(m, spiker, 'att');
   dr(m, spiker, 0.035 + pj / 4000);
   const setMul = { perfect: 1.12, good: 1, bad: 0.72 }[sq2];
-  const tip = bad && !elSrc && R() < 0.35;
+  const so = ordOf(m, spiker, 'shot'), // role orders (spec §2.29): Tip always tips, another ordered shot never (the same draw)
+    tip0 = bad && !elSrc && R() < 0.35,
+    tip = so === 'tip' ? !elSrc : so ? false : tip0;
   let pow = tip ? rnd(18, 30) : Formula.spikePower({ spiker, team: atkT, setMul, quick, back, longB, combo, fat }) * (x.powK ?? 1); // × Power through (spec §2.26)
   const elS = !tip && elSrc ? elSpike(m, elSrc, spiker, setter, defT, sq2 === 'perfect') : null;
   if (elS) {
@@ -377,7 +381,7 @@ function spikePower(c, x) {
   st(m, spiker, 'top', kmh(pow));
   let around = false;
   const cutS = hasTech(spiker, 'cutshot');
-  if (!tip && cov > 0.5 && R() < clamp((W(spiker) - 0.4) * 0.45 + (cutS ? 0.2 : 0) + (x.cutK || 0), 0, 0.75)) {
+  if (!tip && cov > 0.5 && R() < clamp((W(spiker) - 0.4) * 0.45 + (cutS ? 0.2 : 0) + (x.cutK || 0), 0, x.cutMax ?? 0.75)) {
     around = true;
     if (cutS) techFire(m, spiker, 'cutshot');
     // a blocker at least as sharp as the hitter reads the cut and keeps part of the block on it
@@ -486,6 +490,7 @@ function landingSpot(c, x) {
   const bMean = b1 ? (bz0 + bz1) / 2 : bz0;
   let lz = around ? (bMean > 0.5 ? rnd(0.1, 0.35) : rnd(0.65, 0.9)) : clamp(laneZ(spZ, x.ch) + rnd(-0.12, 0.12), 0.1, 0.9); // the channel the hitter aimed at (spec §2.24)
   let lx = sx(ds, tip ? rnd(390, 460) : rnd(170, 400));
+  if (!tip && !around && m.ord[x.spiker.id]) [lx, lz] = atkLand(m, x.spiker, defT, blockers, ds, lx, lz); // aimed (spec §2.29)
   if (elS && elS.far)
     [lx, lz] = elFar(
       m,

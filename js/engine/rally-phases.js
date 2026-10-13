@@ -355,6 +355,12 @@ function chooseAttack(c, s, h) {
       if (relNote) m.relLog.push({ act: relNote.act, p: setter.id, mate: relNote.who.id, tag: relTag(m, setter, relNote.who) });
     }
   }
+  // the Plan board's odds probe (spec §2.29; an isolated stream): the probed hitter takes this ball when they are free
+  const fed = m.probe && pool.includes(m.probe.p) ? m.probe.p : null;
+  if (fed && fed !== spiker) {
+    spiker = fed;
+    if (quick && !MBs.includes(fed)) quick = false;
+  }
   // a predictable attack is easier to read: blockers get there a little more often
   const readBonus = tac.focus && spiker.role === tac.focus ? tac.read : 0;
   // setter-driven plays (decided before the approach so the animation can show them)

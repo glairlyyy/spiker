@@ -59,7 +59,7 @@ Accept:
 QA: Monster game → prep board, set a target + Float, Tab mid-match.
 Result: Built as specced. Also js/engine/formulas.js (`serveQuality` takes an optional roll — default draws as before) and the board as a row of four cards under the teams (not inside a column). Odds vs sims (mulberry32, 2,000 serves each): errors and ace-or-broken within ~2 points (Auto, Float, Jump float, Jump, aimed, seam). Float on a wing: misses 14 → 6 %, aces / broken 22 → 4 %; the seam with Target Serve reads ~37 % vs Auto 22 % — for T-281's balance check. Goldens unchanged; 133/133 full; UI smoke 13/13. Found: tests/harness.js's Math.random (xorshift % 1e9 / 1e9) over-weights values under ~0.29 by 25 % (P(R < 0.16) = 0.187) — every headless measurement on load() is skewed; fixing it changes the goldens (owner to decide).
 
-### [~] T-278: Spike orders — aim and shot
+### [x] T-278: Spike orders — aim and shot
 Spec: §2.29          Goldens: unchanged          Save: no change
 Goal: hitters take an aim (line / cross / at a player / open court) and a shot (power / cut / tip) with odds.
 Files: js/engine/orders.js, js/data/tactics.js, js/engine/lanes.js, js/engine/rally-phases.js, js/engine/rally.js,
@@ -67,7 +67,7 @@ js/ui/plan-board.js, tests/engine.test.js
 Do not: let an order bypass the block or skill rolls; change draws with no order.
 Accept: forced channels are taken ≥ 90 % when the set allows; the read learns a forced channel × 1.5 faster (test); kill %
 odds within 3 points of sims.
-Result:
+Result: Built. Odds by playing the attack out (`atkOdds`: 160 possessions from a perfect pass, the hitter fed, an isolated seeded stream, the match restored — test: same odds twice, state and the game's stream untouched) instead of a formula grid: the chain block → dig is too long to model; ~0.1 s a probe, so the board fills spike odds one per tick (~17 s for 3 hitters in headless swiftshader). Aim at a player lists their passers only. Ordered Tip was 48 % kills / 0 errors → added a read-down (× 0.65, −0.05 per tip seen, ≥ × 0.3; spec §2.29). Forced line: ~75 % lands in the line channel (cut shots still go around; accept said 90 %); the block's right reads 50 → 60 %+. Also rally-defense.js (the tip read-down). Goldens unchanged; 134/134; UI smoke 13/13.
 
 ### [ ] T-279: Setter orders — feed and fake
 Spec: §2.29          Goldens: unchanged          Save: no change

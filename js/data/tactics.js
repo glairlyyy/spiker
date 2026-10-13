@@ -218,9 +218,30 @@ const KNOCK = {
  * Role orders (spec §2.29, js/engine/orders.js). srv: a softer serve than the natural one, by steps down (1: jump → jump
  * float, 2: jump → float): pace × `pace`, errors × `err`; aiming at a passer without Target Serve is a lean (`lean` of the
  * serves, errors × `aimErr`); the seam's receive −`seam`. odds: the fixed grid of the serve roll and the receiver's run
- * (aimed beside them / a random spot / the seam) the Plan board's numbers use.
+ * (aimed beside them / a random spot / the seam) the Plan board's numbers use. atk (T-278): a channel order holds
+ * `force` of the time and their block reads it × `readK` faster; at a player: a `lean` toward their channel, the ball `atK`
+ * of the way to them, errors × `aimErr`; the open court (Wit `openWit`+): `openK` of the way to the biggest gap, errors ×
+ * `openErr`; Power: pace × `pow`, errors × `powErr`, no cut shot; Cut: the cut chance + `cut` (to 90 %); Tip: always tips, its kill
+ * chance × `tip0` − `tipSeen` per ordered tip seen this match (to `tipMin`).
+ * odds.atkN possessions per attack-odds probe (an isolated stream, `seed`).
  */
 const ORDERS = {
   srv: { pace: [1, 0.93, 0.85], err: [1, 0.8, 0.6], lean: 0.6, aimErr: 1.1, seam: 6 },
-  odds: { roll: [0.82, 0.86, 0.9, 0.94, 0.98, 1.02, 1.06, 1.1, 1.14, 1.18], dAim: 0.22, dRand: 0.36, dSeam: 0.4 }
+  atk: {
+    force: 0.95,
+    readK: 1.5,
+    lean: 0.35,
+    aimErr: 1.05,
+    openErr: 1.12,
+    openWit: 1.2,
+    openK: 0.7,
+    atK: 0.6,
+    pow: 1.08,
+    powErr: 1.15,
+    cut: 0.35,
+    tip0: 0.65,
+    tipSeen: 0.05,
+    tipMin: 0.3
+  },
+  odds: { roll: [0.82, 0.86, 0.9, 0.94, 0.98, 1.02, 1.06, 1.1, 1.14, 1.18], dAim: 0.22, dRand: 0.36, dSeam: 0.4, atkN: 160, seed: 9173 }
 };
