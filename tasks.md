@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-277** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-282** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,65 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+**Plan board (owner, 2026-10-13, spec §2.29): T-277 → T-281, one agent, in order.** Every order has Auto = today's engine, so
+with no orders the goldens stay unchanged (tests pass without `--update`); orders change draws only when set. Odds draw no R().
+
+### [ ] T-277: Plan board and serve orders
+Spec: §2.29          Goldens: unchanged          Save: no change
+Goal: match prep shows a board of player cards under the team plans; Tab opens it mid-match (paused); servers take a target
+and a serve type, with true odds and locked options showing the gap.
+Files: js/engine/orders.js (new), js/data/tactics.js (`ORDERS`), js/engine/serve.js, js/engine/match.js (`m.ord`),
+js/ui/plan-board.js (new), js/ui/match-prep.js, js/ui/match-controls.js (Tab), js/render/tags.js (order mark), css/match.css,
+index.html, tests/engine.test.js, tests/ui-smoke.js, ARCHITECTURE.md, ARCHITECTURE-details.md
+Do not: change any draw when no order is set; let odds call R()/rnd(); add Fire up / Settle to the board; save orders.
+Steps:
+1. `m.ord = {}` (pid → { tgt, srv }) in newMatch; `Orders` (orders.js): `opts(m, p, kind)` (options, locked + gap text),
+   `set(m, p, kind, v)`, `get`, `odds(m, p, kind, v)` (serve: error, ace, broken pass (q 1) on a fixed grid of the
+   receive roll, vs their passers now).
+2. serve.js: the serve type cap / softer type (pace, errors per `ORDERS.srv`), Drive / Killer always when ordered, the target
+   (lean without Target Serve, exact with it; seam → the weaker passer −6). Each hook runs only when an order is set.
+3. Board UI: a card per player (role, choices as segments, the outcome % under each, bad news first); prep renders it under
+   each side's plans for the sides / cards you edit (§2.29 who edits); Tab pauses (A.hold) and opens it; tag mark.
+Accept:
+- Goldens unchanged; a test: ordering Float on a natural jump server over 300 serves lowers errors and aces vs Auto; a seam /
+  target order sends ≥ 80 % (Target Serve) of serves to the chosen side; odds within 3 points of the simulated rates.
+- ui-smoke: the board opens in prep and on Tab; no page error.
+QA: Monster game → prep board, set a target + Float, Tab mid-match.
+Result:
+
+### [ ] T-278: Spike orders — aim and shot
+Spec: §2.29          Goldens: unchanged          Save: no change
+Goal: hitters take an aim (line / cross / at a player / open court) and a shot (power / cut / tip) with odds.
+Files: js/engine/orders.js, js/data/tactics.js, js/engine/lanes.js, js/engine/rally-phases.js, js/engine/rally.js,
+js/ui/plan-board.js, tests/engine.test.js
+Do not: let an order bypass the block or skill rolls; change draws with no order.
+Accept: forced channels are taken ≥ 90 % when the set allows; the read learns a forced channel × 1.5 faster (test); kill %
+odds within 3 points of sims.
+Result:
+
+### [ ] T-279: Setter orders — feed and fake
+Spec: §2.29          Goldens: unchanged          Save: no change
+Goal: the setter feeds the chosen hitter on a 3 / 2 pass; fake on / off.
+Files: js/engine/orders.js, js/engine/rally-phases.js (chooseAttack, fake set), js/engine/lanes.js (read × 1.5 on the fed
+hitter), js/ui/plan-board.js, tests/engine.test.js
+Accept: fed hitter takes ≥ 85 % of 3 / 2 sets; a 1 pass still goes high to whoever is open; fake off = no fake sets (test).
+Result:
+
+### [ ] T-280: Middle orders — Read / Commit / Stay back
+Spec: §2.29, §2.9          Goldens: unchanged          Save: no change
+Goal: a middle's own block order overrides the team setting for them.
+Files: js/engine/orders.js, js/engine/rally-block.js, js/engine/rally-defense.js, js/ui/plan-board.js, tests/engine.test.js
+Accept: Commit raises stuffs on quicks and lowers coverage on high balls; Stay back never blocks and digs (test); odds within
+3 points.
+Result:
+
+### [ ] T-281: Orders on the result card and the balance check
+Spec: §2.29          Goldens: unchanged          Save: no change
+Goal: the result card lists each order and how it went; paired sims per option vs Auto, numbers into spec §2.29.
+Files: js/engine/orders.js (tallies), js/ui/match-result.js, css/match.css, tests/ui-smoke.js, spec.md (measured line only)
+Accept: no option beats Auto by more than +3 % points for an average team (else retune `ORDERS`); result card shows orders.
+Result:
 
 
 

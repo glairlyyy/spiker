@@ -454,6 +454,51 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   - Direction (owner, 2026-10-12): finding the weakest passer — by scouting before the match, or by watching stamina drop in it
     — may become the game's main tactic (Hunt the passer, §2.26, is the first piece).
 
+- §2.29 Plan board — role orders (owner, 2026-10-13) **[open: T-277–T-281]**: you set how each player plays their part;
+  the engine plays it out (§5.7: prep, not presses — the strategy made visible). The team plan (§2.26) stays the coach layer;
+  the board adds the player layer under it.
+  - **Where**: match prep shows the board under the team plans; **Tab** in a played match pauses and opens the same board
+    (Tab / Esc / Enter close). An order made mid-rally applies from the next rally (the engine has played the current one).
+    The team plan still changes only at a timeout. Captain's calls Fire up / Settle are not on the board (owner, 2026-10-13:
+    not for now).
+  - **Who edits**: Monster game — a side on "You decide": all four cards; "Coach decides": hidden. Career — your own card
+    always (you are a player); as captain, every card of your side. Other cards read **Auto**.
+  - **Cards** (one per player, by role). Every choice has **Auto** = today's engine (the AI picker, one engine, two pickers):
+    AI sides and untouched players play exactly as now (goldens unchanged with no orders).
+
+    | Who                      | Choice | Options                                                                        |
+    | ------------------------ | ------ | ------------------------------------------------------------------------------ |
+    | Server (each, on serve)  | Target | Auto · one of their passers · the seam between two passers                     |
+    |                          | Serve  | Auto · Float · Jump float · Jump; learned: Drive (float), Killer (jump)        |
+    | Hitter (WS / OP; MB too) | Aim    | Auto · Line · Cross · At a player · Open court (the seam nobody covers)        |
+    |                          | Shot   | Auto · Power · Cut · Tip                                                       |
+    | Setter                   | Feed   | Auto · one hitter                                                              |
+    |                          | Fake   | On (Auto) · Off                                                                |
+    | Middle (MB)              | Block  | Auto (the team's §2.9 setting) · Read · Commit (jump with their quick) · Stay back (no block: dig and cover) |
+
+  - **Trade-offs** (numbers in `ORDERS`, js/data/tactics.js; each tilts points, none decides one, §2.0):
+    - Serve type: a player's natural type (`serveType`) is the hardest they may pick; a softer one trades pace for safety
+      (Float: pace × 0.85, errors × 0.6; Jump float under a natural Jump: pace × 0.93, errors × 0.8). A jump serve keeps the
+      server late to the first defence (as now) — floating keeps them in it. Drive / Killer (learned): always fire instead of 50 %.
+    - Target a passer: without Target Serve a lean (the Hunt lean) and errors × 1.1; with Target Serve exact. The seam (needs
+      Target Serve): the weaker of the two passers takes it, receive −6.
+    - Aim / shot: the hitter tries the chosen channel, player or seam, and shot; skill and the block decide (a read block takes
+      a channel away; the laning read learns a forced channel × 1.5 faster). Power: power × 1.08, errors × 1.15. Tip: good vs a
+      deep floor, poor vs a read block.
+    - Feed: the setter sets that hitter on a 3 or 2 pass (a 1 is still the high ball to whoever is open); their block reads a
+      fed hitter × 1.5 faster. Fake off: no decoy fake set.
+    - Block: Commit — vs the quick stuff × 1.4, vs a high ball late (coverage × 0.6); Stay back — no block, digs as a
+      back-row player (dig distance × 0.8).
+  - **Locked** options show the gap (§9: locked = the gap): "Jump — Power 56+ as WS", "Seam — learn Target Serve".
+  - **Odds** (true numbers): each option shows its outcome as words + % ("Ace or broken pass 34 % · miss 12 %", "Kill 41 %",
+    "Stuff 22 %") from the engine's own formulas on a fixed grid (no R() draws), for the current rotation, their passers /
+    block now and this match's reads; recomputed at every point. Bad news first ("Their block reads your line 3 of 4").
+  - **Remembered**: orders stand for the match (`m.ord`); a small mark on the court tag shows a standing order. Not saved
+    between matches (later: the career keeps your own card's defaults). Hidden from the other side; they leak as patterns
+    (§2.25, the laning read).
+  - **Result card**: the orders used and how they went ("#7 Jump serve: 3 aces, 4 misses of 14").
+  - Build order: serve (with the board) → spike → set → middle → result card and balance (T-277–T-281).
+
 ## 3. Menu [built]
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two
@@ -875,7 +920,7 @@ mood)`.
     "which stat today". Look for decisions with real trade-offs, made with information the player had to earn (scouting,
     reads, rivals' habits), whose results show in the match and on the island.
   - **Rules any answer keeps:** one engine, two pickers — every human decision is also an AI decision, sims unchanged (§2.13,
-    goldens); no menus or odds during a rally, no rock-paper-scissors; per-rally button prompts were tried and removed (§2.16, hard to scale); tactics stay modest vs a big stat gap (§2.0);
+    goldens); no menus or odds during a rally (the Plan board's Tab pauses the match, §2.29), no rock-paper-scissors; per-rally button prompts were tried and removed (§2.16, hard to scale); tactics stay modest vs a big stat gap (§2.0);
     the game reminds, never suggests (§9.1); no tutorial voice, lore voices only (§6); numbers true; relationships only from
     costly shared acts (§4.23); desktop only.
   - **Parked ideas to weigh (not decided):** the match remembering your choices ("AI memory": they read your favourite lane
@@ -883,7 +928,8 @@ mood)`.
     reveals an ace's weakness shown in the match UI (§8 ace traits); a smarter coach (§8).
   - **Current direction (owner, 2026-10-11 – 12)**: (1) **Laning first** (§2.24, built) so reads and aims are real and visible;
     (2) a Kenshi-style **right-click** on any player / thing lists what you may ask or do (requests as a player — teammates and the
-    coach answer by bond / trust; nothing is required; locked options show the gap), proposed, not decided.
+    coach answer by bond / trust; nothing is required; locked options show the gap), proposed, not decided; (3) **Plan board**
+    (owner, 2026-10-13, §2.29): role orders per player — serve, spike, set, block — in prep and on Tab, with true odds.
   - **Earlier (owner, 2026-10-11)** — agency is **prep, not presses**: choices made before the match play out on their own
     (auto-battler feel); the thrill is outsmarting the other side; each choice tilts points, never decides one alone. No QTE, no
     in-rally input (§2.16 removed). The captain's calls stay (§2.17).
