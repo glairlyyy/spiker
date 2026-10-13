@@ -365,7 +365,9 @@ function chooseAttack(c, s, h) {
   if (slide) techFire(m, spiker, 'slide');
   if (sync) techFire(m, setter, 'sync');
   const DF = defT.P.filter(p => p.role !== 'S' && front(ds, p) && !onFloor(m, p, c.n)), // (not one who is on the floor: spec §2.28)
-    B0 = DF.find(p => p.role === 'MB') || DF[0] || defT.P.find(p => front(ds, p)) || defT.mb; // a front-row setter before anyone from the back
+    up = p => !onFloor(m, p, c.n),
+    // a front-row setter before anyone from the back; never one who is on the floor while anyone is up
+    B0 = DF.find(p => p.role === 'MB') || DF[0] || defT.P.find(p => front(ds, p) && up(p)) || defT.P.find(up) || defT.mb;
   const bad = sq2 === 'bad';
   if (relNote && c.V) {
     // the setter says it out loud (a talk beat before the set; no extra draw)

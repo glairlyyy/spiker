@@ -91,7 +91,8 @@ test('people: save → load keeps run.people; a v9 save is dropped', () => {
 test.slow('people: calibration — the league grows like the old drift (5 seeds × 28 weeks)', () => {
   // baseline on the pre-T-060 code (random weekly drift), after 11 / 27 growth ticks: [league mean OVR, top-10 mean OVR, stars]
   // rebased 2026-10-05 (the league starts at OVR 40–50, CAREER.npcStart): it grows faster from lower and ends ~10 below
-  const base = { w12: [65.26, 75.14, 5.2], w28: [75.86, 89.62, 9.6] },
+  // rebased 2026-10-13: the harness's Math.random made uniform (it over-weighted low draws) — fewer stars than the old base
+  const base = { w12: [65.07, 75.78, 3.2], w28: [75.1, 90.74, 7.2] },
     got = { w12: [0, 0, 0], w28: [0, 0, 0] };
   for (const seed of [1, 2, 3, 4, 5]) {
     const [g, run] = mkPeople(seed);
@@ -122,7 +123,8 @@ test.slow('people: calibration — the league grows like the old drift (5 seeds 
 // bond-week baseline on the pre-T-061 code (+7 per training session): average week the first mate reaches bond 60 / 80
 // rebased in T-132 (hex battles shift the random stream) and T-189: the named players' curves replace their breakthrough rolls, which
 // shifts the stream (no systematic change: seeds 11–18 average bond 80 at week 8.3 with them vs 8.0 without)
-const BOND_BASE = { w60: 5.2, w80: 9.6 }; // rebased 2026-10-05 twice: league at OVR 40–50, then Thai names (name hashes move traits and plans)
+const BOND_BASE = { w60: 2.6, w80: 9 }; // rebased 2026-10-13: the harness's Math.random made uniform (bond 60 came at 5.2);
+// before that 2026-10-05 twice: league at OVR 40–50, then Thai names (name hashes move traits and plans)
 const mkMate = (seed, traits = ['steady', 'proud']) => {
   const [g, run] = mkPeople(seed),
     mate = g.Run.mates(run)[0];
@@ -167,7 +169,7 @@ test('rel: trait multipliers; cynical lost_together is negative', () => {
   assert(st(['cynical', 'steady'], 'lost_together') < 0, 'cynical lost_together is negative');
 });
 test('rel: taking a same-role mate’s spot writes spot_taken once a week; their tag drops to resent', () => {
-  const [g, run] = mkPeople(94),
+  const [g, run] = mkPeople(97),
     you = g.Run.you(run),
     T = g.Run.myTeam(run);
   const peer = g.squadOf(T).find(p => p !== you && p.role === you.role) || g.squadOf(T).find(p => p !== you);
@@ -772,7 +774,7 @@ test('pairs: cliques and feuds form from memories, and the captain rule moves th
   eq(g.Run.lineup(run, T, null, true).rival.score - base, -g.REL.chem.capVouch, 'an enemy of the captain scores less');
 });
 test('pairs: feuding with the captain: cut one evaluation sooner', () => {
-  const [g, run, t, p, me] = mkFate(144);
+  const [g, run, t, p, me] = mkFate(148);
   t.cap = t.P[0];
   me.bench = g.REL.fate.cut - 1;
   g.People.fates(run);

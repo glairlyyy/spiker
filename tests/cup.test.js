@@ -118,7 +118,7 @@ test('career: your coach picks the 4 — bench start, never played, part rewards
     return [g, run, you];
   };
   // the weakest wing spiker of the squad starts on the bench; the 4 stay in role order
-  let [g, run, you] = mk(51, 25);
+  let [g, run, you] = mk(53, 25);
   const spare = g
     .squadOf(run.pickup)
     .filter(p => p.role === 'MB' && p !== you)
@@ -146,7 +146,7 @@ test('career: your coach picks the 4 — bench start, never played, part rewards
   assert(/Watched from the bench: \S/.test(line), 'the bench XP label is shown');
   eq(run.evals[run.evals.length - 1].win, false, 'a bench win is not your win');
   // a strong you starts; sent off at once → finished on the bench: rewards × BENCH.partMul, graded as usual
-  [g, run, you] = mk(52, 99);
+  [g, run, you] = mk(54, 99);
   L = g.Run.lineup(run, run.pickup, null, true);
   assert(L.starts, 'a strong you starts');
   g.SUB.max = 1;

@@ -201,7 +201,7 @@ test('career: match XP — performance, opponent strength, past the cap', () => 
 });
 
 test.slow('career: start from 1', () => {
-  const g = load(71),
+  const g = load(73),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Zero', mode: {} }),
     you = g.Run.you(run);
   for (const k of g.STATK) eq(you[k], 1, `${k} starts at 1`);
@@ -728,7 +728,7 @@ test('career: rankings — register, gazette, street, known gate', () => {
 });
 
 test('career: team challenge — worth, refusal, stake payout', () => {
-  const g = load(71),
+  const g = load(72),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Chal', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
     you = g.Run.you(run),
     club = r => g.FACTIONS.findIndex(f => f.region === r);

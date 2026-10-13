@@ -449,7 +449,8 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     Firm and up: knocked back along the ball (to 0.9 m; a knockdown 1.2 m) with both feet skidding and dust; **shockwave
     rings** through the arms along the ball's line (the air impact's Doppler look — biggest at the arms), wind lines, a floor
     ripple from hard; hard and knockdowns add a **hit-stop** (up to 90 ms) and a camera shake. Soft balls show nothing new.
-  - A setter's fake never makes a knocked-down middle jump (`fakeMB`).
+  - A setter's fake never makes a knocked-down middle jump (`fakeMB`); a knocked-down player never covers a blocked ball nor
+    blocks (fixed 2026-10-13).
   - Not yet: attackers aiming at the hole the fallen player leaves; a coach-panel line for knockdowns (`m.ko` has the counts).
   - Direction (owner, 2026-10-12): finding the weakest passer — by scouting before the match, or by watching stamina drop in it
     — may become the game's main tactic (Hunt the passer, §2.26, is the first piece).

@@ -790,8 +790,7 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   beside the target, or 40 % from the weaker to the other seam passer (receive − `.seam`). Tallies `m.srvLog`.
 - Odds (`srvOdds(m, p, side, srv, tgt)`): temporarily sets the asked orders, evaluates `Formula.serveQuality(…, roll)` on the
   grid `ORDERS.odds.roll`, techniques at their Auto shares, the receiver mix (aimed at `dAim`, random `dRand`, seam `dSeam`),
-  ace = the engine's sigmoid, broken = P(receive margin ≤ −8); restores the orders. Within ~2 points of sims (test, on
-  mulberry32 — the harness's Math.random over-weights low values, so statistical checks seed `RNG`).
+  ace = the engine's sigmoid, broken = P(receive margin ≤ −8); restores the orders. Within ~2 points of sims (test).
 - UI (plan-board.js): `boardSide(i)` renders four cards (rotation order) under match prep's columns; `prepOpen(null, true)`
   (Tab, `boardToggle`) shows the board alone with the plan read-only (`A.prepS.board`; prepStart then applies no plans).
   Keys: Tab / Esc close, also with a board button focused. `boardMark` draws the ◆ on the court tag (tags.js).

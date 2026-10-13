@@ -15,7 +15,7 @@ function load(seed = 123456789) {
     x ^= x << 13;
     x ^= x >>> 17;
     x ^= x << 5;
-    return ((x >>> 0) % 1e9) / 1e9;
+    return (x >>> 0) / 4294967296; // uniform in [0, 1) (was % 1e9 / 1e9: values under ~0.29 came 25 % too often)
   };
   const mem = {};
   const ctx = {
