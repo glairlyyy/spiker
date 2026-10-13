@@ -1,0 +1,155 @@
+// Role orders (spec §2.29): how a player plays their part, set on the Plan board. No order = Auto = today's engine (the
+// AI picker), so a match nobody touches plays exactly as before. Each hook in the engine runs only when an order is set.
+// Odds are the engine's own formulas on a fixed grid — no R() draws.
+
+const SRV_TYPES = ['float', 'jumpfloat', 'jump'];
+/** Serve-order id → the serve type it plays. */
+const SRV_BASE = { float: 'float', drive: 'float', jumpfloat: 'jumpfloat', jump: 'jump', killer: 'jump' };
+
+/** A player's order of one kind ('srv' | 'tgt'), or undefined (Auto). */
+const ordOf = (m, p, k) => m.ord && m.ord[p.id] && m.ord[p.id][k];
+/** Set (v) or clear (v == null) one order. */
+function ordSet(m, p, k, v) {
+  const o = m.ord || (m.ord = {});
+  if (v == null || v === 'auto') {
+    if (o[p.id]) delete o[p.id][k];
+    if (o[p.id] && !Object.keys(o[p.id]).length) delete o[p.id];
+  } else (o[p.id] || (o[p.id] = {}))[k] = v;
+}
+/** The hardest serve type a player may order. */
+const srvCap = p => (p.role === 'WS' ? 'jump' : p.speed >= 60 || p.jump >= 65 ? 'jumpfloat' : 'float');
+/** Their passers (the receiving side's court players but the setter). */
+const passersOf = T => {
+  const L = T.P.filter(p => p !== T.s);
+  return L.length ? L : T.P;
+};
+/** The seam: the two weakest passers (the weaker one ends up taking it). */
+function seamOf(T) {
+  const k = p => effD(p) + p.speed * 0.3;
+  return [...passersOf(T)].sort((a, b) => k(a) - k(b)).slice(0, 2);
+}
+
+/** Serve options for a player: [{ v, label, lock (the gap) }]. */
+function srvOpts(p) {
+  const cap = SRV_TYPES.indexOf(srvCap(p)),
+    gap = { jumpfloat: 'Speed 60+ or Jump 65+', jump: 'a wing spiker (WS)' };
+  return [
+    { v: 'auto', label: 'Auto' },
+    ...SRV_TYPES.map((t, i) => ({
+      v: t,
+      label: { float: 'Float', jumpfloat: 'Jump float', jump: 'Jump' }[t],
+      lock: i > cap ? gap[t] : null
+    })),
+    { v: 'drive', label: 'Drive', lock: hasTech(p, 'drive') ? null : 'learn Drive Serve' },
+    { v: 'killer', label: 'Killer', lock: hasTech(p, 'killer') ? (cap < 2 ? gap.jump : null) : 'learn Killer Jump Serve' }
+  ];
+}
+/** Target options against side T: Auto, each passer, the seam (needs Target Serve). */
+function tgtOpts(p, T) {
+  return [
+    { v: 'auto', label: 'Auto' },
+    ...passersOf(T).map(q => ({ v: q.id, label: `#${q.num} ${q.name.split(' ')[0]}`, p: q })),
+    { v: 'seam', label: 'Seam', lock: hasTech(p, 'target') ? null : 'learn Target Serve' }
+  ];
+}
+
+/** Serve order applied to the natural type (serveWalk): { sType, sq, errK }. */
+function srvApply(m, server, sType, sq) {
+  const o = ordOf(m, server, 'srv');
+  if (!o) return { sType, sq, errK: 1 };
+  const want = SRV_BASE[o],
+    soft = SRV_TYPES.indexOf(sType) - SRV_TYPES.indexOf(want);
+  return soft > 0 ? { sType: want, sq: sq * ORDERS.srv.pace[soft], errK: ORDERS.srv.err[soft] } : { sType: want, sq, errK: 1 };
+}
+/** The served-at target (serveAim): { rc, exact, seam } or null (Auto, or the player is not on court). */
+function tgtResolve(m, server, RT) {
+  const o = ordOf(m, server, 'tgt');
+  if (!o) return null;
+  const exact = hasTech(server, 'target');
+  if (o === 'seam') return exact ? { rc: seamOf(RT)[0], exact, seam: true } : null;
+  const rc = passersOf(RT).find(p => p.id === o);
+  return rc ? { rc, exact, seam: false } : null;
+}
+/** Per-server serve tallies (no randoms): serves, errors, ace rolls won, broken passes (quality 1). */
+function srvLog(m, p, k) {
+  const L = m.srvLog || (m.srvLog = {}),
+    r = L[p.id] || (L[p.id] = { n: 0, err: 0, ace: 0, bad: 0 });
+  if (k) r[k]++;
+  else r.n++;
+}
+
+/**
+ * Serve odds for one server on side s with a given serve order and target (each 'auto' or an id; undefined = the
+ * current order): { err, hit } — hit = an ace or a broken pass. The engine's own formulas over a fixed grid of its rolls.
+ */
+function srvOdds(m, server, s, srv, tgt) {
+  const ST = m.t[s],
+    RT = m.t[1 - s],
+    o0 = m.ord && m.ord[server.id],
+    keep = o0 ? { ...o0 } : null;
+  // evaluate with the asked orders in place, then put the real ones back
+  if (srv !== undefined) ordSet(m, server, 'srv', srv);
+  if (tgt !== undefined) ordSet(m, server, 'tgt', tgt);
+  const so = ordOf(m, server, 'srv'),
+    tg = tgtResolve(m, server, RT),
+    ap = atkPlan(m, s),
+    cp = defPlan(m, 1 - s),
+    wp = weakPasser(RT),
+    G = ORDERS.odds;
+  let err = 0,
+    hit = 0;
+  for (const f of G.roll) {
+    const sq0 = Formula.serveQuality(server, ST, f),
+      a = srvApply(m, server, serveType(server, sq0), sq0);
+    let sq = a.sq;
+    const jump = a.sType === 'jump';
+    if (jump) sq *= 1 + (runUpM(server, a.sType) - 3.2) * 0.05;
+    // techniques: ordered = always; Auto = their usual share (killer / drive 50 %, target 30 %)
+    const kP = jump && hasTech(server, 'killer') ? (so === 'killer' ? 1 : so ? 0 : 0.5) : 0,
+      dP = !jump && hasTech(server, 'drive') ? (so === 'drive' ? 1 : so ? 0 : 0.5) : 0,
+      tP = tg ? 0 : hasTech(server, 'target') ? 0.3 : 0;
+    for (const [kk, pk] of [
+      [1, kP],
+      [0, 1 - kP]
+    ]) {
+      if (!pk) continue;
+      const sqk = kk ? sq * 1.1 : sq,
+        e = Math.min(
+          1,
+          (Formula.serveErrorP(server, ST, sqk) + (kk ? 0.03 : 0)) * (ap.serveErr ?? 1) * a.errK * (tg && !tg.exact ? ORDERS.srv.aimErr : 1)
+        );
+      // who takes it, and how far they move: aimed (beside them) or a random spot (the nearest)
+      const aimed = tg && tg.exact ? [[tg.rc, 1]] : tg ? [[tg.rc, ORDERS.srv.lean]] : [];
+      const huntW = tg ? 0 : ap.huntK ? 1 : tP,
+        rest = 1 - aimed.reduce((x, [, q]) => x + q, 0);
+      const L = passersOf(RT),
+        rcs = [
+          ...aimed.map(([p, q]) => [p, q, tg.seam ? G.dSeam : G.dAim]),
+          ...(rest > 0 ? [[wp, rest * huntW, G.dAim], ...L.map(p => [p, (rest * (1 - huntW)) / L.length, G.dRand])] : [])
+        ];
+      let h = 0;
+      for (const [rc, q, d0] of rcs) {
+        if (!q) continue;
+        for (const [dd, pd] of [
+          [1, dP],
+          [0, 1 - dP]
+        ]) {
+          if (!pd) continue;
+          let rs = Formula.receiveScore(rc, RT, d0) - (dd ? 14 : 0);
+          if (cp.weakRs) rs += rc === wp ? cp.weakRs : cp.otherRs;
+          if (ap.press && rc === wp) rs -= ap.press;
+          if (tg && tg.seam) rs -= ORDERS.srv.seam;
+          const ace = sig((sqk - rs) / 24 - 2.4),
+            bad = clamp((-8 - (rs - sqk * 0.85) + 18) / 36, 0, 1);
+          h += q * pd * (ace + (1 - ace) * bad);
+        }
+      }
+      err += pk * e;
+      hit += pk * (1 - e) * h;
+    }
+  }
+  // restore
+  if (keep) m.ord[server.id] = keep;
+  else if (m.ord) delete m.ord[server.id];
+  return { err: err / G.roll.length, hit: hit / G.roll.length };
+}

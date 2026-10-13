@@ -780,3 +780,18 @@ logical half-height (the logical view is 1000 × 2·VH from `VT`; 220 = the clas
 canvas's aspect to camera3d `setAspect`: a screen taller than 1000:440 widens every shot's vertical FOV (`vfov`) so its
 horizontal extent stays the classic one; `focal`, `P3D` and `viewCamera` use the same half-height. Overlay pieces placed in
 absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 220`. F fullscreens `#match` (HUD kept).
+
+## Plan board — role orders (spec §2.29, T-277)
+
+- Engine (orders.js): `m.ord[pid] = { srv, tgt }`; absent = Auto, and every hook is `if order` so a match without orders
+  draws exactly as before (goldens). serveWalk: `srvApply` caps / softens the natural `serveType` (pace × `ORDERS.srv.pace`,
+  errors × `.err` by steps down); serveToss: an ordered Drive / Killer always fires, another ordered type never (the same
+  R() draws); serveContact: `tgtResolve` (exact with Target Serve, else a lean of `.lean`, errors × `.aimErr`); serveAim:
+  beside the target, or 40 % from the weaker to the other seam passer (receive − `.seam`). Tallies `m.srvLog`.
+- Odds (`srvOdds(m, p, side, srv, tgt)`): temporarily sets the asked orders, evaluates `Formula.serveQuality(…, roll)` on the
+  grid `ORDERS.odds.roll`, techniques at their Auto shares, the receiver mix (aimed at `dAim`, random `dRand`, seam `dSeam`),
+  ace = the engine's sigmoid, broken = P(receive margin ≤ −8); restores the orders. Within ~2 points of sims (test, on
+  mulberry32 — the harness's Math.random over-weights low values, so statistical checks seed `RNG`).
+- UI (plan-board.js): `boardSide(i)` renders four cards (rotation order) under match prep's columns; `prepOpen(null, true)`
+  (Tab, `boardToggle`) shows the board alone with the plan read-only (`A.prepS.board`; prepStart then applies no plans).
+  Keys: Tab / Esc close, also with a board button focused. `boardMark` draws the ◆ on the court tag (tags.js).

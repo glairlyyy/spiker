@@ -15,8 +15,8 @@ function prepMine(m) {
   const you = Run.you(RUN);
   return [0, 1].find(k => squadOf(m.t[k]).some(p => p.id === you.id)) ?? null;
 }
-/** Open match prep: the intro (only = undefined) or one side's timeout huddle (only = side). */
-function prepOpen(only) {
+/** Open match prep: the intro (only = undefined), one side's timeout huddle (only = side), or the Plan board alone (board). */
+function prepOpen(only, board) {
   if (!A || !A.m) return;
   const m = A.m,
     sides = prepSides(m);
@@ -24,6 +24,7 @@ function prepOpen(only) {
   // who decides each side: you or the coach (Monster: the right team's coach by default, hidden)
   A.prepS = A.prepS || { who: [0, 1].map(i => (sides.includes(i) && (i === 0 || A.fx.onFinish) ? 'you' : 'ai')) };
   A.prepS.only = only ?? null;
+  A.prepS.board = !!board; // Tab mid-match (spec §2.29): the board only; the team plan waits for a timeout
   A.prepS.plan = [0, 1].map(i => ({ ...planOf(m, i) }));
   A.prep = true;
   let el = $('#prep');
@@ -60,16 +61,18 @@ function prepTeam(i) {
           `<span class="pl ${k === 1 || k === 2 ? 'fr' : ''}">${stag(p)}#${p.num} ${p.role}${p.cap ? ' <span class="capb">C</span>' : ''}</span>`
       )
       .join(''),
-    you = sides.includes(i),
-    plan = you
-      ? `${A.fx.onFinish ? '' : `<div class="seg who">${['you', 'ai'].map(w => `<button class="btn ${S.who[i] === w ? 'on' : ''}" onclick="prepWho(${i},'${w}')">${w === 'you' ? 'You decide' : 'Coach decides'}</button>`).join('')}</div>`}${
-          S.who[i] === 'you'
-            ? prepRow(i, 'atk') + prepRow(i, 'def')
-            : '<p class="small mute">The coach picks — hidden until the match is over.</p>'
-        }`
-      : i === mine
-        ? `<p class="small">Coach's plan: <b>${esc(PLANS.atk[planOf(m, i).atk].name)}</b> · <b>${esc(PLANS.def[planOf(m, i).def].name)}</b></p><p class="small mute">The captain sets the plan.</p>`
-        : '<p class="small mute">Their plan: hidden.</p>';
+    you = sides.includes(i) && !S.board,
+    plan = S.board
+      ? `<p class="small">Plan: <b>${S.who[i] === 'you' || i === mine || m.over ? `${esc(PLANS.atk[planOf(m, i).atk].short)} · ${esc(PLANS.def[planOf(m, i).def].short)}` : 'hidden'}</b> <span class="mute">— a timeout changes it</span></p>`
+      : you
+        ? `${A.fx.onFinish ? '' : `<div class="seg who">${['you', 'ai'].map(w => `<button class="btn ${S.who[i] === w ? 'on' : ''}" onclick="prepWho(${i},'${w}')">${w === 'you' ? 'You decide' : 'Coach decides'}</button>`).join('')}</div>`}${
+            S.who[i] === 'you'
+              ? prepRow(i, 'atk') + prepRow(i, 'def')
+              : '<p class="small mute">The coach picks — hidden until the match is over.</p>'
+          }`
+        : i === mine
+          ? `<p class="small">Coach's plan: <b>${esc(PLANS.atk[planOf(m, i).atk].name)}</b> · <b>${esc(PLANS.def[planOf(m, i).def].name)}</b></p><p class="small mute">The captain sets the plan.</p>`
+          : '<p class="small mute">Their plan: hidden.</p>';
   return `<section class="pteam" style="--tc:${t.color}"><h3>${chip(t)}${esc(t.name)}</h3><p class="small mute">OVR ${ovrAvg} · ${esc((t.S && t.S.name) || '')}</p><div class="lineup">${lineup}</div>${plan}</section>`;
 }
 function prepDraw() {
@@ -77,10 +80,16 @@ function prepDraw() {
     S = A.prepS;
   if (!el || !S) return;
   const only = S.only,
-    cols = only != null ? [only] : [0, 1];
-  el.innerHTML = `<div class="ocard prep ${cols.length === 1 ? 'one' : ''}"><div class="lab">${only != null ? `Timeout · ${esc(A.m.t[only].short)} ${A.m.pts[only]}–${A.m.pts[1 - only]}` : esc(A.fx.round || 'Match prep')}</div>
-    <div class="pcols">${cols.map(prepTeam).join(cols.length === 2 ? '<div class="pvs">vs</div>' : '')}</div>
-    <div class="acts"><button class="btn hot" onclick="prepStart()">${only != null ? 'Back to the match' : 'Start match'} <kbd>Enter</kbd></button></div></div>`;
+    cols = only != null ? [only] : S.board ? [0, 1].filter(i => boardEdit(A.m, i)) : [0, 1],
+    title =
+      only != null
+        ? `Timeout · ${esc(A.m.t[only].short)} ${A.m.pts[only]}–${A.m.pts[1 - only]}`
+        : S.board
+          ? `Plan board · ${A.m.pts[0]}–${A.m.pts[1]} <span class="mute">— orders play from the next rally</span>`
+          : esc(A.fx.round || 'Match prep');
+  el.innerHTML = `<div class="ocard prep ${cols.length === 1 ? 'one' : ''} ${cols.some(i => boardEdit(A.m, i)) ? 'wide' : ''}"><div class="lab">${title}</div>
+    <div class="pcols">${cols.map(prepTeam).join(cols.length === 2 ? '<div class="pvs">vs</div>' : '')}</div>${cols.map(boardSide).join('')}
+    <div class="acts"><button class="btn hot" onclick="prepStart()">${only != null || S.board ? 'Back to the match' : 'Start match'} <kbd>${S.board ? 'Tab' : 'Enter'}</kbd></button></div></div>`;
 }
 function prepPick(i, kind, id) {
   if (!A || !A.prepS || !PLANS[kind][id]) return;
@@ -97,7 +106,7 @@ function prepStart() {
   if (!A || !A.prep) return;
   const m = A.m,
     S = A.prepS;
-  for (const i of prepSides(m)) {
+  for (const i of S.board ? [] : prepSides(m)) {
     if (S.only != null && i !== S.only) continue;
     if (S.who[i] === 'you') planSet(m, i, S.plan[i], 'you');
     else if (m.planBy) m.planBy[i] = 'ai';

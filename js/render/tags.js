@@ -138,6 +138,17 @@ function drawTags(d, pr, k, staV) {
     ctx.fillStyle = cw.tone === 'good' ? '#4ade80' : cw.tone === 'bad' ? '#ff5d6c' : '#ffb020';
     ctx.fillText(cw.t, pr.X, pr.Y - (staV != null && staV < 0.92 ? 96 : 102) * k);
   }
+  if (!A.cele && !A.done && A.m && boardMark(A.m, p)) {
+    // a standing order from the Plan board (spec §2.29)
+    const y = pr.Y - 116 * k;
+    ctx.fillStyle = '#eef0f3';
+    ctx.beginPath();
+    ctx.moveTo(pr.X, y - 4 * k);
+    ctx.lineTo(pr.X + 4 * k, y);
+    ctx.lineTo(pr.X, y + 4 * k);
+    ctx.lineTo(pr.X - 4 * k, y);
+    ctx.fill();
+  }
   if (staV != null && staV < 0.92 && !A.cele) {
     const w = 24 * k,
       x = pr.X - w / 2,

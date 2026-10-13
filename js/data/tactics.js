@@ -213,3 +213,14 @@ const KNOCK = {
   free: 1000,
   highCov: 1.15
 };
+
+/**
+ * Role orders (spec §2.29, js/engine/orders.js). srv: a softer serve than the natural one, by steps down (1: jump → jump
+ * float, 2: jump → float): pace × `pace`, errors × `err`; aiming at a passer without Target Serve is a lean (`lean` of the
+ * serves, errors × `aimErr`); the seam's receive −`seam`. odds: the fixed grid of the serve roll and the receiver's run
+ * (aimed beside them / a random spot / the seam) the Plan board's numbers use.
+ */
+const ORDERS = {
+  srv: { pace: [1, 0.93, 0.85], err: [1, 0.8, 0.6], lean: 0.6, aimErr: 1.1, seam: 6 },
+  odds: { roll: [0.82, 0.86, 0.9, 0.94, 0.98, 1.02, 1.06, 1.1, 1.14, 1.18], dAim: 0.22, dRand: 0.36, dSeam: 0.4 }
+};

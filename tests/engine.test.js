@@ -466,6 +466,69 @@ test('engine: team plans — given plans hold, the coach picks from its style, H
   eq(m.plan[0].atk + m.plan[0].def, 'powerdeep');
 });
 
+test.slow(
+  'engine: role orders — a softer serve misses less and hurts less; an exact target finds its passer; odds match the engine (spec §2.29)',
+  () => {
+    const g = load(29);
+    g.RNG.seed(29); // the engine stream on mulberry32: the odds are checked against real rates
+    const T = g.mkTeams(),
+      run = (srv, tgt, n) => {
+        const A = { n: 0, err: 0, hit: 0, at: 0, eErr: 0, eHit: 0 };
+        for (let i = 0; i < n; i++) {
+          const m = g.newMatch(T[i % 8], T[(i * 3 + 1) % 8], false);
+          while (!m.over) {
+            const s = m.serve,
+              p = g.rotOrder(m.t[s], m.rot[s])[0],
+              RT = m.t[1 - s],
+              wp = g.weakPasser(RT);
+            if (srv && g.srvCap(p) === 'jump') g.ordSet(m, p, 'srv', srv);
+            if (tgt) {
+              p.skills = ['target'];
+              g.ordSet(m, p, 'tgt', wp.id);
+            }
+            const own = !!m.ord[p.id],
+              o = g.srvOdds(m, p, s),
+              L0 = { ...((m.srvLog && m.srvLog[p.id]) || { err: 0, ace: 0, bad: 0 }) },
+              r0 = (m.recv[wp.id] && m.recv[wp.id].n + m.recv[wp.id].ace) || 0;
+            g.playRally(m);
+            if (tgt) p.skills = [];
+            if ((srv || tgt) && !own) continue;
+            const L = m.srvLog[p.id];
+            A.n++;
+            A.err += L.err - L0.err;
+            A.hit += L.ace - L0.ace + L.bad - L0.bad;
+            A.eErr += o.err;
+            A.eHit += o.hit;
+            A.at += ((m.recv[wp.id] && m.recv[wp.id].n + m.recv[wp.id].ace) || 0) - r0;
+          }
+        }
+        return A;
+      };
+    const auto = run(null, null, 40),
+      flt = run('float', null, 120),
+      jmp = run('jump', null, 120),
+      aim = run(null, true, 40),
+      pc = (a, b) => (100 * a) / b;
+    for (const [k, A] of Object.entries({ auto, flt, jmp, aim })) {
+      assert(Math.abs(pc(A.err - A.eErr, A.n)) < 3, `${k} errors ${pc(A.err, A.n).toFixed(1)} vs odds ${pc(A.eErr, A.n).toFixed(1)}`);
+      assert(
+        Math.abs(pc(A.hit - A.eHit, A.n)) < 3,
+        `${k} aces / broken passes ${pc(A.hit, A.n).toFixed(1)} vs odds ${pc(A.eHit, A.n).toFixed(1)}`
+      );
+    }
+    assert(pc(flt.err, flt.n) < pc(jmp.err, jmp.n) && pc(flt.hit, flt.n) < pc(jmp.hit, jmp.n), 'a wing floating: fewer misses, fewer aces');
+    assert(aim.at / (aim.n - aim.err) > 0.8, `exact target: ${pc(aim.at, aim.n - aim.err).toFixed(0)} % at the passer`);
+    // locked options show the gap; a cleared order is Auto again
+    const p = T[0].P.find(q => q.role === 'S');
+    assert(g.srvOpts(p).find(o => o.v === 'jump').lock, 'a setter cannot order a jump serve');
+    const m = g.newMatch(T[0], T[1], false);
+    g.ordSet(m, p, 'srv', 'float');
+    g.ordSet(m, p, 'srv', 'auto');
+    eq(g.ordOf(m, p, 'srv'), undefined, 'Auto clears the order');
+    g.RNG.unseed();
+  }
+);
+
 test('engine: defence settings — AI default, captain switch, scouting habits', () => {
   const g = load(9),
     T = g.mkTeams(),

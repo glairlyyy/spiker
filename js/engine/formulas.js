@@ -10,8 +10,8 @@ const Formula = {
   /** An error chance at an action, scaled by the player's mistake factor for it. */
   bySkill: (p, act, base) => base * Formula.errK(p, act),
   /** Serve strength (roughly 20–110). Wing spikers serve hardest. */
-  serveQuality: (server, team) =>
-    effP(server) * 0.8 * { WS: 1, MB: 0.88, S: 0.8 }[server.role] * team.S.serve * rnd(0.8, 1.2) * skillMod(server, 'serve'),
+  serveQuality: (server, team, roll = rnd(0.8, 1.2)) =>
+    effP(server) * 0.8 * { WS: 1, MB: 0.88, S: 0.8 }[server.role] * team.S.serve * roll * skillMod(server, 'serve'),
   /** Chance the serve goes into the net or out. Low wit and very hard serves miss more. */
   serveErrorP: (server, team, sq) =>
     Formula.bySkill(server, 'serve', 0.06 + Math.max(0, 1.2 - W(server)) * 0.05 + (sq > 80 ? 0.03 : 0)) * team.S.serveErr,

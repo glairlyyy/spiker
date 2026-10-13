@@ -214,12 +214,23 @@ const step = async (name, fn) => {
     // match prep (spec §2.26): both sides yours in a Monster game; pick Hunt the passer / Wall their ace for the left team
     await ev(() => {
       if (!A.prep || $('#prep').querySelectorAll('.pteam').length !== 2) throw new Error('no Monster match prep');
+      // the Plan board (spec §2.29): your side's cards with serve odds; an order goes in and shows as chosen
+      const cards = $('#prep').querySelectorAll('.bcard');
+      if (cards.length !== 4 || !/%/.test(cards[0].textContent)) throw new Error(`Plan board: ${cards.length} cards`);
+      const p0 = rotOrder(A.m.t[0], A.m.rot[0])[0];
+      boardPick(p0.id, 'srv', 'float');
+      if (ordOf(A.m, p0, 'srv') !== 'float' || !$('#prep .bcard .btn.on small')) throw new Error('board order not set');
       prepPick(0, 'atk', 'hunt');
       prepPick(0, 'def', 'wall');
       prepStart();
       const p = A.m.plan[0];
       if (A.prep || p.atk !== 'hunt' || p.def !== 'wall' || A.m.planBy[0] !== 'you' || A.m.planBy[1] !== 'ai')
         throw new Error(`plans not set: ${JSON.stringify(A.m.plan)} ${A.m.planBy}`);
+      // Tab mid-match: the board alone (play waits); Tab again closes it; the order stands
+      boardToggle();
+      if (!A.prep || !A.prepS.board || !$('#prep .bcard')) throw new Error('Tab did not open the Plan board');
+      boardToggle();
+      if (A.prep || ordOf(A.m, rotOrder(A.m.t[0], A.m.rot[0])[0], 'srv') !== 'float') throw new Error('board did not close / order lost');
     });
     // the captain's chips (spec §2.17): between points, when you captain, E / R under your feet; no ⚙ Prompts
     const cc = await ev(() => {

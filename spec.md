@@ -454,10 +454,11 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   - Direction (owner, 2026-10-12): finding the weakest passer — by scouting before the match, or by watching stamina drop in it
     — may become the game's main tactic (Hunt the passer, §2.26, is the first piece).
 
-- §2.29 Plan board — role orders (owner, 2026-10-13) **[open: T-277–T-281]**: you set how each player plays their part;
+- §2.29 Plan board — role orders (owner, 2026-10-13) **[built 2026-10-13: the board + serve orders, T-277; open: T-278–T-281]**: you set how each player plays their part;
   the engine plays it out (§5.7: prep, not presses — the strategy made visible). The team plan (§2.26) stays the coach layer;
   the board adds the player layer under it.
-  - **Where**: match prep shows the board under the team plans; **Tab** in a played match pauses and opens the same board
+  - **Where**: match prep shows the board under the teams (a row of four player cards per side you run, options listed
+    with their odds on the right); **Tab** in a played match pauses and opens the same board
     (Tab / Esc / Enter close). An order made mid-rally applies from the next rally (the engine has played the current one).
     The team plan still changes only at a timeout. Captain's calls Fire up / Settle are not on the board (owner, 2026-10-13:
     not for now).

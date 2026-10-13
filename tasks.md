@@ -36,7 +36,7 @@ repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 **Plan board (owner, 2026-10-13, spec §2.29): T-277 → T-281, one agent, in order.** Every order has Auto = today's engine, so
 with no orders the goldens stay unchanged (tests pass without `--update`); orders change draws only when set. Odds draw no R().
 
-### [ ] T-277: Plan board and serve orders
+### [x] T-277: Plan board and serve orders
 Spec: §2.29          Goldens: unchanged          Save: no change
 Goal: match prep shows a board of player cards under the team plans; Tab opens it mid-match (paused); servers take a target
 and a serve type, with true odds and locked options showing the gap.
@@ -57,7 +57,7 @@ Accept:
   target order sends ≥ 80 % (Target Serve) of serves to the chosen side; odds within 3 points of the simulated rates.
 - ui-smoke: the board opens in prep and on Tab; no page error.
 QA: Monster game → prep board, set a target + Float, Tab mid-match.
-Result:
+Result: Built as specced. Also js/engine/formulas.js (`serveQuality` takes an optional roll — default draws as before) and the board as a row of four cards under the teams (not inside a column). Odds vs sims (mulberry32, 2,000 serves each): errors and ace-or-broken within ~2 points (Auto, Float, Jump float, Jump, aimed, seam). Float on a wing: misses 14 → 6 %, aces / broken 22 → 4 %; the seam with Target Serve reads ~37 % vs Auto 22 % — for T-281's balance check. Goldens unchanged; 133/133 full; UI smoke 13/13. Found: tests/harness.js's Math.random (xorshift % 1e9 / 1e9) over-weights values under ~0.29 by 25 % (P(R < 0.16) = 0.187) — every headless measurement on load() is skewed; fixing it changes the goldens (owner to decide).
 
 ### [ ] T-278: Spike orders — aim and shot
 Spec: §2.29          Goldens: unchanged          Save: no change

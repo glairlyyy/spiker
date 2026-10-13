@@ -122,7 +122,10 @@ function toggleFullscreen() {
   setTimeout(fit, 60);
 }
 addEventListener('keydown', e => {
-  if (!A || e.target.closest('input,select,textarea,button')) return;
+  if (!A || e.target.closest('input,select,textarea')) return;
+  // the Plan board (spec §2.29): Tab opens it (play waits) and closes it, also with a board button focused
+  if (e.key === 'Tab' || (e.key === 'Escape' && A.prep && A.prepS && A.prepS.board)) return (e.preventDefault(), boardToggle());
+  if (e.target.closest('button')) return;
   if (A.prep) {
     if (e.key === 'Enter') prepStart(); // match prep (spec §2.26): Enter starts / resumes
     return;

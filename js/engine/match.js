@@ -110,6 +110,7 @@ function newMatch(a, b, rec, opts = {}) {
     dsetLog: [], // engine-only: every captain switch { side, from, to }
     ...matchTallies(), // engine-only tallies (no randoms): attacks, knockdowns, lanes, the coach panel's numbers
     buff: {}, // player id → { lv, n } captain's buff (n = points left)
+    ord: {}, // role orders from the Plan board (spec §2.29): player id → { srv, tgt }; none = Auto (today's engine)
     t: [a, b],
     subs: [0, 0], // substitutions made this set per side (SUB.max)
     played: new Set([...a.P, ...b.P].map(p => p.id)), // engine-only: everyone who was on court at any point (starters, then every sub who came on)
@@ -210,7 +211,8 @@ function matchTallies() {
     ko: { n: [0, 0], rec: [0, 0], free: [0, 0], on: [0, 0], high: [0, 0], p: {} }, // knockdowns and what the team did next (spec §2.28)
     lanes: {}, // laning (spec §2.24): hitter id → { line, cross } shots this match (what the blockers have seen)
     hit: {}, // the coach panel (spec §2.25): hitter id → { n, k, err, stf, line, cross, tip, rd, rdOk } this match
-    recv: {} // the coach panel: receiver id → { n, ace } serves taken / aced
+    recv: {}, // the coach panel: receiver id → { n, ace } serves taken / aced
+    srvLog: {} // role orders (spec §2.29): server id → { n, err, ace, bad } serves, misses, aces won, broken passes
   };
 }
 /** Per-rally state (rallyStart resets most of it each serve) and the staged scenes' memory (engine/hype.js). */
