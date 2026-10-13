@@ -130,7 +130,6 @@ addEventListener('keydown', e => {
     if (e.key === 'Enter') prepStart(); // match prep (spec §2.26): Enter starts / resumes
     return;
   }
-  if (promptKey(e)) return e.preventDefault(); // the captain's call: E / R (spec §2.17)
   if (e.key === 'f' || e.key === 'F') toggleFullscreen();
   else if (e.key === 'b' || e.key === 'B') railOpen();
   else if (e.key === 't' || e.key === 'T') railOpen('tac');

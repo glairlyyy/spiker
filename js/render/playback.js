@@ -569,7 +569,6 @@ function step(dt) {
     if (A.cele) stepCelebration(dt);
     return;
   }
-  if (A.m.human != null) promptStep(); // the captain's chips under your feet (spec §2.17)
   if (A.clip && A.bi >= A.beats.length) return void clipLoop(); // Animation lab: the clip again (js/ui/anim-lab.js)
   if (!A.beats || A.bi >= A.beats.length) {
     if (Dir.busy()) return; // a between-point exchange (spec §2.18) holds the next rally
@@ -577,7 +576,6 @@ function step(dt) {
       finishMatch();
       return;
     }
-    if (A.m.human != null) promptCaptain(); // between points: the captain's Fire up / Settle (spec §2.17)
     rallyPull();
     return;
   }

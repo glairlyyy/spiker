@@ -59,7 +59,7 @@ Accept:
 QA: Monster game → prep board, set a target + Float, Tab mid-match.
 Result: Built as specced. Also js/engine/formulas.js (`serveQuality` takes an optional roll — default draws as before) and the board as a row of four cards under the teams (not inside a column). Odds vs sims (mulberry32, 2,000 serves each): errors and ace-or-broken within ~2 points (Auto, Float, Jump float, Jump, aimed, seam). Float on a wing: misses 14 → 6 %, aces / broken 22 → 4 %; the seam with Target Serve reads ~37 % vs Auto 22 % — for T-281's balance check. Goldens unchanged; 133/133 full; UI smoke 13/13. Found: tests/harness.js's Math.random (xorshift % 1e9 / 1e9) over-weights values under ~0.29 by 25 % (P(R < 0.16) = 0.187) — every headless measurement on load() is skewed; fixing it changes the goldens (owner to decide).
 
-### [ ] T-278: Spike orders — aim and shot
+### [~] T-278: Spike orders — aim and shot
 Spec: §2.29          Goldens: unchanged          Save: no change
 Goal: hitters take an aim (line / cross / at a player / open court) and a shot (power / cut / tip) with odds.
 Files: js/engine/orders.js, js/data/tactics.js, js/engine/lanes.js, js/engine/rally-phases.js, js/engine/rally.js,
@@ -181,7 +181,7 @@ Result: Later › refactor seams rewritten with today's sizes: done ones dropped
 
 **Open from the match revamp (spec §2.14, §2.17): T-259 → T-260, one engine agent.** Seams in place: `js/data/momentum.js`
 (`STAGES`, `STAGE_IDS`, `stageOfSnap`), `js/engine/fire.js` (`capReady`, `capCall` stubs), act `stage` → `stageShow` + `Dir.stage`, the
-captain's chips (match-prompts.js) call `capReady` / `capCall`. Contracts: stage act `{ k: 'stage', side, from, to, why }`; snapshot
+AI captains will call `capReady` / `capCall` (the player chips are gone, 2026-10-14). Contracts: stage act `{ k: 'stage', side, from, to, why }`; snapshot
 `fire`, `stage`; `capCall(m, side, 'fire' | 'settle')` → beats. The batch notes (ownership, contracts) are in tasks-done.md.
 
 ### [ ] T-259: Fire, stages and temperament replace momentum and the zone (Agent B)
@@ -203,13 +203,14 @@ Result:
 
 ### [ ] T-260: Captain's calls and the balance check (Agent B)
 Spec: §2.17, §2.14 (balance)          Goldens: update (the random captain buff goes)          Save: no change
-Goal: captains call Fire up / Settle on a leadership cooldown (AI and you); `npm run balance` prints the stage numbers and the stage buffs hit their targets.
+Goal: captains call Fire up / Settle on a leadership cooldown (the AI for every captain); `npm run balance` prints the stage numbers and the stage buffs hit their targets.
 Files: js/engine/fire.js (capReady, capCall), match.js (captainThink: the buff → AI calls; drop the zone captain's call),
 js/data/momentum.js (tuning), tests/balance.js, tests/momentum.test.js, tests/golden.json
 Do not: touch the captain's tactic / defence switches; tune off steps of 5.
 Steps:
 1. capReady / capCall per §2.17 (cooldown 5 / 4 / 3 points by leadLv); beats: the captain's `call` line, `plabel`, `log`, `stage`.
-2. AI captains: Settle when Loose; Fire up when 2+ down or at set point; skip when `m.human` is the captain (the UI calls).
+2. AI captains: Settle when Loose; Fire up when 2+ down or at set point — every captain, yours too (the player chips were
+   removed, owner 2026-10-14).
 3. tests/balance.js: 1000 headless matches of league teams → table: point win rate per stage vs Composed, stage time share,
    Fevers per match, per temperament, with / without captain calls. Tune momentum.js to the §2.14 targets (±2 points).
 Accept: goldens updated; the balance table in Result; tests pass.

@@ -206,8 +206,8 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   - **Fire up** `E` (any stage but Fever): team fire +0.2 (cannot trigger Fever by itself); the hottest teammate gets the old
     personal buff (+5 %/lvl power and defence, 4 points) and, with an element, a full gauge.
   - **Settle** `R`: Loose → Composed at once and no Loose for 3 points; costs 0.1 fire (Focused may drop to Composed).
-  - AI captains use the same calls (Settle when Loose; Fire up on a 2-point deficit or at set point). You as captain: the two
-    chips show between points while ready (`E` / `R` key caps, 3 s); otherwise the AI captain calls. The coach's timeout stays the other tool.
+  - AI captains use the same calls (Settle when Loose; Fire up on a 2-point deficit or at set point), yours too: **no
+    player chips** (owner, 2026-10-14: the `E` / `R` chips and js/ui/match-prompts.js removed **[built]**). The coach's timeout stays the other tool.
   - The captain's call that rallied a team into the zone (`capCall` in pointZone) goes; the tactic and defence switches stay.
 
 - §2.18 Cinematic lines **[open: T-263; box T-255]** — the story told in words, from events, never from timers. The director

@@ -1302,13 +1302,7 @@ html.reduced .xl {
   animation: mv-fade 120ms linear;
 }
 
-/* the captain's chips (spec §2.17; js/ui/match-prompts.js): key caps under your player's feet between points */
-.prompts {
-  position: absolute;
-  inset: 0;
-  z-index: 6;
-  pointer-events: none;
-}
+/* a key-cap chip (the result card's reward chips and the career cards restyle it) */
 .pchip {
   position: absolute;
   display: inline-flex;
@@ -1337,19 +1331,6 @@ html.reduced .xl {
   background: var(--ink);
   color: var(--on-ink);
   font: 700 12px/1 var(--body);
-}
-.pchip.off {
-  opacity: 0.4;
-}
-.pgrp {
-  position: absolute;
-  display: flex;
-  gap: 6px;
-  transform: translate(-50%, 0);
-}
-.pgrp .pchip {
-  position: static;
-  transform: none;
 }
 /* Coach panel (spec §2.25): the match rail's Coach tab */
 #coach .cside {

@@ -219,7 +219,7 @@ const step = async (name, fn) => {
       if (cards.length !== 4 || !/%/.test(cards[0].textContent)) throw new Error(`Plan board: ${cards.length} cards`);
       const p0 = rotOrder(A.m.t[0], A.m.rot[0])[0];
       boardPick(p0.id, 'srv', 'float');
-      if (ordOf(A.m, p0, 'srv') !== 'float' || !$('#prep .bcard .btn.on small')) throw new Error('board order not set');
+      if (ordOf(A.m, p0, 'srv') !== 'float' || !$('#prep .bcard .bopt.on small')) throw new Error('board order not set');
       prepPick(0, 'atk', 'hunt');
       prepPick(0, 'def', 'wall');
       prepStart();
@@ -232,21 +232,12 @@ const step = async (name, fn) => {
       boardToggle();
       if (A.prep || ordOf(A.m, rotOrder(A.m.t[0], A.m.rot[0])[0], 'srv') !== 'float') throw new Error('board did not close / order lost');
     });
-    // the captain's chips (spec §2.17): between points, when you captain, E / R under your feet; no ⚙ Prompts
-    const cc = await ev(() => {
-      const you = A.m.t[0].ws[0];
-      if (A.m.human !== you.id) throw new Error('Play as did not set your player');
-      if (/Prompts/.test(settingsMenu())) throw new Error('⚙ Prompts is still there');
-      const cap0 = A.m.t[0].cap;
-      A.m.t[0].cap = you; // you captain (the chips need it)
-      A.capChip = null;
-      promptCaptain();
-      const txt = $('#prompts') ? $('#prompts').textContent : '';
-      promptPress('R'); // Settle: the chips go
-      A.m.t[0].cap = cap0;
-      return { txt, gone: !A.capChip };
+    // no captain's chips (owner, 2026-10-14) and no ⚙ Prompts; Play as sets your player
+    await ev(() => {
+      if (A.m.human !== A.m.t[0].ws[0].id) throw new Error('Play as did not set your player');
+      if (/Prompts/.test(settingsMenu()) || typeof promptCaptain !== 'undefined' || $('#prompts'))
+        throw new Error('captain chips / Prompts still there');
     });
-    if (!/Fire up/.test(cc.txt) || !/Settle/.test(cc.txt) || !cc.gone) throw new Error(`captain's chips: ${JSON.stringify(cc)}`);
     await ev(() => {
       // the momentum line (spec §2.14, T-254): a stage chip at each end naming a stage
       const names = STAGE_IDS.map(id => STAGES[id].name);
