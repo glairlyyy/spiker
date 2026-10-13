@@ -31,6 +31,7 @@ function rally(m, B, V, atk, pas, qual, scr = null) {
     return i === 1 || i === 2;
   };
   for (let n = 1; ; n++) {
+    if (n > RALLY_MAX) return atk; // a safety net (a rigged random stream in tests): real rallies end long before
     possessionStart(m, V, n);
     const atkT = m.t[atk],
       ds = 1 - atk;
@@ -42,6 +43,8 @@ function rally(m, B, V, atk, pas, qual, scr = null) {
     [atk, pas, qual, scr = null] = e.next;
   }
 }
+/** Possessions after which a rally gives up (the attacking side takes it): never reached with real draws. */
+const RALLY_MAX = 80;
 /** A possession ends: { point } (the rally is over) or { next: [atk, pas, qual, scr?] } (the ball goes on). */
 const endOf = r => (r.point != null ? { point: r.point } : { next: r.next });
 /** Each possession: players knocked down get up (spec §2.28); past LONG_RALLY everyone tires and the element gauges heat. */

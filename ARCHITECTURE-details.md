@@ -813,3 +813,16 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
 - Result card (T-281): `m.ordLog[pid]['kind:value'] = { kind, v, n, k, err, stf, ace, bad }` — srvLog adds serve orders,
   tallyAttack → `ordAttack` the hitter's aim / shot, the setter's feed (only when `feedOrd`) / fake and the front-row
   middles' blk; `boardResult(m)` (plan-board.js) prints them under the plans for the sides whose board you saw.
+
+## Momentum stages (spec §2.14, T-259)
+
+- Fire is `m.mom` (pointMomentum moves it as before). After every point `pointStage` (fire.js, called from `end` in place of
+  the old pointZone): the zone breaker (a kill block on a Fever team: they → Composed, the scorers → Fever; a fake → Focused),
+  Fever's clock (`m.fever[side]` points, `feverLen` by temperament, an Ice opponent cuts 2) and its error exit, Fever's start
+  (fire ≥ the temperament's threshold and a trigger on this point: 3+ possessions, the streak reaching 4, a kill at set
+  point; not on the point a Fever ended), then every other side's stage from its fire (`fireStage`, the temperament's
+  thresholds, Slow burner never Loose before 8 points). Changes come back as `stage` acts on one beat after the point beat;
+  `zone` acts still flash on entering Fever. A timeout: `stageTimeout` (Loose → Composed, their Fever → Focused).
+- Buffs: `stageBuff(p, k)` (k: atk spike power, def in effD, spd in receive / dig speed terms and block reach, jump in
+  jumpPx, serve in serveQuality) replaces the old `0.06 × mom` in boost(). The losing captain's random zone call is gone.
+- `RALLY_MAX` (rally.js): a rally gives up after 80 possessions (the attacking side scores) — only a rigged stream gets there.

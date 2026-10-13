@@ -223,10 +223,9 @@ function skipMatch() {
 }
 /** Buff names for the stage chip's tooltip (spec §2.14: numbers only in the tooltip, never on the chip). */
 const BUFF_NAME = { atk: 'attack', def: 'defence', spd: 'speed', jump: 'jump', serve: 'serve' };
-/** The temperament line of a chip's tooltip (`TEMPERS` from the engine when it exists, else the id). */
+/** The temperament line of a chip's tooltip (TEMPERS, spec §2.14). */
 const temperLine = id => {
-  // eslint-disable-next-line no-undef -- TEMPERS arrives with the engine's temperaments (T-259); until then the id is shown
-  const T = typeof TEMPERS !== 'undefined' && TEMPERS[id];
+  const T = TEMPERS[id];
   return T ? `${T.name}: ${T.tip || ''}`.replace(/: $/, '') : id ? String(id) : '';
 };
 /** One team's stage chip: the name on the chip; buffs, temperament and how to leave it in the tooltip. */

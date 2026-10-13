@@ -143,7 +143,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 team's stage (epic effects only on epic moments), you take part with one-press commands (removed 2026-10-10, §2.16; captain's calls stay), lines are spoken between points. Built by three agents at once (tasks.md **Now**).
 Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-row defensive commands, temperament changing how a team plays.
 
-- §2.14 Momentum stages **[open: T-259, T-260; HUD T-254]** — replace "In the zone". Each team has **fire** −1..1 (`m.fire`, was `m.mom`;
+- §2.14 Momentum stages **[built 2026-10-14: fire, stages, temperaments and buffs, T-259; open: the captains' calls and the balance, T-260; HUD T-254]** — replace "In the zone". Each team has **fire** −1..1 (`m.mom`, `fire` in the snapshot;
   same rises and falls as today's momentum, shaped by temperament) and a **stage** (`m.stage[side]`, ids in `STAGE_IDS`,
   data in js/data/momentum.js):
 
@@ -154,7 +154,8 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   | Focused  | 0.35 .. 0.8   | +5 % attack, +5 % speed                     | +4                                  |
   | Fever    | ≥ 0.8 + a trigger | +10 % attack, −10 % defence, +5 % speed, +5 % jump | +7 attacking                |
 
-  - **Fever** needs fire ≥ 0.8 **and** a trigger: an 8+ touch rally won, a 4-point streak, or a kill at set point.
+  - **Fever** needs fire ≥ 0.8 **and** a trigger on the point won: an 8+ touch rally (3+ possessions), the streak reaching 4, or
+    a kill at set point — never on the point a Fever just ended. Speed buffs act on receive / dig speed and block reach.
     Lasts at most 4 points; an error by that team ends it (→ Focused). The **zone breaker** (a kill block against a Fever team) drops it to Composed; a stuff (kill block) at any other time drops Fever to Focused.
   - **Out of Loose**: a won rally (+fire), a timeout (→ Composed at once), the captain's Settle (§2.17).
   - **Into Loose** (owner, 2026-10-08): a lost point costs more the more fire the team has (× 0.7 + 0.6 × fire, 0.4–1.3: a team

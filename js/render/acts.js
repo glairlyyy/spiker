@@ -254,7 +254,7 @@ const ACTS_UI = {
     if ((a.zone || A.pointN % 11 === 0) && !A.wave) A.wave = { x: -120 };
   },
   /** A team changes momentum stage (spec §2.14): the HUD's chip / banner, then the director. */
-  stage(a) {
+  stage(a, d, bs) {
     stageShow(a);
     Dir.stage(a);
   }

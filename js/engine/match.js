@@ -137,7 +137,9 @@ function newMatch(a, b, rec, opts = {}) {
     sta: {},
     streak: [0, 0],
     big: 0,
-    zone: [0, 0],
+    zone: [0, 0], // Fever per side (an alias kept for elements, hype and the Element Trial: spec §2.14)
+    stage: ['composed', 'composed'], // the momentum stage per side (STAGE_IDS, js/engine/fire.js)
+    fever: [0, 0], // points of Fever left per side
     // technique switches (spec §9.10): player id → Set of technique ids held back (from p.techOff: your career choice),
     // and what each technique did this match: techUse[id][tech] = { n, won, err }; techRally = fired this rally
     off: Object.fromEntries(
@@ -164,6 +166,7 @@ function newMatch(a, b, rec, opts = {}) {
       m.mood[p.id] = p.form || 0;
     })
   );
+  m.temper = [temperOf(a), temperOf(b)]; // spec §2.14: from the squads' personalities (no draws)
   matchPlans(m, opts);
   return m;
 }
@@ -252,6 +255,9 @@ const snap = m => ({
   serve: m.serve,
   over: m.over,
   mom: [...m.mom],
+  fire: [...m.mom],
+  stage: [...m.stage],
+  temper: [...m.temper],
   zone: [...m.zone],
   buff: Object.fromEntries(Object.entries(m.buff || {}).map(([id, b]) => [id, b.lv])),
   eg: Object.assign({}, m.eg),
@@ -455,9 +461,8 @@ function end(m, w, beats) {
   const oppWasInZone = !!m.zone[1 - w];
   pointTally(m, w);
   pointMomentum(m, w);
-  const z = pointZone(m, w, oppWasInZone);
+  const z = pointStage(m, w, oppWasInZone); // fire → stage (spec §2.14)
   elPoint(m, w);
-  for (const i of [0, 1]) if (m.zone[i]) m.zoneHit[i] = 1;
   // captain's buffs wear off after a few points
   for (const id in m.buff) if (--m.buff[id].n <= 0) delete m.buff[id];
   const [a, b] = m.pts;
@@ -570,57 +575,8 @@ function pointMomentum(m, w) {
   for (const id in m.mood) m.mood[id] *= 0.97;
   for (const t of m.t) for (const p of squadOf(t)) m.sta[p.id] = Math.min(1, (m.sta[p.id] == null ? 1 : m.sta[p.id]) + 0.02); // the bench recovers too
 }
-/** The zone: zone breaker, zone in / out, the losing captain's call. Returns { zoneIn, capCall, breaker }. */
-function pointZone(m, w, oppWasInZone) {
-  const LD = i => (m.t[i].cap.lead - 50) / 100;
-  let zoneIn = false,
-    capCall = -1,
-    breaker = false;
-  // Zone breaker: a kill block or a fake set that scores against a team in the zone
-  // knocks them out of it and sends the scoring team straight into the zone.
-  if (oppWasInZone && (m.lastPlay === 'killblock' || m.lastPlay === 'fake')) {
-    const O = 1 - w;
-    breaker = true;
-    m.zone[O] = 0;
-    m.mom[O] = Math.min(m.mom[O], -0.2);
-    m.streak[O] = 0;
-    m.zone[w] = 1;
-    m.mom[w] = Math.max(m.mom[w], 0.9);
-    for (const q of m.t[w].P) md(m, q, 0.25);
-    for (const q of m.t[O].P) md(m, q, -0.2);
-  }
-  for (const i of [0, 1]) {
-    const thr = 0.85 - LD(i) * 0.3;
-    if (!m.zone[i] && m.mom[i] >= thr) {
-      m.zone[i] = 1;
-      m.zoneHit[i] = 1;
-      if (i === w) zoneIn = true;
-    } else if (m.zone[i] && m.mom[i] < thr - 0.35) m.zone[i] = 0;
-  }
-  {
-    const L = 1 - w,
-      cap = m.t[L].cap;
-    if (
-      !breaker &&
-      !m.zone[L] &&
-      !m.over &&
-      m.pts[w] - m.pts[L] >= 2 &&
-      (m.streak[w] >= 2 || m.zone[w]) &&
-      R() < Math.pow(cap.lead / 100, 3) * 0.09
-    ) {
-      capCall = L;
-      m.zone[L] = 1;
-      m.mom[L] = Math.max(m.mom[L], 0.8);
-      m.mom[w] *= 0.5;
-      if (m.zone[w] && m.mom[w] < 0.5) m.zone[w] = 0;
-      for (const q of m.t[L].P) md(m, q, 0.3);
-      m.streak[w] = 0;
-    }
-  }
-  return { zoneIn, capCall, breaker };
-}
-/** The point's beats: score, chatter, captain decisions, zone breaker / captain's call / zone flashes. */
-function pointBeats(m, w, beats, { zoneIn, capCall, breaker }, capBeats) {
+/** The point's beats: score, chatter, captain decisions, the zone breaker, stage changes (spec §2.14) and the Fever flash. */
+function pointBeats(m, w, beats, { zoneIn, breaker, changes }, capBeats) {
   beats.push({
     dur: m.over ? 1600 : 900,
     acts: [{ k: 'point', side: w, big: m.big, streak: m.streak[w], zone: zoneIn }, ...hypeChatter(m, w), { k: 'score', snap: snap(m) }]
@@ -639,12 +595,7 @@ function pointBeats(m, w, beats, { zoneIn, capCall, breaker }, capBeats) {
       acts: [{ k: 'zone', side: w }]
     });
   }
-  if (capCall >= 0 && !m.over) {
-    beats.push({
-      dur: 400,
-      acts: [{ k: 'zone', side: capCall }]
-    });
-  }
+  if (changes.length) beats.push({ dur: 400, acts: changes });
   if (zoneIn && !m.over) {
     beats.push({
       dur: 400,
@@ -666,7 +617,7 @@ function timeout(m, L, beats, manual) {
   m.mom[O] *= 0.6 - 0.3 * iq;
   m.mom[L] = Math.max(m.mom[L], 0);
   m.streak[O] = 0;
-  if (m.zone[O] && m.mom[O] < 0.5) m.zone[O] = 0;
+  const sc = stageTimeout(m, L); // out of Loose at once; their Fever cools (spec §2.14)
   // the AI coach's huddle answers what it has noticed (spec §2.26); a side you run changes plan in match prep instead
   const np = m.planBy[L] === 'ai' ? planCounter(m, L) : null;
   if (np) planSet(m, L, np, 'ai');
@@ -692,6 +643,7 @@ function timeout(m, L, beats, manual) {
       ...T.P.map(q => ({ k: 'pose', p: q.id, pose: 'huddle' })),
       ...m.t[O].P.map(q => ({ k: 'pose', p: q.id, pose: 'ready' })),
       { k: 'coachtalk', side: L, text: line },
+      ...sc,
       { k: 'score', snap: snap(m) }
     ]
   });

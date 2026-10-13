@@ -43,7 +43,7 @@ function blockApproach(c, x) {
   const appX = sx(atk, slide ? 455 : quick ? 466 : longB ? 215 : back ? 325 : 420);
   // how far a blocker can shift along the net before the hit (time available × speed)
   const tAv = (quick ? 0.3 : bad ? 1.05 : 0.8) + (back ? 0.15 : 0) + (longB ? 0.1 : 0),
-    reach = b => ((b.speed / 100) * tAv * 0.6) / courtScale();
+    reach = b => (((b.speed * stageBuff(b, 'spd')) / 100) * tAv * 0.6) / courtScale();
   // defence setting (see DEFSETS): Bunch starts both front-row defenders near the middle (they drift there while the ball is set, as far as their speed allows)
   // a front-row middle's own block order (spec §2.29) replaces the team's setting for this attack (Stay back: they don't block)
   const mo = c.defT.P.map(p => p.role === 'MB' && c.front(ds, p) && ordOf(m, p, 'blk')).find(o => o && o !== 'back'),

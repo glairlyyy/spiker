@@ -1,4 +1,4 @@
-// Effective stats during a match: wit, mood, momentum and stamina modifiers; derived numbers.
+// Effective stats during a match: wit, mood, stamina and the momentum stage's buffs (stageBuff, js/engine/fire.js); derived numbers.
 
 /** The match being played: set by playRally(), read by the effective-stat helpers below. */
 let CM = null;
@@ -9,14 +9,14 @@ const W = p => (CM && CM.mood ? clamp(p.wit * (1 + 0.12 * (CM.mood[p.id] || 0)) 
 const staOf = p => (CM && CM.sta && CM.sta[p.id] != null ? CM.sta[p.id] : 1);
 const boost = p =>
   CM && CM.mood
-    ? (1 + 0.06 * CM.mom[sideOf(p)] + 0.05 * (CM.mood[p.id] || 0)) * (1 - RULES.stamina.hit * (1 - staOf(p))) * (1 + 0.05 * buffLv(p))
+    ? (1 + 0.05 * (CM.mood[p.id] || 0)) * (1 - RULES.stamina.hit * (1 - staOf(p))) * (1 + 0.05 * buffLv(p)) // (the stage buffs: stageBuff)
     : 1;
 const witMul = w => 0.75 + 0.25 * w;
 /** Wit's share of power / defense: a negative wit counts as a plain 1 — it never lowers the body. */
 const witBody = p => witMul(p.wit < 0 ? 1 : W(p));
 const effP = p => p.power * witBody(p) * boost(p);
-const effD = p => p.def * witBody(p) * boost(p);
-const jumpPx = p => (20 + p.jump * 0.9 * p.team.S.jump) * (1 - RULES.stamina.jumpHit * (1 - staOf(p)));
+const effD = p => p.def * witBody(p) * boost(p) * stageBuff(p, 'def');
+const jumpPx = p => (20 + p.jump * 0.9 * p.team.S.jump) * (1 - RULES.stamina.jumpHit * (1 - staOf(p))) * stageBuff(p, 'jump');
 const jumpCm = p => Math.round(45 + p.jump * 0.55 * p.team.S.jump);
 const kmh = pow => Math.round(40 + pow * 0.85);
 /** Serve style a player uses (jump serve needs a strong enough serve roll). */

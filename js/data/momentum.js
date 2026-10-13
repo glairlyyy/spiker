@@ -31,3 +31,22 @@ function stageOfSnap(s, side) {
   const f = s.mom ? s.mom[side] : 0;
   return f < STAGES.composed.from ? 'loose' : f < STAGES.focused.from ? 'composed' : 'focused';
 }
+/**
+ * Temperaments (spec §2.14): from the squad's personalities, the captain counting double (hot / cocky → hot, shy → slow,
+ * leader → steady, cool → ice; ties → steady). Thresholds override STAGES[...].from for that team; loose / fever false =
+ * never; looseAfter = points played before it can go Loose; feverLen = points a Fever lasts; oppFever = points off the
+ * opponent's Fever.
+ */
+const TEMPERS = {
+  hot: { name: 'Hot-headed', tip: 'heats up fast, cracks fast', focused: 0.25, loose: -0.15 },
+  slow: { name: 'Slow burner', tip: 'never rattled early; a Fever lasts longer', looseAfter: 8, feverLen: 5 },
+  steady: { name: 'Steady', tip: 'hard to rattle, slow to boil', loose: -0.35, fever: 0.85 },
+  ice: { name: 'Ice', tip: 'never rattled, never in Fever; their Fever burns out sooner', loose: false, fever: false, oppFever: 2 }
+};
+/** Personality → temperament. */
+const TEMPER_OF = { hot: 'hot', cocky: 'hot', shy: 'slow', leader: 'steady', cool: 'ice' };
+/**
+ * Fire and Fever (spec §2.14): a Fever lasts `feverLen` points; its triggers — a rally of `rally`+ possessions won (≈ 8+
+ * touches), a `streak`-point run, a kill at set point.
+ */
+const FIRE = { feverLen: 4, rally: 3, streak: 4 };

@@ -11,7 +11,13 @@ const Formula = {
   bySkill: (p, act, base) => base * Formula.errK(p, act),
   /** Serve strength (roughly 20–110). Wing spikers serve hardest. */
   serveQuality: (server, team, roll = rnd(0.8, 1.2)) =>
-    effP(server) * 0.8 * { WS: 1, MB: 0.88, S: 0.8 }[server.role] * team.S.serve * roll * skillMod(server, 'serve'),
+    effP(server) *
+    0.8 *
+    { WS: 1, MB: 0.88, S: 0.8 }[server.role] *
+    team.S.serve *
+    roll *
+    skillMod(server, 'serve') *
+    stageBuff(server, 'serve'),
   /** Chance the serve goes into the net or out. Low wit and very hard serves miss more. */
   serveErrorP: (server, team, sq) =>
     Formula.bySkill(server, 'serve', 0.06 + Math.max(0, 1.2 - W(server)) * 0.05 + (sq > 80 ? 0.03 : 0)) * team.S.serveErr,
@@ -21,7 +27,7 @@ const Formula = {
   spikeNetShare: (hS, longB) => clamp(0.4 + (190 - hS) / 100 - (longB ? 0.2 : 0), 0.15, 0.75),
   /** Serve-receive quality; being far from the ball costs more for slow players. */
   receiveScore: (rc, team, dist0) =>
-    (effD(rc) * 0.7 + rc.speed * 0.3) * team.S.dig * skillMod(rc, 'receive') -
+    (effD(rc) * 0.7 + rc.speed * stageBuff(rc, 'spd') * 0.3) * team.S.dig * skillMod(rc, 'receive') -
     Math.max(0, dist0 - 0.1) * 45 * (1.3 - rc.speed / 100) -
     SKILL.pass * (Formula.errK(rc, 'pass') - 1), // a weak passer shanks more (SKILL)
   /** Chance a set is at least "good" (before the double-contact check). */
@@ -42,7 +48,8 @@ const Formula = {
     (back ? (longB ? 0.94 : 0.88) * skillMod(spiker, 'pipe') : 1) * // long back: a full-body, broad-jump swing
     (combo ? 1.15 : 1) *
     fat *
-    skillMod(spiker, 'spike'),
+    skillMod(spiker, 'spike') *
+    stageBuff(spiker, 'atk'), // the momentum stage (spec §2.14)
   /**
    * Chance the spiker hits into the net or out: a mistake, never a choice. Low wit, a bad set, over-hitting and a
    * low contact point (little room over the net: hand height hS vs the tape at 150) all make it likelier.
@@ -64,7 +71,7 @@ const Formula = {
     cov,
   /** Dig quality for a defender who has to cover dist0 to reach the ball. */
   digScore: (dg, team, dist0) =>
-    (effD(dg) * 0.6 + dg.speed * 0.4) * team.S.dig * rnd(0.8, 1.2) -
+    (effD(dg) * 0.6 + dg.speed * stageBuff(dg, 'spd') * 0.4) * team.S.dig * rnd(0.8, 1.2) -
     Math.max(0, dist0 - 0.1) * 55 * (1.35 - dg.speed / 100) * skillMod(dg, 'reach'),
   /** Chance an attack scores against a given dig score. */
   killChance: (pow, dsc, tip, dist0) => (tip ? 0.3 + dist0 * 0.3 : sig((pow - dsc) / 34 + 0.3))

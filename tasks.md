@@ -184,7 +184,7 @@ Result: Later › refactor seams rewritten with today's sizes: done ones dropped
 AI captains will call `capReady` / `capCall` (the player chips are gone, 2026-10-14). Contracts: stage act `{ k: 'stage', side, from, to, why }`; snapshot
 `fire`, `stage`; `capCall(m, side, 'fire' | 'settle')` → beats. The batch notes (ownership, contracts) are in tasks-done.md.
 
-### [ ] T-259: Fire, stages and temperament replace momentum and the zone (Agent B)
+### [x] T-259: Fire, stages and temperament replace momentum and the zone (Agent B)
 Spec: §2.14          Goldens: update (stages change the buffs and draws of every match)          Save: no change
 Goal: every match tracks fire and a stage per team with the §2.14 buffs, triggers, exits and temperaments; the beats announce changes.
 Files: js/engine/fire.js, match.js (pointMomentum, pointZone, snap), stats.js (boost: stage buffs), elements.js / hype.js (zone →
@@ -199,7 +199,7 @@ Steps:
 5. Tests: every stage reachable; Ice never Loose / Fever; Fever ≤ 4 points; buffs applied (effective stats at each stage).
 Accept: goldens updated with the reason; tests pass; report stage time shares from a 400-match headless run in Result.
 QA: none (engine).
-Result:
+Result: Built (spec chat, 2026-10-14). `m.mom` stays the fire (no `m.fire` field: a second array would drift from it in the odds probe's copies; the snapshot has `fire`). pointStage replaces pointZone; the losing captain's random zone call (an R() draw) went with it. Fever triggers: 3+ possessions / the streak reaching 4 / a kill at set point, never re-entered on the point it ended (a held streak chained 8-point Fevers). Speed buff = receive / dig speed terms and block reach. Also rally.js (`RALLY_MAX` 80: a rigged R() = 0.99 test looped forever once the buffs moved), rally-block.js, formulas.js, acts.js (`stage(a, d, bs)` so the act test sees it), match-controls.js (TEMPERS now exists), tests (the middle-orders test paired by seed: unpaired it was noise; a full element gauge swings instead of tipping). Goldens updated: stage buffs replace 0.06 × mom, and the zone captain's draw is gone. 200 tournament matches: Loose 9 % · Composed 51 % · Focused 38 % · Fever 2 % of points, Fever in 47 % of matches (targets 12 / 50 / 30 / 8, Fever in ~40 %: T-260 tunes).
 
 ### [ ] T-260: Captain's calls and the balance check (Agent B)
 Spec: §2.17, §2.14 (balance)          Goldens: update (the random captain buff goes)          Save: no change
