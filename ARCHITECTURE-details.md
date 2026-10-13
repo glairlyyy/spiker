@@ -791,7 +791,9 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
 - Odds (`srvOdds(m, p, side, srv, tgt)`): temporarily sets the asked orders, evaluates `Formula.serveQuality(…, roll)` on the
   grid `ORDERS.odds.roll`, techniques at their Auto shares, the receiver mix (aimed at `dAim`, random `dRand`, seam `dSeam`),
   ace = the engine's sigmoid, broken = P(receive margin ≤ −8); restores the orders. Within ~2 points of sims (test).
-- UI (plan-board.js): `boardSide(i)` renders four cards (rotation order) under match prep's columns; `prepOpen(null, true)`
+- UI (plan-board.js): `boardSide(i)` renders four cards (rotation order) as a prep tab (`prepTabs` / `prepTab(k)`, keys 1–3,
+  `A.prepS.tab`: 'teams' or a side); `boardRow` draws a folded slot (current pick + its odds), `boardSlot(k)` opens one
+  (`A.prepS.open` = 'pid.kind'; a pick closes it). `prepOpen(null, true)`
   (Tab, `boardToggle`) shows the board alone with the plan read-only (`A.prepS.board`; prepStart then applies no plans).
   Keys: Tab / Esc close, also with a board button focused. `boardMark` draws the ◆ on the court tag (tags.js).
 - Spike orders (T-278): `m.ord[pid].aim` ('line' | 'cross' | 'open' | a passer's id) and `.shot` ('power' | 'cut' | 'tip').

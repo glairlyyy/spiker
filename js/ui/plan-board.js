@@ -12,18 +12,32 @@ function boardEdit(m, i) {
 }
 /** A standing order shows on the court tag (only on a side whose board you see). */
 const boardMark = (m, p) => !!(m.ord && m.ord[p.id] && A.prepS && [0, 1].some(i => m.t[i].P.includes(p) && boardEdit(m, i)));
-/** One choice: a list of its options, each with its odds on the right (or the gap when locked). odds(v) → text, or
- * { txt, key } for odds still being worked out (filled in place when ready). */
+/** One choice, folded (owner, 2026-10-14): a slot shows the current pick and its odds; clicking it opens the options, each
+ * with its odds (or the gap when locked); one slot open at a time. odds(v) → text, or { txt, key } for odds still being
+ * worked out (filled in place when ready) — a folded slot only works out the current pick's. */
 function boardRow(p, kind, label, opts, cur, odds, can) {
-  return `<div class="brow"><span class="lab">${label}</span>${opts
-    .map(o => {
-      const on = String(o.v) === String(cur),
-        r = o.lock ? `🔒 ${esc(o.lock)}` : odds(o.v),
-        right = typeof r === 'string' ? r : r.txt,
+  const k = `${p.id}.${kind}`,
+    open = can && A.prepS.open === k,
+    show = r => {
+      const right = typeof r === 'string' ? r : r.txt,
         key = typeof r === 'string' ? '' : ` data-odds="${esc(r.key)}"`;
-      return `<button class="bopt ${on ? 'on' : ''} ${o.lock ? 'lock' : ''}" ${o.lock || !can ? 'disabled' : `onclick="boardPick('${p.id}','${kind}','${o.v}')"`} ${o.lock ? tip(`Locked: ${o.lock}`) : ''}><span>${esc(o.label)}</span><small${key}>${right}</small></button>`;
+      return `<small${key}>${right}</small>`;
+    },
+    c = opts.find(o => String(o.v) === String(cur)) || opts[0],
+    slot = `<button class="bslot ${open ? 'open' : ''} ${String(cur) !== 'auto' ? 'set' : ''}" ${can ? `onclick="boardSlot('${esc(k)}')" aria-expanded="${open}"` : 'disabled'}><span class="lab">${label}</span><b>${esc(c.label)}</b>${show(odds(c.v))}<i aria-hidden="true">${can ? (open ? '▴' : '▾') : ''}</i></button>`;
+  if (!open) return `<div class="brow">${slot}</div>`;
+  return `<div class="brow">${slot}<div class="bopts">${opts
+    .map(o => {
+      const on = String(o.v) === String(cur);
+      return `<button class="bopt ${on ? 'on' : ''} ${o.lock ? 'lock' : ''}" ${o.lock ? 'disabled' : `onclick="boardPick('${p.id}','${kind}','${o.v}')"`} ${o.lock ? tip(`Locked: ${o.lock}`) : ''}><span>${esc(o.label)}</span>${o.lock ? `<small>🔒 ${esc(o.lock)}</small>` : show(odds(o.v))}</button>`;
     })
-    .join('')}</div>`;
+    .join('')}</div></div>`;
+}
+/** Open / close one slot's options. */
+function boardSlot(k) {
+  if (!A || !A.prepS) return;
+  A.prepS.open = A.prepS.open === k ? null : k;
+  prepDraw();
 }
 /** Spike odds text: kill · error; their attack into your block (a middle's order): stuff · their kill. */
 const boardAtkTxt = o => (o.vs ? `${BOARD_PCT(o.stf)} · ${BOARD_PCT(o.kill)}` : `${BOARD_PCT(o.kill)} · ${BOARD_PCT(o.err)}`);
@@ -100,7 +114,7 @@ function boardSide(i) {
     who = boardEdit(m, i),
     t = m.t[i];
   if (!who) return '';
-  return `<section class="pboard" style="--tc:${t.color}"><div class="lab">${chip(t)}${esc(t.short)} · players <span class="mute">— serve: ace or broken pass · miss; spike: kill · error; block: stuff · their kill</span></div><div class="bcards">${rotOrder(
+  return `<section class="pboard" style="--tc:${t.color}"><div class="lab">${chip(t)}${esc(t.name)} · orders ${info("Odds on each pick — serve: ace or broken pass · miss; spike: kill · error; block: stuff · their kill. Auto = the player's own game.")}</div><div class="bcards">${rotOrder(
     t,
     m.rot[i]
   )
@@ -112,6 +126,7 @@ function boardPick(id, kind, v) {
   const p = [0, 1].flatMap(i => squadOf(A.m.t[i])).find(q => String(q.id) === id);
   if (!p) return;
   ordSet(A.m, p, kind, v === 'auto' ? null : v);
+  if (A.prepS) A.prepS.open = null;
   prepDraw();
 }
 /** Tab mid-match: open the board (play waits) — or close it. */

@@ -26,6 +26,7 @@ function prepOpen(only, board) {
   A.prepS.only = only ?? null;
   A.prepS.board = !!board; // Tab mid-match (spec §2.29): the board only; the team plan waits for a timeout
   A.prepS.plan = [0, 1].map(i => ({ ...planOf(m, i) }));
+  A.prepS.tab = A.prepS.open = null; // the intro and a huddle open on Teams & plans, Tab on your players
   A.prep = true;
   let el = $('#prep');
   if (!el) {
@@ -40,12 +41,12 @@ function prepRow(i, kind) {
   const P = PLANS[kind],
     cur = A.prepS.plan[i][kind],
     c = P[cur];
-  return `<div class="pplan"><span class="lab">${kind === 'atk' ? 'Attack' : 'Defence'}</span><div class="seg">${Object.entries(P)
+  return `<div class="pplan"><span class="lab">${kind === 'atk' ? 'Attack' : 'Defence'}</span><div class="seg ptiles">${Object.entries(P)
     .map(
       ([k, v]) =>
         `<button class="btn ${k === cur ? 'on' : ''}" onclick="prepPick(${i},'${kind}','${k}')" ${tip(v.desc)}>${esc(v.short)}</button>`
     )
-    .join('')}</div><p class="pdesc"><b>${esc(c.name)}</b> · ${esc(c.desc)} <span class="mute">${esc(c.cost)}</span></p></div>`;
+    .join('')}</div><p class="pdesc" ${tip(`${c.desc} ${c.cost}`)}><b>${esc(c.name)}</b> · ${esc(c.desc)}</p></div>`;
 }
 /** One team's column. */
 function prepTeam(i) {
@@ -73,23 +74,54 @@ function prepTeam(i) {
         : i === mine
           ? `<p class="small">Coach's plan: <b>${esc(PLANS.atk[planOf(m, i).atk].name)}</b> · <b>${esc(PLANS.def[planOf(m, i).def].name)}</b></p><p class="small mute">The captain sets the plan.</p>`
           : '<p class="small mute">Their plan: hidden.</p>';
-  return `<section class="pteam" style="--tc:${t.color}"><h3>${chip(t)}${esc(t.name)}</h3><p class="small mute">OVR ${ovrAvg} · ${esc((t.S && t.S.name) || '')}</p><div class="lineup">${lineup}</div>${plan}</section>`;
+  return `<section class="pteam" style="--tc:${t.color}"><div class="pban"><h3>${esc(t.name)}</h3><span class="povr"><b>${ovrAvg}</b> OVR</span><span class="small mute">${esc((t.S && t.S.name) || '')}</span></div><div class="lineup">${lineup}</div>${plan}</section>`;
+}
+/** The prep tabs (owner, 2026-10-14: a game screen, not a page): Teams & plans, then one Players tab per side whose board you see. */
+function prepTabs() {
+  const S = A.prepS,
+    only = S.only,
+    sides = only != null ? [only] : [0, 1];
+  return ['teams', ...sides.filter(i => boardEdit(A.m, i))];
 }
 function prepDraw() {
   const el = $('#prep'),
     S = A.prepS;
   if (!el || !S) return;
   const only = S.only,
-    cols = only != null ? [only] : S.board ? [0, 1].filter(i => boardEdit(A.m, i)) : [0, 1],
+    tabs = prepTabs();
+  if (!tabs.includes(S.tab)) S.tab = S.board && tabs.length > 1 ? tabs[1] : 'teams';
+  const cols = only != null ? [only] : S.board ? [0, 1].filter(i => boardEdit(A.m, i)) : [0, 1],
     title =
       only != null
         ? `Timeout · ${esc(A.m.t[only].short)} ${A.m.pts[only]}–${A.m.pts[1 - only]}`
         : S.board
-          ? `Plan board · ${A.m.pts[0]}–${A.m.pts[1]} <span class="mute">— orders play from the next rally</span>`
-          : esc(A.fx.round || 'Match prep');
-  el.innerHTML = `<div class="ocard prep ${cols.length === 1 ? 'one' : ''} ${cols.some(i => boardEdit(A.m, i)) ? 'wide' : ''}"><div class="lab">${title}</div>
-    <div class="pcols">${cols.map(prepTeam).join(cols.length === 2 ? '<div class="pvs">vs</div>' : '')}</div>${cols.map(boardSide).join('')}
-    <div class="acts"><button class="btn hot" onclick="prepStart()">${only != null || S.board ? 'Back to the match' : 'Start match'} <kbd>${S.board ? 'Tab' : 'Enter'}</kbd></button></div></div>`;
+          ? `Plan board · ${A.m.pts[0]}–${A.m.pts[1]}`
+          : esc(A.fx.round || 'Match prep'),
+    tabBar =
+      tabs.length > 1
+        ? `<nav class="ptabs" role="tablist">${tabs
+            .map(
+              (t, k) =>
+                `<button class="ptab ${t === S.tab ? 'on' : ''}" role="tab" aria-selected="${t === S.tab}" onclick="prepTab(${k})" ${t === 'teams' ? '' : `style="--tc:${A.m.t[t].color}"`}>${t === 'teams' ? 'Teams & plans' : `${chip(A.m.t[t])}${esc(A.m.t[t].short)} players`} <kbd>${k + 1}</kbd></button>`
+            )
+            .join('')}</nav>`
+        : '',
+    body =
+      S.tab === 'teams'
+        ? `<div class="pcols">${cols.map(prepTeam).join(cols.length === 2 ? '<div class="pvs">VS</div>' : '')}</div>`
+        : boardSide(S.tab);
+  el.innerHTML = `<div class="ocard prep ${cols.length === 1 && S.tab === 'teams' ? 'one' : ''} ${S.tab !== 'teams' ? 'wide' : ''}"><div class="phead"><span class="lab">${title}</span>${tabBar}</div>
+    ${body}
+    <div class="acts">${S.board ? '<span class="small mute">Orders play from the next rally.</span>' : ''}<button class="btn hot" onclick="prepStart()">${only != null || S.board ? 'Back to the match' : 'Start match'} <kbd>${S.board ? 'Tab' : 'Enter'}</kbd></button></div></div>`;
+}
+/** Switch the prep tab by its index (also keys 1–3). */
+function prepTab(k) {
+  if (!A || !A.prepS) return;
+  const t = prepTabs()[k];
+  if (t == null) return;
+  A.prepS.tab = t;
+  A.prepS.open = null;
+  prepDraw();
 }
 function prepPick(i, kind, id) {
   if (!A || !A.prepS || !PLANS[kind][id]) return;

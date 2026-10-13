@@ -460,7 +460,13 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   the engine plays it out (§5.7: prep, not presses — the strategy made visible). The team plan (§2.26) stays the coach layer;
   the board adds the player layer under it.
   - **Where**: match prep shows the board under the teams (a row of four player cards per side you run, options listed
-    with their odds on the right); **Tab** in a played match pauses and opens the same board
+    with their odds on the right);
+  - **Prep screen layout** (owner, 2026-10-14) **[built 2026-10-14]**: a game screen, not a page — no long scroll. Tabs
+    **Teams & plans** (key 1: two team banners facing each other with VS, lineup chips, the plan tiles, the chosen plan's
+    effect in one line) and **‹team› players** per side whose board you see (keys 2–3: the four cards). Each card's choices
+    are folded slots — label, current pick, its odds, ▾; a click opens that choice's options with their odds (one open at a
+    time; a pick closes it); a set order is gold-edged; the odds legend sits in an ⓘ. The intro and a huddle open on Teams &
+    plans, Tab mid-match on your players. Same screen in the career. **Tab** in a played match pauses and opens the same board
     (Tab / Esc / Enter close). An order made mid-rally applies from the next rally (the engine has played the current one).
     The team plan still changes only at a timeout. Captain's calls Fire up / Settle are not on the board (owner, 2026-10-13:
     not for now).

@@ -214,12 +214,17 @@ const step = async (name, fn) => {
     // match prep (spec §2.26): both sides yours in a Monster game; pick Hunt the passer / Wall their ace for the left team
     await ev(() => {
       if (!A.prep || $('#prep').querySelectorAll('.pteam').length !== 2) throw new Error('no Monster match prep');
-      // the Plan board (spec §2.29): your side's cards with serve odds; an order goes in and shows as chosen
+      // the Plan board (spec §2.29): your side's players tab (key 2) — cards with folded slots and their odds; a slot opens its options
+      prepTab(1);
       const cards = $('#prep').querySelectorAll('.bcard');
       if (cards.length !== 4 || !/%/.test(cards[0].textContent)) throw new Error(`Plan board: ${cards.length} cards`);
       const p0 = rotOrder(A.m.t[0], A.m.rot[0])[0];
+      boardSlot(`${p0.id}.srv`);
+      if ($('#prep').querySelectorAll('.bopts .bopt').length < 3) throw new Error('slot did not open');
       boardPick(p0.id, 'srv', 'float');
-      if (ordOf(A.m, p0, 'srv') !== 'float' || !$('#prep .bcard .bopt.on small')) throw new Error('board order not set');
+      if (ordOf(A.m, p0, 'srv') !== 'float' || !$('#prep .bcard .bslot.set small') || $('#prep .bopts'))
+        throw new Error('board order not set');
+      prepTab(0);
       prepPick(0, 'atk', 'hunt');
       prepPick(0, 'def', 'wall');
       prepStart();

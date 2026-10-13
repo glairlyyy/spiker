@@ -127,7 +127,9 @@ addEventListener('keydown', e => {
   if (e.key === 'Tab' || (e.key === 'Escape' && A.prep && A.prepS && A.prepS.board)) return (e.preventDefault(), boardToggle());
   if (e.target.closest('button')) return;
   if (A.prep) {
-    if (e.key === 'Enter') prepStart(); // match prep (spec §2.26): Enter starts / resumes
+    if (e.key === 'Enter')
+      prepStart(); // match prep (spec §2.26): Enter starts / resumes
+    else if (/^[1-3]$/.test(e.key)) prepTab(+e.key - 1); // its tabs
     return;
   }
   if (e.key === 'f' || e.key === 'F') toggleFullscreen();
