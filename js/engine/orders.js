@@ -70,12 +70,38 @@ function tgtResolve(m, server, RT) {
   const rc = passersOf(RT).find(p => p.id === o);
   return rc ? { rc, exact, seam: false } : null;
 }
-/** Per-server serve tallies (no randoms): serves, errors, ace rolls won, broken passes (quality 1). */
+/** Per-server serve tallies (no randoms): serves, errors, ace rolls won, broken passes (quality 1); per serve order too. */
 function srvLog(m, p, k) {
   const L = m.srvLog || (m.srvLog = {}),
     r = L[p.id] || (L[p.id] = { n: 0, err: 0, ace: 0, bad: 0 });
   if (k) r[k]++;
   else r.n++;
+  const o = m.ord && m.ord[p.id];
+  if (o) for (const kind of ['srv', 'tgt']) if (o[kind]) ordLog(m, p, kind, o[kind], k || 'n');
+}
+/** How each order went (spec §2.29, the result card): m.ordLog[pid][kind:value] = { n, … } (no randoms). */
+function ordLog(m, p, kind, v, k) {
+  const L = m.ordLog || (m.ordLog = {}),
+    P = L[p.id] || (L[p.id] = {}),
+    r = P[`${kind}:${v}`] || (P[`${kind}:${v}`] = { kind, v, n: 0, k: 0, err: 0, stf: 0, ace: 0, bad: 0 });
+  r[k]++;
+}
+/** tallyAttack: the hitter's aim / shot, the setter's feed / fake and the blocking middles' orders, one attack's outcome. */
+function ordAttack(m, side, x, kill, err, stf) {
+  const tally = (p, kind, v) => {
+    ordLog(m, p, kind, v, 'n');
+    if (kill) ordLog(m, p, kind, v, 'k');
+    if (err) ordLog(m, p, kind, v, 'err');
+    if (stf) ordLog(m, p, kind, v, 'stf');
+  };
+  const os = m.ord[x.spiker.id];
+  if (os) for (const kind of ['aim', 'shot']) if (os[kind]) tally(x.spiker, kind, os[kind]);
+  const st = x.setter && m.ord[x.setter.id];
+  if (st && st.feed && x.feedOrd) tally(x.setter, 'feed', st.feed);
+  if (st && st.fake) tally(x.setter, 'fake', st.fake);
+  const D = m.t[1 - side],
+    fr = rotOrder(D, m.rot[1 - side]).filter((q, i) => i === 1 || i === 2);
+  for (const q of fr) if (q.role === 'MB' && ordOf(m, q, 'blk')) tally(q, 'blk', ordOf(m, q, 'blk'));
 }
 
 /**

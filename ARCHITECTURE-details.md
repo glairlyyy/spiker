@@ -810,3 +810,6 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   attack (bunch / commit flags follow); fakeSet's bite test reads the decoy blocker's own order first. Stay back (`stayBack`):
   out of DF and the B0 fallback, no late jump, moved to `ORDERS.blk.backX` in blockMoves, a floor digger in digSetup
   (dig distance × `backDd`). Board odds: `atkOdds(m, their side, null, [[mb, 'blk', v]])` shown as stuff · their kill.
+- Result card (T-281): `m.ordLog[pid]['kind:value'] = { kind, v, n, k, err, stf, ace, bad }` — srvLog adds serve orders,
+  tallyAttack → `ordAttack` the hitter's aim / shot, the setter's feed (only when `feedOrd`) / fake and the front-row
+  middles' blk; `boardResult(m)` (plan-board.js) prints them under the plans for the sides whose board you saw.

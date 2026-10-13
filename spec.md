@@ -455,7 +455,7 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   - Direction (owner, 2026-10-12): finding the weakest passer — by scouting before the match, or by watching stamina drop in it
     — may become the game's main tactic (Hunt the passer, §2.26, is the first piece).
 
-- §2.29 Plan board — role orders (owner, 2026-10-13) **[built 2026-10-13–14: the board + serve orders, T-277; spike orders, T-278; setter orders, T-279; middle orders, T-280; open: T-281]**: you set how each player plays their part;
+- §2.29 Plan board — role orders (owner, 2026-10-13) **[built 2026-10-13–14, T-277–T-281]**: you set how each player plays their part;
   the engine plays it out (§5.7: prep, not presses — the strategy made visible). The team plan (§2.26) stays the coach layer;
   the board adds the player layer under it.
   - **Where**: match prep shows the board under the teams (a row of four player cards per side you run, options listed
@@ -488,7 +488,7 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
       takes a channel away; the laning read learns a forced channel × 1.5 faster). At a player (one of their passers): the ball
       goes toward them (errors × 1.05); Open court (Wit 1.2+): toward the biggest gap (errors × 1.12). Power: power × 1.08,
       errors × 1.15, no cut shot. Cut: more cut shots around the block. Tip: always tips, never errs — they come up short for
-      it (kill chance × 0.65), less each time they have seen one this match (−0.05 each, to × 0.3). Cut shots still go around
+      it (kill chance × 0.5), less each time they have seen one this match (−0.06 each, to × 0.3). Cut shots still go around
       the block, so a forced line lands in the line channel ~75 % of the time.
     - Feed: the setter sets that hitter on a 3 or 2 pass whenever they are free (a 1 is still the high ball to whoever is
       open; not a hitter who just dived or is on the bench); a fake set keeps the ball on them; their block reads a fed
@@ -507,8 +507,16 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   - **Remembered**: orders stand for the match (`m.ord`); a small mark on the court tag shows a standing order. Not saved
     between matches (later: the career keeps your own card's defaults). Hidden from the other side; they leak as patterns
     (§2.25, the laning read).
-  - **Result card**: the orders used and how they went ("#7 Jump serve: 3 aces, 4 misses of 14").
-  - Build order: serve (with the board) → spike → set → middle → result card and balance (T-277–T-281).
+  - **Result card**: an **Orders** row under the plans — each order on a side whose board you saw and how it went ("#7 Serve
+    Jump · 14 serves · 3 aces · 2 broken passes · 4 missed"; attacks: kills · errors · stuffed; a middle's block: their
+    attacks · stuffed · their kills). Tallied per order (`m.ordLog`), no draws.
+  - **Measured** (2026-10-14; paired sims, the same seed with and without, the whole side on the order; point share): league
+    teams, 1,500 pairs — Float +0.9 % (+4.5 % match wins), Jump float +0.1, Jump +0.2, Target the weak passer +0.2, Seam (with
+    Target Serve) +1.2, Line −0.9, Cross −0.2, Open court +0.6, At the weak passer −0.6, Power +0.1, Cut −0.1, Tip +1.0
+    (+5 % wins; was +2.7 / +12 before the read-down was raised), Feed the ace +0.4, Fake off 0, Commit −0.3, Stay back −1.3;
+    tournament teams, 600 pairs — Float −0.7, Seam +1.2, Open −0.5, Tip −1.8, Feed the ace 0, Commit −1.7, Stay back −1.4.
+    No order beats Auto by more than +1.2 % points: each is a trade-off that depends on the matchup (Float and Tip help
+    weak sides that miss a lot, hurt strong ones), and an order on everyone is worse than one aimed where it fits.
 
 ## 3. Menu [built]
 

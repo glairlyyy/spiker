@@ -35,7 +35,7 @@ orders `aim` / `shot`: `aimOpts` / `shotOpts`, `atkApply` (laneAim), `atkLand` (
 attack from now on an isolated stream (snapshot `stCopy`, `m.probe`, `probeHit` in tallyAttack) and restores the match;
 setter orders `feed` / `fake`: `feedOpts` / `fakeOpts`, read in chooseAttack (`fed`, `feedOrd`), fakeSet and setterDump; a
 middle's `blk` ('read' | 'commit' | 'back'): `blkOpts`, `stayBack`, read in blockApproach (the setting), chooseAttack (DF),
-blockMoves and digSetup; data `ORDERS`), `rally.js`.
+blockMoves and digSetup; tallies `ordLog` / `ordAttack` → `m.ordLog` (the result card's Orders row, `boardResult`); data `ORDERS`), `rally.js`.
 - **audio** `sfx.js` (internals in the `SOUND` closure; global: `SND`, `sfx`, `audioInit`, `toggleSound`, `setVolume`, `bgmStart`, `bgmStop`, `panAt`). **game** `state.js` (G, HYPE, Screens / navigate), `bracket.js`.
 - **career** `run.js` (Run, RUN_DEFAULTS), `training.js`, `growth.js`, `element.js`, `world.js`, `pool.js`, `eval.js`,
   `city.js`, `front.js`, `mapmodel.js`, `dossier.js`, `events.js`, `sponsors.js`, `skills.js`, `rank.js`, `cup.js`, `fight.js`.

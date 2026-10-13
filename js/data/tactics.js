@@ -243,8 +243,8 @@ const ORDERS = {
     pow: 1.08,
     powErr: 1.15,
     cut: 0.35,
-    tip0: 0.65,
-    tipSeen: 0.05,
+    tip0: 0.5,
+    tipSeen: 0.06,
     tipMin: 0.3
   },
   odds: { roll: [0.82, 0.86, 0.9, 0.94, 0.98, 1.02, 1.06, 1.1, 1.14, 1.18], dAim: 0.22, dRand: 0.36, dSeam: 0.4, atkN: 160, seed: 9173 }

@@ -123,3 +123,38 @@ function boardToggle() {
   }
   if ([0, 1].some(i => boardEdit(A.m, i))) prepOpen(null, true);
 }
+/** The result card's orders (spec §2.29): each order on a side whose board you saw, and how it went. */
+function boardResult(m) {
+  if (!m || !m.ordLog || !A.prepS) return '';
+  const rows = [];
+  for (const i of [0, 1]) {
+    if (!boardEdit(m, i)) continue;
+    for (const p of squadOf(m.t[i])) {
+      const L = m.ordLog[p.id];
+      if (!L) continue;
+      for (const r of Object.values(L)) {
+        const opts = {
+            srv: () => srvOpts(p),
+            tgt: () => tgtOpts(p, m.t[1 - i]),
+            aim: () => aimOpts(p, m.t[1 - i]),
+            shot: shotOpts,
+            feed: () => feedOpts(p, m.t[i]),
+            fake: fakeOpts,
+            blk: blkOpts
+          }[r.kind](),
+          o = opts.find(x => String(x.v) === String(r.v)),
+          name = { srv: 'Serve', tgt: 'Serve at', aim: 'Aim', shot: 'Shot', feed: 'Feed', fake: 'Fake', blk: 'Block' }[r.kind],
+          how =
+            r.kind === 'srv' || r.kind === 'tgt'
+              ? `${r.n} serves · ${r.ace} aces · ${r.bad} broken passes · ${r.err} missed`
+              : r.kind === 'blk'
+                ? `${r.n} of their attacks · ${r.stf} stuffed · ${r.k} their kills`
+                : `${r.n} attacks · ${r.k} kills · ${r.err} errors · ${r.stf} stuffed`;
+        rows.push(
+          `<div class="rplan"><span class="rpt">${chip(m.t[i])}#${p.num}</span><span><b>${esc(name)} ${esc(o ? o.label : String(r.v))}</b> <span class="mute">${how}</span></span></div>`
+        );
+      }
+    }
+  }
+  return rows.length ? `<div class="rplans"><div class="lab">Orders</div>${rows.join('')}</div>` : '';
+}

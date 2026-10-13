@@ -85,12 +85,12 @@ Accept: Commit raises stuffs on quicks and lowers coverage on high balls; Stay b
 3 points.
 Result: Built on §2.9's own Commit (coverage × 1.6 / reach × 3.5 on a quick, × 0.6 otherwise) instead of new stuff × 1.4 / coverage × 0.6 numbers — spec updated. Stay back: out of the block and the late jumps, drops to dig (× 0.8 distance). Test (60 matches): Commit stuffs quicks ≥ × 1.2 vs Read and their pins score more; Stay back: 0 blocks, ≥ × 1.3 digs. Odds: stuff · their kill (atkOdds of their attack). Also rally.js (fakeSet bite), rally-phases.js (DF / B0), tactics.js (`ORDERS.blk`). Goldens unchanged.
 
-### [ ] T-281: Orders on the result card and the balance check
+### [x] T-281: Orders on the result card and the balance check
 Spec: §2.29          Goldens: unchanged          Save: no change
 Goal: the result card lists each order and how it went; paired sims per option vs Auto, numbers into spec §2.29.
 Files: js/engine/orders.js (tallies), js/ui/match-result.js, css/match.css, tests/ui-smoke.js, spec.md (measured line only)
 Accept: no option beats Auto by more than +3 % points for an average team (else retune `ORDERS`); result card shows orders.
-Result:
+Result: Orders row on the result card (m.ordLog tallies; ui-smoke checks it). Paired sims (league 1,500 pairs; tournament 600) in spec §2.29: all within +1.2 % points of Auto after one retune — Tip was +2.7 % points / +12 % wins → tip0 0.65 → 0.5, tipSeen 0.05 → 0.06 (now +1.0 / +5). Also js/engine/rally.js (the ordAttack call), js/ui/plan-board.js (`boardResult`), tactics.js. No css needed (reuses .rplans). Balance script kept in scratch (not in the repo).
 
 
 

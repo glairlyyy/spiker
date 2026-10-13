@@ -299,6 +299,9 @@ const step = async (name, fn) => {
     });
     await pg.waitForFunction(() => /Top 3/i.test((document.querySelector('#over') || {}).textContent || ''), null, { timeout: 10000 });
     if (!/Plans[\s\S]*Hunt the passer/.test(await ev(() => $('#over').textContent))) throw new Error('no Plans row on the result card');
+    // the orders and how they went (spec §2.29): the server's Float set in prep
+    if (!/Orders[\s\S]*Serve Float[\s\S]*serves/.test(await ev(() => $('#over').textContent)))
+      throw new Error('no Orders row on the result card');
   });
   const dbg = await ev(() => (typeof DBG !== 'undefined' ? DBG.text() : '')).catch(() => '');
   for (const l of dbg.split('\n')) if (/\berror\b/i.test(l) && !/STALL/.test(l)) errors.push(`DBG: ${l.slice(0, 200)}`);
