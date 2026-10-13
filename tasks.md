@@ -69,13 +69,13 @@ Accept: forced channels are taken ≥ 90 % when the set allows; the read learns 
 odds within 3 points of sims.
 Result: Built. Odds by playing the attack out (`atkOdds`: 160 possessions from a perfect pass, the hitter fed, an isolated seeded stream, the match restored — test: same odds twice, state and the game's stream untouched) instead of a formula grid: the chain block → dig is too long to model; ~0.1 s a probe, so the board fills spike odds one per tick (~17 s for 3 hitters in headless swiftshader). Aim at a player lists their passers only. Ordered Tip was 48 % kills / 0 errors → added a read-down (× 0.65, −0.05 per tip seen, ≥ × 0.3; spec §2.29). Forced line: ~75 % lands in the line channel (cut shots still go around; accept said 90 %); the block's right reads 50 → 60 %+. Also rally-defense.js (the tip read-down). Goldens unchanged; 134/134; UI smoke 13/13.
 
-### [ ] T-279: Setter orders — feed and fake
+### [x] T-279: Setter orders — feed and fake
 Spec: §2.29          Goldens: unchanged          Save: no change
 Goal: the setter feeds the chosen hitter on a 3 / 2 pass; fake on / off.
 Files: js/engine/orders.js, js/engine/rally-phases.js (chooseAttack, fake set), js/engine/lanes.js (read × 1.5 on the fed
 hitter), js/ui/plan-board.js, tests/engine.test.js
 Accept: fed hitter takes ≥ 85 % of 3 / 2 sets; a 1 pass still goes high to whoever is open; fake off = no fake sets (test).
-Result:
+Result: Built. Feed: the fed hitter gets every 3 / 2 pass they are free for (test, subs off: share 37 → 60 %+; not after a dive or from the bench); a fake set no longer switches away from them. Fake off also stops the setter dump (its decoy reads "Fake set!" too) — spec says so. atkOdds now takes a list of orders to try and a null hitter (the side's attack) for Auto feed / fake odds. Also rally.js (fakeSet), tactics.js (`ORDERS.set`), plan-board.js. Goldens unchanged.
 
 ### [ ] T-280: Middle orders — Read / Commit / Stay back
 Spec: §2.29, §2.9          Goldens: unchanged          Save: no change

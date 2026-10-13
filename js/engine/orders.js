@@ -230,18 +230,18 @@ function stCopy(v) {
 }
 const PROBE_STOP = { probe: 1 };
 /**
- * Side's attack odds for hitter p with the given aim / shot ('auto' or an id; undefined = the current order): { kill,
- * err, stf, n } over `ORDERS.odds.atkN` possessions from a good pass, the hitter fed. The match is restored afterwards and
- * the game's random stream is untouched (RNG.next swapped for a seeded one) — the same numbers at the same moment.
+ * Side's attack odds — hitter p fed (or, p null, whoever the setter picks) — with some orders tried out (set: [[player,
+ * kind, value ('auto' clears)], …]): { kill, err, stf, n } over `ORDERS.odds.atkN` possessions from a perfect pass. The
+ * match is restored afterwards and the game's random stream is untouched (RNG.next swapped for a seeded one) — the same
+ * numbers at the same moment.
  */
-function atkOdds(m, side, p, aim, shot) {
+function atkOdds(m, side, p, set = []) {
   const T = m.t[side],
     pas = T.P.find(q => q !== p && q !== T.s) || T.P.find(q => q !== p),
     snap = stCopy(m),
     next0 = RNG.next,
     cm0 = CM;
-  if (aim !== undefined) ordSet(m, p, 'aim', aim);
-  if (shot !== undefined) ordSet(m, p, 'shot', shot);
+  for (const [q, k, v] of set) ordSet(m, q, k, v);
   const ord = stCopy(m.ord),
     o = { kill: 0, err: 0, stf: 0, n: 0 };
   RNG.seed(ORDERS.odds.seed + m.pts[0] * 31 + m.pts[1]);
@@ -249,7 +249,7 @@ function atkOdds(m, side, p, aim, shot) {
   try {
     for (let i = 0; i < ORDERS.odds.atkN; i++) {
       for (const k of Object.keys(m)) if (!(k in snap)) delete m[k];
-      Object.assign(m, stCopy(snap), { ord: stCopy(ord), rec: false, probe: { p, out: null } });
+      Object.assign(m, stCopy(snap), { ord: stCopy(ord), rec: false, probe: { p, side, out: null } });
       try {
         rally(m, null, false, side, pas, 3);
       } catch (e) {
@@ -271,9 +271,24 @@ function atkOdds(m, side, p, aim, shot) {
   const n = Math.max(1, o.n);
   return { kill: o.kill / n, err: o.err / n, stf: o.stf / n, n: o.n };
 }
-/** tallyAttack's probe hook: the probed hitter's first attack ends the probe possession. */
-function probeHit(m, x, kill, err, stf) {
-  if (!m.probe || x.spiker !== m.probe.p) return;
+/** tallyAttack's probe hook: the probed hitter's (or side's) first attack ends the probe possession. */
+function probeHit(m, side, x, kill, err, stf) {
+  if (!m.probe || (m.probe.p ? x.spiker !== m.probe.p : side !== m.probe.side)) return;
   m.probe.out = { kill, err, stf };
   throw PROBE_STOP;
 }
+
+// ---- Setter orders (T-279): feed one hitter on a 3 or 2 pass; the fake set on / off ----
+
+/** Feed options: Auto, each court hitter of the setter's side. */
+function feedOpts(setter, T) {
+  return [
+    { v: 'auto', label: 'Auto' },
+    ...T.P.filter(q => q !== setter).map(q => ({ v: q.id, label: `#${q.num} ${q.name.split(' ')[0]}`, p: q }))
+  ];
+}
+/** Fake options (a setter's decoy fake set: on by default). */
+const fakeOpts = () => [
+  { v: 'auto', label: 'On' },
+  { v: 'off', label: 'Off' }
+];

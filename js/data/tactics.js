@@ -223,10 +223,12 @@ const KNOCK = {
  * of the way to them, errors × `aimErr`; the open court (Wit `openWit`+): `openK` of the way to the biggest gap, errors ×
  * `openErr`; Power: pace × `pow`, errors × `powErr`, no cut shot; Cut: the cut chance + `cut` (to 90 %); Tip: always tips, its kill
  * chance × `tip0` − `tipSeen` per ordered tip seen this match (to `tipMin`).
+ * set (T-279): their block reads a fed hitter × `readK` faster.
  * odds.atkN possessions per attack-odds probe (an isolated stream, `seed`).
  */
 const ORDERS = {
   srv: { pace: [1, 0.93, 0.85], err: [1, 0.8, 0.6], lean: 0.6, aimErr: 1.1, seam: 6 },
+  set: { readK: 1.5 },
   atk: {
     force: 0.95,
     readK: 1.5,

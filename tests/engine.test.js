@@ -569,18 +569,64 @@ test.slow(
     const p = m.t[0].P.find(q => q.role === 'WS'),
       before = JSON.stringify([m.pts, m.stat, m.pos, m.sta, m.mood, m.hit, m.lanes]);
     g.RNG.seed(5);
-    const a = g.atkOdds(m, 0, p, 'auto', 'power'),
-      b = g.atkOdds(m, 0, p, 'auto', 'power'),
+    const a = g.atkOdds(m, 0, p, [[p, 'shot', 'power']]),
+      b = g.atkOdds(m, 0, p, [[p, 'shot', 'power']]),
       r1 = g.R();
     g.RNG.seed(5);
     eq(g.R(), r1, 'the game stream is untouched');
     eq(JSON.stringify(a), JSON.stringify(b), 'the same odds at the same moment');
     eq(JSON.stringify([m.pts, m.stat, m.pos, m.sta, m.mood, m.hit, m.lanes]), before, 'the match is restored');
     eq(g.ordOf(m, p, 'shot'), undefined, 'no order left behind');
-    assert(a.n > 100 && g.atkOdds(m, 0, p, 'auto', 'tip').err === 0, 'a tip never errs');
+    assert(a.n > 100 && g.atkOdds(m, 0, p, [[p, 'shot', 'tip']]).err === 0, 'a tip never errs');
     g.RNG.unseed();
   }
 );
+
+test.slow('engine: setter orders — the fed hitter takes the ball; fake off means no fake sets (spec §2.29)', () => {
+  const g = load(37),
+    T = g.mkTeams();
+  const share = feed => {
+    let mine = 0,
+      all = 0,
+      fakes = 0,
+      fakes1 = 0;
+    for (let i = 0; i < 24; i++) {
+      const m = g.newMatch(T[i % 8], T[(i * 3 + 1) % 8], true),
+        h = m.t[0].P.find(q => q.role === 'WS');
+      for (const s of g.squadOf(m.t[0]).filter(q => q.role === 'S')) {
+        if (feed) g.ordSet(m, s, 'feed', h.id);
+        if (feed) g.ordSet(m, s, 'fake', 'off');
+      }
+      const S0 = new Set(g.squadOf(m.t[0]).map(q => q.id));
+      while (!m.over)
+        for (const b of g.playRally(m).beats)
+          if (b.acts.some(a => a.k === 'label' && a.t === 'Fake set!')) {
+            const st = b.acts.find(a => a.k === 'pose' && a.pose === 'set');
+            if (st && S0.has(st.p)) fakes++;
+            else fakes1++;
+          }
+      for (const p of g.squadOf(m.t[0])) {
+        const r = m.hit[p.id];
+        if (!r) continue;
+        all += r.n;
+        if (p === h) mine += r.n;
+      }
+    }
+    return { share: mine / all, fakes, fakes1 };
+  };
+  const sub0 = g.SUB.max;
+  g.SUB.max = 0; // (no substitutions: a fed hitter sent to the bench can't be fed)
+  const auto = share(false),
+    fed = share(true);
+  g.SUB.max = sub0;
+  // (every 3 / 2 pass the hitter is free for; not when they just dived, ran in from a jump serve or the pass was a 1)
+  assert(
+    fed.share > 0.6 && fed.share > auto.share + 0.2,
+    `fed hitter's share ${(100 * fed.share).toFixed(0)} % (Auto ${(100 * auto.share).toFixed(0)} %)`
+  );
+  eq(fed.fakes, 0, 'fake off: no fake sets');
+  assert(auto.fakes > 0 && fed.fakes1 > 0, `fakes still happen elsewhere (${auto.fakes}, ${fed.fakes1})`);
+});
 
 test('engine: defence settings — AI default, captain switch, scouting habits', () => {
   const g = load(9),

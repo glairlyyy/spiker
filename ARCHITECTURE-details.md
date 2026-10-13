@@ -802,3 +802,7 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   each from a copy of the match (`stCopy`: plain state deep-copied, teams and players by reference — a rally does not change
   them), RNG.next swapped for a seed of the score; `probeHit` (tallyAttack) throws `PROBE_STOP` at the hitter's first attack.
   ~0.1 s a probe: the board queues them (`boardAtk` / `boardWork`, one per tick, cached per point) and fills each in place.
+- Setter orders (T-279): `m.ord[setter].feed` (a hitter id) — chooseAttack swaps the spiker for them after its draws when the
+  pass is a 3 / 2, they are in the free pool and it is no high ball (`fed`, `feedOrd` on the attack; laneRead × `ORDERS.set.readK`
+  with `feedOrd`); fakeSet keeps a fed spiker (no switch to a quick). `.fake = 'off'`: fakeSet and setterDump skip (no draw).
+  The probe's own feed (`m.probe.p`) uses the same swap; `atkOdds(m, side, null, …)` measures the side's attack.

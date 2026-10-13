@@ -137,7 +137,7 @@ function tallyAttack(m, side, x, k0, bk0, e0) {
   if (x.b1) a.dbl++;
   const err = (m.stat[x.spiker.id] || blank()).err > e0;
   hitLog(m, x, kill, stuffed, err); // the coach panel's per-hitter numbers (spec §2.25)
-  probeHit(m, x, kill, err, stuffed); // the Plan board's odds probe (spec §2.29): ends the probe here
+  probeHit(m, side, x, kill, err, stuffed); // the Plan board's odds probe (spec §2.29): ends the probe here
   if (stuffed) {
     a.stf++;
     a[kind + 's']++;
@@ -164,9 +164,11 @@ function fakeSet(c, x) {
     !x.high && // (a high ball for a fallen teammate: no tricks — spec §2.28)
     qual >= 2 &&
     setter.role === 'S' &&
+    ordOf(m, setter, 'fake') !== 'off' && // role orders (spec §2.29): no fake set
     R() < clamp(0.12 * W(setter) * (atkT.sk === 'mind' ? 2 : atkT.sk === 'tempo' ? 1.5 : 1), 0, 0.55)
   ) {
-    if (!quick && MBs.length && R() < 0.55) {
+    if (!quick && MBs.length && R() < 0.55 && !x.fed) {
+      // (a fed hitter keeps the ball: the fake only shows another approach)
       quick = true;
       spiker = pick(MBs);
     }

@@ -173,13 +173,19 @@ function saveSet(c) {
   m.scrLog.push({ first: scr.first.id, saver: pas.id, hitter: null });
   return { setter: pas, dual: false, DMB, setX: at.x, setZ: at.z };
 }
-/** 3. Setter dump: a second-touch feint (Left-hand Dump makes it more likely and deadlier). */
+/** 3. Setter dump: a second-touch feint (Left-hand Dump makes it more likely and deadlier; never with Fake off — spec §2.29). */
 function setterDump(c, s) {
   const { m, B, V, atk, ds, dd, atkT, defT, pas, qual } = c,
     { setter, DMB, setZ } = s;
   // higher wit and higher jump make the setter a bigger dump threat
   const lefty = setter.role === 'S' && hasTech(setter, 'lefty');
-  if (!c.high && setter.role === 'S' && qual >= 2 && R() < atkT.S.feint * 0.5 * dumpThreat(setter, W(setter)) * (lefty ? 1.4 : 1)) {
+  if (
+    !c.high &&
+    setter.role === 'S' &&
+    qual >= 2 &&
+    ordOf(m, setter, 'fake') !== 'off' &&
+    R() < atkT.S.feint * 0.5 * dumpThreat(setter, W(setter)) * (lefty ? 1.4 : 1)
+  ) {
     if (lefty) techFire(m, setter, 'lefty');
     const sj = Math.max(24, jumpPx(setter) * 0.55);
     const lx = sx(ds, rnd(410, 465)),
@@ -355,8 +361,12 @@ function chooseAttack(c, s, h) {
       if (relNote) m.relLog.push({ act: relNote.act, p: setter.id, mate: relNote.who.id, tag: relTag(m, setter, relNote.who) });
     }
   }
-  // the Plan board's odds probe (spec §2.29; an isolated stream): the probed hitter takes this ball when they are free
-  const fed = m.probe && pool.includes(m.probe.p) ? m.probe.p : null;
+  // role orders (spec §2.29): the setter feeds the ordered hitter on a 3 or 2 pass (a 1 still goes to whoever is open);
+  // the Plan board's odds probe feeds its hitter the same way (its own random stream)
+  const fo = ordOf(m, setter, 'feed'),
+    pr = m.probe && m.probe.p ? pool.find(p => p === m.probe.p) : null,
+    of = fo && qual >= 2 && !c.high ? pool.find(p => p.id === fo) : null,
+    fed = pr || of;
   if (fed && fed !== spiker) {
     spiker = fed;
     if (quick && !MBs.includes(fed)) quick = false;
@@ -383,7 +393,26 @@ function chooseAttack(c, s, h) {
       acts: [{ k: 'call', p: setter.id, t: callLine(act, setter, m) }]
     });
   }
-  return { MBs, mbZ, tac, quick, pool, callers, trust, spiker, readBonus, freak, slide, sync, DF, B0, bad, high: !!c.high };
+  return {
+    MBs,
+    mbZ,
+    tac,
+    quick,
+    pool,
+    callers,
+    trust,
+    spiker,
+    readBonus,
+    freak,
+    slide,
+    sync,
+    DF,
+    B0,
+    bad,
+    high: !!c.high,
+    fed: !!fed,
+    feedOrd: !!of
+  };
 }
 /**
  * 5b. A bad set: most stay hittable (in place, just weaker — see setMul), but some go astray — the ball flies off

@@ -455,7 +455,7 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   - Direction (owner, 2026-10-12): finding the weakest passer — by scouting before the match, or by watching stamina drop in it
     — may become the game's main tactic (Hunt the passer, §2.26, is the first piece).
 
-- §2.29 Plan board — role orders (owner, 2026-10-13) **[built 2026-10-13–14: the board + serve orders, T-277; spike orders, T-278; open: T-279–T-281]**: you set how each player plays their part;
+- §2.29 Plan board — role orders (owner, 2026-10-13) **[built 2026-10-13–14: the board + serve orders, T-277; spike orders, T-278; setter orders, T-279; open: T-280–T-281]**: you set how each player plays their part;
   the engine plays it out (§5.7: prep, not presses — the strategy made visible). The team plan (§2.26) stays the coach layer;
   the board adds the player layer under it.
   - **Where**: match prep shows the board under the teams (a row of four player cards per side you run, options listed
@@ -490,8 +490,10 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
       errors × 1.15, no cut shot. Cut: more cut shots around the block. Tip: always tips, never errs — they come up short for
       it (kill chance × 0.65), less each time they have seen one this match (−0.05 each, to × 0.3). Cut shots still go around
       the block, so a forced line lands in the line channel ~75 % of the time.
-    - Feed: the setter sets that hitter on a 3 or 2 pass (a 1 is still the high ball to whoever is open); their block reads a
-      fed hitter × 1.5 faster. Fake off: no decoy fake set.
+    - Feed: the setter sets that hitter on a 3 or 2 pass whenever they are free (a 1 is still the high ball to whoever is
+      open; not a hitter who just dived or is on the bench); a fake set keeps the ball on them; their block reads a fed
+      hitter × 1.5 faster. Fake off: no decoy fake set and no setter dump. Odds: Feed shows that hitter's kill · error when
+      fed, Auto / Fake the side's attack (the setter's own pick).
     - Block: Commit — vs the quick stuff × 1.4, vs a high ball late (coverage × 0.6); Stay back — no block, digs as a
       back-row player (dig distance × 0.8).
   - **Locked** options show the gap (§9: locked = the gap): "Jump — Power 56+ as WS", "Seam — learn Target Serve".

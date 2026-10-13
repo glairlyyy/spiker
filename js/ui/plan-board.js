@@ -29,12 +29,13 @@ function boardRow(p, kind, label, opts, cur, odds, can) {
 const boardAtkTxt = o => `${BOARD_PCT(o.kill)} · ${BOARD_PCT(o.err)}`;
 const BOARD_Q = [];
 let boardBusy = false;
-/** The spike odds for p with aim / shot: cached for this point, else queued (atkOdds plays it out: ~0.1 s each). */
-function boardAtk(m, i, p, aim, shot) {
-  const key = `${p.id}|${aim}|${shot}|${m.pts}|${m.rot}|${m.setNo}`,
+/** Attack odds (hitter p, or the side's attack when p is null) with some orders tried (set: [[player, kind, v], …]): cached
+ * for this point and these orders, else queued (atkOdds plays it out: ~0.1 s each). */
+function boardAtk(m, i, p, set) {
+  const key = `${p ? p.id : 'side' + i}|${set.map(([q, k, v]) => `${q.id}.${k}=${v}`).join(',')}|${JSON.stringify(m.ord)}|${m.pts}|${m.rot}|${m.setNo}`,
     c = (A.prepS.odds || (A.prepS.odds = {}))[key];
   if (c) return { txt: boardAtkTxt(c), key };
-  if (!BOARD_Q.some(q => q.key === key)) BOARD_Q.push({ key, i, p, aim, shot });
+  if (!BOARD_Q.some(q => q.key === key)) BOARD_Q.push({ key, i, p, set });
   boardWork();
   return { txt: '…', key };
 }
@@ -49,13 +50,13 @@ function boardWork() {
       BOARD_Q.length = 0;
       return;
     }
-    const o = (A.prepS.odds[q.key] = atkOdds(A.m, q.i, q.p, q.aim, q.shot));
+    const o = (A.prepS.odds[q.key] = atkOdds(A.m, q.i, q.p, q.set));
     for (const el of document.querySelectorAll('[data-odds]')) if (el.dataset.odds === q.key) el.textContent = boardAtkTxt(o);
     setTimeout(tick, 0);
   };
   setTimeout(tick, 0);
 }
-/** A player's card: bad news first, then the serve choices, then (hitters) aim and shot; set / block rows come with T-279–T-280. */
+/** A player's card: bad news first, then the serve choices, then hitters' aim and shot or the setter's feed and fake. */
 function boardCard(m, i, p, can) {
   const K = Coach.condition(m, i).players.find(r => r.p === p),
     bad = K ? K.words.filter(w => w.tone !== 'good') : [],
@@ -63,6 +64,9 @@ function boardCard(m, i, p, can) {
     tgt = ordOf(m, p, 'tgt') || 'auto',
     aim = ordOf(m, p, 'aim') || 'auto',
     shot = ordOf(m, p, 'shot') || 'auto',
+    feed = ordOf(m, p, 'feed') || 'auto',
+    fake = ordOf(m, p, 'fake') || 'auto',
+    T = m.t[i],
     so = v => {
       const o = srvOdds(m, p, i, v, undefined);
       return `${BOARD_PCT(o.hit)} · ${BOARD_PCT(o.err)}`;
@@ -77,9 +81,17 @@ function boardCard(m, i, p, can) {
     ${boardRow(p, 'srv', 'Serve', srvOpts(p), srv, so, can)}
     ${boardRow(p, 'tgt', 'Target', tgtOpts(p, m.t[1 - i]), tgt, to, can)}${
       p.role === 'S'
-        ? ''
-        : boardRow(p, 'aim', 'Aim', aimOpts(p, m.t[1 - i]), aim, v => boardAtk(m, i, p, v, shot), can) +
-          boardRow(p, 'shot', 'Shot', shotOpts(), shot, v => boardAtk(m, i, p, aim, v), can)
+        ? boardRow(
+            p,
+            'feed',
+            'Feed',
+            feedOpts(p, T),
+            feed,
+            v => boardAtk(m, i, v === 'auto' ? null : T.P.find(q => q.id === v), [[p, 'feed', v]]),
+            can
+          ) + boardRow(p, 'fake', 'Fake', fakeOpts(), fake, v => boardAtk(m, i, null, [[p, 'fake', v]]), can)
+        : boardRow(p, 'aim', 'Aim', aimOpts(p, m.t[1 - i]), aim, v => boardAtk(m, i, p, [[p, 'aim', v]]), can) +
+          boardRow(p, 'shot', 'Shot', shotOpts(), shot, v => boardAtk(m, i, p, [[p, 'shot', v]]), can)
     }</div>`;
 }
 /** Side i's board (empty when you set nothing there): its four cards in a row. */

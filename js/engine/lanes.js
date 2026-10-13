@@ -33,7 +33,8 @@ function laneRead(c, x) {
       LANE.readK *
       (atkPlan(m, atk).readK ?? 1) * // Hunt is predictable; Wall reads the ace; a forced channel (spec §2.29) too
       (dp.aceRead && spiker === aceOf(atkT) ? dp.aceRead : 1) *
-      (ao === 'line' || ao === 'cross' ? ORDERS.atk.readK : 1),
+      (ao === 'line' || ao === 'cross' ? ORDERS.atk.readK : 1) *
+      (x.feedOrd ? ORDERS.set.readK : 1), // a fed hitter is expected
     s = laneSeen(m, spiker),
     est = (s.line + 1) / (s.line + s.cross + 2),
     q = Math.max(readQ(b0), b1 ? readQ(b1) : 0),
