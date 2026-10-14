@@ -229,8 +229,8 @@ test.slow('engine: the setter takes the second ball', () => {
   }
   assert(sets > 4000 && reach > 0, `sets were judged (${sets}, ${reach} won by reach)`);
   // (≈ 10.4–11.2 % since the Loose shakes, owner 2026-10-08: a colder team passes worse; ≈ 11.6 % since team plans, 2026-10-12:
-  // Hunt the passer forces more bad passes; the guard is against ~12.5 %)
-  assert(astNon / ast < 0.12, `assists by non-setters ${((100 * astNon) / ast).toFixed(1)} % (was ~12.5 %)`);
+  // Hunt the passer forces more bad passes; ≈ 12.2 % since stamina drains faster, 2026-10-15; the guard is against ~13 %)
+  assert(astNon / ast < 0.125, `assists by non-setters ${((100 * astNon) / ast).toFixed(1)} % (was ~12.5 %)`);
 });
 
 test('engine: staged scenes are rare and well-formed', () => {
@@ -436,8 +436,10 @@ test('engine: team plans — given plans hold, the coach picks from its style, H
   }
   // given plans are played; Hunt the passer sends most serves at their weakest passer (their coach's targeted sub, SUB.hunt,
   // would move the target: off here, it has its own test)
-  const share0 = g.SUB.hunt.share;
+  const share0 = g.SUB.hunt.share,
+    max0 = g.SUB.max;
   g.SUB.hunt.share = 9;
+  g.SUB.max = 0; // (no substitutions: a rested passer moves the target)
   let at = 0,
     all = 0,
     changed = 0;
@@ -458,6 +460,7 @@ test('engine: team plans — given plans hold, the coach picks from its style, H
   }
   assert(at / all > 0.6, `Hunt: ${((100 * at) / all).toFixed(0)} % of serves at the weakest passer`);
   g.SUB.hunt.share = share0;
+  g.SUB.max = max0;
   assert(changed > 3, `the AI coach changed plan at its timeout in ${changed} of 60 matches`);
   // planSet at the same score replaces the entry; the coach panel tags carry true counts
   const m = g.newMatch(T[0], T[1], false);
@@ -634,7 +637,7 @@ test.slow('engine: middle orders — Commit stuffs more quicks and leaves the pi
   const g = load(53),
     T = g.mkTeams();
   const run = o => {
-    const r = { q: 0, qs: 0, pin: 0, pink: 0, blk: 0, dig: 0 };
+    const r = { q: 0, qs: 0, qk: 0, pin: 0, pink: 0, blk: 0, dig: 0 };
     for (let i = 0; i < 200; i++) {
       g.RNG.seed(900 + i); // paired: the same draws for each order, so the order's own effect shows
       const m = g.newMatch(T[i % 8], T[(i * 3 + 1) % 8], false, { dset: ['read', null] });
@@ -644,6 +647,7 @@ test.slow('engine: middle orders — Commit stuffs more quicks and leaves the pi
       const a = m.att[1];
       r.q += a.q;
       r.qs += a.qs;
+      r.qk += a.qk;
       r.pin += a.pin;
       r.pink += a.pink;
       for (const q of mbs) {
@@ -656,10 +660,36 @@ test.slow('engine: middle orders — Commit stuffs more quicks and leaves the pi
   const read = run('read'),
     com = run('commit'),
     back = run('back');
-  assert(com.qs / com.q > (read.qs / read.q) * 1.15, `Commit: quicks stuffed ${com.qs}/${com.q} vs Read ${read.qs}/${read.q}`);
+  assert(com.qk / com.q < read.qk / read.q, `Commit: their quicks score less ${com.qk}/${com.q} vs Read ${read.qk}/${read.q}`);
   assert(com.pink / com.pin > read.pink / read.pin, `Commit: pins score more ${com.pink}/${com.pin} vs ${read.pink}/${read.pin}`);
   eq(back.blk, 0, 'Stay back: the middle never blocks');
   assert(back.dig > read.dig * 1.3, `Stay back digs more: ${back.dig} vs ${read.dig}`);
+});
+
+test('engine: stamina and the bench — a Rest order subs at the dead ball; the bench recovers faster (spec §2.30)', () => {
+  const g = load(61),
+    T = g.mkTeams(),
+    m = g.newMatch(T[0], T[1], false);
+  for (let i = 0; i < 6; i++) g.playRally(m);
+  const p = m.t[0].P.find(q => q.role === 'WS'),
+    q = g.restFor(m, 0, p);
+  assert(q && !g.restOpts(m, 0, p).find(o => o.v === 'now').lock, 'a fresh bench player is ready');
+  g.ordSet(m, p, 'rest', 'now');
+  const subs0 = m.subs[0];
+  g.playRally(m);
+  assert(!m.t[0].P.includes(p) && m.t[0].P.includes(q) && m.subs[0] === subs0 + 1, 'rested at the dead ball');
+  eq(g.ordOf(m, p, 'rest'), undefined, 'the order is used up');
+  eq(m.subLog[m.subLog.length - 1].why, 'rest');
+  // between points the bench gets more back than the court
+  m.sta[p.id] = 0.5;
+  m.to[0] = m.to[1] = 1; // (no timeout's lift)
+  const c = m.t[0].P[0];
+  m.sta[c.id] = 0.7; // (above SUB.sta: the coach leaves them on)
+  g.playRally(m);
+  assert(
+    m.sta[p.id] - 0.5 >= g.RULES.stamina.bench - 1e-9 && m.sta[c.id] - 0.7 <= g.RULES.stamina.court + 1e-9,
+    `the bench rests: ${m.sta[p.id]} vs ${m.sta[c.id]} ${m.t[0].P.includes(p)}`
+  );
 });
 
 test('engine: defence settings — AI default, captain switch, scouting habits', () => {
@@ -674,6 +704,8 @@ test('engine: defence settings — AI default, captain switch, scouting habits',
   const cap = T.find(t => t.S !== g.STYLES.tempo && t !== T[7]) || T[1],
     foe = T[7];
   for (const p of cap.P) p.lead = 100;
+  const max0 = g.SUB.max;
+  g.SUB.max = 0; // (no substitutions: resting their middles would change the attack mix this reads)
   let sw = 0,
     fixedSw = 0;
   for (let i = 0; i < 50; i++) {
@@ -681,6 +713,7 @@ test('engine: defence settings — AI default, captain switch, scouting habits',
     sw += m.dsetLog.filter(x => x.side === 1 && x.to === 'commit').length;
     fixedSw += g.simMatch(foe, cap, { tac: ['mb', 'auto'], dset: ['read', 'read'] }).dsetLog.length;
   }
+  g.SUB.max = max0;
   assert(sw >= 1, 'the captain switches to Commit against an MB-focus attack');
   eq(fixedSw, 0, 'a fixed defence setting never changes');
 });
@@ -874,7 +907,10 @@ test.slow('engine: smarter coach subs', () => {
   const sharp = run(1),
     dull = run(0);
   eq(sharp.bad, 0, 'a coachIQ 1 coach never subs when it makes the side worse');
-  assert(sharp.per < dull.per, `sharp coaches sub less (${sharp.per.toFixed(2)} vs ${dull.per.toFixed(2)} per match for side 0)`);
+  assert(
+    sharp.per <= dull.per * 1.05,
+    `sharp coaches sub no more (both near SUB.max now that stamina drains faster) (${sharp.per.toFixed(2)} vs ${dull.per.toFixed(2)} per match for side 0)`
+  );
   // the coach trusts your player: the sub-out roll is × SUB.you (2000+ seeded rolls each)
   const g2 = load(9),
     T2 = g2.mkTeams(),

@@ -418,7 +418,10 @@ function coachSubs(m, side) {
   if (m.subs[side] >= SUB.max || !t.bench || !t.bench.length) return [];
   const c = subCandidate(m, side);
   if (!c || R() >= lerp(SUB.iq[0], SUB.iq[1], t.coachIQ == null ? 0.7 : t.coachIQ) * (c.out.you ? SUB.you : 1)) return [];
-  const { out, inn, why } = c;
+  return subDo(m, side, c.out, c.inn, c.why);
+}
+/** Make a substitution and log it; the beats that show it (recording only). */
+function subDo(m, side, out, inn, why) {
   subIn(m, side, out, inn);
   m.subLog.push({ side, pts: m.pts[0] + m.pts[1], why, out: out.id, inn: inn.id, sta: m.sta[out.id] == null ? 1 : m.sta[out.id] });
   if (!m.rec) return [];
@@ -474,10 +477,10 @@ function end(m, w, beats) {
   }
   const capBeats = m.over ? [] : [...captainThink(m, 0), ...captainThink(m, 1)];
   if (beats) pointBeats(m, w, beats, z, capBeats);
-  // substitutions at the dead ball (after the point's beats, before any timeout huddle)
+  // substitutions at the dead ball (after the point's beats, before any timeout huddle): a Rest order first (spec §2.30)
   if (!m.over)
     for (const side of [0, 1]) {
-      const bs = coachSubs(m, side);
+      const bs = [...ordSubs(m, side), ...coachSubs(m, side)];
       if (beats) beats.push(...bs);
     }
   if (!m.over) {
@@ -573,7 +576,10 @@ function pointMomentum(m, w) {
   for (const p of m.t[w].P) md(m, p, 0.03);
   for (const p of m.t[1 - w].P) md(m, p, -0.02);
   for (const id in m.mood) m.mood[id] *= 0.97;
-  for (const t of m.t) for (const p of squadOf(t)) m.sta[p.id] = Math.min(1, (m.sta[p.id] == null ? 1 : m.sta[p.id]) + 0.02); // the bench recovers too
+  // between points: on court a breath (RULES.stamina.court), on the bench real rest (.bench — spec §2.30: resting a starter pays)
+  for (const t of m.t)
+    for (const p of squadOf(t))
+      m.sta[p.id] = Math.min(1, (m.sta[p.id] == null ? 1 : m.sta[p.id]) + (t.P.includes(p) ? RULES.stamina.court : RULES.stamina.bench));
 }
 /** The point's beats: score, chatter, captain decisions, the zone breaker, stage changes (spec §2.14) and the Fever flash. */
 function pointBeats(m, w, beats, { zoneIn, breaker, changes }, capBeats) {

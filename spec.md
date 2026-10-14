@@ -547,6 +547,9 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     and costs more when low; the bench rests (recovers between points) and a fresh bench player is worth bringing in —
     resting a starter and bringing them back is a real tactic. More subs per set; the coach (and you, on the board) can call
     them. Numbers in `SUB` / `RULES.stamina`, tuned with the bot.
+    **[built 2026-10-15, T-282]**: drain × 2.5 (was 1.7), low stamina costs up to 50 % (was 40 %), between points +0.01 on
+    court / +0.05 on the bench, 4 subs a set (was 2); the board's **Rest** order takes a court player off at the next dead
+    ball for the best fresh bench player. Starters end a match at ~0.64 stamina (was 0.87); ~7 subs a match (was 2.5).
   - **The board shows the point it wins** ("wins the point 54 %") — the rally played out (`atkOdds(…, full)`), not the first
     attack's kill · error, which misleads (a tip's errorless kills hide the counter-attack it gives away).
 

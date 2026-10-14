@@ -6,8 +6,9 @@ const RULES = {
   winBy: 2,
   timeoutsPerTeam: 1,
   // Match stamina (1 = fresh): `drain` scales every touch's cost (a hero who does everything tires first); a tired player
-  // loses up to `hit` of power/defense and `jumpHit` of jump height at stamina 0.
-  stamina: { drain: 1.7, hit: 0.4, jumpHit: 0.3 }
+  // loses up to `hit` of power/defense and `jumpHit` of jump height at stamina 0. Between points a court player gets back
+  // `court`, a bench player `bench` (spec §2.30: the bench rests — a tired starter is worth resting).
+  stamina: { drain: 2.5, hit: 0.5, jumpHit: 0.3, court: 0.01, bench: 0.05 }
 };
 /**
  * Substitutions: at most `max` per team per set. A coach takes a player off when their match stamina is under `sta`, or
@@ -41,7 +42,7 @@ const SKILL = {
   pass: 4
 };
 const SUB = {
-  max: 2,
+  max: 4,
   sta: 0.6,
   fresh: 0.9,
   errs: 3,

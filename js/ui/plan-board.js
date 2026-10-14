@@ -106,7 +106,18 @@ function boardCard(m, i, p, can) {
           ) + boardRow(p, 'fake', 'Fake', fakeOpts(), fake, v => boardAtk(m, i, null, [[p, 'fake', v]]), can)
         : boardRow(p, 'aim', 'Aim', aimOpts(p, m.t[1 - i]), aim, v => boardAtk(m, i, p, [[p, 'aim', v]]), can) +
           boardRow(p, 'shot', 'Shot', shotOpts(), shot, v => boardAtk(m, i, p, [[p, 'shot', v]]), can)
-    }${p.role === 'MB' ? boardRow(p, 'blk', 'Block', blkOpts(), ordOf(m, p, 'blk') || 'auto', v => boardAtk(m, 1 - i, null, [[p, 'blk', v]], true), can) : ''}</div>`;
+    }${p.role === 'MB' ? boardRow(p, 'blk', 'Block', blkOpts(), ordOf(m, p, 'blk') || 'auto', v => boardAtk(m, 1 - i, null, [[p, 'blk', v]], true), can) : ''}${
+      m.t[i].P.includes(p)
+        ? boardRow(p, 'rest', 'Rest', restOpts(m, i, p), ordOf(m, p, 'rest') || 'auto', v => boardRest(m, i, p, v), can)
+        : ''
+    }</div>`;
+}
+/** The Rest row's numbers (spec §2.30): their stamina now, or who comes on and how fresh. */
+function boardRest(m, i, p, v) {
+  const sta = q => BOARD_PCT(m.sta[q.id] == null ? 1 : m.sta[q.id]);
+  if (v !== 'now') return `stamina ${sta(p)}`;
+  const q = restFor(m, i, p);
+  return q ? `→ #${q.num} ${esc(q.role)} · ${sta(q)}` : '';
 }
 /** Side i's board (empty when you set nothing there): its four cards in a row. */
 function boardSide(i) {

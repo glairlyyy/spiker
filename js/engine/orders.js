@@ -332,3 +332,34 @@ const blkOpts = () => [
   { v: 'commit', label: 'Commit' },
   { v: 'back', label: 'Stay back' }
 ];
+
+// ---- Rest (T-282, spec §2.30): take a court player off at the next dead ball for the best fresh bench player ----
+
+/** The bench player who would come on for p (same setter / non-setter kind, fresh enough, the best now), or null. */
+function restFor(m, side, p) {
+  const t = m.t[side],
+    sta = q => (m.sta[q.id] == null ? 1 : m.sta[q.id]),
+    worth = q => ovr(q) * (1 - RULES.stamina.hit * (1 - sta(q))),
+    L = (t.bench || []).filter(q => !q.noSub && (q.role === 'S') === (p.role === 'S') && sta(q) >= SUB.fresh - 0.15);
+  return L.length ? L.reduce((a, q) => (worth(q) > worth(a) ? q : a)) : null;
+}
+/** Rest options for a court player (locked: no subs left / no fresh bench player). */
+function restOpts(m, side, p) {
+  const gap = m.subs[side] >= SUB.max ? 'no substitutions left this set' : !restFor(m, side, p) ? 'no fresh bench player' : null;
+  return [
+    { v: 'auto', label: 'Auto' },
+    { v: 'now', label: 'Rest now', lock: gap }
+  ];
+}
+/** At the dead ball: every court player ordered to rest goes off (spec §2.30); the order is used up. Returns the beats. */
+function ordSubs(m, side) {
+  const out = [];
+  for (const p of [...m.t[side].P]) {
+    if (ordOf(m, p, 'rest') !== 'now') continue;
+    ordSet(m, p, 'rest', null);
+    const inn = m.subs[side] < SUB.max ? restFor(m, side, p) : null;
+    if (!inn) continue;
+    out.push(...subDo(m, side, p, inn, 'rest'));
+  }
+  return out;
+}

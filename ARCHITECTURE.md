@@ -37,7 +37,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
 orders `aim` / `shot`: `aimOpts` / `shotOpts`, `atkApply` (laneAim), `atkLand` (landingSpot); `atkOdds(m, side, p | null, [[player, kind, v], …])` — the engine plays the
 attack from now on an isolated stream (snapshot `stCopy`, `m.probe`, `probeHit` in tallyAttack) and restores the match;
 setter orders `feed` / `fake`: `feedOpts` / `fakeOpts`, read in chooseAttack (`fed`, `feedOrd`), fakeSet and setterDump; a
-middle's `blk` ('read' | 'commit' | 'back'): `blkOpts`, `stayBack`, read in blockApproach (the setting), chooseAttack (DF),
+Rest (`rest`: `restOpts`, `restFor`, `ordSubs` at the dead ball before coachSubs; `subDo` in match.js); a middle's `blk` ('read' | 'commit' | 'back'): `blkOpts`, `stayBack`, read in blockApproach (the setting), chooseAttack (DF),
 blockMoves and digSetup; tallies `ordLog` / `ordAttack` → `m.ordLog` (the result card's Orders row, `boardResult`); data `ORDERS`), `rally.js`.
 - **audio** `sfx.js` (internals in the `SOUND` closure; global: `SND`, `sfx`, `audioInit`, `toggleSound`, `setVolume`, `bgmStart`, `bgmStop`, `panAt`). **game** `state.js` (G, HYPE, Screens / navigate), `bracket.js`.
 - **career** `run.js` (Run, RUN_DEFAULTS), `training.js`, `growth.js`, `element.js`, `world.js`, `pool.js`, `eval.js`,

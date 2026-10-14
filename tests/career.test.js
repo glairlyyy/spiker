@@ -817,9 +817,13 @@ test('career: challenge loss and injury', () => {
       run.lastFight = null;
     },
     play = (stake = 50) => {
+      // the match on a real stream (a constant R() makes a degenerate match); the rigged roll only for what follows it
+      const rig = g.RNG.next;
+      g.RNG.seed(72);
       const fx = g.Fight.challenge(run, ti, stake),
         m = g.newMatch(fx.a, fx.b, false);
       while (!m.over) g.playRally(m);
+      g.RNG.next = rig;
       return { m, line: fx.onFinish(m) };
     };
   // 'unlucky' rolls: R() = 0.99 → never injured; forced low → injured

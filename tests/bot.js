@@ -61,7 +61,16 @@ function smartRest(m, side) {
         o => -o.win
       );
   }
-  if (typeof g.botSubs === 'function') g.botSubs(m, side); // T-282: rest a tired starter when it pays
+  botSubs(m, side);
+}
+/** Rest a court player when the best fresh bench player is worth more than they are now (T-282). */
+function botSubs(m, side) {
+  const sta = q => (m.sta[q.id] == null ? 1 : m.sta[q.id]),
+    worth = q => g.ovr(q) * (1 - g.RULES.stamina.hit * (1 - sta(q)));
+  for (const p of m.t[side].P) {
+    const q = g.restFor(m, side, p);
+    if (q && worth(q) > worth(p) * 1.03 && !g.restOpts(m, side, p).find(o => o.v === 'now').lock) g.ordSet(m, p, 'rest', 'now');
+  }
 }
 function blanket(m, side, kind, v) {
   for (const p of g.squadOf(m.t[side])) {
