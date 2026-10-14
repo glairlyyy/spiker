@@ -524,6 +524,11 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     tournament teams, 600 pairs — Float −0.7, Seam +1.2, Open −0.5, Tip −1.8, Feed the ace 0, Commit −1.7, Stay back −1.4.
     No order beats Auto by more than +1.2 % points: each is a trade-off that depends on the matchup (Float and Tip help
     weak sides that miss a lot, hurt strong ones), and an order on everyone is worse than one aimed where it fits.
+  - **The ceiling** (2026-10-14; a smart bot playing the board for one side: every serve picked by the serve odds, every 4
+    points each player's aim / shot / feed / fake / block picked by the point it wins — `atkOdds(…, full)`, the rally played
+    out — vs the same match on Auto, 60 pairs): league teams +2.8 % points (+15 % match wins), tournament teams +1.5 %
+    (+10 %); serve orders alone +0.6 % (200 pairs). Its picks lean on Tip, Float, the seam and aiming at a player. Owner's
+    read (open): the options are too weak / too evenly priced for "outsmart a stronger side" (§5.7) — see §5 open questions.
 
 ## 3. Menu [built]
 

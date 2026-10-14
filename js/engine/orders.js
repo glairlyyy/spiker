@@ -261,7 +261,7 @@ const PROBE_STOP = { probe: 1 };
  * match is restored afterwards and the game's random stream is untouched (RNG.next swapped for a seeded one) — the same
  * numbers at the same moment.
  */
-function atkOdds(m, side, p, set = []) {
+function atkOdds(m, side, p, set = [], full = false) {
   const T = m.t[side],
     pas = T.P.find(q => q !== p && q !== T.s) || T.P.find(q => q !== p),
     snap = stCopy(m),
@@ -269,21 +269,23 @@ function atkOdds(m, side, p, set = []) {
     cm0 = CM;
   for (const [q, k, v] of set) ordSet(m, q, k, v);
   const ord = stCopy(m.ord),
-    o = { kill: 0, err: 0, stf: 0, n: 0 };
+    o = { kill: 0, err: 0, stf: 0, n: 0, win: 0 };
   RNG.seed(ORDERS.odds.seed + m.pts[0] * 31 + m.pts[1]);
   CM = m;
   try {
     for (let i = 0; i < ORDERS.odds.atkN; i++) {
       for (const k of Object.keys(m)) if (!(k in snap)) delete m[k];
-      Object.assign(m, stCopy(snap), { ord: stCopy(ord), rec: false, probe: { p, side, out: null } });
+      Object.assign(m, stCopy(snap), { ord: stCopy(ord), rec: false, probe: { p, side, out: null, full } });
+      let w = null;
       try {
-        rally(m, null, false, side, pas, 3);
+        w = rally(m, null, false, side, pas, 3);
       } catch (e) {
         if (e !== PROBE_STOP) throw e;
       }
       const r = m.probe.out;
       if (!r) continue;
       o.n++;
+      if (w === side) o.win++; // (full: the rally played out — who won the point)
       if (r.kill) o.kill++;
       else if (r.err) o.err++;
       else if (r.stf) o.stf++;
@@ -295,13 +297,13 @@ function atkOdds(m, side, p, set = []) {
     CM = cm0;
   }
   const n = Math.max(1, o.n);
-  return { kill: o.kill / n, err: o.err / n, stf: o.stf / n, n: o.n };
+  return { kill: o.kill / n, err: o.err / n, stf: o.stf / n, n: o.n, win: full ? o.win / n : null };
 }
 /** tallyAttack's probe hook: the probed hitter's (or side's) first attack ends the probe possession. */
 function probeHit(m, side, x, kill, err, stf) {
-  if (!m.probe || (m.probe.p ? x.spiker !== m.probe.p : side !== m.probe.side)) return;
+  if (!m.probe || m.probe.out || (m.probe.p ? x.spiker !== m.probe.p : side !== m.probe.side)) return;
   m.probe.out = { kill, err, stf };
-  throw PROBE_STOP;
+  if (!m.probe.full) throw PROBE_STOP; // (full: the rally plays on to its point)
 }
 
 // ---- Setter orders (T-279): feed one hitter on a 3 or 2 pass; the fake set on / off ----

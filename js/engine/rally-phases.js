@@ -364,7 +364,7 @@ function chooseAttack(c, s, h) {
   // role orders (spec §2.29): the setter feeds the ordered hitter on a 3 or 2 pass (a 1 still goes to whoever is open);
   // the Plan board's odds probe feeds its hitter the same way (its own random stream)
   const fo = ordOf(m, setter, 'feed'),
-    pr = m.probe && m.probe.p ? pool.find(p => p === m.probe.p) : null,
+    pr = m.probe && m.probe.p && !m.probe.out ? pool.find(p => p === m.probe.p) : null,
     of = fo && qual >= 2 && !c.high ? pool.find(p => p.id === fo) : null,
     fed = pr || of;
   if (fed && fed !== spiker) {
