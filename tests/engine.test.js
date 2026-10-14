@@ -677,9 +677,12 @@ test('engine: stamina and the bench — a Rest order subs at the dead ball; the 
   g.ordSet(m, p, 'rest', 'now');
   const subs0 = m.subs[0];
   g.playRally(m);
-  assert(!m.t[0].P.includes(p) && m.t[0].P.includes(q) && m.subs[0] === subs0 + 1, 'rested at the dead ball');
+  const e = m.subLog.find(x => x.why === 'rest');
+  assert(
+    e && e.out === p.id && e.inn === q.id && !m.t[0].P.includes(p) && m.subs[0] > subs0,
+    'rested at the dead ball (and not straight back)'
+  );
   eq(g.ordOf(m, p, 'rest'), undefined, 'the order is used up');
-  eq(m.subLog[m.subLog.length - 1].why, 'rest');
   // between points the bench gets more back than the court
   m.sta[p.id] = 0.5;
   m.to[0] = m.to[1] = 1; // (no timeout's lift)

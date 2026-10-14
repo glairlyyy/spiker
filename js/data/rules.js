@@ -53,7 +53,9 @@ const SUB = {
   // the targeted passer (owner, 2026-10-12): they serve at one of ours (`share` of their serves, at least noticeAt(T) of them)
   // and it hurts (aces + loose passes + knockdowns ≥ `hurt` of those serves) → a bench player who passes at least `pass` ×
   // as well comes in — their hunt has to start over; a passer taken off for this does not come straight back
-  hunt: { share: 0.5, hurt: 0.4, pass: 0.97 }
+  hunt: { share: 0.5, hurt: 0.4, pass: 0.97 },
+  // a starter you rested (the board's Rest order, spec §2.30) comes back only with `rested` more stamina than they went off with
+  rested: 0.1
 };
 /**
  * The second ball (spec §2.1): on a bad pass (quality 1) a free teammate sets instead of the setter only when the setter's time

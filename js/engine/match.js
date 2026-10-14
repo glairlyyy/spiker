@@ -404,6 +404,9 @@ function subCandidate(m, side) {
   }
   for (const s of m.lineup0[side].P) {
     if (hunted(s)) continue;
+    // rested on your order (spec §2.30): back only once they have really rested
+    const rs = m.subLog.findLast(e => e.out === s.id);
+    if (rs && rs.why === 'rest' && sta(s) < Math.min(1, rs.sta + SUB.rested)) continue;
     const r = t.P.find(p => p.id === m.subbed[s.id]);
     if (r && t.bench.includes(s) && !s.noSub && sta(s) >= SUB.back && fit(r, s) && ovr(s) > ovr(r)) return { out: r, inn: s, why: 'back' };
   }
