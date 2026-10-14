@@ -212,7 +212,8 @@ function serveAim(c) {
   // Rolling Receive: dive-and-roll takes most of the sting out of a long run
   const rollR = hasTech(rc, 'roll') && d0 > 0.5;
   if (rollR) techFire(m, rc, 'roll');
-  let rs = Formula.receiveScore(rc, RT, d0) - (drive ? 14 : 0);
+  let rs = Formula.receiveScore(rc, RT, d0) - (drive ? 14 : 0) - pressOf(m, rc) * READ.press.k; // the pressure on them (§2.30)
+  pressAdd(m, rc, 0);
   const cp = defPlan(m, r); // Cover the weak link (spec §2.26): the weakest passer is helped, the rest a little more open
   if (cp.weakRs) rs += rc === weakPasser(RT) ? cp.weakRs : cp.otherRs;
   if (atkPlan(m, c.s).press && rc === weakPasser(RT)) rs -= atkPlan(m, c.s).press; // Hunt the passer: the pressure tells on them
@@ -233,6 +234,7 @@ function serveAim(c) {
 /** The serve beats the receiver: off the arms (a teammate may save it) or a clean ace. */
 function serveAce(c) {
   const { m, rc, d0, sq } = c;
+  pressAdd(m, rc, 1); // broken: the pressure builds (spec §2.30)
   // the receiver got an arm on it: sometimes it pops up in their court and a teammate keeps it alive
   const fr = Math.min(1, (0.8 / (d0 + 0.01)) * (0.3 + rc.speed / 200)),
     p0r = m.pos[rc.id];
@@ -344,7 +346,7 @@ function serveReceive(c) {
   const rDive = rollR || mustDive(rc, m.pos[rc.id], tx - dR * 16, tz, sdur); // run to it, or dive only when out of reach
   if (rDive) setBusy(m, rc, 1); // still on the floor while the team sets
   const ko = knock(m, rc, sq * KNOCK.srvK, mg, 2); // a hard serve barely kept up: knocked flat (spec §2.28)
-  if (q === 1) (recvLog(m, rc, 'bad'), srvLog(m, c.server, 'bad'));
+  if (q === 1) (recvLog(m, rc, 'bad'), srvLog(m, c.server, 'bad'), pressAdd(m, rc, 1));
   mv(m, rc, tx - dR * 16, tz, sw, V);
   dr(m, rc, 0.015);
   V &&

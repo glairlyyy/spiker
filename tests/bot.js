@@ -17,7 +17,9 @@ function smartServe(m, side) {
     bv = -9;
   for (const so of g.srvOpts(p).filter(o => !o.lock))
     for (const to of g.tgtOpts(p, O).filter(o => !o.lock)) {
-      const v = srvEV(g.srvOdds(m, p, side, so.v, to.v));
+      // (pressure builds over serves: a passer already under it is worth more than this serve's odds alone)
+      const tp = to.v !== 'auto' && to.v !== 'seam' ? O.P.find(q => q.id === to.v) : null,
+        v = srvEV(g.srvOdds(m, p, side, so.v, to.v)) + (tp ? 0.02 * g.pressOf(m, tp) : 0);
       if (v > bv) [bv, best] = [v, [so.v, to.v]];
     }
   g.ordSet(m, p, 'srv', best[0]);
@@ -87,6 +89,15 @@ const share = m => {
   for (const sc of m.setScores) ((a += sc[0]), (b += sc[1]));
   return a / (a + b);
 };
+/** Every point, the reads a human makes from the board (spec §2.30): aim where their block does not expect it. */
+function smartReads(m, side) {
+  for (const p of m.t[side].P) {
+    if (p.role === 'S') continue;
+    const s = g.laneSeen(m, p),
+      est = (s.line + 1) / (s.line + s.cross + 2);
+    g.ordSet(m, p, 'aim', est > 0.5 ? 'cross' : 'line');
+  }
+}
 function play(seed, smart) {
   g.RNG.seed(seed);
   const L = TEAMS === 'tour' ? g.mkTeams() : g.mkLeagueTeams(),
@@ -96,6 +107,7 @@ function play(seed, smart) {
     if (smart && !MODE.startsWith('blanket:')) {
       smartServe(m, 0);
       if (MODE === 'full' && k % EVERY === 0) smartRest(m, 0);
+      if (MODE === 'full' && process.env.READS) smartReads(m, 0);
     }
     g.playRally(m);
   }

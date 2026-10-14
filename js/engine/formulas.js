@@ -49,7 +49,8 @@ const Formula = {
     (combo ? 1.15 : 1) *
     fat *
     skillMod(spiker, 'spike') *
-    stageBuff(spiker, 'atk'), // the momentum stage (spec §2.14)
+    stageBuff(spiker, 'atk') * // the momentum stage (spec §2.14)
+    formOf(CM, spiker), // on a run (spec §2.30)
   /**
    * Chance the spiker hits into the net or out: a mistake, never a choice. Low wit, a bad set, over-hitting and a
    * low contact point (little room over the net: hand height hS vs the tape at 150) all make it likelier.

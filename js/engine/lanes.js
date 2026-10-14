@@ -37,8 +37,10 @@ function laneRead(c, x) {
       (x.feedOrd ? ORDERS.set.readK : 1), // a fed hitter is expected
     s = laneSeen(m, spiker),
     est = (s.line + 1) / (s.line + s.cross + 2),
-    q = Math.max(readQ(b0), b1 ? readQ(b1) : 0),
-    pLine = clamp(0.5 + (est - 0.5) * k * q, 0.05, 0.95);
+    // a middle told to read their habit (spec §2.30) calls it from what the match has shown, sharply
+    hab = [b0, b1].some(b => b && b.role === 'MB' && ordOf(m, b, 'blk') === 'habit'),
+    q = hab ? 1 : Math.max(readQ(b0), b1 ? readQ(b1) : 0),
+    pLine = clamp(0.5 + (est - 0.5) * k * q * (hab ? READ.habitK : 1), 0.05, 0.95);
   return { bch: R() < pLine ? 'line' : 'cross' };
 }
 

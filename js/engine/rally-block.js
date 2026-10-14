@@ -192,7 +192,8 @@ function blockCoverage(c, x, f) {
     readB,
     setTech,
     seam,
-    over
+    over,
+    commit: f.commit
   };
 }
 /** Each blocker's hands: lane × height coverage, scaled by reading and the defence setting. */

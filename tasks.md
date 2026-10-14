@@ -44,7 +44,7 @@ Sub order), js/ui/plan-board.js, tests/engine.test.js, tests/golden.json
 Accept: end-of-set stamina median ~0.6 for starters (was ~0.87); subs per match up; a bot that rests its tired starters gains.
 Result: RULES.stamina drain 1.7 → 2.5, hit 0.4 → 0.5, between points court +0.01 / bench +0.05 (was +0.02 for all); SUB.max 2 → 4. 120 league + tournament matches: starters' stamina mid-set 0.92 → 0.83, at the end median 0.87 → 0.64 (p10 0.07: the one who does everything is Spent); subs 2.5 → 6.8 a match. Rest order on the board (a court player off at the next dead ball for the best fresh bench player; `ordSubs` before coachSubs, `subDo` shared). Bot with rest: league +1.9 % points (60 pairs; noise ±1.2) — the bench alone is no big lever yet. Tests: hunt / captain-switch tests run without subs (they read a fixed lineup); the challenge test plays the match on a real stream; the non-setter assist guard 12 → 12.5 %; sharp coaches sub no more than dull (both near the cap). Goldens updated.
 
-### [ ] T-283: Orders pay by situation
+### [~] T-283: Orders pay by situation
 Spec: §2.30          Goldens: unchanged (orders only)          Save: no change
 Goal: each order's payoff depends on the read (passer broken, block's read, hot hand, their quick share, their tips).
 Files: js/engine/orders.js, js/engine/lanes.js, js/engine/serve.js, js/engine/rally-phases.js, js/engine/rally-defense.js,

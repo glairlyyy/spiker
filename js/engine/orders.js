@@ -161,7 +161,7 @@ function srvOdds(m, server, s, srv, tgt) {
           [0, 1 - dP]
         ]) {
           if (!pd) continue;
-          let rs = Formula.receiveScore(rc, RT, d0) - (dd ? 14 : 0);
+          let rs = Formula.receiveScore(rc, RT, d0) - (dd ? 14 : 0) - pressOf(m, rc) * READ.press.k;
           if (cp.weakRs) rs += rc === wp ? cp.weakRs : cp.otherRs;
           if (ap.press && rc === wp) rs -= ap.press;
           if (tg && tg.seam) rs -= ORDERS.srv.seam;
@@ -330,6 +330,7 @@ const blkOpts = () => [
   { v: 'auto', label: 'Auto' },
   { v: 'read', label: 'Read' },
   { v: 'commit', label: 'Commit' },
+  { v: 'habit', label: 'Read their habit' },
   { v: 'back', label: 'Stay back' }
 ];
 
@@ -362,4 +363,24 @@ function ordSubs(m, side) {
     out.push(...subDo(m, side, p, inn, 'rest'));
   }
   return out;
+}
+
+// ---- Reading pays (T-283, spec §2.30): situations that make an order pay ----
+
+/** Serve pressure on a passer (READ.press): grows with every serve they take, more when it breaks them; eases each point. */
+const pressOf = (m, p) => (m.press && m.press[p.id]) || 0;
+function pressAdd(m, p, broken) {
+  const P = m.press || (m.press = {});
+  P[p.id] = (P[p.id] || 0) + (broken ? READ.press.bad : READ.press.add);
+}
+/** A hitter's form (READ.hot / cold): their run of kills, or of errors and stuffs, at the end of their latest attacks. */
+function formOf(m, p) {
+  const h = m && m.hit && m.hit[p.id];
+  if (!h || !h.last) return 1;
+  const run = ch => {
+    let n = 0;
+    for (let i = h.last.length - 1; i >= 0 && h.last[i] === ch && n < READ.run; i--) n++;
+    return n;
+  };
+  return 1 + READ.hot * run('k') - READ.cold * run('x');
 }

@@ -579,6 +579,7 @@ function pointMomentum(m, w) {
   for (const p of m.t[w].P) md(m, p, 0.03);
   for (const p of m.t[1 - w].P) md(m, p, -0.02);
   for (const id in m.mood) m.mood[id] *= 0.97;
+  for (const id in m.press) m.press[id] *= READ.press.decay; // serve pressure eases (spec §2.30)
   // between points: on court a breath (RULES.stamina.court), on the bench real rest (.bench — spec §2.30: resting a starter pays)
   for (const t of m.t)
     for (const p of squadOf(t))

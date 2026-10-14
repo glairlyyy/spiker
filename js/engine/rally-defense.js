@@ -53,7 +53,10 @@ function block(c, x) {
     ) {
       smashed = true;
       blockBreak(c, x, k);
-    } else if (!late && R() < stuffChance(bp, cov, pow) * blockSkill(bb) * (x.planStuff ?? 1)) {
+    } else if (
+      !late &&
+      R() < stuffChance(bp, cov, pow) * blockSkill(bb) * (x.planStuff ?? 1) * (x.commit && x.quick ? READ.commitStuff : 1)
+    ) {
       laneTag(c, x, 'stuff');
       return blockStuff(c, x, k);
     }

@@ -58,11 +58,11 @@ const LANE = {
   seeMax: 0.6,
   away: 0.25,
   weakK: 0.012,
-  on: 1.36,
-  off: 0.4,
+  on: 1.6,
+  off: 0.2,
   offDbl: 0.65,
   handK: 0.008,
-  shade: 0.85,
+  shade: 0.6,
   crossMin: 0.3
 };
 
@@ -249,3 +249,11 @@ const ORDERS = {
   },
   odds: { roll: [0.82, 0.86, 0.9, 0.94, 0.98, 1.02, 1.06, 1.1, 1.14, 1.18], dAim: 0.22, dRand: 0.36, dSeam: 0.4, atkN: 160, seed: 9173 }
 };
+
+/**
+ * Reading pays (spec §2.30, T-283): situations a read can exploit. press — serve pressure on a passer: each serve they take
+ * adds `add` (`bad` more when it breaks them: an ace or a loose pass), × `decay` every point; their receive − `k` × it
+ * (a sub comes in fresh). hot / cold — a hitter on a run of kills hits × (1 + `hot` per kill, up to `run`), on a run of
+ * errors / stuffs × (1 − `cold` per miss). commitStuff — a Commit middle on the quick stuffs × it.
+ */
+const READ = { press: { add: 1, bad: 1.5, decay: 0.9, k: 9 }, hot: 0.05, cold: 0.06, run: 3, commitStuff: 1.6, habitK: 2 };
