@@ -530,6 +530,26 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     (+10 %); serve orders alone +0.6 % (200 pairs). Its picks lean on Tip, Float, the seam and aiming at a player. Owner's
     read (open): the options are too weak / too evenly priced for "outsmart a stronger side" (§5.7) — see §5 open questions.
 
+- §2.30 Reading pays (owner, 2026-10-15) **[open: T-282–T-285]**: tactics are worth a lot when they answer what you read, little
+  when sprayed (the Total War feel: a weaker side can beat a stronger one by outplaying its habits). **This loosens §2.0** for
+  read-and-answered orders; blanket orders stay near zero.
+  - **Target**: the smart bot (§2.29 ceiling — the board's own odds, the rally played out, every order re-picked) beats Auto
+    by **+15–20 % of points** on equal teams; the same order put on everyone ("all float", "all tip") stays within ±2 %; a
+    wrong read costs points. Each change is measured with the bot (paired seeds) and the numbers written here.
+  - **Payoff by situation** (each order pays from a condition the board and the coach panel show):
+    - Serve at a passer: the more they are broken (served at, loose passes, Tiring / Shaken), the worse they pass —
+      pressure compounds (each serve at them drains their stamina and mood); a strong, fresh passer barely cares.
+    - Aim / shot: a channel the block has not read yet (what it has seen of you is shown) pays much more; the read
+      channel much less; a tip pays against a deep floor and tired diggers, little against a set front row.
+    - Feed: a hitter on a hot hand ("Hot hand") hits harder; a cold or tired one worse — feeding is choosing the form.
+    - Block: Commit pays against a side that lives on quicks, costs against wings; Stay back pays against tips / soft hitters.
+  - **Stamina and the bench** (owner): stamina drains faster (a starter who does everything is Tiring by mid-set, Spent late)
+    and costs more when low; the bench rests (recovers between points) and a fresh bench player is worth bringing in —
+    resting a starter and bringing them back is a real tactic. More subs per set; the coach (and you, on the board) can call
+    them. Numbers in `SUB` / `RULES.stamina`, tuned with the bot.
+  - **The board shows the point it wins** ("wins the point 54 %") — the rally played out (`atkOdds(…, full)`), not the first
+    attack's kill · error, which misleads (a tip's errorless kills hide the counter-attack it gives away).
+
 ## 3. Menu [built]
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two

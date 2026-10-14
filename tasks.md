@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-282** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-286** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,37 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+**Reading pays (owner, 2026-10-15, spec §2.30): T-282 → T-285.** Measure with the smart bot (scratch `smartbot.js` → T-285
+puts it in tests/bot.js) after each step; numbers into spec §2.30. Goldens: update where stated (stamina changes every match).
+
+### [ ] T-282: Stamina drains faster, the bench rests and is worth bringing in
+Spec: §2.30          Goldens: update (stamina numbers move every match)          Save: no change
+Goal: starters who do everything tire by mid-set; the bench recovers; subs (coach and board) are a real tactic.
+Files: js/data/rules.js (RULES.stamina, SUB), js/engine/match.js (point recovery, coachSubs), js/engine/orders.js (a Rest /
+Sub order), js/ui/plan-board.js, tests/engine.test.js, tests/golden.json
+Accept: end-of-set stamina median ~0.6 for starters (was ~0.87); subs per match up; a bot that rests its tired starters gains.
+Result:
+
+### [ ] T-283: Orders pay by situation
+Spec: §2.30          Goldens: unchanged (orders only)          Save: no change
+Goal: each order's payoff depends on the read (passer broken, block's read, hot hand, their quick share, their tips).
+Files: js/engine/orders.js, js/engine/lanes.js, js/engine/serve.js, js/engine/rally-phases.js, js/engine/rally-defense.js,
+js/data/tactics.js (ORDERS), tests/engine.test.js
+Accept: smart bot +15–20 % points vs Auto (equal league teams, 60+ pairs); blanket orders within ±2 %.
+Result:
+
+### [ ] T-284: The board shows the point it wins
+Spec: §2.30          Goldens: unchanged          Save: no change
+Goal: spike / set / block odds read "wins the point N %" (full-rally probe); serve keeps ace-or-broken · miss.
+Files: js/ui/plan-board.js, js/engine/orders.js, tests/ui-smoke.js
+Result:
+
+### [ ] T-285: The smart bot as a balance tool
+Spec: §2.30          Goldens: unchanged          Save: no change
+Goal: `npm run bot` (tests/bot.js): the smart bot vs Auto, paired seeds, league + tournament, prints points / wins and picks.
+Files: tests/bot.js (new), package.json
+Result:
 
 **Plan board (owner, 2026-10-13, spec §2.29): T-277 → T-281, one agent, in order.** Every order has Auto = today's engine, so
 with no orders the goldens stay unchanged (tests pass without `--update`); orders change draws only when set. Odds draw no R().
