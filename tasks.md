@@ -58,11 +58,11 @@ Goal: spike / set / block odds read "wins the point N %" (full-rally probe); ser
 Files: js/ui/plan-board.js, js/engine/orders.js, tests/ui-smoke.js
 Result:
 
-### [ ] T-285: The smart bot as a balance tool
+### [x] T-285: The smart bot as a balance tool
 Spec: §2.30          Goldens: unchanged          Save: no change
 Goal: `npm run bot` (tests/bot.js): the smart bot vs Auto, paired seeds, league + tournament, prints points / wins and picks.
 Files: tests/bot.js (new), package.json
-Result:
+Result: tests/bot.js + `npm run bot -- [pairs] [league|tour] [full|serve|blanket:<kind>=<value>] [every]`; ~7 s a pair (full, ATKN 40). Calls `botSubs` when T-282 adds it.
 
 **Plan board (owner, 2026-10-13, spec §2.29): T-277 → T-281, one agent, in order.** Every order has Auto = today's engine, so
 with no orders the goldens stay unchanged (tests pass without `--update`); orders change draws only when set. Odds draw no R().

@@ -1,7 +1,7 @@
 {
   "name": "spite-and-spike",
   "private": true,
-  "description": "Spite & Spike — 4v4 anime volleyball RPG (browser, no build step).",
+  "description": "Spite & Spike \u2014 4v4 anime volleyball RPG (browser, no build step).",
   "scripts": {
     "test": "node tests/run.js",
     "test:update": "node tests/run.js --update",
@@ -11,7 +11,8 @@
     "format:check": "prettier --check \"js/**/*.{js,mjs}\" \"css/**/*.css\" \"tests/**/*.js\" \"*.html\"",
     "test:quick": "node tests/run.js --quick",
     "test:ui": "node tests/ui-smoke.js",
-    "balance": "node tests/balance.js"
+    "balance": "node tests/balance.js",
+    "bot": "node tests/bot.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

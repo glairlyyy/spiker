@@ -65,6 +65,8 @@ Build chat loop, one task at a time:
   on any page error. Run it for every task that touches js/ui, css or render code; extend it when you add a screen or card.
 - `npm run test:quick` — the same minus the slow statistical tests (`test.slow`), ~28 s on a 2-core container: for the edit loop; run the full set before a commit.
 - `npm run test:update` — only when the task says Goldens: update.
+- `npm run bot -- [pairs] [league|tour] [full|serve|blanket:<kind>=<v>]` — the smart bot vs Auto (spec §2.30): what playing
+  the Plan board well is worth (~7 s a pair). Run it after any change to orders, stamina or subs.
 - `npm run lint` / `npm run format` — ESLint (flat config collects shared globals from index.html) / Prettier.
 - `npm run serve` — http://localhost:8765 (index.html: CDN three, or node_modules three on localhost — `?cdn` forces the CDN).
 
