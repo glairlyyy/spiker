@@ -828,3 +828,15 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
 - Buffs: `stageBuff(p, k)` (k: atk spike power, def in effD, spd in receive / dig speed terms and block reach, jump in
   jumpPx, serve in serveQuality) replaces the old `0.06 × mom` in boost(). The losing captain's random zone call is gone.
 - `RALLY_MAX` (rally.js): a rally gives up after 80 possessions (the attacking side scores) — only a rigged stream gets there.
+
+## Bars — HP and morale (spec §2.31, T-286)
+
+- **HP**: `knock(m, p, pow, mg, until)` (match.js) is called on every kept-up serve receive and dig; it calls `hpHit` (bars.js),
+  which takes `clamp((impact − HP.gap) / HP.span, 0, 1) × weight` off `m.hp[id]` (impact and weight as the old knockdown roll).
+  HP 0 → the old knockdown path (on the floor, busy, `KNOCK.sta`, `m.ko` tallies). No R(): the roll is gone (goldens moved).
+  `hpHeal` in pointMomentum: court + `HP.heal`, bench back to 1. `dr` (stats.js) × (1 + `HP.drain` × (1 − hp)).
+- **Morale**: `m.mor[id]` for every squad player (bench too, so a sub brings a live value). `morPoint` (bars.js) runs the old
+  pointMomentum fire update per player with `MTRAITS` shaping it; then `m.mom[side] = fireOf(m, side)`. Everything that used to
+  set `m.mom` directly (element Starlight, zone breaker, timeout) goes through `morAdd` / `fireTo` (shift everyone alike).
+  `subIn` refreshes the fire (who is on court). `m.noTraits` (tests) makes every player trait-less: then all morale is equal
+  and the fire is exactly the old fire.

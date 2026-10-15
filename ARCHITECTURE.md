@@ -32,7 +32,10 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   `stats.js`, `skills.js`, `formulas.js`, `elements.js`, `hype.js`, `fire.js` (momentum stages, spec §2.14: `temperOf`,
   `fireStage`, `pointStage` after every point (in `end`), `stageTimeout`, `stageBuff(p, stat)` read by effD / jumpPx / the
   formulas; `m.mom` is the fire, `m.stage`, `m.temper`, `m.fever`; `m.zone` = the Fever alias; data in data/momentum.js:
-  `STAGES`, `TEMPERS`, `TEMPER_OF`, `FIRE`; the captains' calls `capReady` / `capCall` — T-260), `match.js`, `serve.js`, `rally-phases.js`,
+  `STAGES`, `TEMPERS`, `TEMPER_OF`, `FIRE`; the captains' calls `capReady` / `capCall` — T-260), `bars.js` (spec §2.31: HP
+  `m.hp` — `hpHit` in `knock` (collapse = HP 0, no roll), `hpHeal` between rallies; morale `m.mor` per player — `morPoint`
+  replaces the fire update, `fireOf` = the on-court average (captain ×2) → `m.mom`, `morAdd` / `fireTo` for team-wide pushes;
+  `mtraitOf(p)` by hash; data `HP`, `MTRAITS` in data/cards.js), `match.js`, `serve.js`, `rally-phases.js`,
   `rally-defense.js`, `rally-block.js`, `lanes.js` (laning, spec §2.24: `laneRead`, `laneAim`, `laneTag`, `laneRecord`, coach-panel logs `hitLog` / `recvLog`; tuning `LANE` in data/tactics.js), `coach.js` (`Coach.side` / `Coach.tags`: the coach panel's analysis, spec §2.25), `plans.js` (team plans, spec §2.26: `planOf`, `atkPlan` / `defPlan`, `planPick`, `planSet`, `planCounter`, `weakPasser`, `aceOf`; data `PLANS`, `PLAN_STYLE`, `PLAN_AI`, `PLAN_LINES` in data/tactics.js; `m.plan`, `m.planBy`, `m.planLog`), `orders.js` (role orders, spec §2.29: `m.ord` player id → { srv, tgt }, none = Auto; `ordOf` / `ordSet`, `srvOpts` / `tgtOpts` (locked = the gap), `srvApply` / `tgtResolve` (the serve hooks, only with an order), `srvOdds` (the board's odds: the engine's formulas on the fixed grid `ORDERS.odds`, no draws), `srvLog` → `m.srvLog`; spike
 orders `aim` / `shot`: `aimOpts` / `shotOpts`, `atkApply` (laneAim), `atkLand` (landingSpot); `atkOdds(m, side, p | null, [[player, kind, v], …])` — the engine plays the
 attack from now on an isolated stream (snapshot `stCopy`, `m.probe`, `probeHit` in tallyAttack) and restores the match;

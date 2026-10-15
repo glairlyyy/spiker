@@ -356,7 +356,7 @@ function serveReceive(c) {
         { k: 'pose', p: rc.id, pose: ko ? 'fall' : rDive ? 'dive' : 'bump' },
         ...(rc.def >= 82 || (m.zone[r] && rc.def >= 65) ? [{ k: 'call', p: rc.id, t: callLine('recv', rc, m) }] : []),
         ...(rollR && !ko ? [{ k: 'tech', p: rc.id, t: 'Rolling Receive', when: 'end' }] : []),
-        ...(ko ? [{ k: 'label', t: 'Knocked down!', small: 1, when: 'end' }] : []),
+        ...(ko ? [{ k: 'label', t: 'Collapsed!', small: 1, when: 'end' }] : []),
         { k: 'ball', to: { p: rc.id, c: rDive && !ko ? 'dive' : 'bump' }, h: sArc, wob, trail: sq > 60 ? sq : 0 },
         ...RT.P.filter(p => p !== rc).map(p => ({ k: 'jump', p: p.id, mode: 'hop', peak: 7, t0: 0, t1: 0.2 })),
         ...(rc.elOn ? [{ k: 'efx', el: rc.el, pow: 35, when: 'end' }] : [])

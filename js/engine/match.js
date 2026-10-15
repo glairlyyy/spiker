@@ -16,14 +16,11 @@ function setBusy(m, p, until) {
 /** Knocked down (spec §2.28): on the floor through possession m.down[id] — no dig, block, set or hit (nearest() skips them). */
 const onFloor = (m, p, n) => ((m.down && m.down[p.id]) || 0) >= n;
 /**
- * A hard ball barely kept up (pass margin mg) may knock `p` down (spec §2.28): on the floor through possession `until`.
- * Draws one R() only past the impact gap with a low margin. Returns true when knocked down.
+ * A hard ball kept up (pass margin mg) takes HP (spec §2.31); when it empties, `p` collapses — knocked down (spec §2.28): on
+ * the floor through possession `until`. No randoms. Returns true when knocked down.
  */
 function knock(m, p, pow, mg, until) {
-  const imp = pow - effD(p) * KNOCK.defK,
-    ch = Math.min(KNOCK.max, (imp - KNOCK.gap) / KNOCK.span) * clamp((pow - KNOCK.from) / (KNOCK.full - KNOCK.from), 0, 1);
-  if (imp <= KNOCK.gap || mg >= KNOCK.mg || ch <= 0) return false;
-  if (R() >= ch) return false;
+  if (!hpHit(m, p, pow)) return false; // HP (spec §2.31): the hit that empties it collapses the player — no roll
   m.down[p.id] = until;
   m.ko.mg = mg; // how loose the ball came off them (recover(): a loose ball can only go over)
   setBusy(m, p, until + 1); // back on the feet, still a step behind the play
@@ -132,7 +129,9 @@ function newMatch(a, b, rec, opts = {}) {
     rec: !!rec,
     to: [0, 0],
     toReq: [0, 0],
-    mom: [0, 0],
+    mom: [0, 0], // team fire = the on-court average morale (spec §2.31, fireOf)
+    mor: {}, // morale per player (spec §2.31)
+    hp: {}, // HP per player (spec §2.31; 1 until the first hit)
     mood: {},
     sta: {},
     streak: [0, 0],
@@ -164,6 +163,7 @@ function newMatch(a, b, rec, opts = {}) {
       const h = home(p, side);
       m.pos[p.id] = { x: h[0], z: h[1] };
       m.mood[p.id] = p.form || 0;
+      m.mor[p.id] = 0;
     })
   );
   m.temper = [temperOf(a), temperOf(b)]; // spec §2.14: from the squads' personalities (no draws)
@@ -358,6 +358,7 @@ function subIn(m, side, out, inn) {
   delete m.subbed[inn.id];
   m.subbed[out.id] = inn.id;
   m.subs[side]++;
+  if (m.mor) m.mom[side] = fireOf(m, side); // the fire is who is on court (spec §2.31)
 }
 /**
  * Who a coach would sub now, if anyone: { out, inn, why } or null. In order: a tired player (stamina under SUB.sta), one who
@@ -564,18 +565,16 @@ function pointMomentum(m, w) {
   // won = the point ended on that element spike, for its side (dug and played on → false)
   const es = m.ctx && m.ctx.el ? m.elLog[m.elLog.length - 1] : null;
   for (const L of m.elLog) if (L.won == null) L.won = L === es && w === L.side;
-  if (es && es.won && m.ctx.el.mom) m.mom[w] = clamp(m.mom[w] + m.ctx.el.mom, -1, 1);
+  if (es && es.won && m.ctx.el.mom) morAdd(m, w, m.ctx.el.mom);
   m.lastK = m.ctxK || null;
   m.ctxK = null;
   m.ctx0 = m.ctx; // the last attack (chatter)
   m.ctx = null;
   // momentum fades every point and drops on a lost one — half as fast outside the zone (owner 2026-10-08: Fever was too rare);
   // a team in the zone (Fever) burns it at the full rate
+  // (per player since spec §2.31: morale by these rules and the player's trait; the team's fire = their average)
   const fade = i => (m.zone[i] ? 1 : MOM_FADE);
-  m.mom[w] = clamp(m.mom[w] * (1 - 0.15 * fade(w)) + (0.1 + (m.streak[w] >= 3 ? 0.07 : 0) + m.big * 0.1) * (1 + LD(w) * 0.6), -1, 1);
-  const L = 1 - w,
-    heat = clamp(MOM_LOSS.heat + MOM_LOSS.hot * m.mom[L], MOM_LOSS.min, MOM_LOSS.max);
-  m.mom[L] = clamp(m.mom[L] * (1 - 0.15 * fade(L)) - (0.09 + m.big * 0.05) * fade(L) * heat - momShaken(m, L), -1, 1);
+  morPoint(m, w, fade, LD);
   for (const p of m.t[w].P) md(m, p, 0.03);
   for (const p of m.t[1 - w].P) md(m, p, -0.02);
   for (const id in m.mood) m.mood[id] *= 0.97;
@@ -583,6 +582,7 @@ function pointMomentum(m, w) {
   for (const t of m.t)
     for (const p of squadOf(t))
       m.sta[p.id] = Math.min(1, (m.sta[p.id] == null ? 1 : m.sta[p.id]) + (t.P.includes(p) ? RULES.stamina.court : RULES.stamina.bench));
+  hpHeal(m); // HP heals part of the way between rallies (spec §2.31)
 }
 /** The point's beats: score, chatter, captain decisions, the zone breaker, stage changes (spec §2.14) and the Fever flash. */
 function pointBeats(m, w, beats, { zoneIn, breaker, changes }, capBeats) {
@@ -623,8 +623,8 @@ function timeout(m, L, beats, manual) {
     m.mood[q.id] = 0.1 + 0.15 * iq + Math.max(0, m.mood[q.id] || 0) * 0.3;
     m.sta[q.id] = Math.min(1, (m.sta[q.id] == null ? 1 : m.sta[q.id]) + 0.12);
   }
-  m.mom[O] *= 0.6 - 0.3 * iq;
-  m.mom[L] = Math.max(m.mom[L], 0);
+  fireTo(m, O, m.mom[O] * (0.6 - 0.3 * iq)); // (fire = morale since spec §2.31: everyone shifts alike)
+  if (m.mom[L] < 0) fireTo(m, L, 0);
   m.streak[O] = 0;
   const sc = stageTimeout(m, L); // out of Loose at once; their Fever cools (spec §2.14)
   // the AI coach's huddle answers what it has noticed (spec §2.26); a side you run changes plan in match prep instead

@@ -493,7 +493,7 @@ function digUp(c, x, bl, { dg, q0, dd0, dsc, rollD, a4 }) {
         { k: 'pose', p: dg.id, pose: ko ? 'fall' : dive ? 'dive' : 'bump', pc: dive && dd0 > 0.22 ? 1 : 0 },
         ...(!dram && (dg.def >= 85 || (m.zone[ds] && dg.def >= 70)) ? [{ k: 'call', p: dg.id, t: callLine('dig', dg, m) }] : []),
         ...(ko
-          ? [{ k: 'label', t: 'Knocked down!', when: 'end' }]
+          ? [{ k: 'label', t: 'Collapsed!', when: 'end' }]
           : rollD
             ? [{ k: 'tech', p: dg.id, t: 'Rolling Receive', when: 'end' }]
             : dive && dd0 > 0.22

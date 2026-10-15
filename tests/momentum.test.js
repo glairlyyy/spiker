@@ -76,3 +76,47 @@ test.slow(
     assert(s.fire && s.stage && s.temper, 'snapshot fields');
   }
 );
+
+test('bars: fire is the on-court average morale (captain ×2); without traits every player moves alike (spec §2.31)', () => {
+  const g = load(31),
+    T = g.mkTeams(),
+    m = g.newMatch(T[0], T[1], false);
+  m.noTraits = true;
+  for (let i = 0; i < 20 && !m.over; i++) {
+    g.playRally(m);
+    for (const s of [0, 1]) {
+      const v = g.squadOf(m.t[s]).map(p => m.mor[p.id]);
+      assert(Math.max(...v) - Math.min(...v) < 1e-9, 'no traits: one morale for the squad');
+      assert(Math.abs(m.mom[s] - v[0]) < 1e-9, `fire ${m.mom[s]} = morale ${v[0]}`);
+    }
+  }
+  const m2 = g.newMatch(T[2], T[3], false);
+  for (let i = 0; i < 20 && !m2.over; i++) g.playRally(m2);
+  const P = m2.t[0].P,
+    cap = m2.t[0].cap,
+    avg = P.reduce((a, p) => a + m2.mor[p.id] * (p === cap ? 2 : 1), 0) / (P.length + (P.includes(cap) ? 1 : 0));
+  assert(Math.abs(m2.mom[0] - avg) < 1e-9, 'fire = weighted average');
+  const tr = g.squadOf(T[0]).concat(...T.slice(1).map(g.squadOf)).map(g.mtraitOf);
+  assert(tr.some(Boolean) && tr.some(t => !t), 'some players have a trait, some none');
+  eq(JSON.stringify(tr), JSON.stringify(g.squadOf(T[0]).concat(...T.slice(1).map(g.squadOf)).map(g.mtraitOf)), 'stable (a hash)');
+});
+
+test('bars: HP — hard balls wear a passer down across rallies and empty HP collapses them, no roll (spec §2.31)', () => {
+  const g = load(33),
+    T = g.mkTeams(),
+    m = g.newMatch(T[0], T[1], false);
+  g.CM = m;
+  const p = m.t[1].P.find(q => q.role !== 'S'),
+    r0 = g.RNG.next;
+  let fell = false;
+  for (let i = 0; i < 6 && !fell; i++) {
+    fell = g.knock(m, p, 120, 0, 2);
+    if (!fell) g.hpHeal(m);
+  }
+  assert(fell, `collapsed (hp ${m.hp[p.id]})`);
+  eq(m.hp[p.id], 0, 'HP empty');
+  assert(m.down[p.id] === 2, 'on the floor through the next defence');
+  eq(g.RNG.next, r0, 'no draws');
+  const q = m.t[1].P.find(x => x !== p && x.role !== 'S');
+  assert(!g.knock(m, q, 20, 0, 2) && g.hpOf(m, q) === 1, 'a soft ball takes nothing');
+});

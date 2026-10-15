@@ -58,11 +58,11 @@ function pointStage(m, w, oppWasInZone) {
   // Zone breaker: a kill block (or a fake set) that scores against a team in Fever: they drop to Composed, the scorers catch fire
   if (oppWasInZone && (m.lastPlay === 'killblock' || m.lastPlay === 'fake')) {
     breaker = m.lastPlay === 'killblock';
-    m.mom[O] = Math.min(m.mom[O], -0.2);
+    if (m.mom[O] > -0.2) fireTo(m, O, -0.2);
     m.streak[O] = 0;
     put(O, breaker ? 'composed' : 'focused', breaker ? 'breaker' : 'stuff');
     if (breaker) {
-      m.mom[w] = Math.max(m.mom[w], 0.9);
+      if (m.mom[w] < 0.9) fireTo(m, w, 0.9);
       for (const q of m.t[w].P) md(m, q, 0.25);
       for (const q of m.t[O].P) md(m, q, -0.2);
       if (TEMPERS[m.temper[w]].fever !== false) put(w, 'fever', 'breaker');
