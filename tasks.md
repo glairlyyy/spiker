@@ -62,12 +62,12 @@ never slotted again; combos link; turns every 6 points.
 QA: none (engine).
 Result: Built as specced (js/engine/cards.js, CARDS / COMBOS / TURN / SLOTS / CARD_AI in js/data/cards.js). Cards compile into plans, the tactic, orders (`C.cord`; never over an order already set), forced techniques (`cardForce` at the R()-gated hooks; Cut Shot +0.25) and buffs (`cardBuff` × stageBuff). `opts.cards === false` = no hand; `opts.plan` keeps cards off that side's plan (old tests). A timeout refills the calling side. Act kinds `turn` / `cardspent` with handlers (js/ui/match-cards.js stub until T-289). Also render/acts.js, js/ui/match-cards.js (new), tests/run.js. Goldens updated (the coach slots cards in every match). 145/145.
 
-### [ ] T-296: Measure the cards, bars and turns
+### [x] T-296: Measure the cards, bars and turns
 Spec: §2.31–§2.33          Goldens: unchanged          Save: no change
 Goal: `npm run cards` — paired seeds, league + tournament: no cards / boosts only / coach / random plays / each play blanket;
 spent per match, collapses per 100 points, stage shares, traits. Numbers into spec.
 Files: tests/cards.js (new), package.json, spec.md (measured lines)
-Result:
+Result: tests/cards.js + `npm run cards -- [pairs] [league|tour|both] [modes]` (~75 s for 100 pairs both). Numbers in spec §2.33 Measured. Headline: boosts only +2.1 / +2.2 % points vs no cards (league / tournament), coach +2.3 / +0.8, random plays +2.1 / +1.3 — the coach is not above boosts and plays add little: fails the must-hold; next is the balance pass (owner: not tuned yet). Also js/engine/cards.js: a side you run in full (`by: 'you'`, mine 5) keeps empty slots empty.
 
 ### [ ] T-297: Card UI — bars, the turn overlay, prep, result card
 Spec: §2.31–§2.33, §9          Goldens: unchanged          Save: no change

@@ -615,6 +615,16 @@ the AI coach fills every slot you leave with the same function. Built and measur
     boost when their own pick matches the card, and their off-plan actions don't count toward its spent tally.
   - **Must hold (T-296)**: no cards < boosts only ≤ coach AI; random plays within ±2 % of no cards; a no-card team never
     beats the coach AI on average.
+  - **Measured** (2026-10-16, `npm run cards`, 100 paired seeds, side 0 vs the coach's hand; point share vs side 0 holding no
+    cards): league — boosts only +2.1 % (+8 % wins), coach +2.3 (+12), random plays +2.1 (+7); tournament — boosts +2.2 (+6),
+    coach +0.8 (−3), random +1.3 (+1). Plays on top of the coach (blanket, league / tournament): Tip & Roll +5.4 / +2.2,
+    Power through +3.3 / +1.5, Pipe Combo +3.5 / +0.6, Spite Spike +3.1 / +0.6, Dig deep +3.1 / −0.1, Hunt +2.6 / +0.2;
+    Speed Dig 0.0 / −1.7 and Commit +0.6 / 0.0 at the bottom. Spent: ~0.9 plays a match (league), ~1.2 (tournament); random
+    hands ~2. Turns ~4 a match. Collapses 0.04 (league) / 5.0 (tournament) per 100 points. Stages (coach vs coach): league
+    Loose 1 · Composed 47 · Focused 51 · Fever 1 %; tournament 5 · 47 · 45 · 2 %. Morale at the end by trait: Spiteful
+    highest (0.6), Showboat lowest (0.3), Glass 0.27 in tournaments. **Fails the must-hold**: the coach is not above boosts
+    only (tournament: below) and plays add little over boosts — the coach's pick and the plays' sizes are the next balance
+    pass (owner: not tuned yet).
 
 ## 3. Menu [built]
 

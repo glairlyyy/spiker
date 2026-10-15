@@ -33,7 +33,7 @@ function cardsInit(m, opts) {
   if (opts.cards === false) return (m.cards = null);
   m.cards = [0, 1].map(i => ({
     by: (opts.cards && opts.cards[i] && opts.cards[i].by) || 'ai', // who runs the side's hand: you (Monster / captain) or the coach
-    mine: (opts.cards && opts.cards[i] && opts.cards[i].mine) || 0, // career: how many cards are yours (1 / 2 / 5)
+    mine: (opts.cards && opts.cards[i] && opts.cards[i].mine) ?? (opts.cards && opts.cards[i] && opts.cards[i].by === 'you' ? 5 : 0), // how many cards are yours (career 1 / 2 / 5; a side you run: 5)
     you: {}, // slot → card id you placed (kept at a turn unless spent)
     slots: Object.fromEntries(SLOTS.map(k => [k, null])),
     net: {}, // card (or combo) id → net points while slotted
@@ -164,9 +164,10 @@ function cardFill(m, i) {
   for (const k of SLOTS) if (!C.you[k] || C.spent.includes(C.you[k])) ((C.slots[k] = null), delete C.you[k]);
   for (const k of SLOTS) if (C.you[k]) C.slots[k] = C.you[k];
   const pool = cardPool(m, i),
-    X = cardCtx(m, i);
+    X = cardCtx(m, i),
+    coach = C.by === 'ai' || C.mine < SLOTS.length; // a side you run in full: only your cards (an empty slot stays empty)
   for (const k of SLOTS) {
-    if (C.slots[k]) continue;
+    if (C.slots[k] || !coach) continue;
     const chosen = cardIds(m, i),
       grps = chosen.map(id => CARDS[id].grp).filter(Boolean);
     let best = null,
