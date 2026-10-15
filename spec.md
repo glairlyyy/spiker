@@ -359,7 +359,7 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     "Block reading them" / "guessing wrong", with n of m), and **Numbers** folded away (attack, hitters, block, serve receive).
     Your side first in a career match. Quieter words: Tiring under 50 % stamina, Spent under 25 %, Fired up from mood 0.75
     (they showed in nearly every match before).
-- §2.26 Team plans and match prep (owner, 2026-10-12) **[built 2026-10-12]**: every side plays one **attack plan** and one
+- §2.26 Team plans and match prep (owner, 2026-10-12) **[built 2026-10-12; the plan tiles removed 2026-10-16, T-298 — the cards (§2.33) set the plans; the engine's plans stay]**: every side plays one **attack plan** and one
   **defence plan** (`PLANS`, js/data/tactics.js; engine js/engine/plans.js). Plans are hidden from the other side, leak
   through the coach panel's tags (§2.25), change only at a timeout, and tilt points — none decides one (§2.0).
 
@@ -459,7 +459,7 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   - Direction (owner, 2026-10-12): finding the weakest passer — by scouting before the match, or by watching stamina drop in it
     — may become the game's main tactic (Hunt the passer, §2.26, is the first piece).
 
-- §2.29 Plan board — role orders (owner, 2026-10-13) **[built 2026-10-13–14, T-277–T-281]**: you set how each player plays their part;
+- §2.29 Plan board — role orders (owner, 2026-10-13) **[built 2026-10-13–14, T-277–T-281; its UI removed 2026-10-16, T-298 — the cards (§2.33) set the orders now; the engine's orders stay]**: you set how each player plays their part;
   the engine plays it out (§5.7: prep, not presses — the strategy made visible). The team plan (§2.26) stays the coach layer;
   the board adds the player layer under it.
   - **Where**: match prep shows the board under the teams (a row of four player cards per side you run, options listed
@@ -619,7 +619,8 @@ the AI coach fills every slot you leave with the same function. Built and measur
     HP / stamina / morale bars and traits, up to three coach-panel patterns, your hand, **Coach picks** `A`, **Coach for the
     match**, **Play on** Space); Tab looks at your hand between turns. Court tags: three thin bars (HP, stamina, morale).
     A spent card: "‹team›: ‹card› spent" over the court. Result card: **Cards** row — each side's plays (turns slotted) and
-    the spent ones. The old plan tiles, the board's player tabs and its Tab stay only for a match without cards.
+    the spent ones. The old plan tiles and the Plan board's pages are removed **[built 2026-10-16, T-298]**; a timeout of
+    yours opens the turn overlay (the huddle).
   - **Must hold (T-296)**: no cards < boosts only ≤ coach AI; random plays within ±2 % of no cards; a no-card team never
     beats the coach AI on average.
   - **Measured** (2026-10-16, `npm run cards`, 100 paired seeds, side 0 vs the coach's hand; point share vs side 0 holding no

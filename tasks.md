@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-298** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-299** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -83,6 +83,14 @@ Result: js/ui/match-cards.js (hand, turn overlay #cturn, Tab look, spent tag, re
 the expected failure, year 2 the redemption. One save bump (RUN_VERSION 19) in T-286 covers the whole block; later tasks add
 fields through RUN_DEFAULTS. Story mode only (Endless stays unbuilt); the main random stream is untouched (seeded rolls).
 
+
+### [x] T-298: Remove the old plan pages
+Spec: §2.26, §2.29, §2.33          Goldens: unchanged          Save: no change
+Goal: the plan tiles in prep, the Plan board (its player tabs and Tab) and the result card's Plans / Orders rows go; the cards
+are the only way to set plans and orders. Engine plans and orders stay (the cards compile into them; tests and the bot use them).
+Files: js/ui/plan-board.js (deleted), js/ui/match-prep.js, js/ui/match-controls.js, js/ui/match-result.js, js/render/tags.js,
+js/render/acts.js, css/match.css, index.html, ARCHITECTURE.md, spec.md
+Result: Done (owner request, spec chat). Prep = teams + hands only; your timeout opens the turn overlay; Tab = a look at your hand. The court tag's ◆ order mark went with the board. UI smoke 13/13, 135 quick tests.
 ### [x] T-286: Two seasons — the year rolls over after the year-1 Cup
 Spec: §4.28 Year 2          Goldens: unchanged          Save: RUN_VERSION 19 (`run.year`; week stamps rebased)
 Goal: In Story mode the year-1 U21 Cup no longer ends the run: the run goes on to year 2 (week 1 again, the calendar and the

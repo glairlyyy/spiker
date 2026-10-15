@@ -124,14 +124,11 @@ function toggleFullscreen() {
 addEventListener('keydown', e => {
   if (!A || e.target.closest('input,select,textarea')) return;
   if (cardsKey(e)) return; // the turn overlay (spec §2.32)
-  // Tab: your hand (spec §2.33; the Plan board without cards); play waits while it is open
-  if (A.m && A.m.cards && e.key === 'Tab' && !A.prep) return (e.preventDefault(), cardsPeek());
-  if (e.key === 'Tab' || (e.key === 'Escape' && A.prep && A.prepS && A.prepS.board)) return (e.preventDefault(), boardToggle());
+  // Tab: a look at your hand (spec §2.33); play waits while it is open
+  if (e.key === 'Tab') return (e.preventDefault(), A.prep ? null : cardsPeek());
   if (e.target.closest('button')) return;
   if (A.prep) {
-    if (e.key === 'Enter')
-      prepStart(); // match prep (spec §2.26): Enter starts / resumes
-    else if (/^[1-3]$/.test(e.key)) prepTab(+e.key - 1); // its tabs
+    if (e.key === 'Enter') prepStart(); // match prep (spec §2.26): Enter starts
     return;
   }
   if (e.key === 'f' || e.key === 'F') toggleFullscreen();

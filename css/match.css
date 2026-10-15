@@ -1476,9 +1476,6 @@ html.reduced .xl {
 .ocard.prep.one {
   max-width: 520px;
 }
-.ocard.prep.wide {
-  max-width: 1080px;
-}
 .prep > * {
   width: 100%;
 }
@@ -1487,31 +1484,6 @@ html.reduced .xl {
   align-items: center;
   gap: 16px;
   flex-wrap: wrap;
-}
-.prep .ptabs {
-  display: flex;
-  gap: 4px;
-  margin-left: auto;
-}
-.prep .ptab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--line);
-  border-bottom: 3px solid var(--tc, var(--line));
-  border-radius: 6px;
-  background: var(--surf);
-  color: var(--mute);
-  font: 600 13px var(--body);
-  cursor: pointer;
-}
-.prep .ptab.on {
-  border-color: var(--line-strong);
-  border-bottom-color: var(--tc, var(--ink));
-  background: var(--surf2);
-  color: var(--ink);
 }
 .prep .pcols {
   display: flex;
@@ -1567,35 +1539,12 @@ html.reduced .xl {
 .prep .pl.fr {
   border-color: var(--line-strong);
 }
-.prep .pplan {
-  margin-bottom: 10px;
-}
-.prep .pplan .seg {
-  flex-wrap: wrap;
-  margin: 4px 0;
-}
 .prep .seg .btn {
   height: 32px;
   padding: 0 10px;
 }
-.prep .ptiles .btn {
-  flex: 1;
-  height: 40px;
-  font-weight: 700;
-}
 .prep .seg.who {
   margin-bottom: 8px;
-}
-.prep .pdesc {
-  margin: 2px 0 0;
-  font-size: 12px;
-  color: var(--mute);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.prep .pdesc b {
-  color: var(--ink);
 }
 .mres .rplans {
   margin: 12px 0;
@@ -1619,124 +1568,6 @@ html.reduced .xl {
   justify-content: flex-end;
   gap: 12px;
   width: 100%;
-}
-/* The Plan board (spec §2.29): the players tab; Tab opens it mid-match */
-.prep .pboard > .lab {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.prep .bcards {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 8px;
-  align-items: start;
-}
-.prep .bcard {
-  border: 1px solid var(--line);
-  border-top: 3px solid var(--tc);
-  border-radius: 6px;
-  padding: 8px;
-  background: var(--surf);
-}
-.prep .bcard.ro {
-  opacity: 0.7;
-}
-.prep .bhead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  margin-bottom: 4px;
-}
-.prep .brow {
-  margin-top: 4px;
-}
-.prep .bslot {
-  display: grid;
-  grid-template-columns: 60px minmax(0, 1fr) auto 12px;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  height: 32px;
-  padding: 0 6px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--surf2);
-  color: var(--ink);
-  font: inherit;
-  font-size: 13px;
-  text-align: left;
-  cursor: pointer;
-}
-.prep .bslot .lab {
-  margin: 0;
-}
-.prep .bslot b {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.prep .bslot.set {
-  border-color: var(--gold);
-}
-.prep .bslot.open {
-  border-color: var(--line-strong);
-}
-.prep .bslot:disabled {
-  cursor: default;
-}
-.prep .bslot i {
-  font-style: normal;
-  color: var(--mute);
-}
-.prep .bslot small,
-.prep .bopt small {
-  font-size: 12px;
-  color: var(--mute);
-  white-space: nowrap;
-}
-.prep .bopts {
-  margin: 2px 0 4px;
-  padding: 2px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--bg);
-}
-.prep .bopt {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-  width: 100%;
-  padding: 4px 6px;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  background: none;
-  color: var(--ink);
-  font: inherit;
-  font-size: 13px;
-  text-align: left;
-  cursor: pointer;
-}
-.prep .bopt:hover:not(:disabled) {
-  border-color: var(--line);
-}
-.prep .bopt.on {
-  background: var(--surf2);
-  font-weight: 700;
-}
-.prep .bopt:disabled {
-  cursor: default;
-}
-.prep .bopt.lock {
-  color: var(--mute);
-}
-.prep .bopt.lock small {
-  white-space: normal;
-  text-align: right;
 }
 /* Tactic cards (spec §2.33): the hand in match prep and the turn overlay (§2.32) */
 .prep .chand {
