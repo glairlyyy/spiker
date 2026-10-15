@@ -36,7 +36,7 @@ repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 **Semi-automatic matches (owner, 2026-10-16, spec §2.31–§2.33): T-294 → T-297, spec chat, in order.** Built and measured,
 not tuned (owner: "no need to fine tune it yet"). T-283 / T-284 wait: the cards replace the board they tune.
 
-### [ ] T-294: HP and per-player morale
+### [x] T-294: HP and per-player morale
 Spec: §2.31          Goldens: update (collapse replaces the knockdown roll; morale traits move fire)          Save: no change
 Goal: every player has HP (rally damage, partial heal, collapse) and morale (today's fire rules per player, traits); team fire
 = their average.
@@ -46,7 +46,7 @@ ARCHITECTURE.md, ARCHITECTURE-details.md
 Do not: draw R() for HP or traits (hashes); change the stages' thresholds.
 Accept: no traits → fire equals the average morale; a passer served at hard 3 rallies running collapses; tests pass.
 QA: none (engine).
-Result:
+Result: Built (js/engine/bars.js, js/data/cards.js). HP: gap 0, span 30, heal 0.2 — collapses (60 sims) league ~0.1 / tournament ~5 per 100 points (the roll gave ~1.4 / ~9; untuned). Morale per player for the whole squad, fire = on-court average (captain ×2); no traits → equal to the old fire (test). Traits by hash (~half). 200 tournament matches: Loose 6 · Composed 49 · Focused 43 · Fever 2 % (Fever in 49 %). Tests: stuff band 7–12.5 % (11.8 now), Commit's test checks stuffed quicks (quick kills now level with Read). Goldens updated.
 
 ### [ ] T-295: Tactic cards and turns
 Spec: §2.32, §2.33          Goldens: update (the coach slots cards in every match)          Save: no change
