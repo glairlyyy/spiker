@@ -1,4 +1,5 @@
-// Slow-motion cooldown (owner, 2026-10-09; display only): slow motion plays for a team at most once every VFX.slowcd.pts
+// Slow motion only on a moment that ends the rally (owner, 2026-10-15: `decisive` — a kill, a kill block, an ace), and then
+// with a cooldown (owner, 2026-10-09; display only): slow motion plays for a team at most once every VFX.slowcd.pts
 // points — per kind, or (shared) one cooldown for all kinds — the rest of the time that moment runs at normal speed. Kinds: staged hype scenes (their build-up,
 // the defence read and the scene beats; skipped like Hype off), the impact frame, the fake set, the scramble, the kill block /
 // block break, the Delayed Spike hang, the near-miss dig. Exempt: slow motion that hides the animation — the far-dig chase
@@ -47,13 +48,37 @@ const SlowMo = {
     return null;
   },
   /**
-   * At a beat's first frame, before it starts (playback step): a beat whose kind is cooling down for its team loses its slow
-   * motion — a staged scene is skipped (as with Hype off), any other beat just plays at normal speed.
+   * Does the moment at the current beat end the rally (owner, 2026-10-15: slow motion only for a kill or a kill block)?
+   * Yes when the rally ends with the ball landing for a point (an `impact` act: kill, tip, kill block, ace) and nobody gets
+   * a touch on it (a bump or dive) from this beat on. A fake set, a block or a scene before a ball that gets dug: no.
+   */
+  decisive() {
+    const B = A.beats || [];
+    let land = false;
+    for (let i = A.bi; i < B.length; i++) {
+      const acts = B[i].acts;
+      if (i > A.bi && acts.some(a => a.k === 'reset')) break;
+      if (acts.some(a => a.k === 'ball' && a.to && (a.to.c === 'bump' || a.to.c === 'dive'))) return false;
+      if (acts.some(a => a.k === 'impact')) land = true;
+      if (acts.some(a => a.k === 'point')) break;
+    }
+    if (land) return true;
+    for (let i = A.bi - 1; i >= 0; i--) {
+      const acts = B[i].acts;
+      if (acts.some(a => a.k === 'impact')) return true; // a scene after the kill (its celebration)
+      if (acts.some(a => a.k === 'reset' || (a.k === 'ball' && a.to && a.to.c))) return false;
+    }
+    return false;
+  },
+  /**
+   * At a beat's first frame, before it starts (playback step): a beat whose slow motion doesn't end the rally, or whose kind
+   * is cooling down for its team, loses its slow motion — a staged scene is skipped (as with Hype off), any other beat just
+   * plays at normal speed.
    */
   beat(b) {
     if (b.acts.some(a => a.k === 'reset')) SlowMo.reset();
     const k = SlowMo.kindOf(b);
-    if (!k || SlowMo.take(k, SlowMo.sideOf())) return;
+    if (!k || (SlowMo.decisive() && SlowMo.take(k, SlowMo.sideOf()))) return;
     if (b.scene) {
       b.dur = 1;
       b.acts = [];

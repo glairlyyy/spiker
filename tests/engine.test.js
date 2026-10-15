@@ -104,6 +104,34 @@ test('render: presentation never draws from the game RNG', () => {
   eq(bad.join(' '), '', 'use FXR (core/rng.js) for presentation randomness');
 });
 
+test('render: slow motion only on a moment that ends the rally (kill, kill block)', () => {
+  const g = load(21),
+    T = g.mkTeams(),
+    ctx = { VFX: { slowcd: { on: 0 } }, A: {} };
+  g.simBalance(T);
+  require('vm').runInNewContext(fs.readFileSync(path.join(__dirname, '..', 'js/render/slowmo.js'), 'utf8') + ';this.SlowMo=SlowMo;', ctx);
+  const touched = (B, i) => B.slice(i).some(b => b.acts.some(a => a.k === 'ball' && a.to && /bump|dive/.test(a.to.c)));
+  let kept = 0,
+    cut = 0;
+  for (let n = 0; n < 6; n++) {
+    const m = g.newMatch(T[n], T[(n + 3) % 8], true);
+    while (!m.over) {
+      const B = (ctx.A.beats = g.playRally(m).beats.map(b => ({ ...b, acts: [...b.acts] })));
+      for (let i = 0; i < B.length; i++) {
+        ctx.A.bi = i;
+        const had = !!(B[i].slow || B[i].hypeSlow || B[i].sceneSlow || B[i].scene),
+          k = ctx.SlowMo.kindOf(B[i]);
+        ctx.SlowMo.beat(B[i]);
+        if (!had || !k) continue;
+        const left = !!(B[i].slow || B[i].hypeSlow || B[i].sceneSlow || (B[i].scene && B[i].dur !== 1));
+        left ? kept++ : cut++;
+        if (left) assert(!touched(B, i), 'a slow moment the other side still touches');
+      }
+    }
+  }
+  assert(kept > 5 && cut > 5, `kept ${kept}, cut ${cut}`);
+});
+
 test('engine: every beat act kind is handled by the renderer', () => {
   const g = load(11);
   // one-shot acts: the keys of the ACTS tables (acts.js, a method each); tweened ones: startBeat's cases (playback.js)

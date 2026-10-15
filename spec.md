@@ -299,6 +299,9 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   scenes (skipped like Hype off), impact frame, fake set, scramble, kill block / block break, Delayed Spike. Exempt: the
   far-dig chase (it hides the animation) and the cut-scenes. Dig / free-ball slow motion ends once the player taking the ball
   is set; a failed dig gets none when the diver can't get there, a short light one (× 0.6) when it just beats them.
+  **Only on a moment that ends the rally [built, owner 2026-10-15]**: slow motion plays only when the ball then lands for the
+  point (a kill, a kill block, an ace) with no dig or bump in between — a fake set, a block, a scene or a scramble before a ball
+  that gets dug plays at normal speed (staged scenes skipped). The far-dig chase stays.
 - §2.22 Dev labs (menu › Dev; dev only) **[built]**: **Cut-scene lab** — a Monster game where every rally stages the chosen
   cut-scene (Ace / WS kill / MB quick), its camera values live in a side panel, ¼ / ½ / 1×, Force rotate, Copy / Download;
   the owner's values are baked in as defaults. **Animation lab** — **Clips** (owner, 2026-10-12): pick an animation (receive soft / firm / hard, knockdown, dive, set, spike, serve, block, point celebration) and the lab finds a real rally with it and plays just that moment on a loop, the camera on the player (¼–1×, Another one); it also keeps the last 8 s of every player; Freeze, scrub, step,
