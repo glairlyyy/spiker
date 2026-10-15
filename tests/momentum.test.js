@@ -91,7 +91,7 @@ test('bars: fire is the on-court average morale (captain ×2); without traits ev
     }
   }
   const m2 = g.newMatch(T[2], T[3], false);
-  for (let i = 0; i < 20 && !m2.over; i++) g.playRally(m2);
+  for (let i = 0; i < 10 && !m2.over; i++) g.playRally(m2); // (not to the end: the lineups go back when it is over)
   const P = m2.t[0].P,
     cap = m2.t[0].cap,
     avg = P.reduce((a, p) => a + m2.mor[p.id] * (p === cap ? 2 : 1), 0) / (P.length + (P.includes(cap) ? 1 : 0));
@@ -132,5 +132,5 @@ test('bars: HP — hard balls wear a passer down across rallies and empty HP col
   g.RNG.next = nx;
   eq(draws, 0, 'no draws');
   const q = m.t[1].P.find(x => x !== p && x.role !== 'S');
-  assert(!g.knock(m, q, 20, 0, 2) && g.hpOf(m, q) === 1, 'a soft ball takes nothing');
+  assert(!g.knock(m, q, 20, 0, 2) && g.hpOf(m, q) > 0.85, `a soft ball takes little (hp ${g.hpOf(m, q)})`);
 });

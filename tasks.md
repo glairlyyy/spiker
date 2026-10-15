@@ -84,7 +84,7 @@ the expected failure, year 2 the redemption. One save bump (RUN_VERSION 19) in T
 fields through RUN_DEFAULTS. Story mode only (Endless stays unbuilt); the main random stream is untouched (seeded rolls).
 
 
-### [ ] T-299: Balance pass — reading pays, collapses common
+### [x] T-299: Balance pass — reading pays, collapses common
 Spec: §2.31 (collapse rate), §2.33 (balance pass)          Goldens: update          Save: no change
 Goal: a fitting play wins +10–20 % more of the rallies it acts in, a countered one −10–20 %, a misfit ≈ −5 %; plays burn
 only when countered / misfit; boosts +3; the coach slots what fits; ~30 % of kept-up receives / digs collapse, by stat gap.
@@ -92,7 +92,7 @@ Files: js/data/cards.js, js/engine/cards.js, js/engine/bars.js, js/engine/match.
 tests/cards.test.js, tests/*.test.js (statistical bands the collapse rate moves), tests/golden.json, spec.md (measured)
 Accept: `npm run cards` prints per play the acting-rally win rate fit / misfit / countered vs the same rallies without it;
 fit +10–20, countered −10–20; collapse share ~30 % (league and tournament); coach ≥ boosts-only.
-Result:
+Result: Built; numbers in spec §2.33 (Measured) and §2.31 (collapse). Edges per play (CARD_EDGE, × EDGE.k 2), fit reads (CARD_FIT), states per rally (cardEdges), plays burn only off the read, coach scores by the read and swaps a play seen countered (2+ rallies). Coach hand +12 / +17 % points over no cards (league / tournament); fitting plays +9–18 on the rallies they act in, countered −9 to −27. Weak spots: Tip's and the serve techniques' counters barely bite; random hands +8–10 (half fit) — the old ±2 must-hold no longer applies. Collapse: HP by r = power / Defense (16 / 24 % of hits). Also tests/reads.js (`npm run reads`), chips show Fits now; legacy-system tests run cardless (elements, lane-read, laning, middle orders; Commit's pin-cost assertion dropped). Goldens updated.
 
 ### [x] T-298: Remove the old plan pages
 Spec: §2.26, §2.29, §2.33          Goldens: unchanged          Save: no change

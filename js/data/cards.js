@@ -2,11 +2,12 @@
 // engine is js/engine/bars.js and js/engine/cards.js. First numbers, measured (npm run cards), not tuned yet.
 
 /**
- * HP (spec §2.31): every kept-up serve receive / dig takes damage = (impact − gap) / span × the ball's weight (impact = the
- * knockdown's: ball power − Defense as played × KNOCK.defK; weight from KNOCK.from → KNOCK.full). At 0: collapse (the
- * knockdown). After every rally court players heal `heal`, the bench all of it. Low HP drains stamina × 1 + drain × (1 − hp).
+ * HP (spec §2.31): every kept-up serve receive / dig takes `base` × (r / r0)^exp (r = ball power / the receiver's Defense as
+ * played; r0 = a typical ball in every league: power ≈ 0.72 × Defense), at most `max`. At 0: collapse (the knockdown). After
+ * every rally court players heal `heal` (a collapsed one back to at least `up`), the bench all of it. Low HP drains stamina
+ * × 1 + drain × (1 − hp). Calibrated (owner, 2026-10-16): an average player goes down on the 2nd or 3rd hit of a rally.
  */
-const HP = { gap: 0, span: 30, heal: 0.2, drain: 0.5 };
+const HP = { base: 0.45, r0: 0.72, exp: 1.55, max: 1.5, heal: 0.35, up: 0.5, drain: 0.5 };
 
 /**
  * Morale traits (spec §2.31), by hash of the player (`share` of all players each; the rest have none). up: their own error /
@@ -39,10 +40,10 @@ const slotZone = k => (k === 'flex' ? 'flex' : k.slice(0, 3));
  */
 const CARDS = {
   // boosts
-  pow: { name: 'Power Up', zone: 'atk', kind: 'boost', src: 'base', buff: { atk: 5 }, desc: 'Power +5 %' },
-  jmp: { name: 'High Point', zone: 'atk', kind: 'boost', src: 'base', buff: { jump: 5 }, desc: 'Jump +5 %' },
-  grd: { name: 'Guard Up', zone: 'def', kind: 'boost', src: 'base', buff: { def: 5 }, desc: 'Defense +5 %' },
-  ftw: { name: 'Quick Step', zone: 'def', kind: 'boost', src: 'base', buff: { spd: 5 }, desc: 'Speed +5 %' },
+  pow: { name: 'Power Up', zone: 'atk', kind: 'boost', src: 'base', buff: { atk: 3 }, desc: 'Power +3 %' },
+  jmp: { name: 'High Point', zone: 'atk', kind: 'boost', src: 'base', buff: { jump: 3 }, desc: 'Jump +3 %' },
+  grd: { name: 'Guard Up', zone: 'def', kind: 'boost', src: 'base', buff: { def: 3 }, desc: 'Defense +3 %' },
+  ftw: { name: 'Quick Step', zone: 'def', kind: 'boost', src: 'base', buff: { spd: 3 }, desc: 'Speed +3 %' },
   // the coach's playbook
   hunt: {
     name: 'Hunt the Passer',
@@ -318,4 +319,128 @@ const COMBOS = {
   decoy: { name: 'Decoy', cards: ['quick', ['freak', 'slide']], buff: { atk: 6 } }
 };
 /** The coach's pick (no draws): base score of a boost / a play; situational scores; a dull coach (IQ < `dull`) plays only its style's plans. */
-const CARD_AI = { boost: 1, play: 0.8, tech: 2.2, trait: 1.8, op: 3.5, style: 1.5, read: 3, combo: 1.2, worn: -2, dull: 0.5 };
+const CARD_AI = {
+  boost: 1,
+  play: 0.8,
+  tech: 1,
+  trait: 1,
+  op: 3.5,
+  style: 0.5,
+  read: 3,
+  misfit: -2,
+  countered: -5,
+  seenCtr: 2,
+  combo: 1.2,
+  worn: -2,
+  dull: 0.5
+};
+
+/**
+ * Reading pays (spec §2.33 balance pass, T-299): each play's situational edge (a technique's edge acts only on its holders —
+ * fewer players, so a bigger number — unless `team`: a setter's play or a cut shot lifts the whole side while a holder is on
+ * court). fit — the read that makes it fit (CARD_FIT in
+ * js/engine/cards.js); ctr — the other side's cards that counter it; e — [who ('us' | 'them'), stat, %]: applied in full
+ * when it fits, × −1 when countered (a counter slotted on the other side), × `mis` when neither. Edges stack with the buffs.
+ */
+const CARD_EDGE = {
+  hunt: {
+    fit: 'weakPass',
+    ctr: ['cover'],
+    e: [
+      ['us', 'serve', 30],
+      ['them', 'def', -10]
+    ]
+  },
+  target: {
+    fit: 'weakPass',
+    ctr: ['cover'],
+    e: [
+      ['us', 'serve', 30],
+      ['them', 'def', -10]
+    ]
+  },
+  killer: {
+    fit: 'weakPass',
+    ctr: ['cover'],
+    e: [
+      ['us', 'serve', 30],
+      ['them', 'def', -10]
+    ]
+  },
+  drive: {
+    fit: 'weakPass',
+    ctr: ['cover'],
+    e: [
+      ['us', 'serve', 30],
+      ['them', 'def', -10]
+    ]
+  },
+  power: {
+    fit: 'weakBlock',
+    ctr: ['deep'],
+    e: [
+      ['us', 'atk', 20],
+      ['them', 'def', -10]
+    ]
+  },
+  beat: {
+    fit: 'strongBlock',
+    ctr: ['sdig'],
+    e: [
+      ['us', 'atk', 25],
+      ['them', 'jump', -10]
+    ]
+  },
+  cutshot: { fit: 'strongBlock', ctr: ['sdig'], team: 1, e: [['them', 'jump', -25]] },
+  delay: { fit: 'strongBlock', ctr: ['sdig'], e: [['us', 'atk', 50]] },
+  sync: { fit: 'strongBlock', ctr: [], team: 1, e: [['us', 'atk', 20]] },
+  pipecombo: { fit: 'strongBlock', ctr: [], team: 1, e: [['us', 'atk', 20]] },
+  lefty: {
+    fit: 'strongBlock',
+    ctr: [],
+    team: 1,
+    e: [
+      ['us', 'atk', 15],
+      ['them', 'jump', -10]
+    ]
+  },
+  tip: { fit: 'tiredFloor', ctr: ['sdig'], e: [['them', 'spd', -25]] },
+  quick: { fit: 'lowMiddle', ctr: ['commit', 'readblk'], e: [['us', 'atk', 25]] },
+  freak: { fit: 'lowMiddle', ctr: ['commit', 'readblk'], e: [['us', 'atk', 50]] },
+  slide: { fit: 'lowMiddle', ctr: ['commit', 'readblk'], e: [['us', 'atk', 50]] },
+  wall: {
+    fit: 'theirAce',
+    ctr: ['beat'],
+    e: [
+      ['us', 'jump', 30],
+      ['them', 'atk', -10]
+    ]
+  },
+  commit: {
+    fit: 'theirQuicks',
+    ctr: ['power'],
+    e: [
+      ['us', 'jump', 30],
+      ['them', 'atk', -10]
+    ]
+  },
+  readblk: { fit: 'theirQuicks', ctr: [], e: [['us', 'jump', 50]] },
+  sdig: {
+    fit: 'theirSoft',
+    ctr: ['power'],
+    e: [
+      ['us', 'spd', 25],
+      ['us', 'def', 15]
+    ]
+  },
+  deep: { fit: 'theirPower', ctr: ['tip'], e: [['us', 'def', 30]] },
+  softblk: { fit: 'theirPower', ctr: [], e: [['us', 'def', 50]] },
+  cover: { fit: 'ourWeakPass', ctr: ['killer', 'drive'], e: [['us', 'def', 20]] },
+  spite: { fit: 'behind', ctr: [], e: [['us', 'atk', 15]] },
+  hold: { fit: 'behind', ctr: [], e: [['us', 'def', 15]] },
+  iron: { fit: 'always', ctr: [], e: [['us', 'def', 5]] },
+  surge: { fit: 'always', ctr: [], e: [] },
+  rush: { fit: 'always', ctr: [], e: [] }
+};
+/** The edge's factor: fit × 1, countered × `ctr`, misfit × `mis`; all × `k` (the balance knob). */
+const EDGE = { ctr: -1.5, mis: -0.6, k: 2 };

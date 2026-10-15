@@ -50,6 +50,7 @@ function rallyStart(m) {
   m.defBeats = [];
   m.att0 = m.att ? [m.att[0].n, m.att[1].n] : [0, 0]; // the cards' spent tally (spec §2.33): who attacked this rally
   m.srv0 = m.serve;
+  cardEdges(m); // reading pays (spec §2.33): each play fits, misfits or is countered this rally
 }
 /** Choose the serve up front and walk everyone to their spots; the reset and the server's routine beats. */
 function serveWalk(c) {

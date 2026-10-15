@@ -1720,3 +1720,9 @@ html.reduced .xl {
 .prep .hbar {
   display: block;
 }
+.prep .ccard.fits {
+  border-left-color: var(--good);
+}
+.prep .ccard.fits i {
+  color: var(--good);
+}

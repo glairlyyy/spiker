@@ -27,17 +27,22 @@ const mtr = (m, p) => (m && m.noTraits ? null : mtraitOf(p));
 
 /** HP 0–1 (1 before the first hit). */
 const hpOf = (m, p) => (m && m.hp && m.hp[p.id] != null ? m.hp[p.id] : 1);
-/** A hard ball kept up: HP damage from its impact (spec §2.31). Returns true when the player collapses (HP 0). */
+/**
+ * A ball kept up (serve receive or dig): HP damage by how hard it is for this receiver — r = ball power / Defense as played;
+ * HP.base at a typical ball (r = HP.r0), × (r / r0)^HP.exp (spec §2.31: an average player goes down on the 2nd or 3rd hit
+ * of a rally, on the 1st when the gap is big). Returns true when the player collapses (HP 0). No randoms.
+ */
 function hpHit(m, p, pow) {
-  const imp = pow - effD(p) * KNOCK.defK,
-    dmg = clamp((imp - HP.gap) / HP.span, 0, 1) * clamp((pow - KNOCK.from) / (KNOCK.full - KNOCK.from), 0, 1);
-  if (dmg <= 0) return false;
+  const r = pow / Math.max(1, effD(p)),
+    dmg = Math.min(HP.max, HP.base * Math.pow(r / HP.r0, HP.exp));
+  if (m.hpLog) ((m.hpLog.n += 1), (m.hpLog.dmg += dmg));
   m.hp[p.id] = Math.max(0, hpOf(m, p) - dmg);
   return m.hp[p.id] <= 0;
 }
 /** Between rallies: court players heal HP.heal, the bench all of it. */
 function hpHeal(m) {
-  for (const t of m.t) for (const p of squadOf(t)) m.hp[p.id] = t.P.includes(p) ? Math.min(1, hpOf(m, p) + HP.heal) : 1;
+  for (const t of m.t)
+    for (const p of squadOf(t)) m.hp[p.id] = t.P.includes(p) ? Math.min(1, Math.max(hpOf(m, p) + HP.heal, m.down[p.id] ? HP.up : 0)) : 1;
 }
 
 /** A player's morale (−1..1). */

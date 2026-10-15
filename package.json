@@ -13,7 +13,8 @@
     "test:ui": "node tests/ui-smoke.js",
     "balance": "node tests/balance.js",
     "bot": "node tests/bot.js",
-    "cards": "node tests/cards.js"
+    "cards": "node tests/cards.js",
+    "reads": "node tests/reads.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

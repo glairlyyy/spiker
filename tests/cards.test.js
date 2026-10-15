@@ -44,6 +44,7 @@ test('cards: a play at −3 is spent for the match — out of its slot, never sl
   g.playRally(m);
   const before = m.mom[0];
   for (let i = 0; i < 3; i++) {
+    m.cards[0].st.hunt = 'mis'; // (spec §2.33: only misfit / countered rallies burn a play)
     m.srv0 = 0;
     m.srvP0 = m.t[0].P[0];
     g.cardTally(m, 1);

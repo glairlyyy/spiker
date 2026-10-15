@@ -21,11 +21,14 @@ function cardForce(p, id) {
 function cardBuff(p, k) {
   if (!CM || !CM.cards) return 1;
   const i = CM.t[0] === p.team ? 0 : 1,
-    L = CM.cards[i].bk[k];
-  if (!L) return 1;
+    C = CM.cards[i],
+    L = C.bk[k],
+    E = C.ek && C.ek[k];
+  if (!L && !E) return 1;
   let v = 0;
-  for (const b of L) if ((!b.need || hasTech(p, b.need)) && (!b.when || CM.pts[i] < CM.pts[1 - i])) v += b.v;
-  return 1 + v / 100;
+  if (L) for (const b of L) if ((!b.need || hasTech(p, b.need)) && (!b.when || CM.pts[i] < CM.pts[1 - i])) v += b.v;
+  if (E) for (const b of E) if (!b.need || hasTech(p, b.need)) v += b.v; // reading pays (spec §2.33): this rally's edges
+  return Math.max(0.3, 1 + v / 100);
 }
 
 /** Start a match's cards (newMatch): opts.cards === false → none; opts.cards[i] = { by: 'you' | 'ai', pick: { slot: id } }. */
@@ -40,6 +43,9 @@ function cardsInit(m, opts) {
     worn: [], // ids at TURN.worn or below
     spent: [], // ids burnt for the match
     played: {}, // id → turns it was slotted (the result card)
+    stat: {}, // id → { fit | mis | ctr: [rallies it acted in, won] } (the balance check; the coach reads ctr)
+    st: {}, // id → this rally's state (cardEdges)
+    ek: {}, // stat → this rally's edges [{ v, need }] (cardBuff)
     force: [],
     buff: [],
     bk: {},
@@ -119,16 +125,14 @@ function cardScore(m, i, id, chosen, X = cardCtx(m, i)) {
   if (X.dull && !styled) return -9;
   let s = c.src === 'tech' ? A.tech : c.src === 'trait' ? A.trait : c.src === 'op' ? A.op : A.play;
   if (styled) s += A.style;
-  const { theirs, ours, oa, weakGap, aceGap, T } = X;
-  if (id === 'hunt' && (weakGap >= PLAN_AI.passGap || ours.some(g => g.kind === 'serve'))) s += A.read;
-  if (id === 'target' && weakGap >= PLAN_AI.passGap) s += A.read / 2;
-  if (id === 'wall' && (aceGap >= PLAN_AI.aceGap || theirs.some(g => g.kind === 'lane'))) s += A.read;
-  if (id === 'cover' && theirs.some(g => g.kind === 'serve')) s += A.read;
-  if (id === 'deep' && ours.some(g => g.kind === 'fooled')) s += A.read;
-  if (id === 'power' && theirs.some(g => g.kind === 'read')) s += A.read;
-  if (id === 'commit' && oa.n >= 8 && oa.q / oa.n > 0.35) s += A.read;
+  const { T } = X,
+    E = CARD_EDGE[id];
+  // what the coach sees (spec §2.33): does the play fit now (the same reads as yours); has it been countered here (it can't
+  // see their hand, only what happened when this card was slotted)
+  if (E) s += (CARD_FIT[E.fit] || CARD_FIT.always)(m, i) ? A.read : A.misfit;
+  const S = C && C.stat[id];
+  if (S && S.ctr[0] >= A.seenCtr) s += A.countered;
   if (c.need) s *= Math.min(1.6, T.P.filter(p => hasTech(p, c.need)).length * 0.5 + 0.5); // more holders on court, more worth
-  if (c.when === 'behind' && m.pts[i] + 2 <= m.pts[1 - i]) s += 1;
   if (C && C.worn.includes(id)) s += A.worn;
   if (comboOf([...chosen, id], id)) s += A.combo;
   return s;
@@ -244,6 +248,97 @@ function cardApply(m, i) {
   C.prev = ids;
 }
 
+/** Averages for the reads (no draws): hitters' power in play, blockers' block, passers' receive, the side's Defense. */
+const avgOf = (L, f) => (L.length ? L.reduce((a, q) => a + f(q), 0) / L.length : 0);
+const hitPow = T =>
+  avgOf(
+    T.P.filter(q => q.role !== 'S'),
+    effP
+  );
+const blkOf = T =>
+  avgOf(
+    T.P.filter(q => q.role !== 'S'),
+    q => effD(q) * 0.55 + q.jump * 0.45
+  );
+const defOf2 = T => avgOf(T.P, effD);
+/** A side's passers are breaking: a clear weakest passer, or one worn down (HP / stamina). */
+function passWeak(m, T) {
+  const pas = passersOf(T),
+    q = pas.map(p => effD(p) + p.speed * 0.3),
+    gap = q.length ? avgOf(q, x => x) - Math.min(...q) : 0;
+  return gap >= PLAN_AI.passGap || pas.some(p => hpOf(m, p) < 0.6 || (m.sta[p.id] ?? 1) < 0.5);
+}
+/**
+ * The reads that make a play fit (spec §2.33 balance pass): side i against side o, from what the coach panel and the bars
+ * show. No draws.
+ */
+const CARD_FIT = {
+  always: () => true,
+  behind: (m, i) => m.pts[i] < m.pts[1 - i],
+  weakPass: (m, i) => passWeak(m, m.t[1 - i]),
+  ourWeakPass: (m, i) => passWeak(m, m.t[i]),
+  weakBlock: (m, i) => hitPow(m.t[i]) >= blkOf(m.t[1 - i]) + 3,
+  strongBlock: (m, i) => blkOf(m.t[1 - i]) >= hitPow(m.t[i]) - 3,
+  tiredFloor: (m, i) => {
+    const P = m.t[1 - i].P;
+    return avgOf(P, p => m.sta[p.id] ?? 1) < 0.7 || avgOf(P, p => hpOf(m, p)) < 0.7;
+  },
+  lowMiddle: (m, i) => {
+    const us = m.t[i].P.filter(p => p.role === 'MB'),
+      them = m.t[1 - i].P.filter(p => p.role === 'MB');
+    return !!us.length && avgOf(us, effP) >= (them.length ? avgOf(them, q => effD(q) * 0.55 + q.jump * 0.45) : 0);
+  },
+  theirAce: (m, i) => {
+    const hit = m.t[1 - i].P.filter(q => q.role !== 'S').map(q => q.power * 0.6 + q.jump * 0.4),
+      ace = Math.max(0, ...hit);
+    return hit.length > 1 && ace - (hit.reduce((a, v) => a + v, 0) - ace) / (hit.length - 1) >= PLAN_AI.aceGap;
+  },
+  theirQuicks: (m, i) => {
+    const a = m.att[1 - i];
+    if (a.n >= 6) return a.q / a.n >= 0.3;
+    const T = m.t[1 - i];
+    return (
+      avgOf(
+        T.P.filter(p => p.role === 'MB'),
+        effP
+      ) >=
+      avgOf(
+        T.P.filter(p => p.role === 'WS'),
+        effP
+      )
+    );
+  },
+  theirSoft: (m, i) => hitPow(m.t[1 - i]) <= defOf2(m.t[i]) - 3,
+  theirPower: (m, i) => hitPow(m.t[1 - i]) >= defOf2(m.t[i]) + 3
+};
+/** A slotted play's state this rally: 'ctr' (the other side holds its counter), 'fit', or 'mis'. */
+function cardState(m, i, id) {
+  const E = CARD_EDGE[id];
+  if (!E) return 'fit';
+  const theirs = cardIds(m, 1 - i);
+  if (E.ctr.some(x => theirs.includes(x))) return 'ctr';
+  return (CARD_FIT[E.fit] || CARD_FIT.always)(m, i) ? 'fit' : 'mis';
+}
+/** Before every serve (rallyStart): each side's plays' states and their edges (C.st, C.ek) for cardBuff. */
+function cardEdges(m) {
+  if (!m.cards) return;
+  for (const i of [0, 1]) ((m.cards[i].st = {}), (m.cards[i].ek = {}));
+  for (const i of [0, 1])
+    for (const id of cardIds(m, i)) {
+      const c = CARDS[id],
+        E = CARD_EDGE[id];
+      if (c.kind !== 'play' || !E) continue;
+      if (c.need && !m.t[i].P.some(p => hasTech(p, c.need))) continue; // (its holders all on the bench: nothing)
+      const st = cardState(m, i, id),
+        f = (st === 'fit' ? 1 : st === 'ctr' ? EDGE.ctr : EDGE.mis) * EDGE.k;
+      m.cards[i].st[id] = st;
+      for (const [who, k, v] of E.e) {
+        const C = m.cards[who === 'us' ? i : 1 - i];
+        (C.ek[k] || (C.ek[k] = [])).push({ v: v * f, need: who === 'us' && !E.team ? c.need : null });
+      }
+    }
+}
+
 /**
  * After a rally won by w (end(), before the serve moves on): every slotted play on each side that acted in it counts ±1
  * (a combo shares one count); Worn at TURN.worn; Spent at TURN.spent → out for the match, morale down, a turn at once.
@@ -272,9 +367,14 @@ function cardTally(m, w) {
       if (c.tally === 'serve' && server && mtr(m, server) === 'stubborn') acted = false;
       if (c.tally === 'attack' && hitter && m.t[i].P.includes(hitter) && mtr(m, hitter) === 'stubborn') acted = false;
       if (!acted) continue;
+      const st = (C.st && C.st[id]) || 'fit',
+        S = C.stat[id] || (C.stat[id] = { fit: [0, 0], mis: [0, 0], ctr: [0, 0] }); // [rallies, won] by state
+      S[st][0]++;
+      if (w === i) S[st][1]++;
       const key = comboOf(ids, id) || id;
       if (seen.has(key)) continue;
       seen.add(key);
+      if (st === 'fit') continue; // (spec §2.33: a fitting play never burns — only countered / misfit rallies count)
       C.net[key] = (C.net[key] || 0) + (w === i ? 1 : -1);
       const n = C.net[key],
         burn = key in COMBOS ? ids.filter(x => comboOf(ids, x) === key) : [id];

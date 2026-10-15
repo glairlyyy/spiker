@@ -569,6 +569,10 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Collapse rate (owner, 2026-10-16) [open — T-299]**: collapses are common in every league — about **30 % of kept-up
     receives and digs** on average, far more when the ball's power is well above the receiver's Defense, rare when Defense is
     well above it. Every collapse is the blown-away knockdown (§2.28); the firm / hard receive tiers are display only.
+    **[built 2026-10-16, T-299]** (owner: an average player goes down on the 2nd or 3rd hit of a rally, the 1st when the gap
+    is real): damage `HP.base` 0.45 × (r / 0.72)^1.55, r = ball power / Defense as played (0.72 = a typical ball in every
+    league), at most 1.5; heal 0.35 a rally, a collapsed player back to at least 0.5. Measured (60 sims): 16 % of kept-up
+    receives / digs collapse in the league (5 a match), 24 % in tournaments (7 a match); kill rate unchanged (34–36 %).
   - **Stamina**: as §2.0b / §2.30 (T-282), plus the low-HP drain.
   - **Morale** (`m.mor[id]`, −1..1) replaces team fire: each player's morale moves by today's fire rules (§2.14
     pointMomentum: won / lost point, streak, big points, the heat of a lost point, marathons, hard kills, the zone breaker,
@@ -624,7 +628,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     A spent card: "‹team›: ‹card› spent" over the court. Result card: **Cards** row — each side's plays (turns slotted) and
     the spent ones. The old plan tiles and the Plan board's pages are removed **[built 2026-10-16, T-298]**; a timeout of
     yours opens the turn overlay (the huddle).
-  - **Balance pass (owner, 2026-10-16) [open — T-299]**: reading must pay. Measured on the rallies a play acts in (its tally):
+  - **Balance pass (owner, 2026-10-16) [built 2026-10-16, T-299]**: reading must pay. Measured on the rallies a play acts in (its tally):
     - **Fit** — the situation it answers is there (its `fit` read, from what the coach panel and the bars show: a weak or worn
       passer for the serve plays, a strong block for Beat / the techniques, a weak block for Power, their quick share for
       Commit, their ace for Wall, a soft floor / tired diggers for Tip …): its side wins **+10–20 %** more of those rallies.
@@ -636,6 +640,18 @@ the AI coach fills every slot you leave with the same function. Built and measur
       rallies, −3 → spent).
     - Boosts +3 % (were +5). The coach slots what fits (the same reads), swaps out a countered play, never a fitting one.
     - Over a match: one well-read play ≈ +4–8 % of points, two or three ≈ +10 % or more (§2.30's +15–20 % with the bot).
+    - **How** (`CARD_EDGE`, `CARD_FIT`, `EDGE` in js/data/cards.js · js/engine/cards.js `cardEdges` before every serve): each play
+      has a read (`fit`), its counters (`ctr`) and an edge — stat % for its side (`us`) or off the other side (`them`), × 2
+      (`EDGE.k`), full when it fits, × −1.5 countered, × −0.6 misfit; a technique's edge only on its holders (a setter's play
+      and Cut Shot: the whole side). The chip shows **Fits now** when its read holds (your read, never their hand).
+    - **Measured** (`npm run reads`, 80 paired seeds, the rallies it acts in vs the same read in a cardless match; tournament /
+      league): Hunt +10.5 / +12.7 fit, −14.5 / −12.0 countered; Power +11.5 / +17.8, −8.7 / −9.2; Beat +14.0 / +9.3, −18.1 /
+      −18.2; Wall +12.8 / +10.8, −14.8 / −20.9; Commit +11.9 / +17.3, −14.9 / −10.9; Speed Dig +10.1 / +15.4, −21.5 / −26.9;
+      Dig deep +11.9 / +10.9, −12.0 / −14.7; Quick +9.3 / +17.2; Tip +10.9 / +11.6 (its counter barely bites: +3.5 / −3.6);
+      Killer +27, Drive +22, Target +16 (their counter Cover barely bites); setter plays and Cut Shot +8–13; misfits −2 to
+      −11. Over matches (`npm run cards`, 100 pairs, vs side 0 holding no cards): coach hand +12.1 % points (+36 % wins)
+      league, +16.9 % (+41 %) tournament; random plays +7.8 / +9.9 (half of them fit); boosts only 0 / +2.3. Plays spent
+      ~0.3 a match (coach), ~1.1 (random).
   - **Must hold (T-296)**: no cards < boosts only ≤ coach AI; random plays within ±2 % of no cards; a no-card team never
     beats the coach AI on average.
   - **Measured** (2026-10-16, `npm run cards`, 100 paired seeds, side 0 vs the coach's hand; point share vs side 0 holding no

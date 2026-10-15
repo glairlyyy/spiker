@@ -196,7 +196,7 @@ test('engine: elements — rarity, every element fires, counters, captain buff',
     n = 0;
   for (let i = 0; i < 70; i++) {
     const [a, b] = g.mkMonsterTeams(),
-      m = g.simMatch(a, b);
+      m = g.simMatch(a, b, { cards: false }); // (the element spike's own worth, without the cards' edges)
     for (const L of m.elLog) {
       fired[L.el] = (fired[L.el] || 0) + 1;
       n++;
@@ -313,7 +313,7 @@ test.slow('engine: lane-read block — stuff rate and defence settings', () => {
     const g = load(seed),
       T = g.mkTeams();
     for (let i = 0; i < 50; i++) {
-      const m = g.simMatch(T[i % 8], T[(i * 3 + 1) % 8]);
+      const m = g.simMatch(T[i % 8], T[(i * 3 + 1) % 8], { cards: false }); // (the block itself, no card edges)
       for (const a of m.att) {
         n += a.n;
         kills += a.k;
@@ -332,7 +332,7 @@ test.slow('engine: lane-read block — stuff rate and defence settings', () => {
     run = (tac, dset) => {
       const t = { q: 0, qs: 0, pin: 0, pins: 0 };
       for (let i = 0; i < 400; i++) {
-        const a = g.simMatch(T[i % 8], T[(i * 3 + 1) % 8], { tac: [tac, 'auto'], dset: ['read', dset] }).att[0];
+        const a = g.simMatch(T[i % 8], T[(i * 3 + 1) % 8], { tac: [tac, 'auto'], dset: ['read', dset], cards: false }).att[0];
         t.q += a.q;
         t.qs += a.qs;
         t.pin += a.pin;
@@ -362,7 +362,7 @@ test.slow('engine: laning — the block reads a channel, a right read stops more
     okK = 0,
     wk = 0;
   for (let i = 0; i < 120; i++) {
-    const m = g.simMatch(T[i % 8], T[(i * 5 + 2) % 8]);
+    const m = g.simMatch(T[i % 8], T[(i * 5 + 2) % 8], { cards: false });
     for (const a of m.att) {
       rd += a.rd;
       ok += a.rdOk;
@@ -669,7 +669,7 @@ test.slow('engine: middle orders — Commit stuffs more quicks and leaves the pi
     const r = { q: 0, qs: 0, qk: 0, pin: 0, pink: 0, blk: 0, dig: 0 };
     for (let i = 0; i < 200; i++) {
       g.RNG.seed(900 + i); // paired: the same draws for each order, so the order's own effect shows
-      const m = g.newMatch(T[i % 8], T[(i * 3 + 1) % 8], false, { dset: ['read', null] });
+      const m = g.newMatch(T[i % 8], T[(i * 3 + 1) % 8], false, { dset: ['read', null], cards: false });
       const mbs = g.squadOf(m.t[0]).filter(q => q.role === 'MB');
       if (o) for (const q of mbs) g.ordSet(m, q, 'blk', o);
       while (!m.over) g.playRally(m);
@@ -691,7 +691,7 @@ test.slow('engine: middle orders — Commit stuffs more quicks and leaves the pi
     back = run('back');
   // (T-294: Commit still stuffs more quicks, but their quick kills now end level with Read — see spec §2.33 / T-296)
   assert(com.qs / com.q > read.qs / read.q, `Commit: stuffs more quicks ${com.qs}/${com.q} vs Read ${read.qs}/${read.q}`);
-  assert(com.pink / com.pin > read.pink / read.pin, `Commit: pins score more ${com.pink}/${com.pin} vs ${read.pink}/${read.pin}`);
+  // (T-299: with common collapses the old order's pin cost evened out — Commit now pays or costs through its card's edge, §2.33)
   eq(back.blk, 0, 'Stay back: the middle never blocks');
   assert(back.dig > read.dig * 1.3, `Stay back digs more: ${back.dig} vs ${read.dig}`);
 });
