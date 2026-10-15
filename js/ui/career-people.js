@@ -74,9 +74,9 @@ function personCard(run, id) {
   // want / traits only once one is known; the rumour of their season is the name's hover (personDetail) — §10.8
   return `<div class="pcard small">
     ${kw || kt.some(Boolean) ? `<div>Wants ${want} · Traits ${traits}</div>` : ''}
-    <div class="mute">${p.gone ? esc(`${p.gone.team} · ${People.fateText(me)}`) : `${esc(t ? t.name : 'No club')}${me.status !== 'active' ? ` · ${esc(People.fateText(me))}` : ''}${me.inj > 0 ? ` · injured ${me.inj}w` : ''}`}</div>
+    <div class="mute">${p.gone ? esc(`${p.gone.team} · ${People.fateText(run, me)}`) : `${esc(t ? t.name : 'No club')}${me.status !== 'active' ? ` · ${esc(People.fateText(run, me))}` : ''}${me.inj > 0 ? ` · injured ${me.inj}w` : ''}`}</div>
     ${p.gone ? '' : sidesLine(run, id)}
-    ${mem.length ? `<ul class="pmem">${mem.map(m => `<li><b>W${m.w}</b> ${esc(m.text)}</li>`).join('')}</ul>` : ''}
+    ${mem.length ? `<ul class="pmem">${mem.map(m => `<li><b>${Season.at(run, m.w)}</b> ${esc(m.text)}</li>`).join('')}</ul>` : ''}
   </div>`;
 }
 /** Open the People sheet on this person. */
@@ -135,7 +135,7 @@ function sheetPeople(run) {
         m = marks(p),
         b = mateIds.has(p.id) ? Run.you(run).bond[p.id] || 0 : 0;
       return `<button class="plist ${id === sel ? 'on' : ''}" data-flip="p:${esc(id)}" onclick="CW.person='${esc(id)}';renderCareer()">${p.gone ? '<span></span>' : faceSVG(p, 0, 28)}<span class="nm"><span class="n1"><b>${stag(p)}${esc(p.name)}</b>${m ? `<span class="pmk">${m}</span>` : ''}</span><small class="mute">${p.role}${
-        p.gone ? ` · ${esc(People.fateText(run.people[id]))}` : ` · ${personMet(run, p) ? 'OVR ' + ovr(p) : 'unrated'}`
+        p.gone ? ` · ${esc(People.fateText(run, run.people[id]))}` : ` · ${personMet(run, p) ? 'OVR ' + ovr(p) : 'unrated'}`
       }</small></span>${mateIds.has(p.id) ? `<i class="bbar sm ${b >= 80 ? 'f' : b >= 60 ? 'c' : ''}" ${tip('Bond ' + b)}><i style="--w:${b}%"></i></i>` : '<span></span>'}${tag === 'neutral' ? '' : `<span class="stc ${tag}">${STANCE_NAME[tag]}</span>`}${waitIds.has(id) ? '<em class="badge">!</em>' : ''}</button>`;
     },
     chem = mates.length

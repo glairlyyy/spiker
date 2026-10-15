@@ -134,7 +134,7 @@ const Run = {
   /** Weekly snapshot for the growth chart on the result screen. */
   snap(run) {
     const you = Run.you(run);
-    run.hist.push({ w: run.week, ovr: ovr(you), ...Object.fromEntries(STATK.map(k => [k, you[k]])), wit: you.wit });
+    run.hist.push({ w: run.week, y: Season.year(run), ovr: ovr(you), ...Object.fromEntries(STATK.map(k => [k, you[k]])), wit: you.wit });
   },
   /** Match-day form before any team talk: your mood; a teammate's is +0.1 per 80+ bond (same for everyone on your side). */
   form(run, p) {
@@ -199,7 +199,7 @@ const Run = {
   /** What this week is: 'train' | 'camp' | 'eval' (an evaluation you take part in) | 'cup'. */
   weekType(run) {
     if (Run.cupDef(run)) return 'cup';
-    const k = CALENDAR[run.week] || 'train';
+    const k = Season.cal(run, run.week) || 'train';
     return k === 'eval' ? (Eval.kind(run) ? 'eval' : 'train') : k;
   },
   /** A diary line. k: 'bad' | 'good' | 'world' — the Week report's tag (T-203); lines without one are tagged by text (logTag). */
@@ -365,9 +365,11 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 18;
+const RUN_VERSION = 19;
 /** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history), v9: `run.mode.story` (T-067), v10: `run.people` / `run.pseed` (NPC careers, T-060), v11: `run.mem` (what NPCs remember about you, T-061), v12: `run.asks` / `run.loans` / `run.vouch` / `run.sitout` / `run.duo` (approaches, T-063), v13: person `status` / `bench` / `gone` (fates, T-064), v14: memory entries gain `a` + NPC ↔ NPC pairs in `run.mem` (T-065), v15: `run.warm` → `run.evals`, `warmupWin|Loss` → `evalWin|Loss` (T-086) — older saves are dropped; add steps when the saved shape changes). */
-const RUN_MIGRATIONS = {};
+const RUN_MIGRATIONS = {
+  18: d => ({ ...d, v: 19, year: 1 }) // two seasons (T-286): a v18 run is in year 1
+};
 const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
 /**
  * Run fields with a plain default: name → [make (fresh value), valid (keep a saved value?)]. `Run.create` starts from
@@ -375,6 +377,7 @@ const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
  */
 const RUN_DEFAULTS = {
   log: [() => [], Array.isArray],
+  year: [() => 1, v => v === 1 || v === 2], // the season (spec §4.28: Story plays two; js/career/season.js)
   seen: [() => [], Array.isArray],
   evals: [() => [], Array.isArray], // evaluation results { week, win }
   cups: [() => [], Array.isArray],

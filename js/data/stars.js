@@ -68,6 +68,14 @@ const STARS = {
     ovr: [86, 95],
     wit: [1.35, 1.65]
   },
+  /**
+   * Year 2 (spec §4.28, owner 2026-10-15): the cohort plateaus — week 1 → the year-2 Cup, linear. The rival's `max` curve when
+   * you beat her squad in the year-1 Cup (story flag `beatRival`: she takes it personally).
+   */
+  year2: {
+    rival: { ovr: [90, 92], max: [90, 95], wit: [1.45, 1.5] },
+    cohort: { ovr: [85, 88], wit: [0, 0.05] } // wit: added to the year-1 end
+  },
   /** Stat shape round the target OVR by role (key stat highest); Stars.shape shifts them all until the OVR matches. */
   profile: {
     WS: { power: 9, jump: 3, speed: -3, def: -7 },

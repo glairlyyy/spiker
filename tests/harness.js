@@ -76,9 +76,9 @@ const goldenCheck = (key, value) => {
 };
 
 /** A whole career run played headless with simple choices (rest when tired, train the key stat, sign when a club allows). */
-function playRun(g, role = 'WS') {
+function playRun(g, role = 'WS', mode) {
   const d = g.Run.draft();
-  const run = g.Run.create(d, { role, name: 'Test', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
+  const run = g.Run.create(d, { role, name: 'Test', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0, mode });
   let guard = 0;
   while (!run.result && guard++ < 400) {
     if (run.event) {

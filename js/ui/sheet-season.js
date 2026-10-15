@@ -5,7 +5,7 @@
 function seasonCard(run) {
   if (!run.cups.length && !run.sponsors.length && !run.injury) return ''; // nothing yet: hidden (§10.8)
   return `<div class="panel season"><h3>Cups and sponsors${run.sponsors.length ? '' : info(`Sponsors make offers at ${SPONSOR_AT.map(f => f.toLocaleString()).join(', ')} fans.`)}</h3>
-    ${run.cups.map(c => `<div class="small">${esc(CUPS.find(x => x.id === c.id).name)}: <b>${Cup.placeText(c.place)}</b></div>`).join('')}
+    ${run.cups.map(c => `<div class="small">${(c.y || 1) > 1 || Season.year(run) > 1 ? `Year ${c.y || 1} ` : ''}${esc(CUPS.find(x => x.id === c.id).name)}: <b>${Cup.placeText(c.place)}</b></div>`).join('')}
     ${
       run.sponsors.length
         ? `<div class="small"><b>Sponsors</b> ${run.sponsors
@@ -38,7 +38,7 @@ function calendar(run) {
   const pips = [],
     cur = Run.cupDef(run);
   for (let w = 1; w <= CAREER.weeks; w++) {
-    const k = CALENDAR[w] || 'train',
+    const k = Season.cal(run, w) || 'train',
       lab = k === 'camp' ? 'Camp' : k === 'eval' ? 'Eval' : '',
       skip = run.mode.short && w < 5,
       now = !cur && w === run.week;
@@ -47,7 +47,7 @@ function calendar(run) {
     );
     const c = CUPS.find(x => x.after === w);
     if (c) {
-      const res = run.cups.find(x => x.id === c.id);
+      const res = run.cups.find(x => x.id === c.id && (x.y || 1) === Season.year(run));
       pips.push(
         `<span class="pip cup ${cur && cur.id === c.id ? 'now' : res ? 'past' : ''}" title="${c.name}${res ? ': ' + res.place : ''}">${c.short}</span>`
       );
@@ -62,7 +62,7 @@ function matchLog(run) {
     row = (e, i) => {
       const prev = L[i - 1],
         res = e.played ? `${e.win ? 'W' : 'L'} · ${e.grade}` : 'did not play',
-        sum = `W${e.week} · ${MKIND[e.kind] || e.kind}${e.round ? ` (${esc(e.round)})` : ''} · vs ${esc(e.vs)} · ${e.score[0]}-${e.score[1]} · ${res}`,
+        sum = `${Season.label(e.y, e.week)} · ${MKIND[e.kind] || e.kind}${e.round ? ` (${esc(e.round)})` : ''} · vs ${esc(e.vs)} · ${e.score[0]}-${e.score[1]} · ${res}`,
         stats = [['ovr', 'OVR'], ...[...STATK, 'wit'].map(k => [k, STATNAME[k].slice(0, 3)])]
           .map(
             ([k, n]) =>

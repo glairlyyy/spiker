@@ -5,10 +5,16 @@
 
 /** `hub` trigger conditions (SCENES trigger.when): pure tests of the run. */
 const STORY_WHEN = {
-  trained: run => Object.keys(run.uses || {}).some(k => run.uses[k] > 0),
-  week2: run => run.week >= 2,
-  week3: run => run.week >= 3 && !!Stars.get(run, 'rival'),
+  // year-1 moments (Fern's lessons, the rival's first meeting): never replayed in year 2
+  trained: run => Season.year(run) === 1 && Object.keys(run.uses || {}).some(k => run.uses[k] > 0),
+  week2: run => Season.year(run) === 1 && run.week >= 2,
+  week3: run => Season.year(run) === 1 && run.week >= 3 && !!Stars.get(run, 'rival'),
   // `result` trigger (T-175): the match you just played (run.story.res, set by Cup.record, cleared by the first hub after it)
+  year2: run => Season.year(run) > 1,
+  year2Won: run => Season.year(run) > 1 && !!run.story.flags.beatRival,
+  rematchWeek: run => Season.rematch(run),
+  rematchWon: run => !!run.story.flags.rematchWon,
+  rematchLost: run => !!run.story.flags.rematchLost,
   won: run => !!(run.story.res && run.story.res.win),
   lost: run => !!(run.story.res && !run.story.res.win)
 };
@@ -31,6 +37,7 @@ const Story = {
   due(run, on, pick) {
     if (!Story.on(run) || run.story.cur) return null;
     if (on === 'result' && !run.story.res) return null; // no match since the last hub
+    if (on === 'pick' && Season.year(run) > 1) return null; // Fern's place lessons are year 1's (she has left)
     if (on === 'hub' && run.story.at === Story.clock(run)) return null; // one scene per day: a lesson never follows another at once
     return (
       Object.keys(SCENES).find(id => {
@@ -45,7 +52,7 @@ const Story = {
     );
   },
   /** Where the run is in time (week.days spent): scenes remember when the last one ended. */
-  clock: run => `${run.week}.${(run.dayLog || []).length}`,
+  clock: run => `${Season.wk(run)}.${(run.dayLog || []).length}`,
   /** A line's text with {role} / {key} filled in. */
   text: (run, t) =>
     String(t).replace('{role}', ROLE_NAME[Run.you(run).role].toLowerCase()).replace('{key}', STATNAME[KEYSTAT[Run.you(run).role]]),

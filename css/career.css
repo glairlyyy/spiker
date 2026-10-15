@@ -285,6 +285,14 @@
 .runend h4 {
   margin-top: 14px;
 }
+/* a Story run's ending (spec §4.28): the diary's last lines */
+.ending .diaryl {
+  margin: 6px 0;
+  font-style: italic;
+}
+.ending.spite {
+  border-left: 3px solid var(--hot);
+}
 .ency h3 {
   margin-top: 22px;
 }

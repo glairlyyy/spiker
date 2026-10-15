@@ -96,9 +96,10 @@ function matchRosters(run, mine, theirs) {
 /** The evaluation week's card: play (or Sim) your evaluation match, or watch from the bench when not selected. */
 function evalPanel(run, note = '') {
   const e = run.eval || Eval.setup(run),
+    rt = e.kind === 'rematch' && Stars.get(run, 'rival').team,
     label = e.kind === 'academy' ? 'Academy' : REGIONS[e.region].name,
     D = Dossier.build(run, e.region),
-    all = Pool.players(run, e.region).concat([Run.you(run)]),
+    all = Pool.players(run, e.region).concat([Run.you(run)], e.mineRegion ? Pool.players(run, e.mineRegion) : []),
     club = Run.myTeam(run),
     byId = ids => ids.map(id => all.find(p => p.id === id)).filter(Boolean),
     meId = Run.you(run).id,
@@ -110,15 +111,15 @@ function evalPanel(run, note = '') {
         )
         .join(''),
     venue = City.venue(run),
-    head = `<div class="mph"><span class="lab">Week ${run.week} · Match day</span><h3 class="mpt">${esc(label)} evaluation${info(`Teammates who played with you remember the win. Per kill, block or ace: +${REWARDS.perPlay.sp} skill pts +${REWARDS.perPlay.fans} fans. × Grade.`)}</h3>${
+    head = `<div class="mph"><span class="lab">Week ${run.week} · Match day</span><h3 class="mpt">${rt ? `The rematch — ${esc(rt.name)}` : `${esc(label)} evaluation`}${info(`Teammates who played with you remember the win. Per kill, block or ace: +${REWARDS.perPlay.sp} skill pts +${REWARDS.perPlay.fans} fans. × Grade.`)}</h3>${
       e.kind === 'faction' && !e.mine && venue ? `<span class="small mute">at ${esc(VENUES[venue].name)}</span>` : ''
     }</div>`;
   if (e.kind === 'faction' && !e.mine)
     return `<div class="panel">${head}<p>Not selected this month.</p>
     ${note}<div class="acts"><button class="btn hot" onclick="benchEval()">Watch from the bench</button></div></div>`;
-  const mine = e.kind === 'academy' ? club.P : byId(e.mine).slice(0, 4); // the 4 who start
+  const mine = e.kind === 'academy' || !e.mine ? club.P : byId(e.mine).slice(0, 4); // the 4 who start
   return `<div class="panel">${head}
-    <div class="rosters"><div><div class="lab">${e.kind === 'academy' ? esc(club.name) : esc(club.name) + ' squad'}</div>${col(mine, true)}</div><div><div class="lab">${esc(REGIONS[e.region].name)} squad</div>${col(byId(e.opp).slice(0, 4), D.scouted || D.member)}</div></div>
+    <div class="rosters"><div><div class="lab">${e.kind === 'academy' || rt ? esc(club.name) : esc(club.name) + ' squad'}</div>${col(mine, true)}</div><div><div class="lab">${rt ? esc(rt.name) : `${esc(REGIONS[e.region].name)} squad`}</div>${col(byId(e.opp).slice(0, 4), D.scouted || D.member)}</div></div>
     ${matchPrep(run, false)}
     <div class="rwchips"><span class="pchip"><span class="wl">Win</span> ${term('sp', REWARDS.evalWin.sp)} ${term('fans', REWARDS.evalWin.fans)}</span><span class="pchip"><span class="wl">Loss</span> ${term('sp', REWARDS.evalLoss.sp)} ${term('fans', REWARDS.evalLoss.fans)}</span></div>
     ${prepNotes(run, `${esc(REGIONS[e.region].name)} squad`, rankBestRows(run, byId(e.opp).slice(0, 4)), D.scouted || D.member ? '' : 'Scout one of their clubs to see ratings')}

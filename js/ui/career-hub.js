@@ -178,12 +178,16 @@ function weekBrief(run) {
         `<div class="bi"><span class="bico ${cls}">${ico}</span><b>${title}</b><span class="btag ${cls}">${tag}</span>${facts ? peek(`br:${id}`, '', kv(facts), 'bpk') : '<span></span>'}</div>`
       );
   if (wt === 'eval') {
-    const e = run.eval || Eval.setup(run);
+    const e = run.eval || Eval.setup(run),
+      rt = e.kind === 'rematch' && Stars.get(run, 'rival').team;
     row(
       '⚑',
-      `${esc(e.kind === 'academy' ? 'Academy' : REGIONS[e.region].name)} evaluation`,
+      rt ? 'The rematch' : `${esc(e.kind === 'academy' ? 'Academy' : REGIONS[e.region].name)} evaluation`,
       'this week',
-      [['Opponent', `${esc(REGIONS[e.region].name)} squad`], City.venue(run) ? ['Venue', esc(VENUES[City.venue(run)].name)] : null],
+      [
+        ['Opponent', rt ? `${esc(rt.name)} — she starts` : `${esc(REGIONS[e.region].name)} squad`],
+        City.venue(run) ? ['Venue', esc(VENUES[City.venue(run)].name)] : null
+      ],
       '',
       'eval'
     );
@@ -211,13 +215,13 @@ function weekBrief(run) {
     const pay = run.log.find(l => /^Payday:/.test(l.t));
     row('☰', 'Payday', 'Gazette out', pay ? [['Paid', esc(pay.t.replace(/^Payday: /, ''))]] : null, '', 'pay');
   }
-  if (!match && CALENDAR[run.week + 1] === 'eval') {
+  if (!match && Season.cal(run, run.week + 1) === 'eval') {
     const ev = evalNext(run);
     row('⚑', 'Evaluation', 'next week', Array.isArray(ev) ? ev : [['Note', ev]], '', 'evaln');
   }
   const title = { train: 'Training week', camp: 'Training camp', eval: 'Evaluation week', cup: 'Cup week' }[wt] || 'This week',
     line = match ? 'Match weeks have no training days.' : `${WEEK_DAYS} days. Every action takes a day, plus the trip there.`;
-  return `<div class="panel brief"><div class="lab">Week ${Math.min(run.week, CAREER.weeks)} / ${CAREER.weeks}</div><h2 ${tip(line)}>${title}</h2>
+  return `<div class="panel brief"><div class="lab">${run.mode.story ? `Year ${Season.year(run)} · ` : ''}Week ${Math.min(run.week, CAREER.weeks)} / ${CAREER.weeks}</div><h2 ${tip(line)}>${title}</h2>
     ${rows.join('') || '<p class="small mute">A quiet week.</p>'}
     <div class="acts ${run.gazette && !run.gazette.read ? 'pri' : ''}"><button class="btn hot" onclick="briefDone()">${match ? 'Go to match prep' : 'Start the week'}</button>${
       run.gazette && !run.gazette.read ? '<button class="btn" onclick="briefDone(\'news\')">Read the Gazette</button>' : ''
@@ -261,7 +265,7 @@ function topBar(real) {
   return `<header class="tbar">
     <span class="tbrand">Spite &amp; Spike</span>
     <div class="tres-row">
-      ${cell('Week', `<span class="disp">${cup ? esc(cup.short) : `${real.week} / ${CAREER.weeks}`}</span>`, `Week ${real.week} of ${CAREER.weeks}`)}
+      ${cell('Week', `<span class="disp">${run.mode.story ? `Y${Season.year(run)} · ` : ''}${cup ? esc(cup.short) : `${real.week} / ${CAREER.weeks}`}</span>`, `${run.mode.story ? `Year ${Season.year(run)} of ${SEASON.years}, w` : 'W'}eek ${real.week} of ${CAREER.weeks}`)}
       ${cell('Money', `${num('money', `$${run.money.toLocaleString()}`)}${d('money')}`, 'Money', 'money')}
       ${cell('Fans', `${num('fans', run.fans.toLocaleString())}${d('fans')}`, 'Fans', 'fans')}
       ${cell('Skill pts', `${num('sp', run.sp)}${d('sp')}`, 'Skill points', 'sp')}
@@ -462,13 +466,15 @@ function evalCountdown(run) {
   const wt = Run.weekType(run);
   if (wt !== 'train' && wt !== 'camp') return null;
   let w = run.week + 1;
-  while (w <= CAREER.weeks && CALENDAR[w] !== 'eval') w++;
+  while (w <= CAREER.weeks && Season.cal(run, w) !== 'eval') w++;
   const n = w - run.week,
     what = w > CAREER.weeks ? 'Cup' : 'Eval';
   return { w, text: `${what} ${n === 1 ? 'next week' : `in ${n} weeks`}` };
 }
 /** Next week's evaluation as facts (the squads are drawn that week): opponent and venue; no evaluation for you → a note. */
 function evalNext(run) {
+  if (Season.year(run) > 1 && run.mode.story && run.week + 1 === SEASON.rematch && Stars.get(run, 'rival'))
+    return [['Opponent', `${esc(Stars.get(run, 'rival').team.name)} — the rematch`]];
   const kind = Eval.kind(run);
   if (!kind) return 'Match weeks have no training days';
   const region = FACTIONS[run.team] && FACTIONS[run.team].region,

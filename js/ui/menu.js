@@ -11,7 +11,9 @@ function renderMenu() {
     club = saved && saved.team != null && saved.teams[saved.team] ? saved.teams[saved.team].name : 'Academy',
     hero = you
       ? `<button class="tcont" onclick="openCareer()"><span class="tct"><b>${saved.result ? 'Last run' : 'Continue'}</b><small>${esc(you.name)} · ${ROLE_NAME[you.role]} · ${
-          saved.result ? 'Result' : saved.week > CAREER.weeks ? 'Cup' : `Week ${saved.week}`
+          saved.result
+            ? 'Result'
+            : `${(saved.year || 1) > 1 ? `Year ${saved.year} · ` : ''}${saved.week > CAREER.weeks ? 'Cup' : `Week ${saved.week}`}`
         } · ${esc(club)}</small></span><kbd>Enter</kbd></button>`
       : '';
   $('#app').innerHTML = `<section class="title">

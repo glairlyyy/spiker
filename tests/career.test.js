@@ -19,8 +19,17 @@ test('career: a full run reaches a result with sane values', () => {
       run = playRun(g, role),
       you = g.Run.you(run);
     assert(run.result && ['S', 'A', 'B', 'C'].includes(run.result.rank), 'run must end with a rank');
-    eq(run.cups.map(c => c.id).join(','), 'u21', 'the U21 Final Cup ends every run (placing NO_CUP when your squad was not drawn)');
-    eq(run.week, g.CAREER.weeks + 1, 'the season runs all 28 weeks');
+    eq(
+      run.cups.map(c => `${c.id}:${c.y}`).join(','),
+      'u21:1,u21:2',
+      'Story: two seasons, a U21 Final Cup each (NO_CUP when your squad was not drawn)'
+    );
+    eq(run.week, g.CAREER.weeks + 1, 'each season runs all 28 weeks');
+    eq(run.year, 2, 'the run ends in year 2');
+    assert(
+      run.hist.some(h => h.y === 2 && h.w === 1),
+      'the growth chart carries year 2'
+    );
     assert(run.hist.length >= 20, 'weekly history for the growth chart');
     for (const k of g.STATK) assert(you[k] >= g.CAREER.statMin && you[k] <= 99, `${k} out of range: ${you[k]}`);
     assert(you.wit >= 0.1 && you.wit <= 2, 'wit out of range');
@@ -95,7 +104,7 @@ test('career: training cap, facility Lv 5 and Hard training', () => {
   eq(you.power, 80, 'a stat already at 80 is not lowered by a positive bump');
   g.Training.addXp(run, 'power', 100000, 'match');
   assert(you.power > 80, 'match XP goes past the training cap');
-  assert(!('lb' in run) && g.RUN_VERSION === 18, 'no Limit Break progress in the run; RUN_VERSION 18');
+  assert(!('lb' in run) && g.RUN_VERSION === 19, 'no Limit Break progress in the run; RUN_VERSION 19');
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
   const n = g.Training.preview(run, 'power', false).main[2],
@@ -886,7 +895,7 @@ test('career: challenge loss and injury', () => {
   run.sp = 99;
   assert(g.Training.physio(run) && !run.injury, 'physio heals the injury');
   assert(you[lost[0]] === before[g.STATK.indexOf(lost[0])] - g.INJURY.lose, 'but not the lost stat');
-  eq(g.RUN_VERSION, 18, 'save v18');
+  eq(g.RUN_VERSION, 19, 'save v19');
 });
 
 test('career: rules moved out of the UI (T-075)', () => {
@@ -1119,6 +1128,103 @@ test('story: week 1 keeps to the campus (Fern points at the Academy Gym); week 2
   assert(g.Story.step(run).k === 'cam' && g.Story.step(run).to === 'island', 'the camera pulls back over the island');
   const end = g.Run.create(g.Run.draft(), { role: 'WS', name: 'E', mode: { story: false } });
   assert(g.City.can(end, 'weiPower').ok, 'Endless: no fence');
+});
+
+test('season: Endless ends at its one Cup; Story rolls over — stamps rebased, saves round-trip, a v18 save is year 1 (T-286)', () => {
+  const g = load(77),
+    end = playRun(g, 'WS', { story: false });
+  eq(end.cups.length + ':' + end.year, '1:1', 'Endless: one season');
+  const [h, run] = mkRunG(78);
+  run.refused = { 3: { week: 25, n: 1 } };
+  run.elNext = 30;
+  run.lastFight = 27 * h.WEEK_DAYS;
+  const id = Object.keys(run.people)[0];
+  run.people[id].bench = 20;
+  run.week = 29;
+  h.Season.rollover(run);
+  eq(`${run.year}/${run.week}`, '2/1', 'year 2, week 1');
+  eq(run.refused[3].week, -4, 'a refusal in week 25 is 5 weeks ago at year 2 week 1');
+  eq(run.elNext, 1, 'the Element Trial retry week carries over');
+  eq(run.people[id].bench, -9, 'bench stamp rebased');
+  eq(h.Season.at(run, -4), 'W25', 'a rebased stamp reads as its year-1 week');
+  eq(h.Season.wk(run), 30, 'weekly hashes see a new week');
+  h.Run.save(run);
+  const back = h.Run.load();
+  eq(back.year + '/' + back.week, '2/1', 'a year-2 save round-trips');
+  const raw = JSON.parse(h.__mem[h.KEYS.career]);
+  raw.v = 18;
+  delete raw.year;
+  h.__ls.setItem(h.KEYS.career, JSON.stringify(raw));
+  eq(h.Run.load().year, 1, 'a v18 save loads as year 1');
+});
+
+test('season: the off-season — the first aces age out, the market moves, the named stay; year 2 grows the field slower (T-287)', () => {
+  const [g, run] = mkRunG(91);
+  run.week = 29;
+  g.Season.rollover(run);
+  eq(g.Stars.all(run).filter(p => p.named === 'ace').length, 0, 'no first ace in year 2');
+  eq(g.Stars.get(run, 'rival').team, run.teams[0], 'the rival stays on Wei Gold');
+  for (const c of g.STARS.cohort) eq(g.Stars.get(run, c.key).team, run.teams[c.club], `${c.key} stays`);
+  assert(
+    run.gazette.items.some(t => /ages out/.test(t)),
+    'the Gazette reports it'
+  );
+  assert(g.PEOPLE.year2 < 1, 'the field grows slower in year 2');
+});
+
+test('season: year 2 — the rival plateaus, the week-14 rematch, her squad in the other half of the Cup (T-288)', () => {
+  const g = load(131),
+    run = playRun(g, 'MB'),
+    rm = run.mlog.find(e => e.round === 'Rematch');
+  assert(rm && rm.y === 2 && rm.week === g.SEASON.rematch, 'the rematch is played in year 2, week 14');
+  eq(g.ovr(g.Stars.get(run, 'rival')), run.story.flags.beatRival ? 95 : 92, 'her year-2 Cup rating');
+  assert(run.story.flags.rematchWon || run.story.flags.rematchLost, 'the rematch sets its flag');
+  for (const seed of [5, 6, 7, 8, 9, 10]) {
+    const [h, r] = mkRunG(seed);
+    r.week = 29;
+    h.Season.rollover(r);
+    r.week = 29;
+    h.Cup.start(r, h.CUPS[0]);
+    const riv = h.Stars.get(r, 'rival'),
+      E = r.cup.entrants,
+      ri = E.findIndex(e => e.ids.includes(riv.id)),
+      first = r.cup.sched.slice(0, 8).flatMap(x => [x.a, x.b]),
+      half = i => Math.floor(first.indexOf(i) / 8);
+    assert(ri >= 0, 'the rival is in the year-2 Cup');
+    if (r.cup.me >= 0 && ri !== r.cup.me) assert(half(ri) !== half(r.cup.me), `seed ${seed}: her squad in the other half`);
+  }
+});
+
+test('story: year 2 — the year-1 verdict, Fern goodbye (secrets), the rematch scenes, the two endings (T-289)', () => {
+  const [g, run] = mkRunG(222);
+  g.Story.skip(run);
+  run.week = 29;
+  g.Season.rollover(run);
+  const play = () => {
+    const id = g.Story.due(run, 'hub');
+    if (id) {
+      g.Story.fire(run, 'hub');
+      g.Story.skip(run);
+      run.story.at = null;
+    }
+    return id;
+  };
+  eq(play(), 'y1Lost', 'a year-1 loss: her verdict scene first');
+  eq(play(), 'fernBye', 'then Fern says goodbye');
+  assert(run.story.flags.guideGone && run.story.flags.secrets, 'Fern is gone; the secret places are told');
+  eq(play(), null, 'nothing more until week 14');
+  run.week = g.SEASON.rematch;
+  eq(play(), 'rematchPre', 'the rematch week');
+  run.story.flags.rematchWon = true;
+  run.story.res = { kind: 'eval', win: true, played: true, week: run.week };
+  eq(g.Story.due(run, 'result'), 'rematchWon', 'the rematch result');
+  run.week = 29;
+  run.cups.push({ id: 'u21', place: 'Champion', champ: 'Academy', y: 2 });
+  g.Cup.end(run, 'Champion');
+  eq(run.result.ending, 'true', 'year-2 Cup won: the true end');
+  run.result = null;
+  g.Cup.end(run, 'Final');
+  eq(run.result.ending, 'spite', 'lost: the spite end');
 });
 
 test('stars: the rival, the cohort and the first aces — seated, on curves, never moved, on the map (T-189, T-190)', () => {

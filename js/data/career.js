@@ -55,6 +55,11 @@ const TRAINK = Object.keys(TRAININGS).filter(k => !TRAININGS[k].lv);
 const ROLE_NAME = { S: 'Setter', MB: 'Middle blocker', WS: 'Wing spiker' };
 const STATNAME = { power: 'Power', def: 'Defense', speed: 'Speed', jump: 'Jump', wit: 'Wit', lead: 'Leadership' };
 /** What each week is. Anything not listed is a training week. */
+/** Story mode is two seasons (spec §4.28): `years` of CAREER.weeks + the U21 Cup each; `shift` = one season in weeks (the Cup week
+ * counts), the offset Season.rollover takes off every stored week stamp so cooldowns and memories keep counting across it. */
+const SEASON = { years: 2, shift: 29, rematch: 14 }; // rematch: year 2's guaranteed match against the rival's club (an 'eval' week, Eval kind 'rematch')
+/** Between the years (Season.offseason): rounds of the transfer market, then a summer of NPC growth (weeks of Growth.week). */
+const OFFSEASON = { transfers: 6, summer: 4 };
 const CALENDAR = { 4: 'eval', 8: 'eval', 12: 'eval', 16: 'eval', 20: 'eval', 24: 'eval', 26: 'camp', 27: 'camp', 28: 'camp' };
 /** Monthly evaluations: a player who is not selected watches from the bench — wit XP worth `benchDays` day-sessions of Wit training. */
 const EVAL = { benchDays: 1 };

@@ -132,7 +132,7 @@ const Fight = {
       out.push(Run.bump(run, 'fans', L.fans));
       Run.news(
         run,
-        GAZETTE_JABS[Math.floor(hstr(`${run.week}|${club}`) * GAZETTE_JABS.length)]
+        GAZETTE_JABS[Math.floor(hstr(`${Season.wk(run)}|${club}`) * GAZETTE_JABS.length)]
           .replace('{name}', Run.you(run).name)
           .replace('{club}', club)
       );
@@ -307,7 +307,7 @@ const Fight = {
     if (r === 'outlaws') [verdict, text] = stake >= C.outlaws.minStake ? ['likely', why.likely] : ['refuses', why.refuses];
     else if (r === 'gloria' && !gaz) [verdict, text] = ['refuses', why.refuses];
     if (run.refused && run.refused[ti] && run.refused[ti].week === run.week) [verdict, text] = ['refuses', CHALLENGE_WHY.week];
-    const accepts = verdict === 'likely' || (verdict === 'doubtful' && hstr(`${run.week}|${ti}|${stake}`) < C.doubtP);
+    const accepts = verdict === 'likely' || (verdict === 'doubtful' && hstr(`${Season.wk(run)}|${ti}|${stake}`) < C.doubtP);
     return { verdict, why: text, accepts, need, worth };
   },
   /**

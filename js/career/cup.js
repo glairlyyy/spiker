@@ -28,7 +28,24 @@ const Cup = {
       out.push({ name: T.name, short: T.short, color: T.color, region: null, ids: squadOf(T).map(p => p.id), academy: true });
     }
     if (run.mode && run.mode.story && !out.some(e => e.ids.includes(run.youId))) Cup.place(run, out);
+    Cup.placeRival(run, out);
     return out;
+  },
+  /**
+   * Story year 2 (spec §4.28): the rival is in the Cup — not drawn (and not hurt) → she takes the place of the weakest same-role
+   * player of her region's first squad without you. Mutates `out`.
+   */
+  placeRival(run, out) {
+    const riv = Stars.get(run, 'rival');
+    if (!riv || !Story.on(run) || Season.year(run) < 2 || People.out(run, riv) || out.some(e => e.ids.includes(riv.id))) return;
+    const r = (FACTIONS[riv.team.i] && FACTIONS[riv.team.i].region) || 'wei',
+      e = out.find(x => x.region === r && !x.ids.includes(run.youId));
+    if (!e) return;
+    const all = Pool.players(run, r),
+      ps = e.ids.map(id => all.find(p => p.id === id)).filter(Boolean),
+      same = ps.filter(p => p.role === riv.role),
+      weak = (same.length ? same : ps).reduce((a, p) => (ovr(p) < ovr(a) ? p : a));
+    e.ids[e.ids.indexOf(weak.id)] = riv.id;
   },
   /**
    * Story (spec §4.26): you are always in the cup. Signed with a faction → you take the place of the weakest same-role
@@ -118,12 +135,25 @@ const Cup = {
         .sort((a, b) => b[1] - a[1])
         .map(x => x[0]),
       order = seedOrder(16).map(s => (s <= ranked.length ? ranked[s - 1] : null));
+    Cup.splitRival(run, E, me, order);
     run.cup = { id: def.id, entrants: E, me, sched: newBracket(order), done: false };
     Run.log(run, `The ${def.name} begins: ${E.length} squads, seeded by rating. Stamina refilled.`);
     if (me < 0) {
       Run.log(run, `You watch the ${def.name} from the stands.`);
       Cup.close(run, NO_CUP);
     }
+  },
+  /** Story year 2: the rival's squad goes to the other half of the bracket from yours (you meet in the final if both keep winning). */
+  splitRival(run, E, me, order) {
+    const riv = Stars.get(run, 'rival');
+    if (!riv || !Story.on(run) || Season.year(run) < 2 || me < 0) return;
+    const ri = E.findIndex(e => e.ids.includes(riv.id)),
+      h = order.length / 2,
+      pm = order.indexOf(me),
+      pr = order.indexOf(ri);
+    if (ri < 0 || ri === me || pm < 0 || pr < 0 || Math.floor(pm / h) !== Math.floor(pr / h)) return;
+    const q = (pr + h) % order.length;
+    [order[pr], order[q]] = [order[q], order[pr]];
   },
   /** Resolve a fixture at once without watching (its setup, every rally, its finish). Returns the match. */
   simNow(fx) {
@@ -197,6 +227,8 @@ const Cup = {
       club = run.team != null ? run.teams[run.team] : null;
     if (e && e.kind === 'faction')
       return { T: Eval.squad(run, e.mine, `${club.name} · Eval`, club.color, undefined, club.short), region: FACTIONS[run.team].region };
+    if (e && e.kind === 'rematch' && e.mine)
+      return { T: Eval.squad(run, e.mine, club.name, club.color, e.mineRegion, club.short), region: e.mineRegion };
     return { T: Run.myTeam(run), region: null }; // the Academy squad is a real team
   },
   /** Fixture for the match screen. kind: 'eval' | 'cup'. Your side is always on the left; your coach picks the 4 (Run.lineup). */
@@ -212,10 +244,15 @@ const Cup = {
     if (kind === 'eval') {
       // an evaluation: drawn squads (lent their players for the match); the Academy squad is a real team
       const e = Eval.setup(run);
-      if (e.kind === 'faction') Eval.lend(run, mine);
-      opp = Eval.squad(run, e.opp, `${REGIONS[e.region].name} · Eval`, REGIONS[e.region].color);
+      if (e.kind === 'faction' || (e.kind === 'rematch' && e.mine)) Eval.lend(run, mine);
+      const rt = e.kind === 'rematch' && Stars.get(run, 'rival').team;
+      opp = rt
+        ? Eval.squad(run, e.opp, rt.name, rt.color, e.region, rt.short)
+        : Eval.squad(run, e.opp, `${REGIONS[e.region].name} · Eval`, REGIONS[e.region].color);
       Eval.lend(run, opp);
-      round = `${e.kind === 'academy' ? 'Academy' : REGIONS[e.region].name} evaluation (week ${run.week})`;
+      round = rt
+        ? `The rematch (year 2, week ${run.week})`
+        : `${e.kind === 'academy' ? 'Academy' : REGIONS[e.region].name} evaluation (week ${run.week})`;
     } else if (kind === 'cup') {
       opp = Cup.team(run, bm.a === run.cup.me ? bm.b : bm.a);
       Eval.lend(run, mine);
@@ -223,7 +260,7 @@ const Cup = {
       round = `${def.name} ${bm.round}`;
     }
     Cup.prepare(run, opp, kind, mine);
-    const lu = Run.lineup(run, mine, side.region, false, kind === 'cup' && run.mode.story); // Story: you start every cup match
+    const lu = Run.lineup(run, mine, side.region, false, (kind === 'cup' || Season.rematch(run)) && run.mode.story); // Story: you start every cup match and the rematch
     if (lu.starts && lu.rival) Rel.spot(run, lu.rival.p.id); // you took a same-role mate's spot
     const rel = Rel.matchFlags(run, mine, opp);
     return {
@@ -269,6 +306,7 @@ const Cup = {
     });
     run.mlog.push({
       week: run.week,
+      y: Season.year(run),
       day: Run.dayNo(run),
       kind,
       vs: m.t[1].name,
@@ -284,6 +322,20 @@ const Cup = {
     });
     if (run.mlog.length > MLOG.max) run.mlog.splice(0, run.mlog.length - MLOG.max);
     Story.matched(run, kind, win, played); // the hub's next scene may be about this match (T-175)
+  },
+  /**
+   * Story flags from a match against the rival's side (spec §4.28): `rematchWon` / `rematchLost` (year-2 rematch); `beatRival` — you
+   * beat her squad in the year-1 Cup (her year-2 curve goes to its maximum; the Cup won sets it too, Cup.close).
+   */
+  rivalMet(run, m, kind, bm) {
+    if (!Story.on(run)) return;
+    const riv = Stars.get(run, 'rival'),
+      F = run.story.flags,
+      win = m.winner === 0;
+    if (!riv || !squadOf(m.t[1]).includes(riv)) return;
+    if (Season.rematch(run)) F[win ? 'rematchWon' : 'rematchLost'] = true;
+    if (kind === 'cup' && win && Season.year(run) === 1) F.beatRival = true;
+    if (kind === 'cup' && Season.year(run) > 1) F[win ? 'cupBeatRival' : 'cupLostRival'] = true;
   },
   /** Your grade for one match (S–C) from your own line. */
   grade(s, win) {
@@ -306,7 +358,8 @@ const Cup = {
       sc = m.setScores[0],
       score = `${sc[0]}-${sc[1]}`,
       opp = m.t[1];
-    Cup.record(run, m, kind, kind === 'cup' ? { round: bm.round } : {});
+    Cup.record(run, m, kind, kind === 'cup' ? { round: bm.round } : Season.rematch(run) ? { round: 'Rematch' } : {});
+    Cup.rivalMet(run, m, kind, bm);
     Rel.afterMatch(run, m, 0);
     let line,
       grade = null;
@@ -347,7 +400,7 @@ const Cup = {
     }
     Run.log(run, line);
     if (kind === 'eval') {
-      run.evals.push({ week: run.week, vs: opp.i, win: played && win, score, grade });
+      run.evals.push({ week: run.week, y: Season.year(run), vs: opp.i, win: played && win, score, grade });
       Run.endWeek(run);
     } else {
       run.talk = null;
@@ -371,21 +424,25 @@ const Cup = {
         Run.bump(run, 'sp', Math.round(P.sp * def.mul)),
         World.prize(run, Math.round((ECON.place[place] || 0) * def.mul))
       ];
-    People.national(run);
-    run.cups.push({ id: def.id, place, champ });
+    if (Season.last(run))
+      People.national(run); // year 1 of Story: nobody is called up yet (spec §4.28)
+    else if (place === 'Champion' && Story.on(run)) run.story.flags.beatRival = true; // the year-1 Cup won: she takes it personally
+    run.cups.push({ id: def.id, place, champ, y: Season.year(run) });
     Run.log(
       run,
       place === NO_CUP
         ? `The ${def.name} is over — won by ${champ}.`
         : `${place === 'Champion' ? `${run.cup.entrants[run.cup.me].name} win the ${def.name}!` : `Out of the ${def.name} in the ${place.toLowerCase()}.`} ${out.filter(Boolean).join(', ')}`
     );
-    Cup.end(run, place);
+    if (Season.last(run)) Cup.end(run, place);
+    else Season.rollover(run); // Story year 1: the run goes on to year 2
   },
   /** End the run: rank and result. place = your U21 Final Cup finish. */
   end(run, place) {
     const rank = rankOf(run.fans);
     Run.snap(run);
     run.result = { place, rank, cups: run.cups, champ: run.cups[run.cups.length - 1].champ };
+    if (Story.on(run) && Season.year(run) > 1) run.result.ending = place === 'Champion' ? 'true' : 'spite'; // spec §4.28
     Run.save(run);
   }
 };

@@ -163,6 +163,79 @@ const SCENES = {
       { k: 'end' }
     ]
   },
+  // ---- year 2 (spec §4.28, §4.31): the year-1 Cup's verdict, Fern's goodbye, the rematch ----
+  y1Won: {
+    trigger: { on: 'hub', when: 'year2Won' },
+    steps: [
+      { k: 'cut', bars: true },
+      { k: 'say', who: 'diary', text: 'The Gazette ran my face for a day. Then hers, every day after.' },
+      { k: 'say', who: 'rumor', text: "Word is Haewon Bae hasn't left the Wei gym since the Cup. Two sessions a day. Three." },
+      { k: 'say', who: 'diary', text: "Good. Now she's chasing something too." },
+      { k: 'end' }
+    ]
+  },
+  y1Lost: {
+    trigger: { on: 'hub', when: 'year2', off: 'beatRival' },
+    steps: [
+      { k: 'cut', dark: true },
+      { k: 'title', text: 'Year 2' },
+      { k: 'say', who: 'diary', text: 'I watched the Cup final from wherever they put the losers.' },
+      { k: 'say', who: 'diary', text: 'She signed autographs after. She walked right past me.' },
+      { k: 'say', who: 'diary', text: "She doesn't remember. I do. One more year of U21 — that's all I get." },
+      { k: 'cut', bars: true },
+      { k: 'end' }
+    ]
+  },
+  fernBye: {
+    trigger: { on: 'hub', when: 'year2' },
+    steps: [
+      { k: 'cut', bars: true },
+      { k: 'say', who: 'senior', text: "Ferry's at six. Twenty-one, no club, no call. That's the U21s for you." },
+      { k: 'say', who: 'senior', text: "Things nobody told me in my first year. I'm telling you, then I'm done telling people things." },
+      { k: 'say', who: 'senior', text: "The Academy basement. Old scouting tapes — yours is in there. So is hers. Here's my key." },
+      { k: 'say', who: 'senior', text: 'The lighthouse past the Wu docks. Where I went when I wanted to quit. Go at night.' },
+      {
+        k: 'say',
+        who: 'senior',
+        text: "Past the Thousand Steps there's an old national player. Turned everyone away. Me too. Try anyway."
+      },
+      { k: 'say', who: 'senior', text: "And the roof of this flat. I'll write. Don't expect much — I hate writing." },
+      { k: 'choice', opts: [{ text: 'Thank you, Fern.' }, { text: 'You could stay. Try again.', goto: 'stay' }] },
+      { k: 'say', who: 'senior', text: "Don't. Just win something.", goto: 'gone' },
+      { id: 'stay', k: 'say', who: 'senior', text: 'I tried again for a year. You watched. Go win something.' },
+      { id: 'gone', k: 'set', flag: 'guideGone' },
+      { k: 'set', flag: 'secrets' }, // the secret places appear (spec §4.31)
+      { k: 'say', who: 'diary', text: 'Her room is empty by noon. The window still sticks.' },
+      { k: 'end' }
+    ]
+  },
+  rematchPre: {
+    trigger: { on: 'hub', when: 'rematchWeek' },
+    steps: [
+      { k: 'cut', bars: true },
+      { k: 'say', who: 'wei', text: 'Exhibition, week 14: Wei Dynasty · Gold host a challenger. The office expects a routine afternoon.' },
+      { k: 'say', who: 'diary', text: 'Routine. I can work with routine.' },
+      { k: 'end' }
+    ]
+  },
+  rematchWon: {
+    trigger: { on: 'result', when: 'rematchWon' },
+    steps: [
+      { k: 'cut', bars: true },
+      { k: 'say', who: 'rival', text: '…Okay. Who coached you? Nobody blocks me like that by accident.' },
+      { k: 'say', who: 'diary', text: "Still doesn't know my name. She'll learn it at the Cup." },
+      { k: 'end' }
+    ]
+  },
+  rematchLost: {
+    trigger: { on: 'result', when: 'rematchLost' },
+    steps: [
+      { k: 'cut', bars: true },
+      { k: 'say', who: 'rival', text: 'Good game. You were closer than the last lot.' },
+      { k: 'say', who: 'diary', text: '"The last lot." Fourteen weeks to the Cup.' },
+      { k: 'end' }
+    ]
+  },
   tutHouse: {
     trigger: { on: 'pick', when: 'home', off: 'noTour' },
     steps: [
@@ -181,6 +254,15 @@ const SCENES = {
       { k: 'end' }
     ]
   }
+};
+/** The two endings of a Story run (spec §4.28), shown on the end screen: diary lines. `remember`: you beat her squad in the year-2 Cup. */
+const ENDINGS = {
+  true: [
+    'The national squad list went up on the Academy board. My name, then hers, then the aces.',
+    'The International Cup. Everyone I chased, on my side of the net.'
+  ],
+  remember: '"Fifteen to four," she said at the airport. "You were the one at the net." She remembers now.',
+  spite: ['The national squad list went up without me. Her name was second.', "They fly out Monday. I'm not done. Not even close."]
 };
 /**
  * A new squad introduces itself (owner, 2026-10-05; Story.meetSteps): the opening diary line, one line per teammate by their

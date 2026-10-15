@@ -6,7 +6,7 @@
 
 const People = {
   /** [0, 1) from the run seed, the week, a player id and a salt. */
-  roll: (run, id, salt) => hstr(`${run.pseed}|${run.week}|${id}|${salt}`),
+  roll: (run, id, salt) => hstr(`${run.pseed}|${Season.wk(run)}|${id}|${salt}`),
   /** One weighted pick (one roll) from { key: weight }; zero weights are never picked. */
   pick(run, id, salt, weights) {
     const keys = Object.keys(weights).filter(k => weights[k] > 0);
@@ -295,21 +295,21 @@ const People = {
           role: p ? p.role : '',
           stance,
           tag: Rel.tag(run, id),
-          fate: People.fateText(me),
+          fate: People.fateText(run, me),
           mem: Rel.top(run, id, 2)
         };
       });
   },
   /** Their fate in one line: status and week. */
-  fateText(me) {
-    const w = me.gone ? me.gone.week : me.bench;
+  fateText(run, me) {
+    const w = Season.at(run, me.gone ? me.gone.week : me.bench);
     return (
       {
-        cut: `cut to the reserves, W${w}`,
-        quit: `quit the sport, W${w}`,
-        poached: `poached by St. Gloria, W${w}`,
-        abroad: `left the island, W${w}`,
-        national: `called up to the national team, W${w}`
+        cut: `cut to the reserves, ${w}`,
+        quit: `quit the sport, ${w}`,
+        poached: `poached by St. Gloria, ${w}`,
+        abroad: `left the island, ${w}`,
+        national: `called up to the national team, ${w}`
       }[me.status] || 'still in play'
     );
   },
@@ -360,7 +360,7 @@ const People = {
             f = ids.map(first);
           Run.news(
             run,
-            L[Math.floor(hstr(`chem|${kind}|${run.week}|${ids.join()}`) * L.length)]
+            L[Math.floor(hstr(`chem|${kind}|${Season.wk(run)}|${ids.join()}`) * L.length)]
               .replace('{t}', t.name)
               .replace('{a}', f[0])
               .replace('{b}', f[1])
@@ -373,9 +373,10 @@ const People = {
   },
   /** One week for every NPC: plan → apply → record; injuries, stamina, off-screen play for league starters. */
   week(run) {
-    if (CALENDAR[run.week] === 'eval') People.benchTick(run);
+    if (Season.cal(run, run.week) === 'eval') People.benchTick(run);
     const homes = People.homes(run),
-      hard = run.mode && run.mode.hard ? 1.15 : 1,
+      yr = Season.year(run) > 1 ? PEOPLE.year2 : 1,
+      hard = (run.mode && run.mode.hard ? 1.15 : 1) * yr,
       starters = new Set(run.teams.flatMap(t => t.P));
     People.ensure(run, homes);
     for (const { p, home, t } of homes.values()) {
@@ -387,7 +388,7 @@ const People = {
         me.sta += PEOPLE.sta.rest;
         me.log.rest++;
       } else if (plan.act === 'hustle') {
-        People.matchXp(me, p, PEOPLE.hustle);
+        People.matchXp(me, p, PEOPLE.hustle * yr);
         me.sta -= PEOPLE.sta.hustle;
         me.log.hustle++;
       } else {
@@ -408,7 +409,7 @@ const People = {
           }
         }
       }
-      if (plan.act !== 'out' && me.inj === 0 && starters.has(p)) People.matchXp(me, p, PEOPLE.play);
+      if (plan.act !== 'out' && me.inj === 0 && starters.has(p)) People.matchXp(me, p, PEOPLE.play * yr);
       me.sta = clamp(me.sta + PEOPLE.sta.week, 0, 100);
     }
     People.pairs(run, homes);

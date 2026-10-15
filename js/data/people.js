@@ -78,7 +78,8 @@ const PEOPLE = {
   sta: { train: 15, hard: 25, hustle: 10, rest: 60, week: 20, tired: 35 },
   hurt: { hard: 0.04, low: 0.12, lowSta: 40, weeks: [1, 3] },
   hustle: 100,
-  play: 100
+  play: 100,
+  year2: 0.4 // year 2 (spec §4.28): the field's growth × this — the island has had its year; you are the one still climbing
 };
 /**
  * What an NPC remembers about you (spec §4.23 B). kind → { v: base value, rep: ×rep per same-kind repeat in one week,

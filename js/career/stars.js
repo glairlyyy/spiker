@@ -59,10 +59,19 @@ const Stars = {
   all: run => run.teams.flatMap(t => squadOf(t)).filter(p => p.named),
   /** A named player by key ('rival', 'reina', …, 'ace-wei'), or null. */
   get: (run, key) => Stars.all(run).find(p => p.nkey === key) || null,
-  /** The curve's target this week: week 1 → the last week (the year-1 Cup), linear. */
+  /** The curve's target this week: week 1 → the last week (the season's Cup), linear. */
   target(run, c) {
     const t = clamp((run.week - 1) / Math.max(1, CAREER.weeks - 1), 0, 1);
     return { ovr: Math.round(lerp(c.ovr[0], c.ovr[1], t)), wit: +lerp(c.wit[0], c.wit[1], t).toFixed(2) };
+  },
+  /** p's curve this season: year 1 its own; year 2 the plateau (STARS.year2; the first aces have left by then). */
+  curve(run, p) {
+    if (Season.year(run) < 2 || !p.curve) return p.curve;
+    const Y = STARS.year2,
+      w1 = p.curve.wit[1];
+    if (p.named === 'rival') return { ovr: run.story && run.story.flags.beatRival ? Y.rival.max : Y.rival.ovr, wit: Y.rival.wit };
+    if (p.named === 'cohort') return { ovr: Y.cohort.ovr, wit: [w1 + Y.cohort.wit[0], w1 + Y.cohort.wit[1]] };
+    return { ovr: [p.curve.ovr[1], p.curve.ovr[1]], wit: [w1, w1] };
   },
   /** Set p's stats to its role's shape at OVR `o` (key stat highest), capped at 99. */
   shape(p, o) {
@@ -78,7 +87,7 @@ const Stars = {
     const C = CAREER;
     for (const p of Stars.all(run)) {
       if (!p.curve) continue;
-      const T = Stars.target(run, p.curve);
+      const T = Stars.target(run, Stars.curve(run, p));
       p.wit = T.wit;
       Stars.shape(p, T.ovr);
       const o = ovr(p);
