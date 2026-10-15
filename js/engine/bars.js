@@ -6,11 +6,22 @@
 function mtraitOf(p) {
   if (p.mtrait !== undefined) return p.mtrait;
   if (p.you) return null;
+  const key = `${p.name}|${p.role}`,
+    c = MT_CACHE.get(p);
+  if (c && c[0] === key) return c[1];
   const h = hu(p, 'mtrait');
-  let a = 0;
-  for (const k in MTRAITS) if (h < (a += MTRAITS[k].share)) return k;
-  return null;
+  let a = 0,
+    t = null;
+  for (const k in MTRAITS)
+    if (h < (a += MTRAITS[k].share)) {
+      t = k;
+      break;
+    }
+  MT_CACHE.set(p, [key, t]);
+  return t;
 }
+/** mtraitOf's cache (the hash is the slow part): player → [name|role, trait]. */
+const MT_CACHE = new WeakMap();
 /** In this match (m.noTraits: the tests' plain match). */
 const mtr = (m, p) => (m && m.noTraits ? null : mtraitOf(p));
 

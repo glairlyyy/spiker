@@ -374,9 +374,9 @@ function chooseAttack(c, s, h) {
   // a predictable attack is easier to read: blockers get there a little more often
   const readBonus = tac.focus && spiker.role === tac.focus ? tac.read : 0;
   // setter-driven plays (decided before the approach so the animation can show them)
-  const freak = quick && hasTech(spiker, 'freak') && W(setter) >= 1.6 && R() < 0.5,
-    slide = quick && !freak && hasTech(spiker, 'slide') && W(setter) >= 1.3 && R() < 0.35,
-    sync = !quick && qual === 3 && setter.role === 'S' && hasTech(setter, 'sync') && R() < 0.25;
+  const freak = quick && hasTech(spiker, 'freak') && W(setter) >= 1.6 && (cardForce(spiker, 'freak') || R() < 0.5),
+    slide = quick && !freak && hasTech(spiker, 'slide') && W(setter) >= 1.3 && (cardForce(spiker, 'slide') || R() < 0.35),
+    sync = !quick && qual === 3 && setter.role === 'S' && hasTech(setter, 'sync') && (cardForce(setter, 'sync') || R() < 0.25);
   if (freak) techFire(m, spiker, 'freak');
   if (slide) techFire(m, spiker, 'slide');
   if (sync) techFire(m, setter, 'sync');

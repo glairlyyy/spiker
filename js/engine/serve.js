@@ -48,6 +48,8 @@ function rallyStart(m) {
   m.hypeRally = 0; // at most one staged scene per rally
   m.kbScene = 0; // a kill-block scene played this rally (chatter skips the blocker's line)
   m.defBeats = [];
+  m.att0 = m.att ? [m.att[0].n, m.att[1].n] : [0, 0]; // the cards' spent tally (spec §2.33): who attacked this rally
+  m.srv0 = m.serve;
 }
 /** Choose the serve up front and walk everyone to their spots; the reset and the server's routine beats. */
 function serveWalk(c) {
@@ -83,6 +85,7 @@ function serveWalk(c) {
       acts: []
     });
   Object.assign(c, { oS, oR, server, sq, sType, errK, jumpSrv, runM, endX, startX });
+  m.srvP0 = server;
 }
 /** Run-up pace and serve techniques; the toss (and run-up) beat. */
 function serveToss(c) {

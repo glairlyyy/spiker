@@ -387,14 +387,23 @@ function spikePower(c, x) {
   st(m, spiker, 'top', kmh(pow));
   let around = false;
   const cutS = hasTech(spiker, 'cutshot');
-  if (!tip && cov > 0.5 && R() < clamp((W(spiker) - 0.4) * 0.45 + (cutS ? 0.2 : 0) + (x.cutK || 0), 0, x.cutMax ?? 0.75)) {
+  if (
+    !tip &&
+    cov > 0.5 &&
+    R() <
+      clamp(
+        (W(spiker) - 0.4) * 0.45 + (cutS ? 0.2 : 0) + (cutS && cardForce(spiker, 'cutshot') ? 0.25 : 0) + (x.cutK || 0),
+        0,
+        x.cutMax ?? 0.75
+      )
+  ) {
     around = true;
     if (cutS) techFire(m, spiker, 'cutshot');
     // a blocker at least as sharp as the hitter reads the cut and keeps part of the block on it
     cov *= (cutS ? 0.35 : 0.45) + (W(b0) >= W(spiker) ? 0.2 : 0);
   }
   // Delayed Spike: hang in the air until the blockers come down
-  const delayed = !tip && !quick && !around && cov > 0.4 && hasTech(spiker, 'delay') && R() < 0.35;
+  const delayed = !tip && !quick && !around && cov > 0.4 && hasTech(spiker, 'delay') && (cardForce(spiker, 'delay') || R() < 0.35);
   if (delayed) {
     cov *= 0.4;
     techFire(m, spiker, 'delay');

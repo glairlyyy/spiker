@@ -168,6 +168,10 @@ function newMatch(a, b, rec, opts = {}) {
   );
   m.temper = [temperOf(a), temperOf(b)]; // spec §2.14: from the squads' personalities (no draws)
   matchPlans(m, opts);
+  const cm0 = CM;
+  CM = m; // (the coach's card pick reads this match's effective stats, not the last match's)
+  cardsInit(m, opts); // tactic cards (spec §2.33): the turn-0 hands
+  CM = cm0;
   return m;
 }
 /** Team plans (spec §2.26): from match prep (opts.plan[side]) or the coach's own pick; who runs each; the log. */
@@ -180,6 +184,7 @@ function matchPlans(m, opts) {
   CM = cm0;
   m.planBy = [0, 1].map(i => (opts.plan?.[i] ? 'you' : 'ai')); // who runs each side's plan: 'you' (match prep) or the AI coach
   m.planLog = m.plan.map((p, i) => ({ side: i, at: [0, 0], atk: p.atk, def: p.def, by: m.planBy[i] }));
+  m.planFixed = [0, 1].map(i => !!opts.plan?.[i]); // fixed in prep / a test: the cards leave this side's plan alone
 }
 /** A side's starting lineup (restoreLineups puts it back). */
 const lineupOf = t => ({
@@ -468,6 +473,7 @@ function end(m, w, beats) {
   const oppWasInZone = !!m.zone[1 - w];
   pointTally(m, w);
   pointMomentum(m, w);
+  const spent = cardTally(m, w); // the slotted plays' net points; a play at TURN.spent burns (spec §2.33)
   const z = pointStage(m, w, oppWasInZone); // fire → stage (spec §2.14)
   elPoint(m, w);
   // captain's buffs wear off after a few points
@@ -481,12 +487,15 @@ function end(m, w, beats) {
   }
   const capBeats = m.over ? [] : [...captainThink(m, 0), ...captainThink(m, 1)];
   if (beats) pointBeats(m, w, beats, z, capBeats);
+  if (beats && spent.length) beats.push({ dur: 900, acts: spent.map(s => ({ k: 'cardspent', side: s.side, id: s.id })) });
   // substitutions at the dead ball (after the point's beats, before any timeout huddle): a Rest order first (spec §2.30)
   if (!m.over)
     for (const side of [0, 1]) {
       const bs = [...ordSubs(m, side), ...coachSubs(m, side)];
       if (beats) beats.push(...bs);
     }
+  const tb = cardTurn(m); // a turn: every TURN.pts points, or after a spent card (spec §2.32)
+  if (beats && tb) beats.push(tb);
   if (!m.over) {
     const L = 1 - w,
       T = m.t[L],
@@ -628,8 +637,16 @@ function timeout(m, L, beats, manual) {
   m.streak[O] = 0;
   const sc = stageTimeout(m, L); // out of Loose at once; their Fever cools (spec §2.14)
   // the AI coach's huddle answers what it has noticed (spec §2.26); a side you run changes plan in match prep instead
-  const np = m.planBy[L] === 'ai' ? planCounter(m, L) : null;
-  if (np) planSet(m, L, np, 'ai');
+  let np = null;
+  if (m.cards) {
+    // with cards (spec §2.32): a timeout is a turn for that side — the coach re-picks around your cards
+    const before = cardIds(m, L).join();
+    if (m.cards[L].by === 'ai') cardFill(m, L);
+    np = before !== cardIds(m, L).join();
+  } else {
+    np = m.planBy[L] === 'ai' ? planCounter(m, L) : null;
+    if (np) planSet(m, L, np, 'ai');
+  }
   if (!beats) return;
   const hx = (side, i) => sx(side, 80 + i * 24),
     hz = i => [0.04, 0.11, 0.02, 0.13][i];

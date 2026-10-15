@@ -96,7 +96,7 @@ function stageTimeout(m, L) {
 /** A side's stage buff for one stat (spec §2.14): atk (power in play), def, spd, jump, serve → a multiplier. */
 const stageBuff = (p, k) => {
   const S = CM && CM.stage && STAGES[CM.stage[sideOf(p)]];
-  return S && S.buff[k] ? 1 + S.buff[k] / 100 : 1;
+  return (S && S.buff[k] ? 1 + S.buff[k] / 100 : 1) * cardBuff(p, k); // × the slotted tactic cards (spec §2.33)
 };
 
 /** Points until the side's captain can call again (0 = ready). */

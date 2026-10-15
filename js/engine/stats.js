@@ -42,7 +42,8 @@ const dumpThreat = (p, wit = p.wit) => clamp(0.25 + (wit - 1) * 0.6 + (p.jump - 
 /** Drain stamina (skills, defense and speed soften it; floor 0.05). */
 function dr(m, p, v) {
   m.sta[p.id] = clamp(
-    (m.sta[p.id] == null ? 1 : m.sta[p.id]) - v * RULES.stamina.drain * skillMod(p, 'stamina') * (1.3 - (p.def + p.speed) / 400) * (1 + HP.drain * (1 - hpOf(m, p))), // low HP drains more (spec §2.31)
+    (m.sta[p.id] == null ? 1 : m.sta[p.id]) -
+      v * RULES.stamina.drain * skillMod(p, 'stamina') * (1.3 - (p.def + p.speed) / 400) * (1 + HP.drain * (1 - hpOf(m, p))), // low HP drains more (spec §2.31)
     0.05,
     1
   );

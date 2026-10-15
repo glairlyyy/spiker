@@ -48,7 +48,7 @@ Accept: no traits → fire equals the average morale; a passer served at hard 3 
 QA: none (engine).
 Result: Built (js/engine/bars.js, js/data/cards.js). HP: gap 0, span 30, heal 0.2 — collapses (60 sims) league ~0.1 / tournament ~5 per 100 points (the roll gave ~1.4 / ~9; untuned). Morale per player for the whole squad, fire = on-court average (captain ×2); no traits → equal to the old fire (test). Traits by hash (~half). 200 tournament matches: Loose 6 · Composed 49 · Focused 43 · Fever 2 % (Fever in 49 %). Tests: stuff band 7–12.5 % (11.8 now), Commit's test checks stuffed quicks (quick kills now level with Read). Goldens updated.
 
-### [ ] T-295: Tactic cards and turns
+### [x] T-295: Tactic cards and turns
 Spec: §2.32, §2.33          Goldens: update (the coach slots cards in every match)          Save: no change
 Goal: every side plays a 5-slot hand from its squad's pool, refilled at turns (every 6 points, a spent card, a timeout);
 plays compile into plans / orders / the tactic / forced techniques / buffs; combos; spent at −3; Stubborn.
@@ -60,7 +60,7 @@ Do not: draw R() in the coach's pick; change a technique's chance when no card f
 Accept: tests — a forced Killer fires on every holder's jump serve; a Stubborn holder isn't forced; a play at −3 is spent and
 never slotted again; combos link; turns every 6 points.
 QA: none (engine).
-Result:
+Result: Built as specced (js/engine/cards.js, CARDS / COMBOS / TURN / SLOTS / CARD_AI in js/data/cards.js). Cards compile into plans, the tactic, orders (`C.cord`; never over an order already set), forced techniques (`cardForce` at the R()-gated hooks; Cut Shot +0.25) and buffs (`cardBuff` × stageBuff). `opts.cards === false` = no hand; `opts.plan` keeps cards off that side's plan (old tests). A timeout refills the calling side. Act kinds `turn` / `cardspent` with handlers (js/ui/match-cards.js stub until T-289). Also render/acts.js, js/ui/match-cards.js (new), tests/run.js. Goldens updated (the coach slots cards in every match). 145/145.
 
 ### [ ] T-296: Measure the cards, bars and turns
 Spec: §2.31–§2.33          Goldens: unchanged          Save: no change

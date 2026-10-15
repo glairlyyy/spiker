@@ -13,6 +13,7 @@ require('./hex.test');
 require('./map3d.test');
 require('./cup.test');
 require('./court.test');
+require('./cards.test');
 require('./study.test');
 require('./momentum.test');
 require('./lines.test');

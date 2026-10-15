@@ -146,7 +146,7 @@ function blockCoverage(c, x, f) {
   let cov = Math.max(c0.c, c1.c) + (c0.c > 0.4 && c1.c > 0.4 ? 0.25 : 0) + readBonus;
   // techniques that beat (or read) the block
   const readB = quick && hasTech(b0, 'readblk') && W(b0) >= 1.1,
-    pipeCombo = back && hasTech(setter, 'pipecombo') && (m.pts[0] + m.pts[1] + n) % 2 === 0; // planned play, not every time
+    pipeCombo = back && hasTech(setter, 'pipecombo') && (cardForce(setter, 'pipecombo') || (m.pts[0] + m.pts[1] + n) % 2 === 0); // planned play, not every time
   if (readB) techFire(m, b0, 'readblk');
   if (pipeCombo) techFire(m, setter, 'pipecombo');
   if (freak) cov *= readB ? 0.6 : 0.25;

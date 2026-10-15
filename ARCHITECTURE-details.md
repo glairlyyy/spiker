@@ -840,3 +840,16 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   set `m.mom` directly (element Starlight, zone breaker, timeout) goes through `morAdd` / `fireTo` (shift everyone alike).
   `subIn` refreshes the fire (who is on court). `m.noTraits` (tests) makes every player trait-less: then all morale is equal
   and the fire is exactly the old fire.
+
+## Tactic cards and turns (spec §2.32–§2.33, T-287)
+
+- **Compile, don't fork**: a card is data (`CARDS`); `cardApply` turns the slotted set into the existing levers, so the rally
+  code only gained `cardForce` checks at the R()-gated technique hooks (delay, freak, slide, sync, pipe combo; Cut Shot adds
+  +0.25 to its chance) and `cardBuff` inside `stageBuff`. A forced technique skips its R() draw; no card → the old draw.
+- **Orders**: a card's role orders go into `m.ord` like the board's, listed in `C.cord`; the next apply clears only those, and a
+  card never overwrites an order already there (a board / test order stands). Stubborn players get none.
+- **Plans**: `m.planFixed[side]` (opts.plan: match prep's old plan tiles, tests) keeps the cards off that side's plan.
+- **Tally**: `rallyStart` notes `m.att0` (attacks so far) and `m.srv0`, `serveWalk` the server (`m.srvP0`); `cardTally(m, w)` in
+  `end` after pointMomentum reads them. A combo shares one `net` key (the combo id).
+- **Turns**: `cardTurn` after the dead-ball subs: every TURN.pts points played or `m.turnNow` (a spent card); a timeout refills
+  the calling side (`timeout`). `m.turnLog` keeps each turn's slots.

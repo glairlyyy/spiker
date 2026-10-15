@@ -257,6 +257,14 @@ const ACTS_UI = {
   stage(a, d, bs) {
     stageShow(a);
     Dir.stage(a);
+  },
+  /** A turn (spec §2.32): the hand overlay (js/ui/match-cards.js) pauses a played match. */
+  turn(a, d, bs) {
+    if (typeof cardsTurnShow === 'function') cardsTurnShow(a);
+  },
+  /** A tactic card burns (spec §2.33): its slot empties, a tag over the court. */
+  cardspent(a, d, bs) {
+    if (typeof cardsSpentShow === 'function') cardsSpentShow(a);
   }
 };
 /** Players on court: substitutions and display state (poses, spike style, set direction). */
