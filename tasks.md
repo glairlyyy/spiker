@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-292** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-294** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -133,6 +133,42 @@ Steps:
    tint while Fired up, a teammate remark.
 Accept: a scripted week of wins fills Drive to Fired up; a run of losses reaches a Scar; no UI shows a value.
 QA: career run → hub after a Fired up trigger.
+Result:
+
+### [ ] T-292: Fern's goodbye and the first four secret places
+Spec: §4.31          Goldens: unchanged          Save: no change (RUN_DEFAULTS `secret`: id → true; `habits`: revealed rival habits)
+Goal: At the off-season Fern names the secret places in her goodbye scene; the Tape Room, the Lighthouse, the Hermit's
+Court and Fern's Rooftop appear on the map with a reveal and each does its one thing.
+Files: js/data/city.js, js/career/city.js, js/data/story.js, js/career/story.js, js/career/season.js, js/career/feel.js,
+js/career/mapmodel.js, js/ui/career-map.js, js/ui/plan-board.js, js/map3d/ (the place markers only), tests/career.test.js
+Do not: put a money lock on them; make any of them a stat gym; show the hidden bars' values.
+Steps:
+1. `SECRET` places in CITY data (hidden until `run.secret[id]`); `fernBye` scene (T-289) sets them.
+2. Tape Room: a day; first viewing Pain + (Feel); later viewings reveal the next of the rival's habits (from her
+   laneSeen-style tallies / STARS data) into `run.habits`; the Plan board shows them on her when you face her.
+3. Lighthouse (night): two choices — let go (Pain − FEEL.light.let) / sharpen (Pain + FEEL.light.sharp, next Scar's
+   OP odds + FEEL.light.op).
+4. Hermit's Court: a trial per visit (a stat bar to reach, the next one higher); passed → a secret technique (one of a
+   short authored list in js/data/skills.js — ids only here, effects with T-291's special moves).
+5. Fern's Rooftop: one letter a month in year 2 — authored hints chosen by what you lack (lowest stat, no habits
+   revealed, Drive low), lore voice.
+Accept: after the rollover the four places are on the map; each acts as above in a scripted run; none before Fern's goodbye.
+QA: career run → map after the off-season; each card.
+Result:
+
+### [ ] T-293: The Onsen, the Midnight Court, the Old Scout
+Spec: §4.31          Goldens: unchanged          Save: no change
+Goal: The other three secret places: deep rest; night games where the named players may appear; a monthly honest rating.
+Files: js/data/city.js, js/career/city.js, js/career/court.js, js/career/feel.js, js/data/story.js, js/ui/career-map.js,
+tests/career.test.js
+Do not: let the Old Scout run more than one headless sim set a month; draw from the main random stream for who shows up.
+Steps:
+1. Onsen: 2 days → full stamina, mood Great, injury −1 week.
+2. Midnight Court (night; unlocked by a street contact after a street win): a court match (Court) where a named player
+   may take the other side (seeded); win → Drive + FEEL.midnight.win, loss → Pain + FEEL.midnight.loss.
+3. Old Scout (unlocked at a fan mark): once a month, your squad vs the rival's squad over N headless matches → "x in 10".
+Accept: each place acts as above; the Old Scout's number matches a direct simMatch tally for the same squads.
+QA: career run → each card.
 Result:
 
 ### [?] T-291: Scars — the trait pools

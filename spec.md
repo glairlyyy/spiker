@@ -951,6 +951,30 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   - **Hidden, both years**: no bar on screen. Shown only indirectly — diary lines as a bar climbs ("Something won't sit
     still in you" / "It hurts more than it should"), teammates' remarks, the MC's face on the hub, the Fired up match
     itself, the Scar's own scene. A second run is worth it for knowing what fills them.
+- §4.31 Secret places **[draft, owner 2026-10-16]**: places that aren't on the map until someone tells you — no money
+  locks (fees per visit stay as today). Each does something no other place does (never another gym). **Fern names
+  most of them in her goodbye at the off-season** ("Things nobody told me in my first year…", lore voice); they
+  appear on the map with a reveal. Year 2 only, except the Midnight Court (found by play).
+  - **The Tape Room** (Academy basement; Fern's key): watch old scouting tapes, the 15–4 match among them. The first
+    viewing hurts (Pain); each later viewing reveals one of the rival's habits (her lanes, shots, serve targets), and
+    the Plan board shows it when you face her. Costs a day.
+  - **The Lighthouse** (Wu's far tip, night only; "where I went when I wanted to quit"): a night with your Pain —
+    **let it go** (Pain down, no Scar) or **sharpen it** (Pain up, a Scar sooner, the OP odds up). The only place that
+    acts on the hidden bars.
+  - **The Hermit's Court** (Shu, past the Thousand Steps; an old national player who turned everyone away, Fern
+    too): a trial (a drill to pass or a stat to reach) → one **secret technique** per trial passed. Where signature
+    moves come from (with §4.30's special-only effects).
+  - **Fern's Rooftop** (the Student flat roof; she shows you before she goes): in year 2 her letters arrive here —
+    hints at what to try next, never the answer.
+  - **The Onsen** (Shu hot spring; "the one luxury worth it"): 2 days for full stamina and mood, an injury a week
+    sooner. The only deep rest.
+  - **The Midnight Court** (Outlaws, under the overpass, night; found through a street contact after a street win, not
+    Fern): off-the-record night games where the aces practise — the cohort or the rival may be across the net. A win
+    → a lot of Drive, a loss → Pain.
+  - **The Old Scout** (Wei café; found through fame — the radio station / your fans): once a month an honest rating:
+    your squad's real odds against the rival's (a headless sim, like the 2026-10-15 measurement).
+  - Build order: Fern's goodbye + Tape Room, Lighthouse, Hermit's Court, Rooftop first; the Onsen, the Midnight
+    Court, the Old Scout after.
 - §4.27 Hex territory **[built, T-131–T-134, T-138, T-153]** (owner, 2026-10-03): the war map becomes hex tiles; each tile has its own takeover
   condition. Changes how factions move and seize; the player's travel (roads, days, trips, fog) does not change.
   Replaces the fixed border meters and border places (§4.7 `FRONT.borders`, T-130 lines, seized patches).
