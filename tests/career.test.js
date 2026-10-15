@@ -40,7 +40,7 @@ test('career: a full run reaches a result with sane values', () => {
 
 test('career: week steps are ordered lists of functions (T-202)', () => {
   const g = load(5);
-  eq(g.WEEK_END.length, 6, 'six week-end steps');
+  eq(g.WEEK_END.length, 8, 'eight week-end steps (Drive & Pain, the secret places: T-290, T-292)');
   eq(g.WEEK_START.length, 6, 'six week-start steps');
   assert(
     [...g.WEEK_END, ...g.WEEK_START].every(f => typeof f === 'function'),
@@ -1225,6 +1225,87 @@ test('story: year 2 — the year-1 verdict, Fern goodbye (secrets), the rematch 
   run.result = null;
   g.Cup.end(run, 'Final');
   eq(run.result.ending, 'spite', 'lost: the spite end');
+});
+
+test('feel: Drive fills to Fired up (a whole-match buff, then it counts down); Pain fills to a Scar; never on screen (T-290)', () => {
+  const [g, run] = mkRunG(333);
+  for (let i = 0; i < 60 && !run.fired; i++) g.Feel.add(run, 'drive', g.FEEL.drive.train);
+  eq(run.fired, g.FEEL.fired.matches, 'Drive at the top: Fired up for the next matches');
+  eq(run.feel.drive, 0, 'then the bar starts again');
+  assert(g.Feel.trainMul(run) > 1, 'training gains up while Fired up');
+  const T = g.Run.myTeam(run),
+    m = g.newMatch(T, run.teams[0], false);
+  g.Feel.match(run, m);
+  assert(m.buff[run.youId] && m.buff[run.youId].n > 100, 'a whole-match buff on you');
+  while (!m.over) g.playRally(m);
+  g.Feel.result(run, m, true, 'B');
+  eq(run.fired, g.FEEL.fired.matches - 1, 'one Fired up match used');
+  for (let i = 0; i < 20 && !run.scars.length; i++) g.Feel.add(run, 'pain', g.FEEL.pain.loss);
+  eq(run.scars.length, 1, 'Pain at the top: a Scar');
+  assert(
+    run.log.some(l => g.FEEL_LINES.pain[2] === l.t),
+    'the diary says so — the only trace'
+  );
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'js/ui/career-hub.js'), 'utf8');
+  assert(!/feel\.(drive|pain)/.test(src), 'no UI reads the bars');
+});
+
+test('secret places: hidden until told; tapes, lighthouse, hermit, roof, onsen, night court, old scout (T-292, T-293)', () => {
+  const [g, run] = mkRunG(444);
+  g.Story.skip(run);
+  run.event = null;
+  const ids = ['tapes', 'light', 'hermit', 'roof', 'onsen', 'midnight', 'oldScout'];
+  assert(
+    ids.every(id => !g.Secret.known(run, id) && !g.City.can(run, id).ok),
+    'off the map before anyone tells you'
+  );
+  assert(!g.MapModel.pins(run).some(p => ids.includes(p.id)), 'no pin');
+  run.week = 29;
+  g.Season.rollover(run);
+  run.story.flags.secrets = true; // Fern's goodbye
+  assert(
+    ['tapes', 'light', 'hermit', 'roof', 'onsen'].every(id => g.Secret.known(run, id)),
+    "Fern's five are told"
+  );
+  const day = (id, opt) => {
+    run.days = g.WEEK_DAYS;
+    run.pos = g.City.at(run, id).slice();
+    return g.City.day(run, id, false, opt);
+  };
+  day('tapes');
+  assert(run.feel.pain >= g.SECRET.tapes.pain && !run.habits.length, 'the first viewing hurts');
+  day('tapes');
+  eq(run.habits.length, 1, 'then each viewing shows one of her habits');
+  assert(/down the line \d+ %/.test(g.Secret.seen(run)[0].text), 'a true number');
+  run.feel.pain = 50;
+  day('light', 'let');
+  eq(run.feel.pain, 50 - g.SECRET.light.let, 'let it go: Pain down');
+  assert(!g.City.can(run, 'light').ok, 'the lighthouse needs a choice');
+  const you = g.Run.you(run);
+  for (const k of g.STATK) you[k] = 50;
+  day('hermit');
+  eq(run.secretMoves.length, 0, 'the trial needs your best stat at the bar');
+  you.power = 61;
+  day('hermit');
+  eq(run.secretMoves[0], g.SECRET_LINES.moves[0], 'passed: a secret technique');
+  eq(you.power, 61 + g.SECRET.hermit.gain, 'and a little past the cap');
+  assert(g.Secret.letter(run) === 'habits' || g.Secret.letter(run), 'a letter waits on the roof');
+  day('roof');
+  eq(g.Secret.letter(run), null, 'one a month');
+  run.sta = 10;
+  run.money = 500;
+  day('onsen');
+  eq(run.sta, run.staMax, 'the onsen: full stamina');
+  assert(g.WEEK_DAYS - run.days >= 2, 'two days');
+  g.Secret.street(run);
+  assert(g.Secret.known(run, 'midnight'), 'a street contact tells you of the night court');
+  const n = run.mlog.length;
+  day('midnight');
+  eq(run.mlog.length, n + 1, 'the night game is on your history');
+  run.fans = g.SECRET.oldScout.fans;
+  const line = day('oldScout');
+  assert(/\d+ in 10/.test(line), "the old scout's number");
+  assert(!g.City.can(run, 'oldScout').ok, 'once a month');
 });
 
 test('stars: the rival, the cohort and the first aces — seated, on curves, never moved, on the map (T-189, T-190)', () => {

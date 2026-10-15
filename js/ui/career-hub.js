@@ -289,7 +289,7 @@ function weekRail(run, armed) {
     match = wt === 'cup' || wt === 'eval',
     eve = !match && days <= 0;
   return `<aside class="wrail" aria-label="This week">
-    <div class="wtop"><button class="wme" onclick="hubOpen('me')" aria-label="Your player"><span class="portrait">${faceSVG(you, MOODS[run.mood].form, 44)}</span>
+    <div class="wtop"><button class="wme" onclick="hubOpen('me')" aria-label="Your player"><span class="portrait ${Feel.fired(run) ? 'fired' : ''}">${faceSVG(you, MOODS[run.mood].form, 44)}</span>
       <span><b>${stag(you)}${esc(you.name)}</b><small ${tip(`${ROLE_NAME[you.role]} · ${team.name}`)}>${you.role} · OVR ${ovr(you)}</small></span></button>
       <button class="btn wfold" onclick="railToggle()" aria-label="Collapse the week rail ([)">« <kbd>[</kbd></button></div>
     <div class="wstats">${STATK.map(k => {
@@ -329,7 +329,7 @@ function railStrip(run, armed) {
           .join('');
   return `<aside class="wrail mini" aria-label="This week">
     <button class="btn wfold" onclick="railToggle()" aria-label="Expand the week rail ([)">» <kbd>[</kbd></button>
-    <button class="wme" onclick="hubOpen('me')" aria-label="Your player" ${tip(you.name)}><span class="portrait">${faceSVG(you, MOODS[run.mood].form, 40)}</span></button>
+    <button class="wme" onclick="hubOpen('me')" aria-label="Your player" ${tip(you.name)}><span class="portrait ${Feel.fired(run) ? 'fired' : ''}">${faceSVG(you, MOODS[run.mood].form, 40)}</span></button>
     <div class="wleft"><b>${match ? '⚑' : days}</b><small>${match ? 'match' : 'left'}</small></div>
     <div class="wdays">${cells}</div>
     <button class="wicon" onclick="railToggle()" aria-label="Inbox: ${n} waiting" ${tip(`Inbox · ${n} waiting`)}>✉${n ? `<em class="badge">${n}</em>` : ''}</button>

@@ -299,7 +299,98 @@ const SPOTS = {
     at: [785, 490],
     icon: '💵',
     desc: 'Street hustle for cash: win on your OVR, −12 stamina'
+  },
+  // secret places (spec §4.31): `secret` = off the map until someone tells you (Secret.known); act = what Secret.day does there
+  tapes: {
+    name: 'The Tape Room',
+    act: 'tapes',
+    secret: true,
+    region: 'open',
+    at: [500, 472],
+    icon: '📼',
+    desc: "The Academy basement: old scouting tapes. Fern's key."
+  },
+  light: {
+    name: 'The Lighthouse',
+    act: 'light',
+    secret: true,
+    region: 'wu',
+    at: [960, 222],
+    icon: '🗼',
+    desc: 'Past the Wu docks. Where Fern went when she wanted to quit.'
+  },
+  hermit: {
+    name: "The Hermit's Court",
+    act: 'hermit',
+    secret: true,
+    region: 'shu',
+    at: [300, 218],
+    icon: '🏯',
+    desc: 'An old national player past the Thousand Steps. He turns everyone away.'
+  },
+  roof: {
+    name: "Fern's Rooftop",
+    act: 'roof',
+    secret: true,
+    region: 'open',
+    at: [496, 540],
+    icon: '✉',
+    desc: 'The roof of the student flat. Her letters come here.'
+  },
+  onsen: {
+    name: 'The Onsen',
+    act: 'onsen',
+    secret: true,
+    region: 'shu',
+    at: [240, 270],
+    icon: '♨',
+    cost: 30,
+    days: 2,
+    desc: 'A hot spring in the hills. The one luxury worth it. Two days: full stamina, mood Great, an injury heals a week sooner.'
+  },
+  midnight: {
+    name: 'The Midnight Court',
+    act: 'midnight',
+    secret: true,
+    region: 'outlaws',
+    at: [800, 478],
+    icon: '🌙',
+    desc: 'Under the overpass, off the record. The aces practise here when nobody is looking.'
+  },
+  oldScout: {
+    name: 'The Old Scout',
+    act: 'oldScout',
+    secret: true,
+    region: 'wei',
+    at: [745, 312],
+    icon: '☕',
+    desc: 'A café in Wei. A retired scout who still rates everyone — honestly, once a month.'
   }
+};
+/**
+ * The secret places (spec §4.31; js/career/secret.js). tapes: the first viewing's Pain. light: Pain let go / sharpened (+ the next
+ * Scar's OP odds, T-291). hermit: the trial bars (your best stat must reach the next one) and the gain past the cap on a pass.
+ * roof: a letter every `every` weeks in year 2. onsen: days, price. midnight: Drive / Pain on top of the match's own. oldScout:
+ * the fans that bring him to you, sims per rating, once every `every` weeks.
+ */
+const SECRET = {
+  tapes: { pain: 15 },
+  light: { let: 30, sharp: 25, op: 0.05 },
+  hermit: { bars: [60, 66, 72, 78, 84], gain: 2 },
+  roof: { every: 4 },
+  onsen: { days: 2, cost: 30 },
+  midnight: { win: 15, loss: 8 },
+  oldScout: { fans: 2000, n: 10, every: 4 }
+};
+/** The week rail's label for a day at a secret place (City.dayWhat). */
+const SECRET_DAY = {
+  tapes: 'Tapes',
+  light: 'Lighthouse',
+  hermit: 'Trial',
+  roof: 'Letter',
+  onsen: 'Onsen',
+  midnight: 'Night game',
+  oldScout: 'Scout'
 };
 /** Street hustle tuning: rival OVR range, stake won / lost, fans on a win. */
 const STREET = { rival: [35, 60], win: [40, 90], loss: 20, fans: 40, sta: 12 };
@@ -428,7 +519,15 @@ const ROADS = {
     'venue:highland': [400, 180],
     steps: [320, 235],
     hotelShu: [410, 250],
-    jSn: [490, 215]
+    jSn: [490, 215],
+    // the secret places (spec §4.31)
+    tapes: [500, 472],
+    light: [960, 222],
+    hermit: [300, 218],
+    roof: [496, 540],
+    onsen: [240, 270],
+    midnight: [800, 478],
+    oldScout: [745, 312]
   },
   edges: [
     // Wu coast road and the way up to Wei
@@ -521,7 +620,14 @@ const ROADS = {
     ['hq4', 'venue:highland', 'dirt'],
     ['hotelShu', 'dojo', 'dirt'],
     ['hotelShu', 'jSn', 'dirt'],
-    ['jSn', 'jWj', 'main']
+    ['jSn', 'jWj', 'main'],
+    ['acaGym', 'tapes', 'path'],
+    ['dunes', 'light', 'path'],
+    ['steps', 'hermit', 'path'],
+    ['home:studio', 'roof', 'path'],
+    ['trail', 'onsen', 'path'],
+    ['street', 'midnight', 'dirt'],
+    ['jW3', 'oldScout', 'street']
   ]
 };
 /**
@@ -954,6 +1060,13 @@ const LANDMARK = {
   arcade: 'stall',
   bonfire: 'stall',
   street: 'court',
+  tapes: 'campus',
+  light: 'shrine',
+  hermit: 'dojo',
+  roof: 'stall',
+  onsen: 'hotel',
+  midnight: 'court',
+  oldScout: 'stall',
   hq: 'hq'
 };
 

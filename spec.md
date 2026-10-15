@@ -990,7 +990,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     (the rival included); you have that year to catch up. Not tied to your OVR.
   - Numbers are first guesses for the balance pass; the shape (year-1 aces ≥ rival > cohort > field; you catch up in
     year 2) is the decision.
-  - **Year 2 decided (owner, 2026-10-15)** — the frame: year 1 drops you on the island, Fern tells you briefly what's
+  - **Year 2 decided (owner, 2026-10-15) [built 2026-10-16, T-286–T-289]** — the frame: year 1 drops you on the island, Fern tells you briefly what's
     coming and what to do, then lets you play around and **fail; that is expected** (the AI may carry you past the rival
     — the story covers that — but mostly you lose). **Year 2 is the redemption arc**: the game guides (it doesn't help)
     and opens more depth than train → end week — first through Drive & Pain (§4.30).
@@ -1001,11 +1001,18 @@ the AI coach fills every slot you leave with the same function. Built and measur
     - **The rival match is guaranteed**: an authored **rematch in week 14** of year 2 (your club or Academy squad vs
       Wei Dynasty · Gold, the rival starting), and the year-2 Cup seeds her squad into the **other half** of your
       bracket (you meet in the final if both keep winning).
-    - **Full off-season** between the years: the first aces and Fern leave (their clubs promote a reserve); a
-      transfer window (World.transfers × several) and a promotion pass (World.promote); every NPC grows a year (their
-      growth curve, a season's worth at once); clubs, squads, relations, money, Scars and Drive carry over; the week
-      goes back to 1 and the calendar repeats.
-- §4.30 Drive & Pain **[draft, owner 2026-10-15]**: two hidden bars on the MC, 0–100 each. Not training-place
+    - **Full off-season** between the years: the first aces age out (a same-role reserve takes each seat) and Fern
+      leaves (her goodbye scene); 6 rounds of transfers and a promotion pass; a summer of NPC growth (4 weeks of the
+      weekly rules) — and in year 2 the field grows at × 0.4 (`PEOPLE.year2`: they had their year; you are the one still
+      climbing). Measured: league mean ~82 at the year-1 Cup → ~87 at the year-2 Cup (the rival 92). Clubs, squads,
+      relations, money, Drive & Pain carry over; the week goes back to 1 and the calendar repeats (28 weeks each year).
+    - The rematch is an evaluation week (kind `rematch`) in year-2 week 14: your club's squad (or the Academy squad)
+      against her club with her starting; you start. The year-1 Cup calls nobody up (People.national waits for year 2).
+    - **Scenes**: the year-1 verdict (lost: "She doesn't remember. I do."; won: she takes it personally — her year-2 max
+      curve), Fern's goodbye (she names the secret places, §4.31), the rematch before / after; Fern's year-1 lessons and the
+      rival's first meeting never replay. **Endings** on the end screen: picked together (the year-2 Cup won; "she
+      remembers" if you beat her squad in it) or spite (they go without her).
+- §4.30 Drive & Pain **[built 2026-10-16, T-290; Scars' pools open: T-291]** (owner 2026-10-15): two hidden bars on the MC, 0–100 each. Not training-place
   streaks: everything you do counts.
   - **Drive** fills on every positive thing: a training session, a win, a good grade, a teammate's praise, a good
     event, a club taking you, mood **Great three weeks in a row**. An idle week drains it a little; a loss doesn't empty
@@ -1021,16 +1028,19 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Hidden, both years**: no bar on screen. Shown only indirectly — diary lines as a bar climbs ("Something won't sit
     still in you" / "It hurts more than it should"), teammates' remarks, the MC's face on the hub, the Fired up match
     itself, the Scar's own scene. A second run is worth it for knowing what fills them.
-- §4.31 Secret places **[draft, owner 2026-10-16]**: places that aren't on the map until someone tells you — no money
+- §4.31 Secret places **[built 2026-10-16, T-292–T-293]** (owner 2026-10-16): places that aren't on the map until someone tells you — no money
   locks (fees per visit stay as today). Each does something no other place does (never another gym). **Fern names
   most of them in her goodbye at the off-season** ("Things nobody told me in my first year…", lore voice); they
   appear on the map with a reveal. Year 2 only, except the Midnight Court (found by play).
   - **The Tape Room** (Academy basement; Fern's key): watch old scouting tapes, the 15–4 match among them. The first
     viewing hurts (Pain); each later viewing reveals one of the rival's habits (her lanes, shots, serve targets), and
     the Plan board shows it when you face her. Costs a day.
-  - **The Lighthouse** (Wu's far tip, night only; "where I went when I wanted to quit"): a night with your Pain —
+  - **The Lighthouse** (Wu's far tip; "where I went when I wanted to quit"; a day like any place — the island has no night turn): a night with your Pain —
     **let it go** (Pain down, no Scar) or **sharpen it** (Pain up, a Scar sooner, the OP odds up). The only place that
     acts on the hidden bars.
+  - (built: the trial = your best stat at the next bar, 60 / 66 / 72 / 78 / 84; a pass teaches a named technique — effects with
+    T-291 — and +2 to that stat past the training cap. The Tape Room's facts: her line / cross share, serve, her club's
+    habits, her finisher — true numbers, shown on the Plan board when you face her.)
   - **The Hermit's Court** (Shu, past the Thousand Steps; an old national player who turned everyone away, Fern
     too): a trial (a drill to pass or a stat to reach) → one **secret technique** per trial passed. Where signature
     moves come from (with §4.30's special-only effects).
@@ -1038,9 +1048,9 @@ the AI coach fills every slot you leave with the same function. Built and measur
     hints at what to try next, never the answer.
   - **The Onsen** (Shu hot spring; "the one luxury worth it"): 2 days for full stamina and mood, an injury a week
     sooner. The only deep rest.
-  - **The Midnight Court** (Outlaws, under the overpass, night; found through a street contact after a street win, not
-    Fern): off-the-record night games where the aces practise — the cohort or the rival may be across the net. A win
-    → a lot of Drive, a loss → Pain.
+  - **The Midnight Court** (Outlaws, under the overpass; found through a street contact after a street win, not
+    Fern): off-the-record night games (played at once, on your match history) where the aces practise — the cohort or
+    the rival may be across the net (half the time, seeded). A win → a lot of Drive, a loss → Pain.
   - **The Old Scout** (Wei café; found through fame — the radio station / your fans): once a month an honest rating:
     your squad's real odds against the rival's (a headless sim, like the 2026-10-15 measurement).
   - Build order: Fern's goodbye + Tape Room, Lighthouse, Hermit's Court, Rooftop first; the Onsen, the Midnight

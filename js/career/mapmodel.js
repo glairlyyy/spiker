@@ -5,7 +5,9 @@
 
 const MapModel = {
   /** What you know of: explored places, your home, your club's HQ, this week's battle. */
-  known: (run, id, p) => id === 'home' || id === `hq${run.team}` || id === 'clash' || City.seen(run, p),
+  known: (run, id, p) =>
+    !(SPOTS[id] && SPOTS[id].secret && !Secret.known(run, id)) &&
+    (id === 'home' || id === `hq${run.team}` || id === 'clash' || City.seen(run, p)),
   /** A picked map point, as the selection id 'pt:x,y' ↔ [x, y]. */
   /**
    * Nature on the island (spec §4.19c, NATURE): trees, rocks, bushes and grass as plain data — [{ k, at, s (size ×), r (yaw), c

@@ -50,7 +50,8 @@ const Training = {
       x *
       (Training.camp(run) ? 1.5 : 1) *
       (hard ? TRAIN_X.hard.gain : 1) *
-      (run.injury ? 0.4 : 1)
+      (run.injury ? 0.4 : 1) *
+      Feel.trainMul(run) // Fired up (spec §4.30)
     );
   },
   staCost: (run, key, hard) =>
@@ -146,6 +147,7 @@ const Training = {
     }
     const lv0 = Training.facility(run, key);
     run.uses[key] = (run.uses[key] || 0) + 1;
+    Feel.add(run, 'drive', FEEL.drive.train);
     if (Training.facility(run, key) > lv0) out.push(`${TRAININGS[key].name} facility Lv ${Training.facility(run, key) + 1}`);
     return `${name}${Training.camp(run) ? ' (camp)' : ''}: ${out.filter(Boolean).join(', ')}`;
   },

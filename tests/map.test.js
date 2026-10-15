@@ -478,7 +478,10 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   eq(run.teams.map(t => t.name).join(','), g.FACTIONS.map(f => f.team[0]).join(','), 'league teams play as faction squads');
   for (const id of Object.keys(g.SPOTS)) {
     const s = g.SPOTS[id];
-    assert(s.train ? g.TRAININGS[s.train] : ['rest', 'rec', 'ramen', 'arcade', 'street'].includes(s.act), `${id} does something`);
+    assert(
+      s.train ? g.TRAININGS[s.train] : ['rest', 'rec', 'ramen', 'arcade', 'street', ...g.Secret.acts].includes(s.act),
+      `${id} does something`
+    );
     assert(s.region === null || g.REGIONS[s.region], `${id} region`);
   }
   for (const k of g.TRAINK) assert(g.City.spotsFor(k).length >= 2, `several places for ${k} training`);

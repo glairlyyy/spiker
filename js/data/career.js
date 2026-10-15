@@ -58,6 +58,19 @@ const STATNAME = { power: 'Power', def: 'Defense', speed: 'Speed', jump: 'Jump',
 /** Story mode is two seasons (spec §4.28): `years` of CAREER.weeks + the U21 Cup each; `shift` = one season in weeks (the Cup week
  * counts), the offset Season.rollover takes off every stored week stamp so cooldowns and memories keep counting across it. */
 const SEASON = { years: 2, shift: 29, rematch: 14 }; // rematch: year 2's guaranteed match against the rival's club (an 'eval' week, Eval kind 'rematch')
+/**
+ * Drive & Pain (spec §4.30): two hidden bars on you, 0–max. Drive fills on what goes right; at max → Fired up (`fired.matches`
+ * of your next matches: a whole-match buff of `fired.lv`, training × `fired.train`). Pain fills on what guts you (never an injury
+ * or a bad night); at max → a Scar (pools: T-291). Mood streaks feed them (`streak`). Cues: a diary line as a bar passes each `cue`.
+ */
+const FEEL = {
+  max: 100,
+  drive: { train: 2, win: 8, grade: 6, joined: 12, great: 15, rematch: 20, idle: -4 },
+  pain: { loss: 12, rout: 8, bench: 6, refused: 6, rival: 25, awful: 10, scene: { rivalMeet: 12, y1Lost: 20, rematchLost: 10 } },
+  streak: { great: 3, awful: 2 },
+  fired: { matches: 2, lv: 2, train: 1.25 },
+  cue: [50, 80]
+};
 /** Between the years (Season.offseason): rounds of the transfer market, then a summer of NPC growth (weeks of Growth.week). */
 const OFFSEASON = { transfers: 6, summer: 4 };
 const CALENDAR = { 4: 'eval', 8: 'eval', 12: 'eval', 16: 'eval', 20: 'eval', 24: 'eval', 26: 'camp', 27: 'camp', 28: 'camp' };

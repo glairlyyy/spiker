@@ -130,7 +130,14 @@ function boardSide(i) {
     m.rot[i]
   )
     .map(p => boardCard(m, i, p, who === 'all' || who === p.id))
-    .join('')}</div></section>`;
+    .join('')}</div>${boardHabits(m, i)}</section>`;
+}
+/** The rival's habits you uncovered at the Tape Room (spec §4.31), when she is across the net from side i. */
+function boardHabits(m, i) {
+  if (typeof RUN === 'undefined' || !RUN || !A.fx.onFinish) return '';
+  const riv = Stars.get(RUN, 'rival'),
+    seen = riv && squadOf(m.t[1 - i]).includes(riv) ? Secret.seen(RUN) : [];
+  return seen.length ? `<div class="small bhab"><b>From her tape:</b> ${seen.map(h => esc(h.text)).join(' · ')}</div>` : '';
 }
 function boardPick(id, kind, v) {
   if (!A || !A.m) return;

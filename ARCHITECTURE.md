@@ -203,6 +203,20 @@ their `onLeave` only cleans up (`Eval.restore`). The UI opens them with `watchCa
   `Stars.week` (from Growth.week) sets their stats to the authored curve each week. World.transfers / promote and
   People fates / poach skip `named`; Growth.grow skips their breakthrough roll. `MapModel.figures(run)` lists every person
   drawn as a full model (Fern + the named): map3d keeps one `createAvatar(scene, { kit })` per figure id.
+- **Two seasons** (spec §4.28, `career/season.js` `Season`): Story plays year 1 and year 2 (`run.year`); `run.week` is the week of
+  the season. The year-1 Cup's `Cup.close` calls `Season.rollover` instead of `Cup.end`: `Season.offseason` (the first aces age
+  out, transfers, a summer of Growth.week), stored week stamps rebased by −`SEASON.shift`, week 1 again. `Season.wk(run)` (the week
+  from the run's start) seeds weekly hashes and the story clock; `Season.cal` adds the year-2 rematch week (an evaluation of kind
+  `rematch`, `Eval.rematch`); `Season.at` labels a rebased stamp. Year 2: `STARS.year2` curves, `PEOPLE.year2` slows the field,
+  `Cup.placeRival` / `splitRival` put her squad in the other half of your bracket; `run.result.ending` 'true' | 'spite'.
+- **Drive & Pain** (spec §4.30, `career/feel.js` `Feel`, data `FEEL`): two hidden bars in `run.feel` filled from Training.train,
+  `Cup.record` (every match: `Feel.result`), World.join, refusals, hurtful scenes (`Story.finish` → `Feel.scene`) and mood streaks
+  (WEEK_END). Drive at the top → `run.fired` matches with a whole-match `m.buff` on you (`Feel.match` in the fixture's setup) and
+  training × `FEEL.fired.train`; Pain at the top → `run.scars` (pools: T-291). Never shown: diary cues (`FEEL_LINES`), the portrait ring.
+- **Secret places** (spec §4.31, `career/secret.js` `Secret`, data `SECRET`): SPOTS with `secret` (road nodes like any place) are
+  hidden (MapModel.known, City.can) until `Secret.known` (Fern's goodbye flag `secrets`, a street win, fans). City.day hands their
+  acts to `Secret.day`; the night games and the Old Scout's sims run on a seeded stream (`Secret.isolated`), never the run's.
+  The Tape Room's facts (`Secret.habits`: true engine numbers) show on the Plan board against her (`boardHabits`).
 - **Sponsors** (`career/sponsors.js`; the coach's goal was removed in T-170, spec §10.1b): sponsors make offers at fan milestones (a `pre` event shown before the week's choice) with a perk kept while a
   condition holds.
 - **Matches** (`career/cup.js`; street battles, challenges, loss and injury are `Fight` in `career/fight.js`): an S–C grade from your own line scales that match's rewards; a pre-match focus goal;
@@ -249,7 +263,7 @@ moving for 6 s (25 s while the 3D players load) or one beat lasts 20 s, with a s
 
 ## Saves
 
-Career runs carry `v` (`RUN_VERSION` = 9, `career/run.js`; key `sns_run_v1`). History: v2 faction reserves, v3 cup
+Career runs carry `v` (`RUN_VERSION` = 19, `career/run.js`; key `sns_run_v1`; v19 = `run.year`, migration 18 → 19). History: v2 faction reserves, v3 cup
 entrants, v4 squads of 6 (`bench`), v5 `run.lb` dropped, v6 `run.met` / `street` / `refused`, v7 `losses` / `lastFight`,
 v8 `mlog`, v9 `run.mode.story`; older saves are dropped (`RUN_MIGRATIONS` is empty). Bump the version when the save shape changes and add a step to
 `RUN_MIGRATIONS[oldVersion] = data => upgraded data`; `Run.load` applies the steps in order and ignores saves from a newer version.

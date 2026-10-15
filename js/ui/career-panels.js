@@ -74,6 +74,7 @@ function placePanel(run, id) {
     });
   const study = studyPanel(run, sid, base, travel); // the tutor / a bookstore (T-230)
   if (study) return study;
+  if (s.secret) return secretPanel(run, sid, base, travel, days, cost);
   const label = s.act === 'rest' ? 'Rest' : s.act === 'rec' ? 'Relax' : 'Go';
   return placeCard({
     ...base,
@@ -88,6 +89,35 @@ function placePanel(run, id) {
       travel
     ].filter(Boolean)
   });
+}
+/** A secret place's card (spec §4.31): what it does, its one action (the Lighthouse: two), the gap when it can't. */
+function secretPanel(run, sid, base, travel, days, cost) {
+  const S = Secret.of(run),
+    go = (label, opt = '', hot = true) => {
+      const c = City.can(run, sid, opt || undefined);
+      return `<button class="btn ${c.ok && hot ? 'hot' : ''}" onclick="mapGo('${sid}'${opt ? `,'${opt}'` : ''})" ${c.ok ? '' : `disabled ${tip(c.why)}`}>${label} · ${days}d${cost ? ` · $${cost}` : ''}</button>`;
+    },
+    seen = Secret.seen(run),
+    body =
+      {
+        tapes: seen.length
+          ? `<ul class="small">${seen.map(h => `<li>${esc(h.text)}</li>`).join('')}</ul>`
+          : `<p class="small mute">Nothing watched yet.</p>`,
+        hermit:
+          SECRET.hermit.bars[S.trials || 0] != null
+            ? `<p class="small">Next trial: your best stat at <b>${SECRET.hermit.bars[S.trials || 0]}</b>${(run.secretMoves || []).length ? ` · learned: ${esc(run.secretMoves.join(', '))}` : ''}</p>`
+            : `<p class="small mute">He has taught you everything: ${esc((run.secretMoves || []).join(', '))}.</p>`
+      }[sid] || '';
+  const row = {
+    tapes: [go('Watch')],
+    light: [go('Let it go', 'let'), go('Sharpen it', 'sharp', false)],
+    hermit: [go('Take the trial')],
+    roof: [go('Read the letter')],
+    onsen: [go('Soak')],
+    midnight: [go('Play the night game')],
+    oldScout: [go('Ask for the number')]
+  }[sid];
+  return placeCard({ ...base, kind: 'Secret', flavour: SPOTS[sid].desc, body, row: [...row, travel].filter(Boolean) });
 }
 /** Any point of the island: travel there (the fog lifts around it). */
 /** The hex tile under a map point (spec §4.27): holder, ground, what it takes to seize it, and any pressure on it. */

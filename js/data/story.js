@@ -199,6 +199,7 @@ const SCENES = {
         who: 'senior',
         text: "Past the Thousand Steps there's an old national player. Turned everyone away. Me too. Try anyway."
       },
+      { k: 'say', who: 'senior', text: 'The hot spring in the hills. Two days. The one luxury worth it.' },
       { k: 'say', who: 'senior', text: "And the roof of this flat. I'll write. Don't expect much — I hate writing." },
       { k: 'choice', opts: [{ text: 'Thank you, Fern.' }, { text: 'You could stay. Try again.', goto: 'stay' }] },
       { k: 'say', who: 'senior', text: "Don't. Just win something.", goto: 'gone' },
@@ -254,6 +255,40 @@ const SCENES = {
       { k: 'end' }
     ]
   }
+};
+/** Drive & Pain's indirect cues (spec §4.30): the diary as a bar passes FEEL.cue[i] (one line picked per band), and at the top. */
+const FEEL_LINES = {
+  drive: [
+    ["Something won't sit still in me.", 'I keep replaying the good touches. That never used to happen.'],
+    ["I can't sleep. Not the bad kind.", 'My legs want the court before my alarm does.'],
+    'Fired up. Every ball looks slow today.'
+  ],
+  pain: [
+    ['It hurts more than it should.', 'I keep smiling at people. It keeps not working.'],
+    ['I stopped reading the Gazette.', 'Some nights I can still hear the score.'],
+    'Something in me snapped and set wrong.'
+  ],
+  mate: ["You're different lately. Don't stop.", "Whatever you're on, keep it."] // a teammate notices you Fired up
+};
+/** The secret places' lines (spec §4.31). Fern's letters by what you lack (Secret.letter); the hermit; the tapes; the night court. */
+const SECRET_LINES = {
+  letters: {
+    habits: "You haven't been to the basement, have you. Watch her tape. Watch it till it stops hurting. — F.",
+    pain: 'You sound like I did. The lighthouse. Go at night. Decide what you keep. — F.',
+    drive: 'Stop training for one day. Eat with someone. Win something small. It counts. — F.',
+    stat: "Your {stat} is the hole they'll hit. Everyone on the island can see it but you. — F.",
+    fine: "Nothing to tell you. That's new. Don't get used to it. — F."
+  },
+  hermitNo: "He looked at my {stat} and went back to sweeping. 'Not yet.' He wants {bar}.",
+  hermitYes: "He made me do it until I couldn't, then once more. Then he showed me: {move}.",
+  hermitDone: 'He had nothing left to teach me. He said so, and he looked almost pleased.',
+  moves: ['Ghost Feint', 'Iron Wall', 'Sky Stair', 'Silent Spike', 'Last Breath Dig'],
+  tapeFirst: 'Fifteen to four, frame by frame. I made myself watch all of it.',
+  tapeDone: "There's nothing left on her tape I haven't seen.",
+  lightLet: 'I left it at the lighthouse. Most of it.',
+  lightSharp: "I didn't leave anything. I sharpened it.",
+  midnightTold: "Outlaw: “You fight like you've got a grudge. There's a court under the overpass after dark. The aces think nobody knows.”",
+  scoutTold: 'Wei office: The retired scout at the Wei café has asked about you. He rarely asks about anyone.'
 };
 /** The two endings of a Story run (spec §4.28), shown on the end screen: diary lines. `remember`: you beat her squad in the year-2 Cup. */
 const ENDINGS = {

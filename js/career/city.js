@@ -12,7 +12,7 @@ const City = {
   days: run => (Number.isFinite(run.days) ? run.days : WEEK_DAYS),
   night: run => City.days(run) <= 0,
   /** Days an action at a place takes: the trip there + a day there. */
-  cost: (run, id) => City.trip(run, City.at(run, id)) + 1,
+  cost: (run, id) => City.trip(run, City.at(run, id)) + ((SPOTS[id] && SPOTS[id].days) || 1),
   /** Spend days (callers checked they fit). */
   spend(run, n) {
     run.days = Math.max(0, City.days(run) - n);
@@ -153,6 +153,7 @@ const City = {
   can(run, id, mate) {
     const s = SPOTS[id];
     if (!s) return { ok: false, why: 'unknown place' };
+    if (s.secret && !Secret.known(run, id)) return { ok: false, why: 'unknown place' };
     if (run.event) return { ok: false, why: 'answer the event first' };
     if (s.at && City.outside(run, s.at)) return { ok: false, why: City.fence(run) };
     const acc = City.access(run, id);
@@ -162,6 +163,8 @@ const City = {
     const cost = City.price(run, id);
     if (cost && run.money < cost) return { ok: false, why: `needs $${cost}` };
     if (s.act === 'ramen' && !Run.mates(run).some(p => p.id === mate)) return { ok: false, why: 'pick a teammate' };
+    const sw = Secret.acts.includes(s.act) ? Secret.why(run, id, mate) : ''; // a secret place's own rule (mate: the Lighthouse's choice)
+    if (sw) return { ok: false, why: sw };
     return { ok: true, why: '' };
   },
   /** A day at a place (after the trip there): train, rest, relax or an outing. Returns the diary line. */
@@ -169,6 +172,7 @@ const City = {
     if (!City.can(run, id, mate).ok) return '';
     if (['ramen', 'arcade', 'street'].includes(SPOTS[id].act)) return City.outing(run, id, mate);
     if (Study.acts.includes(SPOTS[id].act)) return Study.day(run, id); // the tutor / a bookstore (T-230)
+    if (Secret.acts.includes(SPOTS[id].act)) return Secret.day(run, id, mate); // a secret place (spec §4.31)
     const s = SPOTS[id],
       cost = City.price(run, id),
       out = [];
@@ -211,6 +215,7 @@ const City = {
       return { k: 'train', label: T.more ? T.name : STATNAME[T.main[0]], stat: T.main[0], at: s.name };
     }
     if (s.act === 'rest') return { k: 'rest', label: 'Rest', at: s.name };
+    if (s.secret) return { k: s.act === 'onsen' ? 'rest' : 'outing', label: SECRET_DAY[s.act] || 'Out', at: s.name };
     if (['ramen', 'arcade', 'street'].includes(s.act)) return { k: 'outing', label: s.act === 'street' ? 'Hustle' : 'Outing', at: s.name };
     return { k: 'rest', label: 'Relax', at: s.name };
   },
@@ -239,6 +244,7 @@ const City = {
         run.money += amt;
         Rank.points(run, Run.you(run).id, RANK.street.hustle);
         out.push(`won +$${amt}`, Run.bump(run, 'fans', STREET.fans));
+        Secret.street(run); // a street contact: the Midnight Court (spec §4.31)
       } else {
         const lost = Math.min(run.money, STREET.loss);
         run.money -= lost;

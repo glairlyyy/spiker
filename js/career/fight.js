@@ -211,6 +211,7 @@ const Fight = {
       trip = (Cup.record(run, m, 'street'), City.go(run, c.at, { k: 'battle', label: 'Fight', at: c.name })),
       out = [Growth.matchXp(run, m), Skills.tryLearn(run, m)];
     if (win) Rel.beatMe(run, m);
+    if (win) Secret.street(run); // a street contact: the Midnight Court (spec §4.31)
     run.clash.done = true;
     const front = Front.result(run, win ? side : foe, win ? foe : side);
     Rank.points(run, you.id, RANK.street.fight + (win ? RANK.street.win : 0));
@@ -327,6 +328,7 @@ const Fight = {
       trip = City.go(run, CITY.hq[ti], { k: 'challenge', label: 'Refused', at: t.name }),
       rf = (run.refused[ti] = { week: run.week, n: ((run.refused[ti] && run.refused[ti].n) || 0) + 1 }),
       pest = rf.n >= CHALLENGE.refuseMax ? City.repBump(run, r, CHALLENGE.pest) : '';
+    Feel.add(run, 'pain', FEEL.pain.refused); // a club turning you down (spec §4.30)
     return {
       accepted: false,
       line: `${trip}${t.name} turned your challenge down: “${pick(lines)}”${pest ? ` You are becoming a pest (${pest}).` : ''}`

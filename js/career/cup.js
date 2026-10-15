@@ -272,6 +272,7 @@ const Cup = {
       // relationship flags for the engine (T-066); "Feed me": a captain's buff on you for the first 8 points
       setup: m => {
         m.rel = rel;
+        Feel.match(run, m); // Fired up: a whole-match buff on you (spec §4.30)
         if (kind === 'cup' && you.cap && run.talk === 'feed') {
           m.buff[you.id] = { lv: 2, n: 8 };
           elBuff(m, you); // an unlocked element: the gauge starts full
@@ -321,6 +322,7 @@ const Cup = {
       box
     });
     if (run.mlog.length > MLOG.max) run.mlog.splice(0, run.mlog.length - MLOG.max);
+    Feel.result(run, m, played, run.mlog[run.mlog.length - 1].grade); // Drive & Pain (spec §4.30): every match of yours
     Story.matched(run, kind, win, played); // the hub's next scene may be about this match (T-175)
   },
   /**

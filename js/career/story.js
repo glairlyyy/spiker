@@ -182,6 +182,7 @@ const Story = {
   },
   finish(run) {
     run.story.seen[run.story.cur.id] = true;
+    Feel.scene(run, run.story.cur.id); // a scene that hurts fills Pain (spec §4.30)
     run.story.at = Story.clock(run);
     run.story.cur = null;
   }

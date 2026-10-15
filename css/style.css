@@ -573,3 +573,9 @@ td i {
   align-items: center;
   gap: 8px;
 }
+/* Fired up (spec §4.30): the only on-screen trace of the hidden Drive bar — a warm ring round your portrait */
+.portrait.fired {
+  box-shadow:
+    0 0 0 2px var(--gold),
+    0 0 12px var(--gold);
+}

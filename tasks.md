@@ -83,7 +83,7 @@ Result:
 the expected failure, year 2 the redemption. One save bump (RUN_VERSION 19) in T-286 covers the whole block; later tasks add
 fields through RUN_DEFAULTS. Story mode only (Endless stays unbuilt); the main random stream is untouched (seeded rolls).
 
-### [ ] T-286: Two seasons — the year rolls over after the year-1 Cup
+### [x] T-286: Two seasons — the year rolls over after the year-1 Cup
 Spec: §4.28 Year 2          Goldens: unchanged          Save: RUN_VERSION 19 (`run.year`; week stamps rebased)
 Goal: In Story mode the year-1 U21 Cup no longer ends the run: the run goes on to year 2 (week 1 again, the calendar and the
 Cup repeat); the year-2 Cup ends it. The hub and menu show the year.
@@ -107,9 +107,9 @@ Accept:
 - Save → load in year 2 round-trips; a v18 save loads as year 1.
 - No cooldown misfires after the rollover (a club refused in week 25 is asked again by its normal rule).
 QA: career run → Season sheet and hub in year 2 (a dev jump: `Season.rollover(RUN)` from the console).
-Result:
+Result: Built (Season module, RUN_VERSION 19 + migration). Also js/career/fight.js, js/career/city.js, js/ui/career-people.js (Season.wk hashes, fence, rebased labels); story clock = Season.wk. 145/145 full, UI smoke 13/13.
 
-### [ ] T-287: The off-season
+### [x] T-287: The off-season
 Spec: §4.28 Year 2 (full off-season)          Goldens: unchanged          Save: no change
 Goal: Between the years the island moves on: the first aces and Fern leave, a transfer window and a promotion pass run,
 every NPC grows a year; the Gazette reports it.
@@ -125,9 +125,9 @@ Steps:
 Accept: after the rollover no first ace and no Fern exists; league mean OVR rises by roughly a season's NPC growth;
 the cohort and the rival are on their clubs.
 QA: none
-Result:
+Result: Built; NPC growth: a 4-week summer + year-2 field × 0.4 (PEOPLE.year2) instead of a season at once — league mean ~82 → ~87 by the year-2 Cup (rival 92). A leaving ace takes a same-role reserve from any pool when its own has none.
 
-### [ ] T-288: The rival in year 2 — curves, the week-14 rematch, the Cup path
+### [x] T-288: The rival in year 2 — curves, the week-14 rematch, the Cup path
 Spec: §4.28 Year 2          Goldens: unchanged          Save: no change
 Goal: The cohort plateaus in year 2; a guaranteed rematch against Wei Dynasty · Gold in week 14; the year-2 Cup seeds the
 rival's squad into the other half of your bracket.
@@ -143,9 +143,9 @@ Steps:
 Accept: every year-2 Story run plays the rematch in week 14; in 20 seeded runs the rival's squad is never in your half;
 her OVR at the year-2 Cup is 92 (95 with the flag).
 QA: career run → week-14 hub card and match.
-Result:
+Result: Built; the rematch is an evaluation of kind 'rematch' (Eval.rematch / Season.cal), so the hub, prep and result paths are the evaluation's. Year-2 Cup: Cup.placeRival seats her if not drawn; Cup.splitRival.
 
-### [ ] T-289: The year scenes and the two endings
+### [x] T-289: The year scenes and the two endings
 Spec: §4.28, lore.md §6          Goldens: unchanged          Save: no change
 Goal: The story frames the two years: the year-1 Cup result scene, Fern's goodbye at the off-season, the rematch's
 before / after lines, and two endings on the end screen.
@@ -157,9 +157,9 @@ Steps:
 2. Cup.end in year 2: the result carries `ending: 'true' | 'spite'`; the end screen shows it.
 Accept: each scene fires once at its moment in a scripted run; both endings reachable in tests.
 QA: career run → end screen (dev: finish the year-2 Cup won / lost).
-Result:
+Result: Built: y1Won / y1Lost / fernBye / rematchPre / rematchWon / rematchLost scenes, ENDINGS on the end screen; year-1 lessons and pick scenes never replay.
 
-### [ ] T-290: Drive & Pain — the hidden bars
+### [x] T-290: Drive & Pain — the hidden bars
 Spec: §4.30          Goldens: unchanged          Save: no change (RUN_DEFAULTS `drive`, `pain`, `fired`, `scars`)
 Goal: Two hidden 0–100 bars fill from what happens to the MC; Drive at 100 → Fired up for the next 2 matches; Pain at 100
 → a Scar (pool placeholder until T-291); only indirect cues on screen.
@@ -179,9 +179,9 @@ Steps:
    tint while Fired up, a teammate remark.
 Accept: a scripted week of wins fills Drive to Fired up; a run of losses reaches a Scar; no UI shows a value.
 QA: career run → hub after a Fired up trigger.
-Result:
+Result: Built; Feel.result runs from Cup.record (every match kind); Fired up = m.buff lv 2 for the whole match. Harness runs (1 training a week) reach ~1 Scar in two years; real play trains daily → more Drive.
 
-### [ ] T-292: Fern's goodbye and the first four secret places
+### [x] T-292: Fern's goodbye and the first four secret places
 Spec: §4.31          Goldens: unchanged          Save: no change (RUN_DEFAULTS `secret`: id → true; `habits`: revealed rival habits)
 Goal: At the off-season Fern names the secret places in her goodbye scene; the Tape Room, the Lighthouse, the Hermit's
 Court and Fern's Rooftop appear on the map with a reveal and each does its one thing.
@@ -200,9 +200,9 @@ Steps:
    revealed, Drive low), lore voice.
 Accept: after the rollover the four places are on the map; each acts as above in a scripted run; none before Fern's goodbye.
 QA: career run → map after the off-season; each card.
-Result:
+Result: Built (js/career/secret.js; SPOTS + road nodes + edges; secretPanel; boardHabits). Night-only dropped (no night turn: a day like any place).
 
-### [ ] T-293: The Onsen, the Midnight Court, the Old Scout
+### [x] T-293: The Onsen, the Midnight Court, the Old Scout
 Spec: §4.31          Goldens: unchanged          Save: no change
 Goal: The other three secret places: deep rest; night games where the named players may appear; a monthly honest rating.
 Files: js/data/city.js, js/career/city.js, js/career/court.js, js/career/feel.js, js/data/story.js, js/ui/career-map.js,
@@ -215,7 +215,7 @@ Steps:
 3. Old Scout (unlocked at a fan mark): once a month, your squad vs the rival's squad over N headless matches → "x in 10".
 Accept: each place acts as above; the Old Scout's number matches a direct simMatch tally for the same squads.
 QA: career run → each card.
-Result:
+Result: Built; night games and the scout's sims on a seeded stream (Secret.isolated) — the run's stream is untouched.
 
 ### [?] T-291: Scars — the trait pools
 Spec: §4.30 (pools [open])          Goldens: update (traits change play)          Save: no change
