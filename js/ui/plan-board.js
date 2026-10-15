@@ -158,7 +158,7 @@ function boardToggle() {
 }
 /** The result card's orders (spec §2.29): each order on a side whose board you saw, and how it went. */
 function boardResult(m) {
-  if (!m || !m.ordLog || !A.prepS) return '';
+  if (!m || !m.ordLog || !A || !A.prepS) return ''; // (a simmed match has no match screen: A is null)
   const rows = [];
   for (const i of [0, 1]) {
     if (!boardEdit(m, i)) continue;
