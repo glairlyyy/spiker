@@ -149,7 +149,26 @@ function drawTags(d, pr, k, staV) {
     ctx.lineTo(pr.X - 4 * k, y);
     ctx.fill();
   }
-  if (staV != null && staV < 0.92 && !A.cele) {
+  if (A.hpShown && !A.cele && !A.done) {
+    // the bars (spec §2.31): HP, stamina, morale — three thin bars under the tag
+    const w = 26 * k,
+      h = 2.6 * k,
+      x = pr.X - w / 2,
+      y0 = pr.Y - 110 * k,
+      hp = A.hpShown[p.id] ?? 1,
+      mo = ((A.morShown && A.morShown[p.id]) || 0) * 0.5 + 0.5,
+      st = staV ?? 1;
+    ctx.fillStyle = 'rgba(16,22,58,.75)';
+    ctx.fillRect(x - 1, y0 - 1, w + 2, 3 * h + 4 * k + 2);
+    [
+      [hp, '#f43f5e'],
+      [st, '#facc15'],
+      [mo, '#60a5fa']
+    ].forEach(([v, c], j) => {
+      ctx.fillStyle = c;
+      ctx.fillRect(x, y0 + j * (h + 2 * k), w * clamp(v, 0, 1), h);
+    });
+  } else if (staV != null && staV < 0.92 && !A.cele) {
     const w = 24 * k,
       x = pr.X - w / 2,
       y = pr.Y - 109 * k;

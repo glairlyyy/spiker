@@ -123,7 +123,9 @@ function toggleFullscreen() {
 }
 addEventListener('keydown', e => {
   if (!A || e.target.closest('input,select,textarea')) return;
-  // the Plan board (spec §2.29): Tab opens it (play waits) and closes it, also with a board button focused
+  if (cardsKey(e)) return; // the turn overlay (spec §2.32)
+  // Tab: your hand (spec §2.33; the Plan board without cards); play waits while it is open
+  if (A.m && A.m.cards && e.key === 'Tab' && !A.prep) return (e.preventDefault(), cardsPeek());
   if (e.key === 'Tab' || (e.key === 'Escape' && A.prep && A.prepS && A.prepS.board)) return (e.preventDefault(), boardToggle());
   if (e.target.closest('button')) return;
   if (A.prep) {
@@ -321,6 +323,8 @@ function board(s) {
       A.buffShown = s.buff;
       A.egShown = s.eg || {};
       A.staShown = s.sta || {};
+      A.hpShown = s.hp || {}; // the bars (spec §2.31)
+      A.morShown = s.mor || {};
     }
   }
   const mx = Math.max(...s.pts),

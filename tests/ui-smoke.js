@@ -130,9 +130,10 @@ const step = async (name, fn) => {
       mapCourt('arena', 'open', false);
     });
     await pg.waitForFunction(() => typeof R3D !== 'undefined' && R3D && A && A.m && !A.hold, null, { timeout: 120000 });
-    // match prep (spec §2.26): the intro shows both teams; the other side's plan is hidden; Enter starts
+    // match prep (spec §2.26, §2.33): both teams; your side's hand (one card yours, the coach fills the rest); theirs hidden
     const pre = await ev(() => (A.prep && $('#prep') && !$('#prep').hidden ? $('#prep').textContent : ''));
-    if (!/Their plan: hidden/.test(pre)) throw new Error(`career match prep: ${pre.slice(0, 160)}`);
+    if (!/Their hand: hidden/.test(pre) || !/the coach fills the rest/.test(pre))
+      throw new Error(`career match prep: ${pre.slice(0, 200)}`);
     await pg.keyboard.press('Enter');
     if (await ev(() => A.prep)) throw new Error('Enter did not start the match');
     await ev(() => {
@@ -214,28 +215,28 @@ const step = async (name, fn) => {
     // match prep (spec §2.26): both sides yours in a Monster game; pick Hunt the passer / Wall their ace for the left team
     await ev(() => {
       if (!A.prep || $('#prep').querySelectorAll('.pteam').length !== 2) throw new Error('no Monster match prep');
-      // the Plan board (spec §2.29): your side's players tab (key 2) — cards with folded slots and their odds; a slot opens its options
-      prepTab(1);
-      const cards = $('#prep').querySelectorAll('.bcard');
-      if (cards.length !== 4 || !/%/.test(cards[0].textContent)) throw new Error(`Plan board: ${cards.length} cards`);
-      const p0 = rotOrder(A.m.t[0], A.m.rot[0])[0];
-      boardSlot(`${p0.id}.srv`);
-      if ($('#prep').querySelectorAll('.bopts .bopt').length < 3) throw new Error('slot did not open');
-      boardPick(p0.id, 'srv', 'float');
-      if (ordOf(A.m, p0, 'srv') !== 'float' || !$('#prep .bcard .bslot.set small') || $('#prep .bopts'))
-        throw new Error('board order not set');
-      prepTab(0);
-      prepPick(0, 'atk', 'hunt');
-      prepPick(0, 'def', 'wall');
+      // the hand (spec §2.33): your five slots and the pool; the coach's side is hidden
+      if ($('#prep').querySelectorAll('.chand').length !== 1 || $('#prep').querySelectorAll('.chand .cslot').length !== 5)
+        throw new Error('no hand in prep');
+      cardsSlot(0, 'atk0');
+      cardsPick(0, 'hunt');
+      cardsSlot(0, 'def0');
+      cardsPick(0, 'wall');
+      if (A.m.cards[0].slots.atk0 !== 'hunt' || A.m.cards[0].slots.def0 !== 'wall')
+        throw new Error(`cards: ${JSON.stringify(A.m.cards[0].slots)}`);
       prepStart();
       const p = A.m.plan[0];
-      if (A.prep || p.atk !== 'hunt' || p.def !== 'wall' || A.m.planBy[0] !== 'you' || A.m.planBy[1] !== 'ai')
-        throw new Error(`plans not set: ${JSON.stringify(A.m.plan)} ${A.m.planBy}`);
-      // Tab mid-match: the board alone (play waits); Tab again closes it; the order stands
-      boardToggle();
-      if (!A.prep || !A.prepS.board || !$('#prep .bcard')) throw new Error('Tab did not open the Plan board');
-      boardToggle();
-      if (A.prep || ordOf(A.m, rotOrder(A.m.t[0], A.m.rot[0])[0], 'srv') !== 'float') throw new Error('board did not close / order lost');
+      if (A.prep || p.atk !== 'hunt' || p.def !== 'wall' || A.m.cards[0].by !== 'you' || A.m.cards[1].by !== 'ai')
+        throw new Error(`cards did not set the plans: ${JSON.stringify(A.m.plan)}`);
+      // Tab mid-match: a look at your hand (play waits); Tab again closes it
+      cardsPeek();
+      if (!A.prep || !$('#cturn') || $('#cturn').hidden || !$('#cturn .cbars .cbrow')) throw new Error('Tab did not open the hand');
+      cardsPeek();
+      if (A.prep) throw new Error('the hand did not close');
+      // a turn (spec §2.32): the overlay pauses play with your hand editable
+      cardsTurnShow({ n: 1 });
+      if (!A.prep || !$('#cturn .cpool .cpick')) throw new Error('no turn overlay');
+      cardsTurnClose();
     });
     // no captain's chips (owner, 2026-10-14) and no ⚙ Prompts; Play as sets your player
     await ev(() => {
@@ -303,10 +304,8 @@ const step = async (name, fn) => {
       finishMatch();
     });
     await pg.waitForFunction(() => /Top 3/i.test((document.querySelector('#over') || {}).textContent || ''), null, { timeout: 10000 });
-    if (!/Plans[\s\S]*Hunt the passer/.test(await ev(() => $('#over').textContent))) throw new Error('no Plans row on the result card');
-    // the orders and how they went (spec §2.29): the server's Float set in prep
-    if (!/Orders[\s\S]*Serve Float[\s\S]*serves/.test(await ev(() => $('#over').textContent)))
-      throw new Error('no Orders row on the result card');
+    // the cards (spec §2.33): each side's plays and turns slotted
+    if (!/Cards[\s\S]*Hunt the Passer ×/.test(await ev(() => $('#over').textContent))) throw new Error('no Cards row on the result card');
   });
   const dbg = await ev(() => (typeof DBG !== 'undefined' ? DBG.text() : '')).catch(() => '');
   for (const l of dbg.split('\n')) if (/\berror\b/i.test(l) && !/STALL/.test(l)) errors.push(`DBG: ${l.slice(0, 200)}`);

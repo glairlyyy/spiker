@@ -69,7 +69,7 @@ spent per match, collapses per 100 points, stage shares, traits. Numbers into sp
 Files: tests/cards.js (new), package.json, spec.md (measured lines)
 Result: tests/cards.js + `npm run cards -- [pairs] [league|tour|both] [modes]` (~75 s for 100 pairs both). Numbers in spec §2.33 Measured. Headline: boosts only +2.1 / +2.2 % points vs no cards (league / tournament), coach +2.3 / +0.8, random plays +2.1 / +1.3 — the coach is not above boosts and plays add little: fails the must-hold; next is the balance pass (owner: not tuned yet). Also js/engine/cards.js: a side you run in full (`by: 'you'`, mine 5) keeps empty slots empty.
 
-### [ ] T-297: Card UI — bars, the turn overlay, prep, result card
+### [x] T-297: Card UI — bars, the turn overlay, prep, result card
 Spec: §2.31–§2.33, §9          Goldens: unchanged          Save: no change
 Goal: three thin bars under each name tag; the turn overlay (hand row, five slots, Auto, Space) pauses a played match at turns;
 match prep shows the hand instead of the plan tiles and the board; Tab opens the overlay; the result card's row: cards played /
@@ -77,7 +77,7 @@ spent.
 Files: js/ui/match-cards.js (new), js/ui/match-prep.js, js/ui/match-controls.js, js/ui/match-result.js, js/render/tags.js,
 js/render/playback.js (turn pause), css/match.css, index.html, tests/ui-smoke.js, ARCHITECTURE.md
 QA: Monster game → prep hand, a turn, a spent card.
-Result:
+Result: js/ui/match-cards.js (hand, turn overlay #cturn, Tab look, spent tag, result row); prep shows the hand instead of the plan tiles / board tabs (both kept for a cardless match); court tags draw HP / stamina / morale (snapshot gains `hp`, `mor` — goldens: the recorded-match hash moved, no gameplay change). Not js/render/playback.js: the turn act's handler pauses via A.prep (the next rally is pulled only after). Career: your side 1 card (5 as captain); trust's 2 needs a trust value (not built). Also css `.ocard.prep { flex-wrap: nowrap }` (a tall card wrapped into a second column). QA (Monster, seed 7): prep hand, turn 1 at 4–1 with bars, no page errors. UI smoke 13/13.
 
 **Year 2 and Drive & Pain (owner, 2026-10-15, spec §4.28 "Year 2 decided", §4.30): T-286 → T-291, in order.** Year 1 is
 the expected failure, year 2 the redemption. One save bump (RUN_VERSION 19) in T-286 covers the whole block; later tasks add

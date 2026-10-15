@@ -37,7 +37,7 @@ function resultScreen(m, wt, hi, lo, stars, res, o = { round: A.fx.round, back: 
       )
       .join('')}</div>`,
     acts = `<div class="acts ${res ? 'pri' : ''}"><button class="btn hot" onclick="${o.leave}">${esc(o.back || 'Continue')}${o.key ? ' <kbd>Space</kbd>' : ''}</button>${res && o.box ? `<button class="btn" onclick="railOpen('box')">Box score <kbd>B</kbd></button>` : ''}</div>`;
-  if (!res) return `<div class="ocard mres mono">${head}${planRow(m)}${boardResult(m)}${top}${acts}</div>`;
+  if (!res) return `<div class="ocard mres mono">${head}${m.cards ? cardsRow(m) : planRow(m) + boardResult(m)}${top}${acts}</div>`;
   const L = res.line,
     you = res.played
       ? `<div class="rgrade"><div class="gtile g${res.grade || 'X'}">${res.grade || '–'}</div><div><div class="lab">Your line</div><div class="rline">${[
@@ -65,7 +65,7 @@ function resultScreen(m, wt, hi, lo, stars, res, o = { round: A.fx.round, back: 
           .join('')}`
       : '',
     techs = res.techs.length ? `<div class="lab">Techniques picked up</div><div class="small">${res.techs.map(esc).join(' · ')}</div>` : '';
-  return `<div class="ocard mres">${head}<div class="rcols"><div>${you}${chips}</div><div>${grow}${techs}</div></div>${planRow(m)}${boardResult(m)}${top}${acts}</div>`;
+  return `<div class="ocard mres">${head}<div class="rcols"><div>${you}${chips}</div><div>${grow}${techs}</div></div>${m.cards ? cardsRow(m) : planRow(m) + boardResult(m)}${top}${acts}</div>`;
 }
 /**
  * Both sides' plans (spec §2.26), revealed now the match is over: what each side opened with and every change (at its score).

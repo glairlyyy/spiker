@@ -268,6 +268,8 @@ const snap = m => ({
   eg: Object.assign({}, m.eg),
   mood: Object.assign({}, m.mood),
   sta: Object.assign({}, m.sta),
+  hp: Object.assign({}, m.hp), // the bars (spec §2.31)
+  mor: Object.assign({}, m.mor),
   rot: [0, 1].map(i => rotOrder(m.t[i], m.rot[i]).map(p => p.id))
 });
 /**

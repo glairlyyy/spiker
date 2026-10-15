@@ -560,7 +560,7 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
 itself, and every few points you (or the coach) answer what the bars and the coach panel show. One engine, two pickers stays:
 the AI coach fills every slot you leave with the same function. Built and measured, not tuned yet (T-296).
 
-- §2.31 Bars — HP, stamina, morale (owner, 2026-10-16) **[locked, not built — T-294, UI T-297]**: three bars per player.
+- §2.31 Bars — HP, stamina, morale (owner, 2026-10-16) **[built 2026-10-16, T-294; UI T-297]**: three bars per player.
   - **HP** (`m.hp[id]`, 0–1): every serve receive and dig takes damage = the knockdown impact (§2.28: ball power − Defense as
     played × `KNOCK.defK`, past `HP.gap`, over `HP.span`, × the ball's weight). At 0 the player **collapses** — today's knockdown
     (on the floor through the next defence, then the get-up), now certain instead of a roll. Partial heal at the end of every
@@ -576,12 +576,12 @@ the AI coach fills every slot you leave with the same function. Built and measur
     kills shake it twice as hard; **Showboat** — their own kill +0.15 more, teammates' kills half; **Anchor** — a lost point
     costs × 0.7 and lifts the lowest teammate (+0.08); **Stubborn** — morale as default; ignores what a slotted card forces
     (§2.33). Temperaments (§2.14) stay as the team's stage thresholds.
-- §2.32 Turns (owner, 2026-10-16) **[locked, not built — T-295, UI T-297]**: the match pauses for a **turn** every `TURN.pts`
+- §2.32 Turns (owner, 2026-10-16) **[built 2026-10-16, T-295; UI T-297]**: the match pauses for a **turn** every `TURN.pts`
   (6) points played, and at once when a card is spent (§2.33); match prep is turn 0; a timeout is an extra turn for its side.
   At a turn each side's slots are filled again (yours first, then the coach's). Played match: an overlay over the frozen
   court — the bars, what the coach panel noticed, your hand and slots; **Auto** (the coach fills it all, for this turn or the
   match) or Space (keep). Sims, NPCs and AI sides: the coach, at once. No input during a rally (§5.7).
-- §2.33 Tactic cards (owner, 2026-10-16) **[locked, not built — T-295, UI T-297; replaces the team plans §2.26, the defence
+- §2.33 Tactic cards (owner, 2026-10-16) **[built 2026-10-16, T-295; UI T-297; not tuned — see Measured; replaces the team plans §2.26, the defence
   setting §2.9, the Plan board §2.29 and the technique switches §9.10 once accepted]**: a compact hand instead of the plan
   tables. Data `CARDS` / `COMBOS` (js/data/cards.js), engine js/engine/cards.js; a card compiles into the existing levers
   (plans, orders, the tactic, forced techniques, stat buffs).
@@ -613,6 +613,13 @@ the AI coach fills every slot you leave with the same function. Built and measur
     order, one shot order), and swaps out a Worn card.
   - **Stubborn** players ignore what a card forces (orders, forced techniques) and play their own game; they still get the
     boost when their own pick matches the card, and their off-plan actions don't count toward its spent tally.
+  - **On screen** (T-297): match prep shows your hand (five slots, the pool under them; ◆ = a technique you own; Worn /
+    Spent marked; the spent rule on hover) — Monster: "You decide" / "Coach decides" per side; career: your side, 1 card (5
+    as captain; trust's 2 not built yet), the other hand hidden. A turn pauses a played match with the overlay (your players'
+    HP / stamina / morale bars and traits, up to three coach-panel patterns, your hand, **Coach picks** `A`, **Coach for the
+    match**, **Play on** Space); Tab looks at your hand between turns. Court tags: three thin bars (HP, stamina, morale).
+    A spent card: "‹team›: ‹card› spent" over the court. Result card: **Cards** row — each side's plays (turns slotted) and
+    the spent ones. The old plan tiles, the board's player tabs and its Tab stay only for a match without cards.
   - **Must hold (T-296)**: no cards < boosts only ≤ coach AI; random plays within ±2 % of no cards; a no-card team never
     beats the coach AI on average.
   - **Measured** (2026-10-16, `npm run cards`, 100 paired seeds, side 0 vs the coach's hand; point share vs side 0 holding no

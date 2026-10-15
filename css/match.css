@@ -1461,6 +1461,7 @@ html.reduced .xl {
 .ocard.prep {
   display: flex;
   flex-direction: column;
+  flex-wrap: nowrap; /* (a tall hand scrolls; never wraps into a second column) */
   align-items: stretch;
   gap: 16px;
   max-width: 920px;
@@ -1736,4 +1737,155 @@ html.reduced .xl {
 .prep .bopt.lock small {
   white-space: normal;
   text-align: right;
+}
+/* Tactic cards (spec §2.33): the hand in match prep and the turn overlay (§2.32) */
+.prep .chand {
+  margin-top: 8px;
+}
+.prep .cslots {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+.prep .cslot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surf);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.prep .cslot:disabled {
+  cursor: default;
+}
+.prep .cslot.you {
+  border-color: var(--gold);
+}
+.prep .cslot.sel {
+  outline: 2px solid var(--ink);
+}
+.prep .cslot .lab {
+  font-size: 12px;
+}
+.prep .ccard {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 4px 6px;
+  border-left: 3px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--surf2);
+}
+.prep .ccard b {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.prep .ccard i {
+  font-size: 12px;
+  font-style: normal;
+  color: var(--mute);
+}
+.prep .ccard.k-play {
+  border-left-color: var(--cyan);
+}
+.prep .ccard.z-op {
+  border-left-color: var(--hot);
+}
+.prep .ccard.worn {
+  border-left-color: var(--warn);
+}
+.prep .ccard.worn i {
+  color: var(--warn);
+}
+.prep .ccard.spent {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+.prep .ccard.empty {
+  background: transparent;
+  color: var(--mute);
+}
+.prep .cpool,
+.prep .cspent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.prep .cpick {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  max-width: 150px;
+}
+.prep .cspent .lab {
+  align-self: center;
+  margin-right: 4px;
+}
+.prep .cbars {
+  display: grid;
+  gap: 2px;
+  margin: 8px 0;
+}
+.prep .cbrow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, 56px);
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.prep .cbrow i {
+  font-style: normal;
+  color: var(--mute);
+}
+.prep .hbar {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--c) var(--v), var(--line) var(--v));
+}
+.prep .hbar.hp {
+  --c: var(--bad);
+}
+.prep .hbar.sta {
+  --c: var(--warn);
+}
+.prep .hbar.mor {
+  --c: var(--cyan);
+}
+.prep .cnote {
+  margin: 4px 0;
+  padding-left: 16px;
+}
+.mres .rspent {
+  color: var(--bad);
+}
+.prep .cslot .ccard b {
+  white-space: normal;
+  line-height: 1.2;
+}
+.prep .cpick .ccard {
+  padding: 3px 6px;
+}
+.prep .cpick .ccard i {
+  display: none; /* (in the pool the left edge says the kind: boost · play · OP) */
+}
+.prep .cpick .ccard.k-boost {
+  border-left-color: var(--gold);
+}
+#cturn {
+  z-index: 12; /* over the between-point exchange (.xbox) */
+}
+.prep .hbar {
+  display: block;
 }

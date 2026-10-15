@@ -28,6 +28,10 @@ function prepOpen(only, board) {
   A.prepS.plan = [0, 1].map(i => ({ ...planOf(m, i) }));
   A.prepS.tab = A.prepS.open = null; // the intro and a huddle open on Teams & plans, Tab on your players
   A.prep = true;
+  for (const i of [0, 1]) {
+    const n = cardsMine(m, i); // your hand (spec §2.33): the coach's pick to start from
+    if (m.cards && n && m.cards[i].by !== 'you') cardsWho(m, i, n);
+  }
   let el = $('#prep');
   if (!el) {
     $('#stage').insertAdjacentHTML('beforeend', '<div class="over prepo" id="prep" role="dialog" aria-label="Match prep"></div>');
@@ -63,21 +67,36 @@ function prepTeam(i) {
       )
       .join(''),
     you = sides.includes(i) && !S.board,
-    plan = S.board
-      ? `<p class="small">Plan: <b>${S.who[i] === 'you' || i === mine || m.over ? `${esc(PLANS.atk[planOf(m, i).atk].short)} · ${esc(PLANS.def[planOf(m, i).def].short)}` : 'hidden'}</b> <span class="mute">— a timeout changes it</span></p>`
-      : you
-        ? `${A.fx.onFinish ? '' : `<div class="seg who">${['you', 'ai'].map(w => `<button class="btn ${S.who[i] === w ? 'on' : ''}" onclick="prepWho(${i},'${w}')">${w === 'you' ? 'You decide' : 'Coach decides'}</button>`).join('')}</div>`}${
-            S.who[i] === 'you'
-              ? prepRow(i, 'atk') + prepRow(i, 'def')
-              : '<p class="small mute">The coach picks — hidden until the match is over.</p>'
+    mineN = cardsMine(m, i),
+    hand = m.cards
+      ? // tactic cards (spec §2.33): the hand instead of the plan tiles
+        sides.includes(i) && !A.fx.onFinish
+        ? `<div class="seg who">${['you', 'ai'].map(w => `<button class="btn ${S.who[i] === w ? 'on' : ''}" onclick="prepWho(${i},'${w}')">${w === 'you' ? 'You decide' : 'Coach decides'}</button>`).join('')}</div>${
+            S.who[i] === 'you' ? cardsHand(i, true) : '<p class="small mute">The coach picks — hidden until the match is over.</p>'
           }`
-        : i === mine
-          ? `<p class="small">Coach's plan: <b>${esc(PLANS.atk[planOf(m, i).atk].name)}</b> · <b>${esc(PLANS.def[planOf(m, i).def].name)}</b></p><p class="small mute">The captain sets the plan.</p>`
-          : '<p class="small mute">Their plan: hidden.</p>';
+        : mineN
+          ? cardsHand(i, true)
+          : '<p class="small mute">Their hand: hidden.</p>'
+      : null,
+    plan =
+      hand != null
+        ? hand
+        : S.board
+          ? `<p class="small">Plan: <b>${S.who[i] === 'you' || i === mine || m.over ? `${esc(PLANS.atk[planOf(m, i).atk].short)} · ${esc(PLANS.def[planOf(m, i).def].short)}` : 'hidden'}</b> <span class="mute">— a timeout changes it</span></p>`
+          : you
+            ? `${A.fx.onFinish ? '' : `<div class="seg who">${['you', 'ai'].map(w => `<button class="btn ${S.who[i] === w ? 'on' : ''}" onclick="prepWho(${i},'${w}')">${w === 'you' ? 'You decide' : 'Coach decides'}</button>`).join('')}</div>`}${
+                S.who[i] === 'you'
+                  ? prepRow(i, 'atk') + prepRow(i, 'def')
+                  : '<p class="small mute">The coach picks — hidden until the match is over.</p>'
+              }`
+            : i === mine
+              ? `<p class="small">Coach's plan: <b>${esc(PLANS.atk[planOf(m, i).atk].name)}</b> · <b>${esc(PLANS.def[planOf(m, i).def].name)}</b></p><p class="small mute">The captain sets the plan.</p>`
+              : '<p class="small mute">Their plan: hidden.</p>';
   return `<section class="pteam" style="--tc:${t.color}"><div class="pban"><h3>${esc(t.name)}</h3><span class="povr"><b>${ovrAvg}</b> OVR</span><span class="small mute">${esc((t.S && t.S.name) || '')}</span></div><div class="lineup">${lineup}</div>${plan}</section>`;
 }
 /** The prep tabs (owner, 2026-10-14: a game screen, not a page): Teams & plans, then one Players tab per side whose board you see. */
 function prepTabs() {
+  if (A.m && A.m.cards) return ['teams']; // the cards replace the Plan board's player tabs (spec §2.33)
   const S = A.prepS,
     only = S.only,
     sides = only != null ? [only] : [0, 1];
@@ -131,6 +150,7 @@ function prepPick(i, kind, id) {
 function prepWho(i, w) {
   if (!A || !A.prepS) return;
   A.prepS.who[i] = w;
+  cardsWho(A.m, i, cardsMine(A.m, i));
   prepDraw();
 }
 /** Start (or resume): your plans go in; a side left to the coach keeps the coach's own. */
@@ -140,6 +160,7 @@ function prepStart() {
     S = A.prepS;
   for (const i of S.board ? [] : prepSides(m)) {
     if (S.only != null && i !== S.only) continue;
+    if (m.cards) continue; // the cards set the plan (spec §2.33)
     if (S.who[i] === 'you') planSet(m, i, S.plan[i], 'you');
     else if (m.planBy) m.planBy[i] = 'ai';
   }
