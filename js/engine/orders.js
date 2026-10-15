@@ -336,12 +336,12 @@ const blkOpts = () => [
 
 // ---- Rest (T-282, spec §2.30): take a court player off at the next dead ball for the best fresh bench player ----
 
-/** The bench player who would come on for p (same setter / non-setter kind, fresh enough, the best now), or null. */
+/** The bench player who would come on for p (the same role, fresh enough, the best now), or null. */
 function restFor(m, side, p) {
   const t = m.t[side],
     sta = q => (m.sta[q.id] == null ? 1 : m.sta[q.id]),
     worth = q => ovr(q) * (1 - RULES.stamina.hit * (1 - sta(q))),
-    L = (t.bench || []).filter(q => !q.noSub && (q.role === 'S') === (p.role === 'S') && sta(q) >= SUB.fresh - 0.15);
+    L = (t.bench || []).filter(q => !q.noSub && q.role === p.role && sta(q) >= SUB.fresh - 0.15); // the same role: a wing in the middle's spot costs more than it rests
   return L.length ? L.reduce((a, q) => (worth(q) > worth(a) ? q : a)) : null;
 }
 /** Rest options for a court player (locked: no subs left / no fresh bench player). */

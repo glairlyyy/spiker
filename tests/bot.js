@@ -68,7 +68,7 @@ function smartRest(m, side) {
         o => -o.win
       );
   }
-  botSubs(m, side);
+  if (!process.env.NOREST) botSubs(m, side);
 }
 /** Rest a court player when the best fresh bench player is worth more than they are now (T-282). */
 function botSubs(m, side) {
@@ -103,17 +103,19 @@ function smartReads(m, side) {
     g.ordSet(m, p, 'aim', est > 0.5 ? 'cross' : 'line');
   }
 }
-function play(seed, smart) {
+function play(seed, smart, flip) {
   g.RNG.seed(seed);
   const L = TEAMS === 'tour' ? g.mkTeams() : g.mkLeagueTeams(),
-    m = g.newMatch(L[seed % L.length], L[(seed * 3 + 1) % L.length], false);
+    a = L[seed % L.length],
+    b = L[(seed * 3 + 1) % L.length],
+    m = flip ? g.newMatch(b, a, false) : g.newMatch(a, b, false);
   if (smart && MODE.startsWith('blanket:')) blanket(m, 0, ...MODE.slice(8).split('='));
   for (let k = 0; !m.over; k++) {
     if (smart && !MODE.startsWith('blanket:')) {
       smartServe(m, 0);
       if (MODE === 'full' && k % EVERY === 0) smartRest(m, 0);
       if ((MODE === 'full' || MODE === 'reads') && !process.env.NOREADS) smartReads(m, 0);
-      if (MODE === 'reads') botSubs(m, 0); // (a reading player re-aims every point; NOREADS=1 to leave it to the probe)
+      if (MODE === 'reads' && !process.env.NOREST) botSubs(m, 0); // (a reading player re-aims every point; NOREADS=1 to leave it to the probe)
     }
     g.playRally(m);
   }
@@ -125,9 +127,11 @@ let d = 0,
 const t0 = Date.now(),
   pick = {};
 for (let j = 0; j < N; j++) {
-  const s = 7000 + j,
-    ma = play(s, false),
-    mb = play(s, true);
+  // each pairing both ways round (the bot's side first, then the other team's): Auto's own side-0 rate averages 50 %,
+  // so a perturbed stream drifting back toward the mean is not counted as the bot's edge
+  const s = 7000 + (j >> 1),
+    ma = play(s, false, j & 1),
+    mb = play(s, true, j & 1);
   d += share(mb) - share(ma);
   w0 += ma.winner === 0;
   w1 += mb.winner === 0;

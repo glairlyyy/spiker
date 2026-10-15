@@ -58,7 +58,7 @@ const LANE = {
   seeMax: 0.6,
   away: 0.25,
   weakK: 0.012,
-  on: 1.6,
+  on: 1.4,
   off: 0.2,
   offDbl: 0.65,
   handK: 0.008,
@@ -256,4 +256,4 @@ const ORDERS = {
  * stays under it, a hunt does not) their receive − `k` per unit (a sub comes in fresh). hot / cold — a hitter on a run of kills hits × (1 + `hot` per kill, up to `run`), on a run of
  * errors / stuffs × (1 − `cold` per miss). commitStuff — a Commit middle on the quick stuffs × it.
  */
-const READ = { press: { add: 1, bad: 1.5, decay: 0.75, from: 1.5, k: 24 }, hot: 0.08, cold: 0.08, run: 3, commitStuff: 1.6, habitK: 2 };
+const READ = { press: { add: 1, bad: 1.5, decay: 0.75, from: 1.5, k: 18 }, hot: 0.08, cold: 0.08, run: 3, commitStuff: 1.6, habitK: 2 };
