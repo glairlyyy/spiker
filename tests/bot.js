@@ -2,7 +2,8 @@
 // The smart bot (spec §2.30, T-285): plays the Plan board for side 0 with the board's own odds and measures what that is
 // worth against the same match played on Auto (paired seeds). Serve orders every serve (srvOdds); every `every` points each
 // player's aim / shot / feed / fake / block by the point it wins (atkOdds full: the rally played out).
-// npm run bot -- [pairs=60] [teams=league|tour] [mode=full|serve|blanket:<kind>=<value>] [every=4]
+// npm run bot -- [pairs=60] [teams=league|tour] [mode=full|reads|serve|blanket:<kind>=<value>] [every=4]
+// (reads: serve + aim where their block does not expect it + rest — no probe, fast)
 const { load } = require('./harness');
 const g = load(11);
 const [N = 60, TEAMS = 'league', MODE = 'full', EVERY = 4] = process.argv.slice(2).map((v, i) => (i === 0 || i === 3 ? +v : v));
@@ -15,8 +16,12 @@ function smartServe(m, side) {
     O = m.t[1 - side];
   let best = null,
     bv = -9;
+  // a hunt (spec §2.30): keep serving the passer already under the most pressure (the weakest to start)
+  const hunted = g
+    .passersOf(O)
+    .reduce((a, q) => (g.pressOf(m, q) + (q === g.weakPasser(O) ? 0.5 : 0) > g.pressOf(m, a) + (a === g.weakPasser(O) ? 0.5 : 0) ? q : a));
   for (const so of g.srvOpts(p).filter(o => !o.lock))
-    for (const to of g.tgtOpts(p, O).filter(o => !o.lock)) {
+    for (const to of g.tgtOpts(p, O).filter(o => !o.lock && (!process.env.HUNT || o.v === hunted.id))) {
       // (pressure builds over serves: a passer already under it is worth more than this serve's odds alone)
       const tp = to.v !== 'auto' && to.v !== 'seam' ? O.P.find(q => q.id === to.v) : null,
         v = srvEV(g.srvOdds(m, p, side, so.v, to.v)) + (tp ? 0.02 * g.pressOf(m, tp) : 0);
@@ -107,7 +112,8 @@ function play(seed, smart) {
     if (smart && !MODE.startsWith('blanket:')) {
       smartServe(m, 0);
       if (MODE === 'full' && k % EVERY === 0) smartRest(m, 0);
-      if (MODE === 'full' && process.env.READS) smartReads(m, 0);
+      if ((MODE === 'full' || MODE === 'reads') && !process.env.NOREADS) smartReads(m, 0);
+      if (MODE === 'reads') botSubs(m, 0); // (a reading player re-aims every point; NOREADS=1 to leave it to the probe)
     }
     g.playRally(m);
   }

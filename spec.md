@@ -533,8 +533,9 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
 - §2.30 Reading pays (owner, 2026-10-15) **[open: T-282–T-285]**: tactics are worth a lot when they answer what you read, little
   when sprayed (the Total War feel: a weaker side can beat a stronger one by outplaying its habits). **This loosens §2.0** for
   read-and-answered orders; blanket orders stay near zero.
-  - **Target**: the smart bot (§2.29 ceiling — the board's own odds, the rally played out, every order re-picked) beats Auto
-    by **+15–20 % of points** on equal teams; the same order put on everyone ("all float", "all tip") stays within ±2 %; a
+  - **Target** (owner, 2026-10-15: match wins, not points): the smart bot (§2.29 ceiling — the board's own odds, the rally
+    played out, every order re-picked, the block's read beaten every point) wins **+15–20 % more matches** than Auto on equal
+    teams (about a +3–4 stat edge: a lower tier can nearly match a higher one); the same order put on everyone ("all float", "all tip") stays within ±2 %; a
     wrong read costs points. Each change is measured with the bot (paired seeds) and the numbers written here.
   - **Payoff by situation** (each order pays from a condition the board and the coach panel show):
     - Serve at a passer: the more they are broken (served at, loose passes, Tiring / Shaken), the worse they pass —
@@ -547,9 +548,10 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     and costs more when low; the bench rests (recovers between points) and a fresh bench player is worth bringing in —
     resting a starter and bringing them back is a real tactic. More subs per set; the coach (and you, on the board) can call
     them. Numbers in `SUB` / `RULES.stamina`, tuned with the bot.
-    **[built 2026-10-15, T-282]**: drain × 2.5 (was 1.7), low stamina costs up to 50 % (was 40 %), between points +0.01 on
-    court / +0.05 on the bench, 4 subs a set (was 2); the board's **Rest** order takes a court player off at the next dead
-    ball for the best fresh bench player. Starters end a match at ~0.64 stamina (was 0.87); ~7 subs a match (was 2.5).
+    **[built 2026-10-15, T-282]**: drain × 2.2 (was 1.7), low stamina costs up to 50 % (was 40 %), no recovery on court (owner:
+    recovering on court will be a player trait) / +0.05 a point on the bench, 4 subs a set (was 2); the board's **Rest** order takes a court player off at the next dead
+    ball for the best fresh bench player (and the coach brings them back only once they have rested: +0.1). Starters end a match
+    at ~0.62 stamina (was 0.87); ~7 subs a match (was 2.5).
   - **The board shows the point it wins** ("wins the point 54 %") — the rally played out (`atkOdds(…, full)`), not the first
     attack's kill · error, which misleads (a tip's errorless kills hide the counter-attack it gives away).
 

@@ -39,8 +39,8 @@ function boardSlot(k) {
   A.prepS.open = A.prepS.open === k ? null : k;
   prepDraw();
 }
-/** Spike odds text: kill · error; their attack into your block (a middle's order): stuff · their kill. */
-const boardAtkTxt = o => (o.vs ? `${BOARD_PCT(o.stf)} · ${BOARD_PCT(o.kill)}` : `${BOARD_PCT(o.kill)} · ${BOARD_PCT(o.err)}`);
+/** Attack odds text (spec §2.30): the point your side wins — the rally played out (their attack into your block: 1 − theirs). */
+const boardAtkTxt = o => `point ${BOARD_PCT(o.vs ? 1 - o.win : o.win)}`;
 const BOARD_Q = [];
 let boardBusy = false;
 /** Attack odds (hitter p, or the side's attack when p is null) with some orders tried (set: [[player, kind, v], …]): cached
@@ -64,7 +64,7 @@ function boardWork() {
       BOARD_Q.length = 0;
       return;
     }
-    const o = (A.prepS.odds[q.key] = { ...atkOdds(A.m, q.i, q.p, q.set), vs: !!q.vs });
+    const o = (A.prepS.odds[q.key] = { ...atkOdds(A.m, q.i, q.p, q.set, true), vs: !!q.vs });
     for (const el of document.querySelectorAll('[data-odds]')) if (el.dataset.odds === q.key) el.textContent = boardAtkTxt(o);
     setTimeout(tick, 0);
   };
@@ -104,13 +104,21 @@ function boardCard(m, i, p, can) {
             v => boardAtk(m, i, v === 'auto' ? null : T.P.find(q => q.id === v), [[p, 'feed', v]]),
             can
           ) + boardRow(p, 'fake', 'Fake', fakeOpts(), fake, v => boardAtk(m, i, null, [[p, 'fake', v]]), can)
-        : boardRow(p, 'aim', 'Aim', aimOpts(p, m.t[1 - i]), aim, v => boardAtk(m, i, p, [[p, 'aim', v]]), can) +
+        : boardRow(p, 'aim', `Aim ${boardExpect(m, p)}`, aimOpts(p, m.t[1 - i]), aim, v => boardAtk(m, i, p, [[p, 'aim', v]]), can) +
           boardRow(p, 'shot', 'Shot', shotOpts(), shot, v => boardAtk(m, i, p, [[p, 'shot', v]]), can)
     }${p.role === 'MB' ? boardRow(p, 'blk', 'Block', blkOpts(), ordOf(m, p, 'blk') || 'auto', v => boardAtk(m, 1 - i, null, [[p, 'blk', v]], true), can) : ''}${
       m.t[i].P.includes(p)
         ? boardRow(p, 'rest', 'Rest', restOpts(m, i, p), ordOf(m, p, 'rest') || 'auto', v => boardRest(m, i, p, v), can)
         : ''
     }</div>`;
+}
+/** What their block expects of this hitter (spec §2.30: the read to beat) — from what this match has shown them. */
+function boardExpect(m, p) {
+  const s = laneSeen(m, p),
+    n = s.line + s.cross;
+  if (n < 2) return '';
+  const line = s.line / n;
+  return `<small class="mute" ${tip(`Their block has seen ${s.line} down the line, ${s.cross} cross-court`)}>· they expect ${line >= 0.5 ? 'line' : 'cross'} ${BOARD_PCT(Math.max(line, 1 - line))}</small>`;
 }
 /** The Rest row's numbers (spec §2.30): their stamina now, or who comes on and how fresh. */
 function boardRest(m, i, p, v) {
@@ -125,7 +133,7 @@ function boardSide(i) {
     who = boardEdit(m, i),
     t = m.t[i];
   if (!who) return '';
-  return `<section class="pboard" style="--tc:${t.color}"><div class="lab">${chip(t)}${esc(t.name)} · orders ${info("Odds on each pick — serve: ace or broken pass · miss; spike: kill · error; block: stuff · their kill. Auto = the player's own game.")}</div><div class="bcards">${rotOrder(
+  return `<section class="pboard" style="--tc:${t.color}"><div class="lab">${chip(t)}${esc(t.name)} · orders ${info("Odds on each pick — serve: ace or broken pass · miss; attack, set and block picks: the point your side wins, the rally played out. Auto = the player's own game.")}</div><div class="bcards">${rotOrder(
     t,
     m.rot[i]
   )

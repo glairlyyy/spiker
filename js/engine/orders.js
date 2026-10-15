@@ -161,7 +161,7 @@ function srvOdds(m, server, s, srv, tgt) {
           [0, 1 - dP]
         ]) {
           if (!pd) continue;
-          let rs = Formula.receiveScore(rc, RT, d0) - (dd ? 14 : 0) - pressOf(m, rc) * READ.press.k;
+          let rs = Formula.receiveScore(rc, RT, d0) - (dd ? 14 : 0) - pressHit(m, rc);
           if (cp.weakRs) rs += rc === wp ? cp.weakRs : cp.otherRs;
           if (ap.press && rc === wp) rs -= ap.press;
           if (tg && tg.seam) rs -= ORDERS.srv.seam;
@@ -369,6 +369,8 @@ function ordSubs(m, side) {
 
 /** Serve pressure on a passer (READ.press): grows with every serve they take, more when it breaks them; eases each point. */
 const pressOf = (m, p) => (m.press && m.press[p.id]) || 0;
+/** What the pressure costs a passer's receive: only above READ.press.from (spread serving never gets there; a hunt does). */
+const pressHit = (m, p) => Math.max(0, pressOf(m, p) - READ.press.from) * READ.press.k;
 function pressAdd(m, p, broken) {
   const P = m.press || (m.press = {});
   P[p.id] = (P[p.id] || 0) + (broken ? READ.press.bad : READ.press.add);

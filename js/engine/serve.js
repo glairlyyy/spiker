@@ -212,7 +212,7 @@ function serveAim(c) {
   // Rolling Receive: dive-and-roll takes most of the sting out of a long run
   const rollR = hasTech(rc, 'roll') && d0 > 0.5;
   if (rollR) techFire(m, rc, 'roll');
-  let rs = Formula.receiveScore(rc, RT, d0) - (drive ? 14 : 0) - pressOf(m, rc) * READ.press.k; // the pressure on them (§2.30)
+  let rs = Formula.receiveScore(rc, RT, d0) - (drive ? 14 : 0) - pressHit(m, rc); // the pressure on them (§2.30)
   pressAdd(m, rc, 0);
   const cp = defPlan(m, r); // Cover the weak link (spec §2.26): the weakest passer is helped, the rest a little more open
   if (cp.weakRs) rs += rc === weakPasser(RT) ? cp.weakRs : cp.otherRs;

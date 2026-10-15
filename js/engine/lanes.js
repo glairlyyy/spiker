@@ -112,7 +112,8 @@ function laneTag(c, x, out) {
 
 /** After the attack: what the blockers saw (the channel it really went), and the side's read tallies (spec §2.24). */
 function laneRecord(m, side, x, kill) {
-  if (x.tip && ordOf(m, x.spiker, 'shot') === 'tip') laneSeen(m, x.spiker).tip = (laneSeen(m, x.spiker).tip || 0) + 1; // ordered tips get read (§2.29)
+  // ordered tips get read (§2.29): the side's ordered tips — a team that tips a lot gets read as a team (§2.30)
+  if (x.tip && ordOf(m, x.spiker, 'shot') === 'tip') (m.tipN || (m.tipN = [0, 0]))[side]++;
   if (x.tip || x.lz == null) return;
   laneSeen(m, x.spiker)[laneOf(x.spZ, x.lz)]++;
   if (!x.read) return;

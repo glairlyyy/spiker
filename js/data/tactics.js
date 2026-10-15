@@ -244,16 +244,16 @@ const ORDERS = {
     powErr: 1.15,
     cut: 0.35,
     tip0: 0.5,
-    tipSeen: 0.06,
-    tipMin: 0.3
+    tipSeen: 0.08,
+    tipMin: 0.15
   },
   odds: { roll: [0.82, 0.86, 0.9, 0.94, 0.98, 1.02, 1.06, 1.1, 1.14, 1.18], dAim: 0.22, dRand: 0.36, dSeam: 0.4, atkN: 160, seed: 9173 }
 };
 
 /**
  * Reading pays (spec §2.30, T-283): situations a read can exploit. press — serve pressure on a passer: each serve they take
- * adds `add` (`bad` more when it breaks them: an ace or a loose pass), × `decay` every point; their receive − `k` × it
- * (a sub comes in fresh). hot / cold — a hitter on a run of kills hits × (1 + `hot` per kill, up to `run`), on a run of
+ * adds `add` (`bad` more when it breaks them: an ace or a loose pass), × `decay` every point; above `from` (spread serving
+ * stays under it, a hunt does not) their receive − `k` per unit (a sub comes in fresh). hot / cold — a hitter on a run of kills hits × (1 + `hot` per kill, up to `run`), on a run of
  * errors / stuffs × (1 − `cold` per miss). commitStuff — a Commit middle on the quick stuffs × it.
  */
-const READ = { press: { add: 1, bad: 1.5, decay: 0.9, k: 9 }, hot: 0.05, cold: 0.06, run: 3, commitStuff: 1.6, habitK: 2 };
+const READ = { press: { add: 1, bad: 1.5, decay: 0.75, from: 1.5, k: 24 }, hot: 0.08, cold: 0.08, run: 3, commitStuff: 1.6, habitK: 2 };

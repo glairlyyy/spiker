@@ -315,7 +315,7 @@ function digSetup(c, x, bl) {
     // an ordered tip (spec §2.29): they come up short for it, and more so each time it has been seen this match
     tipK =
       tip && ordOf(m, x.spiker, 'shot') === 'tip'
-        ? clamp(ORDERS.atk.tip0 - (laneSeen(m, x.spiker).tip || 0) * ORDERS.atk.tipSeen, ORDERS.atk.tipMin, 1)
+        ? clamp(ORDERS.atk.tip0 - ((m.tipN && m.tipN[1 - ds]) || 0) * ORDERS.atk.tipSeen, ORDERS.atk.tipMin, 1)
         : 1,
     killP = Math.min(0.98, Formula.killChance(pow, dsc, tip, dd0) * deepK * tipK);
   const a4 = [];
