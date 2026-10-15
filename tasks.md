@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-294** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-298** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,52 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+**Semi-automatic matches (owner, 2026-10-16, spec §2.31–§2.33): T-294 → T-297, spec chat, in order.** Built and measured,
+not tuned (owner: "no need to fine tune it yet"). T-283 / T-284 wait: the cards replace the board they tune.
+
+### [ ] T-294: HP and per-player morale
+Spec: §2.31          Goldens: update (collapse replaces the knockdown roll; morale traits move fire)          Save: no change
+Goal: every player has HP (rally damage, partial heal, collapse) and morale (today's fire rules per player, traits); team fire
+= their average.
+Files: js/data/cards.js (new: HP, MTRAITS), js/engine/bars.js (new), js/engine/match.js (knock, pointMomentum, timeout,
+newMatch), js/engine/fire.js (zone breaker), js/engine/stats.js (dr), index.html, tests/momentum.test.js, tests/golden.json,
+ARCHITECTURE.md, ARCHITECTURE-details.md
+Do not: draw R() for HP or traits (hashes); change the stages' thresholds.
+Accept: no traits → fire equals the average morale; a passer served at hard 3 rallies running collapses; tests pass.
+QA: none (engine).
+Result:
+
+### [ ] T-295: Tactic cards and turns
+Spec: §2.32, §2.33          Goldens: update (the coach slots cards in every match)          Save: no change
+Goal: every side plays a 5-slot hand from its squad's pool, refilled at turns (every 6 points, a spent card, a timeout);
+plays compile into plans / orders / the tactic / forced techniques / buffs; combos; spent at −3; Stubborn.
+Files: js/data/cards.js, js/engine/cards.js (new), js/engine/fire.js (stageBuff × card buff), js/engine/match.js (end: turns,
+tallies; timeout), js/engine/serve.js, js/engine/rally.js, js/engine/rally-phases.js, js/engine/rally-block.js,
+js/engine/rally-defense.js (forced techniques), index.html, tests/cards.test.js (new), tests/golden.json, ARCHITECTURE.md,
+ARCHITECTURE-details.md
+Do not: draw R() in the coach's pick; change a technique's chance when no card forces it.
+Accept: tests — a forced Killer fires on every holder's jump serve; a Stubborn holder isn't forced; a play at −3 is spent and
+never slotted again; combos link; turns every 6 points.
+QA: none (engine).
+Result:
+
+### [ ] T-296: Measure the cards, bars and turns
+Spec: §2.31–§2.33          Goldens: unchanged          Save: no change
+Goal: `npm run cards` — paired seeds, league + tournament: no cards / boosts only / coach / random plays / each play blanket;
+spent per match, collapses per 100 points, stage shares, traits. Numbers into spec.
+Files: tests/cards.js (new), package.json, spec.md (measured lines)
+Result:
+
+### [ ] T-297: Card UI — bars, the turn overlay, prep, result card
+Spec: §2.31–§2.33, §9          Goldens: unchanged          Save: no change
+Goal: three thin bars under each name tag; the turn overlay (hand row, five slots, Auto, Space) pauses a played match at turns;
+match prep shows the hand instead of the plan tiles and the board; Tab opens the overlay; the result card's row: cards played /
+spent.
+Files: js/ui/match-cards.js (new), js/ui/match-prep.js, js/ui/match-controls.js, js/ui/match-result.js, js/render/tags.js,
+js/render/playback.js (turn pause), css/match.css, index.html, tests/ui-smoke.js, ARCHITECTURE.md
+QA: Monster game → prep hand, a turn, a spent card.
+Result:
 
 **Year 2 and Drive & Pain (owner, 2026-10-15, spec §4.28 "Year 2 decided", §4.30): T-286 → T-291, in order.** Year 1 is
 the expected failure, year 2 the redemption. One save bump (RUN_VERSION 19) in T-286 covers the whole block; later tasks add

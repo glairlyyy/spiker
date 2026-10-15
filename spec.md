@@ -556,6 +556,66 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   - **The board shows the point it wins** ("wins the point 54 %") — the rally played out (`atkOdds(…, full)`), not the first
     attack's kill · error, which misleads (a tip's errorless kills hide the counter-attack it gives away).
 
+**Semi-automatic matches (owner, 2026-10-16): §2.31–§2.33.** An anime match with RPG bars and a card hand: the match plays
+itself, and every few points you (or the coach) answer what the bars and the coach panel show. One engine, two pickers stays:
+the AI coach fills every slot you leave with the same function. Built and measured, not tuned yet (T-296).
+
+- §2.31 Bars — HP, stamina, morale (owner, 2026-10-16) **[locked, not built — T-294, UI T-297]**: three bars per player.
+  - **HP** (`m.hp[id]`, 0–1): every serve receive and dig takes damage = the knockdown impact (§2.28: ball power − Defense as
+    played × `KNOCK.defK`, past `HP.gap`, over `HP.span`, × the ball's weight). At 0 the player **collapses** — today's knockdown
+    (on the floor through the next defence, then the get-up), now certain instead of a roll. Partial heal at the end of every
+    rally (`HP.heal`), so a passer served at point after point wears down (focus fire). Low HP drains stamina faster
+    (× 1 + `HP.drain` × (1 − hp)); a collapse costs stamina (`KNOCK.sta`). "Collapsed" replaces "Knocked down" on screen.
+  - **Stamina**: as §2.0b / §2.30 (T-282), plus the low-HP drain.
+  - **Morale** (`m.mor[id]`, −1..1) replaces team fire: each player's morale moves by today's fire rules (§2.14
+    pointMomentum: won / lost point, streak, big points, the heat of a lost point, marathons, hard kills, the zone breaker,
+    timeouts). The team's **fire** (`m.mom`: the stages, the HUD, the director) = the on-court players' average morale, the
+    captain counting double. With no traits it equals today's fire. `mood` (form, nerves) stays the hidden in-play feeling for now.
+  - **Morale traits** (`mtraitOf(p)`, by hash of the player; about half have one; never your career player for now):
+    **Spiteful** — their own error or being stuffed raises it (+0.15), a lost point costs half; **Glass** — marathons and hard
+    kills shake it twice as hard; **Showboat** — their own kill +0.15 more, teammates' kills half; **Anchor** — a lost point
+    costs × 0.7 and lifts the lowest teammate (+0.08); **Stubborn** — morale as default; ignores what a slotted card forces
+    (§2.33). Temperaments (§2.14) stay as the team's stage thresholds.
+- §2.32 Turns (owner, 2026-10-16) **[locked, not built — T-295, UI T-297]**: the match pauses for a **turn** every `TURN.pts`
+  (6) points played, and at once when a card is spent (§2.33); match prep is turn 0; a timeout is an extra turn for its side.
+  At a turn each side's slots are filled again (yours first, then the coach's). Played match: an overlay over the frozen
+  court — the bars, what the coach panel noticed, your hand and slots; **Auto** (the coach fills it all, for this turn or the
+  match) or Space (keep). Sims, NPCs and AI sides: the coach, at once. No input during a rally (§5.7).
+- §2.33 Tactic cards (owner, 2026-10-16) **[locked, not built — T-295, UI T-297; replaces the team plans §2.26, the defence
+  setting §2.9, the Plan board §2.29 and the technique switches §9.10 once accepted]**: a compact hand instead of the plan
+  tables. Data `CARDS` / `COMBOS` (js/data/cards.js), engine js/engine/cards.js; a card compiles into the existing levers
+  (plans, orders, the tactic, forced techniques, stat buffs).
+  - **Slots** per side: **ATK × 2**, **DEF × 2**, **FLEX × 1** (any card; the only slot for an **OP** card). ATK / DEF are
+    synced team plays, not roles.
+  - **Kinds**: **Boost** — a plain stat lift (+5 %), never spent (Power Up, High Point, Guard Up, Quick Step). **Play** — a
+    team play with a bigger effect; it can be **spent**: gone for the rest of the match.
+  - **Pool** (the squad's 6): boosts always; the coach's playbook (Hunt the passer, Power through, Beat the block, Wall their
+    ace, Cover the weak link, Dig deep, Commit, Speed Dig — one middle stays back to dig, Speed +10 % —, Quick Tempo, Tip &
+    Roll); every **technique** a squad player owns adds its card (Killer Serve, Drive Serve, Target Serve, Delayed Spike, Cut
+    Shot, Freak Quick, Slide, Sync Attack, Lefty Dump, Pipe Combo, Read Block, Soft Block); some **traits** add one (Spiteful
+    → Spite Spike: hitters +10 % power while behind; Anchor → Hold the Line: defence +8 % while behind); an **OP** or
+    element player adds an OP card (Element Surge: a full gauge each turn; Fever Rush: +0.3 morale on court when slotted;
+    Iron Wall: defence +10 %). A slotted card whose holders are all on the bench pays nothing.
+  - **A technique card forces** its technique on everyone who owns it (fires wherever it can, + the card's boost); players
+    without it get nothing. **No card = today's technique** (its usual chance), so learning one always pays.
+  - **Combos**: two plays slotted together link for a bonus — **Sniper** (Killer Serve + Target Serve: serve +6 %),
+    **Fortress** (Speed Dig + Dig deep: defence +6 %), **Lockdown** (Wall their ace + Commit: jump +6 %), **Decoy** (Quick
+    Tempo + Freak Quick or Slide: attack +6 %). A combo shares one spent count: when it fails, both cards go.
+  - **Spent**: a play counts its net points while slotted, over the rallies it acts in (serve cards: your serves; attack
+    cards: rallies you attack in; defence / receive cards: rallies they attack in / serve): **Worn** at −2 (shown), **Spent**
+    at −3. A spent card is gone for the match; the team's morale drops (−0.1 each on court; Spiteful +0.1); a turn follows.
+    Boosts never burn.
+  - **Who picks**: your card first (any slot it fits, from the team's pool; your own cards marked) — career: 1 card, 2 when
+    trusted, all 5 as captain; Monster game: all 5 on a "You decide" side. The coach fills the rest around it (no draws):
+    boosts by default; plays when the situation shows them (a weak passer → Hunt, a standout ace → Wall, their quick share →
+    Commit, the coach panel's tags, its playstyle's plans, the squad's techniques); a dull coach (IQ < 0.5) only its
+    playstyle's plays; it completes a combo, never slots two cards of one group (one attack plan, one defence plan, one block
+    order, one shot order), and swaps out a Worn card.
+  - **Stubborn** players ignore what a card forces (orders, forced techniques) and play their own game; they still get the
+    boost when their own pick matches the card, and their off-plan actions don't count toward its spent tally.
+  - **Must hold (T-296)**: no cards < boosts only ≤ coach AI; random plays within ±2 % of no cards; a no-card team never
+    beats the coach AI on average.
+
 ## 3. Menu [built]
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two
@@ -1038,6 +1098,8 @@ mood)`.
   - **Parked ideas to weigh (not decided):** the match remembering your choices ("AI memory": they read your favourite lane
     over a match / a season); back-row defensive commands; temperament changing how a team plays (T-259); scouting that
     reveals an ace's weakness shown in the match UI (§8 ace traits); a smarter coach (§8).
+  - **Decided (owner, 2026-10-16)**: the semi-automatic match — bars (§2.31), turns every 6 points (§2.32) and a tactic-card
+    hand (§2.33) replace the one-time plan tables; the career feeds the hand (techniques, traits, trust → how many cards are yours).
   - **Current direction (owner, 2026-10-11 – 12)**: (1) **Laning first** (§2.24, built) so reads and aims are real and visible;
     (2) a Kenshi-style **right-click** on any player / thing lists what you may ask or do (requests as a player — teammates and the
     coach answer by bond / trust; nothing is required; locked options show the gap), proposed, not decided; (3) **Plan board**
