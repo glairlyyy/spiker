@@ -829,7 +829,7 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   jumpPx, serve in serveQuality) replaces the old `0.06 × mom` in boost(). The losing captain's random zone call is gone.
 - `RALLY_MAX` (rally.js): a rally gives up after 80 possessions (the attacking side scores) — only a rigged stream gets there.
 
-## Bars — HP and morale (spec §2.31, T-286)
+## Bars — HP and morale (spec §2.31, T-294)
 
 - **HP**: `knock(m, p, pow, mg, until)` (match.js) is called on every kept-up serve receive and dig; it calls `hpHit` (bars.js),
   which takes `clamp((impact − HP.gap) / HP.span, 0, 1) × weight` off `m.hp[id]` (impact and weight as the old knockdown roll).
@@ -841,7 +841,7 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   `subIn` refreshes the fire (who is on court). `m.noTraits` (tests) makes every player trait-less: then all morale is equal
   and the fire is exactly the old fire.
 
-## Tactic cards and turns (spec §2.32–§2.33, T-287)
+## Tactic cards and turns (spec §2.32–§2.33, T-295)
 
 - **Compile, don't fork**: a card is data (`CARDS`); `cardApply` turns the slotted set into the existing levers, so the rally
   code only gained `cardForce` checks at the R()-gated technique hooks (delay, freak, slide, sync, pipe combo; Cut Shot adds

@@ -323,7 +323,7 @@ test.slow('engine: lane-read block — stuff rate and defence settings', () => {
   }
   const stuffRate = stuffs / n;
   // real-game rates (SKILL, owner 2026-10-04): a good side stuffs ~7–11 % of attacks (was 12–16 % before skill-scaled blocking)
-  // (T-286: collapses — certain once HP is gone — send more high balls into a full block; 12.5 until the cards' balance pass)
+  // (T-294: collapses — certain once HP is gone — send more high balls into a full block; 12.5 until the cards' balance pass)
   assert(stuffRate >= 0.07 && stuffRate <= 0.125, `stuff rate ${(100 * stuffRate).toFixed(1)} % is outside 7–12.5 %`);
   assert(kills / n >= 0.36 && kills / n <= 0.48, `hitter kill rate ${((100 * kills) / n).toFixed(1)} % drifted from ~42 %`);
   // a fixed attack style against each defence setting (attacker: side 0)
@@ -689,7 +689,7 @@ test.slow('engine: middle orders — Commit stuffs more quicks and leaves the pi
   const read = run('read'),
     com = run('commit'),
     back = run('back');
-  // (T-286: Commit still stuffs more quicks, but their quick kills now end level with Read — see spec §2.33 / T-288)
+  // (T-294: Commit still stuffs more quicks, but their quick kills now end level with Read — see spec §2.33 / T-296)
   assert(com.qs / com.q > read.qs / read.q, `Commit: stuffs more quicks ${com.qs}/${com.q} vs Read ${read.qs}/${read.q}`);
   assert(com.pink / com.pin > read.pink / read.pin, `Commit: pins score more ${com.pink}/${com.pin} vs ${read.pink}/${read.pin}`);
   eq(back.blk, 0, 'Stay back: the middle never blocks');

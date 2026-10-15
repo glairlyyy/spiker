@@ -1,4 +1,4 @@
-// Tests: tactic cards and turns (spec §2.32–§2.33, T-287). harness.js has the loader, runner and helpers.
+// Tests: tactic cards and turns (spec §2.32–§2.33, T-295). harness.js has the loader, runner and helpers.
 const { load, test, assert, eq } = require('./harness');
 
 /** A league match where side 0's wing spikers own Killer Jump Serve and Target Serve (career-learned). */

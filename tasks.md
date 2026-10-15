@@ -60,7 +60,7 @@ Do not: draw R() in the coach's pick; change a technique's chance when no card f
 Accept: tests — a forced Killer fires on every holder's jump serve; a Stubborn holder isn't forced; a play at −3 is spent and
 never slotted again; combos link; turns every 6 points.
 QA: none (engine).
-Result: Built as specced (js/engine/cards.js, CARDS / COMBOS / TURN / SLOTS / CARD_AI in js/data/cards.js). Cards compile into plans, the tactic, orders (`C.cord`; never over an order already set), forced techniques (`cardForce` at the R()-gated hooks; Cut Shot +0.25) and buffs (`cardBuff` × stageBuff). `opts.cards === false` = no hand; `opts.plan` keeps cards off that side's plan (old tests). A timeout refills the calling side. Act kinds `turn` / `cardspent` with handlers (js/ui/match-cards.js stub until T-289). Also render/acts.js, js/ui/match-cards.js (new), tests/run.js. Goldens updated (the coach slots cards in every match). 145/145.
+Result: Built as specced (js/engine/cards.js, CARDS / COMBOS / TURN / SLOTS / CARD_AI in js/data/cards.js). Cards compile into plans, the tactic, orders (`C.cord`; never over an order already set), forced techniques (`cardForce` at the R()-gated hooks; Cut Shot +0.25) and buffs (`cardBuff` × stageBuff). `opts.cards === false` = no hand; `opts.plan` keeps cards off that side's plan (old tests). A timeout refills the calling side. Act kinds `turn` / `cardspent` with handlers (js/ui/match-cards.js stub until T-297). Also render/acts.js, js/ui/match-cards.js (new), tests/run.js. Goldens updated (the coach slots cards in every match). 145/145.
 
 ### [x] T-296: Measure the cards, bars and turns
 Spec: §2.31–§2.33          Goldens: unchanged          Save: no change

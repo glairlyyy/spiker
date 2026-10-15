@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Cards, bars and turns measured (spec §2.31–§2.33, T-288): side 0 plays a hand mode against the coach's hand (side 1), paired
+// Cards, bars and turns measured (spec §2.31–§2.33, T-296): side 0 plays a hand mode against the coach's hand (side 1), paired
 // seeds against the same match with side 0 holding no cards. Prints point share / match-win deltas per mode, how often plays
 // burn, collapses, stage shares and morale by trait. Measured, not tuned.
 // npm run cards -- [pairs=100] [teams=league|tour|both] [modes=none,boosts,coach,random,blanket]
