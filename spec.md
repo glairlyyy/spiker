@@ -566,6 +566,9 @@ the AI coach fills every slot you leave with the same function. Built and measur
     (on the floor through the next defence, then the get-up), now certain instead of a roll. Partial heal at the end of every
     rally (`HP.heal`), so a passer served at point after point wears down (focus fire). Low HP drains stamina faster
     (× 1 + `HP.drain` × (1 − hp)); a collapse costs stamina (`KNOCK.sta`). "Collapsed" replaces "Knocked down" on screen.
+  - **Collapse rate (owner, 2026-10-16) [open — T-299]**: collapses are common in every league — about **30 % of kept-up
+    receives and digs** on average, far more when the ball's power is well above the receiver's Defense, rare when Defense is
+    well above it. Every collapse is the blown-away knockdown (§2.28); the firm / hard receive tiers are display only.
   - **Stamina**: as §2.0b / §2.30 (T-282), plus the low-HP drain.
   - **Morale** (`m.mor[id]`, −1..1) replaces team fire: each player's morale moves by today's fire rules (§2.14
     pointMomentum: won / lost point, streak, big points, the heat of a lost point, marathons, hard kills, the zone breaker,
@@ -621,6 +624,18 @@ the AI coach fills every slot you leave with the same function. Built and measur
     A spent card: "‹team›: ‹card› spent" over the court. Result card: **Cards** row — each side's plays (turns slotted) and
     the spent ones. The old plan tiles and the Plan board's pages are removed **[built 2026-10-16, T-298]**; a timeout of
     yours opens the turn overlay (the huddle).
+  - **Balance pass (owner, 2026-10-16) [open — T-299]**: reading must pay. Measured on the rallies a play acts in (its tally):
+    - **Fit** — the situation it answers is there (its `fit` read, from what the coach panel and the bars show: a weak or worn
+      passer for the serve plays, a strong block for Beat / the techniques, a weak block for Power, their quick share for
+      Commit, their ace for Wall, a soft floor / tired diggers for Tip …): its side wins **+10–20 %** more of those rallies.
+    - **Countered** — the other side has slotted its counter (Cover answers the serve plays; Dig deep answers Power; Speed
+      Dig answers Tip, Beat, Cut Shot, Delayed Spike; Commit and Read Block answer Quick, Freak, Slide; Beat answers Wall;
+      Power answers Commit and Speed Dig; Tip answers Dig deep; Killer / Drive answer Cover): **−10–20 %**.
+    - **Misfit** (neither): about −5 %.
+    - **Spent only when countered or misfit**: losses while it fits never burn it (the net counts only countered / misfit
+      rallies, −3 → spent).
+    - Boosts +3 % (were +5). The coach slots what fits (the same reads), swaps out a countered play, never a fitting one.
+    - Over a match: one well-read play ≈ +4–8 % of points, two or three ≈ +10 % or more (§2.30's +15–20 % with the bot).
   - **Must hold (T-296)**: no cards < boosts only ≤ coach AI; random plays within ±2 % of no cards; a no-card team never
     beats the coach AI on average.
   - **Measured** (2026-10-16, `npm run cards`, 100 paired seeds, side 0 vs the coach's hand; point share vs side 0 holding no

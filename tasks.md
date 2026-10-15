@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-299** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-300** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -83,6 +83,16 @@ Result: js/ui/match-cards.js (hand, turn overlay #cturn, Tab look, spent tag, re
 the expected failure, year 2 the redemption. One save bump (RUN_VERSION 19) in T-286 covers the whole block; later tasks add
 fields through RUN_DEFAULTS. Story mode only (Endless stays unbuilt); the main random stream is untouched (seeded rolls).
 
+
+### [ ] T-299: Balance pass — reading pays, collapses common
+Spec: §2.31 (collapse rate), §2.33 (balance pass)          Goldens: update          Save: no change
+Goal: a fitting play wins +10–20 % more of the rallies it acts in, a countered one −10–20 %, a misfit ≈ −5 %; plays burn
+only when countered / misfit; boosts +3; the coach slots what fits; ~30 % of kept-up receives / digs collapse, by stat gap.
+Files: js/data/cards.js, js/engine/cards.js, js/engine/bars.js, js/engine/match.js (knock tally), tests/cards.js,
+tests/cards.test.js, tests/*.test.js (statistical bands the collapse rate moves), tests/golden.json, spec.md (measured)
+Accept: `npm run cards` prints per play the acting-rally win rate fit / misfit / countered vs the same rallies without it;
+fit +10–20, countered −10–20; collapse share ~30 % (league and tournament); coach ≥ boosts-only.
+Result:
 
 ### [x] T-298: Remove the old plan pages
 Spec: §2.26, §2.29, §2.33          Goldens: unchanged          Save: no change
