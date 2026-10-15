@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-286** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-292** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,114 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+**Year 2 and Drive & Pain (owner, 2026-10-15, spec §4.28 "Year 2 decided", §4.30): T-286 → T-291, in order.** Year 1 is
+the expected failure, year 2 the redemption. One save bump (RUN_VERSION 19) in T-286 covers the whole block; later tasks add
+fields through RUN_DEFAULTS. Story mode only (Endless stays unbuilt); the main random stream is untouched (seeded rolls).
+
+### [ ] T-286: Two seasons — the year rolls over after the year-1 Cup
+Spec: §4.28 Year 2          Goldens: unchanged          Save: RUN_VERSION 19 (`run.year`; week stamps rebased)
+Goal: In Story mode the year-1 U21 Cup no longer ends the run: the run goes on to year 2 (week 1 again, the calendar and the
+Cup repeat); the year-2 Cup ends it. The hub and menu show the year.
+Files: js/career/season.js (new; index.html), js/career/run.js, js/career/cup.js, js/career/stars.js, js/career/story.js,
+js/career/asks.js, js/career/people.js, js/career/rel.js, js/career/hex.js, js/career/element.js, js/data/career.js,
+js/ui/career-hub.js, js/ui/menu.js, js/ui/sheet-season.js, js/ui/career-end.js, tests/career.test.js
+Do not: add an absolute-week refactor across the codebase; touch the engine; build the off-season (T-287) or endings (T-289).
+Steps:
+1. `run.year` (1 | 2) in RUN_DEFAULTS; RUN_VERSION 19 + RUN_MIGRATIONS[18] (year: 1).
+2. `Season` (season.js): `last(run)` (year 2 or not Story), `rollover(run)`: rebase every stored week stamp used in a
+   difference by −(CAREER.weeks + 1) (people `bench`, `run.mem` entries' `w`, `run.hex.t`, `run.scout`, `run.refused[*].week`,
+   `run.elNext`, `run.loans[*].due`), clear the per-week ones (`sitout`, `duo`, `asks`, `eval`, `cup`), `run.year++`,
+   `run.week = 1`, `Run.nextWeek`. Display lists (log, mlog, hist, evals, cups) get a `y` field and keep their week.
+3. `Cup.close`: Story and not `Season.last` → `Season.rollover` instead of `Cup.end` (the cups list keeps the year-1 entry).
+4. Stars.target: year 1 as today; year 2 reads the year-2 curve (T-288 fills it; until then they hold their year-1 end).
+5. Story gates (`week2`, `week3`, Fern's lessons, the campus fence) only in year 1.
+6. UI: "Year N · Week w / 28" on the hub and the menu's resume line; the Season sheet's week strip per year; the end
+   screen lists both years' cups.
+Accept:
+- A full Story run (harness policy) plays 2 × 28 weeks + 2 Cups and ends with a result; Endless (story false) ends after one.
+- Save → load in year 2 round-trips; a v18 save loads as year 1.
+- No cooldown misfires after the rollover (a club refused in week 25 is asked again by its normal rule).
+QA: career run → Season sheet and hub in year 2 (a dev jump: `Season.rollover(RUN)` from the console).
+Result:
+
+### [ ] T-287: The off-season
+Spec: §4.28 Year 2 (full off-season)          Goldens: unchanged          Save: no change
+Goal: Between the years the island moves on: the first aces and Fern leave, a transfer window and a promotion pass run,
+every NPC grows a year; the Gazette reports it.
+Files: js/career/season.js, js/career/world.js, js/career/growth.js, js/career/people.js, js/career/stars.js,
+js/data/career.js, js/career/mapmodel.js, tests/career.test.js
+Do not: move or cut the rival or the cohort; draw from the run's main stream outside the existing World / Growth calls.
+Steps:
+1. `Season.offseason(run)` before the week reset: the first aces (`named: 'ace'`) leave — their club promotes its best
+   same-role reserve (the World.promote path); Fern leaves (Story flag `fernGone`; MapModel figure gone).
+2. `OFFSEASON = { transfers: 6 }` rounds of World.transfers, then World.promote.
+3. NPC growth: a season's worth of Growth.grow per player at once (one call with a weeks factor, not 28 loops).
+4. A Gazette issue "The off-season" listing who left, moved and broke through.
+Accept: after the rollover no first ace and no Fern exists; league mean OVR rises by roughly a season's NPC growth;
+the cohort and the rival are on their clubs.
+QA: none
+Result:
+
+### [ ] T-288: The rival in year 2 — curves, the week-14 rematch, the Cup path
+Spec: §4.28 Year 2          Goldens: unchanged          Save: no change
+Goal: The cohort plateaus in year 2; a guaranteed rematch against Wei Dynasty · Gold in week 14; the year-2 Cup seeds the
+rival's squad into the other half of your bracket.
+Files: js/data/stars.js, js/career/stars.js, js/data/career.js, js/career/cup.js, js/career/eval.js, js/career/run.js,
+js/ui/career-hub.js, js/ui/career-match.js, js/ui/sheet-season.js, tests/career.test.js
+Do not: change the year-1 curves; add a new beat act kind; force your lineup outside the rematch.
+Steps:
+1. STARS year-2 curves: rival `ovr2 [90, 92]` (`ovr2max [90, 95]` when you beat her squad in the year-1 Cup — story flag),
+   cohort `[85, 88]`; Stars.target picks by `run.year`.
+2. `CALENDAR2 = { 14: 'rematch' }` merged in Run.weekType for year 2; the fixture: your club (or the Academy squad) vs
+   Wei Dynasty · Gold with the rival starting; recorded in mlog as "Rematch"; you start (Story).
+3. Cup.start in year 2: after seeding, swap entrants so the rival's squad sits in the half opposite yours.
+Accept: every year-2 Story run plays the rematch in week 14; in 20 seeded runs the rival's squad is never in your half;
+her OVR at the year-2 Cup is 92 (95 with the flag).
+QA: career run → week-14 hub card and match.
+Result:
+
+### [ ] T-289: The year scenes and the two endings
+Spec: §4.28, lore.md §6          Goldens: unchanged          Save: no change
+Goal: The story frames the two years: the year-1 Cup result scene, Fern's goodbye at the off-season, the rematch's
+before / after lines, and two endings on the end screen.
+Files: js/data/story.js, js/career/story.js, js/career/cup.js, js/ui/career-end.js, tests/career.test.js
+Do not: write lines outside lore.md's voice list; add randoms.
+Steps:
+1. Scenes: `y1Lost` ("She doesn't remember. You do."), `y1Won` (the rival takes it personally), `fernBye`, `rematchPre`,
+   `rematchPost` (won / lost), `trueEnd` (picked together; "they finally remember"), `spiteEnd` (they go without her).
+2. Cup.end in year 2: the result carries `ending: 'true' | 'spite'`; the end screen shows it.
+Accept: each scene fires once at its moment in a scripted run; both endings reachable in tests.
+QA: career run → end screen (dev: finish the year-2 Cup won / lost).
+Result:
+
+### [ ] T-290: Drive & Pain — the hidden bars
+Spec: §4.30          Goldens: unchanged          Save: no change (RUN_DEFAULTS `drive`, `pain`, `fired`, `scars`)
+Goal: Two hidden 0–100 bars fill from what happens to the MC; Drive at 100 → Fired up for the next 2 matches; Pain at 100
+→ a Scar (pool placeholder until T-291); only indirect cues on screen.
+Files: js/career/feel.js (new; index.html), js/data/career.js (FEEL table), js/career/run.js, js/career/training.js,
+js/career/cup.js, js/career/world.js, js/career/people.js, js/career/fight.js, js/ui/career-hub.js, tests/career.test.js
+Do not: show a bar or number; touch the engine's formulas (Fired up rides the existing match buff / form hooks); draw
+from the main random stream.
+Steps:
+1. `FEEL` (data): Drive gains per source (train, win, grade A/S, praise memory, good event, joined, Great-mood week streak
+   of 3), idle-week drain; Pain gains per source (loss, loss by 8+, benched, cut, refused, rival loss, rival "doesn't
+   remember", Awful-mood streak); Fired up { matches: 2, stat: 1.1, train: 1.25 }.
+2. `Feel.add(run, 'drive' | 'pain', src)` called from the sources; at 100: Drive → `run.fired = 2`, Pain → `Feel.scar(run)`
+   (placeholder: records `{ k: 'pending', y, w }`; T-291 rolls the trait).
+3. Fired up: Cup.prepare / Cup.fixture applies the stat amplification to you for the match and counts it down; training
+   gains × FEEL.fired.train while it lasts.
+4. Indirect cues: a diary line at 50 / 80 of each bar (seeded pick from a few lines per band, lore voice), a hub portrait
+   tint while Fired up, a teammate remark.
+Accept: a scripted week of wins fills Drive to Fired up; a run of losses reaches a Scar; no UI shows a value.
+QA: career run → hub after a Fired up trigger.
+Result:
+
+### [?] T-291: Scars — the trait pools
+Spec: §4.30 (pools [open])          Goldens: update (traits change play)          Save: no change
+Question: Owner to decide with the spec chat: the bad / mixed / OP traits and their effects, the odds and pity, whether
+Drive can heal a Scar, which VFX (air impact, impact frame, secret techniques) become Fired-up / special-only.
+Result:
 
 **Reading pays (owner, 2026-10-15, spec §2.30): T-282 → T-285.** Measure with the smart bot (scratch `smartbot.js` → T-285
 puts it in tests/bot.js) after each step; numbers into spec §2.30. Goldens: update where stated (stamina changes every match).

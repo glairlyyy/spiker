@@ -920,6 +920,37 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     (the rival included); you have that year to catch up. Not tied to your OVR.
   - Numbers are first guesses for the balance pass; the shape (year-1 aces ≥ rival > cohort > field; you catch up in
     year 2) is the decision.
+  - **Year 2 decided (owner, 2026-10-15)** — the frame: year 1 drops you on the island, Fern tells you briefly what's
+    coming and what to do, then lets you play around and **fail; that is expected** (the AI may carry you past the rival
+    — the story covers that — but mostly you lose). **Year 2 is the redemption arc**: the game guides (it doesn't help)
+    and opens more depth than train → end week — first through Drive & Pain (§4.30).
+    - **Same growth for you; the cohort plateaus**: the rival 90 → 92 over year 2 (her maximum after a year-1 Cup
+      loss to you: 90 → 95), the cohort 85 → 88. No faster training, no new caps. Measured (2026-10-15, auto-played
+      runs): you reach OVR ~45–68 by the year-1 Cup (league mean ~79), your Cup squad beats hers ~30 %, mostly
+      decided by her squad's draw.
+    - **The rival match is guaranteed**: an authored **rematch in week 14** of year 2 (your club or Academy squad vs
+      Wei Dynasty · Gold, the rival starting), and the year-2 Cup seeds her squad into the **other half** of your
+      bracket (you meet in the final if both keep winning).
+    - **Full off-season** between the years: the first aces and Fern leave (their clubs promote a reserve); a
+      transfer window (World.transfers × several) and a promotion pass (World.promote); every NPC grows a year (their
+      growth curve, a season's worth at once); clubs, squads, relations, money, Scars and Drive carry over; the week
+      goes back to 1 and the calendar repeats.
+- §4.30 Drive & Pain **[draft, owner 2026-10-15]**: two hidden bars on the MC, 0–100 each. Not training-place
+  streaks: everything you do counts.
+  - **Drive** fills on every positive thing: a training session, a win, a good grade, a teammate's praise, a good
+    event, a club taking you, mood **Great three weeks in a row**. An idle week drains it a little; a loss doesn't empty
+    it. **At 100 → Fired up** for your next 2 matches: your stats amplified (~× 1.1), training gains up, and special
+    moves unlocked (which effects and secret techniques move behind it: decided with the Scar pools). Then 0.
+  - **Pain** fills on every outcome that guts the MC: a loss (more by 8+), benched, cut, a club refusing you, losing
+    to the rival, the rival not remembering you, mood **Awful several weeks running**. **Not** injury, not bad sleep.
+    **At 100 → a Scar**: a trait drawn from pools — mostly bad, some mixed, a rare OP one (e.g. **Enlightenment**:
+    every stat and Wit up a lot); the OP chance grows with each Scar. Then 0. Seeded (no change to the run's random
+    stream). **Pools: [open]** — to be decided with the owner (traits, odds, whether Drive can heal a Scar, which VFX
+    become Fired-up-only).
+  - **Mood stays** (the five levels, `MOODS`) and plays along: streaks of mood feed the bars (above).
+  - **Hidden, both years**: no bar on screen. Shown only indirectly — diary lines as a bar climbs ("Something won't sit
+    still in you" / "It hurts more than it should"), teammates' remarks, the MC's face on the hub, the Fired up match
+    itself, the Scar's own scene. A second run is worth it for knowing what fills them.
 - §4.27 Hex territory **[built, T-131–T-134, T-138, T-153]** (owner, 2026-10-03): the war map becomes hex tiles; each tile has its own takeover
   condition. Changes how factions move and seize; the player's travel (roads, days, trips, fog) does not change.
   Replaces the fixed border meters and border places (§4.7 `FRONT.borders`, T-130 lines, seized patches).
