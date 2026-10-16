@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-306** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-307** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -83,6 +83,12 @@ Result: js/ui/match-cards.js (hand, turn overlay #cturn, Tab look, spent tag, re
 the expected failure, year 2 the redemption. One save bump (RUN_VERSION 19) in T-286 covers the whole block; later tasks add
 fields through RUN_DEFAULTS. Story mode only (Endless stays unbuilt); the main random stream is untouched (seeded rolls).
 
+
+### [x] T-306: Filter the card pool
+Spec: §2.33 (On screen, Filters)          Goldens: unchanged          Save: no change
+Goal: the 43-card pool can be narrowed to what fits now, a zone or a kind.
+Files: js/ui/match-cards.js (CARD_FILTS, cardsFiltBar, cardsFilt; A.cardFilt), css/match.css, tests/ui-smoke.js, spec.md
+Result: Done (owner request, spec chat). Prep and the turn overlay share the hand code, so both get the row. UI smoke: DEF shows only DEF cards, All brings Power Up back. QA (Monster prep, seed 7): Fits now → 11 of 38. UI smoke 13/13.
 
 ### [x] T-305: More cards — one-shots, traps, new plays and OP cards, counters filled
 Spec: §2.33 (More cards)          Goldens: update (new cards in every pool; the coach's picks)          Save: no change

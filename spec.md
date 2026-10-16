@@ -658,7 +658,9 @@ the AI coach fills every slot you leave with the same function. Built and measur
     A spent card: "‹team›: ‹card› spent" over the court. Result card: **Cards** row — each side's plays (turns slotted) and
     the spent ones. **Drag and drop** (owner, 2026-10-16) **[built, T-302]**: drag a pool card onto a slot, a slot's card onto
     another slot (they swap when the other card fits back), or a slot's card onto the pool (emptied — the coach refills a slot
-    that isn't yours); while dragging, the slots it fits light up and the others dim. Clicks still work. The old plan tiles and the Plan board's pages are removed **[built 2026-10-16, T-298]**; a timeout of
+    that isn't yours); while dragging, the slots it fits light up and the others dim. Clicks still work. **Filters**
+    (owner, 2026-10-17) **[built, T-306]**: a row over the pool — All · Fits now · ATK · DEF · OP · Boost · One-shot · Trap,
+    each with its count (an empty one is hidden); per side, kept for the match; dragging onto the pool still works. The old plan tiles and the Plan board's pages are removed **[built 2026-10-16, T-298]**; a timeout of
     yours opens the turn overlay (the huddle).
   - **Balance pass (owner, 2026-10-16) [built 2026-10-16, T-299]**: reading must pay. Measured on the rallies a play acts in (its tally):
     - **Fit** — the situation it answers is there (its `fit` read, from what the coach panel and the bars show: a weak or worn

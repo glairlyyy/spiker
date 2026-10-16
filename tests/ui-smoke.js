@@ -226,6 +226,16 @@ const step = async (name, fn) => {
     if ((await ev(() => A.m.cards[0].slots.atk1)) !== 'pow') throw new Error('drag: Power Up not in ATK 2');
     await pg.dragAndDrop('#prep .cslot[data-slot="atk1"]', '#prep .cpool');
     if ((await ev(() => A.m.cards[0].slots.atk1)) === 'pow') throw new Error('drag: the slot did not empty');
+    // the pool's filters (owner, 2026-10-17): DEF shows only DEF cards, All brings the rest back
+    await pg.click('#prep .cfilt[data-filt="def"]');
+    await ev(() => {
+      const ids = [...document.querySelectorAll('#prep .cpool .cpick')].map(b => b.dataset.card);
+      if (!ids.length || ids.some(id => CARDS[id].zone !== 'def')) throw new Error(`filter DEF shows ${ids.join(',')}`);
+    });
+    await pg.click('#prep .cfilt[data-filt="all"]');
+    await ev(() => {
+      if (!document.querySelector('#prep .cpool .cpick[data-card="pow"]')) throw new Error('filter All: Power Up missing');
+    });
     // match prep (spec §2.26): both sides yours in a Monster game; pick Hunt the passer / Wall their ace for the left team
     await ev(() => {
       if (!A.prep || $('#prep').querySelectorAll('.pteam').length !== 2) throw new Error('no Monster match prep');

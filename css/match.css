@@ -1748,6 +1748,34 @@ html.reduced .xl {
   opacity: 0.4;
 }
 .prep .cslot.dropon,
+.prep .cfilts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.prep .cfilt {
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--mute);
+  cursor: pointer;
+}
+.prep .cfilt i {
+  font-style: normal;
+  opacity: 0.7;
+}
+.prep .cfilt:hover {
+  color: var(--white);
+}
+.prep .cfilt.on {
+  color: var(--bg);
+  background: var(--cyan);
+  border-color: var(--cyan);
+}
 .prep .cpool.dropon {
   outline: 2px solid var(--good);
   outline-offset: 2px;

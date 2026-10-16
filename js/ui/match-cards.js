@@ -118,8 +118,10 @@ function cardsHand(i, edit) {
         id ? cardChip(m, i, id) : '<span class="ccard empty"><b>Empty</b></span>'
       }</button>`;
     }).join(''),
-    pool = cardPool(m, i)
-      .filter(id => !ids.includes(id))
+    all = cardPool(m, i).filter(id => !ids.includes(id)),
+    f = cardsFiltOf(i),
+    pool = all
+      .filter(id => CARD_FILTS[f].ok(m, i, id))
       .map(
         id =>
           `<button class="cpick" data-card="${id}" ${edit ? `onclick="cardsPick(${i},'${id}')" draggable="true" ondragstart="cardsDragStart(event,${i},'${id}',null)" ondragend="cardsDragEnd()"` : 'disabled'}>${cardChip(m, i, id)}</button>`
@@ -131,9 +133,45 @@ function cardsHand(i, edit) {
       ? 'Drag a card into a slot (or click it). Drag a slot back to the pool to empty it.'
       : `Your card${C.mine > 1 ? 's' : ''}: ${C.mine} (${Math.max(0, left)} to place) — the coach fills the rest.`
     : 'Cards change at a turn.';
-  return `<div class="chand"><div class="cslots">${slots}</div><p class="small mute">${note}</p>${edit ? `<div class="cpool" ondragover="cardsDragOver(event,${i},null)" ondragleave="this.classList.remove('dropon')" ondrop="cardsDrop(event,${i},null)">${pool}</div>` : ''}${
+  return `<div class="chand"><div class="cslots">${slots}</div><p class="small mute">${note}</p>${edit ? cardsFiltBar(m, i, all, f) : ''}${edit ? `<div class="cpool" ondragover="cardsDragOver(event,${i},null)" ondragleave="this.classList.remove('dropon')" ondrop="cardsDrop(event,${i},null)">${pool}</div>` : ''}${
     spent ? `<div class="cspent"><span class="lab">Spent</span>${spent}</div>` : ''
   }</div>`;
+}
+/**
+ * The pool's filters (owner, 2026-10-17: 43 cards is a long pool): by what fits now, zone or kind. Per side, kept while the
+ * match lasts (A.cardFilt); a filter with no card is not shown.
+ */
+const cardFitsNow = (m, i, id) => {
+  const E = CARD_EDGE[id],
+    c = CARDS[id];
+  return (c.kind === 'play' || c.kind === 'once') && !!E && (CARD_FIT[E.fit] || CARD_FIT.always)(m, i);
+};
+const CARD_FILTS = {
+  all: { label: 'All', ok: () => true },
+  fits: { label: 'Fits now', ok: cardFitsNow },
+  atk: { label: 'ATK', ok: (m, i, id) => CARDS[id].zone === 'atk' },
+  def: { label: 'DEF', ok: (m, i, id) => CARDS[id].zone === 'def' },
+  op: { label: 'OP', ok: (m, i, id) => CARDS[id].zone === 'op' },
+  boost: { label: 'Boost', ok: (m, i, id) => CARDS[id].kind === 'boost' },
+  once: { label: 'One-shot', ok: (m, i, id) => CARDS[id].kind === 'once' },
+  trap: { label: 'Trap', ok: (m, i, id) => CARDS[id].kind === 'trap' }
+};
+const cardsFiltOf = i => (A.cardFilt && CARD_FILTS[A.cardFilt[i]] ? A.cardFilt[i] : 'all');
+/** The filter row over the pool: each filter with its count (none shown when it would be empty). */
+function cardsFiltBar(m, i, all, f) {
+  const b = Object.entries(CARD_FILTS)
+    .map(([k, F]) => [k, F, all.filter(id => F.ok(m, i, id)).length])
+    .filter(([k, , n]) => n || k === f)
+    .map(
+      ([k, F, n]) =>
+        `<button class="cfilt ${k === f ? 'on' : ''}" data-filt="${k}" onclick="cardsFilt(${i},'${k}')">${F.label} <i>${n}</i></button>`
+    )
+    .join('');
+  return `<div class="cfilts" role="toolbar" aria-label="Filter the cards">${b}</div>`;
+}
+function cardsFilt(i, k) {
+  (A.cardFilt || (A.cardFilt = {}))[i] = k;
+  cardsRedraw();
 }
 /** A slot clicked: select it; clicked again: empty it (yours only). */
 function cardsSlot(i, k) {
