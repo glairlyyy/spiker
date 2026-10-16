@@ -652,8 +652,8 @@ the AI coach fills every slot you leave with the same function. Built and measur
       −11. Over matches (`npm run cards`, 100 pairs, vs side 0 holding no cards): coach hand +12.1 % points (+36 % wins)
       league, +16.9 % (+41 %) tournament; random plays +7.8 / +9.9 (half of them fit); boosts only 0 / +2.3. Plays spent
       ~0.3 a match (coach), ~1.1 (random).
-  - **Must hold (T-296)**: no cards < boosts only ≤ coach AI; random plays within ±2 % of no cards; a no-card team never
-    beats the coach AI on average.
+  - **Must hold (T-296)**: no cards < boosts only ≤ coach AI; a no-card team never beats the coach AI on average. A random
+    hand may beat no hand (owner, 2026-10-16: about half its plays fit by chance — fine), never the coach.
   - **Measured** (2026-10-16, `npm run cards`, 100 paired seeds, side 0 vs the coach's hand; point share vs side 0 holding no
     cards): league — boosts only +2.1 % (+8 % wins), coach +2.3 (+12), random plays +2.1 (+7); tournament — boosts +2.2 (+6),
     coach +0.8 (−3), random +1.3 (+1). Plays on top of the coach (blanket, league / tournament): Tip & Roll +5.4 / +2.2,
