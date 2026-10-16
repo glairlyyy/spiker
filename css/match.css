@@ -1729,3 +1729,27 @@ html.reduced .xl {
 .prep .bhab {
   margin-top: 8px;
 }
+/* drag and drop (owner, 2026-10-16) */
+.prep .cpick[draggable='true'],
+.prep .cslot[draggable='true'] {
+  cursor: grab;
+}
+.prep .cslot.can {
+  border-color: var(--good);
+}
+.prep .cslot.no {
+  opacity: 0.4;
+}
+.prep .cslot.dropon,
+.prep .cpool.dropon {
+  outline: 2px solid var(--good);
+  outline-offset: 2px;
+}
+.prep .cpool.can {
+  outline: 1px dashed var(--line-strong);
+  outline-offset: 4px;
+}
+/* a hand being edited redraws the card: no entrance animation after the first frame (it flickered on every drop) */
+.over.settled:not([hidden]) .ocard.ocard {
+  animation: none;
+}

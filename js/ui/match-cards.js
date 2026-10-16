@@ -71,24 +71,35 @@ function cardsHand(i, edit) {
   const ids = cardIds(m, i),
     sel = A.cardSel && A.cardSel.i === i ? A.cardSel.k : null,
     left = C.mine - Object.keys(C.you).length,
+    mine = k => C.you[k] || C.mine >= SLOTS.length, // a slot you may change
     slots = SLOTS.map(k => {
       const id = C.slots[k],
-        combo = id && comboOf(ids, id);
-      return `<button class="cslot ${C.you[k] ? 'you' : ''} ${sel === k ? 'sel' : ''}" ${edit ? `onclick="cardsSlot(${i},'${k}')"` : 'disabled'}><span class="lab">${ZONE_LAB[slotZone(k)]}${combo ? ` · ${esc(COMBOS[combo].name)}` : ''}</span>${
+        combo = id && comboOf(ids, id),
+        drag =
+          edit && id && mine(k)
+            ? ` draggable="true" ondragstart="cardsDragStart(event,${i},'${id}','${k}')" ondragend="cardsDragEnd()"`
+            : '',
+        drop = edit
+          ? ` ondragover="cardsDragOver(event,${i},'${k}')" ondragleave="this.classList.remove('dropon')" ondrop="cardsDrop(event,${i},'${k}')"`
+          : '';
+      return `<button class="cslot ${C.you[k] ? 'you' : ''} ${sel === k ? 'sel' : ''}" data-slot="${k}" ${edit ? `onclick="cardsSlot(${i},'${k}')"` : 'disabled'}${drag}${drop}><span class="lab">${ZONE_LAB[slotZone(k)]}${combo ? ` · ${esc(COMBOS[combo].name)}` : ''}</span>${
         id ? cardChip(m, i, id) : '<span class="ccard empty"><b>Empty</b></span>'
       }</button>`;
     }).join(''),
     pool = cardPool(m, i)
       .filter(id => !ids.includes(id))
-      .map(id => `<button class="cpick" ${edit ? `onclick="cardsPick(${i},'${id}')"` : 'disabled'}>${cardChip(m, i, id)}</button>`)
+      .map(
+        id =>
+          `<button class="cpick" data-card="${id}" ${edit ? `onclick="cardsPick(${i},'${id}')" draggable="true" ondragstart="cardsDragStart(event,${i},'${id}',null)" ondragend="cardsDragEnd()"` : 'disabled'}>${cardChip(m, i, id)}</button>`
+      )
       .join(''),
     spent = C.spent.map(id => cardChip(m, i, id)).join('');
   const note = edit
     ? C.mine >= SLOTS.length
-      ? 'Click a card to slot it. Click a slot to pick it, again to empty it.'
+      ? 'Drag a card into a slot (or click it). Drag a slot back to the pool to empty it.'
       : `Your card${C.mine > 1 ? 's' : ''}: ${C.mine} (${Math.max(0, left)} to place) — the coach fills the rest.`
     : 'Cards change at a turn.';
-  return `<div class="chand"><div class="cslots">${slots}</div><p class="small mute">${note}</p>${edit ? `<div class="cpool">${pool}</div>` : ''}${
+  return `<div class="chand"><div class="cslots">${slots}</div><p class="small mute">${note}</p>${edit ? `<div class="cpool" ondragover="cardsDragOver(event,${i},null)" ondragleave="this.classList.remove('dropon')" ondrop="cardsDrop(event,${i},null)">${pool}</div>` : ''}${
     spent ? `<div class="cspent"><span class="lab">Spent</span>${spent}</div>` : ''
   }</div>`;
 }
@@ -101,13 +112,16 @@ function cardsSlot(i, k) {
   } else A.cardSel = { i, k };
   cardsRedraw();
 }
-/** A pool card clicked: into the selected slot if it fits, else the first empty slot it fits, else the first it fits. */
-function cardsPick(i, id) {
+/**
+ * A pool card clicked (or dropped on slot `at`): into that slot, else the selected slot if it fits, else the first empty slot
+ * it fits, else the first it fits.
+ */
+function cardsPick(i, id, at) {
   const m = A.m,
     C = m.cards[i],
     fits = SLOTS.filter(k => cardFits(id, k)),
     sel = A.cardSel && A.cardSel.i === i && fits.includes(A.cardSel.k) ? A.cardSel.k : null,
-    k = sel || fits.find(s => !C.slots[s]) || fits.find(s => !C.you[s]) || fits[0];
+    k = (at && fits.includes(at) && at) || sel || fits.find(s => !C.slots[s]) || fits.find(s => !C.you[s]) || fits[0];
   if (!k) return;
   // a limited hand (career): your card moves rather than adding one more
   if (!C.you[k] && Object.keys(C.you).length >= C.mine) {
@@ -115,6 +129,57 @@ function cardsPick(i, id) {
     if (old) cardPut(m, i, old, null);
   }
   cardsSet(i, k, id);
+  A.cardSel = null;
+  cardsRedraw();
+}
+/**
+ * Drag and drop (owner, 2026-10-16): a pool card onto a slot, a slot's card onto another slot (they swap when the other fits
+ * back), a slot's card onto the pool (emptied). While dragging, the slots it fits light up. Clicks still work.
+ */
+function cardsDragStart(e, i, id, from) {
+  A.cardDrag = { i, id, from };
+  try {
+    e.dataTransfer.setData('text/plain', id);
+    e.dataTransfer.effectAllowed = 'move';
+  } catch (er) {
+    // (some browsers refuse setData on a button: the drag still works from A.cardDrag)
+  }
+  const hand = e.target.closest('.chand');
+  if (hand) {
+    for (const s of hand.querySelectorAll('.cslot')) s.classList.add(cardFits(id, s.dataset.slot) ? 'can' : 'no');
+    if (from) hand.querySelector('.cpool')?.classList.add('can');
+  }
+}
+function cardsDragEnd() {
+  A.cardDrag = null;
+  for (const s of document.querySelectorAll('.chand .can, .chand .no, .chand .dropon')) s.classList.remove('can', 'no', 'dropon');
+}
+/** Over a slot (k) or the pool (k null): allow the drop when it would do something. */
+function cardsDragOver(e, i, k) {
+  const D = A.cardDrag;
+  if (!D || D.i !== i) return;
+  if (k ? !cardFits(D.id, k) || k === D.from : !D.from) return;
+  e.preventDefault();
+  e.currentTarget.classList.add('dropon');
+}
+function cardsDrop(e, i, k) {
+  const D = A.cardDrag;
+  e.preventDefault();
+  cardsDragEnd();
+  if (!D || D.i !== i) return;
+  const m = A.m,
+    C = m.cards[i];
+  if (!k) {
+    if (D.from) cardsSet(i, D.from, null); // back to the pool: the slot empties (the coach refills it if it is not yours)
+  } else if (!D.from) return cardsPick(i, D.id, k);
+  else if (k !== D.from && cardFits(D.id, k)) {
+    const other = C.slots[k],
+      back = other && (C.you[k] || C.mine >= SLOTS.length) && cardFits(other, D.from) ? other : null;
+    cardPut(m, i, D.from, null);
+    cardPut(m, i, k, D.id);
+    if (back) cardPut(m, i, D.from, back); // a swap
+    cardsSet(i, k, D.id);
+  }
   A.cardSel = null;
   cardsRedraw();
 }
@@ -156,7 +221,9 @@ function cardsTurnOpen(n, edit) {
   A.cardSel = null;
   A.prep = true;
   el.hidden = false;
+  el.classList.remove('settled'); // (the entrance animation plays once per opening, not on every redraw)
   cardsTurnDraw();
+  requestAnimationFrame(() => el.classList.add('settled'));
 }
 /** Close the overlay and play on. */
 function cardsTurnClose() {

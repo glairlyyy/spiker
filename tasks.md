@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-302** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-303** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -83,6 +83,12 @@ Result: js/ui/match-cards.js (hand, turn overlay #cturn, Tab look, spent tag, re
 the expected failure, year 2 the redemption. One save bump (RUN_VERSION 19) in T-286 covers the whole block; later tasks add
 fields through RUN_DEFAULTS. Story mode only (Endless stays unbuilt); the main random stream is untouched (seeded rolls).
 
+
+### [x] T-302: Drag the cards
+Spec: §2.33 (On screen)          Goldens: unchanged          Save: no change
+Goal: cards can be dragged: pool → slot, slot → slot (swap), slot → pool.
+Files: js/ui/match-cards.js, js/ui/match-prep.js, css/match.css, tests/ui-smoke.js, spec.md
+Result: Done (owner request, spec chat). HTML5 drag and drop on the hand in prep and the turn overlay; slots it fits light up. Also: the prep / turn card's entrance animation now plays once per opening (`settled`) — every redraw on a click or drop replayed it (a flicker; in headless QA it stuck invisible). UI smoke drags Power Up into ATK 2 and back to the pool; QA swapped two slots. 135 quick, UI smoke 13/13.
 
 ### [x] T-301: The tactic shows — speed and jumps with the edge, and a jump that fits its height
 Spec: §2.33 (You can see the tactic)          Goldens: update (flight times feed dive / busy)          Save: no change

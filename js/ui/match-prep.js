@@ -29,7 +29,9 @@ function prepOpen() {
     el = $('#prep');
   }
   el.hidden = false;
+  el.classList.remove('settled'); // (the entrance animation plays once per opening, not on every redraw)
   prepDraw();
+  requestAnimationFrame(() => el.classList.add('settled'));
 }
 /** One team's column: banner, lineup in rotation order, the hand (yours) or a hidden line. */
 function prepTeam(i) {

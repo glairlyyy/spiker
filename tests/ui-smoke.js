@@ -212,6 +212,12 @@ const step = async (name, fn) => {
       startMonster();
     });
     await pg.waitForFunction(() => typeof A !== 'undefined' && A && A.m, null, { timeout: 60000 });
+    // drag and drop (owner, 2026-10-16): a pool card onto a slot, then that slot's card back onto the pool
+    await pg.waitForFunction(() => A.prep && document.querySelector('#prep .cpool .cpick[data-card="pow"]'), null, { timeout: 20000 });
+    await pg.dragAndDrop('#prep .cpool .cpick[data-card="pow"]', '#prep .cslot[data-slot="atk1"]');
+    if ((await ev(() => A.m.cards[0].slots.atk1)) !== 'pow') throw new Error('drag: Power Up not in ATK 2');
+    await pg.dragAndDrop('#prep .cslot[data-slot="atk1"]', '#prep .cpool');
+    if ((await ev(() => A.m.cards[0].slots.atk1)) === 'pow') throw new Error('drag: the slot did not empty');
     // match prep (spec §2.26): both sides yours in a Monster game; pick Hunt the passer / Wall their ace for the left team
     await ev(() => {
       if (!A.prep || $('#prep').querySelectorAll('.pteam').length !== 2) throw new Error('no Monster match prep');
