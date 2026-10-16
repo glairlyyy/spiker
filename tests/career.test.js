@@ -75,6 +75,20 @@ test('career: save → load round-trip keeps the run intact', () => {
   eq(JSON.stringify(back.teams.map(g.teamToJSON)), JSON.stringify(run.teams.map(g.teamToJSON)), 'teams');
 });
 
+test('career: year 2 lifts the training cap to SEASON.cap; past 75 each point costs steep × the last (yours only)', () => {
+  const g = load(10),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Cap2', alloc: {}, witSteps: 0 }),
+    you = g.Run.you(run);
+  eq(g.Training.cap(run), g.TRAIN_CAP, 'year 1: TRAIN_CAP');
+  run.year = 2;
+  eq(g.Training.cap(run), g.SEASON.cap, 'year 2: SEASON.cap');
+  you.power = 75;
+  g.Training.addXp(run, 'power', 1e6);
+  eq(you.power, g.SEASON.cap, 'training reaches the year-2 cap');
+  const [at, k] = g.TRAIN_X.xp.steep;
+  assert(Math.abs(g.Training.need(at + 5) / g.Training.need(at + 4) - k) < 0.05, 'past the knee: ×steep a point');
+  assert(g.Training.need(at + 5, true) < g.Training.need(at + 5), 'the league curve has no steep part');
+});
 test('career: training cap, facility Lv 5 and Hard training', () => {
   const g = load(10),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Cap', alloc: { power: 30, def: 10, speed: 10, jump: 10 }, witSteps: 0 }),

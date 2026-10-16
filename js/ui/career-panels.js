@@ -248,8 +248,8 @@ function trainSpot(run, id, c) {
     pv = Training.preview(run, key, hard, x),
     turf = City.turf(run, id),
     gain = ([k, , xp], role) => {
-      if (STATK.includes(k) && Run.you(run)[k] >= TRAIN_CAP)
-        return `<div class="pgain"><span class="pi">${statI(statKey(k), 20)}</span><span>${STATNAME[k]}${role}</span><b class="mute">at ${TRAIN_CAP} — matches only</b></div>`;
+      if (STATK.includes(k) && Run.you(run)[k] >= Training.cap(run))
+        return `<div class="pgain"><span class="pi">${statI(statKey(k), 20)}</span><span>${STATNAME[k]}${role}</span><b class="mute">at ${Training.cap(run)} — matches only</b></div>`;
       // the session's XP ÷ what a point of this stat costs now ≈ points this session (owner, 2026-10-03: a rating, not "+1 in n"); the count on hover
       const pr = Training.progress(run, k),
         n = Math.max(1, Math.ceil((pr.need - pr.have) / Math.max(0.01, xp))),

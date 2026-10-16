@@ -765,7 +765,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
   starting skill, no team pick. Challenge modes (Hard league, Short season) are plain options. Run end: result, rank,
   growth chart.
 - §4.14 Growth (Kenshi rule):
-  - Training gains shrink above ~60, stop at `TRAIN_CAP` 75; the fastest early route.
+  - Training gains shrink above ~60, stop at `TRAIN_CAP` 75 in year 1 (year 2: `SEASON.cap` 90, each point past 75 ×1.12 dearer — §4.32); the fastest early route.
   - Match XP (`MATCH_XP`) is the only way above 75: every match you play (evaluation, cup, street fight, challenge),
     from your performance not the result — kills → power, blocks → jump + def, digs → def + speed, sets/assists → wit.
     × opponent strength vs your side: stronger 1.5–2, equal 1, weaker 0.3.
@@ -1102,6 +1102,23 @@ the AI coach fills every slot you leave with the same function. Built and measur
   Findings: how you play barely changes the result — the Cups are decided by the squads (you are one of four on court);
   money never binds; every bot joins Wu Navy · Harbor in week 1 (open to anyone). **Built**: the run rank's fan bars × 2
   for a two-season run (`rankOf(fans, seasons)`: S was 18 of 30 runs). **[open]**: the levers that make play matter.
+
+  **Your stats [built 2026-10-16]** (owner: "the worst thing here"): every bot hit the cap of 75 on all four stats by week 28 and
+  then stood still for a year (matches add ~10 points in two seasons), so play could not show. Now year 2 lifts the training
+  cap to `SEASON.cap` 90 (`Training.cap(run)`), and past 75 each point costs ×`TRAIN_X.xp.steep` 1.12 the last (yours only —
+  the league keeps its curve, `Training.need(v, true)`): the ceiling is out of reach, how far you climb is how well you spend
+  your weeks. Also fixed: the rematch crashed when the rival's club had a player out — her side is filled from her region's
+  pool like yours. Second pass (20 runs each):
+
+  | | casual | good |
+  |---|---|---|
+  | you at the Cup (Y1 / Y2) | 75 / 87 | 78 / 93 |
+  | league mean · the rival (Y2) | 87 · 92 | 87 · 93 |
+  | your stats at the Y2 Cup (P / D / S / J · wit) | 90 / 85 / 82 / 82 · 60 | 89 / 87 / 88 / 88 · 82 |
+  | your Cup squad vs hers (Y1 / Y2) | 35 / 50 % | 46 / 59 % |
+
+  Good play now ends year 2 level with the rival, casual play at the league's mean. Still **[open]**: the Cups and the endings
+  barely follow (true endings 1–2 in 20) — the squad around you decides them.
 - §4.30 Drive & Pain **[built 2026-10-16, T-290; Scars' pools open: T-291]** (owner 2026-10-15): two hidden bars on the MC, 0–100 each. Not training-place
   streaks: everything you do counts.
   - **Drive** fills on every positive thing: a training session, a win, a good grade, a teammate's praise, a good

@@ -680,8 +680,9 @@ block and the street fight buttons show "Injury risk ~N %" and are disabled whil
 
 Training gives XP (`Training.xpFor`: base gain × `TRAIN_X.xp.per` × every multiplier — place quality and home turf
 (x), facility level, mood, streak, teammates, camp, Hard). A stat rises a point each time its XP reaches
-`Training.need(v)` = max(1, round(base × grow^(v − from))) for every v, below 50 too (≈1 XP at 1, 10 at 50; T-055); leftovers bank in `run.xp`; nothing banks past the top.
-`Training.top(run, stat, src)`: 'train' (sessions, the default) → `TRAIN_CAP` 75; 'match' → `CAREER.runCap`; wit its own cap. `sim` /
+`Training.need(v)` = max(1, round(base × grow^(v − from))) for every v, below 50 too (≈1 XP at 1, 10 at 50; T-055), × steep[1]^(v − 75) past
+`TRAIN_X.xp.steep[0]` (yours only; NPCs call `need(v, true)`); leftovers bank in `run.xp`; nothing banks past the top.
+`Training.top(run, stat, src)`: 'train' (sessions, the default) → `Training.cap(run)` (`TRAIN_CAP` 75, year 2 `SEASON.cap`); 'match' → `CAREER.runCap`; wit its own cap. `sim` /
 `gain` / `addXp` take the same `src`; a stat already above the top gains nothing from that source. Wit counts in 0.02 steps
 (level = wit × 50). Injuries still change stats directly, but stop at `TRAIN_CAP` (`Run.bump` never lowers a stat that matches raised).
 

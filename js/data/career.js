@@ -57,7 +57,7 @@ const STATNAME = { power: 'Power', def: 'Defense', speed: 'Speed', jump: 'Jump',
 /** What each week is. Anything not listed is a training week. */
 /** Story mode is two seasons (spec §4.28): `years` of CAREER.weeks + the U21 Cup each; `shift` = one season in weeks (the Cup week
  * counts), the offset Season.rollover takes off every stored week stamp so cooldowns and memories keep counting across it. */
-const SEASON = { years: 2, shift: 29, rematch: 14 }; // rematch: year 2's guaranteed match against the rival's club (an 'eval' week, Eval kind 'rematch')
+const SEASON = { years: 2, shift: 29, rematch: 14, cap: 90 }; // rematch: year 2's guaranteed match against the rival's club (an 'eval' week, Eval kind 'rematch'); cap: year 2's training cap (Training.cap)
 /**
  * Drive & Pain (spec §4.30): two hidden bars on you, 0–max. Drive fills on what goes right; at max → Fired up (`fired.matches`
  * of your next matches: a whole-match buff of `fired.lv`, training × `fired.train`). Pain fills on what guts you (never an injury
@@ -91,7 +91,7 @@ const PLACES = {
   Final: { fans: 1500, sp: 60 },
   Champion: { fans: 3000, sp: 90 }
 };
-/** Training and events raise a stat to here at most; only match experience goes higher (up to CAREER.runCap). Spec §4.14. */
+/** Training and events raise a stat to here at most in year 1 (year 2: SEASON.cap — Training.cap); only match experience goes higher (up to CAREER.runCap). Spec §4.14. */
 const TRAIN_CAP = 75;
 /** Training depth: facility levels (uses needed per level), Hard option, streaks. */
 const TRAIN_X = {
@@ -104,8 +104,9 @@ const TRAIN_X = {
    * Training gives experience; a stat goes up a point each time its XP reaches `need` — which grows exponentially
    * with the stat: base × grow^(value − from). XP from a session = the training's base gain × per × every multiplier
    * (place quality, facility level, mood, streak, teammates, camp, Hard…). Wit counts in 0.02 steps (level = wit × 50).
+   * Past `steep[0]` (year 1's cap) each point costs steep[1] × the last (spec §4.32): year 2's cap is a ceiling only good weeks reach.
    */
-  xp: { per: 10, base: 10, grow: 1.05, from: 50 }
+  xp: { per: 10, base: 10, grow: 1.05, from: 50, steep: [75, 1.12] }
 };
 /** Match grade from your own line (kills, blocks, aces, digs, errors, win): multiplies that match's rewards. */
 const GRADES = [

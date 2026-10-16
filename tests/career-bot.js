@@ -24,8 +24,8 @@ function placeFor(g, run, stat) {
 function statFor(g, run, pol) {
   const you = g.Run.you(run),
     key = g.KEYSTAT[you.role];
-  if (pol === 'casual') return you[key] < g.TRAIN_CAP ? key : g.STATK.find(k => you[k] < g.TRAIN_CAP) || 'wit';
-  const open = g.STATK.filter(k => you[k] < g.TRAIN_CAP);
+  if (pol === 'casual') return you[key] < g.Training.cap(run) ? key : g.STATK.find(k => you[k] < g.Training.cap(run)) || 'wit';
+  const open = g.STATK.filter(k => you[k] < g.Training.cap(run));
   if (you.wit * 50 < Math.min(...open.map(k => you[k])) - 5 || !open.length) return 'wit';
   return open.reduce((a, k) => (you[k] - (k === key ? 8 : 0) < you[a] - (a === key ? 8 : 0) ? k : a), open[0]);
 }
@@ -100,7 +100,19 @@ function play(seed, pol) {
     role = ['WS', 'MB', 'S'][seed % 3],
     run = g.Run.create(g.Run.draft(), { role, name: 'Bot', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
     you = g.Run.you(run),
-    M = { secret: {}, fails: 0, fired: 0, minMoney: Infinity, evicted: 0, mood: [], evals: [[], []], y: [{}, {}], joined: null };
+    M = {
+      curve: {},
+      pts: { train: 0, match: 0, other: 0 },
+      secret: {},
+      fails: 0,
+      fired: 0,
+      minMoney: Infinity,
+      evicted: 0,
+      mood: [],
+      evals: [[], []],
+      y: [{}, {}],
+      joined: null
+    };
   g.Story.skip(run);
   const add = g.Feel.add;
   g.Feel.add = (r, k, v) => {
@@ -108,6 +120,21 @@ function play(seed, pol) {
     const out = add(r, k, v);
     if (k === 'drive' && r.fired && r.fired !== was) M.fired++;
     return out;
+  };
+  const addXp = g.Training.addXp;
+  g.Training.addXp = (r, stat, xp, src = 'train') => {
+    const was = stat === 'wit' ? 0 : you[stat],
+      out = addXp(r, stat, xp, src);
+    if (stat !== 'wit') M.pts[src] += you[stat] - was;
+    return out;
+  };
+  const endWeek = g.Run.endWeek;
+  g.Run.endWeek = r => {
+    const w = (g.Season.year(r) - 1) * 28 + r.week,
+      before = g.STATK.reduce((a, k) => a + you[k], 0);
+    endWeek(r);
+    if (w % 4 === 0) M.curve[w] = [g.ovr(you), g.Season.mean(r), g.ovr(g.Stars.get(r, 'rival') || you)];
+    M.pts.other += g.STATK.reduce((a, k) => a + you[k], 0) - before;
   };
   const cupStart = g.Cup.start;
   g.Cup.start = (r, def) => {
@@ -118,6 +145,7 @@ function play(seed, pol) {
     Y.league = g.Season.mean(r);
     Y.rival = g.ovr(g.Stars.get(r, 'rival'));
     Y.money = r.money;
+    Y.stats = g.STATK.map(k => you[k]).concat(Math.round(you.wit * 50));
     Y.fans = r.fans;
   };
   for (let guard = 0; guard < 800 && !run.result; guard++) {
@@ -179,6 +207,8 @@ function play(seed, pol) {
     fails: M.fails,
     secret: M.secret,
     fans: run.fans,
+    curve: M.curve,
+    pts: M.pts,
     cupW: [1, 2].map(y => run.mlog.filter(e => e.kind === 'cup' && e.y === y).map(e => e.win))
   };
 }
@@ -188,6 +218,7 @@ const avg = A => {
 };
 const f1 = v => (Number.isFinite(v) ? v.toFixed(1) : '—'),
   pc = v => (Number.isFinite(v) ? `${Math.round(100 * v)} %` : '—');
+const g0 = load(1);
 for (const pol of POL === 'both' ? ['casual', 'good'] : [POL]) {
   const R = [];
   for (let i = 0; i < N; i++) R.push(play(3000 + i, pol));
@@ -197,6 +228,17 @@ for (const pol of POL === 'both' ? ['casual', 'good'] : [POL]) {
   console.log(
     `  you at the Cup        Y1 ${f1(Y('you')[0])}  Y2 ${f1(Y('you')[1])}   (league ${f1(Y('league')[0])} / ${f1(Y('league')[1])}, rival ${f1(Y('rival')[0])} / ${f1(Y('rival')[1])})`
   );
+  const ws = [...new Set(R.flatMap(r => Object.keys(r.curve).map(Number)))].sort((a, b) => a - b);
+  console.log(`  week            ${ws.map(w => String(w).padStart(4)).join('')}`);
+  for (const [i, lab] of ['you', 'league', 'rival'].entries())
+    console.log(`  ${lab.padEnd(16)}${ws.map(w => f1(avg(R.map(r => r.curve[w] && r.curve[w][i]))).padStart(4)).join('')}`);
+  for (const y of [0, 1])
+    console.log(
+      `  stats at Cup Y${y + 1}  ${g0.STATK.concat('wit')
+        .map((k, i) => `${k} ${f1(avg(R.map(r => r.y[y].stats && r.y[y].stats[i])))}`)
+        .join(' · ')}`
+    );
+  console.log(`  stat points from  ${['train', 'match', 'other'].map(k => `${k} ${f1(avg(R.map(r => r.pts[k])))}`).join(' · ')}`);
   console.log(
     `  vs her squad (odds)   Y1 ${pc(Y('odds')[0])}  Y2 ${pc(Y('odds')[1])}   (met in the bracket: ${R.filter(r => r.y[0].odds != null).length} / ${R.filter(r => r.y[1].odds != null).length})`
   );

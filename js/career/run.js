@@ -217,7 +217,7 @@ const Run = {
     const fmt = (d, name, dec = 0) => (d ? `${fmtDelta(d, { dec })} ${name}` : '');
     if (STATK.includes(key) || key === 'lead') {
       if (v > 0 && key !== 'lead') v = Math.max(1, Math.round(v * Training.dim(you[key]))); // events obey diminishing returns too
-      const top = key === 'lead' ? CAREER.runCap : Math.max(you[key], TRAIN_CAP), // events stop at the training cap (never lower a stat matches raised)
+      const top = key === 'lead' ? CAREER.runCap : Math.max(you[key], Training.cap(run)), // events stop at the training cap (never lower a stat matches raised)
         nv = Math.round(clamp(you[key] + v, CAREER.statMin, top)),
         d = nv - you[key];
       you[key] = nv;

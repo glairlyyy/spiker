@@ -9,7 +9,7 @@ function sheetMe(run) {
     statRow = k => {
       const pr = Training.progress(run, k),
         pct = Math.round((pr.have / Math.max(1, pr.need)) * 100);
-      return `<div class="mrow" ${tip(`${pct}% of the way to the next point. Training stops at ${TRAIN_CAP}; matches only above.`)}><span>${statI(statKey(k), 20)}${STATNAME[k]}</span><span class="mbars"><i class="mb"><i style="--w:${Math.min(100, you[k])}%"></i></i><i class="mp"><i style="--w:${pct}%"></i></i></span><span class="mv"><b>${you[k]}</b> <span class="mute">/ ${TRAIN_CAP}</span></span></div>`;
+      return `<div class="mrow" ${tip(`${pct}% of the way to the next point. Training stops at ${Training.cap(run)} this season; matches only above.`)}><span>${statI(statKey(k), 20)}${STATNAME[k]}</span><span class="mbars"><i class="mb"><i style="--w:${Math.min(100, you[k])}%"></i></i><i class="mp"><i style="--w:${pct}%"></i></i></span><span class="mv"><b>${you[k]}</b> <span class="mute">/ ${Training.cap(run)}</span></span></div>`;
     },
     ids = Skills.forRole(you.role),
     aff = ids.filter(id => !you.skills.includes(id) && Skills.canLearn(run, id)).length,

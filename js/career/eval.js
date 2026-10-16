@@ -37,13 +37,15 @@ const Eval = {
   },
   /**
    * The rematch's squads (spec §4.28): the rival's club with her starting, against your club (or the Academy squad: mine null)
-   * with you starting; a squad short of players (you play for her club) is filled from your region's pool. Ids in court order.
+   * with you starting; a squad short of players (you play for her club, hers has players out) is filled from its region's pool. Ids in court order.
    */
   rematch(run) {
     const you = Run.you(run),
       riv = Stars.get(run, 'rival'),
       region = (FACTIONS[riv.team.i] && FACTIONS[riv.team.i].region) || 'wei',
-      opp = Eval.order([riv, ...squadOf(riv.team).filter(p => p !== you && p !== riv && !People.out(run, p))], riv);
+      own = squadOf(riv.team).filter(p => p !== you && p !== riv && !People.out(run, p)),
+      sub = Pool.players(run, region).filter(p => p !== you && p !== riv && !own.includes(p) && !People.out(run, p)),
+      opp = Eval.order([riv, ...own, ...sub.sort((a, b) => ovr(b) - ovr(a)).slice(0, Math.max(0, SQUAD - 1 - own.length))], riv);
     if (World.isFree(run)) return { kind: 'rematch', region, mine: null, opp: opp.map(p => p.id) };
     const mr = (FACTIONS[run.team] && FACTIONS[run.team].region) || region,
       taken = new Set(opp),

@@ -95,7 +95,7 @@ const People = {
     return { act: act === 'hard' ? 'hard' : act === 'wit' ? 'wit' : 'train', stat, at };
   },
   /**
-   * Give an NPC's stat XP through the same curve as yours (Training.need), up to `top`; the rest banks in person.xp.
+   * Give an NPC's stat XP through the league curve (Training.need(v, true): yours without its steep part), up to `top`; the rest banks in person.xp.
    * Wit counts in 0.02 steps (level = wit × 50). Returns the points gained.
    */
   addXp(person, p, stat, xp, top) {
@@ -103,8 +103,8 @@ const People = {
       have = (person.xp[stat] || 0) + xp,
       pts = 0;
     if (v >= top) return 0; // at (or above) this source's top: it banks nothing
-    while (v < top && have >= Training.need(v)) {
-      have -= Training.need(v);
+    while (v < top && have >= Training.need(v, true)) {
+      have -= Training.need(v, true);
       v++;
       pts++;
     }

@@ -1,6 +1,6 @@
 // Weekly choices: the five trainings (normal or Hard), Rest and Recreation. Gains scale with mood, facility level
 // (Lv 1–5), a streak of the same training, teammates training alongside you (friendship at bond 80+), the camps and
-// sponsor perks. Training (and events) stop a stat at TRAIN_CAP; only matches go higher. Training while exhausted can
+// sponsor perks. Training (and events) stop a stat at Training.cap (TRAIN_CAP; year 2 SEASON.cap); only matches go higher. Training while exhausted can
 // injure you (light training only until it heals).
 
 const Training = {
@@ -60,12 +60,19 @@ const Training = {
   failP: (run, hard) => clamp((50 - run.sta) * 0.015 + (hard ? TRAIN_X.hard.fail : 0), 0, 0.95),
   /** Diminishing returns: ×0.9 from 60, ×0.7 from 70, ×0.45 from 80, ×0.3 from 85, ×0.15 from 92. */
   dim: v => (v >= 92 ? 0.15 : v >= 85 ? 0.3 : v >= 80 ? 0.45 : v >= 70 ? 0.7 : v >= 60 ? 0.9 : 1),
-  /** XP needed for the next point of a stat at level v. */
-  need: v => Math.max(1, Math.round(TRAIN_X.xp.base * Math.pow(TRAIN_X.xp.grow, v - TRAIN_X.xp.from))),
+  /** XP needed for the next point of a stat at level v; `npc`: the league's curve (no steep part — PEOPLE growth is calibrated on it). */
+  need(v, npc = false) {
+    const X = TRAIN_X.xp,
+      [at, k] = npc ? [Infinity, 1] : X.steep;
+    return Math.max(1, Math.round(X.base * Math.pow(X.grow, Math.min(v, at) - X.from) * Math.pow(k, Math.max(0, v - at))));
+  },
   /** A stat's level (wit in 0.02 steps). */
   level: (you, stat) => (stat === 'wit' ? Math.round(you.wit * 50) : you[stat]),
-  /** Where a stat stops for a source of XP: 'train' (sessions, default) → TRAIN_CAP; 'match' → the run cap. Wit: its own cap. */
-  top: (run, stat, src = 'train') => (stat === 'wit' ? Math.round(CAREER.witRunCap * 50) : src === 'match' ? CAREER.runCap : TRAIN_CAP),
+  /** The training cap this season: TRAIN_CAP in year 1, SEASON.cap in year 2 (spec §4.32). */
+  cap: run => (Season.year(run) > 1 ? SEASON.cap : TRAIN_CAP),
+  /** Where a stat stops for a source of XP: 'train' (sessions, default) → Training.cap; 'match' → the run cap. Wit: its own cap. */
+  top: (run, stat, src = 'train') =>
+    stat === 'wit' ? Math.round(CAREER.witRunCap * 50) : src === 'match' ? CAREER.runCap : Training.cap(run),
   /** XP a session gives a stat: its base gain (wit converted to 0.02 steps) × per × the multiplier. */
   xpFor: (stat, base, mul) => Math.round((stat === 'wit' ? base * 50 : base) * TRAIN_X.xp.per * mul),
   /** Adding xp to a stat: { pts, have } — points gained and the XP left toward the next one (none past the top). */
@@ -114,7 +121,7 @@ const Training = {
       lvl: Training.facility(run, key) + 1,
       next: Training.toNext(run, key),
       streak: Training.streakBonus(run, key),
-      cap: STATK.includes(T.main[0]) && Run.you(run)[T.main[0]] >= TRAIN_CAP ? TRAIN_CAP : null,
+      cap: STATK.includes(T.main[0]) && Run.you(run)[T.main[0]] >= Training.cap(run) ? Training.cap(run) : null,
       mates: run.floor[key] || []
     };
   },

@@ -67,7 +67,7 @@ const PLAN_TRAIT = {
 };
 /**
  * The numbers. sessions: training sessions a week. xp: base XP per session (× place quality × potential × Hard league ×
- * `hard` on a Hard session), through the same curve as yours (Training.need). sta: stamina costs / gains (0–100).
+ * `hard` on a Hard session), through the league curve (Training.need(v, true): yours without its steep part past 75). sta: stamina costs / gains (0–100).
  * hurt: chance a Hard session injures (`low` when stamina < lowSta), injury length in weeks. hustle: match XP (key stat 0.4, the others 0.2 each)
  * from a week of street games. play: weekly match XP (key stat 0.4, the others 0.2 each) for a league-team starter (they play off screen).
  */
