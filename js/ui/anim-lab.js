@@ -73,8 +73,34 @@ const ANIM_CLIPS = [
   ],
   ['serve', 'Serve', b => animFindAct(b, a => a.k === 'pose' && a.pose === 'serve')],
   ['block', 'Block', b => animFindAct(b, a => a.k === 'pose' && a.pose === 'block')],
-  ['cele', 'Point celebration', b => animFindAct(b, a => a.k === 'pose' && a.pose === 'roar')]
+  ['cele', 'Point celebration', b => animFindAct(b, a => a.k === 'pose' && a.pose === 'roar')],
+  // jumps (owner, 2026-10-16): each kind of jump, played at the height you pick (ANIM_JUMP_LV) with its effects (VFX.leap)
+  ['jumpSpike', 'Jump · spike (wing)', b => animFindJump(b, 'normal')],
+  ['jumpQuick', 'Jump · quick (middle)', b => animFindJump(b, 'quick')],
+  ['jumpPipe', 'Jump · back-row attack (pipe)', b => animFindJump(b, 'pipe')],
+  ['jumpServe', 'Jump · jump serve', b => animFindJump(b, 'serve')],
+  ['jumpBlock', 'Jump · block', b => animFindJump(b, null)]
 ];
+/** Jump heights the lab can force (metres; null = as the engine played it). */
+const ANIM_JUMP_LV = [null, 1.2, 1.8, 2.2, 2.6, 3, 3.2];
+/** The first beat with an 'up' jump: a spike style `st` (spkstyle; 'serve' = a jump serve), or a block (st null). */
+function animFindJump(beats, st) {
+  for (let i = 0; i < beats.length; i++) {
+    const A0 = beats[i].acts,
+      who = st ? (A0.find(a => a.k === 'spkstyle' && a.st === st) || {}).p : (A0.find(a => a.k === 'pose' && a.pose === 'block') || {}).p,
+      j = who && A0.find(a => a.k === 'jump' && a.p === who && a.mode === 'up' && a.peak);
+    if (j) return { i, p: who };
+  }
+  return null;
+}
+/** The clip's beats with the clip player's 'up' jumps at `m` metres (the ball still meets the hand: it goes to the player). */
+function animJumpAt(beats, p, m) {
+  if (m == null) return beats;
+  return beats.map(b => ({
+    ...b,
+    acts: b.acts.map(a => (a.k === 'jump' && a.p === p && a.mode === 'up' && a.peak ? { ...a, peak: m / UNIT_M.h } : a))
+  }));
+}
 /** The first beat with an act matching `f` (and its player: who(a), or a.p). */
 function animFindAct(beats, f, who = a => a.p) {
   for (let i = 0; i < beats.length; i++) {
@@ -141,7 +167,14 @@ function animClip(id) {
     L.clipMsg = 'Not found in 300 rallies — try again.';
     return vfxRedraw();
   }
-  const start = Math.max(0, f.i - (id === 'spike' ? 2 : 1));
+  L.clipF = f;
+  animClipPlay(id, f);
+}
+/** Set up a found clip (animClip; a new jump height replays the same one). */
+function animClipPlay(id, f) {
+  const L = A.animLab,
+    jump = id.startsWith('jump');
+  const start = Math.max(0, f.i - (id === 'spike' || (jump && id !== 'jumpBlock') ? 2 : 1));
   let end = Math.min(f.beats.length, f.i + 4);
   if (id !== 'cele') for (let j = f.i; j < end; j++) if (f.beats[j].acts.some(a => a.k === 'point')) end = j; // stop before the point
   if (id === 'fall') {
@@ -166,9 +199,9 @@ function animClip(id) {
     id,
     // a beat to hold the end (a celebration, getting up: longer), then again
     beats: JSON.stringify(
-      f.beats
-        .slice(start, end)
-        .concat([{ dur: id === 'cele' || id === 'fall' ? 2600 : 700, acts: id === 'fall' ? [{ k: 'getup', p: f.p }] : [] }])
+      animJumpAt(f.beats.slice(start, end), f.p, jump ? L.jumpLv : null).concat([
+        { dur: id === 'cele' || id === 'fall' ? 2600 : 700, acts: id === 'fall' ? [{ k: 'getup', p: f.p }] : [] }
+      ])
     ),
     snap: animSnap()
   };
@@ -224,13 +257,22 @@ function animClipOff() {
   if (R3D && R3D.anim && R3D.anim.unfollow) R3D.anim.unfollow();
   vfxRedraw();
 }
+/** Force the jump clips' height (metres, or null = as played) and replay the same clip at it. */
+function animJumpLv(m) {
+  const L = A.animLab;
+  L.jumpLv = m;
+  if (A.clip && A.clip.id.startsWith('jump') && L.clipF) animClipPlay(A.clip.id, L.clipF);
+  vfxRedraw();
+}
+/** What a jump of `m` metres shows (VFX.leap): plain, the high-jump effects, or the warp. */
+const animJumpKind = m => (m == null ? 'as played' : m >= VFX.leap.warpFrom ? 'warp' : m >= VFX.leap.from ? 'high-jump effects' : 'plain');
 /** Start the lab: a Monster game with recording on (menu › Dev). */
 function startAnimLab() {
   startMonster({ anim: true });
 }
 /** The lab's state on the match (match-screen startMatch): the selected player, speed, foot marks. */
 function animLabInit(m) {
-  return { sel: m.t[0].P[0].id, speed: 0.5, marks: true, i: 0, replay: false, over: null, playing: false };
+  return { sel: m.t[0].P[0].id, speed: 0.5, marks: true, i: 0, replay: false, over: null, playing: false, jumpLv: null, clipF: null };
 }
 const animApi = () => (typeof R3D !== 'undefined' && R3D && R3D.anim) || null;
 /** The panel body (vfxPanel hands over when A.animLab is on). */
@@ -257,6 +299,16 @@ function animPanel() {
                 `<button class="btn ${A.speed === s ? 'on' : ''}" onclick="A.speed=${s};vfxRedraw()">${s === 1 ? '1' : s === 0.5 ? '½' : '¼'}×</button>`
             )
             .join('')}</div></div>`
+        : ''
+    }
+    ${
+      A.clip && A.clip.id.startsWith('jump')
+        ? `<div class="vrow"><span>Height</span><div class="seg">${ANIM_JUMP_LV.map(
+            m =>
+              `<button class="btn ${L.jumpLv === m ? 'on' : ''}" onclick="animJumpLv(${m})" ${tip(animJumpKind(m))}>${m == null ? 'Played' : `${m} m`}</button>`
+          ).join(
+            ''
+          )}</div></div><p class="small mute">${esc(animJumpKind(L.jumpLv))} · high-jump effects from ${VFX.leap.from} m, the warp from ${VFX.leap.warpFrom} m (VFX → High jump)</p>`
         : ''
     }
     ${L.clipMsg ? `<p class="small mute">${esc(L.clipMsg)}</p>` : ''}

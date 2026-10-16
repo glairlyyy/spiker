@@ -312,7 +312,10 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   cut-scene (Ace / WS kill / MB quick), its camera values live in a side panel, ¼ / ½ / 1×, Force rotate, Copy / Download;
   the owner's values are baked in as defaults. **Animation lab** — **Clips** (owner, 2026-10-12): pick an animation (receive soft / firm / hard, knockdown, dive, set, spike, serve, block, point celebration) and the lab finds a real rally with it and plays just that moment on a loop, the camera on the player (¼–1×, Another one); it also keeps the last 8 s of every player; Freeze, scrub, step,
   play at ¼–1×, orbit a chosen player, foot marks (a sliding foot smears), edit the frame's pose values live, Copy as pose
-  code. **Models**: Monster games use the owner's six VRMs (random per player).
+  code. **Jumps** (owner, 2026-10-16 **[built]**): clips for every kind of jump — wing spike, middle quick, back-row pipe,
+  jump serve, block — at a height you pick (Played / 1.2 / 1.8 / 2.2 / 2.6 / 3 / 3.2 m; the same clip replays at the new
+  height), showing which effects that height gets (plain, high-jump effects, warp; §2.3b). The **VFX lab** has the high
+  jump and the warp jump on the empty floor. **Models**: Monster games use the owner's six VRMs (random per player).
 - §2.23 Removed (owner, 2026-10-08): cut-ins (full banner and mini notification) and the commentary ticker, engine acts too;
   the read eye gauge (a full read shows 👁 after the role in your name tag); the team-colour line under the role tag.
 

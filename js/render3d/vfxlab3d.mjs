@@ -132,6 +132,7 @@ export function mountLab(el) {
     if (L.run) flyBall(dt);
     ballTrail(dt);
     sweep(dt);
+    later(dt);
     ctl.update();
     const f0 = performance.now();
     L.fx.update(dt, camera, renderer.domElement.height, camera.fov);
@@ -220,6 +221,26 @@ function sweep(dt) {
   });
 }
 
+/** Effects queued for later (a high jump's rise and top): [{ t: seconds left, fn }]. */
+function later(dt) {
+  if (!L.later) return;
+  for (const q of L.later) if ((q.t -= dt) <= 0) q.fn();
+  L.later = L.later.filter(q => q.t > 0);
+}
+const after = (t, fn) => (L.later || (L.later = [])).push({ t, fn });
+/** A high jump's effects (VFX.leap) on the empty floor: take-off, air rushing past on the rise, the top; `warp`: the teleport. */
+function leap(p, warp, col) {
+  const fx = L.fx,
+    top = 2.6,
+    rise = warp ? (typeof VFX !== 'undefined' ? VFX.leap.warpMs : 110) / 1000 : 0.72;
+  fx.leapOff(p, 1, warp, col);
+  for (let t = 0.03; t < rise * 0.9; t += 0.03) after(t, () => fx.leapWind(p.clone().setY(1.2 + top * (t / rise)), 1));
+  after(rise, () => {
+    const c = p.clone().setY(1.2 + top);
+    if (warp) fx.warpIn(c, 1, col);
+    fx.leapHaze(c, 1);
+  });
+}
 const RAND = s => (Math.random() * 2 - 1) * s;
 /** Fire one effect. `stray`: at a random spot (stress), else at the centre. */
 function play(name, stray) {
@@ -229,6 +250,10 @@ function play(name, stray) {
     at = (y = 0) => new THREE.Vector3(stray ? RAND(5) : 0, y, stray ? RAND(3) : 0),
     shot = new THREE.Vector3(-1, -0.45, 0).normalize();
   switch (name) {
+    case 'leap':
+      return leap(at(), false, col);
+    case 'warp':
+      return leap(at(), true, col);
     case 'blast':
       return fx.blast(at(), o.pow, col);
     case 'airImpact':
@@ -291,6 +316,7 @@ export function labAdvance(sec) {
     if (L.run) flyBall(1 / 60);
     ballTrail(1 / 60);
     sweep(1 / 60);
+    later(1 / 60);
     L.fx.update(1 / 60, L.camera, L.renderer.domElement.height, L.camera.fov);
   }
 }

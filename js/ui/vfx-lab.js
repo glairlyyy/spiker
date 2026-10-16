@@ -6,6 +6,8 @@ const LAB = { fx: 'blast', pow: 110, el: 'fire', speed: 1, auto: false, stress: 
 const LAB_FX = [
   ['blast', 'Ground blast', false],
   ['found', 'Every player: dust, skid, bump, set, save, breath', false],
+  ['leap', 'High jump: take-off, air past, haze at the top', false],
+  ['warp', 'Warp jump: flash, light column, pop at the top', true],
   ['sweep', 'Hand trail: weapon sweep', false],
   ['spike', 'Spike: air → trail → floor (+ blast at 100+)', true],
   ['airImpact', 'Air impact', false],
