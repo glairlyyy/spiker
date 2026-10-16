@@ -656,8 +656,11 @@ the AI coach fills every slot you leave with the same function. Built and measur
       ~0.3 a match (coach), ~1.1 (random).
   - **You can see the tactic** (owner, 2026-10-16) **[built, T-300–T-301]**: a card's edge shows in the body and the ball —
     a fitting attack card hits visibly harder, a jump card jumps visibly higher, a countered one looks weaker. Limits: the
-    ball shows at most 300 km/h (`POW_VIS_MAX`; it had shown 540), a jump at most 4 m (`JUMP_MAX_M`; it had shown 5.4 m)
-    and a card against a player never shrinks their jump (`jumpVis`); the spike's "↑ cm" label is the height shown.
+    ball shows at most 300 km/h (`POW_VIS_MAX`; it had shown 540); a jump has no hard cap but gets exponentially harder
+    above 1.8 m, approaching 3.2 m (owner, 2026-10-16 **[built]**, `JUMP_SOFT` / `jumpSoft`: raw 2.2 → 2.15 m, 3 → 2.61,
+    4 → 2.91, 6 → 3.13; it had a hard 4 m cap). Measured (8 matches each, cards by the coach): league p50 1.0 / p90 1.65 /
+    max 2.7 m, tournament 1.3 / 2.0 / 2.85 m. A card against a player never shrinks their jump (`jumpVis`); the spike's
+    "↑ cm" label is the height shown.
     Everything round the jump matches it (T-301): it leaves the floor early enough to rise under the game's gravity
     (`jumpT0`, render: a 4 m jump rises in ~0.7 s, 1.5 m in ~0.43 s — before, every spike rose in 384 ms), the run-up
     grows with the height (3 m → up to 4.8 m: × √(height / 1.5 m), 1–1.6) and so does the broad jump onto the ball.

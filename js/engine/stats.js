@@ -24,9 +24,17 @@ const kmh = pow => Math.round(40 + pow * 0.85);
  */
 const POW_VIS_MAX = (300 - 40) / 0.85;
 const powVis = (p, pow) => Math.min(pow, POW_VIS_MAX);
-/** How high p jumps on screen: a card edge for them shows (owner, 2026-10-16: 3–4 m jumps look anime), never above JUMP_MAX_M. */
-const JUMP_MAX_M = 4;
-const jumpVis = p => Math.min(Math.max(jumpPx(p), jumpPx(p) / edgeK(p, 'jump')), JUMP_MAX_M / UNIT_M.h); // (an edge against them never shrinks the jump)
+/**
+ * How high p jumps on screen: a card edge for them shows (owner, 2026-10-16: 3–4 m jumps look anime), and an edge against
+ * them never shrinks the jump. No hard cap (owner, 2026-10-16): up to JUMP_SOFT.knee metres the height is as raw; above it,
+ * each extra metre counts exponentially less, approaching JUMP_SOFT.max (`jumpSoft`; the slope is continuous at the knee).
+ */
+const JUMP_SOFT = { knee: 1.8, max: 3.2 };
+const jumpSoft = m => {
+  const { knee: k, max: a } = JUMP_SOFT;
+  return m <= k ? m : k + (a - k) * (1 - Math.exp(-(m - k) / (a - k)));
+};
+const jumpVis = p => jumpSoft(Math.max(jumpPx(p), jumpPx(p) / edgeK(p, 'jump')) * UNIT_M.h) / UNIT_M.h;
 /** The spike's "↑ cm" label: the height the body rises on screen (it was a realistic vertical that did not match the jump). */
 const jumpCm = p => Math.round(jumpVis(p) * UNIT_M.h * 100);
 /** Serve style a player uses (jump serve needs a strong enough serve roll). */
