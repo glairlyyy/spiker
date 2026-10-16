@@ -59,6 +59,12 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
   ball in a rally (the serve too) pops a number right of the court — "N touches", bigger with every touch; tiers by colour and a
   word: 6 Rally (gold), 10 Long rally (warn), 15 Marathon (hot), 20 Legendary (hot, pulsing). Shows from touch 3; holds on the
   point, then fades; a new rally clears it. VFX panel → Rally counter: on, shows from, size. No motion with reduced motion.
+- §2.3b High jumps (owner, 2026-10-16) **[built]** (VFX → High jump; display only): an 'up' jump of 2 m or more shown gets,
+  scaled by height, a short vertical camera kick at take-off, a floor ring and more dust, thin streaks of air rushing down past
+  the body on the rise, and a faint shimmering haze ring at the top. From 2.6 m it is a **warp** — so fast it reads as a
+  teleport (the Goku look): the body leaves the floor at the engine's take-off, a flash and a column of light shoot up in the
+  team colour, the body is gone on the way up (110 ms) and pops back in at the top (ring, flash, sparks), then hangs there to
+  the contact. Never with reduced motion; every value a VFX slider.
 - §2.3a Air impact (owner, 2026-10-06, the Kuroko look) **[built, T-236]**: every spike (not a tip; power ≥ 58) splits the air
   at the contact — pressure rings stacked along the shot (2 / 3 / 4 by power: hard / heavy 80+ / 95+; owner 2026-10-06: a Doppler cone — the
   biggest at the hand, smaller and closer together down the shot; owner 2026-10-07: they follow the ball — lined up along its

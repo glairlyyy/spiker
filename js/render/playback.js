@@ -157,6 +157,7 @@ function startBeat(b) {
       case 'jump':
         d.jt = 0;
         d.jmode = { mode: a.mode, t0: jumpT0(a, b.dur), t1: a.t1 || 1, peak: a.peak || d.jy, start: d.jy };
+        if (leapWarp(a)) Object.assign(d.jmode, { warp: true, warpU: VFX.leap.warpMs / Math.max(1, b.dur) }); // (VFX.leap: the teleport jump)
         d.fallMs = null;
         d.landMs = null;
         if (a.mode === 'down' && (d.pose === 'spike' || d.pose === 'serve')) {
@@ -453,10 +454,18 @@ function tweenBall(a, b, t) {
  * (1 − (1 − l)²) is exactly a rise under constant gravity, so the take-off speed matches the height. Contact stays at t1.
  */
 function jumpT0(a, dur) {
+  if (leapWarp(a)) return a.t0 || 0; // the warp: still on the floor until the engine's take-off, then gone (tweenJump)
   if (a.mode !== 'up' || (a.t1 ?? 1) < 1 || !a.peak || !(dur > 0)) return a.t0 || 0;
   const riseMs = Math.sqrt((2 * a.peak * UNIT_M.h) / FALL_G) * 1000;
   return Math.max(0.03, Math.min(a.t0 || 0, 1 - riseMs / dur));
 }
+/**
+ * A warp jump (VFX.leap, owner 2026-10-16 — a jump so fast it looks like a teleport): an 'up' jump at least VFX.leap.warpFrom
+ * metres high. It leaves the floor at the engine's take-off and reaches the top in VFX.leap.warpMs (the body hidden on the
+ * way: actors3d), then hangs there to the contact. Never with reduced motion.
+ */
+const leapWarp = a =>
+  !RM && !!VFX.leap.on && !!VFX.leap.warp && a.mode === 'up' && (a.t1 ?? 1) >= 1 && !!a.peak && a.peak * UNIT_M.h >= VFX.leap.warpFrom;
 /** Jump modes: up (rise to the peak), reup (land, then up again), down (free fall from here), other = a hop. */
 function tweenJump(d, a, b, t) {
   const J = d.jmode || NO_JUMP,
@@ -478,7 +487,9 @@ function tweenJump(d, a, b, t) {
       d.spkHold = true;
     }
   }
-  if (a.mode === 'up') d.jy = J.peak * (1 - Math.pow(1 - l, 2));
+  if (a.mode === 'up' && J.warp)
+    d.jy = t < J.t0 ? 0 : J.peak * (1 - Math.pow(1 - clamp((t - J.t0) / J.warpU, 0, 1), 3)); // up in a flash
+  else if (a.mode === 'up') d.jy = J.peak * (1 - Math.pow(1 - l, 2));
   else if (a.mode === 'reup')
     d.jy = t < 0.4 ? J.start * (1 - Math.pow(t / 0.4, 2)) : J.peak * (1 - Math.pow(1 - l, 2)) * (t >= J.t0 ? 1 : 0);
   else if (a.mode === 'down') {

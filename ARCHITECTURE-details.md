@@ -92,7 +92,7 @@ units3d's KH / KX / KZ read it), `BALL_K` / `SERVE_K` (ball flight speed factors
   drive forward and low → one reaching hand under the ball (pancake flat, else a fist pop) → land on chest/stomach,
   chin up, back arched, the other hand cushioning like a push-up → momentum slide, legs slightly bent → squat → ready.
 - `fx3d.mjs` (T-269: an assembler — `createFx` = `createKit(scene)` (fx/kit.mjs: textures, shaders, the particle / streak pools,
-  rocks, bolts, rings, discs, domes, `update`, `stats`) + the effect groups fx/ground, hits, elements, trail, each `xxxFx(K)` →
+  rocks, bolts, rings, discs, domes, `update`, `stats`) + the effect groups fx/ground, hits, elements, trail, leap (high jumps: actors3d leapOff / leapAir, playback leapWarp), each `xxxFx(K)` →
   its methods; a new effect = one method in a group; `rr(a, b)` = Math.random range) — 3D effects: GPU particles (glow / spark / smoke / billowing puffs, per-particle spin), velocity-stretched
   streak sparks (instanced quads, floor bounce), floor glow discs, lightning tubes, shockwave rings, bouncing rocks (per-instance
   colour), one style per team element. Every tunable number is read live from `VFX` (js/data/vfx.js, `vx(group, key, default)`): `airImpact` rings run large → small down the shot (Doppler; `classic` = small → large, lab only); `blast` fires on a kill on the floor when `VFX.blast.on` (effects.js `groundBlast`); `stats()` = live counts. `render/effects.js` hands its entry points (`burst`, `impact`, `elemBurst`,

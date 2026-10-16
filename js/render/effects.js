@@ -117,6 +117,12 @@ function camKick(pow, dir) {
   if (RM || pow < S.min || S.spike * Dir.shakeK() <= 0) return;
   A.kick = { t0: performance.now(), amt: Math.min(1.6, (pow - S.min + 25) / 60) * S.spike * Dir.shakeK(), dir }; // × the director's shake
 }
+/** A high jump's take-off (VFX.leap): a short vertical kick of the camera, `k` 0.5–1.2 by height. */
+function jumpKick(k) {
+  const L = VFX.leap;
+  if (RM || L.shake * Dir.shakeK() <= 0) return;
+  A.kick = { t0: performance.now(), amt: 0.35 * k * L.shake * Dir.shakeK(), dir: 0 };
+}
 function camRumble(pow, kill) {
   const S = VFX.shake;
   if (RM || pow < S.min * 0.6 || S.floor * Dir.shakeK() <= 0) return; // softer balls on the floor still rumble a little (from 60 % of the min)

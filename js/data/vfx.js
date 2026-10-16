@@ -89,6 +89,20 @@ const VFX_DEF = {
       dist: [1, 0.3, 3, 0.05, 'Distance']
     }
   },
+  leap: {
+    name: 'High jump (take-off, rise, top, warp)',
+    p: {
+      on: [1, 0, 1, 1, 'On'],
+      from: [2, 1, 3.2, 0.05, 'From a jump of (m)'],
+      shake: [1, 0, 3, 0.1, 'Take-off camera kick ×'],
+      ring: [1, 0, 3, 0.1, 'Floor ring ×'],
+      wind: [1, 0, 3, 0.1, 'Air rushing past on the rise ×'],
+      haze: [1, 0, 3, 0.1, 'Haze ring at the top ×'],
+      warp: [1, 0, 1, 1, 'Warp: so fast it looks like a teleport'],
+      warpFrom: [2.6, 1.5, 3.2, 0.05, 'Warp from a jump of (m)'],
+      warpMs: [110, 40, 300, 10, 'Warp rise (ms)']
+    }
+  },
   found: {
     name: 'Every player (foundation)',
     p: {

@@ -213,13 +213,16 @@ export function posePlayer(pl, dt, ballPos, fx) {
 const FND_UP = 4, // jy (court h units) above which a player is airborne
   SPRINT = 3.2; // m/s
 function foundation(pl, d, mot, pos, dt, fx) {
+  if (pl.fnd && pl.fnd.leap && pl.fnd.leap.hid && (A.shot || !fx)) leapShow(pl); // a cut-scene took over mid-warp
   if (!fx || !fx.dust || A.shot || dt <= 0) return;
   const F = VFX.found,
     s = pl.fnd || (pl.fnd = { air: false, peak: 0, step: 0, kb: 0, foot: 0, br: Math.random() }),
     jy = d.jy || 0,
     air = jy > FND_UP;
   if (air) s.peak = Math.max(s.peak, jy);
-  if (air && !s.air && d.pose !== 'dive') fx.dust(pos, 0.7 * F.jump); // takeoff
+  if (air && !s.air && d.pose !== 'dive' && !leapOff(pl, d, s, pos, fx)) fx.dust(pos, 0.7 * F.jump); // takeoff (a high one: leapOff)
+  if (air && s.leap) leapAir(pl, d, s, dt, fx);
+  if (!air && s.leap) leapShow(pl);
   if (!air && s.air) {
     fx.dust(pos, clamp(s.peak / 90, 0.4, 1.4) * F.jump); // landing: the higher the jump, the bigger the cloud
     s.peak = 0;
@@ -251,6 +254,50 @@ function foundation(pl, d, mot, pos, dt, fx) {
   }
 }
 
+/**
+ * A high jump's take-off (VFX.leap, owner 2026-10-16): an 'up' jump of at least VFX.leap.from metres gets a floor ring, more
+ * dust and a camera kick by height (`k` 0.5–1.2); a warp jump (playback leapWarp) a flash and a light column, and the body is
+ * hidden until it pops back in at the top. False for an ordinary jump (the caller puts up the plain dust).
+ */
+function leapOff(pl, d, s, pos, fx) {
+  const L = VFX.leap,
+    J = d.jmode,
+    m = J && J.mode === 'up' ? (J.peak || 0) * UNIT_M.h : 0;
+  if (!L.on || RM || !fx.leapOff || m < L.from) return false;
+  const k = 0.5 + 0.7 * clamp((m - L.from) / Math.max(0.1, JUMP_SOFT.max - L.from), 0, 1),
+    col = (d.p.team && d.p.team.color) || '#ffffff';
+  fx.leapOff(pos, k, !!J.warp, col);
+  if (typeof jumpKick === 'function') jumpKick(k);
+  s.leap = { k, top: false, wt: 0, col, hid: !!J.warp };
+  if (J.warp) pl.vrm.scene.visible = false; // gone: the jump is too fast to see
+  return true;
+}
+/** The body back on screen and the high jump over (landed, a cut-scene, a new match). */
+function leapShow(pl) {
+  if (pl.vrm) pl.vrm.scene.visible = true;
+  if (pl.fnd) pl.fnd.leap = null;
+}
+/** In the air after a high take-off: air rushing past on the rise; at the top a haze ring — and the warp's body pops back in. */
+function leapAir(pl, d, s, dt, fx) {
+  const L = s.leap,
+    peak = (d.jmode && d.jmode.peak) || s.peak || 1,
+    chest = pl.bone('chest').getWorldPosition(tmp2);
+  if (!L.top && (d.jy || 0) < 0.9 * peak) {
+    if ((L.wt -= dt) <= 0) {
+      L.wt = 0.03;
+      fx.leapWind(chest, L.k);
+    }
+    return;
+  }
+  if (L.top) return;
+  L.top = true;
+  if (L.hid) {
+    pl.vrm.scene.visible = true;
+    L.hid = false;
+    fx.warpIn(chest, L.k, L.col);
+  }
+  fx.leapHaze(chest, L.k);
+}
 /**
  * Running far and fast, on the ground, not blocking or setting (left: metres still to go; along a back-row curve, what is
  * left of the curve). A hitter's short retreat to the run-up point stays a backpedal.
@@ -612,6 +659,7 @@ export function dressActors(w) {
   w.people.forEach(pl => {
     const d = pl.d;
     pl.root.visible = pl.aura.visible = !!d;
+    leapShow(pl); // (a warp cut short by the match ending)
     if (!d) {
       for (const t of [...pl.trails, ...pl.eyeTrails]) t.clear();
       pl.zone.visible = pl.buff.visible = false;
