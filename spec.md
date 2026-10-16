@@ -1073,7 +1073,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
   appear on the map with a reveal. Year 2 only, except the Midnight Court (found by play).
   - **The Tape Room** (Academy basement; Fern's key): watch old scouting tapes, the 15–4 match among them. The first
     viewing hurts (Pain); each later viewing reveals one of the rival's habits (her lanes, shots, serve targets), and
-    the Plan board shows it when you face her. Costs a day.
+    match prep shows it under your hand when you face her (the Plan board until T-298). Costs a day.
   - **The Lighthouse** (Wu's far tip; "where I went when I wanted to quit"; a day like any place — the island has no night turn): a night with your Pain —
     **let it go** (Pain down, no Scar) or **sharpen it** (Pain up, a Scar sooner, the OP odds up). The only place that
     acts on the hidden bars.

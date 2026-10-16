@@ -53,9 +53,16 @@ function prepTeam(i) {
             ''
           )}</div>${S.who[i] === 'you' ? cardsHand(i, true) : '<p class="small mute">The coach picks — hidden until the match is over.</p>'}`
       : cardsMine(m, i)
-        ? cardsHand(i, true)
+        ? cardsHand(i, true) + prepHabits(m, i)
         : '<p class="small mute">Their hand: hidden.</p>';
   return `<section class="pteam" style="--tc:${t.color}"><div class="pban"><h3>${esc(t.name)}</h3><span class="povr"><b>${ovrAvg}</b> OVR</span><span class="small mute">${esc((t.S && t.S.name) || '')}</span></div><div class="lineup">${lineup}</div>${hand}</section>`;
+}
+/** The rival's habits you uncovered at the Tape Room (spec §4.31), under your hand when she is across the net from side i. */
+function prepHabits(m, i) {
+  if (typeof RUN === 'undefined' || !RUN || !A.fx.onFinish) return '';
+  const riv = Stars.get(RUN, 'rival'),
+    seen = riv && squadOf(m.t[1 - i]).includes(riv) ? Secret.seen(RUN) : [];
+  return seen.length ? `<div class="small bhab"><b>From her tape:</b> ${seen.map(h => esc(h.text)).join(' · ')}</div>` : '';
 }
 function prepDraw() {
   const el = $('#prep');

@@ -1726,3 +1726,6 @@ html.reduced .xl {
 .prep .ccard.fits i {
   color: var(--good);
 }
+.prep .bhab {
+  margin-top: 8px;
+}
