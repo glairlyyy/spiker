@@ -25,22 +25,45 @@ const TOOL_COV = [0.25, 0.6],
 const LATE_TOUCH = { pow: 0.7 }; // a fingertip touch off falling hands takes less off the ball than a full touch (×0.55)
 function block(c, x) {
   const { defT } = c,
-    { tip, cov, c0, c1, b0, b1, elS } = x,
-    late = !!x.delayed;
+    { tip, cov, b0, b1, elS } = x;
   let { pow } = x;
   let touched = false,
     softTouch = false,
     smashed = false;
   if (!tip && cov > BLOCK_MIN_COV) {
-    const bb = c1.c > c0.c ? b1 : b0;
+    // the ball keeps its own line (contact → landing spot, no draws): the blocker it meets is the one nearer where it
+    // crosses the net, and their hands go to it there (BLOCK_GEO) — the ball is never pulled up or across into a hand
+    const g = netCross(x),
+      bb = b1 && Math.abs(x.bz1 - g.z) < Math.abs(x.bz0 - g.z) ? b1 : b0,
+      bz = bb === b1 ? x.bz1 : x.bz0,
+      top = blkTopH(x, bb),
+      above = g.h - top, // > 0: the line passes over the fingertips
+      late = !!x.delayed || above > BLOCK_GEO.over; // hanging, or hit over the hands: fingertips at most
+    if (above > BLOCK_GEO.reach) {
+      // clean over the block: nothing touches it
+      if (c.V) dropDefScene(c.m);
+      laneTag(c, x, 'beaten');
+      return { touched, softTouch, smashed, pow };
+    }
     const bp = Formula.blockPower(b0, b1, defT, cov);
-    // which hand the ball meets (presentation, no draws): the side of the blocker its path crosses the net on
-    // (spiker → landing spot, a fifth of the way: the hitter is near the net); hz = +1 / −1 along court z
-    const bz = bb === b1 ? x.bz1 : x.bz0,
-      zNet = x.spZ + (x.lz - x.spZ) * 0.2,
-      hands = { p: bb.id, c: 'block', hz: zNet >= bz ? 1 : -1 },
+    // hz = +1 / −1 along court z: the side of the blocker the ball crosses on (the hand that reaches); geo: the ball's
+    // own point, not a hand (the 3D reaches the hands to it instead of pulling it in)
+    const hands = {
+        x: sx(c.atk, 496),
+        z: clamp(g.z, bz - BLOCK_GEO.span, bz + BLOCK_GEO.span),
+        h: x.delayed ? NET_CROSS : Math.min(g.h, top + 4), // (a hanging hitter's ball meets falling hands low)
+        p: bb.id,
+        c: 'block',
+        hz: g.z >= bz ? 1 : -1,
+        geo: 1
+      },
       bel = bb.elOn ? bb.el : null, // the blocker's own element shows on the wall (unlocked players only)
       brk = elS ? elS.brk : 0; // Earth element spike: breaks through blocks far more often
+    // a blocker who went up higher than the line brings the hands down onto it (their jump tops out just above the ball)
+    const meet = () => {
+      const j = !late && (x.bjA || []).find(a => a.p === bb.id);
+      if (j) j.peak = Math.max(0, Math.min(j.peak, g.h + BLOCK_GEO.above - 1.1 * bodyK(bb)));
+    };
     // Block break: a solid block (coverage ≥ 0.5) can still be blasted through
     // when the spike beats the block's full strength by 10%+ (chance grows to 45% at +25%).
     const ratio = pow / Math.max(1, bp / cov),
@@ -52,18 +75,22 @@ function block(c, x) {
       R() < Math.min(0.45 + 0.4 * brk, (ratio - 1.1 + 0.25 * brk) * 3 + 0.35 * brk)
     ) {
       smashed = true;
+      meet();
       blockBreak(c, x, k);
     } else if (!late && R() < stuffChance(bp, cov, pow) * blockSkill(bb) * (x.planStuff ?? 1)) {
       laneTag(c, x, 'stuff');
+      meet();
       return blockStuff(c, x, k);
     }
     // touch or tool off the hands (not after a block break: that ball is already through)
     if (!smashed && R() < sig((bp - pow) / 20 + 0.2)) {
       touched = true;
+      meet();
       softTouch = blockTouch(c, x, k);
       pow = k.pow;
     } else if (!smashed && !late && cov >= TOOL_COV[0] && cov < TOOL_COV[1] && R() < TOOL_P) {
       if (c.V) dropDefScene(c.m); // tooled: the blocker's scene line goes too (owner 2026-10-07)
+      meet();
       return blockTool(c, x, k);
     }
     // the blockers' scene lines ("I read you") only when the block got a hand on it — a kill block, a touch or a soft
@@ -75,16 +102,15 @@ function block(c, x) {
 }
 /** Block break: drill, hit-stop, the wall cracks; the ball is through (the dig follows). */
 function blockBreak(c, x, { bb, ratio, hands, pow }) {
-  const { m, B, V, ds, atkT, defT } = c,
-    { spiker, appX, bz0, spZ, hit, blockers, el, mark } = x;
-
+  const { m, B, V, atkT, defT } = c,
+    { spiker, appX, spZ, hit, blockers, el, mark } = x;
   md(m, bb, -0.1);
   md(m, spiker, 0.1);
   // the engine already knows the block breaks: stage the hitter's jump at contact (inserted right after the set)
   if (V) B.ins(mark, ...hypeSpikeCut(m, spiker, bb));
   V &&
     B({
-      dur: clamp(Math.hypot(sx(ds, 484) - appX, (bz0 - spZ) * Z_UNITS) / (kmh(powVis(spiker, pow)) * BALL_K), 80, 200),
+      dur: clamp(Math.hypot(hands.x - appX, (hands.z - spZ) * Z_UNITS) / (kmh(powVis(spiker, pow)) * BALL_K), 80, 200),
       acts: [...hit, { k: 'ball', to: hands, h: 0, trail: pow, el, op: spiker.op }]
     });
   // hit-stop: the world pauses while the ball spins into the block like a drill and cracks the wall
@@ -93,7 +119,7 @@ function blockBreak(c, x, { bb, ratio, hands, pow }) {
       dur: 560,
       freeze: 1,
       acts: [
-        { k: 'cam', amt: 0.95, x: NETX, z: bz0, h: 150, hold: 1700 },
+        { k: 'cam', amt: 0.95, x: NETX, z: hands.z, h: 150, hold: 1700 },
         { k: 'shot', kind: 'ball', p: bb.id, p2: spiker.id, hype: 1 }, // 3D: right up to the ball grinding into the hands
         { k: 'drill', p: bb.id, pow, color: defT.color, el }
       ]
@@ -105,7 +131,7 @@ function blockBreak(c, x, { bb, ratio, hands, pow }) {
       acts: [
         { k: 'netshake' },
         { k: 'burst', pow: pow + 20, color: atkT.color, el, op: spiker.op },
-        { k: 'cam', amt: 0.95, x: NETX, z: bz0, h: 150, hold: 1000 }, // block break: push in closer
+        { k: 'cam', amt: 0.95, x: NETX, z: hands.z, h: 150, hold: 1000 }, // block break: push in closer
         { k: 'flash', a: 0.3 },
         { k: 'shake', amt: 3 },
         ...blockers.map(b => ({ k: 'plabel', p: b.id, t: 'Ugh!' })),
@@ -116,14 +142,15 @@ function blockBreak(c, x, { bb, ratio, hands, pow }) {
 }
 /** Kill block: a cover dig saves it (rally on) or the point goes to the blockers. */
 function blockStuff(c, x, k) {
-  const { m, B, V, atk, ds, atkT } = c,
-    { spiker, appX, bz0, spZ, hit, el } = x,
+  const { m, B, V, atk, atkT } = c,
+    { spiker, appX, spZ, hit, el } = x,
     { bb, bp, hands, bel, pow } = k;
+  // the stuff goes straight back down on the hitter's side, around where the ball met the hands
   const bx = sx(atk, rnd(425, 470)),
-    bzz = clamp(spZ + rnd(-0.12, 0.12), 0.1, 0.9),
+    bzz = clamp(hands.z + rnd(-0.12, 0.12), 0.1, 0.9),
     dp = Math.round(pow * 0.55 + bp * 0.55),
     dpV = Math.round(powVis(spiker, pow) * 0.55 + powVis(bb, bp, 'jump') * 0.55), // (the real speed off the block: edges divided out)
-    bd = clamp(Math.hypot(bx - sx(ds, 484), (bzz - bz0) * Z_UNITS, 150) / (kmh(dpV) * BALL_K), 100, 260);
+    bd = clamp(Math.hypot(bx - hands.x, (bzz - hands.z) * Z_UNITS, hands.h) / (kmh(dpV) * BALL_K), 100, 260);
   // Block cover: the best-placed teammate (high defense, decent wit) may dig the kill block
   const coverScore = q => effD(q) * 0.65 + q.speed * 0.35 - dist(m.pos[q.id], bx, bzz) * 25;
   const mates = atkT.P.filter(q => q !== spiker),
@@ -142,7 +169,7 @@ function blockStuff(c, x, k) {
   st(m, bb, 'top', kmh(dpV));
   V &&
     B({
-      dur: clamp(Math.hypot(sx(ds, 484) - appX, (bz0 - spZ) * Z_UNITS) / (kmh(powVis(spiker, pow)) * BALL_K), 90, 220),
+      dur: clamp(Math.hypot(hands.x - appX, (hands.z - spZ) * Z_UNITS) / (kmh(powVis(spiker, pow)) * BALL_K), 90, 220),
       acts: [...hit, { k: 'ball', to: hands, h: 0, trail: pow, el, op: spiker.op }]
     });
   V &&
@@ -222,8 +249,8 @@ function blockKill(c, x, { bb, bel }, { bx, bzz, dp, dpV, bd }) {
 }
 /** A touch off the hands (Soft Block, or a late fingertip). Takes power off the ball (k.pow); returns softTouch. */
 function blockTouch(c, x, k) {
-  const { m, B, V, ds } = c,
-    { blockers, hit, bz0 } = x,
+  const { m, B, V } = c,
+    { blockers, hit } = x,
     { bb, hands, late } = k;
   let { pow } = k;
   const softTouch = !late && hasTech(bb, 'softblk'); // a Soft Block needs the hands up
@@ -235,8 +262,8 @@ function blockTouch(c, x, k) {
       dur: 190,
       acts: [
         ...hit,
-        // late: the fingertips at the tape, not the hands (they are already below it)
-        { k: 'ball', to: late ? { x: sx(ds, 490), z: bz0, h: 160 } : hands, h: 0, trail: pow },
+        // hanging: the falling fingertips at the tape (no reach); over the hands: the fingertips reach up to it
+        { k: 'ball', to: x.delayed ? { x: hands.x, z: hands.z, h: hands.h } : hands, h: 0, trail: pow },
         ...(softTouch ? [{ k: 'tech', p: bb.id, t: 'Soft Block' }] : []),
         ...(late ? [{ k: 'plabel', p: bb.id, t: 'Fingertips!' }] : [{ k: 'call', p: bb.id, t: hypeLine('touch', bb, m) }])
       ]
@@ -248,8 +275,7 @@ function blockTouch(c, x, k) {
 /** Tooled off the hands and out: point to the attackers. */
 function blockTool(c, x, { hands, pow }) {
   const { m, B, V, atk, ds } = c,
-    { spiker, hit, bdown, bz0 } = x;
-
+    { spiker, hit, bdown } = x;
   st(m, spiker, 'k');
   V && B({ dur: 190, acts: [...hit, { k: 'ball', to: hands, h: 0, trail: pow }] });
   V &&
@@ -257,7 +283,8 @@ function blockTool(c, x, { hands, pow }) {
       dur: 650,
       acts: [
         ...bdown,
-        { k: 'ball', to: { x: sx(ds, 15), z: bz0 > 0.5 ? 1.08 : -0.08, h: 0 }, h: 90 },
+        // off the outer edge of the hand it met, on out the way it was going
+        { k: 'ball', to: { x: sx(ds, 15), z: hands.hz > 0 ? 1.08 : -0.08, h: 0 }, h: 90 },
         { k: 'label', t: 'Off the block!', when: 'end', big: 1 }
       ]
     });

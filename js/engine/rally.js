@@ -349,14 +349,16 @@ const blockT0 = (x, b) => (b === x.b0 && x.bitten ? 0.84 : x.quick ? 0.3 : 0.6);
 /** The blockers' jumps. */
 function blockJumpActs(c, x) {
   const { fakeDecoy, bitten, b0, blockers } = x;
-  return blockers.map(b => ({
+  // (kept on x: a blocker who meets the ball below their reach brings the hands down to it, block() in rally-defense.js)
+  x.bjA = blockers.map(b => ({
     k: 'jump',
     p: b.id,
     mode: b === b0 && bitten && fakeDecoy ? 'reup' : 'up',
     t0: blockT0(x, b),
     t1: 1,
-    peak: jumpVis(b) * (b === b0 && bitten ? 0.45 : 0.85)
+    peak: blkPeak(x, b)
   }));
+  return x.bjA;
 }
 /** The blockers' poses and the late jumpers. */
 function blockPoseActs(x) {
@@ -392,7 +394,7 @@ function spikePower(c, x) {
     cov > 0.5 &&
     R() <
       clamp(
-        (W(spiker) - 0.4) * 0.45 + (cutS ? 0.2 : 0) + (cutS && cardForce(spiker, 'cutshot') ? 0.25 : 0) + (x.cutK || 0),
+        (W(spiker) - 0.4) * 0.45 + (cutS ? 0.2 : 0) + (cutS && cardForce(spiker, 'cutshot') ? 0.25 : 0) + (x.cutK || 0) + heightRead(x),
         0,
         x.cutMax ?? 0.75
       )
@@ -414,6 +416,10 @@ function spikePower(c, x) {
   const tier = tip ? 'tip' : pow >= 100 ? 'ult' : pow >= 80 ? 'heavy' : pow >= 58 ? 'hard' : 'soft';
   return { tip, pow, elS, el: elS ? elS.el : null, around, cutS, delayed, cov, tier };
 }
+
+/** A hitter facing a block that reaches well above them goes around it more, as far as they see it (wit). */
+const HEIGHT_READ = 0.25;
+const heightRead = x => HEIGHT_READ * clamp((blkTopH(x, x.b0) - hitTopH(x.spiker)) / 60, 0, 1) * clamp(W(x.spiker) - 0.6, 0, 1);
 
 /**
  * 8b. The spike's presentation (no random draws): the impact zoom and the hit acts

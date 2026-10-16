@@ -248,6 +248,15 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   - **Crouch before a jump** deeper the higher the player jumps (× 1 at Jump ≤ 40 → × 1.5 at 99; spike load, block prep).
   - **One-hand block**: the engine tags which hand the spike meets (`hz`, no draws); the ball meets that palm, only that arm
     reaches, the other stays in the block.
+  - **The block meets the ball's own line** (owner, 2026-10-16) **[built 2026-10-16, T-303]**: a low hitter's spike was
+    pulled up into a high block's hands. The ball now keeps its line (contact → landing spot, lifted over the tape like any
+    spike): the block contact is where that line crosses the net (≥ 2.72 m), the blocker it meets is the one nearer that point
+    along the net (± 0.6 m of hands), and the hands reach to the ball (no pull onto the palm). A blocker who went up higher
+    than the line brings the hands down onto it (their jump tops out ~0.7 m above the ball); a line over the fingertips only
+    grazes them (no stuff, break or tool — a fingertip touch at most) and one clearly over the block passes untouched. A kill
+    block drops back on the hitter's side around that point; a tool goes off the hand it met, out that way. Hitters read
+    height: facing a block that reaches well above them they go around it more (cut shot, by Wit, up to +25 %). Stats still
+    decide the block (stuff rate 10.8 → 10.7 % of attacks, kills 38.0 → 38.8 %).
   - **Point celebrations** start once the scorer has landed: fist pump, jump-spin-stomp (big points, ≤ 1 per 4 points), sky
     roar, finger to the sky, taunt, shy hop — by personality, hash-picked; the nearest teammate high-fives, the others clap.
   - **Feet on the ground**: standing still, both feet are planted flat on the floor; a planted foot stays on its spot until the

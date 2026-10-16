@@ -257,8 +257,9 @@ test.slow('engine: the setter takes the second ball', () => {
   }
   assert(sets > 4000 && reach > 0, `sets were judged (${sets}, ${reach} won by reach)`);
   // (≈ 10.4–11.2 % since the Loose shakes, owner 2026-10-08: a colder team passes worse; ≈ 11.6 % since team plans, 2026-10-12:
-  // Hunt the passer forces more bad passes; ≈ 12.2 % since stamina drains faster, 2026-10-15; the guard is against ~13 %)
-  assert(astNon / ast < 0.125, `assists by non-setters ${((100 * astNon) / ast).toFixed(1)} % (was ~12.5 %)`);
+  // Hunt the passer forces more bad passes; ≈ 12.2 % since stamina drains faster, 2026-10-15; the guard is against ~13 %;
+  // seeds 5–7 spread 11.4–12.9 %, T-303)
+  assert(astNon / ast < 0.13, `assists by non-setters ${((100 * astNon) / ast).toFixed(1)} % (was ~12.5 %)`);
 });
 
 test('engine: staged scenes are rare and well-formed', () => {
@@ -539,7 +540,7 @@ test.slow(
     const auto = run(null, null, 40),
       flt = run('float', null, 120),
       jmp = run('jump', null, 120),
-      aim = run(null, true, 40),
+      aim = run(null, true, 80), // (80: at 40 the aimed rates sat ~1.5 σ from the odds — T-303 moved the stream and it tripped)
       pc = (a, b) => (100 * a) / b;
     for (const [k, A] of Object.entries({ auto, flt, jmp, aim })) {
       assert(Math.abs(pc(A.err - A.eErr, A.n)) < 3, `${k} errors ${pc(A.err, A.n).toFixed(1)} vs odds ${pc(A.eErr, A.n).toFixed(1)}`);
@@ -598,7 +599,8 @@ test.slow(
     // the probe: same numbers twice, the match state and the game stream as before, no order left behind
     const m = g.newMatch(T[0], T[1], false, { cards: false });
     for (let i = 0; i < 8; i++) g.playRally(m);
-    const p = m.t[0].P.find(q => q.role === 'WS'),
+    const fr = g.rotOrder(m.t[0], m.rot[0]).slice(1, 3), // (a front-row hitter: a back-row one is rarely set — n too small)
+      p = m.t[0].P.find(q => q.role === 'WS' && fr.includes(q)) || m.t[0].P.find(q => q.role === 'WS'),
       before = JSON.stringify([m.pts, m.stat, m.pos, m.sta, m.mood, m.hit, m.lanes]);
     g.RNG.seed(5);
     const a = g.atkOdds(m, 0, p, [[p, 'shot', 'power']]),

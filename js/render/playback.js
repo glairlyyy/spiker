@@ -343,7 +343,7 @@ function startBall(a) {
   // (see handTouch in r3d)
   const bt =
     a.to.p && (a.to.c === 'block' || a.to.c === 'spike' || a.to.c === 'serve')
-      ? { p: a.to.p, c: a.to.c, hz: a.to.hz, b: A.beats && A.beats[A.bi] } // b: the beat of this flight (its progress drives the pull); hz: block hand
+      ? { p: a.to.p, c: a.to.c, hz: a.to.hz, geo: a.to.geo, b: A.beats && A.beats[A.bi] } // b: the beat of this flight (its progress drives the pull); hz: block hand; geo: the ball's own point (no pull)
       : null;
   if (!bt && A.handTouch) {
     A.handLast = A.handTouch;

@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-303** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-304** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -83,6 +83,13 @@ Result: js/ui/match-cards.js (hand, turn overlay #cturn, Tab look, spent tag, re
 the expected failure, year 2 the redemption. One save bump (RUN_VERSION 19) in T-286 covers the whole block; later tasks add
 fields through RUN_DEFAULTS. Story mode only (Endless stays unbuilt); the main random stream is untouched (seeded rolls).
 
+
+### [x] T-303: The block meets the ball on its own line
+Spec: §2.19 (The block meets the ball's own line)          Goldens: update (blocker pick, over-the-hands gate, cut read)          Save: no change
+Goal: a blocked spike flies its own line to where it crosses the net; the blocker there reaches to it — no ball pulled up or
+across into a hand.
+Files: js/engine/rally-block.js (BLOCK_GEO, netCross, heights), js/engine/rally-defense.js (block, stuff, touch, tool, break), js/engine/rally.js (blockJumpActs keeps x.bjA, heightRead), js/render/playback.js (geo flag), js/render3d/r3d.mjs (handTouch skips geo), spec.md, tests/golden.json
+Result: Done (owner request, spec chat). The block contact is the spike's own net crossing (contact → landing, ≥ 168 h over the tape); the nearer blocker along the net meets it (± 0.05 z of hands); `geo` balls are not pulled onto a palm (r3d handTouch), the hands reach by IK; a blocker above the line drops the jump to fingertips 45 h (≈ 0.7 m) over the ball (x.bjA); over the fingertips by 14+ only a fingertip touch, by 30+ untouched; stuff rebounds / tool / break follow that point; heightRead: up to +25 % cut-shot chance vs a block reaching 60 h over the hitter (Wit). Measured (5 seeds × 50, no cards): stuffs 10.8 → 10.7 %, kills 38.0 → 38.8 %; 30 visual matches: 153 block contacts, 109 at the tape line, ~half the blockers lower their jump. Tests: three statistical guards moved with the stream (non-setter assists < 13 % — seeds 5–7 spread 11.4–12.9 before and after; aimed serve odds over 80 matches; the tip probe on a front-row hitter). QA (Monster, seed 7): a Soft Block at 1–1 — the ball on its line met the blocker's hands at the net. 151/151, UI smoke 13/13.
 
 ### [x] T-302: Drag the cards
 Spec: §2.33 (On screen)          Goldens: unchanged          Save: no change

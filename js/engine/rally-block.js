@@ -3,6 +3,25 @@
 
 /** Closest two blockers stand side by side along the net (z units: 0.06 ≈ 0.7 m, shoulder to shoulder). */
 const BLOCK_GAP = 0.06;
+/**
+ * The block meets the ball on the ball's own line (owner, 2026-10-16: a low hitter's spike was pulled up into a high
+ * block's hands). Heights in court h units, as the 3D draws them (render reachH): a hitter's contact, a blocker's fingertips.
+ * span: how far along the net (z) the hands reach either side of the body; over: the line passing this far above the
+ * fingertips only grazes them (a fingertip touch), reach: further above, it clears the block; above: a blocker who jumped
+ * higher than the line brings the hands down to it, fingertips this far over the ball.
+ */
+const BLOCK_GEO = { span: 0.05, over: 14, reach: 30, above: 45 },
+  NET_CROSS = 168; // the drawn flight's lowest crossing (render NET_CLEAR: tape + the ball and a margin)
+const bodyK = p => (1.8 * ((p.look && p.look.hgt) || 1)) / UNIT_M.h;
+const hitTopH = p => 1.15 * bodyK(p) + jumpVis(p);
+const blkPeak = (x, b) => jumpVis(b) * (b === x.b0 && x.bitten ? 0.45 : 0.85);
+const blkTopH = (x, b) => 1.1 * bodyK(b) + blkPeak(x, b);
+/** The spike's own line at the net: contact → landing spot, lifted over the tape like the drawn flight. { z, h } (no draws). */
+function netCross(x) {
+  const cx = x.appX,
+    u = clamp((NETX - cx) / (x.lx - cx || 1), 0, 1);
+  return { z: clamp(x.spZ + (x.lz - x.spZ) * u, 0.02, 0.98), h: Math.max(hitTopH(x.spiker) * (1 - u), NET_CROSS) };
+}
 /** How well a blocker reads the attack (0–1): wit and speed. */
 const readQ = b => clamp((0.5 * (W(b) - 0.4)) / 1.2 + (0.5 * (b.speed - 40)) / 55, 0, 1);
 

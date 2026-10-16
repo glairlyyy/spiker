@@ -398,7 +398,7 @@ const HAND_REL_MS = 140;
 function handTouch(w, now) {
   const rel = !A.handTouch && A.handLast ? 1 - (now - (A.handRel || 0)) / HAND_REL_MS : 1,
     t = A.handTouch || (rel > 0 ? A.handLast : null);
-  if (!t || !w.ball.visible) return;
+  if (!t || !w.ball.visible || t.geo) return; // a block on the ball's own line (geo): the hands reach to it, not it to them
   const pl = w.people.find(q => q.d && q.d.p.id === t.p);
   if (!pl) return;
   const fw = pl.d.side === 0 ? 1 : -1;
