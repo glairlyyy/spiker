@@ -213,7 +213,15 @@ const step = async (name, fn) => {
     });
     await pg.waitForFunction(() => typeof A !== 'undefined' && A && A.m, null, { timeout: 60000 });
     // drag and drop (owner, 2026-10-16): a pool card onto a slot, then that slot's card back onto the pool
-    await pg.waitForFunction(() => A.prep && document.querySelector('#prep .cpool .cpick[data-card="pow"]'), null, { timeout: 20000 });
+    await pg.waitForFunction(() => A.prep && document.querySelector('#prep .cpool'), null, { timeout: 20000 });
+    await ev(() => {
+      // the opening hand follows the random Monster teams: Power Up may already be slotted — empty that slot first
+      const C = A.m.cards[0],
+        k = Object.keys(C.slots).find(s => C.slots[s] === 'pow');
+      if (k) cardsSet(0, k, null);
+      cardsRedraw();
+    });
+    await pg.waitForFunction(() => document.querySelector('#prep .cpool .cpick[data-card="pow"]'), null, { timeout: 5000 });
     await pg.dragAndDrop('#prep .cpool .cpick[data-card="pow"]', '#prep .cslot[data-slot="atk1"]');
     if ((await ev(() => A.m.cards[0].slots.atk1)) !== 'pow') throw new Error('drag: Power Up not in ATK 2');
     await pg.dragAndDrop('#prep .cslot[data-slot="atk1"]', '#prep .cpool');
