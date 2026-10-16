@@ -18,8 +18,12 @@ const effP = p => p.power * witBody(p) * boost(p);
 const effD = p => p.def * witBody(p) * boost(p) * stageBuff(p, 'def');
 const jumpPx = p => (20 + p.jump * 0.9 * p.team.S.jump) * (1 - RULES.stamina.jumpHit * (1 - staOf(p))) * stageBuff(p, 'jump');
 const kmh = pow => Math.round(40 + pow * 0.85);
-/** The power p's ball really travels at (stat k's card edge divided out: edges win contests, not km/h — spec §2.33). */
-const powVis = (p, pow, k = 'atk') => pow / edgeK(p, k);
+/**
+ * The power p's ball shows on screen (speed label, flight time, top-speed stat): the card edge shows (owner, 2026-10-16: a
+ * tactic you can see), never above POW_VIS_MAX (300 km/h — it had shown 540). k: the stat the edge reads (kept for callers).
+ */
+const POW_VIS_MAX = (300 - 40) / 0.85;
+const powVis = (p, pow) => Math.min(pow, POW_VIS_MAX);
 /** How high p jumps on screen: a card edge for them shows (owner, 2026-10-16: 3–4 m jumps look anime), never above JUMP_MAX_M. */
 const JUMP_MAX_M = 4;
 const jumpVis = p => Math.min(Math.max(jumpPx(p), jumpPx(p) / edgeK(p, 'jump')), JUMP_MAX_M / UNIT_M.h); // (an edge against them never shrinks the jump)

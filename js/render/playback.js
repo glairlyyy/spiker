@@ -156,7 +156,7 @@ function startBeat(b) {
         break;
       case 'jump':
         d.jt = 0;
-        d.jmode = { mode: a.mode, t0: a.t0 || 0, t1: a.t1 || 1, peak: a.peak || d.jy, start: d.jy };
+        d.jmode = { mode: a.mode, t0: jumpT0(a, b.dur), t1: a.t1 || 1, peak: a.peak || d.jy, start: d.jy };
         d.fallMs = null;
         d.landMs = null;
         if (a.mode === 'down' && (d.pose === 'spike' || d.pose === 'serve')) {
@@ -446,6 +446,16 @@ function tweenBall(a, b, t) {
     A.ball.z += Math.sin(u * Math.PI * 4) * 0.022;
     A.ball.h += Math.sin(u * Math.PI * 6) * 5 * (1 - u);
   }
+}
+/**
+ * When an 'up' jump leaves the floor (fraction of a beat of `dur` ms): never later than the engine's t0, but early enough to
+ * rise to its peak under FALL_G (owner, 2026-10-16: a 4 m jump rose in the same 384 ms as a 1.5 m one — a rocket). The tween
+ * (1 − (1 − l)²) is exactly a rise under constant gravity, so the take-off speed matches the height. Contact stays at t1.
+ */
+function jumpT0(a, dur) {
+  if (a.mode !== 'up' || (a.t1 ?? 1) < 1 || !a.peak || !(dur > 0)) return a.t0 || 0;
+  const riseMs = Math.sqrt((2 * a.peak * UNIT_M.h) / FALL_G) * 1000;
+  return Math.max(0.03, Math.min(a.t0 || 0, 1 - riseMs / dur));
 }
 /** Jump modes: up (rise to the peak), reup (land, then up again), down (free fall from here), other = a hop. */
 function tweenJump(d, a, b, t) {

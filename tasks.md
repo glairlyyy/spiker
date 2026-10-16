@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-301** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-302** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -83,6 +83,13 @@ Result: js/ui/match-cards.js (hand, turn overlay #cturn, Tab look, spent tag, re
 the expected failure, year 2 the redemption. One save bump (RUN_VERSION 19) in T-286 covers the whole block; later tasks add
 fields through RUN_DEFAULTS. Story mode only (Endless stays unbuilt); the main random stream is untouched (seeded rolls).
 
+
+### [x] T-301: The tactic shows — speed and jumps with the edge, and a jump that fits its height
+Spec: §2.33 (You can see the tactic)          Goldens: update (flight times feed dive / busy)          Save: no change
+Goal: cards change what you see again (owner), capped (300 km/h, 4 m); a higher jump leaves earlier under gravity, after a
+longer run-up, and carries further.
+Files: js/engine/stats.js (powVis cap), js/render/playback.js (jumpT0), js/render/movement.js (approachOf), spec.md, tests/golden.json
+Result: Done (owner request, spec chat). T-300's divide-out of the ball's edge undone; jumps were already shown. QA in Monster: a 3.15 m jump took off at 0.21 of the set beat, from the take-off point. 151/151, UI smoke 13/13.
 
 ### [x] T-300: Ball speed and jump height with card edges
 Spec: §2.33 (Edges win contests, not km/h)          Goldens: update (flight times feed the dive / busy decisions)          Save: no change

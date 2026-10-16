@@ -48,18 +48,22 @@ function approachOf(b) {
   if (!sl || !jp || (jp.t0 || 0) < 0.3) return null;
   if (b.acts.some(x => x.k === 'spkstyle' && x.p === ba.to.p && x.st === 'serve')) return null; // a jump serve has its own routine
   const dir = Math.sign(sl.x - NETX) || 1,
-    run = !sl.via;
+    run = !sl.via,
+    // a higher jump needs a longer run and carries further (owner, 2026-10-16): × √(height / 1.5 m), 1–1.6
+    k = clamp(Math.sqrt(((jp.peak || 0) * UNIT_M.h) / 1.5), 1, 1.6),
+    runM = RUNUP_M * k,
+    offM = TAKEOFF_M * k;
   return {
     p: ba.to.p,
     back: b.acts.some(x => x.k === 'spkstyle' && x.p === ba.to.p && x.st === 'pipe'), // back-row attack (pipe / long back)
-    deep: run ? clamp(sl.x + (dir * RUNUP_M) / MX, 20, 980) : sl.via.x, // the run-up depth: run-up point, or the end line
+    deep: run ? clamp(sl.x + (dir * runM) / MX, 20, 980) : sl.via.x, // the run-up depth: run-up point, or the end line
     cx: sl.x,
     cz: sl.z,
-    rx: run ? clamp(sl.x + (dir * RUNUP_M) / MX, 20, 980) : null,
+    rx: run ? clamp(sl.x + (dir * runM) / MX, 20, 980) : null,
     rz: run ? sl.z : null,
-    ox: sl.x + (dir * TAKEOFF_M) / MX,
+    ox: sl.x + (dir * offM) / MX,
     oz: sl.z,
-    t0: jp.t0 || 0
+    t0: jumpT0(jp, b.dur) // (take-off by the jump's height: playback jumpT0)
   };
 }
 /** Reading the set: the hitter of the next beat starts for their run-up point already in this beat. */
