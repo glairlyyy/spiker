@@ -34,7 +34,7 @@ const hpOf = (m, p) => (m && m.hp && m.hp[p.id] != null ? m.hp[p.id] : 1);
  */
 function hpHit(m, p, pow) {
   const r = pow / Math.max(1, effD(p)),
-    dmg = Math.min(HP.max, HP.base * Math.pow(r / HP.r0, HP.exp));
+    dmg = Math.min(HP.max, HP.base * Math.pow(r / HP.r0, HP.exp)) * ((MTRAITS[mtr(m, p)] || {}).hp || 1); // Iron Body
   if (m.hpLog) ((m.hpLog.n += 1), (m.hpLog.dmg += dmg));
   m.hp[p.id] = Math.max(0, hpOf(m, p) - dmg);
   return m.hp[p.id] <= 0;
@@ -77,13 +77,23 @@ function morPoint(m, w, fade, LD) {
     shake = momShaken(m, L),
     gain = (0.1 + (m.streak[w] >= 3 ? 0.07 : 0) + m.big * 0.1) * (1 + LD(w) * 0.6),
     killer = m.lastK,
-    stuffed = m.lastPlay === 'killblock' && m.ctx0 && m.ctx0.spiker ? m.ctx0.spiker.id : null;
+    stuffed = m.lastPlay === 'killblock' && m.ctx0 && m.ctx0.spiker ? m.ctx0.spiker.id : null,
+    late = Math.max(m.pts[0], m.pts[1]) >= TRAIT_LATE,
+    early = m.pts[0] + m.pts[1] <= TRAIT_EARLY;
+  // the T-304 traits' gain / loss factors (late in the set, early, every swing, the weaker side)
+  const gainK = (T, i) =>
+    (T.swing || 1) *
+    (T.late && late ? T.late[0] : 1) *
+    (T.early ? T.early[early ? 0 : 1] : 1) *
+    (T.under && ovrSide(m, i) < ovrSide(m, 1 - i) - 1 ? T.under : 1);
+  const lossK = T => (T.swing || 1) * (T.late && late ? T.late[1] : 1);
   for (const p of squadOf(m.t[w])) {
     const T = MTRAITS[mtr(m, p)] || {},
       own = killer === p.id;
     let g = gain;
     if (killer && !own && T.mates) g *= T.mates;
     if (own && T.kill) g += T.kill;
+    g *= gainK(T, w);
     m.mor[p.id] = clamp(morOf(m, p) * (1 - 0.15 * fade(w)) + g, -1, 1);
   }
   let low = null;
@@ -94,6 +104,7 @@ function morPoint(m, w, fade, LD) {
     let loss = (0.09 + m.big * 0.05) * fade(L) * heat;
     if (T.lost) loss *= T.lost;
     loss += shake * (T.shake || 1);
+    loss *= lossK(T);
     if (T.up && (m.errBy === p.id || stuffed === p.id)) loss = -T.up; // Spiteful: their own error / being stuffed fires them up
     m.mor[p.id] = clamp(mo * (1 - 0.15 * fade(L)) - loss, -1, 1);
     if (m.t[L].P.includes(p) && (!low || morOf(m, p) < morOf(m, low))) low = p;
@@ -102,6 +113,13 @@ function morPoint(m, w, fade, LD) {
     const T = MTRAITS[mtr(m, p)];
     if (T && T.lift && low && low !== p) m.mor[low.id] = clamp(morOf(m, low) + T.lift, -1, 1);
   }
+  // Trash Talker: the error that lost the point stings its maker more (each talker on court)
+  const errP = m.errBy && squadOf(m.t[L]).find(p => p.id === m.errBy);
+  if (errP)
+    for (const p of m.t[w].P) {
+      const T = MTRAITS[mtr(m, p)];
+      if (T && T.taunt) m.mor[errP.id] = clamp(morOf(m, errP) - T.taunt, -1, 1);
+    }
   m.mom[w] = fireOf(m, w);
   m.mom[L] = fireOf(m, L);
 }

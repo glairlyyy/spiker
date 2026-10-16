@@ -601,6 +601,18 @@ the AI coach fills every slot you leave with the same function. Built and measur
     kills shake it twice as hard; **Showboat** — their own kill +0.15 more, teammates' kills half; **Anchor** — a lost point
     costs × 0.7 and lifts the lowest teammate (+0.08); **Stubborn** — morale as default; ignores what a slotted card forces
     (§2.33). Temperaments (§2.14) stay as the team's stage thresholds.
+  - **More traits (owner, 2026-10-17) [built 2026-10-17, T-304]**: twelve traits, about 85 % of players have one (shares:
+    Spiteful 10, Glass 6, Showboat 8, Anchor 8, Stubborn 6, Clutch 8, Hothead 8, Iron Body 7, Slow Starter 6, Underdog 7,
+    Trash Talker 6, Choker 5 %). "Late" = either side at 12+ (`TRAIT_LATE`).
+    **Clutch** — late: gains × 1.5, losses × 0.5. **Choker** — late: losses × 2, gains × 0.5 (no card). **Hothead** — gains
+    and losses × 1.5. **Iron Body** — HP damage × 0.7. **Slow Starter** — gains × 0.5 for the first 8 points played, × 1.3
+    after. **Underdog** — gains × 1.4 while their side's average OVR is below the other's. **Trash Talker** — an opponent's
+    error costs that opponent 0.08 more morale (each Trash Talker on court).
+    Trait cards (a squad player with the trait adds it): Spiteful → Spite Spike, Anchor → Hold the Line (kept); **Showboat →
+    Highlight Reel** (showboats' jump +10 % while ahead); **Clutch → Ice Veins** (power and serve +6 % late); **Hothead → Hot
+    Streak** (power +10 % on a 2+ point streak); **Iron Body → Take the Hit** (defence +8 %); **Slow Starter → Second Wind**
+    (one-shot: the court's HP full, stamina +0.25); **Underdog → Giant Killer** (power and defence +5 % while the weaker side);
+    **Trash Talker → Get In Their Head** (−0.15 morale to their side when slotted). Glass, Stubborn and Choker add none.
 - §2.32 Turns (owner, 2026-10-16) **[built 2026-10-16, T-295; UI T-297]**: the match pauses for a **turn** every `TURN.pts`
   (6) points played, and at once when a card is spent (§2.33); match prep is turn 0; a timeout is an extra turn for its side.
   At a turn each side's slots are filled again (yours first, then the coach's). Played match: an overlay over the frozen
@@ -685,6 +697,36 @@ the AI coach fills every slot you leave with the same function. Built and measur
     Measured (25 matches, with cards): spikes p90 120 / 162 / 191 km/h, max 179 / 253 / 300 (league / tournament /
     Monster); jumps p90 1.8 / 2.4 / 2.8 m, max 3.5 / 4.0 / 4.0 m. QA (Monster, a 3.15 m jump): take-off at 21 % of the set
     (was 52 %), from the take-off point, the ball at the hand at the top.
+  - **More cards (owner, 2026-10-17) [built 2026-10-17, T-305]**: two new kinds, new plays and OP cards, and counters for the
+    plays that had none.
+    - **One-shot** (`kind: 'once'`): fires the moment it is slotted, then is used up (no morale cost, no turn). **Second Wind**
+      (Slow Starter, above); **Timeout Talk** (coach, DEF: morale +0.25 on court and the hand's Worn marks cleared; fits when
+      the side's fire is below −0.2).
+    - **Trap** (`kind: 'trap'`, coach): hidden; at a turn, if the other side slots a card it names, that card burns at once
+      (their usual spent cost: morale down, a turn) and the trap is used up. **Serve Trap** (DEF: Hunt, Killer, Drive, Target,
+      Float Barrage), **Quick Trap** (DEF: Quick Tempo, Freak Quick, Slide), **Block Bait** (ATK: Wall Their Ace, Commit, Read
+      Block, Read the Setter). The coach sets one when the other side's pool holds what it names.
+    - **New coach plays**: **Short Serve** (ATK serve: fits against a side that lives on quicks; their power −15 %; countered by
+      Speed Dig; it counters Quick / Freak / Slide); **Feed the Hot Hand** (ATK: the setter feeds the hitter with the highest
+      morale, each turn; fits when one is at 0.3+; power +15 % side-wide; countered by Wall Their Ace); **Float Barrage** (ATK
+      serve: everyone floats; fits against passers who are not breaking; their defence −15 %; countered by Cover); **Read the
+      Setter** (DEF: jump +25 %; fits against a sharp setter, Wit 1.2+; countered by Tip & Roll; it counters Sync, Pipe Combo,
+      Lefty Dump).
+    - **New OP cards** (FLEX): **Zone** (when slotted: their best hitter's morale to full, the side +0.1); **Overload** (power
+      and defence +10 %, stamina drains × 2 while slotted); **Last Stand** (power, defence and jump +15 % while the other side is
+      at match point).
+    - **Counters filled**: Read Block ← Power Through; Soft Block ← Tip & Roll; Sync / Pipe Combo / Lefty ← Read the Setter.
+    - **OP reads**: Element Surge fits with an element player on court, Fever Rush when the side is shaken (fire < −0.2), Iron
+      Wall against hitters stronger than our defence, Zone when behind, Overload on fresh legs (stamina 0.75+), Last Stand at
+      their match point — so the coach's FLEX pick varies (it was always Element Surge).
+    - **Measured** (2026-10-17, tournament, `npm run reads`, 60 pairs; fit / misfit / countered vs no cards): Short Serve
+      +11 / −10 / −23; Feed the Hot Hand +9 / −19 / −22; Read the Setter +10 / – / −13; Take the Hit +11 / −13 / −14; Highlight
+      Reel +12 / −8; Ice Veins +15 / −4; Giant Killer +10 / −20; Float Barrage and Hot Streak too few fitting rallies to read
+      (n 44 / 22). Hands (`npm run cards`, 60 pairs, vs side 0 holding no cards; league / tournament): boosts +1.2 / +2.1 %
+      points, random plays +8.7 / +14.0, coach +14.8 / +19.2 (wins +40 / +45 %) — the must-hold now holds (none < boosts <
+      random < coach). Coach vs coach, 80 matches: 0.84 plays spent, 0.5 one-shots used, 0.08 traps sprung a match. End
+      morale by trait (tournament): Spiteful 0.48, Clutch 0.51, Iron Body 0.42, Hothead 0.37, Underdog 0.37, none 0.25,
+      Choker 0.15, Showboat 0.13, Glass 0.05.
   - **Must hold (T-296)**: no cards < boosts only ≤ coach AI; a no-card team never beats the coach AI on average. A random
     hand may beat no hand (owner, 2026-10-16: about half its plays fit by chance — fine), never the coach.
   - **Measured** (2026-10-16, `npm run cards`, 100 paired seeds, side 0 vs the coach's hand; point share vs side 0 holding no

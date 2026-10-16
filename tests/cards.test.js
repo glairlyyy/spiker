@@ -102,3 +102,89 @@ test('cards: no cards (cards: false) is today’s engine — no slots, plans fro
   while (!m.over) g.playRally(m);
   eq(m.turnN, undefined, 'no turns');
 });
+
+test('cards: traps burn the card they name at the next serve; one-shots fire once and are used up; Overload drains twice (T-305)', () => {
+  const g = load(73),
+    T = g.mkTeams();
+  // a Serve Trap against a slotted Hunt the Passer
+  const m = g.newMatch(T[0], T[1], false, {
+    cards: [
+      { by: 'you', pick: { atk0: 'hunt' } },
+      { by: 'you', pick: { def0: 'strap' } }
+    ]
+  });
+  assert(m.trapNow, 'traps wait for the first serve');
+  g.playRally(m);
+  assert(m.cards[0].spent.includes('hunt') && !g.cardIds(m, 0).includes('hunt'), 'Hunt burnt by the trap');
+  assert(m.cards[1].spent.includes('strap') && !g.cardIds(m, 1).includes('strap'), 'the trap is used up');
+  assert(m.turnNow || m.turnN > 0, 'a turn follows');
+  // no target: the trap stays
+  const n = g.newMatch(T[0], T[1], false, {
+    cards: [
+      { by: 'you', pick: { atk0: 'pow' } },
+      { by: 'you', pick: { def0: 'qtrap' } }
+    ]
+  });
+  g.playRally(n);
+  assert(g.cardIds(n, 1).includes('qtrap'), 'a trap with nothing to catch stays');
+  // Timeout Talk: morale up, used up at once
+  const t = g.newMatch(T[2], T[3], false, { cards: [{ by: 'you', pick: {} }, null] });
+  const f0 = t.mom[0];
+  assert(g.cardPut(t, 0, 'def0', 'talk'), 'Timeout Talk fits DEF');
+  g.cardApply(t, 0);
+  assert(t.mom[0] > f0 + 0.2, `morale up (${f0} → ${t.mom[0]})`);
+  assert(!g.cardIds(t, 0).includes('talk') && t.cards[0].spent.includes('talk') && !t.turnNow, 'used up, no turn');
+  // Overload: stamina drains × 2 for its side only
+  const o = g.newMatch(T[2], T[3], false, {
+    cards: [
+      { by: 'you', pick: { flex: 'overload' } },
+      { by: 'you', pick: {} }
+    ]
+  });
+  assert(g.cardInPool(o, 0, 'overload') || !g.squadOf(o.t[0]).some(p => p.op || p.elOn), 'Overload comes with an OP / element player');
+  if (g.cardIds(o, 0).includes('overload')) {
+    const a = o.t[0].P[0],
+      b = o.t[1].P[0];
+    a.def = b.def;
+    a.speed = b.speed;
+    g.dr(o, a, 0.05);
+    g.dr(o, b, 0.05);
+    assert(Math.abs(1 - o.sta[a.id] - 2 * (1 - o.sta[b.id])) < 1e-6, 'twice the drain');
+  }
+});
+
+test('traits: twelve traits, ~85 % of players; Iron Body takes less HP damage; Choker loses more late (spec §2.31, T-304)', () => {
+  const g = load(74),
+    sh = Object.values(g.MTRAITS).reduce((a, t) => a + t.share, 0);
+  eq(Object.keys(g.MTRAITS).length, 12);
+  assert(Math.abs(sh - 0.85) < 1e-9, `shares sum to ${sh}`);
+  const T = g.mkTeams(),
+    all = T.flatMap(t => g.squadOf(t)),
+    has = all.filter(p => g.mtraitOf(p)).length / all.length;
+  assert(has > 0.7 && has < 0.97, `${(100 * has).toFixed(0)} % have a trait`);
+  const m = g.newMatch(T[0], T[1], false, { cards: false }),
+    p = m.t[1].P[0];
+  p.mtrait = null;
+  g.hpHit(m, p, 60);
+  const plain = 1 - g.hpOf(m, p);
+  m.hp[p.id] = 1;
+  p.mtrait = 'iron';
+  g.hpHit(m, p, 60);
+  assert(Math.abs(1 - g.hpOf(m, p) - plain * 0.7) < 1e-9, 'Iron Body × 0.7');
+  // Choker vs none: a lost point late
+  const lose = tr => {
+    const n = g.newMatch(T[0], T[1], false, { cards: false });
+    for (const q of g.squadOf(n.t[1])) q.mtrait = tr;
+    n.pts = [13, 12];
+    g.morPoint(
+      n,
+      0,
+      () => 1,
+      () => 0
+    );
+    return g.morOf(n, n.t[1].P[1]);
+  };
+  assert(lose('choker') < lose(null), 'a Choker loses more late');
+  assert(lose('clutch') > lose(null), 'a Clutch player loses less late');
+  for (const q of all) delete q.mtrait;
+});

@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-304** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-306** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -83,6 +83,20 @@ Result: js/ui/match-cards.js (hand, turn overlay #cturn, Tab look, spent tag, re
 the expected failure, year 2 the redemption. One save bump (RUN_VERSION 19) in T-286 covers the whole block; later tasks add
 fields through RUN_DEFAULTS. Story mode only (Endless stays unbuilt); the main random stream is untouched (seeded rolls).
 
+
+### [x] T-305: More cards — one-shots, traps, new plays and OP cards, counters filled
+Spec: §2.33 (More cards)          Goldens: update (new cards in every pool; the coach's picks)          Save: no change
+Goal: one-shot and trap kinds; Short Serve, Feed the Hot Hand, Float Barrage, Read the Setter, Timeout Talk, Serve / Quick
+Trap, Block Bait; OP Zone, Overload, Last Stand; counters for Read Block, Soft Block, Sync, Pipe Combo, Lefty.
+Files: js/data/cards.js, js/engine/cards.js (cardOn, cardTraps, one-shots, new reads, ord who setter / all, value hot), js/engine/serve.js (traps before the serve), js/engine/stats.js (Overload drain), js/ui/match-cards.js, css/match.css, tests/cards.test.js, spec.md, ARCHITECTURE.md, tests/golden.json
+Result: Done (owner request, spec chat). The coach sets a trap only for a card the other side has slotted before (it can't see the hand). The OP cards got their own reads (the coach always took Element Surge). Edges tuned once on the reads (Short Serve −15 → −30 their power, Feed +40, Read the Setter jump 45 + def 15, Highlight Reel power 35). Measured in spec §2.33 More cards: the must-hold holds now (coach +14.8 / +19.2 % points vs no cards; boosts +1.2 / +2.1). Float Barrage and Hot Streak fit too rarely to read. QA (Monster prep, seed 7): both pools show the new cards, one-shots green-edged, traps dashed. 154/154, UI smoke 13/13.
+
+### [x] T-304: More traits — twelve, ~85 % of players, seven new trait cards
+Spec: §2.31 (More traits)          Goldens: update (trait shares re-roll who has which)          Save: no change
+Goal: Clutch, Hothead, Iron Body, Slow Starter, Underdog, Trash Talker, Choker; trait cards Highlight Reel, Ice Veins, Hot
+Streak, Take the Hit, Second Wind, Giant Killer, Get In Their Head.
+Files: js/data/cards.js (MTRAITS, TRAIT_LATE / TRAIT_EARLY), js/engine/bars.js (morPoint factors, Trash Talker, Iron Body in hpHit), js/engine/cards.js (`needT`, `when` = any read), tests/cards.test.js, spec.md
+Result: Done (owner request, spec chat). Shares re-balanced to 0.85 total (Spiteful 12 → 10, Glass 10 → 6, Showboat / Anchor 10 → 8, Stubborn 8 → 6), so some players' traits changed. A card's `when` is now any CARD_FIT read; `needT` limits a buff to that trait's players (Highlight Reel). End morale by trait in spec §2.33 (More cards, Measured). Tests: shares, Iron Body × 0.7, Choker / Clutch late.
 
 ### [x] T-303: The block meets the ball on its own line
 Spec: §2.19 (The block meets the ball's own line)          Goldens: update (blocker pick, over-the-hands gate, cut read)          Save: no change

@@ -12,15 +12,28 @@ const HP = { base: 0.45, r0: 0.72, exp: 1.55, max: 1.5, heal: 0.35, up: 0.5, dra
 /**
  * Morale traits (spec §2.31), by hash of the player (`share` of all players each; the rest have none). up: their own error /
  * being stuffed (Spiteful); lost: × on a lost point; shake: × on marathons and hard kills; kill: + on their own kill; mates:
- * × on a point a teammate's kill won; lift: the lowest teammate's morale on a lost point (Anchor).
+ * × on a point a teammate's kill won; lift: the lowest teammate's morale on a lost point (Anchor); late: [gain ×, loss ×]
+ * late in the set; swing: × on every gain and loss; hp: × HP damage; early: [gain × before TRAIT_EARLY points, after];
+ * under: gain × while the weaker side (OVR); taunt: an opponent's error costs that opponent this much more.
  */
 const MTRAITS = {
-  spiteful: { name: 'Spiteful', share: 0.12, up: 0.15, lost: 0.5, tip: 'errors and stuffs fire them up' },
-  glass: { name: 'Glass', share: 0.1, shake: 2, tip: 'marathons and hard kills shake them twice as hard' },
-  showboat: { name: 'Showboat', share: 0.1, kill: 0.15, mates: 0.5, tip: 'lives for their own kills' },
-  anchor: { name: 'Anchor', share: 0.1, lost: 0.7, lift: 0.08, tip: 'holds steady and lifts the lowest teammate' },
-  stubborn: { name: 'Stubborn', share: 0.08, tip: 'plays their own game: ignores what a card forces' }
+  spiteful: { name: 'Spiteful', share: 0.1, up: 0.15, lost: 0.5, tip: 'errors and stuffs fire them up' },
+  glass: { name: 'Glass', share: 0.06, shake: 2, tip: 'marathons and hard kills shake them twice as hard' },
+  showboat: { name: 'Showboat', share: 0.08, kill: 0.15, mates: 0.5, tip: 'lives for their own kills' },
+  anchor: { name: 'Anchor', share: 0.08, lost: 0.7, lift: 0.08, tip: 'holds steady and lifts the lowest teammate' },
+  stubborn: { name: 'Stubborn', share: 0.06, tip: 'plays their own game: ignores what a card forces' },
+  // (owner, 2026-10-17, T-304)
+  clutch: { name: 'Clutch', share: 0.08, late: [1.5, 0.5], tip: 'rises late in the set' },
+  hothead: { name: 'Hothead', share: 0.08, swing: 1.5, tip: 'every point hits them half again as hard, up or down' },
+  iron: { name: 'Iron Body', share: 0.07, hp: 0.7, tip: 'takes 30 % less HP damage' },
+  slow: { name: 'Slow Starter', share: 0.06, early: [0.5, 1.3], tip: 'slow to warm up, strong once going' },
+  underdog: { name: 'Underdog', share: 0.07, under: 1.4, tip: 'fires up against a stronger side' },
+  trash: { name: 'Trash Talker', share: 0.06, taunt: 0.08, tip: 'every opponent error stings them more' },
+  choker: { name: 'Choker', share: 0.05, late: [0.5, 2], tip: 'tightens up late in the set' }
 };
+/** "Late" for Clutch / Choker / Ice Veins: either side at this many points (spec §2.31). Slow Starter: the first `early` points played. */
+const TRAIT_LATE = 12,
+  TRAIT_EARLY = 8;
 
 /** Turns (spec §2.32): every `pts` points played, and at once when a card is spent. Spent tally: Worn at `worn`, Spent at `spent`. */
 const TURN = { pts: 6, worn: -2, spent: -3, spentMor: -0.1 };
@@ -31,11 +44,14 @@ const slotZone = k => (k === 'flex' ? 'flex' : k.slice(0, 3));
 /**
  * The tactic cards (spec §2.33). zone: 'atk' | 'def' | 'op' (OP: FLEX only). kind: 'boost' (never spent) | 'play'. src:
  * 'base' (always in the pool) | 'coach' (the coach's playbook) | 'tech' (a squad player owns `need`) | 'trait' (a squad player
- * has trait `trait`) | 'op' (an OP or element player in the squad). What a card does, compiled by js/engine/cards.js:
- * buff — stat → % (atk = power in play, def, spd, jump, serve; with `need` only for its holders; `when: 'behind'` only while
- * the side trails); plan — { atk | def } team plan (PLANS); tac — the tactic (TACTICS); ord — [kind, value] role order for
- * its players (`who`: 'holders' | 'mb' | 'hitters'); force — the technique always fires for its holders; on — 'rush' (morale
- * when slotted) | 'surge' (a full element gauge every turn). grp: only one card of a group at a time. tally: the rallies its
+ * has trait `trait`) | 'op' (an OP or element player in the squad). kind also 'once' (fires when slotted, then used up: `on`)
+ * and 'trap' (`trap`: the other side's cards it burns when they slot one). What a card does, compiled by js/engine/cards.js:
+ * buff — stat → % (atk = power in play, def, spd, jump, serve; with `need` only for its holders, `needT` only for players with
+ * that trait; `when`: a CARD_FIT read that must hold — 'behind', 'late', 'streak', 'ahead', 'under', 'brink'); plan — { atk | def } team plan (PLANS); tac — the tactic (TACTICS); ord — [kind, value] role order for
+ * its players (`who`: 'holders' | 'mb' | 'hitters' | 'setter' | 'all'; value 'weak' = their weakest passer, 'hot' = our
+ * hitter with the highest morale); force — the technique always fires for its holders; on — what happens when it is slotted:
+ * 'rush' (morale) | 'surge' (a full element gauge every turn) | 'taunt' | 'zone' | 'wind' | 'talk' (js/engine/cards.js cardOn);
+ * over — stamina drains × this while slotted. grp: only one card of a group at a time. tally: the rallies its
  * spent count reads — 'serve' (your serves) | 'recv' (theirs) | 'attack' (rallies you attack in) | 'defend' (they attack in).
  */
 const CARDS = {
@@ -298,6 +314,151 @@ const CARDS = {
     tally: 'defend',
     desc: 'Defense +8 % while behind'
   },
+  showreel: {
+    name: 'Highlight Reel',
+    zone: 'atk',
+    kind: 'play',
+    src: 'trait',
+    trait: 'showboat',
+    needT: 'showboat',
+    buff: { jump: 10 },
+    when: 'ahead',
+    tally: 'attack',
+    desc: 'Showboats jump +10 % while ahead'
+  },
+  ice: {
+    name: 'Ice Veins',
+    zone: 'atk',
+    kind: 'play',
+    src: 'trait',
+    trait: 'clutch',
+    buff: { atk: 6, serve: 6 },
+    when: 'late',
+    tally: 'attack',
+    desc: 'Power and serve +6 % late in the set'
+  },
+  hot: {
+    name: 'Hot Streak',
+    zone: 'atk',
+    kind: 'play',
+    src: 'trait',
+    trait: 'hothead',
+    buff: { atk: 10 },
+    when: 'streak',
+    tally: 'attack',
+    desc: 'Power +10 % on a 2+ point streak'
+  },
+  take: {
+    name: 'Take the Hit',
+    zone: 'def',
+    kind: 'play',
+    src: 'trait',
+    trait: 'iron',
+    buff: { def: 8 },
+    tally: 'defend',
+    desc: 'Defense +8 %'
+  },
+  wind: {
+    name: 'Second Wind',
+    zone: 'def',
+    kind: 'once',
+    src: 'trait',
+    trait: 'slow',
+    on: 'wind',
+    desc: 'One-shot: the court’s HP full, stamina +0.25'
+  },
+  giant: {
+    name: 'Giant Killer',
+    zone: 'atk',
+    kind: 'play',
+    src: 'trait',
+    trait: 'underdog',
+    buff: { atk: 5, def: 5 },
+    when: 'under',
+    tally: 'attack',
+    desc: 'Power and defense +5 % while the weaker side'
+  },
+  head: {
+    name: 'Get In Their Head',
+    zone: 'atk',
+    kind: 'play',
+    src: 'trait',
+    trait: 'trash',
+    on: 'taunt',
+    tally: 'attack',
+    desc: 'Their morale −0.15 when slotted'
+  },
+  // one-shots and traps (owner, 2026-10-17, T-305)
+  talk: {
+    name: 'Timeout Talk',
+    zone: 'def',
+    kind: 'once',
+    src: 'coach',
+    on: 'talk',
+    desc: 'One-shot: morale +0.25 on court, Worn marks cleared'
+  },
+  strap: {
+    name: 'Serve Trap',
+    zone: 'def',
+    kind: 'trap',
+    src: 'coach',
+    trap: ['hunt', 'killer', 'drive', 'target', 'float'],
+    desc: 'Hidden: if they slot a serve play, it burns'
+  },
+  qtrap: {
+    name: 'Quick Trap',
+    zone: 'def',
+    kind: 'trap',
+    src: 'coach',
+    trap: ['quick', 'freak', 'slide'],
+    desc: 'Hidden: if they slot a quick play, it burns'
+  },
+  bait: {
+    name: 'Block Bait',
+    zone: 'atk',
+    kind: 'trap',
+    src: 'coach',
+    trap: ['wall', 'commit', 'readblk', 'rset'],
+    desc: 'Hidden: if they slot a block play, it burns'
+  },
+  // more coach plays (T-305)
+  short: {
+    name: 'Short Serve',
+    zone: 'atk',
+    kind: 'play',
+    src: 'coach',
+    tally: 'serve',
+    desc: 'Short serves pull their middles off the net'
+  },
+  feedhot: {
+    name: 'Feed the Hot Hand',
+    zone: 'atk',
+    kind: 'play',
+    src: 'coach',
+    ord: ['feed', 'hot'],
+    who: 'setter',
+    tally: 'attack',
+    desc: 'The setter feeds the hitter with the highest morale'
+  },
+  float: {
+    name: 'Float Barrage',
+    zone: 'atk',
+    kind: 'play',
+    src: 'coach',
+    ord: ['srv', 'float'],
+    who: 'all',
+    grp: 'srv',
+    tally: 'serve',
+    desc: 'Everyone floats: wobbling serves at a steady passer'
+  },
+  rset: {
+    name: 'Read the Setter',
+    zone: 'def',
+    kind: 'play',
+    src: 'coach',
+    tally: 'defend',
+    desc: 'The block follows their setter’s hands'
+  },
   // OP (FLEX only)
   surge: {
     name: 'Element Surge',
@@ -309,7 +470,36 @@ const CARDS = {
     desc: 'Element players start every turn charged'
   },
   rush: { name: 'Fever Rush', zone: 'op', kind: 'play', src: 'op', on: 'rush', tally: 'attack', desc: 'Morale +0.3 on court when slotted' },
-  iron: { name: 'Iron Wall', zone: 'op', kind: 'play', src: 'op', buff: { def: 10 }, tally: 'defend', desc: 'Defense +10 %' }
+  iron: { name: 'Iron Wall', zone: 'op', kind: 'play', src: 'op', buff: { def: 10 }, tally: 'defend', desc: 'Defense +10 %' },
+  zone: {
+    name: 'Zone',
+    zone: 'op',
+    kind: 'play',
+    src: 'op',
+    on: 'zone',
+    tally: 'attack',
+    desc: 'Their best hitter’s morale to full, the side +0.1, when slotted'
+  },
+  overload: {
+    name: 'Overload',
+    zone: 'op',
+    kind: 'play',
+    src: 'op',
+    buff: { atk: 10, def: 10 },
+    over: 2,
+    tally: 'attack',
+    desc: 'Power and defense +10 %; stamina drains twice as fast'
+  },
+  stand: {
+    name: 'Last Stand',
+    zone: 'op',
+    kind: 'play',
+    src: 'op',
+    buff: { atk: 15, def: 15, jump: 15 },
+    when: 'brink',
+    tally: 'defend',
+    desc: 'Power, defense and jump +15 % while they are at match point'
+  }
 };
 /** Combos (spec §2.33): both slotted → the bonus; they share one spent count. `any`: either of the second ids. */
 const COMBOS = {
@@ -331,6 +521,7 @@ const CARD_AI = {
   countered: -5,
   seenCtr: 2,
   combo: 1.2,
+  trap: 1.5,
   worn: -2,
   dull: 0.5
 };
@@ -393,11 +584,11 @@ const CARD_EDGE = {
   },
   cutshot: { fit: 'strongBlock', ctr: ['sdig'], team: 1, e: [['them', 'jump', -25]] },
   delay: { fit: 'strongBlock', ctr: ['sdig'], e: [['us', 'atk', 50]] },
-  sync: { fit: 'strongBlock', ctr: [], team: 1, e: [['us', 'atk', 20]] },
-  pipecombo: { fit: 'strongBlock', ctr: [], team: 1, e: [['us', 'atk', 20]] },
+  sync: { fit: 'strongBlock', ctr: ['rset'], team: 1, e: [['us', 'atk', 20]] },
+  pipecombo: { fit: 'strongBlock', ctr: ['rset'], team: 1, e: [['us', 'atk', 20]] },
   lefty: {
     fit: 'strongBlock',
-    ctr: [],
+    ctr: ['rset'],
     team: 1,
     e: [
       ['us', 'atk', 15],
@@ -405,9 +596,9 @@ const CARD_EDGE = {
     ]
   },
   tip: { fit: 'tiredFloor', ctr: ['sdig'], e: [['them', 'spd', -25]] },
-  quick: { fit: 'lowMiddle', ctr: ['commit', 'readblk'], e: [['us', 'atk', 25]] },
-  freak: { fit: 'lowMiddle', ctr: ['commit', 'readblk'], e: [['us', 'atk', 50]] },
-  slide: { fit: 'lowMiddle', ctr: ['commit', 'readblk'], e: [['us', 'atk', 50]] },
+  quick: { fit: 'lowMiddle', ctr: ['commit', 'readblk', 'short'], e: [['us', 'atk', 25]] },
+  freak: { fit: 'lowMiddle', ctr: ['commit', 'readblk', 'short'], e: [['us', 'atk', 50]] },
+  slide: { fit: 'lowMiddle', ctr: ['commit', 'readblk', 'short'], e: [['us', 'atk', 50]] },
   wall: {
     fit: 'theirAce',
     ctr: ['beat'],
@@ -424,7 +615,7 @@ const CARD_EDGE = {
       ['them', 'atk', -10]
     ]
   },
-  readblk: { fit: 'theirQuicks', ctr: [], e: [['us', 'jump', 50]] },
+  readblk: { fit: 'theirQuicks', ctr: ['power'], e: [['us', 'jump', 50]] },
   sdig: {
     fit: 'theirSoft',
     ctr: ['power'],
@@ -434,13 +625,50 @@ const CARD_EDGE = {
     ]
   },
   deep: { fit: 'theirPower', ctr: ['tip'], e: [['us', 'def', 30]] },
-  softblk: { fit: 'theirPower', ctr: [], e: [['us', 'def', 50]] },
+  softblk: { fit: 'theirPower', ctr: ['tip'], e: [['us', 'def', 50]] },
   cover: { fit: 'ourWeakPass', ctr: ['killer', 'drive'], e: [['us', 'def', 20]] },
   spite: { fit: 'behind', ctr: [], e: [['us', 'atk', 15]] },
   hold: { fit: 'behind', ctr: [], e: [['us', 'def', 15]] },
-  iron: { fit: 'always', ctr: [], e: [['us', 'def', 5]] },
-  surge: { fit: 'always', ctr: [], e: [] },
-  rush: { fit: 'always', ctr: [], e: [] }
+  iron: { fit: 'theirPower', ctr: [], e: [['us', 'def', 5]] },
+  surge: { fit: 'elements', ctr: [], e: [] },
+  rush: { fit: 'shaken', ctr: [], e: [] },
+  // T-304 / T-305
+  showreel: { fit: 'ahead', ctr: [], e: [['us', 'atk', 35]] },
+  ice: { fit: 'late', ctr: [], e: [['us', 'atk', 15]] },
+  hot: { fit: 'streak', ctr: [], e: [['us', 'atk', 30]] },
+  take: { fit: 'ourWeakPass', ctr: ['killer', 'drive'], e: [['us', 'def', 25]] },
+  wind: { fit: 'tiredUs', ctr: [], e: [] },
+  giant: {
+    fit: 'under',
+    ctr: [],
+    e: [
+      ['us', 'atk', 15],
+      ['us', 'def', 10]
+    ]
+  },
+  head: { fit: 'always', ctr: [], e: [] },
+  talk: { fit: 'shaken', ctr: [], e: [] },
+  short: {
+    fit: 'theirQuicks',
+    ctr: ['sdig'],
+    e: [
+      ['them', 'atk', -30],
+      ['us', 'serve', 15]
+    ]
+  },
+  feedhot: { fit: 'hotHand', ctr: ['wall'], team: 1, e: [['us', 'atk', 40]] },
+  float: { fit: 'strongPass', ctr: ['cover'], e: [['them', 'def', -30]] },
+  rset: {
+    fit: 'theirSetter',
+    ctr: ['tip'],
+    e: [
+      ['us', 'jump', 45],
+      ['us', 'def', 15]
+    ]
+  },
+  zone: { fit: 'behind', ctr: [], e: [] },
+  overload: { fit: 'fresh', ctr: [], e: [] },
+  stand: { fit: 'brink', ctr: [], e: [['us', 'def', 15]] }
 };
 /** The edge's factor: fit × 1, countered × `ctr`, misfit × `mis`; all × `k` (the balance knob). */
 const EDGE = { ctr: -1.5, mis: -0.6, k: 2 };

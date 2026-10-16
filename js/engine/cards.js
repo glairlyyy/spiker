@@ -26,8 +26,8 @@ function cardBuff(p, k) {
     E = C.ek && C.ek[k];
   if (!L && !E) return 1;
   let v = 0;
-  if (L) for (const b of L) if ((!b.need || hasTech(p, b.need)) && (!b.when || CM.pts[i] < CM.pts[1 - i])) v += b.v;
-  if (E) for (const b of E) if (!b.need || hasTech(p, b.need)) v += b.v; // reading pays (spec §2.33): this rally's edges
+  if (L) for (const b of L) if (cardFor(p, b) && (!b.when || CARD_FIT[b.when](CM, i))) v += b.v;
+  if (E) for (const b of E) if (cardFor(p, b)) v += b.v; // reading pays (spec §2.33): this rally's edges
   return Math.max(0.3, 1 + v / 100);
 }
 
@@ -40,9 +40,11 @@ function edgeK(p, k) {
   const E = CM.cards[CM.t[0] === p.team ? 0 : 1].ek[k];
   if (!E) return 1;
   let v = 0;
-  for (const b of E) if (!b.need || hasTech(p, b.need)) v += b.v;
+  for (const b of E) if (cardFor(p, b)) v += b.v;
   return Math.max(0.3, 1 + v / 100);
 }
+/** Does a buff / edge entry reach p: its technique (`need`), its trait (`needT`, spec §2.31). */
+const cardFor = (p, b) => (!b.need || hasTech(p, b.need)) && (!b.needT || mtr(CM, p) === b.needT);
 /** Start a match's cards (newMatch): opts.cards === false → none; opts.cards[i] = { by: 'you' | 'ai', pick: { slot: id } }. */
 function cardsInit(m, opts) {
   if (opts.cards === false) return (m.cards = null);
@@ -67,6 +69,7 @@ function cardsInit(m, opts) {
   m.turnN = 0;
   m.turnNow = false;
   m.turnLog = [];
+  m.trapNow = true; // traps (spec §2.33) are checked before the next serve, once both hands are set
   for (const i of [0, 1]) {
     const pick = opts.cards && opts.cards[i] && opts.cards[i].pick;
     if (pick) for (const k in pick) cardPut(m, i, k, pick[k]);
@@ -135,6 +138,8 @@ function cardScore(m, i, id, chosen, X = cardCtx(m, i)) {
     styled = c.plan && (c.plan.atk === X.style[0] || c.plan.def === X.style[1]);
   if (c.kind === 'boost') return A.boost;
   if (X.dull && !styled) return -9;
+  // a trap: worth a slot when they have slotted what it names before and can again (the coach can't see their hand now)
+  if (c.kind === 'trap') return c.trap.some(x => X.theirSeen.includes(x)) ? A.trap : -9;
   let s = c.src === 'tech' ? A.tech : c.src === 'trait' ? A.trait : c.src === 'op' ? A.op : A.play;
   if (styled) s += A.style;
   const { T } = X,
@@ -161,6 +166,7 @@ function cardCtx(m, i) {
     ace = hit.length ? Math.max(...hit) : 0;
   return {
     T,
+    theirSeen: m.cards ? Object.keys(m.cards[1 - i].played).filter(x => cardInPool(m, 1 - i, x)) : [],
     dull: (T.coachIQ ?? 0.6) < CARD_AI.dull,
     style: PLAN_STYLE[T.sk] || ['straight', 'read'],
     theirs: m.att ? Coach.tags(m, 1 - i).filter(g => g.n >= need) : [],
@@ -234,10 +240,14 @@ function cardApply(m, i) {
           ? T.P.filter(p => p.role === 'MB')
           : c.who === 'hitters'
             ? T.P.filter(p => p.role !== 'S')
-            : squadOf(T).filter(p => hasTech(p, c.need));
+            : c.who === 'setter'
+              ? T.P.filter(p => p === T.s || p.role === 'S').slice(0, 1)
+              : c.who === 'all'
+                ? T.P
+                : squadOf(T).filter(p => hasTech(p, c.need));
     for (const p of who) {
       if (mtr(m, p) === 'stubborn' || ordOf(m, p, k)) continue;
-      const v = v0 === 'weak' ? weakPasser(m.t[1 - i]).id : v0;
+      const v = v0 === 'weak' ? weakPasser(m.t[1 - i]).id : v0 === 'hot' ? hotHand(m, i, p).id : v0;
       if (k === 'srv' && srvOpts(p).some(o => o.v === v && o.lock)) continue; // (a type they can't serve)
       ordSet(m, p, k, v);
       C.cord.push([p.id, k, v]);
@@ -248,16 +258,91 @@ function cardApply(m, i) {
   C.buff = [];
   for (const id of ids) {
     const c = CARDS[id];
-    for (const k in c.buff || {}) C.buff.push({ k, v: c.buff[k], need: c.need, when: c.when });
+    for (const k in c.buff || {}) C.buff.push({ k, v: c.buff[k], need: c.need, needT: c.needT, when: c.when });
   }
   for (const k in COMBOS)
     if (ids.some(id => comboOf(ids, id) === k)) for (const s in COMBOS[k].buff) C.buff.push({ k: s, v: COMBOS[k].buff[s] });
   C.bk = {}; // stat → its buffs (cardBuff reads this on every effective-stat call)
   for (const b of C.buff) (C.bk[b.k] || (C.bk[b.k] = [])).push(b);
-  // OP cards: Fever Rush when newly slotted; Element Surge every turn
-  if (ids.includes('rush') && !prev.includes('rush')) morAdd(m, i, 0.3);
-  if (ids.includes('surge') && m.eg) for (const p of T.P) elBuff(m, p);
-  C.prev = ids;
+  // on-slot effects (OP, trait and one-shot cards): when newly slotted; Element Surge every turn
+  for (const id of ids) if (CARDS[id].on && (!prev.includes(id) || CARDS[id].on === 'surge')) cardOn(m, i, id);
+  C.over = Math.max(1, ...ids.map(id => CARDS[id].over || 1)); // Overload: stamina drain × (dr, js/engine/stats.js)
+  // a one-shot is used up the moment it fires: out of its slot, gone for the match (no morale cost, no turn)
+  for (const k of SLOTS) {
+    const id = C.slots[k];
+    if (!id || CARDS[id].kind !== 'once') continue;
+    C.slots[k] = null;
+    delete C.you[k];
+    C.spent.push(id);
+    C.played[id] = (C.played[id] || 0) + 1;
+    (m.cardLog || (m.cardLog = [])).push({ side: i, id, at: [...m.pts], k: 'used' });
+  }
+  C.prev = cardIds(m, i);
+}
+/** Our hitter on court with the highest morale (Feed the Hot Hand), not the setter p. */
+const hotHand = (m, i, s) =>
+  m.t[i].P.filter(q => q !== s && q.role !== 'S').reduce(
+    (a, q) => (morOf(m, q) > morOf(m, a) ? q : a),
+    m.t[i].P.find(q => q !== s)
+  );
+/** A card's effect when it is slotted (`on`): Fever Rush, Element Surge, Get In Their Head, Zone, Second Wind, Timeout Talk. */
+function cardOn(m, i, id) {
+  const T = m.t[i],
+    C = cardsOf(m, i);
+  switch (CARDS[id].on) {
+    case 'rush':
+      return morAdd(m, i, 0.3);
+    case 'surge':
+      if (m.eg) for (const p of T.P) elBuff(m, p);
+      return;
+    case 'taunt':
+      return morAdd(m, 1 - i, -0.15);
+    case 'zone': {
+      const ace = T.P.filter(q => q.role !== 'S').reduce((a, q) => (effP(q) > effP(a) ? q : a), T.P[0]);
+      morAdd(m, i, 0.1);
+      m.mor[ace.id] = 1;
+      m.mom[i] = fireOf(m, i);
+      return;
+    }
+    case 'wind':
+      for (const p of T.P) {
+        m.hp[p.id] = 1;
+        m.sta[p.id] = Math.min(1, (m.sta[p.id] ?? 1) + 0.25);
+      }
+      return;
+    case 'talk':
+      for (const p of T.P) m.mor[p.id] = clamp(morOf(m, p) + 0.25, -1, 1);
+      m.mom[i] = fireOf(m, i);
+      for (const x of C.worn) if (C.net[x] < 0) C.net[x] = 0;
+      C.worn = [];
+      return;
+  }
+}
+/**
+ * Traps (spec §2.33): before the first serve after a turn, every slotted trap whose named cards the other side has slotted
+ * burns that card (cardSpend: their usual cost) and is used up. Returns [{ side, id, trap }] (side: the side that lost id).
+ */
+function cardTraps(m) {
+  m.trapNow = false;
+  if (!m.cards) return [];
+  const out = [];
+  for (const i of [0, 1]) {
+    const C = m.cards[i];
+    for (const k of SLOTS) {
+      const t = C.slots[k],
+        c = t && CARDS[t];
+      if (!c || c.kind !== 'trap') continue;
+      const hit = cardIds(m, 1 - i).find(x => c.trap.includes(x));
+      if (!hit) continue;
+      C.slots[k] = null;
+      delete C.you[k];
+      C.spent.push(t);
+      (m.cardLog || (m.cardLog = [])).push({ side: i, id: t, at: [...m.pts], k: 'trap', hit });
+      cardSpend(m, 1 - i, hit);
+      out.push({ side: 1 - i, id: hit, trap: t });
+    }
+  }
+  return out;
 }
 
 /** Averages for the reads (no draws): hitters' power in play, blockers' block, passers' receive, the side's Defense. */
@@ -321,8 +406,37 @@ const CARD_FIT = {
     );
   },
   theirSoft: (m, i) => hitPow(m.t[1 - i]) <= defOf2(m.t[i]) - 3,
-  theirPower: (m, i) => hitPow(m.t[1 - i]) >= defOf2(m.t[i]) + 3
+  theirPower: (m, i) => hitPow(m.t[1 - i]) >= defOf2(m.t[i]) + 3,
+  // T-304 / T-305
+  ahead: (m, i) => m.pts[i] > m.pts[1 - i],
+  late: m => Math.max(m.pts[0], m.pts[1]) >= TRAIT_LATE,
+  streak: (m, i) => (m.streak ? m.streak[i] : 0) >= 2,
+  under: (m, i) => ovrSide(m, i) < ovrSide(m, 1 - i) - 1,
+  brink: (m, i) => m.pts[1 - i] >= RULES.pointsToWin - 1 && m.pts[1 - i] > m.pts[i],
+  tiredUs: (m, i) => {
+    const P = m.t[i].P;
+    return avgOf(P, p => hpOf(m, p)) < 0.6 || avgOf(P, p => m.sta[p.id] ?? 1) < 0.6;
+  },
+  shaken: (m, i) => (m.mom ? m.mom[i] : 0) < -0.2,
+  elements: (m, i) => m.t[i].P.some(p => p.elOn),
+  fresh: (m, i) => avgOf(m.t[i].P, p => m.sta[p.id] ?? 1) >= 0.75,
+  hotHand: (m, i) => m.t[i].P.some(p => p.role !== 'S' && morOf(m, p) >= 0.3),
+  strongPass: (m, i) => !passWeak(m, m.t[1 - i]),
+  theirSetter: (m, i) => {
+    const S = m.t[1 - i].P.find(p => p.role === 'S');
+    return !!S && W(S) >= 1.2;
+  }
 };
+/** Side i's on-court average OVR (Underdog, Giant Killer), cached per lineup. */
+function ovrSide(m, i) {
+  const T = m.t[i],
+    key = T.P.map(p => p.id).join(),
+    c = (m.ovrC || (m.ovrC = []))[i];
+  if (c && c[0] === key) return c[1];
+  const v = avgOf(T.P, ovr);
+  m.ovrC[i] = [key, v];
+  return v;
+}
 /** A slotted play's state this rally: 'ctr' (the other side holds its counter), 'fit', or 'mis'. */
 function cardState(m, i, id) {
   const E = CARD_EDGE[id];
@@ -429,5 +543,6 @@ function cardTurn(m) {
   m.turnN++;
   for (const i of [0, 1]) cardFill(m, i);
   m.turnLog.push({ n: m.turnN, at: [...m.pts], slots: [0, 1].map(i => ({ ...m.cards[i].slots })) });
+  m.trapNow = true;
   return m.rec ? { dur: 300, acts: [{ k: 'turn', n: m.turnN, snap: snap(m) }] } : null;
 }

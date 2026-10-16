@@ -37,15 +37,35 @@ function cardChip(m, i, id) {
     key = comboOf(cardIds(m, i), id) || id,
     net = C.net[key] || 0,
     st = C.spent.includes(id) ? 'spent' : C.worn.includes(id) ? 'worn' : '',
-    fits = c.kind === 'play' && E && !st && (CARD_FIT[E.fit] || CARD_FIT.always)(m, i), // (what you can read; never their hand)
+    fits = (c.kind === 'play' || c.kind === 'once') && E && !st && (CARD_FIT[E.fit] || CARD_FIT.always)(m, i), // (what you can read; never their hand)
     you = cardsCareer() && c.need && hasTech(Run.you(RUN), c.need),
     ctr = E && E.ctr.length ? ` Countered by: ${E.ctr.map(x => CARDS[x].name).join(', ')}.` : '',
     rule =
       c.kind === 'boost'
         ? 'Never spent.'
-        : `Pays when it ${FIT_TIP[E ? E.fit : 'always']}.${ctr} Burns at ${TURN.spent} net points in the rallies it plays off the read (now ${net > 0 ? '+' : ''}${net}).`;
+        : c.kind === 'once'
+          ? `Used up the moment it is slotted${E && E.fit !== 'always' ? `; best when it ${FIT_TIP[E.fit]}` : ''}.`
+          : c.kind === 'trap'
+            ? `Hidden from them. At the next serve, if they have slotted ${c.trap.map(x => CARDS[x].name).join(', ')}, that card burns and the trap is used up.`
+            : `Pays when it ${FIT_TIP[E ? E.fit : 'always']}.${ctr} Burns at ${TURN.spent} net points in the rallies it plays off the read (now ${net > 0 ? '+' : ''}${net}).`;
   return `<span class="ccard k-${c.kind} z-${c.zone} ${st} ${fits ? 'fits' : ''}" ${tip(`${c.desc}. ${rule}`)}><b>${you ? '◆ ' : ''}${esc(c.name)}</b><i>${
-    st === 'spent' ? 'Spent' : st === 'worn' ? 'Worn' : c.kind === 'boost' ? 'Boost' : fits ? 'Fits now' : c.zone === 'op' ? 'OP' : 'Play'
+    st === 'spent'
+      ? c.kind === 'once' || c.kind === 'trap'
+        ? 'Used'
+        : 'Spent'
+      : st === 'worn'
+        ? 'Worn'
+        : c.kind === 'boost'
+          ? 'Boost'
+          : c.kind === 'trap'
+            ? 'Trap'
+            : fits
+              ? 'Fits now'
+              : c.kind === 'once'
+                ? 'One-shot'
+                : c.zone === 'op'
+                  ? 'OP'
+                  : 'Play'
   }</i></span>`;
 }
 /** Each read in words (the card's tooltip, registrar voice). */
@@ -61,7 +81,19 @@ const FIT_TIP = {
   theirAce: 'faces a standout hitter',
   theirQuicks: 'faces a side that lives on quicks',
   theirSoft: 'faces soft hitters',
-  theirPower: 'faces hitters stronger than our defence'
+  theirPower: 'faces hitters stronger than our defence',
+  ahead: 'plays from ahead',
+  late: 'plays late in the set (12+)',
+  streak: 'rides a 2+ point streak',
+  under: 'plays as the weaker side',
+  brink: 'plays with them at match point',
+  tiredUs: 'picks up a worn-down court',
+  shaken: 'calms a shaken side',
+  hotHand: 'has a hitter on fire (morale 0.3+)',
+  strongPass: 'faces passers who are not breaking',
+  theirSetter: 'reads a sharp setter',
+  elements: 'has an element player on court',
+  fresh: 'starts from fresh legs (stamina 0.75+)'
 };
 /** Side i's hand: the five slots, then the pool (edit: cards can be placed). */
 function cardsHand(i, edit) {
@@ -290,7 +322,14 @@ function cardsKey(e) {
 /** A spent card (acts.js `cardspent`): a tag over the court. */
 function cardsSpentShow(a) {
   if (!A || !A.m || !CARDS[a.id]) return;
-  instant({ k: 'label', t: `${A.m.t[a.side].short}: ${CARDS[a.id].name} spent`, small: 1, dy: 40 });
+  instant({
+    k: 'label',
+    t: a.trap
+      ? `${CARDS[a.trap].name}! ${A.m.t[a.side].short}: ${CARDS[a.id].name} burns`
+      : `${A.m.t[a.side].short}: ${CARDS[a.id].name} spent`,
+    small: 1,
+    dy: 40
+  });
 }
 /** The result card's row: each side's plays — turns slotted — and the spent ones. */
 function cardsRow(m) {
@@ -298,7 +337,7 @@ function cardsRow(m) {
   const side = i => {
     const C = m.cards[i],
       played = Object.entries(C.played)
-        .filter(([id]) => CARDS[id].kind === 'play')
+        .filter(([id]) => CARDS[id].kind !== 'boost')
         .sort((a, b) => b[1] - a[1])
         .map(([id, n]) => `${esc(CARDS[id].name)} ×${n}`)
         .join(' · '),

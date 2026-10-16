@@ -1630,6 +1630,13 @@ html.reduced .xl {
 .prep .ccard.z-op {
   border-left-color: var(--hot);
 }
+.prep .ccard.k-once {
+  border-left-color: var(--good); /* one-shot (T-305) */
+}
+.prep .ccard.k-trap {
+  border-left-color: var(--rival); /* trap (T-305) */
+  border-left-style: dashed;
+}
 .prep .ccard.worn {
   border-left-color: var(--warn);
 }
@@ -1709,7 +1716,7 @@ html.reduced .xl {
   padding: 3px 6px;
 }
 .prep .cpick .ccard i {
-  display: none; /* (in the pool the left edge says the kind: boost · play · OP) */
+  display: none; /* (in the pool the left edge says the kind: boost · play · OP · one-shot · trap) */
 }
 .prep .cpick .ccard.k-boost {
   border-left-color: var(--gold);

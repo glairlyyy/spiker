@@ -40,7 +40,9 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   (`opts.cards === false`); `cardsInit` in newMatch, `cardFill` (your cards stay, the coach's `cardScore` picks the rest, no
   draws), `cardApply` compiles into planSet / `m.tac` / `ordSet` (only its own orders: `cord`) / `cardForce(p, tech)` read at
   the technique hooks / `cardBuff(p, stat)` multiplied into `stageBuff`; `cardTally` after every point (spent at TURN.spent →
-  `cardSpend`), `cardTurn` every TURN.pts points (act `turn`), act `cardspent`; data `CARDS`, `COMBOS`, `TURN`, `SLOTS`,
+  `cardSpend`), `cardTurn` every TURN.pts points (act `turn`), act `cardspent`; `cardOn` (on-slot effects), one-shots used up
+  in `cardApply`, `cardTraps` at the first serve after a turn (`m.trapNow`; act `cardspent` with `trap`), `C.over` (Overload,
+  read by `dr`); data `CARDS`, `COMBOS`, `TURN`, `SLOTS`,
   `CARD_AI` in data/cards.js), `match.js`, `serve.js`, `rally-phases.js`,
   `rally-defense.js`, `rally-block.js`, `lanes.js` (laning, spec §2.24: `laneRead`, `laneAim`, `laneTag`, `laneRecord`, coach-panel logs `hitLog` / `recvLog`; tuning `LANE` in data/tactics.js), `coach.js` (`Coach.side` / `Coach.tags`: the coach panel's analysis, spec §2.25), `plans.js` (team plans, spec §2.26: `planOf`, `atkPlan` / `defPlan`, `planPick`, `planSet`, `planCounter`, `weakPasser`, `aceOf`; data `PLANS`, `PLAN_STYLE`, `PLAN_AI`, `PLAN_LINES` in data/tactics.js; `m.plan`, `m.planBy`, `m.planLog`), `orders.js` (role orders, spec §2.29: `m.ord` player id → { srv, tgt }, none = Auto; `ordOf` / `ordSet`, `srvOpts` / `tgtOpts` (locked = the gap), `srvApply` / `tgtResolve` (the serve hooks, only with an order), `srvOdds` (the board's odds: the engine's formulas on the fixed grid `ORDERS.odds`, no draws), `srvLog` → `m.srvLog`; spike
 orders `aim` / `shot`: `aimOpts` / `shotOpts`, `atkApply` (laneAim), `atkLand` (landingSpot); `atkOdds(m, side, p | null, [[player, kind, v], …])` — the engine plays the

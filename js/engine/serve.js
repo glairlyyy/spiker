@@ -19,6 +19,7 @@ function playRally(m) {
     B.len = () => beats.length;
     B.ins = (i, ...bs) => beats.splice(i, 0, ...bs);
   }
+  if (V && m.trapFired.length) B({ dur: 1100, acts: m.trapFired.map(t => ({ k: 'cardspent', side: t.side, id: t.id, trap: t.trap })) });
   const s = m.serve,
     r = 1 - s,
     c = { m, V, B, beats, s, r, ST: m.t[s], RT: m.t[r], dR: DIR(r) };
@@ -50,6 +51,7 @@ function rallyStart(m) {
   m.defBeats = [];
   m.att0 = m.att ? [m.att[0].n, m.att[1].n] : [0, 0]; // the cards' spent tally (spec §2.33): who attacked this rally
   m.srv0 = m.serve;
+  m.trapFired = m.trapNow ? cardTraps(m) : []; // traps (spec §2.33): checked once both hands are set after a turn
   cardEdges(m); // reading pays (spec §2.33): each play fits, misfits or is countered this rally
 }
 /** Choose the serve up front and walk everyone to their spots; the reset and the server's routine beats. */
