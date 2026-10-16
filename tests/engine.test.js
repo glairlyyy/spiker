@@ -507,7 +507,7 @@ test.slow(
       run = (srv, tgt, n) => {
         const A = { n: 0, err: 0, hit: 0, at: 0, eErr: 0, eHit: 0 };
         for (let i = 0; i < n; i++) {
-          const m = g.newMatch(T[i % 8], T[(i * 3 + 1) % 8], false);
+          const m = g.newMatch(T[i % 8], T[(i * 3 + 1) % 8], false, { cards: false }); // (the order system on its own)
           while (!m.over) {
             const s = m.serve,
               p = g.rotOrder(m.t[s], m.rot[s])[0],
@@ -553,7 +553,7 @@ test.slow(
     // locked options show the gap; a cleared order is Auto again
     const p = T[0].P.find(q => q.role === 'S');
     assert(g.srvOpts(p).find(o => o.v === 'jump').lock, 'a setter cannot order a jump serve');
-    const m = g.newMatch(T[0], T[1], false);
+    const m = g.newMatch(T[0], T[1], false, { cards: false });
     g.ordSet(m, p, 'srv', 'float');
     g.ordSet(m, p, 'srv', 'auto');
     eq(g.ordOf(m, p, 'srv'), undefined, 'Auto clears the order');
@@ -572,7 +572,7 @@ test.slow(
         rd = 0,
         ok = 0;
       for (let i = 0; i < 40; i++) {
-        const m = g.newMatch(T[i % 8], T[(i * 5 + 2) % 8], false);
+        const m = g.newMatch(T[i % 8], T[(i * 5 + 2) % 8], false, { cards: false });
         for (const p of g.squadOf(m.t[0])) if (aim) g.ordSet(m, p, 'aim', aim);
         while (!m.over) g.playRally(m);
         for (const p of g.squadOf(m.t[0])) {
@@ -596,7 +596,7 @@ test.slow(
       `the block reads a forced channel: ${(100 * fl.right).toFixed(0)} % vs ${(100 * auto.right).toFixed(0)} %`
     );
     // the probe: same numbers twice, the match state and the game stream as before, no order left behind
-    const m = g.newMatch(T[0], T[1], false);
+    const m = g.newMatch(T[0], T[1], false, { cards: false });
     for (let i = 0; i < 8; i++) g.playRally(m);
     const p = m.t[0].P.find(q => q.role === 'WS'),
       before = JSON.stringify([m.pts, m.stat, m.pos, m.sta, m.mood, m.hit, m.lanes]);
@@ -625,7 +625,7 @@ test.slow('engine: setter orders — the fed hitter takes the ball; fake off mea
       fakes = 0,
       fakes1 = 0;
     for (let i = 0; i < 24; i++) {
-      const m = g.newMatch(T[i % 8], T[(i * 3 + 1) % 8], true),
+      const m = g.newMatch(T[i % 8], T[(i * 3 + 1) % 8], true, { cards: false }),
         h = m.t[0].P.find(q => q.role === 'WS');
       for (const s of g.squadOf(m.t[0]).filter(q => q.role === 'S')) {
         if (feed) g.ordSet(m, s, 'feed', h.id);

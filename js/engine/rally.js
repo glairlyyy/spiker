@@ -203,15 +203,15 @@ function fakeSet(c, x) {
             ...fk,
             ...others.map(p => ({ k: 'pose', p: p.id, pose: 'spike' })),
             { k: 'pose', p: spiker.id, pose: 'spike' },
-            { k: 'jump', p: decoy.id, mode: 'up', peak: jumpPx(decoy), t0: 0.2, t1: 0.95 },
-            ...others.filter(p => p !== decoy).map(p => ({ k: 'jump', p: p.id, mode: 'hop', peak: jumpPx(p) * 0.7, t0: 0.3, t1: 1 })),
+            { k: 'jump', p: decoy.id, mode: 'up', peak: jumpVis(decoy), t0: 0.2, t1: 0.95 },
+            ...others.filter(p => p !== decoy).map(p => ({ k: 'jump', p: p.id, mode: 'hop', peak: jumpVis(p) * 0.7, t0: 0.3, t1: 1 })),
             ...(bitten
               ? [
                   { k: 'pose', p: db.id, pose: 'block' },
-                  { k: 'jump', p: db.id, mode: 'up', peak: jumpPx(db) * 0.85, t0: 0.4, t1: 1 }
+                  { k: 'jump', p: db.id, mode: 'up', peak: jumpVis(db) * 0.85, t0: 0.4, t1: 1 }
                 ]
               : []),
-            { k: 'ghost', to: { x: xOf(decoy) + da * 12, z: dz, h: REACH_H + jumpPx(decoy) } },
+            { k: 'ghost', to: { x: xOf(decoy) + da * 12, z: dz, h: REACH_H + jumpVis(decoy) } },
             { k: 'label', t: 'Fake set!', dy: 60, set: 1, big: 1 }
           ]
         });
@@ -290,7 +290,7 @@ function setCallActs(c, x) {
 function setActs(c, x, { setDir, combo, setCalls, hype }) {
   const { atkT, qual } = c,
     { setter, spiker, quick, bad, back, longB, freak, slide, sync, pool, fakeDecoy, bitten, sq2, bumpSet } = x,
-    { spZ, b0, bz0, a1, pj, cov, readB, setTech } = x;
+    { spZ, b0, bz0, a1, cov, readB, setTech } = x;
   return [
     ...(hype ? [{ k: 'shot', kind: null }] : []),
     { k: 'pose', p: setter.id, pose: bumpSet ? 'bump' : 'set' },
@@ -304,14 +304,14 @@ function setActs(c, x, { setDir, combo, setCalls, hype }) {
           .filter(p => p !== spiker)
           .flatMap(p => [
             { k: 'pose', p: p.id, pose: 'spike' },
-            { k: 'jump', p: p.id, mode: 'hop', peak: jumpPx(p) * 0.85, t0: 0.4, t1: 1 }
+            { k: 'jump', p: p.id, mode: 'hop', peak: jumpVis(p) * 0.85, t0: 0.4, t1: 1 }
           ])
       : []),
     ...(combo ? [{ k: 'link', p1: setter.id, p2: spiker.id, color: atkT.color }] : []),
     ...(!fakeDecoy && setter.role === 'S' && qual === 3 && W(setter) > 1.5
-      ? [{ k: 'jump', p: setter.id, mode: 'hop', peak: jumpPx(setter) * 0.45, t0: 0, t1: 0.6 }]
+      ? [{ k: 'jump', p: setter.id, mode: 'hop', peak: jumpVis(setter) * 0.45, t0: 0, t1: 0.6 }]
       : []),
-    { k: 'jump', p: spiker.id, mode: 'up', t0: quick ? 0.05 : longB ? 0.64 : 0.52, t1: 1, peak: pj },
+    { k: 'jump', p: spiker.id, mode: 'up', t0: quick ? 0.05 : longB ? 0.64 : 0.52, t1: 1, peak: jumpVis(spiker) },
     ...(fakeDecoy
       ? [
           { k: 'jump', p: fakeDecoy.id, mode: 'down', t0: 0, t1: 0.55 },
@@ -355,7 +355,7 @@ function blockJumpActs(c, x) {
     mode: b === b0 && bitten && fakeDecoy ? 'reup' : 'up',
     t0: blockT0(x, b),
     t1: 1,
-    peak: jumpPx(b) * (b === b0 && bitten ? 0.45 : 0.85)
+    peak: jumpVis(b) * (b === b0 && bitten ? 0.45 : 0.85)
   }));
 }
 /** The blockers' poses and the late jumpers. */
@@ -384,7 +384,7 @@ function spikePower(c, x) {
     pow *= elS.pow;
     m.elLog.push({ p: elSrc.id, el: elS.el, side: atk, won: null });
   }
-  st(m, spiker, 'top', kmh(pow));
+  st(m, spiker, 'top', kmh(powVis(spiker, pow)));
   let around = false;
   const cutS = hasTech(spiker, 'cutshot');
   if (
@@ -439,7 +439,7 @@ function spikeActs(c, x) {
       : [
           { k: 'burst', pow, color: elS ? ECOL[elS.el] : atkT.color, op: spiker.op, el: elS ? elS.el : null },
           ...(elS && elS.res ? [{ k: 'plabel', p: elS.res.id, t: 'Resist!' }] : []),
-          { k: 'label', t: `${kmh(pow)} km/h`, pow },
+          { k: 'label', t: `${kmh(powVis(spiker, pow))} km/h`, pow: powVis(spiker, pow) },
           { k: 'label', t: `↑ ${jumpCm(spiker)} cm`, small: 1, dy: 26 },
           { k: 'shake', amt: Math.max(0, (pow - 65) / 5) + (elS ? (elS.el === 'blast' ? 8 : 3) : 0) }
         ]),
@@ -501,7 +501,7 @@ function spikeNote(x) {
 /** 8c. Where the spike lands (around the block → away from it; water / curve → away from the defenders) and its flight time. */
 function landingSpot(c, x) {
   const { m, ds, defT } = c,
-    { tip, around, b1, bz0, bz1, spZ, elS, blockers, appX, pj, pow } = x;
+    { tip, around, b1, bz0, bz1, spZ, elS, blockers, appX, pow } = x;
   const bMean = b1 ? (bz0 + bz1) / 2 : bz0;
   let lz = around ? (bMean > 0.5 ? rnd(0.1, 0.35) : rnd(0.65, 0.9)) : clamp(laneZ(spZ, x.ch) + rnd(-0.12, 0.12), 0.1, 0.9); // the channel the hitter aimed at (spec §2.24)
   let lx = sx(ds, tip ? rnd(390, 460) : rnd(170, 400));
@@ -517,11 +517,13 @@ function landingSpot(c, x) {
     );
   // flight time: harder spikes fly faster (about +17% at power 100, +29% at 130), and a hard hit gets to the floor
   // sooner still (HIT_FAST: up to ×1.6 from power 50 to 120)
-  const fast = 1 + clamp((pow - 50) / 70, 0, 1) * (HIT_FAST - 1);
+  const vp = powVis(x.spiker, pow), // (the ball's real speed: a card edge wins the contest, it doesn't speed the ball up)
+    fast = 1 + clamp((vp - 50) / 70, 0, 1) * (HIT_FAST - 1);
   let hdur = tip
     ? 520
     : clamp(
-        Math.hypot(lx - appX, (lz - spZ) * Z_UNITS, REACH_H + pj) / (kmh(pow) * (BALL_K + Math.max(0, pow - 60) * 0.00005) * fast),
+        Math.hypot(lx - appX, (lz - spZ) * Z_UNITS, REACH_H + jumpVis(x.spiker)) /
+          (kmh(vp) * (BALL_K + Math.max(0, vp - 60) * 0.00005) * fast),
         95,
         560
       ) * courtScale();

@@ -84,7 +84,7 @@ function blockBreak(c, x, { bb, ratio, hands, pow }) {
   if (V) B.ins(mark, ...hypeSpikeCut(m, spiker, bb));
   V &&
     B({
-      dur: clamp(Math.hypot(sx(ds, 484) - appX, (bz0 - spZ) * Z_UNITS) / (kmh(pow) * BALL_K), 80, 200),
+      dur: clamp(Math.hypot(sx(ds, 484) - appX, (bz0 - spZ) * Z_UNITS) / (kmh(powVis(spiker, pow)) * BALL_K), 80, 200),
       acts: [...hit, { k: 'ball', to: hands, h: 0, trail: pow, el, op: spiker.op }]
     });
   // hit-stop: the world pauses while the ball spins into the block like a drill and cracks the wall
@@ -122,7 +122,8 @@ function blockStuff(c, x, k) {
   const bx = sx(atk, rnd(425, 470)),
     bzz = clamp(spZ + rnd(-0.12, 0.12), 0.1, 0.9),
     dp = Math.round(pow * 0.55 + bp * 0.55),
-    bd = clamp(Math.hypot(bx - sx(ds, 484), (bzz - bz0) * Z_UNITS, 150) / (kmh(dp) * BALL_K), 100, 260);
+    dpV = Math.round(powVis(spiker, pow) * 0.55 + powVis(bb, bp, 'jump') * 0.55), // (the real speed off the block: edges divided out)
+    bd = clamp(Math.hypot(bx - sx(ds, 484), (bzz - bz0) * Z_UNITS, 150) / (kmh(dpV) * BALL_K), 100, 260);
   // Block cover: the best-placed teammate (high defense, decent wit) may dig the kill block
   const coverScore = q => effD(q) * 0.65 + q.speed * 0.35 - dist(m.pos[q.id], bx, bzz) * 25;
   const mates = atkT.P.filter(q => q !== spiker),
@@ -138,10 +139,10 @@ function blockStuff(c, x, k) {
     m.hero = bb;
     md(m, spiker, -0.12);
   }
-  st(m, bb, 'top', kmh(dp));
+  st(m, bb, 'top', kmh(dpV));
   V &&
     B({
-      dur: clamp(Math.hypot(sx(ds, 484) - appX, (bz0 - spZ) * Z_UNITS) / (kmh(pow) * BALL_K), 90, 220),
+      dur: clamp(Math.hypot(sx(ds, 484) - appX, (bz0 - spZ) * Z_UNITS) / (kmh(powVis(spiker, pow)) * BALL_K), 90, 220),
       acts: [...hit, { k: 'ball', to: hands, h: 0, trail: pow, el, op: spiker.op }]
     });
   V &&
@@ -161,11 +162,11 @@ function blockStuff(c, x, k) {
         ...(saved ? [] : [{ k: 'shot', kind: 'ball', p: bb.id, p2: spiker.id, hype: 1 }]) // the stuff, up close
       ]
     });
-  const s = { bx, bzz, dp, bd, coverScore, cvr };
+  const s = { bx, bzz, dp, dpV, bd, coverScore, cvr };
   return saved ? blockCover(c, x, k, s) : blockKill(c, x, k, s);
 }
 /** A teammate digs the kill block. */
-function blockCover(c, x, { bb, bel }, { bx, bzz, dp, bd, coverScore, cvr }) {
+function blockCover(c, x, { bb, bel }, { bx, bzz, dp, dpV, bd, coverScore, cvr }) {
   const { m, B, V, atk, da, defT } = c,
     { bdown } = x;
 
@@ -184,7 +185,7 @@ function blockCover(c, x, { bb, bel }, { bx, bzz, dp, bd, coverScore, cvr }) {
       acts: [
         ...bdown,
         { k: 'burst', pow: dp, color: defT.color, el: bel, op: bb.op },
-        { k: 'label', t: `${kmh(dp)} km/h`, pow: dp, dy: -8 },
+        { k: 'label', t: `${kmh(dpV)} km/h`, pow: dpV, dy: -8 },
         { k: 'shake', amt: Math.max(4, (dp - 45) / 5) },
         ...a5,
         { k: 'pose', p: cvr.id, pose: cDive ? 'dive' : 'bump' },
@@ -196,7 +197,7 @@ function blockCover(c, x, { bb, bel }, { bx, bzz, dp, bd, coverScore, cvr }) {
   return { next: [atk, cvr, mg > 15 ? 2 : 1] };
 }
 /** The stuff stands: the kill-block beat. */
-function blockKill(c, x, { bb, bel }, { bx, bzz, dp, bd }) {
+function blockKill(c, x, { bb, bel }, { bx, bzz, dp, dpV, bd }) {
   const { m, B, V, ds, defT } = c,
     { spiker, blockers, bdown } = x;
   V &&
@@ -205,7 +206,7 @@ function blockKill(c, x, { bb, bel }, { bx, bzz, dp, bd }) {
       acts: [
         ...bdown,
         { k: 'burst', pow: dp, color: defT.color, el: bel, op: bb.op },
-        { k: 'label', t: `${kmh(dp)} km/h`, pow: dp, dy: -8 },
+        { k: 'label', t: `${kmh(dpV)} km/h`, pow: dpV, dy: -8 },
         { k: 'shake', amt: Math.max(5, (dp - 45) / 4) },
         ...(dp >= 80 ? [{ k: 'lines', pow: dp }] : []),
         { k: 'ball', to: { x: bx, z: bzz, h: 0 }, h: 0, trail: Math.max(80, dp), el: bel, op: bb.op },

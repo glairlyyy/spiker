@@ -187,7 +187,7 @@ function setterDump(c, s) {
     R() < atkT.S.feint * 0.5 * dumpThreat(setter, W(setter)) * (lefty ? 1.4 : 1)
   ) {
     if (lefty) techFire(m, setter, 'lefty');
-    const sj = Math.max(24, jumpPx(setter) * 0.55);
+    const sj = Math.max(24, jumpVis(setter) * 0.55);
     const lx = sx(ds, rnd(410, 465)),
       lz = clamp(setZ + rnd(-0.3, 0.3), 0.1, 0.9);
     const dg = nearest(m, defT.P, lx, lz),
@@ -209,10 +209,10 @@ function setterDump(c, s) {
           { k: 'ball', to: { p: setter.id, c: 'set', dh: sj }, h: 0 },
           ...fk,
           { k: 'pose', p: dec.id, pose: 'spike' },
-          { k: 'jump', p: dec.id, mode: 'hop', peak: jumpPx(dec), t0: 0.05 },
+          { k: 'jump', p: dec.id, mode: 'hop', peak: jumpVis(dec), t0: 0.05 },
           { k: 'pose', p: DMB.id, pose: 'block' },
-          { k: 'jump', p: DMB.id, mode: 'hop', peak: jumpPx(DMB) * 0.85, t0: 0.25 },
-          { k: 'ghost', to: { x: sx(atk, 432), z: dz, h: REACH_H + jumpPx(dec) } },
+          { k: 'jump', p: DMB.id, mode: 'hop', peak: jumpVis(DMB) * 0.85, t0: 0.25 },
+          { k: 'ghost', to: { x: sx(atk, 432), z: dz, h: REACH_H + jumpVis(dec) } },
           { k: 'label', t: 'Fake set!', dy: 60, set: 1, big: 1 }
         ]
       });

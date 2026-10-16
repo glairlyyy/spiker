@@ -123,7 +123,7 @@ function blockMoves(c, x, f) {
       return [
         { k: 'slide', p: p.id, x: sx(ds, 482), z },
         { k: 'pose', p: p.id, pose: 'block' },
-        { k: 'jump', p: p.id, mode: 'up', t0: quick ? 0.45 : 0.74, t1: 1, peak: jumpPx(p) * 0.7 }
+        { k: 'jump', p: p.id, mode: 'up', t0: quick ? 0.45 : 0.74, t1: 1, peak: jumpVis(p) * 0.7 }
       ];
     });
   for (const b of blockers) dr(m, b, 0.025);

@@ -652,6 +652,13 @@ the AI coach fills every slot you leave with the same function. Built and measur
       −11. Over matches (`npm run cards`, 100 pairs, vs side 0 holding no cards): coach hand +12.1 % points (+36 % wins)
       league, +16.9 % (+41 %) tournament; random plays +7.8 / +9.9 (half of them fit); boosts only 0 / +2.3. Plays spent
       ~0.3 a match (coach), ~1.1 (random).
+  - **Edges win contests, not km/h** (owner, 2026-10-16) **[built, T-300]**: a card's edge changes who wins the receive,
+    dig, block or kill, never how fast the ball looks — speed labels, flight times and the "top speed" stat divide it out
+    (`powVis`; it had shown spikes of 540 km/h). Jumps may show it (owner: 3–4 m looks anime): the body rises the edged
+    height, never lower than without the card and never above `JUMP_MAX_M` 4 m (`jumpVis`); the spike's "↑ cm" label is
+    that shown height (it was a realistic 76–105 cm vertical under a 1.5–4 m rise). Measured (25 matches): spikes with cards
+    p90 98 / 129 / 158 km/h, max 163 / 172 / 263 (league / tournament / Monster; without cards max 151 / 216 / 267); jumps
+    p90 1.8 / 2.4 / 2.9 m, max 3.5 / 4.0 / 4.0 m.
   - **Must hold (T-296)**: no cards < boosts only ≤ coach AI; a no-card team never beats the coach AI on average. A random
     hand may beat no hand (owner, 2026-10-16: about half its plays fit by chance — fine), never the coach.
   - **Measured** (2026-10-16, `npm run cards`, 100 paired seeds, side 0 vs the coach's hand; point share vs side 0 holding no

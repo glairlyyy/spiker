@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-300** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-301** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -83,6 +83,13 @@ Result: js/ui/match-cards.js (hand, turn overlay #cturn, Tab look, spent tag, re
 the expected failure, year 2 the redemption. One save bump (RUN_VERSION 19) in T-286 covers the whole block; later tasks add
 fields through RUN_DEFAULTS. Story mode only (Endless stays unbuilt); the main random stream is untouched (seeded rolls).
 
+
+### [x] T-300: Ball speed and jump height with card edges
+Spec: §2.33 (Edges win contests, not km/h)          Goldens: update (flight times feed the dive / busy decisions)          Save: no change
+Goal: card edges stop inflating ball speed (540 km/h) and jumps (5.4 m); jumps may show a raised edge up to 4 m (owner).
+Files: js/engine/cards.js (edgeK), js/engine/stats.js (powVis, jumpVis, JUMP_MAX_M, jumpCm), js/engine/rally.js,
+rally-defense.js, rally-phases.js, rally-block.js, serve.js, tests/engine.test.js, tests/people.test.js, tests/golden.json
+Result: Done (owner request, spec chat). Contest values untouched; display / flight use powVis and jumpVis. Order-system tests (role / spike / setter orders, the odds probe) run cardless; the rel calibration averages 10 seeds with a never-reached bond counted as week 28 (one of 5 seeds swung it by 18 weeks after the stream shift). 151/151, UI smoke 13/13.
 
 ### [x] T-299: Balance pass — reading pays, collapses common
 Spec: §2.31 (collapse rate), §2.33 (balance pass)          Goldens: update          Save: no change

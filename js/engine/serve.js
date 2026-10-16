@@ -108,7 +108,7 @@ function serveToss(c) {
     const z0 = m.pos[server.id].z,
       run = [];
     mv(m, server, sx(s, endX), z0, run, V);
-    const pk = jumpPx(server) * (jumpSrv ? 0.8 : 0.35);
+    const pk = jumpVis(server) * (jumpSrv ? 0.8 : 0.35);
     V &&
       B({
         dur: Math.round(260 + (endX - startX) / (0.16 + server.speed / 900)),
@@ -151,7 +151,9 @@ function serveContact(c) {
   const hitFx = [
     { k: 'jump', p: server.id, mode: 'down' },
     { k: 'burst', pow: sq * 0.8, color: ST.color, op: server.op },
-    ...(sq > 70 ? [{ k: 'label', t: `${kmh(sq)} km/h`, pow: sq }] : []),
+    ...(powVis(server, sq, 'serve') > 70
+      ? [{ k: 'label', t: `${kmh(powVis(server, sq, 'serve'))} km/h`, pow: powVis(server, sq, 'serve') }]
+      : []),
     ...(techName ? [{ k: 'tech', p: server.id, t: techName }] : [])
   ];
   // serving team switches to base positions
@@ -223,8 +225,9 @@ function serveAim(c) {
   if (tg && tg.seam && rc === tg.rc) rs -= ORDERS.srv.seam;
   if (rollR) rs += Math.max(0, d0 - 0.1) * 45 * (1.3 - rc.speed / 100) * 0.5;
   // a hard serve gets there sooner (SERVE_FAST: up to ×1.45 from serve 55 to 110)
-  const sfast = 1 + clamp((sq - 55) / 55, 0, 1) * (SERVE_FAST - 1),
-    sdur = clamp(Math.hypot(tx - sp.x, (tz - sp.z) * Z_UNITS) / (kmh(sq) * SERVE_K * sfast), 400, 1300) * courtScale();
+  const vq = powVis(c.server, sq, 'serve'), // (the serve's real speed: the card edge wins the receive, not km/h)
+    sfast = 1 + clamp((vq - 55) / 55, 0, 1) * (SERVE_FAST - 1),
+    sdur = clamp(Math.hypot(tx - sp.x, (tz - sp.z) * Z_UNITS) / (kmh(vq) * SERVE_K * sfast), 400, 1300) * courtScale();
   RT.P.forEach(p => {
     if (p !== rc) {
       const h = playHome(m, p, r);

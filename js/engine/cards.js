@@ -31,6 +31,18 @@ function cardBuff(p, k) {
   return Math.max(0.3, 1 + v / 100);
 }
 
+/**
+ * The edge part alone of p's card multiplier for stat k (no stage, no boosts): what the physical display divides out — ball
+ * speed, flight time and jump height show the player's real body, the edge acts only in the contest (spec §2.33, T-300).
+ */
+function edgeK(p, k) {
+  if (!CM || !CM.cards) return 1;
+  const E = CM.cards[CM.t[0] === p.team ? 0 : 1].ek[k];
+  if (!E) return 1;
+  let v = 0;
+  for (const b of E) if (!b.need || hasTech(p, b.need)) v += b.v;
+  return Math.max(0.3, 1 + v / 100);
+}
 /** Start a match's cards (newMatch): opts.cards === false → none; opts.cards[i] = { by: 'you' | 'ai', pick: { slot: id } }. */
 function cardsInit(m, opts) {
   if (opts.cards === false) return (m.cards = null);

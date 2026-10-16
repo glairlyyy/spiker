@@ -17,8 +17,14 @@ const witBody = p => witMul(p.wit < 0 ? 1 : W(p));
 const effP = p => p.power * witBody(p) * boost(p);
 const effD = p => p.def * witBody(p) * boost(p) * stageBuff(p, 'def');
 const jumpPx = p => (20 + p.jump * 0.9 * p.team.S.jump) * (1 - RULES.stamina.jumpHit * (1 - staOf(p))) * stageBuff(p, 'jump');
-const jumpCm = p => Math.round(45 + p.jump * 0.55 * p.team.S.jump);
 const kmh = pow => Math.round(40 + pow * 0.85);
+/** The power p's ball really travels at (stat k's card edge divided out: edges win contests, not km/h — spec §2.33). */
+const powVis = (p, pow, k = 'atk') => pow / edgeK(p, k);
+/** How high p jumps on screen: a card edge for them shows (owner, 2026-10-16: 3–4 m jumps look anime), never above JUMP_MAX_M. */
+const JUMP_MAX_M = 4;
+const jumpVis = p => Math.min(Math.max(jumpPx(p), jumpPx(p) / edgeK(p, 'jump')), JUMP_MAX_M / UNIT_M.h); // (an edge against them never shrinks the jump)
+/** The spike's "↑ cm" label: the height the body rises on screen (it was a realistic vertical that did not match the jump). */
+const jumpCm = p => Math.round(jumpVis(p) * UNIT_M.h * 100);
 /** Serve style a player uses (jump serve needs a strong enough serve roll). */
 const serveType = (p, sq) => (p.role === 'WS' && sq > 55 ? 'jump' : p.speed >= 60 || p.jump >= 65 ? 'jumpfloat' : 'float');
 /** Run-up distance in metres for a running serve: faster/stronger players take a longer approach. */
