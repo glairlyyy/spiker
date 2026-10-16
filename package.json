@@ -13,6 +13,7 @@
     "test:ui": "node tests/ui-smoke.js",
     "balance": "node tests/balance.js",
     "bot": "node tests/bot.js",
+    "career": "node tests/career-bot.js",
     "cards": "node tests/cards.js",
     "reads": "node tests/reads.js"
   },

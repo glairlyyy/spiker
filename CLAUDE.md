@@ -67,6 +67,8 @@ Build chat loop, one task at a time:
 - `npm run test:update` — only when the task says Goldens: update.
 - `npm run bot -- [pairs] [league|tour] [full|serve|blanket:<kind>=<v>]` — the smart bot vs Auto (spec §2.30): what playing
   the Plan board well is worth (~7 s a pair). Run it after any change to orders, stamina or subs.
+- `npm run career -- [runs] [good|casual|both]` — whole Story runs played day by day (spec §4.32): ratings, Cups, odds vs the
+  rival, money, mood, Drive & Pain. Run it after any change to growth, rewards, prices or the year-2 levers (~2 s a run).
 - `npm run lint` / `npm run format` — ESLint (flat config collects shared globals from index.html) / Prettier.
 - `npm run serve` — http://localhost:8765 (index.html: CDN three, or node_modules three on localhost — `?cdn` forces the CDN).
 

@@ -429,7 +429,7 @@ const RUN_DEFAULTS = {
   fav: [() => [], Array.isArray] // starred people (ids as strings): pinned in the People list, display only (spec §10.9)
 };
 /** Run rank letter for a fan count (RANKS is ordered from the top rank down). */
-const rankOf = fans => RANKS.find(([, min]) => fans >= min)[0];
+const rankOf = (fans, seasons = 1) => RANKS.find(([, min]) => fans >= min * seasons)[0]; // (a two-season Story run: the bars × 2)
 /**
  * The week's steps, in order (each `run => void`; the order is the draw order — never reorder, only append).
  * A new weekly system adds one line here. Entries call through so every callee can load later than this file.

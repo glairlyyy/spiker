@@ -1075,6 +1075,24 @@ the AI coach fills every slot you leave with the same function. Built and measur
       curve), Fern's goodbye (she names the secret places, §4.31), the rematch before / after; Fern's year-1 lessons and the
       rival's first meeting never replay. **Endings** on the end screen: picked together (the year-2 Cup won; "she
       remembers" if you beat her squad in it) or spite (they go without her).
+- §4.32 Career balance (owner, 2026-10-16) **[measuring]**: `npm run career -- [runs] [good|casual|both]` (tests/career-bot.js)
+  plays whole Story runs with a day-by-day player — **casual** trains the key stat and rests when spent; **good** trains the
+  weakest stat (key stat first, wit when it lags), rests and relaxes in time, and in year 2 uses the secret places. First
+  pass (30 runs each, 2026-10-16):
+
+  | | casual | good |
+  |---|---|---|
+  | you at the Cup (Y1 / Y2) | 75 / 84 | 78 / 87 |
+  | league mean · the rival | 81 / 87 · 90 / 92 | 81 / 87 · 90 / 93 |
+  | your Cup squad vs hers (Y1 / Y2) | 41 / 51 % | 42 / 52 % |
+  | Cup match wins (Y1 / Y2) · true endings | 53 / 64 % · 8 / 30 | 63 / 57 % · 5 / 30 |
+  | evaluations won · rematch won | 42–54 % · 11 / 30 | 47–49 % · 13 / 30 |
+  | mood avg · Fired up · Scars a run | Awful (0.2) · 4.3 · 3.0 | Good (2.5) · 4.3 · 0.6 |
+  | money (lowest / at the Y2 Cup) | 36 / 1,150 | 63 / 1,575 |
+
+  Findings: how you play barely changes the result — the Cups are decided by the squads (you are one of four on court);
+  money never binds; every bot joins Wu Navy · Harbor in week 1 (open to anyone). **Built**: the run rank's fan bars × 2
+  for a two-season run (`rankOf(fans, seasons)`: S was 18 of 30 runs). **[open]**: the levers that make play matter.
 - §4.30 Drive & Pain **[built 2026-10-16, T-290; Scars' pools open: T-291]** (owner 2026-10-15): two hidden bars on the MC, 0–100 each. Not training-place
   streaks: everything you do counts.
   - **Drive** fills on every positive thing: a training session, a win, a good grade, a teammate's praise, a good

@@ -441,7 +441,7 @@ const Cup = {
   },
   /** End the run: rank and result. place = your U21 Final Cup finish. */
   end(run, place) {
-    const rank = rankOf(run.fans);
+    const rank = rankOf(run.fans, Season.year(run));
     Run.snap(run);
     run.result = { place, rank, cups: run.cups, champ: run.cups[run.cups.length - 1].champ };
     if (Story.on(run) && Season.year(run) > 1) run.result.ending = place === 'Champion' ? 'true' : 'spite'; // spec §4.28

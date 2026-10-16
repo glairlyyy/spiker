@@ -214,6 +214,7 @@ const MATCH_XP = {
  * when an opponent who played has it. Chance = doP / faceP × (0.5 + wit / 2) × the MATCH_XP gap factor, clamped to [0, 0.5].
  */
 const LEARN = { do: { Attack: ['k', 3], Setter: ['ast', 6], Serve: ['ace', 1], Defense: ['blk+dig', 4] }, doP: 0.08, faceP: 0.05 };
+/** Run rank by fans at the end (a two-season Story run needs twice these: rankOf). */
 const RANKS = [
   ['S', 10000],
   ['A', 7000],
