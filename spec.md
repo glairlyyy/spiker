@@ -1206,6 +1206,48 @@ the AI coach fills every slot you leave with the same function. Built and measur
     your squad's real odds against the rival's (a headless sim, like the 2026-10-15 measurement).
   - Build order: Fern's goodbye + Tape Room, Lighthouse, Hermit's Court, Rooftop first; the Onsen, the Midnight
     Court, the Old Scout after.
+- §4.33 Body and day orders **[draft — T-307–T-312]** (owner, 2026-10-19: "Kenshi players can train stats anywhere"; "no
+  straight Attack training — Strength drives swing velocity, but without enough Flexibility a full swing is harder"):
+  replaces "click a place → Train <stat>". You train **your body** by **what you do each day**; the court skills the match
+  reads are worked out from the body. Facilities stop being stat buttons: they are places with **kit** (equipment and
+  ground) that offer orders.
+  - **Body stats** (yours; NPCs keep court stats for now): **Strength** (`str`), **Agility** (`agi`), **Endurance** (`end`),
+    **Flexibility** (`flex`), **Wit** (unchanged). They start like today's stats (1; wit 1.0) and grow on today's XP curve
+    (`Training.need` with its steep part, the year caps §4.32), each its own XP bank.
+  - **Court skills = f(body)** (`Body.court(you)`, written into `you.power / def / speed / jump` after every body change, so
+    the engine, ovr, techniques' requirements and the cards read what they read today). First guesses (the bot tunes them):
+    - swing range `swing = clamp(flex / (0.8 · str), 0.5, 1)`: a full swing needs Flexibility ≥ 0.8 × Strength.
+    - **Power** = 0.85 · str · (0.55 + 0.45 · swing) + 0.15 · agi — Strength without the swing is wasted.
+    - **Jump** = 0.55 · str · depth + 0.45 · agi, `depth = clamp(flex / (0.7 · str), 0.6, 1)` (a deep load needs mobile hips).
+    - **Speed** = 0.75 · agi + 0.25 · end.
+    - **Defense** = 0.45 · flex + 0.35 · agi + 0.2 · end (getting low, getting there, lasting).
+    - A balanced body (all four at X) gives every court skill X — today's numbers hold; a lopsided one loses some.
+    - **Endurance** also lifts your career stamina (`run.staMax` = 100 + end / 2) and lowers your rally HP damage in a match
+      (`× (1.2 − 0.4 · end / 100)`; players without a body: × 1, so goldens stay).
+  - **Day orders** (one a day; the trip rules of §4.5 stay): the place card lists what you can do there, each with its
+    cost → result on the control ("Heavy sets · 1d · $20 → Str +++ · Flex +").
+    - **Drill** — the place's kit, focused: the fastest gain a day, costs money (today's sessions, re-keyed to body stats).
+    - **Work** — a job the place has (hauling crates at the Harbor, lifeguard shift on the beach, the market's deliveries,
+      the Academy's floor-mopping): pays money and trains the body, slower than a drill. Money finally has a source you
+      choose and a reason to spend it.
+    - **Run** — travel as training: a trip can be walked (as today) or **run**: the route's ground trains you (main road /
+      streets → Endurance; dirt and mountain paths → Endurance + Strength; boardwalk and sand → Agility; the Thousand
+      Steps → Strength + Agility), more for more distance, at a stamina cost; you arrive as usual.
+    - **Stretch** — bodyweight mobility, anywhere (home, the grounds, the shrine, the onsen best): Flexibility, little
+      stamina, free. Every point on the map offers Run and Stretch: **the island is the gym, facilities do it better**.
+    - **Play** (court and street matches — match XP into the body: kills → str, digs → flex + agi, blocks → str + agi)
+      and **Watch** (tapes, film library, the shrine's books → Wit) stay what they are.
+  - **Facilities = kit.** Each SPOTS place lists its kit tags (`weights`, `track`, `sand`, `steps`, `mats`, `water`,
+    `crates`, `film` …); a tag brings its orders. The facility level grows **per place** (today: per training key), so
+    your gym becomes yours. Region quality stays hidden (§4.3). Locals train where they live (the floor: teammates and the cohort at a place that day).
+  - **Representation**: the map pin of a place carries small body-stat glyphs of what it trains best; its landmark shows
+    its kit (racks, crates and a crane at the Harbor, a track, steps, mats); the place card leads with the orders, then the
+    place (who's on the floor, level, price). The Me sheet shows the body (four bars + Wit) above the court skills with the
+    swing gauge ("full swing" / "short: Flexibility 52 of 72") — the gap is the hint.
+  - Save: RUN_VERSION 20 (`you.body`, body XP banks, `run.uses` by place; older saves dropped).
+  - **[open]**: hostile ground (training on a faction's turf you are on bad terms with: XP ×1.2, heat, a street battle when
+    it boils over — Kenshi's "train combat with hostiles"); NPC bodies; jobs as a story thread (Fern's old shift at the
+    Harbor).
 - §4.27 Hex territory **[built, T-131–T-134, T-138, T-153]** (owner, 2026-10-03): the war map becomes hex tiles; each tile has its own takeover
   condition. Changes how factions move and seize; the player's travel (roads, days, trips, fog) does not change.
   Replaces the fixed border meters and border places (§4.7 `FRONT.borders`, T-130 lines, seized patches).

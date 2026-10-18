@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-307** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-313** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,95 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+**Body and day orders (owner, 2026-10-19, spec §4.33): T-307 → T-312, in order.** Engine untouched except T-311; the court
+skills are derived so ovr, techniques and cards keep reading what they read. Re-run `npm run career` after each.
+
+### [ ] T-307: Body stats — Strength, Agility, Endurance, Flexibility; court skills derived
+Spec: §4.33          Goldens: unchanged          Save: RUN_VERSION bump (20: `you.body`, body XP banks)
+Goal: your player has a body (str / agi / end / flex + wit); power / def / speed / jump are computed from it after every
+change; today's trainings still work, each re-keyed to a body mix.
+Files: js/data/career.js (BODY: keys, names, formulas' constants; TRAININGS main/side → body keys), js/career/body.js (new:
+Body.of, Body.court, Body.sync, Body.swing, Body.depth), js/career/training.js (addXp / sim / level / progress on body keys;
+staMax from end), js/career/run.js (create: body at CAREER.start; RUN_VERSION 20; bump on body keys; events), js/career/growth.js
+(matchXp → body keys via MATCH_XP), js/ui/sheet-me.js (body bars, then court skills + the swing gauge), js/ui/career-create.js
+(copy), index.html, tests/career.test.js, tests/career-bot.js (statFor on body keys), ARCHITECTURE.md, ARCHITECTURE-details.md
+Do not: give NPCs a body; touch js/engine; draw randoms in Body; let a court skill exceed CAREER.runCap.
+Steps:
+1. `BODY = { keys: ['str','agi','end','flex'], swing: 0.8, depth: 0.7, … }` and `Body.court(b)` with §4.33's formulas;
+   `Body.sync(you)` writes power / def / speed / jump (rounded) from `you.body`.
+2. Training / match XP / events / injuries act on body keys (old key → body map for events); `Training.cap` caps body stats.
+3. Me sheet: four body bars + Wit, then the court skills with the swing gauge ("full swing" / "short: Flexibility 52 of 72").
+Accept:
+- A balanced body at X gives every court skill X (test, X = 1, 40, 75, 90); str 90 · agi 75 · flex 50 gives Power ≈ 77 (test).
+- `npm run career -- 20 both`: good still ends year 2 ≥ 90 OVR, casual ≤ 88 (state the numbers in Result).
+- `npm test`, `npm run lint`, `npm run test:ui` pass.
+QA: career run → Me sheet (body bars, swing gauge).
+Result:
+
+### [ ] T-308: Facilities = kit; day orders on the place card (Drill, Work, Stretch)
+Spec: §4.33          Goldens: unchanged          Save: no change (beyond T-307's v20; `run.uses` keyed by place)
+Goal: every SPOTS place lists its kit; the place card offers the orders its kit brings, each "cost → result"; Work pays;
+Stretch works anywhere; the facility level grows per place.
+Files: js/data/city.js (SPOTS `kit` replaces `train`), js/data/career.js (KITS, ORDERS: body gains, sta, price, pay),
+js/career/city.js (day → order; can / cost / price per order), js/career/training.js (Training.order; facility per place),
+js/career/mapmodel.js, js/career/dossier.js, js/career/people.js, js/career/story.js, js/career/feel.js, js/career/eval.js
+(their `train` reads), js/ui/career-panels.js (orders list), js/ui/career-map.js, js/ui/career-dossier.js,
+js/ui/career-people.js, css/career.css, tests/career.test.js, tests/map.test.js, tests/people.test.js, tests/harness.js,
+tests/career-bot.js, tests/ui-smoke.js, ARCHITECTURE-details.md
+Do not: show region quality; add a pop-up; change NPC training (People still trains court stats).
+Steps:
+1. Kit per place (Harbor: weights, crates; Sand Courts: sand, mats; Thousand Steps: steps; Shrine: film, mats; Academy Gym:
+   everything at Lv 1 …); ORDERS per kit tag: Drill (fast, $), Work (pays, slower), Stretch (free, Flexibility).
+2. Every map point (no place) offers Stretch; home and the grounds too.
+3. Place card leads with the orders (one ink primary: the best drill), then who's on the floor, level, price.
+Accept:
+- Each of the 17 training places offers ≥ 2 orders; Work pays at ≥ 4 places; Stretch from any point (tests).
+- Bot: money is no longer always > $600 at the Y1 Cup for casual (state it).
+QA: career run → three place cards (Harbor, Sand Courts, home) against the design system.
+Result:
+
+### [ ] T-309: Run — trips train the route's ground
+Spec: §4.33          Goldens: unchanged          Save: no change
+Goal: a trip can be walked or run; running trains the body by the route's edge kinds and distance, at a stamina cost.
+Files: js/data/career.js (RUN_GROUND: edge kind → body gains per day of trip, sta), js/career/city.js (go: run option, gains
+by route), js/ui/career-panels.js (Travel · Walk / Run buttons, "cost → result"), js/ui/career-map.js, tests/career.test.js,
+tests/career-bot.js
+Do not: change trip days or routing; draw randoms.
+Accept: running the airport → Harbor coast road gives Endurance; Shu mountain path gives Endurance + Strength; the Steps
+Strength + Agility (tests); too tired to run → Walk only.
+QA: career run → run a trip across the island; the day track and diary show it.
+Result:
+
+### [ ] T-310: Facilities on the map — pins with what they train, landmarks with their kit
+Spec: §4.33, §4.18, §9          Goldens: unchanged          Save: no change
+Goal: a place's pin shows small body-stat glyphs of what it trains best; its landmark shows its kit (racks, crates + crane,
+track, steps, mats).
+Files: js/career/mapmodel.js (pin glyphs from kit), js/map3d/pins3d.mjs, js/map3d/kit3d.mjs, js/map3d/town3d.mjs, css/map.css,
+tests/map.test.js
+Do not: show quality; add draw calls per frame (landmarks stay single meshes).
+Accept: map test — every training place's pin lists 1–3 body glyphs; QA screenshot of Wei's district and the Harbor.
+QA: career run → map overview + two close-ups.
+Result:
+
+### [ ] T-311: Endurance in the match — rally HP damage
+Spec: §4.33, §2.31          Goldens: unchanged (players without a body: × 1)          Save: no change
+Goal: your Endurance lowers your rally HP damage (× (1.2 − 0.4 · end / 100)).
+Files: js/engine/bars.js, tests/momentum.test.js
+Do not: draw randoms; change any player without `body`.
+Accept: goldens unchanged; a test — end 90 takes less HP damage than end 30 on the same balls.
+QA: none (engine).
+Result:
+
+### [ ] T-312: Balance the orders — the bot plays the day orders
+Spec: §4.32, §4.33          Goldens: unchanged          Save: no change
+Goal: the career bot uses Drill / Work / Run / Stretch (good: keeps the swing full; casual: drills its key stat only); the
+order numbers are tuned so good ends year 2 level with the rival (~92) and casual near the league mean (~87).
+Files: tests/career-bot.js, js/data/career.js (ORDERS, RUN_GROUND, BODY numbers), spec.md (§4.32 table — spec chat)
+Do not: change the year caps or the steep curve without saying so in Result.
+Accept: `npm run career -- 20 both` table in §4.32: good Y2 ≥ 91, casual ≤ 88; casual's swing short in ≥ half its runs.
+QA: none.
+Result:
 
 **Semi-automatic matches (owner, 2026-10-16, spec §2.31–§2.33): T-294 → T-297, spec chat, in order.** Built and measured,
 not tuned (owner: "no need to fine tune it yet"). T-283 / T-284 wait: the cards replace the board they tune.
