@@ -1223,7 +1223,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     - **Defense** = 0.45 · flex + 0.35 · agi + 0.2 · end (getting low, getting there, lasting).
     - A balanced body (all four at X) gives every court skill X — today's numbers hold; a lopsided one loses some.
     - **Endurance** also lifts your career stamina (`run.staMax` = 100 + end / 2) and lowers your rally HP damage in a match
-      (`× (1.2 − 0.4 · end / 100)`; players without a body: × 1, so goldens stay).
+      (`× (1.2 − 0.4 · end / 100)`; players without a body: × 1, so goldens stay). **[built 2026-10-19, T-311]**
   - **Day orders** (one a day; the trip rules of §4.5 stay): the place card lists what you can do there, each with its
     cost → result on the control ("Heavy sets · 1d · $20 → Str +++ · Flex +").
     - **Drill** — the place's kit, focused: the fastest gain a day, costs money (today's sessions, re-keyed to body stats).

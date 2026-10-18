@@ -30,11 +30,13 @@ const hpOf = (m, p) => (m && m.hp && m.hp[p.id] != null ? m.hp[p.id] : 1);
 /**
  * A ball kept up (serve receive or dig): HP damage by how hard it is for this receiver — r = ball power / Defense as played;
  * HP.base at a typical ball (r = HP.r0), × (r / r0)^HP.exp (spec §2.31: an average player goes down on the 2nd or 3rd hit
- * of a rally, on the 1st when the gap is big). Returns true when the player collapses (HP 0). No randoms.
+ * of a rally, on the 1st when the gap is big). Endurance takes the edge off (spec §4.33): × (1.2 − 0.4 × end / 100) for a
+ * player with a body (yours), × 1 without. Returns true when the player collapses (HP 0). No randoms.
  */
 function hpHit(m, p, pow) {
   const r = pow / Math.max(1, effD(p)),
-    dmg = Math.min(HP.max, HP.base * Math.pow(r / HP.r0, HP.exp)) * ((MTRAITS[mtr(m, p)] || {}).hp || 1); // Iron Body
+    end = p.body && Number.isFinite(p.body.end) ? 1.2 - (0.4 * p.body.end) / 100 : 1,
+    dmg = Math.min(HP.max, HP.base * Math.pow(r / HP.r0, HP.exp)) * ((MTRAITS[mtr(m, p)] || {}).hp || 1) * end; // Iron Body, Endurance
   if (m.hpLog) ((m.hpLog.n += 1), (m.hpLog.dmg += dmg));
   m.hp[p.id] = Math.max(0, hpOf(m, p) - dmg);
   return m.hp[p.id] <= 0;

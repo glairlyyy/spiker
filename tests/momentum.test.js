@@ -170,3 +170,25 @@ test.slow('bars: Broken vs Steady, the same squads both ways — the Steady side
   console.log(`   Broken vs Steady: Steady wins ${steady}/${n} (${pct} %)`);
   assert(pct >= 55, `Steady wins clearly more: ${pct} %`);
 });
+
+test('bars: Endurance lowers rally HP damage — end 90 takes less than end 30 on the same balls; no body × 1 (spec §4.33, T-311)', () => {
+  const g = load(76);
+  g.RNG.seed(6);
+  const T = g.mkTeams(),
+    m = g.newMatch(T[0], T[1], false),
+    p = m.t[0].P[1],
+    hit = body => {
+      if (body) p.body = body;
+      else delete p.body;
+      m.hp[p.id] = 1;
+      for (const pow of [20, 25, 30]) g.hpHit(m, p, pow); // (soft balls: no collapse, the damage adds up unclamped)
+      return 1 - m.hp[p.id];
+    },
+    none = hit(null),
+    lo = hit({ end: 30 }),
+    hi = hit({ end: 90 });
+  assert(hi < lo, `end 90 takes less (${hi.toFixed(3)} vs ${lo.toFixed(3)})`);
+  assert(Math.abs(hit({ end: 50 }) - none) < 1e-9, 'end 50 = × 1 = no body');
+  assert(none < 1 && Math.abs(hi / none - (1.2 - 0.36)) < 1e-6, 'end 90: × 0.84');
+  delete p.body;
+});

@@ -131,7 +131,7 @@ Accept: test — a raid win moves the unit's Strength twice as far as a street b
 QA: career run → raid a border.
 Result:
 
-### [ ] T-311: Endurance in the match — rally HP damage
+### [x] T-311: Endurance in the match — rally HP damage
 Agent: B
 Spec: §4.33, §2.31          Goldens: unchanged (players without a body: × 1)          Save: no change
 Goal: your Endurance lowers your rally HP damage (× (1.2 − 0.4 · end / 100)).
@@ -139,7 +139,7 @@ Files: js/engine/bars.js, tests/momentum.test.js
 Do not: draw randoms; change any player without `body` (read `p.body && p.body.end`; A's T-307 adds `you.body`).
 Accept: goldens unchanged; a test — end 90 takes less HP damage than end 30 on the same balls.
 QA: none (engine).
-Result:
+Result: `hpHit` × (1.2 − 0.4 · end / 100) when `p.body.end` is a number, else × 1 (inlined: no new global; HP stays in data/cards.js). Goldens unchanged; test: three soft balls, end 90 takes × 0.84 of the no-body damage, end 30 more, end 50 = × 1.
 
 ### [ ] T-312: Balance the orders — the bot plays the day orders
 Agent: A

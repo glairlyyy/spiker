@@ -33,7 +33,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   `fireStage`, `pointStage` after every point (in `end`), `stageTimeout`, `stageBuff(p, stat)` read by effD / jumpPx / the
   formulas; `m.mom` is the fire, `m.stage`, `m.temper`, `m.fever`; `m.zone` = the Fever alias; data in data/momentum.js:
   `STAGES`, `TEMPERS`, `TEMPER_OF`, `FIRE`; the captains' calls `capReady` / `capCall` — T-260), `bars.js` (spec §2.31: HP
-  `m.hp` — `hpHit` in `knock` (collapse = HP 0, no roll), `hpHeal` between rallies; morale `m.mor` per player — `morPoint`
+  `m.hp` — `hpHit` in `knock` (collapse = HP 0, no roll; your Endurance `p.body.end` × (1.2 − 0.4 · end / 100), no body × 1 — spec §4.33), `hpHeal` between rallies; morale `m.mor` per player — `morPoint`
   replaces the fire update, `fireOf` = the on-court average (captain ×2) → `m.mom`, `morAdd` / `fireTo` for team-wide pushes;
   `mtraitOf(p)` by hash; data `HP`, `MTRAITS` in data/cards.js), `cards.js` (tactic cards and turns, spec §2.32–§2.33:
   `m.cards[side]` = { by, slots (SLOTS: atk0 atk1 def0 def1 flex), you, net, worn, spent, played, force, buff } or null
