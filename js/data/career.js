@@ -47,9 +47,9 @@ const BODY = {
     end: 'Endurance. Lasting: speed late on, more career stamina.',
     flex: 'Flexibility. Getting low, a full swing, a deep load.'
   },
-  swing: 0.8,
+  swing: 1,
   swingMin: 0.5,
-  depth: 0.7,
+  depth: 0.95,
   depthMin: 0.6,
   w: {
     power: { str: 0.85, agi: 0.15, base: 0.55, k: 0.45 }, // Power = 0.85 · str · (0.55 + 0.45 · swing) + 0.15 · agi
@@ -89,13 +89,13 @@ const TRAININGS = {
  * slower) | 'stretch' (free, never fails). The day track names the order.
  */
 const DAY_ORDERS = {
-  heavy: { name: 'Heavy sets', kind: 'drill', main: ['str', 7], side: ['flex', 2], sta: 20, price: 1.5, train: 'power' },
+  heavy: { name: 'Heavy sets', kind: 'drill', main: ['str', 7], side: ['agi', 2], sta: 20, price: 1.5, train: 'power' },
   plyo: { name: 'Box jumps', kind: 'drill', main: ['agi', 7], side: ['str', 2], sta: 20, price: 1.5, train: 'jump' },
   sprints: { name: 'Sprint intervals', kind: 'drill', main: ['end', 6], side: ['agi', 3], sta: 20, price: 1.5, train: 'speed' },
   mobility: { name: 'Mobility class', kind: 'drill', main: ['flex', 7], side: ['agi', 2], sta: 12, price: 1.5, train: 'def' },
-  sandDrill: { name: 'Sand drills', kind: 'drill', main: ['agi', 5], side: ['flex', 3], more: [['end', 1]], sta: 20, price: 1.5, train: 'def' },
+  sandDrill: { name: 'Sand drills', kind: 'drill', main: ['agi', 5], side: ['end', 3], more: [['str', 1]], sta: 20, price: 1.5, train: 'def' },
   dunes: { name: 'Dune runs', kind: 'drill', main: ['end', 5], side: ['agi', 4], sta: 22, price: 1, train: 'speed' },
-  swim: { name: 'Laps', kind: 'drill', main: ['end', 5], side: ['flex', 4], sta: 15, price: 1.5, train: 'speed' },
+  swim: { name: 'Laps', kind: 'drill', main: ['end', 5], side: ['agi', 2], more: [['flex', 2]], sta: 15, price: 1.5, train: 'speed' },
   stepRuns: { name: 'Step runs', kind: 'drill', main: ['str', 5], side: ['agi', 4], sta: 22, price: 1, train: 'jump' },
   trailRun: { name: 'Trail run', kind: 'drill', main: ['end', 6], side: ['str', 3], sta: 22, price: 1, train: 'speed' },
   film: { name: 'Film study', kind: 'drill', main: ['wit', 0.06], side: ['flex', 1], sta: 5, price: 1.5, train: 'wit' },

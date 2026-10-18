@@ -265,7 +265,7 @@ moving for 6 s (25 s while the 3D players load) or one beat lasts 20 s, with a s
 
 ## Saves
 
-Career runs carry `v` (`RUN_VERSION` = 20, `career/run.js`; key `sns_run_v1`; v20 = your body `you.body` (+ `edge` / `synced`) and body-key XP banks in `run.xp`, v19 saves dropped; v19 = `run.year`, migration 18 → 19). History: v2 faction reserves, v3 cup
+Career runs carry `v` (`RUN_VERSION` = 20, `career/run.js`; key `sns_run_v1`; v20 = your body `you.body` (+ `floor` / `edge` / `synced`) and body-key XP banks in `run.xp`, v19 saves dropped; v19 = `run.year`, migration 18 → 19). History: v2 faction reserves, v3 cup
 entrants, v4 squads of 6 (`bench`), v5 `run.lb` dropped, v6 `run.met` / `street` / `refused`, v7 `losses` / `lastFight`,
 v8 `mlog`, v9 `run.mode.story`; older saves are dropped (`RUN_MIGRATIONS` is empty). Bump the version when the save shape changes and add a step to
 `RUN_MIGRATIONS[oldVersion] = data => upgraded data`; `Run.load` applies the steps in order and ignores saves from a newer version.

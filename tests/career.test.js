@@ -137,16 +137,26 @@ test('body: court skills from the body — balanced X gives X; Strength without 
     for (const k of g.STATK) assert(Math.abs(c[k] - X) < 1e-9, `balanced ${X}: ${k} ${c[k]}`);
   }
   const b = { str: 90, agi: 75, end: 60, flex: 50 };
-  eq(Math.round(g.Body.court(b).power), 77, 'str 90 · agi 75 · flex 50 → Power ≈ 77');
+  const sw = g.BODY.swing;
+  g.BODY.swing = 0.8; // the spec's first guess (T-307's accept); T-312 tuned it
+  eq(Math.round(g.Body.court(b).power), 77, 'str 90 · agi 75 · flex 50 → Power ≈ 77 (swing 0.8)');
   assert(g.Body.swing(b) < 1 && g.Body.swingNeed(b) === 72, 'a short swing: Flexibility 72 needed');
-  assert(g.Body.court({ ...b, flex: 72 }).power > g.Body.court(b).power, 'enough Flexibility gives the full swing');
+  g.BODY.swing = sw;
+  const need = g.Body.swingNeed(b);
+  assert(g.Body.court({ ...b, flex: need }).power > g.Body.court(b).power, 'enough Flexibility gives the full swing');
+  eq(g.Body.swing({ ...b, flex: need }), 1, `full at Flexibility ${need}`);
   you.body = { ...b };
   g.Body.sync(you, run);
-  eq(you.power, 77, 'sync writes the court skills (rounded)');
+  eq(you.power, Math.round(g.Body.court(b).power), 'sync writes the court skills (rounded)');
   eq(run.staMax, g.CAREER.staMax + 30, 'staMax = 100 + end / 2');
-  you.power += 2; // a court skill changed directly (the Hermit's trial) stays as an edge on top of the body
-  g.Training.addXp(run, 'agi', 1e5);
-  eq(you.power, Math.round(g.Body.court(you.body).power) + 2, 'the edge survives the next sync');
+  you.power += 2; // a court skill raised directly (the Hermit's trial) stays as a floor the body catches up with
+  g.Training.addXp(run, 'end', 1e5);
+  eq(you.power, Math.round(g.Body.court(b).power) + 2, 'the raise survives the next sync');
+  g.Training.addXp(run, 'flex', 1e5);
+  eq(you.power, Math.round(g.Body.court(you.body).power), '…until the body passes it');
+  you.def -= 3; // lowered directly: an offset
+  g.Training.addXp(run, 'end', 1e5);
+  eq(you.def, Math.round(g.Body.court(you.body).def) - 3, 'a direct cut stays');
   you.body = g.Body.make(99);
   you.edge = { power: 20 };
   g.Body.sync(you, run);

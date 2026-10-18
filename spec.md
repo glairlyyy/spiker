@@ -1245,6 +1245,12 @@ the AI coach fills every slot you leave with the same function. Built and measur
       and the Stone Gym (Haul crates, +$35), the Sand Courts and the Dunes (Lifeguard shift, +$30), the Highland Dojo and the
       Academy Gym (Floor duty, +$20); drills cost 1–1.5 × today's fee; Stretch (Flex + a little Agi, −5 stamina) at every kit
       place, home, the grounds and any map point. The place card lists its orders, each "name · days · stamina · $ → ▲ Str +++ …".
+    - **[built 2026-10-19, T-312]** Tuned with the bot (12 runs each): a full swing needs Flexibility ≥ Strength (`BODY.swing` 1,
+      a deep load 0.95 × Strength); Heavy sets / Sand drills / Laps carry less Flexibility on the side, so Flexibility comes from
+      Mobility class and Stretch. Casual (its key stat's drill, then the weakest, never Flexibility on purpose) Y1 70.5 · Y2 87.3,
+      swing short 12 / 12; good (keeps the swing full, Works under $60, Runs its trips, the secret places) Y1 79.1 · Y2 94.3
+      (rival 92.5, league 87.2); money at the Y1 Cup ~$300 for both. A court skill raised directly (the Hermit's +2) is a floor the
+      body catches up with, no longer stacked past the cap.
     - **Play** (court and street matches — match XP into the body: kills → str, digs → flex + agi, blocks → str + agi)
       and **Watch** (tapes, film library, the shrine's books → Wit) stay what they are.
   - **Facilities = kit.** Each SPOTS place lists its kit tags (`weights`, `track`, `sand`, `steps`, `mats`, `water`,

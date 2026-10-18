@@ -7,34 +7,44 @@
 const { load } = require('./harness');
 const [N = 12, POL = 'both'] = process.argv.slice(2).map((v, i) => (i === 0 ? +v : v));
 
-/** One day's drill (spec §4.33): the place and order that train body stat `stat` best per day (main gain, else the Academy's
- * All-round at a discount), as [id, order] or null. */
-function placeFor(g, run, stat) {
+/** The place and order of `kind` ('drill' | 'work') that train body stat `stat` best per day (any stat: null), as [id, order]
+ * or null — gain × the place's multiplier ÷ the days it takes (spec §4.33). */
+function placeFor(g, run, stat, kind = 'drill', mainOnly = false) {
   let best = null,
     bv = -1;
   for (const id of Object.keys(g.SPOTS)) {
     if (!g.SPOTS[id].kit) continue;
     for (const oid of g.City.orders(id)) {
       const O = g.DAY_ORDERS[oid];
-      if (O.kind !== 'drill' || (O.main[0] !== stat && oid !== 'allRound') || !g.City.can(run, id, oid).ok) continue;
-      const v = ((oid === 'allRound' ? 0.45 : 1) * g.City.mul(run, id) * g.Training.mul(run, oid, false, 1, id)) / g.City.cost(run, id);
+      if (O.kind !== kind || !g.City.can(run, id, oid).ok) continue;
+      const amt = stat ? (O.main[0] === stat ? O.main[1] : !mainOnly && O.side[0] === stat ? O.side[1] : 0) : O.main[1] + O.side[1];
+      if (!amt) continue;
+      const v = (amt * g.City.mul(run, id) * g.Training.mul(run, oid, false, 1, id) + (O.pay || 0) / 10) / g.City.cost(run, id);
       if (v > bv) [bv, best] = [v, [id, oid]];
     }
   }
   return best;
 }
-/** What to train (body stats, spec §4.33): casual = the key stat's body stat; good = the weakest of the four (the key one
- * counts 8 lower), wit when it lags. */
+/** What to train (body stats, spec §4.33): casual = the body stat its key court skill leans on, then the weakest — never Flexibility
+ * on purpose (T-312); good = Flexibility
+ * while the swing is short, else the weakest of the four (the key one counts 8 lower), wit when it lags. */
 function statFor(g, run, pol) {
   const you = g.Run.you(run),
     B = you.body,
-    key = g.BODY.of[g.KEYSTAT[you.role]];
-  if (pol === 'casual') return B[key] < g.Training.cap(run) ? key : g.STATK.map(k => g.BODY.of[k]).find(k => B[k] < g.Training.cap(run)) || 'wit'; // (the old court order's trainings)
-  const open = g.BODY.keys.filter(k => B[k] < g.Training.cap(run));
+    cap = g.Training.cap(run),
+    key = g.Body.lead(g.KEYSTAT[you.role]);
+  if (pol === 'casual') {
+    // its key stat's drill, then the next weakest drill — never Flexibility on purpose (it never stretches)
+    if (B[key] < cap) return key;
+    const open = g.BODY.keys.filter(k => k !== 'flex' && B[k] < cap);
+    return open.length ? open.reduce((a, k) => (B[k] < B[a] ? k : a)) : key;
+  }
+  if (B.flex < cap && B.flex < g.BODY.swing * B.str + 3) return 'flex'; // keep the swing full
+  const open = g.BODY.keys.filter(k => B[k] < cap);
   if (you.wit * 50 < Math.min(...open.map(k => B[k])) - 5 || !open.length) return 'wit';
   return open.reduce((a, k) => (B[k] - (k === key ? 8 : 0) < B[a] - (a === key ? 8 : 0) ? k : a), open[0]);
 }
-/** A training week: spend the days. */
+/** A training week: spend the days (good: Work when money is short, Stretch when a drill can't be paid, Run the trips). */
 function week(g, run, pol, M) {
   for (let guard = 0; guard < 20 && g.City.days(run) > 0; guard++) {
     if (run.event) {
@@ -46,20 +56,27 @@ function week(g, run, pol, M) {
     let id = null,
       hard = false,
       opt;
-    const y2 = pol === 'good' && g.Season.year(run) > 1 && g.Secret ? secretFor(g, run, M) : null;
+    const good = pol === 'good',
+      y2 = good && g.Season.year(run) > 1 && g.Secret ? secretFor(g, run, M) : null;
     if (y2) [id, opt] = y2;
-    else if (run.sta < (pol === 'good' ? 45 : 35)) id = g.City.can(run, 'home').ok ? 'home' : null;
-    else if (pol === 'good' && run.mood <= 1 && g.City.can(run, 'park').ok) id = 'park';
+    else if (run.sta < (good ? 45 : 35)) id = g.City.can(run, 'home').ok ? 'home' : null;
+    else if (good && run.mood <= 1 && g.City.can(run, 'park').ok) id = 'park';
     else {
       const st = statFor(g, run, pol),
-        pf = placeFor(g, run, st);
+        pf = good && run.money < M.workBelow ? placeFor(g, run, null, 'work') : placeFor(g, run, st, 'drill', !good); // casual drills by the main gain only
       if (pf) [id, opt] = pf;
-      hard = pol === 'good' && run.sta > 85;
+      else if (good && g.City.can(run, 'home', 'stretch').ok) [id, opt] = ['home', 'stretch']; // broke: stretch for free
+      hard = good && run.sta > 85;
     }
     if (!id) break;
+    // good: run the trip there when the legs and the stamina allow (the same days; the ground trains)
+    const at = g.City.at(run, id),
+      plan = good && g.City.trip(run, at) > 0 && !g.City.noRun(run, at) ? g.City.runPlan(run, at) : null;
+    if (plan && run.sta - plan.sta > 60 && g.City.travelTo(run, at, 'run')) M.runs++;
     const line = g.City.day(run, id, hard, opt);
     if (!line) break;
     if (y2) M.secret[id] = (M.secret[id] || 0) + 1;
+    if (opt && g.DAY_ORDERS[opt]) M.orders[g.DAY_ORDERS[opt].kind] = (M.orders[g.DAY_ORDERS[opt].kind] || 0) + 1;
     if (/failed/.test(line)) M.fails++;
   }
 }
@@ -111,6 +128,9 @@ function play(seed, pol) {
       pts: { train: 0, match: 0, other: 0 },
       secret: {},
       fails: 0,
+      runs: 0,
+      orders: {},
+      workBelow: 60, // good works a day when money is under this
       fired: 0,
       minMoney: Infinity,
       evicted: 0,
@@ -213,6 +233,8 @@ function play(seed, pol) {
     mood: M.mood.reduce((a, b) => a + b, 0) / Math.max(1, M.mood.length),
     joined: M.joined,
     fails: M.fails,
+    runs: M.runs,
+    orders: M.orders,
     secret: M.secret,
     fans: run.fans,
     curve: M.curve,
@@ -274,6 +296,9 @@ for (const pol of POL === 'both' ? ['casual', 'good'] : [POL]) {
         return o;
       }, {})
     )}`
+  );
+  console.log(
+    `  day orders a run       ${['drill', 'work', 'stretch'].map(k => `${k} ${f1(avg(R.map(r => r.orders[k] || 0)))}`).join(' · ')} · runs ${f1(avg(R.map(r => r.runs)))}`
   );
   console.log(
     `  mood avg ${f1(avg(R.map(r => r.mood)))} · Fired up ${f1(avg(R.map(r => r.fired)))} a run · Scars ${f1(avg(R.map(r => r.scars)))} · failed sessions ${f1(avg(R.map(r => r.fails)))} · fans ${f1(Y('fans')[0])} / ${f1(Y('fans')[1])}`

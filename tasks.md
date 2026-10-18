@@ -141,7 +141,7 @@ Accept: goldens unchanged; a test — end 90 takes less HP damage than end 30 on
 QA: none (engine).
 Result:
 
-### [ ] T-312: Balance the orders — the bot plays the day orders
+### [x] T-312: Balance the orders — the bot plays the day orders
 Agent: A
 Spec: §4.32, §4.33          Goldens: unchanged          Save: no change
 Goal: the career bot uses Drill / Work / Run / Stretch (good: keeps the swing full; casual: drills its key stat only); the
@@ -150,7 +150,7 @@ Files: tests/career-bot.js, js/data/career.js (ORDERS, RUN_GROUND, BODY numbers)
 Do not: change the year caps or the steep curve without saying so in Result.
 Accept: `npm run career -- 20 both` table in §4.32: good Y2 ≥ 91, casual ≤ 88; casual's swing short in ≥ half its runs.
 QA: none.
-Result:
+Result: bot: casual drills its key stat (Body.lead), then the weakest, never Flexibility on purpose; good keeps the swing full (Flexibility first while short), Works under $60, Stretches when broke, Runs trips with stamina to spare. Tuned BODY.swing 0.8 → 1, depth 0.7 → 0.95; Heavy sets / Sand drills / Laps lose their Flexibility sides. Also Body.sync: a directly raised court skill (Hermit's +2) is now a floor the body catches up with, not an edge stacked past the cap (good had reached 95.9). career 12 runs: casual Y1 70.5 · Y2 87.3, swing short 12 / 12; good Y1 79.1 · Y2 94.3 (rival 92.5, league 87.2; above the ~92 aim, ≥ 91 ✓); money at the Y1 Cup ~$300 both (≤ $600 in all). Year caps and the steep curve unchanged. §4.32 table left to the spec chat. npm test 158/158, lint.
 
 **Faction war: Strength, structure, overthrow (owner, 2026-10-19, spec §4.34): Agent B.**
 

@@ -23,19 +23,22 @@ const Body = {
     };
   },
   /**
-   * Write the court skills from the body (rounded, CAREER.statMin–runCap). A court skill changed directly since the last sync
-   * (a Hermit's trial, a test) is kept as an edge on top of the body (`p.edge`); `p.synced` = the values last written.
-   * `run` (optional): Endurance sets run.staMax (CAREER.staMax + ⌊end × BODY.sta⌋, + a stamina sponsor's 15).
+   * Write the court skills from the body (rounded, CAREER.statMin–runCap). A court skill changed directly since the last sync is
+   * kept: raised (the Hermit's +2 past the cap) → a floor the body catches up with (`p.floor`), lowered (tests) → an offset
+   * (`p.edge`); `p.synced` = the values last written. `run` (optional): Endurance sets run.staMax (CAREER.staMax + ⌊end × BODY.sta⌋,
+   * + a stamina sponsor's 15).
    */
   sync(p, run) {
     const b = Body.of(p);
     if (!b) return;
     const c = Body.court(b),
       E = p.edge || (p.edge = {}),
+      F = p.floor || (p.floor = {}),
       S = p.synced || (p.synced = {});
     for (const k of STATK) {
-      if (Number.isFinite(S[k]) && p[k] !== S[k]) E[k] = (E[k] || 0) + (p[k] - S[k]);
-      p[k] = Math.round(clamp(c[k] + (E[k] || 0), CAREER.statMin, CAREER.runCap));
+      if (Number.isFinite(S[k]) && p[k] > S[k]) F[k] = Math.max(F[k] || 0, p[k]);
+      else if (Number.isFinite(S[k]) && p[k] < S[k]) E[k] = (E[k] || 0) + (p[k] - S[k]);
+      p[k] = Math.round(clamp(Math.max(c[k] + (E[k] || 0), F[k] || 0), CAREER.statMin, CAREER.runCap));
       S[k] = p[k];
     }
     if (run) {

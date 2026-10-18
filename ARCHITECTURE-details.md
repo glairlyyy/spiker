@@ -679,13 +679,13 @@ block and the street fight buttons show "Injury risk ~N %" and are disabled whil
 ## Body (spec §4.33, T-307)
 
 Yours only: `you.body = { str, agi, end, flex }` (save v20; NPCs have none). Training, match XP and events act on the body; the
-court skills are derived: `Body.court(b)` (js/career/body.js, numbers in `BODY`, data/career.js) — swing = clamp(flex / (0.8 · str),
-0.5, 1), Power = 0.85 · str · (0.55 + 0.45 · swing) + 0.15 · agi, Jump = 0.55 · str · depth + 0.45 · agi (depth: flex / (0.7 · str),
-0.6–1), Speed = 0.75 · agi + 0.25 · end, Defense = 0.45 · flex + 0.35 · agi + 0.2 · end; a balanced body gives the same number
+court skills are derived: `Body.court(b)` (js/career/body.js, numbers in `BODY`, data/career.js) — swing = clamp(flex / (BODY.swing · str),
+0.5, 1) (1 since T-312), Power = 0.85 · str · (0.55 + 0.45 · swing) + 0.15 · agi, Jump = 0.55 · str · depth + 0.45 · agi (depth: flex / (BODY.depth · str),
+0.6–1; 0.95), Speed = 0.75 · agi + 0.25 · end, Defense = 0.45 · flex + 0.35 · agi + 0.2 · end; a balanced body gives the same number
 everywhere. `Body.sync(you, run)` writes `you.power / def / speed / jump` (rounded, `statMin`–`runCap`) after every body change
 (`Training.addXp`, `Run.bump`) and sets `run.staMax` = 100 + ⌊end / 2⌋ (+15 with the Aqua sponsor). A court skill written
-directly between syncs (the Hermit's +2, tests) is kept as an edge: `you.edge[k]`, against `you.synced[k]` (the values last
-written). `Training.key` sends a court key given for you to its body stat (`BODY.of`: power→str, jump→agi, speed→end, def→flex —
+directly between syncs is kept: raised (the Hermit's +2) → a floor `you.floor[k]` the body catches up with; lowered (tests) → an
+offset `you.edge[k]`; both against `you.synced[k]` (the values last written). `Training.key` sends a court key given for you to its body stat (`BODY.of`: power→str, jump→agi, speed→end, def→flex —
 also how events and injuries land); `TRAININGS` main / side are body keys; teammates training beside you gain the court skill
 the body stat stands for (`BODY.court`, Growth.shared). Me sheet: the four body bars + Wit, then the court skills and the swing
 gauge ("short: Flexibility 52 of 72").
