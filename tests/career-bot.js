@@ -47,6 +47,8 @@ function statFor(g, run, pol) {
 /** A training week: spend the days (good: Work when money is short, Stretch when a drill can't be paid, Run the trips). */
 function week(g, run, pol, M) {
   for (let guard = 0; guard < 20 && g.City.days(run) > 0; guard++) {
+    obs(run, M);
+    if (pol === 'good' && !run.event && warMoves(g, run, M)) continue;
     if (run.event) {
       const pre = run.event.pre;
       g.Run.log(run, g.Events.choose(run, 0));
@@ -72,13 +74,55 @@ function week(g, run, pol, M) {
     // good: run the trip there when the legs and the stamina allow (the same days; the ground trains)
     const at = g.City.at(run, id),
       plan = good && g.City.trip(run, at) > 0 && !g.City.noRun(run, at) ? g.City.runPlan(run, at) : null;
-    if (plan && run.sta - plan.sta > 60 && g.City.travelTo(run, at, 'run')) M.runs++;
-    const line = g.City.day(run, id, hard, opt);
+    if (plan && run.sta - plan.sta > 60 && g.City.travelTo(run, at, 'run')) {
+      M.runs++;
+      M.runSta += plan.sta;
+    }
+    obs(run, M);
+    const m0 = run.money,
+      line = g.City.day(run, id, hard, opt),
+      ok = opt && g.DAY_ORDERS[opt] ? g.DAY_ORDERS[opt].kind : 'place';
+    M.cash[ok] = (M.cash[ok] || 0) + (run.money - m0);
+    obs(run, M);
     if (!line) break;
     if (y2) M.secret[id] = (M.secret[id] || 0) + 1;
     if (opt && g.DAY_ORDERS[opt]) M.orders[g.DAY_ORDERS[opt].kind] = (M.orders[g.DAY_ORDERS[opt].kind] || 0) + 1;
     if (/failed/.test(line)) M.fails++;
   }
+}
+/** Money seen between two looks: income and spending (measurement). */
+function obs(run, M) {
+  const d = run.money - M.lastMoney;
+  if (d > 0) M.cashIn += d;
+  else M.cashOut -= d;
+  M.lastMoney = run.money;
+}
+/** Good policy in the war (measurement, 2026-10-19): a Raid once a week when it may (stamina > 60); an overthrow of a Broken
+ * unit across its border when it may (stamina > 60). True when it spent the day. */
+function warMoves(g, run, M) {
+  if (run.sta <= 60) return false;
+  if (g.Fight.raidWhy(run) === '') {
+    const n = run.mlog.length,
+      line = g.Fight.raid(run);
+    if (line && run.mlog.length > n) {
+      M.raids.push(!!run.mlog[run.mlog.length - 1].win);
+      return true;
+    }
+  }
+  for (const u of g.War.ids()) {
+    const S = g.War.side(run, u);
+    if (!S || !g.War.can(run, u, S.by).ok) continue;
+    const fx = g.War.overthrow(run, u);
+    if (!fx) continue;
+    const m = g.newMatch(fx.a, fx.b, false);
+    fx.setup(m);
+    while (!m.over) g.playRally(m);
+    M.otWho = 'you';
+    fx.onFinish(m);
+    M.otWho = 'ai';
+    return true;
+  }
+  return false;
 }
 /** Year 2 (good policy): the secret places when they pay — a letter, the tapes until her file is read, the hermit's trial when
  * the bar is reached, the lighthouse to let Pain go before a Scar, the onsen when worn out, a night game when Drive is low. */
@@ -137,8 +181,33 @@ function play(seed, pol) {
       mood: [],
       evals: [[], []],
       y: [{}, {}],
-      joined: null
+      joined: null,
+      // the war (measurement, 2026-10-19)
+      runSta: 0,
+      cash: {},
+      cashIn: 0,
+      cashOut: 0,
+      lastMoney: 0,
+      raids: [],
+      otWho: 'ai',
+      ot: [],
+      fell: [],
+      lo: {},
+      stw: {}
     };
+  M.lastMoney = run.money;
+  const absW = r => (g.Season.year(r) - 1) * 28 + r.week;
+  const destroy = g.War.destroy,
+    rally = g.War.rally;
+  g.War.destroy = (r, u, by) => {
+    M.ot.push({ u, by, w: absW(r), who: M.otWho, win: true });
+    M.fell.push({ u, by, w: absW(r), who: M.otWho });
+    return destroy(r, u, by);
+  };
+  g.War.rally = (r, u) => {
+    M.ot.push({ u, w: absW(r), who: M.otWho, win: false });
+    return rally(r, u);
+  };
   g.Story.skip(run);
   const add = g.Feel.add;
   g.Feel.add = (r, k, v) => {
@@ -159,6 +228,14 @@ function play(seed, pol) {
     const w = (g.Season.year(r) - 1) * 28 + r.week,
       before = g.STATK.reduce((a, k) => a + you[k], 0);
     endWeek(r);
+    for (const u of g.War.ids()) {
+      const st = (M.stw[u] = M.stw[u] || [0, 0, 0, 0, 0]);
+      if (g.War.fallen(r, u)) st[4]++;
+      else {
+        st[g.War.stage(r, u)]++;
+        M.lo[u] = Math.min(M.lo[u] ?? 100, g.War.str(r, u));
+      }
+    }
     if (w % 4 === 0) M.curve[w] = [g.ovr(you), g.Season.mean(r), g.ovr(g.Stars.get(r, 'rival') || you)];
     M.pts.other += g.STATK.reduce((a, k) => a + you[k], 0) - before;
   };
@@ -175,6 +252,19 @@ function play(seed, pol) {
     Y.body = g.BODY.keys.map(k => you.body[k]);
     Y.short = g.Body.swing(you.body) < 1;
     Y.fans = r.fans;
+    Y.swing = g.Body.swing(you.body);
+    Y.war = Object.fromEntries(g.War.ids().map(u => [u, g.War.fallen(r, u) ? -1 : g.War.str(r, u)]));
+    Y.sq = {};
+    for (const e of r.cup.entrants) if (e.region) Y.sq[e.region] = (Y.sq[e.region] || 0) + 1;
+    const riv = g.Stars.get(r, 'rival'),
+      ri = riv ? r.cup.entrants.findIndex(e => e.ids.includes(riv.id)) : -1,
+      ovrs = r.cup.entrants.map((e, i) => g.Cup.team(r, i).ovr);
+    Y.riv = riv ? (g.FACTIONS[riv.team.i] && g.FACTIONS[riv.team.i].region) || riv.team.region || '?' : '-';
+    Y.walk = r.war && r.war.walk ? r.war.walk.to : null;
+    Y.rivSq = ri >= 0 ? ovrs[ri] : null;
+    Y.rivWeak = ri >= 0 ? g.War.weakOf(r, g.Cup.team(r, ri)) : null;
+    Y.sqMean = ovrs.reduce((a, b) => a + b, 0) / ovrs.length;
+    Y.sqTop = Math.max(...ovrs.filter((v, i) => i !== ri));
   };
   for (let guard = 0; guard < 800 && !run.result; guard++) {
     // the hub's scenes (and the first hub after a match) play and are read at once: their flags apply (Fern's goodbye …)
@@ -188,6 +278,7 @@ function play(seed, pol) {
       if (!pre && g.Run.canEndWeek(run)) g.Run.endWeek(run);
       continue;
     }
+    obs(run, M);
     joinBest(g, run);
     if (M.joined == null && !g.World.isFree(run)) M.joined = (g.Season.year(run) - 1) * 28 + run.week;
     M.minMoney = Math.min(M.minMoney, run.money);
@@ -239,6 +330,12 @@ function play(seed, pol) {
     fans: run.fans,
     curve: M.curve,
     pts: M.pts,
+    war: { lo: M.lo, stw: M.stw, ot: M.ot, fell: M.fell },
+    raids: M.raids,
+    cash: M.cash,
+    cashIn: M.cashIn,
+    cashOut: M.cashOut,
+    runSta: M.runSta,
     cupW: [1, 2].map(y => run.mlog.filter(e => e.kind === 'cup' && e.y === y).map(e => e.win))
   };
 }
@@ -303,4 +400,52 @@ for (const pol of POL === 'both' ? ['casual', 'good'] : [POL]) {
   console.log(
     `  mood avg ${f1(avg(R.map(r => r.mood)))} · Fired up ${f1(avg(R.map(r => r.fired)))} a run · Scars ${f1(avg(R.map(r => r.scars)))} · failed sessions ${f1(avg(R.map(r => r.fails)))} · fans ${f1(Y('fans')[0])} / ${f1(Y('fans')[1])}`
   );
+  // ---- the war (measurement, 2026-10-19) ----
+  const U = g0.War.ids();
+  console.log(`  war (per run avg; weeks of 56)   lowest (min)   Steady/Strained/Shaken/Broken/fallen wks   Str at Cup Y1 / Y2   fell`);
+  for (const u of U) {
+    const st = k => f1(avg(R.map(r => (r.war.stw[u] || [])[k] || 0))),
+      fell = R.filter(r => r.war.fell.some(f => f.u === u));
+    console.log(
+      `    ${u.padEnd(7)} ${f1(avg(R.map(r => r.war.lo[u] ?? 0))).padStart(5)} (${String(Math.min(...R.map(r => r.war.lo[u] ?? 0))).padStart(3)})   ${[0, 1, 2, 3, 4].map(st).join(' / ').padEnd(30)}   ${[
+        0, 1
+      ]
+        .map(y => f1(avg(R.map(r => (r.y[y].war && r.y[y].war[u] >= 0 ? r.y[y].war[u] : null)))))
+        .join(' / ')
+        .padEnd(
+          12
+        )}   ${fell.length} / ${R.length}${fell.length ? ` (wk ${fell.map(r => r.war.fell.find(f => f.u === u).w).join(',')}; by ${fell.map(r => r.war.fell.find(f => f.u === u).by + (r.war.fell.find(f => f.u === u).who === 'you' ? '*' : '')).join(',')})` : ''}`
+    );
+  }
+  const OT = R.flatMap(r => r.war.ot);
+  for (const who of ['ai', 'you'])
+    console.log(
+      `  overthrows by ${who.padEnd(3)}  ${OT.filter(o => o.who === who).length} in ${R.length} runs, won ${OT.filter(o => o.who === who && o.win).length} · runs with any: ${R.filter(r => r.war.ot.some(o => o.who === who)).length} · targets ${JSON.stringify(OT.filter(o => o.who === who).reduce((o, x) => ((o[x.u] = (o[x.u] || 0) + 1), o), {}))}`
+    );
+  console.log(
+    `  falls a run ${f1(avg(R.map(r => r.war.fell.length)))} · runs with ≥1 fall ${R.filter(r => r.war.fell.length).length} / ${R.length} · Gold fell ${R.filter(r => r.war.fell.some(f => f.u === 'gold')).length} (Haewon to: ${
+      R.filter(r => r.y[1].walk)
+        .map(r => r.y[1].walk)
+        .join(',') || '—'
+    })`
+  );
+  for (const y of [0, 1]) {
+    const regs = [...new Set(R.flatMap(r => Object.keys(r.y[y].sq || {})))].sort();
+    console.log(
+      `  Cup Y${y + 1} squads/faction ${regs.map(k => `${k} ${f1(avg(R.map(r => (r.y[y].sq || {})[k] || 0)))} [${Math.min(...R.map(r => (r.y[y].sq || {})[k] || 0))}–${Math.max(...R.map(r => (r.y[y].sq || {})[k] || 0))}]`).join(' · ')}`
+    );
+    console.log(
+      `  her squad Y${y + 1}  ovr ${f1(avg(R.map(r => r.y[y].rivSq)))} (all squads ${f1(avg(R.map(r => r.y[y].sqMean)))}, best other ${f1(avg(R.map(r => r.y[y].sqTop)))}) · her stage ${f1(avg(R.map(r => r.y[y].rivWeak)))} · she plays for ${JSON.stringify(R.reduce((o, r) => ((o[r.y[y].riv] = (o[r.y[y].riv] || 0) + 1), o), {}))} · swing ${f1(avg(R.map(r => r.y[y].swing)))}`
+    );
+  }
+  const RD = R.flatMap(r => r.raids);
+  console.log(
+    `  raids ${f1(avg(R.map(r => r.raids.length)))} a run (runs with any ${R.filter(r => r.raids.length).length}), won ${pc(RD.length ? RD.filter(Boolean).length / RD.length : NaN)} of ${RD.length}`
+  );
+  const kinds = [...new Set(R.flatMap(r => Object.keys(r.cash)))].sort();
+  console.log(
+    `  money a run  in ${f1(avg(R.map(r => r.cashIn)))} · out ${f1(avg(R.map(r => r.cashOut)))} · by day order ${kinds.map(k => `${k} ${f1(avg(R.map(r => r.cash[k] || 0)))}`).join(' · ')}`
+  );
+  console.log(`  run trips ${f1(avg(R.map(r => r.runs)))} a run · stamina spent on them ${f1(avg(R.map(r => r.runSta)))}`);
+  if (process.env.CAREER_JSON) require('fs').writeFileSync(`${process.env.CAREER_JSON}.${pol}.json`, JSON.stringify(R));
 }
