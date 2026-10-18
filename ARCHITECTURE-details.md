@@ -518,7 +518,7 @@ mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-vie
    patchwork, Shu climbing to rock grey with height; a gravel strip along the Shu–Wei line and sand / pebble banks beside the river),
    then the beach sand, district and ground tints; `land.borders` (MapModel.borders(): the Shu–Wei line, the dune line, the river,
    each with its `BORDERS` strip / row kind) drives the border rows MapModel.nature adds (`NATURE.rows`): pines on the Shu side of the Shu–Wei line, reeds on both river banks, dune grass inland of the dune line, a hedge ring round the Academy, fence panels (turned along the ring) and scrap round the Outlaws — drawn by nature3d.mjs like the scatter (+1 draw call: fence). Dev:
-   `MapView.m3.hexFill(false)` or `?nohex` hides the hex tile fill (the clarity check). Fixed-yaw camera, pitch 55°, wheel zoom 25–420 m, drag pans on the ground plane, a click (< 5 px)
+   `MapView.m3.hexFill(false)` / `?nohex` (a no-op since T-317: no hex fills are drawn). Fixed-yaw camera, pitch 55°, wheel zoom 25–420 m, drag pans on the ground plane, a click (< 5 px)
    raycasts to a map point (`toMap`; 1 map unit = `MAP_M` = 0.5 m). The player is `js/map3d/avatar3d.mjs`
    (`createAvatar(scene)`: the default VRM via `loadBase` / `makeVRM`, capsule until loaded): `snap` first, `setTarget` when
    `model.you.at` changes — `setTarget(at, path)` walks the road polyline `model.you.route` (added by `MapView.routed` in js/ui/map-view.js from `City.route(last you.at, you.at)`; the renderer never calls `City`; straight line without it) at 6 m/s over the whole length (trip 1.2–6 s, ramps 0.4 s; faster trips show a ×N badge), facing along the current segment, gait from
@@ -526,7 +526,7 @@ mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-vie
    Furniture is `js/map3d/pins3d.mjs` (`createFurniture(scene, heightAt)`): an HTML overlay `.maplay` over the canvas holds one
    `.mpin` button per `model.pins` item (icon, badge, flag classes, click → `pick(id)`), the region / airport labels (fade out
    below ~70 m camera distance) and the picked-point flag, all projected onto the terrain every frame after render;
-   the hex territory (`model.hexes`: draped owner fills, two-colour edge ribbons where holders differ, a faint grid, the pulsing battle tile, `.mbord` pressure chips) is the terrain decal layer. `sync(model, on)` rebuilds a part only when its JSON changed;
+   the war (`model.borders`, map3d `warLayer`, T-317: each unit's border a draped ribbon just inside its land in its lead club's colour, the week's hot stretch a pulsing amber glow, banners along it — three meshes, rebuilt on change; pins3d's old hex-decal code gets no `model.hexes` any more) is the terrain decal layer. `sync(model, on)` rebuilds a part only when its JSON changed;
    fog is a per-vertex darkening of the terrain colours (`applyFog(model.fog)` with `fogFactor`, unexplored land dim, not hidden).
    Shared helpers live in `js/map3d/geo3d.mjs` (`MAP_M`, `FOG_DIM`, `FOG_SOFT`, `toWorld` / `toMap`, `clamp` / `lerp` /
    `smooth`, `fogFactor(fog)` → k(x, z) with squared-distance early-outs): every map3d module imports from it, never from
@@ -754,7 +754,7 @@ won +WAR.win × k, lost −WAR.lose × k × soak, 0–100, stamps `last`; A's Ra
 rally), `sync` (rebuilds the `run.own` place cache). `Front.site` picks the week's border (a hash of the week: unit pair,
 then edge; `run.clash = { tile (defender's), from (raider's), at (the edge's midpoint), ua, ud, att, def }`), `Front.result`
 hits both units, `Front.sim` reads their Strength. Tiles never flip; the player's travel never reads tiles.
-`MapModel.hexes(run)` is the ground layer the map draws (each tile in its holder's region colour, `unit`, frontier).
+`MapModel.warMap(run)` (model key `borders`) is what the map draws: `Hex.outline` (boundary edges chained into loops) + `Hex.smooth` (Chaikin) per unit (`War.outline`, cached by the holders), the battle units' meeting stretch (`War.meet`), banners every `MapModel.bannerStep` points (each side's colour, facing across), `fall`. Hex tiles and the point panel's tile block are gone (T-317).
 War stages in the match (T-314): the engine takes a per-side stage `opts.weak` / `weakSet(m, [k0, k1])` (match.js; WAR_STAGES
 index, absent = nothing changes): `m.weak`, morale starts −`mor` (morAdd), `hpHeal` heals −`heal`, a Broken side's cards lose
 `slots` from the end of SLOTS (`C.off` = ['flex']; `cardSlots(m, i)`, cardPut / cardFill skip it). Career fixtures call
@@ -768,7 +768,7 @@ fixture against `War.ace` at its HQ (HQ card: `overthrowBlock`, action `mapOvert
 club); the rival never to the winner's region nor yours → `run.war.walk` → the `walkout` scene) or `rally` (+WAR.rally).
 `War.ai` (from `War.week`): a standing unit < WAR.ai off cooldown is challenged by its strongest foe (simMatch of the aces).
 `Cup.places(run)` splits each major's squads over its units; a fallen unit's share counts for its holder's region. The map
-pans to the latest fall once (`hexes.fall`, map3d). Engine matches are one set: the "5 sets" overthrow is one match.
+pans to the latest fall once (`borders.fall`, map3d). Engine matches are one set: the "5 sets" overthrow is one match.
 Call-ups (T-316): `Fight.calledFor(run)` = the region your club fights for when its unit is on this week's battle border
 (`Front.clash`), else null; a battle settled without you on that side (`clashEnd`, `watch`, fighting for the other side in
 `clashResult`) → `Fight.refuse` (WAR_CALL.refuse standing, diary note). clashPanel shows the call (WAR_CALL.lines, the

@@ -25,20 +25,29 @@ test('hex: the grid is deterministic, every place and HQ sits on a tile of its r
   eq(JSON.stringify(g.Hex.grid().tiles), h, 'rebuilt the same');
 });
 
-test('map: hex tiles in the model follow their holder unit; the battle tile shows the defender’s Strength (T-133, T-313)', () => {
+test('map: borders — one closed smoothed border per unit, the hot stretch is the week’s battle, banners on it; no hex tiles (T-317)', () => {
   const g = load(52),
-    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Hexes' });
-  let M = g.MapModel.build(run).hexes;
-  eq(M.tiles.length, g.Hex.grid().tiles.length, 'every land tile');
-  assert(
-    M.tiles.every(t => t.own === g.Hex.tile(t.id).region && t.color === g.REGIONS[t.own].color && t.unit === g.Hex.tile(t.id).unit),
-    'start: own region and unit'
-  );
-  assert(M.tiles.some(t => t.frontier) && M.tiles.every(t => !t.frontier || g.MAJORS.includes(t.own)), 'frontier tiles are majors’');
-  eq(M.target, null, 'no battle yet');
-  const tg = g.Front.site(run, 'shu', 'wei');
-  run.clash = { tile: tg.tile, from: tg.from, att: 'shu', def: 'wei', seen: false, done: false };
-  M = g.MapModel.build(run).hexes;
-  eq(M.target.id, tg.tile, 'the battle tile');
-  assert(M.target.text === `Iron ${g.War.str(run, 'iron')}` && M.target.color === g.REGIONS.shu.color, 'the defender’s Strength, in the raider’s colour');
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Borders' });
+  run.clash = null;
+  let M = g.MapModel.build(run);
+  assert(!('hexes' in M), 'no hex tiles in the model');
+  eq(M.borders.lines.map(l => l.unit).join(), g.War.ids().join(), 'a border per unit');
+  for (const L of M.borders.lines) {
+    eq(g.Hex.outline(g.War.land(run, L.unit)).length, 1, 'one closed loop: ' + L.unit);
+    assert(L.pts.length > 40 && L.color === run.teams[g.WAR.units[L.unit].clubs[0]].color, 'smoothed, in its club colour: ' + L.unit);
+  }
+  assert(M.borders.hot === null && M.borders.banners.length === 0, 'calm: no hot stretch');
+  const t = g.Front.site(run, 'shu', 'wei');
+  run.clash = { tile: t.tile, from: t.from, at: t.at, att: 'shu', def: 'wei', seen: false, done: false };
+  M = g.MapModel.build(run).borders;
+  eq(M.hot.units.join(), [t.ua, t.ud].join(), 'the hot stretch is the battle’s border');
+  const near = (p, L) => L.some(q => Math.hypot(q[0] - p[0], q[1] - p[1]) < g.HEX.size);
+  assert(M.hot.lines.some(L => near(t.at, L)), 'the battle site sits on it');
+  assert(M.banners.length >= 2 && M.banners.every(b => b.at.length === 2 && b.face.length === 2), 'banners along it');
+  eq(JSON.stringify(g.MapModel.build(run).borders), JSON.stringify(M), 'deterministic');
+  // a destroyed unit's land joins its destroyer's border
+  g.War.destroy(run, 'iron', 'harbor');
+  const B = g.MapModel.build(run).borders;
+  assert(!B.lines.some(l => l.unit === 'iron') && g.Hex.outline(g.War.land(run, 'harbor')).length === 1, 'Harbor’s one border takes in Iron’s land');
+  assert(B.fall && B.fall.pin === 'hq1', 'the map pans to the fall');
 });

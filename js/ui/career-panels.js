@@ -120,20 +120,6 @@ function secretPanel(run, sid, base, travel, days, cost) {
   return placeCard({ ...base, kind: 'Secret', flavour: SPOTS[sid].desc, body, row: [...row, travel].filter(Boolean) });
 }
 /** Any point of the island: travel there (the fog lifts around it). */
-/** The war ground under a map point (spec §4.34): the unit holding it, its Strength and stage, and whether it is a border. */
-function tileBlock(run, p) {
-  const id = Hex.idAt(p),
-    t = Hex.tile(id);
-  if (!t) return '';
-  const u = War.unitAt(run, id);
-  if (!u) return `<div class="ptile small"><span class="mute">${t.kind === 'academy' ? 'Neutral ground — no fighting on campus' : 'Not in the war'}</span></div>`;
-  const D = WAR.units[u],
-    n = War.stage(run, u),
-    from = t.unit !== u ? ` <span class="mute">(${esc(WAR.units[t.unit].name)}'s, before it fell)</span>` : '';
-  return `<div class="ptile small"><div>${chip(REGIONS[D.region])}<b>${esc(D.name)}</b> ground${from}</div><div><span ${tip(GLOSSARY.strength.long)}>Strength <b>${War.str(run, u)}</b></span>${
-    n ? ` · <span ${tip(GLOSSARY.stage.long)}>${WAR_STAGES[n].name}</span>` : ''
-  }${Hex.frontier(run, id) ? ` · <span ${tip(GLOSSARY.border.long)}>Border</span>` : ''}</div></div>`;
-}
 function pointPanel(run, p) {
   const d = City.travelDays(run, p),
     seen = City.seen(run, p),
@@ -145,7 +131,6 @@ function pointPanel(run, p) {
     title: `⚑ ${seen ? esc(REGIONS[r].name) : 'Unexplored land'}`,
     tags: d >= 2 ? [ptag(`Trip ${d}d`, '', 'warn')] : [],
     flavour: seen ? REGIONS[r].desc : 'Nobody you know has been out there. Go and see what you find.',
-    body: tileBlock(run, p),
     row: [
       `<button class="btn hot" onclick="mapTravel(${p[0]},${p[1]})" ${late ? `disabled ${tip(late)}` : ''}>Travel here · ${d}d</button>`
     ]

@@ -325,6 +325,59 @@ const War = {
       }`, 'world');
     }
   },
+  /** The tiles unit u holds now (a Set of ids). */
+  land(run, u) {
+    return new Set(
+      Hex.grid()
+        .tiles.filter(t => War.unitAt(run, t.id) === u)
+        .map(t => t.id)
+    );
+  },
+  /** u's border (spec §4.34): the outer edge of its land, one closed smoothed loop [[x, y]…] (cached until a unit falls). */
+  outline(run, u) {
+    const key = `${u}|${War.ids().map(x => War.holder(run, x)).join()}`,
+      C = War.lineCache || (War.lineCache = new Map());
+    if (!C.has(key)) {
+      const L = Hex.outline(War.land(run, u))[0];
+      C.set(key, L ? Hex.smooth(L, 2, true) : []);
+    }
+    return C.get(key);
+  },
+  /**
+   * The stretch where units a and b meet: open polylines of the tile edges between their land (smoothed), longest first.
+   */
+  meet(run, a, b) {
+    const A = War.land(run, a),
+      key = p => `${Math.round(p[0] * 10)},${Math.round(p[1] * 10)}`,
+      segs = [];
+    for (const id of A) {
+      const t = Hex.tile(id),
+        C = Hex.corners(Hex.centre(t.q, t.r));
+      for (let i = 0; i < 6; i++) {
+        const n = Hex.across(t, i);
+        if (n && War.unitAt(run, n.id) === b) segs.push([C[i], C[(i + 1) % 6]]);
+      }
+    }
+    // chain the segments into polylines (a's edges all run the same way round)
+    const from = new Map(segs.map(s => [key(s[0]), s])),
+      to = new Set(segs.map(s => key(s[1]))),
+      used = new Set(),
+      lines = [];
+    const starts = segs.filter(s => !to.has(key(s[0]))).concat(segs);
+    for (const s0 of starts) {
+      if (used.has(s0)) continue;
+      const L = [s0[0]];
+      let s = s0;
+      while (s && !used.has(s)) {
+        used.add(s);
+        L.push(s[1]);
+        s = from.get(key(s[1]));
+      }
+      lines.push(Hex.smooth(L, 2, false));
+    }
+    const len = L => L.reduce((n, p, i) => (i ? n + Math.hypot(p[0] - L[i - 1][0], p[1] - L[i - 1][1]) : 0), 0);
+    return lines.sort((x, y) => len(y) - len(x));
+  },
   /** run.own = { placeId: holder region } for every place whose tile's holder is not the place's own region (Front.owner reads it). */
   sync(run) {
     const own = {};

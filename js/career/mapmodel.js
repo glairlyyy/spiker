@@ -1,5 +1,5 @@
 // The island map as plain data: what a renderer draws, with no drawing in it (DOM-free, tested headless).
-// MapModel.build(run, sel) → { w, h, land, hexes, pins, you, fog, flag, focus, sel, life }. Map units: CITY.w × CITY.h,
+// MapModel.build(run, sel) → { w, h, land, borders, pins, you, fog, flag, focus, sel, life }. Map units: CITY.w × CITY.h,
 // y down. A renderer (MapView: js/ui/map-view.js → js/map3d/map3d.mjs) draws a model and reports two things
 // back: a pin picked (its id) and a map point clicked ([x, y] in map units). All game rules stay in City / Front.
 
@@ -618,36 +618,46 @@ const MapModel = {
     });
   },
   /**
-   * The war ground (spec §4.34, War / Hex): { size, tiles: [{ id, at, own, major, color, kind, frontier, unit }], target } —
-   * every land tile with the region of the war unit holding it (major: one of MAJORS); frontier = a war border tile; fall = the
-   * latest destroyed unit { key, at (its HQ), pin }; target =
-   * this week's battle tile { id, color (raider), text 'Iron 84' — the defending unit's Strength }. Display only.
+   * The war on the map (spec §4.34; hex tiles are never drawn): lines — one closed smoothed border per standing unit { unit,
+   * color (its lead club's colour), pts }; hot — this week's battle stretch { units, colors, lines (open polylines), site };
+   * banners along it [{ at, face, color }] (each side's, facing across); fall — the latest destroyed unit { key, at (its HQ),
+   * pin } (the map pans there once). Display only, no randoms.
    */
-  hexes(run) {
-    const c = Fight.clashSite(run),
-      short = u => WAR.units[u].name.split(' ').slice(-1)[0];
-    const F = War.state(run).fallen,
+  warMap(run) {
+    const col = u => run.teams[WAR.units[u].clubs[0]].color,
+      F = War.state(run).fallen,
       last = Object.keys(F).sort((a, b) => F[b].week - F[a].week || (a < b ? -1 : 1))[0],
-      hq = last && WAR.units[last].clubs[0];
+      hq = last && WAR.units[last].clubs[0],
+      U = Front.clash(run),
+      hot = U && War.alive(run, U.ua) && War.alive(run, U.ub) ? { units: [U.ua, U.ub], colors: [col(U.ua), col(U.ub)], lines: War.meet(run, U.ua, U.ub), site: run.clash.at || null } : null,
+      banners = [];
+    if (hot)
+      for (const L of hot.lines)
+        for (let i = 1; i + 1 < L.length; i += MapModel.bannerStep) {
+          const [x, y] = L[i],
+            dx = L[i + 1][0] - L[i - 1][0],
+            dy = L[i + 1][1] - L[i - 1][1],
+            n = Math.hypot(dx, dy) || 1,
+            nx = dy / n,
+            ny = -dx / n; // right of the line: b's side (a's edges run round a's land)
+          [
+            [-1, hot.colors[0]],
+            [1, hot.colors[1]]
+          ].forEach(([k, color]) =>
+            banners.push({ at: [x + nx * k * 9, y + ny * k * 9], face: [x - nx * k * 30, y - ny * k * 30], color })
+          );
+        }
     return {
-      size: HEX.size,
-      fall: last ? { key: `${last}|${F[last].week}`, at: CITY.hq[hq].slice(), pin: `hq${hq}` } : null, // the latest destroyed unit: the map pans there once
-      target: c ? { id: c.tile, color: REGIONS[c.a].color, text: `${short(c.ub)} ${War.str(run, c.ub)}` } : null,
-      tiles: Hex.grid().tiles.map(t => {
-        const own = War.regionAt(run, t.id);
-        return {
-          id: t.id,
-          at: t.at,
-          own,
-          major: MAJORS.includes(own),
-          color: REGIONS[own].color,
-          kind: t.kind,
-          frontier: Hex.frontier(run, t.id),
-          unit: War.unitAt(run, t.id)
-        };
-      })
+      lines: War.ids()
+        .filter(u => War.alive(run, u))
+        .map(u => ({ unit: u, color: col(u), pts: War.outline(run, u) })),
+      hot,
+      banners,
+      fall: last ? { key: `${last}|${F[last].week}`, at: CITY.hq[hq].slice(), pin: `hq${hq}` } : null
     };
   },
+  /** Every this-many points of a smoothed hot stretch, a pair of banners. */
+  bannerStep: 10,
   /**
    * Patrols on this week's hot border (spec §4.34): the battle's two tiles — the defender guards its tile (2), the raider
    * stands on its own tile across the border (3). Figures [{ id, tile, at, face, color }]: at = on the tile's side facing the
@@ -682,7 +692,7 @@ const MapModel = {
       w: CITY.w,
       h: CITY.h,
       land: MapModel.land(run),
-      hexes: MapModel.hexes(run),
+      borders: MapModel.warMap(run),
       pins: MapModel.pins(run),
       you: { at: City.pos(run), title: `You are in ${REGIONS[City.loc(run)].name}` },
       // the dark map lifts only round you and your home (owner, 2026-10-03); what you've explored stays known (pins) but dark

@@ -119,6 +119,67 @@ const Hex = {
     const t = Hex.tile(id);
     return t ? Hex.DIRS.map(([dq, dr]) => Hex.tile(`${t.q + dq},${t.r + dr}`)).filter(Boolean) : [];
   },
+  /** The tile across edge i of tile t (edge i joins corners i and i + 1), or null (water / off the grid). */
+  across(t, i) {
+    const a = ((i + 0.5) * Math.PI) / 3,
+      d = HEX.size * Math.sqrt(3);
+    return Hex.tile(Hex.idAt([t.at[0] + d * Math.cos(a), t.at[1] + d * Math.sin(a)])) || null;
+  },
+  /**
+   * The outline of a set of tiles (ids, a Set): closed loops of corner points [[x, y]…], longest first. Every boundary edge
+   * (to a tile outside the set, or to no tile) is walked corner to corner; a tile's edges run the same way round, so the
+   * loops close.
+   */
+  outline(ids) {
+    const key = p => `${Math.round(p[0] * 10)},${Math.round(p[1] * 10)}`,
+      next = new Map();
+    for (const id of ids) {
+      const t = Hex.tile(id),
+        C = Hex.corners(Hex.centre(t.q, t.r)); // (the exact centre: neighbours' corners meet)
+      for (let i = 0; i < 6; i++) {
+        const n = Hex.across(t, i);
+        if (n && ids.has(n.id)) continue;
+        const a = C[i],
+          b = C[(i + 1) % 6],
+          k = key(a);
+        if (!next.has(k)) next.set(k, []);
+        next.get(k).push([a, b]);
+      }
+    }
+    const loops = [];
+    for (const [k0, list] of next)
+      while (list.length) {
+        const loop = [];
+        let [a, b] = list.pop(),
+          guard = 0;
+        loop.push(a);
+        while (key(b) !== k0 && guard++ < 4000) {
+          loop.push(b);
+          const L = next.get(key(b));
+          if (!L || !L.length) break;
+          [, b] = L.pop();
+        }
+        if (loop.length > 2) loops.push(loop.map(p => [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10]));
+      }
+    const len = L => L.reduce((s, p, i) => s + Math.hypot(p[0] - L[(i + 1) % L.length][0], p[1] - L[(i + 1) % L.length][1]), 0);
+    return loops.sort((x, y) => len(y) - len(x));
+  },
+  /** Chaikin corner cutting (n rounds) of a polyline; closed = a loop. Keeps an open line's ends. */
+  smooth(pts, n = 2, closed = true) {
+    let P = pts;
+    for (let r = 0; r < n; r++) {
+      const out = closed ? [] : [P[0]],
+        m = closed ? P.length : P.length - 1;
+      for (let i = 0; i < m; i++) {
+        const a = P[i],
+          b = P[(i + 1) % P.length];
+        out.push([0.75 * a[0] + 0.25 * b[0], 0.75 * a[1] + 0.25 * b[1]], [0.25 * a[0] + 0.75 * b[0], 0.25 * a[1] + 0.75 * b[1]]);
+      }
+      if (!closed) out.push(P[P.length - 1]);
+      P = out;
+    }
+    return P.map(p => [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10]);
+  },
   /** A tile's name for the diary and cards: its place, else "{region} ground near {nearest place}". */
   name(id) {
     const t = Hex.tile(id),

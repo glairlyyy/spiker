@@ -210,7 +210,7 @@ Accept: tests — a member is called up on a battle week of their unit; a refuse
 QA: career run → a call-up week.
 Result: `Fight.calledFor` (your club's unit on the week's border) / `Fight.refuse` (−8 standing with your faction, diary line) on stay-away (clashEnd), watching, or fighting for the other side; WAR_CALL in js/data/war.js (the call in wei / wu / shu voices); clashPanel: Call-up + Refuse rows first, your side's Fight button is the ink primary — no new pop-up. Test: called for Harbor's battle, not Fort's; stay-away −8; answering costs nothing extra; free agents never called. QA: call-up week card screenshot fine.
 
-### [ ] T-317: Borders on the map — lines, heat, banners
+### [x] T-317: Borders on the map — lines, heat, banners
 Agent: B
 Spec: §4.34, §4.18          Goldens: unchanged          Save: no change
 Goal: hex fills and the tile panel go; each war unit's border is one smoothed line in its colour; fighting heats a stretch
@@ -220,7 +220,7 @@ Files: js/map3d/map3d.mjs, js/map3d/geo3d.mjs (banners there, not in A's pins3d.
 Do not: add per-frame allocations; colour terrain (faction colour only on borders, banners).
 Accept: map test — one closed border per unit; the hot stretch is the one the week's battle was on; QA screenshot.
 QA: career run → map overview, a hot border close-up.
-Result:
+Result: model key `borders` (MapModel.warMap; `hexes` gone, so pins3d draws no fills / tile chips) — Hex.outline + Hex.smooth: one closed Chaikin-smoothed loop per standing unit (Iron 70 corners, Gold 36, Harbor 34, Fort 42, Shu 68), in its lead club's colour, drawn just inside its own land so neighbours sit side by side; the hot stretch = War.meet of the battle's two units (pulsing amber glow, opacity only per frame), banner pairs every 10 points facing across (geo3d `ribbon` / `bannerArrays`, map3d `warLayer`: 3 meshes, rebuilt on JSON change); the point panel's tile block is gone. Map test: one loop per unit, the hot stretch is the battle's and the site sits on it, a destroyed unit's land joins its destroyer's one border. Notes: pins3d.mjs (A's) keeps its now-unused hex-decal code and css/map.css its `.ptile` / `.mbord` rules — remove at merge; borders along the coast sit in the water and stay hidden (only land borders show). QA: overview + Iron/Harbor close-up (glow, banners, ⚔ on the line). ui-smoke: 13/13 before; after T-317 two runs each failed one different, map-unrelated step under load (court prep text, Monster cards row; 0 page errors) — re-run at merge.
 
 **Semi-automatic matches (owner, 2026-10-16, spec §2.31–§2.33): T-294 → T-297, spec chat, in order.** Built and measured,
 not tuned (owner: "no need to fine tune it yet"). T-283 / T-284 wait: the cards replace the board they tune.
