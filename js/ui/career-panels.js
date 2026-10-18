@@ -120,27 +120,19 @@ function secretPanel(run, sid, base, travel, days, cost) {
   return placeCard({ ...base, kind: 'Secret', flavour: SPOTS[sid].desc, body, row: [...row, travel].filter(Boolean) });
 }
 /** Any point of the island: travel there (the fog lifts around it). */
-/** The hex tile under a map point (spec §4.27): holder, ground, what it takes to seize it, and any pressure on it. */
+/** The war ground under a map point (spec §4.34): the unit holding it, its Strength and stage, and whether it is a border. */
 function tileBlock(run, p) {
   const id = Hex.idAt(p),
     t = Hex.tile(id);
   if (!t) return '';
-  const own = Hex.owner(run, id),
-    H = Hex.state(run),
-    short = r => esc(REGIONS[r].name.split(' ')[0]),
-    ground = `${t.kind === 'place' ? 'place' : t.kind === 'hq' ? 'club HQ' : t.terrain === 'plain' ? 'open ground' : t.terrain} · <span ${tip(GLOSSARY.value.long)}>value <b>${Hex.value(t)}</b></span>`,
-    why = { hq: 'Capital — never falls', academy: 'Neutral ground — never taken', minor: 'Not in the war' }[t.kind],
-    conds = MAJORS.filter(a => a !== own)
-      .map(a => {
-        const reach = Hex.targets(run, a, own).some(x => x.id === id);
-        return `<span class="${reach ? '' : 'mute'}" ${reach ? '' : tip(`${REGIONS[a].name} can't reach it yet: no supplied tile next to it`)}>${chip(REGIONS[a])}${short(a)} needs <b>${Hex.cost(run, id, a)}</b></span>`;
-      })
-      .join(' · ');
-  return `<div class="ptile small"><div>${chip(REGIONS[own])}<b>${esc(REGIONS[own].name)}</b> tile · ${ground}${
-    t.region !== own ? ` <span class="mute">(taken from ${short(t.region)})</span>` : ''
-  }</div><div ${tip(GLOSSARY.seize.long)}>${why ? `<span class="mute">${why}</span>` : `Seize: ${conds}`}</div>${
-    H.p[id] ? `<div>${chip(REGIONS[H.by[id]])}${short(H.by[id])} pushing <b>${H.p[id]}/${Hex.cost(run, id, H.by[id])}</b></div>` : ''
-  }</div>`;
+  const u = War.unitAt(run, id);
+  if (!u) return `<div class="ptile small"><span class="mute">${t.kind === 'academy' ? 'Neutral ground — no fighting on campus' : 'Not in the war'}</span></div>`;
+  const D = WAR.units[u],
+    n = War.stage(run, u),
+    from = t.unit !== u ? ` <span class="mute">(${esc(WAR.units[t.unit].name)}'s, before it fell)</span>` : '';
+  return `<div class="ptile small"><div>${chip(REGIONS[D.region])}<b>${esc(D.name)}</b> ground${from}</div><div><span ${tip(GLOSSARY.strength.long)}>Strength <b>${War.str(run, u)}</b></span>${
+    n ? ` · <span ${tip(GLOSSARY.stage.long)}>${WAR_STAGES[n].name}</span>` : ''
+  }${Hex.frontier(run, id) ? ` · <span ${tip(GLOSSARY.border.long)}>Border</span>` : ''}</div></div>`;
 }
 function pointPanel(run, p) {
   const d = City.travelDays(run, p),
@@ -159,13 +151,12 @@ function pointPanel(run, p) {
     ]
   });
 }
-/** The battle's border line: "{attacker} n/cost to seize" (+ the tile when it isn't the battle's own site), or that it can't reach. */
+/** The battle's border line: "Wu Harbor 100 · Wei Iron 84" (the two units on it, by Strength), or that they don't touch. */
 function clashBorder(run, att, def) {
-  const k = Front.stakes(run, att, def),
-    c = Fight.clashSite(run),
+  const U = Front.units(run, att, def),
     short = r => esc(REGIONS[r].name.split(' ')[0]);
-  return k.tile
-    ? `${short(att)} ${k.meter - 1}/${k.cost} to seize${c && c.name === k.name ? '' : ` ${esc(k.name)}`}`
+  return U
+    ? U.map(u => `<span ${tip(GLOSSARY.strength.long)}>${esc(WAR.units[u].name)} <b>${War.str(run, u)}</b></span>`).join(' · ')
     : `${short(att)} can't reach ${short(def)}`;
 }
 /**
@@ -183,16 +174,11 @@ function clashPanel(run) {
     def = att === c.a ? c.b : c.a,
     short = r => esc(REGIONS[r].name.split(' ')[0]),
     side = r => `<span ${tip(REGIONS[r].name)}>${chip(REGIONS[r])}${short(r)}</span>`,
-    main = Front.stakes(run, att, def).tile,
     border = (w, l) => {
-      const s = Front.stakes(run, w, l),
-        other = s.tile !== main, // the facts above name the battle's tile; another tile is named on hover
-        what = !s.tile
-          ? `${short(w)} can't reach ${short(l)}`
-          : s.seize
-            ? `${short(w)} seizes${other ? ' a tile' : ''}`
-            : `${short(w)} ${s.meter}/${s.cost}${other ? ' elsewhere' : ''}`;
-      return s.tile && other ? `<span ${tip(s.name)}>${what}</span>` : what;
+      const s = Front.stakes(run, w, l);
+      return s.unit
+        ? `<span ${tip(`${WAR.units[s.unit].name} Strength. ${GLOSSARY.strength.long}`)}>${esc(WAR.units[s.unit].name.split(' ').slice(-1)[0])} ${s.str} → <b>${s.after}</b></span>`
+        : `${short(w)} can't reach ${short(l)}`;
     },
     std = r => {
       const v = City.rep(run, r);

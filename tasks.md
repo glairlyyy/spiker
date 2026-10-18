@@ -154,7 +154,7 @@ Result:
 
 **Faction war: Strength, structure, overthrow (owner, 2026-10-19, spec §4.34): Agent B.**
 
-### [ ] T-313: War units and Strength replace hex takeover
+### [x] T-313: War units and Strength replace hex takeover
 Agent: B
 Spec: §4.34          Goldens: unchanged (engine)          Save: RUN_VERSION 21 (`run.war`; `run.hex` dropped) — after A's T-307 (20) is published
 Goal: six war units (Wei Iron, Wei Gold, Wu Harbor, Wu Fort, Shu, + none for minors) with Strength 0–100; street battles
@@ -170,7 +170,7 @@ Do not: change NPC homes or region names; touch js/engine.
 Accept: 30-week headless run — every unit's Strength stays in 0–100, Shu loses ≤ half what Iron loses for the same results,
 Gold untouched while Iron stands (tests).
 QA: career run → Factions cards and a border.
-Result:
+Result: js/data/war.js (WAR, WAR_STAGES) + js/career/war.js (War: str/stage/weak/holder/unitAt/edges/pairs/hit/week/sync), `run.war` v21; Hex = geometry + `t.unit` (Gold = Wei tiles ≥ 3 steps from another major: Iron 33 / Gold 16 tiles; Wu by nearest HQ: Harbor 16 / Fort 21); Front.site picks the week's unit border by hash (no extra R()). Tests: 30 weeks of forced battles stay in 0–100, Shu −4 vs Iron −8, Gold 100 throughout; 5 headless 2-year runs end with lows 48–95 (Fort / Iron), nobody Broken — the deltas are mild at ~0.45 battles a week. Deviations: tests/run.js registers war.test.js; HEX_COST/VALUE/ECON, Front.econ/down, the tile pressure and the `value` term are gone (`strength`, `stage` terms added; `seize` reworded as the overthrow); tests/people.test.js:723 still expects v19 (A's file: fails until merge, set it to 21). QA: Factions cards, dossier, battle card, border point — screenshots fine.
 
 ### [ ] T-314: Stages in the match — Strained, Shaken, Broken
 Agent: B

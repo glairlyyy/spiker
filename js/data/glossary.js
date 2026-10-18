@@ -37,14 +37,19 @@ const GLOSSARY = {
   },
   seize: {
     icon: 'text',
-    short: 'Seize',
-    long: `Seize n/cost. A battle is fought on one border tile; each win +1 pressure, a defender's win clears it. The tile flips at its cost: open ground ${HEX_COST.plain}, place / city / beach / highland ${HEX_COST.place}; +${HEX_COST.home} on the defender's home terrain, ${HEX_COST.retake} to retake, ${HEX_COST.cut} if cut off from its HQs. Places go with their tile.`
+    short: 'Overthrow',
+    long: `Overthrow. A Broken faction unit (Strength under ${WAR_STAGES[3].below}) can be challenged at its HQ: one match, 5 sets, against its aces. Win and it is destroyed — its places and land go to the winner. Lose and it rallies +${WAR.rally}. ${WAR.cool} weeks between tries.`
   },
-  border: { icon: 'text', short: 'Border', long: 'Border tile. Touches another faction’s land: battles are fought on such tiles.' },
-  value: {
+  border: { icon: 'text', short: 'Border', long: 'Border. Where two factions’ land meets: street battles are fought on it.' },
+  strength: {
     icon: 'text',
-    short: 'Value',
-    long: `Tile value: HQ ${HEX_VALUE.hq}, place ${HEX_VALUE.place}, city ${HEX_VALUE.city}, beach ${HEX_VALUE.beach}, highland / open ground ${HEX_VALUE.plain}. A faction's economy follows the value it holds against its start: per point lost, prices +${Math.round(HEX_ECON.price * 100)}%; per point either way, facilities ±${HEX_ECON.q * 100}%; every ${HEX_ECON.step} lost, clubs ask less; ${HEX_ECON.weakAt} lost: weakened.`
+    short: 'Strength',
+    long: `Strength 0–100 per faction unit. A street battle lost on its border −${WAR.lose}, won +${WAR.win}; left alone ${WAR.idle} weeks, +${WAR.regen} a week. Shu takes half. Low Strength: dearer prices, poorer facilities, easier to join.`
+  },
+  stage: {
+    icon: 'text',
+    short: 'Stage',
+    long: `War stage of a unit, worn into every match it plays. ${WAR_STAGES[1].name} under ${WAR_STAGES[1].below}: morale starts ${WAR_STAGES[1].mor * 100} lower. ${WAR_STAGES[2].name} under ${WAR_STAGES[2].below}: HP heals ${WAR_STAGES[2].heal * 100} less a rally. ${WAR_STAGES[3].name} under ${WAR_STAGES[3].below}: one card slot fewer.`
   },
   sim: { icon: 'text', short: 'Sim', long: 'Sim. The result without watching. Same rules, same rewards.' },
   academy: { icon: 'text', short: 'Academy', long: 'Academy squad. You play evaluations and the U21 Cup with it until a club signs you.' },

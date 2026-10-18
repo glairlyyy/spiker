@@ -458,7 +458,7 @@ builds a squad on demand (the Academy entrant is `run.pickup`). Every match, you
 ## Faction dossier
 
 `Dossier.build(run, r)` (`js/career/dossier.js`, DOM-free, read-only) returns one faction's window data: standing, state
-(weakened / pressed / rising / stable / minor), fronts (`Front.meter` per rival: tile pressure), places taken / lost, price and quality multipliers,
+(weakened / pressed / stable / fallen / minor, from its war units' stages), fronts (its war units: Strength, stage, the stage played, border, what its clubs ask less — spec §4.34), places taken / lost, price and quality multipliers,
 the facilities it holds now (seized ones marked, with `City.access`), its clubs (join text, `World.canJoin`) and the pool
 roster. Ratings and elements are `null` until one of its clubs is scouted or you are a member. It reuses `City`, `Front`,
 `World`, `Pool` and `Training`; no rules live in it. `Dossier.summary(run, r)` is the short form the World sheet's Factions tab renders (standing +
@@ -489,21 +489,21 @@ Central Academy = the hex tiles within `ACADEMY.ring` of its middle (`Hex.dist`)
 `price` (TRAIN_FEE / HOTEL × region price), `mul` (quality × home turf, passed to `Training.train/preview` as x),
 `can`/`day`/`scout`. Week = `run.days` (WEEK_DAYS 7): every action costs `City.cost` = trip + 1 day and is refused if
 it would spill into next week (`noTime`); at 0 days it is night; only `mapEndWeek` (the player) calls `Run.endWeek`.
-`Run.endWeek` runs `WEEK_END` (run.js: growth, sponsors, heal, world, settle the clash, hex decay), resets the week, then the cup
+`Run.endWeek` runs `WEEK_END` (run.js: growth, sponsors, heal, world, settle the clash, the war's rally `War.week`), resets the week, then the cup
 or `Run.nextWeek` = `WEEK_START` (clash roll, training floor, sponsor offers, Trial offer, eval setup, approaches). The
 order is the draw order: append new weekly systems, never reorder.
 No random week events (removed, owner 2026-10-05). Street battles (`Fight`, career/fight.js; City keeps places, travel and standing): `clashRoll` in `Run.nextWeek`
 (`run.clash` with its aggressor, settled by `clashEnd` at week end if nobody joined), `watch(run, null)`; standing per
-region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): tile pressure on the hex map (`push`/`meter`/`battleTile`, state in `run.hex`, §4.27), seized places `run.own`
-(City.region follows the holder), `econ`/`priceMul`/`qMul`/`weak`, `pick` (aggressor + target), `sim`/`result`/`stakes`;
-`World.joinReq` lowers a weakened faction's join bar. Sessions × DAY_GAIN (gains and skill points).
+region in `run.rep` (`rep`/`repBump`). `js/career/front.js` (Front): who raids whom and where (`pick`, `site`: a border between two war units, §4.34), `sim`/`result`/`stakes`
+on the units' Strength (`War`), places held by others `run.own` (City.region follows the holder), `priceMul`/`qMul` from Strength;
+`World.joinReq` lowers a club's join bar a step per stage of its unit. Sessions × DAY_GAIN (gains and skill points).
 
 ### Island map layers
 
 1. Rules — City / Front (DOM-free): positions, travel, fog (`City.seen`), regions (`regionAt`), ownership.
 2. Model — `MapModel.build(run, sel)` (`js/career/mapmodel.js`, DOM-free, tested): `{ w, h, land: { coast, beach,
 regions[{id, poly, color, mine}], minors[ellipses], park, relief, pads, labels, airport }, pins[{id, kind: spot|hq|clash, at, icon, badge, title, color?, flags: off/far/turf/gem/overhyped/hq/can/
-mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-view centre), sel, life }`. `life` (`MapModel.life`, display only, no randoms; positions from hashes of ids + place): `mates[{id, name, at, color, spot}]` (your floor mates at the explored place of their key nearest home), `crews[{region, team, at, color, n 2–6, known, walk[[x,y]…]}]` (known clubs' HQs; `known` = scouted or yours), `battle {at, a, b, colors}|null`, `patrols[{id, tile, at, face, color}]` (`MapModel.patrols`: the hot hex frontier — the battle tile and tiles under pressure, ≤ 3 fronts, any pair; the holder's 2 on the tile, the pusher's 2–4 on its own frontier tile next to it, facing across; colours and points only, the renderer never names factions). Map units
+mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-view centre), sel, life }`. `life` (`MapModel.life`, display only, no randoms; positions from hashes of ids + place): `mates[{id, name, at, color, spot}]` (your floor mates at the explored place of their key nearest home), `crews[{region, team, at, color, n 2–6, known, walk[[x,y]…]}]` (known clubs' HQs; `known` = scouted or yours), `battle {at, a, b, colors}|null`, `patrols[{id, tile, at, face, color}]` (`MapModel.patrols`: this week's battle border — the defender's 2 on its tile, the raider's 3 on its tile across, facing; colours and points only, the renderer never names factions). Map units
    CITY.w × CITY.h, y down. Selection ids: a pin id, or `pt:x,y` (`ptId` / `ptOf`).
 3. Renderer — `MapView` (`js/ui/map-view.js`): `mount(el, model, { pick(id), point([x, y]) })`, `update(model)`,
    `select(id)`, `dispose()`, `setWalk(k)` (your walking speed ×1/×2/×4, remembered as `sns_walk`; map3d ticks your avatar ×k). The only renderer is the three.js map: it lazy-imports `js/map3d/map3d.mjs` once (a notice
@@ -721,8 +721,8 @@ Consequence feedback (UI state only, nothing saved): `weekSnap` keeps a baseline
 diffs it around `Run.endWeek` into `CW.recap` → `recapCard` (the Week report). Diary entries `{ w, t, k? }`: `Run.log(run, text, k)` tags a line bad / good /
 world at the producer; untagged lines fall back to the `LOG_TAGS` text match (career-week.js) — new producers pass `k`. `renderCareer` diffs `run.own` against
 `CW.own` (`ownChanges`); a seize becomes an inbox row for a week (`CW.seizes`) and selects the place on the map.
-`Front.stakes(run, w, l)` is a pure preview of "w beats l" (meter, seize, place) used by the street-battle panel and the
-Factions tab's front rows. `run.dayLog` (RUN_DEFAULTS, cleared by `Run.endWeek`, written by `City.go` / `logDays`)
+`Front.stakes(run, w, l)` is a pure preview of "w beats l" (the losing unit's Strength now / after; `seize` / `place` stay
+false / null) used by the street-battle panel and the brief. `run.dayLog` (RUN_DEFAULTS, cleared by `Run.endWeek`, written by `City.go` / `logDays`)
 feeds the day track. `hubKey`: 1–4 sheets, Space End week, Esc closes ⚙ → list → sheet → place panel; `CW.endArm`
 makes End week ask twice (4 s) while days are unused.
 
@@ -743,12 +743,18 @@ Island scale (spec §4.18b): js/data/city.js writes every map point in design un
 once at load by `MAP_SCALE` (1.5); towns, minors and the Academy keep their size (see its comment). Code reads CITY.w / h and
 the scaled points — never design literals; tests scale design points by `g.MAP_SCALE`.
 
-Hex territory (spec §4.27): `js/career/hex.js` `Hex` builds a flat-top axial grid once from CITY (tiles: id `q,r`, at,
-start region, kind hq/academy/minor/place/land, terrain, spots, hq) and holds the war rules on it: `supply` (BFS from a
-faction's HQ tiles), `cost` (HEX_COST), `targets` (cheapest, then nearest an attacker HQ), `flip`, `decay`. Run state
-`run.hex = { own, p, by, t }` (v16). `Front` fights a battle on `run.clash.tile` and pushes / flips tiles; `run.own` is a
-cache of place holders rebuilt by `Hex.sync`, so City prices, turf, access and Dossier read places as before. The
-player's travel never reads tiles. `MapModel.hexes(run)` is what the map draws.
+Faction war (spec §4.34, T-313): `js/career/hex.js` `Hex` is geometry only — a flat-top axial grid built once from CITY
+(tiles: id `q,r`, at, start region, kind hq/academy/minor/place/land, terrain, spots, hq, `unit` = the war unit it starts in:
+`Hex.unitOf` — Wei's Gold ring = Wei tiles ≥ `WAR.ring` steps from any other major's tile, Iron outside; Wu by the nearest of
+its clubs' HQs; Shu one). `js/career/war.js` `War` holds the war: `run.war = { str, fallen, last, ot }` (v21), `str` / `stage`
+(own, WAR_STAGES by Strength) / `weak` (the stage its squads play with: Shu `late`, Gold Iron's − 1), `holder` / `unitAt` /
+`regionAt` (a destroyed unit's land goes to its destroyer), `edges` / `pairs` (the borders between units of two regions),
+`regionStr` (mean of a region's standing units: prices, quality), `hit(run, unit, win, k = 1)` (the one Strength change:
+won +WAR.win × k, lost −WAR.lose × k × soak, 0–100, stamps `last`; A's Raid calls it with k = 2), `week` (WEEK_END: idle units
+rally), `sync` (rebuilds the `run.own` place cache). `Front.site` picks the week's border (a hash of the week: unit pair,
+then edge; `run.clash = { tile (defender's), from (raider's), at (the edge's midpoint), ua, ud, att, def }`), `Front.result`
+hits both units, `Front.sim` reads their Strength. Tiles never flip; the player's travel never reads tiles.
+`MapModel.hexes(run)` is the ground layer the map draws (each tile in its holder's region colour, `unit`, frontier).
 
 ## Match music
 

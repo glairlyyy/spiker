@@ -207,3 +207,49 @@
   padding: 0 8px;
   font-size: 12px;
 }
+/* war */
+/* War units on the Factions cards and the dossier (spec §4.34): name, Strength bar (stage colour, not faction), stage chip */
+.wunits {
+  display: grid;
+  gap: 4px;
+  margin: 4px 0;
+}
+.wunit {
+  display: grid;
+  grid-template-columns: 96px 1fr 28px 64px 88px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.wunit.gone {
+  grid-template-columns: 96px 1fr;
+}
+.wunit b {
+  text-align: right;
+}
+.wstr {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+.wstr i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--w);
+  border-radius: 3px;
+  background: var(--good);
+}
+.wstr.s1 i {
+  background: var(--warn);
+}
+.wstr.s2 i,
+.wstr.s3 i {
+  background: var(--bad-soft);
+}
+.wunit .stk {
+  font-size: 12px;
+}

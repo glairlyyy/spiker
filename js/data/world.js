@@ -67,7 +67,7 @@ const REGIONS = {
     desc: 'Neutral ground by charter. All newcomers enrol here. No faction may train, recruit or fight on campus.' // voice: registrar
   }
 };
-/** The three majors (borders, fronts, hex territory); the other regions are minors or the open academy. */
+/** The three majors (the war: WAR units, borders); the other regions are minors or the open academy. */
 const MAJORS = ['wei', 'wu', 'shu'];
 /**
  * One faction per league team (index = team index; styles come from TEAMDEFS). Each major fields two squads.
@@ -191,7 +191,7 @@ const HOUSEK = Object.keys(HOUSING);
  * with the side you fought against. Watching scouts both sides' clubs.
  */
 const CLASH = {
-  chance: 0.45, // a training week opens with a battle on a tile (spec §4.27: the site is the raider's target tile)
+  chance: 0.45, // a training week opens with a battle on a border between two war units (spec §4.34: Front.site)
   sta: 15,
   watchSta: 5,
   win: 10,
@@ -200,9 +200,9 @@ const CLASH = {
   fans: 60
 };
 /**
- * Faction dynamics (Front): battles move tiles on the hex map (HEX below, js/career/hex.js); places go with their
- * tile and the economy follows tile value (HEX_VALUE / HEX_ECON). Per step down: club join needs −join (OVR / key stat),
- * fee −fee. aggro = who starts street battles (+revenge for last battle's loser; the raider gets +initiative).
+ * Faction dynamics (Front, spec §4.34): who raids whom; the war itself (units, Strength, stages) is WAR in data/war.js.
+ * Per stage of a club's war unit: club join needs −join (OVR / key stat), fee −fee. aggro = who starts street battles
+ * (+revenge for last battle's loser; the raider gets +initiative).
  */
 const FRONT = {
   join: 3,
@@ -210,30 +210,15 @@ const FRONT = {
   aggro: { wu: 0.5, wei: 0.3, shu: 0.2 },
   /**
    * Whom a raider goes for (owner, 2026-10-03): Wei and Wu want each other — the Shu highlands are deep in the mountains for
-   * poor facilities; Shu raids either. × `push` when the raider is already winning on that border.
+   * poor facilities; Shu raids either. × `push` when the raider is the stronger (Strength) on that border.
    */
   prey: { wei: { wu: 0.85, shu: 0.15 }, wu: { wei: 0.85, shu: 0.15 }, shu: { wei: 0.5, wu: 0.5 } },
   push: 1.5,
   revenge: 0.2,
   initiative: 10 // the raiding side's edge (street strength) in a battle nobody joins
 };
-/**
- * Hex territory (spec §4.27): the war map as flat-top hex tiles `size` map units across (centre to corner). A tile flips
- * after `cost` net battle wins on it (HEX_COST); untouched for `decay` weeks, its pressure drops by 1.
- */
-const HEX = { size: 36, decay: 4 };
-/** Net wins a tile needs: by kind / terrain, +home on the defender's home terrain, −retake, −cut (cut off from every defender HQ). */
-const HEX_COST = { plain: 1, city: 2, beach: 2, highland: 2, place: 2, home: 1, retake: -1, cut: -1, min: 1 };
-/** What a tile is worth to its holder's economy (spec §4.27 tile value): by kind, else by terrain. */
-const HEX_VALUE = { hq: 4, place: 3, city: 3, beach: 2, highland: 1, plain: 1 };
-/**
- * Economy from tile value (e = value held − value at the start): prices × (1 + price × points lost), quality × (1 + q × e)
- * within qClamp, street strength 50 + str × e; every `step` points lost = one step down (club join −FRONT.join OVR / key,
- * fee −FRONT.fee); weakened at e ≤ −weakAt.
- */
-const HEX_ECON = { price: 0.03, q: 0.015, qClamp: [0.7, 1.3], str: 3, step: 3, weakAt: 6 };
-/** Each major's home terrain. */
-const HEX_HOME = { wei: 'city', wu: 'beach', shu: 'highland' };
+/** The war map's hex tiles (spec §4.34, js/career/hex.js): `size` map units across (centre to corner). Geometry only. */
+const HEX = { size: 36 };
 /**
  * Facility access: a place refuses you if your standing with its owner is at or below `grudge`, or you miss the
  * owner's condition (same fields as a club's `join`: ovr, key, star, fans). Members of the owner always get in.

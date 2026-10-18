@@ -246,7 +246,7 @@ test('career: town layout — districts, beach, overpass, frozen borders', () =>
     mid = g.Hex.idAt([C.park.x, C.park.y]);
   eq(acaT.length, 7, 'the Academy is seven tiles');
   assert(
-    acaT.every(t => g.Hex.dist(t.id, mid) <= 1 && !g.Hex.takeable(t)),
+    acaT.every(t => g.Hex.dist(t.id, mid) <= 1 && !t.unit),
     'all within a step of its middle, out of the war'
   );
   for (const p of [g.HOME_AT.studio, g.SPOTS.acaGym.at])
@@ -460,8 +460,8 @@ test('career: map model life — mates, crews, battle, borders, no randoms', () 
   run.scout[hq] = 1;
   L = g.MapModel.build(run).life;
   assert(L.crews.find(c => c.team === hq).known, 'scouted: coloured');
-  const tg = g.Hex.target(run, 'wei', 'wu');
-  run.clash = { tile: tg.id, from: tg.from, att: 'wei', def: 'wu', seen: false, done: false };
+  const tg = g.Front.site(run, 'wei', 'wu');
+  run.clash = { tile: tg.tile, from: tg.from, att: 'wei', def: 'wu', seen: false, done: false };
   L = g.MapModel.build(run).life;
   assert(L.battle && L.battle.colors.length === 2 && L.battle.at.length === 2, 'the open battle');
   run.clash.done = true;
@@ -568,8 +568,8 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   // a street battle: fight for one side — a real match; the other side always holds it against you
   run.days = 7;
   run.pos = g.CITY.airport.slice();
-  const tg = g.Hex.target(run, 'wei', 'wu');
-  run.clash = { tile: tg.id, from: tg.from, att: 'wei', def: 'wu', seen: false, done: false };
+  const tg = g.Front.site(run, 'wei', 'wu');
+  run.clash = { tile: tg.tile, from: tg.from, att: 'wei', def: 'wu', seen: false, done: false };
   const c = g.Fight.clashSite(run),
     r0 = g.City.rep(run, c.b),
     cc = g.Fight.clashCost(run),
@@ -645,23 +645,24 @@ test('career: faction dossier — state, places, roster gate', () => {
     d.roster.every(p => p.ovr === null && p.el === null),
     'unscouted: ratings and elements unknown'
   );
-  assert(d.fronts.length === 2 && d.fronts.every(f => f.meter === 0), 'two fronts, no pressure yet');
+  assert(d.fronts.length === 2 && d.fronts.every(f => f.str === 100 && f.stage === 'steady'), 'two war units (Iron, Gold) at full Strength');
   const wei = g.FACTIONS.findIndex(f => f.region === 'wei');
   assert(g.City.scout(run, wei), 'scout a Wei club');
   d = g.Dossier.build(run, 'wei');
   assert(d.scouted && d.roster.every(p => typeof p.ovr === 'number'), 'scouted: every rating shows');
   const before = JSON.stringify(run.teams.map(g.teamToJSON));
-  g.Hex.flip(run, g.Hex.ofSpot('weiSpeed').id, 'wu');
-  const wu = g.Dossier.build(run, 'wu');
-  eq(g.Dossier.build(run, 'wei').state, 'pressed', 'one place lost: pressed');
-  const seized = wu.places.find(p => p.seized);
+  run.war.str.iron = 50;
+  eq(g.Dossier.build(run, 'wei').state, 'pressed', 'Iron Strained: pressed');
+  run.war.str.iron = 30;
+  eq(g.Dossier.build(run, 'wei').state, 'weakened', 'Iron Shaken: weakened');
+  run.war.fallen.iron = { by: 'harbor', week: 1 }; // (T-315 destroys units: its places go to the destroyer)
+  g.War.sync(run);
+  const wu = g.Dossier.build(run, 'wu'),
+    seized = wu.places.find(p => p.seized);
   assert(
     seized && seized.from === 'wei' && !g.Dossier.build(run, 'wei').places.some(p => p.id === seized.id),
     'a seized place moves to the holder'
   );
-  eq(wu.state, 'rising', 'the taker is rising');
-  g.Hex.flip(run, g.Hex.ofSpot('weiWit').id, 'wu');
-  eq(g.Dossier.build(run, 'wei').state, 'weakened', 'two places lost: weakened');
   eq(JSON.stringify(run.teams.map(g.teamToJSON)), before, 'building a dossier changes no team');
   const gl = g.Dossier.build(run, 'gloria');
   assert(gl.state === 'minor' && gl.fronts.length === 0, 'St. Gloria is not in the war');
@@ -735,27 +736,21 @@ test('map: official venues', () => {
   eq(g.City.venue(run), 'arena', 'a cup week is played at the League Arena');
 });
 
-test('map: patrols walk the hex frontier (T-079, T-153)', () => {
+test('map: patrols stand on this week’s border (T-079, T-153, T-313)', () => {
   const g = load(51),
     run = g.Run.create(g.Run.draft(), { role: 'S', name: 'Patrol' });
   run.clash = null;
-  run.hex = { own: {}, p: {}, by: {}, t: {} };
   let m = g.MapModel.build(run);
   eq(m.life.patrols.length, 0, 'calm: no patrols');
   assert(!('seized' in m) && !('contest' in m.land) && !('contest' in m.life), 'no pre-hex leftovers in the model');
-  // any pair: Shu pushes a Wu tile; the battle this week is Wei on another Wu tile
-  const t = g.Hex.target(run, 'shu', 'wu'),
-    b = g.Hex.target(run, 'wei', 'wu');
-  run.hex.p[t.id] = 1;
-  run.hex.by[t.id] = 'shu';
-  run.clash = { att: 'wei', def: 'wu', tile: b.id, from: b.from, done: false };
+  const b = g.Front.site(run, 'wei', 'wu');
+  run.clash = { att: 'wei', def: 'wu', tile: b.tile, from: b.from, done: false };
   m = g.MapModel.build(run);
   const P = m.life.patrols,
     on = id => P.filter(p => p.tile === id);
-  assert(P.length > 0 && P.every(p => g.Hex.frontier(run, p.tile)), 'patrols only on frontier tiles');
-  eq(P[0].tile, b.id, 'the battle front comes first');
-  assert(on(t.id).length === 2 && on(t.id).every(p => p.color === g.REGIONS.wu.color), 'the holder guards the pushed tile');
-  assert(on(t.from).length >= 2 && on(t.from).every(p => p.color === g.REGIONS.shu.color), 'the pusher stands next to it');
+  assert(P.length > 0 && P.every(p => g.Hex.frontier(run, p.tile)), 'patrols only on border tiles');
+  assert(on(b.tile).length === 2 && on(b.tile).every(p => p.color === g.REGIONS.wu.color), 'the defender guards its tile');
+  assert(on(b.from).length >= 2 && on(b.from).every(p => p.color === g.REGIONS.wei.color), 'the raider stands across the border');
   assert(
     P.every(p => Array.isArray(p.face) && typeof p.color === 'string' && !('region' in p)),
     'colours and points only'

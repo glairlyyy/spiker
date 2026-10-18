@@ -58,10 +58,11 @@ const World = {
     if (j.fee && run.money < j.fee) miss.push(`$${j.fee}`);
     return { ok: !miss.length, why: miss };
   },
-  /** What a club asks now: a weakened faction (places lost, Front) lowers its bar. */
+  /** What a club asks now: a club whose war unit is Strained or worse lowers its bar, a step per stage (spec §4.34). */
   joinReq(run, ti) {
     const j = Object.assign({}, (FACTIONS[ti] && FACTIONS[ti].join) || {}),
-      n = run && FACTIONS[ti] ? Front.down(run, FACTIONS[ti].region) : 0; // steps down from tile value lost (spec §4.27)
+      u = run && War.ofClub(ti),
+      n = u ? War.stage(run, u) : 0;
     if (run && run.vouch && run.vouch[ti]) {
       // an ally vouched for you (T-063): the OVR and key-stat bars drop
       if (j.ovr) j.ovr = Math.max(1, j.ovr - REL.ask.vouch);

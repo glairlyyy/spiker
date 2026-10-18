@@ -226,7 +226,7 @@ const Fight = {
     run.focus = null;
     out.push(Fight.injure(run, risk));
     run.lastFight = Run.dayNo(run);
-    const line = `${trip}Fought for ${REGIONS[side].name} in the street battle — ${win ? 'won' : 'lost'} ${sc[0]}-${sc[1]}, grade ${grade}. You: ${s.k} kills, ${s.blk} blocks, ${s.ace} aces · ${out.filter(Boolean).join(', ')}${front ? `. ${front}!` : ''}`;
+    const line = `${trip}Fought for ${REGIONS[side].name} in the street battle — ${win ? 'won' : 'lost'} ${sc[0]}-${sc[1]}, grade ${grade}. You: ${s.k} kills, ${s.blk} blocks, ${s.ace} aces · ${out.filter(Boolean).join(', ')}${front ? `. ${front}` : ''}`;
     Run.log(run, line);
     Run.save(run);
     return line;
@@ -236,9 +236,9 @@ const Fight = {
     run.clash = null;
     const wt = Run.weekType(run);
     if ((wt !== 'train' && wt !== 'camp') || R() >= CLASH.chance) return;
-    const { att, def } = Front.pick(run),
-      t = Hex.target(run, att, def); // fought on the defender's cheapest, nearest tile (spec §4.27)
-    if (t) run.clash = { tile: t.id, from: t.from, att, def, seen: false, done: false };
+    const P = Front.pick(run),
+      t = P && Front.site(run, P.att, P.def); // fought on a border between two of their units (spec §4.34)
+    if (t) run.clash = { tile: t.tile, from: t.from, at: t.at, ua: t.ua, ud: t.ud, att: P.att, def: P.def, seen: false, done: false };
   },
   /** A battle nobody joined is settled at the week's end. Returns the diary line. */
   clashEnd(run) {
@@ -334,11 +334,18 @@ const Fight = {
       line: `${trip}${t.name} turned your challenge down: “${pick(lines)}”${pest ? ` You are becoming a pest (${pest}).` : ''}`
     };
   },
-  /** This week's open battle: { a: raider, b: defender, at, name, tile } (null when none or fought). */
+  /**
+   * This week's open battle: { a: raider, b: defender, ua / ub (their units), at (on the border), name, tile } (null when
+   * none or fought).
+   */
   clashSite(run) {
     const c = run.clash,
-      t = c && !c.done && Hex.tile(c.tile);
-    return t ? { a: c.att, b: c.def, at: t.at, name: Hex.name(t.id), tile: t.id } : null;
+      t = c && !c.done && Hex.tile(c.tile),
+      U = t && Front.clash(run);
+    if (!U) return null;
+    const f = c.from && Hex.tile(c.from),
+      at = Array.isArray(c.at) ? c.at : f ? [(t.at[0] + f.at[0]) / 2, (t.at[1] + f.at[1]) / 2] : t.at;
+    return { a: c.att, b: c.def, ua: U.ua, ub: U.ub, at, name: Hex.name(t.id), tile: t.id };
   },
   clashCost: run => City.trip(run, Fight.clashSite(run).at) + 1,
   /** Go to the battle and watch it (side null). Returns the diary line. Fighting is Fight.clash(run, side), a real match. */

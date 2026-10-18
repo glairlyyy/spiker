@@ -33,7 +33,7 @@ const Season = {
       if (me.gone && Number.isFinite(me.gone.week)) me.gone.week -= S;
     }
     for (const L of Object.values(run.mem || {})) for (const e of L) if (Number.isFinite(e.w)) e.w -= S;
-    if (run.hex && run.hex.t) for (const k of Object.keys(run.hex.t)) run.hex.t[k] -= S;
+    if (run.war) for (const T of [run.war.last, run.war.ot]) for (const k of Object.keys(T || {})) T[k] -= S;
     for (const k of Object.keys(run.scout || {})) run.scout[k] -= S;
     for (const r of Object.values(run.refused || {})) if (Number.isFinite(r.week)) r.week -= S;
     for (const l of Object.values(run.loans || {})) if (Number.isFinite(l.due)) l.due = Math.max(1, l.due - S);

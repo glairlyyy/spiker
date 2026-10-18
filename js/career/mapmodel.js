@@ -618,83 +618,58 @@ const MapModel = {
     });
   },
   /**
-   * The hex territory (spec §4.27, Hex): { size, tiles: [{ id, at, own, major, color, kind, frontier, p, by, cost, text }], target }
-   * — every land tile with its holder (major: held by one of MAJORS); frontier = touches another major's tile; p / by / cost / text only on tiles under
-   * pressure; target = this week's battle tile { id, color (raider), text 'Wu 0/2' }. Display only.
+   * The war ground (spec §4.34, War / Hex): { size, tiles: [{ id, at, own, major, color, kind, frontier, unit }], target } —
+   * every land tile with the region of the war unit holding it (major: one of MAJORS); frontier = a war border tile; target =
+   * this week's battle tile { id, color (raider), text 'Iron 84' — the defending unit's Strength }. Display only.
    */
   hexes(run) {
-    const H = Hex.state(run),
-      c = Fight.clashSite(run),
-      major = r => MAJORS.includes(r),
-      short = r => REGIONS[r].name.split(' ')[0],
-      k = c ? Front.stakes(run, c.a, c.b) : null;
+    const c = Fight.clashSite(run),
+      short = u => WAR.units[u].name.split(' ').slice(-1)[0];
     return {
       size: HEX.size,
-      target: c ? { id: c.tile, color: REGIONS[c.a].color, text: `${short(c.a)} ${k.tile === c.tile ? k.meter - 1 : 0}/${k.cost}` } : null,
+      target: c ? { id: c.tile, color: REGIONS[c.a].color, text: `${short(c.ub)} ${War.str(run, c.ub)}` } : null,
       tiles: Hex.grid().tiles.map(t => {
-        const own = Hex.owner(run, t.id),
-          p = H.p[t.id] || 0;
+        const own = War.regionAt(run, t.id);
         return {
           id: t.id,
           at: t.at,
           own,
-          major: major(own),
+          major: MAJORS.includes(own),
           color: REGIONS[own].color,
           kind: t.kind,
-          frontier: major(own) && Hex.near(t.id).some(n => major(Hex.owner(run, n.id)) && Hex.owner(run, n.id) !== own),
-          ...(p
-            ? {
-                p,
-                by: H.by[t.id],
-                cost: Hex.cost(run, t.id, H.by[t.id]),
-                text: `${short(H.by[t.id])} ${p}/${Hex.cost(run, t.id, H.by[t.id])}`
-              }
-            : {})
+          frontier: Hex.frontier(run, t.id),
+          unit: War.unitAt(run, t.id)
         };
       })
     };
   },
   /**
-   * Patrols on the hot hex frontier (spec §4.27): this week's battle tile and every tile under pressure (at most 3 fronts:
-   * the battle first, then most pressure, then a hash). The holder guards the tile (2), the pusher stands on its own frontier
-   * tile next to it, thicker with pressure (2–4). Figures [{ id, tile, at, face, color }]: at = on the tile's side facing the
+   * Patrols on this week's hot border (spec §4.34): the battle's two tiles — the defender guards its tile (2), the raider
+   * stands on its own tile across the border (3). Figures [{ id, tile, at, face, color }]: at = on the tile's side facing the
    * other tile (hash jitter), face = the other tile's centre. Display only, no randoms.
    */
   patrols(run) {
-    const H = Hex.state(run),
-      c = Fight.clashSite(run),
-      hot = Object.keys(H.p)
-        .filter(id => H.p[id] > 0 && H.by[id])
-        .map(id => ({ id, by: H.by[id], p: H.p[id] }));
-    if (c && !hot.some(h => h.id === c.tile)) hot.push({ id: c.tile, by: c.a, p: 0 });
-    const first = h => (c && h.id === c.tile ? 0 : 1);
-    hot.sort((x, y) => first(x) - first(y) || y.p - x.p || hstr(x.id) - hstr(y.id));
-    const out = [],
-      seen = new Set(),
-      add = (t, r, n, face) => {
-        for (let i = 0; i < n; i++) {
-          const id = `${t.id}|${r}|${i}`;
-          if (seen.has(id)) continue;
-          seen.add(id);
-          const a = hstr(`${id}|a`) * Math.PI * 2,
-            d = HEX.size * (0.08 + hstr(`${id}|r`) * 0.14);
-          out.push({
-            id,
-            tile: t.id,
-            at: [t.at[0] + (face[0] - t.at[0]) * 0.3 + Math.cos(a) * d, t.at[1] + (face[1] - t.at[1]) * 0.3 + Math.sin(a) * d],
-            face: face.slice(),
-            color: REGIONS[r].color
-          });
-        }
-      };
-    for (const h of hot.slice(0, 3)) {
-      if (!Hex.frontier(run, h.id)) continue;
-      const t = Hex.tile(h.id),
-        from = Hex.near(h.id).find(n => Hex.owner(run, n.id) === h.by && Hex.frontier(run, n.id)),
-        n = 2 + Math.min(2, Math.floor((2 * h.p) / Hex.cost(run, h.id, h.by)));
-      add(t, Hex.owner(run, h.id), 2, from ? from.at : t.at);
-      if (from) add(from, h.by, n, t.at);
-    }
+    const c = Fight.clashSite(run),
+      out = [];
+    if (!c || !run.clash.from || !Hex.tile(run.clash.from)) return out;
+    const add = (t, r, n, face) => {
+      for (let i = 0; i < n; i++) {
+        const id = `${t.id}|${r}|${i}`,
+          a = hstr(`${id}|a`) * Math.PI * 2,
+          d = HEX.size * (0.08 + hstr(`${id}|r`) * 0.14);
+        out.push({
+          id,
+          tile: t.id,
+          at: [t.at[0] + (face[0] - t.at[0]) * 0.3 + Math.cos(a) * d, t.at[1] + (face[1] - t.at[1]) * 0.3 + Math.sin(a) * d],
+          face: face.slice(),
+          color: REGIONS[r].color
+        });
+      }
+    };
+    const t = Hex.tile(c.tile),
+      f = Hex.tile(run.clash.from);
+    add(t, c.b, 2, f.at);
+    add(f, c.a, 3, t.at);
     return out;
   },
   build(run, sel = null) {
