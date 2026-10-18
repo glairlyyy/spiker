@@ -160,9 +160,9 @@ Haewon walks out (scene); a loss rallies it.
 Files: js/career/front.js, js/career/cup.js (entrants by unit), js/career/people.js (scatter), js/career/world.js (members
 freed), js/career/story.js, js/data/story.js (walk-out, fall news — lore voices), js/ui/career-panels.js (HQ card: Challenge),
 js/career/mapmodel.js, js/map3d/map3d.mjs (region recolour + pan), tests/career.test.js
-Do not: let Haewon join the winner or your club; allow two overthrows within 8 weeks.
+Do not: let Haewon join the winner or your club; allow a challenge within 4 weeks of that unit's last overthrow match; slow the street battles.
 Accept: tests — destroying Iron opens Gold's border; destroying Harbor leaves Fort's Strength unchanged; a destroyed unit
-sends no Cup squads and the winner gets its places; Haewon is never on the winner's or your squad.
+sends no Cup squads and the winner gets its places; Haewon is never on the winner's or your squad; a rallied unit can't be challenged for 4 weeks while its border's battles go on.
 QA: career run (forced Broken Iron) → challenge, win, the map recolours.
 Result:
 
