@@ -1269,7 +1269,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **The overthrow**: once a unit is Broken, a unit fighting it (or you — as its member, or leading a street crew as a free
     agent) may challenge its **ace squad at its HQ**: one match, 5 sets. The AI challenges when a unit is < 10. Win → the unit
     is **destroyed**; lose → it rallies (+20). **Cooldown** (owner, 2026-10-19): after an overthrow match a unit can't be challenged
-    again for 4 weeks (each unit its own clock); street battles go on at their normal rate meanwhile.
+    again for 4 weeks (each unit its own clock); street battles go on at their normal rate meanwhile. **[built 2026-10-19, T-315: one match (the engine plays one set), not 5 sets — open]**
   - **Destroyed**: its places and region pass to the winner at once (the region recolours, a news line, a camera pan); its
     players scatter (the best go to the winner's pool, the rest to the reserves and the Outlaws); its **U21 Cup places go to
     the winner** (more squads for the attacker in the final Cup); its club stops (members are free agents again — you too,

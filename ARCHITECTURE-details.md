@@ -760,6 +760,15 @@ index, absent = nothing changes): `m.weak`, morale starts −`mor` (morAdd), `hp
 `slots` from the end of SLOTS (`C.off` = ['flex']; `cardSlots(m, i)`, cardPut / cardFill skip it). Career fixtures call
 `War.match(run, m)` in their `setup` (Cup.fixture, Fight.clash / challenge, Court): `War.weakOf(run, T)` = its club's unit
 (`T.i`), a crew's unit (`T.wu`), a region's drawn squad (`T.wr`: its least-hit standing unit). Match prep shows the chip (`prepStage`).
+The overthrow (T-315, war.js): `War.can(run, u, by)` (Broken, standing, `by` across its border — `foes` —, `cool` = WAR.cool weeks
+after `ot[u]`), `War.side` (your club's unit, or alone a hired street crew for its strongest foe), `War.overthrow(run, u)` → a
+fixture against `War.ace` at its HQ (HQ card: `overthrowBlock`, action `mapOverthrow` in career-dossier.js), `overthrowResult` →
+`destroy(run, u, by)` (fallen + `sync`; its clubs stop: `War.down` → no joins, no challenges; you are freed (`War.free`);
+`WAR.scatter` best players and the rival move by `War.into` (People.toReserve, else a seat swap into the region's best
+club); the rival never to the winner's region nor yours → `run.war.walk` → the `walkout` scene) or `rally` (+WAR.rally).
+`War.ai` (from `War.week`): a standing unit < WAR.ai off cooldown is challenged by its strongest foe (simMatch of the aces).
+`Cup.places(run)` splits each major's squads over its units; a fallen unit's share counts for its holder's region. The map
+pans to the latest fall once (`hexes.fall`, map3d). Engine matches are one set: the "5 sets" overthrow is one match.
 
 ## Match music
 

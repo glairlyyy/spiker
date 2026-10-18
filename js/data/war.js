@@ -23,6 +23,7 @@ const WAR = {
   rally: 20, // an overthrow the attacker lost: the defender rallies
   cool: 4, // weeks after an overthrow match before that unit can be challenged again
   ai: 10, // the AI challenges a Broken unit below this
+  scatter: 2, // a destroyed club's best players who go to the winner's reserves
   ring: 3, // Gold's ring: Wei tiles at least this many hex steps from any other major's tile
   sim: 0.15, // a battle nobody joins: street strength 50 + sim × (Strength − 100)
   price: 0.003, // prices × (1 + price × points under 100)

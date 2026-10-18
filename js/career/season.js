@@ -34,6 +34,7 @@ const Season = {
     }
     for (const L of Object.values(run.mem || {})) for (const e of L) if (Number.isFinite(e.w)) e.w -= S;
     if (run.war) for (const T of [run.war.last, run.war.ot]) for (const k of Object.keys(T || {})) T[k] -= S;
+    if (run.war) for (const e of [...Object.values(run.war.fallen || {}), run.war.walk]) if (e && Number.isFinite(e.week)) e.week -= S;
     for (const k of Object.keys(run.scout || {})) run.scout[k] -= S;
     for (const r of Object.values(run.refused || {})) if (Number.isFinite(r.week)) r.week -= S;
     for (const l of Object.values(run.loans || {})) if (Number.isFinite(l.due)) l.due = Math.max(1, l.due - S);

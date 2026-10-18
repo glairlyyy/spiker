@@ -347,6 +347,7 @@ export function create(onIdle) {
     badge = null,
     walkK = 1, // your walking speed (×1 / ×2 / ×4 — the map's speed selector, T-214)
     seen = null, // the you.at last shown
+    fallSeen, // the latest destroyed war unit already shown (model.hexes.fall.key; the first model sets it without a pan)
     cur = null, // the last model (pins for select)
     lastSel = null,
     cw = 0, // canvas size (px), cached by size() — never read from the DOM per frame
@@ -451,6 +452,10 @@ export function create(onIdle) {
     update(m) {
       if (!furn) return;
       cur = m;
+      const fall = m.hexes && m.hexes.fall ? m.hexes.fall.key : null;
+      if (fallSeen !== undefined && fall && fall !== fallSeen)
+        (m.pins || []).some(p => p.id === m.hexes.fall.pin) ? C.flyTo(m.hexes.fall.pin) : C.overview(); // a unit destroyed: the camera goes to see (spec §4.34)
+      fallSeen = fall;
       if (m.sel && m.sel !== lastSel) C.flyTo(m.sel); // selected from outside the map (list, chip, banner)
       lastSel = m.sel;
       town.sync(m);

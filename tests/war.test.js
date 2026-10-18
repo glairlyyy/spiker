@@ -111,3 +111,91 @@ test('war: stages in the match — Iron bleeds into Gold one lighter, Shu one la
   eq(g.cardSlots(m, 1).length, 4, 'their crew: 4 slots');
   fx.onLeave();
 });
+
+/** Sign you with club ti (no conditions: the test's shortcut). */
+const sign = (g, run, ti) => {
+  const you = g.Run.you(run),
+    T = run.teams[ti],
+    old = T.P.find(p => p.role === you.role) || T.P[3];
+  g.World.swap(you, old);
+  run.team = ti;
+  g.finalizeTeam(T);
+  g.finalizeTeam(run.pickup);
+};
+
+test('war: a destroyed unit — its land and places to the winner, Gold’s border opens, the Cup places move, the other half stays (T-315)', () => {
+  const [g, run] = mkRun(35),
+    N0 = g.Cup.places(run),
+    fort0 = g.War.str(run, 'fort');
+  eq(JSON.stringify(N0), JSON.stringify({ wei: 4, wu: 3, shu: 2 }), 'every major sends its pool’s squads');
+  g.War.destroy(run, 'iron', 'harbor');
+  assert(g.War.fallen(run, 'iron') && g.War.holder(run, 'iron') === 'harbor', 'Iron is gone, Harbor holds its land');
+  const placeOnIron = Object.keys(g.SPOTS).find(id => g.SPOTS[id].at && g.SPOTS[id].region === 'wei' && (g.Hex.ofSpot(id) || {}).unit === 'iron');
+  eq(g.Front.owner(run, placeOnIron), 'wu', 'its places go to the winner');
+  assert(g.War.pairs(run, 'wu', 'wei').some(([, d]) => d === 'gold'), 'Gold has a border now');
+  eq(g.War.str(run, 'fort'), fort0, 'Fort untouched');
+  const N1 = g.Cup.places(run);
+  assert(N1.wu > N0.wu && N1.wei < N0.wei, `the Cup places move to the winner (${JSON.stringify(N1)})`);
+  assert(g.World.canJoin(run, g.WAR.units.iron.clubs[0]).why.includes('club destroyed') && !g.Fight.worth(run, g.WAR.units.iron.clubs[0]), 'the club has stopped');
+  // destroying Harbor leaves Fort as it was
+  g.War.destroy(run, 'harbor', 'shu');
+  eq(g.War.str(run, 'fort'), fort0, 'one half falling does nothing to the other');
+  eq(g.War.holder(run, 'iron'), 'shu', 'Iron’s land went on with Harbor’s');
+  // the last Wei unit: Wei sends no squads at all
+  g.War.destroy(run, 'gold', 'fort');
+  const N2 = g.Cup.places(run);
+  eq(N2.wei, 0, 'a wiped faction sends no squads');
+  assert(!g.Cup.entrants(run).some(e => e.region === 'wei'), 'no Wei entrant');
+});
+
+test('war: Haewon walks out — never to the winner’s side nor yours; your club destroyed frees you (T-315)', () => {
+  const [g, run] = mkRun(36),
+    riv = g.Stars.get(run, 'rival'),
+    harbor = g.WAR.units.harbor.clubs[0];
+  sign(g, run, harbor);
+  g.War.destroy(run, 'iron', 'harbor');
+  g.War.destroy(run, 'gold', 'harbor');
+  const wu = g.Pool.players(run, 'wu');
+  assert(!wu.includes(riv) && !g.squadOf(g.Run.myTeam(run)).includes(riv), 'not with the winner, not with you');
+  eq(g.Pool.players(run, 'shu').includes(riv), true, 'she went to Shu (the other standing faction)');
+  assert(run.war.walk && run.war.walk.to === 'shu' && g.STORY_WHEN.walkout(run), 'her scene is due');
+  // your club destroyed: you are a free agent again
+  const fort = g.WAR.units.fort.clubs[0];
+  g.War.destroy(run, 'harbor', 'shu');
+  assert(g.World.isFree(run) && g.squadOf(run.pickup).some(p => p.id === run.youId), 'freed: back on the Academy squad');
+  assert(run.log.some(l => /doesn’t exist any more/.test(l.t)), 'a diary line');
+  eq(run.teams[fort].P.length, 4, 'the other half plays on');
+});
+
+test('war: the overthrow — Broken only, your match at its HQ, a loss rallies it for 4 weeks while battles go on; the AI below 10 (T-315)', () => {
+  const [g, run] = mkRun(37);
+  sign(g, run, g.WAR.units.harbor.clubs[0]);
+  run.days = 7;
+  run.pos = g.CITY.hq[1].slice();
+  assert(!g.War.can(run, 'iron', 'harbor').ok && /not Broken/.test(g.War.can(run, 'iron', 'harbor').why), 'not before it is Broken');
+  run.war.str.iron = 4;
+  eq(g.War.side(run, 'iron').by, 'harbor', 'you fight for your club’s unit');
+  assert(g.War.can(run, 'iron', 'harbor').ok, 'Broken: open');
+  const fx = g.War.overthrow(run, 'iron'),
+    m = g.newMatch(fx.a, fx.b, false);
+  fx.setup(m);
+  eq(m.weak[1], 3, 'Iron plays Broken');
+  while (!m.over) g.playRally(m);
+  fx.onFinish(m);
+  eq(run.mlog[run.mlog.length - 1].kind, 'overthrow', 'on your match history');
+  if (m.winner === 0) assert(g.War.fallen(run, 'iron'), 'won: destroyed');
+  else {
+    eq(g.War.str(run, 'iron'), 24, 'lost: it rallies +20');
+    assert(/rallied/.test(g.War.can(run, 'iron', 'harbor').why), 'cooldown');
+    assert(g.Front.site(run, 'wu', 'wei'), 'the border’s battles go on');
+    run.week += 4;
+    assert(g.War.can(run, 'iron', 'harbor').ok, 'after 4 weeks: open again');
+  }
+  // the AI: a unit under 10, off cooldown, is challenged at week end
+  const [h, r2] = mkRun(38);
+  r2.war.str.fort = 5;
+  r2.week = 6;
+  h.War.week(r2);
+  eq(r2.war.ot.fort, 6, 'the AI challenged Fort');
+  assert(h.War.fallen(r2, 'fort') || h.War.str(r2, 'fort') >= 25, 'destroyed or rallied');
+});

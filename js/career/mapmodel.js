@@ -619,14 +619,19 @@ const MapModel = {
   },
   /**
    * The war ground (spec §4.34, War / Hex): { size, tiles: [{ id, at, own, major, color, kind, frontier, unit }], target } —
-   * every land tile with the region of the war unit holding it (major: one of MAJORS); frontier = a war border tile; target =
+   * every land tile with the region of the war unit holding it (major: one of MAJORS); frontier = a war border tile; fall = the
+   * latest destroyed unit { key, at (its HQ), pin }; target =
    * this week's battle tile { id, color (raider), text 'Iron 84' — the defending unit's Strength }. Display only.
    */
   hexes(run) {
     const c = Fight.clashSite(run),
       short = u => WAR.units[u].name.split(' ').slice(-1)[0];
+    const F = War.state(run).fallen,
+      last = Object.keys(F).sort((a, b) => F[b].week - F[a].week || (a < b ? -1 : 1))[0],
+      hq = last && WAR.units[last].clubs[0];
     return {
       size: HEX.size,
+      fall: last ? { key: `${last}|${F[last].week}`, at: CITY.hq[hq].slice(), pin: `hq${hq}` } : null, // the latest destroyed unit: the map pans there once
       target: c ? { id: c.tile, color: REGIONS[c.a].color, text: `${short(c.ub)} ${War.str(run, c.ub)}` } : null,
       tiles: Hex.grid().tiles.map(t => {
         const own = War.regionAt(run, t.id);

@@ -10,9 +10,11 @@ const Cup = {
   roman: n => ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'][n - 1] || String(n),
   /** Every squad of the U21 Final Cup: each faction's pool drawn into squads, then the Academy squad while you are still in it. */
   entrants(run) {
-    const out = [];
+    const out = [],
+      N = Cup.places(run);
     for (const r of Object.keys(POOL)) {
-      Pool.draw(run, r).forEach((sq, i) =>
+      if (N[r] === 0) continue;
+      Pool.draw(run, r, N[r]).forEach((sq, i) =>
         out.push({
           name: `${REGIONS[r].name} ${Cup.roman(i + 1)}`,
           short: `${r.slice(0, 3).toUpperCase()}${i + 1}`,
@@ -32,13 +34,32 @@ const Cup = {
     return out;
   },
   /**
+   * Squads per major in the Cup (spec §4.34): its pool's squads split over its war units by clubs; a destroyed unit's share
+   * goes to its destroyer's region (more squads for the attacker), a region with no unit standing sends none. Minors: their
+   * pool's (undefined → Pool.draw's default). With no unit destroyed every major sends what its pool holds, as before.
+   */
+  places(run) {
+    const N = {},
+      share = {};
+    for (const r of MAJORS) {
+      const us = War.ofRegion(r),
+        n = Math.floor(Pool.size(run, r) / SQUAD),
+        clubs = us.reduce((k, u) => k + WAR.units[u].clubs.length, 0);
+      for (const u of us) share[u] = (n * WAR.units[u].clubs.length) / clubs;
+      N[r] = 0;
+    }
+    for (const u of War.ids()) N[WAR.units[War.holder(run, u)].region] += share[u];
+    for (const r of MAJORS) N[r] = Front.standing(run, r) ? Math.round(N[r]) : 0;
+    return N;
+  },
+  /**
    * Story year 2 (spec §4.28): the rival is in the Cup — not drawn (and not hurt) → she takes the place of the weakest same-role
    * player of her region's first squad without you. Mutates `out`.
    */
   placeRival(run, out) {
     const riv = Stars.get(run, 'rival');
     if (!riv || !Story.on(run) || Season.year(run) < 2 || People.out(run, riv) || out.some(e => e.ids.includes(riv.id))) return;
-    const r = (FACTIONS[riv.team.i] && FACTIONS[riv.team.i].region) || 'wei',
+    const r = (FACTIONS[riv.team.i] && FACTIONS[riv.team.i].region) || riv.team.region || 'wei', // (a walk-out: her new region's reserves)
       e = out.find(x => x.region === r && !x.ids.includes(run.youId));
     if (!e) return;
     const all = Pool.players(run, r),

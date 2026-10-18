@@ -244,6 +244,14 @@ function factionsCard(run) {
       : ''
   }</div>`;
 }
+/** Overthrow war unit u at its HQ (spec §4.34): a real match (watch it, or sim it at once). */
+function mapOverthrow(u, sim) {
+  const fx = War.overthrow(RUN, u);
+  if (!fx) return;
+  CW.spot = `hq${War.ace(RUN, u).i}`;
+  if (!sim) return watchCareer(fx);
+  mapAfter(RUN, null, simCareer(fx));
+}
 function joinClub(ti) {
   if (World.join(RUN, ti)) Run.save(RUN);
   renderCareer();

@@ -295,7 +295,7 @@ const Fight = {
   worth(run, ti, stake = 0) {
     const t = run.teams[ti],
       f = FACTIONS[ti];
-    if (!t || !f || ti === run.team) return null;
+    if (!t || !f || ti === run.team || War.down(run, ti)) return null; // (a destroyed club takes no challenges)
     const C = CHALLENGE,
       r = f.region,
       you = Run.you(run),

@@ -185,7 +185,7 @@ squads: the Steady side wins clearly more (state the %).
 QA: Monster game with `weak` forced on one side → prep chip.
 Result: engine `weakSet(m, [k0, k1])` (= `opts.weak`; absent / [0, 0] → the same match, goldens unchanged): morale −0.1 at the start, HP heal −0.25 when Shaken, a Broken side loses FLEX (`C.off`, `cardSlots`); `War.weak` (Gold = max(own, Iron − 1), Shu one late), `War.match` in every career fixture's setup (Cup eval / cup, street battle, challenge, court; squads tagged by unit / region); match prep's chip (`prepStage`). 200 sims Broken vs Steady, same squads both ways: Steady wins 115/200 (58 %) — the stages bite but mildly. Deviation: the FLEX slot still draws as "Empty" in the hand (js/ui/match-cards.js is the cards session's); cards.js only gained the slot lock. QA: Monster game, weakSet [3, 1] → Broken / Strained chips; ui-smoke 13/13.
 
-### [ ] T-315: The overthrow and a destroyed faction
+### [x] T-315: The overthrow and a destroyed faction
 Agent: B
 Spec: §4.34          Goldens: unchanged          Save: no change (inside `run.war`)
 Goal: a Broken unit can be challenged at its HQ (you, a unit fighting it, or the AI below 10); a 5-set match against its ace
@@ -198,7 +198,7 @@ Do not: let Haewon join the winner or your club; allow a challenge within 4 week
 Accept: tests — destroying Iron opens Gold's border; destroying Harbor leaves Fort's Strength unchanged; a destroyed unit
 sends no Cup squads and the winner gets its places; Haewon is never on the winner's or your squad; a rallied unit can't be challenged for 4 weeks while its border's battles go on.
 QA: career run (forced Broken Iron) → challenge, win, the map recolours.
-Result:
+Result: War.can / side / overthrow / overthrowResult / destroy / rally / ai / into / free / walkout; Cup.places (squads per unit, a fallen unit's share to its holder's region: e.g. Iron down → wei 4→3, wu 3→4; a wiped region sends 0); clubs of a fallen unit stop (no joins, no challenges, HQ tag "Destroyed by"), you are freed to the Academy squad (diary line), its 2 best players and the rival move by seat swap (Shu / Gloria have no reserves); the rival → the strongest standing major that is neither the winner's nor yours, else St. Gloria, `walkout` scene (rumor + diary); fall news in the Gazette voice (WAR_LINES, js/data/story.js); the map pans to the latest fall (map3d). Deviations: **one match, not 5 sets** — the engine plays one set to 15 (a best-of-5 needs engine + match-UI work: a task for the spec chat); tests in tests/war.test.js (not career.test.js); the action `mapOverthrow` lives in career-dossier.js (career-map.js is A's); the AI runs from War.week (a simMatch of the two aces, main stream). QA: Iron forced Broken → HQ card's Overthrow peek → simmed (lost 10-15: Iron rallied to 24) → forced destroy: Iron's land recolours Wu, inbox lists the seized places.
 
 ### [ ] T-316: You in the war — call-ups
 Agent: B

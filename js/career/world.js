@@ -49,6 +49,7 @@ const World = {
     const you = Run.you(run),
       j = World.joinReq(run, ti),
       miss = [];
+    if (War.down(run, ti)) miss.push('club destroyed');
     if (!World.isFree(run)) miss.push('already signed');
     if (Run.cupDef(run)) miss.push('not during a cup');
     if (j.ovr && ovr(you) < j.ovr) miss.push(`OVR ${j.ovr}`);

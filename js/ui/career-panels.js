@@ -337,6 +337,37 @@ function venuePanel(run, id) {
     ...courtCard(run, id) // court matches (T-229)
   });
 }
+/**
+ * The overthrow row of a war unit's HQ card (spec §4.34): shown once the unit is Broken (or rallied and waiting); its peek holds
+ * who you fight for, the ace squad, what a win / loss does, the cost, and Overthrow / Sim ⏭ — or the gap when you can't.
+ */
+function overthrowBlock(run, ti) {
+  const u = War.ofClub(ti);
+  if (!u || !War.alive(run, u) || (War.stage(run, u) < WAR_STAGES.length - 1 && !War.cool(run, u))) return '';
+  const S = War.side(run, u),
+    c = War.can(run, u, S && S.by),
+    ace = War.ace(run, u),
+    d = War.cost(run, u),
+    late = !S
+      ? 'your club has no border with it'
+      : !c.ok
+        ? c.why
+        : run.event
+          ? 'answer the event first'
+          : Fight.ban(run) || City.noTime(run, d) || (run.money < S.cost ? `needs $${S.cost} for a street crew` : ''),
+    name = esc(WAR.units[u].name),
+    risk = Math.round(Fight.injuryRisk(run, ace.ovr) * 100);
+  const body = `<div class="lab" ${tip(GLOSSARY.seize.long)}>Overthrow</div>${kv([
+    late ? ['Locked', esc(late), 'mute'] : null,
+    S ? ['For', `${chip(REGIONS[WAR.units[S.by].region])}${esc(WAR.units[S.by].name)}${S.kind === 'crew' ? ` · your street crew $${S.cost}` : ''}`] : null,
+    ['Against', `${esc(ace.name)} · rating ${ace.ovr}`],
+    ['Lose', `${name} rallies +${WAR.rally}`, 'dn'],
+    ['Win', `${name} destroyed: its land and places to ${S ? esc(WAR.units[S.by].name) : 'the winner'}`],
+    ['Injury', `~${risk}%`]
+  ])}
+    <div class="acts pri"><button class="btn" onclick="CW.peek=null;mapOverthrow('${u}')" ${late ? `disabled ${tip(late)}` : ''}>Overthrow · ${d}d</button><button class="btn" onclick="CW.peek=null;mapOverthrow('${u}', true)" ${late ? 'disabled' : ''} ${tip(GLOSSARY.sim.long)}>Sim ⏭</button></div>`;
+  return `<section class="pchal">${peek(`ot:${ti}`, `⚔ Overthrow <span class="${late ? 'mute' : 'dn'}">${esc(WAR_STAGES[War.stage(run, u)].name)} · ${War.str(run, u)}</span>`, body, 'row')}</section>`;
+}
 function hqPanel(run, ti) {
   const t = run.teams[ti],
     f = FACTIONS[ti],
@@ -352,6 +383,8 @@ function hqPanel(run, ti) {
           .map((h, i) => [i ? '' : 'Habits', esc(h[0].toUpperCase() + h.slice(1))])
       : [],
     rep = City.rep(run, f.region),
+    wu = War.ofClub(ti),
+    fall = wu && War.state(run).fallen[wu],
     scouted = seen
       ? `<div class="pdet">${peek(
           `ro:${ti}`,
@@ -371,6 +404,7 @@ function hqPanel(run, ti) {
     title: `${chip(t)}${esc(t.name)}`,
     flavour: `${f.front}.${seen ? ` Word is: ${f.dark}.` : ''}`,
     tags: [
+      fall ? ptag(`Destroyed by ${esc(WAR.units[fall.by].name)}`, GLOSSARY.seize.long, 'bad') : '',
       ptag(`Rating ${t.ovr}`),
       rep ? ptag(`⚑ ${fmtDelta(rep)}`, GLOSSARY.standing.long, rep < 0 ? 'bad' : '') : '', // hidden at 0 (§10.8)
       free && j.ok ? ptag('Would sign you', esc(World.joinText(ti, run)), 'sel') : ''
@@ -385,6 +419,6 @@ function hqPanel(run, ti) {
       `<button class="btn" onclick="openDossier('${f.region}')" ${tip(`Everything you know about ${REGIONS[f.region].name}`)}>Dossier</button>`
     ].filter(Boolean),
     split: free ? 'three' : 'two',
-    after: challengeBlock(run, ti) + scouted
+    after: overthrowBlock(run, ti) + challengeBlock(run, ti) + scouted
   });
 }

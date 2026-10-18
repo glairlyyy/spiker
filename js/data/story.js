@@ -164,6 +164,17 @@ const SCENES = {
     ]
   },
   // ---- year 2 (spec §4.28, §4.31): the year-1 Cup's verdict, Fern's goodbye, the rematch ----
+  // ---- the war (spec §4.34): the rival walks out of a fallen Gold (War.walkout sets run.war.walk) ----
+  walkout: {
+    trigger: { on: 'hub', when: 'walkout' },
+    steps: [
+      { k: 'cut', bars: true },
+      { k: 'say', who: 'rumor', text: 'Word is Haewon Bae walked out of the Gold gym the night it fell. Took one bag. Signed nothing for the winners.' },
+      { k: 'say', who: 'diary', text: "Of course she didn't go with them. She doesn't lose. She just leaves." },
+      { k: 'say', who: 'diary', text: 'Fine. Wherever she lands, I know the way there.' },
+      { k: 'end' }
+    ]
+  },
   y1Won: {
     trigger: { on: 'hub', when: 'year2Won' },
     steps: [
@@ -338,4 +349,17 @@ const STORY_VOICES = {
   gloria: 'St. Gloria agent',
   villager: 'Villager',
   rumor: 'Word on the street'
+};
+/**
+ * The war's lines (spec §4.34). fall: the Gazette's news line when a unit is destroyed (voice: wei — the office reports every
+ * fall, keyed by the winner's region); rallied: a unit that held its HQ (voice: rumor); freed: your club is gone (voice: diary).
+ */
+const WAR_LINES = {
+  fall: {
+    wei: 'The office confirms {loser} is dissolved. Its grounds return to proper administration under {winner}.',
+    wu: 'The office records that {loser} has been overrun by Wu crews. {winner} holds its grounds until order is restored.',
+    shu: 'The office records that {loser} has fallen to the highlanders. {winner} holds its grounds; the office was not consulted.'
+  },
+  rallied: 'Word is {unit} held its HQ. Its crews were back on the street by morning.',
+  freed: 'My club doesn’t exist any more. Nobody’s player again — I’ve been that before.'
 };
