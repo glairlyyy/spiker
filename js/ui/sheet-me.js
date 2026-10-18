@@ -25,7 +25,9 @@ function sheetMe(run) {
     sw = B ? Body.swing(B) : 1,
     swingRow = B
       ? `<div class="mrow swing" ${tip(`A full swing needs Flexibility ≥ ${BODY.swing} × Strength: without it Strength is wasted on Power (and a shallow load costs Jump).`)}><span>Swing</span><span class="mbars"><i class="mb ${sw < 1 ? 'short' : ''}"><i style="--w:${Math.round(sw * 100)}%"></i></i></span><span class="mv small ${sw < 1 ? 'warn' : 'up'}">${sw < 1 ? `short` : 'full'}</span></div>${
-          sw < 1 ? `<p class="small swhint">Short: Flexibility <b>${B.flex}</b> of ${Body.swingNeed(B)}</p>` : `<p class="small mute swhint">Full swing</p>`
+          sw < 1
+            ? `<p class="small swhint">Short: Flexibility <b>${B.flex}</b> of ${Body.swingNeed(B)}</p>`
+            : `<p class="small mute swhint">Full swing</p>`
         }`
       : '',
     ids = Skills.forRole(you.role),

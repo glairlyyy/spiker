@@ -93,7 +93,16 @@ const DAY_ORDERS = {
   plyo: { name: 'Box jumps', kind: 'drill', main: ['agi', 7], side: ['str', 2], sta: 20, price: 1.5, train: 'jump' },
   sprints: { name: 'Sprint intervals', kind: 'drill', main: ['end', 6], side: ['agi', 3], sta: 20, price: 1.5, train: 'speed' },
   mobility: { name: 'Mobility class', kind: 'drill', main: ['flex', 7], side: ['agi', 2], sta: 12, price: 1.5, train: 'def' },
-  sandDrill: { name: 'Sand drills', kind: 'drill', main: ['agi', 5], side: ['end', 3], more: [['str', 1]], sta: 20, price: 1.5, train: 'def' },
+  sandDrill: {
+    name: 'Sand drills',
+    kind: 'drill',
+    main: ['agi', 5],
+    side: ['end', 3],
+    more: [['str', 1]],
+    sta: 20,
+    price: 1.5,
+    train: 'def'
+  },
   dunes: { name: 'Dune runs', kind: 'drill', main: ['end', 5], side: ['agi', 4], sta: 22, price: 1, train: 'speed' },
   swim: { name: 'Laps', kind: 'drill', main: ['end', 5], side: ['agi', 2], more: [['flex', 2]], sta: 15, price: 1.5, train: 'speed' },
   stepRuns: { name: 'Step runs', kind: 'drill', main: ['str', 5], side: ['agi', 4], sta: 22, price: 1, train: 'jump' },
@@ -117,6 +126,7 @@ const DAY_ORDERS = {
   haul: { name: 'Haul crates', kind: 'work', main: ['str', 4], side: ['end', 2], sta: 25, pay: 35, train: 'power' },
   lifeguard: { name: 'Lifeguard shift', kind: 'work', main: ['end', 3], side: ['agi', 2], sta: 18, pay: 30, train: 'def' },
   chores: { name: 'Floor duty', kind: 'work', main: ['end', 2], side: ['flex', 2], sta: 15, pay: 20, train: 'def' },
+  raid: { name: 'Raid', kind: 'raid', sta: 20, k: 2 }, // T-318: a street game on this week's hot border; a win counts × k on their Strength (Fight.raid)
   stretch: { name: 'Stretch', kind: 'stretch', main: ['flex', 4], side: ['agi', 1], sta: 5, train: 'def' },
   // a run (T-309): its gains come from the route's ground (RUN_GROUND); this entry carries the name, the multipliers' key and the sponsor perk
   run: { name: 'Run', kind: 'run', main: ['end', 0], side: ['agi', 0], sta: 0, train: 'speed' }

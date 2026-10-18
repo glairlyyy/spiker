@@ -176,7 +176,10 @@ test('run: a trip run trains the route’s ground — coast road End, mountain p
   eq(coast.days, g.City.travelDays(run, g.SPOTS.harbor.at), 'running takes the walking days');
   run.pos = g.SPOTS.trail.at.slice();
   const hills = g.City.runPlan(run, g.City.at(run, 'stone'));
-  assert(g.City.legs(run.pos, g.City.at(run, 'stone')).every(l => ['path', 'dirt', 'ground'].includes(l.kind)), 'a Shu mountain route');
+  assert(
+    g.City.legs(run.pos, g.City.at(run, 'stone')).every(l => ['path', 'dirt', 'ground'].includes(l.kind)),
+    'a Shu mountain route'
+  );
   assert(hills.gains.end > 0 && hills.gains.str > 0, `Shu mountain path: End + Str (${JSON.stringify(hills.gains)})`);
   run.pos = N.hq4.slice();
   const steps = g.City.runPlan(run, N.hermit);
@@ -192,7 +195,10 @@ test('run: a trip run trains the route’s ground — coast road End, mountain p
   assert(you.body.end > e0, 'Endurance up');
   eq(run.sta, 100 - coast.sta + (run.staMax - g.CAREER.staMax), 'stamina spent (Endurance lifts the max a little)');
   eq(g.City.days(run), 7 - t, 'the walking days');
-  assert(run.dayLog.every(d => d.label === 'Run'), 'the day track shows the run');
+  assert(
+    run.dayLog.every(d => d.label === 'Run'),
+    'the day track shows the run'
+  );
   // too tired → walk only
   run.sta = 3;
   run.days = 7;
@@ -293,7 +299,11 @@ test('career: match XP — performance, opponent strength, past the cap', () => 
   g.Training.tally = {}; // the result card's XP count (resultSnap → resultData)
   const f = g.Growth.matchGap(m2); // before the finish (a point gained in it moves your side's OVR)
   assert(/XP: /.test(fx2.onFinish(m2)), 'the result line shows the XP labels');
-  eq(g.Training.tally.str, Math.round((5 * g.MATCH_XP.per.k.str + g.MATCH_XP.per.blk.str) * f), 'the tally counts the Strength XP of 5 kills and a block');
+  eq(
+    g.Training.tally.str,
+    Math.round((5 * g.MATCH_XP.per.k.str + g.MATCH_XP.per.blk.str) * f),
+    'the tally counts the Strength XP of 5 kills and a block'
+  );
   eq(g.Training.tally.agi, Math.round(g.MATCH_XP.per.blk.agi * f), 'and the Agility XP of a block');
   g.Training.tally = null;
 });
@@ -312,7 +322,10 @@ test.slow('career: start from 1', () => {
   run.event = null;
   run.sta = run.staMax;
   g.Training.train(run, 'power', false);
-  assert(you.body.str >= 4 && you.power > 1, `one Power session raises Strength from 1 by several points (${you.body.str}) and Power with it`);
+  assert(
+    you.body.str >= 4 && you.power > 1,
+    `one Power session raises Strength from 1 by several points (${you.body.str}) and Power with it`
+  );
   // the coach benches an all-1 you behind a same-role mate (a middle blocker: the squad has one MB slot; a lone WS still starts for lack of a rival)
   const runMB = g.Run.create(g.Run.draft(), { role: 'MB', name: 'Zero', mode: {} });
   eq(g.Run.lineup(runMB, g.Run.myTeam(runMB), null, true).starts, false, 'you start on the bench');
@@ -973,7 +986,10 @@ test('career: challenge loss and injury', () => {
   const txt = g.Fight.injure(run, 0.5);
   assert(run.injury && run.injury.weeks === g.INJURY.weeks.severe && /severe/.test(txt), `severe: ${txt}`);
   const lost = g.BODY.keys.filter((k, i) => you.body[k] < before[i]);
-  assert(lost.length === 1 && before[g.BODY.keys.indexOf(lost[0])] - you.body[lost[0]] === g.INJURY.lose, 'one body stat loses INJURY.lose for good');
+  assert(
+    lost.length === 1 && before[g.BODY.keys.indexOf(lost[0])] - you.body[lost[0]] === g.INJURY.lose,
+    'one body stat loses INJURY.lose for good'
+  );
   // an injured player can't challenge or fight and is benched by Run.lineup
   roll(0.99);
   eq(g.Fight.ban(run), 'Injured — rest first', 'the ban text');

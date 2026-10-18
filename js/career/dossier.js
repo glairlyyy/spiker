@@ -85,15 +85,7 @@ const Dossier = {
       scouted = clubs.some(x => City.scouted(run, x.ti)),
       member = run.team != null && !!FACTIONS[run.team] && FACTIONS[run.team].region === r,
       worst = Math.max(0, ...F.fronts.filter(f => !f.fallen).map(f => War.stage(run, f.unit))),
-      state = !major
-        ? 'minor'
-        : !Front.standing(run, r)
-          ? 'fallen'
-          : worst >= 2
-            ? 'weakened'
-            : worst === 1
-              ? 'pressed'
-              : 'stable',
+      state = !major ? 'minor' : !Front.standing(run, r) ? 'fallen' : worst >= 2 ? 'weakened' : worst === 1 ? 'pressed' : 'stable',
       reserve = (run.reserve && run.reserve[r] && run.reserve[r].P) || [];
     const places = Object.keys(SPOTS)
       .filter(id => id !== 'home' && City.region(run, id) === r)

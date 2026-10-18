@@ -393,6 +393,7 @@ const RUN_DEFAULTS = {
   year: [() => 1, v => v === 1 || v === 2],
   feel: [() => ({ drive: 0, pain: 0, great: 0, awful: 0 }), isObj], // Drive & Pain (spec §4.30; js/career/feel.js) — hidden
   fired: [() => 0, Number.isFinite], // Fired up: your next matches with the buff
+  raidW: [() => null, v => v === null || Number.isFinite(v)], // the absolute week of your last Raid (T-318)
   scars: [() => [], Array.isArray], // Pain's Scars (T-291 pools)
   secret: [() => ({}), isObj], // the secret places (spec §4.31; js/career/secret.js)
   habits: [() => [], Array.isArray], // the rival's habits uncovered at the Tape Room (keys)

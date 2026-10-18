@@ -76,7 +76,10 @@ test('war: Strength drives the economy — prices, quality, joins, street streng
   assert(g.Front.strength(run, 'iron') < g.Front.strength(run, 'harbor'), 'weaker on the street');
   eq(g.Front.owner(run, 'weiPower'), 'wei', 'no place changes hands');
   const d = g.Dossier.build(run, 'wei');
-  assert(d.state === 'pressed' && d.fronts.length === 2 && d.fronts[0].unit === 'iron' && d.fronts[0].str === 50, 'the dossier shows the units');
+  assert(
+    d.state === 'pressed' && d.fronts.length === 2 && d.fronts[0].unit === 'iron' && d.fronts[0].str === 50,
+    'the dossier shows the units'
+  );
   eq(g.Dossier.summary(run, 'gloria').fronts.length, 0, 'minors are not in the war');
   // saved with the run
   g.Run.save(run);
@@ -130,13 +133,21 @@ test('war: a destroyed unit — its land and places to the winner, Gold’s bord
   eq(JSON.stringify(N0), JSON.stringify({ wei: 4, wu: 3, shu: 2 }), 'every major sends its pool’s squads');
   g.War.destroy(run, 'iron', 'harbor');
   assert(g.War.fallen(run, 'iron') && g.War.holder(run, 'iron') === 'harbor', 'Iron is gone, Harbor holds its land');
-  const placeOnIron = Object.keys(g.SPOTS).find(id => g.SPOTS[id].at && g.SPOTS[id].region === 'wei' && (g.Hex.ofSpot(id) || {}).unit === 'iron');
+  const placeOnIron = Object.keys(g.SPOTS).find(
+    id => g.SPOTS[id].at && g.SPOTS[id].region === 'wei' && (g.Hex.ofSpot(id) || {}).unit === 'iron'
+  );
   eq(g.Front.owner(run, placeOnIron), 'wu', 'its places go to the winner');
-  assert(g.War.pairs(run, 'wu', 'wei').some(([, d]) => d === 'gold'), 'Gold has a border now');
+  assert(
+    g.War.pairs(run, 'wu', 'wei').some(([, d]) => d === 'gold'),
+    'Gold has a border now'
+  );
   eq(g.War.str(run, 'fort'), fort0, 'Fort untouched');
   const N1 = g.Cup.places(run);
   assert(N1.wu > N0.wu && N1.wei < N0.wei, `the Cup places move to the winner (${JSON.stringify(N1)})`);
-  assert(g.World.canJoin(run, g.WAR.units.iron.clubs[0]).why.includes('club destroyed') && !g.Fight.worth(run, g.WAR.units.iron.clubs[0]), 'the club has stopped');
+  assert(
+    g.World.canJoin(run, g.WAR.units.iron.clubs[0]).why.includes('club destroyed') && !g.Fight.worth(run, g.WAR.units.iron.clubs[0]),
+    'the club has stopped'
+  );
   // destroying Harbor leaves Fort as it was
   g.War.destroy(run, 'harbor', 'shu');
   eq(g.War.str(run, 'fort'), fort0, 'one half falling does nothing to the other');
@@ -163,7 +174,10 @@ test('war: Haewon walks out — never to the winner’s side nor yours; your clu
   const fort = g.WAR.units.fort.clubs[0];
   g.War.destroy(run, 'harbor', 'shu');
   assert(g.World.isFree(run) && g.squadOf(run.pickup).some(p => p.id === run.youId), 'freed: back on the Academy squad');
-  assert(run.log.some(l => /doesn’t exist any more/.test(l.t)), 'a diary line');
+  assert(
+    run.log.some(l => /doesn’t exist any more/.test(l.t)),
+    'a diary line'
+  );
   eq(run.teams[fort].P.length, 4, 'the other half plays on');
 });
 
@@ -228,6 +242,35 @@ test('war: call-ups — a member is called up on a battle week of their unit; re
   while (!m.over) g.playRally(m);
   const r1 = g.City.rep(run, 'wu');
   fx.onFinish(m);
-  eq(g.City.rep(run, 'wu'), g.clamp(r1 + (m.winner === 0 ? g.CLASH.win : g.CLASH.lose), -100, 100), 'answered: only the battle’s own standing');
+  eq(
+    g.City.rep(run, 'wu'),
+    g.clamp(r1 + (m.winner === 0 ? g.CLASH.win : g.CLASH.lose), -100, 100),
+    'answered: only the battle’s own standing'
+  );
   assert(g.Fight.calledFor(g.Run.create(g.Run.draft(), { role: 'S', name: 'Free' })) === null, 'a free agent is never called up');
+});
+
+test('war: the Raid order — a member on the hot border, once a week; a win hits their Strength × 2, a loss yours × 1 (T-318)', () => {
+  const [g, run] = mkRun(41),
+    harbor = g.WAR.units.harbor.clubs[0];
+  sign(g, run, harbor);
+  assert(/no hot border/.test(g.Fight.raidWhy(run)), 'no battle this week: no raid');
+  const e = g.War.edges(run, 'harbor', 'iron')[0];
+  run.clash = { tile: e.tile, from: e.from, att: 'wu', def: 'wei', seen: false, done: false };
+  Object.assign(run, { days: 7, injury: null, sta: 100, pos: g.CITY.hq[2].slice() });
+  eq(g.Fight.raidWhy(run), '', 'a member on this border may raid');
+  const s0 = { harbor: g.War.str(run, 'harbor'), iron: g.War.str(run, 'iron') },
+    next = g.RNG.next,
+    line = g.Fight.raid(run);
+  assert(g.RNG.next === next, 'the run’s random stream is untouched');
+  assert(/^.*Raid on /.test(line), line);
+  const won = /: won /.test(line);
+  if (won) eq(g.War.str(run, 'iron'), s0.iron - 2 * g.WAR.lose, 'a win: Iron −2 × lose');
+  else eq(g.War.str(run, 'harbor'), s0.harbor - g.WAR.lose, 'a loss: Harbor −1 × lose');
+  eq(g.Fight.raidWhy(run), 'raided this week', 'once a week');
+  eq(
+    g.War.hit(g.Run.create(g.Run.draft(), { role: 'S', name: 'X' }), 'iron', false, 2),
+    -2 * g.WAR.lose,
+    'War.hit × 2 = twice a street battle loss'
+  );
 });

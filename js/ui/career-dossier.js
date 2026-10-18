@@ -185,7 +185,9 @@ function factionsCard(run) {
         .filter(f => !f.fallen)
         .map(f => {
           const S = WAR_STAGES[WAR_STAGES.findIndex(x => x.id === f.plays)],
-            what = [S.mor && `morale −${S.mor * 100}`, S.heal && `heal −${S.heal * 100}`, S.slots && `${S.slots} card slot fewer`].filter(Boolean);
+            what = [S.mor && `morale −${S.mor * 100}`, S.heal && `heal −${S.heal * 100}`, S.slots && `${S.slots} card slot fewer`].filter(
+              Boolean
+            );
           return [
             esc(f.name),
             `${f.vs.length ? `border with ${f.vs.map(o => esc(WAR.units[o].name)).join(', ')}` : '<span class="mute">no border</span>'}${what.length ? ` · ${what.join(', ')}` : ''}`

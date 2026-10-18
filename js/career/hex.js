@@ -109,10 +109,13 @@ const Hex = {
   frontier(run, id) {
     const u = War.unitAt(run, id),
       r = u && WAR.units[u].region;
-    return !!r && Hex.near(id).some(n => {
-      const v = War.unitAt(run, n.id);
-      return !!v && WAR.units[v].region !== r;
-    });
+    return (
+      !!r &&
+      Hex.near(id).some(n => {
+        const v = War.unitAt(run, n.id);
+        return !!v && WAR.units[v].region !== r;
+      })
+    );
   },
   /** The tile's six neighbours that are land. */
   near: id => {
@@ -189,5 +192,5 @@ const Hex = {
       .filter(([, s]) => s.at)
       .sort((a, b) => Math.hypot(a[1].at[0] - t.at[0], a[1].at[1] - t.at[1]) - Math.hypot(b[1].at[0] - t.at[0], b[1].at[1] - t.at[1]))[0];
     return `${t.terrain === 'plain' ? 'open ground' : t.terrain} near ${near ? near[1].name : 'the Academy'}`;
-  },
+  }
 };

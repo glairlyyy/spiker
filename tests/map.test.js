@@ -532,12 +532,18 @@ test('map: a training place’s pin shows 1–3 body glyphs of what it trains be
     assert(p, `${id} pinned`);
     assert(p.glyphs.length >= 1 && p.glyphs.length <= 3 && p.glyphs.every(x => glyphs.has(x)), `${id}: ${p.glyphs.join('')}`);
   }
-  assert(pins.filter(p => p.kind === 'spot' && !g.SPOTS[p.id].kit).every(p => !p.glyphs.length), 'no glyphs without a kit');
+  assert(
+    pins.filter(p => p.kind === 'spot' && !g.SPOTS[p.id].kit).every(p => !p.glyphs.length),
+    'no glyphs without a kit'
+  );
   eq(g.MapModel.trains('harbor').join(','), 'str', 'the Harbor builds Strength');
   eq(g.MapModel.trains('steps').join(','), 'str,agi', 'the Steps: Strength + Agility');
   const lm = g.MapModel.landmarks(run);
   eq(lm.find(l => l.id === 'harbor').kit.join(','), 'weights,crates', 'the Harbor landmark carries racks and crates');
-  assert(lm.filter(l => g.SPOTS[l.id] && g.SPOTS[l.id].kit).every(l => l.kit.length), 'every kit place shows its kit');
+  assert(
+    lm.filter(l => g.SPOTS[l.id] && g.SPOTS[l.id].kit).every(l => l.kit.length),
+    'every kit place shows its kit'
+  );
 });
 
 test('career: island map — regions, prices, quality, far trips, outings, scouting, 7-day weeks, saved', () => {
@@ -555,8 +561,12 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   }
   for (const k of g.TRAINK) assert(g.City.spotsFor(k).length >= 2, `several places for ${k} training`);
   // prices follow the regions; Wei may be overhyped, Shu may be a gem, others as advertised
-  eq(g.City.price(run, 'weiPower'), Math.round(g.TRAIN_FEE * g.DAY_ORDERS.heavy.price * 2), 'Wei costs double (the lead drill, Heavy sets)');
-  eq(g.City.price(run, 'stone'), Math.round(g.TRAIN_FEE * g.DAY_ORDERS.heavy.price / 2), 'Shu costs half');
+  eq(
+    g.City.price(run, 'weiPower'),
+    Math.round(g.TRAIN_FEE * g.DAY_ORDERS.heavy.price * 2),
+    'Wei costs double (the lead drill, Heavy sets)'
+  );
+  eq(g.City.price(run, 'stone'), Math.round((g.TRAIN_FEE * g.DAY_ORDERS.heavy.price) / 2), 'Shu costs half');
   for (const id of Object.keys(run.spotQ)) {
     const Q = run.spotQ[id],
       r = g.SPOTS[id].region;
@@ -714,7 +724,10 @@ test('career: faction dossier — state, places, roster gate', () => {
     d.roster.every(p => p.ovr === null && p.el === null),
     'unscouted: ratings and elements unknown'
   );
-  assert(d.fronts.length === 2 && d.fronts.every(f => f.str === 100 && f.stage === 'steady'), 'two war units (Iron, Gold) at full Strength');
+  assert(
+    d.fronts.length === 2 && d.fronts.every(f => f.str === 100 && f.stage === 'steady'),
+    'two war units (Iron, Gold) at full Strength'
+  );
   const wei = g.FACTIONS.findIndex(f => f.region === 'wei');
   assert(g.City.scout(run, wei), 'scout a Wei club');
   d = g.Dossier.build(run, 'wei');

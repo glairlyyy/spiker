@@ -119,7 +119,7 @@ Accept: map test — every training place's pin lists 1–3 body glyphs; QA scre
 QA: career run → map overview + two close-ups.
 Result: MapModel.trains(id) → pin `glyphs` (1–3 body glyphs: each stat's best gain among the place's orders, within 60 % of the top; Harbor ▲, the Steps ▲≫, Wei Strength ▲∿), drawn on a tab under the pin (pins3d.mjs, css/map.css); landmarks carry `kit` and kit3d's KIT_PROPS add racks, crates + a crane, plyo boxes, steps, a track, dunes, a pool, a sand court, mats, a shed, a film screen, shelves beside them — merged into the one landmark mesh (no draw call added). Map test (every training place 1–3 glyphs, kits on landmarks). npm test 158/158, lint, test:ui 13/13; QA: overview, Wei's district, the Harbor close-up.
 
-### [ ] T-318: The Raid order — a street game on a hot border
+### [x] T-318: The Raid order — a street game on a hot border
 Agent: A (after B's T-313 is published: needs `War.hit`)
 Spec: §4.33, §4.34          Goldens: unchanged          Save: no change
 Goal: a Raid day order at a point on a hot border (or its nearest place) fights a street game there; a win counts × 2 on that
@@ -129,7 +129,7 @@ war rows), tests/career.test.js (its own test)
 Do not: re-implement Strength; add a pop-up.
 Accept: test — a raid win moves the unit's Strength twice as far as a street battle win.
 QA: career run → raid a border.
-Result:
+Result: (spec chat, after the merge) `Fight.raid` / `raidWhy` + the Raid button on the battle card (a member on this week's hot border, once a week, trip + 1 day, −20 stamina); played at once on a seeded stream (like the Midnight Court) with the war stages; win → their unit `War.hit(…, 2)`, loss → yours × 1; match XP, Drive / Pain; `run.raidW`. Test in war.test.js. Also: the dead hex decals in pins3d.mjs, `.mbord` / `.ptile` CSS and the hub's "A win takes" row removed; Prettier over the merged tree.
 
 ### [x] T-311: Endurance in the match — rally HP damage
 Agent: B

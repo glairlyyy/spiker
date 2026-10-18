@@ -169,7 +169,11 @@ const SCENES = {
     trigger: { on: 'hub', when: 'walkout' },
     steps: [
       { k: 'cut', bars: true },
-      { k: 'say', who: 'rumor', text: 'Word is Haewon Bae walked out of the Gold gym the night it fell. Took one bag. Signed nothing for the winners.' },
+      {
+        k: 'say',
+        who: 'rumor',
+        text: 'Word is Haewon Bae walked out of the Gold gym the night it fell. Took one bag. Signed nothing for the winners.'
+      },
       { k: 'say', who: 'diary', text: "Of course she didn't go with them. She doesn't lose. She just leaves." },
       { k: 'say', who: 'diary', text: 'Fine. Wherever she lands, I know the way there.' },
       { k: 'end' }

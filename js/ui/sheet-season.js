@@ -56,7 +56,14 @@ function calendar(run) {
   return `<div class="cal">${pips.join('')}</div>`; // legend on the Calendar label's hover (§10.8)
 }
 /** Match history (T-052, Cup.record): newest first, each row a fold with the kick-off snapshot (changes vs your previous match), your line and the box score. */
-const MKIND = { eval: 'Evaluation', cup: 'Cup', challenge: 'Challenge', street: 'Street fight', court: 'Court match', overthrow: 'Overthrow' };
+const MKIND = {
+  eval: 'Evaluation',
+  cup: 'Cup',
+  challenge: 'Challenge',
+  street: 'Street fight',
+  court: 'Court match',
+  overthrow: 'Overthrow'
+};
 function matchLog(run) {
   const L = run.mlog || [],
     row = (e, i) => {

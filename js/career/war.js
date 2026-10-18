@@ -120,8 +120,7 @@ const War = {
   /** The standing units of another region across u's border: who may challenge it. */
   foes: (run, u) => War.ids().filter(o => War.edges(run, o, u).length),
   /** u's ace squad: the best-rated of its clubs (Shu: Peak or Valley). */
-  ace: (run, u) =>
-    WAR.units[u].clubs.map(ti => run.teams[ti]).reduce((a, t) => (t.ovr > a.ovr ? t : a)),
+  ace: (run, u) => WAR.units[u].clubs.map(ti => run.teams[ti]).reduce((a, t) => (t.ovr > a.ovr ? t : a)),
   /** Weeks until u may be challenged again (0 = now): WAR.cool after its last overthrow match. */
   cool(run, u) {
     const t = War.state(run).ot[u];
@@ -261,9 +260,7 @@ const War = {
       let moved = 0;
       for (const p of best) if (moved < WAR.scatter && War.into(run, p, wr)) moved++;
     }
-    const line = WAR_LINES.fall[wr]
-      .replace('{loser}', WAR.units[u].name)
-      .replace('{winner}', WAR.units[by].name);
+    const line = WAR_LINES.fall[wr].replace('{loser}', WAR.units[u].name).replace('{winner}', WAR.units[by].name);
     Run.news(run, line);
     return line;
   },
@@ -294,9 +291,7 @@ const War = {
   into(run, p, r) {
     if (People.toReserve(run, p, r)) return true;
     const you = Run.you(run),
-      T = run.teams
-        .filter(t => FACTIONS[t.i] && FACTIONS[t.i].region === r && !War.down(run, t.i))
-        .sort((a, b) => b.ovr - a.ovr)[0],
+      T = run.teams.filter(t => FACTIONS[t.i] && FACTIONS[t.i].region === r && !War.down(run, t.i)).sort((a, b) => b.ovr - a.ovr)[0],
       q =
         T &&
         squadOf(T)
@@ -320,9 +315,13 @@ const War = {
         D = War.ace(run, u),
         m = simMatch(A, D, { weak: [War.weak(run, by), War.weak(run, u)] });
       War.state(run).ot[u] = run.week;
-      Run.log(run, `Overthrow at ${D.name}: ${A.name} ${m.winner === 0 ? 'won' : 'lost'} ${m.setScores[0].join('-')}. ${
-        m.winner === 0 ? War.destroy(run, u, by) : War.rally(run, u)
-      }`, 'world');
+      Run.log(
+        run,
+        `Overthrow at ${D.name}: ${A.name} ${m.winner === 0 ? 'won' : 'lost'} ${m.setScores[0].join('-')}. ${
+          m.winner === 0 ? War.destroy(run, u, by) : War.rally(run, u)
+        }`,
+        'world'
+      );
     }
   },
   /** The tiles unit u holds now (a Set of ids). */
@@ -335,7 +334,9 @@ const War = {
   },
   /** u's border (spec §4.34): the outer edge of its land, one closed smoothed loop [[x, y]…] (cached until a unit falls). */
   outline(run, u) {
-    const key = `${u}|${War.ids().map(x => War.holder(run, x)).join()}`,
+    const key = `${u}|${War.ids()
+        .map(x => War.holder(run, x))
+        .join()}`,
       C = War.lineCache || (War.lineCache = new Map());
     if (!C.has(key)) {
       const L = Hex.outline(War.land(run, u))[0];

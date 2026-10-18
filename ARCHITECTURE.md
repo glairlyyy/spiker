@@ -221,7 +221,7 @@ their `onLeave` only cleans up (`Eval.restore`). The UI opens them with `watchCa
   The Tape Room's facts (`Secret.habits`: true engine numbers) show on the Plan board against her (`boardHabits`).
 - **Sponsors** (`career/sponsors.js`; the coach's goal was removed in T-170, spec §10.1b): sponsors make offers at fan milestones (a `pre` event shown before the week's choice) with a perk kept while a
   condition holds.
-- **Matches** (`career/cup.js`; street battles, challenges, loss and injury are `Fight` in `career/fight.js`): an S–C grade from your own line scales that match's rewards; a pre-match focus goal;
+- **Matches** (`career/cup.js`; street battles, the Raid order (`Fight.raid`, T-318), challenges, loss and injury are `Fight` in `career/fight.js`): an S–C grade from your own line scales that match's rewards; a pre-match focus goal;
   a captain's team talk before Cup matches (applied in `Cup.prepare` and the fixture's `setup(m)` hook).
 - Content is data: `data/career.js` (numbers, trainings, calendar, cups, rewards, ranks, unlocks, sponsors, modes),
   `data/skills.js`. The only event cards are the Element Trial and sponsor offers, built in `Events.def` (the random training events were removed, owner 2026-10-05).

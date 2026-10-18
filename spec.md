@@ -1298,7 +1298,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     the hex grid's outer edge (smoothed), never drawn as tiles. Fighting heats a border: the stretch glows and pulses with
     banners, the battle site sits on it. Borders move only when a unit is destroyed. **[built 2026-10-19, T-317]**
   - **You in the war** (T-316): your club calls you up on battle weeks (refusing costs standing) **[built 2026-10-19, T-316: −8 standing; staying away, watching or fighting for the other side all refuse]**; a **Raid** day order
-    (§4.33) fights a street game on a hot border (your win counts × 2 on Strength).
+    (§4.33) fights a street game on a hot border (your win counts × 2 on Strength). **[built 2026-10-19, T-318: from the battle card, played at once; a loss costs your unit × 1]**
   - Economy: Strength replaces the tile value (prices × (1 + 0.3 % per point under 100), quality × (0.7 + 0.3 × Strength /
     100), joins easier when Strained or worse). Save: RUN_VERSION bump (`run.war = { str, fallen, last }`, `run.hex` dropped).
 - §4.27 Hex territory **[built, T-131–T-134, T-138, T-153; superseded by §4.34 when T-313 lands]** (owner, 2026-10-03): the war map becomes hex tiles; each tile has its own takeover

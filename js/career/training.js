@@ -183,7 +183,9 @@ const Training = {
     hard = hard && !run.injury && (!O || O.kind !== 'stretch');
     const pv = Training.preview(run, key, hard, x, at),
       out = [],
-      name = O ? `${hard ? 'Hard ' : ''}${O.name}${run.injury ? ' (light)' : ''}` : `${hard ? 'Hard ' : ''}${T.name}${run.injury ? ' (light)' : ''} training`;
+      name = O
+        ? `${hard ? 'Hard ' : ''}${O.name}${run.injury ? ' (light)' : ''}`
+        : `${hard ? 'Hard ' : ''}${T.name}${run.injury ? ' (light)' : ''} training`;
     run.lastMain = pv.main[0];
     run.trained = 1;
     run.streak = run.streak && run.streak.key === key ? { key, n: run.streak.n + 1 } : { key, n: 1 };

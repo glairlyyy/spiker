@@ -43,7 +43,8 @@ const City = {
     return o.find(k => DAY_ORDERS[k].kind === 'drill') || o[0] || null;
   },
   /** The order a day at place id runs for option `opt` (an order offered there; a kit place without one: its lead drill), else null. */
-  orderOf: (id, opt) => (DAY_ORDERS[opt] && City.orders(id).includes(opt) ? opt : SPOTS[id] && SPOTS[id].kit && !DAY_ORDERS[opt] ? City.lead(id) : null),
+  orderOf: (id, opt) =>
+    DAY_ORDERS[opt] && City.orders(id).includes(opt) ? opt : SPOTS[id] && SPOTS[id].kit && !DAY_ORDERS[opt] ? City.lead(id) : null,
   /** Your faction's region (null while a free agent). */
   myRegion: run => (run.team != null && FACTIONS[run.team] ? FACTIONS[run.team].region : null),
   /** Home-turf bonus at a place: it lies in your faction's region. */

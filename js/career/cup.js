@@ -250,7 +250,10 @@ const Cup = {
       club = run.team != null ? run.teams[run.team] : null;
     const tag = (T, r) => Object.assign(T, { wu: War.ofClub(run.team), wr: r }); // your club's war stage (War.weakOf)
     if (e && e.kind === 'faction')
-      return { T: tag(Eval.squad(run, e.mine, `${club.name} · Eval`, club.color, undefined, club.short), FACTIONS[run.team].region), region: FACTIONS[run.team].region };
+      return {
+        T: tag(Eval.squad(run, e.mine, `${club.name} · Eval`, club.color, undefined, club.short), FACTIONS[run.team].region),
+        region: FACTIONS[run.team].region
+      };
     if (e && e.kind === 'rematch' && e.mine)
       return { T: tag(Eval.squad(run, e.mine, club.name, club.color, e.mineRegion, club.short), e.mineRegion), region: e.mineRegion };
     return { T: Run.myTeam(run), region: null }; // the Academy squad is a real team

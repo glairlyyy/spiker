@@ -314,7 +314,13 @@ const MapModel = {
   },
   /** Every place and club HQ with its landmark kind (LANDMARK): [{ id, at, kind, region, kit? }] (kit: the place's KITS tags, drawn beside it). Your home sits where your housing is. */
   landmarks: run => [
-    ...Object.keys(SPOTS).map(id => ({ id, at: City.at(run, id), kind: LANDMARK[id], region: City.region(run, id), kit: SPOTS[id].kit || [] })),
+    ...Object.keys(SPOTS).map(id => ({
+      id,
+      at: City.at(run, id),
+      kind: LANDMARK[id],
+      region: City.region(run, id),
+      kit: SPOTS[id].kit || []
+    })),
     ...CITY.hq.map((at, i) => ({ id: `hq${i}`, at, kind: LANDMARK.hq, region: FACTIONS[i].region })),
     ...Object.entries(VENUES).map(([id, v]) => ({ id: `venue:${id}`, at: v.at, kind: v.kind, region: v.region })),
     { id: 'ritual', at: CITY.ritual, kind: 'ritual', region: 'open' }, // the old ritual ground: no pin, no label
@@ -646,7 +652,10 @@ const MapModel = {
       last = Object.keys(F).sort((a, b) => F[b].week - F[a].week || (a < b ? -1 : 1))[0],
       hq = last && WAR.units[last].clubs[0],
       U = Front.clash(run),
-      hot = U && War.alive(run, U.ua) && War.alive(run, U.ub) ? { units: [U.ua, U.ub], colors: [col(U.ua), col(U.ub)], lines: War.meet(run, U.ua, U.ub), site: run.clash.at || null } : null,
+      hot =
+        U && War.alive(run, U.ua) && War.alive(run, U.ub)
+          ? { units: [U.ua, U.ub], colors: [col(U.ua), col(U.ub)], lines: War.meet(run, U.ua, U.ub), site: run.clash.at || null }
+          : null,
       banners = [];
     if (hot)
       for (const L of hot.lines)

@@ -64,7 +64,11 @@ function prepStage(m, i) {
   const k = m.weak ? m.weak[i] : 0;
   if (!k) return '';
   const S = WAR_STAGES[k],
-    what = [S.mor && `morale starts ${S.mor * 100} lower`, S.heal && `HP heals ${S.heal * 100} less a rally`, S.slots && `${cardSlots(m, i).length} card slots`]
+    what = [
+      S.mor && `morale starts ${S.mor * 100} lower`,
+      S.heal && `HP heals ${S.heal * 100} less a rally`,
+      S.slots && `${cardSlots(m, i).length} card slots`
+    ]
       .filter(Boolean)
       .join(' · ');
   return `<span class="wstage" ${tip(`At war: ${what}. ${GLOSSARY.stage.long}`)} tabindex="0">${S.name}</span>`;

@@ -150,6 +150,12 @@ function clashBorder(run, att, def) {
  * This week's street battle (spec §10.1a, HubBattle): the facts top-down, one card per side (cost, injury, Win and Lose
  * effects one per line), the Play it / Sim it option, then one row: Fight for A, Fight for B, Watch.
  */
+/** The Raid order on the battle card (T-318): cost → result; disabled with the reason (only shown to a member on this border). */
+function raidBtn(run, d) {
+  const why = Fight.raidWhy(run);
+  if (why === "your club isn't on this border" || why === 'no hot border this week') return '';
+  return `<button class="btn" onclick="mapRaid()" ${why ? `disabled ${tip(why)}` : tip(`A street game against their crew, played at once. Win: their Strength −${WAR.lose * DAY_ORDERS.raid.k} (× 2). Lose: yours −${WAR.lose}.`)}>Raid · ${d}d · ${term('sta', -DAY_ORDERS.raid.sta, 'cost')} → Strength ×${DAY_ORDERS.raid.k}</button>`;
+}
 function clashPanel(run) {
   const c = Fight.clashSite(run);
   if (!c) return `<p class="small mute">The street battle is over.</p>`;
@@ -193,7 +199,13 @@ function clashPanel(run) {
     flavour: "Crews from both sides are settling it on the street this week. If nobody joins, it is settled at the week's end.",
     body: `${kv([
       call ? ['Call-up', `<span ${tip(WAR_CALL.lines[call])}>${esc(WAR_CALL.lines[call])}</span>`, 'wa'] : null,
-      call ? ['Refuse', `${term('standing', WAR_CALL.refuse)} ${short(call)} <span class="mute">— stay away, watch, or fight for ${short(call === c.a ? c.b : c.a)}</span>`, 'dn'] : null,
+      call
+        ? [
+            'Refuse',
+            `${term('standing', WAR_CALL.refuse)} ${short(call)} <span class="mute">— stay away, watch, or fight for ${short(call === c.a ? c.b : c.a)}</span>`,
+            'dn'
+          ]
+        : null,
       ['Attacker', side(att)],
       ['Defender', side(def)],
       ['Border', clashBorder(run, att, def)],
@@ -208,7 +220,8 @@ function clashPanel(run) {
     row: [
       fight(c.a),
       fight(c.b),
-      `<button class="btn" onclick="mapClash(null)" ${late ? `disabled ${tip(late)}` : tip(`See both sides' clubs in action: scouts them. −${CLASH.watchSta} stamina`)}>Watch · ${d}d</button>`
+      `<button class="btn" onclick="mapClash(null)" ${late ? `disabled ${tip(late)}` : tip(`See both sides' clubs in action: scouts them. −${CLASH.watchSta} stamina`)}>Watch · ${d}d</button>`,
+      raidBtn(run, d)
     ]
   });
 }
@@ -218,7 +231,11 @@ function xpRate(run, k, xp) {
   if (k !== 'wit' && Training.level(Run.you(run), k) >= Training.cap(run)) return { t: 'at cap', cls: 'mute', n: Infinity };
   const pr = Training.progress(run, k),
     r = xp / Math.max(1, pr.need);
-  return { t: r >= 3 ? '+++' : r >= 1 ? '++' : r >= 0.25 ? '+' : '·', cls: r >= 1 ? 'up' : r >= 0.25 ? '' : 'mute', n: Math.max(1, Math.ceil((pr.need - pr.have) / Math.max(0.01, xp))) };
+  return {
+    t: r >= 3 ? '+++' : r >= 1 ? '++' : r >= 0.25 ? '+' : '·',
+    cls: r >= 1 ? 'up' : r >= 0.25 ? '' : 'mute',
+    n: Math.max(1, Math.ceil((pr.need - pr.have) / Math.max(0.01, xp)))
+  };
 }
 /** One day's gain multiplier at a place as the card shows it: the advertised quality × home turf × DAY_GAIN (quality stays hidden, §4.3). */
 function dayX(run, id) {
@@ -331,7 +348,9 @@ function pointCard(run, p) {
   const html = pointPanel(run, p),
     O = DAY_ORDERS.stretch,
     pv = Training.preview(run, 'stretch', false, DAY_GAIN, null),
-    late = run.event ? 'answer the event first' : City.noTime(run, City.travelDays(run, p)) || (City.outside(run, p) ? City.fence(run) : ''),
+    late = run.event
+      ? 'answer the event first'
+      : City.noTime(run, City.travelDays(run, p)) || (City.outside(run, p) ? City.fence(run) : ''),
     blk = `<div class="ords">${runBtn(run, p, late)}${ordBtn(run, O, pv, City.pointCan(run, p), `mapStretch(${p[0]},${p[1]})`, City.trip(run, p) + 1, 0, false)}</div>`,
     i = html.lastIndexOf('</div>');
   return i < 0 ? html : html.slice(0, i) + blk + html.slice(i);
@@ -403,7 +422,12 @@ function overthrowBlock(run, ti) {
     risk = Math.round(Fight.injuryRisk(run, ace.ovr) * 100);
   const body = `<div class="lab" ${tip(GLOSSARY.seize.long)}>Overthrow</div>${kv([
     late ? ['Locked', esc(late), 'mute'] : null,
-    S ? ['For', `${chip(REGIONS[WAR.units[S.by].region])}${esc(WAR.units[S.by].name)}${S.kind === 'crew' ? ` · your street crew $${S.cost}` : ''}`] : null,
+    S
+      ? [
+          'For',
+          `${chip(REGIONS[WAR.units[S.by].region])}${esc(WAR.units[S.by].name)}${S.kind === 'crew' ? ` · your street crew $${S.cost}` : ''}`
+        ]
+      : null,
     ['Against', `${esc(ace.name)} · rating ${ace.ovr}`],
     ['Lose', `${name} rallies +${WAR.rally}`, 'dn'],
     ['Win', `${name} destroyed: its land and places to ${S ? esc(WAR.units[S.by].name) : 'the winner'}`],

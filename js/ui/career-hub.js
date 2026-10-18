@@ -195,8 +195,7 @@ function weekBrief(run) {
   const c = Fight.clashSite(run);
   if (c && !run.clash.done) {
     const att = run.clash.att || c.a,
-      def = att === c.a ? c.b : c.a,
-      k = Front.stakes(run, att, def);
+      def = att === c.a ? c.b : c.a;
     row(
       '⚔',
       `${chip(REGIONS[att])}${esc(REGIONS[att].name.split(' ')[0])} raid ${chip(REGIONS[def])}${esc(REGIONS[def].name.split(' ')[0])}`,
@@ -204,7 +203,6 @@ function weekBrief(run) {
       [
         ['Where', esc(c.name)],
         ['Border', clashBorder(run, att, def)],
-        k.seize && k.place ? ['A win takes', esc(SPOTS[k.place].name)] : null,
         ['If nobody joins', "Settled at the week's end"]
       ],
       'warn',

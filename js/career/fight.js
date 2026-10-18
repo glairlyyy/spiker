@@ -271,6 +271,67 @@ const Fight = {
     if (!U || !u) return null;
     return u === U.ua ? U.a : u === U.ub ? U.b : null;
   },
+  /**
+   * Why you can't Raid this week ('' if you can; spec §4.33–§4.34, T-318): a member of a war unit on this week's hot border,
+   * once a week, the trip + a day in time.
+   */
+  raidWhy(run) {
+    const c = Fight.clashSite(run),
+      u = run.team != null && War.ofClub(run.team);
+    if (!c) return 'no hot border this week';
+    if (!u || (u !== c.ua && u !== c.ub)) return "your club isn't on this border";
+    if (run.raidW === Season.wk(run)) return 'raided this week';
+    if (run.sta < DAY_ORDERS.raid.sta) return 'too tired';
+    return run.event ? 'answer the event first' : Fight.ban(run) || City.noTime(run, Fight.clashCost(run)) || '';
+  },
+  /**
+   * A Raid (T-318): your club's crew (you on court) against theirs at the battle site, played at once on a seeded stream (the
+   * run's own is untouched, like the Midnight Court). A win hits their unit × DAY_ORDERS.raid.k (War.hit), a loss hits yours
+   * once; match XP, Drive or Pain. Returns the diary line ('' if you can't).
+   */
+  raid(run) {
+    if (Fight.raidWhy(run)) return '';
+    const c = Fight.clashSite(run),
+      u = War.ofClub(run.team),
+      side = u === c.ua ? c.a : c.b,
+      foe = side === c.a ? c.b : c.a,
+      fu = side === c.a ? c.ub : c.ua,
+      you = Run.you(run),
+      trip = City.go(run, c.at, { k: 'outing', label: 'Raid', at: c.name });
+    run.raidW = Season.wk(run);
+    const m = Secret.isolated(hstr(`raid|${run.pseed}|${Season.wk(run)}`) * 4294967296, () => {
+      const ids = Pool.draw(run, side, 1)[0].map(p => p.id);
+      if (!ids.includes(you.id)) ids.splice(Math.max(0, ['S', 'MB', 'WS', 'WS'].indexOf(you.role)), 1, you.id);
+      const mine = Eval.squad(run, ids, `${REGIONS[side].name} raiders`, REGIONS[side].color, side, side.slice(0, 3).toUpperCase()),
+        opp = Eval.squad(
+          run,
+          Pool.draw(run, foe, 1)[0].map(p => p.id),
+          `${REGIONS[foe].name} crew`,
+          REGIONS[foe].color,
+          foe,
+          foe.slice(0, 3).toUpperCase()
+        );
+      [mine.wu, opp.wu] = [u, fu];
+      Eval.lend(run, mine);
+      Eval.lend(run, opp);
+      try {
+        const g = newMatch(mine, opp, false);
+        War.match(run, g);
+        while (!g.over) playRally(g);
+        return g;
+      } finally {
+        Eval.restore();
+      }
+    });
+    const win = m.winner === 0,
+      sc = m.setScores[0],
+      d = win ? War.hit(run, fu, false, DAY_ORDERS.raid.k) : War.hit(run, u, false, 1),
+      out = [Run.bump(run, 'sta', -DAY_ORDERS.raid.sta), Growth.matchXp(run, m)];
+    Cup.record(run, m, 'court', { round: 'Raid' });
+    Feel.add(run, win ? 'drive' : 'pain', win ? FEEL.drive.win : FEEL.pain.loss);
+    const name = WAR.units[win ? fu : u].name;
+    return `${trip}Raid on ${c.name}: ${win ? 'won' : 'lost'} ${sc[0]}-${sc[1]} — ${name} Strength ${d}${out.filter(Boolean).length ? ' · ' + out.filter(Boolean).join(' · ') : ''}`;
+  },
   /** A refused call-up: standing WAR_CALL.refuse with your club's faction and a diary note. Returns the label. */
   refuse(run) {
     const r = FACTIONS[run.team].region;

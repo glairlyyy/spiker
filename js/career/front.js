@@ -72,7 +72,8 @@ const Front = {
   stakes(run, w, l) {
     const U = Front.units(run, w, l),
       c = Fight.clashSite(run);
-    if (!U || !War.alive(run, U[1])) return { tile: null, name: '', unit: null, str: 0, after: 0, seize: false, place: null, meter: 0, cost: 0 };
+    if (!U || !War.alive(run, U[1]))
+      return { tile: null, name: '', unit: null, str: 0, after: 0, seize: false, place: null, meter: 0, cost: 0 };
     const s = War.str(run, U[1]);
     return {
       tile: c && [c.ua, c.ub].includes(U[1]) ? c.tile : null,

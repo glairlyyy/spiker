@@ -280,6 +280,15 @@ function lockLayer() {
     ${F.rows.length ? `<div class="tfr">${F.rows.map(([ic, n, v, c, t]) => `<div ${t ? tip(t) : ''}>${ic}<span>${n}</span><b class="${c}">${v}</b></div>`).join('')}</div>` : ''}
     <small class="mute">Click or press Space</small></div></div>`;
 }
+/** The Raid order (T-318): played at once; the diary line, then the hub. */
+function mapRaid() {
+  if (CW.lock) return;
+  const line = Fight.raid(RUN);
+  if (!line) return;
+  Run.log(RUN, line);
+  CW.spot = null;
+  mapAfter(RUN);
+}
 function mapClash(side, sim) {
   let res = null;
   if (side) {
