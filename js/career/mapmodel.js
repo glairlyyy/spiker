@@ -296,9 +296,25 @@ const MapModel = {
       { kind: 'dunes', pts: CITY.dunes },
       ...(CITY.relief && CITY.relief.river ? [{ kind: 'river', pts: CITY.relief.river.line, w: CITY.relief.river.w }] : [])
     ].map(b => ({ ...b, ...BORDERS[b.kind] })),
-  /** Every place and club HQ with its landmark kind (LANDMARK): [{ id, at, kind, region }]. Your home sits where your housing is. */
+  /**
+   * What a kit place trains best (spec §4.33, T-310): body stats (or wit) by their best gain in any of its orders (Stretch aside;
+   * wit × 100 to compare), the top one and any within 60 % of it, at most 3; [] for a place without a kit.
+   */
+  trains(id) {
+    const s = SPOTS[id],
+      sum = {};
+    if (!s || !s.kit) return [];
+    for (const oid of City.orders(id)) {
+      const O = DAY_ORDERS[oid];
+      if (O.kind === 'stretch') continue;
+      for (const [k, v] of [O.main, O.side, ...(O.more || [])]) sum[k] = Math.max(sum[k] || 0, k === 'wit' ? v * 100 : v);
+    }
+    const ks = Object.keys(sum).sort((a, b) => sum[b] - sum[a] || BODY.keys.indexOf(a) - BODY.keys.indexOf(b));
+    return ks.filter(k => sum[k] >= 0.6 * sum[ks[0]]).slice(0, 3);
+  },
+  /** Every place and club HQ with its landmark kind (LANDMARK): [{ id, at, kind, region, kit? }] (kit: the place's KITS tags, drawn beside it). Your home sits where your housing is. */
   landmarks: run => [
-    ...Object.keys(SPOTS).map(id => ({ id, at: City.at(run, id), kind: LANDMARK[id], region: City.region(run, id) })),
+    ...Object.keys(SPOTS).map(id => ({ id, at: City.at(run, id), kind: LANDMARK[id], region: City.region(run, id), kit: SPOTS[id].kit || [] })),
     ...CITY.hq.map((at, i) => ({ id: `hq${i}`, at, kind: LANDMARK.hq, region: FACTIONS[i].region })),
     ...Object.entries(VENUES).map(([id, v]) => ({ id: `venue:${id}`, at: v.at, kind: v.kind, region: v.region })),
     { id: 'ritual', at: CITY.ritual, kind: 'ritual', region: 'open' }, // the old ritual ground: no pin, no label
@@ -480,6 +496,7 @@ const MapModel = {
         at,
         icon: s.icon,
         badge: mates || '',
+        glyphs: MapModel.trains(id).map(k => Body.glyph(k)), // what it trains best (spec §4.33)
         title: `${s.name}${s.kit ? ` — ${s.kit.map(t => KITS[t].name).join(', ')}` : ''}`,
         flags: {
           off: !!City.noTime(run, City.cost(run, id)),

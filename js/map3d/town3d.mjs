@@ -319,7 +319,7 @@ export function createTown(scene, heightAt) {
         }
       }
       if (L.rot != null) yaw = L.rot; // a fixed heading (the airport)
-      const g = buildLandmark(L.kind, tint.get(L.region) || accentOf(L.region)),
+      const g = buildLandmark(L.kind, tint.get(L.region) || accentOf(L.region), L.kit), // + its kit's props (spec §4.33)
         h = Math.min(heightAt(x - 3, z - 3), heightAt(x + 3, z - 3), heightAt(x - 3, z + 3), heightAt(x + 3, z + 3), heightAt(x, z));
       mat.makeRotationY(yaw).setPosition(x, h, z);
       g.applyMatrix4(mat);

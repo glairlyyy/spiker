@@ -4,6 +4,7 @@
 //   KIT[kind]            filler lots (MapModel.lots kinds): { geo(), mat, scale: [width, height, depth], colors }
 //   LANDMARKS[kind]      landmarks (LANDMARK kinds): { h, w, d, build(accent) → a vertex-coloured BufferGeometry }
 //   landmarkHeight(kind) how tall a landmark is in metres (pins float above it)
+//   KIT_PROPS[tag]       a place's kit beside its landmark (spec §4.33): racks, crates + a crane, a track, steps, mats …
 //
 // Swapping a kind: a filler kind's `geo()` may return any BufferGeometry whose footprint is 1 × 1 and height 1 with its feet at
 // y = 0 (take the one from a loaded GLTF mesh, e.g. from assets/models/); `scale` then sizes it per lot (width and depth × the
@@ -413,12 +414,44 @@ export const LANDMARKS = {
   }
 };
 
+/**
+ * Kit props (spec §4.33, T-310): what a training place's kit looks like beside its landmark — racks, crates and a crane, a track,
+ * steps, mats … Each `(accent) → parts` sits in a slot about 4 × 4 m, centred, feet at y = 0; merged into the landmark (no draw call).
+ */
+const BLUE = '#3f6fb5',
+  SAND = '#e3cf96';
+export const KIT_PROPS = {
+  weights: a => [post(-1.4, 0, 0, 2.2, DARK, 0.25), post(1.4, 0, 0, 2.2, DARK, 0.25), box(3.6, 0.15, 0.15, 0, 1.9, 0, STONE), box(0.3, 0.9, 0.9, -1.6, 1.5, 0, DARK), box(0.3, 0.9, 0.9, 1.6, 1.5, 0, DARK), box(3.2, 0.12, 1.6, 0, 0, 1.6, a)],
+  crates: a => [box(1.4, 1.2, 1.4, -1.2, 0, 0.8, WOOD), box(1.4, 1.2, 1.4, 0.3, 0, 0.8, WOOD), box(1.4, 1.2, 1.4, -0.45, 1.2, 0.8, '#a07c56'), post(1.6, 0, -1.4, 7, a, 0.5), box(5, 0.4, 0.4, 0.2, 6.6, -1.4, a), post(-2.1, 0, -1.4, 0.1, DARK)],
+  plyo: a => [box(1, 0.6, 1, -1.4, 0, 0, a), box(1, 1, 1, 0, 0, 0, LIGHT), box(1, 1.4, 1, 1.4, 0, 0, a)],
+  steps: () => [0, 1, 2, 3, 4].map(i => box(3, 0.45 * (i + 1), 0.8, 0, 0, 1.6 - i * 0.8, STONE)),
+  track: a => [ring(1.6, 1.6, 2.4, 2.4, 0, 0.08, '#b0563a'), box(0.15, 0.09, 1.6, 2, 0, 0, a)],
+  dunes: () => [hip(3.6, 1.2, 3, -0.4, 0, 0.2, SAND), hip(2.4, 0.8, 2, 1.2, 0, -1, SAND)],
+  trail: a => [post(-1.2, 0, 1, 1.4, WOOD, 0.3), box(0.9, 0.5, 0.1, -1.2, 1, 1.05, a), box(3.6, 0.06, 0.9, 0.4, 0, -0.6, '#8b7355')],
+  water: () => [box(4, 0.3, 3, 0, 0, 0, LIGHT), box(3.4, 0.32, 2.4, 0, 0.01, 0, BLUE)],
+  sand: a => [box(4, 0.08, 3, 0, 0, 0, SAND), post(-1.6, 0, 0, 2.4, DARK, 0.15), post(1.6, 0, 0, 2.4, DARK, 0.15), box(3.2, 0.5, 0.05, 0, 1.6, 0, a)],
+  mats: a => [box(1.8, 0.12, 3, -1, 0, 0, a), box(1.8, 0.12, 3, 1, 0, 0, BLUE)],
+  chores: a => [box(1.6, 1.6, 1.6, 0, 0, 0, LIGHT), hip(2, 0.8, 2, 0, 1.6, 0, a), post(1.3, 0, 1, 1.3, WOOD, 0.12)],
+  film: a => [post(-1.2, 0, 0, 2.4, DARK, 0.2), post(1.2, 0, 0, 2.4, DARK, 0.2), box(2.8, 1.6, 0.12, 0, 1, 0, LIGHT), box(2.4, 0.08, 0.14, 0, 2.6, 0, a)],
+  books: a => [box(2.6, 2, 0.7, 0, 0, 0, WOOD), box(2.3, 0.35, 0.72, 0, 0.3, 0, a), box(2.3, 0.35, 0.72, 0, 1.1, 0, RED)],
+  gym: () => []
+};
+/** Where the n-th prop of a landmark (w × d m) sits: along its sides, clear of the door (+z). */
+const propSlot = (L, i) => [(i % 2 ? -1 : 1) * (L.w / 2 + 2.6), -L.d / 4 + Math.floor(i / 2) * 4.4];
+
 /** Height in metres of a landmark kind (pins float above it); 3 for an unknown kind. */
 export const landmarkHeight = kind => (LANDMARKS[kind] ? LANDMARKS[kind].h : 3);
-/** Build a landmark's merged geometry (accent = a CSS colour): door on +z, centred, feet at y = 0. */
-export const buildLandmark = (kind, accent) => {
+/** Build a landmark's merged geometry (accent = a CSS colour; kit = the place's KITS tags → props beside it): door on +z, centred, feet at y = 0. */
+export const buildLandmark = (kind, accent, kit = []) => {
   const L = LANDMARKS[kind] || LANDMARKS.home,
     parts = L.build(accent || ACC.open);
+  let n = 0;
+  for (const t of kit) {
+    const P = KIT_PROPS[t] ? KIT_PROPS[t](accent || ACC.open) : [];
+    if (!P.length) continue;
+    const [x, z] = propSlot(L, n++);
+    for (const g of P) parts.push(g.translate(x, 0, z));
+  }
   if (L.footing !== false) parts.push(box(L.w, 1.5, L.d, 0, -1.5, 0, '#6f6c66')); // a footing: hides the gap on a slope
   return mergeGeometries(parts);
 };

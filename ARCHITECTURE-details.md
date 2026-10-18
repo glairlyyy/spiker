@@ -714,6 +714,14 @@ TRIP_DAY of each leg's travel cost, stamina `RUN_GROUND.sta` per trip day; `City
 of the `DAY_ORDERS.run` key × DAY_GAIN; no fail roll). UI: `runBtn` (career-panels.js) beside Walk on place cards and inside
 `pointCard`; `mapTravel(x, y, 'run')`.
 
+### Kit on the map (T-310)
+
+`MapModel.trains(id)`: a kit place's best body stats (each stat's best gain in any of its orders, Stretch aside; the top and any
+within 60 %, ≤ 3) → pin field `glyphs` (BODY glyphs; pins3d draws them on a tab under the pin, `.mpin em.mgl` in css/map.css).
+`MapModel.landmarks` carries `kit` (the SPOTS tags); `buildLandmark(kind, accent, kit)` (kit3d.mjs) adds each tag's `KIT_PROPS`
+(racks, crates + crane, plyo boxes, steps, a track, dunes, a trail post, a pool, a sand court, mats, a shed, a film screen, a
+shelf) in slots along the landmark's sides — merged into the one landmark mesh (town3d.mjs), so no draw call is added.
+
 ## Training XP
 
 Training gives XP (`Training.xpFor`: base gain × `TRAIN_X.xp.per` × every multiplier — place quality and home turf

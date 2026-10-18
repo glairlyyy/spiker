@@ -107,7 +107,7 @@ Strength + Agility (tests); too tired to run → Walk only.
 QA: career run → run a trip across the island; the day track and diary show it.
 Result: RUN_GROUND (data/career.js) per TRIP_DAY of each leg's travel cost (main / street / overpass → End, dirt / path → End + Str, boardwalk → Agi, the Steps' edges → Str + Agi, cross-country → End), −14 stamina a trip day; City.path returns node ids, City.legs / runPlan / noRun, travelTo(run, p, 'run'), Training.runTrip; Walk / Run buttons on place cards and (inside pointCard) map points; day track 'Run', diary 'Ran to …'. Airport → Harbor (2 d): End 7.7 base, −22 stamina. Day orders' own trips stay walked; the bot runs from T-312. npm test 157/157, lint, test:ui 13/13; QA: ran airport → Harbor.
 
-### [ ] T-310: Facilities on the map — pins with what they train, landmarks with their kit
+### [x] T-310: Facilities on the map — pins with what they train, landmarks with their kit
 Agent: A
 Spec: §4.33, §4.18, §9          Goldens: unchanged          Save: no change
 Goal: a place's pin shows small body-stat glyphs of what it trains best; its landmark shows its kit (racks, crates + crane,
@@ -117,7 +117,7 @@ tests/map.test.js
 Do not: show quality; add draw calls per frame (landmarks stay single meshes).
 Accept: map test — every training place's pin lists 1–3 body glyphs; QA screenshot of Wei's district and the Harbor.
 QA: career run → map overview + two close-ups.
-Result:
+Result: MapModel.trains(id) → pin `glyphs` (1–3 body glyphs: each stat's best gain among the place's orders, within 60 % of the top; Harbor ▲, the Steps ▲≫, Wei Strength ▲∿), drawn on a tab under the pin (pins3d.mjs, css/map.css); landmarks carry `kit` and kit3d's KIT_PROPS add racks, crates + a crane, plyo boxes, steps, a track, dunes, a pool, a sand court, mats, a shed, a film screen, shelves beside them — merged into the one landmark mesh (no draw call added). Map test (every training place 1–3 glyphs, kits on landmarks). npm test 158/158, lint, test:ui 13/13; QA: overview, Wei's district, the Harbor close-up.
 
 ### [ ] T-318: The Raid order — a street game on a hot border
 Agent: A (after B's T-313 is published: needs `War.hit`)

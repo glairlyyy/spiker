@@ -1253,7 +1253,10 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Representation**: the map pin of a place carries small body-stat glyphs of what it trains best; its landmark shows
     its kit (racks, crates and a crane at the Harbor, a track, steps, mats); the place card leads with the orders, then the
     place (who's on the floor, level, price). The Me sheet shows the body (four bars + Wit) above the court skills with the
-    swing gauge ("full swing" / "short: Flexibility 52 of 72") — the gap is the hint.
+    swing gauge ("full swing" / "short: Flexibility 52 of 72") — the gap is the hint. **[built 2026-10-19, T-307 / T-308 / T-310]**:
+    the pin's glyph tab shows 1–3 body stats (each one's best gain among the place's orders, within 60 % of the top); every
+    kit tag adds a prop beside the landmark (racks; crates and a crane; plyo boxes; steps; a track; dunes; a pool; a sand court;
+    mats; a shed; a film screen; shelves).
   - Save: RUN_VERSION 20 (`you.body`, body XP banks, `run.uses` by place; older saves dropped).
   - **[open]**: hostile ground (training on a faction's turf you are on bad terms with: XP ×1.2, heat, a street battle when
     it boils over — Kenshi's "train combat with hostiles"); NPC bodies; jobs as a story thread (Fern's old shift at the

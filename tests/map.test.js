@@ -521,6 +521,25 @@ test('orders: facilities = kit — every training place ≥ 2 orders, Work pays 
   assert(g.City.day(run, 'home', false, 'stretch') && run.dayLog[run.dayLog.length - 1].label === 'Stretch', 'Stretch at home');
 });
 
+test('map: a training place’s pin shows 1–3 body glyphs of what it trains best; its landmark carries its kit (T-310)', () => {
+  const g = load(79),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Pins' });
+  for (const id of Object.keys(g.SPOTS)) run.fog.push(g.City.at(run, id).slice()); // everything explored
+  const pins = g.MapModel.build(run, null).pins,
+    glyphs = new Set([...g.BODY.keys.map(k => g.BODY.glyph[k]), g.GLOSSARY.wit.glyph]);
+  for (const id of Object.keys(g.SPOTS).filter(i => g.SPOTS[i].kit && !g.SPOTS[i].secret)) {
+    const p = pins.find(q => q.id === id);
+    assert(p, `${id} pinned`);
+    assert(p.glyphs.length >= 1 && p.glyphs.length <= 3 && p.glyphs.every(x => glyphs.has(x)), `${id}: ${p.glyphs.join('')}`);
+  }
+  assert(pins.filter(p => p.kind === 'spot' && !g.SPOTS[p.id].kit).every(p => !p.glyphs.length), 'no glyphs without a kit');
+  eq(g.MapModel.trains('harbor').join(','), 'str', 'the Harbor builds Strength');
+  eq(g.MapModel.trains('steps').join(','), 'str,agi', 'the Steps: Strength + Agility');
+  const lm = g.MapModel.landmarks(run);
+  eq(lm.find(l => l.id === 'harbor').kit.join(','), 'weights,crates', 'the Harbor landmark carries racks and crates');
+  assert(lm.filter(l => g.SPOTS[l.id] && g.SPOTS[l.id].kit).every(l => l.kit.length), 'every kit place shows its kit');
+});
+
 test('career: island map — regions, prices, quality, far trips, outings, scouting, 7-day weeks, saved', () => {
   const g = load(77),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Mapper', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });

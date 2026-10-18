@@ -243,7 +243,7 @@ export function createFurniture(scene, heightAt) {
           e.setAttribute('aria-label', p.title);
           if (p.color) e.style.setProperty('--tc', p.color);
           e.style.zIndex = KIND_Z[p.kind] || 2;
-          e.innerHTML = `<i>${p.icon}</i>${p.badge ? `<b>${esc(p.badge)}</b>` : ''}`;
+          e.innerHTML = `<i>${p.icon}</i>${p.badge ? `<b>${esc(p.badge)}</b>` : ''}${p.glyphs && p.glyphs.length ? `<em class="mgl">${esc(p.glyphs.join(''))}</em>` : ''}`; // what it trains best (spec §4.33)
           e.addEventListener('click', () => on.pick(p.id));
           add(e, p.at, PIN_UP + (lmk.has(p.id) ? landmarkHeight(lmk.get(p.id)) : 0));
         }
