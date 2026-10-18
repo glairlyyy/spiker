@@ -3,7 +3,21 @@
 // Also the World sheet's cards: Rankings (rankCard), My club (myClubCard) and Factions (factionsCard); joinGap / joinClub
 // serve the club HQ panel, the only place to sign (spec §10.9).
 
-const DOSSIER_STATE = { weakened: 'Weakened', pressed: 'Pressed', rising: 'Rising', stable: 'Stable', minor: 'Not in the war' };
+const DOSSIER_STATE = { weakened: 'Weakened', pressed: 'Pressed', stable: 'Stable', fallen: 'Destroyed', minor: 'Not in the war' };
+/**
+ * One war unit (Dossier.front's `fronts` entry, spec §4.34): name, Strength and its bar, the stage (and the one its squads
+ * play with when it differs: Gold under a shaken Iron, Shu one late), or who destroyed it.
+ */
+function warUnit(f) {
+  if (f.fallen)
+    return `<div class="wunit gone"><span class="wn">${esc(f.name)}</span><span class="mute">Destroyed${f.by ? ` by ${esc(WAR.units[f.by].name)}` : ''}</span></div>`;
+  const n = WAR_STAGES.findIndex(S => S.id === f.stage),
+    k = WAR_STAGES.findIndex(S => S.id === f.plays),
+    plays = k !== n ? ` <span class="mute small" ${tip(GLOSSARY.stage.long)}>plays ${WAR_STAGES[k].name}</span>` : '';
+  return `<div class="wunit"><span class="wn">${esc(f.name)}</span><span class="wstr s${n}" ${tip(GLOSSARY.strength.long)}><i style="--w:${f.str}%"></i></span><b>${f.str}</b>${
+    n ? `<span class="stk ${n >= 2 ? 'far' : ''}" ${tip(GLOSSARY.stage.long)}>${WAR_STAGES[n].name}</span>` : ''
+  }${plays}</div>`;
+}
 
 function openDossier(r) {
   CW.dossier = r;
@@ -25,7 +39,7 @@ function dossierCard(run, r) {
   const d = Dossier.build(run, r),
     v = d.standing;
   const fronts = d.fronts.length
-    ? `<h4>Front</h4><div class="fms">${d.fronts.map(f => `<span class="fm ${f.meter > 0 ? 'up' : f.meter < 0 ? 'dn' : ''}" ${tip(GLOSSARY.seize.long)}>vs ${esc(REGIONS[f.vs].name)} ${fmtDelta(f.meter)}</span>`).join('')}</div>
+    ? `<h4>War</h4><div class="wunits">${d.fronts.map(warUnit).join('')}</div>
       ${d.took.length ? `<div class="small">Took: ${d.took.map(id => `${esc(SPOTS[id].name)} <i class="mute">(from ${esc(REGIONS[SPOTS[id].region].name)})</i>`).join(', ')}</div>` : ''}
       ${d.lost.length ? `<div class="small">Lost: ${d.lost.map(id => `${esc(SPOTS[id].name)} <i class="mute">(to ${esc(REGIONS[RUN.own[id]].name)})</i>`).join(', ')}</div>` : ''}
       <div class="small mute">Prices ×${d.priceMul.toFixed(2)} · facilities ×${d.qMul.toFixed(2)}</div>`
@@ -73,7 +87,7 @@ function sheetWorld(run) {
   return `<div class="sheet-h"><h2>World</h2><div class="seg pfil">${Object.entries(WORLD_TABS)
     .map(
       ([k, n]) =>
-        `<button class="btn ${k === t ? 'on' : ''}" onclick="worldTab('${k}')" ${k === 'factions' ? tip(`Street battles move your standing and the seize count on border tiles.`) : ''}>${n}</button>`
+        `<button class="btn ${k === t ? 'on' : ''}" onclick="worldTab('${k}')" ${k === 'factions' ? tip(`Street battles move your standing and the Strength of the units on that border.`) : ''}>${n}</button>`
     )
     .join('')}</div></div><div class="wsheet w-${t}">${body}</div>`;
 }
@@ -163,24 +177,21 @@ function myClubCard(run) {
 }
 /** Your standing with each faction (region), its clubs, and this week's street battle. */
 function factionsCard(run) {
-  /** The faction's front in detail (spec §4.27, a peek — §10.8): tiles and value vs the start, the next tile per border, places taken / lost, economy. */
+  /** The faction's war in detail (spec §4.34, a peek — §10.8): each unit's border and what its stage costs, places taken / lost, economy. */
   const front = (r, F) => {
-    const T = Hex.grid().tiles,
-      held = T.filter(t => Hex.owner(run, t.id) === r).length,
-      d = held - T.filter(t => t.region === r).length,
-      e = Front.econ(run, r),
-      sg = n => (n ? ` <b class="${n > 0 ? 'up' : 'dn'}">${fmtDelta(n)}</b>` : ''),
-      E = F.econ;
+    const E = F.econ;
     return kv([
-      ['Tiles', `${held}${sg(d)}`],
-      ['Value', `<span ${tip(GLOSSARY.value.long)}>${Hex.worth(run, r)}${sg(e)}</span>`],
-      ...F.fronts.map(({ vs }) => {
-        const k = Front.stakes(run, r, vs);
-        return [
-          `Next vs ${esc(REGIONS[vs].name.split(' ')[0])}`,
-          k.tile ? `${esc(k.name)}${k.seize && k.place ? `, a win takes ${esc(SPOTS[k.place].name)}` : ''}` : 'no reach'
-        ];
-      }),
+      ...F.fronts
+        .filter(f => !f.fallen)
+        .map(f => {
+          const S = WAR_STAGES[WAR_STAGES.findIndex(x => x.id === f.plays)],
+            what = [S.mor && `morale −${S.mor * 100}`, S.heal && `heal −${S.heal * 100}`, S.slots && `${S.slots} card slot fewer`].filter(Boolean);
+          return [
+            esc(f.name),
+            `${f.vs.length ? `border with ${f.vs.map(o => esc(WAR.units[o].name)).join(', ')}` : '<span class="mute">no border</span>'}${what.length ? ` · ${what.join(', ')}` : ''}`
+          ];
+        }),
+      ...F.fronts.filter(f => f.joinCut).map(f => ['Clubs ask', `${esc(f.name)}: −${f.joinCut} OVR/key, fees −${f.feeCut}%`]),
       F.took.length
         ? ['Took', F.took.map(p => `${esc(p.name)} <i class="mute">(${esc(REGIONS[p.from].name.split(' ')[0])})</i>`).join(', ')]
         : null,
@@ -188,8 +199,7 @@ function factionsCard(run) {
         ? ['Lost', F.lost.map(p => `${esc(p.name)} <i class="mute">(${esc(REGIONS[p.to].name.split(' ')[0])})</i>`).join(', ')]
         : null,
       E ? ['Prices', `×${E.priceMul.toFixed(2)}`] : null,
-      E ? ['Facilities', `×${E.qMul.toFixed(2)}`] : null,
-      E && E.joinCut ? ['Clubs ask', `−${E.joinCut} OVR/key, fees −${E.feeCut}%`] : null
+      E ? ['Facilities', `×${E.qMul.toFixed(2)}`] : null
     ]);
   };
   const stBar = v =>
@@ -198,18 +208,12 @@ function factionsCard(run) {
     const F = Dossier.summary(run, r),
       v = F.standing,
       major = MAJORS.includes(r),
-      fronts = F.fronts
-        .map(({ vs }) => {
-          const k = Front.stakes(run, r, vs),
-            cur = k.tile ? k.meter - 1 : 0;
-          return `<span class="fm2" ${tip(GLOSSARY.seize.long)}>vs ${esc(REGIONS[vs].name.split(' ')[0])} ${k.tile ? `<b class="${cur ? 'up' : ''}">${cur}/${k.cost}</b>` : '<span class="mute">—</span>'}</span>`;
-        })
-        .join(''),
+      fronts = F.fronts.map(warUnit).join(''),
       clubs = F.clubs.map(ti => run.teams[ti]);
-    return `<div class="fac ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}"><div class="fh"><b><a href="#" class="dlink" onclick="openDossier('${r}');return false" ${tip(`${F.kind}. ${F.desc}`)}>${esc(F.name)}</a></b>${F.weak ? ' <span class="stk far">Weakened</span>' : ''}${
+    return `<div class="fac ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}"><div class="fh"><b><a href="#" class="dlink" onclick="openDossier('${r}');return false" ${tip(`${F.kind}. ${F.desc}`)}>${esc(F.name)}</a></b>${
       v ? `<span class="fv">${fmtDelta(v)}</span>` : ''
     }</div>
-        ${stBar(v)}${fronts ? `<div class="fms">${fronts}</div>` : ''}
+        ${stBar(v)}${fronts ? `<div class="wunits">${fronts}</div>` : ''}
         <div class="small fclubs">${clubs.map(t => `<span>${chip(t)}${esc(t.name)}${t.i === run.team ? ' <i class="mute">(yours)</i>' : ''}</span>`).join('')}${
           F.foe
             ? ` <a href="#" class="clashk" onclick="hubOpen(null);mapPick('clash');return false">⚔ vs ${esc(REGIONS[F.foe].name.split(' ')[0])}</a>`
@@ -239,6 +243,14 @@ function factionsCard(run) {
         )}</div>`
       : ''
   }</div>`;
+}
+/** Overthrow war unit u at its HQ (spec §4.34): a real match (watch it, or sim it at once). */
+function mapOverthrow(u, sim) {
+  const fx = War.overthrow(RUN, u);
+  if (!fx) return;
+  CW.spot = `hq${War.ace(RUN, u).i}`;
+  if (!sim) return watchCareer(fx);
+  mapAfter(RUN, null, simCareer(fx));
 }
 function joinClub(ti) {
   if (World.join(RUN, ti)) Run.save(RUN);

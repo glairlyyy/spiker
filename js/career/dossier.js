@@ -19,7 +19,7 @@ const Dossier = {
   },
   /** Standing label for a standing value (−100…100). */
   standingLabel: v => (v >= 30 ? 'Trusted' : v > 0 ? 'Friendly' : v <= -30 ? 'Hostile' : v < 0 ? 'Wary' : 'Neutral'),
-  /** The short form for the World sheet's Factions tab: standing, war state, tile pressure, places taken / lost, economy. */
+  /** The short form for the World sheet's Factions tab: standing, war units (Strength, stage), places taken / lost, economy. */
   summary(run, r) {
     const R0 = REGIONS[r],
       F = Dossier.front(run, r),
@@ -39,29 +39,39 @@ const Dossier = {
       fronts: F.fronts,
       took: took.map(id => ({ id, name: SPOTS[id].name, from: SPOTS[id].region })),
       lost: lost.map(id => ({ id, name: SPOTS[id].name, to: run.own[id] })),
-      econ:
-        major && Front.econ(run, r) !== 0
-          ? {
-              priceMul: F.priceMul,
-              qMul: F.qMul,
-              joinCut: FRONT.join * Front.down(run, r),
-              feeCut: Math.round(FRONT.fee * Front.down(run, r) * 100),
-              value: Hex.worth(run, r),
-              valueD: Front.econ(run, r)
-            }
-          : null,
+      econ: major && War.regionStr(run, r) < WAR.start ? { priceMul: F.priceMul, qMul: F.qMul } : null,
       clubs: run.teams.filter(t => FACTIONS[t.i].region === r).map(t => t.i),
       foe: c ? (c.a === r ? c.b : c.b === r ? c.a : null) : null
     };
   },
-  /** The front / price / quality block shared by summary and build: places taken and lost, pressure on the other majors. */
+  /**
+   * The war block shared by summary and build: places taken and lost; fronts = the region's war units (spec §4.34) — { unit,
+   * name, str, stage (WAR_STAGES id), plays (the stage its squads play with), fallen, by (destroyer), vs (the units across its
+   * border), clubs, joinCut / feeCut (what its clubs ask less) }.
+   */
   front(run, r) {
-    const major = MAJORS.includes(r);
+    const major = MAJORS.includes(r),
+      W = War.state(run);
     return {
       major,
       lost: Front.lostIds(run, r),
       took: Front.takenIds(run, r),
-      fronts: major ? MAJORS.filter(o => o !== r).map(vs => ({ vs, meter: Front.meter(run, r, vs) })) : [],
+      fronts: War.ofRegion(r).map(u => {
+        const n = War.stage(run, u);
+        return {
+          unit: u,
+          name: WAR.units[u].name,
+          str: War.str(run, u),
+          stage: WAR_STAGES[n].id,
+          plays: WAR_STAGES[War.weak(run, u)].id,
+          fallen: War.fallen(run, u),
+          by: W.fallen[u] ? W.fallen[u].by : null,
+          vs: War.ids().filter(o => War.edges(run, u, o).length),
+          clubs: WAR.units[u].clubs,
+          joinCut: FRONT.join * n,
+          feeCut: Math.round(FRONT.fee * n * 100)
+        };
+      }),
       priceMul: Front.priceMul(run, r),
       qMul: Front.qMul(run, r)
     };
@@ -74,14 +84,15 @@ const Dossier = {
       clubs = FACTIONS.map((f, ti) => ({ f, ti })).filter(x => x.f.region === r),
       scouted = clubs.some(x => City.scouted(run, x.ti)),
       member = run.team != null && !!FACTIONS[run.team] && FACTIONS[run.team].region === r,
+      worst = Math.max(0, ...F.fronts.filter(f => !f.fallen).map(f => War.stage(run, f.unit))),
       state = !major
         ? 'minor'
-        : Front.weak(run, r)
-          ? 'weakened'
-          : Front.econ(run, r) < 0
-            ? 'pressed'
-            : Front.econ(run, r) > 0
-              ? 'rising'
+        : !Front.standing(run, r)
+          ? 'fallen'
+          : worst >= 2
+            ? 'weakened'
+            : worst === 1
+              ? 'pressed'
               : 'stable',
       reserve = (run.reserve && run.reserve[r] && run.reserve[r].P) || [];
     const places = Object.keys(SPOTS)

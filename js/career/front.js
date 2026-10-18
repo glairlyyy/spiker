@@ -1,111 +1,108 @@
-// Faction dynamics between the three majors on the hex map (spec §4.27, js/career/hex.js): a street battle is fought on a
-// tile and pushes its pressure; at the tile's cost it changes hands, with any places on it (price, turf, map colour). Losing
-// places weakens a faction: dearer, poorer facilities, easier to join. Who starts a fight: FRONT.aggro (+ revenge).
-// DOM-free.
+// Faction dynamics between the three majors (spec §4.34): each week's street battle is fought on one border between two war
+// units (js/career/war.js) and moves their Strength — no tile changes hands. Strength drives the economy: prices, facility
+// quality, club joins. Who starts a fight: FRONT.aggro (+ revenge), whom it goes for: FRONT.prey. DOM-free.
 
 const Front = {
-  /** Who holds a place now (seized places differ from their home region). */
+  /** Who holds a place now (a destroyed unit's places go to its destroyer; run.own caches the changes — War.sync). */
   owner: (run, id) => (run.own && run.own[id]) || SPOTS[id].region,
   seized: (run, id) => !!(SPOTS[id] && SPOTS[id].region && Front.owner(run, id) !== SPOTS[id].region),
   /** Places a region lost / took. */
   lostIds: (run, r) => Object.keys(run.own || {}).filter(id => SPOTS[id].region === r && run.own[id] !== r),
   takenIds: (run, r) => Object.keys(run.own || {}).filter(id => run.own[id] === r && SPOTS[id].region !== r),
-  /** Economy from tile value (spec §4.27, HEX_ECON): e = value held − value at the start (0 for minors and the Academy). */
-  econ: (run, r) => (MAJORS.includes(r) ? Hex.worth(run, r) - Hex.worth0(r) : 0),
-  /** Steps down: one per HEX_ECON.step value points lost (club joins get easier). */
-  down: (run, r) => Math.floor(Math.max(0, -Front.econ(run, r)) / HEX_ECON.step),
-  weak: (run, r) => Front.econ(run, r) <= -HEX_ECON.weakAt,
-  /** Prices × (fewer facilities for the same money), facility quality × (money follows the land). */
-  priceMul: (run, r) => 1 + HEX_ECON.price * Math.max(0, -Front.econ(run, r)),
-  qMul: (run, r) => clamp(1 + HEX_ECON.q * Front.econ(run, r), HEX_ECON.qClamp[0], HEX_ECON.qClamp[1]),
-  /** a's strongest push on b: the highest pressure a has built on any of b's tiles (spec §4.27). */
-  push(run, a, b) {
-    const H = Hex.state(run);
-    return Math.max(
-      0,
-      ...Object.keys(H.p)
-        .filter(id => H.by[id] === a && Hex.owner(run, id) === b)
-        .map(id => H.p[id])
-    );
-  },
-  /** Pressure between a and b from a's side: a's push on b minus b's push on a. */
-  meter: (run, a, b) => Front.push(run, a, b) - Front.push(run, b, a),
+  /** A major still in the war: one of its units stands. */
+  standing: (run, r) => War.ofRegion(r).some(u => War.alive(run, u)),
+  /** Region r shaken by the war: one of its units is Strained or worse. */
+  weak: (run, r) => War.ofRegion(r).some(u => War.stage(run, u) > 0),
+  /** Prices × (1 + WAR.price per point of Strength under 100), facility quality × (q0 + q1 × Strength / 100) — majors only. */
+  priceMul: (run, r) => (MAJORS.includes(r) ? 1 + WAR.price * (WAR.start - War.regionStr(run, r)) : 1),
+  qMul: (run, r) => (MAJORS.includes(r) ? WAR.q[0] + (WAR.q[1] * War.regionStr(run, r)) / 100 : 1),
+  /** a's edge over b: a's Strength minus b's (region means). */
+  meter: (run, a, b) => War.regionStr(run, a) - War.regionStr(run, b),
   /**
-   * The tile a win for w over l is fought on: this week's battle tile if l holds it (the raider won), the tile the raid came
-   * from if w held the battle tile (the defender won: its counter-push), else w's next target on l.
+   * Where att raids def this week: a border between their touching units (a hash of the week picks the pair, then the
+   * edge) → { tile (def's), from (att's), at (the edge's midpoint), ua, ud }; null when their land doesn't touch.
    */
-  battleTile(run, w, l) {
-    const c = run.clash;
-    if (c && c.tile && [c.att, c.def].includes(w) && [c.att, c.def].includes(l)) {
-      if (Hex.owner(run, c.tile) === l) return c.tile;
-      if (c.from && Hex.owner(run, c.from) === l && Hex.takeable(Hex.tile(c.from))) return c.from;
-    }
-    const t = Hex.target(run, w, l);
-    return t ? t.id : null;
+  site(run, att, def, salt = '') {
+    const P = War.pairs(run, att, def);
+    if (!P.length) return null;
+    const h = s => hstr(`${Season.wk(run)}|${att}|${def}|${s}${salt}`),
+      [ua, ud] = P[Math.floor(h('pair') * P.length)],
+      E = War.edges(run, ua, ud),
+      e = E[Math.floor(h('edge') * E.length)],
+      a = Hex.tile(e.tile).at,
+      b = Hex.tile(e.from).at;
+    return { tile: e.tile, from: e.from, at: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], ua, ud };
   },
-  /** Street strength for battles nobody decides for them. */
-  strength: (run, r) => 50 + HEX_ECON.str * Front.econ(run, r),
+  /** This week's battle's units (open or fought): { a: raider, b: defender, ua, ub } from run.clash's tiles, or null. */
+  clash(run) {
+    const c = run.clash;
+    if (!c || !c.tile || !Hex.tile(c.tile)) return null;
+    const ua = c.ua || (c.from && War.unitAt(run, c.from)),
+      ub = c.ud || War.unitAt(run, c.tile);
+    return ua && ub ? { a: c.att, b: c.def, ua, ub } : null;
+  },
+  /** The units of this week's battle when it is w vs l, else w's and l's first touching pair: [unit of w, unit of l] or null. */
+  units(run, w, l) {
+    const c = Front.clash(run);
+    if (c && [c.a, c.b].includes(w) && [c.a, c.b].includes(l)) return w === c.a ? [c.ua, c.ub] : [c.ub, c.ua];
+    return War.pairs(run, w, l)[0] || null;
+  },
+  /** Street strength in a battle nobody decides for them: 50 + WAR.sim × (the unit's Strength − 100). */
+  strength: (run, u) => 50 + WAR.sim * (War.str(run, u) - WAR.start),
   /** A battle nobody joined (att = the raider, who has the initiative). */
   sim(run, a, b, att) {
-    const s = r => Front.strength(run, r) + (r === att ? FRONT.initiative : 0);
-    return R() < clamp(0.5 + (s(a) - s(b)) / 100, 0.2, 0.8) ? a : b;
+    const U = Front.units(run, a, b) || [],
+      s = (r, u) => (u ? Front.strength(run, u) : 50) + (r === att ? FRONT.initiative : 0);
+    return R() < clamp(0.5 + (s(a, U[0]) - s(b, U[1])) / 100, 0.2, 0.8) ? a : b;
+  },
+  /** w beat l on this week's border: Strength +WAR.win for w's unit, −WAR.lose (× soak) for l's. Returns the line ('' if no border). */
+  result(run, w, l) {
+    run.lastLoser = l;
+    const U = Front.units(run, w, l);
+    if (!U) return '';
+    const s0 = War.str(run, U[1]);
+    War.hit(run, U[0], true);
+    War.hit(run, U[1], false);
+    return `${WAR.units[U[1]].name} Strength ${s0} → ${War.str(run, U[1])}`;
   },
   /**
-   * w beat l: +1 pressure for w on the battle tile (Front.battleTile); a defender's win also clears the raid's pressure on
-   * its own tile. At the tile's cost (Hex.cost) it flips to w. Returns the news line ('' if nothing changed hands).
+   * Preview of "w beats l" (nothing changes): { tile, name, unit (l's), str (now), after (after the win), seize, place, meter,
+   * cost } — `seize` / `place` stay false / null: no place changes hands in a street battle (spec §4.34).
    */
-  result(run, w, l) {
-    const H = Hex.state(run),
-      c = run.clash;
-    run.lastLoser = l;
-    if (c && c.tile && Hex.owner(run, c.tile) === w && H.by[c.tile] === l) {
-      delete H.p[c.tile];
-      delete H.by[c.tile];
-    }
-    const id = Front.battleTile(run, w, l);
-    if (!id) return '';
-    if (H.by[id] !== w) H.p[id] = 0;
-    H.p[id] = (H.p[id] || 0) + 1;
-    H.by[id] = w;
-    H.t[id] = run.week;
-    if (H.p[id] < Hex.cost(run, id, w)) return '';
-    const back = Hex.tile(id).region === w,
-      name = Hex.name(id);
-    Hex.flip(run, id, w);
-    const s = `${REGIONS[w].name} ${back ? 'retook' : 'seized'} ${Hex.tile(id).spots.some(x => !x.startsWith('venue:')) ? 'the ' : ''}${name} from ${REGIONS[l].name}${
-      Front.weak(run, l) ? ` — ${REGIONS[l].name} weakened` : ''
-    }`;
-    Run.news(run, s + '.');
-    return s;
-  },
-  /** Preview of "w beats l" (nothing changes): { tile, name, meter (pressure after the win), cost, seize, place (a place that falls, or null) }. */
   stakes(run, w, l) {
-    const id = Front.battleTile(run, w, l);
-    if (!id) return { tile: null, name: '', meter: 0, cost: 0, seize: false, place: null };
-    const H = Hex.state(run),
-      m = (H.by[id] === w ? H.p[id] || 0 : 0) + 1,
-      cost = Hex.cost(run, id, w),
-      seize = m >= cost;
+    const U = Front.units(run, w, l),
+      c = Fight.clashSite(run);
+    if (!U || !War.alive(run, U[1])) return { tile: null, name: '', unit: null, str: 0, after: 0, seize: false, place: null, meter: 0, cost: 0 };
+    const s = War.str(run, U[1]);
     return {
-      tile: id,
-      name: Hex.name(id),
-      meter: Math.min(m, cost),
-      cost,
-      seize,
-      place: seize ? Hex.tile(id).spots.find(x => !x.startsWith('venue:')) || null : null
+      tile: c && [c.ua, c.ub].includes(U[1]) ? c.tile : null,
+      name: c ? c.name : '',
+      unit: U[1],
+      str: s,
+      after: clamp(Math.round(s - WAR.lose * (WAR.units[U[1]].soak || 1)), 0, 100),
+      seize: false,
+      place: null,
+      meter: s,
+      cost: WAR.start
     };
   },
-  /** This week's aggressor (FRONT.aggro + revenge for last week's loser) and its target (FRONT.prey, × FRONT.push where it is winning). */
+  /**
+   * This week's aggressor (FRONT.aggro + revenge for last week's loser) and its target (FRONT.prey, × FRONT.push where it is
+   * winning). Regions with no standing unit are out of it. null when fewer than two majors stand.
+   */
   pick(run) {
-    const w = MAJORS.map(r => FRONT.aggro[r] + (run.lastLoser === r ? FRONT.revenge : 0)),
+    const live = MAJORS.filter(r => Front.standing(run, r)),
+      w = live.map(r => FRONT.aggro[r] + (run.lastLoser === r ? FRONT.revenge : 0)),
       sum = w.reduce((a, b) => a + b, 0);
+    if (live.length < 2) return null;
     let x = R() * sum,
       i = 0;
-    while (i < MAJORS.length - 1 && (x -= w[i]) >= 0) i++;
-    const att = MAJORS[i],
-      [o1, o2] = MAJORS.filter(r => r !== att),
+    while (i < live.length - 1 && (x -= w[i]) >= 0) i++;
+    const att = live[i],
+      os = live.filter(r => r !== att),
       p = o => FRONT.prey[att][o] * (Front.meter(run, att, o) > 0 ? FRONT.push : 1),
-      p1 = p(o1);
-    return { att, def: R() * (p1 + p(o2)) < p1 ? o1 : o2 };
+      p1 = p(os[0]),
+      y = R() * (p1 + (os[1] ? p(os[1]) : 0));
+    return { att, def: !os[1] || y < p1 ? os[0] : os[1] };
   }
 };

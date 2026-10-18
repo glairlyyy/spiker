@@ -93,6 +93,7 @@ function nearest(m, arr, x, z) {
  * opts.court: court size multiplier (default RULES.court); opts.tac: [tactic, tactic] fixes a side's tactic;
  * opts.dset: [setting, setting] fixes a side's defence setting (DEFSETS; default: the team's style, then the captain may switch it).
  * opts.rel: career relationship flags { tag: { 'idA|idB': 'ally' | … }, rival: Set } (Rel.matchFlags, T-066); absent → no relationship effect at all.
+ * opts.weak: [stage, stage] a side's war stage (WAR_STAGES index 0–3, spec §4.34: morale start, HP heal, card slots); absent → none.
  */
 function newMatch(a, b, rec, opts = {}) {
   for (const t of [a, b]) for (const p of squadOf(t)) fixStats(p); // the engine never sees a negative, NaN or huge stat (no-op for valid ones)
@@ -166,13 +167,42 @@ function newMatch(a, b, rec, opts = {}) {
       m.mor[p.id] = 0;
     })
   );
+
   m.temper = [temperOf(a), temperOf(b)]; // spec §2.14: from the squads' personalities (no draws)
   matchPlans(m, opts);
   const cm0 = CM;
   CM = m; // (the coach's card pick reads this match's effective stats, not the last match's)
   cardsInit(m, opts); // tactic cards (spec §2.33): the turn-0 hands
+  weakSet(m, opts.weak);
   CM = cm0;
   return m;
+}
+/**
+ * The sides' war stages (spec §4.34; WAR_STAGES index 0–3 per side, from opts.weak or a career fixture's setup): morale
+ * starts lower, HP heals less (hpHeal reads m.weak), a Broken side loses its last card slot(s) (FLEX). No draws; absent or
+ * [0, 0] → nothing changes.
+ */
+function weakSet(m, weak) {
+  if (!weak || !(weak[0] || weak[1])) return;
+  m.weak = [0, 1].map(i => clamp(Math.round(weak[i] || 0), 0, WAR_STAGES.length - 1));
+  const cm0 = CM;
+  CM = m;
+  for (const i of [0, 1]) {
+    const S = WAR_STAGES[m.weak[i]],
+      C = cardsOf(m, i);
+    if (S.mor) morAdd(m, i, -S.mor);
+    if (C && S.slots) {
+      C.off = SLOTS.slice(-S.slots);
+      for (const k of C.off) {
+        const id = C.slots[k];
+        if (id && C.played[id] && !--C.played[id]) delete C.played[id]; // (counted by turn 0's fill)
+        C.slots[k] = null;
+        delete C.you[k];
+      }
+      cardApply(m, i);
+    }
+  }
+  CM = cm0;
 }
 /** Team plans (spec §2.26): from match prep (opts.plan[side]) or the coach's own pick; who runs each; the log. */
 function matchPlans(m, opts) {

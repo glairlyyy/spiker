@@ -122,28 +122,6 @@ function secretPanel(run, sid, base, travel, days, cost) {
   return placeCard({ ...base, kind: 'Secret', flavour: SPOTS[sid].desc, body, row: [...row, travel].filter(Boolean) });
 }
 /** Any point of the island: travel there (the fog lifts around it). */
-/** The hex tile under a map point (spec §4.27): holder, ground, what it takes to seize it, and any pressure on it. */
-function tileBlock(run, p) {
-  const id = Hex.idAt(p),
-    t = Hex.tile(id);
-  if (!t) return '';
-  const own = Hex.owner(run, id),
-    H = Hex.state(run),
-    short = r => esc(REGIONS[r].name.split(' ')[0]),
-    ground = `${t.kind === 'place' ? 'place' : t.kind === 'hq' ? 'club HQ' : t.terrain === 'plain' ? 'open ground' : t.terrain} · <span ${tip(GLOSSARY.value.long)}>value <b>${Hex.value(t)}</b></span>`,
-    why = { hq: 'Capital — never falls', academy: 'Neutral ground — never taken', minor: 'Not in the war' }[t.kind],
-    conds = MAJORS.filter(a => a !== own)
-      .map(a => {
-        const reach = Hex.targets(run, a, own).some(x => x.id === id);
-        return `<span class="${reach ? '' : 'mute'}" ${reach ? '' : tip(`${REGIONS[a].name} can't reach it yet: no supplied tile next to it`)}>${chip(REGIONS[a])}${short(a)} needs <b>${Hex.cost(run, id, a)}</b></span>`;
-      })
-      .join(' · ');
-  return `<div class="ptile small"><div>${chip(REGIONS[own])}<b>${esc(REGIONS[own].name)}</b> tile · ${ground}${
-    t.region !== own ? ` <span class="mute">(taken from ${short(t.region)})</span>` : ''
-  }</div><div ${tip(GLOSSARY.seize.long)}>${why ? `<span class="mute">${why}</span>` : `Seize: ${conds}`}</div>${
-    H.p[id] ? `<div>${chip(REGIONS[H.by[id]])}${short(H.by[id])} pushing <b>${H.p[id]}/${Hex.cost(run, id, H.by[id])}</b></div>` : ''
-  }</div>`;
-}
 function pointPanel(run, p) {
   const d = City.travelDays(run, p),
     seen = City.seen(run, p),
@@ -155,19 +133,17 @@ function pointPanel(run, p) {
     title: `⚑ ${seen ? esc(REGIONS[r].name) : 'Unexplored land'}`,
     tags: d >= 2 ? [ptag(`Trip ${d}d`, '', 'warn')] : [],
     flavour: seen ? REGIONS[r].desc : 'Nobody you know has been out there. Go and see what you find.',
-    body: tileBlock(run, p),
     row: [
       `<button class="btn hot" onclick="mapTravel(${p[0]},${p[1]})" ${late ? `disabled ${tip(late)}` : ''}>Travel here · ${d}d</button>`
     ]
   });
 }
-/** The battle's border line: "{attacker} n/cost to seize" (+ the tile when it isn't the battle's own site), or that it can't reach. */
+/** The battle's border line: "Wu Harbor 100 · Wei Iron 84" (the two units on it, by Strength), or that they don't touch. */
 function clashBorder(run, att, def) {
-  const k = Front.stakes(run, att, def),
-    c = Fight.clashSite(run),
+  const U = Front.units(run, att, def),
     short = r => esc(REGIONS[r].name.split(' ')[0]);
-  return k.tile
-    ? `${short(att)} ${k.meter - 1}/${k.cost} to seize${c && c.name === k.name ? '' : ` ${esc(k.name)}`}`
+  return U
+    ? U.map(u => `<span ${tip(GLOSSARY.strength.long)}>${esc(WAR.units[u].name)} <b>${War.str(run, u)}</b></span>`).join(' · ')
     : `${short(att)} can't reach ${short(def)}`;
 }
 /**
@@ -185,16 +161,11 @@ function clashPanel(run) {
     def = att === c.a ? c.b : c.a,
     short = r => esc(REGIONS[r].name.split(' ')[0]),
     side = r => `<span ${tip(REGIONS[r].name)}>${chip(REGIONS[r])}${short(r)}</span>`,
-    main = Front.stakes(run, att, def).tile,
     border = (w, l) => {
-      const s = Front.stakes(run, w, l),
-        other = s.tile !== main, // the facts above name the battle's tile; another tile is named on hover
-        what = !s.tile
-          ? `${short(w)} can't reach ${short(l)}`
-          : s.seize
-            ? `${short(w)} seizes${other ? ' a tile' : ''}`
-            : `${short(w)} ${s.meter}/${s.cost}${other ? ' elsewhere' : ''}`;
-      return s.tile && other ? `<span ${tip(s.name)}>${what}</span>` : what;
+      const s = Front.stakes(run, w, l);
+      return s.unit
+        ? `<span ${tip(`${WAR.units[s.unit].name} Strength. ${GLOSSARY.strength.long}`)}>${esc(WAR.units[s.unit].name.split(' ').slice(-1)[0])} ${s.str} → <b>${s.after}</b></span>`
+        : `${short(w)} can't reach ${short(l)}`;
     },
     std = r => {
       const v = City.rep(run, r);
@@ -212,14 +183,17 @@ function clashPanel(run) {
         ['', border(foe, s)]
       ])}</div>`,
     sim = !!CW.clashSim,
+    call = Fight.calledFor(run), // your club calls you up (spec §4.34): its side's button is the primary
     fight = s =>
-      `<button class="btn" onclick="mapClash('${s}', CW.clashSim)" ${late || ban ? `disabled ${tip(ban || late)}` : tip(`Injury ~${risk(s === c.a ? c.b : c.a)}%. A real match with their crew: XP, techniques and a grade. A loss costs ${LOSS.sta} more stamina and mood.`)}>${chip(REGIONS[s])}Fight for ${short(s)}${sim ? ' ⏭' : ''}</button>`;
+      `<button class="btn ${s === call && !late && !ban ? 'hot' : ''}" onclick="mapClash('${s}', CW.clashSim)" ${late || ban ? `disabled ${tip(ban || late)}` : tip(`Injury ~${risk(s === c.a ? c.b : c.a)}%. A real match with their crew: XP, techniques and a grade. A loss costs ${LOSS.sta} more stamina and mood.`)}>${chip(REGIONS[s])}Fight for ${short(s)}${sim ? ' ⏭' : ''}</button>`;
   return placeCard({
     region: null,
     kind: 'Street battle',
     title: `⚔ ${esc(c.name[0].toUpperCase() + c.name.slice(1))}`,
     flavour: "Crews from both sides are settling it on the street this week. If nobody joins, it is settled at the week's end.",
     body: `${kv([
+      call ? ['Call-up', `<span ${tip(WAR_CALL.lines[call])}>${esc(WAR_CALL.lines[call])}</span>`, 'wa'] : null,
+      call ? ['Refuse', `${term('standing', WAR_CALL.refuse)} ${short(call)} <span class="mute">— stay away, watch, or fight for ${short(call === c.a ? c.b : c.a)}</span>`, 'dn'] : null,
       ['Attacker', side(att)],
       ['Defender', side(def)],
       ['Border', clashBorder(run, att, def)],
@@ -407,6 +381,37 @@ function venuePanel(run, id) {
     ...courtCard(run, id) // court matches (T-229)
   });
 }
+/**
+ * The overthrow row of a war unit's HQ card (spec §4.34): shown once the unit is Broken (or rallied and waiting); its peek holds
+ * who you fight for, the ace squad, what a win / loss does, the cost, and Overthrow / Sim ⏭ — or the gap when you can't.
+ */
+function overthrowBlock(run, ti) {
+  const u = War.ofClub(ti);
+  if (!u || !War.alive(run, u) || (War.stage(run, u) < WAR_STAGES.length - 1 && !War.cool(run, u))) return '';
+  const S = War.side(run, u),
+    c = War.can(run, u, S && S.by),
+    ace = War.ace(run, u),
+    d = War.cost(run, u),
+    late = !S
+      ? 'your club has no border with it'
+      : !c.ok
+        ? c.why
+        : run.event
+          ? 'answer the event first'
+          : Fight.ban(run) || City.noTime(run, d) || (run.money < S.cost ? `needs $${S.cost} for a street crew` : ''),
+    name = esc(WAR.units[u].name),
+    risk = Math.round(Fight.injuryRisk(run, ace.ovr) * 100);
+  const body = `<div class="lab" ${tip(GLOSSARY.seize.long)}>Overthrow</div>${kv([
+    late ? ['Locked', esc(late), 'mute'] : null,
+    S ? ['For', `${chip(REGIONS[WAR.units[S.by].region])}${esc(WAR.units[S.by].name)}${S.kind === 'crew' ? ` · your street crew $${S.cost}` : ''}`] : null,
+    ['Against', `${esc(ace.name)} · rating ${ace.ovr}`],
+    ['Lose', `${name} rallies +${WAR.rally}`, 'dn'],
+    ['Win', `${name} destroyed: its land and places to ${S ? esc(WAR.units[S.by].name) : 'the winner'}`],
+    ['Injury', `~${risk}%`]
+  ])}
+    <div class="acts pri"><button class="btn" onclick="CW.peek=null;mapOverthrow('${u}')" ${late ? `disabled ${tip(late)}` : ''}>Overthrow · ${d}d</button><button class="btn" onclick="CW.peek=null;mapOverthrow('${u}', true)" ${late ? 'disabled' : ''} ${tip(GLOSSARY.sim.long)}>Sim ⏭</button></div>`;
+  return `<section class="pchal">${peek(`ot:${ti}`, `⚔ Overthrow <span class="${late ? 'mute' : 'dn'}">${esc(WAR_STAGES[War.stage(run, u)].name)} · ${War.str(run, u)}</span>`, body, 'row')}</section>`;
+}
 function hqPanel(run, ti) {
   const t = run.teams[ti],
     f = FACTIONS[ti],
@@ -422,6 +427,8 @@ function hqPanel(run, ti) {
           .map((h, i) => [i ? '' : 'Habits', esc(h[0].toUpperCase() + h.slice(1))])
       : [],
     rep = City.rep(run, f.region),
+    wu = War.ofClub(ti),
+    fall = wu && War.state(run).fallen[wu],
     scouted = seen
       ? `<div class="pdet">${peek(
           `ro:${ti}`,
@@ -441,6 +448,7 @@ function hqPanel(run, ti) {
     title: `${chip(t)}${esc(t.name)}`,
     flavour: `${f.front}.${seen ? ` Word is: ${f.dark}.` : ''}`,
     tags: [
+      fall ? ptag(`Destroyed by ${esc(WAR.units[fall.by].name)}`, GLOSSARY.seize.long, 'bad') : '',
       ptag(`Rating ${t.ovr}`),
       rep ? ptag(`⚑ ${fmtDelta(rep)}`, GLOSSARY.standing.long, rep < 0 ? 'bad' : '') : '', // hidden at 0 (§10.8)
       free && j.ok ? ptag('Would sign you', esc(World.joinText(ti, run)), 'sel') : ''
@@ -455,6 +463,6 @@ function hqPanel(run, ti) {
       `<button class="btn" onclick="openDossier('${f.region}')" ${tip(`Everything you know about ${REGIONS[f.region].name}`)}>Dossier</button>`
     ].filter(Boolean),
     split: free ? 'three' : 'two',
-    after: challengeBlock(run, ti) + scouted
+    after: overthrowBlock(run, ti) + challengeBlock(run, ti) + scouted
   });
 }

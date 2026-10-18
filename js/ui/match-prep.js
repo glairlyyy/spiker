@@ -57,7 +57,17 @@ function prepTeam(i) {
       : cardsMine(m, i)
         ? cardsHand(i, true) + prepHabits(m, i)
         : '<p class="small mute">Their hand: hidden.</p>';
-  return `<section class="pteam" style="--tc:${t.color}"><div class="pban"><h3>${esc(t.name)}</h3><span class="povr"><b>${ovrAvg}</b> OVR</span><span class="small mute">${esc((t.S && t.S.name) || '')}</span></div><div class="lineup">${lineup}</div>${hand}</section>`;
+  return `<section class="pteam" style="--tc:${t.color}"><div class="pban"><h3>${esc(t.name)}</h3><span class="povr"><b>${ovrAvg}</b> OVR</span><span class="small mute">${esc((t.S && t.S.name) || '')}</span>${prepStage(m, i)}</div><div class="lineup">${lineup}</div>${hand}</section>`;
+}
+/** The war's stage a side plays with (spec §4.34, m.weak): a chip with what it costs; '' when Steady. */
+function prepStage(m, i) {
+  const k = m.weak ? m.weak[i] : 0;
+  if (!k) return '';
+  const S = WAR_STAGES[k],
+    what = [S.mor && `morale starts ${S.mor * 100} lower`, S.heal && `HP heals ${S.heal * 100} less a rally`, S.slots && `${cardSlots(m, i).length} card slots`]
+      .filter(Boolean)
+      .join(' · ');
+  return `<span class="wstage" ${tip(`At war: ${what}. ${GLOSSARY.stage.long}`)} tabindex="0">${S.name}</span>`;
 }
 /** The rival's habits you uncovered at the Tape Room (spec §4.31), under your hand when she is across the net from side i. */
 function prepHabits(m, i) {

@@ -30,6 +30,7 @@ const Fight = {
       );
     Eval.lend(run, mine);
     Eval.lend(run, opp);
+    [mine.wu, opp.wu] = side === c.a ? [c.ua, c.ub] : [c.ub, c.ua]; // the units on this border (their war stages)
     Cup.prepare(run, opp, 'clash', mine);
     const rel = Rel.matchFlags(run, mine, opp);
     return {
@@ -38,7 +39,10 @@ const Fight = {
       round: `Street battle: ${REGIONS[c.a].name} vs ${REGIONS[c.b].name} · ${c.name}`,
       back: 'Continue',
       rel,
-      setup: m => (m.rel = rel),
+      setup: m => {
+        m.rel = rel;
+        War.match(run, m); // the war's stages (spec §4.34)
+      },
       onFinish: m => {
         Eval.restore();
         return Fight.clashResult(run, m, side, foe);
@@ -112,7 +116,10 @@ const Fight = {
       round: `Challenge: ${mine.name} vs ${opp.name}${stake ? ` · stake $${stake}` : ''}`,
       back: 'Continue',
       rel,
-      setup: m => (m.rel = rel),
+      setup: m => {
+        m.rel = rel;
+        War.match(run, m); // the war's stages (spec §4.34)
+      },
       onFinish: m => {
         Eval.restore();
         return Fight.challengeResult(run, m, ti, stake, side);
@@ -218,6 +225,7 @@ const Fight = {
     Rank.settle(run, win ? side : foe);
     Rank.meet(run, m);
     out.push(City.repBump(run, side, win ? CLASH.win : CLASH.lose), City.repBump(run, foe, CLASH.other), Run.bump(run, 'sta', -CLASH.sta));
+    if (Fight.calledFor(run) === foe) out.push(Fight.refuse(run)); // called up by the other side
     if (win) out.push(Run.bump(run, 'fans', Math.round(CLASH.fans * gmul)));
     else Fight.lose(run, `${REGIONS[foe].name} crew`, margin, null, out);
     run.plays.k += s.k;
@@ -226,7 +234,7 @@ const Fight = {
     run.focus = null;
     out.push(Fight.injure(run, risk));
     run.lastFight = Run.dayNo(run);
-    const line = `${trip}Fought for ${REGIONS[side].name} in the street battle — ${win ? 'won' : 'lost'} ${sc[0]}-${sc[1]}, grade ${grade}. You: ${s.k} kills, ${s.blk} blocks, ${s.ace} aces · ${out.filter(Boolean).join(', ')}${front ? `. ${front}!` : ''}`;
+    const line = `${trip}Fought for ${REGIONS[side].name} in the street battle — ${win ? 'won' : 'lost'} ${sc[0]}-${sc[1]}, grade ${grade}. You: ${s.k} kills, ${s.blk} blocks, ${s.ace} aces · ${out.filter(Boolean).join(', ')}${front ? `. ${front}` : ''}`;
     Run.log(run, line);
     Run.save(run);
     return line;
@@ -236,20 +244,37 @@ const Fight = {
     run.clash = null;
     const wt = Run.weekType(run);
     if ((wt !== 'train' && wt !== 'camp') || R() >= CLASH.chance) return;
-    const { att, def } = Front.pick(run),
-      t = Hex.target(run, att, def); // fought on the defender's cheapest, nearest tile (spec §4.27)
-    if (t) run.clash = { tile: t.id, from: t.from, att, def, seen: false, done: false };
+    const P = Front.pick(run),
+      t = P && Front.site(run, P.att, P.def); // fought on a border between two of their units (spec §4.34)
+    if (t) run.clash = { tile: t.tile, from: t.from, at: t.at, ua: t.ua, ud: t.ud, att: P.att, def: P.def, seen: false, done: false };
   },
   /** A battle nobody joined is settled at the week's end. Returns the diary line. */
   clashEnd(run) {
     const c = Fight.clashSite(run);
     if (!c) return '';
+    const no = Fight.calledFor(run) ? Fight.refuse(run) : ''; // called up and stayed away
     run.clash.done = true;
     const w = Front.sim(run, c.a, c.b, run.clash.att),
       l = w === c.a ? c.b : c.a,
       s = Front.result(run, w, l);
     Rank.settle(run, w);
-    return `Street battle: ${REGIONS[w].name} beat ${REGIONS[l].name}${s ? ` — ${s}` : ''}.`;
+    return `Street battle: ${REGIONS[w].name} beat ${REGIONS[l].name}${s ? ` — ${s}` : ''}.${no ? ` ${no}` : ''}`;
+  },
+  /**
+   * This week's call-up (spec §4.34, T-316): the region your club fights for in this week's street battle (its war unit is on
+   * that border), or null — free agents, battles elsewhere, a battle already fought.
+   */
+  calledFor(run) {
+    const c = run.clash,
+      U = c && Front.clash(run),
+      u = run.team != null && War.ofClub(run.team);
+    if (!U || !u) return null;
+    return u === U.ua ? U.a : u === U.ub ? U.b : null;
+  },
+  /** A refused call-up: standing WAR_CALL.refuse with your club's faction and a diary note. Returns the label. */
+  refuse(run) {
+    const r = FACTIONS[run.team].region;
+    return `${WAR_CALL.refused} ${City.repBump(run, r, WAR_CALL.refuse)}`;
   },
   /** Why you can't fight or challenge now ('' if you can): an injury keeps you off the street (spec §4.15). */
   ban: run => (run.injury ? 'Injured — rest first' : City.fence(run)), // (battles and challenges are never on campus)
@@ -288,7 +313,7 @@ const Fight = {
   worth(run, ti, stake = 0) {
     const t = run.teams[ti],
       f = FACTIONS[ti];
-    if (!t || !f || ti === run.team) return null;
+    if (!t || !f || ti === run.team || War.down(run, ti)) return null; // (a destroyed club takes no challenges)
     const C = CHALLENGE,
       r = f.region,
       you = Run.you(run),
@@ -334,11 +359,18 @@ const Fight = {
       line: `${trip}${t.name} turned your challenge down: “${pick(lines)}”${pest ? ` You are becoming a pest (${pest}).` : ''}`
     };
   },
-  /** This week's open battle: { a: raider, b: defender, at, name, tile } (null when none or fought). */
+  /**
+   * This week's open battle: { a: raider, b: defender, ua / ub (their units), at (on the border), name, tile } (null when
+   * none or fought).
+   */
   clashSite(run) {
     const c = run.clash,
-      t = c && !c.done && Hex.tile(c.tile);
-    return t ? { a: c.att, b: c.def, at: t.at, name: Hex.name(t.id), tile: t.id } : null;
+      t = c && !c.done && Hex.tile(c.tile),
+      U = t && Front.clash(run);
+    if (!U) return null;
+    const f = c.from && Hex.tile(c.from),
+      at = Array.isArray(c.at) ? c.at : f ? [(t.at[0] + f.at[0]) / 2, (t.at[1] + f.at[1]) / 2] : t.at;
+    return { a: c.att, b: c.def, ua: U.ua, ub: U.ub, at, name: Hex.name(t.id), tile: t.id };
   },
   clashCost: run => City.trip(run, Fight.clashSite(run).at) + 1,
   /** Go to the battle and watch it (side null). Returns the diary line. Fighting is Fight.clash(run, side), a real match. */
@@ -351,6 +383,7 @@ const Fight = {
     run.clash.done = true;
     const vs = `${REGIONS[c.a].name} vs ${REGIONS[c.b].name}`;
     if (!side) {
+      if (Fight.calledFor(run)) out.push(Fight.refuse(run)); // watching is not answering the call
       for (const t of run.teams) if ([c.a, c.b].includes(FACTIONS[t.i].region)) (run.scout || (run.scout = {}))[t.i] = run.week;
       const w = Front.sim(run, c.a, c.b, run.clash.att),
         s = Front.result(run, w, w === c.a ? c.b : c.a);

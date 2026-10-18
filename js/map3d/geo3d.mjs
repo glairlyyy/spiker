@@ -112,3 +112,66 @@ export function fitView(points, aspect, minD, maxD, fovDeg = 40, pitchDeg = 55) 
     d = Math.max(w / 2 / th, (h * s) / 2 / tv);
   return { x: (x0 + x1) / 2, z: (z0 + z1) / 2, d: clamp(d, minD, maxD) };
 }
+
+/**
+ * A ribbon along a polyline (map units): for each point its left and right edge points at ±half (the normal is the mean of
+ * the two neighbouring segments), its middle moved `shift` to the left. closed = a loop (the last point joins the first).
+ * Returns [[lx, ly, rx, ry], …].
+ */
+export function ribbon(pts, half, closed = false, shift = 0) {
+  const n = pts.length,
+    out = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[closed ? (i - 1 + n) % n : Math.max(0, i - 1)],
+      b = pts[closed ? (i + 1) % n : Math.min(n - 1, i + 1)],
+      dx = b[0] - a[0],
+      dy = b[1] - a[1],
+      l = Math.hypot(dx, dy) || 1,
+      nx = -dy / l,
+      ny = dx / l,
+      x = pts[i][0] + nx * shift,
+      y = pts[i][1] + ny * shift;
+    out.push([x + nx * half, y + ny * half, x - nx * half, y - ny * half]);
+  }
+  return out;
+}
+/**
+ * The war banners (spec §4.34, T-317) as one geometry's arrays: per banner a pole (a thin quad pair) and a flag (a quad,
+ * coloured), standing on the ground at `at` and facing `face` (map units). h(x, y) = ground height (m) at a map point.
+ * Returns { pos, col } flat arrays (triangles) for one BufferGeometry — one mesh, no per-frame work.
+ */
+export function bannerArrays(banners, h, hexToRgb) {
+  const pos = [],
+    col = [],
+    tri = (p, c) => {
+      pos.push(...p);
+      for (let i = 0; i < 3; i++) col.push(...c);
+    },
+    pole = [0.35, 0.33, 0.3];
+  for (const b of banners) {
+    const [x, y] = b.at,
+      wx = x * MAP_M,
+      wz = y * MAP_M,
+      g = h(x, y),
+      fx = b.face[0] - x,
+      fy = b.face[1] - y,
+      l = Math.hypot(fx, fy) || 1,
+      sx = (-fy / l) * 5, // the flag spans sideways to the facing (m)
+      sz = (fx / l) * 5,
+      c = hexToRgb(b.color),
+      top = g + 12,
+      // the pole: two crossed quads 0.3 m wide, 12 m tall
+      P = (dx, dz, yy) => [wx + dx, yy, wz + dz];
+    for (const [dx, dz] of [
+      [0.15, 0],
+      [0, 0.15]
+    ]) {
+      tri([...P(-dx, -dz, g), ...P(dx, dz, g), ...P(dx, dz, top)], pole);
+      tri([...P(-dx, -dz, g), ...P(dx, dz, top), ...P(-dx, -dz, top)], pole);
+    }
+    // the flag: from the pole's top, 5 m sideways, 4 m tall
+    tri([...P(0, 0, top), ...P(sx, sz, top), ...P(sx, sz, top - 4)], c);
+    tri([...P(0, 0, top), ...P(sx, sz, top - 4), ...P(0, 0, top - 4)], c);
+  }
+  return { pos, col };
+}

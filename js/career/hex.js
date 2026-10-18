@@ -1,8 +1,7 @@
-// Hex territory (spec §4.27): the war map as flat-top hex tiles. Each tile has an owner and a takeover condition (HEX_COST);
-// street battles are fought on a tile and push its pressure until it flips. The player's travel never reads tiles.
-// Grid: axial (q, r), built once from CITY (pure, deterministic). Run state: run.hex = { own, p, by, t } (changed owners,
-// pressure and who pushes it, last week fought). Places follow their tile: Hex.sync rebuilds run.own (the place-owner cache Front reads).
-// DOM-free, no randoms.
+// The war map's geometry (spec §4.34; the tiles of §4.27): flat-top hex tiles, axial (q, r), built once from CITY (pure,
+// deterministic). Tiles never change hands: each starts in one war unit (`t.unit`, WAR.units) and the units' borders are
+// computed from the tile edges; who holds a tile now is War.unitAt (a destroyed unit's land goes to its destroyer).
+// The player's travel never reads tiles. DOM-free, no randoms.
 
 const Hex = {
   DIRS: [
@@ -42,6 +41,7 @@ const Hex = {
   /**
    * The grid (cached): { tiles: [{ id, q, r, at, region, kind, terrain, spots, hq }], byId }. A tile is land if its centre or a corner is.
    * region: the start owner (a place's or HQ's region wins over the polygon). kind: hq · academy · minor · place · land.
+   * unit: the war unit it starts in (Hex.unitOf), null for the minors and the Academy.
    * terrain: city (Wei downtown / old town) · beach (sand) · highland (on the Peak or the Spine: reliefAt > HIGHLAND_M) · plain.
    */
   grid() {
@@ -83,72 +83,103 @@ const Hex = {
       t.kind =
         t.region === 'open' ? 'academy' : !MAJORS.includes(t.region) ? 'minor' : t.hq.length ? 'hq' : t.spots.length ? 'place' : 'land';
     }
+    const foes = r => tiles.filter(o => MAJORS.includes(o.region) && o.region !== r);
+    for (const t of tiles) t.unit = Hex.unitOf(t, foes(t.region));
     return (Hex.cache = { tiles, byId });
+  },
+  /**
+   * The war unit a tile starts in (spec §4.34): its region's only unit; Wei's rings — Gold (`inner`) at least WAR.ring steps
+   * from every other major's tile, Iron outside it; else the unit whose first club's HQ is nearest (Wu: Harbor east, Fort south).
+   */
+  unitOf(t, foes) {
+    const us = Object.keys(WAR.units).filter(u => WAR.units[u].region === t.region);
+    if (us.length < 2) return us[0] || null;
+    const inner = us.find(u => WAR.units[u].inner);
+    if (inner) return Math.min(...foes.map(o => Hex.dist(t.id, o.id))) >= WAR.ring ? inner : WAR.units[inner].inner;
+    const d = u => {
+      const h = CITY.hq[WAR.units[u].clubs[0]];
+      return Math.hypot(h[0] - t.at[0], h[1] - t.at[1]);
+    };
+    return us.reduce((a, b) => (d(b) < d(a) ? b : a));
   },
   tile: id => Hex.grid().byId.get(id),
   /** The tile a place (SPOTS id) stands on. */
   ofSpot: sid => Hex.grid().tiles.find(t => t.spots.includes(sid)) || null,
-  /** A border tile: in the war and touching another major's tile. */
+  /** A border tile: a war unit's tile touching another major's war territory (spec §4.34; War.unitAt). */
   frontier(run, id) {
-    const t = Hex.tile(id),
-      own = Hex.owner(run, id);
-    return !!t && Hex.takeable(t) && Hex.near(id).some(n => MAJORS.includes(Hex.owner(run, n.id)) && Hex.owner(run, n.id) !== own);
+    const u = War.unitAt(run, id),
+      r = u && WAR.units[u].region;
+    return !!r && Hex.near(id).some(n => {
+      const v = War.unitAt(run, n.id);
+      return !!v && WAR.units[v].region !== r;
+    });
   },
   /** The tile's six neighbours that are land. */
   near: id => {
     const t = Hex.tile(id);
     return t ? Hex.DIRS.map(([dq, dr]) => Hex.tile(`${t.q + dq},${t.r + dr}`)).filter(Boolean) : [];
   },
-  state: run => run.hex || (run.hex = { own: {}, p: {}, by: {}, t: {} }),
-  owner: (run, id) => Hex.state(run).own[id] || Hex.tile(id).region,
-  pressure: (run, id) => Hex.state(run).p[id] || 0,
-  /** In the war at all: a major's tile that is not an HQ (minors, the Academy and capitals never change hands). */
-  takeable: t => MAJORS.includes(t.region) && t.kind !== 'hq',
-  /** Tiles of region r connected to one of its HQs through its own tiles (its supply line). */
-  supply(run, r) {
-    const seen = new Set(),
-      todo = Hex.grid().tiles.filter(t => t.kind === 'hq' && Hex.owner(run, t.id) === r);
-    for (const t of todo) seen.add(t.id);
-    while (todo.length) {
-      const t = todo.pop();
-      for (const n of Hex.near(t.id))
-        if (!seen.has(n.id) && Hex.owner(run, n.id) === r) {
-          seen.add(n.id);
-          todo.push(n);
-        }
-    }
-    return seen;
-  },
-  /** Net wins `att` needs to take tile id (HEX_COST): kind / terrain, home terrain, retake, cut off. */
-  cost(run, id, att, sup) {
-    const t = Hex.tile(id),
-      own = Hex.owner(run, id),
-      C = HEX_COST;
-    let c = t.kind === 'place' ? C.place : C[t.terrain];
-    if (HEX_HOME[own] === t.terrain) c += C.home;
-    if (t.region === att) c += C.retake;
-    if (!(sup || Hex.supply(run, own)).has(id)) c += C.cut;
-    return Math.max(C.min, c);
+  /** The tile across edge i of tile t (edge i joins corners i and i + 1), or null (water / off the grid). */
+  across(t, i) {
+    const a = ((i + 0.5) * Math.PI) / 3,
+      d = HEX.size * Math.sqrt(3);
+    return Hex.tile(Hex.idAt([t.at[0] + d * Math.cos(a), t.at[1] + d * Math.sin(a)])) || null;
   },
   /**
-   * Tiles `att` can attack on `def`: def's takeable tiles touching an `att` tile on att's supply line, each with its cost and
-   * the attacking tile it is pushed from. Sorted cheapest first, then nearest to an att HQ, then by a hash (spec §4.27).
+   * The outline of a set of tiles (ids, a Set): closed loops of corner points [[x, y]…], longest first. Every boundary edge
+   * (to a tile outside the set, or to no tile) is walked corner to corner; a tile's edges run the same way round, so the
+   * loops close.
    */
-  targets(run, att, def) {
-    const supA = Hex.supply(run, att),
-      supD = Hex.supply(run, def),
-      hqs = Hex.grid().tiles.filter(t => t.kind === 'hq' && Hex.owner(run, t.id) === att),
-      dHq = t => Math.min(...hqs.map(h => Math.hypot(h.at[0] - t.at[0], h.at[1] - t.at[1]))),
-      out = [];
-    for (const t of Hex.grid().tiles) {
-      if (!Hex.takeable(t) || Hex.owner(run, t.id) !== def) continue;
-      const from = Hex.near(t.id).find(n => supA.has(n.id));
-      if (from) out.push({ id: t.id, from: from.id, cost: Hex.cost(run, t.id, att, supD), d: dHq(t) });
+  outline(ids) {
+    const key = p => `${Math.round(p[0] * 10)},${Math.round(p[1] * 10)}`,
+      next = new Map();
+    for (const id of ids) {
+      const t = Hex.tile(id),
+        C = Hex.corners(Hex.centre(t.q, t.r)); // (the exact centre: neighbours' corners meet)
+      for (let i = 0; i < 6; i++) {
+        const n = Hex.across(t, i);
+        if (n && ids.has(n.id)) continue;
+        const a = C[i],
+          b = C[(i + 1) % 6],
+          k = key(a);
+        if (!next.has(k)) next.set(k, []);
+        next.get(k).push([a, b]);
+      }
     }
-    return out.sort((a, b) => a.cost - b.cost || a.d - b.d || hstr(a.id) - hstr(b.id));
+    const loops = [];
+    for (const [k0, list] of next)
+      while (list.length) {
+        const loop = [];
+        let [a, b] = list.pop(),
+          guard = 0;
+        loop.push(a);
+        while (key(b) !== k0 && guard++ < 4000) {
+          loop.push(b);
+          const L = next.get(key(b));
+          if (!L || !L.length) break;
+          [, b] = L.pop();
+        }
+        if (loop.length > 2) loops.push(loop.map(p => [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10]));
+      }
+    const len = L => L.reduce((s, p, i) => s + Math.hypot(p[0] - L[(i + 1) % L.length][0], p[1] - L[(i + 1) % L.length][1]), 0);
+    return loops.sort((x, y) => len(y) - len(x));
   },
-  /** The tile `att` fights `def` on next (null when it can reach none). */
-  target: (run, att, def) => Hex.targets(run, att, def)[0] || null,
+  /** Chaikin corner cutting (n rounds) of a polyline; closed = a loop. Keeps an open line's ends. */
+  smooth(pts, n = 2, closed = true) {
+    let P = pts;
+    for (let r = 0; r < n; r++) {
+      const out = closed ? [] : [P[0]],
+        m = closed ? P.length : P.length - 1;
+      for (let i = 0; i < m; i++) {
+        const a = P[i],
+          b = P[(i + 1) % P.length];
+        out.push([0.75 * a[0] + 0.25 * b[0], 0.75 * a[1] + 0.25 * b[1]], [0.25 * a[0] + 0.75 * b[0], 0.25 * a[1] + 0.75 * b[1]]);
+      }
+      if (!closed) out.push(P[P.length - 1]);
+      P = out;
+    }
+    return P.map(p => [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10]);
+  },
   /** A tile's name for the diary and cards: its place, else "{region} ground near {nearest place}". */
   name(id) {
     const t = Hex.tile(id),
@@ -159,38 +190,4 @@ const Hex = {
       .sort((a, b) => Math.hypot(a[1].at[0] - t.at[0], a[1].at[1] - t.at[1]) - Math.hypot(b[1].at[0] - t.at[0], b[1].at[1] - t.at[1]))[0];
     return `${t.terrain === 'plain' ? 'open ground' : t.terrain} near ${near ? near[1].name : 'the Academy'}`;
   },
-  /** What a tile is worth (HEX_VALUE): HQ, place, else its terrain. */
-  value: t => (t.kind === 'hq' ? HEX_VALUE.hq : t.kind === 'place' ? HEX_VALUE.place : HEX_VALUE[t.terrain] || 0),
-  /** Value region r holds now / held at the start. */
-  worth: (run, r) => Hex.grid().tiles.reduce((s, t) => s + (Hex.owner(run, t.id) === r ? Hex.value(t) : 0), 0),
-  worth0: r => Hex.grid().tiles.reduce((s, t) => s + (t.region === r ? Hex.value(t) : 0), 0),
-  /** Move a tile to region r (its start region → no entry) and rebuild the place-owner cache run.own. */
-  flip(run, id, r) {
-    const H = Hex.state(run);
-    if (Hex.tile(id).region === r) delete H.own[id];
-    else H.own[id] = r;
-    delete H.p[id];
-    delete H.by[id];
-    Hex.sync(run);
-  },
-  /** run.own = { placeId: holder } for every place whose tile is held by someone other than the place's region. */
-  sync(run) {
-    const own = {};
-    for (const t of Hex.grid().tiles)
-      for (const id of t.spots) if (!id.startsWith('venue:') && Hex.owner(run, t.id) !== SPOTS[id].region) own[id] = Hex.owner(run, t.id);
-    run.own = own;
-  },
-  /** Week end: a tile nobody fought over for HEX.decay weeks loses 1 pressure. */
-  decay(run) {
-    const H = Hex.state(run);
-    for (const id of Object.keys(H.p))
-      if (run.week - (H.t[id] || 0) >= HEX.decay) {
-        H.p[id] -= 1;
-        H.t[id] = run.week;
-        if (H.p[id] <= 0) {
-          delete H.p[id];
-          delete H.by[id];
-        }
-      }
-  }
 };

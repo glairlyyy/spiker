@@ -12,7 +12,7 @@ import { createLife } from './life3d.mjs';
 import { createTown } from './town3d.mjs';
 import { createNature } from './nature3d.mjs';
 import { createMapCam } from './mapcam3d.mjs';
-import { MAP_M, clamp, lerp, smooth, fogFactor, inside, edgeDist, sideDist, hstr } from './geo3d.mjs';
+import { MAP_M, clamp, lerp, smooth, fogFactor, inside, edgeDist, sideDist, hstr, ribbon, bannerArrays } from './geo3d.mjs';
 export { inside, edgeDist, sideDist }; // (the polygon maths live in geo3d.mjs; tests import them from here too)
 
 const CELL = 2, // terrain grid cell (m)
@@ -309,6 +309,94 @@ function lightScene(renderer, scene) {
   return { sun, water };
 }
 /** Free every geometry / material the map made (shared kit caches — userData.shared — survive a re-create), the GPU context. */
+/**
+ * The war on the map (spec §4.34, T-317; model.borders): each standing unit's border as one draped ribbon in its colour (one
+ * mesh, vertex colours), this week's hot stretch as a brighter wider ribbon that pulses (one mesh: only its opacity changes
+ * per frame) and the banners along it (one mesh, geo3d bannerArrays). Rebuilt only when the borders' JSON changes.
+ */
+function warLayer(scene, heightAt) {
+  const g = new THREE.Group(),
+    h = (x, y) => heightAt(x * MAP_M, y * MAP_M),
+    rgb = hex => {
+      const c = new THREE.Color(hex);
+      return [c.r, c.g, c.b];
+    };
+  scene.add(g);
+  let key = null,
+    hot = null;
+  const mat = (opacity, vc = true) =>
+    new THREE.MeshBasicMaterial({
+      vertexColors: vc,
+      transparent: true,
+      opacity,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      polygonOffset: true,
+      polygonOffsetFactor: -4,
+      polygonOffsetUnits: -4
+    });
+  /** Ribbon triangles along pts (map units), half-width `half`, lifted `up` m, coloured c → pushed onto pos / col. */
+  const strip = (pts, half, closed, up, c, pos, col, shift = 0) => {
+    const R = ribbon(pts, half, closed, shift),
+      n = closed ? R.length : R.length - 1,
+      V = ([x, y]) => [x * MAP_M, h(x, y) + up, y * MAP_M];
+    for (let i = 0; i < n; i++) {
+      const a = R[i],
+        b = R[(i + 1) % R.length],
+        q = [V([a[0], a[1]]), V([a[2], a[3]]), V([b[0], b[1]]), V([b[2], b[3]])];
+      pos.push(...q[0], ...q[1], ...q[2], ...q[2], ...q[1], ...q[3]);
+      for (let k = 0; k < 6; k++) col.push(...c);
+    }
+  };
+  const mesh = (pos, col, m) => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    return new THREE.Mesh(geo, m);
+  };
+  const clear = () => {
+    for (const o of [...g.children]) {
+      g.remove(o);
+      o.geometry.dispose();
+      o.material.dispose();
+    }
+    hot = null;
+  };
+  return {
+    sync(B) {
+      const k = JSON.stringify(B || null);
+      if (k === key) return;
+      key = k;
+      clear();
+      if (!B) return;
+      const pos = [],
+        col = [];
+      // each unit's line just inside its own land (shift 3 left of the loop's run = inward), so two neighbours' colours sit side by side
+      for (const L of B.lines) if (L.pts.length > 2) strip(L.pts, 2.4, true, 0.7, rgb(L.color), pos, col, 3);
+      if (pos.length) g.add(mesh(pos, col, mat(0.85)));
+      if (B.hot && B.hot.lines.length) {
+        const hp = [],
+          hc = [],
+          c = rgb('#ffb347').map((v, i) => (3 * v + rgb(B.hot.colors[0])[i]) / 4); // a hot glow, tinted by the raider
+        for (const L of B.hot.lines) if (L.length > 1) strip(L, 16, false, 1, c, hp, hc);
+        if (hp.length) g.add((hot = mesh(hp, hc, mat(0.5))));
+      }
+      if (B.banners && B.banners.length) {
+        const A = bannerArrays(B.banners, h, rgb),
+          bm = mesh(A.pos, A.col, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+        g.add(bm);
+      }
+    },
+    /** The hot stretch glows and pulses. */
+    pulse(t) {
+      if (hot) hot.material.opacity = 0.45 + 0.4 * (0.5 + 0.5 * Math.sin(t * 3));
+    },
+    dispose() {
+      clear();
+      scene.remove(g);
+    }
+  };
+}
 function releaseScene(scene, renderer, sun) {
   scene.traverse(o => {
     if (o.userData && o.userData.shared) return;
@@ -347,6 +435,8 @@ export function create(onIdle) {
     badge = null,
     walkK = 1, // your walking speed (×1 / ×2 / ×4 — the map's speed selector, T-214)
     seen = null, // the you.at last shown
+    fallSeen, // the latest destroyed war unit already shown (model.borders.fall.key; the first model sets it without a pan)
+    war = null, // the war's borders, hot stretch and banners (spec §4.34: warLayer)
     cur = null, // the last model (pins for select)
     lastSel = null,
     cw = 0, // canvas size (px), cached by size() — never read from the DOM per frame
@@ -368,6 +458,7 @@ export function create(onIdle) {
     furn = createFurniture(scene, terrain.heightAt);
     life = createLife(scene, terrain.heightAt);
     nature = createNature(scene, terrain.heightAt);
+    war = warLayer(scene, terrain.heightAt);
     furn.layer.addEventListener('wheel', C.onWheel, { passive: false }); // wheel over a pin still zooms
   };
   /** Darken the terrain where nothing you have visited lies within fog.r (unexplored land stays visible, dim). */
@@ -409,6 +500,7 @@ export function create(onIdle) {
       life.tick(dt, clock);
       nature.tick(dt, clock);
       furn.pulse(clock);
+      war.pulse(clock);
       C.step(dt);
       const n = avatar.lapse(),
         txt = n ? `×${n < 2 ? n.toFixed(1) : Math.round(n)}` : '';
@@ -451,6 +543,10 @@ export function create(onIdle) {
     update(m) {
       if (!furn) return;
       cur = m;
+      const fall = m.borders && m.borders.fall ? m.borders.fall.key : null;
+      if (fallSeen !== undefined && fall && fall !== fallSeen)
+        (m.pins || []).some(p => p.id === m.borders.fall.pin) ? C.flyTo(m.borders.fall.pin) : C.overview(); // a unit destroyed: the camera goes to see (spec §4.34)
+      fallSeen = fall;
       if (m.sel && m.sel !== lastSel) C.flyTo(m.sel); // selected from outside the map (list, chip, banner)
       lastSel = m.sel;
       town.sync(m);
@@ -458,6 +554,7 @@ export function create(onIdle) {
       furn.sync(m, on);
       showHex();
       life.sync(m);
+      war.sync(m.borders);
       applyFog(m.fog);
       const want = new Map((m.figures || []).map(f => [f.id, f]));
       for (const [id, a] of figs) if (!want.has(id)) (a.dispose(), figs.delete(id));
@@ -515,6 +612,7 @@ export function create(onIdle) {
       if (town) town.dispose();
       if (life) life.dispose();
       if (nature) nature.dispose();
+      if (war) war.dispose();
       if (raf) cancelAnimationFrame(raf);
       if (ro) ro.disconnect();
       C.dispose();

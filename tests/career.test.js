@@ -119,7 +119,7 @@ test('career: training cap, facility Lv 5 and Hard training', () => {
   g.Training.addXp(run, 'str', 100000, 'match');
   assert(you.body.str > 80, 'match XP goes past the training cap');
   assert(you.power <= g.CAREER.runCap, 'a court skill never passes the run cap');
-  assert(!('lb' in run) && g.RUN_VERSION === 20, 'no Limit Break progress in the run; RUN_VERSION 20');
+  assert(!('lb' in run) && g.RUN_VERSION === 21, 'no Limit Break progress in the run; RUN_VERSION 21');
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
   const n = g.Training.preview(run, 'power', false).main[2],
@@ -386,8 +386,8 @@ test('career: match history', () => {
   run.injury = null;
   run.event = null;
   run.pos = [470, 600];
-  const tg = g.Hex.target(run, 'wei', 'wu');
-  run.clash = { tile: tg.id, from: tg.from, att: 'wei', def: 'wu', seen: false, done: false };
+  const tg = g.Front.site(run, 'wei', 'wu');
+  run.clash = { tile: tg.tile, from: tg.from, att: 'wei', def: 'wu', seen: false, done: false };
   const fs = g.Fight.clash(run, 'wei'),
     ms = play(fs);
   fs.onFinish(ms);
@@ -810,8 +810,8 @@ test('career: rankings — register, gazette, street, known gate', () => {
     'the opponents are met and rated'
   );
   // a street battle you fight: your points, and the winner faction's best players share
-  const tg = g.Hex.target(run, 'wei', 'wu');
-  run.clash = { tile: tg.id, from: tg.from, att: 'wei', def: 'wu', seen: false, done: false };
+  const tg = g.Front.site(run, 'wei', 'wu');
+  run.clash = { tile: tg.tile, from: tg.from, att: 'wei', def: 'wu', seen: false, done: false };
   const side = 'wei',
     fx = g.Fight.clash(run, side),
     m = g.newMatch(fx.a, fx.b, false);
@@ -985,7 +985,7 @@ test('career: challenge loss and injury', () => {
   run.sp = 99;
   assert(g.Training.physio(run) && !run.injury, 'physio heals the injury');
   assert(you.body[lost[0]] === before[g.BODY.keys.indexOf(lost[0])] - g.INJURY.lose, 'but not the lost stat');
-  eq(g.RUN_VERSION, 20, 'save v20');
+  eq(g.RUN_VERSION, 21, 'save v21');
 });
 
 test('career: rules moved out of the UI (T-075)', () => {
@@ -1009,17 +1009,14 @@ test('career: rules moved out of the UI (T-075)', () => {
   assert(g.Run.readGazette(run) && run.gazette.read && !g.Run.readGazette(run), 'the Gazette is read once');
   // Dossier.summary / standingLabel
   run.rep = { wei: 40, wu: -5 };
-  g.Hex.flip(run, g.Hex.ofSpot('weiSpeed').id, 'wu');
+  run.war.str.iron = 50; // the war (spec §4.34): Iron Strained
   const W = g.Dossier.summary(run, 'wei'),
     U = g.Dossier.summary(run, 'wu');
   eq(W.label, 'Trusted', 'standing label');
   eq(U.label, 'Wary', 'standing label (negative)');
-  assert(
-    W.lost.some(x => x.id === 'weiSpeed'),
-    'Wei lost the place on that tile (the training district may share it)'
-  );
-  eq(U.took[0].from, 'wei', 'Wu took it from Wei');
-  assert(W.econ && W.econ.joinCut === g.FRONT.join, 'a losing faction asks less');
+  assert(W.weak && !U.weak, 'Wei shaken by the war, Wu not');
+  assert(W.econ && W.econ.priceMul > 1 && !U.econ, 'its economy shows it');
+  eq(W.fronts.find(f => f.unit === 'iron').joinCut, g.FRONT.join, 'a Strained unit’s clubs ask less');
   eq(g.Dossier.summary(run, 'outlaws').fronts.length, 0, 'minors are not in the war');
   // Cup.simNow: a fixture resolves at once (setup when present)
   let setupRan = false,
@@ -1244,7 +1241,7 @@ test('season: Endless ends at its one Cup; Story rolls over — stamps rebased, 
   const raw = JSON.parse(h.__mem[h.KEYS.career]);
   raw.v = 19;
   h.__ls.setItem(h.KEYS.career, JSON.stringify(raw));
-  eq(h.Run.load(), null, 'a v19 save (no body) is dropped (T-307)');
+  eq(h.Run.load(), null, 'a v19 save (no body, no war units) is dropped');
 });
 
 test('season: the off-season — the first aces age out, the market moves, the named stay; year 2 grows the field slower (T-287)', () => {

@@ -10,9 +10,11 @@ const Cup = {
   roman: n => ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'][n - 1] || String(n),
   /** Every squad of the U21 Final Cup: each faction's pool drawn into squads, then the Academy squad while you are still in it. */
   entrants(run) {
-    const out = [];
+    const out = [],
+      N = Cup.places(run);
     for (const r of Object.keys(POOL)) {
-      Pool.draw(run, r).forEach((sq, i) =>
+      if (N[r] === 0) continue;
+      Pool.draw(run, r, N[r]).forEach((sq, i) =>
         out.push({
           name: `${REGIONS[r].name} ${Cup.roman(i + 1)}`,
           short: `${r.slice(0, 3).toUpperCase()}${i + 1}`,
@@ -32,13 +34,32 @@ const Cup = {
     return out;
   },
   /**
+   * Squads per major in the Cup (spec §4.34): its pool's squads split over its war units by clubs; a destroyed unit's share
+   * goes to its destroyer's region (more squads for the attacker), a region with no unit standing sends none. Minors: their
+   * pool's (undefined → Pool.draw's default). With no unit destroyed every major sends what its pool holds, as before.
+   */
+  places(run) {
+    const N = {},
+      share = {};
+    for (const r of MAJORS) {
+      const us = War.ofRegion(r),
+        n = Math.floor(Pool.size(run, r) / SQUAD),
+        clubs = us.reduce((k, u) => k + WAR.units[u].clubs.length, 0);
+      for (const u of us) share[u] = (n * WAR.units[u].clubs.length) / clubs;
+      N[r] = 0;
+    }
+    for (const u of War.ids()) N[WAR.units[War.holder(run, u)].region] += share[u];
+    for (const r of MAJORS) N[r] = Front.standing(run, r) ? Math.round(N[r]) : 0;
+    return N;
+  },
+  /**
    * Story year 2 (spec §4.28): the rival is in the Cup — not drawn (and not hurt) → she takes the place of the weakest same-role
    * player of her region's first squad without you. Mutates `out`.
    */
   placeRival(run, out) {
     const riv = Stars.get(run, 'rival');
     if (!riv || !Story.on(run) || Season.year(run) < 2 || People.out(run, riv) || out.some(e => e.ids.includes(riv.id))) return;
-    const r = (FACTIONS[riv.team.i] && FACTIONS[riv.team.i].region) || 'wei',
+    const r = (FACTIONS[riv.team.i] && FACTIONS[riv.team.i].region) || riv.team.region || 'wei', // (a walk-out: her new region's reserves)
       e = out.find(x => x.region === r && !x.ids.includes(run.youId));
     if (!e) return;
     const all = Pool.players(run, r),
@@ -122,7 +143,9 @@ const Cup = {
   team(run, i) {
     const e = run.cup.entrants[i];
     if (e.academy) return run.pickup;
-    return Eval.squad(run, e.ids, e.name, e.color, e.crew ? 'street' : e.region, e.short);
+    const T = Eval.squad(run, e.ids, e.name, e.color, e.crew ? 'street' : e.region, e.short);
+    T.wr = e.crew ? null : e.region; // its war stage (War.weakOf)
+    return T;
   },
   /** A cup begins: stamina refills; the squads are drawn and seeded by rating (1 plays 16, 8 plays 9, …; missing seeds are byes). */
   start(run, def) {
@@ -225,10 +248,11 @@ const Cup = {
     if (kind === 'cup') return { T: Cup.team(run, run.cup.me), region: run.cup.entrants[run.cup.me].region };
     const e = Eval.setup(run),
       club = run.team != null ? run.teams[run.team] : null;
+    const tag = (T, r) => Object.assign(T, { wu: War.ofClub(run.team), wr: r }); // your club's war stage (War.weakOf)
     if (e && e.kind === 'faction')
-      return { T: Eval.squad(run, e.mine, `${club.name} · Eval`, club.color, undefined, club.short), region: FACTIONS[run.team].region };
+      return { T: tag(Eval.squad(run, e.mine, `${club.name} · Eval`, club.color, undefined, club.short), FACTIONS[run.team].region), region: FACTIONS[run.team].region };
     if (e && e.kind === 'rematch' && e.mine)
-      return { T: Eval.squad(run, e.mine, club.name, club.color, e.mineRegion, club.short), region: e.mineRegion };
+      return { T: tag(Eval.squad(run, e.mine, club.name, club.color, e.mineRegion, club.short), e.mineRegion), region: e.mineRegion };
     return { T: Run.myTeam(run), region: null }; // the Academy squad is a real team
   },
   /** Fixture for the match screen. kind: 'eval' | 'cup'. Your side is always on the left; your coach picks the 4 (Run.lineup). */
@@ -247,8 +271,8 @@ const Cup = {
       if (e.kind === 'faction' || (e.kind === 'rematch' && e.mine)) Eval.lend(run, mine);
       const rt = e.kind === 'rematch' && Stars.get(run, 'rival').team;
       opp = rt
-        ? Eval.squad(run, e.opp, rt.name, rt.color, e.region, rt.short)
-        : Eval.squad(run, e.opp, `${REGIONS[e.region].name} · Eval`, REGIONS[e.region].color);
+        ? Object.assign(Eval.squad(run, e.opp, rt.name, rt.color, e.region, rt.short), { wu: War.ofClub(rt.i) })
+        : Object.assign(Eval.squad(run, e.opp, `${REGIONS[e.region].name} · Eval`, REGIONS[e.region].color), { wr: e.region });
       Eval.lend(run, opp);
       round = rt
         ? `The rematch (year 2, week ${run.week})`
@@ -272,6 +296,7 @@ const Cup = {
       // relationship flags for the engine (T-066); "Feed me": a captain's buff on you for the first 8 points
       setup: m => {
         m.rel = rel;
+        War.match(run, m); // the war's stages: morale, HP heal, card slots (spec §4.34)
         Feel.match(run, m); // Fired up: a whole-match buff on you (spec §4.30)
         if (kind === 'cup' && you.cap && run.talk === 'feed') {
           m.buff[you.id] = { lv: 2, n: 8 };

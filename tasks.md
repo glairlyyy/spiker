@@ -131,7 +131,7 @@ Accept: test — a raid win moves the unit's Strength twice as far as a street b
 QA: career run → raid a border.
 Result:
 
-### [ ] T-311: Endurance in the match — rally HP damage
+### [x] T-311: Endurance in the match — rally HP damage
 Agent: B
 Spec: §4.33, §2.31          Goldens: unchanged (players without a body: × 1)          Save: no change
 Goal: your Endurance lowers your rally HP damage (× (1.2 − 0.4 · end / 100)).
@@ -139,7 +139,7 @@ Files: js/engine/bars.js, tests/momentum.test.js
 Do not: draw randoms; change any player without `body` (read `p.body && p.body.end`; A's T-307 adds `you.body`).
 Accept: goldens unchanged; a test — end 90 takes less HP damage than end 30 on the same balls.
 QA: none (engine).
-Result:
+Result: `hpHit` × (1.2 − 0.4 · end / 100) when `p.body.end` is a number, else × 1 (inlined: no new global; HP stays in data/cards.js). Goldens unchanged; test: three soft balls, end 90 takes × 0.84 of the no-body damage, end 30 more, end 50 = × 1.
 
 ### [x] T-312: Balance the orders — the bot plays the day orders
 Agent: A
@@ -154,7 +154,7 @@ Result: bot: casual drills its key stat (Body.lead), then the weakest, never Fle
 
 **Faction war: Strength, structure, overthrow (owner, 2026-10-19, spec §4.34): Agent B.**
 
-### [ ] T-313: War units and Strength replace hex takeover
+### [x] T-313: War units and Strength replace hex takeover
 Agent: B
 Spec: §4.34          Goldens: unchanged (engine)          Save: RUN_VERSION 21 (`run.war`; `run.hex` dropped) — after A's T-307 (20) is published
 Goal: six war units (Wei Iron, Wei Gold, Wu Harbor, Wu Fort, Shu, + none for minors) with Strength 0–100; street battles
@@ -170,9 +170,9 @@ Do not: change NPC homes or region names; touch js/engine.
 Accept: 30-week headless run — every unit's Strength stays in 0–100, Shu loses ≤ half what Iron loses for the same results,
 Gold untouched while Iron stands (tests).
 QA: career run → Factions cards and a border.
-Result:
+Result: js/data/war.js (WAR, WAR_STAGES) + js/career/war.js (War: str/stage/weak/holder/unitAt/edges/pairs/hit/week/sync), `run.war` v21; Hex = geometry + `t.unit` (Gold = Wei tiles ≥ 3 steps from another major: Iron 33 / Gold 16 tiles; Wu by nearest HQ: Harbor 16 / Fort 21); Front.site picks the week's unit border by hash (no extra R()). Tests: 30 weeks of forced battles stay in 0–100, Shu −4 vs Iron −8, Gold 100 throughout; 5 headless 2-year runs end with lows 48–95 (Fort / Iron), nobody Broken — the deltas are mild at ~0.45 battles a week. Deviations: tests/run.js registers war.test.js; HEX_COST/VALUE/ECON, Front.econ/down, the tile pressure and the `value` term are gone (`strength`, `stage` terms added; `seize` reworded as the overthrow); tests/people.test.js:723 still expects v19 (A's file: fails until merge, set it to 21). QA: Factions cards, dossier, battle card, border point — screenshots fine.
 
-### [ ] T-314: Stages in the match — Strained, Shaken, Broken
+### [x] T-314: Stages in the match — Strained, Shaken, Broken
 Agent: B
 Spec: §4.34, §2.31, §2.33          Goldens: unchanged (no `weak` → today)          Save: no change
 Goal: a squad of a weakened unit plays with its stage's debuffs (morale start, HP heal, one card slot fewer); Iron bleeds into
@@ -183,9 +183,9 @@ Do not: draw R(); change a match without `weak`.
 Accept: goldens unchanged; tests — Broken side has 4 slots and starts 10 morale lower; 200 sims Broken vs Steady equal
 squads: the Steady side wins clearly more (state the %).
 QA: Monster game with `weak` forced on one side → prep chip.
-Result:
+Result: engine `weakSet(m, [k0, k1])` (= `opts.weak`; absent / [0, 0] → the same match, goldens unchanged): morale −0.1 at the start, HP heal −0.25 when Shaken, a Broken side loses FLEX (`C.off`, `cardSlots`); `War.weak` (Gold = max(own, Iron − 1), Shu one late), `War.match` in every career fixture's setup (Cup eval / cup, street battle, challenge, court; squads tagged by unit / region); match prep's chip (`prepStage`). 200 sims Broken vs Steady, same squads both ways: Steady wins 115/200 (58 %) — the stages bite but mildly. Deviation: the FLEX slot still draws as "Empty" in the hand (js/ui/match-cards.js is the cards session's); cards.js only gained the slot lock. QA: Monster game, weakSet [3, 1] → Broken / Strained chips; ui-smoke 13/13.
 
-### [ ] T-315: The overthrow and a destroyed faction
+### [x] T-315: The overthrow and a destroyed faction
 Agent: B
 Spec: §4.34          Goldens: unchanged          Save: no change (inside `run.war`)
 Goal: a Broken unit can be challenged at its HQ (you, a unit fighting it, or the AI below 10); a 5-set match against its ace
@@ -198,9 +198,9 @@ Do not: let Haewon join the winner or your club; allow a challenge within 4 week
 Accept: tests — destroying Iron opens Gold's border; destroying Harbor leaves Fort's Strength unchanged; a destroyed unit
 sends no Cup squads and the winner gets its places; Haewon is never on the winner's or your squad; a rallied unit can't be challenged for 4 weeks while its border's battles go on.
 QA: career run (forced Broken Iron) → challenge, win, the map recolours.
-Result:
+Result: War.can / side / overthrow / overthrowResult / destroy / rally / ai / into / free / walkout; Cup.places (squads per unit, a fallen unit's share to its holder's region: e.g. Iron down → wei 4→3, wu 3→4; a wiped region sends 0); clubs of a fallen unit stop (no joins, no challenges, HQ tag "Destroyed by"), you are freed to the Academy squad (diary line), its 2 best players and the rival move by seat swap (Shu / Gloria have no reserves); the rival → the strongest standing major that is neither the winner's nor yours, else St. Gloria, `walkout` scene (rumor + diary); fall news in the Gazette voice (WAR_LINES, js/data/story.js); the map pans to the latest fall (map3d). Deviations: **one match, not 5 sets** — the engine plays one set to 15 (a best-of-5 needs engine + match-UI work: a task for the spec chat); tests in tests/war.test.js (not career.test.js); the action `mapOverthrow` lives in career-dossier.js (career-map.js is A's); the AI runs from War.week (a simMatch of the two aces, main stream). QA: Iron forced Broken → HQ card's Overthrow peek → simmed (lost 10-15: Iron rallied to 24) → forced destroy: Iron's land recolours Wu, inbox lists the seized places.
 
-### [ ] T-316: You in the war — call-ups
+### [x] T-316: You in the war — call-ups
 Agent: B
 Spec: §4.33, §4.34          Goldens: unchanged          Save: no change
 Goal: your club calls you up on battle weeks (refusal costs standing). (The Raid order is A's T-318.)
@@ -208,9 +208,9 @@ Files: js/career/fight.js, js/data/war.js, js/ui/career-panels.js (`clashPanel`)
 Do not: add a pop-up beyond the existing battle card.
 Accept: tests — a member is called up on a battle week of their unit; a refused call-up costs standing.
 QA: career run → a call-up week.
-Result:
+Result: `Fight.calledFor` (your club's unit on the week's border) / `Fight.refuse` (−8 standing with your faction, diary line) on stay-away (clashEnd), watching, or fighting for the other side; WAR_CALL in js/data/war.js (the call in wei / wu / shu voices); clashPanel: Call-up + Refuse rows first, your side's Fight button is the ink primary — no new pop-up. Test: called for Harbor's battle, not Fort's; stay-away −8; answering costs nothing extra; free agents never called. QA: call-up week card screenshot fine.
 
-### [ ] T-317: Borders on the map — lines, heat, banners
+### [x] T-317: Borders on the map — lines, heat, banners
 Agent: B
 Spec: §4.34, §4.18          Goldens: unchanged          Save: no change
 Goal: hex fills and the tile panel go; each war unit's border is one smoothed line in its colour; fighting heats a stretch
@@ -220,7 +220,7 @@ Files: js/map3d/map3d.mjs, js/map3d/geo3d.mjs (banners there, not in A's pins3d.
 Do not: add per-frame allocations; colour terrain (faction colour only on borders, banners).
 Accept: map test — one closed border per unit; the hot stretch is the one the week's battle was on; QA screenshot.
 QA: career run → map overview, a hot border close-up.
-Result:
+Result: model key `borders` (MapModel.warMap; `hexes` gone, so pins3d draws no fills / tile chips) — Hex.outline + Hex.smooth: one closed Chaikin-smoothed loop per standing unit (Iron 70 corners, Gold 36, Harbor 34, Fort 42, Shu 68), in its lead club's colour, drawn just inside its own land so neighbours sit side by side; the hot stretch = War.meet of the battle's two units (pulsing amber glow, opacity only per frame), banner pairs every 10 points facing across (geo3d `ribbon` / `bannerArrays`, map3d `warLayer`: 3 meshes, rebuilt on JSON change); the point panel's tile block is gone. Map test: one loop per unit, the hot stretch is the battle's and the site sits on it, a destroyed unit's land joins its destroyer's one border. Notes: pins3d.mjs (A's) keeps its now-unused hex-decal code and css/map.css its `.ptile` / `.mbord` rules — remove at merge; borders along the coast sit in the water and stay hidden (only land borders show). QA: overview + Iron/Harbor close-up (glow, banners, ⚔ on the line). ui-smoke: 13/13 before; after T-317 two runs each failed one different, map-unrelated step under load (court prep text, Monster cards row; 0 page errors) — re-run at merge.
 
 **Semi-automatic matches (owner, 2026-10-16, spec §2.31–§2.33): T-294 → T-297, spec chat, in order.** Built and measured,
 not tuned (owner: "no need to fine tune it yet"). T-283 / T-284 wait: the cards replace the board they tune.

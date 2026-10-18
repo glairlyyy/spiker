@@ -13,6 +13,7 @@ const STORY_WHEN = {
   year2: run => Season.year(run) > 1,
   year2Won: run => Season.year(run) > 1 && !!run.story.flags.beatRival,
   rematchWeek: run => Season.rematch(run),
+  walkout: run => !!(run.war && run.war.walk), // the rival walked out of a fallen club (spec §4.34)
   rematchWon: run => !!run.story.flags.rematchWon,
   rematchLost: run => !!run.story.flags.rematchLost,
   won: run => !!(run.story.res && run.story.res.win),

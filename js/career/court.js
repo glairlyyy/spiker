@@ -112,7 +112,10 @@ const Court = {
       back: 'Continue',
       rel,
       ace: ace ? ace.name : null,
-      setup: m => (m.rel = rel),
+      setup: m => {
+        m.rel = rel;
+        War.match(run, m); // the war's stages (spec §4.34): your club's; the regulars have none
+      },
       onFinish: m => {
         Eval.restore();
         return Court.result(run, m, id, tier, side, ace);

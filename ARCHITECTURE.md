@@ -26,14 +26,14 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
 - **data** `rules.js` (RULES, EGO…), `styles.js` (playstyles, team list, archetypes), `names.js` (name pools),
   `looks.js` (appearance palettes), `moves.js` (signature / combo names, coach lines), `roles.js` (role biases, key
   stats, mood deltas), `elements.js`, `vfx.js` (VFX_DEF / live `VFX` effect tuning, read by render code only; saved dev edits in `sns_vfx`), `tactics.js`, `dialogue.js` (lines, `callLine`), `skills.js`, `career.js`
-  (CAREER, BODY, CALENDAR, ROLE_NAME, STATNAME, MLOG…), `world.js` (REGIONS, FACTIONS, ECON, HOUSING, CLASH, FRONT…), `city.js`
+  (CAREER, BODY, CALENDAR, ROLE_NAME, STATNAME, MLOG…), `world.js` (REGIONS, FACTIONS, ECON, HOUSING, CLASH, FRONT, HEX…), `war.js` (WAR: the war units, Strength deltas; WAR_STAGES — spec §4.34), `city.js`
   (CITY geometry, SPOTS, travel constants, layout data).
 - **engine** `court.js` (geometry, `Z_UNITS`, `UNIT_M`, `BALL_K` / `SERVE_K`), `players.js`, `teams.js`, `save.js`,
   `stats.js`, `skills.js`, `formulas.js`, `elements.js`, `hype.js`, `fire.js` (momentum stages, spec §2.14: `temperOf`,
   `fireStage`, `pointStage` after every point (in `end`), `stageTimeout`, `stageBuff(p, stat)` read by effD / jumpPx / the
   formulas; `m.mom` is the fire, `m.stage`, `m.temper`, `m.fever`; `m.zone` = the Fever alias; data in data/momentum.js:
   `STAGES`, `TEMPERS`, `TEMPER_OF`, `FIRE`; the captains' calls `capReady` / `capCall` — T-260), `bars.js` (spec §2.31: HP
-  `m.hp` — `hpHit` in `knock` (collapse = HP 0, no roll), `hpHeal` between rallies; morale `m.mor` per player — `morPoint`
+  `m.hp` — `hpHit` in `knock` (collapse = HP 0, no roll; your Endurance `p.body.end` × (1.2 − 0.4 · end / 100), no body × 1 — spec §4.33), `hpHeal` between rallies; morale `m.mor` per player — `morPoint`
   replaces the fire update, `fireOf` = the on-court average (captain ×2) → `m.mom`, `morAdd` / `fireTo` for team-wide pushes;
   `mtraitOf(p)` by hash; data `HP`, `MTRAITS` in data/cards.js), `cards.js` (tactic cards and turns, spec §2.32–§2.33:
   `m.cards[side]` = { by, slots (SLOTS: atk0 atk1 def0 def1 flex), you, net, worn, spent, played, force, buff } or null
@@ -43,7 +43,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   `cardSpend`), `cardTurn` every TURN.pts points (act `turn`), act `cardspent`; `cardOn` (on-slot effects), one-shots used up
   in `cardApply`, `cardTraps` at the first serve after a turn (`m.trapNow`; act `cardspent` with `trap`), `C.over` (Overload,
   read by `dr`); data `CARDS`, `COMBOS`, `TURN`, `SLOTS`,
-  `CARD_AI` in data/cards.js), `match.js`, `serve.js`, `rally-phases.js`,
+  `CARD_AI` in data/cards.js; `cardSlots` — a Broken war unit's side lacks FLEX, `C.off`), `match.js` (`newMatch`; `weakSet` — a side's war stage `m.weak`, spec §4.34), `serve.js`, `rally-phases.js`,
   `rally-defense.js`, `rally-block.js`, `lanes.js` (laning, spec §2.24: `laneRead`, `laneAim`, `laneTag`, `laneRecord`, coach-panel logs `hitLog` / `recvLog`; tuning `LANE` in data/tactics.js), `coach.js` (`Coach.side` / `Coach.tags`: the coach panel's analysis, spec §2.25), `plans.js` (team plans, spec §2.26: `planOf`, `atkPlan` / `defPlan`, `planPick`, `planSet`, `planCounter`, `weakPasser`, `aceOf`; data `PLANS`, `PLAN_STYLE`, `PLAN_AI`, `PLAN_LINES` in data/tactics.js; `m.plan`, `m.planBy`, `m.planLog`), `orders.js` (role orders, spec §2.29: `m.ord` player id → { srv, tgt }, none = Auto; `ordOf` / `ordSet`, `srvOpts` / `tgtOpts` (locked = the gap), `srvApply` / `tgtResolve` (the serve hooks, only with an order), `srvOdds` (the board's odds: the engine's formulas on the fixed grid `ORDERS.odds`, no draws), `srvLog` → `m.srvLog`; spike
 orders `aim` / `shot`: `aimOpts` / `shotOpts`, `atkApply` (laneAim), `atkLand` (landingSpot); `atkOdds(m, side, p | null, [[player, kind, v], …])` — the engine plays the
 attack from now on an isolated stream (snapshot `stCopy`, `m.probe`, `probeHit` in tallyAttack) and restores the match;
@@ -52,7 +52,7 @@ Rest (`rest`: `restOpts`, `restFor`, `ordSubs` at the dead ball before coachSubs
 blockMoves and digSetup; tallies `ordLog` / `ordAttack` → `m.ordLog` (the result card's Orders row, `boardResult`); data `ORDERS`), `rally.js`.
 - **audio** `sfx.js` (internals in the `SOUND` closure; global: `SND`, `sfx`, `audioInit`, `toggleSound`, `setVolume`, `bgmStart`, `bgmStop`, `panAt`). **game** `state.js` (G, HYPE, Screens / navigate), `bracket.js`.
 - **career** `run.js` (Run, RUN_DEFAULTS), `body.js` (Body: your body → the court skills, spec §4.33), `training.js`, `growth.js`, `element.js`, `world.js`, `pool.js`, `eval.js`,
-  `city.js`, `front.js`, `mapmodel.js`, `dossier.js`, `events.js`, `sponsors.js`, `skills.js`, `rank.js`, `cup.js`, `fight.js`.
+  `city.js`, `hex.js` (the war map's tile geometry), `front.js` (who raids whom, where), `war.js` (War: units, Strength, stages, `run.war`), `mapmodel.js`, `dossier.js`, `events.js`, `sponsors.js`, `skills.js`, `rank.js`, `cup.js`, `fight.js`.
 - **portraits** `js/render/faces.js` `faceSVG(p, mood, size)` returns a cached 3D portrait `<img>` (PORTRAIT: look key → data URL) or the drawn face (`faceSVG2D`) as a placeholder that is swapped in place when `js/render3d/portrait3d.mjs` (lazy-loaded; one offscreen renderer, the default model re-dressed in hair / skin / team shirt, Main_v2 for you) finishes it.
 - **ui** `dom.js` (esc, tip, info, fold, kv — the vertical label/value list of spec §10.1a, peek — the L2 detail card of §10.8: `CW.peek` holds the open id, `peekSync` (MutationObserver on #app) ports the open card to <body> beside its owner panel…), `icons.js`, `match-screen.js` (startMatch → `A`, 3D load / bind, fit, venue / stakes, leaveMatch), `match-controls.js` (control bar, ⚙ settings,
   camera / follow, fullscreen, timeouts, tactics, speed / pause / skip, scoreboard, commentary, rail, box score, hotkeys), `match-tech.js`
@@ -265,7 +265,7 @@ moving for 6 s (25 s while the 3D players load) or one beat lasts 20 s, with a s
 
 ## Saves
 
-Career runs carry `v` (`RUN_VERSION` = 20, `career/run.js`; key `sns_run_v1`; v20 = your body `you.body` (+ `floor` / `edge` / `synced`) and body-key XP banks in `run.xp`, v19 saves dropped; v19 = `run.year`, migration 18 → 19). History: v2 faction reserves, v3 cup
+Career runs carry `v` (`RUN_VERSION` = 21, `career/run.js`; key `sns_run_v1`; v21 = `run.war` (the war units' Strength, spec §4.34), `run.hex` dropped; v20 = your body `you.body` (+ `floor` / `edge` / `synced`) and body-key XP banks in `run.xp`; older saves dropped; v19 = `run.year`). History: v2 faction reserves, v3 cup
 entrants, v4 squads of 6 (`bench`), v5 `run.lb` dropped, v6 `run.met` / `street` / `refused`, v7 `losses` / `lastFight`,
 v8 `mlog`, v9 `run.mode.story`; older saves are dropped (`RUN_MIGRATIONS` is empty). Bump the version when the save shape changes and add a step to
 `RUN_MIGRATIONS[oldVersion] = data => upgraded data`; `Run.load` applies the steps in order and ignores saves from a newer version.

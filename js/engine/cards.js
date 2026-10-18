@@ -53,6 +53,7 @@ function cardsInit(m, opts) {
     mine: (opts.cards && opts.cards[i] && opts.cards[i].mine) ?? (opts.cards && opts.cards[i] && opts.cards[i].by === 'you' ? 5 : 0), // how many cards are yours (career 1 / 2 / 5; a side you run: 5)
     you: {}, // slot → card id you placed (kept at a turn unless spent)
     slots: Object.fromEntries(SLOTS.map(k => [k, null])),
+    off: [], // slots this side lacks: a Broken war unit (weakSet, spec §4.34)
     net: {}, // card (or combo) id → net points while slotted
     worn: [], // ids at TURN.worn or below
     spent: [], // ids burnt for the match
@@ -77,6 +78,11 @@ function cardsInit(m, opts) {
   }
 }
 
+/** Side i's usable slots (SLOTS minus what its war stage takes, spec §4.34). */
+const cardSlots = (m, i) => {
+  const C = cardsOf(m, i);
+  return C ? SLOTS.filter(k => !(C.off && C.off.includes(k))) : [];
+};
 /** Is card id in side i's pool now (the squad's techniques, traits, OP / element players; not spent)? */
 function cardInPool(m, i, id) {
   const c = CARDS[id],
@@ -102,7 +108,7 @@ const cardFits = (id, k) => {
 /** Place card id in slot k for side i (by you): false when it doesn't fit, is spent, not in the pool, or clashes. */
 function cardPut(m, i, k, id) {
   const C = cardsOf(m, i);
-  if (!C || !SLOTS.includes(k)) return false;
+  if (!C || !SLOTS.includes(k) || (C.off && C.off.includes(k))) return false;
   if (id == null) {
     C.slots[k] = null;
     delete C.you[k];
@@ -189,7 +195,7 @@ function cardFill(m, i) {
     X = cardCtx(m, i),
     coach = C.by === 'ai' || C.mine < SLOTS.length; // a side you run in full: only your cards (an empty slot stays empty)
   for (const k of SLOTS) {
-    if (C.slots[k] || !coach) continue;
+    if (C.slots[k] || !coach || (C.off && C.off.includes(k))) continue;
     const chosen = cardIds(m, i),
       grps = chosen.map(id => CARDS[id].grp).filter(Boolean);
     let best = null,

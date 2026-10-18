@@ -1227,7 +1227,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     - **Defense** = 0.45 · flex + 0.35 · agi + 0.2 · end (getting low, getting there, lasting).
     - A balanced body (all four at X) gives every court skill X — today's numbers hold; a lopsided one loses some.
     - **Endurance** also lifts your career stamina (`run.staMax` = 100 + end / 2) and lowers your rally HP damage in a match
-      (`× (1.2 − 0.4 · end / 100)`; players without a body: × 1, so goldens stay).
+      (`× (1.2 − 0.4 · end / 100)`; players without a body: × 1, so goldens stay). **[built 2026-10-19, T-311]**
   - **Day orders** (one a day; the trip rules of §4.5 stay): the place card lists what you can do there, each with its
     cost → result on the control ("Heavy sets · 1d · $20 → Str +++ · Flex +").
     - **Drill** — the place's kit, focused: the fastest gain a day, costs money (today's sessions, re-keyed to body stats).
@@ -1271,10 +1271,10 @@ the AI coach fills every slot you leave with the same function. Built and measur
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.
   - **Strength** (0–100 per war unit, start 100): a street battle lost on its border −8 (won +3); untouched for 4 weeks +2 a
-    week; an overthrow lost by the attacker → the defender +20 ("rallied"). Shown on the Factions cards and the border.
+    week; an overthrow lost by the attacker → the defender +20 ("rallied"). Shown on the Factions cards and the border. **[built 2026-10-19, T-313: war units, Strength, the economy; Gold's ring = Wei land ≥ 3 hex steps from another major]**
   - **Stages → match debuffs** for every squad of that unit (evaluations, Cup, street, court; display of the stage on the
     match prep): **Strained** < 60 — morale starts 10 lower · **Shaken** < 40 — also HP heals 0.25 less between rallies ·
-    **Broken** < 25 — also one card slot fewer. (Numbers first guesses; the engine takes a per-side `weak` stage, absent = none.)
+    **Broken** < 25 — also one card slot fewer. (Numbers first guesses; the engine takes a per-side `weak` stage, absent = none.) **[built 2026-10-19, T-314: the slot a Broken side loses is FLEX; Broken vs Steady, same squads: Steady wins 58 %]**
   - **Structure — the war units** (owner):
     - **Wei = two rings.** **Iron** is the outer circle (its border faces the island), **Gold** the inner circle (Haewon's
       club). Street battles on Wei's border hit Iron while Iron stands; Gold has no border until Iron falls. Iron's stage
@@ -1288,7 +1288,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **The overthrow**: once a unit is Broken, a unit fighting it (or you — as its member, or leading a street crew as a free
     agent) may challenge its **ace squad at its HQ**: one match, 5 sets. The AI challenges when a unit is < 10. Win → the unit
     is **destroyed**; lose → it rallies (+20). **Cooldown** (owner, 2026-10-19): after an overthrow match a unit can't be challenged
-    again for 4 weeks (each unit its own clock); street battles go on at their normal rate meanwhile.
+    again for 4 weeks (each unit its own clock); street battles go on at their normal rate meanwhile. **[built 2026-10-19, T-315: one match (the engine plays one set), not 5 sets — open]**
   - **Destroyed**: its places and region pass to the winner at once (the region recolours, a news line, a camera pan); its
     players scatter (the best go to the winner's pool, the rest to the reserves and the Outlaws); its **U21 Cup places go to
     the winner** (more squads for the attacker in the final Cup); its club stops (members are free agents again — you too,
@@ -1296,8 +1296,8 @@ the AI coach fills every slot you leave with the same function. Built and measur
     faction or St. Gloria (a scene), and plays the Cup there.
   - **Map**: hex tiles go (fills, pressure, the tile panel, `run.hex`); a border line per war unit stays — computed once from
     the hex grid's outer edge (smoothed), never drawn as tiles. Fighting heats a border: the stretch glows and pulses with
-    banners, the battle site sits on it. Borders move only when a unit is destroyed.
-  - **You in the war** (T-316): your club calls you up on battle weeks (refusing costs standing); a **Raid** day order
+    banners, the battle site sits on it. Borders move only when a unit is destroyed. **[built 2026-10-19, T-317]**
+  - **You in the war** (T-316): your club calls you up on battle weeks (refusing costs standing) **[built 2026-10-19, T-316: −8 standing; staying away, watching or fighting for the other side all refuse]**; a **Raid** day order
     (§4.33) fights a street game on a hot border (your win counts × 2 on Strength).
   - Economy: Strength replaces the tile value (prices × (1 + 0.3 % per point under 100), quality × (0.7 + 0.3 × Strength /
     100), joins easier when Strained or worse). Save: RUN_VERSION bump (`run.war = { str, fallen, last }`, `run.hex` dropped).
