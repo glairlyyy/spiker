@@ -1248,7 +1248,41 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **[open]**: hostile ground (training on a faction's turf you are on bad terms with: XP ×1.2, heat, a street battle when
     it boils over — Kenshi's "train combat with hostiles"); NPC bodies; jobs as a story thread (Fern's old shift at the
     Harbor).
-- §4.27 Hex territory **[built, T-131–T-134, T-138, T-153]** (owner, 2026-10-03): the war map becomes hex tiles; each tile has its own takeover
+- §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
+  too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
+  hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.
+  - **Strength** (0–100 per war unit, start 100): a street battle lost on its border −8 (won +3); untouched for 4 weeks +2 a
+    week; an overthrow lost by the attacker → the defender +20 ("rallied"). Shown on the Factions cards and the border.
+  - **Stages → match debuffs** for every squad of that unit (evaluations, Cup, street, court; display of the stage on the
+    match prep): **Strained** < 60 — morale starts 10 lower · **Shaken** < 40 — also HP heals 0.25 less between rallies ·
+    **Broken** < 25 — also one card slot fewer. (Numbers first guesses; the engine takes a per-side `weak` stage, absent = none.)
+  - **Structure — the war units** (owner):
+    - **Wei = two rings.** **Iron** is the outer circle (its border faces the island), **Gold** the inner circle (Haewon's
+      club). Street battles on Wei's border hit Iron while Iron stands; Gold has no border until Iron falls. Iron's stage
+      bleeds inward one step lighter (Iron Shaken → Gold Strained; Broken → Shaken). Wiping Wei takes **two** overthrows.
+    - **Wu = two coastal halves**, independent: **Harbor** (the east coast) and **Fort** (the south coast), each its own
+      border, Strength and overthrow. One falling does nothing to the other. Wiping Wu takes **two** overthrows.
+    - **Shu = one** unit (Peak and Valley share one Strength, one border, one overthrow against the better of their two
+      ace squads). The highlands soak it up: street battles hit Shu × 0.5 and its debuffs come one stage late (Shaken plays
+      as Strained). Wiping Shu takes **one** overthrow, the hardest to reach.
+    - The minors (Outlaws, St. Gloria) and the Academy stay out of the war.
+  - **The overthrow**: once a unit is Broken, a unit fighting it (or you — as its member, or leading a street crew as a free
+    agent) may challenge its **ace squad at its HQ**: one match, 5 sets. The AI challenges when a unit is < 10. Win → the unit
+    is **destroyed**; lose → it rallies (+20). **[proposed]** At most one overthrow every 8 weeks island-wide, none before
+    week 14 of year 1.
+  - **Destroyed**: its places and region pass to the winner at once (the region recolours, a news line, a camera pan); its
+    players scatter (the best go to the winner's pool, the rest to the reserves and the Outlaws); its **U21 Cup places go to
+    the winner** (more squads for the attacker in the final Cup); its club stops (members are free agents again — you too,
+    with a story line). **Haewon never joins the side that broke Gold, nor yours**: she walks out to the other surviving
+    faction or St. Gloria (a scene), and plays the Cup there.
+  - **Map**: hex tiles go (fills, pressure, the tile panel, `run.hex`); a border line per war unit stays — computed once from
+    the hex grid's outer edge (smoothed), never drawn as tiles. Fighting heats a border: the stretch glows and pulses with
+    banners, the battle site sits on it. Borders move only when a unit is destroyed.
+  - **You in the war** (T-316): your club calls you up on battle weeks (refusing costs standing); a **Raid** day order
+    (§4.33) fights a street game on a hot border (your win counts × 2 on Strength).
+  - Economy: Strength replaces the tile value (prices × (1 + 0.3 % per point under 100), quality × (0.7 + 0.3 × Strength /
+    100), joins easier when Strained or worse). Save: RUN_VERSION bump (`run.war = { str, fallen, last }`, `run.hex` dropped).
+- §4.27 Hex territory **[built, T-131–T-134, T-138, T-153; superseded by §4.34 when T-313 lands]** (owner, 2026-10-03): the war map becomes hex tiles; each tile has its own takeover
   condition. Changes how factions move and seize; the player's travel (roads, days, trips, fog) does not change.
   Replaces the fixed border meters and border places (§4.7 `FRONT.borders`, T-130 lines, seized patches).
   - Grid: flat-top hexes, `HEX.size` 36 map units (~170 land tiles), built deterministically from CITY (land = centre or any corner on

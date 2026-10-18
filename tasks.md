@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-313** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-318** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -120,6 +120,71 @@ Files: tests/career-bot.js, js/data/career.js (ORDERS, RUN_GROUND, BODY numbers)
 Do not: change the year caps or the steep curve without saying so in Result.
 Accept: `npm run career -- 20 both` table in §4.32: good Y2 ≥ 91, casual ≤ 88; casual's swing short in ≥ half its runs.
 QA: none.
+Result:
+
+**Faction war: Strength, structure, overthrow (owner, 2026-10-19, spec §4.34): T-313 → T-317, in order (after T-312
+unless the owner says otherwise).**
+
+### [ ] T-313: War units and Strength replace hex takeover
+Spec: §4.34          Goldens: unchanged (engine)          Save: RUN_VERSION bump (`run.war`; `run.hex` dropped)
+Goal: six war units (Wei Iron, Wei Gold, Wu Harbor, Wu Fort, Shu, + none for minors) with Strength 0–100; street battles
+move it (Shu × 0.5; Gold only once Iron is gone); no tile flips; prices / quality / joins read Strength.
+Files: js/data/world.js (WAR: units, clubs per unit, deltas, stages; FRONT trimmed), js/career/front.js (pick a border, apply a
+battle to Strength), js/career/hex.js (geometry only: unit borders from the grid's outer edge), js/career/world.js,
+js/career/city.js, js/career/fight.js, js/career/mapmodel.js, js/career/run.js (v bump, run.war), js/ui/career-panels.js,
+js/ui/career-dossier.js, js/ui/sheet-season.js (Factions cards), tests/map.test.js, tests/career.test.js, tests/harness.js,
+ARCHITECTURE.md, ARCHITECTURE-details.md
+Do not: change NPC homes or region names; touch js/engine.
+Accept: 30-week headless run — every unit's Strength stays in 0–100, Shu loses ≤ half what Iron loses for the same results,
+Gold untouched while Iron stands (tests).
+QA: career run → Factions cards and a border.
+Result:
+
+### [ ] T-314: Stages in the match — Strained, Shaken, Broken
+Spec: §4.34, §2.31, §2.33          Goldens: unchanged (no `weak` → today)          Save: no change
+Goal: a squad of a weakened unit plays with its stage's debuffs (morale start, HP heal, one card slot fewer); Iron bleeds into
+Gold one step lighter; Shu one stage late; match prep shows the stage.
+Files: js/engine/match.js (newMatch opts.weak), js/engine/bars.js, js/engine/cards.js, js/career/cup.js (fixture setup),
+js/career/fight.js, js/career/court.js, js/ui/match-prep.js, tests/momentum.test.js, tests/cards.test.js
+Do not: draw R(); change a match without `weak`.
+Accept: goldens unchanged; tests — Broken side has 4 slots and starts 10 morale lower; 200 sims Broken vs Steady equal
+squads: the Steady side wins clearly more (state the %).
+QA: Monster game with `weak` forced on one side → prep chip.
+Result:
+
+### [ ] T-315: The overthrow and a destroyed faction
+Spec: §4.34          Goldens: unchanged          Save: no change (inside `run.war`)
+Goal: a Broken unit can be challenged at its HQ (you, a unit fighting it, or the AI below 10); a 5-set match against its ace
+squad; a win destroys it — places and region to the winner, players scattered, Cup places to the winner, members freed;
+Haewon walks out (scene); a loss rallies it.
+Files: js/career/front.js, js/career/cup.js (entrants by unit), js/career/people.js (scatter), js/career/world.js (members
+freed), js/career/story.js, js/data/story.js (walk-out, fall news — lore voices), js/ui/career-panels.js (HQ card: Challenge),
+js/career/mapmodel.js, js/map3d/map3d.mjs (region recolour + pan), tests/career.test.js
+Do not: let Haewon join the winner or your club; allow two overthrows within 8 weeks.
+Accept: tests — destroying Iron opens Gold's border; destroying Harbor leaves Fort's Strength unchanged; a destroyed unit
+sends no Cup squads and the winner gets its places; Haewon is never on the winner's or your squad.
+QA: career run (forced Broken Iron) → challenge, win, the map recolours.
+Result:
+
+### [ ] T-316: You in the war — call-ups and the Raid order
+Spec: §4.33, §4.34          Goldens: unchanged          Save: no change
+Goal: your club calls you up on battle weeks (refusal costs standing); a Raid day order fights a street game on a hot border
+(a win counts × 2).
+Files: js/career/fight.js, js/career/city.js (Raid order), js/data/career.js, js/ui/career-panels.js, js/ui/career-week.js,
+tests/career.test.js
+Do not: add a pop-up beyond the existing battle card.
+Accept: tests — a raid win moves Strength twice as far; a refused call-up costs standing.
+QA: career run → raid a border.
+Result:
+
+### [ ] T-317: Borders on the map — lines, heat, banners
+Spec: §4.34, §4.18          Goldens: unchanged          Save: no change
+Goal: hex fills and the tile panel go; each war unit's border is one smoothed line in its colour; fighting heats a stretch
+(glow, pulse, banners); the battle site sits on it.
+Files: js/map3d/map3d.mjs, js/map3d/geo3d.mjs, js/map3d/pins3d.mjs, js/career/mapmodel.js, css/map.css, tests/map.test.js
+Do not: add per-frame allocations; colour terrain (faction colour only on borders, banners).
+Accept: map test — one closed border per unit; the hot stretch is the one the week's battle was on; QA screenshot.
+QA: career run → map overview, a hot border close-up.
 Result:
 
 **Semi-automatic matches (owner, 2026-10-16, spec §2.31–§2.33): T-294 → T-297, spec chat, in order.** Built and measured,
