@@ -769,6 +769,10 @@ club); the rival never to the winner's region nor yours → `run.war.walk` → t
 `War.ai` (from `War.week`): a standing unit < WAR.ai off cooldown is challenged by its strongest foe (simMatch of the aces).
 `Cup.places(run)` splits each major's squads over its units; a fallen unit's share counts for its holder's region. The map
 pans to the latest fall once (`hexes.fall`, map3d). Engine matches are one set: the "5 sets" overthrow is one match.
+Call-ups (T-316): `Fight.calledFor(run)` = the region your club fights for when its unit is on this week's battle border
+(`Front.clash`), else null; a battle settled without you on that side (`clashEnd`, `watch`, fighting for the other side in
+`clashResult`) → `Fight.refuse` (WAR_CALL.refuse standing, diary note). clashPanel shows the call (WAR_CALL.lines, the
+faction's voice) and the refusal cost first, and makes your side's Fight button the primary.
 
 ## Match music
 

@@ -39,3 +39,17 @@ const WAR_STAGES = [
   { id: 'shaken', name: 'Shaken', below: 40, mor: 0.1, heal: 0.25 },
   { id: 'broken', name: 'Broken', below: 25, mor: 0.1, heal: 0.25, slots: 1 }
 ];
+/**
+ * Call-ups (spec §4.34, T-316): a member whose club's unit fights this week's street battle is called up; refusing it (the
+ * battle settled without you on your side: you stayed away, watched, or fought for the other side) costs `refuse` standing
+ * with your club's faction. lines: the call on the battle card, in the faction's voice (lore §7).
+ */
+const WAR_CALL = {
+  refuse: -8,
+  lines: {
+    wei: 'The office expects every registered player on the line this week. Attendance is recorded.', // voice: wei
+    wu: "Crew's going out. You're on the sheet. Don't make us come get you.", // voice: wu
+    shu: 'The elders ask that you walk with us this week. They will not ask twice.' // voice: shu
+  },
+  refused: 'Didn’t answer the call-up. They noticed.' // voice: diary
+};

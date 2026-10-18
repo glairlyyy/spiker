@@ -200,7 +200,7 @@ sends no Cup squads and the winner gets its places; Haewon is never on the winne
 QA: career run (forced Broken Iron) → challenge, win, the map recolours.
 Result: War.can / side / overthrow / overthrowResult / destroy / rally / ai / into / free / walkout; Cup.places (squads per unit, a fallen unit's share to its holder's region: e.g. Iron down → wei 4→3, wu 3→4; a wiped region sends 0); clubs of a fallen unit stop (no joins, no challenges, HQ tag "Destroyed by"), you are freed to the Academy squad (diary line), its 2 best players and the rival move by seat swap (Shu / Gloria have no reserves); the rival → the strongest standing major that is neither the winner's nor yours, else St. Gloria, `walkout` scene (rumor + diary); fall news in the Gazette voice (WAR_LINES, js/data/story.js); the map pans to the latest fall (map3d). Deviations: **one match, not 5 sets** — the engine plays one set to 15 (a best-of-5 needs engine + match-UI work: a task for the spec chat); tests in tests/war.test.js (not career.test.js); the action `mapOverthrow` lives in career-dossier.js (career-map.js is A's); the AI runs from War.week (a simMatch of the two aces, main stream). QA: Iron forced Broken → HQ card's Overthrow peek → simmed (lost 10-15: Iron rallied to 24) → forced destroy: Iron's land recolours Wu, inbox lists the seized places.
 
-### [ ] T-316: You in the war — call-ups
+### [x] T-316: You in the war — call-ups
 Agent: B
 Spec: §4.33, §4.34          Goldens: unchanged          Save: no change
 Goal: your club calls you up on battle weeks (refusal costs standing). (The Raid order is A's T-318.)
@@ -208,7 +208,7 @@ Files: js/career/fight.js, js/data/war.js, js/ui/career-panels.js (`clashPanel`)
 Do not: add a pop-up beyond the existing battle card.
 Accept: tests — a member is called up on a battle week of their unit; a refused call-up costs standing.
 QA: career run → a call-up week.
-Result:
+Result: `Fight.calledFor` (your club's unit on the week's border) / `Fight.refuse` (−8 standing with your faction, diary line) on stay-away (clashEnd), watching, or fighting for the other side; WAR_CALL in js/data/war.js (the call in wei / wu / shu voices); clashPanel: Call-up + Refuse rows first, your side's Fight button is the ink primary — no new pop-up. Test: called for Harbor's battle, not Fort's; stay-away −8; answering costs nothing extra; free agents never called. QA: call-up week card screenshot fine.
 
 ### [ ] T-317: Borders on the map — lines, heat, banners
 Agent: B

@@ -225,6 +225,7 @@ const Fight = {
     Rank.settle(run, win ? side : foe);
     Rank.meet(run, m);
     out.push(City.repBump(run, side, win ? CLASH.win : CLASH.lose), City.repBump(run, foe, CLASH.other), Run.bump(run, 'sta', -CLASH.sta));
+    if (Fight.calledFor(run) === foe) out.push(Fight.refuse(run)); // called up by the other side
     if (win) out.push(Run.bump(run, 'fans', Math.round(CLASH.fans * gmul)));
     else Fight.lose(run, `${REGIONS[foe].name} crew`, margin, null, out);
     run.plays.k += s.k;
@@ -251,12 +252,29 @@ const Fight = {
   clashEnd(run) {
     const c = Fight.clashSite(run);
     if (!c) return '';
+    const no = Fight.calledFor(run) ? Fight.refuse(run) : ''; // called up and stayed away
     run.clash.done = true;
     const w = Front.sim(run, c.a, c.b, run.clash.att),
       l = w === c.a ? c.b : c.a,
       s = Front.result(run, w, l);
     Rank.settle(run, w);
-    return `Street battle: ${REGIONS[w].name} beat ${REGIONS[l].name}${s ? ` — ${s}` : ''}.`;
+    return `Street battle: ${REGIONS[w].name} beat ${REGIONS[l].name}${s ? ` — ${s}` : ''}.${no ? ` ${no}` : ''}`;
+  },
+  /**
+   * This week's call-up (spec §4.34, T-316): the region your club fights for in this week's street battle (its war unit is on
+   * that border), or null — free agents, battles elsewhere, a battle already fought.
+   */
+  calledFor(run) {
+    const c = run.clash,
+      U = c && Front.clash(run),
+      u = run.team != null && War.ofClub(run.team);
+    if (!U || !u) return null;
+    return u === U.ua ? U.a : u === U.ub ? U.b : null;
+  },
+  /** A refused call-up: standing WAR_CALL.refuse with your club's faction and a diary note. Returns the label. */
+  refuse(run) {
+    const r = FACTIONS[run.team].region;
+    return `${WAR_CALL.refused} ${City.repBump(run, r, WAR_CALL.refuse)}`;
   },
   /** Why you can't fight or challenge now ('' if you can): an injury keeps you off the street (spec §4.15). */
   ban: run => (run.injury ? 'Injured — rest first' : City.fence(run)), // (battles and challenges are never on campus)
@@ -365,6 +383,7 @@ const Fight = {
     run.clash.done = true;
     const vs = `${REGIONS[c.a].name} vs ${REGIONS[c.b].name}`;
     if (!side) {
+      if (Fight.calledFor(run)) out.push(Fight.refuse(run)); // watching is not answering the call
       for (const t of run.teams) if ([c.a, c.b].includes(FACTIONS[t.i].region)) (run.scout || (run.scout = {}))[t.i] = run.week;
       const w = Front.sim(run, c.a, c.b, run.clash.att),
         s = Front.result(run, w, w === c.a ? c.b : c.a);

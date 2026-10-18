@@ -199,3 +199,35 @@ test('war: the overthrow — Broken only, your match at its HQ, a loss rallies i
   eq(r2.war.ot.fort, 6, 'the AI challenged Fort');
   assert(h.War.fallen(r2, 'fort') || h.War.str(r2, 'fort') >= 25, 'destroyed or rallied');
 });
+
+test('war: call-ups — a member is called up on a battle week of their unit; refusing costs standing (T-316)', () => {
+  const [g, run] = mkRun(39),
+    harbor = g.WAR.units.harbor.clubs[0];
+  sign(g, run, harbor);
+  const e = g.War.edges(run, 'harbor', 'iron')[0],
+    on = (att, def, tile, from) => (run.clash = { tile, from, att, def, seen: false, done: false });
+  on('wu', 'wei', e.tile, e.from); // Harbor raids Iron
+  eq(g.Fight.calledFor(run), 'wu', 'called up for Wu');
+  const f = g.War.edges(run, 'fort', 'iron')[0];
+  on('wu', 'wei', f.tile, f.from); // Fort raids Iron: not your unit
+  eq(g.Fight.calledFor(run), null, 'another unit’s battle: no call');
+  on('wu', 'wei', e.tile, e.from);
+  const r0 = g.City.rep(run, 'wu'),
+    line = g.Fight.clashEnd(run);
+  eq(g.City.rep(run, 'wu'), r0 + g.WAR_CALL.refuse, 'stayed away: standing −8');
+  assert(/call-up/.test(line), 'the diary says so: ' + line);
+  // answered: fighting for your side costs nothing extra
+  on('wu', 'wei', e.tile, e.from);
+  run.days = 7;
+  run.injury = null;
+  run.lastFight = null;
+  run.pos = g.CITY.hq[2].slice();
+  const fx = g.Fight.clash(run, 'wu'),
+    m = g.newMatch(fx.a, fx.b, false);
+  fx.setup(m);
+  while (!m.over) g.playRally(m);
+  const r1 = g.City.rep(run, 'wu');
+  fx.onFinish(m);
+  eq(g.City.rep(run, 'wu'), g.clamp(r1 + (m.winner === 0 ? g.CLASH.win : g.CLASH.lose), -100, 100), 'answered: only the battle’s own standing');
+  assert(g.Fight.calledFor(g.Run.create(g.Run.draft(), { role: 'S', name: 'Free' })) === null, 'a free agent is never called up');
+});

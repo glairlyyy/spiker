@@ -196,14 +196,17 @@ function clashPanel(run) {
         ['', border(foe, s)]
       ])}</div>`,
     sim = !!CW.clashSim,
+    call = Fight.calledFor(run), // your club calls you up (spec §4.34): its side's button is the primary
     fight = s =>
-      `<button class="btn" onclick="mapClash('${s}', CW.clashSim)" ${late || ban ? `disabled ${tip(ban || late)}` : tip(`Injury ~${risk(s === c.a ? c.b : c.a)}%. A real match with their crew: XP, techniques and a grade. A loss costs ${LOSS.sta} more stamina and mood.`)}>${chip(REGIONS[s])}Fight for ${short(s)}${sim ? ' ⏭' : ''}</button>`;
+      `<button class="btn ${s === call && !late && !ban ? 'hot' : ''}" onclick="mapClash('${s}', CW.clashSim)" ${late || ban ? `disabled ${tip(ban || late)}` : tip(`Injury ~${risk(s === c.a ? c.b : c.a)}%. A real match with their crew: XP, techniques and a grade. A loss costs ${LOSS.sta} more stamina and mood.`)}>${chip(REGIONS[s])}Fight for ${short(s)}${sim ? ' ⏭' : ''}</button>`;
   return placeCard({
     region: null,
     kind: 'Street battle',
     title: `⚔ ${esc(c.name[0].toUpperCase() + c.name.slice(1))}`,
     flavour: "Crews from both sides are settling it on the street this week. If nobody joins, it is settled at the week's end.",
     body: `${kv([
+      call ? ['Call-up', `<span ${tip(WAR_CALL.lines[call])}>${esc(WAR_CALL.lines[call])}</span>`, 'wa'] : null,
+      call ? ['Refuse', `${term('standing', WAR_CALL.refuse)} ${short(call)} <span class="mute">— stay away, watch, or fight for ${short(call === c.a ? c.b : c.a)}</span>`, 'dn'] : null,
       ['Attacker', side(att)],
       ['Defender', side(def)],
       ['Border', clashBorder(run, att, def)],
