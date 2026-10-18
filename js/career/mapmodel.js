@@ -480,7 +480,7 @@ const MapModel = {
         at,
         icon: s.icon,
         badge: mates || '',
-        title: `${s.name}${s.train ? ` — ${TRAININGS[s.train].name} training` : ''}`,
+        title: `${s.name}${s.kit ? ` — ${s.kit.map(t => KITS[t].name).join(', ')}` : ''}`,
         flags: {
           off: !!City.noTime(run, City.cost(run, id)),
           far: City.trip(run, at) >= 2,

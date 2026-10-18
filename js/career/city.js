@@ -26,8 +26,24 @@ const City = {
   region: (run, id) => Front.owner(run, id) || (HOUSING[run.housing] || HOUSING.studio).region || 'open',
   /** Map position of a place (home moves with your housing). */
   at: (run, id) => (SPOTS[id].at ? SPOTS[id].at : HOME_AT[run.housing] || HOME_AT.studio),
-  /** The training places for a key. */
+  /** The training places for a key (their lead training). */
   spotsFor: key => Object.keys(SPOTS).filter(id => SPOTS[id].train === key),
+  /** Places that offer Stretch without a kit (spec §4.33: home, the grounds — and every map point, City.pointCan). */
+  STRETCH_AT: ['home', 'park'],
+  /** The day orders at place id (spec §4.33): its kit's, then Stretch; [] where there are none. */
+  orders(id) {
+    const s = SPOTS[id];
+    if (!s) return [];
+    const o = s.kit ? [...new Set(s.kit.flatMap(t => KITS[t].orders))] : [];
+    return s.kit || City.STRETCH_AT.includes(id) ? [...o, 'stretch'] : o;
+  },
+  /** A place's lead order: its first drill (the card's primary), else its first order; null without any. */
+  lead(id) {
+    const o = City.orders(id);
+    return o.find(k => DAY_ORDERS[k].kind === 'drill') || o[0] || null;
+  },
+  /** The order a day at place id runs for option `opt` (an order offered there; a kit place without one: its lead drill), else null. */
+  orderOf: (id, opt) => (DAY_ORDERS[opt] && City.orders(id).includes(opt) ? opt : SPOTS[id] && SPOTS[id].kit && !DAY_ORDERS[opt] ? City.lead(id) : null),
   /** Your faction's region (null while a free agent). */
   myRegion: run => (run.team != null && FACTIONS[run.team] ? FACTIONS[run.team].region : null),
   /** Home-turf bonus at a place: it lies in your faction's region. */
@@ -62,12 +78,13 @@ const City = {
     const Q = (run.spotQ && run.spotQ[id]) || { q: (REGIONS[SPOTS[id].region] || REGIONS.open).q, tag: '', known: true };
     return Object.assign({}, Q, { q: Math.round(Q.q * Front.qMul(run, City.region(run, id)) * 100) / 100 });
   },
-  /** Money for a session / outing / hotel night at a place (0 at home and in the park). */
-  price(run, id) {
+  /** Money for a session / outing / hotel night at a place (0 at home and in the park); a kit place: the order's price (default: its lead drill). */
+  price(run, id, oid) {
     const s = SPOTS[id],
       r = City.region(run, id),
       p = ((REGIONS[r] || REGIONS.open).price || 1) * Front.priceMul(run, r);
-    if (s.train) return Math.round(TRAIN_FEE * p);
+    if (DAY_ORDERS[oid]) return Math.round(TRAIN_FEE * (DAY_ORDERS[oid].price || 0) * p);
+    if (s.kit) return Math.round(TRAIN_FEE * (DAY_ORDERS[City.lead(id)].price || 0) * p);
     if (s.hotel) return Math.round(HOTEL.price * p);
     return s.cost ? Math.round(s.cost * p) : 0;
   },
@@ -149,10 +166,11 @@ const City = {
       ? 'Week 1 — the campus first (Fern: learn the routine)'
       : '',
   outside: (run, p) => !!City.fence(run) && City.regionAt(p) !== 'open',
-  /** Can you do this now? { ok, why }. */
+  /** Can you do this now? { ok, why }. mate: a teammate (dinner), a secret place's choice, or a day order (spec §4.33). */
   can(run, id, mate) {
     const s = SPOTS[id];
     if (!s) return { ok: false, why: 'unknown place' };
+    if (DAY_ORDERS[mate] && !City.orders(id).includes(mate)) return { ok: false, why: 'not done here' };
     if (s.secret && !Secret.known(run, id)) return { ok: false, why: 'unknown place' };
     if (run.event) return { ok: false, why: 'answer the event first' };
     if (s.at && City.outside(run, s.at)) return { ok: false, why: City.fence(run) };
@@ -160,34 +178,57 @@ const City = {
     if (!acc.ok) return acc;
     const late = City.noTime(run, City.cost(run, id));
     if (late) return { ok: false, why: late };
-    const cost = City.price(run, id);
+    const oid = City.orderOf(id, mate),
+      cost = City.price(run, id, oid);
     if (cost && run.money < cost) return { ok: false, why: `needs $${cost}` };
+    if (oid && DAY_ORDERS[oid].kind === 'work' && run.injury) return { ok: false, why: 'injured — no work until it heals' };
     if (s.act === 'ramen' && !Run.mates(run).some(p => p.id === mate)) return { ok: false, why: 'pick a teammate' };
     const sw = Secret.acts.includes(s.act) ? Secret.why(run, id, mate) : ''; // a secret place's own rule (mate: the Lighthouse's choice)
     if (sw) return { ok: false, why: sw };
     return { ok: true, why: '' };
   },
-  /** A day at a place (after the trip there): train, rest, relax or an outing. Returns the diary line. */
+  /** A day at a place (after the trip there): a day order (spec §4.33), rest, relax or an outing. Returns the diary line. */
   day(run, id, hard, mate) {
     if (!City.can(run, id, mate).ok) return '';
+    const oid = City.orderOf(id, mate);
+    if (oid) return City.orderDay(run, id, oid, hard);
     if (['ramen', 'arcade', 'street'].includes(SPOTS[id].act)) return City.outing(run, id, mate);
     if (Study.acts.includes(SPOTS[id].act)) return Study.day(run, id); // the tutor / a bookstore (T-230)
     if (Secret.acts.includes(SPOTS[id].act)) return Secret.day(run, id, mate); // a secret place (spec §4.31)
     const s = SPOTS[id],
-      cost = City.price(run, id),
-      out = [];
+      cost = City.price(run, id);
     let line;
-    if (s.train) {
-      run.money -= cost;
-      const Q = City.quality(run, id);
-      line = Training.train(run, s.train, hard, City.mul(run, id) * DAY_GAIN, (s.sand ? SAND_SP : 1) * DAY_GAIN);
-      if (!Q.known && run.spotQ && run.spotQ[id]) run.spotQ[id].known = true; // quality is never shown (owner, T-172); it still scales EXP
-      line = `${line} (−$${cost})${out.length ? ' · ' + out.join('; ') : ''}`;
-    } else if (s.act === 'rest') {
+    if (s.act === 'rest') {
       if (s.hotel) run.money -= cost;
       line = `${s.hotel ? `${s.name} (−$${cost}): ` : ''}${Training.rest(run, s.hotel ? HOTEL.rest : null)}`;
     } else line = Training.recreation(run);
     return City.arrive(run, id) + line;
+  },
+  /** A day order at place id (callers checked City.can): pay its price, run it (Training.order); the diary line. */
+  orderDay(run, id, oid, hard) {
+    const s = SPOTS[id],
+      cost = City.price(run, id, oid),
+      trip = City.arrive(run, id, oid);
+    run.money -= cost;
+    const line = Training.order(run, oid, id, hard, (s.kit ? City.mul(run, id) : 1) * DAY_GAIN, (s.sand ? SAND_SP : 1) * DAY_GAIN);
+    if (s.kit && run.spotQ && run.spotQ[id]) run.spotQ[id].known = true; // quality is never shown (owner, T-172); it still scales EXP
+    return `${trip}${line}${cost ? ` (−$${cost})` : ''}`;
+  },
+  /** A day order at map point p (spec §4.33: Stretch anywhere): { ok, why } like City.can, the days = the trip + one. */
+  pointCan(run, p, oid = 'stretch') {
+    if (!DAY_ORDERS[oid] || oid !== 'stretch') return { ok: false, why: 'not done here' };
+    if (run.event) return { ok: false, why: 'answer the event first' };
+    if (!City.onLand(p)) return { ok: false, why: 'in the sea' };
+    if (City.outside(run, p)) return { ok: false, why: City.fence(run) };
+    const late = City.noTime(run, City.trip(run, p) + 1);
+    return late ? { ok: false, why: late } : { ok: true, why: '' };
+  },
+  /** Go to map point p and spend a day there on order oid (Stretch). Returns the diary line ('' if it can't). */
+  pointDay(run, p, oid = 'stretch') {
+    if (!City.pointCan(run, p, oid).ok) return '';
+    const O = DAY_ORDERS[oid],
+      trip = City.go(run, p, { k: 'train', label: O.name, stat: O.main[0], at: REGIONS[City.regionAt(p)].name });
+    return `${trip}${Training.order(run, oid, null, false, DAY_GAIN, DAY_GAIN)}`;
   },
   /**
    * Go to point p, spending the trip + a day there; returns the trip's diary prefix. `what` = the day's entry for the
@@ -206,20 +247,21 @@ const City = {
     for (let i = 0; i < trips; i++) L.push({ k: 'trip', label: 'Trip' });
     if (what) L.push(what);
   },
-  /** The day-track entry for a day at place id. */
-  dayWhat(id) {
+  /** The day-track entry for a day at place id (an order: `oid`, or a kit place's lead drill). */
+  dayWhat(id, oid) {
     const s = SPOTS[id];
     if (!s) return { k: 'day', label: 'Out' };
-    if (s.train) {
-      const T = TRAININGS[s.train];
-      return { k: 'train', label: T.more ? T.name : STATNAME[T.main[0]], stat: T.main[0], at: s.name };
+    const o = City.orderOf(id, oid);
+    if (o) {
+      const O = DAY_ORDERS[o];
+      return { k: 'train', label: O.name, stat: O.main[0], at: s.name };
     }
     if (s.act === 'rest') return { k: 'rest', label: 'Rest', at: s.name };
     if (s.secret) return { k: s.act === 'onsen' ? 'rest' : 'outing', label: SECRET_DAY[s.act] || 'Out', at: s.name };
     if (['ramen', 'arcade', 'street'].includes(s.act)) return { k: 'outing', label: s.act === 'street' ? 'Hustle' : 'Outing', at: s.name };
     return { k: 'rest', label: 'Relax', at: s.name };
   },
-  arrive: (run, id) => City.go(run, City.at(run, id), City.dayWhat(id)),
+  arrive: (run, id, oid) => City.go(run, City.at(run, id), City.dayWhat(id, oid)),
   /** An outing (dinner, a night out, street hustle): returns the diary line. */
   outing(run, id, mate) {
     const s = SPOTS[id],

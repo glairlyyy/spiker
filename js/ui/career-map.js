@@ -126,11 +126,23 @@ function mapGo(id, mate) {
   const run = RUN;
   if (!SPOTS[id] || !City.can(run, id, mate).ok || CW.lock) return;
   const s = SPOTS[id],
-    before = s.train ? trainSnap(run, TRAININGS[s.train].main[0]) : null,
+    oid = City.orderOf(id, mate), // a day order (spec §4.33): a kit place's (its lead drill by default) or Stretch at home / the grounds
+    before = oid ? trainSnap(run, DAY_ORDERS[oid].main[0]) : null,
     line = City.day(run, id, CW.hard, mate);
   Run.log(run, line);
-  const fx = s.train ? trainFx(run, s, before, line) : null;
+  const fx = oid ? trainFx(run, s, before, line, oid) : null;
   mapAfter(run, fx);
+}
+/** Stretch at map point (x, y) (spec §4.33: anywhere): the trip + a day there. */
+function mapStretch(x, y) {
+  const run = RUN;
+  if (CW.lock || !City.pointCan(run, [x, y]).ok) return;
+  const before = trainSnap(run, DAY_ORDERS.stretch.main[0]),
+    line = City.pointDay(run, [x, y]);
+  if (!line) return;
+  Run.log(run, line);
+  CW.spot = null;
+  mapAfter(run, trainFx(run, { name: REGIONS[City.loc(run)].name }, before, line, 'stretch'));
 }
 /** After an action on the map: rules, save, render — then the action lock while you walk there (and a training cut-in). */
 function mapAfter(run, fx = null, res = null) {
@@ -161,7 +173,7 @@ function trainSnap(run, main) {
   };
 }
 /** The cut-in's content: outcome, title and the changes as rows (stat points, EXP toward the next point, costs). */
-function trainFx(run, s, a, line) {
+function trainFx(run, s, a, line, oid) {
   const b = trainSnap(run, a.main),
     rows = [],
     ok = !/ failed/.test(line);
@@ -182,7 +194,7 @@ function trainFx(run, s, a, line) {
   if (b.sta !== a.sta) rows.push([statI('sta', 18), 'Stamina', fmtDelta(b.sta - a.sta), 'cost']);
   if (b.money !== a.money) rows.push([statI('mon', 18), 'Money', fmtDelta(b.money - a.money, { pre: '$' }), 'cost']);
   if (b.mood !== a.mood) rows.push([statI('mood', 18), 'Mood', b.mood > a.mood ? '↑' : '↓', b.mood > a.mood ? 'up' : 'dn']);
-  return { ok, injured: b.injury && !a.injury, name: TRAININGS[s.train].name, place: s.name, rows, was: a };
+  return { ok, injured: b.injury && !a.injury, name: oid ? DAY_ORDERS[oid].name : TRAININGS[s.train].name, place: s.name, rows, was: a };
 }
 const LOCK = { min: 250, max: 20000, spin: 1100, show: 3200 }; // ms: wait for the walk to start · give up · spinner · result
 /**
@@ -262,9 +274,9 @@ function lockLayer() {
   if (L.phase === 'res') return `<div class="actlock dim res" id="actlock" role="dialog" aria-live="polite">${L.res}</div>`;
   const F = L.fx;
   if (L.phase === 'spin')
-    return `<div class="actlock dim" id="actlock" role="status" aria-live="polite"><div class="tfx"><i class="spin" aria-hidden="true"></i><b>${esc(F.name)} training</b><small class="mute">${esc(F.place)}</small></div></div>`;
+    return `<div class="actlock dim" id="actlock" role="status" aria-live="polite"><div class="tfx"><i class="spin" aria-hidden="true"></i><b>${esc(F.name)}</b><small class="mute">${esc(F.place)}</small></div></div>`;
   return `<div class="actlock dim" id="actlock" role="status" aria-live="polite" onclick="lockEnd()"><div class="tfx ${F.ok ? 'ok' : 'bad'}">
-    <span class="tfi" aria-hidden="true">${F.ok ? '✓' : '✕'}</span><b>${F.ok ? 'Training complete' : F.injured ? 'Training failed — injured' : 'Training failed'}</b>
+    <span class="tfi" aria-hidden="true">${F.ok ? '✓' : '✕'}</span><b>${F.ok ? `${esc(F.name)} — done` : F.injured ? `${esc(F.name)} failed — injured` : `${esc(F.name)} failed`}</b>
     ${F.rows.length ? `<div class="tfr">${F.rows.map(([ic, n, v, c, t]) => `<div ${t ? tip(t) : ''}>${ic}<span>${n}</span><b class="${c}">${v}</b></div>`).join('')}</div>` : ''}
     <small class="mute">Click or press Space</small></div></div>`;
 }

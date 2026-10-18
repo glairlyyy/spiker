@@ -206,7 +206,7 @@ function askMove(id, kind, at) {
   renderCareer();
 }
 /** The training cut-in's "before" for a session at place `at` (null if it isn't a training place). */
-const trainBefore = at => (at && SPOTS[at] && SPOTS[at].train ? trainSnap(RUN, TRAININGS[SPOTS[at].train].main[0]) : null);
+const trainBefore = at => (at && SPOTS[at] && SPOTS[at].kit ? trainSnap(RUN, DAY_ORDERS[City.lead(at)].main[0]) : null);
 /**
  * Training with a friend (owner, 2026-10-05): the People sheet closes, you walk to the place on the map with the hub locked,
  * they greet you in the dialogue box, then the usual training cut-in. Returns false when there is nothing to show.
@@ -219,7 +219,7 @@ function trainWithFriend(id, at, snap, line) {
   CW.peek = null;
   CW.spot = at;
   Run.save(RUN);
-  actLock(snap && s.train ? trainFx(RUN, s, snap, line || '') : null, { person: p, text: FRIEND_HI });
+  actLock(snap && s.kit ? trainFx(RUN, s, snap, line || '', City.lead(at)) : null, { person: p, text: FRIEND_HI });
   renderCareer();
   return true;
 }

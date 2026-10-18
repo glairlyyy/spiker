@@ -34,7 +34,7 @@ const PANELS = [
   [id => id.startsWith('hq'), (run, id) => hqPanel(run, +id.slice(2))],
   [id => id === 'clash', run => clashPanel(run)],
   [id => id.startsWith('venue:'), (run, id) => venuePanel(run, id.slice(6))],
-  [id => id.startsWith('pt:'), (run, id) => pointPanel(run, MapModel.ptOf(id))]
+  [id => id.startsWith('pt:'), (run, id) => pointCard(run, MapModel.ptOf(id))]
 ];
 function spotPanel(run, id) {
   if (!id) return `<p class="small mute">Pick a place on the map.</p>`;
@@ -55,9 +55,9 @@ function placePanel(run, id) {
       ? `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${trOk ? '' : `disabled ${tip(City.noTime(run, trip) || (City.outside(run, at) ? City.fence(run) : 'answer the event first'))}`}>Travel · ${trip}d</button>`
       : '',
     base = { region: City.region(run, sid), title: `${s.icon} ${esc(s.name)}`, after: placeDetails(sid, placeTags(run, sid, trip)) };
-  if (s.train) {
-    const T = trainSpot(run, sid, c);
-    return placeCard({ ...base, ...T, row: [T.go, travel].filter(Boolean) });
+  if (s.kit) {
+    const T = kitSpot(run, sid);
+    return placeCard({ ...base, ...T, row: [travel].filter(Boolean) });
   }
   if (s.act === 'ramen')
     return placeCard({
@@ -75,11 +75,13 @@ function placePanel(run, id) {
   const study = studyPanel(run, sid, base, travel); // the tutor / a bookstore (T-230)
   if (study) return study;
   if (s.secret) return secretPanel(run, sid, base, travel, days, cost);
-  const label = s.act === 'rest' ? 'Rest' : s.act === 'rec' ? 'Relax' : 'Go';
+  const label = s.act === 'rest' ? 'Rest' : s.act === 'rec' ? 'Relax' : 'Go',
+    stretch = City.orders(sid).length ? ordList(run, sid, false) : ''; // home and the grounds: Stretch (spec §4.33)
   return placeCard({
     ...base,
     kind: s.act === 'rest' ? 'Rest' : s.act === 'street' ? 'Street' : 'Place',
     flavour: s.desc,
+    after: stretch + base.after,
     tags:
       sid === 'home'
         ? [ptag(`${esc(HOUSING[run.housing].name)} · rest ×${World.restMul(run)}`, 'Your home: how much a rest day restores')]
@@ -237,26 +239,58 @@ function clashPanel(run) {
   });
 }
 
-/** A training place's parts for placeCard: kind, tags, flavour, gain rows, options (Normal / Hard, teammates), the Train button. */
-function trainSpot(run, id, c) {
+/** The session's XP ÷ what a point costs now ≈ points this session (owner, 2026-10-03: a rating, not "+1 in n"): '+++' 3+ · '++' 1+ · '+' ¼+ · '·' less. */
+function xpRate(run, k, xp) {
+  if (k !== 'wit' && Training.level(Run.you(run), k) >= Training.cap(run)) return { t: 'at cap', cls: 'mute', n: Infinity };
+  const pr = Training.progress(run, k),
+    r = xp / Math.max(1, pr.need);
+  return { t: r >= 3 ? '+++' : r >= 1 ? '++' : r >= 0.25 ? '+' : '·', cls: r >= 1 ? 'up' : r >= 0.25 ? '' : 'mute', n: Math.max(1, Math.ceil((pr.need - pr.have) / Math.max(0.01, xp))) };
+}
+/** One day's gain multiplier at a place as the card shows it: the advertised quality × home turf × DAY_GAIN (quality stays hidden, §4.3). */
+function dayX(run, id) {
+  const s = SPOTS[id];
+  if (!s.kit) return DAY_GAIN;
+  const Q = City.quality(run, id);
+  return (Q.known ? Q.q : (REGIONS[s.region] || REGIONS.open).q) * (1 + City.turf(run, id)) * DAY_GAIN;
+}
+const ORD_KIND = { work: 'Work', stretch: 'Free' };
+/**
+ * A place's day orders (spec §4.33), each one button: name, then cost → result ("1d · −20 · $12 → ▲ Str +++ · ∿ Flex +"). The
+ * lead drill is the card's one ink primary (`lead`); an order it can't do now shows why (the gap) on hover.
+ */
+function ordList(run, id, lead = true) {
+  const hard = CW.hard && !run.injury,
+    x = dayX(run, id),
+    days = City.cost(run, id),
+    first = lead ? City.lead(id) : null;
+  return `<div class="ords">${City.orders(id)
+    .map(oid => {
+      const O = DAY_ORDERS[oid],
+        pv = Training.preview(run, oid, hard, x, id),
+        c = City.can(run, id, oid),
+        price = City.price(run, id, oid);
+      return ordBtn(run, O, pv, c, `mapGo('${id}','${oid}')`, days, price, oid === first && c.ok);
+    })
+    .join('')}</div>`;
+}
+/** One order's button (cost → result on the control). */
+function ordBtn(run, O, pv, c, onclick, days, price, hot) {
+  const res = [pv.main, pv.side, ...pv.more]
+      .map(([k, , xp]) => {
+        const r = xpRate(run, k, xp);
+        return `<span class="${hot ? '' : r.cls}" ${tip(r.n === Infinity ? `${Body.name(k)}: at the cap this season — matches only` : r.n <= 1 ? `${Body.name(k)}: next point this session` : `${Body.name(k)}: next point in ${r.n} sessions`)}>${Body.glyph(k)} ${BODY.short[k] || 'Wit'} ${r.t}</span>`;
+      })
+      .join(' · '),
+    cost = [term('day', String(days), 'cost'), term('sta', -pv.sta, 'cost'), price ? `$${price}` : 'free'].join(' ');
+  return `<button class="btn ord ${hot ? 'hot' : ''}" onclick="${onclick}" ${c.ok ? '' : `disabled ${tip(c.why)}`}><b class="onm">${esc(O.name)}${ORD_KIND[O.kind] ? ` <small>${ORD_KIND[O.kind]}</small>` : ''}</b><span class="oln">${cost} → ${res}${pv.pay ? ` · <b>+$${pv.pay}</b>` : ''}</span></button>`;
+}
+/** A kit place's parts for placeCard (spec §4.33): kind, tags, the orders first, then options (Normal / Hard), who's on the floor, level. */
+function kitSpot(run, id) {
   const s = SPOTS[id],
-    key = s.train,
     T = Run.myTeam(run),
     hard = CW.hard && !run.injury,
-    Q = City.quality(run, id),
-    x = (Q.known ? Q.q : (REGIONS[s.region] || REGIONS.open).q) * (1 + City.turf(run, id)) * DAY_GAIN, // one day's session at the advertised quality (City.day trains × DAY_GAIN)
-    pv = Training.preview(run, key, hard, x),
+    pv = Training.preview(run, City.lead(id), hard, dayX(run, id), id),
     turf = City.turf(run, id),
-    gain = ([k, , xp], role) => {
-      if (STATK.includes(k) && Run.you(run)[k] >= Training.cap(run))
-        return `<div class="pgain"><span class="pi">${statI(statKey(k), 20)}</span><span>${STATNAME[k]}${role}</span><b class="mute">at ${Training.cap(run)} — matches only</b></div>`;
-      // the session's XP ÷ what a point of this stat costs now ≈ points this session (owner, 2026-10-03: a rating, not "+1 in n"); the count on hover
-      const pr = Training.progress(run, k),
-        n = Math.max(1, Math.ceil((pr.need - pr.have) / Math.max(0.01, xp))),
-        r = xp / Math.max(1, pr.need),
-        [label, cls] = r >= 3 ? ['EXP +++', 'up'] : r >= 1 ? ['EXP ++', 'up'] : r >= 0.25 ? ['EXP +', ''] : ['Almost no EXP', 'mute']; // ≈ points this session: 3+ · 1+ · ¼+ · less
-      return `<div class="pgain"><span class="pi">${statI(statKey(k), 20)}</span><span>${STATNAME[k]}${role}</span><b class="${cls}" ${tip(n <= 1 ? 'Next point this session' : `Next point in ${n} sessions here`)}>${label}</b></div>`;
-    },
     mates = pv.mates.filter(pid => squadOf(T).some(p => p.id === pid)), // a teammate who has since left
     seg = `<div class="seg"><button class="btn ${hard ? '' : 'on'}" onclick="CW.hard=false;mapPick(CW.spot)">Normal</button><button class="btn ${hard ? 'on' : ''}" ${
       run.injury
@@ -272,14 +306,15 @@ function trainSpot(run, id, c) {
           .join('')}</div>`
       : '';
   return {
-    kind: 'Training',
+    kind: 'Facility',
     tags: [
       ptag(
         `Lv ${pv.lvl}`,
         pv.fixed
           ? 'Facility level: fixed — the Academy keeps this gym basic.'
-          : `Facility level: grows with use${pv.next != null ? ` — ${pv.next} more sessions to Lv ${pv.lvl + 1}` : ' — top level'}.`
+          : `Facility level: grows with every day you work out here${pv.next != null ? ` — ${pv.next} more to Lv ${pv.lvl + 1}` : ' — top level'}.`
       ),
+      ptag(esc(s.kit.map(t => KITS[t].name).join(' · ')), 'The kit: what you can do here'),
       s.sand ? ptag(`Sand ×${SAND_SP} pts`, `Sand training builds technique: skill points ×${SAND_SP}`) : '',
       pv.fail // a risk: stays visible (§10.8 never hides penalties)
         ? ptag(
@@ -298,13 +333,18 @@ function trainSpot(run, id, c) {
       ].filter(Boolean)
     ),
     flavour: s.desc || '',
-    // a little of every stat (the Academy Gym) lists them all with no main / side
-    body: pv.more.length
-      ? [pv.main, pv.side, ...pv.more].map(r => gain(r, '')).join('')
-      : gain(pv.main, ' <i class="mute">· main</i>') + gain(pv.side, ' <i class="mute">· side</i>'),
-    opts: seg + chips,
-    go: `<button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${id}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}>Train ${TRAININGS[key].name} · ${term('day', String(City.cost(run, id)), 'cost')} ${term('sta', -pv.sta, 'cost')} $${City.price(run, id)}</button>`
+    body: ordList(run, id),
+    opts: seg + chips
   };
+}
+/** A map point's card (B's pointPanel) + Stretch there (spec §4.33: the island is the gym): the order block goes inside the card. */
+function pointCard(run, p) {
+  const html = pointPanel(run, p),
+    O = DAY_ORDERS.stretch,
+    pv = Training.preview(run, 'stretch', false, DAY_GAIN, null),
+    blk = `<div class="ords">${ordBtn(run, O, pv, City.pointCan(run, p), `mapStretch(${p[0]},${p[1]})`, City.trip(run, p) + 1, 0, false)}</div>`,
+    i = html.lastIndexOf('</div>');
+  return i < 0 ? html : html.slice(0, i) + blk + html.slice(i);
 }
 
 /** The challenge row of a club's card: `⚔ Challenge {verdict} ›`; its peek holds accepts / why / crew / injury / stake and Challenge / Sim ⏭. */

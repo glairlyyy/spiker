@@ -1829,3 +1829,30 @@
 .tc {
   color: var(--c);
 }
+/* day orders on a place card (spec §4.33): one button each — name, then cost → result; the lead drill is the ink primary */
+.plc .ords {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+.plc .btn.ord {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 13px;
+}
+.plc .btn.ord .onm small {
+  margin-left: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.75;
+}
+.plc .btn.ord .oln {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.plc .btn.ord .up {
+  color: var(--good);
+}

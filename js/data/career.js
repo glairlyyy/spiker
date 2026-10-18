@@ -82,6 +82,60 @@ const TRAININGS = {
     lv: 1
   }
 };
+/**
+ * Day orders (spec §4.33; DAY_ORDERS — `ORDERS` is the match engine's role orders): what you can do on a day at a place, brought by its kit (KITS) — Stretch anywhere. main / side / more:
+ * body gains like TRAININGS (wit in wit units); sta: stamina; price: × TRAIN_FEE × the region's price (0 = free); pay: money a
+ * Work order earns; train: the training it stands for (sponsor perks, the floor); kind: 'drill' (fast, costs) | 'work' (pays,
+ * slower) | 'stretch' (free, never fails). The day track names the order.
+ */
+const DAY_ORDERS = {
+  heavy: { name: 'Heavy sets', kind: 'drill', main: ['str', 7], side: ['flex', 2], sta: 20, price: 1.5, train: 'power' },
+  plyo: { name: 'Box jumps', kind: 'drill', main: ['agi', 7], side: ['str', 2], sta: 20, price: 1.5, train: 'jump' },
+  sprints: { name: 'Sprint intervals', kind: 'drill', main: ['end', 6], side: ['agi', 3], sta: 20, price: 1.5, train: 'speed' },
+  mobility: { name: 'Mobility class', kind: 'drill', main: ['flex', 7], side: ['agi', 2], sta: 12, price: 1.5, train: 'def' },
+  sandDrill: { name: 'Sand drills', kind: 'drill', main: ['agi', 5], side: ['flex', 3], more: [['end', 1]], sta: 20, price: 1.5, train: 'def' },
+  dunes: { name: 'Dune runs', kind: 'drill', main: ['end', 5], side: ['agi', 4], sta: 22, price: 1, train: 'speed' },
+  swim: { name: 'Laps', kind: 'drill', main: ['end', 5], side: ['flex', 4], sta: 15, price: 1.5, train: 'speed' },
+  stepRuns: { name: 'Step runs', kind: 'drill', main: ['str', 5], side: ['agi', 4], sta: 22, price: 1, train: 'jump' },
+  trailRun: { name: 'Trail run', kind: 'drill', main: ['end', 6], side: ['str', 3], sta: 22, price: 1, train: 'speed' },
+  film: { name: 'Film study', kind: 'drill', main: ['wit', 0.06], side: ['flex', 1], sta: 5, price: 1.5, train: 'wit' },
+  books: { name: 'The old books', kind: 'drill', main: ['wit', 0.06], side: ['flex', 1], sta: 5, price: 1, train: 'wit' },
+  allRound: {
+    name: 'All-round',
+    kind: 'drill',
+    main: ['str', 2],
+    side: ['flex', 2],
+    more: [
+      ['agi', 2],
+      ['end', 2],
+      ['wit', 0.025]
+    ],
+    sta: 15,
+    price: 1,
+    train: 'all'
+  },
+  haul: { name: 'Haul crates', kind: 'work', main: ['str', 4], side: ['end', 2], sta: 25, pay: 35, train: 'power' },
+  lifeguard: { name: 'Lifeguard shift', kind: 'work', main: ['end', 3], side: ['agi', 2], sta: 18, pay: 30, train: 'def' },
+  chores: { name: 'Floor duty', kind: 'work', main: ['end', 2], side: ['flex', 2], sta: 15, pay: 20, train: 'def' },
+  stretch: { name: 'Stretch', kind: 'stretch', main: ['flex', 4], side: ['agi', 1], sta: 5, train: 'def' }
+};
+/** A place's kit (SPOTS[id].kit, equipment and ground): each tag brings its orders; `train` = the lead training of a place it leads. */
+const KITS = {
+  weights: { name: 'Weights', train: 'power', orders: ['heavy'] },
+  crates: { name: 'Crates', train: 'power', orders: ['haul'] },
+  plyo: { name: 'Plyo boxes', train: 'jump', orders: ['plyo'] },
+  steps: { name: 'Steps', train: 'jump', orders: ['stepRuns'] },
+  track: { name: 'Track', train: 'speed', orders: ['sprints'] },
+  dunes: { name: 'Dunes', train: 'speed', orders: ['dunes'] },
+  trail: { name: 'Trail', train: 'speed', orders: ['trailRun'] },
+  water: { name: 'Water', train: 'speed', orders: ['swim'] },
+  sand: { name: 'Sand', train: 'def', orders: ['sandDrill', 'lifeguard'] },
+  mats: { name: 'Mats', train: 'def', orders: ['mobility'] },
+  chores: { name: 'Floors', train: 'def', orders: ['chores'] },
+  film: { name: 'Film', train: 'wit', orders: ['film'] },
+  books: { name: 'Books', train: 'wit', orders: ['books'] },
+  gym: { name: 'Basic gym', train: 'all', orders: ['allRound'] }
+};
 /** The trainings that level up with use and that teammates drill at (the fixed-level Academy Gym is not one). */
 const TRAINK = Object.keys(TRAININGS).filter(k => !TRAININGS[k].lv);
 const ROLE_NAME = { S: 'Setter', MB: 'Middle blocker', WS: 'Wing spiker' };

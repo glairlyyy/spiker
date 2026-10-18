@@ -1514,7 +1514,8 @@ test('career: day track — a trip then the training day, cleared at the week st
   assert(far, 'a training place one trip day away');
   g.City.day(run, far, false);
   eq(run.dayLog.map(e => e.k).join(','), 'trip,train', 'trip first, then the training day');
-  eq(run.dayLog[1].stat, g.TRAININGS[g.SPOTS[far].train].main[0], 'the day names the stat trained');
+  eq(run.dayLog[1].stat, g.DAY_ORDERS[g.City.lead(far)].main[0], 'the day names the stat trained (the lead drill: T-308)');
+  eq(run.dayLog[1].label, g.DAY_ORDERS[g.City.lead(far)].name, '…and the order');
   eq(g.WEEK_DAYS - g.City.days(run), run.dayLog.length, 'one entry per day spent');
   g.Run.endWeek(run);
   eq(run.dayLog.length, 0, 'a new week starts empty');

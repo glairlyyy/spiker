@@ -71,7 +71,7 @@ Accept:
 QA: career run → Me sheet (body bars, swing gauge).
 Result: js/career/body.js (Body.court / sync / swing / depth; `you.edge` keeps direct court changes such as the Hermit's +2), BODY in data/career.js, RUN_VERSION 20 (v19 dropped); trainings re-keyed (Power → Str+Flex, Def → Flex+Agi, Speed → End+Agi, Jump → Agi+Str); events / injuries on a court key land on BODY.of; Me sheet body + court + swing gauge; career-map.js trainFx shows body rows (else "undefined EXP"). career -- 20 both: good Y2 95.2 (Y1 77.5), casual Y2 88.2 (Y1 75.4) — 0.2 over the ≤ 88 target (bot casual keeps the old court order's trainings); T-312 tunes. career-match.js result card (unowned) still lists court skills (progress reads the body stat). npm test 155/155, lint, test:ui 13/13. CLAUDE.md's "RUN_VERSION 19" line is the spec chat's to bump.
 
-### [ ] T-308: Facilities = kit; day orders on the place card (Drill, Work, Stretch)
+### [x] T-308: Facilities = kit; day orders on the place card (Drill, Work, Stretch)
 Agent: A
 Spec: §4.33          Goldens: unchanged          Save: no change (beyond T-307's v20; `run.uses` keyed by place)
 Goal: every SPOTS place lists its kit; the place card offers the orders its kit brings, each "cost → result"; Work pays;
@@ -92,7 +92,7 @@ Accept:
 - Each of the 17 training places offers ≥ 2 orders; Work pays at ≥ 4 places; Stretch from any point (tests).
 - Bot: money is no longer always > $600 at the Y1 Cup for casual (state it).
 QA: career run → three place cards (Harbor, Sand Courts, home) against the design system.
-Result:
+Result: KITS + DAY_ORDERS (data/career.js — `ORDERS` is taken by the engine's role orders); SPOTS `kit`, `train` derived from the first tag (B's dossier / NPC plans unchanged); 16 kit places (the task says 17: there are 16), each ≥ 2 orders; Work at 6 (Harbor, Stone Gym, Sand Courts, Dunes, Dojo, Academy Gym); Stretch at kit places, home, the grounds and any map point (City.pointDay; the point card = B's pointPanel + a Stretch row inserted by `pointCard`, pointPanel untouched); facility level per place (`run.uses[id]`; `Training.facility(run, trainingKey)` = its best place); `City.day(run, id, hard, oid)`, `mapGo(id, oid)`. Drills cost 1–1.5 × the old fee. Bot drills by body stat: casual money at the Y1 Cup $280 (under $600 in 20 / 20; was $857), Y2 89.3; good Y2 95.5. npm test 156/156, lint, test:ui 13/13 (+ order / Stretch checks); QA Harbor, Sand Courts, home cards.
 
 ### [ ] T-309: Run — trips train the route's ground
 Agent: A

@@ -471,6 +471,56 @@ test('career: map model life — mates, crews, battle, borders, no randoms', () 
   g.RNG.next = next0;
 });
 
+test('orders: facilities = kit — every training place ≥ 2 orders, Work pays at ≥ 4, Stretch anywhere; the level grows per place (T-308)', () => {
+  const g = load(78),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Kit' });
+  run.event = null;
+  run.mode.story = false;
+  const kitted = Object.keys(g.SPOTS).filter(id => g.SPOTS[id].kit);
+  eq(kitted.length, 16, 'the 16 training places carry a kit');
+  for (const id of kitted) {
+    const s = g.SPOTS[id];
+    assert(g.City.orders(id).length >= 2, `${id}: ${g.City.orders(id).join(',')}`);
+    assert(g.TRAININGS[s.train] && s.train === g.KITS[s.kit[0]].train, `${id} keeps its lead training (${s.train})`);
+    assert(g.DAY_ORDERS[g.City.lead(id)].kind === 'drill', `${id} leads with a drill`);
+  }
+  const work = kitted.filter(id => g.City.orders(id).some(o => g.DAY_ORDERS[o].kind === 'work'));
+  assert(work.length >= 4, `Work at ${work.join(', ')}`);
+  for (const id of ['home', 'park']) assert(g.City.orders(id).includes('stretch'), `Stretch at ${id}`);
+  for (const o of Object.values(g.DAY_ORDERS)) assert(o.kind !== 'work' || (o.pay > 0 && !o.price), `${o.name}: Work pays, costs nothing`);
+  // Work pays; a drill costs; Stretch is free and works at any point
+  run.money = 100;
+  run.sta = 100;
+  run.days = 7;
+  run.pos = g.City.at(run, 'harbor').slice();
+  const m0 = run.money,
+    you = g.Run.you(run),
+    str0 = you.body.str;
+  assert(g.City.day(run, 'harbor', false, 'haul'), 'hauling crates');
+  eq(run.money, m0 + g.DAY_ORDERS.haul.pay, 'Work pays');
+  assert(you.body.str > str0, 'and trains the body');
+  eq(run.uses.harbor, 1, 'the facility counts per place');
+  const m1 = run.money;
+  assert(g.City.day(run, 'harbor', false, 'heavy'), 'heavy sets');
+  eq(run.money, m1 - g.City.price(run, 'harbor', 'heavy'), 'a drill costs');
+  eq(run.uses.harbor, 2, 'any order there levels the place');
+  assert(!g.City.can(run, 'harbor', 'mobility').ok, 'no order the kit does not bring');
+  run.uses.harbor = 26;
+  eq(g.Training.facility(run, 'harbor'), 4, 'Lv 5 after 26 days at the place');
+  eq(g.Training.facility(run, 'stone'), 0, 'another weights place stays Lv 1');
+  eq(g.Training.facility(run, 'power'), 4, 'a training key reads its best place (the dossier)');
+  run.days = 7;
+  const p = g.City.at(run, 'trail'),
+    flex0 = you.body.flex,
+    d0 = g.City.days(run),
+    tr = g.City.trip(run, p);
+  assert(g.City.pointCan(run, p).ok, 'Stretch at a map point');
+  assert(g.City.pointDay(run, p), 'stretched up in the hills');
+  assert(you.body.flex > flex0 && g.City.days(run) === d0 - tr - 1, 'Flexibility up, the trip + a day spent');
+  eq(run.money, m1 - g.City.price(run, 'harbor', 'heavy'), 'Stretch is free');
+  assert(g.City.day(run, 'home', false, 'stretch') && run.dayLog[run.dayLog.length - 1].label === 'Stretch', 'Stretch at home');
+});
+
 test('career: island map — regions, prices, quality, far trips, outings, scouting, 7-day weeks, saved', () => {
   const g = load(77),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Mapper', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
@@ -486,8 +536,8 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   }
   for (const k of g.TRAINK) assert(g.City.spotsFor(k).length >= 2, `several places for ${k} training`);
   // prices follow the regions; Wei may be overhyped, Shu may be a gem, others as advertised
-  eq(g.City.price(run, 'weiPower'), g.TRAIN_FEE * 2, 'Wei costs double');
-  eq(g.City.price(run, 'stone'), g.TRAIN_FEE / 2, 'Shu costs half');
+  eq(g.City.price(run, 'weiPower'), Math.round(g.TRAIN_FEE * g.DAY_ORDERS.heavy.price * 2), 'Wei costs double (the lead drill, Heavy sets)');
+  eq(g.City.price(run, 'stone'), Math.round(g.TRAIN_FEE * g.DAY_ORDERS.heavy.price / 2), 'Shu costs half');
   for (const id of Object.keys(run.spotQ)) {
     const Q = run.spotQ[id],
       r = g.SPOTS[id].region;

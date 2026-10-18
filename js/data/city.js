@@ -187,36 +187,38 @@ const REVEAL_R = 170 * MAP_SCALE;
 
 /**
  * Places. Each takes a day (+ the trip there). act: what a non-training place does (rest, rec, or an outing: ramen,
- * arcade, street). train: the training key done there. region: see REGIONS (null = your home: goes with your housing).
- * cost: money for an outing (× the region's price). sand: technique training (SAND_SP).
+ * arcade, street). kit: its equipment and ground (KITS tags, spec §4.33) — each tag brings day orders; `train` (the lead
+ * training, read by NPC plans and the dossier) is derived from the first tag below. lv: a fixed facility level. region: see
+ * REGIONS (null = your home: goes with your housing). cost: money for an outing (× the region's price). sand: technique training (SAND_SP).
  */
 const SPOTS = {
   // Wei — the city: premium, pricey, maybe overhyped
-  weiPower: { name: 'Dynasty Strength Center', train: 'power', region: 'wei', at: [655, 315], icon: '🏋' },
-  weiSpeed: { name: 'Dome Sprint Lab', train: 'speed', region: 'wei', at: [705, 315], icon: '🏃' },
-  weiWit: { name: 'Academy Film Library', train: 'wit', region: 'wei', at: [655, 350], icon: '🎞' },
-  weiJump: { name: 'Skytower Plyo Gym', train: 'jump', region: 'wei', at: [705, 350], icon: '🏀' },
-  gloria: { name: 'St. Gloria Private Club', train: 'def', region: 'gloria', at: [735, 275], icon: '💎' },
+  weiPower: { name: 'Dynasty Strength Center', kit: ['weights', 'mats'], region: 'wei', at: [655, 315], icon: '🏋' },
+  weiSpeed: { name: 'Dome Sprint Lab', kit: ['track', 'mats'], region: 'wei', at: [705, 315], icon: '🏃' },
+  weiWit: { name: 'Academy Film Library', kit: ['film'], region: 'wei', at: [655, 350], icon: '🎞' },
+  weiJump: { name: 'Skytower Plyo Gym', kit: ['plyo', 'weights'], region: 'wei', at: [705, 350], icon: '🏀' },
+  gloria: { name: 'St. Gloria Private Club', kit: ['mats', 'water'], region: 'gloria', at: [735, 275], icon: '💎' },
   // Wu — the coast: mid everything; sand courts build technique
-  sand: { name: 'Sand Courts', train: 'def', region: 'wu', sand: true, at: [790, 600], icon: '🏖' },
-  dunes: { name: 'Dune Sprints', train: 'speed', region: 'wu', at: [975, 240], icon: '🌊' },
-  harbor: { name: 'Harbor Gym', train: 'power', region: 'wu', at: [935, 385], icon: '⚓' },
-  pier: { name: 'Pier Jump Deck', train: 'jump', region: 'wu', sand: true, at: [535, 645], icon: '🪂' },
+  sand: { name: 'Sand Courts', kit: ['sand', 'mats'], region: 'wu', sand: true, at: [790, 600], icon: '🏖' },
+  dunes: { name: 'Dune Sprints', kit: ['dunes', 'sand'], region: 'wu', at: [975, 240], icon: '🌊' },
+  harbor: { name: 'Harbor Gym', kit: ['weights', 'crates'], region: 'wu', at: [935, 385], icon: '⚓' },
+  pier: { name: 'Pier Jump Deck', kit: ['plyo', 'water'], region: 'wu', sand: true, at: [535, 645], icon: '🪂' },
   // Shu — the highlands: cheap and rough, far from everything
-  trail: { name: 'Mountain Trail', train: 'speed', region: 'shu', at: [215, 290], icon: '⛰' },
-  steps: { name: 'Thousand Steps', train: 'jump', region: 'shu', at: [320, 235], icon: '🛕' },
-  dojo: { name: 'Highland Dojo', train: 'def', region: 'shu', at: [395, 360], icon: '🥋' },
-  stone: { name: 'Stone Gym', train: 'power', region: 'shu', at: [420, 475], icon: '🪨' },
-  shrine: { name: 'Shrine Library', train: 'wit', region: 'shu', at: [320, 410], icon: '📜' },
+  trail: { name: 'Mountain Trail', kit: ['trail'], region: 'shu', at: [215, 290], icon: '⛰' },
+  steps: { name: 'Thousand Steps', kit: ['steps'], region: 'shu', at: [320, 235], icon: '🛕' },
+  dojo: { name: 'Highland Dojo', kit: ['mats', 'chores'], region: 'shu', at: [395, 360], icon: '🥋' },
+  stone: { name: 'Stone Gym', kit: ['weights', 'crates'], region: 'shu', at: [420, 475], icon: '🪨' },
+  shrine: { name: 'Shrine Library', kit: ['books', 'mats'], region: 'shu', at: [320, 410], icon: '📜' },
   // the minors and Central Academy
-  cage: { name: 'Overpass Cage', train: 'power', region: 'outlaws', at: [845, 455], icon: '⛓' },
+  cage: { name: 'Overpass Cage', kit: ['weights'], region: 'outlaws', at: [845, 455], icon: '⛓' },
   acaGym: {
     name: 'Academy Gym',
-    train: 'all',
+    kit: ['gym', 'mats', 'chores'],
+    lv: 1, // a fixed facility level: the Academy keeps it basic
     region: 'open',
     at: [490, 460],
     icon: '🏫',
-    desc: 'The basic gym every student may use: a little of everything.'
+    desc: 'The basic gym every student may use: a little of everything, a mat to stretch on, floors to mop for pocket money.'
   },
   park: {
     name: 'Academy Grounds',
@@ -367,6 +369,8 @@ const SPOTS = {
     desc: 'A café in Wei. A retired scout who still rates everyone — honestly, once a month.'
   }
 };
+// a place's lead training (its first kit tag's): what NPC plans, the dossier and the floor read (spec §4.33)
+for (const s of Object.values(SPOTS)) if (s.kit) s.train = KITS[s.kit[0]].train;
 /**
  * The secret places (spec §4.31; js/career/secret.js). tapes: the first viewing's Pain. light: Pain let go / sharpened (+ the next
  * Scar's OP odds, T-291). hermit: the trial bars (your best stat must reach the next one) and the gain past the cap on a pass.

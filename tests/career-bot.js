@@ -7,18 +7,19 @@
 const { load } = require('./harness');
 const [N = 12, POL = 'both'] = process.argv.slice(2).map((v, i) => (i === 0 ? +v : v));
 
-/** The training whose main gain is body stat `b` (spec §4.33: trainings re-keyed to the body). */
-const trainFor = (g, b) => (b === 'wit' ? 'wit' : Object.keys(g.TRAININGS).find(k => !g.TRAININGS[k].lv && g.TRAININGS[k].main[0] === b));
-/** One day's action: the best place for body stat `stat` (fewest days, then the best gain), or null. */
+/** One day's drill (spec §4.33): the place and order that train body stat `stat` best per day (main gain, else the Academy's
+ * All-round at a discount), as [id, order] or null. */
 function placeFor(g, run, stat) {
-  const ids = [...g.City.spotsFor(trainFor(g, stat)), 'acaGym'].filter(id => g.City.can(run, id).ok);
   let best = null,
     bv = -1;
-  for (const id of ids) {
-    const days = g.City.cost(run, id),
-      gain = (id === 'acaGym' ? 0.45 : 1) * g.City.mul(run, id) * g.Training.mul(run, g.SPOTS[id].train, false);
-    const v = gain / days;
-    if (v > bv) [bv, best] = [v, id];
+  for (const id of Object.keys(g.SPOTS)) {
+    if (!g.SPOTS[id].kit) continue;
+    for (const oid of g.City.orders(id)) {
+      const O = g.DAY_ORDERS[oid];
+      if (O.kind !== 'drill' || (O.main[0] !== stat && oid !== 'allRound') || !g.City.can(run, id, oid).ok) continue;
+      const v = ((oid === 'allRound' ? 0.45 : 1) * g.City.mul(run, id) * g.Training.mul(run, oid, false, 1, id)) / g.City.cost(run, id);
+      if (v > bv) [bv, best] = [v, [id, oid]];
+    }
   }
   return best;
 }
@@ -50,8 +51,9 @@ function week(g, run, pol, M) {
     else if (run.sta < (pol === 'good' ? 45 : 35)) id = g.City.can(run, 'home').ok ? 'home' : null;
     else if (pol === 'good' && run.mood <= 1 && g.City.can(run, 'park').ok) id = 'park';
     else {
-      const st = statFor(g, run, pol);
-      id = placeFor(g, run, st);
+      const st = statFor(g, run, pol),
+        pf = placeFor(g, run, st);
+      if (pf) [id, opt] = pf;
       hard = pol === 'good' && run.sta > 85;
     }
     if (!id) break;
@@ -263,7 +265,7 @@ for (const pol of POL === 'both' ? ['casual', 'good'] : [POL]) {
     `  endings               true ${cnt(v => v === 'true', 'ending')} · spite ${cnt(v => v === 'spite', 'ending')} · ranks ${R.map(r => r.rank).join('')}`
   );
   console.log(
-    `  joined a club (week)  ${f1(avg(R.map(r => r.joined)))} (never: ${cnt(v => v == null, 'joined')}) · money at the Cups ${f1(Y('money')[0])} / ${f1(Y('money')[1])} · lowest ${f1(avg(R.map(r => r.minMoney)))} · evicted weeks ${f1(avg(R.map(r => r.evicted)))}`
+    `  joined a club (week)  ${f1(avg(R.map(r => r.joined)))} (never: ${cnt(v => v == null, 'joined')}) · money at the Cups ${f1(Y('money')[0])} / ${f1(Y('money')[1])} (Y1 under $600: ${R.filter(r => r.y[0].money < 600).length} / ${R.length}) · lowest ${f1(avg(R.map(r => r.minMoney)))} · evicted weeks ${f1(avg(R.map(r => r.evicted)))}`
   );
   console.log(
     `  final fans ${f1(avg(R.map(r => r.fans)))} (min ${Math.min(...R.map(r => r.fans))}, max ${Math.max(...R.map(r => r.fans))}) · secret visits ${JSON.stringify(

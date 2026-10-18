@@ -1,4 +1,5 @@
-// Weekly choices: the five trainings (normal or Hard), Rest and Recreation. Gains scale with mood, facility level
+// Weekly choices: the day orders at a place's kit (Drill / Work / Stretch, spec §4.33; Training.order) and the old five
+// trainings (Training.train: tests, the harness), normal or Hard, Rest and Recreation. Gains scale with mood, facility level
 // (Lv 1–5), a streak of the same training, teammates training alongside you (friendship at bond 80+), the camps and
 // sponsor perks. Training (and events) stop a stat at Training.cap (TRAIN_CAP; year 2 SEASON.cap); only matches go higher. Training while exhausted can
 // injure you (light training only until it heals).
@@ -6,18 +7,30 @@
 const Training = {
   /** While a match result is being counted ({} from resultSnap to resultData): XP given per stat. Display only, never saved. */
   tally: null,
-  /** Facility level index 0–4 (shown as Lv 1–5) from how often you have done this training. */
-  facility(run, key) {
-    if (TRAININGS[key].lv) return TRAININGS[key].lv - 1; // a fixed-level facility (the Academy Gym)
-    const u = run.uses[key] || 0;
+  /** Facility level index 0–4 for `u` uses. */
+  lvOf(u) {
     let lv = 0;
     while (lv + 1 < TRAIN_X.lvUses.length && u >= TRAIN_X.lvUses[lv + 1]) lv++;
     return lv;
   },
+  /** A fixed facility level (the Academy Gym), else null. */
+  fixed: k => (SPOTS[k] && SPOTS[k].lv) || (TRAININGS[k] && TRAININGS[k].lv) || null,
+  /**
+   * Facility level index 0–4 (shown as Lv 1–5). A place id (spec §4.33): how often you have worked out there (run.uses by place;
+   * not a kit place: 0). A training key: its own uses or its best place's (the places it leads), whichever is higher.
+   */
+  facility(run, key) {
+    const fx = Training.fixed(key),
+      u = run.uses || {};
+    if (fx) return fx - 1;
+    if (SPOTS[key]) return SPOTS[key].kit ? Training.lvOf(u[key] || 0) : 0;
+    if (!TRAININGS[key]) return 0;
+    return Math.max(Training.lvOf(u[key] || 0), ...City.spotsFor(key).map(id => (Training.fixed(id) ? 0 : Training.lvOf(u[id] || 0))));
+  },
   camp: run => Run.weekType(run) === 'camp',
-  /** Sessions until the next facility level (null at Lv 5). */
+  /** Sessions until the next facility level (null at Lv 5 or fixed). */
   toNext(run, key) {
-    if (TRAININGS[key].lv) return null;
+    if (Training.fixed(key) || (SPOTS[key] && !SPOTS[key].kit)) return null;
     const lv = Training.facility(run, key),
       need = TRAIN_X.lvUses[lv + 1];
     return need == null ? null : need - (run.uses[key] || 0);
@@ -36,17 +49,25 @@ const Training = {
         (run.floor[k] = run.floor[k] || []).push(m.id);
       }
   },
-  /** Gain multiplier for a training right now (x: the place — its quality × home turf, see City.mul). */
-  mul(run, key, hard, x = 1) {
-    const you = Run.you(run);
+  /** The session's definition: a day order (DAY_ORDERS) or a training (TRAININGS). */
+  def: key => DAY_ORDERS[key] || TRAININGS[key],
+  /** Teammates on the floor for `key` at place `at` (an order: the place's lead training; nowhere: none). */
+  matesAt(run, key, at) {
+    const k = at ? SPOTS[at] && SPOTS[at].train : TRAININGS[key] ? key : null;
+    return (k && run.floor[k]) || [];
+  },
+  /** Gain multiplier for a training / day order right now (x: the place — its quality × home turf, see City.mul; at: the place id). */
+  mul(run, key, hard, x = 1, at = null) {
+    const you = Run.you(run),
+      T = Training.def(key);
     let mates = 0;
-    for (const id of run.floor[key] || []) mates += (you.bond[id] || 0) >= 80 ? 0.5 : 0.2;
+    for (const id of Training.matesAt(run, key, at)) mates += (you.bond[id] || 0) >= 80 ? 0.5 : 0.2;
     return (
       MOODS[run.mood].mul *
-      (1 + 0.1 * Training.facility(run, key)) *
+      (1 + 0.1 * Training.facility(run, at || key)) *
       (1 + mates) *
       (1 + Training.streakBonus(run, key)) *
-      (1 + Sponsors.trainBonus(run, key)) *
+      (1 + Sponsors.trainBonus(run, T.train || key)) *
       x *
       (Training.camp(run) ? 1.5 : 1) *
       (hard ? TRAIN_X.hard.gain : 1) *
@@ -55,7 +76,7 @@ const Training = {
     );
   },
   staCost: (run, key, hard) =>
-    Math.round(TRAININGS[key].sta * (Training.camp(run) ? 1.5 : 1) * (hard ? TRAIN_X.hard.sta : 1) * (run.injury ? 0.5 : 1)),
+    Math.round(Training.def(key).sta * (Training.camp(run) ? 1.5 : 1) * (hard ? TRAIN_X.hard.sta : 1) * (run.injury ? 0.5 : 1)),
   /** Failure chance: below 50 stamina, (50 − stamina) × 1.5%; Hard adds 15%. */
   failP: (run, hard) => clamp((50 - run.sta) * 0.015 + (hard ? TRAIN_X.hard.fail : 0), 0, 0.95),
   /** Diminishing returns: ×0.9 from 60, ×0.7 from 70, ×0.45 from 80, ×0.3 from 85, ×0.15 from 92. */
@@ -118,30 +139,40 @@ const Training = {
     stat = Training.key(run, stat);
     return { have: (run.xp && run.xp[stat]) || 0, need: Training.need(Training.level(Run.you(run), stat)) };
   },
-  preview(run, key, hard, x = 1) {
-    const T = TRAININGS[key],
-      mul = Training.mul(run, key, hard, x),
+  preview(run, key, hard, x = 1, at = null) {
+    const T = Training.def(key),
+      hd = hard && T.kind !== 'stretch',
+      mul = Training.mul(run, key, hd, x, at),
       row = ([k, b]) => [k, Training.gain(run, k, b, mul), Training.xpFor(k, b, mul)];
     return {
       main: row(T.main),
       side: row(T.side),
       more: (T.more || []).map(row),
-      fixed: !!T.lv,
-      sta: Training.staCost(run, key, hard),
-      fail: Training.failP(run, hard),
-      lvl: Training.facility(run, key) + 1,
-      next: Training.toNext(run, key),
+      fixed: !!Training.fixed(at || key),
+      sta: Training.staCost(run, key, hd),
+      fail: T.kind === 'stretch' ? 0 : Training.failP(run, hd),
+      lvl: Training.facility(run, at || key) + 1,
+      next: Training.toNext(run, at || key),
+      pay: T.pay || 0,
       streak: Training.streakBonus(run, key),
       cap: T.main[0] !== 'wit' && Training.level(Run.you(run), T.main[0]) >= Training.cap(run) ? Training.cap(run) : null,
-      mates: run.floor[key] || []
+      mates: Training.matesAt(run, key, at)
     };
   },
   /** Train (hard = the Hard option; not while injured; x = the place's multiplier; spMul = skill points ×). Returns a summary line for the log. */
-  train(run, key, hard, x = 1, spMul = 1) {
-    hard = hard && !run.injury;
-    const pv = Training.preview(run, key, hard, x),
+  train: (run, key, hard, x = 1, spMul = 1) => Training.session(run, key, null, hard, x, spMul),
+  /**
+   * A day order (spec §4.33) at place `at` (a SPOTS id, or null: a map point): its body gains, stamina, a Work order's pay; the
+   * facility level grows per kit place. Same rules as a training (fail when tired, Hard, mates, streak). Returns the log line.
+   */
+  order: (run, oid, at, hard, x = 1, spMul = 1) => Training.session(run, oid, at, hard, x, spMul),
+  session(run, key, at, hard, x = 1, spMul = 1) {
+    const T = Training.def(key),
+      O = DAY_ORDERS[key];
+    hard = hard && !run.injury && (!O || O.kind !== 'stretch');
+    const pv = Training.preview(run, key, hard, x, at),
       out = [],
-      name = `${hard ? 'Hard ' : ''}${TRAININGS[key].name}${run.injury ? ' (light)' : ''} training`;
+      name = O ? `${hard ? 'Hard ' : ''}${O.name}${run.injury ? ' (light)' : ''}` : `${hard ? 'Hard ' : ''}${T.name}${run.injury ? ' (light)' : ''} training`;
     run.lastMain = pv.main[0];
     run.trained = 1;
     run.streak = run.streak && run.streak.key === key ? { key, n: run.streak.n + 1 } : { key, n: 1 };
@@ -158,15 +189,25 @@ const Training = {
       return `${name} failed: ${out.filter(Boolean).join(', ')}`;
     }
     for (const [k, , xp] of [pv.main, pv.side, ...pv.more]) out.push(Training.addXp(run, k, xp));
-    out.push(Run.bump(run, 'sta', -pv.sta), Run.bump(run, 'sp', Math.round(CAREER.spPerTraining * (hard ? 1.5 : 1) * spMul)));
+    out.push(
+      Run.bump(run, 'sta', -pv.sta),
+      Run.bump(run, 'sp', Math.round(CAREER.spPerTraining * (hard ? 1.5 : 1) * spMul * (O && O.kind !== 'drill' ? 0.5 : 1)))
+    );
+    if (pv.pay) {
+      run.money += pv.pay; // a Work order pays (spec §4.33)
+      out.push(`+$${pv.pay}`);
+    }
     for (const id of pv.mates) {
       out.push(Run.bond(run, id, undefined, 'trained'));
       Growth.shared(run, id, pv);
     }
-    const lv0 = Training.facility(run, key);
-    run.uses[key] = (run.uses[key] || 0) + 1;
+    const fk = at || key, // the facility that levels: the place (an order), else the training key
+      grows = at ? !!(SPOTS[at] && SPOTS[at].kit) : !O,
+      lv0 = Training.facility(run, fk);
+    if (grows) run.uses[fk] = (run.uses[fk] || 0) + 1;
     Feel.add(run, 'drive', FEEL.drive.train);
-    if (Training.facility(run, key) > lv0) out.push(`${TRAININGS[key].name} facility Lv ${Training.facility(run, key) + 1}`);
+    if (grows && Training.facility(run, fk) > lv0)
+      out.push(`${at ? SPOTS[at].name : T.name} facility Lv ${Training.facility(run, fk) + 1}`);
     return `${name}${Training.camp(run) ? ' (camp)' : ''}: ${out.filter(Boolean).join(', ')}`;
   },
   /** Rest: stamina × how well you sleep (your home — or `mul`, e.g. a hotel away from home). */

@@ -111,6 +111,11 @@ const step = async (name, fn) => {
           bad.push(`${id}: ${e.message}`);
         }
       }
+      // day orders (spec §4.33): a kit place lists its orders (one ink primary), Stretch at home and at any map point
+      const hb = spotPanel(RUN, 'harbor'),
+        pt = spotPanel(RUN, MapModel.ptId(City.pos(RUN)));
+      if (!/Heavy sets/.test(hb) || !/Haul crates/.test(hb) || (hb.match(/btn ord hot/g) || []).length > 1) bad.push('harbor: orders');
+      if (!/Stretch/.test(spotPanel(RUN, 'home')) || !/Stretch/.test(pt)) bad.push('Stretch at home / a point');
       mapPick('venue:arena'); // and one rendered for real
       if (!document.querySelector('#spot').textContent.includes('Court match')) bad.push('venue card: no court match');
       mapPick(null);
