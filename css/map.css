@@ -253,3 +253,11 @@
 .wunit .stk {
   font-size: 12px;
 }
+/* the war stage chip in match prep (spec §4.34) */
+.prep .wstage {
+  padding: 1px 8px;
+  border: 1px solid var(--bad-soft);
+  border-radius: 8px;
+  color: var(--bad-soft);
+  font-size: 12px;
+}

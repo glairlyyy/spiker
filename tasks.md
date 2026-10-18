@@ -172,7 +172,7 @@ Gold untouched while Iron stands (tests).
 QA: career run → Factions cards and a border.
 Result: js/data/war.js (WAR, WAR_STAGES) + js/career/war.js (War: str/stage/weak/holder/unitAt/edges/pairs/hit/week/sync), `run.war` v21; Hex = geometry + `t.unit` (Gold = Wei tiles ≥ 3 steps from another major: Iron 33 / Gold 16 tiles; Wu by nearest HQ: Harbor 16 / Fort 21); Front.site picks the week's unit border by hash (no extra R()). Tests: 30 weeks of forced battles stay in 0–100, Shu −4 vs Iron −8, Gold 100 throughout; 5 headless 2-year runs end with lows 48–95 (Fort / Iron), nobody Broken — the deltas are mild at ~0.45 battles a week. Deviations: tests/run.js registers war.test.js; HEX_COST/VALUE/ECON, Front.econ/down, the tile pressure and the `value` term are gone (`strength`, `stage` terms added; `seize` reworded as the overthrow); tests/people.test.js:723 still expects v19 (A's file: fails until merge, set it to 21). QA: Factions cards, dossier, battle card, border point — screenshots fine.
 
-### [ ] T-314: Stages in the match — Strained, Shaken, Broken
+### [x] T-314: Stages in the match — Strained, Shaken, Broken
 Agent: B
 Spec: §4.34, §2.31, §2.33          Goldens: unchanged (no `weak` → today)          Save: no change
 Goal: a squad of a weakened unit plays with its stage's debuffs (morale start, HP heal, one card slot fewer); Iron bleeds into
@@ -183,7 +183,7 @@ Do not: draw R(); change a match without `weak`.
 Accept: goldens unchanged; tests — Broken side has 4 slots and starts 10 morale lower; 200 sims Broken vs Steady equal
 squads: the Steady side wins clearly more (state the %).
 QA: Monster game with `weak` forced on one side → prep chip.
-Result:
+Result: engine `weakSet(m, [k0, k1])` (= `opts.weak`; absent / [0, 0] → the same match, goldens unchanged): morale −0.1 at the start, HP heal −0.25 when Shaken, a Broken side loses FLEX (`C.off`, `cardSlots`); `War.weak` (Gold = max(own, Iron − 1), Shu one late), `War.match` in every career fixture's setup (Cup eval / cup, street battle, challenge, court; squads tagged by unit / region); match prep's chip (`prepStage`). 200 sims Broken vs Steady, same squads both ways: Steady wins 115/200 (58 %) — the stages bite but mildly. Deviation: the FLEX slot still draws as "Empty" in the hand (js/ui/match-cards.js is the cards session's); cards.js only gained the slot lock. QA: Monster game, weakSet [3, 1] → Broken / Strained chips; ui-smoke 13/13.
 
 ### [ ] T-315: The overthrow and a destroyed faction
 Agent: B

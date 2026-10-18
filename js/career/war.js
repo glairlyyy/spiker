@@ -37,6 +37,22 @@ const War = {
     if (D.inner && War.alive(run, D.inner)) k = Math.max(k, War.weak(run, D.inner) - 1);
     return Math.max(0, k);
   },
+  /**
+   * The war stage a squad plays with (spec §4.34): its club's unit, a street crew's unit (T.wu), a region's drawn squad (T.wr:
+   * its least-hit standing unit); 0 for the Academy, the minors and hired crews.
+   */
+  weakOf(run, T) {
+    if (!T) return 0;
+    if (T.wu) return War.weak(run, T.wu);
+    const u = War.ofClub(T.i);
+    if (u) return War.weak(run, u);
+    const us = T.wr ? War.ofRegion(T.wr).filter(x => War.alive(run, x)) : [];
+    return us.length ? Math.min(...us.map(x => War.weak(run, x))) : 0;
+  },
+  /** A career fixture's setup: both sides' war stages into the match (weakSet: morale start, HP heal, card slots). */
+  match(run, m) {
+    weakSet(m, [War.weakOf(run, m.t[0]), War.weakOf(run, m.t[1])]);
+  },
   /** The unit holding what u started with: u itself, or (destroyed) its destroyer's holder. */
   holder(run, u) {
     const F = War.state(run).fallen;

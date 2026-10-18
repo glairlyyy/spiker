@@ -755,6 +755,11 @@ rally), `sync` (rebuilds the `run.own` place cache). `Front.site` picks the week
 then edge; `run.clash = { tile (defender's), from (raider's), at (the edge's midpoint), ua, ud, att, def }`), `Front.result`
 hits both units, `Front.sim` reads their Strength. Tiles never flip; the player's travel never reads tiles.
 `MapModel.hexes(run)` is the ground layer the map draws (each tile in its holder's region colour, `unit`, frontier).
+War stages in the match (T-314): the engine takes a per-side stage `opts.weak` / `weakSet(m, [k0, k1])` (match.js; WAR_STAGES
+index, absent = nothing changes): `m.weak`, morale starts −`mor` (morAdd), `hpHeal` heals −`heal`, a Broken side's cards lose
+`slots` from the end of SLOTS (`C.off` = ['flex']; `cardSlots(m, i)`, cardPut / cardFill skip it). Career fixtures call
+`War.match(run, m)` in their `setup` (Cup.fixture, Fight.clash / challenge, Court): `War.weakOf(run, T)` = its club's unit
+(`T.i`), a crew's unit (`T.wu`), a region's drawn squad (`T.wr`: its least-hit standing unit). Match prep shows the chip (`prepStage`).
 
 ## Match music
 

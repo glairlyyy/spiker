@@ -83,3 +83,31 @@ test('war: Strength drives the economy — prices, quality, joins, street streng
   eq(g.Run.load().war.str.iron, 50, 'run.war round-trips');
   assert(!('hex' in g.Run.defaults()), 'run.hex is gone');
 });
+
+test('war: stages in the match — Iron bleeds into Gold one lighter, Shu one late; the battle’s crews carry them (T-314)', () => {
+  const [g, run] = mkRun(34);
+  run.war.str.iron = 35; // Shaken
+  eq(g.War.weak(run, 'iron'), 2, 'Iron plays Shaken');
+  eq(g.War.weak(run, 'gold'), 1, 'Gold plays Strained (one lighter)');
+  run.war.str.iron = 20; // Broken
+  eq(g.War.weak(run, 'gold'), 2, 'Iron Broken → Gold Shaken');
+  run.war.str.gold = 20;
+  eq(g.War.weak(run, 'gold'), 3, 'Gold’s own stage when worse');
+  run.war.str.shu = 35;
+  eq(g.War.weak(run, 'shu'), 1, 'Shu Shaken plays as Strained');
+  run.war.str.shu = 20;
+  eq(g.War.weak(run, 'shu'), 2, 'Shu Broken plays as Shaken');
+  eq(g.War.weakOf(run, run.teams[g.WAR.units.iron.clubs[0]]), 3, 'a club squad: its unit');
+  eq(g.War.weakOf(run, run.pickup), 0, 'the Academy: none');
+  // a street battle you fight on the Iron border: your Wu crew Steady, their Iron crew Broken
+  run.days = 7;
+  run.pos = g.CITY.airport.slice();
+  run.war.str.gold = 100;
+  clashOn(g, run, 'wu', 'wei');
+  const fx = g.Fight.clash(run, 'wu'),
+    m = g.newMatch(fx.a, fx.b, false);
+  fx.setup(m);
+  eq(JSON.stringify(m.weak), '[0,3]', 'the fixture’s setup sets both sides’ stages');
+  eq(g.cardSlots(m, 1).length, 4, 'their crew: 4 slots');
+  fx.onLeave();
+});

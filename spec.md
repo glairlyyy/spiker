@@ -1255,7 +1255,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     week; an overthrow lost by the attacker → the defender +20 ("rallied"). Shown on the Factions cards and the border. **[built 2026-10-19, T-313: war units, Strength, the economy; Gold's ring = Wei land ≥ 3 hex steps from another major]**
   - **Stages → match debuffs** for every squad of that unit (evaluations, Cup, street, court; display of the stage on the
     match prep): **Strained** < 60 — morale starts 10 lower · **Shaken** < 40 — also HP heals 0.25 less between rallies ·
-    **Broken** < 25 — also one card slot fewer. (Numbers first guesses; the engine takes a per-side `weak` stage, absent = none.)
+    **Broken** < 25 — also one card slot fewer. (Numbers first guesses; the engine takes a per-side `weak` stage, absent = none.) **[built 2026-10-19, T-314: the slot a Broken side loses is FLEX; Broken vs Steady, same squads: Steady wins 58 %]**
   - **Structure — the war units** (owner):
     - **Wei = two rings.** **Iron** is the outer circle (its border faces the island), **Gold** the inner circle (Haewon's
       club). Street battles on Wei's border hit Iron while Iron stands; Gold has no border until Iron falls. Iron's stage

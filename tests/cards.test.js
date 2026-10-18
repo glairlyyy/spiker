@@ -188,3 +188,31 @@ test('traits: twelve traits, ~85 % of players; Iron Body takes less HP damage; C
   assert(lose('clutch') > lose(null), 'a Clutch player loses less late');
   for (const q of all) delete q.mtrait;
 });
+
+test('cards: a Broken side plays with 4 slots (FLEX gone) and starts 10 morale lower; [0, 0] is today’s match (spec §4.34, T-314)', () => {
+  const g = load(73);
+  g.RNG.seed(5);
+  const T = g.mkTeams(),
+    m = g.newMatch(T[0], T[1], false, { weak: [3, 0] });
+  eq(g.cardSlots(m, 0).length, 4, 'Broken: 4 slots');
+  eq(g.cardSlots(m, 1).length, 5, 'Steady: 5');
+  assert(!m.cards[0].slots.flex && !g.cardPut(m, 0, 'flex', 'pow'), 'nothing goes into the missing FLEX slot');
+  assert(g.squadOf(m.t[0]).every(p => Math.abs(m.mor[p.id] + 0.1) < 1e-9), 'every Broken player starts at −10 morale');
+  assert(Math.abs(m.mom[0] + 0.1) < 1e-9 && m.mom[1] === 0, 'the fire follows');
+  // after newMatch (a career fixture's setup): the same
+  g.RNG.seed(5);
+  const U = g.mkTeams(),
+    n = g.newMatch(U[0], U[1], false);
+  g.weakSet(n, [3, 0]);
+  eq(JSON.stringify([n.mor, n.cards[0].slots, n.weak]), JSON.stringify([m.mor, m.cards[0].slots, m.weak]), 'weakSet after newMatch = opts.weak');
+  // no stage: the same match beat for beat
+  const play = weak => {
+    g.RNG.seed(9);
+    const V = g.mkTeams(),
+      x = g.newMatch(V[2], V[3], true, weak ? { weak } : {});
+    let out = '';
+    while (!x.over) out += JSON.stringify(g.playRally(x).beats);
+    return out + JSON.stringify(x.setScores);
+  };
+  assert(play([0, 0]) === play(null), '[0, 0] changes nothing');
+});

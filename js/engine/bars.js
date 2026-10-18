@@ -39,10 +39,12 @@ function hpHit(m, p, pow) {
   m.hp[p.id] = Math.max(0, hpOf(m, p) - dmg);
   return m.hp[p.id] <= 0;
 }
-/** Between rallies: court players heal HP.heal, the bench all of it. */
+/** Between rallies: court players heal HP.heal (less on a Shaken side: the war's stage, m.weak — spec §4.34), the bench all of it. */
 function hpHeal(m) {
-  for (const t of m.t)
-    for (const p of squadOf(t)) m.hp[p.id] = t.P.includes(p) ? Math.min(1, Math.max(hpOf(m, p) + HP.heal, m.down[p.id] ? HP.up : 0)) : 1;
+  m.t.forEach((t, i) => {
+    const heal = HP.heal - (m.weak ? WAR_STAGES[m.weak[i]].heal || 0 : 0);
+    for (const p of squadOf(t)) m.hp[p.id] = t.P.includes(p) ? Math.min(1, Math.max(hpOf(m, p) + heal, m.down[p.id] ? HP.up : 0)) : 1;
+  });
 }
 
 /** A player's morale (−1..1). */

@@ -134,3 +134,39 @@ test('bars: HP — hard balls wear a passer down across rallies and empty HP col
   const q = m.t[1].P.find(x => x !== p && x.role !== 'S');
   assert(!g.knock(m, q, 20, 0, 2) && g.hpOf(m, q) > 0.85, `a soft ball takes little (hp ${g.hpOf(m, q)})`);
 });
+
+test('bars: a Shaken side heals less between rallies (spec §4.34, T-314)', () => {
+  const g = load(74);
+  g.RNG.seed(4);
+  const T = g.mkTeams(),
+    m = g.newMatch(T[0], T[1], false, { weak: [2, 0] }),
+    a = m.t[0].P[0],
+    b = m.t[1].P[0];
+  m.hp[a.id] = m.hp[b.id] = 0.2;
+  g.hpHeal(m);
+  assert(Math.abs(m.hp[b.id] - 0.2 - g.HP.heal) < 1e-9, 'Steady: the full heal');
+  assert(Math.abs(m.hp[a.id] - 0.2 - (g.HP.heal - g.WAR_STAGES[2].heal)) < 1e-9, 'Shaken: 0.25 less');
+});
+
+test.slow('bars: Broken vs Steady, the same squads both ways — the Steady side wins clearly more (spec §4.34, T-314)', () => {
+  const g = load(75);
+  g.RNG.seed(11);
+  const T = g.mkTeams();
+  let steady = 0,
+    n = 0;
+  for (let i = 0; i < 100; i++) {
+    const a = T[i % 8],
+      b = T[(i + 1 + ((i >> 3) % 7)) % 8]; // (never the same team)
+    for (const w of [
+      [3, 0],
+      [0, 3]
+    ]) {
+      const m = g.simMatch(a, b, { weak: w });
+      if (m.winner === (w[0] ? 1 : 0)) steady++;
+      n++;
+    }
+  }
+  const pct = Math.round((100 * steady) / n);
+  console.log(`   Broken vs Steady: Steady wins ${steady}/${n} (${pct} %)`);
+  assert(pct >= 55, `Steady wins clearly more: ${pct} %`);
+});

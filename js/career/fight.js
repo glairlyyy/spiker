@@ -30,6 +30,7 @@ const Fight = {
       );
     Eval.lend(run, mine);
     Eval.lend(run, opp);
+    [mine.wu, opp.wu] = side === c.a ? [c.ua, c.ub] : [c.ub, c.ua]; // the units on this border (their war stages)
     Cup.prepare(run, opp, 'clash', mine);
     const rel = Rel.matchFlags(run, mine, opp);
     return {
@@ -38,7 +39,10 @@ const Fight = {
       round: `Street battle: ${REGIONS[c.a].name} vs ${REGIONS[c.b].name} · ${c.name}`,
       back: 'Continue',
       rel,
-      setup: m => (m.rel = rel),
+      setup: m => {
+        m.rel = rel;
+        War.match(run, m); // the war's stages (spec §4.34)
+      },
       onFinish: m => {
         Eval.restore();
         return Fight.clashResult(run, m, side, foe);
@@ -112,7 +116,10 @@ const Fight = {
       round: `Challenge: ${mine.name} vs ${opp.name}${stake ? ` · stake $${stake}` : ''}`,
       back: 'Continue',
       rel,
-      setup: m => (m.rel = rel),
+      setup: m => {
+        m.rel = rel;
+        War.match(run, m); // the war's stages (spec §4.34)
+      },
       onFinish: m => {
         Eval.restore();
         return Fight.challengeResult(run, m, ti, stake, side);
