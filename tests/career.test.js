@@ -153,6 +153,44 @@ test('body: court skills from the body — balanced X gives X; Strength without 
   eq(you.power, g.CAREER.runCap, 'never past the run cap');
 });
 
+test('run: a trip run trains the route’s ground — coast road End, mountain paths End + Str, the Steps Str + Agi; tired → walk (T-309)', () => {
+  const g = load(13),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Runner' }),
+    you = g.Run.you(run),
+    N = g.ROADS.nodes;
+  run.event = null;
+  run.mode.story = false;
+  run.pos = g.CITY.airport.slice();
+  const coast = g.City.runPlan(run, g.SPOTS.harbor.at);
+  assert(coast.gains.end > 0 && !coast.gains.str && !coast.gains.agi, `airport → Harbor: Endurance (${JSON.stringify(coast.gains)})`);
+  eq(coast.days, g.City.travelDays(run, g.SPOTS.harbor.at), 'running takes the walking days');
+  run.pos = g.SPOTS.trail.at.slice();
+  const hills = g.City.runPlan(run, g.City.at(run, 'stone'));
+  assert(g.City.legs(run.pos, g.City.at(run, 'stone')).every(l => ['path', 'dirt', 'ground'].includes(l.kind)), 'a Shu mountain route');
+  assert(hills.gains.end > 0 && hills.gains.str > 0, `Shu mountain path: End + Str (${JSON.stringify(hills.gains)})`);
+  run.pos = N.hq4.slice();
+  const steps = g.City.runPlan(run, N.hermit);
+  assert(steps.gains.str > 0 && steps.gains.agi > 0 && !steps.gains.end, `the Steps: Str + Agi (${JSON.stringify(steps.gains)})`);
+  // a run: the same days, body gains, stamina, the day track says Run
+  run.pos = g.CITY.airport.slice();
+  run.sta = 100;
+  run.days = 7;
+  const e0 = you.body.end,
+    t = g.City.travelDays(run, g.SPOTS.harbor.at),
+    line = g.City.travelTo(run, g.SPOTS.harbor.at, 'run');
+  assert(/^Ran to/.test(line), line);
+  assert(you.body.end > e0, 'Endurance up');
+  eq(run.sta, 100 - coast.sta + (run.staMax - g.CAREER.staMax), 'stamina spent (Endurance lifts the max a little)');
+  eq(g.City.days(run), 7 - t, 'the walking days');
+  assert(run.dayLog.every(d => d.label === 'Run'), 'the day track shows the run');
+  // too tired → walk only
+  run.sta = 3;
+  run.days = 7;
+  assert(/too tired/.test(g.City.noRun(run, g.CITY.airport)), 'too tired to run');
+  eq(g.City.travelTo(run, g.CITY.airport, 'run'), '', 'no run');
+  assert(/^Travelled/.test(g.City.travelTo(run, g.CITY.airport)), 'walking still works');
+});
+
 test('career: the Academy Gym — a fixed Lv 1, a little EXP to every stat (T-183)', () => {
   const g = load(11),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Gym' }),

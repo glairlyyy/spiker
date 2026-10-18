@@ -52,7 +52,7 @@ function placePanel(run, id) {
     days = City.cost(run, sid),
     trOk = trip && !run.event && !City.noTime(run, trip) && !City.outside(run, at),
     travel = trip
-      ? `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${trOk ? '' : `disabled ${tip(City.noTime(run, trip) || (City.outside(run, at) ? City.fence(run) : 'answer the event first'))}`}>Travel · ${trip}d</button>`
+      ? `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${trOk ? '' : `disabled ${tip(City.noTime(run, trip) || (City.outside(run, at) ? City.fence(run) : 'answer the event first'))}`}>Walk · ${trip}d</button>${runBtn(run, at, trOk ? '' : City.noTime(run, trip) || City.fence(run) || 'answer the event first')}`
       : '',
     base = { region: City.region(run, sid), title: `${s.icon} ${esc(s.name)}`, after: placeDetails(sid, placeTags(run, sid, trip)) };
   if (s.kit) {
@@ -337,12 +337,28 @@ function kitSpot(run, id) {
     opts: seg + chips
   };
 }
+/** Run there (spec §4.33, T-309): the same days as walking, the route's ground trains you — "Run · 2d · −22 → ◆ End ++". `late`: why the trip can't happen now. */
+function runBtn(run, p, late = '') {
+  const P = City.runPlan(run, p),
+    why = late || City.noRun(run, p),
+    mul = Training.mul(run, 'run', false, DAY_GAIN),
+    res = BODY.keys
+      .filter(k => P.gains[k])
+      .map(k => {
+        const r = xpRate(run, k, Training.xpFor(k, P.gains[k], mul));
+        return `<span class="${r.cls}">${BODY.glyph[k]} ${BODY.short[k]} ${r.t}</span>`;
+      })
+      .join(' · ');
+  if (!P.sta) return '';
+  return `<button class="btn run" onclick="mapTravel(${p[0]},${p[1]},'run')" ${why ? `disabled ${tip(why)}` : tip('Run the route: its ground trains you (roads: Endurance; dirt and mountain paths: + Strength; boardwalk: Agility; the Steps: Strength + Agility)')}>Run · ${P.days}d ${term('sta', -P.sta, 'cost')} → ${res}</button>`;
+}
 /** A map point's card (B's pointPanel) + Stretch there (spec §4.33: the island is the gym): the order block goes inside the card. */
 function pointCard(run, p) {
   const html = pointPanel(run, p),
     O = DAY_ORDERS.stretch,
     pv = Training.preview(run, 'stretch', false, DAY_GAIN, null),
-    blk = `<div class="ords">${ordBtn(run, O, pv, City.pointCan(run, p), `mapStretch(${p[0]},${p[1]})`, City.trip(run, p) + 1, 0, false)}</div>`,
+    late = run.event ? 'answer the event first' : City.noTime(run, City.travelDays(run, p)) || (City.outside(run, p) ? City.fence(run) : ''),
+    blk = `<div class="ords">${runBtn(run, p, late)}${ordBtn(run, O, pv, City.pointCan(run, p), `mapStretch(${p[0]},${p[1]})`, City.trip(run, p) + 1, 0, false)}</div>`,
     i = html.lastIndexOf('</div>');
   return i < 0 ? html : html.slice(0, i) + blk + html.slice(i);
 }

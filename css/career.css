@@ -1856,3 +1856,11 @@
 .plc .btn.ord .up {
   color: var(--good);
 }
+/* running a trip (T-309): the cost → result on the button */
+.plc .btn.run {
+  font-size: 13px;
+  white-space: normal;
+}
+.plc .btn.run .up {
+  color: var(--good);
+}

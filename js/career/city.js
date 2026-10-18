@@ -298,14 +298,17 @@ const City = {
   },
   /** Days to just travel to point p (at least one). */
   travelDays: (run, p) => Math.max(1, City.trip(run, p)),
-  /** Travel to any point on the island. Returns the diary line. */
-  travelTo(run, p) {
-    const t = City.travelDays(run, p);
-    if (run.event || !City.onLand(p) || City.noTime(run, t) || City.outside(run, p)) return '';
+  /** Travel to any point on the island; `how` 'run' (T-309): the same days, the route's ground trains you. Returns the diary line. */
+  travelTo(run, p, how = 'walk') {
+    const t = City.travelDays(run, p),
+      ran = how === 'run';
+    if (run.event || !City.onLand(p) || City.noTime(run, t) || City.outside(run, p) || (ran && City.noRun(run, p))) return '';
+    const plan = ran ? City.runPlan(run, p) : null;
     City.spend(run, t);
-    City.logDays(run, t, null);
+    for (let i = 0; i < t; i++) (run.dayLog || (run.dayLog = [])).push(ran ? { k: 'trip', label: 'Run' } : { k: 'trip', label: 'Trip' });
     City.moveTo(run, p);
-    return `Travelled to ${REGIONS[City.loc(run)].name} (${t} day${t > 1 ? 's' : ''}).`;
+    const where = `${REGIONS[City.loc(run)].name} (${t} day${t > 1 ? 's' : ''})`;
+    return ran ? `Ran to ${where}: ${Training.runTrip(run, plan)}` : `Travelled to ${where}.`;
   },
   /** The road path from map point `from` to `to` (spec §4.18): the points of City.path. */
   route: (from, to) => City.path(from, to).pts,
@@ -318,11 +321,11 @@ const City = {
   path(from, to) {
     const key = `${from[0]},${from[1]}>${to[0]},${to[1]}`,
       hit = PATH_CACHE.get(key);
-    if (hit) return { pts: hit.pts.map(p => p.slice()), cost: hit.cost };
+    if (hit) return { pts: hit.pts.map(p => p.slice()), cost: hit.cost, ids: hit.ids.slice() };
     if (PATH_CACHE.size > 4000) PATH_CACHE.clear();
     const r = City.pathRaw(from, to);
     PATH_CACHE.set(key, r);
-    return { pts: r.pts.map(p => p.slice()), cost: r.cost };
+    return { pts: r.pts.map(p => p.slice()), cost: r.cost, ids: r.ids.slice() };
   },
   pathRaw(from, to) {
     const N = ROADS.nodes,
@@ -331,7 +334,7 @@ const City = {
       near = p => ids.reduce((best, id) => (d(p, N[id]) < d(p, N[best]) ? id : best), ids[0]),
       a = near(from),
       b = near(to),
-      straight = { pts: [from.slice(), to.slice()], cost: City.ground(from, to) };
+      straight = { pts: [from.slice(), to.slice()], cost: City.ground(from, to), ids: [] };
     if (d(from, to) <= d(from, N[a]) && d(from, to) <= d(to, N[b])) return straight;
     const adj = {};
     for (const [u, v, kind] of ROADS.edges) {
@@ -357,7 +360,56 @@ const City = {
     const path = [];
     for (let id = b; id !== undefined; id = prev[id]) path.unshift(id);
     const pts = [from, ...path.map(id => N[id]), to].filter((p, i, A) => !i || p[0] !== A[i - 1][0] || p[1] !== A[i - 1][1]);
-    return { pts: pts.map(p => p.slice()), cost };
+    return { pts: pts.map(p => p.slice()), cost, ids: path };
+  },
+  /**
+   * The route from `from` to `to` as legs of ground (spec §4.33, T-309): [{ kind, cost }] — each road edge walked (its ROADS kind;
+   * an edge at the Thousand Steps node: 'steps') and the cross-country legs to / from the network ('ground'), with its travel cost.
+   */
+  legs(from, to) {
+    const P = City.path(from, to),
+      N = ROADS.nodes,
+      kinds = City.edgeKinds(),
+      out = [];
+    if (!P.ids.length) return [{ kind: 'ground', cost: City.ground(from, to) }];
+    out.push({ kind: 'ground', cost: City.ground(from, N[P.ids[0]]) });
+    for (let i = 1; i < P.ids.length; i++) {
+      const a = P.ids[i - 1],
+        b = P.ids[i],
+        k = a === 'steps' || b === 'steps' ? 'steps' : kinds[`${a}|${b}`] || 'ground';
+      out.push({ kind: k, cost: Math.hypot(N[b][0] - N[a][0], N[b][1] - N[a][1]) * (ROAD_COST[kinds[`${a}|${b}`]] ?? 1) });
+    }
+    out.push({ kind: 'ground', cost: City.ground(N[P.ids[P.ids.length - 1]], to) });
+    return out.filter(l => l.cost > 0);
+  },
+  /** ROADS edge kinds by 'u|v' (both ways), built once. */
+  edgeKinds() {
+    if (!City._ek) {
+      City._ek = {};
+      for (const [u, v, k] of ROADS.edges) City._ek[`${u}|${v}`] = City._ek[`${v}|${u}`] = k;
+    }
+    return City._ek;
+  },
+  /**
+   * Running to map point p (T-309): { gains: { body stat: base units }, sta, days } — RUN_GROUND per TRIP_DAY of each leg's travel
+   * cost; stamina RUN_GROUND.sta per day of the trip's cost (≥ 1 when it moves at all). Pure.
+   */
+  runPlan(run, p) {
+    const gains = {};
+    let c = 0;
+    for (const l of City.legs(City.pos(run), p)) {
+      c += l.cost;
+      for (const [k, v] of Object.entries(RUN_GROUND[l.kind] || RUN_GROUND.ground)) gains[k] = (gains[k] || 0) + (v * l.cost) / TRIP_DAY;
+    }
+    for (const k of Object.keys(gains)) gains[k] = +gains[k].toFixed(2);
+    return { gains, sta: c > 0 ? Math.max(1, Math.round((RUN_GROUND.sta * c) / TRIP_DAY)) : 0, days: City.travelDays(run, p) };
+  },
+  /** Why you can't run to p ('' if you can): it must move you, and you need the stamina (too tired → walk only). */
+  noRun(run, p) {
+    const R0 = City.runPlan(run, p);
+    if (!R0.sta) return 'nowhere to run';
+    if (run.injury) return 'injured — walk';
+    return run.sta < R0.sta ? `too tired to run (needs ${R0.sta} stamina) — walk` : '';
   },
   /** Cross-country cost from a to b: the distance, each GROUND_STEP-long stretch × GROUND_COST of the region at its middle × the climb (reliefAt). */
   ground(a, b) {

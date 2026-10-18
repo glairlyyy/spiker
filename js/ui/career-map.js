@@ -323,10 +323,10 @@ function mapScout(ti) {
   CW.spot = `hq${ti}`;
   mapAfter(RUN);
 }
-/** Just travel to a point (its trip days, at least one). */
-function mapTravel(x, y) {
+/** Just travel to a point (its trip days, at least one); `how` 'run': run it (T-309 — the ground trains you). */
+function mapTravel(x, y, how = 'walk') {
   if (CW.lock) return;
-  const line = City.travelTo(RUN, [x, y]);
+  const line = City.travelTo(RUN, [x, y], how);
   if (!line) return;
   Run.log(RUN, line);
   if (CW.spot && CW.spot.startsWith('pt:')) CW.spot = null;

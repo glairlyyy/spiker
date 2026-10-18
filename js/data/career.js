@@ -117,7 +117,24 @@ const DAY_ORDERS = {
   haul: { name: 'Haul crates', kind: 'work', main: ['str', 4], side: ['end', 2], sta: 25, pay: 35, train: 'power' },
   lifeguard: { name: 'Lifeguard shift', kind: 'work', main: ['end', 3], side: ['agi', 2], sta: 18, pay: 30, train: 'def' },
   chores: { name: 'Floor duty', kind: 'work', main: ['end', 2], side: ['flex', 2], sta: 15, pay: 20, train: 'def' },
-  stretch: { name: 'Stretch', kind: 'stretch', main: ['flex', 4], side: ['agi', 1], sta: 5, train: 'def' }
+  stretch: { name: 'Stretch', kind: 'stretch', main: ['flex', 4], side: ['agi', 1], sta: 5, train: 'def' },
+  // a run (T-309): its gains come from the route's ground (RUN_GROUND); this entry carries the name, the multipliers' key and the sponsor perk
+  run: { name: 'Run', kind: 'run', main: ['end', 0], side: ['agi', 0], sta: 0, train: 'speed' }
+};
+/**
+ * Running a trip (spec §4.33, T-309): the ground trains you. Per TRIP_DAY of travel cost on each kind of ground (ROADS edge kinds;
+ * `steps` = the Thousand Steps' paths, `ground` = cross-country legs): body gains in DAY_ORDERS units; `sta`: stamina per trip day.
+ */
+const RUN_GROUND = {
+  main: { end: 5 },
+  street: { end: 5 },
+  overpass: { end: 5 },
+  boardwalk: { agi: 4, end: 1 },
+  dirt: { end: 4, str: 2 },
+  path: { end: 3, str: 3 },
+  steps: { str: 4, agi: 4 },
+  ground: { end: 4 },
+  sta: 14
 };
 /** A place's kit (SPOTS[id].kit, equipment and ground): each tag brings its orders; `train` = the lead training of a place it leads. */
 const KITS = {

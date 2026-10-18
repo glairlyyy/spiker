@@ -94,7 +94,7 @@ Accept:
 QA: career run → three place cards (Harbor, Sand Courts, home) against the design system.
 Result: KITS + DAY_ORDERS (data/career.js — `ORDERS` is taken by the engine's role orders); SPOTS `kit`, `train` derived from the first tag (B's dossier / NPC plans unchanged); 16 kit places (the task says 17: there are 16), each ≥ 2 orders; Work at 6 (Harbor, Stone Gym, Sand Courts, Dunes, Dojo, Academy Gym); Stretch at kit places, home, the grounds and any map point (City.pointDay; the point card = B's pointPanel + a Stretch row inserted by `pointCard`, pointPanel untouched); facility level per place (`run.uses[id]`; `Training.facility(run, trainingKey)` = its best place); `City.day(run, id, hard, oid)`, `mapGo(id, oid)`. Drills cost 1–1.5 × the old fee. Bot drills by body stat: casual money at the Y1 Cup $280 (under $600 in 20 / 20; was $857), Y2 89.3; good Y2 95.5. npm test 156/156, lint, test:ui 13/13 (+ order / Stretch checks); QA Harbor, Sand Courts, home cards.
 
-### [ ] T-309: Run — trips train the route's ground
+### [x] T-309: Run — trips train the route's ground
 Agent: A
 Spec: §4.33          Goldens: unchanged          Save: no change
 Goal: a trip can be walked or run; running trains the body by the route's edge kinds and distance, at a stamina cost.
@@ -105,7 +105,7 @@ Do not: change trip days or routing; draw randoms.
 Accept: running the airport → Harbor coast road gives Endurance; Shu mountain path gives Endurance + Strength; the Steps
 Strength + Agility (tests); too tired to run → Walk only.
 QA: career run → run a trip across the island; the day track and diary show it.
-Result:
+Result: RUN_GROUND (data/career.js) per TRIP_DAY of each leg's travel cost (main / street / overpass → End, dirt / path → End + Str, boardwalk → Agi, the Steps' edges → Str + Agi, cross-country → End), −14 stamina a trip day; City.path returns node ids, City.legs / runPlan / noRun, travelTo(run, p, 'run'), Training.runTrip; Walk / Run buttons on place cards and (inside pointCard) map points; day track 'Run', diary 'Ran to …'. Airport → Harbor (2 d): End 7.7 base, −22 stamina. Day orders' own trips stay walked; the bot runs from T-312. npm test 157/157, lint, test:ui 13/13; QA: ran airport → Harbor.
 
 ### [ ] T-310: Facilities on the map — pins with what they train, landmarks with their kit
 Agent: A

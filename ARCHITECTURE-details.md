@@ -705,6 +705,15 @@ fixed (`SPOTS.acaGym.lv`). Map points: `City.pointCan` / `City.pointDay` (Stretc
 (career-panels.js; "cost → result" per body stat from `xpRate`), `kitSpot` (the kit card), `pointCard` wraps B's `pointPanel`
 and adds the Stretch row inside it; `mapGo(id, oid)` / `mapStretch(x, y)` (career-map.js).
 
+### Running a trip (T-309)
+
+`City.path` also returns the road node ids; `City.legs(from, to)` turns the route into ground legs `{ kind, cost }` (ROADS edge kinds;
+an edge at the `steps` node = 'steps'; to / from the network = 'ground'). `City.runPlan(run, p)` = `RUN_GROUND[kind]` gains per
+TRIP_DAY of each leg's travel cost, stamina `RUN_GROUND.sta` per trip day; `City.noRun` (no move, injured, too tired → walk only).
+`City.travelTo(run, p, 'run')` spends the walking days, logs 'Run' trip days and calls `Training.runTrip` (the gains × `Training.mul`
+of the `DAY_ORDERS.run` key × DAY_GAIN; no fail roll). UI: `runBtn` (career-panels.js) beside Walk on place cards and inside
+`pointCard`; `mapTravel(x, y, 'run')`.
+
 ## Training XP
 
 Training gives XP (`Training.xpFor`: base gain × `TRAIN_X.xp.per` × every multiplier — place quality and home turf

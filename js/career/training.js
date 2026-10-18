@@ -166,6 +166,17 @@ const Training = {
    * facility level grows per kit place. Same rules as a training (fail when tired, Hard, mates, streak). Returns the log line.
    */
   order: (run, oid, at, hard, x = 1, spMul = 1) => Training.session(run, oid, at, hard, x, spMul),
+  /** A run (T-309): City.runPlan's gains through the usual multipliers (× DAY_GAIN), its stamina; no fail roll, no facility. The log text. */
+  runTrip(run, plan) {
+    const mul = Training.mul(run, 'run', false, DAY_GAIN),
+      out = [];
+    run.trained = 1;
+    run.lastMain = Object.keys(plan.gains).reduce((a, k) => (plan.gains[k] > (plan.gains[a] || 0) ? k : a), 'end');
+    for (const k of BODY.keys) if (plan.gains[k]) out.push(Training.addXp(run, k, Training.xpFor(k, plan.gains[k], mul)));
+    out.push(Run.bump(run, 'sta', -plan.sta));
+    Feel.add(run, 'drive', FEEL.drive.train);
+    return out.filter(Boolean).join(', ');
+  },
   session(run, key, at, hard, x = 1, spMul = 1) {
     const T = Training.def(key),
       O = DAY_ORDERS[key];
