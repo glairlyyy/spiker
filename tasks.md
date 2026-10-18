@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-318** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-319** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -33,11 +33,24 @@ repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
 
-**Body and day orders (owner, 2026-10-19, spec §4.33): T-307 → T-312, in order.** Engine untouched except T-311; the court
+**Two agents (owner, 2026-10-19), by file ownership (CLAUDE.md):** **Agent A — Body & orders** (T-307 → T-308 → T-309 →
+T-310 → T-318 → T-312) and **Agent B — War** (T-313 → T-314 → T-311 → T-315 → T-316 → T-317), in parallel. Each edits only
+what it owns; on an artifact publish refusal: re-read the refused files, re-apply its own edit, publish again.
+
+| | Agent A — Body & orders | Agent B — War |
+|---|---|---|
+| **Owns** | js/data/career.js, js/data/city.js, js/career/body.js (new), training.js, growth.js, city.js, people.js, feel.js, eval.js, story.js (its `trained` gate only), js/ui/career-panels.js (all but the B functions), career-map.js, career-people.js, career-create.js, career-week.js, sheet-me.js, css/career.css, js/map3d/pins3d.mjs, kit3d.mjs, town3d.mjs, tests/career-bot.js, tests/people.test.js, tests/ui-smoke.js | js/data/war.js (new), js/career/war.js (new), js/data/world.js, front.js, hex.js, world.js, fight.js, cup.js, court.js, dossier.js, season.js, js/career/story.js (all but `trained`), js/data/story.js, js/data/glossary.js, js/engine/** (incl. T-311's bars.js), js/ui/career-dossier.js, sheet-season.js, match-prep.js, js/map3d/map3d.mjs, geo3d.mjs, tests/hex.test.js, tests/momentum.test.js, tests/cards.test.js, tests/war.test.js (new) |
+| **Shared, by section** | mapmodel.js: everything but B's · career-panels.js: everything but B's · run.js: RUN_VERSION 20 (T-307), body fields · css/map.css: pins · tests/career.test.js, map.test.js: their own tests · index.html: its own script lines · tests/harness.js: A | mapmodel.js: `hexes`, `patrols`, `borders` and their keys in `build` · career-panels.js: `hqPanel`, `clashPanel`, `pointPanel` · run.js: RUN_VERSION 21 (T-313, after A's T-307 is published), the `hex` / `war` defaults · css/map.css: `/* war */` block · tests: blocks named hex / front / war / clash · index.html: its own script lines |
+| **Keeps working for the other** | `SPOTS[id].train` (a place's lead training, derived from its kit) and `Training.facility(run, key \| placeId)` — B's dossier reads them | `Front.owner / priceMul / qMul`, `Hex.dist / idAt / tile` (city.js, run.js call them); new: `War.hit(run, unit, win, k = 1)` for A's Raid (T-318) |
+
+Not in this split: the cards session's files (js/engine/cards.js, js/ui/match-cards.js) — B touches cards.js only for T-314's slot count.
+
+**Body and day orders (owner, 2026-10-19, spec §4.33): Agent A.** Engine untouched except T-311; the court
 skills are derived so ovr, techniques and cards keep reading what they read. Re-run `npm run career` after each.
 
 ### [ ] T-307: Body stats — Strength, Agility, Endurance, Flexibility; court skills derived
-Spec: §4.33          Goldens: unchanged          Save: RUN_VERSION bump (20: `you.body`, body XP banks)
+Agent: A
+Spec: §4.33          Goldens: unchanged          Save: RUN_VERSION 20 (`you.body`, body XP banks) — publish it early: B's T-313 takes 21
 Goal: your player has a body (str / agi / end / flex + wit); power / def / speed / jump are computed from it after every
 change; today's trainings still work, each re-keyed to a body mix.
 Files: js/data/career.js (BODY: keys, names, formulas' constants; TRAININGS main/side → body keys), js/career/body.js (new:
@@ -59,16 +72,17 @@ QA: career run → Me sheet (body bars, swing gauge).
 Result:
 
 ### [ ] T-308: Facilities = kit; day orders on the place card (Drill, Work, Stretch)
+Agent: A
 Spec: §4.33          Goldens: unchanged          Save: no change (beyond T-307's v20; `run.uses` keyed by place)
 Goal: every SPOTS place lists its kit; the place card offers the orders its kit brings, each "cost → result"; Work pays;
 Stretch works anywhere; the facility level grows per place.
 Files: js/data/city.js (SPOTS `kit` replaces `train`), js/data/career.js (KITS, ORDERS: body gains, sta, price, pay),
 js/career/city.js (day → order; can / cost / price per order), js/career/training.js (Training.order; facility per place),
-js/career/mapmodel.js, js/career/dossier.js, js/career/people.js, js/career/story.js, js/career/feel.js, js/career/eval.js
-(their `train` reads), js/ui/career-panels.js (orders list), js/ui/career-map.js, js/ui/career-dossier.js,
-js/ui/career-people.js, css/career.css, tests/career.test.js, tests/map.test.js, tests/people.test.js, tests/harness.js,
+js/career/mapmodel.js (A's sections), js/career/people.js, js/career/story.js (`trained`), js/career/feel.js, js/career/eval.js
+(their `train` reads), js/ui/career-panels.js (orders list), js/ui/career-map.js, js/ui/career-people.js, css/career.css, tests/career.test.js, tests/map.test.js, tests/people.test.js, tests/harness.js,
 tests/career-bot.js, tests/ui-smoke.js, ARCHITECTURE-details.md
-Do not: show region quality; add a pop-up; change NPC training (People still trains court stats).
+Do not: show region quality; add a pop-up; change NPC training (People still trains court stats); drop `SPOTS[id].train` (keep it as the
+place's lead training — B's dossier reads it) or break `Training.facility(run, key)`.
 Steps:
 1. Kit per place (Harbor: weights, crates; Sand Courts: sand, mats; Thousand Steps: steps; Shrine: film, mats; Academy Gym:
    everything at Lv 1 …); ORDERS per kit tag: Drill (fast, $), Work (pays, slower), Stretch (free, Flexibility).
@@ -81,6 +95,7 @@ QA: career run → three place cards (Harbor, Sand Courts, home) against the des
 Result:
 
 ### [ ] T-309: Run — trips train the route's ground
+Agent: A
 Spec: §4.33          Goldens: unchanged          Save: no change
 Goal: a trip can be walked or run; running trains the body by the route's edge kinds and distance, at a stamina cost.
 Files: js/data/career.js (RUN_GROUND: edge kind → body gains per day of trip, sta), js/career/city.js (go: run option, gains
@@ -93,6 +108,7 @@ QA: career run → run a trip across the island; the day track and diary show it
 Result:
 
 ### [ ] T-310: Facilities on the map — pins with what they train, landmarks with their kit
+Agent: A
 Spec: §4.33, §4.18, §9          Goldens: unchanged          Save: no change
 Goal: a place's pin shows small body-stat glyphs of what it trains best; its landmark shows its kit (racks, crates + crane,
 track, steps, mats).
@@ -103,16 +119,30 @@ Accept: map test — every training place's pin lists 1–3 body glyphs; QA scre
 QA: career run → map overview + two close-ups.
 Result:
 
+### [ ] T-318: The Raid order — a street game on a hot border
+Agent: A (after B's T-313 is published: needs `War.hit`)
+Spec: §4.33, §4.34          Goldens: unchanged          Save: no change
+Goal: a Raid day order at a point on a hot border (or its nearest place) fights a street game there; a win counts × 2 on that
+unit's Strength (`War.hit(run, unit, win, 2)`).
+Files: js/career/city.js, js/data/career.js (ORDERS.raid), js/ui/career-panels.js (A's place / point card rows — not `pointPanel`'s
+war rows), tests/career.test.js (its own test)
+Do not: re-implement Strength; add a pop-up.
+Accept: test — a raid win moves the unit's Strength twice as far as a street battle win.
+QA: career run → raid a border.
+Result:
+
 ### [ ] T-311: Endurance in the match — rally HP damage
+Agent: B
 Spec: §4.33, §2.31          Goldens: unchanged (players without a body: × 1)          Save: no change
 Goal: your Endurance lowers your rally HP damage (× (1.2 − 0.4 · end / 100)).
 Files: js/engine/bars.js, tests/momentum.test.js
-Do not: draw randoms; change any player without `body`.
+Do not: draw randoms; change any player without `body` (read `p.body && p.body.end`; A's T-307 adds `you.body`).
 Accept: goldens unchanged; a test — end 90 takes less HP damage than end 30 on the same balls.
 QA: none (engine).
 Result:
 
 ### [ ] T-312: Balance the orders — the bot plays the day orders
+Agent: A
 Spec: §4.32, §4.33          Goldens: unchanged          Save: no change
 Goal: the career bot uses Drill / Work / Run / Stretch (good: keeps the swing full; casual: drills its key stat only); the
 order numbers are tuned so good ends year 2 level with the rival (~92) and casual near the league mean (~87).
@@ -122,17 +152,19 @@ Accept: `npm run career -- 20 both` table in §4.32: good Y2 ≥ 91, casual ≤ 
 QA: none.
 Result:
 
-**Faction war: Strength, structure, overthrow (owner, 2026-10-19, spec §4.34): T-313 → T-317, in order (after T-312
-unless the owner says otherwise).**
+**Faction war: Strength, structure, overthrow (owner, 2026-10-19, spec §4.34): Agent B.**
 
 ### [ ] T-313: War units and Strength replace hex takeover
-Spec: §4.34          Goldens: unchanged (engine)          Save: RUN_VERSION bump (`run.war`; `run.hex` dropped)
+Agent: B
+Spec: §4.34          Goldens: unchanged (engine)          Save: RUN_VERSION 21 (`run.war`; `run.hex` dropped) — after A's T-307 (20) is published
 Goal: six war units (Wei Iron, Wei Gold, Wu Harbor, Wu Fort, Shu, + none for minors) with Strength 0–100; street battles
-move it (Shu × 0.5; Gold only once Iron is gone); no tile flips; prices / quality / joins read Strength.
+move it (Shu × 0.5; Gold only once Iron is gone); no tile flips; prices / quality / joins read Strength. city.js keeps calling
+`Front.owner / priceMul / qMul` and `Hex.dist / idAt` — keep them (on Strength); expose `War.hit(run, unit, win, k = 1)`.
 Files: js/data/world.js (WAR: units, clubs per unit, deltas, stages; FRONT trimmed), js/career/front.js (pick a border, apply a
 battle to Strength), js/career/hex.js (geometry only: unit borders from the grid's outer edge), js/career/world.js,
-js/career/city.js, js/career/fight.js, js/career/mapmodel.js, js/career/run.js (v bump, run.war), js/ui/career-panels.js,
-js/ui/career-dossier.js, js/ui/sheet-season.js (Factions cards), tests/map.test.js, tests/career.test.js, tests/harness.js,
+js/career/fight.js, js/career/mapmodel.js (B's sections), js/career/run.js (RUN_VERSION 21, `war` / `hex` defaults), js/ui/career-panels.js
+(B's functions), js/ui/career-dossier.js, js/ui/sheet-season.js (Factions cards), js/data/war.js (new), js/career/war.js (new), index.html
+(its lines), tests/war.test.js (new), tests/map.test.js / career.test.js (hex / front tests),
 ARCHITECTURE.md, ARCHITECTURE-details.md
 Do not: change NPC homes or region names; touch js/engine.
 Accept: 30-week headless run — every unit's Strength stays in 0–100, Shu loses ≤ half what Iron loses for the same results,
@@ -141,6 +173,7 @@ QA: career run → Factions cards and a border.
 Result:
 
 ### [ ] T-314: Stages in the match — Strained, Shaken, Broken
+Agent: B
 Spec: §4.34, §2.31, §2.33          Goldens: unchanged (no `weak` → today)          Save: no change
 Goal: a squad of a weakened unit plays with its stage's debuffs (morale start, HP heal, one card slot fewer); Iron bleeds into
 Gold one step lighter; Shu one stage late; match prep shows the stage.
@@ -153,12 +186,13 @@ QA: Monster game with `weak` forced on one side → prep chip.
 Result:
 
 ### [ ] T-315: The overthrow and a destroyed faction
+Agent: B
 Spec: §4.34          Goldens: unchanged          Save: no change (inside `run.war`)
 Goal: a Broken unit can be challenged at its HQ (you, a unit fighting it, or the AI below 10); a 5-set match against its ace
 squad; a win destroys it — places and region to the winner, players scattered, Cup places to the winner, members freed;
 Haewon walks out (scene); a loss rallies it.
-Files: js/career/front.js, js/career/cup.js (entrants by unit), js/career/people.js (scatter), js/career/world.js (members
-freed), js/career/story.js, js/data/story.js (walk-out, fall news — lore voices), js/ui/career-panels.js (HQ card: Challenge),
+Files: js/career/front.js, js/career/war.js, js/career/cup.js (entrants by unit), js/career/world.js (members freed; the scatter
+calls People.toReserve / People.remove — A's file, call only), js/career/story.js, js/data/story.js (walk-out, fall news — lore voices), js/ui/career-panels.js (HQ card: Challenge),
 js/career/mapmodel.js, js/map3d/map3d.mjs (region recolour + pan), tests/career.test.js
 Do not: let Haewon join the winner or your club; allow a challenge within 4 weeks of that unit's last overthrow match; slow the street battles.
 Accept: tests — destroying Iron opens Gold's border; destroying Harbor leaves Fort's Strength unchanged; a destroyed unit
@@ -166,22 +200,23 @@ sends no Cup squads and the winner gets its places; Haewon is never on the winne
 QA: career run (forced Broken Iron) → challenge, win, the map recolours.
 Result:
 
-### [ ] T-316: You in the war — call-ups and the Raid order
+### [ ] T-316: You in the war — call-ups
+Agent: B
 Spec: §4.33, §4.34          Goldens: unchanged          Save: no change
-Goal: your club calls you up on battle weeks (refusal costs standing); a Raid day order fights a street game on a hot border
-(a win counts × 2).
-Files: js/career/fight.js, js/career/city.js (Raid order), js/data/career.js, js/ui/career-panels.js, js/ui/career-week.js,
-tests/career.test.js
+Goal: your club calls you up on battle weeks (refusal costs standing). (The Raid order is A's T-318.)
+Files: js/career/fight.js, js/data/war.js, js/ui/career-panels.js (`clashPanel`), tests/war.test.js
 Do not: add a pop-up beyond the existing battle card.
-Accept: tests — a raid win moves Strength twice as far; a refused call-up costs standing.
-QA: career run → raid a border.
+Accept: tests — a member is called up on a battle week of their unit; a refused call-up costs standing.
+QA: career run → a call-up week.
 Result:
 
 ### [ ] T-317: Borders on the map — lines, heat, banners
+Agent: B
 Spec: §4.34, §4.18          Goldens: unchanged          Save: no change
 Goal: hex fills and the tile panel go; each war unit's border is one smoothed line in its colour; fighting heats a stretch
 (glow, pulse, banners); the battle site sits on it.
-Files: js/map3d/map3d.mjs, js/map3d/geo3d.mjs, js/map3d/pins3d.mjs, js/career/mapmodel.js, css/map.css, tests/map.test.js
+Files: js/map3d/map3d.mjs, js/map3d/geo3d.mjs (banners there, not in A's pins3d.mjs), js/career/mapmodel.js (B's sections), css/map.css
+(`/* war */`), tests/map.test.js (hex / war tests)
 Do not: add per-frame allocations; colour terrain (faction colour only on borders, banners).
 Accept: map test — one closed border per unit; the hot stretch is the one the week's battle was on; QA screenshot.
 QA: career run → map overview, a hot border close-up.
