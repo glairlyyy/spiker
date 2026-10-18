@@ -27,7 +27,7 @@ function renderCreate() {
         .filter(id => SKILLS[id].tech && SKILLS[id].role !== 'any')
         .map(id => SKILLS[id].name);
     return `<div class="rcw"><button class="rcard ${CR.role === r ? 'on' : ''}" onclick="crRole('${r}')" aria-pressed="${CR.role === r}"><span class="lab">${r}</span><b>${ROLE_NAME[r]}</b>
-      <span class="rk" ${tip(`Key stat: ${STATNAME[k]}`)}>${statI(statKey(k), 16)} ${STATNAME[k]}</span>
+      <span class="rk" ${tip(`Key stat: ${STATNAME[k]} — built mostly on ${BODY.name[Body.lead(k)]}`)}>${statI(statKey(k), 16)} ${STATNAME[k]}</span>
       <span class="small mute">${ROLE_PITCH[r]}</span></button>${peek(
         `cr:${r}`,
         'Details',
@@ -38,7 +38,7 @@ function renderCreate() {
       )}</div>`;
   };
   $('#app').innerHTML = `<section class="create2">
-    <div class="chead"><span class="lab">New career</span><h2 ${tip(`Every stat starts at ${CAREER.start}. Training takes you to ${TRAIN_CAP}; matches take you further. You arrive as a free agent.`)} tabindex="0">Who arrives on the island?</h2></div>
+    <div class="chead"><span class="lab">New career</span><h2 ${tip(`You train your body — Strength, Agility, Endurance, Flexibility — each from ${CAREER.start}; the court skills come from it. Training takes it to ${TRAIN_CAP}; matches take you further. You arrive as a free agent.`)} tabindex="0">Who arrives on the island?</h2></div>
     <div class="lab">Role</div>
     <div class="rcards">${['WS', 'MB', 'S'].map(card).join('')}</div>
     <div class="crow"><div><div class="lab">Name</div><div class="namerow"><input id="crname" maxlength="24" value="${esc(CR.name)}" oninput="CR.name=this.value" aria-label="Player name"><button class="btn" onclick="CR.name=rollName(new Set());renderCreate()">Random</button></div></div>

@@ -1,4 +1,4 @@
-// The Me sheet (career-hub.js HUB_SHEETS, spec §10.4 SheetMe): you, stats, element, skills, life, housing — and its handlers.
+// The Me sheet (career-hub.js HUB_SHEETS, spec §10.4 SheetMe): you, body and court skills (§4.33), element, skills, life, housing — and its handlers.
 
 /** The Me sheet (spec §10.4, SheetMe): who you are, stats with caps and progress, element, skills, life. */
 function sheetMe(run) {
@@ -6,11 +6,28 @@ function sheetMe(run) {
     team = Run.myTeam(run),
     mood = MOODS[run.mood],
     rank = you.op ? 'OP red star' : you.star ? `★ Star — OP at OVR ${CAREER.op.ovr}` : `Rookie — ★ Star at OVR ${CAREER.star.ovr}`,
-    statRow = k => {
+    // the body (spec §4.33): what you train — XP bar under each; the court skills below are worked out from it
+    bodyRow = k => {
       const pr = Training.progress(run, k),
-        pct = Math.round((pr.have / Math.max(1, pr.need)) * 100);
-      return `<div class="mrow" ${tip(`${pct}% of the way to the next point. Training stops at ${Training.cap(run)} this season; matches only above.`)}><span>${statI(statKey(k), 20)}${STATNAME[k]}</span><span class="mbars"><i class="mb"><i style="--w:${Math.min(100, you[k])}%"></i></i><i class="mp"><i style="--w:${pct}%"></i></i></span><span class="mv"><b>${you[k]}</b> <span class="mute">/ ${Training.cap(run)}</span></span></div>`;
+        pct = Math.round((pr.have / Math.max(1, pr.need)) * 100),
+        v = you.body[k];
+      return `<div class="mrow" ${tip(`${BODY.desc[k]}\n${pct}% of the way to the next point. Training stops at ${Training.cap(run)} this season; matches only above.`)}><span><i class="bgl" aria-hidden="true">${BODY.glyph[k]}</i>${BODY.name[k]}</span><span class="mbars"><i class="mb"><i style="--w:${Math.min(100, v)}%"></i></i><i class="mp"><i style="--w:${pct}%"></i></i></span><span class="mv"><b>${v}</b> <span class="mute">/ ${Training.cap(run)}</span></span></div>`;
     },
+    courtRow = k =>
+      `<div class="mrow court" ${tip(`${GLOSSARY[k].long}\nFrom your body: ${courtHow[k]}.`)}><span>${statI(statKey(k), 20)}${STATNAME[k]}</span><span class="mbars"><i class="mb"><i style="--w:${Math.min(100, you[k])}%"></i></i></span><span class="mv"><b>${you[k]}</b></span></div>`,
+    courtHow = {
+      power: 'Strength × the swing, a little Agility',
+      jump: 'Strength × the load depth, Agility',
+      speed: 'Agility, a little Endurance',
+      def: 'Flexibility, Agility, Endurance'
+    },
+    B = you.body,
+    sw = B ? Body.swing(B) : 1,
+    swingRow = B
+      ? `<div class="mrow swing" ${tip(`A full swing needs Flexibility ≥ ${BODY.swing} × Strength: without it Strength is wasted on Power (and a shallow load costs Jump).`)}><span>Swing</span><span class="mbars"><i class="mb ${sw < 1 ? 'short' : ''}"><i style="--w:${Math.round(sw * 100)}%"></i></i></span><span class="mv small ${sw < 1 ? 'warn' : 'up'}">${sw < 1 ? `short` : 'full'}</span></div>${
+          sw < 1 ? `<p class="small swhint">Short: Flexibility <b>${B.flex}</b> of ${Body.swingNeed(B)}</p>` : `<p class="small mute swhint">Full swing</p>`
+        }`
+      : '',
     ids = Skills.forRole(you.role),
     aff = ids.filter(id => !you.skills.includes(id) && Skills.canLearn(run, id)).length,
     // passive skills (§10.8): owned ones, then the 3 closest to affordable; the rest behind `+n more ›`
@@ -48,8 +65,9 @@ function sheetMe(run) {
     el = ElTrial.steps(run).seen ? '' : `Element at OVR ${ElTrial.revealAt}`;
   return `<div class="sheet-h"><span class="portrait" ${el ? `${tip(el)} tabindex="0"` : ''}>${faceSVG(you, mood.form, 56)}</span><div><h2>${stag(you)}${esc(you.name)}</h2><div class="mute">${ROLE_NAME[you.role]} · ${chip(team)}${esc(team.short)} · <span ${tip(rank)}>OVR ${ovr(you)}</span></div></div></div>
     <div class="sheet-cols mecols">
-      <section class="card"><div class="lab" ${tip('Thick bar: the stat. Thin bar: progress to the next point.')}>Stats</div>${STATK.map(statRow).join('')}
+      <section class="card"><div class="lab" ${tip('What you train. Thick bar: the stat. Thin bar: progress to the next point.')}>Body</div>${B ? BODY.keys.map(bodyRow).join('') : ''}
         <div class="mrow"><span>${statI('wit', 20)}Wit</span><span class="mbars"><i class="mb"><i style="--w:${you.wit * 50}%"></i></i></span><span class="mv"><b>${you.wit.toFixed(2)}</b></span></div>
+        <div class="lab sub" ${tip('What the match reads — worked out from your body after every change.')}>Court</div>${STATK.map(courtRow).join('')}${swingRow}
         <div class="mrow"><span>${statI('led', 20)}Leadership</span><span class="mbars"><i class="mb lead"><i style="--w:${you.lead}%"></i></i></span><span class="mv"><b>${you.lead}</b></span></div>
         ${elementLine(run)}
         ${

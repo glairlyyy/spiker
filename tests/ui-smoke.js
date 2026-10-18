@@ -88,9 +88,12 @@ const step = async (name, fn) => {
   for (const k of ['me', 'people', 'world', 'season'])
     await step(`sheet ${k}`, async () => {
       await ev(k => hubOpen(k), k);
-      const n = await ev(() => ((document.querySelector('.hub .sheet') || {}).textContent || '').length);
+      const txt = await ev(() => (document.querySelector('.hub .sheet') || {}).textContent || '');
       await ev(() => hubOpen(null));
-      if (n < 20) throw new Error('the sheet did not render');
+      if (txt.length < 20) throw new Error('the sheet did not render');
+      // the Me sheet (spec §4.33): the body's four bars, then the court skills with the swing gauge
+      if (k === 'me' && !(/Strength/.test(txt) && /Flexibility/.test(txt) && /Swing/.test(txt) && /Power/.test(txt)))
+        throw new Error('the Me sheet has no body / court / swing');
     });
   await step('every place card', () =>
     ev(() => {

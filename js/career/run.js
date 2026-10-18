@@ -46,6 +46,7 @@ const Run = {
       stats = {};
     for (const k of STATK) stats[k] = CAREER.start;
     const you = createPlayer({
+      body: Body.make(CAREER.start), // your body (spec §4.33): the court skills are worked out from it (Body.sync)
       name: spec.name,
       role,
       slot,
@@ -62,6 +63,7 @@ const Run = {
       bond: {},
       ...stats
     });
+    Body.sync(you);
     t.P[t.P.indexOf(old)] = you;
     [t.s, t.mb] = t.P;
     t.ws = [t.P[2], t.P[3]];
@@ -209,12 +211,22 @@ const Run = {
     run.log.length = Math.min(run.log.length, 50);
   },
   /**
-   * Change one of your values, respecting caps. key: a stat, 'wit', 'lead', 'sta', 'mood', 'sp', 'fans'.
-   * Returns a short label such as "+6 Power" (empty if nothing changed).
+   * Change one of your values, respecting caps. key: a body stat (a court skill lands on its body stat, BODY.of), 'wit',
+   * 'lead', 'sta', 'mood', 'sp', 'fans'. Returns a short label such as "+6 Strength" (empty if nothing changed).
    */
   bump(run, key, v) {
     const you = Run.you(run);
     const fmt = (d, name, dec = 0) => (d ? `${fmtDelta(d, { dec })} ${name}` : '');
+    if (you.body && (STATK.includes(key) || Body.isKey(key))) {
+      const k = Body.key(key),
+        b = you.body;
+      if (v > 0) v = Math.max(1, Math.round(v * Training.dim(b[k]))); // events obey diminishing returns too
+      const nv = Math.round(clamp(b[k] + v, CAREER.statMin, Math.max(b[k], Training.cap(run)))), // stop at the training cap (never lower what matches raised)
+        d = nv - b[k];
+      b[k] = nv;
+      if (d) Body.sync(you, run);
+      return fmt(d, BODY.name[k]);
+    }
     if (STATK.includes(key) || key === 'lead') {
       if (v > 0 && key !== 'lead') v = Math.max(1, Math.round(v * Training.dim(you[key]))); // events obey diminishing returns too
       const top = key === 'lead' ? CAREER.runCap : Math.max(you[key], Training.cap(run)), // events stop at the training cap (never lower a stat matches raised)
@@ -365,10 +377,11 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 19;
-/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history), v9: `run.mode.story` (T-067), v10: `run.people` / `run.pseed` (NPC careers, T-060), v11: `run.mem` (what NPCs remember about you, T-061), v12: `run.asks` / `run.loans` / `run.vouch` / `run.sitout` / `run.duo` (approaches, T-063), v13: person `status` / `bench` / `gone` (fates, T-064), v14: memory entries gain `a` + NPC ↔ NPC pairs in `run.mem` (T-065), v15: `run.warm` → `run.evals`, `warmupWin|Loss` → `evalWin|Loss` (T-086) — older saves are dropped; add steps when the saved shape changes). */
+const RUN_VERSION = 20;
+/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history), v9: `run.mode.story` (T-067), v10: `run.people` / `run.pseed` (NPC careers, T-060), v11: `run.mem` (what NPCs remember about you, T-061), v12: `run.asks` / `run.loans` / `run.vouch` / `run.sitout` / `run.duo` (approaches, T-063), v13: person `status` / `bench` / `gone` (fates, T-064), v14: memory entries gain `a` + NPC ↔ NPC pairs in `run.mem` (T-065), v15: `run.warm` → `run.evals`, `warmupWin|Loss` → `evalWin|Loss` (T-086), v20: `you.body` + body XP banks (T-307) — older saves are dropped; add steps when the saved shape changes). */
 const RUN_MIGRATIONS = {
   18: d => ({ ...d, v: 19, year: 1 }) // two seasons (T-286): a v18 run is in year 1
+  // v20: your body (`you.body`, body XP banks in `run.xp` — spec §4.33): v19 saves are dropped
 };
 const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
 /**
@@ -419,7 +432,7 @@ const RUN_DEFAULTS = {
   scout: [() => ({}), isObj], // scouted clubs: team index → week
   uses: [() => ({}), isObj],
   floor: [() => ({}), isObj],
-  xp: [() => ({}), isObj], // training experience toward each stat's next point
+  xp: [() => ({}), isObj], // training experience toward each body stat's (and wit's) next point
   plays: [() => ({ k: 0, blk: 0, ace: 0 }), isObj],
   lastFight: [() => null, v => v === null || Number.isFinite(v)], // absolute day of your last challenge / street fight
   days: [() => WEEK_DAYS, v => Number.isFinite(v) && v >= 0 && v <= WEEK_DAYS], // days left this week

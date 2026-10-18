@@ -7,9 +7,11 @@
 const { load } = require('./harness');
 const [N = 12, POL = 'both'] = process.argv.slice(2).map((v, i) => (i === 0 ? +v : v));
 
-/** One day's action: the best place for `stat` (fewest days, then the best gain), or null. */
+/** The training whose main gain is body stat `b` (spec §4.33: trainings re-keyed to the body). */
+const trainFor = (g, b) => (b === 'wit' ? 'wit' : Object.keys(g.TRAININGS).find(k => !g.TRAININGS[k].lv && g.TRAININGS[k].main[0] === b));
+/** One day's action: the best place for body stat `stat` (fewest days, then the best gain), or null. */
 function placeFor(g, run, stat) {
-  const ids = [...g.City.spotsFor(stat), 'acaGym'].filter(id => g.City.can(run, id).ok);
+  const ids = [...g.City.spotsFor(trainFor(g, stat)), 'acaGym'].filter(id => g.City.can(run, id).ok);
   let best = null,
     bv = -1;
   for (const id of ids) {
@@ -20,14 +22,16 @@ function placeFor(g, run, stat) {
   }
   return best;
 }
-/** What to train: casual = the key stat; good = the weakest of the four (the key stat counts 8 lower), wit when it lags. */
+/** What to train (body stats, spec §4.33): casual = the key stat's body stat; good = the weakest of the four (the key one
+ * counts 8 lower), wit when it lags. */
 function statFor(g, run, pol) {
   const you = g.Run.you(run),
-    key = g.KEYSTAT[you.role];
-  if (pol === 'casual') return you[key] < g.Training.cap(run) ? key : g.STATK.find(k => you[k] < g.Training.cap(run)) || 'wit';
-  const open = g.STATK.filter(k => you[k] < g.Training.cap(run));
-  if (you.wit * 50 < Math.min(...open.map(k => you[k])) - 5 || !open.length) return 'wit';
-  return open.reduce((a, k) => (you[k] - (k === key ? 8 : 0) < you[a] - (a === key ? 8 : 0) ? k : a), open[0]);
+    B = you.body,
+    key = g.BODY.of[g.KEYSTAT[you.role]];
+  if (pol === 'casual') return B[key] < g.Training.cap(run) ? key : g.STATK.map(k => g.BODY.of[k]).find(k => B[k] < g.Training.cap(run)) || 'wit'; // (the old court order's trainings)
+  const open = g.BODY.keys.filter(k => B[k] < g.Training.cap(run));
+  if (you.wit * 50 < Math.min(...open.map(k => B[k])) - 5 || !open.length) return 'wit';
+  return open.reduce((a, k) => (B[k] - (k === key ? 8 : 0) < B[a] - (a === key ? 8 : 0) ? k : a), open[0]);
 }
 /** A training week: spend the days. */
 function week(g, run, pol, M) {
@@ -123,9 +127,9 @@ function play(seed, pol) {
   };
   const addXp = g.Training.addXp;
   g.Training.addXp = (r, stat, xp, src = 'train') => {
-    const was = stat === 'wit' ? 0 : you[stat],
+    const was = stat === 'wit' ? 0 : g.Training.level(you, stat),
       out = addXp(r, stat, xp, src);
-    if (stat !== 'wit') M.pts[src] += you[stat] - was;
+    if (stat !== 'wit') M.pts[src] += g.Training.level(you, stat) - was;
     return out;
   };
   const endWeek = g.Run.endWeek;
@@ -146,6 +150,8 @@ function play(seed, pol) {
     Y.rival = g.ovr(g.Stars.get(r, 'rival'));
     Y.money = r.money;
     Y.stats = g.STATK.map(k => you[k]).concat(Math.round(you.wit * 50));
+    Y.body = g.BODY.keys.map(k => you.body[k]);
+    Y.short = g.Body.swing(you.body) < 1;
     Y.fans = r.fans;
   };
   for (let guard = 0; guard < 800 && !run.result; guard++) {
@@ -238,7 +244,11 @@ for (const pol of POL === 'both' ? ['casual', 'good'] : [POL]) {
         .map((k, i) => `${k} ${f1(avg(R.map(r => r.y[y].stats && r.y[y].stats[i])))}`)
         .join(' · ')}`
     );
-  console.log(`  stat points from  ${['train', 'match', 'other'].map(k => `${k} ${f1(avg(R.map(r => r.pts[k])))}`).join(' · ')}`);
+  for (const y of [0, 1])
+    console.log(
+      `  body at Cup Y${y + 1}   ${g0.BODY.keys.map((k, i) => `${k} ${f1(avg(R.map(r => r.y[y].body && r.y[y].body[i])))}`).join(' · ')} · swing short ${R.filter(r => r.y[y].short).length} / ${R.length}`
+    );
+  console.log(`  body points from  ${['train', 'match', 'other'].map(k => `${k} ${f1(avg(R.map(r => r.pts[k])))}`).join(' · ')}`);
   console.log(
     `  vs her squad (odds)   Y1 ${pc(Y('odds')[0])}  Y2 ${pc(Y('odds')[1])}   (met in the bracket: ${R.filter(r => r.y[0].odds != null).length} / ${R.filter(r => r.y[1].odds != null).length})`
   );

@@ -67,7 +67,9 @@ const Training = {
     return Math.max(1, Math.round(X.base * Math.pow(X.grow, Math.min(v, at) - X.from) * Math.pow(k, Math.max(0, v - at))));
   },
   /** A stat's level (wit in 0.02 steps). */
-  level: (you, stat) => (stat === 'wit' ? Math.round(you.wit * 50) : you[stat]),
+  level: (you, stat) => (stat === 'wit' ? Math.round(you.wit * 50) : Body.isKey(stat) && you.body ? you.body[stat] : you[stat]),
+  /** The key XP goes to: yours land on the body (a court skill → its body stat, BODY.of); wit as it is. */
+  key: (run, stat) => (Body.of(Run.you(run)) ? Body.key(stat) : stat),
   /** The training cap this season: TRAIN_CAP in year 1, SEASON.cap in year 2 (spec §4.32). */
   cap: run => (Season.year(run) > 1 ? SEASON.cap : TRAIN_CAP),
   /** Where a stat stops for a source of XP: 'train' (sessions, default) → Training.cap; 'match' → the run cap. Wit: its own cap. */
@@ -77,6 +79,7 @@ const Training = {
   xpFor: (stat, base, mul) => Math.round((stat === 'wit' ? base * 50 : base) * TRAIN_X.xp.per * mul),
   /** Adding xp to a stat: { pts, have } — points gained and the XP left toward the next one (none past the top). */
   sim(run, stat, xp, src = 'train') {
+    stat = Training.key(run, stat);
     const top = Training.top(run, stat, src);
     let v = Training.level(Run.you(run), stat),
       have = ((run.xp && run.xp[stat]) || 0) + xp,
@@ -97,16 +100,24 @@ const Training = {
   },
   /** Give a stat XP: raises it by the points earned, banks the rest. Returns a short label for the log. */
   addXp(run, stat, xp, src = 'train') {
+    stat = Training.key(run, stat);
     const you = Run.you(run),
       r = Training.sim(run, stat, xp, src);
     if (Training.tally) Training.tally[stat] = (Training.tally[stat] || 0) + xp; // the result card's "+N XP" (opened by resultSnap)
     (run.xp || (run.xp = {}))[stat] = r.have;
     if (stat === 'wit') you.wit = +(you.wit + r.pts * 0.02).toFixed(2);
-    else you[stat] += r.pts;
-    return r.pts ? `${GLOSSARY[stat].glyph}+${stat === 'wit' ? (r.pts * 0.02).toFixed(2) : r.pts}` : `${GLOSSARY[stat].glyph}…`; // ⛉+1 / ⛉… (spec §9.4)
+    else if (Body.isKey(stat) && you.body) {
+      you.body[stat] += r.pts;
+      if (r.pts) Body.sync(you, run); // the court skills follow the body (spec §4.33)
+    } else you[stat] += r.pts;
+    const gl = Body.glyph(stat);
+    return r.pts ? `${gl}+${stat === 'wit' ? (r.pts * 0.02).toFixed(2) : r.pts}` : `${gl}…`; // ▲+1 / ▲… (spec §9.4)
   },
   /** XP toward the next point: { have, need } (for the stat bars). */
-  progress: (run, stat) => ({ have: (run.xp && run.xp[stat]) || 0, need: Training.need(Training.level(Run.you(run), stat)) }),
+  progress(run, stat) {
+    stat = Training.key(run, stat);
+    return { have: (run.xp && run.xp[stat]) || 0, need: Training.need(Training.level(Run.you(run), stat)) };
+  },
   preview(run, key, hard, x = 1) {
     const T = TRAININGS[key],
       mul = Training.mul(run, key, hard, x),
@@ -121,7 +132,7 @@ const Training = {
       lvl: Training.facility(run, key) + 1,
       next: Training.toNext(run, key),
       streak: Training.streakBonus(run, key),
-      cap: STATK.includes(T.main[0]) && Run.you(run)[T.main[0]] >= Training.cap(run) ? Training.cap(run) : null,
+      cap: T.main[0] !== 'wit' && Training.level(Run.you(run), T.main[0]) >= Training.cap(run) ? Training.cap(run) : null,
       mates: run.floor[key] || []
     };
   },

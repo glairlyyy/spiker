@@ -82,9 +82,9 @@ test('career: year 2 lifts the training cap to SEASON.cap; past 75 each point co
   eq(g.Training.cap(run), g.TRAIN_CAP, 'year 1: TRAIN_CAP');
   run.year = 2;
   eq(g.Training.cap(run), g.SEASON.cap, 'year 2: SEASON.cap');
-  you.power = 75;
-  g.Training.addXp(run, 'power', 1e6);
-  eq(you.power, g.SEASON.cap, 'training reaches the year-2 cap');
+  you.body.str = 75;
+  g.Training.addXp(run, 'str', 1e6);
+  eq(you.body.str, g.SEASON.cap, 'training reaches the year-2 cap');
   const [at, k] = g.TRAIN_X.xp.steep;
   assert(Math.abs(g.Training.need(at + 5) / g.Training.need(at + 4) - k) < 0.05, 'past the knee: ×steep a point');
   assert(g.Training.need(at + 5, true) < g.Training.need(at + 5), 'the league curve has no steep part');
@@ -94,7 +94,7 @@ test('career: training cap, facility Lv 5 and Hard training', () => {
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Cap', alloc: { power: 30, def: 10, speed: 10, jump: 10 }, witSteps: 0 }),
     you = g.Run.you(run);
   eq(g.TRAIN_CAP, 75, 'training cap');
-  you.power = 60;
+  you.body.str = 60;
   for (let i = 0; i < 200; i++) {
     run.sta = 100;
     run.injury = null;
@@ -102,28 +102,55 @@ test('career: training cap, facility Lv 5 and Hard training', () => {
     g.Training.train(run, 'power');
     assert(!run.event, 'no Limit Break event any more');
   }
-  eq(you.power, 75, '200 sessions stop power at 75');
+  eq(you.body.str, 75, '200 sessions stop Strength at 75');
   eq(g.Training.preview(run, 'power', false).cap, 75, 'the preview says the stat is capped');
-  const xp0 = run.xp.power || 0;
-  g.Training.addXp(run, 'power', 500);
-  eq(you.power, 75, 'XP from training past the cap does nothing');
-  eq(run.xp.power || 0, xp0, '…and banks nothing');
-  g.Run.bump(run, 'power', 10);
-  eq(you.power, 75, 'an event bump at 75 does nothing');
-  you.power = 80;
+  const xp0 = run.xp.str || 0;
+  g.Training.addXp(run, 'str', 500);
+  eq(you.body.str, 75, 'XP from training past the cap does nothing');
+  eq(run.xp.str || 0, xp0, '…and banks nothing');
+  g.Run.bump(run, 'str', 10);
+  eq(you.body.str, 75, 'an event bump at 75 does nothing');
+  you.body.str = 80;
   g.Run.bump(run, 'power', -5);
-  eq(you.power, 75, 'a negative event still applies to a raised stat');
-  you.power = 80;
-  g.Run.bump(run, 'power', 4);
-  eq(you.power, 80, 'a stat already at 80 is not lowered by a positive bump');
-  g.Training.addXp(run, 'power', 100000, 'match');
-  assert(you.power > 80, 'match XP goes past the training cap');
-  assert(!('lb' in run) && g.RUN_VERSION === 19, 'no Limit Break progress in the run; RUN_VERSION 19');
+  eq(you.body.str, 75, 'a negative event (on a court skill: its body stat) still applies to a raised stat');
+  you.body.str = 80;
+  g.Run.bump(run, 'str', 4);
+  eq(you.body.str, 80, 'a stat already at 80 is not lowered by a positive bump');
+  g.Training.addXp(run, 'str', 100000, 'match');
+  assert(you.body.str > 80, 'match XP goes past the training cap');
+  assert(you.power <= g.CAREER.runCap, 'a court skill never passes the run cap');
+  assert(!('lb' in run) && g.RUN_VERSION === 20, 'no Limit Break progress in the run; RUN_VERSION 20');
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
   const n = g.Training.preview(run, 'power', false).main[2],
     h = g.Training.preview(run, 'power', true);
   assert(h.main[2] > n && h.sta === 2 * g.Training.preview(run, 'power', false).sta, 'Hard: more gain, double stamina');
+});
+
+test('body: court skills from the body — balanced X gives X; Strength without Flexibility is wasted; Endurance lifts stamina (T-307)', () => {
+  const g = load(12),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Body' }),
+    you = g.Run.you(run);
+  for (const k of g.BODY.keys) eq(you.body[k], g.CAREER.start, `${k} starts at CAREER.start`);
+  for (const X of [1, 40, 75, 90]) {
+    const c = g.Body.court(g.Body.make(X));
+    for (const k of g.STATK) assert(Math.abs(c[k] - X) < 1e-9, `balanced ${X}: ${k} ${c[k]}`);
+  }
+  const b = { str: 90, agi: 75, end: 60, flex: 50 };
+  eq(Math.round(g.Body.court(b).power), 77, 'str 90 · agi 75 · flex 50 → Power ≈ 77');
+  assert(g.Body.swing(b) < 1 && g.Body.swingNeed(b) === 72, 'a short swing: Flexibility 72 needed');
+  assert(g.Body.court({ ...b, flex: 72 }).power > g.Body.court(b).power, 'enough Flexibility gives the full swing');
+  you.body = { ...b };
+  g.Body.sync(you, run);
+  eq(you.power, 77, 'sync writes the court skills (rounded)');
+  eq(run.staMax, g.CAREER.staMax + 30, 'staMax = 100 + end / 2');
+  you.power += 2; // a court skill changed directly (the Hermit's trial) stays as an edge on top of the body
+  g.Training.addXp(run, 'agi', 1e5);
+  eq(you.power, Math.round(g.Body.court(you.body).power) + 2, 'the edge survives the next sync');
+  you.body = g.Body.make(99);
+  you.edge = { power: 20 };
+  g.Body.sync(you, run);
+  eq(you.power, g.CAREER.runCap, 'never past the run cap');
 });
 
 test('career: the Academy Gym — a fixed Lv 1, a little EXP to every stat (T-183)', () => {
@@ -141,8 +168,8 @@ test('career: the Academy Gym — a fixed Lv 1, a little EXP to every stat (T-18
       .map(r => r[0])
       .sort()
       .join(','),
-    'def,jump,power,speed,wit',
-    'every stat'
+    'agi,end,flex,str,wit',
+    'every body stat'
   );
   const power = g.Training.preview(run, 'power', false);
   assert(rows.every(r => r[2] > 0) && pv.main[2] < power.main[2] / 2, 'a little EXP each: well under the Power gym on Power');
@@ -150,7 +177,7 @@ test('career: the Academy Gym — a fixed Lv 1, a little EXP to every stat (T-18
   const xp0 = { ...(run.xp || {}) };
   g.Training.train(run, 'all');
   assert(
-    ['power', 'def', 'speed', 'jump', 'wit'].every(k => (run.xp[k] || 0) !== (xp0[k] || 0) || you[k] > 1),
+    ['str', 'agi', 'end', 'flex', 'wit'].every(k => (run.xp[k] || 0) !== (xp0[k] || 0) || g.Training.level(you, k) > 1),
     'a session moves every stat'
   );
   eq(g.City.dayWhat('acaGym').label, 'All-round', 'the day track names it');
@@ -179,21 +206,21 @@ test('career: match XP — performance, opponent strength, past the cap', () => 
   let L = 25;
   while (L < 99 && g.teamOvr({ P: foe.P.map(p => ({ ...p, ...Object.fromEntries(g.STATK.map(k => [k, L])) })) }) < base) L++;
   const eq1 = xpFor(L, 0);
-  eq(eq1.power, 4 * 12 + 1 * 8, 'kills and aces → power');
-  eq(eq1.jump, 2 * 8 + 10, 'blocks and attempts → jump');
-  eq(eq1.def, 2 * 8 + 3 * 6, 'blocks and digs → defense');
-  eq(eq1.speed, 3 * 6, 'digs → speed');
+  eq(eq1.str, 4 * 12 + 1 * 8 + 2 * 8, 'kills, aces and blocks → Strength');
+  eq(eq1.agi, 2 * 8 + 3 * 6, 'blocks and digs → Agility');
+  eq(eq1.flex, 3 * 6, 'digs → Flexibility');
+  eq(eq1.end, 10, 'attempts → Endurance');
   eq(eq1.wit, 6 * 2, 'assists → wit');
   const strong = xpFor(L + 12, 0),
     weak = xpFor(L - 30, 0);
-  assert(strong.power > eq1.power && strong.power <= eq1.power * 2, `stronger side gives more (${strong.power} vs ${eq1.power})`);
-  eq(weak.power, Math.round(56 * 0.3), 'a much weaker side gives ×0.3');
+  assert(strong.str > eq1.str && strong.str <= eq1.str * 2, `stronger side gives more (${strong.str} vs ${eq1.str})`);
+  eq(weak.str, Math.round(72 * 0.3), 'a much weaker side gives ×0.3');
   eq(JSON.stringify(xpFor(L, 1)), JSON.stringify(eq1), 'the winner flag changes nothing');
   // past the training cap: matches raise a stat at 75
-  you.power = 75;
+  you.body.str = 75;
   run.xp = {};
-  const label = g.Training.addXp(run, 'power', 200, 'match');
-  assert(you.power > 75 && /^✸\+\d+/.test(label), `a stat at 75 rises from match XP (${you.power})`);
+  const label = g.Training.addXp(run, 'str', 200, 'match');
+  assert(you.body.str > 75 && /^▲\+\d+/.test(label), `a stat at 75 rises from match XP (${you.body.str})`);
   // never played → no XP line
   for (const p of foe.P) for (const k of g.STATK) p[k] = 55;
   run.week = 4;
@@ -218,8 +245,8 @@ test('career: match XP — performance, opponent strength, past the cap', () => 
   g.Training.tally = {}; // the result card's XP count (resultSnap → resultData)
   const f = g.Growth.matchGap(m2); // before the finish (a point gained in it moves your side's OVR)
   assert(/XP: /.test(fx2.onFinish(m2)), 'the result line shows the XP labels');
-  eq(g.Training.tally.power, Math.round(5 * g.MATCH_XP.per.k.power * f), 'the tally counts the power XP of 5 kills');
-  eq(g.Training.tally.jump, Math.round(g.MATCH_XP.per.blk.jump * f), 'and the jump XP of a block');
+  eq(g.Training.tally.str, Math.round((5 * g.MATCH_XP.per.k.str + g.MATCH_XP.per.blk.str) * f), 'the tally counts the Strength XP of 5 kills and a block');
+  eq(g.Training.tally.agi, Math.round(g.MATCH_XP.per.blk.agi * f), 'and the Agility XP of a block');
   g.Training.tally = null;
 });
 
@@ -237,7 +264,7 @@ test.slow('career: start from 1', () => {
   run.event = null;
   run.sta = run.staMax;
   g.Training.train(run, 'power', false);
-  assert(you.power >= 4, `one Power session raises Power from 1 by several points (${you.power})`);
+  assert(you.body.str >= 4 && you.power > 1, `one Power session raises Strength from 1 by several points (${you.body.str}) and Power with it`);
   // the coach benches an all-1 you behind a same-role mate (a middle blocker: the squad has one MB slot; a lone WS still starts for lack of a rival)
   const runMB = g.Run.create(g.Run.draft(), { role: 'MB', name: 'Zero', mode: {} });
   eq(g.Run.lineup(runMB, g.Run.myTeam(runMB), null, true).starts, false, 'you start on the bench');
@@ -890,14 +917,15 @@ test('career: challenge loss and injury', () => {
   eq(g.Fight.injuryRisk(run, 999, 99), g.INJURY.max, 'clamped at INJURY.max');
   // forced low: a severe injury — 3 weeks and −2 on one stat
   fresh();
-  for (const k of g.STATK) you[k] = 60;
-  const before = g.STATK.map(k => you[k]);
+  you.body = g.Body.make(60);
+  g.Body.sync(you, run);
+  const before = g.BODY.keys.map(k => you.body[k]);
   let n = 0;
   g.RNG.next = () => (n++ ? 0.97 : 0.0);
   const txt = g.Fight.injure(run, 0.5);
   assert(run.injury && run.injury.weeks === g.INJURY.weeks.severe && /severe/.test(txt), `severe: ${txt}`);
-  const lost = g.STATK.filter((k, i) => you[k] < before[i]);
-  assert(lost.length === 1 && before[g.STATK.indexOf(lost[0])] - you[lost[0]] === g.INJURY.lose, 'one stat loses INJURY.lose for good');
+  const lost = g.BODY.keys.filter((k, i) => you.body[k] < before[i]);
+  assert(lost.length === 1 && before[g.BODY.keys.indexOf(lost[0])] - you.body[lost[0]] === g.INJURY.lose, 'one body stat loses INJURY.lose for good');
   // an injured player can't challenge or fight and is benched by Run.lineup
   roll(0.99);
   eq(g.Fight.ban(run), 'Injured — rest first', 'the ban text');
@@ -908,8 +936,8 @@ test('career: challenge loss and injury', () => {
   // the physio clears the weeks but not the stat
   run.sp = 99;
   assert(g.Training.physio(run) && !run.injury, 'physio heals the injury');
-  assert(you[lost[0]] === before[g.STATK.indexOf(lost[0])] - g.INJURY.lose, 'but not the lost stat');
-  eq(g.RUN_VERSION, 19, 'save v19');
+  assert(you.body[lost[0]] === before[g.BODY.keys.indexOf(lost[0])] - g.INJURY.lose, 'but not the lost stat');
+  eq(g.RUN_VERSION, 20, 'save v20');
 });
 
 test('career: rules moved out of the UI (T-075)', () => {
@@ -1144,7 +1172,7 @@ test('story: week 1 keeps to the campus (Fern points at the Academy Gym); week 2
   assert(g.City.can(end, 'weiPower').ok, 'Endless: no fence');
 });
 
-test('season: Endless ends at its one Cup; Story rolls over — stamps rebased, saves round-trip, a v18 save is year 1 (T-286)', () => {
+test('season: Endless ends at its one Cup; Story rolls over — stamps rebased, saves round-trip, a v19 save is dropped (T-286, T-307)', () => {
   const g = load(77),
     end = playRun(g, 'WS', { story: false });
   eq(end.cups.length + ':' + end.year, '1:1', 'Endless: one season');
@@ -1166,10 +1194,9 @@ test('season: Endless ends at its one Cup; Story rolls over — stamps rebased, 
   const back = h.Run.load();
   eq(back.year + '/' + back.week, '2/1', 'a year-2 save round-trips');
   const raw = JSON.parse(h.__mem[h.KEYS.career]);
-  raw.v = 18;
-  delete raw.year;
+  raw.v = 19;
   h.__ls.setItem(h.KEYS.career, JSON.stringify(raw));
-  eq(h.Run.load().year, 1, 'a v18 save loads as year 1');
+  eq(h.Run.load(), null, 'a v19 save (no body) is dropped (T-307)');
 });
 
 test('season: the off-season — the first aces age out, the market moves, the named stay; year 2 grows the field slower (T-287)', () => {

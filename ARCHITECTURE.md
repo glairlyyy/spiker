@@ -26,7 +26,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
 - **data** `rules.js` (RULES, EGO…), `styles.js` (playstyles, team list, archetypes), `names.js` (name pools),
   `looks.js` (appearance palettes), `moves.js` (signature / combo names, coach lines), `roles.js` (role biases, key
   stats, mood deltas), `elements.js`, `vfx.js` (VFX_DEF / live `VFX` effect tuning, read by render code only; saved dev edits in `sns_vfx`), `tactics.js`, `dialogue.js` (lines, `callLine`), `skills.js`, `career.js`
-  (CAREER, CALENDAR, ROLE_NAME, STATNAME, MLOG…), `world.js` (REGIONS, FACTIONS, ECON, HOUSING, CLASH, FRONT…), `city.js`
+  (CAREER, BODY, CALENDAR, ROLE_NAME, STATNAME, MLOG…), `world.js` (REGIONS, FACTIONS, ECON, HOUSING, CLASH, FRONT…), `city.js`
   (CITY geometry, SPOTS, travel constants, layout data).
 - **engine** `court.js` (geometry, `Z_UNITS`, `UNIT_M`, `BALL_K` / `SERVE_K`), `players.js`, `teams.js`, `save.js`,
   `stats.js`, `skills.js`, `formulas.js`, `elements.js`, `hype.js`, `fire.js` (momentum stages, spec §2.14: `temperOf`,
@@ -51,7 +51,7 @@ setter orders `feed` / `fake`: `feedOpts` / `fakeOpts`, read in chooseAttack (`f
 Rest (`rest`: `restOpts`, `restFor`, `ordSubs` at the dead ball before coachSubs; `subDo` in match.js); a middle's `blk` ('read' | 'commit' | 'back'): `blkOpts`, `stayBack`, read in blockApproach (the setting), chooseAttack (DF),
 blockMoves and digSetup; tallies `ordLog` / `ordAttack` → `m.ordLog` (the result card's Orders row, `boardResult`); data `ORDERS`), `rally.js`.
 - **audio** `sfx.js` (internals in the `SOUND` closure; global: `SND`, `sfx`, `audioInit`, `toggleSound`, `setVolume`, `bgmStart`, `bgmStop`, `panAt`). **game** `state.js` (G, HYPE, Screens / navigate), `bracket.js`.
-- **career** `run.js` (Run, RUN_DEFAULTS), `training.js`, `growth.js`, `element.js`, `world.js`, `pool.js`, `eval.js`,
+- **career** `run.js` (Run, RUN_DEFAULTS), `body.js` (Body: your body → the court skills, spec §4.33), `training.js`, `growth.js`, `element.js`, `world.js`, `pool.js`, `eval.js`,
   `city.js`, `front.js`, `mapmodel.js`, `dossier.js`, `events.js`, `sponsors.js`, `skills.js`, `rank.js`, `cup.js`, `fight.js`.
 - **portraits** `js/render/faces.js` `faceSVG(p, mood, size)` returns a cached 3D portrait `<img>` (PORTRAIT: look key → data URL) or the drawn face (`faceSVG2D`) as a placeholder that is swapped in place when `js/render3d/portrait3d.mjs` (lazy-loaded; one offscreen renderer, the default model re-dressed in hair / skin / team shirt, Main_v2 for you) finishes it.
 - **ui** `dom.js` (esc, tip, info, fold, kv — the vertical label/value list of spec §10.1a, peek — the L2 detail card of §10.8: `CW.peek` holds the open id, `peekSync` (MutationObserver on #app) ports the open card to <body> beside its owner panel…), `icons.js`, `match-screen.js` (startMatch → `A`, 3D load / bind, fit, venue / stakes, leaveMatch), `match-controls.js` (control bar, ⚙ settings,
@@ -265,7 +265,7 @@ moving for 6 s (25 s while the 3D players load) or one beat lasts 20 s, with a s
 
 ## Saves
 
-Career runs carry `v` (`RUN_VERSION` = 19, `career/run.js`; key `sns_run_v1`; v19 = `run.year`, migration 18 → 19). History: v2 faction reserves, v3 cup
+Career runs carry `v` (`RUN_VERSION` = 20, `career/run.js`; key `sns_run_v1`; v20 = your body `you.body` (+ `edge` / `synced`) and body-key XP banks in `run.xp`, v19 saves dropped; v19 = `run.year`, migration 18 → 19). History: v2 faction reserves, v3 cup
 entrants, v4 squads of 6 (`bench`), v5 `run.lb` dropped, v6 `run.met` / `street` / `refused`, v7 `losses` / `lastFight`,
 v8 `mlog`, v9 `run.mode.story`; older saves are dropped (`RUN_MIGRATIONS` is empty). Bump the version when the save shape changes and add a step to
 `RUN_MIGRATIONS[oldVersion] = data => upgraded data`; `Run.load` applies the steps in order and ignores saves from a newer version.

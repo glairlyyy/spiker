@@ -1311,6 +1311,29 @@
 .hub .sheet .mb.lead > i {
   background: var(--mute);
 }
+/* the body (spec §4.33): glyphs for the body stats; court skills read from it; the swing gauge — short = the gap */
+.hub .bgl {
+  display: inline-block;
+  width: 20px;
+  font-style: normal;
+  text-align: center;
+  color: var(--cyan);
+}
+.hub .sheet .mrow.court .mb > i {
+  background: var(--ink);
+}
+.hub .sheet .mb.short > i {
+  background: var(--warn);
+}
+.hub .sheet .swhint {
+  margin: 4px 0 0;
+}
+.hub .sheet .mv.warn {
+  color: var(--warn);
+}
+.hub .sheet .mv.up {
+  color: var(--good);
+}
 .hub .sheet .mv {
   text-align: right;
   font-variant-numeric: tabular-nums;

@@ -29,21 +29,53 @@ const MOODS = [
 ];
 /** Match history (T-052): entries kept on `run.mlog` (the oldest are dropped). */
 const MLOG = { max: 80 };
-/** Trainings: main/side gains and stamina cost. Wit gains are in wit units. */
+/**
+ * Your body (spec §4.33): Strength, Agility, Endurance, Flexibility (+ Wit) are what you train; the court skills the match reads
+ * (power / def / speed / jump) are worked out from them (Body.court). `swing` / `depth`: Flexibility a full swing / a deep load
+ * needs, × Strength (`swingMin` / `depthMin`: the floors). `w`: each court skill's weights. `of`: the body stat an old court-stat
+ * change lands on (events, injuries); `court`: the court skill a body stat's training stands for (teammates training beside you).
+ * `sta`: Endurance lifts your career stamina, staMax = CAREER.staMax + end × sta.
+ */
+const BODY = {
+  keys: ['str', 'agi', 'end', 'flex'],
+  name: { str: 'Strength', agi: 'Agility', end: 'Endurance', flex: 'Flexibility' },
+  short: { str: 'Str', agi: 'Agi', end: 'End', flex: 'Flex' },
+  glyph: { str: '▲', agi: '≫', end: '◆', flex: '∿' },
+  desc: {
+    str: 'Strength. Swing speed and the jump’s push — wasted without the Flexibility to swing it.',
+    agi: 'Agility. First step, reaching the ball, the jump’s spring.',
+    end: 'Endurance. Lasting: speed late on, more career stamina.',
+    flex: 'Flexibility. Getting low, a full swing, a deep load.'
+  },
+  swing: 0.8,
+  swingMin: 0.5,
+  depth: 0.7,
+  depthMin: 0.6,
+  w: {
+    power: { str: 0.85, agi: 0.15, base: 0.55, k: 0.45 }, // Power = 0.85 · str · (0.55 + 0.45 · swing) + 0.15 · agi
+    jump: { str: 0.55, agi: 0.45 }, // Jump = 0.55 · str · depth + 0.45 · agi
+    speed: { agi: 0.75, end: 0.25 },
+    def: { flex: 0.45, agi: 0.35, end: 0.2 }
+  },
+  of: { power: 'str', jump: 'agi', speed: 'end', def: 'flex' },
+  court: { str: 'power', agi: 'jump', end: 'speed', flex: 'def' },
+  sta: 0.5
+};
+/** Trainings: main/side gains (body stats, spec §4.33) and stamina cost. Wit gains are in wit units. */
 const TRAININGS = {
-  power: { name: 'Power', main: ['power', 7], side: ['jump', 2], sta: 20 },
-  def: { name: 'Defense', main: ['def', 7], side: ['speed', 2], sta: 20 },
-  speed: { name: 'Speed', main: ['speed', 7], side: ['power', 2], sta: 20 },
-  jump: { name: 'Jump', main: ['jump', 7], side: ['def', 2], sta: 20 },
-  wit: { name: 'Wit', main: ['wit', 0.06], side: ['def', 2], sta: 5 },
+  power: { name: 'Power', main: ['str', 7], side: ['flex', 2], sta: 20 },
+  def: { name: 'Defense', main: ['flex', 7], side: ['agi', 2], sta: 20 },
+  speed: { name: 'Speed', main: ['end', 7], side: ['agi', 2], sta: 20 },
+  jump: { name: 'Jump', main: ['agi', 7], side: ['str', 2], sta: 20 },
+  wit: { name: 'Wit', main: ['wit', 0.06], side: ['flex', 2], sta: 5 },
   // the Academy Gym (spec §4.18e): a little of every stat at a fixed Lv 1 (lv); `more` = the gains past main / side
   all: {
     name: 'All-round',
-    main: ['power', 2],
-    side: ['def', 2],
+    main: ['str', 2],
+    side: ['flex', 2],
     more: [
-      ['speed', 2],
-      ['jump', 2],
+      ['agi', 2],
+      ['end', 2],
       ['wit', 0.025]
     ],
     sta: 15,
@@ -205,7 +237,8 @@ const COURT = {
   pool: 12
 };
 const MATCH_XP = {
-  per: { k: { power: 12 }, ace: { power: 8 }, blk: { jump: 8, def: 8 }, dig: { def: 6, speed: 6 }, ast: { wit: 2 }, att: { jump: 1 } },
+  // body stats (spec §4.33): kills → str, digs → flex + agi, blocks → str + agi
+  per: { k: { str: 12 }, ace: { str: 8 }, blk: { str: 8, agi: 8 }, dig: { flex: 6, agi: 6 }, ast: { wit: 2 }, att: { end: 1 } },
   gap: [0.3, 2],
   perGap: 0.1
 };

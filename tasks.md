@@ -48,7 +48,7 @@ Not in this split: the cards session's files (js/engine/cards.js, js/ui/match-ca
 **Body and day orders (owner, 2026-10-19, spec §4.33): Agent A.** Engine untouched except T-311; the court
 skills are derived so ovr, techniques and cards keep reading what they read. Re-run `npm run career` after each.
 
-### [ ] T-307: Body stats — Strength, Agility, Endurance, Flexibility; court skills derived
+### [x] T-307: Body stats — Strength, Agility, Endurance, Flexibility; court skills derived
 Agent: A
 Spec: §4.33          Goldens: unchanged          Save: RUN_VERSION 20 (`you.body`, body XP banks) — publish it early: B's T-313 takes 21
 Goal: your player has a body (str / agi / end / flex + wit); power / def / speed / jump are computed from it after every
@@ -69,7 +69,7 @@ Accept:
 - `npm run career -- 20 both`: good still ends year 2 ≥ 90 OVR, casual ≤ 88 (state the numbers in Result).
 - `npm test`, `npm run lint`, `npm run test:ui` pass.
 QA: career run → Me sheet (body bars, swing gauge).
-Result:
+Result: js/career/body.js (Body.court / sync / swing / depth; `you.edge` keeps direct court changes such as the Hermit's +2), BODY in data/career.js, RUN_VERSION 20 (v19 dropped); trainings re-keyed (Power → Str+Flex, Def → Flex+Agi, Speed → End+Agi, Jump → Agi+Str); events / injuries on a court key land on BODY.of; Me sheet body + court + swing gauge; career-map.js trainFx shows body rows (else "undefined EXP"). career -- 20 both: good Y2 95.2 (Y1 77.5), casual Y2 88.2 (Y1 75.4) — 0.2 over the ≤ 88 target (bot casual keeps the old court order's trainings); T-312 tunes. career-match.js result card (unowned) still lists court skills (progress reads the body stat). npm test 155/155, lint, test:ui 13/13. CLAUDE.md's "RUN_VERSION 19" line is the spec chat's to bump.
 
 ### [ ] T-308: Facilities = kit; day orders on the place card (Drill, Work, Stretch)
 Agent: A

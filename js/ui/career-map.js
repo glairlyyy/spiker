@@ -149,7 +149,7 @@ function trainSnap(run, main) {
     pr = Training.progress(run, main);
   return {
     main,
-    st: Object.fromEntries([...STATK, 'wit'].map(k => [k, you[k]])),
+    st: Object.fromEntries([...STATK, 'wit'].map(k => [k, you[k]]).concat(BODY.keys.map(k => [k, Training.level(you, k)]))), // court skills + the body (spec §4.33)
     fans: run.fans,
     staMax: run.staMax,
     sta: run.sta,
@@ -165,14 +165,15 @@ function trainFx(run, s, a, line) {
   const b = trainSnap(run, a.main),
     rows = [],
     ok = !/ failed/.test(line);
-  for (const k of [...STATK, 'wit']) {
+  const ic = k => (BODY.glyph[k] ? `<i class="bgl" aria-hidden="true">${BODY.glyph[k]}</i>` : statI(statKey(k), 18));
+  for (const k of [...BODY.keys, ...STATK, 'wit']) {
     const d = +(b.st[k] - a.st[k]).toFixed(2);
-    if (d) rows.push([statI(statKey(k), 18), STATNAME[k], fmtDelta(k === 'wit' ? +d.toFixed(2) : d), d > 0 ? 'up' : 'dn']);
+    if (d) rows.push([ic(k), Body.name(k), fmtDelta(k === 'wit' ? +d.toFixed(2) : d), d > 0 ? 'up' : 'dn']);
   }
   if (ok && b.st[a.main] === a.st[a.main] && b.pct > a.pct)
     rows.push([
-      statI(statKey(a.main), 18),
-      `${STATNAME[a.main]} EXP`,
+      ic(a.main),
+      `${Body.name(a.main)} EXP`,
       `+${Math.round((b.pct - a.pct) * 100)}%`,
       'up',
       `${Math.round(b.pct * 100)}% to the next point`

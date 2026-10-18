@@ -36,7 +36,7 @@ const Growth = {
     return Growth.gapFactor(teamOvr({ P: m.lineup0[0].P }), teamOvr({ P: m.lineup0[1].P }));
   },
   /**
-   * Stat XP from your line in match m (its 4 starters vs theirs set the factor): each stat line unit × MATCH_XP.per,
+   * Body-stat XP (spec §4.33) from your line in match m (its 4 starters vs theirs set the factor): each stat line unit × MATCH_XP.per,
    * through Training.addXp with source 'match' (past the training cap). Returns the text for the result line, or ''.
    */
   matchXp(run, m) {
@@ -47,7 +47,7 @@ const Growth = {
     for (const [unit, map] of Object.entries(MATCH_XP.per))
       for (const [stat, v] of Object.entries(map)) xp[stat] = (xp[stat] || 0) + (s[unit] || 0) * v;
     const out = [];
-    for (const stat of [...STATK, 'wit']) if (xp[stat]) out.push(Training.addXp(run, stat, Math.round(xp[stat] * f), 'match'));
+    for (const stat of [...BODY.keys, 'wit']) if (xp[stat]) out.push(Training.addXp(run, stat, Math.round(xp[stat] * f), 'match'));
     return out.length ? `XP: ${out.join(', ')}${Growth.gapNote(f)}` : '';
   },
   /** Your own star / OP status: earned by hitting the overall (and for OP, key stat + wit) criteria. */
@@ -86,8 +86,9 @@ const Growth = {
   shared(run, id, pv) {
     const m = squadOf(Run.myTeam(run)).find(p => p.id === id);
     if (!m) return;
-    const [mk, mv] = pv.main,
-      [sk, sv] = pv.side;
+    const ck = k => BODY.court[k] || k, // your body stat → the court skill it stands for (teammates keep court stats)
+      [mk, mv] = [ck(pv.main[0]), pv.main[1]],
+      [sk, sv] = [ck(pv.side[0]), pv.side[1]];
     if (mk === 'wit') m.wit = +Math.min(2, m.wit + mv * GROWTH.share).toFixed(2);
     else m[mk] = Math.min(99, m[mk] + Math.round(mv * GROWTH.share));
     m[sk] = Math.min(99, m[sk] + Math.round(sv * GROWTH.share * 0.5));

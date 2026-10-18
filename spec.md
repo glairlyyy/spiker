@@ -1213,7 +1213,11 @@ the AI coach fills every slot you leave with the same function. Built and measur
   ground) that offer orders.
   - **Body stats** (yours; NPCs keep court stats for now): **Strength** (`str`), **Agility** (`agi`), **Endurance** (`end`),
     **Flexibility** (`flex`), **Wit** (unchanged). They start like today's stats (1; wit 1.0) and grow on today's XP curve
-    (`Training.need` with its steep part, the year caps §4.32), each its own XP bank.
+    (`Training.need` with its steep part, the year caps §4.32), each its own XP bank. **[built 2026-10-19, T-307]**: today's
+    trainings re-keyed (Power → Str + Flex, Defense → Flex + Agi, Speed → End + Agi, Jump → Agi + Str, Wit → Wit + Flex); an
+    event / injury on a court skill lands on its body stat (power → str, jump → agi, speed → end, def → flex); match XP: kills /
+    aces → str, blocks → str + agi, digs → flex + agi, attempts → end; the formulas below as written; a court skill raised
+    directly (the Hermit's +2) stays on top of the body; the Me sheet shows the body, the court skills and the swing gauge.
   - **Court skills = f(body)** (`Body.court(you)`, written into `you.power / def / speed / jump` after every body change, so
     the engine, ovr, techniques' requirements and the cards read what they read today). First guesses (the bot tunes them):
     - swing range `swing = clamp(flex / (0.8 · str), 0.5, 1)`: a full swing needs Flexibility ≥ 0.8 × Strength.

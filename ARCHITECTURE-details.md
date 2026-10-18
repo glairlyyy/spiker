@@ -676,6 +676,20 @@ roll). The risk is computed before the trip and the match's tiredness are counte
 but not the lost stat. Evaluations and the cup carry no injury roll. Save v7 adds `run.losses` and `run.lastFight`. UI: the challenge
 block and the street fight buttons show "Injury risk ~N %" and are disabled while injured.
 
+## Body (spec §4.33, T-307)
+
+Yours only: `you.body = { str, agi, end, flex }` (save v20; NPCs have none). Training, match XP and events act on the body; the
+court skills are derived: `Body.court(b)` (js/career/body.js, numbers in `BODY`, data/career.js) — swing = clamp(flex / (0.8 · str),
+0.5, 1), Power = 0.85 · str · (0.55 + 0.45 · swing) + 0.15 · agi, Jump = 0.55 · str · depth + 0.45 · agi (depth: flex / (0.7 · str),
+0.6–1), Speed = 0.75 · agi + 0.25 · end, Defense = 0.45 · flex + 0.35 · agi + 0.2 · end; a balanced body gives the same number
+everywhere. `Body.sync(you, run)` writes `you.power / def / speed / jump` (rounded, `statMin`–`runCap`) after every body change
+(`Training.addXp`, `Run.bump`) and sets `run.staMax` = 100 + ⌊end / 2⌋ (+15 with the Aqua sponsor). A court skill written
+directly between syncs (the Hermit's +2, tests) is kept as an edge: `you.edge[k]`, against `you.synced[k]` (the values last
+written). `Training.key` sends a court key given for you to its body stat (`BODY.of`: power→str, jump→agi, speed→end, def→flex —
+also how events and injuries land); `TRAININGS` main / side are body keys; teammates training beside you gain the court skill
+the body stat stands for (`BODY.court`, Growth.shared). Me sheet: the four body bars + Wit, then the court skills and the swing
+gauge ("short: Flexibility 52 of 72").
+
 ## Training XP
 
 Training gives XP (`Training.xpFor`: base gain × `TRAIN_X.xp.per` × every multiplier — place quality and home turf
@@ -684,12 +698,12 @@ Training gives XP (`Training.xpFor`: base gain × `TRAIN_X.xp.per` × every mult
 `TRAIN_X.xp.steep[0]` (yours only; NPCs call `need(v, true)`); leftovers bank in `run.xp`; nothing banks past the top.
 `Training.top(run, stat, src)`: 'train' (sessions, the default) → `Training.cap(run)` (`TRAIN_CAP` 75, year 2 `SEASON.cap`); 'match' → `CAREER.runCap`; wit its own cap. `sim` /
 `gain` / `addXp` take the same `src`; a stat already above the top gains nothing from that source. Wit counts in 0.02 steps
-(level = wit × 50). Injuries still change stats directly, but stop at `TRAIN_CAP` (`Run.bump` never lowers a stat that matches raised).
+(level = wit × 50); body stats are their own banks (`Training.level` reads `you.body`). Injuries and events change a body stat through `Run.bump`, stopping at the training cap (never lowering a stat that matches raised).
 
 ### Match XP (T-035)
 
 `Growth.matchXp(run, m, mine, opp)` (career/growth.js), called from `Cup.result` when you played: your `m.stat` line × `MATCH_XP.per`
-(`data/career.js`: kills → power, aces → power, blocks → jump + def, digs → def + speed, assists → wit, attempts → jump), × the gap
+(`data/career.js`, body stats since T-307: kills → str, aces → str, blocks → str + agi, digs → flex + agi, assists → wit, attempts → end), × the gap
 factor `Growth.gapFactor(ovr of your 4 starters, opponent's)` = clamp(1 + gap × `perGap`, `gap`), each stat through
 `Training.addXp(…, 'match')` (so matches pass `TRAIN_CAP`). The winner is never read. A street battle you fight is a real match: `Fight.clash(run, side)`
 builds the fixture (your side's crew from `Pool.draw`, you on court in your role, vs the other side's crew; both lent via
