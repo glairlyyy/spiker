@@ -12,7 +12,9 @@ const Rel = {
   /** Remember something about you (see MEMORY); returns the change in the cached bond. */
   add(run, id, kind, v) {
     if (id === run.youId || !run.people || !run.people[id] || !MEMORY[kind]) return 0;
-    const before = Rel.bondOf(run, id);
+    const before = Rel.bondOf(run, id),
+      v0 = v == null ? MEMORY[kind].v : v;
+    if (v0 > 0 && Feel.has(run, 'bitter')) v = v0 * SCARS.bitter.k; // Bitter (spec §4.30): bonds grow slower
     Rel.push(run, Rel.key(run.youId, id), id, kind, v, id);
     Rel.refresh(run, id);
     Rel.reveal(run, id);

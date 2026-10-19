@@ -610,6 +610,7 @@ function pointMomentum(m, w) {
   if (es && es.won && m.ctx.el.mom) morAdd(m, w, m.ctx.el.mom);
   m.lastK = m.ctxK || null;
   m.ctxK = null;
+  trPoint(m); // God of War's run (spec §4.30; only trait carriers)
   m.ctx0 = m.ctx; // the last attack (chatter)
   m.ctx = null;
   // momentum fades every point and drops on a lost one — half as fast outside the zone (owner 2026-10-08: Fever was too rare);

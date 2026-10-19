@@ -25,6 +25,94 @@ const MT_CACHE = new WeakMap();
 /** In this match (m.noTraits: the tests' plain match). */
 const mtr = (m, p) => (m && m.noTraits ? null : mtraitOf(p));
 
+/* ---------- Sparks and Scars (spec §4.30): only your career player has `p.traits`; without it every hook is a no-op ---------- */
+
+/** Does p carry Spark / Scar `id` (MC_TRAITS)? */
+const hasTr = (p, id) => !!(p && p.traits && p.traits.length && p.traits.includes(id));
+/** Note that p's trait `id` acted this match (`m.trAct[pid][id]`: the career names a hidden Scar after it). */
+function trActed(m, p, id) {
+  const A = m.trAct || (m.trAct = {});
+  (A[p.id] || (A[p.id] = {}))[id] = 1;
+}
+/** Late in the set for Clutch / Shaky Hands: TRAIT_LATE_PTS+ points or a set point. */
+const trLate = m => Math.max(m.pts[0], m.pts[1]) >= Math.min(TRAIT_LATE_PTS, RULES.pointsToWin - 1);
+/**
+ * The traits' stat multiplier for stat k (stageBuff's keys: atk = power in play, def, spd, jump, serve): Clutch late (atk, def),
+ * Air Impact (atk), God of War on a run (atk), Spite against Haewon's squad (every stat; m.vsRival from the career). 1 without traits.
+ */
+function trBuff(p, k) {
+  const t = p.traits,
+    m = CM;
+  if (!t || !t.length || !m || !m.pts) return 1;
+  let x = 1;
+  if ((k === 'atk' || k === 'def') && t.includes('clutch') && trLate(m)) {
+    x *= 1 + SPARKS.clutch.k;
+    trActed(m, p, 'clutch');
+  }
+  if (k === 'atk' && t.includes('airImpact')) x *= 1 + SPARKS.airImpact.k;
+  if (k === 'atk' && t.includes('godOfWar') && m.gow && m.gow[p.id] && m.gow[p.id].on) x *= 1 + SPARKS.godOfWar.k;
+  if (m.vsRival && t.includes('spite')) {
+    x *= 1 + SCARS.spite.k;
+    trActed(m, p, 'spite');
+  }
+  return x;
+}
+/** Wit in the match: Tunnel Vision's −0.1 (0 without traits). */
+function trWit(p) {
+  if (!hasTr(p, 'tunnel') || !CM || !CM.pts) return 0;
+  trActed(CM, p, 'tunnel');
+  return SCARS.tunnel.k;
+}
+/** Dead Calm: p's side is Loose → p plays as Composed (the stage stageBuff reads for p). */
+function trStage(p, st) {
+  if (st !== 'loose' || !hasTr(p, 'deadCalm')) return st;
+  trActed(CM, p, 'deadCalm');
+  return 'composed';
+}
+/** Serve errors + this for p now: Shaky Hands late in the set (0 without traits). */
+function trServeErr(p) {
+  if (!hasTr(p, 'shakyHands') || !CM || !CM.pts || !trLate(CM)) return 0;
+  trActed(CM, p, 'shakyHands');
+  return SCARS.shakyHands.k;
+}
+/** The squad players who carry traits, per side (found once a match: squads never change mid-match). */
+const trSquad = (m, i) =>
+  (m.trP || (m.trP = m.t.map(t => squadOf(t).filter(p => p.traits && p.traits.length))))[i];
+/** Side(s)' trait carriers with their morale now (morKeep compares after a change). */
+function trMor(m, sides = [0, 1]) {
+  const out = [];
+  for (const i of sides) for (const p of trSquad(m, i)) out.push([p, morOf(m, p)]);
+  return out;
+}
+/** After a morale change: Eye of the Storm keeps what p had (no loss); Iron Will holds the floor (SPARKS.ironWill.k). */
+function morKeep(m, keep) {
+  for (const [p, was] of keep) {
+    let v = morOf(m, p);
+    if (v < was && hasTr(p, 'eyeStorm')) {
+      v = was;
+      trActed(m, p, 'eyeStorm');
+    }
+    if (v < SPARKS.ironWill.k && v < was && hasTr(p, 'ironWill')) v = Math.min(was, SPARKS.ironWill.k);
+    m.mor[p.id] = v;
+  }
+}
+/** A point is over: God of War's run (two kills running → on; your error → off). */
+function trPoint(m) {
+  for (const i of [0, 1])
+    for (const p of trSquad(m, i)) {
+      if (!hasTr(p, 'godOfWar')) continue;
+      const G = (m.gow || (m.gow = {}))[p.id] || (m.gow[p.id] = { n: 0, on: false });
+      if (m.errBy === p.id) Object.assign(G, { n: 0, on: false });
+      else if (m.lastK === p.id) {
+        G.n++;
+        if (G.n >= 2 && !G.on) {
+          G.on = true;
+          trActed(m, p, 'godOfWar');
+        }
+      } else G.n = 0;
+    }
+}
+
 /** HP 0–1 (1 before the first hit). */
 const hpOf = (m, p) => (m && m.hp && m.hp[p.id] != null ? m.hp[p.id] : 1);
 /**
@@ -45,8 +133,17 @@ function hpHit(m, p, pow) {
 function hpHeal(m) {
   m.t.forEach((t, i) => {
     const heal = HP.heal - (m.weak ? WAR_STAGES[m.weak[i]].heal || 0 : 0);
-    for (const p of squadOf(t)) m.hp[p.id] = t.P.includes(p) ? Math.min(1, Math.max(hpOf(m, p) + heal, m.down[p.id] ? HP.up : 0)) : 1;
+    for (const p of squadOf(t))
+      m.hp[p.id] = t.P.includes(p)
+        ? Math.min(1, Math.max(hpOf(m, p) + heal + (p.traits ? trHeal(m, p) : 0), m.down[p.id] ? HP.up : 0))
+        : 1;
   });
+}
+
+/** Second Wind: HP heals SPARKS.secondWind.k more (when there is HP to heal). */
+function trHeal(m, p) {
+  if (!hasTr(p, 'secondWind') || hpOf(m, p) >= 1) return 0;
+  return SPARKS.secondWind.k;
 }
 
 /** A player's morale (−1..1). */
@@ -65,7 +162,9 @@ function fireOf(m, i) {
 }
 /** Shift every squad player of side i by v (a team-wide push: element spikes, the zone breaker, timeouts). */
 function morAdd(m, i, v) {
+  const keep = v < 0 ? trMor(m, [i]) : null;
   for (const p of squadOf(m.t[i])) m.mor[p.id] = clamp(morOf(m, p) + v, -1, 1);
+  if (keep && keep.length) morKeep(m, keep); // Eye of the Storm, Iron Will (spec §4.30)
   m.mom[i] = fireOf(m, i);
 }
 /** Move side i's fire to v by shifting everyone alike (the old `m.mom[i] = v`). */
@@ -91,6 +190,7 @@ function morPoint(m, w, fade, LD) {
     (T.early ? T.early[early ? 0 : 1] : 1) *
     (T.under && ovrSide(m, i) < ovrSide(m, 1 - i) - 1 ? T.under : 1);
   const lossK = T => (T.swing || 1) * (T.late && late ? T.late[1] : 1);
+  const keep = trMor(m); // the Sparks and Scars (spec §4.30): morale before this point, for Eye of the Storm / Iron Will
   for (const p of squadOf(m.t[w])) {
     const T = MTRAITS[mtr(m, p)] || {},
       own = killer === p.id;
@@ -124,6 +224,11 @@ function morPoint(m, w, fade, LD) {
       const T = MTRAITS[mtr(m, p)];
       if (T && T.taunt) m.mor[errP.id] = clamp(morOf(m, errP) - T.taunt, -1, 1);
     }
+  // Captain's Voice: your kill lifts every teammate
+  const kp = killer && trSquad(m, w).find(p => p.id === killer);
+  if (kp && hasTr(kp, 'voice'))
+    for (const p of squadOf(m.t[w])) if (p !== kp) m.mor[p.id] = clamp(morOf(m, p) + SPARKS.voice.k, -1, 1);
+  if (keep.length) morKeep(m, keep);
   m.mom[w] = fireOf(m, w);
   m.mom[L] = fireOf(m, L);
 }

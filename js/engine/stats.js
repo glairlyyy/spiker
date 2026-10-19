@@ -5,7 +5,8 @@ let CM = null;
 const sideOf = p => (CM.t[0] === p.team ? 0 : 1);
 /** Captain's buff on a player this match: level 1–3 (0 = none). */
 const buffLv = p => (CM && CM.buff && CM.buff[p.id] ? CM.buff[p.id].lv : 0);
-const W = p => (CM && CM.mood ? clamp(p.wit * (1 + 0.12 * (CM.mood[p.id] || 0)) + 0.08 * buffLv(p), 0.1, 2) : p.wit);
+const W = p =>
+  CM && CM.mood ? clamp(p.wit * (1 + 0.12 * (CM.mood[p.id] || 0)) + 0.08 * buffLv(p) + (p.traits ? trWit(p) : 0), 0.1, 2) : p.wit; // (Tunnel Vision: trWit)
 const staOf = p => (CM && CM.sta && CM.sta[p.id] != null ? CM.sta[p.id] : 1);
 const boost = p =>
   CM && CM.mood

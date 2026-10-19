@@ -359,6 +359,7 @@ const Run = {
     if (!Number.isFinite(run.sta)) run.sta = run.staMax;
     if (!run.mode || typeof run.mode !== 'object') run.mode = { hard: false, short: false, story: true };
     if (typeof run.mode.story !== 'boolean') run.mode.story = true;
+    Feel.sync(run); // your Sparks and Scars onto your player (you.traits); an old save's pending Scars are rolled
     // an event this version no longer knows (removed / renamed) would leave the week stuck on a blank card
     if (run.event && !Events.def(run.event, run)) run.event = null;
     // the named cohort's names are authored (renamed by the owner, 2026-10-05): a save from before keeps them, under their current names
@@ -394,7 +395,8 @@ const RUN_DEFAULTS = {
   feel: [() => ({ drive: 0, pain: 0, great: 0, awful: 0 }), isObj], // Drive & Pain (spec §4.30; js/career/feel.js) — hidden
   fired: [() => 0, Number.isFinite], // Fired up: your next matches with the buff
   raidW: [() => null, v => v === null || Number.isFinite(v)], // the absolute week of your last Raid (T-318)
-  scars: [() => [], Array.isArray], // Pain's Scars (T-291 pools)
+  scars: [() => [], Array.isArray], // Pain's Scars { id, y, w, seen } (spec §4.30; SCARS, js/data/traits.js)
+  sparks: [() => [], Array.isArray], // Fired up's Sparks (ids; SPARKS) — with the Scars onto you.traits (Feel.sync)
   secret: [() => ({}), isObj], // the secret places (spec §4.31; js/career/secret.js)
   habits: [() => [], Array.isArray], // the rival's habits uncovered at the Tape Room (keys)
   secretMoves: [() => [], Array.isArray], // the Hermit's techniques (names; effects with T-291) // the season (spec §4.28: Story plays two; js/career/season.js)
