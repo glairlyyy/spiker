@@ -100,7 +100,7 @@ function obs(run, M) {
 /** Good policy in the war (measurement, 2026-10-19): a Raid once a week when it may (stamina > 60); an overthrow of a Broken
  * unit across its border when it may (stamina > 60). True when it spent the day. */
 function warMoves(g, run, M) {
-  if (run.sta <= 60) return false;
+  if (process.env.CAREER_WAR === '0' || run.sta <= 60) return false; // CAREER_WAR=0: the good policy stays out of the war
   if (g.Fight.raidWhy(run) === '') {
     const n = run.mlog.length,
       line = g.Fight.raid(run);
