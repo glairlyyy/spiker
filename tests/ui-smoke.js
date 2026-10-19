@@ -213,6 +213,16 @@ const step = async (name, fn) => {
     await ev(() => leaveMatch());
     return `${r} frames, ${clip}`;
   });
+  await step('Year-2 Cup match (dev): two sampled Cup squads', async () => {
+    await ev(() => navigate('menu'));
+    await ev(() => devOpen('cup', () => startCupSample()));
+    await pg.waitForFunction(() => typeof A !== 'undefined' && A && A.m && /Year-2 Cup sample/.test(A.fx.round || ''), null, {
+      timeout: 60000
+    });
+    const r = await ev(() => [A.m.t[0].name, A.m.t[1].name, A.m.t[0].P.length + A.m.t[1].P.length]);
+    await ev(() => leaveMatch());
+    return `${r[0]} vs ${r[1]}`;
+  });
   await step('Monster game → result', async () => {
     await ev(() => navigate('menu'));
     await ev(() => {

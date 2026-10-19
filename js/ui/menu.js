@@ -39,6 +39,7 @@ function renderMenu() {
           .map(([v, n]) => `<option value="${v}" ${(TS.venue || 'arena') === v ? 'selected' : ''}>${n}</option>`)
           .join('')}</select></label>
         <button class="btn" onclick="startAverage()" ${tip('A one-off 3D match between two teams of ordinary players: every player rolled at overall 30–60')}>Average game</button>
+        <button class="btn" onclick="devOpen('cup', () => startCupSample())" ${tip('Two squads drawn at random from a real year-2 U21 Cup — the squads as auto-played Story runs reached it (your player and Haewon may be in them)')}>Year-2 Cup match</button>
         <label class="btn" ${tip('Load a .vrm from your computer. It stays in this browser (never uploaded); in the Monster game every player picks a random model among the built-in ones (Main_v2, Rival_v2–v4, male1, male2) and the loaded ones (career: your player is always Main_v2).')}>+ Player model<input type="file" accept=".vrm,.glb" hidden onchange="addModelFile(this)"></label>
         <button class="btn" onclick="devOpen('anim', () => startAnimLab())" ${tip('A Monster game that records every player: freeze, scrub frame by frame, orbit, foot marks, edit the pose values and Copy them')}>Animation lab</button>
         <button class="btn" onclick="startMonster({ cine: '${CINE_KINDS[0].id}' })" ${tip('A Monster game where every rally stages a cut-scene, with its camera values live beside it (Copy to bake them in)')}>Cut-scene lab</button>
@@ -113,6 +114,31 @@ const PLAY_AS = [
   )
 ];
 /** Average game (dev): a one-off match between two teams of ordinary players (overall 30–60 each). */
+/**
+ * Year-2 Cup match (dev, owner 2026-10-20): two squads at random from one sampled year-2 U21 Cup (CUP_SAMPLE — js/data/cup-sample.js,
+ * generated from auto-played Story runs by tests/career-bot.js). Half the time it is your squad against another one.
+ */
+function startCupSample() {
+  if (typeof CUP_SAMPLE === 'undefined' || !CUP_SAMPLE.length) return DBG.log('error', 'Year-2 Cup sample missing');
+  const run = CUP_SAMPLE[Math.floor(Math.random() * CUP_SAMPLE.length)],
+    S = run.squads,
+    mine = S.findIndex(s => s.you),
+    i = mine >= 0 && Math.random() < 0.5 ? mine : Math.floor(Math.random() * S.length);
+  let j = Math.floor(Math.random() * (S.length - 1));
+  if (j >= i) j++;
+  const [a, b] = [S[i], S[j]].map(o => teamFromJSON(JSON.parse(JSON.stringify(o)))),
+    tag = s => `${s.name}${s.you ? ' (you)' : ''}${s.rival ? ' (Haewon)' : ''}`;
+  for (const p of [...a.P, ...b.P]) p.form = +rnd(-0.1, 0.4).toFixed(2);
+  navigate('match', {
+    a,
+    b,
+    vfx: true,
+    venue: TS.venue || 'arena',
+    round: `Year-2 Cup sample · run ${run.seed} · ${tag(S[i])} vs ${tag(S[j])}`,
+    back: 'Back to menu',
+    onLeave: () => navigate('menu')
+  });
+}
 function startAverage() {
   const [a, b] = mkAverageTeams();
   for (const p of [...a.P, ...b.P]) p.form = +rnd(-0.1, 0.4).toFixed(2);
