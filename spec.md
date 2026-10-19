@@ -1168,7 +1168,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
 
   Good play now ends year 2 level with the rival, casual play at the league's mean. Still **[open]**: the Cups and the endings
   barely follow (true endings 1–2 in 20) — the squad around you decides them.
-- §4.30 Drive & Pain **[built 2026-10-16, T-290; Scars' pools open: T-291]** (owner 2026-10-15): two hidden bars on the MC, 0–100 each. Not training-place
+- §4.30 Drive & Pain **[built 2026-10-16, T-290; Sparks, Scars and the special VFX decided 2026-10-20: T-291]** (owner 2026-10-15): two hidden bars on the MC, 0–100 each. Not training-place
   streaks: everything you do counts.
   - **Drive** fills on every positive thing: a training session, a win, a good grade, a teammate's praise, a good
     event, a club taking you, mood **Great three weeks in a row**. An idle week drains it a little; a loss doesn't empty
@@ -1178,9 +1178,26 @@ the AI coach fills every slot you leave with the same function. Built and measur
     to the rival, the rival not remembering you, mood **Awful several weeks running**. **Not** injury, not bad sleep.
     **At 100 → a Scar**: a trait drawn from pools — mostly bad, some mixed, a rare OP one (e.g. **Enlightenment**:
     every stat and Wit up a lot); the OP chance grows with each Scar. Then 0. Seeded (no change to the run's random
-    stream). **Pools: [open]** — to be decided with the owner (traits, odds, whether Drive can heal a Scar, which VFX
-    become Fired-up-only).
+    stream). **Pools decided (owner, 2026-10-20) — T-291**, below.
   - **Mood stays** (the five levels, `MOODS`) and plays along: streaks of mood feed the bars (above).
+  - **Fired up gives both** (owner, 2026-10-20): the special moves while it lasts (below), and each Fired up has a seeded
+    ~35 % chance of a permanent **Spark** — a trait from the Drive pool (no repeats, at most 3):
+    **Clutch** (+6 % attack and defence at 20+ points or a set point) · **Second Wind** (HP heals +0.1 more between rallies) ·
+    **Captain's Voice** (your kills lift every teammate's morale +0.05) · **Iron Will** (your morale never falls below −0.3) ·
+    **Air Impact** (the air impact spike always, and power +3 %) · **Flash Step** (the warp jump always) · **God of War**
+    (the explosive burst and the ink style always; two kills running → power +8 % until your next error).
+  - **Scars: hidden until they show** (owner, 2026-10-20): Pain at 100 draws one (seeded, no repeats, at most 3). Its name
+    stays hidden — the diary only says something broke — until the first match where it acts; then it is named (a diary
+    line, the Me sheet). Drive can't heal a Scar (the Lighthouse's *let it go* is the way to keep one from coming).
+    - **Bad (~88 %)**: **Glass Ankle** (injury chance × 1.5) · **Shaky Hands** (serve errors +6 % at 20+ points) ·
+      **Haunted** (morale −0.2 at the start against Haewon's squad) · **Insomnia** (rest −20 %) · **Tunnel Vision** (Wit
+      −0.1 in matches) · **Bitter** (bonds grow 30 % slower).
+    - **OP (12 %, +8 % for each Lighthouse *sharpen it*, +4 % for each Scar before)**: **Enlightenment** (every body stat +6,
+      past the caps, and Wit +0.3) · **Eye of the Storm** (no morale loss) · **Spite** (+8 % stats against Haewon's squad) ·
+      **Dead Calm** (never Rattled).
+  - **Special VFX** (owner, 2026-10-20): the **air impact spike**, the **warp jump**, the **eye light trails**, the **explosive
+    burst** and the **ink style** are no longer everyone's — only an OP player, a Fired-up player, or one whose trait unlocks it
+    (Air Impact, Flash Step, God of War) shows them. Display only (who shows them; the match itself is unchanged by it).
   - **Hidden, both years**: no bar on screen. Shown only indirectly — diary lines as a bar climbs ("Something won't sit
     still in you" / "It hurts more than it should"), teammates' remarks, the MC's face on the hub, the Fired up match
     itself, the Scar's own scene. A second run is worth it for knowing what fills them.

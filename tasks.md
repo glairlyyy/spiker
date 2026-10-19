@@ -471,10 +471,23 @@ Accept: each place acts as above; the Old Scout's number matches a direct simMat
 QA: career run → each card.
 Result: Built; night games and the scout's sims on a seeded stream (Secret.isolated) — the run's stream is untouched.
 
-### [?] T-291: Scars — the trait pools
-Spec: §4.30 (pools [open])          Goldens: update (traits change play)          Save: no change
-Question: Owner to decide with the spec chat: the bad / mixed / OP traits and their effects, the odds and pity, whether
-Drive can heal a Scar, which VFX (air impact, impact frame, secret techniques) become Fired-up / special-only.
+### [ ] T-291: Sparks and Scars — the trait pools; the special VFX
+Spec: §4.30 (decided 2026-10-20)          Goldens: unchanged (only your player carries traits; a match without them is today's)          Save: no change (`run.scars` exists; `run.sparks` added as a RUN_DEFAULTS field, no bump)
+Goal: Fired up rolls a permanent Spark (35 %, Drive pool); Pain at 100 rolls a Scar (88 % bad / 12 %+ OP), hidden until it
+first acts in a match; every trait's effect works; the five special VFX show only for OP, Fired-up or unlocking-trait players.
+Files: js/data/traits.js (new: SPARKS, SCARS, odds), js/career/feel.js (roll on Fired up / Pain 100 — seeded `hstr`, no R()),
+js/career/run.js (`sparks` default; you.traits for the match), js/engine/bars.js, js/engine/formulas.js, js/engine/match.js
+(trait hooks: read `p.traits` only — absent = today), js/career/training.js (Insomnia), js/career/rel.js (Bitter), js/career/fight.js
+(Glass Ankle), js/ui/sheet-me.js (named traits; "something broke" for a hidden Scar), js/data/story.js (diary lines — lore
+voice `diary`), js/render3d/actors3d.mjs (eye trails), js/render3d/fx/hits.mjs + js/render/effects.js (air impact, burst),
+js/render/playback.js (warp), js/render3d/trails3d.mjs / arena3d.mjs (ink style), index.html, tests/career.test.js,
+tests/engine.test.js, ARCHITECTURE-details.md
+Do not: draw R() for the rolls or the effects; give NPCs traits; change any match where nobody has traits (goldens).
+Accept: tests — Fired up ×100 seeds: ~35 % Sparks, no repeats, ≤ 3; Pain-100 ×1000 seeds: 12 ± 3 % OP with no sharpen, more
+with; a hidden Scar is named on the first match it acts; each trait's effect changes its number in a scripted match; a
+non-OP star without a trait shows no air impact / warp / eye trails / burst / ink (QA); `npm run career -- 20 both` unchanged
+within noise for ratings.
+QA: Monster game (an OP vs a plain star: who shows the special VFX); career run → Fired up and a Scar on the Me sheet.
 Result:
 
 **Reading pays (owner, 2026-10-15, spec §2.30): T-282 → T-285.** Measure with the smart bot (scratch `smartbot.js` → T-285
