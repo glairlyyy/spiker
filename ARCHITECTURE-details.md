@@ -912,6 +912,32 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   `subIn` refreshes the fire (who is on court). `m.noTraits` (tests) makes every player trait-less: then all morale is equal
   and the fire is exactly the old fire.
 
+## Sparks and Scars (spec §4.30, T-291)
+
+- **Data** `js/data/traits.js`: `SPARKS` (the Drive pool), `SCARS` (bad; `op: true` = the OP pool; `career: true` = acts outside
+  matches), `MC_TRAITS` = both by id; `TRAIT_ODDS` (spark 0.35, op 0.12 + sharp 0.08 per `run.secret.sharp` + per 0.04 per Scar
+  before, max 3); `TRAIT_LATE_PTS` = 12 (the spec's "20+ points" of a 25-point set, in the 15-point set; or a set point). Diary
+  lines `FEEL_LINES.traits` (data/story.js).
+- **Rolls** (career/feel.js, no R()): `Feel.add` → at the top `Feel.spark` (Drive) / `Feel.scar` (Pain); `Feel.roll(run, salt)` =
+  `hstr(pseed|feel|week|salt)`. A Spark is named at once; a Scar is pushed `seen: false` — Enlightenment applies at once
+  (`Feel.enlighten`: body + 6 → Body.sync, Wit + 0.3, ≤ runCap / witRunCap). An old save's `{ k: 'pending' }` entries are rolled
+  by `Feel.sync` (Run.repair).
+- **Into the match**: `Feel.sync` → `you.traits` (ids; deleted when none). `Feel.match` (Cup fixtures) sets `m.vsRival` when her
+  squad is m.t[1] (Spite) and Haunted's start morale. Engine hooks (bars.js; each is skipped without `p.traits`, no draws):
+  `trBuff(p, k)` × in `stageBuff` (Clutch late atk/def, Air Impact atk, God of War atk while `m.gow[pid].on`, Spite all),
+  `trStage` (Dead Calm: Loose → Composed for p), `trWit` in W (Tunnel Vision), `trServeErr` in Formula.serveErrorP (Shaky Hands
+  late, + 0.06), `trHeal` in hpHeal (Second Wind), `morKeep` after morPoint / a negative morAdd (Eye of the Storm, Iron Will),
+  Captain's Voice in morPoint, `trPoint` in pointMomentum (God of War's run). `trSquad(m, i)` caches the carriers (`m.trP`).
+- **Naming**: hooks mark `m.trAct[pid][id]`; career-side Scars (Glass Ankle in Fight.injuryRisk and the failed-training injury,
+  Insomnia in Training.rest, Bitter in Rel.add) go through `Feel.has(run, id)`, which marks a hidden one `acted`. `Feel.name`
+  (Feel.result, every match of yours) names each hidden Scar that acted (or Enlightenment after a played match): diary line.
+  The Me sheet (`traitLines`) lists Sparks and named Scars; a hidden one shows "Something broke."
+- **Special VFX** (display only): `specialFx(p | id, kind)` (render/effects.js) → 0 none, 1 as staged (p.op, `A.m.fired === p.id`,
+  the dev labs), 2 always (`MC_TRAITS[id].fx`). Sites: acts.js `burst` (the 3D contact burst by the hitter — spkstyle's p or
+  `A.ballBy`; the air impact pend by the spiker, an Air Impact spark ignores the stage's floor), playback.js `leapWarp` (Flash
+  Step: from VFX.leap.from), actors3d.mjs (eye trails; hand-trail ink), director.js `ballStyle` (ink by `A.trailBy`, set in
+  startBall from `A.ballBy`).
+
 ## Tactic cards and turns (spec §2.32–§2.33, T-295)
 
 - **Compile, don't fork**: a card is data (`CARDS`); `cardApply` turns the slotted set into the existing levers, so the rally
