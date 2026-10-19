@@ -62,7 +62,9 @@ function swingE(d) {
   return sw < pre ? (CE * sw) / pre : Math.min(1, CE + ((1 - CE) * (sw - pre)) / post);
 }
 // 1. Bow and arrow: hitting elbow drawn back high above the shoulder, thumb back, big open hand behind the head
-const BOW_R = RA(V(-0.8, 0.52, -0.3), V(0.18, 0.97, 0.05), V(0.08, 0.82, -0.56), V(0.8, 0.1, 0.6));
+// (owner, 2026-10-20: the hitting arm was a goalpost — elbow at the side, forearm straight up — and then folded back for the
+// whip: now the elbow is drawn high and back, the forearm already laid back behind the head, palm to the net)
+const BOW_R = RA(V(-0.6, 0.62, -0.5), V(0.55, 0.65, -0.52), V(0.5, 0.55, -0.67), V(0.2, 0.4, 0.9));
 const QUICK_R = RA(V(-0.6, 0.72, -0.2), V(0.02, 0.97, -0.2), V(0, 0.75, -0.66), V(0.5, 0.1, 0.85));
 // whip: the elbow leads forward and up while the forearm still lies back
 const WHIP_R = RA(V(-0.45, 0.85, 0.22), V(-0.12, 0.5, -0.86), V(-0.08, 0.3, -0.95), V(0, 0.9, 0.4));

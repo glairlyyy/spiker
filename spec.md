@@ -742,6 +742,9 @@ the AI coach fills every slot you leave with the same function. Built and measur
     only (tournament: below) and plays add little over boosts — the coach's pick and the plays' sizes are the next balance
     pass (owner: not tuned yet).
 
+- §2.35 Pose fixes (owner, 2026-10-20) **[built 2026-10-20]**: the spike's bow — the hitting elbow drawn high and back, the hand behind
+  the head, palm to the net (was a goalpost arm that folded back for the whip); the set — the ready triangle with the forearms
+  turned (left −2.08, right 1.85, from the Animation lab) and held at that twist through every push (no twisting back and forth).
 - §2.34 Gloom lines (owner, 2026-10-20) **[built 2026-10-20]**: the anime gloom lines — purple vertical lines hanging from above the
   head and fading toward the chest — over a debuffed player: its side plays a war stage (§4.34: Strained / Shaken / Broken,
   darker by stage), its own morale has sunk (below −0.35), or its HP is nearly gone (below 0.3); the strongest of the three

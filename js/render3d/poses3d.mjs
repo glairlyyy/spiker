@@ -245,6 +245,16 @@ const BACK_UP = C({
   al: [V(-0.28, 0.62, 0.73), V(-0.28, 0.7, 0.66), V(-0.28, 0.78, 0.56), 0, -2.2],
   ar: undefined
 });
+// The set's forearms (owner, 2026-10-20, from the Animation lab): turned so the palms open up to the ball in the ready
+// triangle, and held at that twist through the push — the forearms never twist back and forth during the set.
+const SET_TW_L = [0, -2.08],
+  SET_TW_R = [0.16, 1.85];
+/** Set arms: the left arm `al` with the set's twist, and its mirror on the right with the right's twist. */
+const setArms = al => {
+  const l = [al[0], al[1], al[2], ...SET_TW_L],
+    r = mirror(l);
+  return { al: l, ar: [r[0], r[1], r[2], ...SET_TW_R] };
+};
 const WINDOW = {
   hp: 0.14,
   sp: 0,
@@ -252,13 +262,14 @@ const WINDOW = {
   hd: -0.3,
   L: leg(0.5, 0.85),
   R: leg(0.3, 0.7),
-  al: [V(0.75, 0.25, 0.6), V(-0.3, 0.85, 0.4), V(-0.35, 0.6, -0.72), 0, 0.6],
+  // (owner, 2026-10-20: the ready set — hands up over the forehead, fingers to the sky)
+  ...setArms([V(0.726, 0.34, 0.598), V(-0.262, 0.873, 0.411), V(-0.02, 0.999, -0.036)]),
   curl: 0.15
 };
 const PUSH = {
-  front: { al: [V(0.25, 0.9, 0.35), V(0.08, 0.9, 0.42), V(0.02, 0.6, 0.8), 0, 0.6], sp: 0.02, cp: 0, hd: -0.35 },
-  quick: { al: [V(0.2, 0.97, 0.1), V(0.04, 1, 0.06), V(0, 0.9, 0.4), 0, 0.6], sp: 0, cp: 0, hd: -0.55 },
-  back: { al: [V(0.2, 0.9, -0.3), V(0.06, 0.85, -0.5), V(0, 0.5, -0.86), 0, 0.6], sp: -0.3, cp: -0.22, hd: -0.6 }
+  front: { ...setArms([V(0.25, 0.9, 0.35), V(0.08, 0.9, 0.42), V(0.02, 0.6, 0.8)]), sp: 0.02, cp: 0, hd: -0.35 },
+  quick: { ...setArms([V(0.2, 0.97, 0.1), V(0.04, 1, 0.06), V(0, 0.9, 0.4)]), sp: 0, cp: 0, hd: -0.55 },
+  back: { ...setArms([V(0.2, 0.9, -0.3), V(0.06, 0.85, -0.5), V(0, 0.5, -0.86)]), sp: -0.3, cp: -0.22, hd: -0.6 }
 };
 export const PUNCH_R = [V(-0.22, 0.35, 0.91), V(-0.15, 0.3, 0.94), V(-0.1, 0.4, 0.91)];
 export const COCK_SERVE = [V(-0.55, 0.72, -0.42), V(-0.08, 0.99, 0.08), V(-0.05, 0.45, -0.89)];
