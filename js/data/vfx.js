@@ -103,6 +103,19 @@ const VFX_DEF = {
       warpMs: [110, 40, 300, 10, 'Warp rise (ms)']
     }
   },
+  gloom: {
+    name: 'Gloom lines (a debuffed player: war stage, sunk morale, low HP)',
+    p: {
+      on: [1, 0, 1, 1, 'On'],
+      curvy: [0, 0, 1, 1, 'Curvy lines'],
+      col: ['#9a5cff', 0, 0, 0, 'Colour'],
+      op: [1, 0, 1, 0.05, 'Opacity at full'],
+      size: [1, 0.5, 2, 0.05, 'Size ×'],
+      war: [0.7, 0, 1, 0.05, 'War stage (Shaken) strength'],
+      mor: [-0.35, -1, 0, 0.05, 'Morale below'],
+      hp: [0.3, 0, 1, 0.05, 'HP below']
+    }
+  },
   found: {
     name: 'Every player (foundation)',
     p: {

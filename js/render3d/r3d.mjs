@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { loadBase, makeVRM, modelStats, updateVrm, MODEL_URL, MAIN_URL, BUNDLED } from './players3d.mjs';
 import { createFx } from './fx3d.mjs';
+import { makeGloom } from './fx/gloom.mjs';
 import { makeTrail } from './trails3d.mjs';
 import { W, lowEnd } from './units3d.mjs';
 import { animCapture, animReplay, animFreeze, animOrbit, animInfo, animClear, animFollow, animUnfollow } from './anim3d.mjs';
@@ -108,13 +109,14 @@ async function build(onProgress) {
   return w;
 }
 
-/** A player figure's extras: aura, zone / buff floor rings, hand and eye light trails, eyes on the ball. */
+/** A player figure's extras: aura, gloom lines, zone / buff floor rings, hand and eye light trails, eyes on the ball. */
 function kitOut(pl, scene, arena) {
   pl.aura = new THREE.Sprite(
     new THREE.SpriteMaterial({ map: arena.glowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })
   );
   pl.aura.scale.set(2.2, 2.6, 1);
   scene.add(pl.aura);
+  pl.gloom = makeGloom(scene); // gloom lines over a debuffed player (fx/gloom.mjs)
   pl.zone = arena.flatRing(arena.ringTex, 1.5);
   pl.buff = arena.flatRing(arena.dashTex, 1.7);
   pl.buff.material.color.set('#ffd84d');

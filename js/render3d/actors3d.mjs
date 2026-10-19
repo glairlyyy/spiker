@@ -11,6 +11,7 @@ import { cam, povFadeId } from './camera3d.mjs';
 import { footIK, armIK, kneeHands } from './ik3d.mjs';
 import { turnLag, landSpring, headSteady } from './secondary3d.mjs';
 import { gaitIK } from './gait3d.mjs';
+import { gloomOf, gloomUpdate } from './fx/gloom.mjs';
 
 const tmp = new THREE.Vector3(),
   tmp2 = new THREE.Vector3();
@@ -460,6 +461,7 @@ function glow(pl, d, pos, dt, fx) {
     targ = Math.max(own, look === 'full' ? 0.3 : look === 'faint' ? 0.14 : look === 'haze' ? 0.18 : 0);
   pl.aura.material.color.set(full ? ECOL[d.p.el] : d.p.op ? '#ff2846' : look === 'haze' && !own ? '#8b9099' : d.p.team.color);
   pl.aura.material.opacity += (targ - pl.aura.material.opacity) * (1 - Math.exp(-dt * 8));
+  gloomUpdate(pl, A.animLab ? 0 : gloomOf(A.m, d.p, side), dt, performance.now() / 1000); // a debuffed player (war stage, morale, HP)
   const elc = d.p.elOn ? ECOL[d.p.el] : null, // unlocked element: the aura takes its colour
     col = elc || (d.p.team && d.p.team.color) || '#ff2846',
     chg = !!(elc && (A.egShown || {})[d.p.id] >= EG.full);
@@ -659,6 +661,7 @@ export function dressActors(w) {
   w.people.forEach(pl => {
     const d = pl.d;
     pl.root.visible = pl.aura.visible = !!d;
+    if (pl.gloom && !d) pl.gloom.visible = false;
     leapShow(pl); // (a warp cut short by the match ending)
     if (!d) {
       for (const t of [...pl.trails, ...pl.eyeTrails]) t.clear();

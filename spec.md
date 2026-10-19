@@ -742,6 +742,11 @@ the AI coach fills every slot you leave with the same function. Built and measur
     only (tournament: below) and plays add little over boosts — the coach's pick and the plays' sizes are the next balance
     pass (owner: not tuned yet).
 
+- §2.34 Gloom lines (owner, 2026-10-20) **[built 2026-10-20]**: the anime gloom lines — purple vertical lines hanging from above the
+  head and fading toward the chest — over a debuffed player: its side plays a war stage (§4.34: Strained / Shaken / Broken,
+  darker by stage), its own morale has sunk (below −0.35), or its HP is nearly gone (below 0.3); the strongest of the three
+  sets how dark, easing in and out. Straight or curvy lines; colour, size, opacity and the three thresholds in the VFX panel
+  (`VFX.gloom`). Display only (js/render3d/fx/gloom.mjs).
 ## 3. Menu [built]
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two
