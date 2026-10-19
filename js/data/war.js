@@ -16,9 +16,9 @@ const WAR = {
     shu: { region: 'shu', name: 'Shu', clubs: [4, 7], soak: 0.5, late: 1 }
   },
   start: 100,
-  lose: 8, // a street battle lost on its border
+  lose: 10, // a street battle lost on its border
   win: 3, // … won
-  idle: 4, // untouched this many weeks: +regen a week
+  idle: 6, // untouched this many weeks: +regen a week
   regen: 2,
   rally: 20, // an overthrow the attacker lost: the defender rallies
   cool: 4, // weeks after an overthrow match before that unit can be challenged again

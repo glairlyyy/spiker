@@ -1270,8 +1270,11 @@ the AI coach fills every slot you leave with the same function. Built and measur
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.
-  - **Strength** (0–100 per war unit, start 100): a street battle lost on its border −8 (won +3); untouched for 4 weeks +2 a
+  - **Strength** (0–100 per war unit, start 100): a street battle lost on its border −10 (won +3); untouched for 6 weeks +2 a
     week; an overthrow lost by the attacker → the defender +20 ("rallied"). Shown on the Factions cards and the border. **[built 2026-10-19, T-313: war units, Strength, the economy; Gold's ring = Wei land ≥ 3 hex steps from another major]**
+    **Tuned 2026-10-19 [built]** (owner: the war should be noticeable, the overthrow optional — a faction weakened at least once
+    a run): −8 → −10 a lost battle, the rally after 4 → 6 untouched weeks. 20 runs without you in the war: a unit Strained in 19 / 20
+    (was 14), Shaken 12 / 20 (was 7), Broken 6 / 20 (was 4); a fall in 2 / 20 (unchanged); Iron is worn down most (owner: fine).
   - **Stages → match debuffs** for every squad of that unit (evaluations, Cup, street, court; display of the stage on the
     match prep): **Strained** < 60 — morale starts 10 lower · **Shaken** < 40 — also HP heals 0.25 less between rallies ·
     **Broken** < 25 — also one card slot fewer. (Numbers first guesses; the engine takes a per-side `weak` stage, absent = none.) **[built 2026-10-19, T-314: the slot a Broken side loses is FLEX; Broken vs Steady, same squads: Steady wins 58 %]**

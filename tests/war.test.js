@@ -22,8 +22,8 @@ test('war: units and Strength — battles move it, Shu soaks half, Gold untouche
   // the same results: a lost battle costs Iron 8, Shu half that
   clashOn(g, run, 'wu', 'wei');
   const line = g.Front.result(run, 'wu', 'wei');
-  eq(g.War.str(run, 'iron'), 100 - g.WAR.lose, 'Iron −8');
-  assert(/Wei Iron Strength 100 → 92/.test(line), 'the line names it: ' + line);
+  eq(g.War.str(run, 'iron'), 100 - g.WAR.lose, 'Iron −lose');
+  assert(line.includes(`Wei Iron Strength 100 → ${100 - g.WAR.lose}`), 'the line names it: ' + line);
   clashOn(g, run, 'wu', 'shu');
   g.Front.result(run, 'wu', 'shu');
   const lostIron = 100 - g.War.str(run, 'iron'),
@@ -68,7 +68,7 @@ test('war: Strength drives the economy — prices, quality, joins, street streng
   const pre = JSON.stringify(run.war),
     k = g.Front.stakes(run, 'wu', 'wei');
   eq(JSON.stringify(run.war), pre, 'stakes() changes nothing');
-  assert(k.unit === 'iron' && k.str === 100 && k.after === 92 && !k.seize && !k.place, 'the preview: Iron 100 → 92');
+  assert(k.unit === 'iron' && k.str === 100 && k.after === 100 - g.WAR.lose && !k.seize && !k.place, 'the preview: Iron 100 → 100 − lose');
   run.war.str.iron = 50;
   eq(g.War.stage(run, 'iron'), 1, 'under 60: Strained');
   eq(g.World.joinReq(run, ti).ovr, o0 - g.FRONT.join, 'a Strained club asks less');
