@@ -18,6 +18,7 @@ function playRally(m) {
   if (V) {
     B.len = () => beats.length;
     B.ins = (i, ...bs) => beats.splice(i, 0, ...bs);
+    B.last = () => beats[beats.length - 1]; // (the fake set rides on the pass beat: fakeSet)
   }
   if (V && m.trapFired.length) B({ dur: 1100, acts: m.trapFired.map(t => ({ k: 'cardspent', side: t.side, id: t.id, trap: t.trap })) });
   const s = m.serve,

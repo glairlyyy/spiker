@@ -200,22 +200,35 @@ function setterDump(c, s) {
       fk = [];
     mv(m, dec, sx(atk, 420), dz, fk, V);
     mv(m, DMB, sx(ds, 484), dz, fk, V);
-    V &&
-      B({
-        dur: 700,
-        acts: [
-          { k: 'pose', p: setter.id, pose: 'set' },
-          { k: 'jump', p: setter.id, mode: 'up', peak: sj },
-          { k: 'ball', to: { p: setter.id, c: 'set', dh: sj }, h: 0 },
-          ...fk,
-          { k: 'pose', p: dec.id, pose: 'spike' },
-          { k: 'jump', p: dec.id, mode: 'hop', peak: jumpVis(dec), t0: 0.05 },
-          { k: 'pose', p: DMB.id, pose: 'block' },
-          { k: 'jump', p: DMB.id, mode: 'hop', peak: jumpVis(DMB) * 0.85, t0: 0.25 },
-          { k: 'ghost', to: { x: sx(atk, 432), z: dz, h: REACH_H + jumpVis(dec) } },
-          { k: 'label', t: 'Fake set!', dy: 60, set: 1, big: 1 }
-        ]
-      });
+    // the fake rides on the pass (owner, 2026-10-20): the setter goes up to meet it, the decoy and their middle hop as it
+    // arrives, and the dump follows at once — no beat with the ball held at the setter's hands
+    const fakeActs = [
+        { k: 'pose', p: setter.id, pose: 'set' },
+        { k: 'jump', p: setter.id, mode: 'up', peak: sj, t0: 0.55, t1: 1 },
+        ...fk,
+        { k: 'pose', p: dec.id, pose: 'spike' },
+        { k: 'jump', p: dec.id, mode: 'up', peak: jumpVis(dec), t0: 0.45, t1: 1 },
+        { k: 'pose', p: DMB.id, pose: 'block' },
+        { k: 'jump', p: DMB.id, mode: 'up', peak: jumpVis(DMB) * 0.85, t0: 0.6, t1: 1 },
+        { k: 'ghost', to: { x: sx(atk, 432), z: dz, h: REACH_H + jumpVis(dec) }, when: 'end' },
+        { k: 'label', t: 'Fake set!', dy: 60, set: 1, big: 1, when: 'end' }
+      ],
+      pass = V && B.last && B.last(),
+      pb = pass && pass.acts && pass.acts.find(a => a.k === 'ball' && a.to && a.to.p === setter.id && a.to.c === 'set');
+    if (pb) {
+      pb.to = { ...pb.to, dh: sj }; // (to the setter's hands at the top of the jump)
+      pass.acts = pass.acts.filter(a => !(a.k === 'pose' && a.p === setter.id)).concat(fakeActs);
+    } else
+      V &&
+        B({
+          dur: 700,
+          acts: [
+            { k: 'pose', p: setter.id, pose: 'set' },
+            { k: 'jump', p: setter.id, mode: 'up', peak: sj },
+            { k: 'ball', to: { p: setter.id, c: 'set', dh: sj }, h: 0 },
+            ...fakeActs.slice(2).map(a => (a.when ? { ...a, when: undefined } : a))
+          ]
+        });
     st(m, setter, 'att');
     const a2 = [];
     if (kill) {

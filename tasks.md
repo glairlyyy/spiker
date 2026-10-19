@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-319** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-320** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -118,6 +118,12 @@ Do not: show quality; add draw calls per frame (landmarks stay single meshes).
 Accept: map test — every training place's pin lists 1–3 body glyphs; QA screenshot of Wei's district and the Harbor.
 QA: career run → map overview + two close-ups.
 Result: MapModel.trains(id) → pin `glyphs` (1–3 body glyphs: each stat's best gain among the place's orders, within 60 % of the top; Harbor ▲, the Steps ▲≫, Wei Strength ▲∿), drawn on a tab under the pin (pins3d.mjs, css/map.css); landmarks carry `kit` and kit3d's KIT_PROPS add racks, crates + a crane, plyo boxes, steps, a track, dunes, a pool, a sand court, mats, a shed, a film screen, shelves beside them — merged into the one landmark mesh (no draw call added). Map test (every training place 1–3 glyphs, kits on landmarks). npm test 158/158, lint, test:ui 13/13; QA: overview, Wei's district, the Harbor close-up.
+
+### [x] T-319: The fake set rides on the pass — no slow motion, no ball held in the air
+Spec: §2.19 (The fake set rides on the pass)          Goldens: update (the recorded-match hash only; sims unchanged)          Save: no change
+Goal: the decoy fake and the setter's dump fake happen as the pass travels; the set or the dump follows at once.
+Files: js/engine/rally.js (fakeSet, setActs), js/engine/rally-phases.js (setterDump), js/engine/serve.js (B.last), tests/engine.test.js, spec.md, tests/golden.json
+Result: Done (owner request, spec chat). The fake's acts join the pass beat (B.last: the beat whose ball goes to the setter): approach moves, the decoy's jump to its peak at the setter's touch, the bitten middle, the ghost arrow and the label at the end; the dump fake also lifts the setter to meet the pass. A fallback short beat stays for a fake with no pass beat before it (none in 8 test matches). A staged scene (Hype) may still cut in before the set. Test: every fake is on the pass beat, no slow motion, the next play beat moves the ball. 169/169, UI smoke 13/13.
 
 ### [x] T-318: The Raid order — a street game on a hot border
 Agent: A (after B's T-313 is published: needs `War.hit`)

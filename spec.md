@@ -302,6 +302,11 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     and a runner leans into the turn; running, the head stays level and on the ball (the gait's bob and twist filtered out);
     landing from a jump, the hips settle with a small spring (up to ~4 cm, the knees bend, the feet stay on the floor).
     VFX panel → Secondary motion (on, weight shift, torso lag, lean, head steady, landing settle).
+  - **The fake set rides on the pass** (owner, 2026-10-20) **[built, T-319]**: the decoy fake (multi-attack) and the setter's
+    dump fake play while the pass is in the air — the hitters run in, the decoy is at the top of the jump (a bitten middle
+    with them) as the ball reaches the setter ("Fake set!" there), and the set or the dump follows at once. It had its own
+    slowed beat with the ball held at the setter's hands. The passer never runs in on screen (a passer the engine picked as
+    the decoy is shown by the strongest other runner); the engine and its draws are unchanged.
 - §2.20 Cut-scenes (display only) **[built, owner 2026-10-08 – 10-09]**: a heroic tracked camera for a big point, picked from the
   rally's beats before they play. **Ace** — the ball in the server's hands as they bounce it, the feet on the run-up, a side
   view of the hit, riding the ball to the floor. **WS kill** — over the hitter's shoulder as the set goes up, low at the feet

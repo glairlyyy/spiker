@@ -162,7 +162,8 @@ function fakeSet(c, x) {
     { setter, MBs, mbZ, readBonus, B0, bad } = x;
   let { quick, spiker } = x,
     bitten = false,
-    fakeDecoy = null;
+    fakeDecoy = null,
+    fakeShown = null;
   if (
     !bad &&
     !x.high && // (a high ball for a fallen teammate: no tricks — spec §2.28)
@@ -191,33 +192,35 @@ function fakeSet(c, x) {
       for (const p of [...others, spiker]) mv(m, p, xOf(p), zOf(p), fk, V);
       const dz = zOf(decoy);
       if (bitten) mv(m, db, sx(ds, 484), dz, fk, V);
-      V &&
-        B({
-          dur: 650,
-          slow: 0.3,
-          slowAt: [0.42, 0.72], // a real slow-mo on the moment of the fake only (not a whole beat at 70%: that read as lag)
-          acts: [
-            { k: 'pose', p: setter.id, pose: 'set' },
-            { k: 'jump', p: setter.id, mode: 'up', peak: 18, t0: 0.05, t1: 0.7 },
-            { k: 'ball', to: { p: setter.id, c: 'set', dh: 18 }, h: 0 },
-            ...fk,
-            ...others.map(p => ({ k: 'pose', p: p.id, pose: 'spike' })),
-            { k: 'pose', p: spiker.id, pose: 'spike' },
-            { k: 'jump', p: decoy.id, mode: 'up', peak: jumpVis(decoy), t0: 0.2, t1: 0.95 },
-            ...others.filter(p => p !== decoy).map(p => ({ k: 'jump', p: p.id, mode: 'hop', peak: jumpVis(p) * 0.7, t0: 0.3, t1: 1 })),
-            ...(bitten
-              ? [
-                  { k: 'pose', p: db.id, pose: 'block' },
-                  { k: 'jump', p: db.id, mode: 'up', peak: jumpVis(db) * 0.85, t0: 0.4, t1: 1 }
-                ]
-              : []),
-            { k: 'ghost', to: { x: xOf(decoy) + da * 12, z: dz, h: REACH_H + jumpVis(decoy) } },
-            { k: 'label', t: 'Fake set!', dy: 60, set: 1, big: 1 }
-          ]
-        });
+      // the fake happens while the pass is in the air (owner, 2026-10-20): the hitters run in, the decoy is at the top of
+      // the jump as the ball reaches the setter, and the set follows at once — no slow motion, no ball held in the air
+      // (the passer is still playing the pass in that beat: they don't run in on screen; a passer picked as the decoy is shown
+      // by the strongest other runner — display only, no draws)
+      const run = others.filter(p => p !== c.pas),
+        shown = decoy !== c.pas ? decoy : run.length ? run.reduce((a, p) => (p.power > a.power ? p : a)) : null;
+      fakeShown = shown;
+      const acts = [
+        ...fk.filter(a => a.p !== c.pas.id),
+        ...run.map(p => ({ k: 'pose', p: p.id, pose: 'spike' })),
+        { k: 'pose', p: spiker.id, pose: 'spike' },
+        ...(shown ? [{ k: 'jump', p: shown.id, mode: 'up', peak: jumpVis(shown), t0: 0.45, t1: 1 }] : []),
+        ...run.filter(p => p !== shown).map(p => ({ k: 'jump', p: p.id, mode: 'hop', peak: jumpVis(p) * 0.7, t0: 0.55, t1: 1 })),
+        ...(bitten
+          ? [
+              { k: 'pose', p: db.id, pose: 'block' },
+              { k: 'jump', p: db.id, mode: 'up', peak: jumpVis(db) * 0.85, t0: 0.6, t1: 1 }
+            ]
+          : []),
+        ...(shown ? [{ k: 'ghost', to: { x: xOf(shown) + da * 12, z: zOf(shown), h: REACH_H + jumpVis(shown) }, when: 'end' }] : []),
+        { k: 'label', t: 'Fake set!', dy: 60, set: 1, big: 1, when: 'end' }
+      ];
+      const pass = V && B.last && B.last(),
+        onPass = pass && pass.acts && pass.acts.some(a => a.k === 'ball' && a.to && a.to.p === setter.id && a.to.c === 'set');
+      if (onPass) pass.acts.push(...acts);
+      else if (V) B({ dur: 420, acts: acts.map(a => (a.when === 'end' ? { ...a, when: undefined } : a)) }); // (no pass beat: a short one, the ball where it is)
     }
   }
-  return { quick, spiker, bitten, fakeDecoy };
+  return { quick, spiker, bitten, fakeDecoy, fakeShown };
 }
 
 /**
@@ -314,8 +317,7 @@ function setActs(c, x, { setDir, combo, setCalls, hype }) {
     { k: 'jump', p: spiker.id, mode: 'up', t0: quick ? 0.05 : longB ? 0.64 : 0.52, t1: 1, peak: jumpVis(spiker) },
     ...(fakeDecoy
       ? [
-          { k: 'jump', p: fakeDecoy.id, mode: 'down', t0: 0, t1: 0.55 },
-          { k: 'jump', p: setter.id, mode: 'down', t0: 0.25, t1: 0.75 },
+          ...(x.fakeShown ? [{ k: 'jump', p: x.fakeShown.id, mode: 'down', t0: 0, t1: 0.55 }] : []),
           ...(bitten ? [{ k: 'plabel', p: b0.id, t: '!?' }] : [])
         ]
       : []),

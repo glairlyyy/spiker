@@ -1288,3 +1288,28 @@ test('engine: technique switches — a held-back technique never fires; techUse 
   g.setTechOff(m, p.id, 'drive', false);
   eq(g.hasTech(p, 'drive'), true, 'back on');
 });
+
+test('engine: the fake set plays while the pass is in the air — no slow motion, the set follows at once (owner, 2026-10-20)', () => {
+  const g = load(7),
+    T = g.mkTeams();
+  let n = 0;
+  for (let i = 0; i < 8; i++) {
+    const m = g.newMatch(T[i % 8], T[(i + 3) % 8], true);
+    while (!m.over) {
+      const bs = g.playRally(m).beats;
+      bs.forEach((b, j) => {
+        const lab = b.acts.find(a => a.k === 'label' && a.t === 'Fake set!');
+        if (!lab) return;
+        n++;
+        const ball = b.acts.find(a => a.k === 'ball');
+        assert(ball && ball.to.c === 'set' && !b.slow, 'on the pass to the setter, no slow motion');
+        eq(lab.when, 'end', 'the label as the ball reaches the setter');
+        // the next beat of play (a staged scene may cut in: Hype setting) sends the ball on — the set, or the setter's dump
+        const nb = bs.slice(j + 1).find(q => !q.scene),
+          nx = nb && nb.acts.find(a => a.k === 'ball');
+        assert(nx && !nb.slow, 'the ball goes on at once');
+      });
+    }
+  }
+  assert(n > 5, `${n} fake sets`);
+});
