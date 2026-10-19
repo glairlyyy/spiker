@@ -7,6 +7,20 @@ const MAX_PARTS = 900;
 /** Block-break drill: how long the ball grinds into the wall before it shatters (ms, real time). */
 const DRILL_MS = 560;
 
+/* ---------- who shows the special effects (spec §4.30) ---------- */
+
+/**
+ * May player p (or a player id) show special effect `kind` ('air' impact spike, 'warp' jump, 'eyes' light trails, 'burst' the
+ * explosive contact burst, 'ink' style)? 0 = no; 1 = yes, as the director stages it (an OP player, your player while Fired up —
+ * `A.m.fired`; anyone in the dev labs); 2 = always (its Spark: MC_TRAITS[id].fx). Display only.
+ */
+function specialFx(p, kind) {
+  if (p && typeof p !== 'object') p = A && A.disp && A.disp[p] ? A.disp[p].p : null;
+  if (p && p.traits && p.traits.some(id => MC_TRAITS[id] && MC_TRAITS[id].fx && MC_TRAITS[id].fx.includes(kind))) return 2;
+  if (A && (A.animLab || A.cineForce)) return 1;
+  return p && (p.op || (A && A.m && A.m.fired === p.id)) ? 1 : 0;
+}
+
 /* ---------- 3D effect hand-off ---------- */
 
 /** The 3D effects API, or null while the 3D view is not up (there is nothing to draw effects on then). */

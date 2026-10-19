@@ -76,8 +76,7 @@ function trServeErr(p) {
   return SCARS.shakyHands.k;
 }
 /** The squad players who carry traits, per side (found once a match: squads never change mid-match). */
-const trSquad = (m, i) =>
-  (m.trP || (m.trP = m.t.map(t => squadOf(t).filter(p => p.traits && p.traits.length))))[i];
+const trSquad = (m, i) => (m.trP || (m.trP = m.t.map(t => squadOf(t).filter(p => p.traits && p.traits.length))))[i];
 /** Side(s)' trait carriers with their morale now (morKeep compares after a change). */
 function trMor(m, sides = [0, 1]) {
   const out = [];
@@ -134,9 +133,7 @@ function hpHeal(m) {
   m.t.forEach((t, i) => {
     const heal = HP.heal - (m.weak ? WAR_STAGES[m.weak[i]].heal || 0 : 0);
     for (const p of squadOf(t))
-      m.hp[p.id] = t.P.includes(p)
-        ? Math.min(1, Math.max(hpOf(m, p) + heal + (p.traits ? trHeal(m, p) : 0), m.down[p.id] ? HP.up : 0))
-        : 1;
+      m.hp[p.id] = t.P.includes(p) ? Math.min(1, Math.max(hpOf(m, p) + heal + (p.traits ? trHeal(m, p) : 0), m.down[p.id] ? HP.up : 0)) : 1;
   });
 }
 
@@ -226,8 +223,7 @@ function morPoint(m, w, fade, LD) {
     }
   // Captain's Voice: your kill lifts every teammate
   const kp = killer && trSquad(m, w).find(p => p.id === killer);
-  if (kp && hasTr(kp, 'voice'))
-    for (const p of squadOf(m.t[w])) if (p !== kp) m.mor[p.id] = clamp(morOf(m, p) + SPARKS.voice.k, -1, 1);
+  if (kp && hasTr(kp, 'voice')) for (const p of squadOf(m.t[w])) if (p !== kp) m.mor[p.id] = clamp(morOf(m, p) + SPARKS.voice.k, -1, 1);
   if (keep.length) morKeep(m, keep);
   m.mom[w] = fireOf(m, w);
   m.mom[L] = fireOf(m, L);

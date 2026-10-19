@@ -56,8 +56,7 @@ const Feel = {
     return id;
   },
   /** A Scar's OP chance now: TRAIT_ODDS.op + .sharp per Lighthouse sharpen + .per per Scar before. */
-  opChance: run =>
-    TRAIT_ODDS.op + TRAIT_ODDS.sharp * ((run.secret && run.secret.sharp) || 0) + TRAIT_ODDS.per * Feel.scarsOf(run).length,
+  opChance: run => TRAIT_ODDS.op + TRAIT_ODDS.sharp * ((run.secret && run.secret.sharp) || 0) + TRAIT_ODDS.per * Feel.scarsOf(run).length,
   /** The rolled Scars ({ id, y, w, seen }; an old save's pending entries are left out until Feel.sync rolls them). */
   scarsOf: run => (run.scars || []).filter(s => s && MC_TRAITS[s.id]),
   /**
@@ -65,7 +64,7 @@ const Feel = {
    * the first match where it acts (Feel.result). Enlightenment applies at once (body +6 past the caps, Wit +0.3). Returns the id or null.
    */
   scar(run) {
-    const L = (run.scars || (run.scars = [])),
+    const L = run.scars || (run.scars = []),
       have = Feel.scarsOf(run),
       ids = have.map(s => s.id);
     if (have.length >= TRAIT_ODDS.max) return null;

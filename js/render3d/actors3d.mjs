@@ -415,11 +415,12 @@ function lightTrails(pl, d, root, dt) {
   const tier = d.p.op ? 2 : d.p.star ? 1 : 0,
     zk = Dir.aura(side) === 'full' ? 1.25 : 1, // Fever (the old zone look; spec §2.15 aura)
     charged = !!(d.p.elOn && (A.egShown || {})[d.p.id] >= EG.full), // full element gauge: trails turn the element colour
-    ink = G.trail === 'ink', // ⚙ Trails: Ink — a wider, longer black brush stroke burning crimson (or the element colour)
+    inkS = specialFx(d.p, 'ink'), // the ink style: an OP / Fired-up player's only, God of War's always (spec §4.30)
+    ink = inkS === 2 || (!!inkS && G.trail === 'ink'), // ⚙ Trails: Ink — a wider, longer black brush stroke burning crimson (or the element colour)
     o =
-      tier || charged
+      tier || charged || ink
         ? {
-            width: Math.max(tier === 2 ? 0.12 : tier ? 0.065 : 0, charged ? 0.1 : 0) * zk * (ink ? 1.7 : 1) * VFX.hand.width,
+            width: Math.max(tier === 2 ? 0.12 : tier || ink ? 0.065 : 0, charged ? 0.1 : 0) * zk * (ink ? 1.7 : 1) * VFX.hand.width,
             life: (tier === 2 || charged ? 0.34 : 0.2) * zk * (ink ? 1.4 : 1) * VFX.hand.life,
             alpha: charged ? 0.9 : tier === 2 ? 0.8 : 0.7,
             color: charged ? ECOL[d.p.el] : ink ? VFX.hand.ink : pl.trailCol,
@@ -430,7 +431,7 @@ function lightTrails(pl, d, root, dt) {
   for (let i = 0; i < 2; i++) pl.trails[i].update(pl.bone(hands[i]).getWorldPosition(tmp2), dt, cam, o);
   // eyes (Kuroko's zone): a thin streak of light from each eye that flows back behind the head, in the eye colour —
   // only while the team is in Fever (spec §2.15; the director off: in the zone or with a captain's buff, as before)
-  const eyesOn = zk > 1 || (!Dir.on() && !!(A.buffShown && A.buffShown[d.p.id])),
+  const eyesOn = (zk > 1 || (!Dir.on() && !!(A.buffShown && A.buffShown[d.p.id]))) && !!specialFx(d.p, 'eyes'), // (spec §4.30: special)
     head = pl.bone('head'),
     fwd = tmp.set(Math.sin(root.rotation.y), 0, Math.cos(root.rotation.y)),
     eo = eyesOn

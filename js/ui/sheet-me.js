@@ -72,6 +72,7 @@ function sheetMe(run) {
         <div class="lab sub" ${tip('What the match reads — worked out from your body after every change.')}>Court</div>${STATK.map(courtRow).join('')}${swingRow}
         <div class="mrow"><span>${statI('led', 20)}Leadership</span><span class="mbars"><i class="mb lead"><i style="--w:${you.lead}%"></i></i></span><span class="mv"><b>${you.lead}</b></span></div>
         ${elementLine(run)}
+        ${traitLines(run)}
         ${
           run.injury
             ? `<div class="inj"><b>Injured</b> ${run.injury.weeks}w — light training only (×0.4 gains, half stamina) <button class="btn" onclick="seePhysio()" ${run.sp < TRAIN_X.physio ? 'disabled' : ''}>Physio · ${TRAIN_X.physio} pts</button></div>`
@@ -87,6 +88,21 @@ function sheetMe(run) {
       <section class="card"><div class="lab" ${tip(`Payday every ${ECON.payEvery} weeks: +$${ECON.allowance} allowance, −$${ECON.food} food, −rent. Run out of money and you're evicted to the abandoned gym.`)}>Life · payday W${next}</div>
         <div class="homes">${homeRow(run, run.housing)}</div>${peek('me:homes', 'Change home', `<div class="lab">Homes</div><div class="homes">${HOUSEK.map(k => homeRow(run, k)).join('')}</div>`, 'mmore')}</section>
     </div>`;
+}
+/** Your Sparks and Scars (spec §4.30): named ones with their numbers; a Scar not yet shown in a match is only "something broke". */
+function traitLines(run) {
+  const sp = (run.sparks || []).filter(id => SPARKS[id]),
+    sc = Feel.scarsOf(run);
+  if (!sp.length && !sc.length) return '';
+  const row = (id, cls) =>
+    `<div class="srow" ${tip(MC_TRAITS[id].desc)}><b>${esc(MC_TRAITS[id].name)}</b><span class="ptag ${cls}">${cls === 'sel' ? 'Spark' : 'Scar'}</span></div>`;
+  return `<div class="lab sub" ${tip('Sparks: from Fired up. Scars: from what hurt. Both for good.')}>Sparks · Scars</div>${sp.map(id => row(id, 'sel')).join('')}${sc
+    .map(s =>
+      s.seen
+        ? row(s.id, '')
+        : `<div class="srow" ${tip('Not shown yet. Named after the first match it acts in.')}><span class="mute">Something broke.</span><span class="ptag">Scar · ?</span></div>`
+    )
+    .join('')}`;
 }
 /** Your element: hidden (???) until OVR 70, then the three trial steps, then the signature spike. */
 function elementLine(run) {

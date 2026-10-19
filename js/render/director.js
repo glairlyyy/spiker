@@ -189,8 +189,10 @@ const Dir = {
   },
   /** The ball trail style: the row's, or the VFX panel's ('off' there always wins). */
   ballStyle() {
-    const r = this.row();
-    return r && VFX.ball.style !== 'off' ? r.ball : VFX.ball.style;
+    const r = this.row(),
+      st = r && VFX.ball.style !== 'off' ? r.ball : VFX.ball.style,
+      s = st === 'off' ? 0 : specialFx(A && A.trailBy, 'ink'); // the ink style: the hitter's if special (spec §4.30)
+    return s === 2 ? 'ink' : st === 'ink' && !s ? 'ribbon' : st;
   },
   /** Kill bounce allowed now. */
   bounceOn() {
