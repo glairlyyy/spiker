@@ -283,7 +283,27 @@ const FEEL_LINES = {
     ['I stopped reading the Gazette.', 'Some nights I can still hear the score.'],
     'Something in me snapped and set wrong.'
   ],
-  mate: ["You're different lately. Don't stop.", "Whatever you're on, keep it."] // a teammate notices you Fired up
+  mate: ["You're different lately. Don't stop.", "Whatever you're on, keep it."], // a teammate notices you Fired up
+  // Sparks (spec §4.30): the line when a Fired up leaves one for good; Scars: the line the first match it shows (named then)
+  traits: {
+    clutch: 'Clutch. The last points used to shrink me. Now they slow down and wait.',
+    secondWind: 'Second Wind. I go down and something in me just… refills. Rude, honestly.',
+    voice: "Captain's Voice. I scored and the whole bench stood up. Nobody told them to.",
+    ironWill: "Iron Will. They can boo. There's a floor in me now, and it doesn't move.",
+    airImpact: 'Air Impact. The air split when I hit it. I heard it. Everyone heard it.',
+    flashStep: "Flash Step. I jumped and the blocker was still looking at where I'd been.",
+    godOfWar: 'God of War. Two kills and the third one is already decided. It feels like ink and fire.',
+    glassAnkle: "Glass Ankle. It rolled on nothing. That's what broke: the ankle doesn't trust the floor.",
+    shakyHands: "Shaky Hands. Late in the set I tossed it and my hand wasn't mine.",
+    haunted: "Haunted. Haewon's squad walked out and I was fifteen to four again before the first whistle.",
+    insomnia: 'Insomnia. I lie down and the court lies down with me. Nobody sleeps.',
+    tunnel: 'Tunnel Vision. I only see the ball now. The rest of the court went somewhere.',
+    bitter: 'Bitter. Someone said good game. I heard the other thing they meant.',
+    enlight: 'Enlightenment. It broke, and what came out was clear. Everything is slower. Everything is mine.',
+    eyeStorm: 'Eye of the Storm. They went on a run and I felt nothing. Not calm. Nothing.',
+    spite: "Spite. Haewon's squad. My body remembered before I did, and it played better for it.",
+    deadCalm: 'Dead Calm. Everyone around me was coming apart. I wasn’t. I should be worried about that.'
+  }
 };
 /** The secret places' lines (spec §4.31). Fern's letters by what you lack (Secret.letter); the hermit; the tapes; the night court. */
 const SECRET_LINES = {

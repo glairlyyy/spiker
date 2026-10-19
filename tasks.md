@@ -471,7 +471,7 @@ Accept: each place acts as above; the Old Scout's number matches a direct simMat
 QA: career run → each card.
 Result: Built; night games and the scout's sims on a seeded stream (Secret.isolated) — the run's stream is untouched.
 
-### [ ] T-291: Sparks and Scars — the trait pools; the special VFX
+### [x] T-291: Sparks and Scars — the trait pools; the special VFX
 Spec: §4.30 (decided 2026-10-20)          Goldens: unchanged (only your player carries traits; a match without them is today's)          Save: no change (`run.scars` exists; `run.sparks` added as a RUN_DEFAULTS field, no bump)
 Goal: Fired up rolls a permanent Spark (35 %, Drive pool); Pain at 100 rolls a Scar (88 % bad / 12 %+ OP), hidden until it
 first acts in a match; every trait's effect works; the five special VFX show only for OP, Fired-up or unlocking-trait players.
@@ -488,7 +488,7 @@ with; a hidden Scar is named on the first match it acts; each trait's effect cha
 non-OP star without a trait shows no air impact / warp / eye trails / burst / ink (QA); `npm run career -- 20 both` unchanged
 within noise for ratings.
 QA: Monster game (an OP vs a plain star: who shows the special VFX); career run → Fired up and a Scar on the Me sheet.
-Result:
+Result: Built (js/data/traits.js; rolls in Feel.spark / Feel.scar on hstr; engine hooks in bars.js read p.traits only — also one-line hooks in fire.js stageBuff and stats.js W, unlisted files; specialFx in render/effects.js, ink gated in director.js ballStyle). Deviations: "20+ points" = 12+ or set point (15-point sets); Shaky Hands +0.06 absolute; Haunted / Spite in Cup fixtures only; career-side Scars named at the match after they act; the secret techniques' effects not built (not in the steps). Tests 175/175 (tests/traits.test.js: 100 Fired ups → 33 Sparks, 1000 Scars → 10.7 % OP, more with sharpen / earlier Scars), goldens unchanged; career 12 both: casual Y2 87.6, good Y2 93.3. QA Monster (OP left vs plain stars + one God of War right): plain stars 0 shown of 38.7k ink / 69 warp / 12 air / 18 burst checks; OP all; God of War ink + burst only. Me sheet: Spark, named Scar, "Something broke."
 
 **Reading pays (owner, 2026-10-15, spec §2.30): T-282 → T-285.** Measure with the smart bot (scratch `smartbot.js` → T-285
 puts it in tests/bot.js) after each step; numbers into spec §2.30. Goldens: update where stated (stamina changes every match).

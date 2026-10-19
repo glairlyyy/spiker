@@ -352,7 +352,7 @@ const Fight = {
         margin * I.perPoint +
         (1 - run.sta / run.staMax) * I.sta +
         Math.max(0, I.cool - since) * I.perDay;
-    return clamp(v, 0, I.max);
+    return clamp(v, 0, I.max) * (Feel.has(run, 'glassAnkle') ? SCARS.glassAnkle.k : 1); // Glass Ankle (spec §4.30)
   },
   /** The rating of a faction's league clubs (their crew in a street fight), 60 if it has none. */
   crewOvr(run, region) {

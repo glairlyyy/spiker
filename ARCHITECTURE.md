@@ -27,7 +27,8 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   `looks.js` (appearance palettes), `moves.js` (signature / combo names, coach lines), `roles.js` (role biases, key
   stats, mood deltas), `elements.js`, `vfx.js` (VFX_DEF / live `VFX` effect tuning, read by render code only; saved dev edits in `sns_vfx`), `tactics.js`, `dialogue.js` (lines, `callLine`), `skills.js`, `career.js`
   (CAREER, BODY, CALENDAR, ROLE_NAME, STATNAME, MLOG…), `world.js` (REGIONS, FACTIONS, ECON, HOUSING, CLASH, FRONT, HEX…), `war.js` (WAR: the war units, Strength deltas; WAR_STAGES — spec §4.34), `city.js`
-  (CITY geometry, SPOTS, travel constants, layout data).
+  (CITY geometry, SPOTS, travel constants, layout data), `stars.js` (STARS), `traits.js` (SPARKS / SCARS / `MC_TRAITS`, `TRAIT_ODDS`: the
+  traits only your player carries — spec §4.30; not the NPCs' `TRAITS` in people.js).
 - **engine** `court.js` (geometry, `Z_UNITS`, `UNIT_M`, `BALL_K` / `SERVE_K`), `players.js`, `teams.js`, `save.js`,
   `stats.js`, `skills.js`, `formulas.js`, `elements.js`, `hype.js`, `fire.js` (momentum stages, spec §2.14: `temperOf`,
   `fireStage`, `pointStage` after every point (in `end`), `stageTimeout`, `stageBuff(p, stat)` read by effD / jumpPx / the
@@ -214,7 +215,11 @@ their `onLeave` only cleans up (`Eval.restore`). The UI opens them with `watchCa
 - **Drive & Pain** (spec §4.30, `career/feel.js` `Feel`, data `FEEL`): two hidden bars in `run.feel` filled from Training.train,
   `Cup.record` (every match: `Feel.result`), World.join, refusals, hurtful scenes (`Story.finish` → `Feel.scene`) and mood streaks
   (WEEK_END). Drive at the top → `run.fired` matches with a whole-match `m.buff` on you (`Feel.match` in the fixture's setup) and
-  training × `FEEL.fired.train`; Pain at the top → `run.scars` (pools: T-291). Never shown: diary cues (`FEEL_LINES`), the portrait ring.
+  training × `FEEL.fired.train`; Pain at the top → a Scar. Never shown: diary cues (`FEEL_LINES`), the portrait ring.
+  **Sparks and Scars** (T-291): `Feel.spark` / `Feel.scar` roll on `hstr` (`Feel.roll`: pseed + the week), into `run.sparks` (ids) /
+  `run.scars` ({ id, y, w, seen }); `Feel.sync` writes `you.traits` (the engine reads only `p.traits` — bars.js `trBuff` in
+  `stageBuff`, `trWit` in W, `trServeErr`, `trHeal`, `morKeep`, `trPoint`; a hook that acts marks `m.trAct[pid][id]`); `Feel.name`
+  (from Feel.result) names a hidden Scar after the first match it acts in. Special VFX: `specialFx(p, kind)` (render/effects.js).
 - **Secret places** (spec §4.31, `career/secret.js` `Secret`, data `SECRET`): SPOTS with `secret` (road nodes like any place) are
   hidden (MapModel.known, City.can) until `Secret.known` (Fern's goodbye flag `secrets`, a street win, fans). City.day hands their
   acts to `Secret.day`; the night games and the Old Scout's sims run on a seeded stream (`Secret.isolated`), never the run's.
@@ -271,7 +276,8 @@ v8 `mlog`, v9 `run.mode.story`; older saves are dropped (`RUN_MIGRATIONS` is emp
 `RUN_MIGRATIONS[oldVersion] = data => upgraded data`; `Run.load` applies the steps in order and ignores saves from a newer version.
 Plain-default fields live once in `RUN_DEFAULTS` (run.js: name → `[make, valid]`): `Run.create` starts from
 `Run.defaults()` and `Run.repair` refills any field a save lacks or holds broken, then repairs the run-dependent ones
-(`academy`, `eval` + `Eval.setup`, `spotQ` via `City.roll`, `fog`, `clash`, `sta`, `mode`). Add a new simple field to
+(`academy`, `eval` + `Eval.setup`, `spotQ` via `City.roll`, `fog`, `clash`, `sta`, `mode`, `Feel.sync` → `you.traits` from
+`run.sparks` / `run.scars`). Add a new simple field to
 the table only. `run.grades` (your match grades, newest last) is capped at `MLOG.max` like `run.mlog`.
 
 ## Testing
@@ -305,4 +311,4 @@ the Season sheet shows it (`sheetSeason`). `Run.repair` adds `mlog` to older sav
 ## Feature notes → ARCHITECTURE-details.md
 
 The deep notes per feature live in **ARCHITECTURE-details.md**; read only the section for the code you touch, and update
-that section (or add one) when you change its structure. Sections: 3D renderer (js/render3d/) · Net clearance and errors · Deflections and ball speed · Elements · Slow motion and staged scenes · Block formation · Ego (T-068, spec §2.12) · Substitutions · Blocks · Far digs (playback) · Spike approach (playback) · Pre-serve routine · Career world (P1) · Team shape (squads of 6) · Faction pools · NPC careers (T-060, spec §4.23 A) · Evaluations · U21 Final Cup · Faction dossier · Island map (training weeks) · Possession paths and touch counts · World layout (T-045) · Rankings · Team challenges · Training XP · Career hub UI · Match music · UI motion (spec §9.12, T-216–T-219).
+that section (or add one) when you change its structure. Sections: 3D renderer (js/render3d/) · Net clearance and errors · Deflections and ball speed · Elements · Slow motion and staged scenes · Block formation · Ego (T-068, spec §2.12) · Substitutions · Blocks · Far digs (playback) · Spike approach (playback) · Pre-serve routine · Career world (P1) · Team shape (squads of 6) · Faction pools · NPC careers (T-060, spec §4.23 A) · Evaluations · U21 Final Cup · Faction dossier · Island map (training weeks) · Possession paths and touch counts · World layout (T-045) · Rankings · Team challenges · Training XP · Career hub UI · Match music · UI motion (spec §9.12, T-216–T-219) · Sparks and Scars (spec §4.30, T-291).

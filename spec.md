@@ -1171,7 +1171,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
 
   Good play now ends year 2 level with the rival, casual play at the league's mean. Still **[open]**: the Cups and the endings
   barely follow (true endings 1–2 in 20) — the squad around you decides them.
-- §4.30 Drive & Pain **[built 2026-10-16, T-290; Sparks, Scars and the special VFX decided 2026-10-20: T-291]** (owner 2026-10-15): two hidden bars on the MC, 0–100 each. Not training-place
+- §4.30 Drive & Pain **[built 2026-10-16, T-290; Sparks, Scars and the special VFX decided 2026-10-20, built 2026-10-20, T-291]** (owner 2026-10-15): two hidden bars on the MC, 0–100 each. Not training-place
   streaks: everything you do counts.
   - **Drive** fills on every positive thing: a training session, a win, a good grade, a teammate's praise, a good
     event, a club taking you, mood **Great three weeks in a row**. An idle week drains it a little; a loss doesn't empty
@@ -1201,6 +1201,14 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Special VFX** (owner, 2026-10-20): the **air impact spike**, the **warp jump**, the **eye light trails**, the **explosive
     burst** and the **ink style** are no longer everyone's — only an OP player, a Fired-up player, or one whose trait unlocks it
     (Air Impact, Flash Step, God of War) shows them. Display only (who shows them; the match itself is unchanged by it).
+  - **[built 2026-10-20, T-291]** Rolls are seeded (the run's NPC seed + the week), never the run's stream; a Spark is named in
+    the diary at once. "20+ points" reads as 12+ points or a set point (sets are to 15). Shaky Hands = serve errors + 6 points
+    (absolute). Spite / Haunted act in Cup fixtures (cups, evaluations, the rematch) against her squad. Dead Calm: a Loose team
+    plays you as Composed. A career-side Scar (Glass Ankle, Insomnia, Bitter) is named at the match after it first acts.
+    Enlightenment: the body + 6 (≤ 99), the court skills follow. Air Impact: the air impact at any stage (power ≥ 58); Flash
+    Step: the warp from any high jump (2 m); God of War: the contact burst and the ink style (ball and hand trails) always.
+    Without the unlock, a plain player shows no contact burst, air impact, warp, eye trails or ink; the Me sheet lists Sparks
+    and named Scars, a hidden one as "Something broke."
   - **Hidden, both years**: no bar on screen. Shown only indirectly — diary lines as a bar climbs ("Something won't sit
     still in you" / "It hurts more than it should"), teammates' remarks, the MC's face on the hub, the Fired up match
     itself, the Scar's own scene. A second run is worth it for knowing what fills them.

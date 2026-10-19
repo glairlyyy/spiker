@@ -144,6 +144,7 @@ function startBeat(b) {
         break;
       case 'hold':
         A.ball.follow = a.p;
+        A.ballBy = a.p; // (the next flight is theirs: specialFx)
         A.ball.vis = false; // appears in the server's hands once they're at their spot (followBall)
         A.dribble = true;
         // the server's routine before the serve (see preServe in ball.js): bounce it, or spin it and aim
@@ -352,6 +353,8 @@ function startBall(a) {
   A.handTouch = bt;
   A.lastC = a.to.c || null;
   A.lastP = a.to.p || null;
+  A.trailBy = A.ballBy || null; // who sent this flight (the ink trail: specialFx)
+  A.ballBy = a.to.p || null;
   A.ball.follow = null;
   A.ball.vis = true;
   a._f = { x: A.ball.x, z: A.ball.z, h: A.ball.h };
@@ -464,8 +467,11 @@ function jumpT0(a, dur) {
  * metres high. It leaves the floor at the engine's take-off and reaches the top in VFX.leap.warpMs (the body hidden on the
  * way: actors3d), then hangs there to the contact. Never with reduced motion.
  */
-const leapWarp = a =>
-  !RM && !!VFX.leap.on && !!VFX.leap.warp && a.mode === 'up' && (a.t1 ?? 1) >= 1 && !!a.peak && a.peak * UNIT_M.h >= VFX.leap.warpFrom;
+const leapWarp = a => {
+  if (RM || !VFX.leap.on || !VFX.leap.warp || a.mode !== 'up' || (a.t1 ?? 1) < 1 || !a.peak) return false;
+  const s = specialFx(a.p, 'warp'); // an OP / Fired-up player's only; Flash Step: from any high jump (spec §4.30)
+  return !!s && a.peak * UNIT_M.h >= (s === 2 ? VFX.leap.from : VFX.leap.warpFrom);
+};
 /** Jump modes: up (rise to the peak), reup (land, then up again), down (free fall from here), other = a hop. */
 function tweenJump(d, a, b, t) {
   const J = d.jmode || NO_JUMP,

@@ -9,12 +9,14 @@ const FLASH_WHITE = '255,255,255',
 /** Effects, labels, camera and sound over the scene. */
 const ACTS_FX = {
   burst(a, d, bs) {
-    burst(a.pow, a.color);
-    sfx.hit(a.pow);
     // a spike (its beat carries the hitter's swing style) splits the air — not a tip, not a soft one (spec §2.3a)
     const cb = A.beats && A.beats[A.bi],
-      sw = cb && cb.acts.find(x => x.k === 'spkstyle');
-    if (sw && sw.st !== 'tip' && a.pow >= Dir.airMin()) {
+      sw = cb && cb.acts.find(x => x.k === 'spkstyle'),
+      by = sw ? sw.p : A.ballBy, // who hit it: the spiker, else the ball's last receiver (server, blocker)
+      air = sw ? specialFx(sw.p, 'air') : 0; // the special effects are an OP / Fired-up / trait player's only (spec §4.30)
+    if (specialFx(by, 'burst')) burst(a.pow, a.color);
+    sfx.hit(a.pow);
+    if (sw && sw.st !== 'tip' && air && a.pow >= (air === 2 ? Math.min(Dir.airMin(), VFX.air.min) : Dir.airMin())) {
       A.airPend = { pow: a.pow, color: a.color }; // fired with the ball's path (airFlush); the floor is the director's (spec §2.15)
       Dir.tally('air');
     }

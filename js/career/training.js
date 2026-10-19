@@ -193,7 +193,7 @@ const Training = {
       run.streak = null;
       out.push(Run.bump(run, 'sta', -pv.sta));
       // exhausted: a failed session can injure you
-      if (run.sta < TRAIN_X.injuryAt && !run.injury && R() < 0.5) {
+      if (run.sta < TRAIN_X.injuryAt && !run.injury && R() < 0.5 * (Feel.has(run, 'glassAnkle') ? SCARS.glassAnkle.k : 1)) {
         run.injury = { weeks: R() < 0.5 ? 1 : 2 };
         out.push(Run.bump(run, 'mood', -1));
         return `${name} failed — injured! Light training only for ${run.injury.weeks} week${run.injury.weeks > 1 ? 's' : ''}: ${out.filter(Boolean).join(', ')}`;
@@ -225,7 +225,13 @@ const Training = {
   },
   /** Rest: stamina × how well you sleep (your home — or `mul`, e.g. a hotel away from home). */
   rest(run, mul = null) {
-    const out = [Run.bump(run, 'sta', Math.round(rnd(30, 60) * (mul == null ? World.restMul(run) : mul)))];
+    const out = [
+      Run.bump(
+        run,
+        'sta',
+        Math.round(rnd(30, 60) * (mul == null ? World.restMul(run) : mul) * (Feel.has(run, 'insomnia') ? SCARS.insomnia.k : 1)) // Insomnia (spec §4.30)
+      )
+    ];
     if (run.injury && R() < 0.5) {
       run.injury.weeks = Math.max(0, run.injury.weeks - 1);
       out.push('injury healing faster');

@@ -20,7 +20,8 @@ const Formula = {
     stageBuff(server, 'serve'),
   /** Chance the serve goes into the net or out. Low wit and very hard serves miss more. */
   serveErrorP: (server, team, sq) =>
-    Formula.bySkill(server, 'serve', 0.06 + Math.max(0, 1.2 - W(server)) * 0.05 + (sq > 80 ? 0.03 : 0)) * team.S.serveErr,
+    Formula.bySkill(server, 'serve', 0.06 + Math.max(0, 1.2 - W(server)) * 0.05 + (sq > 80 ? 0.03 : 0)) * team.S.serveErr +
+    (server.traits ? trServeErr(server) : 0), // Shaky Hands (spec §4.30)
   /** Which way a missed serve goes: a flat or tired swing clips the net, too much power sails long. */
   serveNetShare: (server, sq, jump) => clamp((jump ? 0.42 : 0.56) - (sq - 60) / 350 + (1 - staOf(server)) * 0.2, 0.15, 0.8),
   /** Which way a missed spike goes: the lower the contact over the net, the likelier it's the net. */
