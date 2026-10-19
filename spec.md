@@ -754,6 +754,9 @@ the AI coach fills every slot you leave with the same function. Built and measur
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two
   teams of ordinary players, each rolled at OVR 30–60 — owner, 2026-10-04).
+  **Year-2 Cup match** (owner, 2026-10-20) **[built]**: two squads at random from one real year-2 U21 Cup — `CUP_SAMPLE`
+  (js/data/cup-sample.js, loaded on demand) holds every Cup squad of 6 auto-played good-policy Story runs (regenerate:
+  `CAREER_SAMPLE=js/data/cup-sample.js npm run career -- 6 good`); half the time one side is your squad; Haewon's may come up.
 
 ## 4. Career world [built unless tagged]
 
