@@ -1344,7 +1344,9 @@ the AI coach fills every slot you leave with the same function. Built and measur
     after every day; the friend with the highest bond goes first; short of money = no deal and no second offer; the roll is
     a hash of the run (no luck re-rolls by reloading).
   - **Rubbing off**: training beside a friend (bond 60+) with a body or growth gift gives that session a share of it (Rubber
-    Joints → Flexibility gains × 1.2 that day; Grinder → training × 1.15; …).
+    Joints → Flexibility gains × 1.2 that day; Grinder → training × 1.15; …). **[built 2026-10-20, T-323]**: teammates on the floor at bond 60+; Spring Legs and
+    Quick Twitch → Agility × 1.2, Rubber Joints → Flexibility × 1.2, Iron Frame → Endurance × 1.2, Prodigy / Grinder → every gain
+    × 1.15, Late Bloomer → × 1.2 in year 2; a Generous friend's share × 1.5; the place card's teammate chip names it.
   - **Presence** (owner, 2026-10-20: "S and A should be noticeable even without scouting — a cool portrait decoration, an aura"):
     S and A share one look (S stronger); only scouting tells which. (1) **Portrait frame** wherever a portrait shows (faceSVG):
     A — a thin gold edge and a small crest in a corner; S — the same with a slow shimmer. One new theme token `--gift` (gold),

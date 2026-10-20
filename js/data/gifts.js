@@ -57,3 +57,17 @@ const GIFT_LINES = {
   decline: ['Told {n} no. I’ll get there my own way.'],
   short: ['Can’t pay {n}. {g} will have to wait.']
 };
+/**
+ * Rubbing off (spec §4.35, T-323): a friend on the floor with you (bond `bond`+) shares a body or growth gift for that session —
+ * key: the body stat whose gains it lifts (none: every gain), k: × (Generous friend: the share × GIFTS.generous.k), y2: year 2 only.
+ */
+const GIFT_RUB = {
+  bond: 60,
+  springLegs: { key: 'agi', k: 1.2 },
+  quickTwitch: { key: 'agi', k: 1.2 },
+  rubberJoints: { key: 'flex', k: 1.2 },
+  ironFrame: { key: 'end', k: 1.2 },
+  prodigy: { k: 1.15 },
+  grinder: { k: 1.15 },
+  lateBloomer: { k: 1.2, y2: true }
+};

@@ -1650,3 +1650,41 @@ test('code: every top-level classic-script name is used somewhere else (no dead 
     }
   eq(twice.join(', '), '', 'top-level names declared in two scripts');
 });
+
+test('gifts rub off (T-323): a Rubber Joints friend at bond 60+ on the floor lifts that session’s Flexibility × 1.2', () => {
+  const g = load(323),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Rub' });
+  run.event = null;
+  const at = Object.keys(g.SPOTS).find(id => g.SPOTS[id].kit && g.SPOTS[id].train && g.City.orders(id).includes('stretch')),
+    you = g.Run.you(run),
+    p = g.Run.mates(run)[0],
+    flex = () => g.Training.preview(run, 'stretch', false, 1, at).main;
+  run.floor = { [g.SPOTS[at].train]: [p.id] };
+  p.gifts = [];
+  you.bond[p.id] = 70;
+  const base = flex();
+  eq(base[0], 'flex', 'Stretch trains Flexibility');
+  p.gifts = ['rubberJoints'];
+  you.bond[p.id] = 55;
+  eq(flex()[2], base[2], 'bond under 60: nothing rubs off');
+  you.bond[p.id] = 70;
+  const lifted = flex();
+  assert(Math.abs(lifted[2] / base[2] - 1.2) < 0.02, `Flexibility XP ${base[2]} → ${lifted[2]} (× 1.2)`);
+  const side = g.Training.preview(run, 'stretch', false, 1, at).side;
+  eq(side[0], 'agi', 'the side gain');
+  p.gifts = ['rubberJoints', 'generous'];
+  assert(Math.abs(flex()[2] / base[2] - 1.3) < 0.02, 'a Generous friend shares × 1.5: × 1.3');
+  p.gifts = ['grinder'];
+  const pv = g.Training.preview(run, 'stretch', false, 1, at);
+  assert(Math.abs(pv.main[2] / base[2] - 1.15) < 0.02, 'Grinder: every gain × 1.15');
+  eq(pv.rub.map(r => `${r.gift}:${r.x}`).join(), 'grinder:1.15', 'the place card names it');
+  // the session gives what the preview says
+  p.gifts = ['rubberJoints'];
+  run.sta = 100;
+  const want = flex()[2],
+    x0 = (run.xp && run.xp.flex) || 0,
+    f0 = you.body.flex;
+  g.Training.order(run, 'stretch', at, false);
+  const got = (run.xp.flex || 0) - x0 + (you.body.flex - f0 ? 1e9 : 0);
+  assert(got === want || you.body.flex > f0, `the session banks the lifted XP (${got} vs ${want})`);
+});

@@ -145,7 +145,10 @@ const Training = {
     const T = Training.def(key),
       hd = hard && T.kind !== 'stretch',
       mul = Training.mul(run, key, hd, x, at),
-      row = ([k, b]) => [k, Training.gain(run, k, b, mul), Training.xpFor(k, b, mul)];
+      mates = Training.matesAt(run, key, at),
+      rub = Gifts.rub(run, mates), // gifts rubbing off from friends on the floor (spec §4.35, T-323)
+      mk = k => mul * rub.all * (rub.keys[Training.key(run, k)] || 1),
+      row = ([k, b]) => [k, Training.gain(run, k, b, mk(k)), Training.xpFor(k, b, mk(k))];
     return {
       main: row(T.main),
       side: row(T.side),
@@ -158,7 +161,8 @@ const Training = {
       pay: T.pay || 0,
       streak: Training.streakBonus(run, key),
       cap: T.main[0] !== 'wit' && Training.level(Run.you(run), T.main[0]) >= Training.cap(run) ? Training.cap(run) : null,
-      mates: Training.matesAt(run, key, at)
+      mates,
+      rub: rub.from
     };
   },
   /** Train (hard = the Hard option; not while injured; x = the place's multiplier; spMul = skill points ×). Returns a summary line for the log. */

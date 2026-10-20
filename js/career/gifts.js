@@ -171,6 +171,29 @@ const Gifts = {
     Body.sync(you, run);
     return true;
   },
+  /**
+   * What rubs off this session (spec §4.35, T-323) from teammates `ids` on the floor with you: each friend at GIFT_RUB.bond+ with a
+   * body or growth gift (GIFT_RUB) shares it — { all: × every gain, keys: { bodyKey: × }, from: [{ id, gift, key, x }] }.
+   */
+  rub(run, ids) {
+    const you = Run.you(run),
+      mates = squadOf(Run.myTeam(run)),
+      out = { all: 1, keys: {}, from: [] };
+    for (const id of ids || []) {
+      const p = mates.find(q => q.id === id);
+      if (!p || p === you || ((you && you.bond[id]) || 0) < GIFT_RUB.bond) continue;
+      const gen = hasGift(p, 'generous') ? GIFTS.generous.k : 1;
+      for (const g of Gifts.of(p)) {
+        const R = GIFT_RUB[g];
+        if (!R || !R.k || (R.y2 && Season.year(run) < 2)) continue;
+        const x = +(1 + (R.k - 1) * gen).toFixed(3);
+        if (R.key) out.keys[R.key] = (out.keys[R.key] || 1) * x;
+        else out.all *= x;
+        out.from.push({ id, gift: g, key: R.key || null, x });
+      }
+    }
+    return out;
+  },
   /** The first Cup wakes a Dormant element: every player of the Cup's squads (Run.endWeek, after Cup.start). */
   wake(run) {
     const ids = new Set(((run.cup && run.cup.entrants) || []).flatMap(e => e.ids || []));

@@ -741,6 +741,8 @@
   align-items: center;
 }
 .plc .pchip {
+  position: static; /* (not the match's key-cap chip, match.css .pchip) */
+  transform: none;
   display: inline-flex;
   align-items: center;
   gap: 4px;

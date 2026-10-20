@@ -289,10 +289,12 @@ function kitSpot(run, id) {
         : tip(`Hard: EXP ×${TRAIN_X.hard.gain}, stamina ×${TRAIN_X.hard.sta}, ${Math.round(TRAIN_X.hard.fail * 100)}% fail`)
     } onclick="CW.hard=true;mapPick(CW.spot)">Hard</button></div>`,
     chips = mates.length
-      ? `<div class="pmates" ${tip('Teammates training here: more EXP together')}>${mates
+      ? `<div class="pmates" ${tip(`Teammates training here: more EXP together. A friend (bond ${GIFT_RUB.bond}+) shares a body or growth gift.`)}>${mates
           .map(pid => {
-            const m = squadOf(T).find(p => p.id === pid);
-            return `<span class="pchip">${faceSVG(m, 0.3, 18)}${esc(m.name.split(' ')[0])} +${(Run.you(run).bond[pid] || 0) >= 80 ? 50 : 20}%</span>`;
+            const m = squadOf(T).find(p => p.id === pid),
+              rubs = (pv.rub || []).filter(r => r.id === pid), // what rubs off (spec §4.35, T-323)
+              note = rubs.map(r => `${GIFTS[r.gift].name} rubs off: ${r.key ? Body.name(r.key) : 'every gain'} ×${r.x}`).join('\n');
+            return `<span class="pchip" ${note ? tip(note) : ''}>${faceSVG(m, 0.3, 18)}${esc(m.name.split(' ')[0])} +${(Run.you(run).bond[pid] || 0) >= 80 ? 50 : 20}%${rubs.map(r => ` · ${esc(GIFTS[r.gift].name)} ×${r.x}`).join('')}</span>`;
           })
           .join('')}</div>`
       : '';

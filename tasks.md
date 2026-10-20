@@ -96,14 +96,14 @@ Accept: tests — an S and an A get the frame class, a B doesn't; the beat fires
 QA: career run (force an S into the squad) → the people drawer, a match; Monster game (one S) → the court glow.
 Result:
 
-### [ ] T-323: Gifts rub off in training
+### [x] T-323: Gifts rub off in training
 Agent: G
 Spec: §4.35          Goldens: unchanged          Save: no change
 Goal: training beside a friend (bond 60+) with a body or growth gift gives that session a share of it (the place card says so).
 Files: js/career/training.js, js/career/city.js, js/ui/career-panels.js, tests/career.test.js
 Accept: test — a Rubber Joints friend at 60+ on the floor lifts that session's Flexibility gain × 1.2. `npm run career -- 12 both` within noise.
 QA: career run → a place card with a gifted friend on the floor.
-Result:
+Result: Gifts.rub (GIFT_RUB) in Training.preview — rows × all × the body stat's share, so card and session agree; mate chip `· Rubber Joints ×1.2` (tip names the stat). Test: ×1.2 Flexibility at bond 70, nothing at 55, Generous ×1.3, Grinder ×1.15. Deviation: css/hub.css `.plc .pchip` gets `position: static; transform: none` — match.css's global key-cap `.pchip` (absolute, −50 %) laid the place card's mate chip over Normal / Hard (pre-existing). city.js untouched. QA: place card screenshot clean, 0 page errors; UI smoke 14/14; 189/189; career 12 both league 81.7 / 87.0, 81.6 / 87.2 (you Y2 88.0 casual, 94.0 good).
 
 **Two agents (owner, 2026-10-19), by file ownership (CLAUDE.md):** **Agent A — Body & orders** (T-307 → T-308 → T-309 →
 T-310 → T-318 → T-312) and **Agent B — War** (T-313 → T-314 → T-311 → T-315 → T-316 → T-317), in parallel. Each edits only

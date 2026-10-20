@@ -979,5 +979,9 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   < p → `Gifts.learn`). Lines `GIFT_LINES` (diary). Yours: `run.gifts` → `you.gifts` (`Gifts.sync`, Run.repair); growth ×
   `Gifts.grow` in `Training.sim` (preview and gain alike), body bonus `Gifts.stat` in `Body.sync`, `Body.swing(b, p)` full with
   Rubber Joints, Generous scales the `Growth.shared` pv in Training.session. Me sheet: `giftLines`.
+- **Rubbing off** (T-323): `Gifts.rub(run, ids)` over `Training.matesAt` (teammates on the floor, `you.bond` ≥ GIFT_RUB.bond) →
+  `{ all, keys, from }`; `Training.preview` multiplies each row's mul by `all` × `keys[bodyKey]` (so the session and the card agree)
+  and returns `rub` (= from); kitSpot's mate chip names it (`· Rubber Joints ×1.2`, the body stat in its tip). A Generous
+  friend's share × GIFTS.generous.k. Data `GIFT_RUB` (body gifts → their body stat, growth gifts → every gain; Late Bloomer in year 2).
 - **Not here** (Agent P, rel.js): Magnetic / Lone Wolf bond growth — `Rel.add` can scale a positive memory by
   `Gifts.bondMul(run, id)` (their Magnetic / Lone Wolf × your Magnetic).
