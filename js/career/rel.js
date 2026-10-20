@@ -3,6 +3,7 @@
 // run.mem[key] = [{ w (week), k (kind), v (value), n (same-kind count this week), a (who feels it: an id, '*' = both) }], key = Rel.key(a, b).
 // You ↔ NPC lists are the NPC's (a = the NPC); NPC ↔ NPC lists (T-065) only exist between squadmates, capped by REL.chem.pairs in all.
 // The old 0–100 `you.bond[id]` is only a cache of Rel.bond (so combos at 60, friendship at 80, goals, the People sheet work as before).
+/* global Gifts */ // (the Gifts contract, T-320 — Agent G; read behind a typeof guard until it lands)
 
 const Rel = {
   key: (a, b) => [a, b].sort().join('|'),
@@ -12,13 +13,49 @@ const Rel = {
   /** Remember something about you (see MEMORY); returns the change in the cached bond. */
   add(run, id, kind, v) {
     if (id === run.youId || !run.people || !run.people[id] || !MEMORY[kind]) return 0;
-    const before = Rel.bondOf(run, id),
-      v0 = v == null ? MEMORY[kind].v : v;
-    if (v0 > 0 && Feel.has(run, 'bitter')) v = v0 * SCARS.bitter.k; // Bitter (spec §4.30): bonds grow slower
+    const before = Rel.bondOf(run, id);
+    v = Rel.behaveIn(run, id, kind, v == null ? MEMORY[kind].v : v);
+    if (v > 0 && Feel.has(run, 'bitter')) v *= SCARS.bitter.k; // Bitter (spec §4.30): bonds grow slower
+    if (v > 0 && typeof Gifts !== 'undefined' && Gifts.bondMul) v *= Gifts.bondMul(run, id); // Magnetic / Lone Wolf (spec §4.35, theirs and yours)
     Rel.push(run, Rel.key(run.youId, id), id, kind, v, id);
     Rel.refresh(run, id);
     Rel.reveal(run, id);
     return Rel.bondOf(run, id) - before;
+  },
+  /** Their headline behaviour's write-time rules (spec §4.35, REL.behave): Shy's first meetings barely count; Picky's nothing until the bar. */
+  behaveIn(run, id, kind, v) {
+    const ts = Rel.traits(run, id),
+      t = ts[0],
+      B = REL.behave[t],
+      F = MEMORY[kind].flip;
+    if (!B || v <= 0 || (F && ts.some(x => F.includes(x)))) return v; // (a memory their traits turn negative is not a gain)
+    if (t === 'steady' && Rel.list(run, id).length < B.first) return v * B.low;
+    if (t === 'cynical' && !Rel.picky(run, id)) return 0;
+    return v;
+  },
+  /** A Picky NPC lets you count: your OVR is at most REL.behave.cynical.ovr under theirs, or you have its fans. */
+  picky(run, id) {
+    const B = REL.behave.cynical,
+      you = Run.you(run),
+      p = People.find(run, id);
+    return !!(you && p && !p.gone && (ovr(you) >= ovr(p) - B.ovr || (run.fans || 0) >= B.fans));
+  },
+  /**
+   * The read-time context of id's headline behaviour toward `other` (null: none, or an NPC ↔ NPC pair — those keep REL.trait):
+   * { t, B, row (REL.trait[t] overridden by REL.behave[t]), own (Loyal: you are in their faction) }.
+   */
+  cx(run, id, other = run.youId) {
+    const t = Rel.traits(run, id)[0],
+      B = other === run.youId && REL.behave[t];
+    if (!B) return null;
+    let own = false;
+    if (t === 'loyal') {
+      const T = Run.myTeam(run),
+        mine = run.team == null ? 'academy' : (T && FACTIONS[T.i] && FACTIONS[T.i].region) || 'outlaws',
+        e = People.homes(run).get(id);
+      own = !!e && e.home === mine;
+    }
+    return { t, B, row: { ...(REL.trait[t] || {}), ...B }, own };
   },
   /** Write one memory into a list: same kind, week and `a` merge (the repeat rule); `who` = whose traits flip it ('*': read time). */
   push(run, key, who, kind, v, a) {
@@ -62,32 +99,43 @@ const Rel = {
       n--;
     }
   },
-  /** One memory's weight now: value × fade × the multipliers of their traits (`id` = the one who feels it; the stance is the sum). */
-  weigh(run, id, e) {
+  /**
+   * One memory's weight now: value × fade × the multipliers of their traits (`id` = the one who feels it; the stance is the sum).
+   * `cx` (Rel.cx, toward you): the first trait reads as its headline behaviour (spec §4.35) — its row, then Loyal / Mercenary / Hothead.
+   */
+  weigh(run, id, e, cx = null) {
     const M = MEMORY[e.k] || {},
-      ts = Rel.traits(run, id);
+      ts = Rel.traits(run, id),
+      age = run.week - e.w;
     let v = e.v;
     if (e.a === '*' && M.flip && ts.some(t => M.flip.includes(t))) v = -Math.abs(v); // shared memories flip per reader
-    let x = v * (M.scar ? 1 : REL.decay ** (run.week - e.w));
-    for (const t of ts.map(n => REL.trait[n]).filter(Boolean)) {
+    let x = v * (M.scar ? 1 : REL.decay ** age);
+    for (const t of ts.map((n, i) => (i === 0 && cx ? cx.row : REL.trait[n])).filter(Boolean)) {
       if (M.scar && t.scar) x *= t.scar;
       if (t[e.k]) x *= t[e.k];
       if (v > 0 && t.pos) x *= t.pos;
       if (v < 0 && t.neg) x *= t.neg;
       if (t.payoff) x *= M.payoff ? t.payoff : t.other;
     }
+    if (!cx) return x;
+    const B = cx.B;
+    if (cx.t === 'loyal' && v > 0) x *= cx.own ? B.own : B.out;
+    if (cx.t === 'calculating' && !M.scar && age > B.after) x *= B.fast ** (age - B.after);
+    if (cx.t === 'reckless') x *= B.swing;
     return x;
   },
   /** How `id` feels about `other` (you by default): Σ of the weights of what they feel, to 0.1. */
   stance(run, id, other = run.youId) {
+    const cx = Rel.cx(run, id, other);
     let s = 0;
-    for (const e of Rel.list(run, id, other)) if (e.a == null || e.a === id || e.a === '*') s += Rel.weigh(run, id, e);
+    for (const e of Rel.list(run, id, other)) if (e.a == null || e.a === id || e.a === '*') s += Rel.weigh(run, id, e, cx);
     return Math.round(s * 10) / 10;
   },
   /** The n memories that weigh most (|weight|, newest first on ties): [{ w, k, v, text }]. */
   top(run, id, n = 3) {
+    const cx = Rel.cx(run, id);
     return Rel.list(run, id)
-      .map((e, i) => ({ e, i, x: Math.abs(Rel.weigh(run, id, e)) }))
+      .map((e, i) => ({ e, i, x: Math.abs(Rel.weigh(run, id, e, cx)) }))
       .sort((a, b) => b.x - a.x || b.e.w - a.e.w || b.i - a.i)
       .slice(0, n)
       .map(({ e }) => ({ w: e.w, k: e.k, v: e.v, text: Rel.text(run, id, e) }));
@@ -128,8 +176,24 @@ const Rel = {
     REL.know.trait.forEach((need, i) => {
       if (me.known.traits[i] || n < need) return;
       me.known.traits[i] = true;
-      Run.log(run, `${first} is ${TRAITS[me.traits[i]].name.toLowerCase()}. Should have seen it.`);
+      const T = TRAITS[me.traits[i]];
+      if (T)
+        Run.log(
+          run,
+          i
+            ? `${first} is ${T.name.toLowerCase()} too. Should have seen it.`
+            : `${first}: ${T.beh.toLowerCase()}. You can tell in a minute.`
+        );
     });
+  },
+  /**
+   * Presence (spec §4.35): 2 for an S talent, 1 for an A, 0 otherwise (never you, nor anyone without a talent). Gifts.tier (T-320) when it
+   * is loaded, else the same letters from `p.pot`. Display only (portrait frame, court glow, the first-meeting beat) — never the letter.
+   */
+  presence(p) {
+    if (!p || p.you || p.gone) return 0;
+    const t = typeof Gifts !== 'undefined' ? Gifts.tier(p) : p.pot == null ? null : p.pot >= 1.4 ? 'S' : p.pot >= 1.2 ? 'A' : null;
+    return t === 'S' ? 2 : t === 'A' ? 1 : 0;
   },
   /** A stance as a band: 'ally' | 'respect' | 'neutral' | 'resent' | 'enemy'. */
   band(s) {
@@ -264,12 +328,26 @@ const Rel = {
   beatMe(run, m) {
     for (const p of squadOf(m.t[1])) if (m.played.has(p.id)) Rel.add(run, p.id, 'beat_me');
   },
-  /** After a match you played in (`side` = your side): the teammates who played. */
+  /**
+   * After a match you played in (`side` = your side): the teammates who played. Headline behaviours (spec §4.35): an Egoist weighs your
+   * match line against theirs (outshone / shone); a Hothead may blame you for a loss (`blamed`, a People.roll — no R()).
+   */
   afterMatch(run, m, side) {
     const you = Run.you(run);
     if (!you || !m.played.has(you.id)) return;
     const mates = squadOf(m.t[side]).filter(p => p !== you && m.played.has(p.id)),
-      won = m.winner === side;
-    for (const p of mates) Rel.add(run, p.id, won ? 'won_together' : 'lost_together');
+      won = m.winner === side,
+      line = s => (s ? s.k + 1.2 * s.blk + 1.2 * s.ace + 0.4 * s.dig + 0.35 * s.ast - s.err : null),
+      mine = line(m.stat && m.stat[you.id]);
+    for (const p of mates) {
+      Rel.add(run, p.id, won ? 'won_together' : 'lost_together');
+      const t = Rel.traits(run, p.id)[0],
+        theirs = line(m.stat && m.stat[p.id]);
+      if (t === 'proud' && mine != null && theirs != null) {
+        if (mine - theirs >= REL.behave.proud.gap) Rel.add(run, p.id, 'outshone');
+        else if (theirs > mine) Rel.add(run, p.id, 'shone');
+      }
+      if (t === 'reckless' && !won && People.roll(run, p.id, `blame|${run.week}`) < REL.behave.reckless.feud) Rel.add(run, p.id, 'blamed');
+    }
   }
 };

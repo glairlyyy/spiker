@@ -143,8 +143,10 @@ test('rel: a scar never fades, a normal memory fades by REL.decay per week', () 
   run2.week += 9;
   eq(g2.Rel.stance(run2, m2.id), t0, 'a scar never fades');
 });
+// a test-only first trait with no headline behaviour (spec §4.35): the old plain rules, for tests of memories and REL.trait
+const PLAIN = 'plain';
 test('rel: trained ×3 in a week is one entry worth 3 + 1.5 + 0.75', () => {
-  const [g, run, mate] = mkMate(92, ['steady', 'reckless']);
+  const [g, run, mate] = mkMate(92, [PLAIN, 'reckless']);
   for (let i = 0; i < 3; i++) g.Rel.add(run, mate.id, 'trained');
   const l = g.Rel.list(run, mate.id);
   eq(l.length, 1, 'one entry');
@@ -157,16 +159,140 @@ test('rel: trait multipliers; cynical lost_together is negative', () => {
     g.Rel.add(run, mate.id, kind);
     return g.Rel.stance(run, mate.id);
   };
-  eq(st(['steady', 'reckless'], 'spot_taken'), -30, 'plain scar');
-  eq(st(['proud', 'reckless'], 'spot_taken'), -60, 'proud ×2 on scars');
-  eq(st(['jealous', 'reckless'], 'spot_taken'), -45, 'jealous ×1.5 on spot_taken');
-  eq(st(['proud', 'reckless'], 'beat_me'), -16, 'proud ×2 on beat_me');
-  eq(st(['loyal', 'reckless'], 'beat_me'), -4.8, 'loyal ×0.6 on negatives');
-  eq(st(['warm', 'reckless'], 'won_together'), 6.5, 'warm ×1.3');
-  eq(st(['cynical', 'reckless'], 'won_together'), 3.5, 'cynical ×0.7');
-  eq(st(['calculating', 'reckless'], 'won_together'), 7.5, 'calculating ×1.5 on payoff');
-  eq(st(['calculating', 'reckless'], 'trained'), 1.5, 'calculating ×0.5 on the rest');
+  // the second trait (the hidden nuance) keeps today's multipliers
+  eq(st([PLAIN, 'reckless'], 'spot_taken'), -30, 'plain scar');
+  eq(st([PLAIN, 'proud'], 'spot_taken'), -60, 'proud ×2 on scars');
+  eq(st([PLAIN, 'jealous'], 'spot_taken'), -45, 'jealous ×1.5 on spot_taken');
+  eq(st([PLAIN, 'proud'], 'beat_me'), -16, 'proud ×2 on beat_me');
+  eq(st([PLAIN, 'loyal'], 'beat_me'), -4.8, 'loyal ×0.6 on negatives');
+  eq(st([PLAIN, 'warm'], 'won_together'), 6.5, 'warm ×1.3');
+  eq(st([PLAIN, 'cynical'], 'won_together'), 3.5, 'cynical ×0.7');
+  eq(st([PLAIN, 'calculating'], 'won_together'), 7.5, 'calculating ×1.5 on payoff');
+  eq(st([PLAIN, 'calculating'], 'trained'), 1.5, 'calculating ×0.5 on the rest');
   assert(st(['cynical', 'steady'], 'lost_together') < 0, 'cynical lost_together is negative');
+  // the first trait keeps them too, under its behaviour
+  eq(st(['proud', PLAIN], 'spot_taken'), -60, 'Egoist: proud ×2 on scars');
+  eq(st(['jealous', PLAIN], 'spot_taken'), -45, 'Competitive: jealous ×1.5 on spot_taken');
+});
+
+// ---- Behaviour (T-321, spec §4.35): the first trait is the headline; its bond rule, you ↔ NPC ----
+const behSt = (seed, traits, kinds, setup) => {
+  const [g, run, mate] = mkMate(seed, traits);
+  if (setup) setup(g, run, mate);
+  for (const k of kinds) g.Rel.add(run, mate.id, k);
+  return g.Rel.stance(run, mate.id);
+};
+test('behaviour: Friendly × 1.5; Shy — the first 3 meetings ≤ 25 %, then × 1.4', () => {
+  eq(behSt(122, ['warm', PLAIN], ['won_together']), 7.5, 'Friendly: 5 × 1.5');
+  const three = ['trained', 'hung_out', 'won_together'],
+    plain = behSt(122, [PLAIN, 'x'], three),
+    shy = behSt(122, ['steady', PLAIN], three);
+  assert(shy > 0 && shy <= plain * 0.25, `Shy: the first 3 barely count (${shy} vs ${plain})`);
+  const four = behSt(122, ['steady', PLAIN], [...three, 'vouched']) - shy;
+  assert(Math.abs(four - 15 * 1.4) < 0.11, `the 4th × 1.4: ${four}`);
+  assert(behSt(122, ['steady', PLAIN], ['spot_taken']) === -30, 'Shy: a scar counts in full');
+});
+test('behaviour: Competitive — beating them and training Hard together win them over', () => {
+  eq(behSt(123, [PLAIN, 'x'], ['beat_me']), -8, 'plain: beat_me hurts');
+  eq(behSt(123, ['jealous', PLAIN], ['beat_me']), 6, 'Competitive: beat_me +6');
+  eq(behSt(123, ['jealous', PLAIN], ['trained_hard']), 6, 'Competitive: a Hard session × 2');
+  eq(behSt(123, [PLAIN, 'x'], ['trained_hard']), 3, 'plain: a Hard session as any');
+});
+test('behaviour: Picky — no bond gain until your OVR is within 5 of theirs or you have 1,000 fans', () => {
+  const lo = (g, run, mate) => {
+      for (const k of g.STATK) ((mate[k] = 80), (g.Run.you(run)[k] = 40));
+      run.fans = 0;
+    },
+    near = (g, run, mate) => {
+      lo(g, run, mate);
+      for (const k of g.STATK) g.Run.you(run)[k] = 85;
+      assert(Math.abs(g.ovr(g.Run.you(run)) - g.ovr(mate)) <= 5, 'within 5');
+    },
+    fans = (g, run, mate) => {
+      lo(g, run, mate);
+      run.fans = 1000;
+    };
+  const [g, run, mate] = mkMate(124, ['cynical', PLAIN]);
+  lo(g, run, mate);
+  for (const k of ['trained', 'hung_out', 'won_together', 'vouched']) g.Rel.add(run, mate.id, k);
+  eq(g.Rel.stance(run, mate.id), 0, 'nothing counts under the bar');
+  eq(g.Run.you(run).bond[mate.id] || 0, 0, 'no bond');
+  assert(run.people[mate.id].known.traits[0], 'but you have met them');
+  eq(behSt(124, ['cynical', PLAIN], ['won_together'], near), 3.5, 'OVR within 5: counts (× 0.7, cynical)');
+  eq(behSt(124, ['cynical', PLAIN], ['won_together'], fans), 3.5, '1,000 fans: counts');
+  assert(behSt(124, ['cynical', PLAIN], ['beat_me'], lo) < 0, 'the bad still counts');
+});
+test('behaviour: Egoist — their better match beside you grows it, outshining them costs', () => {
+  const play = (mine, theirs, traits = ['proud', PLAIN]) => {
+    const [g, run, mate] = mkMate(125, traits),
+      you = g.Run.you(run),
+      T = g.Run.myTeam(run),
+      opp = run.teams.find(t => t !== T);
+    g.Run.lineup(run, T, null);
+    g.Run.lineup(run, opp, null);
+    const m = g.newMatch(T, opp, false),
+      line = k => ({ mp: 1, k, att: k, err: 0, blk: 0, ace: 0, dig: 0, ast: 0, top: 0, els: 0 });
+    m.played.add(you.id);
+    m.played.add(mate.id);
+    m.stat = { [you.id]: line(mine), [mate.id]: line(theirs) };
+    m.winner = 0;
+    g.Rel.afterMatch(run, m, 0);
+    return g.Rel.list(run, mate.id).map(e => e.k);
+  };
+  assert(play(12, 3).includes('outshone'), 'you outshone them');
+  assert(play(3, 9).includes('shone'), 'they had the better game');
+  const even = play(6, 5);
+  assert(!even.includes('shone') && !even.includes('outshone'), 'a close game: neither');
+  assert(!play(12, 3, [PLAIN, 'proud']).includes('outshone'), 'only the headline behaviour');
+});
+test('behaviour: Loyal — × 1.5 inside their faction, × 0.6 outside', () => {
+  eq(behSt(126, ['loyal', PLAIN], ['won_together']), 7.5, 'a squadmate: their faction');
+  const [g, run] = mkPeople(126),
+    T = g.Run.myTeam(run),
+    out = g.People.all(run).find(p => g.People.home(run, p) !== g.People.home(run, g.Run.mates(run)[0]) && p.team !== T);
+  run.people[out.id].traits = ['loyal', PLAIN];
+  g.Rel.add(run, out.id, 'won_together');
+  eq(g.Rel.stance(run, out.id), 3, 'an outsider: 5 × 0.6');
+});
+test('behaviour: Mercenary — loans and paid outings × 2; after 3 weeks it fades fast', () => {
+  eq(behSt(127, ['calculating', PLAIN], ['lent_money']), 30, 'a loan: 10 × 1.5 (payoff) × 2');
+  eq(behSt(127, ['calculating', PLAIN], ['hung_out']), 4, 'an outing: 4 × 0.5 × 2');
+  const at = (traits, wk) => {
+    const [g, run, mate] = mkMate(127, traits);
+    g.Rel.add(run, mate.id, 'won_together');
+    const s0 = g.Rel.stance(run, mate.id);
+    run.week += wk;
+    return g.Rel.stance(run, mate.id) / s0;
+  };
+  assert(Math.abs(at(['calculating', PLAIN], 3) - at([PLAIN, 'x'], 3)) < 0.02, 'the first 3 weeks: the normal fade');
+  assert(at(['calculating', PLAIN], 6) <= at([PLAIN, 'x'], 6) * 0.45, 'after 6 weeks: under half of a plain fade');
+});
+test('behaviour: Hothead — big swings; a loss together may start a feud (no R())', () => {
+  eq(behSt(128, ['reckless', PLAIN], ['won_together']), 7.5, 'won × 1.5');
+  eq(behSt(128, ['reckless', PLAIN], ['beat_me']), -12, 'beat_me × 1.5');
+  const [g, run, mate] = mkMate(128, ['reckless', PLAIN]),
+    you = g.Run.you(run),
+    T = g.Run.myTeam(run),
+    opp = run.teams.find(t => t !== T);
+  g.Run.lineup(run, T, null);
+  g.Run.lineup(run, opp, null);
+  const ms = Array.from({ length: 20 }, () => g.newMatch(T, opp, false));
+  g.RNG.seed(7);
+  const next = [g.R(), g.R()];
+  g.RNG.seed(7);
+  let blamed = 0;
+  for (let w = 1; w <= 20; w++) {
+    run.week = w;
+    const m = ms[w - 1];
+    m.played.add(you.id);
+    m.played.add(mate.id);
+    m.winner = 1;
+    g.Rel.afterMatch(run, m, 0);
+    blamed += g.Rel.list(run, mate.id).some(e => e.k === 'blamed' && e.w === w) ? 1 : 0;
+  }
+  eq(JSON.stringify([g.R(), g.R()]), JSON.stringify(next), 'the main random stream is untouched');
+  assert(blamed >= 2 && blamed <= 14, `some losses start a feud, not all: ${blamed} / 20`);
+  assert(['resent', 'enemy'].includes(g.Rel.band(-10 * 1.5)), 'one blame alone makes them resent you');
 });
 test('rel: taking a same-role mate’s spot writes spot_taken once a week; their tag drops to resent', () => {
   const [g, run] = mkPeople(97),
@@ -383,6 +509,38 @@ test('people sheet: sheetPeople renders for a fresh run and a 10-week run', () =
   clean(h);
   assert(h.includes('pcard') && /Word is/.test(h), 'the open card shows the season');
   assert(!/>\?<\/b>/.test(h) || true, 'unknown parts show a ?');
+});
+
+test('behaviour: every trait has a behaviour name and a rule; the first is named on the card from the first meeting', () => {
+  const [g, run, mate] = mkMate(121, ['warm', 'steady']);
+  for (const [k, T] of Object.entries(g.TRAITS)) assert(T.beh && T.rule && g.REL.behave[k], `${k}: a behaviour and its rule`);
+  eq(g.REL.know.trait[0], 1, 'the first trait shows at once');
+  g.Rel.add(run, mate.id, 'trained');
+  const kn = run.people[mate.id].known;
+  assert(kn.traits[0] && !kn.traits[1], 'the behaviour is known after one meeting, the nuance is not');
+  assert(
+    run.log.some(l => /friendly/.test(l.t)),
+    'a diary line names it'
+  );
+  const ui = mkUi(g),
+    h = ui.personCard(run, mate.id);
+  assert(h.includes('>Friendly<') && h.includes(g.TRAITS.warm.rule), 'the card names the behaviour, its rule on hover: ' + h);
+  assert(!h.includes('>Steady<'), 'the second trait stays hidden');
+  // a squadmate (met) you share no memory with yet: named all the same
+  const other = g.Run.mates(run)[1];
+  run.people[other.id].traits = ['cynical', 'warm'];
+  assert(ui.personCard(run, other.id).includes('>Picky<'), 'met → named');
+  assert(!/Talent/.test(h), 'no Gifts yet: no talent line');
+  // the Gifts contract (T-320, Agent G), stubbed: tier and gifts only once known
+  let known = false;
+  g.Gifts = { tier: () => 'S', of: () => ['prodigy'], known: () => known };
+  g.GIFTS = { prodigy: { name: 'Prodigy', desc: 'Grows × 1.3.', kind: 'growth' } };
+  const ui2 = mkUi(g);
+  assert(!/Talent/.test(ui2.personCard(run, mate.id)), 'unknown: hidden');
+  known = true;
+  assert(/Talent <b>S<\/b> · <b data-tip="Grows × 1.3.">Prodigy<\/b>/.test(ui2.personCard(run, mate.id)), 'known: tier and gifts');
+  delete g.Gifts;
+  delete g.GIFTS;
 });
 
 // ---- Approaches (T-063, spec §4.23 C) ----
@@ -947,4 +1105,98 @@ test('fixes: poach_advice lines say what happened; an unanswered one is news too
     run2.news.some(l => l.includes(p2.name)),
     'and the Gazette says so'
   );
+});
+
+// ---- Presence (T-324, spec §4.35): the S / A portrait frame and the first-meeting beat ----
+const mkFaces = g =>
+  new Function('Rel', 'esc', `${fs.readFileSync(path.join(__dirname, '..', 'js/render/faces.js'), 'utf8')}\nreturn { faceSVG, PORTRAIT };`)(
+    g.Rel,
+    x => String(x)
+  );
+test('presence: an S and an A portrait get the gold frame (S shimmers), a B and you do not; the letter never shows', () => {
+  const [g, run] = mkPeople(131),
+    F = mkFaces(g),
+    [s, a, b] = g.Run.mates(run),
+    you = g.Run.you(run);
+  s.pot = 1.5;
+  a.pot = 1.25;
+  b.pot = 1.0;
+  you.pot = 1.6;
+  eq([s, a, b, you].map(p => g.Rel.presence(p)).join(','), '2,1,0,0', 'Rel.presence from pot: S 2, A 1, B 0, never you');
+  const hs = F.faceSVG(s, 0, 48),
+    ha = F.faceSVG(a, 0, 48);
+  assert(hs.startsWith('<span class="gift glint">') && /<svg/.test(hs), 'S: frame + shimmer around the face');
+  assert(ha.startsWith('<span class="gift">'), 'A: the frame, no shimmer');
+  assert(!/gift/.test(F.faceSVG(b, 0, 48)) && !/gift/.test(F.faceSVG(you, 0, 48)), 'B and you: none');
+  assert(![hs, ha].some(h => /\b[SA]\b(?![^<]*>)/.test(h.replace(/<[^>]*>/g, ''))), 'no letter in the markup text');
+});
+test('presence: the beat plays once per S / A player you meet (dark, chime cue, a diary line); none for a B; no R()', () => {
+  const [g, run] = mkPeople(132),
+    [s, a, b] = g.Run.mates(run);
+  s.pot = 1.45;
+  a.pot = 1.2;
+  b.pot = 1.1;
+  const far = g.People.all(run).find(p => p.team && p.team !== g.Run.myTeam(run));
+  far.pot = 1.5; // not met: no beat
+  assert(g.Story.on(run), 'Story mode');
+  g.Story.skip(run); // the cold open
+  g.RNG.seed(7);
+  const next = [g.R(), g.R()];
+  g.RNG.seed(7);
+  const ids = [];
+  for (let i = 0; i < 20 && g.Story.hub(run); i++) {
+    const cur = run.story.cur;
+    ids.push(cur.id);
+    if (cur.id.startsWith('presence:')) {
+      eq(cur.mode.dark, true, 'the screen goes dark');
+      eq(cur.steps[0].sfx, 'chime', 'with the chime');
+      eq(g.Story.step(run).k, 'wait', 'a moment first');
+      g.Story.next(run);
+      const st = g.Story.step(run);
+      assert(
+        st.k === 'say' &&
+          st.who === 'diary' &&
+          g.MEET.presence.some(l => st.text === l.replace(/\{n\}/g, g.People.find(run, cur.id.slice(9)).name.split(' ')[0])),
+        'then a diary line'
+      );
+      assert(!/\b[SA]\b/.test(st.text), 'never the letter');
+    }
+    g.Story.skip(run);
+  }
+  eq(JSON.stringify([g.R(), g.R()]), JSON.stringify(next), 'the main random stream is untouched');
+  const pres = ids.filter(x => x.startsWith('presence:'));
+  eq(pres.sort().join(','), [`presence:${a.id}`, `presence:${s.id}`].sort().join(','), 'one beat each for the S and the A mate');
+  assert(
+    run.log.some(l =>
+      g.MEET.presence.some(t => l.t === t.replace(/\{n\}/g, s.name.split(' ')[0]) || l.t === t.replace(/\{n\}/g, a.name.split(' ')[0]))
+    ),
+    'the line is in the diary'
+  );
+  for (let i = 0; i < 5 && g.Story.hub(run); i++) {
+    assert(!run.story.cur.id.startsWith('presence:'), 'never twice');
+    g.Story.skip(run);
+  }
+  run.met[far.id] = true; // faced on court
+  run.story.at = null;
+  assert(g.Story.hub(run) && run.story.cur.id === `presence:${far.id}`, 'meeting them on court plays it');
+  g.Story.skip(run);
+  run.mode.story = false;
+  far.pot = 1.6;
+  delete run.story.seen[`presence:${far.id}`];
+  assert(!g.Story.presence(run), 'Story mode only');
+});
+test('rel: a gain × Gifts.bondMul when Gifts is loaded (Magnetic / Lone Wolf, T-320 contract); losses untouched', () => {
+  const [g, run, mate] = mkMate(133, [PLAIN, 'x']);
+  g.Rel.add(run, mate.id, 'won_together');
+  eq(g.Rel.stance(run, mate.id), 5, 'no Gifts: × 1');
+  const G = g.Rel.add.constructor('return globalThis')(); // the game context's global (where `typeof Gifts` looks)
+  G.Gifts = { bondMul: (r, id) => (id === mate.id ? 1.3 : 1) };
+  try {
+    g.Rel.add(run, mate.id, 'vouched');
+    eq(g.Rel.stance(run, mate.id), 5 + 15 * 1.3, 'a gain × 1.3');
+    g.Rel.add(run, mate.id, 'beat_me');
+    eq(g.Rel.stance(run, mate.id), 5 + 15 * 1.3 - 8, 'a loss as it is');
+  } finally {
+    delete G.Gifts;
+  }
 });

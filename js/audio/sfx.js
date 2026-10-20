@@ -481,6 +481,17 @@ const SOUND = (() => {
       nz(0.9, 0.35, 'lowpass', 260, 0.7, 80, 0.01);
       tone(60, 0.6, 'sine', 0.3, 30);
     },
+    /** Presence (spec §4.35): a soft, high bell — three sine partials ringing out into the reverb. */
+    chime: () => {
+      if (!live()) return;
+      const t = now(),
+        o = [SND.master, SND.rev];
+      [
+        [1318.5, 0.045],
+        [1975.5, 0.025],
+        [2637, 0.014]
+      ].forEach(([f, v], i) => osc('sine', f, f * 0.998, t + i * 0.07, 1.6, v, o, 0.012));
+    },
     /** In the zone: riser into a power chord with a shimmer. */
     zone: () => {
       if (!live()) return;

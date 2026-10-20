@@ -13,6 +13,7 @@
   --hot: #ff3b4e;
   --cyan: #4cc9f0;
   --gold: #f5c451;
+  --gift: #f2b53a; /* presence (spec §4.35): the S / A portrait frame and court glow — used only there */
   /* status colours: good / bad / warning (exact shades kept) */
   --good: #4ade80;
   --good-deep: #16a34a;
@@ -872,7 +873,8 @@ html.reduced .hub .tbar .hd,
 html.reduced .hub .spotcard.swap > *,
 html.reduced .hub .sheet.swap > *,
 html.reduced .hub .hubmodal.swap .hubcard > *,
-html.reduced .hub .hubmodal.in .evc > :nth-child(2) {
+html.reduced .hub .hubmodal.in .evc > :nth-child(2),
+html.reduced .gift.glint::before {
   animation: none !important;
 }
 html.reduced .hub .spotcard.glide,

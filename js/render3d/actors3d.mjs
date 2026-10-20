@@ -450,7 +450,14 @@ function lightTrails(pl, d, root, dt) {
   }
 }
 
-/** Aura sprite, OP lightning arcs, element motes, and the zone / captain's-buff floor rings. */
+/** Presence (spec §4.35): 2 for an S talent, 1 for an A, else 0 (Rel.presence: Gifts.tier or p.pot; never you). Display only. */
+const presenceOf = p => (typeof Rel === 'undefined' ? 0 : Rel.presence(p));
+let giftCol = null; // the --gift theme token (gold), read once
+const GIFT = () =>
+  giftCol ||
+  (giftCol =
+    (typeof document !== 'undefined' && getComputedStyle(document.documentElement).getPropertyValue('--gift').trim()) || '#f2b53a');
+/** Aura sprite, OP lightning arcs, element motes, presence (S / A: a faint gold idle glow, S a few motes), and the zone / captain's-buff floor rings. */
 function glow(pl, d, pos, dt, fx) {
   const root = pl.root,
     side = d.side;
@@ -459,8 +466,15 @@ function glow(pl, d, pos, dt, fx) {
   const full = !!(d.p.elOn && (A.egShown || {})[d.p.id] >= EG.full),
     look = Dir.aura(side), // the team's stage (spec §2.15): Loose a grey haze, Focused faint, Fever full
     own = full ? (air ? 0.65 : 0.4) : d.p.op ? (air ? 0.55 : 0.22) : d.p.star && air ? 0.35 : 0,
-    targ = Math.max(own, look === 'full' ? 0.3 : look === 'faint' ? 0.14 : look === 'haze' ? 0.18 : 0);
-  pl.aura.material.color.set(full ? ECOL[d.p.el] : d.p.op ? '#ff2846' : look === 'haze' && !own ? '#8b9099' : d.p.team.color);
+    team = look === 'full' ? 0.3 : look === 'faint' ? 0.14 : look === 'haze' ? 0.18 : 0,
+    pres = A.animLab ? 0 : pl.pres, // (cached in dressFigure)
+    gift = pres && !own && team < 0.3 ? (pres > 1 ? 0.4 : 0.3) : 0, // off-element gold, under Fever's team glow
+    targ = Math.max(own, team, gift);
+  pl.aura.material.color.set(
+    full ? ECOL[d.p.el] : d.p.op ? '#ff2846' : gift ? GIFT() : look === 'haze' && !own ? '#8b9099' : d.p.team.color
+  );
+  if (pres > 1 && gift && !A.shot && Math.random() < dt * 1.2)
+    fx.mote(pl.bone(AURA[(Math.random() * AURA.length) | 0]).getWorldPosition(new THREE.Vector3()), GIFT(), null); // S: now and then a gold mote
   pl.aura.material.opacity += (targ - pl.aura.material.opacity) * (1 - Math.exp(-dt * 8));
   gloomUpdate(pl, A.animLab ? 0 : gloomOf(A.m, d.p, side), dt, performance.now() / 1000); // a debuffed player (war stage, morale, HP)
   const elc = d.p.elOn ? ECOL[d.p.el] : null, // unlocked element: the aura takes its colour
@@ -531,6 +545,7 @@ function dressFigure(pl, d) {
   // Jump height (root.position.y = jy × KH, metres) does not depend on the scale, so jumps and blocks reach the same height.
   pl.root.scale.setScalar((pl.scale = pl.model && pl.model !== 'main' ? 1 : 1.8 / pl.headY));
   pl.aura.material.color.set(p.op ? '#ff2846' : team.color);
+  pl.pres = presenceOf(p); // presence (spec §4.35): the idle gold glow in glow()
   pl.zone.material.color.set(team.color);
   // hand trails in the player's hair colour, a touch brighter
   pl.trailCol = '#' + new THREE.Color(p.hair || '#ffffff').offsetHSL(0, 0.15, 0.12).getHexString();

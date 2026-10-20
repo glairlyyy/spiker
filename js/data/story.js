@@ -352,7 +352,14 @@ const MEET = {
     reckless: ["If it's in the air, it's mine. You'll get used to it.", "Fast and hard, that's how I play. Keep up."],
     calculating: ["I've read your numbers. We'll see if they mean anything.", "Show me what you're good for and I'll use it."],
     steady: ['Practice is at seven. Every day.', "Do the work and we'll get along fine."]
-  }
+  },
+  // the presence beat (spec §4.35): the first meeting with an S/A player — voice `diary`, never the letter; {n} = their first name
+  presence: [
+    "Something about her. I don't know what yet.",
+    "{n}. Something about her. I don't know what yet.",
+    'Something about {n}. Not the numbers. Something else.',
+    '{n} walked in and the air changed. I hate that I noticed.'
+  ]
 };
 /** Your flatmate in the Student flat (lore §6): the story's guide for the first weeks. A person for the box's portrait and the map. */
 const GUIDE = {

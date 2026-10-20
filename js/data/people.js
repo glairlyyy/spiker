@@ -19,16 +19,49 @@ const WANT_BY = {
   gloria: { national: 3, money: 2, spot: 2, leave: 1, prove: 0.5, grudge: 0.5 },
   academy: { national: 3, prove: 2, spot: 2, money: 1, leave: 1, grudge: 0.5 }
 };
-/** How an NPC behaves. */
+/**
+ * How an NPC behaves (spec §4.35): the first trait is their headline behaviour (`beh`, named on their card from the first meeting;
+ * `rule` = how a bond with them grows, its numbers in REL.behave); the second stays a hidden nuance (`name`, REL.trait only).
+ */
 const TRAITS = {
-  proud: { name: 'Proud', desc: 'Hates being second.' },
-  loyal: { name: 'Loyal', desc: 'Sticks with their own.' },
-  jealous: { name: 'Jealous', desc: 'Counts what others get.' },
-  warm: { name: 'Warm', desc: 'Lets people in.' },
-  cynical: { name: 'Cynical', desc: 'Expects the worst, and is rarely wrong.' },
-  reckless: { name: 'Reckless', desc: 'Pushes past the warning signs.' },
-  calculating: { name: 'Calculating', desc: 'Every move has a reason.' },
-  steady: { name: 'Steady', desc: 'Does the work, every day.' }
+  proud: {
+    name: 'Proud',
+    desc: 'Hates being second.',
+    beh: 'Egoist',
+    rule: 'Grows when they have the better match beside you. Outshining them costs.'
+  },
+  loyal: { name: 'Loyal', desc: 'Sticks with their own.', beh: 'Loyal', rule: 'Bonds × 1.5 inside their faction, × 0.6 outside it.' },
+  jealous: {
+    name: 'Jealous',
+    desc: 'Counts what others get.',
+    beh: 'Competitive',
+    rule: 'Grows when you beat them, or train Hard together.'
+  },
+  warm: { name: 'Warm', desc: 'Lets people in.', beh: 'Friendly', rule: 'Bonds × 1.5.' },
+  cynical: {
+    name: 'Cynical',
+    desc: 'Expects the worst, and is rarely wrong.',
+    beh: 'Picky',
+    rule: 'Nothing counts until your OVR is within 5 of theirs, or you have 1,000 fans.'
+  },
+  reckless: {
+    name: 'Reckless',
+    desc: 'Pushes past the warning signs.',
+    beh: 'Hothead',
+    rule: 'Everything × 1.5. A loss together may start a feud.'
+  },
+  calculating: {
+    name: 'Calculating',
+    desc: 'Every move has a reason.',
+    beh: 'Mercenary',
+    rule: 'Loans and paid outings × 2. After 3 weeks without, it fades fast.'
+  },
+  steady: {
+    name: 'Steady',
+    desc: 'Does the work, every day.',
+    beh: 'Shy',
+    rule: 'The first 3 meetings barely count. After that, bonds × 1.4.'
+  }
 };
 /** Opposite pairs: an NPC never has both of a pair. */
 const TRAIT_OPP = [
@@ -88,6 +121,7 @@ const PEOPLE = {
  */
 const MEMORY = {
   trained: { v: 3, rep: 0.5 },
+  trained_hard: { v: 3, rep: 0.5 }, // a Hard session side by side (Competitive × 2)
   hung_out: { v: 4, rep: 0.5 },
   won_together: { v: 5, payoff: 1 },
   lost_together: { v: 2, flip: ['jealous', 'cynical'] },
@@ -109,7 +143,10 @@ const MEMORY = {
   advised: { v: 10, payoff: 1 },
   held_back: { v: -8 },
   sided_with: { v: 8, payoff: 1 },
-  sided_against: { v: -8 }
+  sided_against: { v: -8 },
+  shone: { v: 6 }, // an Egoist outplayed you in a match beside you
+  outshone: { v: -6 }, // you outshone an Egoist beside you
+  blamed: { v: -10 } // a Hothead blames you for a loss together
 };
 /**
  * The relationship numbers. decay: stance fades per week (scars never). max: entries kept per pair. tags: stance
@@ -122,7 +159,7 @@ const REL = {
   tags: { ally: 40, respect: 15, resent: -15, enemy: -45 },
   rivalOvr: 5,
   bondK: 8,
-  know: { want: 6, trait: [4, 9] }, // memories with you before their want / first trait / second trait show on their card
+  know: { want: 6, trait: [1, 9] }, // memories with you before their want / first trait (the behaviour: at once) / second trait show on their card
   // approaches (T-063): max a week, base chance (x the kind's weight by want), the loan range, the chance a loan is repaid by trait,
   // the OVR / key-stat bar a vouch cuts, what refusing a call-out costs, the trait mods on your own asks
   // fates (T-064): cut after `cut` evaluations on the bench (and under the faction's join OVR); a cut player may quit after `weeks`
@@ -148,6 +185,23 @@ const REL = {
     warm: { pos: 1.3 },
     cynical: { pos: 0.7 },
     calculating: { payoff: 1.5, other: 0.5 }
+  },
+  /**
+   * The headline behaviours (spec §4.35; the first trait only, you ↔ NPC only — NPC ↔ NPC keeps `trait`). Read time (Rel.weigh) entries
+   * override that trait's `trait` row: pos / neg / a kind name = multipliers (Competitive's beat_me × −0.75 turns positive). Write time
+   * (Rel.add): Shy's first `first` memories × `low` (positives); Picky's positives count 0 until your OVR ≥ theirs − `ovr` or `fans`;
+   * Egoist: `gap` = how far your match line beats theirs to outshine them; Loyal: positives × own / out by faction; Mercenary: after `after`
+   * weeks a memory fades × `fast` a week more (scars never); Hothead: everything × `swing`, a loss together → `blamed` on a roll < `feud`.
+   */
+  behave: {
+    warm: { pos: 1.5 },
+    steady: { pos: 1.4, first: 3, low: 0.15 },
+    jealous: { trained_hard: 2, beat_me: -0.75 },
+    cynical: { ovr: 5, fans: 1000 },
+    proud: { gap: 4 },
+    loyal: { own: 1.5, out: 0.6 },
+    calculating: { lent_money: 2, hung_out: 2, after: 3, fast: 0.75 },
+    reckless: { swing: 1.5, feud: 0.35 }
   }
 };
 /**
@@ -199,6 +253,10 @@ const MEM_TEXT = {
   ],
   sided_with: ['{n} saw me take their side. That is not forgotten.', 'Stood with {n} when it counted. They keep count.'],
   sided_against: ['Sided against {n}. They know.', '{n} lost the argument, and noticed who made sure of it.'],
+  trained_hard: ['Went Hard next to {n}. Neither of us stopped first.', '{n} and me, a Hard session. {n} kept score.'],
+  shone: ['{n} had the better game. {n} made sure I noticed.', "{n} outplayed me beside me. I'll let {n} have it. Once."],
+  outshone: ['I had the better game. {n} took it badly.', '{n} watched me take the match. Not with a smile.'],
+  blamed: ['We lost and {n} decided it was me. Loudly.', '{n} blames me for the loss. Wrong, but loud about it.'],
   held_back: ["Talked {n} out of leaving. {n} hasn't thanked me.", '{n} stayed because I said so. They will remember who to blame.']
 };
 const MEM_ALT = {}; // (kind → trait → lines; none now — the ego memories went with the ego feature, owner 2026-10-06)

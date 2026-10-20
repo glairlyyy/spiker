@@ -1335,7 +1335,11 @@ the AI coach fills every slot you leave with the same function. Built and measur
     or train Hard together) · **cynical → Picky** (nothing counts until your OVR is within 5 of theirs or you have 1,000+ fans)
     · **proud → Egoist** (grows when you make them look good; your outshining them in a match costs) · **loyal → Loyal** (fast
     with their own faction, slow with outsiders) · **calculating → Mercenary** (loans and paid outings count double; fades fast
-    when you stop) · **reckless → Hothead** (big swings: a loss together may start a feud).
+    when you stop) · **reckless → Hothead** (big swings: a loss together may start a feud). **[built 2026-10-20, T-321: you ↔ NPC only
+    (NPC ↔ NPC keeps today's trait multipliers); Shy = the first 3 memories × 0.15 (positives), Picky = your OVR ≥ theirs − 5 (being above
+    counts), Mercenary fades × 0.75 a week past 3 weeks, Hothead × 1.5 and a loss together → `blamed` −10 on a 35 % hash roll; Egoist: your
+    match line 4+ over theirs costs (outshone −6), theirs over yours grows (shone +6); Competitive's Hard session needs the training hook
+    (`trained_hard`, open: training.js is G's)]**
   - **The MC has no gift and is never Elementless** (owner). Instead, a **gift chance** event: when your bond with a friend who has
     a gift first passes **50**, they offer to show you (an event card, like the sponsor offer): **pay** (by the gift: $150 · $300 ·
     $500 for a rare one) for a chance at it — 35 % + 1 % per bond point over 50 — or **decline**. Once per friend; the MC keeps at
@@ -1352,7 +1356,10 @@ the AI coach fills every slot you leave with the same function. Built and measur
     A — a thin gold edge and a small crest in a corner; S — the same with a slow shimmer. One new theme token `--gift` (gold),
     used only here. (3) **On court**: a faint idle glow in the aura sprite on an S/A player (S also a few slow gold motes rising),
     off-element so it never reads as one. (5) **First meeting**: once per S/A player, a short presence beat — the screen dims a
-    moment, a soft chime, a diary line ("Something about her. I don't know what yet.", voice `diary`).
+    moment, a soft chime, a diary line ("Something about her. I don't know what yet.", voice `diary`). **[built 2026-10-20, T-324:
+    tier from `pot` until Gifts lands; the beat = a quiet Story scene (dark — the box has no dim mode — chime, one of 4 diary lines), Story
+    mode only, once per player via `run.story.seen` (no save change); a met player = squadmate, faced on court or a memory with you; the
+    court glow yields to an element-full / OP / airborne-star aura and to Fever]**
   - **[open]**: close friends favoured into your year-2 Cup squad (the squad lever from §4.32); a jealous friend turning once they
     discover your learned gift.
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has

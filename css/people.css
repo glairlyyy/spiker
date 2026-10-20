@@ -242,3 +242,49 @@
   color: inherit;
   text-decoration: underline dotted;
 }
+/* presence (spec §4.35, T-324): an S / A player's portrait (faceSVG wraps it in .gift) — a thin gold edge and a small crest; S
+   (.glint) also shimmers. One look for both but the shimmer, never the letter. --gift is used only here. */
+.gift {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 0;
+  border-radius: 4px;
+}
+.gift::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid var(--gift);
+  border-radius: inherit;
+  box-shadow: inset 0 0 6px color-mix(in srgb, var(--gift) 35%, transparent);
+  pointer-events: none;
+}
+.gift::after {
+  /* the crest: a small gem in the top-right corner */
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 22%;
+  min-width: 5px;
+  max-width: 12px;
+  aspect-ratio: 1;
+  background: var(--gift);
+  clip-path: polygon(50% 0, 100% 40%, 50% 100%, 0 40%);
+  pointer-events: none;
+}
+.gift.glint::before {
+  background: linear-gradient(115deg, transparent 38%, color-mix(in srgb, var(--gift) 45%, transparent) 50%, transparent 62%) 100% 0 / 300%
+    100% no-repeat;
+  animation: gift-glint 4.5s ease-in-out infinite;
+}
+@keyframes gift-glint {
+  0%,
+  45% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}

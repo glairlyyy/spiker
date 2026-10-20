@@ -58,7 +58,7 @@ within ±1.5 of today.
 QA: career run → a scouted player's card.
 Result: GIFTS (22, kinds growth/body/element/mind/social) + Gifts (tier/of/known/roll/innate/grow/wake); rolled in People.ensure by hstr+fmix32 (plain FNV skewed the picks); shares over 6 runs ~45 % / ~10 %; Haewon S Element-born + Prodigy, cohort A (Quick Twitch / Reader / Contagious), first aces authored A + rolled gifts; engine hooks via `hasGift` (goldens unchanged); Magnetic / Lone Wolf need a Rel.add hook (Agent P); war.test's 'Gold untouched' now holds only while Iron stands (Iron fell in seed 32 with gifts). Career 12 both: league 81.6 / 86.8 casual, 81.6 / 87.1 good (was 81.5 / 86.9, 81.6 / 87.0); 185/185.
 
-### [ ] T-321: Behaviour — the personality traits promoted
+### [x] T-321: Behaviour — the personality traits promoted
 Agent: P
 Spec: §4.35, §4.23          Goldens: unchanged          Save: no change
 Goal: an NPC's first trait is their headline behaviour, named on the card from the first meeting; each behaviour's bond rule
@@ -68,7 +68,7 @@ also tier + gifts once `Gifts.known` — the contract), tests/people.test.js
 Do not: add a second trait system; change NPC ↔ NPC chemistry beyond the same rules.
 Accept: tests per behaviour (e.g. Picky: no bond gain until the bar; Shy: first 3 meetings ≤ 25 %; Mercenary: fades after 3 weeks).
 QA: career run → the People sheet.
-Result:
+Result: 8 behaviours in REL.behave (you ↔ NPC; NPC ↔ NPC unchanged), card names the first trait from the first meeting + rule on hover, tier/gifts behind `typeof Gifts`; 8 new tests, bond calibration in band. Open: Competitive's Hard session needs training.js (G) to write `trained_hard`; engine.test.js:1209 (not P's) sets a Shy mate → needs `['warm', 'reckless']`.
 
 ### [x] T-322: The gift chance event
 Agent: G
@@ -83,7 +83,7 @@ Accept: tests — the event fires once at 50; paying moves money and rolls the s
 QA: career run (forced bond 50) → the card, pay, the Me sheet.
 Result: Gifts.ask (WEEK_START + after every City.day) → event 'gift' (Events.def / choose → Gifts.answer): the highest-bond friend at 50+ with a priced gift you lack, once per friend (`run.giftAsk`), ≤ 2 (`run.gifts` → `you.gifts` via Gifts.sync); pay rolls a hash (no R()); short of money = no deal (said on the card); learned: growth in Training.sim, body bonus in Body.sync, Rubber Joints full swing, Leadership, Generous scales your mates' share; engine reads you.gifts; Me sheet 'Gifts'. Magnetic needs Rel.add × `Gifts.bondMul(run, id)` (Agent P). Tests: map.test clears the event a bond opened; WEEK_START 7. QA: card → pay → Me sheet (Defense +3, full swing), 0 page errors; UI smoke 14/14; career 12 both league 81.7 / 87.0, 81.6 / 87.1 (good you Y2 93.6).
 
-### [ ] T-324: Presence — S/A portrait frame, court glow, the first meeting
+### [x] T-324: Presence — S/A portrait frame, court glow, the first meeting
 Agent: P
 Spec: §4.35 (Presence)          Goldens: unchanged (display only)          Save: no change (`run.met` or a new `run.presence` set of ids — a RUN_DEFAULTS field)
 Goal: every portrait of an S/A player has the gold frame (S shimmers); on court their aura glows faintly at idle (S with gold
@@ -94,7 +94,7 @@ tests/people.test.js, tests/ui-smoke.js (a frame on an S portrait)
 Do not: reveal the letter; use faction or element colours; add a pop-up.
 Accept: tests — an S and an A get the frame class, a B doesn't; the beat fires once per S/A on first meeting; UI smoke passes.
 QA: career run (force an S into the squad) → the people drawer, a match; Monster game (one S) → the court glow.
-Result:
+Result: frame in faceSVG (`.gift`/`.glint`, `--gift` #f2b53a, reduced motion off), court glow S 0.4 / A 0.3 + rare S motes, presence beat = quiet Story scene (dark + `sfx.chime` + diary line), once via `run.story.seen` (no RUN_DEFAULTS field); 2 tests; UI smoke 14/14 (not extended: ui-smoke.js isn't P's — checked by QA: S/A frames in the People sheet, the beat, Monster glow vs control). Open: Gifts.tier (G) replaces the pot fallback in Rel.presence.
 
 ### [x] T-323: Gifts rub off in training
 Agent: G

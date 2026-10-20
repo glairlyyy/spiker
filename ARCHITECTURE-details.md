@@ -12,7 +12,7 @@ artifact; its drawing code was removed here. `js/render/` now holds: `playback.j
 beats are copied per rally so playback never marks the engine's own), `clock.js`, `camera.js`, `ball.js`,
 `scenes.js`, `effects.js`, `overlay.js` (the screen-space layer behind the `Overlay` object — `applyView`, `drawChant`, `drawTrail`,
 `drawFx`, `frame` — called by r3d.mjs and the clock; view transform, chant, ball trail, labels, flashes;
-`FONT_ROUND` / `FONT_DISPLAY` / `INK` / `roundRectPath`), `faces.js` (`faceSVG` portraits + `shade`), `tags.js`
+`FONT_ROUND` / `FONT_DISPLAY` / `INK` / `roundRectPath`), `faces.js` (`faceSVG` portraits + `shade`; `PORTRAIT.frame` wraps an S / A portrait in `.gift` — see Presence), `tags.js`
 (player / coach tags over the figures), `dive.js` (the dive timeline `diveF` / `diving` / `diveShape`), `acts.js`
 (one-shot act handlers in three tables — `ACTS_FX`, `ACTS_UI`, `ACTS_ROSTER`, merged as `ACTS`; `instant(a)` looks the
 kind up and calls it with `(a, d, bs)`), `movement.js` (pre-dig reads, spike approach, sprint caps, dig chases, squeaks,
@@ -395,6 +395,29 @@ read it. `you.bond[id]` is only a cache: `Rel.bondOf` = clamp(round(stance × RE
 Sources: `Run.bond(run, id, v, kind)` (training → trained, city outings → hung_out), `Cup.result` →
 `Rel.afterMatch` (won / lost_together), `Cup.fixture` → `Rel.spot` (spot_taken for a benched rival, once a week),
 challenge / clash wins → `Rel.beatMe`. Match rewards no longer carry bond.
+
+**Behaviour (T-321, spec §4.35).** An NPC's first trait is their headline behaviour: `TRAITS[t].beh` / `.rule` (Friendly, Shy, Competitive, Picky,
+Egoist, Loyal, Mercenary, Hothead), numbers in `REL.behave`; the second trait keeps `REL.trait` only. You ↔ NPC only (NPC ↔ NPC reads `REL.trait` as
+before). Write time (`Rel.behaveIn`, from `Rel.add`, before Bitter): Shy — positives × low while their list with you has < 3 entries; Picky —
+positives count 0 unless `Rel.picky` (your OVR ≥ theirs − 5 or 1,000 fans); a memory their traits flip negative is never gated. After Bitter, a gain × `Gifts.bondMul(run, id)` (Magnetic / Lone Wolf, T-320) when Gifts is loaded. Read time
+(`Rel.cx(run, id, other)` → `Rel.weigh(..., cx)`, built once per `stance` / `top`): the first trait's `REL.trait` row overridden by its `REL.behave`
+row (Friendly pos 1.5, Shy pos 1.4, Competitive beat_me × −0.75 and trained_hard × 2), then Loyal (positives × own / out by your faction vs their
+home), Mercenary (× fast per week past `after` weeks; scars exempt), Hothead (× swing). `Rel.afterMatch`: Egoist mates get `outshone` (your
+match line ≥ theirs + gap) or `shone` (theirs > yours); a Hothead's loss together → `blamed` on `People.roll(id, blame|week)` < feud. New MEMORY kinds
+`trained_hard` (a Hard session together — written by training once wired), `shone`, `outshone`, `blamed`. `REL.know.trait[0]` = 1: the behaviour
+shows after one memory, and on the card of anyone met (`personMet`) at once; the card also shows talent and gifts once `Gifts.known` (T-320 contract,
+behind a `typeof Gifts` guard).
+
+**Presence (T-324, spec §4.35).** `Rel.presence(p)` → 2 (S) / 1 (A) / 0 from `Gifts.tier` (T-320) or, until it lands, `p.pot` (S ≥ 1.4,
+A ≥ 1.2); 0 for you (`p.you`). Display only, never the letter. Portraits: `faceSVG` → `PORTRAIT.frame` wraps every S / A portrait (drawn,
+3D or waiting) in `<span class="gift">` (S: `gift glint`); css/people.css draws the gold edge (`::before`), the crest gem (`::after`) and S's sheen
+(`gift-glint`, off under `html.reduced`); `--gift` (css/theme.css) is used only here. Court: actors3d `dressFigure` caches `pl.pres`; `glow()` gives
+an idle gold aura (S 0.4 / A 0.3 opacity, the `--gift` token read once) unless the player's own aura (element full, OP, star in the air) or
+Fever's team glow is up; S also spawns a gold `fx.mote` now and then (Math.random, display only). First meeting: `Story.hub` (after the
+result scene, before a lesson) → `Story.presence`: the first S / A NPC met (a squadmate, `run.met`, or a memory with you) whose
+`run.story.seen['presence:<id>']` is unset gets a generated quiet scene — cut dark with `sfx: 'chime'` (`sfx.chime`, js/audio/sfx.js; played by
+`Story.advance` when `sfx` exists), a diary log, a 0.9 s wait, the diary line (`MEET.presence`, by `hstr(id)`); quiet = it leaves `run.story.at`
+alone (the day's lesson still comes). Story mode only; no save change.
 
 **People sheet (T-062, T-123).** `run.people[id].known = { want, traits[2] }` (added by `People.ensure`): `Rel.reveal` (called from `Rel.add`) flips
 the want after REL.know.want memories and each trait at REL.know.trait[i] (one diary line each); `People.knows(run, p, 'want' | 'trait', i)`

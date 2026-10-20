@@ -104,6 +104,48 @@ const Story = {
     Story.advance(run);
     return true;
   },
+  /**
+   * Presence (spec §4.35): the first S/A player you have met (a squadmate, faced on court, or one with a memory of you) whose beat
+   * has not played, or null. Hash-free, no randoms.
+   */
+  presenceDue(run) {
+    if (!Story.on(run) || run.story.cur) return null;
+    const mates = new Set(Run.mates(run).map(p => p.id));
+    return (
+      People.all(run).find(
+        p =>
+          !run.story.seen[`presence:${p.id}`] &&
+          Rel.presence(p) > 0 &&
+          ((run.met && run.met[p.id]) || mates.has(p.id) || Rel.list(run, p.id).length > 0)
+      ) || null
+    );
+  },
+  /**
+   * The presence beat, once per S/A player (a generated scene): the screen goes dark a moment with a soft chime, then a diary line
+   * (MEET.presence, picked by a hash of their id). Quiet: it does not use up the day's lesson (`run.story.at`). True when it started.
+   */
+  presence(run) {
+    const p = Story.presenceDue(run);
+    if (!p) return false;
+    const L = MEET.presence,
+      text = L[Math.floor(hstr(`presence|${p.id}`) * L.length)].replace(/\{n\}/g, p.name.split(' ')[0]);
+    run.story.cur = {
+      id: `presence:${p.id}`,
+      i: -1,
+      mode: {},
+      log: [],
+      quiet: true,
+      steps: [
+        { k: 'cut', dark: true, sfx: 'chime' },
+        { k: 'diary', text },
+        { k: 'wait', ms: 900 },
+        { k: 'say', who: 'diary', text },
+        { k: 'end' }
+      ]
+    };
+    Story.advance(run);
+    return true;
+  },
   /** A match of yours just ended (Cup.record): its moment for the `result` trigger. */
   matched(run, kind, win, played) {
     if (Story.on(run)) run.story.res = { kind, win: !!win, played: !!played, week: run.week };
@@ -117,7 +159,7 @@ const Story = {
     if (run.story.meet != null && Story.meet(run)) return true; // a new squad first: its players introduce themselves
     const r = !!run.story.res && Story.fire(run, 'result');
     delete run.story.res;
-    return r || Story.fire(run, 'hub');
+    return r || Story.presence(run) || Story.fire(run, 'hub'); // someone with presence you just met, before a lesson
   },
   /** You clicked map id `pick` (career-map.js): a lesson about that kind of place, the first time only. True when one started. */
   pick: (run, pick) => Story.fire(run, 'pick', pick),
@@ -167,8 +209,10 @@ const Story = {
     for (let guard = 0; guard < 500; guard++) {
       const s = steps[++cur.i];
       if (!s || s.k === 'end') return Story.finish(run);
-      if (s.k === 'cut') cur.mode = { dark: !!s.dark, bars: !!s.bars };
-      else if (s.k === 'set') run.story.flags[s.flag] = s.v === undefined ? true : s.v;
+      if (s.k === 'cut') {
+        cur.mode = { dark: !!s.dark, bars: !!s.bars };
+        if (s.sfx && typeof sfx !== 'undefined' && sfx[s.sfx]) sfx[s.sfx](); // (a sound with the cut: the presence chime; none headless)
+      } else if (s.k === 'set') run.story.flags[s.flag] = s.v === undefined ? true : s.v;
       else if (s.k === 'diary') Run.log(run, s.text);
       else if (s.k === 'gazette') Run.log(run, s.text);
       else if (s.k === 'goto') cur.i = Story.idx(cur.id, s.step) - 1;
@@ -184,7 +228,7 @@ const Story = {
   finish(run) {
     run.story.seen[run.story.cur.id] = true;
     Feel.scene(run, run.story.cur.id); // a scene that hurts fills Pain (spec §4.30)
-    run.story.at = Story.clock(run);
+    if (!run.story.cur.quiet) run.story.at = Story.clock(run);
     run.story.cur = null;
   }
 };
