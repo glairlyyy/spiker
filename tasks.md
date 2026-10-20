@@ -83,7 +83,7 @@ Accept: tests — the event fires once at 50; paying moves money and rolls the s
 QA: career run (forced bond 50) → the card, pay, the Me sheet.
 Result:
 
-### [~] T-324: Presence — S/A portrait frame, court glow, the first meeting
+### [x] T-324: Presence — S/A portrait frame, court glow, the first meeting
 Agent: P
 Spec: §4.35 (Presence)          Goldens: unchanged (display only)          Save: no change (`run.met` or a new `run.presence` set of ids — a RUN_DEFAULTS field)
 Goal: every portrait of an S/A player has the gold frame (S shimmers); on court their aura glows faintly at idle (S with gold
@@ -94,7 +94,7 @@ tests/people.test.js, tests/ui-smoke.js (a frame on an S portrait)
 Do not: reveal the letter; use faction or element colours; add a pop-up.
 Accept: tests — an S and an A get the frame class, a B doesn't; the beat fires once per S/A on first meeting; UI smoke passes.
 QA: career run (force an S into the squad) → the people drawer, a match; Monster game (one S) → the court glow.
-Result:
+Result: frame in faceSVG (`.gift`/`.glint`, `--gift` #f2b53a, reduced motion off), court glow S 0.4 / A 0.3 + rare S motes, presence beat = quiet Story scene (dark + `sfx.chime` + diary line), once via `run.story.seen` (no RUN_DEFAULTS field); 2 tests; UI smoke 14/14 (not extended: ui-smoke.js isn't P's — checked by QA: S/A frames in the People sheet, the beat, Monster glow vs control). Open: Gifts.tier (G) replaces the pot fallback in Rel.presence.
 
 ### [ ] T-323: Gifts rub off in training
 Agent: G

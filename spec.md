@@ -1348,7 +1348,10 @@ the AI coach fills every slot you leave with the same function. Built and measur
     A — a thin gold edge and a small crest in a corner; S — the same with a slow shimmer. One new theme token `--gift` (gold),
     used only here. (3) **On court**: a faint idle glow in the aura sprite on an S/A player (S also a few slow gold motes rising),
     off-element so it never reads as one. (5) **First meeting**: once per S/A player, a short presence beat — the screen dims a
-    moment, a soft chime, a diary line ("Something about her. I don't know what yet.", voice `diary`).
+    moment, a soft chime, a diary line ("Something about her. I don't know what yet.", voice `diary`). **[built 2026-10-20, T-324:
+    tier from `pot` until Gifts lands; the beat = a quiet Story scene (dark — the box has no dim mode — chime, one of 4 diary lines), Story
+    mode only, once per player via `run.story.seen` (no save change); a met player = squadmate, faced on court or a memory with you; the
+    court glow yields to an element-full / OP / airborne-star aura and to Fever]**
   - **[open]**: close friends favoured into your year-2 Cup squad (the squad lever from §4.32); a jealous friend turning once they
     discover your learned gift.
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has

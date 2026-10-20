@@ -468,7 +468,7 @@ function glow(pl, d, pos, dt, fx) {
     own = full ? (air ? 0.65 : 0.4) : d.p.op ? (air ? 0.55 : 0.22) : d.p.star && air ? 0.35 : 0,
     team = look === 'full' ? 0.3 : look === 'faint' ? 0.14 : look === 'haze' ? 0.18 : 0,
     pres = A.animLab ? 0 : pl.pres, // (cached in dressFigure)
-    gift = pres && !own && team < 0.3 ? (pres > 1 ? 0.2 : 0.15) : 0, // off-element gold, under Fever's team glow
+    gift = pres && !own && team < 0.3 ? (pres > 1 ? 0.4 : 0.3) : 0, // off-element gold, under Fever's team glow
     targ = Math.max(own, team, gift);
   pl.aura.material.color.set(
     full ? ECOL[d.p.el] : d.p.op ? '#ff2846' : gift ? GIFT() : look === 'haze' && !own ? '#8b9099' : d.p.team.color
