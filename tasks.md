@@ -83,7 +83,7 @@ Accept: tests — the event fires once at 50; paying moves money and rolls the s
 QA: career run (forced bond 50) → the card, pay, the Me sheet.
 Result:
 
-### [ ] T-324: Presence — S/A portrait frame, court glow, the first meeting
+### [~] T-324: Presence — S/A portrait frame, court glow, the first meeting
 Agent: P
 Spec: §4.35 (Presence)          Goldens: unchanged (display only)          Save: no change (`run.met` or a new `run.presence` set of ids — a RUN_DEFAULTS field)
 Goal: every portrait of an S/A player has the gold frame (S shimmers); on court their aura glows faintly at idle (S with gold

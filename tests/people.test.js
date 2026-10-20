@@ -1106,3 +1106,82 @@ test('fixes: poach_advice lines say what happened; an unanswered one is news too
     'and the Gazette says so'
   );
 });
+
+// ---- Presence (T-324, spec §4.35): the S / A portrait frame and the first-meeting beat ----
+const mkFaces = g =>
+  new Function('Rel', 'esc', `${fs.readFileSync(path.join(__dirname, '..', 'js/render/faces.js'), 'utf8')}\nreturn { faceSVG, PORTRAIT };`)(
+    g.Rel,
+    x => String(x)
+  );
+test('presence: an S and an A portrait get the gold frame (S shimmers), a B and you do not; the letter never shows', () => {
+  const [g, run] = mkPeople(131),
+    F = mkFaces(g),
+    [s, a, b] = g.Run.mates(run),
+    you = g.Run.you(run);
+  s.pot = 1.5;
+  a.pot = 1.25;
+  b.pot = 1.0;
+  you.pot = 1.6;
+  eq([s, a, b, you].map(p => g.Rel.presence(p)).join(','), '2,1,0,0', 'Rel.presence from pot: S 2, A 1, B 0, never you');
+  const hs = F.faceSVG(s, 0, 48),
+    ha = F.faceSVG(a, 0, 48);
+  assert(hs.startsWith('<span class="gift glint">') && /<svg/.test(hs), 'S: frame + shimmer around the face');
+  assert(ha.startsWith('<span class="gift">'), 'A: the frame, no shimmer');
+  assert(!/gift/.test(F.faceSVG(b, 0, 48)) && !/gift/.test(F.faceSVG(you, 0, 48)), 'B and you: none');
+  assert(![hs, ha].some(h => /\b[SA]\b(?![^<]*>)/.test(h.replace(/<[^>]*>/g, ''))), 'no letter in the markup text');
+});
+test('presence: the beat plays once per S / A player you meet (dark, chime cue, a diary line); none for a B; no R()', () => {
+  const [g, run] = mkPeople(132),
+    [s, a, b] = g.Run.mates(run);
+  s.pot = 1.45;
+  a.pot = 1.2;
+  b.pot = 1.1;
+  const far = g.People.all(run).find(p => p.team && p.team !== g.Run.myTeam(run));
+  far.pot = 1.5; // not met: no beat
+  assert(g.Story.on(run), 'Story mode');
+  g.Story.skip(run); // the cold open
+  g.RNG.seed(7);
+  const next = [g.R(), g.R()];
+  g.RNG.seed(7);
+  const ids = [];
+  for (let i = 0; i < 20 && g.Story.hub(run); i++) {
+    const cur = run.story.cur;
+    ids.push(cur.id);
+    if (cur.id.startsWith('presence:')) {
+      eq(cur.mode.dark, true, 'the screen goes dark');
+      eq(cur.steps[0].sfx, 'chime', 'with the chime');
+      eq(g.Story.step(run).k, 'wait', 'a moment first');
+      g.Story.next(run);
+      const st = g.Story.step(run);
+      assert(
+        st.k === 'say' &&
+          st.who === 'diary' &&
+          g.MEET.presence.some(l => st.text === l.replace(/\{n\}/g, g.People.find(run, cur.id.slice(9)).name.split(' ')[0])),
+        'then a diary line'
+      );
+      assert(!/\b[SA]\b/.test(st.text), 'never the letter');
+    }
+    g.Story.skip(run);
+  }
+  eq(JSON.stringify([g.R(), g.R()]), JSON.stringify(next), 'the main random stream is untouched');
+  const pres = ids.filter(x => x.startsWith('presence:'));
+  eq(pres.sort().join(','), [`presence:${a.id}`, `presence:${s.id}`].sort().join(','), 'one beat each for the S and the A mate');
+  assert(
+    run.log.some(l =>
+      g.MEET.presence.some(t => l.t === t.replace(/\{n\}/g, s.name.split(' ')[0]) || l.t === t.replace(/\{n\}/g, a.name.split(' ')[0]))
+    ),
+    'the line is in the diary'
+  );
+  for (let i = 0; i < 5 && g.Story.hub(run); i++) {
+    assert(!run.story.cur.id.startsWith('presence:'), 'never twice');
+    g.Story.skip(run);
+  }
+  run.met[far.id] = true; // faced on court
+  run.story.at = null;
+  assert(g.Story.hub(run) && run.story.cur.id === `presence:${far.id}`, 'meeting them on court plays it');
+  g.Story.skip(run);
+  run.mode.story = false;
+  far.pot = 1.6;
+  delete run.story.seen[`presence:${far.id}`];
+  assert(!g.Story.presence(run), 'Story mode only');
+});

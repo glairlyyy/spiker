@@ -9,11 +9,11 @@ const moodK = v => (v >= 0.6 ? 'fire' : v >= 0.2 ? 'happy' : v > -0.2 ? 'calm' :
  */
 function faceSVG(p, mood, size) {
   const req = PORTRAIT.req(p);
-  if (!req) return faceSVG2D(p, mood, size);
+  if (!req) return PORTRAIT.frame(p, faceSVG2D(p, mood, size));
   const url = PORTRAIT.cache.get(req.key);
-  if (url) return PORTRAIT.img(url, p, size);
+  if (url) return PORTRAIT.frame(p, PORTRAIT.img(url, p, size));
   PORTRAIT.want(req);
-  return `<span class="face3d wait" data-pk="${esc(req.key)}" data-sz="${size}">${faceSVG2D(p, mood, size)}</span>`;
+  return PORTRAIT.frame(p, `<span class="face3d wait" data-pk="${esc(req.key)}" data-sz="${size}">${faceSVG2D(p, mood, size)}</span>`);
 }
 /** The 3D portrait cache and loader (display only). */
 const PORTRAIT = {
@@ -30,6 +30,14 @@ const PORTRAIT = {
     const main = !!(p.you || (typeof RUN !== 'undefined' && RUN && p.id === RUN.youId)),
       kit = { shirt: (p.team && p.team.color) || '#3a4a7a', hair: p.hair, skin: p.look.skin };
     return { main, kit, key: main ? 'main' : `${kit.shirt}|${kit.hair}|${kit.skin}` };
+  },
+  /**
+   * The presence frame (spec §4.35): an S/A player's portrait in a thin gold edge with a small crest (`.gift`; S also shimmers, `.glint`).
+   * Same look for both but the shimmer — never the letter. Not you. Rel.presence reads Gifts.tier, else p.pot.
+   */
+  frame(p, html) {
+    const pr = typeof Rel !== 'undefined' ? Rel.presence(p) : 0; // (0 for you: p.you)
+    return pr ? `<span class="gift${pr > 1 ? ' glint' : ''}">${html}</span>` : html;
   },
   img: (url, p, size) =>
     `<img class="face face3d" src="${url}" width="${size}" height="${size}" alt="${esc(p.name || '')}" draggable="false">`,
