@@ -102,6 +102,8 @@ const Training = {
   sim(run, stat, xp, src = 'train') {
     stat = Training.key(run, stat);
     const top = Training.top(run, stat, src);
+    const g = Gifts.grow(run, Run.you(run), src, stat); // your learned growth gifts (spec §4.35)
+    if (g !== 1) xp = Math.round(xp * g);
     let v = Training.level(Run.you(run), stat),
       have = ((run.xp && run.xp[stat]) || 0) + xp,
       pts = 0;
@@ -210,9 +212,11 @@ const Training = {
       run.money += pv.pay; // a Work order pays (spec §4.33)
       out.push(`+$${pv.pay}`);
     }
+    const gen = hasGift(Run.you(run), 'generous') ? GIFTS.generous.k : 1, // Generous (yours): your mates take × more (spec §4.35)
+      share = gen === 1 ? pv : { main: [pv.main[0], pv.main[1] * gen], side: [pv.side[0], pv.side[1] * gen] };
     for (const id of pv.mates) {
       out.push(Run.bond(run, id, undefined, 'trained'));
-      Growth.shared(run, id, pv);
+      Growth.shared(run, id, share);
     }
     const fk = at || key, // the facility that levels: the place (an order), else the training key
       grows = at ? !!(SPOTS[at] && SPOTS[at].kit) : !O,

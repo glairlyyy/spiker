@@ -1,4 +1,4 @@
-// Event cards: the Element Trial and sponsor offers (the random training events are gone, owner 2026-10-05).
+// Event cards: the Element Trial, sponsor offers and the gift chance (spec §4.35) (the random training events are gone, owner 2026-10-05).
 
 const Events = {
   /** Event definition. Special events: 'element' (Element Trial), 'sponsor' (offer at a fan milestone). */
@@ -26,6 +26,22 @@ const Events = {
         b: o[1] ? [`Sign ${o[1].name}`, `${o[1].perk}. Condition: ${o[1].cond.toLowerCase()}`] : ['Decline', 'No deal']
       };
     }
+    if (ev.id === 'gift') {
+      // the gift chance (spec §4.35): a friend offers to show you a gift
+      const G = GIFTS[ev.gift],
+        p = run ? People.find(run, ev.who) : null,
+        n = p ? p.name.split(' ')[0] : 'A friend',
+        short = run ? Math.max(0, ev.cost - run.money) : 0;
+      return {
+        title: `${n}: ${G.name}`,
+        text: run ? Gifts.line('offer', run, ev.who, ev.gift) : '',
+        a: [
+          `Pay $${ev.cost}`,
+          short ? `Short $${short}: no deal` : `${Math.round(ev.p * 100)}% chance: ${G.name} — ${G.desc} Fail: the money is gone`
+        ],
+        b: ['Decline', `${n} won't offer again`]
+      };
+    }
     return null; // the random training events are gone (owner, 2026-10-05); an old save's leftover clears on load
   },
   /** Fill {mate} and {cap}. */
@@ -47,6 +63,7 @@ const Events = {
       const id = ev.opts[i];
       return id ? Sponsors.sign(run, id) : 'Declined the sponsor offers.';
     }
+    if (ev.id === 'gift') return Gifts.answer(run, i);
     run.event = null;
     return '';
   }

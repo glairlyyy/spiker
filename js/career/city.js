@@ -190,6 +190,11 @@ const City = {
   },
   /** A day at a place (after the trip there): a day order (spec §4.33), rest, relax or an outing. Returns the diary line. */
   day(run, id, hard, mate) {
+    const line = City.dayDo(run, id, hard, mate);
+    if (line) Gifts.ask(run); // a day may have raised a bond to the gift chance (spec §4.35)
+    return line;
+  },
+  dayDo(run, id, hard, mate) {
     if (!City.can(run, id, mate).ok) return '';
     const oid = City.orderOf(id, mate);
     if (oid) return City.orderDay(run, id, oid, hard);

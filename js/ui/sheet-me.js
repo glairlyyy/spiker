@@ -22,7 +22,7 @@ function sheetMe(run) {
       def: 'Flexibility, Agility, Endurance'
     },
     B = you.body,
-    sw = B ? Body.swing(B) : 1,
+    sw = B ? Body.swing(B, you) : 1,
     swingRow = B
       ? `<div class="mrow swing" ${tip(`A full swing needs Flexibility ≥ ${BODY.swing} × Strength: without it Strength is wasted on Power (and a shallow load costs Jump).`)}><span>Swing</span><span class="mbars"><i class="mb ${sw < 1 ? 'short' : ''}"><i style="--w:${Math.round(sw * 100)}%"></i></i></span><span class="mv small ${sw < 1 ? 'warn' : 'up'}">${sw < 1 ? `short` : 'full'}</span></div>${
           sw < 1
@@ -73,6 +73,7 @@ function sheetMe(run) {
         <div class="mrow"><span>${statI('led', 20)}Leadership</span><span class="mbars"><i class="mb lead"><i style="--w:${you.lead}%"></i></i></span><span class="mv"><b>${you.lead}</b></span></div>
         ${elementLine(run)}
         ${traitLines(run)}
+        ${giftLines(run)}
         ${
           run.injury
             ? `<div class="inj"><b>Injured</b> ${run.injury.weeks}w — light training only (×0.4 gains, half stamina) <button class="btn" onclick="seePhysio()" ${run.sp < TRAIN_X.physio ? 'disabled' : ''}>Physio · ${TRAIN_X.physio} pts</button></div>`
@@ -88,6 +89,14 @@ function sheetMe(run) {
       <section class="card"><div class="lab" ${tip(`Payday every ${ECON.payEvery} weeks: +$${ECON.allowance} allowance, −$${ECON.food} food, −rent. Run out of money and you're evicted to the abandoned gym.`)}>Life · payday W${next}</div>
         <div class="homes">${homeRow(run, run.housing)}</div>${peek('me:homes', 'Change home', `<div class="lab">Homes</div><div class="homes">${HOUSEK.map(k => homeRow(run, k)).join('')}</div>`, 'mmore')}</section>
     </div>`;
+}
+/** Your learned gifts (spec §4.35): name, the registrar's numbers. */
+function giftLines(run) {
+  const g = (run.gifts || []).filter(id => GIFTS[id]);
+  if (!g.length) return '';
+  return `<div class="lab sub" ${tip(`Shown by a friend. For good. At most ${GIFT_ASK.max}.`)}>Gifts</div>${g
+    .map(id => `<div class="srow" ${tip(GIFTS[id].desc)}><b>${esc(GIFTS[id].name)}</b><span class="ptag sel">Gift</span></div>`)
+    .join('')}`;
 }
 /** Your Sparks and Scars (spec §4.30): named ones with their numbers; a Scar not yet shown in a match is only "something broke". */
 function traitLines(run) {

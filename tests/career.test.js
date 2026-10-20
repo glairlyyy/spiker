@@ -41,7 +41,7 @@ test('career: a full run reaches a result with sane values', () => {
 test('career: week steps are ordered lists of functions (T-202)', () => {
   const g = load(5);
   eq(g.WEEK_END.length, 8, 'eight week-end steps (Drive & Pain, the secret places: T-290, T-292)');
-  eq(g.WEEK_START.length, 6, 'six week-start steps');
+  eq(g.WEEK_START.length, 7, 'seven week-start steps (the gift chance: T-322)');
   assert(
     [...g.WEEK_END, ...g.WEEK_START].every(f => typeof f === 'function'),
     'every step is a function'

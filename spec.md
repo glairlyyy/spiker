@@ -1340,7 +1340,9 @@ the AI coach fills every slot you leave with the same function. Built and measur
     a gift first passes **50**, they offer to show you (an event card, like the sponsor offer): **pay** (by the gift: $150 · $300 ·
     $500 for a rare one) for a chance at it — 35 % + 1 % per bond point over 50 — or **decline**. Once per friend; the MC keeps at
     most 2 gifts; only the good ones are on offer (never Glass Bones, Choker, Lone Wolf, Elementless, Dormant, Early Peak). A
-    learned gift works on the MC as on an NPC (its growth / body / mind effects).
+    learned gift works on the MC as on an NPC (its growth / body / mind effects). **[built 2026-10-20, T-322]**: checked at each week's start and
+    after every day; the friend with the highest bond goes first; short of money = no deal and no second offer; the roll is
+    a hash of the run (no luck re-rolls by reloading).
   - **Rubbing off**: training beside a friend (bond 60+) with a body or growth gift gives that session a share of it (Rubber
     Joints → Flexibility gains × 1.2 that day; Grinder → training × 1.15; …).
   - **Presence** (owner, 2026-10-20: "S and A should be noticeable even without scouting — a cool portrait decoration, an aura"):

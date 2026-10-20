@@ -973,5 +973,11 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   unlocks Elementless or an unwoken Dormant; `elCharge` × Element-born; `elSpike` — Twin plays `el2` / `sig2` on every other
   spike (`m.stat[pid].els` odd); bars.js `hpHit` × Iron Frame; `gfMor` / `giftMor` (cached carriers `m.gfP`) after morPoint and a
   negative morAdd from `TRAIT_LATE_PTS`: Choker's drop × 1.5, Ice Veins' floor (−0.55, above Rattled); Contagious in morPoint.
+- **Gift chance** (T-322): `Gifts.ask(run)` (WEEK_START, and `City.day` → `dayDo` then ask) opens `run.event = { id: 'gift', who,
+  gift, cost, p, pre }` for the highest-bond friend at GIFT_ASK.bond+ with a priced gift you lack (once: `run.giftAsk[id]` = week;
+  none in a cup, none at GIFT_ASK.max); Events.def / choose → `Gifts.answer` (pay: money, `Gifts.mix(hstr(pseed|giftask|who|gift))`
+  < p → `Gifts.learn`). Lines `GIFT_LINES` (diary). Yours: `run.gifts` → `you.gifts` (`Gifts.sync`, Run.repair); growth ×
+  `Gifts.grow` in `Training.sim` (preview and gain alike), body bonus `Gifts.stat` in `Body.sync`, `Body.swing(b, p)` full with
+  Rubber Joints, Generous scales the `Growth.shared` pv in Training.session. Me sheet: `giftLines`.
 - **Not here** (Agent P, rel.js): Magnetic / Lone Wolf bond growth — `Rel.add` can scale a positive memory by
-  `GIFTS[id].k` of the NPC's gift.
+  `Gifts.bondMul(run, id)` (their Magnetic / Lone Wolf × your Magnetic).

@@ -99,6 +99,78 @@ const Gifts = {
     }
     return x;
   },
+  /** Bond growth × with NPC `id` (positive memories; for Rel.add): their Magnetic / Lone Wolf, your Magnetic. */
+  bondMul(run, id) {
+    const p = People.find(run, id);
+    let x = 1;
+    for (const g of ['magnetic', 'loneWolf']) if (hasGift(p, g)) x *= GIFTS[g].k;
+    if (hasGift(Run.you(run), 'magnetic')) x *= GIFTS.magnetic.k;
+    return x;
+  },
+  /** Your learned gifts (`run.gifts`) onto your player (`you.gifts`, read by the engine and the career like an NPC's). */
+  sync(run) {
+    const you = Run.you(run);
+    if (!you) return;
+    if (run.gifts && run.gifts.length) you.gifts = run.gifts.filter(id => GIFTS[id]);
+    else delete you.gifts;
+  },
+  /** The gift chance for `bond`: GIFT_ASK.base + per point over GIFT_ASK.bond (≤ 0.95). */
+  chance: bond => clamp(GIFT_ASK.base + GIFT_ASK.per * Math.max(0, bond - GIFT_ASK.bond), 0, 0.95),
+  /** A gift of p's you could learn: one with a cost (the good ones) that you don't have. */
+  offerOf: (run, p) => Gifts.of(p).find(id => GIFTS[id] && GIFTS[id].cost && !(run.gifts || []).includes(id)) || null,
+  /** One of a line list by hash, {n} / {g} filled. */
+  line(k, run, who, gift) {
+    const L = GIFT_LINES[k],
+      p = People.find(run, who),
+      n = p ? p.name.split(' ')[0] : 'Someone';
+    return L[Math.floor(hstr(`gline|${k}|${who}|${run.pseed}`) * L.length)]
+      .replace(/\{n\}/g, () => n)
+      .replace(/\{g\}/g, () => GIFTS[gift].name);
+  },
+  /**
+   * The gift chance event (spec §4.35): the first friend (highest bond) whose bond with you has reached GIFT_ASK.bond and who has a
+   * gift to offer gets run.event 'gift' — once per friend (`run.giftAsk`), not with an event open, in a cup or at GIFT_ASK.max gifts.
+   * Checked at the week's start and after each day (City.day). Returns true when it opened.
+   */
+  ask(run) {
+    if (run.event || Run.cupDef(run) || (run.gifts || []).length >= GIFT_ASK.max) return false;
+    const asked = run.giftAsk || (run.giftAsk = {}),
+      ids = [...new Set(Object.keys(run.mem || {}).flatMap(k => k.split('|')))].filter(id => id !== run.youId && !asked[id]);
+    let best = null;
+    for (const id of ids) {
+      const me = run.people && run.people[id],
+        p = me && me.status === 'active' ? People.find(run, id) : null,
+        bond = p ? Rel.bondOf(run, id) : 0,
+        gift = bond >= GIFT_ASK.bond ? Gifts.offerOf(run, p) : null;
+      if (gift && (!best || bond > best.bond || (bond === best.bond && id < best.id))) best = { id, bond, gift };
+    }
+    if (!best) return false;
+    asked[best.id] = run.week;
+    run.people[best.id].known.gifts = true; // they told you
+    run.event = { id: 'gift', who: best.id, gift: best.gift, cost: GIFTS[best.gift].cost, p: Gifts.chance(best.bond), pre: true };
+    return true;
+  },
+  /** Answer the event: pay (i = 0) or decline. Paying rolls the chance on a hash (no R()). Returns the diary line. */
+  answer(run, i) {
+    const ev = run.event;
+    run.event = null;
+    if (i) return Gifts.line('decline', run, ev.who, ev.gift);
+    if (run.money < ev.cost) return Gifts.line('short', run, ev.who, ev.gift);
+    run.money -= ev.cost;
+    const got = Gifts.mix(hstr(`${run.pseed}|giftask|${ev.who}|${ev.gift}`)) < ev.p;
+    if (got) Gifts.learn(run, ev.gift);
+    return `${Gifts.line(got ? 'won' : 'lost', run, ev.who, ev.gift)} (−$${ev.cost}${got ? `, ${GIFTS[ev.gift].name}: ${GIFTS[ev.gift].desc}` : ''})`;
+  },
+  /** You learn gift `id` (max GIFT_ASK.max): into run.gifts, onto you, its once-only part (Leadership, Twin), your body re-synced. */
+  learn(run, id) {
+    if (!GIFTS[id] || (run.gifts || []).includes(id) || (run.gifts || []).length >= GIFT_ASK.max) return false;
+    (run.gifts || (run.gifts = [])).push(id);
+    Gifts.sync(run);
+    const you = Run.you(run);
+    Gifts.innate(you, [id]);
+    Body.sync(you, run);
+    return true;
+  },
   /** The first Cup wakes a Dormant element: every player of the Cup's squads (Run.endWeek, after Cup.start). */
   wake(run) {
     const ids = new Set(((run.cup && run.cup.entrants) || []).flatMap(e => e.ids || []));

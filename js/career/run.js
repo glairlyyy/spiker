@@ -361,6 +361,7 @@ const Run = {
     if (!Number.isFinite(run.sta)) run.sta = run.staMax;
     if (!run.mode || typeof run.mode !== 'object') run.mode = { hard: false, short: false, story: true };
     if (typeof run.mode.story !== 'boolean') run.mode.story = true;
+    Gifts.sync(run); // your learned gifts onto your player (spec §4.35)
     Feel.sync(run); // your Sparks and Scars onto your player (you.traits); an old save's pending Scars are rolled
     // an event this version no longer knows (removed / renamed) would leave the week stuck on a blank card
     if (run.event && !Events.def(run.event, run)) run.event = null;
@@ -444,6 +445,8 @@ const RUN_DEFAULTS = {
   dayLog: [() => [], Array.isArray], // what each spent day of this week was (the hub's day track, spec §10.2)
   pos: [() => CITY.airport.slice(), Array.isArray], // where you stand on the map
   story: [() => ({ seen: { intro: true }, flags: {}, cur: null }), isObj], // story scenes; a run saved before them skips the intro
+  gifts: [() => [], Array.isArray], // the gifts you learned (spec §4.35; Gifts.sync → you.gifts), at most GIFT_ASK.max
+  giftAsk: [() => ({}), isObj], // NPC id → the week they offered you a gift (once per friend)
   fav: [() => [], Array.isArray] // starred people (ids as strings): pinned in the People list, display only (spec §10.9)
 };
 /** Run rank letter for a fan count (RANKS is ordered from the top rank down). */
@@ -468,5 +471,6 @@ const WEEK_START = [
   run => Sponsors.offer(run),
   run => ElTrial.offer(run),
   run => Eval.setup(run),
-  run => Asks.roll(run)
+  run => Asks.roll(run),
+  run => Gifts.ask(run) // the gift chance (spec §4.35; no draws)
 ];

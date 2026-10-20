@@ -70,7 +70,7 @@ Accept: tests per behaviour (e.g. Picky: no bond gain until the bar; Shy: first 
 QA: career run → the People sheet.
 Result:
 
-### [ ] T-322: The gift chance event
+### [x] T-322: The gift chance event
 Agent: G
 Spec: §4.35          Goldens: unchanged          Save: no change (`run.gifts` for the MC, `run.giftAsk` once-per-friend)
 Goal: bond with a gifted friend first passes 50 → an event card (pay $ for 35 % + 1 % per point over 50, or decline); a learned
@@ -81,7 +81,7 @@ js/ui/sheet-me.js (your gifts), tests/gifts.test.js
 Do not: offer Glass Bones, Choker, Lone Wolf, Elementless, Dormant or Early Peak; fire twice for one friend.
 Accept: tests — the event fires once at 50; paying moves money and rolls the stated chance (seeded); a learned gift acts.
 QA: career run (forced bond 50) → the card, pay, the Me sheet.
-Result:
+Result: Gifts.ask (WEEK_START + after every City.day) → event 'gift' (Events.def / choose → Gifts.answer): the highest-bond friend at 50+ with a priced gift you lack, once per friend (`run.giftAsk`), ≤ 2 (`run.gifts` → `you.gifts` via Gifts.sync); pay rolls a hash (no R()); short of money = no deal (said on the card); learned: growth in Training.sim, body bonus in Body.sync, Rubber Joints full swing, Leadership, Generous scales your mates' share; engine reads you.gifts; Me sheet 'Gifts'. Magnetic needs Rel.add × `Gifts.bondMul(run, id)` (Agent P). Tests: map.test clears the event a bond opened; WEEK_START 7. QA: card → pay → Me sheet (Defense +3, full swing), 0 page errors; UI smoke 14/14; career 12 both league 81.7 / 87.0, 81.6 / 87.1 (good you Y2 93.6).
 
 ### [ ] T-324: Presence — S/A portrait frame, court glow, the first meeting
 Agent: P

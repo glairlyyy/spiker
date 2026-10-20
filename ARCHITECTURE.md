@@ -231,7 +231,7 @@ their `onLeave` only cleans up (`Eval.restore`). The UI opens them with `watchCa
 - **Matches** (`career/cup.js`; street battles, the Raid order (`Fight.raid`, T-318), challenges, loss and injury are `Fight` in `career/fight.js`): an S–C grade from your own line scales that match's rewards; a pre-match focus goal;
   a captain's team talk before Cup matches (applied in `Cup.prepare` and the fixture's `setup(m)` hook).
 - Content is data: `data/career.js` (numbers, trainings, calendar, cups, rewards, ranks, unlocks, sponsors, modes),
-  `data/skills.js`. The only event cards are the Element Trial and sponsor offers, built in `Events.def` (the random training events were removed, owner 2026-10-05).
+  `data/skills.js`. The only event cards are the Element Trial, sponsor offers and the gift chance (`Gifts.ask`, spec §4.35), built in `Events.def` (the random training events were removed, owner 2026-10-05).
 - Skills reach the engine only through `skillMod(p, key)` and bonds through `bondCombo(a, b)` (`engine/skills.js`);
   both are neutral for normal players and draw no random numbers.
 - Skills in the shop vs in play (T-036): basic skills (no `tech`) are bought with skill points (`Skills.learn`); techniques can't be
@@ -273,7 +273,7 @@ moving for 6 s (25 s while the 3D players load) or one beat lasts 20 s, with a s
 ## Saves
 
 Career runs carry `v` (`RUN_VERSION` = 22, `career/run.js`; key `sns_run_v1`; v22 = `p.gifts` on every NPC (+ `p.el2` / `p.sig2`,
-`p.woke`; `run.people[id].known.gifts`; spec §4.35), older saves dropped; v21 = `run.war` (the war units' Strength, spec §4.34), `run.hex` dropped; v20 = your body `you.body` (+ `floor` / `edge` / `synced`) and body-key XP banks in `run.xp`; older saves dropped; v19 = `run.year`). History: v2 faction reserves, v3 cup
+`p.woke`; `run.people[id].known.gifts`; `run.gifts` / `run.giftAsk` (RUN_DEFAULTS); spec §4.35), older saves dropped; v21 = `run.war` (the war units' Strength, spec §4.34), `run.hex` dropped; v20 = your body `you.body` (+ `floor` / `edge` / `synced`) and body-key XP banks in `run.xp`; older saves dropped; v19 = `run.year`). History: v2 faction reserves, v3 cup
 entrants, v4 squads of 6 (`bench`), v5 `run.lb` dropped, v6 `run.met` / `street` / `refused`, v7 `losses` / `lastFight`,
 v8 `mlog`, v9 `run.mode.story`; older saves are dropped (`RUN_MIGRATIONS` is empty). Bump the version when the save shape changes and add a step to
 `RUN_MIGRATIONS[oldVersion] = data => upgraded data`; `Run.load` applies the steps in order and ignores saves from a newer version.

@@ -265,3 +265,126 @@ test('gifts: saves keep them (RUN_VERSION 22)', () => {
         .join();
   eq(ids(back), ids(run), 'every NPC keeps their gifts');
 });
+
+// ---------- T-322: the gift chance ----------
+/** A gifted NPC teammate (with a gift on offer) at bond `b` with you. */
+const giftFriend = (g, run, gift = 'springLegs') => {
+  const p = g.Run.mates(run)[0];
+  p.gifts = [gift];
+  return p;
+};
+const bondTo = (g, run, p, b) => {
+  for (let i = 0; i < 200 && g.Rel.bondOf(run, p.id) < b; i++) g.Rel.add(run, p.id, 'event', 1);
+};
+
+test('gift chance: fires once when a gifted friend’s bond reaches 50; never for a bad gift; at most 2 gifts', () => {
+  const [g, run] = mkRun(330),
+    p = giftFriend(g, run);
+  bondTo(g, run, p, 45);
+  assert(!g.Gifts.ask(run) && !run.event, 'under 50: nothing');
+  bondTo(g, run, p, 50);
+  assert(g.Gifts.ask(run), 'at 50: the offer');
+  eq(run.event.id, 'gift', 'an event card');
+  eq(run.event.who, p.id, 'from that friend');
+  eq(run.event.gift, 'springLegs', 'their gift');
+  eq(run.event.cost, g.GIFTS.springLegs.cost, 'its price');
+  const d = g.Events.def(run.event, run);
+  assert(d && d.title.includes('Spring Legs') && d.a[0].includes(`$${run.event.cost}`), 'the card: ' + JSON.stringify(d));
+  g.Events.choose(run, 1);
+  assert(!run.event, 'declined');
+  bondTo(g, run, p, 70);
+  assert(!g.Gifts.ask(run), 'never twice for one friend');
+  // bad gifts are never offered
+  const [h, r2] = mkRun(331),
+    q = giftFriend(h, r2, 'glassBones');
+  for (const bad of ['glassBones', 'choker', 'loneWolf', 'elementless', 'dormant', 'earlyPeak']) {
+    assert(!h.GIFTS[bad].cost, `${bad}: no price`);
+    q.gifts = [bad];
+    bondTo(h, r2, q, 60);
+    assert(!h.Gifts.ask(r2), `${bad}: not offered`);
+  }
+  // at most two
+  r2.gifts = ['grinder', 'reader'];
+  q.gifts = ['springLegs'];
+  assert(!h.Gifts.ask(r2), 'two gifts already: no offer');
+  assert(!h.Gifts.learn(r2, 'springLegs') && r2.gifts.length === 2, 'learn stops at 2');
+});
+
+test('gift chance: paying moves the money and rolls the stated chance (seeded, no R()); declining costs nothing', () => {
+  let got = 0,
+    n = 0;
+  for (let s = 0; s < 40; s++) {
+    const [g, run] = mkRun(340 + (s % 4)),
+      p = giftFriend(g, run, 'quickTwitch');
+    run.pseed = s * 7919 + 1;
+    bondTo(g, run, p, 60);
+    run.money = 1000;
+    assert(g.Gifts.ask(run), 'offered');
+    const ch = run.event.p,
+      bond = g.Rel.bondOf(run, p.id);
+    assert(Math.abs(ch - (0.35 + 0.01 * (bond - 50))) < 1e-9, `chance ${ch} at bond ${bond}`);
+    const x = g.R(),
+      line = g.Events.choose(run, 0);
+    eq(run.money, 1000 - g.GIFTS.quickTwitch.cost, 'paid');
+    assert(line.length > 0, 'a diary line');
+    const has = run.gifts.includes('quickTwitch');
+    if (has) got++;
+    n++;
+    // the same roll again: the same answer (a hash of the run seed and the friend)
+    const [h, r2] = mkRun(340 + (s % 4)),
+      q = giftFriend(h, r2, 'quickTwitch');
+    r2.pseed = run.pseed;
+    bondTo(h, r2, q, 60);
+    r2.money = 1000;
+    h.Gifts.ask(r2);
+    h.Events.choose(r2, 0);
+    eq(r2.gifts.includes('quickTwitch'), has, 'seeded');
+    eq(h.R(), x, 'the roll drew no R()');
+  }
+  assert(got > 4 && got < 30, `learned ${got} / ${n} at ~45 %`);
+  // decline and short
+  const [g, run] = mkRun(350),
+    p = giftFriend(g, run);
+  bondTo(g, run, p, 55);
+  run.money = 100;
+  g.Gifts.ask(run);
+  const d = g.Events.def(run.event, run);
+  assert(d.a[1].includes('Short'), 'short of money: said on the card');
+  g.Events.choose(run, 0);
+  assert(run.money === 100 && !run.gifts.length && !run.event, 'short: no deal, no money moved');
+});
+
+test('gift chance: a learned gift acts on you — Spring Legs Jump +4, Rubber Joints full swing, Grinder training, Natural Leader', () => {
+  const [g, run] = mkRun(360),
+    you = g.Run.you(run),
+    j0 = you.jump;
+  assert(g.Gifts.learn(run, 'springLegs'), 'learned');
+  eq(you.jump, j0 + 4, 'Jump +4 (your court skill, on top of the body)');
+  eq(you.gifts.join(), 'springLegs', 'you carry it (the engine reads you.gifts)');
+  g.Body.sync(you, run);
+  eq(you.jump, j0 + 4, 'kept through the next sync');
+  // Rubber Joints: the swing is never short
+  you.body.str = 80;
+  you.body.flex = 30;
+  assert(g.Body.swing(you.body, you) < 1, 'short before');
+  g.Gifts.learn(run, 'rubberJoints');
+  eq(g.Body.swing(you.body, you), 1, 'full with Rubber Joints');
+  // Grinder: training XP × 1.3 (a fresh run)
+  const [h, r2] = mkRun(361);
+  const before = h.Training.sim(r2, 'str', 100);
+  h.Gifts.learn(r2, 'grinder');
+  const after = h.Training.sim(r2, 'str', 100);
+  assert(
+    after.have > before.have || after.pts > before.pts,
+    `Grinder: more from the same session (${JSON.stringify(before)} → ${JSON.stringify(after)})`
+  );
+  const mt = h.Training.sim(r2, 'str', 100, 'match');
+  assert(mt.have < before.have || mt.pts < before.pts, 'Grinder: less from a match');
+  const [k, r3] = mkRun(362),
+    l1 = k.Run.you(r3).lead;
+  k.Gifts.learn(r3, 'leader');
+  eq(k.Run.you(r3).lead, Math.min(99, l1 + 15), 'Natural Leader: Leadership +15');
+  k.Run.save(r3);
+  const back = k.Run.load();
+  eq(k.Run.you(back).gifts.join(), 'leader', 'saved and loaded');
+});

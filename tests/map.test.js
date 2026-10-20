@@ -607,6 +607,7 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   assert(g.City.day(run, 'trail', false) && g.City.loc(run) === 'shu' && g.City.days(run) === 7 - ct, 'went up and trained');
   assert(run.spotQ.trail.known, 'training there shows what the place is really like');
   const ch = g.City.cost(run, 'home');
+  run.event = null; // (a bond may have reached the gift chance: spec §4.35)
   run.days = ch - 1;
   assert(!g.City.can(run, 'home').ok && g.City.can(run, 'home').why.includes(`only ${ch - 1} left`), 'nothing may spill into next week');
   run.days = g.City.cost(run, 'hotelShu');

@@ -5,18 +5,18 @@
 const Body = {
   /** Your body ({ str, agi, end, flex }) or null (an NPC). */
   of: p => (p && p.body) || null,
-  /** Swing range 0.5–1: a full swing needs Flexibility ≥ BODY.swing × Strength. */
-  swing: b => (b.str > 0 ? clamp(b.flex / (BODY.swing * b.str), BODY.swingMin, 1) : 1),
+  /** Swing range 0.5–1: a full swing needs Flexibility ≥ BODY.swing × Strength (p with Rubber Joints: always full, spec §4.35). */
+  swing: (b, p) => (hasGift(p, 'rubberJoints') ? 1 : b.str > 0 ? clamp(b.flex / (BODY.swing * b.str), BODY.swingMin, 1) : 1),
   /** Load depth 0.6–1: a deep jump load needs Flexibility ≥ BODY.depth × Strength. */
   depth: b => (b.str > 0 ? clamp(b.flex / (BODY.depth * b.str), BODY.depthMin, 1) : 1),
   /** The Flexibility a full swing needs now (Strength × BODY.swing, rounded up). */
   swingNeed: b => Math.ceil(BODY.swing * b.str),
-  /** The court skills of a body, unrounded: a balanced body (all four at X) gives every skill X. */
-  court(b) {
+  /** The court skills of a body, unrounded: a balanced body (all four at X) gives every skill X. p (optional): its owner's gifts. */
+  court(b, p) {
     const W = BODY.w,
       P = W.power;
     return {
-      power: P.str * b.str * (P.base + P.k * Body.swing(b)) + P.agi * b.agi,
+      power: P.str * b.str * (P.base + P.k * Body.swing(b, p)) + P.agi * b.agi,
       jump: W.jump.str * b.str * Body.depth(b) + W.jump.agi * b.agi,
       speed: W.speed.agi * b.agi + W.speed.end * b.end,
       def: W.def.flex * b.flex + W.def.agi * b.agi + W.def.end * b.end
@@ -31,14 +31,14 @@ const Body = {
   sync(p, run) {
     const b = Body.of(p);
     if (!b) return;
-    const c = Body.court(b),
+    const c = Body.court(b, p),
       E = p.edge || (p.edge = {}),
       F = p.floor || (p.floor = {}),
       S = p.synced || (p.synced = {});
     for (const k of STATK) {
       if (Number.isFinite(S[k]) && p[k] > S[k]) F[k] = Math.max(F[k] || 0, p[k]);
       else if (Number.isFinite(S[k]) && p[k] < S[k]) E[k] = (E[k] || 0) + (p[k] - S[k]);
-      p[k] = Math.round(clamp(Math.max(c[k] + (E[k] || 0), F[k] || 0), CAREER.statMin, CAREER.runCap));
+      p[k] = Math.round(clamp(Math.max(c[k] + Gifts.stat(p, k) + (E[k] || 0), F[k] || 0), CAREER.statMin, CAREER.runCap)); // + body gifts (§4.35)
       S[k] = p[k];
     }
     if (run) {

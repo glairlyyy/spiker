@@ -40,3 +40,20 @@ const GIFTS = {
   generous: { name: 'Generous', kind: 'social', w: 4, cost: 150, k: 1.5, desc: 'Training beside them: what rubs off × 1.5.' },
   contagious: { name: 'Contagious', kind: 'social', w: 4, cost: 300, k: 0.04, desc: 'Their kills lift every teammate’s morale +0.04.' }
 };
+/**
+ * The gift chance (spec §4.35, T-322): when your bond with a gifted friend first reaches `bond`, they offer to show you one of
+ * their gifts with a `cost` — pay for a chance of `base` + `per` per bond point over `bond`; once per friend; you keep at most `max`.
+ */
+const GIFT_ASK = { bond: 50, base: 0.35, per: 0.01, max: 2 };
+/** The event's lines (voice: diary — the MC). {n} = their first name, {g} = the gift. */
+const GIFT_LINES = {
+  offer: [
+    '{n} says {g} can be taught. Maybe. Not for free.',
+    '{n} offers to show me how {g} works. Their time costs, apparently.',
+    '{n} caught me after the session: "{g}. I could show you." Then named a price.'
+  ],
+  won: ['{n} showed me. {g} — mine now. Didn’t think it would take.', 'It took. {g}. {n} looked more surprised than I did.'],
+  lost: ['{n} tried. I tried. {g} didn’t take. Money gone.', 'Nothing. {n} says some bodies just don’t listen. Mine, apparently.'],
+  decline: ['Told {n} no. I’ll get there my own way.'],
+  short: ['Can’t pay {n}. {g} will have to wait.']
+};
