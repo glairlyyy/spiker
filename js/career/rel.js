@@ -206,7 +206,8 @@ const Rel = {
       p = squadOf(Run.myTeam(run)).find(q => q.id === id);
     return !!(you && p && p !== you && p.role === you.role && Math.abs(ovr(p) - ovr(you)) <= REL.rivalOvr);
   },
-  bondOf: (run, id) => clamp(Math.round(Rel.stance(run, id) * REL.bondK), 0, 100),
+  /** Stance → bond 0–100, exponential (REL.bondTau): every point past the first few takes more (owner, 2026-10-21). */
+  bondOf: (run, id) => clamp(Math.round(100 * (1 - Math.exp(-Math.max(0, Rel.stance(run, id)) / REL.bondTau))), 0, 100),
   /** Write the cached bond (only for ids World already tracks, or your current mates). */
   refresh(run, id) {
     const you = Run.you(run);

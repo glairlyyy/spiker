@@ -123,7 +123,7 @@ test.slow('people: calibration — the league grows like the old drift (5 seeds 
 // bond-week baseline on the pre-T-061 code (+7 per training session): average week the first mate reaches bond 60 / 80
 // rebased in T-132 (hex battles shift the random stream) and T-189: the named players' curves replace their breakthrough rolls, which
 // shifts the stream (no systematic change: seeds 11–18 average bond 80 at week 8.3 with them vs 8.0 without)
-const BOND_BASE = { w60: 2.6, w80: 7.5 }; // (2026-10-20: behaviours (T-321) and Magnetic (T-320) make the first mate warmer — bond 80 at ~6.7, was 9) // rebased 2026-10-13: the harness's Math.random made uniform (bond 60 came at 5.2);
+const BOND_BASE = { w60: 7, w80: 21 }; // (2026-10-21: bond exponential in stance, REL.bondTau — 60 at ~7 weeks, 80 at ~21 of daily training together; was 2.8 / 6.7) // (2026-10-20: behaviours (T-321) and Magnetic (T-320) make the first mate warmer — bond 80 at ~6.7, was 9) // rebased 2026-10-13: the harness's Math.random made uniform (bond 60 came at 5.2);
 // before that 2026-10-05 twice: league at OVR 40–50, then Thai names (name hashes move traits and plans)
 const mkMate = (seed, traits = ['steady', 'proud']) => {
   const [g, run] = mkPeople(seed),

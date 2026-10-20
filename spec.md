@@ -1308,6 +1308,9 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **[open]**: hostile ground (training on a faction's turf you are on bad terms with: XP ×1.2, heat, a street battle when
     it boils over — Kenshi's "train combat with hostiles"); NPC bodies; jobs as a story thread (Fern's old shift at the
     Harbor).
+- §4.23b Bond is exponential (owner, 2026-10-21) **[built]**: bond = 100 × (1 − e^(−stance / 12.5)) (`REL.bondTau`): the first points come as fast
+  as before, each later one takes more — training beside the same mate every day: bond 60 at ~week 7 (was ~3), 80 at ~week 21
+  (was ~7). Stance, its decay and the tags (ally / respect …) are unchanged.
 - §4.35 Talent, gifts and behaviour **[draft — T-320–T-323]** (owner, 2026-10-20: "make characters unique, and make it good luck to
   find a friendly one with an OP trait"). Three things rolled **independently** for every NPC (hashes, no draws): a talent
   tier, 0–2 innate gifts, and a behaviour. Who is easy to befriend comes from behaviour, never from talent.
