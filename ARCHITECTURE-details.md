@@ -396,6 +396,18 @@ Sources: `Run.bond(run, id, v, kind)` (training → trained, city outings → hu
 `Rel.afterMatch` (won / lost_together), `Cup.fixture` → `Rel.spot` (spot_taken for a benched rival, once a week),
 challenge / clash wins → `Rel.beatMe`. Match rewards no longer carry bond.
 
+**Behaviour (T-321, spec §4.35).** An NPC's first trait is their headline behaviour: `TRAITS[t].beh` / `.rule` (Friendly, Shy, Competitive, Picky,
+Egoist, Loyal, Mercenary, Hothead), numbers in `REL.behave`; the second trait keeps `REL.trait` only. You ↔ NPC only (NPC ↔ NPC reads `REL.trait` as
+before). Write time (`Rel.behaveIn`, from `Rel.add`, before Bitter): Shy — positives × low while their list with you has < 3 entries; Picky —
+positives count 0 unless `Rel.picky` (your OVR ≥ theirs − 5 or 1,000 fans); a memory their traits flip negative is never gated. Read time
+(`Rel.cx(run, id, other)` → `Rel.weigh(..., cx)`, built once per `stance` / `top`): the first trait's `REL.trait` row overridden by its `REL.behave`
+row (Friendly pos 1.5, Shy pos 1.4, Competitive beat_me × −0.75 and trained_hard × 2), then Loyal (positives × own / out by your faction vs their
+home), Mercenary (× fast per week past `after` weeks; scars exempt), Hothead (× swing). `Rel.afterMatch`: Egoist mates get `outshone` (your
+match line ≥ theirs + gap) or `shone` (theirs > yours); a Hothead's loss together → `blamed` on `People.roll(id, blame|week)` < feud. New MEMORY kinds
+`trained_hard` (a Hard session together — written by training once wired), `shone`, `outshone`, `blamed`. `REL.know.trait[0]` = 1: the behaviour
+shows after one memory, and on the card of anyone met (`personMet`) at once; the card also shows talent and gifts once `Gifts.known` (T-320 contract,
+behind a `typeof Gifts` guard).
+
 **People sheet (T-062, T-123).** `run.people[id].known = { want, traits[2] }` (added by `People.ensure`): `Rel.reveal` (called from `Rel.add`) flips
 the want after REL.know.want memories and each trait at REL.know.trait[i] (one diary line each); `People.knows(run, p, 'want' | 'trait', i)`
 also counts a scouted club (`City.scouted`) for the want. `Rel.top` = the n memories with the largest |`Rel.weigh`| (same weights as the

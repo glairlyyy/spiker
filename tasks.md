@@ -58,7 +58,7 @@ within ±1.5 of today.
 QA: career run → a scouted player's card.
 Result:
 
-### [~] T-321: Behaviour — the personality traits promoted
+### [x] T-321: Behaviour — the personality traits promoted
 Agent: P
 Spec: §4.35, §4.23          Goldens: unchanged          Save: no change
 Goal: an NPC's first trait is their headline behaviour, named on the card from the first meeting; each behaviour's bond rule
@@ -68,7 +68,7 @@ also tier + gifts once `Gifts.known` — the contract), tests/people.test.js
 Do not: add a second trait system; change NPC ↔ NPC chemistry beyond the same rules.
 Accept: tests per behaviour (e.g. Picky: no bond gain until the bar; Shy: first 3 meetings ≤ 25 %; Mercenary: fades after 3 weeks).
 QA: career run → the People sheet.
-Result:
+Result: 8 behaviours in REL.behave (you ↔ NPC; NPC ↔ NPC unchanged), card names the first trait from the first meeting + rule on hover, tier/gifts behind `typeof Gifts`; 8 new tests, bond calibration in band. Open: Competitive's Hard session needs training.js (G) to write `trained_hard`; engine.test.js:1209 (not P's) sets a Shy mate → needs `['warm', 'reckless']`.
 
 ### [ ] T-322: The gift chance event
 Agent: G
