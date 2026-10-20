@@ -1339,6 +1339,12 @@ the AI coach fills every slot you leave with the same function. Built and measur
     learned gift works on the MC as on an NPC (its growth / body / mind effects).
   - **Rubbing off**: training beside a friend (bond 60+) with a body or growth gift gives that session a share of it (Rubber
     Joints → Flexibility gains × 1.2 that day; Grinder → training × 1.15; …).
+  - **Presence** (owner, 2026-10-20: "S and A should be noticeable even without scouting — a cool portrait decoration, an aura"):
+    S and A share one look (S stronger); only scouting tells which. (1) **Portrait frame** wherever a portrait shows (faceSVG):
+    A — a thin gold edge and a small crest in a corner; S — the same with a slow shimmer. One new theme token `--gift` (gold),
+    used only here. (3) **On court**: a faint idle glow in the aura sprite on an S/A player (S also a few slow gold motes rising),
+    off-element so it never reads as one. (5) **First meeting**: once per S/A player, a short presence beat — the screen dims a
+    moment, a soft chime, a diary line ("Something about her. I don't know what yet.", voice `diary`).
   - **[open]**: close friends favoured into your year-2 Cup squad (the squad lever from §4.32); a jealous friend turning once they
     discover your learned gift.
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
