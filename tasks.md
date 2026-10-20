@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-320** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-324** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,54 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+**Talent, gifts and behaviour (owner, 2026-10-20, spec §4.35): T-320 → T-323, in order.**
+
+### [ ] T-320: Talent tiers and gifts for every NPC
+Spec: §4.35          Goldens: unchanged (career only; engine reads `p.gifts` only where set)          Save: RUN_VERSION 22 (`p.gifts` on players)
+Goal: every NPC has a tier letter from `pot` and 0–2 gifts by hash; growth, body and element gifts act (People XP, stats, element
+gauge / no element); tier and gifts show on the person's card once known (scouted, trained beside, bond 20+).
+Files: js/data/gifts.js (new: GIFTS, tiers, shares), js/career/people.js (roll + growth hooks), js/career/run.js (version; roll on
+create and for new players), js/engine/elements.js + js/engine/bars.js (Element-born / Elementless / Twin / Iron Frame / Ice Veins / Choker
+/ Contagious: read `p.gifts`, no draws), js/career/stars.js (named players: authored gifts — Haewon Element-born + Prodigy; the cohort one each),
+js/ui/career-people.js (card), index.html, tests/people.test.js, ARCHITECTURE.md, ARCHITECTURE-details.md
+Do not: draw R(); change a match where nobody has gifts; give the MC gifts here.
+Accept: tests — shares (~45 % one, ~10 % two) over the league; Prodigy grows faster than a giftless twin over 28 weeks; an
+Elementless player never fires an element spike; the card hides gifts until known. `npm run career -- 12 both` league mean
+within ±1.5 of today.
+QA: career run → a scouted player's card.
+Result:
+
+### [ ] T-321: Behaviour — the personality traits promoted
+Spec: §4.35, §4.23          Goldens: unchanged          Save: no change
+Goal: an NPC's first trait is their headline behaviour, named on the card from the first meeting; each behaviour's bond rule
+works (Friendly, Shy, Competitive, Picky, Egoist, Loyal, Mercenary, Hothead).
+Files: js/data/people.js (TRAITS: behaviour name + rule; REL.know), js/career/rel.js (the rules), js/ui/career-people.js,
+tests/people.test.js
+Do not: add a second trait system; change NPC ↔ NPC chemistry beyond the same rules.
+Accept: tests per behaviour (e.g. Picky: no bond gain until the bar; Shy: first 3 meetings ≤ 25 %; Mercenary: fades after 3 weeks).
+QA: career run → the People sheet.
+Result:
+
+### [ ] T-322: The gift chance event
+Spec: §4.35          Goldens: unchanged          Save: no change (`run.gifts` for the MC, `run.giftAsk` once-per-friend)
+Goal: bond with a gifted friend first passes 50 → an event card (pay $ for 35 % + 1 % per point over 50, or decline); a learned
+gift acts on the MC (max 2, good ones only).
+Files: js/career/events.js (event def 'gift'), js/career/rel.js (the trigger), js/career/run.js (fields), js/career/people.js /
+js/career/training.js / js/career/body.js (MC gift effects), js/data/gifts.js, js/data/story.js (lines — lore voices),
+js/ui/sheet-me.js (your gifts), tests/career.test.js
+Do not: offer Glass Bones, Choker, Lone Wolf, Elementless, Dormant or Early Peak; fire twice for one friend.
+Accept: tests — the event fires once at 50; paying moves money and rolls the stated chance (seeded); a learned gift acts.
+QA: career run (forced bond 50) → the card, pay, the Me sheet.
+Result:
+
+### [ ] T-323: Gifts rub off in training
+Spec: §4.35          Goldens: unchanged          Save: no change
+Goal: training beside a friend (bond 60+) with a body or growth gift gives that session a share of it (the place card says so).
+Files: js/career/training.js, js/career/city.js, js/ui/career-panels.js, tests/career.test.js
+Accept: test — a Rubber Joints friend at 60+ on the floor lifts that session's Flexibility gain × 1.2. `npm run career -- 12 both` within noise.
+QA: career run → a place card with a gifted friend on the floor.
+Result:
 
 **Two agents (owner, 2026-10-19), by file ownership (CLAUDE.md):** **Agent A — Body & orders** (T-307 → T-308 → T-309 →
 T-310 → T-318 → T-312) and **Agent B — War** (T-313 → T-314 → T-311 → T-315 → T-316 → T-317), in parallel. Each edits only

@@ -1308,6 +1308,39 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **[open]**: hostile ground (training on a faction's turf you are on bad terms with: XP ×1.2, heat, a street battle when
     it boils over — Kenshi's "train combat with hostiles"); NPC bodies; jobs as a story thread (Fern's old shift at the
     Harbor).
+- §4.35 Talent, gifts and behaviour **[draft — T-320–T-323]** (owner, 2026-10-20: "make characters unique, and make it good luck to
+  find a friendly one with an OP trait"). Three things rolled **independently** for every NPC (hashes, no draws): a talent
+  tier, 0–2 innate gifts, and a behaviour. Who is easy to befriend comes from behaviour, never from talent.
+  - **Talent tier S–D** = the existing hidden potential (`p.pot`, 0.6–1.6) shown as a letter (S ≥ 1.4, A ≥ 1.2, B ≥ 0.95, C ≥ 0.75,
+    D below) — only once you know the player (scouted, trained beside them, or bond 20+). Nothing new under it: pot already
+    drives their growth.
+  - **Gifts** (innate: never added or removed by training; hidden until scouted or bond 20+; ~45 % of players have one, ~10 %
+    two; `GIFTS`): Growth — **Prodigy** (all growth × 1.3) · **Late Bloomer** (× 0.8 in year 1, × 1.4 in year 2) · **Early Peak**
+    (× 1.3 to 75, × 0.6 above) · **Grinder** (training × 1.3, match XP × 0.7) · **Gamer** (match XP × 1.5, training × 0.8). Body —
+    **Spring Legs** (Jump +4) · **Rubber Joints** (Defense +3, the swing never short for the MC) · **Iron Frame** (HP damage × 0.85)
+    · **Quick Twitch** (Speed +4) · **Glass Bones** (injury × 1.5). Element — **Element-born** (gauge fills × 1.3) · **Elementless**
+    (no element at all: Wit +0.2 instead) · **Twin Element** (very rare: a second element's spike) · **Dormant** (the element
+    sleeps until the player's first Cup). Mind — **Natural Leader** (Leadership +15, a better captain) · **Reader** (Wit growth
+    × 1.3) · **Ice Veins** (never Rattled at 12+ points) · **Choker** (morale drops × 1.5 at 12+). Social — **Magnetic** (bonds
+    with them grow × 1.3) · **Lone Wolf** (bonds × 0.7) · **Generous** (training beside them shares × 1.5) · **Contagious** (their
+    kills lift the team's morale more).
+  - **Behaviour = the existing personality traits, promoted** (owner: reuse). An NPC's first trait is their headline behaviour,
+    shown on their card from the first meeting (`REL.know.trait[0]` 4 → 1); the second stays a hidden nuance. Each trait gets
+    a name the player reads and a rule for how a bond grows, on top of today's memory multipliers: **warm → Friendly** (bonds ×
+    1.5) · **steady → Shy** (the first 3 meetings barely count, then × 1.4) · **jealous → Competitive** (grows when you beat them
+    or train Hard together) · **cynical → Picky** (nothing counts until your OVR is within 5 of theirs or you have 1,000+ fans)
+    · **proud → Egoist** (grows when you make them look good; your outshining them in a match costs) · **loyal → Loyal** (fast
+    with their own faction, slow with outsiders) · **calculating → Mercenary** (loans and paid outings count double; fades fast
+    when you stop) · **reckless → Hothead** (big swings: a loss together may start a feud).
+  - **The MC has no gift and is never Elementless** (owner). Instead, a **gift chance** event: when your bond with a friend who has
+    a gift first passes **50**, they offer to show you (an event card, like the sponsor offer): **pay** (by the gift: $150 · $300 ·
+    $500 for a rare one) for a chance at it — 35 % + 1 % per bond point over 50 — or **decline**. Once per friend; the MC keeps at
+    most 2 gifts; only the good ones are on offer (never Glass Bones, Choker, Lone Wolf, Elementless, Dormant, Early Peak). A
+    learned gift works on the MC as on an NPC (its growth / body / mind effects).
+  - **Rubbing off**: training beside a friend (bond 60+) with a body or growth gift gives that session a share of it (Rubber
+    Joints → Flexibility gains × 1.2 that day; Grinder → training × 1.15; …).
+  - **[open]**: close friends favoured into your year-2 Cup squad (the squad lever from §4.32); a jealous friend turning once they
+    discover your learned gift.
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.
