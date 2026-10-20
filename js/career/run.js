@@ -287,8 +287,10 @@ const Run = {
     Run.snap(run);
     run.week++;
     const cup = CUPS.find(c => c.after === run.week - 1);
-    if (cup) Cup.start(run, cup);
-    else Run.nextWeek(run);
+    if (cup) {
+      Cup.start(run, cup);
+      Gifts.wake(run); // a Dormant element wakes at its player's first Cup (spec §4.35)
+    } else Run.nextWeek(run);
     Run.save(run);
   },
   /** A training week begins: who's at which training, sponsor offers. */
@@ -378,8 +380,8 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 21;
-/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history), v9: `run.mode.story` (T-067), v10: `run.people` / `run.pseed` (NPC careers, T-060), v11: `run.mem` (what NPCs remember about you, T-061), v12: `run.asks` / `run.loans` / `run.vouch` / `run.sitout` / `run.duo` (approaches, T-063), v13: person `status` / `bench` / `gone` (fates, T-064), v14: memory entries gain `a` + NPC ↔ NPC pairs in `run.mem` (T-065), v15: `run.warm` → `run.evals`, `warmupWin|Loss` → `evalWin|Loss` (T-086), v21: `run.war`, `run.hex` dropped (T-313); v20: `you.body` + body XP banks (T-307) — older saves are dropped; add steps when the saved shape changes). */
+const RUN_VERSION = 22;
+/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history), v9: `run.mode.story` (T-067), v10: `run.people` / `run.pseed` (NPC careers, T-060), v11: `run.mem` (what NPCs remember about you, T-061), v12: `run.asks` / `run.loans` / `run.vouch` / `run.sitout` / `run.duo` (approaches, T-063), v13: person `status` / `bench` / `gone` (fates, T-064), v14: memory entries gain `a` + NPC ↔ NPC pairs in `run.mem` (T-065), v15: `run.warm` → `run.evals`, `warmupWin|Loss` → `evalWin|Loss` (T-086), v22: `p.gifts` on every NPC (T-320); v21: `run.war`, `run.hex` dropped (T-313); v20: `you.body` + body XP banks (T-307) — older saves are dropped; add steps when the saved shape changes). */
 const RUN_MIGRATIONS = {
   18: d => ({ ...d, v: 19, year: 1 }) // two seasons (T-286): a v18 run is in year 1
   // v20: your body (`you.body`, body XP banks in `run.xp` — spec §4.33): v19 saves are dropped

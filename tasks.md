@@ -42,7 +42,7 @@ js/data/story.js, js/career/story.js (the presence beat), tests/people.test.js. 
 guard): `Gifts.tier(p)` → 'S'…'D', `Gifts.of(p)` → gift ids, `Gifts.known(run, p)`, `GIFTS[id]` = { name, desc, kind }. G's event and
 diary lines live in js/data/gifts.js (not story.js).
 
-### [ ] T-320: Talent tiers and gifts for every NPC
+### [x] T-320: Talent tiers and gifts for every NPC
 Agent: G
 Spec: §4.35          Goldens: unchanged (career only; engine reads `p.gifts` only where set)          Save: RUN_VERSION 22 (`p.gifts` on players)
 Goal: every NPC has a tier letter from `pot` and 0–2 gifts by hash; growth, body and element gifts act (People XP, stats, element
@@ -56,7 +56,7 @@ Accept: tests — shares (~45 % one, ~10 % two) over the league; Prodigy grows f
 Elementless player never fires an element spike; the card hides gifts until known. `npm run career -- 12 both` league mean
 within ±1.5 of today.
 QA: career run → a scouted player's card.
-Result:
+Result: GIFTS (22, kinds growth/body/element/mind/social) + Gifts (tier/of/known/roll/innate/grow/wake); rolled in People.ensure by hstr+fmix32 (plain FNV skewed the picks); shares over 6 runs ~45 % / ~10 %; Haewon S Element-born + Prodigy, cohort A (Quick Twitch / Reader / Contagious), first aces authored A + rolled gifts; engine hooks via `hasGift` (goldens unchanged); Magnetic / Lone Wolf need a Rel.add hook (Agent P); war.test's 'Gold untouched' now holds only while Iron stands (Iron fell in seed 32 with gifts). Career 12 both: league 81.6 / 86.8 casual, 81.6 / 87.1 good (was 81.5 / 86.9, 81.6 / 87.0); 185/185.
 
 ### [ ] T-321: Behaviour — the personality traits promoted
 Agent: P

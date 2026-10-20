@@ -950,3 +950,28 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   `end` after pointMomentum reads them. A combo shares one `net` key (the combo id).
 - **Turns**: `cardTurn` after the dead-ball subs: every TURN.pts points played or `m.turnNow` (a spent card); a timeout refills
   the calling side (`timeout`). `m.turnLog` keeps each turn's slots.
+
+## Gifts (spec §4.35, T-320)
+
+- **Data** `js/data/gifts.js`: `GIFT_TIERS` (pot bars → S A B C D), `GIFT_ODDS` (two 0.10, one 0.45; `know` = the bond that
+  shows them, 20), `GIFTS[id]` = { name, desc (registrar), kind growth | body | element | mind | social, w (roll weight), cost
+  ($ for the gift chance; none = never offered), k / stat / wit / lead / mor (numbers) }.
+- **Roll** (career/gifts.js `Gifts`, no R()): `People.ensure` → `Gifts.roll(run, p)` once per NPC without `p.gifts` (new
+  players too); `Gifts.pick(seed, id)` = `hstr(pseed|id|gift|i)` through `Gifts.mix` (fmix32: plain FNV-1a barely moves on
+  `p12` vs `p13`); two gifts are never one kind. `Gifts.innate(p, ids)` applies the once-only part: an NPC's body-stat bonus
+  (Spring Legs / Rubber Joints / Quick Twitch), Elementless Wit, Natural Leader's Leadership, `p.elOn` off (Elementless,
+  Dormant), Twin's `p.el2` (+ `p.sig2` in elAssign). The named (career/stars.js): Haewon and the cohort carry authored
+  `tier` / `gifts` (data/stars.js), the first aces an authored tier and rolled gifts; `Stars.shape` adds `Gifts.stat`, `Stars.week`
+  adds `Gifts.wit` (their curve resets the stats weekly). The MC never gets a roll (People.homes skips you).
+- **Contract** (Agent P's card / presence): `Gifts.tier(p)` (authored `p.tier`, else pot), `Gifts.of(p)` (ids, [] none),
+  `Gifts.known(run, p)` (you; club scouted `City.scouted`; a `trained` memory; `Rel.bondOf` ≥ 20 — sticky in
+  `run.people[id].known.gifts`), `GIFTS[id]`.
+- **Career effects**: `Gifts.grow(run, p, src, stat)` × in People.week (training XP: Prodigy, Late Bloomer by `Season.year`,
+  Early Peak by OVR < 75, Grinder / Gamer by source, Reader on wit; match XP: hustle and league play); Glass Bones × the Hard
+  injury roll. Dormant: `Gifts.wake(run)` after `Cup.start` (Run.endWeek) wakes the Cup squads' sleepers (`p.woke` → elCheck).
+- **Engine hooks** (read `p.gifts` only; `hasGift(p, id)` in engine/elements.js; no draws, so goldens hold): `elCheck` never
+  unlocks Elementless or an unwoken Dormant; `elCharge` × Element-born; `elSpike` — Twin plays `el2` / `sig2` on every other
+  spike (`m.stat[pid].els` odd); bars.js `hpHit` × Iron Frame; `gfMor` / `giftMor` (cached carriers `m.gfP`) after morPoint and a
+  negative morAdd from `TRAIT_LATE_PTS`: Choker's drop × 1.5, Ice Veins' floor (−0.55, above Rattled); Contagious in morPoint.
+- **Not here** (Agent P, rel.js): Magnetic / Lone Wolf bond growth — `Rel.add` can scale a positive memory by
+  `GIFTS[id].k` of the NPC's gift.

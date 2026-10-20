@@ -26,6 +26,8 @@ const Stars = {
           bmove: BMOVES[0],
           team: t,
           pot: 1,
+          tier: s.tier,
+          gifts: [...(s.gifts || [])],
           named: s.kind,
           nkey: s.key,
           curve: { ovr: s.ovr, wit: s.wit }
@@ -34,6 +36,7 @@ const Stars = {
       arr[arr.indexOf(old)] = p;
       [t.s, t.mb] = t.P;
       t.ws = [t.P[2], t.P[3]];
+      Gifts.innate(p, p.gifts);
       Stars.shape(p, s.ovr[0]);
       finalizeTeam(t);
     }
@@ -49,7 +52,13 @@ const Stars = {
         const alt = GIV.filter(n => !given.includes(n)); // no first ace shares a first name with the cohort
         p.name = `${alt[Math.floor(hstr(p.name) * alt.length)]} ${fam}`;
       }
-      Object.assign(p, { named: 'ace', nkey: `ace-${FACTIONS[ci].region}`, pot: 1, curve: { ovr: STARS.aces.ovr, wit: STARS.aces.wit } });
+      Object.assign(p, {
+        named: 'ace',
+        nkey: `ace-${FACTIONS[ci].region}`,
+        pot: 1,
+        tier: STARS.aces.tier,
+        curve: { ovr: STARS.aces.ovr, wit: STARS.aces.wit }
+      });
       p.wit = STARS.aces.wit[0];
       Stars.shape(p, STARS.aces.ovr[0]);
       finalizeTeam(t);
@@ -73,7 +82,7 @@ const Stars = {
     if (p.named === 'cohort') return { ovr: Y.cohort.ovr, wit: [w1 + Y.cohort.wit[0], w1 + Y.cohort.wit[1]] };
     return { ovr: [p.curve.ovr[1], p.curve.ovr[1]], wit: [w1, w1] };
   },
-  /** Set p's stats to its role's shape at OVR `o` (key stat highest), capped at 99. */
+  /** Set p's stats to its role's shape at OVR `o` (key stat highest), capped at 99; then its body gifts on top (spec §4.35). */
   shape(p, o) {
     const P = STARS.profile[p.role] || STARS.profile.WS;
     let base = o;
@@ -81,6 +90,7 @@ const Stars = {
       for (const k of STATK) p[k] = Math.round(clamp(base + (P[k] || 0), STAT_FLOOR, 99));
       base += o - ovr(p);
     }
+    for (const k of STATK) p[k] = Math.min(99, p[k] + Gifts.stat(p, k));
   },
   /** A week on: each named player to its curve; star / OP follow the career criteria (CAREER.star / op). */
   week(run) {
@@ -88,7 +98,7 @@ const Stars = {
     for (const p of Stars.all(run)) {
       if (!p.curve) continue;
       const T = Stars.target(run, Stars.curve(run, p));
-      p.wit = T.wit;
+      p.wit = +(T.wit + Gifts.wit(p)).toFixed(2); // (Elementless: + its Wit)
       Stars.shape(p, T.ovr);
       const o = ovr(p);
       p.star = o >= C.star.ovr;

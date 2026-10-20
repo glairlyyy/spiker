@@ -112,6 +112,30 @@ function trPoint(m) {
     }
 }
 
+/* ---------- Gifts (spec §4.35): `p.gifts` (NPCs, and what you learned); without them every hook is a no-op ---------- */
+
+/** The morale gifts. */
+const GIFT_MOR = ['choker', 'iceVeins'];
+/** Side i's squad players with a morale gift (found once a match). */
+const gfSquad = (m, i) =>
+  (m.gfP || (m.gfP = m.t.map(t => squadOf(t).filter(p => p.gifts && p.gifts.some(id => GIFT_MOR.includes(id))))))[i];
+/** Side(s)' morale-gift carriers with their morale now (giftMor compares after a change). */
+function gfMor(m, sides = [0, 1]) {
+  const out = [];
+  for (const i of sides) for (const p of gfSquad(m, i)) out.push([p, morOf(m, p)]);
+  return out;
+}
+/** After a morale change, from TRAIT_LATE_PTS points: Choker's drop × GIFTS.choker.k; Ice Veins never below GIFTS.iceVeins.mor (Rattled). */
+function giftMor(m, keep) {
+  if (!keep.length || !m.pts || Math.max(m.pts[0], m.pts[1]) < TRAIT_LATE_PTS) return;
+  for (const [p, was] of keep) {
+    let v = morOf(m, p);
+    if (v < was && hasGift(p, 'choker')) v = was + (v - was) * GIFTS.choker.k;
+    if (hasGift(p, 'iceVeins')) v = Math.max(v, GIFTS.iceVeins.mor);
+    m.mor[p.id] = clamp(v, -1, 1);
+  }
+}
+
 /** HP 0–1 (1 before the first hit). */
 const hpOf = (m, p) => (m && m.hp && m.hp[p.id] != null ? m.hp[p.id] : 1);
 /**
@@ -123,7 +147,11 @@ const hpOf = (m, p) => (m && m.hp && m.hp[p.id] != null ? m.hp[p.id] : 1);
 function hpHit(m, p, pow) {
   const r = pow / Math.max(1, effD(p)),
     end = p.body && Number.isFinite(p.body.end) ? 1.2 - (0.4 * p.body.end) / 100 : 1,
-    dmg = Math.min(HP.max, HP.base * Math.pow(r / HP.r0, HP.exp)) * ((MTRAITS[mtr(m, p)] || {}).hp || 1) * end; // Iron Body, Endurance
+    dmg =
+      Math.min(HP.max, HP.base * Math.pow(r / HP.r0, HP.exp)) *
+      ((MTRAITS[mtr(m, p)] || {}).hp || 1) *
+      end *
+      (p.gifts && hasGift(p, 'ironFrame') ? GIFTS.ironFrame.k : 1); // Iron Body, Endurance, Iron Frame (spec §4.35)
   if (m.hpLog) ((m.hpLog.n += 1), (m.hpLog.dmg += dmg));
   m.hp[p.id] = Math.max(0, hpOf(m, p) - dmg);
   return m.hp[p.id] <= 0;
@@ -159,8 +187,10 @@ function fireOf(m, i) {
 }
 /** Shift every squad player of side i by v (a team-wide push: element spikes, the zone breaker, timeouts). */
 function morAdd(m, i, v) {
-  const keep = v < 0 ? trMor(m, [i]) : null;
+  const keep = v < 0 ? trMor(m, [i]) : null,
+    gk = v < 0 ? gfMor(m, [i]) : null;
   for (const p of squadOf(m.t[i])) m.mor[p.id] = clamp(morOf(m, p) + v, -1, 1);
+  if (gk && gk.length) giftMor(m, gk); // Choker, Ice Veins (spec §4.35)
   if (keep && keep.length) morKeep(m, keep); // Eye of the Storm, Iron Will (spec §4.30)
   m.mom[i] = fireOf(m, i);
 }
@@ -187,7 +217,8 @@ function morPoint(m, w, fade, LD) {
     (T.early ? T.early[early ? 0 : 1] : 1) *
     (T.under && ovrSide(m, i) < ovrSide(m, 1 - i) - 1 ? T.under : 1);
   const lossK = T => (T.swing || 1) * (T.late && late ? T.late[1] : 1);
-  const keep = trMor(m); // the Sparks and Scars (spec §4.30): morale before this point, for Eye of the Storm / Iron Will
+  const keep = trMor(m), // the Sparks and Scars (spec §4.30): morale before this point, for Eye of the Storm / Iron Will
+    gk = gfMor(m); // the morale gifts (spec §4.35)
   for (const p of squadOf(m.t[w])) {
     const T = MTRAITS[mtr(m, p)] || {},
       own = killer === p.id;
@@ -224,6 +255,10 @@ function morPoint(m, w, fade, LD) {
   // Captain's Voice: your kill lifts every teammate
   const kp = killer && trSquad(m, w).find(p => p.id === killer);
   if (kp && hasTr(kp, 'voice')) for (const p of squadOf(m.t[w])) if (p !== kp) m.mor[p.id] = clamp(morOf(m, p) + SPARKS.voice.k, -1, 1);
+  // Contagious (spec §4.35): their kill lifts every teammate
+  const cp = killer && squadOf(m.t[w]).find(p => p.id === killer && p.gifts && hasGift(p, 'contagious'));
+  if (cp) for (const p of squadOf(m.t[w])) if (p !== cp) m.mor[p.id] = clamp(morOf(m, p) + GIFTS.contagious.k, -1, 1);
+  if (gk.length) giftMor(m, gk);
   if (keep.length) morKeep(m, keep);
   m.mom[w] = fireOf(m, w);
   m.mom[L] = fireOf(m, L);

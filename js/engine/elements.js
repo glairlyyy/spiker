@@ -11,6 +11,8 @@ function hstr(s) {
   return (h >>> 0) / 4294967296;
 }
 const hu = (p, salt) => hstr(`${p.name}|${p.role}|${salt}`);
+/** Does p carry innate gift `id` (spec §4.35; GIFTS in data/gifts.js)? A player without `p.gifts` never does. */
+const hasGift = (p, id) => !!(p && p.gifts && p.gifts.length && p.gifts.includes(id));
 /** Weighted pick with a 0..1 roll (no RNG draw). */
 function hpick(keys, w, u) {
   const tot = keys.reduce((a, k) => a + w[k], 0);
@@ -58,18 +60,29 @@ function elAssign(p) {
       b = TWORD[tw];
     p.sig = { tw, name: `${a[Math.floor(hu(p, 'w1') * a.length)]} ${b[Math.floor(hu(p, 'w2') * b.length)]}` };
   }
+  if (p.el2 && !p.sig2) {
+    // Twin Element (spec §4.35): the second element's signature, same twist
+    const a = EWORD[p.el2],
+      b = TWORD[p.sig.tw];
+    p.sig2 = { tw: p.sig.tw, name: `${a[Math.floor(hu(p, 'w3') * a.length)]} ${b[Math.floor(hu(p, 'w2') * b.length)]}` };
+  }
   elCheck(p);
 }
-/** Unlock: OP players always, about 1 in 4 stars. Your career player only through the Element Trial. */
+/** Unlock: OP players always, about 1 in 4 stars. Your career player only through the Element Trial. Never an Elementless player; a Dormant one once woken (spec §4.35). */
 function elCheck(p) {
+  if (p.gifts && (hasGift(p, 'elementless') || (hasGift(p, 'dormant') && !p.woke))) {
+    if (p.elOn) p.elOn = false;
+    return;
+  }
   if (p.elOn || p.you) return;
   if (p.op || (p.star && hu(p, 'on') < EG.starUnlock)) p.elOn = true;
 }
 
 // ---- match gauge ----
-/** Add v to an unlocked player's gauge (clamped 0..EG.full). */
+/** Add v to an unlocked player's gauge (clamped 0..EG.full); Element-born × GIFTS.elementBorn.k. */
 function elCharge(m, p, v) {
   if (!p.elOn || !m.eg || !v) return;
+  if (p.gifts && hasGift(p, 'elementBorn')) v *= GIFTS.elementBorn.k;
   m.eg[p.id] = clamp((m.eg[p.id] || 0) + v, 0, EG.full);
 }
 /** A full gauge: this player's next attack (or set) is an element spike. */
@@ -139,14 +152,16 @@ function elBuff(m, p) {
  */
 function elSpike(m, p, hitter, setter, defT, perfect) {
   m.eg[p.id] = 0;
-  const el = p.el,
+  const twin = !!(p.el2 && p.sig2 && hasGift(p, 'twinElement') && m.stat[p.id] && m.stat[p.id].els % 2 === 1), // Twin Element: every other spike
+    sig = twin ? p.sig2 : p.sig,
+    el = twin ? p.el2 : p.el,
     res = ECOUNTER[el] ? defT.P.find(q => q.elOn && q.el === ECOUNTER[el]) : null,
     k = res ? 0.5 : 1,
     K = v => 1 + (v - 1) * k,
     e = {
       el,
-      tw: p.sig.tw,
-      name: p.sig.name,
+      tw: sig.tw,
+      name: sig.name,
       res,
       k,
       pow: 1,

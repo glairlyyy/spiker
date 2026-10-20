@@ -28,7 +28,8 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   stats, mood deltas), `elements.js`, `vfx.js` (VFX_DEF / live `VFX` effect tuning, read by render code only; saved dev edits in `sns_vfx`), `tactics.js`, `dialogue.js` (lines, `callLine`), `skills.js`, `career.js`
   (CAREER, BODY, CALENDAR, ROLE_NAME, STATNAME, MLOG…), `world.js` (REGIONS, FACTIONS, ECON, HOUSING, CLASH, FRONT, HEX…), `war.js` (WAR: the war units, Strength deltas; WAR_STAGES — spec §4.34), `city.js`
   (CITY geometry, SPOTS, travel constants, layout data), `stars.js` (STARS), `traits.js` (SPARKS / SCARS / `MC_TRAITS`, `TRAIT_ODDS`: the
-  traits only your player carries — spec §4.30; not the NPCs' `TRAITS` in people.js).
+  traits only your player carries — spec §4.30; not the NPCs' `TRAITS` in people.js), `gifts.js` (GIFTS, GIFT_TIERS, GIFT_ODDS: talent
+  tiers and innate gifts — spec §4.35).
 - **engine** `court.js` (geometry, `Z_UNITS`, `UNIT_M`, `BALL_K` / `SERVE_K`), `players.js`, `teams.js`, `save.js`,
   `stats.js`, `skills.js`, `formulas.js`, `elements.js`, `hype.js`, `fire.js` (momentum stages, spec §2.14: `temperOf`,
   `fireStage`, `pointStage` after every point (in `end`), `stageTimeout`, `stageBuff(p, stat)` read by effD / jumpPx / the
@@ -53,7 +54,8 @@ Rest (`rest`: `restOpts`, `restFor`, `ordSubs` at the dead ball before coachSubs
 blockMoves and digSetup; tallies `ordLog` / `ordAttack` → `m.ordLog` (the result card's Orders row, `boardResult`); data `ORDERS`), `rally.js`.
 - **audio** `sfx.js` (internals in the `SOUND` closure; global: `SND`, `sfx`, `audioInit`, `toggleSound`, `setVolume`, `bgmStart`, `bgmStop`, `panAt`). **game** `state.js` (G, HYPE, Screens / navigate), `bracket.js`.
 - **career** `run.js` (Run, RUN_DEFAULTS), `body.js` (Body: your body → the court skills, spec §4.33), `training.js`, `growth.js`, `element.js`, `world.js`, `pool.js`, `eval.js`,
-  `city.js`, `hex.js` (the war map's tile geometry), `front.js` (who raids whom, where), `war.js` (War: units, Strength, stages, `run.war`), `mapmodel.js`, `dossier.js`, `events.js`, `sponsors.js`, `skills.js`, `rank.js`, `cup.js`, `fight.js`.
+  `city.js`, `hex.js` (the war map's tile geometry), `front.js` (who raids whom, where), `war.js` (War: units, Strength, stages, `run.war`), `mapmodel.js`, `dossier.js`, `events.js`, `sponsors.js`, `skills.js`, `rank.js`, `cup.js`, `fight.js`; … `gifts.js` (Gifts: tiers, the
+  gift roll, `known`, growth / innate effects — spec §4.35; the engine reads `p.gifts` through `hasGift` in engine/elements.js).
 - **portraits** `js/render/faces.js` `faceSVG(p, mood, size)` returns a cached 3D portrait `<img>` (PORTRAIT: look key → data URL) or the drawn face (`faceSVG2D`) as a placeholder that is swapped in place when `js/render3d/portrait3d.mjs` (lazy-loaded; one offscreen renderer, the default model re-dressed in hair / skin / team shirt, Main_v2 for you) finishes it.
 - **ui** `dom.js` (esc, tip, info, fold, kv — the vertical label/value list of spec §10.1a, peek — the L2 detail card of §10.8: `CW.peek` holds the open id, `peekSync` (MutationObserver on #app) ports the open card to <body> beside its owner panel…), `icons.js`, `match-screen.js` (startMatch → `A`, 3D load / bind, fit, venue / stakes, leaveMatch), `match-controls.js` (control bar, ⚙ settings,
   camera / follow, fullscreen, timeouts, tactics, speed / pause / skip, scoreboard, commentary, rail, box score, hotkeys), `match-tech.js`
@@ -270,7 +272,8 @@ moving for 6 s (25 s while the 3D players load) or one beat lasts 20 s, with a s
 
 ## Saves
 
-Career runs carry `v` (`RUN_VERSION` = 21, `career/run.js`; key `sns_run_v1`; v21 = `run.war` (the war units' Strength, spec §4.34), `run.hex` dropped; v20 = your body `you.body` (+ `floor` / `edge` / `synced`) and body-key XP banks in `run.xp`; older saves dropped; v19 = `run.year`). History: v2 faction reserves, v3 cup
+Career runs carry `v` (`RUN_VERSION` = 22, `career/run.js`; key `sns_run_v1`; v22 = `p.gifts` on every NPC (+ `p.el2` / `p.sig2`,
+`p.woke`; `run.people[id].known.gifts`; spec §4.35), older saves dropped; v21 = `run.war` (the war units' Strength, spec §4.34), `run.hex` dropped; v20 = your body `you.body` (+ `floor` / `edge` / `synced`) and body-key XP banks in `run.xp`; older saves dropped; v19 = `run.year`). History: v2 faction reserves, v3 cup
 entrants, v4 squads of 6 (`bench`), v5 `run.lb` dropped, v6 `run.met` / `street` / `refused`, v7 `losses` / `lastFight`,
 v8 `mlog`, v9 `run.mode.story`; older saves are dropped (`RUN_MIGRATIONS` is empty). Bump the version when the save shape changes and add a step to
 `RUN_MIGRATIONS[oldVersion] = data => upgraded data`; `Run.load` applies the steps in order and ignores saves from a newer version.
@@ -311,4 +314,4 @@ the Season sheet shows it (`sheetSeason`). `Run.repair` adds `mlog` to older sav
 ## Feature notes → ARCHITECTURE-details.md
 
 The deep notes per feature live in **ARCHITECTURE-details.md**; read only the section for the code you touch, and update
-that section (or add one) when you change its structure. Sections: 3D renderer (js/render3d/) · Net clearance and errors · Deflections and ball speed · Elements · Slow motion and staged scenes · Block formation · Ego (T-068, spec §2.12) · Substitutions · Blocks · Far digs (playback) · Spike approach (playback) · Pre-serve routine · Career world (P1) · Team shape (squads of 6) · Faction pools · NPC careers (T-060, spec §4.23 A) · Evaluations · U21 Final Cup · Faction dossier · Island map (training weeks) · Possession paths and touch counts · World layout (T-045) · Rankings · Team challenges · Training XP · Career hub UI · Match music · UI motion (spec §9.12, T-216–T-219) · Sparks and Scars (spec §4.30, T-291).
+that section (or add one) when you change its structure. Sections: 3D renderer (js/render3d/) · Net clearance and errors · Deflections and ball speed · Elements · Slow motion and staged scenes · Block formation · Ego (T-068, spec §2.12) · Substitutions · Blocks · Far digs (playback) · Spike approach (playback) · Pre-serve routine · Career world (P1) · Team shape (squads of 6) · Faction pools · NPC careers (T-060, spec §4.23 A) · Evaluations · U21 Final Cup · Faction dossier · Island map (training weeks) · Possession paths and touch counts · World layout (T-045) · Rankings · Team challenges · Training XP · Career hub UI · Match music · UI motion (spec §9.12, T-216–T-219) · Sparks and Scars (spec §4.30, T-291) · Gifts (spec §4.35, T-320).

@@ -50,7 +50,8 @@ const People = {
   /** Create the entries that are missing (new players from transfers, the street crew). */
   ensure(run, homes = People.homes(run)) {
     if (!run.people) run.people = {};
-    for (const [id, { home }] of homes) {
+    for (const [id, { home, p }] of homes) {
+      Gifts.roll(run, p); // innate gifts, once (spec §4.35)
       if (run.people[id]) {
         const x = run.people[id];
         if (!x.known) x.known = { want: false, traits: [false, false] };
@@ -388,19 +389,21 @@ const People = {
         me.sta += PEOPLE.sta.rest;
         me.log.rest++;
       } else if (plan.act === 'hustle') {
-        People.matchXp(me, p, PEOPLE.hustle * yr);
+        People.matchXp(me, p, PEOPLE.hustle * yr * Gifts.grow(run, p, 'match'));
         me.sta -= PEOPLE.sta.hustle;
         me.log.hustle++;
       } else {
         const isHard = plan.act === 'hard',
           q = plan.at ? City.quality(run, plan.at).q : REGIONS.open.q,
-          top = plan.stat === 'wit' ? Math.round(CAREER.witRunCap * 50) : TRAIN_CAP;
+          top = plan.stat === 'wit' ? Math.round(CAREER.witRunCap * 50) : TRAIN_CAP,
+          gift = Gifts.grow(run, p, 'train', plan.stat), // growth gifts (spec §4.35)
+          frail = hasGift(p, 'glassBones') ? GIFTS.glassBones.k : 1;
         me.log[isHard ? 'hard' : 'train']++;
         for (let s = 0; s < PEOPLE.sessions; s++) {
-          People.addXp(me, p, plan.stat, PEOPLE.xp * q * (p.pot || 1) * hard * (isHard ? PEOPLE.hard : 1), top);
+          People.addXp(me, p, plan.stat, PEOPLE.xp * q * (p.pot || 1) * hard * (isHard ? PEOPLE.hard : 1) * gift, top);
           const low = me.sta < PEOPLE.hurt.lowSta;
           me.sta -= isHard ? PEOPLE.sta.hard : PEOPLE.sta.train;
-          if (isHard && People.roll(run, p.id, `hurt${s}`) < (low ? PEOPLE.hurt.low : PEOPLE.hurt.hard)) {
+          if (isHard && People.roll(run, p.id, `hurt${s}`) < (low ? PEOPLE.hurt.low : PEOPLE.hurt.hard) * frail) {
             const [a, b] = PEOPLE.hurt.weeks;
             me.inj = a + Math.floor(People.roll(run, p.id, 'hurtw') * (b - a + 1));
             me.log.hurt++;
@@ -409,7 +412,7 @@ const People = {
           }
         }
       }
-      if (plan.act !== 'out' && me.inj === 0 && starters.has(p)) People.matchXp(me, p, PEOPLE.play * yr);
+      if (plan.act !== 'out' && me.inj === 0 && starters.has(p)) People.matchXp(me, p, PEOPLE.play * yr * Gifts.grow(run, p, 'match'));
       me.sta = clamp(me.sta + PEOPLE.sta.week, 0, 100);
     }
     People.pairs(run, homes);

@@ -3,10 +3,15 @@
 // the NPC growth; nobody transfers, poaches or cuts them. Data only; the rules are js/career/stars.js.
 
 const STARS = {
-  /** The cohort: seated on `club` (FACTIONS index) in place of its weakest same-role player. ovr / wit: week 1 → the year-1 Cup. */
+  /**
+   * The cohort: seated on `club` (FACTIONS index) in place of its weakest same-role player. ovr / wit: week 1 → the year-1 Cup.
+   * tier / gifts: authored (spec §4.35: Haewon Element-born + Prodigy, the cohort one each).
+   */
   cohort: [
     {
       key: 'rival',
+      tier: 'S', // authored (spec §4.35)
+      gifts: ['elementBorn', 'prodigy'],
       kind: 'rival',
       name: 'Haewon Bae', // (owner, 2026-10-05: was Tachibana Sae; her name shows orange in the dialogue box)
       role: 'WS',
@@ -20,6 +25,8 @@ const STARS = {
     },
     {
       key: 'reina',
+      tier: 'A', // authored (spec §4.35)
+      gifts: ['quickTwitch'],
       kind: 'cohort',
       name: 'Praew Siriwong',
       role: 'MB',
@@ -33,6 +40,8 @@ const STARS = {
     },
     {
       key: 'ren',
+      tier: 'A', // authored (spec §4.35)
+      gifts: ['reader'],
       kind: 'cohort',
       name: 'Pond Thammasak',
       role: 'S',
@@ -46,6 +55,8 @@ const STARS = {
     },
     {
       key: 'taiga',
+      tier: 'A', // authored (spec §4.35)
+      gifts: ['contagious'],
       kind: 'cohort',
       name: 'Fai Wongsakul',
       role: 'WS',
@@ -66,7 +77,8 @@ const STARS = {
       [7, 'S']
     ],
     ovr: [86, 95],
-    wit: [1.35, 1.65]
+    wit: [1.35, 1.65],
+    tier: 'A' // authored (spec §4.35); their gifts are rolled like anyone's
   },
   /**
    * Year 2 (spec §4.28, owner 2026-10-15): the cohort plateaus — week 1 → the year-2 Cup, linear. The rival's `max` curve when

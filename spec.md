@@ -1323,7 +1323,11 @@ the AI coach fills every slot you leave with the same function. Built and measur
     sleeps until the player's first Cup). Mind — **Natural Leader** (Leadership +15, a better captain) · **Reader** (Wit growth
     × 1.3) · **Ice Veins** (never Rattled at 12+ points) · **Choker** (morale drops × 1.5 at 12+). Social — **Magnetic** (bonds
     with them grow × 1.3) · **Lone Wolf** (bonds × 0.7) · **Generous** (training beside them shares × 1.5) · **Contagious** (their
-    kills lift the team's morale more).
+    kills lift the team's morale more). **[built 2026-10-20, T-320]**: rolled once per NPC by hash (0 / 1 / 2 at ~45 / 45 / 10 %, never two of one kind); Haewon S
+    with Element-born + Prodigy, the cohort A with one each (Praew Quick Twitch, Pond Reader, Fai Contagious), the first aces A;
+    known = their club scouted, a training day beside them, or bond 20+ (then for good); Early Peak's 75 is OVR; Ice Veins =
+    morale never below −0.55 from 12 points; Contagious = +0.04 morale to each teammate per kill; Twin = every other element
+    spike is the second element; Dormant wakes when their squad enters a Cup. Magnetic / Lone Wolf wait for the bond hook (rel.js).
   - **Behaviour = the existing personality traits, promoted** (owner: reuse). An NPC's first trait is their headline behaviour,
     shown on their card from the first meeting (`REL.know.trait[0]` 4 → 1); the second stays a hidden nuance. Each trait gets
     a name the player reads and a rule for how a bond grows, on top of today's memory multipliers: **warm → Friendly** (bonds ×

@@ -19,6 +19,7 @@ require('./study.test');
 require('./momentum.test');
 require('./lines.test');
 require('./traits.test');
+require('./gifts.test');
 
 // ---------- report ----------
 let fail = 0,

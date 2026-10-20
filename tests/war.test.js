@@ -41,13 +41,14 @@ test('war: units and Strength — battles move it, Shu soaks half, Gold untouche
       t = P && h.Front.site(r2, P.att, P.def);
     if (t) {
       r2.clash = { tile: t.tile, from: t.from, at: t.at, ua: t.ua, ud: t.ud, att: P.att, def: P.def, done: false };
-      assert(![t.ua, t.ud].includes('gold'), 'Gold never on the street while Iron stands');
+      assert((r2.war.fallen && r2.war.fallen.iron) || ![t.ua, t.ud].includes('gold'), 'Gold never on the street while Iron stands');
       h.Fight.clashEnd(r2);
       fought++;
     }
     h.War.week(r2);
     for (const u of h.War.ids()) {
       const s = h.War.str(r2, u);
+      if (u === 'gold' && r2.war.fallen && r2.war.fallen.iron) continue; // (Iron fell: Gold has a border now)
       lo[u] = Math.min(lo[u] ?? 100, s);
       hi[u] = Math.max(hi[u] ?? 0, s);
     }
