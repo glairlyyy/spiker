@@ -1,7 +1,6 @@
 // Career: the People sheet — everyone who matters to you, and what you know of them (want and trait once found out,
 // their stance, their season in a rumour, the three memories that weigh most in your diary voice). Display only: the logic
 // is Rel / People. Opened from the top bar's People tab, and from names in the Rankings and the faction dossier (openPerson).
-/* global Gifts, GIFTS */ // (the Gifts contract, T-320 — Agent G; read behind a typeof guard until it lands)
 
 const STANCE_NAME = { ally: 'ally', respect: 'respect', neutral: 'neutral', resent: 'resent', enemy: 'enemy' };
 /** True when you know this person's rating: you, your squad, or someone you faced on court (as the Register does). */

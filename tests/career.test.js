@@ -825,6 +825,7 @@ test('career: rankings — register, gazette, street, known gate', () => {
   // a street battle you fight: your points, and the winner faction's best players share
   const tg = g.Front.site(run, 'wei', 'wu');
   run.clash = { tile: tg.tile, from: tg.from, att: 'wei', def: 'wu', seen: false, done: false };
+  run.event = null; // (a gift offer may be waiting — T-322)
   const side = 'wei',
     fx = g.Fight.clash(run, side),
     m = g.newMatch(fx.a, fx.b, false);

@@ -93,7 +93,7 @@ Build chat loop, one task at a time:
 - Seeded randomness: never change the order/count of R()/rnd()/pick() draws in engine unless the task says so
   (golden changes). Presentation code (hype, element assignment hash, chatter) must draw no randoms.
 - Beat act kinds/flags are the engine↔renderer interface; every act kind needs an `ACTS` handler (render/acts.js) or a `startBeat` case in playback.js (tested).
-- Saves: RUN_VERSION 21 (v21: war units `run.war`, `run.hex` dropped — spec §4.34; v20: your body `you.body` — §4.33; v19: two seasons `run.year` — spec §4.28; v10–v15: NPC careers, memories, approaches, fates, NPC ↔ NPC — spec §4.23; v16: hex territory `run.hex` — §4.27; v17: island × 1.5 — positions and fog in the scaled units, §4.18b; v18: island × 2.25), key sns_run_v1. In development, breaking changes just bump the version (task will say).
+- Saves: RUN_VERSION 22 (v22: NPC gifts `p.gifts`, your learned gifts `run.gifts` — spec §4.35; v21: war units `run.war`, `run.hex` dropped — spec §4.34; v20: your body `you.body` — §4.33; v19: two seasons `run.year` — spec §4.28; v10–v15: NPC careers, memories, approaches, fates, NPC ↔ NPC — spec §4.23; v16: hex territory `run.hex` — §4.27; v17: island × 1.5 — positions and fog in the scaled units, §4.18b; v18: island × 2.25), key sns_run_v1. In development, breaking changes just bump the version (task will say).
 - Artifact host quirks: confirm()/alert() blocked (use inline confirms); localStorage may throw; blob: URLs may be
   blocked (textures are decoded in memory — keep it that way).
 - Escape all user/data strings in innerHTML with esc().

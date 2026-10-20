@@ -123,7 +123,7 @@ test.slow('people: calibration — the league grows like the old drift (5 seeds 
 // bond-week baseline on the pre-T-061 code (+7 per training session): average week the first mate reaches bond 60 / 80
 // rebased in T-132 (hex battles shift the random stream) and T-189: the named players' curves replace their breakthrough rolls, which
 // shifts the stream (no systematic change: seeds 11–18 average bond 80 at week 8.3 with them vs 8.0 without)
-const BOND_BASE = { w60: 2.6, w80: 9 }; // rebased 2026-10-13: the harness's Math.random made uniform (bond 60 came at 5.2);
+const BOND_BASE = { w60: 2.6, w80: 7.5 }; // (2026-10-20: behaviours (T-321) and Magnetic (T-320) make the first mate warmer — bond 80 at ~6.7, was 9) // rebased 2026-10-13: the harness's Math.random made uniform (bond 60 came at 5.2);
 // before that 2026-10-05 twice: league at OVR 40–50, then Thai names (name hashes move traits and plans)
 const mkMate = (seed, traits = ['steady', 'proud']) => {
   const [g, run] = mkPeople(seed),
@@ -530,17 +530,18 @@ test('behaviour: every trait has a behaviour name and a rule; the first is named
   const other = g.Run.mates(run)[1];
   run.people[other.id].traits = ['cynical', 'warm'];
   assert(ui.personCard(run, other.id).includes('>Picky<'), 'met → named');
-  assert(!/Talent/.test(h), 'no Gifts yet: no talent line');
-  // the Gifts contract (T-320, Agent G), stubbed: tier and gifts only once known
+  // the Gifts contract (T-320), its methods stubbed: tier and gifts only once known
   let known = false;
-  g.Gifts = { tier: () => 'S', of: () => ['prodigy'], known: () => known };
-  g.GIFTS = { prodigy: { name: 'Prodigy', desc: 'Grows × 1.3.', kind: 'growth' } };
+  const keep = { tier: g.Gifts.tier, of: g.Gifts.of, known: g.Gifts.known },
+    keepP = g.GIFTS.prodigy;
+  Object.assign(g.Gifts, { tier: () => 'S', of: () => ['prodigy'], known: () => known });
+  g.GIFTS.prodigy = { name: 'Prodigy', desc: 'Grows × 1.3.', kind: 'growth' };
   const ui2 = mkUi(g);
   assert(!/Talent/.test(ui2.personCard(run, mate.id)), 'unknown: hidden');
   known = true;
   assert(/Talent <b>S<\/b> · <b data-tip="Grows × 1.3.">Prodigy<\/b>/.test(ui2.personCard(run, mate.id)), 'known: tier and gifts');
-  delete g.Gifts;
-  delete g.GIFTS;
+  Object.assign(g.Gifts, keep);
+  g.GIFTS.prodigy = keepP;
 });
 
 // ---- Approaches (T-063, spec §4.23 C) ----
@@ -1188,15 +1189,15 @@ test('presence: the beat plays once per S / A player you meet (dark, chime cue, 
 test('rel: a gain × Gifts.bondMul when Gifts is loaded (Magnetic / Lone Wolf, T-320 contract); losses untouched', () => {
   const [g, run, mate] = mkMate(133, [PLAIN, 'x']);
   g.Rel.add(run, mate.id, 'won_together');
-  eq(g.Rel.stance(run, mate.id), 5, 'no Gifts: × 1');
-  const G = g.Rel.add.constructor('return globalThis')(); // the game context's global (where `typeof Gifts` looks)
-  G.Gifts = { bondMul: (r, id) => (id === mate.id ? 1.3 : 1) };
+  eq(g.Rel.stance(run, mate.id), 5, 'no Magnetic / Lone Wolf: × 1');
+  const keep = g.Gifts.bondMul;
+  g.Gifts.bondMul = (r, id) => (id === mate.id ? 1.3 : 1);
   try {
     g.Rel.add(run, mate.id, 'vouched');
     eq(g.Rel.stance(run, mate.id), 5 + 15 * 1.3, 'a gain × 1.3');
     g.Rel.add(run, mate.id, 'beat_me');
     eq(g.Rel.stance(run, mate.id), 5 + 15 * 1.3 - 8, 'a loss as it is');
   } finally {
-    delete G.Gifts;
+    g.Gifts.bondMul = keep;
   }
 });

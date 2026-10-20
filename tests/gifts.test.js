@@ -271,6 +271,7 @@ test('gifts: saves keep them (RUN_VERSION 22)', () => {
 const giftFriend = (g, run, gift = 'springLegs') => {
   const p = g.Run.mates(run)[0];
   p.gifts = [gift];
+  if (run.people && run.people[p.id]) run.people[p.id].traits = ['warm', 'steady']; // Friendly: the bond grows (T-321's behaviour rules)
   return p;
 };
 const bondTo = (g, run, p, b) => {

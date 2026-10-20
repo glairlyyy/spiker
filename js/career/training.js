@@ -219,7 +219,7 @@ const Training = {
     const gen = hasGift(Run.you(run), 'generous') ? GIFTS.generous.k : 1, // Generous (yours): your mates take × more (spec §4.35)
       share = gen === 1 ? pv : { main: [pv.main[0], pv.main[1] * gen], side: [pv.side[0], pv.side[1] * gen] };
     for (const id of pv.mates) {
-      out.push(Run.bond(run, id, undefined, 'trained'));
+      out.push(Run.bond(run, id, undefined, hard ? 'trained_hard' : 'trained')); // a Hard session side by side (Competitive × 2, spec §4.35)
       Growth.shared(run, id, share);
     }
     const fk = at || key, // the facility that levels: the place (an order), else the training key

@@ -1205,7 +1205,7 @@ test('rel on court: Cup.fixture builds the flags for both squads and passes them
   run.event = null;
   g.People.ensure(run);
   const mate = g.Run.mates(run).find(p => p.role !== 'S');
-  run.people[mate.id].traits = ['steady', 'reckless'];
+  run.people[mate.id].traits = ['warm', 'reckless'];
   g.Rel.add(run, mate.id, 'spot_given', 80);
   const fx = g.Cup.fixture(run, 'eval');
   assert(fx.rel && fx.rel.tag && typeof fx.rel.rival.has === 'function', 'the fixture carries the flags');
