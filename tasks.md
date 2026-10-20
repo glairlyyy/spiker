@@ -58,7 +58,7 @@ within ±1.5 of today.
 QA: career run → a scouted player's card.
 Result:
 
-### [ ] T-321: Behaviour — the personality traits promoted
+### [~] T-321: Behaviour — the personality traits promoted
 Agent: P
 Spec: §4.35, §4.23          Goldens: unchanged          Save: no change
 Goal: an NPC's first trait is their headline behaviour, named on the card from the first meeting; each behaviour's bond rule

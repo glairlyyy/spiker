@@ -1,6 +1,7 @@
 // Career: the People sheet — everyone who matters to you, and what you know of them (want and trait once found out,
 // their stance, their season in a rumour, the three memories that weigh most in your diary voice). Display only: the logic
 // is Rel / People. Opened from the top bar's People tab, and from names in the Rankings and the faction dossier (openPerson).
+/* global Gifts, GIFTS */ // (the Gifts contract, T-320 — Agent G; read behind a typeof guard until it lands)
 
 const STANCE_NAME = { ally: 'ally', respect: 'respect', neutral: 'neutral', resent: 'resent', enemy: 'enemy' };
 /** True when you know this person's rating: you, your squad, or someone you faced on court (as the Register does). */
@@ -60,20 +61,34 @@ function chemBlock(run) {
       ''
     )}<div class="mute">${mine ? 'You are in a clique.' : 'You are outside the cliques.'}${foes.length ? ` Feuding with ${foes.map(nm).join(', ')}.` : ''}</div></div>`;
 }
-/** One person's card: want / traits ("?" until known), their season, their team and the 3 memories that weigh most. */
+/**
+ * One person's card: their behaviour (the first trait, spec §4.35 — named from the first meeting, its bond rule on hover), want and the
+ * second trait ("?" until known), talent and gifts once known, their season, their team and the 3 memories that weigh most.
+ */
 function personCard(run, id) {
   const p = People.find(run, id),
     me = run.people && run.people[id];
   if (!p || !me) return '';
   const kw = People.knows(run, p, 'want'),
-    kt = me.traits.map((t, i) => People.knows(run, p, 'trait', i)),
+    kb = People.knows(run, p, 'trait', 0) || (!p.gone && personMet(run, p)),
+    k2 = People.knows(run, p, 'trait', 1),
+    B = TRAITS[me.traits[0]],
+    N = TRAITS[me.traits[1]],
     want = kw ? `<b ${tip(WANTS[me.want].desc)}>${esc(WANTS[me.want].name)}</b>` : '<b class="mute">?</b>',
-    traits = me.traits.map((t, i) => (kt[i] ? `<b ${tip(TRAITS[t].desc)}>${esc(TRAITS[t].name)}</b>` : '<b class="mute">?</b>')).join(', '),
+    nuance = k2 ? `<b ${tip(N.desc)}>${esc(N.name)}</b>` : '<b class="mute">?</b>',
+    G =
+      typeof Gifts !== 'undefined' && !p.gone && Gifts.known(run, p)
+        ? Gifts.of(p).filter(g => typeof GIFTS !== 'undefined' && GIFTS[g])
+        : null,
+    gifts = G
+      ? `<div>Talent <b>${esc(Gifts.tier(p))}</b> · ${G.length ? G.map(g => `<b ${tip(GIFTS[g].desc)}>${esc(GIFTS[g].name)}</b>`).join(', ') : 'No gifts'}</div>`
+      : '', // talent and gifts once known (the Gifts contract, T-320); nothing before Gifts exists
     mem = Rel.top(run, id, 3),
     t = p.team;
-  // want / traits only once one is known; the rumour of their season is the name's hover (personDetail) — §10.8
+  // the behaviour from the first meeting, the want / second trait once known; the rumour of their season is the name's hover (personDetail) — §10.8
   return `<div class="pcard small">
-    ${kw || kt.some(Boolean) ? `<div>Wants ${want} · Traits ${traits}</div>` : ''}
+    ${kb ? `<div class="pbeh"><b ${tip(B.rule)}>${esc(B.beh)}</b> · Wants ${want} · Also ${nuance}</div>` : kw ? `<div>Wants ${want}</div>` : ''}
+    ${gifts}
     <div class="mute">${p.gone ? esc(`${p.gone.team} · ${People.fateText(run, me)}`) : `${esc(t ? t.name : 'No club')}${me.status !== 'active' ? ` · ${esc(People.fateText(run, me))}` : ''}${me.inj > 0 ? ` · injured ${me.inj}w` : ''}`}</div>
     ${p.gone ? '' : sidesLine(run, id)}
     ${mem.length ? `<ul class="pmem">${mem.map(m => `<li><b>${Season.at(run, m.w)}</b> ${esc(m.text)}</li>`).join('')}</ul>` : ''}
