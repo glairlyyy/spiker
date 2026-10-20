@@ -1185,3 +1185,18 @@ test('presence: the beat plays once per S / A player you meet (dark, chime cue, 
   delete run.story.seen[`presence:${far.id}`];
   assert(!g.Story.presence(run), 'Story mode only');
 });
+test('rel: a gain × Gifts.bondMul when Gifts is loaded (Magnetic / Lone Wolf, T-320 contract); losses untouched', () => {
+  const [g, run, mate] = mkMate(133, [PLAIN, 'x']);
+  g.Rel.add(run, mate.id, 'won_together');
+  eq(g.Rel.stance(run, mate.id), 5, 'no Gifts: × 1');
+  const G = g.Rel.add.constructor('return globalThis')(); // the game context's global (where `typeof Gifts` looks)
+  G.Gifts = { bondMul: (r, id) => (id === mate.id ? 1.3 : 1) };
+  try {
+    g.Rel.add(run, mate.id, 'vouched');
+    eq(g.Rel.stance(run, mate.id), 5 + 15 * 1.3, 'a gain × 1.3');
+    g.Rel.add(run, mate.id, 'beat_me');
+    eq(g.Rel.stance(run, mate.id), 5 + 15 * 1.3 - 8, 'a loss as it is');
+  } finally {
+    delete G.Gifts;
+  }
+});

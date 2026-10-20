@@ -16,6 +16,7 @@ const Rel = {
     const before = Rel.bondOf(run, id);
     v = Rel.behaveIn(run, id, kind, v == null ? MEMORY[kind].v : v);
     if (v > 0 && Feel.has(run, 'bitter')) v *= SCARS.bitter.k; // Bitter (spec §4.30): bonds grow slower
+    if (v > 0 && typeof Gifts !== 'undefined' && Gifts.bondMul) v *= Gifts.bondMul(run, id); // Magnetic / Lone Wolf (spec §4.35, theirs and yours)
     Rel.push(run, Rel.key(run.youId, id), id, kind, v, id);
     Rel.refresh(run, id);
     Rel.reveal(run, id);

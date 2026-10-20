@@ -399,7 +399,7 @@ challenge / clash wins → `Rel.beatMe`. Match rewards no longer carry bond.
 **Behaviour (T-321, spec §4.35).** An NPC's first trait is their headline behaviour: `TRAITS[t].beh` / `.rule` (Friendly, Shy, Competitive, Picky,
 Egoist, Loyal, Mercenary, Hothead), numbers in `REL.behave`; the second trait keeps `REL.trait` only. You ↔ NPC only (NPC ↔ NPC reads `REL.trait` as
 before). Write time (`Rel.behaveIn`, from `Rel.add`, before Bitter): Shy — positives × low while their list with you has < 3 entries; Picky —
-positives count 0 unless `Rel.picky` (your OVR ≥ theirs − 5 or 1,000 fans); a memory their traits flip negative is never gated. Read time
+positives count 0 unless `Rel.picky` (your OVR ≥ theirs − 5 or 1,000 fans); a memory their traits flip negative is never gated. After Bitter, a gain × `Gifts.bondMul(run, id)` (Magnetic / Lone Wolf, T-320) when Gifts is loaded. Read time
 (`Rel.cx(run, id, other)` → `Rel.weigh(..., cx)`, built once per `stance` / `top`): the first trait's `REL.trait` row overridden by its `REL.behave`
 row (Friendly pos 1.5, Shy pos 1.4, Competitive beat_me × −0.75 and trained_hard × 2), then Loyal (positives × own / out by your faction vs their
 home), Mercenary (× fast per week past `after` weeks; scars exempt), Hothead (× swing). `Rel.afterMatch`: Egoist mates get `outshone` (your
