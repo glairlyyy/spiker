@@ -364,6 +364,9 @@ export function createLife(scene, heightAt) {
     poles.forEach((p, i) => cloth.setColorAt(i, col.set(p.color)));
     person.count = fast ? figs.length : 0;
     circleRing.count = fast ? 0 : circle.length;
+    circleRing.visible = circleRing.count > 0;
+    hum.mesh.visible = !fast;
+    person.visible = fast;
     pole.count = poles.length;
     cloth.count = poles.length;
     dust.count = puffs.length;
