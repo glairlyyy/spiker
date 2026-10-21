@@ -1529,6 +1529,20 @@ the AI coach fills every slot you leave with the same function. Built and measur
     - **Who agrees to play**: by behaviour (§4.35) — Picky and Egoist refuse anything but a flat floor (asphalt at best), Proud
       grumbles (a small negative memory if you lose), Friendly / Hothead / Reckless play on anything; a player born to a ground
       (Wu's beach kids on sand, Shu's on the slopes) plays it better (+ a little). A crew that refuses says so on the card.
+    **[built 2026-10-21, T-339: the Cargo Shed by the airport sells the drone ($400, the trip + a day); rent one at any court or venue
+    ($40, the walk there, D) for one match. A map point's card gets a **Pickup** row (P, Shift + P ⏭): open ground only (not the sea,
+    water, paddies, the airport, a road, an official venue or among the buildings); sand on the beach strip, grass in the parks and open
+    land, slope on terraces / the quarry / fields / steep Shu ground, asphalt in Wei, the Outlaws, yards and quays; wind on the beach,
+    open fields and high ground. Opponents: the people within 150 of the point, nearest first, one per crew — the first who agrees plays
+    with their crew; a spar-like match (no stake, the trip + a day, −12 stamina, half the match XP, `sparred`). Spar in the figure menu
+    takes a court, else with the drone the open ground near them. A road stop's crew gets **Challenge here** (the stake-free challenge
+    played at the stop). Refusals by headline behaviour: Picky / Egoist off anything but asphalt (the row prints who and why); "Proud" =
+    a hidden second trait proud — plays, but a loss leaves `grumbled` −3; everyone else plays. Engine (no ground = today's match, draw for
+    draw; goldens unchanged): sand Agility / jump × 0.9, HP a hit × 0.8, digs × 0.94; grass passes −5, a dig's bad bounce 8 %, jump × 0.95;
+    asphalt HP × 1.3 — each of your knockdowns a 5 % injury (1 week) and, under Endurance 50, Pain; slope sets −0.03, Agility × 0.96,
+    the low end's serve errors +3 %; wind floats wander. Born to it: 40 % of each penalty, + 0.01. Equal teams, 1200 matches: every
+    ground within ±2 % of a court, born to the sand +2.5 % — under the home-court edge. The field venue: the ground patch, glowing
+    projected lines, a light-curtain net between two projector pylons, a few props and onlookers, no stands; the drone hovers and calls]**
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.

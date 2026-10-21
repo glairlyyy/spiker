@@ -152,10 +152,11 @@ Both run on the frame clock and never touch playback. The whistle / beep sound i
   receiveScore; set: setSuccess; serve: serveErrorP for the side `m.ground.low`). A player in `home` (their pool's region =
   `GROUNDS.home.region[k]`: Wu → sand, Shu → slope) keeps `keep` of each penalty, + `plus` on agi / jump (HP is the ground's for all).
   Draws only with a ground: one R() a dig on grass (`bounce` → − `bad`, rally-defense digSetup), one rnd() a float serve's receive with
-  wind (serve.js serveAim). `m.grd.ko` (engine-only) counts knockdowns on a field. Measured (1200 seeded matches, each pair both ways):
-  sand HP a hit −24 %, 0.03 fewer touches a rally; grass loose passes +0.9 pts; asphalt HP +29 %, knockdowns 4.8 → 7.5 a match; slope the
-  low side's serve errors +2 pts; wind (1) loose passes +1.1 pts; side 0's win odds within noise of the court's for every ground; born to it
-  (all of side 0): sand +2.5 %, the low end of a slope −2 % (≤ the ±5 % home-court edge).
+  wind (serve.js serveAim). `m.grd.ko` (engine-only) counts knockdowns on a field. Measured (1200 seeded matches, each pair both ways; side 0
+  wins 52.3 % on a court): sand HP a hit −25 %, knockdowns 4.8 → 2.8 a match, touches a rally 1.23 → 1.19 (51 %); grass loose passes
+  13.4 → 14.1 % (50 %); asphalt HP +30 %, knockdowns 7.6 (52 %); slope: the low side's serve errors 15.7 vs 13.9 % (side 0 low: 50 %);
+  wind 1: loose passes 14.7 %, aces 4.4 → 4.7 (51 %); born to the sand (all of side 0): 54.8 % (+2.5 on a court, +3.9 on the same sand);
+  born to the slope at its low end: 50 %. Every swing ≤ the ±5 % home-court edge (noise ±1.4).
 - **Career** — `City.groundAt(run, p)` (pure): `{ k, wind, name }` or `{ why }` (sea, reservoir / paddies, airport, within
   `PICKUP.road[kind]` of a road, an official venue's clear, a building lot); sand = MapModel.onSand; grass in parks; slope on terraces,
   the quarry, the fields and Shu's relief gradient > `PICKUP.slope`; asphalt in Wei, the Outlaws, yards, quays; wind by exposure. The
