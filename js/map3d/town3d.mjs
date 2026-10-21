@@ -3,11 +3,13 @@
 // come from kit3d.mjs. Display only: no rules, no randoms.
 //   createTown(scene, heightAt) → { sync(model), dispose() }
 // The layout is rebuilt only when its JSON changes; the fog dimming is recoloured when the fog changes.
-// Wealth (a lot's `wealth`, 0–1) tints each instance and, with `h`, stretches its height. Draw calls: 1 (roads) + 1 (overpass) + 4 (box / gable / stepped / cylinder fillers) + 1 (landmarks + walls).
+// Wealth (a lot's `wealth`, 0–1) tints each instance and, with `h`, stretches its height. Draw calls: 1 (roads) + 1 (overpass) + 1 (landmarks + walls)
+// + the lots: the detailed look (spec §4.39, the default) 3 merged meshes — walls / props / street furniture, glass, pitched roofs
+// (kit3d.mjs buildLot, streetProp); the Fast setting (G.gfx 'fast') today's 4 instanced shapes (box / gable / stepped / cylinder).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAP_M, smooth, fogFactor } from './geo3d.mjs';
-import { KIT, buildLandmark, accentOf, box, hip } from './kit3d.mjs';
+import { KIT, buildLandmark, accentOf, box, hip, FOOT, FOOTPRINT, unit, buildLot, mesher, detailMats, streetProp } from './kit3d.mjs';
 
 const ROAD = {
     main: { w: 3.2, color: '#6d6e73' },
@@ -19,13 +21,10 @@ const ROAD = {
   LIFT = 0.15, // roads sit this far above the terrain (m)
   STEP = 3, // road sample spacing (m)
   PLANK = 0.9, // boardwalk plank length (m): planks alternate two tones
-  FOOT = 1.2, // buildings are sunk this far into the ground (m)
-  FOOTPRINT = 1.2, // a lot's side in metres = size (map units) × MAP_M × this
   WALL = { h: 2.4, t: 0.6, color: '#d9cdb8' }; // the Gloria wall (m)
 /** The overpass (m); life3d drives its vans along the same deck. */
 export const DECK = { up: 7, w: 5.4, thick: 0.9, rail: 0.8, ramp: 28, every: 20, step: 2 };
 
-const unit = i => (Math.imul(i + 1, 2654435761) >>> 0) / 4294967296; // a fixed hash in 0..1
 const toM = ([x, y]) => [x * MAP_M, y * MAP_M];
 
 const GLASS = new THREE.Color('#8fbbe0'),
@@ -44,24 +43,31 @@ const wealthTint = (c, w, u, rise) => {
   return c.multiplyScalar(0.8 + 0.35 * w);
 };
 
-export function createTown(scene, heightAt) {
-  const group = new THREE.Group();
+/** Street furniture along the main roads (spec §4.39): a slot halfway between two lamps (kit3d STREET), its kind and side by hash. */
+const PROPS = { every: 22, off: { bench: 2.7, bin: 2.6, stop: 3.4 } };
+
+/** opts.fast() → true for the Fast graphics setting (default: the game's G.gfx); read at each sync. */
+export function createTown(scene, heightAt, opts = {}) {
+  const group = new THREE.Group(),
+    fastOf = opts.fast || (() => typeof G !== 'undefined' && G.gfx === 'fast');
   scene.add(group);
   let layoutKey = null,
     fogKey = null,
     fogK = () => 1,
     vparts = [], // vertex-coloured meshes dimmed by the fog: [{ mesh, base }]
-    fill = []; // [{ mesh, base: Float32Array (rgb per instance), at: [x, z] per instance }]
+    fill = [], // [{ mesh, base: Float32Array (rgb per instance), at: [x, z] per instance }]
+    det = null; // the detailed lots: { parts: [{ mesh, base, glow? }], at: [[x, z]], span: per part [start, end) vertex per item }
 
   const clear = () => {
     for (const o of [...group.children]) {
       group.remove(o);
       if (o.geometry && !o.userData.shared) o.geometry.dispose();
-      if (o.material && !o.userData.shared) o.material.dispose();
+      if (o.material && !o.userData.shared && !o.material.userData.shared) o.material.dispose();
       if (o.isInstancedMesh) o.dispose();
     }
     vparts = [];
     fill = [];
+    det = null;
   };
   const stdMat = extra => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0, ...extra });
   /** A mesh from flat position / colour arrays (non-indexed triangles), normals computed. */
@@ -241,6 +247,98 @@ export function createTown(scene, heightAt) {
     return out;
   };
 
+  /**
+   * The detailed lots (spec §4.39): every building's walls, trims and props, its glass and its pitched roof from kit3d buildLot,
+   * the street furniture along the main roads — merged into three meshes (walls, glass, roofs). Colours as the Fast instances
+   * (kit palette × a hash, wealth tint); fog dimming per building (its centre), recoloured in place.
+   */
+  const buildDetail = (lots, roads) => {
+    const M = { W: mesher({ wmask: 3 }), G: mesher({ glow: 3 }), R: mesher() },
+      keys = ['W', 'G', 'R'],
+      at = [],
+      span = { W: [], G: [], R: [] },
+      col = new THREE.Color(),
+      open = () => keys.map(k => M[k].count()),
+      close = (x, z, s0) => {
+        at.push([x, z]);
+        keys.forEach((k, j) => span[k].push(s0[j], M[k].count()));
+      };
+    lots.forEach((l, i) => {
+      const k = KIT[l.kind];
+      if (!k) return;
+      const x = l.at[0] * MAP_M,
+        z = l.at[1] * MAP_M,
+        s0 = open();
+      col.set(k.colors[Math.floor(unit(i * 3 + 2) * k.colors.length)]).multiplyScalar(0.92 + 0.16 * unit(i * 3));
+      wealthTint(col, l.wealth, unit(i * 3 + 5), k.rise);
+      if (buildLot(M, l, i, heightAt(x, z), [col.r, col.g, col.b])) close(x, z, s0);
+    });
+    // benches, bins and bus stops on the main roads, clear of the lots (a coarse bucket grid of their footprints)
+    const cell = 12,
+      grid = new Map(),
+      key = (x, z) => `${Math.floor(x / cell)},${Math.floor(z / cell)}`;
+    lots.forEach(l => {
+      const x = l.at[0] * MAP_M,
+        z = l.at[1] * MAP_M,
+        r = l.size * MAP_M * FOOTPRINT * 1.1;
+      for (let a = -1; a <= 1; a++)
+        for (let b = -1; b <= 1; b++) {
+          const kk = key(x + a * cell, z + b * cell);
+          if (!grid.has(kk)) grid.set(kk, []);
+          grid.get(kk).push([x, z, r]);
+        }
+    });
+    const free = (x, z) => !(grid.get(key(x, z)) || []).some(([a, b, r]) => Math.hypot(x - a, z - b) < r + 0.9);
+    roads.forEach((r, ri) => {
+      if (r.kind !== 'main') return;
+      const [a, b] = r.pts.map(p => [p[0] * MAP_M, p[1] * MAP_M]),
+        len = Math.hypot(b[0] - a[0], b[1] - a[1]),
+        ux = (b[0] - a[0]) / (len || 1),
+        uz = (b[1] - a[1]) / (len || 1);
+      for (let d = PROPS.every, j = 0; d < len - 4; d += PROPS.every, j++) {
+        const h = unit(ri * 977 + j * 31),
+          kind = h < 0.16 ? 'stop' : h < 0.5 ? 'bench' : h < 0.66 ? 'bin' : null;
+        if (!kind) continue;
+        const s = unit(ri * 977 + j * 31 + 1) < 0.5 ? 1 : -1,
+          o = PROPS.off[kind] * s,
+          x = a[0] + ux * d - uz * o,
+          z = a[1] + uz * d + ux * o,
+          y = heightAt(x, z);
+        if (y < 0.2 || !free(x, z)) continue;
+        const s0 = open();
+        streetProp(M.W, kind, x, y, z, uz * s, -ux * s);
+        if (kind === 'bench' && free(x + ux * 1.3, z + uz * 1.3))
+          streetProp(M.W, 'bin', x + ux * 1.3, heightAt(x + ux * 1.3, z + uz * 1.3), z + uz * 1.3, uz * s, -ux * s);
+        close(x, z, s0);
+      }
+    });
+    const mats = detailMats(),
+      parts = [];
+    for (const [k, mat] of [
+      ['W', mats.wall],
+      ['G', mats.glass],
+      ['R', mats.roof]
+    ]) {
+      const g = M[k].geometry();
+      if (!g) {
+        parts.push(null);
+        continue;
+      }
+      const mesh = new THREE.Mesh(g, mat);
+      mesh.castShadow = k !== 'G';
+      mesh.receiveShadow = true;
+      mesh.frustumCulled = false; // spread over the whole island
+      mesh.userData.town = k;
+      parts.push({
+        mesh,
+        base: g.attributes.color.array.slice(),
+        glow: g.attributes.glow ? g.attributes.glow.array.slice() : null,
+        span: span[k]
+      });
+    }
+    return { parts, at };
+  };
+
   /** A wall ring round each walled district (compound style) with a gatehouse where a road crosses it. */
   const wallParts = (districts, roads) => {
     const out = [],
@@ -346,6 +444,23 @@ export function createTown(scene, heightAt) {
       }
       c.needsUpdate = true;
     }
+    if (det)
+      for (const p of det.parts) {
+        if (!p) continue;
+        const a = p.mesh.geometry.attributes,
+          c = a.color.array,
+          g = a.glow && a.glow.array;
+        det.at.forEach(([x, z], j) => {
+          const k = fogK(x, z),
+            kg = 0.4 + 0.6 * k; // lit windows still show in the dark you haven't explored, fainter (as the night layer)
+          for (let v = p.span[j * 2] * 3, e = p.span[j * 2 + 1] * 3; v < e; v++) {
+            c[v] = p.base[v] * k;
+            if (g) g[v] = p.glow[v] * kg;
+          }
+        });
+        a.color.needsUpdate = true;
+        if (g) a.glow.needsUpdate = true;
+      }
     for (const f of fill) {
       const c = f.mesh.instanceColor;
       f.at.forEach(([x, z], j) => {
@@ -360,7 +475,8 @@ export function createTown(scene, heightAt) {
     /** Bring the layer up to date with a model (reads model.land roads / lots / landmarks / districts and model.fog only). */
     sync(model) {
       const L = model.land,
-        key = JSON.stringify([L.roads, L.lots, L.landmarks, L.districts]);
+        fast = !!fastOf(),
+        key = JSON.stringify([L.roads, L.lots, L.landmarks, L.districts, fast]);
       let dirty = false;
       if (key !== layoutKey) {
         layoutKey = key;
@@ -369,9 +485,11 @@ export function createTown(scene, heightAt) {
           roads = buildRoads(L.roads),
           over = buildOverpass(L.roads),
           lm = buildLandmarks(L.landmarks, L.roads, tint, L.districts);
-        fill = buildFill(L.lots);
+        if (fast) fill = buildFill(L.lots);
+        else det = buildDetail(L.lots, L.roads);
         for (const v of [roads, over, lm]) if (v) (vparts.push(v), group.add(v.mesh));
         for (const f of fill) group.add(f.mesh);
+        if (det) for (const p of det.parts) if (p) group.add(p.mesh);
         dirty = true;
       }
       const fk = JSON.stringify(model.fog);
@@ -381,6 +499,12 @@ export function createTown(scene, heightAt) {
         recolour();
       }
     },
+    /** The detailed look's counts (QA): buildings and props drawn, triangles per part; null in the Fast setting. */
+    count: () =>
+      det && {
+        items: det.at.length,
+        tris: det.parts.map(p => (p ? p.mesh.geometry.attributes.position.count / 3 : 0))
+      },
     dispose() {
       clear();
       scene.remove(group);

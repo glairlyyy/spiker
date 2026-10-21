@@ -659,7 +659,20 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
    instance, height × (1 + 2.5 × `lot.h` × the kind's `rise`) so downtown towers rise toward the middle; `lot.wealth` tints the instance colour in place — rich: glass-blue / clean stone / gold, poor: grey / rust / patched wood, the middle untouched — no extra draw call); one merged mesh for all landmarks
    and the wall ring of each `compound` district (a gatehouse of two towers and a lintel where a road crosses it); each landmark faces its
    nearest road unless it has a fixed `rot` (the airport: runway, apron, terminal and tower as one landmark on `AIRPORT.yaw`; lots keep
-   off `AIRPORT.box`, `MapModel.inAirport`). Rebuilt only when the layout JSON changes, dimmed by the same fog rule as the terrain (`fogFactor` in geo3d.mjs); 5 draw calls, ~+10k triangles. Terrain (`buildTerrain`): on the Wu stretch the sand between `land.dunes` and the coast is
+   off `AIRPORT.box`, `MapModel.inAirport`). Rebuilt only when the layout JSON changes, dimmed by the same fog rule as the terrain (`fogFactor` in geo3d.mjs); 5 draw calls, ~+10k triangles.
+   That instanced look is the Fast setting's (`G.gfx === 'fast'`, read by town3d at each sync — `createTown(scene, heightAt, { fast })`
+   for tests). The default is the **detailed look** (spec §4.39, T-342; kit3d.mjs "The detailed look"): `buildLot` draws each lot from
+   `facade(lot, i)` (the one window layout: per face that can be seen — world normal z ≥ −0.25, the camera never turns — rows of
+   panes every 2.8 m (one row under a low eave), the door or a shop front (+ awning in the district's colours, a sign) on the face
+   most toward the camera, balconies, wall AC units; each pane `lit` by a fixed hash) and `LOOK[kind]` turned by the district style
+   (flat roofs with parapet, deck, roof AC units, stair houses, antennas, Wu water tanks; gable / hip / lean-to roofs, Shu clay tiles
+   with ridge caps, terracotta in Old Town and Gloria, tin in Wu; Shu's stepped terrace houses; tanks and stacks as banded
+   cylinders); heights and footprints are `lotFrame` (the Fast instances' numbers). Benches, bins and bus stops (`streetProp`) stand
+   between the lamps of the main roads, clear of the lots. All merged into three meshes on kit3d's shared `detailMats()`: walls (vertex
+   colour × the canvas wall texture's plaster / brick / plank channel picked per vertex by `wmask`; metal = planks turned upright),
+   glass (the canvas window atlas `TILE`; lit panes glow by their `glow` colour × `NIGHT_U` — set by the night layer — through the
+   atlas's glow mask), roofs (the canvas roof atlas). Fog dims per building (vertex ranges, recoloured in place). ~1.27k items,
+   ~136k triangles, 3 draw calls in place of the Fast 4. Terrain (`buildTerrain`): on the Wu stretch the sand between `land.dunes` and the coast is
    wide, flat and low (`sideDist` = signed distance to the dune line) with a dune ridge on the line; a faint tint per district style is
    folded into the vertex colours (no draw call). Pins above a landmark float `PIN_UP` over its roof (`landmarkHeight(kind)`). The kit registry
    is `js/map3d/kit3d.mjs`: `KIT[kind] = { geo(), mat, scale, colors, rise }` (filler kinds, incl. rowhouse, barracks, workshop, market,
@@ -722,6 +735,11 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   roads, every 22 m, alternating sides) and court floodlights (`model.floods` = `MapModel.floods`: explored court landmarks +
   venues, four towers each), plus one InstancedMesh of additive ground pools (lamps, courts); fog-dimmed (to 40 %, so lit towns still show in the dark); hidden when `lit` ≈ 0;
   rebuilt when the lots, fog, floods or the setting change. Fast setting: ⅓ of the windows, no lamp pools, `LIFE.low` figures.
+  Detailed look (T-342): the window glows are kit3d `facade`'s lit panes on camera-facing faces (shop fronts a glow every 1.4 m,
+  signs a small coloured one) — the panes town3d draws, so they line up by construction; the lamps come from kit3d `lampSpots` (the
+  same row as before) and each gets a post 0.9 m further from the road with an arm out to the head (`lampPost`); each flood glow a
+  mast with a lamp bank turned to the court (`floodTower`) — one merged mesh on the shared wall material, drawn day and night
+  (+1 draw call); `set(lit)` also drives `NIGHT_U`.
 
 ### The map's detailed look (spec §4.39 Land, T-343)
 
