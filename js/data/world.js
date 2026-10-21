@@ -325,3 +325,26 @@ const SQUAD = 6;
 const DRAW = { floor: 40, span: 20, minW: 0.1, repPer: 50, sure: 60 };
 /** Reserve promotion on payday: a faction's best reserve replaces a weaker same-role squad player if it beats their OVR by at least `gap`. */
 const PROMOTE = { gap: 3 };
+/**
+ * Team life (spec §4.36). Transfer windows: you sign with a club only in a week whose previous week is an evaluation
+ * (CALENDAR) or in week 1 of a season (`open`: the off-season's registration; year 1's preseason); the Academy squad and
+ * leaving to go free are always open. Leaving a club: `walked_out` with every teammate (MEMORY.walked_out) and `rep` standing.
+ * Tenure (weeks at your club): `ahead` → lineup + `lineup`; `members` → × `price` at your faction's places; `captain` → you may be named.
+ */
+const WINDOW = { open: [1], rep: -8 };
+const TENURE = { ahead: 4, lineup: 4, members: 8, price: 0.8, captain: 12 };
+/** Team-life lines. registrar: the window rules (dry); diary: your walking out, a friend who follows (the MC). {n} first name, {club}. */
+const TEAM_LINES = {
+  closed: 'Registrations closed. Next window: week {w}.', // registrar
+  closedSeason: 'Registrations closed until the off-season.', // registrar
+  left: ['Walked out on {club}. Nobody held the door.', 'Left {club}. Cleared the locker in four minutes.'], // diary
+  ask: {
+    warm: '“Wherever you go, I’m going. Don’t argue.”',
+    steady: '“…Is there room for one more? I work hard. You know that.”',
+    reckless: '“You think you can just leave me here? Take me with you.”',
+    calculating: '“I go where the wins are. {fee} and I’m yours.”',
+    other: '“If there’s a seat over there… I’d take it.”'
+  },
+  came: ['{n} cleared the locker right after me. Didn’t ask permission.', '{n} followed me to {club}. Loud about it.'], // diary
+  stayed: ['Left {n} behind at {old}. {n} watched me go.', 'Told {n} no. The look will keep.'] // diary
+};

@@ -453,6 +453,8 @@ function hqPanel(run, ti) {
           .map((h, i) => [i ? '' : 'Habits', esc(h[0].toUpperCase() + h.slice(1))])
       : [],
     rep = City.rep(run, f.region),
+    mine = ti === run.team,
+    win = World.window(run),
     wu = War.ofClub(ti),
     fall = wu && War.state(run).fallen[wu],
     scouted = seen
@@ -477,18 +479,61 @@ function hqPanel(run, ti) {
       fall ? ptag(`Destroyed by ${esc(WAR.units[fall.by].name)}`, GLOSSARY.seize.long, 'bad') : '',
       ptag(`Rating ${t.ovr}`),
       rep ? ptag(`⚑ ${fmtDelta(rep)}`, GLOSSARY.standing.long, rep < 0 ? 'bad' : '') : '', // hidden at 0 (§10.8)
-      free && j.ok ? ptag('Would sign you', esc(World.joinText(ti, run)), 'sel') : ''
+      j.ok ? ptag('Would sign you', esc(World.joinText(ti, run)), 'sel') : '',
+      mine ? tenureTag(run) : fall ? '' : windowTag(win)
     ].filter(Boolean),
     row: [
-      free
-        ? `<button class="btn ${j.ok ? 'hot' : 'lock'}" onclick="joinClub(${ti})" ${j.ok ? '' : `disabled ${tip(`They ask: ${World.joinText(ti, run)}. Missing: ${j.why.join(', ')}`)}`}>${j.ok ? 'Sign' : esc(joinGap(run, ti))}</button>`
+      !mine
+        ? `<button class="btn ${j.ok ? 'hot' : 'lock'}" onclick="joinClub(${ti})" ${j.ok ? (free ? '' : tip(switchCost(run))) : `disabled ${tip(`They ask: ${World.joinText(ti, run)}. Missing: ${j.why.join(', ')}`)}`}>${j.ok ? (free ? 'Sign' : `Switch · ⚑ ${WINDOW.rep}`) : esc(win.open || Run.cupDef(run) ? (free ? joinGap(run, ti) : j.why[0]) : win.next ? `Window · W${win.next}` : 'Window shut')}</button>`
         : '',
       ti !== run.team
         ? `<button class="btn" onclick="mapScout(${ti})" ${late ? `disabled ${tip(late)}` : tip(`A day at their HQ${sc > 1 ? ' (+ the trip)' : ''}: see their roster and elements, hear a rumour. −${SCOUT_STA} stamina`)}>${seen ? 'Scout again' : 'Scout'} · ${sc}d</button>`
         : '',
       `<button class="btn" onclick="openDossier('${f.region}')" ${tip(`Everything you know about ${REGIONS[f.region].name}`)}>Dossier</button>`
     ].filter(Boolean),
-    split: free ? 'three' : 'two',
-    after: overthrowBlock(run, ti) + challengeBlock(run, ti) + scouted
+    split: mine ? 'two' : 'three',
+    after: overthrowBlock(run, ti) + challengeBlock(run, ti) + scouted + (mine ? leaveBlock(run, t) : '')
   });
+}
+/** The transfer window on another club's HQ card (spec §4.36 A): open now, or the week it opens. */
+const windowTag = win =>
+  win.open
+    ? ptag('Window open', 'Registrations open this week (the week after an evaluation, or week 1)', 'sel')
+    : ptag(win.next ? `Window opens W${win.next}` : 'Window shut', esc(win.why));
+/** Weeks at your club and the next tenure step (spec §4.36 A). */
+function tenureTag(run) {
+  const n = World.tenure(run),
+    steps = [
+      [TENURE.ahead, `lineup +${TENURE.lineup}`],
+      [TENURE.members, `members' price × ${TENURE.price}`],
+      [TENURE.captain, 'captain eligible']
+    ],
+    nx = steps.find(([w]) => n < w);
+  return ptag(
+    `Tenure ${n}w`,
+    `${steps.map(([w, t]) => `${w}+ weeks: ${t}${n >= w ? ' ✓' : ''}`).join(' · ')}${nx ? `. Next in ${nx[0] - n}w` : ''}`,
+    nx ? '' : 'sel'
+  );
+}
+/** What walking out costs (the Switch / Walk out controls): each teammate's memory, standing. */
+function switchCost(run) {
+  const T = Run.myTeam(run),
+    n = squadOf(T).filter(p => p.id !== run.youId).length;
+  return `Walk out of ${T.name}: ${n} teammates remember it (Loyal ones twice as hard), ${WINDOW.rep} standing with ${REGIONS[FACTIONS[run.team].region].name}. Tenure starts again.`;
+}
+/** Your club's HQ: walk out to go free (always open), behind a peek — the inline confirm. */
+function leaveBlock(run, t) {
+  if (Run.cupDef(run)) return '';
+  const n = squadOf(t).filter(p => p.id !== run.youId).length,
+    body = `<div class="lab">Walk out</div>${kv([
+      ['Teammates', `${n} remember it`, 'dn'],
+      ['Standing', `${WINDOW.rep} with ${esc(REGIONS[FACTIONS[run.team].region].name)}`, 'dn'],
+      ['Tenure', `${World.tenure(run)}w → 0`, 'dn'],
+      ['Then', 'free agent on the Academy squad']
+    ])}<div class="acts pri"><button class="btn danger" onclick="CW.peek=null;leaveClub()">Walk out · ⚑ ${WINDOW.rep}</button></div>`;
+  return `<section class="pchal">${peek(`lv:${t.i}`, 'Leave club', body, 'row')}</section>`;
+}
+function leaveClub() {
+  if (World.leave(RUN)) Run.save(RUN);
+  renderCareer();
 }

@@ -152,12 +152,14 @@ const Run = {
    */
   lineup(run, T, region, dry, forceYou) {
     const you = Run.you(run),
+      club = run.team != null && T === run.teams[run.team], // your club (not the Academy squad, not a Cup squad)
       cap = T.cap && squadOf(T).includes(T.cap) ? T.cap : null, // the sitting captain's allies gain, his enemies lose (REL.chem.capVouch)
       chem = cap ? Rel.chem(run, T) : null,
       score = p =>
         ovr(p) +
         6 * Run.form(run, p) +
         (p === you && region ? City.rep(run, region) / BENCH.standingPer : 0) +
+        (p === you && club && World.tenure(run) >= TENURE.ahead ? TENURE.lineup : 0) + // tenure (spec §4.36): ahead of an equal rival
         (chem ? Rel.capBonus(run, chem, cap, p) : 0),
       left = [...squadOf(T)],
       P = [],
@@ -181,7 +183,8 @@ const Run = {
       [T.s, T.mb] = P;
       T.ws = [P[2], P[3]];
       for (const p of squadOf(T)) p.cap = false;
-      T.cap = P.reduce((a, p) => (p.lead > a.lead ? p : a), P[0]);
+      const C = club && World.tenure(run) < TENURE.captain ? P.filter(p => p !== you) : P; // captain only after TENURE.captain weeks
+      T.cap = C.reduce((a, p) => (p.lead > a.lead ? p : a), C[0]);
       T.cap.cap = true;
       T.ovr = teamOvr(T);
     }
@@ -381,8 +384,8 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 22;
-/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history), v9: `run.mode.story` (T-067), v10: `run.people` / `run.pseed` (NPC careers, T-060), v11: `run.mem` (what NPCs remember about you, T-061), v12: `run.asks` / `run.loans` / `run.vouch` / `run.sitout` / `run.duo` (approaches, T-063), v13: person `status` / `bench` / `gone` (fates, T-064), v14: memory entries gain `a` + NPC ↔ NPC pairs in `run.mem` (T-065), v15: `run.warm` → `run.evals`, `warmupWin|Loss` → `evalWin|Loss` (T-086), v22: `p.gifts` on every NPC (T-320); v21: `run.war`, `run.hex` dropped (T-313); v20: `you.body` + body XP banks (T-307) — older saves are dropped; add steps when the saved shape changes). */
+const RUN_VERSION = 23;
+/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history), v9: `run.mode.story` (T-067), v10: `run.people` / `run.pseed` (NPC careers, T-060), v11: `run.mem` (what NPCs remember about you, T-061), v12: `run.asks` / `run.loans` / `run.vouch` / `run.sitout` / `run.duo` (approaches, T-063), v13: person `status` / `bench` / `gone` (fates, T-064), v14: memory entries gain `a` + NPC ↔ NPC pairs in `run.mem` (T-065), v15: `run.warm` → `run.evals`, `warmupWin|Loss` → `evalWin|Loss` (T-086), v23: `run.tenure` / `run.ex` (team life, T-325); v22: `p.gifts` on every NPC (T-320); v21: `run.war`, `run.hex` dropped (T-313); v20: `you.body` + body XP banks (T-307) — older saves are dropped; add steps when the saved shape changes). */
 const RUN_MIGRATIONS = {
   18: d => ({ ...d, v: 19, year: 1 }) // two seasons (T-286): a v18 run is in year 1
   // v20: your body (`you.body`, body XP banks in `run.xp` — spec §4.33): v19 saves are dropped
@@ -447,6 +450,8 @@ const RUN_DEFAULTS = {
   story: [() => ({ seen: { intro: true }, flags: {}, cur: null }), isObj], // story scenes; a run saved before them skips the intro
   gifts: [() => [], Array.isArray], // the gifts you learned (spec §4.35; Gifts.sync → you.gifts), at most GIFT_ASK.max
   giftAsk: [() => ({}), isObj], // NPC id → the week they offered you a gift (once per friend)
+  tenure: [() => null, v => v === null || Number.isFinite(v)], // the absolute week (Season.wk) you signed with your club (spec §4.36; World.tenure)
+  ex: [() => ({}), isObj], // the teammates you left: id → the absolute week you left them (spec §4.36; World.leave)
   fav: [() => [], Array.isArray] // starred people (ids as strings): pinned in the People list, display only (spec §10.9)
 };
 /** Run rank letter for a fan count (RANKS is ordered from the top rank down). */

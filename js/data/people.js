@@ -146,7 +146,11 @@ const MEMORY = {
   sided_against: { v: -8 },
   shone: { v: 6 }, // an Egoist outplayed you in a match beside you
   outshone: { v: -6 }, // you outshone an Egoist beside you
-  blamed: { v: -10 } // a Hothead blames you for a loss together
+  blamed: { v: -10 }, // a Hothead blames you for a loss together
+  // team life (spec §4.36): you walked out of their club (× `beh` by headline behaviour: Loyal × 2, Mercenary × 0.3, an Egoist is glad);
+  // they faced you across the net after you left (written by the ex-teammate remarks)
+  walked_out: { v: -10, beh: { loyal: 2, calculating: 0.3, proud: -0.2 } },
+  faced_ex: { v: -3 }
 };
 /**
  * The relationship numbers. decay: stance fades per week (scars never). max: entries kept per pair. tags: stance
@@ -260,9 +264,14 @@ const MEM_TEXT = {
   shone: ['{n} had the better game. {n} made sure I noticed.', "{n} outplayed me beside me. I'll let {n} have it. Once."],
   outshone: ['I had the better game. {n} took it badly.', '{n} watched me take the match. Not with a smile.'],
   blamed: ['We lost and {n} decided it was me. Loudly.', '{n} blames me for the loss. Wrong, but loud about it.'],
+  walked_out: ['Walked out on {n} and the rest. {n} took it personally.', "Left {n}'s club. {n} won't be at my farewell."],
+  faced_ex: ['Faced {n} across the net. Old teammates hit harder.', '{n} played against me like I owed money.'],
   held_back: ["Talked {n} out of leaving. {n} hasn't thanked me.", '{n} stayed because I said so. They will remember who to blame.']
 };
-const MEM_ALT = {}; // (kind → trait → lines; none now — the ego memories went with the ego feature, owner 2026-10-06)
+const MEM_ALT = {
+  // (kind → trait → lines; the ego memories went with the ego feature, owner 2026-10-06)
+  walked_out: { proud: ['Walked out on {n}. {n} shrugged: more court for {n}.'] } // an Egoist is glad you left
+};
 /** Their season in one line (voice `rumor`: "word is", unreliable by definition — but the numbers are true). Chosen by the largest log count. */
 const SEASON_TEXT = {
   hard: [

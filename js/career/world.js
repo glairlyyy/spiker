@@ -50,8 +50,9 @@ const World = {
       j = World.joinReq(run, ti),
       miss = [];
     if (War.down(run, ti)) miss.push('club destroyed');
-    if (!World.isFree(run)) miss.push('already signed');
+    if (run.team === ti) miss.push('your club');
     if (Run.cupDef(run)) miss.push('not during a cup');
+    else if (!World.window(run).open) miss.push(World.window(run).why);
     if (j.ovr && ovr(you) < j.ovr) miss.push(`OVR ${j.ovr}`);
     if (j.key && you[KEYSTAT[you.role]] < j.key) miss.push(`${STATNAME[KEYSTAT[you.role]]} ${j.key}`);
     if (j.star && !you.star) miss.push('★ star');
@@ -86,9 +87,72 @@ const World = {
     if (j.fee) p.push(`$${j.fee} fee`);
     return p.join(' · ') || 'Open to anyone';
   },
-  /** Sign with team ti: you take the same-role slot; that player drops to the pickup squad. */
+  /**
+   * The transfer window (spec §4.36 A): { open, next (the week it opens next this season, or null), why (registrar line) }.
+   * Open in week 1 (WINDOW.open) and in every week after an evaluation week (CALENDAR — the year-2 rematch opens none).
+   */
+  window(run) {
+    const at = w => WINDOW.open.includes(w) || CALENDAR[w - 1] === 'eval',
+      w0 = run.week;
+    if (at(w0)) return { open: true, next: w0, why: '' };
+    let next = null;
+    for (let w = w0 + 1; w <= CAREER.weeks && next == null; w++) if (at(w)) next = w;
+    return {
+      open: false,
+      next,
+      why: next ? TEAM_LINES.closed.replace('{w}', next) : TEAM_LINES.closedSeason
+    };
+  },
+  /** Weeks at your club (0 while a free agent): the tenure steps (TENURE) read it. */
+  tenure: run => (run.team != null && Number.isFinite(run.tenure) ? Math.max(0, Season.wk(run) - run.tenure) : 0),
+  /**
+   * Walk out of your club (always open): every teammate remembers it (`walked_out` × their behaviour, MEMORY.walked_out.beh),
+   * standing WINDOW.rep with its faction, they go into `run.ex`; you take your role's seat on the Academy squad (as War.free).
+   * `keep`: an id spared the memory (a friend asking to follow — Circle.answer writes it on a no). False while a free agent.
+   */
+  leave(run, keep) {
+    if (World.isFree(run)) return false;
+    const T = run.teams[run.team],
+      f = FACTIONS[run.team],
+      you = Run.you(run),
+      P = run.pickup,
+      wk = Season.wk(run);
+    for (const m of squadOf(T)) {
+      if (m === you) continue;
+      run.ex[m.id] = wk;
+      if (m.id !== keep) World.walkedOut(run, m.id);
+    }
+    const rep = City.repBump(run, f.region, WINDOW.rep),
+      q = squadOf(P).find(p => p.role === you.role) || P.P[P.P.length - 1];
+    World.swap(you, q);
+    run.team = null;
+    run.tenure = null;
+    finalizeTeam(T);
+    finalizeTeam(P);
+    for (const m of Run.mates(run)) if (you.bond[m.id] == null) you.bond[m.id] = 0;
+    const L = TEAM_LINES.left;
+    Run.log(run, `${L[Math.floor(hstr(`left|${wk}`) * L.length)].replace('{club}', T.name)}${rep ? ` (${rep})` : ''}`, 'bad');
+    Run.news(run, `The office notes ${you.name} has left ${T.name}.`); // voice: wei (the Gazette)
+    return true;
+  },
+  /** One teammate's walked_out memory, scaled by their headline behaviour (Loyal × 2, Mercenary × 0.3, an Egoist glad). */
+  walkedOut(run, id) {
+    const M = MEMORY.walked_out,
+      k = Rel.traits(run, id)[0],
+      x = M.beh[k] == null ? 1 : M.beh[k];
+    return Rel.add(run, id, 'walked_out', M.v * x);
+  },
+  /**
+   * Sign with team ti (in the window): signed elsewhere, you walk out first (World.leave); you take the same-role slot and that
+   * player drops to the pickup squad. Your tenure starts; a close friend you left may ask to follow (Circle.ask).
+   */
   join(run, ti) {
     if (!World.canJoin(run, ti).ok) return false;
+    const from = run.team,
+      left = from != null ? squadOf(run.teams[from]).filter(p => p.id !== run.youId) : Run.mates(run),
+      asker = null; // T326
+    if (from != null) World.leave(run, asker && asker.id);
+    else for (const m of left) run.ex[m.id] = Season.wk(run); // (the Academy squad you leave: no hard feelings, but remembered)
     const T = run.teams[ti],
       P = run.pickup,
       you = Run.you(run),
@@ -98,6 +162,8 @@ const World = {
     const fee = World.joinReq(run, ti).fee || 0;
     run.money -= fee;
     run.team = ti;
+    run.tenure = Season.wk(run);
+    for (const m of squadOf(T)) delete run.ex[m.id]; // old teammates again
     finalizeTeam(T);
     Training.rollFloor(run); // this week's training partners are your new teammates
     finalizeTeam(P);
@@ -105,6 +171,7 @@ const World = {
     Run.news(run, `The office registers ${you.name} with ${T.name}.`); // voice: wei (the Gazette)
     Story.joined(run, ti); // your new teammates introduce themselves at the next hub (Story mode)
     Feel.add(run, 'drive', FEEL.drive.joined);
+    // T326 offer
     return true;
   },
   setHousing(run, k) {

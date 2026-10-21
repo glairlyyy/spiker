@@ -1008,3 +1008,19 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   friend's share × GIFTS.generous.k. Data `GIFT_RUB` (body gifts → their body stat, growth gifts → every gain; Late Bloomer in year 2).
 - **Not here** (Agent P, rel.js): Magnetic / Lone Wolf bond growth — `Rel.add` can scale a positive memory by
   `Gifts.bondMul(run, id)` (their Magnetic / Lone Wolf × your Magnetic).
+
+## Team life — windows, tenure, circle, strip (spec §4.36, T-325–T-327)
+
+- **Windows** (`World.window(run)` → { open, next, why }): open in `WINDOW.open` weeks (week 1 of a season — the off-season's
+  registration) and every week after a CALENDAR evaluation week (5, 9 … 25; the year-2 rematch opens none). `World.canJoin`
+  adds the registrar's `why` outside it (not during a cup), and drops "already signed": signing elsewhere is a switch.
+- **Leaving** (`World.leave(run, keep)`, always open; `World.join` calls it on a switch): `World.walkedOut` writes `walked_out`
+  with every teammate (`MEMORY.walked_out.v` × `beh[headline trait]`: Loyal × 2, Mercenary × 0.3, Egoist × −0.2 = +2) through
+  `Rel.add`, `City.repBump` WINDOW.rep with the club's region, every teammate → `run.ex[id]` = `Season.wk`; you take your role's
+  seat on the Academy squad (as War.free). Signing from the Academy squad records its players in `run.ex` without the memory;
+  a join clears `run.ex` for the new squad. HQ card (career-panels.js): `windowTag` / Switch (`⚑ −8`, `switchCost` tip) on other
+  clubs; your club: `tenureTag` and the Leave club peek (`leaveBlock` → `leaveClub`).
+- **Tenure** (`World.tenure(run)` = `Season.wk − run.tenure` at a club, 0 free; absolute weeks: no rebase at the rollover):
+  TENURE.ahead → `Run.lineup` score + TENURE.lineup for you at your club; TENURE.members → `City.price` × TENURE.price at
+  places of your faction's region; until TENURE.captain `Run.lineup` leaves you out of the captain pick at your club
+  (finalizeTeam's pick is overwritten by the next lineup).

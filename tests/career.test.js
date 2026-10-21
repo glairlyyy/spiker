@@ -119,7 +119,7 @@ test('career: training cap, facility Lv 5 and Hard training', () => {
   g.Training.addXp(run, 'str', 100000, 'match');
   assert(you.body.str > 80, 'match XP goes past the training cap');
   assert(you.power <= g.CAREER.runCap, 'a court skill never passes the run cap');
-  assert(!('lb' in run) && g.RUN_VERSION === 22, 'no Limit Break progress in the run; RUN_VERSION 22');
+  assert(!('lb' in run) && g.RUN_VERSION === 23, 'no Limit Break progress in the run; RUN_VERSION 23');
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
   const n = g.Training.preview(run, 'power', false).main[2],
@@ -1002,7 +1002,7 @@ test('career: challenge loss and injury', () => {
   run.sp = 99;
   assert(g.Training.physio(run) && !run.injury, 'physio heals the injury');
   assert(you.body[lost[0]] === before[g.BODY.keys.indexOf(lost[0])] - g.INJURY.lose, 'but not the lost stat');
-  eq(g.RUN_VERSION, 22, 'save v22');
+  eq(g.RUN_VERSION, 23, 'save v23');
 });
 
 test('career: rules moved out of the UI (T-075)', () => {

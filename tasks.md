@@ -43,7 +43,7 @@ js/data/match-lines.js (ex-teammate remarks), js/ui/career-people.js (arc step o
 provides, S reads with a `typeof Circle` guard: `Circle.of(run)` → ids (fallback: `Run.mates(run)` ids), `run.ex` = { id: week left }.
 S keeps its state lazily in `run.team` (Team.of(run), no RUN_DEFAULTS). Both: no R() (hashes), goldens unchanged.
 
-### [ ] T-325: Transfer windows, leaving hurts, tenure
+### [x] T-325: Transfer windows, leaving hurts, tenure
 Agent: T
 Spec: §4.36 A          Goldens: unchanged          Save: RUN_VERSION 23 (`run.tenure`, `run.ex`)
 Goal: signing only in the window (the week after an evaluation, the off-season); leaving writes walked_out (by behaviour) and
@@ -52,7 +52,7 @@ Files: js/career/world.js, js/career/run.js (lineup score, fields), js/career/ci
 js/ui/career-panels.js (HQ card: "window opens week N"), tests/team.test.js (new; in tests/run.js), tests/career-bot.js (joinBest respects the window)
 Accept: tests — no join outside the window; leaving writes walked_out with each mate (Loyal × 2); tenure steps act. `npm run career -- 12 both` within noise.
 QA: career run → an HQ card outside and inside the window.
-Result:
+Result: windows = week 1 (off-season / preseason) + the week after each eval (5…25; the Y2 rematch opens none); switching allowed (`World.join` walks out first), `World.leave` (Leave club peek on your HQ card) always open; Academy squad → `run.ex` without walked_out; Egoist = × −0.2; data WINDOW/TENURE/TEAM_LINES in js/data/world.js; captain rule only at your club; edited the RUN_VERSION asserts in career/gifts tests + map.test's sign week; bot casual 36 runs Y2 86.6 (base 86.8), 12 both: good Y2 92.6, casual 85.0, league 87.0; QA t325-hq-{closed,open,yours,switch}.png.
 
 ### [ ] T-326: The circle and friends who follow
 Agent: T

@@ -1371,9 +1371,12 @@ the AI coach fills every slot you leave with the same function. Built and measur
     - **Transfer windows**: you sign with a new club only in the week after an evaluation (weeks 5, 9, 13, 17, 21, 25) or in the
       off-season (the registrar says why, voice `wei`). The Academy squad and leaving to go free are always open.
     - **Leaving hurts**: walking out writes `walked_out` with every teammate you leave (base −10; Loyal × 2, Mercenary × 0.3, an
-      Egoist is glad: +2) and standing −8 with that faction.
+      Egoist is glad: +2) and standing −8 with that faction. **[built 2026-10-21, T-325: the window is also week 1 of each season (year 1's
+      preseason); signing elsewhere while signed is the switch (you walk out, then sign); Leave club (your HQ card) goes free any week;
+      leaving the Academy squad for a club leaves no walked_out, but its players are remembered in `run.ex`]**
     - **Staying pays (tenure, weeks at the club)**: 4+ — you start ahead of an equal same-role rival (lineup + 4); 8+ — members'
       price at their facilities (× 0.8); 12+ — you can be named captain; at the Cup still there — the club's veteran lines.
+      **[built 2026-10-21, T-325: lineup / members' price / captain at your club only (the HQ card's Tenure tag); the veteran lines not built]**
   - **B. Your people.**
     - **The circle**: up to 5 people at bond 30+ (any club; pinnable), shown in the **squad strip** (1) — current teammates marked.
     - **Friends can follow**: when you switch, a friend at bond 60+ may ask to come (Friendly / Shy / Hothead often, Mercenary

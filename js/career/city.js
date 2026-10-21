@@ -83,7 +83,10 @@ const City = {
   price(run, id, oid) {
     const s = SPOTS[id],
       r = City.region(run, id),
-      p = ((REGIONS[r] || REGIONS.open).price || 1) * Front.priceMul(run, r);
+      p =
+        ((REGIONS[r] || REGIONS.open).price || 1) *
+        Front.priceMul(run, r) *
+        (r && r === City.myRegion(run) && World.tenure(run) >= TENURE.members ? TENURE.price : 1); // members' price (spec §4.36)
     if (DAY_ORDERS[oid]) return Math.round(TRAIN_FEE * (DAY_ORDERS[oid].price || 0) * p);
     if (s.kit) return Math.round(TRAIN_FEE * (DAY_ORDERS[City.lead(id)].price || 0) * p);
     if (s.hotel) return Math.round(HOTEL.price * p);

@@ -26,7 +26,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
 - **data** `rules.js` (RULES, EGO…), `styles.js` (playstyles, team list, archetypes), `names.js` (name pools),
   `looks.js` (appearance palettes), `moves.js` (signature / combo names, coach lines), `roles.js` (role biases, key
   stats, mood deltas), `elements.js`, `vfx.js` (VFX_DEF / live `VFX` effect tuning, read by render code only; saved dev edits in `sns_vfx`), `tactics.js`, `dialogue.js` (lines, `callLine`), `skills.js`, `career.js`
-  (CAREER, BODY, CALENDAR, ROLE_NAME, STATNAME, MLOG…), `world.js` (REGIONS, FACTIONS, ECON, HOUSING, CLASH, FRONT, HEX…), `war.js` (WAR: the war units, Strength deltas; WAR_STAGES — spec §4.34), `city.js`
+  (CAREER, BODY, CALENDAR, ROLE_NAME, STATNAME, MLOG…), `world.js` (REGIONS, FACTIONS, ECON, HOUSING, CLASH, FRONT, HEX…, WINDOW / TENURE / TEAM_LINES — team life, spec §4.36), `war.js` (WAR: the war units, Strength deltas; WAR_STAGES — spec §4.34), `city.js`
   (CITY geometry, SPOTS, travel constants, layout data), `stars.js` (STARS), `traits.js` (SPARKS / SCARS / `MC_TRAITS`, `TRAIT_ODDS`: the
   traits only your player carries — spec §4.30; not the NPCs' `TRAITS` in people.js), `gifts.js` (GIFTS, GIFT_TIERS, GIFT_ODDS: talent
   tiers and innate gifts — spec §4.35).
@@ -272,7 +272,8 @@ moving for 6 s (25 s while the 3D players load) or one beat lasts 20 s, with a s
 
 ## Saves
 
-Career runs carry `v` (`RUN_VERSION` = 22, `career/run.js`; key `sns_run_v1`; v22 = `p.gifts` on every NPC (+ `p.el2` / `p.sig2`,
+Career runs carry `v` (`RUN_VERSION` = 23, `career/run.js`; key `sns_run_v1`; v23 = `run.tenure` (the absolute week you signed with
+your club) and `run.ex` (id → the absolute week you left them; team life, spec §4.36 — RUN_DEFAULTS), older saves dropped; v22 = `p.gifts` on every NPC (+ `p.el2` / `p.sig2`,
 `p.woke`; `run.people[id].known.gifts`; `run.gifts` / `run.giftAsk` (RUN_DEFAULTS); spec §4.35), older saves dropped; v21 = `run.war` (the war units' Strength, spec §4.34), `run.hex` dropped; v20 = your body `you.body` (+ `floor` / `edge` / `synced`) and body-key XP banks in `run.xp`; older saves dropped; v19 = `run.year`). History: v2 faction reserves, v3 cup
 entrants, v4 squads of 6 (`bench`), v5 `run.lb` dropped, v6 `run.met` / `street` / `refused`, v7 `losses` / `lastFight`,
 v8 `mlog`, v9 `run.mode.story`; older saves are dropped (`RUN_MIGRATIONS` is empty). Bump the version when the save shape changes and add a step to

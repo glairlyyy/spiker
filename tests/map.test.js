@@ -634,6 +634,7 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   // home turf: your faction's region
   run.event = null;
   const open = g.FACTIONS.findIndex(f => !Object.keys(f.join).length);
+  run.week = 5; // (the transfer window, spec §4.36)
   assert(g.World.join(run, open), 'sign');
   for (const id of Object.keys(g.SPOTS))
     if (g.SPOTS[id].train) eq(g.City.turf(run, id), g.SPOTS[id].region === g.FACTIONS[open].region ? g.TURF_BONUS : 0, `turf at ${id}`);
