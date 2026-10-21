@@ -387,6 +387,15 @@ const SOUND = (() => {
       lfo.stop(t + 0.35);
     },
 
+    /** The Ref drone's call (spec §4.38): two bright synth blips, the second up a fifth. */
+    droneCall: () => {
+      if (!live()) return;
+      const t = now(),
+        o = out();
+      osc('sine', 1320, 1320, t, 0.07, 0.06, o);
+      osc('sine', 1980, 1980, t + 0.09, 0.09, 0.06, o);
+    },
+
     /* ---------- anime specials ---------- */
     whoosh: () => nz(0.45, 0.22, 'bandpass', 300, 1.2, 3500, 0.05),
     /** Slow motion in/out: the mix goes muffled and a low rush sweeps in; it opens back up when time returns. */

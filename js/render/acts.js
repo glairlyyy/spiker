@@ -2,6 +2,54 @@
 // its player's display entry `d` (or null) and the ball's screen point `bs`. Every act kind the engine emits needs an
 // entry here or a tween in startBeat (a test checks).
 
+/**
+ * The calls you see (spec §4.38): a fault label's `call` ('net' | 'foot' | 'double', at { x, z }) and every close in / out
+ * (lineCall, read at the point from the rally's last floor landing) become `A.call = { k, at, line, n, pt }`; the 3D reads it
+ * (venue3d.mjs: the Ref drone, or the Academy's referee). Display only, never holds up play.
+ */
+const LINE_CALL = { m: 0.15 }; // a ball landing this close to a painted line (metres) is called in or out
+function refCall(k, at, line = null) {
+  A.refN = (A.refN || 0) + 1;
+  A.call = { k, at: { x: at.x, z: at.z }, line, n: A.refN, pt: A.pointN };
+  if (typeof sfx !== 'undefined' && A.fx) (matchVenue(A.fx) === 'hall' ? sfx.whistle : sfx.droneCall)(); // the Academy's referee whistles
+}
+/**
+ * A close call from a landing spot (engine units): 'in' / 'out' when the ball lands within LINE_CALL.m of a line (COURT_LINES),
+ * with the line it is judged on ({ axis: 'x' | 'z', v }: a line of constant x — an end line — or of constant z — a side line); else null.
+ */
+function lineCall(x, z) {
+  const L = COURT_LINES,
+    x0 = L.end,
+    x1 = 1000 - L.end,
+    z0 = L.side,
+    z1 = 1 - L.side,
+    inside = x >= x0 && x <= x1 && z >= z0 && z <= z1,
+    dx = Math.min(Math.abs(x - x0), Math.abs(x - x1)) * UNIT_M.x, // to the nearer end line (m)
+    dz = Math.min(Math.abs(z - z0), Math.abs(z - z1)) * UNIT_M.z, // to the nearer side line (m)
+    ox = Math.max(x0 - x, 0, x - x1) * UNIT_M.x, // outside by (m)
+    oz = Math.max(z0 - z, 0, z - z1) * UNIT_M.z,
+    d = inside ? Math.min(dx, dz) : Math.hypot(ox, oz);
+  if (d > LINE_CALL.m) return null;
+  const byX = inside ? dx <= dz : ox >= oz;
+  return {
+    k: inside ? 'in' : 'out',
+    line: byX
+      ? { axis: 'x', v: Math.abs(x - x0) < Math.abs(x - x1) ? x0 : x1 }
+      : { axis: 'z', v: Math.abs(z - z0) < Math.abs(z - z1) ? z0 : z1 }
+  };
+}
+/** The rally's last floor landing ({ x, z } of a ball act that ends at h 0) in the beats played so far, back to the reset. */
+function lastLanding() {
+  for (let i = Math.min(A.bi, A.beats.length - 1); i >= 0; i--) {
+    const acts = A.beats[i].acts || [];
+    for (let j = acts.length - 1; j >= 0; j--) {
+      const a = acts[j];
+      if (a.k === 'reset') return null;
+      if (a.k === 'ball' && a.to && a.to.x != null && a.to.h === 0) return a.to;
+    }
+  }
+  return null;
+}
 /** Flash tint colours (r,g,b) for the full-screen flash. */
 const FLASH_WHITE = '255,255,255',
   FLASH_BOLT = '200,235,255',
@@ -61,6 +109,7 @@ const ACTS_FX = {
   },
   label(a, d, bs) {
     if (a._skip) return; // (playback diveLook: a "Pancake!" of a dive shown as a bump)
+    if (a.call && a.at) refCall(a.call, a.at); // a fault called (spec §4.38)
     A.labels.push({
       t: a.t,
       x: bs.X,
@@ -236,6 +285,12 @@ const ACTS_UI = {
   },
   point(a, d, bs) {
     for (const id in A.disp) koUp(A.disp[id]); // the rally is over: everyone on the floor gets up
+    if (!A.call || A.call.pt !== A.pointN) {
+      // no fault called this rally: a ball that landed by a line is called in or out (spec §4.38)
+      const l = A.beats ? lastLanding() : null,
+        lc = l && lineCall(l.x, l.z);
+      if (lc) refCall(lc.k, l, lc.line);
+    }
     Dir.heatPoint(a, A.touchN || 0); // crowd heat (spec §2.27): this rally's length, a big point, a streak
     A.touchN = 0;
     comboEnd(); // the rally counter holds its final count, then fades

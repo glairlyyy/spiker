@@ -22,6 +22,18 @@ const Formula = {
   serveErrorP: (server, team, sq) =>
     Formula.bySkill(server, 'serve', 0.06 + Math.max(0, 1.2 - W(server)) * 0.05 + (sq > 80 ? 0.03 : 0)) * team.S.serveErr +
     (server.traits ? trServeErr(server) : 0), // Shaky Hands (spec §4.30)
+  /** Chance a body at the tape touches the net (FAULTS.net): kind 'hit' | 'tip' | 'read' | 'commit'; fatigue = 1 − stamina. */
+  netTouchP: (p, kind, fatigue) => {
+    const F = FAULTS.net;
+    return (
+      F[kind] *
+      (1 + F.tired * fatigue) *
+      (1 + (F.agi * clamp(F.agiFrom - p.speed, 0, F.agiFrom)) / F.agiFrom) *
+      (mtr(CM, p) === 'hothead' ? F.reckless : 1)
+    );
+  },
+  /** Chance the server steps on the end line (FAULTS.foot): by serve type ('jump' | 'jumpfloat' | 'float'), tired feet more. */
+  footFaultP: (server, type) => FAULTS.foot[type] * (1 + FAULTS.foot.tired * (1 - staOf(server))),
   /** Which way a missed serve goes: a flat or tired swing clips the net, too much power sails long. */
   serveNetShare: (server, sq, jump) => clamp((jump ? 0.42 : 0.56) - (sq - 60) / 350 + (1 - staOf(server)) * 0.2, 0.15, 0.8),
   /** Which way a missed spike goes: the lower the contact over the net, the likelier it's the net. */

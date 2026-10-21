@@ -2,8 +2,12 @@
 import * as THREE from 'three';
 import { W } from '../units3d.mjs';
 import { box, at, figure } from './kit.mjs';
+import { makeReferee } from './referee.mjs';
 
-/** Officials and court-side props: referee stand by the far post, line judges, benches, scorer's table, ball cart. */
+/**
+ * Officials and court-side props: the referee's wooden stand by the far post and the line judges (the Academy Hall only — every
+ * other venue's calls are the Ref drone's, spec §4.38), benches, scorer's table, ball cart.
+ */
 export function setOfficials() {
   const g = new THREE.Group(),
     far = W(500, 1.04).z; // far post
@@ -17,16 +21,17 @@ export function setOfficials() {
     stand.add(
       at(
         new THREE.Mesh(
-          new THREE.CylinderGeometry(0.03, 0.03, 1.5, 6),
-          new THREE.MeshStandardMaterial({ color: '#c8ccd8', metalness: 0.5 })
+          new THREE.CylinderGeometry(0.04, 0.045, 1.5, 6),
+          new THREE.MeshStandardMaterial({ color: '#8a6440', roughness: 0.85 })
         ),
         dx,
         0.75,
         dz
       )
     );
-  stand.add(at(box(0.9, 0.08, 0.9, '#c8ccd8', { metal: 0.4 }), 0, 1.5, 0));
-  const ref = figure('#1d1f26');
+  stand.add(at(box(0.9, 0.08, 0.9, '#7a5634'), 0, 1.5, 0));
+  for (const y of [0.45, 0.95]) stand.add(at(box(0.08, 0.05, 0.7, '#7a5634'), 0, y, 0.35)); // ladder rungs
+  const ref = makeReferee('#1d1f26');
   ref.position.y = 1.54;
   stand.add(ref);
   stand.position.set(0, 0, far - 0.75);
@@ -71,6 +76,6 @@ export function setOfficials() {
     );
   cart.position.set(-12.5, 0, far - 1.4);
   g.add(cart);
-  g.userData = { judges, table };
+  g.userData = { judges, table, stand, ref };
   return g;
 }

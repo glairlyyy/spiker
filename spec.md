@@ -1491,12 +1491,16 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **New faults (T-337, engine — goldens update).** Two faults join double contact: a **net touch** (a blocker or a hitter at the
     net touches the tape: the point to the other side; likelier tired, with low Agility, or Reckless; a commit block likelier than
     a read) and a **foot fault** (the server steps on the line: a service error; jump serves likelier). Target rates ≈ 1 net touch
-    and ≈ 0.5 foot faults a match; the bot's numbers (§2.30) stay within noise.
+    and ≈ 0.5 foot faults a match; the bot's numbers (§2.30) stay within noise. **[built 2026-10-21, T-337: one draw per serve
+    (before the error roll) and one per attack (read after the block — a stuffed ball is dead first); a tip never touches; Reckless =
+    the Hothead match trait (people traits don't reach the engine); 200 matches: 0.87 net touches, 0.52 foot faults a match]**
   - **Calls you see (T-338).** Every fault and every close in / out (the ball lands within ~15 cm of a line) is called on screen:
     at a drone venue the drone drops to the spot and flashes a hologram call ("NET TOUCH", "FOOT FAULT", "DOUBLE CONTACT", "IN",
     "OUT") with a short line trace; at the **Academy Hall** — the old real court (painted lines, wooden posts, a real net) — a
     referee on the stand blows the whistle and gives the hand signal instead. Every other venue, street court and battle has a
     drone hovering over the net, following the ball. Display only (a flag on the existing `label` act; no new act kind).
+    **[built 2026-10-21, T-338: the drone (fx/drone.mjs) and the Hall's referee (venues/referee.mjs) read `A.call` (render/acts.js);
+    the referee's stand and the line judges show only at the Hall — the drone replaces them elsewhere; close in / out ≈ 0.35 a match]**
   - **The drone as an item (T-339, after §4.37 T-333).** Buy one (the airport's cargo shed, $; or rent it for a match at any
     court) → **Pickup game** on any open ground on the map (beach, park, car park, field — not on buildings or roads): the drone
     projects the lines and strings a light-curtain net where you stand; your opponents are the people around (§4.37 1), and a

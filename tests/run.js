@@ -24,6 +24,7 @@ require('./team.test');
 require('./encounter.test');
 
 require('./story.test');
+require('./drone.test');
 
 // ---------- report ----------
 let fail = 0,

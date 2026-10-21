@@ -113,6 +113,36 @@ engine decides them by chance and skill (`Formula.spikeErrorP` — wit, set qual
 the net; `serveErrorP`) and which way they go (`spikeNetShare`: lower contact → net; `serveNetShare`: flat or tired
 swing → net, too much power → long), then ends those balls at the net or out.
 
+## Faults — net touch, foot fault, double contact (spec §4.38, T-337)
+
+Three faults, each one draw at a fixed place, chances in `FAULTS` (rules.js) via `Formula.netTouchP(p, kind, fatigue)` /
+`Formula.footFaultP(server, type)` and `doubleContactP` (stats.js). **Foot fault**: every serve, in `playRally` (serve.js)
+right before the service-error roll (`footFault(c)`: a service error — `st` err, not a `srvLog` err: the serve odds don't model it;
+jump serves × 5 a float). **Net touch**: the draw `x.ntU` is made at the end of `blockCoverage` (rally-block.js) on every attack;
+`netTouch(c, x)` reads it in `attackPhases` (rally.js) after `block()` when the block did not end the attack (a stuff is dead
+first) and before the dig: the bodies at the tape are a front-row hitter (`hit`; a tip never touches) and each blocker (`read`;
+a middle on Commit `commit`), each × tired (1 − stamina), × low speed (the engine's Agility), × a Hothead (`mtr`). A blocker's
+touch → the point to the attack, the hitter's → the defence. Each fault emits `{ k: 'label', t, big, call: 'net' | 'foot' |
+'double', at: { x, z } }` (net: on the toucher's side of the tape, foot: the end line at the server's z, double: the set
+point) — the call T-338 shows. Engine-only tally `m.flt = { net, foot, dbl }` (`fltAdd`, no draws). Rates (rate test, 200
+seeded matches of mkTeams): ≈ 1.0 net touches, ≈ 0.5 foot faults, ≈ 0.65 double contacts a match. `COURT_LINES` (rules.js)
+names the painted lines in engine units (end x 80 / 920, side z 0.08 / 0.92).
+
+## The calls you see — Ref drone and the Academy's referee (spec §4.38, T-338)
+
+Display only, no act kind of its own: a fault label carries `call` + `at` (T-337), and `ACTS.label` (render/acts.js) hands it
+to `refCall(k, at, line)` → `A.call = { k, at, line, n, pt }` (`n` counts calls, `pt` = `A.pointN` when made). At the `point`
+act, a rally with no fault call is checked for a close line: `lastLanding()` (the rally's last ball act ending on the floor,
+back to the `reset`) → `lineCall(x, z)` → `{ k: 'in' | 'out', line: { axis: 'x' (an end line) | 'z' (a side line), v } }`
+when the ball lands within `LINE_CALL.m` (0.15 m) of a `COURT_LINES` line, else null. venue3d `updateVenue` reads `A.call`
+each frame: at every venue but the Academy Hall `updateDrone` (fx/drone.mjs: a low-poly drone hovering 4.4 m over the net,
+following the ball's z; a new `n` → it drops to the spot (`H.call`, over the tape for a net touch), the hologram word (a
+sprite, `CALLS[k].word`, verdict colour from theme tokens `--good` / `--bad`, frame `--cyan`), a projection cone and a line
+trace along the end line / the tape / the judged line (a ring for a double); held `T.hold` 1.9 s, then back); at the Hall
+`updateReferee` (venues/referee.mjs on the wooden stand of venues/props.mjs: the whistle — hand to the mouth, a puff — then
+`SIGNALS[k]` toward the call's side, 1.9 s). The stand and the line judges show only at the Hall (the drone calls elsewhere).
+Both run on the frame clock and never touch playback. The whistle / beep sound is sfx's (merged separately).
+
 ## Deflections and ball speed
 
 A defender who reaches a hard spike or serve but can't control it may pop it up inside their own court (`popChance`,
