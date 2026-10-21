@@ -1365,7 +1365,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     court glow yields to an element-full / OP / airborne-star aura and to Fever]**
   - **[open]**: close friends favoured into your year-2 Cup squad (the squad lever from §4.32); a jealous friend turning once they
     discover your learned gift.
-- §4.36 Team life — staying, leaving, your people **[draft — T-325–T-330]** (owner, 2026-10-21: "make the player attached to their
+- §4.36 Team life — staying, leaving, your people **[built 2026-10-21 — T-325–T-330]** (owner, 2026-10-21: "make the player attached to their
   teammates — but I switch teams often"). Switching becomes a decision; attachment follows people, not clubs.
   - **A. Switching costs.**
     - **Transfer windows**: you sign with a new club only in the week after an evaluation (weeks 5, 9, 13, 17, 21, 25) or in the
@@ -1417,6 +1417,42 @@ the AI coach fills every slot you leave with the same function. Built and measur
     the cut-in = the hype banner "Mint × You" + their line, the first time it plays. Every match of yours: played or simmed from the hub,
     and the instant Raid and Midnight Court (the coach plays them there; owner, 2026-10-21). **Ex-teammates** across the net: one exchange after match prep (their line by
     personality, your reply) and `faced_ex` for each who played.
+- §4.37 The living island — seamless, people you can see **[draft — T-331–T-336]** (owner, 2026-10-21: "the world looks empty —
+  the others' activity is computed under the hood"; "Kenshi makes the map and world seamless — I don't want scene cuts"; "keep
+  decisions to the user and actions to automation, but keep some effort"). Builds on §4.19a (districts, traffic, figures) and §4.33
+  (day orders, Run trips).
+  - **Principle: you decide, automation acts, effort is an edge.** Every day you choose (where, what, whom); the walk and the
+    order play out on their own (auto-walk; skip any time). Effort is always optional and worth at most +10 % of what the day
+    gives — the career bot plays without it and its numbers stay the baseline.
+  - **One world, no cuts.** The island map is the world zoomed out; nothing loads a separate scene. Phase 2 (T-336) brings the
+    camera down to street level in the same world; until then everything below lives on today's map.
+  - **1. People you can see (T-331).** Every known person stands where their week's plan puts them (People.plan: train / hard /
+    wit at its place, hustle at a court, rest / out at home) — named figures, not anonymous loops: your circle in full colour,
+    teammates in the club colour, everyone else muted; unscouted crews stay grey silhouettes (§4.19a). Hover → face, name, club,
+    what they are doing ("Mint · drilling at the Wei gym"); click → their People card. They walk home at night and out in the
+    morning by the day clock. Fog hides what you haven't explored. At most ~120 named figures; the rest stay today's crowd.
+  - **2. The day clock (T-332).** Each day has a time of day: dawn when it starts, the walk is the morning, the order the
+    afternoon, then evening; the week's last day ends at night. The sun's angle and colour follow it; at night windows, street
+    lamps and the courts' floodlights come on and figures go home. Display only (the rules still resolve a day at a time).
+  - **3. Encounters on the road (T-333).** When your walk passes near someone who matters, the avatar stops and a small card
+    opens over the map, at most one per trip (by hash): a circle member at their place (Talk: + a small memory; or walk on), a
+    rival club's crew (Challenge — §4.29's challenge; or walk on), the week's street battle (Join — §4.34's street battle; or walk
+    on), the person of an open arc beat (answer it in person — §4.36 3). A setting decides when the walk stops: friends only
+    (default) · everything · never. Walking on costs nothing.
+  - **4. Effort (T-335), always optional:**
+    - **Route**: a trip offers up to two routes on the map — the safe road (default, auto) and a short cut (through the hot border:
+      a street-fight chance; or past your circle: an encounter chance). Pick one or let it walk the safe road.
+    - **Focus**: during the order's animation one timing press (Space); on the beat → that day's training XP × 1.1, missed or
+      skipped → × 1 (never a loss). Off in the settings for people who don't want it.
+  - **5. Island sound (T-334).** Synthesized like the match effects (js/audio/sfx.js; nothing to download): ambience by the district
+    under the camera (harbor water and gulls, market murmur, ball thuds near courts, wind in the Spine, night insects), footsteps
+    while you walk, soft UI clicks; follows the volume slider and the sound toggle.
+  - **6. Street level (T-336, phase 2 — a prototype, judged before more).** One district first (Wei's core with one gym and one
+    court): the map camera keeps zooming down to a follow camera behind you — the same world, no load; within ~150 m buildings swap
+    to detailed ones (doors, windows, signs, props), roads to street width; the gym and the court open by cutaway (roof and near
+    wall fade when you or the camera go in) and show the people training there; within ~40 m people become their VRM players
+    (≤ 15 on screen; the low-poly setting keeps fewer); the order prompt shows in the world at the kit. Judged on: does it feel
+    good, does it hold the frame rate, does walking get tedious. **Phase 3** (only if phase 2 passes): every district.
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.

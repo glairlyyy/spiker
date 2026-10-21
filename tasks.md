@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-331** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-337** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,96 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+**The living island (owner, 2026-10-21, spec §4.37), phase 1: two agents.** **Agent L — Life & clock**: T-331 → T-332. **Agent E —
+Encounters, effort & sound**: T-333 → T-335 → T-334. T-336 (street level) waits for phase 1 and the owner's look. Ownership: L owns
+js/career/mapmodel.js (model.life.people, model.clock), js/map3d/life3d.mjs, js/map3d/map3d.mjs (sun, night lights), js/ui/map-view.js
+(hover / click on a figure), js/data/life.js (new: LIFE, CLOCK), tests/map.test.js. E owns js/career/encounter.js (new: Encounter),
+js/data/encounter.js (new), js/career/city.js (the trip's encounter + the effort multipliers), js/ui/career-map.js (the encounter card,
+route pick, focus press), js/map3d/avatar3d.mjs (stop mid-walk, the second route), js/audio/sfx.js + js/audio/ambience.js (new),
+js/ui/menu.js (the settings rows), js/core/storage.js (KEYS), tests/encounter.test.js (new), tests/career-bot.js. Contract — L provides,
+E reads behind a guard: `MapModel.lifePeople(run)` → [{ id, at: [x, y] map units, act, spot (SPOTS id or null) }] (today's places, the
+same data the figures use), `MapModel.clock(run)` → 0–1 time of day. Both: display code draws no R(); career code hashes; goldens unchanged;
+no save bump (E keeps state lazily in `run.enc`).
+
+### [ ] T-331: People you can see — named figures walking their week's plan
+Agent: L
+Spec: §4.37 1          Goldens: unchanged          Save: no change
+Goal: every known person stands on the map where People.plan puts them today (circle in colour, mates in the club colour, others
+muted, unscouted grey); hover shows face · name · club · doing what; click opens their People card.
+Files: js/career/mapmodel.js, js/map3d/life3d.mjs, js/ui/map-view.js, js/data/life.js (new), tests/map.test.js, index.html (script line)
+Do not: draw R() or Math.random (hash variety); recompute plans in the renderer (read the model); replace §4.19a's traffic or crowds.
+Steps:
+1. `MapModel.lifePeople(run)`: known people (People.homes, fog) → today's spot from People.plan (train / hard / wit → its place; hustle → a court;
+   rest / out → home), a hashed offset round it; ≤ LIFE.max (120), circle first then mates then by bond.
+2. life3d draws them as named instances (tint by group), idles by act (drill, jog, sit), walks home at night / out at dawn by `model.clock` (T-332;
+   0.5 until it exists).
+3. map-view: hover a figure → a tip with faceSVG, name, club, act text; click → openPerson(id).
+Accept: tests — lifePeople is deterministic, respects fog and the cap, puts a training mate at their plan's spot; ui-smoke hover shows a name.
+QA: career run → the map at three zooms; hover a circle member.
+Result:
+
+### [ ] T-332: The day clock — dawn to night on the map
+Agent: L
+Spec: §4.37 2          Goldens: unchanged          Save: no change
+Goal: the map has a time of day that moves as you spend days: dawn → morning walk → afternoon order → evening; night at the week's end;
+sun angle and colour follow; at night windows, lamps and court floodlights light and figures go home.
+Files: js/career/mapmodel.js (`MapModel.clock`), js/map3d/map3d.mjs, js/map3d/life3d.mjs, js/data/life.js (CLOCK), tests/map.test.js
+Do not: change how days resolve (display only); add a new loop — ride the map's existing tick.
+Steps:
+1. `MapModel.clock(run)` from the days spent this week + the walk / order phase the UI reports (map-view → map3d `setPhase`).
+2. map3d: sun direction / colour / hemisphere by CLOCK keys; emissive windows, lamp and floodlight sprites fade in at night (low-poly setting: fewer).
+Accept: tests — clock monotonic through a week, night on the last day; ui-smoke: a night screenshot step without page errors.
+QA: career run → a week spent day by day; screenshots dawn / noon / night.
+Result:
+
+### [ ] T-333: Encounters on the road
+Agent: E
+Spec: §4.37 3          Goldens: unchanged          Save: no change (lazy `run.enc`)
+Goal: a walk that passes near someone who matters stops once (by hash) with a small card: a circle member (Talk / walk on), a rival crew
+(Challenge / walk on), the week's street battle (Join / walk on), an open arc beat's person (answer it). A setting: stop for friends
+(default) · everything · never.
+Files: js/career/encounter.js (new), js/data/encounter.js (new; lines in the lore voices), js/career/city.js, js/ui/career-map.js,
+js/map3d/avatar3d.mjs, js/ui/menu.js, js/core/storage.js, tests/encounter.test.js (new; in tests/run.js), index.html
+Do not: open more than one per trip; open any during a cup or with an event open; draw R() (hash on run seed + week + day).
+Steps:
+1. `Encounter.on(run, path)`: who is within ENC.r of the path (MapModel.lifePeople behind a guard; fallback: today's floor + the week's battle),
+   ranked arc > circle > battle > crew, hashed chance ENC.p; the setting filters.
+2. Talk → `Rel.add(run, id, 'met_road')` (+2, Friendly × 1.5); Challenge → Fight.challenge; Join → the street battle; arc → Team.answer.
+3. avatar3d: stop at the point, resume on walk on; the card in the action lock (actLock) with hotkeys.
+Accept: tests — deterministic, at most one per trip, the setting obeyed, each answer does its thing; `npm run career` unchanged (the bot never stops).
+QA: career run → a trip past a circle member; the card; walk on.
+Result:
+
+### [ ] T-335: Effort — route pick and the focus press
+Agent: E
+Spec: §4.37 4          Goldens: unchanged          Save: no change
+Goal: a trip may offer a second route (a short cut through the hot border with a street-fight chance, or past your circle with an
+encounter chance) drawn on the map; during an order's animation one optional timing press (Space) → that day's XP × 1.1 on the beat.
+Files: js/career/city.js, js/career/encounter.js, js/ui/career-map.js, js/map3d/avatar3d.mjs, js/ui/menu.js (focus press on / off), tests/encounter.test.js, tests/career-bot.js
+Do not: punish skipping (× 1 is the floor); let effort exceed + 10 % of a day's gain; make the safe road anything but the default.
+Accept: tests — the press caps at × 1.1, skipping = × 1; the short cut's fight chance by hash; career bot: baseline (no effort) unchanged,
+`good` with the press always hit reported as a separate line.
+QA: career run → a trip with two routes; a drill with the press hit and missed.
+Result:
+
+### [ ] T-334: Island sound
+Agent: E
+Spec: §4.37 5          Goldens: unchanged          Save: no change
+Goal: on the map, synthesized ambience by the district under the camera (harbor, market, courts, the Spine's wind, night insects by the
+clock), footsteps while walking, soft UI clicks; the volume slider and sound toggle apply.
+Files: js/audio/ambience.js (new), js/audio/sfx.js (shared context / bus only), js/ui/career-map.js (start / stop with the map), index.html
+Do not: download or add audio files; play on the title screen; keep nodes running off the map (stop and free them).
+Accept: ui-smoke: the map opens and closes with no page errors and no AudioContext left running; a short QA recording note per district.
+QA: career run → pan the map across three districts; walk a trip.
+Result:
+
+### [ ] T-336: Street level — one district prototype (phase 2)
+Spec: §4.37 6          Goldens: unchanged          Save: no change
+Goal: in Wei's core the map camera zooms down to a follow camera behind you (no load); detailed buildings within ~150 m; the gym and one
+court open by cutaway with the people training there; VRMs within ~40 m (≤ 15); the order prompt at the kit.
+Status: outline — detailed after phase 1 and the owner's look.
+Result:
 
 **Team life (owner, 2026-10-21, spec §4.36): two agents.** **Agent T — Transfers & circle**: T-325 → T-326 → T-327.
 **Agent S — Stories & cards**: T-328 → T-329 → T-330. Ownership: T owns js/career/world.js, js/career/run.js (RUN_VERSION 23; `run.tenure`,
