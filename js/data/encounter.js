@@ -17,7 +17,19 @@ const ENC = {
   week: 3,
   stops: { friends: ['arc', 'circle'], all: ['arc', 'circle', 'battle', 'crew'], never: [] },
   alt: { p: 0.85, slack: 1.5, extra: 220 },
-  focus: { k: 0.1, ms: 1800, win: [0.55, 0.8] }
+  focus: { k: 0.1, ms: 1800, win: [0.55, 0.8] },
+  // the figure menu (spec §4.37 7, T-340). invite: who says yes — bond at least `bond`, then their headline behaviour's chance p
+  // (+ perBond for every bond point over `bond`, at most max; by hash), likely from `likely`, doubtful from `doubt`. spar: a court
+  // (an explored court or a venue) within r of them; the match XP × xp of a real match, − sta stamina, the memory either way.
+  invite: {
+    bond: 20,
+    p: { warm: 0.9, loyal: 0.85, steady: 0.7, reckless: 0.75, calculating: 0.6, proud: 0.5, jealous: 0.4, cynical: 0.35, other: 0.6 },
+    perBond: 0.004,
+    max: 0.95,
+    likely: 0.7,
+    doubt: 0.45
+  },
+  spar: { r: 90, xp: 0.5, sta: 12 }
 };
 /** The setting's names (registrar). */
 const ENC_STOPS = { friends: 'Friends', all: 'Everything', never: 'Never' };
@@ -62,13 +74,53 @@ const ENC_ROUTE = {
   circle: { name: 'Short cut · past {n}', tip: 'Same days. Past {n}’s place: you’ll likely meet.' }
 };
 
+/** The figure menu's rows (registrar): name and what it gives — the control reads "cost → result". */
+const ENC_MENU = {
+  talk: { name: 'Talk', res: 'a small memory' },
+  invite: { name: 'Invite', res: 'joins your next order' },
+  spar: { name: 'Spar', res: 'a practice match · no stake' },
+  challenge: { name: 'Challenge', res: 'a match' },
+  card: { name: 'Card', res: 'their People card' }
+};
+/** Asked to train with you, by their headline behaviour (their own words): yes / no. */
+const ENC_INVITE = {
+  yes: {
+    warm: ['Yes! Finally. Lead the way.', 'Together? Obviously.'],
+    steady: ['…Okay. I’ll come.', 'Sure. If you want.'],
+    jealous: ['Fine. Try to keep up.', 'Only so I can watch your form.'],
+    cynical: ['One session. Don’t make it weird.', 'Fine. You’re paying attention, at least.'],
+    proud: ['You want to learn from me. Understandable.', 'I’ll show you how it’s done.'],
+    loyal: ['For you? Sure.', 'Count me in.'],
+    calculating: ['Deal. You owe me one.', 'Sure — it’s good for both of us.'],
+    reckless: ['Let’s go hard. Now.', 'Yes. Last one there does extra reps.'],
+    other: ['Sure.', 'Why not.']
+  },
+  no: {
+    warm: ['Not today — I promised someone. Soon?', 'Ah, I can’t. Ask me again?'],
+    steady: ['I… have my own plan today.', 'Maybe another day.'],
+    jealous: ['And help you get better than me? No.', 'Train with yourself.'],
+    cynical: ['No.', 'I train alone.'],
+    proud: ['You’re not at my level yet.', 'I don’t train with just anyone.'],
+    loyal: ['My crew comes first today.', 'Not today. My people need me.'],
+    calculating: ['What’s in it for me? Nothing. So no.', 'Not worth my day.'],
+    reckless: ['Boring. Pass.', 'Train? I’ve got better plans.'],
+    other: ['Not today.', 'No, thanks.']
+  }
+};
+
 Object.assign(MEMORY, {
-  met_road: { v: 2, rep: 0.5 } // you stopped to talk on the road (spec §4.37 3; Friendly × 1.5 by REL.behave)
+  met_road: { v: 2, rep: 0.5 }, // you stopped to talk on the road (spec §4.37 3; Friendly × 1.5 by REL.behave)
+  sparred: { v: 3, rep: 0.5 } // a practice match against their crew, win or lose (spec §4.37 7)
 });
 Object.assign(MEM_TEXT, {
   met_road: [
     'Ran into {n} on the road. We talked. Mostly about nothing.',
     '{n} stopped me on the way. The trip felt shorter.',
     'Bumped into {n}. Neither of us pretended it was an accident.'
+  ],
+  sparred: [
+    'Sparred {n}’s crew. Nobody kept score. Everybody kept score.',
+    'A practice game with {n}’s lot. We shook hands after. Mostly.',
+    '{n} came at me hard in the spar. Good.'
   ]
 });

@@ -7,7 +7,9 @@
 // (life.patrols: positions and colours from the model, no faction names here), and the city's traffic (life.traffic, spec §4.19a): buses and
 // vans driving their lines (up onto the overpass deck), boats circling offshore, a plane taking off down the runway. One InstancedMesh per
 // kind (people, poles, cloth, dust, bus, van, boat, plane), at most CAP of each; instances are rebuilt only when the data changes, animated in tick.
-//   createLife(scene, heightAt) → { sync(model, low), tick(dt, t, tod), pick(cam, x, y, cw, ch) → person id | null, count(), dispose() }
+//   createLife(scene, heightAt) → { sync(model, low), tick(dt, t, tod), pick(cam, x, y, cw, ch) → person id | null, hover(id), mark(id),
+//                                   going(id, tod), at(id), count(), dispose() }
+// hover(id) / mark(id): a ring under that named figure's feet — the hovered one (ink) and the figure menu's person (cyan, pulsing).
 // tod = time of day 0–1 (map3d's clock); low = the Fast graphics setting (fewer named figures: life.look.low).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -95,6 +97,17 @@ export function createLife(scene, heightAt) {
   }
   person.castShadow = true;
   pole.castShadow = true;
+  // the rings under a hovered figure and the figure menu's person (spec §4.37 7): ink / cyan like the UI's tokens
+  const ringGeo = new THREE.RingGeometry(0.45, 0.7, 32).rotateX(-Math.PI / 2),
+    mkRing = (color, opacity) => {
+      const r = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false }));
+      r.visible = false;
+      r.renderOrder = 2;
+      scene.add(r);
+      return r;
+    },
+    rings = { hover: { id: null, m: mkRing(0xeef0f3, 0.75) }, mark: { id: null, m: mkRing(0x4cc9f0, 0.95) } };
+  let ringMin = 0; // the rings' smallest scale (map3d: ~14 px on screen at the camera's distance)
   for (const m of Object.values(cars)) m.castShadow = true;
 
   const D = new THREE.Object3D(),
@@ -459,6 +472,26 @@ export function createLife(scene, heightAt) {
         cars.plane.setMatrixAt(0, D.matrix);
       }
       for (const m of meshes) m.instanceMatrix.needsUpdate = true;
+      for (const [k, R] of Object.entries(rings)) {
+        const f = R.id !== null && (k === 'mark' || R.id !== rings.mark.id) ? named.find(q => q.id === R.id) : null;
+        R.m.visible = !!(f && f.vis);
+        if (!R.m.visible) continue;
+        const pulse = k === 'mark' ? 1 + 0.08 * Math.sin(t * 4) : 1;
+        R.m.position.set(f.wx, heightAt(f.wx, f.wz) + 0.06, f.wz);
+        R.m.scale.setScalar(Math.max(f.s, ringMin) * pulse);
+      }
+    },
+    /** The hovered named figure (a ring under its feet), or null. */
+    hover(id) {
+      rings.hover.id = id === undefined ? null : id;
+    },
+    /** The rings' smallest scale (so they read at any zoom). */
+    ringScale(v) {
+      ringMin = v;
+    },
+    /** The figure menu's person (a pulsing ring), or null. */
+    mark(id) {
+      rings.mark.id = id === undefined ? null : id;
     },
     /**
      * The named figure under screen point (x, y) (canvas px; cw × ch the canvas size), within life.look.pick px of its head or
@@ -501,6 +534,8 @@ export function createLife(scene, heightAt) {
       vehicles: cars.bus.count + cars.van.count + cars.boat.count + cars.plane.count
     }),
     dispose() {
+      for (const R of Object.values(rings)) (scene.remove(R.m), R.m.material.dispose());
+      ringGeo.dispose();
       for (const m of meshes) {
         scene.remove(m);
         m.geometry.dispose();

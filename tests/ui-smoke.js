@@ -199,6 +199,62 @@ const step = async (name, fn) => {
     });
     return `tip: ${tip.slice(0, 60)}; night lights ${n.win} windows, ${n.lamp} lamps, ${n.flood} courts`;
   });
+  await step('the figure menu (T-340): right-click a figure → the menu → Talk → a diary line', async () => {
+    await ev(() => MapView.m3.setClock(Math.floor(MapModel.weekTime(RUN)) + 0.5)); // noon: people stand at their places (it holds there)
+    const hit = await pg
+      .waitForFunction(
+        () => {
+          if (CW.lock || document.querySelector('.hubmodal')) return null;
+          const c = document.querySelector('#mapwrap canvas'),
+            r = c.getBoundingClientRect(),
+            v = JSON.stringify(MapView.m3.info().view),
+            tod = MapView.m3.clock().tod,
+            still = window.__mapView2 === v; // the camera at rest (frames are slow here)
+          window.__mapView2 = v;
+          if (!still || tod < 0.34 || tod > 0.74) return null;
+          for (const q of MapView.model.life.people) {
+            const R0 = Encounter.row(RUN, q.id, 'talk'),
+              s = R0 && !R0.why && MapView.m3.figureAt(q.id),
+              x = s && r.left + s[0],
+              y = s && r.top + s[1];
+            if (s && s[0] > 20 && s[1] > 20 && s[0] < r.width - 20 && s[1] < r.height - 20 && document.elementFromPoint(x, y) === c)
+              return { id: q.id, x, y };
+          }
+          return null;
+        },
+        null,
+        { timeout: 60000 }
+      )
+      .then(h => h.jsonValue());
+    for (let i = 0; i < 4; i++) {
+      // (they hop and jog: aim where the figure is now)
+      const at = await ev(h => {
+        const s = MapView.figureAt(h.id);
+        return s || [h.x, h.y];
+      }, hit);
+      await pg.mouse.move(at[0], at[1]);
+      await pg.mouse.click(at[0], at[1], { button: 'right' });
+      if (await pg.waitForFunction(() => document.getElementById('figmenu'), null, { timeout: 8000 }).catch(() => null)) break;
+    }
+    if (!(await ev(() => !!document.getElementById('figmenu')))) {
+      const d = await ev(id => ({ fig: CW.fig, lock: !!CW.lock, off: Encounter.menuOff(RUN), who: !!Encounter.who(RUN, id) }), hit.id);
+      throw new Error(`no menu after a right-click: ${JSON.stringify(d)}`);
+    }
+    const m = await ev(() => ({
+      rows: document.querySelectorAll('#figmenu .fmo > li').length,
+      pri: document.querySelectorAll('#figmenu .btn.hot').length,
+      txt: document.getElementById('figmenu').textContent
+    }));
+    if (m.rows !== 5 || m.pri !== 1 || !/Talk/.test(m.txt) || !/Card/.test(m.txt))
+      throw new Error(`menu: ${m.rows} rows, ${m.pri} primaries: ${m.txt.slice(0, 120)}`);
+    await pg.keyboard.press('1'); // Talk: walk over, then their line and the diary's
+    await pg.waitForFunction(() => CW.lock && CW.lock.phase === 'greet', null, { timeout: 90000 });
+    const g = await ev(() => ({ box: document.querySelector('#actlock').textContent, log: RUN.log.slice(0, 2).map(l => l.t) }));
+    if (!g.log.some(t => g.box.includes(t.replace(/ \(.*\)$/, '')))) throw new Error(`the box: ${g.box.slice(0, 120)}`);
+    await pg.keyboard.press('Space');
+    await pg.waitForFunction(() => !CW.lock, null, { timeout: 30000 });
+    return g.log[0].slice(0, 70);
+  });
   // the living island, Agent E (spec §4.37 3–5): a stop on the road, the short cut, the focus press, the island's sound
   await step('the road (T-333): a stop on the way — the card over the map, Space walks on', async () => {
     await pg.waitForFunction(() => typeof ROAD !== 'undefined' && ROAD.mod && MapView.m3, null, { timeout: 60000 });
@@ -226,7 +282,7 @@ const step = async (name, fn) => {
     const r = await ev(() => ({
       txt: document.querySelector('#actlock').textContent,
       held: !!ROAD.mod.WALK.held,
-      pri: document.querySelectorAll('#actlock .sb-opts .btn.hot').length
+      pri: document.querySelectorAll('#actlock .fmenu .btn.hot').length
     }));
     if (!/Walk on/.test(r.txt) || r.pri !== 1) throw new Error(`encounter card: ${r.txt.slice(0, 160)} (${r.pri} primaries)`);
     await pg.keyboard.press('Space');

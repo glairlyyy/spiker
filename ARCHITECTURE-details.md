@@ -1190,3 +1190,19 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   Sound (`toggleSound`).
 - **Career bot**: `casual` / `good` never stop or press (the baseline); `focus` = good + `City.focus(run, true)` after every day
   (`both` prints it as one extra line).
+- **The figure menu** (spec §4.37 7, T-340) — rules in encounter.js (pure, no R()): `Encounter.menu(run, id, road, stake)` = the rows
+  talk · invite · spar · challenge · card, each `{ k, days, why }` (`why` = the gap, '' = open) + invite `p` / `verdict`, spar `court`,
+  challenge `ti` / `verdict`; `Encounter.who` = the person's lifePeople entry + squad (null for grey / fogged / gone). State lazily in
+  `run.enc` (this week): `talk` / `ask` = { id: `Encounter.today` } (once a day per person), `inv` = the id an Invite's yes brings.
+  Talk = `met_road` + their `ENC_HI` line; Invite = `hstr('inv|pseed|today|id') < inviteP` (ENC.invite: bond floor, behaviour odds,
+  + bond); `City.withInvite(run, place, fn)` puts them on that place's floor (`run.floor[train key]`) for the order (`City.orderDay`,
+  then used up; a non-teammate gets `trained`) and for the place card's preview, then restores the floor; Spar = `Encounter.spar` →
+  a fixture (your challenge side vs their squad, at `Encounter.court`: an explored court or a venue within ENC.spar.r; no stake, no
+  injury roll, no standing), `sparResult` = the trip + a day, ENC.spar.xp × the match XP, `sparred` either way, `Cup.record` 'Spar'.
+  Walking over: `City.walkTo(run, p)` = the trip days only (0 close by). UI (career-map.js): MapView.person (click; map3d's
+  `contextmenu` = right-click) → `figOpen` → `#figmenu` (`.fmenu`, re-inserted by mapMount → `figRender`), placed by `figPlace` in
+  the spot-follow loop beside `MapView.figureAt(id)` (`besideAt`, shared with the place card) and `MapView.mark(id)` = life3d's cyan
+  ring (hover = an ink ring). `figDo`: Talk / Invite walk then the greet box (their line + the diary's); Spar / Challenge play as
+  from the HQ card (watch, or ⏭ = simCareer); Card = openPerson. Keys (`figKey` in roadKey): 1–n, Shift + n = ⏭, − / + the stake,
+  Esc. The road stop (`encLayer`) is the same card in `#actlock` (`encRows`: an arc's answers + the person's rows; a crew's Challenge;
+  the battle's sides, with ⏭; Walk on = Space).

@@ -6,6 +6,8 @@
 // face, name, club, what they do — and a click opening their People card) and tells the map the phase of the day:
 // MapView.phase() → 'idle' | 'walk' | 'order', read by map3d each frame (setPhase) from the action lock (CW.lock: walk /
 // greet = 'walk', spin / done / res = 'order', any other lock phase — an encounter's stop — = 'walk'; none = 'idle').
+// The figure menu (spec §4.37 7, T-340): a click or right-click on a figure opens it (figOpen, career-map.js); figureAt(id) = the
+// figure's client point (the menu follows it), mark(id) = the ring under their feet while it is open.
 
 const MapView = {
   m3: null, // the live 3D renderer
@@ -102,11 +104,25 @@ const MapView = {
     box.style.left = `${Math.max(8, Math.min(innerWidth - b.width - 8, x + 14))}px`;
     box.style.top = `${Math.max(8, y - b.height - 12)}px`;
   },
-  /** A click on a named figure: their People card (not for someone of a club you haven't scouted). */
+  /** A click / right-click on a named figure: the figure menu (not for someone of a club you haven't scouted; no menu → their card). */
   person(id) {
     const f = MapView.who(id);
     MapView.hover(null);
-    if (f && f.g !== 'grey' && typeof openPerson === 'function') openPerson(id);
+    if (!f || f.g === 'grey') return;
+    if (typeof figOpen === 'function') figOpen(id);
+    else if (typeof openPerson === 'function') openPerson(id);
+  },
+  /** A named figure's point on the page (client px), or null when it isn't on screen (hidden at home, off the canvas). */
+  figureAt(id) {
+    const s = MapView.m3 && MapView.m3.figureAt ? MapView.m3.figureAt(id) : null,
+      c = s && MapView.el && MapView.el.querySelector('canvas');
+    if (!c) return null;
+    const r = c.getBoundingClientRect();
+    return s[0] < 0 || s[1] < 0 || s[0] > r.width || s[1] > r.height ? null : [r.left + s[0], r.top + s[1]];
+  },
+  /** The ring under a figure's feet (the menu's person), or none (null). */
+  mark(id) {
+    if (MapView.m3 && MapView.m3.mark) MapView.m3.mark(id);
   },
   /** Release the 3D renderer (leaving the career screen). */
   drop3D() {

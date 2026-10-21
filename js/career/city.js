@@ -219,11 +219,50 @@ const City = {
       cost = City.price(run, id, oid),
       trip = City.arrive(run, id, oid);
     run.money -= cost;
-    const line = City.capture(run, () =>
-      Training.order(run, oid, id, hard, (s.kit ? City.mul(run, id) : 1) * DAY_GAIN, (s.sand ? SAND_SP : 1) * DAY_GAIN)
-    );
+    const inv = City.joins(run, id),
+      line = City.withInvite(run, id, () =>
+        City.capture(run, () =>
+          Training.order(run, oid, id, hard, (s.kit ? City.mul(run, id) : 1) * DAY_GAIN, (s.sand ? SAND_SP : 1) * DAY_GAIN)
+        )
+      );
     if (s.kit && run.spotQ && run.spotQ[id]) run.spotQ[id].known = true; // quality is never shown (owner, T-172); it still scales EXP
-    return `${trip}${line}${cost ? ` (−$${cost})` : ''}`;
+    let w = '';
+    if (inv != null) {
+      run.enc.inv = null; // an Invite's yes is used up by this order (spec §4.37 7)
+      const p = People.find(run, inv),
+        b = Run.mates(run).some(m => m.id === inv) ? 0 : Rel.add(run, inv, 'trained'); // (a teammate's bond came with the session)
+      w = ` · with ${p ? p.name.split(' ')[0] : 'a friend'}${b ? ` (${fmtDelta(b)} bond)` : ''}`;
+    }
+    return `${trip}${line}${cost ? ` (−$${cost})` : ''}${w}`;
+  },
+  /** Who an Invite brings to a day order at place id (spec §4.37 7): the invited person if the place has a floor (a training key), else null. */
+  joins: (run, id) => (SPOTS[id] && SPOTS[id].train && typeof Encounter !== 'undefined' ? Encounter.invited(run) : null),
+  /**
+   * Run fn with the invited person on place id's floor (run.floor[its training key]) and put the floor back after: the order (and
+   * its preview on the place card) counts them like a teammate there (§4.33 — EXP × 1.2, the bond, gifts rubbing off).
+   */
+  withInvite(run, id, fn) {
+    const v = City.joins(run, id),
+      k = v != null && SPOTS[id].train,
+      F = run.floor || (run.floor = {}),
+      had = k ? F[k] : null;
+    if (!k || (had || []).includes(v)) return fn();
+    F[k] = [...(had || []), v];
+    try {
+      return fn();
+    } finally {
+      if (had) F[k] = had;
+      else delete F[k];
+    }
+  },
+  /** Walk over to map point p (spec §4.37 7: someone you clicked): its trip days (0 close by), no day of its own. The diary prefix, or null when you can't. */
+  walkTo(run, p) {
+    if (run.event || !City.onLand(p) || City.outside(run, p) || City.noTime(run, City.trip(run, p))) return null;
+    const t = City.trip(run, p);
+    City.spend(run, t);
+    City.logDays(run, t, null);
+    City.moveTo(run, p);
+    return t ? `(${t}-day trip) ` : '';
   },
   /** A day order at map point p (spec §4.33: Stretch anywhere): { ok, why } like City.can, the days = the trip + one. */
   pointCan(run, p, oid = 'stretch') {
