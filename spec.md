@@ -1453,6 +1453,35 @@ the AI coach fills every slot you leave with the same function. Built and measur
     wall fade when you or the camera go in) and show the people training there; within ~40 m people become their VRM players
     (≤ 15 on screen; the low-poly setting keeps fewer); the order prompt shows in the world at the kit. Judged on: does it feel
     good, does it hold the frame rate, does walking get tedious. **Phase 3** (only if phase 2 passes): every district.
+- §4.38 The Ref drone — play anywhere, every call seen **[draft — T-337–T-339]** (owner, 2026-10-21: "a high-tech drone that
+  visualizes the court and its AI detects net touches or any foul — so with open space you can play volleyball anywhere"; "the
+  Academy still uses the old real court"). Lore §4 (the drone).
+  - **New faults (T-337, engine — goldens update).** Two faults join double contact: a **net touch** (a blocker or a hitter at the
+    net touches the tape: the point to the other side; likelier tired, with low Agility, or Reckless; a commit block likelier than
+    a read) and a **foot fault** (the server steps on the line: a service error; jump serves likelier). Target rates ≈ 1 net touch
+    and ≈ 0.5 foot faults a match; the bot's numbers (§2.30) stay within noise.
+  - **Calls you see (T-338).** Every fault and every close in / out (the ball lands within ~15 cm of a line) is called on screen:
+    at a drone venue the drone drops to the spot and flashes a hologram call ("NET TOUCH", "FOOT FAULT", "DOUBLE CONTACT", "IN",
+    "OUT") with a short line trace; at the **Academy Hall** — the old real court (painted lines, wooden posts, a real net) — a
+    referee on the stand blows the whistle and gives the hand signal instead. Every other venue, street court and battle has a
+    drone hovering over the net, following the ball. Display only (a flag on the existing `label` act; no new act kind).
+  - **The drone as an item (T-339, after §4.37 T-333).** Buy one (the airport's cargo shed, $; or rent it for a match at any
+    court) → **Pickup game** on any open ground on the map (beach, park, car park, field — not on buildings or roads): the drone
+    projects the lines and strings a light-curtain net where you stand; your opponents are the people around (§4.37 1), and a
+    road encounter's Challenge can be played right there (§4.37 3). A street match like the others (§4.29), on a **field venue**:
+    the ground under you (sand, grass, asphalt by where you are), no stands, a few onlookers.
+  - **Terrain plays (T-339; owner, 2026-10-21: "everyone cares that they play on an official flat floor — with enough open space
+    some players are okay to play, and the environment affects the play").** A field match carries its ground (`m.ground`; official
+    courts have none = today's match exactly):
+    - **Sand**: slower first steps and lower jumps (Agility, jump × ~0.9), softer landings — dives cost less HP; the ball dies
+      fast (fewer long rallies).
+    - **Grass**: uneven — passes a little worse, the odd bad bounce off a dig; jumps × ~0.95.
+    - **Asphalt**: fast and hard — speed fine, every dive and knockdown costs more HP and adds an injury chance; Pain for the soft.
+    - **Slope / bumps** (a park, a field): the side on the low end serves into the rise; set quality a little worse for both.
+    - **Wind** (the beach, the Spine, any open field): float serves wander more (good for the server, bad for the passer).
+    - **Who agrees to play**: by behaviour (§4.35) — Picky and Egoist refuse anything but a flat floor (asphalt at best), Proud
+      grumbles (a small negative memory if you lose), Friendly / Hothead / Reckless play on anything; a player born to a ground
+      (Wu's beach kids on sand, Shu's on the slopes) plays it better (+ a little). A crew that refuses says so on the card.
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.

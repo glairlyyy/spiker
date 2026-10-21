@@ -49,6 +49,10 @@ Status tags as in spec.md: **[locked]** decided · **[open]** undecided — do n
   importing tactics (block reads, systems, set plays) and the coaches keep drilling them, but they rarely hold: raw
   body physics breaks a tactic more easily than a tactic beats a body. Tactics give an edge, never a guarantee
   (Wu calls that proof; Wei calls it a coaching problem).
+- **The Ref drone** [owner, 2026-10-21]: mainland tech, landed through the airport and licensed by the league office —
+  it projects the lines, strings a light net and calls every touch. "The drone said so" ends every argument; nobody remembers
+  who set its rules. Wu's market sells cheap knock-offs; Shu's old-language keepers won't play under one. The Academy Hall still
+  plays on the old real court with a human referee on the stand — the one court where a whistle, not a machine, decides.
 - **Major nation:** still stands over the island; its national team is the international career.
 - **Names:** Wei, Wu, Shu are mainland warring-state names the settlers adopted for prestige — the same states the
   refugees fled. Nobody on the island notices the irony.

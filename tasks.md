@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-337** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-340** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -121,6 +121,47 @@ Spec: §4.37 6          Goldens: unchanged          Save: no change
 Goal: in Wei's core the map camera zooms down to a follow camera behind you (no load); detailed buildings within ~150 m; the gym and one
 court open by cutaway with the people training there; VRMs within ~40 m (≤ 15); the order prompt at the kit.
 Status: outline — detailed after phase 1 and the owner's look.
+Result:
+
+**The Ref drone (owner, 2026-10-21, spec §4.38): Agent D** — T-337 → T-338 now (engine + match render; no overlap with L / E);
+T-339 after T-333 merges. D owns js/engine/rally-phases.js, js/engine/rally-block.js, js/engine/serve.js, js/engine/formulas.js,
+js/data/rules.js, js/render/acts.js, js/render3d/venue3d.mjs + js/render3d/venues/, js/render3d/fx/drone.mjs (new), tests/engine.test.js
+(+ goldens), tests/drone.test.js (new). Not sfx.js (E's): the whistle and the drone's beep are added at the merge.
+
+### [ ] T-337: Net touch and foot fault
+Agent: D
+Spec: §4.38          Goldens: update (two new faults change rallies)          Save: no change
+Goal: a net touch (blocker / hitter at the tape; tired, low Agility, Reckless, commit block likelier) and a foot fault (server on the
+line; jump serves likelier) join double contact; ≈ 1 and ≈ 0.5 a match.
+Files: js/engine/rally-block.js, js/engine/rally-phases.js, js/engine/serve.js, js/engine/formulas.js (the chances), js/data/rules.js (FAULTS),
+tests/engine.test.js (goldens + a rate test), ARCHITECTURE-details.md (engine section)
+Do not: add draws anywhere else (one R() per check, documented order); touch hype / director (presentation draws nothing).
+Steps:
+1. `netTouchP(p, kind, fatigue)`, `footFaultP(server, type)` in formulas.js from FAULTS; one R() each at a fixed place in the rally.
+2. Emit `{ k: 'label', t: 'Net touch' | 'Foot fault', big: 1, call: 'net' | 'foot', at: { x, z } }`; double contact gets `call: 'double'` too.
+3. `npm run test:update` once; reason in the commit.
+Accept: a rate test over 200 seeded matches (net 0.7–1.3, foot 0.3–0.7 a match); `npm run bot -- 6` within noise of before.
+QA: Monster game → a net touch and a foot fault called.
+Result:
+
+### [ ] T-338: The calls you see — drone and the Academy's referee
+Agent: D
+Spec: §4.38          Goldens: unchanged (after T-337)          Save: no change
+Goal: every fault and every close in / out shows a call: the drone drops to the spot with a hologram word and a line trace; at the
+Academy Hall a referee on the stand whistles and signals instead; a drone hovers over the net and follows the ball at every other venue.
+Files: js/render/acts.js (the label's `call`, close in / out from the landing), js/render3d/fx/drone.mjs (new), js/render3d/venue3d.mjs,
+js/render3d/venues/ (the Academy Hall's stand + referee), tests/drone.test.js (new; in tests/run.js), tests/ui-smoke.js (a call during the Monster step), index.html
+Do not: add an act kind (a flag on `label`); draw randoms; block play (calls ride the rally's own time).
+Accept: tests — every `call` label has a handler path; close in / out found from the landing within 15 cm; ui-smoke: no page errors.
+QA: Monster game at the arena and at the Academy Hall → screenshots of a drone call and a referee call.
+Result:
+
+### [ ] T-339: The drone item and pickup games anywhere
+Spec: §4.38          Goldens: unchanged          Save: no change (lazy `run.drone`)
+Goal: buy (airport cargo shed) or rent the drone → a Pickup game on open ground where you stand, opponents from the people around,
+a road encounter's Challenge played on the spot; a field venue (sand / grass / asphalt by place). The ground plays (§4.38 terrain):
+`m.ground` modifiers in the engine (none = today, no new draws), and who agrees to play off a flat floor by behaviour.
+Status: outline — detailed after T-333 (Agent E) merges.
 Result:
 
 **Team life (owner, 2026-10-21, spec §4.36): two agents.** **Agent T — Transfers & circle**: T-325 → T-326 → T-327.
