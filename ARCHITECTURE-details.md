@@ -624,9 +624,9 @@ mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-vie
    map3d.mjs (no import cycles). Per frame nothing reads the DOM size (cached by the ResizeObserver) and the pin overlay
    is only re-projected when the camera, canvas size, distance or items changed. `dispose` removes its listeners and
    skips `userData.shared` objects (kit materials / shape caches). `MODEL_URL` (the base VRM) is exported once by players3d.mjs. First
-   view: on the player, 60 m away. Life is `js/map3d/life3d.mjs` (`createLife(scene, heightAt)` → `{ sync(model), tick(dt, t),
+   view: on the player, 60 m away. Life is `js/map3d/life3d.mjs` (`createLife(scene, heightAt)` → `{ sync(model, low), tick(dt, t, tod, cam),
 count(), dispose() }`, display only, no game randoms): reads `model.life`; one `InstancedMesh` per kind
-   (figure = capsule body + head, flag poles, flag cloth, dust puffs; ≤ 300 figures), rebuilt only when that JSON changes and
+   (figure = the people3d humanoid, Fast: capsule body + head — see "Map life and the day clock" → Looks; flag poles, flag cloth, dust puffs; ≤ 300 figures), rebuilt only when that JSON changes and
    animated in `tick` (the named people first, drill hops, walkers looping round a crew's places at 1.2 m/s, the battle crowd shoving, waving flags).
    Known crews are coloured, unscouted crews grey (crews go in at night); patrols stand where `life.patrols` puts them,
    facing their `face` point (a seized place shows by its tile colour, no flag). `furn.pulse(t)` pulses the battle tile's outline.
@@ -671,11 +671,26 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   badge counts). Home anchor `MapModel.homeAt`: club HQ, else the pool's region anchor, the Academy → the student flat. `at` /
   `home` = hashed rings (`LIFE.spotR` / `homeR`). Fog: a place must be `MapModel.known`, a home `City.seen`. Groups `g`: circle
   (`Circle.of`) · mate (your squad, your club colour) · grey (a club not yours and not scouted) · other; sorted circle → mates →
-  bond → id, cut at `max`. life3d draws them in the shared people InstancedMesh (× `look.size[g]`, `other` muted half-way to
+  bond → id, cut at `max`. life3d draws them in the shared people InstancedMesh (`other` muted half-way to
   grey; the Fast setting keeps `look.low`): idle by act (train / hard drill hops, hustle a jog round the court, wit / rest / out
   sit), by the time of day `tod`: home (hidden) at night, walking out inside `CLOCK.out` and home inside `CLOCK.home` (each at
   a hashed moment, `step` long, a straight line). `pick(cam, x, y, cw, ch, px)` = the nearest shown figure within px on screen
   (head or middle projected; no raycast); `going(id, tod)`; `at(id)`.
+- **Looks (spec §4.39 People, T-341)** — `js/map3d/people3d.mjs`. Default: every figure (named, crews, battle, patrols) is the
+  low-poly humanoid (`createHumanoids`: one InstancedMesh, head + hair, torso, sleeves / forearms, shorts / legs / shoes; vertex
+  attribute `part` picks the colour — shirt = instanceColor, skin `iSkin`, hair `iHair`, fixed; `limb` / `pivot` + the instance's
+  `iPose` [leg swing, arm swing, arm raise, leg bend] swing the limbs in the vertex shader, the same patch on its customDepthMaterial
+  so shadows match). Named scale `NAMED_S` 2.9 × √(look.size / 1.4) (~4.2–4.9 m: ~2.5× life; your avatar 6 m), crowds `CROWD_S` 1.6;
+  a jog's circle widens with the size; sitting drops the body and swings the legs forward. Your circle stands on a soft gold
+  ring (one InstancedMesh, alpha vertex colours). Hashed skin / hair (`lookOf(id)`, `LOOKS`; grey = all grey). VRMs
+  (`createPeopleVRM`): every `VRM_LOD.every` s `nearestOnScreen` picks the `cap` (16) nearest shown, non-grey named people inside
+  the view and `maxD` (260 m) of the camera (shown ones count × 0.8 nearer: hysteresis); a slot fades in over `fade` s (VRM grows
+  0.85 → 1 while life3d shrinks that humanoid by `weight(id)`) and out the same way. Slots: the base model (`loadBase(MODEL_URL)`,
+  started `delay` s after the map's first tick) parsed by `makeVRM` one slot at a time (`gap` s apart; geometry and textures
+  shared by players3d's caches), springs off, `dress`ed on assignment (club colour shirt, dark shorts, hashed hair / skin).
+  Poses: walking / jogging = `locoPose` by the measured ground speed ÷ the figure's size; drill = READY → arms-up BLOCK by the hop;
+  wit / rest / out = SIT (`groundSnap` lying); else STAND breathing. Fast: capsules (`look.size`), no humanoids, rings or VRMs.
+  life3d.tick takes `cam` (map3d passes it). `count()` adds `look`, `humanoids`, `circle`, `vrm` / `built` / `cap`.
 - **Hover / click** — map3d listens to pointermove / pointerleave on its canvas, picks every 6 frames or after a move, sets the
   cursor and calls `on.hover(id | null, clientX, clientY, going)`; a canvas click while a figure is hovered goes to
   `on.person(id)` instead of `on.point` (mapcam gets the wrapped callbacks). MapView adds both: the tip reuses `.tipbox`

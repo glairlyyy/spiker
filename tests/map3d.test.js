@@ -97,3 +97,86 @@ test('map3d: fitView frames every point, clamps the distance', () => {
     'far apart: clamped to the maximum'
   );
 });
+
+// ---------- T-341: people on the map (people3d.mjs LOD, life3d looks) ----------
+test('map3d people: the VRM LOD takes the nearest on-screen cap, holds the shown ones', () => {
+  const { nearestOnScreen, VRM_LOD } = require('../js/map3d/people3d.mjs');
+  const cands = Array.from({ length: 40 }, (_, i) => ({ id: i, d: 10 + ((i * 37) % 40) }));
+  const pick = nearestOnScreen(cands, VRM_LOD.cap, new Set());
+  eq(pick.size, VRM_LOD.cap, 'never more than the cap');
+  const near = cands
+    .slice()
+    .sort((a, b) => a.d - b.d)
+    .slice(0, VRM_LOD.cap)
+    .map(c => c.id);
+  assert(
+    near.every(id => pick.has(id)),
+    'the nearest ones'
+  );
+  assert(VRM_LOD.cap >= 12 && VRM_LOD.cap <= 20, 'about 16');
+  // hysteresis: someone shown stays while only a little farther than a newcomer
+  const two = [
+    { id: 'old', d: 11 },
+    { id: 'new', d: 10 }
+  ];
+  eq([...nearestOnScreen(two, 1, new Set(['old']))][0], 'old', 'the shown one holds');
+  eq([...nearestOnScreen(two, 1, new Set())][0], 'new', 'without a hold: the nearer');
+  eq(
+    [
+      ...nearestOnScreen(
+        [
+          { id: 'old', d: 20 },
+          { id: 'new', d: 10 }
+        ],
+        1,
+        new Set(['old'])
+      )
+    ][0],
+    'new',
+    'much nearer wins'
+  );
+  eq(nearestOnScreen(cands, 0, null).size, 0, 'cap 0: none');
+});
+
+test('map3d people: humanoids by default, capsules on Fast; no VRMs before the map has shown', () => {
+  const THREE = require('three');
+  const { createLife } = require('../js/map3d/life3d.mjs');
+  const scene = new THREE.Scene(),
+    L = createLife(scene, () => 0),
+    people = Array.from({ length: 30 }, (_, i) => ({
+      id: i,
+      at: [100 + i * 3, 100],
+      home: [100 + i * 3, 140],
+      act: ['train', 'hustle', 'rest'][i % 3],
+      g: i < 3 ? 'circle' : i < 6 ? 'grey' : 'other',
+      color: '#c03030'
+    })),
+    m = {
+      life: {
+        people,
+        look: { size: { circle: 1.9, mate: 1.6, other: 1.4, grey: 1.4 }, low: 10, pick: 16 },
+        crews: [{ at: [50, 50], team: 1, n: 4, known: true, color: '#3050c0', walk: [[60, 60]] }],
+        battle: null,
+        patrols: []
+      }
+    },
+    cam = new THREE.PerspectiveCamera(40, 1.6, 1, 3000);
+  cam.position.set(60, 60, 120);
+  cam.lookAt(60, 0, 50);
+  cam.updateMatrixWorld();
+  L.sync(m, false);
+  L.tick(0.016, 1, 0.5, cam);
+  let c = L.count();
+  eq(c.look, 'humanoid', 'the default look');
+  eq(c.humanoids, 34, 'every figure a humanoid (30 named + 4 crew)');
+  eq(c.circle, 3, 'your circle ringed');
+  eq(c.vrm, 0, 'no VRM on the first frame');
+  assert(L.at(0) && L.at(0)[1] > 1.3 * 2.5, 'named people ~2.5× life size (head above 3 m)');
+  L.sync(m, true);
+  L.tick(0.016, 1, 0.5, cam);
+  c = L.count();
+  eq(c.look, 'capsule', 'Fast keeps the capsules');
+  eq(c.people, 14, 'Fast: look.low named + the crew');
+  eq(c.humanoids + c.circle + c.vrm, 0, 'Fast: no humanoids, rings or VRMs');
+  L.dispose();
+});
