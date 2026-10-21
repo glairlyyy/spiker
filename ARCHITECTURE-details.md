@@ -681,13 +681,14 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   attribute `part` picks the colour — shirt = instanceColor, skin `iSkin`, hair `iHair`, fixed; `limb` / `pivot` + the instance's
   `iPose` [leg swing, arm swing, arm raise, leg bend] swing the limbs in the vertex shader, the same patch on its customDepthMaterial
   so shadows match). Named scale `NAMED_S` 2.9 × √(look.size / 1.4) (~4.2–4.9 m: ~2.5× life; your avatar 6 m), crowds `CROWD_S` 1.6;
-  a jog's circle widens with the size; sitting drops the body and swings the legs forward. Your circle stands on a soft gold
+  a jog's circle widens with the size; sitting drops the body and swings the legs forward; crews drill 9–14 m round their HQ (Fast: 2–6);
+  others' shirts `MUTE` 0.2 to grey (Fast 0.5). Your circle stands on a soft gold
   ring (one InstancedMesh, alpha vertex colours). Hashed skin / hair (`lookOf(id)`, `LOOKS`; grey = all grey). VRMs
   (`createPeopleVRM`): every `VRM_LOD.every` s `nearestOnScreen` picks the `cap` (16) nearest shown, non-grey named people inside
   the view and `maxD` (260 m) of the camera (shown ones count × 0.8 nearer: hysteresis); a slot fades in over `fade` s (VRM grows
   0.85 → 1 while life3d shrinks that humanoid by `weight(id)`) and out the same way. Slots: the base model (`loadBase(MODEL_URL)`,
   started `delay` s after the map's first tick) parsed by `makeVRM` one slot at a time (`gap` s apart; geometry and textures
-  shared by players3d's caches), springs off, `dress`ed on assignment (club colour shirt, dark shorts, hashed hair / skin).
+  shared by players3d's caches), springs off, shadows only for the `shadows` (6) nearest, `dress`ed on assignment (club colour shirt, dark shorts, hashed hair / skin).
   Poses: walking / jogging = `locoPose` by the measured ground speed ÷ the figure's size; drill = READY → arms-up BLOCK by the hop;
   wit / rest / out = SIT (`groundSnap` lying); else STAND breathing. Fast: capsules (`look.size`), no humanoids, rings or VRMs.
   life3d.tick takes `cam` (map3d passes it). `count()` adds `look`, `humanoids`, `circle`, `vrm` / `built` / `cap`.

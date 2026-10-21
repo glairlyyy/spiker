@@ -71,7 +71,7 @@ const CAP = { people: 300, poles: 2, cloth: 2, dust: 10 },
   PER_SIDE = 12, // battle crowd
   NAMED_S = 2.9, // the default look: a named figure's scale (× the 1.45 m figure: ~2.5× life size) at look.size 1.4, √-graded by group
   CROWD_S = 1.6, // … the crews, the battle crowd and the patrols
-  MUTE = 0.3, // the default look: others' shirts this far to grey (half-way read as skin on the VRM shirts; Fast: 0.5)
+  MUTE = 0.2, // the default look: others' shirts this far to grey (half-way read as skin on the VRM shirts; Fast: 0.5)
   CIRCLE_RING = '#f5c451', // your circle's soft ring (theme --gold)
   HIP = 0.7; // the humanoid's hip height (m at scale 1): sitting drops the body by about this
 
@@ -260,7 +260,8 @@ export function createLife(scene, heightAt) {
           let len = 0;
           const seg = path.slice(1).map((p, j) => (len += Math.hypot(p.x - path[j].x, p.z - path[j].z)));
           figs.push({ x: 0, z: 0, y: 0, yaw: 0, color: k, kind: 'walk', ph: hstr(id), path, seg, len, crew: hstr(`${id}|n`) });
-        } else (drill(c.at, id, k, 2, 6), (figs[figs.length - 1].crew = hstr(`${id}|n`)));
+        } else (drill(c.at, id, k, low ? 2 : 9, low ? 6 : 14), (figs[figs.length - 1].crew = hstr(`${id}|n`)));
+        // (the default look: round the HQ building, 9–14 m out — inside 6 m the bigger figures stood in its walls)
       }
     }
     if (L.battle) {
