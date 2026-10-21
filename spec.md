@@ -1554,6 +1554,11 @@ the AI coach fills every slot you leave with the same function. Built and measur
     shop fronts with awnings and signs by district, balconies, roof edges, AC units, water tanks on Wu roofs, tiled roofs in Shu;
     materials with roughness and a little colour noise. Street lamps get their posts (the light stays as it is), the courts'
     floodlights get towers, plus benches, bins and bus stops on the main roads. Interiors come with street level (T-336).
+    **[built 2026-10-21, T-342: one facade layout per lot drives both the panes and the night glows (lit panes glow as
+    rectangles, shop fronts and signs too); doors and shop fronts on the side toward the camera; flat roofs with parapets, AC
+    units, stair houses, Wu water tanks; gable / hip / lean-to roofs (Shu clay tiles with ridge caps, terracotta in Old Town and
+    Gloria, tin in Wu); canvas-drawn wall, window and roof textures; lamp posts with an arm, floodlight masts; benches, bins and
+    bus stops between the lamps of the main roads. Fast keeps the boxes and today's night lights]**
   - **Land, water, sky (T-343).** Terrain textured by ground (grass, sand, rock, dirt, paddies, farmland) with soft blends and
     detail; real tree crowns (palms on Wu's coast, pines in Shu, broadleaf in Wei's parks), bushes and grass tufts; the sea as a
     water shader (waves, reflections, foam at the shore); a physical sky that follows the day clock (§4.37 2); ACES tone mapping,

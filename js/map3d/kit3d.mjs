@@ -890,6 +890,9 @@ const wallUV = (tex, u0, u1, v0, v1) =>
     ? [v0 * 0.75, u0 * 0.75, v0 * 0.75, u1 * 0.75, v1 * 0.75, u1 * 0.75, v1 * 0.75, u0 * 0.75]
     : [u0 / TEXM, v0 / TEXM, u1 / TEXM, v0 / TEXM, u1 / TEXM, v1 / TEXM, u0 / TEXM, v1 / TEXM];
 
+/** UVs of a wall triangle from its corners' (along, up) metres. */
+const tuv = (tex, ...pts) => pts.flatMap(([u, v]) => (tex === 'metal' ? [v * 0.75, u * 0.75] : [u / TEXM, v / TEXM]));
+
 /**
  * A box in a local frame P(x, y, z) → world: faces counter-clockwise from outside, wall UVs in metres; skip = face names to leave
  * out ('py' top, 'ny' bottom, 'px' …). Into mesher M with colour c and wall texture tex.
@@ -1046,10 +1049,10 @@ const roofTexture = () => {
   const barrel = (y0, k, warm) => {
     for (let x = 0; x < S; x += 32) {
       for (let y = y0; y < y0 + 128; y += 16) {
-        const t = 0.62 + 0.18 * rnd() * warm;
+        const t = 0.8 + 0.12 * rnd() * warm;
         for (let i = 0; i < 32; i++) {
           const a = Math.sin((i / 32) * Math.PI);
-          g.fillStyle = grey(clamp(t * (0.55 + 0.5 * a * k), 0, 1));
+          g.fillStyle = grey(clamp(t * (0.72 + 0.32 * a * k), 0, 1));
           g.fillRect(x + i, y, 1, 16);
         }
         g.fillStyle = 'rgba(0,0,0,0.28)';
@@ -1064,7 +1067,7 @@ const roofTexture = () => {
   // tin: fine ribs along the slope, sheet overlaps, rust streaks
   for (let x = 0; x < S; x++) {
     const a = 0.5 + 0.5 * Math.sin((x / 16) * Math.PI * 2);
-    g.fillStyle = grey(0.62 + 0.26 * a);
+    g.fillStyle = grey(0.78 + 0.2 * a);
     g.fillRect(x, 256, 1, 128);
   }
   for (let x = 0; x < S; x += 128) ((g.fillStyle = 'rgba(0,0,0,0.25)'), g.fillRect(x, 256, 2, 128));
@@ -1082,7 +1085,7 @@ const roofTexture = () => {
   // shingles: staggered courses with gaps
   for (let y = 384, r = 0; y < 512; y += 16, r++)
     for (let x = r % 2 ? -16 : 0; x < S; x += 32) {
-      g.fillStyle = grey(0.58 + 0.28 * rnd());
+      g.fillStyle = grey(0.74 + 0.22 * rnd());
       g.fillRect(x, y, 31, 15);
       g.fillStyle = 'rgba(0,0,0,0.3)';
       g.fillRect(x, y + 13, 31, 2);
@@ -1312,7 +1315,7 @@ export const detailMats = () => {
 
 // ---------- one lot in detail ----------
 const ROOFCOL = {
-  shu: ['#6f7d8a', '#64717e', '#7a8690', '#5e6a72'],
+  shu: ['#8494a3', '#7a8896', '#909ca8', '#748290'],
   terra: ['#d47c56', '#c66a48', '#de8c62'],
   metal: ['#9ab8cc', '#b0b4b8', '#b8805e', '#8cae96', '#c4c8cc'],
   shingle: ['#7e6e66', '#6e7480', '#8a745f']
@@ -1517,9 +1520,9 @@ function pitched(W, R, P, L, w, d, eave, top, wall, rc, hh, base = 0) {
       (-A - og) / 4,
       v[1]
     ]);
-    W.tri(Q(A, eave, Bh), Q(A, eave, -Bh), Q(A, top, -Bh), wall, [0, 0, 0, 0, 0, 0], e);
-    W.tri(Q(-A, eave, -Bh), Q(-A, eave, Bh), Q(-A, top, -Bh), wall, [0, 0, 0, 0, 0, 0], e);
-    W.quad(Q(A, eave, -Bh), Q(-A, eave, -Bh), Q(-A, top, -Bh), Q(A, top, -Bh), wall, [0, 0, 0, 0, 0, 0, 0, 0], e);
+    W.tri(Q(A, eave, Bh), Q(A, eave, -Bh), Q(A, top, -Bh), wall, tuv(L.wall, [-Bh, eave], [Bh, eave], [Bh, top]), e);
+    W.tri(Q(-A, eave, -Bh), Q(-A, eave, Bh), Q(-A, top, -Bh), wall, tuv(L.wall, [-Bh, eave], [Bh, eave], [-Bh, top]), e);
+    W.quad(Q(A, eave, -Bh), Q(-A, eave, -Bh), Q(-A, top, -Bh), Q(A, top, -Bh), wall, wallUV(L.wall, -A, A, eave, top), e);
     return;
   }
   const s = (top - eave) / Bh,
@@ -1539,8 +1542,8 @@ function pitched(W, R, P, L, w, d, eave, top, wall, rc, hh, base = 0) {
     D = Bh + ov;
   R.quad(Q(-E, ey, D), Q(E, ey, D), Q(E, top, 0), Q(-E, top, 0), rc, uv(-E, E));
   R.quad(Q(E, ey, -D), Q(-E, ey, -D), Q(-E, top, 0), Q(E, top, 0), rc, uv(-E, E));
-  W.tri(Q(A, eave, Bh), Q(A, eave, -Bh), Q(A, top, 0), wall, [0, 0, 0, 0, 0, 0], e);
-  W.tri(Q(-A, eave, -Bh), Q(-A, eave, Bh), Q(-A, top, 0), wall, [0, 0, 0, 0, 0, 0], e);
+  W.tri(Q(A, eave, Bh), Q(A, eave, -Bh), Q(A, top, 0), wall, tuv(L.wall, [-Bh, eave], [Bh, eave], [0, top]), e);
+  W.tri(Q(-A, eave, -Bh), Q(-A, eave, Bh), Q(-A, top, 0), wall, tuv(L.wall, [-Bh, eave], [Bh, eave], [0, top]), e);
   // the bargeboards along the gable ends' slopes, and a ridge cap (with upturned ends on Shu roofs)
   const bc = mul(wall, 0.6);
   for (const sa of [-1, 1]) {
