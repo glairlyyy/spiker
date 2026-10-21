@@ -503,7 +503,8 @@ export const LOOK = {
   sky: { turbidity: 5, rayleigh: 1.4, mie: 0.004, g: 0.8, every: 0.25, moved: 0.015 },
   bloom: { strength: 0.85, radius: 0.5, day: 3, night: 0.8 }, // threshold from day (nothing blooms) to night
   shadow: { radius: 3, box: [40, 360], k: 0.85, map: 2048, mapHi: 4096 },
-  dyn: { floor: { auto: 0.7, high: 1, fast: 1 }, slow: 24, quick: 15 }, // ms (frame-time average) to step down / up
+  // dynamic resolution: ms (frame-time average) to step down / up; far too slow (`dire`, < ~15 fps) steps faster to `rescue`
+  dyn: { floor: { auto: 0.7, high: 1, fast: 1 }, slow: 24, quick: 15, dire: 66, rescue: { auto: 0.45, high: 1, fast: 1 } },
   sea: { deep: '#0d3b5e', mid: '#176b8a', shallow: '#3fb2ad', foam: '#f4f8f6', wave: 0.32 },
   detail: 256 // generated texture size (px)
 };
@@ -715,7 +716,7 @@ function richLook(renderer, scene, cam, sun, hemi) {
     w = 1,
     h = 1,
     pr = 1;
-  const dyn = { res: 1, ema: 16.7, t: 0 };
+  const dyn = { res: 1, ema: 16.7, t: 0, last: 0 };
   const makeComposer = () => {
     const rt = new THREE.WebGLRenderTarget(w * pr, h * pr, { type: THREE.HalfFloatType, samples: LOOK.samples });
     composer = new EffectComposer(renderer, rt);
@@ -841,15 +842,21 @@ function richLook(renderer, scene, cam, sun, hemi) {
       wantAO(gfx === 'high');
       hi = gfx === 'high';
       // dynamic resolution (like matches, r3d adaptRes): under ~42 fps step down to the setting's floor, back up with headroom
-      const floor = LOOK.dyn.floor[gfx] || LOOK.dyn.floor.auto;
-      dyn.ema += (Math.min(100, dt * 1000) - dyn.ema) * 0.05;
-      dyn.t += dt;
+      // (the real time between frames: the frame's dt is capped at 0.1 s)
+      const D = LOOK.dyn,
+        now = performance.now(),
+        ms = dyn.last ? Math.min(1000, now - dyn.last) : 16.7,
+        dire = dyn.ema > D.dire,
+        floor = (dire ? D.rescue[gfx] : D.floor[gfx]) || (dire ? D.rescue.auto : D.floor.auto);
+      dyn.last = now;
+      dyn.ema += (ms - dyn.ema) * (ms > dyn.ema ? 0.2 : 0.05);
+      dyn.t += ms / 1000;
       if (dyn.t >= 1) {
         dyn.t = 0;
         const r0 = dyn.res;
-        if (dyn.ema > LOOK.dyn.slow && dyn.res > floor) dyn.res = Math.max(floor, +(dyn.res - 0.05).toFixed(2));
+        if (dyn.ema > D.slow && dyn.res > floor) dyn.res = Math.max(floor, +(dyn.res - (dire ? 0.15 : 0.05)).toFixed(2));
         else if (dyn.ema < LOOK.dyn.quick && dyn.res < 1) dyn.res = Math.min(1, +(dyn.res + 0.05).toFixed(2));
-        if (dyn.res < floor) dyn.res = floor;
+        if (dyn.res < D.rescue.auto) dyn.res = D.rescue.auto;
         if (dyn.res !== r0) resize(w, h);
       }
     },
