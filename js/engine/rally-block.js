@@ -160,7 +160,7 @@ function blockMoves(c, x, f) {
 function blockCoverage(c, x, f) {
   const { m, n } = c,
     { setter, quick, slide, sync, freak, readBonus } = x,
-    { back, longB, spZ, lane, pipe, appX, b0, bz0, late0, b1, bz1, late1, blockers, lateB, lateA, a1 } = f;
+    { back, longB, spZ, lane, pipe, appX, b0, bz0, late0, b1, bz1, late1, blockers, lateB, lateA, a1, commit } = f;
   const { pj, hS, c0, c1 } = blockHands(c, x, f);
   let cov = Math.max(c0.c, c1.c) + (c0.c > 0.4 && c1.c > 0.4 ? 0.25 : 0) + readBonus;
   // techniques that beat (or read) the block
@@ -187,6 +187,7 @@ function blockCoverage(c, x, f) {
             : null;
   const seam = b1 && c0.raw > 0.2 && c1.raw > 0.2 && Math.abs(bz0 - bz1) > 0.17 && R() < 0.5;
   const over = hS - Math.max(c0.hB, c1.hB) > 38 && Math.max(c0.raw, c1.raw) > 0.3;
+  const ntU = R(); // the net touch's one draw (spec §4.38), made on every attack here; read by netTouch after the block
   return {
     back,
     longB,
@@ -211,7 +212,9 @@ function blockCoverage(c, x, f) {
     readB,
     setTech,
     seam,
-    over
+    over,
+    commit,
+    ntU
   };
 }
 /** Each blocker's hands: lane × height coverage, scaled by reading and the defence setting. */
@@ -246,4 +249,46 @@ function blockHands(c, x, f) {
   if (swing) c0.c *= BLOCK.swingCov;
   else if (bitten) c0.c *= 0.5;
   return { pj, hS, c0, c1 };
+}
+
+/** Engine-only fault tally (spec §4.38; no draws): m.flt = { net, foot, dbl } — net touches, foot faults, double contacts. */
+const fltAdd = (m, k) => (m.flt || (m.flt = { net: 0, foot: 0, dbl: 0 }))[k]++;
+/**
+ * 9b. Net touch (spec §4.38): called after the block when the block did not end the attack (a stuffed ball is dead at once),
+ * before the dig (rally.js attackPhases). Its one draw (`x.ntU`) is made in blockCoverage on every attack — a hitting error or
+ * a hang that ends it first leaves it unread. The bodies at the tape are a front-row hitter (a back-row attack takes off
+ * behind the line) and each blocker (a middle on Commit lunges: 'commit'), each with its own chance (Formula.netTouchP); the
+ * draw picks at most one of them. A blocker's touch gives the attack the point, the hitter's the defence. { point } or nothing.
+ */
+function netTouch(c, x) {
+  const { m, B, V, atk, ds } = c,
+    { spiker, tip, back, blockers, commit, hit, bdown, spZ, lx, lz, hdur, pow, elS, ntU } = x,
+    at = [
+      ...(back ? [] : [[spiker, Formula.netTouchP(spiker, tip ? 'tip' : 'hit', 1 - staOf(spiker)), spZ]]),
+      ...blockers.map(b => [
+        b,
+        Formula.netTouchP(b, commit && b.role === 'MB' ? 'commit' : 'read', 1 - staOf(b)),
+        b === x.b1 ? x.bz1 : x.bz0
+      ])
+    ];
+  let u = ntU;
+  const t = at.find(([, p]) => (u -= p) < 0);
+  if (!t) return;
+  const [who, , z] = t,
+    blk = who !== spiker;
+  st(m, who, 'err');
+  fltAdd(m, 'net');
+  V &&
+    B({
+      dur: (tip ? 520 : hdur) + 150,
+      acts: [
+        ...hit,
+        ...bdown,
+        { k: 'netshake' },
+        { k: 'ball', to: { x: lx, z: lz, h: 0 }, h: tip ? 40 : 20, trail: tip ? 0 : pow, el: elS ? elS.el : null },
+        { k: 'plabel', p: who.id, t: 'Touched the net!', v: 'err' },
+        { k: 'label', t: 'Net touch', big: 1, call: 'net', at: { x: sx(blk ? ds : atk, NETX - 6), z } } // (on the toucher's side of the tape)
+      ]
+    });
+  return { point: blk ? atk : ds };
 }

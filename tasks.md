@@ -128,7 +128,7 @@ T-339 after T-333 merges. D owns js/engine/rally-phases.js, js/engine/rally-bloc
 js/data/rules.js, js/render/acts.js, js/render3d/venue3d.mjs + js/render3d/venues/, js/render3d/fx/drone.mjs (new), tests/engine.test.js
 (+ goldens), tests/drone.test.js (new). Not sfx.js (E's): the whistle and the drone's beep are added at the merge.
 
-### [ ] T-337: Net touch and foot fault
+### [x] T-337: Net touch and foot fault
 Agent: D
 Spec: §4.38          Goldens: update (two new faults change rallies)          Save: no change
 Goal: a net touch (blocker / hitter at the tape; tired, low Agility, Reckless, commit block likelier) and a foot fault (server on the
@@ -142,7 +142,7 @@ Steps:
 3. `npm run test:update` once; reason in the commit.
 Accept: a rate test over 200 seeded matches (net 0.7–1.3, foot 0.3–0.7 a match); `npm run bot -- 6` within noise of before.
 QA: Monster game → a net touch and a foot fault called.
-Result:
+Result: Built. `FAULTS` + `COURT_LINES` (rules.js), `Formula.netTouchP` / `footFaultP`. Foot fault: one R() per serve in playRally right before the error roll (`footFault`; jump × 5 a float; a `st` error, not a `srvLog` error — the serve odds don't model it). Net touch: one R() per attack at the end of blockCoverage (`x.ntU`), read by `netTouch` (rally-block.js) after the block when it didn't end the attack (a stuff is dead first; read before the block, it ate into Commit's quick-stuff edge), before the dig; needs one line in rally.js attackPhases (unlisted file). A tip never touches; `commit` only for a middle on Commit; Reckless = the Hothead match trait; at = the toucher's side of the tape. Labels carry `call` + `at` (double contact too); engine-only tally `m.flt`. Rate test (200 matches): net 0.87, foot 0.52 (double 0.74). Bot league full, 60 pairs: points 1.79 → 6.49 %, wins +15.0 → +21.7 % (20 pairs went the other way: noise). Goldens updated (teams, matches, sims). Stream-tripped fixed-seed tests: lane-read 400 → 800 matches, elements 70 → 140 games, laning two recorded matches; cards.test.js (unowned) fills twice before the idempotence check — a first refill's own buffs can move a fit (cards.js, not touched). QA (qa/): t337-net-touch(-close/-close2), t337-foot-fault(-close/-close2).
 
 ### [ ] T-338: The calls you see — drone and the Academy's referee
 Agent: D

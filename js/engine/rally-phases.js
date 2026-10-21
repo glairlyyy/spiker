@@ -287,13 +287,14 @@ function setHands(c, s) {
   }
   if (sq2 === 'fault') {
     st(m, setter, 'err');
+    fltAdd(m, 'dbl');
     V &&
       B({
         dur: 700,
         acts: [
           { k: 'pose', p: setter.id, pose: 'set' },
           { k: 'ball', to: { x: setX + da * 10, z: setZ, h: 0 }, h: 60 },
-          { k: 'label', t: 'Double contact', big: 1 }
+          { k: 'label', t: 'Double contact', big: 1, call: 'double', at: { x: setX, z: setZ } }
         ]
       });
     return { point: ds };

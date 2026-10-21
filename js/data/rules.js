@@ -62,6 +62,20 @@ const SUB = {
  * to the set point (distance ÷ (0.5 + speed / 100), as `nearest`) is more than `beat` × that teammate's. No randoms in the choice.
  */
 const SETTER = { beat: 1.6 };
+/** The painted lines in engine units (as venues/floor.mjs draws them): end lines at x = end and 1000 − end, side lines at z = side and 1 − side. */
+const COURT_LINES = { end: 80, side: 0.08 };
+/**
+ * Net touch and foot fault (spec §4.38), beside double contact. Net touch: one draw on every attack (rally-block.js
+ * blockCoverage), read after the block when the block did not end it (netTouch), for the bodies at the tape — a front-row hitter (`hit`; a tip `tip` — soft, no follow-through: 0) and each blocker
+ * (`read`; a middle on Commit is up early and lunges: `commit`). Each body: net[kind] × (1 + tired × (1 − stamina)) ×
+ * (1 + agi × how far its speed (the engine's Agility) is under agiFrom, ÷ agiFrom) × (`reckless` for a Hothead). Foot fault:
+ * every serve gets one draw (serve.js playRally): foot[serve type] × (1 + tired × (1 − stamina)).
+ * Rate test (200 seeded matches): ≈ 1 net touch and ≈ 0.5 foot faults a match.
+ */
+const FAULTS = {
+  net: { hit: 0.014, tip: 0, read: 0.01, commit: 0.016, tired: 1.5, agi: 1, agiFrom: 60, reckless: 1.6 },
+  foot: { jump: 0.026, jumpfloat: 0.013, float: 0.005, tired: 1 }
+};
 const rulesText = () => `First to ${RULES.pointsToWin}, win by ${RULES.winBy}`;
 /**
  * Relationships on court (T-066, spec §4.23 E; career matches only: every effect is gated on `m.rel`, so Monster / sims / the golden

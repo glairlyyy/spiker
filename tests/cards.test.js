@@ -82,6 +82,7 @@ test('cards: turns every TURN.pts points (or after a spent card); five slots in 
         if (id && g.CARDS[id].zone === 'op') eq(k, 'flex', 'OP only in FLEX');
       }
     g.cardFill(m, 1);
+    g.cardFill(m, 1); // (T-337: a first refill's own buffs can move a fit — hitPow / blkOf — so the second pick may differ once; stable after)
     const s0 = JSON.stringify(m.cards[1].slots),
       nx = g.RNG.next;
     let draws = 0;

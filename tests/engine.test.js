@@ -82,6 +82,45 @@ test('engine: rally invariants over 300 matches', () => {
   }
 });
 
+test.slow('engine: net touch and foot fault — ≈ 1 and ≈ 0.5 a match; the calls carry their spot (spec §4.38)', () => {
+  const g = load(5),
+    T = g.mkTeams();
+  let net = 0,
+    foot = 0;
+  for (let i = 0; i < 200; i++) {
+    const f = g.simMatch(T[i % 8], T[(i * 3 + 1) % 8]).flt || {};
+    net += f.net || 0;
+    foot += f.foot || 0;
+  }
+  net /= 200;
+  foot /= 200;
+  assert(net >= 0.7 && net <= 1.3, `net touches a match ${net}`);
+  assert(foot >= 0.3 && foot <= 0.7, `foot faults a match ${foot}`);
+  // the chances: a Commit block, tired legs, low Agility (speed), a jump serve — likelier
+  const F = g.Formula,
+    p = T[0].P[0],
+    slow = { ...p, speed: 20 };
+  assert(F.netTouchP(p, 'commit', 0) > F.netTouchP(p, 'read', 0), 'commit > read');
+  assert(F.netTouchP(p, 'hit', 0.5) > F.netTouchP(p, 'hit', 0), 'tired > fresh');
+  assert(F.netTouchP(slow, 'hit', 0) > F.netTouchP({ ...p, speed: 90 }, 'hit', 0), 'slow > quick');
+  assert(F.footFaultP(p, 'jump') > F.footFaultP(p, 'float'), 'jump serve > float');
+  // recorded: every fault label carries its call and spot
+  const r = load(6),
+    R2 = r.mkTeams(),
+    seen = {};
+  for (let i = 0; i < 40 && Object.keys(seen).length < 3; i++) {
+    const m = r.newMatch(R2[i % 8], R2[(i + 3) % 8], true);
+    while (!m.over)
+      for (const b of r.playRally(m).beats)
+        for (const a of b.acts)
+          if (a.k === 'label' && a.call) {
+            assert(a.at && Number.isFinite(a.at.x) && Number.isFinite(a.at.z), `${a.call} call without a spot`);
+            seen[a.call] = 1;
+          }
+  }
+  eq(Object.keys(seen).sort().join(','), 'double,foot,net', 'net touch, foot fault and double contact are all called');
+});
+
 test('render: presentation never draws from the game RNG', () => {
   // playback runs playRally lazily inside step(): a frame-rate-dependent draw here would move the engine stream
   const root = path.join(__dirname, '..'),
@@ -194,7 +233,8 @@ test('engine: elements — rarity, every element fires, counters, captain buff',
   const fired = {};
   let won = 0,
     n = 0;
-  for (let i = 0; i < 70; i++) {
+  for (let i = 0; i < 140; i++) {
+    // (140: at 70 games, ~300 spikes, the rate's ± 0.04 crossed the 0.5 floor on some streams — at HEAD too, seed 22 gave 0.48)
     const [a, b] = g.mkMonsterTeams(),
       m = g.simMatch(a, b, { cards: false }); // (the element spike's own worth, without the cards' edges)
     for (const L of m.elLog) {
@@ -205,7 +245,7 @@ test('engine: elements — rarity, every element fires, counters, captain buff',
     }
   }
   for (const e of g.ELS) assert(fired[e] > 0, `${e} never fired`);
-  // (≈ 0.57 across seeds, ± 0.04 at 300 spikes: the floor is "most", not a tuned value)
+  // (≈ 0.55 across seeds, ± 0.03 at 600 spikes: the floor is "most", not a tuned value)
   assert(won / n > 0.5 && won / n < 0.85, `element spike win rate ${(won / n).toFixed(2)}`);
   // counters: a defender whose element beats the attacker's halves the effect; Blast has no counter
   const [A, B] = g.mkMonsterTeams(),
@@ -332,7 +372,8 @@ test.slow('engine: lane-read block — stuff rate and defence settings', () => {
     T = g.mkTeams(),
     run = (tac, dset) => {
       const t = { q: 0, qs: 0, pin: 0, pins: 0 };
-      for (let i = 0; i < 400; i++) {
+      for (let i = 0; i < 800; i++) {
+        // (800: at 400 the quick-stuff gap sat at the 0.03 line once T-337's two draws moved the stream — same gap with the faults off)
         const a = g.simMatch(T[i % 8], T[(i * 3 + 1) % 8], { tac: [tac, 'auto'], dset: ['read', dset], cards: false }).att[0];
         t.q += a.q;
         t.qs += a.qs;
@@ -386,9 +427,15 @@ test.slow('engine: laning — the block reads a channel, a right read stops more
   const hs = T.flatMap(t => g.squadOf(t)).map(g.habitLine);
   assert(Math.min(...hs) >= 0.15 && Math.max(...hs) <= 0.85 && Math.max(...hs) - Math.min(...hs) > 0.2, 'habits spread');
   // a recorded match shows the projected direction during the set: act `lane` with the block's read channel when it read one
-  const m = g.newMatch(T[0], T[1], true),
-    acts = [];
-  while (!m.over) for (const b of g.playRally(m).beats) for (const a of b.acts) if (a.k === 'lane') acts.push(a);
+  const acts = [];
+  for (const [a, b] of [
+    [0, 1],
+    [2, 3]
+  ]) {
+    // (two matches: one short match after T-337's stream move showed exactly 10)
+    const m = g.newMatch(T[a], T[b], true);
+    while (!m.over) for (const bt of g.playRally(m).beats) for (const x of bt.acts) if (x.k === 'lane') acts.push(x);
+  }
   assert(acts.length > 10 && acts.some(a => a.bz != null) && acts.every(a => Number.isFinite(a.x1) && Number.isFinite(a.z1)), 'lane acts');
 });
 

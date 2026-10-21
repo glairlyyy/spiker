@@ -29,6 +29,8 @@ function playRally(m) {
   serveToss(c);
   serveContact(c);
   srvLog(m, c.server);
+  // the foot fault (spec §4.38): one draw on every serve, here, before the error roll (FAULTS.foot)
+  if (R() < Formula.footFaultP(c.server, c.sType) && m.dev !== 'ace') return footFault(c); // (not a srvLog error: the serve odds don't model it)
   if (R() < c.serr && m.dev !== 'ace') return (srvLog(m, c.server, 'err'), serveFault(c)); // (m.dev 'ace': the Dev cut-scene preview — same draws)
   serveAim(c);
   if (R() < sig((c.sq - c.rs) / 24 - 2.4) || m.dev === 'ace') return (srvLog(m, c.server, 'ace'), serveAce(c));
@@ -185,6 +187,23 @@ function serveFault(c) {
           trail: sq
         },
         { k: 'label', t: net ? 'Into the net' : 'Long!', when: 'end', big: 1 }
+      ]
+    });
+  return end(m, r, beats);
+}
+/** Foot fault (spec §4.38): the server stepped on the end line — a service error, called at the line where they took off. */
+function footFault(c) {
+  const { m, V, B, beats, s, r, server, sq, sp, hitFx, sw } = c;
+  st(m, server, 'err');
+  fltAdd(m, 'foot');
+  V &&
+    B({
+      dur: 750,
+      acts: [
+        ...hitFx,
+        ...sw,
+        { k: 'ball', to: { x: sx(r, 300), z: clamp(sp.z, 0.2, 0.8), h: 0 }, h: 110, trail: sq },
+        { k: 'label', t: 'Foot fault', big: 1, call: 'foot', at: { x: sx(s, COURT_LINES.end), z: sp.z } }
       ]
     });
   return end(m, r, beats);

@@ -125,6 +125,8 @@ function attackPhases(c, { s, h, a }) {
   const bl = block(c, x);
   if (bl.point != null) return fin({ point: bl.point });
   if (bl.next) return fin({ next: bl.next });
+  r = netTouch(c, x); // a net touch (spec §4.38, rally-block.js): its draw was made in formBlock; a stuff is dead before it
+  if (r) return fin({ point: r.point });
   return fin(endOf(dig(c, x, bl)));
 }
 
