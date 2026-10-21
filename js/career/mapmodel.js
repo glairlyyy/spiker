@@ -740,7 +740,7 @@ const MapModel = {
     });
   },
   /**
-   * The war on the map (spec §4.34; hex tiles are never drawn): lines — one closed smoothed border per standing unit { unit,
+   * The war on the map (spec §4.34; hex tiles are never drawn): lines — one closed border (straight runs) per standing unit { unit,
    * color (its lead club's colour), pts }; hot — this week's battle stretch { units, colors, lines (open polylines), site };
    * banners along it [{ at, face, color }] (each side's, facing across); fall — the latest destroyed unit { key, at (its HQ),
    * pin } (the map pans there once). Display only, no randoms.
@@ -781,7 +781,7 @@ const MapModel = {
       fall: last ? { key: `${last}|${F[last].week}`, at: CITY.hq[hq].slice(), pin: `hq${hq}` } : null
     };
   },
-  /** Every this-many points of a smoothed hot stretch, a pair of banners. */
+  /** Every this-many points of a hot stretch (Hex.dense: HEX.size / 4 apart), a pair of banners. */
   bannerStep: 10,
   /**
    * Patrols on this week's hot border (spec §4.34): the battle's two tiles — the defender guards its tile (2), the raider

@@ -332,7 +332,7 @@ const War = {
         .map(t => t.id)
     );
   },
-  /** u's border (spec §4.34): the outer edge of its land, one closed smoothed loop [[x, y]…] (cached until a unit falls). */
+  /** u's border (spec §4.34): the outer edge of its land, one closed loop of straight runs [[x, y]…] (Hex.straight, points every HEX.size / 4: Hex.dense) (cached until a unit falls). */
   outline(run, u) {
     const key = `${u}|${War.ids()
         .map(x => War.holder(run, x))
@@ -340,12 +340,12 @@ const War = {
       C = War.lineCache || (War.lineCache = new Map());
     if (!C.has(key)) {
       const L = Hex.outline(War.land(run, u))[0];
-      C.set(key, L ? Hex.smooth(L, 2, true) : []);
+      C.set(key, L ? Hex.dense(Hex.straight(L)) : []); // straight runs, not curves (owner, 2026-10-21)
     }
     return C.get(key);
   },
   /**
-   * The stretch where units a and b meet: open polylines of the tile edges between their land (smoothed), longest first.
+   * The stretch where units a and b meet: open polylines of the tile edges between their land (straight runs, densified like `outline`), longest first.
    */
   meet(run, a, b) {
     const A = War.land(run, a),
@@ -374,7 +374,7 @@ const War = {
         L.push(s[1]);
         s = from.get(key(s[1]));
       }
-      lines.push(Hex.smooth(L, 2, false));
+      lines.push(Hex.dense(Hex.straight(L, undefined, false), undefined, false));
     }
     const len = L => L.reduce((n, p, i) => (i ? n + Math.hypot(p[0] - L[i - 1][0], p[1] - L[i - 1][1]) : 0), 0);
     return lines.sort((x, y) => len(y) - len(x));

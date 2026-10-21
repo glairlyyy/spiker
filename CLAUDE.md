@@ -55,6 +55,7 @@ Build chat loop, one task at a time:
 
 - Ultra-concise replies, no preamble or recaps; only raise real concerns.
 - Targeted edits, not rewrites. Max one clarifying question; assume reasonably — except the stop-and-ask cases above.
+- (owner, 2026-10-22) The spec chat composes and talks with the owner; build work goes to spawned agents (model Opus 5.5, effort medium) — the spec chat merges, tests, pushes and publishes.
 
 ## Commands
 

@@ -167,6 +167,53 @@ const Hex = {
     const len = L => L.reduce((s, p, i) => s + Math.hypot(p[0] - L[(i + 1) % L.length][0], p[1] - L[(i + 1) % L.length][1]), 0);
     return loops.sort((x, y) => len(y) - len(x));
   },
+  /**
+   * Straighten a polyline (owner, 2026-10-21: borders not curvy): Ramer–Douglas–Peucker — drop every corner within `tol` map units
+   * of the straight line through its neighbours, so the hex zigzag becomes a few long straight runs. closed = a loop.
+   */
+  straight(pts, tol = HEX.size * 0.9, closed = true) {
+    if (pts.length < 3) return pts.slice();
+    const off = (p, a, b) => {
+        const dx = b[0] - a[0],
+          dy = b[1] - a[1],
+          L = Math.hypot(dx, dy) || 1;
+        return Math.abs(dx * (a[1] - p[1]) - dy * (a[0] - p[0])) / L;
+      },
+      rdp = P => {
+        let k = -1,
+          d = 0;
+        for (let i = 1; i < P.length - 1; i++) {
+          const e = off(P[i], P[0], P[P.length - 1]);
+          if (e > d) [d, k] = [e, i];
+        }
+        return d > tol
+          ? rdp(P.slice(0, k + 1))
+              .slice(0, -1)
+              .concat(rdp(P.slice(k)))
+          : [P[0], P[P.length - 1]];
+      };
+    if (!closed) return rdp(pts);
+    // a loop: split at the point farthest from the first, straighten both halves
+    let far = 1;
+    for (let i = 1; i < pts.length; i++)
+      if (Math.hypot(pts[i][0] - pts[0][0], pts[i][1] - pts[0][1]) > Math.hypot(pts[far][0] - pts[0][0], pts[far][1] - pts[0][1])) far = i;
+    const A = rdp(pts.slice(0, far + 1)),
+      B = rdp(pts.slice(far).concat([pts[0]]));
+    return A.slice(0, -1).concat(B.slice(0, -1));
+  },
+  /** Points every ≤ `step` map units along a polyline (its corners kept): a straight run still drapes over the terrain and spaces banners. */
+  dense(pts, step = HEX.size / 4, closed = true) {
+    const out = [],
+      n = closed ? pts.length : pts.length - 1;
+    for (let i = 0; i < n; i++) {
+      const a = pts[i],
+        b = pts[(i + 1) % pts.length],
+        k = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / step));
+      for (let j = 0; j < k; j++) out.push([a[0] + ((b[0] - a[0]) * j) / k, a[1] + ((b[1] - a[1]) * j) / k]);
+    }
+    if (!closed && pts.length) out.push(pts[pts.length - 1].slice());
+    return out;
+  },
   /** Chaikin corner cutting (n rounds) of a polyline; closed = a loop. Keeps an open line's ends. */
   smooth(pts, n = 2, closed = true) {
     let P = pts;

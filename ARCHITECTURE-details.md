@@ -168,9 +168,9 @@ Both run on the frame clock and never touch playback. The whistle / beep sound i
   p)` (the point card): the people within `ENC.pickup.r`, nearest first, one per crew — the first whose headline behaviour agrees
   (`refuses`: `ENC.pickup.flat` = Picky / Egoist off anything but asphalt) plays; `pickupFx` → `sparFx` with the field: `fx.venue =
   'field'`, `fx.ground = { k, wind }`, setup puts `matchGround` (home ids, the low side by hash) on m. `sparResult` → `fieldAfter`: the
-  rented drone back; on asphalt each knockdown of yours an injury chance (`GROUNDS.asphalt.ko`, hash) and Pain for Endurance < 50; a
-  grumbler (hidden second trait proud) you lost with → `grumbled` −3. A road stop's crew: `Encounter.spot(run, E)` (drone, open ground
-  at the stop, their captain agrees) → `answer(…, 'here')` = `spotChallenge`: Fight.offer / Fight.challenge inside `City.playAt(stop)`,
+  rented drone back; on asphalt each knockdown of yours an injury chance (`GROUNDS.asphalt.ko`, hash) and Pain for Endurance < 50; no bad
+  memory for a loss. A road stop's crew: `Encounter.spot(run, E)` (drone, open ground
+  at the stop, their captain agrees) → `answer(…, 'here')` = `spotChallenge`: Fight.offer / Fight.challenge inside `City.playAt(stop)` with `at` = the stop (`Fight.cost`: the trip there + the day, not their HQ's),
   the fixture re-dressed as a field.
 - **UI** (career-map.js) — `PANELS` gets the Cargo Shed (`cargoPanel`: Buy the drone, the one primary); `spotCard` appends `pickupRow`
   (map points: P, Shift + P ⏭) and `rentRow` (courts and venues: D) in the figure menu's row look (`dronePickRow`: key, name, cost →
@@ -929,7 +929,7 @@ won +WAR.win × k, lost −WAR.lose × k × soak, 0–100, stamps `last`; A's Ra
 rally), `sync` (rebuilds the `run.own` place cache). `Front.site` picks the week's border (a hash of the week: unit pair,
 then edge; `run.clash = { tile (defender's), from (raider's), at (the edge's midpoint), ua, ud, att, def }`), `Front.result`
 hits both units, `Front.sim` reads their Strength. Tiles never flip; the player's travel never reads tiles.
-`MapModel.warMap(run)` (model key `borders`) is what the map draws: `Hex.outline` (boundary edges chained into loops) + `Hex.smooth` (Chaikin) per unit (`War.outline`, cached by the holders), the battle units' meeting stretch (`War.meet`), banners every `MapModel.bannerStep` points (each side's colour, facing across), `fall`. Hex tiles and the point panel's tile block are gone (T-317).
+`MapModel.warMap(run)` (model key `borders`) is what the map draws: `Hex.outline` (boundary edges chained into loops) + `Hex.straight` (Ramer–Douglas–Peucker, tol 0.9 HEX.size: straight runs) + `Hex.dense` (points ≤ HEX.size / 4 apart, for the terrain drape and banner spacing) per unit (`War.outline`, cached by the holders), the battle units' meeting stretch (`War.meet`), banners every `MapModel.bannerStep` points (each side's colour, facing across), `fall`. Hex tiles and the point panel's tile block are gone (T-317).
 War stages in the match (T-314): the engine takes a per-side stage `opts.weak` / `weakSet(m, [k0, k1])` (match.js; WAR_STAGES
 index, absent = nothing changes): `m.weak`, morale starts −`mor` (morAdd), `hpHeal` heals −`heal`, a Broken side's cards lose
 `slots` from the end of SLOTS (`C.off` = ['flex']; `cardSlots(m, i)`, cardPut / cardFill skip it). Career fixtures call

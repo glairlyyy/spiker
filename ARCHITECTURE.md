@@ -33,7 +33,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   MEMORY / MEM_TEXT), `life.js` (LIFE: the named figures on the map — cap, rings, courts, figure sizes, act words; CLOCK: the day
   clock — dawn / walk / order / night times, when people walk out and home, display rates, the light keys — spec §4.37 1–2),
   `encounter.js` (ENC, ENC_STOPS, ENC_ACT, ENC_HI, ENC_CREW, ENC_BATTLE, ENC_ROUTE, ENC_MENU, ENC_GROUND: the road's numbers and lines,
-  the figure menu, pickup games — spec §4.37 3–4, 7, §4.38; merges `met_road` / `sparred` / `grumbled` into MEMORY / MEM_TEXT).
+  the figure menu, pickup games — spec §4.37 3–4, 7, §4.38; merges `met_road` / `sparred` into MEMORY / MEM_TEXT).
 - **engine** `court.js` (geometry, `Z_UNITS`, `UNIT_M`, `BALL_K` / `SERVE_K`), `players.js`, `teams.js`, `save.js`,
   `stats.js`, `skills.js`, `formulas.js`, `elements.js`, `hype.js`, `fire.js` (momentum stages, spec §2.14: `temperOf`,
   `fireStage`, `pointStage` after every point (in `end`), `stageTimeout`, `stageBuff(p, stat)` read by effD / jumpPx / the

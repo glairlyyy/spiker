@@ -416,8 +416,6 @@ const Encounter = {
   },
   /** Their words when they refuse (their behaviour's voice). */
   noLine: (run, id) => Encounter.say(run, ENC_GROUND.no, id, 'gno'),
-  /** A grumbler (their hidden second trait is proud, ENC.pickup.grumble): plays anywhere, but a loss off a flat floor stays with them. */
-  grumbles: (run, id, k) => !ENC.pickup.ok.includes(k) && Rel.traits(run, id)[1] === ENC.pickup.grumble,
   /** The engine's ground for a field C: { k, home (the squads' players born to it: GROUNDS.home.region), low (the side on the low end) }. */
   matchGround(run, C, teams) {
     const reg = GROUNDS.home.region[C.g.k],
@@ -437,8 +435,7 @@ const Encounter = {
   },
   /**
    * After a field match (spar or pickup): a rented drone goes back; on asphalt each time you were knocked down risks a light injury
-   * (GROUNDS.asphalt.ko, by hash) and the soft (Endurance under ENC.pickup.soft) take Pain; a grumbler you lost to the ground with
-   * keeps `grumbled`. Returns the diary bits.
+   * (GROUNDS.asphalt.ko, by hash) and the soft (Endurance under ENC.pickup.soft) take Pain. Returns the diary bits (no bad memory for a loss — owner, 2026-10-21).
    */
   fieldAfter(run, m, id, C) {
     const out = [],
@@ -452,10 +449,6 @@ const Encounter = {
         out.push(`hurt on the asphalt — ${P.injWeeks} week of light training`);
       }
       if (!(you.body && you.body.end >= P.soft)) Feel.add(run, 'pain', Math.min(P.painMax, P.pain * n));
-    }
-    if (m.winner !== 0 && Encounter.grumbles(run, id, C.g.k)) {
-      const b = Rel.add(run, id, 'grumbled');
-      if (b) out.push(`${fmtDelta(b)} bond: ${Team.first(People.find(run, id))} blames the ground`);
     }
     return out;
   },
@@ -527,13 +520,13 @@ const Encounter = {
   spotChallenge(run, E) {
     const S = Encounter.spot(run, E);
     if (S.why) return null;
-    const r = City.playAt(S.field.at, () => Fight.offer(run, E.ti, 0)); // (a refusal spends the day at the stop, not at their HQ)
+    const r = City.playAt(S.field.at, () => Fight.offer(run, E.ti, 0, S.field.at)); // (a refusal spends the day at the stop, not at their HQ)
     if (!r) return null;
     if (!r.accepted) {
       Run.log(run, r.line);
       return { line: r.line };
     }
-    const fx = Fight.challenge(run, E.ti, r.stake);
+    const fx = Fight.challenge(run, E.ti, r.stake, false, S.field.at); // (on the spot: the trip to the stop, not to their HQ)
     if (!fx) return null;
     const C = S.field,
       G = Encounter.matchGround(run, C, [fx.a, fx.b]),

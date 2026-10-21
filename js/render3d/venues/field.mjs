@@ -220,19 +220,18 @@ export function setField() {
     top = 150 * KH,
     bot = 92 * KH,
     curtain = new THREE.Mesh(
-      new THREE.PlaneGeometry(netW, top - bot),
+      new THREE.BoxGeometry(0.16, top - bot, netW), // a slab, not a sheet (owner, 2026-10-21: it read edge-on from the game camera)
       new THREE.MeshBasicMaterial({
         map: curtainTex(),
         color: cyan,
         transparent: true,
-        opacity: 0.55,
+        opacity: 0.7,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide,
         fog: false
       })
     );
-  curtain.rotation.y = Math.PI / 2;
   curtain.position.set(0, (top + bot) / 2, 0);
   g.add(curtain);
   const tape = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.04, netW), new THREE.MeshBasicMaterial({ color: '#e8fbff', fog: false }));
@@ -363,5 +362,5 @@ export function dressField(set, k, low) {
 /** Per frame: the curtain shimmers. */
 export function updateField(set, now) {
   const c = set.userData.curtain;
-  if (c) c.material.opacity = 0.45 + 0.12 * Math.sin(now * 0.004);
+  if (c) c.material.opacity = 0.7 + 0.08 * Math.sin(now * 0.004); // (round the slab's 0.7)
 }

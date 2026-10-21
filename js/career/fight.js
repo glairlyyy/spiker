@@ -96,10 +96,10 @@ const Fight = {
    * A team challenge you take (spec §4.15): your side (Academy squad, your club's squad, or a hired street crew) against club
    * ti's squad, a real match like a street battle. Nothing is spent until it finishes. Null if the club wouldn't accept now.
    */
-  challenge(run, ti, stake = 0, force = false) {
+  challenge(run, ti, stake = 0, force = false, at = null) {
     const side = Fight.challengeSide(run),
       W = Fight.worth(run, ti, stake);
-    if (!W || (!force && !W.accepts) || run.event || Fight.ban(run) || City.noTime(run, City.scoutCost(run, ti)) || run.money < side.cost)
+    if (!W || (!force && !W.accepts) || run.event || Fight.ban(run) || City.noTime(run, Fight.cost(run, ti, at)) || run.money < side.cost)
       return null;
     stake = clamp(Math.round(stake) || 0, 0, Fight.stakeMax(run));
     const opp = run.teams[ti],
@@ -403,11 +403,13 @@ const Fight = {
    * stake }: nothing is spent yet — the match is Fight.challenge and Fight.challengeResult spends the trip + day. Refused →
    * the trip + a day are spent, the club won't hear you again this week, and { accepted: false, line } is the diary line.
    */
-  offer(run, ti, stake = 0) {
+  /** The days a challenge of club ti takes: the trip to their HQ and the day — or, played on the spot (`at`, a road stop), the trip there. */
+  cost: (run, ti, at = null) => (at ? City.trip(run, at) + 1 : City.scoutCost(run, ti)),
+  offer(run, ti, stake = 0, at = null) {
     const side = Fight.challengeSide(run);
     stake = clamp(Math.round(stake) || 0, 0, Fight.stakeMax(run));
     const W = Fight.worth(run, ti, stake);
-    if (!W || run.event || Fight.ban(run) || City.noTime(run, City.scoutCost(run, ti)) || run.money < side.cost) return null;
+    if (!W || run.event || Fight.ban(run) || City.noTime(run, Fight.cost(run, ti, at)) || run.money < side.cost) return null;
     if (W.accepts) return { accepted: true, stake };
     const t = run.teams[ti],
       r = FACTIONS[ti].region,

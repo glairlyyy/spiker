@@ -510,10 +510,22 @@ test('drone: a road stop’s crew challenged on the spot — on the field there,
   }
   assert(E, 'a crew on the road that takes a challenge, open ground at the stop');
   const S = g.Encounter.spot(run, E),
+    stop = g.City.trip(run, S.field.at) + 1,
+    hq = g.City.scoutCost(run, E.ti);
+  eq(g.Fight.cost(run, E.ti, S.field.at), stop, 'on the spot: the trip to the stop and the day');
+  eq(g.Fight.cost(run, E.ti), hq, 'at their HQ: the trip there and the day');
+  assert(stop < hq, `the stop is nearer than their HQ (${stop} vs ${hq} days)`);
+  const dd = run.days;
+  run.days = stop; // (time for the stop, not for their HQ)
+  assert(g.Fight.offer(run, E.ti, 0, S.field.at), 'the days left fit the stop: Challenge here goes ahead');
+  eq(g.Fight.offer(run, E.ti, 0), null, 'the same days would not reach their HQ');
+  run.days = dd;
+  const d0 = g.City.days(run),
     r = g.Encounter.answer(run, E, 'here');
   assert(r && r.fx, 'played on the spot');
   eq(r.fx.venue, 'field', 'the field venue');
   const m = g.Cup.simNow(r.fx);
+  eq(d0 - g.City.days(run), stop, `the days spent are the stop's (${stop}), not the HQ's (${hq})`);
   eq(m.ground.k, S.field.g.k, 'its ground');
   eq(JSON.stringify(run.pos), JSON.stringify(S.field.at), 'you stand at the stop, not their HQ');
   run.drone = null;

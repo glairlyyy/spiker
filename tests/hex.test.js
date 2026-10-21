@@ -30,7 +30,7 @@ test('hex: the grid is deterministic, every place and HQ sits on a tile of its r
   eq(JSON.stringify(g.Hex.grid().tiles), h, 'rebuilt the same');
 });
 
-test('map: borders — one closed smoothed border per unit, the hot stretch is the week’s battle, banners on it; no hex tiles (T-317)', () => {
+test('map: borders — one closed border of straight runs per unit, the hot stretch is the week’s battle, banners on it; no hex tiles (T-317)', () => {
   const g = load(52),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Borders' });
   run.clash = null;
@@ -38,8 +38,19 @@ test('map: borders — one closed smoothed border per unit, the hot stretch is t
   assert(!('hexes' in M), 'no hex tiles in the model');
   eq(M.borders.lines.map(l => l.unit).join(), g.War.ids().join(), 'a border per unit');
   for (const L of M.borders.lines) {
-    eq(g.Hex.outline(g.War.land(run, L.unit)).length, 1, 'one closed loop: ' + L.unit);
-    assert(L.pts.length > 40 && L.color === run.teams[g.WAR.units[L.unit].clubs[0]].color, 'smoothed, in its club colour: ' + L.unit);
+    const O = g.Hex.outline(g.War.land(run, L.unit)),
+      P = L.pts,
+      bends = P.filter((p, i) => {
+        const a = P[(i - 1 + P.length) % P.length],
+          b = P[(i + 1) % P.length];
+        return Math.abs((p[0] - a[0]) * (b[1] - p[1]) - (p[1] - a[1]) * (b[0] - p[0])) > 1e-6;
+      }).length,
+      gap = Math.max(...P.map((p, i) => Math.hypot(P[(i + 1) % P.length][0] - p[0], P[(i + 1) % P.length][1] - p[1])));
+    eq(O.length, 1, 'one closed loop: ' + L.unit);
+    assert(
+      bends >= 3 && bends < O[0].length / 2 && gap <= g.HEX.size / 4 + 1e-6 && L.color === run.teams[g.WAR.units[L.unit].clubs[0]].color,
+      `straight runs (${bends} corners of ${O[0].length}), points ≤ HEX.size / 4 apart (${gap.toFixed(1)}), in its club colour: ` + L.unit
+    );
   }
   assert(M.borders.hot === null && M.borders.banners.length === 0, 'calm: no hot stretch');
   const t = g.Front.site(run, 'shu', 'wei');
@@ -61,4 +72,50 @@ test('map: borders — one closed smoothed border per unit, the hot stretch is t
     'Harbor’s one border takes in Iron’s land'
   );
   assert(B.fall && B.fall.pin === 'hq1', 'the map pans to the fall');
+});
+
+test('hex: Hex.straight — fewer corners, every dropped one within tolerance of the line kept (owner, 2026-10-21)', () => {
+  const g = load(3),
+    seg = (p, a, b) => {
+      const dx = b[0] - a[0],
+        dy = b[1] - a[1],
+        L2 = dx * dx + dy * dy || 1,
+        t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2));
+      return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+    },
+    tol = g.HEX.size * 0.9,
+    check = (P, S, closed, what) => {
+      assert(S.length >= (closed ? 3 : 2) && S.length < P.length, `${what}: ${S.length} of ${P.length}`);
+      const key = q => q.join(),
+        kept = S.map(key);
+      let j = 0;
+      for (const k of kept)
+        assert(
+          P.some(q => key(q) === k),
+          what + ': kept points are input points'
+        );
+      // walk the input; each point lies within tol of the straight run between the kept points around it
+      const at = P.map(q => kept.indexOf(key(q)));
+      const n = closed ? P.length : P.length - 1;
+      for (let i = 0; i < n; i++) {
+        if (at[i] >= 0) j = at[i];
+        else {
+          const a = S[j],
+            b = S[(j + 1) % S.length];
+          assert(seg(P[i], a, b) <= tol + 1e-9, `${what}: dropped corner ${i} is ${seg(P[i], a, b).toFixed(1)} off`);
+        }
+      }
+    };
+  // a hex-like zigzag along a straight line collapses to its ends
+  const Z = [];
+  for (let i = 0; i <= 20; i++) Z.push([i * 10, i % 2 ? tol * 0.6 : 0]);
+  const zs = g.Hex.straight(Z, tol, false);
+  eq(zs.length, 2, 'a zigzag inside the tolerance is one straight run');
+  check(Z, zs, false, 'zigzag');
+  // a real war border (closed loop)
+  const run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Straight' });
+  for (const u of g.War.ids()) {
+    const O = g.Hex.outline(g.War.land(run, u))[0];
+    if (O) check(O, g.Hex.straight(O), true, u);
+  }
 });

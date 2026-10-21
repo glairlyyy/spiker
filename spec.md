@@ -1524,7 +1524,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     - **Slope / bumps** (a park, a field): the side on the low end serves into the rise; set quality a little worse for both.
     - **Wind** (the beach, the Spine, any open field): float serves wander more (good for the server, bad for the passer).
     - **Who agrees to play**: by behaviour (§4.35) — Picky and Egoist refuse anything but a flat floor (asphalt at best), Proud
-      grumbles (a small negative memory if you lose), Friendly / Hothead / Reckless play on anything; a player born to a ground
+      plays on anything, no bad memory for a loss **[built 2026-10-22: owner — `grumbled` removed]**, Friendly / Hothead / Reckless play on anything; a player born to a ground
       (Wu's beach kids on sand, Shu's on the slopes) plays it better (+ a little). A crew that refuses says so on the card.
     **[built 2026-10-21, T-339: the Cargo Shed by the airport sells the drone ($400, the trip + a day); rent one at any court or venue
     ($40, the walk there, D) for one match. A map point's card gets a **Pickup** row (P, Shift + P ⏭): open ground only (not the sea,
@@ -1533,13 +1533,13 @@ the AI coach fills every slot you leave with the same function. Built and measur
     open fields and high ground. Opponents: the people within 150 of the point, nearest first, one per crew — the first who agrees plays
     with their crew; a spar-like match (no stake, the trip + a day, −12 stamina, half the match XP, `sparred`). Spar in the figure menu
     takes a court, else with the drone the open ground near them. A road stop's crew gets **Challenge here** (the stake-free challenge
-    played at the stop). Refusals by headline behaviour: Picky / Egoist off anything but asphalt (the row prints who and why); "Proud" =
-    a hidden second trait proud — plays, but a loss leaves `grumbled` −3; everyone else plays. Engine (no ground = today's match, draw for
+    played at the stop; its days are the trip to the stop + the day, not the trip to the crew's HQ — **[built 2026-10-22]**). Refusals by headline behaviour: Picky / Egoist off anything but asphalt (the row prints who and why); "Proud" =
+    a hidden second trait proud — plays (no memory for a loss since 2026-10-22); everyone else plays. Engine (no ground = today's match, draw for
     draw; goldens unchanged): sand Agility / jump × 0.9, HP a hit × 0.8, digs × 0.94; grass passes −5, a dig's bad bounce 8 %, jump × 0.95;
     asphalt HP × 1.3 — each of your knockdowns a 5 % injury (1 week) and, under Endurance 50, Pain; slope sets −0.03, Agility × 0.96,
     the low end's serve errors +3 %; wind floats wander. Born to it: 40 % of each penalty, + 0.01. Equal teams, 1200 matches: every
     ground within ±2 % of a court, born to the sand +2.5 % — under the home-court edge. The field venue: the ground patch, glowing
-    projected lines, a light-curtain net between two projector pylons, a few props and onlookers, no stands; the drone hovers and calls]**
+    projected lines, a light-curtain net between two projector pylons (a thin glowing slab so it reads from the game camera — 2026-10-22), a few props and onlookers, no stands; the drone hovers and calls]**
 - §4.39 The island, beautiful **[draft — T-341–T-343]** (owner, 2026-10-21: "everything looks like polygon — make a beautiful /
   realistic version now and decide later about the polygon setting"; "render the small default model instead of the clay figures —
   it's very hard to find them"; "the street light doesn't have the pillar, but the light makes the town more lively — good").
@@ -1591,7 +1591,8 @@ the AI coach fills every slot you leave with the same function. Built and measur
     with a story line). **Haewon never joins the side that broke Gold, nor yours**: she walks out to the other surviving
     faction or St. Gloria (a scene), and plays the Cup there.
   - **Map**: hex tiles go (fills, pressure, the tile panel, `run.hex`); a border line per war unit stays — computed once from
-    the hex grid's outer edge (smoothed), never drawn as tiles. Fighting heats a border: the stretch glows and pulses with
+    the hex grid's outer edge as a few long straight runs (not curves — owner; **[built 2026-10-22]**: the hex zigzag straightened, every
+    corner dropped within 0.9 hex of the run kept), never drawn as tiles. Fighting heats a border: the stretch glows and pulses with
     banners, the battle site sits on it. Borders move only when a unit is destroyed. **[built 2026-10-19, T-317]**
   - **You in the war** (T-316): your club calls you up on battle weeks (refusing costs standing) **[built 2026-10-19, T-316: −8 standing; staying away, watching or fighting for the other side all refuse]**; a **Raid** day order
     (§4.33) fights a street game on a hot border (your win counts × 2 on Strength). **[built 2026-10-19, T-318: from the battle card, played at once; a loss costs your unit × 1]**

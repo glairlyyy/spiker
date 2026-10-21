@@ -30,7 +30,7 @@ const ENC = {
   spar: { r: 90, xp: 0.5, sta: 12 },
   // the Ref drone (spec §4.38, T-339): a pickup's opponents stand within r of the point (one crew each, nearest first); a spar with the
   // drone plays on the first open ground at `near` (map units) round them, `dirs` ways. Who plays off a flat floor: headline behaviours
-  // in `flat` refuse every ground but those in `ok`; a hidden second trait `grumble` plays, but a loss leaves `grumbled`. Asphalt: each
+  // in `flat` refuse every ground but those in `ok`; everyone else plays (a loss there leaves no bad memory — owner, 2026-10-21). Asphalt: each
   // knockdown of yours risks an injury of `injWeeks` (GROUNDS.asphalt.ko) and, under Endurance `soft`, `pain` Pain (at most painMax).
   pickup: {
     r: 150,
@@ -38,7 +38,6 @@ const ENC = {
     dirs: 8,
     flat: ['cynical', 'proud'],
     ok: ['asphalt'],
-    grumble: 'proud',
     injWeeks: 1,
     soft: 50,
     pain: 4,
@@ -136,8 +135,7 @@ const ENC_INVITE = {
 
 Object.assign(MEMORY, {
   met_road: { v: 2, rep: 0.5 }, // you stopped to talk on the road (spec §4.37 3; Friendly × 1.5 by REL.behave)
-  sparred: { v: 3, rep: 0.5 }, // a practice match against their crew, win or lose (spec §4.37 7)
-  grumbled: { v: -3 } // a proud one lost a pickup game off a flat floor: the ground's fault, and yours (spec §4.38)
+  sparred: { v: 3, rep: 0.5 } // a practice match against their crew, win or lose (spec §4.37 7)
 });
 Object.assign(MEM_TEXT, {
   met_road: [
@@ -149,6 +147,5 @@ Object.assign(MEM_TEXT, {
     'Sparred {n}’s crew. Nobody kept score. Everybody kept score.',
     'A practice game with {n}’s lot. We shook hands after. Mostly.',
     '{n} came at me hard in the spar. Good.'
-  ],
-  grumbled: ['{n} lost on the bumps and blamed the ground. Then me.', 'A pickup game, a loss, and {n} sulking about “a real floor”.']
+  ]
 });
