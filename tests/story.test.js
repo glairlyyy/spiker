@@ -235,10 +235,7 @@ test('arcs: refusing ends it (arc_refused; a soft beat pays back instead); an un
   run2.week += g2.TEAM.arc.open + 1;
   g2.Team.week(run2);
   eq(C.st, 'lost', 'left unanswered');
-  assert(
-    g2.Rel.list(run2, C.id).some(e => e.k === 'ignored'),
-    'ignored'
-  );
+  assert(!g2.Rel.list(run2, C.id).some(e => e.k === 'ignored'), 'no bond loss (owner, 2026-10-21)');
 });
 
 test('arcs: the year-2 Cup lean puts a friend you saw through into your squad (no draws)', () => {
@@ -340,4 +337,22 @@ test('ex-teammates: across the net they are marked for the remark and remember t
     m2 = g2.newMatch(g2.Run.myTeam(run2), run2.teams[0], false);
   g2.Team.setup(run2, m2);
   eq(m2.exIds, undefined, 'nobody left: no remark');
+});
+
+test('duo: the instant Midnight Court deals your duo card too (owner, 2026-10-21)', () => {
+  const [g, run] = mkRun(351),
+    you = g.Run.you(run),
+    f = g.Run.myTeam(run).P.find(p => p !== you);
+  run.people[f.id].traits[0] = 'warm';
+  for (let n = 0; n < 40 && g.Rel.bondOf(run, f.id) < g.TEAM.duo; n++) g.Rel.add(run, f.id, 'vouched');
+  g.Team.duoWeek(run);
+  const set = g.Team.setup,
+    seen = [];
+  g.Team.setup = (r, m) => (set(r, m), seen.push(m.duo));
+  try {
+    g.Secret.midnight(run);
+  } finally {
+    g.Team.setup = set;
+  }
+  assert(seen.length === 1 && seen[0] && Object.keys(seen[0].find(Boolean)).length, 'the night game has your duo');
 });

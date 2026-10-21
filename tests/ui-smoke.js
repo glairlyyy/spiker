@@ -159,9 +159,14 @@ const step = async (name, fn) => {
     });
     await pg.waitForFunction(() => typeof R3D !== 'undefined' && R3D && A && A.m && !A.hold, null, { timeout: 120000 });
     // match prep (spec §2.26, §2.33): both teams; your side's hand (one card yours, the coach fills the rest); theirs hidden
+    await pg
+      .waitForFunction(() => A.prep && $('#prep') && !$('#prep').hidden && /Their hand/.test($('#prep').textContent), null, {
+        timeout: 10000
+      })
+      .catch(() => {}); // (the card can paint a frame after A.m — the check below says what was there)
     const pre = await ev(() => (A.prep && $('#prep') && !$('#prep').hidden ? $('#prep').textContent : ''));
     if (!/Their hand: hidden/.test(pre) || !/the coach fills the rest/.test(pre))
-      throw new Error(`career match prep: ${pre.slice(0, 200)}`);
+      throw new Error(`career match prep: ${pre.replace(/\s+/g, ' ').slice(0, 400)}`);
     await pg.keyboard.press('Enter');
     if (await ev(() => A.prep)) throw new Error('Enter did not start the match');
     await ev(() => {

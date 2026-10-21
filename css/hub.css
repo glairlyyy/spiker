@@ -401,6 +401,15 @@
   background: var(--warn);
   color: var(--bg);
 }
+.hub .tpin {
+  position: absolute;
+  top: -6px;
+  left: -4px;
+  font: 700 12px/1 var(--body);
+  font-style: normal;
+  color: var(--gold);
+  text-shadow: 0 0 2px var(--bg);
+}
 .hub .ttabs {
   margin-left: auto;
   display: flex;

@@ -295,7 +295,7 @@ function squadStrip(run) {
         [ico, mood] = MOOD[Circle.mood(run, id)],
         club = mate ? 'Teammate' : p.team ? p.team.name : 'No club',
         star = (run.fav || []).map(String).includes(id) ? '★ ' : '';
-      return `<button class="tcm ${mate ? 'mate' : ''}" ${mate ? `style="--tc:${p.team.color}"` : ''} onclick="openPerson('${esc(id)}')" ${tip(`${star}${p.name} · ${club} · bond ${b}${mood ? ` · ${mood}` : ''}`)} aria-label="${esc(p.name)}">${faceSVG(p, mate ? Run.form(run, p) : 0, 28)}${ico ? `<em class="tmd ${Circle.mood(run, id)}">${ico}</em>` : ''}<i class="bbar ${b >= 80 ? 'f' : b >= 60 ? 'c' : ''}"><i style="--w:${b}%"></i></i></button>`;
+      return `<button class="tcm ${mate ? 'mate' : ''}" ${mate ? `style="--tc:${p.team.color}"` : ''} onclick="openPerson('${esc(id)}')" ${tip(`${star}${p.name} · ${club} · bond ${b}${mood ? ` · ${mood}` : ''}`)} aria-label="${esc(p.name)}">${faceSVG(p, mate ? Run.form(run, p) : 0, 28)}${star ? '<em class="tpin" aria-hidden="true">★</em>' : ''}${ico ? `<em class="tmd ${Circle.mood(run, id)}">${ico}</em>` : ''}<i class="bbar ${b >= 80 ? 'f' : b >= 60 ? 'c' : ''}"><i style="--w:${b}%"></i></i></button>`;
     })
     .join('')}</nav>`;
 }

@@ -128,7 +128,7 @@ const Team = {
   /** The arcs whose beat waits for your answer now: [arc]. */
   open: run => Object.values(Team.arcs(run)).filter(A => A.y === Season.year(run) && A.st === 'open'),
   /**
-   * Each week (WEEK_START, no draws): beats that waited too long are lost (`ignored`), the next beats open (the seat waits for a
+   * Each week (WEEK_START, no draws): beats that waited too long close quietly (no memory), the next beats open (the seat waits for a
    * match week, then becomes its alt), and circle members without an arc this season start one from their want (from their
    * hashed start week, up to TEAM.arc.last, at most TEAM.arc.max running).
    */
@@ -147,8 +147,7 @@ const Team = {
         continue;
       }
       if ((A.st === 'open' && wk > A.at + X.open) || (A.st === 'wait' && wk > A.at + X.wait)) {
-        A.st = 'lost';
-        Rel.add(run, A.id, 'ignored');
+        A.st = 'lost'; // no bond loss (owner, 2026-10-21): it just closes
         Run.log(run, `${n(A)} stopped asking. Fair enough.`);
       } else if (A.st === 'next' && wk >= A.at) {
         const B = ARCS[A.w].beats[A.b];

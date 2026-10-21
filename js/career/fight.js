@@ -317,6 +317,7 @@ const Fight = {
       try {
         const g = newMatch(mine, opp, false);
         War.match(run, g);
+        Team.setup(run, g); // your duo cards (spec §4.36 4)
         while (!g.over) playRally(g);
         return g;
       } finally {

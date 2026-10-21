@@ -175,7 +175,10 @@ const Secret = {
       T.short = 'NGT';
       Eval.lend(run, T);
       try {
-        return simMatch(mine, T);
+        const g = newMatch(mine, T, false);
+        Team.setup(run, g); // your duo cards (spec §4.36 4)
+        for (let n = 0; !g.over && n < SIM_MAX_RALLIES; n++) playRally(g);
+        return g;
       } finally {
         Eval.restore();
       }

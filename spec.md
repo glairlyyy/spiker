@@ -1389,7 +1389,8 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **1. Squad strip** (hub top bar): your circle's faces with mood and bond; click → their card: this week's plan, their want,
     their arc step (3), your history.
     **[built 2026-10-21, T-327: mood = their week (injured / tired / out of the squad), a corner badge; bond = a bar under the face;
-    teammates ringed in the club colour; click → their People card (the arc step is Agent S's)]**
+    teammates ringed in the club colour; a starred person shows a ★ top-left (owner, 2026-10-21); click → their People card (the arc
+    step is Agent S's); right after a switch you may still show as captain under 12 weeks until the next lineup (owner: fine)]**
   - **2. Team chat** after every match you play: 2–4 messages from teammates in their behaviour's voice (the Hothead blames, the
     Friendly cheers, the Egoist talks about themselves); one reply (back them · joke · stay quiet) → a small memory each. **[built 2026-10-21,
     T-328]**: after every match of yours (Cup.record) 2–4 people of your side's squad, those who played first, one line each by
@@ -1402,7 +1403,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     a big memory, their growth × 1.1 for the rest of the season, and they lean toward your year-2 Cup squad. **[built 2026-10-21,
     T-329]**: one arc a season per circle member (from a hashed week 2–16, never after week 21, at most 2 running), ARCS by want
     (the call-up, the debt, the seat, the grudge, proving it, the way out); a beat waits to the end of the next week (unanswered:
-    `ignored`), the next opens 2 weeks after a help; asks: a training day together at their place, money ($80 / $120), your next
+    it closes quietly, no bond loss — owner, 2026-10-21), the next opens 2 weeks after a help; asks: a training day together at their place, money ($80 / $120), your next
     match beside them (2 weeks; a non-teammate asks for a day instead), sitting out an evaluation (waits for one, then a choice),
     a choice. Each help `arc_help` (+8), refusing `arc_refused` (−6) ends it; the third help `arc_done` (+20), growth × 1.1 that
     season (through Gifts.grow), and in year 2 a 60 % hash to take the weakest same-role seat of your Cup squad (within 5 OVR, same
@@ -1413,8 +1414,8 @@ the AI coach fills every slot you leave with the same function. Built and measur
     Connection (S × WS: power +8 %), Two Brains (S × S: defense, speed +5 %), Twin Towers (MB × MB: jump +8 %), Double Wall (MB × WS:
     jump +6 %, defense +4 %), Shield Dig (WS × WS: defense +8 %) — for the two of you only, while both are on court; never spent;
     unlocked once at bond 60 (a diary line); shown as "Mint × You: Pin Connection"; the coach may slot it too (a little over a boost);
-    the cut-in = the hype banner "Mint × You" + their line, the first time it plays. Matches you play or sim from the hub (the
-    instant Raid and Midnight Court have no hand). **Ex-teammates** across the net: one exchange after match prep (their line by
+    the cut-in = the hype banner "Mint × You" + their line, the first time it plays. Every match of yours: played or simmed from the hub,
+    and the instant Raid and Midnight Court (the coach plays them there; owner, 2026-10-21). **Ex-teammates** across the net: one exchange after match prep (their line by
     personality, your reply) and `faced_ex` for each who played.
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
