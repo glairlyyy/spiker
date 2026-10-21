@@ -136,7 +136,7 @@ act, a rally with no fault call is checked for a close line: `lastLanding()` (th
 back to the `reset`) → `lineCall(x, z)` → `{ k: 'in' | 'out', line: { axis: 'x' (an end line) | 'z' (a side line), v } }`
 when the ball lands within `LINE_CALL.m` (0.15 m) of a `COURT_LINES` line, else null. venue3d `updateVenue` reads `A.call`
 each frame: at every venue but the Academy Hall `updateDrone` (fx/drone.mjs: a low-poly drone flying 4.4 m up outside the far sideline (SIDE), level with the ball,
-following the ball's z; a new `n` → it drops to the spot (`H.call`, over the tape for a net touch), the hologram word (a
+following the ball along the court; a new `n` → it comes down there, level with the spot (`H.call`, over the tape for a net touch), the hologram word (a
 sprite, `CALLS[k].word`, verdict colour from theme tokens `--good` / `--bad`, frame `--cyan`), a projection cone and a line
 trace along the end line / the tape / the judged line (a ring for a double); held `T.hold` 1.9 s, then back); at the Hall
 `updateReferee` (venues/referee.mjs on the wooden stand of venues/props.mjs: the whistle — hand to the mouth, a puff — then
