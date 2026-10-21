@@ -117,10 +117,25 @@ QA: career run → pan the map across three districts; walk a trip.
 Result: js/audio/ambience.js (Ambience): a bus on SND.master, looped sea / murmur / wind noise + an AM insect tone, one-shot thuds / gulls / footsteps (WALK.onStep) / hub button clicks; 200 ms mix by the camera's ground point; stops with the map (every node stopped + disconnected, the context suspended unless a match runs); SND.on mutes; sfx.js untouched (its SND.ctx / master / noise are enough). Settings › Sound. QA mix: Harbor Gym sea 0.57 · gulls 0.79 · murmur 0.9 · thuds 0.37; Sand Courts sea 0.49 · thuds 0.4; the shrine wind 0.25; Wei gym murmur 1; night (last day) insects 0.4, murmur 0.35; ui-smoke: 15 nodes → 0, context suspended.
 
 ### [ ] T-340: Interact with anyone you see — the figure menu
+Agent: M
 Spec: §4.37 7          Goldens: unchanged          Save: no change (lazy `run.enc`)
 Goal: hover outlines a figure; click / right-click opens a menu at it — Talk · Invite · Spar · Challenge · Card — you walk over, then it
 happens; locked options say why; the road encounter reuses this menu.
-Status: after T-331 (Agent L: the figures, hover) and T-333 (Agent E: Encounter's actions) merge — detailed then.
+Files: js/map3d/map3d.mjs + js/map3d/life3d.mjs (the outline, right-click → on.person), js/ui/map-view.js, js/ui/career-map.js (the menu,
+walk-over then act), js/career/encounter.js + js/data/encounter.js (the actions and their locks, lines), js/career/city.js (Invite joins
+today's order; Spar spends the day), css/hub.css (the menu), tests/encounter.test.js, tests/ui-smoke.js
+Do not: draw R() (hashes); open with an event open, a lock running or in a cup / match week; touch the engine or venue3d (Agent D's).
+Steps:
+1. Hover: an outline (or a ring under the feet) on the hovered figure; the T-331 tip stays.
+2. Click / right-click a non-grey figure → a menu anchored to it (like the place card): Talk (free, once a day per person — `met_road`,
+   line by behaviour), Invite (today's order with you: their plan allows it — not out / injured, bond ≥ ENC.invite.bond, behaviour odds
+   by hash; on yes, the order's place gets them on the floor — §4.33's floor bonus), Spar (no-stake court match: needs a court within
+   ENC.spar.r — the drone of §4.38 comes with T-339; the day, + a small memory either way), Challenge (Fight.challenge at their club; stake
+   row as on the HQ card), Card (openPerson). Locked rows show why. Hotkeys 1–5, Esc closes.
+3. Choosing walks you there (the trip days as any travel), then acts; the road encounter card becomes this menu, opened for you.
+4. Challenge / Join from the menu or a road stop offer Sim ⏭ too (owner default; like the HQ card).
+Accept: tests — each row's lock and effect, deterministic, once-a-day Talk; ui-smoke: right-click a figure → the menu → Talk → a diary line.
+QA: career run → hover, right-click, each option.
 Result:
 
 ### [ ] T-336: Street level — one district prototype (phase 2)
