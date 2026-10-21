@@ -143,6 +143,43 @@ trace along the end line / the tape / the judged line (a ring for a double); hel
 `SIGNALS[k]` toward the call's side, 1.9 s). The stand and the line judges show only at the Hall (the drone calls elsewhere).
 Both run on the frame clock and never touch playback. The whistle / beep sound is sfx's (merged separately).
 
+### The drone as an item: pickup games and terrain (spec §4.38, T-339)
+
+- **Terrain in the engine** — a field match carries `m.ground = { k, home: [ids], low }` and `m.wind` (0–1), from `newMatch` opts or a
+  fixture's setup (`Encounter.groundOn`); official courts carry none, so every hook is × 1 / + 0 and the draws are today's (goldens hold).
+  `GROUNDS` (rules.js) per ground; the hooks read `CM.ground` through `Formula.gMul(p, key)` (agi: the speed term of receiveScore /
+  digScore and mustDive's reach; jump: spikePower / blockPower; hp: knock()'s HP hit; dig: digScore) and `Formula.gOff(p, key)` (pass:
+  receiveScore; set: setSuccess; serve: serveErrorP for the side `m.ground.low`). A player in `home` (their pool's region =
+  `GROUNDS.home.region[k]`: Wu → sand, Shu → slope) keeps `keep` of each penalty, + `plus` on agi / jump (HP is the ground's for all).
+  Draws only with a ground: one R() a dig on grass (`bounce` → − `bad`, rally-defense digSetup), one rnd() a float serve's receive with
+  wind (serve.js serveAim). `m.grd.ko` (engine-only) counts knockdowns on a field. Measured (1200 seeded matches, each pair both ways):
+  sand HP a hit −24 %, 0.03 fewer touches a rally; grass loose passes +0.9 pts; asphalt HP +29 %, knockdowns 4.8 → 7.5 a match; slope the
+  low side's serve errors +2 pts; wind (1) loose passes +1.1 pts; side 0's win odds within noise of the court's for every ground; born to it
+  (all of side 0): sand +2.5 %, the low end of a slope −2 % (≤ the ±5 % home-court edge).
+- **Career** — `City.groundAt(run, p)` (pure): `{ k, wind, name }` or `{ why }` (sea, reservoir / paddies, airport, within
+  `PICKUP.road[kind]` of a road, an official venue's clear, a building lot); sand = MapModel.onSand; grass in parks; slope on terraces,
+  the quarry, the fields and Shu's relief gradient > `PICKUP.slope`; asphalt in Wei, the Outlaws, yards, quays; wind by exposure. The
+  drone: `City.drone(run)` ('own' / 'rent' / ''), bought at `SPOTS.cargo` (act 'cargo': `City.dayDo` → `buyDrone`, flat `DRONE.buy`),
+  rented at a court (`City.rentDrone(run, C)`: the walk there, `DRONE.rent`), a rented one spent by `droneUsed` after its match.
+  `City.playAt(p, fn)` sends every `City.go` inside fn to p (a road stop's challenge on the spot).
+- **Pickup / Spar** (encounter.js, no R()) — `Encounter.field(run, p)` = `{ at, g, name }` or `{ why }`; `fieldNear` tries p, then
+  `ENC.pickup.near` rings × `dirs`. Spar (the figure menu) takes a court, else with the drone the field near them. `Encounter.pickup(run,
+  p)` (the point card): the people within `ENC.pickup.r`, nearest first, one per crew — the first whose headline behaviour agrees
+  (`refuses`: `ENC.pickup.flat` = Picky / Egoist off anything but asphalt) plays; `pickupFx` → `sparFx` with the field: `fx.venue =
+  'field'`, `fx.ground = { k, wind }`, setup puts `matchGround` (home ids, the low side by hash) on m. `sparResult` → `fieldAfter`: the
+  rented drone back; on asphalt each knockdown of yours an injury chance (`GROUNDS.asphalt.ko`, hash) and Pain for Endurance < 50; a
+  grumbler (hidden second trait proud) you lost with → `grumbled` −3. A road stop's crew: `Encounter.spot(run, E)` (drone, open ground
+  at the stop, their captain agrees) → `answer(…, 'here')` = `spotChallenge`: Fight.offer / Fight.challenge inside `City.playAt(stop)`,
+  the fixture re-dressed as a field.
+- **UI** (career-map.js) — `PANELS` gets the Cargo Shed (`cargoPanel`: Buy the drone, the one primary); `spotCard` appends `pickupRow`
+  (map points: P, Shift + P ⏭) and `rentRow` (courts and venues: D) in the figure menu's row look (`dronePickRow`: key, name, cost →
+  result or the gap; never the card's primary); `encRows` adds "Challenge here" for a crew (⏭); `mapPickup` / `mapRent`.
+- **Field venue** (match-screen.js `A.ground` from `fx.ground`; stakes 0.12 → a handful of onlookers; venue3d `dressVenue('field')`):
+  `LOOK.field` + `FIELD_LOOK[k]` (sky, light, ground tones), `drawField` (the ground patch and grain, the projected lines in `--cyan`
+  with a glow, a scan), `setField` (the light-curtain net with its tape and light antennae, two projector pylons; props per ground:
+  palms and the sea / trees / cars and bollards / trees, rocks and a bank rising behind the high side's end), `w.netKit` (the real net,
+  tape, posts, antennae) hidden; the drone (T-338) hovers and calls there like any venue but the Hall.
+
 ## Deflections and ball speed
 
 A defender who reaches a hard spike or serve but can't control it may pop it up inside their own court (`popChance`,

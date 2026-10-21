@@ -23,17 +23,17 @@ earlier files **at load time** (inside functions, anything loaded is fine).
 Classic scripts, in index.html order (each group only uses earlier groups at load time):
 
 - **core** `debuglog.js` (DBG), `math.js` (clamp, lerp, inPoly, fmtDelta…), `rng.js` (R / RNG / FXR), `storage.js` (store, KEYS).
-- **data** `rules.js` (RULES, EGO…), `styles.js` (playstyles, team list, archetypes), `names.js` (name pools),
+- **data** `rules.js` (RULES, EGO…, FAULTS, GROUNDS: a field's terrain — spec §4.38), `styles.js` (playstyles, team list, archetypes), `names.js` (name pools),
   `looks.js` (appearance palettes), `moves.js` (signature / combo names, coach lines), `roles.js` (role biases, key
   stats, mood deltas), `elements.js`, `vfx.js` (VFX_DEF / live `VFX` effect tuning, read by render code only; saved dev edits in `sns_vfx`), `tactics.js`, `dialogue.js` (lines, `callLine`), `skills.js`, `career.js`
   (CAREER, BODY, CALENDAR, ROLE_NAME, STATNAME, MLOG…), `world.js` (REGIONS, FACTIONS, ECON, HOUSING, CLASH, FRONT, HEX…, WINDOW / TENURE / TEAM_LINES — team life, spec §4.36), `war.js` (WAR: the war units, Strength deltas; WAR_STAGES — spec §4.34), `city.js`
-  (CITY geometry, SPOTS, travel constants, layout data), `stars.js` (STARS), `traits.js` (SPARKS / SCARS / `MC_TRAITS`, `TRAIT_ODDS`: the
+  (CITY geometry, SPOTS, travel constants, layout data; DRONE / PICKUP: the Ref drone's prices, where a pickup may stand — spec §4.38), `stars.js` (STARS), `traits.js` (SPARKS / SCARS / `MC_TRAITS`, `TRAIT_ODDS`: the
   traits only your player carries — spec §4.30; not the NPCs' `TRAITS` in people.js), `gifts.js` (GIFTS, GIFT_TIERS, GIFT_ODDS: talent
   tiers and innate gifts — spec §4.35), `team.js` (TEAM, TEAM_CHAT, TEAM_REPLY, ARCS: team stories — spec §4.36; merges its memory kinds into
   MEMORY / MEM_TEXT), `life.js` (LIFE: the named figures on the map — cap, rings, courts, figure sizes, act words; CLOCK: the day
   clock — dawn / walk / order / night times, when people walk out and home, display rates, the light keys — spec §4.37 1–2),
-  `encounter.js` (ENC, ENC_STOPS, ENC_ACT, ENC_HI, ENC_CREW, ENC_BATTLE, ENC_ROUTE: the road's numbers and lines — spec
-  §4.37 3–4; merges `met_road` into MEMORY / MEM_TEXT).
+  `encounter.js` (ENC, ENC_STOPS, ENC_ACT, ENC_HI, ENC_CREW, ENC_BATTLE, ENC_ROUTE, ENC_MENU, ENC_GROUND: the road's numbers and lines,
+  the figure menu, pickup games — spec §4.37 3–4, 7, §4.38; merges `met_road` / `sparred` / `grumbled` into MEMORY / MEM_TEXT).
 - **engine** `court.js` (geometry, `Z_UNITS`, `UNIT_M`, `BALL_K` / `SERVE_K`), `players.js`, `teams.js`, `save.js`,
   `stats.js`, `skills.js`, `formulas.js`, `elements.js`, `hype.js`, `fire.js` (momentum stages, spec §2.14: `temperOf`,
   `fireStage`, `pointStage` after every point (in `end`), `stageTimeout`, `stageBuff(p, stat)` read by effD / jumpPx / the
@@ -63,7 +63,8 @@ blockMoves and digSetup; tallies `ordLog` / `ordAttack` → `m.ordLog` (the resu
   time of day, `weekTime` the same in days), `dossier.js`, `events.js`, `sponsors.js`, `skills.js`, `rank.js`, `cup.js`, `fight.js`; `circle.js` (Circle: your circle `Circle.of(run)` → ids, the friend who follows a switch — spec §4.36 B); … `gifts.js` (Gifts: tiers, the
   gift roll, `known`, growth / innate effects — spec §4.35; the engine reads `p.gifts` through `hasGift` in engine/elements.js).
   `team.js` (Team: the team chat, personal arcs, duo cards, ex-teammates — spec §4.36; state `run.tlife`; `Team.matched` from Cup.record, `Team.lean` from Cup.entrants, `Team.week` appended to WEEK_START at load).
-  `encounter.js` (Encounter: who stops your walk on the road and the answers, the short cut's vias — spec §4.37 3–4; state `run.enc`, lazy).
+  `encounter.js` (Encounter: who stops your walk on the road and the answers, the short cut's vias, the figure menu, pickup games with the
+  Ref drone — spec §4.37 3–4, 7, §4.38; state `run.enc`, lazy; the drone: `run.drone`, lazy — City.drone).
 - **portraits** `js/render/faces.js` `faceSVG(p, mood, size)` returns a cached 3D portrait `<img>` (PORTRAIT: look key → data URL) or the drawn face (`faceSVG2D`) as a placeholder that is swapped in place when `js/render3d/portrait3d.mjs` (lazy-loaded; one offscreen renderer, the default model re-dressed in hair / skin / team shirt, Main_v2 for you) finishes it.
 - **ui** `dom.js` (esc, tip, info, fold, kv — the vertical label/value list of spec §10.1a, peek — the L2 detail card of §10.8: `CW.peek` holds the open id, `peekSync` (MutationObserver on #app) ports the open card to <body> beside its owner panel…), `icons.js`, `match-screen.js` (startMatch → `A`, 3D load / bind, fit, venue / stakes, leaveMatch), `match-controls.js` (control bar, ⚙ settings,
   camera / follow, fullscreen, timeouts, tactics, speed / pause / skip, scoreboard, commentary, rail, box score, hotkeys), `match-tech.js`
@@ -76,7 +77,9 @@ blockMoves and digSetup; tallies `ordLog` / `ordAttack` → `m.ordLog` (the resu
   `effects.js`, `overlay.js`, `faces.js`, `tags.js`, `dive.js`; then `main.js`.
 
 ES modules (loaded on demand): `js/render3d/` — `r3d.mjs` (entry), `units3d`, `arena3d`, `camera3d`, `actors3d`,
-`players3d` (VRM load / dress, `MODEL_URL`), `poses3d` (+ `setMotion`; spike / swing / serve poses in `poses3d-attack`), `fx3d` (effect groups in `fx/`; `fx/gloom.mjs`: the gloom lines over a debuffed player — a sprite per figure, `gloomOf(m, p, side)` from m.weak / m.mor / m.hp; `fx/drone.mjs`: the Ref drone — `makeDrone` / `updateDrone`, driven by venue3d from `A.call`, spec §4.38), `venues/referee.mjs` (the Academy Hall's referee on the stand: `makeReferee` / `updateReferee`), `trails3d`, `ambient3d` (the venue's air by crowd heat `Dir.heat`: wind, embers, flames — spec §2.27), `title3d` (the title backdrop: its own small renderer — `mountTitle3D(el)` / `unmountTitle3D()`, buildArena without players or ball, orbiting; menu.js `titleBg` / `titleBgOff`, navigate stops it), `vfxlab3d` (dev VFX lab: own renderer + OrbitControls + `createFx`; `mountLab` / `labPlay` / `labSet` / `labStats` / `labAdvance` (QA stepping); stops itself when its element leaves the page); `js/map3d/` — `map3d.mjs`
+`players3d` (VRM load / dress, `MODEL_URL`), `poses3d` (+ `setMotion`; spike / swing / serve poses in `poses3d-attack`), `fx3d` (effect groups in `fx/`; `fx/gloom.mjs`: the gloom lines over a debuffed player — a sprite per figure, `gloomOf(m, p, side)` from m.weak / m.mor / m.hp; `fx/drone.mjs`: the Ref drone — `makeDrone` / `updateDrone`, driven by venue3d from `A.call`, spec §4.38), `venues/referee.mjs` (the Academy Hall's referee on the stand: `makeReferee` / `updateReferee`), `venues/field.mjs` (the field venue of a
+pickup game, spec §4.38: `setField` / `dressField(set, ground, low)` / `drawField` / `updateField`, `FIELD_LOOK` per ground; venue3d hides
+the real net kit there), `trails3d`, `ambient3d` (the venue's air by crowd heat `Dir.heat`: wind, embers, flames — spec §2.27), `title3d` (the title backdrop: its own small renderer — `mountTitle3D(el)` / `unmountTitle3D()`, buildArena without players or ball, orbiting; menu.js `titleBg` / `titleBgOff`, navigate stops it), `vfxlab3d` (dev VFX lab: own renderer + OrbitControls + `createFx`; `mountLab` / `labPlay` / `labSet` / `labStats` / `labAdvance` (QA stepping); stops itself when its element leaves the page); `js/map3d/` — `map3d.mjs`
 (entry: scene, terrain, the model sync, `api`; the day clock's sun / sky and the night lights — `skyAt`, `nightLayer`), `mapcam3d` (camera + input: pan, zoom, click a point, fly to a pin / to you / over the island, follow the walk, the week-1 fence — T-272), `geo3d`, `avatar3d` (+ `WALK`: the UI's hold on your walk — stop, via, route preview, footsteps; career-map.js imports the same module), `pins3d`, `life3d`, `town3d`, `kit3d`, `nature3d`.
 
 CSS (`css/`, loaded in this order): `style.css` (page base: tokens use, buttons, panels, glossary terms), `match.css` (the match screen and the dev VFX lab / panel; T-273), `career.css` (career screens layout: menu, create, cards,
@@ -290,7 +293,8 @@ Plain-default fields live once in `RUN_DEFAULTS` (run.js: name → `[make, valid
 `Run.defaults()` and `Run.repair` refills any field a save lacks or holds broken, then repairs the run-dependent ones
 (`academy`, `eval` + `Eval.setup`, `spotQ` via `City.roll`, `fog`, `clash`, `sta`, `mode`, `Feel.sync` → `you.traits` from
 `run.sparks` / `run.scars`). Add a new simple field to
-the table only. `run.grades` (your match grades, newest last) is capped at `MLOG.max` like `run.mlog`.
+the table only. `run.grades` (your match grades, newest last) is capped at `MLOG.max` like `run.mlog`. Lazy fields (no RUN_DEFAULTS, no version bump: absent = the
+empty state): `run.enc` (this week's road / menu state), `run.tlife`, `run.drone` (`{ own }` / `{ rent }`: the Ref drone, spec §4.38).
 
 ## Testing
 

@@ -355,7 +355,10 @@ const step = async (name, fn) => {
     return `${on.n} nodes, then ${off.n} (${off.st || 'no context'})`;
   });
   await step('simmed court match → result card', async () => {
-    await ev(() => mapCourt('arena', 'open', true));
+    await ev(() => {
+      RUN.event = null; // (the week's one event comes after a first day: the drill above may have raised it)
+      mapCourt('arena', 'open', true);
+    });
     await pg.waitForFunction(() => CW.lock && CW.lock.phase === 'res', null, { timeout: 90000 });
     const txt = await ev(() => document.querySelector('#actlock').textContent);
     if (!/Top 3/i.test(txt)) throw new Error('no result card');
@@ -371,6 +374,7 @@ const step = async (name, fn) => {
     await ev(() => {
       RUN.days = 7;
       RUN.injury = null;
+      RUN.event = null;
       mapCourt('arena', 'open', false);
     });
     await pg.waitForFunction(() => typeof R3D !== 'undefined' && R3D && A && A.m && !A.hold, null, { timeout: 120000 });
@@ -398,6 +402,72 @@ const step = async (name, fn) => {
     const row = await ev(() => document.querySelector('#over').textContent);
     if (/Your plays/.test(row)) throw new Error('the removed Your plays row is back');
     await ev(() => leaveMatch());
+  });
+  await step('the drone (T-339): buy it at the Cargo Shed, a Pickup on a beach point → the field venue, a call', async () => {
+    await pg.waitForFunction(() => document.querySelector('.career.hub'), null, { timeout: 60000 });
+    const buy = await ev(() => {
+      if (CW.lock) lockEnd(); // (the last match's result / team chat)
+      CW.lock = null;
+      Object.assign(RUN, { days: 7, event: null, money: 3000, sta: 100, injury: null, drone: null });
+      MapView.setWalk(4); // (a software GPU: frames are slow)
+      LOCK.max = 120000;
+      mapPick('cargo');
+      const t = document.querySelector('#spot').textContent,
+        b = document.querySelector('#spot .btn.hot');
+      if (!/Buy the drone/.test(t) || !b) return `cargo card: ${t.slice(0, 160)}`;
+      b.click();
+      return '';
+    });
+    if (buy) throw new Error(buy);
+    await pg.waitForFunction(() => !CW.lock || CW.lock.phase === 'done', null, { timeout: 120000, polling: 200 });
+    await ev(() => CW.lock && lockEnd());
+    if (!(await ev(() => City.drone(RUN) === 'own'))) throw new Error('not bought');
+    const pt = await ev(() => {
+      Object.assign(RUN, { days: 7, event: null, sta: 100, injury: null });
+      for (const q of Encounter.people(RUN))
+        for (const [dx, dy] of [
+          [40, 0],
+          [0, 40],
+          [-40, 0],
+          [0, -40],
+          [70, 70],
+          [-70, 70]
+        ]) {
+          const p = MapModel.ptOf(MapModel.ptId([q.at[0] + dx, q.at[1] + dy])),
+            P = Encounter.pickup(RUN, p);
+          if (!P.why && P.g.k === 'sand') {
+            mapPick(MapModel.ptId(p));
+            return p;
+          }
+        }
+      return null;
+    });
+    if (!pt) throw new Error('no beach point with a crew around');
+    const row = await ev(() => (document.querySelector('#spot .ppick') || {}).textContent || '');
+    if (!/Pickup[\s\S]*Sand/.test(row) || /needs/.test(row)) throw new Error(`pickup row: ${row.slice(0, 160)}`);
+    await pg.keyboard.press('p'); // P: the pickup (printed on the row)
+    await pg.waitForFunction(() => typeof R3D !== 'undefined' && R3D && A && A.m && !A.hold, null, { timeout: 120000 });
+    const v = await ev(() => ({ venue: A.venue, g: A.ground && A.ground.k, mg: A.m.ground && A.m.ground.k, wind: A.m.wind }));
+    if (v.venue !== 'field' || v.g !== 'sand' || v.mg !== 'sand') throw new Error(`field: ${JSON.stringify(v)}`);
+    if (await ev(() => !!A.prep)) await pg.keyboard.press('Enter');
+    await ev(() => {
+      A.hold = true;
+      for (let i = 0; i < 400; i++) {
+        step(16);
+        R3D.poseAll(0.016);
+      }
+      ACTS.label({ k: 'label', t: 'Foot fault', big: 1, call: 'foot', at: { x: COURT_LINES.end, z: 0.3 } }, null, { X: 0, Y: 0 });
+      if (!A.call || A.call.k !== 'foot') throw new Error('no call on the field');
+      A.hold = false;
+    });
+    await pg.waitForTimeout(800); // frames run on the field with the call up (any page error fails the run)
+    await ev(() => skipMatch());
+    await pg.waitForFunction(() => /Top 3/i.test((document.querySelector('#over') || {}).textContent || ''), null, { timeout: 30000 });
+    await ev(() => leaveMatch());
+    await pg.waitForFunction(() => document.querySelector('.career.hub'), null, { timeout: 60000 });
+    const log = await ev(() => RUN.log.slice(0, 3).map(l => l.t));
+    if (!log.some(t => /Pickup game with/.test(t))) throw new Error(`diary: ${log.join(' | ').slice(0, 200)}`);
+    return `${v.g}${v.wind ? `, wind ${v.wind}` : ''} · ${log.find(t => /Pickup game/.test(t)).slice(0, 60)}`;
   });
   await step('encyclopedia', async () => {
     await ev(() => navigate('encyclopedia'));
