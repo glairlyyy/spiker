@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-341** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-344** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -206,6 +206,46 @@ on a road / building / water; ui-smoke: buy the drone, a Pickup on a beach point
 `npm run career -- 12 both` unchanged.
 QA: career run → buy, a Pickup on sand, on grass, on asphalt (screenshots); a road stop's Challenge on the spot.
 Result: Built. GROUNDS (rules.js) through `Formula.gMul / gOff` on CM.ground (receive / dig / set / spike / block / serve error, mustDive, knock's HP); draws only on grass (a dig) and with wind (a float); `m.grd.ko`. SPOTS.cargo + DRONE / PICKUP (data/city.js; road node + edge, landmark 'stall'); City.drone / buyDrone / rentDrone / droneUsed / groundAt / playAt (City.go's override). Encounter.field / fieldNear / refuses / pickup / pickupFx / sparFx / matchGround / fieldAfter / spot / spotChallenge ('here'); ENC.pickup, ENC_GROUND, `grumbled`. UI: Cargo Shed card (PANELS), Pickup row on map points (P), Rent row on courts (D), Challenge here on a crew's road stop, match-screen A.ground (field stakes .12), venues/field.mjs + LOOK.field, the real net kit hidden. Decided: "Proud" = a hidden second trait proud (headline proud is Egoist, who refuses); slope = the low side's serve errors (a weaker serve helped it); home = Wu → sand, Shu → slope by pool region. Measured (1200 matches): every ground ±2 % win odds of a court, born to the sand +2.5 %, low end of a slope −2 %. Deviations: tests/map.test.js accepts act 'cargo' (one word); ui-smoke's court steps clear the week's event (they failed before this task: the drill's day raised it). Tests 234/234 (5 new: 3 encounter, 2 drone — one slow); ui-smoke 21/21 (new drone step); career 12 both identical (casual 69.6 / 86.0, good 77.8 / 92.3, focus 78.3 / 93.0); bot 6 identical. QA t339-buy / pickup-row / refusal-row / match-sand / -grass / -asphalt / road-here / road-here-result.
+
+**The island, beautiful (owner, 2026-10-21, spec §4.39): three agents.** **F — People** T-341 · **B — Buildings & streets** T-342 ·
+**N — Land, water, sky** T-343. Then T-336 (street level + interiors) on top of them. Ownership: F owns js/map3d/life3d.mjs,
+js/map3d/people3d.mjs (new), and in js/map3d/map3d.mjs only the lines that create / sync / tick life (its mount); B owns js/map3d/town3d.mjs,
+js/map3d/kit3d.mjs, and in map3d.mjs only `NIGHT` + `nightLayer` (posts, towers); N owns js/map3d/nature3d.mjs, js/map3d/geo3d.mjs, and the
+rest of map3d.mjs (terrain, lightScene, skyAt, the sea, the renderer and post). Each keeps the Fast setting (KEYS.gfx) on today's look.
+Shared: no game randoms in display code (hash variety); tests/map3d.test.js — add, don't rewrite; ui-smoke must stay green.
+
+### [ ] T-341: People on the map are real players
+Agent: F
+Spec: §4.39 People          Goldens: unchanged          Save: no change
+Goal: named people as the small default VRM (club colours, match gait) for the nearest ~16 on screen; a low-poly humanoid with swinging
+limbs for the rest; ~2.5× life size; circle ringed; hover / figure menu unchanged.
+Files: js/map3d/people3d.mjs (new), js/map3d/life3d.mjs, js/map3d/map3d.mjs (life's mount lines only), tests/map3d.test.js, tests/ui-smoke.js
+Do not: load a VRM per person (one base model, cloned; `players3d` loadBase / makeVRM / dress); exceed the cap; block the map's first frame.
+Accept: tests — LOD picks the nearest on-screen cap, Fast keeps capsules; ui-smoke hover + figure menu steps pass; frame time reported.
+QA: career run → the map near the Wei gym, a crew at an HQ, zoomed in / out.
+Result:
+
+### [ ] T-342: Buildings and streets with detail
+Agent: B
+Spec: §4.39 Buildings          Goldens: unchanged          Save: no change
+Goal: facades (windows, doors, shop fronts, awnings, signs by district, balconies, roof edges, AC units, Wu water tanks, Shu tiled roofs),
+lamp posts under the lamps, floodlight towers, benches / bins / bus stops on main roads.
+Files: js/map3d/town3d.mjs, js/map3d/kit3d.mjs, js/map3d/map3d.mjs (`NIGHT` / `nightLayer` only), tests/map3d.test.js
+Do not: change lots, footprints or heights (window glows and gameplay read them); one mesh per building (merge / instance by kind).
+Accept: draw calls and triangles before / after reported; night windows still line up; Fast unchanged; ui-smoke green.
+QA: career run → Wei centre, Wu harbour, Shu village by day and night.
+Result:
+
+### [ ] T-343: Land, water and sky
+Agent: N
+Spec: §4.39 Land          Goldens: unchanged          Save: no change
+Goal: textured terrain by ground, real tree crowns by region, bushes and grass, a water shader with shore foam, a physical sky on the day
+clock, ACES tone mapping, soft shadows, bloom on night lights (AO on high).
+Files: js/map3d/map3d.mjs (all but life's mount and NIGHT / nightLayer), js/map3d/nature3d.mjs, js/map3d/geo3d.mjs, tests/map3d.test.js
+Do not: change heights (`heightAt`), fog rules or the clock (T-332); add downloads (draw textures in canvas).
+Accept: frame time and draw calls before / after; Fast unchanged; ui-smoke green; the night-map step still finds lights.
+QA: career run → three zooms by day, dusk and night.
+Result:
 
 **Team life (owner, 2026-10-21, spec §4.36): two agents.** **Agent T — Transfers & circle**: T-325 → T-326 → T-327.
 **Agent S — Stories & cards**: T-328 → T-329 → T-330. Ownership: T owns js/career/world.js, js/career/run.js (RUN_VERSION 23; `run.tenure`,

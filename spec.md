@@ -1540,6 +1540,26 @@ the AI coach fills every slot you leave with the same function. Built and measur
     the low end's serve errors +3 %; wind floats wander. Born to it: 40 % of each penalty, + 0.01. Equal teams, 1200 matches: every
     ground within ±2 % of a court, born to the sand +2.5 % — under the home-court edge. The field venue: the ground patch, glowing
     projected lines, a light-curtain net between two projector pylons, a few props and onlookers, no stands; the drone hovers and calls]**
+- §4.39 The island, beautiful **[draft — T-341–T-343]** (owner, 2026-10-21: "everything looks like polygon — make a beautiful /
+  realistic version now and decide later about the polygon setting"; "render the small default model instead of the clay figures —
+  it's very hard to find them"; "the street light doesn't have the pillar, but the light makes the town more lively — good").
+  - **Default look = detailed.** The current low-poly look stays as the graphics setting's Fast mode (KEYS.gfx); everything below
+    is the new default. No downloaded assets: textures are drawn in code (canvas), models built from three.js geometry or the VRMs
+    we ship; three.js addons (Sky, Water, post-processing) are fine.
+  - **People (T-341).** Named people are real players: the default VRM model, small (about 2.5× life size like your own avatar, so
+    you can find them), dressed in their club's colours (the match `dress`), walking and idling with the match gait. The nearest
+    ~16 on screen are VRMs (Fast: 6); the rest are a proper low-poly humanoid (head, torso, arms, legs that swing) instead of the
+    capsule. Your circle stands out (a soft ring under them); hover and the figure menu work on both.
+  - **Buildings and streets (T-342).** Every building gets a facade: windows in rows (lit at night from the same windows), doors,
+    shop fronts with awnings and signs by district, balconies, roof edges, AC units, water tanks on Wu roofs, tiled roofs in Shu;
+    materials with roughness and a little colour noise. Street lamps get their posts (the light stays as it is), the courts'
+    floodlights get towers, plus benches, bins and bus stops on the main roads. Interiors come with street level (T-336).
+  - **Land, water, sky (T-343).** Terrain textured by ground (grass, sand, rock, dirt, paddies, farmland) with soft blends and
+    detail; real tree crowns (palms on Wu's coast, pines in Shu, broadleaf in Wei's parks), bushes and grass tufts; the sea as a
+    water shader (waves, reflections, foam at the shore); a physical sky that follows the day clock (§4.37 2); ACES tone mapping,
+    soft shadows, bloom on the night lights; ambient occlusion on high settings.
+  - **Budget**: the map keeps ≥ 45 fps on a mid laptop GPU at the default camera (dynamic resolution allowed, like matches); Fast
+    stays as it is today.
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.
