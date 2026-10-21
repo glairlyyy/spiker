@@ -76,7 +76,26 @@ const FAULTS = {
   net: { hit: 0.014, tip: 0, read: 0.01, commit: 0.016, tired: 1.5, agi: 1, agiFrom: 60, reckless: 1.6 },
   foot: { jump: 0.026, jumpfloat: 0.013, float: 0.005, tired: 1 }
 };
-const rulesText = () => `First to ${RULES.pointsToWin}, win by ${RULES.winBy}`;
+/**
+ * Terrain (spec §4.38, T-339): a field match carries its ground (`m.ground = { k, home: [ids], low: side }`) and its wind (`m.wind`
+ * 0–1); official courts carry none and play exactly as before (every hook below is × 1 / + 0 without them, and draws only with them).
+ * Multipliers on a player's Agility (`agi`: the speed term of receive / dig, how far they reach before diving) and jump (`jump`: spike
+ * and block); `hp` × the HP a kept-up ball takes (spec §2.31); `dig` × every dig score (sand: the ball dies fast); `pass` off every
+ * receive score; `bounce` = the chance a dig takes a bad bounce (one draw a dig, grass only), `bad` off that dig; `set` off every set's
+ * success; `serve` added to the low side's serve error chance (`m.ground.low` serves into the rise); `ko` = your injury chance a knockdown (career side,
+ * by hash: asphalt). wind: off a float's receive score × m.wind × a draw in 0.5–1.5 (jump floats `jumpfloat`, jump serves none).
+ * home: a player born to the ground (`m.ground.home`; `region` → their pool's region) keeps `keep` of each penalty and gets `plus` on
+ * agi / jump. Sized so equal teams stay within ≈ ±5 % win odds (tests/drone.test.js measures it).
+ */
+const GROUNDS = {
+  sand: { name: 'Sand', agi: 0.9, jump: 0.9, hp: 0.8, dig: 0.94 },
+  grass: { name: 'Grass', pass: 5, bounce: 0.08, bad: 22, jump: 0.95 },
+  asphalt: { name: 'Asphalt', hp: 1.3, ko: 0.05 },
+  slope: { name: 'Slope', agi: 0.96, set: 0.03, serve: 0.03 },
+  wind: { float: 9, jumpfloat: 5 },
+  home: { keep: 0.4, plus: 0.01, region: { sand: 'wu', slope: 'shu' } }
+};
+const rulesText = () =>`First to ${RULES.pointsToWin}, win by ${RULES.winBy}`;
 /**
  * Relationships on court (T-066, spec §4.23 E; career matches only: every effect is gated on `m.rel`, so Monster / sims / the golden
  * matches are untouched). trust / freeze: the setter's weight for an ally / a resent-or-enemy hitter once either side has `clutch`

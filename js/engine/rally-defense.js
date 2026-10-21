@@ -326,6 +326,8 @@ function digSetup(c, x, bl) {
       (dp.weakDd ? (dg === weakPasser(defT) ? dp.weakDd : dp.otherDd) : 1) * // Cover the weak link (spec §2.26)
       (stayBack(m, dg) && c.front(ds, dg) ? ORDERS.blk.backDd : 1); // a middle on Stay back is set for it (§2.29)
   let dsc = Formula.digScore(dg, defT, dd0);
+  const G = m.ground && Formula.ground();
+  if (G && G.bounce && R() < G.bounce) dsc -= G.bad; // grass: the odd bad bounce off a dig (spec §4.38: one draw a dig, only there)
   if (touched) dsc *= softTouch ? 1.4 : 1.15;
   // Rolling Receive on defense: far balls cost much less
   const rollD = hasTech(dg, 'roll') && dd0 > 0.5;

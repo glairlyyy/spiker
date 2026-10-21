@@ -156,6 +156,7 @@ const Encounter = {
       const fx = Fight.challenge(run, E.ti, r.stake);
       return fx ? { fx } : null;
     }
+    if (what === 'here' && E.kind === 'crew') return Encounter.spotChallenge(run, E); // on the spot, with the drone (spec §4.38)
     if (what === 'join' && E.kind === 'battle') {
       const fx = Fight.clash(run, side);
       return fx ? { fx } : null;
@@ -213,7 +214,7 @@ const Encounter = {
         at: l.at,
         name: SPOTS[l.id] ? SPOTS[l.id].name : VENUES[String(l.id).slice(6)] ? VENUES[String(l.id).slice(6)].name : 'the court'
       })),
-  /** The court nearest map point p within ENC.spar.r, or null (the drone, §4.38, comes later). */
+  /** The court nearest map point p within ENC.spar.r, or null (with the drone a field will do: Encounter.fieldNear). */
   court(run, p) {
     let best = null;
     for (const c of Encounter.courts(run)) {
@@ -257,19 +258,21 @@ const Encounter = {
           wwhy
       };
     const side = Fight.challengeSide(run),
-      C = Encounter.court(run, W.at),
+      C = Encounter.court(run, W.at) || (City.drone(run) ? Encounter.fieldNear(run, W.at) : null), // a court, else the drone's field (§4.38)
       mineT = side.T,
       spar = {
         k: 'spar',
-        court: C,
-        days: C ? City.trip(run, C.at) + 1 : 0,
+        court: C && !C.why ? C : null,
+        days: C && !C.why ? City.trip(run, C.at) + 1 : 0,
         sta: ENC.spar.sta,
         why:
           off ||
           Fight.ban(run) ||
           (!W.t || squadOf(W.t).length < 4 ? 'no crew to play' : '') ||
           (mineT && W.t === mineT ? 'your own squad — invite them' : '') ||
-          (!C ? 'needs a court nearby (no drone yet)' : '') ||
+          (!C ? 'needs a court nearby or the drone' : '') ||
+          (C.why ? `no open ground near them — ${C.why}` : '') ||
+          (C.g ? Encounter.refuses(run, id, C.g.k) : '') ||
           (City.outside(run, C.at) ? City.fence(run) : '') ||
           City.noTime(run, City.trip(run, C.at) + 1) ||
           (run.sta < ENC.spar.sta ? `too tired (needs ${ENC.spar.sta} stamina)` : '')
@@ -330,24 +333,34 @@ const Encounter = {
    */
   spar(run, id) {
     const R0 = Encounter.row(run, id, 'spar');
-    if (!R0 || R0.why) return null;
+    return !R0 || R0.why ? null : Encounter.sparFx(run, id, R0.court);
+  },
+  /**
+   * The spar / pickup match against person id's crew at C: a court ({ id, at, name }) or a field ({ at, name, g: City.groundAt }) —
+   * then the field venue with its ground: `m.ground` (who was born to it: GROUNDS.home) and `m.wind`, set in the fixture's setup.
+   */
+  sparFx(run, id, C) {
     const W = Encounter.who(run, id),
       side = Fight.challengeSide(run),
       mine = side.kind === 'hired' ? Fight.hired(run) : side.T,
-      opp = W.t,
-      C = R0.court;
+      opp = W.t;
     if (side.kind === 'hired') Eval.lend(run, mine);
     Cup.prepare(run, opp, 'court', mine);
     Run.lineup(run, mine, City.myRegion(run), false, true);
     Run.lineup(run, opp, null);
-    const rel = Rel.matchFlags(run, mine, opp);
+    const rel = Rel.matchFlags(run, mine, opp),
+      G = C.g ? Encounter.matchGround(run, C, [mine, opp]) : null;
     return {
       a: mine,
       b: opp,
-      round: `Spar: ${mine.name} vs ${opp.name} · ${C.name}`,
+      round: `${C.g ? 'Pickup' : 'Spar'}: ${mine.name} vs ${opp.name} · ${C.name}`,
       back: 'Continue',
       rel,
-      setup: m => (m.rel = rel),
+      ...(G ? { venue: 'field', ground: { k: G.k, wind: C.g.wind } } : {}),
+      setup: m => {
+        m.rel = rel;
+        if (G) Encounter.groundOn(m, G, C.g.wind);
+      },
       onFinish: m => {
         Eval.restore();
         return Encounter.sparResult(run, m, id, C);
@@ -363,15 +376,187 @@ const Encounter = {
       sc = m.setScores[0],
       k = ENC.spar.xp,
       half = Object.fromEntries(Object.entries(s).map(([u, v]) => [u, typeof v === 'number' ? v * k : v])),
-      trip = (Cup.record(run, m, 'court', { round: 'Spar' }), City.go(run, C.at, { k: 'battle', label: 'Spar', at: C.name })),
+      what = C.g ? 'Pickup' : 'Spar',
+      trip = (Cup.record(run, m, 'court', { round: what }), City.go(run, C.at, { k: 'battle', label: what, at: C.name })),
       bond = Rel.add(run, id, 'sparred'),
       n = Team.first(People.find(run, id)),
       out = [Growth.matchXp(run, { ...m, stat: { ...m.stat, [you.id]: half } }), Run.bump(run, 'sta', -ENC.spar.sta)];
     if (bond) out.push(`${fmtDelta(bond)} bond with ${n}`);
+    if (C.g) out.push(...Encounter.fieldAfter(run, m, id, C));
     run.focus = null;
-    const line = `${trip}Sparred ${n}’s crew at ${C.name} — ${win ? 'won' : 'lost'} ${sc[0]}-${sc[1]} · ${out.filter(Boolean).join(', ')}`;
+    const line = `${trip}${C.g ? 'Pickup game with' : 'Sparred'} ${n}’s crew at ${C.name} — ${win ? 'won' : 'lost'} ${sc[0]}-${sc[1]} · ${out.filter(Boolean).join(', ')}`;
     Run.log(run, line);
     Run.save(run);
     return line;
+  },
+
+  // ---- the Ref drone (spec §4.38, T-339): a pickup game on open ground where you stand; who agrees to play off a flat floor -----
+  /** A field at map point p ({ at, name, g } — City.groundAt's ground; { why } where nobody can play). */
+  field(run, p) {
+    const g = City.groundAt(run, p);
+    if (g.why) return { why: g.why };
+    return { at: [Math.round(p[0]), Math.round(p[1])], g, name: `the ${g.name.toLowerCase()} in ${REGIONS[City.regionAt(p)].name}` };
+  },
+  /** The first open ground at or round p (ENC.pickup.near rings × dirs, in a fixed order): a field, or { why } of p itself. */
+  fieldNear(run, p) {
+    const P = ENC.pickup,
+      first = Encounter.field(run, p);
+    if (!first.why) return first;
+    for (const r of P.near.slice(1))
+      for (let i = 0; i < P.dirs; i++) {
+        const a = (i / P.dirs) * Math.PI * 2,
+          F = Encounter.field(run, [p[0] + Math.cos(a) * r, p[1] + Math.sin(a) * r]);
+        if (!F.why) return F;
+      }
+    return first;
+  },
+  /** Will person id play on ground k? '' if so, else the gap (by headline behaviour, ENC.pickup.flat: a flat floor — asphalt at best). */
+  refuses(run, id, k) {
+    if (!k || ENC.pickup.ok.includes(k)) return '';
+    const b = Encounter.beh(run, id);
+    if (!ENC.pickup.flat.includes(b)) return '';
+    return `${Team.first(People.find(run, id))} won’t play on ${GROUNDS[k].name.toLowerCase()} — a flat floor only (${TRAITS[b].beh})`;
+  },
+  /** Their words when they refuse (their behaviour's voice). */
+  noLine: (run, id) => Encounter.say(run, ENC_GROUND.no, id, 'gno'),
+  /** A grumbler (their hidden second trait is proud, ENC.pickup.grumble): plays anywhere, but a loss off a flat floor stays with them. */
+  grumbles: (run, id, k) => !ENC.pickup.ok.includes(k) && Rel.traits(run, id)[1] === ENC.pickup.grumble,
+  /** The engine's ground for a field C: { k, home (the squads' players born to it: GROUNDS.home.region), low (the side on the low end) }. */
+  matchGround(run, C, teams) {
+    const reg = GROUNDS.home.region[C.g.k],
+      H = People.homes(run),
+      home = reg
+        ? teams.flatMap(t => squadOf(t)).filter(p => (H.get(p.id) || {}).home === reg).map(p => p.id)
+        : [];
+    return { k: C.g.k, home, low: C.g.k === 'slope' ? (hstr(`low|${run.pseed}|${Season.wk(run)}|${C.at}`) < 0.5 ? 0 : 1) : -1 };
+  },
+  /** Put a field's ground on match m (the fixture's setup; the engine reads m.ground / m.wind). */
+  groundOn(m, G, wind) {
+    m.ground = G;
+    if (wind) m.wind = wind;
+  },
+  /**
+   * After a field match (spar or pickup): a rented drone goes back; on asphalt each time you were knocked down risks a light injury
+   * (GROUNDS.asphalt.ko, by hash) and the soft (Endurance under ENC.pickup.soft) take Pain; a grumbler you lost to the ground with
+   * keeps `grumbled`. Returns the diary bits.
+   */
+  fieldAfter(run, m, id, C) {
+    const out = [],
+      you = Run.you(run),
+      P = ENC.pickup,
+      n = (m.grd && m.grd.ko[you.id]) || 0;
+    City.droneUsed(run);
+    if (C.g.k === 'asphalt' && n) {
+      if (hstr(`asph|${run.pseed}|${Season.wk(run)}|${run.days}|${n}`) < 1 - Math.pow(1 - GROUNDS.asphalt.ko, n)) {
+        run.injury = { weeks: Math.max(P.injWeeks, run.injury ? run.injury.weeks : 0) };
+        out.push(`hurt on the asphalt — ${P.injWeeks} week of light training`);
+      }
+      if (!(you.body && you.body.end >= P.soft)) Feel.add(run, 'pain', Math.min(P.painMax, P.pain * n));
+    }
+    if (m.winner !== 0 && Encounter.grumbles(run, id, C.g.k)) {
+      const b = Rel.add(run, id, 'grumbled');
+      if (b) out.push(`${fmtDelta(b)} bond: ${Team.first(People.find(run, id))} blames the ground`);
+    }
+    return out;
+  },
+  /**
+   * A pickup game at map point p (the point card): where you stand must be open ground (City.groundAt), you need the drone (yours or
+   * rented), and the people around (Encounter.people within ENC.pickup.r, nearest first, one per crew) — the first who agrees to the
+   * ground plays with their crew; who refused says why. { at, g, field, foe (id), refused: [{ id, why }], days, sta, why ('' = open) }.
+   * Pure, no draws.
+   */
+  pickup(run, p) {
+    const field = Encounter.field(run, p),
+      mineT = Fight.challengeSide(run).T,
+      seen = new Set(),
+      refused = [];
+    let foe = null;
+    if (!field.why)
+      for (const q of Encounter.people(run)
+        .map(q => ({ ...q, d: Math.hypot(q.at[0] - p[0], q.at[1] - p[1]) }))
+        .filter(q => q.d <= ENC.pickup.r)
+        .sort((a, b) => a.d - b.d || (String(a.id) < String(b.id) ? -1 : 1))) {
+        const W = Encounter.who(run, q.id);
+        if (!W || !W.t || seen.has(W.t) || W.t === mineT || squadOf(W.t).length < 4 || W.act === 'out') continue;
+        seen.add(W.t);
+        const why = Encounter.refuses(run, q.id, field.g.k);
+        if (!why) {
+          foe = q.id;
+          break;
+        }
+        refused.push({ id: q.id, why });
+      }
+    const days = City.trip(run, p) + 1,
+      why =
+        Encounter.menuOff(run) ||
+        (!City.drone(run) ? `needs the drone — $${DRONE.buy} at the Cargo Shed, or rent one at a court ($${DRONE.rent})` : '') ||
+        (field.why ? `no pickup here — ${field.why}` : '') ||
+        Fight.ban(run) ||
+        (foe == null ? (refused.length ? refused[0].why : 'nobody around to play') : '') ||
+        (City.outside(run, p) ? City.fence(run) : '') ||
+        City.noTime(run, days) ||
+        (run.sta < ENC.spar.sta ? `too tired (needs ${ENC.spar.sta} stamina)` : '');
+    return { at: p, g: field.g || null, field, foe, refused, days, sta: ENC.spar.sta, why };
+  },
+  /** The pickup match at p (null when Encounter.pickup is locked): like a spar, on the field where you stand. */
+  pickupFx(run, p) {
+    const P = Encounter.pickup(run, p);
+    return P.why ? null : Encounter.sparFx(run, P.foe, P.field);
+  },
+  /**
+   * A road stop's crew, challenged on the spot (spec §4.38): with the drone, on open ground at the stop, if their captain agrees to the
+   * ground. { field, cap (their captain's id), why ('' = open) }.
+   */
+  spot(run, E) {
+    const t = E.kind === 'crew' ? run.teams[E.ti] : null,
+      field = t && E.stop ? Encounter.fieldNear(run, E.stop) : { why: 'not here' },
+      cap = t && t.cap ? t.cap.id : null,
+      why =
+        (!t ? 'no crew' : '') ||
+        (!City.drone(run) ? 'needs the drone' : '') ||
+        (field.why ? `no open ground — ${field.why}` : '') ||
+        (cap != null && People.find(run, cap) ? Encounter.refuses(run, cap, field.g.k) : '') ||
+        Fight.ban(run) ||
+        (run.money < Fight.challengeSide(run).cost ? `needs $${Fight.challengeSide(run).cost} for a crew` : '');
+    return { field, cap, why };
+  },
+  /**
+   * Challenge a road stop's crew on the spot: Fight.offer at no stake ({ line } when they refuse), else Fight.challenge played on the
+   * field at the stop — its trip and day there (City.playAt), the field venue and its ground. { fx } | { line } | null.
+   */
+  spotChallenge(run, E) {
+    const S = Encounter.spot(run, E);
+    if (S.why) return null;
+    const r = Fight.offer(run, E.ti, 0);
+    if (!r) return null;
+    if (!r.accepted) {
+      Run.log(run, r.line);
+      return { line: r.line };
+    }
+    const fx = Fight.challenge(run, E.ti, r.stake);
+    if (!fx) return null;
+    const C = S.field,
+      G = Encounter.matchGround(run, C, [fx.a, fx.b]),
+      set0 = fx.setup,
+      fin0 = fx.onFinish;
+    return {
+      fx: {
+        ...fx,
+        round: `${fx.round} · ${C.name}`,
+        venue: 'field',
+        ground: { k: G.k, wind: C.g.wind },
+        setup: m => {
+          if (set0) set0(m);
+          Encounter.groundOn(m, G, C.g.wind);
+        },
+        onFinish: m =>
+          City.playAt(C.at, () => {
+            const line = fin0(m),
+              bits = Encounter.fieldAfter(run, m, S.cap, C);
+            if (bits.filter(Boolean).length) Run.log(run, bits.filter(Boolean).join(', '));
+            return line;
+          })
+      }
+    };
   }
 };

@@ -89,6 +89,7 @@ const City = {
         (r && r === City.myRegion(run) && World.tenure(run) >= TENURE.members ? TENURE.price : 1); // members' price (spec §4.36)
     if (DAY_ORDERS[oid]) return Math.round(TRAIN_FEE * (DAY_ORDERS[oid].price || 0) * p);
     if (s.kit) return Math.round(TRAIN_FEE * (DAY_ORDERS[City.lead(id)].price || 0) * p);
+    if (s.act === 'cargo') return DRONE.buy; // (freight: a flat price)
     if (s.hotel) return Math.round(HOTEL.price * p);
     return s.cost ? Math.round(s.cost * p) : 0;
   },
@@ -176,6 +177,7 @@ const City = {
     if (!s) return { ok: false, why: 'unknown place' };
     if (DAY_ORDERS[mate] && !City.orders(id).includes(mate)) return { ok: false, why: 'not done here' };
     if (s.secret && !Secret.known(run, id)) return { ok: false, why: 'unknown place' };
+    if (s.act === 'cargo' && City.drone(run) === 'own') return { ok: false, why: 'you have the drone' };
     if (run.event) return { ok: false, why: 'answer the event first' };
     if (s.at && City.outside(run, s.at)) return { ok: false, why: City.fence(run) };
     const acc = City.access(run, id);
@@ -204,6 +206,7 @@ const City = {
     if (['ramen', 'arcade', 'street'].includes(SPOTS[id].act)) return City.outing(run, id, mate);
     if (Study.acts.includes(SPOTS[id].act)) return Study.day(run, id); // the tutor / a bookstore (T-230)
     if (Secret.acts.includes(SPOTS[id].act)) return Secret.day(run, id, mate); // a secret place (spec §4.31)
+    if (SPOTS[id].act === 'cargo') return City.buyDrone(run, id); // the Ref drone (spec §4.38)
     const s = SPOTS[id],
       cost = City.price(run, id);
     let line;
@@ -264,6 +267,96 @@ const City = {
     City.moveTo(run, p);
     return t ? `(${t}-day trip) ` : '';
   },
+  // ---- the Ref drone (spec §4.38, T-339): buy / rent it, the ground under a pickup game -------------------------------------
+  /** Your drone: 'own' (bought), 'rent' (a rented one waiting for its match) or '' (none). Lazy `run.drone`. */
+  drone: run => (run.drone && run.drone.own ? 'own' : run.drone && run.drone.rent ? 'rent' : ''),
+  /** Buy the drone at the Cargo Shed (the day there; callers checked City.can). The diary line. */
+  buyDrone(run, id) {
+    const trip = City.arrive(run, id);
+    run.money -= DRONE.buy;
+    run.drone = { own: 1 };
+    return `${trip}${SPOTS[id].name}: bought the Ref drone (−$${DRONE.buy}). Pickup games anywhere.`;
+  },
+  /** Why you can't rent the drone at court C ({ id, at, name }) now ('' if you can): you have one, money, the walk over. */
+  rentWhy(run, C) {
+    if (City.drone(run)) return City.drone(run) === 'own' ? 'you have your own' : 'rented — play its match first';
+    if (run.event) return 'answer the event first';
+    if (run.money < DRONE.rent) return `needs $${DRONE.rent}`;
+    return City.outside(run, C.at) ? City.fence(run) : City.noTime(run, City.trip(run, C.at));
+  },
+  /** Rent the drone at court C for one match (the walk there, no day of its own). The diary line, or '' when you can't. */
+  rentDrone(run, C) {
+    if (City.rentWhy(run, C)) return '';
+    const trip = City.walkTo(run, C.at);
+    if (trip == null) return '';
+    run.money -= DRONE.rent;
+    run.drone = { rent: 1 };
+    return `${trip}Rented a Ref drone at ${C.name} (−$${DRONE.rent}) for one match.`;
+  },
+  /** A field match was played: a rented drone goes back. */
+  droneUsed(run) {
+    if (City.drone(run) === 'rent') run.drone = null;
+  },
+  /**
+   * The ground at map point p for a pickup game (spec §4.38): { k (GROUNDS key), wind (0–1), name } — or { why } where nobody can
+   * play: the sea, water / paddies, the airport, a road, among the buildings, an official venue. Sand on the beach strip; grass in the
+   * parks; slope on terraces, the quarry, the fields and Shu's steep ground; asphalt in Wei, the Outlaws' patch, yards and quays;
+   * grass elsewhere.
+   * Wind by exposure: the beach, open fields, the high ground. Pure.
+   */
+  groundAt(run, p) {
+    if (!City.onLand(p)) return { why: 'in the sea' };
+    const G = GROUND.find(q => {
+        const d = Math.hypot(p[0] - q.poly.x, p[1] - q.poly.y);
+        return d <= q.poly.r && !(q.poly.r0 && d < q.poly.r0);
+      }),
+      gk = G ? G.kind : '',
+      F = PICKUP;
+    if (gk === 'water' || gk === 'paddy') return { why: gk === 'water' ? 'in the water' : 'in the paddies' };
+    if (MapModel.inAirport(p)) return { why: 'on the airport' };
+    const N = ROADS.nodes;
+    for (const [a, b, kind] of ROADS.edges) {
+      const A = N[a],
+        B = N[b],
+        dx = B[0] - A[0],
+        dy = B[1] - A[1],
+        t = clamp(((p[0] - A[0]) * dx + (p[1] - A[1]) * dy) / (dx * dx + dy * dy || 1), 0, 1);
+      if (Math.hypot(p[0] - A[0] - t * dx, p[1] - A[1] - t * dy) < (F.road[kind] || F.road.other)) return { why: 'on the road' };
+    }
+    if (Object.values(VENUES).some(v => Math.hypot(p[0] - v.at[0], p[1] - v.at[1]) < v.clear)) return { why: 'an official venue' };
+    if (MapModel.lots(run).some(l => Math.hypot(p[0] - l.at[0], p[1] - l.at[1]) < l.size * 0.75 + F.lot))
+      return { why: 'among the buildings' };
+    const reg = City.regionAt(p),
+      h = reliefAt(p),
+      d = F.step,
+      grad =
+        Math.hypot(reliefAt([p[0] + d, p[1]]) - reliefAt([p[0] - d, p[1]]), reliefAt([p[0], p[1] + d]) - reliefAt([p[0], p[1] - d])) /
+        (2 * d),
+      sand = MapModel.onSand(p),
+      k = sand
+        ? 'sand'
+        : gk === 'park'
+          ? 'grass'
+          : gk === 'terrace' || gk === 'quarry' || gk === 'field'
+            ? 'slope'
+            : gk === 'yard' || gk === 'quay' || reg === 'wei' || reg === 'outlaws'
+              ? 'asphalt'
+              : grad > F.slope
+                ? 'slope'
+                : 'grass',
+      wind = sand ? F.wind.beach : gk === 'field' ? F.wind.field : h >= HIGHLAND_M ? clamp(F.wind.high + h / 100, 0, 1) : 0;
+    return { k, wind: Math.round(wind * 100) / 100, name: GROUNDS[k].name };
+  },
+  /** City.go goes here instead while `fn` runs (a road stop's challenge played on the spot, spec §4.38). */
+  goOver: null,
+  playAt(p, fn) {
+    City.goOver = p;
+    try {
+      return fn();
+    } finally {
+      City.goOver = null;
+    }
+  },
   /** A day order at map point p (spec §4.33: Stretch anywhere): { ok, why } like City.can, the days = the trip + one. */
   pointCan(run, p, oid = 'stretch') {
     if (!DAY_ORDERS[oid] || oid !== 'stretch') return { ok: false, why: 'not done here' };
@@ -315,6 +408,7 @@ const City = {
    * week's day track (run.dayLog, spec §10.2): { k, label, stat? }; trip days are logged as { k: 'trip' } before it.
    */
   go(run, p, what = { k: 'day', label: 'Out' }) {
+    if (City.goOver) p = City.goOver; // (played on the spot: City.playAt)
     const t = City.trip(run, p),
       from = City.pos(run).slice(),
       d0 = City.days(run);
@@ -368,6 +462,7 @@ const City = {
       return { k: 'train', label: O.name, stat: O.main[0], at: s.name };
     }
     if (s.act === 'rest') return { k: 'rest', label: 'Rest', at: s.name };
+    if (s.act === 'cargo') return { k: 'outing', label: 'Drone', at: s.name };
     if (s.secret) return { k: s.act === 'onsen' ? 'rest' : 'outing', label: SECRET_DAY[s.act] || 'Out', at: s.name };
     if (['ramen', 'arcade', 'street'].includes(s.act)) return { k: 'outing', label: s.act === 'street' ? 'Hustle' : 'Outing', at: s.name };
     return { k: 'rest', label: 'Relax', at: s.name };

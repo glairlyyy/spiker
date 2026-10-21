@@ -246,6 +246,7 @@ function serveAim(c) {
   if (atkPlan(m, c.s).press && rc === weakPasser(RT)) rs -= atkPlan(m, c.s).press; // Hunt the passer: the pressure tells on them
   if (tg && tg.seam && rc === tg.rc) rs -= ORDERS.srv.seam;
   if (rollR) rs += Math.max(0, d0 - 0.1) * 45 * (1.3 - rc.speed / 100) * 0.5;
+  if (m.wind && GROUNDS.wind[c.sType]) rs -= m.wind * GROUNDS.wind[c.sType] * rnd(0.5, 1.5); // a float wanders in the wind (spec §4.38: one draw, only with wind)
   // a hard serve gets there sooner (SERVE_FAST: up to ×1.45 from serve 55 to 110)
   const vq = powVis(c.server, sq, 'serve'), // (the serve's real speed: the card edge wins the receive, not km/h)
     sfast = 1 + clamp((vq - 55) / 55, 0, 1) * (SERVE_FAST - 1),

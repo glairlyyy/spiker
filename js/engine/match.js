@@ -20,7 +20,8 @@ const onFloor = (m, p, n) => ((m.down && m.down[p.id]) || 0) >= n;
  * the floor through possession `until`. No randoms. Returns true when knocked down.
  */
 function knock(m, p, pow, mg, until) {
-  if (!hpHit(m, p, pow)) return false; // HP (spec §2.31): the hit that empties it collapses the player — no roll
+  if (!hpHit(m, p, m.ground ? pow * Formula.gMul(p, 'hp') : pow)) return false; // HP (spec §2.31): the hit that empties it collapses the player — no roll (a field's ground softens or hardens it, §4.38)
+  if (m.ground) (m.grd || (m.grd = { ko: {} })).ko[p.id] = (m.grd.ko[p.id] || 0) + 1; // engine-only: knockdowns on a field (asphalt: the injury chance)
   m.down[p.id] = until;
   m.ko.mg = mg; // how loose the ball came off them (recover(): a loose ball can only go over)
   setBusy(m, p, until + 1); // back on the feet, still a step behind the play
@@ -32,7 +33,7 @@ function knock(m, p, pow, mg, until) {
 /** Can a player at `q` run to (x, z) within `ms` and play it on their feet, or must they dive? (metres: 3D scale) */
 function mustDive(p, q, x, z, ms) {
   const d = Math.hypot((x - q.x) * 0.0243, (z - q.z) * 12);
-  return d - 0.6 > (3 + (3 * p.speed) / 100) * Math.max(0, ms / 1000 - 0.12);
+  return d - 0.6 > (3 + (3 * p.speed * Formula.gMul(p, 'agi')) / 100) * Math.max(0, ms / 1000 - 0.12); // (sand: slower first steps, §4.38)
 }
 /** How a feels about b on court (T-066): 'ally' | 'respect' | 'neutral' | 'resent' | 'enemy' ('neutral' without m.rel, so nothing changes). */
 const relTag = (m, a, b) => (m.rel && m.rel.tag[`${a.id}|${b.id}`]) || 'neutral';
@@ -94,6 +95,8 @@ function nearest(m, arr, x, z) {
  * opts.dset: [setting, setting] fixes a side's defence setting (DEFSETS; default: the team's style, then the captain may switch it).
  * opts.rel: career relationship flags { tag: { 'idA|idB': 'ally' | … }, rival: Set } (Rel.matchFlags, T-066); absent → no relationship effect at all.
  * opts.weak: [stage, stage] a side's war stage (WAR_STAGES index 0–3, spec §4.34: morale start, HP heal, card slots); absent → none.
+ * opts.ground / opts.wind: a field match's ground ({ k: GROUNDS key, home: [ids], low: side }) and wind (0–1, spec §4.38); absent →
+ * an official court, today's match draw for draw (a career fixture may set them in its setup instead).
  */
 function newMatch(a, b, rec, opts = {}) {
   for (const t of [a, b]) for (const p of squadOf(t)) fixStats(p); // the engine never sees a negative, NaN or huge stat (no-op for valid ones)
@@ -175,6 +178,8 @@ function newMatch(a, b, rec, opts = {}) {
   cardsInit(m, opts); // tactic cards (spec §2.33): the turn-0 hands
   weakSet(m, opts.weak);
   CM = cm0;
+  if (opts.ground) m.ground = opts.ground;
+  if (opts.wind) m.wind = opts.wind;
   return m;
 }
 /**

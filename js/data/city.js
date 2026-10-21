@@ -367,8 +367,29 @@ const SPOTS = {
     at: [745, 312],
     icon: '☕',
     desc: 'A café in Wei. A retired scout who still rates everyone — honestly, once a month.'
+  },
+  // the airport's freight (spec §4.38, T-339): the Ref drone for sale (DRONE)
+  cargo: {
+    name: 'Cargo Shed',
+    act: 'cargo',
+    region: 'wu',
+    at: [495, 578],
+    icon: '📦',
+    desc: 'Mainland freight, league-licensed. The Ref drone: it projects the lines, strings a light net and calls every touch.'
   }
 };
+/**
+ * The Ref drone as an item (spec §4.38, T-339; lore §4): buy one at the Cargo Shed (`buy`, flat: freight prices don't follow the
+ * region) or rent one at any court for one match (`rent`). With it, a Pickup game on open ground (City.groundAt). Lazy `run.drone` =
+ * { own: 1 } once bought, { rent: 1 } while a rented one waits for its match.
+ */
+const DRONE = { buy: 400, rent: 40 };
+/**
+ * Where a pickup game may stand (City.groundAt): clear of a road by `road[kind]` map units (`other` for the rest), of a building lot by
+ * its half-size + `lot`; `slope` = the climb (relief m a map unit, over ± `step`) from which open ground is a slope; wind by exposure
+ * (`beach`, open `field`, the high ground: `high` + height / 100).
+ */
+const PICKUP = { road: { main: 12, overpass: 12, path: 6, other: 9 }, lot: 4, step: 10, slope: 0.15, wind: { beach: 0.8, field: 0.6, high: 0.4 } };
 // a place's lead training (its first kit tag's): what NPC plans, the dossier and the floor read (spec §4.33)
 for (const s of Object.values(SPOTS)) if (s.kit) s.train = KITS[s.kit[0]].train;
 /**
@@ -449,6 +470,7 @@ const VENUES = {
 const ROADS = {
   nodes: {
     airport: [470, 600],
+    cargo: [495, 578],
     // Wu: the coast road, east round to the harbor
     sand: [790, 600],
     pier: [535, 645],
@@ -545,6 +567,7 @@ const ROADS = {
     ['hotelWu', 'jBw3', 'dirt'],
     ['hq2', 'wuVillage', 'dirt'],
     ['hq3', 'home:dorm', 'main'],
+    ['airport', 'cargo', 'street'], // the freight yard behind the terminal
     // the boardwalk (sand ↔ pier ↔ bonfire ↔ the resort strip)
     ['airport', 'jBw1', 'boardwalk'],
     ['jBw1', 'pier', 'boardwalk'],
@@ -1071,6 +1094,7 @@ const LANDMARK = {
   onsen: 'hotel',
   midnight: 'court',
   oldScout: 'stall',
+  cargo: 'stall',
   hq: 'hq'
 };
 
