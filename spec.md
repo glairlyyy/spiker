@@ -1417,7 +1417,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     the cut-in = the hype banner "Mint × You" + their line, the first time it plays. Every match of yours: played or simmed from the hub,
     and the instant Raid and Midnight Court (the coach plays them there; owner, 2026-10-21). **Ex-teammates** across the net: one exchange after match prep (their line by
     personality, your reply) and `faced_ex` for each who played.
-- §4.37 The living island — seamless, people you can see **[draft — T-331–T-336]** (owner, 2026-10-21: "the world looks empty —
+- §4.37 The living island — seamless, people you can see **[draft — T-331–T-336, T-340]** (owner, 2026-10-21: "the world looks empty —
   the others' activity is computed under the hood"; "Kenshi makes the map and world seamless — I don't want scene cuts"; "keep
   decisions to the user and actions to automation, but keep some effort"). Builds on §4.19a (districts, traffic, figures) and §4.33
   (day orders, Run trips).
@@ -1447,6 +1447,13 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **5. Island sound (T-334).** Synthesized like the match effects (js/audio/sfx.js; nothing to download): ambience by the district
     under the camera (harbor water and gulls, market murmur, ball thuds near courts, wind in the Spine, night insects), footsteps
     while you walk, soft UI clicks; follows the volume slider and the sound toggle.
+  - **7. Interact with anyone you see (T-340; owner, 2026-10-21).** Hover a figure → it gets an outline and its tip (1); click
+    (or right-click) → a small menu at the figure, Kenshi-style: you walk over, then it happens. **Talk** (free, once a day per
+    person: a line in their behaviour's voice, a small memory) · **Invite** (train with you today: they join your day order if
+    their plan allows — by bond and behaviour; a teammate's floor bonus, §4.33) · **Spar** (a practice match, no stake: your
+    circle against their crew — the day, a little XP and bond either way; needs a court or the drone, §4.38) · **Challenge**
+    (the stake match, §4.29) · **Card** (their People card). Locked options show why ("needs a court or the drone", "won't
+    train with you — bond 20"). The road encounter (3) is this same menu, opened for you.
   - **6. Street level (T-336, phase 2 — a prototype, judged before more).** One district first (Wei's core with one gym and one
     court): the map camera keeps zooming down to a follow camera behind you — the same world, no load; within ~150 m buildings swap
     to detailed ones (doors, windows, signs, props), roads to street width; the gym and the court open by cutaway (roof and near

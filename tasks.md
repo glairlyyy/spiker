@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-340** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-341** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -114,6 +114,13 @@ Files: js/audio/ambience.js (new), js/audio/sfx.js (shared context / bus only), 
 Do not: download or add audio files; play on the title screen; keep nodes running off the map (stop and free them).
 Accept: ui-smoke: the map opens and closes with no page errors and no AudioContext left running; a short QA recording note per district.
 QA: career run → pan the map across three districts; walk a trip.
+Result:
+
+### [ ] T-340: Interact with anyone you see — the figure menu
+Spec: §4.37 7          Goldens: unchanged          Save: no change (lazy `run.enc`)
+Goal: hover outlines a figure; click / right-click opens a menu at it — Talk · Invite · Spar · Challenge · Card — you walk over, then it
+happens; locked options say why; the road encounter reuses this menu.
+Status: after T-331 (Agent L: the figures, hover) and T-333 (Agent E: Encounter's actions) merge — detailed then.
 Result:
 
 ### [ ] T-336: Street level — one district prototype (phase 2)
