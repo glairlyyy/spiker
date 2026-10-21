@@ -150,7 +150,7 @@ const World = {
     if (!World.canJoin(run, ti).ok) return false;
     const from = run.team,
       left = from != null ? squadOf(run.teams[from]).filter(p => p.id !== run.youId) : Run.mates(run),
-      asker = null; // T326
+      asker = Circle.asker(run, left);
     if (from != null) World.leave(run, asker && asker.id);
     else for (const m of left) run.ex[m.id] = Season.wk(run); // (the Academy squad you leave: no hard feelings, but remembered)
     const T = run.teams[ti],
@@ -171,7 +171,7 @@ const World = {
     Run.news(run, `The office registers ${you.name} with ${T.name}.`); // voice: wei (the Gazette)
     Story.joined(run, ti); // your new teammates introduce themselves at the next hub (Story mode)
     Feel.add(run, 'drive', FEEL.drive.joined);
-    // T326 offer
+    if (asker) Circle.offer(run, asker, from, ti);
     return true;
   },
   setHousing(run, k) {

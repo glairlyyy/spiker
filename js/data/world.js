@@ -333,6 +333,13 @@ const PROMOTE = { gap: 3 };
  */
 const WINDOW = { open: [1], rep: -8 };
 const TENURE = { ahead: 4, lineup: 4, members: 8, price: 0.8, captain: 12 };
+/**
+ * Your people (spec §4.36 B): the circle = up to `max` people at bond `bond`+ (starred first). On a switch the closest friend at
+ * bond FOLLOW.bond+ among the teammates you leave may ask to come: chance by headline behaviour (`p`, by hash; `other` for the
+ * rest), a Mercenary for `fee`. The named never move.
+ */
+const CIRCLE = { max: 5, bond: 30 };
+const FOLLOW = { bond: 60, p: { warm: 0.7, steady: 0.7, reckless: 0.7, calculating: 0.5, loyal: 0, other: 0.3 }, fee: 120 };
 /** Team-life lines. registrar: the window rules (dry); diary: your walking out, a friend who follows (the MC). {n} first name, {club}. */
 const TEAM_LINES = {
   closed: 'Registrations closed. Next window: week {w}.', // registrar

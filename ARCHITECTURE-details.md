@@ -1024,3 +1024,11 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   TENURE.ahead → `Run.lineup` score + TENURE.lineup for you at your club; TENURE.members → `City.price` × TENURE.price at
   places of your faction's region; until TENURE.captain `Run.lineup` leaves you out of the captain pick at your club
   (finalizeTeam's pick is overwritten by the next lineup).
+- **Circle** (career/circle.js; data CIRCLE / FOLLOW / TEAM_LINES): `Circle.of(run)` → up to CIRCLE.max ids from every `run.mem`
+  pair with you whose `Rel.bondOf` ≥ CIRCLE.bond and who is still in play (`People.homes`), starred (`run.fav`) first, then bond,
+  then id — the contract Team (Agent S) reads with `run.ex`. `Circle.mood` (hurt / out / tired / fine) and `Circle.mate` for the strip.
+- **Follow**: `World.join` asks `Circle.asker(run, left)` before walking out — the closest active, non-named teammate at FOLLOW.bond+
+  whose `People.roll(run, id, 'follow')` < FOLLOW.p[headline] (Loyal 0); none with an event open or in a cup. The asker is spared
+  `walked_out`; `Circle.offer` opens `run.event = { id: 'follow', who, from, to, fee (Mercenary), pre: true }` (Events.def / choose →
+  `Circle.answer`). Yes: pay the fee, `Circle.move` (the lowest same-role non-named player of your club drops to the Academy squad —
+  via the friend's old club: two `World.swap`s), an `event` +8 memory, `run.ex` cleared. No: `walked_out` (a club only) + `refused_help`.

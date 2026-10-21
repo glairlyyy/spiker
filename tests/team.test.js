@@ -109,3 +109,99 @@ test('team: tenure — 4w lineup +4, 8w members’ price × 0.8, 12w captain (T-
   eq(back.tenure, run.tenure, 'tenure saved');
   eq(JSON.stringify(back.ex), JSON.stringify(run.ex), 'exes saved');
 });
+
+/** Give id a stance toward you of about v (one memory, behaviour-neutral: a plain `event`). */
+const befriend = (g, run, id, v) => g.Rel.push(run, g.Rel.key(run.youId, id), id, 'event', v, id);
+
+test('team: the circle — bond 30+, any club, starred first, at most 5 (T-326)', () => {
+  const [g, run] = mkRun(3261);
+  const ppl = g.People.all(run).filter(p => !p.named);
+  // eight people in different squads, stances 2…40
+  const pick = [];
+  for (const p of ppl) if (pick.length < 8 && !pick.some(q => q.team === p.team)) pick.push(p);
+  pick.forEach((p, i) => befriend(g, run, p.id, 2 + i * 5));
+  const c = g.Circle.of(run),
+    b = id => g.Rel.bondOf(run, id);
+  assert(c.length <= g.CIRCLE.max && c.length > 1, 'capped: ' + c.length);
+  assert(
+    c.every(id => b(id) >= g.CIRCLE.bond),
+    'everyone at 30+: ' + c.map(b)
+  );
+  for (let i = 1; i < c.length; i++) assert(b(c[i - 1]) >= b(c[i]), 'by bond');
+  eq(new Set(c.map(id => g.People.find(run, id).team)).size, c.length, 'any club');
+  const qualify = pick.filter(p => b(p.id) >= g.CIRCLE.bond).map(p => p.id);
+  assert(qualify.length > g.CIRCLE.max, 'more than fit');
+  const last = qualify.sort((x, y) => b(x) - b(y))[0]; // the weakest who qualifies: out of the top 5
+  assert(!c.includes(last), 'the weakest is left out');
+  run.fav.push(last);
+  eq(g.Circle.of(run)[0], last, 'a starred member first');
+  const weak = pick.find(p => b(p.id) < g.CIRCLE.bond);
+  run.fav.push(weak.id);
+  assert(!g.Circle.of(run).includes(weak.id), 'a star under 30 stays out');
+  eq(g.Circle.mood(run, last), 'fine', 'their week');
+});
+
+test('team: friends who follow — a Loyal never asks; a follower lands in your new squad; a no leaves walked_out (T-326)', () => {
+  const [g, run] = mkRun(3262);
+  run.week = 5;
+  assert(g.World.join(run, OPEN), 'sign');
+  const mates = g.Run.mates(run).filter(p => !p.named),
+    f = mates[0];
+  run.people[f.id].traits[0] = 'loyal';
+  befriend(g, run, f.id, 40);
+  assert(g.Rel.bondOf(run, f.id) >= g.FOLLOW.bond, 'a close friend');
+  for (let w = 1; w <= 28; w++) {
+    run.week = w;
+    assert(!g.Circle.asker(run, [f]), 'a Loyal never asks (week ' + w + ')');
+  }
+  // a Friendly friend always asks (FOLLOW.p forced): they come along
+  run.people[f.id].traits[0] = 'warm';
+  g.FOLLOW.p.warm = 1;
+  run.week = 9;
+  run.money = 1000;
+  const T0 = run.teams[OPEN];
+  assert(g.World.join(run, FEE), 'switch');
+  eq(run.event && run.event.id, 'follow', 'the follow card');
+  eq(run.event.who, f.id, 'from the close friend');
+  assert(!g.Rel.list(run, f.id).some(e => e.k === 'walked_out'), 'no walked_out while they ask');
+  assert(g.Events.def(run.event, run).title.includes('wants to come'), 'the card');
+  const T = run.teams[FEE],
+    n0 = g.squadOf(T).length;
+  const line = g.Events.choose(run, 0);
+  assert(line.length > 0 && !run.event, 'answered: ' + line);
+  assert(g.Run.mates(run).includes(f) && f.team === T, 'the follower lands in your new squad');
+  eq(g.squadOf(T).length, n0, 'a seat, not an extra player');
+  eq(g.squadOf(T0).length, 6, 'the old squad stays full');
+  eq(run.ex[f.id], undefined, 'not an ex any more');
+  assert(g.Run.you(run).bond[f.id] >= g.FOLLOW.bond, 'bond cached');
+  // decline: the walked_out lands now, plus refused_help
+  const [h, r2] = mkRun(3263);
+  r2.week = 5;
+  h.World.join(r2, OPEN);
+  const f2 = h.Run.mates(r2).filter(p => !p.named)[0];
+  r2.people[f2.id].traits[0] = 'calculating';
+  h.FOLLOW.p.calculating = 1;
+  r2.week = 9;
+  befriend(h, r2, f2.id, 60); // (a Mercenary's memories fade fast: written this week)
+  r2.money = 1000;
+  assert(h.World.join(r2, FEE) && r2.event && r2.event.fee === h.FOLLOW.fee, 'a Mercenary asks for a fee');
+  h.Events.choose(r2, 1);
+  assert(!h.Run.mates(r2).includes(f2), 'stays behind');
+  const ks = h.Rel.list(r2, f2.id).map(e => e.k);
+  assert(ks.includes('walked_out') && ks.includes('refused_help'), 'remembers: ' + ks);
+  // a paid follow: the fee goes
+  const [k, r3] = mkRun(3264);
+  r3.week = 5;
+  k.World.join(r3, OPEN);
+  const f3 = k.Run.mates(r3).filter(p => !p.named)[0];
+  r3.people[f3.id].traits[0] = 'calculating';
+  k.FOLLOW.p.calculating = 1;
+  r3.week = 9;
+  befriend(k, r3, f3.id, 60); // (a Mercenary's memories fade fast: written this week)
+  r3.money = 1000;
+  k.World.join(r3, FEE);
+  const m0 = r3.money;
+  k.Events.choose(r3, 0);
+  eq(r3.money, m0 - k.FOLLOW.fee, 'paid');
+  assert(k.Run.mates(r3).includes(f3), 'and came');
+});

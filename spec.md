@@ -1381,6 +1381,9 @@ the AI coach fills every slot you leave with the same function. Built and measur
     - **The circle**: up to 5 people at bond 30+ (any club; pinnable), shown in the **squad strip** (1) — current teammates marked.
     - **Friends can follow**: when you switch, a friend at bond 60+ may ask to come (Friendly / Shy / Hothead often, Mercenary
       for a fee, Loyal never, by hash) — they move with you and take a seat (the seat's holder drops to the pickup squad).
+      **[built 2026-10-21, T-326: one ask per switch — the closest friend whose hash passes (Friendly / Shy / Hothead 70 %,
+      Mercenary 50 % for $120, others 30 %); a card: bring them (a +8 memory) or not (their walked_out and refused_help);
+      pins = the People sheet's ★; the circle counts only people still in play]**
     - **Ex-teammates**: the people you left are remembered (`run.ex`); across the net they get their own remarks and a
       `faced_ex` memory.
   - **1. Squad strip** (hub top bar): your circle's faces with mood and bond; click → their card: this week's plan, their want,

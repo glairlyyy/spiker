@@ -1,4 +1,4 @@
-// Event cards: the Element Trial, sponsor offers and the gift chance (spec §4.35) (the random training events are gone, owner 2026-10-05).
+// Event cards: the Element Trial, sponsor offers, the gift chance (spec §4.35) and a friend who follows (§4.36) (the random training events are gone, owner 2026-10-05).
 
 const Events = {
   /** Event definition. Special events: 'element' (Element Trial), 'sponsor' (offer at a fan milestone). */
@@ -42,6 +42,20 @@ const Events = {
         b: ['Decline', `${n} won't offer again`]
       };
     }
+    if (ev.id === 'follow') {
+      // a friend asks to follow you to your new club (spec §4.36 B, Circle)
+      const p = run ? People.find(run, ev.who) : null,
+        n = p ? p.name.split(' ')[0] : 'A friend',
+        T = run && run.teams[ev.to],
+        short = run ? Math.max(0, ev.fee - run.money) : 0,
+        seat = p ? `joins ${T ? T.name : 'your club'} (${p.role}); the seat's holder drops to the Academy squad` : '';
+      return {
+        title: `${n} wants to come`,
+        text: run ? `${n}: ${Circle.line(run, ev)}` : '',
+        a: [ev.fee ? `Bring ${n} · $${ev.fee}` : `Bring ${n}`, short ? `Short $${short}: ${n} stays` : `${n} ${seat}`],
+        b: ['Not this time', `${n} stays behind${ev.from != null ? ' and remembers you walked out' : ''}`]
+      };
+    }
     return null; // the random training events are gone (owner, 2026-10-05); an old save's leftover clears on load
   },
   /** Fill {mate} and {cap}. */
@@ -64,6 +78,7 @@ const Events = {
       return id ? Sponsors.sign(run, id) : 'Declined the sponsor offers.';
     }
     if (ev.id === 'gift') return Gifts.answer(run, i);
+    if (ev.id === 'follow') return Circle.answer(run, i);
     run.event = null;
     return '';
   }

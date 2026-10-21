@@ -54,7 +54,7 @@ Accept: tests — no join outside the window; leaving writes walked_out with eac
 QA: career run → an HQ card outside and inside the window.
 Result: windows = week 1 (off-season / preseason) + the week after each eval (5…25; the Y2 rematch opens none); switching allowed (`World.join` walks out first), `World.leave` (Leave club peek on your HQ card) always open; Academy squad → `run.ex` without walked_out; Egoist = × −0.2; data WINDOW/TENURE/TEAM_LINES in js/data/world.js; captain rule only at your club; edited the RUN_VERSION asserts in career/gifts tests + map.test's sign week; bot casual 36 runs Y2 86.6 (base 86.8), 12 both: good Y2 92.6, casual 85.0, league 87.0; QA t325-hq-{closed,open,yours,switch}.png.
 
-### [ ] T-326: The circle and friends who follow
+### [x] T-326: The circle and friends who follow
 Agent: T
 Spec: §4.36 B          Goldens: unchanged          Save: no change (beyond T-325)
 Goal: `Circle.of(run)` (≤ 5, bond 30+, any club, pins first); on a switch, a 60+ friend may ask to come (behaviour, hash) and moves
@@ -62,7 +62,7 @@ with you; `run.ex` remembers who you left.
 Files: js/career/circle.js (new), js/career/world.js, js/career/events.js (the follow card), index.html, tests/team.test.js
 Accept: tests — the circle's order and cap; a Loyal friend never follows; a follower lands in your new squad.
 QA: career run → switch clubs with a close friend.
-Result:
+Result: pins = the People sheet's stars (`run.fav`, no new field); the asker = the closest 60+ active non-named teammate passing the hash (Friendly/Shy/Hothead 0.7, Mercenary 0.5 for $120, Loyal 0, others 0.3), also when you leave the Academy squad; asks only with no event open; yes → `event` +8 memory, no → walked_out (clubs) + refused_help; data CIRCLE/FOLLOW in js/data/world.js; QA t326-follow-card.png, t326-after.png.
 
 ### [ ] T-327: The squad strip
 Agent: T
