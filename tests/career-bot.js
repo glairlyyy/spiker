@@ -3,7 +3,9 @@
 // days like a person would — train at a place it can reach, rest when tired, relax when low, join the best club that takes
 // it — and reports what a run looks like: your rating against the league and the rival, money, mood, Drive & Pain,
 // evaluations, both Cups and your squad's odds against hers, the rematch and the ending.
-// npm run career -- [runs=12] [policy=good|casual|both]
+// npm run career -- [runs=12] [policy=good|casual|focus|both]
+// focus (spec §4.37 4, T-335): the good policy with the focus press always on the beat (+10 % of an order day's EXP); `both` reports it
+// as one extra line. The others never press and never stop on the road (encounters are the map's; the baseline is without effort).
 const { load } = require('./harness');
 const [N = 12, POL = 'both'] = process.argv.slice(2).map((v, i) => (i === 0 ? +v : v));
 
@@ -48,7 +50,7 @@ function statFor(g, run, pol) {
 function week(g, run, pol, M) {
   for (let guard = 0; guard < 20 && g.City.days(run) > 0; guard++) {
     obs(run, M);
-    if (pol === 'good' && !run.event && warMoves(g, run, M)) continue;
+    if (pol !== 'casual' && !run.event && warMoves(g, run, M)) continue;
     if (run.event) {
       const pre = run.event.pre;
       g.Run.log(run, g.Events.choose(run, 0));
@@ -58,7 +60,7 @@ function week(g, run, pol, M) {
     let id = null,
       hard = false,
       opt;
-    const good = pol === 'good',
+    const good = pol !== 'casual',
       y2 = good && g.Season.year(run) > 1 && g.Secret ? secretFor(g, run, M) : null;
     if (y2) [id, opt] = y2;
     else if (run.sta < (good ? 45 : 35)) id = g.City.can(run, 'home').ok ? 'home' : null;
@@ -82,6 +84,7 @@ function week(g, run, pol, M) {
     const m0 = run.money,
       line = g.City.day(run, id, hard, opt),
       ok = opt && g.DAY_ORDERS[opt] ? g.DAY_ORDERS[opt].kind : 'place';
+    if (pol === 'focus') g.City.focus(run, true); // the press, always on the beat
     M.cash[ok] = (M.cash[ok] || 0) + (run.money - m0);
     obs(run, M);
     if (!line) break;
@@ -370,11 +373,17 @@ function slim(p) {
   for (const k in p) if (!SLIM_DROP.includes(k) && typeof p[k] !== 'function') q[k] = p[k];
   return q;
 }
-for (const pol of POL === 'both' ? ['casual', 'good'] : [POL]) {
+for (const pol of POL === 'both' ? ['casual', 'good', 'focus'] : [POL]) {
   const R = [];
   for (let i = 0; i < N; i++) R.push(play(3000 + i, pol));
   const Y = k => [0, 1].map(y => avg(R.map(r => r.y[y][k])));
   const cnt = (f, k) => R.filter(r => f(r[k])).length;
+  if (pol === 'focus' && POL === 'both') {
+    console.log(
+      `\ngood + focus press (always on the beat) · ${N} runs\n  you at the Cup        Y1 ${f1(Y('you')[0])}  Y2 ${f1(Y('you')[1])}   (league ${f1(Y('league')[0])} / ${f1(Y('league')[1])}, rival ${f1(Y('rival')[0])} / ${f1(Y('rival')[1])}) · body points from train ${f1(avg(R.map(r => r.pts.train)))}`
+    );
+    continue;
+  }
   console.log(`\n${pol} · ${N} runs`);
   console.log(
     `  you at the Cup        Y1 ${f1(Y('you')[0])}  Y2 ${f1(Y('you')[1])}   (league ${f1(Y('league')[0])} / ${f1(Y('league')[1])}, rival ${f1(Y('rival')[0])} / ${f1(Y('rival')[1])})`
