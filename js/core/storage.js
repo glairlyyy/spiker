@@ -54,5 +54,7 @@ const KEYS = {
   motion: 'sns_motion', // UI motion: 'full' | 'reduced' (spec §9.12, T-216)
   trail: 'sns_trail', // hand trails: 'light' | 'ink' (T-239)
   vfx: 'sns_vfx', // dev VFX panel edits (JSON of changed values; js/data/vfx.js)
+  enc: 'sns_enc', // road stops (spec §4.37 3): 'friends' | 'all' | 'never' (T-333)
+  focus: 'sns_focus', // the focus press on order days (spec §4.37 4): 'on' | 'off' (T-335)
   career: 'sns_run_v1' // Spite & Spike run (older Skyline Cup careers are not carried over)
 };

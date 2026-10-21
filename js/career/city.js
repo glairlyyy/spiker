@@ -219,7 +219,9 @@ const City = {
       cost = City.price(run, id, oid),
       trip = City.arrive(run, id, oid);
     run.money -= cost;
-    const line = Training.order(run, oid, id, hard, (s.kit ? City.mul(run, id) : 1) * DAY_GAIN, (s.sand ? SAND_SP : 1) * DAY_GAIN);
+    const line = City.capture(run, () =>
+      Training.order(run, oid, id, hard, (s.kit ? City.mul(run, id) : 1) * DAY_GAIN, (s.sand ? SAND_SP : 1) * DAY_GAIN)
+    );
     if (s.kit && run.spotQ && run.spotQ[id]) run.spotQ[id].known = true; // quality is never shown (owner, T-172); it still scales EXP
     return `${trip}${line}${cost ? ` (−$${cost})` : ''}`;
   },
@@ -237,18 +239,79 @@ const City = {
     if (!City.pointCan(run, p, oid).ok) return '';
     const O = DAY_ORDERS[oid],
       trip = City.go(run, p, { k: 'train', label: O.name, stat: O.main[0], at: REGIONS[City.regionAt(p)].name });
-    return `${trip}${Training.order(run, oid, null, false, DAY_GAIN, DAY_GAIN)}`;
+    return `${trip}${City.capture(run, () => Training.order(run, oid, null, false, DAY_GAIN, DAY_GAIN))}`;
+  },
+  // ---- effort (spec §4.37 4, T-335): the focus press on an order day; never a loss, at most + ENC.focus.k of the day ----
+  /** The last order day's EXP by stat ({ xp, wk, day }; not saved: the press follows at once): what City.focus scales. */
+  dayXp: null,
+  /** Run an order day `fn`, noting the EXP it gives (Training.tally) for the focus press. No draws of its own. */
+  capture(run, fn) {
+    const T0 = Training.tally,
+      T = (Training.tally = {});
+    try {
+      return fn();
+    } finally {
+      Training.tally = T0;
+      if (T0) for (const [k, v] of Object.entries(T)) T0[k] = (T0[k] || 0) + v;
+      City.dayXp = Object.keys(T).length ? { xp: T, wk: Season.wk(run), day: WEEK_DAYS - City.days(run) } : null;
+    }
+  },
+  /**
+   * The focus press for the last order day: hit (on the beat) → that day's EXP × ENC.focus.k more, once; missed or skipped → nothing
+   * (× 1). Returns the gains' label ('' when nothing was added).
+   */
+  focus(run, hit) {
+    const D = City.dayXp;
+    City.dayXp = null;
+    if (!hit || !D || D.wk !== Season.wk(run)) return '';
+    const out = [];
+    for (const [k, xp] of Object.entries(D.xp)) {
+      const add = Math.floor(xp * ENC.focus.k);
+      if (add > 0) out.push(Training.addXp(run, k, add));
+    }
+    return out.join(', ');
   },
   /**
    * Go to point p, spending the trip + a day there; returns the trip's diary prefix. `what` = the day's entry for the
    * week's day track (run.dayLog, spec §10.2): { k, label, stat? }; trip days are logged as { k: 'trip' } before it.
    */
   go(run, p, what = { k: 'day', label: 'Out' }) {
-    const t = City.trip(run, p);
+    const t = City.trip(run, p),
+      from = City.pos(run).slice(),
+      d0 = City.days(run);
     City.spend(run, t + 1);
     City.logDays(run, t, what);
     City.moveTo(run, p);
+    City.note(run, from, d0);
     return t ? `(${t}-day trip) ` : '';
+  },
+  /** The last trip, for the road's encounter (spec §4.37 3; not saved, read at once by the map): { from, to, day (days used before it) }. */
+  last: null,
+  note(run, from, d0) {
+    City.last = { from, to: City.pos(run).slice(), day: WEEK_DAYS - d0 };
+  },
+  /**
+   * The second route to map point `to` (spec §4.37 4, T-335): a short cut past what Encounter.vias lists (the hot border's battle,
+   * your circle's places) — the same trip days (never one more), at most ENC.alt.slack × the safe road's travel cost (or + extra),
+   * and only when the safe road doesn't pass it already. { kind, key, at, id?, pts (the road: from → it → to) } or null. Pure.
+   */
+  alt(run, to) {
+    const from = City.pos(run),
+      far = Math.hypot(to[0] - from[0], to[1] - from[1]);
+    if (far < 2 * ENC.min) return null;
+    const safe = City.path(from, to),
+      days = City.trip(run, to),
+      max = Math.max(safe.cost * ENC.alt.slack, safe.cost + ENC.alt.extra);
+    for (const c of Encounter.vias(run)) {
+      if (Encounter.dist(safe.pts, c.at).d <= ENC.r) continue;
+      const a = City.path(from, c.at),
+        b = City.path(c.at, to),
+        cost = a.cost + b.cost,
+        d = far <= NEAR_R ? 0 : Math.min(TRIP_MAX, Math.ceil(cost / TRIP_DAY));
+      if (d !== days || cost > max) continue;
+      return { kind: c.kind, key: c.key, at: c.at, id: c.id, pts: [...a.pts, ...b.pts.slice(1)] };
+    }
+    return null;
   },
   /** Append to the day track: `trips` trip days, then one day of `what` (null: trips only). Display only. */
   logDays(run, trips, what) {
@@ -312,10 +375,13 @@ const City = {
     const t = City.travelDays(run, p),
       ran = how === 'run';
     if (run.event || !City.onLand(p) || City.noTime(run, t) || City.outside(run, p) || (ran && City.noRun(run, p))) return '';
-    const plan = ran ? City.runPlan(run, p) : null;
+    const plan = ran ? City.runPlan(run, p) : null,
+      from = City.pos(run).slice(),
+      d0 = City.days(run);
     City.spend(run, t);
     for (let i = 0; i < t; i++) (run.dayLog || (run.dayLog = [])).push(ran ? { k: 'trip', label: 'Run' } : { k: 'trip', label: 'Trip' });
     City.moveTo(run, p);
+    City.note(run, from, d0);
     const where = `${REGIONS[City.loc(run)].name} (${t} day${t > 1 ? 's' : ''})`;
     return ran ? `Ran to ${where}: ${Training.runTrip(run, plan)}` : `Travelled to ${where}.`;
   },

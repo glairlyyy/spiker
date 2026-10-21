@@ -75,7 +75,7 @@ Accept: tests — clock monotonic through a week, night on the last day; ui-smok
 QA: career run → a week spent day by day; screenshots dawn / noon / night.
 Result: `MapModel.weekTime` / `clock` / `span` / `time`, `MapView.phase()` from CW.lock → map3d `setPhase(fn)`; walk share by the avatar's progress along its road (holds when stopped); a trip of n days runs n − 1 nights; never runs back. map3d `skyAt` (CLOCK.keys) + `nightLayer` (2 draw calls at night: ~1.6k window glows, 180 lamps, 9 floodlit courts; 0 by day). Frame time (swiftshader, contended, 200 m): base 1300–2120 ms vs 1830–2010 ms (noise ± 40 %; +2 calls, +20k tris). Tests: clock monotonic, night on day 7, 3-day trip; ui-smoke night step. QA t332-dawn/noon/evening/night(-far). Deviation: one commit for both tasks.
 
-### [ ] T-333: Encounters on the road
+### [x] T-333: Encounters on the road
 Agent: E
 Spec: §4.37 3          Goldens: unchanged          Save: no change (lazy `run.enc`)
 Goal: a walk that passes near someone who matters stops once (by hash) with a small card: a circle member (Talk / walk on), a rival crew
@@ -91,9 +91,9 @@ Steps:
 3. avatar3d: stop at the point, resume on walk on; the card in the action lock (actLock) with hotkeys.
 Accept: tests — deterministic, at most one per trip, the setting obeyed, each answer does its thing; `npm run career` unchanged (the bot never stops).
 QA: career run → a trip past a circle member; the card; walk on.
-Result:
+Result: js/career/encounter.js (Encounter) + js/data/encounter.js (ENC, lines, `met_road` +2); City.last noted by City.go / travelTo, read by the map's four trip actions only; the card = the dialogue box over the map (face · act at place, their line by behaviour / crew voice / the street; 1–n, Space walks on; talk shows the diary line), challenge / join / an arc answer leave the road and play as from their own cards; avatar3d `WALK` halts the walk at the stop (a second leg, its own ramp) — or the card meets you on arrival when the map can't halt; Settings › Road stops (KEYS.enc). Fallback until T-331: the floor + the circle's plans + HQs + the battle. 5 tests (tests/encounter.test.js); career bot unchanged (casual 69.5 / 85.0, good 77.7 / 92.9 — identical to HEAD); QA t333-card / t333-talked (held mid-walk).
 
-### [ ] T-335: Effort — route pick and the focus press
+### [x] T-335: Effort — route pick and the focus press
 Agent: E
 Spec: §4.37 4          Goldens: unchanged          Save: no change
 Goal: a trip may offer a second route (a short cut through the hot border with a street-fight chance, or past your circle with an
@@ -103,9 +103,9 @@ Do not: punish skipping (× 1 is the floor); let effort exceed + 10 % of a day's
 Accept: tests — the press caps at × 1.1, skipping = × 1; the short cut's fight chance by hash; career bot: baseline (no effort) unchanged,
 `good` with the press always hit reported as a separate line.
 QA: career run → a trip with two routes; a drill with the press hit and missed.
-Result:
+Result: City.alt (past the hot border's battle or a circle member's place; same trip days, ≤ 1.5× the road's cost or + 220; display + its stop only — days, Run gains, arrival stay the safe road's), route row + R on the place card, ribbons in avatar3d (safe ink, short cut warn); City.capture / City.focus: Space on the beat (ENC.focus.win 0.55–0.8 of 1.8 s) → floor(xp × 0.1) per stat once; miss / skip / off → × 1. Bot `focus` line (good + always hit): Y1 78.2 · Y2 93.2 (good 77.7 / 92.9). Ring and hint in inline token styles (no CSS file listed). QA t335-route-short / t335-focus-ring / t335-done-hit.
 
-### [ ] T-334: Island sound
+### [x] T-334: Island sound
 Agent: E
 Spec: §4.37 5          Goldens: unchanged          Save: no change
 Goal: on the map, synthesized ambience by the district under the camera (harbor, market, courts, the Spine's wind, night insects by the
@@ -114,7 +114,7 @@ Files: js/audio/ambience.js (new), js/audio/sfx.js (shared context / bus only), 
 Do not: download or add audio files; play on the title screen; keep nodes running off the map (stop and free them).
 Accept: ui-smoke: the map opens and closes with no page errors and no AudioContext left running; a short QA recording note per district.
 QA: career run → pan the map across three districts; walk a trip.
-Result:
+Result: js/audio/ambience.js (Ambience): a bus on SND.master, looped sea / murmur / wind noise + an AM insect tone, one-shot thuds / gulls / footsteps (WALK.onStep) / hub button clicks; 200 ms mix by the camera's ground point; stops with the map (every node stopped + disconnected, the context suspended unless a match runs); SND.on mutes; sfx.js untouched (its SND.ctx / master / noise are enough). Settings › Sound. QA mix: Harbor Gym sea 0.57 · gulls 0.79 · murmur 0.9 · thuds 0.37; Sand Courts sea 0.49 · thuds 0.4; the shrine wind 0.25; Wei gym murmur 1; night (last day) insects 0.4, murmur 0.35; ui-smoke: 15 nodes → 0, context suspended.
 
 ### [ ] T-340: Interact with anyone you see — the figure menu
 Spec: §4.37 7          Goldens: unchanged          Save: no change (lazy `run.enc`)
