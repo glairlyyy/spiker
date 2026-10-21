@@ -225,7 +225,7 @@ Accept: tests — LOD picks the nearest on-screen cap, Fast keeps capsules; ui-s
 QA: career run → the map near the Wei gym, a crew at an HQ, zoomed in / out.
 Result:
 
-### [ ] T-342: Buildings and streets with detail
+### [x] T-342: Buildings and streets with detail
 Agent: B
 Spec: §4.39 Buildings          Goldens: unchanged          Save: no change
 Goal: facades (windows, doors, shop fronts, awnings, signs by district, balconies, roof edges, AC units, Wu water tanks, Shu tiled roofs),
@@ -234,7 +234,7 @@ Files: js/map3d/town3d.mjs, js/map3d/kit3d.mjs, js/map3d/map3d.mjs (`NIGHT` / `n
 Do not: change lots, footprints or heights (window glows and gameplay read them); one mesh per building (merge / instance by kind).
 Accept: draw calls and triangles before / after reported; night windows still line up; Fast unchanged; ui-smoke green.
 QA: career run → Wei centre, Wu harbour, Shu village by day and night.
-Result:
+Result: kit3d "The detailed look": `facade(lot, i)` = the one window layout (town3d's panes and nightLayer's glows; lit panes glow as rectangles via `NIGHT_U`), `buildLot` (LOOK per kind × district style: parapets, roof AC, stair houses, antennas, Wu tanks; gable / hip / lean-to / stepped roofs — Shu clay tiles + ridge caps, terracotta, tin; balconies, wall AC, doors and shop fronts + awnings + signs toward the camera), canvas wall / window / roof textures (`detailMats`), `lampSpots` (= the old lamp row, tested), `lampPost` / `floodTower` / `streetProp` (benches, bins, bus stops between main-road lamps, clear of lots). town3d: 3 merged meshes (~1.27k items, walls 100k + glass 18k + roofs 2k tris) for the 4 instanced shapes; Fast (G.gfx) = today's instances and night code. Night: 2596 window glows (was 1624), 218 posts / towers (1 mesh, day and night). Draw calls 186 → 186 by day, 188 → 188 at night; triangles (renderer.info) 1.13M → 1.24M; frame (swiftshader, same page, Wei 140 m) detailed 1.08–1.68 s vs Fast 1.03–1.47 s. Tests: 3 new in map3d.test.js; ui-smoke 21/21. QA (qa/): t342-before-* / t342-after-* (wei, wu, shu × day / night × close / mid, overview), t342-fast-*. Deviations: map3d.mjs gets a second kit3d import line inside the NIGHT block; town3d reads G.gfx itself at sync (map3d's town.sync has no Fast flag).
 
 ### [ ] T-343: Land, water and sky
 Agent: N
