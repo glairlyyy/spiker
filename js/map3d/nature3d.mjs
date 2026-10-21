@@ -159,8 +159,7 @@ const HI = {
           [0, 4.3, 0, 1.9],
           [1.2, 3.8, 0.4, 1.4],
           [-1.1, 3.9, -0.3, 1.45],
-          [0.2, 3.7, -1.2, 1.3],
-          [-0.2, 5.3, 0.3, 1.3]
+          [0.1, 4.9, -0.6, 1.35]
         ],
         '#4f8a3e',
         2.4,
@@ -174,8 +173,7 @@ const HI = {
         [
           [0, 3.9, 0, 1.7],
           [1.0, 3.5, 0.4, 1.25],
-          [-1.0, 3.6, -0.3, 1.3],
-          [0.1, 4.7, 0.2, 1.15]
+          [-0.6, 4.4, -0.5, 1.3]
         ],
         '#eaa6bd',
         2.3,
@@ -197,12 +195,12 @@ const HI = {
         ),
         (x, y) => 0.78 + 0.3 * (Math.floor(y * 2.2) % 2) * 0.6
       ),
-      fronds = [0, 1, 2, 3, 4, 5, 6, 7, 8].map(i => {
+      fronds = [0, 1, 2, 3, 4, 5, 6, 7].map(i => {
         const L = 3.4 + 0.5 * vh(i, 1, 2),
           lift = 0.9 + 0.5 * vh(i, 3, 4),
-          a = (i * Math.PI * 2) / 9 + 0.3 * vh(i, 5, 6),
+          a = (i * Math.PI * 2) / 8 + 0.3 * vh(i, 5, 6),
           pos = [],
-          N = 6,
+          N = 5,
           pt = (s, side) => {
             const wdt = 0.8 * Math.pow(Math.sin(Math.PI * Math.min(1, s * 1.05)), 0.7) + 0.05,
               x = s * L,
@@ -401,6 +399,7 @@ const richMat = (U, double) => {
 
 export function createNature(scene, heightAt) {
   const U = { t: { value: 0 } },
+    shadowMat = new THREE.MeshBasicMaterial(),
     flat = () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }),
     meshes = {},
     D = new THREE.Object3D(),
@@ -408,12 +407,15 @@ export function createNature(scene, heightAt) {
   let key = null,
     fogKey = null,
     low = false,
+    shadows = {}, // shape → its shadow proxy (detailed look)
     mat = flat,
     placed = {}, // shape → [{ x, z, tint: [r, g, b] }] in instance order
     wild = [], // { k, x, z, r, up, ph, sp, mesh, i }
     life = {};
 
   const clear = () => {
+    for (const m of Object.values(shadows)) (scene.remove(m), m.geometry.dispose());
+    shadows = {};
     for (const m of [...Object.values(meshes), ...Object.values(life)]) {
       scene.remove(m);
       m.geometry.dispose();
@@ -484,6 +486,19 @@ export function createNature(scene, heightAt) {
       m.receiveShadow = true;
       meshes[shape] = m;
       scene.add(m);
+      // the detailed look: the shadow is cast by the Fast shape (layer 1: only the sun's shadow camera draws it) — a few
+      // percent of the triangles for the same silhouette at shadow-map resolution
+      if (!low && m.castShadow) {
+        const px = new THREE.InstancedMesh(SHAPE[shape](), shadowMat, list.length);
+        px.instanceMatrix.copy(m.instanceMatrix);
+        px.castShadow = true;
+        px.receiveShadow = false;
+        px.layers.set(1);
+        px.userData.proxy = true;
+        m.castShadow = false;
+        shadows[shape] = px;
+        scene.add(px);
+      }
     }
     // the animals: one mesh per body kind, moved in tick
     wild = animals.map(a => {
@@ -573,6 +588,7 @@ export function createNature(scene, heightAt) {
     count: () => Object.values(placed).reduce((n, l) => n + l.length, 0) + wild.length,
     dispose() {
       clear();
+      shadowMat.dispose();
       placed = {};
       wild = [];
     }

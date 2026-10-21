@@ -641,6 +641,13 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
    `model.land.wild` (`MapModel.wild`: the animals' loop centres from NATURE.life anchors). One InstancedMesh per shape (9: pine,
    broad, blossom, palm, rock, bush + tea, tuft + dune grass, bamboo, log) + 3 animal bodies (bird, beast, heron); vertex tones ×
    instance tint × the fog's dimming; animals move in tick. ~1.9k instances, ~45k triangles.
+   `sync(model, low)`: the Fast setting keeps these flat shapes (`SHAPES.flat`); the detailed look (T-343) builds `SHAPES.hi` —
+   pine tiers (jittered lathes), broadleaf / blossom crowns of smooth jittered blobs on a branched trunk, arched palm fronds on a
+   curved ringed stem with coconuts, lumpy bushes and rocks, 7-blade tufts — with vertex tones (dark under / inside, light on top)
+   and a `leaf` attribute that the detailed material (`richMat`) reads for a 3D value-noise mottle and the wind sway (vertex shader,
+   `WIND`, by height and instance position; uniform time from tick). A few extra tufts ring each plant and rock (`GRASS`, hashed
+   offsets). Shadows come from the Fast shape as a shadow-only proxy on layer 1 (the sun's shadow camera enables it, the view
+   camera never draws it). Draw calls +≤ 5 proxies.
    The town layer is `js/map3d/town3d.mjs` (`createTown(scene, heightAt)` → `{ sync(model), dispose() }`, display only, no randoms):
    reads only `model.land.roads / lots / landmarks / districts` and `model.fog`. Ground use (`model.land.ground`, from `GROUND`: circles or
    rings in map units) is painted into the terrain's vertex colours by map3d.mjs `buildTerrain` (`GROUND_TINT`: two tones, straight bands at a
@@ -699,6 +706,33 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   roads, every 22 m, alternating sides) and court floodlights (`model.floods` = `MapModel.floods`: explored court landmarks +
   venues, four towers each), plus one InstancedMesh of additive ground pools (lamps, courts); fog-dimmed (to 40 %, so lit towns still show in the dark); hidden when `lit` ≈ 0;
   rebuilt when the lots, fog, floods or the setting change. Fast setting: ⅓ of the windows, no lamp pools, `LIFE.low` figures.
+
+### The map's detailed look (spec §4.39 Land, T-343)
+
+- `map3d.mjs` `richLook(renderer, scene, cam, sun, hemi)` → `{ terrainMat, sea, on, set(v, water), setTerrain(T), resize(w, h),
+  step(dt, t, lit, tod, view, gfx), render(), info(), dispose() }`; tunables in the exported `LOOK`. `setLow(true)` (the Fast setting,
+  `G.gfx === 'fast'`) = `set(false)`: no tone mapping, PCFSoft shadows at the fixed box, the Phong sea, the flat terrain material
+  (`flatMat`), `renderer.render` straight to the canvas — the look before T-343. Detailed: ACES (exposure by `lit`), an
+  `EffectComposer` (RenderPass into a half-float MSAA target → GTAOPass on High, lazy-imported → UnrealBloomPass, on only while
+  `lit` > 0, threshold falling with `lit` so the night layer's glows bloom → OutputPass), PCF shadows with `radius` whose box
+  follows the zoom (`LOOK.shadow`, 4096 map on High), dynamic resolution (frame-time average, steps of 0.05 down to the setting's
+  floor, like r3d `adaptRes`). `renderer.info.autoReset` is off: `draw()` resets it, so `info()` counts the whole frame.
+- **Sky**: three's `Sky` (Preetham; its sun disc removed — the directional light is the sun) at the clock's real sun (`tod`,
+  under the horizon at night), baked to `scene.environment` with PMREM when the sun has moved (≥ `LOOK.sky.moved`, ≤ every
+  0.25 s); `environmentIntensity` by the sun's height. The map camera never sees the sky: it is the light and the reflections.
+  `skyAt` still drives the sun, the hemisphere (× `LOOK.hemi`) and the night `lit`.
+- **Terrain**: the same mesh; `buildTerrain` adds `gnd` (sand, rock, field rows, wet), `gdir` (rows' direction; none = contour
+  rows), `gpav` (paving) per vertex, and `shore` (RGBA bytes per vertex: height −6…+2 m, distance out to sea 0…60 m). The
+  terrain material (onBeforeCompile) mixes per weight: grass grain and dry patches, sand ripples, rock with cracks (plus slope
+  rock), furrowed fields, wet sheen (low roughness), 3 m paving slabs; one generated tileable detail texture (`lookTextures`:
+  geo3d `tileNoise`, no downloads), sampled at two scales plus a 170 m macro patch; bump by screen derivatives (`lkBump`).
+  The vertex colours (with the fog) are still the base.
+- **Wei's ground** (`WEI_GROUND`, owner 2026-10-21, both looks): a calm two-tone lawn replaces the Wei biome's grey / green
+  patchwork; the urban districts (city / works / oldtown styles) are paved, lighter toward the core; the ring suburbs only as
+  an apron round each lot (rastered once per terrain).
+- **Sea**: a standard material (env reflection, sun glint, shadows) with two scrolling generated normal maps, colour from
+  shallow turquoise to deep blue by depth and distance (the `shore` texture over the island box; open sea beyond), foam at the
+  waterline and in bands rolling in.
 
 ## Possession paths and touch counts
 

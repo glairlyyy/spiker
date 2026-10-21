@@ -69,7 +69,8 @@ const WEI_GROUND = {
   patch: 45, // lawn tone patches (m)
   edge: [-8, 14], // the paving's soft edge (m, signed distance into the district)
   core: 70, // the core's full lightness this far in (m)
-  suburb: 0.3, // how far the ring suburbs are paved (0–1; the cores 0.9)
+  suburb: 0.5, // the ring suburbs (k < 0.9): paved only round their lots, apron m wide (the cores: k 0.9 everywhere)
+  apron: 5,
   pave: { city: ['#7f817e', '#a19f98'], works: ['#6f6e6a', '#83807a'], oldtown: ['#857d72', '#9f9483'] }
 };
 /**
@@ -134,6 +135,8 @@ function buildTerrain(model) {
           C: new THREE.Color(WEI_GROUND.pave[d.style][1])
         };
       }),
+    // the paving round the lots of Wei's ring suburbs (an apron per lot, soft over WEI_GROUND.apron m): raster per terrain vertex
+    apron = new Float32Array((nx + 1) * (nz + 1)),
     lawnA = new THREE.Color(WEI_GROUND.lawn[0]),
     lawnB = new THREE.Color(WEI_GROUND.lawn[1]),
     grounds = (L.ground || [])
@@ -260,6 +263,19 @@ function buildTerrain(model) {
       return base * smooth(0, BEACH, d);
     };
   for (const q of pads) q.h = landH(q.x, q.z, edgeDist(q.x, q.z, coast));
+  for (const l of L.lots || []) {
+    const x0 = l.at[0] * MAP_M,
+      z0 = l.at[1] * MAP_M,
+      r = l.size * MAP_M * 0.75,
+      R = r + WEI_GROUND.apron;
+    if (!paved.some(q => q.k < 0.9 && inside(x0, z0, q.poly))) continue;
+    for (let j = Math.max(0, Math.floor((z0 - R) / sz)); j <= Math.min(nz, Math.ceil((z0 + R) / sz)); j++)
+      for (let i = Math.max(0, Math.floor((x0 - R) / sx)); i <= Math.min(nx, Math.ceil((x0 + R) / sx)); i++) {
+        const k = j * (nx + 1) + i,
+          v = 1 - smooth(r, R, Math.hypot(i * sx - x0, j * sz - z0));
+        if (v > apron[k]) apron[k] = v;
+      }
+  }
   for (let j = 0; j <= nz; j++)
     for (let i = 0; i <= nx; i++) {
       const x = i * sx,
@@ -346,8 +362,9 @@ function buildTerrain(model) {
           const sdq = inside(x, z, q.poly) ? edgeDist(x, z, q.poly) : -edgeDist(x, z, q.poly),
             u = smooth(WEI_GROUND.edge[0], WEI_GROUND.edge[1], sdq);
           if (u <= 0) continue;
-          c.lerp(tintC.copy(q.E).lerp(q.C, smooth(0, WEI_GROUND.core, sdq)), q.k * u);
-          wP = Math.max(wP, q.k * u);
+          const pk = q.k < 0.9 ? 0.85 * apron[k] : q.k; // suburbs: only round the lots
+          c.lerp(tintC.copy(q.E).lerp(q.C, smooth(0, WEI_GROUND.core, sdq)), pk * u);
+          wP = Math.max(wP, pk * u);
           wS *= 1 - u;
           wR *= 1 - u;
         }
@@ -429,6 +446,7 @@ function lightScene(renderer, scene) {
   sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
   Object.assign(sun.shadow.camera, { left: -SHADOW_BOX, right: SHADOW_BOX, top: SHADOW_BOX, bottom: -SHADOW_BOX, near: 1, far: 500 });
   sun.shadow.bias = -0.0006;
+  sun.shadow.camera.layers.enable(1); // (the detailed look's shadow-only proxies, nature3d)
   scene.add(sun, sun.target);
   const water = new THREE.Mesh(
     new THREE.PlaneGeometry(6000, 6000).rotateX(-Math.PI / 2),
@@ -477,10 +495,11 @@ function skyAt(keys, tod, sun, hemi, scene) {
  * bloom while the night lights are on, GTAO on the High setting; soft PCF shadows whose box follows the zoom; dynamic
  * resolution. No downloads, no randoms (fixed-hash noise).
  */
-const LOOK = {
-  exposure: 1,
+export const LOOK = {
+  exposure: [1, 1.3], // ACES exposure by day → with the night lights on (lit)
+  samples: 4, // MSAA samples of the post's render target (the canvas's own antialias is bypassed)
   env: 0.3, // the sky's light on materials at noon (× the sun's height; none at night)
-  hemi: 0.7, // the clock's hemisphere light × this (the sky adds the rest)
+  hemi: [0.7, 1.5], // the clock's hemisphere light × this by day → at night (by day the sky adds the rest)
   sky: { turbidity: 5, rayleigh: 1.4, mie: 0.004, g: 0.8, every: 0.25, moved: 0.015 },
   bloom: { strength: 0.85, radius: 0.5, day: 3, night: 0.8 }, // threshold from day (nothing blooms) to night
   shadow: { radius: 3, box: [40, 360], k: 0.85, map: 2048, mapHi: 4096 },
@@ -698,7 +717,7 @@ function richLook(renderer, scene, cam, sun, hemi) {
     pr = 1;
   const dyn = { res: 1, ema: 16.7, t: 0 };
   const makeComposer = () => {
-    const rt = new THREE.WebGLRenderTarget(w * pr, h * pr, { type: THREE.HalfFloatType, samples: 4 });
+    const rt = new THREE.WebGLRenderTarget(w * pr, h * pr, { type: THREE.HalfFloatType, samples: LOOK.samples });
     composer = new EffectComposer(renderer, rt);
     composer.setPixelRatio(pr);
     composer.setSize(w, h);
@@ -763,7 +782,7 @@ function richLook(renderer, scene, cam, sun, hemi) {
       ready = true;
       on = v;
       renderer.toneMapping = v ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
-      renderer.toneMappingExposure = v ? LOOK.exposure : 1;
+      renderer.toneMappingExposure = v ? LOOK.exposure[0] : 1;
       renderer.shadowMap.type = v ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
       sun.shadow.radius = v ? LOOK.shadow.radius : 1;
       sun.shadow.normalBias = v ? 0.04 : 0;
@@ -772,6 +791,11 @@ function richLook(renderer, scene, cam, sun, hemi) {
       water.visible = !v;
       if (v && !composer) makeComposer();
       if (!v) {
+        // the Fast look's fixed shadow box and map (lightScene)
+        const sc = sun.shadow.camera;
+        Object.assign(sc, { left: -SHADOW_BOX, right: SHADOW_BOX, top: SHADOW_BOX, bottom: -SHADOW_BOX, near: 1, far: 500 });
+        sc.updateProjectionMatrix();
+        sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
         dyn.res = 1;
         pr = Math.min(devicePixelRatio || 1, 2);
         sizeAll();
@@ -793,6 +817,7 @@ function richLook(renderer, scene, cam, sun, hemi) {
       SKYDIR.set(1.25 * Math.cos(a), Math.sin(a), 0.05 + 0.3 * Math.max(0, Math.sin(a))).normalize();
       bakeSky(dt, SKYDIR);
       scene.environmentIntensity = LOOK.env * smooth(-0.05, 0.35, SKYDIR.y);
+      renderer.toneMappingExposure = lerp(LOOK.exposure[0], LOOK.exposure[1], lit);
       bloom.enabled = lit > 0.02;
       bloom.threshold = lerp(LOOK.bloom.day, LOOK.bloom.night, lit);
       bloom.strength = LOOK.bloom.strength * lit;
@@ -1209,7 +1234,8 @@ export function create(onIdle) {
     lastWalk = null, // model.time.walk[0] last seen: a change = a new action
     hoverId = null,
     ptr = null, // the pointer over the canvas { x, y, cx, cy } (canvas px, client px) — picked in the frame
-    pickN = 0;
+    pickN = 0,
+    held = null; // QA: a time of day the clock holds (holdClock)
 
   // camera and input (mapcam3d.mjs): it reads the parts below as they appear
   const C = createMapCam(cam, canvas, sun, () => ({ terrain, mesh, avatar, cur, on: onW, cw, ch }));
@@ -1255,6 +1281,7 @@ export function create(onIdle) {
   const clockStep = dt => {
     const T = cur && cur.time;
     if (!T) return;
+    if (held !== null) return void (tod = held); // (QA: holdClock)
     const ph = typeof phase === 'function' ? phase() : phase,
       acted = T.walk[1] > T.walk[0] + 1e-6;
     let aim = T.idle,
@@ -1344,7 +1371,7 @@ export function create(onIdle) {
       clock += dt;
       clockStep(dt);
       lit = cur && cur.time ? skyAt(cur.time.keys, tod, sun, hemi, scene) : ((hemi.intensity = 0.9), 0);
-      if (look.on) hemi.intensity *= LOOK.hemi; // (the sky's environment light adds the rest)
+      if (look.on) hemi.intensity *= lerp(LOOK.hemi[0], LOOK.hemi[1], lit); // (by day the sky's environment light adds the rest)
       if (C.view) life.ringScale((14 * 2 * C.view.d * Math.tan((cam.fov * Math.PI) / 360)) / (ch || 1) / 0.7); // a ring ≥ ~14 px
       life.tick(dt, clock, tod);
       hoverStep();
@@ -1474,6 +1501,10 @@ export function create(onIdle) {
     setClock(w) {
       wt = w;
       tod = w - Math.floor(w);
+    },
+    /** Dev / QA: hold the time of day at t (0–1) whatever the phase asks; null lets the clock run again. */
+    holdClock(t) {
+      held = t === null || t === undefined ? null : t;
     },
     /** Dev / QA: the mean time (ms) to draw one frame, n frames drawn back to back and waited for (a 1-px read). */
     bench(n = 5) {
