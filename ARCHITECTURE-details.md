@@ -1076,3 +1076,49 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   holds the rally through `Dir.talk`), then `cardsDuoCut` the first time each duo card is slotted with its pair on court (the hype
   banner `showBanner` "Mint × You" + `showSay` with DUO_SAY). `faced_ex` (Team.matched): each ex who played against you (Agent T owns
   the kind; data/team.js defines a stand-in only while it is missing).
+
+## Encounters, effort, island sound (spec §4.37 3–5, T-333–T-335)
+
+- **The trip** — `City.go` / `City.travelTo` note `City.last = { from, to, day }` (not saved; `day` = days used before it). The map's
+  actions (`mapGo`, `mapStretch`, `mapTravel`, `mapScout` in career-map.js) clear it first (`roadStart`), run the rules, then
+  `roadAfter`: `Encounter.on(run, { …City.last, pts }, { via })` on the road walked (City.route, or the short cut's pts), counted at once
+  (`Encounter.open` → `run.enc = { w, n, met }`), and tell the walk where to halt (`WALK.stop`) and which road to take (`WALK.via`).
+  Fight results and other `City.go` callers never stop: only those four read `City.last`.
+- **Encounter.on** (pure, no R()): candidates from `Encounter.near` — `MapModel.lifePeople` (T-331) when it exists, else today's floor
+  (`MapModel.life().mates`) and the circle's plans (`run.people[id].plan.at`, hashed offset, fogged places skipped); an open arc beat's
+  person = `arc`, a circle member = `circle`, `Fight.clashSite` = `battle`, each known rival HQ that would take a challenge = `crew`.
+  Kept: within `ENC.r` of the road, not within `ENC.min` of either end, the setting's kinds (`ENC.stops[Encounter.pref()]`; the short
+  cut's own via under any setting but never), not met this week, `ENC.week` a week; then `hstr('enc|pseed|wk|day|key') < ENC.p[kind]`
+  (`ENC.alt.p` for the via); the first by `ENC.rank`, then nearest the start. `Encounter.force` (a key; UI smoke / QA only) skips the
+  hash and the distance (it halts mid-road). No stop with an event open or in a match / cup week.
+- **Answers** (`Encounter.answer`): talk → `Rel.add(…, 'met_road')` (+2, Friendly × 1.5 by REL.behave) and the diary line; walk → nothing;
+  challenge → `Fight.offer` at no stake → its fixture or the refusal (a day spent, as at the HQ); join → `Fight.clash(side)`; help /
+  refuse → `Team.answer`. The card (`encLayer`, the dialogue box over the map: face, name · act at place, their line by headline
+  behaviour / the crew's faction voice / the street; answers 1–n with cost → result, Space walks on) — talk shows the diary line, then
+  Space walks on; challenge / join / an arc's answer leave the road (`encLeave`: the walk resumes, the lock ends) and play as from
+  their own cards (`mapChallenge`, `mapClash`, `arcAnswer`).
+- **The walk** (avatar3d.mjs `WALK`, imported by career-map.js — the same module instance map3d uses): `setTarget` splits the road at
+  `WALK.stop` into two legs (each its own speed ramp), holds at the end of the first (`WALK.held`, `onHold`; `busy()` stays true) until
+  `WALK.go()`; `WALK.via` replaces the road for a walk to the same point; `WALK.routes` = the preview ribbons (safe road ink, short cut
+  warn; the picked one brighter), rebuilt only when they change; `WALK.onStep` fires per footfall. `lockWalk` (career-map.js) opens
+  phase `enc` on the hold — or on arrival when the map can't halt (no WebGL, a short walk); `roadClear` (lockEnd) clears stop / via.
+- **Short cut** — `City.alt(run, to)`: past `Encounter.vias` (the open battle while you may fight; your circle's places), the same trip
+  days as the safe road (never more), cost ≤ max(safe × `ENC.alt.slack`, safe + `ENC.alt.extra`), only when the safe road doesn't pass it
+  already. Display + its stop only: days, Run gains (City.runPlan) and arrival are the safe road's. `roadSync` (each card / mount) caches
+  it per selection + position + days + week + setting and resets the pick to the safe road; the place card's route row (`routeRow`,
+  injected into spotPanel's card) and R toggle it.
+- **Focus press** — `City.capture` (orderDay, pointDay) notes the order day's EXP by stat (`Training.tally`) in `City.dayXp`;
+  `City.focus(run, hit)`: hit → `Training.addXp(k, floor(xp × ENC.focus.k))` per stat, once; miss / skip → nothing. The cut-in (phase
+  `spin`, `ENC.focus.ms` when on and the day gave EXP) draws a ring closing on a target (`focusRing`, inline token styles); Space inside
+  `ENC.focus.win` → hit, the result rows re-read (`fx.redo`) + a Focus row. Off in Settings (`KEYS.focus`).
+- **Island sound** (js/audio/ambience.js `Ambience`): `start()` from mapMount (idempotent: audioInit, a bus → `SND.master`, three looped
+  noise layers + the insects' AM tone), a 200 ms tick mixes by `weights(run, p, d, clock)` at the camera's ground point
+  (`MapView.m3.info().view`): sea (coast distance), gulls (the harbor district; a little along the coast), murmur (district style), thuds
+  (courts and venues within 220), wind (relief, Shu, wide views), insects (night: `MapModel.clock` ≥ 0.78, fallback the week's last day);
+  zoomed out damps the local layers. One-shots (thuds, gulls, footsteps from `WALK.onStep`, a soft click on hub buttons) free themselves.
+  The tick stops it once `#mapwrap` is gone or the view isn't the career: every node stopped and disconnected, the listeners removed,
+  the context suspended unless a match uses it. Follows `SND.on` (bus gain) and the volume (the master bus). Math.random only.
+- **Settings** (title › Settings, menu.js `islandSettings`): Road stops (`KEYS.enc`: friends · all · never), Focus press (`KEYS.focus`),
+  Sound (`toggleSound`).
+- **Career bot**: `casual` / `good` never stop or press (the baseline); `focus` = good + `City.focus(run, true)` after every day
+  (`both` prints it as one extra line).
