@@ -97,3 +97,58 @@ test('map3d: fitView frames every point, clamps the distance', () => {
     'far apart: clamped to the maximum'
   );
 });
+
+// ---------- T-343: the detailed look's pure parts (generated textures, nature shapes) ----------
+test('map3d: tileable noise and its normal map (the generated textures)', () => {
+  const geo = require('../js/map3d/geo3d.mjs');
+  const n = 32,
+    a = geo.tileNoise(n, 4, 3, 1),
+    b = geo.tileNoise(n, 4, 3, 1);
+  eq(a.length, n * n, 'n × n values');
+  assert(
+    a.every((v, i) => v === b[i]),
+    'fixed: the same seed gives the same image (no randoms)'
+  );
+  assert(
+    a.every(v => v >= 0 && v <= 1),
+    'values in 0..1'
+  );
+  assert(Math.max(...a) - Math.min(...a) > 0.2, 'it varies');
+  // tileable: the period-wrapped noise one cell past the edge equals the start
+  eq(geo.vnoise(4.25, 1.5, 4).toFixed(6), geo.vnoise(0.25, 1.5, 4).toFixed(6), 'vnoise wraps with its period');
+  eq(geo.vnoise(3.3, 2.2).toFixed(6), geo.vnoise(3.3, 2.2, 0).toFixed(6), 'no period: the plain noise (terrain heights unchanged)');
+  let seam = 0,
+    inner = 0;
+  for (let y = 0; y < n; y++) ((seam += Math.abs(a[y * n] - a[y * n + n - 1])), (inner += Math.abs(a[y * n + 1] - a[y * n])));
+  assert(seam < inner * 2 + 0.5, 'no seam across the wrap (left edge vs right edge ~ neighbours)');
+  const N = geo.heightToNormal(new Float32Array(16).fill(0.5), 4);
+  eq(Array.from(N.slice(0, 4)).join(','), '128,128,255,255', 'a flat height → straight up');
+  const ramp = new Float32Array(16).map((_, i) => (i % 4) / 4),
+    R = geo.heightToNormal(ramp, 4, 2);
+  assert(R[4 + 0] < 128, 'a slope up along x tilts the normal toward −x');
+});
+test('map3d: nature shapes — Fast unchanged, detailed shapes carry the leaf flag within budget', () => {
+  const { SHAPES } = require('../js/map3d/nature3d.mjs');
+  const tris = g => g.attributes.position.count / 3;
+  const FLAT = { pine: 22, broad: 30, blossom: 30, palm: 70, rock: 20, bush: 20, tuft: 9, bamboo: 48, fence: 60, log: 12 };
+  for (const [k, t] of Object.entries(FLAT)) {
+    const g = SHAPES.flat[k]();
+    eq(tris(g), t, `Fast ${k}: today's shape`);
+    assert(!g.attributes.leaf, `Fast ${k}: no leaf attribute`);
+  }
+  for (const k of Object.keys(FLAT)) {
+    const g = SHAPES.hi[k]();
+    assert(
+      ['position', 'normal', 'color', 'leaf'].every(a => g.attributes[a]),
+      `detailed ${k}: position, normal, colour, leaf`
+    );
+    assert(tris(g) <= 450, `detailed ${k}: ≤ 450 triangles (${tris(g)})`);
+    assert(g.attributes.position.array.every(Number.isFinite), `detailed ${k}: finite`);
+  }
+  const p1 = SHAPES.hi.pine(),
+    p2 = SHAPES.hi.pine();
+  assert(
+    p1.attributes.position.array.every((v, i) => v === p2.attributes.position.array[i]),
+    'hashed jitter: the same shape every time'
+  );
+});

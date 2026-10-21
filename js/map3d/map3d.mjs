@@ -19,7 +19,27 @@ import { createTown } from './town3d.mjs';
 import { createNature } from './nature3d.mjs';
 import { createMapCam } from './mapcam3d.mjs';
 import { KIT } from './kit3d.mjs';
-import { MAP_M, clamp, lerp, smooth, fogFactor, inside, edgeDist, sideDist, hstr, ribbon, bannerArrays } from './geo3d.mjs';
+import { Sky } from 'three/addons/objects/Sky.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import {
+  MAP_M,
+  clamp,
+  lerp,
+  smooth,
+  fogFactor,
+  inside,
+  edgeDist,
+  sideDist,
+  hstr,
+  ribbon,
+  bannerArrays,
+  vnoise,
+  tileNoise,
+  heightToNormal
+} from './geo3d.mjs';
 export { inside, edgeDist, sideDist }; // (the polygon maths live in geo3d.mjs; tests import them from here too)
 
 const CELL = 2, // terrain grid cell (m)
@@ -28,19 +48,6 @@ const CELL = 2, // terrain grid cell (m)
   SHADOW_MAP = 2048, // sun shadow map size (px)
   SHADOW_BOX = 120; // half-size of the sun's shadow frustum around the view (m)
 
-/** Fixed value noise: a hash of the lattice point, smoothly interpolated. */
-const lattice = (x, y) => {
-  let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263);
-  h = Math.imul(h ^ (h >>> 13), 1274126177);
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
-};
-const vnoise = (x, y) => {
-  const xi = Math.floor(x),
-    yi = Math.floor(y),
-    u = smooth(0, 1, x - xi),
-    v = smooth(0, 1, y - yi);
-  return lerp(lerp(lattice(xi, yi), lattice(xi + 1, yi), u), lerp(lattice(xi, yi + 1), lattice(xi + 1, yi + 1), u), v);
-};
 /** Ground tint per district style (blended in faintly: no extra draw call). */
 const DISTRICT_TINT = {
   city: '#8c8f96',
@@ -51,6 +58,19 @@ const DISTRICT_TINT = {
   terrace: '#8a7b5c',
   fishing: '#9a9172',
   works: '#7f7f84'
+};
+/**
+ * Wei's ground (owner, 2026-10-21: "the biome colour of Wei seems odd"): instead of the grey / green patchwork, a calm lawn
+ * between the districts and paving inside the urban ones — lighter and cleaner toward a district's core (wealth), darker
+ * at its edge, soft over `edge` m. Paved ground reads as concrete in the detailed look.
+ */
+const WEI_GROUND = {
+  lawn: ['#62894a', '#6d9150'],
+  patch: 45, // lawn tone patches (m)
+  edge: [-8, 14], // the paving's soft edge (m, signed distance into the district)
+  core: 70, // the core's full lightness this far in (m)
+  suburb: 0.3, // how far the ring suburbs are paved (0–1; the cores 0.9)
+  pave: { city: ['#7f817e', '#a19f98'], works: ['#6f6e6a', '#83807a'], oldtown: ['#857d72', '#9f9483'] }
 };
 /**
  * Ground use (spec §4.19a, model.land.ground): two tones and a band width (m) per kind; `contour` bands follow the height (terraces),
@@ -65,6 +85,20 @@ const GROUND_TINT = {
   quay: { a: '#a19e95', b: '#98958c', band: 6 },
   water: { a: '#3f7f95', b: '#3f7f95', band: 9 },
   quarry: { a: '#b6b0a2', b: '#a29c8e', band: 1.6, contour: true, step: 2.5, dig: 3 }
+};
+/**
+ * The detailed look's ground weights per ground-use kind (T-343): s = sand, r = rock / paving, f = field rows (rows: straight
+ * at the patch's hashed angle, else contour rows by height), w = wet (water sheen). Grass is what is left.
+ */
+const GROUND_LOOK = {
+  terrace: { s: 0, r: 0, f: 0.8, w: 0 },
+  paddy: { s: 0, r: 0, f: 0.5, w: 0.7, rows: true },
+  field: { s: 0, r: 0, f: 1, w: 0, rows: true },
+  park: { s: 0, r: 0, f: 0, w: 0 },
+  yard: { s: 0.1, r: 0.2, f: 0, w: 0, p: 0.6 },
+  quay: { s: 0, r: 0.2, f: 0, w: 0, p: 0.8 },
+  water: { s: 0, r: 0, f: 0, w: 1 },
+  quarry: { s: 0.2, r: 0.9, f: 0, w: 0 }
 };
 /** The island's height grid and vertex colours (world metres), from the model's land. */
 function buildTerrain(model) {
@@ -83,7 +117,25 @@ function buildTerrain(model) {
     river = L.relief ? L.relief.river : null,
     wu = w((L.regions.find(r => r.id === 'wu') || { poly: [] }).poly),
     dunes = L.dunes ? w(L.dunes) : [],
-    dist = L.districts ? L.districts.map(d => ({ poly: w(d.poly), tint: DISTRICT_TINT[d.style] })).filter(d => d.tint) : [],
+    dist = L.districts
+      ? L.districts.map(d => ({ id: d.id, poly: w(d.poly), tint: DISTRICT_TINT[d.style], style: d.style })).filter(d => d.tint)
+      : [],
+    paved = dist
+      .filter(d => WEI_GROUND.pave[d.style])
+      .map(d => {
+        const xs = d.poly.map(p => p[0]),
+          zs = d.poly.map(p => p[1]),
+          e = -WEI_GROUND.edge[0];
+        return {
+          ...d,
+          box: [Math.min(...xs) - e, Math.min(...zs) - e, Math.max(...xs) + e, Math.max(...zs) + e],
+          k: /ring/.test(d.id || '') ? WEI_GROUND.suburb : 0.9, // the ring suburbs: lawns with a little paving
+          E: new THREE.Color(WEI_GROUND.pave[d.style][0]),
+          C: new THREE.Color(WEI_GROUND.pave[d.style][1])
+        };
+      }),
+    lawnA = new THREE.Color(WEI_GROUND.lawn[0]),
+    lawnB = new THREE.Color(WEI_GROUND.lawn[1]),
     grounds = (L.ground || [])
       .filter(g => GROUND_TINT[g.kind])
       .map(g => {
@@ -127,16 +179,20 @@ function buildTerrain(model) {
     gravelC = new THREE.Color(BIO.gravel || '#a39a86'),
     bankC = new THREE.Color(BIO.bank || '#c2b58f'),
     bc = new THREE.Color(),
+    bio = { rock: 0, wei: 0 }, // the rock share of the last bioCol / biomeAt (the detailed look's ground weights, T-343)
     /** A biome's own colour at (x, z, height h): its two tones in soft patches; Shu climbs to rock grey. */
     bioCol = (b, x, z, h, out) => {
       const n = vnoise(x / (b.pal.patch || 20) + b.x, z / (b.pal.patch || 20));
       out.copy(b.A).lerp(b.B, b.id === 'wei' ? smooth(0.42, 0.58, n) : n);
-      if (b.R) out.lerp(b.R, smooth(b.pal.rock[0], b.pal.rock[1], h));
+      bio.rock = b.R ? smooth(b.pal.rock[0], b.pal.rock[1], h) : 0;
+      if (b.R) out.lerp(b.R, bio.rock);
       return out;
     },
     /** The ground colour from the biomes: majors weighted by a smoothstep across their edges, then the minors on top. */
     biomeAt = (x, z, h, out) => {
       let sum = 0,
+        wei = 0,
+        rk = 0,
         best = null,
         bestD = -Infinity;
       out.setRGB(0, 0, 0);
@@ -149,10 +205,14 @@ function buildTerrain(model) {
         out.r += bc.r * wgt;
         out.g += bc.g * wgt;
         out.b += bc.b * wgt;
+        rk += bio.rock * wgt;
+        if (b.id === 'wei') wei += wgt;
         sum += wgt;
       }
-      if (sum > 0) out.multiplyScalar(1 / sum);
-      else if (best) bioCol(best, x, z, h, out);
+      if (sum > 0) (out.multiplyScalar(1 / sum), (rk /= sum), (wei /= sum));
+      else if (best) (bioCol(best, x, z, h, out), (rk = bio.rock), (wei = best.id === 'wei' ? 1 : 0));
+      // Wei: a calm lawn in place of its patchwork (WEI_GROUND)
+      if (wei > 0) out.lerp(bc.copy(lawnA).lerp(lawnB, vnoise(x / WEI_GROUND.patch + 3.7, z / WEI_GROUND.patch)), wei);
       for (const b of minorsB) {
         const dx = x - b.x,
           dz = z - b.z,
@@ -160,14 +220,22 @@ function buildTerrain(model) {
           v = dx * b.sa + dz * b.ca,
           sd = (1 - Math.hypot(u / b.rx, v / b.rz)) * Math.min(b.rx, b.rz),
           wgt = smooth(-fadeN, fadeN, sd);
-        if (wgt > 0) out.lerp(bioCol(b, x, z, h, bc), wgt);
+        if (wgt > 0) (out.lerp(bioCol(b, x, z, h, bc), wgt), (rk = lerp(rk, bio.rock, wgt)), (wei *= 1 - wgt));
       }
+      bio.rock = rk;
+      bio.wei = wei;
       return out;
     },
     lakes = [], // vertex indices in each water patch: flattened after the heights are known
     pos = new Float32Array((nx + 1) * (nz + 1) * 3),
     col = new Float32Array((nx + 1) * (nz + 1) * 3),
     H = new Float32Array((nx + 1) * (nz + 1)),
+    // the detailed look (T-343): ground weights (sand, rock, field rows, wet) and the rows' direction per vertex; the sea's
+    // shore texture (R = height, −6…+2 m; G = distance from the coast out to sea, 0…60 m)
+    gnd = new Float32Array((nx + 1) * (nz + 1) * 4),
+    gdir = new Float32Array((nx + 1) * (nz + 1) * 2),
+    gpav = new Float32Array((nx + 1) * (nz + 1)), // paving slabs (Wei's districts, yards, quays)
+    shore = new Uint8Array((nx + 1) * (nz + 1) * 4),
     grass = new THREE.Color(0x5d8a4a),
     rock = new THREE.Color(0x7d7a70),
     sand = new THREE.Color(0xd8c690),
@@ -231,31 +299,80 @@ function buildTerrain(model) {
       }
       H[k] = h;
       pos.set([x, h, z], k * 3);
+      // weights for the detailed look (blended like the colours they follow)
+      let wS = 0,
+        wP = 0,
+        wR = 0,
+        wF = 0,
+        wW = 0,
+        dx = 0,
+        dz = 0;
+      const mix = (w, a, t) => w + (a - w) * t;
       // colour: grass → rock with height, sand on the beach (no faction colour: the hex tiles carry it, spec §4.27)
-      if (!land) c.copy(seabed);
+      if (!land) (c.copy(seabed), (wS = 1));
       else {
-        if (biomes.length) biomeAt(x, z, h, c);
-        else c.copy(grass).lerp(rock, smooth(8, 20, h));
-        if (gravelLine.length > 1)
-          c.lerp(gravelC, 0.8 * (1 - smooth((BIO.gravelW || 4) / 2, (BIO.gravelW || 4) / 2 + 1.5, Math.abs(sideDist(x, z, gravelLine)))));
-        c.lerp(sand, 1 - smooth(1, BEACH, d));
-        if (sd > -99) c.lerp(sand, 0.95 * smooth(-3, 2, sd)); // the Wu sand
+        if (biomes.length) (biomeAt(x, z, h, c), (wR = bio.rock));
+        else (c.copy(grass).lerp(rock, smooth(8, 20, h)), (wR = smooth(8, 20, h)));
+        if (gravelLine.length > 1) {
+          const t = 0.8 * (1 - smooth((BIO.gravelW || 4) / 2, (BIO.gravelW || 4) / 2 + 1.5, Math.abs(sideDist(x, z, gravelLine))));
+          c.lerp(gravelC, t);
+          wR = mix(wR, 0.7, t);
+        }
+        const tb = 1 - smooth(1, BEACH, d);
+        c.lerp(sand, tb);
+        wS = mix(wS, 1, tb);
+        wR *= 1 - tb;
+        if (sd > -99) {
+          const t = 0.95 * smooth(-3, 2, sd);
+          c.lerp(sand, t); // the Wu sand
+          wS = mix(wS, 1, t);
+          wR *= 1 - t;
+        }
         if (river && typeof lineDist === 'function') {
           const rd = lineDist([x / MAP_M, z / MAP_M], river.line).d / river.w;
           if (rd < 0.22)
-            c.lerp(riverC, 0.85); // the river off the Peak
-          else c.lerp(bankC, 0.75 * (1 - smooth(0.22 + (BIO.bankW || 0.5) * 0.6, 0.22 + (BIO.bankW || 0.5), rd))); // its sand / pebble banks
+            (c.lerp(riverC, 0.85), (wW = 1)); // the river off the Peak
+          else {
+            const t = 0.75 * (1 - smooth(0.22 + (BIO.bankW || 0.5) * 0.6, 0.22 + (BIO.bankW || 0.5), rd));
+            c.lerp(bankC, t); // its sand / pebble banks
+            wS = mix(wS, 0.6, t);
+            wR = mix(wR, 0.4, t);
+          }
         }
-        for (const q of dist) if (inside(x, z, q.poly)) c.lerp(tintC.set(q.tint), 0.16);
+        for (const q of dist) if (!WEI_GROUND.pave[q.style] && inside(x, z, q.poly)) c.lerp(tintC.set(q.tint), 0.16);
+        // Wei's urban districts: paving, lighter toward the core
+        for (const q of paved) {
+          if (x < q.box[0] || z < q.box[1] || x > q.box[2] || z > q.box[3]) continue;
+          const sdq = inside(x, z, q.poly) ? edgeDist(x, z, q.poly) : -edgeDist(x, z, q.poly),
+            u = smooth(WEI_GROUND.edge[0], WEI_GROUND.edge[1], sdq);
+          if (u <= 0) continue;
+          c.lerp(tintC.copy(q.E).lerp(q.C, smooth(0, WEI_GROUND.core, sdq)), q.k * u);
+          wP = Math.max(wP, q.k * u);
+          wS *= 1 - u;
+          wR *= 1 - u;
+        }
         for (const q of grounds) {
           if (x < q.box[0] || z < q.box[1] || x > q.box[2] || z > q.box[3] || !inside(x, z, q.poly) || (q.hole && inside(x, z, q.hole)))
             continue;
           const v = q.contour ? h : x * q.ca + z * q.sa;
           c.lerp(Math.floor(v / q.band) % 2 ? q.B : q.A, 0.75);
           if (q.kind === 'water') (lakes[grounds.indexOf(q)] = lakes[grounds.indexOf(q)] || []).push(k);
+          const G = GROUND_LOOK[q.kind];
+          if (G) {
+            wS = G.s;
+            wR = G.r;
+            wP = G.p || 0;
+            wF = G.f;
+            wW = G.w;
+            if (G.rows) ((dx = q.ca), (dz = q.sa)); // straight rows at the patch's angle (terraces: none — contour rows by height)
+          }
         }
       }
       col.set([c.r, c.g, c.b], k * 3);
+      gnd.set([wS, wR, wF, wW], k * 4);
+      gpav[k] = wP;
+      gdir.set([dx, dz], k * 2);
+      shore.set([Math.round(clamp((h + 6) / 8, 0, 1) * 255), land ? 0 : Math.round(clamp(d / 60, 0, 1) * 255), 0, 255], k * 4);
     }
   // a lake: its patch sinks to just under its lowest shore, so the water reads level on a slope
   for (const ks of lakes) {
@@ -264,6 +381,7 @@ function buildTerrain(model) {
     for (const k of ks) {
       H[k] = lvl;
       pos[k * 3 + 1] = lvl;
+      shore[k * 4] = Math.round(clamp((lvl + 6) / 8, 0, 1) * 255);
     }
   }
   const idx = new Uint32Array(nx * nz * 6);
@@ -280,6 +398,9 @@ function buildTerrain(model) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('gnd', new THREE.BufferAttribute(gnd, 4));
+  geo.setAttribute('gdir', new THREE.BufferAttribute(gdir, 2));
+  geo.setAttribute('gpav', new THREE.BufferAttribute(gpav, 1));
   geo.setIndex(new THREE.BufferAttribute(idx, 1));
   geo.computeVertexNormals();
   const heightAt = (x, z) => {
@@ -292,7 +413,7 @@ function buildTerrain(model) {
       g = (a, b) => H[b * (nx + 1) + a];
     return lerp(lerp(g(i, j), g(i + 1, j), u), lerp(g(i, j + 1), g(i + 1, j + 1), u), v);
   };
-  return { geo, heightAt, W, D, base: col.slice() };
+  return { geo, heightAt, W, D, base: col.slice(), shore: { data: shore, w: nx + 1, h: nz + 1 } };
 }
 
 /** Renderer settings, sky, hemisphere light, the sun with its shadow, and the sea. */
@@ -345,6 +466,389 @@ function skyAt(keys, tod, sun, hemi, scene) {
     .lerp(SKY.moon, smooth(0.3, 0.9, lit))
     .normalize();
   return lit;
+}
+/**
+ * The detailed look (spec §4.39 Land, T-343) — the default; the Fast setting (setLow) keeps the flat look above. Sky: three's
+ * physical Sky (no sun disc) on the clock's real sun, baked into an environment map (PMREM) when the sun has moved — the
+ * map camera never sees the sky itself, only its light and its reflection (water, glass). Terrain: the same mesh and vertex
+ * colours with a shader on top (ground weights gnd: sand / rock / field rows / wet, plus slope rock; detail from one
+ * generated tileable texture, bump by derivatives). Sea: a standard material with two scrolling generated normal maps,
+ * colour by depth and distance from the coast (terrain.shore texture) and foam at the shore. Post: ACES tone mapping,
+ * bloom while the night lights are on, GTAO on the High setting; soft PCF shadows whose box follows the zoom; dynamic
+ * resolution. No downloads, no randoms (fixed-hash noise).
+ */
+const LOOK = {
+  exposure: 1,
+  env: 0.3, // the sky's light on materials at noon (× the sun's height; none at night)
+  hemi: 0.7, // the clock's hemisphere light × this (the sky adds the rest)
+  sky: { turbidity: 5, rayleigh: 1.4, mie: 0.004, g: 0.8, every: 0.25, moved: 0.015 },
+  bloom: { strength: 0.85, radius: 0.5, day: 3, night: 0.8 }, // threshold from day (nothing blooms) to night
+  shadow: { radius: 3, box: [40, 360], k: 0.85, map: 2048, mapHi: 4096 },
+  dyn: { floor: { auto: 0.7, high: 1, fast: 1 }, slow: 24, quick: 15 }, // ms (frame-time average) to step down / up
+  sea: { deep: '#0d3b5e', mid: '#176b8a', shallow: '#3fb2ad', foam: '#f4f8f6', wave: 0.32 },
+  detail: 256 // generated texture size (px)
+};
+const GLSL_BUMP = `vec3 lkBump(vec3 sp, vec3 sn, vec2 dh) {
+  vec3 sx = dFdx(sp), sy = dFdy(sp), r1 = cross(sy, sn), r2 = cross(sn, sx);
+  float det = dot(sx, r1);
+  return normalize(abs(det) * sn - sign(det) * (dh.x * r1 + dh.y * r2));
+}`;
+/** A repeating linear-filtered, mipmapped RGBA texture from bytes (n × n). */
+const dataTex = (bytes, n, srgb = false) => {
+  const t = new THREE.DataTexture(bytes, n, n, THREE.RGBAFormat);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.magFilter = THREE.LinearFilter;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.generateMipmaps = true;
+  t.anisotropy = 4;
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  t.needsUpdate = true;
+  return t;
+};
+/** The generated textures: detail (R fine grain, G patches, B sand ripples, A rock cracks) and the waves' normal map. */
+function lookTextures(n) {
+  const fine = tileNoise(n, 32, 3, 1),
+    patch = tileNoise(n, 4, 4, 2),
+    warp = tileNoise(n, 4, 3, 3),
+    crack = tileNoise(n, 8, 4, 4),
+    det = new Uint8Array(n * n * 4);
+  for (let y = 0; y < n; y++)
+    for (let x = 0; x < n; x++) {
+      const i = y * n + x,
+        rip = 0.5 + 0.5 * Math.sin(2 * Math.PI * ((y / n) * 12 + 1.6 * warp[i])),
+        cr = smooth(0, 0.07, Math.abs(2 * crack[i] - 1));
+      det.set([fine[i] * 255, patch[i] * 255, rip * 255, cr * 255], i * 4);
+    }
+  return { det: dataTex(det, n), wave: dataTex(heightToNormal(tileNoise(n, 8, 5, 9, 0.55), n, 7), n) };
+}
+function richLook(renderer, scene, cam, sun, hemi) {
+  const U = { t: { value: 0 } }; // shared time uniform (s)
+  let tex = null; // made on first use (the detailed look only)
+  const textures = () => {
+    if (!tex) {
+      tex = lookTextures(LOOK.detail);
+      U.det = { value: tex.det };
+      U.wave = { value: tex.wave };
+    }
+    return tex;
+  };
+  // ---- terrain: the vertex colours × ground detail
+  const terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
+  terrainMat.onBeforeCompile = sh => {
+    textures();
+    Object.assign(sh.uniforms, { tDet: U.det });
+    sh.vertexShader = sh.vertexShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+        attribute vec4 gnd; attribute vec2 gdir; attribute float gpav; varying vec4 vGnd; varying vec2 vGdir; varying float vPav;
+        varying vec3 vWp; varying vec3 vWn;`
+      )
+      .replace(
+        '#include <project_vertex>',
+        `#include <project_vertex>
+        vGnd = gnd; vGdir = gdir; vPav = gpav; vWp = (modelMatrix * vec4(transformed, 1.0)).xyz; vWn = normalize(mat3(modelMatrix) * objectNormal);`
+      );
+    sh.fragmentShader = sh.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+        uniform sampler2D tDet; varying vec4 vGnd; varying vec2 vGdir; varying float vPav; varying vec3 vWp; varying vec3 vWn;
+        float lkH; float lkWet; ${GLSL_BUMP}`
+      )
+      .replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        {
+          vec2 gp = vWp.xz;
+          vec4 d1 = texture2D(tDet, gp / 5.0), d2 = texture2D(tDet, gp / 23.0 + 0.37);
+          float big = texture2D(tDet, gp / 170.0 + 0.11).g;
+          float sS = vGnd.x, sF = vGnd.z, sW = vGnd.w, sP = vPav;
+          float steep = smoothstep(0.3, 0.6, 1.0 - normalize(vWn).y) * (1.0 - sW) * (1.0 - sS);
+          float sR = max(vGnd.y, steep);
+          float sG = max(0.0, 1.0 - sS - sR - sF - sW - sP);
+          float tot = sG + sS + sR + sF + sW + sP + 1e-4;
+          vec3 base = diffuseColor.rgb;
+          vec3 g = base * (0.72 + 0.52 * d1.r) * (0.9 + 0.2 * d2.g);
+          g = mix(g, g * vec3(1.2, 1.1, 0.68), smoothstep(0.5, 0.85, d2.g) * 0.5);
+          float rip = texture2D(tDet, vec2(gp.x + gp.y * 0.35, gp.y - gp.x * 0.25) / 9.0).b;
+          vec3 sa = base * (0.9 + 0.1 * rip + 0.16 * (d1.r - 0.5));
+          vec3 ro = mix(base, vec3(0.2, 0.19, 0.165), steep) * (0.78 + 0.22 * d2.a) * (0.8 + 0.4 * d1.r);
+          // paving: 3 m slabs, a tone per slab (hash), dark joints, a little grain
+          vec2 sl = gp / 3.0, sc = floor(sl), sf = fract(sl);
+          float joint = smoothstep(0.0, 0.05, min(min(sf.x, sf.y), min(1.0 - sf.x, 1.0 - sf.y)));
+          float slab = fract(sin(dot(sc, vec2(12.9898, 78.233))) * 43758.5453);
+          vec3 pv = base * (0.9 + 0.14 * slab + 0.1 * (d1.r - 0.5)) * (0.72 + 0.28 * joint) * (0.92 + 0.16 * d2.g);
+          float rs = length(vGdir) > 0.5 ? dot(gp, normalize(vGdir)) : vWp.y * 2.2;
+          float row = smoothstep(0.2, 0.7, 0.5 + 0.5 * sin(rs * 3.927));
+          vec3 fi = mix(vec3(0.15, 0.095, 0.05) * (0.7 + 0.6 * d1.r), base * (0.75 + 0.5 * d1.r), row);
+          vec3 we = base * (0.7 + 0.1 * d2.g);
+          diffuseColor.rgb = (sG * g + sS * sa + sR * ro + sF * fi + sW * we + sP * pv) / tot * (0.86 + 0.28 * big);
+          lkH = (sG * d1.r * 0.5 + sS * rip * 0.35 + sR * (d2.a + d1.r) * 0.6 + sF * row * 0.8 + sP * joint * 0.5) / tot;
+          lkWet = sW / tot * (1.0 - 0.6 * sF / tot);
+        }`
+      )
+      .replace(
+        '#include <roughnessmap_fragment>',
+        `#include <roughnessmap_fragment>
+        roughnessFactor = mix(roughnessFactor, 0.1, lkWet);`
+      )
+      .replace(
+        '#include <normal_fragment_maps>',
+        `#include <normal_fragment_maps>
+        normal = lkBump(-vViewPosition, normal, vec2(dFdx(lkH), dFdy(lkH)) * 0.07 * (1.0 - lkWet));`
+      );
+  };
+  // ---- the sea
+  const SEA = LOOK.sea,
+    seaMat = new THREE.MeshStandardMaterial({ color: SEA.deep, roughness: 0.07, metalness: 0 }),
+    shoreU = { tShore: { value: null }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) } };
+  seaMat.onBeforeCompile = sh => {
+    textures();
+    Object.assign(sh.uniforms, shoreU, {
+      tDet: U.det,
+      tWave: U.wave,
+      uT: U.t,
+      uDeep: { value: new THREE.Color(SEA.deep) },
+      uMid: { value: new THREE.Color(SEA.mid) },
+      uShallow: { value: new THREE.Color(SEA.shallow) },
+      uFoam: { value: new THREE.Color(SEA.foam) }
+    });
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWp;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvWp = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+        uniform sampler2D tDet, tWave, tShore; uniform vec4 uBox; uniform float uT; uniform vec3 uDeep, uMid, uShallow, uFoam;
+        varying vec3 vWp; float lkFoam;`
+      )
+      .replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        {
+          vec2 sp = (vWp.xz - uBox.xy) * uBox.zw;
+          vec4 sh = (sp.x < 0.0 || sp.y < 0.0 || sp.x > 1.0 || sp.y > 1.0) ? vec4(0.0, 1.0, 0.0, 1.0) : texture2D(tShore, sp);
+          float depth = max(0.0, 6.0 - sh.r * 8.0), off = sh.g;
+          vec3 wc = mix(uShallow, uMid, smoothstep(0.2, 3.0, depth));
+          wc = mix(wc, uDeep, smoothstep(0.15, 1.0, off));
+          float fz = texture2D(tDet, vWp.xz / 7.0 + vec2(uT * 0.031, -uT * 0.017)).r;
+          float edge = smoothstep(0.7, 0.05, depth) * (0.45 + 0.75 * fz);
+          float band = smoothstep(0.75, 1.0, sin(depth * 4.5 + uT * 1.4 + fz * 5.0)) * smoothstep(2.2, 0.3, depth);
+          lkFoam = clamp(max(edge, band * 0.7 * fz * 1.6), 0.0, 1.0);
+          diffuseColor.rgb = mix(wc, uFoam, lkFoam);
+        }`
+      )
+      .replace(
+        '#include <roughnessmap_fragment>',
+        '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.75, lkFoam);'
+      )
+      .replace(
+        '#include <normal_fragment_maps>',
+        `#include <normal_fragment_maps>
+        {
+          vec3 n1 = texture2D(tWave, vWp.xz / 19.0 + uT * vec2(0.012, 0.007)).xyz * 2.0 - 1.0;
+          vec3 n2 = texture2D(tWave, vWp.xz / 7.3 - uT * vec2(0.009, 0.015)).xyz * 2.0 - 1.0;
+          vec2 s = (n1.xy + n2.xy) * ${SEA.wave.toFixed(2)} * (1.0 - 0.7 * lkFoam);
+          normal = normalize((viewMatrix * vec4(normalize(vec3(s.x, 1.0, s.y)), 0.0)).xyz);
+        }`
+      );
+  };
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000).rotateX(-Math.PI / 2), seaMat);
+  sea.receiveShadow = true;
+  sea.visible = false;
+  scene.add(sea);
+  // ---- the sky (environment light and reflections)
+  const sky = new Sky(),
+    skyScene = new THREE.Scene(),
+    pmrem = new THREE.PMREMGenerator(renderer),
+    envDir = new THREE.Vector3(0, -1, 0);
+  sky.material.fragmentShader = sky.material.fragmentShader.replace('vSunE * 19000.0', 'vSunE * 0.0'); // no sun disc: the light is the sun
+  sky.scale.setScalar(100);
+  sky.material.uniforms.turbidity.value = LOOK.sky.turbidity;
+  sky.material.uniforms.rayleigh.value = LOOK.sky.rayleigh;
+  sky.material.uniforms.mieCoefficient.value = LOOK.sky.mie;
+  sky.material.uniforms.mieDirectionalG.value = LOOK.sky.g;
+  skyScene.add(sky);
+  let envRT = null,
+    envAge = 99;
+  const bakeSky = (dt, dir) => {
+    envAge += dt;
+    if (envRT && (envAge < LOOK.sky.every || dir.distanceTo(envDir) < LOOK.sky.moved)) return;
+    sky.material.uniforms.sunPosition.value.copy(dir);
+    const rt = pmrem.fromScene(skyScene, 0, 1, 400);
+    if (envRT) envRT.dispose();
+    envRT = rt;
+    envDir.copy(dir);
+    envAge = 0;
+    if (on) scene.environment = rt.texture;
+  };
+  // ---- post: render → (GTAO) → bloom → ACES + sRGB
+  let composer = null,
+    bloom = null,
+    gtao = null,
+    gtaoWant = false,
+    gtaoLoading = false,
+    on = false,
+    ready = false,
+    hi = false,
+    w = 1,
+    h = 1,
+    pr = 1;
+  const dyn = { res: 1, ema: 16.7, t: 0 };
+  const makeComposer = () => {
+    const rt = new THREE.WebGLRenderTarget(w * pr, h * pr, { type: THREE.HalfFloatType, samples: 4 });
+    composer = new EffectComposer(renderer, rt);
+    composer.setPixelRatio(pr);
+    composer.setSize(w, h);
+    composer.addPass(new RenderPass(scene, cam));
+    bloom = new UnrealBloomPass(new THREE.Vector2(w, h), LOOK.bloom.strength, LOOK.bloom.radius, LOOK.bloom.day);
+    composer.addPass(bloom);
+    composer.addPass(new OutputPass());
+  };
+  /** AO on the High setting (spec §4.39): the pass loads on first use, sits before the bloom. */
+  const wantAO = v => {
+    gtaoWant = v;
+    if (gtao) gtao.enabled = v;
+    if (!v || gtao || gtaoLoading || !composer) return;
+    gtaoLoading = true;
+    import('three/addons/postprocessing/GTAOPass.js')
+      .then(({ GTAOPass }) => {
+        if (!composer) return;
+        gtao = new GTAOPass(scene, cam, w * pr, h * pr);
+        gtao.updateGtaoMaterial({ radius: 2.5, distanceExponent: 1.5, thickness: 2, scale: 1, samples: 12 });
+        gtao.blendIntensity = 0.8;
+        gtao.enabled = gtaoWant;
+        composer.insertPass(gtao, 1);
+      })
+      .catch(() => {});
+  };
+  const sizeAll = () => {
+    renderer.setPixelRatio(pr);
+    renderer.setSize(w, h, false);
+    if (composer) (composer.setPixelRatio(pr), composer.setSize(w, h));
+  };
+  const SKYDIR = new THREE.Vector3();
+  const resize = (cw, ch) => {
+    w = Math.max(1, cw);
+    h = Math.max(1, ch);
+    pr = Math.min(devicePixelRatio || 1, 2) * (on ? dyn.res : 1);
+    sizeAll();
+  };
+  return {
+    terrainMat,
+    sea,
+    get on() {
+      return on;
+    },
+    /** The island's shore texture (the sea's depth and coast distance): once per terrain. */
+    setTerrain(T) {
+      const S = T.shore,
+        t = new THREE.DataTexture(S.data, S.w, S.h, THREE.RGBAFormat);
+      t.magFilter = THREE.LinearFilter;
+      t.minFilter = THREE.LinearFilter;
+      t.needsUpdate = true;
+      if (shoreU.tShore.value) shoreU.tShore.value.dispose();
+      shoreU.tShore.value = t;
+      // texel centres: vertex (i, j) sits at x = i·W/(w−1)
+      const cx = T.W / (S.w - 1),
+        cz = T.D / (S.h - 1);
+      shoreU.uBox.value.set(-cx / 2, -cz / 2, 1 / (T.W + cx), 1 / (T.D + cz));
+    },
+    /** Detailed (true) or the Fast look (false): tone mapping, environment, shadow filter, sea. Materials recompile. */
+    set(v, water) {
+      v = !!v;
+      if (v === on && ready) return;
+      ready = true;
+      on = v;
+      renderer.toneMapping = v ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+      renderer.toneMappingExposure = v ? LOOK.exposure : 1;
+      renderer.shadowMap.type = v ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+      sun.shadow.radius = v ? LOOK.shadow.radius : 1;
+      sun.shadow.normalBias = v ? 0.04 : 0;
+      scene.environment = v && envRT ? envRT.texture : null;
+      sea.visible = v;
+      water.visible = !v;
+      if (v && !composer) makeComposer();
+      if (!v) {
+        dyn.res = 1;
+        pr = Math.min(devicePixelRatio || 1, 2);
+        sizeAll();
+      }
+      if (sun.shadow.map) (sun.shadow.map.dispose(), (sun.shadow.map = null));
+      scene.traverse(o => {
+        const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+        for (const m of ms) m.needsUpdate = true;
+      });
+    },
+    /** The canvas size (CSS px): the renderer and the post at the dynamic resolution. */
+    resize,
+    /** Per frame, before the draw: time, the sky, light balance, bloom by `lit`, the shadow box by zoom, the resolution. */
+    step(dt, t, lit, tod, view, gfx) {
+      if (!on) return;
+      U.t.value = t;
+      // the real sun (below the horizon at night: the sky goes dark; the moon is only the directional light)
+      const a = ((tod - 0.25) / 0.5) * Math.PI;
+      SKYDIR.set(1.25 * Math.cos(a), Math.sin(a), 0.05 + 0.3 * Math.max(0, Math.sin(a))).normalize();
+      bakeSky(dt, SKYDIR);
+      scene.environmentIntensity = LOOK.env * smooth(-0.05, 0.35, SKYDIR.y);
+      bloom.enabled = lit > 0.02;
+      bloom.threshold = lerp(LOOK.bloom.day, LOOK.bloom.night, lit);
+      bloom.strength = LOOK.bloom.strength * lit;
+      // shadows: the box follows the zoom (crisp near, the whole view far), the sun far enough to cover it
+      const S = LOOK.shadow,
+        box = clamp(view ? view.d * S.k : 120, S.box[0], S.box[1]),
+        sc = sun.shadow.camera,
+        size = gfx === 'high' ? S.mapHi : S.map;
+      if (sc.right !== box) {
+        Object.assign(sc, { left: -box, right: box, top: box, bottom: -box, near: 1, far: box * 4 + 400 });
+        sc.updateProjectionMatrix();
+      }
+      if (sun.shadow.mapSize.x !== size) {
+        sun.shadow.mapSize.set(size, size);
+        if (sun.shadow.map) (sun.shadow.map.dispose(), (sun.shadow.map = null));
+      }
+      sun.position
+        .sub(sun.target.position)
+        .setLength(box * 2 + 200)
+        .add(sun.target.position);
+      wantAO(gfx === 'high');
+      hi = gfx === 'high';
+      // dynamic resolution (like matches, r3d adaptRes): under ~42 fps step down to the setting's floor, back up with headroom
+      const floor = LOOK.dyn.floor[gfx] || LOOK.dyn.floor.auto;
+      dyn.ema += (Math.min(100, dt * 1000) - dyn.ema) * 0.05;
+      dyn.t += dt;
+      if (dyn.t >= 1) {
+        dyn.t = 0;
+        const r0 = dyn.res;
+        if (dyn.ema > LOOK.dyn.slow && dyn.res > floor) dyn.res = Math.max(floor, +(dyn.res - 0.05).toFixed(2));
+        else if (dyn.ema < LOOK.dyn.quick && dyn.res < 1) dyn.res = Math.min(1, +(dyn.res + 0.05).toFixed(2));
+        if (dyn.res < floor) dyn.res = floor;
+        if (dyn.res !== r0) resize(w, h);
+      }
+    },
+    /** Draw the frame through the post. */
+    render() {
+      composer.render();
+    },
+    info: () => ({ look: on ? (hi ? 'high' : 'detailed') : 'fast', res: on ? dyn.res : 1, ao: !!(gtao && gtao.enabled) }),
+    dispose() {
+      if (composer) {
+        for (const p of composer.passes) p.dispose && p.dispose();
+        composer.renderTarget1.dispose();
+        composer.renderTarget2.dispose();
+      }
+      if (envRT) envRT.dispose();
+      pmrem.dispose();
+      sky.geometry.dispose();
+      sky.material.dispose();
+      if (tex) (tex.det.dispose(), tex.wave.dispose());
+      if (shoreU.tShore.value) shoreU.tShore.value.dispose();
+      terrainMat.dispose();
+      seaMat.dispose();
+    }
+  };
 }
 /**
  * The night lights (spec §4.37 2, T-332): warm windows on the town's lots (the faces toward the camera; KIT heights as
@@ -661,6 +1165,9 @@ export function create(onIdle) {
     scene = new THREE.Scene(),
     cam = new THREE.PerspectiveCamera(40, 1, 1, 3000);
   const { sun, hemi, water } = lightScene(renderer, scene);
+  const look = richLook(renderer, scene, cam, sun, hemi), // the detailed look (T-343); off = the Fast setting's flat look
+    flatMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }),
+    gfx = () => (typeof G !== 'undefined' && G && G.gfx) || 'auto';
 
   let terrain = null,
     mesh = null,
@@ -710,7 +1217,9 @@ export function create(onIdle) {
   const showHex = () => scene.traverse(o => o.userData && o.userData.hex && (o.visible = hexOn));
   const build = m => {
     terrain = buildTerrain(m);
-    mesh = new THREE.Mesh(terrain.geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }));
+    mesh = new THREE.Mesh(terrain.geo, low ? flatMat : look.terrainMat);
+    look.setTerrain(terrain);
+    look.set(!low, water);
     mesh.receiveShadow = true;
     mesh.castShadow = true;
     scene.add(mesh);
@@ -814,10 +1323,12 @@ export function create(onIdle) {
     if (!el || !el.clientWidth || !el.clientHeight) return;
     cw = el.clientWidth;
     ch = el.clientHeight;
-    renderer.setSize(cw, ch, false);
+    look.resize(cw, ch);
     cam.aspect = cw / ch;
     cam.updateProjectionMatrix();
   };
+  renderer.info.autoReset = false; // (the post draws several passes: info counts the whole frame)
+  const draw = () => (renderer.info.reset(), look.on ? look.render() : renderer.render(scene, cam));
   const frame = t => {
     raf = 0;
     if (dead) return;
@@ -832,7 +1343,8 @@ export function create(onIdle) {
       for (const f of figs.values()) f.tick(dt, terrain.heightAt);
       clock += dt;
       clockStep(dt);
-      lit = cur && cur.time ? skyAt(cur.time.keys, tod, sun, hemi, scene) : 0;
+      lit = cur && cur.time ? skyAt(cur.time.keys, tod, sun, hemi, scene) : ((hemi.intensity = 0.9), 0);
+      if (look.on) hemi.intensity *= LOOK.hemi; // (the sky's environment light adds the rest)
       if (C.view) life.ringScale((14 * 2 * C.view.d * Math.tan((cam.fov * Math.PI) / 360)) / (ch || 1) / 0.7); // a ring ≥ ~14 px
       life.tick(dt, clock, tod);
       hoverStep();
@@ -842,13 +1354,14 @@ export function create(onIdle) {
       C.step(dt);
       if (cur && cur.time) sun.position.copy(sun.target.position).addScaledVector(SKY.dir, 150); // the hour's sun (after the camera placed it)
       night.set(lit, (ch * renderer.getPixelRatio()) / (2 * Math.tan((cam.fov * Math.PI) / 360)), renderer.getPixelRatio());
+      look.step(dt, clock, lit, tod, C.view, gfx());
       const n = avatar.lapse(),
         txt = n ? `×${n < 2 ? n.toFixed(1) : Math.round(n)}` : '';
       if (badge && badge.textContent !== txt) {
         badge.textContent = txt;
         badge.hidden = !txt;
       }
-      renderer.render(scene, cam);
+      draw();
       furn.tick(cam, cw, ch, C.view.d);
     }
     raf = requestAnimationFrame(frame);
@@ -891,7 +1404,7 @@ export function create(onIdle) {
       if (m.sel && m.sel !== lastSel) C.flyTo(m.sel); // selected from outside the map (list, chip, banner)
       lastSel = m.sel;
       town.sync(m);
-      nature.sync(m);
+      nature.sync(m, low);
       furn.sync(m, on);
       showHex();
       life.sync(m, low);
@@ -953,6 +1466,7 @@ export function create(onIdle) {
       if (low === !!v) return;
       low = !!v;
       if (cur && life) (life.sync(cur, low), night.sync(cur, low));
+      if (mesh && cur) (look.set(!low, water), (mesh.material = low ? flatMat : look.terrainMat), nature.sync(cur, low)); // the look (T-343)
     },
     /** The shown clock: { week (days), tod (0–1), lit (0–1) } — for QA and the UI. */
     clock: () => ({ week: wt, tod, lit }),
@@ -960,6 +1474,20 @@ export function create(onIdle) {
     setClock(w) {
       wt = w;
       tod = w - Math.floor(w);
+    },
+    /** Dev / QA: the mean time (ms) to draw one frame, n frames drawn back to back and waited for (a 1-px read). */
+    bench(n = 5) {
+      const gl = renderer.getContext(),
+        px = new Uint8Array(4),
+        t0 = performance.now();
+      for (let i = 0; i < n; i++) (draw(), gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px));
+      return +((performance.now() - t0) / n).toFixed(1);
+    },
+    /** Dev / QA: put the camera over world point (x, z) at distance d (m); fields left out keep their value. */
+    setView(v) {
+      if (!C.view) return;
+      Object.assign(C.view, v);
+      C.fit();
     },
     /** The ring under a named figure's feet (the figure menu's person), or none (null). */
     mark(id) {
@@ -984,6 +1512,7 @@ export function create(onIdle) {
       night: night && night.count(),
       clock: { week: wt, tod, lit },
       nature: nature && nature.count(),
+      ...look.info(),
       view: C.view && { ...C.view }
     }),
     dispose() {
@@ -1005,6 +1534,8 @@ export function create(onIdle) {
       C.dispose();
       if (furn) furn.layer.removeEventListener('wheel', C.onWheel);
       canvas.remove();
+      look.dispose();
+      flatMat.dispose();
       releaseScene(scene, renderer, sun);
     }
   };
