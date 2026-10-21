@@ -431,7 +431,7 @@ test('career: town layout — districts, beach, overpass, frozen borders', () =>
   );
 });
 
-test('career: map model life — mates, crews, battle, borders, no randoms', () => {
+test('career: map model life — people, crews, battle, borders, no randoms', () => {
   const g = load(12),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Life', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
     next0 = g.RNG.next;
@@ -439,18 +439,19 @@ test('career: map model life — mates, crews, battle, borders, no randoms', () 
   g.RNG.next = () => (draws++, next0());
   const mate = g.Run.mates(run)[0];
   run.floor = { wit: [mate.id] };
+  const fm = L0 => L0.people.find(p => p.id === mate.id);
   let L = g.MapModel.build(run).life;
-  eq(L.mates.length, 0, 'unexplored training places show no mates');
+  assert(!fm(L) || fm(L).spot !== 'weiWit', 'an unexplored training place shows no floor mate');
   eq(L.crews.length, 0, 'unexplored clubs show no crews');
   eq(L.battle, null, 'no battle yet');
   run.fog.push(g.City.at(run, 'weiWit'));
   L = g.MapModel.build(run).life;
-  eq(L.mates.length, 1, 'a mate appears once the place is explored');
-  eq(L.mates[0].spot, 'weiWit', 'at their floor key’s place');
+  eq(fm(L) && fm(L).spot, 'weiWit', 'a floor mate stands at their floor key’s place once explored');
   assert(
-    Math.hypot(L.mates[0].at[0] - g.City.at(run, 'weiWit')[0], L.mates[0].at[1] - g.City.at(run, 'weiWit')[1]) <= 28,
+    Math.hypot(fm(L).at[0] - g.City.at(run, 'weiWit')[0], fm(L).at[1] - g.City.at(run, 'weiWit')[1]) <= g.LIFE.spotR[1] + 0.1,
     'offset around it'
   );
+  eq(fm(L).g, 'mate', 'a teammate');
   const hq = g.CITY.hq.findIndex((p, i) => i !== run.team && g.FRONT && g.FACTIONS[i]);
   run.fog.push(g.CITY.hq[hq]);
   L = g.MapModel.build(run).life;
@@ -469,6 +470,110 @@ test('career: map model life — mates, crews, battle, borders, no randoms', () 
   eq(JSON.stringify(g.MapModel.build(run).life), JSON.stringify(g.MapModel.build(run).life), 'same run, same model');
   eq(draws, 0, 'build draws no randoms');
   g.RNG.next = next0;
+});
+
+test('map: people you can see — plans, fog, cap, groups, deterministic (spec §4.37 1, T-331)', () => {
+  const g = load(13),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Seen', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    next0 = g.RNG.next;
+  let draws = 0;
+  g.RNG.next = () => (draws++, next0());
+  run.floor = {};
+  const homes = g.People.homes(run),
+    near = (a, b, r) => Math.hypot(a[0] - b[0], a[1] - b[1]) <= r + 0.1;
+  let P = g.MapModel.lifePeople(run);
+  assert(
+    P.every(p => g.City.seen(run, p.spot ? g.City.at(run, p.spot) : g.MapModel.homeAt(run, homes.get(p.id)))),
+    'fog: only people whose place you have explored'
+  );
+  const n0 = P.length;
+  for (const id of Object.keys(g.SPOTS)) if (g.SPOTS[id].at) run.fog.push(g.City.at(run, id));
+  run.fog.push(...g.CITY.hq);
+  P = g.MapModel.lifePeople(run);
+  assert(P.length > n0 && P.length >= 40, `exploring shows more people (${n0} → ${P.length})`);
+  eq(JSON.stringify(P), JSON.stringify(g.MapModel.lifePeople(run)), 'deterministic');
+  eq(draws, 0, 'no randoms');
+  // where their week's plan puts them
+  const tr = P.find(p => p.act === 'train' && homes.get(p.id) && g.People.plan(run, homes.get(p.id).p).at === p.spot);
+  assert(tr && near(tr.at, g.City.at(run, tr.spot), g.LIFE.spotR[1]), 'a training person at their plan’s place');
+  const want = p => {
+      const e = homes.get(p.id),
+        pl = g.People.plan(run, e.p, e.home);
+      return pl.at || g.LIFE.gym[e.home] || null;
+    },
+    mate = P.find(p => p.g === 'mate' && (p.act === 'train' || p.act === 'hard'));
+  assert(
+    mate && mate.spot && mate.spot === want(mate) && near(mate.at, g.City.at(run, mate.spot), g.LIFE.spotR[1]),
+    'a training teammate at their plan’s place'
+  );
+  const hu = P.find(p => p.act === 'hustle');
+  assert(hu && ['street', 'sand'].includes(hu.spot), 'a hustle at a court');
+  const re = P.find(p => p.act === 'rest' || p.act === 'out');
+  assert(!re || (re.spot === null && near(re.at, g.MapModel.homeAt(run, homes.get(re.id)), g.LIFE.homeR[1])), 'rest: at home');
+  assert(
+    P.every(p => near(p.home, g.MapModel.homeAt(run, homes.get(p.id)), g.LIFE.homeR[1])),
+    'everyone has a home round their anchor'
+  );
+  // groups: teammates in your club's colour, unscouted clubs grey, a scouted club coloured
+  assert(
+    P.filter(p => p.g === 'mate').every(p => p.color === g.Run.myTeam(run).color),
+    'teammates: your club colour'
+  );
+  const grey = P.find(p => p.g === 'grey'),
+    ti = run.teams.indexOf(homes.get(grey.id).t);
+  run.scout = { ...(run.scout || {}), [ti]: 1 };
+  eq(g.MapModel.lifePeople(run).find(p => p.id === grey.id).g, 'other', 'scouted: no longer grey');
+  // the cap: your circle first, then teammates
+  const friend = P.find(p => p.g !== 'mate');
+  g.Rel.push(run, g.Rel.key(run.youId, friend.id), friend.id, 'event', 60, friend.id);
+  const C = g.MapModel.lifePeople(run, 5);
+  eq(C.length, 5, 'capped');
+  if (g.Circle.of(run).includes(friend.id)) eq(C[0].id, friend.id, 'your circle first');
+  assert(
+    C.slice(g.Circle.of(run).length).every(p => p.g === 'mate'),
+    'then your teammates'
+  );
+  assert(g.MapModel.lifePeople(run).length <= g.LIFE.max, 'at most LIFE.max');
+  assert(g.MapModel.build(run).life.people.length === g.MapModel.lifePeople(run).length, 'the model carries them');
+  g.RNG.next = next0;
+});
+
+test('map: the day clock — dawn to night through a week, the walk and the order (spec §4.37 2, T-332)', () => {
+  const g = load(14),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Clock', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
+  run.days = g.WEEK_DAYS;
+  run.dayLog = [];
+  eq(g.MapModel.clock(run), g.CLOCK.dawn, 'a fresh week: dawn');
+  const seq = [g.MapModel.weekTime(run)];
+  for (let d = 0; d < g.WEEK_DAYS; d++) {
+    g.City.spend(run, 1);
+    g.City.logDays(run, 0, { k: 'rest', label: 'Rest' });
+    for (const k of [0, 0.5, 1]) seq.push(g.MapModel.weekTime(run, 'walk', k));
+    for (const k of [0, 0.5, 1]) seq.push(g.MapModel.weekTime(run, 'order', k));
+    seq.push(g.MapModel.weekTime(run));
+    const c = [g.MapModel.clock(run, 'walk', 0.5), g.MapModel.clock(run, 'order', 0.5)];
+    assert(c[0] > 0.25 && c[0] < 0.5 && c[1] >= 0.5 && c[1] < 0.75, `day ${d + 1}: the walk in the morning, the order in the afternoon`);
+  }
+  assert(
+    seq.every((w, i) => !i || w >= seq[i - 1]),
+    `monotonic through the week: ${seq.map(w => w.toFixed(2)).join(' ')}`
+  );
+  assert(g.City.night(run) && g.MapModel.clock(run) === g.CLOCK.night, 'night on the last day');
+  // a 3-day trip: its walk runs through two nights, the order on the last day
+  run.days = g.WEEK_DAYS;
+  run.dayLog = [];
+  g.City.spend(run, 3);
+  g.City.logDays(run, 2, { k: 'train', label: 'Drill' });
+  eq(g.MapModel.span(run), 3, 'the last action took three days');
+  eq(
+    +(g.MapModel.weekTime(run, 'walk', 1) - g.MapModel.weekTime(run, 'walk', 0)).toFixed(4),
+    +(2 + g.CLOCK.walk[1] - g.CLOCK.walk[0]).toFixed(4),
+    'two nights on the road'
+  );
+  eq(Math.floor(g.MapModel.weekTime(run, 'order', 0)), 2, 'the order on day 3');
+  const T = g.MapModel.time(run);
+  assert(T.idle === g.MapModel.weekTime(run) && T.keys.length > 4, 'the model carries the times and the light keys');
+  assert(T.keys.every((k, i) => !i || k.t > T.keys[i - 1].t) && T.keys.some(k => k.lit === 1), 'keys in order, night lit');
 });
 
 test('orders: facilities = kit — every training place ≥ 2 orders, Work pays at ≥ 4, Stretch anywhere; the level grows per place (T-308)', () => {

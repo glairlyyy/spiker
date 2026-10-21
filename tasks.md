@@ -44,7 +44,7 @@ E reads behind a guard: `MapModel.lifePeople(run)` → [{ id, at: [x, y] map uni
 same data the figures use), `MapModel.clock(run)` → 0–1 time of day. Both: display code draws no R(); career code hashes; goldens unchanged;
 no save bump (E keeps state lazily in `run.enc`).
 
-### [ ] T-331: People you can see — named figures walking their week's plan
+### [x] T-331: People you can see — named figures walking their week's plan
 Agent: L
 Spec: §4.37 1          Goldens: unchanged          Save: no change
 Goal: every known person stands on the map where People.plan puts them today (circle in colour, mates in the club colour, others
@@ -59,9 +59,9 @@ Steps:
 3. map-view: hover a figure → a tip with faceSVG, name, club, act text; click → openPerson(id).
 Accept: tests — lifePeople is deterministic, respects fog and the cap, puts a training mate at their plan's spot; ui-smoke hover shows a name.
 QA: career run → the map at three zooms; hover a circle member.
-Result:
+Result: `MapModel.lifePeople` (+ `homeAt`): 71 NPCs in a fresh run, all shown once explored; floor mates at the floor's place (as the pin badge counts), the Academy squad at the Academy Gym; `life.mates` folded into `life.people`. life3d: named figures in the shared people mesh (circle 1.9× / mates 1.6×, others muted), screen-space pick; tip on `.tipbox` (`maptip`), click → openPerson (not for grey). Tests: map.test (fog, cap, plan spots, groups, no draws); ui-smoke hovers a figure. QA t331-zoom-far/mid/near, t331-hover.
 
-### [ ] T-332: The day clock — dawn to night on the map
+### [x] T-332: The day clock — dawn to night on the map
 Agent: L
 Spec: §4.37 2          Goldens: unchanged          Save: no change
 Goal: the map has a time of day that moves as you spend days: dawn → morning walk → afternoon order → evening; night at the week's end;
@@ -73,7 +73,7 @@ Steps:
 2. map3d: sun direction / colour / hemisphere by CLOCK keys; emissive windows, lamp and floodlight sprites fade in at night (low-poly setting: fewer).
 Accept: tests — clock monotonic through a week, night on the last day; ui-smoke: a night screenshot step without page errors.
 QA: career run → a week spent day by day; screenshots dawn / noon / night.
-Result:
+Result: `MapModel.weekTime` / `clock` / `span` / `time`, `MapView.phase()` from CW.lock → map3d `setPhase(fn)`; walk share by the avatar's progress along its road (holds when stopped); a trip of n days runs n − 1 nights; never runs back. map3d `skyAt` (CLOCK.keys) + `nightLayer` (2 draw calls at night: ~1.6k window glows, 180 lamps, 9 floodlit courts; 0 by day). Frame time (swiftshader, contended, 200 m): base 1300–2120 ms vs 1830–2010 ms (noise ± 40 %; +2 calls, +20k tris). Tests: clock monotonic, night on day 7, 3-day trip; ui-smoke night step. QA t332-dawn/noon/evening/night(-far). Deviation: one commit for both tasks.
 
 ### [ ] T-333: Encounters on the road
 Agent: E

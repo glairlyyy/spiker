@@ -138,6 +138,67 @@ const step = async (name, fn) => {
       return `${ids.length} cards`;
     })
   );
+  await step('island map (spec §4.37): hover a named figure → their name; a night-time map', async () => {
+    await pg.waitForFunction(() => MapView.m3 && MapView.m3.info().calls > 0, null, { timeout: 120000 });
+    await ev(() => {
+      for (const id of Object.keys(SPOTS)) if (SPOTS[id].at) RUN.fog.push(City.at(RUN, id));
+      RUN.fog.push(...CITY.hq);
+      renderCareer();
+      if (document.querySelector('[onclick="briefDone()"]')) briefDone(); // the week's brief card covers the map
+      const p = MapView.model.life.people.find(q => q.g !== 'grey' && q.spot);
+      if (p) MapView.select(p.spot);
+    });
+    // a named figure on screen and not under a card or a pin, the camera at rest
+    const hit = await pg
+      .waitForFunction(
+        () => {
+          const c = document.querySelector('#mapwrap canvas'),
+            r = c.getBoundingClientRect(),
+            v = JSON.stringify(MapView.m3.info().view),
+            still = window.__mapView === v; // the camera has finished its flight (frames are slow here)
+          window.__mapView = v;
+          if (!still) return null;
+          for (const q of MapView.model.life.people) {
+            const s = q.g !== 'grey' && MapView.m3.figureAt(q.id),
+              x = s && r.left + s[0],
+              y = s && r.top + s[1];
+            if (s && s[0] > 20 && s[1] > 20 && s[0] < r.width - 20 && s[1] < r.height - 20 && document.elementFromPoint(x, y) === c)
+              return { id: q.id, name: People.find(RUN, q.id).name, x, y };
+          }
+          return null;
+        },
+        null,
+        { timeout: 60000 }
+      )
+      .then(h => h.jsonValue())
+      .catch(async () => {
+        const d = await ev(() => MapView.m3 && { life: MapView.m3.info().life, clock: MapView.m3.clock(), view: MapView.m3.info().view });
+        throw new Error(`no named figure to hover: ${JSON.stringify(d)}`);
+      });
+    const f = hit,
+      at = [hit.x, hit.y];
+    await pg.mouse.move(at[0], at[1]);
+    await pg.waitForFunction(() => document.querySelector('.maptip') && document.querySelector('.maptip').style.display === 'block', null, {
+      timeout: 60000
+    });
+    const tip = await ev(() => document.querySelector('.maptip').textContent);
+    if (!tip.includes(f.name)) throw new Error(`the tip shows "${tip}", not ${f.name}`);
+    await pg.mouse.move(2, 2);
+    // the week spent: night falls on the map (the sun down, the night lights on)
+    await ev(() => {
+      RUN.days = 0;
+      renderCareer();
+      MapView.m3.setClock(MapModel.weekTime(RUN) - 0.1);
+    });
+    await pg.waitForFunction(() => MapView.m3.clock().lit > 0.6, null, { timeout: 30000 });
+    const n = await ev(() => MapView.m3.info().night);
+    await ev(() => {
+      RUN.days = 7;
+      RUN.dayLog = [];
+      renderCareer();
+    });
+    return `tip: ${tip.slice(0, 60)}; night lights ${n.win} windows, ${n.lamp} lamps, ${n.flood} courts`;
+  });
   await step('simmed court match → result card', async () => {
     await ev(() => mapCourt('arena', 'open', true));
     await pg.waitForFunction(() => CW.lock && CW.lock.phase === 'res', null, { timeout: 90000 });
