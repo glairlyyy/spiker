@@ -1563,7 +1563,15 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Land, water, sky (T-343).** Terrain textured by ground (grass, sand, rock, dirt, paddies, farmland) with soft blends and
     detail; real tree crowns (palms on Wu's coast, pines in Shu, broadleaf in Wei's parks), bushes and grass tufts; the sea as a
     water shader (waves, reflections, foam at the shore); a physical sky that follows the day clock (§4.37 2); ACES tone mapping,
-    soft shadows, bloom on the night lights; ambient occlusion on high settings.
+    soft shadows, bloom on the night lights; ambient occlusion on high settings. **[built 2026-10-21, T-343: the detailed look is the
+    default and Fast keeps the flat look; the sky is three's physical Sky on the clock's sun, used as the light and the reflections
+    (the map camera's pitch never shows the sky itself); terrain detail by ground (grass grain, sand ripples, rock, furrowed fields
+    and terraces, wet paddies / lakes / river, paving) from one generated texture; pines / broadleaf / blossom / palms / bushes /
+    rocks / tufts rebuilt with wind sway, extra tufts round each plant; the sea with generated waves, turquoise shallows and
+    foam; ACES, soft PCF shadows following the zoom, bloom while the night lights are on, GTAO on High; dynamic resolution]**
+    **Wei's ground** (owner, 2026-10-21: "the biome colour of Wei seems odd"): a calm lawn instead of the grey / green patchwork,
+    paved urban districts lighter toward their core, the ring suburbs paved only round their buildings — in both looks.
+    **[built 2026-10-21, T-343]**
   - **Budget**: the map keeps ≥ 45 fps on a mid laptop GPU at the default camera (dynamic resolution allowed, like matches); Fast
     stays as it is today.
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has

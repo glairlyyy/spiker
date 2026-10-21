@@ -175,3 +175,54 @@ export function bannerArrays(banners, h, hexToRgb) {
   }
   return { pos, col };
 }
+
+/** Fixed value noise (map3d terrain, T-343 detail textures): a hash of the lattice point (x, y integers), 0..1. */
+export const lattice = (x, y) => {
+  let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+};
+/** Smoothly interpolated value noise over `lattice` (0..1); `period` > 0 wraps the lattice (a tileable noise). */
+export const vnoise = (x, y, period = 0) => {
+  const xi = Math.floor(x),
+    yi = Math.floor(y),
+    u = smooth(0, 1, x - xi),
+    v = smooth(0, 1, y - yi),
+    w = period ? i => ((i % period) + period) % period : i => i,
+    L = (a, b) => lattice(w(a), w(b));
+  return lerp(lerp(L(xi, yi), L(xi + 1, yi), u), lerp(L(xi, yi + 1), L(xi + 1, yi + 1), u), v);
+};
+/**
+ * A tileable fractal noise image (n × n, values 0..1, row-major): `cells` lattice cells across at the first octave, each
+ * further octave twice as fine at `gain` × the weight; `seed` shifts the lattice. Pure (the map's canvas-free textures).
+ */
+export function tileNoise(n, cells, octaves = 4, seed = 0, gain = 0.5) {
+  const out = new Float32Array(n * n);
+  let norm = 0;
+  for (let o = 0, a = 1; o < octaves; o++, a *= gain) norm += a;
+  for (let y = 0; y < n; y++)
+    for (let x = 0; x < n; x++) {
+      let s = 0;
+      for (let o = 0, a = 1, c = cells; o < octaves; o++, a *= gain, c *= 2)
+        s += a * vnoise((x / n) * c + seed * 17 + o * 31, (y / n) * c + seed * 7, c);
+      out[y * n + x] = s / norm;
+    }
+  return out;
+}
+/** RGBA bytes of a tangent-space normal map from a tileable height image h (n × n, 0..1); k = slope strength. */
+export function heightToNormal(h, n, k = 2) {
+  const out = new Uint8Array(n * n * 4),
+    at = (x, y) => h[((y + n) % n) * n + ((x + n) % n)];
+  for (let y = 0; y < n; y++)
+    for (let x = 0; x < n; x++) {
+      const dx = (at(x + 1, y) - at(x - 1, y)) * k,
+        dy = (at(x, y + 1) - at(x, y - 1)) * k,
+        l = Math.hypot(dx, dy, 1),
+        i = (y * n + x) * 4;
+      out[i] = Math.round((0.5 - (0.5 * dx) / l) * 255);
+      out[i + 1] = Math.round((0.5 - (0.5 * dy) / l) * 255);
+      out[i + 2] = Math.round((0.5 + 0.5 / l) * 255);
+      out[i + 3] = 255;
+    }
+  return out;
+}
