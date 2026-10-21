@@ -7,15 +7,19 @@
 // (life.patrols: positions and colours from the model, no faction names here), and the city's traffic (life.traffic, spec §4.19a): buses and
 // vans driving their lines (up onto the overpass deck), boats circling offshore, a plane taking off down the runway. One InstancedMesh per
 // kind (people, poles, cloth, dust, bus, van, boat, plane), at most CAP of each; instances are rebuilt only when the data changes, animated in tick.
-//   createLife(scene, heightAt) → { sync(model, low), tick(dt, t, tod), pick(cam, x, y, cw, ch) → person id | null, hover(id), mark(id),
+//   createLife(scene, heightAt) → { sync(model, low), tick(dt, t, tod, cam), pick(cam, x, y, cw, ch) → person id | null, hover(id), mark(id),
 //                                   going(id, tod), at(id), count(), dispose() }
 // hover(id) / mark(id): a ring under that named figure's feet — the hovered one (ink) and the figure menu's person (cyan, pulsing).
 // tod = time of day 0–1 (map3d's clock); low = the Fast graphics setting (fewer named figures: life.look.low).
+// The look (spec §4.39 People, T-341): by default every figure is the low-poly humanoid (people3d.mjs createHumanoids: limbs
+// swinging by what they do), the named people ~2.5× life size (NAMED_S) with your circle on a soft gold ring, and the nearest
+// VRM_LOD.cap named people on screen fade into the default VRM (createPeopleVRM, given `cam`). Fast keeps the capsule figures.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAP_M, hstr, smooth } from './geo3d.mjs';
 import { box, part } from './kit3d.mjs';
 import { DECK } from './town3d.mjs';
+import { createHumanoids, createPeopleVRM, lookOf } from './people3d.mjs';
 
 /** One figure (≈1.45 m, feet at the origin): a capsule body and a head. */
 const figureGeo = () => {
@@ -64,7 +68,34 @@ const VEH = {
 const CAP = { people: 300, poles: 2, cloth: 2, dust: 10 },
   GREY = '#8a8f99',
   WALK = 1.2, // m/s
-  PER_SIDE = 12; // battle crowd
+  PER_SIDE = 12, // battle crowd
+  NAMED_S = 2.9, // the default look: a named figure's scale (× the 1.45 m figure: ~2.5× life size) at look.size 1.4, √-graded by group
+  CROWD_S = 1.6, // … the crews, the battle crowd and the patrols
+  MUTE = 0.2, // the default look: others' shirts this far to grey (half-way read as skin on the VRM shirts; Fast: 0.5)
+  CIRCLE_RING = '#f5c451', // your circle's soft ring (theme --gold)
+  HIP = 0.7; // the humanoid's hip height (m at scale 1): sitting drops the body by about this
+
+/** A soft ring (alpha fades in and out across its width), flat on the ground, radius 1. */
+const softRingGeo = () => {
+  const pos = [],
+    col = [],
+    R = [0.55, 0.78, 1],
+    A = [0, 0.75, 0],
+    n = 32;
+  for (let i = 0; i < n; i++)
+    for (let j = 0; j < 2; j++) {
+      const a0 = (i / n) * Math.PI * 2,
+        a1 = ((i + 1) / n) * Math.PI * 2,
+        v = (r, a) => [Math.cos(a) * r, 0, Math.sin(a) * r],
+        q = [v(R[j], a0), v(R[j + 1], a0), v(R[j], a1), v(R[j + 1], a1)],
+        al = [A[j], A[j + 1], A[j], A[j + 1]];
+      for (const k of [0, 2, 1, 1, 2, 3]) (pos.push(...q[k]), col.push(1, 1, 1, al[k]));
+    }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+  return g;
+};
 
 export function createLife(scene, heightAt) {
   const person = new THREE.InstancedMesh(figureGeo(), new THREE.MeshStandardMaterial({ roughness: 0.85 }), CAP.people),
@@ -89,7 +120,16 @@ export function createLife(scene, heightAt) {
         new THREE.InstancedMesh(vehicleGeo(k), new THREE.MeshStandardMaterial({ roughness: 0.6 }), v.cap)
       ])
     ),
-    meshes = [person, pole, cloth, dust, ...Object.values(cars)];
+    hum = createHumanoids(CAP.people), // the default look's figures (people3d.mjs)
+    vrms = createPeopleVRM(scene), // … and the nearest named people as VRMs
+    circleRing = new THREE.InstancedMesh(
+      softRingGeo(),
+      new THREE.MeshBasicMaterial({ color: CIRCLE_RING, vertexColors: true, transparent: true, depthWrite: false }),
+      CAP.people
+    ),
+    meshes = [person, pole, cloth, dust, ...Object.values(cars), circleRing];
+  scene.add(hum.mesh);
+  circleRing.renderOrder = 1;
   for (const m of meshes) {
     m.count = 0;
     m.frustumCulled = false;
@@ -116,7 +156,10 @@ export function createLife(scene, heightAt) {
     V = new THREE.Vector3();
   let key = null,
     figs = [], // { x, z, y, yaw, color, kind: 'drill' | 'walk' | 'fight' | 'named', ph, path?, len?, crew? }
-    named = [], // the named figures (also in figs): { id, a, h, act, s, dOut, dHome, wx, wy, wz, vis }
+    named = [], // the named figures (also in figs): { id, a, h, act, s, dOut, dHome, wx, wy, wz, vis, st }
+    states = new Map(), // the named figures' state for the VRMs (people3d createPeopleVRM): id → st
+    circle = [], // the named figures of your circle (their soft ring)
+    fast = false, // the Fast setting at the last build: capsules, no VRMs, no circle rings
     TM = null, // the clock windows (model.time: out, home, step)
     poles = [], // { x, z, y, color, ph }
     puffs = [], // { x, z, y, ph }
@@ -146,6 +189,9 @@ export function createLife(scene, heightAt) {
       look = L.look || { size: {}, low: 40 };
     figs = [];
     named = [];
+    states = new Map();
+    circle = [];
+    fast = !!low;
     poles = [];
     puffs = [];
     TM = m.time || null;
@@ -163,8 +209,16 @@ export function createLife(scene, heightAt) {
           y: a.y,
           yaw: hstr(`n${p.id}|y`) * 6.28,
           act: p.act,
-          s: look.size[p.g] || 1.4,
-          color: p.g === 'grey' ? GREY : p.g === 'other' ? `#${col.set(p.color).lerp(col2.set(GREY), 0.5).getHexString()}` : p.color,
+          s: low ? look.size[p.g] || 1.4 : NAMED_S * Math.sqrt((look.size[p.g] || 1.4) / 1.4),
+          color:
+            p.g === 'grey'
+              ? GREY
+              : p.g === 'other'
+                ? `#${col
+                    .set(p.color)
+                    .lerp(col2.set(GREY), low ? 0.5 : MUTE)
+                    .getHexString()}`
+                : p.color,
           ph: hstr(`n${p.id}|p`) * 6.28,
           dOut: hstr(`n${p.id}|o`),
           dHome: hstr(`n${p.id}|h`),
@@ -173,6 +227,26 @@ export function createLife(scene, heightAt) {
           wz: 0,
           vis: false
         };
+      const lk = p.g === 'grey' ? { skin: GREY, hair: GREY } : lookOf(p.id);
+      f.skin = lk.skin;
+      f.hair = lk.hair;
+      f.st = {
+        vis: false,
+        x: 0,
+        y: 0,
+        z: 0,
+        yaw: 0,
+        mode: 'idle',
+        act: p.act,
+        s: f.s,
+        lift: 0,
+        shirt: f.color,
+        skin: lk.skin,
+        hair: lk.hair,
+        g: p.g
+      };
+      states.set(p.id, f.st);
+      if (p.g === 'circle') circle.push(f);
       figs.push(f);
       named.push(f);
     }
@@ -186,7 +260,8 @@ export function createLife(scene, heightAt) {
           let len = 0;
           const seg = path.slice(1).map((p, j) => (len += Math.hypot(p.x - path[j].x, p.z - path[j].z)));
           figs.push({ x: 0, z: 0, y: 0, yaw: 0, color: k, kind: 'walk', ph: hstr(id), path, seg, len, crew: hstr(`${id}|n`) });
-        } else (drill(c.at, id, k, 2, 6), (figs[figs.length - 1].crew = hstr(`${id}|n`)));
+        } else (drill(c.at, id, k, low ? 2 : 9, low ? 6 : 14), (figs[figs.length - 1].crew = hstr(`${id}|n`)));
+        // (the default look: round the HQ building, 9–14 m out — inside 6 m the bigger figures stood in its walls)
       }
     }
     if (L.battle) {
@@ -279,9 +354,19 @@ export function createLife(scene, heightAt) {
     }
     figs = figs.slice(0, CAP.people);
     poles = poles.slice(0, CAP.poles);
-    figs.forEach((f, i) => person.setColorAt(i, col.set(f.color)));
+    if (fast) figs.forEach((f, i) => person.setColorAt(i, col.set(f.color)));
+    else
+      figs.forEach((f, i) => {
+        const lk = f.skin ? f : f.color === GREY ? { skin: GREY, hair: GREY } : lookOf(`${f.kind}${i}`);
+        hum.tint(i, f.color, lk.skin, lk.hair);
+      });
+    hum.count(fast ? 0 : figs.length);
     poles.forEach((p, i) => cloth.setColorAt(i, col.set(p.color)));
-    person.count = figs.length;
+    person.count = fast ? figs.length : 0;
+    circleRing.count = fast ? 0 : circle.length;
+    circleRing.visible = circleRing.count > 0;
+    hum.mesh.visible = !fast;
+    person.visible = fast;
     pole.count = poles.length;
     cloth.count = poles.length;
     dust.count = puffs.length;
@@ -338,6 +423,7 @@ export function createLife(scene, heightAt) {
     return NAMED;
   };
   const DAY = tod => !TM || (tod >= TM.out[0] && tod < TM.home[1]);
+  const POSE = [0, 0, 0, 0]; // the humanoid's limbs this frame: [leg swing, arm swing, arm raise, leg bend] (rad)
 
   return {
     /** Bring the figures up to date with a model (rebuilt only when life, the clock windows or the setting changed). */
@@ -352,68 +438,111 @@ export function createLife(scene, heightAt) {
      * Animate: the named people by the time of day, drill hops, walkers going round their places, the crowd shoving, flags and
      * dust. t = seconds; tod = time of day 0–1 (crews go in at night too).
      */
-    tick(dt, t, tod = 0.5) {
-      const day = DAY(tod);
+    tick(dt, t, tod = 0.5, cam = null) {
+      const day = DAY(tod),
+        PO = POSE;
       figs.forEach((f, i) => {
         let { x, z, yaw } = f,
           lift = 0,
           lean = 0,
-          sc = 1,
-          sy = 1;
+          sc = fast ? 1 : CROWD_S,
+          sy = 1,
+          drop = 0;
+        PO[0] = PO[1] = PO[2] = PO[3] = 0;
         if (f.kind === 'named') {
-          const w = whereNamed(f, tod);
+          const w = whereNamed(f, tod),
+            st = f.st;
           sc = f.s;
+          st.mode = w.mode;
           if (w.mode === 'home') sc = 0;
           else if (w.mode === 'walk') {
             x = w.x;
             z = w.z;
             yaw = w.yaw;
             lift = Math.abs(Math.sin(t * 6 + f.ph * 9)) * 0.06 * sc;
-            lean = 0.12;
+            lean = fast ? 0.12 : 0.05;
+            PO[0] = Math.sin(t * 6 + f.ph * 9) * 0.55;
+            PO[1] = -PO[0] * 0.8;
           } else if (f.act === 'hustle') {
-            // a jog round the court
-            const a = t * 0.9 + f.ph;
-            x += Math.cos(a) * 2.2;
-            z += Math.sin(a) * 2.2;
+            // a jog round the court (wider for the bigger figures)
+            const a = t * 0.9 + f.ph,
+              r = fast ? 2.2 : 2.2 * Math.max(1, sc / 1.4);
+            x += Math.cos(a) * r;
+            z += Math.sin(a) * r;
             yaw = a + Math.PI;
             lift = Math.abs(Math.sin(t * 7 + f.ph)) * 0.08 * sc;
-            lean = 0.15;
-          } else if (f.act === 'train' || f.act === 'hard') lift = Math.max(0, Math.sin(t * (f.act === 'hard' ? 7 : 5) + f.ph)) * 0.22 * sc;
-          else sy = 0.72; // studying, resting, injured: sitting
+            lean = fast ? 0.15 : 0.1;
+            PO[0] = Math.sin(t * 7 + f.ph) * 0.75;
+            PO[1] = -PO[0] * 0.9;
+            PO[2] = 0.35;
+          } else if (f.act === 'train' || f.act === 'hard') {
+            const s = Math.sin(t * (f.act === 'hard' ? 7 : 5) + f.ph);
+            lift = Math.max(0, s) * 0.22 * sc;
+            PO[2] = 2.9 * smooth(0, 0.6, s); // a block jump: the arms go up
+          } else if (fast)
+            sy = 0.72; // studying, resting, injured: sitting
+          else ((drop = (HIP - 0.08) * sc), (PO[3] = 1.45), (PO[2] = -0.45), (lean = -0.08));
           f.vis = sc > 0;
           if (f.vis) {
             f.wx = x;
             f.wz = z;
             f.wy = heightAt(x, z) + 1.3 * sc;
           }
-          D.position.set(x, (w.mode === 'idle' && f.act !== 'hustle' ? f.y : heightAt(x, z)) + lift, z);
-          D.rotation.set(lean, yaw, 0);
-          D.scale.set(sc, sc * sy, sc);
-          D.updateMatrix();
-          person.setMatrixAt(i, D.matrix);
+          const gy = w.mode === 'idle' && f.act !== 'hustle' ? f.y : heightAt(x, z);
+          st.vis = f.vis;
+          st.x = x;
+          st.z = z;
+          st.y = gy;
+          st.yaw = yaw;
+          st.lift = lift;
+          if (fast) {
+            D.position.set(x, gy + lift, z);
+            D.rotation.set(lean, yaw, 0);
+            D.scale.set(sc, sc * sy, sc);
+            D.updateMatrix();
+            person.setMatrixAt(i, D.matrix);
+          } else hum.set(i, x, gy + lift - drop, z, yaw, lean, sc * (1 - vrms.weight(f.id)), sy, PO);
           return;
         }
         if (f.crew !== undefined && !(day || f.crew < 0.15)) sc = 0; // a crew goes in at night (a few stay out late)
-        if (f.kind === 'drill') lift = Math.max(0, Math.sin(t * 5 + f.ph)) * 0.25;
-        else if (f.kind === 'fight') {
+        if (f.kind === 'drill') {
+          const s = Math.sin(t * 5 + f.ph);
+          lift = Math.max(0, s) * 0.25;
+          PO[2] = 2.9 * smooth(0, 0.6, s);
+        } else if (f.kind === 'fight') {
           const s = Math.sin(t * 3 + f.ph);
           lift = Math.max(0, s) * 0.18;
           x += Math.sin(yaw) * s * 0.25;
+          PO[0] = 0.3;
+          PO[2] = 1.3 + 0.3 * s; // shoving: arms out in front
         } else {
           const p = along(f, (f.ph * f.len + t * WALK) % f.len);
           x = p.x;
           z = p.z;
           yaw = p.yaw;
           lift = Math.abs(Math.sin(t * 6 + f.ph * 9)) * 0.06;
-          lean = 0.12;
+          lean = fast ? 0.12 : 0.05;
+          PO[0] = Math.sin(t * 6 + f.ph * 9) * 0.55;
+          PO[1] = -PO[0] * 0.8;
         }
         const y = f.kind === 'walk' ? heightAt(x, z) : f.y;
+        if (!fast) return hum.set(i, x, y + lift * sc, z, yaw, lean, sc, 1, PO);
         D.position.set(x, y + lift, z);
         D.rotation.set(lean, yaw, 0);
         D.scale.set(sc, sc, sc);
         D.updateMatrix();
         person.setMatrixAt(i, D.matrix);
       });
+      if (!fast)
+        circle.forEach((f, i) => {
+          D.position.set(f.wx, heightAt(f.wx, f.wz) + 0.05, f.wz);
+          D.rotation.set(0, 0, 0);
+          D.scale.setScalar(f.vis ? f.s * 0.75 : 0);
+          D.updateMatrix();
+          circleRing.setMatrixAt(i, D.matrix);
+        });
+      if (cam) vrms.tick(dt, states, cam, !fast);
+      hum.flush();
       poles.forEach((p, i) => {
         D.position.set(p.x, p.y + 1.5, p.z);
         D.rotation.set(0, 0, 0);
@@ -528,12 +657,19 @@ export function createLife(scene, heightAt) {
     /** Figures currently shown (for QA / budget). */
     count: () => ({
       named: named.filter(f => f.vis).length,
-      people: person.count,
+      people: fast ? person.count : hum.mesh.count,
       poles: pole.count,
       dust: dust.count,
-      vehicles: cars.bus.count + cars.van.count + cars.boat.count + cars.plane.count
+      vehicles: cars.bus.count + cars.van.count + cars.boat.count + cars.plane.count,
+      look: fast ? 'capsule' : 'humanoid',
+      humanoids: hum.mesh.count,
+      circle: circleRing.count,
+      ...vrms.count()
     }),
     dispose() {
+      vrms.dispose();
+      scene.remove(hum.mesh);
+      hum.dispose();
       for (const R of Object.values(rings)) (scene.remove(R.m), R.m.material.dispose());
       ringGeo.dispose();
       for (const m of meshes) {
