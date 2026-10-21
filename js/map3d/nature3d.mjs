@@ -132,20 +132,20 @@ const crown = (blobs, color, y0, y1) =>
 const HI = {
   pine: () => {
     const tiers = [0, 1, 2, 3, 4].map(i => {
-      const r = 2.35 * (1 - i * 0.17),
-        y0 = 1.7 + i * 1.3,
-        ht = 2.5 - i * 0.18,
+      const r = 2.4 * (1 - i * 0.18),
+        y0 = 1.6 + i * 1.25,
+        ht = 2.9 - i * 0.25,
         g = new THREE.LatheGeometry(
           [
-            new THREE.Vector2(r * 0.9, y0 - 0.35),
-            new THREE.Vector2(r, y0),
-            new THREE.Vector2(r * 0.45, y0 + ht * 0.55),
+            new THREE.Vector2(r, y0 - 0.15),
+            new THREE.Vector2(r * 0.62, y0 + ht * 0.28),
+            new THREE.Vector2(r * 0.28, y0 + ht * 0.62),
             new THREE.Vector2(0.001, y0 + ht)
           ],
           8
         ).rotateY(i * 1.3);
-      jit(g, 0.35, i);
-      return tone(leafy(g, '#2f5a3a', 1), (x, y) => (0.55 + 0.5 * Math.min(1, (y - y0 + 0.35) / (ht + 0.35))) * (0.85 + 0.25 * (i / 4)));
+      jit(g, 0.45, i);
+      return tone(leafy(g, '#3a6a45', 1), (x, y) => (0.6 + 0.5 * Math.min(1, Math.max(0, (y - y0) / ht))) * (0.85 + 0.25 * (i / 4)));
     });
     return merge([trunk(0.16, 0.3, 3.4, '#4f3a2a'), ...tiers]);
   },
@@ -399,7 +399,7 @@ const richMat = (U, double) => {
 
 export function createNature(scene, heightAt) {
   const U = { t: { value: 0 } },
-    shadowMat = new THREE.MeshBasicMaterial(),
+    shadowMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }),
     flat = () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }),
     meshes = {},
     D = new THREE.Object3D(),
@@ -486,14 +486,13 @@ export function createNature(scene, heightAt) {
       m.receiveShadow = true;
       meshes[shape] = m;
       scene.add(m);
-      // the detailed look: the shadow is cast by the Fast shape (layer 1: only the sun's shadow camera draws it) — a few
-      // percent of the triangles for the same silhouette at shadow-map resolution
+      // the detailed look: the shadow is cast by the Fast shape (drawn into the shadow map; in the view it writes nothing) —
+      // a few percent of the triangles for the same silhouette at shadow-map resolution
       if (!low && m.castShadow) {
         const px = new THREE.InstancedMesh(SHAPE[shape](), shadowMat, list.length);
         px.instanceMatrix.copy(m.instanceMatrix);
         px.castShadow = true;
         px.receiveShadow = false;
-        px.layers.set(1);
         px.userData.proxy = true;
         m.castShadow = false;
         shadows[shape] = px;

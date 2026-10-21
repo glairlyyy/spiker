@@ -646,8 +646,8 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
    curved ringed stem with coconuts, lumpy bushes and rocks, 7-blade tufts — with vertex tones (dark under / inside, light on top)
    and a `leaf` attribute that the detailed material (`richMat`) reads for a 3D value-noise mottle and the wind sway (vertex shader,
    `WIND`, by height and instance position; uniform time from tick). A few extra tufts ring each plant and rock (`GRASS`, hashed
-   offsets). Shadows come from the Fast shape as a shadow-only proxy on layer 1 (the sun's shadow camera enables it, the view
-   camera never draws it). Draw calls +≤ 5 proxies.
+   offsets). Shadows come from the Fast shape as a shadow-only proxy (castShadow; its material writes no colour or
+   depth, so the view shows only the detailed shape). Draw calls +≤ 5 proxies.
    The town layer is `js/map3d/town3d.mjs` (`createTown(scene, heightAt)` → `{ sync(model), dispose() }`, display only, no randoms):
    reads only `model.land.roads / lots / landmarks / districts` and `model.fog`. Ground use (`model.land.ground`, from `GROUND`: circles or
    rings in map units) is painted into the terrain's vertex colours by map3d.mjs `buildTerrain` (`GROUND_TINT`: two tones, straight bands at a

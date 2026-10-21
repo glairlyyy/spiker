@@ -70,7 +70,7 @@ const WEI_GROUND = {
   edge: [-8, 14], // the paving's soft edge (m, signed distance into the district)
   core: 70, // the core's full lightness this far in (m)
   suburb: 0.5, // the ring suburbs (k < 0.9): paved only round their lots, apron m wide (the cores: k 0.9 everywhere)
-  apron: 5,
+  apron: 3.5,
   pave: { city: ['#7f817e', '#a19f98'], works: ['#6f6e6a', '#83807a'], oldtown: ['#857d72', '#9f9483'] }
 };
 /**
@@ -346,8 +346,9 @@ function buildTerrain(model) {
         }
         if (river && typeof lineDist === 'function') {
           const rd = lineDist([x / MAP_M, z / MAP_M], river.line).d / river.w;
+          wW = 1 - smooth(0.12, 0.3, rd); // (soft: the water's edge is not the 2 m grid)
           if (rd < 0.22)
-            (c.lerp(riverC, 0.85), (wW = 1)); // the river off the Peak
+            c.lerp(riverC, 0.85); // the river off the Peak
           else {
             const t = 0.75 * (1 - smooth(0.22 + (BIO.bankW || 0.5) * 0.6, 0.22 + (BIO.bankW || 0.5), rd));
             c.lerp(bankC, t); // its sand / pebble banks
@@ -362,7 +363,7 @@ function buildTerrain(model) {
           const sdq = inside(x, z, q.poly) ? edgeDist(x, z, q.poly) : -edgeDist(x, z, q.poly),
             u = smooth(WEI_GROUND.edge[0], WEI_GROUND.edge[1], sdq);
           if (u <= 0) continue;
-          const pk = q.k < 0.9 ? 0.85 * apron[k] : q.k; // suburbs: only round the lots
+          const pk = q.k < 0.9 ? 0.65 * apron[k] : q.k; // suburbs: only round the lots
           c.lerp(tintC.copy(q.E).lerp(q.C, smooth(0, WEI_GROUND.core, sdq)), pk * u);
           wP = Math.max(wP, pk * u);
           wS *= 1 - u;
@@ -446,7 +447,6 @@ function lightScene(renderer, scene) {
   sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
   Object.assign(sun.shadow.camera, { left: -SHADOW_BOX, right: SHADOW_BOX, top: SHADOW_BOX, bottom: -SHADOW_BOX, near: 1, far: 500 });
   sun.shadow.bias = -0.0006;
-  sun.shadow.camera.layers.enable(1); // (the detailed look's shadow-only proxies, nature3d)
   scene.add(sun, sun.target);
   const water = new THREE.Mesh(
     new THREE.PlaneGeometry(6000, 6000).rotateX(-Math.PI / 2),
