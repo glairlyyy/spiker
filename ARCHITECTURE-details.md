@@ -1008,3 +1008,18 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   friend's share × GIFTS.generous.k. Data `GIFT_RUB` (body gifts → their body stat, growth gifts → every gain; Late Bloomer in year 2).
 - **Not here** (Agent P, rel.js): Magnetic / Lone Wolf bond growth — `Rel.add` can scale a positive memory by
   `Gifts.bondMul(run, id)` (their Magnetic / Lone Wolf × your Magnetic).
+
+## Team stories (spec §4.36 2–4, T-328–T-330)
+
+- **Files**: `js/data/team.js` (TEAM numbers, TEAM_CHAT lines by behaviour × situation, TEAM_REPLY; its memory kinds are merged into
+  MEMORY / MEM_TEXT at load), `js/career/team.js` (`Team`, DOM-free, hashes only — `hstr`, never R()). State lazily in `run.tlife`
+  (`Team.of`; not `run.team`, which is the club index), no RUN_DEFAULTS, no save bump. Agent T's contract is read behind guards:
+  `Team.circle` = `Circle.of(run)` or your mates (≤ TEAM.circle), `Team.ex` = `run.ex` or {}.
+- **Hook**: `Cup.record` (every match of yours, you = side 0) calls `Team.matched(run, m)`.
+- **Chat** (T-328): `Team.chatFor` → `run.tlife.chat = { key, win, msgs: [{ id, sit, t }], done }`: 2–4 people of your side's squad
+  (played first, then by hash), each one line from `TEAM_CHAT[their first trait][sit]` (`Team.sit`: win / loss + `_you` / `_them` when
+  one line beats the other by REL.behave.proud.gap — `Team.line` weighs a stat line as Rel.afterMatch does). A match you only watched
+  clears it. `Team.reply(run, kind)` once: `Rel.add(id, TEAM_REPLY[kind].mem, v × by[behaviour])` for each who wrote (0 → none).
+  UI (career-match.js): `chatCard` in the hub's lock layer (`CW.lock = { phase: 'res', res, chat: true }`) — after a watched match
+  from `watchCareer`'s onLeave (only a chat this match wrote), after a simmed one from the result card's Continue (`chatAfter`);
+  `chatKey` (window, capture) takes 1 / 2 / 3 and Space / Enter / Esc (= Stay quiet) before `hubKey`.

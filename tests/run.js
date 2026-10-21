@@ -20,6 +20,7 @@ require('./momentum.test');
 require('./lines.test');
 require('./traits.test');
 require('./gifts.test');
+require('./story.test');
 
 // ---------- report ----------
 let fail = 0,

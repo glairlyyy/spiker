@@ -73,14 +73,14 @@ Accept: UI smoke passes with the strip; design-system rules (tokens, type ≥ 12
 QA: career run → the hub, screenshot.
 Result:
 
-### [ ] T-328: Team chat after matches
+### [x] T-328: Team chat after matches
 Agent: S
 Spec: §4.36 2          Goldens: unchanged          Save: no change (`run.team` lazy)
 Goal: after a match you played: 2–4 teammate messages in their behaviour's voice (by result, your line, theirs); one reply → a memory.
 Files: js/career/team.js (new), js/data/team.js (new; lore voices), js/ui/career-match.js, index.html, tests/story.test.js (new; in tests/run.js)
 Accept: tests — the messages match behaviours and the result; one reply writes one memory; no randoms.
 QA: career run → a match → the chat card.
-Result:
+Result: Team.matched from Cup.record (one line in cup.js, every match of yours) → run.tlife.chat (state in `run.tlife`: `run.team` is the club index); one reply to the whole chat = one memory with each who wrote (× behaviour, 0 = none); card in the hub lock layer after the result (watched: onLeave; sim: Continue → chatAfter; keys 1/2/3, Space = Stay quiet); ui-smoke's sim step answers it. 4 tests; QA: 4 messages after a court loss, 0 page errors.
 
 ### [ ] T-329: Personal arcs
 Agent: S

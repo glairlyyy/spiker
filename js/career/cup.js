@@ -352,6 +352,7 @@ const Cup = {
     if (run.mlog.length > MLOG.max) run.mlog.splice(0, run.mlog.length - MLOG.max);
     Feel.result(run, m, played, run.mlog[run.mlog.length - 1].grade); // Drive & Pain (spec §4.30): every match of yours
     Story.matched(run, kind, win, played); // the hub's next scene may be about this match (T-175)
+    if (typeof Team !== 'undefined') Team.matched(run, m); // team life (spec §4.36): the chat, arcs, ex-teammates (no draws)
   },
   /**
    * Story flags from a match against the rival's side (spec §4.28): `rematchWon` / `rematchLost` (year-2 rematch); `beatRival` — you

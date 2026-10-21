@@ -1383,7 +1383,11 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **1. Squad strip** (hub top bar): your circle's faces with mood and bond; click → their card: this week's plan, their want,
     their arc step (3), your history.
   - **2. Team chat** after every match you play: 2–4 messages from teammates in their behaviour's voice (the Hothead blames, the
-    Friendly cheers, the Egoist talks about themselves); one reply (back them · joke · stay quiet) → a small memory each.
+    Friendly cheers, the Egoist talks about themselves); one reply (back them · joke · stay quiet) → a small memory each. **[built 2026-10-21,
+    T-328]**: after every match of yours (Cup.record) 2–4 people of your side's squad, those who played first, one line each by
+    their behaviour × the result × whose line was better (by 4+); one reply to the whole chat → one memory with each who wrote,
+    × their behaviour (Back them: Egoist / Hothead × 1.5; Joke: Friendly × 1.5, Picky / Egoist turn it negative; Stay quiet: Shy ×
+    1.5, Friendly / Hothead negative, some no memory); shown in the hub after the result card (keys 1 / 2 / 3, Space = Stay quiet).
   - **3. Personal arcs**: each circle member has one three-beat arc a season built on their want (national: a call-up
     rumour → a test match → the verdict; money: a debt → a hustle → the payoff; spot: losing it → asking you to sit out → their
     chance; grudge, prove, leave likewise). Each beat asks you for something (a day, a match, money, a choice); helping →
