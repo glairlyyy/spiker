@@ -496,10 +496,10 @@ function skyAt(keys, tod, sun, hemi, scene) {
  * resolution. No downloads, no randoms (fixed-hash noise).
  */
 export const LOOK = {
-  exposure: [1, 1.3], // ACES exposure by day → with the night lights on (lit)
+  exposure: [1, 1.7], // ACES exposure by day → with the night lights on (lit)
   samples: 4, // MSAA samples of the post's render target (the canvas's own antialias is bypassed)
   env: 0.3, // the sky's light on materials at noon (× the sun's height; none at night)
-  hemi: [0.7, 1.5], // the clock's hemisphere light × this by day → at night (by day the sky adds the rest)
+  hemi: [0.7, 1.6], // the clock's hemisphere light × this by day → at night (by day the sky adds the rest)
   sky: { turbidity: 5, rayleigh: 1.4, mie: 0.004, g: 0.8, every: 0.25, moved: 0.015 },
   bloom: { strength: 0.85, radius: 0.5, day: 3, night: 0.8 }, // threshold from day (nothing blooms) to night
   shadow: { radius: 3, box: [40, 360], k: 0.85, map: 2048, mapHi: 4096 },
