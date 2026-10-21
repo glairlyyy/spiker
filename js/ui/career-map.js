@@ -9,10 +9,12 @@ function mapMount(run) {
   roadMod();
   roadSync(run);
   MapView.mount(el, MapModel.build(run, CW.spot), { pick: mapPick, point: mapPoint });
+  figRender(); // the figure menu, if one is open (spec §4.37 7)
   if (typeof Ambience !== 'undefined') Ambience.start(); // the island's sound (spec §4.37 5): only while the map is up
 }
 /** Empty map clicked: land → a point to travel to; sea → deselect. */
 function mapPoint(p) {
+  if (CW.fig) figClose();
   if (!City.onLand(p)) return mapPick(null);
   CW.spot = MapModel.ptId(p);
   if (Story.pick(RUN, CW.spot)) Run.save(RUN); // Fern's lesson for the first tile you click (spec §10.10a)
@@ -38,9 +40,17 @@ function spotGhost(run, id) {
 /** The floating card for the selected place (with the route choice when a short cut exists — spec §4.37 4). */
 function spotCard(run) {
   roadSync(run);
-  const body = spotPanel(run, CW.spot),
-    row = routeRow(run);
+  const body = City.withInvite(run, CW.spot, () => spotPanel(run, CW.spot)), // (an Invite's yes counts on this floor: the numbers include them)
+    row = inviteRow(run, CW.spot) + routeRow(run);
   return `<button class="btn x" onclick="mapPick(null)" aria-label="Close">✕</button>${row ? body.replace(/<\/div>\s*$/, `${row}</div>`) : body}`;
+}
+/** The place card's note when an Invite's yes joins an order here (spec §4.37 7) and they aren't a teammate (those show on the floor). */
+function inviteRow(run, id) {
+  const v = City.joins(run, id),
+    P = v != null && !Run.mates(run).some(m => m.id === v) && People.find(run, v);
+  return P
+    ? `<div class="popts pinv"><span class="pchip">${faceSVG(P, 0.3, 18)}${esc(Team.first(P))} +${(Run.you(run).bond[v] || 0) >= 80 ? 50 : 20}%</span><small class="mute">joins your next order here</small></div>`
+    : '';
 }
 /**
  * The place popup follows its pin (spec §10.1c): beside the selected pin (or the picked-point flag), right of it when it
@@ -52,6 +62,7 @@ function spotFollow() {
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(spotFollow);
   try {
     spotPlace();
+    figPlace();
   } catch (e) {
     /* a frame mid-render: try again next frame */
   }
@@ -62,35 +73,37 @@ function spotPlace() {
     hub = card && card.closest('.hub');
   if (card && hub) {
     const pin = hub.querySelector(CW.spot && CW.spot.startsWith('pt:') ? '.maplay .mflag' : '.maplay .mpin.sel'),
-      H = hub.getBoundingClientRect(),
-      cs = getComputedStyle(hub),
-      L = H.left + (parseFloat(cs.getPropertyValue('--rail')) || 0) + 16,
-      T = H.top + (parseFloat(cs.getPropertyValue('--tbar')) || 0) + 16,
-      R = H.right - 16,
-      B = H.bottom - 16,
-      w = card.offsetWidth,
-      h = card.offsetHeight,
       p = pin && pin.style.display !== 'none' ? pin.getBoundingClientRect() : null;
-    if (p && p.width) {
-      const ax = p.left + p.width / 2,
-        ay = p.top + p.height / 2;
-      let x = ax + SPOT_GAP;
-      if (x + w > R) x = ax - SPOT_GAP - w; // flip to the left of the pin
-      x = Math.max(L, Math.min(x, R - w));
-      const y = Math.max(T, Math.min(ay - h / 2, B - h));
-      card.style.left = `${Math.round(x - H.left)}px`;
-      card.style.top = `${Math.round(y - H.top)}px`;
-      card.style.right = 'auto';
-      card.style.setProperty('--mv-origin', x < ax ? 'right center' : 'left center'); // it grows from its pin's side
-      card.classList.add('pinned');
-    } else if (card.classList.contains('pinned')) {
+    if (p && p.width) besideAt(card, hub, p.left + p.width / 2, p.top + p.height / 2);
+    else if (card.classList.contains('pinned')) {
       card.style.left = card.style.top = card.style.right = '';
       card.classList.remove('pinned');
     }
   }
 }
+/** Place a floating card beside client point (ax, ay): right of it when it fits, else left; centred on it; kept inside the map area. */
+function besideAt(card, hub, ax, ay) {
+  const H = hub.getBoundingClientRect(),
+    cs = getComputedStyle(hub),
+    L = H.left + (parseFloat(cs.getPropertyValue('--rail')) || 0) + 16,
+    T = H.top + (parseFloat(cs.getPropertyValue('--tbar')) || 0) + 16,
+    R = H.right - 16,
+    B = H.bottom - 16,
+    w = card.offsetWidth,
+    h = card.offsetHeight;
+  let x = ax + SPOT_GAP;
+  if (x + w > R) x = ax - SPOT_GAP - w; // flip to the left of the pin
+  x = Math.max(L, Math.min(x, R - w));
+  const y = Math.max(T, Math.min(ay - h / 2, B - h));
+  card.style.left = `${Math.round(x - H.left)}px`;
+  card.style.top = `${Math.round(y - H.top)}px`;
+  card.style.right = 'auto';
+  card.style.setProperty('--mv-origin', x < ax ? 'right center' : 'left center'); // it grows from its pin's side
+  card.classList.add('pinned');
+}
 if (typeof requestAnimationFrame === 'function' && typeof document !== 'undefined') requestAnimationFrame(spotFollow);
 function mapPick(id) {
+  if (CW.fig && id) figClose(); // one card over the map at a time
   const prev = CW.spot,
     el = $('#spot');
   CW.spot = id;
@@ -208,6 +221,8 @@ function trainFx(run, s, a, line, oid) {
   if (b.sta !== a.sta) rows.push([statI('sta', 18), 'Stamina', fmtDelta(b.sta - a.sta), 'cost']);
   if (b.money !== a.money) rows.push([statI('mon', 18), 'Money', fmtDelta(b.money - a.money, { pre: '$' }), 'cost']);
   if (b.mood !== a.mood) rows.push([statI('mood', 18), 'Mood', b.mood > a.mood ? '↑' : '↓', b.mood > a.mood ? 'up' : 'dn']);
+  const w = / · with ([^(]+?)(?: \(|$)/.exec(line); // an Invite's yes came along (spec §4.37 7)
+  if (w) rows.push([statI(GLOSSARY.bond.icon, 18), 'Together', esc(w[1]), 'up', 'They trained beside you: EXP as a teammate on the floor']);
   return { ok, injured: b.injury && !a.injury, name: oid ? DAY_ORDERS[oid].name : TRAININGS[s.train].name, place: s.name, rows, was: a };
 }
 const LOCK = { min: 250, max: 20000, spin: 1100, show: 3200 }; // ms: wait for the walk to start · give up · spinner · result
@@ -307,7 +322,7 @@ function lockLayer() {
     return `<div class="actlock walk" id="actlock" role="status" aria-live="polite"><span class="lkpill"><i class="spin sm" aria-hidden="true"></i>${L.to ? `Walking to ${esc(L.to)}` : 'On the way'}</span></div>`;
   if (L.phase === 'greet') {
     const P = L.greet.person;
-    return `<div class="actlock greet" id="actlock" role="dialog" aria-live="polite" onclick="lockGreetDone()"><div class="sbox">${P ? `<span class="sb-face">${faceSVG(P, 0, 72)}</span>` : ''}<div class="sb-body">${P ? `<b class="sb-name">${esc(P.name)}</b>` : ''}<p class="sb-text">${esc(L.greet.text)}</p></div><span class="sb-keys"><kbd>Space</kbd> next</span></div></div>`;
+    return `<div class="actlock greet" id="actlock" role="dialog" aria-live="polite" onclick="lockGreetDone()"><div class="sbox">${P ? `<span class="sb-face">${faceSVG(P, 0, 72)}</span>` : ''}<div class="sb-body">${P ? `<b class="sb-name">${esc(P.name)}</b>` : ''}<p class="sb-text">${esc(L.greet.text)}</p>${L.greet.sub ? `<small class="mute">${esc(L.greet.sub)}</small>` : ''}</div><span class="sb-keys"><kbd>Space</kbd> next</span></div></div>`;
   }
   if (L.phase === 'res') return `<div class="actlock dim res" id="actlock" role="dialog" aria-live="polite">${L.res}</div>`;
   if (L.phase === 'enc') return encLayer(L);
@@ -355,9 +370,9 @@ function mapStake(ti, d) {
   S[ti] = clamp((S[ti] || 0) + d * CHALLENGE.stakeStep, 0, Fight.stakeMax(RUN));
   mapPick(`hq${ti}`);
 }
-/** Challenge club ti at the chosen stake: refused (diary line) or played (watch, or sim = the result at once). */
-function mapChallenge(ti, sim) {
-  const r = Fight.offer(RUN, ti, (CW.stake || {})[ti] || 0);
+/** Challenge club ti at the chosen stake (or `stake`): refused (diary line) or played (watch, or sim = the result at once). */
+function mapChallenge(ti, sim, stake = null) {
+  const r = Fight.offer(RUN, ti, stake != null ? stake : (CW.stake || {})[ti] || 0);
   let res = null;
   if (!r) return;
   CW.spot = `hq${ti}`;
@@ -492,16 +507,59 @@ function roadClear() {
     if (W.held) W.go();
   }
 }
-/** The encounter card's answers: [{ t (label), c (cost → result), a (handler), pri, dis (why it can't) }]. */
-function encOpts(run, E) {
-  const walk = { t: 'Walk on', a: "encDo('walk')" };
-  if (E.kind === 'circle') return [{ t: 'Talk', c: '→ a small memory', a: "encDo('talk')", pri: true }, walk];
-  if (E.kind === 'arc') {
-    const A = Team.arc(run, String(E.id));
-    if (!A || A.st !== 'open') return [{ t: 'Talk', c: '→ a small memory', a: "encDo('talk')", pri: true }, walk];
+// ---- the figure menu (spec §4.37 7, T-340): click / right-click anyone you see → Talk · Invite · Spar · Challenge · Card ------------
+// Kenshi-style: you pick, you walk over, then it happens (the rules run first, as for every map action). The road's stop (§4.37 3) is
+// this same menu, opened for you where the walk halts. A row = { t (name), c (cost → result, html), a / sim (onclick), dis (why it
+// can't: printed on the row — the gap), x (html under it: the stake) }; the first open row is the card's one ink primary.
+/** The stake you set for club ti (as on the HQ card), within what you can stake. */
+const figStake = (run, ti) => (ti >= 0 ? Math.min((CW.stake || {})[ti] || 0, Fight.stakeMax(run)) : 0);
+/** The person rows for id: `fn` = the handler's name ('figDo' on the map, 'encDo' on a road stop). */
+function figPersonRows(run, id, road) {
+  const M0 = Encounter.menu(run, id, road);
+  if (!M0) return null;
+  const ti = M0[3].ti,
+    st = figStake(run, ti),
+    M = st ? Encounter.menu(run, id, road, st) : M0,
+    fn = road ? 'encDo' : 'figDo',
+    cost = R0 => (R0.days ? term('day', String(R0.days), 'cost') : 'free'),
+    [talk, inv, spar, ch] = M;
+  return [
+    { t: ENC_MENU.talk.name, c: `${cost(talk)} → ${ENC_MENU.talk.res}`, a: `${fn}('talk')`, dis: talk.why },
+    { t: ENC_MENU.invite.name, c: `${cost(inv)} → ${ENC_MENU.invite.res} · says yes: ${inv.verdict}`, a: `${fn}('invite')`, dis: inv.why },
+    {
+      t: ENC_MENU.spar.name,
+      c: `${term('day', String(spar.days), 'cost')} ${term('sta', -spar.sta, 'cost')} → ${ENC_MENU.spar.res}${spar.court ? ` · ${esc(spar.court.name)}` : ''}`,
+      a: `${fn}('spar')`,
+      sim: `${fn}('spar',null,true)`,
+      dis: spar.why
+    },
+    {
+      t: ENC_MENU.challenge.name,
+      c: `${term('day', String(ch.days), 'cost')} $${st} → ${ENC_MENU.challenge.res} · accepts: ${ch.verdict}`,
+      a: `${fn}('challenge')`,
+      sim: `${fn}('challenge',null,true)`,
+      dis: ch.why,
+      tip: ch.said,
+      x: ch.why
+        ? ''
+        : `<span class="fmst"><span class="lab">Stake <kbd>−</kbd><kbd>+</kbd></span><button class="btn" onclick="figStakeStep(${ti},-1)" ${st <= 0 ? 'disabled' : ''} aria-label="Lower the stake">−</button><b>$${st}</b><button class="btn" onclick="figStakeStep(${ti},1)" ${st + CHALLENGE.stakeStep > Fight.stakeMax(run) ? 'disabled' : ''} aria-label="Raise the stake">+</button></span>`
+    },
+    { t: ENC_MENU.card.name, c: `→ ${ENC_MENU.card.res}`, a: `${fn}('card')` }
+  ];
+}
+/** A road stop's rows: an arc's two answers (then the person's menu), a crew's Challenge, the battle's two sides; Walk on is the key row. */
+function encRows(run, E) {
+  if (E.kind === 'circle' || E.kind === 'arc') {
+    const A = E.kind === 'arc' && Team.arc(run, String(E.id)),
+      own = figPersonRows(run, E.id, true) || [];
+    if (!A || A.st !== 'open') return own;
     const B = Team.beat(run, A),
       c = Team.cost(run, A);
-    return [{ t: B.a, c: c ? `${c} → their arc` : '→ their arc', a: "encDo('help')", pri: true }, { t: B.b, a: "encDo('refuse')" }, walk];
+    return [
+      { t: B.a, c: c ? `${esc(c)} → their arc` : '→ their arc', a: "encDo('help')" },
+      { t: B.b, c: '→ their arc', a: "encDo('refuse')" },
+      ...own
+    ];
   }
   if (E.kind === 'crew') {
     const W = Fight.worth(run, E.ti, 0),
@@ -509,27 +567,146 @@ function encOpts(run, E) {
       side = Fight.challengeSide(run),
       dis = Fight.ban(run) || City.noTime(run, d) || (run.money < side.cost ? `needs $${side.cost} for a crew` : '');
     return [
-      { t: 'Challenge', c: `${d}d → a match · accepts: ${W ? W.verdict : 'refuses'}`, a: "encDo('challenge')", pri: true, dis },
-      walk
+      {
+        t: ENC_MENU.challenge.name,
+        c: `${term('day', String(d), 'cost')} → ${ENC_MENU.challenge.res} · accepts: ${W ? W.verdict : 'refuses'}`,
+        a: "encDo('challenge')",
+        sim: "encDo('challenge',null,true)",
+        dis,
+        tip: W ? W.why : ''
+      }
     ];
   }
   const c = Fight.clashSite(run);
-  if (!c) return [walk];
+  if (!c) return [];
   const d = Fight.clashCost(run),
     dis = Fight.ban(run) || City.noTime(run, d),
-    call = Fight.calledFor(run);
-  return [
-    ...[c.a, c.b].map((r, i) => ({
+    call = Fight.calledFor(run),
+    rows = [c.a, c.b].map((r, i) => ({
       t: `Fight for ${REGIONS[r].name}`,
-      c: `${d}d → a street match${call === r ? ' · your club’s call' : ''}`,
+      c: `${term('day', String(d), 'cost')} → a street match${call === r ? ' · your club’s call' : ''}`,
       a: `encDo('join','${i ? 'b' : 'a'}')`,
-      pri: call ? call === r : !i,
+      sim: `encDo('join','${i ? 'b' : 'a'}',true)`,
       dis
-    })),
-    walk
-  ];
+    }));
+  return call === c.b ? [rows[1], rows[0]] : rows; // your club's call first (the primary)
 }
-/** The encounter card over the map (the dialogue box): who, what they're doing, their line, the answers (1–n), Space walks on. */
+/** The menu's rows as a numbered list (1–n; ⏭ = Shift + the number); the first open row is the ink primary. */
+function figRows(rows) {
+  const pri = rows.findIndex(o => !o.dis);
+  return `<ol class="fmo">${rows
+    .map((o, i) => {
+      const sim = o.sim
+        ? `<button class="btn fms" onclick="event.stopPropagation();${o.sim}" ${o.dis ? 'disabled' : ''} ${tip(GLOSSARY.sim.long)} aria-label="Sim">⏭ <kbd>⇧${i + 1}</kbd></button>`
+        : '';
+      return `<li><div class="fmr"><button class="btn fmb ${i === pri ? 'hot' : ''}" onclick="event.stopPropagation();${o.a}" ${o.dis ? 'disabled' : ''} ${o.tip ? tip(o.tip) : ''}><kbd>${i + 1}</kbd><b>${esc(o.t)}</b><span class="oln ${o.dis ? 'why' : ''}">${o.dis ? esc(o.dis) : o.c}</span></button>${sim}</div>${o.x || ''}</li>`;
+    })
+    .join('')}</ol>`;
+}
+/** The card's head: face, name, what they are doing (or a crew / the battle). */
+const figHead = (P, name, sub) =>
+  `<div class="fmh">${P && !P.gone ? `<span class="fmf">${faceSVG(P, 0, 40)}</span>` : ''}<div><b>${esc(name)}</b><small class="mute">${esc(sub)}</small></div></div>`;
+/** What person id is doing, for the head: "Club · drilling at the Harbor Gym". */
+function figSub(run, id) {
+  const W = Encounter.who(run, id);
+  if (!W) return '';
+  const place = W.spot && SPOTS[W.spot] ? SPOTS[W.spot].name : '';
+  return `${W.t ? W.t.name : 'No club'} · ${LIFE.act[W.act] || 'out'}${place ? ` at ${place}` : ` · ${LIFE.home}`}`;
+}
+/** The open menu's markup for person id ('' when they aren't on the map any more). */
+function figMenu(run, id) {
+  const rows = figPersonRows(run, id, false),
+    P = People.find(run, id);
+  if (!rows || !P) return '';
+  return `<button class="btn x" onclick="figClose()" aria-label="Close (Esc)">✕<kbd>Esc</kbd></button>${figHead(P, P.name, figSub(run, id))}${figRows(rows)}`;
+}
+/** Open the menu at a named figure (a click or right-click on it on the map); not with a walk / result running, an event, a scene or a match week. */
+function figOpen(id) {
+  const run = typeof RUN !== 'undefined' ? RUN : null;
+  if (!run || CW.lock || CW.sheet || Encounter.menuOff(run) || Story.step(run) || !Encounter.who(run, id)) return false;
+  CW.fig = { id };
+  if (CW.spot) mapPick(null); // one card over the map at a time
+  figRender();
+  const el = document.getElementById('figmenu');
+  if (el) Motion.play(el, 'in');
+  return true;
+}
+function figClose() {
+  CW.fig = null;
+  const el = document.getElementById('figmenu');
+  if (el) el.remove();
+}
+/** Put the open menu into the hub (each render re-creates the hub: mapMount calls this), or take it away. */
+function figRender() {
+  const hub = document.querySelector('.career.hub');
+  let el = document.getElementById('figmenu');
+  const html = CW.fig && hub && !CW.lock && !CW.sheet && typeof RUN !== 'undefined' && RUN ? figMenu(RUN, CW.fig.id) : '';
+  if (!html) {
+    if (el) el.remove();
+    if (CW.fig && !CW.lock) CW.fig = null; // (they left the map, or a sheet opened)
+    return;
+  }
+  if (!el || el.parentNode !== hub) {
+    if (el) el.remove();
+    el = document.createElement('div');
+    el.id = 'figmenu';
+    el.className = 'hud fmenu';
+    el.setAttribute('role', 'dialog');
+    hub.appendChild(el);
+  }
+  el.setAttribute('aria-label', (People.find(RUN, CW.fig.id) || {}).name || 'Person');
+  el.innerHTML = html;
+  figPlace();
+}
+function figStakeStep(ti, d) {
+  const S = (CW.stake = CW.stake || {});
+  S[ti] = clamp((S[ti] || 0) + d * CHALLENGE.stakeStep, 0, Fight.stakeMax(RUN));
+  if (CW.lock && CW.lock.phase === 'enc') return lockPhase('enc');
+  figRender();
+}
+/** Choose a row of the open menu: walk over, then it happens (Talk, Invite) — or the match / the card. sim: ⏭ (the result at once). */
+function figDo(k, side, sim) {
+  const run = RUN,
+    F = CW.fig;
+  if (!F || CW.lock) return;
+  const id = F.id,
+    W = Encounter.who(run, id),
+    R0 = W && Encounter.row(run, id, k, false, k === 'challenge' ? figStake(run, Encounter.club(run, W)) : 0);
+  if (!R0 || R0.why) return;
+  figClose();
+  if (k === 'card') return openPerson(id);
+  if (k === 'challenge') return mapChallenge(R0.ti, !!sim);
+  if (k === 'spar') {
+    const fx = Encounter.spar(run, id);
+    if (!fx) return;
+    CW.spot = null;
+    if (!sim) return watchCareer(fx);
+    return mapAfter(run, null, simCareer(fx));
+  }
+  const trip = City.walkTo(run, W.at); // talk / invite: the walk over (its trip days), then their words
+  if (trip == null) return;
+  if (trip) Run.log(run, `${trip}Walked over to ${W.p.name}.`);
+  const r = k === 'talk' ? Encounter.talk(run, id) : Encounter.invite(run, id);
+  CW.spot = null;
+  Run.save(run);
+  actLock(null, { person: W.p, text: `“${r.hi}”`, sub: r.line });
+  CW.lock.to = W.p.name;
+  renderCareer();
+}
+/** The menu follows its figure like the place card its pin; no figure on screen → where it was (or its corner / the middle). */
+function figPlace() {
+  const L = CW.lock,
+    E = L && L.phase === 'enc' && L.enc,
+    open = document.getElementById('figmenu'),
+    road = E && E.id != null && document.querySelector('#actlock .fmenu'),
+    el = open && CW.fig ? open : road,
+    id = el ? (el === open ? CW.fig.id : E.id) : null,
+    hub = el && el.closest('.hub'),
+    p = hub ? MapView.figureAt(id) : null;
+  if (p) besideAt(el, hub, p[0], p[1]);
+  if (id !== figPlace.mark) MapView.mark((figPlace.mark = id)); // the ring under their feet while the menu is open
+}
+/** The encounter card over the map (the figure menu, opened for you): who, what they're doing, their line, the rows (1–n), Space walks on. */
 function encLayer(L) {
   const run = RUN,
     E = L.enc,
@@ -539,53 +716,68 @@ function encLayer(L) {
     sub = '',
     text = '';
   if (P) {
-    const where = E.spot && SPOTS[E.spot] ? ` at ${SPOTS[E.spot].name}` : '';
     name = P.name;
-    sub = `${ENC_ACT[E.act] || ENC_ACT.train}${where}`;
+    sub = figSub(run, E.id) || `${ENC_ACT[E.act] || ENC_ACT.train}${E.spot && SPOTS[E.spot] ? ` at ${SPOTS[E.spot].name}` : ''}`;
     const A = E.kind === 'arc' && Team.arc(run, String(E.id));
     if (A && A.st === 'open') text = `“${Team.beat(run, A).line}”`;
     else {
       const L0 = ENC_HI[Team.beh(run, E.id)] || ENC_HI.other;
-      text = L0[Math.floor(hstr(`hi|${E.key}|${run.week}`) * L0.length)];
+      text = `“${L0[Math.floor(hstr(`hi|${E.key}|${run.week}`) * L0.length)]}”`;
     }
   } else if (E.kind === 'crew') {
     const t = run.teams[E.ti],
       L0 = ENC_CREW[E.region] || ENC_CREW.wei;
     name = t ? `${t.name} crew` : 'A crew';
     sub = 'on the road from their HQ';
-    text = L0[Math.floor(hstr(`crew|${E.ti}|${run.week}`) * L0.length)];
+    text = `“${L0[Math.floor(hstr(`crew|${E.ti}|${run.week}`) * L0.length)]}”`;
   } else {
     name = 'Street battle';
     sub = `${REGIONS[E.a].name} vs ${REGIONS[E.b].name} · ${E.name}`;
     text = ENC_BATTLE[Math.floor(hstr(`battle|${run.week}`) * ENC_BATTLE.length)];
   }
   const done = L.encDone != null,
-    opts = done
-      ? ''
-      : `<ol class="sb-opts">${encOpts(run, E)
-          .map(
-            (o, i) =>
-              `<li><button class="btn ${o.pri ? 'hot' : ''}" onclick="event.stopPropagation();${o.a}" ${o.dis ? `disabled ${tip(o.dis)}` : ''}><kbd>${i + 1}</kbd> ${esc(o.t)}${o.c ? ` <i class="mute small">${esc(o.c)}</i>` : ''}</button></li>`
-          )
-          .join('')}</ol>`;
-  return `<div class="actlock greet enc" id="actlock" role="dialog" aria-live="polite" ${done ? 'onclick="encOn(CW.lock)"' : ''}><div class="sbox">${P && !P.gone ? `<span class="sb-face">${faceSVG(P, 0, 72)}</span>` : ''}<div class="sb-body"><b class="sb-name">${esc(name)}</b> <small class="mute">${esc(sub)}</small><p class="sb-text">${esc(done ? L.encDone || `${first} nodded. That was it.` : text)}</p>${opts}</div><span class="sb-keys"><kbd>Space</kbd> walk on</span></div></div>`;
+    rows = done ? '' : figRows(encRows(run, E));
+  return `<div class="actlock greet enc" id="actlock" role="dialog" aria-live="polite" ${done ? 'onclick="encOn(CW.lock)"' : ''}><div class="hud fmenu road" aria-label="${esc(name)}">${figHead(P, name, sub)}<p class="fml">${esc(done ? L.encDone || `${first} nodded. That was it.` : text)}</p>${rows}<button class="btn fmb fmw" onclick="event.stopPropagation();encOn(CW.lock)"><kbd>Space</kbd><b>Walk on</b><span class="oln">→ nothing</span></button></div></div>`;
 }
-/** Answer the encounter: walk on (the walk resumes), talk (their memory; then Space walks on), or leave the road for the answer. */
-function encDo(what, side) {
+/**
+ * Answer the stop: walk on (the walk resumes), talk / invite (their memory / answer; then Space walks on), card (walk on, their card
+ * opens), or leave the road for the answer (an arc's beat, a challenge, a spar, the battle — sim: ⏭).
+ */
+function encDo(what, side, sim) {
   const L = CW.lock;
   if (!L || L.phase !== 'enc' || !L.enc || L.encDone != null) return;
-  const E = L.enc;
+  const E = L.enc,
+    R0 = E.id != null && ['talk', 'invite', 'spar', 'challenge'].includes(what) ? Encounter.row(RUN, E.id, what, true, 0) : null;
+  if (R0 && R0.why) return;
   if (what === 'walk') return encOn(L);
-  if (what === 'talk') {
-    const r = Encounter.answer(RUN, E, 'talk');
+  if (what === 'talk' || what === 'invite') {
+    const r = Encounter.answer(RUN, E, what);
     Run.save(RUN);
-    L.encDone = r ? r.line : '';
+    L.encDone = r ? (what === 'invite' ? `“${r.hi}” ${r.line}` : r.line) : '';
     return lockPhase('enc');
+  }
+  if (what === 'card') {
+    const id = E.id;
+    encOn(L);
+    return openPerson(id);
+  }
+  let fx = null;
+  if (what === 'spar') {
+    fx = Encounter.spar(RUN, E.id);
+    if (!fx) return;
   }
   encLeave(L); // the rest are a day of their own: the walk ends here, then the answer plays out
   if (what === 'help' || what === 'refuse') return arcAnswer(String(E.id), what === 'help');
-  if (what === 'challenge') return mapChallenge(E.ti, false);
-  if (what === 'join') return mapClash(side === 'b' ? E.b : E.a, false);
+  if (what === 'challenge') {
+    if (E.kind === 'crew') return mapChallenge(E.ti, !!sim, 0); // (a crew on the road: no stake)
+    return mapChallenge(R0.ti, !!sim);
+  }
+  if (what === 'spar') {
+    CW.spot = null;
+    if (!sim) return watchCareer(fx);
+    return mapAfter(RUN, null, simCareer(fx));
+  }
+  if (what === 'join') return mapClash(side === 'b' ? E.b : E.a, !!sim);
 }
 /** Walk on: the card closes, the avatar goes on to the place, then the day's cut-in as usual. */
 function encOn(L) {
@@ -660,11 +852,10 @@ function roadKey(e) {
       if (![' ', 'Enter', 'Escape'].includes(e.key)) return;
       encOn(L);
     } else if (e.key === ' ' || e.key === 'Escape') encDo('walk');
-    else if (/^[1-9]$/.test(e.key)) {
-      const b = document.querySelectorAll('#actlock .sb-opts button')[+e.key - 1];
-      if (!b || b.disabled) return;
-      b.click();
-    } else return;
+    else if (!figKey(e, document.querySelector('#actlock .fmenu'))) return;
+  } else if (!L && CW.fig && !(e.target.closest && e.target.closest('input,select,textarea'))) {
+    if (e.key === 'Escape') figClose();
+    else if (!figKey(e, document.getElementById('figmenu'))) return;
   } else if (L && L.phase === 'spin' && e.key === ' ' && L.focus) {
     if (!focusPress()) return;
   } else if (
@@ -678,5 +869,18 @@ function roadKey(e) {
   else return;
   e.preventDefault();
   e.stopImmediatePropagation();
+}
+/** The figure menu's keys: 1–n a row, Shift + n its ⏭ Sim, − / + the stake. True if one was used. */
+function figKey(e, menu) {
+  if (!menu) return false;
+  const n = /^Digit[1-9]$/.test(e.code) ? +e.code.slice(5) : /^[1-9]$/.test(e.key) ? +e.key : 0,
+    li = n ? menu.querySelectorAll('.fmo > li')[n - 1] : null,
+    st = menu.querySelector('.fmst');
+  let b = null;
+  if (li) b = li.querySelector(e.shiftKey ? '.fms' : '.fmb');
+  else if (st && (e.key === '-' || e.key === '+' || e.key === '=')) b = st.querySelectorAll('button')[e.key === '-' ? 0 : 1];
+  if (!b) return false;
+  if (!b.disabled) b.click();
+  return true;
 }
 if (typeof addEventListener === 'function') addEventListener('keydown', roadKey, true);

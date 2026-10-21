@@ -116,7 +116,7 @@ Accept: ui-smoke: the map opens and closes with no page errors and no AudioConte
 QA: career run → pan the map across three districts; walk a trip.
 Result: js/audio/ambience.js (Ambience): a bus on SND.master, looped sea / murmur / wind noise + an AM insect tone, one-shot thuds / gulls / footsteps (WALK.onStep) / hub button clicks; 200 ms mix by the camera's ground point; stops with the map (every node stopped + disconnected, the context suspended unless a match runs); SND.on mutes; sfx.js untouched (its SND.ctx / master / noise are enough). Settings › Sound. QA mix: Harbor Gym sea 0.57 · gulls 0.79 · murmur 0.9 · thuds 0.37; Sand Courts sea 0.49 · thuds 0.4; the shrine wind 0.25; Wei gym murmur 1; night (last day) insects 0.4, murmur 0.35; ui-smoke: 15 nodes → 0, context suspended.
 
-### [ ] T-340: Interact with anyone you see — the figure menu
+### [x] T-340: Interact with anyone you see — the figure menu
 Agent: M
 Spec: §4.37 7          Goldens: unchanged          Save: no change (lazy `run.enc`)
 Goal: hover outlines a figure; click / right-click opens a menu at it — Talk · Invite · Spar · Challenge · Card — you walk over, then it
@@ -136,7 +136,7 @@ Steps:
 4. Challenge / Join from the menu or a road stop offer Sim ⏭ too (owner default; like the HQ card).
 Accept: tests — each row's lock and effect, deterministic, once-a-day Talk; ui-smoke: right-click a figure → the menu → Talk → a diary line.
 QA: career run → hover, right-click, each option.
-Result:
+Result: Encounter.menu / who / talk / invite / spar (+ sparResult) in encounter.js (pure, no R(); `run.enc.talk / ask / inv`), ENC.invite / ENC.spar, ENC_MENU, ENC_INVITE, `sparred` +3 in data/encounter.js; City.walkTo (the trip days only), City.withInvite / joins (the invitee on the place's floor for the order and the card's preview, then put back; a non-teammate gets `trained`); life3d hover (ink) / mark (cyan, pulsing) rings, ≥ ~14 px at any zoom; map3d right-click (`contextmenu`) → on.person, mark(id); MapView.person → figOpen, figureAt, mark; career-map.js the menu (`#figmenu`, follows its figure via besideAt shared with the place card; keys 1–5, Shift + n ⏭, − / + stake, Esc), the road stop = the same card (encRows; a crew's Challenge and the battle's Join with ⏭), a Together row on the cut-in; css/hub.css `.fmenu`. Deviations: Invite = your next day order this week at a place with a floor (not strictly today — trips move the day); Spar lends a hired street crew free; the spar plays on the run's stream like a challenge. 3 new tests (8 in encounter.test.js), 226/226; ui-smoke 20/20 (new step: right-click → menu → Talk → the diary line; the road step reads the new card); career bot 12 both identical to a53605a (casual 69.5 / 85.0, good 77.7 / 92.9, focus 78.2 / 93.2); QA t340-hover / menu / locked / talk / invite-answer / invite-card / invite-day / road.
 
 ### [ ] T-336: Street level — one district prototype (phase 2)
 Spec: §4.37 6          Goldens: unchanged          Save: no change

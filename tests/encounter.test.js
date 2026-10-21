@@ -251,3 +251,139 @@ test('effort: the focus press — on the beat × 1.1 of the day’s EXP once, mi
   assert(extra > 0, 'the hit adds EXP: ' + extra);
   assert(extra <= Math.ceil(dayXp * g.ENC.focus.k * 1.35) + 1, `at most +10 % of the day (×gifts): ${extra} of ${dayXp}`);
 });
+
+// ---- the figure menu (spec §4.37 7, T-340) ----
+/** Someone on the map whose menu row k is open, or null. */
+const someone = (g, run, k, road = false) =>
+  g.Encounter.people(run)
+    .map(p => p.id)
+    .find(id => {
+      const R0 = g.Encounter.row(run, id, k, road);
+      return R0 && !R0.why;
+    });
+test('figure menu: the rows, their locks, deterministic and drawing nothing (T-340)', () => {
+  const [g, run] = mkRun(),
+    [g2, run2] = mkRun(),
+    sig = (G, R) =>
+      G.Encounter.people(R)
+        .map(p => (G.Encounter.menu(R, p.id) || []).map(r => `${r.k}:${r.why}:${r.days}`).join(','))
+        .join('|');
+  eq(sig(g, run), sig(g2, run2), 'the same run gives the same menus');
+  eq(g.R(), g2.R(), 'menus draw no R()');
+  const M = g.Encounter.menu(run, someone(g, run, 'talk'));
+  eq(M.map(r => r.k).join(' '), 'talk invite spar challenge card', 'Talk · Invite · Spar · Challenge · Card');
+  // grey (a club not scouted) and fogged people have no menu
+  const grey = g.MapModel.lifePeople(run).find(p => p.g === 'grey');
+  if (grey) assert(!g.Encounter.menu(run, grey.id), 'no menu for a grey figure');
+  // Invite: bond under ENC.invite.bond → locked with the gap; out (injured) → locked
+  const low = g.Encounter.people(run).find(p => g.Encounter.who(run, p.id) && g.Rel.bondOf(run, p.id) < g.ENC.invite.bond);
+  assert(low, 'someone with a low bond');
+  assert(
+    /bond \d+, needs 20/.test(g.Encounter.row(run, low.id, 'invite').why),
+    'the bond gap: ' + g.Encounter.row(run, low.id, 'invite').why
+  );
+  const mate = someone(g, run, 'invite');
+  assert(mate != null, 'a friend you may invite');
+  run.people[mate].inj = 2;
+  assert(/injured/.test(g.Encounter.row(run, mate, 'invite').why), 'injured: out');
+  run.people[mate].inj = 0;
+  // Spar: no court within ENC.spar.r → "needs a court"; your own squad → locked
+  const rows = g.Encounter.people(run)
+    .map(p => g.Encounter.row(run, p.id, 'spar'))
+    .filter(Boolean);
+  assert(
+    rows.some(r => /needs a court/.test(r.why)),
+    'a spar without a court nearby'
+  );
+  const tm = g.Run.mates(run).find(m => g.Encounter.who(run, m.id));
+  if (tm) assert(/own squad/.test(g.Encounter.row(run, tm.id, 'spar').why), 'no spar with your own squad');
+  if (tm) eq(g.Encounter.row(run, tm.id, 'challenge').why, 'your own club', 'no challenge of your own club');
+  // the whole menu is shut in a match week and with an event open
+  run.event = { id: 'x' };
+  assert(
+    g.Encounter.menu(run, mate).every(r => r.k === 'card' || r.why),
+    'an event open: only the card'
+  );
+  run.event = null;
+  // injured: no spar, no challenge
+  run.injury = { weeks: 1 };
+  const M2 = g.Encounter.menu(run, mate);
+  assert(M2[2].why && M2[3].why, 'injured: no spar / challenge');
+  run.injury = null;
+  // the days: a walk over costs its trip days (City.trip), too many → the gap
+  run.days = 0;
+  const far = g.Encounter.people(run).find(p => g.City.trip(run, p.at) > 0);
+  if (far) assert(/no days left/.test(g.Encounter.row(run, far.id, 'talk').why), 'no days for the walk');
+});
+
+test('figure menu: Talk once a day per person (met_road), Invite by hash joins your next order (the floor bonus) (T-340)', () => {
+  const [g, run] = mkRun(),
+    id = someone(g, run, 'talk'),
+    W = g.Encounter.who(run, id),
+    d0 = run.days,
+    t = g.City.trip(run, W.at),
+    trip = g.City.walkTo(run, W.at);
+  assert(trip != null, 'you walk over');
+  eq(run.days, d0 - t, 'the walk: its trip days only (no day of its own)');
+  const r = g.Encounter.talk(run, id);
+  assert(r.hi && r.line && g.Rel.list(run, id).some(e => e.k === 'met_road'), 'talk: their line, met_road');
+  eq(g.Encounter.row(run, id, 'talk').why, 'talked today', 'once a day');
+  run.days -= 1; // a new day
+  eq(g.Encounter.row(run, id, 'talk').why, '', 'the next day: again');
+  // Invite: the hash decides, the same in a twin; yes → the next order at a kit place counts them on its floor
+  const [h, twin] = mkRun(),
+    [k, base] = mkRun(),
+    who = someone(h, twin, 'invite');
+  assert(who != null, 'someone to invite');
+  const a = h.Encounter.invite(twin, who),
+    b = g.Encounter.row(run, who, 'invite') && !g.Encounter.row(run, who, 'invite').why ? g.Encounter.invite(run, who) : null;
+  if (b) eq(a.yes, b.yes, 'deterministic');
+  eq(h.Encounter.row(twin, who, 'invite').why ? 1 : 0, 1, 'asked: locked for today');
+  // force a yes and check the floor bonus against the twin without one
+  twin.enc.inv = who;
+  const spot = Object.keys(h.SPOTS).find(s => h.SPOTS[s].kit && h.SPOTS[s].train && h.City.can(twin, s).ok && h.City.can(base, s).ok);
+  twin.sta = base.sta = 100;
+  const pv1 = h.City.withInvite(twin, spot, () => h.Training.preview(twin, h.City.lead(spot), false, 1, spot)),
+    pv0 = k.Training.preview(base, k.City.lead(spot), false, 1, spot);
+  assert(pv1.mates.includes(who) && !pv0.mates.includes(who), 'on the floor for the preview');
+  assert(pv1.main[2] > pv0.main[2], `more EXP: ${pv1.main[2]} vs ${pv0.main[2]}`);
+  const floor0 = JSON.stringify(twin.floor),
+    line = h.City.day(twin, spot, false);
+  assert(/ · with /.test(line), 'the day says who came: ' + line);
+  eq(JSON.stringify(twin.floor), floor0, 'the floor is put back');
+  eq(h.Encounter.invited(twin), null, 'used up by the order');
+  // a place without a floor (Stretch at home) keeps the invite for the next drill
+  twin.enc.inv = who;
+  eq(h.City.joins(twin, 'home'), null, 'home has no floor');
+});
+
+test('figure menu: Spar — a court nearby, no stake, the day, XP and a memory either way (T-340)', () => {
+  const [g, run] = mkRun();
+  let id = someone(g, run, 'spar');
+  if (id == null) {
+    // put a court next to someone: reveal every court and take the person nearest one
+    const C = g.Encounter.courts(run);
+    id = g.Encounter.people(run)
+      .filter(p => g.Encounter.who(run, p.id))
+      .find(p => C.some(c => Math.hypot(c.at[0] - p.at[0], c.at[1] - p.at[1]) < g.ENC.spar.r * 3))?.id;
+    g.ENC.spar.r *= 3;
+  }
+  assert(id != null && !g.Encounter.row(run, id, 'spar').why, 'someone to spar');
+  const money = run.money,
+    rep = JSON.stringify(run.rep || {}),
+    d0 = run.days,
+    R0 = g.Encounter.row(run, id, 'spar'),
+    fx = g.Encounter.spar(run, id);
+  assert(fx && fx.b === g.Encounter.who(run, id).t, 'their crew');
+  const m = g.Cup.simNow(fx);
+  assert(m.over, 'played');
+  eq(run.money, money, 'no stake, no fee');
+  eq(JSON.stringify(run.rep || {}), rep, 'no standing');
+  eq(run.days, d0 - R0.days, 'the trip + a day');
+  assert(
+    g.Rel.list(run, id).some(e => e.k === 'sparred'),
+    'sparred, win or lose'
+  );
+  assert(/Sparred/.test(run.log[0].t), 'the diary: ' + run.log[0].t);
+  assert(run.mlog[run.mlog.length - 1].round === 'Spar' || run.mlog.some(x => x.round === 'Spar'), 'in the match history');
+});

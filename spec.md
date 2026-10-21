@@ -1478,7 +1478,18 @@ the AI coach fills every slot you leave with the same function. Built and measur
     their plan allows — by bond and behaviour; a teammate's floor bonus, §4.33) · **Spar** (a practice match, no stake: your
     circle against their crew — the day, a little XP and bond either way; needs a court or the drone, §4.38) · **Challenge**
     (the stake match, §4.29) · **Card** (their People card). Locked options show why ("needs a court or the drone", "won't
-    train with you — bond 20"). The road encounter (3) is this same menu, opened for you.
+    train with you — bond 20"). The road encounter (3) is this same menu, opened for you. **[built 2026-10-21, T-340: hover = an ink ring under
+    the figure (the tip stays); click or right-click a coloured figure → the menu beside it (it follows the figure; the menu's person
+    gets a cyan ring); not with an event, a walk / result, a scene, a sheet or in a match week. Rows 1–5 with cost → result, the first
+    open one the primary; locked rows print the gap. **Talk**: free nearby, else the trip days (you walk over, no day of its own) →
+    their line by behaviour + `met_road`, once a day per person. **Invite**: bond ≥ 20, not injured, once a day; yes by hash (by
+    behaviour 0.35–0.9, + 0.004 a bond point over 20, ≤ 0.95; shown likely / doubtful / unlikely) → they join your next day order at
+    a place with a floor this week (EXP as a teammate on the floor, +20 %; the place card shows them; a non-teammate gets `trained`).
+    **Spar**: an explored court or a venue within 90 of them ("needs a court nearby (no drone yet)"), not your own squad; your
+    challenge side (a street crew lent free) vs their squad, the trip + a day, −12 stamina, half the match XP, `sparred` +3 either
+    way; no stake, injury roll or standing; watch or ⏭. **Challenge**: their club's HQ challenge with the HQ card's stake (− / +),
+    watch or ⏭; Academy / street people: "no club to challenge". **Card**: their People card. Keys 1–5, Shift + n = ⏭, − / +, Esc.
+    The road stop is the same card (an arc's two answers first; Walk on = Space); a crew's Challenge and the battle's Join offer ⏭ too]**
   - **6. Street level (T-336, phase 2 — a prototype, judged before more).** One district first (Wei's core with one gym and one
     court): the map camera keeps zooming down to a follow camera behind you — the same world, no load; within ~150 m buildings swap
     to detailed ones (doors, windows, signs, props), roads to street width; the gym and the court open by cutaway (roof and near

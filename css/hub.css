@@ -1187,3 +1187,163 @@
 .hub .actlock.res .ocard.mres {
   max-height: calc(100% - 48px);
 }
+/* the figure menu (spec §4.37 7, T-340): beside the clicked figure like the place card beside its pin (figPlace, career-map.js);
+   the road's stop is the same card, opened for you over the map */
+.hub .fmenu {
+  top: calc(var(--tbar) + 16px);
+  right: 16px;
+  z-index: 5;
+  width: 360px;
+  max-height: calc(100vh - var(--tbar) - 32px);
+  overflow: auto;
+  padding: 16px;
+  background: var(--surf);
+  border-radius: 12px;
+  border-color: var(--line-strong);
+  cursor: default;
+}
+.hub .actlock .fmenu {
+  top: auto;
+  right: auto;
+}
+.hub .fmenu.pinned {
+  transition:
+    left var(--dur-fast) var(--ease-out),
+    top var(--dur-fast) var(--ease-out);
+}
+.hub .fmenu > .x {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  height: 32px;
+  margin: 0;
+  padding: 0 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.hub .fmenu > .x kbd {
+  margin: 0;
+}
+.hub .fmh {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-right: 72px;
+}
+.hub .fmh > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.hub .fmh b {
+  font-size: 16px;
+}
+.hub .fmh small {
+  font-size: 13px;
+}
+.hub .fmf {
+  flex: none;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--surf2);
+}
+.hub .fml {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.hub .fmo {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hub .fmr {
+  display: flex;
+  gap: 8px;
+}
+.hub .fmb {
+  flex: 1;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 2px;
+  min-height: 48px;
+  padding: 8px 12px;
+  text-align: left;
+}
+.hub .fmb kbd {
+  grid-row: span 2;
+  margin: 0;
+}
+.hub .fmb b {
+  font-size: 14px;
+  font-weight: 600;
+}
+.hub .fmb .oln {
+  font-size: 12px;
+  color: var(--mute);
+}
+.hub .fmb.hot .oln,
+.hub .fmb.hot kbd {
+  color: var(--on-ink);
+  border-color: var(--on-ink);
+}
+.hub .fmb .oln .term {
+  margin-right: 4px;
+}
+/* locked: the gap stays readable (no dimming), the name goes quiet */
+.hub .fmb:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--line-strong);
+}
+.hub .fmb:disabled b {
+  color: var(--mute);
+}
+.hub .fmb:disabled .oln.why {
+  color: var(--ink);
+}
+.hub .fms {
+  flex: none;
+  padding: 0 12px;
+  font-size: 13px;
+}
+.hub .fms:disabled {
+  opacity: 1;
+  color: var(--mute);
+  background: transparent;
+  border-style: dashed;
+}
+.hub .fmst {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0 12px;
+  font-size: 13px;
+}
+.hub .fmst .lab {
+  margin-right: auto;
+}
+.hub .fmst .btn {
+  height: 28px;
+  min-width: 28px;
+  padding: 0 8px;
+}
+.hub .fmw {
+  width: 100%;
+  margin-top: 8px;
+  min-height: 40px;
+}
+.hub .pinv {
+  gap: 8px;
+}

@@ -1,9 +1,9 @@
 // The 3D island map (three.js). Draws a MapModel (see js/career/mapmodel.js) as low-poly terrain with water, a fixed
 // tilted camera and pan / zoom, and reports clicks as map points.
 //   create(onIdle) → { mount(el, model, on), update(model), select(id), dispose(), heightAt(x, z), info(), hexFill(on),
-//                      setPhase(p), setLow(b), clock() }
+//                      setPhase(p), setLow(b), clock(), mark(id), figureAt(id) }
 // on = { pick(id), point([x, y]), hover?(id | null, clientX, clientY, going), person?(id) }: hover / person are the named figures
-// (life3d pick; a click on one goes to person instead of point). The day clock (spec §4.37 2): model.time (MapModel.time) gives
+// (life3d pick; a click or right-click on one goes to person instead of point; the hovered one and mark(id) get a ring underfoot). The day clock (spec §4.37 2): model.time (MapModel.time) gives
 // the week time of the waiting day and of the last action's walk and order; setPhase(p | () => p) tells the map which of
 // 'idle' | 'walk' | 'order' is playing; the clock runs toward it (never back), the walk's share by how far the avatar has come
 // along its road (so it holds while the avatar stands still), and sets the sun, the sky and the night lights.
@@ -768,10 +768,20 @@ export function create(onIdle) {
   };
   const offPtr = () => {
     ptr = null;
-    if (hoverId !== null) ((hoverId = null), (canvas.style.cursor = ''), on && on.hover && on.hover(null));
+    if (hoverId !== null) ((hoverId = null), (canvas.style.cursor = ''), life && life.hover(null), on && on.hover && on.hover(null));
+  };
+  /** A right-click on a named figure opens its menu too (spec §4.37 7); the browser's own menu never shows over the map. */
+  const onCtx = e => {
+    e.preventDefault();
+    if (!life || !cur || (avatar && avatar.busy()) || !on || !on.person) return;
+    const r = canvas.getBoundingClientRect(),
+      look = cur.life && cur.life.look,
+      id = life.pick(cam, e.clientX - r.left, e.clientY - r.top, cw, ch, look ? look.pick : 16);
+    if (id !== null) on.person(id);
   };
   canvas.addEventListener('pointermove', onPtr);
   canvas.addEventListener('pointerleave', offPtr);
+  canvas.addEventListener('contextmenu', onCtx);
   /** The named figure under the pointer (every few frames, or right after a move): tell the UI (hover tip), set the cursor. */
   const hoverStep = () => {
     if (!ptr || !life || !cur || pickN-- > 0) return;
@@ -779,6 +789,7 @@ export function create(onIdle) {
     const look = cur.life && cur.life.look,
       id = life.pick(cam, ptr.x, ptr.y, cw, ch, look ? look.pick : 16);
     if (id !== hoverId) canvas.style.cursor = id !== null ? 'pointer' : '';
+    if (id !== hoverId) life.hover(id);
     if (id !== hoverId || id !== null) {
       hoverId = id;
       if (on && on.hover) on.hover(id, ptr.cx, ptr.cy, id !== null ? life.going(id, tod) : null);
@@ -822,6 +833,7 @@ export function create(onIdle) {
       clock += dt;
       clockStep(dt);
       lit = cur && cur.time ? skyAt(cur.time.keys, tod, sun, hemi, scene) : 0;
+      if (C.view) life.ringScale((14 * 2 * C.view.d * Math.tan((cam.fov * Math.PI) / 360)) / (ch || 1) / 0.7); // a ring ≥ ~14 px
       life.tick(dt, clock, tod);
       hoverStep();
       nature.tick(dt, clock);
@@ -949,6 +961,10 @@ export function create(onIdle) {
       wt = w;
       tod = w - Math.floor(w);
     },
+    /** The ring under a named figure's feet (the figure menu's person), or none (null). */
+    mark(id) {
+      if (life) life.mark(id);
+    },
     /** QA: a named figure's screen point (canvas px) or null — to hover it in the UI smoke. */
     figureAt(id) {
       const p = life && life.at(id);
@@ -983,6 +999,7 @@ export function create(onIdle) {
       if (night) night.dispose();
       canvas.removeEventListener('pointermove', onPtr);
       canvas.removeEventListener('pointerleave', offPtr);
+      canvas.removeEventListener('contextmenu', onCtx);
       if (raf) cancelAnimationFrame(raf);
       if (ro) ro.disconnect();
       C.dispose();

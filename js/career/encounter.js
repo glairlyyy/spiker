@@ -144,12 +144,8 @@ const Encounter = {
    */
   answer(run, E, what, side) {
     if (what === 'walk') return {};
-    if (what === 'talk' && E.id != null) {
-      const bond = Rel.add(run, E.id, 'met_road'),
-        line = Rel.text(run, E.id, { k: 'met_road', w: run.week });
-      Run.log(run, `${line}${bond ? ` (${fmtDelta(bond)} bond)` : ''}`);
-      return { line, bond };
-    }
+    if (what === 'talk' && E.id != null) return Encounter.talk(run, E.id);
+    if (what === 'invite' && E.id != null) return Encounter.invite(run, E.id);
     if (what === 'challenge' && E.kind === 'crew') {
       const r = Fight.offer(run, E.ti, 0);
       if (!r) return null;
@@ -174,5 +170,208 @@ const Encounter = {
   vias(run) {
     if (Encounter.pref() === 'never' || Encounter.off(run)) return [];
     return Encounter.near(run).filter(c => (c.kind === 'battle' && !Fight.ban(run)) || c.kind === 'circle');
+  },
+
+  // ---- the figure menu (spec §4.37 7, T-340): anyone you see — Talk · Invite · Spar · Challenge · Card, each with its lock -------
+  // State in `run.enc` (this week's, lazily): talk / ask = { id: the day (Encounter.today) }, inv = the id joining your next order.
+  /** Today: the week and the day of it (Talk and Invite are once a day per person). */
+  today: run => `${Season.wk(run)}|${WEEK_DAYS - City.days(run)}`,
+  /** Why the menu can't open now ('' if it can): an event open, a cup / evaluation week. */
+  menuOff(run) {
+    const o = Encounter.off(run);
+    return o === 'event' ? 'answer the event first' : o ? 'not in a match week' : '';
+  },
+  /** A named person on the map: { id, p (the NPC), t (their squad), home, at, act, spot, g } — null if not shown (fog) or gone. */
+  who(run, id) {
+    const f = Encounter.people(run).find(q => String(q.id) === String(id)),
+      e = f && f.g !== 'grey' && People.homes(run).get(f.id);
+    return e && !e.p.gone ? { ...f, id: f.id, p: e.p, t: e.t, home: e.home } : null;
+  },
+  /** Their headline behaviour, as the line tables key it ('other' when none). */
+  beh(run, id) {
+    const b = Team.beh(run, id);
+    return b && ENC_HI[b] ? b : 'other';
+  },
+  /** A line from table L (by behaviour) for id, picked by a hash of `salt` and today. */
+  say: (run, L, id, salt) => {
+    const A = L[Encounter.beh(run, id)] || L.other;
+    return A[Math.floor(hstr(`${salt}|${id}|${Encounter.today(run)}`) * A.length)];
+  },
+  /** Why you can't walk over to map point p now ('' if you can): the trip days, the week-1 fence. */
+  walkWhy: (run, p) => (City.outside(run, p) ? City.fence(run) : City.noTime(run, City.trip(run, p))),
+  /** Their chance to say yes to an Invite (0–1): by behaviour (ENC.invite.p), more with bond. */
+  inviteP(run, id) {
+    const I = ENC.invite;
+    return clamp((I.p[Encounter.beh(run, id)] || I.p.other) + (Rel.bondOf(run, id) - I.bond) * I.perBond, 0, I.max);
+  },
+  /** The courts you know (explored court landmarks and the venues): [{ id, at, name }]. */
+  courts: run =>
+    MapModel.landmarks(run)
+      .filter(l => (l.kind === 'court' && MapModel.known(run, l.id, l.at)) || String(l.id).startsWith('venue:'))
+      .map(l => ({
+        id: l.id,
+        at: l.at,
+        name: SPOTS[l.id] ? SPOTS[l.id].name : VENUES[String(l.id).slice(6)] ? VENUES[String(l.id).slice(6)].name : 'the court'
+      })),
+  /** The court nearest map point p within ENC.spar.r, or null (the drone, §4.38, comes later). */
+  court(run, p) {
+    let best = null;
+    for (const c of Encounter.courts(run)) {
+      const d = Math.hypot(c.at[0] - p[0], c.at[1] - p[1]);
+      if (d <= ENC.spar.r && (!best || d < best.d)) best = { ...c, d };
+    }
+    return best;
+  },
+  /** Their club's index in run.teams (a faction club), else -1 (the Academy squad, a street or reserve crew). */
+  club: (run, W) => (W && W.t ? run.teams.indexOf(W.t) : -1),
+  /**
+   * The menu for person id: [{ k, days, why ('' = open), … }] in order talk · invite · spar · challenge · card — Invite adds p and
+   * verdict, Spar its court, Challenge ti / stake / verdict / accepts' why. `road`: you are already beside them (a road stop: no walk).
+   * Pure, no draws. Null when they aren't on the map.
+   */
+  menu(run, id, road = false, stake = 0) {
+    const W = Encounter.who(run, id);
+    if (!W) return null;
+    const S = Encounter.of(run),
+      now = Encounter.today(run),
+      off = Encounter.menuOff(run),
+      walk = road ? 0 : City.trip(run, W.at),
+      wwhy = off || (road ? '' : Encounter.walkWhy(run, W.at)),
+      bond = Rel.bondOf(run, id),
+      first = Team.first(W.p),
+      key = String(id);
+    const talk = { k: 'talk', days: walk, why: wwhy || ((S.talk || {})[key] === now ? 'talked today' : '') };
+    const P = Encounter.inviteP(run, id),
+      invite = {
+        k: 'invite',
+        days: walk,
+        p: P,
+        verdict: P >= ENC.invite.likely ? 'likely' : P >= ENC.invite.doubt ? 'doubtful' : 'unlikely',
+        why:
+          off ||
+          (W.act === 'out' || (run.people[id] && run.people[id].inj > 0) ? 'injured — out this week' : '') ||
+          (bond < ENC.invite.bond ? `won’t train with you — bond ${bond}, needs ${ENC.invite.bond}` : '') ||
+          (S.inv != null && String(S.inv) === key ? `${first} joins your next order` : '') ||
+          (S.inv != null ? 'someone else joins your next order' : '') ||
+          ((S.ask || {})[key] === now ? 'asked today' : '') ||
+          wwhy
+      };
+    const side = Fight.challengeSide(run),
+      C = Encounter.court(run, W.at),
+      mineT = side.T,
+      spar = {
+        k: 'spar',
+        court: C,
+        days: C ? City.trip(run, C.at) + 1 : 0,
+        sta: ENC.spar.sta,
+        why:
+          off ||
+          Fight.ban(run) ||
+          (!W.t || squadOf(W.t).length < 4 ? 'no crew to play' : '') ||
+          (mineT && W.t === mineT ? 'your own squad — invite them' : '') ||
+          (!C ? 'needs a court nearby (no drone yet)' : '') ||
+          (City.outside(run, C.at) ? City.fence(run) : '') ||
+          City.noTime(run, City.trip(run, C.at) + 1) ||
+          (run.sta < ENC.spar.sta ? `too tired (needs ${ENC.spar.sta} stamina)` : '')
+      };
+    const ti = Encounter.club(run, W),
+      Wt = ti >= 0 && ti !== run.team ? Fight.worth(run, ti, stake) : null,
+      challenge = {
+        k: 'challenge',
+        ti,
+        days: ti >= 0 ? City.scoutCost(run, ti) : 0,
+        verdict: Wt ? Wt.verdict : 'refuses',
+        said: Wt ? Wt.why : '',
+        why:
+          off ||
+          (ti < 0 ? 'no club to challenge' : '') ||
+          (ti === run.team ? 'your own club' : '') ||
+          (!Wt ? 'takes no challenges' : '') ||
+          (!MapModel.known(run, `hq${ti}`, CITY.hq[ti]) ? 'their HQ isn’t on your map' : '') ||
+          Fight.ban(run) ||
+          City.noTime(run, City.scoutCost(run, ti)) ||
+          (run.money < side.cost ? `needs $${side.cost} for a crew` : '')
+      };
+    return [talk, invite, spar, challenge, { k: 'card', days: 0, why: '' }];
+  },
+  /** One row of the menu (or null). */
+  row: (run, id, k, road, stake) => (Encounter.menu(run, id, road, stake) || []).find(r => r.k === k) || null,
+  /** Talk (once a day per person): `met_road` (+2, Friendly × 1.5) — their line (behaviour), the diary line. { hi, line, bond }. */
+  talk(run, id) {
+    const S = Encounter.of(run);
+    (S.talk || (S.talk = {}))[String(id)] = Encounter.today(run);
+    const hi = Encounter.say(run, ENC_HI, id, 'hi'),
+      bond = Rel.add(run, id, 'met_road'),
+      line = Rel.text(run, id, { k: 'met_road', w: run.week });
+    Run.log(run, `${line}${bond ? ` (${fmtDelta(bond)} bond)` : ''}`);
+    return { hi, line, bond };
+  },
+  /**
+   * Invite (once a day per person): yes by hash under Encounter.inviteP → they join your next day order this week (the floor
+   * bonus, §4.33: City.orderDay). { yes, hi (their answer), line (the diary) }.
+   */
+  invite(run, id) {
+    const S = Encounter.of(run),
+      now = Encounter.today(run),
+      yes = hstr(`inv|${run.pseed}|${now}|${id}`) < Encounter.inviteP(run, id),
+      n = Team.first(People.find(run, id));
+    (S.ask || (S.ask = {}))[String(id)] = now;
+    if (yes) S.inv = id;
+    const hi = Encounter.say(run, yes ? ENC_INVITE.yes : ENC_INVITE.no, id, 'inv'),
+      line = yes ? `Asked ${n} to train with me. Yes. Next order, together.` : `Asked ${n} to train with me. No. Their loss.`;
+    Run.log(run, line);
+    return { yes, hi, line };
+  },
+  /** Who joins your next day order (an Invite said yes this week), or null. */
+  invited: run => (run.enc && run.enc.w === Season.wk(run) && run.enc.inv != null ? run.enc.inv : null),
+  /**
+   * Spar person id's crew (no stake): your challenge side (club squad / Academy squad / a street crew, lent for free) against their
+   * squad at the court nearest them — a real match, no injury roll, no standing. Null if the menu's Spar row is locked.
+   */
+  spar(run, id) {
+    const R0 = Encounter.row(run, id, 'spar');
+    if (!R0 || R0.why) return null;
+    const W = Encounter.who(run, id),
+      side = Fight.challengeSide(run),
+      mine = side.kind === 'hired' ? Fight.hired(run) : side.T,
+      opp = W.t,
+      C = R0.court;
+    if (side.kind === 'hired') Eval.lend(run, mine);
+    Cup.prepare(run, opp, 'court', mine);
+    Run.lineup(run, mine, City.myRegion(run), false, true);
+    Run.lineup(run, opp, null);
+    const rel = Rel.matchFlags(run, mine, opp);
+    return {
+      a: mine,
+      b: opp,
+      round: `Spar: ${mine.name} vs ${opp.name} · ${C.name}`,
+      back: 'Continue',
+      rel,
+      setup: m => (m.rel = rel),
+      onFinish: m => {
+        Eval.restore();
+        return Encounter.sparResult(run, m, id, C);
+      },
+      onLeave: () => Eval.restore()
+    };
+  },
+  /** After a spar: the trip + a day at the court, − stamina, ENC.spar.xp of the match XP, `sparred` either way. Returns the diary line. */
+  sparResult(run, m, id, C) {
+    const you = Run.you(run),
+      win = m.winner === 0,
+      s = m.stat[you.id] || blank(),
+      sc = m.setScores[0],
+      k = ENC.spar.xp,
+      half = Object.fromEntries(Object.entries(s).map(([u, v]) => [u, typeof v === 'number' ? v * k : v])),
+      trip = (Cup.record(run, m, 'court', { round: 'Spar' }), City.go(run, C.at, { k: 'battle', label: 'Spar', at: C.name })),
+      bond = Rel.add(run, id, 'sparred'),
+      n = Team.first(People.find(run, id)),
+      out = [Growth.matchXp(run, { ...m, stat: { ...m.stat, [you.id]: half } }), Run.bump(run, 'sta', -ENC.spar.sta)];
+    if (bond) out.push(`${fmtDelta(bond)} bond with ${n}`);
+    run.focus = null;
+    const line = `${trip}Sparred ${n}’s crew at ${C.name} — ${win ? 'won' : 'lost'} ${sc[0]}-${sc[1]} · ${out.filter(Boolean).join(', ')}`;
+    Run.log(run, line);
+    Run.save(run);
+    return line;
   }
 };
