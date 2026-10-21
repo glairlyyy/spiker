@@ -1,11 +1,14 @@
 // The living island (display only, no game randoms: variety comes from a string hash): low-poly figures on the 3D map.
-// Reads only model.life (MapModel, js/career/mapmodel.js): your mates drilling where they train, each known club's crew
+// Reads only model.life (MapModel, js/career/mapmodel.js): the named people (life.people, spec §4.37 1: each where their
+// week's plan puts them, walking out at dawn and home in the evening by the map's time of day — hidden indoors at night;
+// idling by what they do: drill hops, a jog round the court, sitting), each known club's crew
 // drilling at its HQ (grey silhouettes until scouted) with a walker or two going round the region's places, the week's
 // street battle as a two-colour crowd with flags and dust, and patrols facing each other across the hot hex frontier
 // (life.patrols: positions and colours from the model, no faction names here), and the city's traffic (life.traffic, spec §4.19a): buses and
 // vans driving their lines (up onto the overpass deck), boats circling offshore, a plane taking off down the runway. One InstancedMesh per
 // kind (people, poles, cloth, dust, bus, van, boat, plane), at most CAP of each; instances are rebuilt only when the data changes, animated in tick.
-//   createLife(scene, heightAt) → { sync(model), tick(dt, t), count(), dispose() }
+//   createLife(scene, heightAt) → { sync(model, low), tick(dt, t, tod), pick(cam, x, y, cw, ch) → person id | null, count(), dispose() }
+// tod = time of day 0–1 (map3d's clock); low = the Fast graphics setting (fewer named figures: life.look.low).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAP_M, hstr, smooth } from './geo3d.mjs';
@@ -95,9 +98,13 @@ export function createLife(scene, heightAt) {
   for (const m of Object.values(cars)) m.castShadow = true;
 
   const D = new THREE.Object3D(),
-    col = new THREE.Color();
+    col = new THREE.Color(),
+    col2 = new THREE.Color(),
+    V = new THREE.Vector3();
   let key = null,
-    figs = [], // { x, z, y, yaw, color, kind: 'drill' | 'walk' | 'fight', ph, path?, len? }
+    figs = [], // { x, z, y, yaw, color, kind: 'drill' | 'walk' | 'fight' | 'named', ph, path?, len?, crew? }
+    named = [], // the named figures (also in figs): { id, a, h, act, s, dOut, dHome, wx, wy, wz, vis }
+    TM = null, // the clock windows (model.time: out, home, step)
     poles = [], // { x, z, y, color, ph }
     puffs = [], // { x, z, y, ph }
     rides = [], // vehicles on a line: { kind, i, path, seg, len, deck: [[s0, s1]], ph, speed }
@@ -121,14 +128,40 @@ export function createLife(scene, heightAt) {
     };
 
   /** Rebuild the instance lists from a model. */
-  const build = m => {
-    const L = m.life;
+  const build = (m, low) => {
+    const L = m.life,
+      look = L.look || { size: {}, low: 40 };
     figs = [];
+    named = [];
     poles = [];
     puffs = [];
-    for (const f of L.mates) {
-      const w = world(f.at); // already offset around the place by the model
-      figs.push({ x: w.x, z: w.z, y: w.y, yaw: hstr(`m${f.id}|y`) * 6.28, color: f.color, kind: 'drill', ph: hstr(`m${f.id}|p`) * 6.28 });
+    TM = m.time || null;
+    // the named people: muted unless your circle or your teammates; grey for a club you haven't scouted
+    for (const p of (L.people || []).slice(0, low ? look.low : CAP.people)) {
+      const a = world(p.at),
+        h = world(p.home),
+        f = {
+          id: p.id,
+          kind: 'named',
+          a,
+          h,
+          x: a.x,
+          z: a.z,
+          y: a.y,
+          yaw: hstr(`n${p.id}|y`) * 6.28,
+          act: p.act,
+          s: look.size[p.g] || 1.4,
+          color: p.g === 'grey' ? GREY : p.g === 'other' ? `#${col.set(p.color).lerp(col2.set(GREY), 0.5).getHexString()}` : p.color,
+          ph: hstr(`n${p.id}|p`) * 6.28,
+          dOut: hstr(`n${p.id}|o`),
+          dHome: hstr(`n${p.id}|h`),
+          wx: 0,
+          wy: 0,
+          wz: 0,
+          vis: false
+        };
+      figs.push(f);
+      named.push(f);
     }
     for (const c of L.crews) {
       const k = c.known ? c.color : GREY,
@@ -139,8 +172,8 @@ export function createLife(scene, heightAt) {
         if (i < walkers) {
           let len = 0;
           const seg = path.slice(1).map((p, j) => (len += Math.hypot(p.x - path[j].x, p.z - path[j].z)));
-          figs.push({ x: 0, z: 0, y: 0, yaw: 0, color: k, kind: 'walk', ph: hstr(id), path, seg, len });
-        } else drill(c.at, id, k, 2, 6);
+          figs.push({ x: 0, z: 0, y: 0, yaw: 0, color: k, kind: 'walk', ph: hstr(id), path, seg, len, crew: hstr(`${id}|n`) });
+        } else (drill(c.at, id, k, 2, 6), (figs[figs.length - 1].crew = hstr(`${id}|n`)));
       }
     }
     if (L.battle) {
@@ -259,21 +292,95 @@ export function createLife(scene, heightAt) {
     return AT;
   };
 
+  /**
+   * Where a named figure is at time of day `tod`: at home at night (hidden indoors), walking out in the morning (each at its
+   * own hashed moment inside T.out), at its place through the day, walking home in the evening (T.home). Writes into AT.
+   */
+  const NAMED = { x: 0, z: 0, yaw: 0, mode: 'idle' };
+  const whereNamed = (f, tod) => {
+    const o = TM ? TM.out : [0.2, 0.3],
+      hm = TM ? TM.home : [0.76, 0.88],
+      st = TM ? TM.step : 0.05,
+      o0 = o[0] + f.dOut * Math.max(0, o[1] - o[0] - st),
+      h0 = hm[0] + f.dHome * Math.max(0, hm[1] - hm[0] - st),
+      { a, h } = f;
+    let u = -1,
+      from = a,
+      to = a;
+    if (tod < o0 || tod >= h0 + st) return ((NAMED.mode = 'home'), NAMED);
+    if (tod < o0 + st) ((u = (tod - o0) / st), (from = h), (to = a));
+    else if (tod >= h0) ((u = (tod - h0) / st), (from = a), (to = h));
+    if (u < 0 || (Math.abs(a.x - h.x) < 0.5 && Math.abs(a.z - h.z) < 0.5)) {
+      NAMED.x = a.x;
+      NAMED.z = a.z;
+      NAMED.yaw = f.yaw;
+      NAMED.mode = 'idle';
+      return NAMED;
+    }
+    const k = smooth(0, 1, u);
+    NAMED.x = from.x + (to.x - from.x) * k;
+    NAMED.z = from.z + (to.z - from.z) * k;
+    NAMED.yaw = Math.atan2(to.x - from.x, to.z - from.z);
+    NAMED.mode = 'walk';
+    return NAMED;
+  };
+  const DAY = tod => !TM || (tod >= TM.out[0] && tod < TM.home[1]);
+
   return {
-    /** Bring the figures up to date with a model (rebuilt only when life changed). */
-    sync(m) {
+    /** Bring the figures up to date with a model (rebuilt only when life, the clock windows or the setting changed). */
+    sync(m, low = false) {
       if (!m.life) return;
-      const k = JSON.stringify(m.life);
+      const k = JSON.stringify([m.life, m.time && [m.time.out, m.time.home, m.time.step], !!low]);
       if (k === key) return;
       key = k;
-      build(m);
+      build(m, low);
     },
-    /** Animate: drill hops, walkers going round their places, the crowd shoving, flags and dust. t = seconds. */
-    tick(dt, t) {
+    /**
+     * Animate: the named people by the time of day, drill hops, walkers going round their places, the crowd shoving, flags and
+     * dust. t = seconds; tod = time of day 0–1 (crews go in at night too).
+     */
+    tick(dt, t, tod = 0.5) {
+      const day = DAY(tod);
       figs.forEach((f, i) => {
         let { x, z, yaw } = f,
           lift = 0,
-          lean = 0;
+          lean = 0,
+          sc = 1,
+          sy = 1;
+        if (f.kind === 'named') {
+          const w = whereNamed(f, tod);
+          sc = f.s;
+          if (w.mode === 'home') sc = 0;
+          else if (w.mode === 'walk') {
+            x = w.x;
+            z = w.z;
+            yaw = w.yaw;
+            lift = Math.abs(Math.sin(t * 6 + f.ph * 9)) * 0.06 * sc;
+            lean = 0.12;
+          } else if (f.act === 'hustle') {
+            // a jog round the court
+            const a = t * 0.9 + f.ph;
+            x += Math.cos(a) * 2.2;
+            z += Math.sin(a) * 2.2;
+            yaw = a + Math.PI;
+            lift = Math.abs(Math.sin(t * 7 + f.ph)) * 0.08 * sc;
+            lean = 0.15;
+          } else if (f.act === 'train' || f.act === 'hard') lift = Math.max(0, Math.sin(t * (f.act === 'hard' ? 7 : 5) + f.ph)) * 0.22 * sc;
+          else sy = 0.72; // studying, resting, injured: sitting
+          f.vis = sc > 0;
+          if (f.vis) {
+            f.wx = x;
+            f.wz = z;
+            f.wy = heightAt(x, z) + 1.3 * sc;
+          }
+          D.position.set(x, (w.mode === 'idle' && f.act !== 'hustle' ? f.y : heightAt(x, z)) + lift, z);
+          D.rotation.set(lean, yaw, 0);
+          D.scale.set(sc, sc * sy, sc);
+          D.updateMatrix();
+          person.setMatrixAt(i, D.matrix);
+          return;
+        }
+        if (f.crew !== undefined && !(day || f.crew < 0.15)) sc = 0; // a crew goes in at night (a few stay out late)
         if (f.kind === 'drill') lift = Math.max(0, Math.sin(t * 5 + f.ph)) * 0.25;
         else if (f.kind === 'fight') {
           const s = Math.sin(t * 3 + f.ph);
@@ -290,7 +397,7 @@ export function createLife(scene, heightAt) {
         const y = f.kind === 'walk' ? heightAt(x, z) : f.y;
         D.position.set(x, y + lift, z);
         D.rotation.set(lean, yaw, 0);
-        D.scale.set(1, 1, 1);
+        D.scale.set(sc, sc, sc);
         D.updateMatrix();
         person.setMatrixAt(i, D.matrix);
       });
@@ -353,8 +460,41 @@ export function createLife(scene, heightAt) {
       }
       for (const m of meshes) m.instanceMatrix.needsUpdate = true;
     },
+    /**
+     * The named figure under screen point (x, y) (canvas px; cw × ch the canvas size), within life.look.pick px of its head or
+     * its middle, nearest first; null if none (or hidden at home).
+     */
+    pick(cam, x, y, cw, ch, px = 16) {
+      let best = null,
+        bd = px * px;
+      for (const f of named) {
+        if (!f.vis) continue;
+        for (const dy of [0, -0.6 * f.s]) {
+          V.set(f.wx, f.wy + dy, f.wz).project(cam);
+          if (V.z > 1) continue;
+          const sx = ((V.x + 1) / 2) * cw - x,
+            sy = ((1 - V.y) / 2) * ch - y,
+            d = sx * sx + sy * sy;
+          if (d < bd) ((bd = d), (best = f.id));
+        }
+      }
+      return best;
+    },
+    /** Is a named figure on its way somewhere at time of day tod: 'out' (to its place), 'home', or null (there). */
+    going(id, tod) {
+      const f = named.find(q => q.id === id);
+      if (!f) return null;
+      const w = whereNamed(f, tod);
+      return w.mode !== 'walk' ? null : tod < 0.5 ? 'out' : 'home';
+    },
+    /** Where a named figure stands now (world metres) or null — for QA and the tip. */
+    at(id) {
+      const f = named.find(q => q.id === id);
+      return f && f.vis ? [f.wx, f.wy, f.wz] : null;
+    },
     /** Figures currently shown (for QA / budget). */
     count: () => ({
+      named: named.filter(f => f.vis).length,
       people: person.count,
       poles: pole.count,
       dust: dust.count,

@@ -552,35 +552,11 @@ const MapModel = {
   },
   /**
    * Who is where this week (display only: no randoms, positions come from hashes of ids + place, so the same run state gives
-   * the same model). mates: your floor mates at the explored place of their training key nearest home. crews: each known
+   * the same model). people: MapModel.lifePeople (the named figures). crews: each known
    * faction club's drilling squad at its HQ (n figures by pool size; known = scouted or yours, else grey silhouettes; walk = its
    * region's explored places). battle: this week's open street battle. patrols: MapModel.patrols.
    */
   life(run) {
-    const home = City.at(run, 'home'),
-      dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]),
-      mineColor = Run.myTeam(run).color,
-      people = Run.mates(run),
-      mates = [];
-    for (const [key, ids] of Object.entries(run.floor || {})) {
-      const spots = City.spotsFor(key)
-        .filter(id => MapModel.known(run, id, City.at(run, id)))
-        .sort((a, b) => dist(City.at(run, a), home) - dist(City.at(run, b), home));
-      if (!spots.length) continue;
-      for (const id of ids) {
-        const p = people.find(q => q.id === id),
-          c = City.at(run, spots[0]),
-          ang = hstr(`${id}|${spots[0]}|a`) * Math.PI * 2,
-          rad = 14 + hstr(`${id}|${spots[0]}|r`) * 14;
-        mates.push({
-          id,
-          name: p ? p.name : String(id),
-          at: [c[0] + Math.cos(ang) * rad, c[1] + Math.sin(ang) * rad],
-          color: mineColor,
-          spot: spots[0]
-        });
-      }
-    }
     const crews = [];
     run.teams.forEach((t, i) => {
       const f = FACTIONS[i];
@@ -603,13 +579,136 @@ const MapModel = {
     });
     const c = Fight.clashSite(run);
     return {
-      mates,
+      people: MapModel.lifePeople(run),
+      look: { size: LIFE.size, pick: LIFE.pickPx, low: LIFE.low }, // the renderer's figure scales, hover radius (px), Fast-setting cap
       crews,
       battle: c ? { at: c.at, a: c.a, b: c.b, colors: [REGIONS[c.a].color, REGIONS[c.b].color] } : null,
       patrols: MapModel.patrols(run),
       traffic: MapModel.traffic()
     };
   },
+  /**
+   * The named people on the map (spec §4.37 1, T-331 — also what Agent E's encounters read): every NPC whose place today is
+   * explored, where their week's plan puts them (People.plan: train / hard / wit at its place, hustle at a court — LIFE.court,
+   * rest / out at home); a teammate on this week's training floor stands at the explored place of the floor's key nearest your
+   * home instead (where you meet them; its pin counts them). [{ id, at, home, act, spot (SPOTS id or null), g, color }]: at = a
+   * hashed point round the place, home = one round their home anchor (MapModel.homeAt), map units; g = 'circle' | 'mate' |
+   * 'other' | 'grey' (a club you haven't scouted); color = their club's (your club's for teammates). At most `max`: your circle
+   * first, then teammates, then by bond, then id. No randoms: plans and offsets are string hashes.
+   */
+  lifePeople(run, max = LIFE.max) {
+    const homes = People.homes(run),
+      you = City.at(run, 'home'),
+      dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]),
+      ring = (c, id, [r0, r1]) => {
+        const a = hstr(`${id}|a`) * Math.PI * 2,
+          r = r0 + hstr(`${id}|r`) * (r1 - r0);
+        return [Math.round((c[0] + Math.cos(a) * r) * 10) / 10, Math.round((c[1] + Math.sin(a) * r) * 10) / 10];
+      },
+      circle = new Set(typeof Circle !== 'undefined' ? Circle.of(run).map(String) : []),
+      mates = new Set(Run.mates(run).map(m => String(m.id))),
+      mine = Run.myTeam(run),
+      floorAt = {}, // a floor mate's place: their key's explored place nearest home
+      rank = { circle: 0, mate: 1, other: 2, grey: 2 },
+      out = [];
+    for (const [key, ids] of Object.entries(run.floor || {})) {
+      const s = City.spotsFor(key)
+        .filter(id => MapModel.known(run, id, City.at(run, id)))
+        .sort((a, b) => dist(City.at(run, a), you) - dist(City.at(run, b), you))[0];
+      if (s) for (const id of ids) floorAt[id] = s;
+    }
+    for (const [id, e] of homes) {
+      if (!run.people || !run.people[id]) continue;
+      const plan = People.plan(run, e.p, e.home),
+        sid = String(id),
+        spot =
+          floorAt[id] ||
+          (plan.act === 'hustle' ? LIFE.court[e.home] || LIFE.courtElse : plan.at || (plan.stat ? LIFE.gym[e.home] : null) || null),
+        hq = run.teams.indexOf(e.t),
+        anchor = MapModel.homeAt(run, e),
+        c = spot ? City.at(run, spot) : anchor;
+      if (spot ? !MapModel.known(run, spot, c) : !City.seen(run, c)) continue; // fog: only what you've explored
+      const g = circle.has(sid)
+        ? 'circle'
+        : mates.has(sid)
+          ? 'mate'
+          : hq >= 0 && hq !== run.team && !City.scouted(run, hq)
+            ? 'grey'
+            : 'other';
+      out.push({
+        id,
+        at: ring(c, `${id}|${spot || 'home'}`, spot ? LIFE.spotR : LIFE.homeR),
+        home: ring(anchor, `${id}|home`, LIFE.homeR),
+        act: floorAt[id] ? 'train' : plan.act,
+        spot: spot || null,
+        g,
+        color: g === 'mate' ? mine.color : (e.t && e.t.color) || REGIONS[e.home === 'academy' ? 'open' : e.home].color,
+        k: [rank[g], g === 'grey' ? 0 : -Rel.bondOf(run, id)]
+      });
+    }
+    return out
+      .sort((a, b) => a.k[0] - b.k[0] || a.k[1] - b.k[1] || (String(a.id) < String(b.id) ? -1 : 1))
+      .slice(0, max)
+      .map(({ k, ...p }) => p);
+  },
+  /** Where an NPC lives (their home anchor, map units): their club's HQ, their pool's region anchor, the student quarter. */
+  homeAt(run, e) {
+    const i = run.teams.indexOf(e.t);
+    if (i >= 0 && CITY.hq[i]) return CITY.hq[i];
+    return e.home === 'academy' ? HOME_AT.studio : (REGIONS[e.home] || REGIONS.open).at;
+  },
+  /**
+   * The day clock (spec §4.37 2, T-332) as week time in days: days spent this week + the time of day (CLOCK; display only).
+   * Waiting for an order: the next day's dawn; the week spent: the last day's night. phase 'walk' / 'order' with k 0–1 is
+   * the last action playing out: its walk runs from the morning of its first day (a trip of n days through n − 1 nights) to the
+   * morning of its last, the order that afternoon.
+   */
+  weekTime(run, phase = 'idle', k = 0) {
+    const D = WEEK_DAYS - City.days(run),
+      n = Math.min(D, MapModel.span(run)),
+      C = CLOCK,
+      u = clamp(k, 0, 1);
+    if (phase === 'walk' && n) return D - n + C.walk[0] + (n - 1 + C.walk[1] - C.walk[0]) * u;
+    if (phase === 'order' && n) return D - 1 + C.order[0] + (C.order[1] - C.order[0]) * u;
+    return City.night(run) ? D - 1 + C.night : D + C.dawn;
+  },
+  /** Time of day 0–1 (0 = midnight, 0.5 = noon): what Agent E's encounters read (see weekTime for the phases). */
+  clock: (run, phase = 'idle', k = 0) => {
+    const w = MapModel.weekTime(run, phase, k);
+    return Math.round((w - Math.floor(w)) * 1e4) / 1e4;
+  },
+  /** Days the last action took (its trip days and its day on the week's day track), 0 before any. */
+  span(run) {
+    const L = run.dayLog || [];
+    let i = L.length - 1;
+    if (i < 0) return 0;
+    if (L[i].k !== 'trip') i--;
+    while (i >= 0 && L[i].k === 'trip') i--;
+    return L.length - 1 - i;
+  },
+  /**
+   * The map's time for the renderer (map3d: sun, sky, night lights, people walking out and home): { idle, walk: [a, b],
+   * order: [a, b] } as week time (weekTime), plus CLOCK's display constants. The renderer runs its clock toward the phase the
+   * UI reports (MapView.phase) and never back.
+   */
+  time: run => ({
+    day: WEEK_DAYS - City.days(run),
+    idle: MapModel.weekTime(run),
+    walk: [MapModel.weekTime(run, 'walk', 0), MapModel.weekTime(run, 'walk', 1)],
+    order: [MapModel.weekTime(run, 'order', 0), MapModel.weekTime(run, 'order', 1)],
+    week: WEEK_DAYS,
+    out: CLOCK.out,
+    home: CLOCK.home,
+    step: CLOCK.step,
+    rate: CLOCK.rate,
+    keys: CLOCK.keys
+  }),
+  /** Court floodlights (T-332): the explored courts and every venue, as map points. */
+  floods: run => [
+    ...MapModel.landmarks(run)
+      .filter(l => (l.kind === 'court' && MapModel.known(run, l.id, l.at)) || String(l.id).startsWith('venue:'))
+      .map(l => l.at)
+  ],
   /**
    * City life (spec §4.19a, TRAFFIC; static): lines as closed loops out and back, pts [x, y, over] (over = 1 where the leg to the next
    * point is the overpass); boats { id, at, r, n }; the plane's take-off { from, lift, to, every } (map points on the runway's line).
@@ -727,6 +826,8 @@ const MapModel = {
       focus: City.at(run, 'home'), // where a fresh view centres
       sel,
       life: MapModel.life(run),
+      time: MapModel.time(run),
+      floods: MapModel.floods(run),
       figures: MapModel.figures(run),
       fence: City.fence(run) ? { at: [CITY.park.x, CITY.park.y], r: 170 } : null // Story week 1: the camera keeps to the campus
     };

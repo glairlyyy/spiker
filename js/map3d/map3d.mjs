@@ -1,6 +1,12 @@
 // The 3D island map (three.js). Draws a MapModel (see js/career/mapmodel.js) as low-poly terrain with water, a fixed
 // tilted camera and pan / zoom, and reports clicks as map points.
-//   create(onIdle) → { mount(el, model, on), update(model), select(id), dispose(), heightAt(x, z), info(), hexFill(on) }
+//   create(onIdle) → { mount(el, model, on), update(model), select(id), dispose(), heightAt(x, z), info(), hexFill(on),
+//                      setPhase(p), setLow(b), clock() }
+// on = { pick(id), point([x, y]), hover?(id | null, clientX, clientY, going), person?(id) }: hover / person are the named figures
+// (life3d pick; a click on one goes to person instead of point). The day clock (spec §4.37 2): model.time (MapModel.time) gives
+// the week time of the waiting day and of the last action's walk and order; setPhase(p | () => p) tells the map which of
+// 'idle' | 'walk' | 'order' is playing; the clock runs toward it (never back), the walk's share by how far the avatar has come
+// along its road (so it holds while the avatar stands still), and sets the sun, the sky and the night lights.
 // The player's avatar (avatar3d.mjs) stands at model.you.at and walks when it changes; the camera follows it.
 // Units: map (x, y) → world (x·MAP_M, 0, y·MAP_M) metres (1 map unit = 0.5 m). One renderer and canvas live across
 // re-mounts (the career screen re-creates its #mapwrap each render); the view (target, distance) survives them.
@@ -12,6 +18,7 @@ import { createLife } from './life3d.mjs';
 import { createTown } from './town3d.mjs';
 import { createNature } from './nature3d.mjs';
 import { createMapCam } from './mapcam3d.mjs';
+import { KIT } from './kit3d.mjs';
 import { MAP_M, clamp, lerp, smooth, fogFactor, inside, edgeDist, sideDist, hstr, ribbon, bannerArrays } from './geo3d.mjs';
 export { inside, edgeDist, sideDist }; // (the polygon maths live in geo3d.mjs; tests import them from here too)
 
@@ -294,7 +301,8 @@ function lightScene(renderer, scene) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   scene.background = new THREE.Color(0x0b1d2c);
-  scene.add(new THREE.HemisphereLight(0xcfe6ff, 0x4a5a3a, 0.9));
+  const hemi = new THREE.HemisphereLight(0xcfe6ff, 0x4a5a3a, 0.9);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff0d8, 2.1);
   sun.castShadow = true;
   sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
@@ -306,7 +314,246 @@ function lightScene(renderer, scene) {
     new THREE.MeshPhongMaterial({ color: 0x1d5f8f, specular: 0x9bc4e0, shininess: 90, transparent: true, opacity: 0.92 })
   );
   scene.add(water);
-  return { sun, water };
+  return { sun, hemi, water };
+}
+/**
+ * The light at time of day `tod` (0–1) from the clock's keys (model.time.keys, wrapping round midnight), written into the
+ * sun, the hemisphere and the background; the sun's direction from the hour (east at dawn, south and high at noon, west at
+ * dusk; the moon high in the south-west at night). Returns `lit` (0–1: how far the night lights are on). Reuses its colours.
+ */
+const SKY = { a: new THREE.Color(), b: new THREE.Color(), dir: new THREE.Vector3(), moon: new THREE.Vector3(-0.5, 1, 0.6).normalize() };
+function skyAt(keys, tod, sun, hemi, scene) {
+  let i = keys.findIndex(k => k.t > tod);
+  if (i < 0) i = keys.length;
+  const A = keys[(i - 1 + keys.length) % keys.length],
+    B = keys[i % keys.length],
+    span = (B.t - A.t + 1) % 1 || 1,
+    u = ((tod - A.t + 1) % 1) / span,
+    mix = (k, out) => out.set(A[k]).lerp(SKY.b.set(B[k]), u),
+    num = k => A[k] + (B[k] - A[k]) * u;
+  mix('sun', sun.color);
+  sun.intensity = num('sunI');
+  mix('sky', hemi.color);
+  mix('ground', hemi.groundColor);
+  hemi.intensity = num('hemi');
+  mix('bg', scene.background);
+  const lit = num('lit'),
+    a = clamp((tod - 0.22) / 0.62, 0, 1) * Math.PI;
+  SKY.dir
+    .set(1.25 * Math.cos(a) + 0.54 * Math.sin(a), 0.2 + 0.8 * Math.sin(a), 0.05 + 0.3 * Math.sin(a))
+    .normalize()
+    .lerp(SKY.moon, smooth(0.3, 0.9, lit))
+    .normalize();
+  return lit;
+}
+/**
+ * The night lights (spec §4.37 2, T-332): warm windows on the town's lots (the faces toward the camera; KIT heights as
+ * town3d.mjs builds them), street lamps along the main roads and streets, floodlights over the explored courts and the
+ * venues (model.floods) — one Points mesh of round glows (size per point in metres, kept 2.5–40 px on screen) and one
+ * InstancedMesh of light pools on the ground (vertex-coloured discs, additive). Both fade with `lit` and are not drawn by
+ * day. Dimmed in the fog like the town. Rebuilt when the lots, roads, courts, fog or the setting change. Low (the Fast
+ * setting): a third of the windows, no lamp pools. 2 draw calls at night, none by day.
+ */
+const NIGHT = {
+  win: { every: 2.8, col: 2.4, lit: 0.42, size: 1.3, cap: 6000, colors: ['#ffd38a', '#ffe7b0', '#ffc070', '#d8e4ff'] },
+  dark: ['tank', 'stack', 'shed', 'barn', 'container', 'warehouse', 'plant', 'depot'],
+  lamp: {
+    kinds: ['main', 'street', 'boardwalk'],
+    every: 22,
+    up: 4.5,
+    side: 2.4,
+    size: 1.8,
+    pool: 3.5,
+    cap: 900,
+    color: '#ffd9a0',
+    poolColor: '#ff9f45'
+  },
+  flood: { up: 11, dx: 14, dz: 9, size: 3.2, pool: 22, color: '#f2f6ff' },
+  FOOTPRINT: 1.2 // (town3d.mjs: a lot's side in metres = size × MAP_M × this)
+};
+const unitHash = i => (Math.imul(i + 1, 2654435761) >>> 0) / 4294967296; // town3d.mjs's fixed hash (the same lot heights)
+function nightLayer(scene, heightAt) {
+  const glowMat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      uniforms: { lit: { value: 0 }, scale: { value: 1000 }, pr: { value: 1 } },
+      vertexShader: `attribute float size; attribute vec3 glow; varying vec3 vC; uniform float scale; uniform float pr;
+        void main() { vC = glow; vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = clamp(size * scale / -mv.z, 2.5 * pr, 40.0 * pr); gl_Position = projectionMatrix * mv; }`,
+      fragmentShader: `varying vec3 vC; uniform float lit;
+        void main() { vec2 d = gl_PointCoord - 0.5; float r = dot(d, d) * 4.0; if (r > 1.0) discard;
+          gl_FragColor = vec4(vC * lit * (1.0 - r * r), 1.0); }`
+    }),
+    disc = new THREE.CircleGeometry(1, 16).rotateX(-Math.PI / 2),
+    rim = new Float32Array(disc.attributes.position.count * 3);
+  rim.fill(0);
+  rim.set([1, 1, 1], 0); // the centre vertex lit, the rim dark: a soft pool under additive blending
+  disc.setAttribute('color', new THREE.BufferAttribute(rim, 3));
+  const poolMat = new THREE.MeshBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2
+  });
+  let pts = null,
+    pools = null,
+    key = null,
+    n = { win: 0, lamp: 0, flood: 0 };
+  const clear = () => {
+    for (const o of [pts, pools]) if (o) (scene.remove(o), o.geometry !== disc && o.geometry.dispose(), o.dispose && o.dispose());
+    pts = pools = null;
+  };
+  const build = (m, low) => {
+    clear();
+    const pos = [],
+      glow = [],
+      size = [],
+      pool = [], // [x, y, z, r, color]
+      c = new THREE.Color(),
+      fog = fogFactor(m.fog),
+      add = (x, y, z, s, color, dim = 1) => {
+        c.set(color).multiplyScalar(dim);
+        pos.push(x, y, z);
+        glow.push(c.r, c.g, c.b);
+        size.push(s);
+      };
+    n = { win: 0, lamp: 0, flood: 0 };
+    const W = NIGHT.win,
+      cap = low ? W.cap / 3 : W.cap;
+    // windows: the faces whose outward side looks toward the camera (+z), floors every W.every m, a few lit per floor
+    (m.land.lots || []).forEach((l, i) => {
+      const k = KIT[l.kind];
+      if (!k || n.win >= cap || (low && unitHash(i * 7 + 3) > 0.34)) return;
+      const x0 = l.at[0] * MAP_M,
+        z0 = l.at[1] * MAP_M,
+        f = l.size * MAP_M * NIGHT.FOOTPRINT,
+        h = k.scale[1] * (0.85 + 0.3 * unitHash(i * 3 + 1)) * (1 + 1.2 * (l.h || 0) * k.rise),
+        dim = 0.4 + 0.6 * fog(x0, z0), // (lit windows still show in the dark you haven't explored, fainter)
+        y0 = heightAt(x0, z0),
+        th = -l.rot,
+        cs = Math.cos(th),
+        sn = Math.sin(th),
+        pLit = NIGHT.dark.includes(l.kind) ? 0.08 : W.lit;
+      for (const [nx, nz, half, wide] of [
+        [1, 0, (f * k.scale[0]) / 2, f * k.scale[2]],
+        [-1, 0, (f * k.scale[0]) / 2, f * k.scale[2]],
+        [0, 1, (f * k.scale[2]) / 2, f * k.scale[0]],
+        [0, -1, (f * k.scale[2]) / 2, f * k.scale[0]]
+      ]) {
+        const wx = nx * cs + nz * sn,
+          wz = -nx * sn + nz * cs;
+        if (wz < 0.2) continue; // facing away from the camera
+        const tx = -wz, // along the face
+          tz = wx,
+          cols = clamp(Math.floor(wide / W.col), 1, 4);
+        for (let fl = 1.6, j = 0; fl < h - 0.6; fl += W.every, j++)
+          for (let q = 0; q < cols; q++) {
+            const hh = unitHash(i * 131 + j * 17 + q * 5 + (nx + 2) * 3 + nz);
+            if (hh > pLit) continue;
+            const o = (q + 0.5) / cols - 0.5;
+            add(
+              x0 + wx * (half + 0.12) + tx * o * wide * 0.8,
+              y0 + fl,
+              z0 + wz * (half + 0.12) + tz * o * wide * 0.8,
+              W.size,
+              W.colors[Math.floor(hh * 97) % W.colors.length],
+              dim
+            );
+            n.win++;
+          }
+      }
+    });
+    // street lamps along the main roads and streets (alternating sides), with a pool of light under each
+    const L = NIGHT.lamp;
+    for (const r of m.land.roads || []) {
+      if (!L.kinds.includes(r.kind) || n.lamp >= L.cap) continue;
+      const [a, b] = r.pts.map(p => [p[0] * MAP_M, p[1] * MAP_M]),
+        len = Math.hypot(b[0] - a[0], b[1] - a[1]),
+        ux = (b[0] - a[0]) / (len || 1),
+        uz = (b[1] - a[1]) / (len || 1);
+      for (let d = L.every / 2, j = 0; d < len && n.lamp < L.cap; d += L.every, j++) {
+        const sd = j % 2 ? L.side : -L.side,
+          x = a[0] + ux * d - uz * sd,
+          z = a[1] + uz * d + ux * sd,
+          y = heightAt(x, z),
+          dim = 0.4 + 0.6 * fog(x, z);
+        add(x, y + L.up, z, L.size, L.color, dim);
+        if (!low) pool.push([x, y + 0.25, z, L.pool, dim * 0.35, L.poolColor]);
+        n.lamp++;
+      }
+    }
+    // floodlights: four towers round each court, a pool over the court
+    const F = NIGHT.flood;
+    for (const at of m.floods || []) {
+      const x = at[0] * MAP_M,
+        z = at[1] * MAP_M,
+        y = heightAt(x, z),
+        dim = 0.4 + 0.6 * fog(x, z);
+      for (const [sx, sz] of [
+        [1, 1],
+        [1, -1],
+        [-1, 1],
+        [-1, -1]
+      ])
+        add(x + sx * F.dx, y + F.up, z + sz * F.dz, F.size, F.color, dim);
+      pool.push([x, y + 0.35, z, F.pool, dim * 0.35, F.color]);
+      n.flood++;
+    }
+    if (pos.length) {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('glow', new THREE.Float32BufferAttribute(glow, 3));
+      g.setAttribute('size', new THREE.Float32BufferAttribute(size, 1));
+      pts = new THREE.Points(g, glowMat);
+      pts.frustumCulled = false;
+      pts.renderOrder = 2;
+      scene.add(pts);
+    }
+    if (pool.length) {
+      pools = new THREE.InstancedMesh(disc, poolMat, pool.length);
+      const D = new THREE.Object3D();
+      pool.forEach(([x, y, z, r, k, color], i) => {
+        D.position.set(x, y, z);
+        D.scale.set(r, 1, r);
+        D.updateMatrix();
+        pools.setMatrixAt(i, D.matrix);
+        pools.setColorAt(i, c.set(color).multiplyScalar(k));
+      });
+      pools.frustumCulled = false;
+      pools.renderOrder = 1;
+      scene.add(pools);
+    }
+  };
+  return {
+    sync(m, low) {
+      const k = [m.land.lots, (m.land.roads || []).length];
+      const fk = JSON.stringify([m.fog, m.floods, !!low]);
+      if (key && key[0] === k[0] && key[1] === k[1] && key[2] === fk) return;
+      key = [k[0], k[1], fk];
+      build(m, low);
+    },
+    /** Per frame: fade with lit (0: not drawn); scale = the canvas's px per metre at depth 1. */
+    set(lit, scale, pr) {
+      const on = lit > 0.01;
+      glowMat.uniforms.lit.value = lit;
+      glowMat.uniforms.scale.value = scale;
+      glowMat.uniforms.pr.value = pr;
+      poolMat.opacity = lit;
+      if (pts) pts.visible = on;
+      if (pools) pools.visible = on;
+    },
+    count: () => ({ ...n }),
+    dispose() {
+      clear();
+      disc.dispose();
+      glowMat.dispose();
+      poolMat.dispose();
+    }
+  };
 }
 /** Free every geometry / material the map made (shared kit caches — userData.shared — survive a re-create), the GPU context. */
 /**
@@ -413,7 +660,7 @@ export function create(onIdle) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true }),
     scene = new THREE.Scene(),
     cam = new THREE.PerspectiveCamera(40, 1, 1, 3000);
-  const { sun, water } = lightScene(renderer, scene);
+  const { sun, hemi, water } = lightScene(renderer, scene);
 
   let terrain = null,
     mesh = null,
@@ -440,10 +687,25 @@ export function create(onIdle) {
     cur = null, // the last model (pins for select)
     lastSel = null,
     cw = 0, // canvas size (px), cached by size() — never read from the DOM per frame
-    ch = 0;
+    ch = 0,
+    night = null, // windows, lamps, floodlights (nightLayer)
+    onW = null, // the mount callbacks as mapcam sees them: a click on a named figure goes to on.person instead of on.point
+    low = false, // the Fast graphics setting: fewer named figures and night lights
+    // the day clock (spec §4.37 2): wt = the shown week time (days; its fraction = the time of day), never run back
+    wt = null,
+    tod = 0.5,
+    lit = 0,
+    phase = 'idle', // 'idle' | 'walk' | 'order', or a function returning one (MapView.phase)
+    walkPts = null, // the current walk's road (world [x, z]) and its cumulative lengths, for how far along it the avatar is
+    walkLen = null,
+    prog = 1,
+    lastWalk = null, // model.time.walk[0] last seen: a change = a new action
+    hoverId = null,
+    ptr = null, // the pointer over the canvas { x, y, cx, cy } (canvas px, client px) — picked in the frame
+    pickN = 0;
 
   // camera and input (mapcam3d.mjs): it reads the parts below as they appear
-  const C = createMapCam(cam, canvas, sun, () => ({ terrain, mesh, avatar, cur, on, cw, ch }));
+  const C = createMapCam(cam, canvas, sun, () => ({ terrain, mesh, avatar, cur, on: onW, cw, ch }));
   let hexOn = !(typeof location !== 'undefined' && /[?&]nohex\b/.test(location.search));
   const showHex = () => scene.traverse(o => o.userData && o.userData.hex && (o.visible = hexOn));
   const build = m => {
@@ -459,7 +721,68 @@ export function create(onIdle) {
     life = createLife(scene, terrain.heightAt);
     nature = createNature(scene, terrain.heightAt);
     war = warLayer(scene, terrain.heightAt);
+    night = nightLayer(scene, terrain.heightAt);
     furn.layer.addEventListener('wheel', C.onWheel, { passive: false }); // wheel over a pin still zooms
+  };
+  /** How far along its road the avatar has come (0–1, never back): the walk's share of the clock holds while it stands. */
+  const walkProgress = () => {
+    if (!walkPts || !avatar) return 1;
+    const [x, z] = avatar.pos();
+    let best = Infinity,
+      s = 0;
+    for (let i = 1; i < walkPts.length; i++) {
+      const [ax, az] = walkPts[i - 1],
+        [bx, bz] = walkPts[i],
+        dx = bx - ax,
+        dz = bz - az,
+        L2 = dx * dx + dz * dz || 1,
+        u = clamp(((x - ax) * dx + (z - az) * dz) / L2, 0, 1),
+        d = Math.hypot(x - ax - dx * u, z - az - dz * u);
+      if (d < best) ((best = d), (s = walkLen[i - 1] + u * Math.sqrt(L2)));
+    }
+    return Math.max(prog, clamp(s / (walkLen[walkLen.length - 1] || 1), 0, 1));
+  };
+  /** Advance the shown clock toward what the reported phase asks for (model.time), at most its rate; never back. */
+  const clockStep = dt => {
+    const T = cur && cur.time;
+    if (!T) return;
+    const ph = typeof phase === 'function' ? phase() : phase,
+      acted = T.walk[1] > T.walk[0] + 1e-6;
+    let aim = T.idle,
+      rate = T.rate.idle;
+    if (ph === 'walk' && acted) {
+      prog = walkProgress();
+      aim = lerp(T.walk[0], T.walk[1], prog);
+      rate = T.rate.walk;
+    } else if (ph === 'order' && acted) ((aim = T.order[1]), (rate = T.rate.order));
+    if (wt === null) wt = aim;
+    if (aim < wt - 0.5) wt -= Math.ceil(wt - aim); // a new week: round through the night to its dawn
+    if (aim > wt + 1.5) wt += Math.floor(aim - wt - 0.5); // days passed unseen: skip them
+    if (aim > wt) wt = Math.min(aim, wt + rate * dt);
+    tod = wt - Math.floor(wt);
+  };
+  const onPtr = e => {
+    const r = canvas.getBoundingClientRect();
+    ptr = { x: e.clientX - r.left, y: e.clientY - r.top, cx: e.clientX, cy: e.clientY };
+    pickN = 0;
+  };
+  const offPtr = () => {
+    ptr = null;
+    if (hoverId !== null) ((hoverId = null), (canvas.style.cursor = ''), on && on.hover && on.hover(null));
+  };
+  canvas.addEventListener('pointermove', onPtr);
+  canvas.addEventListener('pointerleave', offPtr);
+  /** The named figure under the pointer (every few frames, or right after a move): tell the UI (hover tip), set the cursor. */
+  const hoverStep = () => {
+    if (!ptr || !life || !cur || pickN-- > 0) return;
+    pickN = 6;
+    const look = cur.life && cur.life.look,
+      id = life.pick(cam, ptr.x, ptr.y, cw, ch, look ? look.pick : 16);
+    if (id !== hoverId) canvas.style.cursor = id !== null ? 'pointer' : '';
+    if (id !== hoverId || id !== null) {
+      hoverId = id;
+      if (on && on.hover) on.hover(id, ptr.cx, ptr.cy, id !== null ? life.going(id, tod) : null);
+    }
   };
   /** Darken the terrain where nothing you have visited lies within fog.r (unexplored land stays visible, dim). */
   const applyFog = f => {
@@ -497,11 +820,16 @@ export function create(onIdle) {
       avatar.tick(dt * walkK, terrain.heightAt); // your walk at the chosen speed (setWalk; the others keep theirs)
       for (const f of figs.values()) f.tick(dt, terrain.heightAt);
       clock += dt;
-      life.tick(dt, clock);
+      clockStep(dt);
+      lit = cur && cur.time ? skyAt(cur.time.keys, tod, sun, hemi, scene) : 0;
+      life.tick(dt, clock, tod);
+      hoverStep();
       nature.tick(dt, clock);
       furn.pulse(clock);
       war.pulse(clock);
       C.step(dt);
+      if (cur && cur.time) sun.position.copy(sun.target.position).addScaledVector(SKY.dir, 150); // the hour's sun (after the camera placed it)
+      night.set(lit, (ch * renderer.getPixelRatio()) / (2 * Math.tan((cam.fov * Math.PI) / 360)), renderer.getPixelRatio());
       const n = avatar.lapse(),
         txt = n ? `×${n < 2 ? n.toFixed(1) : Math.round(n)}` : '';
       if (badge && badge.textContent !== txt) {
@@ -519,6 +847,7 @@ export function create(onIdle) {
     mount(e, m, cb) {
       el = e;
       on = cb;
+      onW = cb && { ...cb, point: p => (hoverId !== null && cb.person ? cb.person(hoverId) : cb.point(p)) };
       el.replaceChildren(canvas);
       badge = document.createElement('div');
       badge.className = 'mapbadge';
@@ -553,7 +882,8 @@ export function create(onIdle) {
       nature.sync(m);
       furn.sync(m, on);
       showHex();
-      life.sync(m);
+      life.sync(m, low);
+      night.sync(m, low);
       war.sync(m.borders);
       applyFog(m.fog);
       const want = new Map((m.figures || []).map(f => [f.id, f]));
@@ -566,10 +896,21 @@ export function create(onIdle) {
       const at = m.you && m.you.at;
       if (!at || !avatar) return;
       const key = at.join(',');
+      if (m.time && m.time.walk[0] !== lastWalk) ((walkPts = null), (prog = 1)); // a new action (no walk unless one starts below)
+      lastWalk = m.time ? m.time.walk[0] : null;
       if (seen === null) avatar.snap(at);
       else if (key !== seen) {
         const [x0, z0] = avatar.pos();
         avatar.setTarget(at, m.you.route);
+        walkPts = [
+          [x0, z0],
+          ...(m.you.route && m.you.route.length > 1 ? m.you.route.slice(1, -1) : []).map(p => [p[0] * MAP_M, p[1] * MAP_M]),
+          [at[0] * MAP_M, at[1] * MAP_M]
+        ];
+        walkLen = [0];
+        for (let i = 1; i < walkPts.length; i++)
+          walkLen.push(walkLen[i - 1] + Math.hypot(walkPts[i][0] - walkPts[i - 1][0], walkPts[i][1] - walkPts[i - 1][1]));
+        prog = 0;
         C.walkFrom(x0, z0); // a drag in progress ends: the camera is the walk's, onto the player first
       }
       seen = key;
@@ -591,6 +932,30 @@ export function create(onIdle) {
       hexOn = !!v;
       showHex();
     },
+    /** Which part of the day is playing: 'idle' | 'walk' | 'order', or a function the map asks each frame (MapView.phase). */
+    setPhase(p) {
+      phase = p || 'idle';
+    },
+    /** The Fast graphics setting: fewer named figures (life.look.low) and night lights. */
+    setLow(v) {
+      if (low === !!v) return;
+      low = !!v;
+      if (cur && life) (life.sync(cur, low), night.sync(cur, low));
+    },
+    /** The shown clock: { week (days), tod (0–1), lit (0–1) } — for QA and the UI. */
+    clock: () => ({ week: wt, tod, lit }),
+    /** Dev / QA: jump the shown clock to week time w (it then runs on toward the phase from there — forward only). */
+    setClock(w) {
+      wt = w;
+      tod = w - Math.floor(w);
+    },
+    /** QA: a named figure's screen point (canvas px) or null — to hover it in the UI smoke. */
+    figureAt(id) {
+      const p = life && life.at(id);
+      if (!p) return null;
+      const v = new THREE.Vector3(p[0], p[1] - 0.3, p[2]).project(cam);
+      return v.z > 1 ? null : [((v.x + 1) / 2) * cw, ((1 - v.y) / 2) * ch];
+    },
     /** True while your player is walking to a new place (the UI locks its actions until they arrive). */
     busy: () => C.walking(),
     heightAt: (x, z) => (terrain ? terrain.heightAt(x, z) : 0),
@@ -600,6 +965,8 @@ export function create(onIdle) {
       geos: renderer.info.memory.geometries,
       tex: renderer.info.memory.textures,
       life: life && life.count(),
+      night: night && night.count(),
+      clock: { week: wt, tod, lit },
       nature: nature && nature.count(),
       view: C.view && { ...C.view }
     }),
@@ -613,6 +980,9 @@ export function create(onIdle) {
       if (life) life.dispose();
       if (nature) nature.dispose();
       if (war) war.dispose();
+      if (night) night.dispose();
+      canvas.removeEventListener('pointermove', onPtr);
+      canvas.removeEventListener('pointerleave', offPtr);
       if (raf) cancelAnimationFrame(raf);
       if (ro) ro.disconnect();
       C.dispose();

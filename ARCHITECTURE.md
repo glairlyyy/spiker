@@ -30,7 +30,8 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   (CITY geometry, SPOTS, travel constants, layout data), `stars.js` (STARS), `traits.js` (SPARKS / SCARS / `MC_TRAITS`, `TRAIT_ODDS`: the
   traits only your player carries — spec §4.30; not the NPCs' `TRAITS` in people.js), `gifts.js` (GIFTS, GIFT_TIERS, GIFT_ODDS: talent
   tiers and innate gifts — spec §4.35), `team.js` (TEAM, TEAM_CHAT, TEAM_REPLY, ARCS: team stories — spec §4.36; merges its memory kinds into
-  MEMORY / MEM_TEXT).
+  MEMORY / MEM_TEXT), `life.js` (LIFE: the named figures on the map — cap, rings, courts, figure sizes, act words; CLOCK: the day
+  clock — dawn / walk / order / night times, when people walk out and home, display rates, the light keys — spec §4.37 1–2).
 - **engine** `court.js` (geometry, `Z_UNITS`, `UNIT_M`, `BALL_K` / `SERVE_K`), `players.js`, `teams.js`, `save.js`,
   `stats.js`, `skills.js`, `formulas.js`, `elements.js`, `hype.js`, `fire.js` (momentum stages, spec §2.14: `temperOf`,
   `fireStage`, `pointStage` after every point (in `end`), `stageTimeout`, `stageBuff(p, stat)` read by effD / jumpPx / the
@@ -55,7 +56,9 @@ Rest (`rest`: `restOpts`, `restFor`, `ordSubs` at the dead ball before coachSubs
 blockMoves and digSetup; tallies `ordLog` / `ordAttack` → `m.ordLog` (the result card's Orders row, `boardResult`); data `ORDERS`), `rally.js`.
 - **audio** `sfx.js` (internals in the `SOUND` closure; global: `SND`, `sfx`, `audioInit`, `toggleSound`, `setVolume`, `bgmStart`, `bgmStop`, `panAt`). **game** `state.js` (G, HYPE, Screens / navigate), `bracket.js`.
 - **career** `run.js` (Run, RUN_DEFAULTS), `body.js` (Body: your body → the court skills, spec §4.33), `training.js`, `growth.js`, `element.js`, `world.js`, `pool.js`, `eval.js`,
-  `city.js`, `hex.js` (the war map's tile geometry), `front.js` (who raids whom, where), `war.js` (War: units, Strength, stages, `run.war`), `mapmodel.js`, `dossier.js`, `events.js`, `sponsors.js`, `skills.js`, `rank.js`, `cup.js`, `fight.js`; `circle.js` (Circle: your circle `Circle.of(run)` → ids, the friend who follows a switch — spec §4.36 B); … `gifts.js` (Gifts: tiers, the
+  `city.js`, `hex.js` (the war map's tile geometry), `front.js` (who raids whom, where), `war.js` (War: units, Strength, stages, `run.war`), `mapmodel.js` (the map as plain data; the living island's contract, spec §4.37:
+  `MapModel.lifePeople(run)` → [{ id, at, home, act, spot, g, color }] — who stands where today, and `MapModel.clock(run, phase?, k?)` → 0–1
+  time of day, `weekTime` the same in days), `dossier.js`, `events.js`, `sponsors.js`, `skills.js`, `rank.js`, `cup.js`, `fight.js`; `circle.js` (Circle: your circle `Circle.of(run)` → ids, the friend who follows a switch — spec §4.36 B); … `gifts.js` (Gifts: tiers, the
   gift roll, `known`, growth / innate effects — spec §4.35; the engine reads `p.gifts` through `hasGift` in engine/elements.js).
   `team.js` (Team: the team chat, personal arcs, duo cards, ex-teammates — spec §4.36; state `run.tlife`; `Team.matched` from Cup.record, `Team.lean` from Cup.entrants, `Team.week` appended to WEEK_START at load).
 - **portraits** `js/render/faces.js` `faceSVG(p, mood, size)` returns a cached 3D portrait `<img>` (PORTRAIT: look key → data URL) or the drawn face (`faceSVG2D`) as a placeholder that is swapped in place when `js/render3d/portrait3d.mjs` (lazy-loaded; one offscreen renderer, the default model re-dressed in hair / skin / team shirt, Main_v2 for you) finishes it.
@@ -71,7 +74,7 @@ blockMoves and digSetup; tallies `ordLog` / `ordAttack` → `m.ordLog` (the resu
 
 ES modules (loaded on demand): `js/render3d/` — `r3d.mjs` (entry), `units3d`, `arena3d`, `camera3d`, `actors3d`,
 `players3d` (VRM load / dress, `MODEL_URL`), `poses3d` (+ `setMotion`; spike / swing / serve poses in `poses3d-attack`), `fx3d` (effect groups in `fx/`; `fx/gloom.mjs`: the gloom lines over a debuffed player — a sprite per figure, `gloomOf(m, p, side)` from m.weak / m.mor / m.hp), `trails3d`, `ambient3d` (the venue's air by crowd heat `Dir.heat`: wind, embers, flames — spec §2.27), `title3d` (the title backdrop: its own small renderer — `mountTitle3D(el)` / `unmountTitle3D()`, buildArena without players or ball, orbiting; menu.js `titleBg` / `titleBgOff`, navigate stops it), `vfxlab3d` (dev VFX lab: own renderer + OrbitControls + `createFx`; `mountLab` / `labPlay` / `labSet` / `labStats` / `labAdvance` (QA stepping); stops itself when its element leaves the page); `js/map3d/` — `map3d.mjs`
-(entry: scene, terrain, the model sync, `api`), `mapcam3d` (camera + input: pan, zoom, click a point, fly to a pin / to you / over the island, follow the walk, the week-1 fence — T-272), `geo3d`, `avatar3d`, `pins3d`, `life3d`, `town3d`, `kit3d`, `nature3d`.
+(entry: scene, terrain, the model sync, `api`; the day clock's sun / sky and the night lights — `skyAt`, `nightLayer`), `mapcam3d` (camera + input: pan, zoom, click a point, fly to a pin / to you / over the island, follow the walk, the week-1 fence — T-272), `geo3d`, `avatar3d`, `pins3d`, `life3d`, `town3d`, `kit3d`, `nature3d`.
 
 CSS (`css/`, loaded in this order): `style.css` (page base: tokens use, buttons, panels, glossary terms), `match.css` (the match screen and the dev VFX lab / panel; T-273), `career.css` (career screens layout: menu, create, cards,
 sheets), `map.css` (island map frame, 3D overlay pins/labels, legend, hex tile labels), `hub.css` (hub HUD + shell: top bar, week

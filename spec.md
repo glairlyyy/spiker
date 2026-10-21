@@ -1431,9 +1431,21 @@ the AI coach fills every slot you leave with the same function. Built and measur
     teammates in the club colour, everyone else muted; unscouted crews stay grey silhouettes (§4.19a). Hover → face, name, club,
     what they are doing ("Mint · drilling at the Wei gym"); click → their People card. They walk home at night and out in the
     morning by the day clock. Fog hides what you haven't explored. At most ~120 named figures; the rest stay today's crowd.
+    **[built 2026-10-21, T-331]**: every NPC whose place you've explored (`MapModel.lifePeople`, also what encounters read);
+    a teammate on this week's training floor stands at the floor's place (where you meet them); homes round their club's HQ
+    (pools: their region, the Academy squad: the student quarter); the Academy squad trains at the Academy Gym. Circle and
+    teammates drawn larger, others muted half-way to grey; idle by what they do (drill hops, a jog round the court, sitting);
+    hidden indoors at night. Hover tip: face, name, club, "drilling at Dynasty Strength Center" / "heading home"; unscouted:
+    "Not scouted" + club, no face, no click. The Fast graphics setting keeps 40.
   - **2. The day clock (T-332).** Each day has a time of day: dawn when it starts, the walk is the morning, the order the
     afternoon, then evening; the week's last day ends at night. The sun's angle and colour follow it; at night windows, street
     lamps and the courts' floodlights come on and figures go home. Display only (the rules still resolve a day at a time).
+    **[built 2026-10-21, T-332]**: a waiting day shows its dawn; an action's walk runs from the morning of its first day to
+    the morning of its last (a 3-day trip passes two nights), its order that afternoon, then on through evening and night to
+    the next dawn (~1.5 s); the clock follows how far you have walked, so it holds while you stand still, and never runs back.
+    The sun rises in the east, stands high in the south at noon, sets in the west; the moon lights the night. Night lights:
+    lit windows on the faces toward the camera, street lamps with pools along the main roads and streets, four floodlights over
+    each explored court and venue; crews go in too (a few stay out). Fast setting: a third of the windows, no lamp pools.
   - **3. Encounters on the road (T-333).** When your walk passes near someone who matters, the avatar stops and a small card
     opens over the map, at most one per trip (by hash): a circle member at their place (Talk: + a small memory; or walk on), a
     rival club's crew (Challenge — §4.29's challenge; or walk on), the week's street battle (Join — §4.34's street battle; or walk

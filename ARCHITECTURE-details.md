@@ -526,7 +526,7 @@ on the units' Strength (`War`), places held by others `run.own` (City.region fol
 1. Rules — City / Front (DOM-free): positions, travel, fog (`City.seen`), regions (`regionAt`), ownership.
 2. Model — `MapModel.build(run, sel)` (`js/career/mapmodel.js`, DOM-free, tested): `{ w, h, land: { coast, beach,
 regions[{id, poly, color, mine}], minors[ellipses], park, relief, pads, labels, airport }, pins[{id, kind: spot|hq|clash, at, icon, badge, title, color?, flags: off/far/turf/gem/overhyped/hq/can/
-mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-view centre), sel, life }`. `life` (`MapModel.life`, display only, no randoms; positions from hashes of ids + place): `mates[{id, name, at, color, spot}]` (your floor mates at the explored place of their key nearest home), `crews[{region, team, at, color, n 2–6, known, walk[[x,y]…]}]` (known clubs' HQs; `known` = scouted or yours), `battle {at, a, b, colors}|null`, `patrols[{id, tile, at, face, color}]` (`MapModel.patrols`: this week's battle border — the defender's 2 on its tile, the raider's 3 on its tile across, facing; colours and points only, the renderer never names factions). Map units
+mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-view centre), sel, life }`. `life` (`MapModel.life`, display only, no randoms; positions from hashes of ids + place): `people` (MapModel.lifePeople — see "Map life and the day clock" below), `look` (figure sizes, hover px, the Fast cap), `crews[{region, team, at, color, n 2–6, known, walk[[x,y]…]}]` (known clubs' HQs; `known` = scouted or yours), `battle {at, a, b, colors}|null`, `patrols[{id, tile, at, face, color}]` (`MapModel.patrols`: this week's battle border — the defender's 2 on its tile, the raider's 3 on its tile across, facing; colours and points only, the renderer never names factions). Map units
    CITY.w × CITY.h, y down. Selection ids: a pin id, or `pt:x,y` (`ptId` / `ptOf`).
 3. Renderer — `MapView` (`js/ui/map-view.js`): `mount(el, model, { pick(id), point([x, y]) })`, `update(model)`,
    `select(id)`, `dispose()`, `setWalk(k)` (your walking speed ×1/×2/×4, remembered as `sns_walk`; map3d ticks your avatar ×k). The only renderer is the three.js map: it lazy-imports `js/map3d/map3d.mjs` once (a notice
@@ -559,8 +559,8 @@ mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-vie
    view: on the player, 60 m away. Life is `js/map3d/life3d.mjs` (`createLife(scene, heightAt)` → `{ sync(model), tick(dt, t),
 count(), dispose() }`, display only, no game randoms): reads `model.life`; one `InstancedMesh` per kind
    (figure = capsule body + head, flag poles, flag cloth, dust puffs; ≤ 300 figures), rebuilt only when that JSON changes and
-   animated in `tick` (drill hops, walkers looping round a crew's places at 1.2 m/s, the battle crowd shoving, waving flags).
-   Mates and known crews are coloured, unscouted crews grey; patrols stand where `life.patrols` puts them,
+   animated in `tick` (the named people first, drill hops, walkers looping round a crew's places at 1.2 m/s, the battle crowd shoving, waving flags).
+   Known crews are coloured, unscouted crews grey (crews go in at night); patrols stand where `life.patrols` puts them,
    facing their `face` point (a seized place shows by its tile colour, no flag). `furn.pulse(t)` pulses the battle tile's outline.
    Traffic (spec §4.19a): `life.traffic` = `MapModel.traffic()` (static, from `TRAFFIC` in js/data/city.js): lines as closed out-and-back
    loops of road nodes `[x, y, over]`, boats `{ at, r, n }`, the plane's take-off `{ from, lift, to, every }` on `AIRPORT.runway`. life3d
@@ -593,6 +593,44 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
    height 1, feet at y = 0; landmark: door on +z, feet at y = 0, vertex colours) — nothing else changes (see the header of kit3d.mjs).
    `info().life` reports the instance counts. `js/ui/career-map.js` mounts it (`mapMount`),
    turns picks into panels (`mapPick`) and land clicks into travel targets (`mapPoint`). Region colours: REGIONS.color.
+
+### Map life and the day clock (spec §4.37 1–2, T-331–T-332)
+
+- **People** — `MapModel.lifePeople(run, max = LIFE.max)` (js/career/mapmodel.js; also Agent E's encounter input): every NPC of
+  `People.homes` with a `run.people` entry, at `People.plan(run, p, home)` (the same week plan People.week applies; no randoms):
+  train / hard / wit → `plan.at` (else `LIFE.gym[home]`: the Academy squad → the Academy Gym), hustle → `LIFE.court[home]` /
+  `LIFE.courtElse`, rest / out → home; a teammate on `run.floor` → the floor key's explored place nearest your home (as its pin
+  badge counts). Home anchor `MapModel.homeAt`: club HQ, else the pool's region anchor, the Academy → the student flat. `at` /
+  `home` = hashed rings (`LIFE.spotR` / `homeR`). Fog: a place must be `MapModel.known`, a home `City.seen`. Groups `g`: circle
+  (`Circle.of`) · mate (your squad, your club colour) · grey (a club not yours and not scouted) · other; sorted circle → mates →
+  bond → id, cut at `max`. life3d draws them in the shared people InstancedMesh (× `look.size[g]`, `other` muted half-way to
+  grey; the Fast setting keeps `look.low`): idle by act (train / hard drill hops, hustle a jog round the court, wit / rest / out
+  sit), by the time of day `tod`: home (hidden) at night, walking out inside `CLOCK.out` and home inside `CLOCK.home` (each at
+  a hashed moment, `step` long, a straight line). `pick(cam, x, y, cw, ch, px)` = the nearest shown figure within px on screen
+  (head or middle projected; no raycast); `going(id, tod)`; `at(id)`.
+- **Hover / click** — map3d listens to pointermove / pointerleave on its canvas, picks every 6 frames or after a move, sets the
+  cursor and calls `on.hover(id | null, clientX, clientY, going)`; a canvas click while a figure is hovered goes to
+  `on.person(id)` instead of `on.point` (mapcam gets the wrapped callbacks). MapView adds both: the tip reuses `.tipbox`
+  (class `maptip`): `faceSVG`, name, club, "drilling at <place>" / "heading home"; grey = "Not scouted" + club, no face, no
+  click; a click opens `openPerson(id)`.
+- **Clock** — week time w = days spent + time of day (`MapModel.weekTime`; `clock` = its fraction, 0 = midnight). Waiting:
+  the next day's dawn (`CLOCK.dawn`); the week spent: the last day's night. The last action (`MapModel.span`: its trip days +
+  its day from `run.dayLog`) plays as walk = from the morning of its first day to the morning of its last (a 3-day trip runs
+  through two nights), order = that afternoon. `MapModel.time(run)` hands the renderer `{ day, idle, walk: [a, b], order:
+  [a, b], out, home, step, rate, keys }`. **Phase interface:** `MapView.phase()` → 'idle' | 'walk' | 'order' from `CW.lock`
+  (walk / greet → walk; spin / done / res → order; any other lock phase → walk; none → idle), handed to map3d once as
+  `setPhase(fn)` and read each frame. map3d's `clockStep`: aim = idle, or lerp(walk) by the avatar's progress along its road
+  (projection onto the route, ratcheted — it holds while the avatar is stopped, e.g. an encounter), or order[1]; the shown w
+  runs toward it at `rate[phase]` days / s and never back (a lower aim = a new week: w wraps forward through the night; a gap
+  over 1.5 days skips whole days). Dev / QA: `setClock(w)`, `clock()`.
+- **Light** — `skyAt(keys, tod, …)` interpolates `CLOCK.keys` (wrapping): sun colour / intensity, hemisphere sky / ground /
+  intensity, background, `lit`; the sun's direction by the hour (east → south-high → west, blending to the moon by `lit`), set
+  after the camera step (mapcam still places it; map3d overrides before render). `nightLayer`: one Points mesh (ShaderMaterial,
+  additive, size in metres clamped 2.5–40 px) of windows (lots' faces toward the camera, floors every 2.8 m, ~42 % lit by
+  hash; heights replicate town3d's `unit` hash and FOOTPRINT 1.2 — keep in step), street lamps (main / street / boardwalk
+  roads, every 22 m, alternating sides) and court floodlights (`model.floods` = `MapModel.floods`: explored court landmarks +
+  venues, four towers each), plus one InstancedMesh of additive ground pools (lamps, courts); fog-dimmed (to 40 %, so lit towns still show in the dark); hidden when `lit` ≈ 0;
+  rebuilt when the lots, fog, floods or the setting change. Fast setting: ⅓ of the windows, no lamp pools, `LIFE.low` figures.
 
 ## Possession paths and touch counts
 
