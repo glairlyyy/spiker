@@ -387,3 +387,172 @@ test('figure menu: Spar — a court nearby, no stake, the day, XP and a memory e
   assert(/Sparred/.test(run.log[0].t), 'the diary: ' + run.log[0].t);
   assert(run.mlog[run.mlog.length - 1].round === 'Spar' || run.mlog.some(x => x.round === 'Spar'), 'in the match history');
 });
+
+// ---- the Ref drone (spec §4.38, T-339): buy / rent, pickup games on open ground, who plays off a flat floor ----------------------
+/** Map points on a grid with their ground (City.groundAt): [{ p, G }]. */
+function grounds(g, run, step = 53) {
+  const out = [];
+  for (let y = step / 2; y < g.CITY.h; y += step)
+    for (let x = step / 2; x < g.CITY.w; x += step) out.push({ p: [x, y], G: g.City.groundAt(run, [x, y]) });
+  return out;
+}
+/** A point with a pickup open (or only its foe's refusal / days in the way), nearest people first: { p, P } or null. */
+function pickupSpot(g, run, ok = P => !P.why) {
+  for (const q of g.Encounter.people(run))
+    for (const [dx, dy] of [
+      [40, 0],
+      [0, 40],
+      [-40, 0],
+      [0, -40],
+      [70, 70],
+      [-70, 70]
+    ]) {
+      const p = [q.at[0] + dx, q.at[1] + dy],
+        P = g.Encounter.pickup(run, p);
+      if (ok(P)) return { p, P };
+    }
+  return null;
+}
+test('drone: buy at the Cargo Shed, rent at a court for one match; the ground under you — none on a road, building or water (T-339)', () => {
+  const [g, run] = mkRun();
+  eq(g.City.drone(run), '', 'no drone at the start');
+  const S = pickupSpot(g, run, P => /needs the drone/.test(P.why));
+  assert(S, 'without the drone: "needs the drone" (the gap: buy or rent)');
+  // buy: the Cargo Shed at the airport, a flat price, once
+  const m0 = run.money;
+  assert(g.City.can(run, 'cargo').ok, 'the Cargo Shed sells it');
+  eq(g.City.price(run, 'cargo'), g.DRONE.buy, 'a flat price');
+  const line = g.City.day(run, 'cargo');
+  assert(/bought the Ref drone/.test(line), line);
+  eq(run.money, m0 - g.DRONE.buy, 'paid');
+  eq(g.City.drone(run), 'own', 'yours');
+  eq(g.City.can(run, 'cargo').why, 'you have the drone', 'once');
+  // the ground: sea, water, road, buildings → none; sand / grass / asphalt / slope all found somewhere
+  const G = grounds(g, run),
+    kinds = new Set(G.filter(x => x.G.k).map(x => x.G.k));
+  eq([...kinds].sort().join(','), 'asphalt,grass,sand,slope', 'every ground somewhere');
+  eq(g.City.groundAt(run, [5, 5]).why, 'in the sea', 'the sea');
+  const res = g.GROUND.find(q => q.kind === 'water');
+  eq(g.City.groundAt(run, [res.poly.x, res.poly.y]).why, 'in the water', 'the reservoir');
+  const [a, b] = g.ROADS.edges[0],
+    mid = [(g.ROADS.nodes[a][0] + g.ROADS.nodes[b][0]) / 2, (g.ROADS.nodes[a][1] + g.ROADS.nodes[b][1]) / 2];
+  eq(g.City.groundAt(run, mid).why, 'on the road', 'a road');
+  const lot = g.MapModel.lots(run).find(l => !g.City.groundAt(run, l.at).why.includes('road'));
+  eq(g.City.groundAt(run, lot.at).why, 'among the buildings', 'a building');
+  assert(
+    G.filter(x => x.G.why).every(x => /no pickup here|answer|match week/.test(g.Encounter.pickup(run, x.p).why)),
+    'no pickup where there is no ground'
+  );
+  assert(
+    G.filter(x => x.G.k === 'sand').every(x => g.MapModel.onSand(x.p)),
+    'sand is the beach strip'
+  );
+  assert(
+    G.filter(x => x.G.k === 'sand').every(x => x.G.wind > 0),
+    'the beach is windy'
+  );
+  // rent: at a court, one match
+  const [h, twin] = mkRun(),
+    C = h.Encounter.courts(twin)[0];
+  eq(h.City.rentWhy(twin, C), '', 'rent at a court');
+  const m1 = twin.money;
+  assert(/Rented a Ref drone/.test(h.City.rentDrone(twin, C)), 'rented');
+  eq(twin.money, m1 - h.DRONE.rent, 'paid the rent');
+  eq(h.City.drone(twin), 'rent', 'rented');
+  assert(/rented/.test(h.City.rentWhy(twin, C)), 'one at a time');
+  const T = pickupSpot(h, twin);
+  assert(T, 'a pickup with the rented drone');
+  h.Cup.simNow(h.Encounter.pickupFx(twin, T.p));
+  eq(h.City.drone(twin), '', 'a rented drone is spent after one match');
+  // a cup / evaluation week: no pickup
+  twin.drone = { own: 1 };
+  const wk = twin.week;
+  twin.week = Object.keys(h.CALENDAR)
+    .map(Number)
+    .find(w => h.CALENDAR[w] === 'eval');
+  assert(/match week/.test(h.Encounter.pickup(twin, T.p).why), 'not in an evaluation week');
+  twin.week = wk;
+});
+test('drone: a pickup — the people around, Picky / Egoist refuse but on asphalt, the field match on its ground; Spar with the drone (T-339)', () => {
+  const [g, run] = mkRun();
+  run.drone = { own: 1 };
+  const S = pickupSpot(g, run);
+  assert(S, 'a pickup somewhere near people');
+  const { p, P } = S,
+    W = g.Encounter.who(run, P.foe);
+  assert(W && W.t && Math.hypot(W.at[0] - p[0], W.at[1] - p[1]) <= g.ENC.pickup.r, 'their crew, around the point');
+  eq(JSON.stringify(g.Encounter.pickup(run, p)), JSON.stringify(P), 'deterministic');
+  // who refuses: by headline behaviour (Picky = cynical, Egoist = proud) off a flat floor; asphalt is fine; the rest play anywhere
+  const id = P.foe,
+    tr = run.people[id].traits.slice();
+  for (const k of ['sand', 'grass', 'slope', 'asphalt'])
+    for (const b of ['cynical', 'proud', 'warm', 'reckless', 'steady', 'loyal', 'jealous', 'calculating']) {
+      run.people[id].traits = [b, tr[1]];
+      const why = g.Encounter.refuses(run, id, k),
+        no = (b === 'cynical' || b === 'proud') && k !== 'asphalt';
+      eq(!!why, no, `${b} on ${k}`);
+      if (no) assert(new RegExp(`won’t play on ${k}.*flat floor only \\((Picky|Egoist)\\)`).test(why), why);
+    }
+  run.people[id].traits = ['cynical', tr[1]];
+  const P2 = g.Encounter.pickup(run, p);
+  if (P.g.k !== 'asphalt') {
+    assert(P2.foe !== id && P2.refused.some(r => r.id === id), 'a Picky crew refuses and says so; the next crew may play');
+    if (P2.foe == null) assert(/flat floor only/.test(P2.why), 'the row says why: ' + P2.why);
+  }
+  run.people[id].traits = tr;
+  // the match: the field venue, its ground on the engine, the day, the memory, the drone stays (yours)
+  const d0 = run.days,
+    fx = g.Encounter.pickupFx(run, p);
+  eq(fx.venue, 'field', 'the field venue');
+  eq(fx.ground.k, P.g.k, 'its ground');
+  const m = g.Cup.simNow(fx);
+  eq(m.ground.k, P.g.k, 'the engine plays on it');
+  eq(JSON.stringify(m.ground.home), JSON.stringify(g.Encounter.matchGround(run, P.field, [fx.a, fx.b]).home), 'who was born to it');
+  eq(run.days, d0 - P.days, 'the trip + a day');
+  assert(/Pickup game with/.test(run.log[0].t), run.log[0].t);
+  assert(
+    g.Rel.list(run, id).some(e => e.k === 'sparred'),
+    'a memory either way'
+  );
+  eq(g.City.drone(run), 'own', 'your own drone stays');
+  // Spar from the figure menu: with the drone a court is no longer needed — open ground near them will do
+  const sp = g.Encounter.people(run)
+    .map(q => g.Encounter.row(run, q.id, 'spar'))
+    .filter(r => r && r.court && r.court.g);
+  assert(sp.length, 'a spar on a field');
+  run.drone = null;
+  assert(
+    g.Encounter.people(run).every(q => {
+      const r = g.Encounter.row(run, q.id, 'spar');
+      return !r || !r.court || !r.court.g;
+    }),
+    'no field without the drone'
+  );
+});
+test('drone: a road stop’s crew challenged on the spot — on the field there, the trip and the day at the stop (T-339)', () => {
+  const [g, run] = mkRun();
+  run.drone = { own: 1 };
+  run.fans = 1e6; // (Wei's clubs take a famous name's challenge)
+  let E = null;
+  g.Encounter.force = null;
+  for (const { trip } of trips(g, run, 0)) {
+    for (const c of g.Encounter.near(run).filter(c => c.kind === 'crew')) {
+      g.Encounter.force = c.key;
+      E = g.Encounter.on(run, trip, { stop: 'all' });
+      g.Encounter.force = null;
+      if (E && E.kind === 'crew' && !g.Encounter.spot(run, E).why && g.Fight.worth(run, E.ti, 0)?.accepts) break;
+      E = null;
+    }
+    if (E) break;
+  }
+  assert(E, 'a crew on the road that takes a challenge, open ground at the stop');
+  const S = g.Encounter.spot(run, E),
+    r = g.Encounter.answer(run, E, 'here');
+  assert(r && r.fx, 'played on the spot');
+  eq(r.fx.venue, 'field', 'the field venue');
+  const m = g.Cup.simNow(r.fx);
+  eq(m.ground.k, S.field.g.k, 'its ground');
+  eq(JSON.stringify(run.pos), JSON.stringify(S.field.at), 'you stand at the stop, not their HQ');
+  run.drone = null;
+  assert(/needs the drone/.test(g.Encounter.spot(run, E).why), 'without the drone: at their HQ only');
+});

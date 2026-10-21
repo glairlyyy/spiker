@@ -426,7 +426,10 @@ const Encounter = {
     const reg = GROUNDS.home.region[C.g.k],
       H = People.homes(run),
       home = reg
-        ? teams.flatMap(t => squadOf(t)).filter(p => (H.get(p.id) || {}).home === reg).map(p => p.id)
+        ? teams
+            .flatMap(t => squadOf(t))
+            .filter(p => (H.get(p.id) || {}).home === reg)
+            .map(p => p.id)
         : [];
     return { k: C.g.k, home, low: C.g.k === 'slope' ? (hstr(`low|${run.pseed}|${Season.wk(run)}|${C.at}`) < 0.5 ? 0 : 1) : -1 };
   },
@@ -527,7 +530,7 @@ const Encounter = {
   spotChallenge(run, E) {
     const S = Encounter.spot(run, E);
     if (S.why) return null;
-    const r = Fight.offer(run, E.ti, 0);
+    const r = City.playAt(S.field.at, () => Fight.offer(run, E.ti, 0)); // (a refusal spends the day at the stop, not at their HQ)
     if (!r) return null;
     if (!r.accepted) {
       Run.log(run, r.line);

@@ -389,7 +389,13 @@ const DRONE = { buy: 400, rent: 40 };
  * its half-size + `lot`; `slope` = the climb (relief m a map unit, over ± `step`) from which open ground is a slope; wind by exposure
  * (`beach`, open `field`, the high ground: `high` + height / 100).
  */
-const PICKUP = { road: { main: 12, overpass: 12, path: 6, other: 9 }, lot: 4, step: 10, slope: 0.15, wind: { beach: 0.8, field: 0.6, high: 0.4 } };
+const PICKUP = {
+  road: { main: 12, overpass: 12, path: 6, other: 9 },
+  lot: 4,
+  step: 10,
+  slope: 0.15,
+  wind: { beach: 0.8, field: 0.6, high: 0.4 }
+};
 // a place's lead training (its first kit tag's): what NPC plans, the dossier and the floor read (spec §4.33)
 for (const s of Object.values(SPOTS)) if (s.kit) s.train = KITS[s.kit[0]].train;
 /**

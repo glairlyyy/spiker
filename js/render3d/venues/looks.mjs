@@ -71,5 +71,20 @@ export const LOOK = {
     outer: '#1e2025',
     lum: 0.42,
     neutrals: ['#3d3f4a', '#4a3e36', '#2f3a44']
+  },
+  // the field (spec §4.38): a pickup game on open ground — its ground's tones come from venues/field.mjs FIELD_LOOK
+  field: {
+    bg: '#a9cde6',
+    fog: [40, 150],
+    hemi: ['#eef6ff', '#4f7a3a', 1.2],
+    sun: 2.0,
+    rim: 0.3,
+    inner: '#5f9a45',
+    free: '#5f9a45',
+    lines: '#e8fbff',
+    rough: 0.95,
+    outer: '#5a8f42',
+    lum: 0.95,
+    neutrals: ['#c2563f', '#3f8fb0', '#e0b23c', '#6a8a4a', '#7a6d5e']
   }
 };

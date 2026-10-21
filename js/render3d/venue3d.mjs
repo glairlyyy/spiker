@@ -11,13 +11,14 @@ import { setHall } from './venues/hall.mjs';
 import { setBeach } from './venues/beach.mjs';
 import { setHighland } from './venues/highland.mjs';
 import { setStreet } from './venues/street.mjs';
+import { setField, dressField, drawField, updateField, FIELD_LOOK } from './venues/field.mjs';
 import { setOfficials } from './venues/props.mjs';
 import { updateReferee } from './venues/referee.mjs';
 import { makeDrone, updateDrone } from './fx/drone.mjs';
 
 export const VENUE_KINDS = Object.keys(LOOK);
 /** One builder per venue (js/render3d/venues/*): a new venue = a LOOK entry, a floor case and one line here. */
-const VENUE_SETS = { arena: setArena, hall: setHall, beach: setBeach, highland: setHighland, street: setStreet };
+const VENUE_SETS = { arena: setArena, hall: setHall, beach: setBeach, highland: setHighland, street: setStreet, field: setField };
 
 /** Crowd rows per venue: { y (feet), z, x (half width) }. */
 const ROWS = {
@@ -25,7 +26,8 @@ const ROWS = {
   hall: [0, 1, 2, 3].map(r => ({ y: 0.45 + r * 0.45, z: -9.2 - r * 1.0, x: 17 })),
   beach: [0, 1, 2, 3].map(r => ({ y: 0.5 + r * 0.5, z: -9.8 - r * 1.1, x: 13 })),
   highland: [0, 1].map(r => ({ y: 0, z: -8.9 - r * 1.0, x: 14 })),
-  street: [0, 1].map(r => ({ y: 0, z: -9.8 - r * 1.0, x: 15 }))
+  street: [0, 1].map(r => ({ y: 0, z: -9.8 - r * 1.0, x: 15 })),
+  field: [0, 1].map(r => ({ y: 0, z: -8.6 - r * 0.9, x: 9 })) // a few onlookers on the ground, no stands (spec §4.38)
 };
 const POSES = 4,
   CAP = lowEnd ? 60 : 110; // fans per pose mesh
@@ -89,6 +91,18 @@ export function buildVenues(scene, w) {
   w.officials = setOfficials();
   scene.add(w.officials);
   w.drone = makeDrone(scene); // the Ref drone (spec §4.38): every venue but the Academy Hall
+  // the real net's posts, tape and antennae (arena3d): the field strings a light curtain instead (venues/field.mjs)
+  w.netKit = [
+    w.net,
+    ...scene.children.filter(o => {
+      const P = o.isMesh && o.geometry && o.geometry.parameters;
+      return (
+        P &&
+        ((o.geometry.type === 'CylinderGeometry' && (P.height === 2.62 || (P.height === 1.8 && P.radiusTop === 0.012))) ||
+          (o.geometry.type === 'BoxGeometry' && P.width === 0.03 && P.height === 0.08))
+      );
+    })
+  ];
   // crowd: one instanced cut-out mesh per pose, tinted per instance
   w.crowd = [];
   for (let p = 0; p < POSES; p++) {
@@ -121,14 +135,17 @@ export function buildVenues(scene, w) {
 
 /** Dress the world for a match: venue kind (VENUE_KINDS), crowd stakes 0–1, the two team colours. */
 export function dressVenue(w, kind, stakes, t0c, t1c) {
-  const L = LOOK[kind] ? LOOK[kind] : LOOK.arena;
+  const fg = kind === 'field' ? (typeof A !== 'undefined' && A && A.ground) || { k: 'grass' } : null, // a field's ground (spec §4.38)
+    L = fg ? { ...LOOK.field, ...FIELD_LOOK[fg.k] } : LOOK[kind] ? LOOK[kind] : LOOK.arena;
   kind = LOOK[kind] ? kind : 'arena';
   w.venue = kind;
   w.look = L;
   for (const [k, g] of Object.entries(w.sets)) g.visible = k === kind;
   w.stands.visible = kind === 'arena';
   w.board.visible = kind === 'arena' || kind === 'hall';
-  w.officials.userData.table.visible = kind !== 'street';
+  w.officials.userData.table.visible = kind !== 'street' && kind !== 'field';
+  for (const o of w.netKit) o.visible = kind !== 'field';
+  if (fg) dressField(w.sets.field, fg.k, A && A.m && A.m.ground ? A.m.ground.low : -1);
   // the Academy Hall keeps the old court's officials (spec §4.38): the referee on the stand, the line judges; elsewhere the drone calls
   w.officials.userData.judges.visible = w.officials.userData.stand.visible = kind === 'hall';
   // sky, fog, light
@@ -144,7 +161,8 @@ export function dressVenue(w, kind, stakes, t0c, t1c) {
   const spot = w.sets.arena.userData.spot;
   spot.intensity = kind === 'arena' ? 60 : 0; // (owner, 2026-10-06: 140 was too bright)
   // floor
-  drawFloor(w.floorCanvas.getContext('2d'), w.floorCanvas.width, w.floorCanvas.height, kind);
+  if (fg) drawField(w.floorCanvas.getContext('2d'), w.floorCanvas.width, w.floorCanvas.height, fg.k);
+  else drawFloor(w.floorCanvas.getContext('2d'), w.floorCanvas.width, w.floorCanvas.height, kind);
   w.floorTexV.needsUpdate = true;
   w.floor.material.map = w.floorTexV;
   w.floor.material.roughness = L.rough;
@@ -195,6 +213,7 @@ export function updateVenue(w, now, dt, camera) {
     hall = w.venue === 'hall';
   updateDrone(w.drone, call, A.ball && A.ball.vis ? w.ball.position : null, dt / 1000, now, !hall);
   if (hall) updateReferee(w.officials.userData.ref, call, dt / 1000);
+  if (w.venue === 'field') updateField(w.sets.field, now);
   // the arena follows the hotter team (spec §2.15): lights, rim, crowd; the hush at set / match point quiets the crowd
   const ar = Dir.arena(),
     heat = Dir.heat || 0,

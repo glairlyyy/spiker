@@ -41,7 +41,7 @@ function spotGhost(run, id) {
 function spotCard(run) {
   roadSync(run);
   const body = City.withInvite(run, CW.spot, () => spotPanel(run, CW.spot)), // (an Invite's yes counts on this floor: the numbers include them)
-    row = inviteRow(run, CW.spot) + routeRow(run);
+    row = inviteRow(run, CW.spot) + pickupRow(run, CW.spot) + rentRow(run, CW.spot) + routeRow(run);
   return `<button class="btn x" onclick="mapPick(null)" aria-label="Close">✕</button>${row ? body.replace(/<\/div>\s*$/, `${row}</div>`) : body}`;
 }
 /** The place card's note when an Invite's yes joins an order here (spec §4.37 7) and they aren't a teammate (those show on the floor). */
@@ -51,6 +51,83 @@ function inviteRow(run, id) {
   return P
     ? `<div class="popts pinv"><span class="pchip">${faceSVG(P, 0.3, 18)}${esc(Team.first(P))} +${(Run.you(run).bond[v] || 0) >= 80 ? 50 : 20}%</span><small class="mute">joins your next order here</small></div>`
     : '';
+}
+// ---- the Ref drone (spec §4.38, T-339): the Cargo Shed's card, Rent at a court, a Pickup on the point card -------------------
+/** One action row on a place card (the figure menu's row look; never the card's primary): key, name, cost → result or the gap, ⏭. */
+function dronePickRow(cls, key, name, c, why, a, sim, note = '') {
+  const s = sim
+    ? `<button class="btn fms" onclick="${sim}" ${why ? 'disabled' : ''} ${tip(GLOSSARY.sim.long)} aria-label="Sim">⏭ <kbd>⇧${key}</kbd></button>`
+    : '';
+  return `<div class="popts ${cls}"><div class="fmr" style="width:100%"><button class="btn fmb" onclick="${a}" ${why ? 'disabled' : ''}><kbd>${key}</kbd><b>${esc(name)}</b><span class="oln ${why ? 'why' : ''}">${why ? esc(why) : c}</span></button>${s}</div>${note}</div>`;
+}
+/** The point card's Pickup row (a map point): you, the drone, the ground where you'd stand, who plays — or the gap. */
+function pickupRow(run, id) {
+  if (!id || !id.startsWith('pt:')) return '';
+  const p = MapModel.ptOf(id),
+    P = Encounter.pickup(run, p),
+    foe = P.foe != null ? People.find(run, P.foe) : null,
+    g = P.g ? `${P.g.name}${P.g.wind ? ' · windy' : ''}` : '',
+    c = `${term('day', String(P.days), 'cost')} ${term('sta', -P.sta, 'cost')} → ${ENC_MENU.pickup.res}${g ? ` · ${esc(g)}` : ''}${foe ? ` · vs ${esc(Team.first(foe))}’s crew` : ''}${City.drone(run) === 'rent' ? ' · the rented drone' : ''}`,
+    no =
+      !P.why && P.refused.length
+        ? `<small class="mute">${P.refused.map(r => esc(Team.first(People.find(run, r.id)))).join(', ')} won’t play off a flat floor</small>`
+        : '';
+  return dronePickRow('ppick', 'P', ENC_MENU.pickup.name, c, P.why, `mapPickup(${p[0]},${p[1]})`, `mapPickup(${p[0]},${p[1]},true)`, no);
+}
+/** A court's card: Rent the drone (the walk there + $; one pickup game). Courts = Encounter.courts (explored courts and the venues). */
+function rentRow(run, id) {
+  const C = id && Encounter.courts(run).find(q => q.id === id);
+  if (!C) return '';
+  const t = City.trip(run, C.at),
+    c = `${t ? term('day', String(t), 'cost') : 'here'} $${DRONE.rent} → ${ENC_MENU.rent.res}`;
+  return dronePickRow('prent', 'D', ENC_MENU.rent.name, c, City.rentWhy(run, C), `mapRent('${esc(id)}')`, '');
+}
+/** The Cargo Shed (the airport's freight): buy the Ref drone — the trip + a day, DRONE.buy → pickup games anywhere. */
+function cargoPanel(run, id) {
+  const s = SPOTS[id],
+    c = City.can(run, id),
+    at = City.at(run, id),
+    trip = City.trip(run, at),
+    days = City.cost(run, id),
+    own = City.drone(run) === 'own',
+    late = run.event ? 'answer the event first' : City.noTime(run, trip) || (City.outside(run, at) ? City.fence(run) : '');
+  return placeCard({
+    region: City.region(run, id),
+    kind: 'Freight',
+    title: `${s.icon} ${esc(s.name)}`,
+    flavour: s.desc,
+    body: kv([
+      ['Ref drone', own ? '<b>yours</b>' : `$${DRONE.buy}`],
+      ['Does', 'projects the lines, a light net, calls every touch'],
+      ['Then', 'a Pickup on open ground: the point card, Spar anywhere'],
+      ['Or', `rent one at any court · $${DRONE.rent} a match`]
+    ]),
+    row: [
+      `<button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${id}')" ${c.ok ? '' : 'disabled'}>${c.ok ? `${esc(ENC_MENU.buy.name)} · ${days}d · $${DRONE.buy} → ${esc(ENC_MENU.buy.res)}` : esc(c.why)}</button>`,
+      trip
+        ? `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${late ? `disabled ${tip(late)}` : ''}>Walk · ${trip}d</button>`
+        : ''
+    ].filter(Boolean),
+    after: placeDetails(id, placeTags(run, id, trip))
+  });
+}
+if (typeof PANELS !== 'undefined') PANELS.unshift([id => id === 'cargo', (run, id) => cargoPanel(run, id)]);
+/** Play a pickup game at map point (x, y): watch it, or sim = the result at once. */
+function mapPickup(x, y, sim) {
+  if (CW.lock) return;
+  const fx = Encounter.pickupFx(RUN, [x, y]);
+  if (!fx) return;
+  CW.spot = null;
+  if (!sim) return watchCareer(fx);
+  mapAfter(RUN, null, simCareer(fx));
+}
+/** Rent the drone at court id (the walk there). */
+function mapRent(id) {
+  const C = !CW.lock && Encounter.courts(RUN).find(q => q.id === id),
+    line = C ? City.rentDrone(RUN, C) : '';
+  if (!line) return;
+  Run.log(RUN, line);
+  mapAfter(RUN);
 }
 /**
  * The place popup follows its pin (spec §10.1c): beside the selected pin (or the picked-point flag), right of it when it
@@ -565,7 +642,9 @@ function encRows(run, E) {
     const W = Fight.worth(run, E.ti, 0),
       d = City.scoutCost(run, E.ti),
       side = Fight.challengeSide(run),
-      dis = Fight.ban(run) || City.noTime(run, d) || (run.money < side.cost ? `needs $${side.cost} for a crew` : '');
+      dis = Fight.ban(run) || City.noTime(run, d) || (run.money < side.cost ? `needs $${side.cost} for a crew` : ''),
+      S = Encounter.spot(run, E), // on the spot, with the drone (spec §4.38)
+      hd = S.field.at ? City.trip(run, S.field.at) + 1 : 1;
     return [
       {
         t: ENC_MENU.challenge.name,
@@ -574,6 +653,19 @@ function encRows(run, E) {
         sim: "encDo('challenge',null,true)",
         dis,
         tip: W ? W.why : ''
+      },
+      {
+        t: ENC_MENU.here.name,
+        c: `${term('day', String(hd), 'cost')} → ${ENC_MENU.here.res}${S.field.g ? ` · ${esc(S.field.g.name)}${S.field.g.wind ? ' · windy' : ''}` : ''} · accepts: ${W ? W.verdict : 'refuses'}`,
+        a: "encDo('here')",
+        sim: "encDo('here',null,true)",
+        dis: S.why || City.noTime(run, hd),
+        tip:
+          S.why && S.cap != null && Encounter.refuses(run, S.cap, S.field.g && S.field.g.k)
+            ? `“${Encounter.noLine(run, S.cap)}”`
+            : W
+              ? W.why
+              : ''
       }
     ];
   }
@@ -768,6 +860,14 @@ function encDo(what, side, sim) {
   }
   encLeave(L); // the rest are a day of their own: the walk ends here, then the answer plays out
   if (what === 'help' || what === 'refuse') return arcAnswer(String(E.id), what === 'help');
+  if (what === 'here') {
+    const r = Encounter.answer(RUN, E, 'here'); // the crew on the spot, with the drone (spec §4.38)
+    CW.spot = null;
+    if (!r) return mapAfter(RUN);
+    if (r.line) return mapAfter(RUN);
+    if (!sim) return watchCareer(r.fx);
+    return mapAfter(RUN, null, simCareer(r.fx));
+  }
   if (what === 'challenge') {
     if (E.kind === 'crew') return mapChallenge(E.ti, !!sim, 0); // (a crew on the road: no stake)
     return mapChallenge(R0.ti, !!sim);
@@ -866,7 +966,13 @@ function roadKey(e) {
     !(e.target.closest && e.target.closest('input,select,textarea'))
   )
     roadPick(ROAD.route === 'alt' ? 'safe' : 'alt');
-  else return;
+  else if (!L && CW.spot && /^[pPdD]$/.test(e.key) && !(e.target.closest && e.target.closest('input,select,textarea'))) {
+    // the drone's rows (spec §4.38): P a pickup (Shift: ⏭), D rent the drone
+    const row = document.querySelector(/[pP]/.test(e.key) ? '.spotcard .ppick' : '.spotcard .prent'),
+      b = row && row.querySelector(e.shiftKey ? '.fms' : '.fmb');
+    if (!b) return;
+    if (!b.disabled) b.click();
+  } else return;
   e.preventDefault();
   e.stopImmediatePropagation();
 }

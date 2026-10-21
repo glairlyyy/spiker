@@ -63,7 +63,11 @@ const Formula = {
     Formula.gOff(rc, 'pass'), // uneven ground (§4.38)
   /** Chance a set is at least "good" (before the double-contact check). */
   setSuccess(setter, qual, team, dual) {
-    let succ = clamp(0.5 + 0.23 * W(setter) + (qual - 2) * 0.09 + team.S.set + (dual && setter.role === 'S' ? 0.03 : 0) - Formula.gOff(setter, 'set'), 0.08, 0.985);
+    let succ = clamp(
+      0.5 + 0.23 * W(setter) + (qual - 2) * 0.09 + team.S.set + (dual && setter.role === 'S' ? 0.03 : 0) - Formula.gOff(setter, 'set'),
+      0.08,
+      0.985
+    );
     if (setter.role !== 'S') succ *= 0.75;
     if (setter.skills) succ = Math.min(0.99, succ * skillMod(setter, 'set'));
     return succ;
@@ -102,7 +106,10 @@ const Formula = {
     cov,
   /** Dig quality for a defender who has to cover dist0 to reach the ball. */
   digScore: (dg, team, dist0) =>
-    (effD(dg) * 0.6 + dg.speed * stageBuff(dg, 'spd') * Formula.gMul(dg, 'agi') * 0.4) * team.S.dig * rnd(0.8, 1.2) * Formula.gMul(dg, 'dig') -
+    (effD(dg) * 0.6 + dg.speed * stageBuff(dg, 'spd') * Formula.gMul(dg, 'agi') * 0.4) *
+      team.S.dig *
+      rnd(0.8, 1.2) *
+      Formula.gMul(dg, 'dig') -
     Math.max(0, dist0 - 0.1) * 55 * (1.35 - dg.speed / 100) * skillMod(dg, 'reach'),
   /** Chance an attack scores against a given dig score. */
   killChance: (pow, dsc, tip, dist0) => (tip ? 0.3 + dist0 * 0.3 : sig((pow - dsc) / 34 + 0.3))

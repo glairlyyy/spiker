@@ -145,6 +145,7 @@ function startMatch(fx) {
     techCareer: !!you, // career: your choice is kept on your player (p.techOff) for the next match
     techKeys: [],
     venue: matchVenue(fx), // the 3D set (spec §9.11)
+    ground: matchVenue(fx) === 'field' ? fx.ground || { k: 'grass' } : null, // a pickup's ground: { k, wind } (spec §4.38)
     stakes: matchStakes(fx),
     animLab: fx.anim ? animLabInit(m) : null, // the Animation lab (js/ui/anim-lab.js, js/render3d/anim3d.mjs)
     cineForce: fx.cine || null, // Dev cut-scene preview: that cut-scene every time (no budget, any Hype setting)
@@ -243,15 +244,16 @@ function fit() {
 }
 addEventListener('resize', fit);
 /* ---------- venue (spec §9.11) ---------- */
-/** The venue a match is played at: fx.venue, else the career week's venue (City.venue), else the street; exhibitions: the arena. */
+/** The venue a match is played at: fx.venue (a pickup game: 'field', its ground in fx.ground — spec §4.38), else the career week's venue (City.venue), else the street; exhibitions: the arena. */
 function matchVenue(fx) {
   if (fx.venue) return fx.venue;
   if (!(fx.onFinish && typeof RUN !== 'undefined' && RUN)) return 'arena';
   return City.venue(RUN) || 'street';
 }
-/** How full the stands are (0–1): the Cup final 1, other Cup rounds .85, evaluations .45, the street .35, exhibitions .9. */
+/** How full the stands are (0–1): the Cup final 1, other Cup rounds .85, evaluations .45, the street .35, a field's few onlookers .12, exhibitions .9. */
 function matchStakes(fx) {
   const v = matchVenue(fx);
+  if (v === 'field') return 0.12;
   if (!(fx.onFinish && typeof RUN !== 'undefined' && RUN)) return 0.9;
   if (Run.weekType(RUN) === 'cup') return /final/i.test(fx.round || '') && !/semi|quarter/i.test(fx.round || '') ? 1 : 0.85;
   return v === 'street' ? 0.35 : 0.45;

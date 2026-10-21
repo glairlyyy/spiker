@@ -95,7 +95,7 @@ const GROUNDS = {
   wind: { float: 9, jumpfloat: 5 },
   home: { keep: 0.4, plus: 0.01, region: { sand: 'wu', slope: 'shu' } }
 };
-const rulesText = () =>`First to ${RULES.pointsToWin}, win by ${RULES.winBy}`;
+const rulesText = () => `First to ${RULES.pointsToWin}, win by ${RULES.winBy}`;
 /**
  * Relationships on court (T-066, spec §4.23 E; career matches only: every effect is gated on `m.rel`, so Monster / sims / the golden
  * matches are untouched). trust / freeze: the setter's weight for an ally / a resent-or-enemy hitter once either side has `clutch`

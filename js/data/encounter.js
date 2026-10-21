@@ -34,7 +34,18 @@ const ENC = {
   // drone plays on the first open ground at `near` (map units) round them, `dirs` ways. Who plays off a flat floor: headline behaviours
   // in `flat` refuse every ground but those in `ok`; a hidden second trait `grumble` plays, but a loss leaves `grumbled`. Asphalt: each
   // knockdown of yours risks an injury of `injWeeks` (GROUNDS.asphalt.ko) and, under Endurance `soft`, `pain` Pain (at most painMax).
-  pickup: { r: 150, near: [0, 30, 60, 90], dirs: 8, flat: ['cynical', 'proud'], ok: ['asphalt'], grumble: 'proud', injWeeks: 1, soft: 50, pain: 4, painMax: 8 }
+  pickup: {
+    r: 150,
+    near: [0, 30, 60, 90],
+    dirs: 8,
+    flat: ['cynical', 'proud'],
+    ok: ['asphalt'],
+    grumble: 'proud',
+    injWeeks: 1,
+    soft: 50,
+    pain: 4,
+    painMax: 8
+  }
 };
 /** The setting's names (registrar). */
 const ENC_STOPS = { friends: 'Friends', all: 'Everything', never: 'Never' };
@@ -141,8 +152,5 @@ Object.assign(MEM_TEXT, {
     'A practice game with {n}’s lot. We shook hands after. Mostly.',
     '{n} came at me hard in the spar. Good.'
   ],
-  grumbled: [
-    '{n} lost on the bumps and blamed the ground. Then me.',
-    'A pickup game, a loss, and {n} sulking about “a real floor”.'
-  ]
+  grumbled: ['{n} lost on the bumps and blamed the ground. Then me.', 'A pickup game, a loss, and {n} sulking about “a real floor”.']
 });

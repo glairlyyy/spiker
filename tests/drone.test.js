@@ -94,3 +94,88 @@ test('calls: close in / out from the landing — within 15 cm of a line (spec §
   A.call.pt = A.pointN;
   eq(pt({ x: 700, z: 1 - side - uz(6), h: 0 }), null, 'a fault was called this rally');
 });
+
+// ---- terrain (spec §4.38, T-339): a field match carries its ground (m.ground) and wind (m.wind); official courts carry none ----------
+/** n pairs of seeded matches (each pair both ways round), with opts: side 0's win %, rally length, HP a hit, knockdowns, loose passes, serve errors by side. */
+function terrain(g, T, n, opts = {}) {
+  const S = { w0: 0, n: 0, ral: 0, rn: 0, hpn: 0, hpd: 0, ko: 0, bad: 0, rcv: 0, e: [0, 0], s: [0, 0] };
+  for (let k = 0; k < n; k++)
+    for (const flip of [0, 1]) {
+      const a = T[k % 8],
+        b = T[(k + 1 + (k % 7)) % 8],
+        [x, y] = flip ? [b, a] : [a, b],
+        o = {};
+      if (opts.k) o.ground = { k: opts.k, home: opts.home ? g.squadOf(x).map(p => p.id) : [], low: opts.low ?? -1 };
+      if (opts.wind) o.wind = opts.wind;
+      const m = g.newMatch(x, y, false, o);
+      while (!m.over) {
+        g.playRally(m);
+        S.ral += m.rallyN;
+        S.rn++;
+      }
+      S.n++;
+      if (m.winner === 0) S.w0++;
+      S.hpn += m.hpLog.n;
+      S.hpd += m.hpLog.dmg;
+      S.ko += m.ko.n[0] + m.ko.n[1];
+      m.t.forEach((t, i) =>
+        g.squadOf(t).forEach(p => {
+          const L = (m.srvLog || {})[p.id];
+          if (L) ((S.e[i] += L.err), (S.s[i] += L.n));
+        })
+      );
+      for (const r of Object.values(m.recv || {})) ((S.bad += r.bad), (S.rcv += r.n + r.ace + r.bad));
+    }
+  return {
+    win0: S.w0 / S.n,
+    rally: S.ral / S.rn,
+    hp: S.hpd / S.hpn,
+    ko: S.ko / S.n,
+    bad: S.bad / S.rcv,
+    err: S.e.map((e, i) => e / S.s[i])
+  };
+}
+test('terrain: off a field nothing changes — every ground hook is × 1 / + 0 without m.ground (spec §4.38)', () => {
+  const g = load(9),
+    T = g.mkTeams(),
+    p = g.squadOf(T[0])[0];
+  const m = g.newMatch(T[0], T[1], false);
+  assert(!m.ground && !m.wind, 'an official court carries no ground');
+  for (const k of ['agi', 'jump', 'hp', 'dig']) eq(g.Formula.gMul(p, k), 1, `× 1 (${k})`);
+  for (const k of ['pass', 'set', 'serve']) eq(g.Formula.gOff(p, k), 0, `+ 0 (${k})`);
+  // born to the ground (Wu's beach kids on sand, Shu's on the slopes): part of each penalty, a little extra
+  const f = g.newMatch(T[0], T[1], false, { ground: { k: 'sand', home: [p.id], low: -1 } }),
+    q = g.squadOf(T[1])[0];
+  g.playRally(f); // (CM = f)
+  assert(g.Formula.gMul(p, 'agi') > g.Formula.gMul(q, 'agi') && g.Formula.gMul(q, 'agi') === g.GROUNDS.sand.agi, 'home on sand: quicker');
+  assert(g.Formula.gMul(p, 'jump') > g.GROUNDS.sand.jump, 'home on sand: higher');
+  eq(g.Formula.gMul(p, 'hp'), g.Formula.gMul(q, 'hp'), 'the ground softens everyone alike');
+  eq(JSON.stringify(g.GROUNDS.home.region), JSON.stringify({ sand: 'wu', slope: 'shu' }), 'Wu → sand, Shu → slope');
+});
+test.slow('terrain: each ground plays — sand, grass, asphalt, slope, wind have the right sign over 200 seeded matches (spec §4.38)', () => {
+  const run = opts => {
+      const g = load(4242);
+      return terrain(g, g.mkTeams(), 100, opts);
+    },
+    base = run({}),
+    sand = run({ k: 'sand' }),
+    grass = run({ k: 'grass' }),
+    asph = run({ k: 'asphalt' }),
+    slope = run({ k: 'slope', low: 0 }),
+    wind = run({ wind: 1 });
+  assert(sand.hp < base.hp * 0.9, `sand: softer landings (HP a hit ${sand.hp.toFixed(3)} < ${base.hp.toFixed(3)})`);
+  assert(sand.rally < base.rally, `sand: the ball dies fast (${sand.rally.toFixed(3)} < ${base.rally.toFixed(3)} touches a rally)`);
+  assert(grass.bad > base.bad, `grass: worse passes (${(grass.bad * 100).toFixed(1)} % > ${(base.bad * 100).toFixed(1)} % loose)`);
+  assert(
+    asph.hp > base.hp * 1.1 && asph.ko > base.ko,
+    `asphalt: hard falls (HP ${asph.hp.toFixed(3)}, knockdowns ${asph.ko.toFixed(2)} a match)`
+  );
+  assert(
+    slope.err[0] > slope.err[1] && slope.err[0] > base.err[0],
+    `slope: the low end serves into the rise (${slope.err.map(e => (e * 100).toFixed(1)).join(' / ')} %)`
+  );
+  assert(wind.bad > base.bad, `wind: floats wander (${(wind.bad * 100).toFixed(1)} % > ${(base.bad * 100).toFixed(1)} % loose)`);
+  // equal teams (each pair both ways): a ground swings side 0 by at most a home-court edge (≈ ±5 %; noise here ±3.5 %)
+  for (const [k, r] of Object.entries({ sand, grass, asph, slope, wind }))
+    assert(Math.abs(r.win0 - base.win0) <= 0.09, `${k}: win odds ${(r.win0 * 100).toFixed(1)} % vs ${(base.win0 * 100).toFixed(1)} %`);
+});
