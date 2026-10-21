@@ -178,12 +178,33 @@ Accept: tests — every `call` label has a handler path; close in / out found fr
 QA: Monster game at the arena and at the Academy Hall → screenshots of a drone call and a referee call.
 Result: Built. A fault label's `call` + `at` → acts.js `refCall` → `A.call = { k, at, line, n, pt }`; at the `point` act a rally without a fault is checked from its last floor landing (`lineCall`: within 15 cm of `COURT_LINES` → in / out with the judged line; ≈ 0.35 a match in 20 recorded matches). venue3d reads `A.call` each frame: fx/drone.mjs everywhere but the Hall (low-poly drone, ×1.5 ≈ 1.1 m, 4.4 m over the net following the ball's z; on a call it drops to the spot — beside the server on a foot fault — with the hologram word (`--good` IN / `--bad` the rest, `--cyan` frame), a projection cone, a line trace along the end line / tape / judged line, a ring; 1.9 s on the frame clock); at the Hall venues/referee.mjs on a wooden stand (props.mjs): whistle (hand to the mouth, a puff) then the signal toward the call's side. Decided: the stand and line judges show only at the Hall. No index.html line (ES modules imported by venue3d). tests/drone.test.js (2 tests, in run.js); ui-smoke Monster step fires a net call + lineCall (15/15, 0 page errors). QA (qa/): t338-drone-in, t338-drone-hover, t338-hall-referee-net(-close/-close2), t338-hall-referee-foot(-close/-close2), the drone at a real net touch t337-net-touch-close2, at a real foot fault t337-foot-fault-close2.
 
-### [ ] T-339: The drone item and pickup games anywhere
-Spec: §4.38          Goldens: unchanged          Save: no change (lazy `run.drone`)
-Goal: buy (airport cargo shed) or rent the drone → a Pickup game on open ground where you stand, opponents from the people around,
-a road encounter's Challenge played on the spot; a field venue (sand / grass / asphalt by place). The ground plays (§4.38 terrain):
-`m.ground` modifiers in the engine (none = today, no new draws), and who agrees to play off a flat floor by behaviour.
-Status: outline — detailed after T-333 (Agent E) merges.
+### [ ] T-339: The drone item, pickup games anywhere, terrain that plays
+Agent: P
+Spec: §4.38          Goldens: unchanged (no `m.ground` = today's match, draw for draw)          Save: no change (lazy `run.drone`)
+Goal: buy the drone (a Cargo shed place at the airport, DRONE.buy $400) or rent it for a match at any court (DRONE.rent $40) → a
+**Pickup game** on open ground where you stand (the point card and the figure menu's Spar no longer need a court), opponents from the
+people around (MapModel.lifePeople), a road stop's Challenge played on the spot; a field venue (sand / grass / asphalt / slope by where
+you are, wind by exposure); the ground plays (§4.38 terrain) and people agree to play off a flat floor by behaviour.
+Files: js/data/rules.js (GROUNDS: per-ground multipliers), js/engine/formulas.js + js/engine/rally-phases.js + js/engine/rally-defense.js +
+js/engine/serve.js + js/engine/match.js (read `m.ground`; draws only when it is set), js/data/city.js (SPOTS.cargo, DRONE), js/career/city.js
+(the buy / rent, `City.groundAt(p)`, the pickup day), js/career/encounter.js + js/data/encounter.js (Spar / Pickup with the drone, who
+refuses by behaviour, the lines), js/ui/career-map.js (Pickup on the point card, the menu rows), js/ui/match-screen.js (`matchVenue` →
+'field' with its ground), js/render3d/venue3d.mjs + js/render3d/venues/field.mjs (new: ground patch, projected lines, the light-curtain
+net, a few onlookers, no stands; the drone of T-338), tests/drone.test.js, tests/encounter.test.js, tests/ui-smoke.js
+Do not: change a match without `m.ground` (goldens must hold); let a ground swing a match more than a home-court edge (≈ ±5 % win odds
+for equal teams; the bot reports it); allow a Pickup on buildings, roads, water, or in a cup / evaluation week.
+Steps:
+1. GROUNDS { sand: { agi, jump, dive HP, rally }, grass: { pass, bounce, jump }, asphalt: { dive HP ×, injury }, slope: { set, serve
+   side }, wind: { float wander } }; `City.groundAt(p)` from the region, the beach strip, relief and roads (§4.19a / §4.18).
+2. Engine: one hook per formula reading `m.ground` (and `m.wind`); home ground: a player from that ground's region (Wu → sand, Shu →
+   slope) gets GROUNDS.home.
+3. Who plays: Picky / Egoist refuse anything but a flat floor (asphalt at best) — the row says so; Proud agrees, a small negative memory on a
+   loss; Friendly / Hothead / Reckless play anywhere.
+4. Buy / rent; the drone hovers over every field match (T-338's calls); a rented drone is spent after one match.
+Accept: tests — golden hashes unchanged; each ground's effect has the right sign over 200 seeded matches; refusals by behaviour; no Pickup
+on a road / building / water; ui-smoke: buy the drone, a Pickup on a beach point → the field venue renders, a call shows, no page errors.
+`npm run career -- 12 both` unchanged.
+QA: career run → buy, a Pickup on sand, on grass, on asphalt (screenshots); a road stop's Challenge on the spot.
 Result:
 
 **Team life (owner, 2026-10-21, spec §4.36): two agents.** **Agent T — Transfers & circle**: T-325 → T-326 → T-327.

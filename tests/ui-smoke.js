@@ -336,7 +336,7 @@ const step = async (name, fn) => {
     await ev(() => {
       if (CW.lock) lockEnd();
       ENC.focus.ms = 1800;
-      Encounter.setPref('friends');
+      Encounter.setPref('never'); // (the steps after this are not about the road: a hashed stop would hold their walk)
       MapView.setWalk(1);
       LOCK.max = 20000;
     });
