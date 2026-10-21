@@ -12,6 +12,8 @@ import { setBeach } from './venues/beach.mjs';
 import { setHighland } from './venues/highland.mjs';
 import { setStreet } from './venues/street.mjs';
 import { setOfficials } from './venues/props.mjs';
+import { updateReferee } from './venues/referee.mjs';
+import { makeDrone, updateDrone } from './fx/drone.mjs';
 
 export const VENUE_KINDS = Object.keys(LOOK);
 /** One builder per venue (js/render3d/venues/*): a new venue = a LOOK entry, a floor case and one line here. */
@@ -86,6 +88,7 @@ export function buildVenues(scene, w) {
   }
   w.officials = setOfficials();
   scene.add(w.officials);
+  w.drone = makeDrone(scene); // the Ref drone (spec §4.38): every venue but the Academy Hall
   // crowd: one instanced cut-out mesh per pose, tinted per instance
   w.crowd = [];
   for (let p = 0; p < POSES; p++) {
@@ -125,7 +128,9 @@ export function dressVenue(w, kind, stakes, t0c, t1c) {
   for (const [k, g] of Object.entries(w.sets)) g.visible = k === kind;
   w.stands.visible = kind === 'arena';
   w.board.visible = kind === 'arena' || kind === 'hall';
-  w.officials.userData.judges.visible = w.officials.userData.table.visible = kind !== 'street';
+  w.officials.userData.table.visible = kind !== 'street';
+  // the Academy Hall keeps the old court's officials (spec §4.38): the referee on the stand, the line judges; elsewhere the drone calls
+  w.officials.userData.judges.visible = w.officials.userData.stand.visible = kind === 'hall';
   // sky, fog, light
   w.scene.background.set(L.bg);
   w.scene.fog.color.set(L.bg);
@@ -185,6 +190,11 @@ const mtx = new THREE.Matrix4(),
 /** Per frame: crowd bounce and wave, the venue's zone light, confetti on the win, flags, the big screen. */
 export function updateVenue(w, now, dt, camera) {
   if (camera) fadeBeams(camera);
+  // the calls (spec §4.38): the drone over the net, or the Academy's referee on the stand
+  const call = A.call || null,
+    hall = w.venue === 'hall';
+  updateDrone(w.drone, call, A.ball && A.ball.vis ? w.ball.position : null, dt / 1000, now, !hall);
+  if (hall) updateReferee(w.officials.userData.ref, call, dt / 1000);
   // the arena follows the hotter team (spec §2.15): lights, rim, crowd; the hush at set / match point quiets the crowd
   const ar = Dir.arena(),
     heat = Dir.heat || 0,

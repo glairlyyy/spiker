@@ -1467,6 +1467,8 @@ the AI coach fills every slot you leave with the same function. Built and measur
     "OUT") with a short line trace; at the **Academy Hall** — the old real court (painted lines, wooden posts, a real net) — a
     referee on the stand blows the whistle and gives the hand signal instead. Every other venue, street court and battle has a
     drone hovering over the net, following the ball. Display only (a flag on the existing `label` act; no new act kind).
+    **[built 2026-10-21, T-338: the drone (fx/drone.mjs) and the Hall's referee (venues/referee.mjs) read `A.call` (render/acts.js);
+    the referee's stand and the line judges show only at the Hall — the drone replaces them elsewhere; close in / out ≈ 0.35 a match]**
   - **The drone as an item (T-339, after §4.37 T-333).** Buy one (the airport's cargo shed, $; or rent it for a match at any
     court) → **Pickup game** on any open ground on the map (beach, park, car park, field — not on buildings or roads): the drone
     projects the lines and strings a light-curtain net where you stand; your opponents are the people around (§4.37 1), and a

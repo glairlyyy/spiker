@@ -128,6 +128,21 @@ point) — the call T-338 shows. Engine-only tally `m.flt = { net, foot, dbl }` 
 seeded matches of mkTeams): ≈ 1.0 net touches, ≈ 0.5 foot faults, ≈ 0.65 double contacts a match. `COURT_LINES` (rules.js)
 names the painted lines in engine units (end x 80 / 920, side z 0.08 / 0.92).
 
+## The calls you see — Ref drone and the Academy's referee (spec §4.38, T-338)
+
+Display only, no act kind of its own: a fault label carries `call` + `at` (T-337), and `ACTS.label` (render/acts.js) hands it
+to `refCall(k, at, line)` → `A.call = { k, at, line, n, pt }` (`n` counts calls, `pt` = `A.pointN` when made). At the `point`
+act, a rally with no fault call is checked for a close line: `lastLanding()` (the rally's last ball act ending on the floor,
+back to the `reset`) → `lineCall(x, z)` → `{ k: 'in' | 'out', line: { axis: 'x' (an end line) | 'z' (a side line), v } }`
+when the ball lands within `LINE_CALL.m` (0.15 m) of a `COURT_LINES` line, else null. venue3d `updateVenue` reads `A.call`
+each frame: at every venue but the Academy Hall `updateDrone` (fx/drone.mjs: a low-poly drone hovering 4.4 m over the net,
+following the ball's z; a new `n` → it drops to the spot (`H.call`, over the tape for a net touch), the hologram word (a
+sprite, `CALLS[k].word`, verdict colour from theme tokens `--good` / `--bad`, frame `--cyan`), a projection cone and a line
+trace along the end line / the tape / the judged line (a ring for a double); held `T.hold` 1.9 s, then back); at the Hall
+`updateReferee` (venues/referee.mjs on the wooden stand of venues/props.mjs: the whistle — hand to the mouth, a puff — then
+`SIGNALS[k]` toward the call's side, 1.9 s). The stand and the line judges show only at the Hall (the drone calls elsewhere).
+Both run on the frame clock and never touch playback. The whistle / beep sound is sfx's (merged separately).
+
 ## Deflections and ball speed
 
 A defender who reaches a hard spike or serve but can't control it may pop it up inside their own court (`popChance`,

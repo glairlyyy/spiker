@@ -352,6 +352,14 @@ const step = async (name, fn) => {
       vfxResetAll();
       vfxToggle();
     });
+    // the calls (spec §4.38): a fault label's call reaches A.call (the drone flies to it in venue3d), a close landing is called
+    await ev(() => {
+      ACTS.label({ k: 'label', t: 'Net touch', big: 1, call: 'net', at: { x: 494, z: 0.4 } }, null, { X: 0, Y: 0 });
+      if (!A.call || A.call.k !== 'net' || A.call.at.z !== 0.4) throw new Error('no net touch call');
+      const lc = lineCall(COURT_LINES.end + 3, 0.5);
+      if (!lc || lc.k !== 'in') throw new Error('no close-in call');
+    });
+    await pg.waitForTimeout(800); // frames run with the call up (any page error fails the run)
     await ev(() => {
       A.hold = true;
       while (!A.m.over) playRally(A.m);

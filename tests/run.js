@@ -23,6 +23,7 @@ require('./gifts.test');
 require('./team.test');
 
 require('./story.test');
+require('./drone.test');
 
 // ---------- report ----------
 let fail = 0,
