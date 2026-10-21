@@ -174,7 +174,7 @@ export function nearestOnScreen(cands, cap, held, keep = 0.8) {
       .map(c => c.id)
   );
 }
-export const VRM_LOD = { cap: 16, maxD: 260, every: 0.25, fade: 0.3, delay: 1.5, gap: 0.35 };
+export const VRM_LOD = { cap: 16, maxD: 260, every: 0.25, fade: 0.3, delay: 1.5, gap: 0.35, shadows: 6 }; // shadows: the nearest n cast one
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z).normalize();
 const leg = (a, k, f = 0, s = 0.1) => ({ a, k, f, s });
@@ -226,7 +226,8 @@ export function createPeopleVRM(scene, opts = {}) {
     age = 0,
     lodT = 0,
     gapT = 0,
-    want = new Set();
+    want = new Set(),
+    near = new Map(); // id → rank by distance among the shown (the nearest cast shadows)
   const build = () => {
     building = true;
     makeVRM(buf, HEAD)
@@ -237,7 +238,22 @@ export function createPeopleVRM(scene, opts = {}) {
         pl.vrm.springBoneManager = null; // hair stays put on the map: no springs to step
         pl.root.visible = false;
         scene.add(pl.root);
-        slots.push({ pl, base: pl.scale, id: null, k: 0, kit: null, phase: 0, w: 0, px: 0, pz: 0, t: hstr(`slot${slots.length}`) * 9 });
+        const meshes = [];
+        pl.vrm.scene.traverse(o => o.isMesh && meshes.push(o));
+        slots.push({
+          pl,
+          meshes,
+          sh: true,
+          base: pl.scale,
+          id: null,
+          k: 0,
+          kit: null,
+          phase: 0,
+          w: 0,
+          px: 0,
+          pz: 0,
+          t: hstr(`slot${slots.length}`) * 9
+        });
       })
       .catch(e => {
         building = false;
@@ -259,6 +275,12 @@ export function createPeopleVRM(scene, opts = {}) {
     held.clear();
     for (const s of slots) if (s.id !== null && s.k > 0) held.add(s.id);
     want = nearestOnScreen(cands, O.cap, held);
+    near = new Map(
+      cands
+        .filter(c => want.has(c.id))
+        .sort((a, b) => a.d - b.d)
+        .map((c, i) => [c.id, i])
+    );
   };
   const pose = (S, f, dt) => {
     const pl = S.pl,
@@ -343,6 +365,9 @@ export function createPeopleVRM(scene, opts = {}) {
         S.pl.root.visible = !!f && S.k > 0.01;
         if (!S.pl.root.visible) continue;
         wt.set(S.id, S.k);
+        const sh = (near.get(S.id) ?? O.cap) < O.shadows;
+        if (sh !== S.sh) for (const m of S.meshes) m.castShadow = sh;
+        S.sh = sh;
         pose(S, f, dt);
       }
     },

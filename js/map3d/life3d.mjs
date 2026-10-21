@@ -71,6 +71,7 @@ const CAP = { people: 300, poles: 2, cloth: 2, dust: 10 },
   PER_SIDE = 12, // battle crowd
   NAMED_S = 2.9, // the default look: a named figure's scale (× the 1.45 m figure: ~2.5× life size) at look.size 1.4, √-graded by group
   CROWD_S = 1.6, // … the crews, the battle crowd and the patrols
+  MUTE = 0.3, // the default look: others' shirts this far to grey (half-way read as skin on the VRM shirts; Fast: 0.5)
   CIRCLE_RING = '#f5c451', // your circle's soft ring (theme --gold)
   HIP = 0.7; // the humanoid's hip height (m at scale 1): sitting drops the body by about this
 
@@ -209,7 +210,15 @@ export function createLife(scene, heightAt) {
           yaw: hstr(`n${p.id}|y`) * 6.28,
           act: p.act,
           s: low ? look.size[p.g] || 1.4 : NAMED_S * Math.sqrt((look.size[p.g] || 1.4) / 1.4),
-          color: p.g === 'grey' ? GREY : p.g === 'other' ? `#${col.set(p.color).lerp(col2.set(GREY), 0.5).getHexString()}` : p.color,
+          color:
+            p.g === 'grey'
+              ? GREY
+              : p.g === 'other'
+                ? `#${col
+                    .set(p.color)
+                    .lerp(col2.set(GREY), low ? 0.5 : MUTE)
+                    .getHexString()}`
+                : p.color,
           ph: hstr(`n${p.id}|p`) * 6.28,
           dOut: hstr(`n${p.id}|o`),
           dHome: hstr(`n${p.id}|h`),
