@@ -13,6 +13,7 @@
 // model's own look). Nothing else (town3d.mjs, rules, map data) needs to change.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { MAP_M } from './geo3d.mjs';
 
 /** Region accents (the REGIONS colours): the palettes below lean on them. */
 const ACC = { wei: '#d08a2e', wu: '#5b8def', shu: '#2fb8a0', outlaws: '#ff8c42', gloria: '#ff5da2', open: '#f5e6a8' };
@@ -481,3 +482,1180 @@ export const buildLandmark = (kind, accent, kit = []) => {
 };
 /** The accent colour of a region id. */
 export const accentOf = region => ACC[region] || ACC.open;
+
+// ================================================================================================================================
+// The detailed look (spec §4.39, T-342): facades, roofs and street furniture for the default graphics setting; the Fast setting
+// keeps the plain shapes above (town3d.mjs). Shared with map3d.mjs's night layer: `facade(lot, i)` is the one window layout both
+// draw from (the panes here, the glows there) and `lampSpots(roads)` the one row of street lamps (the posts, the lamp heads).
+// Display only: fixed hashes, no randoms. Textures are drawn in canvas (no downloads), once, on first use; without a document
+// (node tests) the materials have no maps.
+// ================================================================================================================================
+
+/** Lot geometry (town3d.mjs): a building is sunk FOOT m into the ground; its side = lot size × MAP_M × FOOTPRINT m. */
+export const FOOT = 1.2,
+  FOOTPRINT = 1.2;
+/** The fixed hash (0..1) behind every lot's height and look. */
+export const unit = i => (Math.imul(i + 1, 2654435761) >>> 0) / 4294967296;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+/** Lot i's frame: centre (m), sides w (local x) × d (local z), height h (m above the ground), its turn (cos / sin of −rot). */
+export const lotFrame = (l, i) => {
+  const k = KIT[l.kind];
+  if (!k) return null;
+  const f = l.size * MAP_M * FOOTPRINT;
+  return {
+    k,
+    x: l.at[0] * MAP_M,
+    z: l.at[1] * MAP_M,
+    w: f * k.scale[0],
+    d: f * k.scale[2],
+    h: k.scale[1] * (0.85 + 0.3 * unit(i * 3 + 1)) * (1 + 1.2 * (l.h || 0) * k.rise),
+    cs: Math.cos(-l.rot),
+    sn: Math.sin(-l.rot)
+  };
+};
+
+/** The window atlas (4 × 4 canvas tiles): panes, doors, shop fronts and signs. */
+export const TILE = {
+  sash: 0,
+  cross: 1,
+  shutter: 2,
+  office: 3,
+  shop: 4,
+  door: 5,
+  gdoor: 6,
+  shoji: 7,
+  roller: 8,
+  arch: 9,
+  cdoor: 10,
+  bdoor: 11,
+  signCity: 12,
+  signOld: 13,
+  signWu: 14,
+  signPlain: 15
+};
+const ROOFTEX = { shu: 0, terra: 1, metal: 2, shingle: 3 }; // bands of the roof atlas
+
+/**
+ * How each filler kind looks in detail: wall texture (plaster / concrete / brick / wood / metal), roof (flat / gable / hip / lean /
+ * stepped / cyl) and its texture (rt), eave = the walls' share of the height under a pitched roof, window tile and column width
+ * cw (m; null = no windows), door tile; shares of lots with a shop front (shop), balconies (bal), wall AC units (wallAc); roof
+ * AC units (ac), a water tank on Wu roofs (tank), plinth / cornice / crown trims; high = one row of high windows (sheds, halls);
+ * dim = few lit windows at night (map3d NIGHT.dark).
+ */
+const LOOK = {
+  block: { wall: 'plaster', roof: 'flat', win: TILE.sash, cw: 1.5, door: TILE.gdoor, shop: 0.4, bal: 0.3, ac: 2, plinth: 1, wallAc: 0.15 },
+  tower: { wall: 'concrete', roof: 'flat', win: TILE.office, cw: 1.1, door: TILE.gdoor, ac: 2, crown: 1, curtain: 1 },
+  shop: { wall: 'plaster', roof: 'flat', win: TILE.cross, cw: 1.4, door: TILE.gdoor, shop: 1, ac: 1, plinth: 1 },
+  office: { wall: 'concrete', roof: 'flat', win: TILE.office, cw: 1.05, door: TILE.gdoor, ac: 3, crown: 1, curtain: 1 },
+  apartment: {
+    wall: 'plaster',
+    roof: 'flat',
+    win: TILE.sash,
+    cw: 1.5,
+    door: TILE.door,
+    shop: 0.15,
+    bal: 0.8,
+    ac: 2,
+    wallAc: 0.25,
+    plinth: 1
+  },
+  plant: { wall: 'metal', roof: 'flat', win: TILE.cross, cw: 2.6, door: TILE.roller, vents: 1, high: 1, dim: 1 },
+  depot: { wall: 'metal', roof: 'gable', rt: 'metal', eave: 0.74, win: TILE.cross, cw: 2.4, door: TILE.roller, high: 1, dim: 1 },
+  tank: { wall: 'metal', roof: 'cyl', dim: 1 },
+  stack: { wall: 'brick', roof: 'cyl', dim: 1 },
+  hut: { wall: 'wood', roof: 'gable', rt: 'metal', eave: 0.64, win: TILE.shutter, cw: 1.7, door: TILE.door, tank: 0.5 },
+  shed: { wall: 'wood', roof: 'gable', rt: 'metal', eave: 0.7, win: null, cw: 2, door: TILE.roller, dim: 1 },
+  boathouse: { wall: 'wood', roof: 'gable', rt: 'metal', eave: 0.66, win: TILE.shutter, cw: 2, door: TILE.roller },
+  house: { wall: 'plaster', roof: 'gable', rt: 'shingle', eave: 0.62, win: TILE.shutter, cw: 1.6, door: TILE.door },
+  barn: { wall: 'wood', roof: 'gable', rt: 'shu', eave: 0.6, win: null, cw: 2, door: TILE.roller, dim: 1 },
+  hall: { wall: 'brick', roof: 'flat', win: TILE.sash, cw: 1.3, door: TILE.gdoor, ac: 1, plinth: 1, cornice: 1 },
+  dorm: { wall: 'brick', roof: 'flat', win: TILE.cross, cw: 1.4, door: TILE.gdoor, bal: 0.35, ac: 1, plinth: 1, wallAc: 0.15 },
+  shack: { wall: 'metal', roof: 'lean', rt: 'metal', win: TILE.cross, cw: 1.8, door: TILE.door },
+  container: { wall: 'metal', roof: 'flat', win: null, cw: 2, door: TILE.cdoor, bare: 1, dim: 1 },
+  villa: { wall: 'plaster', roof: 'hip', rt: 'terra', eave: 0.66, win: TILE.arch, cw: 1.6, door: TILE.door, bal: 0.5 },
+  gatehouse: { wall: 'plaster', roof: 'hip', rt: 'terra', eave: 0.7, win: TILE.arch, cw: 1.6, door: TILE.door },
+  rowhouse: { wall: 'brick', roof: 'gable', rt: 'terra', eave: 0.66, win: TILE.cross, cw: 1.3, door: TILE.door, shop: 0.2 },
+  barracks: { wall: 'concrete', roof: 'flat', win: TILE.cross, cw: 1.5, door: TILE.door, tank: 1, plinth: 1 },
+  workshop: { wall: 'metal', roof: 'gable', rt: 'metal', eave: 0.72, win: TILE.cross, cw: 1.8, door: TILE.roller },
+  market: { wall: 'plaster', roof: 'flat', win: TILE.cross, cw: 1.6, door: TILE.gdoor, shop: 1, tank: 0.6 },
+  warehouse: { wall: 'metal', roof: 'gable', rt: 'metal', eave: 0.76, win: TILE.cross, cw: 2.6, door: TILE.roller, high: 1, dim: 1 },
+  resort: { wall: 'plaster', roof: 'flat', win: TILE.bdoor, cw: 1.7, door: TILE.gdoor, bal: 1, tank: 0.5, ac: 1 },
+  kiosk: { wall: 'wood', roof: 'flat', win: null, cw: 1.5, door: TILE.door, shop: 1, kiosk: 1 },
+  terrace: { wall: 'plaster', roof: 'stepped', rt: 'shu', win: TILE.shoji, cw: 1.4, door: TILE.door }
+};
+/** A lot's look: its kind's, turned by its district style (Shu: clay tiles and paper screens; Wu: tin roofs and water tanks). */
+const lookOf = l => {
+  const L = LOOK[l.kind];
+  if (!L) return null;
+  if (l.style === 'terrace') return { ...L, rt: L.rt && 'shu', win: L.win === null ? null : TILE.shoji, ridge: 1 };
+  if (l.style === 'fishing' || l.style === 'beach') return { ...L, rt: L.rt && 'metal', wu: 1 };
+  if (l.style === 'oldtown') return { ...L, rt: L.rt && 'terra' };
+  if (l.style === 'compound') return { ...L, rt: L.rt && 'terra' };
+  return L;
+};
+/** Signs and awnings by district style (spec §4.39: shop fronts with awnings and signs by district). */
+const SIGN = {
+  city: TILE.signCity,
+  works: TILE.signPlain,
+  oldtown: TILE.signOld,
+  fishing: TILE.signWu,
+  beach: TILE.signWu,
+  terrace: TILE.signWu
+};
+const AWNING = {
+  city: ['#2f3b46', '#c79a3a', '#2f6f6a', '#7a2f3c'],
+  oldtown: ['#a8322a', '#7a2420', '#c4572c'],
+  fishing: ['#2f6fa8', '#3f8fbf', '#4f7f95'],
+  beach: ['#ef8a7a', '#4fb0c4', '#efc050', '#7fc48f'],
+  terrace: ['#2f3f6f', '#5a3f30'],
+  campus: ['#2f5f4a', '#2f3f6a', '#7a3a3a'],
+  shacks: ['#8a6a3a', '#5f6f7a', '#7a4a3a'],
+  compound: ['#c86a8a', '#efe0c8'],
+  works: ['#5f6f7a']
+};
+const SIGN_GLOW = {
+  [TILE.signCity]: ['#ff6fb0', '#5fe0ff', '#ffd060', '#9fff8a'],
+  [TILE.signOld]: ['#ff6a3c', '#ffb040'],
+  [TILE.signWu]: ['#bfe0ff', '#ffe7b0'],
+  [TILE.signPlain]: ['#fff1c8']
+};
+/** Window colours at night (the Fast setting's NIGHT.win.colors are the same). */
+export const GLOW = ['#ffd38a', '#ffe7b0', '#ffc070', '#d8e4ff'];
+const FACES = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1]
+];
+const rowsOf = top => {
+  if (top >= 3.6) {
+    const r = [];
+    for (let y = 1.6; y + 0.62 <= top - 0.35; y += 2.8) r.push(y);
+    return { r, wh: 1.25 };
+  }
+  return top >= 1.3 ? { r: [top * 0.52], wh: clamp(top * 0.34, 0.45, 0.95) } : { r: [], wh: 0 };
+};
+
+/**
+ * The facade of lot i (spec §4.39). The camera never turns, so only faces that can be seen (world normal z ≥ −0.25) are listed:
+ * { f, nx, nz (local normal), wz (world normal z), half (m from the middle), wide (m), front, wins: [{ kind: win | bal | door |
+ * shop | sign, u (m along the face from its middle, to the right seen from outside), y (m above the ground), w, h (m), tile, half?
+ * (another wall plane: the stepped house's upper floor), lit (a fixed hash: lit at night), glow (its colour) }] }. The front
+ * (door, shop front) is the face most toward the camera. town3d.mjs draws the panes and map3d.mjs's night layer the glows from it.
+ * → { fr (lotFrame), L (look), eave (m), shop, front, faces } or null for a kind the kit does not know.
+ */
+export function facade(l, i) {
+  const fr = lotFrame(l, i),
+    L = lookOf(l);
+  if (!fr || !L) return null;
+  const { w, d, h, cs, sn } = fr,
+    out = { fr, L, eave: h, shop: null, front: 0, faces: [] };
+  if (L.roof === 'cyl') return out;
+  const eave = L.roof === 'flat' ? h : L.roof === 'lean' ? h * 0.8 : L.roof === 'stepped' ? h * 0.5 : h * (L.eave || 0.65);
+  out.eave = eave;
+  let best = -2;
+  FACES.forEach(([nx, nz], f) => {
+    const wz = -nx * sn + nz * cs;
+    if (wz > best) ((best = wz), (out.front = f));
+  });
+  if (L.door === TILE.cdoor) {
+    // a container opens at an end: the short face most toward the camera
+    best = -2;
+    FACES.forEach(([nx, nz], f) => {
+      const wz = -nx * sn + nz * cs;
+      if ((nx ? d : w) <= Math.min(w, d) + 1e-6 && wz > best) ((best = wz), (out.front = f));
+    });
+  }
+  const pLit = L.dim ? 0.08 : 0.42,
+    hasShop = L.shop && unit(i * 7 + 11) < L.shop && eave >= (L.kiosk ? 1.8 : 2.3),
+    hasBal = L.bal && unit(i * 7 + 13) < L.bal,
+    sign = SIGN[l.style] !== undefined ? SIGN[l.style] : TILE.signPlain,
+    R = L.high ? (eave >= 3 ? { r: [eave - 0.75], wh: 0.6 } : { r: [], wh: 0 }) : rowsOf(eave);
+  FACES.forEach(([nx, nz], f) => {
+    const wz = -nx * sn + nz * cs;
+    if (wz < -0.25) return;
+    const half = nx ? w / 2 : d / 2,
+      wide = nx ? d : w,
+      front = f === out.front,
+      wins = [],
+      hh = (j, q) => unit(i * 131 + j * 17 + q * 5 + f * 3 + 7),
+      add = (o, j, q, p) => {
+        const u = hh(j, q);
+        o.lit = u < p;
+        o.glow =
+          o.kind === 'sign' ? SIGN_GLOW[o.tile][Math.floor(u * 97) % SIGN_GLOW[o.tile].length] : GLOW[Math.floor(u * 97) % GLOW.length];
+        wins.push(o);
+      };
+    let door = null;
+    if (front) {
+      if (hasShop) {
+        // the shop front fills the ground floor; an awning over it, a sign above
+        const kiosk = L.kiosk,
+          y0 = kiosk ? 0.85 : 0.08,
+          top = kiosk ? Math.min(1.85, eave - 0.45) : Math.min(2.2, eave - 0.9),
+          sw = wide - (kiosk ? 0.5 : 0.7);
+        add({ kind: 'shop', u: 0, y: (y0 + top) / 2, w: sw, h: top - y0, tile: TILE.shop }, 9, 0, 0.7);
+        out.shop = { f, top, w: sw + 0.2, colors: AWNING[l.style] || AWNING.city };
+        const s0 = top + 0.32,
+          s1 = Math.min(top + 0.9, eave - 0.12);
+        if (s1 - s0 >= 0.28)
+          add(
+            { kind: 'sign', u: 0, y: (s0 + s1) / 2, w: sw * 0.78, h: s1 - s0, tile: sign },
+            9,
+            1,
+            l.style === 'city' || l.style === 'oldtown' || l.style === 'beach' ? 0.85 : 0.5
+          );
+      } else {
+        const roll = L.door === TILE.roller || L.door === TILE.cdoor,
+          dh = L.door === TILE.cdoor ? eave - 0.25 : roll ? Math.min(eave * 0.8, 3.2) : Math.min(2.15, eave * 0.74),
+          dw = L.door === TILE.cdoor ? wide - 0.2 : roll ? Math.min(wide * 0.5, 3) : clamp(dh * 0.5, 0.6, 1.1);
+        door = { kind: 'door', u: 0, y: dh / 2 + 0.02, w: dw, h: dh, tile: L.door, lit: false, glow: GLOW[0] };
+        wins.push(door);
+      }
+    }
+    if (L.win !== null) {
+      const span = wide - 0.5,
+        cols = Math.max(1, Math.floor(span / L.cw)),
+        ww = L.curtain ? (span / cols) * 0.86 : Math.min(L.cw * 0.56, (span / cols) * 0.8);
+      R.r.forEach((y, j) => {
+        for (let q = 0; q < cols; q++) {
+          const u = (-0.5 + (q + 0.5) / cols) * span;
+          if (front && j === 0 && hasShop && y < out.shop.top + 1) continue; // the ground floor is the shop
+          if (door && y - R.wh / 2 < door.h && Math.abs(u - door.u) < (door.w + ww) / 2 + 0.1) continue; // the door is there
+          const b = front && hasBal && y > 3;
+          add(
+            {
+              kind: b ? 'bal' : 'win',
+              u,
+              y: b ? y - 0.15 : y,
+              w: b ? Math.max(ww, 0.75) : ww,
+              h: b ? R.wh + 0.3 : R.wh,
+              tile: b ? TILE.bdoor : L.win
+            },
+            j,
+            q,
+            pLit
+          );
+        }
+      });
+      if (L.roof === 'stepped') {
+        // the upper floor, set back: its own wall plane and a row of screens
+        const half2 = nx ? 0.36 * w : nz > 0 ? 0.13 * d : 0.49 * d,
+          wide2 = nx ? 0.62 * d : 0.72 * w,
+          u0 = 0.18 * d * nx,
+          y = h * (0.5 + 0.28 * 0.52),
+          cols = Math.max(1, Math.floor((wide2 - 0.4) / L.cw));
+        for (let q = 0; q < cols; q++)
+          add(
+            {
+              kind: 'win',
+              u: u0 + (-0.5 + (q + 0.5) / cols) * (wide2 - 0.4),
+              y,
+              w: Math.min(L.cw * 0.56, 0.9),
+              h: clamp(h * 0.28 * 0.4, 0.4, 0.8),
+              tile: L.win,
+              half: half2
+            },
+            5,
+            q,
+            pLit
+          );
+      }
+    }
+    out.faces.push({ f, nx, nz, wz, half, wide, front, wins });
+  });
+  return out;
+}
+
+/** Street lamps (spec §4.37 2): every `every` m along these road kinds (from each edge's first point), alternating sides `side` m off the centre line, heads `up` m high; at most `cap`. */
+export const STREET = { kinds: ['main', 'street', 'boardwalk'], every: 22, side: 2.4, up: 4.5, cap: 900 };
+/** The lamps of a road list (map units in, metres out): [{ x, z, ux, uz (the road's direction), s (side: ±1) }] — map3d.mjs's lamp heads and posts. */
+export const lampSpots = roads => {
+  const out = [];
+  for (const r of roads || []) {
+    if (!STREET.kinds.includes(r.kind) || out.length >= STREET.cap) continue;
+    const [a, b] = r.pts.map(p => [p[0] * MAP_M, p[1] * MAP_M]),
+      len = Math.hypot(b[0] - a[0], b[1] - a[1]),
+      ux = (b[0] - a[0]) / (len || 1),
+      uz = (b[1] - a[1]) / (len || 1);
+    for (let d = STREET.every / 2, j = 0; d < len && out.length < STREET.cap; d += STREET.every, j++) {
+      const s = j % 2 ? 1 : -1,
+        sd = s * STREET.side;
+      out.push({ x: a[0] + ux * d - uz * sd, z: a[1] + uz * d + ux * sd, ux, uz, s, kind: r.kind });
+    }
+  }
+  return out;
+};
+
+// ---------- a flat triangle-list builder (merged meshes: one draw call per material) ----------
+const LIN = new Map();
+/** A CSS colour as linear [r, g, b] (cached). */
+export const rgb = hex => {
+  if (!LIN.has(hex)) {
+    const c = new THREE.Color(hex);
+    LIN.set(hex, [c.r, c.g, c.b]);
+  }
+  return LIN.get(hex);
+};
+const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const mul = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
+/** A mesh under construction: position, normal, colour, uv + extra per-vertex attributes ({ name: size }) in growing typed arrays. */
+export function mesher(extra = {}) {
+  let cap = 4096,
+    n = 0;
+  const sizes = { position: 3, normal: 3, color: 3, uv: 2, ...extra },
+    A = {};
+  for (const k in sizes) A[k] = new Float32Array(cap * sizes[k]);
+  const grow = () => {
+    cap *= 2;
+    for (const k in sizes) {
+      const b = new Float32Array(cap * sizes[k]);
+      b.set(A[k]);
+      A[k] = b;
+    }
+  };
+  const put = (p, nr, c, u, v, e) => {
+    if (n >= cap) grow();
+    const o = n * 3;
+    A.position[o] = p[0];
+    A.position[o + 1] = p[1];
+    A.position[o + 2] = p[2];
+    A.normal[o] = nr[0];
+    A.normal[o + 1] = nr[1];
+    A.normal[o + 2] = nr[2];
+    A.color[o] = c[0];
+    A.color[o + 1] = c[1];
+    A.color[o + 2] = c[2];
+    A.uv[n * 2] = u;
+    A.uv[n * 2 + 1] = v;
+    if (e) for (const k in extra) if (e[k]) A[k].set(e[k], n * extra[k]);
+    n++;
+  };
+  const normal = (p0, p1, p2) => {
+    const ux = p1[0] - p0[0],
+      uy = p1[1] - p0[1],
+      uz = p1[2] - p0[2],
+      vx = p2[0] - p0[0],
+      vy = p2[1] - p0[1],
+      vz = p2[2] - p0[2],
+      nx = uy * vz - uz * vy,
+      ny = uz * vx - ux * vz,
+      nz = ux * vy - uy * vx,
+      L = Math.hypot(nx, ny, nz) || 1;
+    return [nx / L, ny / L, nz / L];
+  };
+  return {
+    count: () => n,
+    /** A quad p0..p3 counter-clockwise seen from its front; t = 8 uv numbers (per corner); e = extra values (all four corners). */
+    quad(p0, p1, p2, p3, c, t, e) {
+      const nr = normal(p0, p1, p3);
+      put(p0, nr, c, t[0], t[1], e);
+      put(p1, nr, c, t[2], t[3], e);
+      put(p2, nr, c, t[4], t[5], e);
+      put(p0, nr, c, t[0], t[1], e);
+      put(p2, nr, c, t[4], t[5], e);
+      put(p3, nr, c, t[6], t[7], e);
+    },
+    /** A triangle p0..p2 counter-clockwise seen from its front. */
+    tri(p0, p1, p2, c, t, e) {
+      const nr = normal(p0, p1, p2);
+      put(p0, nr, c, t[0], t[1], e);
+      put(p1, nr, c, t[2], t[3], e);
+      put(p2, nr, c, t[4], t[5], e);
+    },
+    /** The finished BufferGeometry (null when empty). */
+    geometry() {
+      if (!n) return null;
+      const g = new THREE.BufferGeometry();
+      for (const k in sizes) g.setAttribute(k, new THREE.BufferAttribute(A[k].slice(0, n * sizes[k]), sizes[k]));
+      return g;
+    }
+  };
+}
+
+/** Wall texture channels (the wall material's `wmask`): plaster / brick / wood planks; metal = the planks turned upright, finer. */
+const MASK = {
+  plaster: { wmask: [1, 0, 0] },
+  concrete: { wmask: [0.6, 0, 0] },
+  brick: { wmask: [0.25, 1, 0] },
+  wood: { wmask: [0.2, 0, 1] },
+  metal: { wmask: [0, 0, 0.9] },
+  none: { wmask: [0, 0, 0] }
+};
+const TEXM = 4; // the wall texture spans 4 m
+/** UVs of a wall quad (local u along, v up, in m): the metal texture runs upright and 3 × finer. */
+const wallUV = (tex, u0, u1, v0, v1) =>
+  tex === 'metal'
+    ? [v0 * 0.75, u0 * 0.75, v0 * 0.75, u1 * 0.75, v1 * 0.75, u1 * 0.75, v1 * 0.75, u0 * 0.75]
+    : [u0 / TEXM, v0 / TEXM, u1 / TEXM, v0 / TEXM, u1 / TEXM, v1 / TEXM, u0 / TEXM, v1 / TEXM];
+
+/**
+ * A box in a local frame P(x, y, z) → world: faces counter-clockwise from outside, wall UVs in metres; skip = face names to leave
+ * out ('py' top, 'ny' bottom, 'px' …). Into mesher M with colour c and wall texture tex.
+ */
+export const lbox = (M, P, x0, x1, y0, y1, z0, z1, c, tex = 'none', skip = 'ny') => {
+  const e = MASK[tex] || MASK.none,
+    q = (name, a, b, cc, dd, u0, u1, v0, v1) =>
+      !skip.includes(name) && M.quad(P(...a), P(...b), P(...cc), P(...dd), c, wallUV(tex, u0, u1, v0, v1), e);
+  q('pz', [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], x0, x1, y0, y1);
+  q('nz', [x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0], -x1, -x0, y0, y1);
+  q('px', [x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1], -z1, -z0, y0, y1);
+  q('nx', [x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0], z0, z1, y0, y1);
+  q('py', [x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0], x0, x1, -z1, -z0);
+  q('ny', [x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], x0, x1, z0, z1);
+};
+/** An upright cylinder (n sides) at (cx, cz), radius r, from y0 to y1, with a top cap (cap: false = none). */
+const lcyl = (M, P, cx, cz, r, y0, y1, c, tex = 'none', n = 10, cap = true) => {
+  const e = MASK[tex] || MASK.none,
+    at = (k, y) => {
+      const a = (k / n) * Math.PI * 2;
+      return [cx + Math.sin(a) * r, y, cz + Math.cos(a) * r];
+    },
+    arc = (Math.PI * 2 * r) / n;
+  for (let k = 0; k < n; k++) {
+    M.quad(P(...at(k, y0)), P(...at(k + 1, y0)), P(...at(k + 1, y1)), P(...at(k, y1)), c, wallUV(tex, k * arc, (k + 1) * arc, y0, y1), e);
+    if (cap) M.tri(P(...at(k, y1)), P(...at(k + 1, y1)), P(cx, y1, cz), c, [0, 0, 0, 0, 0, 0], e);
+  }
+};
+/** A cone cap (n sides) from radius r at y0 to a point at y1. */
+const lcone = (M, P, cx, cz, r, y0, y1, c, n = 10) => {
+  for (let k = 0; k < n; k++) {
+    const a = (k / n) * Math.PI * 2,
+      b = ((k + 1) / n) * Math.PI * 2;
+    M.tri(
+      P(cx + Math.sin(a) * r, y0, cz + Math.cos(a) * r),
+      P(cx + Math.sin(b) * r, y0, cz + Math.cos(b) * r),
+      P(cx, y1, cz),
+      c,
+      [0, 0, 0, 0, 0, 0],
+      MASK.none
+    );
+  }
+};
+
+/** UVs of atlas tile t (4 × 4), inset a little so mipmaps do not bleed. */
+const tileUV = t => {
+  const c = t % 4,
+    r = Math.floor(t / 4),
+    i = 1.5 / 512,
+    u0 = c / 4 + i,
+    u1 = (c + 1) / 4 - i,
+    v0 = 1 - (r + 1) / 4 + i,
+    v1 = 1 - r / 4 - i;
+  return [u0, v0, u1, v0, u1, v1, u0, v1];
+};
+/** Roof atlas band b's v range (eave → ridge). */
+const band = b => [1 - (b + 1) / 4 + 2 / 512, 1 - b / 4 - 2 / 512];
+
+/** A pane (glass mesh) or a flat panel on a face: local normal (nx, nz), plane at `half` + out, centred at u along, y up. */
+const onFace = (P, nx, nz, half, out) => (u, y) => P(nx * (half + out) + nz * u, y, nz * (half + out) - nx * u);
+const pane = (M, F, u, y, w, h, c, t, e) =>
+  M.quad(F(u - w / 2, y - h / 2), F(u + w / 2, y - h / 2), F(u + w / 2, y + h / 2), F(u - w / 2, y + h / 2), c, t, e);
+/** A thin box standing out of a face (sills, balconies, awnings): u along, y up, from the wall out to `out` m. */
+const faceBox = (M, P, nx, nz, half, u0, u1, y0, y1, o0, o1, c, skip = 'nynz') => {
+  // in face coordinates: along = t = (nz, −nx), out = n (pz = its outer face, nz = against the wall); corners into the lot frame
+  const Q = (u, y, o) => P(nx * (half + o) + nz * u, y, nz * (half + o) - nx * u);
+  lbox(M, Q, u0, u1, y0, y1, o0, o1, c, 'none', skip);
+};
+
+// ---------- canvas textures (drawn once, shared; no downloads) ----------
+const lcg = seed => () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
+/** Tileable value noise on an n × n lattice: (x, y) in 0..1 → 0..1. */
+const vnoise = (rnd, n) => {
+  const g = Float32Array.from({ length: n * n }, rnd);
+  return (x, y) => {
+    const fx = x * n,
+      fy = y * n,
+      x0 = Math.floor(fx),
+      y0 = Math.floor(fy),
+      tx = fx - x0,
+      ty = fy - y0,
+      sx = tx * tx * (3 - 2 * tx),
+      sy = ty * ty * (3 - 2 * ty),
+      at = (i, j) => g[(((j % n) + n) % n) * n + (((i % n) + n) % n)],
+      a = at(x0, y0),
+      b = at(x0 + 1, y0),
+      c = at(x0, y0 + 1),
+      d = at(x0 + 1, y0 + 1);
+    return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+  };
+};
+const canvas = (w, h) => {
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  return c;
+};
+/** The wall detail (4 m square, data, not colour): R plaster / concrete mottling and stains, G brick, B wood planks; ~0.8 on average. */
+const wallTexture = () => {
+  const S = 512,
+    c = canvas(S, S),
+    x2 = c.getContext('2d'),
+    img = x2.createImageData(S, S),
+    rnd = lcg(7),
+    n1 = vnoise(rnd, 6),
+    n2 = vnoise(rnd, 24),
+    n3 = vnoise(rnd, 96),
+    streak = vnoise(rnd, 40),
+    brick = Float32Array.from({ length: 64 * 16 }, rnd),
+    board = Float32Array.from({ length: 16 * 4 }, rnd);
+  for (let y = 0; y < S; y++)
+    for (let x = 0; x < S; x++) {
+      const u = x / S,
+        v = y / S,
+        // plaster: soft patches, fine grain, a few rain streaks
+        st = Math.max(0, streak(u, 0) - 0.62) * 2.2 * (0.6 + 0.4 * n2(u, v * 0.25)),
+        P = 0.8 + 0.16 * (n1(u, v) - 0.5) + 0.1 * (n2(u, v) - 0.5) + 0.07 * (n3(u, v) - 0.5) - 0.18 * st,
+        // brick: 25 × 6.5 cm in running bond, light mortar
+        row = y >> 3,
+        bx = x + (row & 1 ? 16 : 0),
+        mortar = (y & 7) === 0 || (bx & 31) === 0,
+        B = mortar ? 0.97 : 0.68 + 0.22 * brick[(row & 63) * 16 + ((bx >> 5) & 15)] + 0.06 * (n3(u, v) - 0.5),
+        // planks: 25 cm boards, dark seams, grain, butt joints
+        k = y >> 5,
+        jx = (x + Math.floor(board[(k & 15) * 4] * S)) % S,
+        seam = (y & 31) < 2 || (jx & 255) < 2,
+        W = seam
+          ? 0.42
+          : 0.72 +
+            0.2 * board[(k & 15) * 4 + 1] +
+            0.07 * Math.sin(x * 0.09 + board[(k & 15) * 4 + 2] * 40 + 6 * n2(u, v)) +
+            0.05 * (n3(u, v) - 0.5),
+        o = (y * S + x) * 4;
+      img.data[o] = clamp(P, 0, 1) * 255;
+      img.data[o + 1] = clamp(B, 0, 1) * 255;
+      img.data[o + 2] = clamp(W, 0, 1) * 255;
+      img.data[o + 3] = 255;
+    }
+  x2.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.NoColorSpace;
+  t.anisotropy = 4;
+  return t;
+};
+/** The roof atlas: four 128 px bands (eave at the bottom, ridge at the top), each tiling sideways every 4 m — clay barrel tiles (Shu), terracotta, corrugated tin, shingles. Grey: the vertex colour gives the hue. */
+const roofTexture = () => {
+  const S = 512,
+    c = canvas(S, S),
+    g = c.getContext('2d'),
+    rnd = lcg(11),
+    grey = v => `rgb(${(v * 255) | 0},${(v * 255) | 0},${(v * 255) | 0})`;
+  // barrel tiles: rounded columns (caps) over darker pans, courses overlapping downward
+  const barrel = (y0, k, warm) => {
+    for (let x = 0; x < S; x += 32) {
+      for (let y = y0; y < y0 + 128; y += 16) {
+        const t = 0.62 + 0.18 * rnd() * warm;
+        for (let i = 0; i < 32; i++) {
+          const a = Math.sin((i / 32) * Math.PI);
+          g.fillStyle = grey(clamp(t * (0.55 + 0.5 * a * k), 0, 1));
+          g.fillRect(x + i, y, 1, 16);
+        }
+        g.fillStyle = 'rgba(0,0,0,0.28)';
+        g.fillRect(x, y + 14, 32, 2);
+        g.fillStyle = 'rgba(255,255,255,0.12)';
+        g.fillRect(x + 6, y + 1, 12, 2);
+      }
+    }
+  };
+  barrel(0, 1, 0.6);
+  barrel(128, 1.1, 1.4);
+  // tin: fine ribs along the slope, sheet overlaps, rust streaks
+  for (let x = 0; x < S; x++) {
+    const a = 0.5 + 0.5 * Math.sin((x / 16) * Math.PI * 2);
+    g.fillStyle = grey(0.62 + 0.26 * a);
+    g.fillRect(x, 256, 1, 128);
+  }
+  for (let x = 0; x < S; x += 128) ((g.fillStyle = 'rgba(0,0,0,0.25)'), g.fillRect(x, 256, 2, 128));
+  g.fillStyle = 'rgba(0,0,0,0.18)';
+  g.fillRect(0, 318, S, 3);
+  for (let k = 0; k < 14; k++) {
+    const x = (rnd() * S) | 0,
+      w = 4 + ((rnd() * 18) | 0),
+      gr = g.createLinearGradient(0, 256, 0, 384);
+    gr.addColorStop(0, 'rgba(90,50,30,0)');
+    gr.addColorStop(1, `rgba(90,50,30,${0.15 + 0.25 * rnd()})`);
+    g.fillStyle = gr;
+    g.fillRect(x, 256, w, 128);
+  }
+  // shingles: staggered courses with gaps
+  for (let y = 384, r = 0; y < 512; y += 16, r++)
+    for (let x = r % 2 ? -16 : 0; x < S; x += 32) {
+      g.fillStyle = grey(0.58 + 0.28 * rnd());
+      g.fillRect(x, y, 31, 15);
+      g.fillStyle = 'rgba(0,0,0,0.3)';
+      g.fillRect(x, y + 13, 31, 2);
+    }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.ClampToEdgeWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+};
+/** The window atlas (TILE) and its glow mask (white where light comes out at night: glass, sign letters). */
+const windowTextures = () => {
+  const S = 512,
+    T = 128,
+    c = canvas(S, S),
+    e = canvas(S, S),
+    g = c.getContext('2d'),
+    m = e.getContext('2d'),
+    rnd = lcg(5);
+  m.fillStyle = '#000';
+  m.fillRect(0, 0, S, S);
+  const at = t => [(t % 4) * T, Math.floor(t / 4) * T],
+    rect = (ctx, col, x, y, w, h) => ((ctx.fillStyle = col), ctx.fillRect(x, y, w, h)),
+    glass = (x, y, w, h, lit = '#fff') => {
+      const gr = g.createLinearGradient(x, y, x + w * 0.4, y + h);
+      gr.addColorStop(0, '#a9c0d0');
+      gr.addColorStop(0.45, '#4b6274');
+      gr.addColorStop(1, '#22303c');
+      rect(g, gr, x, y, w, h);
+      g.fillStyle = 'rgba(255,255,255,0.13)';
+      g.beginPath();
+      g.moveTo(x + w * 0.15, y + h);
+      g.lineTo(x + w * 0.45, y + h);
+      g.lineTo(x + w * 0.85, y);
+      g.lineTo(x + w * 0.55, y);
+      g.fill();
+      rect(m, lit, x, y, w, h);
+    },
+    glyphs = (x, y, w, h, n, col, glow) => {
+      // letters drawn narrow: a sign is stretched ~5 × sideways
+      const cw = w / n;
+      for (let k = 0; k < n; k++) {
+        const gx = x + k * cw + cw * 0.2,
+          gw = cw * 0.6;
+        for (const ctx of [g, m]) ctx.fillStyle = ctx === g ? col : glow;
+        for (let s = 0; s < 3; s++) {
+          const r = rnd(),
+            vert = r < 0.5;
+          const sx = vert ? gx + (rnd() < 0.5 ? 0 : gw * 0.7) : gx,
+            sy = vert ? y : y + rnd() * h * 0.85,
+            sw = vert ? gw * 0.3 : gw,
+            sh = vert ? h : h * 0.15;
+          g.fillStyle = col;
+          g.fillRect(sx, sy, sw, sh);
+          m.fillStyle = glow;
+          m.fillRect(sx, sy, sw, sh);
+        }
+      }
+    };
+  let [x, y] = at(TILE.sash);
+  rect(g, '#e8e4dc', x, y, T, T);
+  glass(x + 12, y + 10, 46, 100);
+  glass(x + 70, y + 10, 46, 100);
+  rect(g, '#d8d2c6', x + 12, y + 56, 104, 6);
+  rect(m, '#000', x + 12, y + 56, 104, 6);
+  rect(g, '#bdb6a8', x, y + 116, T, 12);
+  [x, y] = at(TILE.cross);
+  rect(g, '#3a3a3e', x, y, T, T);
+  glass(x + 9, y + 9, 110, 110);
+  for (const ctx of [g, m])
+    (rect(ctx, ctx === g ? '#3a3a3e' : '#000', x + 60, y + 9, 8, 110), rect(ctx, ctx === g ? '#3a3a3e' : '#000', x + 9, y + 54, 110, 8));
+  [x, y] = at(TILE.shutter);
+  rect(g, '#d8d0c0', x, y, T, T);
+  glass(x + 38, y + 8, 52, 112);
+  for (const sx of [x + 4, x + 92]) {
+    rect(g, '#5f7f74', sx, y + 6, 32, 116);
+    for (let k = 0; k < 14; k++) rect(g, 'rgba(0,0,0,0.25)', sx + 3, y + 10 + k * 8, 26, 2);
+  }
+  [x, y] = at(TILE.office);
+  rect(g, '#2a333d', x, y, T, T);
+  glass(x + 3, y + 3, 122, 100);
+  rect(g, '#3c4652', x, y + 104, T, 24);
+  for (const ctx of [g, m]) rect(ctx, ctx === g ? '#2a333d' : '#000', x + 62, y + 3, 4, 100);
+  [x, y] = at(TILE.shop);
+  rect(g, '#26282c', x, y, T, T);
+  glass(x + 5, y + 5, 118, 118, '#fff');
+  for (let k = 0; k < 3; k++) {
+    rect(g, 'rgba(240,230,210,0.5)', x + 6, y + 30 + k * 32, 116, 3);
+    for (let q = 0; q < 7; q++)
+      rect(g, ['#e0a040', '#d05050', '#50a0d0', '#e8e0c8', '#70b070'][(q + k) % 5], x + 9 + q * 16, y + 16 + k * 32, 10, 14);
+  }
+  rect(g, '#26282c', x + 46, y + 20, 36, 108);
+  glass(x + 50, y + 24, 28, 104);
+  [x, y] = at(TILE.door);
+  rect(g, '#d8d0c0', x, y, T, T);
+  rect(g, '#6b4a32', x + 12, y + 8, 104, 120);
+  rect(g, '#5a3c28', x + 24, y + 18, 80, 40);
+  rect(g, '#5a3c28', x + 24, y + 70, 80, 48);
+  rect(g, '#d8b860', x + 96, y + 66, 8, 8);
+  [x, y] = at(TILE.gdoor);
+  rect(g, '#3a3d42', x, y, T, T);
+  glass(x + 8, y + 8, 54, 120);
+  glass(x + 66, y + 8, 54, 120);
+  rect(g, '#9aa0a8', x + 20, y + 66, 36, 5);
+  rect(g, '#9aa0a8', x + 72, y + 66, 36, 5);
+  [x, y] = at(TILE.shoji);
+  rect(g, '#4a3424', x, y, T, T);
+  rect(g, '#eadfc4', x + 8, y + 8, 112, 112);
+  rect(m, '#fff', x + 8, y + 8, 112, 112);
+  for (let k = 1; k < 4; k++) for (const ctx of [g, m]) rect(ctx, ctx === g ? '#4a3424' : '#000', x + 8 + k * 28 - 2, y + 8, 4, 112);
+  for (let k = 1; k < 6; k++) for (const ctx of [g, m]) rect(ctx, ctx === g ? '#4a3424' : '#000', x + 8, y + 8 + k * 19 - 2, 112, 4);
+  [x, y] = at(TILE.roller);
+  rect(g, '#9a9ca0', x, y, T, T);
+  for (let k = 0; k < 16; k++) rect(g, 'rgba(0,0,0,0.22)', x, y + k * 8 + 6, T, 2);
+  rect(g, '#5a5c60', x, y, 6, T);
+  rect(g, '#5a5c60', x + 122, y, 6, T);
+  rect(g, '#6a6c70', x + 50, y + 116, 28, 4);
+  [x, y] = at(TILE.arch);
+  rect(g, '#efe8dc', x, y, T, T);
+  g.save();
+  g.beginPath();
+  g.moveTo(x + 22, y + 118);
+  g.lineTo(x + 22, y + 50);
+  g.arc(x + 64, y + 50, 42, Math.PI, 0);
+  g.lineTo(x + 106, y + 118);
+  g.closePath();
+  g.clip();
+  glass(x + 22, y + 8, 84, 110);
+  g.restore();
+  m.fillStyle = '#000';
+  m.fillRect(x, y, T, T);
+  m.fillStyle = '#fff';
+  m.beginPath();
+  m.moveTo(x + 22, y + 118);
+  m.lineTo(x + 22, y + 50);
+  m.arc(x + 64, y + 50, 42, Math.PI, 0);
+  m.lineTo(x + 106, y + 118);
+  m.fill();
+  rect(g, '#efe8dc', x + 61, y + 8, 6, 110);
+  rect(g, '#d6cdbd', x + 14, y + 116, 100, 10);
+  [x, y] = at(TILE.cdoor);
+  rect(g, '#b0b4b8', x, y, T, T);
+  for (let k = 0; k < 13; k++) rect(g, 'rgba(0,0,0,0.18)', x + k * 10, y, 4, T);
+  rect(g, 'rgba(0,0,0,0.5)', x + 63, y, 2, T);
+  for (const bx of [24, 48, 80, 104]) rect(g, '#55585c', x + bx, y + 4, 4, 120);
+  [x, y] = at(TILE.bdoor);
+  rect(g, '#ece8e0', x, y, T, T);
+  glass(x + 10, y + 6, 50, 122);
+  glass(x + 68, y + 6, 50, 122);
+  // signs: a board with letters (their glow mask = the letters)
+  const board = (t, bg, edge, ink, glow, n) => {
+    [x, y] = at(t);
+    rect(g, edge, x, y, T, T);
+    rect(g, bg, x + 5, y + 8, 118, 112);
+    glyphs(x + 10, y + 26, 108, 76, n, ink, glow);
+  };
+  board(TILE.signCity, '#1c1f26', '#3a3f48', '#ffd060', '#fff', 8);
+  rect(g, '#ff6fb0', x + 5, y + 8, 118, 6);
+  rect(m, '#fff', x + 5, y + 8, 118, 6);
+  board(TILE.signOld, '#9a2a22', '#e0b040', '#f0c040', '#fff', 6);
+  board(TILE.signWu, '#c8a878', '#6b4a32', '#2f5f9f', '#fff', 7);
+  board(TILE.signPlain, '#f2efe6', '#2f5f4a', '#2a2f3a', '#fff', 8);
+  const tex = cv => {
+    const t = new THREE.CanvasTexture(cv);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 4;
+    return t;
+  };
+  return { map: tex(c), glow: tex(e) };
+};
+
+/** The shared uniform the glass reads at night (0 by day, 1 at full dark): map3d.mjs's night layer sets it each frame. */
+export const NIGHT_U = { value: 0 };
+let MATS = null;
+/**
+ * The detailed look's three materials (made once, shared — never disposed by a layer): walls (vertex colour × the wall texture
+ * channel picked per vertex by `wmask`), glass (the window atlas; lit panes glow by their `glow` colour × NIGHT_U), roofs (the roof
+ * atlas × vertex colour).
+ */
+export const detailMats = () => {
+  if (MATS) return MATS;
+  const dom = typeof document !== 'undefined',
+    win = dom ? windowTextures() : {},
+    wall = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0, map: dom ? wallTexture() : null }),
+    glass = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.32,
+      metalness: 0.15,
+      map: win.map || null,
+      emissiveMap: win.glow || null,
+      emissive: 0x000000,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -4
+    }),
+    roof = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.05, map: dom ? roofTexture() : null });
+  wall.onBeforeCompile = sh => {
+    sh.vertexShader =
+      'attribute vec3 wmask;\nvarying vec3 vMask;\n' +
+      sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vMask = wmask;');
+    sh.fragmentShader =
+      'varying vec3 vMask;\n' +
+      sh.fragmentShader.replace(
+        '#include <map_fragment>',
+        '#ifdef USE_MAP\n  vec3 wt = texture2D(map, vMapUv).rgb;\n  diffuseColor.rgb *= 1.0 + 1.3 * dot(wt - 0.8, vMask);\n#endif'
+      );
+  };
+  wall.customProgramCacheKey = () => 'kit3d-wall';
+  glass.onBeforeCompile = sh => {
+    sh.uniforms.uNight = NIGHT_U;
+    sh.vertexShader =
+      'attribute vec3 glow;\nvarying vec3 vGlow;\n' +
+      sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vGlow = glow;');
+    sh.fragmentShader =
+      'uniform float uNight;\nvarying vec3 vGlow;\n' +
+      sh.fragmentShader.replace(
+        '#include <emissivemap_fragment>',
+        '#ifdef USE_EMISSIVEMAP\n  totalEmissiveRadiance += vGlow * uNight * 1.5 * texture2D(emissiveMap, vEmissiveMapUv).rgb;\n#else\n  totalEmissiveRadiance += vGlow * uNight;\n#endif'
+      );
+  };
+  glass.customProgramCacheKey = () => 'kit3d-glass';
+  for (const m of [wall, glass, roof]) m.userData.shared = true;
+  MATS = { wall, glass, roof };
+  return MATS;
+};
+
+// ---------- one lot in detail ----------
+const ROOFCOL = {
+  shu: ['#6f7d8a', '#64717e', '#7a8690', '#5e6a72'],
+  terra: ['#d47c56', '#c66a48', '#de8c62'],
+  metal: ['#9ab8cc', '#b0b4b8', '#b8805e', '#8cae96', '#c4c8cc'],
+  shingle: ['#7e6e66', '#6e7480', '#8a745f']
+};
+const TANKCOL = ['#3f6fb0', '#e8e4da', '#3a3c40'];
+const AC = '#c9cbc6',
+  METAL = '#4a4e54',
+  WHITE = '#efece4';
+
+/**
+ * Lot i in detail (spec §4.39) into the three meshers B = { W (walls, trims, props: `wmask`), G (glass: `glow`), R (pitched roofs) },
+ * standing on ground height y0, its walls coloured `wall` ([r, g, b] linear, already tinted by wealth). The panes are exactly
+ * `facade(l, i)`'s (the night glows sit on them). Returns false for a kind the kit does not know.
+ */
+export function buildLot(B, l, i, y0, wall) {
+  const F = facade(l, i);
+  if (!F) return false;
+  const { fr, L, eave } = F,
+    { w, d, h, x, z, cs, sn } = fr,
+    P = (lx, ly, lz) => [x + lx * cs + lz * sn, y0 + ly, z - lx * sn + lz * cs],
+    { W, G, R } = B,
+    tex = L.wall,
+    hs = k => unit(i * 13 + k),
+    pick = (list, k) => rgb(list[Math.floor(hs(k) * list.length) % list.length]),
+    trim = mix(wall, rgb(WHITE), 0.3),
+    dark = mul(wall, 0.72),
+    roofC = L.rt
+      ? mul(pick(L.wu && L.rt === 'metal' ? ROOFCOL.metal : L.rt === 'metal' ? ['#a8adb2', '#9aa0a6'] : ROOFCOL[L.rt], 1), 1)
+      : null,
+    w2 = w / 2,
+    d2 = d / 2;
+  // ---- the body and the roof ----
+  if (L.roof === 'cyl') {
+    const r = Math.min(w, d) / 2,
+      tank = l.kind === 'tank',
+      top = tank ? h - 0.35 * r : h;
+    lcyl(W, P, 0, 0, r, -FOOT, top, wall, tex, 14, !tank);
+    if (tank) {
+      lcone(W, P, 0, 0, r, top, h, trim, 14);
+      for (const k of [0.33, 0.66]) lcyl(W, P, 0, 0, r + 0.05, h * k, h * k + 0.14, dark, 'none', 14, false);
+      // the ladder up the front (the side toward the camera)
+      const fx = -sn * (r + 0.06),
+        fz = cs * (r + 0.06),
+        Q = (u, y, o) => P(fx + cs * u - sn * o, y, fz + sn * u + cs * o);
+      lbox(W, Q, -0.2, 0.2, 0, top, 0, 0.06, rgb(METAL), 'none', 'ny');
+    } else {
+      lcyl(W, P, 0, 0, r + 0.06, h - 2.2, h - 1.5, rgb('#c8463a'), 'none', 12, false);
+      lcyl(W, P, 0, 0, r + 0.06, h - 0.9, h - 0.2, rgb('#c8463a'), 'none', 12, false);
+      lcyl(W, P, 0, 0, r + 0.1, h - 0.2, h, rgb('#3a3a3a'), 'none', 12, true);
+    }
+    return true;
+  }
+  if (L.plinth) lbox(W, P, -w2 - 0.04, w2 + 0.04, -FOOT, 0.45, -d2 - 0.04, d2 + 0.04, dark, 'concrete', 'nypy');
+  if (L.roof === 'flat') {
+    const deck = h - (L.bare ? 0 : 0.35),
+      t = 0.16;
+    lbox(W, P, -w2, w2, -FOOT, h, -d2, d2, wall, tex, L.bare ? 'ny' : 'nypy');
+    if (!L.bare) {
+      // the parapet: its top, its inner sides, the roof deck
+      const dc = mix(wall, rgb('#8a8984'), 0.6),
+        y = [0, deck, h],
+        rim = (a, b, c2, d3) => W.quad(P(...a), P(...b), P(...c2), P(...d3), trim, [0, 0, 0, 0, 0, 0, 0, 0], MASK.none);
+      rim([-w2, h, d2], [w2, h, d2], [w2 - t, h, d2 - t], [-w2 + t, h, d2 - t]);
+      rim([w2, h, -d2], [-w2, h, -d2], [-w2 + t, h, -d2 + t], [w2 - t, h, -d2 + t]);
+      rim([w2, h, d2], [w2, h, -d2], [w2 - t, h, -d2 + t], [w2 - t, h, d2 - t]);
+      rim([-w2, h, -d2], [-w2, h, d2], [-w2 + t, h, d2 - t], [-w2 + t, h, -d2 + t]);
+      const ic = mul(trim, 0.8),
+        x0 = -w2 + t,
+        x1 = w2 - t,
+        z0 = -d2 + t,
+        z1 = d2 - t,
+        flat = [0, 0, 0, 0, 0, 0, 0, 0];
+      // the parapet's inner sides, facing the deck
+      W.quad(P(x1, y[1], z1), P(x0, y[1], z1), P(x0, h, z1), P(x1, h, z1), ic, flat, MASK.none);
+      W.quad(P(x0, y[1], z0), P(x1, y[1], z0), P(x1, h, z0), P(x0, h, z0), ic, flat, MASK.none);
+      W.quad(P(x1, y[1], z0), P(x1, y[1], z1), P(x1, h, z1), P(x1, h, z0), ic, flat, MASK.none);
+      W.quad(P(x0, y[1], z1), P(x0, y[1], z0), P(x0, h, z0), P(x0, h, z1), ic, flat, MASK.none);
+      W.quad(
+        P(-w2 + t, deck, d2 - t),
+        P(w2 - t, deck, d2 - t),
+        P(w2 - t, deck, -d2 + t),
+        P(-w2 + t, deck, -d2 + t),
+        dc,
+        wallUV('plaster', -w2, w2, -d2, d2),
+        MASK.concrete
+      );
+      if (L.cornice) lbox(W, P, -w2 - 0.12, w2 + 0.12, h - 0.75, h - 0.5, -d2 - 0.12, d2 + 0.12, trim, 'none', 'ny');
+      if (L.crown) lbox(W, P, -w2 - 0.06, w2 + 0.06, h - 1.1, h - 0.45, -d2 - 0.06, d2 + 0.06, mul(wall, 0.55), 'none', 'nypy');
+      roofProps(W, P, L, l, i, w, d, deck, h);
+    }
+  } else if (L.roof === 'gable' || L.roof === 'hip' || L.roof === 'lean') {
+    lbox(W, P, -w2, w2, -FOOT, eave, -d2, d2, wall, tex, 'nypy');
+    pitched(W, R, P, L, w, d, eave, h, wall, roofC, hs(3));
+    if (L.wu && L.tank && hs(4) < L.tank) {
+      // a water drum on stilts beside the house
+      const tx = w2 + 0.5,
+        tz = -d2 * 0.4;
+      for (const [a, b] of [
+        [-0.3, -0.3],
+        [0.3, -0.3],
+        [-0.3, 0.3],
+        [0.3, 0.3]
+      ])
+        lbox(W, P, tx + a - 0.04, tx + a + 0.04, -0.3, 1.4, tz + b - 0.04, tz + b + 0.04, rgb(METAL));
+      lcyl(W, P, tx, tz, 0.42, 1.4, 2.2, pick(TANKCOL, 5), 'none', 10, true);
+    }
+  } else if (L.roof === 'stepped') {
+    const e1 = h * 0.5,
+      e2 = h * 0.78,
+      zc = -0.18 * d,
+      uw = 0.36 * w,
+      ud = 0.31 * d;
+    lbox(W, P, -w2, w2, -FOOT, e1, -d2, d2, wall, tex, 'ny');
+    lbox(W, (a, b, c2) => P(a, b, c2 + zc), -uw, uw, e1, e2, -ud, ud, wall, tex, 'nypy');
+    pitched(W, R, (a, b, c2) => P(a, b, c2 + zc), L, uw * 2, ud * 2, e2 - e1, h - e1, wall, roofC, hs(3), e1);
+    // a tiled lean-to over the lower floor's front
+    const v = band(ROOFTEX.shu),
+      zf = zc + ud;
+    R.quad(
+      P(-w2 - 0.15, e1 - 0.05, d2 + 0.2),
+      P(w2 + 0.15, e1 - 0.05, d2 + 0.2),
+      P(w2 + 0.15, e1 + 0.4, zf),
+      P(-w2 - 0.15, e1 + 0.4, zf),
+      roofC,
+      [-w2 / 4, v[0], w2 / 4, v[0], w2 / 4, v[1], -w2 / 4, v[1]]
+    );
+  }
+  // ---- the facade: panes, sills, balconies, AC units, the shop front ----
+  for (const fc of F.faces) {
+    const { nx, nz, half } = fc;
+    for (const o of fc.wins) {
+      const hf = o.half !== undefined ? o.half : half,
+        Fp = onFace(P, nx, nz, hf, 0.025),
+        tint =
+          o.tile === TILE.cdoor ? mix(wall, rgb(WHITE), 0.25) : o.tile === TILE.shutter ? mix(rgb('#ffffff'), wall, 0.15) : rgb('#ffffff'),
+        gl = { glow: o.lit ? rgb(o.glow) : [0, 0, 0] };
+      pane(G, Fp, o.u, o.y, o.w, o.h, tint, tileUV(o.tile), gl);
+      if (o.kind === 'win' && !L.curtain && o.tile !== TILE.shoji)
+        faceBox(
+          W,
+          P,
+          nx,
+          nz,
+          hf,
+          o.u - o.w / 2 - 0.08,
+          o.u + o.w / 2 + 0.08,
+          o.y - o.h / 2 - 0.09,
+          o.y - o.h / 2,
+          0,
+          0.1,
+          trim,
+          'nynzpxnx'
+        );
+      if (o.kind === 'bal') {
+        const y = o.y - o.h / 2 - 0.12;
+        faceBox(W, P, nx, nz, hf, o.u - o.w / 2 - 0.3, o.u + o.w / 2 + 0.3, y, y + 0.12, 0, 0.62, trim);
+        faceBox(
+          W,
+          P,
+          nx,
+          nz,
+          hf,
+          o.u - o.w / 2 - 0.3,
+          o.u + o.w / 2 + 0.3,
+          y + 0.12,
+          y + 0.85,
+          0.57,
+          0.62,
+          rgb(hs(6) < 0.5 ? METAL : WHITE)
+        );
+      } else if (o.kind === 'win' && L.wallAc && unit(i * 29 + Math.round(o.y * 10) + Math.round(o.u * 7)) < L.wallAc)
+        faceBox(W, P, nx, nz, hf, o.u + o.w / 2 + 0.1, o.u + o.w / 2 + 0.68, o.y - o.h / 2 - 0.1, o.y - o.h / 2 + 0.32, 0, 0.32, rgb(AC));
+      else if (o.kind === 'door' && o.tile !== TILE.cdoor && o.tile !== TILE.roller)
+        faceBox(W, P, nx, nz, hf, o.u - o.w / 2 - 0.15, o.u + o.w / 2 + 0.15, o.h + 0.05, o.h + 0.14, 0, 0.45, dark); // a canopy over the door
+    }
+    if (F.shop && F.shop.f === fc.f) awning(W, P, nx, nz, half, F.shop, hs(7));
+  }
+  return true;
+}
+
+/** A pitched roof over w × d (local), walls up to `eave`, ridge at `top` (y offset `base`): gable (ridge along the longer side), hip or lean-to. Gable ends in the wall mesher, slopes in the roof mesher. */
+function pitched(W, R, P, L, w, d, eave, top, wall, rc, hh, base = 0) {
+  const along = w >= d,
+    A = (along ? w : d) / 2,
+    Bh = (along ? d : w) / 2,
+    // canonical (a along the ridge, y, b across) → the lot frame
+    Q = (a, y, b) => (along ? P(a, y + base, b) : P(b, y + base, -a)),
+    v = band(ROOFTEX[L.rt] || 0),
+    ov = 0.28,
+    og = 0.22,
+    e = MASK[L.wall] || MASK.none;
+  if (L.roof === 'lean') {
+    const s = (top - eave) / (2 * Bh),
+      ey = eave - ov * s;
+    R.quad(Q(-A - og, ey, Bh + ov), Q(A + og, ey, Bh + ov), Q(A + og, top + 0.1 * s, -Bh - 0.1), Q(-A - og, top + 0.1 * s, -Bh - 0.1), rc, [
+      (-A - og) / 4,
+      v[0],
+      (A + og) / 4,
+      v[0],
+      (A + og) / 4,
+      v[1],
+      (-A - og) / 4,
+      v[1]
+    ]);
+    W.tri(Q(A, eave, Bh), Q(A, eave, -Bh), Q(A, top, -Bh), wall, [0, 0, 0, 0, 0, 0], e);
+    W.tri(Q(-A, eave, -Bh), Q(-A, eave, Bh), Q(-A, top, -Bh), wall, [0, 0, 0, 0, 0, 0], e);
+    W.quad(Q(A, eave, -Bh), Q(-A, eave, -Bh), Q(-A, top, -Bh), Q(A, top, -Bh), wall, [0, 0, 0, 0, 0, 0, 0, 0], e);
+    return;
+  }
+  const s = (top - eave) / Bh,
+    ey = eave - ov * s,
+    uv = (a0, a1) => [a0 / 4, v[0], a1 / 4, v[0], a1 / 4, v[1], a0 / 4, v[1]];
+  if (L.roof === 'hip') {
+    const r = Math.max(0, A - Bh),
+      E = A + ov,
+      D = Bh + ov;
+    R.quad(Q(-E, ey, D), Q(E, ey, D), Q(r, top, 0), Q(-r, top, 0), rc, uv(-E, E));
+    R.quad(Q(E, ey, -D), Q(-E, ey, -D), Q(-r, top, 0), Q(r, top, 0), rc, uv(-E, E));
+    R.tri(Q(E, ey, D), Q(E, ey, -D), Q(r, top, 0), rc, [D / 4, v[0], -D / 4, v[0], 0, v[1]]);
+    R.tri(Q(-E, ey, -D), Q(-E, ey, D), Q(-r, top, 0), rc, [-D / 4, v[0], D / 4, v[0], 0, v[1]]);
+    return;
+  }
+  const E = A + og,
+    D = Bh + ov;
+  R.quad(Q(-E, ey, D), Q(E, ey, D), Q(E, top, 0), Q(-E, top, 0), rc, uv(-E, E));
+  R.quad(Q(E, ey, -D), Q(-E, ey, -D), Q(-E, top, 0), Q(E, top, 0), rc, uv(-E, E));
+  W.tri(Q(A, eave, Bh), Q(A, eave, -Bh), Q(A, top, 0), wall, [0, 0, 0, 0, 0, 0], e);
+  W.tri(Q(-A, eave, -Bh), Q(-A, eave, Bh), Q(-A, top, 0), wall, [0, 0, 0, 0, 0, 0], e);
+  // the bargeboards along the gable ends' slopes, and a ridge cap (with upturned ends on Shu roofs)
+  const bc = mul(wall, 0.6);
+  for (const sa of [-1, 1]) {
+    const a0 = sa * (E - 0.03),
+      a1 = sa * (E + 0.03);
+    for (const sb of [-1, 1])
+      W.quad(Q(a1, ey, sb * D), Q(a1, top + 0.04, 0), Q(a0, top + 0.04, 0), Q(a0, ey, sb * D), bc, [0, 0, 0, 0, 0, 0, 0, 0], MASK.none);
+  }
+  if (L.ridge || L.rt === 'shu') {
+    const rcap = mul(rc, 0.55),
+      C = (a, y, b) => Q(a, y, b);
+    lbox(W, C, -E, E, top - 0.06, top + 0.12, -0.1, 0.1, rcap, 'none', 'ny');
+    if (hh < 0.7)
+      for (const sa of [-1, 1])
+        lbox(W, C, sa > 0 ? E - 0.12 : -E, sa > 0 ? E : -E + 0.12, top + 0.12, top + 0.38, -0.08, 0.08, rcap, 'none', 'ny');
+  }
+}
+
+/** Roof furniture on a flat roof (deck at y = deck): AC units, a stair house, an antenna, vents, a water tank on Wu roofs. */
+function roofProps(W, P, L, l, i, w, d, deck, h) {
+  const hs = k => unit(i * 17 + k),
+    iw = w / 2 - 0.6,
+    id = d / 2 - 0.6;
+  if (iw <= 0.2 || id <= 0.2) return;
+  const spot = k => [(hs(k) * 2 - 1) * iw * 0.8, (hs(k + 1) * 2 - 1) * id * 0.8];
+  for (let k = 0; k < (L.ac || 0); k++) {
+    if (hs(10 + k) > 0.8) continue;
+    const [ax, az] = spot(20 + k * 2);
+    lbox(W, P, ax - 0.35, ax + 0.35, deck, deck + 0.5, az - 0.3, az + 0.3, rgb(AC), 'none', 'ny');
+    lbox(W, P, ax - 0.2, ax + 0.2, deck + 0.5, deck + 0.53, az - 0.2, az + 0.2, rgb(METAL), 'none', 'ny');
+  }
+  if (h > 8 && iw > 0.9 && id > 0.9) lbox(W, P, -iw, -iw + 1.5, deck, deck + 1.7, -id, -id + 1.3, mul(rgb(AC), 0.85), 'concrete', 'ny');
+  if (L.crown && h > 14 && hs(3) < 0.5) lbox(W, P, 0.3, 0.38, deck, h + 3.5, -0.2, -0.12, rgb(METAL), 'none', 'ny');
+  if (L.vents) for (const k of [0, 1]) lcyl(W, P, (k - 0.5) * iw, 0, 0.32, deck, deck + 1.3, rgb('#9aa0a6'), 'metal', 8, true);
+  if (L.wu && L.tank && hs(5) < L.tank) {
+    const [tx, tz] = spot(40);
+    for (const [a, b] of [
+      [-0.3, -0.3],
+      [0.3, -0.3],
+      [-0.3, 0.3],
+      [0.3, 0.3]
+    ])
+      lbox(W, P, tx + a - 0.04, tx + a + 0.04, deck, deck + 0.55, tz + b - 0.04, tz + b + 0.04, rgb(METAL));
+    lcyl(W, P, tx, tz, 0.45, deck + 0.55, deck + 1.4, rgb(TANKCOL[Math.floor(hs(6) * 3) % 3]), 'none', 10, true);
+  }
+}
+
+/** A striped awning over the shop front (and its valance), in the district's colours. */
+function awning(W, P, nx, nz, half, S, hh) {
+  const n = Math.max(3, Math.round(S.w / 0.45)),
+    c1 = rgb(S.colors[Math.floor(hh * S.colors.length) % S.colors.length]),
+    c2 = rgb('#efe9dc'),
+    y1 = S.top + 0.28,
+    y0 = S.top - 0.12,
+    out = 0.95,
+    Q = (u, y, o) => P(nx * (half + o) + nz * u, y, nz * (half + o) - nx * u);
+  for (let k = 0; k < n; k++) {
+    const u0 = -S.w / 2 + (k * S.w) / n,
+      u1 = u0 + S.w / n,
+      c = k % 2 ? c2 : c1;
+    W.quad(Q(u0, y0, out), Q(u1, y0, out), Q(u1, y1, 0.02), Q(u0, y1, 0.02), c, [0, 0, 0, 0, 0, 0, 0, 0], MASK.none);
+    W.quad(Q(u0, y0 - 0.2, out), Q(u1, y0 - 0.2, out), Q(u1, y0, out), Q(u0, y0, out), c, [0, 0, 0, 0, 0, 0, 0, 0], MASK.none);
+  }
+}
+
+// ---------- street furniture (spec §4.39): benches, bins, bus stops along the main roads; lamp posts; floodlight towers ----------
+/** A street prop at ground point (x, y, z), facing the road along (fx, fz) (a unit vector from the prop toward the road). */
+export function streetProp(W, kind, x, y, z, fx, fz) {
+  // local frame: +z toward the road, +x along it
+  const P = (a, b, c) => [x + a * fz + c * fx, y + b, z - a * fx + c * fz],
+    wood = rgb('#8a6440'),
+    iron = rgb('#3c4046');
+  if (kind === 'bench') {
+    lbox(W, P, -0.75, 0.75, 0.42, 0.5, -0.2, 0.2, wood);
+    lbox(W, P, -0.75, 0.75, 0.55, 0.9, -0.24, -0.18, wood, 'none', 'ny');
+    for (const a of [-0.6, 0.6]) lbox(W, P, a - 0.04, a + 0.04, -0.2, 0.55, -0.2, 0.18, iron);
+  } else if (kind === 'bin') {
+    lcyl(W, P, 0, 0, 0.24, -0.2, 0.85, rgb('#3f6a4a'), 'none', 8, true);
+    lcyl(W, P, 0, 0, 0.27, 0.85, 0.92, iron, 'none', 8, true);
+  } else if (kind === 'stop') {
+    const glassC = rgb('#9fb8c8');
+    lbox(W, P, -1.4, 1.4, -0.2, 2.3, -0.75, -0.68, glassC, 'none', 'ny'); // the back pane
+    for (const a of [-1.4, 1.4]) lbox(W, P, a - 0.05, a + 0.05, -0.2, 2.45, -0.78, 0.55, iron);
+    lbox(W, P, -1.55, 1.55, 2.45, 2.58, -0.85, 0.65, rgb('#d8d4cc'), 'none', 'ny'); // the roof
+    lbox(W, P, -1.1, 1.1, 0.42, 0.5, -0.65, -0.3, wood); // the seat
+    lbox(W, P, 1.75, 1.82, -0.2, 2.6, 0.3, 0.37, iron); // the sign post
+    lbox(W, P, 1.55, 2.02, 2.1, 2.6, 0.28, 0.4, rgb('#2f6fb8'), 'none', 'ny');
+  }
+}
+/** A street lamp's post under its head at (x, top, z): the post stands `reach` m further from the road (ox, oz = away from the road), an arm out to the head. */
+export function lampPost(W, x, yb, top, z, ox, oz, c) {
+  const reach = 0.9,
+    px = x + ox * reach,
+    pz = z + oz * reach,
+    P = (a, b, cc) => [px + a, yb + b, pz + cc],
+    up = top - yb;
+  lbox(W, P, -0.14, 0.14, -0.3, 0.6, -0.14, 0.14, mul(c, 0.8)); // the base
+  lbox(W, P, -0.07, 0.07, 0.6, up + 0.28, -0.07, 0.07, c);
+  // the arm: from the post's top out to the head, and the head (the glow hangs just below it)
+  const Q = (a, b, cc) => [px + a * -ox + cc * oz, yb + b, pz + a * -oz - cc * ox];
+  lbox(W, Q, 0, reach + 0.25, up + 0.2, up + 0.28, -0.04, 0.04, c, 'none', 'ny');
+  lbox(W, Q, reach - 0.28, reach + 0.3, up + 0.06, up + 0.22, -0.13, 0.13, mul(c, 0.7), 'none', '');
+}
+/** A floodlight tower at (x, z) from ground yb up to the lamp bank at `top`, the bank turned toward (cx, cz) (the court). */
+export function floodTower(W, x, yb, top, z, cx, cz, c) {
+  const dx = cx - x,
+    dz = cz - z,
+    L = Math.hypot(dx, dz) || 1,
+    fx = dx / L,
+    fz = dz / L,
+    P = (a, b, cc) => [x + a * fz + cc * fx, yb + b, z - a * fx + cc * fz], // +z local toward the court
+    up = top - yb;
+  lbox(W, P, -0.32, 0.32, -0.4, 0.5, -0.32, 0.32, mul(c, 0.8));
+  lbox(W, P, -0.14, 0.14, 0.5, up + 0.1, -0.5, -0.22, c); // the mast, set back from the bank
+  lbox(W, P, -0.08, 0.08, 0.5, up - 0.4, -0.14, 0.02, mul(c, 0.85)); // a cable run
+  lbox(W, P, -0.9, 0.9, up - 0.45, up + 0.5, -0.36, -0.16, mul(c, 0.7), 'none', ''); // the lamp bank (the glow on its face)
+  lbox(W, P, -0.95, 0.95, up + 0.5, up + 0.58, -0.45, 0.05, c, 'none', 'ny');
+}
