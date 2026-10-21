@@ -834,7 +834,7 @@ export function create(onIdle) {
       clockStep(dt);
       lit = cur && cur.time ? skyAt(cur.time.keys, tod, sun, hemi, scene) : 0;
       if (C.view) life.ringScale((14 * 2 * C.view.d * Math.tan((cam.fov * Math.PI) / 360)) / (ch || 1) / 0.7); // a ring ≥ ~14 px
-      life.tick(dt, clock, tod);
+      life.tick(dt, clock, tod, cam); // (cam: the nearest named people on screen as VRMs)
       hoverStep();
       nature.tick(dt, clock);
       furn.pulse(clock);
