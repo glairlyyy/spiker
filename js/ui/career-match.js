@@ -234,8 +234,13 @@ function simCareer(fx) {
   let snap = null,
     msg = '';
   const fin = fx.onFinish,
+    set = fx.setup,
     m = Cup.simNow({
       ...fx,
+      setup: mm => {
+        if (set) set(mm);
+        Team.setup(RUN, mm); // duo cards, ex-teammates (spec §4.36)
+      },
       onFinish: mm => {
         snap = resultSnap(RUN, mm);
         return (msg = fin(mm) || '');
@@ -245,22 +250,95 @@ function simCareer(fx) {
   return resultScreen(m, m.t[m.winner], Math.max(...sc), Math.min(...sc), matchStars(m), snap ? resultData(RUN, m, snap, msg) : null, {
     round: fx.round,
     back: 'Continue',
-    leave: 'lockEnd()',
+    leave: 'chatAfter()',
     box: false,
     key: true
   });
 }
-/** Watch a career fixture (from js/career) on the match screen; leaving runs its own clean-up, then back to the hub. */
+/** Watch a career fixture (from js/career) on the match screen; leaving runs its own clean-up, then back to the hub (the team chat first). */
 function watchCareer(fx) {
-  const done = fx.onLeave;
+  const done = fx.onLeave,
+    c0 = RUN && RUN.tlife ? RUN.tlife.chat : null; // (a match left before its end writes no chat: never show an older one)
+  const set = fx.setup;
   navigate('match', {
     ...fx,
+    setup: m => {
+      if (set) set(m);
+      Team.setup(RUN, m); // duo cards, ex-teammates (spec §4.36): the hand reads m.duo; the cut-ins wait for the court
+      requestAnimationFrame(() => teamWatch(m));
+    },
     onLeave: () => {
       if (done) done();
+      const C = RUN && !RUN.result && Team.pending(RUN);
+      if (C && C !== c0) CW.lock = { phase: 'res', res: chatCard(RUN), chat: true };
       navigate('career');
     }
   });
 }
+/**
+ * The team chat (spec §4.36 2): after a match you played, 2–4 teammates' messages (face, name, behaviour, their line) and your one
+ * reply — Back them · Joke · Stay quiet — each a small memory with them. Shown in the hub's lock layer after the result card.
+ */
+function chatCard(run) {
+  const C = Team.pending(run);
+  if (!C) return '';
+  const rows = C.msgs
+      .map(x => {
+        const p = People.find(run, x.id),
+          B = TRAITS[Team.beh(run, x.id)];
+        return p
+          ? `<div class="rstar" style="--tc:${p.team ? p.team.color : 'var(--line-strong)'}"><span></span>${faceSVG(p, x.sit.startsWith('win') ? 0.6 : -0.3, 32)}<span><b>${esc(p.name)}</b><span>${esc(x.t)}</span></span><span class="small mute">${B ? esc(B.beh) : ''}</span></div>`
+          : '';
+      })
+      .join(''),
+    btn = (k, R0) =>
+      `<button class="btn ${k === 'quiet' ? 'hot' : ''}" onclick="chatReply('${k}')" ${tip(`A small memory with each of them: how it lands depends on who they are.`)}>${esc(R0.name)} <kbd>${R0.key}</kbd>${k === 'quiet' ? ' <kbd>Space</kbd>' : ''}</button>`;
+  return `<div class="ocard mres mono tchat"><div class="rhead"><span class="lab">Team chat</span><h2>${C.win ? 'After the win' : 'After the loss'}</h2></div><div class="rtop">${rows}</div><div class="lab">Your reply</div><div class="acts">${Object.entries(
+    TEAM_REPLY
+  )
+    .map(([k, R0]) => btn(k, R0))
+    .join('')}</div></div>`;
+}
+/** Answer the chat and close it. */
+function chatReply(kind) {
+  Team.reply(RUN, kind);
+  Run.save(RUN);
+  lockEnd();
+}
+/** A simmed match's result closed: the team chat next (if one waits), else the hub. */
+function chatAfter() {
+  if (CW.lock && CW.lock.phase === 'res' && !CW.lock.chat && RUN && !RUN.result && Team.pending(RUN)) {
+    CW.lock.res = chatCard(RUN);
+    CW.lock.chat = true;
+    const el = $('#actlock');
+    if (el) el.outerHTML = lockLayer();
+    return;
+  }
+  lockEnd();
+}
+/** Keys over the hub's result layer (before the hub's own): the chat's 1 / 2 / 3, Space / Enter / Esc = Stay quiet; a result card → the chat. */
+function chatKey(e) {
+  if (
+    (typeof A !== 'undefined' && A) ||
+    typeof CW === 'undefined' ||
+    !CW.lock ||
+    CW.lock.phase !== 'res' ||
+    e.ctrlKey ||
+    e.metaKey ||
+    e.altKey
+  )
+    return;
+  const go = [' ', 'Enter', 'Escape'].includes(e.key);
+  if (CW.lock.chat) {
+    const k = go ? 'quiet' : Object.keys(TEAM_REPLY).find(x => TEAM_REPLY[x].key === e.key);
+    if (!k) return;
+    chatReply(k);
+  } else if (go && RUN && Team.pending(RUN)) chatAfter();
+  else return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+}
+addEventListener('keydown', chatKey, true);
 /** Play a career match on the match screen, or (sim) resolve it at once without watching. */
 function playCareer(kind, sim) {
   const fx = Cup.fixture(RUN, kind);

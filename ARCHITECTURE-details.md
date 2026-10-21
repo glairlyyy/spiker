@@ -1037,3 +1037,42 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   60 / 80), a corner badge for `Circle.mood` (hurt ✚ `--bad`, tired z `--warn`, out –), a teammate ringed in the club colour
   (`--tc` border); the tip says name · club · bond · mood; click → `openPerson(id)`. Nothing when the circle is empty.
 
+
+## Team stories (spec §4.36 2–4, T-328–T-330)
+
+- **Files**: `js/data/team.js` (TEAM numbers, TEAM_CHAT lines by behaviour × situation, TEAM_REPLY; its memory kinds are merged into
+  MEMORY / MEM_TEXT at load), `js/career/team.js` (`Team`, DOM-free, hashes only — `hstr`, never R()). State lazily in `run.tlife`
+  (`Team.of`; not `run.team`, which is the club index), no RUN_DEFAULTS, no save bump. Agent T's contract is read behind guards:
+  `Team.circle` = `Circle.of(run)` or your mates (≤ TEAM.circle), `Team.ex` = `run.ex` or {}.
+- **Hook**: `Cup.record` (every match of yours, you = side 0) calls `Team.matched(run, m)`.
+- **Chat** (T-328): `Team.chatFor` → `run.tlife.chat = { key, win, msgs: [{ id, sit, t }], done }`: 2–4 people of your side's squad
+  (played first, then by hash), each one line from `TEAM_CHAT[their first trait][sit]` (`Team.sit`: win / loss + `_you` / `_them` when
+  one line beats the other by REL.behave.proud.gap — `Team.line` weighs a stat line as Rel.afterMatch does). A match you only watched
+  clears it. `Team.reply(run, kind)` once: `Rel.add(id, TEAM_REPLY[kind].mem, v × by[behaviour])` for each who wrote (0 → none).
+  UI (career-match.js): `chatCard` in the hub's lock layer (`CW.lock = { phase: 'res', res, chat: true }`) — after a watched match
+  from `watchCareer`'s onLeave (only a chat this match wrote), after a simmed one from the result card's Continue (`chatAfter`);
+  `chatKey` (window, capture) takes 1 / 2 / 3 and Space / Enter / Esc (= Stay quiet) before `hubKey`.
+- **Arcs** (T-329): `run.tlife.arcs[id] = { id, y, w (want), b (beat), st, at, alt? }` and `run.tlife.helped[id] = [years]`. `Team.week`
+  (a WEEK_START step appended at load by team.js): lapsed beats → `ignored`, the next beat opens (the seat waits for an evaluation
+  week, then its `alt`), circle members start one arc a season (hashed start week, ≤ TEAM.arc.max running, until TEAM.arc.last).
+  `Team.beat` = ARCS data with `alt` when it can't be played as written (a match with a non-mate → a day). `Team.answer(run, id, yes)`:
+  money · day (`City.day` at `Asks.place`, as an accepted invite) · match (→ 'wait', kept by `Team.arcMatch` from Team.matched when
+  they played on your side) · sit (`run.sitout`, Asks.sits) · choice; each help → `arc_help`, the last → `arc_done` + `helped`;
+  no → `arc_refused` (a `soft` beat: none; `back` pays back). Rewards: `Team.growMul` (× TEAM.grow the season it was seen through)
+  is multiplied into `Gifts.grow` (every NPC growth path); `Team.lean(run, out)` from `Cup.entrants` (year 2, after the rival is
+  placed): a helped friend of your squad's region takes the weakest same-role seat on a hash < TEAM.lean (within TEAM.leanOvr OVR).
+  UI (career-people.js): `arcStep` (the card's line), `arcAsk` / `arcAnswer` (the open beat, cost on the help button), open beats
+  sort with the waiting asks (the `!` badge).
+- **Duo cards and ex-teammates** (T-330): six CARDS with `src: 'duo'` and `duo: [role, role]` (js/data/cards.js; `Team.duoCard` finds
+  yours by your role and theirs). `Team.setup(run, m)` — called from the UI's fixture wrappers (`watchCareer` / `simCareer` setup,
+  after the fixture's own; the headless Raid / Midnight Court have none) — sets `m.duo[your side] = { card: [you, friends] }` for
+  squadmates whose duo is unlocked (`Team.duoOk`: bond TEAM.duo once — `Team.duoWeek` logs it in `run.tlife.duo`) and refills turn 0
+  (the coach picked in newMatch before m.duo existed; `played` reset so counts stay 1); `m.exIds` = ex-teammates across the net. Engine
+  (cards.js): `duoIds(m, i, id)`, `duoOn(T, ids)` (two of the pair on court); `cardInPool` holds a duo card only while both are on
+  court; its buffs carry `ids` and `cardFor` gives them to the pair only while both are on court; never spent (no CARD_EDGE: always
+  'fit'); the coach scores it `CARD_AI.duo`. No m.duo → nothing reads differently (goldens unchanged). UI: `cardName` ("Mint × You:
+  Pin Connection", chips and the result row); `teamWatch(m)` (match-cards.js, a rAF loop from watchCareer's setup) waits until no
+  prep / turn / exchange / scene holds the court, then `exRemark(m)` once (match-exchange.js: MLINES `ex` / `ex_reply` by personality,
+  holds the rally through `Dir.talk`), then `cardsDuoCut` the first time each duo card is slotted with its pair on court (the hype
+  banner `showBanner` "Mint × You" + `showSay` with DUO_SAY). `faced_ex` (Team.matched): each ex who played against you (Agent T owns
+  the kind; data/team.js defines a stand-in only while it is missing).

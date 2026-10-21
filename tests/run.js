@@ -22,6 +22,8 @@ require('./traits.test');
 require('./gifts.test');
 require('./team.test');
 
+require('./story.test');
+
 // ---------- report ----------
 let fail = 0,
   skipped = 0;

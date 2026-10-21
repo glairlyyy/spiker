@@ -73,16 +73,16 @@ Accept: UI smoke passes with the strip; design-system rules (tokens, type ≥ 12
 QA: career run → the hub, screenshot.
 Result: NPC "mood" = this week's state from their career (injured ✚ / tired z under PEOPLE.sta.tired / out –, none when fine) — NPCs have no mood value; teammates ringed in the club colour, starred only in the tip; UI smoke step added (strip, ring, bond bar, click → card); QA t327-strip.png (+ -zoom, -click).
 
-### [ ] T-328: Team chat after matches
+### [x] T-328: Team chat after matches
 Agent: S
 Spec: §4.36 2          Goldens: unchanged          Save: no change (`run.team` lazy)
 Goal: after a match you played: 2–4 teammate messages in their behaviour's voice (by result, your line, theirs); one reply → a memory.
 Files: js/career/team.js (new), js/data/team.js (new; lore voices), js/ui/career-match.js, index.html, tests/story.test.js (new; in tests/run.js)
 Accept: tests — the messages match behaviours and the result; one reply writes one memory; no randoms.
 QA: career run → a match → the chat card.
-Result:
+Result: Team.matched from Cup.record (one line in cup.js, every match of yours) → run.tlife.chat (state in `run.tlife`: `run.team` is the club index); one reply to the whole chat = one memory with each who wrote (× behaviour, 0 = none); card in the hub lock layer after the result (watched: onLeave; sim: Continue → chatAfter; keys 1/2/3, Space = Stay quiet); ui-smoke's sim step answers it. 4 tests; QA: 4 messages after a court loss, 0 page errors.
 
-### [ ] T-329: Personal arcs
+### [x] T-329: Personal arcs
 Agent: S
 Spec: §4.36 3          Goldens: unchanged          Save: no change
 Goal: each circle member gets one three-beat arc a season by want; each beat asks something; helping → a big memory, growth × 1.1,
@@ -90,9 +90,9 @@ leaning toward your year-2 Cup squad (a weight Cup squads read).
 Files: js/career/team.js, js/data/team.js, js/ui/career-people.js (the arc step), js/career/cup.js (the lean, one line), tests/story.test.js
 Accept: tests — an arc advances beat by beat; helping applies its rewards; one arc per member a season.
 QA: career run → an arc's three beats.
-Result:
+Result: Team.week appended to WEEK_START from team.js at load (career.test's step count 7 → 8); growth × 1.1 via one hook in Gifts.grow (js/career/gifts.js — not listed, the one place every NPC growth path reads); Cup lean = Team.lean from Cup.entrants (one line, year 2, hash < 0.6, within 5 OVR, same region); a match beat for a non-teammate and the seat without an evaluation fall back to a day / a choice; unanswered beats → `ignored`. 4 tests; career 12 both: good Y2 92.3, casual 87.3 (no arcs answered by the bot); QA: the debt arc's 3 beats on the People sheet, 0 page errors.
 
-### [ ] T-330: Duo cards and ex-teammates across the net
+### [x] T-330: Duo cards and ex-teammates across the net
 Agent: S
 Spec: §4.36 4, B (ex-teammates)          Goldens: unchanged (no duo card / no ex → today)          Save: no change
 Goal: a 60+ friend unlocks a duo card (by roles) playable whenever you share a court, with a small cut-in; ex-teammates across the
@@ -100,7 +100,7 @@ net get their remarks and a faced_ex memory.
 Files: js/data/cards.js, js/engine/cards.js, js/ui/match-cards.js, js/data/match-lines.js, js/ui/match-exchange.js, js/career/team.js, tests/story.test.js
 Accept: tests — the duo card is in the hand only with that friend on court; it acts; a match vs an ex writes faced_ex.
 QA: Monster/career match with a duo friend → the card and its cut-in.
-Result:
+Result: m.duo set by Team.setup from the UI's fixture wrappers (watched + simmed; headless Raid / Midnight Court none), turn 0 refilled so the coach can slot it; engine reads m.duo only (new helpers `duoIds` / `duoOn`; buff entries carry `ids`) — no m.duo → today (goldens unchanged); no new act kind: the cut-in reuses showBanner / showSay from a rAF watcher (`teamWatch`), the ex remark the exchange box (MLINES ex / ex_reply, not a director kind); faced_ex stand-in in data/team.js until T's lands. 2 tests; UI smoke 14/14; career 12 both unchanged (good Y2 92.3, casual 87.3); QA: "Joss × You: Pin Connection" in the hand, its cut-in, the ex's remark, 0 page errors.
 
 **Talent, gifts and behaviour (owner, 2026-10-20, spec §4.35): two agents.** **Agent G — Gifts**: T-320 → T-322 → T-323.
 **Agent P — People & presence**: T-321 → T-324. Ownership: G owns js/data/gifts.js (new), js/career/gifts.js (new), people.js,

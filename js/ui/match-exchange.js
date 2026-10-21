@@ -77,3 +77,24 @@ function exchangeHide(silent) {
   x.el.remove();
   if (!silent && x.done) x.done(x.lines);
 }
+/**
+ * An ex-teammate across the net (spec §4.36 B, T-330): once a match, after match prep — their line to you, your reply (MLINES `ex` /
+ * `ex_reply`, by personality and hash). Holds the next rally like the director's exchanges (Dir.talk). False when there is none.
+ */
+function exRemark(m) {
+  const ids = (m && m.exIds) || [],
+    you = m && m.human != null ? byId(m.human) : null,
+    ex = ids.map(byId).find(p => p && A.disp && A.disp[p.id]) || ids.map(byId).find(Boolean);
+  if (!ex || !you) return false;
+  const ys = m.t[0] === you.team ? 0 : 1,
+    sc = s => `${m.pts[s]}–${m.pts[1 - s]}`,
+    name = s => m.t[s].short || m.t[s].name,
+    n = `ex|${A.pointN || 0}`,
+    lines = [
+      { p: ex.id, t: mlinePick('ex', ex, you, name(1 - ys), sc(1 - ys), n, name(ys)), side: 1 - ys },
+      { p: you.id, t: mlinePick('ex_reply', you, ex, name(ys), sc(ys), n, name(1 - ys)), side: ys }
+    ];
+  Dir.talk = { t: 0 };
+  exchangeShow(lines, () => (Dir.talk = null));
+  return true;
+}

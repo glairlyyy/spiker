@@ -43,8 +43,13 @@ function edgeK(p, k) {
   for (const b of E) if (cardFor(p, b)) v += b.v;
   return Math.max(0.3, 1 + v / 100);
 }
-/** Does a buff / edge entry reach p: its technique (`need`), its trait (`needT`, spec §2.31). */
-const cardFor = (p, b) => (!b.need || hasTech(p, b.need)) && (!b.needT || mtr(CM, p) === b.needT);
+/** Does a buff / edge entry reach p: its technique (`need`), its trait (`needT`, spec §2.31), a duo's pair both on court (`ids`, §4.36). */
+const cardFor = (p, b) =>
+  (!b.need || hasTech(p, b.need)) && (!b.needT || mtr(CM, p) === b.needT) && (!b.ids || (b.ids.includes(p.id) && duoOn(p.team, b.ids)));
+/** A duo (spec §4.36 4): at least two of its ids on T's court. */
+const duoOn = (T, ids) => !!T && T.P.filter(q => ids.includes(q.id)).length >= 2;
+/** Side i's duo card id: the ids of its pair (you + the friends it holds), or null (no m.duo: none — every other match). */
+const duoIds = (m, i, id) => (m.duo && m.duo[i] && m.duo[i][id]) || null;
 /** Start a match's cards (newMatch): opts.cards === false → none; opts.cards[i] = { by: 'you' | 'ai', pick: { slot: id } }. */
 function cardsInit(m, opts) {
   if (opts.cards === false) return (m.cards = null);
@@ -95,6 +100,7 @@ function cardInPool(m, i, id) {
   if (c.src === 'tech') return sq.some(p => hasTech(p, c.need));
   if (c.src === 'trait') return sq.some(p => mtr(m, p) === c.trait);
   if (c.src === 'op') return sq.some(p => p.op || p.elOn);
+  if (c.src === 'duo') return !!duoIds(m, i, id) && duoOn(m.t[i], duoIds(m, i, id)); // (only with that friend on court)
   return false;
 }
 /** Side i's pool: [id]. */
@@ -146,7 +152,7 @@ function cardScore(m, i, id, chosen, X = cardCtx(m, i)) {
   if (X.dull && !styled) return -9;
   // a trap: worth a slot when they have slotted what it names before and can again (the coach can't see their hand now)
   if (c.kind === 'trap') return c.trap.some(x => X.theirSeen.includes(x)) ? A.trap : -9;
-  let s = c.src === 'tech' ? A.tech : c.src === 'trait' ? A.trait : c.src === 'op' ? A.op : A.play;
+  let s = c.src === 'tech' ? A.tech : c.src === 'trait' ? A.trait : c.src === 'op' ? A.op : c.src === 'duo' ? A.duo : A.play;
   if (styled) s += A.style;
   const { T } = X,
     E = CARD_EDGE[id];
@@ -264,7 +270,15 @@ function cardApply(m, i) {
   C.buff = [];
   for (const id of ids) {
     const c = CARDS[id];
-    for (const k in c.buff || {}) C.buff.push({ k, v: c.buff[k], need: c.need, needT: c.needT, when: c.when });
+    for (const k in c.buff || {})
+      C.buff.push({
+        k,
+        v: c.buff[k],
+        need: c.need,
+        needT: c.needT,
+        when: c.when,
+        ...(c.src === 'duo' ? { ids: duoIds(m, i, id) || [] } : {})
+      });
   }
   for (const k in COMBOS)
     if (ids.some(id => comboOf(ids, id) === k)) for (const s in COMBOS[k].buff) C.buff.push({ k: s, v: COMBOS[k].buff[s] });

@@ -144,7 +144,12 @@ const step = async (name, fn) => {
     const txt = await ev(() => document.querySelector('#actlock').textContent);
     if (!/Top 3/i.test(txt)) throw new Error('no result card');
     await pg.keyboard.press('Space');
+    // the team chat (spec §4.36 2): after a match you played, the teammates' messages and one reply; Space = Stay quiet
+    const chat = await ev(() => (CW.lock && CW.lock.chat ? document.querySelector('#actlock').textContent : ''));
+    if (chat && !/Team chat[\s\S]*Back them[\s\S]*Stay quiet/.test(chat)) throw new Error(`team chat: ${chat.slice(0, 120)}`);
+    if (chat) await pg.keyboard.press('Space');
     if (await ev(() => !!CW.lock)) throw new Error('Space did not close the card');
+    return chat ? 'team chat shown' : 'no chat';
   });
   await step('played court match → no prompts in a rally → skip → result card', async () => {
     await ev(() => {
