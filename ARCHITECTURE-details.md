@@ -715,8 +715,9 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   (`flatMat`), `renderer.render` straight to the canvas — the look before T-343. Detailed: ACES (exposure by `lit`), an
   `EffectComposer` (RenderPass into a half-float MSAA target → GTAOPass on High, lazy-imported → UnrealBloomPass, on only while
   `lit` > 0, threshold falling with `lit` so the night layer's glows bloom → OutputPass), PCF shadows with `radius` whose box
-  follows the zoom (`LOOK.shadow`, 4096 map on High), dynamic resolution (frame-time average, steps of 0.05 down to the setting's
-  floor, like r3d `adaptRes`). `renderer.info.autoReset` is off: `draw()` resets it, so `info()` counts the whole frame.
+  follows the zoom (`LOOK.shadow`, 4096 map on High), dynamic resolution (real frame-time average, steps of 0.05 down to the
+  setting's floor, like r3d `adaptRes`; under ~15 fps steps of 0.15 down to `rescue` 0.45 — what keeps headless swiftshader QA
+  moving). Dev / QA: `setView({ x, z, d })`, `holdClock(tod | null)`, `bench(n)` (ms a frame, waited for). `renderer.info.autoReset` is off: `draw()` resets it, so `info()` counts the whole frame.
 - **Sky**: three's `Sky` (Preetham; its sun disc removed — the directional light is the sun) at the clock's real sun (`tod`,
   under the horizon at night), baked to `scene.environment` with PMREM when the sun has moved (≥ `LOOK.sky.moved`, ≤ every
   0.25 s); `environmentIntensity` by the sun's height. The map camera never sees the sky: it is the light and the reflections.

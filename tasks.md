@@ -236,7 +236,7 @@ Accept: draw calls and triangles before / after reported; night windows still li
 QA: career run → Wei centre, Wu harbour, Shu village by day and night.
 Result:
 
-### [ ] T-343: Land, water and sky
+### [x] T-343: Land, water and sky
 Agent: N
 Spec: §4.39 Land          Goldens: unchanged          Save: no change
 Goal: textured terrain by ground, real tree crowns by region, bushes and grass, a water shader with shore foam, a physical sky on the day
@@ -245,7 +245,7 @@ Files: js/map3d/map3d.mjs (all but life's mount and NIGHT / nightLayer), js/map3
 Do not: change heights (`heightAt`), fog rules or the clock (T-332); add downloads (draw textures in canvas).
 Accept: frame time and draw calls before / after; Fast unchanged; ui-smoke green; the night-map step still finds lights.
 QA: career run → three zooms by day, dusk and night.
-Result:
+Result: detailed look default, Fast (setLow) = the flat look (renderer, materials, shapes); sky = three's Sky (no sun disc) baked to the environment on the clock's real sun (never seen directly at the map's pitch); terrain shader on the same mesh (ground weights gnd / gdir / gpav, one generated texture, derivative bump), sea = standard material + generated normal maps + shore texture (depth, coast distance, foam); nature: new shapes + wind + extra tufts, shadows cast by the Fast shapes (proxies); ACES, PCF soft shadows boxed by zoom, bloom while lit, GTAO on High (it re-draws the scene: ×2 calls / tris), dynamic resolution (a rescue step to 0.45 under ~15 fps: without it swiftshader ui-smoke timed out on the map steps); owner fold-in: Wei's ground = lawn + paved districts (in both looks — Fast differs only there); QA hooks setView / holdClock / bench; swiftshader (CPU, relative; same session) a frame 3.1 → 5.8 s day, 3.7 → 7.3 s night (another career ×2–5.7), draw calls +4 day / +17 night, triangles 2.23 M → 3.05 M; ui-smoke 21/21 (night: 1624 windows, 182 lamps, 9 courts); QA t343-{before,g,i,high,fast,wei}-*.png.
 
 **Team life (owner, 2026-10-21, spec §4.36): two agents.** **Agent T — Transfers & circle**: T-325 → T-326 → T-327.
 **Agent S — Stories & cards**: T-328 → T-329 → T-330. Ownership: T owns js/career/world.js, js/career/run.js (RUN_VERSION 23; `run.tenure`,
