@@ -1365,6 +1365,32 @@ the AI coach fills every slot you leave with the same function. Built and measur
     court glow yields to an element-full / OP / airborne-star aura and to Fever]**
   - **[open]**: close friends favoured into your year-2 Cup squad (the squad lever from §4.32); a jealous friend turning once they
     discover your learned gift.
+- §4.36 Team life — staying, leaving, your people **[draft — T-325–T-330]** (owner, 2026-10-21: "make the player attached to their
+  teammates — but I switch teams often"). Switching becomes a decision; attachment follows people, not clubs.
+  - **A. Switching costs.**
+    - **Transfer windows**: you sign with a new club only in the week after an evaluation (weeks 5, 9, 13, 17, 21, 25) or in the
+      off-season (the registrar says why, voice `wei`). The Academy squad and leaving to go free are always open.
+    - **Leaving hurts**: walking out writes `walked_out` with every teammate you leave (base −10; Loyal × 2, Mercenary × 0.3, an
+      Egoist is glad: +2) and standing −8 with that faction.
+    - **Staying pays (tenure, weeks at the club)**: 4+ — you start ahead of an equal same-role rival (lineup + 4); 8+ — members'
+      price at their facilities (× 0.8); 12+ — you can be named captain; at the Cup still there — the club's veteran lines.
+  - **B. Your people.**
+    - **The circle**: up to 5 people at bond 30+ (any club; pinnable), shown in the **squad strip** (1) — current teammates marked.
+    - **Friends can follow**: when you switch, a friend at bond 60+ may ask to come (Friendly / Shy / Hothead often, Mercenary
+      for a fee, Loyal never, by hash) — they move with you and take a seat (the seat's holder drops to the pickup squad).
+    - **Ex-teammates**: the people you left are remembered (`run.ex`); across the net they get their own remarks and a
+      `faced_ex` memory.
+  - **1. Squad strip** (hub top bar): your circle's faces with mood and bond; click → their card: this week's plan, their want,
+    their arc step (3), your history.
+  - **2. Team chat** after every match you play: 2–4 messages from teammates in their behaviour's voice (the Hothead blames, the
+    Friendly cheers, the Egoist talks about themselves); one reply (back them · joke · stay quiet) → a small memory each.
+  - **3. Personal arcs**: each circle member has one three-beat arc a season built on their want (national: a call-up
+    rumour → a test match → the verdict; money: a debt → a hustle → the payoff; spot: losing it → asking you to sit out → their
+    chance; grudge, prove, leave likewise). Each beat asks you for something (a day, a match, money, a choice); helping →
+    a big memory, their growth × 1.1 for the rest of the season, and they lean toward your year-2 Cup squad.
+  - **4. Duo cards**: at bond 60+, a friend unlocks a duo card for your hand ("Mint × You: Sync Quick", "Ploy × You: Shield Dig"
+    — by their role and yours) playable whenever you share a court (club, Cup squad, street crew, Raid, Midnight Court), with
+    a small cut-in. One per friend.
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.

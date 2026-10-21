@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-325** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-331** (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,75 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+**Team life (owner, 2026-10-21, spec §4.36): two agents.** **Agent T — Transfers & circle**: T-325 → T-326 → T-327.
+**Agent S — Stories & cards**: T-328 → T-329 → T-330. Ownership: T owns js/career/world.js, js/career/run.js (RUN_VERSION 23; `run.tenure`,
+`run.ex`, `run.circle` pins), js/career/circle.js (new: Circle), js/data/people.js (MEMORY kinds walked_out, faced_ex), js/career/city.js
+(members' price), js/ui/career-hub.js + css/hub.css (the strip), js/ui/career-panels.js (HQ card: the window), tests/team.test.js (new). S
+owns js/career/team.js (new: Team — chat, arcs), js/data/team.js (new: lines, arcs, its memory kinds merged into MEMORY at load),
+js/data/cards.js + js/engine/cards.js (duo cards), js/ui/match-cards.js, js/ui/career-match.js (the chat card), js/ui/match-exchange.js +
+js/data/match-lines.js (ex-teammate remarks), js/ui/career-people.js (arc step on the card), tests/story.test.js (new). Contract — T
+provides, S reads with a `typeof Circle` guard: `Circle.of(run)` → ids (fallback: `Run.mates(run)` ids), `run.ex` = { id: week left }.
+S keeps its state lazily in `run.team` (Team.of(run), no RUN_DEFAULTS). Both: no R() (hashes), goldens unchanged.
+
+### [ ] T-325: Transfer windows, leaving hurts, tenure
+Agent: T
+Spec: §4.36 A          Goldens: unchanged          Save: RUN_VERSION 23 (`run.tenure`, `run.ex`)
+Goal: signing only in the window (the week after an evaluation, the off-season); leaving writes walked_out (by behaviour) and
+standing −8; tenure 4 / 8 / 12 weeks → lineup +4, members' price × 0.8, captain eligible.
+Files: js/career/world.js, js/career/run.js (lineup score, fields), js/career/city.js, js/data/people.js, js/data/world.js (WINDOW, TENURE),
+js/ui/career-panels.js (HQ card: "window opens week N"), tests/team.test.js (new; in tests/run.js), tests/career-bot.js (joinBest respects the window)
+Accept: tests — no join outside the window; leaving writes walked_out with each mate (Loyal × 2); tenure steps act. `npm run career -- 12 both` within noise.
+QA: career run → an HQ card outside and inside the window.
+Result:
+
+### [ ] T-326: The circle and friends who follow
+Agent: T
+Spec: §4.36 B          Goldens: unchanged          Save: no change (beyond T-325)
+Goal: `Circle.of(run)` (≤ 5, bond 30+, any club, pins first); on a switch, a 60+ friend may ask to come (behaviour, hash) and moves
+with you; `run.ex` remembers who you left.
+Files: js/career/circle.js (new), js/career/world.js, js/career/events.js (the follow card), index.html, tests/team.test.js
+Accept: tests — the circle's order and cap; a Loyal friend never follows; a follower lands in your new squad.
+QA: career run → switch clubs with a close friend.
+Result:
+
+### [ ] T-327: The squad strip
+Agent: T
+Spec: §4.36 1          Goldens: unchanged          Save: no change
+Goal: the hub's top bar shows your circle's faces (mood, bond; current teammates marked); a click opens their card.
+Files: js/ui/career-hub.js, css/hub.css, tests/ui-smoke.js (the strip renders)
+Accept: UI smoke passes with the strip; design-system rules (tokens, type ≥ 12px).
+QA: career run → the hub, screenshot.
+Result:
+
+### [ ] T-328: Team chat after matches
+Agent: S
+Spec: §4.36 2          Goldens: unchanged          Save: no change (`run.team` lazy)
+Goal: after a match you played: 2–4 teammate messages in their behaviour's voice (by result, your line, theirs); one reply → a memory.
+Files: js/career/team.js (new), js/data/team.js (new; lore voices), js/ui/career-match.js, index.html, tests/story.test.js (new; in tests/run.js)
+Accept: tests — the messages match behaviours and the result; one reply writes one memory; no randoms.
+QA: career run → a match → the chat card.
+Result:
+
+### [ ] T-329: Personal arcs
+Agent: S
+Spec: §4.36 3          Goldens: unchanged          Save: no change
+Goal: each circle member gets one three-beat arc a season by want; each beat asks something; helping → a big memory, growth × 1.1,
+leaning toward your year-2 Cup squad (a weight Cup squads read).
+Files: js/career/team.js, js/data/team.js, js/ui/career-people.js (the arc step), js/career/cup.js (the lean, one line), tests/story.test.js
+Accept: tests — an arc advances beat by beat; helping applies its rewards; one arc per member a season.
+QA: career run → an arc's three beats.
+Result:
+
+### [ ] T-330: Duo cards and ex-teammates across the net
+Agent: S
+Spec: §4.36 4, B (ex-teammates)          Goldens: unchanged (no duo card / no ex → today)          Save: no change
+Goal: a 60+ friend unlocks a duo card (by roles) playable whenever you share a court, with a small cut-in; ex-teammates across the
+net get their remarks and a faced_ex memory.
+Files: js/data/cards.js, js/engine/cards.js, js/ui/match-cards.js, js/data/match-lines.js, js/ui/match-exchange.js, js/career/team.js, tests/story.test.js
+Accept: tests — the duo card is in the hand only with that friend on court; it acts; a match vs an ex writes faced_ex.
+QA: Monster/career match with a duo friend → the card and its cut-in.
+Result:
 
 **Talent, gifts and behaviour (owner, 2026-10-20, spec §4.35): two agents.** **Agent G — Gifts**: T-320 → T-322 → T-323.
 **Agent P — People & presence**: T-321 → T-324. Ownership: G owns js/data/gifts.js (new), js/career/gifts.js (new), people.js,
