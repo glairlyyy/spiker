@@ -214,7 +214,7 @@ js/map3d/kit3d.mjs, and in map3d.mjs only `NIGHT` + `nightLayer` (posts, towers)
 rest of map3d.mjs (terrain, lightScene, skyAt, the sea, the renderer and post). Each keeps the Fast setting (KEYS.gfx) on today's look.
 Shared: no game randoms in display code (hash variety); tests/map3d.test.js — add, don't rewrite; ui-smoke must stay green.
 
-### [ ] T-341: People on the map are real players
+### [x] T-341: People on the map are real players
 Agent: F
 Spec: §4.39 People          Goldens: unchanged          Save: no change
 Goal: named people as the small default VRM (club colours, match gait) for the nearest ~16 on screen; a low-poly humanoid with swinging
@@ -223,7 +223,7 @@ Files: js/map3d/people3d.mjs (new), js/map3d/life3d.mjs, js/map3d/map3d.mjs (lif
 Do not: load a VRM per person (one base model, cloned; `players3d` loadBase / makeVRM / dress); exceed the cap; block the map's first frame.
 Accept: tests — LOD picks the nearest on-screen cap, Fast keeps capsules; ui-smoke hover + figure menu steps pass; frame time reported.
 QA: career run → the map near the Wei gym, a crew at an HQ, zoomed in / out.
-Result:
+Result: js/map3d/people3d.mjs — instanced humanoid (limbs swung in the vertex shader, 1 call + shadow) for every figure, named ~4.2–4.9 m, crowds 2.3 m (crews 9–14 m round their HQ), circle on a soft gold ring; the 16 nearest non-grey named on screen within 260 m fade into the default VRM (makeVRM one slot at a time from 1.5 s after the map shows, springs off, shadows for the nearest 6, others' shirts muted 0.2 not 0.5 — half-way read as skin). Fast = capsules, draw calls identical. Swiftshader 1100×700, load ~12 (relative only): Wei gym d 48 — 166 calls / 1.06 M tris / 2.6 s a frame → 246 / 1.35 M / 2.7–3.6 s with 3 VRMs (~14 calls, ~48 k tris each a pass); zoomed out d 278 — 168 / 1.065 M → 169 / 1.076 M, 3.0 → 2.9 s; Fast 168 = 168, 1 056 050 tris both.
 
 ### [ ] T-342: Buildings and streets with detail
 Agent: B

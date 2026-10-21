@@ -1552,7 +1552,8 @@ the AI coach fills every slot you leave with the same function. Built and measur
     capsule. Your circle stands out (a soft ring under them); hover and the figure menu work on both.
     **[built 2026-10-21, T-341]**: everyone on the map (named people, crews, the battle crowd, patrols) is a low-poly humanoid whose
     arms and legs swing as they walk, jog, drill (a block jump, arms up) or sit; named people ~4.2–4.9 m (circle biggest), crowds
-    ~2.3 m; hashed hair and skin, shirts in the club colour (grey stays grey). The 16 nearest named people on screen (within
+    ~2.3 m (crews round their HQ building, not inside it); hashed hair and skin, shirts in the club colour (others' muted a
+    little less than the capsules', grey stays grey). The 16 nearest named people on screen (within
     ~260 m of the camera, unscouted excepted) fade into the default VRM in their club's shirt with the match gait; the models are
     built one at a time after the map shows. Your circle stands on a soft gold ring. Fast: today's capsules, no VRMs.
   - **Buildings and streets (T-342).** Every building gets a facade: windows in rows (lit at night from the same windows), doors,
