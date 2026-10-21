@@ -135,7 +135,7 @@ to `refCall(k, at, line)` → `A.call = { k, at, line, n, pt }` (`n` counts call
 act, a rally with no fault call is checked for a close line: `lastLanding()` (the rally's last ball act ending on the floor,
 back to the `reset`) → `lineCall(x, z)` → `{ k: 'in' | 'out', line: { axis: 'x' (an end line) | 'z' (a side line), v } }`
 when the ball lands within `LINE_CALL.m` (0.15 m) of a `COURT_LINES` line, else null. venue3d `updateVenue` reads `A.call`
-each frame: at every venue but the Academy Hall `updateDrone` (fx/drone.mjs: a low-poly drone hovering 4.4 m over the net,
+each frame: at every venue but the Academy Hall `updateDrone` (fx/drone.mjs: a low-poly drone flying 4.4 m up outside the far sideline (SIDE), level with the ball,
 following the ball's z; a new `n` → it drops to the spot (`H.call`, over the tape for a net touch), the hologram word (a
 sprite, `CALLS[k].word`, verdict colour from theme tokens `--good` / `--bad`, frame `--cyan`), a projection cone and a line
 trace along the end line / the tape / the judged line (a ring for a double); held `T.hold` 1.9 s, then back); at the Hall
@@ -1213,10 +1213,6 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   already. Display + its stop only: days, Run gains (City.runPlan) and arrival are the safe road's. `roadSync` (each card / mount) caches
   it per selection + position + days + week + setting and resets the pick to the safe road; the place card's route row (`routeRow`,
   injected into spotPanel's card) and R toggle it.
-- **Focus press** — `City.capture` (orderDay, pointDay) notes the order day's EXP by stat (`Training.tally`) in `City.dayXp`;
-  `City.focus(run, hit)`: hit → `Training.addXp(k, floor(xp × ENC.focus.k))` per stat, once; miss / skip → nothing. The cut-in (phase
-  `spin`, `ENC.focus.ms` when on and the day gave EXP) draws a ring closing on a target (`focusRing`, inline token styles); Space inside
-  `ENC.focus.win` → hit, the result rows re-read (`fx.redo`) + a Focus row. Off in Settings (`KEYS.focus`).
 - **Island sound** (js/audio/ambience.js `Ambience`): `start()` from mapMount (idempotent: audioInit, a bus → `SND.master`, three looped
   noise layers + the insects' AM tone), a 200 ms tick mixes by `weights(run, p, d, clock)` at the camera's ground point
   (`MapView.m3.info().view`): sea (coast distance), gulls (the harbor district; a little along the coast), murmur (district style), thuds
@@ -1224,10 +1220,9 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   zoomed out damps the local layers. One-shots (thuds, gulls, footsteps from `WALK.onStep`, a soft click on hub buttons) free themselves.
   The tick stops it once `#mapwrap` is gone or the view isn't the career: every node stopped and disconnected, the listeners removed,
   the context suspended unless a match uses it. Follows `SND.on` (bus gain) and the volume (the master bus). Math.random only.
-- **Settings** (title › Settings, menu.js `islandSettings`): Road stops (`KEYS.enc`: friends · all · never), Focus press (`KEYS.focus`),
+- **Settings** (title › Settings, menu.js `islandSettings`): Road stops (`KEYS.enc`: friends · all · never),
   Sound (`toggleSound`).
-- **Career bot**: `casual` / `good` never stop or press (the baseline); `focus` = good + `City.focus(run, true)` after every day
-  (`both` prints it as one extra line).
+- **Career bot**: `casual` / `good` never stop on the road (the baseline).
 - **The figure menu** (spec §4.37 7, T-340) — rules in encounter.js (pure, no R()): `Encounter.menu(run, id, road, stake)` = the rows
   talk · invite · spar · challenge · card, each `{ k, days, why }` (`why` = the gap, '' = open) + invite `p` / `verdict`, spar `court`,
   challenge `ti` / `verdict`; `Encounter.who` = the person's lifePeople entry + squad (null for grey / fogged / gone). State lazily in

@@ -6,8 +6,7 @@
  * place you leave, the place you arrive at — the greeting there is the floor's). p: the hashed chance a stop happens, by kind. rank:
  * who stops you first when several are near. week: stops a week at most. stops: the setting → the kinds it stops for. alt: the second
  * route — p = the chance the person / the fight it passes stops you, extra / slack = how much longer than the safe road it may be
- * (cost ≤ max(safe × slack, safe + extra)), never a day more. focus: the timing press — k = the day's EXP on top when on the beat,
- * ms = the cut-in's length with the press on, win = the beat (share of ms).
+ * (cost ≤ max(safe × slack, safe + extra)), never a day more.
  */
 const ENC = {
   r: 70,
@@ -17,7 +16,6 @@ const ENC = {
   week: 3,
   stops: { friends: ['arc', 'circle'], all: ['arc', 'circle', 'battle', 'crew'], never: [] },
   alt: { p: 0.85, slack: 1.5, extra: 220 },
-  focus: { k: 0.1, ms: 1800, win: [0.55, 0.8] },
   // the figure menu (spec §4.37 7, T-340). invite: who says yes — bond at least `bond`, then their headline behaviour's chance p
   // (+ perBond for every bond point over `bond`, at most max; by hash), likely from `likely`, doubtful from `doubt`. spar: a court
   // (an explored court or a venue) within r of them; the match XP × xp of a real match, − sta stamina, the memory either way.

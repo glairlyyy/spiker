@@ -1,4 +1,4 @@
-// The living island, Agent E (spec §4.37 3–4): encounters on the road (T-333), effort — the short cut and the focus press (T-335).
+// The living island, Agent E (spec §4.37 3–4): encounters on the road (T-333), effort — the short cut (T-335).
 const { load, test, assert, eq } = require('./harness');
 
 /** A run in a training week at a club, the island explored, three teammates in your circle (bond 30+). */
@@ -216,44 +216,6 @@ test('effort: the short cut — same days, passes what it names, its chance by h
   );
 });
 
-test('effort: the focus press — on the beat × 1.1 of the day’s EXP once, missed / skipped × 1 (T-335)', () => {
-  const day = (g, run) => {
-    const id = Object.keys(g.SPOTS).find(k => g.SPOTS[k].kit && g.City.can(run, k).ok);
-    run.sta = 100;
-    return g.City.day(run, id, false);
-  };
-  const [g, run] = mkRun(),
-    [h, twin] = mkRun(),
-    [k, skip] = mkRun();
-  day(g, run);
-  day(h, twin);
-  day(k, skip);
-  const D = g.City.dayXp;
-  assert(D && Object.keys(D.xp).length, 'the order day’s EXP noted');
-  const xp0 = JSON.stringify(run.xp);
-  eq(xp0, JSON.stringify(twin.xp), 'the twin is the same run');
-  const lab = g.City.focus(run, true);
-  assert(lab, 'a hit adds');
-  eq(g.City.focus(run, true), '', 'once: a second press adds nothing');
-  eq(k.City.focus(skip, false), '', 'a miss adds nothing');
-  eq(JSON.stringify(skip.xp), JSON.stringify(twin.xp), 'missed / skipped = × 1 (never a loss)');
-  eq(JSON.stringify(k.Run.you(skip).body), JSON.stringify(h.Run.you(twin).body), 'the body too');
-  // the gain is ≤ ENC.focus.k of the day: banked XP + levels, measured against the twin
-  const total = (G, R) =>
-    G.BODY.keys.concat('wit').reduce((s, key) => {
-      let v = 0;
-      const lv = G.Training.level(G.Run.you(R), key);
-      for (let l = 1; l < lv; l++) v += G.Training.need(l);
-      return s + v + ((R.xp && R.xp[key]) || 0);
-    }, 0);
-  const extra = total(g, run) - total(h, twin),
-    dayXp = Object.values(D.xp).reduce((a, b) => a + b, 0);
-  assert(extra > 0, 'the hit adds EXP: ' + extra);
-  assert(extra <= Math.ceil(dayXp * g.ENC.focus.k * 1.35) + 1, `at most +10 % of the day (×gifts): ${extra} of ${dayXp}`);
-});
-
-// ---- the figure menu (spec §4.37 7, T-340) ----
-/** Someone on the map whose menu row k is open, or null. */
 const someone = (g, run, k, road = false) =>
   g.Encounter.people(run)
     .map(p => p.id)
@@ -261,6 +223,7 @@ const someone = (g, run, k, road = false) =>
       const R0 = g.Encounter.row(run, id, k, road);
       return R0 && !R0.why;
     });
+
 test('figure menu: the rows, their locks, deterministic and drawing nothing (T-340)', () => {
   const [g, run] = mkRun(),
     [g2, run2] = mkRun(),

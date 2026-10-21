@@ -1,4 +1,4 @@
-// The Ref drone (spec §4.38, lore §4): a small low-poly drone that hovers over the net and follows the ball at every venue
+// The Ref drone (spec §4.38, lore §4): a small low-poly drone that flies outside the far sideline and follows the ball at every venue
 // but the Academy Hall. On a call (A.call, set by render/acts.js refCall: net touch, foot fault, double contact, a close in /
 // out) it drops to the spot, flashes the hologram word and traces the line. Display only: Math.random never, the engine's
 // R() never; it rides the frame clock and never holds up play.
@@ -26,6 +26,8 @@ export const CALLS = {
 const T = { fly: 0.4, word: 0.25, draw: [0.3, 0.75], hold: 1.9, out: 0.35 };
 /** Heights (m): hovering over the net, at a call, the word. */
 const H = { hover: 4.4, call: 1.9, net: 3.2, word: 1.15 };
+/** The drone's lane: outside the far sideline (z), as far along the court as the end lines (x) — world metres. */
+const SIDE = { z: W(500, 1.12).z, x: Math.abs(W(1000, 0.5).x) };
 const TAPE = 150; // the net tape in engine height units (court.js: 2.43 m)
 
 const COL = {};
@@ -152,7 +154,7 @@ export function makeDrone(scene) {
     call: null,
     seen: 0,
     t: 0,
-    pos: new THREE.Vector3(0, H.hover, 0),
+    pos: new THREE.Vector3(0, H.hover, SIDE.z),
     vel: new THREE.Vector3()
   };
 }
@@ -184,7 +186,7 @@ function placeTrace(d, call, s) {
   d.ring.position.set(s.x, 0.032, s.z);
 }
 /**
- * Per frame: hover over the net following the ball (`ball`, world position), or play the current call (`call` = A.call,
+ * Per frame: fly the far sideline following the ball (`ball`, world position), or play the current call (`call` = A.call,
  * a new one when its n changes). `on`: the venue flies a drone (every one but the Academy Hall). dt in seconds.
  */
 export function updateDrone(d, call, ball, dt, now, on) {
@@ -214,19 +216,10 @@ export function updateDrone(d, call, ball, dt, now, on) {
   if (cl) d.t += dt;
   const live = cl && d.t < T.hold + T.out;
   if (cl && !live) d.call = null;
-  // where to fly: over the net following the ball (kept near the net, inside the court), or down to the call
-  if (live)
-    tgt.set(
-      d.spot.x,
-      cl.k === 'net' ? H.net : H.call,
-      d.spot.z + (cl.k === 'foot' ? (d.spot.z > 0 ? -1 : 1) * 1.1 : 0) // (a foot fault: beside the server, not on top of them)
-    );
-  else
-    tgt.set(
-      THREE.MathUtils.clamp((ball ? ball.x : 0) * 0.12, -1.2, 1.2),
-      H.hover + Math.sin(now * 0.0017) * 0.12,
-      THREE.MathUtils.clamp(ball ? ball.z : 0, -4.6, 4.6)
-    );
+  // where to fly (owner, 2026-10-21: never over the court, where it would block the view): outside the far sideline, level with the
+  // ball along the court; at a call it comes down there, level with the spot (the cone and the trace still reach the spot)
+  if (live) tgt.set(THREE.MathUtils.clamp(d.spot.x, -SIDE.x, SIDE.x), cl.k === 'net' ? H.net : H.call, SIDE.z);
+  else tgt.set(THREE.MathUtils.clamp(ball ? ball.x : 0, -SIDE.x, SIDE.x), H.hover + Math.sin(now * 0.0017) * 0.12, SIDE.z);
   prev.copy(d.pos);
   const k = 1 - Math.exp(-dt * (live ? 9 : 2.6));
   d.pos.lerp(tgt, k);

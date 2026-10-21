@@ -230,7 +230,6 @@ function mapGo(id, mate) {
     line = City.day(run, id, CW.hard, mate);
   Run.log(run, line);
   const fx = oid ? trainFx(run, s, before, line, oid) : null;
-  if (fx) fx.redo = () => trainFx(run, s, before, line, oid); // the focus press re-reads the day (spec §4.37 4)
   mapAfter(run, fx, null, roadAfter(run, via));
 }
 /** Stretch at map point (x, y) (spec §4.33: anywhere): the trip + a day there. */
@@ -333,23 +332,13 @@ function lockWalk(L) {
     }
   }, 120);
 }
-/** The training cut-in: spinner (with the focus press on an order day — spec §4.37 4), then the result, then unlock (no cut-in: unlock now). */
+/** The training cut-in: spinner, then the result, then unlock (no cut-in: unlock now). */
 function lockTrain(L) {
   if (L.res) return lockPhase('res'); // a simmed match: its result card, until you close it
   if (!L.fx) return lockEnd();
-  const F = L.fx.ok && L.fx.redo && City.dayXp && Encounter.focusOn() ? (L.focus = { t0: Date.now(), ms: ENC.focus.ms, st: null }) : null,
-    ms = F ? F.ms : LOCK.spin;
   lockPhase('spin');
-  if (F) focusAnim(L);
-  setTimeout(() => {
-    if (CW.lock !== L) return;
-    if (F && F.st == null) {
-      F.st = 'skip'; // skipped: × 1, never a loss
-      City.focus(RUN, false);
-    }
-    lockPhase('done');
-  }, ms);
-  setTimeout(() => CW.lock === L && L.phase === 'done' && lockEnd(), ms + LOCK.show);
+  setTimeout(() => CW.lock === L && lockPhase('done'), LOCK.spin);
+  setTimeout(() => CW.lock === L && L.phase === 'done' && lockEnd(), LOCK.spin + LOCK.show);
 }
 /** The friend's greeting was read: on to the cut-in. */
 function lockGreetDone() {
@@ -405,12 +394,8 @@ function lockLayer() {
   if (L.phase === 'enc') return encLayer(L);
   const F = L.fx;
   if (L.phase === 'spin')
-    return `<div class="actlock dim" id="actlock" role="status" aria-live="polite"><div class="tfx">${L.focus ? focusRing(L) : '<i class="spin" aria-hidden="true"></i>'}<b>${esc(F.name)}</b><small class="mute">${esc(F.place)}</small>${L.focus ? `<small id="fhint">${L.focus.st === 'hit' ? 'On the beat — EXP +10 %' : L.focus.st === 'miss' ? 'Off the beat — no change' : '<kbd>Space</kbd> on the beat → EXP +10 %'}</small>` : ''}</div></div>`;
-  const rows = F.rows.concat(
-    L.focus && L.focus.st === 'hit'
-      ? [['<i class="bgl" aria-hidden="true">◎</i>', 'Focus', '+10 %', 'up', 'On the beat: that day’s EXP +10 %']]
-      : []
-  );
+    return `<div class="actlock dim" id="actlock" role="status" aria-live="polite"><div class="tfx"><i class="spin" aria-hidden="true"></i><b>${esc(F.name)}</b><small class="mute">${esc(F.place)}</small></div></div>`;
+  const rows = F.rows;
   return `<div class="actlock dim" id="actlock" role="status" aria-live="polite" onclick="lockEnd()"><div class="tfx ${F.ok ? 'ok' : 'bad'}">
     <span class="tfi" aria-hidden="true">${F.ok ? '✓' : '✕'}</span><b>${F.ok ? `${esc(F.name)} — done` : F.injured ? `${esc(F.name)} failed — injured` : `${esc(F.name)} failed`}</b>
     ${rows.length ? `<div class="tfr">${rows.map(([ic, n, v, c, t]) => `<div ${t ? tip(t) : ''}>${ic}<span>${n}</span><b class="${c}">${v}</b></div>`).join('')}</div>` : ''}
@@ -494,7 +479,7 @@ function mapEndWeek() {
   endWeekUI();
 }
 
-// ---- the road (spec §4.37 3–4, T-333 / T-335): the short cut, the stop on the way, the focus press ------------------------
+// ---- the road (spec §4.37 3–4, T-333 / T-335): the short cut, the stop on the way ------------------------
 // ROAD.mod is js/map3d/avatar3d.mjs — the same module instance the map renders with — whose WALK halts your walk at an encounter
 // and draws the two routes. Display only: the rules (City / Encounter) ran before the walk began.
 const ROAD = { mod: null, load: null, key: '', to: null, alt: null, route: 'safe' };
@@ -552,7 +537,6 @@ function roadPick(v) {
 /** Before a trip: forget the last one; the short cut it takes, if you picked it for this destination. */
 function roadStart(to) {
   City.last = null;
-  City.dayXp = null;
   return ROAD.route === 'alt' && ROAD.alt && ROAD.to && Math.hypot(ROAD.to[0] - to[0], ROAD.to[1] - to[1]) < 1 ? ROAD.alt : null;
 }
 /**
@@ -896,46 +880,7 @@ function encLeave(L) {
   const el = $('#actlock');
   if (el) el.remove();
 }
-/** The focus press's ring: it closes on the target circle; on the beat when they meet (ENC.focus.win). */
-function focusRing(L) {
-  const F = L.focus,
-    c = F.st === 'hit' ? 'var(--good)' : F.st === 'miss' ? 'var(--mute)' : 'var(--cyan)';
-  return `<span class="tfocus" aria-hidden="true" style="position:relative;display:block;width:64px;height:64px"><span style="position:absolute;inset:0;border:2px solid var(--line-strong);border-radius:50%"></span><span id="fring" style="position:absolute;inset:0;border:3px solid ${c};border-radius:50%;transform:scale(${focusScale(F).toFixed(3)})"></span></span>`;
-}
-/** The ring's scale now: 2.2 at the start, 1 (the target) at the middle of the beat, smaller after. */
-function focusScale(F) {
-  const f = clamp((Date.now() - F.t0) / F.ms, 0, 1),
-    m = (ENC.focus.win[0] + ENC.focus.win[1]) / 2;
-  return f <= m ? 2.2 - (1.2 * f) / m : 1 - (0.5 * (f - m)) / (1 - m);
-}
-function focusAnim(L) {
-  if (typeof requestAnimationFrame !== 'function') return;
-  const tick = () => {
-    if (CW.lock !== L || L.phase !== 'spin' || !L.focus || L.focus.st != null) return;
-    const r = document.getElementById('fring');
-    if (r) r.style.transform = `scale(${focusScale(L.focus).toFixed(3)})`;
-    requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
-}
-/** Space during the cut-in: on the beat → City.focus (that day's EXP × 1.1); off it → nothing. One press. */
-function focusPress() {
-  const L = CW.lock,
-    F = L && L.phase === 'spin' && L.focus;
-  if (!F || F.st != null) return false;
-  const f = (Date.now() - F.t0) / F.ms,
-    hit = f >= ENC.focus.win[0] && f <= ENC.focus.win[1];
-  City.focus(RUN, hit);
-  F.st = hit ? 'hit' : 'miss';
-  if (hit && L.fx.redo) L.fx = { ...L.fx.redo(), redo: L.fx.redo };
-  Run.save(RUN);
-  const r = document.getElementById('fring'),
-    h = document.getElementById('fhint'); // in place: no re-pop of the card
-  if (r) r.style.borderColor = hit ? 'var(--good)' : 'var(--mute)';
-  if (h) h.textContent = hit ? 'On the beat — EXP +10 %' : 'Off the beat — no change';
-  return true;
-}
-/** The road's keys (before the hub's): the card's 1–n and Space / Esc, Space in the cut-in, R for the route. */
+/** The road's keys (before the hub's): the card's 1–n and Space / Esc, R for the route. */
 function roadKey(e) {
   if (
     (typeof A !== 'undefined' && A) ||
@@ -956,8 +901,6 @@ function roadKey(e) {
   } else if (!L && CW.fig && !(e.target.closest && e.target.closest('input,select,textarea'))) {
     if (e.key === 'Escape') figClose();
     else if (!figKey(e, document.getElementById('figmenu'))) return;
-  } else if (L && L.phase === 'spin' && e.key === ' ' && L.focus) {
-    if (!focusPress()) return;
   } else if (
     !L &&
     (e.key === 'r' || e.key === 'R') &&

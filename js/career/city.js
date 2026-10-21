@@ -224,9 +224,7 @@ const City = {
     run.money -= cost;
     const inv = City.joins(run, id),
       line = City.withInvite(run, id, () =>
-        City.capture(run, () =>
-          Training.order(run, oid, id, hard, (s.kit ? City.mul(run, id) : 1) * DAY_GAIN, (s.sand ? SAND_SP : 1) * DAY_GAIN)
-        )
+        Training.order(run, oid, id, hard, (s.kit ? City.mul(run, id) : 1) * DAY_GAIN, (s.sand ? SAND_SP : 1) * DAY_GAIN)
       );
     if (s.kit && run.spotQ && run.spotQ[id]) run.spotQ[id].known = true; // quality is never shown (owner, T-172); it still scales EXP
     let w = '';
@@ -371,37 +369,7 @@ const City = {
     if (!City.pointCan(run, p, oid).ok) return '';
     const O = DAY_ORDERS[oid],
       trip = City.go(run, p, { k: 'train', label: O.name, stat: O.main[0], at: REGIONS[City.regionAt(p)].name });
-    return `${trip}${City.capture(run, () => Training.order(run, oid, null, false, DAY_GAIN, DAY_GAIN))}`;
-  },
-  // ---- effort (spec §4.37 4, T-335): the focus press on an order day; never a loss, at most + ENC.focus.k of the day ----
-  /** The last order day's EXP by stat ({ xp, wk, day }; not saved: the press follows at once): what City.focus scales. */
-  dayXp: null,
-  /** Run an order day `fn`, noting the EXP it gives (Training.tally) for the focus press. No draws of its own. */
-  capture(run, fn) {
-    const T0 = Training.tally,
-      T = (Training.tally = {});
-    try {
-      return fn();
-    } finally {
-      Training.tally = T0;
-      if (T0) for (const [k, v] of Object.entries(T)) T0[k] = (T0[k] || 0) + v;
-      City.dayXp = Object.keys(T).length ? { xp: T, wk: Season.wk(run), day: WEEK_DAYS - City.days(run) } : null;
-    }
-  },
-  /**
-   * The focus press for the last order day: hit (on the beat) → that day's EXP × ENC.focus.k more, once; missed or skipped → nothing
-   * (× 1). Returns the gains' label ('' when nothing was added).
-   */
-  focus(run, hit) {
-    const D = City.dayXp;
-    City.dayXp = null;
-    if (!hit || !D || D.wk !== Season.wk(run)) return '';
-    const out = [];
-    for (const [k, xp] of Object.entries(D.xp)) {
-      const add = Math.floor(xp * ENC.focus.k);
-      if (add > 0) out.push(Training.addXp(run, k, add));
-    }
-    return out.join(', ');
+    return `${trip}${Training.order(run, oid, null, false, DAY_GAIN, DAY_GAIN)}`;
   },
   /**
    * Go to point p, spending the trip + a day there; returns the trip's diary prefix. `what` = the day's entry for the

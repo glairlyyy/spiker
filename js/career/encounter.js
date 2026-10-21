@@ -12,9 +12,6 @@ const Encounter = {
   /** The road-stop setting: 'friends' (default) · 'all' · 'never'. */
   pref: () => (ENC.stops[store.get(KEYS.enc)] ? store.get(KEYS.enc) : 'friends'),
   setPref: v => ENC.stops[v] && store.set(KEYS.enc, v),
-  /** The focus press (§4.37 4) on unless switched off. */
-  focusOn: () => store.get(KEYS.focus) !== 'off',
-  setFocus: on => store.set(KEYS.focus, on ? 'on' : 'off'),
   /** This week's state (reset when the week changes). */
   of(run) {
     const w = Season.wk(run);

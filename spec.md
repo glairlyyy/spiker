@@ -1462,16 +1462,13 @@ the AI coach fills every slot you leave with the same function. Built and measur
       T-335: offered when it takes the same trip days and at most 1.5× the road's travel cost (or + 220); the short cut is the walk and
       its stop only — days, a Run's gains and arrival are the safe road's; the thing it passes stops you at 0.85 (by hash) under any
       setting but never; "never" offers no short cut; route row + R on the place card, the two routes drawn on the map]**
-    - **Focus**: during the order's animation one timing press (Space); on the beat → that day's training XP × 1.1, missed or
-      skipped → × 1 (never a loss). Off in the settings for people who don't want it. **[built 2026-10-21, T-335: a day order's cut-in
-      (Drill / Work / Stretch, on the place or a map point) — a ring closing on a target over 1.8 s, the beat = 55–80 % of it; on the beat
-      → floor(10 %) of that day's EXP per stat, once. Career bot, good + always on the beat: Y1 78.2 · Y2 93.2 (good 77.7 / 92.9)]**
+    - **Focus press: removed** (owner, 2026-10-21: "remove QTE in training"): no timing press in the training cut-in; effort is the route pick only.
   - **5. Island sound (T-334).** Synthesized like the match effects (js/audio/sfx.js; nothing to download): ambience by the district
     under the camera (harbor water and gulls, market murmur, ball thuds near courts, wind in the Spine, night insects), footsteps
     while you walk, soft UI clicks; follows the volume slider and the sound toggle. **[built 2026-10-21, T-334: mixed every 200 ms by
     the point under the camera (zoomed out: mostly wind and sea); night = the clock (T-332), until then the week's last day; it runs
     only while the map is up — off the map every node stops and the audio context sleeps; a Sound row joins the title's Settings with
-    Road stops and Focus press]**
+    Road stops]**
   - **7. Interact with anyone you see (T-340; owner, 2026-10-21).** Hover a figure → it gets an outline and its tip (1); click
     (or right-click) → a small menu at the figure, Kenshi-style: you walk over, then it happens. **Talk** (free, once a day per
     person: a line in their behaviour's voice, a small memory) · **Invite** (train with you today: they join your day order if
@@ -1509,7 +1506,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     at a drone venue the drone drops to the spot and flashes a hologram call ("NET TOUCH", "FOOT FAULT", "DOUBLE CONTACT", "IN",
     "OUT") with a short line trace; at the **Academy Hall** — the old real court (painted lines, wooden posts, a real net) — a
     referee on the stand blows the whistle and gives the hand signal instead. Every other venue, street court and battle has a
-    drone hovering over the net, following the ball. Display only (a flag on the existing `label` act; no new act kind).
+    drone flying outside the far sideline, level with the ball, never over the court (owner, 2026-10-21: it must not block the view); at a call it comes down there, beside the spot. **[built 2026-10-21]** Display only (a flag on the existing `label` act; no new act kind).
     **[built 2026-10-21, T-338: the drone (fx/drone.mjs) and the Hall's referee (venues/referee.mjs) read `A.call` (render/acts.js);
     the referee's stand and the line judges show only at the Hall — the drone replaces them elsewhere; close in / out ≈ 0.35 a match]**
   - **The drone as an item (T-339, after §4.37 T-333).** Buy one (the airport's cargo shed, $; or rent it for a match at any

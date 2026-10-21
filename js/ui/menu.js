@@ -56,7 +56,7 @@ function renderMenu() {
   if (bg) $('.title > .tbg').replaceWith(bg);
   else titleBg($('.title > .tbg'));
 }
-/** The island's settings (spec §4.37 3–5): when the road stops you, the focus press, the sound. */
+/** The island's settings (spec §4.37 3–5): when the road stops you, the sound. */
 function islandSettings() {
   const seg = (label, kind, opts, cur, t) =>
     `<div class="sset" ${tip(t)}><span class="cgl">${label}</span><div class="seg">${Object.entries(opts)
@@ -66,12 +66,10 @@ function islandSettings() {
       )
       .join('')}</div></div>`;
   return `${seg('Road stops', 'enc', ENC_STOPS, Encounter.pref(), 'When your walk stops for someone on the road. Friends: your circle and their asks. Everything: rival crews and street battles too. Never: no stops and no short cuts.')}
-    ${seg('Focus press', 'focus', { on: 'On', off: 'Off' }, Encounter.focusOn() ? 'on' : 'off', 'During a day order, Space on the beat: that day’s EXP +10 %. Missing or skipping costs nothing.')}
     ${seg('Sound', 'sound', { on: 'On', off: 'Off' }, SND.on ? 'on' : 'off', 'Every sound: match effects and music, the island’s ambience and footsteps.')}`;
 }
 function islandOpt(kind, v) {
   if (kind === 'enc') Encounter.setPref(v);
-  else if (kind === 'focus') Encounter.setFocus(v === 'on');
   else if (kind === 'sound' && (v === 'on') !== SND.on) toggleSound();
   renderMenu();
 }

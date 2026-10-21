@@ -255,7 +255,7 @@ const step = async (name, fn) => {
     await pg.waitForFunction(() => !CW.lock, null, { timeout: 30000 });
     return g.log[0].slice(0, 70);
   });
-  // the living island, Agent E (spec §4.37 3–5): a stop on the road, the short cut, the focus press, the island's sound
+  // the living island, Agent E (spec §4.37 3–5): a stop on the road, the short cut, the island's sound
   await step('the road (T-333): a stop on the way — the card over the map, Space walks on', async () => {
     await pg.waitForFunction(() => typeof ROAD !== 'undefined' && ROAD.mod && MapView.m3, null, { timeout: 60000 });
     const c = await ev(() => {
@@ -290,7 +290,7 @@ const step = async (name, fn) => {
     await ev(() => (Encounter.force = null));
     return `${c}, ${r.held ? 'stopped mid-walk' : 'met on arrival'}`;
   });
-  await step('effort (T-335): a short cut on the place card (R), the focus ring in a drill (Space)', async () => {
+  await step('effort (T-335): a short cut on the place card (R)', async () => {
     const alt = await ev(() => {
       RUN.days = 7;
       for (const id of Object.keys(SPOTS)) {
@@ -311,37 +311,12 @@ const step = async (name, fn) => {
       if (r[0] !== 'alt' || r[1] !== 2) throw new Error(`R: ${r}`);
       await ev(() => mapPick(null));
     }
-    const kit = await ev(() => {
-      Encounter.setFocus(true);
-      Encounter.setPref('never'); // (no stop on the way to the drill)
-      ENC.focus.ms = 20000; // (slow frames: room to see the ring)
-      RUN.event = null;
-      RUN.days = 7;
-      RUN.sta = 100;
-      RUN.injury = null;
-      const from = City.pos(RUN),
-        d = k => Math.hypot(City.at(RUN, k)[0] - from[0], City.at(RUN, k)[1] - from[1]),
-        id = Object.keys(SPOTS)
-          .filter(k => SPOTS[k].kit && City.can(RUN, k).ok)
-          .sort((a, b) => d(a) - d(b))[0]; // the nearest drill
-      if (id) mapGo(id);
-      return id;
-    });
-    if (!kit) throw new Error('no drill to do');
-    await pg.waitForFunction(() => CW.lock && CW.lock.phase === 'spin', null, { timeout: 90000, polling: 200 });
-    const ring = await ev(() => !!(CW.lock.focus && document.querySelector('#actlock #fring')));
-    await pg.keyboard.press('Space');
-    const st = await ev(() => CW.lock && CW.lock.focus && CW.lock.focus.st);
-    await pg.waitForFunction(() => !CW.lock || CW.lock.phase === 'done', null, { timeout: 60000, polling: 200 });
     await ev(() => {
-      if (CW.lock) lockEnd();
-      ENC.focus.ms = 1800;
       Encounter.setPref('never'); // (the steps after this are not about the road: a hashed stop would hold their walk)
       MapView.setWalk(1);
       LOCK.max = 20000;
     });
-    if (!ring || !st) throw new Error(`focus: ring ${ring}, press ${st}`);
-    return `${alt ? `short cut at ${alt}` : 'no short cut offered'} · focus ${st}`;
+    return alt ? `short cut at ${alt}` : 'no short cut offered';
   });
   await step('island sound (T-334): the map plays; leaving it frees every node and no AudioContext runs', async () => {
     const on = await ev(() => ({ on: Ambience.on, n: Ambience.nodes(), mix: Ambience.mix() }));

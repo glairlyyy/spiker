@@ -1158,6 +1158,8 @@ Full text of every done task, newest first: **tasks-done.md** (read it only when
 
 ## Unplanned changes
 
+- Focus press removed (owner, 2026-10-21: "remove QTE in training"): career-map.js, city.js, encounter.js, data/encounter.js, menu.js, storage.js, tests, career bot.
+
 (build chat: owner requests made directly in the build chat — one line each; the spec chat moves them into spec.md and then into tasks-done.md)
 - 2026-10-08 The crouch before a jump goes deeper the higher the player jumps (owner): × 1 at Jump ≤ 40 up to × 1.5 at Jump 99 (`squatK`, `deepen` in poses3d.mjs: hip drop × k, joints × 1 + 0.3 (k − 1)) on the spike's load and the block's prep. QA (qa_poses, head height): spike load drop 0.47 → 0.71 m at Jump 99 (+51 %), block prep +36 %. Files: js/render3d/poses3d.mjs, poses3d-attack.mjs.
 - 2026-10-08 Failed digs (owner): a scramble beat that ends in a kill gets no slow motion when the diver can't reach the spot in the beat's time (clear miss), and a short, light one (×0.6, last quarter of the beat) when they get there and it just beats them (near miss) — `missCheck` (movement.js), `NEAR_MISS_SLOW` (clock.js). QA (4 Monster games): clear misses 0 slow frames, near misses slowed only at the end. Files: js/render/movement.js, clock.js, playback.js.
