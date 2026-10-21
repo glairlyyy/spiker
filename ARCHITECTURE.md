@@ -29,7 +29,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   (CAREER, BODY, CALENDAR, ROLE_NAME, STATNAME, MLOG…), `world.js` (REGIONS, FACTIONS, ECON, HOUSING, CLASH, FRONT, HEX…), `war.js` (WAR: the war units, Strength deltas; WAR_STAGES — spec §4.34), `city.js`
   (CITY geometry, SPOTS, travel constants, layout data), `stars.js` (STARS), `traits.js` (SPARKS / SCARS / `MC_TRAITS`, `TRAIT_ODDS`: the
   traits only your player carries — spec §4.30; not the NPCs' `TRAITS` in people.js), `gifts.js` (GIFTS, GIFT_TIERS, GIFT_ODDS: talent
-  tiers and innate gifts — spec §4.35), `team.js` (TEAM, TEAM_CHAT, TEAM_REPLY: team stories — spec §4.36; merges its memory kinds into
+  tiers and innate gifts — spec §4.35), `team.js` (TEAM, TEAM_CHAT, TEAM_REPLY, ARCS: team stories — spec §4.36; merges its memory kinds into
   MEMORY / MEM_TEXT).
 - **engine** `court.js` (geometry, `Z_UNITS`, `UNIT_M`, `BALL_K` / `SERVE_K`), `players.js`, `teams.js`, `save.js`,
   `stats.js`, `skills.js`, `formulas.js`, `elements.js`, `hype.js`, `fire.js` (momentum stages, spec §2.14: `temperOf`,
@@ -57,7 +57,7 @@ blockMoves and digSetup; tallies `ordLog` / `ordAttack` → `m.ordLog` (the resu
 - **career** `run.js` (Run, RUN_DEFAULTS), `body.js` (Body: your body → the court skills, spec §4.33), `training.js`, `growth.js`, `element.js`, `world.js`, `pool.js`, `eval.js`,
   `city.js`, `hex.js` (the war map's tile geometry), `front.js` (who raids whom, where), `war.js` (War: units, Strength, stages, `run.war`), `mapmodel.js`, `dossier.js`, `events.js`, `sponsors.js`, `skills.js`, `rank.js`, `cup.js`, `fight.js`; … `gifts.js` (Gifts: tiers, the
   gift roll, `known`, growth / innate effects — spec §4.35; the engine reads `p.gifts` through `hasGift` in engine/elements.js).
-  `team.js` (Team: the team chat, personal arcs, duo cards, ex-teammates — spec §4.36; state `run.tlife`; `Team.matched` from Cup.record).
+  `team.js` (Team: the team chat, personal arcs, duo cards, ex-teammates — spec §4.36; state `run.tlife`; `Team.matched` from Cup.record, `Team.lean` from Cup.entrants, `Team.week` appended to WEEK_START at load).
 - **portraits** `js/render/faces.js` `faceSVG(p, mood, size)` returns a cached 3D portrait `<img>` (PORTRAIT: look key → data URL) or the drawn face (`faceSVG2D`) as a placeholder that is swapped in place when `js/render3d/portrait3d.mjs` (lazy-loaded; one offscreen renderer, the default model re-dressed in hair / skin / team shirt, Main_v2 for you) finishes it.
 - **ui** `dom.js` (esc, tip, info, fold, kv — the vertical label/value list of spec §10.1a, peek — the L2 detail card of §10.8: `CW.peek` holds the open id, `peekSync` (MutationObserver on #app) ports the open card to <body> beside its owner panel…), `icons.js`, `match-screen.js` (startMatch → `A`, 3D load / bind, fit, venue / stakes, leaveMatch), `match-controls.js` (control bar, ⚙ settings,
   camera / follow, fullscreen, timeouts, tactics, speed / pause / skip, scoreboard, commentary, rail, box score, hotkeys), `match-tech.js`

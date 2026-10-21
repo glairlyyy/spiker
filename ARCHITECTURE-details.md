@@ -1023,3 +1023,14 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   UI (career-match.js): `chatCard` in the hub's lock layer (`CW.lock = { phase: 'res', res, chat: true }`) — after a watched match
   from `watchCareer`'s onLeave (only a chat this match wrote), after a simmed one from the result card's Continue (`chatAfter`);
   `chatKey` (window, capture) takes 1 / 2 / 3 and Space / Enter / Esc (= Stay quiet) before `hubKey`.
+- **Arcs** (T-329): `run.tlife.arcs[id] = { id, y, w (want), b (beat), st, at, alt? }` and `run.tlife.helped[id] = [years]`. `Team.week`
+  (a WEEK_START step appended at load by team.js): lapsed beats → `ignored`, the next beat opens (the seat waits for an evaluation
+  week, then its `alt`), circle members start one arc a season (hashed start week, ≤ TEAM.arc.max running, until TEAM.arc.last).
+  `Team.beat` = ARCS data with `alt` when it can't be played as written (a match with a non-mate → a day). `Team.answer(run, id, yes)`:
+  money · day (`City.day` at `Asks.place`, as an accepted invite) · match (→ 'wait', kept by `Team.arcMatch` from Team.matched when
+  they played on your side) · sit (`run.sitout`, Asks.sits) · choice; each help → `arc_help`, the last → `arc_done` + `helped`;
+  no → `arc_refused` (a `soft` beat: none; `back` pays back). Rewards: `Team.growMul` (× TEAM.grow the season it was seen through)
+  is multiplied into `Gifts.grow` (every NPC growth path); `Team.lean(run, out)` from `Cup.entrants` (year 2, after the rival is
+  placed): a helped friend of your squad's region takes the weakest same-role seat on a hash < TEAM.lean (within TEAM.leanOvr OVR).
+  UI (career-people.js): `arcStep` (the card's line), `arcAsk` / `arcAnswer` (the open beat, cost on the help button), open beats
+  sort with the waiting asks (the `!` badge).

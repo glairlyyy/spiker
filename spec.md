@@ -1391,7 +1391,14 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **3. Personal arcs**: each circle member has one three-beat arc a season built on their want (national: a call-up
     rumour → a test match → the verdict; money: a debt → a hustle → the payoff; spot: losing it → asking you to sit out → their
     chance; grudge, prove, leave likewise). Each beat asks you for something (a day, a match, money, a choice); helping →
-    a big memory, their growth × 1.1 for the rest of the season, and they lean toward your year-2 Cup squad.
+    a big memory, their growth × 1.1 for the rest of the season, and they lean toward your year-2 Cup squad. **[built 2026-10-21,
+    T-329]**: one arc a season per circle member (from a hashed week 2–16, never after week 21, at most 2 running), ARCS by want
+    (the call-up, the debt, the seat, the grudge, proving it, the way out); a beat waits to the end of the next week (unanswered:
+    `ignored`), the next opens 2 weeks after a help; asks: a training day together at their place, money ($80 / $120), your next
+    match beside them (2 weeks; a non-teammate asks for a day instead), sitting out an evaluation (waits for one, then a choice),
+    a choice. Each help `arc_help` (+8), refusing `arc_refused` (−6) ends it; the third help `arc_done` (+20), growth × 1.1 that
+    season (through Gifts.grow), and in year 2 a 60 % hash to take the weakest same-role seat of your Cup squad (within 5 OVR, same
+    region). Shown on their card (the arc's step) and in the People sheet like an ask.
   - **4. Duo cards**: at bond 60+, a friend unlocks a duo card for your hand ("Mint × You: Sync Quick", "Ploy × You: Shield Dig"
     — by their role and yours) playable whenever you share a court (club, Cup squad, street crew, Raid, Midnight Court), with
     a small cut-in. One per friend.

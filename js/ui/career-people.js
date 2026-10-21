@@ -90,6 +90,7 @@ function personCard(run, id) {
     ${gifts}
     <div class="mute">${p.gone ? esc(`${p.gone.team} · ${People.fateText(run, me)}`) : `${esc(t ? t.name : 'No club')}${me.status !== 'active' ? ` · ${esc(People.fateText(run, me))}` : ''}${me.inj > 0 ? ` · injured ${me.inj}w` : ''}`}</div>
     ${p.gone ? '' : sidesLine(run, id)}
+    ${arcStep(run, id)}
     ${mem.length ? `<ul class="pmem">${mem.map(m => `<li><b>${Season.at(run, m.w)}</b> ${esc(m.text)}</li>`).join('')}</ul>` : ''}
   </div>`;
 }
@@ -110,7 +111,8 @@ function sheetPeople(run) {
     T = Run.myTeam(run),
     onBench = m => !!(m.team.bench && m.team.bench.includes(m)),
     waits = Asks.list(run),
-    waitIds = new Set(waits.map(a => String(a.id))),
+    arcWait = Team.open(run).map(A => People.find(run, A.id)), // an arc's beat waits like an ask (spec §4.36 3)
+    waitIds = new Set(waits.map(a => String(a.id)).concat(arcWait.filter(Boolean).map(p => String(p.id)))),
     mateIds = new Set(mates.map(m => m.id)),
     favIds = new Set((run.fav || []).map(String)),
     others = People.all(run)
@@ -125,6 +127,7 @@ function sheetPeople(run) {
     seen = new Set(),
     order = [
       ...waits.map(a => People.find(run, a.id)),
+      ...arcWait,
       ...[...favIds].map(id => People.find(run, id)),
       ...mates.filter(m => !onBench(m)),
       ...mates.filter(onBench),
@@ -197,7 +200,48 @@ function personDetail(run, id, waits) {
           }</div></div>`
         : ''
     }
+    ${arcAsk(run, id, !ask)}
     ${moves(run, id) ? `<div class="lab">Your moves</div>${moves(run, id)}` : ''}`;
+}
+/** Their arc this season in one line (spec §4.36 3): its name, the beat (n of 3) and where it stands. '' without one. */
+function arcStep(run, id) {
+  const A = Team.arc(run, String(id));
+  if (!A) return '';
+  const D = ARCS[A.w],
+    n = D.beats.length,
+    st =
+      A.st === 'open'
+        ? 'waiting for you'
+        : A.st === 'wait'
+          ? 'your next match beside them'
+          : A.st === 'next'
+            ? `next: week ${A.at}`
+            : A.st === 'done'
+              ? 'seen through'
+              : 'over';
+  return `<div class="parc">Arc <b>${esc(D.name)}</b> · ${Math.min(A.b + 1, n)} of ${n} — ${esc(D.beats[A.b].name)} · <span class="${A.st === 'lost' ? 'mute' : ''}">${st}</span></div>`;
+}
+/** Their arc's open beat: their line and your two answers (the help one carries its cost). pri: the help is the card's primary. */
+function arcAsk(run, id, pri) {
+  const A = Team.arc(run, String(id));
+  if (!A || A.st !== 'open') return '';
+  const B = Team.beat(run, A),
+    c = Team.cost(run, A),
+    k = esc(String(id));
+  return `<div class="pask"><div class="lab" ${tip('Answer by the end of next week')}>Their arc · ${esc(ARCS[A.w].name)} · ${A.b + 1} of ${ARCS[A.w].beats.length}</div><p>“${esc(B.line)}”</p><div class="acts two"><button class="btn ${pri ? 'hot' : ''}" onclick="arcAnswer('${k}',true)">${esc(B.a)}${c ? ` <i class="mute small">${esc(c)}</i>` : ''}</button><button class="btn" onclick="arcAnswer('${k}',false)">${esc(B.b)}</button></div></div>`;
+}
+/** Answer an arc's beat (a training day with them follows the walk, as an accepted invite does). */
+function arcAnswer(id, yes) {
+  const A = Team.arc(RUN, id),
+    p = People.find(RUN, id),
+    at = A && yes && Team.beat(RUN, A).ask === 'day' && p ? Asks.place(RUN, p) : null,
+    snap = trainBefore(at),
+    r = Team.answer(RUN, id, yes);
+  if (!r) return renderCareer();
+  if (r.blocked) return toastBlocked(r.blocked);
+  Run.save(RUN);
+  if (r.day && trainWithFriend(id, r.at, snap, r.dayLine)) return;
+  renderCareer();
 }
 /** Answer a waiting approach (a match to start, or a day spent, follows). */
 function askAnswer(i, yes) {

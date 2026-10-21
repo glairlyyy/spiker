@@ -82,7 +82,7 @@ Accept: tests — the messages match behaviours and the result; one reply writes
 QA: career run → a match → the chat card.
 Result: Team.matched from Cup.record (one line in cup.js, every match of yours) → run.tlife.chat (state in `run.tlife`: `run.team` is the club index); one reply to the whole chat = one memory with each who wrote (× behaviour, 0 = none); card in the hub lock layer after the result (watched: onLeave; sim: Continue → chatAfter; keys 1/2/3, Space = Stay quiet); ui-smoke's sim step answers it. 4 tests; QA: 4 messages after a court loss, 0 page errors.
 
-### [ ] T-329: Personal arcs
+### [x] T-329: Personal arcs
 Agent: S
 Spec: §4.36 3          Goldens: unchanged          Save: no change
 Goal: each circle member gets one three-beat arc a season by want; each beat asks something; helping → a big memory, growth × 1.1,
@@ -90,7 +90,7 @@ leaning toward your year-2 Cup squad (a weight Cup squads read).
 Files: js/career/team.js, js/data/team.js, js/ui/career-people.js (the arc step), js/career/cup.js (the lean, one line), tests/story.test.js
 Accept: tests — an arc advances beat by beat; helping applies its rewards; one arc per member a season.
 QA: career run → an arc's three beats.
-Result:
+Result: Team.week appended to WEEK_START from team.js at load (career.test's step count 7 → 8); growth × 1.1 via one hook in Gifts.grow (js/career/gifts.js — not listed, the one place every NPC growth path reads); Cup lean = Team.lean from Cup.entrants (one line, year 2, hash < 0.6, within 5 OVR, same region); a match beat for a non-teammate and the seat without an evaluation fall back to a day / a choice; unanswered beats → `ignored`. 4 tests; career 12 both: good Y2 92.3, casual 87.3 (no arcs answered by the bot); QA: the debt arc's 3 beats on the People sheet, 0 page errors.
 
 ### [ ] T-330: Duo cards and ex-teammates across the net
 Agent: S

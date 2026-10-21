@@ -31,6 +31,7 @@ const Cup = {
     }
     if (run.mode && run.mode.story && !out.some(e => e.ids.includes(run.youId))) Cup.place(run, out);
     Cup.placeRival(run, out);
+    if (typeof Team !== 'undefined') Team.lean(run, out); // friends you saw through an arc lean into your year-2 squad (spec §4.36 3)
     return out;
   },
   /**

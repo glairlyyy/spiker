@@ -132,3 +132,226 @@ Object.assign(MEM_TEXT, {
   chat_joke: ['Joked with {n} after the match. {n} took it how {n} takes things.', 'Made {n} laugh after a match. Or wince.'],
   chat_quiet: ['Said nothing to {n} after the match. {n} read it somehow.', 'Left {n} on read. On purpose.']
 });
+
+/**
+ * Personal arcs (spec §4.36 3): one per circle member a season, built on their want — three beats, each asking you for something.
+ * name: the arc (registrar-dry); beats: { name, ask, line (theirs), a (help) / b (refuse) — your answers, yes / no (your diary lines,
+ * {n} = their first name) }. ask: 'day' (a training day together at their place) · 'money' (`amt`) · 'match' (your next match beside
+ * them, within TEAM.arc.wait weeks) · 'sit' (you sit out this evaluation; waits for a match week) · 'choice'. `alt`: the beat when it
+ * can't be played as written (a match with someone off your squad, the seat when no match week comes) — its fields override.
+ * `soft`: refusing writes no memory; `back`: refusing pays you this back.
+ */
+const ARCS = {
+  national: {
+    name: 'The call-up',
+    beats: [
+      {
+        name: 'The rumour',
+        ask: 'day',
+        line: 'Word is a national scout is on the island. Train with me before they look.',
+        a: 'Train together',
+        b: 'Not now',
+        yes: 'Trained with {n} for the scout. If there is a scout.',
+        no: 'Told {n} the scout can wait. {n} did not like that.'
+      },
+      {
+        name: 'The test match',
+        ask: 'match',
+        line: 'A test match. I need someone beside me who makes me look ready.',
+        a: 'I’ll be there',
+        b: 'Find someone else',
+        yes: 'Played beside {n} with the scout watching. Probably watching.',
+        no: '{n} played the test without me.',
+        alt: { ask: 'day', line: 'They want tape of me. Run drills with me so it looks like I belong.', a: 'Run drills' }
+      },
+      {
+        name: 'The verdict',
+        ask: 'choice',
+        line: 'They said “maybe”. Tell me it is not a no.',
+        a: 'It’s a yes in disguise',
+        b: 'Maybe it is a no',
+        yes: 'Told {n} “maybe” means yes. I might be lying.',
+        no: 'Told {n} the truth. {n} did not want it.'
+      }
+    ]
+  },
+  money: {
+    name: 'The debt',
+    beats: [
+      {
+        name: 'The creditors',
+        ask: 'money',
+        amt: 80,
+        line: 'I owe the wrong people. Eighty would make it go away.',
+        a: 'Pay it',
+        b: 'Not a bank',
+        yes: 'Paid {n}’s debt. Lighter wallet, one friend heavier.',
+        no: 'Said no to {n}’s debt. Not a bank.'
+      },
+      {
+        name: 'The hustle',
+        ask: 'match',
+        line: 'There is cash on the next game. Play it beside me.',
+        a: 'Count me in',
+        b: 'Not this one',
+        yes: 'Played beside {n} for the money. {n} counted it twice.',
+        no: '{n} hustled without me.',
+        alt: { ask: 'day', line: 'A street crew wants to see me sharp. Train with me today.', a: 'Train together' }
+      },
+      {
+        name: 'The payoff',
+        ask: 'choice',
+        line: 'It paid. Here is your eighty back — unless you let me keep it.',
+        a: 'Keep it',
+        b: 'Take the $80',
+        soft: 1,
+        back: 80,
+        yes: 'Let {n} keep the money. Generous. Suspiciously.',
+        no: 'Took my $80 back from {n}. Fair is fair.'
+      }
+    ]
+  },
+  spot: {
+    name: 'The seat',
+    beats: [
+      {
+        name: 'Losing it',
+        ask: 'day',
+        line: 'The coach is looking past me. Stay after with me and run my drills.',
+        a: 'Stay after',
+        b: 'Not today',
+        yes: 'Ran {n}’s drills after hours. My legs filed a complaint.',
+        no: 'Left {n} on the floor alone.'
+      },
+      {
+        name: 'Sit out',
+        ask: 'sit',
+        line: 'Sit out this evaluation. Let me show them I still belong.',
+        a: 'Sit out',
+        b: 'No',
+        yes: 'Gave {n} my seat for the evaluation. {n} owes me.',
+        no: 'Kept my seat. {n} watched me keep it.',
+        alt: { ask: 'choice', line: 'I lost my seat. Tell me I get it back.', a: 'You will', b: 'Maybe not' }
+      },
+      {
+        name: 'Their chance',
+        ask: 'choice',
+        line: 'I started. I was good. Say it.',
+        a: 'You were',
+        b: 'You were fine',
+        yes: 'Told {n} the start was good. It was, mostly.',
+        no: 'Told {n} it was fine. {n} heard “not good”.'
+      }
+    ]
+  },
+  grudge: {
+    name: 'The grudge',
+    beats: [
+      {
+        name: 'The target',
+        ask: 'day',
+        line: 'I have a faction to answer. Train with me until I am ready for them.',
+        a: 'Train together',
+        b: 'Not my grudge',
+        yes: 'Trained for {n}’s grudge. Now it is a little bit mine.',
+        no: 'Told {n} it is not my grudge.'
+      },
+      {
+        name: 'The fight',
+        ask: 'match',
+        line: 'Next match, beside me. I want them to see us together.',
+        a: 'Side by side',
+        b: 'Not this time',
+        yes: 'Played beside {n} like we meant it.',
+        no: '{n} went into it without me.',
+        alt: { ask: 'day', line: 'One more day on the floor. Then I go at them.', a: 'One more day' }
+      },
+      {
+        name: 'The reckoning',
+        ask: 'choice',
+        line: 'Was it worth it? Say yes.',
+        a: 'It was',
+        b: 'It wasn’t',
+        yes: 'Told {n} the grudge was worth it. Grudges like hearing that.',
+        no: 'Told {n} it was not worth it. Honest. Unpopular.'
+      }
+    ]
+  },
+  prove: {
+    name: 'Proving it',
+    beats: [
+      {
+        name: 'The doubt',
+        ask: 'day',
+        line: 'The elders say I am not built for it. Train with me until they are wrong.',
+        a: 'Train together',
+        b: 'Not now',
+        yes: 'Trained with {n} to spite the elders. Good reason.',
+        no: 'Let {n} prove it alone.'
+      },
+      {
+        name: 'The showcase',
+        ask: 'match',
+        line: 'Watch me play. No — play with me. Then they will see.',
+        a: 'Play with them',
+        b: 'Watch, maybe',
+        yes: 'Played beside {n} so somebody would see. Somebody did.',
+        no: '{n} played it without me.',
+        alt: { ask: 'day', line: 'Then watch me train. Better: train with me.', a: 'Train together' }
+      },
+      {
+        name: 'The proof',
+        ask: 'choice',
+        line: 'I proved it. Didn’t I?',
+        a: 'You did',
+        b: 'Not yet',
+        yes: 'Told {n} it is proved. {n} will quote me.',
+        no: 'Told {n} not yet. {n} will quote that too.'
+      }
+    ]
+  },
+  leave: {
+    name: 'The way out',
+    beats: [
+      {
+        name: 'The ticket',
+        ask: 'money',
+        amt: 120,
+        line: 'A boat ticket costs a hundred and twenty. I am short.',
+        a: 'Pay it',
+        b: 'Not for that',
+        yes: 'Paid toward {n}’s way off the island. Strange thing to buy.',
+        no: 'Would not pay {n}’s ticket.'
+      },
+      {
+        name: 'The tape',
+        ask: 'day',
+        line: 'An agent wants tape of me training. Run drills with me.',
+        a: 'Run drills',
+        b: 'Not today',
+        yes: 'Ran drills with {n} for an agent who may exist.',
+        no: '{n} made the tape alone.'
+      },
+      {
+        name: 'The goodbye',
+        ask: 'choice',
+        line: 'If I get out, will you hate me for it?',
+        a: 'Go',
+        b: 'Stay',
+        yes: 'Told {n} to go. Meant it, mostly.',
+        no: 'Told {n} to stay. {n} looked at the sea anyway.'
+      }
+    ]
+  }
+};
+
+Object.assign(MEMORY, {
+  arc_help: { v: 8 }, // you helped one beat of their arc (spec §4.36 3)
+  arc_done: { v: 20, payoff: 1 }, // you saw their arc through: the big memory
+  arc_refused: { v: -6 } // you turned a beat down
+});
+Object.assign(MEM_TEXT, {
+  arc_help: ['Helped {n} with something that mattered to {n}.', '{n} asked. I showed up.'],
+  arc_done: ['Saw {n}’s thing through to the end. {n} won’t forget it.', '{n}’s whole mess, start to finish. I was there for it.'],
+  arc_refused: ['{n} needed me. I said no.', 'Turned {n} down when it counted.']
+});

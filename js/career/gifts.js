@@ -86,9 +86,10 @@ const Gifts = {
   wit: p => Gifts.of(p).reduce((s, id) => s + ((GIFTS[id] && GIFTS[id].wit) || 0), 0),
   /** Growth × for p: src 'train' | 'match', `stat` the one it goes to (Reader: wit). 1 without growth gifts. */
   grow(run, p, src = 'train', stat = null) {
-    const g = Gifts.of(p);
-    if (!g.length) return 1;
-    let x = 1;
+    const g = Gifts.of(p),
+      arc = typeof Team !== 'undefined' ? Team.growMul(run, p) : 1; // an arc you saw through: × 1.1 this season (spec §4.36 3)
+    if (!g.length) return arc;
+    let x = arc;
     for (const id of g) {
       const G = GIFTS[id];
       if (id === 'prodigy') x *= G.k;

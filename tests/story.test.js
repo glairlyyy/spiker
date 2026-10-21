@@ -117,3 +117,153 @@ test('team chat: Cup.record writes it for every match of yours (the career path)
   g.Cup.record(run, m, 'challenge');
   assert(g.Team.pending(run), 'a chat after the logged match');
 });
+
+// ---- T-329: personal arcs ----
+const arcRun = seed => {
+  const [g, run] = mkRun(seed);
+  run.week = g.TEAM.arc.start[1]; // every hashed start week has come
+  return [g, run];
+};
+test('arcs: circle members start one arc a season from their want (by hash, at most TEAM.arc.max running); no draws', () => {
+  const [g, run] = arcRun(340),
+    circle = g.Team.circle(run);
+  assert(circle.length >= 2, 'a circle (your mates until Circle lands)');
+  eq(
+    draws(g, () => g.Team.week(run)),
+    0,
+    'no draws'
+  );
+  const open = g.Team.open(run);
+  eq(open.length, Math.min(g.TEAM.arc.max, circle.length), 'as many as may run');
+  for (const A of open) {
+    eq(A.w, run.people[A.id].want, 'built on their want');
+    eq(A.b, 0, 'the first beat');
+    assert(circle.includes(A.id), 'a circle member');
+  }
+  const ids = open.map(A => A.id).join();
+  g.Team.week(run);
+  eq(
+    g.Team.open(run)
+      .map(A => A.id)
+      .join(),
+    ids,
+    'no second arc while two run'
+  );
+  run.week = 1;
+  const [g2, run2] = mkRun(340);
+  run2.week = 1;
+  g2.Team.week(run2);
+  assert(
+    g2.Team.open(run2).every(A => g2.Team.startWeek(run2, A.id) <= 1),
+    'nobody starts before their week'
+  );
+});
+
+test('arcs: beat by beat — pay, a match beside them, the answer; helping writes memories, growth × 1.1, then no second arc', () => {
+  const [g, run] = arcRun(341);
+  g.Team.week(run);
+  const A = g.Team.open(run)[0],
+    id = A.id,
+    p = g.People.find(run, id);
+  A.w = 'money'; // the debt: money → a match → a choice
+  run.money = 1000;
+  const mem = () => g.Rel.list(run, id).map(e => e.k);
+  let r;
+  eq(
+    draws(g, () => (r = g.Team.answer(run, id, true))),
+    0,
+    'no draws'
+  );
+  assert(r && !r.blocked, 'paid');
+  eq(run.money, 1000 - g.ARCS.money.beats[0].amt, 'the debt paid');
+  assert(mem().includes('arc_help'), 'a memory for the beat');
+  eq(A.st, 'next', 'the next beat waits');
+  eq(g.Team.answer(run, id, true), null, 'nothing to answer between beats');
+  run.week = A.at;
+  g.Team.week(run);
+  eq(A.st, 'open', 'the second beat opens');
+  eq(A.b, 1, 'beat 2');
+  eq(g.Team.beat(run, A).ask, 'match', 'a mate: the match itself');
+  g.Team.answer(run, id, true);
+  eq(A.st, 'wait', 'a promise');
+  const m = play(g, run);
+  m.played.add(id);
+  m.played.add(g.Run.you(run).id);
+  g.Team.matched(run, m);
+  eq(A.b, 2, 'the match beside them kept it');
+  run.week = A.at;
+  g.Team.week(run);
+  eq(A.st, 'open', 'the last beat');
+  eq(g.Team.growMul(run, p), 1, 'no growth bonus before the end');
+  g.Team.answer(run, id, true);
+  eq(A.st, 'done', 'seen through');
+  assert(mem().includes('arc_done'), 'the big memory');
+  eq(g.Team.growMul(run, p), g.TEAM.grow, 'their growth × 1.1 this season');
+  assert(
+    Math.abs(g.Gifts.grow(run, p, 'train') / g.Gifts.grow(run, { ...p, id: 'nobody' }, 'train') - g.TEAM.grow) < 1e-9,
+    'Gifts.grow reads it'
+  );
+  run.week = g.TEAM.arc.last;
+  g.Team.week(run);
+  eq(g.Team.arc(run, id), A, 'one arc a member a season');
+  run.year = 2;
+  eq(g.Team.growMul(run, p), 1, 'the bonus is for that season');
+});
+
+test('arcs: refusing ends it (arc_refused; a soft beat pays back instead); an unanswered beat is lost', () => {
+  const [g, run] = arcRun(342);
+  g.Team.week(run);
+  const [A, B] = g.Team.open(run);
+  A.w = 'national';
+  g.Team.answer(run, A.id, false);
+  eq(A.st, 'lost', 'refused: over');
+  assert(
+    g.Rel.list(run, A.id).some(e => e.k === 'arc_refused'),
+    'arc_refused'
+  );
+  B.w = 'money';
+  B.b = 2;
+  const m0 = run.money;
+  g.Team.answer(run, B.id, false);
+  eq(run.money, m0 + 80, 'the payoff taken back');
+  assert(!g.Rel.list(run, B.id).some(e => e.k === 'arc_refused'), 'soft: no hard feelings');
+  const [g2, run2] = arcRun(343);
+  g2.Team.week(run2);
+  const C = g2.Team.open(run2)[0];
+  run2.week += g2.TEAM.arc.open + 1;
+  g2.Team.week(run2);
+  eq(C.st, 'lost', 'left unanswered');
+  assert(
+    g2.Rel.list(run2, C.id).some(e => e.k === 'ignored'),
+    'ignored'
+  );
+});
+
+test('arcs: the year-2 Cup lean puts a friend you saw through into your squad (no draws)', () => {
+  const [g, run] = mkRun(344),
+    r = 'wei',
+    you = g.Run.you(run),
+    all = g.Pool.players(run, r).filter(p => !p.named),
+    role = you.role,
+    same = all.filter(p => p.role === role),
+    others = all.filter(p => p.role !== role);
+  const [w, f] = same,
+    e = { region: r, ids: [you.id, w.id, ...others.slice(0, 4).map(p => p.id)] },
+    o = { region: r, ids: [f.id, ...others.slice(4, 9).map(p => p.id)] },
+    out = [e, o];
+  g.Team.of(run).helped = { [f.id]: [1] };
+  g.TEAM.lean = 1;
+  g.TEAM.leanOvr = 99;
+  run.year = 1;
+  g.Team.lean(run, out);
+  assert(!e.ids.includes(f.id), 'year 1: no lean');
+  run.year = 2;
+  eq(
+    draws(g, () => g.Team.lean(run, out)),
+    0,
+    'no draws'
+  );
+  assert(e.ids.includes(f.id) && !e.ids.includes(w.id), 'the friend takes the same-role seat');
+  assert(o.ids.includes(w.id), 'the replaced player takes theirs');
+  assert(e.ids.includes(you.id), 'you stay');
+});
