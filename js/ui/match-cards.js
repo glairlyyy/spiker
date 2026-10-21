@@ -41,14 +41,14 @@ function cardChip(m, i, id) {
     you = cardsCareer() && c.need && hasTech(Run.you(RUN), c.need),
     ctr = E && E.ctr.length ? ` Countered by: ${E.ctr.map(x => CARDS[x].name).join(', ')}.` : '',
     rule =
-      c.kind === 'boost'
+      c.kind === 'boost' || c.src === 'duo'
         ? 'Never spent.'
         : c.kind === 'once'
           ? `Used up the moment it is slotted${E && E.fit !== 'always' ? `; best when it ${FIT_TIP[E.fit]}` : ''}.`
           : c.kind === 'trap'
             ? `Hidden from them. At the next serve, if they have slotted ${c.trap.map(x => CARDS[x].name).join(', ')}, that card burns and the trap is used up.`
             : `Pays when it ${FIT_TIP[E ? E.fit : 'always']}.${ctr} Burns at ${TURN.spent} net points in the rallies it plays off the read (now ${net > 0 ? '+' : ''}${net}).`;
-  return `<span class="ccard k-${c.kind} z-${c.zone} ${st} ${fits ? 'fits' : ''}" ${tip(`${c.desc}. ${rule}`)}><b>${you ? '◆ ' : ''}${esc(c.name)}</b><i>${
+  return `<span class="ccard k-${c.kind} z-${c.zone} ${st} ${fits ? 'fits' : ''}" ${tip(`${c.desc}. ${rule}`)}><b>${you ? '◆ ' : ''}${esc(cardName(m, i, id))}</b><i>${
     st === 'spent'
       ? c.kind === 'once' || c.kind === 'trap'
         ? 'Used'
@@ -65,7 +65,9 @@ function cardChip(m, i, id) {
                 ? 'One-shot'
                 : c.zone === 'op'
                   ? 'OP'
-                  : 'Play'
+                  : c.src === 'duo'
+                    ? 'Duo'
+                    : 'Play'
   }</i></span>`;
 }
 /** Each read in words (the card's tooltip, registrar voice). */
@@ -377,7 +379,7 @@ function cardsRow(m) {
       played = Object.entries(C.played)
         .filter(([id]) => CARDS[id].kind !== 'boost')
         .sort((a, b) => b[1] - a[1])
-        .map(([id, n]) => `${esc(CARDS[id].name)} ×${n}`)
+        .map(([id, n]) => `${esc(cardName(m, i, id))} ×${n}`)
         .join(' · '),
       spent = C.spent.map(id => esc(CARDS[id].name)).join(' · ');
     return `<div class="rplan"><span class="rpt">${chip(m.t[i])}${esc(m.t[i].short)}</span><span>${played || '<span class="mute">boosts only</span>'}${
@@ -385,4 +387,55 @@ function cardsRow(m) {
     }</span></div>`;
   };
   return `<div class="rplans"><div class="lab">Cards <span class="mute">(turns slotted)</span></div>${side(0)}${side(1)}</div>`;
+}
+/** A card's name on screen: a duo card (spec §4.36 4) names the friend — "Mint × You: Sync Quick". */
+function cardName(m, i, id) {
+  const c = CARDS[id],
+    D = c && c.src === 'duo' && duoIds(m, i, id),
+    f =
+      (D &&
+        D.slice(1)
+          .map(byId)
+          .find(p => p && m.t[i].P.includes(p))) ||
+      (D && byId(D[1]));
+  return f ? `${f.name.split(' ')[0]} × You: ${c.name}` : c.name;
+}
+/** The duo card's cut-in (spec §4.36 4): the hype banner "MINT × YOU" and the friend's line, the first time it plays on your side. */
+function cardsDuoCut(m, i, id) {
+  const D = duoIds(m, i, id),
+    f =
+      D &&
+      D.slice(1)
+        .map(byId)
+        .find(p => p && m.t[i].P.includes(p));
+  if (!f) return;
+  showBanner({ t: `${f.name.split(' ')[0]} × You`, c: m.t[i].color });
+  showSay({ p: f.id, t: `${CARDS[id].name}! ${DUO_SAY[id] || ''}`.trim() });
+  setTimeout(() => {
+    const el = document.getElementById('hsay');
+    if (el && A && A.m === m) el.classList.remove('on');
+  }, 2600);
+}
+/**
+ * A career match's team-life presentation (spec §4.36, started by career-match.js once the fixture's setup ran): each frame while the
+ * match plays and nothing else holds the court — an ex-teammate's remark once, then a cut-in for each duo card of yours the first time
+ * it is slotted with its pair on court. Stops when the match ends or the screen leaves it. Presentation only (no draws).
+ */
+function teamWatch(m) {
+  if (typeof A === 'undefined' || !A || A.m !== m || A.done || m.over) return;
+  if (!A.prep && !A.cturn && typeof X !== 'undefined' && !X && !Dir.talk && !(A.beats && A.bi < A.beats.length && A.beats[A.bi].scene)) {
+    const seen = A.duoSeen || (A.duoSeen = new Set());
+    if (m.exIds && !A.exSaid) {
+      A.exSaid = true;
+      exRemark(m);
+    } else if (m.duo)
+      for (const i of [0, 1])
+        for (const id of cardIds(m, i))
+          if (CARDS[id].src === 'duo' && !seen.has(id) && duoOn(m.t[i], duoIds(m, i, id) || [])) {
+            seen.add(id);
+            cardsDuoCut(m, i, id);
+            break;
+          }
+  }
+  requestAnimationFrame(() => teamWatch(m));
 }

@@ -234,8 +234,13 @@ function simCareer(fx) {
   let snap = null,
     msg = '';
   const fin = fx.onFinish,
+    set = fx.setup,
     m = Cup.simNow({
       ...fx,
+      setup: mm => {
+        if (set) set(mm);
+        Team.setup(RUN, mm); // duo cards, ex-teammates (spec §4.36)
+      },
       onFinish: mm => {
         snap = resultSnap(RUN, mm);
         return (msg = fin(mm) || '');
@@ -254,8 +259,14 @@ function simCareer(fx) {
 function watchCareer(fx) {
   const done = fx.onLeave,
     c0 = RUN && RUN.tlife ? RUN.tlife.chat : null; // (a match left before its end writes no chat: never show an older one)
+  const set = fx.setup;
   navigate('match', {
     ...fx,
+    setup: m => {
+      if (set) set(m);
+      Team.setup(RUN, m); // duo cards, ex-teammates (spec §4.36): the hand reads m.duo; the cut-ins wait for the court
+      requestAnimationFrame(() => teamWatch(m));
+    },
     onLeave: () => {
       if (done) done();
       const C = RUN && !RUN.result && Team.pending(RUN);

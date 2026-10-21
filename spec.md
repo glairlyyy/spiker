@@ -1401,7 +1401,13 @@ the AI coach fills every slot you leave with the same function. Built and measur
     region). Shown on their card (the arc's step) and in the People sheet like an ask.
   - **4. Duo cards**: at bond 60+, a friend unlocks a duo card for your hand ("Mint × You: Sync Quick", "Ploy × You: Shield Dig"
     — by their role and yours) playable whenever you share a court (club, Cup squad, street crew, Raid, Midnight Court), with
-    a small cut-in. One per friend.
+    a small cut-in. One per friend. **[built 2026-10-21, T-330]**: six duo cards by the two roles — Sync Quick (S × MB: power +8 %), Pin
+    Connection (S × WS: power +8 %), Two Brains (S × S: defense, speed +5 %), Twin Towers (MB × MB: jump +8 %), Double Wall (MB × WS:
+    jump +6 %, defense +4 %), Shield Dig (WS × WS: defense +8 %) — for the two of you only, while both are on court; never spent;
+    unlocked once at bond 60 (a diary line); shown as "Mint × You: Pin Connection"; the coach may slot it too (a little over a boost);
+    the cut-in = the hype banner "Mint × You" + their line, the first time it plays. Matches you play or sim from the hub (the
+    instant Raid and Midnight Court have no hand). **Ex-teammates** across the net: one exchange after match prep (their line by
+    personality, your reply) and `faced_ex` for each who played.
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.

@@ -267,3 +267,75 @@ test('arcs: the year-2 Cup lean puts a friend you saw through into your squad (n
   assert(o.ids.includes(w.id), 'the replaced player takes theirs');
   assert(e.ids.includes(you.id), 'you stay');
 });
+
+// ---- T-330: duo cards, ex-teammates across the net ----
+test('duo: a 60+ friend’s card is in the hand only with them on your court; it lifts the two of you; no duo → today', () => {
+  const [g, run] = mkRun(350),
+    you = g.Run.you(run),
+    mine = g.Run.myTeam(run),
+    f = mine.P.find(p => p !== you),
+    card = g.Team.duoCard(you.role, f.role);
+  assert(card && g.CARDS[card].src === 'duo', `a duo card for ${you.role} × ${f.role}`);
+  eq(g.Team.duoCard(f.role, you.role), card, 'either way round');
+  // no duo yet: the same match as without Team
+  const m0 = g.newMatch(mine, run.teams[0], false);
+  g.Team.setup(run, m0);
+  eq(m0.duo, undefined, 'no friend at 60: no m.duo');
+  // bond 60+: unlocked (a diary line, once)
+  run.people[f.id].traits[0] = 'warm'; // (a Picky friend would not count it yet)
+  for (let n = 0; n < 40 && g.Rel.bondOf(run, f.id) < g.TEAM.duo; n++) g.Rel.add(run, f.id, 'vouched');
+  g.Team.duoWeek(run);
+  eq(g.Team.of(run).duo[f.id], card, 'unlocked');
+  const m = g.newMatch(mine, run.teams[0], false);
+  eq(
+    draws(g, () => g.Team.setup(run, m)),
+    0,
+    'no draws'
+  );
+  assert(g.cardPool(m, 0).includes(card), 'in the hand with them on court');
+  assert(!g.cardPool(m, 1).includes(card), 'not theirs');
+  g.playRally(m); // (CM = this match)
+  const k = g.SLOTS.find(s => g.cardFits(card, s));
+  for (const s of g.SLOTS) if (m.cards[0].slots[s] === card) m.cards[0].slots[s] = null;
+  g.cardApply(m, 0);
+  const other = m.t[0].P.find(p => p !== you && p !== f),
+    stat = Object.keys(g.CARDS[card].buff)[0],
+    before = [you, f, other].map(p => g.cardBuff(p, stat));
+  assert(g.cardPut(m, 0, k, card), 'slotted');
+  g.cardApply(m, 0);
+  const after = [you, f, other].map(p => g.cardBuff(p, stat));
+  assert(after[0] > before[0] && after[1] > before[1], `it acts on the pair (${before} → ${after})`);
+  eq(after[2], before[2], 'nobody else');
+  // the friend to the bench: out of the pool, the buff stops
+  const bi = m.t[0].bench.findIndex(Boolean);
+  if (bi >= 0) {
+    const sub = m.t[0].bench[bi];
+    m.t[0].P[m.t[0].P.indexOf(f)] = sub;
+    m.t[0].bench[bi] = f;
+    assert(!g.cardPool(m, 0).includes(card), 'not in the hand with them off court');
+    eq(g.cardBuff(you, stat), before[0], 'no lift without them');
+  }
+});
+
+test('ex-teammates: across the net they are marked for the remark and remember the match (faced_ex); lines for every personality', () => {
+  const [g, run] = mkRun(351),
+    opp = run.teams[0],
+    ex = opp.P[0];
+  run.ex = { [ex.id]: 3 };
+  const m = g.newMatch(g.Run.myTeam(run), opp, false);
+  g.Team.setup(run, m);
+  eq((m.exIds || []).join(), ex.id, 'the ex across the net');
+  while (!m.over) g.playRally(m);
+  m.played.add(g.Run.you(run).id);
+  m.played.add(ex.id);
+  g.Team.matched(run, m);
+  assert(
+    g.Rel.list(run, ex.id).some(e => e.k === 'faced_ex'),
+    'faced_ex'
+  );
+  for (const k of ['ex', 'ex_reply']) for (const pers of g.PERS) assert((g.MLINES[k][pers] || []).length >= 5, `${k}.${pers}`);
+  const [g2, run2] = mkRun(352),
+    m2 = g2.newMatch(g2.Run.myTeam(run2), run2.teams[0], false);
+  g2.Team.setup(run2, m2);
+  eq(m2.exIds, undefined, 'nobody left: no remark');
+});

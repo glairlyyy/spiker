@@ -44,7 +44,7 @@ const slotZone = k => (k === 'flex' ? 'flex' : k.slice(0, 3));
 /**
  * The tactic cards (spec §2.33). zone: 'atk' | 'def' | 'op' (OP: FLEX only). kind: 'boost' (never spent) | 'play'. src:
  * 'base' (always in the pool) | 'coach' (the coach's playbook) | 'tech' (a squad player owns `need`) | 'trait' (a squad player
- * has trait `trait`) | 'op' (an OP or element player in the squad). kind also 'once' (fires when slotted, then used up: `on`)
+ * has trait `trait`) | 'op' (an OP or element player in the squad) | 'duo' (m.duo[side][id] = the pair's ids, both on court). kind also 'once' (fires when slotted, then used up: `on`)
  * and 'trap' (`trap`: the other side's cards it burns when they slot one). What a card does, compiled by js/engine/cards.js:
  * buff — stat → % (atk = power in play, def, spd, jump, serve; with `need` only for its holders, `needT` only for players with
  * that trait; `when`: a CARD_FIT read that must hold — 'behind', 'late', 'streak', 'ahead', 'under', 'brink'); plan — { atk | def } team plan (PLANS); tac — the tactic (TACTICS); ord — [kind, value] role order for
@@ -499,6 +499,68 @@ const CARDS = {
     when: 'brink',
     tally: 'defend',
     desc: 'Power, defense and jump +15 % while they are at match point'
+  },
+  // duo cards (spec §4.36 4, T-330): a friend at bond 60+ (`duo`: your role and theirs, either way); in the pool only while you and
+  // that friend are both on court (m.duo, set by the career); the buff reaches only the two of you; never spent
+  duo_quick: {
+    name: 'Sync Quick',
+    zone: 'atk',
+    kind: 'play',
+    src: 'duo',
+    duo: ['S', 'MB'],
+    buff: { atk: 8 },
+    tally: 'attack',
+    desc: 'The two of you: power +8 %'
+  },
+  duo_pin: {
+    name: 'Pin Connection',
+    zone: 'atk',
+    kind: 'play',
+    src: 'duo',
+    duo: ['S', 'WS'],
+    buff: { atk: 8 },
+    tally: 'attack',
+    desc: 'The two of you: power +8 %'
+  },
+  duo_brains: {
+    name: 'Two Brains',
+    zone: 'def',
+    kind: 'play',
+    src: 'duo',
+    duo: ['S', 'S'],
+    buff: { def: 5, spd: 5 },
+    tally: 'defend',
+    desc: 'The two of you: defense and speed +5 %'
+  },
+  duo_towers: {
+    name: 'Twin Towers',
+    zone: 'def',
+    kind: 'play',
+    src: 'duo',
+    duo: ['MB', 'MB'],
+    buff: { jump: 8 },
+    tally: 'defend',
+    desc: 'The two of you: jump +8 %'
+  },
+  duo_wall: {
+    name: 'Double Wall',
+    zone: 'def',
+    kind: 'play',
+    src: 'duo',
+    duo: ['MB', 'WS'],
+    buff: { jump: 6, def: 4 },
+    tally: 'defend',
+    desc: 'The two of you: jump +6 %, defense +4 %'
+  },
+  duo_shield: {
+    name: 'Shield Dig',
+    zone: 'def',
+    kind: 'play',
+    src: 'duo',
+    duo: ['WS', 'WS'],
+    buff: { def: 8 },
+    tally: 'defend',
+    desc: 'The two of you: defense +8 %'
   }
 };
 /** Combos (spec §2.33): both slotted → the bonus; they share one spent count. `any`: either of the second ids. */
@@ -511,6 +573,7 @@ const COMBOS = {
 /** The coach's pick (no draws): base score of a boost / a play; situational scores; a dull coach (IQ < `dull`) plays only its style's plans. */
 const CARD_AI = {
   boost: 1,
+  duo: 1.5, // a duo card (spec §4.36 4): a little over a boost
   play: 0.8,
   tech: 1,
   trait: 1,

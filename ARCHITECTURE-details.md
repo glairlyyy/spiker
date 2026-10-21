@@ -1034,3 +1034,16 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   placed): a helped friend of your squad's region takes the weakest same-role seat on a hash < TEAM.lean (within TEAM.leanOvr OVR).
   UI (career-people.js): `arcStep` (the card's line), `arcAsk` / `arcAnswer` (the open beat, cost on the help button), open beats
   sort with the waiting asks (the `!` badge).
+- **Duo cards and ex-teammates** (T-330): six CARDS with `src: 'duo'` and `duo: [role, role]` (js/data/cards.js; `Team.duoCard` finds
+  yours by your role and theirs). `Team.setup(run, m)` — called from the UI's fixture wrappers (`watchCareer` / `simCareer` setup,
+  after the fixture's own; the headless Raid / Midnight Court have none) — sets `m.duo[your side] = { card: [you, friends] }` for
+  squadmates whose duo is unlocked (`Team.duoOk`: bond TEAM.duo once — `Team.duoWeek` logs it in `run.tlife.duo`) and refills turn 0
+  (the coach picked in newMatch before m.duo existed; `played` reset so counts stay 1); `m.exIds` = ex-teammates across the net. Engine
+  (cards.js): `duoIds(m, i, id)`, `duoOn(T, ids)` (two of the pair on court); `cardInPool` holds a duo card only while both are on
+  court; its buffs carry `ids` and `cardFor` gives them to the pair only while both are on court; never spent (no CARD_EDGE: always
+  'fit'); the coach scores it `CARD_AI.duo`. No m.duo → nothing reads differently (goldens unchanged). UI: `cardName` ("Mint × You:
+  Pin Connection", chips and the result row); `teamWatch(m)` (match-cards.js, a rAF loop from watchCareer's setup) waits until no
+  prep / turn / exchange / scene holds the court, then `exRemark(m)` once (match-exchange.js: MLINES `ex` / `ex_reply` by personality,
+  holds the rally through `Dir.talk`), then `cardsDuoCut` the first time each duo card is slotted with its pair on court (the hype
+  banner `showBanner` "Mint × You" + `showSay` with DUO_SAY). `faced_ex` (Team.matched): each ex who played against you (Agent T owns
+  the kind; data/team.js defines a stand-in only while it is missing).

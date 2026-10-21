@@ -1,7 +1,7 @@
 // Team life (spec §4.36 2–4): the team chat after every match you play, personal arcs, duo cards and ex-teammates across the net.
 // No DOM. No R() / rnd() / pick(): every choice is a hash (hstr). Data: TEAM, TEAM_CHAT, TEAM_REPLY (js/data/team.js).
 // State (lazy, no RUN_DEFAULTS): run.tlife = { chat: { key, win, msgs: [{ id, sit, t }], done } | null, arcs: { id: arc },
-// helped: { id: [years an arc was seen through] } }; an arc = { id, y (year), w (want), b (beat 0–2), st, at (week), alt? }, st:
+// helped: { id: [years an arc was seen through] }, duo: { id: duo card id, once unlocked } }; an arc = { id, y (year), w (want), b (beat 0–2), st, at (week), alt? }, st:
 // 'open' (the beat waits for your answer since week `at`) · 'wait' (you promised a match beside them, week `at`) · 'next' (the
 // next beat opens at week `at`) · 'done' · 'lost'.
 // Reads Agent T's contract behind guards: Circle.of(run) → ids (else your mates), run.ex = { id: week left } (else none).
@@ -35,7 +35,9 @@ const Team = {
     const you = Run.you(run);
     if (!you || !m || !m.played) return;
     Team.chatFor(run, m, 0);
-    if (m.played.has(you.id)) Team.arcMatch(run, m, 0);
+    if (!m.played.has(you.id)) return;
+    Team.arcMatch(run, m, 0);
+    for (const p of Team.exAcross(run, m, 0)) if (m.played.has(p.id)) Rel.add(run, p.id, 'faced_ex'); // (spec §4.36 B)
   },
   /** The situation of teammate p after match m (side = yours): 'win' | 'loss' + '_you' (your line beat theirs) | '_them' | ''. */
   sit(run, m, side, p) {
@@ -131,6 +133,7 @@ const Team = {
    * hashed start week, up to TEAM.arc.last, at most TEAM.arc.max running).
    */
   week(run) {
+    Team.duoWeek(run);
     const arcs = Team.arcs(run),
       y = Season.year(run),
       wk = run.week,
@@ -284,6 +287,59 @@ const Team = {
       if (o) o.ids[o.ids.indexOf(f.id)] = w.id;
       e.ids[e.ids.indexOf(w.id)] = f.id;
     }
+  },
+  // ---- duo cards and ex-teammates across the net (spec §4.36 4, B; T-330) ----
+  /** The duo card for two roles, either way round (CARDS with src 'duo'), or null. */
+  duoCard: (a, b) =>
+    Object.keys(CARDS).find(id => {
+      const d = CARDS[id].duo;
+      return CARDS[id].src === 'duo' && d && ((d[0] === a && d[1] === b) || (d[0] === b && d[1] === a));
+    }) || null,
+  /** Has id's duo card been unlocked (bond TEAM.duo+ once: it stays)? */
+  duoOk: (run, id) => !!(run.tlife && run.tlife.duo && run.tlife.duo[id]) || Rel.bondOf(run, id) >= TEAM.duo,
+  /** Each week: a circle member past TEAM.duo for the first time unlocks their duo card (one per friend; a diary line). */
+  duoWeek(run) {
+    const T = Team.of(run),
+      D = T.duo || (T.duo = {}),
+      you = Run.you(run);
+    if (!you) return;
+    for (const id of Team.circle(run)) {
+      const p = People.find(run, id),
+        c = p && Team.duoCard(you.role, p.role);
+      if (!c || D[id] || Rel.bondOf(run, id) < TEAM.duo) continue;
+      D[id] = c;
+      Run.log(run, `${Team.first(p)} and me have a move now: ${CARDS[c].name}.`);
+    }
+  },
+  /** The people you left on the other side of match m (side = yours): [player]. */
+  exAcross(run, m, side) {
+    const ex = Team.ex(run);
+    return squadOf(m.t[1 - side]).filter(p => p.id in ex);
+  },
+  /**
+   * Before a match of yours (the UI's setup — watched or simmed): m.duo[your side] = { duo card id: [you, friends] } for squadmates with
+   * an unlocked duo (the engine's pool and buffs read it; none → today's match), m.exIds = ex-teammates across the net (presentation).
+   */
+  setup(run, m) {
+    const you = Run.you(run),
+      side = you ? [0, 1].find(i => squadOf(m.t[i]).some(p => p.id === you.id)) : undefined;
+    if (side == null) return;
+    const by = {};
+    for (const p of squadOf(m.t[side])) {
+      if (p.id === you.id || !run.people || !run.people[p.id] || !Team.duoOk(run, p.id)) continue;
+      const c = Team.duoCard(you.role, p.role);
+      if (c) (by[c] || (by[c] = [you.id])).push(p.id);
+    }
+    if (Object.keys(by).length) {
+      (m.duo || (m.duo = [null, null]))[side] = by;
+      const C = m.cards && m.cards[side];
+      if (C && !m.turnN && !Object.keys(C.you).length) {
+        C.played = {}; // turn 0 again (newMatch's coach picked before the duo was known): the same counts, the duo in the pick
+        cardFill(m, side);
+      }
+    }
+    const ex = Team.exAcross(run, m, side);
+    if (ex.length) m.exIds = ex.map(p => p.id);
   }
 };
 WEEK_START.push(run => Team.week(run)); // (appended at load: the arcs' weekly step, no draws — after Asks.roll and Gifts.ask)

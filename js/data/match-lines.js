@@ -359,6 +359,81 @@ const MLINES = {
       'Nobody quits. Not now.',
       'Hold on — we take it back!'
     ]
+  }, // an ex-teammate across the net (spec §4.36 B, T-330) — said by them to you at the start of the match; not a director kind
+  // (MLINE_KINDS): match-exchange.js `exRemark` shows it once, after match prep
+  ex: {
+    hot: [
+      'Look who switched sides. I’m not holding back, {them}!',
+      'You left, {them}. Now I get to hit it at you!',
+      'Remember me, {them}? You will after today!',
+      'No mercy for old teammates. None!',
+      'I’ve waited for this one, {them}!!'
+    ],
+    cool: [
+      'Different shirt. Same habits, {them}. I know them all.',
+      'I know where you stand on a bad pass, {them}.',
+      '{them}. Let’s see what they taught you.',
+      'Nothing personal. Mostly.',
+      'I used to cover for you. Not today.'
+    ],
+    cocky: [
+      'Hope they’re paying you well, {them}.',
+      'Missed me yet, {them}?',
+      'You picked the wrong side, {them}. Watch.',
+      'Our old coach says hi. Actually, he doesn’t.',
+      'Still serving to the same corner, {them}?'
+    ],
+    shy: [
+      '…{them}? It’s weird seeing you over there.',
+      'I don’t… I don’t want to lose to you.',
+      'We used to warm up together, {them}…',
+      'Please don’t go easy on me. I won’t either.',
+      '…hi, {them}. Good luck. Not too much.'
+    ],
+    leader: [
+      'Good to see you, {them}. Now we beat you.',
+      'You were one of us, {them}. Show me what you are now.',
+      'We remember you. Play like you mean it.',
+      'Respect, {them}. Then nothing until the last point.',
+      'Shake after. Not before.'
+    ]
+  },
+  ex_reply: {
+    hot: [
+      'Then hit it! I’ll dig every one!',
+      'Bring it — I know your tells too!',
+      'I didn’t leave to lose to you!',
+      'Talk after the scoreboard, {them}!',
+      'Every point. Watch me take every point.'
+    ],
+    cool: [
+      'Habits change. You’ll see.',
+      'You know the old me. Not this one.',
+      'Fine. I know yours too, {them}.',
+      'Play, {them}. We’ll talk later.',
+      'Nothing personal. Entirely.'
+    ],
+    cocky: [
+      'They pay in wins, {them}. You’ll see.',
+      'Missed you? I miss beating you in practice.',
+      'Wrong side? We’ll check the score.',
+      'Tell the coach I said nothing.',
+      'Same corner. Still can’t stop it, can you?'
+    ],
+    shy: [
+      '…it’s weird for me too.',
+      'I… don’t want to lose either.',
+      'I remember. I still won’t go easy.',
+      'Okay. Neither will I.',
+      '…good luck, {them}. A little.'
+    ],
+    leader: [
+      'Good. Then give me your best, {them}.',
+      'I am what I was. More of it.',
+      'Remember this one, {them}.',
+      'Respect. Then nothing.',
+      'After. Not before.'
+    ]
   }
 };
 /** The kinds the director speaks first (each has a `_reply`), by priority (spec §2.18: stage change > captain's call > duel > …). */

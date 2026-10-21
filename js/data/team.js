@@ -355,3 +355,16 @@ Object.assign(MEM_TEXT, {
   arc_done: ['Saw {n}’s thing through to the end. {n} won’t forget it.', '{n}’s whole mess, start to finish. I was there for it.'],
   arc_refused: ['{n} needed me. I said no.', 'Turned {n} down when it counted.']
 });
+// Ex-teammates across the net (spec §4.36 B): Agent T defines `faced_ex` in people.js; this is the stand-in until it lands (T's wins).
+if (!MEMORY.faced_ex) MEMORY.faced_ex = { v: -2 };
+if (!MEM_TEXT.faced_ex) MEM_TEXT.faced_ex = ['Faced {n} across the net. Strange view.', '{n} on the other side now. We both noticed.'];
+
+/** The duo card's cut-in (spec §4.36 4): what the friend shouts when it comes into play. */
+const DUO_SAY = {
+  duo_quick: 'Same as practice — go!',
+  duo_pin: 'Wide and high. It’s yours.',
+  duo_brains: 'I read left, you read right.',
+  duo_towers: 'Two walls. Nothing gets through.',
+  duo_wall: 'Close it with me!',
+  duo_shield: 'Back line is ours. Dig everything.'
+};
