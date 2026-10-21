@@ -138,6 +138,105 @@ const step = async (name, fn) => {
       return `${ids.length} cards`;
     })
   );
+  // the living island, Agent E (spec §4.37 3–5): a stop on the road, the short cut, the focus press, the island's sound
+  await step('the road (T-333): a stop on the way — the card over the map, Space walks on', async () => {
+    await pg.waitForFunction(() => typeof ROAD !== 'undefined' && ROAD.mod && MapView.m3, null, { timeout: 60000 });
+    const c = await ev(() => {
+      RUN.days = 7;
+      RUN.event = null;
+      for (const id of Object.keys(SPOTS)) City.reveal(RUN, City.at(RUN, id));
+      for (const h of CITY.hq) City.reveal(RUN, h);
+      const N = Encounter.near(RUN),
+        c = N.find(x => x.kind === 'circle') || N[0],
+        from = City.pos(RUN),
+        to = Object.keys(SPOTS)
+          .map(id => City.at(RUN, id))
+          .filter(p => City.onLand(p) && !City.outside(RUN, p) && Math.hypot(p[0] - from[0], p[1] - from[1]) > 4 * ENC.min)
+          .sort((a, b) => Math.hypot(a[0] - from[0], a[1] - from[1]) - Math.hypot(b[0] - from[0], b[1] - from[1]))[0]; // a short walk
+      if (!c || !to) return null;
+      MapView.setWalk(4); // (a software GPU: frames are slow)
+      LOCK.max = 120000; // (let the walk reach the stop)
+      Encounter.force = c.key; // (the hash would decide in play)
+      mapTravel(to[0], to[1]);
+      return c.kind;
+    });
+    if (!c) throw new Error('nobody on the map to meet');
+    await pg.waitForFunction(() => CW.lock && CW.lock.phase === 'enc', null, { timeout: 90000 });
+    const r = await ev(() => ({
+      txt: document.querySelector('#actlock').textContent,
+      held: !!ROAD.mod.WALK.held,
+      pri: document.querySelectorAll('#actlock .sb-opts .btn.hot').length
+    }));
+    if (!/Walk on/.test(r.txt) || r.pri !== 1) throw new Error(`encounter card: ${r.txt.slice(0, 160)} (${r.pri} primaries)`);
+    await pg.keyboard.press('Space');
+    await pg.waitForFunction(() => !CW.lock, null, { timeout: 90000 });
+    await ev(() => (Encounter.force = null));
+    return `${c}, ${r.held ? 'stopped mid-walk' : 'met on arrival'}`;
+  });
+  await step('effort (T-335): a short cut on the place card (R), the focus ring in a drill (Space)', async () => {
+    const alt = await ev(() => {
+      RUN.days = 7;
+      for (const id of Object.keys(SPOTS)) {
+        CW.spot = id;
+        roadSync(RUN);
+        if (!ROAD.alt) continue;
+        mapPick(id);
+        const ok = document.querySelectorAll('#spot .proute .seg .btn').length === 2;
+        return ok ? id : `${id}: no route row`;
+      }
+      CW.spot = null;
+      return '';
+    });
+    if (alt && / /.test(alt)) throw new Error(alt);
+    if (alt) {
+      await pg.keyboard.press('r');
+      const r = await ev(() => [ROAD.route, (ROAD.mod.WALK.routes || []).length]);
+      if (r[0] !== 'alt' || r[1] !== 2) throw new Error(`R: ${r}`);
+      await ev(() => mapPick(null));
+    }
+    const kit = await ev(() => {
+      Encounter.setFocus(true);
+      Encounter.setPref('never'); // (no stop on the way to the drill)
+      ENC.focus.ms = 20000; // (slow frames: room to see the ring)
+      RUN.event = null;
+      RUN.days = 7;
+      RUN.sta = 100;
+      RUN.injury = null;
+      const from = City.pos(RUN),
+        d = k => Math.hypot(City.at(RUN, k)[0] - from[0], City.at(RUN, k)[1] - from[1]),
+        id = Object.keys(SPOTS)
+          .filter(k => SPOTS[k].kit && City.can(RUN, k).ok)
+          .sort((a, b) => d(a) - d(b))[0]; // the nearest drill
+      if (id) mapGo(id);
+      return id;
+    });
+    if (!kit) throw new Error('no drill to do');
+    await pg.waitForFunction(() => CW.lock && CW.lock.phase === 'spin', null, { timeout: 90000, polling: 200 });
+    const ring = await ev(() => !!(CW.lock.focus && document.querySelector('#actlock #fring')));
+    await pg.keyboard.press('Space');
+    const st = await ev(() => CW.lock && CW.lock.focus && CW.lock.focus.st);
+    await pg.waitForFunction(() => !CW.lock || CW.lock.phase === 'done', null, { timeout: 60000, polling: 200 });
+    await ev(() => {
+      if (CW.lock) lockEnd();
+      ENC.focus.ms = 1800;
+      Encounter.setPref('friends');
+      MapView.setWalk(1);
+      LOCK.max = 20000;
+    });
+    if (!ring || !st) throw new Error(`focus: ring ${ring}, press ${st}`);
+    return `${alt ? `short cut at ${alt}` : 'no short cut offered'} · focus ${st}`;
+  });
+  await step('island sound (T-334): the map plays; leaving it frees every node and no AudioContext runs', async () => {
+    const on = await ev(() => ({ on: Ambience.on, n: Ambience.nodes(), mix: Ambience.mix() }));
+    if (!on.on || !on.n) throw new Error(`no ambience on the map: ${JSON.stringify(on)}`);
+    await ev(() => navigate('menu'));
+    await pg.waitForTimeout(800);
+    const off = await ev(() => ({ on: Ambience.on, n: Ambience.nodes(), st: SND.ctx && SND.ctx.state }));
+    await ev(() => openCareer());
+    await pg.waitForFunction(() => document.querySelector('.career.hub'));
+    if (off.on || off.n || off.st === 'running') throw new Error(`left running: ${JSON.stringify(off)}`);
+    return `${on.n} nodes, then ${off.n} (${off.st || 'no context'})`;
+  });
   await step('simmed court match → result card', async () => {
     await ev(() => mapCourt('arena', 'open', true));
     await pg.waitForFunction(() => CW.lock && CW.lock.phase === 'res', null, { timeout: 90000 });

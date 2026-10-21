@@ -24,7 +24,7 @@ function renderMenu() {
       <button class="btn ${you ? '' : 'hot'} tbig" onclick="CR=null;navigate('create')" ${you && !saved.result ? tip(`Replaces ${you.name}'s run`) : ''}>New career</button>
       <button class="btn tbig" onclick="navigate('encyclopedia')" ${tip('Every technique and who can use it')}>Encyclopedia</button>
       <button class="btn tbig ${TS.settings ? 'on' : ''}" onclick="TS.settings=!TS.settings;renderMenu()" ${tip('Match defaults: hype, graphics, camera, volume')}>Settings</button>
-      ${TS.settings ? `<div class="tset setpop"><div class="popb">${settingsMenu()}</div></div>` : ''}
+      ${TS.settings ? `<div class="tset setpop"><div class="popb">${settingsMenu()}${islandSettings()}</div></div>` : ''}
     </div>
     </div>
     <button class="btn quiet tdev ${TS.dev ? 'on' : ''}" onclick="TS.dev=!TS.dev;renderMenu()" aria-expanded="${TS.dev}" ${tip('Playtest and measurement tools')}>Dev ›</button>
@@ -55,6 +55,25 @@ function renderMenu() {
   </section>`;
   if (bg) $('.title > .tbg').replaceWith(bg);
   else titleBg($('.title > .tbg'));
+}
+/** The island's settings (spec §4.37 3–5): when the road stops you, the focus press, the sound. */
+function islandSettings() {
+  const seg = (label, kind, opts, cur, t) =>
+    `<div class="sset" ${tip(t)}><span class="cgl">${label}</span><div class="seg">${Object.entries(opts)
+      .map(
+        ([k, n]) =>
+          `<button class="btn ${k === cur ? 'on' : ''}" aria-pressed="${k === cur}" onclick="islandOpt('${kind}','${k}')">${esc(n)}</button>`
+      )
+      .join('')}</div></div>`;
+  return `${seg('Road stops', 'enc', ENC_STOPS, Encounter.pref(), 'When your walk stops for someone on the road. Friends: your circle and their asks. Everything: rival crews and street battles too. Never: no stops and no short cuts.')}
+    ${seg('Focus press', 'focus', { on: 'On', off: 'Off' }, Encounter.focusOn() ? 'on' : 'off', 'During a day order, Space on the beat: that day’s EXP +10 %. Missing or skipping costs nothing.')}
+    ${seg('Sound', 'sound', { on: 'On', off: 'Off' }, SND.on ? 'on' : 'off', 'Every sound: match effects and music, the island’s ambience and footsteps.')}`;
+}
+function islandOpt(kind, v) {
+  if (kind === 'enc') Encounter.setPref(v);
+  else if (kind === 'focus') Encounter.setFocus(v === 'on');
+  else if (kind === 'sound' && (v === 'on') !== SND.on) toggleSound();
+  renderMenu();
 }
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.querySelector('.title .tcont') && !e.target.closest('input,select,textarea,button')) openCareer();
