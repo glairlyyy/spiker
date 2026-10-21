@@ -1032,3 +1032,8 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   `walked_out`; `Circle.offer` opens `run.event = { id: 'follow', who, from, to, fee (Mercenary), pre: true }` (Events.def / choose →
   `Circle.answer`). Yes: pay the fee, `Circle.move` (the lowest same-role non-named player of your club drops to the Academy squad —
   via the friend's old club: two `World.swap`s), an `event` +8 memory, `run.ex` cleared. No: `walked_out` (a club only) + `refused_help`.
+- **Squad strip** (career-hub.js `squadStrip`, in `topBar` between the resources and the tabs; css/hub.css `.tcircle` / `.tcm` /
+  `.tmd`): one button per `Circle.of` id — `faceSVG(p, form, 28)` (the S/A frame comes with it), a 3px bond bar (`.bbar` c / f at
+  60 / 80), a corner badge for `Circle.mood` (hurt ✚ `--bad`, tired z `--warn`, out –), a teammate ringed in the club colour
+  (`--tc` border); the tip says name · club · bond · mood; click → `openPerson(id)`. Nothing when the circle is empty.
+

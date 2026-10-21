@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // UI smoke test (T-231): opens the real page in headless Chromium and walks every screen once — title, a new career's hub,
-// the four sheets, every place card, the Encyclopedia, the VFX lab, a simmed court match's result card and a Monster game to its result.
+// the four sheets, the squad strip, every place card, the Encyclopedia, the VFX lab, a simmed court match's result card and a Monster game to its result.
 // Fails on any page error or Debug-log error line. Not part of `npm test` (it needs Chromium): `npm run test:ui`.
 // Playwright is the preinstalled one (local node_modules, else the global install) — never `playwright install`.
 const http = require('http'),
@@ -95,6 +95,21 @@ const step = async (name, fn) => {
       if (k === 'me' && !(/Strength/.test(txt) && /Flexibility/.test(txt) && /Swing/.test(txt) && /Power/.test(txt)))
         throw new Error('the Me sheet has no body / court / swing');
     });
+  await step('squad strip (spec §4.36): a close teammate in the top bar, a click opens their card', async () => {
+    const r = await ev(() => {
+      const m = Run.mates(RUN)[0];
+      Rel.push(RUN, Rel.key(RUN.youId, m.id), m.id, 'event', 30, m.id);
+      renderCareer();
+      const b = document.querySelectorAll('.hub .tbar .tcircle .tcm');
+      if (!b.length) return 'no strip';
+      if (!b[0].classList.contains('mate') || !b[0].querySelector('.bbar')) return 'no teammate ring / bond bar';
+      b[0].click();
+      const ok = CW.sheet === 'people' && CW.person === m.id;
+      hubOpen(null);
+      return ok ? '' : 'the click did not open their card';
+    });
+    if (r) throw new Error(r);
+  });
   await step('every place card', () =>
     ev(() => {
       const ids = [

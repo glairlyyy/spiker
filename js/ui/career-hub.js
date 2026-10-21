@@ -270,6 +270,7 @@ function topBar(real) {
       ${cell('Stamina', `<span class="sbar ${staPct < 50 ? 'low' : ''}"><i ${prev && prev.sta !== run.sta ? `class="mv" style="--w:${staPct}%;--w0:${Math.round((prev.sta / run.staMax) * 100)}%"` : `style="--w:${staPct}%"`}></i></span><span class="${staPct < 50 ? 'warn' : ''}">${run.sta}</span>${d('sta')}`, `Stamina ${run.sta}/${run.staMax}`, 'sta')}
       ${cell('Mood', `<span class="mood m${run.mood}">${mood.name}</span>${d('mood')}`, 'Mood', 'mood')}
     </div>
+    ${squadStrip(real)}
     <nav class="ttabs" aria-label="Sheets">${HUB_TABS.map(
       ([k, n], i) =>
         `<button class="btn ${CW.sheet === k ? 'on' : ''}" onclick="hubOpen('${k}')">${n} <kbd>${i + 1}</kbd>${k === 'people' && people ? `<em class="badge">${people}</em>` : ''}</button>`
@@ -277,6 +278,26 @@ function topBar(real) {
       ''
     )}<button class="btn ${CW.gear ? 'on' : ''}" onclick="gearToggle()" aria-label="Settings">⚙</button></nav>${CW.gear ? gearPop() : ''}
   </header>`;
+}
+/**
+ * The squad strip (spec §4.36 1): your circle's faces (Circle.of — starred first), each with its bond bar and how they are this
+ * week; a current teammate's face is ringed in the club colour. A click opens their card on the People sheet.
+ */
+function squadStrip(run) {
+  const ids = Circle.of(run);
+  if (!ids.length) return '';
+  const MOOD = { hurt: ['✚', 'Injured'], tired: ['z', 'Tired'], out: ['–', 'Out of the squad'], fine: ['', ''] };
+  return `<nav class="tcircle" aria-label="Your circle">${ids
+    .map(id => {
+      const p = People.find(run, id),
+        b = Rel.bondOf(run, id),
+        mate = Circle.mate(run, id),
+        [ico, mood] = MOOD[Circle.mood(run, id)],
+        club = mate ? 'Teammate' : p.team ? p.team.name : 'No club',
+        star = (run.fav || []).map(String).includes(id) ? '★ ' : '';
+      return `<button class="tcm ${mate ? 'mate' : ''}" ${mate ? `style="--tc:${p.team.color}"` : ''} onclick="openPerson('${esc(id)}')" ${tip(`${star}${p.name} · ${club} · bond ${b}${mood ? ` · ${mood}` : ''}`)} aria-label="${esc(p.name)}">${faceSVG(p, mate ? Run.form(run, p) : 0, 28)}${ico ? `<em class="tmd ${Circle.mood(run, id)}">${ico}</em>` : ''}<i class="bbar ${b >= 80 ? 'f' : b >= 60 ? 'c' : ''}"><i style="--w:${b}%"></i></i></button>`;
+    })
+    .join('')}</nav>`;
 }
 /** The week rail: you and your 4 stats, the week's days, the inbox, End week. */
 function weekRail(run, armed) {

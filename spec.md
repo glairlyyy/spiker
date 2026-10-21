@@ -1388,6 +1388,8 @@ the AI coach fills every slot you leave with the same function. Built and measur
       `faced_ex` memory.
   - **1. Squad strip** (hub top bar): your circle's faces with mood and bond; click → their card: this week's plan, their want,
     their arc step (3), your history.
+    **[built 2026-10-21, T-327: mood = their week (injured / tired / out of the squad), a corner badge; bond = a bar under the face;
+    teammates ringed in the club colour; click → their People card (the arc step is Agent S's)]**
   - **2. Team chat** after every match you play: 2–4 messages from teammates in their behaviour's voice (the Hothead blames, the
     Friendly cheers, the Egoist talks about themselves); one reply (back them · joke · stay quiet) → a small memory each.
   - **3. Personal arcs**: each circle member has one three-beat arc a season built on their want (national: a call-up

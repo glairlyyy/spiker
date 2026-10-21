@@ -64,14 +64,14 @@ Accept: tests — the circle's order and cap; a Loyal friend never follows; a fo
 QA: career run → switch clubs with a close friend.
 Result: pins = the People sheet's stars (`run.fav`, no new field); the asker = the closest 60+ active non-named teammate passing the hash (Friendly/Shy/Hothead 0.7, Mercenary 0.5 for $120, Loyal 0, others 0.3), also when you leave the Academy squad; asks only with no event open; yes → `event` +8 memory, no → walked_out (clubs) + refused_help; data CIRCLE/FOLLOW in js/data/world.js; QA t326-follow-card.png, t326-after.png.
 
-### [ ] T-327: The squad strip
+### [x] T-327: The squad strip
 Agent: T
 Spec: §4.36 1          Goldens: unchanged          Save: no change
 Goal: the hub's top bar shows your circle's faces (mood, bond; current teammates marked); a click opens their card.
 Files: js/ui/career-hub.js, css/hub.css, tests/ui-smoke.js (the strip renders)
 Accept: UI smoke passes with the strip; design-system rules (tokens, type ≥ 12px).
 QA: career run → the hub, screenshot.
-Result:
+Result: NPC "mood" = this week's state from their career (injured ✚ / tired z under PEOPLE.sta.tired / out –, none when fine) — NPCs have no mood value; teammates ringed in the club colour, starred only in the tip; UI smoke step added (strip, ring, bond bar, click → card); QA t327-strip.png (+ -zoom, -click).
 
 ### [ ] T-328: Team chat after matches
 Agent: S
