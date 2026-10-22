@@ -364,6 +364,11 @@ function draw() {
   // effects run on the world clock, except in a scene close-up: there they fade out at full speed so a frozen world
   // doesn't pile lightning and sparks in front of the camera
   w.fx.update(A.shot ? dt * 1.5 : dt * Math.max(A.freezeOn ? 0.15 : 0.02, Math.min(1, A.ts ?? 1)), cam, w.gl.height, base.fov);
+  if (A.qaLook) {
+    // QA hook: a close camera on the ball (A.qaLook = [x, y, z] metres off it)
+    cam.position.copy(w.ball.position).add(qaOff.set(...A.qaLook));
+    cam.lookAt(w.ball.position);
+  }
   w.renderer.render(w.scene, cam);
   // overlay: the playback layer's screen-space pieces, now projected through this camera
   Overlay.drawChant(now);
@@ -386,7 +391,8 @@ function draw() {
 }
 
 const hL = new THREE.Vector3(),
-  hR = new THREE.Vector3();
+  hR = new THREE.Vector3(),
+  qaOff = new THREE.Vector3();
 /** Fade (ms) of the ball leaving a hand back onto its own flight path. */
 const HAND_REL_MS = 140;
 /**

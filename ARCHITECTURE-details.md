@@ -246,6 +246,19 @@ call, a camera push and a slow window at the end of the beat (`hypeSlow`: off wh
 "One touch!". The Hype setting (`G.hype`: off / normal /
 max) skips scene beats above its level; tapping the court skips the rest of a scene.
 
+**Ball squash, smear and contact hit-stop** (owner 2026-10-23, `VFX.squash`): `startBall` rates each touch with
+`hitShare(kind, a.trail, A.trailPow)` (0..1: a spike / serve by its own power, a block × 0.7 and a dig × 0.45 of the incoming
+ball, a set 0.12) into `a._sq`; `hitBall(a)` fires once at the hand's contact (at once, or in `tweenBall` after `a._lag`)
+and calls `ballHit` (effects.js): `A.bsq = { k, t, dir, fl, kind }` (`t` on the world clock in `stepEffects`; `dir` = the
+flight's start tangent in court units, `fl` = flight ms), plus on a spike / jump serve with k ≥ stopFrom the hit-stop
+(`hitStopMs`: 40–70 ms via `A.hitStopUntil`, which clock.js already honours; 0 with `RM`, Hype off or a floater), a
+stronger camera kick and a white flash. `ballSquash(k, ms, S, fl)` is the pure shape: flatten (cosine, one overshoot,
+volume kept, round by `S.ms`), then the smear along the flight (up to 2.6× long, thickness ax^−thin, held and eased, capped
+at 0.9 of the flight). arena3d `updateBall` turns it into a world-axis scale matrix (`ball.userData.sq`, applied outside
+the spin by the ball's own `updateMatrix`: T·D·R·S) — along `dir` while flattened, along `ballDir` (this frame's motion)
+once smeared — and washes the stripes out with emissive white as it smears. QA hook: `A.qaLook = [x, y, z]` puts the
+camera that far off the ball (r3d).
+
 ## Block formation
 
 `formBlock()` (engine/rally.js) reads the attack instead of always sending the middle. `lane` = L / M / R from the hitter's net

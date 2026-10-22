@@ -116,6 +116,62 @@ function recvHit(d, pow) {
     A.shake = Math.max(A.shake || 0, R.shake * k);
   }
 }
+/**
+ * Ball squash (owner, 2026-10-23; VFX.squash, display only): how hard a contact hits the ball, 0..1. `kind` the contact
+ * ('spike' | 'serve' | 'block' | 'bump' | 'dive' | 'set'), `out` the new flight's power (a.trail), `inc` the incoming ball's.
+ */
+function hitShare(kind, out, inc, S = VFX.squash) {
+  const k = p => clamp(((p || 0) - S.p0) / Math.max(1, S.p1 - S.p0), 0, 1);
+  if (kind === 'spike' || kind === 'serve') return k(out);
+  if (kind === 'block') return S.block * k(inc);
+  if (kind === 'bump' || kind === 'dive') return S.dig * k(inc);
+  return kind === 'set' ? S.set : 0;
+}
+/**
+ * The ball's shape `ms` (world) after a contact of share `k`: { ax, cr } — the scale along the hit / flight (ax) and across it
+ * (cr). Contact: flattened to 1 − flat·k, snapping back (a damped cosine, first zero at z = 0.27·S.ms, one overshoot, round by
+ * S.ms; cr = 1/√ax keeps the volume). A hard hit (k > strFrom) then smears along its flight — the anime smear frame (owner
+ * 2026-10-23): up to 1 + smear·share^curve long (2.6× at full, ~1.4× a medium hit), cr = ax^−thin thick, held to S.hold ms,
+ * easing round over S.out; both capped by the flight's length `fl` (ms) so it is round before the next touch.
+ */
+function ballSquash(k, ms, S = VFX.squash, fl = Infinity) {
+  if (!(k > 0) || !(ms >= 0)) return { ax: 1, cr: 1 };
+  const T = S.ms,
+    z = 0.27 * T,
+    hold = Math.min(S.hold, 0.6 * fl),
+    out = Math.min(S.out, 0.3 * fl),
+    win = 1 - smooth01((ms - 0.7 * T) / (0.3 * T)),
+    d = ms < T ? S.flat * k * Math.cos((Math.PI / 2) * (ms / z)) * Math.exp(-ms / (0.36 * T)) * win : 0,
+    sh = k > S.strFrom ? Math.pow((k - S.strFrom) / Math.max(0.01, 1 - S.strFrom), S.curve) : 0,
+    env = ms <= z ? 0 : smooth01((ms - z) / 25) * (1 - smooth01((ms - Math.max(z, hold)) / Math.max(1, out))),
+    st = S.smear * sh * env;
+  if (st > 0 && 1 + st > 1 - d) return { ax: 1 + st, cr: Math.pow(1 + st, -S.thin), smear: st };
+  const ax = 1 - d;
+  return { ax, cr: 1 / Math.sqrt(ax) };
+}
+const smooth01 = x => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+/** Hit-stop (ms) of a contact: a hard spike or jump serve only (k ≥ stopFrom); none with reduced motion or Hype off. */
+function hitStopMs(kind, k, wob, S = VFX.squash) {
+  if (!S.on || RM || !HYPE[G.hype].max || wob || (kind !== 'spike' && kind !== 'serve') || k < S.stopFrom) return 0;
+  return S.stop0 + ((S.stop1 - S.stop0) * (k - S.stopFrom)) / Math.max(0.01, 1 - S.stopFrom);
+}
+/**
+ * The ball is hit (playback: at the hand's contact): squash it along `dir` (court delta { x, z, h } of the new flight's start;
+ * `fl` its length in ms; A.bsq, drawn by arena3d updateBall, timed on the world clock in stepEffects), and on a top hit the hit-stop (A.hitStopUntil,
+ * clock.js) with a stronger camera kick and a white flash.
+ */
+function ballHit(kind, k, dir, wob, fl) {
+  const S = VFX.squash;
+  if (!S.on || !(k > 0)) return;
+  A.bsq = { k, t: 0, dir, fl, kind };
+  const ms = hitStopMs(kind, k, wob);
+  if (!ms) return;
+  A.hitStopUntil = Math.max(A.hitStopUntil || 0, performance.now() + ms);
+  const top = (k - S.stopFrom) / Math.max(0.01, 1 - S.stopFrom);
+  camKick(S.p0 + k * (S.p1 - S.p0), dir.x > 0 ? -1 : 1);
+  if (A.kick) A.kick.amt *= S.kick;
+  if (S.flash * top > 0.01) flashScreen(S.flash * top, FLASH_WHITE);
+}
 /** Ball hits the floor: dust and shockwave, plus a camera rumble by power (VFX.shake.floor; a kill × VFX.shake.kill). */
 function impact(pow, kill) {
   const f = fx3();
@@ -278,6 +334,7 @@ function stepEffects(dt) {
   if (A.link) linkSparks();
   A.zoom = (A.zoom || 0) * Math.pow(0.993, dt);
   if (A.squash) A.squash = Math.max(0, A.squash - dt / 300);
+  if (A.bsq && (A.bsq.t += dt) > 2000) A.bsq = null; // the ball's squash / smear clock (ballHit, arena3d updateBall)
   if (A.netShake) A.netShake = Math.max(0, A.netShake - dt / 700);
   A.spin = (A.spin || 0) + dt * (0.006 + (A.trailPow || 0) / 2500) * (A.wob ? 0.12 : 1);
   if (A.ghost && (A.ghost.life -= playDt(dt) / 1000) <= 0) A.ghost = null;

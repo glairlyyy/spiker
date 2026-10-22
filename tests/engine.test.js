@@ -143,6 +143,65 @@ test('render: presentation never draws from the game RNG', () => {
   eq(bad.join(' '), '', 'use FXR (core/rng.js) for presentation randomness');
 });
 
+test('render: ball squash at contact, smear in flight, hit-stop off with reduced motion / Hype off (owner 2026-10-23)', () => {
+  const g = load(1),
+    src = fs.readFileSync(path.join(__dirname, '..', 'js/render/effects.js'), 'utf8'),
+    mk = (RM, hype) => {
+      const ctx = {
+        VFX: g.VFX,
+        RM,
+        HYPE: { off: { max: 0 }, normal: { max: 1 } },
+        G: { hype },
+        A: {},
+        clamp: g.clamp,
+        performance: { now: () => 0 }
+      };
+      require('vm').runInNewContext(src + ';this.F={hitShare,ballSquash,hitStopMs};', ctx);
+      return ctx.F;
+    },
+    F = mk(false, 'normal'),
+    S = g.VFX.squash,
+    top = F.hitShare('spike', 140, 0),
+    vol = s => s.ax * s.cr * s.cr;
+  eq(top, 1, 'a 140 spike is a full hit');
+  assert(F.hitShare('set', 0, 120) < 0.2 && F.hitShare('dig', 0, 120) === 0, 'a set is subtle');
+  assert(F.hitShare('bump', 0, 130) < 0.5, 'a dig is softer than the spike that came in');
+  const c = F.ballSquash(1, 0);
+  assert(c.ax > 0.6 && c.ax < 0.65, `flattened to ~0.62 at contact (${c.ax})`);
+  // squash only (no smear): volume kept, one overshoot, round by 120 ms
+  const noSm = { ...S, smear: 0 };
+  let over = 0;
+  for (let ms = 0; ms <= 130; ms += 2) {
+    const s = F.ballSquash(1, ms, noSm);
+    assert(Math.abs(vol(s) - 1) < 1e-9, `volume kept at ${ms} ms`);
+    if (s.ax > 1.02) over++;
+    if (ms >= 120) eq(s.ax, 1, `round by 120 ms (${ms})`);
+  }
+  assert(over > 0, 'snaps back past round once');
+  assert(F.ballSquash(0.5, 60, noSm).ax > F.ballSquash(1, 60, noSm).ax - 0.2, 'smaller hit, smaller wobble');
+  // a soft set: subtle, round by 120 ms, never smeared
+  const st = F.hitShare('set', 0, 0);
+  assert(F.ballSquash(st, 0).ax > 0.93, 'a set barely squashes');
+  for (let ms = 0; ms <= 400; ms += 5) assert(!F.ballSquash(st, ms).smear, 'no smear on a soft ball');
+  eq(F.ballSquash(st, 120).ax, 1, 'a set is round by 120 ms');
+  // the smear: ~2.6× long and ~0.65 thick for a top spike, held, round again after hold + out
+  const sm = F.ballSquash(1, 100);
+  assert(sm.ax > 2.5 && sm.ax < 2.7 && sm.cr > 0.6 && sm.cr < 0.7, `top smear (${sm.ax}, ${sm.cr})`);
+  const med = F.ballSquash(F.hitShare('spike', 90, 0), 100);
+  assert(med.ax > 1.25 && med.ax < 1.55, `medium smear ~1.4 (${med.ax})`);
+  eq(F.ballSquash(1, S.hold + S.out + 1).ax, 1, 'round after the smear');
+  for (const fl of [160, 220, 300]) eq(F.ballSquash(1, fl - 1, S, fl).ax, 1, `a ${fl} ms flight: round before the next touch`);
+  // hit-stop: a hard spike / jump serve only, 40–70 ms; none for a floater, a dig, reduced motion or Hype off
+  const hs = F.hitStopMs('spike', 1, false);
+  assert(hs >= 65 && hs <= 70, `top hit-stop ${hs}`);
+  eq(F.hitStopMs('spike', S.stopFrom, false), S.stop0, 'threshold');
+  eq(F.hitStopMs('spike', S.stopFrom - 0.01, false), 0, 'below the threshold');
+  eq(F.hitStopMs('serve', 1, true), 0, 'a floater');
+  eq(F.hitStopMs('bump', 1, false), 0, 'a dig');
+  eq(mk(true, 'normal').hitStopMs('spike', 1, false), 0, 'reduced motion: no hit-stop');
+  eq(mk(false, 'off').hitStopMs('spike', 1, false), 0, 'Hype off: no hit-stop');
+});
+
 test('render: slow motion only on a moment that ends the rally (kill, kill block)', () => {
   const g = load(21),
     T = g.mkTeams(),

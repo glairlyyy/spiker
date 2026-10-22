@@ -192,6 +192,13 @@ export function buildArena(scene) {
     new THREE.MeshStandardMaterial({ map: ballTex, roughness: 0.45, emissive: '#000000' })
   );
   ball.castShadow = true;
+  // the squash / smear (updateBall: userData.sq, a world-axis scale) goes outside the spin: T · D · R · S
+  ball.updateMatrix = function () {
+    this.matrix.compose(ORIGIN, this.quaternion, this.scale);
+    if (this.userData.sq) this.matrix.premultiply(this.userData.sq);
+    this.matrix.setPosition(this.position);
+    this.matrixWorldNeedsUpdate = true;
+  };
   scene.add(ball);
   // a white outlined circle on the floor straight under the ball (not the sun's shadow map, which is offset by the light angle)
   const ballShadow = new THREE.Mesh(
@@ -339,7 +346,51 @@ export function updatePointFlash(w) {
 
 const prevBall = new THREE.Vector3(),
   mv = new THREE.Vector3(),
-  ballAxis = new THREE.Vector3(0, 0, 1);
+  ballAxis = new THREE.Vector3(0, 0, 1),
+  ORIGIN = new THREE.Vector3(),
+  sqAx = new THREE.Vector3(),
+  sqM = new THREE.Matrix4(),
+  WHITE = new THREE.Color('#ffffff');
+/**
+ * The ball's squash / smear (A.bsq, set by effects.js ballHit; shape from ballSquash): a scale of ax along the axis and cr
+ * across it, in world space — along the hit while it is flattened, then along the ball's own motion this frame (ballDir).
+ * Returns the smear (0 = none) so the stripes can wash out with it.
+ */
+function ballShape(ball) {
+  const q = A.bsq,
+    s = q && VFX.squash.on ? ballSquash(q.k, q.t, VFX.squash, q.fl) : null;
+  if (!s || (Math.abs(s.ax - 1) < 0.004 && Math.abs(s.cr - 1) < 0.004)) {
+    ball.userData.sq = null;
+    return 0;
+  }
+  if (s.ax < 1 && q.dir) sqAx.set(q.dir.x * KX, q.dir.h * KH, -q.dir.z * KZ);
+  else sqAx.copy(ballDir);
+  if (sqAx.lengthSq() < 1e-9) sqAx.copy(ballDir);
+  sqAx.normalize();
+  const a = s.ax - s.cr,
+    { x, y, z } = sqAx;
+  // D = cr·I + (ax − cr)·a·aᵀ
+  sqM.set(
+    s.cr + a * x * x,
+    a * x * y,
+    a * x * z,
+    0,
+    a * y * x,
+    s.cr + a * y * y,
+    a * y * z,
+    0,
+    a * z * x,
+    a * z * y,
+    s.cr + a * z * z,
+    0,
+    0,
+    0,
+    0,
+    1
+  );
+  ball.userData.sq = sqM;
+  return s.smear || 0;
+}
 /** Direction the ball last moved in (world space; for directional effects). */
 export const ballDir = new THREE.Vector3(1, 0, 0);
 /** The floor marker under the ball: follows it, widens and fades as it rises (uses the ball's final position). */
@@ -369,9 +420,15 @@ export function updateBall(w, now) {
     ball.setRotationFromAxisAngle(ballAxis, A.spin || 0);
     const sq = A.squash || 0;
     ball.scale.set(1 + 0.35 * sq, 1 - 0.42 * sq, 1 + 0.35 * sq);
-    const hot = (A.trailPow || 0) >= 100;
+    const hot = (A.trailPow || 0) >= 100,
+      sm = ballShape(ball),
+      wash = Math.min(1, sm / 1.6) * VFX.squash.fade; // a smeared ball: the stripes wash out, a bright streak (no broken seams)
     ball.material.emissive.set(hot ? '#ff3d7f' : A.trailEl ? ECOL[A.trailEl] : '#000000');
     ball.material.emissiveIntensity = hot ? 0.6 : A.trailPow ? 0.35 : 0;
+    if (wash > 0.01) {
+      ball.material.emissive.lerp(WHITE, wash);
+      ball.material.emissiveIntensity = Math.max(ball.material.emissiveIntensity, 0.9 * wash);
+    }
   }
   // glow + light on powered shots, in the element's colour
   const gk = B.vis && A.trailPow ? Math.min(1, A.trailPow / 110) : 0,

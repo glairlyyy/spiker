@@ -331,6 +331,7 @@ const BALL_ACC_MAX = 0.7;
 /** A `ball` act: the ball leaves the last toucher (or the hand holding it) for resolve(a.to); sets up the tween. */
 function startBall(a) {
   A.dribble = false;
+  a._sq = null;
   // the rally counter: one per touch — the server's toss leaves their own hand (the ball is held), so it isn't one
   if (!A.ball.follow) comboTouch((A.rallyN = (A.rallyN || 0) + 1));
   panAt(ballScreen().X);
@@ -349,6 +350,13 @@ function startBall(a) {
     if (hd) a._lag = Math.max(0, swingLead(hd) - (hd.spk || 0));
     // a hard hit leaves the hand and keeps accelerating (topspin + gravity): the harder, the stronger
     if (hd && a.trail) a._acc = clamp((a.trail - 30) / 100, 0, BALL_ACC_MAX);
+    // the ball squashes at the contact and a hard hit smears in flight (VFX.squash): a spike / serve at the hand's contact
+    // (tweenBall, after a._lag), every other touch now
+    const sk = lc ? hitShare(lc, a.trail, A.trailPow) : 0;
+    if (sk > 0) {
+      a._sq = { kind: lc, k: sk, dir: { x: 0, z: 0, h: 0 } };
+      if (!a._lag) a._sq.go = 1;
+    }
     if (lc === 'bump' || lc === 'dive') sfx.bump();
     else if (lc === 'set') sfx.set();
     else if (lc === 'block') sfx.block();
@@ -374,6 +382,10 @@ function startBall(a) {
   A.inFrom = a._f; // where this flight started (the next receive is knocked back along it)
   a._t = resolve(a.to);
   clearNet(a);
+  if (a._sq) {
+    Object.assign(a._sq.dir, { x: a._t.x - a._f.x, z: a._t.z - a._f.z, h: a._t.h - a._f.h + 4 * (a.h || 0) }); // the flight's start tangent
+    if (a._sq.go) hitBall(a);
+  }
   A.trailPow = a.trail || 0;
   A.wob = !!a.wob;
   A.trailOp = !!a.op;
@@ -452,7 +464,15 @@ function applyBeat(b, t) {
   airMomentum();
 }
 /** Ball along its arc (lift a.h at the middle), late off a hand still swinging, accelerating after a hard hit. */
+/** The contact of a `ball` act's flight (startBall a._sq): squash / smear and the hit-stop (effects.js ballHit), once. */
+function hitBall(a) {
+  const q = a._sq,
+    b = A.beats && A.beats[A.bi];
+  q.done = 1;
+  ballHit(q.kind, q.k, q.dir, a.wob, b ? Math.max(1, b.dur - (a._lag || 0)) : Infinity);
+}
 function tweenBall(a, b, t) {
+  if (a._sq && !a._sq.done && t * b.dur >= (a._lag || 0)) hitBall(a); // the hand meets the ball now
   let u = a._lag ? clamp((t * b.dur - a._lag) / Math.max(1, b.dur - a._lag), 0, 1) : t; // hand still on its way
   if (a._acc) u -= a._acc * u * (1 - u); // slower off the hand, faster into the floor
   A.ball.x = lerp(a._f.x, a._t.x, u);

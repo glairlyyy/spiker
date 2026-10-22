@@ -754,6 +754,13 @@ the AI coach fills every slot you leave with the same function. Built and measur
   up with the take-off, the hitting arm drawn back only in the last 90 ms before the swing (was fully drawn early in the rise and
   held), the whip to contact in 80 ms (150 for other spikes), the follow-through 150 ms (was 200). Contact still on the ball's
   arrival; display only (the slide and other tempos share the normal swing: the engine does not mark them).
+  Ball squash, smear and hit-stop (owner, 2026-10-23) **[built 2026-10-23]**: at every touch the ball flattens along the hit
+  and bulges across it (volume kept) by how hard it is hit — barely on a set, more on a dig of a hard ball, to 0.62 on a top
+  spike or jump serve — and snaps back round in ~110 ms with one overshoot. A hard hit then smears in flight like an anime
+  smear frame: a capsule along its motion, up to 2.6× long and 0.65 thick at top power (~1.4× a medium spike, none on soft
+  balls), its stripes washed bright, held ~140 ms and round again before the next touch. A top spike / jump serve (power
+  ~90+) gets a 40–70 ms hit-stop at contact with a slightly stronger camera kick and a white flash; no hit-stop with reduced
+  motion or Hype off. Display only; numbers in the VFX panel (Ball squash + hit-stop).
 - §2.34 Gloom lines (owner, 2026-10-20) **[built 2026-10-20]**: the anime gloom lines — purple vertical lines hanging from above the
   head and fading toward the chest — over a debuffed player: its side plays a war stage (§4.34: Strained / Shaken / Broken,
   darker by stage), its own morale has sunk (below −0.35), or its HP is nearly gone (below 0.3); the strongest of the three

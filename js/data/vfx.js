@@ -144,6 +144,31 @@ const VFX_DEF = {
       shake: [6, 0, 20, 0.5, 'Camera shake (at full)']
     }
   },
+  squash: {
+    name: 'Ball squash + hit-stop (every contact, owner 2026-10-23)',
+    p: {
+      on: [1, 0, 1, 1, 'On'],
+      p0: [30, 0, 150, 1, 'Spike / serve power from (soft)'],
+      p1: [130, 50, 200, 1, 'Spike / serve power at full'],
+      flat: [0.38, 0, 0.6, 0.01, 'Flatten at full (0.38 → 0.62 along the hit)'],
+      ms: [110, 60, 250, 5, 'Back round in (ms)'],
+      set: [0.12, 0, 1, 0.01, 'A set (power share)'],
+      dig: [0.45, 0, 1, 0.01, 'A bump / dig × the incoming power'],
+      block: [0.7, 0, 1, 0.01, 'A block touch × the incoming power'],
+      smear: [1.6, 0, 3, 0.05, 'Smear in flight: extra length at full (1.6 → 2.6× long)'],
+      strFrom: [0.35, 0, 1, 0.01, 'Smear from (power share)'],
+      curve: [1.5, 0.5, 3, 0.1, 'Smear curve (power share ^; 1.5: a medium hit ~1.4×)'],
+      thin: [0.45, 0.2, 0.8, 0.01, 'Smear thickness (length ^ −this; 0.45: 2.6× long → 0.65 thick)'],
+      hold: [140, 40, 300, 5, 'Smear held for (ms of flight)'],
+      out: [90, 20, 300, 5, 'Smear eases back round over (ms)'],
+      fade: [0.55, 0, 1, 0.05, 'Smear washes the stripes out (texture contrast)'],
+      stopFrom: [0.6, 0, 1, 0.01, 'Hit-stop from (power share; spike / jump serve)'],
+      stop0: [40, 0, 150, 5, 'Hit-stop at the threshold (ms)'],
+      stop1: [70, 0, 150, 5, 'Hit-stop at full (ms)'],
+      kick: [1.2, 0, 3, 0.1, 'Top hit: camera kick ×'],
+      flash: [0.14, 0, 0.6, 0.01, 'Top hit: white flash at full']
+    }
+  },
   ring: {
     name: 'Rings (every ring effect)',
     p: {
