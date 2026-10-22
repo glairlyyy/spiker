@@ -231,6 +231,20 @@ export function armIK(pl, d, pose, hand, dt) {
         .add(new THREE.Vector3(0, -g[1], 0))
         .addScaledVector(left, (s === 'left' ? 1 : -1) * g[2]);
     } else aTgt.copy(ball).addScaledVector(toB.copy(ball).sub(sh).normalize(), -GRIP.one);
+    // the hands meet the ball, they don't chase it (2026-10-23: at a pass the wrists jumped 10–15 cm a frame after the ball,
+    // ~20 m/s, in and back out): the target eases after the ball, and once the ball is going away from the body it is held
+    // where they met (the pose's own follow-through carries the arms on)
+    const tk = pl.ikT || (pl.ikT = {}),
+      T0 = tk[s],
+      dB = ball.distanceTo(sh);
+    aTgt.sub(sh); // (kept relative to the shoulder: a jumping setter / blocker carries the meeting point up with the body)
+    if (!T0 || ws[s] < 0.02) tk[s] = { p: aTgt.clone(), d: dB };
+    else {
+      if (!(dB > T0.d + 0.005 && w0 > 0.01)) T0.p.lerp(aTgt, 1 - Math.exp(-dt * 30));
+      T0.d = dB;
+      aTgt.copy(T0.p);
+    }
+    aTgt.add(sh);
     // how far the arm would have to turn: the pose's shoulder → wrist line against shoulder → target. A big turn (the pose's
     // arm still swinging up or round while the ball is elsewhere) is left to the pose: bending a whole arm round by IK rolls
     // the forearm and spins the hand. Full IK up to TURN[0] degrees, none from TURN[1].
