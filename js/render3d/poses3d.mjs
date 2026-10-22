@@ -112,6 +112,10 @@ function setMotion(d) {
 export function mix(A, B, t) {
   const o = { ...A, ...B };
   for (const k of NUMS) if (A[k] != null || B[k] != null) o[k] = mixN(A[k], B[k], t);
+  // (2026-10-23) values whose unset default isn't 0 blend from that default, never jump: a hand's curl falls back to the pose's
+  // `curl` (fingers flicked open and shut going into the passing grip), the forearm / wrist twist split (`fsplit`) to 1
+  for (const k of ['curlL', 'curlR']) if (A[k] != null || B[k] != null) o[k] = mixN(A[k] ?? A.curl ?? 0.35, B[k] ?? B.curl ?? 0.35, t);
+  if (A.fsplit != null || B.fsplit != null) o.fsplit = mixN(A.fsplit ?? 1, B.fsplit ?? 1, t);
   o.L = mixLeg(A.L, B.L, t);
   o.R = mixLeg(A.R, B.R, t);
   o.al = mixArm(A.al, B.al, t);
@@ -180,8 +184,10 @@ export const READY = C({
   sp: 0.16,
   cp: 0.06,
   hd: -0.7,
-  L: leg(0.9, 1.35, 0.15, 0.28, 0.26),
-  R: leg(1.02, 1.42, 0.15, 0.28, 0.26),
+  // (2026-10-23: the thighs splay, the shins near upright — knees over the toes; a shin splayed as far as the thigh put the
+  // feet outside the knees: knock-kneed)
+  L: leg(0.9, 1.35, 0.15, 0.42, 0.06),
+  R: leg(1.02, 1.42, 0.15, 0.42, 0.06),
   al: [V(0.16, -0.62, 0.76), V(-0.02, -0.38, 0.92), V(-0.05, -0.33, 0.94), 0, -0.7],
   curl: 0.35,
   fsplit: 0.45
@@ -192,8 +198,8 @@ const READY_PALMS = C({
   sp: 0.16,
   cp: 0.06,
   hd: -0.65,
-  L: leg(0.8, 1.2, 0.12, 0.26, 0.24),
-  R: leg(0.92, 1.28, 0.12, 0.26, 0.24),
+  L: leg(0.8, 1.2, 0.12, 0.42, 0.06), // (knees over the toes, as READY)
+  R: leg(0.92, 1.28, 0.12, 0.42, 0.06),
   al: [V(0.14, -0.66, 0.74), V(0.07, -0.52, 0.85), V(0.06, -0.44, 0.9), -0.96, -2.4],
   curl: 0.12,
   fsplit: 0.6
@@ -205,8 +211,8 @@ const REST_KNEES = C({
   sp: 0.18,
   cp: 0.08,
   hd: -0.95,
-  L: leg(0.45, 0.62, 0.05, 0.22, 0.2),
-  R: leg(0.5, 0.66, 0.05, 0.22, 0.2),
+  L: leg(0.45, 0.62, 0.05, 0.3, 0.1),
+  R: leg(0.5, 0.66, 0.05, 0.3, 0.1),
   al: [V(0.14, -0.96, 0.22), V(0.02, -0.95, 0.3), V(-0.15, -0.7, 0.7), 0, -1.4],
   curl: 0.3,
   fsplit: 0.6
@@ -216,11 +222,12 @@ const PLATFORM = C({
   sp: 0.12,
   cp: 0.05,
   hd: -0.55,
-  L: leg(1.15, 1.6, 0, 0.3),
-  R: leg(1.0, 1.55, 0, 0.3),
+  L: leg(1.15, 1.6, 0, 0.38, 0.06), // (knees out over the toes)
+  R: leg(1.0, 1.55, 0, 0.38, 0.06),
   al: [V(-0.3, -0.62, 0.72), V(-0.3, -0.62, 0.72), V(-0.3, -0.58, 0.76), 0, -2.2],
   curlL: 0.2, // the passing grip: one hand in the other, thumbs together
   curlR: 0.6,
+  shrug: 0.12, // (2026-10-23: coaching cue — shoulders shrugged up to the ears, the arms locked in one flat platform)
   fsplit: 0.45
 });
 const PLATFORM_UP = C({
@@ -436,7 +443,7 @@ function idleReady(d, m) {
     calm = !G.ball.vis || Object.values(G.disp || {}).some(q => q.pose === 'preserve'),
     base = pick.live, // its ready once the ball is live
     want = pick.rest && calm && !(moveMix(m) > 0.05) ? 1 : 0, // (moving: up off the knees, the arms free to swing)
-    dt = Math.min(0.1, t - (d.restT ?? t) || 0);
+    dt = clamp(t - (d.restT ?? t) || 0, 0, 0.1); // (never negative: a clock reset sent the ease, and the pose, to NaN)
   d.restT = t;
   d.restW = (d.restW || 0) + (want - (d.restW || 0)) * (1 - Math.exp(-dt * 6));
   const rw = d.restW,
@@ -537,6 +544,12 @@ function armsC(p, R, palmR, L, palmL) {
 }
 const DN = V(0, -1, 0.05),
   FW = V(0, 0, 1);
+/** A palm direction turning from `a` to `b` as t goes 0 → 1 (smoothstep, clamped). */
+const palmTo = (a, b, t) =>
+  a
+    .clone()
+    .lerp(b, sm(clamp(t, 0, 1)))
+    .normalize();
 // Dive keys over f = time / beat time (the ball arrives at f = 1):
 //  run-in → LOW base (hips drop, lunge on the dominant leg) → DRIVE forward and low, not up → reaching hand under the
 //  ball (pancake: flat on the floor; else a one-hand fist pop) → land on chest/upper stomach, chin up, back arched
@@ -647,7 +660,8 @@ function divePose(d, f) {
   }
   const pc = d.pc;
   // palms: pancake flat on the floor; otherwise the reaching hand is a fist popping the ball up
-  const out = armsC(k, k.R_, f > 0.7 ? DN : FW, k.L_, f > 0.85 ? DN : FW);
+  // (the palms turn from the reach to the floor over a few frames — 2026-10-23: switched in one frame, the hands spun)
+  const out = armsC(k, k.R_, palmTo(FW, DN, (f - 0.62) / 0.16), k.L_, palmTo(FW, DN, (f - 0.77) / 0.16));
   const reach = sm(clamp((f - 0.66) / 0.28, 0, 1)) * (1 - sm(clamp((f - 1.15) / 0.25, 0, 1)));
   return {
     ...out,
@@ -803,7 +817,8 @@ function koPose(d, u) {
   }
   const k = up > 0 ? flow(KO_UP_KEYS, eio(up / 0.78) * 0.78, mixDive) : flow(KO_KEYS, u, mixDive),
     UPW = V(0, 1, 0),
-    palm = up > 0.3 || u < 260 ? DN : UPW;
+    // palms down to the floor at the start and getting up, up while lying — turned over ~120 ms, not in one frame
+    palm = palmTo(UPW, DN, up > 0 ? (up - 0.22) / 0.16 : 1 - (u - 200) / 120);
   return {
     ...armsC(k, k.R_, palm, k.L_, palm),
     lying: (u > 60 && up === 0) || (up > 0 && up < 0.7), // (in the air too: the lowest point is the floor, KO_FLY lifts it)
@@ -954,10 +969,20 @@ export function playerPose(d, mood, m) {
   } else if (pose === 'block') {
     const pr = Math.min(1, d.jy / 40),
       prep = deepen(
-        { hp: 0.12, sp: 0.02, hd: -0.2, L: leg(0.4, 0.75, 0, 0.16), R: leg(0.4, 0.75, 0, 0.16), al: BLOCK_PREP, curl: 0.05 },
+        { hp: 0.12, sp: 0.02, hd: -0.2, L: leg(0.4, 0.75, 0, 0.16), R: leg(0.4, 0.75, 0, 0.16), al: BLOCK_PREP, curl: 0.05, shrug: 0.04 },
         squatK(d)
       ),
-      up = { hp: 0.05, sp: 0.08, hd: -0.1, L: leg(0.05, 0.1, 0.7, 0.14), R: leg(0.05, 0.1, 0.7, 0.14), al: BLOCK_UP, curl: 0.02 };
+      // (2026-10-23: at the top the shoulders squeeze up to the ears and the core holds — a press over the net, not a swing)
+      up = {
+        hp: 0.05,
+        sp: 0.08,
+        hd: -0.1,
+        L: leg(0.05, 0.1, 0.7, 0.14),
+        R: leg(0.05, 0.1, 0.7, 0.14),
+        al: BLOCK_UP,
+        curl: 0.02,
+        shrug: 0.16
+      };
     out = mix(prep, up, pr);
     if (mk > 0 && pr < 0.1) {
       const lp = locoPose({ ...m, lat: m.lat || 0.01, fwd: 0, gw: SHUFFLE });
@@ -1055,6 +1080,7 @@ export function playerPose(d, mood, m) {
     out = { ...out, face: { ...mf, ...f } };
   }
   if (d.call) out.face = { ...out.face, aa: 0.7 * Math.min(1, d.call.life * 3) };
+  out.kind = pose; // (the move actually shown: actors3d cross-fades when it changes)
   return out;
 }
 
