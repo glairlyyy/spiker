@@ -12,9 +12,8 @@
 // insides show, restored when they hide. The roof and the walls facing the camera fade (cutAlpha) as you or the camera come within
 // CUT.near m of the footprint. The arena is an open bowl: no shell, no cut.
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAP_M, smooth } from './geo3d.mjs';
-import { box, part, accentOf } from './kit3d.mjs';
+import { box, part, accentOf, landmarkYaw, mergeParts } from './kit3d.mjs';
 
 /** show: the street level the insides appear at; near: the fade's reach (m from the footprint); min: the faded walls' opacity. */
 export const CUT = { show: 0.6, near: 8, min: 0.08, pick: 28 };
@@ -26,26 +25,6 @@ const Ik = () => (typeof INTERIOR !== 'undefined' ? INTERIOR : {}),
 
 /** The cutaway opacity at distance d (m) from you / the camera to the footprint (0 = inside): CUT.min inside, 1 from CUT.near. */
 export const cutAlpha = d => CUT.min + (1 - CUT.min) * smooth(0, CUT.near, Math.max(0, d));
-
-/** A landmark's yaw (rad): its door (+z) faces the nearest road (town3d buildLandmarks' rule), or its fixed `rot`. Map units in. */
-export function landmarkYaw(L, roads) {
-  if (L.rot != null) return L.rot;
-  const [mx, my] = L.at;
-  let best = Infinity,
-    yaw = 0;
-  for (const r of roads || []) {
-    if (r.kind === 'overpass') continue;
-    const [a, b] = r.pts,
-      dx = b[0] - a[0],
-      dy = b[1] - a[1],
-      t = Math.min(1, Math.max(0, ((mx - a[0]) * dx + (my - a[1]) * dy) / (dx * dx + dy * dy || 1))),
-      px = a[0] + dx * t - mx,
-      py = a[1] + dy * t - my,
-      d = Math.hypot(px, py);
-    if (d < best) ((best = d), (yaw = d > 0.5 ? Math.atan2(px, py) : 0));
-  }
-  return yaw;
-}
 
 /** A place's frame: centre (m), yaw, base (the landmark's feet: town3d's 5-sample minimum), floor (the highest ground under it). */
 export function frameOf(L, roads, heightAt, I) {
@@ -64,7 +43,7 @@ export function frameOf(L, roads, heightAt, I) {
 /** Local (lx, lz) in frame F → world [x, z] (rotation about y by F.yaw, as makeRotationY). */
 export const toW = (F, lx, lz) => [F.x + lx * F.c + lz * F.s, F.z - lx * F.s + lz * F.c];
 /** World (x, z) → local [lx, lz] in frame F. */
-export const toL = (F, x, z) => {
+const toL = (F, x, z) => {
   const dx = x - F.x,
     dz = z - F.z;
   return [dx * F.c - dz * F.s, dx * F.s + dz * F.c];
@@ -75,13 +54,13 @@ export const boxDist = (F, x, z) => {
   return Math.hypot(Math.max(Math.abs(lx) - F.I.w / 2, 0), Math.max(Math.abs(lz) - F.I.d / 2, 0));
 };
 /** F's stations in the world: [{ place, id, name, order, card, p: [x, y, z] }] (p = the prompt's anchor, 1.6 m up). */
-export const stationsOf = F =>
+const stationsOf = F =>
   F.I.stations.map(s => {
     const [x, z] = toW(F, s.at[0], s.at[1]);
     return { place: F.id, id: s.id, name: s.name, order: s.order || null, card: !!s.card, p: [x, F.floor + 1.6, z] };
   });
 /** The station nearest world point you [x, z] within r m (the stations of every frame), or null. */
-export function nearStation(frames, you, r = NEAR()) {
+function nearStation(frames, you, r = NEAR()) {
   let best = null,
     bd = r;
   for (const F of frames)
@@ -92,7 +71,7 @@ export function nearStation(frames, you, r = NEAR()) {
   return best;
 }
 /** Today's people for F's place at its slots: [{ id, at: map units }] — round-robin by id; past the slots a ring 0.7 m further out. */
-export function placeAt(F, people) {
+function placeAt(F, people) {
   const slots = F.I.stations.flatMap(s => s.slots || []),
     who = people.filter(p => p.spot === F.id).sort((a, b) => (String(a.id) < String(b.id) ? -1 : 1));
   if (!slots.length) return [];
@@ -191,11 +170,7 @@ function gymShell(I, accent) {
     band = (bw, bd, x, z) => box(bw, 1, bd, x, 2.6, z, accent),
     door = 2.2,
     side = (w - door) / 2,
-    merge = parts => {
-      const g = mergeGeometries(parts);
-      for (const p of parts) p.dispose();
-      return g;
-    };
+    merge = mergeParts;
   return [
     merge([box(w, h, T, 0, 0, -d / 2 + T / 2, WALL), band(w + 0.2, T + 0.2, 0, -d / 2 + T / 2)]),
     merge([
@@ -261,7 +236,7 @@ function scoreFace() {
 }
 
 /** The world box (town.cut's { x0, x1, z0, z1 }) round frame F's footprint + pad m (0.5: the landmark's roof lip and door) — the turned box's bounds. */
-export const cutBoxOf = (F, pad = 0.5) => {
+const cutBoxOf = (F, pad = 0.5) => {
   const hw = F.I.w / 2 + pad,
     hd = F.I.d / 2 + pad,
     ex = hw * Math.abs(F.c) + hd * Math.abs(F.s),
@@ -307,8 +282,7 @@ export function createInteriors(scene, heightAt, opts = {}) {
     root.position.set(F.x, F.floor, F.z);
     root.rotation.y = F.yaw;
     const parts = F.I.kind === 'gym' ? gymProps(F.I, accent) : arenaProps(),
-      g = mergeGeometries(parts);
-    for (const p of parts) p.dispose();
+      g = mergeParts(parts);
     const props = new THREE.Mesh(g, propMat);
     props.castShadow = props.receiveShadow = true;
     root.add(props);

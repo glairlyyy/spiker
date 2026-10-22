@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { NOISE } from '../trails3d.mjs';
 
-export function canvasTex(draw, n = 64) {
+function canvasTex(draw, n = 64) {
   const c = document.createElement('canvas');
   c.width = c.height = n;
   draw(c.getContext('2d'), n);
@@ -11,7 +11,7 @@ export function canvasTex(draw, n = 64) {
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
-export const radial = stops => (g, n) => {
+const radial = stops => (g, n) => {
   const r = g.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
   for (const [o, c] of stops) r.addColorStop(o, c);
   g.fillStyle = r;
@@ -24,14 +24,14 @@ export const TEX_GLOW = canvasTex(
     [1, 'rgba(255,255,255,0)']
   ])
 );
-export const TEX_SMOKE = canvasTex(
+const TEX_SMOKE = canvasTex(
   radial([
     [0, 'rgba(255,255,255,.9)'],
     [0.6, 'rgba(255,255,255,.35)'],
     [1, 'rgba(255,255,255,0)']
   ])
 );
-export const TEX_STAR = canvasTex((g, n) => {
+const TEX_STAR = canvasTex((g, n) => {
   const c = n / 2;
   radial([
     [0, 'rgba(255,255,255,1)'],
@@ -51,7 +51,7 @@ export const TEX_STAR = canvasTex((g, n) => {
   }
 });
 /** A billowing smoke puff: soft blobs clustered round the centre (a fixed pattern — no game randoms). */
-export const TEX_PUFF = canvasTex((g, n) => {
+const TEX_PUFF = canvasTex((g, n) => {
   let s = 7;
   const r = () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
   for (let i = 0; i < 22; i++) {
@@ -67,13 +67,13 @@ export const TEX_PUFF = canvasTex((g, n) => {
     g.fillRect(0, 0, n, n);
   }
 }, 128);
-export const PVS = `attribute float size; attribute float alpha; attribute float rot; attribute vec3 pcol; varying vec3 vC; varying float vA; varying float vR; uniform float scale;
+const PVS = `attribute float size; attribute float alpha; attribute float rot; attribute vec3 pcol; varying vec3 vC; varying float vA; varying float vR; uniform float scale;
 void main(){ vC = pcol; vA = alpha; vR = rot; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = size * scale / max(0.1, -mv.z); gl_Position = projectionMatrix * mv; }`;
-export const PFS = `uniform sampler2D map; varying vec3 vC; varying float vA; varying float vR;
+const PFS = `uniform sampler2D map; varying vec3 vC; varying float vA; varying float vR;
 void main(){ vec2 c = gl_PointCoord - 0.5; float s = sin(vR), k = cos(vR); c = mat2(k, -s, s, k) * c + 0.5;
   vec4 t = texture2D(map, c); gl_FragColor = vec4(vC * t.rgb, t.a * vA); if (gl_FragColor.a < 0.004) discard; }`;
 // streaks: a quad per spark stretched from where it was (pos − vel·len) to where it is, facing the camera; hot white core
-export const SVS = `attribute vec3 ipos; attribute vec3 ivel; attribute vec3 icol; attribute float ia; attribute float iw; attribute float il;
+const SVS = `attribute vec3 ipos; attribute vec3 ivel; attribute vec3 icol; attribute float ia; attribute float iw; attribute float il;
 varying vec3 vC; varying float vA; varying vec2 vU;
 void main(){
   vec4 h = modelViewMatrix * vec4(ipos, 1.0), t = modelViewMatrix * vec4(ipos - ivel * il, 1.0);
@@ -83,22 +83,22 @@ void main(){
   vC = icol; vA = ia; vU = vec2(position.x * 2.0, position.y);
   gl_Position = projectionMatrix * vec4(p, 1.0);
 }`;
-export const SFS = `varying vec3 vC; varying float vA; varying vec2 vU;
+const SFS = `varying vec3 vC; varying float vA; varying vec2 vU;
 void main(){ float x = 1.0 - abs(vU.x), a = x * pow(vU.y, 1.2) * vA; if (a < 0.004) discard;
   gl_FragColor = vec4(mix(vC, vec3(1.0), pow(x, 4.0) * 0.6) * a, a); }`;
 
 export const rr = (a, b) => a + Math.random() * (b - a);
 export const rv = s => new THREE.Vector3().randomDirection().multiplyScalar(s);
-export const Z_AXIS = new THREE.Vector3(0, 0, 1);
+const Z_AXIS = new THREE.Vector3(0, 0, 1);
 // ink rings: the trail's ink look wrapped round a ring — along = the angle, across = the band (−1 inner … +1 outer)
-export const RING_VS = `varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
-export const RING_HEAD = `uniform float op; uniform float seed; uniform float inner; varying vec2 vP;
+const RING_VS = `varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+const RING_HEAD = `uniform float op; uniform float seed; uniform float inner; varying vec2 vP;
 ${NOISE}
 void band(out float e, out float sE, out float s) {
   float r = length(vP), mid = (1.0 + inner) * 0.5, hw = (1.0 - inner) * 0.5;
   sE = (r - mid) / hw; e = abs(sE); s = atan(vP.y, vP.x) * 0.8 + seed;
 }`;
-export const RING_FS_INK = `uniform vec3 ink; uniform vec3 blood; ${RING_HEAD}
+const RING_FS_INK = `uniform vec3 ink; uniform vec3 blood; ${RING_HEAD}
 void main() {
   float e, sE, s; band(e, sE, s);
   float n = strands(s, sE), fade = min(1.0, op * 1.5),
@@ -112,7 +112,7 @@ void main() {
 }`;
 // the partial ink ring (owner 2026-10-07, an ensō brush circle): one stroke from a random start round most of the circle —
 // pressed in, full, then lifting into dry strands — a thin outer strand, splatter outside; the glow colour is the ink
-export const ENSO_HEAD = `uniform float op; uniform float seed; varying vec2 vP;
+const ENSO_HEAD = `uniform float op; uniform float seed; varying vec2 vP;
 ${NOISE}
 void stroke(out float a, out float n, out float e) {
   float r = length(vP), ang = atan(vP.y, vP.x),
@@ -141,20 +141,20 @@ void stroke(out float a, out float n, out float e) {
   a = max(a, drop * smoothstep(0.3, 0.5, op));
   a *= min(1.0, op * 2.0);
 }`;
-export const ENSO_FS = `uniform vec3 blood; ${ENSO_HEAD}
+const ENSO_FS = `uniform vec3 blood; ${ENSO_HEAD}
 void main() {
   float a, n, e; stroke(a, n, e);
   if (a < 0.01) discard;
   gl_FragColor = vec4(mix(blood * 0.5, blood, 0.35 + 0.65 * n) * (1.0 - 0.25 * min(e, 1.0)), a * 0.96); // (drops lie far outside the stroke: e ≫ 1)
 }`;
-export const ENSO_FS_GLOW = `uniform vec3 blood; ${ENSO_HEAD}
+const ENSO_FS_GLOW = `uniform vec3 blood; ${ENSO_HEAD}
 void main() {
   float a, n, e; stroke(a, n, e);
   float g = a * (1.0 - smoothstep(0.0, 0.6, e)) * 0.45;
   if (g < 0.01) discard;
   gl_FragColor = vec4(blood * g, g);
 }`;
-export const RING_FS_BLOOD = `uniform vec3 blood; ${RING_HEAD}
+const RING_FS_BLOOD = `uniform vec3 blood; ${RING_HEAD}
 void main() {
   float e, sE, s; band(e, sE, s);
   float n = strands(s + 3.7, sE * 0.8),
@@ -619,16 +619,10 @@ export function createKit(scene) {
     SMOKE,
     PUFF,
     STREAK,
-    ROCKS,
-    rocks,
     spawnRock,
     bolt,
-    bolts,
     ring,
-    rings,
-    inkRing,
     disc,
-    discs,
     DOME,
     domes,
     COL,

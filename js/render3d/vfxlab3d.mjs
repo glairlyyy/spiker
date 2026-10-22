@@ -1,6 +1,6 @@
 // VFX lab (dev, T-238): every 3D effect of fx3d.mjs on an empty floor — fire one, repeat it, slow time, stress it and read
 // the cost (frame ms, draw calls, live particles). Its own renderer and loop, like the title backdrop; it stops by itself
-// when its element leaves the page. mountLab(el) / unmountLab() / labPlay(name, o) / labSet(o) / labStats().
+// when its element leaves the page. mountLab(el) / labPlay(name, o) / labSet(o) / labStats().
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createFx } from './fx3d.mjs';
@@ -344,7 +344,7 @@ export function labStats() {
 }
 
 /** Stop the loop and free the GPU. */
-export function unmountLab() {
+function unmountLab() {
   if (!L) return;
   cancelAnimationFrame(L.raf);
   L.ro.disconnect();

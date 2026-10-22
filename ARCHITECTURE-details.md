@@ -600,7 +600,7 @@ mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-vie
 3. Renderer — `MapView` (`js/ui/map-view.js`): `mount(el, model, { pick(id), point([x, y]) })`, `update(model)`,
    `select(id)`, `dispose()`, `setWalk(k)` (your walking speed ×1/×2/×4, remembered as `sns_walk`; map3d ticks your avatar ×k). The only renderer is the three.js map: it lazy-imports `js/map3d/map3d.mjs` once (a notice
    shows while loading; on import / WebGL failure it logs `DBG.log('error')` and shows the failure text — there is no 2D
-   fallback). `map3d.create(onIdle)` → `{ mount, update, select, dispose, heightAt, info }`: one renderer +
+   fallback). `map3d.create(onIdle)` → `{ mount, update, select, dispose, info, … }` (the full list heads map3d.mjs): one renderer +
    canvas that survive `renderCareer()` (each mount re-attaches the canvas into the new `#mapwrap`); it releases itself
    (`onIdle` → `MapView.drop3D`) when its canvas has been detached for 3 s (left the career screen). Terrain: 2 m grid
    over the island box from `land.coast` / Shu region / `land.relief` (the designed highlands: global `reliefAt`, levelled under `land.pads`; terraces stepped; fixed-hash noise, no randoms), vertex colours
@@ -609,8 +609,7 @@ mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-vie
    by a smoothstep across their edges over `BIOME.fade` m, minors laid on top over `fadeMinor`; two tones per biome in a soft value-noise
    patchwork, Shu climbing to rock grey with height; a gravel strip along the Shu–Wei line and sand / pebble banks beside the river),
    then the beach sand, district and ground tints; `land.borders` (MapModel.borders(): the Shu–Wei line, the dune line, the river,
-   each with its `BORDERS` strip / row kind) drives the border rows MapModel.nature adds (`NATURE.rows`): pines on the Shu side of the Shu–Wei line, reeds on both river banks, dune grass inland of the dune line, a hedge ring round the Academy, fence panels (turned along the ring) and scrap round the Outlaws — drawn by nature3d.mjs like the scatter (+1 draw call: fence). Dev:
-   `MapView.m3.hexFill(false)` / `?nohex` (a no-op since T-317: no hex fills are drawn). Fixed-yaw camera, pitch 55°, wheel zoom 25–420 m, drag pans on the ground plane, a click (< 5 px)
+   each with its `BORDERS` strip / row kind) drives the border rows MapModel.nature adds (`NATURE.rows`): pines on the Shu side of the Shu–Wei line, reeds on both river banks, dune grass inland of the dune line, a hedge ring round the Academy, fence panels (turned along the ring) and scrap round the Outlaws — drawn by nature3d.mjs like the scatter (+1 draw call: fence). Fixed-yaw camera, pitch 55°, wheel zoom 25–420 m, drag pans on the ground plane, a click (< 5 px)
    raycasts to a map point (`toMap`; 1 map unit = `MAP_M` = 0.5 m). The player is `js/map3d/avatar3d.mjs`
    (`createAvatar(scene)`: the default VRM via `loadBase` / `makeVRM`, capsule until loaded): `snap` first, `setTarget` when
    `model.you.at` changes — `setTarget(at, path)` walks the road polyline `model.you.route` (added by `MapView.routed` in js/ui/map-view.js from `City.route(last you.at, you.at)`; the renderer never calls `City`; straight line without it) at 6 m/s over the whole length (trip 1.2–6 s, ramps 0.4 s; faster trips show a ×N badge), facing along the current segment, gait from
@@ -618,11 +617,11 @@ mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-vie
    Furniture is `js/map3d/pins3d.mjs` (`createFurniture(scene, heightAt)`): an HTML overlay `.maplay` over the canvas holds one
    `.mpin` button per `model.pins` item (icon, badge, flag classes, click → `pick(id)`), the region / airport labels (fade out
    below ~70 m camera distance) and the picked-point flag, all projected onto the terrain every frame after render;
-   the war (`model.borders`, map3d `warLayer`, T-317: each unit's border a draped ribbon just inside its land in its lead club's colour, the week's hot stretch a pulsing amber glow, banners along it — three meshes, rebuilt on change; pins3d's old hex-decal code gets no `model.hexes` any more) is the terrain decal layer. `sync(model, on)` rebuilds a part only when its JSON changed;
+   the war (`model.borders`, layers3d `warLayer`, T-317: each unit's border a draped ribbon just inside its land in its lead club's colour, the week's hot stretch a pulsing amber glow, banners along it — three meshes, rebuilt on change; pins3d's old hex-decal code gets no `model.hexes` any more) is the terrain decal layer. `sync(model, on)` rebuilds a part only when its JSON changed;
    fog is a per-vertex darkening of the terrain colours (`applyFog(model.fog)` with `fogFactor`, unexplored land dim, not hidden).
    Shared helpers live in `js/map3d/geo3d.mjs` (`MAP_M`, `FOG_DIM`, `FOG_SOFT`, `toWorld` / `toMap`, `clamp` / `lerp` /
    `smooth`, `fogFactor(fog)` → k(x, z) with squared-distance early-outs): every map3d module imports from it, never from
-   map3d.mjs (no import cycles). Per frame nothing reads the DOM size (cached by the ResizeObserver) and the pin overlay
+   map3d.mjs (no import cycles); the shape helpers (`part`, `box`, `mergeParts`, `rgb`, the lot hash `unit`, `landmarkYaw`) are kit3d's. Per frame nothing reads the DOM size (cached by the ResizeObserver) and the pin overlay
    is only re-projected when the camera, canvas size, distance or items changed. `dispose` removes its listeners and
    skips `userData.shared` objects (kit materials / shape caches). `MODEL_URL` (the base VRM) is exported once by players3d.mjs. First
    view: on the player, 60 m away. Life is `js/map3d/life3d.mjs` (`createLife(scene, heightAt)` → `{ sync(model, low), tick(dt, t, tod, cam),
@@ -649,9 +648,9 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
    `WIND`, by height and instance position; uniform time from tick). A few extra tufts ring each plant and rock (`GRASS`, hashed
    offsets). Shadows come from the Fast shape as a shadow-only proxy (castShadow; its material writes no colour or
    depth, so the view shows only the detailed shape). Draw calls +≤ 5 proxies.
-   The town layer is `js/map3d/town3d.mjs` (`createTown(scene, heightAt)` → `{ sync(model), dispose() }`, display only, no randoms):
+   The town layer is `js/map3d/town3d.mjs` (`createTown(scene, heightAt, { fast })` → `{ sync(model), ring, ringInfo, cut, count, dispose() }`, display only, no randoms):
    reads only `model.land.roads / lots / landmarks / districts` and `model.fog`. Ground use (`model.land.ground`, from `GROUND`: circles or
-   rings in map units) is painted into the terrain's vertex colours by map3d.mjs `buildTerrain` (`GROUND_TINT`: two tones, straight bands at a
+   rings in map units) is painted into the terrain's vertex colours by terrain3d.mjs `buildTerrain` (`GROUND_TINT`: two tones, straight bands at a
    hashed angle or contour bands by height for terraces; water patches are also flattened into a lake); lots stay off `GROUND_KEEP` kinds
    (`MapModel.kept`). Districts may be `tall` (lots rise with wealth: downtown, the civic core). Meshes: one vertex-coloured mesh for all roads (width and
    colour by kind, slope-following, lifted 0.15 m, polygon offset; the `boardwalk` is planks of two tones 0.3 m up); one for the
@@ -730,9 +729,9 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   over 1.5 days skips whole days). Dev / QA: `setClock(w)`, `clock()`.
 - **Light** — `skyAt(keys, tod, …)` interpolates `CLOCK.keys` (wrapping): sun colour / intensity, hemisphere sky / ground /
   intensity, background, `lit`; the sun's direction by the hour (east → south-high → west, blending to the moon by `lit`), set
-  after the camera step (mapcam still places it; map3d overrides before render). `nightLayer`: one Points mesh (ShaderMaterial,
+  after the camera step (mapcam still places it; map3d overrides before render); look3d.mjs. `nightLayer` (layers3d.mjs): one Points mesh (ShaderMaterial,
   additive, size in metres clamped 2.5–40 px) of windows (lots' faces toward the camera, floors every 2.8 m, ~42 % lit by
-  hash; heights replicate town3d's `unit` hash and FOOTPRINT 1.2 — keep in step), street lamps (main / street / boardwalk
+  hash; heights from kit3d's `unit` hash and `FOOTPRINT`, as town3d's), street lamps (main / street / boardwalk
   roads, every 22 m, alternating sides) and court floodlights (`model.floods` = `MapModel.floods`: explored court landmarks +
   venues, four towers each), plus one InstancedMesh of additive ground pools (lamps, courts); fog-dimmed (to 40 %, so lit towns still show in the dark); hidden when `lit` ≈ 0;
   rebuilt when the lots, fog, floods or the setting change. Fast setting: ⅓ of the windows, no lamp pools, `LIFE.low` figures.
@@ -744,8 +743,8 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
 
 ### The map's detailed look (spec §4.39 Land, T-343)
 
-- `map3d.mjs` `richLook(renderer, scene, cam, sun, hemi)` → `{ terrainMat, sea, on, set(v, water), setTerrain(T), resize(w, h),
-  step(dt, t, lit, tod, view, gfx), render(), info(), dispose() }`; tunables in the exported `LOOK`. `setLow(true)` (the Fast setting,
+- `look3d.mjs` `richLook(renderer, scene, cam, sun)` → `{ terrainMat, sea, on, set(v, water), setTerrain(T), resize(w, h),
+  step(dt, t, lit, tod, view, gfx), render(), info(), dispose() }`; tunables in `LOOK` (look3d.mjs). `setLow(true)` (the Fast setting,
   `G.gfx === 'fast'`) = `set(false)`: no tone mapping, PCFSoft shadows at the fixed box, the Phong sea, the flat terrain material
   (`flatMat`), `renderer.render` straight to the canvas — the look before T-343. Detailed: ACES (exposure by `lit`), an
   `EffectComposer` (RenderPass into a half-float MSAA target → GTAOPass on High, lazy-imported → UnrealBloomPass, on only while
@@ -805,8 +804,8 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
 - **Look** — at s > 0.15 the background is the baked sky (`look.envTex()`; Fast: the clock's sky colour); a `THREE.Fog` haze in the
   sky colour closes in with s (near 160 m at street level; 1e6 on the map); the war borders (`war.show`) and the route preview
   ribbons hide at s ≥ 0.5; the story figures (`model.figures`) shrink to life size with you.
-- **Contract for the interiors (T-336b)** — map3d `api.street()` (0–1), `api.camPos()` / `api.youPos()` (world [x, y, z]);
-  `import('./interior3d.mjs')` once at build (a missing file only rejects): `createInteriors(scene, heightAt, { cut: town.cut })`
+- **Contract for the interiors (T-336b)** — map3d `api.street()` (0–1), `api.youPos()` (world [x, y, z]);
+  `import('./interior3d.mjs')` once at build: `createInteriors(scene, heightAt, { cut: town.cut })`
   — wired as in "Street level — interiors" (map3d hook); a street-level click at canvas px that `at` takes is not a travel
   (mapcam `consume`). town3d `town.cut(box | [box] | null)`: landmark triangles wholly
   inside a world box `{ x0, x1, z0, z1, y0?, y1? }` collapse (the gym's / arena's shell while you are inside), null restores them.
@@ -824,7 +823,7 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   has no day orders).
 - **Renderer** — `js/map3d/interior3d.mjs` `createInteriors(scene, heightAt, { cut })` → { sync(model), tick(dt, { cam, you, street, low,
   size }) → { near, shown, flip }, at([x, y]), people(model), info(), stations(), dispose() }. Frames from `model.land.landmarks`
-  (yaw = town3d's nearest-road rule, copied as `landmarkYaw`; floor = the highest of 9 ground samples). The gym: one merged props
+  (yaw = kit3d `landmarkYaw`, the rule town3d turns landmarks by; floor = the highest of 9 ground samples). The gym: one merged props
   mesh (rubber floor, sprint lane, two squat racks, plate tree, dumbbell rack, bench press, accent mats, mirror wall, stretch
   mats, front desk) + its own shell (4 walls with the landmark's band, the roof with its ceiling lights; one transparent material each).
   The arena: court (map scale 15 × 7.5 m), lines, net, referee stand, team benches, a scoreboard with a canvas face, on the
@@ -837,7 +836,7 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
 - **People** — `people(model)`: while shown, `life.people` with `spot === place` move to its slots (round-robin by id, past the
   slots a ring 0.7 m out), `act: 'train'`; map3d re-syncs life with it when shown flips — life3d's humanoids / VRMs, pick and the
   figure menu work on them unchanged.
-- **map3d hook** — one guarded `import('./interior3d.mjs')` in build (then sync + a life re-sync); `interiors.sync(m)` before
+- **map3d hook** — one `import('./interior3d.mjs')` in build (then sync + a life re-sync); `interiors.sync(m)` before
   life, `life.sync(lifeM(m))` (update, setLow, and when shown flips); `interStep` each frame after the camera (`streetLook`):
   `tick(dt, { cam, you: avatar.pos(), street: st, low, size })`; the near station (not while walking) → `on.station({ ...st, x, y }
   | null)` (client px); mapcam's street-level click → `consume(xy)`: a station under it (`at`) → `on.station(st, true)`, no travel;

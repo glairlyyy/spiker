@@ -3,6 +3,7 @@
 // render/acts.js refCall). Display only: no randoms, rides the frame clock, never holds up play. The whistle's sound is sfx's.
 import * as THREE from 'three';
 import { TEX_GLOW } from '../fx/kit.mjs';
+import { lerp } from '../m3d.mjs';
 
 /** Arm poses (shoulder pitch x, roll z; rest = hanging down). `s` = toward the side the call is for (±1 along world x). */
 const SIGNALS = {
@@ -56,7 +57,6 @@ export function makeReferee(color = '#1d1f26') {
   g.userData = { arms, puff, call: null, seen: 0, t: 0 };
   return g;
 }
-const ease = (a, b, k) => a + (b - a) * k;
 /** Per frame: start a new call (`call` = A.call, new when its n changes), whistle, signal, back to rest. dt in seconds. */
 export function updateReferee(ref, call, dt) {
   const u = ref.userData;
@@ -74,8 +74,8 @@ export function updateReferee(ref, call, dt) {
   for (const id of ['L', 'R']) {
     const a = u.arms[id],
       p = pose[id] || { x: 0, z: 0 };
-    a.rotation.x = ease(a.rotation.x, p.x, k);
-    a.rotation.z = ease(a.rotation.z, p.z, k);
+    a.rotation.x = lerp(a.rotation.x, p.x, k);
+    a.rotation.z = lerp(a.rotation.z, p.z, k);
   }
   const w = c && u.t < WHISTLE.t + 0.2 ? Math.sin(Math.min(1, u.t / (WHISTLE.t + 0.2)) * Math.PI) : 0;
   u.puff.material.opacity = 0.8 * w;

@@ -11,14 +11,14 @@
 //     a block-jump drill, sitting or standing. Slots are built one at a time after the map has shown (never the first frame).
 //   nearestOnScreen(cands, cap, held, keep) — the LOD pick (pure, tested).
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { VRMUtils } from '@pixiv/three-vrm';
 import { loadBase, makeVRM, applyPose, smoothBones, groundSnap, dress, MODEL_URL } from '../render3d/players3d.mjs';
 import { STAND, READY, locoPose, mix } from '../render3d/poses3d.mjs';
 import { hstr, clamp, smooth } from './geo3d.mjs';
+import { mergeParts } from './kit3d.mjs';
 
 /** Display palettes for hashed looks (the people's own looks are not in the map model). */
-export const LOOKS = {
+const LOOKS = {
   skin: ['#f6d7b8', '#f3d2b3', '#eec39a', '#d9a877', '#b57c52', '#8a5a3c'],
   hair: ['#2b2d42', '#101010', '#8d5a3b', '#f2c14e', '#e4572e', '#4ea5d9', '#c3a1e6', '#eef0f5', '#1e7f86', '#b4202a', '#ffa94d', '#94a3b8']
 };
@@ -69,9 +69,7 @@ function humanoidGeo() {
     add(new THREE.CylinderGeometry(0.06, 0.045, 0.46, 5).translate(lx, HIP - 0.4, 0), 1, 2 * sd, HIP); // leg
     add(new THREE.BoxGeometry(0.1, 0.07, 0.2).translate(lx, 0.035, 0.035), 2, 2 * sd, HIP, SHOES); // shoe
   }
-  const g = mergeGeometries(parts);
-  for (const p of parts) p.dispose();
-  return g;
+  return mergeParts(parts);
 }
 const LIMB_GLSL = `attribute float part; attribute float limb; attribute float pivot; attribute vec4 iPose; attribute vec3 iSkin; attribute vec3 iHair;
 mat3 limbRot() {

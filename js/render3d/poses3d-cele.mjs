@@ -318,7 +318,6 @@ const MOVES = {
     ]
   }
 };
-export const CELE_KINDS = Object.keys(MOVES);
 export const celeMs = kind => (MOVES[kind] || MOVES.fist).ms;
 /**
  * The celebration pose of d at its time (d.cele = { kind, t ms, yaw0 }); sets d.celeYaw (the body turn: a spin, a turn to

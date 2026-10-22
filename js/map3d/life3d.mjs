@@ -17,20 +17,16 @@
 // Street level (spec §4.37 6, T-336a): `street` (0–1, map3d's camera weight) scales every figure toward life size (LIFE_S) and turns
 // the VRM pick into the people within STREET_LOD.maxD of the camera (≤ cap; Fast: fastCap VRMs over its capsules).
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAP_M, hstr, smooth } from './geo3d.mjs';
-import { box, part } from './kit3d.mjs';
+import { box, part, mergeParts } from './kit3d.mjs';
 import { DECK } from './town3d.mjs';
 import { createHumanoids, createPeopleVRM, lookOf } from './people3d.mjs';
 
 /** One figure (≈1.45 m, feet at the origin): a capsule body and a head. */
 const figureGeo = () => {
   const body = new THREE.CapsuleGeometry(0.22, 0.7, 3, 8).toNonIndexed().translate(0, 0.57, 0), // (merging needs both non-indexed)
-    head = new THREE.IcosahedronGeometry(0.16, 1).translate(0, 1.3, 0),
-    g = mergeGeometries([body, head]);
-  body.dispose();
-  head.dispose();
-  return g;
+    head = new THREE.IcosahedronGeometry(0.16, 1).translate(0, 1.3, 0);
+  return mergeParts([body, head]);
 };
 
 /** Vehicles (m, nose on +z, wheels at y = 0): drawn ~1.5× life size like the town. */
@@ -57,9 +53,7 @@ const vehicleGeo = kind => {
               box(4, 0.12, 1, 0, 0.2, -5.2, '#d8d4ca'),
               box(0.15, 2, 1.4, 0, 0.2, -5.3, '#c0504a')
             ];
-  const g = mergeGeometries(parts);
-  for (const o of parts) o.dispose();
-  return g;
+  return mergeParts(parts);
 };
 const VEH = {
   bus: { cap: 6, colors: ['#e0b030', '#d9773a'] },
@@ -78,7 +72,7 @@ const CAP = { people: 300, poles: 2, cloth: 2, dust: 10 },
   HIP = 0.7, // the humanoid's hip height (m at scale 1): sitting drops the body by about this
   LIFE_S = 1.2; // street level: every figure's scale (× the 1.45 m figure ≈ 1.74 m)
 /** Street level's VRMs: within maxD m of the camera, at most cap (Fast: fastCap, over its capsules). */
-export const STREET_LOD = { maxD: 40, cap: 15, fastCap: 6 };
+const STREET_LOD = { maxD: 40, cap: 15, fastCap: 6 };
 
 /** A soft ring (alpha fades in and out across its width), flat on the ground, radius 1. */
 const softRingGeo = () => {

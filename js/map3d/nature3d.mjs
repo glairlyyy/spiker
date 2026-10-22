@@ -6,17 +6,12 @@
 // Draw calls: 10 (pine, broad, blossom, palm, rock + scrap, bush + tea + hedge, tuft + dune grass + reeds, bamboo, log, fence) + 3 animals
 // (bird, beast, heron). The border rows (T-224) come in model.land.nature like the rest.
 import * as THREE from 'three';
-import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAP_M, fogFactor, lattice, hstr } from './geo3d.mjs';
-import { part, box } from './kit3d.mjs';
+import { part, box, mergeParts as merge } from './kit3d.mjs';
 
 const cyl = (r0, r1, h, n = 5) => new THREE.CylinderGeometry(r0, r1, h, n, 1, true);
 const cone = (r, h, n = 6) => new THREE.ConeGeometry(r, h, n, 1, true);
-const merge = parts => {
-  const g = mergeGeometries(parts);
-  for (const p of parts) p.dispose();
-  return g;
-};
 /** Shapes (m, base at y = 0): drawn at the town's exaggerated scale so they read from the map camera. */
 const SHAPE = {
   pine: () =>
