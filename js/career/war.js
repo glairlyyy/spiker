@@ -332,52 +332,128 @@ const War = {
         .map(t => t.id)
     );
   },
-  /** u's border (spec §4.34): the outer edge of its land, one closed loop of straight runs [[x, y]…] (Hex.straight, points every HEX.size / 4: Hex.dense) (cached until a unit falls). */
-  outline(run, u) {
-    const key = `${u}|${War.ids()
+  /**
+   * The drawn war borders (spec §4.34; owner 2026-10-22 "fix border"), cached until a unit falls: { units: { u: [{ pts, closed }] },
+   * pairs: { 'a|b': [pts…] } }. Only land borders: a unit's edge against another unit or a minor's / the Academy's land; its coast is
+   * the shore itself (not drawn). Each stretch between two neighbours is straightened once (Hex.straight; a run never leaves the
+   * two sides' tiles or crosses water) and clipped to the island, so both units draw the very same line (b's copy reversed).
+   * Every line runs with its unit's land on the left; points every ≤ HEX.size / 4 (Hex.dense). Display only.
+   */
+  borders(run) {
+    const key = War.ids()
         .map(x => War.holder(run, x))
-        .join()}`,
+        .join(),
       C = War.lineCache || (War.lineCache = new Map());
-    if (!C.has(key)) {
-      const L = Hex.outline(War.land(run, u))[0];
-      C.set(key, L ? Hex.dense(Hex.straight(L)) : []); // straight runs, not curves (owner, 2026-10-21)
+    if (C.has(key)) return C.get(key);
+    const k = p => `${Math.round(p[0] * 10)},${Math.round(p[1] * 10)}`,
+      order = War.ids(),
+      side = id => {
+        const t = Hex.tile(id);
+        return t ? War.unitAt(run, id) || `x:${t.region}` : null;
+      },
+      units = {},
+      pairs = {},
+      stretch = (u, v, raw, closed) => {
+        // straighten on one orientation for both sides: the unit first in War.ids (a minor never draws its own)
+        const flip = v.startsWith('x:') ? false : order.indexOf(v) < order.indexOf(u),
+          P = flip ? raw.slice().reverse() : raw.slice();
+        if (closed) {
+          const m = P.reduce((j, p, i) => (k(p) < k(P[j]) ? i : j), 0);
+          P.push(...P.splice(0, m)); // start at the same corner whoever draws it
+        }
+        const ok = (a, b) => {
+            const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / (HEX.size / 6));
+            for (let i = 1; i < n; i++) {
+              const p = [a[0] + ((b[0] - a[0]) * i) / n, a[1] + ((b[1] - a[1]) * i) / n],
+                s = side(Hex.idAt(p));
+              if ((s !== u && s !== v) || !City.onLand(p)) return false;
+            }
+            return true;
+          },
+          ring = closed && P.every(p => City.onLand(p)) && Hex.straight(P, undefined, true, ok),
+          out = ring
+            ? [ring.concat([ring[0]])]
+            : Hex.clip(closed ? P.concat([P[0]]) : P, CITY.coast).map(L => Hex.straight(L, undefined, false, ok));
+        return flip ? out.map(L => L.slice().reverse()).reverse() : out;
+      };
+    for (const u of order) {
+      if (!War.alive(run, u)) continue;
+      const L = War.land(run, u),
+        next = new Map();
+      for (const id of L) {
+        const t = Hex.tile(id),
+          Cn = Hex.corners(Hex.centre(t.q, t.r)).map(p => p.map(v => Math.round(v * 10) / 10)); // (rounded: both sides' corners equal)
+        for (let i = 0; i < 6; i++) {
+          const n = Hex.across(t, i);
+          if (n && L.has(n.id)) continue;
+          const e = { a: Cn[i], b: Cn[(i + 1) % 6], v: n ? side(n.id) : 'sea' };
+          if (!next.has(k(e.a))) next.set(k(e.a), []);
+          next.get(k(e.a)).push(e);
+        }
+      }
+      const lines = [];
+      for (const k0 of [...next.keys()].sort())
+        while (next.get(k0).length) {
+          // one boundary loop, edge by edge (as Hex.outline), then cut where the neighbour changes
+          const loop = [];
+          let e = next.get(k0).pop();
+          while (e && loop.length < 4000) {
+            loop.push(e);
+            if (k(e.b) === k0) break;
+            const Ls = next.get(k(e.b));
+            e = Ls && Ls.length ? Ls.pop() : null;
+          }
+          const cut = loop.findIndex((x, i) => x.v !== loop[(i - 1 + loop.length) % loop.length].v),
+            whole = cut < 0;
+          if (!whole) loop.push(...loop.splice(0, cut));
+          const runs = [];
+          for (const x of loop) {
+            const r = runs[runs.length - 1];
+            if (r && r.v === x.v) r.e.push(x);
+            else runs.push({ v: x.v, e: [x] });
+          }
+          const pieces = [];
+          for (const r of runs) {
+            if (r.v === 'sea') {
+              pieces.push(null); // a gap: the coast is the border there
+              continue;
+            }
+            const raw = r.e.map(x => x.a).concat(whole ? [] : [r.e[r.e.length - 1].b]),
+              S = stretch(u, r.v, raw, whole);
+            if (!r.v.startsWith('x:')) (pairs[`${u}|${r.v}`] = pairs[`${u}|${r.v}`] || []).push(...S);
+            pieces.push(...S);
+          }
+          // join pieces end to start (the loop's order): one line per unbroken stretch
+          for (const S of pieces) {
+            const last = lines[lines.length - 1];
+            if (S && last && last.open && !last.done && k(last.pts[last.pts.length - 1]) === k(S[0])) last.pts.push(...S.slice(1));
+            else lines.push(S ? { pts: S.slice(), open: true } : { pts: [], open: false });
+          }
+          const first = lines.findIndex(l => l.pts.length && !l.done),
+            last = lines[lines.length - 1];
+          if (first >= 0 && last !== lines[first] && last.pts.length && k(last.pts[last.pts.length - 1]) === k(lines[first].pts[0]))
+            (last.pts.push(...lines[first].pts.slice(1)), lines.splice(first, 1)); // the loop's seam
+          for (const l of lines) l.done = true;
+        }
+      units[u] = lines
+        .filter(l => l.pts.length > 1)
+        .map(l => {
+          const closed = l.pts.length > 3 && k(l.pts[0]) === k(l.pts[l.pts.length - 1]);
+          return { pts: closed ? Hex.dense(l.pts.slice(0, -1)) : Hex.dense(l.pts, undefined, false), closed };
+        });
     }
+    for (const p in pairs) pairs[p] = pairs[p].map(L => Hex.dense(L, undefined, false));
+    C.set(key, { units, pairs });
     return C.get(key);
   },
-  /**
-   * The stretch where units a and b meet: open polylines of the tile edges between their land (straight runs, densified like `outline`), longest first.
-   */
+  /** u's border lines (War.borders): [{ pts, closed }] — its land borders, the coast left to the shore. */
+  outline: (run, u) => War.borders(run).units[u] || [],
+  /** The stretch where units a and b meet: open polylines (the same points as both units' borders there), a's land on the left, longest first. */
   meet(run, a, b) {
-    const A = War.land(run, a),
-      key = p => `${Math.round(p[0] * 10)},${Math.round(p[1] * 10)}`,
-      segs = [];
-    for (const id of A) {
-      const t = Hex.tile(id),
-        C = Hex.corners(Hex.centre(t.q, t.r));
-      for (let i = 0; i < 6; i++) {
-        const n = Hex.across(t, i);
-        if (n && War.unitAt(run, n.id) === b) segs.push([C[i], C[(i + 1) % 6]]);
-      }
-    }
-    // chain the segments into polylines (a's edges all run the same way round)
-    const from = new Map(segs.map(s => [key(s[0]), s])),
-      to = new Set(segs.map(s => key(s[1]))),
-      used = new Set(),
-      lines = [];
-    const starts = segs.filter(s => !to.has(key(s[0]))).concat(segs);
-    for (const s0 of starts) {
-      if (used.has(s0)) continue;
-      const L = [s0[0]];
-      let s = s0;
-      while (s && !used.has(s)) {
-        used.add(s);
-        L.push(s[1]);
-        s = from.get(key(s[1]));
-      }
-      lines.push(Hex.dense(Hex.straight(L, undefined, false), undefined, false));
-    }
-    const len = L => L.reduce((n, p, i) => (i ? n + Math.hypot(p[0] - L[i - 1][0], p[1] - L[i - 1][1]) : 0), 0);
-    return lines.sort((x, y) => len(y) - len(x));
+    const P = War.borders(run).pairs,
+      lines = P[`${a}|${b}`] || (P[`${b}|${a}`] || []).map(L => L.slice().reverse()),
+      len = L => L.reduce((n, p, i) => (i ? n + Math.hypot(p[0] - L[i - 1][0], p[1] - L[i - 1][1]) : 0), 0);
+    return lines.slice().sort((x, y) => len(y) - len(x));
   },
   /** run.own = { placeId: holder region } for every place whose tile's holder is not the place's own region (Front.owner reads it). */
   sync(run) {

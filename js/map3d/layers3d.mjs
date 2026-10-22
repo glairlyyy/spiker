@@ -270,7 +270,7 @@ export function nightLayer(scene, heightAt) {
   };
 }
 /**
- * The war on the map (spec §4.34, T-317; model.borders): each standing unit's border as one draped ribbon in its colour (one
+ * The war on the map (spec §4.34, T-317; model.borders): each standing unit's land border (runs) as draped ribbons in its colour (one
  * mesh, vertex colours), this week's hot stretch as a brighter wider ribbon that pulses (one mesh: only its opacity changes
  * per frame) and the banners along it (one mesh, geo3d bannerArrays). Rebuilt only when the borders' JSON changes.
  */
@@ -327,8 +327,8 @@ export function warLayer(scene, heightAt) {
       if (!B) return;
       const pos = [],
         col = [];
-      // each unit's line just inside its own land (shift 3 left of the loop's run = inward), so two neighbours' colours sit side by side
-      for (const L of B.lines) if (L.pts.length > 2) strip(L.pts, 2.4, true, 0.7, rgb(L.color), pos, col, 3);
+      // each unit's line just inside its own land (shift 3 left of the run = inward), so two neighbours' colours sit side by side on one line
+      for (const L of B.lines) for (const R of L.runs) if (R.pts.length > 1) strip(R.pts, 2.4, R.closed, 0.7, rgb(L.color), pos, col, 3);
       if (pos.length) g.add(mesh(pos, col, mat(0.85)));
       if (B.hot && B.hot.lines.length) {
         const hp = [],

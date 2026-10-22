@@ -1649,7 +1649,9 @@ the AI coach fills every slot you leave with the same function. Built and measur
     faction or St. Gloria (a scene), and plays the Cup there.
   - **Map**: hex tiles go (fills, pressure, the tile panel, `run.hex`); a border line per war unit stays — computed once from
     the hex grid's outer edge as a few long straight runs (not curves — owner; **[built 2026-10-22]**: the hex zigzag straightened, every
-    corner dropped within 0.9 hex of the run kept), never drawn as tiles. Fighting heats a border: the stretch glows and pulses with
+    corner dropped within 0.9 hex of the run kept; **[built 2026-10-22, "fix border"]**: land borders only — a unit's coast is the shore itself,
+    not a line over the sea; where two units meet they share one straightened line (their two colours side by side on it, the hot
+    stretch on the same line); a run never crosses water or a third side's land), never drawn as tiles. Fighting heats a border: the stretch glows and pulses with
     banners, the battle site sits on it. Borders move only when a unit is destroyed. **[built 2026-10-19, T-317]**
   - **You in the war** (T-316): your club calls you up on battle weeks (refusing costs standing) **[built 2026-10-19, T-316: −8 standing; staying away, watching or fighting for the other side all refuse]**; a **Raid** day order
     (§4.33) fights a street game on a hot border (your win counts × 2 on Strength). **[built 2026-10-19, T-318: from the battle card, played at once; a loss costs your unit × 1]**

@@ -170,8 +170,9 @@ const Hex = {
   /**
    * Straighten a polyline (owner, 2026-10-21: borders not curvy): Ramer–Douglas–Peucker — drop every corner within `tol` map units
    * of the straight line through its neighbours, so the hex zigzag becomes a few long straight runs. closed = a loop.
+   * ok(a, b) (optional): may the run go straight from a to b? No → the run keeps its farthest corner and tries again.
    */
-  straight(pts, tol = HEX.size * 0.9, closed = true) {
+  straight(pts, tol = HEX.size * 0.9, closed = true, ok = null) {
     if (pts.length < 3) return pts.slice();
     const off = (p, a, b) => {
         const dx = b[0] - a[0],
@@ -184,9 +185,9 @@ const Hex = {
           d = 0;
         for (let i = 1; i < P.length - 1; i++) {
           const e = off(P[i], P[0], P[P.length - 1]);
-          if (e > d) [d, k] = [e, i];
+          if (e > d || k < 0) [d, k] = [e, i];
         }
-        return d > tol
+        return k > 0 && (d > tol || (ok && !ok(P[0], P[P.length - 1])))
           ? rdp(P.slice(0, k + 1))
               .slice(0, -1)
               .concat(rdp(P.slice(k)))
@@ -212,6 +213,34 @@ const Hex = {
       for (let j = 0; j < k; j++) out.push([a[0] + ((b[0] - a[0]) * j) / k, a[1] + ((b[1] - a[1]) * j) / k]);
     }
     if (!closed && pts.length) out.push(pts[pts.length - 1].slice());
+    return out;
+  },
+  /** The pieces of an open polyline inside polygon `poly` (open polylines; a piece meets the polygon's edge where it crosses it). */
+  clip(pts, poly) {
+    const out = [],
+      n = poly.length;
+    let cur = inPoly(pts[0], poly) ? [pts[0].slice()] : null;
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const [ax, ay] = pts[i],
+        [bx, by] = pts[i + 1],
+        ts = [];
+      for (let j = 0; j < n; j++) {
+        const [cx, cy] = poly[j],
+          [dx, dy] = poly[(j + 1) % n],
+          den = (bx - ax) * (dy - cy) - (by - ay) * (dx - cx);
+        if (!den) continue;
+        const t = ((cx - ax) * (dy - cy) - (cy - ay) * (dx - cx)) / den,
+          s = ((cx - ax) * (by - ay) - (cy - ay) * (bx - ax)) / den;
+        if (t > 0 && t < 1 && s >= 0 && s <= 1) ts.push(t);
+      }
+      for (const t of ts.sort((x, y) => x - y)) {
+        const p = [ax + (bx - ax) * t, ay + (by - ay) * t];
+        if (cur) (cur.push(p), cur.length > 1 && out.push(cur), (cur = null));
+        else cur = [p];
+      }
+      if (cur) cur.push(pts[i + 1].slice());
+    }
+    if (cur && cur.length > 1) out.push(cur);
     return out;
   },
   /** A tile's name for the diary and cards: its place, else "{region} ground near {nearest place}". */

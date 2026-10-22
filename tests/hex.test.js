@@ -30,28 +30,81 @@ test('hex: the grid is deterministic, every place and HQ sits on a tile of its r
   eq(JSON.stringify(g.Hex.grid().tiles), h, 'rebuilt the same');
 });
 
-test('map: borders — one closed border of straight runs per unit, the hot stretch is the week’s battle, banners on it; no hex tiles (T-317)', () => {
+test('map: borders — each unit’s land border in straight runs, shared with its neighbour, never over another unit or the sea; the hot stretch is the week’s battle, banners on it; no hex tiles (T-317, 2026-10-22)', () => {
   const g = load(52),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Borders' });
   run.clash = null;
   let M = g.MapModel.build(run);
   assert(!('hexes' in M), 'no hex tiles in the model');
   eq(M.borders.lines.map(l => l.unit).join(), g.War.ids().join(), 'a border per unit');
+  const side = p => {
+      const t = g.Hex.tile(g.Hex.idAt(p));
+      return t ? g.War.unitAt(run, t.id) || 'x:' + t.region : null;
+    },
+    sk = (a, b) =>
+      [a, b]
+        .map(q => q.map(v => v.toFixed(1)).join())
+        .sort()
+        .join('|');
+  const W = g.War.borders(run),
+    pairOf = {}; // segment → the unit pair whose shared stretch it is
+  for (const p in W.pairs) for (const P of W.pairs[p]) P.slice(1).forEach((q, i) => (pairOf[sk(P[i], q)] = p.split('|')));
   for (const L of M.borders.lines) {
-    const O = g.Hex.outline(g.War.land(run, L.unit)),
-      P = L.pts,
-      bends = P.filter((p, i) => {
-        const a = P[(i - 1 + P.length) % P.length],
+    const raw = g.Hex.outline(g.War.land(run, L.unit))[0];
+    let corners = 0,
+      gap = 0,
+      left = 0,
+      segs = 0;
+    assert(L.runs.length >= 1 && L.color === run.teams[g.WAR.units[L.unit].clubs[0]].color, 'runs in its club colour: ' + L.unit);
+    for (const R of L.runs) {
+      const P = R.pts,
+        n = R.closed ? P.length : P.length - 1;
+      for (let i = 0; i < n; i++) {
+        const a = P[i],
           b = P[(i + 1) % P.length];
-        return Math.abs((p[0] - a[0]) * (b[1] - p[1]) - (p[1] - a[1]) * (b[0] - p[0])) > 1e-6;
-      }).length,
-      gap = Math.max(...P.map((p, i) => Math.hypot(P[(i + 1) % P.length][0] - p[0], P[(i + 1) % P.length][1] - p[1])));
-    eq(O.length, 1, 'one closed loop: ' + L.unit);
+        gap = Math.max(gap, Math.hypot(b[0] - a[0], b[1] - a[1]));
+        // the run stays on the island, on its own or the neighbour's land only: sample a hair to each side of its middle
+        const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2],
+          d = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1,
+          nx = -(b[1] - a[1]) / d,
+          ny = (b[0] - a[0]) / d,
+          two = pairOf[sk(a, b)],
+          okSide = s => (two ? two.includes(s) : s === L.unit || (s && s.startsWith('x:'))),
+          sl = side([m[0] + nx * 2, m[1] + ny * 2]),
+          sr = side([m[0] - nx * 2, m[1] - ny * 2]);
+        assert(g.City.onLand(m), `${L.unit}: a run over the sea at ${m.map(Math.round)}`);
+        assert(okSide(sl) && okSide(sr), `${L.unit}: a run over a third side’s land at ${m.map(Math.round)}: ${sl} / ${sr}`);
+        if (sl !== sr) (segs++, sl === L.unit && left++);
+      }
+      for (let i = 1; i < P.length - 1; i++) {
+        const a = P[i - 1],
+          b = P[i + 1],
+          p = P[i];
+        if (Math.abs((p[0] - a[0]) * (b[1] - p[1]) - (p[1] - a[1]) * (b[0] - p[0])) > 1e-6) corners++;
+      }
+    }
+    assert(segs && left >= segs * 0.8, `${L.unit}: where a run crosses a tile edge, its own land is on the left (${left} / ${segs})`);
     assert(
-      bends >= 3 && bends < O[0].length / 2 && gap <= g.HEX.size / 4 + 1e-6 && L.color === run.teams[g.WAR.units[L.unit].clubs[0]].color,
-      `straight runs (${bends} corners of ${O[0].length}), points ≤ HEX.size / 4 apart (${gap.toFixed(1)}), in its club colour: ` + L.unit
+      corners < raw.length / 2 && gap <= g.HEX.size / 4 + 1e-6,
+      `straight runs (${corners} corners of ${raw.length}), points ≤ HEX.size / 4 apart (${gap.toFixed(1)}): ` + L.unit
     );
   }
+  // a stretch two units share is one line: the same segments in both units' borders
+  let shared = 0;
+  for (const p in W.pairs) {
+    const [a, b] = p.split('|'),
+      seg = Ls => new Set(Ls.flatMap(P => P.slice(1).map((q, i) => sk(P[i], q))));
+    const A = seg(W.pairs[p]),
+      O = seg(W.pairs[`${b}|${a}`] || []);
+    assert(A.size && [...A].every(x => O.has(x)) && A.size === O.size, `one line where ${a} meets ${b}`);
+    const mine = seg(W.units[a].map(r => (r.closed ? r.pts.concat([r.pts[0]]) : r.pts)));
+    assert(
+      [...A].every(x => mine.has(x)),
+      `${a}’s border draws its stretch with ${b}`
+    );
+    shared++;
+  }
+  assert(shared >= 8, 'neighbours: ' + shared);
   assert(M.borders.hot === null && M.borders.banners.length === 0, 'calm: no hot stretch');
   const t = g.Front.site(run, 'shu', 'wei');
   run.clash = { tile: t.tile, from: t.from, at: t.at, att: 'shu', def: 'wei', seen: false, done: false };

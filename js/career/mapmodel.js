@@ -740,8 +740,8 @@ const MapModel = {
     });
   },
   /**
-   * The war on the map (spec §4.34; hex tiles are never drawn): lines — one closed border (straight runs) per standing unit { unit,
-   * color (its lead club's colour), pts }; hot — this week's battle stretch { units, colors, lines (open polylines), site };
+   * The war on the map (spec §4.34; hex tiles are never drawn): lines — each standing unit's land border (straight runs, War.borders) { unit,
+   * color (its lead club's colour), runs: [{ pts, closed }] }; hot — this week's battle stretch { units, colors, lines (open polylines), site };
    * banners along it [{ at, face, color }] (each side's, facing across); fall — the latest destroyed unit { key, at (its HQ),
    * pin } (the map pans there once). Display only, no randoms.
    */
@@ -775,7 +775,7 @@ const MapModel = {
     return {
       lines: War.ids()
         .filter(u => War.alive(run, u))
-        .map(u => ({ unit: u, color: col(u), pts: War.outline(run, u) })),
+        .map(u => ({ unit: u, color: col(u), runs: War.outline(run, u) })),
       hot,
       banners,
       fall: last ? { key: `${last}|${F[last].week}`, at: CITY.hq[hq].slice(), pin: `hq${hq}` } : null
