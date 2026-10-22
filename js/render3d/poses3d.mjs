@@ -187,7 +187,7 @@ export const READY = C({
   fsplit: 0.45
 });
 // ready, the other look (owner, 2026-10-10): arms long and low in front, hands open with the palms to the sky
-export const READY_PALMS = C({
+const READY_PALMS = C({
   hp: 0.62,
   sp: 0.16,
   cp: 0.06,
@@ -200,7 +200,7 @@ export const READY_PALMS = C({
 });
 // resting before the serve (owner, 2026-10-10): bent over, legs nearly straight, hands on the knees (actors3d puts the hands
 // on this player's own knees: pose.kneeHands), head up on the server
-export const REST_KNEES = C({
+const REST_KNEES = C({
   hp: 0.78,
   sp: 0.18,
   cp: 0.08,

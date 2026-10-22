@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { KH, KX, KZ } from './units3d.mjs';
 
 const CAM = { pos: [-2.59, 14.011, 33.007], look: [-0.059, 3.294, 0.012], fov: 20.357 }; // fitted to the classic framing
-export const ASPECT = 1000 / 440; // the classic court framing; the full-court screen (spec §9.9, T-252) keeps its width
+const ASPECT = 1000 / 440; // the classic court framing; the full-court screen (spec §9.9, T-252) keeps its width
 let aspect = ASPECT, // the court canvas's width / height (the viewport since T-252)
   vh = 220; // the overlay's logical half-height: the logical screen is 1000 wide, 2·vh tall
 /** The court canvas's aspect (r3d syncSize, every frame). A taller screen widens the vertical FOV so the court keeps its width. */

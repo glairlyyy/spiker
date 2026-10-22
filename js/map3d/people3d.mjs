@@ -18,7 +18,7 @@ import { STAND, READY, locoPose, mix } from '../render3d/poses3d.mjs';
 import { hstr, clamp, smooth } from './geo3d.mjs';
 
 /** Display palettes for hashed looks (the people's own looks are not in the map model). */
-export const LOOKS = {
+const LOOKS = {
   skin: ['#f6d7b8', '#f3d2b3', '#eec39a', '#d9a877', '#b57c52', '#8a5a3c'],
   hair: ['#2b2d42', '#101010', '#8d5a3b', '#f2c14e', '#e4572e', '#4ea5d9', '#c3a1e6', '#eef0f5', '#1e7f86', '#b4202a', '#ffa94d', '#94a3b8']
 };

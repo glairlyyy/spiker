@@ -170,7 +170,7 @@ const EMBER = [new THREE.Color('#ffd27a'), new THREE.Color('#ff8a2a'), new THREE
 
 /**
  * Per frame (dt seconds of real time): the wind (outdoor venues), the embers, the corner flames — by the heat and its tier.
- * `kind` = the venue (VENUE_KINDS); `hotCol` = the hotter team's colour (the flames take it on).
+ * `kind` = the venue (a venues/looks.mjs LOOK key); `hotCol` = the hotter team's colour (the flames take it on).
  */
 export function updateAmbient(amb, dt, kind, heat, hotCol) {
   if (!amb) return;

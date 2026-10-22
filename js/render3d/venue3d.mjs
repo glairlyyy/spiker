@@ -16,7 +16,6 @@ import { setOfficials } from './venues/props.mjs';
 import { updateReferee } from './venues/referee.mjs';
 import { makeDrone, updateDrone } from './fx/drone.mjs';
 
-export const VENUE_KINDS = Object.keys(LOOK);
 /** One builder per venue (js/render3d/venues/*): a new venue = a LOOK entry, a floor case and one line here. */
 const VENUE_SETS = { arena: setArena, hall: setHall, beach: setBeach, highland: setHighland, street: setStreet, field: setField };
 
@@ -133,7 +132,7 @@ export function buildVenues(scene, w) {
   w.venue = null;
 }
 
-/** Dress the world for a match: venue kind (VENUE_KINDS), crowd stakes 0–1, the two team colours. */
+/** Dress the world for a match: venue kind (a venues/looks.mjs LOOK key), crowd stakes 0–1, the two team colours. */
 export function dressVenue(w, kind, stakes, t0c, t1c) {
   const fg = kind === 'field' ? (typeof A !== 'undefined' && A && A.ground) || { k: 'grass' } : null, // a field's ground (spec §4.38)
     L = fg ? { ...LOOK.field, ...FIELD_LOOK[fg.k] } : LOOK[kind] ? LOOK[kind] : LOOK.arena;

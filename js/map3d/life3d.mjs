@@ -78,7 +78,7 @@ const CAP = { people: 300, poles: 2, cloth: 2, dust: 10 },
   HIP = 0.7, // the humanoid's hip height (m at scale 1): sitting drops the body by about this
   LIFE_S = 1.2; // street level: every figure's scale (× the 1.45 m figure ≈ 1.74 m)
 /** Street level's VRMs: within maxD m of the camera, at most cap (Fast: fastCap, over its capsules). */
-export const STREET_LOD = { maxD: 40, cap: 15, fastCap: 6 };
+const STREET_LOD = { maxD: 40, cap: 15, fastCap: 6 };
 
 /** A soft ring (alpha fades in and out across its width), flat on the ground, radius 1. */
 const softRingGeo = () => {

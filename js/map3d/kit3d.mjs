@@ -3,7 +3,7 @@
 // pack can replace any kind later without touching rules or data — see "Swapping a kind" below. Plain geometry, no scene.
 //   KIT[kind]            filler lots (MapModel.lots kinds): { geo(), mat, scale: [width, height, depth], colors }
 //   LANDMARKS[kind]      landmarks (LANDMARK kinds): { h, w, d, build(accent) → a vertex-coloured BufferGeometry }
-//   landmarkHeight(kind) how tall a landmark is in metres (pins float above it)
+//   landmarkHeight(kind) how tall a landmark is in metres (pins float above it); landmarkYaw(L, roads) which way it faces
 //   KIT_PROPS[tag]       a place's kit beside its landmark (spec §4.33): racks, crates + a crane, a track, steps, mats …
 //
 // Swapping a kind: a filler kind's `geo()` may return any BufferGeometry whose footprint is 1 × 1 and height 1 with its feet at
@@ -13,7 +13,7 @@
 // model's own look). Nothing else (town3d.mjs, rules, map data) needs to change.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { MAP_M } from './geo3d.mjs';
+import { MAP_M, clamp } from './geo3d.mjs';
 
 /** Region accents (the REGIONS colours): the palettes below lean on them. */
 const ACC = { wei: '#d08a2e', wu: '#5b8def', shu: '#2fb8a0', outlaws: '#ff8c42', gloria: '#ff5da2', open: '#f5e6a8' };
@@ -421,7 +421,7 @@ export const LANDMARKS = {
  */
 const BLUE = '#3f6fb5',
   SAND = '#e3cf96';
-export const KIT_PROPS = {
+const KIT_PROPS = {
   weights: a => [
     post(-1.4, 0, 0, 2.2, DARK, 0.25),
     post(1.4, 0, 0, 2.2, DARK, 0.25),
@@ -466,6 +466,25 @@ const propSlot = (L, i) => [(i % 2 ? -1 : 1) * (L.w / 2 + 2.6), -L.d / 4 + Math.
 
 /** Height in metres of a landmark kind (pins float above it); 3 for an unknown kind. */
 export const landmarkHeight = kind => (LANDMARKS[kind] ? LANDMARKS[kind].h : 3);
+/** A landmark's yaw (rad): its door (+z) faces the nearest road (overpasses aside), or its fixed `rot` (the airport). Map units in. */
+export function landmarkYaw(L, roads) {
+  if (L.rot != null) return L.rot;
+  const [mx, my] = L.at;
+  let best = Infinity,
+    yaw = 0;
+  for (const r of roads || []) {
+    if (r.kind === 'overpass') continue;
+    const [a, b] = r.pts,
+      dx = b[0] - a[0],
+      dy = b[1] - a[1],
+      t = clamp(((mx - a[0]) * dx + (my - a[1]) * dy) / (dx * dx + dy * dy || 1), 0, 1),
+      px = a[0] + dx * t - mx,
+      py = a[1] + dy * t - my,
+      d = Math.hypot(px, py);
+    if (d < best) ((best = d), (yaw = d > 0.5 ? Math.atan2(px, py) : 0));
+  }
+  return yaw;
+}
 /** Build a landmark's merged geometry (accent = a CSS colour; kit = the place's KITS tags → props beside it): door on +z, centred, feet at y = 0. */
 export const buildLandmark = (kind, accent, kit = []) => {
   const L = LANDMARKS[kind] || LANDMARKS.home,
@@ -496,7 +515,6 @@ export const FOOT = 1.2,
   FOOTPRINT = 1.2;
 /** The fixed hash (0..1) behind every lot's height and look. */
 export const unit = i => (Math.imul(i + 1, 2654435761) >>> 0) / 4294967296;
-const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 /** Lot i's frame: centre (m), sides w (local x) × d (local z), height h (m above the ground), its turn (cos / sin of −rot). */
 export const lotFrame = (l, i) => {
@@ -516,7 +534,7 @@ export const lotFrame = (l, i) => {
 };
 
 /** The window atlas (4 × 4 canvas tiles): panes, doors, shop fronts and signs. */
-export const TILE = {
+const TILE = {
   sash: 0,
   cross: 1,
   shutter: 2,
@@ -898,7 +916,7 @@ const tuv = (tex, ...pts) => pts.flatMap(([u, v]) => (tex === 'metal' ? [v * 0.7
  * A box in a local frame P(x, y, z) → world: faces counter-clockwise from outside, wall UVs in metres; skip = face names to leave
  * out ('py' top, 'ny' bottom, 'px' …). Into mesher M with colour c and wall texture tex.
  */
-export const lbox = (M, P, x0, x1, y0, y1, z0, z1, c, tex = 'none', skip = 'ny') => {
+const lbox = (M, P, x0, x1, y0, y1, z0, z1, c, tex = 'none', skip = 'ny') => {
   const e = MASK[tex] || MASK.none,
     q = (name, a, b, cc, dd, u0, u1, v0, v1) =>
       !skip.includes(name) && M.quad(P(...a), P(...b), P(...cc), P(...dd), c, wallUV(tex, u0, u1, v0, v1), e);

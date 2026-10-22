@@ -84,6 +84,3 @@ export function unmountTitle3D() {
   T.renderer.domElement.remove();
   T = null;
 }
-
-/** Is a backdrop mounted? (tests / QA) */
-export const title3DOn = () => !!T;

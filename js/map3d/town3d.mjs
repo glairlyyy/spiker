@@ -29,7 +29,8 @@ import {
   interiorMat,
   RING_PROPS,
   rgb,
-  lotFrame
+  lotFrame,
+  landmarkYaw
 } from './kit3d.mjs';
 
 const ROAD = {
@@ -649,28 +650,12 @@ export function createTown(scene, heightAt, opts = {}) {
   /** Every landmark (and the Gloria wall) merged into one vertex-coloured mesh; each landmark faces its nearest road (or its fixed `rot`). */
   const buildLandmarks = (list, edges, tint, districts) => {
     const geos = [],
-      mat = new THREE.Matrix4(),
-      segs = edges.filter(r => r.kind !== 'overpass').map(r => r.pts);
+      mat = new THREE.Matrix4();
     for (const L of list) {
-      const [mx, my] = L.at,
-        x = mx * MAP_M,
-        z = my * MAP_M;
-      let best = Infinity,
-        yaw = 0;
-      for (const [a, b] of segs) {
-        const dx = b[0] - a[0],
-          dy = b[1] - a[1],
-          t = Math.min(1, Math.max(0, ((mx - a[0]) * dx + (my - a[1]) * dy) / (dx * dx + dy * dy || 1))),
-          px = a[0] + dx * t - mx,
-          py = a[1] + dy * t - my,
-          d = Math.hypot(px, py);
-        if (d < best) {
-          best = d;
-          yaw = d > 0.5 ? Math.atan2(px, py) : 0;
-        }
-      }
-      if (L.rot != null) yaw = L.rot; // a fixed heading (the airport)
-      const g = buildLandmark(L.kind, tint.get(L.region) || accentOf(L.region), L.kit), // + its kit's props (spec §4.33)
+      const x = L.at[0] * MAP_M,
+        z = L.at[1] * MAP_M,
+        yaw = landmarkYaw(L, edges),
+        g = buildLandmark(L.kind, tint.get(L.region) || accentOf(L.region), L.kit), // + its kit's props (spec §4.33)
         h = Math.min(heightAt(x - 3, z - 3), heightAt(x + 3, z - 3), heightAt(x - 3, z + 3), heightAt(x + 3, z + 3), heightAt(x, z));
       mat.makeRotationY(yaw).setPosition(x, h, z);
       g.applyMatrix4(mat);
