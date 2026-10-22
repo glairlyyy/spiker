@@ -323,7 +323,7 @@ export function locoPose(m) {
         hyaw: 0,
         L: leg(0.85, 1.3, 0, 0.14 + (0.17 + 0.07 * lead) * o),
         R: leg(0.8, 1.25, 0, 0.14 + (0.17 - 0.07 * lead) * o),
-        lift: 0.05 * Math.abs(Math.sin(ph * 2)),
+        lift: 0.025 * Math.abs(Math.sin(ph)), // (one small lift a step — 2026-10-23: two a step bounced the hips ~14 times a second)
         hroll: 0.06 * lead * o
       },
       side

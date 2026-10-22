@@ -211,7 +211,7 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
   // it bobs, never jumps; the run's flight (pose.lift) on top
   // (shuffling and backpedalling the body stays low, knees bent — the athletic stance; 2026-10-23: it rose to nearly
   // straight legs between the ready stances)
-  const stand = contact + (0.95 - 0.13 * gws - 0.07 * gwb) * leg,
+  const stand = contact + (0.95 - 0.2 * gws - 0.08 * gwb) * leg,
     want2 = Math.max(stand - 0.12, Math.min(stand, T[0].allow, T[1].allow)),
     hyNow = (T[0].hy + T[1].hy) / 2;
   pl.gHip = pl.gHip == null ? want2 : pl.gHip + (want2 - pl.gHip) * (1 - Math.exp(-Math.min(dt, 0.05) * 10));

@@ -378,7 +378,7 @@ secondary3d turnLag: hips turn ahead by ½ the turn to come, ≤ 0.5 rad, the sp
 first then the knee through (lift `gait.lift` × speed). The hips come down as far as a planted foot needs (`pl.gHip`; `pl.gDrop` = how far below 0.95 leg, for QA;
 eased). Targets blend from the pose's foot by the weight `pl.gW` (forward-gait share × `pose.gaitW` — 1 from locoPose, carried
 by `mix` — × speed from `gait.from`; eased) and are solved fully (ik3d `twoBone`). `footIK` plants nothing new from gW 0.2 and
-hands the feet over at 0.8. Heading eased (`pl.gDir`). Every gait is planted (the shuffle and backpedal too; `step` ÷ (1 + 0.6 side), the shuffle's quicker phase); a swinging foot is kept ≥ 0.1 + 0.14 × side m from the other along the hips' left (the feet never cross; the landing moves with it); the standing hip height drops 0.13 leg × side and 0.07 leg × back (low shuffle / backpedal).
+hands the feet over at 0.8. Heading eased (`pl.gDir`). Every gait is planted (the shuffle and backpedal too; `step` ÷ (1 + 0.6 side), the shuffle's quicker phase); a swinging foot is kept ≥ 0.1 + 0.14 × side m from the other along the hips' left (the feet never cross; the landing moves with it); the standing hip height drops 0.2 leg × side and 0.08 leg × back (low shuffle / backpedal).
 
 Landings (display only): poses3d-attack `landBlend` mixes the spike / jump-serve air pose (jy ≥ 9) into its landing pose as
 jy falls from 18 to 2. playback `capMove` holds a body for `LAND_ABSORB` ms after touchdown, then catches up at ≤ `RUN_ACC`
