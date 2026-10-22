@@ -1,6 +1,6 @@
 // Team life (spec §4.36 2–4): the team chat after your matches, personal arcs, duo cards and ex-teammates. Data only — the logic is
 // js/career/team.js (Team); the duo cards themselves are CARDS entries (js/data/cards.js, src 'duo'). Its memory kinds are merged into
-// MEMORY / MEM_TEXT below (people.js stays as it is).
+// MEMORY / MEM_TEXT below (so they sit with the feature).
 
 /**
  * The numbers. chat: messages after a match (min–max, by hash). circle: the most people Team reads from the circle. duo: the bond that

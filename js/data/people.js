@@ -154,8 +154,8 @@ const MEMORY = {
 };
 /**
  * The relationship numbers. decay: stance fades per week (scars never). max: entries kept per pair. tags: stance
- * thresholds. rivalOvr: same role and OVR within this = a rival. bondK / bondTau: stance → the cached 0–100 `you.bond`, exponential
- * (owner, 2026-10-21): bond = 100 × (1 − e^(−stance / bondTau)) — the first points come as fast as before (slope bondK = 100 / bondTau),
+ * thresholds. rivalOvr: same role and OVR within this = a rival. bondTau: stance → the cached 0–100 `you.bond`, exponential
+ * (owner, 2026-10-21): bond = 100 × (1 − e^(−stance / bondTau)) — the first points come at slope 100 / bondTau = 8,
  * each later one takes more: bond 50 at stance ~8.7, 80 at ~20, 90 at ~29, 95 at ~37.
  * trait: multipliers by trait (pos / neg = the value's sign; scar / a kind name; payoff / other for calculating).
  */
@@ -164,7 +164,6 @@ const REL = {
   max: 24,
   tags: { ally: 40, respect: 15, resent: -15, enemy: -45 },
   rivalOvr: 5,
-  bondK: 8,
   bondTau: 12.5,
   know: { want: 6, trait: [1, 9] }, // memories with you before their want / first trait (the behaviour: at once) / second trait show on their card
   // approaches (T-063): max a week, base chance (x the kind's weight by want), the loan range, the chance a loan is repaid by trait,

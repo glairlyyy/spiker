@@ -338,8 +338,7 @@ const Run = {
         reserve: Object.fromEntries(Object.entries(d.reserve || {}).map(([r, t]) => [r, teamFromJSON(t)]))
       });
       if (!Run.myTeam(run) || !Run.you(run)) return null; // corrupt save: your player is missing
-      // the ego feature is gone (owner, 2026-10-06): drop an old save's ego field and its memories
-      for (const t of run.teams.concat(run.pickup || [], Object.values(run.reserve))) for (const p of squadOf(t)) delete p.ego;
+      // memories of a kind that no longer exists (a removed feature's) are dropped
       for (const k of Object.keys(run.mem || {})) run.mem[k] = run.mem[k].filter(e => MEMORY[e.k]);
       Run.repair(run);
       People.ensure(run); // players added since the last save (transfers, the street crew) get a career
@@ -385,11 +384,9 @@ const Run = {
  * (teams still in JSON form) and returns it at version + 1.
  */
 const RUN_VERSION = 23;
-/** version → upgrade step (none yet; v2: faction reserves, v3: cup entrants, v4: squads of 6 (teams save `bench`, bigger pools), v5: Limit Break removed (`run.lb` gone), v6: `run.met` / `run.street` / `run.refused` (rankings, challenges), v7: `run.losses` / `run.lastFight` (loss and injury), v8: `run.mlog` (match history), v9: `run.mode.story` (T-067), v10: `run.people` / `run.pseed` (NPC careers, T-060), v11: `run.mem` (what NPCs remember about you, T-061), v12: `run.asks` / `run.loans` / `run.vouch` / `run.sitout` / `run.duo` (approaches, T-063), v13: person `status` / `bench` / `gone` (fates, T-064), v14: memory entries gain `a` + NPC ↔ NPC pairs in `run.mem` (T-065), v15: `run.warm` → `run.evals`, `warmupWin|Loss` → `evalWin|Loss` (T-086), v23: `run.tenure` / `run.ex` (team life, T-325); v22: `p.gifts` on every NPC (T-320); v21: `run.war`, `run.hex` dropped (T-313); v20: `you.body` + body XP banks (T-307) — older saves are dropped; add steps when the saved shape changes). */
-const RUN_MIGRATIONS = {
-  18: d => ({ ...d, v: 19, year: 1 }) // two seasons (T-286): a v18 run is in year 1
-  // v20: your body (`you.body`, body XP banks in `run.xp` — spec §4.33): v19 saves are dropped
-};
+/** version → upgrade step (v23: `run.tenure` / `run.ex`, T-325; v22: `p.gifts`, T-320; v21: `run.war`, T-313; v20: `you.body`, T-307).
+ * None yet: older saves are dropped; add a step here when the saved shape changes. */
+const RUN_MIGRATIONS = {};
 const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
 /**
  * Run fields with a plain default: name → [make (fresh value), valid (keep a saved value?)]. `Run.create` starts from
