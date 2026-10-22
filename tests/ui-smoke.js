@@ -256,6 +256,7 @@ const step = async (name, fn) => {
     return g.log[0].slice(0, 70);
   });
   await step('street level (T-336a): zoom down at the gym, walk with a click, zoom back out', async () => {
+    const back = await ev(() => City.pos(RUN).slice()); // (put back at the end: the road step walks from there)
     const at = await ev(() => {
       RUN.days = 7;
       RUN.dayLog = [];
@@ -294,7 +295,12 @@ const step = async (name, fn) => {
     await ev(() => MapView.m3.jump()); // (the walk itself shows in QA; here only its end)
     await pg.waitForFunction(() => !MapView.busy() && !CW.lock, null, { timeout: 120000 });
     const days = await ev(() => 7 - City.days(RUN));
-    await ev(() => MapView.m3.setView({ d: 60 }));
+    await ev(() => MapView.m3.setView({ d: 110 })); // (back out to the map, as the walk camera leaves it)
+    await ev(p => {
+      City.moveTo(RUN, p);
+      renderCareer();
+      MapView.m3.jump();
+    }, back);
     await pg.waitForFunction(() => MapView.m3.street() === 0 && !MapView.m3.info().ring.on, null, { timeout: 120000 });
     return `${st.ms} ms a frame at street level (ring ${st.ring.lots} lots, ${Math.round(st.ring.tris / 1000)}k tris, built in ${st.ring.ms} ms; ${st.vrm} VRMs); the walk took ${days} day(s)`;
   });
