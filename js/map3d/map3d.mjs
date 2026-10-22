@@ -1302,6 +1302,29 @@ export function create(onIdle) {
     ptr = null, // the pointer over the canvas { x, y, cx, cy } (canvas px, client px) — picked in the frame
     pickN = 0,
     held = null; // QA: a time of day the clock holds (holdClock)
+  // ---- T-336b hook (Agent I; at the merge S's street-level map3d wins — carry these lines over) -------------------------------
+  // The optional interiors layer (interior3d.mjs, guarded import): synced with the model, ticked each frame with the street level
+  // (S's api.street() when present, else from the camera distance), your position and the camera; the station you stand at goes
+  // to the UI (on.station(st | null), st with its client point x / y); today's people for a place inside stand at its stations
+  // (life gets inter.people(model) while the insides show); a click on a station = on.station(st, true).
+  let inter = null,
+    interNear = null;
+  const lifeM = m => (inter ? inter.people(m) : m),
+    streetOf = () => (api.street ? api.street() : C.view ? clamp((45 - C.view.d) / 15, 0, 1) : 0);
+  const interStep = dt => {
+    if (!inter) return;
+    const r = inter.tick(dt, { cam, you: avatar ? avatar.pos() : null, street: streetOf(), low, size: [cw, ch] });
+    if (r.flip && cur && life) life.sync(lifeM(cur), low);
+    const st = r.near && !(avatar && avatar.busy()) ? r.near : null;
+    if (!st && !interNear) return;
+    interNear = st;
+    if (!on || !on.station) return;
+    if (!st) return on.station(null);
+    const v = new THREE.Vector3(st.p[0], st.p[1], st.p[2]).project(cam),
+      b = canvas.getBoundingClientRect();
+    on.station({ ...st, x: b.left + ((v.x + 1) / 2) * cw, y: b.top + ((1 - v.y) / 2) * ch });
+  };
+  // ---- end T-336b hook ---------------------------------------------------------------------------------------------------
 
   // camera and input (mapcam3d.mjs): it reads the parts below as they appear
   const C = createMapCam(cam, canvas, sun, () => ({ terrain, mesh, avatar, cur, on: onW, cw, ch }));
@@ -1321,6 +1344,13 @@ export function create(onIdle) {
     furn = createFurniture(scene, terrain.heightAt);
     life = createLife(scene, terrain.heightAt);
     nature = createNature(scene, terrain.heightAt);
+    import('./interior3d.mjs') // T-336b hook: the interiors layer, when the module exists
+      .then(M => {
+        if (dead || !terrain || inter) return;
+        inter = M.createInteriors(scene, terrain.heightAt);
+        if (cur) inter.sync(cur);
+      })
+      .catch(() => {});
     war = warLayer(scene, terrain.heightAt);
     night = nightLayer(scene, terrain.heightAt);
     furn.layer.addEventListener('wheel', C.onWheel, { passive: false }); // wheel over a pin still zooms
@@ -1440,6 +1470,7 @@ export function create(onIdle) {
       if (look.on) hemi.intensity *= lerp(LOOK.hemi[0], LOOK.hemi[1], lit); // (by day the sky's environment light adds the rest)
       if (C.view) life.ringScale((14 * 2 * C.view.d * Math.tan((cam.fov * Math.PI) / 360)) / (ch || 1) / 0.7); // a ring ≥ ~14 px
       life.tick(dt, clock, tod, cam); // (cam: the nearest named people on screen as VRMs)
+      interStep(dt); // T-336b hook
       hoverStep();
       nature.tick(dt, clock);
       furn.pulse(clock);
@@ -1465,7 +1496,14 @@ export function create(onIdle) {
     mount(e, m, cb) {
       el = e;
       on = cb;
-      onW = cb && { ...cb, point: p => (hoverId !== null && cb.person ? cb.person(hoverId) : cb.point(p)) };
+      onW = cb && {
+        ...cb,
+        point: p => {
+          if (hoverId !== null && cb.person) return cb.person(hoverId);
+          const st = inter && ptr && cb.station ? inter.at([ptr.x, ptr.y]) : null; // T-336b hook: a click on a station
+          return st ? cb.station(st, true) : cb.point(p);
+        }
+      };
       el.replaceChildren(canvas);
       badge = document.createElement('div');
       badge.className = 'mapbadge';
@@ -1500,7 +1538,8 @@ export function create(onIdle) {
       nature.sync(m, low);
       furn.sync(m, on);
       showHex();
-      life.sync(m, low);
+      if (inter) inter.sync(m); // T-336b hook
+      life.sync(lifeM(m), low);
       night.sync(m, low);
       war.sync(m.borders);
       applyFog(m.fog);
@@ -1558,7 +1597,7 @@ export function create(onIdle) {
     setLow(v) {
       if (low === !!v) return;
       low = !!v;
-      if (cur && life) (town.sync(cur), life.sync(cur, low), night.sync(cur, low));
+      if (cur && life) (town.sync(cur), life.sync(lifeM(cur), low), night.sync(cur, low)); // (T-336b hook: lifeM)
       if (mesh && cur) (look.set(!low, water), (mesh.material = low ? flatMat : look.terrainMat), nature.sync(cur, low)); // the look (T-343)
     },
     /** The shown clock: { week (days), tod (0–1), lit (0–1) } — for QA and the UI. */
@@ -1597,6 +1636,8 @@ export function create(onIdle) {
       const v = new THREE.Vector3(p[0], p[1] - 0.3, p[2]).project(cam);
       return v.z > 1 ? null : [((v.x + 1) / 2) * cw, ((1 - v.y) / 2) * ch];
     },
+    /** QA (T-336b hook): the interiors layer's state ({ shown, places, cut, alpha, street, stations }) or null before it loads. */
+    interiors: () => inter && { ...inter.info(), street: streetOf(), stations: inter.stations() },
     /** True while your player is walking to a new place (the UI locks its actions until they arrive). */
     busy: () => C.walking(),
     heightAt: (x, z) => (terrain ? terrain.heightAt(x, z) : 0),
@@ -1624,6 +1665,7 @@ export function create(onIdle) {
       if (nature) nature.dispose();
       if (war) war.dispose();
       if (night) night.dispose();
+      if (inter) inter.dispose(); // T-336b hook
       canvas.removeEventListener('pointermove', onPtr);
       canvas.removeEventListener('pointerleave', offPtr);
       canvas.removeEventListener('contextmenu', onCtx);

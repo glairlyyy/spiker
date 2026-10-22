@@ -1105,6 +1105,56 @@ const LANDMARK = {
 };
 
 /**
+ * Street-level interiors (spec §4.37 6, T-336b): the two places with insides (keyed by landmark id: a SPOTS id or `venue:<id>`).
+ * Local metres in the landmark's frame (centre at 0, door on +z, as kit3d LANDMARKS). w × d × h = the shell (the landmark's box).
+ * stations: where you walk up to (`at`, the prompt shows within INTERIOR_NEAR m) — `order` = one of the place's day orders
+ * (City.orders: the prompt runs the place card's mapGo(place, order)), or `card` = the prompt opens the place card; `slots` =
+ * where today's people for the place stand training (in order, round-robin). Display data only: no rules here.
+ */
+const INTERIOR_NEAR = 2.5;
+const INTERIOR = {
+  weiPower: {
+    kind: 'gym',
+    w: 13,
+    d: 9,
+    h: 5,
+    stations: [
+      { id: 'bench', name: 'Bench press', order: 'heavy', at: [-1.6, -0.6], slots: [[-2.6, -0.2]] },
+      {
+        id: 'rack',
+        name: 'Weight rack',
+        order: 'heavy',
+        at: [-4.2, -2.4],
+        slots: [
+          [-5, -3.2],
+          [-3.4, -3.2]
+        ]
+      },
+      {
+        id: 'mats',
+        name: 'Mats',
+        order: 'mobility',
+        at: [2.4, -1],
+        slots: [
+          [1.6, -1.6],
+          [3.2, -1.6],
+          [2.4, -0.2]
+        ]
+      },
+      { id: 'mirror', name: 'Mirror wall', order: 'stretch', at: [4.6, 2.2], slots: [[5.6, 1.6]] },
+      { id: 'desk', name: 'Front desk', card: true, at: [-4.2, 2.6], slots: [] }
+    ]
+  },
+  'venue:arena': {
+    kind: 'arena',
+    w: 22,
+    d: 15,
+    h: 0,
+    stations: [{ id: 'court', name: 'Centre court', card: true, at: [0, 0], slots: [] }]
+  }
+};
+
+/**
  * Scale the island once (MAP_SCALE): every map point (coast, regions, places, roads, HQs, venues, homes, labels, mountains,
  * wealth core, region anchors) × MAP_SCALE. Towns keep their size and building count: circle districts move but keep their
  * radius, point districts move by their centroid, the area-wide ones (the beach ring, the Wei ring) thin by MAP_SCALE²; minors
