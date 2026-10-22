@@ -101,7 +101,7 @@ function block(c, x) {
   return { touched, softTouch, smashed, pow };
 }
 /** Block break: drill, hit-stop, the wall cracks; the ball is through (the dig follows). */
-function blockBreak(c, x, { bb, ratio, hands, pow }) {
+function blockBreak(c, x, { bb, hands, pow }) {
   const { m, B, V, atkT, defT } = c,
     { spiker, appX, spZ, hit, blockers, el, mark } = x;
   md(m, bb, -0.1);

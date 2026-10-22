@@ -159,7 +159,7 @@ const MapView = {
     box.style.whiteSpace = 'normal';
     box.style.display = 'block';
     const b = box.getBoundingClientRect();
-    box.style.left = `${Math.max(8, Math.min(innerWidth - b.width - 8, x + 14))}px`;
+    box.style.left = `${clamp(x + 14, 8, innerWidth - b.width - 8)}px`;
     box.style.top = `${Math.max(8, y - b.height - 12)}px`;
   },
   /** A click / right-click on a named figure: the figure menu (not for someone of a club you haven't scouted; no menu → their card). */

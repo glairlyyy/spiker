@@ -16,12 +16,12 @@ const boardTeam = (t, i) =>
  * the stage lines (`STAGES[*].from`, fire −1..1 → 0..100 % of the half). board() fills it.
  */
 function fireRow(a, b) {
-  const ticks = side =>
+  const ticks = () =>
       STAGE_IDS.slice(1)
         .map(id => `<b style="--at:${(((STAGES[id].from + 1) / 2) * 100).toFixed(1)}%"></b>`)
         .join(''),
     chip = (t, i) => `<span class="schip" id="sc${i}" style="--tc:${t.color}" tabindex="0" aria-live="polite"></span>`;
-  return `<div class="mom" aria-label="Momentum">${chip(a, 0)}<div class="fmeter"><div class="fh l" style="--tc:${a.color}"><i id="ff0"></i>${ticks(0)}</div><div class="fh r" style="--tc:${b.color}"><i id="ff1"></i>${ticks(1)}</div></div>${chip(b, 1)}</div>`;
+  return `<div class="mom" aria-label="Momentum">${chip(a, 0)}<div class="fmeter"><div class="fh l" style="--tc:${a.color}"><i id="ff0"></i>${ticks()}</div><div class="fh r" style="--tc:${b.color}"><i id="ff1"></i>${ticks()}</div></div>${chip(b, 1)}</div>`;
 }
 /**
  * Open the match screen for a fixture: { a, b, round, court?, back, setup(m)?, onFinish(m) → plain-text message, onLeave() }.

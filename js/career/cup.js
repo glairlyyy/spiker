@@ -359,7 +359,7 @@ const Cup = {
    * Story flags from a match against the rival's side (spec §4.28): `rematchWon` / `rematchLost` (year-2 rematch); `beatRival` — you
    * beat her squad in the year-1 Cup (her year-2 curve goes to its maximum; the Cup won sets it too, Cup.close).
    */
-  rivalMet(run, m, kind, bm) {
+  rivalMet(run, m, kind) {
     if (!Story.on(run)) return;
     const riv = Stars.get(run, 'rival'),
       F = run.story.flags,
@@ -391,7 +391,7 @@ const Cup = {
       score = `${sc[0]}-${sc[1]}`,
       opp = m.t[1];
     Cup.record(run, m, kind, kind === 'cup' ? { round: bm.round } : Season.rematch(run) ? { round: 'Rematch' } : {});
-    Cup.rivalMet(run, m, kind, bm);
+    Cup.rivalMet(run, m, kind);
     Rel.afterMatch(run, m, 0);
     let line,
       grade = null;

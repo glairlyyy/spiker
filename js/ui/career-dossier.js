@@ -106,7 +106,7 @@ function rankCard(run) {
     tab = RANK_TABS[CW.rank] ? CW.rank : 'register',
     all = Rank[tab](run),
     rated = r => tab !== 'register' || r.ovr != null,
-    list = CW.rankAll ? all : all.filter((r, i) => rated(r) || r.id === you.id),
+    list = CW.rankAll ? all : all.filter(r => rated(r) || r.id === you.id),
     n = 5, // the top 5, then you ± 5
     at = list.findIndex(r => r.id === you.id),
     hidden = all.length - list.length,

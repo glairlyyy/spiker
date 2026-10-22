@@ -58,7 +58,7 @@ function hypeLevel(m, c, spiker, B0, elSrc, bad) {
  * Attack side: the hitter's call (close-up), over the setter's shoulder, behind the wall. The set that follows starts
  * in slow motion (sceneSlow). Defense side: nothing here — see hypeRead, which cuts in once the hitter has jumped.
  */
-function hypeScene(m, B, lv, { setter, spiker, B0, elSrc, atkT, defT, atk, ds, blockers }) {
+function hypeScene(m, B, lv, { setter, spiker, B0, elSrc, atkT, atk }) {
   const mp = matchPoint(m),
     el = elSrc ? elSrc.el : null,
     shot = (dur, acts, def) => {

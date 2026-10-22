@@ -232,7 +232,7 @@ function fakeSet(c, x) {
 function setBeat(c, x) {
   const { m, B, V, atk, ds, atkT, defT } = c,
     { setter, spiker, quick, bad, fakeDecoy, bitten, sq2 } = x,
-    { setZ, spZ, b0, blockers, cov } = x;
+    { setZ, spZ, b0, cov } = x;
   // a bad set that stays hittable still reaches the hitter's hand (it just hits weaker: setMul in attack());
   // the two draws stay so the random sequence is unchanged
   if (bad) {
@@ -250,7 +250,7 @@ function setBeat(c, x) {
   // shonen moment: a staged build-up before the set (presentation only — see engine/hype.js)
   m.defBeats = [];
   const hype = V ? hypeLevel(m, c, spiker, b0, elSrc, bad) : 0;
-  if (hype) hypeScene(m, B, hype, { setter, spiker, B0: b0, elSrc, atkT, defT, atk, ds, blockers });
+  if (hype) hypeScene(m, B, hype, { setter, spiker, B0: b0, elSrc, atkT, atk });
   const read = V ? readLevel(m, b0, cov, bitten, hype) : 0; // the blocker is confident: their scene mid-jump
   V &&
     B({

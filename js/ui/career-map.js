@@ -170,8 +170,8 @@ function besideAt(card, hub, ax, ay) {
     h = card.offsetHeight;
   let x = ax + SPOT_GAP;
   if (x + w > R) x = ax - SPOT_GAP - w; // flip to the left of the pin
-  x = Math.max(L, Math.min(x, R - w));
-  const y = Math.max(T, Math.min(ay - h / 2, B - h));
+  x = clamp(x, L, R - w);
+  const y = clamp(ay - h / 2, T, B - h);
   card.style.left = `${Math.round(x - H.left)}px`;
   card.style.top = `${Math.round(y - H.top)}px`;
   card.style.right = 'auto';

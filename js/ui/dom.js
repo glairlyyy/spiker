@@ -79,7 +79,7 @@ function peekSync() {
     h = card.offsetHeight,
     x = own.right + 12 + w <= innerWidth - 8 ? own.right + 12 : own.left - 12 - w >= 8 ? own.left - 12 - w : Math.max(8, tr.left);
   card.style.left = `${x}px`;
-  card.style.top = `${Math.max(8, Math.min(innerHeight - h - 8, tr.top - 8))}px`;
+  card.style.top = `${clamp(tr.top - 8, 8, innerHeight - h - 8)}px`;
 }
 (function peekEvents() {
   if (typeof document === 'undefined') return;
@@ -288,7 +288,7 @@ const pop = (label, body, cls = '') =>
       b = box.getBoundingClientRect();
     let x = r.left + r.width / 2 - b.width / 2,
       y = r.top - b.height - 8;
-    x = Math.max(8, Math.min(innerWidth - b.width - 8, x));
+    x = clamp(x, 8, innerWidth - b.width - 8);
     if (y < 8) y = r.bottom + 8;
     box.style.left = x + 'px';
     box.style.top = y + 'px';

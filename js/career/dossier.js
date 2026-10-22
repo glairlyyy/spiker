@@ -121,7 +121,7 @@ const Dossier = {
       priceMul: F.priceMul,
       qMul: F.qMul,
       places,
-      clubs: clubs.map(({ f, ti }) => ({
+      clubs: clubs.map(({ ti }) => ({
         ti,
         name: run.teams[ti].name,
         color: run.teams[ti].color,
