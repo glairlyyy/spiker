@@ -1,11 +1,11 @@
 // The 3D island map (three.js). Draws a MapModel (see js/career/mapmodel.js) as low-poly terrain with water, a fixed
 // tilted camera and pan / zoom, and reports clicks as map points.
-//   create(onIdle) → { mount(el, model, on), update(model), select(id), dispose(), heightAt(x, z), info(), hexFill(on),
-//                      setPhase(p), setLow(b), clock(), mark(id), figureAt(id), street(), camPos(), youPos(), interiors() }
+//   create(onIdle) → { mount(el, model, on), update(model), select(id), dispose(), info(), setPhase(p), setLow(b), clock(),
+//                      mark(id), figureAt(id), street(), youPos(), interiors() } (+ the dev / QA hooks below)
 // Street level (spec §4.37 6, T-336a): inside model.street's district the zoom goes down to a follow camera behind you (mapcam3d.mjs
-// streetPose); street() = 0–1 how far down it is; camPos() / youPos() = world [x, y, z]. As it goes down your avatar shrinks to life
+// streetPose); street() = 0–1 how far down it is; youPos() = world [x, y, z]. As it goes down your avatar shrinks to life
 // size, the people near the camera become VRMs (life3d), the town's detail ring builds round the camera (town3d ring), the sky shows
-// and a haze hides the map look far off. The optional interiors layer (js/map3d/interior3d.mjs, T-336b — imported if it exists):
+// and a haze hides the map look far off. The interiors layer (js/map3d/interior3d.mjs, T-336b — imported once at build):
 // createInteriors(scene, heightAt, { cut }) (cut = town.cut) → see interior3d.mjs; today's people for a place inside stand at its
 // stations (lifeM), the station you stand at goes to on.station(st | null), a street-level click on one to on.station(st, true).
 // on = { pick(id), point([x, y]), hover?(id | null, clientX, clientY, going), person?(id), station?(st | null, click?) }: hover / person are the named figures
@@ -24,7 +24,7 @@ import { createLife } from './life3d.mjs';
 import { createTown } from './town3d.mjs';
 import { createNature } from './nature3d.mjs';
 import { createMapCam } from './mapcam3d.mjs';
-import { KIT } from './kit3d.mjs';
+import { KIT, FOOTPRINT, unit, facade, lampSpots, STREET, mesher, detailMats, lampPost, floodTower, NIGHT_U, rgb } from './kit3d.mjs';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -501,7 +501,7 @@ function skyAt(keys, tod, sun, hemi, scene) {
  * bloom while the night lights are on, GTAO on the High setting; soft PCF shadows whose box follows the zoom; dynamic
  * resolution. No downloads, no randoms (fixed-hash noise).
  */
-export const LOOK = {
+const LOOK = {
   exposure: [1, 1.7], // ACES exposure by day → with the night lights on (lit)
   samples: 4, // MSAA samples of the post's render target (the canvas's own antialias is bypassed)
   env: 0.3, // the sky's light on materials at noon (× the sun's height; none at night)
@@ -547,7 +547,7 @@ function lookTextures(n) {
     }
   return { det: dataTex(det, n), wave: dataTex(heightToNormal(tileNoise(n, 8, 5, 9, 0.55), n, 7), n) };
 }
-function richLook(renderer, scene, cam, sun, hemi) {
+function richLook(renderer, scene, cam, sun) {
   const U = { t: { value: 0 } }; // shared time uniform (s)
   let tex = null; // made on first use (the detailed look only)
   const textures = () => {
@@ -900,17 +900,14 @@ function richLook(renderer, scene, cam, sun, hemi) {
  * merged mesh, drawn day and night). Low (the Fast setting): today's windows (a third of them, KIT heights as town3d.mjs's
  * instances), no lamp pools, no posts. 2 draw calls at night + 1 (posts) day and night.
  */
-import { facade, lampSpots, STREET, mesher, detailMats, lampPost, floodTower, NIGHT_U, rgb } from './kit3d.mjs';
 const NIGHT = {
   win: { every: 2.8, col: 2.4, lit: 0.42, size: 1.3, cap: 6000, colors: ['#ffd38a', '#ffe7b0', '#ffc070', '#d8e4ff'] },
   dark: ['tank', 'stack', 'shed', 'barn', 'container', 'warehouse', 'plant', 'depot'],
   lamp: { ...STREET, size: 1.8, pool: 3.5, color: '#ffd9a0', poolColor: '#ff9f45', post: '#3d4248' }, // (kinds, every, up, side, cap: kit3d STREET)
   flood: { up: 11, dx: 14, dz: 9, size: 3.2, pool: 22, color: '#f2f6ff', tower: '#7a7e84' },
   sign: 0.9, // a sign's glow (m)
-  shop: 1.4, // a shop front's glows: one every this many metres
-  FOOTPRINT: 1.2 // (town3d.mjs: a lot's side in metres = size × MAP_M × this)
+  shop: 1.4 // a shop front's glows: one every this many metres
 };
-const unitHash = i => (Math.imul(i + 1, 2654435761) >>> 0) / 4294967296; // town3d.mjs's fixed hash (the same lot heights)
 function nightLayer(scene, heightAt) {
   const glowMat = new THREE.ShaderMaterial({
       transparent: true,
@@ -996,11 +993,11 @@ function nightLayer(scene, heightAt) {
     // windows (Fast): the faces whose outward side looks toward the camera (+z), floors every W.every m, a few lit per floor
     (low ? m.land.lots || [] : []).forEach((l, i) => {
       const k = KIT[l.kind];
-      if (!k || n.win >= cap || (low && unitHash(i * 7 + 3) > 0.34)) return;
+      if (!k || n.win >= cap || (low && unit(i * 7 + 3) > 0.34)) return;
       const x0 = l.at[0] * MAP_M,
         z0 = l.at[1] * MAP_M,
-        f = l.size * MAP_M * NIGHT.FOOTPRINT,
-        h = k.scale[1] * (0.85 + 0.3 * unitHash(i * 3 + 1)) * (1 + 1.2 * (l.h || 0) * k.rise),
+        f = l.size * MAP_M * FOOTPRINT, // (a lot's side, as town3d.mjs's)
+        h = k.scale[1] * (0.85 + 0.3 * unit(i * 3 + 1)) * (1 + 1.2 * (l.h || 0) * k.rise),
         dim = 0.4 + 0.6 * fog(x0, z0), // (lit windows still show in the dark you haven't explored, fainter)
         y0 = heightAt(x0, z0),
         th = -l.rot,
@@ -1021,7 +1018,7 @@ function nightLayer(scene, heightAt) {
           cols = clamp(Math.floor(wide / W.col), 1, 4);
         for (let fl = 1.6, j = 0; fl < h - 0.6; fl += W.every, j++)
           for (let q = 0; q < cols; q++) {
-            const hh = unitHash(i * 131 + j * 17 + q * 5 + (nx + 2) * 3 + nz);
+            const hh = unit(i * 131 + j * 17 + q * 5 + (nx + 2) * 3 + nz);
             if (hh > pLit) continue;
             const o = (q + 0.5) / cols - 0.5;
             add(
@@ -1158,7 +1155,6 @@ function nightLayer(scene, heightAt) {
     }
   };
 }
-/** Free every geometry / material the map made (shared kit caches — userData.shared — survive a re-create), the GPU context. */
 /**
  * The war on the map (spec §4.34, T-317; model.borders): each standing unit's border as one draped ribbon in its colour (one
  * mesh, vertex colours), this week's hot stretch as a brighter wider ribbon that pulses (one mesh: only its opacity changes
@@ -1166,11 +1162,7 @@ function nightLayer(scene, heightAt) {
  */
 function warLayer(scene, heightAt) {
   const g = new THREE.Group(),
-    h = (x, y) => heightAt(x * MAP_M, y * MAP_M),
-    rgb = hex => {
-      const c = new THREE.Color(hex);
-      return [c.r, c.g, c.b];
-    };
+    h = (x, y) => heightAt(x * MAP_M, y * MAP_M);
   scene.add(g);
   let key = null,
     hot = null;
@@ -1237,11 +1229,11 @@ function warLayer(scene, heightAt) {
         g.add(bm);
       }
     },
-    /** The hot stretch glows and pulses. */
     /** Street level hides the borders (draped ribbons and banners read as walls at eye level). */
     show(v) {
       g.visible = v;
     },
+    /** The hot stretch glows and pulses. */
     pulse(t) {
       if (hot) hot.material.opacity = 0.45 + 0.4 * (0.5 + 0.5 * Math.sin(t * 3));
     },
@@ -1251,6 +1243,7 @@ function warLayer(scene, heightAt) {
     }
   };
 }
+/** Free every geometry / material the map made (shared kit caches — userData.shared — survive a re-create), the GPU context. */
 function releaseScene(scene, renderer, sun) {
   scene.traverse(o => {
     if (o.userData && o.userData.shared) return;
@@ -1268,7 +1261,7 @@ export function create(onIdle) {
     scene = new THREE.Scene(),
     cam = new THREE.PerspectiveCamera(40, 1, 1, 3000);
   const { sun, hemi, water } = lightScene(renderer, scene);
-  const look = richLook(renderer, scene, cam, sun, hemi), // the detailed look (T-343); off = the Fast setting's flat look
+  const look = richLook(renderer, scene, cam, sun), // the detailed look (T-343); off = the Fast setting's flat look
     flatMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }),
     gfx = () => (typeof G !== 'undefined' && G && G.gfx) || 'auto';
 
@@ -1314,7 +1307,7 @@ export function create(onIdle) {
     ptr = null, // the pointer over the canvas { x, y, cx, cy } (canvas px, client px) — picked in the frame
     pickN = 0,
     held = null, // QA: a time of day the clock holds (holdClock)
-    interiors = null, // the optional interiors layer (interior3d.mjs, T-336b)
+    interiors = null, // the interiors layer (interior3d.mjs, T-336b; null until its import lands)
     interNear = null, // the station you stand at (last told to on.station)
     st = 0; // the camera's street weight this frame (C.street())
   const bgCol = scene.background,
@@ -1356,8 +1349,6 @@ export function create(onIdle) {
     walkK,
     consume
   }));
-  let hexOn = !(typeof location !== 'undefined' && /[?&]nohex\b/.test(location.search));
-  const showHex = () => scene.traverse(o => o.userData && o.userData.hex && (o.visible = hexOn));
   const build = m => {
     terrain = buildTerrain(m);
     mesh = new THREE.Mesh(terrain.geo, low ? flatMat : look.terrainMat);
@@ -1375,11 +1366,11 @@ export function create(onIdle) {
     war = warLayer(scene, terrain.heightAt);
     night = nightLayer(scene, terrain.heightAt);
     furn.layer.addEventListener('wheel', C.onWheel, { passive: false }); // wheel over a pin still zooms
-    // the interiors (T-336b) when that module exists: a missing file only rejects this import
+    // the interiors (T-336b): imported here, not up front, so the map draws before it lands
     import('./interior3d.mjs')
-      .then(mod => {
-        if (dead || !terrain || !mod || typeof mod.createInteriors !== 'function') return;
-        interiors = mod.createInteriors(scene, terrain.heightAt, { cut: b => town.cut(b) }); // (the gym's landmark: town.cut)
+      .then(({ createInteriors }) => {
+        if (dead || !terrain) return;
+        interiors = createInteriors(scene, terrain.heightAt, { cut: b => town.cut(b) }); // (the gym's landmark: town.cut)
         if (cur) (interiors.sync(cur), life.sync(lifeM(cur), low));
       })
       .catch(() => (interiors = null));
@@ -1578,7 +1569,6 @@ export function create(onIdle) {
       nature.sync(m, low);
       if (interiors) interiors.sync(m); // (before life: lifeM reads where the stations are)
       furn.sync(m, on);
-      showHex();
       life.sync(lifeM(m), low);
       night.sync(m, low);
       war.sync(m.borders);
@@ -1623,11 +1613,6 @@ export function create(onIdle) {
     /** Your walking speed on the map: ×k (1, 2, 4). */
     setWalk(k) {
       walkK = k > 0 ? k : 1;
-    },
-    /** Dev (QA, spec §4.19d clarity check): show / hide the hex tile fill; `?nohex` starts with it hidden. */
-    hexFill(v) {
-      hexOn = !!v;
-      showHex();
     },
     /** Which part of the day is playing: 'idle' | 'walk' | 'order', or a function the map asks each frame (MapView.phase). */
     setPhase(p) {
@@ -1680,15 +1665,13 @@ export function create(onIdle) {
     busy: () => C.walking(),
     /** Street level (T-336a): 0 = the map, 1 = the follow camera behind you. */
     street: () => st,
-    /** The camera's world position [x, y, z] (m). */
-    camPos: () => [cam.position.x, cam.position.y, cam.position.z],
     /** Your avatar's world position [x, y (ground), z] (m). */
     youPos() {
       if (!avatar) return [0, 0, 0];
       const [x, z] = avatar.pos();
       return [x, terrain ? terrain.heightAt(x, z) : 0, z];
     },
-    /** QA: the interiors' state ({ shown, places, cut, alpha, street, stations }), or null when the module is missing / not loaded yet. */
+    /** QA: the interiors' state ({ shown, places, cut, alpha, street, stations }), or null until the module has loaded. */
     interiors: () => interiors && { ...interiors.info(), street: +st.toFixed(3), stations: interiors.stations() },
     /** Dev / QA: the orbit angle round you at street level (rad). */
     setYaw: v => C.setYaw(v),
@@ -1711,7 +1694,6 @@ export function create(onIdle) {
     home() {
       if (avatar && cur && cur.you && cur.you.at) avatar.setTarget(cur.you.at);
     },
-    heightAt: (x, z) => (terrain ? terrain.heightAt(x, z) : 0),
     info: () => ({
       calls: renderer.info.render.calls,
       tris: renderer.info.render.triangles,
