@@ -1237,6 +1237,10 @@ function warLayer(scene, heightAt) {
       }
     },
     /** The hot stretch glows and pulses. */
+    /** Street level hides the borders (draped ribbons and banners read as walls at eye level). */
+    show(v) {
+      g.visible = v;
+    },
     pulse(t) {
       if (hot) hot.material.opacity = 0.45 + 0.4 * (0.5 + 0.5 * Math.sin(t * 3));
     },
@@ -1454,6 +1458,7 @@ export function create(onIdle) {
     const [ax, az] = avatar.pos(),
       inD = C.inDistrict(ax, az);
     town.ring(cam.position.x, cam.position.z, st, inD);
+    war.show(st < 0.5);
     const sky = st > 0.15 && look.on && look.envTex();
     if (sky) scene.background = sky;
     haze.color.copy(bgCol);
@@ -1667,6 +1672,14 @@ export function create(onIdle) {
     interiors: () => interiors,
     /** Dev / QA: the orbit angle round you at street level (rad). */
     setYaw: v => C.setYaw(v),
+    /** The camera to keep across a renderer release ({ x, z, d, yaw, street }); restore(v) puts it back. */
+    viewState: () => C.view && { ...C.view, yaw: C.yaw(), street: st },
+    restore(v) {
+      if (!v || !C.view) return;
+      Object.assign(C.view, { x: v.x, z: v.z, d: v.d });
+      C.setYaw(v.yaw || 0);
+      C.fit();
+    },
     /** Dev / QA: take you back to the shown position (a WASD walk the rules refused). */
     home() {
       if (avatar && cur && cur.you && cur.you.at) avatar.setTarget(cur.you.at);

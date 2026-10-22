@@ -469,6 +469,25 @@ test('map3d: the detail ring — every face and rooms behind the ground-floor gl
   eq(diff, 0, 'the map look is whole again');
   town.ring(cx, cz, 1, false);
   assert(!town.ringInfo().on, 'not outside the district');
+  // town.cut (for the interiors, T-336b): the landmark triangles inside a box drop out, null brings them back
+  let LM = null;
+  sc.traverse(o => o.isMesh && o.userData.landmarks && (LM = o));
+  const lm0 = LM.geometry.attributes.position.array.slice(),
+    box = { x0: cx - 8, x1: cx + 8, z0: cz - 8, z1: cz + 8 };
+  town.cut(box);
+  const cutA = LM.geometry.attributes.position.array;
+  let gone = 0,
+    outside = 0;
+  for (let t = 0; t < cutA.length; t += 9) {
+    const flat = cutA[t] === cutA[t + 3] && cutA[t + 2] === cutA[t + 5] && cutA[t] === cutA[t + 6] && cutA[t + 1] === cutA[t + 4];
+    const was = [0, 3, 6].every(o => lm0[t + o] >= box.x0 && lm0[t + o] <= box.x1 && lm0[t + o + 2] >= box.z0 && lm0[t + o + 2] <= box.z1);
+    if (flat && was) gone++;
+    if (!was) for (let v = 0; v < 9; v++) if (cutA[t + v] !== lm0[t + v]) outside++;
+  }
+  assert(gone > 20, `the gym's triangles cut (${gone})`);
+  eq(outside, 0, 'nothing outside the box changes');
+  town.cut(null);
+  eq(LM.geometry.attributes.position.array.join(), lm0.join(), 'null restores the landmarks');
   town.dispose();
   // Fast: the ring is the ground detail only (the boxes stay)
   const sc2 = new THREE.Scene(),

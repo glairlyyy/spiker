@@ -389,6 +389,33 @@ export function createTown(scene, heightAt, opts = {}) {
     return wealthTint(col, l.wealth, unit(i * 3 + 5), k.rise);
   };
 
+  // ---- landmark cuts (town.cut, for the interiors) ----
+  let lmPart = null,
+    lmCut = null, // the cut applied (JSON)
+    cutBoxes = null;
+  const applyCut = () => {
+    if (!lmPart || lmPart.mesh.geometry.index) return;
+    const k = JSON.stringify(cutBoxes);
+    if (k === lmCut) return;
+    lmCut = k;
+    const a = lmPart.mesh.geometry.attributes.position,
+      arr = a.array;
+    if (!lmPart.orig) lmPart.orig = arr.slice();
+    arr.set(lmPart.orig);
+    const B = cutBoxes || [],
+      within = (o, b) =>
+        arr[o] >= b.x0 &&
+        arr[o] <= b.x1 &&
+        arr[o + 2] >= b.z0 &&
+        arr[o + 2] <= b.z1 &&
+        (b.y0 === undefined || arr[o + 1] >= b.y0) &&
+        (b.y1 === undefined || arr[o + 1] <= b.y1);
+    if (B.length)
+      for (let t = 0; t < arr.length; t += 9)
+        if (B.some(b => within(t, b) && within(t + 3, b) && within(t + 6, b))) for (let v = 3; v < 9; v++) arr[t + v] = arr[t + (v % 3)];
+    a.needsUpdate = true;
+  };
+
   // ---- the detail ring (T-336a) ----
   const ringG = new THREE.Group();
   ringG.visible = false;
@@ -718,6 +745,10 @@ export function createTown(scene, heightAt, opts = {}) {
         if (fast) fill = buildFill(L.lots);
         else det = buildDetail(L.lots, L.roads);
         for (const v of [roads, over, lm]) if (v) (vparts.push(v), group.add(v.mesh));
+        lmPart = lm;
+        if (lm) lm.mesh.userData.landmarks = true;
+        lmCut = null;
+        if (cutBoxes) applyCut(); // (a cut asked for before this layout)
         for (const f of fill) group.add(f.mesh);
         if (det) for (const p of det.parts) if (p) group.add(p.mesh);
         dirty = true;
@@ -742,6 +773,14 @@ export function createTown(scene, heightAt, opts = {}) {
     },
     /** QA: the ring's counts { on, lots, tris, builds, ms (the last build) }. */
     ringInfo: () => ({ on: ringG.visible, ...ringN }),
+    /**
+     * Cut the landmarks (T-336b: the gym's / arena's shell while you are inside): every landmark triangle wholly inside a box is
+     * dropped (collapsed) — box = { x0, x1, z0, z1, y0?, y1? } (world m), an array of them, or null to restore them all.
+     */
+    cut(box) {
+      cutBoxes = box ? (Array.isArray(box) ? box : [box]) : null;
+      applyCut();
+    },
     /** The detailed look's counts (QA): buildings and props drawn, triangles per part; null in the Fast setting. */
     count: () =>
       det && {

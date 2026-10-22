@@ -8,7 +8,7 @@
 // a map-point travel like a click). Outside the district the zoom stops at DIST[0] as before (and eases back up if you leave it).
 import * as THREE from 'three';
 import { MAP_M, toMap, toWorld, clamp, lerp, smooth, wrap, fitView } from './geo3d.mjs';
-import { lotFrame } from './kit3d.mjs';
+import { lotFrame, LANDMARKS } from './kit3d.mjs';
 
 export const PITCH = (55 * Math.PI) / 180;
 export const DIST = [25, 1300]; // camera distance (m): the scaled island (MAP_SCALE 2.25) needs the longer reach
@@ -119,8 +119,8 @@ export function createMapCam(cam, canvas, sun, S) {
         const f = i / n,
           px = x + c * Math.sin(yw) * f,
           pz = z + c * Math.cos(yw) * f,
-          L = lotAt(px, pz, 0.3);
-        if (L && ty + P.up * f < heightAt(px, pz) + L.h + 0.3) {
+          L = lotAt(px, pz, 0.3, true);
+        if (L && !holds(L, x, z, 0.3) && ty + P.up * f < heightAt(px, pz) + L.h + 0.3) {
           k = Math.max(1.6 / d, (i - 1.5) / n);
           break;
         }
@@ -248,7 +248,10 @@ export function createMapCam(cam, canvas, sun, S) {
     addEventListener('blur', onBlur);
   }
 
-  /** The district's filler lots as world rectangles in a 16 m bucket grid (WASD doesn't walk through walls). */
+  /**
+   * The district's filler lots as world rectangles in a 16 m bucket grid (WASD doesn't walk through walls), plus its landmarks as
+   * squares (`lm`: only the camera keeps out of them — you may walk in, the interiors open by cutaway).
+   */
   const lots = () => {
     const m = S().cur,
       L = m && m.land && m.land.lots;
@@ -256,8 +259,13 @@ export function createMapCam(cam, canvas, sun, S) {
     if (L === lotKey) return lotGrid;
     lotKey = L;
     lotGrid = new Map();
-    L.forEach((l, i) => {
-      const f = lotFrame(l, i);
+    const marks = (m.land.landmarks || []).map(q => {
+      const K = LANDMARKS[q.kind],
+        [x, z] = toWorld(q.at),
+        r = K ? Math.max(K.w, K.d) : 0;
+      return K && { x, z, w: r, d: r, h: K.h, cs: 1, sn: 0, lm: true };
+    });
+    [...L.map((l, i) => lotFrame(l, i)), ...marks].forEach(f => {
       if (!f || !inZone(zone, f.x, f.z, 30)) return;
       const R = Math.hypot(f.w, f.d) / 2;
       for (let gx = Math.floor((f.x - R) / 16); gx <= Math.floor((f.x + R) / 16); gx++)
@@ -269,18 +277,20 @@ export function createMapCam(cam, canvas, sun, S) {
     });
     return lotGrid;
   };
-  /** The district lot whose footprint (+ m) holds world (x, z), or null. */
-  function lotAt(x, z, m) {
+  /** Does footprint f (+ m) hold world (x, z)? */
+  function holds(f, x, z, m) {
+    const dx = x - f.x,
+      dz = z - f.z,
+      lx = dx * f.cs - dz * f.sn,
+      lz = dx * f.sn + dz * f.cs;
+    return Math.abs(lx) < f.w / 2 + m && Math.abs(lz) < f.d / 2 + m;
+  }
+  /** The district lot (or, with lm, landmark) whose footprint (+ m) holds world (x, z), or null. */
+  function lotAt(x, z, m, lm = false) {
     const G = lots(),
       list = G && G.get(`${Math.floor(x / 16)},${Math.floor(z / 16)}`);
     if (!list) return null;
-    for (const f of list) {
-      const dx = x - f.x,
-        dz = z - f.z,
-        lx = dx * f.cs - dz * f.sn,
-        lz = dx * f.sn + dz * f.cs;
-      if (Math.abs(lx) < f.w / 2 + m && Math.abs(lz) < f.d / 2 + m) return f;
-    }
+    for (const f of list) if ((lm || !f.lm) && holds(f, x, z, m)) return f;
     return null;
   }
   /** World (x, z) moved out of any district lot it falls in: to the nearest side, 0.8 m clear. */
@@ -345,6 +355,8 @@ export function createMapCam(cam, canvas, sun, S) {
     fit,
     /** 0–1: how far down the camera is (0 = the map, 1 = street level). */
     street: () => st,
+    /** The orbit angle round you (rad). */
+    yaw: () => yaw,
     /** True right after a right-drag orbit (its contextmenu is not a click on a figure). */
     dragged: () => dragged,
     /** Is world (x, z) inside the street-level district (QA / tests)? */

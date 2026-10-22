@@ -254,6 +254,7 @@ export function createAvatar(scene, opts = {}) {
         }
       }
       if (me) routes(heightAt);
+      if (rmesh) rmesh.visible = S.life < 0.5; // (the route preview floats 1.4 m up: over the map, not at street level)
       const h = heightAt(S.x, S.z);
       const size = 1 + (LIFE_H / HEIGHT - 1) * S.life; // map size → life size
       if (!pl) return (marker.scale.setScalar(size), marker.position.set(S.x, h + 3 * size, S.z));

@@ -100,6 +100,10 @@ const MapView = {
         if (MapView.m3.setWalk) MapView.m3.setWalk(MapView.walkK());
         MapView.prep(MapView.m3);
         MapView.m3.mount(MapView.el, MapView.model, MapView.on);
+        // street level survives a release (a screen over the map for a while, e.g. a day's scene): the camera comes back down
+        const K = MapView.kept;
+        MapView.kept = null;
+        if (K && K.street > 0 && Date.now() - K.t < 120000 && MapView.m3.restore) MapView.m3.restore(K);
       })
       .catch(e => {
         MapView.loading = false;
@@ -181,6 +185,7 @@ const MapView = {
   /** Release the 3D renderer (leaving the career screen). */
   drop3D() {
     MapView.hover(null);
+    if (MapView.m3 && MapView.m3.viewState) MapView.kept = { ...MapView.m3.viewState(), t: Date.now() };
     if (MapView.m3) MapView.m3.dispose();
     MapView.m3 = null;
     MapView.failed = null; // a later mount tries again (a load error may have been transient)

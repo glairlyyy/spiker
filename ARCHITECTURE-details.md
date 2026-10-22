@@ -804,7 +804,12 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
 - **Contract for the interiors (T-336b)** — map3d `api.street()` (0–1), `api.camPos()` / `api.youPos()` (world [x, y, z]);
   `import('./interior3d.mjs')` once at build (a missing file only rejects): `createInteriors(scene, heightAt)` → `{ sync(model)`
   (each update), `tick(dt, { cam, you, street, low })` (each frame), `at([sx, sy])` (a street-level click at canvas px: truthy = it
-  took it, no travel), `dispose() }`; `api.interiors()` returns it. Dev / QA: `setYaw(rad)`, `home()`, `info().street` / `.ring`.
+  took it, no travel), `dispose() }`; `api.interiors()` returns it. town3d `town.cut(box | [box] | null)`: landmark triangles wholly
+  inside a world box `{ x0, x1, z0, z1, y0?, y1? }` collapse (the gym's / arena's shell while you are inside), null restores them.
+  Dev / QA: `setYaw(rad)`, `home()`, `info().street` / `.ring`.
+- **Keeping street level** — `flyTo` / `walkFrom` / `centre` don't lift the camera at street level (a day order's select and walk);
+  a renderer released while a screen covers the map (`drop3D`) keeps `viewState()` ({ x, z, d, yaw, street }) in `MapView.kept`, and
+  the next create `restore`s it when it was at street level (≤ 2 min).
 
 ## Possession paths and touch counts
 
