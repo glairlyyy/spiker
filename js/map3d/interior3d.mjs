@@ -120,7 +120,7 @@ const barbell = (x, y, z, len = 2) => [
   cyl(0.17, 0.05, x - len / 2 + 0.28, y, z, '#b5523b', 'x'),
   cyl(0.17, 0.05, x + len / 2 - 0.28, y, z, '#b5523b', 'x')
 ];
-/** The gym's insides: rubber floor, racks, a bench, mats, a sprint lane, a mirror wall, a front desk (one merged mesh). */
+/** The gym's insides: rubber floor, racks, a bench, mats, a sprint lane, a mirror wall, a front desk (one merged mesh; the ceiling lights go with the roof). */
 function gymProps(I, accent) {
   const w = I.w - 2 * T,
     d = I.d - 2 * T,
@@ -183,8 +183,6 @@ function gymProps(I, accent) {
     box(0.5, 0.35, 0.05, dx + 0.5, 1.11, dz + 0.3, '#22252b'),
     box(0.05, 0.6, 2.2, -w / 2 + 0.03, 1.6, dz + 0.2, accent)
   );
-  // ceiling lights (strips under the roof)
-  for (const x of [-3.5, 0, 3.5]) out.push(box(0.25, 0.06, d - 1.5, x, I.h - 0.12, 0, '#fff6dc'));
   return out;
 }
 /** The gym's shell: [back, front (door gap), left, right, roof] — each its own geometry (each fades on its own). */
@@ -210,7 +208,7 @@ function gymShell(I, accent) {
     ]),
     merge([box(T, h, d, -w / 2 + T / 2, 0, 0, WALL), band(T + 0.2, d + 0.2, -w / 2 + T / 2, 0)]),
     merge([box(T, h, d, w / 2 - T / 2, 0, 0, WALL), band(T + 0.2, d + 0.2, w / 2 - T / 2, 0)]),
-    merge([box(w + 0.4, 0.5, d + 0.4, 0, h, 0, DARK)])
+    merge([box(w + 0.4, 0.5, d + 0.4, 0, h, 0, DARK), ...[-3.5, 0, 3.5].map(x => box(0.25, 0.06, d - 1.5, x, h - 0.06, 0, '#fff6dc'))]) // + the ceiling lights
   ];
 }
 /** The walls' outward normals in the local frame (the roof's: up). */

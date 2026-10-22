@@ -25,6 +25,7 @@ require('./encounter.test');
 
 require('./story.test');
 require('./drone.test');
+require('./interior.test');
 
 // ---------- report ----------
 let fail = 0,

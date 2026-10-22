@@ -769,6 +769,40 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   shallow turquoise to deep blue by depth and distance (the `shore` texture over the island box; open sea beyond), foam at the
   waterline and in bands rolling in.
 
+### Street level — interiors (spec §4.37 6, T-336b)
+
+- **Data** — `INTERIOR` (js/data/city.js), keyed by landmark id (`weiPower`, `venue:arena`): `kind`, the shell `w × d × h` (the
+  kit3d landmark's box), `stations` [{ id, name, `order` (one of `City.orders(place)`) | `card`, `at` (local m, door on +z),
+  `slots` (where today's people stand) }]; `INTERIOR_NEAR` 2.5 m = how close you stand for the prompt. The gym: bench + rack →
+  Heavy sets, mats → Mobility class, mirror wall → Stretch, front desk → the card; the arena: centre court → the card (a venue
+  has no day orders).
+- **Renderer** — `js/map3d/interior3d.mjs` `createInteriors(scene, heightAt)` → { sync(model), tick(dt, { cam, you, street, low,
+  size }) → { near, shown, flip }, at([x, y]), people(model), info(), stations(), dispose() }. Frames from `model.land.landmarks`
+  (yaw = town3d's nearest-road rule, copied as `landmarkYaw`; floor = the highest of 9 ground samples). The gym: one merged props
+  mesh (rubber floor, sprint lane, two squat racks, plate tree, dumbbell rack, bench press, accent mats, mirror wall, stretch
+  mats, front desk) + its own shell (4 walls with the landmark's band, the roof with its ceiling lights; one transparent material each).
+  The arena: court (map scale 15 × 7.5 m), lines, net, referee stand, team benches, a scoreboard with a canvas face, on the
+  landmark's pitch — an open bowl: no shell, no cut (the match venue's set needs the match world's textures: not reused). Shown
+  only while `street > CUT.show` (0.6). Draw calls when shown: gym 6, arena 2.
+- **Cutaway** — the town's landmark is one merged mesh (town3d), so the module clips it rather than editing it: six
+  `THREE.Plane`s (outward normals, `clipIntersection`, `clipShadows`) boxing the gym's footprint (+0.25 m, base … floor + 7 m), set
+  on every vertex-coloured, non-instanced mesh under a scene Group whose bounding box meets the box (the landmark mesh; re-found
+  when the town rebuilds); off = an empty box (top constant 1e9: no recompiles); `renderer.localClippingEnabled` is set from the
+  props mesh's `onBeforeRender`. The roof and the walls facing the camera fade to `cutAlpha(d)` (CUT.min 0.08 inside → 1 at
+  CUT.near 8 m; d = you or the camera to the footprint, the nearer); far walls stay. (A `town.cut(box)` export would be cleaner.)
+- **People** — `people(model)`: while shown, `life.people` with `spot === place` move to its slots (round-robin by id, past the
+  slots a ring 0.7 m out), `act: 'train'`; map3d re-syncs life with it when shown flips — life3d's humanoids / VRMs, pick and the
+  figure menu work on them unchanged.
+- **map3d hook (T-336b, marked)** — guarded `import('./interior3d.mjs')` in build; `inter.sync(m)` before life;
+  `life.sync(lifeM(m))`; per frame `interStep`: street = `api.street()` when present, else `(45 − view.d) / 15`; you =
+  `avatar.pos()`; the near station (not while walking) → `on.station({ ...st, x, y } | null)` (client px); a click with a station
+  under the pointer (`inter.at`) → `on.station(st, true)`; `api.interiors()` (QA).
+- **Prompt** — career-map.js `mapStation(st, click)` (a mount callback; MapView passes it through): `#stprompt` (`.hud
+  .stprompt`, fixed above the station) = the station's name + the place card's own `ordBtn` (numbers under `City.withInvite`,
+  `Training.preview`, `City.can / cost / price`) with `<kbd>F</kbd>`; locked → the gap below; a card station → "Open the card".
+  `stationAct(st)` → `mapGo(place, order)` / `mapPick(place)`; F (roadKey) or a click on the station runs it. Hidden while
+  `CW.lock`, a sheet or the figure menu is open.
+
 ## Possession paths and touch counts
 
 `rally(m, B, V, atk, pas, qual, scr)` runs one possession per loop; `next: [atk, pas, qual, scr]` hands it on (`scr` only for a
