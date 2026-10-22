@@ -324,6 +324,7 @@ const step = async (name, fn) => {
       RUN.days = 7;
       RUN.event = null;
       City.reveal(RUN, SPOTS.weiPower.at);
+      if (typeof briefKey === 'function') CW.briefWeek = briefKey(RUN); // (the week's brief closed: the prompt stays off over it)
       RUN.pos = SPOTS.weiPower.at.slice(); // (display: you stand in the gym; the day's rules run from the prompt below)
       MapView.setWalk(4);
       renderCareer();

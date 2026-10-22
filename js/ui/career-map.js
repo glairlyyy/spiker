@@ -913,7 +913,7 @@ function stationHTML(run, st) {
 function mapStation(st, click) {
   const hub = document.querySelector('.career.hub'),
     run = typeof RUN !== 'undefined' ? RUN : null,
-    off = !st || !hub || !run || CW.lock || CW.sheet || CW.fig || (typeof A !== 'undefined' && A);
+    off = !st || !hub || !run || CW.lock || CW.sheet || CW.fig || (typeof A !== 'undefined' && A) || hub.querySelector('.brief'); // (not over the week's brief)
   let el = document.getElementById('stprompt');
   STP.st = off ? null : st;
   if (off) return void (el && el.remove());

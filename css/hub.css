@@ -1329,7 +1329,7 @@
 .hub .stprompt {
   position: fixed;
   z-index: 4;
-  width: 300px;
+  width: 340px;
   padding: 8px;
   display: grid;
   gap: 6px;

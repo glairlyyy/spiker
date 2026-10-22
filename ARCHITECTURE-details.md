@@ -801,7 +801,7 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   .stprompt`, fixed above the station) = the station's name + the place card's own `ordBtn` (numbers under `City.withInvite`,
   `Training.preview`, `City.can / cost / price`) with `<kbd>F</kbd>`; locked → the gap below; a card station → "Open the card".
   `stationAct(st)` → `mapGo(place, order)` / `mapPick(place)`; F (roadKey) or a click on the station runs it. Hidden while
-  `CW.lock`, a sheet or the figure menu is open.
+  `CW.lock`, a sheet, the figure menu or the week's brief is open.
 
 ## Possession paths and touch counts
 
