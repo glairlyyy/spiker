@@ -196,6 +196,7 @@ export function posePlayer(pl, dt, ballPos, fx) {
   armIK(pl, d, pose, bh || (pose.hand ? pose.hand : ['spike', 'serve', 'dive'].includes(d.pose) ? 'right' : 'both'), dt);
   headSteady(pl, d, pose, ballPos, mot, dt); // running: the head level and on the ball
   pl.lastPose = pose; // (the Animation lab and the QA hooks read it)
+  if (A.qaPl) A.qaPl[d.p.id] = pl; // (test hook: the figure posing each player — the motion probes read its bones)
   if (A.animLab) {
     // the Animation lab keeps it (anim3d animCapture)
     pl.lastLift = (d.jy || 0) * KH + (pose.lift || 0);
