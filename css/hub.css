@@ -1324,6 +1324,43 @@
   background: transparent;
   border-style: dashed;
 }
+/* the order at the kit (spec §4.37 6, T-336b): a small card over the station you stand at (mapStation, career-map.js) — the
+   place card's own order button with its key F; fixed at the station's client point, above it */
+.hub .stprompt {
+  position: fixed;
+  z-index: 4;
+  width: 340px;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+  transform: translate(-50%, calc(-100% - 12px));
+  pointer-events: auto;
+  cursor: default;
+}
+.hub .stprompt .stn {
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--mute);
+}
+.hub .stprompt .btn.ord {
+  font-size: 13px;
+}
+.hub .stprompt .btn.ord .onm small {
+  margin-left: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.hub .stprompt .btn.ord .oln {
+  font-variant-numeric: tabular-nums;
+}
+.hub .stprompt .btn.ord .up {
+  color: var(--good);
+}
+.hub .stprompt .why {
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--ink);
+}
 .hub .fmst {
   display: flex;
   align-items: center;

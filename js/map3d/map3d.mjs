@@ -6,8 +6,9 @@
 // streetPose); street() = 0–1 how far down it is; camPos() / youPos() = world [x, y, z]. As it goes down your avatar shrinks to life
 // size, the people near the camera become VRMs (life3d), the town's detail ring builds round the camera (town3d ring), the sky shows
 // and a haze hides the map look far off. The optional interiors layer (js/map3d/interior3d.mjs, T-336b — imported if it exists):
-// createInteriors(scene, heightAt) → { sync(model), tick(dt, { cam, you, street, low }), at([sx, sy]) (a street-level click it takes), dispose() }.
-// on = { pick(id), point([x, y]), hover?(id | null, clientX, clientY, going), person?(id) }: hover / person are the named figures
+// createInteriors(scene, heightAt, { cut }) (cut = town.cut) → see interior3d.mjs; today's people for a place inside stand at its
+// stations (lifeM), the station you stand at goes to on.station(st | null), a street-level click on one to on.station(st, true).
+// on = { pick(id), point([x, y]), hover?(id | null, clientX, clientY, going), person?(id), station?(st | null, click?) }: hover / person are the named figures
 // (life3d pick; a click or right-click on one goes to person instead of point; the hovered one and mark(id) get a ring underfoot). The day clock (spec §4.37 2): model.time (MapModel.time) gives
 // the week time of the waiting day and of the last action's walk and order; setPhase(p | () => p) tells the map which of
 // 'idle' | 'walk' | 'order' is playing; the clock runs toward it (never back), the walk's share by how far the avatar has come
@@ -1314,10 +1315,34 @@ export function create(onIdle) {
     pickN = 0,
     held = null, // QA: a time of day the clock holds (holdClock)
     interiors = null, // the optional interiors layer (interior3d.mjs, T-336b)
+    interNear = null, // the station you stand at (last told to on.station)
     st = 0; // the camera's street weight this frame (C.street())
   const bgCol = scene.background,
     skyCol = new THREE.Color(), // the clock's sky colour (skyAt writes it); street level shows the baked sky instead
     haze = (scene.fog = new THREE.Fog(0xffffff, 1e6, 2e6)); // street level: distance haze (off on the map: 1e6 m)
+  /** The model life draws: while the insides show, today's people for a place inside stand at its stations (interiors.people). */
+  const lifeM = m => (interiors ? interiors.people(m) : m);
+  /** The interiors each frame (after the camera): shown / faded by street level; the station you stand at → on.station(st | null)
+   *  (st with its client point x / y; not while walking); a flip of shown re-syncs life with lifeM. */
+  const interStep = dt => {
+    if (!interiors) return;
+    const r = interiors.tick(dt, { cam, you: avatar.pos(), street: st, low, size: [cw, ch] });
+    if (r.flip && cur && life) life.sync(lifeM(cur), low);
+    const near = r.near && !avatar.busy() ? r.near : null;
+    if (!near && !interNear) return;
+    interNear = near;
+    if (!on || !on.station) return;
+    if (!near) return on.station(null);
+    const v = new THREE.Vector3(near.p[0], near.p[1], near.p[2]).project(cam),
+      b = canvas.getBoundingClientRect();
+    on.station({ ...near, x: b.left + ((v.x + 1) / 2) * cw, y: b.top + ((1 - v.y) / 2) * ch });
+  };
+  /** A street-level click (canvas px) on a station: on.station(st, true), and the click is taken (no travel). */
+  const consume = xy => {
+    const s = interiors && interiors.at(xy);
+    if (s && on && on.station) on.station(s, true);
+    return !!s;
+  };
 
   // camera and input (mapcam3d.mjs): it reads the parts below as they appear
   const C = createMapCam(cam, canvas, sun, () => ({
@@ -1329,7 +1354,7 @@ export function create(onIdle) {
     cw,
     ch,
     walkK,
-    consume: xy => !!(interiors && interiors.at && interiors.at(xy))
+    consume
   }));
   let hexOn = !(typeof location !== 'undefined' && /[?&]nohex\b/.test(location.search));
   const showHex = () => scene.traverse(o => o.userData && o.userData.hex && (o.visible = hexOn));
@@ -1354,8 +1379,8 @@ export function create(onIdle) {
     import('./interior3d.mjs')
       .then(mod => {
         if (dead || !terrain || !mod || typeof mod.createInteriors !== 'function') return;
-        interiors = mod.createInteriors(scene, terrain.heightAt);
-        if (cur && interiors.sync) interiors.sync(cur);
+        interiors = mod.createInteriors(scene, terrain.heightAt, { cut: b => town.cut(b) }); // (the gym's landmark: town.cut)
+        if (cur) (interiors.sync(cur), life.sync(lifeM(cur), low));
       })
       .catch(() => (interiors = null));
   };
@@ -1454,7 +1479,7 @@ export function create(onIdle) {
     cam.aspect = cw / ch;
     cam.updateProjectionMatrix();
   };
-  /** Street level's extras each frame: the detail ring round the camera, the sky and the haze, the interiors' tick. */
+  /** Street level's extras each frame: the detail ring round the camera, the sky and the haze. */
   const streetLook = () => {
     const [ax, az] = avatar.pos(),
       inD = C.inDistrict(ax, az);
@@ -1466,14 +1491,6 @@ export function create(onIdle) {
     haze.color.copy(skyCol);
     haze.near = st > 0 ? 160 + (1 - st) * 4000 : 1e6;
     haze.far = st > 0 ? haze.near + 900 + (1 - st) * 6000 : 2e6;
-    if (interiors && interiors.tick)
-      interiors.tick(clock - (interiors._t || clock), {
-        cam,
-        you: api.youPos(),
-        street: st,
-        low
-      });
-    if (interiors) interiors._t = clock;
   };
   renderer.info.autoReset = false; // (the post draws several passes: info counts the whole frame)
   const draw = () => (renderer.info.reset(), look.on ? look.render() : renderer.render(scene, cam));
@@ -1505,6 +1522,7 @@ export function create(onIdle) {
       C.step(dt);
       st = C.street();
       streetLook();
+      interStep(dt);
       if (cur && cur.time) sun.position.copy(sun.target.position).addScaledVector(SKY.dir, 150); // the hour's sun (after the camera placed it)
       night.set(lit, (ch * renderer.getPixelRatio()) / (2 * Math.tan((cam.fov * Math.PI) / 360)), renderer.getPixelRatio());
       look.step(dt, clock, lit, tod, C.view, gfx());
@@ -1558,10 +1576,10 @@ export function create(onIdle) {
       lastSel = m.sel;
       town.sync(m);
       nature.sync(m, low);
-      if (interiors && interiors.sync) interiors.sync(m);
+      if (interiors) interiors.sync(m); // (before life: lifeM reads where the stations are)
       furn.sync(m, on);
       showHex();
-      life.sync(m, low);
+      life.sync(lifeM(m), low);
       night.sync(m, low);
       war.sync(m.borders);
       applyFog(m.fog);
@@ -1619,7 +1637,7 @@ export function create(onIdle) {
     setLow(v) {
       if (low === !!v) return;
       low = !!v;
-      if (cur && life) (town.sync(cur), life.sync(cur, low), night.sync(cur, low));
+      if (cur && life) (town.sync(cur), life.sync(lifeM(cur), low), night.sync(cur, low));
       if (mesh && cur) (look.set(!low, water), (mesh.material = low ? flatMat : look.terrainMat), nature.sync(cur, low)); // the look (T-343)
     },
     /** The shown clock: { week (days), tod (0–1), lit (0–1) } — for QA and the UI. */
@@ -1670,8 +1688,8 @@ export function create(onIdle) {
       const [x, z] = avatar.pos();
       return [x, terrain ? terrain.heightAt(x, z) : 0, z];
     },
-    /** The interiors layer (T-336b), or null when its module is missing / not loaded yet. */
-    interiors: () => interiors,
+    /** QA: the interiors' state ({ shown, places, cut, alpha, street, stations }), or null when the module is missing / not loaded yet. */
+    interiors: () => interiors && { ...interiors.info(), street: +st.toFixed(3), stations: interiors.stations() },
     /** Dev / QA: the orbit angle round you at street level (rad). */
     setYaw: v => C.setYaw(v),
     /** The camera to keep across a renderer release ({ x, z, d, yaw, street }); restore(v) puts it back. */
@@ -1718,7 +1736,7 @@ export function create(onIdle) {
       if (town) town.dispose();
       if (life) life.dispose();
       if (nature) nature.dispose();
-      if (interiors && interiors.dispose) interiors.dispose();
+      if (interiors) interiors.dispose();
       interiors = null;
       if (war) war.dispose();
       if (night) night.dispose();

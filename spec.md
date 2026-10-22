@@ -1513,7 +1513,12 @@ the AI coach fills every slot you leave with the same function. Built and measur
       training (the VRM people of §4.39).
     - **The order at the kit**: inside, walk up to a station (the rack, the mats, the court) and its day order shows as a small
       prompt in the world — name, cost → result, the hotkey; it does exactly what the place card's button does (and the place card
-      still works from the map).
+      still works from the map). **[built 2026-10-22, T-336b: the gym's stations — bench press and weight rack → Heavy sets, mats →
+      Mobility class, mirror wall → Stretch, front desk → the place card; the arena's centre court → its card (a venue has no day
+      orders); within 2.5 m the prompt is the place card's own order button with key F (or click the station); the gym's own shell
+      replaces the landmark inside its footprint (the town's landmark is cut out there while you are at street level), its roof and the walls facing the camera fade
+      within 8 m of you or the camera; the arena is an open bowl (no cut) with a simplified court, net, benches and a scoreboard
+      (the match venue's set is not reused); today's people for the gym stand at its stations, drilling; shown at street level only]**
     - **People**: within ~40 m they are their VRM players (≤ 15; Fast: 6), walking their plans; the figure menu (§4.37 7) works on them.
     - **Fast**: the same camera, walking and interiors, with the simpler materials and fewer people.
     **[built 2026-10-22, T-336a: the district = a capsule ~100 m round the line from the gym to the arena; below the map's closest

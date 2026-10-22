@@ -8,7 +8,7 @@ function mapMount(run) {
   if (!el) return;
   roadMod();
   roadSync(run);
-  MapView.mount(el, MapModel.build(run, CW.spot), { pick: mapPick, point: mapPoint });
+  MapView.mount(el, MapModel.build(run, CW.spot), { pick: mapPick, point: mapPoint, station: mapStation });
   figRender(); // the figure menu, if one is open (spec §4.37 7)
   if (typeof Ambience !== 'undefined') Ambience.start(); // the island's sound (spec §4.37 5): only while the map is up
 }
@@ -880,6 +880,69 @@ function encLeave(L) {
   const el = $('#actlock');
   if (el) el.remove();
 }
+// ---- street level (spec §4.37 6, T-336b): the order at the kit -----------------------------------------------------------
+// The map (interior3d.mjs via map3d) reports the station you stand at, with its client point; the prompt over it is the place
+// card's own button for that order (ordBtn, the card's numbers under City.withInvite) — F (or a click on the station) runs it.
+const STP = { st: null, key: '', t: 0 };
+/** A station's action — the place card's: its day order → mapGo(place, order); a card station (the desk, the court) → the place's card. */
+function stationAct(st) {
+  if (!st) return null;
+  if (st.order && SPOTS[st.place] && City.orders(st.place).includes(st.order)) return { fn: 'mapGo', args: [st.place, st.order] };
+  return { fn: 'mapPick', args: [st.place] };
+}
+/** The prompt's inside: the station's name, then its order as the place card shows it (cost → result; the gap when locked), key F. */
+function stationHTML(run, st) {
+  const act = stationAct(st),
+    call = `${act.fn}(${act.args.map(a => `'${esc(a)}'`).join(',')})`,
+    head = `<small class="stn">${esc(st.name)}</small>`;
+  if (act.fn !== 'mapGo') {
+    const nm = (SPOTS[st.place] || {}).name || (VENUES[st.place.replace(/^venue:/, '')] || {}).name || 'the place';
+    return `${head}<button class="btn fmb" onclick="${call}"><kbd>F</kbd><b>${esc(nm)}</b><span class="oln">Open the card</span></button>`;
+  }
+  const [id, oid] = act.args;
+  return City.withInvite(run, id, () => {
+    const c = City.can(run, id, oid),
+      pv = Training.preview(run, oid, CW.hard && !run.injury, dayX(run, id), id),
+      b = ordBtn(run, DAY_ORDERS[oid], pv, c, call, City.cost(run, id), City.price(run, id, oid), c.ok)
+        .replace('class="btn ord', 'class="btn fmb ord')
+        .replace('<b class="onm">', '<kbd>F</kbd><b class="onm">');
+    return `${head}${b}${c.ok ? '' : `<small class="why">${esc(c.why)}</small>`}`;
+  });
+}
+/** From the map: the station you stand at (client x / y) or null; click = run it now (a click on the station in the world). */
+function mapStation(st, click) {
+  const hub = document.querySelector('.career.hub'),
+    run = typeof RUN !== 'undefined' ? RUN : null,
+    off = !st || !hub || !run || CW.lock || CW.sheet || CW.fig || (typeof A !== 'undefined' && A) || hub.querySelector('.brief'); // (not over the week's brief)
+  let el = document.getElementById('stprompt');
+  STP.st = off ? null : st;
+  if (off) return void (el && el.remove());
+  if (click) {
+    const a = stationAct(st);
+    return void (a && window[a.fn](...a.args));
+  }
+  if (!el || el.parentNode !== hub) {
+    if (el) el.remove();
+    el = document.createElement('div');
+    el.id = 'stprompt';
+    el.className = 'hud stprompt';
+    el.setAttribute('role', 'dialog');
+    hub.appendChild(el);
+    STP.key = '';
+  }
+  const now = Date.now(),
+    key = `${st.place}|${st.id}`;
+  if (key !== STP.key || now - STP.t > 400) {
+    const html = stationHTML(run, st);
+    if (el.innerHTML !== html) el.innerHTML = html;
+    if (key !== STP.key) Motion.play(el, 'in');
+    el.setAttribute('aria-label', st.name);
+    STP.key = key;
+    STP.t = now;
+  }
+  el.style.left = `${Math.round(st.x)}px`;
+  el.style.top = `${Math.round(st.y)}px`;
+}
 /** The road's keys (before the hub's): the card's 1–n and Space / Esc, R for the route. */
 function roadKey(e) {
   if (
@@ -909,7 +972,12 @@ function roadKey(e) {
     !(e.target.closest && e.target.closest('input,select,textarea'))
   )
     roadPick(ROAD.route === 'alt' ? 'safe' : 'alt');
-  else if (!L && CW.spot && /^[pPdD]$/.test(e.key) && !(e.target.closest && e.target.closest('input,select,textarea'))) {
+  else if (!L && !CW.fig && STP.st && /^[fF]$/.test(e.key) && !(e.target.closest && e.target.closest('input,select,textarea'))) {
+    // the prompt at a station (spec §4.37 6): F runs its button
+    const b = document.querySelector('#stprompt .fmb');
+    if (!b) return;
+    if (!b.disabled) b.click();
+  } else if (!L && CW.spot && /^[pPdD]$/.test(e.key) && !(e.target.closest && e.target.closest('input,select,textarea'))) {
     // the drone's rows (spec §4.38): P a pickup (Shift: ⏭), D rent the drone
     const row = document.querySelector(/[pP]/.test(e.key) ? '.spotcard .ppick' : '.spotcard .prent'),
       b = row && row.querySelector(e.shiftKey ? '.fms' : '.fmb');

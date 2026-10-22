@@ -806,14 +806,47 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   sky colour closes in with s (near 160 m at street level; 1e6 on the map); the war borders (`war.show`) and the route preview
   ribbons hide at s ≥ 0.5; the story figures (`model.figures`) shrink to life size with you.
 - **Contract for the interiors (T-336b)** — map3d `api.street()` (0–1), `api.camPos()` / `api.youPos()` (world [x, y, z]);
-  `import('./interior3d.mjs')` once at build (a missing file only rejects): `createInteriors(scene, heightAt)` → `{ sync(model)`
-  (each update), `tick(dt, { cam, you, street, low })` (each frame), `at([sx, sy])` (a street-level click at canvas px: truthy = it
-  took it, no travel), `dispose() }`; `api.interiors()` returns it. town3d `town.cut(box | [box] | null)`: landmark triangles wholly
+  `import('./interior3d.mjs')` once at build (a missing file only rejects): `createInteriors(scene, heightAt, { cut: town.cut })`
+  — wired as in "Street level — interiors" (map3d hook); a street-level click at canvas px that `at` takes is not a travel
+  (mapcam `consume`). town3d `town.cut(box | [box] | null)`: landmark triangles wholly
   inside a world box `{ x0, x1, z0, z1, y0?, y1? }` collapse (the gym's / arena's shell while you are inside), null restores them.
   Dev / QA: `setYaw(rad)`, `jump()` (stand at you.at, no walk), `home()`, `info().street` / `.ring`.
 - **Keeping street level** — `flyTo` / `walkFrom` / `centre` don't lift the camera at street level (a day order's select and walk);
   a renderer released while a screen covers the map (`drop3D`) keeps `viewState()` ({ x, z, d, yaw, street }) in `MapView.kept`, and
   the next create `restore`s it when it was at street level (≤ 2 min).
+
+### Street level — interiors (spec §4.37 6, T-336b)
+
+- **Data** — `INTERIOR` (js/data/city.js), keyed by landmark id (`weiPower`, `venue:arena`): `kind`, the shell `w × d × h` (the
+  kit3d landmark's box), `stations` [{ id, name, `order` (one of `City.orders(place)`) | `card`, `at` (local m, door on +z),
+  `slots` (where today's people stand) }]; `INTERIOR_NEAR` 2.5 m = how close you stand for the prompt. The gym: bench + rack →
+  Heavy sets, mats → Mobility class, mirror wall → Stretch, front desk → the card; the arena: centre court → the card (a venue
+  has no day orders).
+- **Renderer** — `js/map3d/interior3d.mjs` `createInteriors(scene, heightAt, { cut })` → { sync(model), tick(dt, { cam, you, street, low,
+  size }) → { near, shown, flip }, at([x, y]), people(model), info(), stations(), dispose() }. Frames from `model.land.landmarks`
+  (yaw = town3d's nearest-road rule, copied as `landmarkYaw`; floor = the highest of 9 ground samples). The gym: one merged props
+  mesh (rubber floor, sprint lane, two squat racks, plate tree, dumbbell rack, bench press, accent mats, mirror wall, stretch
+  mats, front desk) + its own shell (4 walls with the landmark's band, the roof with its ceiling lights; one transparent material each).
+  The arena: court (map scale 15 × 7.5 m), lines, net, referee stand, team benches, a scoreboard with a canvas face, on the
+  landmark's pitch — an open bowl: no shell, no cut (the match venue's set needs the match world's textures: not reused). Shown
+  only while `street > CUT.show` (0.6). Draw calls when shown: gym 6, arena 2.
+- **Cutaway** — while shown, `opts.cut(cutBoxOf(gym))` (map3d passes `town.cut`): the landmark's triangles wholly inside the
+  axis-aligned bounds of the gym's turned footprint (+0.25 m) collapse; `cut(null)` when the insides hide or on dispose. The roof
+  and the walls facing the camera fade to `cutAlpha(d)` (CUT.min 0.08 inside → 1 at CUT.near 8 m; d = you or the camera to the
+  footprint, the nearer); far walls stay.
+- **People** — `people(model)`: while shown, `life.people` with `spot === place` move to its slots (round-robin by id, past the
+  slots a ring 0.7 m out), `act: 'train'`; map3d re-syncs life with it when shown flips — life3d's humanoids / VRMs, pick and the
+  figure menu work on them unchanged.
+- **map3d hook** — one guarded `import('./interior3d.mjs')` in build (then sync + a life re-sync); `interiors.sync(m)` before
+  life, `life.sync(lifeM(m))` (update, setLow, and when shown flips); `interStep` each frame after the camera (`streetLook`):
+  `tick(dt, { cam, you: avatar.pos(), street: st, low, size })`; the near station (not while walking) → `on.station({ ...st, x, y }
+  | null)` (client px); mapcam's street-level click → `consume(xy)`: a station under it (`at`) → `on.station(st, true)`, no travel;
+  `api.interiors()` (QA) = `{ ...info(), street, stations }`.
+- **Prompt** — career-map.js `mapStation(st, click)` (a mount callback; MapView passes it through): `#stprompt` (`.hud
+  .stprompt`, fixed above the station) = the station's name + the place card's own `ordBtn` (numbers under `City.withInvite`,
+  `Training.preview`, `City.can / cost / price`) with `<kbd>F</kbd>`; locked → the gap below; a card station → "Open the card".
+  `stationAct(st)` → `mapGo(place, order)` / `mapPick(place)`; F (roadKey) or a click on the station runs it. Hidden while
+  `CW.lock`, a sheet, the figure menu or the week's brief is open.
 
 ## Possession paths and touch counts
 
