@@ -1,6 +1,9 @@
 // The player on the 3D map: your own model (Main_v2, as in matches and your portrait; the default model if it fails), idle-breathing, walking or running to wherever the rules put
 // the player. Display only — the rules move instantly; this animates from the previously shown position.
-//   createAvatar(scene, opts?) → { setTarget([x, y], path?), snap([x, y]), face([x, y]), tick(dt, heightAt), busy(), pos(), lapse(), dispose() }
+//   createAvatar(scene, opts?) → { setTarget([x, y], path?), snap([x, y]), face([x, y]), tick(dt, heightAt), busy(), pos(), lapse(),
+//                                  heading(), drive(x, z, v, yaw), setLife(k), dispose() }
+// Street level (spec §4.37 6, T-336a): setLife(k) scales the figure from map size (HEIGHT, k = 0) to life size (LIFE_H, k = 1) — map3d
+// passes the camera's street weight; drive(x, z, v, yaw) = one WASD frame (display only: stand at world (x, z), moving at v m/s, facing yaw).
 //   opts.kit (shirt / hair / skin colours): another person on the default model, dressed (the story guide, spec §10.10a); none = you.
 // Map points are map units (see toWorld in map3d.mjs). Until the model has loaded a capsule marks the spot.
 // WALK (spec §4.37 3–4, T-333 / T-335): the UI's hold on your walk (js/ui/career-map.js imports this same module): `stop` — the
@@ -18,7 +21,9 @@ const HEIGHT = 6, // metres: drawn about 3.5× life size so you can find yoursel
   TIME = [1.2, 6], // trip duration limits (s)
   RAMP = 0.4, // ease-in / ease-out (s)
   TURN = 0.25, // wait for the turn before setting off (s)
-  RUN_AT = 2.5; // m/s: above this the gait blends into a run
+  RUN_AT = 2.5, // m/s: above this the gait blends into a run
+  LIFE_H = 1.72, // metres: life size at street level (setLife(1))
+  LIFE_PACE = 0.6; // at street level a trip's pace × this (a life-size runner, not a 6 m/s giant)
 
 const segYaw = (pts, i) => Math.atan2(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]); // facing along segment i
 
@@ -68,14 +73,14 @@ export function createAvatar(scene, opts = {}) {
     rmesh = null, // the route preview (yours only)
     rkey = null;
   const me = !opts.kit, // your own avatar: WALK applies
-    S = { x: 0, z: 0, yaw: 0, walk: null, phase: 0, w: 0, t: 0, next: null, held: false, stepAt: 0 };
+    S = { x: 0, z: 0, yaw: 0, walk: null, phase: 0, w: 0, t: 0, next: null, held: false, stepAt: 0, life: 0, drive: null };
   /** Start walking world-space pts (from where you stand) on the trapezoid speed profile. */
   const plan = pts => {
     const cum = [0];
     for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
     const dist = cum[cum.length - 1];
     if (dist < 0.5) return false;
-    const dur = clamp(dist / SPEED, TIME[0], TIME[1]),
+    const dur = clamp(dist / (SPEED * (1 - (1 - LIFE_PACE) * S.life)), TIME[0], TIME[1]),
       r = Math.min(RAMP, dur / 2);
     // trapezoid speed profile: ramp up, cruise at vc, ramp down; the area under it is the distance along the path
     S.walk = { pts, cum, i: 0, dist, dur, r, vc: dist / (dur - r), t: S.walk || S.held ? 0 : -TURN, s: 0, yaw: segYaw(pts, 0) };
@@ -150,6 +155,7 @@ export function createAvatar(scene, opts = {}) {
       if (dead) return VRMUtils.deepDispose(p.vrm.scene);
       if (opts.kit) dress(p.vrm, opts.kit);
       pl = p;
+      pl.base = p.scale;
       scene.remove(marker);
       marker.geometry.dispose();
       marker.material.dispose();
@@ -162,6 +168,7 @@ export function createAvatar(scene, opts = {}) {
     snap(at) {
       [S.x, S.z] = toWorld(at);
       S.walk = S.next = null;
+      S.drive = null;
       if (S.held) S.held = WALK.held = false;
     },
     /**
@@ -194,11 +201,29 @@ export function createAvatar(scene, opts = {}) {
     },
     busy: () => !!S.walk || S.held,
     pos: () => [S.x, S.z],
+    /** The way you face (rad, atan2(dx, dz)). */
+    heading: () => S.yaw,
+    /** One WASD frame (display only): stand at world (x, z), moving at v m/s, turning toward yaw. */
+    drive(x, z, v, yaw) {
+      if (S.walk || S.held) return;
+      S.x = x;
+      S.z = z;
+      S.drive = { v, yaw };
+    },
+    /** 0 = map size (HEIGHT), 1 = life size (LIFE_H): the camera's street weight. */
+    setLife(k) {
+      S.life = clamp(k, 0, 1);
+    },
     /** Time-lapse factor of the current trip (ground speed ÷ SPEED), 0 when it is not faster than SPEED. */
     lapse: () => (S.walk && S.walk.dist / S.walk.dur > SPEED * 1.02 ? S.walk.dist / S.walk.dur / SPEED : 0),
     tick(dt, heightAt) {
       const W = S.walk;
       let v = 0;
+      if (S.drive) {
+        v = S.drive.v;
+        S.yaw += wrap(S.drive.yaw - S.yaw) * (1 - Math.exp(-dt / 0.08));
+        S.drive = null;
+      }
       if (W) {
         W.t += dt;
         const t = clamp(W.t, 0, W.dur),
@@ -229,12 +254,14 @@ export function createAvatar(scene, opts = {}) {
         }
       }
       if (me) routes(heightAt);
+      if (rmesh) rmesh.visible = S.life < 0.5; // (the route preview floats 1.4 m up: over the map, not at street level)
       const h = heightAt(S.x, S.z);
-      if (!pl) return marker.position.set(S.x, h + 3, S.z);
+      const size = 1 + (LIFE_H / HEIGHT - 1) * S.life; // map size → life size
+      if (!pl) return (marker.scale.setScalar(size), marker.position.set(S.x, h + 3 * size, S.z));
       S.t += dt;
       const gait = Math.min(v, SPEED),
-        stride = (1.6 + 0.8 * clamp((gait - RUN_AT) / 1.5, 0, 1)) * (HEIGHT / 1.65); // metres per gait cycle (× the figure's size)
-      S.phase += ((gait * dt) / stride) * Math.PI * 2;
+        stride = (1.6 + 0.8 * clamp((gait - RUN_AT) / 1.5, 0, 1)) * ((HEIGHT * size) / 1.65); // metres per gait cycle (× the figure's size)
+      S.phase += ((v * dt) / stride) * Math.PI * 2;
       if (me && gait > 0.4 && S.phase >= S.stepAt) {
         S.stepAt = (Math.floor(S.phase / Math.PI) + 1) * Math.PI; // a foot lands every half gait cycle
         if (WALK.onStep) WALK.onStep(gait);
@@ -243,6 +270,8 @@ export function createAvatar(scene, opts = {}) {
       const sway = Math.sin(S.t * 1.7),
         idle = { ...STAND, cp: 0.02 * sway, sp: 0.02 + 0.012 * sway },
         pose = S.w > 0.01 ? mix(idle, locoPose({ speed: gait, fwd: gait, lat: 0, phase: S.phase }), S.w) : idle;
+      pl.scale = pl.base * size;
+      pl.root.scale.setScalar(pl.scale);
       pl.root.rotation.set(0, S.yaw, 0);
       pl.root.position.set(S.x, 0, S.z);
       applyPose(pl, pose);

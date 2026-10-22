@@ -644,8 +644,9 @@ const rowsOf = top => {
  * (another wall plane: the stepped house's upper floor), lit (a fixed hash: lit at night), glow (its colour) }] }. The front
  * (door, shop front) is the face most toward the camera. town3d.mjs draws the panes and map3d.mjs's night layer the glows from it.
  * → { fr (lotFrame), L (look), eave (m), shop, front, faces } or null for a kind the kit does not know.
+ * all = every face (street level's detail ring, T-336a: the camera orbits there); the hashes and the front stay the same.
  */
-export function facade(l, i) {
+export function facade(l, i, all = false) {
   const fr = lotFrame(l, i),
     L = lookOf(l);
   if (!fr || !L) return null;
@@ -674,7 +675,7 @@ export function facade(l, i) {
     R = L.high ? (eave >= 3 ? { r: [eave - 0.75], wh: 0.6 } : { r: [], wh: 0 }) : rowsOf(eave);
   FACES.forEach(([nx, nz], f) => {
     const wz = -nx * sn + nz * cs;
-    if (wz < -0.25) return;
+    if (wz < -0.25 && !all) return;
     const half = nx ? w / 2 : d / 2,
       wide = nx ? d : w,
       front = f === out.front,
@@ -1329,9 +1330,11 @@ const AC = '#c9cbc6',
  * Lot i in detail (spec §4.39) into the three meshers B = { W (walls, trims, props: `wmask`), G (glass: `glow`), R (pitched roofs) },
  * standing on ground height y0, its walls coloured `wall` ([r, g, b] linear, already tinted by wealth). The panes are exactly
  * `facade(l, i)`'s (the night glows sit on them). Returns false for a kind the kit does not know.
+ * all = every face (the detail ring); B.I (a mesher with `room` 4 / `tan` 3, the interiors material) takes the ground
+ * floor's windows and shop fronts as rooms glimpsed through the glass (interiorPane).
  */
-export function buildLot(B, l, i, y0, wall) {
-  const F = facade(l, i);
+export function buildLot(B, l, i, y0, wall, all = false) {
+  const F = facade(l, i, all);
   if (!F) return false;
   const { fr, L, eave } = F,
     { w, d, h, x, z, cs, sn } = fr,
@@ -1452,7 +1455,9 @@ export function buildLot(B, l, i, y0, wall) {
         tint =
           o.tile === TILE.cdoor ? mix(wall, rgb(WHITE), 0.25) : o.tile === TILE.shutter ? mix(rgb('#ffffff'), wall, 0.15) : rgb('#ffffff'),
         gl = { glow: o.lit ? rgb(o.glow) : [0, 0, 0] };
-      pane(G, Fp, o.u, o.y, o.w, o.h, tint, tileUV(o.tile), gl);
+      if (B.I && (o.kind === 'win' || o.kind === 'shop') && o.half === undefined && o.y - o.h / 2 < 2.6)
+        interiorPane(B.I, Fp, o, [nz * cs - nx * sn, -nz * sn - nx * cs], unit(i * 53 + Math.round(o.u * 10) + 3));
+      else pane(G, Fp, o.u, o.y, o.w, o.h, tint, tileUV(o.tile), gl);
       if (o.kind === 'win' && !L.curtain && o.tile !== TILE.shoji)
         faceBox(
           W,
@@ -1611,6 +1616,74 @@ function awning(W, P, nx, nz, half, S, hh) {
 
 // ---------- street furniture (spec §4.39): benches, bins, bus stops along the main roads; lamp posts; floodlight towers ----------
 /** A street prop at ground point (x, y, z), facing the road along (fx, fz) (a unit vector from the prop toward the road). */
+/** A ground-floor pane as a room behind glass (the interiors material): uv 0–1 over the pane, room = (w, h, seed, shop + 2 × lit), tan = the face's along direction (world). */
+function interiorPane(I, F, o, t, seed) {
+  const e = { room: [o.w, o.h, seed, (o.kind === 'shop' ? 1 : 0) + (o.lit ? 2 : 0)], tan: [t[0], 0, t[1]] },
+    c = [1, 1, 1],
+    q = (u, v) => F(o.u + (u - 0.5) * o.w, o.y + (v - 0.5) * o.h);
+  I.quad(q(0, 0), q(1, 0), q(1, 1), q(0, 1), c, [0, 0, 1, 0, 1, 1, 0, 1], e); // (the pane's 0–1 coordinates ride in uv)
+}
+/**
+ * The interiors material (street level's detail ring, T-336a): each pane shows a room behind it — interior mapping, a ray from the
+ * camera into a box behind the glass (back wall, floor, ceiling, side walls; shop shelves or a sofa), lit warm at night when the
+ * pane is lit (NIGHT_U). Shared, made once.
+ */
+let IMAT = null;
+export const interiorMat = () => {
+  if (IMAT) return IMAT;
+  const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.18, metalness: 0.1 });
+  m.onBeforeCompile = sh => {
+    sh.uniforms.uNight = NIGHT_U;
+    sh.vertexShader =
+      'attribute vec4 room;\nattribute vec3 tan;\nvarying vec4 vRoom;\nvarying vec3 vTanW;\nvarying vec3 vNW;\nvarying vec3 vPW;\nvarying vec2 vRUv;\n' +
+      sh.vertexShader.replace(
+        '#include <begin_vertex>',
+        '#include <begin_vertex>\n  vRoom = room; vTanW = tan; vNW = normal; vPW = position; vRUv = uv;'
+      );
+    sh.fragmentShader =
+      'uniform float uNight;\nvarying vec4 vRoom;\nvarying vec3 vTanW;\nvarying vec3 vNW;\nvarying vec3 vPW;\nvarying vec2 vRUv;\nvec3 roomCol;\n' +
+      'float rh(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\n' +
+      sh.fragmentShader
+        .replace(
+          '#include <map_fragment>',
+          `{
+    vec3 V = normalize(vPW - cameraPosition), N = normalize(vNW), T = normalize(vTanW);
+    vec3 d = vec3(dot(V, T), V.y, max(0.05, -dot(V, N)));
+    float W = vRoom.x, H = vRoom.y, seed = vRoom.z, shop = mod(vRoom.w, 2.0), lit = step(1.5, vRoom.w);
+    float x0 = shop > 0.5 ? 0.0 : -0.5, x1 = W - x0, y0 = shop > 0.5 ? -0.05 : -0.9, y1 = H + 0.45, D = max(2.4, W * 0.8);
+    vec3 p = vec3(vRUv.x * W, vRUv.y * H, 0.0);
+    float tx = d.x > 0.0 ? (x1 - p.x) / d.x : (x0 - p.x) / min(d.x, -1e-4);
+    float ty = d.y > 0.0 ? (y1 - p.y) / d.y : (y0 - p.y) / min(d.y, -1e-4);
+    float tz = D / d.z, t = min(tx, min(ty, tz));
+    vec3 h = p + d * t;
+    vec3 wallC = mix(vec3(0.86, 0.8, 0.7), vec3(0.62, 0.72, 0.8), fract(seed * 7.13));
+    vec3 c;
+    if (t == tz) {
+      c = wallC;
+      if (shop > 0.5) {
+        float row = floor((h.y - y0) * 2.4), fy = fract((h.y - y0) * 2.4);
+        vec3 item = 0.35 + 0.6 * vec3(rh(vec2(floor(h.x * 3.0), row + seed)), rh(vec2(row, floor(h.x * 3.0) + 7.0)), rh(vec2(seed, row * 3.0 + floor(h.x * 3.0))));
+        c = fy < 0.14 ? vec3(0.3, 0.26, 0.22) : (h.y < y1 - 0.4 ? item : wallC);
+      } else if (h.y - y0 < 0.85 && abs(h.x - W * 0.5) < W * 0.4) c = mix(vec3(0.35, 0.3, 0.42), vec3(0.5, 0.36, 0.26), fract(seed * 3.7));
+      else if (abs(h.x - W * 0.5) < 0.35 && h.y > H * 0.3 && h.y < H * 0.85) c = vec3(0.92, 0.88, 0.75) * 0.9; // a picture
+    } else if (t == ty) c = d.y < 0.0 ? vec3(0.5, 0.38, 0.27) * (0.8 + 0.2 * step(0.5, fract(h.x * 1.5))) : vec3(0.92);
+    else c = wallC * 0.82;
+    c *= mix(1.0, 0.55, clamp(h.z / D, 0.0, 1.0));
+    float fr = step(vRUv.x, 0.035) + step(0.965, vRUv.x) + step(vRUv.y, 0.04) + step(0.96, vRUv.y);
+    c = mix(c, vec3(0.16, 0.17, 0.19), clamp(fr, 0.0, 1.0));
+    roomCol = c * (0.55 + uNight * (lit > 0.5 ? 1.4 : 0.1)) * mix(vec3(1.0), vec3(1.15, 0.95, 0.72), uNight * lit);
+    diffuseColor.rgb = c * 0.18;
+  }`
+        )
+        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance += roomCol;');
+  };
+  m.customProgramCacheKey = () => 'kit3d-interior';
+  m.userData.shared = true;
+  IMAT = m;
+  return m;
+};
+/** Ring props (T-336a) along the pavements: a bollard, a planter with a shrub, a hydrant. */
+export const RING_PROPS = ['bollard', 'planter', 'hydrant'];
 export function streetProp(W, kind, x, y, z, fx, fz) {
   // local frame: +z toward the road, +x along it
   const P = (a, b, c) => [x + a * fz + c * fx, y + b, z - a * fx + c * fz],
@@ -1631,6 +1704,18 @@ export function streetProp(W, kind, x, y, z, fx, fz) {
     lbox(W, P, -1.1, 1.1, 0.42, 0.5, -0.65, -0.3, wood); // the seat
     lbox(W, P, 1.75, 1.82, -0.2, 2.6, 0.3, 0.37, iron); // the sign post
     lbox(W, P, 1.55, 2.02, 2.1, 2.6, 0.28, 0.4, rgb('#2f6fb8'), 'none', 'ny');
+  } else if (kind === 'bollard') {
+    lcyl(W, P, 0, 0, 0.1, -0.1, 0.85, rgb('#3a3e44'), 'none', 8, true);
+    lcyl(W, P, 0, 0, 0.11, 0.62, 0.7, rgb('#d8c060'), 'none', 8, false);
+  } else if (kind === 'planter') {
+    lbox(W, P, -0.5, 0.5, -0.1, 0.55, -0.5, 0.5, rgb('#9a958c'), 'concrete');
+    lbox(W, P, -0.42, 0.42, 0.55, 0.6, -0.42, 0.42, rgb('#4a3a2a'), 'none', 'ny');
+    lcyl(W, P, 0, 0, 0.38, 0.6, 1.2, rgb('#3f7a3a'), 'none', 7, true);
+    lcone(W, P, 0, 0, 0.3, 1.2, 1.55, rgb('#4f8a42'), 7);
+  } else if (kind === 'hydrant') {
+    lcyl(W, P, 0, 0, 0.13, -0.1, 0.6, rgb('#c8463a'), 'none', 8, true);
+    lcyl(W, P, 0, 0, 0.17, 0.42, 0.5, rgb('#a83a30'), 'none', 8, true);
+    lbox(W, P, -0.22, 0.22, 0.3, 0.38, -0.05, 0.05, rgb('#a83a30'));
   }
 }
 /** A street lamp's post under its head at (x, top, z): the post stands `reach` m further from the road (ox, oz = away from the road), an arm out to the head. */

@@ -1,7 +1,12 @@
 // The 3D island map (three.js). Draws a MapModel (see js/career/mapmodel.js) as low-poly terrain with water, a fixed
 // tilted camera and pan / zoom, and reports clicks as map points.
 //   create(onIdle) → { mount(el, model, on), update(model), select(id), dispose(), heightAt(x, z), info(), hexFill(on),
-//                      setPhase(p), setLow(b), clock(), mark(id), figureAt(id) }
+//                      setPhase(p), setLow(b), clock(), mark(id), figureAt(id), street(), camPos(), youPos(), interiors() }
+// Street level (spec §4.37 6, T-336a): inside model.street's district the zoom goes down to a follow camera behind you (mapcam3d.mjs
+// streetPose); street() = 0–1 how far down it is; camPos() / youPos() = world [x, y, z]. As it goes down your avatar shrinks to life
+// size, the people near the camera become VRMs (life3d), the town's detail ring builds round the camera (town3d ring), the sky shows
+// and a haze hides the map look far off. The optional interiors layer (js/map3d/interior3d.mjs, T-336b — imported if it exists):
+// createInteriors(scene, heightAt) → { sync(model), tick(dt, { cam, you, street, low }), at([sx, sy]) (a street-level click it takes), dispose() }.
 // on = { pick(id), point([x, y]), hover?(id | null, clientX, clientY, going), person?(id) }: hover / person are the named figures
 // (life3d pick; a click or right-click on one goes to person instead of point; the hovered one and mark(id) get a ring underfoot). The day clock (spec §4.37 2): model.time (MapModel.time) gives
 // the week time of the waiting day and of the last action's walk and order; setPhase(p | () => p) tells the map which of
@@ -865,6 +870,8 @@ function richLook(renderer, scene, cam, sun, hemi) {
       composer.render();
     },
     info: () => ({ look: on ? (hi ? 'high' : 'detailed') : 'fast', res: on ? dyn.res : 1, ao: !!(gtao && gtao.enabled) }),
+    /** The baked sky (PMREM) — street level shows it as the background. */
+    envTex: () => (envRT ? envRT.texture : null),
     dispose() {
       if (composer) {
         for (const p of composer.passes) p.dispose && p.dispose();
@@ -1230,6 +1237,10 @@ function warLayer(scene, heightAt) {
       }
     },
     /** The hot stretch glows and pulses. */
+    /** Street level hides the borders (draped ribbons and banners read as walls at eye level). */
+    show(v) {
+      g.visible = v;
+    },
     pulse(t) {
       if (hot) hot.material.opacity = 0.45 + 0.4 * (0.5 + 0.5 * Math.sin(t * 3));
     },
@@ -1301,10 +1312,25 @@ export function create(onIdle) {
     hoverId = null,
     ptr = null, // the pointer over the canvas { x, y, cx, cy } (canvas px, client px) — picked in the frame
     pickN = 0,
-    held = null; // QA: a time of day the clock holds (holdClock)
+    held = null, // QA: a time of day the clock holds (holdClock)
+    interiors = null, // the optional interiors layer (interior3d.mjs, T-336b)
+    st = 0; // the camera's street weight this frame (C.street())
+  const bgCol = scene.background,
+    skyCol = new THREE.Color(), // the clock's sky colour (skyAt writes it); street level shows the baked sky instead
+    haze = (scene.fog = new THREE.Fog(0xffffff, 1e6, 2e6)); // street level: distance haze (off on the map: 1e6 m)
 
   // camera and input (mapcam3d.mjs): it reads the parts below as they appear
-  const C = createMapCam(cam, canvas, sun, () => ({ terrain, mesh, avatar, cur, on: onW, cw, ch }));
+  const C = createMapCam(cam, canvas, sun, () => ({
+    terrain,
+    mesh,
+    avatar,
+    cur,
+    on: onW,
+    cw,
+    ch,
+    walkK,
+    consume: xy => !!(interiors && interiors.at && interiors.at(xy))
+  }));
   let hexOn = !(typeof location !== 'undefined' && /[?&]nohex\b/.test(location.search));
   const showHex = () => scene.traverse(o => o.userData && o.userData.hex && (o.visible = hexOn));
   const build = m => {
@@ -1324,6 +1350,14 @@ export function create(onIdle) {
     war = warLayer(scene, terrain.heightAt);
     night = nightLayer(scene, terrain.heightAt);
     furn.layer.addEventListener('wheel', C.onWheel, { passive: false }); // wheel over a pin still zooms
+    // the interiors (T-336b) when that module exists: a missing file only rejects this import
+    import('./interior3d.mjs')
+      .then(mod => {
+        if (dead || !terrain || !mod || typeof mod.createInteriors !== 'function') return;
+        interiors = mod.createInteriors(scene, terrain.heightAt);
+        if (cur && interiors.sync) interiors.sync(cur);
+      })
+      .catch(() => (interiors = null));
   };
   /** How far along its road the avatar has come (0–1, never back): the walk's share of the clock holds while it stands. */
   const walkProgress = () => {
@@ -1375,7 +1409,7 @@ export function create(onIdle) {
   /** A right-click on a named figure opens its menu too (spec §4.37 7); the browser's own menu never shows over the map. */
   const onCtx = e => {
     e.preventDefault();
-    if (!life || !cur || (avatar && avatar.busy()) || !on || !on.person) return;
+    if (!life || !cur || (avatar && avatar.busy()) || !on || !on.person || C.dragged()) return; // (a right-drag orbited)
     const r = canvas.getBoundingClientRect(),
       look = cur.life && cur.life.look,
       id = life.pick(cam, e.clientX - r.left, e.clientY - r.top, cw, ch, look ? look.pick : 16);
@@ -1420,6 +1454,27 @@ export function create(onIdle) {
     cam.aspect = cw / ch;
     cam.updateProjectionMatrix();
   };
+  /** Street level's extras each frame: the detail ring round the camera, the sky and the haze, the interiors' tick. */
+  const streetLook = () => {
+    const [ax, az] = avatar.pos(),
+      inD = C.inDistrict(ax, az);
+    town.ring(cam.position.x, cam.position.z, st, inD);
+    war.show(st < 0.5);
+    // the sky: the baked one (detailed look), else the clock's sky colour (Fast) — never the map's backdrop
+    skyCol.copy(hemi.color).lerp(bgCol, 0.25);
+    if (st > 0.15) scene.background = (look.on && look.envTex()) || skyCol;
+    haze.color.copy(skyCol);
+    haze.near = st > 0 ? 160 + (1 - st) * 4000 : 1e6;
+    haze.far = st > 0 ? haze.near + 900 + (1 - st) * 6000 : 2e6;
+    if (interiors && interiors.tick)
+      interiors.tick(clock - (interiors._t || clock), {
+        cam,
+        you: api.youPos(),
+        street: st,
+        low
+      });
+    if (interiors) interiors._t = clock;
+  };
   renderer.info.autoReset = false; // (the post draws several passes: info counts the whole frame)
   const draw = () => (renderer.info.reset(), look.on ? look.render() : renderer.render(scene, cam));
   const frame = t => {
@@ -1432,19 +1487,24 @@ export function create(onIdle) {
       if (gone > IDLE_S) return onIdle && onIdle(); // the career screen is gone: release the GPU objects
     } else {
       gone = 0;
+      st = C.street();
+      avatar.setLife(st);
       avatar.tick(dt * walkK, terrain.heightAt); // your walk at the chosen speed (setWalk; the others keep theirs)
-      for (const f of figs.values()) f.tick(dt, terrain.heightAt);
+      for (const f of figs.values()) (f.setLife(st), f.tick(dt, terrain.heightAt)); // (the guide, the rival, the aces: life size too)
       clock += dt;
       clockStep(dt);
+      scene.background = bgCol; // (skyAt mixes into the colour)
       lit = cur && cur.time ? skyAt(cur.time.keys, tod, sun, hemi, scene) : ((hemi.intensity = 0.9), 0);
       if (look.on) hemi.intensity *= lerp(LOOK.hemi[0], LOOK.hemi[1], lit); // (by day the sky's environment light adds the rest)
       if (C.view) life.ringScale((14 * 2 * C.view.d * Math.tan((cam.fov * Math.PI) / 360)) / (ch || 1) / 0.7); // a ring ≥ ~14 px
-      life.tick(dt, clock, tod, cam); // (cam: the nearest named people on screen as VRMs)
+      life.tick(dt, clock, tod, cam, st); // (cam: the nearest named people on screen as VRMs; st: life size and the near VRMs at street level)
       hoverStep();
       nature.tick(dt, clock);
       furn.pulse(clock);
       war.pulse(clock);
       C.step(dt);
+      st = C.street();
+      streetLook();
       if (cur && cur.time) sun.position.copy(sun.target.position).addScaledVector(SKY.dir, 150); // the hour's sun (after the camera placed it)
       night.set(lit, (ch * renderer.getPixelRatio()) / (2 * Math.tan((cam.fov * Math.PI) / 360)), renderer.getPixelRatio());
       look.step(dt, clock, lit, tod, C.view, gfx());
@@ -1498,6 +1558,7 @@ export function create(onIdle) {
       lastSel = m.sel;
       town.sync(m);
       nature.sync(m, low);
+      if (interiors && interiors.sync) interiors.sync(m);
       furn.sync(m, on);
       showHex();
       life.sync(m, low);
@@ -1599,6 +1660,39 @@ export function create(onIdle) {
     },
     /** True while your player is walking to a new place (the UI locks its actions until they arrive). */
     busy: () => C.walking(),
+    /** Street level (T-336a): 0 = the map, 1 = the follow camera behind you. */
+    street: () => st,
+    /** The camera's world position [x, y, z] (m). */
+    camPos: () => [cam.position.x, cam.position.y, cam.position.z],
+    /** Your avatar's world position [x, y (ground), z] (m). */
+    youPos() {
+      if (!avatar) return [0, 0, 0];
+      const [x, z] = avatar.pos();
+      return [x, terrain ? terrain.heightAt(x, z) : 0, z];
+    },
+    /** The interiors layer (T-336b), or null when its module is missing / not loaded yet. */
+    interiors: () => interiors,
+    /** Dev / QA: the orbit angle round you at street level (rad). */
+    setYaw: v => C.setYaw(v),
+    /** The camera to keep across a renderer release ({ x, z, d, yaw, street }); restore(v) puts it back. */
+    viewState: () => C.view && { ...C.view, yaw: C.yaw(), street: st },
+    restore(v) {
+      if (!v || !C.view) return;
+      Object.assign(C.view, { x: v.x, z: v.z, d: v.d });
+      C.setYaw(v.yaw || 0);
+      C.fit();
+    },
+    /** Dev / QA: stand at the model's you.at at once (no walk; a held stop is let go). */
+    jump() {
+      if (!avatar || !cur || !cur.you || !cur.you.at) return;
+      avatar.snap(cur.you.at);
+      seen = cur.you.at.join(',');
+      C.land();
+    },
+    /** Take you back to the shown position (a WASD walk the rules refused). */
+    home() {
+      if (avatar && cur && cur.you && cur.you.at) avatar.setTarget(cur.you.at);
+    },
     heightAt: (x, z) => (terrain ? terrain.heightAt(x, z) : 0),
     info: () => ({
       calls: renderer.info.render.calls,
@@ -1611,7 +1705,9 @@ export function create(onIdle) {
       clock: { week: wt, tod, lit },
       nature: nature && nature.count(),
       ...look.info(),
-      view: C.view && { ...C.view }
+      view: C.view && { ...C.view },
+      street: +st.toFixed(3),
+      ring: town && town.ringInfo ? town.ringInfo() : null
     }),
     dispose() {
       dead = true;
@@ -1622,6 +1718,8 @@ export function create(onIdle) {
       if (town) town.dispose();
       if (life) life.dispose();
       if (nature) nature.dispose();
+      if (interiors && interiors.dispose) interiors.dispose();
+      interiors = null;
       if (war) war.dispose();
       if (night) night.dispose();
       canvas.removeEventListener('pointermove', onPtr);

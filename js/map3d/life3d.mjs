@@ -7,13 +7,15 @@
 // (life.patrols: positions and colours from the model, no faction names here), and the city's traffic (life.traffic, spec §4.19a): buses and
 // vans driving their lines (up onto the overpass deck), boats circling offshore, a plane taking off down the runway. One InstancedMesh per
 // kind (people, poles, cloth, dust, bus, van, boat, plane), at most CAP of each; instances are rebuilt only when the data changes, animated in tick.
-//   createLife(scene, heightAt) → { sync(model, low), tick(dt, t, tod, cam), pick(cam, x, y, cw, ch) → person id | null, hover(id), mark(id),
+//   createLife(scene, heightAt) → { sync(model, low), tick(dt, t, tod, cam, street), pick(cam, x, y, cw, ch) → person id | null, hover(id), mark(id),
 //                                   going(id, tod), at(id), count(), dispose() }
 // hover(id) / mark(id): a ring under that named figure's feet — the hovered one (ink) and the figure menu's person (cyan, pulsing).
 // tod = time of day 0–1 (map3d's clock); low = the Fast graphics setting (fewer named figures: life.look.low).
 // The look (spec §4.39 People, T-341): by default every figure is the low-poly humanoid (people3d.mjs createHumanoids: limbs
 // swinging by what they do), the named people ~2.5× life size (NAMED_S) with your circle on a soft gold ring, and the nearest
 // VRM_LOD.cap named people on screen fade into the default VRM (createPeopleVRM, given `cam`). Fast keeps the capsule figures.
+// Street level (spec §4.37 6, T-336a): `street` (0–1, map3d's camera weight) scales every figure toward life size (LIFE_S) and turns
+// the VRM pick into the people within STREET_LOD.maxD of the camera (≤ cap; Fast: fastCap VRMs over its capsules).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAP_M, hstr, smooth } from './geo3d.mjs';
@@ -73,7 +75,10 @@ const CAP = { people: 300, poles: 2, cloth: 2, dust: 10 },
   CROWD_S = 1.6, // … the crews, the battle crowd and the patrols
   MUTE = 0.2, // the default look: others' shirts this far to grey (half-way read as skin on the VRM shirts; Fast: 0.5)
   CIRCLE_RING = '#f5c451', // your circle's soft ring (theme --gold)
-  HIP = 0.7; // the humanoid's hip height (m at scale 1): sitting drops the body by about this
+  HIP = 0.7, // the humanoid's hip height (m at scale 1): sitting drops the body by about this
+  LIFE_S = 1.2; // street level: every figure's scale (× the 1.45 m figure ≈ 1.74 m)
+/** Street level's VRMs: within maxD m of the camera, at most cap (Fast: fastCap, over its capsules). */
+export const STREET_LOD = { maxD: 40, cap: 15, fastCap: 6 };
 
 /** A soft ring (alpha fades in and out across its width), flat on the ground, radius 1. */
 const softRingGeo = () => {
@@ -438,21 +443,23 @@ export function createLife(scene, heightAt) {
      * Animate: the named people by the time of day, drill hops, walkers going round their places, the crowd shoving, flags and
      * dust. t = seconds; tod = time of day 0–1 (crews go in at night too).
      */
-    tick(dt, t, tod = 0.5, cam = null) {
+    tick(dt, t, tod = 0.5, cam = null, street = 0) {
       const day = DAY(tod),
         PO = POSE;
       figs.forEach((f, i) => {
         let { x, z, yaw } = f,
           lift = 0,
           lean = 0,
-          sc = fast ? 1 : CROWD_S,
+          sc = (fast ? 1 : CROWD_S) * (1 - street) + LIFE_S * street,
           sy = 1,
           drop = 0;
         PO[0] = PO[1] = PO[2] = PO[3] = 0;
         if (f.kind === 'named') {
           const w = whereNamed(f, tod),
             st = f.st;
-          sc = f.s;
+          sc = f.s + (LIFE_S - f.s) * street;
+          f.cs = sc;
+          st.s = sc;
           st.mode = w.mode;
           if (w.mode === 'home') sc = 0;
           else if (w.mode === 'walk') {
@@ -498,7 +505,8 @@ export function createLife(scene, heightAt) {
           if (fast) {
             D.position.set(x, gy + lift, z);
             D.rotation.set(lean, yaw, 0);
-            D.scale.set(sc, sc * sy, sc);
+            const kv = sc * (1 - vrms.weight(f.id));
+            D.scale.set(kv, kv * sy, kv);
             D.updateMatrix();
             person.setMatrixAt(i, D.matrix);
           } else hum.set(i, x, gy + lift - drop, z, yaw, lean, sc * (1 - vrms.weight(f.id)), sy, PO);
@@ -537,11 +545,18 @@ export function createLife(scene, heightAt) {
         circle.forEach((f, i) => {
           D.position.set(f.wx, heightAt(f.wx, f.wz) + 0.05, f.wz);
           D.rotation.set(0, 0, 0);
-          D.scale.setScalar(f.vis ? f.s * 0.75 : 0);
+          D.scale.setScalar(f.vis ? (f.cs || f.s) * 0.75 : 0);
           D.updateMatrix();
           circleRing.setMatrixAt(i, D.matrix);
         });
-      if (cam) vrms.tick(dt, states, cam, !fast);
+      if (cam)
+        vrms.tick(
+          dt,
+          states,
+          cam,
+          !fast || street > 0.3,
+          street > 0 ? { street, near: STREET_LOD, cap: fast ? STREET_LOD.fastCap : STREET_LOD.cap } : null
+        );
       hum.flush();
       poles.forEach((p, i) => {
         D.position.set(p.x, p.y + 1.5, p.z);
@@ -607,7 +622,7 @@ export function createLife(scene, heightAt) {
         if (!R.m.visible) continue;
         const pulse = k === 'mark' ? 1 + 0.08 * Math.sin(t * 4) : 1;
         R.m.position.set(f.wx, heightAt(f.wx, f.wz) + 0.06, f.wz);
-        R.m.scale.setScalar(Math.max(f.s, ringMin) * pulse);
+        R.m.scale.setScalar(Math.max(f.cs || f.s, ringMin) * pulse);
       }
     },
     /** The hovered named figure (a ring under its feet), or null. */
@@ -631,7 +646,7 @@ export function createLife(scene, heightAt) {
         bd = px * px;
       for (const f of named) {
         if (!f.vis) continue;
-        for (const dy of [0, -0.6 * f.s]) {
+        for (const dy of [0, -0.6 * (f.cs || f.s)]) {
           V.set(f.wx, f.wy + dy, f.wz).project(cam);
           if (V.z > 1) continue;
           const sx = ((V.x + 1) / 2) * cw - x,
