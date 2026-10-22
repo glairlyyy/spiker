@@ -86,8 +86,13 @@ export function footIK(pl, d, pose, dt) {
   // (the Animation lab's playback, or the planted gait — gait3d — has the feet fully: start fresh afterwards)
   if (A.animLab?.replay || (pl.gW || 0) >= 0.8 || d.kb) {
     // (knocked back by the ball, d.kb: both feet slide with the body — nothing stays planted)
-    feet[0] = {};
-    feet[1] = {};
+    // while the planted gait has the feet, a foot it has down is kept as this foot's lock: when the gait hands the feet back
+    // (the body stops) that foot stays on its spot (2026-10-23: it glided ~5–10 cm a frame to the pose's foot)
+    const g = !d.kb && !A.animLab?.replay && pl.gait;
+    for (let i = 0; i < 2; i++) {
+      const gf = g && g[i];
+      feet[i] = gf && gf.stance && gf.plant ? { lock: gf.plant.clone().setY(pl.footRest * pl.scale) } : {};
+    }
     return;
   }
   // in the air or lying down nothing new is planted; a foot still locked steps off its lock like a lifted one (dropping the
