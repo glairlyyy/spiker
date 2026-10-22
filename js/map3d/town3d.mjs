@@ -1,7 +1,7 @@
 // The town layer of the 3D island: road ribbons (the boardwalk planked, the overpass raised on pillars), settlement lots (instanced),
 // landmarks and the Gloria wall, drawn from the model's land (roads, lots, landmarks, districts) and fog only. Procedural shapes
 // come from kit3d.mjs. Display only: no rules, no randoms.
-//   createTown(scene, heightAt) → { sync(model), ring(cx, cz, k, on), ringInfo(), count(), dispose() }
+//   createTown(scene, heightAt, { fast }) → { sync(model), ring(cx, cz, k, on), ringInfo(), cut(box), count(), dispose() }
 // The detail ring (street level, spec §4.37 6, T-336a): ring(camera x, z, street weight k, inside the district) builds the lots within
 // RING.r of the camera with every face (the camera orbits there) and their ground-floor panes as rooms behind glass (kit3d
 // interiorMat), plus kerbs, pavements, road markings and pavement props; the same lots are collapsed out of the map-look meshes

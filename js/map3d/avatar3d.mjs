@@ -5,7 +5,7 @@
 // Street level (spec §4.37 6, T-336a): setLife(k) scales the figure from map size (HEIGHT, k = 0) to life size (LIFE_H, k = 1) — map3d
 // passes the camera's street weight; drive(x, z, v, yaw) = one WASD frame (display only: stand at world (x, z), moving at v m/s, facing yaw).
 //   opts.kit (shirt / hair / skin colours): another person on the default model, dressed (the story guide, spec §10.10a); none = you.
-// Map points are map units (see toWorld in map3d.mjs). Until the model has loaded a capsule marks the spot.
+// Map points are map units (see toWorld in geo3d.mjs). Until the model has loaded a capsule marks the spot.
 // WALK (spec §4.37 3–4, T-333 / T-335): the UI's hold on your walk (js/ui/career-map.js imports this same module): `stop` — the
 // map point the next walk halts at (an encounter; `held` until go()), `via` — the road it follows instead ({ to, pts }: the short
 // cut you picked), `routes` — a preview of the safe road and the short cut ([{ pts, on, alt }], drawn as ribbons), `onStep` — a
