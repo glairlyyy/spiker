@@ -65,7 +65,6 @@ camState.w[camMode === 'follow' || camMode === 'pov' ? 'courtside' : camMode] = 
 let followId = null;
 /** The player the Follow camera tracks (a player id; null → Courtside). */
 export const setFollow = id => (followId = id == null ? null : id);
-export const getFollow = () => followId;
 const FOL = { back: 4.5, up: 2.6, ahead: 3, fov: 55, tau: 0.25, ball: [0.35, 0.6] },
   fol = { id: null, pos: new THREE.Vector3(), look: new THREE.Vector3() },
   fv = new THREE.Vector3(),
@@ -74,7 +73,7 @@ const FOL = { back: 4.5, up: 2.6, ahead: 3, fov: 55, tau: 0.25, ball: [0.35, 0.6
  * POV: the followed player's eyes (head bone + 0.08 m forward), looking at the ball while it is within 100° of their
  * facing, else straight ahead (a hitter on the approach / in the air always leans toward the ball: the set). Horizontal position follows the head exactly, height is smoothed within ±5 cm, the look point
  * ~0.12 s. In the air (> 0.6 m), in a dive, or while the view turns faster than 220°/s the pose blends (~0.25 s) to the
- * Follow pose and back 0.3 s after it calms (`pov.fb` 0..1; `povStats.switches` counts the changes).
+ * Follow pose and back 0.3 s after it calms (`pov.fb` 0..1).
  */
 const POV = {
     fwd: 0.08,
@@ -101,12 +100,10 @@ const POV = {
     on: false,
     hide: false
   },
-  povStats = { switches: 0, log: [] },
   pf = new THREE.Vector3(),
   ph = new THREE.Vector3(),
   pd = new THREE.Vector3(),
   pt = new THREE.Vector3();
-export const getPovStats = () => povStats;
 /** The player whose head should be hidden (the camera is at their eyes), else null. */
 export const povHidden = () => (pov.hide ? followId : null);
 /** The player whose POV camera is (blending) in, for fading figures that come close to it (T-070), else null. */
@@ -143,14 +140,9 @@ function povPose(pl, dt, pos, look) {
   }
   pov.hold = wild ? POV.hold : Math.max(0, pov.hold - dt);
   const on = pov.hold > 0;
-  if (on !== pov.on && !fresh) {
-    povStats.switches++;
-    if (povStats.log.length < 400) povStats.log.push([+pl.root.position.y.toFixed(2), +rate.toFixed(0), on ? 'follow' : 'pov']);
-  }
   pov.on = on;
   pov.fb += ((on ? 1 : 0) - pov.fb) * (1 - Math.exp(-dt * 12));
   pov.id = followId;
-  povStats.fb = pov.fb;
   pos.copy(pov.pos);
   look.copy(pov.look);
 }
