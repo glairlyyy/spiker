@@ -214,22 +214,6 @@ const Hex = {
     if (!closed && pts.length) out.push(pts[pts.length - 1].slice());
     return out;
   },
-  /** Chaikin corner cutting (n rounds) of a polyline; closed = a loop. Keeps an open line's ends. */
-  smooth(pts, n = 2, closed = true) {
-    let P = pts;
-    for (let r = 0; r < n; r++) {
-      const out = closed ? [] : [P[0]],
-        m = closed ? P.length : P.length - 1;
-      for (let i = 0; i < m; i++) {
-        const a = P[i],
-          b = P[(i + 1) % P.length];
-        out.push([0.75 * a[0] + 0.25 * b[0], 0.75 * a[1] + 0.25 * b[1]], [0.25 * a[0] + 0.75 * b[0], 0.25 * a[1] + 0.75 * b[1]]);
-      }
-      if (!closed) out.push(P[P.length - 1]);
-      P = out;
-    }
-    return P.map(p => [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10]);
-  },
   /** A tile's name for the diary and cards: its place, else "{region} ground near {nearest place}". */
   name(id) {
     const t = Hex.tile(id),

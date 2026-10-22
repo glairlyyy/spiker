@@ -318,16 +318,7 @@ function chatAfter() {
 }
 /** Keys over the hub's result layer (before the hub's own): the chat's 1 / 2 / 3, Space / Enter / Esc = Stay quiet; a result card → the chat. */
 function chatKey(e) {
-  if (
-    (typeof A !== 'undefined' && A) ||
-    typeof CW === 'undefined' ||
-    !CW.lock ||
-    CW.lock.phase !== 'res' ||
-    e.ctrlKey ||
-    e.metaKey ||
-    e.altKey
-  )
-    return;
+  if (A || !CW.lock || CW.lock.phase !== 'res' || e.ctrlKey || e.metaKey || e.altKey) return;
   const go = [' ', 'Enter', 'Escape'].includes(e.key);
   if (CW.lock.chat) {
     const k = go ? 'quiet' : Object.keys(TEAM_REPLY).find(x => TEAM_REPLY[x].key === e.key);

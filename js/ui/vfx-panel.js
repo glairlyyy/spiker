@@ -26,8 +26,8 @@ function vfxRow(g, k) {
 /** The panel body: export row, the test buttons (in a match), every group. In the Cut-scene lab (A.cineForce) only the
  * cut-scene groups (VFX_DEF lab 'cine'), with the kind and a slow speed; everywhere else every other group. */
 function vfxPanel() {
-  if (typeof A !== 'undefined' && A && A.animLab) return animPanel(); // the Animation lab (anim-lab.js)
-  const inMatch = typeof A !== 'undefined' && A && A.m,
+  if (A && A.animLab) return animPanel(); // the Animation lab (anim-lab.js)
+  const inMatch = A && A.m,
     cine = !!(inMatch && A.cineForce),
     groups = Object.entries(VFX_DEF).filter(([, d]) => (d.lab === 'cine') === cine && (!cine || d.cut === A.cineForce));
   return `<div class="vfxh"><h3>${cine ? 'Cut-scene lab' : 'VFX tuning'}</h3>${inMatch ? '<button class="btn" onclick="vfxToggle()">Close <kbd>V</kbd></button>' : ''}</div>

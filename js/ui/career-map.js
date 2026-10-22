@@ -10,7 +10,7 @@ function mapMount(run) {
   roadSync(run);
   MapView.mount(el, MapModel.build(run, CW.spot), { pick: mapPick, point: mapPoint, station: mapStation });
   figRender(); // the figure menu, if one is open (spec §4.37 7)
-  if (typeof Ambience !== 'undefined') Ambience.start(); // the island's sound (spec §4.37 5): only while the map is up
+  Ambience.start(); // the island's sound (spec §4.37 5): only while the map is up
 }
 /** Empty map clicked: land → a point to travel to; sea → deselect. */
 function mapPoint(p) {
@@ -111,7 +111,7 @@ function cargoPanel(run, id) {
     after: placeDetails(id, placeTags(run, id, trip))
   });
 }
-if (typeof PANELS !== 'undefined') PANELS.unshift([id => id === 'cargo', (run, id) => cargoPanel(run, id)]);
+PANELS.unshift([id => id === 'cargo', (run, id) => cargoPanel(run, id)]);
 /** Play a pickup game at map point (x, y): watch it, or sim = the result at once. */
 function mapPickup(x, y, sim) {
   if (CW.lock) return;
@@ -359,7 +359,7 @@ function lockEnd() {
   if (L && L.phase === 'res') return renderCareer(); // the hub catches up (and the match's scene, if any, may play)
   const el = $('#actlock');
   if (el) el.remove();
-  if (L && typeof RUN !== 'undefined' && RUN && City.night(RUN)) renderCareer(); // the last day is spent: the End week ask
+  if (L && RUN && City.night(RUN)) renderCareer(); // the last day is spent: the End week ask
 }
 /**
  * Out of days (owner, 2026-10-05): once the lock ends with no days left, a card asks to end the week — never forced.
@@ -489,8 +489,8 @@ function roadMod() {
   ROAD.load = import(new URL('js/map3d/avatar3d.mjs', document.baseURI).href)
     .then(m => {
       ROAD.mod = m;
-      if (typeof Ambience !== 'undefined') Ambience.bind(m.WALK);
-      if (typeof RUN !== 'undefined' && RUN && document.querySelector('.career.hub')) roadSync(RUN);
+      Ambience.bind(m.WALK);
+      if (RUN && document.querySelector('.career.hub')) roadSync(RUN);
     })
     .catch(e => DBG.log('warn', 'The road (avatar module) could not load', e && e.message ? e.message : e));
 }
@@ -698,7 +698,7 @@ function figMenu(run, id) {
 }
 /** Open the menu at a named figure (a click or right-click on it on the map); not with a walk / result running, an event, a scene or a match week. */
 function figOpen(id) {
-  const run = typeof RUN !== 'undefined' ? RUN : null;
+  const run = RUN;
   if (!run || CW.lock || CW.sheet || Encounter.menuOff(run) || Story.step(run) || !Encounter.who(run, id)) return false;
   CW.fig = { id };
   if (CW.spot) mapPick(null); // one card over the map at a time
@@ -716,7 +716,7 @@ function figClose() {
 function figRender() {
   const hub = document.querySelector('.career.hub');
   let el = document.getElementById('figmenu');
-  const html = CW.fig && hub && !CW.lock && !CW.sheet && typeof RUN !== 'undefined' && RUN ? figMenu(RUN, CW.fig.id) : '';
+  const html = CW.fig && hub && !CW.lock && !CW.sheet && RUN ? figMenu(RUN, CW.fig.id) : '';
   if (!html) {
     if (el) el.remove();
     if (CW.fig && !CW.lock) CW.fig = null; // (they left the map, or a sheet opened)
@@ -912,8 +912,8 @@ function stationHTML(run, st) {
 /** From the map: the station you stand at (client x / y) or null; click = run it now (a click on the station in the world). */
 function mapStation(st, click) {
   const hub = document.querySelector('.career.hub'),
-    run = typeof RUN !== 'undefined' ? RUN : null,
-    off = !st || !hub || !run || CW.lock || CW.sheet || CW.fig || (typeof A !== 'undefined' && A) || hub.querySelector('.brief'); // (not over the week's brief)
+    run = RUN,
+    off = !st || !hub || !run || CW.lock || CW.sheet || CW.fig || A || hub.querySelector('.brief'); // (not over the week's brief)
   let el = document.getElementById('stprompt');
   STP.st = off ? null : st;
   if (off) return void (el && el.remove());
@@ -945,15 +945,7 @@ function mapStation(st, click) {
 }
 /** The road's keys (before the hub's): the card's 1–n and Space / Esc, R for the route. */
 function roadKey(e) {
-  if (
-    (typeof A !== 'undefined' && A) ||
-    e.ctrlKey ||
-    e.metaKey ||
-    e.altKey ||
-    typeof CW === 'undefined' ||
-    !document.querySelector('.career.hub')
-  )
-    return;
+  if (A || e.ctrlKey || e.metaKey || e.altKey || !document.querySelector('.career.hub')) return;
   const L = CW.lock;
   if (L && L.phase === 'enc') {
     if (L.encDone != null) {

@@ -237,7 +237,7 @@ const City = {
     return `${trip}${line}${cost ? ` (−$${cost})` : ''}${w}`;
   },
   /** Who an Invite brings to a day order at place id (spec §4.37 7): the invited person if the place has a floor (a training key), else null. */
-  joins: (run, id) => (SPOTS[id] && SPOTS[id].train && typeof Encounter !== 'undefined' ? Encounter.invited(run) : null),
+  joins: (run, id) => (SPOTS[id] && SPOTS[id].train ? Encounter.invited(run) : null),
   /**
    * Run fn with the invited person on place id's floor (run.floor[its training key]) and put the floor back after: the order (and
    * its preview on the place card) counts them like a teammate there (§4.33 — EXP × 1.2, the bond, gifts rubbing off).

@@ -2,7 +2,7 @@
 
 function openDebug() {
   closeDebug();
-  const txt = DBG.text(typeof matchState === 'function' ? matchState() : null);
+  const txt = DBG.text(matchState());
   document.body.insertAdjacentHTML(
     'beforeend',
     `<div class="dbg" id="dbg" role="dialog" aria-modal="true" aria-label="Debug log" onclick="if(event.target===this)closeDebug()">

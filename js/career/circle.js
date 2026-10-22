@@ -1,6 +1,6 @@
 // Your people (spec §4.36 B): the circle — up to CIRCLE.max people at bond CIRCLE.bond+ in any club, your starred people
 // (`run.fav`) first — and the friend who asks to follow you when you switch clubs (World.join → Circle.asker / offer; the
-// event card → Circle.answer). Read by the hub's squad strip and by Team (stories, Agent S). DOM-free; no R() — the ask is a hash.
+// event card → Circle.answer). Read by the hub's squad strip and by Team (stories). DOM-free; no R() — the ask is a hash.
 
 const Circle = {
   /** Your circle: person ids (strings), pinned first, then by bond (then id). Only people still in play. */

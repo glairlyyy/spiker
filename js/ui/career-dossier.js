@@ -30,7 +30,7 @@ function closeDossier() {
   renderCareer();
 }
 document.addEventListener('keydown', e => {
-  if (e.key !== 'Escape' || typeof CW === 'undefined' || !CW.dossier) return;
+  if (e.key !== 'Escape' || !CW.dossier) return;
   e.stopImmediatePropagation(); // back to the faction list, not out of the sheet
   closeDossier();
 });

@@ -6,7 +6,7 @@ const TECH_ICON = { Attack: '⚔', Serve: '◎', Defense: '⛉', Setter: '✋' }
 const ownTechs = p => Object.keys(SKILLS).filter(id => SKILLS[id].tech && knowsTech(p, id));
 /** Career: your player; otherwise every player of the side(s) you run. */
 function techPlayers(m, fx, sides) {
-  const you = fx.onFinish && typeof RUN !== 'undefined' && RUN ? Run.you(RUN) : null,
+  const you = fx.onFinish && RUN ? Run.you(RUN) : null,
     ps = sides.flatMap(i => squadOf(m.t[i]));
   return you ? ps.filter(p => p.id === you.id) : ps;
 }

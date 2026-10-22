@@ -21,7 +21,7 @@ function coachSide(m, i) {
     { t, att, block } = C,
     K = Coach.condition(m, i, A.staShown && Object.keys(A.staShown).length ? A.staShown : m.sta, A.moodShown || m.mood),
     T = K.team,
-    shown = m.over || (A.prepS && A.prepS.who[i] === 'you') || (typeof prepMine === 'function' && prepMine(m) === i),
+    shown = m.over || (A.prepS && A.prepS.who[i] === 'you') || prepMine(m) === i,
     plan = shown ? `${esc(PLANS.atk[planOf(m, i).atk].short)} · ${esc(PLANS.def[planOf(m, i).def].short)}` : 'hidden',
     run = T.run >= 2 ? `On a ${T.run}-point run` : T.theirRun >= 2 ? `Lost the last ${T.theirRun}` : 'Trading points',
     // the players who stand out: the most bad news first, each with up to 3 words (bad first); the rest are steady
@@ -73,6 +73,6 @@ function coachSide(m, i) {
 function coachPanel() {
   const el = $('#coach');
   if (!el || !A || !A.m) return;
-  const mine = typeof prepMine === 'function' ? prepMine(A.m) : null;
+  const mine = prepMine(A.m);
   el.innerHTML = (mine === 1 ? [1, 0] : [0, 1]).map(i => coachSide(A.m, i)).join('');
 }

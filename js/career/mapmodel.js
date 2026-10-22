@@ -588,7 +588,7 @@ const MapModel = {
     };
   },
   /**
-   * The named people on the map (spec §4.37 1, T-331 — also what Agent E's encounters read): every NPC whose place today is
+   * The named people on the map (spec §4.37 1, T-331 — also what the encounters read): every NPC whose place today is
    * explored, where their week's plan puts them (People.plan: train / hard / wit at its place, hustle at a court — LIFE.court,
    * rest / out at home); a teammate on this week's training floor stands at the explored place of the floor's key nearest your
    * home instead (where you meet them; its pin counts them). [{ id, at, home, act, spot (SPOTS id or null), g, color }]: at = a
@@ -605,7 +605,7 @@ const MapModel = {
           r = r0 + hstr(`${id}|r`) * (r1 - r0);
         return [Math.round((c[0] + Math.cos(a) * r) * 10) / 10, Math.round((c[1] + Math.sin(a) * r) * 10) / 10];
       },
-      circle = new Set(typeof Circle !== 'undefined' ? Circle.of(run).map(String) : []),
+      circle = new Set(Circle.of(run).map(String)),
       mates = new Set(Run.mates(run).map(m => String(m.id))),
       mine = Run.myTeam(run),
       floorAt = {}, // a floor mate's place: their key's explored place nearest home
@@ -672,7 +672,7 @@ const MapModel = {
     if (phase === 'order' && n) return D - 1 + C.order[0] + (C.order[1] - C.order[0]) * u;
     return City.night(run) ? D - 1 + C.night : D + C.dawn;
   },
-  /** Time of day 0–1 (0 = midnight, 0.5 = noon): what Agent E's encounters read (see weekTime for the phases). */
+  /** Time of day 0–1 (0 = midnight, 0.5 = noon): what the encounters read (see weekTime for the phases). */
   clock: (run, phase = 'idle', k = 0) => {
     const w = MapModel.weekTime(run, phase, k);
     return Math.round((w - Math.floor(w)) * 1e4) / 1e4;

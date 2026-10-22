@@ -36,7 +36,7 @@ function startMatch(fx) {
   G.view = 'match';
   Dir.reset();
   // your side in a career fixture (the squad that holds your player): only it gets Timeout / Tactics; Monster game: both
-  const you = fx.onFinish && typeof RUN !== 'undefined' && RUN ? Run.you(RUN) : null,
+  const you = fx.onFinish && RUN ? Run.you(RUN) : null,
     mine = you ? ([0, 1].find(i => squadOf(m.t[i]).some(p => p.id === you.id)) ?? null) : null,
     sides = mine == null ? [0, 1] : [mine];
   if (mine != null)
@@ -247,14 +247,14 @@ addEventListener('resize', fit);
 /** The venue a match is played at: fx.venue (a pickup game: 'field', its ground in fx.ground — spec §4.38), else the career week's venue (City.venue), else the street; exhibitions: the arena. */
 function matchVenue(fx) {
   if (fx.venue) return fx.venue;
-  if (!(fx.onFinish && typeof RUN !== 'undefined' && RUN)) return 'arena';
+  if (!(fx.onFinish && RUN)) return 'arena';
   return City.venue(RUN) || 'street';
 }
 /** How full the stands are (0–1): the Cup final 1, other Cup rounds .85, evaluations .45, the street .35, a field's few onlookers .12, exhibitions .9. */
 function matchStakes(fx) {
   const v = matchVenue(fx);
   if (v === 'field') return 0.12;
-  if (!(fx.onFinish && typeof RUN !== 'undefined' && RUN)) return 0.9;
+  if (!(fx.onFinish && RUN)) return 0.9;
   if (Run.weekType(RUN) === 'cup') return /final/i.test(fx.round || '') && !/semi|quarter/i.test(fx.round || '') ? 1 : 0.85;
   return v === 'street' ? 0.35 : 0.45;
 }

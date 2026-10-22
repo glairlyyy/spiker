@@ -4,21 +4,19 @@
 // helped: { id: [years an arc was seen through] }, duo: { id: duo card id, once unlocked } }; an arc = { id, y (year), w (want), b (beat 0–2), st, at (week), alt? }, st:
 // 'open' (the beat waits for your answer since week `at`) · 'wait' (you promised a match beside them, week `at`) · 'next' (the
 // next beat opens at week `at`) · 'done' · 'lost'.
-// Reads Agent T's contract behind guards: Circle.of(run) → ids (else your mates), run.ex = { id: week left } (else none).
+// Reads Circle.of(run) (ids) and run.ex = { id: week left }.
 
-/* global Circle -- Agent T’s circle (js/career/circle.js), read behind a typeof guard until it lands */
 const Team = {
   /** The run's team-life state (created on first use). */
   of: run => run.tlife || (run.tlife = { chat: null }),
-  /** Your circle (spec §4.36 B): Circle.of when it exists, else your current mates — ids of people only, at most TEAM.circle. */
+  /** Your circle (spec §4.36 B): Circle.of — ids of people only, at most TEAM.circle. */
   circle(run) {
-    const ids = typeof Circle !== 'undefined' ? Circle.of(run) : Run.mates(run).map(p => p.id);
-    return ids
+    return Circle.of(run)
       .map(String)
       .filter(id => run.people && run.people[id])
       .slice(0, TEAM.circle);
   },
-  /** The people you left (spec §4.36 B): { id: week left } (Agent T's run.ex), {} before it exists. */
+  /** The people you left (spec §4.36 B): { id: week left } (run.ex). */
   ex: run => run.ex || {},
   /** Their headline behaviour (the first trait), or null. */
   beh: (run, id) => Rel.traits(run, id)[0] || null,
@@ -268,7 +266,7 @@ const Team = {
   lean(run, out) {
     const helped = (run.tlife && run.tlife.helped) || {},
       e = out.find(x => x.ids.includes(run.youId)),
-      riv = typeof Stars !== 'undefined' ? Stars.get(run, 'rival') : null;
+      riv = Stars.get(run, 'rival');
     if (Season.year(run) < 2 || !e || !e.region || e.crew || e.academy || !Object.keys(helped).length) return;
     const all = Pool.players(run, e.region),
       byId = id => all.find(p => p.id === id),

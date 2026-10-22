@@ -3,8 +3,7 @@
 // once: the person of an open arc beat, a circle member, the week's street battle, a rival club's crew (ENC.rank). The setting
 // (Encounter.pref: friends · everything · never) says which kinds may stop you; a short cut you picked (City.alt) stops for what it
 // passes even under "friends". State: `run.enc` = { w (Season.wk), n (stops this week), met: { key: w } }, made lazily.
-// Who stands where comes from MapModel.lifePeople (Agent L, T-331) when it exists, else today's floor, your circle's plans,
-// the clubs' HQs and the battle site.
+// Who stands where comes from MapModel.lifePeople (T-331), the clubs' HQs and the battle site.
 
 const Encounter = {
   /** A candidate key that always stops you, on any road (the UI smoke and QA only; null in play). */
@@ -20,23 +19,8 @@ const Encounter = {
   },
   /** The hash of a stop: run seed + week + the trip's day + who. */
   roll: (run, day, key) => hstr(`enc|${run.pseed}|${Season.wk(run)}|${day}|${key}`),
-  /** People on the map today: [{ id, at, act, spot }] — MapModel.lifePeople (T-331) or the fallback (the floor, your circle's plans). */
-  people(run) {
-    if (typeof MapModel.lifePeople === 'function') return MapModel.lifePeople(run);
-    const out = MapModel.life(run).mates.map(m => ({ id: m.id, at: m.at, act: 'train', spot: m.spot })),
-      have = new Set(out.map(m => m.id));
-    for (const id of [...Circle.of(run), ...Team.open(run).map(A => A.id)]) {
-      const me = run.people && run.people[id],
-        P = me && me.plan,
-        at = P && P.at && SPOTS[P.at] ? City.at(run, P.at) : null;
-      if (have.has(id) || !at || !MapModel.known(run, P.at, at)) continue;
-      have.add(id);
-      const a = hstr(`${id}|${P.at}|a`) * Math.PI * 2,
-        r = 14 + hstr(`${id}|${P.at}|r`) * 14;
-      out.push({ id, at: [at[0] + Math.cos(a) * r, at[1] + Math.sin(a) * r], act: P.act, spot: P.at });
-    }
-    return out;
-  },
+  /** People on the map today: [{ id, at, act, spot }] — MapModel.lifePeople (T-331). */
+  people: run => MapModel.lifePeople(run),
   /**
    * Everyone who could stop you today: [{ kind, key, at, id?, ti?, act?, spot? }] — arc (an open beat's person), circle, battle
    * (the open street battle), crew (each known rival club's squad at its HQ). A person with an open beat is an arc, not a circle.

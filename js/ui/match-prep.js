@@ -4,11 +4,11 @@
 
 /** The sides whose run you can choose (You decide / Coach decides): Monster game both; career: none (your side is yours). */
 function prepSides() {
-  return A.fx.onFinish && typeof RUN !== 'undefined' && RUN ? [] : [0, 1];
+  return A.fx.onFinish && RUN ? [] : [0, 1];
 }
 /** The side you play for (career), or null. */
 function prepMine(m) {
-  if (!(A.fx.onFinish && typeof RUN !== 'undefined' && RUN)) return null;
+  if (!(A.fx.onFinish && RUN)) return null;
   const you = Run.you(RUN);
   return [0, 1].find(k => squadOf(m.t[k]).some(p => p.id === you.id)) ?? null;
 }
@@ -75,7 +75,7 @@ function prepStage(m, i) {
 }
 /** The rival's habits you uncovered at the Tape Room (spec §4.31), under your hand when she is across the net from side i. */
 function prepHabits(m, i) {
-  if (typeof RUN === 'undefined' || !RUN || !A.fx.onFinish) return '';
+  if (!RUN || !A.fx.onFinish) return '';
   const riv = Stars.get(RUN, 'rival'),
     seen = riv && squadOf(m.t[1 - i]).includes(riv) ? Secret.seen(RUN) : [];
   return seen.length ? `<div class="small bhab"><b>From her tape:</b> ${seen.map(h => esc(h.text)).join(' · ')}</div>` : '';

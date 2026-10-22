@@ -26,8 +26,8 @@ const MapView = {
   /** The street-level district (map units): the capsule from the Dynasty Strength Center to the League Arena, STREET_R round it. */
   STREET_R: 200,
   zone() {
-    const a = typeof SPOTS !== 'undefined' && SPOTS.weiPower && SPOTS.weiPower.at,
-      b = typeof VENUES !== 'undefined' && VENUES.arena && VENUES.arena.at;
+    const a = SPOTS.weiPower && SPOTS.weiPower.at,
+      b = VENUES.arena && VENUES.arena.at;
     return a && b ? { a: a.slice(), b: b.slice(), r: MapView.STREET_R } : null;
   },
   /** The model with you.route = the road path from the last shown position to you.at when that changed (the renderer reads only the model). */
@@ -47,8 +47,8 @@ const MapView = {
   street: () => (MapView.m3 && MapView.m3.street ? MapView.m3.street() : 0),
   /** You may walk at street level now: no lock, event, open figure menu, sheet or match (the hub's input rules). */
   canWalk() {
-    if (typeof RUN === 'undefined' || !RUN || RUN.event || (typeof A !== 'undefined' && A)) return false;
-    if (typeof CW === 'undefined' || CW.lock || CW.fig || CW.sheet) return false;
+    if (!RUN || RUN.event || A) return false;
+    if (CW.lock || CW.fig || CW.sheet) return false;
     return !document.querySelector('.hubmodal');
   },
   /**
@@ -56,11 +56,11 @@ const MapView = {
    * (refused or the same point → your avatar walks back to where the rules have you).
    */
   walk(p, click = false) {
-    const pos = typeof RUN !== 'undefined' && RUN ? City.pos(RUN) : null,
+    const pos = RUN ? City.pos(RUN) : null,
       same = pos && Math.hypot(p[0] - pos[0], p[1] - pos[1]) < 3;
     if (!pos || same || !MapView.canWalk()) return click ? !same && MapView.on0 && MapView.on0.point(p) : MapView.home();
     if (!click) MapView.free = p.slice();
-    if (typeof mapTravel === 'function') mapTravel(p[0], p[1]);
+    mapTravel(p[0], p[1]);
     const now = City.pos(RUN);
     if (now[0] === pos[0] && now[1] === pos[1]) {
       MapView.free = null;
@@ -117,11 +117,11 @@ const MapView = {
   /** The renderer's settings from the UI: the phase source and the Fast graphics setting (fewer figures and lights). */
   prep(m3) {
     if (m3.setPhase) m3.setPhase(MapView.phase);
-    if (m3.setLow) m3.setLow(typeof G !== 'undefined' && G.gfx === 'fast');
+    if (m3.setLow) m3.setLow(G.gfx === 'fast');
   },
   /** The part of the day the UI is playing (see the header): 'idle' | 'walk' | 'order'. */
   phase() {
-    const L = typeof CW !== 'undefined' && CW ? CW.lock : null;
+    const L = CW.lock;
     return !L ? 'idle' : ['spin', 'done', 'res'].includes(L.phase) ? 'order' : 'walk';
   },
   /** A named figure's entry in the shown model (life.people), or null. */
@@ -146,7 +146,7 @@ const MapView = {
   /** Show / move / hide the tip for the named figure under the pointer (clientX / Y), on the design system's tooltip. */
   hover(id, x, y, going) {
     let box = MapView.tipEl;
-    const t = id !== null && id !== undefined && typeof RUN !== 'undefined' && RUN ? MapView.tipOf(RUN, id, going) : null;
+    const t = id !== null && id !== undefined && RUN ? MapView.tipOf(RUN, id, going) : null;
     if (!t) return box && (box.style.display = 'none');
     if (!box) {
       box = MapView.tipEl = document.createElement('div');
@@ -167,8 +167,7 @@ const MapView = {
     const f = MapView.who(id);
     MapView.hover(null);
     if (!f || f.g === 'grey') return;
-    if (typeof figOpen === 'function') figOpen(id);
-    else if (typeof openPerson === 'function') openPerson(id);
+    figOpen(id);
   },
   /** A named figure's point on the page (client px), or null when it isn't on screen (hidden at home, off the canvas). */
   figureAt(id) {

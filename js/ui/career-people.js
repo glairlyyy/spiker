@@ -75,10 +75,7 @@ function personCard(run, id) {
     N = TRAITS[me.traits[1]],
     want = kw ? `<b ${tip(WANTS[me.want].desc)}>${esc(WANTS[me.want].name)}</b>` : '<b class="mute">?</b>',
     nuance = k2 ? `<b ${tip(N.desc)}>${esc(N.name)}</b>` : '<b class="mute">?</b>',
-    G =
-      typeof Gifts !== 'undefined' && !p.gone && Gifts.known(run, p)
-        ? Gifts.of(p).filter(g => typeof GIFTS !== 'undefined' && GIFTS[g])
-        : null,
+    G = !p.gone && Gifts.known(run, p) ? Gifts.of(p).filter(g => GIFTS[g]) : null,
     gifts = G
       ? `<div>Talent <b>${esc(Gifts.tier(p))}</b> · ${G.length ? G.map(g => `<b ${tip(GIFTS[g].desc)}>${esc(GIFTS[g].name)}</b>`).join(', ') : 'No gifts'}</div>`
       : '', // talent and gifts once known (the Gifts contract, T-320); nothing before Gifts exists

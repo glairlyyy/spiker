@@ -97,7 +97,7 @@ function sbShow(el, n) {
  * falls inside wrapped in `.sb-rival` (a name cut mid-typing is orange so far).
  */
 function sbMark(text, a, b) {
-  const rv = typeof STARS !== 'undefined' && STARS.cohort.find(c => c.kind === 'rival'),
+  const rv = STARS.cohort.find(c => c.kind === 'rival'),
     names = rv ? [rv.name, rv.name.split(' ')[0]] : [],
     hits = [];
   for (const nm of names)
@@ -162,7 +162,7 @@ function sbSkip(yes) {
 document.addEventListener(
   'keydown',
   e => {
-    if (typeof RUN === 'undefined' || !RUN || !Story.step(RUN) || !document.getElementById('sbox')) return;
+    if (!RUN || !Story.step(RUN) || !document.getElementById('sbox')) return;
     e.preventDefault();
     e.stopImmediatePropagation();
     const s = Story.step(RUN);

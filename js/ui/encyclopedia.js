@@ -49,7 +49,7 @@ function encyWatch() {
   pick();
 }
 document.addEventListener('keydown', e => {
-  if (e.key !== 'Escape' || !document.querySelector('.ency') || $('#dbg') || (typeof CW !== 'undefined' && CW.peek)) return;
+  if (e.key !== 'Escape' || !document.querySelector('.ency') || $('#dbg') || CW.peek) return;
   navigate('menu');
 });
 function renderEncyclopedia() {

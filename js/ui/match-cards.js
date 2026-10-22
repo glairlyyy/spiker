@@ -5,7 +5,7 @@
 const ZONE_LAB = { atk: 'ATK', def: 'DEF', flex: 'FLEX' };
 
 /** Is this a career match (your player is in it)? */
-const cardsCareer = () => !!(A && A.fx.onFinish && typeof RUN !== 'undefined' && RUN);
+const cardsCareer = () => !!(A && A.fx.onFinish && RUN);
 /** How many of side i's cards are yours: Monster — "You decide" 5; career — your side: 5 as captain, else 1. */
 function cardsMine(m, i) {
   if (!m || !m.cards) return 0;
@@ -422,8 +422,8 @@ function cardsDuoCut(m, i, id) {
  * it is slotted with its pair on court. Stops when the match ends or the screen leaves it. Presentation only (no draws).
  */
 function teamWatch(m) {
-  if (typeof A === 'undefined' || !A || A.m !== m || A.done || m.over) return;
-  if (!A.prep && !A.cturn && typeof X !== 'undefined' && !X && !Dir.talk && !(A.beats && A.bi < A.beats.length && A.beats[A.bi].scene)) {
+  if (!A || A.m !== m || A.done || m.over) return;
+  if (!A.prep && !A.cturn && !X && !Dir.talk && !(A.beats && A.bi < A.beats.length && A.beats[A.bi].scene)) {
     const seen = A.duoSeen || (A.duoSeen = new Set());
     if (m.exIds && !A.exSaid) {
       A.exSaid = true;

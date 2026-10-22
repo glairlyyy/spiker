@@ -35,7 +35,7 @@ function xNext() {
   X.t = 0;
   if (X.i >= X.lines.length) return exchangeHide();
   const l = X.lines[X.i],
-    p = typeof byId === 'function' ? byId(l.p) : null,
+    p = byId(l.p),
     side = l.side ?? (p && A && A.m && p.team === A.m.t[1] ? 1 : 0),
     team = A && A.m ? A.m.t[side] : null,
     mood = p && A && A.moodShown ? A.moodShown[p.id] || 0.4 : 0.4,

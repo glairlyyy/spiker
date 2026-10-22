@@ -15,7 +15,7 @@ const Rel = {
     const before = Rel.bondOf(run, id);
     v = Rel.behaveIn(run, id, kind, v == null ? MEMORY[kind].v : v);
     if (v > 0 && Feel.has(run, 'bitter')) v *= SCARS.bitter.k; // Bitter (spec §4.30): bonds grow slower
-    if (v > 0 && typeof Gifts !== 'undefined' && Gifts.bondMul) v *= Gifts.bondMul(run, id); // Magnetic / Lone Wolf (spec §4.35, theirs and yours)
+    if (v > 0) v *= Gifts.bondMul(run, id); // Magnetic / Lone Wolf (spec §4.35, theirs and yours)
     Rel.push(run, Rel.key(run.youId, id), id, kind, v, id);
     Rel.refresh(run, id);
     Rel.reveal(run, id);
@@ -186,12 +186,11 @@ const Rel = {
     });
   },
   /**
-   * Presence (spec §4.35): 2 for an S talent, 1 for an A, 0 otherwise (never you, nor anyone without a talent). Gifts.tier (T-320) when it
-   * is loaded, else the same letters from `p.pot`. Display only (portrait frame, court glow, the first-meeting beat) — never the letter.
+   * Presence (spec §4.35): 2 for an S talent, 1 for an A (Gifts.tier), 0 otherwise (never you, nor anyone without a talent). Display only (portrait frame, court glow, the first-meeting beat) — never the letter.
    */
   presence(p) {
     if (!p || p.you || p.gone) return 0;
-    const t = typeof Gifts !== 'undefined' ? Gifts.tier(p) : p.pot == null ? null : p.pot >= 1.4 ? 'S' : p.pot >= 1.2 ? 'A' : null;
+    const t = Gifts.tier(p);
     return t === 'S' ? 2 : t === 'A' ? 1 : 0;
   },
   /** A stance as a band: 'ally' | 'respect' | 'neutral' | 'resent' | 'enemy'. */

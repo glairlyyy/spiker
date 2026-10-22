@@ -81,7 +81,7 @@ function finishMatch() {
       p.tour.mp++;
       if (m.stat[p.id]) addStats(p.tour, m.stat[p.id]);
     }
-  const snap = A.fx.onFinish && typeof RUN !== 'undefined' && RUN && typeof resultSnap === 'function' ? resultSnap(RUN, m) : null,
+  const snap = A.fx.onFinish && RUN ? resultSnap(RUN, m) : null,
     msg = A.fx.onFinish ? A.fx.onFinish(m) || '' : '',
     res = snap ? resultData(RUN, m, snap, msg) : null; // career: the result screen's data (spec §10.6)
   for (const b of document.querySelectorAll('.cbar .play button, .fsb button[data-s], #fspause')) b.disabled = true; // playback is over

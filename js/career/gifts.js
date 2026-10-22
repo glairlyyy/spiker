@@ -2,7 +2,7 @@
 // rolls them once, by a hash of the run seed and the player: no R()), what you know about them, and their career effects
 // (growth, the body stats, leadership, the element). The match effects read `p.gifts` in js/engine/elements.js and bars.js.
 // DOM-free. Data: js/data/gifts.js (GIFTS, GIFT_TIERS, GIFT_ODDS).
-// Contract (Agent P's card and presence read these): Gifts.tier(p), Gifts.of(p), Gifts.known(run, p), GIFTS[id].
+// The person card and presence read Gifts.tier(p), Gifts.of(p), Gifts.known(run, p), GIFTS[id].
 
 const Gifts = {
   /** 'S' | 'A' | 'B' | 'C' | 'D': an authored `p.tier` (the named), else from `p.pot` (GIFT_TIERS). */
@@ -13,7 +13,6 @@ const Gifts = {
   },
   /** p's gift ids (none: []). */
   of: p => (p && Array.isArray(p.gifts) ? p.gifts : []),
-  has: (p, id) => hasGift(p, id),
   /**
    * Do you know p's tier and gifts? Yourself; or their club is scouted, you have trained beside them (a `trained` memory) or your
    * bond is GIFT_ODDS.know+. Once known, always known (run.people[id].known.gifts).
@@ -87,7 +86,7 @@ const Gifts = {
   /** Growth × for p: src 'train' | 'match', `stat` the one it goes to (Reader: wit). 1 without growth gifts. */
   grow(run, p, src = 'train', stat = null) {
     const g = Gifts.of(p),
-      arc = typeof Team !== 'undefined' ? Team.growMul(run, p) : 1; // an arc you saw through: × 1.1 this season (spec §4.36 3)
+      arc = Team.growMul(run, p); // an arc you saw through: × 1.1 this season (spec §4.36 3)
     if (!g.length) return arc;
     let x = arc;
     for (const id of g) {
