@@ -761,6 +761,15 @@ the AI coach fills every slot you leave with the same function. Built and measur
   balls), its stripes washed bright, held ~140 ms and round again before the next touch. A top spike / jump serve (power
   ~90+) gets a 40–70 ms hit-stop at contact with a slightly stronger camera kick and a white flash; no hit-stop with reduced
   motion or Hype off. Display only; numbers in the VFX panel (Ball squash + hit-stop).
+  Attack animation pass (owner, 2026-10-23: "make everything smooth") **[built 2026-10-23]**: from coaching and spike-jump
+  studies — the leg drive from the deepest crouch to the take-off takes ~150 ms (was ~60) and leaves the floor on nearly straight
+  legs with both arms swinging up past the shoulders, handing over to the air pose without a jump; the arms swing back and
+  forward like pendulums (past the hips, not out to the side); the free arm pulls down with the start of the swing and is tucked
+  at contact; the hand meets the ball at full speed (no stop on it) and the swing keys turn at an even rate (no one-frame
+  flicks); the landing absorbs straight into the ready stance (no rise to standing then a snap); the jump serve's toss arm joins
+  the arm swing after the toss; the float serve cocks bow-and-arrow (elbow high, hand by the ear — not the goalpost), its arm
+  lifting out to the side first, punches through at speed and settles into the ready stance; the jump float plants lightly
+  before its hop. Display only.
 - §2.34 Gloom lines (owner, 2026-10-20) **[built 2026-10-20]**: the anime gloom lines — purple vertical lines hanging from above the
   head and fading toward the chest — over a debuffed player: its side plays a war stage (§4.34: Strained / Shaken / Broken,
   darker by stage), its own morale has sunk (below −0.35), or its HP is nearly gone (below 0.3); the strongest of the three

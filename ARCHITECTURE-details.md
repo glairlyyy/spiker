@@ -63,6 +63,10 @@ units3d's KH / KX / KZ read it), `BALL_K` / `SERVE_K` (ball flight speed factors
 - `poses3d-attack.mjs` — the spike swing / jump serve, the landing and the float serve, and `RA` (right-arm keys with a
   palm twist; the dive uses it too). Import cycle with poses3d.mjs: it is evaluated first, so its top level uses only its
   own names (own `V` / `leg`), THREE, `mirror` and `clamp`; what it imports from poses3d.mjs runs inside functions only.
+  Its blends turn arms at an even rate (`mixArmS` / `mixS`: slerp, twists read from mixArm at the matching nlerp point;
+  `viaArm` / `mixVia` swing through a middle key between keys ~150° apart), the swing tracks pass inner keys at speed
+  (`trackC`: Hermite, eased only at the first and last key), `approachPose` is the run-up (also the take-off frame the air
+  pose blends out of, and the jump float's plant), and landings / the float serve end on `readyNow` (playerPose 'ready').
 - `poses3d.mjs` — one pose per engine pose, driven by the same values the playback layer keeps (swing/spike
   timers, jump arcs, `diveShape` (dive.js), `setMotion` (poses3d.mjs)) plus **measured motion** from `actors3d.mjs` (`motion()`: speed,
   forward/lateral velocity, gait phase advanced by distance so feet don't slide). Locomotion blends keyframed
