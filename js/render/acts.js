@@ -362,7 +362,9 @@ const ACTS_ROSTER = {
     koUp(d);
   },
   spkstyle(a, d, bs) {
-    if (d) d.spkStyle = a.st;
+    if (!d) return;
+    d.spkFast = a.st === 'quick' || (a.st === 'tip' && !!d.spkFast); // a quick's fast swing (playback SWING_FAST), kept on a tipped quick
+    d.spkStyle = a.st;
   },
   setdir(a, d, bs) {
     if (d) d.setDir = a.dir;

@@ -205,6 +205,25 @@ test('render3d: every pose the engine sends has a 3D pose', () => {
   assert(!missing.length, 'poses with no 3D version: ' + missing.join(', '));
 });
 
+test('render: a quick swings faster — later wind-up, shorter lead (owner, 2026-10-22)', () => {
+  const vm = require('vm'),
+    ctx = { UNIT_M: { x: 0.0204, z: 12, h: 2.43 / 150 }, Z_UNITS: 1, Math };
+  vm.createContext(ctx);
+  const src = fs.readFileSync(path.join(__dirname, '..', 'js/render/playback.js'), 'utf8');
+  vm.runInContext(`${src}\n;globalThis.__p={swingLead,quickWind,SWING_FAST};`, ctx);
+  const { swingLead, quickWind, SWING_FAST } = ctx.__p;
+  const J = { dur: 430 },
+    q = jt => ({ pose: 'spike', spkFast: true, jmode: J, jt });
+  assert(swingLead(q(0)) < swingLead({ pose: 'spike' }), 'quick lead shorter than a normal spike');
+  eq(quickWind({ pose: 'spike', jmode: J, jt: 0.5 }), null, 'a normal spike keeps its height-keyed draw');
+  const swingAt = 1 - SWING_FAST.lead / J.dur,
+    windAt = 1 - (SWING_FAST.lead + SWING_FAST.wind) / J.dur;
+  eq(quickWind(q(windAt - 0.05)), 0, 'arm not drawn back before the wind-up');
+  eq(quickWind(q(swingAt)), 1, 'fully wound when the swing starts');
+  const mid = quickWind(q((windAt + swingAt) / 2));
+  assert(mid > 0.3 && mid < 0.7, `half-way wind ${mid}`);
+});
+
 test('engine: elements — rarity, every element fires, counters, captain buff', () => {
   const g = load(21);
   // rarity: regular players never; OP always; roughly 1 in 4 other stars

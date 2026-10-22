@@ -750,6 +750,10 @@ the AI coach fills every slot you leave with the same function. Built and measur
 - §2.35 Pose fixes (owner, 2026-10-20) **[built 2026-10-20]**: the spike's bow — the hitting elbow drawn high and back, the hand behind
   the head, palm to the net (was a goalpost arm that folded back for the whip); the set — the ready triangle with the forearms
   turned (left −2.08, right 1.85, from the Animation lab) and held at that twist through every push (no twisting back and forth).
+  Quick swing (owner, 2026-10-22) **[built 2026-10-22]**: a quick (and a tipped quick) swings faster to match the fast set — arms
+  up with the take-off, the hitting arm drawn back only in the last 90 ms before the swing (was fully drawn early in the rise and
+  held), the whip to contact in 80 ms (150 for other spikes), the follow-through 150 ms (was 200). Contact still on the ball's
+  arrival; display only (the slide and other tempos share the normal swing: the engine does not mark them).
 - §2.34 Gloom lines (owner, 2026-10-20) **[built 2026-10-20]**: the anime gloom lines — purple vertical lines hanging from above the
   head and fading toward the chest — over a debuffed player: its side plays a war stage (§4.34: Strained / Shaken / Broken,
   darker by stage), its own morale has sunk (below −0.35), or its HP is nearly gone (below 0.3); the strongest of the three

@@ -54,7 +54,7 @@ export const RA = (u, f, h, palm) => {
 // Swing progress e (0..1) with ball contact at CE. Before contact the swing takes swingLead(d) ms (the playback starts
 // it that long before the ball arrives); after it, POST ms of snap and follow-through.
 const CE = 0.3;
-const POST = { quick: 200, tip: 240, power: 300, cut: 250, serve: 270 };
+const POST = { quick: 150, tip: 240, power: 300, cut: 250, serve: 270 };
 function swingE(d) {
   const pre = swingLead(d) || 150,
     post = POST[d.spkStyle] || 270,
@@ -258,7 +258,8 @@ export function spikePose(d, m) {
   if (sw == null) {
     // 1. rising: both arms swing up, then the bow: non-hitting arm points at the ball, hitting elbow drawn back high
     const takeK = clamp(u * 3, 0, 1),
-      draw = sty === 'quick' ? clamp(u * 2.2, 0, 1) : sm(clamp((u - 0.15) / 0.55, 0, 1));
+      qw = quickWind(d), // a quick: arms up with the take-off, the hitting arm drawn back only just before the snap (playback SWING_FAST)
+      draw = qw != null ? qw : sty === 'quick' ? clamp(u * 2.2, 0, 1) : sm(clamp((u - 0.15) / 0.55, 0, 1));
     const rA = draw > 0 ? mixArm(mirror(ARMS_UP), keys[0][1], draw, -1) : mixArm(mirror(ARMS_LOW), mirror(ARMS_UP), takeK, -1),
       lA = draw > 0 ? mixArm(ARMS_UP, UP_L, draw) : mixArm(ARMS_LOW, ARMS_UP, takeK);
     const body = mixT({ hp: -0.05, sp: 0.05, cp: 0, tw: 0, hd: -0.6 }, bowT, draw);

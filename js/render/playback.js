@@ -38,7 +38,20 @@ const reachH = (d, k) => (k * 1.8 * ((d.p && d.p.look && d.p.look.hgt) || 1)) / 
  * before the ball arrives (and holds the contact pose until the hit beat); otherwise the ball waits at
  * the contact point this long at the start of the hit beat, so the hand really meets it.
  */
-const swingLead = d => (d.pose === 'serve' ? 70 : d.pose === 'spike' ? 150 : 0);
+const swingLead = d => (d.pose === 'serve' ? 70 : d.pose === 'spike' ? (d.spkFast ? SWING_FAST.lead : 150) : 0);
+/**
+ * A quick (owner, 2026-10-22: a snappy swing to match the fast set): `d.spkFast` (acts `spkstyle` 'quick', kept if the quick is
+ * tipped). The swing reaches the ball in SWING_FAST.lead ms (150 otherwise) and the arm draws back only in the last
+ * SWING_FAST.wind ms before it, instead of at the start of the rise; poses3d-attack's POST.quick shortens the follow-through.
+ */
+const SWING_FAST = { lead: 80, wind: 90 };
+/** A quick's wind-up (0..1) while rising, from the ms left until the swing starts (jmode.dur); null for other spikes. */
+const quickWind = d => {
+  const J = d.jmode;
+  if (!d.spkFast || !J || !(J.dur > 0) || d.jt == null) return null;
+  const left = (1 - d.jt) * J.dur - swingLead(d);
+  return ease(Math.min(1, Math.max(0, 1 - left / SWING_FAST.wind)));
+};
 /** Metres per court unit (3D scale): MX along the long axis (x/1000 of it), MZ across (z 0..1). */
 const MX = UNIT_M.x,
   MZ = UNIT_M.z;
@@ -157,7 +170,7 @@ function startBeat(b) {
         break;
       case 'jump':
         d.jt = 0;
-        d.jmode = { mode: a.mode, t0: jumpT0(a, b.dur), t1: a.t1 || 1, peak: a.peak || d.jy, start: d.jy };
+        d.jmode = { mode: a.mode, t0: jumpT0(a, b.dur), t1: a.t1 || 1, peak: a.peak || d.jy, start: d.jy, dur: b.dur };
         if (leapWarp(a)) Object.assign(d.jmode, { warp: true, warpU: VFX.leap.warpMs / Math.max(1, b.dur) }); // (VFX.leap: the teleport jump)
         d.fallMs = null;
         d.landMs = null;
@@ -226,7 +239,7 @@ function startPose(d, pose, pc, dur) {
     d.spkHold = false;
     d.pt = 0;
   }
-  if (d.pose !== pose && pose !== 'spike' && pose !== 'serve') d.spkStyle = null;
+  if (d.pose !== pose && pose !== 'spike' && pose !== 'serve') d.spkStyle = d.spkFast = null;
   d.pc = pc;
   if (d.dv && pose !== 'dive') d.gu = { t: 0, s: diveShape(d) };
   // dive heading: where the player is going, fixed at take-off

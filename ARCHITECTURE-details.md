@@ -73,7 +73,8 @@ units3d's KH / KX / KZ read it), `BALL_K` / `SERVE_K` (ball flight speed factors
   (keys carry a palm direction, `palmTwist`) → wrist snap → arm across to the opposite hip → soft two-foot landing,
   with per-style arm tracks (normal, cut, tip, quick; power arches more, pipe splits the legs). The playback starts
   the swing `swingLead` ms before the ball arrives, so the hand meets it at the top of the jump (held through
-  cut-ins). Contact heights come from the hitter's body height (`reachH`) plus the jump the stats give
+  cut-ins). A quick (`d.spkFast`, set by acts `spkstyle` 'quick', kept on a tipped quick) uses playback `SWING_FAST`: a shorter lead
+  and a wind-up keyed to the ms left before the swing (`quickWind`, from `jmode.dur`) instead of the jump height. Contact heights come from the hitter's body height (`reachH`) plus the jump the stats give
   (`jumpPx`); in the air `groundSnap` carries the jump on the hips, so tucked legs don't eat it. Serve tosses go
   up well above the hand and drop into it. A test checks every engine pose has a 3D version.
 - Moving: players face where they run on long moves (back to position, to the bench for a timeout) and turn back
