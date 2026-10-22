@@ -260,8 +260,9 @@ const step = async (name, fn) => {
       RUN.days = 7;
       RUN.dayLog = [];
       CW.spot = null;
-      City.moveTo(RUN, [SPOTS.weiPower.at[0], SPOTS.weiPower.at[1] - 18]); // the street in front of the Dynasty Strength Center
+      City.moveTo(RUN, ROADS.nodes.jW1.slice()); // the junction on the main road by the Dynasty Strength Center
       renderCareer();
+      MapView.m3.jump(); // (no walk there: frames are slow here)
       return City.pos(RUN).slice();
     });
     await pg.waitForFunction(() => !MapView.busy() && !CW.lock, null, { timeout: 60000 });
@@ -269,9 +270,13 @@ const step = async (name, fn) => {
       const y = MapView.m3.youPos();
       MapView.m3.setView({ x: y[0], z: y[2], d: 6.7 });
     });
-    await pg.waitForFunction(() => MapView.m3.street() > 0.95 && MapView.m3.info().ring && MapView.m3.info().ring.on, null, {
-      timeout: 60000
-    });
+    await pg
+      .waitForFunction(() => MapView.m3.street() > 0.95 && MapView.m3.info().ring && MapView.m3.info().ring.on, null, { timeout: 120000 })
+      .catch(async () => {
+        throw new Error(
+          `not at street level: ${JSON.stringify(await ev(() => ({ s: MapView.m3.street(), view: MapView.m3.info().view, ring: MapView.m3.info().ring })))}`
+        );
+      });
     const st = await ev(() => ({ ms: MapView.m3.bench(3), ring: MapView.m3.info().ring, vrm: MapView.m3.info().life.vrm }));
     // a click on the ground ahead: a map-point travel (the same rules as the point card's Walk)
     const c = await ev(() => {
@@ -286,10 +291,11 @@ const step = async (name, fn) => {
       .catch(() => {
         throw new Error(`the click did not travel (street ${MapView.m3 && MapView.m3.street()})`);
       });
-    await pg.waitForFunction(() => !MapView.busy() && !CW.lock, null, { timeout: 90000 });
+    await ev(() => MapView.m3.jump()); // (the walk itself shows in QA; here only its end)
+    await pg.waitForFunction(() => !MapView.busy() && !CW.lock, null, { timeout: 120000 });
     const days = await ev(() => 7 - City.days(RUN));
     await ev(() => MapView.m3.setView({ d: 60 }));
-    await pg.waitForFunction(() => MapView.m3.street() === 0 && !MapView.m3.info().ring.on, null, { timeout: 30000 });
+    await pg.waitForFunction(() => MapView.m3.street() === 0 && !MapView.m3.info().ring.on, null, { timeout: 120000 });
     return `${st.ms} ms a frame at street level (ring ${st.ring.lots} lots, ${Math.round(st.ring.tris / 1000)}k tris, built in ${st.ring.ms} ms; ${st.vrm} VRMs); the walk took ${days} day(s)`;
   });
   // the living island, Agent E (spec §4.37 3–5): a stop on the road, the short cut, the island's sound

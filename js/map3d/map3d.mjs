@@ -1682,7 +1682,14 @@ export function create(onIdle) {
       C.setYaw(v.yaw || 0);
       C.fit();
     },
-    /** Dev / QA: take you back to the shown position (a WASD walk the rules refused). */
+    /** Dev / QA: stand at the model's you.at at once (no walk; a held stop is let go). */
+    jump() {
+      if (!avatar || !cur || !cur.you || !cur.you.at) return;
+      avatar.snap(cur.you.at);
+      seen = cur.you.at.join(',');
+      C.land();
+    },
+    /** Take you back to the shown position (a WASD walk the rules refused). */
     home() {
       if (avatar && cur && cur.you && cur.you.at) avatar.setTarget(cur.you.at);
     },

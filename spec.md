@@ -1514,7 +1514,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     - **Fast**: the same camera, walking and interiors, with the simpler materials and fewer people.
     **[built 2026-10-22, T-336a: the district = a capsule ~100 m round the line from the gym to the arena; below the map's closest
     (25 m) the zoom eases on to ~6.7 m — pitch 55° → 15°, the target up to your head and onto you — only while you stand in it (leaving
-    it, the camera rises back); Q / E, a right-drag or any drag at street level orbit; a wall between you and the camera pulls it in.
+    it, the camera rises back); Q / E, a right-drag or any drag at street level orbit; a building behind you lifts the camera over it (or, too tall, brings it in front); a day order run there keeps the camera down.
     A click on the ground = a map-point travel (refused → the point card); WASD walks you (camera-relative, not through buildings,
     inside the district) and the stop resolves as one travel when the point changed (refused → you walk back). Your avatar and every
     figure shrink to life size as the camera goes down; the people within 40 m of the camera are VRMs (≤ 15; Fast 6 over capsules).

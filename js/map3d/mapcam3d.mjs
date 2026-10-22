@@ -365,6 +365,10 @@ export function createMapCam(cam, canvas, sun, S) {
     fit,
     /** 0–1: how far down the camera is (0 = the map, 1 = street level). */
     street: () => st,
+    /** End a camera flight where it is (QA: a jump). */
+    land() {
+      fly = null;
+    },
     /** The orbit angle round you (rad). */
     yaw: () => yaw,
     /** True right after a right-drag orbit (its contextmenu is not a click on a figure). */

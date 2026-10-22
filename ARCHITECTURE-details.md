@@ -778,7 +778,9 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   avatar (k by s), so at d1 the camera is ~6.5 m behind, ~3.2 m above the ground. Below 25 m only while your avatar is inside the
   district and the view centre within `STREET.pad` of it (`allowed`); otherwise the zoom stops at 25 m, and leaving the district eases
   the camera back up (`STREET.back`). `yaw` (× s, reset at s = 0): Q / E (`STREET.orbit` rad/s), a right-drag, or any drag at
-  s > 0.5 (`STREET.drag`); a click walk swings it behind you (`STREET.behind`). Near plane 1 → 0.2 m. `flyTo` / `walkFrom` keep the
+  s > 0.5 (`STREET.drag`); a click walk swings it behind you (`STREET.behind`). A lot or landmark between your head and the
+  camera (the district's lots + landmark squares; one holding you — the gym / arena — doesn't count) lifts the camera over it, up to
+  `STREET.rise` m (eased), else brings it in front. Near plane 1 → 0.2 m, far 3000 → 900 m. `flyTo` / `walkFrom` keep the
   camera down at street level. A contextmenu after a right-drag orbit is not a figure click (`C.dragged()`).
 - **Walking** — a click at s > 0.5: `MapView.walk(p, true)` → `mapTravel` (the point card's Walk; refused or the same point → the
   point card, which says why). WASD (window keys, `e.code`, only at s > 0.5 and `on.canWalk()`: no lock / event / figure menu / sheet
@@ -799,8 +801,9 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   1.6 m, kerb 0.14 m) both sides of main / street roads, trimmed `RING.trim` at junctions; main roads' centre dashes and zebra
   crossings at junctions of 3+; pavement props (bollard, planter, hydrant — kit3d `RING_PROPS`) by hash, clear of lots. Fast: the ground
   detail only (the boxes stay). `ringInfo()` → { on, lots, tris, builds, ms }.
-- **Look** — at s > 0.15 (detailed look) the background is the baked sky (`look.envTex()`); a `THREE.Fog` haze in the clock's sky
-  colour closes in with s (near 160 m at street level; 1e6 on the map).
+- **Look** — at s > 0.15 the background is the baked sky (`look.envTex()`; Fast: the clock's sky colour); a `THREE.Fog` haze in the
+  sky colour closes in with s (near 160 m at street level; 1e6 on the map); the war borders (`war.show`) and the route preview
+  ribbons hide at s ≥ 0.5; the story figures (`model.figures`) shrink to life size with you.
 - **Contract for the interiors (T-336b)** — map3d `api.street()` (0–1), `api.camPos()` / `api.youPos()` (world [x, y, z]);
   `import('./interior3d.mjs')` once at build (a missing file only rejects): `createInteriors(scene, heightAt)` → `{ sync(model)`
   (each update), `tick(dt, { cam, you, street, low })` (each frame), `at([sx, sy])` (a street-level click at canvas px: truthy = it
