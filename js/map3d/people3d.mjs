@@ -3,7 +3,9 @@
 //   createHumanoids(cap) → { mesh, set(i, x, y, z, yaw, lean, s, sy, pose), tint(i, shirt, skin, hair), count(n), dispose() }
 //     the low-poly humanoid (head with hair, torso, arms and legs that swing) for everyone not drawn as a VRM: one InstancedMesh,
 //     the limbs swung in the vertex shader by a per-instance pose `[legSwing, armSwing, armRaise, legBend]` (radians, + = forward).
-//   createPeopleVRM(scene, opts) → { tick(dt, states, cam, on), weight(id), count(), dispose() }
+//   createPeopleVRM(scene, opts) → { tick(dt, states, cam, on, street?), weight(id), count(), dispose() }
+//     street = { street (0–1), near: { maxD }, cap } at street level (T-336a): the pick's reach shrinks toward near.maxD (m from the
+//     camera) and its cap becomes `cap`.
 //     the nearest `cap` named people on screen as the default VRM (players3d loadBase / makeVRM: one model file, parsed once
 //     per slot with its geometry and textures shared; `dress` in their club's colours), posed with the match gait (locoPose),
 //     a block-jump drill, sitting or standing. Slots are built one at a time after the map has shown (never the first frame).
@@ -261,20 +263,22 @@ export function createPeopleVRM(scene, opts = {}) {
         console.warn('3D map: people models failed — keeping the figures.', e && e.message ? e.message : e);
       });
   };
-  const lod = (states, cam) => {
-    const cands = [];
+  const lod = (states, cam, SL) => {
+    const cands = [],
+      maxD = SL ? O.maxD + (SL.near.maxD - O.maxD) * smooth(0, 1, SL.street) : O.maxD,
+      cap = SL && SL.street > 0.5 ? SL.cap : O.cap;
     for (const [id, f] of states) {
       if (!f.vis || f.g === 'grey') continue; // unscouted: grey silhouettes stay
       P.set(f.x, f.y + 0.7 * f.s, f.z);
       const d = P.distanceTo(cam.position);
-      if (d > O.maxD) continue;
+      if (d > maxD) continue;
       P.project(cam);
       if (P.z > 1 || Math.abs(P.x) > 1.05 || Math.abs(P.y) > 1.1) continue;
       cands.push({ id, d });
     }
     held.clear();
     for (const s of slots) if (s.id !== null && s.k > 0) held.add(s.id);
-    want = nearestOnScreen(cands, O.cap, held);
+    want = nearestOnScreen(cands, cap, held);
     near = new Map(
       cands
         .filter(c => want.has(c.id))
@@ -315,7 +319,7 @@ export function createPeopleVRM(scene, opts = {}) {
     pl.vrm.update(dt);
   };
   return {
-    tick(dt, states, cam, on = true) {
+    tick(dt, states, cam, on = true, SL = null) {
       age += dt;
       if (!on) {
         for (const S of slots) ((S.id = null), (S.k = 0), (S.pl.root.visible = false));
@@ -330,7 +334,7 @@ export function createPeopleVRM(scene, opts = {}) {
       }
       if ((lodT -= dt) <= 0) {
         lodT = O.every;
-        lod(states, cam);
+        lod(states, cam, SL);
       }
       // free slots fade out; new people take a free slot (or a new one is built, one at a time)
       for (const S of slots) {

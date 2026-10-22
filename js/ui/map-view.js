@@ -8,6 +8,10 @@
 // greet = 'walk', spin / done / res = 'order', any other lock phase — an encounter's stop — = 'walk'; none = 'idle').
 // The figure menu (spec §4.37 7, T-340): a click or right-click on a figure opens it (figOpen, career-map.js); figureAt(id) = the
 // figure's client point (the menu follows it), mark(id) = the ring under their feet while it is open.
+// Street level (spec §4.37 6, T-336a): MapView adds `street` to the model (the prototype district: a capsule round the Dynasty
+// Strength Center and the League Arena, map units) and walk(p) / canWalk() to the callbacks. At street level a click on the ground
+// is a travel there (mapTravel — the same rules as the point card's Walk; refused → the point card says why); WASD walks you freely
+// and walk(p) resolves where you stopped the same way (only if it changed point; refused → your avatar walks back).
 
 const MapView = {
   m3: null, // the live 3D renderer
@@ -16,19 +20,69 @@ const MapView = {
   el: null,
   model: null,
   on: null,
+  on0: null, // the callbacks as the UI gave them (pick, point)
   last: null, // the you.at last passed on (the road a trip follows starts there)
+  free: null, // a WASD stop being resolved: the travel goes straight there (you already stand on it)
+  /** The street-level district (map units): the capsule from the Dynasty Strength Center to the League Arena, STREET_R round it. */
+  STREET_R: 200,
+  zone() {
+    const a = typeof SPOTS !== 'undefined' && SPOTS.weiPower && SPOTS.weiPower.at,
+      b = typeof VENUES !== 'undefined' && VENUES.arena && VENUES.arena.at;
+    return a && b ? { a: a.slice(), b: b.slice(), r: MapView.STREET_R } : null;
+  },
   /** The model with you.route = the road path from the last shown position to you.at when that changed (the renderer reads only the model). */
   routed(model) {
+    model = model.street ? model : { ...model, street: MapView.zone() };
     const at = model.you && model.you.at;
     if (!at) return model;
-    const from = MapView.last;
+    const from = MapView.last,
+      free = MapView.free;
     MapView.last = at.slice();
+    MapView.free = null;
     if (!from || (from[0] === at[0] && from[1] === at[1])) return model;
+    if (free && free[0] === at[0] && free[1] === at[1]) return { ...model, you: { ...model.you, route: [from, at] } }; // (WASD: you are there)
     return { ...model, you: { ...model.you, route: City.route(from, at) } };
+  },
+  /** How far down the camera is (0 = the map, 1 = street level). */
+  street: () => (MapView.m3 && MapView.m3.street ? MapView.m3.street() : 0),
+  /** You may walk at street level now: no lock, event, open figure menu, sheet or match (the hub's input rules). */
+  canWalk() {
+    if (typeof RUN === 'undefined' || !RUN || RUN.event || (typeof A !== 'undefined' && A)) return false;
+    if (typeof CW === 'undefined' || CW.lock || CW.fig || CW.sheet) return false;
+    return !document.querySelector('.hubmodal');
+  },
+  /**
+   * A travel from street level to map point p: a click (click = true; refused → the point card, which says why) or a WASD stop
+   * (refused or the same point → your avatar walks back to where the rules have you).
+   */
+  walk(p, click = false) {
+    const pos = typeof RUN !== 'undefined' && RUN ? City.pos(RUN) : null,
+      same = pos && Math.hypot(p[0] - pos[0], p[1] - pos[1]) < 3;
+    if (!pos || same || !MapView.canWalk()) return click ? !same && MapView.on0 && MapView.on0.point(p) : MapView.home();
+    if (!click) MapView.free = p.slice();
+    if (typeof mapTravel === 'function') mapTravel(p[0], p[1]);
+    const now = City.pos(RUN);
+    if (now[0] === pos[0] && now[1] === pos[1]) {
+      MapView.free = null;
+      if (click && MapView.on0) MapView.on0.point(p);
+      else MapView.home();
+    }
+  },
+  /** Your avatar walks back to where the rules have you (a WASD walk that didn't become a travel). */
+  home() {
+    if (MapView.m3 && MapView.m3.home) MapView.m3.home();
   },
   mount(el, model, on) {
     model = MapView.routed(model);
-    on = { ...on, hover: MapView.hover, person: MapView.person };
+    MapView.on0 = on;
+    on = {
+      ...on,
+      hover: MapView.hover,
+      person: MapView.person,
+      point: p => (MapView.street() > 0.5 ? MapView.walk(p, true) : MapView.on0.point(p)),
+      walk: p => MapView.walk(p),
+      canWalk: MapView.canWalk
+    };
     MapView.el = el;
     MapView.model = model;
     MapView.on = on;
@@ -130,7 +184,7 @@ const MapView = {
     if (MapView.m3) MapView.m3.dispose();
     MapView.m3 = null;
     MapView.failed = null; // a later mount tries again (a load error may have been transient)
-    MapView.el = MapView.model = MapView.on = null; // don't hold the detached screen
+    MapView.el = MapView.model = MapView.on = MapView.on0 = null; // don't hold the detached screen
   },
   update(model) {
     model = MapView.routed(model);

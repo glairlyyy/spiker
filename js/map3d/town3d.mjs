@@ -1,7 +1,11 @@
 // The town layer of the 3D island: road ribbons (the boardwalk planked, the overpass raised on pillars), settlement lots (instanced),
 // landmarks and the Gloria wall, drawn from the model's land (roads, lots, landmarks, districts) and fog only. Procedural shapes
 // come from kit3d.mjs. Display only: no rules, no randoms.
-//   createTown(scene, heightAt) → { sync(model), dispose() }
+//   createTown(scene, heightAt) → { sync(model), ring(cx, cz, k, on), ringInfo(), count(), dispose() }
+// The detail ring (street level, spec §4.37 6, T-336a): ring(camera x, z, street weight k, inside the district) builds the lots within
+// RING.r of the camera with every face (the camera orbits there) and their ground-floor panes as rooms behind glass (kit3d
+// interiorMat), plus kerbs, pavements, road markings and pavement props; the same lots are collapsed out of the map-look meshes
+// while it shows. Rebuilt when the camera has moved RING.step from where it was built; hidden (the map look back) when k ≈ 0.
 // The layout is rebuilt only when its JSON changes; the fog dimming is recoloured when the fog changes.
 // Wealth (a lot's `wealth`, 0–1) tints each instance and, with `h`, stretches its height. Draw calls: 1 (roads) + 1 (overpass) + 1 (landmarks + walls)
 // + the lots: the detailed look (spec §4.39, the default) 3 merged meshes — walls / props / street furniture, glass, pitched roofs
@@ -9,7 +13,24 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAP_M, smooth, fogFactor } from './geo3d.mjs';
-import { KIT, buildLandmark, accentOf, box, hip, FOOT, FOOTPRINT, unit, buildLot, mesher, detailMats, streetProp } from './kit3d.mjs';
+import {
+  KIT,
+  buildLandmark,
+  accentOf,
+  box,
+  hip,
+  FOOT,
+  FOOTPRINT,
+  unit,
+  buildLot,
+  mesher,
+  detailMats,
+  streetProp,
+  interiorMat,
+  RING_PROPS,
+  rgb,
+  lotFrame
+} from './kit3d.mjs';
 
 const ROAD = {
     main: { w: 3.2, color: '#6d6e73' },
@@ -42,6 +63,28 @@ const wealthTint = (c, w, u, rise) => {
   if (poor > 0) c.lerp(u < 0.4 ? GREY : u < 0.7 ? RUST : PATCH, 0.55 * poor);
   return c.multiplyScalar(0.8 + 0.35 * w);
 };
+
+/**
+ * The detail ring: r = its reach round the camera (m), step = how far the camera moves before a rebuild, show = the street weight
+ * it appears at; kerb height, pavement width, trim (pavements stop short of a junction), dash / gap / line (the main roads' centre
+ * line), zebra (crossings at main-road junctions: from, to m from the node), prop = pavement props every this many m.
+ */
+export const RING = {
+  r: 150,
+  step: 30,
+  show: 0.02,
+  kerb: 0.14,
+  pave: 1.6,
+  trim: 3.2,
+  dash: 1.6,
+  gap: 1.4,
+  line: 0.12,
+  zebra: [3.4, 6],
+  prop: 9
+};
+const PAVE = '#b9b5ac',
+  KERB = '#d6d2c8',
+  PAINT = '#eeeae0';
 
 /** Street furniture along the main roads (spec §4.39): a slot halfway between two lamps (kit3d STREET), its kind and side by hash. */
 const PROPS = { every: 22, off: { bench: 2.7, bin: 2.6, stop: 3.4 } };
@@ -259,8 +302,10 @@ export function createTown(scene, heightAt, opts = {}) {
       span = { W: [], G: [], R: [] },
       col = new THREE.Color(),
       open = () => keys.map(k => M[k].count()),
-      close = (x, z, s0) => {
+      ids = [], // the lot index behind each item (−1: a street prop)
+      close = (x, z, s0, li = -1) => {
         at.push([x, z]);
+        ids.push(li);
         keys.forEach((k, j) => span[k].push(s0[j], M[k].count()));
       };
     lots.forEach((l, i) => {
@@ -271,7 +316,7 @@ export function createTown(scene, heightAt, opts = {}) {
         s0 = open();
       col.set(k.colors[Math.floor(unit(i * 3 + 2) * k.colors.length)]).multiplyScalar(0.92 + 0.16 * unit(i * 3));
       wealthTint(col, l.wealth, unit(i * 3 + 5), k.rise);
-      if (buildLot(M, l, i, heightAt(x, z), [col.r, col.g, col.b])) close(x, z, s0);
+      if (buildLot(M, l, i, heightAt(x, z), [col.r, col.g, col.b])) close(x, z, s0, i);
     });
     // benches, bins and bus stops on the main roads, clear of the lots (a coarse bucket grid of their footprints)
     const cell = 12,
@@ -336,7 +381,188 @@ export function createTown(scene, heightAt, opts = {}) {
         span: span[k]
       });
     }
-    return { parts, at };
+    return { parts, at, ids };
+  };
+  /** A lot's wall colour (the kit palette × a hash, the wealth tint) — the same for the map look and the ring. */
+  const lotColour = (l, i, k, col) => {
+    col.set(k.colors[Math.floor(unit(i * 3 + 2) * k.colors.length)]).multiplyScalar(0.92 + 0.16 * unit(i * 3));
+    return wealthTint(col, l.wealth, unit(i * 3 + 5), k.rise);
+  };
+
+  // ---- the detail ring (T-336a) ----
+  const ringG = new THREE.Group();
+  ringG.visible = false;
+  scene.add(ringG);
+  let ringAt = null, // [x, z] the ring was built round
+    ringLots = new Set(), // lot indices collapsed out of the map look now
+    ringWant = new Set(), // … the ones the built ring draws
+    ringN = { lots: 0, tris: 0, builds: 0, ms: 0 },
+    lastModel = null;
+  const ringClear = () => {
+    for (const o of [...ringG.children]) {
+      ringG.remove(o);
+      o.geometry.dispose();
+    }
+  };
+  /** Collapse (hide) / restore the map look's items for the lots in `want` (the detailed look's merged meshes; Fast: instance scale). */
+  const baseHide = want => {
+    if (det)
+      for (const p of det.parts) {
+        if (!p) continue;
+        const a = p.mesh.geometry.attributes.position,
+          arr = a.array;
+        if (!p.orig) p.orig = arr.slice();
+        let dirty = false;
+        det.ids.forEach((li, j) => {
+          if (li < 0) return;
+          const h = want.has(li),
+            was = ringLots.has(li);
+          if (h === was) return;
+          const v0 = p.span[j * 2] * 3,
+            v1 = p.span[j * 2 + 1] * 3;
+          if (v1 <= v0) return;
+          if (h) for (let v = v0; v < v1; v++) arr[v] = p.orig[v0 + (v % 3)];
+          else arr.set(p.orig.subarray(v0, v1), v0);
+          dirty = true;
+        });
+        if (dirty) a.needsUpdate = true;
+      }
+    ringLots = want;
+  };
+  /** Kerbs, pavements, the main roads' centre dashes and zebra crossings, and pavement props, within the ring (into mesher W). */
+  const ringGround = (W, roads, cx, cz, frames) => {
+    const inLot = (x, z) =>
+      frames.some(f => {
+        const dx = x - f.x,
+          dz = z - f.z,
+          lx = dx * f.cs - dz * f.sn,
+          lz = dx * f.sn + dz * f.cs;
+        return Math.abs(lx) < f.w / 2 + 0.4 && Math.abs(lz) < f.d / 2 + 0.4;
+      });
+    const deg = new Map(),
+      kk = p => `${Math.round(p[0])},${Math.round(p[1])}`;
+    for (const r of roads)
+      if (ROAD[r.kind] && r.kind !== 'boardwalk')
+        for (const p of [r.pts[0], r.pts[r.pts.length - 1]]) deg.set(kk(p), (deg.get(kk(p)) || 0) + 1);
+    const pave = rgb(PAVE),
+      kerb = rgb(KERB),
+      paint = rgb(PAINT),
+      flat = [0, 0, 0, 0, 0, 0, 0, 0],
+      none = { wmask: [0, 0, 0] },
+      R2 = (RING.r + 20) ** 2;
+    roads.forEach((r, ri) => {
+      if (r.kind !== 'main' && r.kind !== 'street') return;
+      const spec = ROAD[r.kind],
+        [a, b] = [r.pts[0], r.pts[r.pts.length - 1]].map(toM),
+        L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (L < 1) return;
+      const ux = (b[0] - a[0]) / L,
+        uz = (b[1] - a[1]) / L,
+        // nearest point of the segment to the camera: skip roads out of the ring
+        t = Math.max(0, Math.min(L, (cx - a[0]) * ux + (cz - a[1]) * uz));
+      if ((a[0] + ux * t - cx) ** 2 + (a[1] + uz * t - cz) ** 2 > R2) return;
+      const hw = spec.w / 2,
+        s0 = deg.get(kk(r.pts[0])) > 1 ? RING.trim : 0,
+        s1 = L - (deg.get(kk(r.pts[r.pts.length - 1])) > 1 ? RING.trim : 0),
+        at = (s, o, up) => {
+          const x = a[0] + ux * s - uz * o,
+            z = a[1] + uz * s + ux * o;
+          return [x, heightAt(x, z) + LIFT + up, z];
+        },
+        n = Math.max(1, Math.ceil((s1 - s0) / STEP));
+      for (const side of [1, -1])
+        for (let j = 0; j < n && s1 > s0; j++) {
+          const p = s0 + ((s1 - s0) * j) / n,
+            q = s0 + ((s1 - s0) * (j + 1)) / n,
+            i0 = side * hw,
+            i1 = side * (hw + RING.pave),
+            K = RING.kerb,
+            // quads wound counter-clockwise from above / from the road side
+            ord = (A, B, C, D) => (side > 0 ? [A, B, C, D] : [B, A, D, C]);
+          W.quad(...ord(at(p, i1, K), at(q, i1, K), at(q, i0, K), at(p, i0, K)), pave, flat, none); // the pavement
+          W.quad(...ord(at(p, i0, K), at(q, i0, K), at(q, i0, 0), at(p, i0, 0)), kerb, flat, none); // the kerb face
+        }
+      if (r.kind === 'main') {
+        const hl = RING.line / 2;
+        for (let s = s0 + 0.5; s + RING.dash < s1; s += RING.dash + RING.gap)
+          W.quad(at(s, hl, 0.02), at(s + RING.dash, hl, 0.02), at(s + RING.dash, -hl, 0.02), at(s, -hl, 0.02), paint, flat, none);
+        for (const [end, dir] of [
+          [0, 1],
+          [L, -1]
+        ]) {
+          if (!(deg.get(kk(end ? r.pts[r.pts.length - 1] : r.pts[0])) > 2)) continue;
+          for (let o = -hw + 0.25; o + 0.4 <= hw - 0.15; o += 0.75) {
+            const z0 = end + dir * RING.zebra[0],
+              z1 = end + dir * RING.zebra[1],
+              [sA, sB] = dir > 0 ? [z0, z1] : [z1, z0];
+            W.quad(at(sA, o + 0.4, 0.025), at(sB, o + 0.4, 0.025), at(sB, o, 0.025), at(sA, o, 0.025), paint, flat, none);
+          }
+        }
+      }
+      // pavement props: by hash, on the pavement's outer half, clear of the ends
+      for (let s = s0 + RING.prop / 2, j = 0; s < s1 - 1; s += RING.prop, j++) {
+        const h = unit(ri * 389 + j * 17 + 5);
+        if (h > 0.55) continue;
+        const side = unit(ri * 389 + j * 17 + 6) < 0.5 ? 1 : -1,
+          kind = RING_PROPS[Math.floor(h * 5.45) % RING_PROPS.length],
+          o = side * (hw + RING.pave * 0.72),
+          [x, y, z] = at(s, o, RING.kerb);
+        if ((x - cx) ** 2 + (z - cz) ** 2 > R2 || inLot(x, z)) continue;
+        streetProp(W, kind, x, y, z, uz * side, -ux * side);
+      }
+    });
+  };
+  /** Build the ring round world (cx, cz): its lots in full (every face, rooms behind the ground-floor glass), the ground detail. */
+  const ringBuild = (m, cx, cz) => {
+    const t0 = typeof performance !== 'undefined' ? performance.now() : 0,
+      L = m.land,
+      fast = !!fastOf(),
+      R2 = RING.r * RING.r,
+      want = new Set(),
+      M = { W: mesher({ wmask: 3 }), G: mesher({ glow: 3 }), R: mesher(), I: mesher({ room: 4, tan: 3 }) },
+      col = new THREE.Color(),
+      frames = [];
+    (L.lots || []).forEach((l, i) => {
+      const k = KIT[l.kind];
+      if (!k) return;
+      const x = l.at[0] * MAP_M,
+        z = l.at[1] * MAP_M;
+      if ((x - cx) ** 2 + (z - cz) ** 2 > (RING.r + 20) ** 2) return;
+      const f = lotFrame(l, i);
+      if (f) frames.push(f);
+      if (fast || (x - cx) ** 2 + (z - cz) ** 2 > R2) return;
+      lotColour(l, i, k, col);
+      if (buildLot(M, l, i, heightAt(x, z), [col.r, col.g, col.b], true)) want.add(i);
+    });
+    ringGround(M.W, L.roads || [], cx, cz, frames);
+    ringClear();
+    const mats = detailMats();
+    let tris = 0;
+    for (const [k, mat] of [
+      ['W', mats.wall],
+      ['G', mats.glass],
+      ['R', mats.roof],
+      ['I', interiorMat()]
+    ]) {
+      const g = M[k].geometry();
+      if (!g) continue;
+      const mesh = new THREE.Mesh(g, mat);
+      mesh.castShadow = k === 'W' || k === 'R';
+      mesh.receiveShadow = true;
+      mesh.userData.ring = k;
+      g.computeBoundingSphere();
+      tris += g.attributes.position.count / 3;
+      ringG.add(mesh);
+    }
+    baseHide(want);
+    ringWant = want;
+    ringAt = [cx, cz];
+    ringN = {
+      lots: want.size,
+      tris,
+      builds: ringN.builds + 1,
+      ms: +((typeof performance !== 'undefined' ? performance.now() : 0) - t0).toFixed(1)
+    };
   };
 
   /** A wall ring round each walled district (compound style) with a gatehouse where a road crosses it. */
@@ -474,6 +700,7 @@ export function createTown(scene, heightAt, opts = {}) {
   return {
     /** Bring the layer up to date with a model (reads model.land roads / lots / landmarks / districts and model.fog only). */
     sync(model) {
+      lastModel = model;
       const L = model.land,
         fast = !!fastOf(),
         key = JSON.stringify([L.roads, L.lots, L.landmarks, L.districts, fast]);
@@ -481,6 +708,9 @@ export function createTown(scene, heightAt, opts = {}) {
       if (key !== layoutKey) {
         layoutKey = key;
         clear();
+        ringLots = new Set(); // (the new map-look meshes show every lot)
+        ringWant = new Set();
+        ringAt = null;
         const tint = new Map(L.regions.map(r => [r.id, r.color])),
           roads = buildRoads(L.roads),
           over = buildOverpass(L.roads),
@@ -499,6 +729,19 @@ export function createTown(scene, heightAt, opts = {}) {
         recolour();
       }
     },
+    /**
+     * The detail ring round the camera at world (cx, cz): k = the street weight, on = your avatar inside the district. Shown while
+     * k ≥ RING.show and on; rebuilt when the camera has moved RING.step from where it was built (or the layout changed).
+     */
+    ring(cx, cz, k, on) {
+      const show = !!lastModel && on && k >= RING.show;
+      if (show && (!ringAt || Math.hypot(cx - ringAt[0], cz - ringAt[1]) > RING.step)) ringBuild(lastModel, cx, cz);
+      if (!show && ringG.visible) baseHide(new Set());
+      if (show && !ringG.visible && ringAt) baseHide(ringWant);
+      ringG.visible = show;
+    },
+    /** QA: the ring's counts { on, lots, tris, builds, ms (the last build) }. */
+    ringInfo: () => ({ on: ringG.visible, ...ringN }),
     /** The detailed look's counts (QA): buildings and props drawn, triangles per part; null in the Fast setting. */
     count: () =>
       det && {
@@ -507,6 +750,8 @@ export function createTown(scene, heightAt, opts = {}) {
       },
     dispose() {
       clear();
+      ringClear();
+      scene.remove(ringG);
       scene.remove(group);
     }
   };
