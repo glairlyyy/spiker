@@ -31,7 +31,9 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
     root = pl.root,
     sp = mot.speed || 0,
     air = pose.lying || d.pose === 'dive' || (d.jy || 0) > 1,
-    want = C.on && !air && !A.animLab?.replay ? (pose.gaitW || 0) * clamp((sp - C.from) / 0.8, 0, 1) * (sp > 3 ? 1 : 0.4 + 0.6 * gw) : 0; // (fast, it steps any way the body goes)
+    // (2026-10-23: the shuffle and the backpedal are planted too — at 40 % their feet skated ~25 cm a second; the feet never
+    // cross and the hips sit low for them, below)
+    want = C.on && !air && !A.animLab?.replay ? (pose.gaitW || 0) * clamp((sp - C.from) / 0.8, 0, 1) : 0;
   // a jump's plant and take-off (spike / jump serve approach timed off the jump) and the air: the run's planted feet let go at
   // once — still weighted, they pinned one foot to its stride while the body rose (a scissor jump — owner, 2026-10-12)
   const takeoff =
@@ -48,7 +50,10 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
   }
   const st = pl.gait || (pl.gait = [{}, {}]),
     contact = pl.footRest * pl.scale,
-    step = Math.max(0.3, mot.step || 0.7),
+    gws = (mot.gw && mot.gw.side) || 0,
+    gwb = (mot.gw && mot.gw.back) || 0,
+    // (a shuffle steps quicker for the same distance — actors3d motion advances its phase × (1 + 0.6 side))
+    step = Math.max(0.3, mot.step || 0.7) / (1 + 0.6 * gws),
     upL = pl.bone('leftUpperLeg'),
     loL = pl.bone('leftLowerLeg');
   const leg =
@@ -182,10 +187,31 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
       allow = (stance ? t.y : contact) + Math.sqrt(Math.max(0, (0.97 * leg) ** 2 - hd * hd));
     return { s, t, hy, allow };
   });
+  // 1b. the feet never cross (2026-10-23; coaching: a shuffle steps out with the lead foot and closes with the trailing one,
+  // never over it — planned like a run, the trailing foot swung past the planted lead): a swinging foot lands, and travels,
+  // no nearer the other foot's side than `sep` along the hips' left (wider shuffling)
+  const sep = 0.1 + 0.14 * gws,
+    lx = Math.cos(yaw),
+    lz = -Math.sin(yaw),
+    gap = (T[0].t.x - T[1].t.x) * lx + (T[0].t.z - T[1].t.z) * lz;
+  if (gap < sep) {
+    const sw = [!st[0].stance, !st[1].stance],
+      n = (sw[0] ? 1 : 0) + (sw[1] ? 1 : 0);
+    if (n)
+      for (let i = 0; i < 2; i++)
+        if (sw[i]) {
+          const k = ((sep - gap) / n) * (i ? -1 : 1);
+          T[i].t.x += lx * k;
+          T[i].t.z += lz * k;
+          st[i].lastT.copy(T[i].t); // (it lands there)
+        }
+  }
   // 2. the hips' height is the gait's, not the pose's (owner, 2026-10-10: the walk / run keys' bent knees sat the body down
   // into a wide crouch): nearly straight legs, down only as far as a foot that is (or is about to be) down needs, eased so
   // it bobs, never jumps; the run's flight (pose.lift) on top
-  const stand = contact + 0.95 * leg,
+  // (shuffling and backpedalling the body stays low, knees bent — the athletic stance; 2026-10-23: it rose to nearly
+  // straight legs between the ready stances)
+  const stand = contact + (0.95 - 0.13 * gws - 0.07 * gwb) * leg,
     want2 = Math.max(stand - 0.12, Math.min(stand, T[0].allow, T[1].allow)),
     hyNow = (T[0].hy + T[1].hy) / 2;
   pl.gHip = pl.gHip == null ? want2 : pl.gHip + (want2 - pl.gHip) * (1 - Math.exp(-Math.min(dt, 0.05) * 10));
