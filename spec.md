@@ -1512,6 +1512,15 @@ the AI coach fills every slot you leave with the same function. Built and measur
       still works from the map).
     - **People**: within ~40 m they are their VRM players (≤ 15; Fast: 6), walking their plans; the figure menu (§4.37 7) works on them.
     - **Fast**: the same camera, walking and interiors, with the simpler materials and fewer people.
+    **[built 2026-10-22, T-336a: the district = a capsule ~100 m round the line from the gym to the arena; below the map's closest
+    (25 m) the zoom eases on to ~6.7 m — pitch 55° → 15°, the target up to your head and onto you — only while you stand in it (leaving
+    it, the camera rises back); Q / E, a right-drag or any drag at street level orbit; a wall between you and the camera pulls it in.
+    A click on the ground = a map-point travel (refused → the point card); WASD walks you (camera-relative, not through buildings,
+    inside the district) and the stop resolves as one travel when the point changed (refused → you walk back). Your avatar and every
+    figure shrink to life size as the camera goes down; the people within 40 m of the camera are VRMs (≤ 15; Fast 6 over capsules).
+    The detail ring (150 m round the camera, rebuilt every 30 m): every lot with all four faces, ground-floor windows and shop fronts
+    as rooms seen through the glass (shelves, sofas; warm at night), pavements with kerbs, the main roads' centre dashes and zebra
+    crossings, bollards / planters / hydrants; Fast keeps its boxes with the ground detail. The sky shows and a haze closes in]**
 - §4.38 The Ref drone — play anywhere, every call seen **[draft — T-337–T-339]** (owner, 2026-10-21: "a high-tech drone that
   visualizes the court and its AI detects net touches or any foul — so with open space you can play volleyball anywhere"; "the
   Academy still uses the old real court"). Lore §4 (the drone).

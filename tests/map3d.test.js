@@ -364,3 +364,120 @@ test('map3d: street lamps — one row for the glows and the posts (kit3d lampSpo
     'each lamp knows its road and side (the post stands away from the road)'
   );
 });
+
+// ---------- T-336a: street level (spec §4.37 6) ----------
+test('map3d: street level — one continuous zoom path (pitch, distance, height monotonic), street mode only inside the district', () => {
+  const { streetPose, DIST, STREET, PITCH, zoneOf, inZone, zoneDist } = require('../js/map3d/mapcam3d.mjs');
+  let prev = null;
+  for (let d = 60; d >= STREET.d1 - 1e-9; d -= 0.25) {
+    const P = streetPose(d);
+    if (prev) {
+      assert(P.pitch <= prev.pitch + 1e-12, `pitch never rises as the zoom goes down (d ${d})`);
+      assert(P.up <= prev.up + 1e-12, `the camera's height never rises (d ${d})`);
+      assert(P.s >= prev.s - 1e-12, 'the street weight only grows');
+      assert(Math.abs(P.pitch - prev.pitch) < 0.02, `no jump in the pitch (d ${d})`);
+    }
+    prev = P;
+  }
+  eq(streetPose(DIST[0]).s, 0, 'at the map’s closest: still the map');
+  eq(streetPose(DIST[0]).pitch, PITCH, '… at its pitch');
+  eq(streetPose(40).pitch, PITCH, 'above it the map’s pitch');
+  eq(streetPose(STREET.d1).s, 1, 'at d1: street level');
+  assert(Math.abs(streetPose(STREET.d1).pitch - (15 * Math.PI) / 180) < 1e-9, '~15° above the horizon');
+  const P = streetPose(STREET.d1),
+    behind = P.dist * Math.cos(P.pitch),
+    above = P.up + STREET.head;
+  assert(behind > 5.5 && behind < 7 && above > 2.5 && above < 3.6, `~6 m behind, ~3 m above (${behind.toFixed(2)}, ${above.toFixed(2)})`);
+  // the district: the capsule from the Dynasty Strength Center to the League Arena (MapView.zone's shape)
+  const { load } = require('./harness'),
+    g = load(5),
+    Z = zoneOf({ a: g.SPOTS.weiPower.at, b: g.VENUES.arena.at, r: 200 }),
+    w = p => [p[0] * 0.5, p[1] * 0.5];
+  assert(inZone(Z, ...w(g.SPOTS.weiPower.at)) && inZone(Z, ...w(g.VENUES.arena.at)), 'the gym and the arena are inside');
+  const mid = w([(g.SPOTS.weiPower.at[0] + g.VENUES.arena.at[0]) / 2, (g.SPOTS.weiPower.at[1] + g.VENUES.arena.at[1]) / 2]);
+  assert(inZone(Z, ...mid), 'the streets between them too');
+  for (const id of ['harbor', 'home'].filter(k => g.SPOTS[k] && g.SPOTS[k].at))
+    assert(!inZone(Z, ...w(g.SPOTS[id].at)), `${id} is outside (the zoom stops at the map's closest there)`);
+  assert(!inZone(Z, ...w(g.CITY.hq[1])) || zoneDist(Z, ...w(g.CITY.hq[1])) <= 0, 'zoneDist agrees with inZone');
+  eq(inZone(null, 0, 0), false, 'no district → no street level');
+});
+test('map3d: the detail ring — every face and rooms behind the ground-floor glass near the camera, kerbs and markings; hidden → the map look back', () => {
+  const THREE = require('three'),
+    kit = require('../js/map3d/kit3d.mjs'),
+    { createTown, RING } = require('../js/map3d/town3d.mjs'),
+    m = townModel(),
+    flat = () => 1,
+    sc = new THREE.Scene(),
+    town = createTown(sc, flat, { fast: () => false });
+  town.sync(m);
+  const g0 = m.land.landmarks.find(l => l.id === 'weiPower').at,
+    cx = g0[0] * 0.5,
+    cz = g0[1] * 0.5;
+  // all faces: a lot's facade with `all` lists faces looking away too, the camera-facing ones unchanged
+  const i = m.land.lots.findIndex(
+    l =>
+      kit.facade(l, m.land.lots.indexOf(l)) &&
+      kit.facade(l, m.land.lots.indexOf(l)).faces.length < 4 &&
+      l.kind !== 'tank' &&
+      l.kind !== 'stack'
+  );
+  const A = kit.facade(m.land.lots[i], i),
+    B = kit.facade(m.land.lots[i], i, true);
+  assert(B.faces.length === 4 && B.faces.length > A.faces.length, 'all four faces in the ring');
+  eq(JSON.stringify(B.faces.filter(f => f.wz >= -0.25)), JSON.stringify(A.faces), 'the faces the map shows are the same');
+  const W = () =>
+    sc.children.find(o => o.isGroup && o.children.some(c => c.userData.town === 'W')).children.find(c => c.userData.town === 'W');
+  const before = W().geometry.attributes.position.array.slice();
+  town.ring(cx, cz, 1, true);
+  const R = town.ringInfo();
+  assert(R.on && R.lots > 40 && R.builds === 1, `ring lots ${R.lots}`);
+  const ring = [];
+  sc.traverse(o => o.isMesh && o.userData.ring && ring.push(o));
+  eq(
+    ring
+      .map(o => o.userData.ring)
+      .sort()
+      .join(','),
+    'G,I,R,W',
+    'walls, glass, roofs, rooms: one draw call each'
+  );
+  const I = ring.find(o => o.userData.ring === 'I'),
+    room = I.geometry.attributes.room;
+  assert(room.count > 200, `room panes (${room.count / 6})`);
+  for (let v = 0; v < room.count; v += 6) assert(room.getX(v) > 0.2 && room.getY(v) > 0.2, 'a room has a size');
+  const pos = I.geometry.attributes.position.array;
+  let far = 0;
+  for (let v = 0; v < pos.length; v += 3) {
+    if (Math.hypot(pos[v] - cx, pos[v + 2] - cz) > RING.r + 12) far++;
+    assert(pos[v + 1] - 1 < 3.2, 'rooms only on the ground floor');
+  }
+  eq(far, 0, 'rooms only inside the ring');
+  // the map look loses those lots while the ring shows (collapsed), and gets them back when it hides
+  const now = W().geometry.attributes.position.array;
+  let moved = 0;
+  for (let v = 0; v < now.length; v++) if (now[v] !== before[v]) moved++;
+  assert(moved > 1000, 'the ring’s lots are out of the map-look mesh');
+  town.ring(cx, cz, 1, true);
+  eq(town.ringInfo().builds, 1, 'no rebuild while the camera stays');
+  town.ring(cx + RING.step + 1, cz, 1, true);
+  eq(town.ringInfo().builds, 2, 'rebuilt after the camera moved a step');
+  town.ring(cx, cz, 0, true);
+  assert(!town.ringInfo().on, 'hidden at the map');
+  const back = W().geometry.attributes.position.array;
+  let diff = 0;
+  for (let v = 0; v < back.length; v++) if (back[v] !== before[v]) diff++;
+  eq(diff, 0, 'the map look is whole again');
+  town.ring(cx, cz, 1, false);
+  assert(!town.ringInfo().on, 'not outside the district');
+  town.dispose();
+  // Fast: the ring is the ground detail only (the boxes stay)
+  const sc2 = new THREE.Scene(),
+    fast = createTown(sc2, flat, { fast: () => true });
+  fast.sync(m);
+  fast.ring(cx, cz, 1, true);
+  const F = [];
+  sc2.traverse(o => o.isMesh && o.userData.ring && F.push(o.userData.ring));
+  eq(F.join(','), 'W', 'Fast: kerbs, pavements, markings, props');
+  eq(fast.ringInfo().lots, 0, 'Fast: no detailed lots');
+  fast.dispose();
+});

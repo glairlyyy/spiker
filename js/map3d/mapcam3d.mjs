@@ -29,6 +29,7 @@ export const STREET = {
   stop: 0.35,
   back: 3,
   near: [1, 0.2], // the camera's near plane (m): the map → street level
+  far: [3000, 900], // … its far plane (the haze closes in before it: the low pitch would draw the whole island)
   behind: 1.4 // a click walk at street level: the camera swings behind you over ~this (s)
 };
 /**
@@ -110,11 +111,27 @@ export function createMapCam(cam, canvas, sun, S) {
     const yw = yaw * s,
       ty = s > 0 ? s * (heightAt(x, z) + STREET.head) : 0,
       c = d * Math.cos(P.pitch);
-    cam.position.set(x + c * Math.sin(yw), ty + P.up, z + c * Math.cos(yw));
+    let k = 1;
+    if (s > 0.3) {
+      // a wall between you and the camera: the camera comes in front of it (march back from your head; the gym and the arena open by cutaway, T-336b)
+      const n = Math.ceil(d / 0.5);
+      for (let i = 2; i <= n; i++) {
+        const f = i / n,
+          px = x + c * Math.sin(yw) * f,
+          pz = z + c * Math.cos(yw) * f,
+          L = lotAt(px, pz, 0.3);
+        if (L && ty + P.up * f < heightAt(px, pz) + L.h + 0.3) {
+          k = Math.max(1.6 / d, (i - 1.5) / n);
+          break;
+        }
+      }
+    }
+    cam.position.set(x + c * k * Math.sin(yw), ty + P.up * k, z + c * k * Math.cos(yw));
     if (s > 0) cam.position.y = Math.max(cam.position.y, heightAt(cam.position.x, cam.position.z) + 0.6);
     cam.lookAt(x, ty, z);
-    const near = lerp(STREET.near[0], STREET.near[1], s);
-    if (Math.abs(cam.near - near) > 0.01) ((cam.near = near), cam.updateProjectionMatrix());
+    const near = lerp(STREET.near[0], STREET.near[1], s),
+      far = lerp(STREET.far[0], STREET.far[1], s);
+    if (Math.abs(cam.near - near) > 0.01 || Math.abs(cam.far - far) > 1) ((cam.near = near), (cam.far = far), cam.updateProjectionMatrix());
     sun.target.position.set(x, 0, z);
     sun.position.set(x + 70, 130, z + 45);
   };
@@ -194,7 +211,9 @@ export function createMapCam(cam, canvas, sun, S) {
     ray.setFromCamera(ndc, cam);
     const h = ray.intersectObject(S().mesh)[0],
       p = h ? h.point : ray.ray.intersectPlane(plane, hit);
-    if (p) S().on.point(toMap(p.x, p.z).map(Math.round));
+    if (!p) return;
+    const [qx, qz] = st > 0.5 ? outside(p.x, p.z) : [p.x, p.z]; // street level: a click on a building = the pavement in front of it
+    S().on.point(toMap(qx, qz).map(Math.round));
   };
   const onWheel = e => {
     e.preventDefault();
@@ -250,21 +269,37 @@ export function createMapCam(cam, canvas, sun, S) {
     });
     return lotGrid;
   };
-  /** World (x, z) is free to stand on: inside the district, on land, outside every lot (+ 0.35 m). */
-  const free = (x, z) => {
-    if (!inZone(zone, x, z) || heightAt(x, z) < 0.15) return false;
+  /** The district lot whose footprint (+ m) holds world (x, z), or null. */
+  function lotAt(x, z, m) {
     const G = lots(),
       list = G && G.get(`${Math.floor(x / 16)},${Math.floor(z / 16)}`);
-    if (!list) return true;
+    if (!list) return null;
     for (const f of list) {
       const dx = x - f.x,
         dz = z - f.z,
         lx = dx * f.cs - dz * f.sn,
         lz = dx * f.sn + dz * f.cs;
-      if (Math.abs(lx) < f.w / 2 + 0.35 && Math.abs(lz) < f.d / 2 + 0.35) return false;
+      if (Math.abs(lx) < f.w / 2 + m && Math.abs(lz) < f.d / 2 + m) return f;
     }
-    return true;
+    return null;
+  }
+  /** World (x, z) moved out of any district lot it falls in: to the nearest side, 0.8 m clear. */
+  const outside = (x, z) => {
+    const f = lotAt(x, z, 0.35);
+    if (!f) return [x, z];
+    const dx = x - f.x,
+      dz = z - f.z;
+    let lx = dx * f.cs - dz * f.sn,
+      lz = dx * f.sn + dz * f.cs;
+    const ex = f.w / 2 + 0.8 - Math.abs(lx),
+      ez = f.d / 2 + 0.8 - Math.abs(lz);
+    if (ex < ez) lx = Math.sign(lx || 1) * (f.w / 2 + 0.8);
+    else lz = Math.sign(lz || 1) * (f.d / 2 + 0.8);
+    // back to world (the inverse of the turn above)
+    return [f.x + lx * f.cs + lz * f.sn, f.z - lx * f.sn + lz * f.cs];
   };
+  /** World (x, z) is free to stand on: inside the district, on land, outside every lot (+ 0.35 m). */
+  const free = (x, z) => inZone(zone, x, z) && heightAt(x, z) >= 0.15 && !lotAt(x, z, 0.35);
   /** WASD: move your avatar (display) relative to the camera's heading; when the keys rest, the rules see where you stopped. */
   const roamStep = dt => {
     const A = S().avatar;

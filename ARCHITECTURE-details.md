@@ -769,6 +769,43 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   shallow turquoise to deep blue by depth and distance (the `shore` texture over the island box; open sea beyond), foam at the
   waterline and in bands rolling in.
 
+### Street level (spec §4.37 6, T-336a)
+
+- **District** — `MapView.zone()` adds `model.street = { a: SPOTS.weiPower.at, b: VENUES.arena.at, r: MapView.STREET_R (200) }`
+  (map units): a capsule round the Dynasty Strength Center and the League Arena. mapcam3d `zoneOf` / `zoneDist` / `inZone` (world m).
+- **Camera path** — mapcam3d `streetPose(d)` (pure, tested): above `DIST[0]` (25 m) today's view; below it s = smoothstep((25 − d) /
+  (25 − `STREET.d1` 6.7)), pitch 55° → `STREET.pitch` 15°, the target rising to your head (`STREET.head` 1.45 m) and pulled onto your
+  avatar (k by s), so at d1 the camera is ~6.5 m behind, ~3.2 m above the ground. Below 25 m only while your avatar is inside the
+  district and the view centre within `STREET.pad` of it (`allowed`); otherwise the zoom stops at 25 m, and leaving the district eases
+  the camera back up (`STREET.back`). `yaw` (× s, reset at s = 0): Q / E (`STREET.orbit` rad/s), a right-drag, or any drag at
+  s > 0.5 (`STREET.drag`); a click walk swings it behind you (`STREET.behind`). Near plane 1 → 0.2 m. `flyTo` / `walkFrom` keep the
+  camera down at street level. A contextmenu after a right-drag orbit is not a figure click (`C.dragged()`).
+- **Walking** — a click at s > 0.5: `MapView.walk(p, true)` → `mapTravel` (the point card's Walk; refused or the same point → the
+  point card, which says why). WASD (window keys, `e.code`, only at s > 0.5 and `on.canWalk()`: no lock / event / figure menu / sheet
+  / modal / match; keys another handler took are skipped): `avatar.drive` moves you camera-relative at `STREET.speed` × the walk
+  speed, sliding along lots (kit3d `lotFrame` rectangles + 0.35 m in a 16 m grid) and kept inside the district on land; `STREET.stop`
+  s after the keys rest `on.walk(point)` → `MapView.walk(p)`: a travel straight there (`MapView.free`: the route is [from, to], you
+  already stand on it) when it changed point (≥ 3 map units) and the rules allow it, else `m3.home()` walks you back.
+- **Scale** — `avatar.setLife(street)`: HEIGHT 6 m → `LIFE_H` 1.72 m (the stride with it; a trip's pace × `LIFE_PACE` at street
+  level); life3d `tick(…, street)` scales every figure toward `LIFE_S` 1.2 (≈ 1.74 m) and hands people3d `{ street, near:
+  STREET_LOD, cap }`: the VRM pick's reach shrinks 260 → `STREET_LOD.maxD` 40 m from the camera, cap 15 (Fast: 6 VRMs over its
+  capsules — Fast turns VRMs on above s 0.3).
+- **Detail ring** — town3d `ring(camX, camZ, street, inDistrict)` (map3d each frame): shown at s ≥ `RING.show` inside the district;
+  rebuilt when the camera moved `RING.step` 30 m from its centre. Lots within `RING.r` 150 m: kit3d `buildLot(…, all = true)`
+  (`facade(l, i, true)`: every face, the camera-facing ones identical) with the ground floor's windows and shop fronts drawn by
+  `interiorPane` into a 4th mesh on `interiorMat()` (interior mapping: a ray from the camera into a box behind the pane — back wall,
+  floor, ceiling, sides; shop shelves / a sofa and a picture by `room` seed; lit warm at night by `NIGHT_U` when the pane is lit);
+  those lots are collapsed out of the map-look meshes (`det.ids` → spans; restored when the ring hides). Ground: pavements (`RING.pave`
+  1.6 m, kerb 0.14 m) both sides of main / street roads, trimmed `RING.trim` at junctions; main roads' centre dashes and zebra
+  crossings at junctions of 3+; pavement props (bollard, planter, hydrant — kit3d `RING_PROPS`) by hash, clear of lots. Fast: the ground
+  detail only (the boxes stay). `ringInfo()` → { on, lots, tris, builds, ms }.
+- **Look** — at s > 0.15 (detailed look) the background is the baked sky (`look.envTex()`); a `THREE.Fog` haze in the clock's sky
+  colour closes in with s (near 160 m at street level; 1e6 on the map).
+- **Contract for the interiors (T-336b)** — map3d `api.street()` (0–1), `api.camPos()` / `api.youPos()` (world [x, y, z]);
+  `import('./interior3d.mjs')` once at build (a missing file only rejects): `createInteriors(scene, heightAt)` → `{ sync(model)`
+  (each update), `tick(dt, { cam, you, street, low })` (each frame), `at([sx, sy])` (a street-level click at canvas px: truthy = it
+  took it, no travel), `dispose() }`; `api.interiors()` returns it. Dev / QA: `setYaw(rad)`, `home()`, `info().street` / `.ring`.
+
 ## Possession paths and touch counts
 
 `rally(m, B, V, atk, pas, qual, scr)` runs one possession per loop; `next: [atk, pas, qual, scr]` hands it on (`scr` only for a

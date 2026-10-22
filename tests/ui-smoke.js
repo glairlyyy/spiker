@@ -255,6 +255,43 @@ const step = async (name, fn) => {
     await pg.waitForFunction(() => !CW.lock, null, { timeout: 30000 });
     return g.log[0].slice(0, 70);
   });
+  await step('street level (T-336a): zoom down at the gym, walk with a click, zoom back out', async () => {
+    const at = await ev(() => {
+      RUN.days = 7;
+      RUN.dayLog = [];
+      CW.spot = null;
+      City.moveTo(RUN, [SPOTS.weiPower.at[0], SPOTS.weiPower.at[1] - 18]); // the street in front of the Dynasty Strength Center
+      renderCareer();
+      return City.pos(RUN).slice();
+    });
+    await pg.waitForFunction(() => !MapView.busy() && !CW.lock, null, { timeout: 60000 });
+    await ev(() => {
+      const y = MapView.m3.youPos();
+      MapView.m3.setView({ x: y[0], z: y[2], d: 6.7 });
+    });
+    await pg.waitForFunction(() => MapView.m3.street() > 0.95 && MapView.m3.info().ring && MapView.m3.info().ring.on, null, {
+      timeout: 60000
+    });
+    const st = await ev(() => ({ ms: MapView.m3.bench(3), ring: MapView.m3.info().ring, vrm: MapView.m3.info().life.vrm }));
+    // a click on the ground ahead: a map-point travel (the same rules as the point card's Walk)
+    const c = await ev(() => {
+      const r = document.querySelector('#mapwrap canvas').getBoundingClientRect();
+      return [r.left + r.width * 0.5, r.top + r.height * 0.4];
+    });
+    await pg.mouse.move(c[0], c[1]);
+    await pg.waitForTimeout(3000); // (the hover pick runs every few frames: nobody under the pointer before the click)
+    await pg.mouse.click(c[0], c[1]);
+    await pg
+      .waitForFunction(p => City.pos(RUN)[0] !== p[0] || City.pos(RUN)[1] !== p[1], at, { timeout: 30000 })
+      .catch(() => {
+        throw new Error(`the click did not travel (street ${MapView.m3 && MapView.m3.street()})`);
+      });
+    await pg.waitForFunction(() => !MapView.busy() && !CW.lock, null, { timeout: 90000 });
+    const days = await ev(() => 7 - City.days(RUN));
+    await ev(() => MapView.m3.setView({ d: 60 }));
+    await pg.waitForFunction(() => MapView.m3.street() === 0 && !MapView.m3.info().ring.on, null, { timeout: 30000 });
+    return `${st.ms} ms a frame at street level (ring ${st.ring.lots} lots, ${Math.round(st.ring.tris / 1000)}k tris, built in ${st.ring.ms} ms; ${st.vrm} VRMs); the walk took ${days} day(s)`;
+  });
   // the living island, Agent E (spec §4.37 3–5): a stop on the road, the short cut, the island's sound
   await step('the road (T-333): a stop on the way — the card over the map, Space walks on', async () => {
     await pg.waitForFunction(() => typeof ROAD !== 'undefined' && ROAD.mod && MapView.m3, null, { timeout: 60000 });
