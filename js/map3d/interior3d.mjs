@@ -12,9 +12,8 @@
 // insides show, restored when they hide. The roof and the walls facing the camera fade (cutAlpha) as you or the camera come within
 // CUT.near m of the footprint. The arena is an open bowl: no shell, no cut.
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAP_M, smooth } from './geo3d.mjs';
-import { box, part, accentOf, landmarkYaw } from './kit3d.mjs';
+import { box, part, accentOf, landmarkYaw, mergeParts } from './kit3d.mjs';
 
 /** show: the street level the insides appear at; near: the fade's reach (m from the footprint); min: the faded walls' opacity. */
 export const CUT = { show: 0.6, near: 8, min: 0.08, pick: 28 };
@@ -171,11 +170,7 @@ function gymShell(I, accent) {
     band = (bw, bd, x, z) => box(bw, 1, bd, x, 2.6, z, accent),
     door = 2.2,
     side = (w - door) / 2,
-    merge = parts => {
-      const g = mergeGeometries(parts);
-      for (const p of parts) p.dispose();
-      return g;
-    };
+    merge = mergeParts;
   return [
     merge([box(w, h, T, 0, 0, -d / 2 + T / 2, WALL), band(w + 0.2, T + 0.2, 0, -d / 2 + T / 2)]),
     merge([
@@ -287,8 +282,7 @@ export function createInteriors(scene, heightAt, opts = {}) {
     root.position.set(F.x, F.floor, F.z);
     root.rotation.y = F.yaw;
     const parts = F.I.kind === 'gym' ? gymProps(F.I, accent) : arenaProps(),
-      g = mergeGeometries(parts);
-    for (const p of parts) p.dispose();
+      g = mergeParts(parts);
     const props = new THREE.Mesh(g, propMat);
     props.castShadow = props.receiveShadow = true;
     root.add(props);

@@ -18,6 +18,12 @@ import { MAP_M, clamp } from './geo3d.mjs';
 /** Region accents (the REGIONS colours): the palettes below lean on them. */
 const ACC = { wei: '#d08a2e', wu: '#5b8def', shu: '#2fb8a0', outlaws: '#ff8c42', gloria: '#ff5da2', open: '#f5e6a8' };
 
+/** Merge geometries into one and free the parts. */
+export const mergeParts = parts => {
+  const g = mergeGeometries(parts);
+  for (const p of parts) p.dispose();
+  return g;
+};
 /** A flat-shaded part: non-indexed geometry with one colour in its vertices (merging needs the same attributes everywhere). */
 export const part = (geo, color) => {
   const g = geo.index ? geo.toNonIndexed() : geo,

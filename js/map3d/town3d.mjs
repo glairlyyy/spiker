@@ -30,7 +30,8 @@ import {
   RING_PROPS,
   rgb,
   lotFrame,
-  landmarkYaw
+  landmarkYaw,
+  mergeParts
 } from './kit3d.mjs';
 
 const ROAD = {
@@ -663,8 +664,7 @@ export function createTown(scene, heightAt, opts = {}) {
     }
     geos.push(...wallParts(districts || [], edges));
     if (!geos.length) return null;
-    const g = mergeGeometries(geos);
-    for (const o of geos) o.dispose();
+    const g = mergeParts(geos);
     const m = new THREE.Mesh(g, stdMat({ roughness: 0.9, flatShading: true }));
     m.castShadow = m.receiveShadow = true;
     return { mesh: m, base: g.attributes.color.array.slice() };
