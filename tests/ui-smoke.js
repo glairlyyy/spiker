@@ -319,19 +319,20 @@ const step = async (name, fn) => {
     return alt ? `short cut at ${alt}` : 'no short cut offered';
   });
   await step('street level inside the gym (T-336b): the station prompt shows, its key F runs the day', async () => {
-    await pg.waitForFunction(() => MapView.m3 && MapView.m3.interiors && MapView.m3.interiors(), null, { timeout: 60000 });
+    await pg.waitForFunction(() => MapView.m3 && MapView.m3.interiors && MapView.m3.interiors(), null, { timeout: 300000 });
     await ev(() => {
       RUN.days = 7;
       RUN.event = null;
       City.reveal(RUN, SPOTS.weiPower.at);
+      Encounter.setPref('never'); // (no road stop on the way in)
       if (typeof briefKey === 'function') CW.briefWeek = briefKey(RUN); // (the week's brief closed: the prompt stays off over it)
       RUN.pos = SPOTS.weiPower.at.slice(); // (display: you stand in the gym; the day's rules run from the prompt below)
       MapView.setWalk(4);
       renderCareer();
     });
-    await pg.waitForFunction(() => !MapView.m3.busy(), null, { timeout: 90000 });
+    await pg.waitForFunction(() => !MapView.m3.busy(), null, { timeout: 300000 });
     await ev(() => MapView.m3.setView({ x: SPOTS.weiPower.at[0] * 0.5, z: SPOTS.weiPower.at[1] * 0.5, d: 25 })); // down to street level
-    await pg.waitForFunction(() => MapView.m3.interiors().shown && document.querySelector('#stprompt .fmb'), null, { timeout: 60000 });
+    await pg.waitForFunction(() => MapView.m3.interiors().shown && document.querySelector('#stprompt .fmb'), null, { timeout: 300000 });
     const p = await ev(() => ({
       txt: document.querySelector('#stprompt').textContent,
       kbd: !!document.querySelector('#stprompt kbd'),
@@ -341,7 +342,7 @@ const step = async (name, fn) => {
     if (!/Heavy sets/.test(p.txt) || !p.kbd) throw new Error(`prompt: ${p.txt.slice(0, 120)}`);
     await pg.keyboard.press('f');
     await pg.waitForFunction(d => RUN.days < d, p.days, { timeout: 20000 });
-    await pg.waitForFunction(() => !CW.lock, null, { timeout: 90000 });
+    await pg.waitForFunction(() => !CW.lock, null, { timeout: 300000 });
     const t = await ev(() => MapView.m3.bench(3));
     await ev(() => (MapView.setWalk(1), MapView.m3.setView({ d: 60 })));
     return `${p.i.cut} clipped, roof ${p.i.alpha}, ${p.days} → ${await ev(() => RUN.days)} days, ${t} ms a frame`;

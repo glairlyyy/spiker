@@ -154,7 +154,7 @@ street level at the gym, walk with a click, zoom back, no page errors; frame tim
 QA: career run → zoom from the island to street level at the gym, walk to the arena, zoom out (screenshots each).
 Result:
 
-### [ ] T-336b: Street level — interiors and the order at the kit
+### [x] T-336b: Street level — interiors and the order at the kit
 Agent: I (owns js/map3d/interior3d.mjs (new), js/render3d/venues/ (read-only reuse of the arena set unless a small export is needed),
 js/ui/career-map.js (the in-world prompt → the same action as the place card), js/data/city.js (INTERIOR: station layouts), tests/interior.test.js
 (new), css/hub.css (the prompt); ui-smoke: its own step)
@@ -167,7 +167,7 @@ Do not: duplicate the place card's rules (call the same functions); draw R(); bu
 Accept: tests — stations per place, the prompt's order = the place card's, cutaway opacity by distance; ui-smoke — inside the gym the prompt
 shows and its hotkey runs the day; no page errors.
 QA: career run → the gym's inside with people, the prompt, a day done from it; the arena's inside.
-Result:
+Result: js/map3d/interior3d.mjs `createInteriors` (+ `people(model)`, `info()`, `stations()`; tick → { near, shown, flip }); INTERIOR / INTERIOR_NEAR in data/city.js (gym: bench + rack → Heavy sets, mats → Mobility, mirror → Stretch, desk → card; arena court → card); prompt `#stprompt` = the card's own ordBtn + F in career-map.js (mapStation / stationAct, mount callback `station`), css/hub.css `.stprompt`; marked T-336b hook in map3d.mjs (guarded import, lifeM, interStep, station click, api.interiors — S's version wins: carry it over). Deviations: the cutaway clips town3d's landmark mesh with six clipping planes on its material (no edit to town3d; a `town.cut(box)` export would be cleaner) and draws the gym's own fading shell; the arena is a simplified build (the match set needs the match world's textures) and an open bowl (no cut); people for the gym are life3d's own figures moved to the slots while shown (no duplicates; scale stays life3d's 2.9× — S's street level should shrink it); street = (45 − view.d)/15 until S's api.street(). 5 tests (interior.test.js), full 246/246, goldens unchanged; ui-smoke step passes alone (6 clipped, roof 0.08, 7 → 6 days) — the full smoke timed out in 7 unrelated steps on the shared machine (load ~10, frames 10–33 s at street or island zoom alike); QA t336b-gym / prompt / day / after / zoomed-out / arena.
 
 **The Ref drone (owner, 2026-10-21, spec §4.38): Agent D** — T-337 → T-338 now (engine + match render; no overlap with L / E);
 T-339 after T-333 merges. D owns js/engine/rally-phases.js, js/engine/rally-block.js, js/engine/serve.js, js/engine/formulas.js,
