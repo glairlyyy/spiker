@@ -1315,7 +1315,8 @@ export function create(onIdle) {
     held = null, // QA: a time of day the clock holds (holdClock)
     interiors = null, // the optional interiors layer (interior3d.mjs, T-336b)
     st = 0; // the camera's street weight this frame (C.street())
-  const bgCol = scene.background, // the clock's sky colour (skyAt writes it); street level shows the baked sky instead
+  const bgCol = scene.background,
+    skyCol = new THREE.Color(), // the clock's sky colour (skyAt writes it); street level shows the baked sky instead
     haze = (scene.fog = new THREE.Fog(0xffffff, 1e6, 2e6)); // street level: distance haze (off on the map: 1e6 m)
 
   // camera and input (mapcam3d.mjs): it reads the parts below as they appear
@@ -1459,9 +1460,10 @@ export function create(onIdle) {
       inD = C.inDistrict(ax, az);
     town.ring(cam.position.x, cam.position.z, st, inD);
     war.show(st < 0.5);
-    const sky = st > 0.15 && look.on && look.envTex();
-    if (sky) scene.background = sky;
-    haze.color.copy(bgCol);
+    // the sky: the baked one (detailed look), else the clock's sky colour (Fast) — never the map's backdrop
+    skyCol.copy(hemi.color).lerp(bgCol, 0.25);
+    if (st > 0.15) scene.background = (look.on && look.envTex()) || skyCol;
+    haze.color.copy(skyCol);
     haze.near = st > 0 ? 160 + (1 - st) * 4000 : 1e6;
     haze.far = st > 0 ? haze.near + 900 + (1 - st) * 6000 : 2e6;
     if (interiors && interiors.tick)
@@ -1488,7 +1490,7 @@ export function create(onIdle) {
       st = C.street();
       avatar.setLife(st);
       avatar.tick(dt * walkK, terrain.heightAt); // your walk at the chosen speed (setWalk; the others keep theirs)
-      for (const f of figs.values()) f.tick(dt, terrain.heightAt);
+      for (const f of figs.values()) (f.setLife(st), f.tick(dt, terrain.heightAt)); // (the guide, the rival, the aces: life size too)
       clock += dt;
       clockStep(dt);
       scene.background = bgCol; // (skyAt mixes into the colour)
