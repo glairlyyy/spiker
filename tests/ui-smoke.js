@@ -376,11 +376,14 @@ const step = async (name, fn) => {
       Encounter.setPref('never'); // (no road stop on the way in)
       if (typeof briefKey === 'function') CW.briefWeek = briefKey(RUN); // (the week's brief closed: the prompt stays off over it)
       RUN.pos = SPOTS.weiPower.at.slice(); // (display: you stand in the gym; the day's rules run from the prompt below)
-      MapView.setWalk(4);
       renderCareer();
+      MapView.m3.jump(); // (no walk there)
     });
     await pg.waitForFunction(() => !MapView.m3.busy(), null, { timeout: 300000 });
-    await ev(() => MapView.m3.setView({ x: SPOTS.weiPower.at[0] * 0.5, z: SPOTS.weiPower.at[1] * 0.5, d: 25 })); // down to street level
+    await ev(() => {
+      const y = MapView.m3.youPos();
+      MapView.m3.setView({ x: y[0], z: y[2], d: 6.7 }); // down to street level (T-336a)
+    });
     await pg.waitForFunction(() => MapView.m3.interiors().shown && document.querySelector('#stprompt .fmb'), null, { timeout: 300000 });
     const p = await ev(() => ({
       txt: document.querySelector('#stprompt').textContent,
@@ -392,9 +395,10 @@ const step = async (name, fn) => {
     await pg.keyboard.press('f');
     await pg.waitForFunction(d => RUN.days < d, p.days, { timeout: 20000 });
     await pg.waitForFunction(() => !CW.lock, null, { timeout: 300000 });
-    const t = await ev(() => MapView.m3.bench(3));
-    await ev(() => (MapView.setWalk(1), MapView.m3.setView({ d: 60 })));
-    return `${p.i.cut} clipped, roof ${p.i.alpha}, ${p.days} → ${await ev(() => RUN.days)} days, ${t} ms a frame`;
+    const t = await ev(() => ({ ms: MapView.m3.bench(3), street: MapView.m3.street() }));
+    if (t.street < 0.5) throw new Error(`the day lifted the camera off street level (${t.street})`);
+    await ev(() => MapView.m3.setView({ d: 110 }));
+    return `cut ${p.i.cut}, roof ${p.i.alpha}, ${p.days} → ${await ev(() => RUN.days)} days, street ${t.street.toFixed(2)} after, ${t.ms} ms a frame`;
   });
   await step('island sound (T-334): the map plays; leaving it frees every node and no AudioContext runs', async () => {
     const on = await ev(() => ({ on: Ambience.on, n: Ambience.nodes(), mix: Ambience.mix() }));

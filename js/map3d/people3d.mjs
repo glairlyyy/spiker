@@ -346,9 +346,9 @@ export function createPeopleVRM(scene, opts = {}) {
       gapT -= dt;
       const shown = new Set(slots.map(S => S.id));
       for (const id of want) {
-        if (shown.has(id)) continue;
-        const S = slots.find(q => q.id === null);
         const f = states.get(id);
+        if (shown.has(id) || !f) continue; // (!f: gone since the last LOD pick — a re-sync, e.g. Fast's fewer people)
+        const S = slots.find(q => q.id === null);
         if (S) {
           S.id = id;
           S.k = 0;

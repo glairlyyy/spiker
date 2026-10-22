@@ -260,8 +260,8 @@ function scoreFace() {
   return m;
 }
 
-/** The world box (town.cut's { x0, x1, z0, z1 }) round frame F's footprint + pad m: the axis-aligned bounds of the turned box. */
-export const cutBoxOf = (F, pad = 0.25) => {
+/** The world box (town.cut's { x0, x1, z0, z1 }) round frame F's footprint + pad m (0.5: the landmark's roof lip and door) — the turned box's bounds. */
+export const cutBoxOf = (F, pad = 0.5) => {
   const hw = F.I.w / 2 + pad,
     hd = F.I.d / 2 + pad,
     ex = hw * Math.abs(F.c) + hd * Math.abs(F.s),

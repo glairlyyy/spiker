@@ -831,9 +831,9 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   landmark's pitch — an open bowl: no shell, no cut (the match venue's set needs the match world's textures: not reused). Shown
   only while `street > CUT.show` (0.6). Draw calls when shown: gym 6, arena 2.
 - **Cutaway** — while shown, `opts.cut(cutBoxOf(gym))` (map3d passes `town.cut`): the landmark's triangles wholly inside the
-  axis-aligned bounds of the gym's turned footprint (+0.25 m) collapse; `cut(null)` when the insides hide or on dispose. The roof
-  and the walls facing the camera fade to `cutAlpha(d)` (CUT.min 0.08 inside → 1 at CUT.near 8 m; d = you or the camera to the
-  footprint, the nearer); far walls stay.
+  axis-aligned bounds of the gym's turned footprint (+0.5 m: the roof lip, the door) collapse; `cut(null)` when the insides hide
+  or on dispose. The roof and the walls facing the camera fade to `cutAlpha(d)` (CUT.min 0.08 inside → 1 at CUT.near 8 m; d = you
+  or the camera to the footprint, the nearer); far walls stay.
 - **People** — `people(model)`: while shown, `life.people` with `spot === place` move to its slots (round-robin by id, past the
   slots a ring 0.7 m out), `act: 'train'`; map3d re-syncs life with it when shown flips — life3d's humanoids / VRMs, pick and the
   figure menu work on them unchanged.
