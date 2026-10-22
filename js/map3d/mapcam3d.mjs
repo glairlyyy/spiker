@@ -30,6 +30,7 @@ export const STREET = {
   back: 3,
   near: [1, 0.2], // the camera's near plane (m): the map → street level
   far: [3000, 900], // … its far plane (the haze closes in before it: the low pitch would draw the whole island)
+  rise: 9, // the most the camera rises over a building behind you (m; more → it comes in front of it)
   behind: 1.4 // a click walk at street level: the camera swings behind you over ~this (s)
 };
 /**
@@ -85,7 +86,8 @@ export function createMapCam(cam, canvas, sun, S) {
     swing = 0, // a click walk at street level: the camera swings behind you while it lasts
     dragged = false, // the last right-button press orbited (its contextmenu is not a figure click)
     lotGrid = null,
-    lotKey = null;
+    lotKey = null,
+    lift = 0; // street level: how far the camera has risen over a building behind you (m)
 
   const district = () => {
     const m = S().cur,
@@ -111,22 +113,30 @@ export function createMapCam(cam, canvas, sun, S) {
     const yw = yaw * s,
       ty = s > 0 ? s * (heightAt(x, z) + STREET.head) : 0,
       c = d * Math.cos(P.pitch);
-    let k = 1;
+    let k = 1,
+      need = P.up;
     if (s > 0.3) {
-      // a wall between you and the camera: the camera comes in front of it (march back from your head; the gym and the arena open by cutaway, T-336b)
+      // a building between you and the camera: the camera rises over it (up to STREET.rise m more), else comes in front of it
+      // (march back from your head; ones holding you — the gym or the arena, opened by cutaway in T-336b — don't count)
       const n = Math.ceil(d / 0.5);
       for (let i = 2; i <= n; i++) {
         const f = i / n,
           px = x + c * Math.sin(yw) * f,
           pz = z + c * Math.cos(yw) * f,
           L = lotAt(px, pz, 0.3, true);
-        if (L && !holds(L, x, z, 0.3) && ty + P.up * f < heightAt(px, pz) + L.h + 0.3) {
+        if (!L || holds(L, x, z, 0.3)) continue;
+        const top = heightAt(px, pz) + L.h + 0.4;
+        if (ty + need * f >= top) continue;
+        const up = (top - ty) / f;
+        if (up <= P.up + STREET.rise * s) need = up;
+        else {
           k = Math.max(1.6 / d, (i - 1.5) / n);
           break;
         }
       }
     }
-    cam.position.set(x + c * k * Math.sin(yw), ty + P.up * k, z + c * k * Math.cos(yw));
+    lift += (need - P.up - lift) * (Math.abs(need - P.up - lift) < 0.02 ? 1 : 0.2); // (eased: walking past houses doesn't jolt it)
+    cam.position.set(x + c * k * Math.sin(yw), ty + (P.up + lift) * k, z + c * k * Math.cos(yw));
     if (s > 0) cam.position.y = Math.max(cam.position.y, heightAt(cam.position.x, cam.position.z) + 0.6);
     cam.lookAt(x, ty, z);
     const near = lerp(STREET.near[0], STREET.near[1], s),
