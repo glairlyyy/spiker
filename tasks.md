@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-344** (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-344** (T-336 is split a / b) (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -138,11 +138,35 @@ Accept: tests — each row's lock and effect, deterministic, once-a-day Talk; ui
 QA: career run → hover, right-click, each option.
 Result: Encounter.menu / who / talk / invite / spar (+ sparResult) in encounter.js (pure, no R(); `run.enc.talk / ask / inv`), ENC.invite / ENC.spar, ENC_MENU, ENC_INVITE, `sparred` +3 in data/encounter.js; City.walkTo (the trip days only), City.withInvite / joins (the invitee on the place's floor for the order and the card's preview, then put back; a non-teammate gets `trained`); life3d hover (ink) / mark (cyan, pulsing) rings, ≥ ~14 px at any zoom; map3d right-click (`contextmenu`) → on.person, mark(id); MapView.person → figOpen, figureAt, mark; career-map.js the menu (`#figmenu`, follows its figure via besideAt shared with the place card; keys 1–5, Shift + n ⏭, − / + stake, Esc), the road stop = the same card (encRows; a crew's Challenge and the battle's Join with ⏭), a Together row on the cut-in; css/hub.css `.fmenu`. Deviations: Invite = your next day order this week at a place with a floor (not strictly today — trips move the day); Spar lends a hired street crew free; the spar plays on the run's stream like a challenge. 3 new tests (8 in encounter.test.js), 226/226; ui-smoke 20/20 (new step: right-click → menu → Talk → the diary line; the road step reads the new card); career bot 12 both identical to a53605a (casual 69.5 / 85.0, good 77.7 / 92.9, focus 78.2 / 93.2); QA t340-hover / menu / locked / talk / invite-answer / invite-card / invite-day / road.
 
-### [ ] T-336: Street level — one district prototype (phase 2)
-Spec: §4.37 6          Goldens: unchanged          Save: no change
-Goal: in Wei's core the map camera zooms down to a follow camera behind you (no load); detailed buildings within ~150 m; the gym and one
-court open by cutaway with the people training there; VRMs within ~40 m (≤ 15); the order prompt at the kit.
-Status: outline — detailed after phase 1 and the owner's look.
+### [ ] T-336a: Street level — the camera, walking and the detail ring
+Agent: S (owns js/map3d/mapcam3d.mjs, js/map3d/map3d.mjs, js/map3d/avatar3d.mjs, js/map3d/town3d.mjs, js/map3d/kit3d.mjs, js/map3d/people3d.mjs,
+js/map3d/life3d.mjs, js/ui/map-view.js, tests/map3d.test.js; ui-smoke: its own step)
+Spec: §4.37 6 (Detail)          Goldens: unchanged          Save: no change
+Goal: in the prototype district (around SPOTS weiPower and VENUES arena) the zoom continues down to a follow camera ~6 m behind / ~3 m above
+you, pitch to ~15°, Q / E / right-drag orbit; click-to-walk and WASD at street level; full detail within ~150 m (kerbs, pavements, road
+markings, ground-floor shop interiors glimpsed); VRMs within ~40 m (≤ 15, Fast 6); zoom out to return. Elsewhere the zoom stops as today.
+Contract for Agent I: `api.street()` → 0–1 (how far down the camera is), `api.camPos()` / `api.youPos()` (world), and map3d calls an optional
+`interiors` layer (js/map3d/interior3d.mjs: `createInteriors(scene, heightAt)` → { sync(model), tick(dt, { cam, you, street, low }), at(screenXY),
+dispose() }) when the module exists — guard the import.
+Do not: change trip rules (WASD is display; where you stop is a map-point travel, like a click); load a new scene; break Fast.
+Accept: tests — the zoom's camera path is continuous (pitch / distance monotonic), street mode only inside the district; ui-smoke — zoom to
+street level at the gym, walk with a click, zoom back, no page errors; frame time reported.
+QA: career run → zoom from the island to street level at the gym, walk to the arena, zoom out (screenshots each).
+Result:
+
+### [ ] T-336b: Street level — interiors and the order at the kit
+Agent: I (owns js/map3d/interior3d.mjs (new), js/render3d/venues/ (read-only reuse of the arena set unless a small export is needed),
+js/ui/career-map.js (the in-world prompt → the same action as the place card), js/data/city.js (INTERIOR: station layouts), tests/interior.test.js
+(new), css/hub.css (the prompt); ui-smoke: its own step)
+Spec: §4.37 6 (Detail)          Goldens: unchanged          Save: no change
+Goal: the Dynasty Strength Center and the League Arena have insides (gym: racks, benches, mats, a sprint lane, mirrors, a desk; arena: the
+match venue's arena set at map scale); the roof and near walls fade when you or the camera go in; today's people for that place stand at the
+stations, training; walking up to a station shows its day order as an in-world prompt (name, cost → result, hotkey) that runs the place
+card's action.
+Do not: duplicate the place card's rules (call the same functions); draw R(); build interiors outside the two places.
+Accept: tests — stations per place, the prompt's order = the place card's, cutaway opacity by distance; ui-smoke — inside the gym the prompt
+shows and its hotkey runs the day; no page errors.
+QA: career run → the gym's inside with people, the prompt, a day done from it; the arena's inside.
 Result:
 
 **The Ref drone (owner, 2026-10-21, spec §4.38): Agent D** — T-337 → T-338 now (engine + match render; no overlap with L / E);

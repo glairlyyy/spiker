@@ -1417,7 +1417,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     the cut-in = the hype banner "Mint × You" + their line, the first time it plays. Every match of yours: played or simmed from the hub,
     and the instant Raid and Midnight Court (the coach plays them there; owner, 2026-10-21). **Ex-teammates** across the net: one exchange after match prep (their line by
     personality, your reply) and `faced_ex` for each who played.
-- §4.37 The living island — seamless, people you can see **[draft — T-331–T-336, T-340]** (owner, 2026-10-21: "the world looks empty —
+- §4.37 The living island — seamless, people you can see **[built 2026-10-21 — T-331–T-335, T-340; draft — T-336]** (owner, 2026-10-21: "the world looks empty —
   the others' activity is computed under the hood"; "Kenshi makes the map and world seamless — I don't want scene cuts"; "keep
   decisions to the user and actions to automation, but keep some effort"). Builds on §4.19a (districts, traffic, figures) and §4.33
   (day orders, Run trips).
@@ -1493,6 +1493,25 @@ the AI coach fills every slot you leave with the same function. Built and measur
     wall fade when you or the camera go in) and show the people training there; within ~40 m people become their VRM players
     (≤ 15 on screen; the low-poly setting keeps fewer); the order prompt shows in the world at the kit. Judged on: does it feel
     good, does it hold the frame rate, does walking get tedious. **Phase 3** (only if phase 2 passes): every district.
+    **Detail (owner, 2026-10-22: "spec and implement T-336"):** the prototype's places are the **Dynasty Strength Center** (SPOTS
+    weiPower) and the **League Arena** (VENUES arena), and the streets between them.
+    - **Camera**: one continuous zoom (wheel / pinch / +−): past the map's closest distance it keeps going — the pitch lowers from the
+      map's top-down to ~15° above the horizon, the camera settles ~6 m behind and ~3 m above your player and follows them; zoom out
+      to go back up. Inside the prototype district only; elsewhere the zoom stops where it does today. Q / E or a right-drag orbit
+      round you at street level. No screen change, no load.
+    - **Walking**: at street level, click the ground to walk there (the same trip rules — a click is a map point travel); WASD walks
+      you freely inside the district (display only: the rules see where you stop, like a click). Auto-walk (a place's Go) still works.
+    - **Detail ring**: within ~150 m of the camera the buildings, streets and props are the detailed ones (§4.39) at full detail —
+      kerbs, pavements, road markings, shop interiors glimpsed through ground-floor windows; beyond it the map look.
+    - **Interiors (cutaway)**: the gym and the arena have real insides — the gym: weight racks, benches, mats, a sprint lane, mirrors,
+      a front desk; the arena: the court, stands, the scoreboard (reuse the match venue's arena set). When you or the camera go
+      through the door, the roof and the near walls fade (Kenshi-style) and the people whose plan puts them there today are inside,
+      training (the VRM people of §4.39).
+    - **The order at the kit**: inside, walk up to a station (the rack, the mats, the court) and its day order shows as a small
+      prompt in the world — name, cost → result, the hotkey; it does exactly what the place card's button does (and the place card
+      still works from the map).
+    - **People**: within ~40 m they are their VRM players (≤ 15; Fast: 6), walking their plans; the figure menu (§4.37 7) works on them.
+    - **Fast**: the same camera, walking and interiors, with the simpler materials and fewer people.
 - §4.38 The Ref drone — play anywhere, every call seen **[draft — T-337–T-339]** (owner, 2026-10-21: "a high-tech drone that
   visualizes the court and its AI detects net touches or any foul — so with open space you can play volleyball anywhere"; "the
   Academy still uses the old real court"). Lore §4 (the drone).
@@ -1540,7 +1559,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     the low end's serve errors +3 %; wind floats wander. Born to it: 40 % of each penalty, + 0.01. Equal teams, 1200 matches: every
     ground within ±2 % of a court, born to the sand +2.5 % — under the home-court edge. The field venue: the ground patch, glowing
     projected lines, a light-curtain net between two projector pylons (a thin glowing slab so it reads from the game camera — 2026-10-22), a few props and onlookers, no stands; the drone hovers and calls]**
-- §4.39 The island, beautiful **[draft — T-341–T-343]** (owner, 2026-10-21: "everything looks like polygon — make a beautiful /
+- §4.39 The island, beautiful **[built 2026-10-21 — T-341–T-343]** (owner, 2026-10-21: "everything looks like polygon — make a beautiful /
   realistic version now and decide later about the polygon setting"; "render the small default model instead of the clay figures —
   it's very hard to find them"; "the street light doesn't have the pillar, but the light makes the town more lively — good").
   - **Default look = detailed.** The current low-poly look stays as the graphics setting's Fast mode (KEYS.gfx); everything below
@@ -1577,6 +1596,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     **Wei's ground** (owner, 2026-10-21: "the biome colour of Wei seems odd"): a calm lawn instead of the grey / green patchwork,
     paved urban districts lighter toward their core, the ring suburbs paved only round their buildings — in both looks.
     **[built 2026-10-21, T-343]**
+  - **Settled (owner, 2026-10-22)**: Wei's new ground colours stay in Fast too; ambient occlusion stays on the High setting.
   - **Budget**: the map keeps ≥ 45 fps on a mid laptop GPU at the default camera (dynamic resolution allowed, like matches); Fast
     stays as it is today.
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
