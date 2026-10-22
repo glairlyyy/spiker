@@ -223,7 +223,7 @@ const People = {
       if (me.status !== 'cut' || run.week - me.bench < F.quit.weeks) continue;
       const m = (me.traits.includes('cynical') ? 1.5 : 1) * (me.traits.includes('loyal') ? 0.5 : 1);
       if (People.roll(run, p.id, `quit|${run.week}`) >= F.quit.p * m) continue;
-      const first = p.name.split(' ')[0];
+      const first = firstName(p);
       People.remove(run, p, 'quit');
       Run.news(run, `${p.name} has quit the sport. The office wishes them well.`);
       if (Rel.list(run, p.id).length) Run.log(run, `${first} quit. I can't say I didn't see it coming.`);
@@ -355,13 +355,13 @@ const People = {
       if (!(t === Run.myTeam(run) || squadOf(t).some(p => run.met[p.id]))) continue;
       const was = before.get(t),
         now = sig(t),
-        first = id => People.find(run, id).name.split(' ')[0],
+        first = id => firstName(People.find(run, id)),
         say = (kind, ids) => {
           const L = CHEM_TEXT[kind],
             f = ids.map(first);
           Run.news(
             run,
-            L[Math.floor(hstr(`chem|${kind}|${Season.wk(run)}|${ids.join()}`) * L.length)]
+            hitem(L, `chem|${kind}|${Season.wk(run)}|${ids.join()}`)
               .replace('{t}', t.name)
               .replace('{a}', f[0])
               .replace('{b}', f[1])

@@ -128,7 +128,7 @@ const Story = {
     const p = Story.presenceDue(run);
     if (!p) return false;
     const L = MEET.presence,
-      text = L[Math.floor(hstr(`presence|${p.id}`) * L.length)].replace(/\{n\}/g, p.name.split(' ')[0]);
+      text = hitem(L, `presence|${p.id}`).replace(/\{n\}/g, firstName(p));
     run.story.cur = {
       id: `presence:${p.id}`,
       i: -1,

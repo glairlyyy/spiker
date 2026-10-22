@@ -49,7 +49,7 @@ function inviteRow(run, id) {
   const v = City.joins(run, id),
     P = v != null && !Run.mates(run).some(m => m.id === v) && People.find(run, v);
   return P
-    ? `<div class="popts pinv"><span class="pchip">${faceSVG(P, 0.3, 18)}${esc(Team.first(P))} +${(Run.you(run).bond[v] || 0) >= 80 ? 50 : 20}%</span><small class="mute">joins your next order here</small></div>`
+    ? `<div class="popts pinv"><span class="pchip">${faceSVG(P, 0.3, 18)}${esc(firstName(P))} +${(Run.you(run).bond[v] || 0) >= 80 ? 50 : 20}%</span><small class="mute">joins your next order here</small></div>`
     : '';
 }
 // ---- the Ref drone (spec §4.38, T-339): the Cargo Shed's card, Rent at a court, a Pickup on the point card -------------------
@@ -67,10 +67,10 @@ function pickupRow(run, id) {
     P = Encounter.pickup(run, p),
     foe = P.foe != null ? People.find(run, P.foe) : null,
     g = P.g ? `${P.g.name}${P.g.wind ? ' · windy' : ''}` : '',
-    c = `${term('day', String(P.days), 'cost')} ${term('sta', -P.sta, 'cost')} → ${ENC_MENU.pickup.res}${g ? ` · ${esc(g)}` : ''}${foe ? ` · vs ${esc(Team.first(foe))}’s crew` : ''}${City.drone(run) === 'rent' ? ' · the rented drone' : ''}`,
+    c = `${term('day', String(P.days), 'cost')} ${term('sta', -P.sta, 'cost')} → ${ENC_MENU.pickup.res}${g ? ` · ${esc(g)}` : ''}${foe ? ` · vs ${esc(firstName(foe))}’s crew` : ''}${City.drone(run) === 'rent' ? ' · the rented drone' : ''}`,
     no =
       !P.why && P.refused.length
-        ? `<small class="mute">${P.refused.map(r => esc(Team.first(People.find(run, r.id)))).join(', ')} won’t play off a flat floor</small>`
+        ? `<small class="mute">${P.refused.map(r => esc(firstName(People.find(run, r.id)))).join(', ')} won’t play off a flat floor</small>`
         : '';
   return dronePickRow('ppick', 'P', ENC_MENU.pickup.name, c, P.why, `mapPickup(${p[0]},${p[1]})`, `mapPickup(${p[0]},${p[1]},true)`, no);
 }
@@ -525,7 +525,7 @@ function routeRow(run) {
   if (!A) return '';
   const D = ENC_ROUTE[A.kind] || ENC_ROUTE.circle,
     P = A.id != null ? People.find(run, A.id) : null,
-    n = P ? Team.first(P) : 'a friend',
+    n = firstName(P, 'a friend'),
     on = ROAD.route === 'alt';
   return `<div class="popts proute"><span class="lab">Route <kbd>R</kbd></span><div class="seg"><button class="btn ${on ? '' : 'on'}" aria-pressed="${!on}" onclick="roadPick('safe')" ${tip(ENC_ROUTE.safe.tip)}>${esc(ENC_ROUTE.safe.name)}</button><button class="btn ${on ? 'on' : ''}" aria-pressed="${on}" onclick="roadPick('alt')" ${tip(D.tip.replace(/\{n\}/g, n))}>${esc(D.name.replace(/\{n\}/g, n))}</button></div></div>`;
 }
@@ -787,7 +787,7 @@ function encLayer(L) {
   const run = RUN,
     E = L.enc,
     P = Encounter.person(run, E),
-    first = P ? Team.first(P) : '';
+    first = firstName(P, '');
   let name = '',
     sub = '',
     text = '';
@@ -798,18 +798,18 @@ function encLayer(L) {
     if (A && A.st === 'open') text = `“${Team.beat(run, A).line}”`;
     else {
       const L0 = ENC_HI[Team.beh(run, E.id)] || ENC_HI.other;
-      text = `“${L0[Math.floor(hstr(`hi|${E.key}|${run.week}`) * L0.length)]}”`;
+      text = `“${hitem(L0, `hi|${E.key}|${run.week}`)}”`;
     }
   } else if (E.kind === 'crew') {
     const t = run.teams[E.ti],
       L0 = ENC_CREW[E.region] || ENC_CREW.wei;
     name = t ? `${t.name} crew` : 'A crew';
     sub = 'on the road from their HQ';
-    text = `“${L0[Math.floor(hstr(`crew|${E.ti}|${run.week}`) * L0.length)]}”`;
+    text = `“${hitem(L0, `crew|${E.ti}|${run.week}`)}”`;
   } else {
     name = 'Street battle';
     sub = `${REGIONS[E.a].name} vs ${REGIONS[E.b].name} · ${E.name}`;
-    text = ENC_BATTLE[Math.floor(hstr(`battle|${run.week}`) * ENC_BATTLE.length)];
+    text = hitem(ENC_BATTLE, `battle|${run.week}`);
   }
   const done = L.encDone != null,
     rows = done ? '' : figRows(encRows(run, E));

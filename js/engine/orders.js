@@ -48,7 +48,7 @@ function srvOpts(p) {
 function tgtOpts(p, T) {
   return [
     { v: 'auto', label: 'Auto' },
-    ...passersOf(T).map(q => ({ v: q.id, label: `#${q.num} ${q.name.split(' ')[0]}`, p: q })),
+    ...passersOf(T).map(q => ({ v: q.id, label: `#${q.num} ${firstName(q)}`, p: q })),
     { v: 'seam', label: 'Seam', lock: hasTech(p, 'target') ? null : 'learn Target Serve' }
   ];
 }
@@ -188,7 +188,7 @@ function aimOpts(p, T) {
     { v: 'auto', label: 'Auto' },
     { v: 'line', label: 'Line' },
     { v: 'cross', label: 'Cross' },
-    ...passersOf(T).map(q => ({ v: q.id, label: `At #${q.num} ${q.name.split(' ')[0]}` })),
+    ...passersOf(T).map(q => ({ v: q.id, label: `At #${q.num} ${firstName(q)}` })),
     { v: 'open', label: 'Open court', lock: W(p) >= ORDERS.atk.openWit ? null : `Wit ${ORDERS.atk.openWit}+` }
   ];
 }
@@ -310,10 +310,7 @@ function probeHit(m, side, x, kill, err, stf) {
 
 /** Feed options: Auto, each court hitter of the setter's side. */
 function feedOpts(setter, T) {
-  return [
-    { v: 'auto', label: 'Auto' },
-    ...T.P.filter(q => q !== setter).map(q => ({ v: q.id, label: `#${q.num} ${q.name.split(' ')[0]}`, p: q }))
-  ];
+  return [{ v: 'auto', label: 'Auto' }, ...T.P.filter(q => q !== setter).map(q => ({ v: q.id, label: `#${q.num} ${firstName(q)}`, p: q }))];
 }
 /** Fake options (a setter's decoy fake set: on by default). */
 const fakeOpts = () => [

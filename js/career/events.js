@@ -30,7 +30,7 @@ const Events = {
       // the gift chance (spec §4.35): a friend offers to show you a gift
       const G = GIFTS[ev.gift],
         p = run ? People.find(run, ev.who) : null,
-        n = p ? p.name.split(' ')[0] : 'A friend',
+        n = firstName(p, 'A friend'),
         short = run ? Math.max(0, ev.cost - run.money) : 0;
       return {
         title: `${n}: ${G.name}`,
@@ -45,7 +45,7 @@ const Events = {
     if (ev.id === 'follow') {
       // a friend asks to follow you to your new club (spec §4.36 B, Circle)
       const p = run ? People.find(run, ev.who) : null,
-        n = p ? p.name.split(' ')[0] : 'A friend',
+        n = firstName(p, 'A friend'),
         T = run && run.teams[ev.to],
         short = run ? Math.max(0, ev.fee - run.money) : 0,
         seat = p ? `joins ${T ? T.name : 'your club'} (${p.role}); the seat's holder drops to the Academy squad` : '';

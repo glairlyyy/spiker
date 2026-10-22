@@ -6,7 +6,7 @@
 const coachPct = (a, b) => (b ? `${Math.round((100 * a) / b)} %` : '–');
 const COACH_TONE = { bad: 0, warn: 1, good: 2 };
 /** A player's short name: #num First. */
-const coachName = p => `${stag(p)}#${p.num} ${esc(p.name.split(' ')[0])}`;
+const coachName = p => `${stag(p)}#${p.num} ${esc(firstName(p))}`;
 /** A pattern in plain words (tags belong to the side that shows them). */
 function coachTag(g) {
   const n = ` <span class="mute">${g.n} of ${g.of}</span>`;

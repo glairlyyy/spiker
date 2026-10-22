@@ -10,6 +10,8 @@ function hstr(s) {
   }
   return (h >>> 0) / 4294967296;
 }
+/** The item of list L picked by the hash of s (no RNG draw). */
+const hitem = (L, s) => L[Math.floor(hstr(s) * L.length)];
 const hu = (p, salt) => hstr(`${p.name}|${p.role}|${salt}`);
 /** Does p carry innate gift `id` (spec §4.35; GIFTS in data/gifts.js)? A player without `p.gifts` never does. */
 const hasGift = (p, id) => !!(p && p.gifts && p.gifts.length && p.gifts.includes(id));

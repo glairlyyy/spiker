@@ -131,7 +131,7 @@ const World = {
     finalizeTeam(P);
     for (const m of Run.mates(run)) if (you.bond[m.id] == null) you.bond[m.id] = 0;
     const L = TEAM_LINES.left;
-    Run.log(run, `${L[Math.floor(hstr(`left|${wk}`) * L.length)].replace('{club}', T.name)}${rep ? ` (${rep})` : ''}`, 'bad');
+    Run.log(run, `${hitem(L, `left|${wk}`).replace('{club}', T.name)}${rep ? ` (${rep})` : ''}`, 'bad');
     Run.news(run, `The office notes ${you.name} has left ${T.name}.`); // voice: wei (the Gazette)
     return true;
   },

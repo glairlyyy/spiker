@@ -177,7 +177,7 @@ const Encounter = {
   /** A line from table L (by behaviour) for id, picked by a hash of `salt` and today. */
   say: (run, L, id, salt) => {
     const A = L[Encounter.beh(run, id)] || L.other;
-    return A[Math.floor(hstr(`${salt}|${id}|${Encounter.today(run)}`) * A.length)];
+    return hitem(A, `${salt}|${id}|${Encounter.today(run)}`);
   },
   /** Why you can't walk over to map point p now ('' if you can): the trip days, the week-1 fence. */
   walkWhy: (run, p) => (City.outside(run, p) ? City.fence(run) : City.noTime(run, City.trip(run, p))),
@@ -220,7 +220,7 @@ const Encounter = {
       walk = road ? 0 : City.trip(run, W.at),
       wwhy = off || (road ? '' : Encounter.walkWhy(run, W.at)),
       bond = Rel.bondOf(run, id),
-      first = Team.first(W.p),
+      first = firstName(W.p),
       key = String(id);
     const talk = { k: 'talk', days: walk, why: wwhy || ((S.talk || {})[key] === now ? 'talked today' : '') };
     const P = Encounter.inviteP(run, id),
@@ -298,7 +298,7 @@ const Encounter = {
     const S = Encounter.of(run),
       now = Encounter.today(run),
       yes = hstr(`inv|${run.pseed}|${now}|${id}`) < Encounter.inviteP(run, id),
-      n = Team.first(People.find(run, id));
+      n = firstName(People.find(run, id));
     (S.ask || (S.ask = {}))[String(id)] = now;
     if (yes) S.inv = id;
     const hi = Encounter.say(run, yes ? ENC_INVITE.yes : ENC_INVITE.no, id, 'inv'),
@@ -360,7 +360,7 @@ const Encounter = {
       what = C.g ? 'Pickup' : 'Spar',
       trip = (Cup.record(run, m, 'court', { round: what }), City.go(run, C.at, { k: 'battle', label: what, at: C.name })),
       bond = Rel.add(run, id, 'sparred'),
-      n = Team.first(People.find(run, id)),
+      n = firstName(People.find(run, id)),
       out = [Growth.matchXp(run, { ...m, stat: { ...m.stat, [you.id]: half } }), Run.bump(run, 'sta', -ENC.spar.sta)];
     if (bond) out.push(`${fmtDelta(bond)} bond with ${n}`);
     if (C.g) out.push(...Encounter.fieldAfter(run, m, id, C));
@@ -396,7 +396,7 @@ const Encounter = {
     if (!k || ENC.pickup.ok.includes(k)) return '';
     const b = Encounter.beh(run, id);
     if (!ENC.pickup.flat.includes(b)) return '';
-    return `${Team.first(People.find(run, id))} won’t play on ${GROUNDS[k].name.toLowerCase()} — a flat floor only (${TRAITS[b].beh})`;
+    return `${firstName(People.find(run, id))} won’t play on ${GROUNDS[k].name.toLowerCase()} — a flat floor only (${TRAITS[b].beh})`;
   },
   /** Their words when they refuse (their behaviour's voice). */
   noLine: (run, id) => Encounter.say(run, ENC_GROUND.no, id, 'gno'),

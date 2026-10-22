@@ -162,7 +162,7 @@ const Secret = {
     const mine = Run.myTeam(run),
       wk = Season.wk(run),
       named = Stars.all(run).filter(p => p.named !== 'ace' && !squadOf(mine).includes(p)),
-      who = hstr(`midnight|${run.pseed}|${wk}`) < 0.5 && named.length ? named[Math.floor(hstr(`midwho|${wk}`) * named.length)] : null;
+      who = hstr(`midnight|${run.pseed}|${wk}`) < 0.5 && named.length ? hitem(named, `midwho|${wk}`) : null;
     const m = Secret.isolated(hstr(`midseed|${run.pseed}|${wk}`) * 4294967296, () => {
       const { T } = Court.draw(run, 'arena', 'pro', mine);
       if (who) {

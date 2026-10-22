@@ -144,8 +144,8 @@ const Rel = {
     const p = People.find(run, id),
       alt = MEM_ALT[e.k] && Rel.traits(run, id).find(t => MEM_ALT[e.k][t]),
       L = alt ? MEM_ALT[e.k][alt] : MEM_TEXT[e.k] || MEM_TEXT.event,
-      n = p ? p.name.split(' ')[0] : 'Someone';
-    return L[Math.floor(hstr(`${e.k}|${e.w}|${id}`) * L.length)].replace(/\{n\}/g, n);
+      n = firstName(p);
+    return hitem(L, `${e.k}|${e.w}|${id}`).replace(/\{n\}/g, n);
   },
   /** Their season in one line (the rumour voice): from their log. */
   season(run, id) {
@@ -155,8 +155,8 @@ const Rel = {
     const g = me.log,
       best = ['hard', 'train', 'hustle', 'rest'].reduce((a, k) => (g[k] > g[a] ? k : a), 'train'),
       L = SEASON_TEXT[g[best] > 0 ? best : 'none'];
-    return L[Math.floor(hstr(`season|${best}|${id}`) * L.length)]
-      .replace(/\{n\}/g, p.name.split(' ')[0])
+    return hitem(L, `season|${best}|${id}`)
+      .replace(/\{n\}/g, firstName(p))
       .replace(/\{(hard|train|hustle|rest|hurt)\}/g, (_, k) => g[k]);
   },
   /** What you have found out after a memory: the want, then the two traits (a diary line each). */
@@ -167,7 +167,7 @@ const Rel = {
     if (n < REL.know.want && n < REL.know.trait[0]) return;
     const p = People.find(run, id);
     if (!p) return;
-    const first = p.name.split(' ')[0];
+    const first = firstName(p);
     if (!me.known.want && n >= REL.know.want) {
       me.known.want = true;
       Run.log(run, `Figured ${first} out: wants ${WANTS[me.want].name.toLowerCase()}.`);

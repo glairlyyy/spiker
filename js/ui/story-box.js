@@ -98,7 +98,7 @@ function sbShow(el, n) {
  */
 function sbMark(text, a, b) {
   const rv = STARS.cohort.find(c => c.kind === 'rival'),
-    names = rv ? [rv.name, rv.name.split(' ')[0]] : [],
+    names = rv ? [rv.name, firstName(rv)] : [],
     hits = [];
   for (const nm of names)
     for (let i = text.indexOf(nm); i >= 0; i = text.indexOf(nm, i + nm.length))

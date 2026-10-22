@@ -238,7 +238,7 @@ const Cup = {
     // rivals across the net (T-066): a proud / reckless one comes in fired up, the others rattled (a mood swing, never a stat)
     for (const p of Rel.rivals(run, opp)) {
       const hot = Rel.traits(run, p.id).some(t => t === 'proud' || t === 'reckless'),
-        n = p.name.split(' ')[0],
+        n = firstName(p),
         line = hot ? `${n} wants this one. Fired up to face me.` : `${n} looks rattled across the net.`;
       p.form = +clamp(p.form + (hot ? REL_E.rival.fired : REL_E.rival.rattled), -1, 1).toFixed(2);
       if (!run.log.length || run.log[0].t !== line) Run.log(run, line);

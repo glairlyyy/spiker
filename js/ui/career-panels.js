@@ -294,7 +294,7 @@ function kitSpot(run, id) {
             const m = squadOf(T).find(p => p.id === pid),
               rubs = (pv.rub || []).filter(r => r.id === pid), // what rubs off (spec §4.35, T-323)
               note = rubs.map(r => `${GIFTS[r.gift].name} rubs off: ${r.key ? Body.name(r.key) : 'every gain'} ×${r.x}`).join('\n');
-            return `<span class="pchip" ${note ? tip(note) : ''}>${faceSVG(m, 0.3, 18)}${esc(m.name.split(' ')[0])} +${(Run.you(run).bond[pid] || 0) >= 80 ? 50 : 20}%${rubs.map(r => ` · ${esc(GIFTS[r.gift].name)} ×${r.x}`).join('')}</span>`;
+            return `<span class="pchip" ${note ? tip(note) : ''}>${faceSVG(m, 0.3, 18)}${esc(firstName(m))} +${(Run.you(run).bond[pid] || 0) >= 80 ? 50 : 20}%${rubs.map(r => ` · ${esc(GIFTS[r.gift].name)} ×${r.x}`).join('')}</span>`;
           })
           .join('')}</div>`
       : '';

@@ -398,7 +398,7 @@ function cardName(m, i, id) {
           .map(byId)
           .find(p => p && m.t[i].P.includes(p))) ||
       (D && byId(D[1]));
-  return f ? `${f.name.split(' ')[0]} × You: ${c.name}` : c.name;
+  return f ? `${firstName(f)} × You: ${c.name}` : c.name;
 }
 /** The duo card's cut-in (spec §4.36 4): the hype banner "MINT × YOU" and the friend's line, the first time it plays on your side. */
 function cardsDuoCut(m, i, id) {
@@ -409,7 +409,7 @@ function cardsDuoCut(m, i, id) {
         .map(byId)
         .find(p => p && m.t[i].P.includes(p));
   if (!f) return;
-  showBanner({ t: `${f.name.split(' ')[0]} × You`, c: m.t[i].color });
+  showBanner({ t: `${firstName(f)} × You`, c: m.t[i].color });
   showSay({ p: f.id, t: `${CARDS[id].name}! ${DUO_SAY[id] || ''}`.trim() });
   setTimeout(() => {
     const el = document.getElementById('hsay');

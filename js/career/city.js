@@ -232,7 +232,7 @@ const City = {
       run.enc.inv = null; // an Invite's yes is used up by this order (spec §4.37 7)
       const p = People.find(run, inv),
         b = Run.mates(run).some(m => m.id === inv) ? 0 : Rel.add(run, inv, 'trained'); // (a teammate's bond came with the session)
-      w = ` · with ${p ? p.name.split(' ')[0] : 'a friend'}${b ? ` (${fmtDelta(b)} bond)` : ''}`;
+      w = ` · with ${firstName(p, 'a friend')}${b ? ` (${fmtDelta(b)} bond)` : ''}`;
     }
     return `${trip}${line}${cost ? ` (−$${cost})` : ''}${w}`;
   },

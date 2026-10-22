@@ -5,7 +5,6 @@
 // run.loans { id: { amt, due } }, run.vouch { clubIndex: true }, run.sitout { week, sit: 'you' | id }, run.duo { id, week }.
 
 const Asks = {
-  first: p => p.name.split(' ')[0],
   /** The approaches waiting this week (with their index in run.asks). */
   list: run =>
     (run.asks || [])
@@ -78,7 +77,7 @@ const Asks = {
         c = Fight.clashSite(run);
       if (L.rival && L.rival.p !== p)
         facts.push(
-          `Word is ${Asks.first(L.rival.p)} ${L.starts ? 'is breathing down your neck' : 'is the one the coach trusts ahead of you'} at ${ROLE_NAME[you.role].toLowerCase()}.`
+          `Word is ${firstName(L.rival.p)} ${L.starts ? 'is breathing down your neck' : 'is the one the coach trusts ahead of you'} at ${ROLE_NAME[you.role].toLowerCase()}.`
         );
       if (c) facts.push(`Word is there will be trouble at ${c.name} this week — ${REGIONS[c.a].name} against ${REGIONS[c.b].name}.`);
       const no = run.teams.find((t, ti) => ti !== run.team && (Fight.worth(run, ti, 0) || {}).verdict === 'refuses');
@@ -133,7 +132,7 @@ const Asks = {
     if (a.kind === 'warn') t = a.data.text;
     if (a.kind === 'take_side') {
       const o = People.find(run, a.data.o);
-      t = t.replace('{o}', o ? Asks.first(o) : 'them');
+      t = t.replace('{o}', firstName(o, 'them'));
     }
     if (a.kind === 'call_out' && a.data.ti != null && run.teams[a.data.ti]) t += ` (${run.teams[a.data.ti].name})`;
     return t;
@@ -148,7 +147,7 @@ const Asks = {
     const a = (run.asks || [])[i];
     if (!a || a.mine || a.week !== run.week || (a.kind === 'poach_advice' && Run.cupDef(run))) return null;
     const p = People.find(run, a.id),
-      n = p ? Asks.first(p) : 'Someone',
+      n = firstName(p),
       out = { line: '' },
       done = line => {
         run.asks.splice(i, 1);
@@ -211,7 +210,7 @@ const Asks = {
         return done(`Told ${n} I'd manage alone.`);
       case 'take_side': {
         const o = People.find(run, a.data.o),
-          on = o ? Asks.first(o) : 'them',
+          on = firstName(o, 'them'),
           [w, l] = yes ? [a.id, a.data.o] : [a.data.o, a.id]; // yes = their side, no = the other's
         Rel.add(run, w, 'sided_with');
         Rel.add(run, l, 'sided_against');
@@ -250,7 +249,7 @@ const Asks = {
       me = run.people && run.people[id];
     if (!p || p.gone || !me || (run.asks || []).some(a => a.mine && a.id === id && a.week === run.week) || run.event) return [];
     const you = Run.you(run),
-      n = Asks.first(p),
+      n = firstName(p),
       out = [],
       known = Asks.isMate(run, p) || run.met[id],
       add = (kind, label, o = {}) =>
@@ -278,7 +277,7 @@ const Asks = {
     const mv = Asks.moves(run, id).find(m => m.kind === kind && (m.at || null) === (o.at || null));
     if (!mv) return null;
     const p = People.find(run, id),
-      n = Asks.first(p),
+      n = firstName(p),
       out = { yes: false, line: '' },
       end = line => {
         Run.log(run, line);
@@ -324,7 +323,7 @@ const Asks = {
         run.money += L.amt;
         delete run.loans[id];
         Rel.add(run, id, 'lent_money');
-        Run.log(run, `${p ? Asks.first(p) : 'Someone'} paid back $${L.amt}. On time. Suspicious.`);
+        Run.log(run, `${firstName(p)} paid back $${L.amt}. On time. Suspicious.`);
       } else Rel.add(run, id, 'debt_unpaid');
     }
   },

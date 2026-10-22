@@ -58,7 +58,7 @@ function endWeekUI() {
   for (const m of Run.mates(run))
     d(
       (now.bond[m.id] || 0) - (before.bond[m.id] || 0),
-      `Bond ${m.name.split(' ')[0]} ${fmtDelta((now.bond[m.id] || 0) - (before.bond[m.id] || 0))}`
+      `Bond ${firstName(m)} ${fmtDelta((now.bond[m.id] || 0) - (before.bond[m.id] || 0))}`
     );
   for (const r of regs) d(City.rep(run, r) - before.rep[r], `⚑ ${REGIONS[r].name} ${fmtDelta(City.rep(run, r) - before.rep[r])}`);
   for (const t of ownChanges(before.own, run.own || {})) rows.push(['ch', t.text]);

@@ -203,7 +203,7 @@ const MapModel = {
               : L.at === 'river'
                 ? R.river.line[1]
                 : L.at === 'forest'
-                  ? forest.length && forest[Math.floor(hstr(id) * forest.length)].at
+                  ? forest.length && hitem(forest, id).at
                   : L.at === 'villages'
                     ? villages[i % villages.length]
                     : dist(L.at);
@@ -418,7 +418,7 @@ const MapModel = {
           rot: Math.round(rot * 1000) / 1000,
           size: Math.round(size * 10) / 10,
           style: d.style,
-          kind: d.kinds[Math.floor(hstr(`${id}|k`) * d.kinds.length)],
+          kind: hitem(d.kinds, `${id}|k`),
           wealth: Math.round(w * 100) / 100,
           h: Math.round((d.tall ? w : w * 0.4) * 100) / 100,
           district: d.district || d.id

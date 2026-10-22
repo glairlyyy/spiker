@@ -32,7 +32,7 @@ function sidesLine(run, id) {
         .map(x => People.find(run, x))
         .filter(q => q && personMet(run, q))
         .slice(0, 2)
-        .map(q => esc(q.name.split(' ')[0]))
+        .map(q => esc(firstName(q)))
         .join(', '),
     w = names(S.with),
     a = names(S.against);

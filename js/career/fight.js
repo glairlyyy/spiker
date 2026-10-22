@@ -139,7 +139,7 @@ const Fight = {
       out.push(Run.bump(run, 'fans', L.fans));
       Run.news(
         run,
-        GAZETTE_JABS[Math.floor(hstr(`${Season.wk(run)}|${club}`) * GAZETTE_JABS.length)]
+        hitem(GAZETTE_JABS, `${Season.wk(run)}|${club}`)
           .replace('{name}', Run.you(run).name)
           .replace('{club}', club)
       );

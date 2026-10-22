@@ -4,6 +4,8 @@
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const sig = x => 1 / (1 + Math.exp(-x));
+/** A person's first name — the nickname (names are `<nickname> <family>`); `none` when there is no person. */
+const firstName = (p, none = 'Someone') => (p ? p.name.split(' ')[0] : none);
 /** Is point p inside polygon poly ([[x, y], …])? (even–odd rule) */
 function inPoly([x, y], poly) {
   let inside = false;

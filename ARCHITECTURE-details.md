@@ -274,7 +274,7 @@ saved). In 'cap' mode `captainThink` (one draw per call, only then) counts the o
 
 ## Ego — removed (owner, 2026-10-06)
 
-No ego personality, ego acts, `m.egoLog` or ego moment any more; `Run.load` drops an old save's `p.ego` and memories of removed kinds. The tracked chase shot is `A.shot` kind `follow` (used by the calls, §2.13).
+No ego personality, ego acts, `m.egoLog` or ego moment any more; `Run.load` drops memories of removed kinds. The tracked chase shot is `A.shot` kind `follow` (used by the calls, §2.13).
 
 **Relationships on court (T-066).** `newMatch(a, b, rec, { rel })` → `m.rel = { tag: { 'idA|idB': band }, rival: Set }` (null in Monster, sims and the golden matches), built by `Rel.matchFlags(run, A, B)` for every pair in both squads (viewer first; you ↔ NPC is the NPC's stance both ways; only non-neutral bands stored) and handed over by the fixtures of `Cup.fixture` / `challenge` / `clash` (`fx.rel`, set on the match in `fx.setup`). **The gating rule:** every effect reads `relTag(m, a, b)` (match.js: 'neutral' without `m.rel`) and either multiplies by 1, adds 0, or sits behind `m.rel &&`, so a match without flags (or with empty ones) draws the same randoms and gives byte-identical beats (a test proves it); no effect adds a draw. `REL_E` (data/rules.js): **trust / freeze** in `chooseAttack` once either side has `clutch` points — the single `wpick` draw is read against the plain weights and the weights × (1 + trust) for an ally / × (1 − freeze) for a resent / enemy hitter; when the picks differ a talk beat (`CALLS.trust` / `CALLS.freeze` + a log line, no new act kind) is pushed before the set; `m.relLog` records every clutch pick `{ act: 'clutch' | 'trust' | 'freeze', p, mate, tag }` (engine-only, for tests); **cover** (`popRecovery`, block cover in `block()`): + `REL_E.cover` on the save chance of an ally of the first touch / blocked hitter; **buff** (`captainThink`): allies of the captain weigh `REL_E.buff` × when the hottest mate is picked. **Rivals across the net** (`Cup.prepare`, no engine change): `Rel.rivals(run, opp)` — NPCs of your role, close in OVR, resent / enemy — start with form + `REL_E.rival.fired` (proud / reckless) or `.rattled`, with a diary line. No relationship gives a stat bonus.
 
@@ -459,7 +459,7 @@ and a Gazette line) → star / OP breakthrough rolls (`Growth.grow`, unchanged R
 (trained / hung_out ×0.5 per same-week repeat; same kind in a week merges into one entry), trait sign flips (jealous / cynical),
 keeps ≤ REL.max entries (oldest non-scar dropped first), refreshes the cache and returns the bond change. `Rel.stance` = Σ value ×
 fade (REL.decay^weeks, scars never) × both traits' multipliers; `Rel.tag` (ally / respect / neutral / resent / enemy) and `Rel.rival`
-read it. `you.bond[id]` is only a cache: `Rel.bondOf` = clamp(round(stance × REL.bondK), 0, 100), refreshed on every add and in
+read it. `you.bond[id]` is only a cache: `Rel.bondOf` = round(100 × (1 − e^(−stance / REL.bondTau))), refreshed on every add and in
 `Rel.week` (called from `Growth.week`), so combos (60), friendship (80) and the People sheet read it unchanged.
 Sources: `Run.bond(run, id, v, kind)` (training → trained, city outings → hung_out), `Cup.result` →
 `Rel.afterMatch` (won / lost_together), `Cup.fixture` → `Rel.spot` (spot_taken for a benched rival, once a week),
@@ -685,7 +685,7 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
 
 ### Map life and the day clock (spec §4.37 1–2, T-331–T-332)
 
-- **People** — `MapModel.lifePeople(run, max = LIFE.max)` (js/career/mapmodel.js; also Agent E's encounter input): every NPC of
+- **People** — `MapModel.lifePeople(run, max = LIFE.max)` (js/career/mapmodel.js; also the encounters' input, `Encounter.people`): every NPC of
   `People.homes` with a `run.people` entry, at `People.plan(run, p, home)` (the same week plan People.week applies; no randoms):
   train / hard / wit → `plan.at` (else `LIFE.gym[home]`: the Academy squad → the Academy Gym), hustle → `LIFE.court[home]` /
   `LIFE.courtElse`, rest / out → home; a teammate on `run.floor` → the floor key's explored place nearest your home (as its pin
@@ -1240,7 +1240,7 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   Dormant), Twin's `p.el2` (+ `p.sig2` in elAssign). The named (career/stars.js): Haewon and the cohort carry authored
   `tier` / `gifts` (data/stars.js), the first aces an authored tier and rolled gifts; `Stars.shape` adds `Gifts.stat`, `Stars.week`
   adds `Gifts.wit` (their curve resets the stats weekly). The MC never gets a roll (People.homes skips you).
-- **Contract** (Agent P's card / presence): `Gifts.tier(p)` (authored `p.tier`, else pot), `Gifts.of(p)` (ids, [] none),
+- **Read by** the person card and presence: `Gifts.tier(p)` (authored `p.tier`, else pot), `Gifts.of(p)` (ids, [] none),
   `Gifts.known(run, p)` (you; club scouted `City.scouted`; a `trained` memory; `Rel.bondOf` ≥ 20 — sticky in
   `run.people[id].known.gifts`), `GIFTS[id]`.
 - **Career effects**: `Gifts.grow(run, p, src, stat)` × in People.week (training XP: Prodigy, Late Bloomer by `Season.year`,
@@ -1260,7 +1260,7 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   `{ all, keys, from }`; `Training.preview` multiplies each row's mul by `all` × `keys[bodyKey]` (so the session and the card agree)
   and returns `rub` (= from); kitSpot's mate chip names it (`· Rubber Joints ×1.2`, the body stat in its tip). A Generous
   friend's share × GIFTS.generous.k. Data `GIFT_RUB` (body gifts → their body stat, growth gifts → every gain; Late Bloomer in year 2).
-- **Not here** (Agent P, rel.js): Magnetic / Lone Wolf bond growth — `Rel.add` can scale a positive memory by
+- **Not here** (rel.js): Magnetic / Lone Wolf bond growth — `Rel.add` can scale a positive memory by
   `Gifts.bondMul(run, id)` (their Magnetic / Lone Wolf × your Magnetic).
 
 ## Team life — windows, tenure, circle, strip (spec §4.36, T-325–T-327)
@@ -1280,7 +1280,7 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   (finalizeTeam's pick is overwritten by the next lineup).
 - **Circle** (career/circle.js; data CIRCLE / FOLLOW / TEAM_LINES): `Circle.of(run)` → up to CIRCLE.max ids from every `run.mem`
   pair with you whose `Rel.bondOf` ≥ CIRCLE.bond and who is still in play (`People.homes`), starred (`run.fav`) first, then bond,
-  then id — the contract Team (Agent S) reads with `run.ex`. `Circle.mood` (hurt / out / tired / fine) and `Circle.mate` for the strip.
+  then id — what Team reads with `run.ex`. `Circle.mood` (hurt / out / tired / fine) and `Circle.mate` for the strip.
 - **Follow**: `World.join` asks `Circle.asker(run, left)` before walking out — the closest active, non-named teammate at FOLLOW.bond+
   whose `People.roll(run, id, 'follow')` < FOLLOW.p[headline] (Loyal 0); none with an event open or in a cup. The asker is spared
   `walked_out`; `Circle.offer` opens `run.event = { id: 'follow', who, from, to, fee (Mercenary), pre: true }` (Events.def / choose →
@@ -1296,8 +1296,8 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
 
 - **Files**: `js/data/team.js` (TEAM numbers, TEAM_CHAT lines by behaviour × situation, TEAM_REPLY; its memory kinds are merged into
   MEMORY / MEM_TEXT at load), `js/career/team.js` (`Team`, DOM-free, hashes only — `hstr`, never R()). State lazily in `run.tlife`
-  (`Team.of`; not `run.team`, which is the club index), no RUN_DEFAULTS, no save bump. Agent T's contract is read behind guards:
-  `Team.circle` = `Circle.of(run)` or your mates (≤ TEAM.circle), `Team.ex` = `run.ex` or {}.
+  (`Team.of`; not `run.team`, which is the club index), no RUN_DEFAULTS, no save bump.
+  `Team.circle` = `Circle.of(run)` (≤ TEAM.circle), `Team.ex` = `run.ex`.
 - **Hook**: `Cup.record` (every match of yours, you = side 0) calls `Team.matched(run, m)`.
 - **Chat** (T-328): `Team.chatFor` → `run.tlife.chat = { key, win, msgs: [{ id, sit, t }], done }`: 2–4 people of your side's squad
   (played first, then by hash), each one line from `TEAM_CHAT[their first trait][sit]` (`Team.sit`: win / loss + `_you` / `_them` when
@@ -1328,8 +1328,8 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   Pin Connection", chips and the result row); `teamWatch(m)` (match-cards.js, a rAF loop from watchCareer's setup) waits until no
   prep / turn / exchange / scene holds the court, then `exRemark(m)` once (match-exchange.js: MLINES `ex` / `ex_reply` by personality,
   holds the rally through `Dir.talk`), then `cardsDuoCut` the first time each duo card is slotted with its pair on court (the hype
-  banner `showBanner` "Mint × You" + `showSay` with DUO_SAY). `faced_ex` (Team.matched): each ex who played against you (Agent T owns
-  the kind; data/team.js defines a stand-in only while it is missing).
+  banner `showBanner` "Mint × You" + `showSay` with DUO_SAY). `faced_ex` (Team.matched): each ex who played against you (MEMORY.faced_ex,
+  js/data/people.js).
 
 ## Encounters, effort, island sound (spec §4.37 3–5, T-333–T-335)
 

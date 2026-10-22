@@ -50,7 +50,7 @@ const Stars = {
         [giv, fam] = p.name.split(' ');
       if (given.includes(giv)) {
         const alt = GIV.filter(n => !given.includes(n)); // no first ace shares a first name with the cohort
-        p.name = `${alt[Math.floor(hstr(p.name) * alt.length)]} ${fam}`;
+        p.name = `${hitem(alt, p.name)} ${fam}`;
       }
       Object.assign(p, {
         named: 'ace',

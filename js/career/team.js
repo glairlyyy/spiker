@@ -20,7 +20,6 @@ const Team = {
   ex: run => run.ex || {},
   /** Their headline behaviour (the first trait), or null. */
   beh: (run, id) => Rel.traits(run, id)[0] || null,
-  first: p => (p ? p.name.split(' ')[0] : 'Someone'),
   /** A match line as one number (as Rel.afterMatch weighs it); null without a stat line. */
   line: s => (s ? s.k + 1.2 * s.blk + 1.2 * s.ace + 0.4 * s.dig + 0.35 * s.ast - s.err : null),
   /** A match's key for the hashes: the season week and how many matches you have logged. */
@@ -68,13 +67,13 @@ const Team = {
         .sort((a, b) => b.on - a.on || a.h - b.h),
       C = TEAM.chat,
       n = Math.min(cand.length, C.min + Math.floor(hstr(`chatn|${key}`) * (C.max - C.min + 1))),
-      me = Team.first(you);
+      me = firstName(you);
     if (!n) return null;
     const msgs = cand.slice(0, n).map(({ p }) => {
       const sit = Team.sit(run, m, side, p),
         B = TEAM_CHAT[Team.beh(run, p.id)] || TEAM_CHAT.steady,
         L = B[sit] || B[sit.split('_')[0]];
-      return { id: p.id, sit, t: L[Math.floor(hstr(`chatl|${key}|${p.id}`) * L.length)].replace(/\{you\}/g, me) };
+      return { id: p.id, sit, t: hitem(L, `chatl|${key}|${p.id}`).replace(/\{you\}/g, me) };
     });
     return (T.chat = { key, win: m.winner === side, msgs, done: null });
   },
@@ -136,7 +135,7 @@ const Team = {
       y = Season.year(run),
       wk = run.week,
       X = TEAM.arc,
-      n = A => Team.first(People.find(run, A.id));
+      n = A => firstName(People.find(run, A.id));
     for (const A of Object.values(arcs)) {
       if (A.y !== y || A.st === 'done' || A.st === 'lost') continue;
       const p = People.find(run, A.id);
@@ -169,7 +168,7 @@ const Team = {
       if (!p || p.gone) continue;
       arcs[id] = { id, y, w: me.want, b: 0, st: 'open', at: wk };
       live++;
-      Run.log(run, `${Team.first(p)} wants a word. It sounded important to ${Team.first(p)}.`);
+      Run.log(run, `${firstName(p)} wants a word. It sounded important to ${firstName(p)}.`);
     }
   },
   /** What the beat costs, in words (the control's cost → result): '' for a choice. */
@@ -181,7 +180,7 @@ const Team = {
       const at = p && Asks.place(run, p);
       return at ? `1 day · ${SPOTS[at].name}` : '1 day';
     }
-    if (B.ask === 'match') return `your next match beside ${Team.first(p)} (${TEAM.arc.wait} weeks)`;
+    if (B.ask === 'match') return `your next match beside ${firstName(p)} (${TEAM.arc.wait} weeks)`;
     if (B.ask === 'sit') return 'you sit out this evaluation';
     return '';
   },
@@ -195,7 +194,7 @@ const Team = {
     if (!A || A.st !== 'open') return null;
     const B = Team.beat(run, A),
       p = People.find(run, id),
-      n = Team.first(p),
+      n = firstName(p),
       out = { line: '' },
       say = t => {
         out.line = t.replace(/\{n\}/g, n);
@@ -237,7 +236,7 @@ const Team = {
       const T = Team.of(run),
         h = (T.helped || (T.helped = {}))[A.id] || (T.helped[A.id] = []);
       if (!h.includes(A.y)) h.push(A.y);
-      Run.log(run, `${ARCS[A.w].name}: seen through with ${Team.first(People.find(run, A.id))}.`);
+      Run.log(run, `${ARCS[A.w].name}: seen through with ${firstName(People.find(run, A.id))}.`);
       return;
     }
     A.b++;
@@ -249,7 +248,7 @@ const Team = {
     const ids = new Set(squadOf(m.t[side]).map(p => p.id));
     for (const A of Object.values(Team.arcs(run)))
       if (A.y === Season.year(run) && A.st === 'wait' && ids.has(A.id) && m.played.has(A.id)) {
-        Run.log(run, ARCS[A.w].beats[A.b].yes.replace(/\{n\}/g, Team.first(People.find(run, A.id))));
+        Run.log(run, ARCS[A.w].beats[A.b].yes.replace(/\{n\}/g, firstName(People.find(run, A.id))));
         Team.help(run, A);
       }
   },
@@ -305,7 +304,7 @@ const Team = {
         c = p && Team.duoCard(you.role, p.role);
       if (!c || D[id] || Rel.bondOf(run, id) < TEAM.duo) continue;
       D[id] = c;
-      Run.log(run, `${Team.first(p)} and me have a move now: ${CARDS[c].name}.`);
+      Run.log(run, `${firstName(p)} and me have a move now: ${CARDS[c].name}.`);
     }
   },
   /** The people you left on the other side of match m (side = yours): [player]. */

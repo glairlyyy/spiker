@@ -26,11 +26,7 @@ const Feel = {
         run.fired = FEEL.fired.matches;
         Feel.spark(run);
         const mate = Run.mates(run)[0];
-        if (mate)
-          Run.log(
-            run,
-            `${mate.name.split(' ')[0]}: “${FEEL_LINES.mate[Math.floor(hstr(`mate|${Season.wk(run)}`) * FEEL_LINES.mate.length)]}”`
-          );
+        if (mate) Run.log(run, `${firstName(mate)}: “${hitem(FEEL_LINES.mate, `mate|${Season.wk(run)}`)}”`);
       } else Feel.scar(run);
     }
     return '';
@@ -38,7 +34,7 @@ const Feel = {
   /** One cue line for band i of bar k (a hash of the week: the same week, the same line). */
   line(run, k, i) {
     const L = FEEL_LINES[k][i];
-    return L[Math.floor(hstr(`feel|${k}|${i}|${Season.wk(run)}`) * L.length)];
+    return hitem(L, `feel|${k}|${i}|${Season.wk(run)}`);
   },
   /** [0, 1) for roll `salt` (the run's NPC seed, the week from the start): seeded, never the run's random stream. */
   roll: (run, salt) => hstr(`${run.pseed || 0}|feel|${Season.wk(run)}|${salt}`),

@@ -122,8 +122,8 @@ const Gifts = {
   line(k, run, who, gift) {
     const L = GIFT_LINES[k],
       p = People.find(run, who),
-      n = p ? p.name.split(' ')[0] : 'Someone';
-    return L[Math.floor(hstr(`gline|${k}|${who}|${run.pseed}`) * L.length)]
+      n = firstName(p);
+    return hitem(L, `gline|${k}|${who}|${run.pseed}`)
       .replace(/\{n\}/g, () => n)
       .replace(/\{g\}/g, () => GIFTS[gift].name);
   },

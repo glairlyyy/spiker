@@ -64,8 +64,8 @@ const Circle = {
     const ev = run.event,
       p = People.find(run, ev.who),
       T = Run.myTeam(run),
-      n = p ? p.name.split(' ')[0] : 'Someone',
-      pickL = (L, salt) => L[Math.floor(hstr(`${salt}|${ev.who}|${Season.wk(run)}`) * L.length)];
+      n = firstName(p),
+      pickL = (L, salt) => hitem(L, `${salt}|${ev.who}|${Season.wk(run)}`);
     run.event = null;
     if (!p || p.gone || run.team !== ev.to || !p.team || Run.mates(run).includes(p)) return '';
     if (i === 0 && run.money >= ev.fee) {
