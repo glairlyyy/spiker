@@ -1724,7 +1724,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Settled (owner, 2026-10-22)**: Wei's new ground colours stay in Fast too; ambient occlusion stays on the High setting.
   - **Budget**: the map keeps ≥ 45 fps on a mid laptop GPU at the default camera (dynamic resolution allowed, like matches); Fast
     stays as it is today.
-- §4.40 The island × 2 and real facilities **[draft — T-350–T-351]** (owner, 2026-10-23: "expand the island 2× so travel matters
+- §4.40 The island × 2 and real facilities **[built 2026-10-24 — T-350–T-351; not yet: the drone's field spots lit like places; zoomed out shows region names, not district names]** (owner, 2026-10-23: "expand the island 2× so travel matters
   and there is room for proper facilities"; "remove pins entirely — a building or a piece of kit lights up on hover"):
   - **Scale** (T-350): `MAP_SCALE` 2.25 → 4.5 (~2.4 × 1.6 km). Towns and districts spread out with it (the same layout, twice the
     room); the fog reveal radius, the war tiles, Wei's wealth fall-off, nature's grid and the map camera's reach scale with it,
