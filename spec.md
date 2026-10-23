@@ -848,8 +848,9 @@ the AI coach fills every slot you leave with the same function. Built and measur
     - **God Resolve** (WS): everyone on court — attack, speed and jump × 2 for 3 points; afterwards everyone's morale −0.3.
     - **Resolve of the Titan** (MB): its holder grows to 2× size on court (display: the model × 2; positions and reach as the
       engine's) with defence and jump × 2 for 3 points; afterwards their stamina −0.4.
-    - **INZONE!!** (S): the side goes straight to **Focused** (§2.14) and cannot drop below it for 6 points; the director plays
-      that side's attacks in the **Ink** style (§2.15, VFX ball style Ink) while it lasts.
+    - **INZONE!!** (S): the side goes straight to **Fever** (§2.14; owner, 2026-10-24 — not Focused) and stays in it for 6 points
+      (an error or the zone breaker does not end it while the card lasts); the director plays that side's attacks in the **Ink**
+      style (§2.15, VFX ball style Ink) while it lasts.
     - Element Surge stays (element players); Fever Rush, Iron Wall, Zone, Overload and Last Stand become plays or go (T-345).
     - Each OP card opens with a full-screen cut-in (its name, the holder, team colour, ~1 s; Hype off: a banner).
   - **On screen** (T-347; §9 and the design system):
@@ -1724,7 +1725,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Settled (owner, 2026-10-22)**: Wei's new ground colours stay in Fast too; ambient occlusion stays on the High setting.
   - **Budget**: the map keeps ≥ 45 fps on a mid laptop GPU at the default camera (dynamic resolution allowed, like matches); Fast
     stays as it is today.
-- §4.40 The island × 2 and real facilities **[built 2026-10-24 — T-350–T-351; not yet: the drone's field spots lit like places; zoomed out shows region names, not district names]** (owner, 2026-10-23: "expand the island 2× so travel matters
+- §4.40 The island × 2 and real facilities **[built 2026-10-24 — T-350–T-351; not yet: the drone's field spots lit like places; zoomed out shows region names, not district names; arriving puts you inside (T-352); later (owner, 2026-10-24): more fillers for Wei, the Cup-win drop (63 → 42 %, 12 runs) re-measured]** (owner, 2026-10-23: "expand the island 2× so travel matters
   and there is room for proper facilities"; "remove pins entirely — a building or a piece of kit lights up on hover"):
   - **Scale** (T-350): `MAP_SCALE` 2.25 → 4.5 (~2.4 × 1.6 km). Towns and districts spread out with it (the same layout, twice the
     room); the fog reveal radius, the war tiles, Wei's wealth fall-off, nature's grid and the map camera's reach scale with it,
