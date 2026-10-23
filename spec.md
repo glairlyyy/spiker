@@ -760,7 +760,8 @@ the AI coach fills every slot you leave with the same function. Built and measur
   smear frame: a capsule along its motion, up to 2.6× long and 0.65 thick at top power (~1.4× a medium spike, none on soft
   balls), its stripes washed bright, held ~140 ms and round again before the next touch. A top spike / jump serve (power
   ~90+) gets a 40–70 ms hit-stop at contact with a slightly stronger camera kick and a white flash; no hit-stop with reduced
-  motion or Hype off. Display only; numbers in the VFX panel (Ball squash + hit-stop).
+  motion or Hype off. Display only; numbers in the VFX panel (Ball squash + hit-stop). Smear axis fix **[built 2026-10-23]**: the smear lies along
+  the ball's real flight (not the drawn ball easing off the hand or held at the floor), so it no longer tilts steeper or flatter than the shot.
   Attack animation pass (owner, 2026-10-23: "make everything smooth") **[built 2026-10-23]**: from coaching and spike-jump
   studies — the leg drive from the deepest crouch to the take-off takes ~150 ms (was ~60) and leaves the floor on nearly straight
   legs with both arms swinging up past the shoulders, handing over to the air pose without a jump; the arms swing back and

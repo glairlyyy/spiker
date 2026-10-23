@@ -345,6 +345,7 @@ export function updatePointFlash(w) {
 }
 
 const prevBall = new THREE.Vector3(),
+  prevFlight = new THREE.Vector3(),
   mv = new THREE.Vector3(),
   ballAxis = new THREE.Vector3(0, 0, 1),
   ORIGIN = new THREE.Vector3(),
@@ -353,7 +354,7 @@ const prevBall = new THREE.Vector3(),
   WHITE = new THREE.Color('#ffffff');
 /**
  * The ball's squash / smear (A.bsq, set by effects.js ballHit; shape from ballSquash): a scale of ax along the axis and cr
- * across it, in world space — along the hit while it is flattened, then along the ball's own motion this frame (ballDir).
+ * across it, in world space — along the hit while it is flattened, then along its flight this frame (ballDir).
  * Returns the smear (0 = none) so the stripes can wash out with it.
  */
 function ballShape(ball) {
@@ -391,7 +392,7 @@ function ballShape(ball) {
   ball.userData.sq = sqM;
   return s.smear || 0;
 }
-/** Direction the ball last moved in (world space; for directional effects). */
+/** Direction the ball last moved in on its flight (world space; for the smear and directional effects). */
 export const ballDir = new THREE.Vector3(1, 0, 0);
 /** The floor marker under the ball: follows it, widens and fades as it rises (uses the ball's final position). */
 export function updateBallShadow(w) {
@@ -409,14 +410,17 @@ export function updateBall(w, now) {
     ball = w.ball;
   ball.visible = !!B.vis;
   if (B.vis) {
+    // ballDir follows the flight itself (A.ball, before the floor clamp and r3d handTouch's pull onto the hand): the drawn
+    // ball eases off the hand over the smear's first ~140 ms, so its own motion tilts the smear off the flight line
+    mv.copy(prevFlight);
+    Wto(prevFlight, B.x, B.z, B.h);
+    mv.subVectors(prevFlight, mv);
+    if (mv.lengthSq() > 1e-8) ballDir.copy(mv).normalize();
     prevBall.copy(ball.position);
-    Wto(ball.position, B.x, B.z, B.h);
+    ball.position.copy(prevFlight);
     ball.position.y = Math.max(0.16, ball.position.y);
     mv.subVectors(ball.position, prevBall);
-    if (mv.lengthSq() > 1e-6) {
-      ballAxis.set(mv.z, 0, -mv.x).normalize();
-      ballDir.copy(mv).normalize();
-    }
+    if (mv.lengthSq() > 1e-6) ballAxis.set(mv.z, 0, -mv.x).normalize();
     ball.setRotationFromAxisAngle(ballAxis, A.spin || 0);
     const sq = A.squash || 0;
     ball.scale.set(1 + 0.35 * sq, 1 - 0.42 * sq, 1 + 0.35 * sq);

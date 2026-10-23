@@ -259,7 +259,7 @@ flight's start tangent in court units, `fl` = flight ms), plus on a spike / jump
 stronger camera kick and a white flash. `ballSquash(k, ms, S, fl)` is the pure shape: flatten (cosine, one overshoot,
 volume kept, round by `S.ms`), then the smear along the flight (up to 2.6× long, thickness ax^−thin, held and eased, capped
 at 0.9 of the flight). arena3d `updateBall` turns it into a world-axis scale matrix (`ball.userData.sq`, applied outside
-the spin by the ball's own `updateMatrix`: T·D·R·S) — along `dir` while flattened, along `ballDir` (this frame's motion)
+the spin by the ball's own `updateMatrix`: T·D·R·S) — along `dir` while flattened, along `ballDir` (this frame's flight motion, from A.ball before the floor clamp and handTouch)
 once smeared — and washes the stripes out with emissive white as it smears. QA hook: `A.qaLook = [x, y, z]` puts the
 camera that far off the ball (r3d).
 
