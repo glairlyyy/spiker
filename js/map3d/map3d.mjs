@@ -13,7 +13,8 @@
 // the week time of the waiting day and of the last action's walk and order; setPhase(p | () => p) tells the map which of
 // 'idle' | 'walk' | 'order' is playing; the clock runs toward it (never back), the walk's share by how far the avatar has come
 // along its road (so it holds while the avatar stands still), and sets the sun, the sky and the night lights.
-// The player's avatar (avatar3d.mjs) stands at model.you.at and walks when it changes; the camera follows it.
+// The player's avatar (avatar3d.mjs) stands at model.you.at — inside the place there (you.inside, spec §4.40: in through its door) — and
+// walks when it changes (out of the door it stood inside first: you.exit); the camera follows it.
 // Units: map (x, y) → world (x·MAP_M, 0, y·MAP_M) metres (1 map unit = 0.5 m). One renderer and canvas live across
 // re-mounts (the career screen re-creates its #mapwrap each render); the view (target, distance) survives them.
 // Display only: no rules, no randoms (terrain noise is a fixed hash).
@@ -32,6 +33,8 @@ export { inside, edgeDist, sideDist }; // (the polygon maths live in geo3d.mjs; 
 
 /** The street battle's pick radius (m) round its point (spec §4.40: the crowd stands there). */
 const CLASH_R = 12;
+/** Where your figure stands for model m: inside the place (you.inside's last point, spec §4.40), else you.at. */
+export const standAt = m => (m.you.inside && m.you.inside.length ? m.you.inside[m.you.inside.length - 1] : m.you.at);
 const IDLE_S = 3; // canvas detached this long → release the renderer
 
 /** Free every geometry / material the map made (shared kit caches — userData.shared — survive a re-create), the GPU context. */
@@ -416,17 +419,21 @@ export function create(onIdle) {
       }
       const at = m.you && m.you.at;
       if (!at || !avatar) return;
-      const key = at.join(',');
+      const key = at.join(','),
+        tail = m.you.inside || [], // arriving inside (spec §4.40): on from the door to where you stand in the place
+        head = m.you.exit || []; // …and out of the one you leave
       if (m.time && m.time.walk[0] !== lastWalk) ((walkPts = null), (prog = 1)); // a new action (no walk unless one starts below)
       lastWalk = m.time ? m.time.walk[0] : null;
-      if (seen === null) avatar.snap(at);
+      if (seen === null) avatar.snap(standAt(m));
       else if (key !== seen) {
         const [x0, z0] = avatar.pos();
-        avatar.setTarget(at, m.you.route);
+        avatar.setTarget(at, m.you.route, { head, tail });
         walkPts = [
           [x0, z0],
-          ...(m.you.route && m.you.route.length > 1 ? m.you.route.slice(1, -1) : []).map(p => [p[0] * MAP_M, p[1] * MAP_M]),
-          [at[0] * MAP_M, at[1] * MAP_M]
+          ...[...head, ...(m.you.route && m.you.route.length > 1 ? m.you.route.slice(1, -1) : []), at, ...tail].map(p => [
+            p[0] * MAP_M,
+            p[1] * MAP_M
+          ])
         ];
         walkLen = [0];
         for (let i = 1; i < walkPts.length; i++)
@@ -530,13 +537,13 @@ export function create(onIdle) {
     /** Dev / QA: stand at the model's you.at at once (no walk; a held stop is let go). */
     jump() {
       if (!avatar || !cur || !cur.you || !cur.you.at) return;
-      avatar.snap(cur.you.at);
+      avatar.snap(standAt(cur));
       seen = cur.you.at.join(',');
       C.land();
     },
     /** Take you back to the shown position (a WASD walk the rules refused). */
     home() {
-      if (avatar && cur && cur.you && cur.you.at) avatar.setTarget(cur.you.at);
+      if (avatar && cur && cur.you && cur.you.at) avatar.setTarget(cur.you.at, null, { tail: cur.you.inside || [] });
     },
     info: () => ({
       calls: renderer.info.render.calls,

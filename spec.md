@@ -1752,6 +1752,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
       buildings themselves stay the way to pick (the map's search / People sheet links still fly the camera to them).
     - Street battles, people (§4.37) and the airport keep their own picks; the drone's field spots (§4.38) light up like places.
     - Low-poly setting: the same buildings, cheaper (merged, no signs' texture detail); the hover rim works in both.
+  - **Arriving inside** (owner, 2026-10-24): a trip to a place ends with your figure walking in its door to its interior's station (the Strength Center: the bench, the street-level prompt's spot) or onto an outdoor facility's kit (track, courts, yard, cage …); leaving, you walk back out of the door first. A building with no interior keeps you at its door; the arena's centre court is its point. Display only: trip costs and what a place does are unchanged **[built 2026-10-24]**.
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.
