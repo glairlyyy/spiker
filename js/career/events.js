@@ -8,7 +8,7 @@ const Events = {
       return {
         title: `${you ? ENAME[you.el] : 'Element'} awakening`,
         text: you
-          ? `Coach takes you aside: “${you.sig.name} is in you. Show me.” Pass and your element is yours for good — its gauge fills in matches, and a full gauge or a captain's buff turns your next attack into ${you.sig.name}.`
+          ? `Your captain takes you aside: “${you.sig.name} is in you. Show me.” Pass and your element is yours for good — its gauge fills in matches, and a full gauge or a captain's buff turns your next attack into ${you.sig.name}.`
           : '',
         a: [
           'Take the trial',

@@ -435,14 +435,15 @@ const step = async (name, fn) => {
       mapCourt('arena', 'open', false);
     });
     await pg.waitForFunction(() => typeof R3D !== 'undefined' && R3D && A && A.m && !A.hold, null, { timeout: 120000 });
-    // match prep (spec §2.26, §2.33): both teams; your side's hand (one card yours, the coach fills the rest); theirs hidden
+    // match prep (spec §2.26, §2.33): both teams; your side's hand (one card yours, the captain fills the rest); theirs hidden
     await pg
       .waitForFunction(() => A.prep && $('#prep') && !$('#prep').hidden && /Their hand/.test($('#prep').textContent), null, {
         timeout: 10000
       })
       .catch(() => {}); // (the card can paint a frame after A.m — the check below says what was there)
     const pre = await ev(() => (A.prep && $('#prep') && !$('#prep').hidden ? $('#prep').textContent : ''));
-    if (!/Their hand: hidden/.test(pre) || !/the coach fills the rest/.test(pre))
+    if (!/Their hand: hidden/.test(pre) || !/the captain fills the rest|Drag a card into a slot/.test(pre))
+      // (you as captain: all 5 yours)
       throw new Error(`career match prep: ${pre.replace(/\s+/g, ' ').slice(0, 400)}`);
     await pg.keyboard.press('Enter');
     if (await ev(() => A.prep)) throw new Error('Enter did not start the match');
@@ -625,7 +626,10 @@ const step = async (name, fn) => {
     // match prep (spec §2.26): both sides yours in a Monster game; pick Hunt the passer / Wall their ace for the left team
     await ev(() => {
       if (!A.prep || $('#prep').querySelectorAll('.pteam').length !== 2) throw new Error('no Monster match prep');
-      // the hand (spec §2.33): your five slots and the pool; the coach's side is hidden
+      // no coach (spec §2.36): the other side is the captain's call, and the rail's tab is Reads
+      if (!/Captain decides/.test($('#prep').textContent) || !/^Reads/.test($('#readsbtn').textContent) || 'coaches' in A)
+        throw new Error('the coach is still in the match');
+      // the hand (spec §2.33): your five slots and the pool; the captain's side is hidden
       if ($('#prep').querySelectorAll('.chand').length !== 1 || $('#prep').querySelectorAll('.chand .cslot').length !== 5)
         throw new Error('no hand in prep');
       cardsSlot(0, 'atk0');
@@ -706,9 +710,9 @@ const step = async (name, fn) => {
     await ev(() => {
       A.hold = true;
       while (!A.m.over) playRally(A.m);
-      // the coach panel (spec §2.25): both sides, hitters and passers after a whole match
-      railOpen('coach');
-      const c = $('#coach');
+      // the Reads tab (spec §2.25, §2.36): both sides, hitters and passers after a whole match
+      railOpen('reads');
+      const c = $('#reads');
       if (
         !c ||
         c.querySelectorAll('.cside').length !== 2 ||
@@ -717,7 +721,7 @@ const step = async (name, fn) => {
         c.querySelectorAll('.cstat').length !== 2 || // each side's status line
         !c.querySelector('details.fold') // the numbers, folded away
       )
-        throw new Error(`coach panel: ${c ? c.textContent.slice(0, 120) : 'missing'}`);
+        throw new Error(`Reads tab: ${c ? c.textContent.slice(0, 120) : 'missing'}`);
       railOpen(null);
       finishMatch();
     });

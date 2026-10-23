@@ -33,7 +33,7 @@ repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
 
-### [ ] T-344: No coach — the captain runs the side
+### [x] T-344: No coach — the captain runs the side
 Spec: §2.36 (lore.md §4)          Goldens: update (the rolled coachIQ goes; the captain's read replaces it)          Save: no change
 Goal: no coach exists in a match; the captain makes every call the coach made, with a read from their own wit and leadership.
 Files: js/engine/teams.js, match.js, coach.js, cards.js, plans.js, lanes.js, js/data/tactics.js, cards.js, rules.js, match-lines.js,
@@ -56,7 +56,7 @@ Accept:
 - `npm test`, `npm run lint`, `npm run test:ui` pass; `npm run cards -- 100 both` and `npm run bot -- 20` before / after in the
   Result (the must-hold coach > boosts > none still holds with the captain).
 QA: Monster game → match prep "Captain decides", a turn overlay, the Reads tab, a timeout line; no sideline figure.
-Result:
+Result: `capIQ(t)` (teams.js, read live from `t.cap`: 0.4 + 0.6 × clamp(½·(lead−62)/28 + ½·(wit−0.8)/1.05); generated captains mean 0.70 / sd 0.17, as the old rnd(0.4, 1) roll) replaces `coachIQ` everywhere (eval / court / people fixed values gone); `Coach`→`Reads` (engine/reads.js, ui/match-reads.js, `READS`), `coachtalk`→`captalk` (a 2.4 s bubble over the captain), `coachSubs`→`capSubs`, card src 'coach'→'book', Coach tab→Reads (H), "Captain decides" / "Captain picks"; sideline figures, `coachPose`, `drawCoachTags` and `A.coaches` gone; sub / timeout lines in the captain's voice. Goldens updated (the roll's draw goes). cards 100 both — before: league coach +15.4 % pts / +49 % wins, boosts +1.3 / +1, none 36.8 %; tour coach +17.2 / +54, boosts −0.4 / +4, none 35.3 %; after: league captain +11.7 / +37, boosts −0.3 / +1, none 38.8 %; tour captain +16.3 / +47, boosts +0.2 / 0, none 35.1 % (captain > boosts > none holds). bot 20 league — before +2.4 % pts / −5 % wins, after +9.3 % / +30 % (noisy at 20 pairs). Seed-fixture tests moved by the stream shift re-seeded (each also fails on the old code at the new-failing seed); bond calibration rebased (90 seeds: 9.3 → 9.7 weeks, unchanged), kill-rate band 0.33–0.48 (~35 % over 17 seeds before and after). QA: prep "Captain decides" ×2, turn overlay, sub line over the captain, Reads tab; no sideline figure; 0 page errors; test:ui 23/23.
 
 **The living island (owner, 2026-10-21, spec §4.37), phase 1: two agents.** **Agent L — Life & clock**: T-331 → T-332. **Agent E —
 Encounters, effort & sound**: T-333 → T-335 → T-334. T-336 (street level) waits for phase 1 and the owner's look. Ownership: L owns

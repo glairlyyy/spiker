@@ -229,7 +229,7 @@ const ACTS_FX = {
     A.link = { p1: a.p1, p2: a.p2, life: 1, c: a.color };
   }
 };
-/** Match-screen UI: banners, calls, the scoreboard, coaches. */
+/** Match-screen UI: banners, calls, the scoreboard, the captain's talk. */
 const ACTS_UI = {
   tech(a, d, bs) {
     // technique name pops over the player who used it
@@ -249,13 +249,13 @@ const ACTS_UI = {
     setTimeout(() => sfx.whistle(), 220);
     updTO();
   },
-  coachtalk(a, d, bs) {
-    const c = A.coaches[a.side];
-    c.type = 'talk';
-    c.react = 1;
-    c.talkT = 2400;
-    c.bubble = a.text;
-    A.coaches[1 - a.side].type = null;
+  /** The captain's line (spec §2.36: a sub, a timeout, a tactic call): a speech bubble over that side's captain. */
+  captalk(a, d, bs) {
+    const t = A.m.t[a.side],
+      c = t.cap && A.disp[t.cap.id];
+    if (!c) return;
+    c.call = { t: a.text, life: 1, dur: 2400 };
+    sfx.voice(c.p.num, false);
   },
   call(a, d, bs) {
     // speech bubble over a player calling for the ball
@@ -276,8 +276,8 @@ const ACTS_UI = {
   score(a, d, bs) {
     board(a.snap);
     boxScore();
-    A.cond = Coach.flags(A.m, A.staShown && Object.keys(A.staShown).length ? A.staShown : A.m.sta, A.moodShown || A.m.mood); // on court (tags.js)
-    if (A.railTab === 'coach') coachPanel(); // spec §2.25: refreshed at the dead ball
+    A.cond = Reads.flags(A.m, A.staShown && Object.keys(A.staShown).length ? A.staShown : A.m.sta, A.moodShown || A.m.mood); // on court (tags.js)
+    if (A.railTab === 'reads') readsPanel(); // spec §2.25: refreshed at the dead ball
   },
   rot(a, d, bs) {
     board(a.snap);
@@ -299,14 +299,6 @@ const ACTS_UI = {
     A.cheer[a.side] = 1;
     if (a.big) A.cheerAll = 1;
     A.pointN++;
-    const cw = A.coaches[a.side],
-      cl = A.coaches[1 - a.side];
-    cw.react = 1;
-    cw.type = 'yay';
-    if (a.big || a.streak >= 2) {
-      cl.react = 1;
-      cl.type = 'ugh';
-    }
     if (a.streak >= 3 && !A.chant) A.chant = { side: a.side, life: 1, text: `${A.m.t[a.side].short}!  ${A.m.t[a.side].short}!` };
     if ((a.zone || A.pointN % 11 === 0) && !A.wave) A.wave = { x: -120 };
   },

@@ -105,7 +105,7 @@ test('career: U21 Final Cup — entrants, seeding, byes, restore', () => {
   assert(r3.result && typeof r3.result.champ === 'string', 'the run ends and names the champion');
 });
 
-test('career: your coach picks the 4 — bench start, never played, part rewards', () => {
+test('career: your captain picks the 4 — bench start, never played, part rewards', () => {
   const spec = { role: 'WS', name: 'Benchy', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 };
   const mk = (seed, level) => {
     const g = load(seed),
@@ -118,7 +118,7 @@ test('career: your coach picks the 4 — bench start, never played, part rewards
     return [g, run, you];
   };
   // the weakest wing spiker of the squad starts on the bench; the 4 stay in role order
-  let [g, run, you] = mk(53, 25);
+  let [g, run, you] = mk(59, 25);
   const spare = g
     .squadOf(run.pickup)
     .filter(p => p.role === 'MB' && p !== you)

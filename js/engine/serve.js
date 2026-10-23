@@ -257,7 +257,7 @@ function serveAim(c) {
       mv(m, p, h[0], h[1], sw, V);
     }
   });
-  recvLog(m, rc, false); // the coach panel: who was served at (spec §2.25)
+  recvLog(m, rc, false); // the Reads tab: who was served at (spec §2.25)
   Object.assign(c, { tx, tz, rc, d0, rollR, rs, sdur });
 }
 /** The serve beats the receiver: off the arms (a teammate may save it) or a clean ace. */

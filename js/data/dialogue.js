@@ -16,14 +16,14 @@ const CALLS = {
 /** Each player has a fixed personality (from a name hash) that picks their lines. */
 const PERS = ['hot', 'cool', 'cocky', 'shy', 'leader'];
 /** {sig} = signature element spike, {mate} = teammate's first name, {opp} = opponent's first name. */
-/** The coach's line at a substitution ({out} / {in} = shirt numbers), picked by hash — never by R(). */
+/** The captain's line at a substitution ({out} / {in} = shirt numbers), picked by hash — never by R(). */
 const SUBLINES = [
-  "Subbing #{out} for #{in}. Don't let us down.",
+  "#{out}, take a breather. #{in}, you're with me.",
   "#{out}, sit. #{in}, you're up — earn it.",
   '#{in} in for #{out}. Same plan, fresher legs.',
-  "#{out}, come off. #{in} — show me why you're here."
+  "#{out}, come off. #{in} — show them why you're here."
 ];
-/** The coach takes off the passer the other side keeps serving at (SUB.hunt): {out} / {in} = shirt numbers. */
+/** The captain takes off the passer the other side keeps serving at (SUB.hunt): {out} / {in} = shirt numbers. */
 const HUNT_SUBLINES = [
   "They're hunting #{out}. #{in}, you take those balls.",
   '#{out}, sit — they found you. #{in}, make them start over.',

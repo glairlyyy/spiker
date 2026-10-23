@@ -4,7 +4,7 @@
 // and camera push-in the playback layer creates lines up with the 3D scene; those are drawn on the transparent 2D
 // canvas on top. The world (renderer, arena, 10 dressed VRMs) is built once and re-dressed for every match.
 //   units3d  court units → metres, textures      arena3d   court, net, stands, crowd, ball
-//   camera3d game camera, scene shots, P3D       actors3d  posing players and coaches, trails, auras, rings
+//   camera3d game camera, scene shots, P3D       actors3d  posing players, trails, auras, rings
 //   players3d VRM load / dress / pose apply      poses3d   pose library      fx3d / trails3d  effects
 import * as THREE from 'three';
 import { loadBase, makeVRM, modelStats, updateVrm, MODEL_URL, MAIN_URL, BUNDLED } from './players3d.mjs';
@@ -31,11 +31,10 @@ import {
   povHidden,
   setAspect
 } from './camera3d.mjs';
-import { posePlayer, poseCoach, dressActors, swapActor, setPovHidden, setKeepColors } from './actors3d.mjs';
+import { posePlayer, dressActors, swapActor, setPovHidden, setKeepColors } from './actors3d.mjs';
 
 const TAG_DROP = 30; // bird's-eye: how far (figure units) the tags come down toward the figure (seen from 45°, a body looks shorter)
-const N_PLAYERS = 8,
-  N_COACHES = 2;
+const N_PLAYERS = 8;
 
 let world = null,
   building = null;
@@ -73,19 +72,17 @@ async function build(onProgress) {
   const arena = buildArena(scene);
   const fx = createFx(scene);
 
-  // players and coaches: one base model, parsed once per figure, dressed per match
+  // players: one base model, parsed once per figure, dressed per match
   prog(0, 'Downloading players');
   const buf = await loadBase(MODEL_URL, f => prog(f * 0.3, 'Downloading players'));
-  const people = [],
-    coaches = [];
-  for (let i = 0; i < N_PLAYERS + N_COACHES; i++) {
+  const people = [];
+  for (let i = 0; i < N_PLAYERS; i++) {
     const pl = await makeVRM(buf, 1.8);
     scene.add(pl.root);
-    prog(0.5 + (0.5 * (i + 1)) / (N_PLAYERS + N_COACHES), 'Getting players ready');
+    prog(0.5 + (0.5 * (i + 1)) / N_PLAYERS, 'Getting players ready');
     await new Promise(r => setTimeout(r, 0));
     if (i === 0) DBG.log('info', `Model base: ${modelStats(pl)}`);
-    if (i < N_PLAYERS) people.push(kitOut(pl, scene, arena));
-    else coaches.push(pl);
+    people.push(kitOut(pl, scene, arena));
   }
   // your own player in career matches: Main_v2 (one figure, kept as modelled; a failed load just leaves the base model)
   try {
@@ -100,7 +97,7 @@ async function build(onProgress) {
   } catch (e) {
     DBG.log('warn', 'Main model could not be loaded', e);
   }
-  const w = { renderer, gl, scene, fx, people, coaches, ...arena, ballTrail: makeTrail(scene, 40) }; // ballTrail: VFX ball style ribbon / ink
+  const w = { renderer, gl, scene, fx, people, ...arena, ballTrail: makeTrail(scene, 40) }; // ballTrail: VFX ball style ribbon / ink
   buildVenues(scene, w); // venue sets, cut-out crowd, officials, big screen, confetti (spec §9.11)
   w.amb = buildAmbient(scene, arena.glowTex); // the venue's air: wind, embers, corner flames (spec §2.27)
   return w;
@@ -193,7 +190,7 @@ async function bench(frames = 40) {
   const r = w.renderer,
     gl = r.getContext(),
     cam2 = new THREE.PerspectiveCamera(40, 16 / 9, 0.1, 100),
-    all = [...w.people, ...w.coaches],
+    all = [...w.people],
     saved = all.map(pl => [pl.root.visible, pl.root.position.clone()]),
     groups = new Map();
   cam2.position.set(0, 1.6, 9);
@@ -354,7 +351,6 @@ function draw() {
   const wdt = dt * Math.max(0.02, Math.min(1, A.ts ?? 1));
   if (!A.qaFreeze) for (const pl of w.people) if (pl.d) posePlayer(pl, pl.d.p.id === A.digHero ? dt : wdt, w.ball.position, w.fx); // qaFreeze: test hook; a digger chasing a far ball poses at normal speed
   if (A.animLab) animCapture(w, wdt); // Animation lab: keep this frame
-  for (const pl of w.coaches) if (pl.c) poseCoach(pl, dt, now);
   ballRibbon(w, wdt);
   updateVenue(w, now, dt * 1000, cam);
   const arn = Dir.arena(); // the venue's air keeps the highest crowd heat of the match (spec §2.27)
@@ -380,12 +376,6 @@ function draw() {
       k = Math.min(1.7, pr.s * FIG);
     pr.Y += TAG_DROP * k * birdW(); // bird's-eye: a figure seen from above looks shorter, so its tag comes down to just over its head
     if (!A.shot) drawTags(d, pr, k, (A.staShown || {})[d.p.id]); // capped: close-up shots
-  }
-  for (const pl of w.coaches) {
-    if (!pl.c) continue;
-    const pr = P(sx(pl.c.side, 115), -0.035, 0);
-    pr.Y += TAG_DROP * pr.s * FIG * 1.02 * birdW();
-    if (!A.shot) drawCoachTags(pl.c, pr, pr.s * FIG * 1.02); // (not in close-up shots)
   }
   Overlay.drawFx(now);
 }

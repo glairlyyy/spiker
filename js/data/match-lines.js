@@ -380,7 +380,7 @@ const MLINES = {
       'Hope they’re paying you well, {them}.',
       'Missed me yet, {them}?',
       'You picked the wrong side, {them}. Watch.',
-      'Our old coach says hi. Actually, he doesn’t.',
+      'Our old captain says hi. Actually, he doesn’t.',
       'Still serving to the same corner, {them}?'
     ],
     shy: [
@@ -417,7 +417,7 @@ const MLINES = {
       'They pay in wins, {them}. You’ll see.',
       'Missed you? I miss beating you in practice.',
       'Wrong side? We’ll check the score.',
-      'Tell the coach I said nothing.',
+      'Tell the captain I said nothing.',
       'Same corner. Still can’t stop it, can you?'
     ],
     shy: [

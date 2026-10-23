@@ -144,7 +144,7 @@ const Run = {
     return p === you ? MOODS[run.mood].form : 0.1 * Run.mates(run).filter(m => (you.bond[m.id] || 0) >= 80).length;
   },
   /**
-   * The coach's 4 (see BENCH): per court slot [S, MB, WS, WS] the best same-role player of squad T by ovr + 6 × form (+ your
+   * The captain's 4 (see BENCH): per court slot [S, MB, WS, WS] the best same-role player of squad T by ovr + 6 × form (+ your
    * standing with `region` ÷ BENCH.standingPer for you); a missing role falls back to the best remaining, the rest sit.
    * Unless `dry`, reorders T.P / T.bench, slots, s / mb / ws and the captain (best leader on court). Returns
    * { starts, you: your score, rival: { p, score } | null } — the same-role player ahead of you (or the best sub behind).
@@ -167,7 +167,7 @@ const Run = {
       forced = forceYou && !out(you) && left.includes(you);
     for (const role of ['S', 'MB', 'WS', 'WS']) {
       const fit = left.filter(p => !out(p)),
-        ok = fit.length ? fit : left, // (everyone hurt: the coach starts someone anyway)
+        ok = fit.length ? fit : left, // (everyone hurt: the captain starts someone anyway)
         of = ok.filter(p => p.role === role),
         p = forced && role === you.role && left.includes(you) ? you : (of.length ? of : ok).reduce((a, b) => (score(b) > score(a) ? b : a));
       P.push(p);

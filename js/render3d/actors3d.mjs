@@ -1,10 +1,9 @@
-// Players and coaches on court: locomotion measured from court movement, facing and head tracking, reaching for the
-// ball at contacts, hand / eye light trails, auras, floor rings (zone, captain's buff) and particles; coaches on the
-// sideline; dressing everyone for a match.
+// Players on court: locomotion measured from court movement, facing and head tracking, reaching for the
+// ball at contacts, hand / eye light trails, auras, floor rings (zone, captain's buff) and particles; dressing everyone for a match.
 import * as THREE from 'three';
 import { wrap } from './m3d.mjs';
 import { applyPose, smoothBones, torsoDir, bendArm, groundSnap, setFace, updateVrm, dress, undress, mirror } from './players3d.mjs';
-import { poseDone, playerPose, coachPose, gaitNow, mix, sm } from './poses3d.mjs';
+import { poseDone, playerPose, gaitNow, mix, sm } from './poses3d.mjs';
 import { celeMs } from './poses3d-cele.mjs';
 import { KH, KX, KZ, W } from './units3d.mjs';
 import { cam, povFadeId } from './camera3d.mjs';
@@ -333,7 +332,7 @@ const longRun = (d, mot, left) =>
   d.pose !== 'block' &&
   d.pose !== 'set' &&
   !(d.app && !d.curve);
-/** Body yaw (pl.yawOff, relative to facing the net): toward a dive, the way you run, the coach in a huddle, or the ball. */
+/** Body yaw (pl.yawOff, relative to facing the net): toward a dive, the way you run, the huddle spot, or the ball. */
 function steer(pl, d, pos, face, mot, ballPos, dt) {
   const side = d.side,
     toward = (x, z) => wrap(Math.atan2(x, z) - face);
@@ -358,12 +357,12 @@ function steer(pl, d, pos, face, mot, ballPos, dt) {
     want = toward(mot.vx, mot.vz);
     rate = 8;
   } else if (free && mot.speed > 0.9 && left > (A.ball.vis ? 2.5 : 0.8)) {
-    // going somewhere (back to position, to the bench, to the coach): face the way you run
+    // going somewhere (back to position, to the bench, to the huddle): face the way you run
     want = toward(mot.vx, mot.vz);
     rate = 8;
   } else if (d.pose === 'huddle' && mot.speed < 0.6) {
     const c = W(sx(side, 115), -0.035, 0);
-    want = toward(c.x - pos.x, c.z - pos.z) * 0.85; // around the coach
+    want = toward(c.x - pos.x, c.z - pos.z) * 0.85; // around the huddle spot on the sideline
     rate = 5;
   } else if (
     (d.pose === 'ready' || d.pose === 'bump' || (mot.speed > 0.6 && d.pose !== 'spike' && d.pose !== 'set') || !d.pose) &&
@@ -536,21 +535,6 @@ function glow(pl, d, pos, dt, fx) {
   }
 }
 
-/** A coach on the sideline: pose from their reaction; hops when celebrating. */
-export function poseCoach(pl, dt, now) {
-  const c = pl.c,
-    s = c.side,
-    hop = c.type === 'yay' ? Math.abs(Math.sin(now * 0.012)) * 14 * c.react : 0;
-  pl.root.position.copy(W(sx(s, 115), -0.035, 0));
-  pl.root.rotation.set(0, s === 0 ? Math.PI / 2 - 0.5 : -Math.PI / 2 + 0.5, 0);
-  const pose = coachPose(c, now);
-  applyPose(pl, pose);
-  smoothBones(pl, dt, 12);
-  groundSnap(pl, hop * KH, false);
-  setFace(pl, pose.face || {}, dt);
-  updateVrm(pl, dt);
-}
-
 /** Loaded .vrm models keep their own colours (no kit / hair / skin / eye tint) when on. */
 let keepColors = false;
 export const setKeepColors = on => (keepColors = !!on);
@@ -671,7 +655,7 @@ export function swapActor(w, outId, d) {
   dressFigure(pl, d);
 }
 
-/** Per match: dress the players (team kit, look, height, trail colours) and coaches; reset per-player state. */
+/** Per match: dress the players (team kit, look, height, trail colours); reset per-player state. */
 export function dressActors(w) {
   if (!A || !A.disp) return; // no match on screen
   const disp = Object.values(A.disp),
@@ -708,14 +692,5 @@ export function dressActors(w) {
       return;
     }
     dressFigure(pl, d);
-  });
-  w.coaches.forEach((pl, i) => {
-    const c = A.coaches[i];
-    pl.c = c;
-    pl.root.visible = !!c;
-    if (!c) return;
-    dress(pl.vrm, { shirt: '#2b2f4a', shorts: '#23263d', hair: c.p.hair, skin: c.p.look.skin, eyes: c.p.look.eyeC, shoes: '#1a1c2c' });
-    pl.root.scale.setScalar((pl.scale = 1.78 / pl.headY));
-    pl.prev.clear();
   });
 }

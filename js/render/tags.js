@@ -1,38 +1,5 @@
-// Player and coach tags drawn above the 3D figures (screen space).
+// Player tags drawn above the 3D figures (screen space).
 
-/** Coach label and timeout speech bubble (screen space) for coach `c` at projected point `pr`, scale `k`. */
-function drawCoachTags(c, pr, k) {
-  const side = c.side;
-  ctx.textAlign = 'center';
-  ctx.font = `700 ${Math.round(9 * k + 1)}px ${FONT_ROUND}`;
-  ctx.fillStyle = 'rgba(255,255,255,.7)';
-  ctx.fillText(A.m.to[side] ? 'Coach · TO used' : 'Coach', pr.X, pr.Y - 126 * k);
-  if (c.bubble) {
-    ctx.save();
-    ctx.font = `700 15px ${FONT_ROUND}`;
-    const tw = ctx.measureText(c.bubble).width,
-      bx2 = clamp(pr.X + (side ? -tw / 2 - 10 : tw / 2 + 10), tw / 2 + 14, 1000 - tw / 2 - 14),
-      by = pr.Y - 165 * k;
-    ctx.fillStyle = '#fff';
-    ctx.strokeStyle = INK;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    roundRectPath(bx2 - tw / 2 - 12, by - 22, tw + 24, 32, 12);
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(pr.X + (side ? -6 : 6), by + 10);
-    ctx.lineTo(pr.X + (side ? -18 : 18), by + 10);
-    ctx.lineTo(pr.X, by + 28);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = INK;
-    ctx.textAlign = 'center';
-    ctx.fillText(c.bubble, bx2, by);
-    ctx.restore();
-  }
-}
 /** Add a rounded rectangle to the current path (a plain one where canvas roundRect is missing). */
 function roundRectPath(x, y, w, h, r) {
   if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
@@ -133,7 +100,7 @@ function drawTags(d, pr, k, staV) {
   }
   const cw = A.cond && A.cond[p.id];
   if (cw && !A.cele && !A.done) {
-    // the player's state, in a word (Coach.flags: the clear ones only — owner, 2026-10-12)
+    // the player's state, in a word (Reads.flags: the clear ones only — owner, 2026-10-12)
     ctx.font = `700 ${Math.max(9, Math.round(8.5 * k + 1))}px ${FONT_ROUND}`;
     ctx.fillStyle = cw.tone === 'good' ? '#4ade80' : cw.tone === 'bad' ? '#ff5d6c' : '#ffb020';
     ctx.fillText(cw.t, pr.X, pr.Y - (staV != null && staV < 0.92 ? 96 : 102) * k);

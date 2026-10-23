@@ -126,7 +126,7 @@ function renderEncyclopedia() {
       <p><b>Tactic</b> switches WS / MB focus ${['', 'rarely', 'sometimes', 'often'][lv]}</p></div>`
       )
       .join('')}</div>
-    <h3 id="pk-tac">Coach tactics</h3>
+    <h3 id="pk-tac">Tactics</h3>
     <div class="ency-grid">
       <div class="ency-card"><div class="ency-hd"><b>Captain's call</b><span class="ency-tag">Default</span></div><p>The captain picks the tactic during the match (needs leadership 55+).</p></div>
       ${Object.values(TACTICS)

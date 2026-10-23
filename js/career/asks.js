@@ -18,7 +18,7 @@ const Asks = {
     const wt = Run.weekType(run);
     return wt === 'eval' || (wt === 'cup' && !run.mode.story);
   },
-  /** The coach's pick right now (dry): { starts, rival } as Run.lineup. */
+  /** The captain's pick right now (dry): { starts, rival } as Run.lineup. */
   lineup: run => Run.lineup(run, Run.myTeam(run), City.myRegion(run), true),
   /** Where they train: their plan's place, else the first place for their key stat you can enter. */
   place(run, p) {
@@ -77,7 +77,7 @@ const Asks = {
         c = Fight.clashSite(run);
       if (L.rival && L.rival.p !== p)
         facts.push(
-          `Word is ${firstName(L.rival.p)} ${L.starts ? 'is breathing down your neck' : 'is the one the coach trusts ahead of you'} at ${ROLE_NAME[you.role].toLowerCase()}.`
+          `Word is ${firstName(L.rival.p)} ${L.starts ? 'is breathing down your neck' : 'is the one the captain trusts ahead of you'} at ${ROLE_NAME[you.role].toLowerCase()}.`
         );
       if (c) facts.push(`Word is there will be trouble at ${c.name} this week — ${REGIONS[c.a].name} against ${REGIONS[c.b].name}.`);
       const no = run.teams.find((t, ti) => ti !== run.team && (Fight.worth(run, ti, 0) || {}).verdict === 'refuses');

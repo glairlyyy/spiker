@@ -2,7 +2,7 @@
 // run picks its cards (Monster: "You decide" per side; career: your side — 1 card, 5 as captain); the other hand is hidden.
 // Play waits (A.prep) until Start. Your timeout opens the turn overlay for your hands (a huddle, js/ui/match-cards.js).
 
-/** The sides whose run you can choose (You decide / Coach decides): Monster game both; career: none (your side is yours). */
+/** The sides whose run you can choose (You decide / Captain decides): Monster game both; career: none (your side is yours). */
 function prepSides() {
   return A.fx.onFinish && RUN ? [] : [0, 1];
 }
@@ -16,11 +16,11 @@ function prepMine(m) {
 function prepOpen() {
   if (!A || !A.m) return;
   const m = A.m;
-  // who decides each side: you or the coach (Monster: the right team's coach by default, hidden)
+  // who decides each side: you or the captain (Monster: the right team's captain by default, hidden)
   A.prepS = A.prepS || { who: [0, 1].map(i => (prepSides().includes(i) && i === 0 ? 'you' : 'ai')) };
   A.prep = true;
   for (const i of [0, 1]) {
-    const n = cardsMine(m, i); // your hand (spec §2.33): the coach's pick to start from
+    const n = cardsMine(m, i); // your hand (spec §2.33): the captain's pick to start from
     if (m.cards && n && m.cards[i].by !== 'you') cardsWho(m, i, n);
   }
   let el = $('#prep');
@@ -49,11 +49,11 @@ function prepTeam(i) {
       ? `<div class="seg who">${['you', 'ai']
           .map(
             w =>
-              `<button class="btn ${S.who[i] === w ? 'on' : ''}" onclick="prepWho(${i},'${w}')">${w === 'you' ? 'You decide' : 'Coach decides'}</button>`
+              `<button class="btn ${S.who[i] === w ? 'on' : ''}" onclick="prepWho(${i},'${w}')">${w === 'you' ? 'You decide' : 'Captain decides'}</button>`
           )
           .join(
             ''
-          )}</div>${S.who[i] === 'you' ? cardsHand(i, true) : '<p class="small mute">The coach picks — hidden until the match is over.</p>'}`
+          )}</div>${S.who[i] === 'you' ? cardsHand(i, true) : '<p class="small mute">The captain picks — hidden until the match is over.</p>'}`
       : cardsMine(m, i)
         ? cardsHand(i, true) + prepHabits(m, i)
         : '<p class="small mute">Their hand: hidden.</p>';
@@ -99,5 +99,5 @@ function prepStart() {
   A.prep = false;
   const el = $('#prep');
   if (el) el.hidden = true;
-  if (A.railTab === 'coach') coachPanel();
+  if (A.railTab === 'reads') readsPanel();
 }

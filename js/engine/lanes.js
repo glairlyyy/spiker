@@ -122,7 +122,7 @@ function laneRecord(m, side, x, kill) {
   } else if (kill) a.rdWk++;
 }
 
-/** The coach panel's per-hitter numbers (spec §2.25; no draws): attacks, kills, errors, stuffed, channels, the block's reads. */
+/** the Reads tab's per-hitter numbers (spec §2.25; no draws): attacks, kills, errors, stuffed, channels, the block's reads. */
 function hitLog(m, x, kill, stuffed, err) {
   const H = m.hit || (m.hit = {}),
     h = H[x.spiker.id] || (H[x.spiker.id] = { n: 0, k: 0, err: 0, stf: 0, line: 0, cross: 0, tip: 0, rd: 0, rdOk: 0, last: '' });
@@ -138,12 +138,12 @@ function hitLog(m, x, kill, stuffed, err) {
     if (x.read === 'right') h.rdOk++;
   }
 }
-/** The coach panel: a serve taken by p (aced: it beat them). */
+/** the Reads tab: a serve taken by p (aced: it beat them). */
 function recvLog(m, p, aced) {
   const V = m.recv || (m.recv = {}),
     r = V[p.id] || (V[p.id] = { n: 0, ace: 0, bad: 0 });
   if (aced === 'bad')
-    r.bad++; // a loose pass (quality 1): the coach sees who is being broken (subCandidate 'targeted')
+    r.bad++; // a loose pass (quality 1): the captain sees who is being broken (subCandidate 'targeted')
   else if (aced) r.ace++;
   else r.n++;
 }

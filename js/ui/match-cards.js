@@ -1,6 +1,6 @@
 // Tactic cards on the match screen (spec §2.31–§2.33): your hand in match prep and at every turn — an overlay over the frozen
 // court (play waits: A.prep) — Tab to look at it between turns, the spent tag, the result card's row. The engine state is
-// m.cards (js/engine/cards.js); this file only places cards (cardPut) and lets the coach fill around them (cardFill).
+// m.cards (js/engine/cards.js); this file only places cards (cardPut) and lets the captain fill around them (cardFill).
 
 const ZONE_LAB = { atk: 'ATK', def: 'DEF', flex: 'FLEX' };
 
@@ -14,7 +14,7 @@ function cardsMine(m, i) {
   if (!squadOf(m.t[i]).some(p => p.id === you.id)) return 0;
   return you.cap ? SLOTS.length : 1;
 }
-/** Give side i to you (n cards yours; a full hand starts from the coach's) or to the coach (n 0); the coach fills the rest. */
+/** Give side i to you (n cards yours; a full hand starts from the captain's) or to the captain (n 0); the captain fills the rest. */
 function cardsWho(m, i, n) {
   const C = m && m.cards && m.cards[i];
   if (!C) return;
@@ -133,7 +133,7 @@ function cardsHand(i, edit) {
   const note = edit
     ? C.mine >= SLOTS.length
       ? 'Drag a card into a slot (or click it). Drag a slot back to the pool to empty it.'
-      : `Your card${C.mine > 1 ? 's' : ''}: ${C.mine} (${Math.max(0, left)} to place) — the coach fills the rest.`
+      : `Your card${C.mine > 1 ? 's' : ''}: ${C.mine} (${Math.max(0, left)} to place) — the captain fills the rest.`
     : 'Cards change at a turn.';
   return `<div class="chand"><div class="cslots">${slots}</div><p class="small mute">${note}</p>${edit ? cardsFiltBar(m, i, all, f) : ''}${edit ? `<div class="cpool" ondragover="cardsDragOver(event,${i},null)" ondragleave="this.classList.remove('dropon')" ondrop="cardsDrop(event,${i},null)">${pool}</div>` : ''}${
     spent ? `<div class="cspent"><span class="lab">Spent</span>${spent}</div>` : ''
@@ -242,7 +242,7 @@ function cardsDrop(e, i, k) {
   const m = A.m,
     C = m.cards[i];
   if (!k) {
-    if (D.from) cardsSet(i, D.from, null); // back to the pool: the slot empties (the coach refills it if it is not yours)
+    if (D.from) cardsSet(i, D.from, null); // back to the pool: the slot empties (the captain refills it if it is not yours)
   } else if (!D.from) return cardsPick(i, D.id, k);
   else if (k !== D.from && cardFits(D.id, k)) {
     const other = C.slots[k],
@@ -255,14 +255,14 @@ function cardsDrop(e, i, k) {
   A.cardSel = null;
   cardsRedraw();
 }
-/** Place (or empty) a slot; the coach then fills around your cards (a side you run in full stays as you left it). */
+/** Place (or empty) a slot; the captain then fills around your cards (a side you run in full stays as you left it). */
 function cardsSet(i, k, id) {
   const m = A.m;
   cardPut(m, i, k, id);
   if (m.cards[i].mine < SLOTS.length) cardFill(m, i);
   else cardApply(m, i);
 }
-/** The coach picks this hand (your cards cleared); a side you run keeps it as yours. */
+/** The captain picks this hand (your cards cleared); a side you run keeps it as yours. */
 function cardsAuto(i) {
   const m = A.m,
     n = m.cards[i].mine;
@@ -275,7 +275,7 @@ function cardsRedraw() {
   else if (A.prep) prepDraw();
 }
 
-/** The turn overlay's sides: the hands you run (none once you hand the match to the coach). */
+/** The turn overlay's sides: the hands you run (none once you hand the match to the captain). */
 const cardsSides = m => (m && m.cards && !A.cardAuto ? [0, 1].filter(i => m.cards[i].by === 'you') : []);
 /** A turn act (acts.js `turn`, spec §2.32): pause and open the overlay for your hands. */
 function cardsTurnShow(a) {
@@ -311,7 +311,7 @@ function cardsPeek() {
   if (A.prep || !A.m.cards) return;
   if ([0, 1].some(i => A.m.cards[i].by === 'you')) cardsTurnOpen(null, false);
 }
-/** Hand the rest of the match to the coach: no more turn stops. */
+/** Hand the rest of the match to the captain: no more turn stops. */
 function cardsAutoMatch() {
   A.cardAuto = true;
   for (const i of [0, 1]) if (A.m.cards[i].by === 'you') cardsWho(A.m, i, 0);
@@ -336,7 +336,7 @@ function cardsTurnDraw() {
   if (!el || !T) return;
   const sides = [0, 1].filter(i => m.cards[i].by === 'you'),
     noticed = i =>
-      [...Coach.tags(m, 1 - i), ...Coach.tags(m, i)]
+      [...Reads.tags(m, 1 - i), ...Reads.tags(m, i)]
         .slice(0, 3)
         .map(g => `<li>${esc(g.text)}</li>`)
         .join(''),
@@ -345,12 +345,12 @@ function cardsTurnDraw() {
         STAGES[m.stage[i]].name
       )}</span></div><div class="cbars">${m.t[i].P.map(p => cardsBars(m, p)).join('')}</div>${
         noticed(i) ? `<ul class="cnote small">${noticed(i)}</ul>` : ''
-      }${cardsHand(i, T.edit)}${T.edit ? `<button class="btn" onclick="cardsAuto(${i})">Coach picks <kbd>A</kbd></button>` : ''}</section>`;
+      }${cardsHand(i, T.edit)}${T.edit ? `<button class="btn" onclick="cardsAuto(${i})">Captain picks <kbd>A</kbd></button>` : ''}</section>`;
   el.innerHTML = `<div class="ocard prep cturn ${sides.length === 1 ? 'one' : ''}"><div class="phead"><span class="lab">${T.edit ? `Turn ${T.n}` : 'Your hand'} · ${esc(m.t[0].short)} ${m.pts[0]}–${m.pts[1]} ${esc(m.t[1].short)}</span></div>
     <div class="pcols">${sides.map(col).join('')}</div>
-    <div class="acts">${T.edit ? '<button class="btn" onclick="cardsAutoMatch()">Coach for the match</button>' : ''}<button class="btn hot" onclick="cardsTurnClose()">${T.edit ? 'Play on' : 'Back to the match'} <kbd>${T.edit ? 'Space' : 'Tab'}</kbd></button></div></div>`;
+    <div class="acts">${T.edit ? '<button class="btn" onclick="cardsAutoMatch()">Captain for the match</button>' : ''}<button class="btn hot" onclick="cardsTurnClose()">${T.edit ? 'Play on' : 'Back to the match'} <kbd>${T.edit ? 'Space' : 'Tab'}</kbd></button></div></div>`;
 }
-/** Keys while the overlay is open: Space / Enter / Tab / Esc play on, A the coach picks. Returns true when it took the key. */
+/** Keys while the overlay is open: Space / Enter / Tab / Esc play on, A the captain picks. Returns true when it took the key. */
 function cardsKey(e) {
   if (!A || !A.cturn) return false;
   if (e.key === ' ' || e.key === 'Enter' || e.key === 'Escape' || e.key === 'Tab') {

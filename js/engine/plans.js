@@ -1,6 +1,6 @@
 // Team plans (spec §2.26): every side plays one attack plan and one defence plan (PLANS, js/data/tactics.js), picked before
-// the match and changed only at a timeout. The AI coach picks from its playstyle and what it can see of the other side
-// (no draws), and at its timeout answers the tags the coach panel shows (Coach.tags) — as soon as its coach IQ notices them.
+// the match and changed only at a timeout. The AI captain picks from its playstyle and what it can see of the other side
+// (no draws), and at its timeout answers the tags the Reads tab shows (Reads.tags) — as soon as its captain's read notices them.
 
 /** Side i's plans: { atk, def }. */
 const planOf = (m, i) => (m.plan && m.plan[i]) || { atk: 'straight', def: 'read' };
@@ -18,13 +18,13 @@ function aceOf(T) {
   return (L.length ? L : T.P).reduce((a, p) => (p.power * 0.6 + p.jump * 0.4 > a.power * 0.6 + a.jump * 0.4 ? p : a));
 }
 /**
- * The AI coach's plans before the match (no draws): the playstyle's default; a sharp coach (coach IQ ≥ PLAN_AI.iq) looks at
+ * The AI captain's plans before the match (no draws): the playstyle's default; a sharp captain (read ≥ PLAN_AI.iq) looks at
  * the other side — a standout ace → Wall their ace; a clearly weak passer → Hunt the passer.
  */
 function planPick(T, O) {
   const [atk, def] = PLAN_STYLE[T.sk] || ['straight', 'read'],
     p = { atk, def };
-  if ((T.coachIQ ?? 0.6) < PLAN_AI.iq) return p;
+  if (capIQ(T) < PLAN_AI.iq) return p;
   const hit = O.P.filter(q => q.role !== 'S').map(q => q.power * 0.6 + q.jump * 0.4),
     ace = Math.max(...hit),
     rest = hit.length > 1 ? (hit.reduce((s, v) => s + v, 0) - ace) / (hit.length - 1) : ace;
@@ -35,7 +35,7 @@ function planPick(T, O) {
   if (avg - lo >= PLAN_AI.passGap) p.atk = 'hunt';
   return p;
 }
-/** Set side i's plans (who: 'ai' | 'you'); logged for the result card and the coach panel. */
+/** Set side i's plans (who: 'ai' | 'you'); logged for the result card and the Reads tab. */
 function planSet(m, i, plan, who) {
   const cur = planOf(m, i);
   const next = { atk: PLANS.atk[plan.atk] ? plan.atk : cur.atk, def: PLANS.def[plan.def] ? plan.def : cur.def },
@@ -47,10 +47,10 @@ function planSet(m, i, plan, who) {
   if (same) Object.assign(same, { atk: next.atk, def: next.def, by: who });
   else L.push({ side: i, at, atk: next.atk, def: next.def, by: who });
 }
-/** How many cases a coach needs before a tag registers: 4 (sharp) … 8 (slow). */
-const noticeAt = T => Math.round(lerp(8, 4, clamp(((T.coachIQ ?? 0.6) - 0.4) / 0.6, 0, 1)));
+/** How many cases a captain needs before a tag registers: 4 (sharp) … 8 (slow). */
+const noticeAt = T => Math.round(lerp(8, 4, clamp((capIQ(T) - 0.4) / 0.6, 0, 1)));
 /**
- * The AI coach's answer at its timeout (spec §2.26): the tags it has noticed (Coach.tags, n ≥ noticeAt) → a counter plan.
+ * The AI captain's answer at its timeout (spec §2.26): the tags it has noticed (Reads.tags, n ≥ noticeAt) → a counter plan.
  * Their hitter keeps going one way / their ace scores → Wall their ace; they serve at our weak passer → Cover the weak link;
  * our block keeps getting fooled → Dig deep; their block reads us → Power through; our serves find their weak passer → Hunt.
  * Returns the new plan (or null: nothing noticed).
@@ -59,8 +59,8 @@ function planCounter(m, i) {
   const T = m.t[i],
     o = 1 - i,
     need = noticeAt(T),
-    theirs = Coach.tags(m, o).filter(g => g.n >= need),
-    ours = Coach.tags(m, i).filter(g => g.n >= need),
+    theirs = Reads.tags(m, o).filter(g => g.n >= need),
+    ours = Reads.tags(m, i).filter(g => g.n >= need),
     cur = planOf(m, i),
     p = { ...cur };
   const ace = aceOf(m.t[o]);

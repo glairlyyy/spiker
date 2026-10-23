@@ -103,7 +103,7 @@ function stepPlayerTimers(wdt, raw) {
       }
     }
     if (d.gu) d.gu.t += dt;
-    if (d.call && (d.call.life -= dt / 1300) <= 0) d.call = null;
+    if (d.call && (d.call.life -= dt / (d.call.dur || 1300)) <= 0) d.call = null; // dur: the captain's talk stays up longer
   }
 }
 /** Measured motion for the 3D poses (speed mv, lateral share lat, facing fwd, gait phase) and running dust. */
@@ -152,7 +152,7 @@ function stepGait(dt) {
     }
   }
 }
-/** Match over: winners bounce, losers slump, coaches react, confetti in the winners' colours for 7 s. */
+/** Match over: winners bounce, losers slump, confetti in the winners' colours for 7 s. */
 function stepCelebration(dt) {
   const C = A.cele;
   C.t += dt;
@@ -166,10 +166,6 @@ function stepCelebration(dt) {
       d.jy = 0;
     }
   }
-  A.coaches[C.w].react = 1;
-  A.coaches[C.w].type = 'yay';
-  A.coaches[1 - C.w].react = 1;
-  A.coaches[1 - C.w].type = 'ugh';
   if (C.t < 7000 && FXR.r() < dt / 18) {
     const col = FXR.pick([A.m.t[C.w].color, '#ffffff', '#ffd84d', A.m.t[C.w].color]);
     addPart({

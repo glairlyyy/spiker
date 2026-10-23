@@ -269,7 +269,7 @@ test('arcs: the year-2 Cup lean puts a friend you saw through into your squad (n
 
 // ---- T-330: duo cards, ex-teammates across the net ----
 test('duo: a 60+ friend’s card is in the hand only with them on your court; it lifts the two of you; no duo → today', () => {
-  const [g, run] = mkRun(350),
+  const [g, run] = mkRun(353),
     you = g.Run.you(run),
     mine = g.Run.myTeam(run),
     f = mine.P.find(p => p !== you),

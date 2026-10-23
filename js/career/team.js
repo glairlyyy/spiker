@@ -330,7 +330,7 @@ const Team = {
       (m.duo || (m.duo = [null, null]))[side] = by;
       const C = m.cards && m.cards[side];
       if (C && !m.turnN && !Object.keys(C.you).length) {
-        C.played = {}; // turn 0 again (newMatch's coach picked before the duo was known): the same counts, the duo in the pick
+        C.played = {}; // turn 0 again (newMatch's captain picked before the duo was known): the same counts, the duo in the pick
         cardFill(m, side);
       }
     }

@@ -114,7 +114,7 @@ test('bars: fire is the on-court average morale (captain ×2); without traits ev
 });
 
 test('bars: HP — hard balls wear a passer down across rallies and empty HP collapses them, no roll (spec §2.31)', () => {
-  const g = load(33),
+  const g = load(34),
     T = g.mkTeams(),
     m = g.newMatch(T[0], T[1], false);
   const p = m.t[1].P.find(q => q.role !== 'S'),

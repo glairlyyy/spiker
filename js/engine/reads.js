@@ -1,8 +1,8 @@
-// The coach panel's analysis (spec §2.25): what this match has shown, per side, from the engine's own tallies (m.att, m.hit,
-// m.recv, m.stat). Pure data, no draws, no DOM — the match screen draws it (js/ui/match-coach.js); the AI coach may read
+// the Reads tab's analysis (spec §2.25): what this match has shown, per side, from the engine's own tallies (m.att, m.hit,
+// m.recv, m.stat). Pure data, no draws, no DOM — the match screen draws it (js/ui/match-reads.js); the AI captain may read
 // the same tags later. Read it at a dead ball: the engine's state then matches what has been shown.
 
-const Coach = {
+const Reads = {
   /** Side `i`'s numbers: attack totals, hitters, block reads, serve receive. */
   side(m, i) {
     const t = m.t[i],
@@ -18,7 +18,7 @@ const Coach = {
       // their attacks against this side's block: reads made, right, right but still beaten (a kill)
       block: { n: them.rd, ok: them.rdOk, beat: them.rdBeat, stf: them.stf },
       recv: recv.sort((x, y) => y.n + y.ace - (x.n + x.ace)),
-      tags: Coach.tags(m, i)
+      tags: Reads.tags(m, i)
     };
   },
   /**
@@ -72,13 +72,13 @@ const Coach = {
   flags(m, sta, mood) {
     const out = {};
     for (const i of [0, 1])
-      for (const { p, words } of Coach.condition(m, i, sta, mood).players) {
+      for (const { p, words } of Reads.condition(m, i, sta, mood).players) {
         const w = COND_COURT.map(t => words.find(x => x.t === t)).find(Boolean);
         if (w) out[p.id] = w;
       }
     return out;
   },
-  /** The patterns side i has shown (true numbers, once clear — COACH). Each: { kind, p?, text, n, of }. */
+  /** The patterns side i has shown (true numbers, once clear — READS). Each: { kind, p?, text, n, of }. */
   tags(m, i) {
     const t = m.t[i],
       out = [],
@@ -87,9 +87,9 @@ const Coach = {
       const h = m.hit[p.id];
       if (!h) continue;
       const ch = h.line + h.cross;
-      if (ch >= COACH.min)
+      if (ch >= READS.min)
         for (const k of ['line', 'cross'])
-          if (h[k] / ch >= COACH.share)
+          if (h[k] / ch >= READS.share)
             out.push({ kind: 'lane', p, ch: k, text: `${num(p)} goes ${k}: ${h[k]} of ${ch}`, n: h[k], of: ch });
     }
     // serves at one receiver: this side receives — the tag belongs to the server's side
@@ -98,7 +98,7 @@ const Coach = {
     for (const p of rec) {
       const r = m.recv[p.id],
         n = r.n + r.ace;
-      if (tot >= COACH.min && n / tot >= COACH.serve)
+      if (tot >= READS.min && n / tot >= READS.serve)
         out.push({
           kind: 'serve',
           p,
@@ -109,9 +109,9 @@ const Coach = {
     }
     // this side's block against the other side's hitters
     const b = m.att[1 - i];
-    if (b.rd >= COACH.min) {
-      if (b.rdOk / b.rd >= COACH.read) out.push({ kind: 'read', text: `Block reads right: ${b.rdOk} of ${b.rd}`, n: b.rdOk, of: b.rd });
-      else if ((b.rd - b.rdOk) / b.rd >= COACH.read)
+    if (b.rd >= READS.min) {
+      if (b.rdOk / b.rd >= READS.read) out.push({ kind: 'read', text: `Block reads right: ${b.rdOk} of ${b.rd}`, n: b.rdOk, of: b.rd });
+      else if ((b.rd - b.rdOk) / b.rd >= READS.read)
         out.push({ kind: 'fooled', text: `Block fooled: ${b.rd - b.rdOk} of ${b.rd}`, n: b.rd - b.rdOk, of: b.rd });
     }
     return out;

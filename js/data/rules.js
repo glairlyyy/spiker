@@ -11,13 +11,13 @@ const RULES = {
   stamina: { drain: 2.5, hit: 0.5, jumpHit: 0.3, court: 0.01, bench: 0.05 }
 };
 /**
- * Substitutions: at most `max` per team per set. A coach takes a player off when their match stamina is under `sta`, or
+ * Substitutions: at most `max` per team per set. The captain takes a player off when their match stamina is under `sta`, or
  * after `errs` errors this set (more than their kills); a bench player must have stamina ≥ `fresh` to come on; a
- * subbed-out starter with stamina ≥ `back` may return for whoever replaced them. With a candidate, the coach acts with
- * a chance between iq[0] and iq[1] (coachIQ 0 → 1) at each dead ball. A tired / erring sub must also pay off: the bench player's ovr has to be at
- * least `worth` × the starter's current worth (ovr × (1 − RULES.stamina.hit × (1 − stamina))); the factor runs from worth[0] (coachIQ 0) to
- * worth[1] (coachIQ 1) — a dull coach subs almost anyone in, a sharp one only when it helps. `you`: the coach's sub-out roll for your career
- * player is × this (the coach trusts you). A player flagged `noSub` (engine-only: an injured you) is never brought on.
+ * subbed-out starter with stamina ≥ `back` may return for whoever replaced them. With a candidate, the captain acts with
+ * a chance between iq[0] and iq[1] (the captain's read capIQ 0 → 1) at each dead ball. A tired / erring sub must also pay off: the bench player's ovr has to be at
+ * least `worth` × the starter's current worth (ovr × (1 − RULES.stamina.hit × (1 − stamina))); the factor runs from worth[0] (read 0) to
+ * worth[1] (read 1) — a dull captain subs almost anyone in, a sharp one only when it helps. `you`: the captain's sub-out roll for your career
+ * player is × this (the captain trusts you). A player flagged `noSub` (engine-only: an injured you) is never brought on.
  */
 /**
  * Skill and mistakes (owner, 2026-10-04: as close to the real game as possible; per action, from the stats that do it — no

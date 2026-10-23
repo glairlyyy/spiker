@@ -314,7 +314,7 @@ function chooseAttack(c, s, h) {
   const nearNet = p => p !== c.pas && Math.abs(m.pos[p.id].x - 500) <= QUICK_REACH;
   const MBs = atkT.P.filter(p => p.role === 'MB' && p !== setter && front(atk, p) && free(p) && nearNet(p)),
     mbZ = p => clamp(setZ + (MBs.indexOf(p) === 1 ? 0.16 : -0.14), 0.1, 0.9);
-  // coach tactic: 'ws' / 'mb' focus shifts who gets the ball; 'auto' = setter's call (the default)
+  // tactic (the captain's call): 'ws' / 'mb' focus shifts who gets the ball; 'auto' = setter's call (the default)
   const tac = TACTICS[(m.tac && m.tac[atk]) || 'auto'];
   let quick =
     !c.high && // (a high ball for a fallen teammate: no quick — spec §2.28)

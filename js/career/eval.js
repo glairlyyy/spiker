@@ -82,7 +82,6 @@ const Eval = {
         hist: { w: 0, l: 0, sw: 0, sl: 0, res: [] },
         nStars: 0,
         arch: 'Evaluation squad',
-        coachIQ: 0.7,
         P,
         bench: got.slice(4)
       };

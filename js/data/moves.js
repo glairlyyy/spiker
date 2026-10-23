@@ -1,4 +1,4 @@
-// Signature move names and coach timeout lines.
+// Signature move names and the captain's timeout lines.
 
 const MOVES = {
   WS: ['Meteor Drive', 'Crimson Lance', 'Thunder Fang', 'Skybreaker', 'Dragon Tail Smash', 'Comet Hammer', 'Blazing Cross', 'Gale Piercer'],
@@ -8,9 +8,9 @@ const MOVES = {
 const BMOVES = ['Iron Curtain', "Heaven's Gate", 'Great Wall', 'Guillotine Block', 'Frost Barrier'];
 const TOLINES = [
   'Breathe. One point at a time.',
-  'Forget the last run — reset!',
-  'Serve at their weakest passer.',
+  'Forget that run. We reset!',
+  'We serve at their weakest passer.',
   'Block the line, dig the cross!',
-  'Trust your setter. Swing big.',
-  'Talk to each other out there!'
+  'Trust the setter. Swing big.',
+  'Talk to me out there!'
 ];

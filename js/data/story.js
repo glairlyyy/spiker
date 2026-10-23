@@ -238,7 +238,7 @@ const SCENES = {
     trigger: { on: 'result', when: 'rematchWon' },
     steps: [
       { k: 'cut', bars: true },
-      { k: 'say', who: 'rival', text: '…Okay. Who coached you? Nobody blocks me like that by accident.' },
+      { k: 'say', who: 'rival', text: '…Okay. Who taught you that? Nobody blocks me like that by accident.' },
       { k: 'say', who: 'diary', text: "Still doesn't know my name. She'll learn it at the Cup." },
       { k: 'end' }
     ]

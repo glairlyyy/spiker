@@ -310,7 +310,7 @@ function drillStep(dt) {
 }
 /** Lifetimes (ms of world time) of the one-off overlay pieces faded by stepEffects. */
 const FX_LIFE = { real: 750, lines: 380, wallFx: 650, ptFlash: 900, chant: 2400, link: 1100, crack: 2600, toBanner: 2600, lane: 2400 };
-/** Age the screen-space effects by dt ms of world time (particles, labels, overlays, shake, flash, crowd, coaches). */
+/** Age the screen-space effects by dt ms of world time (particles, labels, overlays, shake, flash, crowd). */
 function stepEffects(dt) {
   for (const p of A.parts) {
     p.x += p.vx * dt;
@@ -345,19 +345,6 @@ function stepEffects(dt) {
   if (A.wave) {
     A.wave.x += dt * 0.75; // crowd wave sweeping across the stands
     if (A.wave.x > 1150) A.wave = null;
-  }
-  for (const c of A.coaches) {
-    if (c.talkT > 0) {
-      c.talkT -= dt;
-      if (c.talkT <= 0) {
-        c.type = null;
-        c.bubble = null;
-        c.react = 0;
-      }
-      continue;
-    }
-    c.react = Math.max(0, c.react - dt / 1500);
-    if (!c.react) c.type = null;
   }
 }
 /** Golden sparks rising off the link between two players (a pair move). */

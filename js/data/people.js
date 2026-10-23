@@ -235,7 +235,7 @@ const MEM_TEXT = {
   spot_taken: [
     "I took {n}'s spot. {n} hasn't forgotten.",
     '{n} watched from the bench. I felt it from the court.',
-    "Started over {n}. The coach didn't blink. {n} did."
+    "Started over {n}. The captain didn't blink. {n} did."
   ],
   beat_me: ['I beat {n}. {n} took it personally.', "{n} lost to me. I'll hear about it.", 'Won against {n}. Not sorry.'],
   invited: [

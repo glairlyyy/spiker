@@ -43,7 +43,7 @@ const slotZone = k => (k === 'flex' ? 'flex' : k.slice(0, 3));
 
 /**
  * The tactic cards (spec §2.33). zone: 'atk' | 'def' | 'op' (OP: FLEX only). kind: 'boost' (never spent) | 'play'. src:
- * 'base' (always in the pool) | 'coach' (the coach's playbook) | 'tech' (a squad player owns `need`) | 'trait' (a squad player
+ * 'base' (always in the pool) | 'book' (the captain's playbook) | 'tech' (a squad player owns `need`) | 'trait' (a squad player
  * has trait `trait`) | 'op' (an OP or element player in the squad) | 'duo' (m.duo[side][id] = the pair's ids, both on court). kind also 'once' (fires when slotted, then used up: `on`)
  * and 'trap' (`trap`: the other side's cards it burns when they slot one). What a card does, compiled by js/engine/cards.js:
  * buff — stat → % (atk = power in play, def, spd, jump, serve; with `need` only for its holders, `needT` only for players with
@@ -60,12 +60,12 @@ const CARDS = {
   jmp: { name: 'High Point', zone: 'atk', kind: 'boost', src: 'base', buff: { jump: 3 }, desc: 'Jump +3 %' },
   grd: { name: 'Guard Up', zone: 'def', kind: 'boost', src: 'base', buff: { def: 3 }, desc: 'Defense +3 %' },
   ftw: { name: 'Quick Step', zone: 'def', kind: 'boost', src: 'base', buff: { spd: 3 }, desc: 'Speed +3 %' },
-  // the coach's playbook
+  // the captain's playbook
   hunt: {
     name: 'Hunt the Passer',
     zone: 'atk',
     kind: 'play',
-    src: 'coach',
+    src: 'book',
     plan: { atk: 'hunt' },
     grp: 'aplan',
     tally: 'serve',
@@ -75,7 +75,7 @@ const CARDS = {
     name: 'Power Through',
     zone: 'atk',
     kind: 'play',
-    src: 'coach',
+    src: 'book',
     plan: { atk: 'power' },
     grp: 'aplan',
     tally: 'attack',
@@ -85,18 +85,18 @@ const CARDS = {
     name: 'Beat the Block',
     zone: 'atk',
     kind: 'play',
-    src: 'coach',
+    src: 'book',
     plan: { atk: 'beat' },
     grp: 'aplan',
     tally: 'attack',
     desc: 'Hit away from their read'
   },
-  quick: { name: 'Quick Tempo', zone: 'atk', kind: 'play', src: 'coach', tac: 'mb', tally: 'attack', desc: 'Middles go quick' },
+  quick: { name: 'Quick Tempo', zone: 'atk', kind: 'play', src: 'book', tac: 'mb', tally: 'attack', desc: 'Middles go quick' },
   tip: {
     name: 'Tip & Roll',
     zone: 'atk',
     kind: 'play',
-    src: 'coach',
+    src: 'book',
     ord: ['shot', 'tip'],
     who: 'hitters',
     grp: 'shot',
@@ -107,7 +107,7 @@ const CARDS = {
     name: 'Wall Their Ace',
     zone: 'def',
     kind: 'play',
-    src: 'coach',
+    src: 'book',
     plan: { def: 'wall' },
     grp: 'dplan',
     tally: 'defend',
@@ -117,7 +117,7 @@ const CARDS = {
     name: 'Cover the Weak Link',
     zone: 'def',
     kind: 'play',
-    src: 'coach',
+    src: 'book',
     plan: { def: 'cover' },
     grp: 'dplan',
     tally: 'recv',
@@ -127,7 +127,7 @@ const CARDS = {
     name: 'Dig Deep',
     zone: 'def',
     kind: 'play',
-    src: 'coach',
+    src: 'book',
     plan: { def: 'deep' },
     grp: 'dplan',
     tally: 'defend',
@@ -137,7 +137,7 @@ const CARDS = {
     name: 'Commit',
     zone: 'def',
     kind: 'play',
-    src: 'coach',
+    src: 'book',
     ord: ['blk', 'commit'],
     who: 'mb',
     grp: 'blk',
@@ -148,7 +148,7 @@ const CARDS = {
     name: 'Speed Dig',
     zone: 'def',
     kind: 'play',
-    src: 'coach',
+    src: 'book',
     ord: ['blk', 'back'],
     who: 'mb',
     buff: { spd: 10 },
@@ -393,7 +393,7 @@ const CARDS = {
     name: 'Timeout Talk',
     zone: 'def',
     kind: 'once',
-    src: 'coach',
+    src: 'book',
     on: 'talk',
     desc: 'One-shot: morale +0.25 on court, Worn marks cleared'
   },
@@ -401,7 +401,7 @@ const CARDS = {
     name: 'Serve Trap',
     zone: 'def',
     kind: 'trap',
-    src: 'coach',
+    src: 'book',
     trap: ['hunt', 'killer', 'drive', 'target', 'float'],
     desc: 'Hidden: if they slot a serve play, it burns'
   },
@@ -409,7 +409,7 @@ const CARDS = {
     name: 'Quick Trap',
     zone: 'def',
     kind: 'trap',
-    src: 'coach',
+    src: 'book',
     trap: ['quick', 'freak', 'slide'],
     desc: 'Hidden: if they slot a quick play, it burns'
   },
@@ -417,16 +417,16 @@ const CARDS = {
     name: 'Block Bait',
     zone: 'atk',
     kind: 'trap',
-    src: 'coach',
+    src: 'book',
     trap: ['wall', 'commit', 'readblk', 'rset'],
     desc: 'Hidden: if they slot a block play, it burns'
   },
-  // more coach plays (T-305)
+  // more playbook plays (T-305)
   short: {
     name: 'Short Serve',
     zone: 'atk',
     kind: 'play',
-    src: 'coach',
+    src: 'book',
     tally: 'serve',
     desc: 'Short serves pull their middles off the net'
   },
@@ -434,7 +434,7 @@ const CARDS = {
     name: 'Feed the Hot Hand',
     zone: 'atk',
     kind: 'play',
-    src: 'coach',
+    src: 'book',
     ord: ['feed', 'hot'],
     who: 'setter',
     tally: 'attack',
@@ -444,7 +444,7 @@ const CARDS = {
     name: 'Float Barrage',
     zone: 'atk',
     kind: 'play',
-    src: 'coach',
+    src: 'book',
     ord: ['srv', 'float'],
     who: 'all',
     grp: 'srv',
@@ -455,7 +455,7 @@ const CARDS = {
     name: 'Read the Setter',
     zone: 'def',
     kind: 'play',
-    src: 'coach',
+    src: 'book',
     tally: 'defend',
     desc: 'The block follows their setter’s hands'
   },
@@ -570,7 +570,7 @@ const COMBOS = {
   lockdown: { name: 'Lockdown', cards: ['wall', 'commit'], buff: { jump: 6 } },
   decoy: { name: 'Decoy', cards: ['quick', ['freak', 'slide']], buff: { atk: 6 } }
 };
-/** The coach's pick (no draws): base score of a boost / a play; situational scores; a dull coach (IQ < `dull`) plays only its style's plans. */
+/** The captain's pick (no draws): base score of a boost / a play; situational scores; a dull captain (IQ < `dull`) plays only its style's plans. */
 const CARD_AI = {
   boost: 1,
   duo: 1.5, // a duo card (spec §4.36 4): a little over a boost

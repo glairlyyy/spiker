@@ -24,7 +24,7 @@ const RNG = {
 };
 const R = () => RNG.next();
 /**
- * Presentation-only randomness (particles, confetti, trail flicker, coach looks): never the game stream, so what the
+ * Presentation-only randomness (particles, confetti, trail flicker): never the game stream, so what the
  * screen draws — and how often, which depends on frame rate — can't move the engine's draws. `isolate(fn)` runs code
  * that calls R()/pick() internally (e.g. mkLook) on this source instead.
  */

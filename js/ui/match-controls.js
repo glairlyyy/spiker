@@ -8,9 +8,9 @@ const timeoutButton = (t, i, both) =>
 const toLabel = (t, both, state) => `Timeout${both ? ` ${esc(t.short)}` : ''}${state ? ` <small>${state}</small>` : ''}`;
 /** The pause button's label (hotkey printed). */
 const pauseLabel = paused => `${paused ? '▶ Resume' : '❚❚ Pause'} <kbd>Space</kbd>`;
-/** Coach tactic select for side `i` (captain's call or a fixed tactic). */
+/** Tactic select for side `i` (captain's call or a fixed tactic). */
 const tacticPicker = (t, i) =>
-  `<label class="tac" style="--tc:${t.color}" ${tip(`Coach tactic for ${t.name} — applies from the next rally`)}><span>${esc(t.short)}</span><select id="tac${i}" onchange="setTactic(${i},this.value)"><option value="cap">Captain's call${leadLv(t.cap) ? ` (Lv${leadLv(t.cap)})` : ''}</option>${Object.entries(
+  `<label class="tac" style="--tc:${t.color}" ${tip(`Tactic for ${t.name} — applies from the next rally`)}><span>${esc(t.short)}</span><select id="tac${i}" onchange="setTactic(${i},this.value)"><option value="cap">Captain's call${leadLv(t.cap) ? ` (Lv${leadLv(t.cap)})` : ''}</option>${Object.entries(
     TACTICS
   )
     .map(([k, v]) => `<option value="${k}">${esc(v.name)}</option>`)
@@ -135,7 +135,7 @@ addEventListener('keydown', e => {
   else if (e.key === 'b' || e.key === 'B') railOpen();
   else if (e.key === 't' || e.key === 'T') railOpen('tac');
   else if (e.key === 'h' || e.key === 'H')
-    railOpen(A.railTab === 'coach' && !$('#mrail').hidden ? null : 'coach'); // the coach panel (spec §2.25)
+    railOpen(A.railTab === 'reads' && !$('#mrail').hidden ? null : 'reads'); // the Reads tab (spec §2.25)
   else if ((e.key === 'v' || e.key === 'V') && $('#vfxp')) devOpen('vfx', () => vfxToggle());
   else if (e.key === 'c' || e.key === 'C')
     toggleCam3D(); // cycle the camera (its modes are in ⚙ too)
@@ -154,7 +154,7 @@ function reqTO(i) {
   A.m.toReq[i] = 1;
   updTO();
 }
-/** Coach tactic change for one side; takes effect from the next set of the ball. */
+/** Tactic change for one side (the captain's call); takes effect from the next set of the ball. */
 function setTactic(i, v) {
   if (!A || A.done) return;
   if (v === 'cap') {
@@ -166,7 +166,7 @@ function setTactic(i, v) {
   A.m.tacMode[i] = 'fixed';
   A.m.tac[i] = v;
   showTac(i);
-  instant({ k: 'coachtalk', side: i, text: v === 'auto' ? 'Your call, setter!' : v === 'ws' ? 'Feed the wings!' : 'Go quick, middles!' });
+  instant({ k: 'captalk', side: i, text: v === 'auto' ? 'Your call, setter!' : v === 'ws' ? 'Feed the wings!' : 'Go quick, middles!' });
 }
 /** Defence setting change for one side; takes effect from the next rally. */
 function setDefence(i, v) {
@@ -329,7 +329,7 @@ function board(s) {
   $('#setn').textContent = s.over ? 'Final' : mx >= RULES.pointsToWin - 1 && mx > mn ? 'Match point' : rulesText();
 }
 /** The match rail (Box score · Tactics): open on a tab, toggle (no tab), or close (null). */
-const RAIL_TABS = { box: 'Box score', coach: 'Coach', tac: 'Tactics' };
+const RAIL_TABS = { box: 'Box score', reads: 'Reads', tac: 'Tactics' };
 function railOpen(tab) {
   const r = $('#mrail');
   if (!r || !A) return;
@@ -339,7 +339,7 @@ function railOpen(tab) {
   }
   A.railTab = tab || A.railTab || 'box';
   r.hidden = false;
-  if (A.railTab === 'coach') coachPanel(); // spec §2.25
+  if (A.railTab === 'reads') readsPanel(); // spec §2.25
   for (const el of r.querySelectorAll('[data-rt]')) {
     const on = el.dataset.rt === A.railTab;
     if (el.classList.contains('rt')) el.hidden = !on;

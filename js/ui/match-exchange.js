@@ -42,7 +42,7 @@ function xNext() {
     row = document.createElement('div');
   row.className = `xl ${side ? 'r' : 'l'}`;
   row.style.setProperty('--tc', (team && team.color) || 'var(--line-strong)');
-  row.innerHTML = `${p ? `<span class="xf">${faceSVG(p, mood, 48)}</span>` : ''}<span class="xb"><b>${esc(p ? p.name : l.who || 'Coach')}</b><span class="xt"></span></span>`;
+  row.innerHTML = `${p ? `<span class="xf">${faceSVG(p, mood, 48)}</span>` : ''}<span class="xb"><b>${esc(p ? p.name : l.who || 'Captain')}</b><span class="xt"></span></span>`;
   X.el.appendChild(row);
   X.row = row;
   X.full = String(l.t);

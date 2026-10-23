@@ -109,7 +109,7 @@ function newMatch(a, b, rec, opts = {}) {
     dset: [opts.dset?.[0] || defOf(a), opts.dset?.[1] || defOf(b)], // defence setting per side (see DEFSETS): how the front row blocks
     dsetMode: [opts.dset?.[0] ? 'fixed' : 'cap', opts.dset?.[1] ? 'fixed' : 'cap'], // 'cap' = the captain may switch it
     dsetLog: [], // engine-only: every captain switch { side, from, to }
-    ...matchTallies(), // engine-only tallies (no randoms): attacks, knockdowns, lanes, the coach panel's numbers
+    ...matchTallies(), // engine-only tallies (no randoms): attacks, knockdowns, lanes, the Reads tab's numbers
     buff: {}, // player id → { lv, n } captain's buff (n = points left)
     ord: {}, // role orders from the Plan board (spec §2.29): player id → { srv, tgt }; none = Auto (today's engine)
     t: [a, b],
@@ -118,7 +118,7 @@ function newMatch(a, b, rec, opts = {}) {
     finished: null, // engine-only: ids on court when the match ended (set at the end, before the lineups are restored)
     subbed: {}, // engine-only: id of a player sent to the bench → id of whoever took their place (a rested starter may return)
     subLog: [], // engine-only: every substitution { side, pts, why, out, inn, sta (the outgoing player's stamina) }
-    setErr: {}, // engine-only: errors this set per player id (the coach's erring rule)
+    setErr: {}, // engine-only: errors this set per player id (the captain's erring rule)
     lineup0: [a, b].map(lineupOf), // the starting lineups, put back by restoreLineups()
     sets: [0, 0],
     pts: [0, 0],
@@ -174,7 +174,7 @@ function newMatch(a, b, rec, opts = {}) {
   m.temper = [temperOf(a), temperOf(b)]; // spec §2.14: from the squads' personalities (no draws)
   matchPlans(m, opts);
   const cm0 = CM;
-  CM = m; // (the coach's card pick reads this match's effective stats, not the last match's)
+  CM = m; // (the captain's card pick reads this match's effective stats, not the last match's)
   cardsInit(m, opts); // tactic cards (spec §2.33): the turn-0 hands
   weakSet(m, opts.weak);
   CM = cm0;
@@ -209,15 +209,15 @@ function weakSet(m, weak) {
   }
   CM = cm0;
 }
-/** Team plans (spec §2.26): from match prep (opts.plan[side]) or the coach's own pick; who runs each; the log. */
+/** Team plans (spec §2.26): from match prep (opts.plan[side]) or the captain's own pick; who runs each; the log. */
 function matchPlans(m, opts) {
-  // the coach scouts base stats: CM (the match the stat boosts read) is still the previous match here — its mood and
+  // the captain scouts base stats: CM (the match the stat boosts read) is still the previous match here — its mood and
   // momentum leaked into this pick (found 2026-10-12: the same two teams picked different plans after different matches)
   const cm0 = CM;
   CM = null;
   m.plan = [0, 1].map(i => ({ ...(opts.plan?.[i] || planPick(m.t[i], m.t[1 - i])) }));
   CM = cm0;
-  m.planBy = [0, 1].map(i => (opts.plan?.[i] ? 'you' : 'ai')); // who runs each side's plan: 'you' (match prep) or the AI coach
+  m.planBy = [0, 1].map(i => (opts.plan?.[i] ? 'you' : 'ai')); // who runs each side's plan: 'you' (match prep) or the AI captain
   m.planLog = m.plan.map((p, i) => ({ side: i, at: [0, 0], atk: p.atk, def: p.def, by: m.planBy[i] }));
   m.planFixed = [0, 1].map(i => !!opts.plan?.[i]); // fixed in prep / a test: the cards leave this side's plan alone
 }
@@ -254,8 +254,8 @@ function matchTallies() {
     ko: { n: [0, 0], rec: [0, 0], free: [0, 0], on: [0, 0], high: [0, 0], p: {} }, // knockdowns and what the team did next (spec §2.28)
     hpLog: { n: 0, dmg: 0 }, // HP hits taken (spec §2.31): kept-up receives / digs and their damage
     lanes: {}, // laning (spec §2.24): hitter id → { line, cross } shots this match (what the blockers have seen)
-    hit: {}, // the coach panel (spec §2.25): hitter id → { n, k, err, stf, line, cross, tip, rd, rdOk } this match
-    recv: {}, // the coach panel: receiver id → { n, ace } serves taken / aced
+    hit: {}, // the Reads tab (spec §2.25): hitter id → { n, k, err, stf, line, cross, tip, rd, rdOk } this match
+    recv: {}, // the Reads tab: receiver id → { n, ace } serves taken / aced
     srvLog: {} // role orders (spec §2.29): server id → { n, err, ace, bad } serves, misses, aces won, broken passes
   };
 }
@@ -404,10 +404,10 @@ function subIn(m, side, out, inn) {
   if (m.mor) m.mom[side] = fireOf(m, side); // the fire is who is on court (spec §2.31)
 }
 /**
- * Who a coach would sub now, if anyone: { out, inn, why } or null. In order: a tired player (stamina under SUB.sta), one who
+ * Who a captain would sub now, if anyone: { out, inn, why } or null. In order: a tired player (stamina under SUB.sta), one who
  * keeps erring (SUB.errs errors this set, more than their kills), a rested starter returning for whoever replaced them
  * (stamina ≥ SUB.back, and better). The replacement must fit: a setter only for a setter; same role first, else the
- * highest rating; a tired / erring sub must pay off (SUB.worth by coachIQ); a `noSub` player never comes on. No randoms.
+ * highest rating; a tired / erring sub must pay off (SUB.worth by the captain's read, capIQ); a `noSub` player never comes on. No randoms.
  */
 function subCandidate(m, side) {
   const t = m.t[side],
@@ -419,8 +419,8 @@ function subCandidate(m, side) {
     },
     hunted = q => m.subLog.some(e => e.out === q.id && e.why === 'targeted'), // pulled off as their target: stays off
     rested = out => t.bench.filter(q => !q.noSub && !hunted(q) && sta(q) >= SUB.fresh && fit(out, q)),
-    need = lerp(SUB.worth[0], SUB.worth[1], t.coachIQ == null ? 0.7 : t.coachIQ),
-    pays = (out, inn) => ovr(inn) >= need * ovr(out) * (1 - RULES.stamina.hit * (1 - sta(out))); // a smart coach only subs when it helps
+    need = lerp(SUB.worth[0], SUB.worth[1], capIQ(t)),
+    pays = (out, inn) => ovr(inn) >= need * ovr(out) * (1 - RULES.stamina.hit * (1 - sta(out))); // a sharp captain only subs when it helps
   for (const out of t.P.filter(p => sta(p) < SUB.sta).sort((a, b) => sta(a) - sta(b))) {
     const r = rested(out);
     if (r.length && pays(out, best(out, r))) return { out, inn: best(out, r), why: 'tired' };
@@ -433,7 +433,7 @@ function subCandidate(m, side) {
     if (r.length && pays(out, best(out, r))) return { out, inn: best(out, r), why: 'errors' };
   }
   // the targeted passer (SUB.hunt, owner 2026-10-12): they keep serving at one of ours and it hurts — a better (or as good)
-  // passer from the bench breaks their hunt (their coach's read on the receiver starts over)
+  // passer from the bench breaks their hunt (their captain's read on the receiver starts over)
   const H = SUB.hunt,
     V = m.recv || {},
     rv = p => V[p.id] || { n: 0, ace: 0, bad: 0 },
@@ -457,14 +457,14 @@ function subCandidate(m, side) {
   return null;
 }
 /**
- * The coach's substitution at a dead ball: with subs left and a candidate (subCandidate), one roll — a smarter coach
- * (coachIQ) acts more often (SUB.iq; × SUB.you when it is your career player coming off) — then the swap. No candidate → no roll. Returns the beats (recording only).
+ * The captain's substitution at a dead ball: with subs left and a candidate (subCandidate), one roll — a sharper captain
+ * (capIQ) acts more often (SUB.iq; × SUB.you when it is your career player coming off) — then the swap. No candidate → no roll. Returns the beats (recording only).
  */
-function coachSubs(m, side) {
+function capSubs(m, side) {
   const t = m.t[side];
   if (m.subs[side] >= SUB.max || !t.bench || !t.bench.length) return [];
   const c = subCandidate(m, side);
-  if (!c || R() >= lerp(SUB.iq[0], SUB.iq[1], t.coachIQ == null ? 0.7 : t.coachIQ) * (c.out.you ? SUB.you : 1)) return [];
+  if (!c || R() >= lerp(SUB.iq[0], SUB.iq[1], capIQ(t)) * (c.out.you ? SUB.you : 1)) return [];
   return subDo(m, side, c.out, c.inn, c.why);
 }
 /** Make a substitution and log it; the beats that show it (recording only). */
@@ -481,7 +481,7 @@ function subDo(m, side, out, inn, why) {
         { k: 'sub', side, out: out.id, in: inn.id },
         { k: 'rot', snap: snap(m) },
         { k: 'plabel', p: inn.id, t: 'SUBBED' },
-        { k: 'coachtalk', side, text }
+        { k: 'captalk', side, text }
       ]
     }
   ];
@@ -504,7 +504,7 @@ function restoreLineups(m) {
 }
 /**
  * Score a point for side w: serve and rotation, momentum, mood, stamina recovery, element outcomes, the zone
- * (and zone breaker / captain's call), buffs wearing off, the end of the match, captain and coach decisions.
+ * (and zone breaker / captain's call), buffs wearing off, the end of the match, captain decisions.
  * Pushes the point's beats onto `beats` (null in simulations). Returns { w, beats }.
  */
 function end(m, w, beats) {
@@ -529,7 +529,7 @@ function end(m, w, beats) {
   // substitutions at the dead ball (after the point's beats, before any timeout huddle): a Rest order first (spec §2.30)
   if (!m.over)
     for (const side of [0, 1]) {
-      const bs = [...ordSubs(m, side), ...coachSubs(m, side)];
+      const bs = [...ordSubs(m, side), ...capSubs(m, side)];
       if (beats) beats.push(...bs);
     }
   const tb = cardTurn(m); // a turn: every TURN.pts points, or after a spent card (spec §2.32)
@@ -543,7 +543,7 @@ function end(m, w, beats) {
       (m.pts[w] - m.pts[L] >= 2 && m.planBy[L] === 'ai' && !!planCounter(m, L)); // a pattern against them, noticed (spec §2.26)
     if (m.toReq[L] && !m.to[L]) timeout(m, L, beats, true);
     else if (m.toReq[w] && !m.to[w]) timeout(m, w, beats, true);
-    else if (!m.to[L] && need && R() < 0.35 + 0.6 * T.coachIQ) timeout(m, L, beats, false);
+    else if (!m.to[L] && need && R() < 0.35 + 0.6 * capIQ(T)) timeout(m, L, beats, false);
   }
   // the match is decided: note who is on court at the end, then every team goes back to its starting lineup
   if (m.over) {
@@ -664,7 +664,7 @@ function pointBeats(m, w, beats, { zoneIn, breaker, changes }, capBeats) {
 function timeout(m, L, beats, manual) {
   const T = m.t[L],
     O = 1 - L,
-    iq = T.coachIQ;
+    iq = capIQ(T);
   m.to[L] = 1;
   m.toReq[L] = 0;
   for (const q of T.P) {
@@ -675,10 +675,10 @@ function timeout(m, L, beats, manual) {
   if (m.mom[L] < 0) fireTo(m, L, 0);
   m.streak[O] = 0;
   const sc = stageTimeout(m, L); // out of Loose at once; their Fever cools (spec §2.14)
-  // the AI coach's huddle answers what it has noticed (spec §2.26); a side you run changes plan in match prep instead
+  // the AI captain's huddle answers what it has noticed (spec §2.26); a side you run changes plan in match prep instead
   let np = null;
   if (m.cards) {
-    // with cards (spec §2.32): a timeout is a turn for that side — the coach re-picks around your cards
+    // with cards (spec §2.32): a timeout is a turn for that side — the captain re-picks around your cards
     const before = cardIds(m, L).join();
     if (m.cards[L].by === 'ai') cardFill(m, L);
     np = before !== cardIds(m, L).join();
@@ -695,7 +695,7 @@ function timeout(m, L, beats, manual) {
       s1.push({ k: 'slide', p: q.id, x: hx(side, i), z: hz(i) });
       m.pos[q.id] = { x: hx(side, i), z: hz(i) };
     });
-  let line = manual ? 'You called it — reset and refocus!' : pick(TOLINES);
+  let line = manual ? 'Good call. Reset, refocus!' : pick(TOLINES);
   if (np) line = PLAN_LINES[(m.pts[0] + m.pts[1]) % PLAN_LINES.length]; // the new plan stays hidden: only that there is one
   beats.push({
     dur: 700,
@@ -707,7 +707,7 @@ function timeout(m, L, beats, manual) {
     acts: [
       ...T.P.map(q => ({ k: 'pose', p: q.id, pose: 'huddle' })),
       ...m.t[O].P.map(q => ({ k: 'pose', p: q.id, pose: 'ready' })),
-      { k: 'coachtalk', side: L, text: line },
+      { k: 'captalk', side: L, text: line },
       ...sc,
       { k: 'score', snap: snap(m) }
     ]

@@ -1,5 +1,5 @@
 // Tactic cards and turns (spec §2.32–§2.33). Each side holds five slots (SLOTS) filled from its squad's pool (cardPool): your
-// cards first, then the coach's pick around them (cardFill, no draws). Slotted cards compile into the existing levers
+// cards first, then the captain's pick around them (cardFill, no draws). Slotted cards compile into the existing levers
 // (cardApply): the team plan, the tactic, role orders, forced techniques (cardForce, read at each technique's hook) and stat
 // buffs (cardBuff, read through stageBuff). Plays count their net points while slotted (cardTally) and burn at TURN.spent.
 // A turn comes every TURN.pts points and at once when a card burns (cardTurn, from end()). m.cards = null → no cards at all.
@@ -54,7 +54,7 @@ const duoIds = (m, i, id) => (m.duo && m.duo[i] && m.duo[i][id]) || null;
 function cardsInit(m, opts) {
   if (opts.cards === false) return (m.cards = null);
   m.cards = [0, 1].map(i => ({
-    by: (opts.cards && opts.cards[i] && opts.cards[i].by) || 'ai', // who runs the side's hand: you (Monster / captain) or the coach
+    by: (opts.cards && opts.cards[i] && opts.cards[i].by) || 'ai', // who runs the side's hand: you (Monster / captain) or the captain
     mine: (opts.cards && opts.cards[i] && opts.cards[i].mine) ?? (opts.cards && opts.cards[i] && opts.cards[i].by === 'you' ? 5 : 0), // how many cards are yours (career 1 / 2 / 5; a side you run: 5)
     you: {}, // slot → card id you placed (kept at a turn unless spent)
     slots: Object.fromEntries(SLOTS.map(k => [k, null])),
@@ -63,7 +63,7 @@ function cardsInit(m, opts) {
     worn: [], // ids at TURN.worn or below
     spent: [], // ids burnt for the match
     played: {}, // id → turns it was slotted (the result card)
-    stat: {}, // id → { fit | mis | ctr: [rallies it acted in, won] } (the balance check; the coach reads ctr)
+    stat: {}, // id → { fit | mis | ctr: [rallies it acted in, won] } (the balance check; the captain reads ctr)
     st: {}, // id → this rally's state (cardEdges)
     ek: {}, // stat → this rally's edges [{ v, need }] (cardBuff)
     force: [],
@@ -96,7 +96,7 @@ function cardInPool(m, i, id) {
   if (!c || (C && C.spent.includes(id))) return false;
   if (c.plan && m.planBy && m.planBy[i] === 'you' && m.planFixed && m.planFixed[i]) return false; // plans fixed in prep (old tests)
   if (c.tac && m.tacMode[i] === 'fixed') return false;
-  if (c.src === 'base' || c.src === 'coach') return true;
+  if (c.src === 'base' || c.src === 'book') return true;
   if (c.src === 'tech') return sq.some(p => hasTech(p, c.need));
   if (c.src === 'trait') return sq.some(p => mtr(m, p) === c.trait);
   if (c.src === 'op') return sq.some(p => p.op || p.elOn);
@@ -139,8 +139,8 @@ function comboOf(ids, id) {
 const COMBO_LIST = Object.entries(COMBOS).map(([k, c]) => [k, ...c.cards.map(x => (Array.isArray(x) ? x : [x]))]);
 
 /**
- * The coach's score for card id on side i (no draws): boosts a steady base; plays when the match shows them (a weak passer,
- * a standout ace, their quicks, their tips, the coach panel's tags), its playstyle's plans, the squad's techniques, traits,
+ * The captain's score for card id on side i (no draws): boosts a steady base; plays when the match shows them (a weak passer,
+ * a standout ace, their quicks, their tips, the Reads tab's tags), its playstyle's plans, the squad's techniques, traits,
  * OP cards; minus a Worn card; plus a combo with what is already chosen.
  */
 function cardScore(m, i, id, chosen, X = cardCtx(m, i)) {
@@ -150,13 +150,13 @@ function cardScore(m, i, id, chosen, X = cardCtx(m, i)) {
     styled = c.plan && (c.plan.atk === X.style[0] || c.plan.def === X.style[1]);
   if (c.kind === 'boost') return A.boost;
   if (X.dull && !styled) return -9;
-  // a trap: worth a slot when they have slotted what it names before and can again (the coach can't see their hand now)
+  // a trap: worth a slot when they have slotted what it names before and can again (the captain can't see their hand now)
   if (c.kind === 'trap') return c.trap.some(x => X.theirSeen.includes(x)) ? A.trap : -9;
   let s = c.src === 'tech' ? A.tech : c.src === 'trait' ? A.trait : c.src === 'op' ? A.op : c.src === 'duo' ? A.duo : A.play;
   if (styled) s += A.style;
   const { T } = X,
     E = CARD_EDGE[id];
-  // what the coach sees (spec §2.33): does the play fit now (the same reads as yours); has it been countered here (it can't
+  // what the captain sees (spec §2.33): does the play fit now (the same reads as yours); has it been countered here (it can't
   // see their hand, only what happened when this card was slotted)
   if (E) s += (CARD_FIT[E.fit] || CARD_FIT.always)(m, i) ? A.read : A.misfit;
   const S = C && C.stat[id];
@@ -167,7 +167,7 @@ function cardScore(m, i, id, chosen, X = cardCtx(m, i)) {
   return s;
 }
 
-/** What the coach reads once per pick: its style, the coach panel's tags it has noticed, their passers' and hitters' gaps. */
+/** What the captain reads once per pick: its style, the Reads tab's tags it has noticed, their passers' and hitters' gaps. */
 function cardCtx(m, i) {
   const T = m.t[i],
     O = m.t[1 - i],
@@ -179,18 +179,18 @@ function cardCtx(m, i) {
   return {
     T,
     theirSeen: m.cards ? Object.keys(m.cards[1 - i].played).filter(x => cardInPool(m, 1 - i, x)) : [],
-    dull: (T.coachIQ ?? 0.6) < CARD_AI.dull,
+    dull: capIQ(T) < CARD_AI.dull,
     style: PLAN_STYLE[T.sk] || ['straight', 'read'],
-    theirs: m.att ? Coach.tags(m, 1 - i).filter(g => g.n >= need) : [],
-    ours: m.att ? Coach.tags(m, i).filter(g => g.n >= need) : [],
+    theirs: m.att ? Reads.tags(m, 1 - i).filter(g => g.n >= need) : [],
+    ours: m.att ? Reads.tags(m, i).filter(g => g.n >= need) : [],
     oa: m.att ? m.att[1 - i] : { n: 0, q: 0 },
     weakGap: pas.length ? pas.reduce((a, v) => a + v, 0) / pas.length - Math.min(...pas) : 0,
     aceGap: hit.length > 1 ? ace - (hit.reduce((a, v) => a + v, 0) - ace) / (hit.length - 1) : 0
   };
 }
 /**
- * Fill side i's empty slots and re-pick the coach's (the slots you placed stay unless spent), then apply (spec §2.33). The
- * coach goes slot by slot (ATK, DEF, FLEX), best score first; one card of a group; OP only in FLEX. No draws.
+ * Fill side i's empty slots and re-pick the captain's (the slots you placed stay unless spent), then apply (spec §2.33). The
+ * captain goes slot by slot (ATK, DEF, FLEX), best score first; one card of a group; OP only in FLEX. No draws.
  */
 function cardFill(m, i) {
   const C = cardsOf(m, i);
@@ -199,9 +199,9 @@ function cardFill(m, i) {
   for (const k of SLOTS) if (C.you[k]) C.slots[k] = C.you[k];
   const pool = cardPool(m, i),
     X = cardCtx(m, i),
-    coach = C.by === 'ai' || C.mine < SLOTS.length; // a side you run in full: only your cards (an empty slot stays empty)
+    fill = C.by === 'ai' || C.mine < SLOTS.length; // a side you run in full: only your cards (an empty slot stays empty)
   for (const k of SLOTS) {
-    if (C.slots[k] || !coach || (C.off && C.off.includes(k))) continue;
+    if (C.slots[k] || !fill || (C.off && C.off.includes(k))) continue;
     const chosen = cardIds(m, i),
       grps = chosen.map(id => CARDS[id].grp).filter(Boolean);
     let best = null,
@@ -386,7 +386,7 @@ function passWeak(m, T) {
   return gap >= PLAN_AI.passGap || pas.some(p => hpOf(m, p) < 0.6 || (m.sta[p.id] ?? 1) < 0.5);
 }
 /**
- * The reads that make a play fit (spec §2.33 balance pass): side i against side o, from what the coach panel and the bars
+ * The reads that make a play fit (spec §2.33 balance pass): side i against side o, from what the Reads tab and the bars
  * show. No draws.
  */
 const CARD_FIT = {
@@ -552,7 +552,7 @@ function cardSpend(m, i, id) {
 }
 /**
  * A turn (spec §2.32): every TURN.pts points played, or at once after a spent card. Each side refills (cardFill: your cards
- * stay, the coach re-picks the rest). Returns the beat that shows it (recording only), or null.
+ * stay, the captain re-picks the rest). Returns the beat that shows it (recording only), or null.
  */
 function cardTurn(m) {
   if (!m.cards || m.over) return null;

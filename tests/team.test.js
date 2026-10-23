@@ -74,7 +74,7 @@ test('team: switching clubs — walked_out with every teammate by behaviour, sta
 });
 
 test('team: tenure — 4w lineup +4, 8w members’ price × 0.8, 12w captain (T-325)', () => {
-  const [g, run] = mkRun(3253);
+  const [g, run] = mkRun(3254);
   run.week = 5;
   assert(g.World.join(run, OPEN), 'sign');
   const T = run.teams[OPEN],

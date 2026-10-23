@@ -783,7 +783,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
   darker by stage), its own morale has sunk (below −0.35), or its HP is nearly gone (below 0.3); the strongest of the three
   sets how dark, easing in and out. Straight or curvy lines; colour, size, opacity and the three thresholds in the VFX panel
   (`VFX.gloom`). Display only (js/render3d/fx/gloom.mjs).
-- §2.36 No coach — the captain runs the side (owner, 2026-10-23) **[draft — T-344]**: a 4v4 street game has no coach in a
+- §2.36 No coach — the captain runs the side (owner, 2026-10-23) **[built 2026-10-23]**: a 4v4 street game has no coach in a
   match; the side's **captain** (today's pick: the best leader on court, `t.cap`) makes every call the coach made — the
   starters and subs, the card hand at each turn (§2.32–§2.33), the timeout and the huddle, the plan / tactic / defence switches,
   the reads (the coach panel's tags). Wherever §2 says "coach" in a match, read "captain".

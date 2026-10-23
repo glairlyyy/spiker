@@ -190,7 +190,7 @@ const CALENDAR = { 4: 'eval', 8: 'eval', 12: 'eval', 16: 'eval', 20: 'eval', 24:
 /** Monthly evaluations: a player who is not selected watches from the bench — wit XP worth `benchDays` day-sessions of Wit training. */
 const EVAL = { benchDays: 1 };
 /**
- * Your coach picks the 4 starters (Run.lineup): best same-role player by ovr + 6 × form (+ your standing with the squad's
+ * Your captain picks the 4 starters (Run.lineup): best same-role player by ovr + 6 × form (+ your standing with the squad's
  * faction ÷ standingPer for you). Rewards × partMul when you started or finished a match on the bench.
  */
 const BENCH = { partMul: 0.6, standingPer: 20 };

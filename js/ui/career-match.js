@@ -1,7 +1,7 @@
 // Career match cards: match prep rows, the evaluation and Cup cards, the result data the match screen reads, and
 // playCareer (play or sim a career fixture).
 
-/** Pre-match rows (spec §10.5 Match prep): the coach's lineup sentence, your focus as a "Pick one" segment and, for a captain
+/** Pre-match rows (spec §10.5 Match prep): the captain's lineup sentence, your focus as a "Pick one" segment and, for a captain
  * in a Cup match, the team talk the same way. */
 function matchPrep(run, cup) {
   const you = Run.you(run),
@@ -16,7 +16,7 @@ function matchPrep(run, cup) {
     L.starts
       ? '<b class="good">Starting</b>'
       : `<b class="warn">On the bench</b>${L.rival ? ` — ${esc(L.rival.p.name)} rates higher (${L.rival.score.toFixed(0)} vs ${L.you.toFixed(0)})` : ''}`,
-    `${info(`Your coach picks the best player of each role by rating + 6 × form (+ your standing with the faction ÷ ${BENCH.standingPer}). Start or finish on the bench and match rewards ×${BENCH.partMul}; never play and you only get a little Wit XP.`)}`
+    `${info(`Your captain picks the best player of each role by rating + 6 × form (+ your standing with the faction ÷ ${BENCH.standingPer}). Start or finish on the bench and match rewards ×${BENCH.partMul}; never play and you only get a little Wit XP.`)}`
   )}${row('Focus', seg(FOCUS[you.role], run.focus, 'setFocus'), `Pick one · hit it ${term('sp', FOCUS_REWARD.sp)} ${term('fans', FOCUS_REWARD.fans)}`)}${prepTechRow(you, row)}${
     cup && you.cap
       ? row(

@@ -79,7 +79,6 @@ const Court = {
       hist: { w: 0, l: 0, sw: 0, sl: 0, res: [] },
       nStars: 0,
       arch: 'Court regulars',
-      coachIQ: 0.6,
       P,
       bench
     };

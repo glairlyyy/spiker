@@ -123,7 +123,7 @@ test.slow('people: calibration — the league grows like the old drift (5 seeds 
 // bond-week baseline on the pre-T-061 code (+7 per training session): average week the first mate reaches bond 60 / 80
 // rebased in T-132 (hex battles shift the random stream) and T-189: the named players' curves replace their breakthrough rolls, which
 // shifts the stream (no systematic change: seeds 11–18 average bond 80 at week 8.3 with them vs 8.0 without)
-const BOND_BASE = { w60: 7, w80: 21 }; // (2026-10-21: bond exponential in stance, REL.bondTau — 60 at ~7 weeks, 80 at ~21 of daily training together; was 2.8 / 6.7) // (2026-10-20: behaviours (T-321) and Magnetic (T-320) make the first mate warmer — bond 80 at ~6.7, was 9) // rebased 2026-10-13: the harness's Math.random made uniform (bond 60 came at 5.2);
+const BOND_BASE = { w60: 9.5, w80: 20 }; // (2026-10-23, T-344: rebased on 90 seeds — 9.3 / 19.3 before the captain's read, 9.7 / 20.3 after; seeds 1–10 alone had run early at 6.4) // (2026-10-21: bond exponential in stance, REL.bondTau — 60 at ~7 weeks, 80 at ~21 of daily training together; was 2.8 / 6.7) // (2026-10-20: behaviours (T-321) and Magnetic (T-320) make the first mate warmer — bond 80 at ~6.7, was 9) // rebased 2026-10-13: the harness's Math.random made uniform (bond 60 came at 5.2);
 // before that 2026-10-05 twice: league at OVR 40–50, then Thai names (name hashes move traits and plans)
 const mkMate = (seed, traits = ['steady', 'proud']) => {
   const [g, run] = mkPeople(seed),
@@ -295,7 +295,7 @@ test('behaviour: Hothead — big swings; a loss together may start a feud (no R(
   assert(['resent', 'enemy'].includes(g.Rel.band(-10 * 1.5)), 'one blame alone makes them resent you');
 });
 test('rel: taking a same-role mate’s spot writes spot_taken once a week; their tag drops to resent', () => {
-  const [g, run] = mkPeople(97),
+  const [g, run] = mkPeople(101),
     you = g.Run.you(run),
     T = g.Run.myTeam(run);
   const peer = g.squadOf(T).find(p => p !== you && p.role === you.role) || g.squadOf(T).find(p => p !== you);
@@ -371,10 +371,10 @@ test('rel: save → load keeps run.mem; a v10 save is dropped; Rel draws no R()'
   g.__mem[g.KEYS.career] = JSON.stringify(raw);
   eq(g.Run.load(), null, 'a v10 save is dropped');
 });
-test.slow('rel: calibration — the first mate reaches bond 60 / 80 about when it did (10 seeds)', () => {
+test.slow('rel: calibration — the first mate reaches bond 60 / 80 about when it did (20 seeds)', () => {
   const got = { w60: 0, w80: 0 };
   // (10 seeds, a never-reached bond counted as week 28, the season's end — T-300: one seed of 5 swung the mean by 18 weeks)
-  for (const seed of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
+  for (let seed = 1; seed <= 20; seed++) {
     const [g, run] = mkPeople(seed);
     let w60 = 99,
       w80 = 99,
@@ -411,8 +411,8 @@ test.slow('rel: calibration — the first mate reaches bond 60 / 80 about when i
       }
       g.Run.endWeek(run);
     }
-    got.w60 += Math.min(28, w60) / 10;
-    got.w80 += Math.min(28, w80) / 10;
+    got.w60 += Math.min(28, w60) / 20;
+    got.w80 += Math.min(28, w80) / 20;
   }
   assert(Math.abs(got.w60 - BOND_BASE.w60) <= 2, `bond 60 at week ${got.w60.toFixed(1)} vs ${BOND_BASE.w60}`);
   assert(Math.abs(got.w80 - BOND_BASE.w80) <= 2, `bond 80 at week ${got.w80.toFixed(1)} vs ${BOND_BASE.w80} (60 at ${got.w60.toFixed(1)})`);
@@ -895,7 +895,7 @@ test('pairs: a shared lost_together flips by reader (jealous / cynical feel it a
   assert(g.Rel.stance(run, x.id, y.id) > 0 && g.Rel.stance(run, y.id, x.id) < 0, 'one bonds, the jealous one resents');
 });
 test('pairs: cliques and feuds form from memories, and the captain rule moves the lineup', () => {
-  const [g, run] = mkPeople(143),
+  const [g, run] = mkPeople(147),
     t = run.teams.find(x => x !== g.Run.myTeam(run)),
     ps = g.squadOf(t).filter(p => !p.you);
   g.People.ensure(run);
@@ -1052,18 +1052,17 @@ test('fixes: no poach (ask or direct) the week before a cup, and a poach_advice 
   eq(g.Asks.answer(run, run.asks.length - 1, true), null, 'and not answerable');
   eq(run.people[p.id].status, 'active', 'still in play');
 });
-test('fixes: St. Gloria’s empty reserve draws no R() (coachIQ is set, not rolled)', () => {
+test('fixes: St. Gloria’s empty reserve draws no R() (the captain’s read is computed, not rolled)', () => {
   const [g, run, , p, me] = mkPoach(162, 'money', false);
   const gt = run.reserve.gloria;
   gt.P.length = 0;
   gt.bench = [];
-  delete gt.coachIQ;
   g.RNG.seed(7);
   const next = [g.R(), g.R()];
   g.RNG.seed(7);
   g.People.fates(run);
   eq(me.status, 'poached', 'they went to St. Gloria');
-  assert(gt.P.includes(p) && gt.coachIQ === 0.5, 'in the reserve, coachIQ 0.5');
+  assert(gt.P.includes(p) && gt.cap && g.capIQ(gt) >= 0.4 && g.capIQ(gt) <= 1, 'in the reserve, a captain with a read');
   eq(JSON.stringify([g.R(), g.R()]), JSON.stringify(next), 'the main random stream is untouched');
 });
 test('fixes: a borrower who leaves play stops owing; a late loan is due on the last week', () => {

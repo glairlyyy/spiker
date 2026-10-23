@@ -54,11 +54,11 @@ test('cards: a play at −3 is spent for the match — out of its slot, never sl
   assert(m.turnNow, 'a turn follows at once');
   assert(m.mom[0] !== before, 'the team morale moved');
   g.cardFill(m, 0);
-  assert(!g.cardIds(m, 0).includes('hunt'), 'the coach never slots it again');
+  assert(!g.cardIds(m, 0).includes('hunt'), 'the captain never slots it again');
   assert(!g.cardPut(m, 0, 'atk0', 'hunt'), 'nor can you');
 });
 
-test('cards: turns every TURN.pts points (or after a spent card); five slots in their zones; the coach draws no randoms', () => {
+test('cards: turns every TURN.pts points (or after a spent card); five slots in their zones; the captain draws no randoms', () => {
   const g = load(73),
     T = g.mkTeams();
   for (let i = 0; i < 12; i++) {
@@ -94,7 +94,7 @@ test('cards: turns every TURN.pts points (or after a spent card); five slots in 
   }
 });
 
-test('cards: no cards (cards: false) is today’s engine — no slots, plans from the coach, techniques at their usual chance', () => {
+test('cards: no cards (cards: false) is today’s engine — no slots, plans from the captain, techniques at their usual chance', () => {
   const g = load(74),
     T = g.mkTeams(),
     m = g.newMatch(T[0], T[1], false, { cards: false });
@@ -155,7 +155,7 @@ test('cards: traps burn the card they name at the next serve; one-shots fire onc
 });
 
 test('traits: twelve traits, ~85 % of players; Iron Body takes less HP damage; Choker loses more late (spec §2.31, T-304)', () => {
-  const g = load(74),
+  const g = load(75),
     sh = Object.values(g.MTRAITS).reduce((a, t) => a + t.share, 0);
   eq(Object.keys(g.MTRAITS).length, 12);
   assert(Math.abs(sh - 0.85) < 1e-9, `shares sum to ${sh}`);

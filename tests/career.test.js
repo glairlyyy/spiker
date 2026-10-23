@@ -309,7 +309,7 @@ test('career: match XP — performance, opponent strength, past the cap', () => 
 });
 
 test.slow('career: start from 1', () => {
-  const g = load(73),
+  const g = load(74),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Zero', mode: {} }),
     you = g.Run.you(run);
   for (const k of g.STATK) eq(you[k], 1, `${k} starts at 1`);
@@ -326,7 +326,7 @@ test.slow('career: start from 1', () => {
     you.body.str >= 4 && you.power > 1,
     `one Power session raises Strength from 1 by several points (${you.body.str}) and Power with it`
   );
-  // the coach benches an all-1 you behind a same-role mate (a middle blocker: the squad has one MB slot; a lone WS still starts for lack of a rival)
+  // the captain benches an all-1 you behind a same-role mate (a middle blocker: the squad has one MB slot; a lone WS still starts for lack of a rival)
   const runMB = g.Run.create(g.Run.draft(), { role: 'MB', name: 'Zero', mode: {} });
   eq(g.Run.lineup(runMB, g.Run.myTeam(runMB), null, true).starts, false, 'you start on the bench');
   // nothing pushes a stat below 1

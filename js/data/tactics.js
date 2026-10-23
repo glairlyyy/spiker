@@ -1,4 +1,4 @@
-// Coach tactics: how the setter distributes the ball.
+// Tactics (the captain's call): how the setter distributes the ball.
 // quick = multiplier on the quick-attack chance (quickCap caps it), w = weight multiplier by role
 // when picking the spiker, read = block/fake-read bonus the defense gets when the focused role attacks.
 
@@ -67,17 +67,19 @@ const LANE = {
 };
 
 /**
- * Coach panel (spec §2.25): a pattern becomes a tag once it is clear — at least `min` cases and `share` of them one way
+ * Reads (spec §2.25, §2.36): a pattern becomes a tag once it is clear — at least `min` cases and `share` of them one way
  * (a hitter's channel), `serve` of a side's serves at one receiver, `read` of the block's reads right or wrong.
+ * The captain's read (capIQ): leadership `lead` and wit `wit` each map [low, high] → 0 … 1 (a generated side's captain
+ * averages 0.70, spread ≈ 0.17, like the old 0.4–1 roll).
  */
-const COACH = { min: 5, share: 0.7, serve: 0.5, read: 0.65 };
+const READS = { min: 5, share: 0.7, serve: 0.5, read: 0.65, lead: [62, 90], wit: [0.8, 1.85] };
 /**
  * The team's condition (spec §2.25, owner 2026-10-12: tell the state of the team, not what to do). Stamina under `tiring` /
  * `spent`; mood over `up` / under `down`; a passer served at (`served` of the side's serves, at least `min`) and broken
  * (aces + loose passes + knockdowns ≥ `broken` of them; ≤ `steady` reads as passing well); a hitter's last `last` attacks:
  * `hot` kills or more, `cold` errors + stuffs or more; read right by the block ≥ `read` of at least `min` reads.
  */
-/** The state words shown over a player on court (the clear ones, strongest first); the rest stay in the Coach panel. */
+/** The state words shown over a player on court (the clear ones, strongest first); the rest stay in the Reads tab. */
 const COND_COURT = ['Passes breaking', 'Shaken', 'Hot hand'];
 const COND = {
   tiring: 0.5,
@@ -95,7 +97,7 @@ const COND = {
 };
 
 /**
- * Team plans (spec §2.26): one attack plan and one defence plan per side, picked at match prep (the captain or the coach;
+ * Team plans (spec §2.26): one attack plan and one defence plan per side, picked at match prep (you, or the side's captain;
  * hidden from the other side) and changed only at a timeout. Each tilts points — none decides one. `cost` is shown with the
  * effect (§9.1: cost → result). Numbers: see the engine hooks (serve.js serveAim / serveContact, lanes.js, rally.js
  * spikePower / hittingError, rally-defense.js block / digSetup).
@@ -172,7 +174,7 @@ const PLANS = {
     }
   }
 };
-/** A team's own plans from its playstyle (the coach's default before scouting the opponent). */
+/** A team's own plans from its playstyle (the captain's default before scouting the opponent). */
 const PLAN_STYLE = {
   power: ['power', 'read'],
   wall: ['straight', 'wall'],
@@ -183,9 +185,9 @@ const PLAN_STYLE = {
   mind: ['beat', 'cover'],
   balanced: ['straight', 'read']
 };
-/** The AI coach and plans (spec §2.26): coach IQ from which it scouts before the match; the ace / weak-passer gaps it acts on. */
+/** The AI captain's plans (spec §2.26, §2.36): the captain's read from which it scouts before the match; the ace / weak-passer gaps it acts on. */
 const PLAN_AI = { iq: 0.7, aceGap: 8, passGap: 10 };
-/** The AI coach's huddle line when it changes plan (spec §2.26): that there is a new plan, never what it is. */
+/** The AI captain's huddle line when it changes plan (spec §2.26): that there is a new plan, never what it is. */
 const PLAN_LINES = ['New plan. Listen up.', 'We change it. Now.', "They've shown us enough. Here's what we do.", 'Forget the old plan.'];
 /**
  * Knockdowns and recovery (spec §2.28). A hard ball barely kept up knocks the receiver flat: impact = power − Defense × defK

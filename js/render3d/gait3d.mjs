@@ -187,7 +187,7 @@ export function gaitIK(pl, d, pose, mot, gw, dt) {
       allow = (stance ? t.y : contact) + Math.sqrt(Math.max(0, (0.97 * leg) ** 2 - hd * hd));
     return { s, t, hy, allow };
   });
-  // 1b. the feet never cross (2026-10-23; coaching: a shuffle steps out with the lead foot and closes with the trailing one,
+  // 1b. the feet never cross (owner, 2026-10-23: a shuffle steps out with the lead foot and closes with the trailing one,
   // never over it — planned like a run, the trailing foot swung past the planted lead): a swinging foot lands, and travels,
   // no nearer the other foot's side than `sep` along the hips' left (wider shuffling)
   const sep = 0.1 + 0.14 * gws,

@@ -217,7 +217,7 @@ const ARCS = {
       {
         name: 'Losing it',
         ask: 'day',
-        line: 'The coach is looking past me. Stay after with me and run my drills.',
+        line: 'The captain is looking past me. Stay after with me and run my drills.',
         a: 'Stay after',
         b: 'Not today',
         yes: 'Ran {n}’s drills after hours. My legs filed a complaint.',

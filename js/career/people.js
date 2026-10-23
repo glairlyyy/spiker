@@ -180,7 +180,6 @@ const People = {
       if (rt.P.length) finalizeTeam(rt);
       gt.P.push(p);
       p.team = gt;
-      if (gt.coachIQ == null) gt.coachIQ = 0.5; // (finalizeTeam would roll it with rnd(): the main stream)
       finalizeTeam(gt);
       me.status = 'poached';
       me.bench = run.week;

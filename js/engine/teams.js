@@ -102,7 +102,7 @@ function mkAverageTeams(lo = 30, hi = 60) {
   });
 }
 /**
- * Everything that depends on a team's final roster: leadership, captain, coach, shirt numbers, rating. Leadership,
+ * Everything that depends on a team's final roster: leadership, captain, shirt numbers, rating. Leadership,
  * elements and numbers cover the whole squad (numbers unique across all 6); the captain and rating are the 4 on court.
  * Call again after changing a roster (e.g. inserting a created player).
  */
@@ -116,7 +116,6 @@ function finalizeTeam(t) {
   for (const q of all) q.cap = false;
   t.cap = t.P.reduce((x, q) => (q.lead > x.lead ? q : x), t.P[0]);
   t.cap.cap = true;
-  if (t.coachIQ == null) t.coachIQ = +rnd(0.4, 1).toFixed(2);
   const nums = new Set(all.map(p => p.num).filter(Boolean));
   all.forEach(p => {
     if (p.num) return;
@@ -128,6 +127,17 @@ function finalizeTeam(t) {
     p.num = n;
   });
   t.ovr = teamOvr(t);
+}
+/**
+ * The captain's read (spec §2.36): 0.4 (slow) … 1 (sharp), half from t.cap's leadership, half from their wit (READS.lead /
+ * READS.wit map each to 0 … 1). It drives the side's calls: subs, timeouts, the huddle, plan / card picks, when a tag is
+ * noticed. Read live, so a new captain (a sub, a lineup change) brings their own read. No draws.
+ */
+function capIQ(t) {
+  const c = t.cap || t.P[0],
+    [l0, l1] = READS.lead,
+    [w0, w1] = READS.wit;
+  return +(0.4 + 0.6 * clamp((0.5 * (c.lead - l0)) / (l1 - l0) + (0.5 * (c.wit - w0)) / (w1 - w0), 0, 1)).toFixed(2);
 }
 /** Team rating: the players' average overall. */
 const teamOvr = t => Math.round(t.P.reduce((a, p) => a + ovr(p), 0) / t.P.length);

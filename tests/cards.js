@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// Cards, bars and turns measured (spec §2.31–§2.33, T-296): side 0 plays a hand mode against the coach's hand (side 1), paired
+// Cards, bars and turns measured (spec §2.31–§2.33, T-296): side 0 plays a hand mode against the captain's hand (side 1), paired
 // seeds against the same match with side 0 holding no cards. Prints point share / match-win deltas per mode, how often plays
 // burn, collapses, stage shares and morale by trait. Measured, not tuned.
-// npm run cards -- [pairs=100] [teams=league|tour|both] [modes=none,boosts,coach,random,blanket]
+// npm run cards -- [pairs=100] [teams=league|tour|both] [modes=none,boosts,captain,random,blanket]
 const { load } = require('./harness');
 const g = load(17);
-const [N = 100, TEAMS = 'both', MODES = 'boosts,coach,random,blanket'] = process.argv.slice(2).map((v, i) => (i === 0 ? +v : v));
+const [N = 100, TEAMS = 'both', MODES = 'boosts,captain,random,blanket'] = process.argv.slice(2).map((v, i) => (i === 0 ? +v : v));
 
 const BOOSTS = { atk0: 'pow', atk1: 'jmp', def0: 'grd', def1: 'ftw' };
 const PLAYS = Object.keys(g.CARDS).filter(id => g.CARDS[id].kind === 'play');
@@ -27,14 +27,14 @@ function randomHand(m, rr) {
   }
   g.cardApply(m, 0);
 }
-/** One match: side 0's mode (none | boosts | coach | random | blanket:<id>). */
+/** One match: side 0's mode (none | boosts | captain | random | blanket:<id>). */
 function play(seed, teams, mode) {
   g.RNG.seed(seed);
   const L = teams === 'tour' ? g.mkTeams() : g.mkLeagueTeams(),
     a = L[seed % L.length],
     b = L[(seed * 3 + 1) % L.length];
   const c0 =
-    mode === 'coach'
+    mode === 'captain'
       ? null
       : mode === 'none' || mode === 'random'
         ? { by: 'you', pick: {} }
@@ -71,7 +71,7 @@ for (const teams of TEAMS === 'both' ? ['league', 'tour'] : [TEAMS]) {
     S.pts += m.pts[0] + m.pts[1];
     S.turns += m.turnN;
   }
-  // stage shares and morale by trait from coach-vs-coach matches
+  // stage shares and morale by trait from captain-vs-captain matches
   for (let j = 0; j < N; j++) {
     g.RNG.seed(9000 + j);
     const L = teams === 'tour' ? g.mkTeams() : g.mkLeagueTeams(),
@@ -89,9 +89,9 @@ for (const teams of TEAMS === 'both' ? ['league', 'tour'] : [TEAMS]) {
       }
   }
   const st = Object.values(S.stage).reduce((a, v) => a + v, 0);
-  console.log(`\n== ${teams} teams, ${N} pairs (side 0 vs the coach's hand; deltas vs side 0 holding no cards) ==`);
+  console.log(`\n== ${teams} teams, ${N} pairs (side 0 vs the captain's hand; deltas vs side 0 holding no cards) ==`);
   console.log(
-    `collapses ${((100 * S.ko) / S.pts).toFixed(2)} / 100 points · turns ${(S.turns / N).toFixed(1)} a match · stages (coach vs coach): ` +
+    `collapses ${((100 * S.ko) / S.pts).toFixed(2)} / 100 points · turns ${(S.turns / N).toFixed(1)} a match · stages (captain vs captain): ` +
       Object.entries(S.stage)
         .map(([k, v]) => `${k} ${((100 * v) / st).toFixed(0)} %`)
         .join(' · ')

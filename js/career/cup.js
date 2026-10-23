@@ -225,7 +225,7 @@ const Cup = {
     const you = Run.you(run),
       mine = side;
     if (run.injury)
-      you.noSub = true; // engine-only: the coach never subs an injured you on (restoreLineups clears it)
+      you.noSub = true; // engine-only: the captain never subs an injured you on (restoreLineups clears it)
     else delete you.noSub;
     const talk = kind === 'cup' && you.cap ? run.talk : null;
     for (const p of squadOf(mine)) {
@@ -259,7 +259,7 @@ const Cup = {
       return { T: tag(Eval.squad(run, e.mine, club.name, club.color, e.mineRegion, club.short), e.mineRegion), region: e.mineRegion };
     return { T: Run.myTeam(run), region: null }; // the Academy squad is a real team
   },
-  /** Fixture for the match screen. kind: 'eval' | 'cup'. Your side is always on the left; your coach picks the 4 (Run.lineup). */
+  /** Fixture for the match screen. kind: 'eval' | 'cup'. Your side is always on the left; your captain picks the 4 (Run.lineup). */
   fixture(run, kind) {
     const you = Run.you(run),
       def = Run.cupDef(run);

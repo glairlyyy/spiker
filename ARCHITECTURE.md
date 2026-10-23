@@ -24,7 +24,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
 
 - **core** `debuglog.js` (DBG), `math.js` (clamp, lerp, inPoly, fmtDelta…), `rng.js` (R / RNG / FXR), `storage.js` (store, KEYS).
 - **data** `rules.js` (RULES, EGO…, FAULTS, GROUNDS: a field's terrain — spec §4.38), `styles.js` (playstyles, team list, archetypes), `names.js` (name pools),
-  `looks.js` (appearance palettes), `moves.js` (signature / combo names, coach lines), `roles.js` (role biases, key
+  `looks.js` (appearance palettes), `moves.js` (signature / combo names, the captain's timeout lines), `roles.js` (role biases, key
   stats, mood deltas), `elements.js`, `vfx.js` (VFX_DEF / live `VFX` effect tuning, read by render code only; saved dev edits in `sns_vfx`), `tactics.js`, `dialogue.js` (lines, `callLine`), `skills.js`, `career.js`
   (CAREER, BODY, CALENDAR, ROLE_NAME, STATNAME, MLOG…), `world.js` (REGIONS, FACTIONS, ECON, HOUSING, CLASH, FRONT, HEX…, WINDOW / TENURE / TEAM_LINES — team life, spec §4.36), `war.js` (WAR: the war units, Strength deltas; WAR_STAGES — spec §4.34), `city.js`
   (CITY geometry, SPOTS, travel constants, layout data; DRONE / PICKUP: the Ref drone's prices, where a pickup may stand — spec §4.38), `stars.js` (STARS), `traits.js` (SPARKS / SCARS / `MC_TRAITS`, `TRAIT_ODDS`: the
@@ -43,18 +43,18 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   replaces the fire update, `fireOf` = the on-court average (captain ×2) → `m.mom`, `morAdd` / `fireTo` for team-wide pushes;
   `mtraitOf(p)` by hash; data `HP`, `MTRAITS` in data/cards.js), `cards.js` (tactic cards and turns, spec §2.32–§2.33:
   `m.cards[side]` = { by, slots (SLOTS: atk0 atk1 def0 def1 flex), you, net, worn, spent, played, force, buff } or null
-  (`opts.cards === false`); `cardsInit` in newMatch, `cardFill` (your cards stay, the coach's `cardScore` picks the rest, no
+  (`opts.cards === false`); `cardsInit` in newMatch, `cardFill` (your cards stay, the captain's `cardScore` picks the rest, no
   draws), `cardApply` compiles into planSet / `m.tac` / `ordSet` (only its own orders: `cord`) / `cardForce(p, tech)` read at
   the technique hooks / `cardBuff(p, stat)` multiplied into `stageBuff`; `cardTally` after every point (spent at TURN.spent →
   `cardSpend`), `cardTurn` every TURN.pts points (act `turn`), act `cardspent`; `cardOn` (on-slot effects), one-shots used up
   in `cardApply`, `cardTraps` at the first serve after a turn (`m.trapNow`; act `cardspent` with `trap`), `C.over` (Overload,
   read by `dr`); data `CARDS`, `COMBOS`, `TURN`, `SLOTS`,
   `CARD_AI` in data/cards.js; `cardSlots` — a Broken war unit's side lacks FLEX, `C.off`; duo cards `src: 'duo'` read `m.duo` via `duoIds` / `duoOn` — spec §4.36), `match.js` (`newMatch`; `weakSet` — a side's war stage `m.weak`, spec §4.34), `serve.js`, `rally-phases.js`,
-  `rally-defense.js`, `rally-block.js`, `lanes.js` (laning, spec §2.24: `laneRead`, `laneAim`, `laneTag`, `laneRecord`, coach-panel logs `hitLog` / `recvLog`; tuning `LANE` in data/tactics.js), `coach.js` (`Coach.side` / `Coach.tags`: the coach panel's analysis, spec §2.25), `plans.js` (team plans, spec §2.26: `planOf`, `atkPlan` / `defPlan`, `planPick`, `planSet`, `planCounter`, `weakPasser`, `aceOf`; data `PLANS`, `PLAN_STYLE`, `PLAN_AI`, `PLAN_LINES` in data/tactics.js; `m.plan`, `m.planBy`, `m.planLog`), `orders.js` (role orders, spec §2.29: `m.ord` player id → { srv, tgt }, none = Auto; `ordOf` / `ordSet`, `srvOpts` / `tgtOpts` (locked = the gap), `srvApply` / `tgtResolve` (the serve hooks, only with an order), `srvOdds` (the board's odds: the engine's formulas on the fixed grid `ORDERS.odds`, no draws), `srvLog` → `m.srvLog`; spike
+  `rally-defense.js`, `rally-block.js`, `lanes.js` (laning, spec §2.24: `laneRead`, `laneAim`, `laneTag`, `laneRecord`, Reads-tab logs `hitLog` / `recvLog`; tuning `LANE` in data/tactics.js), `reads.js` (`Reads.side` / `Reads.tags`: the Reads tab's analysis, spec §2.25), `plans.js` (team plans, spec §2.26: `planOf`, `atkPlan` / `defPlan`, `planPick`, `planSet`, `planCounter`, `weakPasser`, `aceOf`; data `PLANS`, `PLAN_STYLE`, `PLAN_AI`, `PLAN_LINES` in data/tactics.js; `m.plan`, `m.planBy`, `m.planLog`), `orders.js` (role orders, spec §2.29: `m.ord` player id → { srv, tgt }, none = Auto; `ordOf` / `ordSet`, `srvOpts` / `tgtOpts` (locked = the gap), `srvApply` / `tgtResolve` (the serve hooks, only with an order), `srvOdds` (the board's odds: the engine's formulas on the fixed grid `ORDERS.odds`, no draws), `srvLog` → `m.srvLog`; spike
 orders `aim` / `shot`: `aimOpts` / `shotOpts`, `atkApply` (laneAim), `atkLand` (landingSpot); `atkOdds(m, side, p | null, [[player, kind, v], …])` — the engine plays the
 attack from now on an isolated stream (snapshot `stCopy`, `m.probe`, `probeHit` in tallyAttack) and restores the match;
 setter orders `feed` / `fake`: `feedOpts` / `fakeOpts`, read in chooseAttack (`fed`, `feedOrd`), fakeSet and setterDump; a
-Rest (`rest`: `restOpts`, `restFor`, `ordSubs` at the dead ball before coachSubs; `subDo` in match.js); a middle's `blk` ('read' | 'commit' | 'back'): `blkOpts`, `stayBack`, read in blockApproach (the setting), chooseAttack (DF),
+Rest (`rest`: `restOpts`, `restFor`, `ordSubs` at the dead ball before capSubs; `subDo` in match.js); a middle's `blk` ('read' | 'commit' | 'back'): `blkOpts`, `stayBack`, read in blockApproach (the setting), chooseAttack (DF),
 blockMoves and digSetup; tallies `ordLog` / `ordAttack` → `m.ordLog` (the result card's Orders row, `boardResult`); data `ORDERS`), `rally.js`.
 - **audio** `sfx.js` (internals in the `SOUND` closure; global: `SND`, `sfx`, `audioInit`, `toggleSound`, `setVolume`, `bgmStart`, `bgmStop`, `panAt`), `ambience.js` (`Ambience`: the island map's synthesized sound on sfx.js's context and master bus — start / stop with the map, spec §4.37 5). **game** `state.js` (G, HYPE, Screens / navigate), `bracket.js`.
 - **career** `run.js` (Run, RUN_DEFAULTS), `body.js` (Body: your body → the court skills, spec §4.33), `training.js`, `growth.js`, `element.js`, `world.js`, `pool.js`, `eval.js`,
@@ -68,7 +68,7 @@ blockMoves and digSetup; tallies `ordLog` / `ordAttack` → `m.ordLog` (the resu
 - **portraits** `js/render/faces.js` `faceSVG(p, mood, size)` returns a cached 3D portrait `<img>` (PORTRAIT: look key → data URL) or the drawn face (`faceSVG2D`) as a placeholder that is swapped in place when `js/render3d/portrait3d.mjs` (lazy-loaded; one offscreen renderer, the default model re-dressed in hair / skin / team shirt, Main_v2 for you) finishes it.
 - **ui** `dom.js` (esc, tip, info, fold, kv — the vertical label/value list of spec §10.1a, peek — the L2 detail card of §10.8: `CW.peek` holds the open id, `peekSync` (MutationObserver on #app) ports the open card to <body> beside its owner panel…), `icons.js`, `match-screen.js` (startMatch → `A`, 3D load / bind, fit, venue / stakes, leaveMatch), `match-controls.js` (control bar, ⚙ settings,
   camera / follow, fullscreen, timeouts, tactics, speed / pause / skip, scoreboard, commentary, rail, box score, hotkeys), `match-tech.js`
-  (technique switches), `match-result.js` (result card, finishMatch), `match-coach.js` (the rail's Coach tab, `coachPanel`, spec §2.25), `match-prep.js` (match prep: the intro before every match — both teams and the hands, `prepOpen` / `prepStart`, `A.prep` holds play, spec §2.26 / §2.33), `match-cards.js` (tactic cards, spec §2.31–§2.33: the hand in prep (`cardsHand`, `cardsPick` / `cardsSlot` → cardPut + the coach's cardFill; `cardsMine`: Monster 5 on "You decide", career 1 or 5 as captain), the turn overlay `#cturn` (`cardsTurnShow` from the `turn` act, `cardsPeek` on Tab, `cardsKey`; play waits on `A.prep`), the bars rows, `cardsSpentShow`, the result card's `cardsRow`; the court tags draw HP / stamina / morale from `A.hpShown` / `A.staShown` / `A.morShown` — the snapshot's `hp`, `sta`, `mor`), `match-combo.js` (the rally touch counter: `comboTouch` from startBall, `comboEnd` on point / reset), `models.js`, `menu.js`,
+  (technique switches), `match-result.js` (result card, finishMatch), `match-reads.js` (the rail's Reads tab, `readsPanel`, spec §2.25, §2.36), `match-prep.js` (match prep: the intro before every match — both teams and the hands, `prepOpen` / `prepStart`, `A.prep` holds play, spec §2.26 / §2.33), `match-cards.js` (tactic cards, spec §2.31–§2.33: the hand in prep (`cardsHand`, `cardsPick` / `cardsSlot` → cardPut + the captain's cardFill; `cardsMine`: Monster 5 on "You decide", career 1 or 5 as captain), the turn overlay `#cturn` (`cardsTurnShow` from the `turn` act, `cardsPeek` on Tab, `cardsKey`; play waits on `A.prep`), the bars rows, `cardsSpentShow`, the result card's `cardsRow`; the court tags draw HP / stamina / morale from `A.hpShown` / `A.staShown` / `A.morShown` — the snapshot's `hp`, `sta`, `mor`), `match-combo.js` (the rally touch counter: `comboTouch` from startBall, `comboEnd` on point / reset), `models.js`, `menu.js`,
   `debug-panel.js` (Debug log; `?dev` word counter per region vs the §10.8 budgets), `dev.js` (dev tools on demand, T-271: `DEV_TOOLS` lists each tool's scripts — vfx-panel.js, vfx-lab.js, anim-lab.js, not in index.html — and `devOpen(name, fn)` loads them once, then runs `fn`; ESLint reads the list for its globals), `career-create.js`, `career-week.js` (CW state, End week, Week report, events), `sheet-me.js` / `sheet-season.js` (the Me / Season sheets),
   `career-match.js` (match prep, eval / Cup cards, result data, playCareer, watchCareer), `map-view.js`, `career-panels.js` (place
   panels: `placeCard` anatomy, `PANELS` by kind → hq / clash / venue / map point, else `placePanel`), `career-map.js` (mount, pick, actions, walk lock), `career-dossier.js`,
@@ -109,7 +109,7 @@ onLeave }` (see Screens; `onLeave` only cleans up), opened by the UI with `watch
   knobs); the engine reads knobs through `atkPlan(m, side)` / `defPlan(m, side)` (plans.js) at the roll that owns them
   (serve.js, lanes.js, rally.js, rally-defense.js) — default `?? 1`, so other plans stay draw-identical. A playstyle's default: `PLAN_STYLE`.
 - **A lane read rule** (§2.24): `laneRead` / `laneAim` (engine/lanes.js) with the numbers in `LANE` (tactics.js); record outcomes
-  with `laneRecord` so the Coach panel (match-coach.js) shows them.
+  with `laneRecord` so the Reads tab (match-reads.js) shows them.
 - **A venue's air** (§2.27): ambient3d.mjs `updateAmbient` by `kind` (`OUTDOOR` set: wind; else embers) and the crowd heat `Dir.heat`;
   tunables in `VFX.air` (js/data/vfx.js). Presentation only.
 - **A director event / line** (§2.15, §2.18): push `{ kind, p?, q?, side? }` to `this.ev` in director.js (`beatLines` / `stageLine` /
@@ -162,8 +162,10 @@ digPopped | digKill | digUp`. New rules (e.g. ace traits) hook into the step tha
 
 - `createPlayer(spec)` — the one place that defines a player object (stats clamped 25–99).
 - `mkPlayer(...)` — random player = `rollStats` + `rollWit` + `rollName` + look/moves → `createPlayer`.
-- `finalizeTeam(t)` — leadership, captain, coach, shirt numbers, rating. Keeps values already set,
+- `finalizeTeam(t)` — leadership, captain, shirt numbers, rating. Keeps values already set,
   so a hand-made player can be dropped into a roster and the team re-finalized.
+- `capIQ(t)` (teams.js) — the captain's read, 0.4–1 from `t.cap`'s leadership and wit (`READS.lead` / `READS.wit`, spec §2.36);
+  read live (no field, no save), so a new captain brings their own read. Drives subs, timeouts, the huddle, plan / card picks, `noticeAt`.
 
 ## Effective stats and formulas
 
@@ -185,7 +187,7 @@ literal is the shape; other fields are created by the file that owns them:
 | Ball              | `ball`, `srvId`, `bounce`, `bp`, `bv`, `mv`, `spin`, `wob`, `dribble`, `real`, `trail`, `trailPow`, `trailEl`, `trailOp`, `hand*`, `lastC`, `lastP`                | playback.js, ball.js, acts.js                       |
 | Camera and scenes | `cam`, `shot`, `zc`, `zoom`, `digHero`, `preApp`, `preDig`, `sqT`, `cine`, `cineCool`                                                                              | camera.js, scenes.js, movement.js, acts.js, cine.js |
 | Effects           | `parts`, `labels`, `lines`, `link`, `shake`, `flash`, `flashC`, `ptFlash`, `ghost`, `drill`, `crack`, `squash`, `netShake`, `wallFx`, `toBanner`, `cele`, `pointN` | effects.js, acts.js, match-result.js                |
-| Crowd and bench   | `cheer`, `cheerAll`, `wave`, `chant`, `coaches`                                                                                                                    | effects.js, acts.js                                 |
+| Crowd and bench   | `cheer`, `cheerAll`, `wave`, `chant`                                                                                                                             | effects.js, acts.js                                 |
 | HUD               | `railTab`, `staShown`, `moodShown`, `buffShown`, `egShown`, `zoneShown`, `techPs`, `techCareer`, `techKeys`                                                        | match-controls.js, match-tech.js                    |
 
 `menu`, `match`, `create`, `career`, `encyclopedia`, `vfxlab` — switch with `navigate(name, …args)`.

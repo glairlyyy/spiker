@@ -13,7 +13,7 @@ beats are copied per rally so playback never marks the engine's own), `clock.js`
 `scenes.js`, `effects.js`, `overlay.js` (the screen-space layer behind the `Overlay` object — `applyView`, `drawChant`, `drawTrail`,
 `drawFx`, `frame` — called by r3d.mjs and the clock; view transform, chant, ball trail, labels, flashes;
 `FONT_ROUND` / `FONT_DISPLAY` / `INK` / `roundRectPath`), `faces.js` (`faceSVG` portraits + `shade`; `PORTRAIT.frame` wraps an S / A portrait in `.gift` — see Presence), `tags.js`
-(player / coach tags over the figures), `dive.js` (the dive timeline `diveF` / `diving` / `diveShape`), `acts.js`
+(player tags over the figures), `dive.js` (the dive timeline `diveF` / `diving` / `diveShape`), `acts.js`
 (one-shot act handlers in three tables — `ACTS_FX`, `ACTS_UI`, `ACTS_ROSTER`, merged as `ACTS`; `instant(a)` looks the
 kind up and calls it with `(a, d, bs)`), `movement.js` (pre-dig reads, spike approach, sprint caps, dig chases, squeaks,
 air momentum, body separation) and `actors.js` (per-player timers, free fall, gait / dust, the celebration).
@@ -21,7 +21,7 @@ Units are named once in `engine/court.js`: `Z_UNITS` (z 0..1 ≙ 420 x units), `
 units3d's KH / KX / KZ read it), `BALL_K` / `SERVE_K` (ball flight speed factors).
 
 - **One world, built once.** `main.js` starts `load3D()` in the background at boot: import three.js + three-vrm
-  (jsDelivr, import map in `index.html`), download the model, parse 8 players + 2 coaches, build the arena. Each
+  (jsDelivr, import map in `index.html`), download the model, parse 8 players, build the arena. Each
   match only re-dresses it (`bind()`: kits, hair/skin/eye colours, heights, crowd colours, LED board). Play holds
   (`A.hold`) until it is ready; if WebGL or the download fails, the loading card links to the legacy 2D version.
 - **`P()` is the bridge**: `P3D` projects court points through the current 3D camera, so every effect, label,
@@ -42,7 +42,7 @@ units3d's KH / KX / KZ read it), `BALL_K` / `SERVE_K` (ball flight speed factors
   match-screen `matchVenue(fx)` / `matchStakes(fx)` → `A.venue` / `A.stakes`; Math.random only), `camera3d.mjs` (game
   camera, scene shots `shotPose` with hard cuts, `P3D`, view transform, camera mode, debug camera),
   `actors3d.mjs` (`posePlayer` → `motion`, `steer`, head tracking, `reachForBall`, `lightTrails`, `glow`;
-  `poseCoach`; `dressActors`), `fx3d.mjs`, `trails3d.mjs`.
+  `dressActors`), `fx3d.mjs`, `trails3d.mjs`.
 - Main model: your career player (`p.you`) is always `assets/vrm/main.glb.txt` (Main_v2, base64 like the base model, one
   figure with `model: 'main'`, `own: true` → no kit tint, added to the pool in the r3d build; a failed load falls back to the base model).
 - Extra player models: a .vrm picked in the menu (Playtest card) is kept in the player's own browser (IndexedDB,
@@ -82,7 +82,7 @@ units3d's KH / KX / KZ read it), `BALL_K` / `SERVE_K` (ball flight speed factors
   (`jumpPx`); in the air `groundSnap` carries the jump on the hips, so tucked legs don't eat it. Serve tosses go
   up well above the hand and drop into it. A test checks every engine pose has a 3D version.
 - Moving: players face where they run on long moves (back to position, to the bench for a timeout) and turn back
-  to the ball when close; in a huddle they face the coach. A dive turns the whole body to its launch direction.
+  to the ball when close; in a huddle they face the huddle spot on the sideline. A dive turns the whole body to its launch direction.
   The engine decides dig/receive on reachability (`mustDive`, engine/match.js): a ball the player can run to in the
   beat's time is played on the feet (bump), otherwise they dive; pancakes and technique saves always dive.
   Moves never go faster than a sprint (`capMove`, playback): a move the beat is too short for carries into the next.
@@ -297,19 +297,19 @@ No ego personality, ego acts, `m.egoLog` or ego moment any more; `Run.load` drop
 
 ## Substitutions
 
-`SUB = { max, sta, fresh }` (`js/data/rules.js`). At every dead ball `end()` (engine/match.js) calls `coachSubs(m, side)` after the
+`SUB = { max, sta, fresh }` (`js/data/rules.js`). At every dead ball `end()` (engine/match.js) calls `capSubs(m, side)` after the
 point's beats: with subs left (`m.subs[side] < SUB.max`, per set), `subCandidate` finds who to swap — the tiredest player under `SUB.sta`, then one with
 `SUB.errs` errors (`m.setErr`) and more errors than kills, then a rested starter (≥ `SUB.back`, better rated) returning for whoever replaced them
 (`m.subbed`); the replacement is the fittest bench player at stamina ≥ `SUB.fresh` (same role first, else highest rating; a setter only for a
-setter). A tired / erring sub must pay off (the coach's worth test): bench ovr ≥ `lerp(SUB.worth[0], SUB.worth[1], coachIQ)` × the starter's current worth
-(ovr × (1 − `RULES.stamina.hit` × (1 − stamina))) — a dull coach subs almost anyone in, a sharp one only when it helps; a pair that fails is skipped (the next
+setter). A tired / erring sub must pay off (the captain's worth test): bench ovr ≥ `lerp(SUB.worth[0], SUB.worth[1], capIQ(t))` × the starter's current worth
+(ovr × (1 − `RULES.stamina.hit` × (1 − stamina))) — a dull captain subs almost anyone in, a sharp one only when it helps; a pair that fails is skipped (the next
 candidate is tried). A bench player flagged `noSub` never comes on (`rested`, and the 'back' rule): `Cup.prepare` sets it on your player while `run.injury`
-is set (engine-only, never saved; `restoreLineups` deletes it). One roll `R() < lerp(SUB.iq[0], SUB.iq[1], coachIQ)` decides whether the coach acts now — × `SUB.you`
+is set (engine-only, never saved; `restoreLineups` deletes it). One roll `R() < lerp(SUB.iq[0], SUB.iq[1], capIQ(t))` decides whether the captain acts now — × `SUB.you`
 (0.9) when the player coming off is your career player (`p.you`); no candidate → no roll. `m.subLog` (engine-only: `{ side, pts, why, out, inn, sta }`) records
 each sub with its reason, shown in the log line.
 `subIn` gives the incoming player the seat (`t.P` index), slot and — if the captain went off — the captaincy goes to the best
-leader on court; `m.pos` is copied. Recording adds one beat `sub` (+ `rot` snapshot, `plabel` 'SUBBED', `coachtalk` from
-`SUBLINES` picked by hash, `log`). `m.lineup0` is the starting lineup per side; `restoreLineups(m)` puts `P`, `bench`, slots, `s` /
+leader on court; `m.pos` is copied. Recording adds one beat `sub` (+ `rot` snapshot, `plabel` 'SUBBED', `captalk` from
+`SUBLINES` picked by hash, `log`; acts.js shows `captalk` as a 2.4 s bubble over that side's captain, `d.call.dur`). `m.lineup0` is the starting lineup per side; `restoreLineups(m)` puts `P`, `bench`, slots, `s` /
 `mb` / `ws` and the captain back — called in `end()` when the match is over, by `leaveMatch` and by `navigate()` when a running match is
 left (safe twice; never after a finished match). Match-time stats: `m.stat` (box score / stars / `tour.mp` list players on court or with stats).
 Playback: `A.disp` holds the 4+4 on court, `A.bench` the display entries of the bench (nothing draws or animates them); `case 'sub'`
@@ -318,7 +318,7 @@ incoming player (`dressFigure`), so no figure is ever on court twice. `byId` sea
 
 ### Your player and the bench (T-031)
 
-`Run.lineup(run, T, region, dry)` (career/run.js) is your coach's pick for your side before every career match (`Cup.fixture`, after
+`Run.lineup(run, T, region, dry)` (career/run.js) is your captain's pick for your side before every career match (`Cup.fixture`, after
 `Cup.prepare`): per slot [S, MB, WS, WS] the best same-role player by `ovr + 6 × Run.form` (+ your standing in that region ÷
 `BENCH.standingPer`, `data/career.js`); a missing role falls back to the best remaining player. It reorders `T.P` / `T.bench`, slots,
 `s`/`mb`/`ws`, captain and `ovr`, and returns `{ starts, you, rival }`; `dry` only scores (the pre-match Lineup row). `Cup.mine(run, kind)`
@@ -1337,10 +1337,10 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   yours by your role and theirs). `Team.setup(run, m)` — called from the UI's fixture wrappers (`watchCareer` / `simCareer` setup,
   after the fixture's own; the headless Raid / Midnight Court have none) — sets `m.duo[your side] = { card: [you, friends] }` for
   squadmates whose duo is unlocked (`Team.duoOk`: bond TEAM.duo once — `Team.duoWeek` logs it in `run.tlife.duo`) and refills turn 0
-  (the coach picked in newMatch before m.duo existed; `played` reset so counts stay 1); `m.exIds` = ex-teammates across the net. Engine
+  (the captain picked in newMatch before m.duo existed; `played` reset so counts stay 1); `m.exIds` = ex-teammates across the net. Engine
   (cards.js): `duoIds(m, i, id)`, `duoOn(T, ids)` (two of the pair on court); `cardInPool` holds a duo card only while both are on
   court; its buffs carry `ids` and `cardFor` gives them to the pair only while both are on court; never spent (no CARD_EDGE: always
-  'fit'); the coach scores it `CARD_AI.duo`. No m.duo → nothing reads differently (goldens unchanged). UI: `cardName` ("Mint × You:
+  'fit'); the captain scores it `CARD_AI.duo`. No m.duo → nothing reads differently (goldens unchanged). UI: `cardName` ("Mint × You:
   Pin Connection", chips and the result row); `teamWatch(m)` (match-cards.js, a rAF loop from watchCareer's setup) waits until no
   prep / turn / exchange / scene holds the court, then `exRemark(m)` once (match-exchange.js: MLINES `ex` / `ex_reply` by personality,
   holds the rally through `Dir.talk`), then `cardsDuoCut` the first time each duo card is slotted with its pair on court (the hype

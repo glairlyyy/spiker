@@ -141,7 +141,7 @@ function tallyAttack(m, side, x, k0, bk0, e0) {
   a[kind]++;
   if (x.b1) a.dbl++;
   const err = (m.stat[x.spiker.id] || blank()).err > e0;
-  hitLog(m, x, kill, stuffed, err); // the coach panel's per-hitter numbers (spec §2.25)
+  hitLog(m, x, kill, stuffed, err); // the Reads tab's per-hitter numbers (spec §2.25)
   ordAttack(m, side, x, kill, err, stuffed); // how the role orders went (spec §2.29)
   probeHit(m, side, x, kill, err, stuffed); // the Plan board's odds probe: ends the probe here
   if (stuffed) {

@@ -394,7 +394,7 @@ function startBall(a) {
 }
 /**
  * One-shot act: effects, labels, sounds, UI. Called at a beat's start, at its end for `when: 'end'` acts, and by the
- * match screen (coach talk). The handlers live in ACTS (acts.js), by concern.
+ * match screen (the captain's talk). The handlers live in ACTS (acts.js), by concern.
  */
 function instant(a) {
   const bs = ballScreen(),

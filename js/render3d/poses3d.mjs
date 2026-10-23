@@ -227,7 +227,7 @@ const PLATFORM = C({
   al: [V(-0.3, -0.62, 0.72), V(-0.3, -0.62, 0.72), V(-0.3, -0.58, 0.76), 0, -2.2],
   curlL: 0.2, // the passing grip: one hand in the other, thumbs together
   curlR: 0.6,
-  shrug: 0.12, // (2026-10-23: coaching cue — shoulders shrugged up to the ears, the arms locked in one flat platform)
+  shrug: 0.12, // (owner, 2026-10-23 — shoulders shrugged up to the ears, the arms locked in one flat platform)
   fsplit: 0.45
 });
 const PLATFORM_UP = C({
@@ -1082,26 +1082,4 @@ export function playerPose(d, mood, m) {
   if (d.call) out.face = { ...out.face, aa: 0.7 * Math.min(1, d.call.life * 3) };
   out.kind = pose; // (the move actually shown: actors3d cross-fades when it changes)
   return out;
-}
-
-/** Coaches on the sideline: standing with a clipboard, cheering, despairing or talking. */
-export function coachPose(c, t) {
-  const base = { hp: 0.02, L: leg(0.08, 0.1, 0, 0.12), R: leg(-0.02, 0.08, 0, 0.12), curl: 0.5 };
-  if (c.type === 'yay') return { ...base, al: [V(0.45, 0.85, 0.1), V(0.2, 0.97, 0)], curl: 1, face: { happy: 1 } };
-  if (c.type === 'ugh') return { ...base, hp: 0.25, sp: 0.2, hd: 0.3, al: [V(0.7, 0.5, 0.5), V(-0.5, 0.3, -0.8)], face: { sad: 0.8 } };
-  if (c.type === 'talk') {
-    const w = Math.sin(t * 0.01) * 0.3;
-    return {
-      ...base,
-      al: [V(0.3, -0.6, 0.7), V(-0.4, 0.2, 0.9)],
-      ar: [V(-0.3, -0.2 + w, 0.93), V(-0.25, 0.1 + w, 0.96)],
-      face: { aa: 0.4 + 0.3 * Math.abs(w) }
-    };
-  }
-  return {
-    ...base,
-    al: [V(0.3, -0.85, 0.4), V(-0.5, -0.1, 0.85), V(-0.6, 0, 0.8)],
-    ar: [V(-0.3, -0.85, 0.4), V(0.5, -0.1, 0.85), V(0.6, 0, 0.8)],
-    face: {}
-  };
 }

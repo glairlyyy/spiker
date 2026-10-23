@@ -61,7 +61,7 @@ function startMatch(fx) {
         <button class="btn" onclick="skipMatch()" ${tip('Skip to the final result')}>Skip ⏭</button></div>
       <div class="cg team">${sides.map(i => timeoutButton(m.t[i], i, sides.length > 1)).join('')}
         <button class="btn" id="tacbtn" onclick="railOpen('tac')">Tactics <kbd>T</kbd></button>
-        <button class="btn" id="coachbtn" onclick="railOpen('coach')" ${tip('What each side has shown: patterns, hitters, reads, serves')}>Coach <kbd>H</kbd></button></div>
+        <button class="btn" id="readsbtn" onclick="railOpen('reads')" ${tip('What your captain has noticed: patterns, hitters, reads, serves')}>Reads <kbd>H</kbd></button></div>
       <div class="cg view"><button class="btn" id="railbtn" onclick="railOpen()" ${tip('Box score and tactics')}>Details <kbd>B</kbd></button>
         <button class="btn" onclick="toggleFullscreen()" ${tip('Fullscreen court')} aria-label="Fullscreen">⛶ <kbd>F</kbd></button>
         <button class="btn" id="snd" onclick="toggleSound()" aria-label="Sound">${SND.on ? '🔊' : '🔇'}</button>
@@ -72,7 +72,7 @@ function startMatch(fx) {
     <aside class="mrail" id="mrail" hidden aria-label="Match details"><div class="rhd"><div class="tabs">${Object.entries(RAIL_TABS)
       .map(([k, n]) => `<button class="btn" data-rt="${k}" onclick="railOpen('${k}')">${n}</button>`)
       .join('')}</div><button class="btn x" onclick="railOpen(null)" aria-label="Close">✕</button></div>
-      <div class="rbody"><div class="rt" data-rt="box"><div id="box"></div></div><div class="rt" data-rt="coach"><div id="coach"></div></div>
+      <div class="rbody"><div class="rt" data-rt="box"><div id="box"></div></div><div class="rt" data-rt="reads"><div id="reads"></div></div>
       <div class="rt" data-rt="tac"><div id="techsw"></div>${sides.map(i => `<div class="trow2"><span class="cgl">Tactic</span>${tacticPicker(m.t[i], i)}</div><div class="trow2"><span class="cgl">Defence</span>${defencePicker(m.t[i], i)}</div>`).join('')}</div></div></aside>
   </section>`;
   audioInit();
@@ -123,12 +123,6 @@ function startMatch(fx) {
     link: null,
     cele: null,
     staShown: {},
-    coaches: [0, 1].map(side => ({
-      side,
-      p: FXR.isolate(() => ({ look: mkLook('S'), hair: pick(HAIR), op: false, team: m.t[side] })),
-      react: 0,
-      type: null
-    })),
     trail: [],
     trailPow: 0,
     parts: [],

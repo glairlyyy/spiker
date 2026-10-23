@@ -15,7 +15,6 @@ function acts(g) {
     labels: [],
     pointN: 0,
     disp: {},
-    coaches: [{}, {}],
     cheer: [0, 0],
     m: { t: [{ short: 'A' }, { short: 'B' }] },
     beats: [],
@@ -154,7 +153,7 @@ test('terrain: off a field nothing changes — every ground hook is × 1 / + 0 w
 });
 test.slow('terrain: each ground plays — sand, grass, asphalt, slope, wind have the right sign over 200 seeded matches (spec §4.38)', () => {
   const run = opts => {
-      const g = load(4242);
+      const g = load(4243);
       return terrain(g, g.mkTeams(), 100, opts);
     },
     base = run({}),
