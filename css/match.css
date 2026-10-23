@@ -1569,220 +1569,634 @@ html.reduced .xl {
   gap: 12px;
   width: 100%;
 }
-/* Tactic cards (spec §2.33): the hand in match prep and the turn overlay (§2.32) */
-.prep .chand {
+/* The deck (spec §2.37, T-347): match prep's deck, the hand bar, the piles, the active cards, the result row */
+.prep .bhab {
   margin-top: 8px;
 }
-.prep .cslots {
+.prep .cdeck {
+  margin-top: 8px;
+}
+.prep .cdeck > .lab {
+  margin: 8px 0 4px;
+}
+.hmini {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 6px;
+  gap: 8px;
 }
-.prep .cslot {
-  display: flex;
-  flex-direction: column;
+.prep .dks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
-  min-width: 0;
-  padding: 6px;
-  border: 1px solid var(--line);
+}
+.prep .dk,
+.hli {
+  --kc: var(--mute);
+  display: grid;
+  grid-template-columns: 4px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 8px;
+  min-height: 32px;
+  padding: 4px 8px 4px 0;
   border-radius: 6px;
-  background: var(--surf);
-  color: var(--ink);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.prep .cslot:disabled {
-  cursor: default;
-}
-.prep .cslot.you {
-  border-color: var(--gold);
-}
-.prep .cslot.sel {
-  outline: 2px solid var(--ink);
-}
-.prep .cslot .lab {
-  font-size: 12px;
-}
-.prep .ccard {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  padding: 4px 6px;
-  border-left: 3px solid var(--line-strong);
-  border-radius: 4px;
   background: var(--surf2);
+  overflow: hidden;
 }
-.prep .ccard b {
-  font-size: 12px;
+.prep .dk i,
+.hli i {
+  grid-row: 1 / span 2;
+  align-self: stretch;
+  background: var(--kc);
+}
+.prep .dk b {
+  font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.prep .ccard i {
+.prep .dk small {
+  grid-column: 2 / 4;
   font-size: 12px;
-  font-style: normal;
   color: var(--mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.prep .ccard.k-play {
-  border-left-color: var(--cyan);
+.prep .dk.bas {
+  grid-column: 1 / -1;
 }
-.prep .ccard.z-op {
-  border-left-color: var(--hot);
+/* kind colours: one per kind, always with its word (Basic · Play · One-shot · Trap · OP) */
+.k-basic {
+  --kc: var(--mute);
 }
-.prep .ccard.k-once {
-  border-left-color: var(--good); /* one-shot (T-305) */
+.k-play {
+  --kc: var(--cyan);
 }
-.prep .ccard.k-trap {
-  border-left-color: var(--rival); /* trap (T-305) */
-  border-left-style: dashed;
+.k-once {
+  --kc: var(--gold);
 }
-.prep .ccard.worn {
-  border-left-color: var(--warn);
+.k-trap {
+  --kc: var(--rival);
 }
-.prep .ccard.worn i {
-  color: var(--warn);
+.k-op {
+  --kc: var(--hot);
 }
-.prep .ccard.spent {
-  opacity: 0.55;
-  text-decoration: line-through;
+/* the hand bar: over the court, above the control bar */
+.match .hand {
+  position: absolute;
+  z-index: 9;
+  left: 50%;
+  bottom: 80px;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  pointer-events: none;
+  transition: transform var(--dur-base) var(--ease-move);
 }
-.prep .ccard.empty {
-  background: transparent;
-  color: var(--mute);
+.match .hand[hidden] {
+  display: none;
 }
-.prep .cpool,
-.prep .cspent {
+.match .hand.tuck {
+  transform: translate(-50%, calc(100% + 72px));
+}
+.match .hand > * {
+  pointer-events: auto;
+}
+.hand .hhead {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 6px;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  margin: 0 auto 8px;
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--hud);
+  font-size: 12px;
+  color: var(--mute);
+  white-space: nowrap;
 }
-.prep .cpick {
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  max-width: 150px;
-}
-.prep .cspent .lab {
-  align-self: center;
-  margin-right: 4px;
-}
-.prep .cbars {
-  display: grid;
-  gap: 2px;
-  margin: 8px 0;
-}
-.prep .cbrow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) repeat(3, 56px);
+.hand .hteam {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.hand .htn {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.hand .hsw {
+  height: 24px;
+  padding: 0 8px;
   font-size: 12px;
 }
-.prep .cbrow i {
-  font-style: normal;
+.hand kbd,
+.hc kbd {
+  padding: 0 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  font: 600 12px/16px var(--body);
   color: var(--mute);
 }
-.prep .hbar {
-  height: 6px;
-  border-radius: 3px;
-  background: linear-gradient(90deg, var(--c) var(--v), var(--line) var(--v));
+.hand .hmain {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
 }
-.prep .hbar.hp {
-  --c: var(--bad);
+.hand .hcards {
+  display: flex;
+  align-items: flex-end;
+  padding-top: 28px; /* room for the lift */
 }
-.prep .hbar.sta {
-  --c: var(--warn);
+.hand .hslot {
+  margin: 0 -6px;
+  transform: translateY(var(--y)) rotate(var(--r));
+  transform-origin: 50% 120%;
+  transition: transform var(--dur-fast) var(--ease-out);
 }
-.prep .hbar.mor {
-  --c: var(--cyan);
+.hand .hslot:hover,
+.hand .hslot:focus-within {
+  z-index: 3;
+  transform: translateY(-16px) rotate(0deg);
 }
-.prep .cnote {
+.hand .hslot:has(.hc.q) {
+  z-index: 2;
+  transform: translateY(-28px) rotate(0deg);
+}
+.hand .hslot:has(.hc.gap):hover {
+  transform: translateY(var(--y)) rotate(var(--r));
+}
+/* one card */
+.hc {
+  --kc: var(--mute);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 152px;
+  height: 200px;
+  box-sizing: border-box;
+  padding: 0 8px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--kc) 14%, var(--surf)) 0, var(--surf) 64px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  user-select: none;
+}
+.hc:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+.hand .hc:not(.no):not(.gap):hover {
+  border-color: var(--kc);
+}
+.hc .hcb {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 24px;
+  margin: 0 -8px;
+  padding: 0 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--kc) 50%, transparent);
+  background: color-mix(in srgb, var(--kc) 22%, transparent);
+  box-shadow: inset 0 3px 0 var(--kc);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.hc.k-trap .hcb {
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--kc) 22%, transparent) 0 6px, transparent 6px 12px);
+}
+.hc .hcb kbd {
+  color: var(--ink);
+  background: var(--surf2);
+}
+.hc .hcn {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.hc .hcc {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  font-size: 12px;
+}
+.hc .hcost {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.hc .hcost.poor {
+  color: var(--warn);
+}
+.hc .hcpay {
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--mute);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hc .hcr {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.hc .hlv {
+  color: var(--mute);
+}
+.hc .hfit,
+.hc .hcw {
+  margin-top: auto;
+  align-self: flex-start;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.hc .hfit {
+  color: var(--good);
+  border: 1px solid color-mix(in srgb, var(--good) 50%, transparent);
+}
+.hc .hcw {
+  color: var(--mute);
+  border: 1px solid var(--line);
+}
+.hc .hcw.q {
+  color: var(--cyan);
+  border-color: var(--sel-line);
+  background: var(--sel-bg);
+}
+.hc .hcf {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--mute);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.hc .hcf:first-child,
+.hc .hcc + .hcr + .hcf {
+  margin-top: auto;
+}
+.hc.fits {
+  border-color: color-mix(in srgb, var(--good) 60%, var(--line-strong));
+}
+.hc.k-op:not(.no) {
+  border-color: color-mix(in srgb, var(--hot) 70%, transparent);
+}
+.hc.no {
+  cursor: default;
+  background: var(--surf2);
+}
+.hc.no .hcb {
+  background: transparent;
+  box-shadow: inset 0 3px 0 color-mix(in srgb, var(--kc) 45%, transparent);
+}
+.hc.no .hcn,
+.hc.no .hcr {
+  color: var(--mute);
+}
+.hc.q {
+  border-color: var(--sel-line);
+  box-shadow:
+    var(--glow),
+    0 0 32px color-mix(in srgb, var(--cyan) 35%, transparent),
+    0 12px 28px rgba(0, 0, 0, 0.55);
+  cursor: default;
+}
+.hc.gap {
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+  border: 1px dashed var(--line-strong);
+  background: color-mix(in srgb, var(--hud) 70%, transparent);
+  box-shadow: none;
+  color: var(--mute);
+  font-size: 13px;
+  cursor: default;
+  text-align: center;
+}
+.hc.gap small {
+  font-size: 12px;
+}
+.hc.nope {
+  animation: hc-nope var(--dur-base) var(--ease-out);
+}
+@keyframes hc-nope {
+  25% {
+    translate: -4px 0;
+  }
+  75% {
+    translate: 4px 0;
+  }
+}
+/* the deal: from the deck pile, turning face up */
+.hc.deal {
+  animation: hc-deal var(--dur-slow) var(--ease-out) var(--dl, 0ms) both;
+}
+@keyframes hc-deal {
+  from {
+    opacity: 0;
+    translate: var(--dx, -200px) 24px;
+    scale: 0.6;
+    rotate: -12deg;
+  }
+}
+html.reduced .hc.deal {
+  animation: mv-fade 120ms var(--ease-out) both;
+}
+/* the queued card flies onto the court on its serve */
+.hc.hfly {
+  position: fixed;
+  z-index: 60;
+  margin: 0;
+  pointer-events: none;
+  animation: hc-fly var(--dur-scene) var(--ease-in) forwards;
+}
+@keyframes hc-fly {
+  to {
+    opacity: 0;
+    translate: var(--fx) var(--fy);
+    scale: 0.5;
+  }
+}
+/* match prep's small cards */
+.hc.mini {
+  width: auto;
+  height: 88px;
+  padding-bottom: 6px;
+}
+.hc.mini .hcn {
+  font-size: 13px;
+}
+.hc.mini .hcb {
+  height: 20px;
+}
+.hc.mini .hck {
+  margin-top: auto;
+  font-size: 12px;
+  color: var(--mute);
+}
+.hc.mini.gap {
+  height: 88px;
+}
+.prep .hc.mini:not(.no):hover {
+  border-color: var(--kc);
+}
+/* the piles */
+.hand .hpile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 80px;
+  padding: 8px 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--hud);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.hand .hpile:hover,
+.hand .hpile.on {
+  border-color: var(--sel-line);
+  background: color-mix(in srgb, var(--cyan) 8%, var(--hud));
+}
+.hand .hstack {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 64px;
   margin: 4px 0;
-  padding-left: 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: repeating-linear-gradient(45deg, var(--surf2) 0 4px, var(--surf) 4px 8px);
+  box-shadow:
+    3px -3px 0 -1px var(--surf2),
+    3px -3px 0 0 var(--line-strong),
+    6px -6px 0 -1px var(--surf2),
+    6px -6px 0 0 var(--line);
 }
-.mres .rspent {
-  color: var(--bad);
+.hand .hpile.disc .hstack {
+  box-shadow: none;
+  background: var(--surf2);
 }
-.prep .cslot .ccard b {
-  white-space: normal;
+.hand .hstack b {
+  font: 600 26px/1 var(--disp);
+  font-variant-numeric: tabular-nums;
+}
+.hand .hpile small {
+  font-size: 12px;
+  color: var(--mute);
+  text-align: center;
   line-height: 1.2;
 }
-.prep .cpick .ccard {
-  padding: 3px 6px;
+.hand .hlist {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 360px;
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--hud);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  animation: mv-rise var(--dur-fast) var(--ease-out);
 }
-.prep .cpick .ccard i {
-  display: none; /* (in the pool the left edge says the kind: boost · play · OP · one-shot · trap) */
+.hand .hlist[hidden] {
+  display: none;
 }
-.prep .cpick .ccard.k-boost {
-  border-left-color: var(--gold);
+.hand .hlh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 12px;
+  border-bottom: 1px solid var(--line);
 }
-#cturn {
-  z-index: 12; /* over the between-point exchange (.xbox) */
+.hand .hlh .small {
+  flex: 1;
 }
-.prep .hbar {
-  display: block;
+.hand .hlh .btn.x {
+  height: 32px;
+  width: 32px;
+  padding: 0;
 }
-.prep .ccard.fits {
-  border-left-color: var(--good);
+.hand .hlb {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  overflow: auto;
 }
-.prep .ccard.fits i {
+.hli span {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hli small {
+  grid-column: 2;
+  font-size: 12px;
+  color: var(--mute);
+}
+.hli b {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.hli.cool b {
+  color: var(--warn);
+}
+.hli.ready b {
   color: var(--good);
 }
-.prep .bhab {
-  margin-top: 8px;
+.hli.used b {
+  color: var(--mute);
 }
-/* drag and drop (owner, 2026-10-16) */
-.prep .cpick[draggable='true'],
-.prep .cslot[draggable='true'] {
-  cursor: grab;
+/* the line over the bar: plays (theirs too), turns, a trap's catch */
+.hand .hnote {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--tc);
+  border-radius: 12px;
+  background: var(--hud);
+  font-size: 14px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-base) var(--ease-in);
 }
-.prep .cslot.can {
-  border-color: var(--good);
+.hand .hnote.on {
+  opacity: 1;
+  transition: opacity var(--dur-base) var(--ease-out);
 }
-.prep .cslot.no {
-  opacity: 0.4;
+.hand .hnote.caught b {
+  color: var(--bad);
 }
-.prep .cslot.dropon,
-.prep .cfilts {
+.hand .hnote .hop {
+  margin-right: 8px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--hot);
+  color: var(--on-ink);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+.hand:has(.hlist:not([hidden])) .hnote {
+  display: none;
+}
+.match.hand-on .mrail {
+  bottom: 328px; /* above the hand */
+}
+.match.hand-on .xbox {
+  bottom: 336px;
+}
+/* the active cards by the scoreboard */
+.match .cacts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 0 12px;
+}
+.match .cactl,
+.match .cactr {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin-top: 6px;
 }
-.prep .cfilt {
-  font: inherit;
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 999px;
+.match .cactr {
+  justify-content: flex-end;
+}
+.match .cactl:not(:empty),
+.match .cactr:not(:empty) {
+  margin-top: 8px;
+}
+.cact {
+  --kc: var(--mute);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+  padding: 0 8px;
   border: 1px solid var(--line);
-  background: transparent;
-  color: var(--mute);
-  cursor: pointer;
+  border-left: 3px solid var(--kc);
+  border-radius: 6px;
+  background: var(--surf2);
+  font-size: 12px;
+  animation: mv-pop var(--dur-base) var(--ease-out);
 }
-.prep .cfilt i {
+.cact b {
+  font-weight: 600;
+}
+.cact i {
   font-style: normal;
-  opacity: 0.7;
+  color: var(--mute);
+  font-variant-numeric: tabular-nums;
 }
-.prep .cfilt:hover {
-  color: var(--white);
+/* the result card's row */
+.mres .rcds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
-.prep .cfilt.on {
-  color: var(--bg);
-  background: var(--cyan);
-  border-color: var(--cyan);
+.mres .rcd {
+  --kc: var(--mute);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 2px 8px;
+  border-left: 3px solid var(--kc);
+  border-radius: 6px;
+  background: var(--surf2);
+  font-size: 13px;
 }
-.prep .cpool.dropon {
-  outline: 2px solid var(--good);
-  outline-offset: 2px;
+.mres .rcd small {
+  font-size: 12px;
+  color: var(--mute);
 }
-.prep .cpool.can {
-  outline: 1px dashed var(--line-strong);
-  outline-offset: 4px;
+.mres .rcd em {
+  font-style: normal;
+  font-weight: 600;
 }
 /* a hand being edited redraws the card: no entrance animation after the first frame (it flickered on every drop) */
 .over.settled:not([hidden]) .ocard.ocard {

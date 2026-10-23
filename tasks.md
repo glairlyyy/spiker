@@ -143,7 +143,7 @@ Accept: `npm test`, lint, `npm run test:ui` pass; QA screenshots of each OP card
 QA: Monster game, a side forced to hold all three OP cards (dev hook) → each played.
 Result:
 
-### [ ] T-347: The hand bar
+### [x] T-347: The hand bar
 Spec: §2.37 On screen, §9 (design system)          Goldens: unchanged          Save: no change (the "Pause at turns" setting: prefs)
 Goal: the hand along the bottom of a played match — play with 1–5, discard with Shift+1–5 / right-click, deck and discard piles,
 the active card by the scoreboard, the turn deal; match prep shows the deck; the result card lists cards played.
@@ -155,7 +155,7 @@ deck list if useful).
 Accept: `npm run test:ui` extended (play a card by key, discard one, the deck list opens, a turn refills) and passing; QA
 screenshot checked against the design system.
 QA: Monster game "You decide" → play, discard, a turn; career match as a non-captain (only ◆ cards playable).
-Result:
+Result: js/ui/match-cards.js rebuilt: hand bar `#hand` over the court above the control bar (5 cards 152×200 fanned ±5°, kind band Basic/Play/Technique/Trait/Duo/One-shot/Trap/OP with its key, name, cost (warn under the floor) + payer tag → result, holder level ×, Fits now / the gap from Cards.can, duration · cooldown), deck / discard piles with counts and lists (cooling points left, used OP), 1–5 play (queued: lifted + cyan glow, flies onto the court on its `card` act), Shift+1–5 / right-click discard, Tab the other hand (Monster both yours), the bar's line names every play (theirs too, caught traps; the court banner is T-346's — the old court label is gone), active cards with points left under the scoreboard (#cact0/1), turn deal from the deck pile (A.hshow waits for the point on screen: the engine runs a rally ahead), ⚙ Pause at turns (KEYS.turns, career on / Monster off), prep's opening hand + deck of 12 (own cards with holder, Basics ×n, ◆ yours), result card's cards per side × played with rallies won–lost and net. Gone: #cturn overlay, Tab peek, Captain for the match, slot CSS / drag-and-drop / filters. Rail and exchange box lift above the hand. Unlisted: ui-smoke `UI_ONLY=<name>` env filter (runs one step). npm test 257/257, lint, test:ui 24/24 (extended: prep click queues, key play lifts, right-click discard leaves a gap, deck list counts = draw, discard list, a turn deals, Pause at turns pauses). QA (Monster, 1440×900): hand-prep/deal/idle/queued/deck/discard-list/turn/result screenshots, 0 page errors; career non-captain not exercised in QA (Cards.mine gates ◆ cards; others show "Captain's card").
 
 ### [ ] T-349: Card types, your hand of 3, requests, the Dev deck match
 Spec: §2.37 Card types, Your hand, Requests, Dev match          Goldens: unchanged unless T-345's sims change (say why)          Save: no change unless the collection needs a field (then stop and ask)

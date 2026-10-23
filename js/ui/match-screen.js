@@ -49,7 +49,7 @@ function startMatch(fx) {
       <div class="bsc"><span id="p0">0</span><span class="colon">:</span><span id="p1">0</span><span class="setn" id="setn">${rulesText()}</span></div>
       ${boardTeam(b, 1)}
     </div>
-    ${fireRow(a, b)}</div>
+    ${fireRow(a, b)}<div class="cacts" aria-label="Active cards"><div class="cactl" id="cact0" style="--tc:${a.color}"></div><div class="cactr" id="cact1" style="--tc:${b.color}"></div></div></div>
     <div class="stage" id="stage"><canvas id="cv" aria-label="Match court"></canvas>
       <div class="fsbar" aria-label="Fullscreen controls"><span class="fss"><i style="--tc:${a.color}"></i>${esc(a.short)} <b id="fs0">0</b> : <b id="fs1">0</b> ${esc(b.short)}<i style="--tc:${b.color}"></i></span>
         <span class="fsb"><button onclick="togglePause()" id="fspause" aria-label="Pause">❚❚</button>${SPEEDS.map(s => `<button onclick="setSpeed(${s})" data-s="${s}" class="fsspd">${s}x</button>`).join('')}<button onclick="toggleFullscreen()" aria-label="Exit fullscreen">✕</button></span></div>
@@ -146,6 +146,7 @@ function startMatch(fx) {
     mySide: mine ?? (m.human != null ? (m.t[1].P.some(p => p.id === m.human) ? 1 : 0) : 0) // your team's side (exhibition: Play as, else the left team)
   };
   board(snap(m));
+  handMount(); // the hand bar (spec §2.37, match-cards.js)
   boxScore();
   showTac(0);
   showTac(1);

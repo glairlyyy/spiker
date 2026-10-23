@@ -1,7 +1,8 @@
-// Tactic cards on the match screen (spec §2.31–§2.33, §2.37) — a stop-gap view of the deck until the hand bar (T-347): match
-// prep shows each hand you run and its deck; a turn opens an overlay over the frozen court (play waits: A.prep) with your
-// hand — click a card to play it on the next point — Tab looks at it between turns; a tag over the court names each play;
-// the result card's row. The engine state is m.deck (js/engine/cards.js: Cards.play / Cards.discard / Cards.capPlay).
+// The deck on the match screen (spec §2.37 On screen, §9): the hand bar along the bottom of a played match (always visible, a
+// little fanned; 1–5 play — queued for the next serve — Shift+1–5 / right-click discard), the deck and discard piles with their
+// lists, the turn's deal, "Pause at turns"; the active cards by the scoreboard; match prep's deck; the result card's row.
+// The engine state is m.deck (js/engine/cards.js: Cards.play / discard / can / payers / afford / fits / level / active). The
+// engine runs a whole rally ahead of playback, so the bar shows a turn's new cards only once the point is on screen (handSync).
 
 /** Is this a career match (your player is in it)? */
 const cardsCareer = () => !!(A && A.fx.onFinish && RUN);
@@ -20,31 +21,27 @@ function cardsWho(m, i, n) {
   D.by = n >= DECK.hand ? 'you' : 'ai';
   D.me = n && n < DECK.hand && cardsCareer() ? Run.you(RUN).id : null;
 }
+const BAR_WORD = { sta: 'stamina', hp: 'HP', mor: 'morale' },
+  BAR_ICON = { sta: 'sta', mor: 'mood' };
 /** Cost → result in words (spec §2.37): "−0.10 stamina (holders) → serve +5 % · 3 serves". */
 function cardCost(id) {
   const c = CARDS[id],
-    bar = { sta: 'stamina', hp: 'HP', mor: 'morale' },
     who = { holder: 'holders', captain: 'captain', court: 'court' },
-    pay = C => (C ? `−${C.amt.toFixed(2)} ${bar[C.bar]} (${who[C.who]})` : 'free'),
-    len = c.dur ? `${c.dur} ${c.per === 'srv' ? 'serves' : c.dur === 1 ? 'point' : 'points'}` : 'at once';
-  return `${pay(c.cost)} → ${c.desc} · ${len}${c.after ? ` · after: ${pay(c.after)}` : ''} · cools ${c.cd === Infinity ? 'never (once a match)' : `${c.cd} points`}`;
+    pay = C => (C ? `−${C.amt.toFixed(2)} ${BAR_WORD[C.bar]} (${who[C.who]})` : 'free');
+  return `${pay(c.cost)} → ${c.desc} · ${cardLen(c)}${c.after ? ` · after: ${pay(c.after)}` : ''} · ${cardCool(c, true)}`;
 }
-/** One card as a chip: its name, kind, Fits now, cost → result on hover; ◆ = a card you bring. */
-function cardChip(m, i, id, tag) {
-  const c = CARDS[id],
-    E = CARD_EDGE[id],
-    fits = c.kind !== 'basic' && E && E.fit !== 'always' && Cards.fits(m, i, id), // (what you can read; never their hand)
-    you = cardsCareer() && cardBrings(m, i, Run.you(RUN), id),
-    ctr = E && E.ctr.length ? ` Countered by: ${E.ctr.map(x => CARDS[x].name).join(', ')}.` : '',
-    rule =
-      c.kind === 'trap'
-        ? `Hidden from them. Armed ${c.dur} points: if they play ${c.trap.map(x => CARDS[x].name).join(', ')}, that card is caught.`
-        : E && E.fit !== 'always'
-          ? `Pays when it ${FIT_TIP[E.fit]}.${ctr}`
-          : '';
-  return `<span class="ccard k-${c.kind} z-${c.zone} ${fits ? 'fits' : ''}" ${tip(`${cardCost(id)}. ${rule}`)}><b>${you ? '◆ ' : ''}${esc(cardName(m, i, id))}</b><i>${
-    tag || (fits ? 'Fits now' : { basic: 'Basic', trap: 'Trap', once: 'One-shot', op: 'OP' }[c.kind] || (c.src === 'duo' ? 'Duo' : 'Play'))
-  }</i></span>`;
+/** How long a card acts: "3 serves", "1 point", "armed 6", "at once". */
+const cardLen = c =>
+  !c.dur ? 'at once' : c.kind === 'trap' ? `armed ${c.dur}` : `${c.dur} ${c.per === 'srv' ? 'serves' : c.dur === 1 ? 'point' : 'points'}`;
+/** Its cooldown: "cools 8" (long: "cools 8 points"), OP "once a match". */
+const cardCool = (c, long) => (c.cd === Infinity ? 'once a match' : `cools ${c.cd}${long ? ' points' : ''}`);
+/** The kind band's word. */
+function cardKind(c) {
+  if (c.kind === 'op') return 'OP';
+  if (c.kind === 'basic') return 'Basic';
+  if (c.kind === 'trap') return 'Trap';
+  if (c.kind === 'once') return 'One-shot';
+  return { tech: 'Technique', trait: 'Trait', duo: 'Duo' }[c.src] || 'Play';
 }
 /** Each read in words (the card's tooltip, registrar voice). */
 const FIT_TIP = {
@@ -74,162 +71,42 @@ const FIT_TIP = {
   fresh: 'starts from fresh legs (stamina 0.75+)',
   cold: 'lifts a side below Focused'
 };
-/** Side i's hand (edit: click a card of yours to play it on the next point), its active cards, the deck and discard counts; prep: the deck. */
-function cardsHand(i, edit) {
-  const m = A.m,
-    D = m.deck && m.deck[i];
-  if (!D) return '';
-  const hand = D.hand
-      .map((id, h) => {
-        const why = id ? Cards.can(m, i, h) : 'gap',
-          ok = edit && !why && Cards.mine(m, i, id);
-        return `<button class="cslot ${id && Cards.mine(m, i, id) ? 'you' : ''}" data-hand="${h}" ${ok ? `onclick="cardsPlay(${i},${h})"` : 'disabled'}><span class="lab">${h + 1}</span>${
-          id ? cardChip(m, i, id) : '<span class="ccard empty"><b>Empty</b></span>'
-        }</button>`;
-      })
-      .join(''),
-    act = D.act
-      .filter(a => !a.pin)
-      .map(a => cardChip(m, i, a.id, `${a.left} ${a.per === 'srv' ? 'serves' : 'pts'} left`))
-      .join(''),
-    deck = A.prep && !A.cturn ? [...D.hand, ...D.draw].filter(Boolean) : [],
-    note = edit
-      ? D.by === 'you'
-        ? 'Click a card to play it on the next point (one a point). The hand refills at each turn.'
-        : 'Your cards (◆) are yours to play — the captain plays the rest.'
-      : 'The hand refills at each turn.';
-  return `<div class="chand"><div class="cslots">${hand}</div><p class="small mute">${note} Deck ${D.draw.length} · discard ${D.disc.length}${
-    D.used.length ? ` · used ${D.used.length}` : ''
-  }</p>${act ? `<div class="cspent"><span class="lab">Active</span>${act}</div>` : ''}${
-    deck.length ? `<div class="cpool">${deck.map(id => `<span class="cpick">${cardChip(m, i, id)}</span>`).join('')}</div>` : ''
-  }</div>`;
+/** The card's tooltip: cost → result in full, then its read, counters or trap. */
+function cardTip(id) {
+  const c = CARDS[id],
+    E = CARD_EDGE[id],
+    ctr = E && E.ctr.length ? ` Countered by: ${E.ctr.map(x => CARDS[x].name).join(', ')}.` : '',
+    rule =
+      c.kind === 'trap'
+        ? `Hidden from them. Armed ${c.dur} points: if they play ${c.trap.map(x => CARDS[x].name).join(', ')}, that card is caught.`
+        : E && E.fit !== 'always'
+          ? `Pays when it ${FIT_TIP[E.fit]}.${ctr}`
+          : '';
+  return `${c.name}: ${cardCost(id)}. ${rule}`.trim();
 }
-/** Play hand card h of side i (between points): it acts from the next serve. */
-function cardsPlay(i, h) {
-  if (!A || !A.m) return;
-  Cards.play(A.m, i, h);
-  cardsRedraw();
+/** Does this card show "Fits now" (a card with a read that holds; never their hand)? */
+const cardFits = (m, i, id) => {
+  const E = CARD_EDGE[id];
+  return CARDS[id].kind !== 'basic' && !!E && E.fit !== 'always' && Cards.fits(m, i, id);
+};
+/** The payer's tag: "#9 Rin", "#9 Rin +1", "Captain #4", "Court", "Free". */
+function cardPayer(m, i, id) {
+  const C = CARDS[id].cost;
+  if (!C) return 'Free';
+  if (C.who === 'court') return 'Court';
+  const P = Cards.payers(m, i, id);
+  if (C.who === 'captain') return P[0] ? `Captain #${P[0].num}` : 'Captain';
+  return P.length ? `#${P[0].num} ${firstName(P[0])}${P.length > 1 ? ` +${P.length - 1}` : ''}` : 'Holders';
 }
-function cardsRedraw() {
-  if ($('#cturn') && !$('#cturn').hidden) cardsTurnDraw();
-  else if (A.prep) prepDraw();
-}
-
-/** The turn overlay's sides: the hands you play in (none once you hand the match to the captain). */
-const cardsSides = m => (m && m.deck && !A.cardAuto ? [0, 1].filter(i => m.deck[i].by === 'you' || m.deck[i].me) : []);
-/** A turn act (acts.js `turn`, spec §2.32): pause and open the overlay for your hands. */
-function cardsTurnShow(a) {
-  if (!A || A.done || !cardsSides(A.m).length) return;
-  cardsTurnOpen(a.n, true);
-}
-/** Open the overlay: at a turn (edit) or with Tab between turns (look only). Play waits (A.prep). */
-function cardsTurnOpen(n, edit) {
-  let el = $('#cturn');
-  if (!el) {
-    $('#stage').insertAdjacentHTML('beforeend', '<div class="over prepo" id="cturn" role="dialog" aria-label="Turn"></div>');
-    el = $('#cturn');
-  }
-  A.cturn = { n: n ?? A.m.turnN, edit };
-  A.prep = true;
-  el.hidden = false;
-  el.classList.remove('settled'); // (the entrance animation plays once per opening, not on every redraw)
-  cardsTurnDraw();
-  requestAnimationFrame(() => el.classList.add('settled'));
-}
-/** Close the overlay and play on. */
-function cardsTurnClose() {
-  const el = $('#cturn');
-  if (el) el.hidden = true;
-  A.cturn = null;
-  A.prep = false;
-}
-/** Tab: look at your hands between turns (or close the overlay). */
-function cardsPeek() {
-  if (!A || !A.m || A.done) return;
-  if (A.cturn) return cardsTurnClose();
-  if (A.prep || !A.m.deck) return;
-  if (cardsSides(A.m).length) cardsTurnOpen(null, false);
-}
-/** Hand the rest of the match to the captain: no more turn stops. */
-function cardsAutoMatch() {
-  A.cardAuto = true;
-  for (const i of [0, 1]) if (A.m.deck[i].by === 'you' || A.m.deck[i].me) cardsWho(A.m, i, 0);
-  cardsTurnClose();
-}
-/** One player's three bars (spec §2.31) and their morale trait. */
-function cardsBars(m, p) {
-  const hp = hpOf(m, p),
-    sta = m.sta[p.id] == null ? 1 : m.sta[p.id],
-    bar = (cls, v, t) => `<span class="hbar ${cls}" style="--v:${(100 * clamp(v, 0, 1)).toFixed(0)}%" ${tip(t)}></span>`,
-    tr = MTRAITS[mtr(m, p)];
-  return `<div class="cbrow"><span class="cbname">#${p.num} ${p.role}${tr ? ` <i ${tip(tr.tip)}>${esc(tr.name)}</i>` : ''}</span>${bar('hp', hp, `HP ${Math.round(hp * 100)}`)}${bar(
-    'sta',
-    sta,
-    `Stamina ${Math.round(sta * 100)}`
-  )}${bar('mor', (morOf(m, p) + 1) / 2, `Morale ${morOf(m, p).toFixed(2)}`)}</div>`;
-}
-function cardsTurnDraw() {
-  const el = $('#cturn'),
-    m = A.m,
-    T = A.cturn;
-  if (!el || !T) return;
-  const sides = cardsSides(m),
-    noticed = i =>
-      [...Reads.tags(m, 1 - i), ...Reads.tags(m, i)]
-        .slice(0, 3)
-        .map(g => `<li>${esc(g.text)}</li>`)
-        .join(''),
-    col = i =>
-      `<section class="pteam" style="--tc:${m.t[i].color}"><div class="pban"><h3>${esc(m.t[i].name)}</h3><span class="povr"><b>${m.pts[i]}</b></span><span class="small mute">${esc(
-        STAGES[m.stage[i]].name
-      )}</span></div><div class="cbars">${m.t[i].P.map(p => cardsBars(m, p)).join('')}</div>${
-        noticed(i) ? `<ul class="cnote small">${noticed(i)}</ul>` : ''
-      }${cardsHand(i, true)}</section>`;
-  el.innerHTML = `<div class="ocard prep cturn ${sides.length === 1 ? 'one' : ''}"><div class="phead"><span class="lab">${T.edit ? `Turn ${T.n}` : 'Your hand'} · ${esc(m.t[0].short)} ${m.pts[0]}–${m.pts[1]} ${esc(m.t[1].short)}</span></div>
-    <div class="pcols">${sides.map(col).join('')}</div>
-    <div class="acts"><button class="btn" onclick="cardsAutoMatch()">Captain for the match</button><button class="btn hot" onclick="cardsTurnClose()">${T.edit ? 'Play on' : 'Back to the match'} <kbd>${T.edit ? 'Space' : 'Tab'}</kbd></button></div></div>`;
-}
-/** Keys while the overlay is open: Space / Enter / Tab / Esc play on, 1–5 play that hand card. Returns true when it took the key. */
-function cardsKey(e) {
-  if (!A || !A.cturn) return false;
-  if (e.key === ' ' || e.key === 'Enter' || e.key === 'Escape' || e.key === 'Tab') {
-    e.preventDefault();
-    cardsTurnClose();
-  } else if (/^[1-9]$/.test(e.key)) {
-    const i = cardsSides(A.m)[0],
-      h = +e.key - 1;
-    if (i != null && A.m.deck[i].hand[h] && Cards.mine(A.m, i, A.m.deck[i].hand[h])) cardsPlay(i, h);
-  }
-  return true;
-}
-/** A card played (acts.js `card`, spec §2.37): a tag over the court ("Wu plays Killer Serve"; a trap's catch). T-346 draws it properly. */
-function cardsPlayShow(a) {
-  if (!A || !A.m || !CARDS[a.id]) return;
-  const t = A.m.t[a.side].short,
-    n = cardName(A.m, a.side, a.id);
-  if (typeof DBG !== 'undefined')
-    DBG.log('info', `card: ${t} plays ${n}${a.caught ? ` (caught: ${a.caught})` : ''} · by ${a.by} · ${a.st}`);
-  instant({
-    k: 'label',
-    t: a.caught ? `${CARDS[a.caught].name}! ${t}: ${n} caught` : `${t} plays ${n}`,
-    small: 1,
-    dy: 40
-  });
-}
-/** The result card's row: each side's cards played (× times). */
-function cardsRow(m) {
-  if (!m || !m.deck) return '';
-  const side = i => {
-    const D = m.deck[i],
-      played = Object.entries(D.played)
-        .filter(([id]) => CARDS[id].kind !== 'basic')
-        .sort((a, b) => b[1] - a[1])
-        .map(([id, n]) => `${esc(cardName(m, i, id))} ×${n}`)
-        .join(' · ');
-    return `<div class="rplan"><span class="rpt">${chip(m.t[i])}${esc(m.t[i].short)}</span><span>${played || '<span class="mute">Basics only</span>'}</span></div>`;
-  };
-  return `<div class="rplans"><div class="lab">Cards <span class="mute">(times played)</span></div>${side(0)}${side(1)}</div>`;
-}
+/** Why a hand card can't be played (Cards.can), in words — the gap, never just "locked". */
+const CAN_WORD = {
+  point: 'Played this point',
+  active: 'Active now',
+  clash: 'One of its kind is active',
+  holder: 'No holder on court',
+  off: 'Match over',
+  mine: "Captain's card"
+};
 /** A card's name on screen: a duo card (spec §4.36 4) names the friend — "Mint × You: Sync Quick". */
 function cardName(m, i, id) {
   const c = CARDS[id],
@@ -241,6 +118,444 @@ function cardName(m, i, id) {
           .find(p => p && m.t[i].P.includes(p))) ||
       (D && byId(D[1]));
   return f ? `${firstName(f)} × You: ${c.name}` : c.name;
+}
+/** Is card id one you bring (career ◆)? */
+const cardYours = (m, i, id) => cardsCareer() && cardBrings(m, i, Run.you(RUN), id);
+
+/**
+ * One hand card (the bar's and match prep's): kind band with its key, name, cost → result with the payer's tag, Fits now,
+ * duration and cooldown counters, the gap when it can't be played. o: { q (queued), mini (match prep) }.
+ */
+function handCard(m, i, h, id, o = {}) {
+  const c = CARDS[id],
+    mine = Cards.mine(m, i, id),
+    why = o.q ? null : !mine ? 'mine' : Cards.can(m, i, h),
+    ok = !o.q && !why,
+    fits = cardFits(m, i, id),
+    C = c.cost,
+    poor = C && !Cards.afford(m, i, id),
+    lv = Cards.level(m, i, id),
+    cost = C
+      ? `<span class="hcost ${poor ? 'poor' : ''}" ${poor ? tip(`Under the floor: the payer goes into Tiring / Spent / Shaken`) : ''}>${BAR_ICON[C.bar] ? statI(BAR_ICON[C.bar], 14) : ''}−${C.amt.toFixed(2)} ${BAR_WORD[C.bar]}</span>`
+      : '<span class="hcost">Free</span>',
+    foot = o.q
+      ? '<span class="hcw q">Queued · next serve</span>'
+      : why
+        ? `<span class="hcw">${CAN_WORD[why] || ''}</span>`
+        : fits
+          ? '<span class="hfit">✓ Fits now</span>'
+          : '';
+  return `<div class="hc k-${c.kind} z-${c.zone}${mine ? ' me' : ''}${fits && !why ? ' fits' : ''}${why ? ' no' : ''}${o.q ? ' q' : ''}${o.mini ? ' mini' : ''}" data-h="${h}" data-id="${esc(id)}" role="button" tabindex="${ok ? 0 : -1}" aria-disabled="${!ok}" ${tip(cardTip(id))}${
+    ok ? ` onclick="handPlay(${i},${h})"` : ''
+  }${mine && !o.q ? ` oncontextmenu="return handDisc(event,${i},${h})"` : ''}>
+    <span class="hcb"><span>${o.mini ? '' : cardKind(c)}</span><kbd>${h + 1}</kbd></span>
+    <b class="hcn">${cardYours(m, i, id) ? '◆ ' : ''}${esc(cardName(m, i, id))}</b>${
+      o.mini
+        ? `<small class="hck">${cardKind(c)}</small>`
+        : `<span class="hcc">${cost}<span class="hcpay">${esc(cardPayer(m, i, id))}</span>${
+            c.src === 'tech' && Math.abs(lv - 1) > 0.02
+              ? `<span class="hlv" ${tip('Holder level: × on its edges and buffs')}>×${lv.toFixed(2)}</span>`
+              : ''
+          }</span><span class="hcr">→ ${esc(c.desc)}</span>${foot}<span class="hcf"><span>${cardLen(c)}</span><span>${cardCool(c)}</span></span>`
+    }</div>`;
+}
+/** Play hand card h of side i (between points): it acts from the next serve; the bar lifts it (queued) until then. */
+function handPlay(i, h) {
+  if (!A || !A.m || !A.m.deck || A.done) return false;
+  const m = A.m,
+    D = m.deck[i],
+    id = D.hand[h];
+  if (!id || !Cards.mine(m, i, id) || !Cards.play(m, i, h)) return false;
+  (A.hq || (A.hq = []))[i] = { h, id, at: ptsPlayed(m) };
+  if (A.hshow && A.hshow[i]) A.hshow[i][h] = null;
+  cardsRedraw();
+  return true;
+}
+/** Discard hand card h of side i (right-click / Shift+key): to the discard pile, its place empty until the next turn. */
+function handDisc(e, i, h) {
+  if (e) e.preventDefault();
+  if (!A || !A.m || !A.m.deck || A.done) return false;
+  const m = A.m,
+    id = m.deck[i].hand[h];
+  if (!id || !Cards.mine(m, i, id) || !Cards.discard(m, i, h)) return false;
+  if (A.hshow && A.hshow[i]) A.hshow[i][h] = null;
+  handNote(m.t[i], `Discarded ${cardName(m, i, id)}`, 'disc');
+  cardsRedraw();
+  return false;
+}
+/** Is your queued card still waiting for its serve? */
+const handQ = (m, i) => {
+  const q = A.hq && A.hq[i];
+  return q && ptsPlayed(m) <= q.at + 1 && !q.gone ? q : null;
+};
+function cardsRedraw() {
+  if (A && A.prep && $('#prep') && !$('#prep').hidden) prepDraw();
+  handTick(true);
+}
+
+/* ---------- the hand bar ---------- */
+
+/** The hands you play in (none when the captain runs both). */
+const cardsSides = m => (m && m.deck ? [0, 1].filter(i => m.deck[i].by === 'you' || m.deck[i].me) : []);
+/** The side the bar shows: the first of yours; Tab switches when you run both (Monster). */
+function handSide() {
+  const S = cardsSides(A.m);
+  if (!S.length) return null;
+  if (!S.includes(A.hside)) A.hside = S[0];
+  return A.hside;
+}
+/** Tab: the other hand you run. */
+function handSwitch() {
+  const S = cardsSides(A.m);
+  if (S.length < 2) return;
+  A.hside = S[(S.indexOf(handSide()) + 1) % S.length];
+  A.hpile = null;
+  handTick(true);
+}
+/**
+ * The hand on screen for side i (A.hshow): a play or discard empties its place at once; a card the engine dealt (a turn, a
+ * timeout) shows only once the score on screen has caught up with the engine — then it is dealt (returned, for the animation).
+ */
+function handSync(m, i) {
+  const D = m.deck[i],
+    S = A.hshow || (A.hshow = []),
+    s = S[i] || (S[i] = [...D.hand]),
+    caught = ptsPlayed(m) <= (A.ptsShown || 0),
+    dealt = [];
+  for (let h = 0; h < D.hand.length; h++) {
+    const now = D.hand[h] || null;
+    if (now === (s[h] || null)) continue;
+    if (now && caught) {
+      s[h] = now;
+      dealt.push(h);
+    } else s[h] = null;
+  }
+  return dealt;
+}
+/** Pause at turns (spec §2.37): default on in career, off in Monster; stored per mode. */
+function turnPause() {
+  const P = store.getJSON(KEYS.turns, {}) || {},
+    k = cardsCareer() ? 'career' : 'exh';
+  return k in P ? !!P[k] : k === 'career';
+}
+function setTurnPause(on) {
+  const P = store.getJSON(KEYS.turns, {}) || {};
+  P[cardsCareer() ? 'career' : 'exh'] = !!on;
+  store.setJSON(KEYS.turns, P);
+}
+/** Mount the bar and the active-card rows (startMatch); the loop redraws only on a change. */
+function handMount() {
+  const st = $('#match');
+  if (!st || !A || !A.m.deck) return;
+  st.insertAdjacentHTML(
+    'beforeend',
+    '<div class="hand" id="hand" hidden aria-label="Your hand"><div class="hnote" id="hnote" aria-live="polite"></div><div class="hlist" id="hlist" hidden></div><div class="hrow" id="hrow"></div></div>'
+  );
+  const my = A;
+  const loop = () => {
+    if (A !== my || !$('#hand')) return;
+    handTick();
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+}
+addEventListener('pointerdown', e => handOutside(e), true);
+/** A click outside an open pile list closes it. */
+function handOutside(e) {
+  if (!A || !A.hpile || e.target.closest('#hlist, .hpile')) return;
+  A.hpile = null;
+  handTick(true);
+}
+/** Redraw the bar if anything on it changed (or `force`); the turn's new cards are dealt from the deck pile. */
+function handTick(force) {
+  const el = $('#hand'),
+    m = A && A.m;
+  if (!el || !m || !m.deck) return;
+  cardsActDraw(m);
+  const i = handSide(),
+    show = i != null && !A.prep && !A.done;
+  el.hidden = !show;
+  $('#match')?.classList.toggle('hand-on', show);
+  if (!show) return;
+  el.classList.toggle('tuck', !!A.sceneOn); // a staged scene: the hand tucks down for its second
+  el.style.setProperty('--tc', m.t[i].color);
+  const dealt = handSync(m, i),
+    html = handHTML(m, i);
+  if (!force && !dealt.length && html === A.hhtml) return;
+  A.hhtml = html;
+  $('#hrow').innerHTML = html;
+  const L = $('#hlist');
+  L.hidden = !A.hpile;
+  if (A.hpile) L.innerHTML = handPileList(m, i, A.hpile);
+  if (dealt.length) handDeal(dealt);
+}
+/** The bar's row: deck pile · the fanned hand · discard pile, the head line over it. */
+function handHTML(m, i) {
+  const D = m.deck[i],
+    t = m.t[i],
+    S = cardsSides(m),
+    s = A.hshow[i],
+    q = handQ(m, i),
+    n = s.length,
+    cards = s
+      .map((id, h) => {
+        const mid = (n - 1) / 2,
+          f = `style="--r:${((h - mid) * 2.5).toFixed(1)}deg;--y:${(Math.abs(h - mid) ** 2 * 3).toFixed(0)}px"`;
+        if (q && q.h === h) return `<div class="hslot" ${f}>${handCard(m, i, h, q.id, { q: 1 })}</div>`;
+        if (id) return `<div class="hslot" ${f}>${handCard(m, i, h, id)}</div>`;
+        return `<div class="hslot" ${f}><div class="hc gap" data-h="${h}"><kbd>${h + 1}</kbd><span>Empty</span><small>Refills at the turn</small></div></div>`;
+      })
+      .join(''),
+    left = TURN.pts - (ptsPlayed(m) - m.turnAt),
+    cool = D.disc.filter(e => e.cd > 0).length,
+    pile = (k, lab, nb, sub) =>
+      `<button class="hpile ${k}${A.hpile === k ? ' on' : ''}" onclick="handPile('${k}')" aria-expanded="${A.hpile === k}"><span class="hstack"><b>${nb}</b></span><span class="lab">${lab}</span><small>${sub}</small></button>`;
+  return `<div class="hhead"><span class="hteam">${chip(t)}${esc(t.short)}</span>${
+    S.length > 1
+      ? `<button class="btn hsw" onclick="handSwitch()" ${tip('Show your other hand')}>${esc(m.t[S.find(x => x !== i)].short)} <kbd>Tab</kbd></button>`
+      : ''
+  }<span class="htn">Turn ${m.turnN || 0} · refill in ${Math.max(1, left)}</span><span class="hkeys"><kbd>1</kbd>–<kbd>${n}</kbd> play · <kbd>Shift</kbd> or right-click discard</span>${
+    D.me && D.by !== 'you' ? '<span class="hkeys">◆ yours · the captain plays the rest</span>' : ''
+  }</div><div class="hmain">${pile('deck', 'Deck', D.draw.length, 'draw order hidden')}<div class="hcards">${cards}</div>${pile(
+    'disc',
+    'Discard',
+    D.disc.length,
+    D.used.length ? `${cool} cooling · ${D.used.length} used` : `${cool} cooling`
+  )}</div>`;
+}
+/** Click a pile: its list over the bar (again: closes). */
+function handPile(k) {
+  A.hpile = A.hpile === k ? null : k;
+  handTick(true);
+}
+/** A pile's list: the deck by kind and name (draw order hidden); the discard pile with each card's points left to cool; OP cards used. */
+function handPileList(m, i, k) {
+  const D = m.deck[i],
+    row = (id, right, cls = '') =>
+      `<div class="hli k-${CARDS[id].kind} ${cls}" ${tip(cardTip(id))}><i></i><span>${cardYours(m, i, id) ? '◆ ' : ''}${esc(cardName(m, i, id))}</span><small>${cardKind(CARDS[id])}</small><b>${right}</b></div>`,
+    order = (a, b) =>
+      ['op', 'play', 'once', 'trap', 'basic'].indexOf(CARDS[a].kind) - ['op', 'play', 'once', 'trap', 'basic'].indexOf(CARDS[b].kind) ||
+      CARDS[a].name.localeCompare(CARDS[b].name);
+  let head, rows;
+  if (k === 'deck') {
+    const n = {};
+    for (const id of D.draw) n[id] = (n[id] || 0) + 1;
+    head = `Deck · ${D.draw.length}`;
+    rows = Object.keys(n)
+      .sort(order)
+      .map(id => row(id, `×${n[id]}`))
+      .join('');
+    if (!rows) rows = '<p class="small mute">Empty: cooled cards are shuffled back when it runs out.</p>';
+  } else {
+    head = `Discard · ${D.disc.length}`;
+    rows =
+      [...D.disc]
+        .sort((a, b) => b.cd - a.cd || order(a.id, b.id))
+        .map(e => row(e.id, e.cd > 0 ? `${e.cd} pt${e.cd === 1 ? '' : 's'}` : 'ready', e.cd > 0 ? 'cool' : 'ready'))
+        .join('') + D.used.map(id => row(id, 'used', 'used')).join('');
+    if (!rows) rows = '<p class="small mute">Nothing yet.</p>';
+  }
+  return `<div class="hlh"><span class="lab">${head}</span><span class="small mute">${k === 'deck' ? 'draw order hidden' : 'points left to cool · ready = back at the next shuffle'}</span><button class="btn x" onclick="handPile('${k}')" aria-label="Close">✕</button></div><div class="hlb">${rows}</div>`;
+}
+/** The deal: each new card flies from the deck pile to its place (30 ms apart). */
+function handDeal(dealt) {
+  const deck = $('#hrow .hpile.deck');
+  if (!deck || Motion.reduced) return;
+  const d = deck.getBoundingClientRect();
+  dealt.forEach((h, k) => {
+    const c = $(`#hrow .hslot .hc[data-h="${h}"]`);
+    if (!c) return;
+    const r = c.parentElement.getBoundingClientRect();
+    c.style.setProperty('--dx', `${(d.left + d.width / 2 - (r.left + r.width / 2)).toFixed(0)}px`);
+    c.style.setProperty('--dl', `${k * 30}ms`);
+    Motion.play(c, 'deal');
+  });
+}
+/** A line over the bar for a moment ("Wu Navy plays Killer Serve", "Turn 2 · new cards"), in the team's colour. */
+function handNote(t, text, cls = '', ms = 2200) {
+  const n = $('#hnote');
+  if (!n) return;
+  n.className = `hnote on ${cls}`;
+  n.style.setProperty('--tc', t ? t.color : 'var(--line-strong)');
+  n.innerHTML = text;
+  clearTimeout(n._t);
+  if (ms) n._t = setTimeout(() => n.classList.remove('on'), ms);
+}
+/** The active cards by the scoreboard (spec §2.37): each side's, with points left — as on screen (the engine runs a rally ahead). */
+function cardsActDraw(m) {
+  const lag = Math.max(0, ptsPlayed(m) - (A.ptsShown || 0));
+  for (const i of [0, 1]) {
+    const el = $('#cact' + i);
+    if (!el) continue;
+    const D = m.deck[i],
+      q = handQ(m, i),
+      shown = ptsPlayed(m) - lag,
+      L = D.act
+        .filter(a => !a.pin && !(q && a.id === q.id && a.at[0] + a.at[1] === q.at))
+        .map(a => ({
+          id: a.id,
+          left: Math.min(CARDS[a.id].dur, a.left + (a.per === 'srv' ? (lag && m.srv0 === i ? 1 : 0) : lag)),
+          per: a.per
+        })),
+      ended = lag
+        ? D.log
+            .filter(e => e.k === 'end' && e.at[0] + e.at[1] > shown && !L.some(x => x.id === e.id))
+            .map(e => ({ id: e.id, left: e.at[0] + e.at[1] - shown, per: CARDS[e.id].per }))
+        : [],
+      html = [...L, ...ended]
+        .map(
+          a =>
+            `<span class="cact k-${CARDS[a.id].kind}" ${tip(cardTip(a.id))}><b>${esc(cardName(m, i, a.id))}</b><i>${a.left} ${a.per === 'srv' ? (a.left === 1 ? 'serve' : 'serves') : a.left === 1 ? 'pt' : 'pts'}</i></span>`
+        )
+        .join('');
+    if (el._h !== html) el.innerHTML = el._h = html;
+  }
+}
+/** A turn act (acts.js `turn`, spec §2.32): the bar deals; with "Pause at turns" on the match pauses (Space plays on). */
+function cardsTurnShow(a) {
+  if (!A || A.done || !cardsSides(A.m).length) return;
+  const t = A.m.t[handSide()];
+  if (turnPause() && !A.paused) {
+    A.paused = true;
+    const pb = $('#pause');
+    if (pb) pb.innerHTML = pauseLabel(true);
+    setLabel('#fspause', '▶');
+    handNote(t, `Turn ${a.n} · new cards · paused — <kbd>Space</kbd> plays on`, 'turn', 0);
+  } else handNote(t, `Turn ${a.n} · new cards`, 'turn');
+  handTick(true);
+}
+/** Your timeout (acts.js `tobanner`): an extra turn — the gaps refill (dealt as the point shows). */
+function cardsTurnOpen() {
+  if (!A || A.done) return;
+  handNote(A.m.t[handSide()], 'Timeout · new cards', 'turn');
+}
+/** Keys: 1–5 play, Shift+1–5 discard, Tab the other hand. Returns true when it took the key. */
+function cardsKey(e) {
+  if (!A || !A.m || !A.m.deck || A.done || e.ctrlKey || e.metaKey || e.altKey) return false;
+  const i = handSide();
+  if (i == null) return false;
+  if (e.key === 'Tab' && !A.prep) {
+    e.preventDefault();
+    handSwitch();
+    return true;
+  }
+  if (e.key === 'Escape' && A.hpile) {
+    A.hpile = null;
+    handTick(true);
+    return true;
+  }
+  const k = /^Digit([1-9])$/.exec(e.code || '');
+  if (!k || +k[1] > A.m.deck[i].hand.length) return false;
+  if (A.railTab === 'tac' && !$('#mrail').hidden && !e.shiftKey) return false; // the Tactics tab's 1–9 flip techniques (§9.10)
+  e.preventDefault();
+  const h = +k[1] - 1;
+  if (e.shiftKey) handDisc(null, i, h);
+  else if (!handPlay(i, h)) $(`#hrow .hc[data-h="${h}"]`)?.classList.add('nope');
+  return true;
+}
+/** A card played (acts.js `card`, spec §2.37): yours flies off the bar onto the court; the bar names every play, theirs too (the court's banner is T-346's). */
+function cardsPlayShow(a) {
+  if (!A || !A.m || !CARDS[a.id]) return;
+  const m = A.m,
+    t = m.t[a.side],
+    n = cardName(m, a.side, a.id);
+  if (typeof DBG !== 'undefined')
+    DBG.log('info', `card: ${t.short} plays ${n}${a.caught ? ` (caught: ${a.caught})` : ''} · by ${a.by} · ${a.st}`);
+  const q = A.hq && A.hq[a.side];
+  if (q && q.id === a.id && !q.gone) {
+    q.gone = true;
+    const c = $(`#hrow .hc.q[data-h="${q.h}"]`);
+    if (c && a.side === handSide() && !Motion.reduced) {
+      const r = c.getBoundingClientRect(),
+        g = c.cloneNode(true);
+      g.removeAttribute('onclick');
+      g.classList.add('hfly');
+      g.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;--fx:${(innerWidth / 2 - r.left - r.width / 2).toFixed(0)}px;--fy:${(innerHeight * 0.42 - r.top - r.height / 2).toFixed(0)}px`;
+      document.body.appendChild(g);
+      setTimeout(() => g.remove(), 700);
+    }
+    handTick(true);
+  }
+  handNote(
+    t,
+    a.caught
+      ? `<b>${esc(CARDS[a.caught].name)}!</b> ${esc(t.name)}’s ${esc(n)} is caught`
+      : `${a.op ? '<span class="hop">OP</span>' : ''}${esc(t.name)} plays <b>${esc(n)}</b>`,
+    a.caught ? 'caught' : a.op ? 'op' : ''
+  );
+}
+
+/* ---------- match prep: your deck ---------- */
+
+/** Match prep (spec §2.37): the opening hand (click to queue a card for the first serve) and the whole deck of 12 — your squad's own cards first (◆ yours), the Basics that fill the rest. */
+function cardsDeck(i) {
+  const m = A.m,
+    D = m.deck && m.deck[i];
+  if (!D) return '';
+  const q = handQ(m, i),
+    hand = D.hand
+      .map((id, h) =>
+        q && q.h === h
+          ? handCard(m, i, h, q.id, { q: 1, mini: 1 })
+          : id
+            ? handCard(m, i, h, id, { mini: 1 })
+            : `<div class="hc gap mini" data-h="${h}"><kbd>${h + 1}</kbd><span>Empty</span></div>`
+      )
+      .join(''),
+    all = [...D.hand.filter(Boolean), ...(q ? [q.id] : []), ...D.draw, ...D.disc.map(e => e.id)],
+    own = all.filter(id => CARDS[id].kind !== 'basic'),
+    bas = all.length - own.length,
+    src = id => {
+      const c = CARDS[id];
+      if (c.src === 'tech' || c.src === 'trait' || c.src === 'op' || c.src === 'duo') {
+        const H = Cards.holders(m, i, id);
+        return H.length ? `#${H[0].num} ${esc(firstName(H[0]))}` : 'on the bench';
+      }
+      return c.src === 'book' ? 'playbook' : '';
+    },
+    order = (a, b) =>
+      ['op', 'play', 'once', 'trap', 'basic'].indexOf(CARDS[a].kind) - ['op', 'play', 'once', 'trap', 'basic'].indexOf(CARDS[b].kind) ||
+      CARDS[a].name.localeCompare(CARDS[b].name),
+    deck =
+      [...own]
+        .sort(order)
+        .map(
+          id =>
+            `<span class="dk k-${CARDS[id].kind}" ${tip(cardTip(id))}><i></i><b>${cardYours(m, i, id) ? '◆ ' : ''}${esc(cardName(m, i, id))}</b><small>${cardKind(CARDS[id])}${src(id) ? ` · ${src(id)}` : ''}</small></span>`
+        )
+        .join('') +
+      (bas
+        ? `<span class="dk k-basic bas" ${tip('Basics fill the places your squad has no card for: small and cheap, 1 point.')}><i></i><b>Basics ×${bas}</b><small>Power Up · High Point · Guard Up · Quick Step</small></span>`
+        : ''),
+    note = D.by === 'you' ? 'Click a card to play it on the first serve.' : '◆ yours to play — the captain plays the rest.';
+  return `<div class="cdeck"><div class="lab">Opening hand</div><div class="hmini">${hand}</div><p class="small mute">${note}</p><div class="lab">Deck · ${all.length} <span class="mute">· ${own.length} own · ${bas} Basics</span></div><div class="dks">${deck}</div></div>`;
+}
+/* ---------- the result card ---------- */
+
+/** The result card's row: each side's cards played (× times) and the rallies they acted in, won – lost. */
+function cardsRow(m) {
+  if (!m || !m.deck) return '';
+  const side = i => {
+    const D = m.deck[i],
+      E = Object.entries(D.played),
+      bas = E.filter(([id]) => CARDS[id].kind === 'basic').reduce((s, [, n]) => s + n, 0),
+      played = E.filter(([id]) => CARDS[id].kind !== 'basic')
+        .sort((a, b) => b[1] - a[1])
+        .map(([id, n]) => {
+          const S = D.stat[id],
+            r = S ? S.fit[0] + S.mis[0] + S.ctr[0] : 0,
+            w = S ? S.fit[1] + S.mis[1] + S.ctr[1] : 0,
+            net = w - (r - w);
+          return `<span class="rcd k-${CARDS[id].kind}" ${tip(`${cardTip(id)} Rallies it acted in: ${r}, won ${w}${S && S.ctr[0] ? ` · countered in ${S.ctr[0]}` : ''}.`)}><b>${esc(cardName(m, i, id))}</b> ×${n}${
+            r
+              ? ` <small>${w}–${r - w}</small> <em class="${net > 0 ? 'good' : net < 0 ? 'bad' : 'mute'}">${net > 0 ? '+' : net < 0 ? '−' : '±'}${Math.abs(net)}</em>`
+              : ''
+          }</span>`;
+        });
+    if (bas) played.push(`<span class="rcd k-basic"><b>Basics</b> ×${bas}</span>`);
+    return `<div class="rplan"><span class="rpt">${chip(m.t[i])}${esc(m.t[i].short)}</span><span class="rcds">${played.join('') || '<span class="mute">No cards played</span>'}</span></div>`;
+  };
+  return `<div class="rplans"><div class="lab">Cards played <span class="mute">· rallies won–lost while active</span></div>${side(0)}${side(1)}</div>`;
 }
 /** The duo card's cut-in (spec §4.36 4): the hype banner "MINT × YOU" and the friend's line, the first time it plays on your side. */
 function cardsDuoCut(m, i, id) {
@@ -265,7 +580,7 @@ function cardsDuoCut(m, i, id) {
  */
 function teamWatch(m) {
   if (!A || A.m !== m || A.done || m.over) return;
-  if (!A.prep && !A.cturn && !X && !Dir.talk && !(A.beats && A.bi < A.beats.length && A.beats[A.bi].scene)) {
+  if (!A.prep && !X && !Dir.talk && !(A.beats && A.bi < A.beats.length && A.beats[A.bi].scene)) {
     const seen = A.duoSeen || (A.duoSeen = new Set());
     if (m.exIds && !A.exSaid) {
       A.exSaid = true;

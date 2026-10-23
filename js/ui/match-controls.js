@@ -40,6 +40,7 @@ function settingsMenu() {
     ${seg('Trails', 'trail', TRAIL_STYLES, G.trail, 'Hand trails of stars and OP players. Light: a streak in their hair colour. Ink: a black brush stroke burning crimson.')}
     ${seg('Zooms', 'zoom', { on: 'On', off: 'Off' }, G.camFixed || RM ? 'off' : 'on', 'On: gentle zoom on big plays at the net. Off: no zooms or pushes (motion-friendly).')}
     ${seg('Motion', 'motion', { full: 'Full', reduced: 'Reduced' }, Motion.pref, 'Full: panels slide and fade, numbers count. Reduced: short fades only (also follows your system setting).')}
+    ${seg('Pause at turns', 'turns', { on: 'On', off: 'Off' }, turnPause() ? 'on' : 'off', 'On: the match pauses when the hands refill at a turn (Space plays on). Career and Monster keep their own setting.')}
     ${seg('Graphics', 'gfx', Object.fromEntries(Object.entries(GFX).map(([k, g]) => [k, g.name])), G.gfx, 'High: full resolution always. Auto: sharp, drops a little only if frames run slow. Fast: lower resolution for weaker devices.')}
     ${seg('Camera <kbd>C</kbd>', 'cam', CAM3, cam, "Courtside: close and low, following the ball. Broadcast: the whole court from the stands. Follow: behind one player. POV: through their eyes. Bird's-eye: from straight above, your side at the bottom.")}
     <select id="folsel" class="folsel" hidden onchange="pickFollow(this.value)" aria-label="Player to follow" title="The player the Follow camera stays behind"></select>
@@ -65,6 +66,7 @@ function setOpt(kind, v) {
   } else if (kind === 'cam' && R3D && CAM3[v]) {
     R3D.setCamMode(v);
   } else if (kind === 'motion') Motion.set(v);
+  else if (kind === 'turns') setTurnPause(v === 'on');
   const pb = $('.setpop .popb');
   if (pb) pb.innerHTML = settingsMenu();
   cam3Label();
@@ -123,9 +125,7 @@ function toggleFullscreen() {
 }
 addEventListener('keydown', e => {
   if (!A || e.target.closest('input,select,textarea')) return;
-  if (cardsKey(e)) return; // the turn overlay (spec §2.32)
-  // Tab: a look at your hand (spec §2.33); play waits while it is open
-  if (e.key === 'Tab') return (e.preventDefault(), A.prep ? null : cardsPeek());
+  if (cardsKey(e)) return; // the hand bar (spec §2.37): 1–5 play, Shift+1–5 discard, Tab the other hand
   if (e.target.closest('button')) return;
   if (A.prep) {
     if (e.key === 'Enter') prepStart(); // match prep (spec §2.26): Enter starts
@@ -283,6 +283,7 @@ function board(s) {
   if (!$('#p0')) return;
   updTO();
   techSync();
+  if (A) A.ptsShown = s.pts[0] + s.pts[1]; // the score on screen (the hand bar deals a turn's cards once it is shown)
   for (const i of [0, 1]) {
     const el = $('#p' + i);
     if (s.pts[i] > +el.textContent) Motion.play(el, 'bump'); // the scorer's digit bumps once (spec §9.12)

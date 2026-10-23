@@ -854,7 +854,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
       style (§2.15, VFX ball style Ink) while it lasts.
     - Element Surge stays (element players); Fever Rush, Iron Wall, Zone, Overload and Last Stand become plays or go (T-345).
     - Each OP card opens with a full-screen cut-in (its name, the holder, team colour, ~1 s; Hype off: a banner).
-  - **On screen** (T-347; §9 and the design system):
+  - **On screen** (T-347; §9 and the design system) **[built 2026-10-24]** — the bar names every play, theirs too (the court's banner and the OP cut-ins are T-346); the old turn overlay, Tab peek, slot drag-and-drop and slot filters are gone:
     - **The hand bar**: your 5 cards along the bottom of the match screen, always visible in a played match (no pause needed),
       a little fanned; hotkeys **1–5** play (queue for the next point), **Shift+1–5** or right-click discards. Each card: name,
       kind colour band, the payer's tag, cost → result ("−0.2 stamina Ploy → serve +12 % · 3 serves"), **Fits now** chip,

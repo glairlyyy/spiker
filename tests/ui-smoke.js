@@ -45,6 +45,7 @@ function serve() {
 
 const steps = [];
 const step = async (name, fn) => {
+  if (process.env.UI_ONLY && !name.includes(process.env.UI_ONLY) && name !== 'title screen') return; // UI_ONLY=Monster: one step alone
   const t0 = Date.now();
   try {
     const note = await fn();
@@ -285,7 +286,7 @@ const step = async (name, fn) => {
         return s || [h.x, h.y];
       }, hit);
       await pg.mouse.move(at[0], at[1]);
-      await pg.mouse.click(at[0], at[1], { button: 'right' });
+      await pg.mouse.click(at[0], at[1], { button: 'right', force: true });
       if (await pg.waitForFunction(() => document.getElementById('figmenu'), null, { timeout: 8000 }).catch(() => null)) break;
     }
     if (!(await ev(() => !!document.getElementById('figmenu')))) {
@@ -653,36 +654,107 @@ const step = async (name, fn) => {
       startMonster();
     });
     await pg.waitForFunction(() => typeof A !== 'undefined' && A && A.m, null, { timeout: 60000 });
-    // the deck (spec §2.37): your hand of 5 and the deck in prep; click a card to play it on the first point
-    await pg.waitForFunction(() => A.prep && document.querySelector('#prep .chand'), null, { timeout: 20000 });
+    // the deck (spec §2.37): your opening hand and the deck of 12 in prep; click a card to play it on the first serve
+    await pg.waitForFunction(() => A.prep && document.querySelector('#prep .cdeck'), null, { timeout: 20000 });
     await ev(() => {
       if (!A.prep || $('#prep').querySelectorAll('.pteam').length !== 2) throw new Error('no Monster match prep');
       // no coach (spec §2.36): the other side is the captain's call, and the rail's tab is Reads
       if (!/Captain decides/.test($('#prep').textContent) || !/^Reads/.test($('#readsbtn').textContent) || 'coaches' in A)
         throw new Error('the coach is still in the match');
-      // the hand: five places and the deck under them; the captain's side is hidden
-      if ($('#prep').querySelectorAll('.chand').length !== 1 || $('#prep').querySelectorAll('.chand .cslot').length !== 5)
+      // the opening hand (five places) and the deck (12); the captain's side is hidden
+      if ($('#prep').querySelectorAll('.cdeck').length !== 1 || $('#prep').querySelectorAll('.cdeck .hmini .hc').length !== 5)
         throw new Error('no hand in prep');
-      if ($('#prep').querySelectorAll('.chand .cpool .cpick').length !== DECK.size) throw new Error('no deck in prep');
+      if (!new RegExp(`Deck · ${DECK.size}`).test($('#prep .cdeck').textContent)) throw new Error('no deck of 12 in prep');
     });
     const h = await ev(() => A.m.deck[0].hand.findIndex((id, k) => id && !Cards.can(A.m, 0, k)));
     if (h < 0) throw new Error('no playable card in the opening hand');
-    await pg.click(`#prep .cslot[data-hand="${h}"]`);
+    await pg.click(`#prep .hmini .hc[data-h="${h}"]`);
     await ev(() => {
       const D = A.m.deck[0];
       if (D.log.filter(e => e.k === 'play').length !== 1 || D.hand.filter(Boolean).length !== 4)
         throw new Error(`the card was not played: ${JSON.stringify(D.hand)}`);
+      if (!$('#prep .hmini .hc.q')) throw new Error('the played card is not queued in prep');
       prepStart();
       if (A.prep || A.m.deck[0].by !== 'you' || A.m.deck[1].by !== 'ai') throw new Error('prep did not start the match');
-      // Tab mid-match: a look at your hand (play waits); Tab again closes it
-      cardsPeek();
-      if (!A.prep || !$('#cturn') || $('#cturn').hidden || !$('#cturn .cbars .cbrow')) throw new Error('Tab did not open the hand');
-      cardsPeek();
-      if (A.prep) throw new Error('the hand did not close');
-      // a turn (spec §2.32): the overlay pauses play with your hand editable
-      cardsTurnShow({ n: 1 });
-      if (!A.prep || !$('#cturn .chand .cslot')) throw new Error('no turn overlay');
-      cardsTurnClose();
+    });
+    // the hand bar (T-347): five places, the piles; the queued card lifted
+    await ev(() => {
+      handTick(true); // (the bar's own rAF loop is slow under a software GL)
+      if (!$('#hand') || $('#hand').hidden || $('#hand').querySelectorAll('.hslot').length !== 5) throw new Error('no hand bar');
+    });
+    await ev(() => {
+      if (!$('#hand .hc.q') || !$('#hand .hpile.deck') || !$('#hand .hpile.disc')) throw new Error('no queued card / piles on the bar');
+      if (+$('#hand .hpile.deck b').textContent !== A.m.deck[0].draw.length) throw new Error('deck count wrong');
+    });
+    // play by key: step to the next point with a playable card of yours, press its number
+    const k = await ev(() => {
+      for (let n = 0; n < 6000; n++) {
+        step(16);
+        if (R3D) R3D.poseAll(0.016);
+        if (Dir.busy()) exchangeSkip();
+        const D = A.m.deck[0],
+          f = D.hand.findIndex((id, j) => id && !Cards.can(A.m, 0, j) && A.hshow[0][j] === id);
+        if (A.m.pts[0] + A.m.pts[1] >= 1 && f >= 0 && !A.paused) return f;
+      }
+      return -1;
+    });
+    if (k < 0) throw new Error('no playable card after the first point');
+    await pg.keyboard.press(String(k + 1));
+    await ev(k => {
+      if (A.m.deck[0].log.filter(e => e.k === 'play').length !== 2) throw new Error('the key did not play the card');
+      handTick(true);
+      if (!$(`#hand .hc.q[data-h="${k}"]`)) throw new Error('the keyed card is not lifted');
+    }, k);
+    // discard one (right-click)
+    const dk = await ev(() => {
+      A.sceneOn = false; // (a staged scene tucks the bar away)
+      handTick(true);
+      return A.m.deck[0].hand.findIndex((id, j) => id && A.hshow[0][j] === id);
+    });
+    if (dk >= 0) {
+      await pg.click(`#hand .hc[data-h="${dk}"]`, { button: 'right', force: true });
+      await ev(dk => {
+        const D = A.m.deck[0];
+        if (D.hand[dk] || !D.log.some(e => e.k === 'discard')) throw new Error('right-click did not discard');
+        handTick(true);
+        if (!$(`#hand .hc.gap[data-h="${dk}"]`)) throw new Error('the discard left no gap');
+      }, dk);
+    }
+    // the deck list and the discard list
+    await pg.click('#hand .hpile.deck', { force: true });
+    await ev(() => {
+      if ($('#hlist').hidden || !/Deck/.test($('#hlist').textContent)) throw new Error('the deck list did not open');
+      const n = [...document.querySelectorAll('#hlist .hli b')].reduce((s, b) => s + +b.textContent.replace('×', ''), 0);
+      if (n !== A.m.deck[0].draw.length) throw new Error(`deck list counts ${n}, deck ${A.m.deck[0].draw.length}`);
+    });
+    await pg.click('#hand .hpile.disc', { force: true });
+    await ev(() => {
+      if ($('#hlist').hidden || !$('#hlist .hli')) throw new Error('the discard list is empty');
+      handPile('disc');
+      if (!$('#hlist').hidden) throw new Error('the list did not close');
+    });
+    // a turn refills the gaps (dealt once the point is on screen); Monster: no pause by default, on with the setting
+    await ev(() => {
+      // (the engine plays on to the turn; the score is then put on screen, as playback does at the point)
+      const t0 = A.m.turnN;
+      A.beats = null;
+      while (A.m.turnN === t0 && !A.m.over) playRally(A.m);
+      if (A.m.over) return;
+      handTick();
+      board(snap(A.m));
+      handTick();
+      const D = A.m.deck[0],
+        gaps = document.querySelectorAll('#hand .hc.gap').length;
+      if (gaps !== D.hand.filter(x => !x).length)
+        throw new Error(
+          `the turn did not deal: ${gaps} gaps, hand ${JSON.stringify(D.hand)} shown ${JSON.stringify(A.hshow)} pts ${A.m.pts} ps ${A.ptsShown} side ${handSide()} hidden ${$('#hand').hidden} done ${A.done}`
+        );
+      if (turnPause()) throw new Error('Pause at turns is on by default in Monster');
+      setOpt('turns', 'on');
+      cardsTurnShow({ n: A.m.turnN });
+      if (!A.paused || !/Turn/.test($('#hnote').textContent)) throw new Error('Pause at turns did not pause');
+      togglePause();
+      setOpt('turns', 'off');
     });
     // no captain's chips (owner, 2026-10-14) and no ⚙ Prompts; Play as sets your player
     await ev(() => {
@@ -759,7 +831,8 @@ const step = async (name, fn) => {
     });
     await pg.waitForFunction(() => /Top 3/i.test((document.querySelector('#over') || {}).textContent || ''), null, { timeout: 10000 });
     // the cards (spec §2.37): each side's cards played
-    if (!/Cards[\s\S]*(×\d|Basics only)/.test(await ev(() => $('#over').textContent))) throw new Error('no Cards row on the result card');
+    if (!/Cards[\s\S]*(×\d|No cards played)/.test(await ev(() => $('#over').textContent)))
+      throw new Error('no Cards row on the result card');
   });
   const dbg = await ev(() => (typeof DBG !== 'undefined' ? DBG.text() : '')).catch(() => '');
   for (const l of dbg.split('\n')) if (/\berror\b/i.test(l) && !/STALL/.test(l)) errors.push(`DBG: ${l.slice(0, 200)}`);
