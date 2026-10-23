@@ -37,7 +37,7 @@ units3d's KH / KX / KZ read it), `BALL_K` / `SERVE_K` (ball flight speed factors
   one set builder per venue `arena|hall|beach|highland|street.mjs`, `props.mjs` (officials, benches, table, cart), `kit.mjs`
   (box, figure, light beams `BEAMS`, bleachers). `buildVenues` builds every set hidden + the cut-out crowd (4 instanced pose planes, tinted per instance), officials
   and props, big screen canvas, zone rim light, confetti; `dressVenue(w, kind, stakes, c0, c1)` per match redraws the
-  floor canvas, shows one set, fills the crowd rows × stakes; `updateVenue` per frame: crowd bounce / wave, zone dim +
+  floor canvas, shows one set, fills the crowd rows × stakes; `updateVenue` per frame (`fadeOccluders`: posts / antennae / the referee stand on the camera's ray to the court centre (0, 1, 0) or the ball, within radius + 0.18 m → opacity × 0.18, eased; materials restored when solid): crowd bounce / wave, zone dim +
   rim, confetti on `A.cele`, highland flags, big screen from the shown scoreboard. The venue and stakes come from
   match-screen `matchVenue(fx)` / `matchStakes(fx)` → `A.venue` / `A.stakes`; Math.random only), `camera3d.mjs` (game
   camera, scene shots `shotPose` with hard cuts, `P3D`, view transform, camera mode, debug camera),

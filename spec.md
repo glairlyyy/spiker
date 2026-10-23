@@ -2020,6 +2020,7 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
   - **Readability**: backgrounds darker and less saturated than players and ball; nothing taller than the net within
     3 m of the far side line except the referee stand; low-end devices drop the light cones, shafts and props; light cones and shafts
     fade out within 6–16 m of the camera and in close-ups so no light ever covers the view (owner, 2026-10-04).
+  - **Nothing blocks the play** (owner, 2026-10-24): a net post, antenna or the referee's stand between the camera and the court's centre or the ball fades (eased) to a ghost and comes back solid when clear; display only **[built 2026-10-24]**.
 - §9.12 Motion (owner, 2026-10-05; design system `motion.md`, Motion card, motion tokens) **[built — T-216–T-219; not yet: tooltip delay, dialogue-box exit, match-rail tab fade, stat flip, bar loss flash]**:
   motion shows where a thing came from and went; never decoration, never a wait.
   - **Rules**: input is never blocked (a click during an exit commits at once); exits ≈ 70 % of enters (ease-in), enters

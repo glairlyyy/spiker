@@ -206,7 +206,7 @@ const mtx = new THREE.Matrix4(),
   tint = new THREE.Color();
 /** Per frame: crowd bounce and wave, the venue's zone light, confetti on the win, flags, the big screen. */
 export function updateVenue(w, now, dt, camera) {
-  if (camera) fadeBeams(camera);
+  if (camera) (fadeBeams(camera), fadeOccluders(w, camera, dt / 1000));
   // the calls (spec §4.38): the drone over the net, or the Academy's referee on the stand
   const call = A.call || null,
     hall = w.venue === 'hall';
@@ -291,6 +291,68 @@ export function updateVenue(w, now, dt, camera) {
     }
   // big screen / wall board: in step with the scoreboard the player sees
   if (w.venue === 'arena' || w.venue === 'hall') drawScreen(w);
+}
+const ray = new THREE.Ray(),
+  onRay = new THREE.Vector3(),
+  occA = new THREE.Vector3(),
+  occB = new THREE.Vector3(),
+  occT = new THREE.Vector3(),
+  CENTRE = new THREE.Vector3(0, 1, 0);
+/** The court-side things that can stand between the camera and the play: the net posts, antennae, the referee's stand. */
+function occluders(w) {
+  const list = w.netKit
+    .filter(o => o.geometry && o.geometry.type === 'CylinderGeometry')
+    .map(o => ({ o, h: o.geometry.parameters.height, r: o.geometry.parameters.radiusTop }));
+  list.push({ o: w.officials.userData.stand, h: 3.3, r: 0.6, base: true }); // stand + referee, from the floor up
+  for (const c of list) {
+    c.k = 1;
+    c.mats = [];
+    c.o.traverse(m => {
+      for (const mt of m.material ? [].concat(m.material) : [])
+        if (!c.mats.some(x => x.m === mt)) c.mats.push({ m: mt, op: mt.opacity, tr: mt.transparent, dw: mt.depthWrite });
+    });
+  }
+  return list;
+}
+const shown = o => {
+  for (; o; o = o.parent) if (!o.visible) return false;
+  return true;
+};
+/**
+ * A post, antenna or the referee's stand between the camera and the court's centre or the ball fades (eased) to a ghost
+ * and comes back solid once clear. Display only.
+ */
+function fadeOccluders(w, camera, dt) {
+  if (!w.occ) w.occ = occluders(w);
+  const cp = camera.position,
+    e = 1 - Math.exp(-(dt || 1 / 60) * 9);
+  for (const c of w.occ) {
+    let hit = false;
+    if (shown(c.o)) {
+      c.o.updateMatrixWorld();
+      c.o.getWorldPosition(occA);
+      occB.copy(occA);
+      if (c.base) occB.y += c.h;
+      else ((occA.y -= c.h / 2), (occB.y += c.h / 2));
+      for (const t of A && A.ball && A.ball.vis ? [CENTRE, w.ball.position] : [CENTRE]) {
+        const L = occT.subVectors(t, cp).length();
+        if (L < 0.5) continue;
+        ray.set(cp, occT.divideScalar(L));
+        const d2 = ray.distanceSqToSegment(occA, occB, onRay);
+        if (d2 < (c.r + 0.18) ** 2 && onRay.distanceTo(cp) < L - 0.3) hit = true;
+      }
+    }
+    const k = c.k + ((hit ? 0.18 : 1) - c.k) * e;
+    if (Math.abs(k - c.k) < 1e-4 && k === c.k) continue;
+    c.k = Math.abs(k - 1) < 0.002 ? 1 : k;
+    const solid = c.k === 1;
+    for (const x of c.mats) {
+      const tr = solid ? x.tr : true;
+      if (x.m.transparent !== tr) ((x.m.transparent = tr), (x.m.needsUpdate = true));
+      x.m.opacity = x.op * c.k;
+      x.m.depthWrite = solid ? x.dw : false;
+    }
+  }
 }
 const segA = new THREE.Vector3(),
   segB = new THREE.Vector3(),
