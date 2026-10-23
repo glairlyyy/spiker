@@ -1,6 +1,6 @@
 // The player on the 3D map: your own model (Main_v2, as in matches and your portrait; the default model if it fails), idle-breathing, walking or running to wherever the rules put
 // the player. Display only — the rules move instantly; this animates from the previously shown position.
-//   createAvatar(scene, opts?) → { setTarget([x, y], path?), snap([x, y]), face([x, y]), tick(dt, heightAt), busy(), pos(), lapse(),
+//   createAvatar(scene, opts?) → { setTarget([x, y], path?, { head?, tail? }), snap([x, y]), face([x, y]), tick(dt, heightAt), busy(), pos(), lapse(),
 //                                  heading(), drive(x, z, v, yaw), setLife(k), dispose() }
 // Street level (spec §4.37 6, T-336a): setLife(k) scales the figure from map size (HEIGHT, k = 0) to life size (LIFE_H, k = 1) — map3d
 // passes the camera's street weight; drive(x, z, v, yaw) = one WASD frame (display only: stand at world (x, z), moving at v m/s, facing yaw).
@@ -173,15 +173,19 @@ export function createAvatar(scene, opts = {}) {
     },
     /**
      * Walk (or run) to a map point from where the avatar stands now; `path` (map points, optional) is the road to follow. Yours:
-     * WALK.via (to the same point) replaces the road, WALK.stop halts the walk there until WALK.go().
+     * WALK.via (to the same point) replaces the road, WALK.stop halts the walk there until WALK.go(). o.head / o.tail (map points):
+     * walked before the road (out of a door) / after `at` (in through a door, to where you stand inside — spec §4.40).
      */
-    setTarget(at, path) {
+    setTarget(at, path, o = {}) {
       const V = me && WALK.via && Math.hypot(WALK.via.to[0] - at[0], WALK.via.to[1] - at[1]) < 2 ? WALK.via.pts : path,
         stop = me ? WALK.stop : null;
       if (me) WALK.via = WALK.stop = null;
       let pts = [[S.x, S.z]];
+      for (const p of o.head || []) pts.push(toWorld(p));
       if (V && V.length > 1) for (const p of V.slice(1, -1)) pts.push(toWorld(p));
       pts.push(toWorld(at));
+      for (const p of o.tail || []) pts.push(toWorld(p));
+      const end = o.tail && o.tail.length ? o.tail[o.tail.length - 1] : at;
       S.next = null;
       if (S.held) S.held = WALK.held = false;
       if (stop) {
@@ -191,7 +195,7 @@ export function createAvatar(scene, opts = {}) {
       }
       if (!plan(pts)) {
         if (S.next && plan(S.next)) S.next = null;
-        else this.snap(at);
+        else this.snap(end);
       }
     },
     /** Turn to face a map point (standing still). */

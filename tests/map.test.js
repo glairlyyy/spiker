@@ -1003,3 +1003,50 @@ test('map: real facilities (spec §4.40, T-351) — every place and HQ on its ow
   eq(JSON.stringify(g.MapModel.facilities(run)), JSON.stringify(F), 'deterministic');
   eq(draws, 0, 'no randoms');
 });
+
+test('map: arriving inside (owner, 2026-10-24) — at a place you stand at its interior station or on its kit; in through the door; display only', () => {
+  const g = load(11),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'In', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    F = g.MapModel.facilities(run),
+    U = 1 / g.MAP_UNIT_M,
+    local = (f, p) => {
+      const cs = Math.cos(f.rot),
+        sn = Math.sin(f.rot),
+        dx = p[0] - f.at[0],
+        dy = p[1] - f.at[1];
+      return [(dx * cs - dy * sn) / U, (dx * sn + dy * cs) / U]; // metres in the lot's frame (door on +z)
+    };
+  let n = 0;
+  for (const id of Object.keys(g.SPOTS)) {
+    const f = F[id],
+      p = g.City.at(run, id),
+      I = g.MapModel.inside(run, p);
+    if (!f) continue;
+    const want = !!(g.INTERIOR[id] || g.MapModel.FAC_IN[f.fac]);
+    eq(!!I, want, `${id}: inside only with an interior or outdoor kit`);
+    if (!I) continue;
+    n++;
+    const [out, door, spot] = I.map(q => local(f, q));
+    assert(out[1] > f.d / 2 && Math.abs(out[0]) < 0.01, `${id}: the walk starts at its door, outside`);
+    assert(door[1] < f.d / 2 && door[1] > 0, `${id}: then just inside the door`);
+    assert(Math.abs(spot[0]) < f.w / 2 && Math.abs(spot[1]) < f.d / 2, `${id}: you stand on the lot`);
+    assert(
+      Math.hypot(I[0][0] - p[0], I[0][1] - p[1]) < Math.hypot(f.at[0] - p[0], f.at[1] - p[1]),
+      `${id}: the door faces the place's point`
+    );
+  }
+  assert(n >= 10, `places you go inside: ${n}`);
+  // the gym: you stand at a station (the street-level prompt's reach)
+  const gym = g.MapModel.inside(run, g.City.at(run, 'weiPower')),
+    s = local(F.weiPower, gym[2]);
+  assert(
+    g.INTERIOR.weiPower.stations.some(st => !st.card && Math.hypot(st.at[0] - s[0], st.at[1] - s[1]) < 0.05),
+    'the gym: at a station'
+  );
+  // the model: you.at stays the rules' point; inside rides along; not at a place → none
+  g.City.moveTo(run, g.City.at(run, 'weiPower')); // (rounds the point)
+  const M = g.MapModel.build(run, null);
+  eq(M.you.at.join(), g.City.pos(run).join(), 'you.at = the rules point');
+  eq(JSON.stringify(M.you.inside), JSON.stringify(gym), 'you.inside = the walk in (a travel there rounds the point)');
+  eq(g.MapModel.inside(run, [1, 1]), null, 'a bare map point: no inside');
+});

@@ -37,7 +37,7 @@ units3d's KH / KX / KZ read it), `BALL_K` / `SERVE_K` (ball flight speed factors
   one set builder per venue `arena|hall|beach|highland|street.mjs`, `props.mjs` (officials, benches, table, cart), `kit.mjs`
   (box, figure, light beams `BEAMS`, bleachers). `buildVenues` builds every set hidden + the cut-out crowd (4 instanced pose planes, tinted per instance), officials
   and props, big screen canvas, zone rim light, confetti; `dressVenue(w, kind, stakes, c0, c1)` per match redraws the
-  floor canvas, shows one set, fills the crowd rows × stakes; `updateVenue` per frame: crowd bounce / wave, zone dim +
+  floor canvas, shows one set, fills the crowd rows × stakes; `updateVenue` per frame (`fadeOccluders`: posts / antennae / the referee stand on the camera's ray to the court centre (0, 1, 0) or the ball, within radius + 0.18 m → opacity × 0.18, eased; materials restored when solid): crowd bounce / wave, zone dim +
   rim, confetti on `A.cele`, highland flags, big screen from the shown scoreboard. The venue and stakes come from
   match-screen `matchVenue(fx)` / `matchStakes(fx)` → `A.venue` / `A.stakes`; Math.random only), `camera3d.mjs` (game
   camera, scene shots `shotPose` with hard cuts, `P3D`, view transform, camera mode, debug camera),
@@ -1034,6 +1034,7 @@ of the `DAY_ORDERS.run` key × DAY_GAIN; no fail roll). UI: `runBtn` (career-pan
   building's screen width (career-map.js `spotPlace` → `besideAt(…, hw)`: the popup stands clear of it); region names only far out
   (`NAMES_AT` 700–1100 m); figures' names and the picked-point flag as before. QA: `m3.facilityAt(id)`, `m3.facHover()`.
 - **Interiors** — `INTERIOR.weiPower` is the Strength Center's hall (24 × 16 × 8 m, the facility's footprint: the cut box covers it).
+- **Arriving inside** — `MapModel.inside(run, p)`: at a place's node (within 1 unit: moveTo rounds) → [door outside, door inside, spot] (map units; the spot = the INTERIOR station nearest the hall's middle, else `MapModel.FAC_IN[fac]` × the lot for outdoor kit; else null). `model.you.inside` carries it; MapView.routed adds `you.exit` (the last model's door, reversed) on a move; map3d `avatar.setTarget(at, route, { head: exit, tail: inside })` and `standAt(m)` (snap / jump). `you.at` stays the rules' point.
 
 ### Kit on the map (T-310)
 

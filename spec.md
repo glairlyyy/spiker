@@ -51,6 +51,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 
 - §2.2 Elements: hidden per player; unlocked for OP, ~1/4 of stars, and you via the Element Trial. Gauge fills by
   element play; full gauge or captain buff → next attack is the signature element spike. Counter elements halve. Fiction: lore.md §2 (Trial = modern method; ritual forgotten).
+  - Lightning (element spikes, OP arcs, sky bolts) never breaks the match view: a bolt with a non-finite end is skipped and its curve clamps to its points (display only) **[built 2026-10-24]**.
 - §2.3 Hype (Off/Normal/Max, tap to skip): attack build-up, blocker read mid-jump (only if a block is attempted; owner 2026-10-07: the blocker's
   wall / read lines only when the block gets a hand on it — kill block, touch, soft block; beaten, broken or tooled: dropped),
   block-break spike cut + ball close-up, kill-block, loose-ball slow-mo, personality chatter. No manga panels. One world
@@ -1725,7 +1726,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Settled (owner, 2026-10-22)**: Wei's new ground colours stay in Fast too; ambient occlusion stays on the High setting.
   - **Budget**: the map keeps ≥ 45 fps on a mid laptop GPU at the default camera (dynamic resolution allowed, like matches); Fast
     stays as it is today.
-- §4.40 The island × 2 and real facilities **[built 2026-10-24 — T-350–T-351; not yet: the drone's field spots lit like places; zoomed out shows region names, not district names; arriving puts you inside (owner fix, 2026-10-24); later (owner, 2026-10-24): more fillers for Wei, the Cup-win drop (63 → 42 %, 12 runs) re-measured]** (owner, 2026-10-23: "expand the island 2× so travel matters
+- §4.40 The island × 2 and real facilities **[built 2026-10-24 — T-350–T-351; not yet: the drone's field spots lit like places; zoomed out shows region names, not district names;  later (owner, 2026-10-24): more fillers for Wei, the Cup-win drop (63 → 42 %, 12 runs) re-measured]** (owner, 2026-10-23: "expand the island 2× so travel matters
   and there is room for proper facilities"; "remove pins entirely — a building or a piece of kit lights up on hover"):
   - **Scale** (T-350): `MAP_SCALE` 2.25 → 4.5 (~2.4 × 1.6 km). Towns and districts spread out with it (the same layout, twice the
     room); the fog reveal radius, the war tiles, Wei's wealth fall-off, nature's grid and the map camera's reach scale with it,
@@ -1751,6 +1752,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
       buildings themselves stay the way to pick (the map's search / People sheet links still fly the camera to them).
     - Street battles, people (§4.37) and the airport keep their own picks; the drone's field spots (§4.38) light up like places.
     - Low-poly setting: the same buildings, cheaper (merged, no signs' texture detail); the hover rim works in both.
+  - **Arriving inside** (owner, 2026-10-24): a trip to a place ends with your figure walking in its door to its interior's station (the Strength Center: the bench, the street-level prompt's spot) or onto an outdoor facility's kit (track, courts, yard, cage …); leaving, you walk back out of the door first. A building with no interior keeps you at its door; the arena's centre court is its point. Display only: trip costs and what a place does are unchanged **[built 2026-10-24]**.
 - §4.41 The day in hours **[draft — T-352–T-353]** (owner, 2026-10-24: "resting feels like a burden — a whole day of rest and still
   not recovered"): a day is **24 hours** you spend on the map; every action costs hours, not a day. **Replaces** §4.5's one action
   a day + trip days, §4.33's "one order a day" and the Rest action; §4.37's day clock becomes the real clock.
@@ -2042,6 +2044,7 @@ rgba(255,255,255,.36)`, `on-ink #0b0c10`, `sel-bg rgba(76,201,240,.12)`, `sel-li
   - **Readability**: backgrounds darker and less saturated than players and ball; nothing taller than the net within
     3 m of the far side line except the referee stand; low-end devices drop the light cones, shafts and props; light cones and shafts
     fade out within 6–16 m of the camera and in close-ups so no light ever covers the view (owner, 2026-10-04).
+  - **Nothing blocks the play** (owner, 2026-10-24): a net post, antenna or the referee's stand between the camera and the court's centre or the ball fades (eased) to a ghost and comes back solid when clear; display only **[built 2026-10-24]**.
 - §9.12 Motion (owner, 2026-10-05; design system `motion.md`, Motion card, motion tokens) **[built — T-216–T-219; not yet: tooltip delay, dialogue-box exit, match-rail tab fade, stat flip, bar loss flash]**:
   motion shows where a thing came from and went; never decoration, never a wait.
   - **Rules**: input is never blocked (a click during an exit commits at once); exits ≈ 70 % of enters (ease-in), enters

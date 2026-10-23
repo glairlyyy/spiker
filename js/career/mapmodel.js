@@ -346,6 +346,52 @@ const MapModel = {
       ...MapModel.landmarksFixed().map(L => (L.id.startsWith('venue:') ? { ...L, name: VENUES[L.id.slice(6)].name } : L))
     ];
   },
+  /**
+   * Where you stand at an outdoor facility (spec §4.40, arriving inside): its kit, as fractions of the lot (w, d; door on +z).
+   * A building with an interior stands you at its station (INTERIOR); any other building keeps you at its door (its node).
+   */
+  FAC_IN: {
+    sprintlab: [-0.04, 0.38], // the track's start line
+    sandcourts: [-0.26, 0], // the first sand court
+    dunesprint: [0, 0.33], // the sprint lane
+    harboryard: [-0.33, 0.36], // the racks under the lean-to
+    trailhead: [0, 0.2], // through the gate, on the trail
+    steps: [0, 0.47], // the foot of the steps
+    cage: [-0.1, -0.05], // between the racks and the bench
+    overcourt: [0, 0.15],
+    nightcourt: [0, 0.15],
+    hermit: [0.125, 0.125], // the old court
+    campus: [0, 0.28], // the lawn pitch
+    club: [0.33, 0.22], // the mats pavilion
+    acagym: [0.38, 0.22], // the mats outside
+    bonfire: [0.18, 0.18] // by the fire
+  },
+  /**
+   * Arriving inside (owner, 2026-10-24): at rules point p — a place's own point (its door) — the walk on from the door to where you
+   * stand in it: [door outside, door inside, spot] (map units), or null (not a place's point, or nowhere to go in). The spot: the
+   * interior's station nearest the hall's middle (INTERIOR: the gym's bench, the street-level step's spot), else MapModel.FAC_IN on the
+   * lot. Display only: the rules keep you at p (trip costs, what a place does, the fog).
+   */
+  inside(run, p) {
+    if (!p) return null;
+    const L = MapModel.landmarks(run).find(l => l.node && l.w && Math.hypot(l.node[0] - p[0], l.node[1] - p[1]) < 1); // (within 1: City.moveTo rounds)
+    if (!L) return null;
+    const I = typeof INTERIOR !== 'undefined' && INTERIOR[L.id],
+      f = MapModel.FAC_IN[L.fac];
+    let spot = null;
+    if (I) {
+      const st = I.stations.filter(s => !s.card).length ? I.stations.filter(s => !s.card) : I.stations;
+      spot = st.reduce((a, b) => (Math.hypot(...b.at) < Math.hypot(...a.at) ? b : a)).at;
+    } else if (f) spot = [f[0] * L.w, f[1] * L.d];
+    if (!spot) return null;
+    const c = Math.cos(L.rot || 0),
+      s = Math.sin(L.rot || 0),
+      w = ([lx, lz]) => [
+        Math.round((L.at[0] + (lx * c + lz * s) / MAP_UNIT_M) * 100) / 100,
+        Math.round((L.at[1] + (-lx * s + lz * c) / MAP_UNIT_M) * 100) / 100
+      ]; // local m (door on +z) → map units (the interiors' frame: makeRotationY by the lot's yaw)
+    return [w([0, L.d / 2 + 1]), w([0, L.d / 2 - 1.5]), w(spot)];
+  },
   /** The landmarks that stand where they are drawn (centred on their point): the venues, the ritual ground, the airport. */
   landmarksFixed: () => [
     ...Object.entries(VENUES).map(([id, v]) => ({ id: `venue:${id}`, at: v.at, node: v.at, kind: v.kind, region: v.region })),
@@ -986,7 +1032,7 @@ const MapModel = {
       land: MapModel.land(run),
       borders: MapModel.warMap(run),
       pins: MapModel.pins(run),
-      you: { at: City.pos(run), title: `You are in ${REGIONS[City.loc(run)].name}` },
+      you: { at: City.pos(run), inside: MapModel.inside(run, City.pos(run)), title: `You are in ${REGIONS[City.loc(run)].name}` }, // inside: the walk in from the door (display)
       // the dark map lifts only round you and your home (owner, 2026-10-03); what you've explored stays known (pins) but dark
       fog: { points: [City.pos(run), City.at(run, 'home')], r: REVEAL_R },
       flag: MapModel.ptOf(sel),

@@ -22,6 +22,7 @@ const MapView = {
   on: null,
   on0: null, // the callbacks as the UI gave them (pick, point)
   last: null, // the you.at last passed on (the road a trip follows starts there)
+  lastIn: null, // that model's you.inside (the walk in from its door, display: you walk back out of it on the next trip)
   free: null, // a WASD stop being resolved: the travel goes straight there (you already stand on it)
   /** The street-level district (map units): the capsule from the Dynasty Strength Center to the League Arena, STREET_R round it. */
   STREET_R: 200,
@@ -30,18 +31,24 @@ const MapView = {
       b = VENUES.arena && VENUES.arena.at;
     return a && b ? { a: a.slice(), b: b.slice(), r: MapView.STREET_R } : null;
   },
-  /** The model with you.route = the road path from the last shown position to you.at when that changed (the renderer reads only the model). */
+  /**
+   * The model with you.route = the road path from the last shown position to you.at when that changed (the renderer reads only the
+   * model); you.exit = the walk out of the place you stood inside (its door, MapModel.inside), when you did.
+   */
   routed(model) {
     model = model.street ? model : { ...model, street: MapView.zone() };
     const at = model.you && model.you.at;
     if (!at) return model;
     const from = MapView.last,
+      out = MapView.lastIn, // the place you leave: walk out of its door first (arriving inside, spec §4.40)
       free = MapView.free;
     MapView.last = at.slice();
+    MapView.lastIn = model.you.inside || null;
     MapView.free = null;
     if (!from || (from[0] === at[0] && from[1] === at[1])) return model;
     if (free && free[0] === at[0] && free[1] === at[1]) return { ...model, you: { ...model.you, route: [from, at] } }; // (WASD: you are there)
-    return { ...model, you: { ...model.you, route: City.route(from, at) } };
+    const exit = out ? out.slice(0, 2).reverse() : null; // out of the door you stood inside: [door inside, door outside]
+    return { ...model, you: { ...model.you, route: City.route(from, at), exit } };
   },
   /** How far down the camera is (0 = the map, 1 = street level). */
   street: () => (MapView.m3 && MapView.m3.street ? MapView.m3.street() : 0),
