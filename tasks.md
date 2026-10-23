@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-352** (T-336 is split a / b) (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-354** (T-336 is split a / b) (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,32 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+**The day in hours (owner, 2026-10-24, spec §4.41): T-352 → T-353, one agent, after the fixes agent (arrive inside / net post /
+lightning) lands — both touch js/ui/career-map.js.**
+
+### [ ] T-352: The day in hours — rules and balance
+Spec: §4.41 (§4.5, §4.33, §4.37 day clock, §4.40)          Goldens: unchanged (career tests re-seed — say why)          Save: RUN_VERSION 25 (the clock)
+Goal: actions cost hours (training 2–4 h, travel ≥ 1 h, sleep 4 / 6 / 8 h); the day ends when you sleep; matches at fixed hours;
+NPCs one plan a day; balance kept.
+Files: js/data/city.js, career.js, life.js, js/career/city.js, training.js, body.js, growth.js, run.js, season.js, cup.js, court.js,
+fight.js, encounter.js, people.js (day roll-over only), mapmodel.js (the clock), js/core/storage.js, tests/*, tests/career-bot.js,
+CLAUDE.md (RUN_VERSION line), ARCHITECTURE.md, ARCHITECTURE-details.md
+Do not: change NPC planning beyond "a new plan each day"; add transport; touch js/engine.
+Steps: `run.clock` (day, hour); every action's hours and its per-hour gain / stamina / injury curve; travel hours from the route
+(`PACE`, 1 h floor, Run faster); Sleep 4 / 6 / 8 h and its recovery; the 02:00 nod-off; match / battle hours; the week ends on
+day 7's sleep; the career bot plays the new day (a sensible routine: train, travel, sleep 8 h).
+Accept: tests for each rule; `npm test`, lint pass; `npm run career -- 20 both` before / after (ratings, Cups, injuries, sleep
+hours a night, sessions a day) in the Result, ratings within ±2.
+Result:
+
+### [ ] T-353: The day in hours — on screen
+Spec: §4.41 On screen, §9, §10.2          Goldens: unchanged          Save: no change
+Goal: today's 24 h strip in the week rail, the hour pickers on actions, Travel hours, Sleep 4 / 6 / 8 h at home, the map clock.
+Files: js/ui/career-week.js, career-map.js, career-panels.js, career-hub.js, map-view.js, js/map3d/map3d.mjs, look3d.mjs (sun by the
+hour), css/hub.css, career.css, tests/ui-smoke.js, ARCHITECTURE-details.md
+Accept: `npm run test:ui` extended (train 3 h, travel, sleep 6 h, a new day) and passing; QA screenshots against the design system.
+Result:
 
 **The island × 2 and real facilities (owner, 2026-10-23, spec §4.40): T-350 → T-351, one agent, in parallel with the deck
 (T-345–T-349 own js/engine, js/data/cards.js, the match UI; T-350–T-351 own js/data/city.js, js/career/city.js, mapmodel.js,

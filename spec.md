@@ -1725,7 +1725,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Settled (owner, 2026-10-22)**: Wei's new ground colours stay in Fast too; ambient occlusion stays on the High setting.
   - **Budget**: the map keeps ≥ 45 fps on a mid laptop GPU at the default camera (dynamic resolution allowed, like matches); Fast
     stays as it is today.
-- §4.40 The island × 2 and real facilities **[built 2026-10-24 — T-350–T-351; not yet: the drone's field spots lit like places; zoomed out shows region names, not district names; arriving puts you inside (T-352); later (owner, 2026-10-24): more fillers for Wei, the Cup-win drop (63 → 42 %, 12 runs) re-measured]** (owner, 2026-10-23: "expand the island 2× so travel matters
+- §4.40 The island × 2 and real facilities **[built 2026-10-24 — T-350–T-351; not yet: the drone's field spots lit like places; zoomed out shows region names, not district names; arriving puts you inside (owner fix, 2026-10-24); later (owner, 2026-10-24): more fillers for Wei, the Cup-win drop (63 → 42 %, 12 runs) re-measured]** (owner, 2026-10-23: "expand the island 2× so travel matters
   and there is room for proper facilities"; "remove pins entirely — a building or a piece of kit lights up on hover"):
   - **Scale** (T-350): `MAP_SCALE` 2.25 → 4.5 (~2.4 × 1.6 km). Towns and districts spread out with it (the same layout, twice the
     room); the fog reveal radius, the war tiles, Wei's wealth fall-off, nature's grid and the map camera's reach scale with it,
@@ -1751,6 +1751,28 @@ the AI coach fills every slot you leave with the same function. Built and measur
       buildings themselves stay the way to pick (the map's search / People sheet links still fly the camera to them).
     - Street battles, people (§4.37) and the airport keep their own picks; the drone's field spots (§4.38) light up like places.
     - Low-poly setting: the same buildings, cheaper (merged, no signs' texture detail); the hover rim works in both.
+- §4.41 The day in hours **[draft — T-352–T-353]** (owner, 2026-10-24: "resting feels like a burden — a whole day of rest and still
+  not recovered"): a day is **24 hours** you spend on the map; every action costs hours, not a day. **Replaces** §4.5's one action
+  a day + trip days, §4.33's "one order a day" and the Rest action; §4.37's day clock becomes the real clock.
+  - **Training and orders** (Drill, Work, Stretch, Watch, Study, outings): you pick how long — **2 h at least**, then 3 or 4 h
+    (Stretch from 1 h; an outing takes its own time). Longer = more gain, but each hour costs more stamina than the last and the
+    injury risk climbs with the hours and with low stamina. Shown on the control as cost → result ("Heavy sets · 3 h · −30
+    stamina · $20 → Str +++"). Several sessions a day are fine; stamina is the limit.
+  - **Travel** (Walk / Run, §4.33; transport later): hours by the route's length, **1 h at least**; Run is faster, costs stamina
+    and trains the route's ground as today. Pace (`PACE`) set so one old trip day ≈ 2 h walking: crossing the island is most of
+    a day (§4.40 — travel matters). The free hop (`NEAR_R`) goes: a short walk is simply 1 h.
+  - **Sleep** at home (or a hotel away from home): **4, 6 or 8 h** — never less than 4. 8 h brings stamina back to full (an
+    injury still heals on its own clock), 6 h ~75 % of what is missing, 4 h ~45 % and a mood dip; sleeping is what ends the
+    day — you wake and the next day starts. Up past 02:00 without sleeping: you nod off where you are (4 h, mood down).
+  - **Fixed hours**: an evaluation / Cup match, a street battle or a court match happens at its hour (shown in the week rail);
+    you must be there by then (the walk counts). The week is still 7 days; only you end it, by sleeping through day 7.
+  - **NPCs** keep one plan a day (as today); each new day they pick a new one. The life figures (§4.37) stand at their plan's
+    place during their day and at home at night.
+  - **Balance** (T-352): a good player's year-1 / year-2 ratings within ±2 of today's (`npm run career`); stamina and injury are
+    the limit, not the clock. Save: RUN_VERSION 25 (the clock and the day's state).
+  - **On screen** (T-353): the week rail's day track becomes today's 24 h strip (what you did, hour by hour; the hour now) above
+    the 7 days; every action shows a 2 / 3 / 4 h picker with its cost → result; Travel shows its hours; the home card offers
+    Sleep 4 / 6 / 8 h with what each restores; the map's sun and lights follow the hour; walking moves the clock.
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.
