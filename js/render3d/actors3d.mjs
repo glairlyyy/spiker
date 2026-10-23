@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { wrap } from './m3d.mjs';
 import { applyPose, smoothBones, torsoDir, bendArm, groundSnap, setFace, updateVrm, dress, undress, mirror } from './players3d.mjs';
-import { poseDone, playerPose, coachPose, gaitNow } from './poses3d.mjs';
+import { poseDone, playerPose, coachPose, gaitNow, mix, sm } from './poses3d.mjs';
 import { celeMs } from './poses3d-cele.mjs';
 import { KH, KX, KZ, W } from './units3d.mjs';
 import { cam, povFadeId } from './camera3d.mjs';
@@ -134,6 +134,28 @@ function celeStart(d) {
     q.pose = 'cele';
   });
 }
+/**
+ * A change of move cross-fades (2026-10-23): the bones' exponential smoothing alone starts every switch at full speed — a
+ * block's arms dropped 35 cm in the first frame after landing, a pass's platform snapped out of the run. From the pose last
+ * shown, eased in and out (smoothstep) over XF ms by the move coming in (default XF_DEF): quick for the contact moves, longer
+ * for settling back into the stance; none for a knockdown (the hit is meant to jolt). Display only.
+ */
+const XF = { ready: 280, walk: 220, preserve: 250, cele: 200, roar: 200, slump: 300, huddle: 300, dive: 90, fall: 0 },
+  XF_DEF = 130;
+function crossFade(pl, p, dt) {
+  const k = p.kind;
+  if (pl.pk != null && k !== pl.pk && pl.pRaw && !A.freezeOn) pl.xf = { from: pl.pRaw, t: 0, T: XF[k] ?? XF_DEF };
+  pl.pk = k;
+  let o = p;
+  if (pl.xf) {
+    pl.xf.t += dt * 1000;
+    const u = pl.xf.T > 0 ? pl.xf.t / pl.xf.T : 1;
+    if (u >= 1) pl.xf = null;
+    else o = mix(pl.xf.from, p, sm(u));
+  }
+  pl.pRaw = { ...o }; // (a switch during a fade starts from where the body is)
+  return o;
+}
 const AURA = ['hips', 'chest', 'head', 'leftHand', 'rightHand', 'leftLowerLeg', 'rightLowerLeg', 'leftUpperArm', 'rightUpperArm'];
 
 /** Pose one player for this frame (dt on the world clock). fx: the particle system. */
@@ -149,7 +171,7 @@ export function posePlayer(pl, dt, ballPos, fx) {
     hitMove = !!d.kb || downed(d) || (d.rcv && !d.rcv.ko && recvTier(d) === 'hard'),
     mot = hitMove ? { ...mot0, speed: 0, now: 0, fwd: 0, lat: 0, gw: null, far: 0 } : mot0;
   celeStep(d, dt);
-  const pose = playerPose(d, moodOf(d), mot);
+  const pose = crossFade(pl, playerPose(d, moodOf(d), mot), dt);
   root.position.copy(pos);
   steer(pl, d, pos, face, mot, ballPos, dt);
   root.rotation.set(0, face + pl.yawOff + (d.celeYaw || 0), 0);
@@ -196,6 +218,7 @@ export function posePlayer(pl, dt, ballPos, fx) {
   armIK(pl, d, pose, bh || (pose.hand ? pose.hand : ['spike', 'serve', 'dive'].includes(d.pose) ? 'right' : 'both'), dt);
   headSteady(pl, d, pose, ballPos, mot, dt); // running: the head level and on the ball
   pl.lastPose = pose; // (the Animation lab and the QA hooks read it)
+  if (A.qaPl) A.qaPl[d.p.id] = pl; // (test hook: the figure posing each player — the motion probes read its bones)
   if (A.animLab) {
     // the Animation lab keeps it (anim3d animCapture)
     pl.lastLift = (d.jy || 0) * KH + (pose.lift || 0);

@@ -770,6 +770,13 @@ the AI coach fills every slot you leave with the same function. Built and measur
   the arm swing after the toss; the float serve cocks bow-and-arrow (elbow high, hand by the ear — not the goalpost), its arm
   lifting out to the side first, punches through at speed and settles into the ready stance; the jump float plants lightly
   before its hop. Display only.
+  Rigging pass B (owner, 2026-10-23) **[built 2026-10-23]**, checked against coaching sources: the ready stances and the passing
+  platform have the knees out over the toes (was knock-kneed: the shins splayed as far as the thighs); the pass and the block top
+  shrug the shoulders up; a change of move cross-fades (eased in and out, ~0.1–0.3 s; none for a knockdown) instead of starting at
+  full speed (a block's arms dropped 35 cm in one frame on landing); the hands meet the ball and stay where they met it instead
+  of chasing it in and back out (wrists jumped 10–15 cm a frame at a pass); a dive's / knockdown's palms turn over ~120 ms (were
+  flipped in one frame); a shuffle and a backpedal are planted like the run, low, and the feet never cross (the trailing foot
+  swung past the lead one). The set's forearm twist (2026-10-20) is unchanged. Display only.
 - §2.34 Gloom lines (owner, 2026-10-20) **[built 2026-10-20]**: the anime gloom lines — purple vertical lines hanging from above the
   head and fading toward the chest — over a debuffed player: its side plays a war stage (§4.34: Strained / Shaken / Broken,
   darker by stage), its own morale has sunk (below −0.35), or its HP is nearly gone (below 0.3); the strongest of the three
