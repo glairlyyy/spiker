@@ -47,7 +47,7 @@ const Season = {
     run.week = 1;
     Stars.week(run); // the named onto their year-2 curves
     run.trained = 0;
-    run.days = WEEK_DAYS;
+    run.clock = City.freshClock();
     run.dayLog = [];
     run.sta = run.staMax;
     Run.log(run, `Year ${run.year} begins. Week 1 again — the island looks the same; you don't.`);

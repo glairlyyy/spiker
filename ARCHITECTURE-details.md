@@ -596,8 +596,18 @@ via `more`, fixed `lv` 1, not in TRAINK); sand = technique ×SAND_SP skill point
 Central Academy = the hex tiles within `ACADEMY.ring` of its middle (`Hex.dist`) / major polygon), `trip` (days by travel cost `City.path`, NEAR_R / TRIP_DAY / TRIP_MAX), `go`/`moveTo` (spend, stand,
 `reveal` → `run.fog`), `seen` (the dark map), `travelTo` (any land point), `roll` (per-run place quality → `run.spotQ`, found out by training there),
 `price` (TRAIN_FEE / HOTEL × region price), `mul` (quality × home turf, passed to `Training.train/preview` as x),
-`can`/`day`/`scout`. Week = `run.days` (WEEK_DAYS 7): every action costs `City.cost` = trip + 1 day and is refused if
-it would spill into next week (`noTime`); at 0 days it is night; only `mapEndWeek` (the player) calls `Run.endWeek`.
+`can`/`day`/`scout`. The day in hours (spec §4.41, T-352): `run.clock` = { day 1–7 (8 = the week spent: `City.night`), hour (07 = 7, past
+midnight 24 +), log (today's blocks { k, label, at?, stat?, from, h } — the 24 h strip), last (the map's last action: walk / act in week time),
+met (who trained beside you today: the bond once a day) }. `City.trip` = walking hours (`walkH`: route cost ÷ `WALK_PACE`, 1 h at least, 0 at
+`HERE_R`; a run ÷ `RUN_PACE` more); `City.cost(run, id, oid, h)` = the walk + `hoursAt` (an order's `h` from `hourOpts`: HOURS.opts / .stretch,
+a sleep's DAY.sleepH, an outing's SPOTS `hours`, else DAY.act). `City.go(run, p, what, h)` passes the walk then h hours (`pass`, `mark`).
+`noTime(run, h, to, bed)`: the week spent; past 02:00 (DAY.late — not for a sleep); a match week (`matchAt`): the action + the walk on to the
+venue must end by DAY.match. An action ending past 02:00 → `upLate` → `nod` (4 h where you stand, × DAY.nodMul). `sleep(run, h, mul)`: DAY.sleep[h]
+× mul (housing rest / HOTEL.rest) of the missing stamina, 4 h mood −1, then `endDay` (the day's `daySum` onto `run.dayLog`, day + 1, wake =
+(start + h) mod 24). `matchPlayed` (Cup.result): the walk to the venue, 13:00, DAY.matchH; a Cup round → `nextMorning`. Sessions: `orderX` = place
+× DAY_GAIN × `Training.units(h)` (HOURS.unit per 2 h, linear) for gains and skill points; `Training.session(…, h)`: stamina × HOURS.sta[h] × staK,
+fail + HOURS.fail[h], injury + HOURS.inj[h], pay / facility uses / Drive × the units. Only `mapEndWeek` (the player) calls `Run.endWeek` (a fresh
+clock: the wake hour after day 7's sleep, else 07:00).
 `Run.endWeek` runs `WEEK_END` (run.js: growth, sponsors, heal, world, settle the clash, the war's rally `War.week`), resets the week, then the cup
 or `Run.nextWeek` = `WEEK_START` (clash roll, training floor, sponsor offers, Trial offer, eval setup, approaches). The
 order is the draw order: append new weekly systems, never reorder.
@@ -736,11 +746,10 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   `on.person(id)` instead of `on.point` (mapcam gets the wrapped callbacks). MapView adds both: the tip reuses `.tipbox`
   (class `maptip`): `faceSVG`, name, club, "drilling at <place>" / "heading home"; grey = "Not scouted" + club, no face, no
   click; a click opens `openPerson(id)`.
-- **Clock** — week time w = days spent + time of day (`MapModel.weekTime`; `clock` = its fraction, 0 = midnight). Waiting:
-  the next day's dawn (`CLOCK.dawn`); the week spent: the last day's night. The last action (`MapModel.span`: its trip days +
-  its day from `run.dayLog`) plays as walk = from the morning of its first day to the morning of its last (a 3-day trip runs
-  through two nights), order = that afternoon. `MapModel.time(run)` hands the renderer `{ day, idle, walk: [a, b], order:
-  [a, b], out, home, step, rate, keys }`. **Phase interface:** `MapView.phase()` → 'idle' | 'walk' | 'order' from `CW.lock`
+- **Clock** — week time w = the days before today + the hour ÷ 24 (`City.wt`, spec §4.41; `MapModel.weekTime`; `clock` = its fraction,
+  0 = midnight). The last action (`run.clock.last`, set by City.go / travelTo / sleep / matchPlayed) plays as walk = its walk's hours,
+  order = its own block (a sleep: bedtime to waking, through the night). `MapModel.time(run)` hands the renderer `{ day, hour, idle,
+  walk: [a, b], order: [a, b], out, home, step, rate, keys }`. People stand at today's plan (`People.plan(…, day)`). **Phase interface:** `MapView.phase()` → 'idle' | 'walk' | 'order' from `CW.lock`
   (walk / greet → walk; spin / done / res → order; any other lock phase → walk; none → idle), handed to map3d once as
   `setPhase(fn)` and read each frame. map3d's `clockStep`: aim = idle, or lerp(walk) by the avatar's progress along its road
   (projection onto the route, ratcheted — it holds while the avatar is stopped, e.g. an encounter), or order[1]; the shown w
@@ -1004,9 +1013,9 @@ and adds the Stretch row inside it; `mapGo(id, oid)` / `mapStretch(x, y)` (caree
 
 `City.path` also returns the road node ids; `City.legs(from, to)` turns the route into ground legs `{ kind, cost }` (ROADS edge kinds;
 an edge at the `steps` node = 'steps'; to / from the network = 'ground'). `City.runPlan(run, p)` = `RUN_GROUND[kind]` gains per
-TRIP_DAY of each leg's travel cost, stamina `RUN_GROUND.sta` per trip day; `City.noRun` (no move, injured, too tired → walk only).
-`City.travelTo(run, p, 'run')` spends the walking days, logs 'Run' trip days and calls `Training.runTrip` (the gains × `Training.mul`
-of the `DAY_ORDERS.run` key × DAY_GAIN; no fail roll). UI: `runBtn` (career-panels.js) beside Walk on place cards and inside
+TRIP_DAY of each leg's travel cost, stamina `RUN_GROUND.sta` (× HOURS.staK) per trip day; `City.noRun` (no move, injured, too tired → walk only).
+`City.travelTo(run, p, 'run')` spends the running hours (÷ RUN_PACE), logs a 'Run' block and calls `Training.runTrip` (the gains × `Training.mul`
+of the `DAY_ORDERS.run` key × DAY_GAIN; no fail roll). Since §4.41 the gains are × HOURS.unit × HOURS.run and the stamina × HOURS.staK. UI: `runBtn` (career-panels.js) beside Walk on place cards and inside
 `pointCard`; `mapTravel(x, y, 'run')`.
 
 ### Real facilities, no pins (spec §4.40, T-351)

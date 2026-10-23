@@ -711,8 +711,8 @@ const MapModel = {
         glyphs: MapModel.trains(id).map(k => Body.glyph(k)), // what it trains best (spec §4.33)
         title: `${s.name}${s.kit ? ` — ${s.kit.map(t => KITS[t].name).join(', ')}` : ''}`,
         flags: {
-          off: !!City.noTime(run, City.cost(run, id)),
-          far: City.trip(run, at) >= 2,
+          off: !!City.noTime(run, City.cost(run, id), at),
+          far: City.trip(run, at) >= 4,
           turf: !!(s.train && City.turf(run, id)),
           shut: MapModel.shut(run, id)
         }
@@ -832,7 +832,7 @@ const MapModel = {
     }
     for (const [id, e] of homes) {
       if (!run.people || !run.people[id]) continue;
-      const plan = People.plan(run, e.p, e.home),
+      const plan = People.plan(run, e.p, e.home, Math.min(WEEK_DAYS, City.clock(run).day)), // today's plan (spec §4.41)
         sid = String(id),
         spot =
           floorAt[id] ||
@@ -871,51 +871,46 @@ const MapModel = {
     return e.home === 'academy' ? HOME_AT.studio : (REGIONS[e.home] || REGIONS.open).at;
   },
   /**
-   * The day clock (spec §4.37 2, T-332) as week time in days: days spent this week + the time of day (CLOCK; display only).
-   * Waiting for an order: the next day's dawn; the week spent: the last day's night. phase 'walk' / 'order' with k 0–1 is
-   * the last action playing out: its walk runs from the morning of its first day (a trip of n days through n − 1 nights) to the
-   * morning of its last, the order that afternoon.
+   * The day clock (spec §4.37 2; the real clock since §4.41) as week time in days: the days before today + the hour ÷ 24
+   * (City.wt). phase 'walk' / 'order' with k 0–1 is the last action playing out (City.clock(run).last): its walk, then its block.
    */
   weekTime(run, phase = 'idle', k = 0) {
-    const D = WEEK_DAYS - City.days(run),
-      n = Math.min(D, MapModel.span(run)),
-      C = CLOCK,
-      u = clamp(k, 0, 1);
-    if (phase === 'walk' && n) return D - n + C.walk[0] + (n - 1 + C.walk[1] - C.walk[0]) * u;
-    if (phase === 'order' && n) return D - 1 + C.order[0] + (C.order[1] - C.order[0]) * u;
-    return City.night(run) ? D - 1 + C.night : D + C.dawn;
+    const L = City.clock(run).last || {},
+      u = clamp(k, 0, 1),
+      at = A => A[0] + (A[1] - A[0]) * u;
+    if (phase === 'walk' && L.walk) return at(L.walk);
+    if (phase === 'order' && L.act) return at(L.act);
+    return City.wt(run);
   },
   /** Time of day 0–1 (0 = midnight, 0.5 = noon): what the encounters read (see weekTime for the phases). */
   clock: (run, phase = 'idle', k = 0) => {
     const w = MapModel.weekTime(run, phase, k);
     return Math.round((w - Math.floor(w)) * 1e4) / 1e4;
   },
-  /** Days the last action took (its trip days and its day on the week's day track), 0 before any. */
-  span(run) {
-    const L = run.dayLog || [];
-    let i = L.length - 1;
-    if (i < 0) return 0;
-    if (L[i].k !== 'trip') i--;
-    while (i >= 0 && L[i].k === 'trip') i--;
-    return L.length - 1 - i;
-  },
   /**
    * The map's time for the renderer (map3d: sun, sky, night lights, people walking out and home): { idle, walk: [a, b],
    * order: [a, b] } as week time (weekTime), plus CLOCK's display constants. The renderer runs its clock toward the phase the
-   * UI reports (MapView.phase) and never back.
+   * UI reports (MapView.phase) and never back. A last action without a walk keeps walk = [its start, its start].
    */
-  time: run => ({
-    day: WEEK_DAYS - City.days(run),
-    idle: MapModel.weekTime(run),
-    walk: [MapModel.weekTime(run, 'walk', 0), MapModel.weekTime(run, 'walk', 1)],
-    order: [MapModel.weekTime(run, 'order', 0), MapModel.weekTime(run, 'order', 1)],
-    week: WEEK_DAYS,
-    out: CLOCK.out,
-    home: CLOCK.home,
-    step: CLOCK.step,
-    rate: CLOCK.rate,
-    keys: CLOCK.keys
-  }),
+  time(run) {
+    const L = City.clock(run).last || {},
+      now = City.wt(run),
+      w = L.walk || (L.act ? [L.act[0], L.act[0]] : [now, now]),
+      o = L.act || [w[1], w[1]];
+    return {
+      day: Math.min(WEEK_DAYS, City.clock(run).day) - 1,
+      hour: City.hour(run),
+      idle: now,
+      walk: w.slice(),
+      order: o.slice(),
+      week: WEEK_DAYS,
+      out: CLOCK.out,
+      home: CLOCK.home,
+      step: CLOCK.step,
+      rate: CLOCK.rate,
+      keys: CLOCK.keys
+    };
+  },
   /** Court floodlights (T-332): the explored courts and every venue, as map points. */
   floods: run => [
     ...MapModel.landmarks(run)

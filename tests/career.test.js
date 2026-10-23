@@ -119,7 +119,7 @@ test('career: training cap, facility Lv 5 and Hard training', () => {
   g.Training.addXp(run, 'str', 100000, 'match');
   assert(you.body.str > 80, 'match XP goes past the training cap');
   assert(you.power <= g.CAREER.runCap, 'a court skill never passes the run cap');
-  assert(!('lb' in run) && g.RUN_VERSION === 24, 'no Limit Break progress in the run; RUN_VERSION 24');
+  assert(!('lb' in run) && g.RUN_VERSION === 25, 'no Limit Break progress in the run; RUN_VERSION 25');
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
   const n = g.Training.preview(run, 'power', false).main[2],
@@ -173,7 +173,11 @@ test('run: a trip run trains the route’s ground — coast road End, mountain p
   run.pos = g.CITY.airport.slice();
   const coast = g.City.runPlan(run, g.SPOTS.harbor.at);
   assert(coast.gains.end > 0 && !coast.gains.str && !coast.gains.agi, `airport → Harbor: Endurance (${JSON.stringify(coast.gains)})`);
-  eq(coast.days, g.City.travelDays(run, g.SPOTS.harbor.at), 'running takes the walking days');
+  eq(coast.days, g.City.travelDays(run, g.SPOTS.harbor.at, 'run'), 'running: its hours');
+  assert(
+    coast.days < g.City.travelDays(run, g.SPOTS.harbor.at) && coast.days >= 1,
+    'running is faster than walking, 1 h at least (spec §4.41)'
+  );
   run.pos = g.SPOTS.trail.at.slice();
   const hills = g.City.runPlan(run, g.City.at(run, 'stone'));
   assert(
@@ -184,27 +188,27 @@ test('run: a trip run trains the route’s ground — coast road End, mountain p
   run.pos = N.hq4.slice();
   const steps = g.City.runPlan(run, N.hermit);
   assert(steps.gains.str > 0 && steps.gains.agi > 0 && !steps.gains.end, `the Steps: Str + Agi (${JSON.stringify(steps.gains)})`);
-  // a run: the same days, body gains, stamina, the day track says Run
+  // a run: its hours, body gains, stamina, today's strip says Run
   run.pos = g.CITY.airport.slice();
   run.sta = 100;
-  run.days = 7;
-  const e0 = you.body.end,
-    t = g.City.travelDays(run, g.SPOTS.harbor.at),
-    line = g.City.travelTo(run, g.SPOTS.harbor.at, 'run');
+  run.clock = g.City.freshClock();
+  const gym = g.City.at(run, 'acaGym'),
+    near = g.City.runPlan(run, gym),
+    e0 = you.body.end,
+    t = g.City.travelDays(run, gym, 'run'),
+    line = g.City.travelTo(run, gym, 'run');
   assert(/^Ran to/.test(line), line);
   assert(you.body.end > e0, 'Endurance up');
-  eq(run.sta, 100 - coast.sta + (run.staMax - g.CAREER.staMax), 'stamina spent (Endurance lifts the max a little)');
-  eq(g.City.days(run), 7 - t, 'the walking days');
-  assert(
-    run.dayLog.every(d => d.label === 'Run'),
-    'the day track shows the run'
-  );
+  eq(run.sta, 100 - near.sta + (run.staMax - g.CAREER.staMax), 'stamina spent (Endurance lifts the max a little)');
+  assert(coast.sta > run.staMax, 'a long run (the airport to the Harbor) needs more stamina than you have: walk it');
+  eq(g.City.hour(run), g.DAY.wake + t, 'the running hours');
+  assert(run.clock.log.length === 1 && run.clock.log[0].label === 'Run' && run.clock.log[0].h === t, 'the 24 h strip shows the run');
   // too tired → walk only
   run.sta = 3;
-  run.days = 7;
+  run.clock = g.City.freshClock();
   assert(/too tired/.test(g.City.noRun(run, g.CITY.airport)), 'too tired to run');
   eq(g.City.travelTo(run, g.CITY.airport, 'run'), '', 'no run');
-  assert(/^Travelled/.test(g.City.travelTo(run, g.CITY.airport)), 'walking still works');
+  assert(/^Walked/.test(g.City.travelTo(run, g.CITY.airport)), 'walking still works');
 });
 
 test('career: the Academy Gym — a fixed Lv 1, a little EXP to every stat (T-183)', () => {
@@ -382,7 +386,7 @@ test('career: match history', () => {
   eq(e.box.length, m.played.size, 'the box has every player who played, once');
   eq(JSON.stringify(JSON.parse(JSON.stringify(e))), JSON.stringify(e), 'plain JSON');
   // a challenge and a street fight
-  run.days = g.WEEK_DAYS;
+  run.clock = g.City.freshClock();
   run.week = 5;
   run.money = 500;
   const ti = g.FACTIONS.findIndex(f => f.region === 'outlaws');
@@ -394,7 +398,7 @@ test('career: match history', () => {
   eq(run.mlog[1].kind, 'challenge', 'kind challenge');
   eq(run.mlog[1].stake, stake, 'with its stake');
   eq(run.mlog[1].win, mc.winner === 0, 'win');
-  run.days = 7;
+  run.clock = g.City.freshClock();
   run.lastFight = null; // (no fight ban or injury after the challenge)
   run.injury = null;
   run.event = null;
@@ -410,7 +414,7 @@ test('career: match history', () => {
   eq(JSON.stringify(JSON.parse(JSON.stringify(run.mlog))), JSON.stringify(run.mlog), 'the whole log is plain JSON');
   // trimming and repair
   for (let i = 0; i < g.MLOG.max + 5; i++) run.mlog.push({ ...e, week: i });
-  run.days = g.WEEK_DAYS;
+  run.clock = g.City.freshClock();
   run.week = 8;
   run.eval = null;
   run.event = null;
@@ -766,7 +770,7 @@ test('career: scouting shows attack habits', () => {
   const g = load(94),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Habits', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
   run.event = null;
-  run.days = 7;
+  run.clock = g.City.freshClock();
   const wei = g.FACTIONS.findIndex(f => f.region === 'wei');
   let d = g.Dossier.build(run, 'wei');
   assert(
@@ -861,38 +865,38 @@ test('career: team challenge — worth, refusal, stake payout', () => {
   run.team = club('wei');
   eq(g.Fight.worth(run, club('wei'), 0), null, 'your own club is not challengeable');
   run.team = own;
-  // a refusal costs the trip + a day and blocks that club for the week
-  const d0 = run.days,
+  // a refusal costs the walk + its hours and blocks that club for the week
+  const d0 = g.City.wt(run),
     r0 = g.Fight.offer(run, club('gloria'), 100);
-  assert(r0 && !r0.accepted && /turned your challenge down/.test(r0.line) && run.days < d0, `refused: ${r0 && r0.line}`);
+  assert(r0 && !r0.accepted && /turned your challenge down/.test(r0.line) && g.City.wt(run) > d0, `refused: ${r0 && r0.line}`);
   assert(run.refused[club('gloria')].week === run.week && run.refused[club('gloria')].n === 1, 'the refusal is recorded');
   eq(W('gloria', 100).why, g.CHALLENGE_WHY.week, 'not again this week');
-  run.days = g.WEEK_DAYS;
+  run.clock = g.City.freshClock();
   for (let i = 2; i <= g.CHALLENGE.refuseMax; i++) {
     run.week++;
-    run.days = g.WEEK_DAYS;
+    run.clock = g.City.freshClock();
     g.Fight.offer(run, club('gloria'), 100);
   }
   assert(g.City.rep(run, 'gloria') <= g.CHALLENGE.pest, 'refused 3 times: you are a pest (standing drops)');
-  run.days = g.WEEK_DAYS;
-  run.week = 4;
+  run.clock = g.City.freshClock();
+  run.week = 3; // (not an evaluation week: its 13:00 match would leave no time, spec §4.41)
   // accepted: a real match; a win pays the stake at odds (the club's players are weakened, yours strengthened, so it is won)
   const ti = club('outlaws');
   for (const p of g.squadOf(run.teams[ti])) for (const k of g.STATK) p[k] = 25;
   for (const p of g.squadOf(run.pickup)) for (const k of g.STATK) p[k] = 99;
   const acc = g.Fight.offer(run, ti, 50);
   assert(acc && acc.accepted && acc.stake === 50, 'the Outlaws accept a 50 stake');
-  const d1 = run.days,
+  const d1 = g.City.wt(run),
     money0 = run.money,
     fx = g.Fight.challenge(run, ti, 50),
     m = g.newMatch(fx.a, fx.b, false);
-  eq(run.days, d1, 'nothing is spent until it finishes');
+  eq(g.City.wt(run), d1, 'nothing is spent until it finishes');
   while (!m.over) g.playRally(m);
   const line = fx.onFinish(m);
   assert(m.winner === 0 && /won/.test(line) && run.money > money0, `a won challenge pays the stake at odds: ${line}`);
   assert(
-    run.money - money0 >= Math.round(50 * g.CHALLENGE.odds[0]) && run.days < d1,
-    'at least stake × the lowest odds; a day and the trip spent'
+    run.money - money0 >= Math.round(50 * g.CHALLENGE.odds[0]) && g.City.wt(run) > d1,
+    'at least stake × the lowest odds; the walk and its hours spent'
   );
   assert(run.street[you.id] === g.RANK.street.fight + g.RANK.street.win, 'and street points');
   // alone: a street crew is hired (paid from your money) and you play in it
@@ -902,7 +906,7 @@ test('career: team challenge — worth, refusal, stake payout', () => {
   assert(g.squadOf(T).length === 6 && T.P.includes(you) && T.P.length === 4, 'the hired crew: 6 players, you on court');
   const side = g.Fight.challengeSide(run);
   eq(side.kind, 'hired', 'alone = hired crew');
-  run.days = g.WEEK_DAYS;
+  run.clock = g.City.freshClock();
   run.week = 6;
   const m1 = run.money,
     fx1 = g.Fight.challenge(run, ti, 50),
@@ -923,7 +927,7 @@ test('career: challenge loss and injury', () => {
       run.sta = run.staMax;
       run.mood = 2;
       run.money = 500;
-      run.days = g.WEEK_DAYS;
+      run.clock = g.City.freshClock();
       run.event = null;
       run.injury = null;
       run.lastFight = null;
@@ -1002,7 +1006,7 @@ test('career: challenge loss and injury', () => {
   run.sp = 99;
   assert(g.Training.physio(run) && !run.injury, 'physio heals the injury');
   assert(you.body[lost[0]] === before[g.BODY.keys.indexOf(lost[0])] - g.INJURY.lose, 'but not the lost stat');
-  eq(g.RUN_VERSION, 24, 'save v24');
+  eq(g.RUN_VERSION, 25, 'save v25');
 });
 
 test('career: rules moved out of the UI (T-075)', () => {
@@ -1080,7 +1084,7 @@ test('story: the intro plays on a new Story run, applies its walk, never replays
   while (run.story.cur && n++ < 50) g.Story.next(run);
   assert(!run.story.cur && run.story.seen.intro, 'the scene ends and is marked seen');
   eq(JSON.stringify(run.pos), JSON.stringify(home.map(Math.round)), 'the walk leaves you at your first home');
-  eq(run.days, g.WEEK_DAYS, 'the walk home costs no days');
+  eq(JSON.stringify([run.clock.day, run.clock.hour]), JSON.stringify([1, g.DAY.wake]), 'the walk home costs no hours');
   assert(!g.Story.fire(run, 'start'), 'never replays');
   const end = g.Run.create(g.Run.draft(), { role: 'WS', name: 'E', mode: { story: false } });
   assert(!end.story.cur, 'Endless: no scenes');
@@ -1371,7 +1375,7 @@ test('secret places: hidden until told; tapes, lighthouse, hermit, roof, onsen, 
     "Fern's five are told"
   );
   const day = (id, opt) => {
-    run.days = g.WEEK_DAYS;
+    run.clock = g.City.freshClock();
     run.pos = g.City.at(run, id).slice();
     return g.City.day(run, id, false, opt);
   };
@@ -1399,7 +1403,7 @@ test('secret places: hidden until told; tapes, lighthouse, hermit, roof, onsen, 
   run.money = 500;
   day('onsen');
   eq(run.sta, run.staMax, 'the onsen: full stamina');
-  assert(g.WEEK_DAYS - run.days >= 2, 'two days');
+  eq(run.clock.log[run.clock.log.length - 1].h, g.SPOTS.onsen.hours, 'six hours (spec §4.41)');
   g.Secret.street(run);
   assert(g.Secret.known(run, 'midnight'), 'a street contact tells you of the night court');
   const n = run.mlog.length;
@@ -1567,18 +1571,31 @@ test('saves: a newer, unversioned or corrupt save is refused; the current one lo
   eq(back.week, run.week, 'same week');
 });
 
-// ---------- T-118: the week's day track ----------
-test('career: day track — a trip then the training day, cleared at the week start', () => {
+// ---------- T-118 / T-352: today's strip and the week's day track ----------
+test('career: day track — the walk then the session on today’s strip; the day on the week track after its sleep; cleared at the week start', () => {
   const g = load(21),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Days', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
+  run.event = null;
+  run.mode.story = false;
   eq(JSON.stringify(run.dayLog), '[]', 'a new run starts with an empty track');
-  const far = Object.keys(g.SPOTS).find(id => g.SPOTS[id].train && g.City.trip(run, g.City.at(run, id)) === 2 && g.City.can(run, id).ok);
-  assert(far, 'a training place two trip days away (the island × 2, T-350)');
-  g.City.day(run, far, false);
-  eq(run.dayLog.map(e => e.k).join(','), 'trip,trip,train', 'trip days first, then the training day');
-  eq(run.dayLog[2].stat, g.DAY_ORDERS[g.City.lead(far)].main[0], 'the day names the stat trained (the lead drill: T-308)');
-  eq(run.dayLog[2].label, g.DAY_ORDERS[g.City.lead(far)].name, '…and the order');
-  eq(g.WEEK_DAYS - g.City.days(run), run.dayLog.length, 'one entry per day spent');
+  const far = Object.keys(g.SPOTS).find(
+    id => g.SPOTS[id].train && g.City.trip(run, g.City.at(run, id)) >= 3 && g.City.can(run, id, null, 3).ok
+  );
+  assert(far, 'a training place 3 h or more away');
+  const t = g.City.trip(run, g.City.at(run, far));
+  g.City.day(run, far, false, null, 3);
+  eq(
+    run.clock.log.map(e => `${e.k}:${e.from}:${e.h}`).join(','),
+    `trip:7:${t},train:${7 + t}:3`,
+    'the walk first, then 3 h of the session'
+  );
+  eq(run.clock.log[1].stat, g.DAY_ORDERS[g.City.lead(far)].main[0], 'the block names the stat trained (the lead drill: T-308)');
+  eq(run.clock.log[1].label, g.DAY_ORDERS[g.City.lead(far)].name, '…and the order');
+  eq(run.dayLog.length, 0, 'the day is not over yet');
+  g.City.day(run, 'home', false, null, 8);
+  eq(run.dayLog.length, 1, 'slept: the day joins the week track');
+  eq(run.dayLog[0].label, g.DAY_ORDERS[g.City.lead(far)].name, 'named by its longest block');
+  eq(g.City.days(run), g.WEEK_DAYS - 1, 'a day spent');
   g.Run.endWeek(run);
   eq(run.dayLog.length, 0, 'a new week starts empty');
 });

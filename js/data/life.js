@@ -19,14 +19,10 @@ const LIFE = {
 };
 
 /**
- * The day clock (T-332): time of day 0–1 (0 = midnight, 0.25 = 06:00, 0.5 = noon). A day starts at dawn, the walk is the
- * morning, the order the afternoon, then evening; the week's last day ends at night. Display only.
+ * The day clock (T-332; the real hour since spec §4.41 — run.clock, City.wt): time of day 0–1 (0 = midnight, 0.25 = 06:00,
+ * 0.5 = noon). Display constants for the map: when people walk out and home, how fast the shown clock catches up.
  */
 const CLOCK = {
-  dawn: 0.27, // a day waiting for your order
-  walk: [0.3, 0.45], // the walk there (a trip of n days runs through n − 1 nights)
-  order: [0.5, 0.7], // the order's animation
-  night: 0.92, // the week is spent
   out: [0.2, 0.3], // people leave home (each at a hashed moment inside) …
   home: [0.76, 0.88], // … and walk back
   step: 0.05, // how long that walk takes (days)

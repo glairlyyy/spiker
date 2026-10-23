@@ -7,7 +7,7 @@ function courtRun(seed = 5) {
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Court', mode: {} });
   run.week = 6;
   run.event = null;
-  run.days = 7;
+  run.clock = g.City.freshClock();
   run.money = 5000;
   run.pos = g.VENUES.arena.at.slice(); // no trip
   return { g, run };
@@ -82,7 +82,7 @@ test('court: tiers, the draw, a loss costs only the fee, a win pays 2.5 × fee',
   );
   // a win: the prize and the fans
   run.injury = null;
-  run.days = 7;
+  run.clock = g.City.freshClock();
   run.pos = g.VENUES.arena.at.slice();
   const m0 = run.money,
     f0 = run.fans;
@@ -107,7 +107,7 @@ test('court: half the street injury risk; no court matches in an evaluation week
   g.Fight.injure = injure;
   assert(Math.abs(seen - street * g.COURT.injury) < 1e-9, `risk ${seen} = street ${street} × ${g.COURT.injury}`);
   run.week = 8; // an evaluation week
-  run.days = 7;
+  run.clock = g.City.freshClock();
   run.eval = null;
   assert(g.Court.why(run, 'arena', 'open') !== '' || g.Run.weekType(run) !== 'eval', 'no court match in an evaluation week');
   if (g.Run.weekType(run) === 'eval') eq(g.Court.fixture(run, 'arena', 'open'), null, 'no fixture either');

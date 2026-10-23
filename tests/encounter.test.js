@@ -113,14 +113,14 @@ test('encounters: each answer does its thing — talk (met_road, Friendly × 1.5
       .find(Boolean);
   assert(E && E.id != null, 'a person stops you');
   const bond0 = g.Rel.bondOf(run, E.id),
-    snap = JSON.stringify([run.money, run.days, run.sta, run.pos]);
+    snap = JSON.stringify([run.money, run.clock.day, run.clock.hour, run.sta, run.pos]);
   eq(JSON.stringify(g.Encounter.answer(run, E, 'walk')), '{}', 'walk on: nothing');
-  eq(JSON.stringify([run.money, run.days, run.sta, run.pos]), snap, 'walking on costs nothing');
+  eq(JSON.stringify([run.money, run.clock.day, run.clock.hour, run.sta, run.pos]), snap, 'walking on costs nothing');
   eq(g.Rel.bondOf(run, E.id), bond0, 'no memory');
   const r = g.Encounter.answer(run, E, 'talk');
   assert(r && r.line && g.Rel.list(run, E.id).some(e => e.k === 'met_road'), 'talk: met_road');
   assert(g.Rel.bondOf(run, E.id) >= bond0, 'bond up');
-  eq(JSON.stringify([run.money, run.days, run.sta, run.pos]), snap, 'talking costs nothing');
+  eq(JSON.stringify([run.money, run.clock.day, run.clock.hour, run.sta, run.pos]), snap, 'talking costs nothing');
   // Friendly × 1.5 (REL.behave.warm): the same memory weighs more
   const [h, r2] = mkRun(),
     [id1, id2] = h.Run.mates(r2)
@@ -166,7 +166,7 @@ test('encounters: each answer does its thing — talk (met_road, Friendly × 1.5
   const c = b.Fight.clashSite(r4);
   assert(c, 'a week with a street battle');
   r4.injury = null;
-  r4.days = 7;
+  r4.clock = g.City.freshClock();
   const bt = b.Encounter.near(r4).find(x => x.kind === 'battle'),
     rj = b.Encounter.answer(r4, bt, 'join', c.a);
   assert(rj && rj.fx && /Street battle/.test(rj.fx.round), 'join: the street battle');
@@ -273,8 +273,8 @@ test('figure menu: the rows, their locks, deterministic and drawing nothing (T-3
   const M2 = g.Encounter.menu(run, mate);
   assert(M2[2].why && M2[3].why, 'injured: no spar / challenge');
   run.injury = null;
-  // the days: a walk over costs its trip days (City.trip), too many → the gap
-  run.days = 0;
+  // the hours: a walk over costs its walk (City.trip); the week spent → the gap
+  run.clock.day = 8;
   const far = g.Encounter.people(run).find(p => g.City.trip(run, p.at) > 0);
   if (far) assert(/no days left/.test(g.Encounter.row(run, far.id, 'talk').why), 'no days for the walk');
 });
@@ -283,15 +283,15 @@ test('figure menu: Talk once a day per person (met_road), Invite by hash joins y
   const [g, run] = mkRun(),
     id = someone(g, run, 'talk'),
     W = g.Encounter.who(run, id),
-    d0 = run.days,
+    d0 = g.City.hour(run),
     t = g.City.trip(run, W.at),
     trip = g.City.walkTo(run, W.at);
   assert(trip != null, 'you walk over');
-  eq(run.days, d0 - t, 'the walk: its trip days only (no day of its own)');
+  eq(g.City.hour(run), d0 + t, 'the walk: its hours only (nothing of its own)');
   const r = g.Encounter.talk(run, id);
   assert(r.hi && r.line && g.Rel.list(run, id).some(e => e.k === 'met_road'), 'talk: their line, met_road');
   eq(g.Encounter.row(run, id, 'talk').why, 'talked today', 'once a day');
-  run.days -= 1; // a new day
+  run.clock.day += 1; // a new day
   eq(g.Encounter.row(run, id, 'talk').why, '', 'the next day: again');
   // Invite: the hash decides, the same in a twin; yes → the next order at a kit place counts them on its floor
   const [h, twin] = mkRun(),
@@ -335,7 +335,7 @@ test('figure menu: Spar — a court nearby, no stake, the day, XP and a memory e
   assert(id != null && !g.Encounter.row(run, id, 'spar').why, 'someone to spar');
   const money = run.money,
     rep = JSON.stringify(run.rep || {}),
-    d0 = run.days,
+    d0 = g.City.hour(run),
     R0 = g.Encounter.row(run, id, 'spar'),
     fx = g.Encounter.spar(run, id);
   assert(fx && fx.b === g.Encounter.who(run, id).t, 'their crew');
@@ -343,7 +343,7 @@ test('figure menu: Spar — a court nearby, no stake, the day, XP and a memory e
   assert(m.over, 'played');
   eq(run.money, money, 'no stake, no fee');
   eq(JSON.stringify(run.rep || {}), rep, 'no standing');
-  eq(run.days, d0 - R0.days, 'the trip + a day');
+  eq(g.City.hour(run), d0 + R0.days, 'the walk + its hours');
   assert(
     g.Rel.list(run, id).some(e => e.k === 'sparred'),
     'sparred, win or lose'
@@ -465,14 +465,14 @@ test('drone: a pickup — the people around, Picky / Egoist refuse but on asphal
   }
   run.people[id].traits = tr;
   // the match: the field venue, its ground on the engine, the day, the memory, the drone stays (yours)
-  const d0 = run.days,
+  const d0 = g.City.hour(run),
     fx = g.Encounter.pickupFx(run, p);
   eq(fx.venue, 'field', 'the field venue');
   eq(fx.ground.k, P.g.k, 'its ground');
   const m = g.Cup.simNow(fx);
   eq(m.ground.k, P.g.k, 'the engine plays on it');
   eq(JSON.stringify(m.ground.home), JSON.stringify(g.Encounter.matchGround(run, P.field, [fx.a, fx.b]).home), 'who was born to it');
-  eq(run.days, d0 - P.days, 'the trip + a day');
+  eq(g.City.hour(run), d0 + P.days, 'the walk + its hours');
   assert(/Pickup game with/.test(run.log[0].t), run.log[0].t);
   assert(
     g.Rel.list(run, id).some(e => e.k === 'sparred'),
@@ -511,22 +511,17 @@ test('drone: a road stop’s crew challenged on the spot — on the field there,
   }
   assert(E, 'a crew on the road that takes a challenge, open ground at the stop');
   const S = g.Encounter.spot(run, E),
-    stop = g.City.trip(run, S.field.at) + 1,
+    stop = g.City.trip(run, S.field.at) + g.DAY.act,
     hq = g.City.scoutCost(run, E.ti);
   eq(g.Fight.cost(run, E.ti, S.field.at), stop, 'on the spot: the trip to the stop and the day');
   eq(g.Fight.cost(run, E.ti), hq, 'at their HQ: the trip there and the day');
-  assert(stop < hq, `the stop is nearer than their HQ (${stop} vs ${hq} days)`);
-  const dd = run.days;
-  run.days = stop; // (time for the stop, not for their HQ)
-  assert(g.Fight.offer(run, E.ti, 0, S.field.at), 'the days left fit the stop: Challenge here goes ahead');
-  eq(g.Fight.offer(run, E.ti, 0), null, 'the same days would not reach their HQ');
-  run.days = dd;
-  const d0 = g.City.days(run),
+  assert(stop < hq, `the stop is nearer than their HQ (${stop} vs ${hq} h)`);
+  const d0 = g.City.wt(run),
     r = g.Encounter.answer(run, E, 'here');
   assert(r && r.fx, 'played on the spot');
   eq(r.fx.venue, 'field', 'the field venue');
   const m = g.Cup.simNow(r.fx);
-  eq(d0 - g.City.days(run), stop, `the days spent are the stop's (${stop}), not the HQ's (${hq})`);
+  eq(Math.round((g.City.wt(run) - d0) * 24), stop, `the hours spent are the stop's (${stop}), not the HQ's (${hq})`);
   eq(m.ground.k, S.field.g.k, 'its ground');
   eq(JSON.stringify(run.pos), JSON.stringify(S.field.at), 'you stand at the stop, not their HQ');
   run.drone = null;

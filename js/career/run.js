@@ -190,8 +190,8 @@ const Run = {
     }
     return { starts, you: score(you), rival: rival && { p: rival, score: score(rival) } };
   },
-  /** The absolute day of the run (week × days a week + days used this week): the clock for fatigue between fights. */
-  dayNo: run => run.week * WEEK_DAYS + (WEEK_DAYS - City.days(run)),
+  /** The absolute day of the run (week × days a week + the days before today): the clock for fatigue between fights. */
+  dayNo: run => run.week * WEEK_DAYS + Math.min(WEEK_DAYS, City.clock(run).day - 1),
   /** Your team: a league club, or the pickup squad while you're a free agent (run.team null). */
   myTeam: run => (run.team == null ? run.pickup : run.teams[run.team]),
   /** League news for the next Gazette. */
@@ -284,7 +284,7 @@ const Run = {
   endWeek(run) {
     for (const step of WEEK_END) step(run);
     run.trained = 0;
-    run.days = WEEK_DAYS;
+    run.clock = City.freshClock(City.night(run) ? City.hour(run) : DAY.wake); // slept through day 7: you wake when you wake (spec §4.41)
     run.dayLog = [];
     run.clash = null;
     Run.snap(run);
@@ -383,8 +383,8 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 24;
-/** version → upgrade step (v24: the island × 2 — positions, fog and tiles in the new units, spec §4.40, T-350: none, dropped; v23: `run.tenure` / `run.ex`, T-325; v22: `p.gifts`, T-320; v21: `run.war`, T-313; v20: `you.body`, T-307).
+const RUN_VERSION = 25;
+/** version → upgrade step (v25: the day in hours `run.clock` (`run.days` dropped), spec §4.41, T-352: none, dropped; v24: the island × 2 — positions, fog and tiles in the new units, spec §4.40, T-350: none, dropped; v23: `run.tenure` / `run.ex`, T-325; v22: `p.gifts`, T-320; v21: `run.war`, T-313; v20: `you.body`, T-307).
  * None yet: older saves are dropped; add a step here when the saved shape changes. */
 const RUN_MIGRATIONS = {};
 const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -441,8 +441,11 @@ const RUN_DEFAULTS = {
   xp: [() => ({}), isObj], // training experience toward each body stat's (and wit's) next point
   plays: [() => ({ k: 0, blk: 0, ace: 0 }), isObj],
   lastFight: [() => null, v => v === null || Number.isFinite(v)], // absolute day of your last challenge / street fight
-  days: [() => WEEK_DAYS, v => Number.isFinite(v) && v >= 0 && v <= WEEK_DAYS], // days left this week
-  dayLog: [() => [], Array.isArray], // what each spent day of this week was (the hub's day track, spec §10.2)
+  clock: [
+    () => City.freshClock(),
+    v => isObj(v) && Number.isInteger(v.day) && v.day >= 1 && v.day <= WEEK_DAYS + 1 && Number.isFinite(v.hour) && Array.isArray(v.log)
+  ], // the day in hours (spec §4.41): { day, hour, log (today's blocks), last (the map's last action), met (who trained beside you today) }
+  dayLog: [() => [], Array.isArray], // each slept-through day of this week, summed up (the hub's day track, spec §10.2)
   pos: [() => CITY.airport.slice(), Array.isArray], // where you stand on the map
   story: [() => ({ seen: { intro: true }, flags: {}, cur: null }), isObj], // story scenes; a run saved before them skips the intro
   gifts: [() => [], Array.isArray], // the gifts you learned (spec §4.35; Gifts.sync → you.gifts), at most GIFT_ASK.max

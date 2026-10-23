@@ -81,14 +81,17 @@ const People = {
   },
   /** True while an NPC is injured. */
   out: (run, p) => !!(run.people && run.people[p.id] && run.people[p.id].inj > 0),
-  /** This week's plan: { act: 'out' | 'rest' | 'hustle' | 'train' | 'hard' | 'wit', stat, at (a SPOTS id or null) }. */
-  plan(run, p, home = People.home(run, p)) {
+  /**
+   * A day's plan: { act: 'out' | 'rest' | 'hustle' | 'train' | 'hard' | 'wit', stat, at (a SPOTS id or null) }. Day 1 (the default) is the
+   * week's plan People.week grows them by; each new day of the week they pick a new one the same way (spec §4.41 — what the map shows).
+   */
+  plan(run, p, home = People.home(run, p), day = 1) {
     const me = run.people[p.id];
     if (me.inj > 0) return { act: 'out' };
     if (me.sta < PEOPLE.sta.tired) return { act: 'rest' };
     const w = { ...PLAN[me.want] };
     for (const t of me.traits) for (const [k, m] of Object.entries(PLAN_TRAIT[t] || {})) w[k] *= m;
-    const act = People.pick(run, p.id, 'plan', w);
+    const act = People.pick(run, p.id, day > 1 ? `plan|${day}` : 'plan', w);
     if (act === 'rest' || act === 'hustle') return { act };
     const stat = act === 'weak' ? STATK.reduce((lo, k) => (p[k] < p[lo] ? k : lo), STATK[0]) : act === 'wit' ? 'wit' : KEYSTAT[p.role],
       region = home === 'academy' ? 'open' : home,

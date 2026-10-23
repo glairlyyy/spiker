@@ -8,8 +8,8 @@
 const { load } = require('./harness');
 const [N = 12, POL = 'both'] = process.argv.slice(2).map((v, i) => (i === 0 ? +v : v));
 
-/** The place and order of `kind` ('drill' | 'work') that train body stat `stat` best per day (any stat: null), as [id, order]
- * or null — gain × the place's multiplier ÷ the days it takes (spec §4.33). */
+/** The place and order of `kind` ('drill' | 'work') that train body stat `stat` best per hour (any stat: null), as [id, order]
+ * or null — gain × the place's multiplier ÷ the hours it takes with the walk (spec §4.33, §4.41: 2 h sessions). */
 function placeFor(g, run, stat, kind = 'drill', mainOnly = false) {
   let best = null,
     bv = -1;
@@ -17,10 +17,11 @@ function placeFor(g, run, stat, kind = 'drill', mainOnly = false) {
     if (!g.SPOTS[id].kit) continue;
     for (const oid of g.City.orders(id)) {
       const O = g.DAY_ORDERS[oid];
-      if (O.kind !== kind || !g.City.can(run, id, oid).ok) continue;
+      if (O.kind !== kind || !g.City.can(run, id, oid, 2).ok) continue;
       const amt = stat ? (O.main[0] === stat ? O.main[1] : !mainOnly && O.side[0] === stat ? O.side[1] : 0) : O.main[1] + O.side[1];
       if (!amt) continue;
-      const v = (amt * g.City.mul(run, id) * g.Training.mul(run, oid, false, 1, id) + (O.pay || 0) / 10) / g.City.cost(run, id);
+      const v =
+        (amt * g.City.mul(run, id) * g.Training.mul(run, oid, false, 1, id) + (O.pay || 0) / 10) / (g.City.cost(run, id, oid, 2) + 2);
       if (v > bv) [bv, best] = [v, [id, oid]];
     }
   }
@@ -45,54 +46,87 @@ function statFor(g, run, pol) {
   if (you.wit * 50 < Math.min(...open.map(k => B[k])) - 5 || !open.length) return 'wit';
   return open.reduce((a, k) => (B[k] - (k === key ? 8 : 0) < B[a] - (a === key ? 8 : 0) ? k : a), open[0]);
 }
-/** A training week: spend the days (good: Work when money is short, Stretch when a drill can't be paid, Run the trips). */
+/**
+ * A training week (spec §4.41): each day, 2 h sessions while the stamina lasts (good: Work when money is short, Stretch when a
+ * drill can't be paid, Run the trips), then home and 8 h of sleep — the day ends; the week ends after day 7's sleep.
+ */
 function week(g, run, pol, M) {
   M.weeks++;
-  for (let guard = 0; guard < 20 && g.City.days(run) > 0; guard++) {
+  const good = pol !== 'casual',
+    low = good ? 45 : 35;
+  let today = 0,
+    day = g.City.clock(run).day;
+  for (let guard = 0; guard < 160 && !g.City.night(run); guard++) {
     obs(run, M);
-    if (pol !== 'casual' && !run.event && warMoves(g, run, M)) continue;
+    if (g.City.clock(run).day !== day) {
+      M.days++;
+      M.sessions += today;
+      today = 0;
+      day = g.City.clock(run).day;
+    }
+    if (good && !run.event && run.sta > low && warMoves(g, run, M)) continue;
     if (run.event) {
       const pre = run.event.pre;
       g.Run.log(run, g.Events.choose(run, 0));
       if (!pre) return;
       continue;
     }
+    if (run.sta < low || g.City.hour(run) >= 22) {
+      if (!sleep(g, run, M)) break;
+      continue;
+    }
     let id = null,
-      hard = false,
       opt;
-    const good = pol !== 'casual',
-      y2 = good && g.Season.year(run) > 1 && g.Secret ? secretFor(g, run, M) : null;
+    const y2 = good && g.Season.year(run) > 1 && g.Secret ? secretFor(g, run, M) : null;
     if (y2) [id, opt] = y2;
-    else if (run.sta < (good ? 45 : 35)) id = g.City.can(run, 'home').ok ? 'home' : null;
     else if (good && run.mood <= 1 && g.City.can(run, 'park').ok) id = 'park';
     else {
       const st = statFor(g, run, pol),
         pf = good && run.money < M.workBelow ? placeFor(g, run, null, 'work') : placeFor(g, run, st, 'drill', !good); // casual drills by the main gain only
       if (pf) [id, opt] = pf;
-      else if (good && g.City.can(run, 'home', 'stretch').ok) [id, opt] = ['home', 'stretch']; // broke: stretch for free
-      hard = good && run.sta > 85;
+      else if (good && g.City.can(run, 'home', 'stretch', 2).ok) [id, opt] = ['home', 'stretch']; // broke: stretch for free
     }
-    if (!id) break;
-    // good: run the trip there when the legs and the stamina allow (the same days; the ground trains)
+    if (!id) {
+      if (!sleep(g, run, M)) break;
+      continue;
+    }
+    // good: run the trip there when the legs and the stamina allow (faster; the ground trains)
     const at = g.City.at(run, id),
-      tripD = g.City.trip(run, at),
-      plan = good && tripD > 0 && !g.City.noRun(run, at) ? g.City.runPlan(run, at) : null;
-    M.tripDays += tripD;
+      tripH = g.City.trip(run, at),
+      plan = good && tripH > 1 && !g.City.noRun(run, at) ? g.City.runPlan(run, at) : null;
+    M.tripH += tripH;
     if (plan && run.sta - plan.sta > 60 && g.City.travelTo(run, at, 'run')) {
       M.runs++;
       M.runSta += plan.sta;
     }
     obs(run, M);
     const m0 = run.money,
-      line = g.City.day(run, id, hard, opt),
+      line = g.City.day(run, id, false, opt, 2),
       ok = opt && g.DAY_ORDERS[opt] ? g.DAY_ORDERS[opt].kind : 'place';
     M.cash[ok] = (M.cash[ok] || 0) + (run.money - m0);
     obs(run, M);
-    if (!line) break;
+    if (!line) {
+      if (!sleep(g, run, M)) break;
+      continue;
+    }
     if (y2) M.secret[id] = (M.secret[id] || 0) + 1;
-    if (opt && g.DAY_ORDERS[opt]) M.orders[g.DAY_ORDERS[opt].kind] = (M.orders[g.DAY_ORDERS[opt].kind] || 0) + 1;
+    if (opt && g.DAY_ORDERS[opt]) {
+      M.orders[g.DAY_ORDERS[opt].kind] = (M.orders[g.DAY_ORDERS[opt].kind] || 0) + 1;
+      today++;
+    }
     if (/failed/.test(line)) M.fails++;
+    if (/injured!/.test(line)) M.injuries++;
   }
+  M.sessions += today;
+}
+/** Home and 8 h of sleep (the day ends); false when even that can't be done. */
+function sleep(g, run, M) {
+  const d = g.City.clock(run).day,
+    line = g.City.day(run, 'home', false, null, 8);
+  if (!line) return false;
+  M.sleepH += 8;
+  M.nights++;
+  return g.City.clock(run).day !== d;
 }
 /** Money seen between two looks: income and spending (measurement). */
 function obs(run, M) {
@@ -177,7 +211,12 @@ function play(seed, pol) {
       secret: {},
       fails: 0,
       runs: 0,
-      tripDays: 0,
+      tripH: 0,
+      days: 0,
+      sessions: 0,
+      sleepH: 0,
+      nights: 0,
+      injuries: 0,
       weeks: 0,
       orders: {},
       workBelow: 60, // good works a day when money is under this
@@ -346,7 +385,10 @@ function play(seed, pol) {
     joined: M.joined,
     fails: M.fails,
     runs: M.runs,
-    tripDays: M.tripDays / Math.max(1, M.weeks),
+    tripH: M.tripH / Math.max(1, M.weeks),
+    perDay: M.sessions / Math.max(1, M.days),
+    sleepH: M.sleepH / Math.max(1, M.nights),
+    injuries: M.injuries,
     orders: M.orders,
     secret: M.secret,
     fans: run.fans,
@@ -477,7 +519,9 @@ for (const pol of POL === 'both' ? ['casual', 'good'] : [POL]) {
   console.log(
     `  money a run  in ${f1(avg(R.map(r => r.cashIn)))} · out ${f1(avg(R.map(r => r.cashOut)))} · by day order ${kinds.map(k => `${k} ${f1(avg(R.map(r => r.cash[k] || 0)))}`).join(' · ')}`
   );
-  console.log(`  trip days a training week ${f1(avg(R.map(r => r.tripDays)))}`);
+  console.log(
+    `  walk hours a training week ${f1(avg(R.map(r => r.tripH)))} · sessions a day ${f1(avg(R.map(r => r.perDay)))} · sleep ${f1(avg(R.map(r => r.sleepH)))} h a night · injuries ${f1(avg(R.map(r => r.injuries)))} a run`
+  );
   console.log(`  run trips ${f1(avg(R.map(r => r.runs)))} a run · stamina spent on them ${f1(avg(R.map(r => r.runSta)))}`);
   if (process.env.CAREER_SAMPLE && pol === (POL === 'both' ? 'good' : POL))
     require('fs').writeFileSync(

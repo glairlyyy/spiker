@@ -141,8 +141,6 @@ const Secret = {
       S.letterW = Season.wk(run);
       out.push(SECRET_LINES.letters[k].replace('{stat}', STATNAME[low].toLowerCase()), Run.bump(run, 'mood', 1));
     } else if (id === 'onsen') {
-      City.spend(run, (s.days || 1) - 1);
-      City.logDays(run, 0, { k: 'rest', label: 'Onsen', at: s.name });
       run.sta = run.staMax;
       out.push(`stamina full`, Run.bump(run, 'mood', MOODS.length));
       if (run.injury) {

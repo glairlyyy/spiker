@@ -80,7 +80,7 @@ const step = async (name, fn) => {
       RUN.mode.story = false;
       RUN.week = 6;
       RUN.event = null;
-      RUN.days = 7;
+      RUN.clock = City.freshClock();
       RUN.money = 3000;
       renderCareer();
     });
@@ -186,14 +186,14 @@ const step = async (name, fn) => {
     await pg.mouse.move(2, 2);
     // the week spent: night falls on the map (the sun down, the night lights on)
     await ev(() => {
-      RUN.days = 0;
+      RUN.clock.day = 8;
       renderCareer();
       MapView.m3.setClock(MapModel.weekTime(RUN) - 0.1);
     });
     await pg.waitForFunction(() => MapView.m3.clock().lit > 0.6, null, { timeout: 30000 });
     const n = await ev(() => MapView.m3.info().night);
     await ev(() => {
-      RUN.days = 7;
+      RUN.clock = City.freshClock();
       RUN.dayLog = [];
       renderCareer();
     });
@@ -310,7 +310,7 @@ const step = async (name, fn) => {
   await step('street level (T-336a): zoom down at the gym, walk with a click, zoom back out', async () => {
     const back = await ev(() => City.pos(RUN).slice()); // (put back at the end: the road step walks from there)
     const at = await ev(() => {
-      RUN.days = 7;
+      RUN.clock = City.freshClock();
       RUN.dayLog = [];
       CW.spot = null;
       City.moveTo(RUN, ROADS.nodes.jW1.slice()); // the junction on the main road by the Dynasty Strength Center
@@ -360,7 +360,7 @@ const step = async (name, fn) => {
   await step('the road (T-333): a stop on the way — the card over the map, Space walks on', async () => {
     await pg.waitForFunction(() => typeof ROAD !== 'undefined' && ROAD.mod && MapView.m3, null, { timeout: 60000 });
     const c = await ev(() => {
-      RUN.days = 7;
+      RUN.clock = City.freshClock();
       RUN.event = null;
       for (const id of Object.keys(SPOTS)) City.reveal(RUN, City.at(RUN, id));
       for (const h of CITY.hq) City.reveal(RUN, h);
@@ -393,7 +393,7 @@ const step = async (name, fn) => {
   });
   await step('effort (T-335): a short cut on the place card (R)', async () => {
     const alt = await ev(() => {
-      RUN.days = 7;
+      RUN.clock = City.freshClock();
       for (const id of Object.keys(SPOTS)) {
         CW.spot = id;
         roadSync(RUN);
@@ -422,7 +422,7 @@ const step = async (name, fn) => {
   await step('street level inside the gym (T-336b): the station prompt shows, its key F runs the day', async () => {
     await pg.waitForFunction(() => MapView.m3 && MapView.m3.interiors && MapView.m3.interiors(), null, { timeout: 300000 });
     await ev(() => {
-      RUN.days = 7;
+      RUN.clock = City.freshClock();
       RUN.event = null;
       City.reveal(RUN, SPOTS.weiPower.at);
       Encounter.setPref('never'); // (no road stop on the way in)
@@ -483,7 +483,7 @@ const step = async (name, fn) => {
   });
   await step('played court match → no prompts in a rally → skip → result card', async () => {
     await ev(() => {
-      RUN.days = 7;
+      RUN.clock = City.freshClock();
       RUN.injury = null;
       RUN.event = null;
       mapCourt('arena', 'open', false);

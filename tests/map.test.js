@@ -538,41 +538,35 @@ test('map: people you can see — plans, fog, cap, groups, deterministic (spec �
   g.RNG.next = next0;
 });
 
-test('map: the day clock — dawn to night through a week, the walk and the order (spec §4.37 2, T-332)', () => {
+test('map: the day clock — the real hour (spec §4.41), the walk and the order, a sleep through the night (T-332, T-352)', () => {
   const g = load(14),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Clock', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
-  run.days = g.WEEK_DAYS;
+  run.event = null;
+  run.mode.story = false;
+  run.clock = g.City.freshClock();
   run.dayLog = [];
-  eq(g.MapModel.clock(run), g.CLOCK.dawn, 'a fresh week: dawn');
+  eq(g.MapModel.clock(run), +(g.DAY.wake / 24).toFixed(4), 'a fresh week: 07:00');
   const seq = [g.MapModel.weekTime(run)];
   for (let d = 0; d < g.WEEK_DAYS; d++) {
-    g.City.spend(run, 1);
-    g.City.logDays(run, 0, { k: 'rest', label: 'Rest' });
+    const far = 'acaGym';
+    run.sta = run.staMax;
+    assert(g.City.day(run, far, false, null, 2), `day ${d + 1}: a session`);
     for (const k of [0, 0.5, 1]) seq.push(g.MapModel.weekTime(run, 'walk', k));
     for (const k of [0, 0.5, 1]) seq.push(g.MapModel.weekTime(run, 'order', k));
     seq.push(g.MapModel.weekTime(run));
-    const c = [g.MapModel.clock(run, 'walk', 0.5), g.MapModel.clock(run, 'order', 0.5)];
-    assert(c[0] > 0.25 && c[0] < 0.5 && c[1] >= 0.5 && c[1] < 0.75, `day ${d + 1}: the walk in the morning, the order in the afternoon`);
+    const o = g.MapModel.clock(run, 'order', 1);
+    eq(o, +((g.City.hour(run) % 24) / 24).toFixed(4), `day ${d + 1}: the order ends at the hour now`);
+    assert(g.City.day(run, 'home', false, null, 8), 'home to sleep');
+    seq.push(g.MapModel.weekTime(run, 'order', 0.5), g.MapModel.weekTime(run));
   }
   assert(
-    seq.every((w, i) => !i || w >= seq[i - 1]),
+    seq.every((w, i) => !i || w >= seq[i - 1] - 1e-9),
     `monotonic through the week: ${seq.map(w => w.toFixed(2)).join(' ')}`
   );
-  assert(g.City.night(run) && g.MapModel.clock(run) === g.CLOCK.night, 'night on the last day');
-  // a 3-day trip: its walk runs through two nights, the order on the last day
-  run.days = g.WEEK_DAYS;
-  run.dayLog = [];
-  g.City.spend(run, 3);
-  g.City.logDays(run, 2, { k: 'train', label: 'Drill' });
-  eq(g.MapModel.span(run), 3, 'the last action took three days');
-  eq(
-    +(g.MapModel.weekTime(run, 'walk', 1) - g.MapModel.weekTime(run, 'walk', 0)).toFixed(4),
-    +(2 + g.CLOCK.walk[1] - g.CLOCK.walk[0]).toFixed(4),
-    'two nights on the road'
-  );
-  eq(Math.floor(g.MapModel.weekTime(run, 'order', 0)), 2, 'the order on day 3');
+  assert(g.City.night(run), 'the week spent after the 7th sleep');
   const T = g.MapModel.time(run);
   assert(T.idle === g.MapModel.weekTime(run) && T.keys.length > 4, 'the model carries the times and the light keys');
+  assert(T.order[1] > T.order[0], 'the last sleep runs through the night');
   assert(T.keys.every((k, i) => !i || k.t > T.keys[i - 1].t) && T.keys.some(k => k.lit === 1), 'keys in order, night lit');
 });
 
@@ -596,35 +590,39 @@ test('orders: facilities = kit — every training place ≥ 2 orders, Work pays 
   // Work pays; a drill costs; Stretch is free and works at any point
   run.money = 100;
   run.sta = 100;
-  run.days = 7;
+  run.clock = g.City.freshClock();
   run.pos = g.City.at(run, 'harbor').slice();
   const m0 = run.money,
     you = g.Run.you(run),
     str0 = you.body.str;
-  assert(g.City.day(run, 'harbor', false, 'haul'), 'hauling crates');
-  eq(run.money, m0 + g.DAY_ORDERS.haul.pay, 'Work pays');
+  assert(g.City.day(run, 'harbor', false, 'haul', 2), 'hauling crates');
+  eq(run.money, m0 + g.DAY_ORDERS.haul.pay, 'Work pays (2 h: an old day’s pay)');
   assert(you.body.str > str0, 'and trains the body');
-  eq(run.uses.harbor, 1, 'the facility counts per place');
+  eq(run.uses.harbor, g.HOURS.unit, 'the facility counts per place (2 h = HOURS.unit of an old day session)');
   const m1 = run.money;
-  assert(g.City.day(run, 'harbor', false, 'heavy'), 'heavy sets');
-  eq(run.money, m1 - g.City.price(run, 'harbor', 'heavy'), 'a drill costs');
-  eq(run.uses.harbor, 2, 'any order there levels the place');
+  run.sta = run.staMax;
+  assert(g.City.day(run, 'harbor', false, 'heavy', 3), 'heavy sets, 3 h');
+  eq(run.money, m1 - g.City.price(run, 'harbor', 'heavy', 3), 'a drill costs');
+  eq(run.uses.harbor, +(g.HOURS.unit + g.Training.units(3)).toFixed(2), 'any order there levels the place, by its hours');
   assert(!g.City.can(run, 'harbor', 'mobility').ok, 'no order the kit does not bring');
   run.uses.harbor = 26;
   eq(g.Training.facility(run, 'harbor'), 4, 'Lv 5 after 26 days at the place');
   eq(g.Training.facility(run, 'stone'), 0, 'another weights place stays Lv 1');
   eq(g.Training.facility(run, 'power'), 4, 'a training key reads its best place (the dossier)');
-  run.days = 7;
+  run.clock = g.City.freshClock();
   const p = g.City.at(run, 'trail'),
     flex0 = you.body.flex,
     d0 = g.City.days(run),
     tr = g.City.trip(run, p);
   assert(g.City.pointCan(run, p).ok, 'Stretch at a map point');
   assert(g.City.pointDay(run, p), 'stretched up in the hills');
-  assert(you.body.flex > flex0 && g.City.days(run) === d0 - tr - 1, 'Flexibility up, the trip + a day spent');
-  eq(run.money, m1 - g.City.price(run, 'harbor', 'heavy'), 'Stretch is free');
-  run.days = 7; // (the walk home from the hills: up to TRIP_MAX days on the island × 2)
-  assert(g.City.day(run, 'home', false, 'stretch') && run.dayLog[run.dayLog.length - 1].label === 'Stretch', 'Stretch at home');
+  assert(
+    you.body.flex > flex0 && g.City.days(run) === d0 && g.City.hour(run) === g.DAY.wake + tr + 1,
+    'Flexibility up, the walk + 1 h spent'
+  );
+  eq(run.money, m1 - g.City.price(run, 'harbor', 'heavy', 3), 'Stretch is free');
+  run.clock = g.City.freshClock();
+  assert(g.City.day(run, 'home', false, 'stretch', 2) && run.clock.log[run.clock.log.length - 1].label === 'Stretch', 'Stretch at home');
 });
 
 test('map: a training place’s pin shows 1–3 body glyphs of what it trains best; its landmark carries its kit (T-310)', () => {
@@ -667,12 +665,18 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   }
   for (const k of g.TRAINK) assert(g.City.spotsFor(k).length >= 2, `several places for ${k} training`);
   // prices follow the regions; Wei may be overhyped, Shu may be a gem, others as advertised
+  const u2 = g.Training.units(2);
   eq(
     g.City.price(run, 'weiPower'),
-    Math.round(g.TRAIN_FEE * g.DAY_ORDERS.heavy.price * 2),
-    'Wei costs double (the lead drill, Heavy sets)'
+    Math.round(g.TRAIN_FEE * g.DAY_ORDERS.heavy.price * 2 * u2),
+    'Wei costs double (the lead drill, Heavy sets, 2 h)'
   );
-  eq(g.City.price(run, 'stone'), Math.round((g.TRAIN_FEE * g.DAY_ORDERS.heavy.price) / 2), 'Shu costs half');
+  eq(g.City.price(run, 'stone'), Math.round((g.TRAIN_FEE * g.DAY_ORDERS.heavy.price * u2) / 2), 'Shu costs half');
+  eq(
+    g.City.price(run, 'weiPower', 'heavy', 4),
+    Math.round(g.TRAIN_FEE * g.DAY_ORDERS.heavy.price * 2 * g.Training.units(4)),
+    '4 h cost twice 2 h'
+  );
   for (const id of Object.keys(run.spotQ)) {
     const Q = run.spotQ[id],
       r = g.SPOTS[id].region;
@@ -681,47 +685,50 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
     else assert(Q.known, `${id} known`);
   }
   eq(g.City.days(run), g.WEEK_DAYS, 'a week starts with 7 days');
-  // travel by distance: close by is free, far is up to TRIP_MAX days (the island × 2, T-350: ~twice the days of the 2.25 island)
+  eq(g.City.hour(run), g.DAY.wake, '…at 07:00');
+  // travel by distance (spec §4.41): the route ÷ WALK_PACE, 1 h at least; an old trip day ≈ 2 h
   run.housing = 'studio';
-  eq(g.City.trip(run, g.City.at(run, 'pier')), 0, 'the pier is by the airport');
-  eq(g.City.trip(run, g.City.at(run, 'sand')), 3, 'the sand courts are down the coast (Wu spreads thin)');
-  eq(g.City.trip(run, g.City.at(run, 'harbor')), 4, 'the far east coast: the coast road makes it 4 days (T-048)');
-  eq(g.City.trip(run, g.City.at(run, 'dunes')), 4, 'the dunes past the harbor: 4 days by the Academy avenue and the overpass');
-  eq(g.TRIP_MAX, 5, 'the trip cap');
+  const H = id => g.City.trip(run, g.City.at(run, id));
+  assert(H('pier') >= 1 && H('pier') <= 2, `the pier is by the airport (${H('pier')} h)`);
+  assert(H('sand') > H('pier') && H('harbor') > H('sand'), `the coast spreads thin: sand ${H('sand')} h, the harbor ${H('harbor')} h`);
   const at0 = run.pos;
   run.pos = g.SPOTS.trail.at;
-  eq(g.City.trip(run, g.City.at(run, 'dunes')), g.TRIP_MAX, 'the mountain trail to the dunes: the longest trip');
+  assert(H('dunes') >= 8, `the mountain trail to the dunes: most of a day (${H('dunes')} h)`);
+  eq(g.City.trip(run, run.pos), 0, 'standing there: no walk');
   run.pos = at0;
-  eq(g.City.trip(run, [4000, 4000]), g.TRIP_MAX, 'never more than TRIP_MAX days');
   const m0 = run.money,
     sp0 = run.sp,
-    cs = g.City.cost(run, 'sand');
-  assert(g.City.day(run, 'sand', false), 'train on the sand');
-  eq(run.money, m0 - g.City.price(run, 'sand'), 'the session is paid');
+    cs = g.City.cost(run, 'sand', null, 2);
+  assert(g.City.day(run, 'sand', false, null, 2), 'train on the sand');
+  eq(run.money, m0 - g.City.price(run, 'sand', null, 2), 'the session is paid');
   assert(run.sp > sp0, 'sand builds technique (skill points)');
-  eq(g.City.days(run), 7 - cs, 'the trip + the session');
+  eq(g.City.hour(run), g.DAY.wake + cs, 'the walk + the session');
   run.event = null;
   const mate = g.Run.mates(run)[0].id,
     b0 = g.Run.you(run).bond[mate] || 0,
     cb = g.City.cost(run, 'bonfire');
   assert(g.City.day(run, 'bonfire'), 'night out at the bonfire');
   assert((g.Run.you(run).bond[mate] || 0) > b0, 'the night out raises bond');
-  eq(g.City.days(run), 7 - cs - cb, 'the trip + the night');
+  eq(g.City.hour(run), g.DAY.wake + cs + cb, 'the walk + the night out');
   run.money = 500;
-  run.days = 7;
-  const ct = g.City.cost(run, 'trail');
-  assert(ct >= 3, 'the highlands are far');
-  assert(g.City.day(run, 'trail', false) && g.City.loc(run) === 'shu' && g.City.days(run) === 7 - ct, 'went up and trained');
+  run.clock = g.City.freshClock();
+  const ct = g.City.cost(run, 'trail', null, 2);
+  assert(ct >= 6, 'the highlands are far');
+  assert(
+    g.City.day(run, 'trail', false, null, 2) && g.City.loc(run) === 'shu' && g.City.hour(run) === g.DAY.wake + ct,
+    'went up and trained'
+  );
   assert(run.spotQ.trail.known, 'training there shows what the place is really like');
-  const ch = g.City.cost(run, 'home');
   run.event = null; // (a bond may have reached the gift chance: spec §4.35)
-  run.days = ch - 1;
-  assert(!g.City.can(run, 'home').ok && g.City.can(run, 'home').why.includes(`only ${ch - 1} left`), 'nothing may spill into next week');
-  run.days = g.City.cost(run, 'hotelShu');
+  run.clock.hour = g.DAY.late;
+  assert(!g.City.can(run, 'stone').ok && /past 02:00/.test(g.City.can(run, 'stone').why), 'past 02:00 only sleep is left');
+  assert(g.City.can(run, 'hotelShu', null, 8).ok, '…which still works');
+  run.clock = g.City.freshClock();
+  run.clock.day = g.WEEK_DAYS;
   const m1 = run.money;
-  assert(g.City.day(run, 'hotelShu', false), 'rest at the lodge');
+  assert(g.City.day(run, 'hotelShu', false, null, 8), 'sleep at the lodge');
   eq(run.money, m1 - g.City.price(run, 'hotelShu'), 'the lodge costs a night');
-  assert(g.City.night(run), 'the last day: night falls');
+  assert(g.City.night(run), 'slept through day 7: the week is spent');
   assert(!g.City.can(run, 'stone').ok && g.City.day(run, 'stone', false) === '', 'no days left');
   const w0 = run.week;
   g.Run.endWeek(run);
@@ -732,8 +739,9 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   assert(g.City.seen(run, g.City.at(run, 'trail')) && !g.City.seen(run, g.City.at(run, 'weiSpeed')), 'dark where you have not been');
   assert(!g.City.travelTo(run, [5, 5]), 'only on land');
   const sc = p => p.map(v => v * g.MAP_SCALE),
-    td = g.City.travelDays(run, sc([700, 300]));
-  assert(g.City.travelTo(run, sc([700, 300])) && g.City.days(run) === 7 - td && g.City.loc(run) === 'wei', 'walked into the city');
+    td = g.City.travelDays(run, sc([700, 300])),
+    h0 = g.City.hour(run);
+  assert(g.City.travelTo(run, sc([700, 300])) && g.City.hour(run) === h0 + td && g.City.loc(run) === 'wei', 'walked into the city');
   assert(g.City.seen(run, sc([720, 320])), 'the fog lifts around you');
   eq(g.City.regionAt(sc([540, 500])), 'open', 'Central Academy belongs to nobody');
   eq(g.City.regionAt(sc([815, 470])), 'outlaws', 'the overpass is the Outlaws');
@@ -748,13 +756,13 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   // street hustle keeps values sane
   for (let i = 0; i < 20; i++) {
     run.event = null;
-    run.days = 7;
+    run.clock = g.City.freshClock();
     run.money = i % 3 ? 100 : 5;
     assert(g.City.day(run, 'street'), 'street');
     assert(run.money >= 0 && run.sta >= 0, 'street keeps money and stamina ≥ 0');
   }
   // a street battle: fight for one side — a real match; the other side always holds it against you
-  run.days = 7;
+  run.clock = g.City.freshClock();
   run.pos = g.CITY.airport.slice();
   const tg = g.Front.site(run, 'wei', 'wu');
   run.clash = { tile: tg.tile, from: tg.from, att: 'wei', def: 'wu', seen: false, done: false };
@@ -764,7 +772,7 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
     clashSp0 = run.sp;
   for (const k of g.STATK) g.Run.you(run)[k] = 70; // (a new player starts at 1: give you a normal player's line so the match XP shows)
   const fx = g.Fight.clash(run, c.a);
-  assert(fx && !run.clash.done && run.days === 7, 'nothing is spent until the match ends');
+  assert(fx && !run.clash.done && g.City.hour(run) === g.DAY.wake, 'nothing is spent until the match ends');
   assert([...fx.a.P, ...fx.a.bench].includes(g.Run.you(run)) && fx.a.P.includes(g.Run.you(run)), 'you are on court for your side');
   const m = g.newMatch(fx.a, fx.b, false);
   while (!m.over) g.playRally(m);
@@ -773,25 +781,25 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   assert(run.clash.done && !g.Fight.clashSite(run), 'fought');
   eq(g.City.rep(run, c.b), r0 + g.CLASH.other, 'the other side remembers');
   assert([g.CLASH.win, g.CLASH.lose].includes(g.City.rep(run, c.a)), 'standing with your side moves');
-  eq(g.City.days(run), 7 - cc, 'the trip + a day');
+  eq(g.City.hour(run), g.DAY.wake + cc, 'the walk + its hours');
   assert(g.Run.you(run).team === g.Run.myTeam(run) && clashSp0 === run.sp, 'nobody stays lent; a street battle gives no skill points');
   g.Run.endWeek(run);
   assert(!run.clash || !run.clash.done, 'the battle is gone at the week end');
-  run.days = 7;
+  run.clock = g.City.freshClock();
   const ti = g.FACTIONS.findIndex((f, i) => i !== open && f.region === 'wu');
   run.pos = g.CITY.hq[ti].slice();
   assert(g.City.scout(run, ti) && g.City.scouted(run, ti), 'scouted');
-  eq(g.City.days(run), 6, 'scouting at the HQ takes a day');
+  eq(g.City.hour(run), g.DAY.wake + g.DAY.act, 'scouting at the HQ takes DAY.act hours');
   g.Run.save(run);
   const back = g.Run.load();
   assert(
     back &&
-      back.days === 6 &&
+      back.clock.hour === run.clock.hour &&
       back.pos.join() === run.pos.join() &&
       g.City.scouted(back, ti) &&
       back.spotQ.trail.known &&
       g.City.loc(back) === 'wu',
-    'days, scouting, places and location saved'
+    'the clock, scouting, places and location saved'
   );
 });
 
@@ -799,7 +807,7 @@ test('career: facility access — grudge, owner condition, members and neutral g
   const g = load(78),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Gate', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
   run.event = null;
-  run.days = 7;
+  run.clock = g.City.freshClock();
   run.money = 500;
   const can = id => g.City.can(run, id);
   assert(can('weiPower').ok, 'a Wei place is open at standing 0');
@@ -824,7 +832,7 @@ test('career: faction dossier — state, places, roster gate', () => {
   const g = load(94),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Dossier', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
   run.event = null;
-  run.days = 7;
+  run.clock = g.City.freshClock();
   let d = g.Dossier.build(run, 'wei');
   eq(d.state, 'stable', 'a fresh Wei is stable');
   assert(d.places.length >= 4 && d.places.every(p => p.access && typeof p.price === 'number'), 'Wei has facilities with price and access');

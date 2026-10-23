@@ -390,6 +390,7 @@ const Cup = {
       sc = m.setScores[0],
       score = `${sc[0]}-${sc[1]}`,
       opp = m.t[1];
+    City.matchPlayed(run); // 13:00 at the venue (spec §4.41)
     Cup.record(run, m, kind, kind === 'cup' ? { round: bm.round } : Season.rematch(run) ? { round: 'Rematch' } : {});
     Cup.rivalMet(run, m, kind);
     Rel.afterMatch(run, m, 0);
@@ -441,7 +442,10 @@ const Cup = {
       bm.res = bm.a === me ? [sc[0], sc[1]] : [sc[1], sc[0]];
       if (!win) Cup.close(run, bm.round);
       else if (bm.round === 'Final') Cup.close(run, 'Champion');
-      else Run.save(run);
+      else {
+        City.nextMorning(run); // the next round: tomorrow at 13:00
+        Run.save(run);
+      }
     }
     return line;
   },

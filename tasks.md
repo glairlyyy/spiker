@@ -36,7 +36,7 @@ repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 **The day in hours (owner, 2026-10-24, spec §4.41): T-352 → T-353, one agent, after the fixes agent (arrive inside / net post /
 lightning) lands — both touch js/ui/career-map.js.**
 
-### [ ] T-352: The day in hours — rules and balance
+### [x] T-352: The day in hours — rules and balance
 Spec: §4.41 (§4.5, §4.33, §4.37 day clock, §4.40)          Goldens: unchanged (career tests re-seed — say why)          Save: RUN_VERSION 25 (the clock)
 Goal: actions cost hours (training 2–4 h, travel ≥ 1 h, sleep 4 / 6 / 8 h); the day ends when you sleep; matches at fixed hours;
 NPCs one plan a day; balance kept.
@@ -49,7 +49,7 @@ Steps: `run.clock` (day, hour); every action's hours and its per-hour gain / sta
 day 7's sleep; the career bot plays the new day (a sensible routine: train, travel, sleep 8 h).
 Accept: tests for each rule; `npm test`, lint pass; `npm run career -- 20 both` before / after (ratings, Cups, injuries, sleep
 hours a night, sessions a day) in the Result, ratings within ±2.
-Result:
+Result: `run.clock` { day, hour, log (today's blocks), last (the map's), met } — RUN_VERSION 25 (bumped in js/career/run.js), `run.days` dropped, `run.dayLog` = the slept-through days. Hours (HOURS, DAY in js/data/city.js): drills / Work 2–4 h, Stretch 1–3 h; 2 h = 0.32 of an old day session (gains, price, pay, skill pts, facility uses, Drive linear in the hours); stamina × 1 / 1.6 / 2.3 for 2 / 3 / 4 h × 2.6; fail + 0 / 4 / 10 %, a failed session's injury + 0 / 15 / 30 % on top of the low-stamina 50 %; outings, scouts and the matches you choose DAY.act 2 h, the onsen 6 h, the drone 1 h; the walk = the route ÷ WALK_PACE (an old trip day = 2 h), 1 h floor, NEAR_R / TRIP_MAX gone; a Run ÷ 1.5 the hours, its gains × unit × 0.4, stamina × 2.6 per old trip day; Sleep (home / a hotel) 4 / 6 / 8 h = 45 / 75 / 100 % of the missing stamina × the housing's rest (4 h: mood −1), ends the day, wake = bedtime + h; nothing starts past 02:00 and an action that ends past it nods you off 4 h where you stand (× 0.6, mood −1); a match you are made to play: actions must end by 13:00 − the walk to its venue, Cup.result plays it 13:00–15:00 at the venue (`City.matchPlayed`; a Cup round → the next morning); day 7's sleep spends the week; NPCs `People.plan(…, day)` (day 1 = the week's plan, growth unchanged); the short cut (T-335) may be 1 h longer on foot; a mate's 'trained' bond once a day. Career bot 20 both before → after (bot: 2 h sessions while stamina > 45 / 35, Run trips > 1 h, home and 8 h of sleep; no Hard): good Y1 76.5 → 77.2, Y2 91.8 → 93.5, Cup match wins 53 / 39 → 59 / 68 %, Cups 3 / 20 → 9 / 20 champion, injuries 0.0 → 0.3 a run, 0.4 → 1.7 sessions a day (2 h each), 8 h sleep a night, 21.6 h walked a week; casual Y1 69.3 → 65.3, Y2 85.7 → 79.8 (Flexibility 57 / 76 → 43 / 58: its only Flexibility is Laps' side gain, which its per-hour pick visits less), injuries 3.2 → 3.4, 0.6 → 1.8 sessions a day. Tests: tests/day.test.js (8, new: hours / curve / injury, walk, sleep 4 / 6 / 8, 02:00, day 7, 13:00 match, NPC day plans, save) + career / map / encounter / war / people / gifts / court / ui-smoke rewritten in hours — no re-seeds; goldens unchanged; npm test 262/262, lint. Unlisted: js/career/secret.js (the onsen's extra day gone), story.js (Story.clock counts today's blocks), tests/run.js (day.test).
 
 ### [ ] T-353: The day in hours — on screen
 Spec: §4.41 On screen, §9, §10.2          Goldens: unchanged          Save: no change
