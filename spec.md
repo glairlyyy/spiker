@@ -1764,8 +1764,9 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Sleep** at home (or a hotel away from home): **4, 6 or 8 h** — never less than 4. 8 h brings stamina back to full (an
     injury still heals on its own clock), 6 h ~75 % of what is missing, 4 h ~45 % and a mood dip; sleeping is what ends the
     day — you wake and the next day starts. Up past 02:00 without sleeping: you nod off where you are (4 h, mood down).
-  - **Fixed hours**: an evaluation / Cup match, a street battle or a court match happens at its hour (shown in the week rail);
-    you must be there by then (the walk counts). The week is still 7 days; only you end it, by sleeping through day 7.
+  - **Fixed hours**: a match you are made to play (an evaluation, a Cup / league match, the rematch) always starts at **13:00**
+    (owner, 2026-10-24) — you must be there by then (the walk counts); the morning is yours. Street battles and court matches
+    you choose happen when you go. All shown in the week rail. The week is still 7 days; only you end it, by sleeping through day 7.
   - **NPCs** keep one plan a day (as today); each new day they pick a new one. The life figures (§4.37) stand at their plan's
     place during their day and at home at night.
   - **Balance** (T-352): a good player's year-1 / year-2 ratings within ±2 of today's (`npm run career`); stamina and injury are
