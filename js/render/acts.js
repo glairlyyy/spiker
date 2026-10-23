@@ -311,10 +311,12 @@ const ACTS_UI = {
   turn(a, d, bs) {
     if (typeof cardsTurnShow === 'function') cardsTurnShow(a);
   },
-  /** A tactic card burns (spec §2.33): its slot empties, a tag over the court. */
-  cardspent(a, d, bs) {
-    if (typeof cardsSpentShow === 'function') cardsSpentShow(a);
-  }
+  /** A card is played (spec §2.37): { side, id, by, op, caught? } — a tag over the court for now (T-346 draws it). */
+  card(a, d, bs) {
+    if (typeof cardsPlayShow === 'function') cardsPlayShow(a);
+  },
+  /** An active card ends (spec §2.37): { side, id, by, why: 'done' | 'sprung' } — nothing drawn yet (T-346). */
+  cardend(a, d, bs) {}
 };
 /** Players on court: substitutions and display state (poses, spike style, set direction). */
 const ACTS_ROSTER = {

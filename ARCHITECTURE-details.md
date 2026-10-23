@@ -1262,18 +1262,61 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   Step: from VFX.leap.from), actors3d.mjs (eye trails; hand-trail ink), director.js `ballStyle` (ink by `A.trailBy`, set in
   startBall from `A.ballBy`).
 
-## Tactic cards and turns (spec §2.32–§2.33, T-295)
+## The deck (spec §2.32, §2.37, T-345)
 
-- **Compile, don't fork**: a card is data (`CARDS`); `cardApply` turns the slotted set into the existing levers, so the rally
-  code only gained `cardForce` checks at the R()-gated technique hooks (delay, freak, slide, sync, pipe combo; Cut Shot adds
-  +0.25 to its chance) and `cardBuff` inside `stageBuff`. A forced technique skips its R() draw; no card → the old draw.
-- **Orders**: a card's role orders go into `m.ord` like the board's, listed in `C.cord`; the next apply clears only those, and a
-  card never overwrites an order already there (a board / test order stands). Stubborn players get none.
-- **Plans**: `m.planFixed[side]` (opts.plan: match prep's old plan tiles, tests) keeps the cards off that side's plan.
-- **Tally**: `rallyStart` notes `m.att0` (attacks so far) and `m.srv0`, `serveWalk` the server (`m.srvP0`); `cardTally(m, w)` in
-  `end` after pointMomentum reads them. A combo shares one `net` key (the combo id).
-- **Turns**: `cardTurn` after the dead-ball subs: every TURN.pts points played or `m.turnNow` (a spent card); a timeout refills
-  the calling side (`timeout`). `m.turnLog` keeps each turn's slots.
+Data `js/data/cards.js`: `DECK` { size 12, hand 5, basics, op (role → OP card), books (team style → playbook), book [2, 3] by
+capIQ ≥ iq, lv (holder level ref / clamp), strong (cd ≥ → saved by the captain) }; `CARDS[id]` = { name, zone atk|def|op, kind
+basic|play|once|trap|op, src base|book|tech|trait|op|duo, dur, per 'pts'|'srv', cd (Infinity = once a match), cost / after
+{ who holder|captain|court, bar sta|hp|mor, amt }, buff, plan, tac, ord/who, force, on, grp, when, tally, desc } — dur / cd / cost
+defaulted by kind at load; `CARD_EDGE` / `EDGE` (fit / counter edges, T-299); `CARD_AI` (the captain); `TURN.pts` 6.
+
+**State** `m.deck[i]` (null with `opts.cards === false`):
+- `by` 'you' | 'ai' (who plays the hand), `me` (career non-captain: your id — the cards you bring are yours, `Cards.mine`)
+- `size` hand places (5; a Broken war unit fewer), `hand` [id | null] (null = a gap until the next turn), `draw` [ids, top first],
+  `disc` [{ id, cd }] (cd = points left cooling; 0 → shuffled back when the draw runs out), `used` [OP ids gone for the match]
+- `act` [{ id, left, per, by, pids, who, lv, at, pin? }] — active cards: `left` points (serves of this side for per 'srv'), `by`
+  the player who played it (holder / captain), `pids` its holders (`self` cards: only `by`), `who` the payer ids, `lv` holder
+  level, `at` score when played
+- `pt` points played at its last play (one play a side a point), `log` [{ k: play|discard|end|caught|sprung, id, at, by? }],
+  `played` { id: n }, `stat` { id: { fit|mis|ctr: [rallies, won] } }; internals `st`, `ek`, `bk`, `force`, `buff`, `cord`.
+- Match: `m.turnN`, `m.turnAt`, `m.turnLog` [{ n, at, hands }], `m.cardQ` (acts waiting for the next serve).
+
+**API** (`Cards`, js/engine/cards.js; every call no draws except the reshuffle in `refill`):
+- `Cards.can(m, i, h)` → null (playable) or why not: 'off' | 'gap' | 'point' (this side played this point) | 'active' (same card
+  active) | 'clash' (an active card of its `grp`) | 'holder' (none on court). Grey a card on it; the reason is the tooltip.
+- `Cards.play(m, i, h)` → the `card` act or null: pays `cost` (bars may go into Tiring / Spent / Shaken: allowed), leaves the gap,
+  activates for `dur` from the next serve (dur 0: acts at once, to the discard pile), an armed trap of theirs catches it.
+- `Cards.discard(m, i, h)` → bool: to the discard pile cooling (OP: used), gap kept.
+- `Cards.capPlay(m, i)` → hand index or −1 (the captain's pick; never on a `by: 'you'` side, never a `mine` card). Fits and
+  `afford` (bars after cost ≥ CARD_AI.floor); strong / OP cards wait for `keyMoment` (set point either way, their Fever,
+  CARD_AI.down+ down from CARD_AI.late points, their CARD_AI.run streak) while capIQ ≥ wait / waitOp. `Cards.serve(m)` runs it for
+  both sides before every serve (rallyStart), so a UI play between points must happen before the next `playRally`.
+- For the hand bar's cost → result and chips: `Cards.payers(m, i, id[, 'after'])`, `Cards.afford`, `Cards.fits(m, i, id)`
+  (Fits now — your reads only), `Cards.level(m, i, id)` (× on a technique's buffs / edges), `Cards.holders`, `Cards.strong`,
+  `Cards.active(m, i)` (the scoreboard's active cards with `left`), `D.disc[].cd` (cooling counters), `D.draw.length` /
+  `D.disc.length` (pile counts), `cardCost(id)` (match-cards.js: the words).
+- Engine hooks: `Cards.point(m, w)` (end(): tally, discard pile cools, active cards count down → `cardend` acts and after-costs),
+  `Cards.floor` / `Cards.hold` (INZONE!!), `cardTurn` (every TURN.pts points: `capClear` drops dead cards held a whole turn, gaps
+  refill), `Cards.extra(m, i)` (a timeout: a turn for that side), `Cards.duo(m, i)` (career setup: duo cards replace Basics).
+
+**Acts** (handlers in render/acts.js `ACTS_UI`; drawn by T-346):
+- `{ k: 'card', side, id, by, op, dur, per, who, cost, st, caught? }` — every play, on one beat at the start of the next serve
+  (`m.cardActs`; with any `stage` act it caused, e.g. INZONE!!'s `{ k: 'stage', to: 'fever', why: 'card' }`). `by` player id; `st`
+  'fit' | 'mis' | 'ctr' at play; `caught` = the trap id that caught it.
+- `{ k: 'cardend', side, id, by, why: 'done' | 'sprung', after?, who?, hit? }` — a card's last point (after the point beats;
+  `after` + payer ids when an after-cost hit) or a trap that sprang (`hit` = the card it caught).
+
+**OP cards**: God Resolve (WS; court atk / spd / jump +100 % for 3, then court morale −0.3), Resolve of the Titan (MB; `self`:
+its player def / jump +100 % for 3, then its stamina −0.4), INZONE!! (S; `on: 'inzone'`: `stageSet` → Fever at once for 6 points;
+`Cards.floor` keeps Fever's clock above 0, `Cards.hold` after pointStage / stageTimeout puts the side back in Fever and drops the
+change — errors, the zone breaker and timeouts don't end it; on its end `m.fever = 1` so the clock ends Fever that point),
+Element Surge (element players; full gauges on play and each point while active).
+
+**Compile, don't fork** (as T-295): `cardApply` turns the active set into the plan, tactic, role orders (only its own, `cord`;
+Stubborn players take none), forced techniques (`cardForce` at the R()-gated hooks — a forced technique skips its draw) and
+buffs (`cardBuff` inside `stageBuff`, × holder level for techniques); `cardEdges` before every serve sets each active play's state
+and edges. `opts.cards[i]` = { by, me, deck: [ids] (Basics fill unless fill === false), pin: [ids] (always active, no deck —
+tests / measurements) }. `npm run cards` (tests/cards.js) measures modes and the spam test; `npm run reads` the edges (pinned).
 
 ## Gifts (spec §4.35, T-320)
 
@@ -1367,14 +1410,14 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
 - **Duo cards and ex-teammates** (T-330): six CARDS with `src: 'duo'` and `duo: [role, role]` (js/data/cards.js; `Team.duoCard` finds
   yours by your role and theirs). `Team.setup(run, m)` — called from the UI's fixture wrappers (`watchCareer` / `simCareer` setup,
   after the fixture's own; the headless Raid / Midnight Court have none) — sets `m.duo[your side] = { card: [you, friends] }` for
-  squadmates whose duo is unlocked (`Team.duoOk`: bond TEAM.duo once — `Team.duoWeek` logs it in `run.tlife.duo`) and refills turn 0
-  (the captain picked in newMatch before m.duo existed; `played` reset so counts stay 1); `m.exIds` = ex-teammates across the net. Engine
-  (cards.js): `duoIds(m, i, id)`, `duoOn(T, ids)` (two of the pair on court); `cardInPool` holds a duo card only while both are on
+  squadmates whose duo is unlocked (`Team.duoOk`: bond TEAM.duo once — `Team.duoWeek` logs it in `run.tlife.duo`) and, before the
+  first turn, `Cards.duo` puts each duo card into the deck in place of a Basic (draw first, then the hand; no draws); `m.exIds` = ex-teammates across the net. Engine
+  (cards.js): `duoIds(m, i, id)`, `duoOn(T, ids)` (two of the pair on court); `Cards.holders` is empty (not playable) unless both are on
   court; its buffs carry `ids` and `cardFor` gives them to the pair only while both are on court; never spent (no CARD_EDGE: always
   'fit'); the captain scores it `CARD_AI.duo`. No m.duo → nothing reads differently (goldens unchanged). UI: `cardName` ("Mint × You:
   Pin Connection", chips and the result row); `teamWatch(m)` (match-cards.js, a rAF loop from watchCareer's setup) waits until no
   prep / turn / exchange / scene holds the court, then `exRemark(m)` once (match-exchange.js: MLINES `ex` / `ex_reply` by personality,
-  holds the rally through `Dir.talk`), then `cardsDuoCut` the first time each duo card is slotted with its pair on court (the hype
+  holds the rally through `Dir.talk`), then `cardsDuoCut` the first time each duo card is played with its pair on court (the hype
   banner `showBanner` "Mint × You" + `showSay` with DUO_SAY). `faced_ex` (Team.matched): each ex who played against you (MEMORY.faced_ex,
   js/data/people.js).
 

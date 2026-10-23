@@ -1,15 +1,16 @@
 #!/usr/bin/env node
-// Cards, bars and turns measured (spec §2.31–§2.33, T-296): side 0 plays a hand mode against the captain's hand (side 1), paired
-// seeds against the same match with side 0 holding no cards. Prints point share / match-win deltas per mode, how often plays
-// burn, collapses, stage shares and morale by trait. Measured, not tuned.
-// npm run cards -- [pairs=100] [teams=league|tour|both] [modes=none,boosts,captain,random,blanket]
+// The deck measured (spec §2.31–§2.33, §2.37): side 0 plays its deck one way against the captain (side 1), paired seeds against
+// the same match with side 0 playing no cards. Prints point share / match-win deltas per mode, cards played, collapses, stage
+// shares and morale by trait; then the spam test (a deck of one good card + Basics: played on every draw vs by the captain).
+// Measured, not tuned (T-348).
+// npm run cards -- [pairs=100] [teams=league|tour|both] [modes=captain,random,basics] [spam=power,hunt]
 const { load } = require('./harness');
 const g = load(17);
-const [N = 100, TEAMS = 'both', MODES = 'boosts,captain,random,blanket'] = process.argv.slice(2).map((v, i) => (i === 0 ? +v : v));
+const [N = 100, TEAMS = 'both', MODES = 'captain,random,basics', SPAM = 'power,hunt'] = process.argv
+  .slice(2)
+  .map((v, i) => (i === 0 ? +v : v));
 
-const BOOSTS = { atk0: 'pow', atk1: 'jmp', def0: 'grd', def1: 'ftw' };
-const PLAYS = Object.keys(g.CARDS).filter(id => g.CARDS[id].kind === 'play');
-/** A private stream for the random hands (never the game's R()). */
+/** A private stream for the random plays (never the game's R()). */
 function mulberry(a) {
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -19,39 +20,50 @@ function mulberry(a) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-function randomHand(m, rr) {
-  const pool = g.cardPool(m, 0).filter(id => g.CARDS[id].kind === 'play');
-  for (const k of g.SLOTS) {
-    const fit = pool.filter(id => g.cardFits(id, k) && !g.cardIds(m, 0).includes(id));
-    g.cardPut(m, 0, k, fit.length ? fit[Math.floor(rr() * fit.length)] : null);
-  }
-  g.cardApply(m, 0);
+/** The captain's pick for a side you run (Cards.capPlay skips those): run it as the captain's for one call. */
+function capFor(m, i) {
+  const D = m.deck[i],
+    by = D.by;
+  D.by = 'ai';
+  const h = g.Cards.capPlay(m, i);
+  D.by = by;
+  return h;
 }
-/** One match: side 0's mode (none | boosts | captain | random | blanket:<id>). */
+/**
+ * One match: side 0's mode — none (a deck, no plays) | captain | random (a random playable card every point) | basics (12
+ * Basics, the captain) | spam:<id> (the deck: id + Basics; id played as soon as it can be, the captain the rest) |
+ * cap:<id> (the same deck, the captain plays all).
+ */
 function play(seed, teams, mode) {
   g.RNG.seed(seed);
   const L = teams === 'tour' ? g.mkTeams() : g.mkLeagueTeams(),
     a = L[seed % L.length],
-    b = L[(seed * 3 + 1) % L.length];
-  const c0 =
-    mode === 'captain'
-      ? null
-      : mode === 'none' || mode === 'random'
-        ? { by: 'you', pick: {} }
-        : mode === 'boosts'
-          ? { by: 'you', pick: BOOSTS }
-          : {
-              by: 'you',
-              mine: 1,
-              pick: { [g.CARDS[mode.slice(8)].zone === 'op' ? 'flex' : `${g.CARDS[mode.slice(8)].zone}0`]: mode.slice(8) }
-            };
+    b = L[(seed * 3 + 1) % L.length],
+    [k, id] = mode.split(':'),
+    c0 =
+      k === 'captain'
+        ? null
+        : k === 'none' || k === 'random'
+          ? { by: 'you' }
+          : k === 'basics'
+            ? { deck: [] }
+            : k === 'cap'
+              ? { deck: [id] }
+              : { by: 'you', deck: [id] };
   const m = g.newMatch(a, b, false, { cards: [c0, null] }),
-    rr = mulberry(seed * 7 + 1);
-  let turn = -1;
+    rr = mulberry(seed * 7 + 1),
+    D = m.deck[0];
   while (!m.over) {
-    if (mode === 'random' && m.turnN !== turn) {
-      turn = m.turnN;
-      randomHand(m, rr);
+    if (k === 'random') {
+      const ok = D.hand.map((x, h) => h).filter(h => !g.Cards.can(m, 0, h));
+      if (ok.length) g.Cards.play(m, 0, ok[Math.floor(rr() * ok.length)]);
+    } else if (k === 'spam') {
+      const h = D.hand.indexOf(id);
+      if (h >= 0 && !g.Cards.can(m, 0, h)) g.Cards.play(m, 0, h);
+      else {
+        const c = capFor(m, 0);
+        if (c >= 0 && D.hand[c] !== id) g.Cards.play(m, 0, c);
+      }
     }
     g.playRally(m);
   }
@@ -59,11 +71,14 @@ function play(seed, teams, mode) {
 }
 const share = m => m.pts[0] / (m.pts[0] + m.pts[1]);
 const pct = v => `${v >= 0 ? '+' : ''}${(100 * v).toFixed(1)}`;
+const nPlayed = (m, f = () => true) =>
+  Object.entries(m.deck[0].played)
+    .filter(([id]) => f(id))
+    .reduce((a, [, n]) => a + n, 0);
 
 for (const teams of TEAMS === 'both' ? ['league', 'tour'] : [TEAMS]) {
-  const modes = MODES.split(',').flatMap(x => (x === 'blanket' ? PLAYS.map(id => `blanket:${id}`) : [x]));
   const base = [],
-    S = { ko: 0, pts: 0, stage: { loose: 0, composed: 0, focused: 0, fever: 0 }, turns: 0, trait: {} };
+    S = { ko: 0, pts: 0, stage: { loose: 0, composed: 0, focused: 0, fever: 0 }, turns: 0, trait: {}, cap: 0, op: 0 };
   for (let j = 0; j < N; j++) {
     const m = play(9000 + j, teams, 'none');
     base.push(m);
@@ -71,7 +86,7 @@ for (const teams of TEAMS === 'both' ? ['league', 'tour'] : [TEAMS]) {
     S.pts += m.pts[0] + m.pts[1];
     S.turns += m.turnN;
   }
-  // stage shares and morale by trait from captain-vs-captain matches
+  // stage shares, morale by trait and the captain's plays from captain-vs-captain matches
   for (let j = 0; j < N; j++) {
     g.RNG.seed(9000 + j);
     const L = teams === 'tour' ? g.mkTeams() : g.mkLeagueTeams(),
@@ -87,11 +102,13 @@ for (const teams of TEAMS === 'both' ? ['league', 'tour'] : [TEAMS]) {
         r.n++;
         r.mor += m.mor[p.id];
       }
+    S.cap += nPlayed(m);
+    S.op += nPlayed(m, id => g.CARDS[id].kind === 'op');
   }
   const st = Object.values(S.stage).reduce((a, v) => a + v, 0);
-  console.log(`\n== ${teams} teams, ${N} pairs (side 0 vs the captain's hand; deltas vs side 0 holding no cards) ==`);
+  console.log(`\n== ${teams} teams, ${N} pairs (side 0 vs the captain; deltas vs side 0 playing no cards) ==`);
   console.log(
-    `collapses ${((100 * S.ko) / S.pts).toFixed(2)} / 100 points · turns ${(S.turns / N).toFixed(1)} a match · stages (captain vs captain): ` +
+    `collapses ${((100 * S.ko) / S.pts).toFixed(2)} / 100 points · turns ${(S.turns / N).toFixed(1)} a match · captain plays ${(S.cap / N).toFixed(1)} cards a match (OP ${(S.op / N).toFixed(2)}) · stages (captain vs captain): ` +
       Object.entries(S.stage)
         .map(([k, v]) => `${k} ${((100 * v) / st).toFixed(0)} %`)
         .join(' · ')
@@ -103,24 +120,21 @@ for (const teams of TEAMS === 'both' ? ['league', 'tour'] : [TEAMS]) {
         .join(' · ')
   );
   console.log(`none: side 0 point share ${(100 * (base.reduce((a, m) => a + share(m), 0) / N)).toFixed(1)} %`);
-  const rows = [];
-  for (const mode of modes) {
+  const row = mode => {
     let d = 0,
       w = 0,
-      spent = 0,
-      slotted = 0;
+      n = 0;
     for (let j = 0; j < N; j++) {
       const m = play(9000 + j, teams, mode);
       d += share(m) - share(base[j]);
       w += (m.winner === 0) - (base[j].winner === 0);
-      spent += m.cards[0].spent.length;
-      slotted += Object.keys(m.cards[0].played).filter(id => g.CARDS[id].kind === 'play').length;
+      n += nPlayed(m);
     }
-    rows.push({ mode, d: d / N, w: w / N, spent: spent / N, slotted: slotted / N });
-  }
-  rows.sort((a, b) => b.d - a.d);
-  for (const r of rows)
     console.log(
-      `${r.mode.padEnd(18)} points ${pct(r.d).padStart(6)} %  wins ${pct(r.w).padStart(6)} %  plays slotted ${r.slotted.toFixed(1)}  spent ${r.spent.toFixed(2)} a match`
+      `${mode.padEnd(14)} points ${pct(d / N).padStart(6)} %  wins ${pct(w / N).padStart(6)} %  cards played ${(n / N).toFixed(1)} a match`
     );
+  };
+  for (const mode of MODES.split(',')) row(mode);
+  console.log('spam test (deck: the card + 11 Basics): played on every draw vs by the captain');
+  for (const id of SPAM.split(',').filter(Boolean)) for (const mode of [`spam:${id}`, `cap:${id}`]) row(mode);
 }

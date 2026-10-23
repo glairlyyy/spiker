@@ -192,7 +192,8 @@ test('traits: each match trait changes its number; a player without traits is un
   assert(Math.abs(e1 - g.Formula.serveErrorP(p, p.team, 60) - 0.06) < 1e-9 && Math.abs(e0 - e1) > 0.05, 'Shaky Hands +0.06 late');
   // Second Wind: HP heals +0.1 more
   ({ g, m, p } = mkMatch(5, ['secondWind']));
-  const q2 = m.t[0].P[2];
+  if (!m.t[0].P.includes(p)) ((m.t[0].P[1].traits = p.traits), delete p.traits, (p = m.t[0].P[1])); // (on court: a first-rally sub can take them off)
+  const q2 = m.t[0].P.find(q => q !== p && !(q.traits || []).length);
   m.hp[p.id] = m.hp[q2.id] = 0.4;
   m.down = {};
   g.hpHeal(m);

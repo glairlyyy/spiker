@@ -1,5 +1,5 @@
-// Semi-automatic matches (spec §2.31–§2.33): the bars (HP, morale traits), turns and the tactic cards. Data only — the
-// engine is js/engine/bars.js and js/engine/cards.js. First numbers, measured (npm run cards), not tuned yet.
+// Semi-automatic matches (spec §2.31–§2.33, §2.37): the bars (HP, morale traits), turns and the deck of tactic cards. Data only —
+// the engine is js/engine/bars.js and js/engine/cards.js. First numbers, measured (npm run cards), not tuned yet (T-348).
 
 /**
  * HP (spec §2.31): every kept-up serve receive / dig takes `base` × (r / r0)^exp (r = ball power / the receiver's Defense as
@@ -35,31 +35,57 @@ const MTRAITS = {
 const TRAIT_LATE = 12,
   TRAIT_EARLY = 8;
 
-/** Turns (spec §2.32): every `pts` points played, and at once when a card is spent. Spent tally: Worn at `worn`, Spent at `spent`. */
-const TURN = { pts: 6, worn: -2, spent: -3, spentMor: -0.1 };
-/** The five slots (spec §2.33): ATK × 2, DEF × 2, FLEX × 1 (any card; the only slot for an OP card). */
-const SLOTS = ['atk0', 'atk1', 'def0', 'def1', 'flex'];
-const slotZone = k => (k === 'flex' ? 'flex' : k.slice(0, 3));
+/** Turns (spec §2.32): every `pts` points played the hands refill (a timeout: an extra turn for its side). */
+const TURN = { pts: 6 };
+/**
+ * The deck (spec §2.37): `size` cards per side, the squad's own first (an OP player's card by role `op`, an element player's
+ * Element Surge; duo cards; the captain's playbook `books` by team style — the first `book[0]` with a captain's read below `iq`,
+ * `book[1]` at or above; techniques by holders on court; traits), Basics (`basics`, in turn) filling the rest; a hand of
+ * `hand`. Holder level (a technique's edge and buffs × it): the holders' action level (SKILL.use) / `lv.ref`, within [lv.min,
+ * lv.max]. `strong`: a cooldown this long marks a strong card (the captain saves it).
+ */
+const DECK = {
+  size: 12,
+  hand: 5,
+  basics: ['pow', 'grd', 'jmp', 'ftw'],
+  op: { WS: 'god', MB: 'titan', S: 'inzone' },
+  books: {
+    power: ['power', 'deep', 'stand'],
+    wall: ['wall', 'commit', 'bait'],
+    tempo: ['quick', 'beat', 'feedhot'],
+    counter: ['deep', 'sdig', 'strap'],
+    sky: ['power', 'rset', 'stand'],
+    bombers: ['hunt', 'float', 'short'],
+    mind: ['beat', 'cover', 'talk'],
+    balanced: ['hunt', 'cover', 'tip']
+  },
+  book: [2, 3],
+  iq: 0.7,
+  lv: { ref: 65, min: 0.6, max: 1.2 },
+  strong: 12
+};
 
 /**
- * The tactic cards (spec §2.33). zone: 'atk' | 'def' | 'op' (OP: FLEX only). kind: 'boost' (never spent) | 'play'. src:
- * 'base' (always in the pool) | 'book' (the captain's playbook) | 'tech' (a squad player owns `need`) | 'trait' (a squad player
- * has trait `trait`) | 'op' (an OP or element player in the squad) | 'duo' (m.duo[side][id] = the pair's ids, both on court). kind also 'once' (fires when slotted, then used up: `on`)
- * and 'trap' (`trap`: the other side's cards it burns when they slot one). What a card does, compiled by js/engine/cards.js:
- * buff — stat → % (atk = power in play, def, spd, jump, serve; with `need` only for its holders, `needT` only for players with
- * that trait; `when`: a CARD_FIT read that must hold — 'behind', 'late', 'streak', 'ahead', 'under', 'brink'); plan — { atk | def } team plan (PLANS); tac — the tactic (TACTICS); ord — [kind, value] role order for
- * its players (`who`: 'holders' | 'mb' | 'hitters' | 'setter' | 'all'; value 'weak' = their weakest passer, 'hot' = our
- * hitter with the highest morale); force — the technique always fires for its holders; on — what happens when it is slotted:
- * 'rush' (morale) | 'surge' (a full element gauge every turn) | 'taunt' | 'zone' | 'wind' | 'talk' (js/engine/cards.js cardOn);
- * over — stamina drains × this while slotted. grp: only one card of a group at a time. tally: the rallies its
- * spent count reads — 'serve' (your serves) | 'recv' (theirs) | 'attack' (rallies you attack in) | 'defend' (they attack in).
+ * The tactic cards (spec §2.33, §2.37). zone: 'atk' | 'def' | 'op' (what it plays on; the hand's colour band). kind: 'basic'
+ * (small, 1 point) | 'play' | 'once' (instant: `on`, then cools) | 'trap' (`trap`: armed `dur` points — the other side's card it
+ * names is caught when played: cost paid, no effect) | 'op' (once a match). src: 'base' (Basics: fill the deck) | 'book' (the
+ * captain's playbook, DECK.books) | 'tech' (a squad player owns `need`) | 'trait' (trait `trait`) | 'op' (DECK.op / element players) |
+ * 'duo' (m.duo[side][id] = the pair's ids, both on court). Played (js/engine/cards.js) it acts for `dur` points (`per: 'srv'`: your
+ * serves), then cools `cd` points in the discard pile (OP: used up). cost / after = { who: 'holder' | 'captain' | 'court', bar:
+ * 'sta' | 'hp' | 'mor', amt } paid on play / when it ends. What it does while active: buff — stat → % (atk = power in play,
+ * def, spd, jump, serve; with `need` only for its holders, `needT` only for that trait, `self` only for the holders who played it;
+ * `when`: a CARD_FIT read that must hold); plan — { atk | def } team plan (PLANS); tac — the tactic (TACTICS); ord — [kind,
+ * value] role order for its players (`who`: 'holders' | 'mb' | 'hitters' | 'setter' | 'all'; value 'weak' = their weakest passer,
+ * 'hot' = our hitter with the highest morale); force — the technique always fires for its holders; on — on play: 'surge' (full
+ * element gauges, again each point while active) | 'taunt' | 'wind' | 'talk' | 'inzone' (js/engine/cards.js cardOn). grp: one
+ * active card of a group at a time. tally: the rallies its fit / countered tally reads — 'serve' | 'recv' | 'attack' | 'defend'.
  */
 const CARDS = {
-  // boosts
-  pow: { name: 'Power Up', zone: 'atk', kind: 'boost', src: 'base', buff: { atk: 3 }, desc: 'Power +3 %' },
-  jmp: { name: 'High Point', zone: 'atk', kind: 'boost', src: 'base', buff: { jump: 3 }, desc: 'Jump +3 %' },
-  grd: { name: 'Guard Up', zone: 'def', kind: 'boost', src: 'base', buff: { def: 3 }, desc: 'Defense +3 %' },
-  ftw: { name: 'Quick Step', zone: 'def', kind: 'boost', src: 'base', buff: { spd: 3 }, desc: 'Speed +3 %' },
+  // Basics (the old boosts): small and cheap, 1 point
+  pow: { name: 'Power Up', zone: 'atk', kind: 'basic', src: 'base', buff: { atk: 5 }, desc: 'Power +5 %' },
+  jmp: { name: 'High Point', zone: 'atk', kind: 'basic', src: 'base', buff: { jump: 5 }, desc: 'Jump +5 %' },
+  grd: { name: 'Guard Up', zone: 'def', kind: 'basic', src: 'base', buff: { def: 5 }, desc: 'Defense +5 %' },
+  ftw: { name: 'Quick Step', zone: 'def', kind: 'basic', src: 'base', buff: { spd: 5 }, desc: 'Speed +5 %' },
   // the captain's playbook
   hunt: {
     name: 'Hunt the Passer',
@@ -459,45 +485,64 @@ const CARDS = {
     tally: 'defend',
     desc: 'The block follows their setter’s hands'
   },
-  // OP (FLEX only)
+  // OP cards (spec §2.37): once a match, from OP players by role (DECK.op) and element players
+  god: {
+    name: 'God Resolve',
+    zone: 'op',
+    kind: 'op',
+    src: 'op',
+    role: 'WS',
+    buff: { atk: 100, spd: 100, jump: 100 },
+    tally: 'attack',
+    cost: { who: 'court', bar: 'sta', amt: 0.1 },
+    after: { who: 'court', bar: 'mor', amt: 0.3 },
+    desc: 'Everyone on court: attack, speed and jump × 2; then everyone’s morale −0.3'
+  },
+  titan: {
+    name: 'Resolve of the Titan',
+    zone: 'op',
+    kind: 'op',
+    src: 'op',
+    role: 'MB',
+    self: 1,
+    buff: { def: 100, jump: 100 },
+    tally: 'defend',
+    cost: { who: 'holder', bar: 'hp', amt: 0.1 },
+    after: { who: 'holder', bar: 'sta', amt: 0.4 },
+    desc: 'Grows to twice the size: defense and jump × 2; then their stamina −0.4'
+  },
+  inzone: {
+    name: 'INZONE!!',
+    zone: 'op',
+    kind: 'op',
+    src: 'op',
+    role: 'S',
+    on: 'inzone',
+    dur: 6,
+    tally: 'attack',
+    cost: { who: 'holder', bar: 'sta', amt: 0.15 },
+    desc: 'The side goes straight into Fever for 6 points; an error or the zone breaker does not end it'
+  },
   surge: {
     name: 'Element Surge',
     zone: 'op',
-    kind: 'play',
+    kind: 'op',
     src: 'op',
     on: 'surge',
     tally: 'attack',
-    desc: 'Element players start every turn charged'
-  },
-  rush: { name: 'Fever Rush', zone: 'op', kind: 'play', src: 'op', on: 'rush', tally: 'attack', desc: 'Morale +0.3 on court when slotted' },
-  iron: { name: 'Iron Wall', zone: 'op', kind: 'play', src: 'op', buff: { def: 10 }, tally: 'defend', desc: 'Defense +10 %' },
-  zone: {
-    name: 'Zone',
-    zone: 'op',
-    kind: 'play',
-    src: 'op',
-    on: 'zone',
-    tally: 'attack',
-    desc: 'Their best hitter’s morale to full, the side +0.1, when slotted'
-  },
-  overload: {
-    name: 'Overload',
-    zone: 'op',
-    kind: 'play',
-    src: 'op',
-    buff: { atk: 10, def: 10 },
-    over: 2,
-    tally: 'attack',
-    desc: 'Power and defense +10 %; stamina drains twice as fast'
+    cost: { who: 'holder', bar: 'hp', amt: 0.15 },
+    desc: 'Element players on court charged full, every point'
   },
   stand: {
     name: 'Last Stand',
-    zone: 'op',
+    zone: 'def',
     kind: 'play',
-    src: 'op',
+    src: 'book',
     buff: { atk: 15, def: 15, jump: 15 },
     when: 'brink',
     tally: 'defend',
+    cd: 12,
+    cost: { who: 'court', bar: 'sta', amt: 0.08 },
     desc: 'Power, defense and jump +15 % while they are at match point'
   },
   // duo cards (spec §4.36 4, T-330): a friend at bond 60+ (`duo`: your role and theirs, either way); in the pool only while you and
@@ -563,30 +608,31 @@ const CARDS = {
     desc: 'The two of you: defense +8 %'
   }
 };
-/** Combos (spec §2.33): both slotted → the bonus; they share one spent count. `any`: either of the second ids. */
-const COMBOS = {
-  sniper: { name: 'Sniper', cards: ['killer', 'target'], buff: { serve: 6 } },
-  fortress: { name: 'Fortress', cards: ['sdig', 'deep'], buff: { def: 6 } },
-  lockdown: { name: 'Lockdown', cards: ['wall', 'commit'], buff: { jump: 6 } },
-  decoy: { name: 'Decoy', cards: ['quick', ['freak', 'slide']], buff: { atk: 6 } }
-};
-/** The captain's pick (no draws): base score of a boost / a play; situational scores; a dull captain (IQ < `dull`) plays only its style's plans. */
+/**
+ * The captain's play (spec §2.37, no draws): base score by kind / source; `read` when it fits now; `countered` when it has been
+ * countered here `seenCtr`+ times; `key` for a strong card at a key moment. A payer's bar after the cost stays at `floor` or
+ * above (else not affordable). It saves OP cards when its read (capIQ) is at `waitOp`+ and strong cards at `wait`+ until a key
+ * moment (set point either way, their Fever, `down`+ points down from `late` points on, or their `run`-point streak).
+ */
 const CARD_AI = {
-  boost: 1,
-  duo: 1.5, // a duo card (spec §4.36 4): a little over a boost
-  play: 0.8,
-  tech: 1,
-  trait: 1,
-  op: 3.5,
-  style: 0.5,
-  read: 3,
-  misfit: -2,
+  basic: 1,
+  duo: 3,
+  play: 3,
+  tech: 3.5,
+  trait: 3,
+  op: 5,
+  trap: 2.5,
+  once: 2.5,
+  read: 2,
   countered: -5,
   seenCtr: 2,
-  combo: 1.2,
-  trap: 1.5,
-  worn: -2,
-  dull: 0.5
+  key: 3,
+  floor: { sta: 0.3, hp: 0.3, mor: -0.35 },
+  wait: 0.75,
+  waitOp: 0.55,
+  down: 3,
+  late: 10,
+  run: 3
 };
 
 /**
@@ -692,9 +738,7 @@ const CARD_EDGE = {
   cover: { fit: 'ourWeakPass', ctr: ['killer', 'drive'], e: [['us', 'def', 20]] },
   spite: { fit: 'behind', ctr: [], e: [['us', 'atk', 15]] },
   hold: { fit: 'behind', ctr: [], e: [['us', 'def', 15]] },
-  iron: { fit: 'theirPower', ctr: [], e: [['us', 'def', 5]] },
   surge: { fit: 'elements', ctr: [], e: [] },
-  rush: { fit: 'shaken', ctr: [], e: [] },
   // T-304 / T-305
   showreel: { fit: 'ahead', ctr: [], e: [['us', 'atk', 35]] },
   ice: { fit: 'late', ctr: [], e: [['us', 'atk', 15]] },
@@ -729,9 +773,50 @@ const CARD_EDGE = {
       ['us', 'def', 15]
     ]
   },
-  zone: { fit: 'behind', ctr: [], e: [] },
-  overload: { fit: 'fresh', ctr: [], e: [] },
-  stand: { fit: 'brink', ctr: [], e: [['us', 'def', 15]] }
+  stand: { fit: 'brink', ctr: [], e: [['us', 'def', 15]] },
+  god: { fit: 'always', ctr: [], e: [] },
+  titan: { fit: 'always', ctr: [], e: [] },
+  inzone: { fit: 'cold', ctr: [], e: [] } // (cold: below Focused)
 };
 /** The edge's factor: fit × 1, countered × `ctr`, misfit × `mis`; all × `k` (the balance knob). */
 const EDGE = { ctr: -1.5, mis: -0.6, k: 2 };
+
+/**
+ * Every card's deck numbers (spec §2.37), unless the card sets its own: `dur` points active (serve cards: your serves, `per`),
+ * `cd` points cooling (OP: Infinity — once a match), `cost` on play. Stronger cards cool longer: a technique with a big edge
+ * (50 %+) and Last Stand DECK.strong.
+ */
+(() => {
+  const big = id => CARD_EDGE[id] && CARD_EDGE[id].e.some(e => Math.abs(e[2]) >= 50);
+  const team = ['power', 'tip', 'deep', 'commit', 'sdig', 'float'];
+  for (const [id, c] of Object.entries(CARDS)) {
+    const K =
+      c.kind === 'basic'
+        ? { dur: 1, cd: 2, cost: { who: 'court', bar: 'sta', amt: 0.02 } }
+        : c.kind === 'op'
+          ? { dur: 3, cd: Infinity }
+          : c.kind === 'trap'
+            ? { dur: 6, cd: 8, cost: { who: 'captain', bar: 'mor', amt: 0.05 } }
+            : c.kind === 'once'
+              ? {
+                  dur: 0,
+                  cd: 12,
+                  cost: c.on === 'wind' ? { who: 'court', bar: 'mor', amt: 0.1 } : { who: 'captain', bar: 'sta', amt: 0.1 }
+                }
+              : c.src === 'tech'
+                ? { dur: 3, cd: big(id) ? DECK.strong : 10, cost: { who: 'holder', bar: 'sta', amt: 0.1 } }
+                : c.src === 'trait'
+                  ? { dur: 3, cd: 8, cost: { who: 'holder', bar: id === 'take' ? 'hp' : 'sta', amt: 0.06 } }
+                  : c.src === 'duo'
+                    ? { dur: 3, cd: 6, cost: { who: 'holder', bar: 'sta', amt: 0.06 } }
+                    : {
+                        dur: 3,
+                        cd: 8,
+                        cost: team.includes(id) ? { who: 'court', bar: 'sta', amt: 0.04 } : { who: 'captain', bar: 'mor', amt: 0.08 }
+                      };
+    c.dur ??= K.dur;
+    c.cd ??= K.cd;
+    c.cost ??= K.cost;
+    c.per ??= c.tally === 'serve' && c.kind === 'play' ? 'srv' : 'pts';
+  }
+})();

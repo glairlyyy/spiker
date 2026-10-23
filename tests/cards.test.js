@@ -1,7 +1,7 @@
-// Tests: tactic cards and turns (spec §2.32–§2.33, T-295). harness.js has the loader, runner and helpers.
+// Tests: the deck — one-shot cards, turns, costs, the captain's play (spec §2.32–§2.33, §2.37). harness.js has the loader, runner and helpers.
 const { load, test, assert, eq } = require('./harness');
 
-/** A league match where side 0's wing spikers own Killer Jump Serve and Target Serve (career-learned). */
+/** A tournament match where side 0's wing spikers own Killer Jump Serve and Target Serve (career-learned), pinned active. */
 function killerMatch(g, seed, mtrait) {
   g.RNG.seed(seed);
   const T = g.mkTeams(),
@@ -11,20 +11,22 @@ function killerMatch(g, seed, mtrait) {
     p.skills = p.role === 'WS' ? ['killer', 'target'] : [];
     if (mtrait !== undefined) p.mtrait = mtrait;
   }
-  return g.newMatch(a, b, false, { cards: [{ by: 'you', pick: { atk0: 'killer', atk1: 'target' } }, null] });
+  return g.newMatch(a, b, false, {
+    cards: [
+      { by: 'you', pin: ['killer', 'target'] },
+      { by: 'you', pin: [] }
+    ]
+  });
 }
+/** Put card id into hand place 0 of side i (tests). */
+const give = (m, i, id) => (m.deck[i].hand[0] = id);
 
-test('cards: a slotted Killer Serve fires on every holder jump serve; a Stubborn holder is not forced (spec §2.33)', () => {
+test('cards: an active Killer Serve fires on every holder jump serve; a Stubborn holder is not forced (spec §2.33)', () => {
   const g = load(71);
   const m = killerMatch(g, 3, null),
     ws = m.t[0].P.filter(p => p.role === 'WS');
   for (const p of ws) eq(g.ordOf(m, p, 'srv'), 'killer', 'holder ordered Killer');
-  assert(m.cards[0].force.length === 0 && m.cards[0].buff.some(b => b.k === 'serve' && b.need === 'killer'), 'the card buffs its holders');
-  assert(g.comboOf(g.cardIds(m, 0), 'killer') === 'sniper', 'Killer + Target link as Sniper');
-  assert(
-    m.cards[0].buff.some(b => b.k === 'serve' && b.v === g.COMBOS.sniper.buff.serve),
-    'the combo bonus'
-  );
+  assert(m.deck[0].force.length === 0 && m.deck[0].buff.some(b => b.k === 'serve' && b.need === 'killer'), 'the card buffs its holders');
   while (!m.over) g.playRally(m);
   let srv = 0,
     k = 0;
@@ -37,121 +39,246 @@ test('cards: a slotted Killer Serve fires on every holder jump serve; a Stubborn
   for (const p of s.t[0].P.filter(q => q.role === 'WS')) eq(g.ordOf(s, p, 'srv'), undefined, 'a Stubborn holder takes no order');
 });
 
-test('cards: a play at −3 is spent for the match — out of its slot, never slotted again, the team morale drops, a turn follows', () => {
-  const g = load(72),
-    T = g.mkTeams(),
-    m = g.newMatch(T[2], T[3], false, { cards: [{ by: 'you', pick: { atk0: 'hunt' } }, null] });
-  g.playRally(m);
-  const before = m.mom[0];
-  for (let i = 0; i < 3; i++) {
-    m.cards[0].st.hunt = 'mis'; // (spec §2.33: only misfit / countered rallies burn a play)
-    m.srv0 = 0;
-    m.srvP0 = m.t[0].P[0];
-    g.cardTally(m, 1);
-  }
-  assert(m.cards[0].spent.includes('hunt'), 'spent');
-  assert(!g.cardIds(m, 0).includes('hunt') && !g.cardInPool(m, 0, 'hunt'), 'out of its slot and the pool');
-  assert(m.turnNow, 'a turn follows at once');
-  assert(m.mom[0] !== before, 'the team morale moved');
-  g.cardFill(m, 0);
-  assert(!g.cardIds(m, 0).includes('hunt'), 'the captain never slots it again');
-  assert(!g.cardPut(m, 0, 'atk0', 'hunt'), 'nor can you');
+test('cards: the deck — DECK.size cards, the squad’s own first, Basics filling; a hand of DECK.hand; OP cards by role (spec §2.37)', () => {
+  const g = load(72);
+  g.RNG.seed(4);
+  const L = g.mkLeagueTeams();
+  for (const p of g.squadOf(L[0])) ((p.skills = []), (p.mtrait = null), (p.op = false), (p.elOn = false));
+  const m = g.newMatch(L[0], L[1], false),
+    D = m.deck[0],
+    all = [...D.hand, ...D.draw];
+  eq(all.length, g.DECK.size, 'deck size');
+  eq(D.hand.length, g.DECK.hand, 'hand size');
+  const own = all.filter(id => g.CARDS[id].kind !== 'basic'),
+    book = own.filter(id => g.CARDS[id].src === 'book'),
+    known = id => g.squadOf(L[0]).some(p => g.hasTech(p, g.CARDS[id].need));
+  assert(book.length >= 2 && book.length <= 3, `the captain's playbook: 2–3 plays (${book})`);
+  assert(
+    own.every(id => g.CARDS[id].src === 'book' || (g.CARDS[id].src === 'tech' && known(id))),
+    `no traits / OP: plays and known techniques only (${own})`
+  );
+  eq(all.filter(id => g.CARDS[id].kind === 'basic').length, g.DECK.size - own.length, 'Basics fill the rest');
+  // a technique joins the deck and takes a Basic's place
+  g.RNG.seed(4);
+  const L2 = g.mkLeagueTeams();
+  for (const p of g.squadOf(L2[0])) ((p.skills = p.role === 'WS' ? ['killer'] : []), (p.mtrait = null), (p.op = false), (p.elOn = false));
+  const n = g.newMatch(L2[0], L2[1], false),
+    all2 = [...n.deck[0].hand, ...n.deck[0].draw];
+  assert(all2.includes('killer'), 'Killer Serve in the deck');
+  if (!own.includes('killer')) eq(all2.filter(id => g.CARDS[id].kind === 'basic').length, g.DECK.size - own.length - 1, 'one Basic fewer');
+  // Monster: every player OP — God Resolve, Resolve of the Titan, INZONE!! once each
+  g.RNG.seed(5);
+  const M = g.mkMonsterTeams(),
+    o = g.newMatch(M[0], M[1], false),
+    ops = [...o.deck[0].hand, ...o.deck[0].draw].filter(id => g.CARDS[id].kind === 'op');
+  for (const id of ['god', 'titan', 'inzone']) eq(ops.filter(x => x === id).length, 1, `${id} once`);
 });
 
-test('cards: turns every TURN.pts points (or after a spent card); five slots in their zones; the captain draws no randoms', () => {
+test('cards: one play a side a point; costs hit the payer’s bar; the hand refills only at turns; a discard leaves a gap (spec §2.37)', () => {
+  const g = load(73);
+  g.RNG.seed(6);
+  const T = g.mkTeams();
+  for (const p of g.squadOf(T[0])) p.skills = p.role === 'WS' ? ['killer'] : [];
+  const m = g.newMatch(T[0], T[1], false, { cards: [{ by: 'you' }, { by: 'you' }] }),
+    D = m.deck[0];
+  give(m, 0, 'killer');
+  D.hand[1] = 'hunt';
+  const H = g.Cards.holders(m, 0, 'killer'),
+    st0 = H.map(p => m.sta[p.id] ?? 1),
+    cap = m.t[0].cap,
+    mor0 = g.morOf(m, cap);
+  const a = g.Cards.play(m, 0, 0);
+  assert(a && a.k === 'card' && a.id === 'killer' && a.side === 0 && a.by === H[0].id, 'the card act');
+  H.forEach((p, k) => assert(Math.abs(m.sta[p.id] - (st0[k] - g.CARDS.killer.cost.amt)) < 1e-9, 'the holders pay stamina'));
+  eq(g.Cards.can(m, 0, 1), 'point', 'one play a point');
+  eq(g.Cards.play(m, 0, 1), null, 'the second play is refused');
+  eq(D.hand[0], null, 'a gap where it was');
+  eq(g.Cards.active(m, 0)[0].left, 3, 'active for 3 serves');
+  g.playRally(m);
+  const mor1 = g.morOf(m, cap);
+  assert(g.Cards.play(m, 0, 1), 'next point: Hunt the Passer');
+  let sv = 0;
+  const hunting = () => g.Cards.active(m, 0).some(x => x.id === 'hunt'),
+    rally = () => {
+      const on = hunting() && m.serve === 0;
+      g.playRally(m);
+      if (on) sv++;
+    };
+  assert(Math.abs(g.morOf(m, cap) - (mor1 - g.CARDS.hunt.cost.amt)) < 1e-9 && mor0 !== undefined, 'the captain pays morale');
+  // discard: to the discard pile, the gap stays
+  const id2 = D.hand[2];
+  assert(g.Cards.discard(m, 0, 2) && D.hand[2] === null && D.disc.some(e => e.id === id2), 'discarded');
+  const turn = m.turnN;
+  while (m.turnN === turn && !m.over) {
+    assert(D.hand[0] === null && D.hand[2] === null, 'no refill between turns');
+    rally();
+  }
+  if (!m.over) assert(D.hand[0] && D.hand[2], 'refilled at the turn');
+  // a serve card counts its own side's serves; it ends into the discard pile cooling
+  while (hunting() && !m.over) rally();
+  if (!m.over) assert(sv === 3 && D.disc.some(e => e.id === 'hunt' && e.cd > 0), `Hunt the Passer ended after 3 serves (${sv}), cooling`);
+});
+
+test('cards: an empty deck takes back only cooled cards; an OP card is once a match (spec §2.37)', () => {
+  const g = load(73);
+  g.RNG.seed(7);
+  const T = g.mkTeams(),
+    m = g.newMatch(T[0], T[1], false, { cards: [{ by: 'you' }, { by: 'you' }] }),
+    D = m.deck[0];
+  D.draw = [];
+  D.hand = [null, null, null, 'pow', 'grd'];
+  D.disc = [
+    { id: 'hunt', cd: 0 },
+    { id: 'power', cd: 3 },
+    { id: 'jmp', cd: 0 }
+  ];
+  g.Cards.refill(m, 0);
+  eq([...D.hand].sort().join(), ['grd', 'hunt', 'jmp', 'pow', null].sort().join(), 'the cooled two back, one gap');
+  eq(D.disc.map(e => e.id).join(), 'power', 'the cooling one stays');
+  // OP: played, ends, used up — never back
+  const w = m.t[0].P.find(p => p.role === 'WS');
+  w.op = true;
+  give(m, 0, 'god');
+  assert(g.Cards.play(m, 0, 0), 'God Resolve played');
+  assert(D.bk.atk.some(b => b.v === 100) && D.bk.spd.some(b => b.v === 100) && D.bk.jump.some(b => b.v === 100), 'attack, speed, jump × 2');
+  for (let k = 0; k < 2 && !m.over; k++) g.playRally(m);
+  eq(g.Cards.active(m, 0)[0].left, 1, 'God Resolve: one point left');
+  const f0 = m.t[0].P.map(p => g.morOf(m, p)),
+    ends = g.Cards.point(m, 1); // (its last point, lost)
+  assert(
+    ends.some(e => e.k === 'cardend' && e.id === 'god' && e.after && e.who.length === 4),
+    'the cardend act with its after-cost'
+  );
+  assert(
+    m.t[0].P.every((p, k) => Math.abs(g.morOf(m, p) - Math.max(-1, f0[k] - 0.3)) < 1e-9),
+    'everyone’s morale −0.3'
+  );
+  assert(D.used.includes('god') && !D.disc.some(e => e.id === 'god'), 'used up');
+});
+
+test('cards: the captain plays what fits and saves an OP card for a key moment; a dull captain plays it at once; no draws (spec §2.37)', () => {
+  const g = load(74);
+  g.RNG.seed(8);
+  const T = g.mkTeams(),
+    m = g.newMatch(T[0], T[1], false, { cards: [null, { by: 'you' }] }),
+    D = m.deck[0],
+    w = m.t[0].P.find(p => p.role === 'WS');
+  w.op = true;
+  D.hand = ['god', null, null, null, null];
+  const cap = m.t[0].cap,
+    lead = cap.lead,
+    wit = cap.wit;
+  cap.lead = 99;
+  cap.wit = 3;
+  m.pts = [3, 2];
+  m.streak = [1, 0];
+  eq(g.Cards.capPlay(m, 0), -1, 'a sharp captain saves it early');
+  m.pts = [13, 14];
+  eq(g.Cards.capPlay(m, 0), 0, 'set point: now');
+  m.pts = [6, 6];
+  m.streak = [0, 3];
+  eq(g.Cards.capPlay(m, 0), 0, 'to break their run');
+  m.streak = [1, 0];
+  cap.lead = 0;
+  cap.wit = 0;
+  eq(g.Cards.capPlay(m, 0), 0, 'a dull captain plays it as soon as it can');
+  cap.lead = lead;
+  cap.wit = wit;
+  // no draws, the same pick twice
+  const nx = g.RNG.next;
+  let draws = 0;
+  g.RNG.next = () => (draws++, nx());
+  const p1 = g.Cards.capPlay(m, 0),
+    p2 = g.Cards.capPlay(m, 0);
+  g.RNG.next = nx;
+  eq(draws, 0, 'no draws');
+  eq(p1, p2, 'the same pick twice');
+});
+
+test('cards: turns every TURN.pts points; sims play cards; a side you run plays none of itself', () => {
   const g = load(73),
     T = g.mkTeams();
-  for (let i = 0; i < 12; i++) {
-    const m = g.newMatch(T[i % 8], T[(i + 3) % 8], false);
+  for (let i = 0; i < 8; i++) {
+    const m = g.newMatch(T[i % 8], T[(i + 3) % 8], false, { cards: [null, { by: 'you' }] });
     let last = 0;
     while (!m.over) {
-      const n = m.turnN,
-        sp = m.cards[0].spent.length + m.cards[1].spent.length;
+      const n = m.turnN;
       g.playRally(m);
       if (m.turnN > n) {
-        const at = m.pts[0] + m.pts[1],
-          burnt = m.cards[0].spent.length + m.cards[1].spent.length > sp;
-        assert(at - last === g.TURN.pts || burnt, `turn after ${at - last} points`);
+        const at = m.pts[0] + m.pts[1];
+        eq(at - last, g.TURN.pts, 'turn after TURN.pts points');
         last = at;
       }
     }
-    for (const C of m.cards)
-      for (const k of g.SLOTS) {
-        const id = C.slots[k];
-        if (id) assert(g.cardFits(id, k), `${id} fits ${k}`);
-        if (id && g.CARDS[id].zone === 'op') eq(k, 'flex', 'OP only in FLEX');
-      }
-    g.cardFill(m, 1);
-    g.cardFill(m, 1); // (T-337: a first refill's own buffs can move a fit — hitPow / blkOf — so the second pick may differ once; stable after)
-    const s0 = JSON.stringify(m.cards[1].slots),
-      nx = g.RNG.next;
-    let draws = 0;
-    g.RNG.next = () => (draws++, nx());
-    g.cardFill(m, 1);
-    g.RNG.next = nx;
-    eq(draws, 0, 'no draws');
-    eq(JSON.stringify(m.cards[1].slots), s0, 'the same pick twice');
+    assert(
+      m.deck[0].log.some(e => e.k === 'play'),
+      'the captain played'
+    );
+    assert(!m.deck[1].log.some(e => e.k === 'play'), 'nobody plays for you');
+    const pts = m.deck[0].log.filter(e => e.k === 'play').map(e => e.at.join());
+    eq(new Set(pts).size, pts.length, 'one play a point');
   }
 });
 
-test('cards: no cards (cards: false) is today’s engine — no slots, plans from the captain, techniques at their usual chance', () => {
+test('cards: no cards (cards: false) is today’s engine — no deck, no buffs, no turns', () => {
   const g = load(74),
     T = g.mkTeams(),
     m = g.newMatch(T[0], T[1], false, { cards: false });
-  eq(m.cards, null, 'no hand');
+  eq(m.deck, null, 'no deck');
   eq(g.cardBuff(m.t[0].P[0], 'atk'), 1, 'no buff');
   while (!m.over) g.playRally(m);
   eq(m.turnN, undefined, 'no turns');
 });
 
-test('cards: traps burn the card they name at the next serve; one-shots fire once and are used up; Overload drains twice (T-305)', () => {
-  const g = load(73),
-    T = g.mkTeams();
-  // a Serve Trap against a slotted Hunt the Passer
-  const m = g.newMatch(T[0], T[1], false, {
-    cards: [
-      { by: 'you', pick: { atk0: 'hunt' } },
-      { by: 'you', pick: { def0: 'strap' } }
-    ]
-  });
-  assert(m.trapNow, 'traps wait for the first serve');
+test('cards: a trap catches the card it names; one-shots act at once; INZONE!! holds Focused; holder level scales a technique (T-305, §2.37)', () => {
+  const g = load(73);
+  g.RNG.seed(9);
+  const T = g.mkTeams(),
+    m = g.newMatch(T[0], T[1], false, { cards: [{ by: 'you' }, { by: 'you' }] });
+  give(m, 1, 'strap');
+  assert(g.Cards.play(m, 1, 0), 'Serve Trap armed');
+  give(m, 0, 'hunt');
+  const a = g.Cards.play(m, 0, 0);
+  eq(a.caught, 'strap', 'caught');
+  assert(!g.Cards.active(m, 0).length && m.deck[0].disc.some(e => e.id === 'hunt'), 'Hunt wasted, cooling');
+  assert(!g.Cards.active(m, 1).length && m.deck[1].disc.some(e => e.id === 'strap'), 'the trap used');
+  assert(
+    m.cardQ.some(x => x.k === 'cardend' && x.why === 'sprung'),
+    'the trap’s end act'
+  );
+  // Timeout Talk: morale up at once, straight to the discard pile
   g.playRally(m);
-  assert(m.cards[0].spent.includes('hunt') && !g.cardIds(m, 0).includes('hunt'), 'Hunt burnt by the trap');
-  assert(m.cards[1].spent.includes('strap') && !g.cardIds(m, 1).includes('strap'), 'the trap is used up');
-  assert(m.turnNow || m.turnN > 0, 'a turn follows');
-  // no target: the trap stays
-  const n = g.newMatch(T[0], T[1], false, {
-    cards: [
-      { by: 'you', pick: { atk0: 'pow' } },
-      { by: 'you', pick: { def0: 'qtrap' } }
-    ]
-  });
-  g.playRally(n);
-  assert(g.cardIds(n, 1).includes('qtrap'), 'a trap with nothing to catch stays');
-  // Timeout Talk: morale up, used up at once
-  const t = g.newMatch(T[2], T[3], false, { cards: [{ by: 'you', pick: {} }, null] });
-  const f0 = t.mom[0];
-  assert(g.cardPut(t, 0, 'def0', 'talk'), 'Timeout Talk fits DEF');
-  g.cardApply(t, 0);
-  assert(t.mom[0] > f0 + 0.2, `morale up (${f0} → ${t.mom[0]})`);
-  assert(!g.cardIds(t, 0).includes('talk') && t.cards[0].spent.includes('talk') && !t.turnNow, 'used up, no turn');
-  // Overload: stamina drains × 2 for its side only
-  const o = g.newMatch(T[2], T[3], false, {
-    cards: [
-      { by: 'you', pick: { flex: 'overload' } },
-      { by: 'you', pick: {} }
-    ]
-  });
-  assert(g.cardInPool(o, 0, 'overload') || !g.squadOf(o.t[0]).some(p => p.op || p.elOn), 'Overload comes with an OP / element player');
-  if (g.cardIds(o, 0).includes('overload')) {
-    const a = o.t[0].P[0],
-      b = o.t[1].P[0];
-    a.def = b.def;
-    a.speed = b.speed;
-    g.dr(o, a, 0.05);
-    g.dr(o, b, 0.05);
-    assert(Math.abs(1 - o.sta[a.id] - 2 * (1 - o.sta[b.id])) < 1e-6, 'twice the drain');
+  const f0 = m.mom[0];
+  give(m, 0, 'talk');
+  assert(g.Cards.play(m, 0, 0), 'Timeout Talk');
+  assert(m.mom[0] > f0 + 0.1 && !g.Cards.active(m, 0).length, `morale up (${f0} → ${m.mom[0]}), not active`);
+  // INZONE!!: Fever at once, kept for its 6 points (errors, a cold fire, a timeout against it don't end it), then over
+  g.RNG.seed(9);
+  const U = g.mkTeams(),
+    z = g.newMatch(U[0], U[1], false, { cards: [{ by: 'you' }, { by: 'you' }] });
+  z.t[0].P.find(p => p.role === 'S').op = true;
+  g.fireTo(z, 0, -0.5);
+  z.stage[0] = 'loose';
+  give(z, 0, 'inzone');
+  const za = g.Cards.play(z, 0, 0);
+  assert(za && za.op && z.cardQ.some(x => x.k === 'stage' && x.to === 'fever'), 'INZONE!! played: the stage act');
+  eq(z.stage[0], 'fever', 'straight to Fever');
+  for (let k = 0; k < 5 && !z.over; k++) {
+    g.fireTo(z, 0, -0.6);
+    if (k === 2) g.timeout(z, 1, null, true);
+    g.playRally(z);
+    eq(z.stage[0], 'fever', `point ${k + 1}: still in Fever`);
   }
+  if (!z.over) {
+    g.fireTo(z, 0, -0.6);
+    g.playRally(z);
+    assert(!g.Cards.active(z, 0).length && z.stage[0] !== 'fever', `the 6th point ends it (${z.stage[0]})`);
+  }
+  // holder level: a weak server's Killer Serve is weaker than an ace's
+  const p = z.t[0].P[2],
+    q = { ...p, power: 40 },
+    r = { ...p, power: 99 };
+  assert(g.techLv(q, 'killer') < 0.7 && g.techLv(r, 'killer') === g.DECK.lv.max, 'level 40 → low, 99 → max');
 });
 
 test('traits: twelve traits, ~85 % of players; Iron Body takes less HP damage; Choker loses more late (spec §2.31, T-304)', () => {
@@ -190,14 +317,14 @@ test('traits: twelve traits, ~85 % of players; Iron Body takes less HP damage; C
   for (const q of all) delete q.mtrait;
 });
 
-test('cards: a Broken side plays with 4 slots (FLEX gone) and starts 10 morale lower; [0, 0] is today’s match (spec §4.34, T-314)', () => {
+test('cards: a Broken side holds a hand of 4 and starts 10 morale lower; [0, 0] is today’s match (spec §4.34, T-314, §2.37)', () => {
   const g = load(73);
   g.RNG.seed(5);
   const T = g.mkTeams(),
     m = g.newMatch(T[0], T[1], false, { weak: [3, 0] });
-  eq(g.cardSlots(m, 0).length, 4, 'Broken: 4 slots');
-  eq(g.cardSlots(m, 1).length, 5, 'Steady: 5');
-  assert(!m.cards[0].slots.flex && !g.cardPut(m, 0, 'flex', 'pow'), 'nothing goes into the missing FLEX slot');
+  eq(m.deck[0].hand.length, 4, 'Broken: a hand of 4');
+  eq(m.deck[1].hand.length, 5, 'Steady: 5');
+  eq(m.deck[0].hand.length + m.deck[0].draw.length, g.DECK.size, 'the fifth card back on the deck');
   assert(
     g.squadOf(m.t[0]).every(p => Math.abs(m.mor[p.id] + 0.1) < 1e-9),
     'every Broken player starts at −10 morale'
@@ -209,8 +336,8 @@ test('cards: a Broken side plays with 4 slots (FLEX gone) and starts 10 morale l
     n = g.newMatch(U[0], U[1], false);
   g.weakSet(n, [3, 0]);
   eq(
-    JSON.stringify([n.mor, n.cards[0].slots, n.weak]),
-    JSON.stringify([m.mor, m.cards[0].slots, m.weak]),
+    JSON.stringify([n.mor, n.deck[0].hand, n.deck[0].draw, n.weak]),
+    JSON.stringify([m.mor, m.deck[0].hand, m.deck[0].draw, m.weak]),
     'weakSet after newMatch = opts.weak'
   );
   // no stage: the same match beat for beat

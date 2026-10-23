@@ -1,237 +1,154 @@
-// Tactic cards and turns (spec §2.32–§2.33). Each side holds five slots (SLOTS) filled from its squad's pool (cardPool): your
-// cards first, then the captain's pick around them (cardFill, no draws). Slotted cards compile into the existing levers
-// (cardApply): the team plan, the tactic, role orders, forced techniques (cardForce, read at each technique's hook) and stat
-// buffs (cardBuff, read through stageBuff). Plays count their net points while slotted (cardTally) and burn at TURN.spent.
-// A turn comes every TURN.pts points and at once when a card burns (cardTurn, from end()). m.cards = null → no cards at all.
+// The deck (spec §2.37, built on §2.31–§2.33): each side plays from a DECK.size deck (the squad's own cards, Basics filling)
+// with a hand of DECK.hand, refilled only at turns (every TURN.pts points; a timeout: an extra turn for its side). Between
+// points a side plays at most one card (Cards.play) — it acts for its `dur` points, then cools `cd` points in the discard
+// pile (OP: used up) — or discards one (Cards.discard: the gap stays until the next turn). Costs hit the payer's bars. Active
+// cards compile into the existing levers (cardApply): the team plan, the tactic, role orders, forced techniques (cardForce,
+// read at each technique's hook) and stat buffs (cardBuff, through stageBuff), plus the fit / counter edges (cardEdges, T-299).
+// The captain plays what you don't (Cards.capPlay, no draws). m.deck = null → no cards at all. Only the shuffles draw R().
 
-/** Side i's card state, or null. */
-const cardsOf = (m, i) => (m && m.cards ? m.cards[i] : null);
-/** The active slotted ids of side i (no empties). */
-const cardIds = (m, i) => {
-  const C = cardsOf(m, i);
-  return C ? SLOTS.map(k => C.slots[k]).filter(Boolean) : [];
-};
+/** Side i's deck state, or null. */
+const deckOf = (m, i) => (m && m.deck ? m.deck[i] : null);
+/** Points played so far (one play a side a point is keyed on it). */
+const ptsPlayed = m => m.pts[0] + m.pts[1];
 
-/** Is technique `id` forced for p (a slotted card of p's side, p owns it, p is not Stubborn)? */
+/** Is technique `id` forced for p (an active card of p's side, p owns it, p is not Stubborn)? */
 function cardForce(p, id) {
-  const C = CM && CM.cards && CM.cards[sideOf(p)];
-  return !!(C && C.force.includes(id) && hasTech(p, id) && mtr(CM, p) !== 'stubborn');
+  const D = CM && CM.deck && CM.deck[sideOf(p)];
+  return !!(D && D.force.includes(id) && hasTech(p, id) && mtr(CM, p) !== 'stubborn');
 }
-/** The slotted cards' buff on p for stat k (atk, def, spd, jump, serve) → a multiplier (stageBuff multiplies it in). */
+/** The active cards' buff on p for stat k (atk, def, spd, jump, serve) → a multiplier (stageBuff multiplies it in). */
 function cardBuff(p, k) {
-  if (!CM || !CM.cards) return 1;
+  if (!CM || !CM.deck) return 1;
   const i = CM.t[0] === p.team ? 0 : 1,
-    C = CM.cards[i],
-    L = C.bk[k],
-    E = C.ek && C.ek[k];
+    D = CM.deck[i],
+    L = D.bk[k],
+    E = D.ek && D.ek[k];
   if (!L && !E) return 1;
   let v = 0;
   if (L) for (const b of L) if (cardFor(p, b) && (!b.when || CARD_FIT[b.when](CM, i))) v += b.v;
   if (E) for (const b of E) if (cardFor(p, b)) v += b.v; // reading pays (spec §2.33): this rally's edges
   return Math.max(0.3, 1 + v / 100);
 }
-
 /**
- * The edge part alone of p's card multiplier for stat k (no stage, no boosts): what the physical display divides out — ball
+ * The edge part alone of p's card multiplier for stat k (no stage, no buffs): what the physical display divides out — ball
  * speed, flight time and jump height show the player's real body, the edge acts only in the contest (spec §2.33, T-300).
  */
 function edgeK(p, k) {
-  if (!CM || !CM.cards) return 1;
-  const E = CM.cards[CM.t[0] === p.team ? 0 : 1].ek[k];
+  if (!CM || !CM.deck) return 1;
+  const E = CM.deck[CM.t[0] === p.team ? 0 : 1].ek[k];
   if (!E) return 1;
   let v = 0;
   for (const b of E) if (cardFor(p, b)) v += b.v;
   return Math.max(0.3, 1 + v / 100);
 }
-/** Does a buff / edge entry reach p: its technique (`need`), its trait (`needT`, spec §2.31), a duo's pair both on court (`ids`, §4.36). */
+/**
+ * Does a buff / edge entry reach p: its technique (`need`), its trait (`needT`, spec §2.31), the players who played it (`pids`:
+ * Resolve of the Titan), a duo's pair both on court (`ids`, §4.36).
+ */
 const cardFor = (p, b) =>
-  (!b.need || hasTech(p, b.need)) && (!b.needT || mtr(CM, p) === b.needT) && (!b.ids || (b.ids.includes(p.id) && duoOn(p.team, b.ids)));
+  (!b.need || hasTech(p, b.need)) &&
+  (!b.needT || mtr(CM, p) === b.needT) &&
+  (!b.pids || b.pids.includes(p.id)) &&
+  (!b.ids || (b.ids.includes(p.id) && duoOn(p.team, b.ids)));
 /** A duo (spec §4.36 4): at least two of its ids on T's court. */
 const duoOn = (T, ids) => !!T && T.P.filter(q => ids.includes(q.id)).length >= 2;
 /** Side i's duo card id: the ids of its pair (you + the friends it holds), or null (no m.duo: none — every other match). */
 const duoIds = (m, i, id) => (m.duo && m.duo[i] && m.duo[i][id]) || null;
-/** Start a match's cards (newMatch): opts.cards === false → none; opts.cards[i] = { by: 'you' | 'ai', pick: { slot: id } }. */
+
+/**
+ * Start a match's decks (newMatch): opts.cards === false → none; opts.cards[i] = { by: 'you' | 'ai', me: player id (career: you
+ * play the cards you bring, the captain the rest), deck: [ids] (instead of the squad's own; Basics fill unless fill === false),
+ * pin: [ids] (tests / measurements: always active, no cost, no deck) }. Builds, shuffles (R()) and deals each hand.
+ */
 function cardsInit(m, opts) {
-  if (opts.cards === false) return (m.cards = null);
-  m.cards = [0, 1].map(i => ({
-    by: (opts.cards && opts.cards[i] && opts.cards[i].by) || 'ai', // who runs the side's hand: you (Monster / captain) or the captain
-    mine: (opts.cards && opts.cards[i] && opts.cards[i].mine) ?? (opts.cards && opts.cards[i] && opts.cards[i].by === 'you' ? 5 : 0), // how many cards are yours (career 1 / 2 / 5; a side you run: 5)
-    you: {}, // slot → card id you placed (kept at a turn unless spent)
-    slots: Object.fromEntries(SLOTS.map(k => [k, null])),
-    off: [], // slots this side lacks: a Broken war unit (weakSet, spec §4.34)
-    net: {}, // card (or combo) id → net points while slotted
-    worn: [], // ids at TURN.worn or below
-    spent: [], // ids burnt for the match
-    played: {}, // id → turns it was slotted (the result card)
-    stat: {}, // id → { fit | mis | ctr: [rallies it acted in, won] } (the balance check; the captain reads ctr)
-    st: {}, // id → this rally's state (cardEdges)
-    ek: {}, // stat → this rally's edges [{ v, need }] (cardBuff)
-    force: [],
-    buff: [],
-    bk: {},
-    cord: [] // orders the cards set: [player id, kind, value] (cleared before the next apply)
-  }));
+  if (opts.cards === false) return (m.deck = null);
+  m.deck = [0, 1].map(i => {
+    const o = (opts.cards && opts.cards[i]) || {};
+    return {
+      by: o.by || 'ai', // who plays the side's hand: you (Monster "You decide" / career captain) or the captain
+      me: o.me || null, // career, not captain: your player — the cards you bring are yours to play, the captain plays the rest
+      size: DECK.hand, // hand size (a Broken war unit: fewer, weakSet)
+      draw: [], // the deck, top first
+      hand: [], // DECK.hand places: a card id or null (a gap: played / discarded, refilled at the next turn)
+      disc: [], // the discard pile: { id, cd } (cd: points left cooling; 0 → shuffled back when the deck runs out)
+      used: [], // OP cards gone for the match
+      act: [], // active cards: { id, left, per, by, pids, who, lv, at, pin? }
+      pt: -1, // points played at this side's last play (one a point)
+      held: [], // the hand at the last turn (the captain discards a dead card held a whole turn)
+      log: [], // { k: 'play' | 'discard' | 'end' | 'caught' | 'sprung', id, at, by? }
+      played: {}, // id → times played (the result card)
+      stat: {}, // id → { fit | mis | ctr: [rallies it acted in, won] } (the balance check; the captain reads ctr)
+      st: {}, // id → this rally's state (cardEdges)
+      ek: {}, // stat → this rally's edges [{ v, need, pids }] (cardBuff)
+      force: [],
+      buff: [],
+      bk: {},
+      cord: [] // orders the cards set: [player id, kind, value] (cleared before the next apply)
+    };
+  });
   m.turnAt = 0;
   m.turnN = 0;
-  m.turnNow = false;
   m.turnLog = [];
-  m.trapNow = true; // traps (spec §2.33) are checked before the next serve, once both hands are set
+  m.cardQ = []; // play acts waiting for the next serve's beats
+  m.cardActs = [];
   for (const i of [0, 1]) {
-    const pick = opts.cards && opts.cards[i] && opts.cards[i].pick;
-    if (pick) for (const k in pick) cardPut(m, i, k, pick[k]);
-    cardFill(m, i);
+    const o = (opts.cards && opts.cards[i]) || {},
+      D = m.deck[i];
+    const ids = o.deck ? [...o.deck] : o.pin ? [] : deckOwn(m, i);
+    if (o.fill !== false && !o.pin) for (let k = 0; ids.length < DECK.size; k++) ids.push(DECK.basics[k % DECK.basics.length]);
+    D.draw = deckShuffle(ids.slice(0, DECK.size));
+    D.hand = D.draw.splice(0, D.size);
+    while (D.hand.length < D.size) D.hand.push(null);
+    for (const id of o.pin || []) D.act.push({ id, left: Infinity, per: 'pts', by: null, pids: null, who: [], lv: 1, at: [0, 0], pin: 1 });
+    D.held = [...D.hand];
+    cardApply(m, i);
   }
 }
-
-/** Side i's usable slots (SLOTS minus what its war stage takes, spec §4.34). */
-const cardSlots = (m, i) => {
-  const C = cardsOf(m, i);
-  return C ? SLOTS.filter(k => !(C.off && C.off.includes(k))) : [];
-};
-/** Is card id in side i's pool now (the squad's techniques, traits, OP / element players; not spent)? */
-function cardInPool(m, i, id) {
-  const c = CARDS[id],
-    C = cardsOf(m, i),
-    sq = squadOf(m.t[i]);
-  if (!c || (C && C.spent.includes(id))) return false;
-  if (c.plan && m.planBy && m.planBy[i] === 'you' && m.planFixed && m.planFixed[i]) return false; // plans fixed in prep (old tests)
-  if (c.tac && m.tacMode[i] === 'fixed') return false;
-  if (c.src === 'base' || c.src === 'book') return true;
-  if (c.src === 'tech') return sq.some(p => hasTech(p, c.need));
-  if (c.src === 'trait') return sq.some(p => mtr(m, p) === c.trait);
-  if (c.src === 'op') return sq.some(p => p.op || p.elOn);
-  if (c.src === 'duo') return !!duoIds(m, i, id) && duoOn(m.t[i], duoIds(m, i, id)); // (only with that friend on court)
-  return false;
-}
-/** Side i's pool: [id]. */
-const cardPool = (m, i) => Object.keys(CARDS).filter(id => cardInPool(m, i, id));
-/** Can card id go into slot k? (zone; OP only in FLEX) */
-const cardFits = (id, k) => {
-  const z = slotZone(k),
-    c = CARDS[id];
-  return !!c && (z === 'flex' || c.zone === z);
-};
-/** Place card id in slot k for side i (by you): false when it doesn't fit, is spent, not in the pool, or clashes. */
-function cardPut(m, i, k, id) {
-  const C = cardsOf(m, i);
-  if (!C || !SLOTS.includes(k) || (C.off && C.off.includes(k))) return false;
-  if (id == null) {
-    C.slots[k] = null;
-    delete C.you[k];
-    return true;
+/** A Fisher–Yates shuffle with the game's R() (the only draws the deck makes). */
+function deckShuffle(a) {
+  for (let k = a.length - 1; k > 0; k--) {
+    const j = Math.floor(R() * (k + 1));
+    [a[k], a[j]] = [a[j], a[k]];
   }
-  if (!cardFits(id, k) || !cardInPool(m, i, id)) return false;
-  const g = CARDS[id].grp;
-  for (const s of SLOTS) if (s !== k && C.slots[s] && (C.slots[s] === id || (g && CARDS[C.slots[s]].grp === g))) C.slots[s] = null;
-  for (const s in C.you) if (!C.slots[s]) delete C.you[s];
-  C.slots[k] = id;
-  C.you[k] = id;
-  return true;
+  return a;
 }
-
-/** The combo two slotted cards make (COMBOS id) for card id, or null. */
-function comboOf(ids, id) {
-  for (const [k, A, B] of COMBO_LIST)
-    if ((A.includes(id) || B.includes(id)) && A.some(x => ids.includes(x)) && B.some(x => ids.includes(x))) return k;
-  return null;
-}
-/** COMBOS as [id, [first ids], [second ids]]. */
-const COMBO_LIST = Object.entries(COMBOS).map(([k, c]) => [k, ...c.cards.map(x => (Array.isArray(x) ? x : [x]))]);
-
 /**
- * The captain's score for card id on side i (no draws): boosts a steady base; plays when the match shows them (a weak passer,
- * a standout ace, their quicks, their tips, the Reads tab's tags), its playstyle's plans, the squad's techniques, traits,
- * OP cards; minus a Worn card; plus a combo with what is already chosen.
+ * Side i's own cards (spec §2.37), at most DECK.size: one OP card per OP player's role (DECK.op) and Element Surge for element
+ * players, the captain's playbook (DECK.books by style, 2 or 3 by the captain's read), each technique a squad player owns (most
+ * holders on court first), trait cards. Duo cards join later (Cards.duo: the career's setup). No draws.
  */
-function cardScore(m, i, id, chosen, X = cardCtx(m, i)) {
-  const c = CARDS[id],
-    A = CARD_AI,
-    C = cardsOf(m, i),
-    styled = c.plan && (c.plan.atk === X.style[0] || c.plan.def === X.style[1]);
-  if (c.kind === 'boost') return A.boost;
-  if (X.dull && !styled) return -9;
-  // a trap: worth a slot when they have slotted what it names before and can again (the captain can't see their hand now)
-  if (c.kind === 'trap') return c.trap.some(x => X.theirSeen.includes(x)) ? A.trap : -9;
-  let s = c.src === 'tech' ? A.tech : c.src === 'trait' ? A.trait : c.src === 'op' ? A.op : c.src === 'duo' ? A.duo : A.play;
-  if (styled) s += A.style;
-  const { T } = X,
-    E = CARD_EDGE[id];
-  // what the captain sees (spec §2.33): does the play fit now (the same reads as yours); has it been countered here (it can't
-  // see their hand, only what happened when this card was slotted)
-  if (E) s += (CARD_FIT[E.fit] || CARD_FIT.always)(m, i) ? A.read : A.misfit;
-  const S = C && C.stat[id];
-  if (S && S.ctr[0] >= A.seenCtr) s += A.countered;
-  if (c.need) s *= Math.min(1.6, T.P.filter(p => hasTech(p, c.need)).length * 0.5 + 0.5); // more holders on court, more worth
-  if (C && C.worn.includes(id)) s += A.worn;
-  if (comboOf([...chosen, id], id)) s += A.combo;
-  return s;
-}
-
-/** What the captain reads once per pick: its style, the Reads tab's tags it has noticed, their passers' and hitters' gaps. */
-function cardCtx(m, i) {
+function deckOwn(m, i) {
   const T = m.t[i],
-    O = m.t[1 - i],
-    need = noticeAt(T),
-    passQ = q => effD(q) + q.speed * 0.3,
-    pas = passersOf(O).map(passQ),
-    hit = O.P.filter(q => q.role !== 'S').map(q => q.power * 0.6 + q.jump * 0.4),
-    ace = hit.length ? Math.max(...hit) : 0;
-  return {
-    T,
-    theirSeen: m.cards ? Object.keys(m.cards[1 - i].played).filter(x => cardInPool(m, 1 - i, x)) : [],
-    dull: capIQ(T) < CARD_AI.dull,
-    style: PLAN_STYLE[T.sk] || ['straight', 'read'],
-    theirs: m.att ? Reads.tags(m, 1 - i).filter(g => g.n >= need) : [],
-    ours: m.att ? Reads.tags(m, i).filter(g => g.n >= need) : [],
-    oa: m.att ? m.att[1 - i] : { n: 0, q: 0 },
-    weakGap: pas.length ? pas.reduce((a, v) => a + v, 0) / pas.length - Math.min(...pas) : 0,
-    aceGap: hit.length > 1 ? ace - (hit.reduce((a, v) => a + v, 0) - ace) / (hit.length - 1) : 0
-  };
-}
-/**
- * Fill side i's empty slots and re-pick the captain's (the slots you placed stay unless spent), then apply (spec §2.33). The
- * captain goes slot by slot (ATK, DEF, FLEX), best score first; one card of a group; OP only in FLEX. No draws.
- */
-function cardFill(m, i) {
-  const C = cardsOf(m, i);
-  if (!C) return;
-  for (const k of SLOTS) if (!C.you[k] || C.spent.includes(C.you[k])) ((C.slots[k] = null), delete C.you[k]);
-  for (const k of SLOTS) if (C.you[k]) C.slots[k] = C.you[k];
-  const pool = cardPool(m, i),
-    X = cardCtx(m, i),
-    fill = C.by === 'ai' || C.mine < SLOTS.length; // a side you run in full: only your cards (an empty slot stays empty)
-  for (const k of SLOTS) {
-    if (C.slots[k] || !fill || (C.off && C.off.includes(k))) continue;
-    const chosen = cardIds(m, i),
-      grps = chosen.map(id => CARDS[id].grp).filter(Boolean);
-    let best = null,
-      bv = 0;
-    for (const id of pool) {
-      if (chosen.includes(id) || !cardFits(id, k) || (CARDS[id].grp && grps.includes(CARDS[id].grp))) continue;
-      const v = cardScore(m, i, id, chosen, X);
-      if (v > bv) [bv, best] = [v, id];
-    }
-    C.slots[k] = best;
-  }
-  cardApply(m, i);
-  for (const id of cardIds(m, i)) C.played[id] = (C.played[id] || 0) + 1;
+    sq = squadOf(T),
+    out = [],
+    add = id => CARDS[id] && !out.includes(id) && out.push(id);
+  for (const p of sq) if (p.op && DECK.op[p.role]) add(DECK.op[p.role]);
+  if (sq.some(p => p.elOn)) add('surge');
+  const book = DECK.books[T.sk] || DECK.books.balanced;
+  for (const id of book.slice(0, DECK.book[capIQ(T) >= DECK.iq ? 1 : 0])) add(id);
+  const techs = Object.keys(CARDS).filter(id => CARDS[id].src === 'tech' && sq.some(p => hasTech(p, CARDS[id].need))),
+    nOn = id => T.P.filter(p => hasTech(p, CARDS[id].need)).length;
+  techs.sort((a, b) => nOn(b) - nOn(a));
+  for (const id of techs) add(id);
+  for (const id in CARDS) if (CARDS[id].src === 'trait' && sq.some(p => mtr(m, p) === CARDS[id].trait)) add(id);
+  return out.slice(0, DECK.size);
 }
 
 /**
- * Compile side i's slots into the levers: the team plan (planSet), the tactic, role orders (never over an order the
- * board / a test set), forced techniques, buffs (cards + combos), and the OP cards' on-slot effects.
+ * Compile side i's active cards into the levers: the team plan (planSet), the tactic, role orders (never over an order the
+ * board / a test set), forced techniques and buffs (× the holder level for a technique; `self`: only the players who played it).
  */
 function cardApply(m, i) {
-  const C = cardsOf(m, i),
+  const D = deckOf(m, i),
     T = m.t[i],
-    ids = cardIds(m, i),
-    prev = C.prev || [];
+    A = D.act,
+    ids = A.map(a => a.id);
   // plan
   if (!(m.planFixed && m.planFixed[i])) {
     const plan = { atk: 'straight', def: 'read' };
     for (const id of ids) if (CARDS[id].plan) Object.assign(plan, CARDS[id].plan);
     const cur = planOf(m, i);
-    if (cur.atk !== plan.atk || cur.def !== plan.def) planSet(m, i, plan, C.by === 'you' ? 'you' : 'ai');
+    if (cur.atk !== plan.atk || cur.def !== plan.def) planSet(m, i, plan, D.by === 'you' ? 'you' : 'ai');
   }
   // tactic
   if (m.tacMode[i] !== 'fixed') {
@@ -240,9 +157,9 @@ function cardApply(m, i) {
     else if (m.tacMode[i] === 'card') ((m.tac[i] = 'auto'), (m.tacMode[i] = 'cap'));
   }
   // orders: clear the cards' own, then set (a Stubborn player takes none; an order someone else set stands)
-  for (const [pid, k, v] of C.cord) if (m.ord[pid] && m.ord[pid][k] === v) delete m.ord[pid][k];
+  for (const [pid, k, v] of D.cord) if (m.ord[pid] && m.ord[pid][k] === v) delete m.ord[pid][k];
   for (const pid in m.ord) if (!Object.keys(m.ord[pid]).length) delete m.ord[pid];
-  C.cord = [];
+  D.cord = [];
   for (const id of ids) {
     const c = CARDS[id];
     if (!c.ord) continue;
@@ -262,42 +179,27 @@ function cardApply(m, i) {
       const v = v0 === 'weak' ? weakPasser(m.t[1 - i]).id : v0 === 'hot' ? hotHand(m, i, p).id : v0;
       if (k === 'srv' && srvOpts(p).some(o => o.v === v && o.lock)) continue; // (a type they can't serve)
       ordSet(m, p, k, v);
-      C.cord.push([p.id, k, v]);
+      D.cord.push([p.id, k, v]);
     }
   }
   // forced techniques and buffs
-  C.force = ids.filter(id => CARDS[id].force).map(id => CARDS[id].need);
-  C.buff = [];
-  for (const id of ids) {
-    const c = CARDS[id];
+  D.force = ids.filter(id => CARDS[id].force).map(id => CARDS[id].need);
+  D.buff = [];
+  for (const a of A) {
+    const c = CARDS[a.id];
     for (const k in c.buff || {})
-      C.buff.push({
+      D.buff.push({
         k,
-        v: c.buff[k],
+        v: c.buff[k] * (a.lv || 1),
         need: c.need,
         needT: c.needT,
         when: c.when,
-        ...(c.src === 'duo' ? { ids: duoIds(m, i, id) || [] } : {})
+        ...(c.self && a.pids ? { pids: a.pids } : {}),
+        ...(c.src === 'duo' ? { ids: duoIds(m, i, a.id) || [] } : {})
       });
   }
-  for (const k in COMBOS)
-    if (ids.some(id => comboOf(ids, id) === k)) for (const s in COMBOS[k].buff) C.buff.push({ k: s, v: COMBOS[k].buff[s] });
-  C.bk = {}; // stat → its buffs (cardBuff reads this on every effective-stat call)
-  for (const b of C.buff) (C.bk[b.k] || (C.bk[b.k] = [])).push(b);
-  // on-slot effects (OP, trait and one-shot cards): when newly slotted; Element Surge every turn
-  for (const id of ids) if (CARDS[id].on && (!prev.includes(id) || CARDS[id].on === 'surge')) cardOn(m, i, id);
-  C.over = Math.max(1, ...ids.map(id => CARDS[id].over || 1)); // Overload: stamina drain × (dr, js/engine/stats.js)
-  // a one-shot is used up the moment it fires: out of its slot, gone for the match (no morale cost, no turn)
-  for (const k of SLOTS) {
-    const id = C.slots[k];
-    if (!id || CARDS[id].kind !== 'once') continue;
-    C.slots[k] = null;
-    delete C.you[k];
-    C.spent.push(id);
-    C.played[id] = (C.played[id] || 0) + 1;
-    (m.cardLog || (m.cardLog = [])).push({ side: i, id, at: [...m.pts], k: 'used' });
-  }
-  C.prev = cardIds(m, i);
+  D.bk = {}; // stat → its buffs (cardBuff reads this on every effective-stat call)
+  for (const b of D.buff) (D.bk[b.k] || (D.bk[b.k] = [])).push(b);
 }
 /** Our hitter on court with the highest morale (Feed the Hot Hand), not the setter p. */
 const hotHand = (m, i, s) =>
@@ -305,64 +207,465 @@ const hotHand = (m, i, s) =>
     (a, q) => (morOf(m, q) > morOf(m, a) ? q : a),
     m.t[i].P.find(q => q !== s)
   );
-/** A card's effect when it is slotted (`on`): Fever Rush, Element Surge, Get In Their Head, Zone, Second Wind, Timeout Talk. */
+/** Is INZONE!! active on side i (its Fever lock)? */
+const inZoneCard = (m, i) => !!m.deck && m.deck[i].act.some(a => CARDS[a.id].on === 'inzone');
+/**
+ * A card's effect on play (`on`): Element Surge (full gauges on court; again every point while active), Get In Their Head,
+ * Second Wind, Timeout Talk, INZONE!! (straight to Fever). Returns stage acts (INZONE!!).
+ */
 function cardOn(m, i, id) {
-  const T = m.t[i],
-    C = cardsOf(m, i);
+  const T = m.t[i];
   switch (CARDS[id].on) {
-    case 'rush':
-      return morAdd(m, i, 0.3);
     case 'surge':
       if (m.eg) for (const p of T.P) elBuff(m, p);
-      return;
+      return [];
     case 'taunt':
-      return morAdd(m, 1 - i, -0.15);
-    case 'zone': {
-      const ace = T.P.filter(q => q.role !== 'S').reduce((a, q) => (effP(q) > effP(a) ? q : a), T.P[0]);
-      morAdd(m, i, 0.1);
-      m.mor[ace.id] = 1;
-      m.mom[i] = fireOf(m, i);
-      return;
-    }
+      morAdd(m, 1 - i, -0.15);
+      return [];
     case 'wind':
       for (const p of T.P) {
         m.hp[p.id] = 1;
         m.sta[p.id] = Math.min(1, (m.sta[p.id] ?? 1) + 0.25);
       }
-      return;
+      return [];
     case 'talk':
       for (const p of T.P) m.mor[p.id] = clamp(morOf(m, p) + 0.25, -1, 1);
       m.mom[i] = fireOf(m, i);
-      for (const x of C.worn) if (C.net[x] < 0) C.net[x] = 0;
-      C.worn = [];
-      return;
+      return [];
+    case 'inzone': {
+      // straight to Fever (spec §2.37, owner 2026-10-24); Cards.floor / Cards.hold keep it there while the card lasts
+      const c = stageSet(m, i, 'fever', 'card');
+      return c ? [c] : [];
+    }
+  }
+  return [];
+}
+/** A payer list pays `cost` ({ bar, amt }): stamina / HP down to 0.05 at most, morale to −1 (spec §2.37: spam wears them out). */
+function cardPay(m, i, P, cost) {
+  if (!cost || !P.length) return [];
+  for (const p of P) {
+    if (cost.bar === 'sta') m.sta[p.id] = clamp((m.sta[p.id] ?? 1) - cost.amt, 0.05, 1);
+    else if (cost.bar === 'hp') m.hp[p.id] = clamp(hpOf(m, p) - cost.amt, 0.05, 1);
+    else m.mor[p.id] = clamp(morOf(m, p) - cost.amt, -1, 1);
+  }
+  if (cost.bar === 'mor') m.mom[i] = fireOf(m, i);
+  return P.map(p => p.id);
+}
+/** A technique holder's action level (SKILL.use of the technique's kind) / DECK.lv.ref, clamped (spec §2.37). */
+function techLv(p, need) {
+  const kind = { Serve: 'serve', Attack: 'spike', Setter: 'set', Defense: 'block' }[(SKILLS[need] || {}).tech] || 'spike',
+    U = SKILL.use[kind];
+  let v = 0;
+  for (const k in U) v += U[k] * p[k];
+  return clamp(v / DECK.lv.ref, DECK.lv.min, DECK.lv.max);
+}
+/** Does player p bring card id (career: the cards you bring are yours to play — your techniques, your trait, your duo)? */
+function cardBrings(m, i, p, id) {
+  const c = CARDS[id];
+  if (!p || !c) return false;
+  if (c.src === 'tech') return hasTech(p, c.need);
+  if (c.src === 'trait') return mtr(m, p) === c.trait;
+  if (c.src === 'duo') return (duoIds(m, i, id) || []).includes(p.id);
+  if (c.src === 'op') return id === 'surge' ? !!p.elOn : !!p.op && DECK.op[p.role] === id;
+  return false;
+}
+/** The other side's active traps that name card id. */
+const trapsFor = (m, i, id) => deckOf(m, 1 - i).act.filter(a => CARDS[a.id].kind === 'trap' && CARDS[a.id].trap.includes(id));
+/** Is side i at a key moment (spec §2.37): set point either way, their Fever, CARD_AI.down+ down from CARD_AI.late points, their run? */
+function keyMoment(m, i) {
+  const A = CARD_AI,
+    a = m.pts[i],
+    b = m.pts[1 - i],
+    top = Math.max(a, b);
+  return (
+    top >= RULES.pointsToWin - 1 ||
+    m.stage[1 - i] === 'fever' ||
+    (b - a >= A.down && top >= A.late) ||
+    (m.streak ? m.streak[1 - i] : 0) >= A.run
+  );
+}
+
+const Cards = {
+  /** Side i's deck state (m.deck[i]) or null. */
+  of: deckOf,
+  /** Side i's active cards: [{ id, left, per, by, pids, who, lv, at, pin? }] (`left`: points — serves for per 'srv' — to go). */
+  active: (m, i) => (deckOf(m, i) ? deckOf(m, i).act : []),
+  /** A strong card (the captain saves it): OP, or a cooldown of DECK.strong+. */
+  strong: id => CARDS[id].kind === 'op' || CARDS[id].cd >= DECK.strong,
+  /** Side i's players on court card id belongs to (its holders): technique owners, trait carriers, the duo, the OP / element player; a playbook card or trap: the captain; a Basic: the court. */
+  holders(m, i, id) {
+    const c = CARDS[id],
+      T = m.t[i];
+    if (c.src === 'tech' || c.src === 'trait' || c.src === 'op')
+      return T.P.filter(p => cardBrings(m, i, p, id)).sort((a, b) =>
+        c.src === 'tech' ? techLv(b, c.need) - techLv(a, c.need) : ovr(b) - ovr(a)
+      );
+    if (c.src === 'duo') {
+      const ids = duoIds(m, i, id);
+      return ids && duoOn(T, ids) ? T.P.filter(p => ids.includes(p.id)) : [];
+    }
+    if (c.src === 'base') return [...T.P];
+    return [T.cap || T.P[0]];
+  },
+  /** Who pays card id's cost (`which`: 'cost' | 'after'): its holders, the captain or everyone on court. */
+  payers(m, i, id, which = 'cost') {
+    const C = CARDS[id][which],
+      T = m.t[i];
+    if (!C) return [];
+    return C.who === 'holder'
+      ? Cards.holders(m, i, id).slice(0, CARDS[id].self ? 1 : 9)
+      : C.who === 'captain'
+        ? [T.cap || T.P[0]]
+        : [...T.P];
+  },
+  /** Can every payer afford card id (each bar after the cost at CARD_AI.floor or above)? Playing anyway is allowed. */
+  afford(m, i, id) {
+    const C = CARDS[id].cost;
+    if (!C) return true;
+    const F = CARD_AI.floor[C.bar];
+    return Cards.payers(m, i, id).every(
+      p => (C.bar === 'sta' ? (m.sta[p.id] ?? 1) : C.bar === 'hp' ? hpOf(m, p) : morOf(m, p)) - C.amt >= F
+    );
+  },
+  /** Does card id's read hold for side i now ("Fits now": what you can read, never their hand)? A card without a read: true. */
+  fits(m, i, id) {
+    const E = CARD_EDGE[id];
+    return !E || (CARD_FIT[E.fit] || CARD_FIT.always)(m, i);
+  },
+  /** The holder level card id would play at (a technique: its best holders' level, spec §2.37; others 1). */
+  level(m, i, id) {
+    const c = CARDS[id];
+    if (c.src !== 'tech') return 1;
+    const H = Cards.holders(m, i, id);
+    return H.length ? H.reduce((s, p) => s + techLv(p, c.need), 0) / H.length : 1;
+  },
+  /** Is card id yours to play on side i (a side you run; career: one you bring)? The captain never plays those. */
+  mine(m, i, id) {
+    const D = deckOf(m, i);
+    return (
+      !!D &&
+      (D.by === 'you' ||
+        (!!D.me &&
+          cardBrings(
+            m,
+            i,
+            squadOf(m.t[i]).find(p => p.id === D.me),
+            id
+          )))
+    );
+  },
+  /**
+   * Why hand card h of side i can't be played now, or null: 'off' (no deck / over), 'gap', 'point' (this side played this
+   * point), 'active' (the same card is active), 'clash' (an active card of its group), 'holder' (none on court).
+   */
+  can(m, i, h) {
+    const D = deckOf(m, i);
+    if (!D || m.over) return 'off';
+    const id = D.hand[h];
+    if (!id) return 'gap';
+    if (D.pt === ptsPlayed(m)) return 'point';
+    if (D.act.some(a => a.id === id)) return 'active';
+    const g = CARDS[id].grp;
+    if (g && D.act.some(a => CARDS[a.id].grp === g)) return 'clash';
+    if (!Cards.holders(m, i, id).length) return 'holder';
+    return null;
+  },
+  /**
+   * Play hand card h of side i (between points): the cost on the payers' bars, the card active from the next serve for its
+   * `dur`, its gap left until the next turn; an armed trap of theirs that names it catches it (cost paid, no effect). A
+   * one-shot (`dur` 0) acts at once and goes to the discard pile. Returns the `card` act (queued for the next serve's beats)
+   * or null when it can't be played (Cards.can).
+   */
+  play(m, i, h) {
+    if (Cards.can(m, i, h)) return null;
+    const cm0 = CM;
+    CM = m;
+    const D = deckOf(m, i),
+      id = D.hand[h],
+      c = CARDS[id],
+      H = Cards.holders(m, i, id),
+      by = (c.src === 'base' ? m.t[i].cap || H[0] : H[0]).id,
+      who = cardPay(m, i, Cards.payers(m, i, id), c.cost),
+      at = [...m.pts],
+      act = { k: 'card', side: i, id, by, op: c.kind === 'op', dur: c.dur, per: c.per, who, cost: c.cost || null, st: cardState(m, i, id) },
+      out = [act];
+    D.hand[h] = null;
+    D.pt = ptsPlayed(m);
+    D.played[id] = (D.played[id] || 0) + 1;
+    D.log.push({ k: 'play', id, at, by });
+    const trap = trapsFor(m, i, id)[0];
+    if (trap) {
+      // caught (spec §2.33 traps): the card is wasted, the trap used up
+      act.caught = trap.id;
+      Cards.toDisc(m, i, id);
+      D.log.push({ k: 'caught', id, at, by: trap.id });
+      const O = deckOf(m, 1 - i);
+      O.act = O.act.filter(a => a !== trap);
+      Cards.toDisc(m, 1 - i, trap.id);
+      O.log.push({ k: 'sprung', id: trap.id, at, hit: id });
+      out.push({ k: 'cardend', side: 1 - i, id: trap.id, by: trap.by, why: 'sprung', hit: id });
+    } else if (!c.dur) {
+      out.push(...cardOn(m, i, id));
+      Cards.toDisc(m, i, id);
+    } else {
+      const pids = c.self ? [by] : H.map(p => p.id);
+      D.act.push({ id, left: c.dur, per: c.per, by, pids, who, lv: Cards.level(m, i, id), at });
+      out.push(...cardOn(m, i, id));
+      cardApply(m, i);
+    }
+    m.cardQ.push(...out);
+    CM = cm0;
+    return act;
+  },
+  /** Discard hand card h of side i (any time between points): to the discard pile (an OP card: gone), the gap stays until the next turn. */
+  discard(m, i, h) {
+    const D = deckOf(m, i);
+    if (!D || m.over || !D.hand[h]) return false;
+    const id = D.hand[h];
+    D.hand[h] = null;
+    Cards.toDisc(m, i, id);
+    D.log.push({ k: 'discard', id, at: [...m.pts] });
+    return true;
+  },
+  /** Card id of side i leaves play: cooling in the discard pile for its `cd` points, an OP card used up for the match. */
+  toDisc(m, i, id) {
+    const D = deckOf(m, i);
+    if (CARDS[id].cd === Infinity) D.used.push(id);
+    else D.disc.push({ id, cd: CARDS[id].cd });
+  },
+  /**
+   * The captain's pick for side i (spec §2.37, no draws): a hand index or −1. Only cards it may play (not yours), playable,
+   * affordable and fitting (a trap: when they have played what it names); a strong card waits for a key moment when the
+   * captain's read (capIQ) is sharp enough (CARD_AI.wait / waitOp); best score first.
+   */
+  capPlay(m, i) {
+    const D = deckOf(m, i);
+    if (!D || D.by === 'you' || D.pt === ptsPlayed(m)) return -1;
+    const A = CARD_AI,
+      iq = capIQ(m.t[i]),
+      key = keyMoment(m, i),
+      seen = deckOf(m, 1 - i)
+        .log.filter(e => e.k === 'play')
+        .map(e => e.id);
+    let best = -1,
+      bv = 0;
+    D.hand.forEach((id, h) => {
+      if (!id || Cards.can(m, i, h) || Cards.mine(m, i, id) || !Cards.afford(m, i, id)) return;
+      const c = CARDS[id],
+        strong = Cards.strong(id),
+        S = D.stat[id];
+      if (c.kind === 'trap') {
+        if (!c.trap.some(x => seen.includes(x) && !deckOf(m, 1 - i).used.includes(x)) || D.act.some(a => CARDS[a.id].kind === 'trap'))
+          return;
+      } else if (!Cards.fits(m, i, id)) return;
+      if (strong && !key && iq >= (c.kind === 'op' ? A.waitOp : A.wait)) return; // saved for a key moment
+      let v =
+        A[
+          c.kind === 'basic'
+            ? 'basic'
+            : c.kind === 'op' || c.kind === 'trap' || c.kind === 'once'
+              ? c.kind
+              : c.src === 'tech' || c.src === 'trait' || c.src === 'duo'
+                ? c.src
+                : 'play'
+        ];
+      const E = CARD_EDGE[id];
+      if (E && E.fit !== 'always') v += A.read;
+      if (c.need) v *= Math.min(1.6, Cards.holders(m, i, id).length * 0.5 + 0.5); // more holders on court, more worth
+      if (S && S.ctr[0] >= A.seenCtr) v += A.countered;
+      if (strong && key) v += A.key;
+      if (v > bv) [bv, best] = [v, h];
+    });
+    return best;
+  },
+  /** At a turn: the captain discards its dead cards held since the last turn (no holder on court, or not fitting), if sharp enough. */
+  capClear(m, i) {
+    const D = deckOf(m, i);
+    if (!D || D.by === 'you' || capIQ(m.t[i]) < CARD_AI.waitOp) return;
+    D.hand.forEach((id, h) => {
+      if (!id || !D.held.includes(id) || Cards.mine(m, i, id) || Cards.strong(id) || CARDS[id].kind === 'trap') return;
+      if (!Cards.holders(m, i, id).length || !Cards.fits(m, i, id)) Cards.discard(m, i, h);
+    });
+  },
+  /** Refill side i's gaps from the deck; an empty deck takes the cooled cards back (shuffled: R()). Returns the cards dealt. */
+  refill(m, i) {
+    const D = deckOf(m, i);
+    let n = 0;
+    for (let h = 0; h < D.size; h++) {
+      if (D.hand[h]) continue;
+      if (!D.draw.length) {
+        const cool = D.disc.filter(e => e.cd <= 0).map(e => e.id);
+        D.disc = D.disc.filter(e => e.cd > 0);
+        D.draw = deckShuffle(cool);
+      }
+      if (!D.draw.length) break;
+      D.hand[h] = D.draw.shift();
+      n++;
+    }
+    D.held = [...D.hand];
+    return n;
+  },
+  /** Before every serve (rallyStart): the captains play, then each side's edges. Returns the play acts since the last serve. */
+  serve(m) {
+    if (!m.deck) return [];
+    for (const i of [0, 1]) {
+      const h = Cards.capPlay(m, i);
+      if (h >= 0) Cards.play(m, i, h);
+    }
+    cardEdges(m);
+    return m.cardQ.splice(0);
+  },
+  /** After pointMomentum, before Cards.point (end()): INZONE!!'s side keeps Fever's clock from running out while the card lasts. */
+  floor(m) {
+    if (!m.deck) return;
+    for (const i of [0, 1]) if (inZoneCard(m, i) && m.stage[i] === 'fever') m.fever[i] = Math.max(m.fever[i] || 0, 2);
+  },
+  /**
+   * After pointStage / stageTimeout: an INZONE!! side the point (an error, the zone breaker) or a timeout took out of Fever is
+   * put back, its change dropped from `changes` (the stage acts) so nothing shows it leaving. Returns `changes`.
+   */
+  hold(m, changes) {
+    if (!m.deck) return changes;
+    for (const i of [0, 1]) {
+      if (!inZoneCard(m, i) || m.stage[i] === 'fever') continue;
+      stageSet(m, i, 'fever', 'card');
+      m.fever[i] = Math.max(m.fever[i] || 0, 2);
+      changes = changes.filter(c => !(c.side === i && c.from === 'fever'));
+    }
+    return changes;
+  },
+  /**
+   * After a rally won by w (end()): each active card's fit / misfit / countered tally (the rallies it acted in), the discard
+   * pile cools a point, each active card counts down (serve cards on your serves) and ends at 0: its after-cost, to the
+   * discard pile (OP: used up). Element Surge recharges while active. Returns the `cardend` acts.
+   */
+  point(m, w) {
+    if (!m.deck) return [];
+    cardTally(m, w);
+    const out = [];
+    for (const i of [0, 1]) {
+      const D = m.deck[i];
+      for (const e of D.disc) if (e.cd > 0) e.cd--;
+      let ch = false;
+      for (const a of [...D.act]) {
+        if (a.pin) continue;
+        if (a.per !== 'srv' || m.srv0 === i) a.left--;
+        if (a.left > 0) {
+          if (CARDS[a.id].on === 'surge') cardOn(m, i, a.id);
+          continue;
+        }
+        D.act = D.act.filter(x => x !== a);
+        if (CARDS[a.id].on === 'inzone' && m.stage[i] === 'fever') m.fever[i] = 1; // (Fever ends with the card: pointStage's clock)
+        const after = CARDS[a.id].after,
+          who = after
+            ? cardPay(
+                m,
+                i,
+                Cards.payers(m, i, a.id, 'after').filter(p => !CARDS[a.id].self || p.id === a.by),
+                after
+              )
+            : [];
+        Cards.toDisc(m, i, a.id);
+        D.log.push({ k: 'end', id: a.id, at: [...m.pts] });
+        out.push({ k: 'cardend', side: i, id: a.id, by: a.by, why: 'done', ...(after ? { after, who } : {}) });
+        ch = true;
+      }
+      if (ch) cardApply(m, i);
+    }
+    return out;
+  },
+  /** A timeout (spec §2.32): an extra turn for side i — the captain clears, the gaps refill. Returns the cards dealt. */
+  extra(m, i) {
+    if (!m.deck) return 0;
+    Cards.capClear(m, i);
+    return Cards.refill(m, i);
+  },
+  /** Career (spec §4.36): the duo cards of m.duo[i] join side i's deck in place of Basics (deck first, then the hand); no draws. */
+  duo(m, i) {
+    const D = deckOf(m, i);
+    if (!D || !m.duo || !m.duo[i]) return;
+    const has = id => D.draw.includes(id) || D.hand.includes(id) || D.disc.some(e => e.id === id);
+    for (const id of Object.keys(m.duo[i])) {
+      if (has(id)) continue;
+      const k = D.draw.map(x => CARDS[x].kind).lastIndexOf('basic');
+      if (k >= 0) D.draw[k] = id;
+      else {
+        const h = D.hand.map(x => x && CARDS[x].kind).lastIndexOf('basic');
+        if (h >= 0) D.hand[h] = id;
+      }
+    }
+  }
+};
+
+/** A card's state for side i this rally: 'ctr' (the other side has its counter active), 'fit', or 'mis'. */
+function cardState(m, i, id) {
+  const E = CARD_EDGE[id];
+  if (!E) return 'fit';
+  const theirs = deckOf(m, 1 - i).act.map(a => a.id);
+  if (E.ctr.some(x => theirs.includes(x))) return 'ctr';
+  return (CARD_FIT[E.fit] || CARD_FIT.always)(m, i) ? 'fit' : 'mis';
+}
+/** Before every serve: each side's active plays' states and their edges (D.st, D.ek) for cardBuff (× a technique's holder level). */
+function cardEdges(m) {
+  if (!m.deck) return;
+  for (const i of [0, 1]) ((m.deck[i].st = {}), (m.deck[i].ek = {}));
+  for (const i of [0, 1])
+    for (const a of m.deck[i].act) {
+      const id = a.id,
+        c = CARDS[id],
+        E = CARD_EDGE[id];
+      if (c.kind !== 'play' || !E) continue;
+      if (c.need && !m.t[i].P.some(p => hasTech(p, c.need))) continue; // (its holders all on the bench: nothing)
+      const st = cardState(m, i, id),
+        f = (st === 'fit' ? 1 : st === 'ctr' ? EDGE.ctr : EDGE.mis) * EDGE.k * (a.lv || 1);
+      m.deck[i].st[id] = st;
+      for (const [who, k, v] of E.e) {
+        const C = m.deck[who === 'us' ? i : 1 - i];
+        (C.ek[k] || (C.ek[k] = [])).push({ v: v * f, need: who === 'us' && !E.team ? c.need : null });
+      }
+    }
+}
+/** After a rally won by w: every active play / OP card that acted in it counts the rally by its state (D.stat; Stubborn servers / hitters don't count). */
+function cardTally(m, w) {
+  const a0 = m.att0 || [0, 0],
+    sv = m.srv0 != null ? m.srv0 : m.serve,
+    server = m.srvP0,
+    hitter = m.ctx0 && m.ctx0.spiker;
+  for (const i of [0, 1]) {
+    const D = m.deck[i],
+      atk = m.att[i].n > a0[i],
+      def = m.att[1 - i].n > a0[1 - i];
+    for (const { id } of D.act) {
+      const c = CARDS[id];
+      if (c.kind === 'basic' || c.kind === 'trap') continue;
+      let acted =
+        c.tally === 'serve' ? sv === i : c.tally === 'recv' ? sv !== i : c.tally === 'attack' ? atk : c.tally === 'defend' ? def : true;
+      if (c.need && c.tally === 'serve') acted = acted && server && hasTech(server, c.need);
+      if (c.need && c.tally === 'attack') acted = acted && m.t[i].P.some(p => hasTech(p, c.need));
+      if (c.tally === 'serve' && server && mtr(m, server) === 'stubborn') acted = false;
+      if (c.tally === 'attack' && hitter && m.t[i].P.includes(hitter) && mtr(m, hitter) === 'stubborn') acted = false;
+      if (!acted) continue;
+      const st = (D.st && D.st[id]) || 'fit',
+        S = D.stat[id] || (D.stat[id] = { fit: [0, 0], mis: [0, 0], ctr: [0, 0] }); // [rallies, won] by state
+      S[st][0]++;
+      if (w === i) S[st][1]++;
+    }
   }
 }
 /**
- * Traps (spec §2.33): before the first serve after a turn, every slotted trap whose named cards the other side has slotted
- * burns that card (cardSpend: their usual cost) and is used up. Returns [{ side, id, trap }] (side: the side that lost id).
+ * A turn (spec §2.32): every TURN.pts points played. Each side's captain clears its dead cards, the gaps refill. Returns the
+ * beat that shows it (recording only), or null.
  */
-function cardTraps(m) {
-  m.trapNow = false;
-  if (!m.cards) return [];
-  const out = [];
-  for (const i of [0, 1]) {
-    const C = m.cards[i];
-    for (const k of SLOTS) {
-      const t = C.slots[k],
-        c = t && CARDS[t];
-      if (!c || c.kind !== 'trap') continue;
-      const hit = cardIds(m, 1 - i).find(x => c.trap.includes(x));
-      if (!hit) continue;
-      C.slots[k] = null;
-      delete C.you[k];
-      C.spent.push(t);
-      (m.cardLog || (m.cardLog = [])).push({ side: i, id: t, at: [...m.pts], k: 'trap', hit });
-      cardSpend(m, 1 - i, hit);
-      out.push({ side: 1 - i, id: hit, trap: t });
-    }
-  }
-  return out;
+function cardTurn(m) {
+  if (!m.deck || m.over) return null;
+  const played = ptsPlayed(m);
+  if (played - m.turnAt < TURN.pts) return null;
+  m.turnAt = played;
+  m.turnN++;
+  for (const i of [0, 1]) Cards.capClear(m, i);
+  for (const i of [0, 1]) Cards.refill(m, i);
+  m.turnLog.push({ n: m.turnN, at: [...m.pts], hands: [0, 1].map(i => [...m.deck[i].hand]) });
+  return m.rec ? { dur: 300, acts: [{ k: 'turn', n: m.turnN, snap: snap(m) }] } : null;
 }
 
 /** Averages for the reads (no draws): hitters' power in play, blockers' block, passers' receive, the side's Defense. */
@@ -442,6 +745,7 @@ const CARD_FIT = {
   fresh: (m, i) => avgOf(m.t[i].P, p => m.sta[p.id] ?? 1) >= 0.75,
   hotHand: (m, i) => m.t[i].P.some(p => p.role !== 'S' && morOf(m, p) >= 0.3),
   strongPass: (m, i) => !passWeak(m, m.t[1 - i]),
+  cold: (m, i) => m.stage[i] === 'loose' || m.stage[i] === 'composed', // INZONE!! (spec §2.37): below Focused
   theirSetter: (m, i) => {
     const S = m.t[1 - i].P.find(p => p.role === 'S');
     return !!S && W(S) >= 1.2;
@@ -456,113 +760,4 @@ function ovrSide(m, i) {
   const v = avgOf(T.P, ovr);
   m.ovrC[i] = [key, v];
   return v;
-}
-/** A slotted play's state this rally: 'ctr' (the other side holds its counter), 'fit', or 'mis'. */
-function cardState(m, i, id) {
-  const E = CARD_EDGE[id];
-  if (!E) return 'fit';
-  const theirs = cardIds(m, 1 - i);
-  if (E.ctr.some(x => theirs.includes(x))) return 'ctr';
-  return (CARD_FIT[E.fit] || CARD_FIT.always)(m, i) ? 'fit' : 'mis';
-}
-/** Before every serve (rallyStart): each side's plays' states and their edges (C.st, C.ek) for cardBuff. */
-function cardEdges(m) {
-  if (!m.cards) return;
-  for (const i of [0, 1]) ((m.cards[i].st = {}), (m.cards[i].ek = {}));
-  for (const i of [0, 1])
-    for (const id of cardIds(m, i)) {
-      const c = CARDS[id],
-        E = CARD_EDGE[id];
-      if (c.kind !== 'play' || !E) continue;
-      if (c.need && !m.t[i].P.some(p => hasTech(p, c.need))) continue; // (its holders all on the bench: nothing)
-      const st = cardState(m, i, id),
-        f = (st === 'fit' ? 1 : st === 'ctr' ? EDGE.ctr : EDGE.mis) * EDGE.k;
-      m.cards[i].st[id] = st;
-      for (const [who, k, v] of E.e) {
-        const C = m.cards[who === 'us' ? i : 1 - i];
-        (C.ek[k] || (C.ek[k] = [])).push({ v: v * f, need: who === 'us' && !E.team ? c.need : null });
-      }
-    }
-}
-
-/**
- * After a rally won by w (end(), before the serve moves on): every slotted play on each side that acted in it counts ±1
- * (a combo shares one count); Worn at TURN.worn; Spent at TURN.spent → out for the match, morale down, a turn at once.
- * Stubborn servers / hitters don't count. Returns [{ side, id }] spent.
- */
-function cardTally(m, w) {
-  if (!m.cards) return [];
-  const out = [],
-    a0 = m.att0 || [0, 0],
-    sv = m.srv0 != null ? m.srv0 : m.serve,
-    server = m.srvP0,
-    hitter = m.ctx0 && m.ctx0.spiker;
-  for (const i of [0, 1]) {
-    const C = m.cards[i],
-      ids = cardIds(m, i),
-      atk = m.att[i].n > a0[i],
-      def = m.att[1 - i].n > a0[1 - i];
-    const seen = new Set();
-    for (const id of ids) {
-      const c = CARDS[id];
-      if (c.kind !== 'play') continue;
-      let acted =
-        c.tally === 'serve' ? sv === i : c.tally === 'recv' ? sv !== i : c.tally === 'attack' ? atk : c.tally === 'defend' ? def : true;
-      if (c.need && c.tally === 'serve') acted = acted && server && hasTech(server, c.need);
-      if (c.need && c.tally === 'attack') acted = acted && m.t[i].P.some(p => hasTech(p, c.need));
-      if (c.tally === 'serve' && server && mtr(m, server) === 'stubborn') acted = false;
-      if (c.tally === 'attack' && hitter && m.t[i].P.includes(hitter) && mtr(m, hitter) === 'stubborn') acted = false;
-      if (!acted) continue;
-      const st = (C.st && C.st[id]) || 'fit',
-        S = C.stat[id] || (C.stat[id] = { fit: [0, 0], mis: [0, 0], ctr: [0, 0] }); // [rallies, won] by state
-      S[st][0]++;
-      if (w === i) S[st][1]++;
-      const key = comboOf(ids, id) || id;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      if (st === 'fit') continue; // (spec §2.33: a fitting play never burns — only countered / misfit rallies count)
-      C.net[key] = (C.net[key] || 0) + (w === i ? 1 : -1);
-      const n = C.net[key],
-        burn = key in COMBOS ? ids.filter(x => comboOf(ids, x) === key) : [id];
-      for (const x of burn) {
-        if (n <= TURN.worn && !C.worn.includes(x)) C.worn.push(x);
-        if (n > TURN.worn) C.worn = C.worn.filter(y => y !== x);
-      }
-      if (n <= TURN.spent) for (const x of burn) out.push({ side: i, id: x });
-    }
-  }
-  for (const { side, id } of out) cardSpend(m, side, id);
-  return out;
-}
-/** Card id of side i burns: out of its slot for the match, the team's morale drops (Spiteful players rise), a turn follows. */
-function cardSpend(m, i, id) {
-  const C = m.cards[i];
-  if (C.spent.includes(id)) return;
-  C.spent.push(id);
-  C.worn = C.worn.filter(x => x !== id);
-  for (const k of SLOTS) if (C.slots[k] === id) ((C.slots[k] = null), delete C.you[k]);
-  for (const p of m.t[i].P) {
-    const sp = mtr(m, p) === 'spiteful';
-    m.mor[p.id] = clamp(morOf(m, p) + (sp ? -TURN.spentMor : TURN.spentMor), -1, 1);
-  }
-  m.mom[i] = fireOf(m, i);
-  m.turnNow = true;
-  (m.cardLog || (m.cardLog = [])).push({ side: i, id, at: [...m.pts], k: 'spent' });
-  cardApply(m, i);
-}
-/**
- * A turn (spec §2.32): every TURN.pts points played, or at once after a spent card. Each side refills (cardFill: your cards
- * stay, the captain re-picks the rest). Returns the beat that shows it (recording only), or null.
- */
-function cardTurn(m) {
-  if (!m.cards || m.over) return null;
-  const played = m.pts[0] + m.pts[1];
-  if (!m.turnNow && played - m.turnAt < TURN.pts) return null;
-  m.turnAt = played;
-  m.turnNow = false;
-  m.turnN++;
-  for (const i of [0, 1]) cardFill(m, i);
-  m.turnLog.push({ n: m.turnN, at: [...m.pts], slots: [0, 1].map(i => ({ ...m.cards[i].slots })) });
-  m.trapNow = true;
-  return m.rec ? { dur: 300, acts: [{ k: 'turn', n: m.turnN, snap: snap(m) }] } : null;
 }

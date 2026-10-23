@@ -21,7 +21,7 @@ function prepOpen() {
   A.prep = true;
   for (const i of [0, 1]) {
     const n = cardsMine(m, i); // your hand (spec §2.33): the captain's pick to start from
-    if (m.cards && n && m.cards[i].by !== 'you') cardsWho(m, i, n);
+    if (m.deck && n) cardsWho(m, i, n);
   }
   let el = $('#prep');
   if (!el) {
@@ -67,7 +67,7 @@ function prepStage(m, i) {
     what = [
       S.mor && `morale starts ${S.mor * 100} lower`,
       S.heal && `HP heals ${S.heal * 100} less a rally`,
-      S.slots && `${cardSlots(m, i).length} card slots`
+      S.slots && `a hand of ${m.deck ? m.deck[i].size : DECK.hand - S.slots} cards`
     ]
       .filter(Boolean)
       .join(' · ');

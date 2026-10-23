@@ -328,11 +328,7 @@ const Team = {
     }
     if (Object.keys(by).length) {
       (m.duo || (m.duo = [null, null]))[side] = by;
-      const C = m.cards && m.cards[side];
-      if (C && !m.turnN && !Object.keys(C.you).length) {
-        C.played = {}; // turn 0 again (newMatch's captain picked before the duo was known): the same counts, the duo in the pick
-        cardFill(m, side);
-      }
+      if (!m.turnN) Cards.duo(m, side); // (spec §2.37: the duo cards join the deck in place of Basics, no draws)
     }
     const ex = Team.exAcross(run, m, side);
     if (ex.length) m.exIds = ex.map(p => p.id);

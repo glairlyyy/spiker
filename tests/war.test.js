@@ -112,7 +112,7 @@ test('war: stages in the match — Iron bleeds into Gold one lighter, Shu one la
     m = g.newMatch(fx.a, fx.b, false);
   fx.setup(m);
   eq(JSON.stringify(m.weak), '[0,3]', 'the fixture’s setup sets both sides’ stages');
-  eq(g.cardSlots(m, 1).length, 4, 'their crew: 4 slots');
+  eq(m.deck[1].hand.length, 4, 'their crew: a hand of 4');
   fx.onLeave();
 });
 

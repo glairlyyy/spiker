@@ -175,7 +175,7 @@ function newMatch(a, b, rec, opts = {}) {
   matchPlans(m, opts);
   const cm0 = CM;
   CM = m; // (the captain's card pick reads this match's effective stats, not the last match's)
-  cardsInit(m, opts); // tactic cards (spec §2.33): the turn-0 hands
+  cardsInit(m, opts); // the decks (spec §2.37): built, shuffled, the first hands dealt
   weakSet(m, opts.weak);
   CM = cm0;
   if (opts.ground) m.ground = opts.ground;
@@ -184,7 +184,7 @@ function newMatch(a, b, rec, opts = {}) {
 }
 /**
  * The sides' war stages (spec §4.34; WAR_STAGES index 0–3 per side, from opts.weak or a career fixture's setup): morale
- * starts lower, HP heals less (hpHeal reads m.weak), a Broken side loses its last card slot(s) (FLEX). No draws; absent or
+ * starts lower, HP heals less (hpHeal reads m.weak), a Broken side holds a smaller hand (DECK.hand − slots). No draws; absent or
  * [0, 0] → nothing changes.
  */
 function weakSet(m, weak) {
@@ -194,17 +194,16 @@ function weakSet(m, weak) {
   CM = m;
   for (const i of [0, 1]) {
     const S = WAR_STAGES[m.weak[i]],
-      C = cardsOf(m, i);
+      D = deckOf(m, i);
     if (S.mor) morAdd(m, i, -S.mor);
-    if (C && S.slots) {
-      C.off = SLOTS.slice(-S.slots);
-      for (const k of C.off) {
-        const id = C.slots[k];
-        if (id && C.played[id] && !--C.played[id]) delete C.played[id]; // (counted by turn 0's fill)
-        C.slots[k] = null;
-        delete C.you[k];
+    if (D && S.slots) {
+      // a smaller hand (spec §2.37): the last places go back on top of the deck (no draws)
+      D.size = Math.max(1, DECK.hand - S.slots);
+      while (D.hand.length > D.size) {
+        const id = D.hand.pop();
+        if (id) D.draw.unshift(id);
       }
-      cardApply(m, i);
+      D.held = [...D.hand];
     }
   }
   CM = cm0;
@@ -511,8 +510,10 @@ function end(m, w, beats) {
   const oppWasInZone = !!m.zone[1 - w];
   pointTally(m, w);
   pointMomentum(m, w);
-  const spent = cardTally(m, w); // the slotted plays' net points; a play at TURN.spent burns (spec §2.33)
+  Cards.floor(m); // INZONE!!: Fever's clock held while the card lasts (spec §2.37)
+  const ends = Cards.point(m, w); // the active cards count down, cool, end (spec §2.37)
   const z = pointStage(m, w, oppWasInZone); // fire → stage (spec §2.14)
+  z.changes = Cards.hold(m, z.changes); // (an error / the zone breaker does not end INZONE!!'s Fever)
   elPoint(m, w);
   // captain's buffs wear off after a few points
   for (const id in m.buff) if (--m.buff[id].n <= 0) delete m.buff[id];
@@ -525,14 +526,14 @@ function end(m, w, beats) {
   }
   const capBeats = m.over ? [] : [...captainThink(m, 0), ...captainThink(m, 1)];
   if (beats) pointBeats(m, w, beats, z, capBeats);
-  if (beats && spent.length) beats.push({ dur: 900, acts: spent.map(s => ({ k: 'cardspent', side: s.side, id: s.id })) });
+  if (beats && ends.length) beats.push({ dur: 600, acts: ends });
   // substitutions at the dead ball (after the point's beats, before any timeout huddle): a Rest order first (spec §2.30)
   if (!m.over)
     for (const side of [0, 1]) {
       const bs = [...ordSubs(m, side), ...capSubs(m, side)];
       if (beats) beats.push(...bs);
     }
-  const tb = cardTurn(m); // a turn: every TURN.pts points, or after a spent card (spec §2.32)
+  const tb = cardTurn(m); // a turn: every TURN.pts points, the hands refill (spec §2.32, §2.37)
   if (beats && tb) beats.push(tb);
   if (!m.over) {
     const L = 1 - w,
@@ -674,14 +675,12 @@ function timeout(m, L, beats, manual) {
   fireTo(m, O, m.mom[O] * (0.6 - 0.3 * iq)); // (fire = morale since spec §2.31: everyone shifts alike)
   if (m.mom[L] < 0) fireTo(m, L, 0);
   m.streak[O] = 0;
-  const sc = stageTimeout(m, L); // out of Loose at once; their Fever cools (spec §2.14)
+  const sc = Cards.hold(m, stageTimeout(m, L)); // out of Loose at once; their Fever cools (spec §2.14)
   // the AI captain's huddle answers what it has noticed (spec §2.26); a side you run changes plan in match prep instead
   let np = null;
-  if (m.cards) {
-    // with cards (spec §2.32): a timeout is a turn for that side — the captain re-picks around your cards
-    const before = cardIds(m, L).join();
-    if (m.cards[L].by === 'ai') cardFill(m, L);
-    np = before !== cardIds(m, L).join();
+  if (m.deck) {
+    // with cards (spec §2.32, §2.37): a timeout is an extra turn for that side — its hand refills
+    np = Cards.extra(m, L) > 0 && m.deck[L].by === 'ai';
   } else {
     np = m.planBy[L] === 'ai' ? planCounter(m, L) : null;
     if (np) planSet(m, L, np, 'ai');
