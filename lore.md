@@ -46,7 +46,7 @@ Status tags as in spec.md: **[locked]** decided · **[open]** undecided — do n
 
 - **The game itself:** island volleyball is a **street game**, not the formal 6v6 indoor sport of the mainland —
   4 a side, small courts, physical and fierce; bodies collide at the net, nobody plays it politely. Every faction keeps
-  importing tactics (block reads, systems, set plays) and the coaches keep drilling them, but they rarely hold: raw
+  importing tactics (block reads, systems, set plays) and the captains keep calling them (only the Academy keeps a coach), but they rarely hold: raw
   body physics breaks a tactic more easily than a tactic beats a body. Tactics give an edge, never a guarantee
   (Wu calls that proof; Wei calls it a coaching problem).
 - **The Ref drone** [owner, 2026-10-21]: mainland tech, landed through the airport and licensed by the league office —

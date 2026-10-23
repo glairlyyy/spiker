@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-344** (T-336 is split a / b) (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-345** (T-336 is split a / b) (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,31 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+### [ ] T-344: No coach — the captain runs the side
+Spec: §2.36 (lore.md §4)          Goldens: update (the rolled coachIQ goes; the captain's read replaces it)          Save: no change
+Goal: no coach exists in a match; the captain makes every call the coach made, with a read from their own wit and leadership.
+Files: js/engine/teams.js, match.js, coach.js, cards.js, plans.js, lanes.js, js/data/tactics.js, cards.js, rules.js, match-lines.js,
+dialogue.js, js/data/team.js, people.js, js/career/run.js, cup.js, asks.js, eval.js, court.js, people.js, js/ui/match-coach.js,
+match-cards.js, match-controls.js, match-prep.js, match-screen.js, career-match.js, match-exchange.js, encyclopedia.js,
+js/render/acts.js, actors.js, tags.js, effects.js, js/render3d/r3d.mjs, actors3d.mjs (the sideline coach figure), css/match.css,
+tests/*, ARCHITECTURE.md, ARCHITECTURE-details.md (renames: grep the whole repo — any other file that only names the coach may change)
+Do not: change the lineup formula, how the captain is chosen, or the card counts; add an Academy coach NPC; leave a dead coach
+code path or an unused act kind behind.
+Steps:
+1. The captain's read (`capIQ`, from `t.cap`'s wit and lead, range 0.4–1, a spread like the old roll) replaces `t.coachIQ`
+   everywhere it is read (subs, timeouts, the huddle, plan / card picks, the notice threshold); recomputed when the captain
+   changes. Drop the rnd() roll; `npm run test:update` with the reason.
+2. Rename what the player sees and the internals that say coach (the `coachtalk` act → the captain's, `Coach.*` reads,
+   "Coach decides" → "Captain decides", the Coach tab → **Reads** with `H`); the lines in the captain's voice.
+3. Remove the sideline coach figure and its posing.
+4. Career strings naming the coach → the captain.
+Accept:
+- `grep -rni coach js css index.html` finds nothing in match code (the Academy coach, if any string mentions it, may stay).
+- `npm test`, `npm run lint`, `npm run test:ui` pass; `npm run cards -- 100 both` and `npm run bot -- 20` before / after in the
+  Result (the must-hold coach > boosts > none still holds with the captain).
+QA: Monster game → match prep "Captain decides", a turn overlay, the Reads tab, a timeout line; no sideline figure.
+Result:
 
 **The living island (owner, 2026-10-21, spec §4.37), phase 1: two agents.** **Agent L — Life & clock**: T-331 → T-332. **Agent E —
 Encounters, effort & sound**: T-333 → T-335 → T-334. T-336 (street level) waits for phase 1 and the owner's look. Ownership: L owns
