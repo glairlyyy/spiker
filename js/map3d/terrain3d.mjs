@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { MAP_M, clamp, lerp, smooth, inside, edgeDist, sideDist, hstr, vnoise } from './geo3d.mjs';
 
 const CELL = 2, // terrain grid cell (m)
+  CHUNK = 96, // cells a side of a culled terrain chunk (T-350: ~190 m)
   BEACH = 12; // beach slope width (m)
 
 /** Ground tint per district style (blended in faintly: no extra draw call). */
@@ -390,5 +391,33 @@ export function buildTerrain(model) {
       g = (a, b) => H[b * (nx + 1) + a];
     return lerp(lerp(g(i, j), g(i + 1, j), u), lerp(g(i, j + 1), g(i + 1, j + 1), u), v);
   };
-  return { geo, heightAt, W, D, base: col.slice(), shore: { data: shore, w: nx + 1, h: nz + 1 } };
+  // chunks (the island × 2, T-350): CHUNK × CHUNK cells each, sharing geo's attributes (one upload; the fog's colour writes reach
+  // them all) with their own index and bounds, so the camera and the shadow pass cull what they don't see
+  const chunks = [];
+  for (let j0 = 0; j0 < nz; j0 += CHUNK)
+    for (let i0 = 0; i0 < nx; i0 += CHUNK) {
+      const i1 = Math.min(nx, i0 + CHUNK),
+        j1 = Math.min(nz, j0 + CHUNK),
+        sub = new Uint32Array((i1 - i0) * (j1 - j0) * 6);
+      let m = 0,
+        lo = Infinity,
+        hi = -Infinity;
+      for (let j = j0; j < j1; j++) {
+        sub.set(idx.subarray((j * nx + i0) * 6, (j * nx + i1) * 6), m);
+        m += (i1 - i0) * 6;
+      }
+      for (let j = j0; j <= j1; j++)
+        for (let i = i0; i <= i1; i++) {
+          const y = pos[(j * (nx + 1) + i) * 3 + 1];
+          if (y < lo) lo = y;
+          if (y > hi) hi = y;
+        }
+      const c = new THREE.BufferGeometry();
+      for (const [k, a] of Object.entries(geo.attributes)) c.setAttribute(k, a);
+      c.setIndex(new THREE.BufferAttribute(sub, 1));
+      c.boundingBox = new THREE.Box3(new THREE.Vector3(i0 * sx, lo - 1, j0 * sz), new THREE.Vector3(i1 * sx, hi + 1, j1 * sz));
+      c.boundingSphere = c.boundingBox.getBoundingSphere(new THREE.Sphere());
+      chunks.push(c);
+    }
+  return { geo, chunks, heightAt, W, D, base: col.slice(), shore: { data: shore, w: nx + 1, h: nz + 1 } };
 }

@@ -140,11 +140,15 @@ export function create(onIdle) {
   }));
   const build = m => {
     terrain = buildTerrain(m);
-    mesh = new THREE.Mesh(terrain.geo, low ? flatMat : look.terrainMat);
+    mesh = new THREE.Group(); // the terrain in culled chunks sharing one set of attributes (terrain3d, T-350)
+    for (const g of terrain.chunks) {
+      const c = new THREE.Mesh(g, low ? flatMat : look.terrainMat);
+      c.receiveShadow = true;
+      c.castShadow = true;
+      mesh.add(c);
+    }
     look.setTerrain(terrain);
     look.set(!low, water);
-    mesh.receiveShadow = true;
-    mesh.castShadow = true;
     scene.add(mesh);
     water.position.set(terrain.W / 2, 0, terrain.D / 2);
     avatar = createAvatar(scene);
@@ -412,7 +416,8 @@ export function create(onIdle) {
       if (low === !!v) return;
       low = !!v;
       if (cur && life) (town.sync(cur), life.sync(lifeM(cur), low), night.sync(cur, low));
-      if (mesh && cur) (look.set(!low, water), (mesh.material = low ? flatMat : look.terrainMat), nature.sync(cur, low)); // the look (T-343)
+      if (mesh && cur)
+        (look.set(!low, water), mesh.children.forEach(c => (c.material = low ? flatMat : look.terrainMat)), nature.sync(cur, low)); // the look (T-343)
     },
     /** The shown clock: { week (days), tod (0–1), lit (0–1) } — for QA and the UI. */
     clock: () => ({ week: wt, tod, lit }),

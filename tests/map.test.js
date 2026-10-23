@@ -28,7 +28,7 @@ test('map: nature — trees, rocks, grass and animals by biome, never on roads, 
     N = g.MapModel.nature(run),
     W = g.MapModel.wild(run),
     by = k => N.filter(o => o.k === k);
-  assert(N.length > 1000 && N.length < 4000, `a scattered island (${N.length})`);
+  assert(N.length > 1000 && N.length < 5500, `a scattered island (${N.length})`);
   eq(JSON.stringify(N), JSON.stringify(((g.MapModel.natCache = null), g.MapModel.nature(run))), 'deterministic (hashes, no randoms)');
   assert(
     by('pine').every(o => g.City.regionAt(o.at) === 'shu' && g.reliefAt(o.at) <= g.NATURE.treeline),
@@ -288,12 +288,12 @@ test('career: town layout — districts, beach, overpass, frozen borders', () =>
     flat = g.ROADS.edges.filter(e => e[2] !== 'overpass');
   for (const l of L) by[g.City.regionAt(l.at)] = (by[g.City.regionAt(l.at)] || 0) + 1;
   for (const [r, n, lo, hi] of [
-    ['wei', 670, 536, 804], // (island × 2.25, owner 2026-10-05: the towns fill out where roads and places had squeezed them)
-    ['wu', 260, 208, 312],
-    ['shu', 91, 73, 109],
-    ['outlaws', 48, 38, 58],
-    ['open', 138, 110, 166],
-    ['gloria', 20, 16, 24]
+    ['wei', 1119, 895, 1343], // (island × 4.5, owner 2026-10-23: the towns spread × 2, their lot grid × 1.6 — LOT_SPREAD)
+    ['wu', 462, 370, 554],
+    ['shu', 151, 121, 181],
+    ['outlaws', 103, 82, 124],
+    ['open', 272, 218, 326],
+    ['gloria', 48, 38, 58]
   ])
     assert(by[r] >= lo && by[r] <= hi, `${r} has ${by[r]} lots (~${n})`);
   assert(
@@ -357,7 +357,7 @@ test('career: town layout — districts, beach, overpass, frozen borders', () =>
   );
   assert(g.MapModel.inAirport(T.plane.from) && g.MapModel.inAirport(T.plane.lift), 'the plane rolls on the airport');
   const dd = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
-  assert(dd(g.HOME_AT.condo, g.WEALTH.weiCore) < 100, 'the Luxury condo stands by the civic core');
+  assert(dd(g.HOME_AT.condo, g.WEALTH.weiCore) < (100 * g.MAP_SCALE) / g.MAP_BASE, 'the Luxury condo stands by the civic core');
   assert(dd(g.HOME_AT.dorm, g.ROADS.nodes.jW1) < 100 * g.MAP_SCALE, 'the City dorm stands by the training district');
   const down = L.filter(l => l.district === 'wei-downtown');
   assert(down.length > 20 && Math.max(...down.map(l => l.h)) > 0.8, 'downtown grows tall');
@@ -623,6 +623,7 @@ test('orders: facilities = kit — every training place ≥ 2 orders, Work pays 
   assert(g.City.pointDay(run, p), 'stretched up in the hills');
   assert(you.body.flex > flex0 && g.City.days(run) === d0 - tr - 1, 'Flexibility up, the trip + a day spent');
   eq(run.money, m1 - g.City.price(run, 'harbor', 'heavy'), 'Stretch is free');
+  run.days = 7; // (the walk home from the hills: up to TRIP_MAX days on the island × 2)
   assert(g.City.day(run, 'home', false, 'stretch') && run.dayLog[run.dayLog.length - 1].label === 'Stretch', 'Stretch at home');
 });
 
@@ -680,17 +681,18 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
     else assert(Q.known, `${id} known`);
   }
   eq(g.City.days(run), g.WEEK_DAYS, 'a week starts with 7 days');
-  // travel by distance: close by is free, far is up to 3 days
+  // travel by distance: close by is free, far is up to TRIP_MAX days (the island × 2, T-350: ~twice the days of the 2.25 island)
   run.housing = 'studio';
   eq(g.City.trip(run, g.City.at(run, 'pier')), 0, 'the pier is by the airport');
-  eq(g.City.trip(run, g.City.at(run, 'sand')), 2, 'the sand courts are down the coast (Wu spreads thin)');
-  eq(g.City.trip(run, g.City.at(run, 'harbor')), 2, 'the far east coast: the coast road makes it 2 days (T-048)');
-  eq(g.City.trip(run, g.City.at(run, 'dunes')), 2, 'the dunes past the harbor: 2 days by the Academy avenue and the overpass');
+  eq(g.City.trip(run, g.City.at(run, 'sand')), 3, 'the sand courts are down the coast (Wu spreads thin)');
+  eq(g.City.trip(run, g.City.at(run, 'harbor')), 4, 'the far east coast: the coast road makes it 4 days (T-048)');
+  eq(g.City.trip(run, g.City.at(run, 'dunes')), 4, 'the dunes past the harbor: 4 days by the Academy avenue and the overpass');
+  eq(g.TRIP_MAX, 5, 'the trip cap');
   const at0 = run.pos;
   run.pos = g.SPOTS.trail.at;
   eq(g.City.trip(run, g.City.at(run, 'dunes')), g.TRIP_MAX, 'the mountain trail to the dunes: the longest trip');
   run.pos = at0;
-  eq(g.City.trip(run, [2000, 2000]), g.TRIP_MAX, 'never more than 3 days');
+  eq(g.City.trip(run, [4000, 4000]), g.TRIP_MAX, 'never more than TRIP_MAX days');
   const m0 = run.money,
     sp0 = run.sp,
     cs = g.City.cost(run, 'sand');

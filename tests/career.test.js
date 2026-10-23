@@ -119,7 +119,7 @@ test('career: training cap, facility Lv 5 and Hard training', () => {
   g.Training.addXp(run, 'str', 100000, 'match');
   assert(you.body.str > 80, 'match XP goes past the training cap');
   assert(you.power <= g.CAREER.runCap, 'a court skill never passes the run cap');
-  assert(!('lb' in run) && g.RUN_VERSION === 23, 'no Limit Break progress in the run; RUN_VERSION 23');
+  assert(!('lb' in run) && g.RUN_VERSION === 24, 'no Limit Break progress in the run; RUN_VERSION 24');
   run.uses.power = 26;
   eq(g.Training.facility(run, 'power'), 4, 'Lv 5 after 26 sessions');
   const n = g.Training.preview(run, 'power', false).main[2],
@@ -1002,7 +1002,7 @@ test('career: challenge loss and injury', () => {
   run.sp = 99;
   assert(g.Training.physio(run) && !run.injury, 'physio heals the injury');
   assert(you.body[lost[0]] === before[g.BODY.keys.indexOf(lost[0])] - g.INJURY.lose, 'but not the lost stat');
-  eq(g.RUN_VERSION, 23, 'save v23');
+  eq(g.RUN_VERSION, 24, 'save v24');
 });
 
 test('career: rules moved out of the UI (T-075)', () => {
@@ -1572,12 +1572,12 @@ test('career: day track — a trip then the training day, cleared at the week st
   const g = load(21),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Days', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 });
   eq(JSON.stringify(run.dayLog), '[]', 'a new run starts with an empty track');
-  const far = Object.keys(g.SPOTS).find(id => g.SPOTS[id].train && g.City.trip(run, g.City.at(run, id)) === 1 && g.City.can(run, id).ok);
-  assert(far, 'a training place one trip day away');
+  const far = Object.keys(g.SPOTS).find(id => g.SPOTS[id].train && g.City.trip(run, g.City.at(run, id)) === 2 && g.City.can(run, id).ok);
+  assert(far, 'a training place two trip days away (the island × 2, T-350)');
   g.City.day(run, far, false);
-  eq(run.dayLog.map(e => e.k).join(','), 'trip,train', 'trip first, then the training day');
-  eq(run.dayLog[1].stat, g.DAY_ORDERS[g.City.lead(far)].main[0], 'the day names the stat trained (the lead drill: T-308)');
-  eq(run.dayLog[1].label, g.DAY_ORDERS[g.City.lead(far)].name, '…and the order');
+  eq(run.dayLog.map(e => e.k).join(','), 'trip,trip,train', 'trip days first, then the training day');
+  eq(run.dayLog[2].stat, g.DAY_ORDERS[g.City.lead(far)].main[0], 'the day names the stat trained (the lead drill: T-308)');
+  eq(run.dayLog[2].label, g.DAY_ORDERS[g.City.lead(far)].name, '…and the order');
   eq(g.WEEK_DAYS - g.City.days(run), run.dayLog.length, 'one entry per day spent');
   g.Run.endWeek(run);
   eq(run.dayLog.length, 0, 'a new week starts empty');

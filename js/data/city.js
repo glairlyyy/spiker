@@ -4,8 +4,13 @@
 // Coordinates are written in design units (1060 × 700) and scaled once at load by MAP_SCALE (scaleMap at the end of this
 // file): the island is MAP_SCALE × wider and taller, its towns keep their size and density. Names are placeholders.
 
-/** The island's scale (owner, 2026-10-03: 1.5; owner, 2026-10-05: × 1.5 again = 2.25 — more room between the same towns). */
-const MAP_SCALE = 2.25;
+/**
+ * The island's scale (owner, 2026-10-03: 1.5; owner, 2026-10-05: × 1.5 again = 2.25 — more room between the same towns; owner,
+ * 2026-10-23: × 2 = 4.5 — the whole 2.25 layout spread out twice, towns and districts too: spec §4.40).
+ */
+const MAP_SCALE = 4.5;
+/** The 2.25 island (§4.18b) that MAP_SCALE spreads uniformly × MAP_SCALE / MAP_BASE (scaleMap). */
+const MAP_BASE = 2.25;
 const CITY = (() => {
   const coast = [
       [90, 140],
@@ -180,8 +185,9 @@ const GROUND_COST = { shu: 1.35 },
   GROUND_STEP = 20 * MAP_SCALE;
 /** Free hops (spec §4.5, T-228): a place within this straight distance costs no trip day — about one faction's district (was 110). */
 const NEAR_R = 280 * MAP_SCALE;
-const TRIP_DAY = 220 * MAP_SCALE;
-const TRIP_MAX = 3;
+/** A trip day keeps the 2.25 island's distance on the ground (spec §4.40): a crossing of the spread island costs ~twice the days. */
+const TRIP_DAY = 220 * MAP_BASE;
+const TRIP_MAX = 5;
 /** The dark map: each point you've stood on lights up this radius. */
 const REVEAL_R = 170 * MAP_SCALE;
 
@@ -963,7 +969,7 @@ const GROUND_KEEP = ['terrace', 'paddy', 'field', 'park', 'water', 'quarry'];
  * quays / water grow nothing; the quarry is rock. `life`: the few animals that loop on the map (display only).
  */
 const NATURE = {
-  cell: 18,
+  cell: 36,
   treeline: 62,
   shu: {
     p: 0.66,
@@ -1154,14 +1160,16 @@ const INTERIOR = {
   }
 };
 
+/** The spread's lot grid (scaleMap): a district's lot spacing × this (towns spread × K, so ~(K / LOT_SPREAD)² × the lots). */
+const LOT_SPREAD = 1.6;
 /**
  * Scale the island once (MAP_SCALE): every map point (coast, regions, places, roads, HQs, venues, homes, labels, mountains,
  * wealth core, region anchors) × MAP_SCALE. Towns keep their size and building count: circle districts move but keep their
  * radius, point districts move by their centroid, the area-wide ones (the beach ring, the Wei ring) thin by MAP_SCALE²; minors
  * and the Academy park keep their size, and what stands in them moves with them. Distances that measure the map (travel, reveal, hex size, Wei's wealth fall-off) scale too.
  */
-(function scaleMap(S) {
-  if (S === 1) return;
+(function scaleMap(S, K) {
+  if (S === 1 && K === 1) return;
   // small areas keep their size: a point inside the Academy park or a minor's patch moves with that area's centre
   const areas = [CITY.park, ...Object.values(CITY.minors)].map(e => ({ ...e, rx: e.rx || e.r, ry: e.ry || e.r, rot: e.rot || 0 })),
     within = ([x, y]) =>
@@ -1226,7 +1234,47 @@ const INTERIOR = {
   WEALTH.weiEdge *= S;
   for (const r of Object.values(REGIONS)) pt(r.at);
   HEX.size *= S;
-})(MAP_SCALE);
+  if (K === 1) return;
+  // the spread (spec §4.40): the whole S-scaled island × K — places, roads, towns, districts, minors, the park, ground use and
+  // their sizes alike (the same layout, K × the room); a district's lot grid spreads by LOT_SPREAD (more lots, thinner); heights stay
+  const seen2 = new Set(),
+    pk = p => {
+      if (!p || seen2.has(p)) return;
+      seen2.add(p);
+      p[0] *= K;
+      p[1] *= K;
+    },
+    pks = a => a.forEach(pk);
+  for (const k of ['coast', 'inner', 'dunes', 'wei', 'wu', 'shu', 'beach', 'weiWu', 'strip', 'hq']) pks(CITY[k]);
+  pk(CITY.relief.peak.at);
+  pks(CITY.relief.spine.line);
+  pks(CITY.relief.river.line);
+  for (const k of ['peak', 'spine', 'river']) for (const f of ['r', 'w']) if (CITY.relief[k][f]) CITY.relief[k][f] *= K;
+  Object.values(CITY.label).forEach(pk);
+  pk(CITY.airport);
+  pk(CITY.ritual);
+  for (const e of [CITY.park, ...Object.values(CITY.minors)]) for (const f of ['x', 'y', 'r', 'rx', 'ry']) if (e[f]) e[f] *= K;
+  CITY.w *= K;
+  CITY.h *= K;
+  for (const s of Object.values(SPOTS)) pk(s.at);
+  Object.values(HOME_AT).forEach(pk);
+  for (const v of Object.values(VENUES)) pk(v.at);
+  Object.values(ROADS.nodes).forEach(pk);
+  const G = LOT_SPREAD;
+  for (const d of DISTRICTS) {
+    const q = d.poly;
+    d.gap *= G;
+    if (Array.isArray(q)) pks(q);
+    else if (q && typeof q === 'object') for (const f of ['x', 'y', 'r']) q[f] *= K;
+    // 'beach', 'wei' (area-wide): the spread grid alone grows them like the others
+  }
+  for (const q of GROUND.map(g => g.poly)) for (const f of ['x', 'y', 'r', 'r0']) if (q[f]) q[f] *= K;
+  for (const q of TRAFFIC.boats) for (const f of ['x', 'y', 'r']) q[f] *= K;
+  pk(WEALTH.weiCore);
+  WEALTH.weiEdge *= K;
+  for (const r of Object.values(REGIONS)) pk(r.at);
+  HEX.size *= K;
+})(MAP_BASE, MAP_SCALE / MAP_BASE);
 /** Distance from p to the polyline `line`, and how far along it (0–1) the nearest point is. */
 function lineDist(p, line) {
   let best = Infinity,

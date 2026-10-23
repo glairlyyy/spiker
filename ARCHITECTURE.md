@@ -285,7 +285,7 @@ moving for 6 s (25 s while the 3D players load) or one beat lasts 20 s, with a s
 
 ## Saves
 
-Career runs carry `v` (`RUN_VERSION` = 23, `career/run.js`; key `sns_run_v1`; v23 = `run.tenure` (the absolute week you signed with
+Career runs carry `v` (`RUN_VERSION` = 24, `career/run.js`; key `sns_run_v1`; v24 = the island × 2 (positions, fog and tiles in the new map units, spec §4.40), older saves dropped; v23 = `run.tenure` (the absolute week you signed with
 your club) and `run.ex` (id → the absolute week you left them; team life, spec §4.36 — RUN_DEFAULTS), older saves dropped; v22 = `p.gifts` on every NPC (+ `p.el2` / `p.sig2`,
 `p.woke`; `run.people[id].known.gifts`; `run.gifts` / `run.giftAsk` (RUN_DEFAULTS); spec §4.35), older saves dropped; v21 = `run.war` (the war units' Strength, spec §4.34), `run.hex` dropped; v20 = your body `you.body` (+ `floor` / `edge` / `synced`) and body-key XP banks in `run.xp`; older saves dropped; v19 = `run.year`). History: v2 faction reserves, v3 cup
 entrants, v4 squads of 6 (`bench`), v5 `run.lb` dropped, v6 `run.met` / `street` / `refused`, v7 `losses` / `lastFight`,

@@ -480,7 +480,7 @@ const MapModel = {
   /** Lots stay this far (map units) from a place or HQ: a landmark is up to ~38 units wide (a court), so ~20 clears its footprint. */
   placeClear: 20,
   /** Most settlement lots on the island. */
-  maxLots: 1400,
+  maxLots: 2400,
   /** Every district's and road row's density × this (owner, 2026-10-03: a thinner town). */
   thin: 0.65,
   /** Extra thinning for the majors' land on the scaled island (MAP_SCALE): their towns gained room, the count stays ~the same. */

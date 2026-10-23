@@ -298,9 +298,10 @@ test('figure menu: Talk once a day per person (met_road), Invite by hash joins y
     [k, base] = mkRun(),
     who = someone(h, twin, 'invite');
   assert(who != null, 'someone to invite');
-  const a = h.Encounter.invite(twin, who),
-    b = g.Encounter.row(run, who, 'invite') && !g.Encounter.row(run, who, 'invite').why ? g.Encounter.invite(run, who) : null;
-  if (b) eq(a.yes, b.yes, 'deterministic');
+  const [h2, twin2] = mkRun(),
+    a = h.Encounter.invite(twin, who),
+    b = h2.Encounter.invite(twin2, who); // (a twin on the same day: the hash takes the day and the bond)
+  eq(a.yes, b.yes, 'deterministic');
   eq(h.Encounter.row(twin, who, 'invite').why ? 1 : 0, 1, 'asked: locked for today');
   // force a yes and check the floor bonus against the twin without one
   twin.enc.inv = who;

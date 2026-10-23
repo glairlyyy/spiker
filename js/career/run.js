@@ -383,8 +383,8 @@ const Run = {
  * previous version below, so players keep their run. Each migration takes the raw saved object
  * (teams still in JSON form) and returns it at version + 1.
  */
-const RUN_VERSION = 23;
-/** version → upgrade step (v23: `run.tenure` / `run.ex`, T-325; v22: `p.gifts`, T-320; v21: `run.war`, T-313; v20: `you.body`, T-307).
+const RUN_VERSION = 24;
+/** version → upgrade step (v24: the island × 2 — positions, fog and tiles in the new units, spec §4.40, T-350: none, dropped; v23: `run.tenure` / `run.ex`, T-325; v22: `p.gifts`, T-320; v21: `run.war`, T-313; v20: `you.body`, T-307).
  * None yet: older saves are dropped; add a step here when the saved shape changes. */
 const RUN_MIGRATIONS = {};
 const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);

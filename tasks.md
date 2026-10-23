@@ -37,7 +37,7 @@ repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 (T-345–T-349 own js/engine, js/data/cards.js, the match UI; T-350–T-351 own js/data/city.js, js/career/city.js, mapmodel.js,
 js/map3d/*, js/ui/map-view.js, career-map.js, css/map.css).**
 
-### [ ] T-350: The island × 2
+### [x] T-350: The island × 2
 Spec: §4.40 Scale (§4.18b, §4.5)          Goldens: unchanged (career tests may re-seed — say why)          Save: RUN_VERSION 24 (positions, fog, tiles in the new units)
 Goal: the island twice the size; travel costs about twice the days; districts' free hops kept.
 Files: js/data/city.js, js/data/world.js, js/data/war.js, js/career/city.js, hex.js, war.js, front.js, mapmodel.js, encounter.js,
@@ -47,7 +47,7 @@ Steps: MAP_SCALE 4.5; TRIP_DAY in today's metres (220 × 2.25 units); TRIP_MAX 5
 §4.18b; camera reach and LOD distances; save bump.
 Accept: `npm test`, lint, `npm run test:ui` pass; `npm run career -- 12 both` before / after in the Result (trip days a week, Y2
 rating); the map's fps at the default camera (Fast and High) in the Result.
-Result:
+Result: MAP_SCALE 4.5 = the 2.25 island spread × 2 uniformly (scaleMap's second pass: points, district / minor / park / ground radii, relief, HEX.size, wealth fall-off; district lot grids × LOT_SPREAD 1.6 → lots 1218 → 2155, maxLots 2400; NATURE.cell 36 → 4.5k instances with the longer border rows); TRIP_DAY = 220 × MAP_BASE, TRIP_MAX 5, NEAR_R / REVEAL_R × 4.5; RUN_VERSION 24 (bumped in js/career/run.js — unlisted, where it lives); camera DIST 25–2600, far 6000, near plane backs off with the distance (sea z-fighting the low ground when zoomed out); terrain drawn in culled 96-cell chunks (shared attributes) and the terrain shader fades slab / row detail by metres-a-pixel (moiré zoomed out). Tests re-seeded: trips 2 → 3–4 days (sand 3, harbor 4, dunes 4), day track uses a 2-day place, lot targets, nature range, condo distance; encounter's Invite determinism now compares two fresh twins (was two runs on different days). Career bot 12 both (new line: trip days a training week) before → after: casual trips 0.3 → 0.5 / wk, Y2 86.7 → 85.4; good 1.3 → 1.6 / wk, Y2 92.8 → 91.8; Cup match wins casual 56 → 29 %, good 63 → 42 % (12 runs, noisy). Map at the default camera (60 m, 1440×900, swiftshader CPU — ms not representative; tris / calls are): Fast 1.73M → 1.58M tris, detailed 3.27M → 2.96M, High 6.53M → 5.91M; ~4.4–13 s → 5.6–12.6 s a frame both (noise); build 9.8 → 15.4 s. npm test 250/250, lint, test:ui 23/23. QA: /tmp/…/scratchpad/qa/t350-*.png (overview, Wei, Wu, Shu).
 
 ### [ ] T-351: Real facilities — buildings and kit, hover, no pins
 Spec: §4.40 Real facilities (§4.33 kit, §4.37 street level, §4.39 look, §10.1c popup, §9)          Goldens: unchanged          Save: no change

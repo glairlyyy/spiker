@@ -179,11 +179,13 @@ export function richLook(renderer, scene, cam, sun) {
           vec3 ro = mix(base, vec3(0.2, 0.19, 0.165), steep) * (0.78 + 0.22 * d2.a) * (0.8 + 0.4 * d1.r);
           // paving: 3 m slabs, a tone per slab (hash), dark joints, a little grain
           vec2 sl = gp / 3.0, sc = floor(sl), sf = fract(sl);
-          float joint = smoothstep(0.0, 0.05, min(min(sf.x, sf.y), min(1.0 - sf.x, 1.0 - sf.y)));
-          float slab = fract(sin(dot(sc, vec2(12.9898, 78.233))) * 43758.5453);
+          // (far off — metres a pixel, px — the joints, slabs and rows fade to their mean: no moiré on the zoomed-out island, T-350)
+          float px = length(fwidth(gp));
+          float joint = mix(smoothstep(0.0, 0.05, min(min(sf.x, sf.y), min(1.0 - sf.x, 1.0 - sf.y))), 0.93, smoothstep(0.15, 0.6, px));
+          float slab = mix(fract(sin(dot(sc, vec2(12.9898, 78.233))) * 43758.5453), 0.5, smoothstep(0.8, 2.5, px));
           vec3 pv = base * (0.9 + 0.14 * slab + 0.1 * (d1.r - 0.5)) * (0.72 + 0.28 * joint) * (0.92 + 0.16 * d2.g);
           float rs = length(vGdir) > 0.5 ? dot(gp, normalize(vGdir)) : vWp.y * 2.2;
-          float row = smoothstep(0.2, 0.7, 0.5 + 0.5 * sin(rs * 3.927));
+          float row = mix(smoothstep(0.2, 0.7, 0.5 + 0.5 * sin(rs * 3.927)), 0.5, smoothstep(0.25, 0.8, px));
           vec3 fi = mix(vec3(0.15, 0.095, 0.05) * (0.7 + 0.6 * d1.r), base * (0.75 + 0.5 * d1.r), row);
           vec3 we = base * (0.7 + 0.1 * d2.g);
           diffuseColor.rgb = (sG * g + sS * sa + sR * ro + sF * fi + sW * we + sP * pv) / tot * (0.86 + 0.28 * big);

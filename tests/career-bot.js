@@ -47,6 +47,7 @@ function statFor(g, run, pol) {
 }
 /** A training week: spend the days (good: Work when money is short, Stretch when a drill can't be paid, Run the trips). */
 function week(g, run, pol, M) {
+  M.weeks++;
   for (let guard = 0; guard < 20 && g.City.days(run) > 0; guard++) {
     obs(run, M);
     if (pol !== 'casual' && !run.event && warMoves(g, run, M)) continue;
@@ -74,7 +75,9 @@ function week(g, run, pol, M) {
     if (!id) break;
     // good: run the trip there when the legs and the stamina allow (the same days; the ground trains)
     const at = g.City.at(run, id),
-      plan = good && g.City.trip(run, at) > 0 && !g.City.noRun(run, at) ? g.City.runPlan(run, at) : null;
+      tripD = g.City.trip(run, at),
+      plan = good && tripD > 0 && !g.City.noRun(run, at) ? g.City.runPlan(run, at) : null;
+    M.tripDays += tripD;
     if (plan && run.sta - plan.sta > 60 && g.City.travelTo(run, at, 'run')) {
       M.runs++;
       M.runSta += plan.sta;
@@ -174,6 +177,8 @@ function play(seed, pol) {
       secret: {},
       fails: 0,
       runs: 0,
+      tripDays: 0,
+      weeks: 0,
       orders: {},
       workBelow: 60, // good works a day when money is under this
       fired: 0,
@@ -341,6 +346,7 @@ function play(seed, pol) {
     joined: M.joined,
     fails: M.fails,
     runs: M.runs,
+    tripDays: M.tripDays / Math.max(1, M.weeks),
     orders: M.orders,
     secret: M.secret,
     fans: run.fans,
@@ -471,6 +477,7 @@ for (const pol of POL === 'both' ? ['casual', 'good'] : [POL]) {
   console.log(
     `  money a run  in ${f1(avg(R.map(r => r.cashIn)))} · out ${f1(avg(R.map(r => r.cashOut)))} · by day order ${kinds.map(k => `${k} ${f1(avg(R.map(r => r.cash[k] || 0)))}`).join(' · ')}`
   );
+  console.log(`  trip days a training week ${f1(avg(R.map(r => r.tripDays)))}`);
   console.log(`  run trips ${f1(avg(R.map(r => r.runs)))} a run · stamina spent on them ${f1(avg(R.map(r => r.runSta)))}`);
   if (process.env.CAREER_SAMPLE && pol === (POL === 'both' ? 'good' : POL))
     require('fs').writeFileSync(

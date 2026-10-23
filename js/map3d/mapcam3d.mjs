@@ -11,7 +11,7 @@ import { MAP_M, toMap, toWorld, clamp, lerp, smooth, wrap, fitView } from './geo
 import { lotFrame, LANDMARKS } from './kit3d.mjs';
 
 export const PITCH = (55 * Math.PI) / 180;
-export const DIST = [25, 1300]; // camera distance (m): the scaled island (MAP_SCALE 2.25) needs the longer reach
+export const DIST = [25, 2600]; // camera distance (m): the scaled island (MAP_SCALE 4.5) needs the longer reach
 /**
  * Street level: d1 = the closest camera distance (m; ~6.5 m behind, ~3 m above the ground with the target at your head), pitch =
  * its angle above the horizon, head = the target's height over your feet (m), pad = how far (m) outside the district the view
@@ -29,7 +29,7 @@ export const STREET = {
   stop: 0.35,
   back: 3,
   near: [1, 0.2], // the camera's near plane (m): the map → street level
-  far: [3000, 900], // … its far plane (the haze closes in before it: the low pitch would draw the whole island)
+  far: [6000, 900], // … its far plane (the haze closes in before it: the low pitch would draw the whole island)
   rise: 9, // the most the camera rises over a building behind you (m; more → it comes in front of it)
   behind: 1.4 // a click walk at street level: the camera swings behind you over ~this (s)
 };
@@ -139,7 +139,7 @@ export function createMapCam(cam, canvas, sun, S) {
     cam.position.set(x + c * k * Math.sin(yw), ty + (P.up + lift) * k, z + c * k * Math.cos(yw));
     if (s > 0) cam.position.y = Math.max(cam.position.y, heightAt(cam.position.x, cam.position.z) + 0.6);
     cam.lookAt(x, ty, z);
-    const near = lerp(STREET.near[0], STREET.near[1], s),
+    const near = Math.max(lerp(STREET.near[0], STREET.near[1], s), view.d * 0.03 * (1 - s)), // (far out the near plane backs off: no sea showing through the low ground, T-350)
       far = lerp(STREET.far[0], STREET.far[1], s);
     if (Math.abs(cam.near - near) > 0.01 || Math.abs(cam.far - far) > 1) ((cam.near = near), (cam.far = far), cam.updateProjectionMatrix());
     sun.target.position.set(x, 0, z);

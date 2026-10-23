@@ -254,9 +254,9 @@ test('gifts: the card hides them until known — scouted, trained beside, bond 2
   assert(g.Gifts.known(run, g.Run.you(run)), 'yourself: known');
 });
 
-test('gifts: saves keep them (RUN_VERSION 23)', () => {
+test('gifts: saves keep them (RUN_VERSION 24)', () => {
   const [g, run] = mkRun(327);
-  eq(g.RUN_VERSION, 23, 'v23');
+  eq(g.RUN_VERSION, 24, 'v24');
   g.Run.save(run);
   const back = g.Run.load(),
     ids = r =>
