@@ -818,8 +818,28 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Power scales with the holder**: a technique's edge × the holder's level for it (their action level vs the league's,
     clamped ~0.6–1.2): a 40-rated server's Killer Serve is weaker than an ace's.
   - **Fit / counter** as T-299: played into its read it pays +10–20 % on the points it acts in; into its counter −10–20 %.
-  - **Who plays**: Monster — "You decide" / "Captain decides" per side. Career — you play the cards you hold (your
-    techniques, ◆); as captain, the whole hand. The captain plays the rest by the same function (no draws in the pick):
+  - **Card types** (owner, 2026-10-23) **[draft — T-349]**: **Team play** — changes how the whole side plays (Hunt the Passer,
+    Quick Tempo, Commit, Feed the Hot Hand); the biggest swing and the biggest risk (a countered team play costs the most);
+    paid by the court or the captain; held by the captain — a non-captain gets one only by request. **Individual play** — the
+    holder's own move (Killer Serve, Delayed Spike, Read Block, Take the Hit); paid by them; scales with them. **Opponent
+    debuff** — aimed at the other side (Float Barrage, Short Serve, the traps); its read is the target's state; paid by whoever
+    does it. Basics are individual. At most **one team play active a side**; a new one replaces it.
+  - **Your hand** (career, a non-captain) **[draft — T-349]**: in match prep you pick your **own deck** of `DECK.mine` (6) from
+    your collection (your techniques, gift and trait cards, any card a team play granted you stays only for that match) —
+    your play style; Basics fill it if you own fewer. A **hand of 3**, no role limits (three attack cards are fine), the same
+    rules as the team deck (refill at turns, discard leaves a gap, cooldowns, costs on your bars). You and the captain each
+    play at most one card a point — on one point your card and theirs can both go.
+  - **Requests** **[draft — T-349]**: at a turn (when hands refill) you may ask the captain for one team play from their hand;
+    the answer by your bond and trust with the captain (shown likely / maybe / unlikely, as §4.23 asks), better when the card's
+    read holds now. Yes → the card moves into your hand (one of your 3 places), yours to time. No → nothing lost (no memory).
+    Played into its counter → the captain grants your next request less readily for a few turns (a request cooldown, not a
+    bond loss). Trust widens it: newcomer — one request a turn; trusted — likelier yeses; captain — no requests: your deck
+    joins the team deck and you run its hand of 5 (replaces §2.33's 1 / 2 / 5 cards).
+  - **Dev match** (owner, 2026-10-23) **[draft — T-349]**: menu › Dev › **Deck match** — a played match with your career-style
+    player on a generated side, **As a player** (your hand of 3 + requests, the captain an NPC) or **As captain** (the hand of
+    5); a pick of your own deck from every card; both modes show the captain's choices in DBG.
+  - **Who plays**: Monster — "You decide" / "Captain decides" per side. Career — your hand (above); as captain, the whole hand.
+    The captain plays the rest by the same function (no draws in the pick):
     a card when its read holds and its payer can afford it; OP cards and the strongest plays **saved for key moments** — set
     point either way, the other side's Fever, 3+ down from 10 points on — or spent to break the other side's run (a 3-point
     streak). A sharp captain (`capIQ`) waits better; a dull one plays what fits as soon as it is drawn.

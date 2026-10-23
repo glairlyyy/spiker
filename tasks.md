@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-349** (T-336 is split a / b) (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-350** (T-336 is split a / b) (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -34,7 +34,7 @@ repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 ## Now
 
 **The deck (owner, 2026-10-23, spec §2.37): T-345 (engine) first; then T-346 (OP cards, render) and T-347 (hand UI) in parallel by
-file ownership; then T-348 (balance).** T-346 owns js/render3d/*, js/render/director.js, effects.js, acts.js; T-347 owns js/ui/*,
+file ownership; then T-349 (types, your hand, requests, Dev deck match — after T-347); then T-348 (balance).** T-346 owns js/render3d/*, js/render/director.js, effects.js, acts.js; T-347 owns js/ui/*,
 css/*, tests/ui-smoke.js. Both read T-345's engine API, never change it (ask instead).
 
 ### [ ] T-345: The deck — engine
@@ -95,6 +95,25 @@ deck list if useful).
 Accept: `npm run test:ui` extended (play a card by key, discard one, the deck list opens, a turn refills) and passing; QA
 screenshot checked against the design system.
 QA: Monster game "You decide" → play, discard, a turn; career match as a non-captain (only ◆ cards playable).
+Result:
+
+### [ ] T-349: Card types, your hand of 3, requests, the Dev deck match
+Spec: §2.37 Card types, Your hand, Requests, Dev match          Goldens: unchanged unless T-345's sims change (say why)          Save: no change unless the collection needs a field (then stop and ask)
+Goal: cards are team / individual / debuff; a non-captain plays a hand of 3 from their own deck of 6 and requests team plays at
+turns; the captain runs the 5; a Dev menu match lets the owner play either way.
+Files: js/data/cards.js, js/engine/cards.js, js/engine/match.js, js/career/team.js, js/career/rel.js (the request odds read only),
+js/ui/match-cards.js, match-prep.js, match-screen.js, js/ui/dev.js, menu.js, css/match.css, tests/cards.test.js, tests/ui-smoke.js,
+ARCHITECTURE-details.md
+Do not: change T-345's deck rules or card numbers; add bond loss for a refused or misplayed request.
+Steps:
+1. `type` on every card (team / solo / debuff); one team play active a side; `DECK.mine` 6, hand 3 for the career player.
+2. Requests at turns: odds from bond + trust + the card's read now; yes moves the card; the request cooldown after a countered play.
+3. Match prep: pick your deck of 6 from your collection (Basics fill). The hand bar (T-347) shows your 3 + a Request button at
+   turns (or the captain's 5 when you captain).
+4. Dev › Deck match: As a player / As captain, deck pick from every card; DBG lines for the captain's plays and request answers.
+Accept: tests for types, one team play, hand of 3, request odds and moves, the cooldown; `npm test`, lint, `npm run test:ui`
+(extended: a Dev deck match both ways, one request) pass.
+QA: Dev › Deck match → both modes: play, discard, request (yes and no), a turn.
 Result:
 
 ### [ ] T-348: Deck balance
