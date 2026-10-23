@@ -291,27 +291,31 @@ test('duo: a 60+ friend’s card is in the hand only with them on your court; it
     0,
     'no draws'
   );
-  assert(g.cardPool(m, 0).includes(card), 'in the hand with them on court');
-  assert(!g.cardPool(m, 1).includes(card), 'not theirs');
+  const D = m.deck[0],
+    inDeck = x => [...x.deck[0].draw, ...x.deck[0].hand].includes(card);
+  assert(inDeck(m), 'in the deck (in place of a Basic)');
+  assert(![...m.deck[1].draw, ...m.deck[1].hand].includes(card), 'not theirs');
   g.playRally(m); // (CM = this match)
-  const k = g.SLOTS.find(s => g.cardFits(card, s));
-  for (const s of g.SLOTS) if (m.cards[0].slots[s] === card) m.cards[0].slots[s] = null;
-  g.cardApply(m, 0);
+  if (!m.t[0].P.includes(f) || !m.t[0].P.includes(you)) return; // (a first-rally sub)
   const other = m.t[0].P.find(p => p !== you && p !== f),
     stat = Object.keys(g.CARDS[card].buff)[0],
     before = [you, f, other].map(p => g.cardBuff(p, stat));
-  assert(g.cardPut(m, 0, k, card), 'slotted');
-  g.cardApply(m, 0);
+  D.hand[0] = card;
+  D.pt = -1;
+  assert(g.Cards.play(m, 0, 0), 'played');
   const after = [you, f, other].map(p => g.cardBuff(p, stat));
   assert(after[0] > before[0] && after[1] > before[1], `it acts on the pair (${before} → ${after})`);
   eq(after[2], before[2], 'nobody else');
-  // the friend to the bench: out of the pool, the buff stops
+  // the friend to the bench: no holders (not playable), the buff stops
   const bi = m.t[0].bench.findIndex(Boolean);
   if (bi >= 0) {
     const sub = m.t[0].bench[bi];
     m.t[0].P[m.t[0].P.indexOf(f)] = sub;
     m.t[0].bench[bi] = f;
-    assert(!g.cardPool(m, 0).includes(card), 'not in the hand with them off court');
+    D.hand[1] = card;
+    D.pt = -1;
+    eq(g.Cards.can(m, 0, 1), 'active', 'still active (one copy)');
+    eq(g.Cards.holders(m, 0, card).length, 0, 'no pair on court: no holders');
     eq(g.cardBuff(you, stat), before[0], 'no lift without them');
   }
 });

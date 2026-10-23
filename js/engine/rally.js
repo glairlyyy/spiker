@@ -251,7 +251,7 @@ function setBeat(c, x) {
   m.defBeats = [];
   const hype = V ? hypeLevel(m, c, spiker, b0, elSrc, bad) : 0;
   if (hype) hypeScene(m, B, hype, { setter, spiker, B0: b0, elSrc, atkT, atk });
-  const read = V ? readLevel(m, b0, cov, bitten, hype) : 0; // the blocker is confident: their scene mid-jump
+  const read = V ? readLevel(m, b0, cov, bitten || !!fakeDecoy, hype) : 0; // the blocker is confident: their scene mid-jump (never after a fake set: it plays on at once)
   V &&
     B({
       dur: setDurOf(x),

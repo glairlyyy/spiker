@@ -1,78 +1,54 @@
-// Tactic cards on the match screen (spec §2.31–§2.33): your hand in match prep and at every turn — an overlay over the frozen
-// court (play waits: A.prep) — Tab to look at it between turns, the spent tag, the result card's row. The engine state is
-// m.cards (js/engine/cards.js); this file only places cards (cardPut) and lets the captain fill around them (cardFill).
-
-const ZONE_LAB = { atk: 'ATK', def: 'DEF', flex: 'FLEX' };
+// Tactic cards on the match screen (spec §2.31–§2.33, §2.37) — a stop-gap view of the deck until the hand bar (T-347): match
+// prep shows each hand you run and its deck; a turn opens an overlay over the frozen court (play waits: A.prep) with your
+// hand — click a card to play it on the next point — Tab looks at it between turns; a tag over the court names each play;
+// the result card's row. The engine state is m.deck (js/engine/cards.js: Cards.play / Cards.discard / Cards.capPlay).
 
 /** Is this a career match (your player is in it)? */
 const cardsCareer = () => !!(A && A.fx.onFinish && RUN);
-/** How many of side i's cards are yours: Monster — "You decide" 5; career — your side: 5 as captain, else 1. */
+/** Which of side i's cards are yours: Monster — "You decide" DECK.hand (all); career — your side: all as captain, else 1 (the cards you bring). */
 function cardsMine(m, i) {
-  if (!m || !m.cards) return 0;
-  if (!cardsCareer()) return A.prepS && A.prepS.who && A.prepS.who[i] === 'you' ? SLOTS.length : 0;
+  if (!m || !m.deck) return 0;
+  if (!cardsCareer()) return A.prepS && A.prepS.who && A.prepS.who[i] === 'you' ? DECK.hand : 0;
   const you = Run.you(RUN);
   if (!squadOf(m.t[i]).some(p => p.id === you.id)) return 0;
-  return you.cap ? SLOTS.length : 1;
+  return you.cap ? DECK.hand : 1;
 }
-/** Give side i to you (n cards yours; a full hand starts from the captain's) or to the captain (n 0); the captain fills the rest. */
+/** Give side i to you (n DECK.hand: the whole hand; 1: the cards you bring, the captain the rest) or to the captain (n 0). */
 function cardsWho(m, i, n) {
-  const C = m && m.cards && m.cards[i];
-  if (!C) return;
-  if (n) {
-    if (C.by !== 'you' && n >= SLOTS.length) for (const k of SLOTS) if (C.slots[k]) C.you[k] = C.slots[k];
-    C.by = 'you';
-    C.mine = n;
-  } else {
-    C.by = 'ai';
-    C.mine = 0;
-    C.you = {};
-  }
-  cardFill(m, i);
+  const D = m && m.deck && m.deck[i];
+  if (!D) return;
+  D.by = n >= DECK.hand ? 'you' : 'ai';
+  D.me = n && n < DECK.hand && cardsCareer() ? Run.you(RUN).id : null;
 }
-/** One card as a chip: its name, kind, state (Worn / Spent) and the spent rule on hover; ◆ = a technique you own. */
-function cardChip(m, i, id) {
+/** Cost → result in words (spec §2.37): "−0.10 stamina (holders) → serve +5 % · 3 serves". */
+function cardCost(id) {
   const c = CARDS[id],
-    C = m.cards[i],
+    bar = { sta: 'stamina', hp: 'HP', mor: 'morale' },
+    who = { holder: 'holders', captain: 'captain', court: 'court' },
+    pay = C => (C ? `−${C.amt.toFixed(2)} ${bar[C.bar]} (${who[C.who]})` : 'free'),
+    len = c.dur ? `${c.dur} ${c.per === 'srv' ? 'serves' : c.dur === 1 ? 'point' : 'points'}` : 'at once';
+  return `${pay(c.cost)} → ${c.desc} · ${len}${c.after ? ` · after: ${pay(c.after)}` : ''} · cools ${c.cd === Infinity ? 'never (once a match)' : `${c.cd} points`}`;
+}
+/** One card as a chip: its name, kind, Fits now, cost → result on hover; ◆ = a card you bring. */
+function cardChip(m, i, id, tag) {
+  const c = CARDS[id],
     E = CARD_EDGE[id],
-    key = comboOf(cardIds(m, i), id) || id,
-    net = C.net[key] || 0,
-    st = C.spent.includes(id) ? 'spent' : C.worn.includes(id) ? 'worn' : '',
-    fits = (c.kind === 'play' || c.kind === 'once') && E && !st && (CARD_FIT[E.fit] || CARD_FIT.always)(m, i), // (what you can read; never their hand)
-    you = cardsCareer() && c.need && hasTech(Run.you(RUN), c.need),
+    fits = c.kind !== 'basic' && E && E.fit !== 'always' && Cards.fits(m, i, id), // (what you can read; never their hand)
+    you = cardsCareer() && cardBrings(m, i, Run.you(RUN), id),
     ctr = E && E.ctr.length ? ` Countered by: ${E.ctr.map(x => CARDS[x].name).join(', ')}.` : '',
     rule =
-      c.kind === 'boost' || c.src === 'duo'
-        ? 'Never spent.'
-        : c.kind === 'once'
-          ? `Used up the moment it is slotted${E && E.fit !== 'always' ? `; best when it ${FIT_TIP[E.fit]}` : ''}.`
-          : c.kind === 'trap'
-            ? `Hidden from them. At the next serve, if they have slotted ${c.trap.map(x => CARDS[x].name).join(', ')}, that card burns and the trap is used up.`
-            : `Pays when it ${FIT_TIP[E ? E.fit : 'always']}.${ctr} Burns at ${TURN.spent} net points in the rallies it plays off the read (now ${net > 0 ? '+' : ''}${net}).`;
-  return `<span class="ccard k-${c.kind} z-${c.zone} ${st} ${fits ? 'fits' : ''}" ${tip(`${c.desc}. ${rule}`)}><b>${you ? '◆ ' : ''}${esc(cardName(m, i, id))}</b><i>${
-    st === 'spent'
-      ? c.kind === 'once' || c.kind === 'trap'
-        ? 'Used'
-        : 'Spent'
-      : st === 'worn'
-        ? 'Worn'
-        : c.kind === 'boost'
-          ? 'Boost'
-          : c.kind === 'trap'
-            ? 'Trap'
-            : fits
-              ? 'Fits now'
-              : c.kind === 'once'
-                ? 'One-shot'
-                : c.zone === 'op'
-                  ? 'OP'
-                  : c.src === 'duo'
-                    ? 'Duo'
-                    : 'Play'
+      c.kind === 'trap'
+        ? `Hidden from them. Armed ${c.dur} points: if they play ${c.trap.map(x => CARDS[x].name).join(', ')}, that card is caught.`
+        : E && E.fit !== 'always'
+          ? `Pays when it ${FIT_TIP[E.fit]}.${ctr}`
+          : '';
+  return `<span class="ccard k-${c.kind} z-${c.zone} ${fits ? 'fits' : ''}" ${tip(`${cardCost(id)}. ${rule}`)}><b>${you ? '◆ ' : ''}${esc(cardName(m, i, id))}</b><i>${
+    tag || (fits ? 'Fits now' : { basic: 'Basic', trap: 'Trap', once: 'One-shot', op: 'OP' }[c.kind] || (c.src === 'duo' ? 'Duo' : 'Play'))
   }</i></span>`;
 }
 /** Each read in words (the card's tooltip, registrar voice). */
 const FIT_TIP = {
-  always: 'is slotted',
+  always: 'is played',
   behind: 'plays from behind',
   weakPass: 'meets a weak or worn-down passer',
   ourWeakPass: 'covers our weak or worn-down passer',
@@ -95,179 +71,43 @@ const FIT_TIP = {
   strongPass: 'faces passers who are not breaking',
   theirSetter: 'reads a sharp setter',
   elements: 'has an element player on court',
-  fresh: 'starts from fresh legs (stamina 0.75+)'
+  fresh: 'starts from fresh legs (stamina 0.75+)',
+  cold: 'lifts a side below Focused'
 };
-/** Side i's hand: the five slots, then the pool (edit: cards can be placed). */
+/** Side i's hand (edit: click a card of yours to play it on the next point), its active cards, the deck and discard counts; prep: the deck. */
 function cardsHand(i, edit) {
   const m = A.m,
-    C = m.cards && m.cards[i];
-  if (!C) return '';
-  const ids = cardIds(m, i),
-    sel = A.cardSel && A.cardSel.i === i ? A.cardSel.k : null,
-    left = C.mine - Object.keys(C.you).length,
-    mine = k => C.you[k] || C.mine >= SLOTS.length, // a slot you may change
-    slots = SLOTS.map(k => {
-      const id = C.slots[k],
-        combo = id && comboOf(ids, id),
-        drag =
-          edit && id && mine(k)
-            ? ` draggable="true" ondragstart="cardsDragStart(event,${i},'${id}','${k}')" ondragend="cardsDragEnd()"`
-            : '',
-        drop = edit
-          ? ` ondragover="cardsDragOver(event,${i},'${k}')" ondragleave="this.classList.remove('dropon')" ondrop="cardsDrop(event,${i},'${k}')"`
-          : '';
-      return `<button class="cslot ${C.you[k] ? 'you' : ''} ${sel === k ? 'sel' : ''}" data-slot="${k}" ${edit ? `onclick="cardsSlot(${i},'${k}')"` : 'disabled'}${drag}${drop}><span class="lab">${ZONE_LAB[slotZone(k)]}${combo ? ` · ${esc(COMBOS[combo].name)}` : ''}</span>${
-        id ? cardChip(m, i, id) : '<span class="ccard empty"><b>Empty</b></span>'
-      }</button>`;
-    }).join(''),
-    all = cardPool(m, i).filter(id => !ids.includes(id)),
-    f = cardsFiltOf(i),
-    pool = all
-      .filter(id => CARD_FILTS[f].ok(m, i, id))
-      .map(
-        id =>
-          `<button class="cpick" data-card="${id}" ${edit ? `onclick="cardsPick(${i},'${id}')" draggable="true" ondragstart="cardsDragStart(event,${i},'${id}',null)" ondragend="cardsDragEnd()"` : 'disabled'}>${cardChip(m, i, id)}</button>`
-      )
+    D = m.deck && m.deck[i];
+  if (!D) return '';
+  const hand = D.hand
+      .map((id, h) => {
+        const why = id ? Cards.can(m, i, h) : 'gap',
+          ok = edit && !why && Cards.mine(m, i, id);
+        return `<button class="cslot ${id && Cards.mine(m, i, id) ? 'you' : ''}" data-hand="${h}" ${ok ? `onclick="cardsPlay(${i},${h})"` : 'disabled'}><span class="lab">${h + 1}</span>${
+          id ? cardChip(m, i, id) : '<span class="ccard empty"><b>Empty</b></span>'
+        }</button>`;
+      })
       .join(''),
-    spent = C.spent.map(id => cardChip(m, i, id)).join('');
-  const note = edit
-    ? C.mine >= SLOTS.length
-      ? 'Drag a card into a slot (or click it). Drag a slot back to the pool to empty it.'
-      : `Your card${C.mine > 1 ? 's' : ''}: ${C.mine} (${Math.max(0, left)} to place) — the captain fills the rest.`
-    : 'Cards change at a turn.';
-  return `<div class="chand"><div class="cslots">${slots}</div><p class="small mute">${note}</p>${edit ? cardsFiltBar(m, i, all, f) : ''}${edit ? `<div class="cpool" ondragover="cardsDragOver(event,${i},null)" ondragleave="this.classList.remove('dropon')" ondrop="cardsDrop(event,${i},null)">${pool}</div>` : ''}${
-    spent ? `<div class="cspent"><span class="lab">Spent</span>${spent}</div>` : ''
+    act = D.act
+      .filter(a => !a.pin)
+      .map(a => cardChip(m, i, a.id, `${a.left} ${a.per === 'srv' ? 'serves' : 'pts'} left`))
+      .join(''),
+    deck = A.prep && !A.cturn ? [...D.hand, ...D.draw].filter(Boolean) : [],
+    note = edit
+      ? D.by === 'you'
+        ? 'Click a card to play it on the next point (one a point). The hand refills at each turn.'
+        : 'Your cards (◆) are yours to play — the captain plays the rest.'
+      : 'The hand refills at each turn.';
+  return `<div class="chand"><div class="cslots">${hand}</div><p class="small mute">${note} Deck ${D.draw.length} · discard ${D.disc.length}${
+    D.used.length ? ` · used ${D.used.length}` : ''
+  }</p>${act ? `<div class="cspent"><span class="lab">Active</span>${act}</div>` : ''}${
+    deck.length ? `<div class="cpool">${deck.map(id => `<span class="cpick">${cardChip(m, i, id)}</span>`).join('')}</div>` : ''
   }</div>`;
 }
-/**
- * The pool's filters (owner, 2026-10-17: 43 cards is a long pool): by what fits now, zone or kind. Per side, kept while the
- * match lasts (A.cardFilt); a filter with no card is not shown.
- */
-const cardFitsNow = (m, i, id) => {
-  const E = CARD_EDGE[id],
-    c = CARDS[id];
-  return (c.kind === 'play' || c.kind === 'once') && !!E && (CARD_FIT[E.fit] || CARD_FIT.always)(m, i);
-};
-const CARD_FILTS = {
-  all: { label: 'All', ok: () => true },
-  fits: { label: 'Fits now', ok: cardFitsNow },
-  atk: { label: 'ATK', ok: (m, i, id) => CARDS[id].zone === 'atk' },
-  def: { label: 'DEF', ok: (m, i, id) => CARDS[id].zone === 'def' },
-  op: { label: 'OP', ok: (m, i, id) => CARDS[id].zone === 'op' },
-  boost: { label: 'Boost', ok: (m, i, id) => CARDS[id].kind === 'boost' },
-  once: { label: 'One-shot', ok: (m, i, id) => CARDS[id].kind === 'once' },
-  trap: { label: 'Trap', ok: (m, i, id) => CARDS[id].kind === 'trap' }
-};
-const cardsFiltOf = i => (A.cardFilt && CARD_FILTS[A.cardFilt[i]] ? A.cardFilt[i] : 'all');
-/** The filter row over the pool: each filter with its count (none shown when it would be empty). */
-function cardsFiltBar(m, i, all, f) {
-  const b = Object.entries(CARD_FILTS)
-    .map(([k, F]) => [k, F, all.filter(id => F.ok(m, i, id)).length])
-    .filter(([k, , n]) => n || k === f)
-    .map(
-      ([k, F, n]) =>
-        `<button class="cfilt ${k === f ? 'on' : ''}" data-filt="${k}" onclick="cardsFilt(${i},'${k}')">${F.label} <i>${n}</i></button>`
-    )
-    .join('');
-  return `<div class="cfilts" role="toolbar" aria-label="Filter the cards">${b}</div>`;
-}
-function cardsFilt(i, k) {
-  (A.cardFilt || (A.cardFilt = {}))[i] = k;
-  cardsRedraw();
-}
-/** A slot clicked: select it; clicked again: empty it (yours only). */
-function cardsSlot(i, k) {
-  const C = A.m.cards[i];
-  if (A.cardSel && A.cardSel.i === i && A.cardSel.k === k) {
-    A.cardSel = null;
-    if (C.you[k] || C.mine >= SLOTS.length) cardsSet(i, k, null);
-  } else A.cardSel = { i, k };
-  cardsRedraw();
-}
-/**
- * A pool card clicked (or dropped on slot `at`): into that slot, else the selected slot if it fits, else the first empty slot
- * it fits, else the first it fits.
- */
-function cardsPick(i, id, at) {
-  const m = A.m,
-    C = m.cards[i],
-    fits = SLOTS.filter(k => cardFits(id, k)),
-    sel = A.cardSel && A.cardSel.i === i && fits.includes(A.cardSel.k) ? A.cardSel.k : null,
-    k = (at && fits.includes(at) && at) || sel || fits.find(s => !C.slots[s]) || fits.find(s => !C.you[s]) || fits[0];
-  if (!k) return;
-  // a limited hand (career): your card moves rather than adding one more
-  if (!C.you[k] && Object.keys(C.you).length >= C.mine) {
-    const old = Object.keys(C.you)[0];
-    if (old) cardPut(m, i, old, null);
-  }
-  cardsSet(i, k, id);
-  A.cardSel = null;
-  cardsRedraw();
-}
-/**
- * Drag and drop (owner, 2026-10-16): a pool card onto a slot, a slot's card onto another slot (they swap when the other fits
- * back), a slot's card onto the pool (emptied). While dragging, the slots it fits light up. Clicks still work.
- */
-function cardsDragStart(e, i, id, from) {
-  A.cardDrag = { i, id, from };
-  try {
-    e.dataTransfer.setData('text/plain', id);
-    e.dataTransfer.effectAllowed = 'move';
-  } catch (er) {
-    // (some browsers refuse setData on a button: the drag still works from A.cardDrag)
-  }
-  const hand = e.target.closest('.chand');
-  if (hand) {
-    for (const s of hand.querySelectorAll('.cslot')) s.classList.add(cardFits(id, s.dataset.slot) ? 'can' : 'no');
-    if (from) hand.querySelector('.cpool')?.classList.add('can');
-  }
-}
-function cardsDragEnd() {
-  A.cardDrag = null;
-  for (const s of document.querySelectorAll('.chand .can, .chand .no, .chand .dropon')) s.classList.remove('can', 'no', 'dropon');
-}
-/** Over a slot (k) or the pool (k null): allow the drop when it would do something. */
-function cardsDragOver(e, i, k) {
-  const D = A.cardDrag;
-  if (!D || D.i !== i) return;
-  if (k ? !cardFits(D.id, k) || k === D.from : !D.from) return;
-  e.preventDefault();
-  e.currentTarget.classList.add('dropon');
-}
-function cardsDrop(e, i, k) {
-  const D = A.cardDrag;
-  e.preventDefault();
-  cardsDragEnd();
-  if (!D || D.i !== i) return;
-  const m = A.m,
-    C = m.cards[i];
-  if (!k) {
-    if (D.from) cardsSet(i, D.from, null); // back to the pool: the slot empties (the captain refills it if it is not yours)
-  } else if (!D.from) return cardsPick(i, D.id, k);
-  else if (k !== D.from && cardFits(D.id, k)) {
-    const other = C.slots[k],
-      back = other && (C.you[k] || C.mine >= SLOTS.length) && cardFits(other, D.from) ? other : null;
-    cardPut(m, i, D.from, null);
-    cardPut(m, i, k, D.id);
-    if (back) cardPut(m, i, D.from, back); // a swap
-    cardsSet(i, k, D.id);
-  }
-  A.cardSel = null;
-  cardsRedraw();
-}
-/** Place (or empty) a slot; the captain then fills around your cards (a side you run in full stays as you left it). */
-function cardsSet(i, k, id) {
-  const m = A.m;
-  cardPut(m, i, k, id);
-  if (m.cards[i].mine < SLOTS.length) cardFill(m, i);
-  else cardApply(m, i);
-}
-/** The captain picks this hand (your cards cleared); a side you run keeps it as yours. */
-function cardsAuto(i) {
-  const m = A.m,
-    n = m.cards[i].mine;
-  cardsWho(m, i, 0);
-  if (n) cardsWho(m, i, n);
+/** Play hand card h of side i (between points): it acts from the next serve. */
+function cardsPlay(i, h) {
+  if (!A || !A.m) return;
+  Cards.play(A.m, i, h);
   cardsRedraw();
 }
 function cardsRedraw() {
@@ -275,8 +115,8 @@ function cardsRedraw() {
   else if (A.prep) prepDraw();
 }
 
-/** The turn overlay's sides: the hands you run (none once you hand the match to the captain). */
-const cardsSides = m => (m && m.cards && !A.cardAuto ? [0, 1].filter(i => m.cards[i].by === 'you') : []);
+/** The turn overlay's sides: the hands you play in (none once you hand the match to the captain). */
+const cardsSides = m => (m && m.deck && !A.cardAuto ? [0, 1].filter(i => m.deck[i].by === 'you' || m.deck[i].me) : []);
 /** A turn act (acts.js `turn`, spec §2.32): pause and open the overlay for your hands. */
 function cardsTurnShow(a) {
   if (!A || A.done || !cardsSides(A.m).length) return;
@@ -290,7 +130,6 @@ function cardsTurnOpen(n, edit) {
     el = $('#cturn');
   }
   A.cturn = { n: n ?? A.m.turnN, edit };
-  A.cardSel = null;
   A.prep = true;
   el.hidden = false;
   el.classList.remove('settled'); // (the entrance animation plays once per opening, not on every redraw)
@@ -308,13 +147,13 @@ function cardsTurnClose() {
 function cardsPeek() {
   if (!A || !A.m || A.done) return;
   if (A.cturn) return cardsTurnClose();
-  if (A.prep || !A.m.cards) return;
-  if ([0, 1].some(i => A.m.cards[i].by === 'you')) cardsTurnOpen(null, false);
+  if (A.prep || !A.m.deck) return;
+  if (cardsSides(A.m).length) cardsTurnOpen(null, false);
 }
 /** Hand the rest of the match to the captain: no more turn stops. */
 function cardsAutoMatch() {
   A.cardAuto = true;
-  for (const i of [0, 1]) if (A.m.cards[i].by === 'you') cardsWho(A.m, i, 0);
+  for (const i of [0, 1]) if (A.m.deck[i].by === 'you' || A.m.deck[i].me) cardsWho(A.m, i, 0);
   cardsTurnClose();
 }
 /** One player's three bars (spec §2.31) and their morale trait. */
@@ -334,7 +173,7 @@ function cardsTurnDraw() {
     m = A.m,
     T = A.cturn;
   if (!el || !T) return;
-  const sides = [0, 1].filter(i => m.cards[i].by === 'you'),
+  const sides = cardsSides(m),
     noticed = i =>
       [...Reads.tags(m, 1 - i), ...Reads.tags(m, i)]
         .slice(0, 3)
@@ -345,48 +184,51 @@ function cardsTurnDraw() {
         STAGES[m.stage[i]].name
       )}</span></div><div class="cbars">${m.t[i].P.map(p => cardsBars(m, p)).join('')}</div>${
         noticed(i) ? `<ul class="cnote small">${noticed(i)}</ul>` : ''
-      }${cardsHand(i, T.edit)}${T.edit ? `<button class="btn" onclick="cardsAuto(${i})">Captain picks <kbd>A</kbd></button>` : ''}</section>`;
+      }${cardsHand(i, true)}</section>`;
   el.innerHTML = `<div class="ocard prep cturn ${sides.length === 1 ? 'one' : ''}"><div class="phead"><span class="lab">${T.edit ? `Turn ${T.n}` : 'Your hand'} · ${esc(m.t[0].short)} ${m.pts[0]}–${m.pts[1]} ${esc(m.t[1].short)}</span></div>
     <div class="pcols">${sides.map(col).join('')}</div>
-    <div class="acts">${T.edit ? '<button class="btn" onclick="cardsAutoMatch()">Captain for the match</button>' : ''}<button class="btn hot" onclick="cardsTurnClose()">${T.edit ? 'Play on' : 'Back to the match'} <kbd>${T.edit ? 'Space' : 'Tab'}</kbd></button></div></div>`;
+    <div class="acts"><button class="btn" onclick="cardsAutoMatch()">Captain for the match</button><button class="btn hot" onclick="cardsTurnClose()">${T.edit ? 'Play on' : 'Back to the match'} <kbd>${T.edit ? 'Space' : 'Tab'}</kbd></button></div></div>`;
 }
-/** Keys while the overlay is open: Space / Enter / Tab / Esc play on, A the captain picks. Returns true when it took the key. */
+/** Keys while the overlay is open: Space / Enter / Tab / Esc play on, 1–5 play that hand card. Returns true when it took the key. */
 function cardsKey(e) {
   if (!A || !A.cturn) return false;
   if (e.key === ' ' || e.key === 'Enter' || e.key === 'Escape' || e.key === 'Tab') {
     e.preventDefault();
     cardsTurnClose();
-  } else if ((e.key === 'a' || e.key === 'A') && A.cturn.edit) for (const i of cardsSides(A.m)) cardsAuto(i);
+  } else if (/^[1-9]$/.test(e.key)) {
+    const i = cardsSides(A.m)[0],
+      h = +e.key - 1;
+    if (i != null && A.m.deck[i].hand[h] && Cards.mine(A.m, i, A.m.deck[i].hand[h])) cardsPlay(i, h);
+  }
   return true;
 }
-/** A spent card (acts.js `cardspent`): a tag over the court. */
-function cardsSpentShow(a) {
+/** A card played (acts.js `card`, spec §2.37): a tag over the court ("Wu plays Killer Serve"; a trap's catch). T-346 draws it properly. */
+function cardsPlayShow(a) {
   if (!A || !A.m || !CARDS[a.id]) return;
+  const t = A.m.t[a.side].short,
+    n = cardName(A.m, a.side, a.id);
+  if (typeof DBG !== 'undefined')
+    DBG.log('info', `card: ${t} plays ${n}${a.caught ? ` (caught: ${a.caught})` : ''} · by ${a.by} · ${a.st}`);
   instant({
     k: 'label',
-    t: a.trap
-      ? `${CARDS[a.trap].name}! ${A.m.t[a.side].short}: ${CARDS[a.id].name} burns`
-      : `${A.m.t[a.side].short}: ${CARDS[a.id].name} spent`,
+    t: a.caught ? `${CARDS[a.caught].name}! ${t}: ${n} caught` : `${t} plays ${n}`,
     small: 1,
     dy: 40
   });
 }
-/** The result card's row: each side's plays — turns slotted — and the spent ones. */
+/** The result card's row: each side's cards played (× times). */
 function cardsRow(m) {
-  if (!m || !m.cards) return '';
+  if (!m || !m.deck) return '';
   const side = i => {
-    const C = m.cards[i],
-      played = Object.entries(C.played)
-        .filter(([id]) => CARDS[id].kind !== 'boost')
+    const D = m.deck[i],
+      played = Object.entries(D.played)
+        .filter(([id]) => CARDS[id].kind !== 'basic')
         .sort((a, b) => b[1] - a[1])
         .map(([id, n]) => `${esc(cardName(m, i, id))} ×${n}`)
-        .join(' · '),
-      spent = C.spent.map(id => esc(CARDS[id].name)).join(' · ');
-    return `<div class="rplan"><span class="rpt">${chip(m.t[i])}${esc(m.t[i].short)}</span><span>${played || '<span class="mute">boosts only</span>'}${
-      spent ? ` <span class="rspent">— spent: ${spent}</span>` : ''
-    }</span></div>`;
+        .join(' · ');
+    return `<div class="rplan"><span class="rpt">${chip(m.t[i])}${esc(m.t[i].short)}</span><span>${played || '<span class="mute">Basics only</span>'}</span></div>`;
   };
-  return `<div class="rplans"><div class="lab">Cards <span class="mute">(turns slotted)</span></div>${side(0)}${side(1)}</div>`;
+  return `<div class="rplans"><div class="lab">Cards <span class="mute">(times played)</span></div>${side(0)}${side(1)}</div>`;
 }
 /** A card's name on screen: a duo card (spec §4.36 4) names the friend — "Mint × You: Sync Quick". */
 function cardName(m, i, id) {
@@ -419,7 +261,7 @@ function cardsDuoCut(m, i, id) {
 /**
  * A career match's team-life presentation (spec §4.36, started by career-match.js once the fixture's setup ran): each frame while the
  * match plays and nothing else holds the court — an ex-teammate's remark once, then a cut-in for each duo card of yours the first time
- * it is slotted with its pair on court. Stops when the match ends or the screen leaves it. Presentation only (no draws).
+ * it is active with its pair on court. Stops when the match ends or the screen leaves it. Presentation only (no draws).
  */
 function teamWatch(m) {
   if (!A || A.m !== m || A.done || m.over) return;
@@ -428,9 +270,9 @@ function teamWatch(m) {
     if (m.exIds && !A.exSaid) {
       A.exSaid = true;
       exRemark(m);
-    } else if (m.duo)
+    } else if (m.duo && m.deck)
       for (const i of [0, 1])
-        for (const id of cardIds(m, i))
+        for (const { id } of m.deck[i].act)
           if (CARDS[id].src === 'duo' && !seen.has(id) && duoOn(m.t[i], duoIds(m, i, id) || [])) {
             seen.add(id);
             cardsDuoCut(m, i, id);

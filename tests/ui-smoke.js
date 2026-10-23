@@ -496,7 +496,7 @@ const step = async (name, fn) => {
       })
       .catch(() => {}); // (the card can paint a frame after A.m — the check below says what was there)
     const pre = await ev(() => (A.prep && $('#prep') && !$('#prep').hidden ? $('#prep').textContent : ''));
-    if (!/Their hand: hidden/.test(pre) || !/the captain fills the rest|Drag a card into a slot/.test(pre))
+    if (!/Their hand: hidden/.test(pre) || !/the captain plays the rest|Click a card to play it/.test(pre))
       // (you as captain: all 5 yours)
       throw new Error(`career match prep: ${pre.replace(/\s+/g, ' ').slice(0, 400)}`);
     await pg.keyboard.press('Enter');
@@ -653,49 +653,27 @@ const step = async (name, fn) => {
       startMonster();
     });
     await pg.waitForFunction(() => typeof A !== 'undefined' && A && A.m, null, { timeout: 60000 });
-    // drag and drop (owner, 2026-10-16): a pool card onto a slot, then that slot's card back onto the pool
-    await pg.waitForFunction(() => A.prep && document.querySelector('#prep .cpool'), null, { timeout: 20000 });
-    await ev(() => {
-      // the opening hand follows the random Monster teams: Power Up may already be slotted — empty that slot first
-      const C = A.m.cards[0],
-        k = Object.keys(C.slots).find(s => C.slots[s] === 'pow');
-      if (k) cardsSet(0, k, null);
-      cardsRedraw();
-    });
-    await pg.waitForFunction(() => document.querySelector('#prep .cpool .cpick[data-card="pow"]'), null, { timeout: 5000 });
-    await pg.dragAndDrop('#prep .cpool .cpick[data-card="pow"]', '#prep .cslot[data-slot="atk1"]');
-    if ((await ev(() => A.m.cards[0].slots.atk1)) !== 'pow') throw new Error('drag: Power Up not in ATK 2');
-    await pg.dragAndDrop('#prep .cslot[data-slot="atk1"]', '#prep .cpool');
-    if ((await ev(() => A.m.cards[0].slots.atk1)) === 'pow') throw new Error('drag: the slot did not empty');
-    // the pool's filters (owner, 2026-10-17): DEF shows only DEF cards, All brings the rest back
-    await pg.click('#prep .cfilt[data-filt="def"]');
-    await ev(() => {
-      const ids = [...document.querySelectorAll('#prep .cpool .cpick')].map(b => b.dataset.card);
-      if (!ids.length || ids.some(id => CARDS[id].zone !== 'def')) throw new Error(`filter DEF shows ${ids.join(',')}`);
-    });
-    await pg.click('#prep .cfilt[data-filt="all"]');
-    await ev(() => {
-      if (!document.querySelector('#prep .cpool .cpick[data-card="pow"]')) throw new Error('filter All: Power Up missing');
-    });
-    // match prep (spec §2.26): both sides yours in a Monster game; pick Hunt the passer / Wall their ace for the left team
+    // the deck (spec §2.37): your hand of 5 and the deck in prep; click a card to play it on the first point
+    await pg.waitForFunction(() => A.prep && document.querySelector('#prep .chand'), null, { timeout: 20000 });
     await ev(() => {
       if (!A.prep || $('#prep').querySelectorAll('.pteam').length !== 2) throw new Error('no Monster match prep');
       // no coach (spec §2.36): the other side is the captain's call, and the rail's tab is Reads
       if (!/Captain decides/.test($('#prep').textContent) || !/^Reads/.test($('#readsbtn').textContent) || 'coaches' in A)
         throw new Error('the coach is still in the match');
-      // the hand (spec §2.33): your five slots and the pool; the captain's side is hidden
+      // the hand: five places and the deck under them; the captain's side is hidden
       if ($('#prep').querySelectorAll('.chand').length !== 1 || $('#prep').querySelectorAll('.chand .cslot').length !== 5)
         throw new Error('no hand in prep');
-      cardsSlot(0, 'atk0');
-      cardsPick(0, 'hunt');
-      cardsSlot(0, 'def0');
-      cardsPick(0, 'wall');
-      if (A.m.cards[0].slots.atk0 !== 'hunt' || A.m.cards[0].slots.def0 !== 'wall')
-        throw new Error(`cards: ${JSON.stringify(A.m.cards[0].slots)}`);
+      if ($('#prep').querySelectorAll('.chand .cpool .cpick').length !== DECK.size) throw new Error('no deck in prep');
+    });
+    const h = await ev(() => A.m.deck[0].hand.findIndex((id, k) => id && !Cards.can(A.m, 0, k)));
+    if (h < 0) throw new Error('no playable card in the opening hand');
+    await pg.click(`#prep .cslot[data-hand="${h}"]`);
+    await ev(() => {
+      const D = A.m.deck[0];
+      if (D.log.filter(e => e.k === 'play').length !== 1 || D.hand.filter(Boolean).length !== 4)
+        throw new Error(`the card was not played: ${JSON.stringify(D.hand)}`);
       prepStart();
-      const p = A.m.plan[0];
-      if (A.prep || p.atk !== 'hunt' || p.def !== 'wall' || A.m.cards[0].by !== 'you' || A.m.cards[1].by !== 'ai')
-        throw new Error(`cards did not set the plans: ${JSON.stringify(A.m.plan)}`);
+      if (A.prep || A.m.deck[0].by !== 'you' || A.m.deck[1].by !== 'ai') throw new Error('prep did not start the match');
       // Tab mid-match: a look at your hand (play waits); Tab again closes it
       cardsPeek();
       if (!A.prep || !$('#cturn') || $('#cturn').hidden || !$('#cturn .cbars .cbrow')) throw new Error('Tab did not open the hand');
@@ -703,7 +681,7 @@ const step = async (name, fn) => {
       if (A.prep) throw new Error('the hand did not close');
       // a turn (spec §2.32): the overlay pauses play with your hand editable
       cardsTurnShow({ n: 1 });
-      if (!A.prep || !$('#cturn .cpool .cpick')) throw new Error('no turn overlay');
+      if (!A.prep || !$('#cturn .chand .cslot')) throw new Error('no turn overlay');
       cardsTurnClose();
     });
     // no captain's chips (owner, 2026-10-14) and no ⚙ Prompts; Play as sets your player
@@ -780,8 +758,8 @@ const step = async (name, fn) => {
       finishMatch();
     });
     await pg.waitForFunction(() => /Top 3/i.test((document.querySelector('#over') || {}).textContent || ''), null, { timeout: 10000 });
-    // the cards (spec §2.33): each side's plays and turns slotted
-    if (!/Cards[\s\S]*Hunt the Passer ×/.test(await ev(() => $('#over').textContent))) throw new Error('no Cards row on the result card');
+    // the cards (spec §2.37): each side's cards played
+    if (!/Cards[\s\S]*(×\d|Basics only)/.test(await ev(() => $('#over').textContent))) throw new Error('no Cards row on the result card');
   });
   const dbg = await ev(() => (typeof DBG !== 'undefined' ? DBG.text() : '')).catch(() => '');
   for (const l of dbg.split('\n')) if (/\berror\b/i.test(l) && !/STALL/.test(l)) errors.push(`DBG: ${l.slice(0, 200)}`);
