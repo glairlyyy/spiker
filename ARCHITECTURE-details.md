@@ -1333,6 +1333,23 @@ buffs (`cardBuff` inside `stageBuff`, × holder level for techniques); `cardEdge
 and edges. `opts.cards[i]` = { by, me, deck: [ids] (Basics fill unless fill === false), pin: [ids] (always active, no deck —
 tests / measurements) }. `npm run cards` (tests/cards.js) measures modes and the spam test; `npm run reads` the edges (pinned).
 
+## The hand bar (spec §2.37 On screen, T-347)
+
+- `js/ui/match-cards.js`, css/match.css (`.hand`, `.hc`, `.hpile`, `.hlist`, `.cact`). Mounted by startMatch (`handMount`: `#hand`
+  in `#match`), redrawn by a rAF `handTick` only when its HTML changes; hidden in prep, after the final and when no hand is yours
+  (`cardsSides`: `by 'you'` or `me`); tucked down during a staged scene. `#match.hand-on` lifts the rail and the exchange box.
+- **The engine runs a rally ahead of playback**: `A.ptsShown` (board()) is the score on screen. `A.hshow[i]` is the hand as shown —
+  a play / discard empties its place at once; a card the engine dealt (turn, timeout `Cards.extra`) appears only once
+  `ptsPlayed(m) <= A.ptsShown`, then flies in from the deck pile (`handDeal`). Active cards by the scoreboard add the lag back to
+  `left` and keep just-ended ones (`D.log` 'end') until their point is shown.
+- **Play**: `handPlay(i, h)` = `Cards.play` at once (cost paid; acts from the next serve); `A.hq[i]` { h, id, at } keeps it lifted
+  (`.hc.q`) until its `card` act (`cardsPlayShow`), which flies a copy onto the court and names every play on the bar's line
+  (`#hnote`; the court banner is T-346's). `handDisc` = `Cards.discard`. Locked cards show `Cards.can`'s reason (CAN_WORD).
+- **Turn** (`turn` act → `cardsTurnShow`): the line; with `turnPause()` (KEYS.turns JSON { career, exh }; default career on,
+  Monster off; ⚙ "Pause at turns") `A.paused`. Your timeout's `tobanner` → `cardsTurnOpen` (the line only).
+- Prep: `cardsDeck(i)` (opening hand, click to queue; the deck of 12: own cards with holder, Basics ×n). Result: `cardsRow`
+  (× played, rallies won–lost from `D.stat`).
+
 ## Gifts (spec §4.35, T-320)
 
 - **Data** `js/data/gifts.js`: `GIFT_TIERS` (pot bars → S A B C D), `GIFT_ODDS` (two 0.10, one 0.45; `know` = the bond that

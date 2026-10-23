@@ -1,6 +1,6 @@
 // Match prep (spec §2.26, §2.33): the intro before every played match — both teams, their lineups and the hands. A side you
 // run picks its cards (Monster: "You decide" per side; career: your side — 1 card, 5 as captain); the other hand is hidden.
-// Play waits (A.prep) until Start. Your timeout opens the turn overlay for your hands (a huddle, js/ui/match-cards.js).
+// Play waits (A.prep) until Start. The hand bar (js/ui/match-cards.js) takes over once the match starts.
 
 /** The sides whose run you can choose (You decide / Captain decides): Monster game both; career: none (your side is yours). */
 function prepSides() {
@@ -53,9 +53,9 @@ function prepTeam(i) {
           )
           .join(
             ''
-          )}</div>${S.who[i] === 'you' ? cardsHand(i, true) : '<p class="small mute">The captain picks — hidden until the match is over.</p>'}`
+          )}</div>${S.who[i] === 'you' ? cardsDeck(i) : '<p class="small mute">The captain picks — hidden until the match is over.</p>'}`
       : cardsMine(m, i)
-        ? cardsHand(i, true) + prepHabits(m, i)
+        ? cardsDeck(i) + prepHabits(m, i)
         : '<p class="small mute">Their hand: hidden.</p>';
   return `<section class="pteam" style="--tc:${t.color}"><div class="pban"><h3>${esc(t.name)}</h3><span class="povr"><b>${ovrAvg}</b> OVR</span><span class="small mute">${esc((t.S && t.S.name) || '')}</span>${prepStage(m, i)}</div><div class="lineup">${lineup}</div>${hand}</section>`;
 }
@@ -99,5 +99,6 @@ function prepStart() {
   A.prep = false;
   const el = $('#prep');
   if (el) el.hidden = true;
+  if (A.m.deck) A.hshow = [0, 1].map(i => A.m.deck[i].hand.map(() => null)); // the bar deals your opening hand
   if (A.railTab === 'reads') readsPanel();
 }
