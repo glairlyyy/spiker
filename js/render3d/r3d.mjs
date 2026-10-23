@@ -372,12 +372,35 @@ function draw() {
   for (const pl of w.people) {
     const d = pl.d;
     if (!d) continue;
-    const pr = P(d.x, d.z, d.jy),
+    const pr = P(d.x, d.z, d.jy + ((pl.titanK || 1) - 1) * (1.8 / UNIT_M.h)), // Resolve of the Titan: the tag over the new head
       k = Math.min(1.7, pr.s * FIG);
     pr.Y += TAG_DROP * k * birdW(); // bird's-eye: a figure seen from above looks shorter, so its tag comes down to just over its head
     if (!A.shot) drawTags(d, pr, k, (A.staShown || {})[d.p.id]); // capped: close-up shots
   }
+  opVignette(now);
   Overlay.drawFx(now);
+}
+/**
+ * INZONE!! (spec §2.37, T-346): a focus vignette in the team colour round the screen edges while the card lasts (a slow
+ * breathing pulse; VFX.op.vig). Display only.
+ */
+function opVignette(now) {
+  const side = [0, 1].find(i => typeof OpShow !== 'undefined' && OpShow.on('inzone', i));
+  if (side == null || A.shot || !VFX.op.vig) return;
+  const c = new THREE.Color(A.m.t[side].color),
+    rgb = `${(c.r * 255) | 0},${(c.g * 255) | 0},${(c.b * 255) | 0}`,
+    k = VFX.op.vig * (0.85 + 0.15 * Math.sin(now * 0.004)),
+    W2 = cv.width,
+    H2 = cv.height,
+    vg = ctx.createRadialGradient(W2 / 2, H2 / 2, H2 * 0.38, W2 / 2, H2 / 2, Math.hypot(W2, H2) * 0.55);
+  vg.addColorStop(0, `rgba(${rgb},0)`);
+  vg.addColorStop(0.65, `rgba(${rgb},${(k * 0.35).toFixed(3)})`);
+  vg.addColorStop(1, `rgba(${rgb},${k.toFixed(3)})`);
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W2, H2);
+  ctx.restore();
 }
 
 const hL = new THREE.Vector3(),

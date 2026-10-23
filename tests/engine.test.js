@@ -250,6 +250,41 @@ test('engine: every beat act kind is handled by the renderer', () => {
   assert(!missing.length, 'unhandled act kinds: ' + missing.join(', '));
 });
 
+test('render: the card / cardend acts turn the OP cards’ looks on and off; Hype off → no cut-in (spec §2.37, T-346)', () => {
+  const g = load(11),
+    vm = require('vm'),
+    shown = [],
+    ctx = { CARDS: g.CARDS, HYPE: { off: { max: 0 }, normal: { max: 1 } }, G: { hype: 'normal' }, cardShow: (a, cut) => shown.push(cut) };
+  vm.createContext(ctx);
+  vm.runInContext(`${fs.readFileSync(path.join(__dirname, '..', 'js/render/acts.js'), 'utf8')}\n;globalThis.__a={ACTS,OpShow};`, ctx);
+  const { ACTS, OpShow } = ctx.__a;
+  ctx.A = { m: {} };
+  // every OP card the engine plays comes as a card act with op set (a Monster match: both sides hold them)
+  const T = g.mkMonsterTeams(),
+    ops = new Set();
+  for (let i = 0; i < 4; i++) {
+    const m = g.newMatch(T[0], T[1], true);
+    while (!m.over) for (const b of g.playRally(m).beats) for (const a of b.acts) if (a.k === 'card' && a.op) ops.add(a.id);
+  }
+  assert(ops.size >= 2, 'OP cards played: ' + [...ops].join(', '));
+  ACTS.card({ k: 'card', side: 1, id: 'god', by: 'x', op: true });
+  ACTS.card({ k: 'card', side: 0, id: 'titan', by: 'p7', op: true });
+  ACTS.card({ k: 'card', side: 0, id: 'inzone', by: 'p3', op: true });
+  assert(OpShow.on('god', 1) && !OpShow.on('god', 0), 'God Resolve: its side');
+  assert(OpShow.on('titan', 'p7') && !OpShow.on('titan', 'p3'), 'Titan: its holder');
+  assert(OpShow.on('inzone', 0), 'INZONE!!');
+  eq(shown.join(), 'true,true,true', 'OP cards: the cut-in');
+  ACTS.cardend({ k: 'cardend', side: 0, id: 'titan', by: 'p7', why: 'done' });
+  ACTS.cardend({ k: 'cardend', side: 1, id: 'god', by: 'x', why: 'done' });
+  assert(!OpShow.on('titan', 'p7') && !OpShow.on('god', 1) && OpShow.on('inzone', 0), 'ends one at a time');
+  ctx.G.hype = 'off';
+  ACTS.card({ k: 'card', side: 1, id: 'surge', by: 'y', op: true });
+  ACTS.card({ k: 'card', side: 1, id: 'power', by: 'y', op: false });
+  ACTS.card({ k: 'card', side: 0, id: 'god', by: 'y', op: true, caught: 'trap' });
+  eq(shown.slice(3).join(), 'false,false,false', 'Hype off / a play / a caught card: the banner only');
+  assert(!OpShow.on('god', 0), 'a caught OP card does nothing');
+});
+
 test('render3d: every pose the engine sends has a 3D pose', () => {
   const g = load(12);
   const src = fs.readFileSync(path.join(__dirname, '..', 'js/render3d/poses3d.mjs'), 'utf8');

@@ -311,12 +311,72 @@ const ACTS_UI = {
   turn(a, d, bs) {
     if (typeof cardsTurnShow === 'function') cardsTurnShow(a);
   },
-  /** A card is played (spec §2.37): { side, id, by, op, caught? } — a tag over the court for now (T-346 draws it). */
+  /**
+   * A card is played (spec §2.37): { side, id, by, op, caught? } — the banner ("‹team› plays ‹card›"); an OP card opens with its
+   * full-screen cut-in (Hype off: the banner) and its look starts (OpShow).
+   */
   card(a, d, bs) {
     if (typeof cardsPlayShow === 'function') cardsPlayShow(a);
+    const cut = OpShow.start(a);
+    if (typeof cardShow === 'function') cardShow(a, cut);
   },
-  /** An active card ends (spec §2.37): { side, id, by, why: 'done' | 'sprung' } — nothing drawn yet (T-346). */
-  cardend(a, d, bs) {}
+  /** An active card ends (spec §2.37): { side, id, by, why: 'done' | 'sprung' } — an OP card's look ends. */
+  cardend(a, d, bs) {
+    OpShow.end(a);
+  }
+};
+/**
+ * OP cards on screen (spec §2.37, T-346): which OP looks are on, from the `card` / `cardend` acts — display state only
+ * (`A.opOn` = { god: [side 0, side 1], inzone: [..], surge: [..], titan: { player id: 1 } }; a new match = a new A).
+ * Read by actors3d (Titan's size, God Resolve's aura), the director (INZONE!!'s Ink) and r3d (INZONE!!'s vignette).
+ */
+const OpShow = {
+  /** The state (made on first use). */
+  st() {
+    if (!A) return { god: [0, 0], inzone: [0, 0], surge: [0, 0], titan: {} };
+    return A.opOn || (A.opOn = { god: [0, 0], inzone: [0, 0], surge: [0, 0], titan: {} });
+  },
+  /** A card act: an OP card that was not caught turns its look on. → whether it gets the full-screen cut-in (Hype on). */
+  start(a) {
+    const c = typeof CARDS !== 'undefined' && CARDS[a.id];
+    if (!c || !a.op || a.caught) return false;
+    const S = OpShow.st();
+    if (a.id === 'titan') S.titan[a.by] = 1;
+    else if (S[a.id]) S[a.id][a.side] = 1;
+    return !!(typeof HYPE !== 'undefined' && HYPE[G.hype] && HYPE[G.hype].max > 0);
+  },
+  /** A cardend act: its look off (Titan shrinks back). */
+  end(a) {
+    const S = OpShow.st();
+    if (a.id === 'titan') delete S.titan[a.by];
+    else if (S[a.id]) S[a.id][a.side] = 0;
+  },
+  /** Is OP card id's look on for side (or, for Titan, player id `side`)? */
+  on(id, side) {
+    const S = A && A.opOn;
+    if (!S) return false;
+    return id === 'titan' ? !!S.titan[side] : !!(S[id] && S[id][side]);
+  },
+  /**
+   * Dev / QA hook: side i holds the OP cards (default God Resolve, Resolve of the Titan, INZONE!!) — put into its hand's first
+   * places (back from used / the draw / the discard pile). With `play` (a card id) it is also played now (Cards.play, between
+   * points). Returns the hand. Not called by the game.
+   */
+  deal(i, ids = ['god', 'titan', 'inzone'], play = null) {
+    const D = A && A.m && A.m.deck && A.m.deck[i];
+    if (!D) return null;
+    ids.forEach((id, k) => {
+      D.used = D.used.filter(x => x !== id);
+      D.draw = D.draw.filter(x => x !== id);
+      D.disc = D.disc.filter(x => x.id !== id);
+      const h = D.hand.indexOf(id);
+      if (h >= 0) D.hand[h] = null;
+      D.hand[k] = id;
+    });
+    D.pt = -1; // (a play this point is allowed again)
+    if (play) Cards.play(A.m, i, D.hand.indexOf(play));
+    return D.hand;
+  }
 };
 /** Players on court: substitutions and display state (poses, spike style, set direction). */
 const ACTS_ROSTER = {

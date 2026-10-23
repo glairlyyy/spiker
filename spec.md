@@ -854,6 +854,12 @@ the AI coach fills every slot you leave with the same function. Built and measur
       style (§2.15, VFX ball style Ink) while it lasts.
     - Element Surge stays (element players); Fever Rush, Iron Wall, Zone, Overload and Last Stand become plays or go (T-345).
     - Each OP card opens with a full-screen cut-in (its name, the holder, team colour, ~1 s; Hype off: a banner).
+    - **On screen [built 2026-10-24, T-346]**: every card a banner "‹team› plays ‹card›" (a caught one: "‹trap›! ‹team›'s ‹card›
+      caught"); an OP card's cut-in is a slashed band in the team colour across the court with the holder's portrait, "OP CARD ·
+      team", the card's name and the holder (1.1 s; Hype off: the banner). Titan: the holder's model grows to × 2 from the feet
+      (0.7 s ease, name tag and bars over the new head) and shrinks back at its end. God Resolve: a gold aura, gold floor ring and
+      rising gold motes on everyone of that side. INZONE!!: that side's attacks in Ink (ball and hand trails) and a team-colour
+      edge vignette. Tunables: VFX › OP cards.
   - **On screen** (T-347; §9 and the design system):
     - **The hand bar**: your 5 cards along the bottom of the match screen, always visible in a played match (no pause needed),
       a little fanned; hotkeys **1–5** play (queue for the next point), **Shift+1–5** or right-click discards. Each card: name,

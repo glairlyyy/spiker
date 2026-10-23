@@ -1307,6 +1307,20 @@ defaulted by kind at load; `CARD_EDGE` / `EDGE` (fit / counter edges, T-299); `C
 - `{ k: 'cardend', side, id, by, why: 'done' | 'sprung', after?, who?, hit? }` — a card's last point (after the point beats;
   `after` + payer ids when an after-cost hit) or a trap that sprang (`hit` = the card it caught).
 
+**On screen (T-346, render only)**: `ACTS.card` → `cardsPlayShow` (js/ui: DBG line) + `OpShow.start` + `cardShow(a, cut)`
+(effects.js): every card a banner "‹team› plays ‹card›" (`#cardban`, built and inline-styled inside `#stage` by `stageEl`; Web
+Animations, VFX.op.ban ms); an OP card not caught with Hype on: the full-screen cut-in instead (`#opcut`: a slashed band in the team
+colour, the holder's portrait (`faceSVG`), "OP CARD · team", the name, holder · role; VFX.op.cut ms; play is not held — the card beat
+is 1.1 s). `OpShow` (acts.js) keeps the looks on from `card` to `cardend`: `A.opOn` { god / inzone / surge: [side flags], titan:
+{ player id } } (a new match = a new A); `OpShow.on(id, side | pid)`. Looks: **Titan** — actors3d `titanGrow` eases the holder's root
+scale to VFX.op.titan × over VFX.op.titanMs (from the feet; `pl.scale` follows so feet IK stays on the floor; `pl.scale0` = the
+dressed size; `pl.titanK` lifts r3d's tag point and the aura / floor ring) — positions, jumps and contacts are the engine's.
+**God Resolve** — every player of that side: a gold aura sprite (VFX.op.god / godCol / godSize, breathing), gold floor ring, rising
+gold motes. **INZONE!!** — `Dir.inzone(side)`: `Dir.ballStyle()` returns 'ink' for that side's attacks (any hitter, VFX.op.ink) and
+its hand trails go Ink (actors3d); r3d `opVignette` draws a team-colour edge vignette (VFX.op.vig). Element Surge: cut-in only.
+Dev / QA hook: `OpShow.deal(side, ids = [god, titan, inzone], play?)` puts the OP cards in that side's hand (back from used) and
+optionally plays one now.
+
 **OP cards**: God Resolve (WS; court atk / spd / jump +100 % for 3, then court morale −0.3), Resolve of the Titan (MB; `self`:
 its player def / jump +100 % for 3, then its stamina −0.4), INZONE!! (S; `on: 'inzone'`: `stageSet` → Fever at once for 6 points;
 `Cards.floor` keeps Fever's clock above 0, `Cards.hold` after pointStage / stageTimeout puts the side back in Fever and drops the

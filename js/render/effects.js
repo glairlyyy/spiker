@@ -368,3 +368,105 @@ function linkSparks() {
     c: '#ffe38a'
   });
 }
+
+/* ---------- cards on screen (spec §2.37, T-346) ---------- */
+
+/** The stage's overlay element `id` (made on first use, inline-styled: the render layer owns it; a new match screen = a new one). */
+function stageEl(id, css) {
+  const st = typeof document !== 'undefined' && document.getElementById('stage');
+  if (!st) return null;
+  let el = document.getElementById(id);
+  if (!el || el.parentNode !== st) {
+    el = document.createElement('div');
+    el.id = id;
+    el.setAttribute('aria-live', 'polite');
+    el.style.cssText = css;
+    st.appendChild(el);
+  }
+  return el;
+}
+/**
+ * A card act on screen: the banner "‹team› plays ‹card›" (a caught one: "‹trap›! ‹team›'s ‹card› caught"); `cut` (an OP card,
+ * Hype on): the full-screen cut-in instead — the card's name, its holder (portrait, name, role), the team colour (VFX.op.cut ms).
+ */
+function cardShow(a, cut) {
+  if (!A || !A.m || typeof CARDS === 'undefined' || !CARDS[a.id]) return;
+  const t = A.m.t[a.side],
+    name = typeof cardName === 'function' ? cardName(A.m, a.side, a.id) : CARDS[a.id].name,
+    p = byId(a.by);
+  if (cut) return opCutIn(a, t, name, p);
+  const el = stageEl(
+    'cardban',
+    'position:absolute;left:50%;top:15%;z-index:6;pointer-events:none;opacity:0;white-space:nowrap;padding:8px 18px 9px;' +
+      'background:var(--hud);border-left:5px solid var(--c);color:var(--white);font:800 17px/1.1 var(--disp,"Arial Black",sans-serif);' +
+      'letter-spacing:.04em;transform:translateX(-50%) skewX(-8deg);box-shadow:0 0 18px rgba(0,0,0,.45)'
+  );
+  if (!el) return;
+  el.style.setProperty('--c', t.color);
+  el.innerHTML = a.caught
+    ? `<span style="color:var(--warn-hi)">${esc(CARDS[a.caught].name)}!</span> ${esc(t.short)}’s ${esc(name)} caught`
+    : `<span style="color:var(--c)">${esc(t.short)}</span> plays ${a.op ? '<b style="color:var(--gold-hi)">★ </b>' : ''}${esc(name)}`;
+  const ms = VFX.op.ban;
+  if (el.animate)
+    el.animate(
+      [
+        { opacity: 0, transform: 'translateX(-50%) translateY(-10px) skewX(-8deg)' },
+        { opacity: 1, transform: 'translateX(-50%) translateY(0) skewX(-8deg)', offset: RM ? 0.01 : 0.1 },
+        { opacity: 1, transform: 'translateX(-50%) translateY(0) skewX(-8deg)', offset: 0.85 },
+        { opacity: 0, transform: 'translateX(-50%) translateY(-4px) skewX(-8deg)' }
+      ],
+      { duration: ms, easing: 'ease-out', fill: 'forwards' }
+    );
+  else el.style.opacity = 1;
+}
+/** The OP cut-in: a slashed band in the team colour across the stage, the holder's portrait, the card's name huge. */
+function opCutIn(a, t, name, p) {
+  const el = stageEl('opcut', 'position:absolute;inset:0;z-index:7;pointer-events:none;overflow:hidden;opacity:0');
+  if (!el) return;
+  el.style.setProperty('--c', t.color);
+  const face = p && typeof faceSVG === 'function' ? faceSVG(p, 1, 132) : '',
+    who = p ? `${esc(p.name)} · ${esc(p.role)}` : '';
+  el.innerHTML =
+    '<div style="position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(11,16,48,.25),rgba(11,16,48,.8))"></div>' +
+    '<div data-band style="position:absolute;left:-10%;right:-10%;top:30%;height:40%;transform:skewY(-7deg);' +
+    'background:linear-gradient(90deg,var(--court-ink) 0%,var(--c) 38%,var(--c) 62%,var(--court-ink) 100%);' +
+    'border-top:4px solid var(--white);border-bottom:4px solid var(--white);box-shadow:0 0 60px var(--c)">' +
+    '<div style="position:absolute;inset:0;opacity:.22;background:repeating-linear-gradient(100deg,var(--white) 0 2px,transparent 2px 26px)"></div></div>' +
+    '<div data-txt style="position:absolute;left:0;right:0;top:30%;height:40%;display:flex;align-items:center;justify-content:center;gap:28px;transform:skewY(-7deg)">' +
+    (face
+      ? `<div style="width:132px;height:132px;flex:none;border:4px solid var(--white);background:var(--court-night);overflow:hidden;transform:skewX(-8deg);box-shadow:6px 6px 0 var(--court-ink)">${face}</div>`
+      : '') +
+    '<div style="transform:skewX(-8deg);color:var(--white);text-align:left">' +
+    `<div style="font:900 14px/1 var(--disp,'Arial Black',sans-serif);letter-spacing:.3em;color:var(--court-yellow);text-shadow:2px 2px 0 var(--court-ink)">OP CARD · ${esc(t.short)}</div>` +
+    `<div style="font:clamp(34px,6.4vw,84px)/1.02 var(--disp,'Arial Black',sans-serif);letter-spacing:.04em;text-transform:uppercase;margin:6px 0;text-shadow:0 0 24px var(--c),5px 5px 0 var(--court-ink)">${esc(name)}</div>` +
+    `<div style="font:800 18px/1 var(--disp,'Arial Black',sans-serif);letter-spacing:.08em;text-shadow:2px 2px 0 var(--court-ink)">${who}</div>` +
+    '</div></div>';
+  const ms = VFX.op.cut,
+    band = el.querySelector('[data-band]'),
+    txt = el.querySelector('[data-txt]');
+  if (typeof sfx !== 'undefined' && sfx.stinger) sfx.stinger();
+  if (!el.animate) return void (el.style.opacity = 1);
+  const o = { duration: ms, fill: 'forwards' },
+    inn = RM ? 0.01 : 0.14,
+    out = 0.84;
+  el.animate([{ opacity: 0 }, { opacity: 1, offset: RM ? 0.01 : 0.08 }, { opacity: 1, offset: out }, { opacity: 0 }], o);
+  if (RM) return;
+  band.animate(
+    [
+      { transform: 'skewY(-7deg) translateX(-110%)', easing: 'cubic-bezier(.2,.9,.2,1)' },
+      { transform: 'skewY(-7deg) translateX(0)', offset: inn, easing: 'linear' },
+      { transform: 'skewY(-7deg) translateX(2%)', offset: out, easing: 'ease-in' },
+      { transform: 'skewY(-7deg) translateX(115%)' }
+    ],
+    o
+  );
+  txt.animate(
+    [
+      { transform: 'skewY(-7deg) translateX(30%) scale(1.25)', opacity: 0 },
+      { transform: 'skewY(-7deg) translateX(0) scale(1)', opacity: 1, offset: inn + 0.06 },
+      { transform: 'skewY(-7deg) translateX(-3%) scale(1)', opacity: 1, offset: out },
+      { transform: 'skewY(-7deg) translateX(-40%) scale(1)', opacity: 0 }
+    ],
+    o
+  );
+}

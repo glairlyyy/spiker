@@ -230,6 +230,21 @@ const VFX_DEF = {
       shared: [1, 0, 1, 1, 'One cooldown for all kinds (off: per kind)']
     }
   },
+  // OP cards on screen (spec §2.37, T-346): the cut-in, the card banner, Titan's growth, God Resolve's aura, INZONE!!'s vignette
+  op: {
+    name: 'OP cards (cut-in, Titan, God Resolve, INZONE!!)',
+    p: {
+      cut: [1100, 400, 2500, 50, 'Cut-in length (ms)'],
+      ban: [1800, 600, 4000, 100, 'Card banner length (ms)'],
+      titan: [2, 1, 3, 0.05, 'Titan scale ×'],
+      titanMs: [700, 100, 2500, 50, 'Titan grow / shrink (ms)'],
+      god: [0.7, 0, 1, 0.05, 'God Resolve aura opacity'],
+      godCol: ['#ffe27a', 0, 0, 0, 'God Resolve aura colour'],
+      godSize: [1.35, 1, 2.5, 0.05, 'God Resolve aura size ×'],
+      vig: [0.42, 0, 1, 0.02, 'INZONE!! vignette strength'],
+      ink: [1, 0, 1, 1, 'INZONE!!: the side’s attacks in Ink']
+    }
+  },
   hand: {
     name: 'Hand trails',
     p: {

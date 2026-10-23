@@ -170,6 +170,7 @@ export function posePlayer(pl, dt, ballPos, fx) {
     hitMove = !!d.kb || downed(d) || (d.rcv && !d.rcv.ko && recvTier(d) === 'hard'),
     mot = hitMove ? { ...mot0, speed: 0, now: 0, fwd: 0, lat: 0, gw: null, far: 0 } : mot0;
   celeStep(d, dt);
+  titanGrow(pl, d, dt);
   const pose = crossFade(pl, playerPose(d, moodOf(d), mot), dt);
   root.position.copy(pos);
   steer(pl, d, pos, face, mot, ballPos, dt);
@@ -431,6 +432,20 @@ function reachForBall(pl, d, pose, ballPos) {
   }
 }
 
+/**
+ * Resolve of the Titan (spec §2.37, T-346): while its look is on (OpShow, from the card acts) the holder's model eases to
+ * VFX.op.titan × its size from the feet (the root sits on the floor) over VFX.op.titanMs, then back. Display only: positions,
+ * jumps and contacts stay the engine's. `pl.scale` follows, so the feet keep to the floor; `pl.titanK` = the size × now (r3d
+ * lifts the tag over the new head).
+ */
+function titanGrow(pl, d, dt) {
+  const on = typeof OpShow !== 'undefined' && OpShow.on('titan', d.p.id),
+    O = VFX.op;
+  if (!on && !pl.titanU) return;
+  pl.titanU = Math.min(1, Math.max(0, (pl.titanU || 0) + ((on ? 1 : -1) * dt * 1000) / Math.max(1, O.titanMs)));
+  pl.titanK = 1 + (O.titan - 1) * sm(pl.titanU);
+  pl.root.scale.setScalar((pl.scale = (pl.scale0 || pl.scale) * pl.titanK));
+}
 /** Hand trails (stars thin, OP wide, element colour on a full gauge) and eye streaks (Fever). */
 function lightTrails(pl, d, root, dt) {
   const side = d.side;
@@ -438,7 +453,7 @@ function lightTrails(pl, d, root, dt) {
     zk = Dir.aura(side) === 'full' ? 1.25 : 1, // Fever (the old zone look; spec §2.15 aura)
     charged = !!(d.p.elOn && (A.egShown || {})[d.p.id] >= EG.full), // full element gauge: trails turn the element colour
     inkS = specialFx(d.p, 'ink'), // the ink style: an OP / Fired-up player's only, God of War's always (spec §4.30)
-    ink = inkS === 2 || (!!inkS && G.trail === 'ink'), // ⚙ Trails: Ink — a wider, longer black brush stroke burning crimson (or the element colour)
+    ink = inkS === 2 || (!!inkS && G.trail === 'ink') || Dir.inzone(side), // INZONE!! (spec §2.37): the side in Ink; ⚙ Trails: Ink — a wider, longer black brush stroke burning crimson (or the element colour)
     o =
       tier || charged || ink
         ? {
@@ -484,17 +499,23 @@ function glow(pl, d, pos, dt, fx) {
   const root = pl.root,
     side = d.side;
   const air = d.jy > 12 || d.pose === 'spike' || d.pose === 'block' || d.pose === 'serve';
-  pl.aura.position.set(root.position.x, root.position.y + 1.1, root.position.z);
+  const tk = pl.titanK || 1,
+    god = typeof OpShow !== 'undefined' && OpShow.on('god', side), // God Resolve (spec §2.37): everyone on its side glows gold
+    gs = god ? VFX.op.godSize * (1 + 0.06 * Math.sin(performance.now() * 0.006 + d.p.num)) : 1;
+  pl.aura.position.set(root.position.x, root.position.y + 1.1 * tk * (god ? 1.05 : 1), root.position.z);
+  pl.aura.scale.set(2.2 * tk * gs, 2.6 * tk * gs, 1);
   const full = !!(d.p.elOn && (A.egShown || {})[d.p.id] >= EG.full),
     look = Dir.aura(side), // the team's stage (spec §2.15): Loose a grey haze, Focused faint, Fever full
     own = full ? (air ? 0.65 : 0.4) : d.p.op ? (air ? 0.55 : 0.22) : d.p.star && air ? 0.35 : 0,
     team = look === 'full' ? 0.3 : look === 'faint' ? 0.14 : look === 'haze' ? 0.18 : 0,
     pres = A.animLab ? 0 : pl.pres, // (cached in dressFigure)
     gift = pres && !own && team < 0.3 ? (pres > 1 ? 0.4 : 0.3) : 0, // off-element gold, under Fever's team glow
-    targ = Math.max(own, team, gift);
+    targ = Math.max(own, team, gift, god ? VFX.op.god : 0);
   pl.aura.material.color.set(
-    full ? ECOL[d.p.el] : d.p.op ? '#ff2846' : gift ? GIFT() : look === 'haze' && !own ? '#8b9099' : d.p.team.color
+    god ? VFX.op.godCol : full ? ECOL[d.p.el] : d.p.op ? '#ff2846' : gift ? GIFT() : look === 'haze' && !own ? '#8b9099' : d.p.team.color
   );
+  if (god && !A.shot && Math.random() < dt * 14)
+    fx.mote(pl.bone(AURA[(Math.random() * AURA.length) | 0]).getWorldPosition(new THREE.Vector3()), VFX.op.godCol, '#ffffff'); // rising gold motes
   if (pres > 1 && gift && !A.shot && Math.random() < dt * 1.2)
     fx.mote(pl.bone(AURA[(Math.random() * AURA.length) | 0]).getWorldPosition(new THREE.Vector3()), GIFT(), null); // S: now and then a gold mote
   pl.aura.material.opacity += (targ - pl.aura.material.opacity) * (1 - Math.exp(-dt * 8));
@@ -520,11 +541,12 @@ function glow(pl, d, pos, dt, fx) {
   const zone = look === 'full',
     bl = (A.buffShown && A.buffShown[d.p.id]) || 0,
     now = performance.now();
-  pl.zone.visible = !!zone;
-  if (zone) {
+  pl.zone.visible = !!(zone || god);
+  if (zone || god) {
     const pulse = 0.5 + 0.5 * Math.sin(now * 0.005 + d.p.num);
+    pl.zone.material.color.set(god ? VFX.op.godCol : (d.p.team || A.m.t[side]).color); // God Resolve: the floor ring turns gold
     pl.zone.position.set(pos.x, 0.015, pos.z);
-    pl.zone.scale.setScalar(1 + 0.08 * pulse);
+    pl.zone.scale.setScalar((1 + 0.08 * pulse) * tk * (god ? 1.2 : 1));
     pl.zone.material.opacity = 0.6 + 0.35 * pulse;
   }
   pl.buff.visible = !!bl;
@@ -550,7 +572,9 @@ function dressFigure(pl, d) {
   else dress(pl.vrm, { shirt: team.color, shorts: '#1b2150', hair: p.hair, skin: p.look.skin, eyes: p.look.eyeC, shoes: '#ffffff' });
   // height: the model's own, not the role's (look.hgt) — base / Main_v2 are normalised to 1.8 m, a loaded .vrm keeps its exported size.
   // Jump height (root.position.y = jy × KH, metres) does not depend on the scale, so jumps and blocks reach the same height.
-  pl.root.scale.setScalar((pl.scale = pl.model && pl.model !== 'main' ? 1 : 1.8 / pl.headY));
+  pl.root.scale.setScalar((pl.scale = pl.scale0 = pl.model && pl.model !== 'main' ? 1 : 1.8 / pl.headY));
+  pl.titanU = 0;
+  pl.titanK = 1;
   pl.aura.material.color.set(p.op ? '#ff2846' : team.color);
   pl.pres = presenceOf(p); // presence (spec §4.35): the idle gold glow in glow()
   pl.zone.material.color.set(team.color);
