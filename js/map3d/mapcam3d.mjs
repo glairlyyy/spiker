@@ -271,8 +271,9 @@ export function createMapCam(cam, canvas, sun, S) {
     lotGrid = new Map();
     const marks = (m.land.landmarks || []).map(q => {
       const K = LANDMARKS[q.kind],
-        [x, z] = toWorld(q.at),
-        r = K ? Math.max(K.w, K.d) : 0;
+        [x, z] = toWorld(q.at);
+      if (q.w) return { x, z, w: q.w, d: q.d, h: q.h, cs: Math.cos(q.rot || 0), sn: Math.sin(q.rot || 0), lm: true }; // a facility's lot (spec §4.40)
+      const r = K ? Math.max(K.w, K.d) : 0;
       return K && { x, z, w: r, d: r, h: K.h, cs: 1, sn: 0, lm: true };
     });
     [...L.map((l, i) => lotFrame(l, i)), ...marks].forEach(f => {

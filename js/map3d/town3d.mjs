@@ -15,7 +15,6 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAP_M, smooth, fogFactor } from './geo3d.mjs';
 import {
   KIT,
-  buildLandmark,
   accentOf,
   box,
   hip,
@@ -31,8 +30,10 @@ import {
   rgb,
   lotFrame,
   landmarkYaw,
-  mergeParts
+  mergeParts,
+  LANDMARKS
 } from './kit3d.mjs';
+import { buildFacility } from './facility3d.mjs';
 
 const ROAD = {
     main: { w: 3.2, color: '#6d6e73' },
@@ -91,6 +92,54 @@ const PAVE = '#b9b5ac',
 /** Street furniture along the main roads (spec §4.39): a slot halfway between two lamps (kit3d STREET), its kind and side by hash. */
 const PROPS = { every: 22, off: { bench: 2.7, bin: 2.6, stop: 3.4 } };
 
+/**
+ * The facilities' hover (spec §4.40): the hovered one lights up in the `ink` accent (css/theme.css --ink), easing in over `ms`.
+ * Always-on rims (your club's HQ, your home, your match's venue; a seized / closed place greyed) take `rim` strength.
+ */
+export const HOVER = { ink: '#eef0f3', ms: 150, rim: 0.55, grey: '#7a7d84' };
+/** The rim material's shared uniforms (one hover at a time on the island). */
+const HU = { uHov: { value: -1 }, uHovK: { value: 0 }, uInk: { value: new THREE.Color(HOVER.ink) } };
+/**
+ * The name boards' lettering: one canvas atlas, a row per board (its text centred and fitted in a cell of the board's aspect, a
+ * dark board with an accent stripe); texture.userData.uv[i] = [u0, v0, u1, v1]. Display only.
+ */
+function signAtlas(items) {
+  const W = 1024,
+    H = 96,
+    cols = 2,
+    cw = W / cols,
+    rows = Math.ceil(items.length / cols),
+    cv = document.createElement('canvas');
+  cv.width = W;
+  cv.height = Math.max(H, rows * H);
+  const g = cv.getContext('2d'),
+    uv = [];
+  items.forEach(([text, color, aspect], i) => {
+    const x0 = (i % cols) * cw,
+      y0 = Math.floor(i / cols) * H,
+      w = Math.min(cw, H * aspect),
+      x = x0 + (cw - w) / 2;
+    g.fillStyle = '#16181d';
+    g.fillRect(x, y0, w, H);
+    g.fillStyle = color || '#f5e6a8';
+    g.fillRect(x, y0 + H - 10, w, 10);
+    let fs = 54;
+    g.font = `700 ${fs}px system-ui, sans-serif`;
+    const t = String(text).toUpperCase();
+    while (fs > 14 && g.measureText(t).width > w - 24) g.font = `700 ${(fs -= 2)}px system-ui, sans-serif`;
+    g.fillStyle = '#f4f2ec';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(t, x + w / 2, y0 + (H - 10) / 2 + 2);
+    uv.push([x / W, 1 - (y0 + H) / cv.height, (x + w) / W, 1 - y0 / cv.height]);
+  });
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  tex.userData.uv = uv;
+  return tex;
+}
+
 /** opts.fast() → true for the Fast graphics setting (default: the game's G.gfx); read at each sync. */
 export function createTown(scene, heightAt, opts = {}) {
   const group = new THREE.Group(),
@@ -107,9 +156,11 @@ export function createTown(scene, heightAt, opts = {}) {
     for (const o of [...group.children]) {
       group.remove(o);
       if (o.geometry && !o.userData.shared) o.geometry.dispose();
+      if (o.userData.signs && o.material.map) o.material.map.dispose();
       if (o.material && !o.userData.shared && !o.material.userData.shared) o.material.dispose();
       if (o.isInstancedMesh) o.dispose();
     }
+    signs = null;
     vparts = [];
     fill = [];
     det = null;
@@ -394,7 +445,13 @@ export function createTown(scene, heightAt, opts = {}) {
   // ---- landmark cuts (town.cut, for the interiors) ----
   let lmPart = null,
     lmCut = null, // the cut applied (JSON)
-    cutBoxes = null;
+    cutBoxes = null,
+    facs = [], // the pickable facilities (buildLandmarks)
+    facAt = new Map(), // id → index in facs
+    signs = null,
+    signKey = null,
+    rimKey = null,
+    hov = { id: null, k: 0 };
   const applyCut = () => {
     if (!lmPart || lmPart.mesh.geometry.index) return;
     const k = JSON.stringify(cutBoxes);
@@ -648,26 +705,134 @@ export function createTown(scene, heightAt, opts = {}) {
     return out;
   };
 
-  /** Every landmark (and the Gloria wall) merged into one vertex-coloured mesh; each landmark faces its nearest road (or its fixed `rot`). */
-  const buildLandmarks = (list, edges, tint, districts) => {
+  /**
+   * Every landmark — the facilities (spec §4.40: facility3d.mjs, on their own lots, `rot` = the door toward the place's point), the
+   * venues, the ritual ground, the airport — and the Gloria wall, merged into one vertex-coloured mesh on the rim material: per vertex
+   * `fid` (the index into `facs`, −1 for what can't be picked) and `rim` (an always-on rim, rgb + strength). facs[i] = { id, x, z,
+   * yaw, w, d, h, base, v0, v1 (its vertex range), sign } (world m).
+   */
+  const buildLandmarks = (list, edges, tint, districts, fast) => {
     const geos = [],
+      facs = [],
       mat = new THREE.Matrix4();
+    let nv = 0;
     for (const L of list) {
       const x = L.at[0] * MAP_M,
         z = L.at[1] * MAP_M,
         yaw = landmarkYaw(L, edges),
-        g = buildLandmark(L.kind, tint.get(L.region) || accentOf(L.region), L.kit), // + its kit's props (spec §4.33)
-        h = Math.min(heightAt(x - 3, z - 3), heightAt(x + 3, z - 3), heightAt(x - 3, z + 3), heightAt(x + 3, z + 3), heightAt(x, z));
+        K = LANDMARKS[L.kind] || {},
+        w = L.w || K.w || 6,
+        d = L.d || K.d || 6,
+        r = Math.min(w, d) * 0.45,
+        acc = tint.get(L.region) || accentOf(L.region),
+        { geo: g, sign } = buildFacility(L, acc, fast), // + its kit (spec §4.33)
+        h = Math.min(heightAt(x - r, z - r), heightAt(x + r, z - r), heightAt(x - r, z + r), heightAt(x + r, z + r), heightAt(x, z));
       mat.makeRotationY(yaw).setPosition(x, h, z);
       g.applyMatrix4(mat);
+      const n = g.attributes.position.count,
+        pick = L.id !== 'ritual' && L.id !== 'airport';
+      g.setAttribute('fid', new THREE.BufferAttribute(new Float32Array(n).fill(pick ? facs.length : -1), 1));
+      if (pick)
+        facs.push({ id: L.id, x, z, yaw, w, d, h: L.h || K.h || 6, base: h, v0: nv, v1: nv + n, sign: sign && { ...sign, color: acc } });
+      nv += n;
       geos.push(g);
     }
-    geos.push(...wallParts(districts || [], edges));
+    for (const g of wallParts(districts || [], edges)) {
+      g.setAttribute('fid', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count).fill(-1), 1));
+      geos.push(g);
+    }
     if (!geos.length) return null;
     const g = mergeParts(geos);
-    const m = new THREE.Mesh(g, stdMat({ roughness: 0.9, flatShading: true }));
+    g.setAttribute('rim', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 4), 4));
+    const m = new THREE.Mesh(g, rimMat());
     m.castShadow = m.receiveShadow = true;
-    return { mesh: m, base: g.attributes.color.array.slice() };
+    return { mesh: m, base: g.attributes.color.array.slice(), facs };
+  };
+  /** The landmarks' material: vertex colours, flat shaded, and the hover / always-on rims (fresnel + a lift; HOVER.ink). */
+  const rimMat = () => {
+    const M = stdMat({ roughness: 0.9, flatShading: true });
+    M.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, HU);
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute float fid; attribute vec4 rim; varying float vFid; varying vec4 vRim;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFid = fid; vRim = rim;');
+      sh.fragmentShader = sh.fragmentShader
+        .replace(
+          '#include <common>',
+          '#include <common>\nuniform float uHov; uniform float uHovK; uniform vec3 uInk; varying float vFid; varying vec4 vRim;'
+        )
+        .replace(
+          '#include <emissivemap_fragment>',
+          `#include <emissivemap_fragment>
+          {
+            float fr = pow(1.0 - abs(dot(normal, normalize(vViewPosition))), 2.0);
+            float hv = (vFid > -0.5 && abs(vFid - uHov) < 0.5) ? uHovK : 0.0;
+            totalEmissiveRadiance += uInk * hv * (0.16 + 0.9 * fr) + vRim.rgb * vRim.a * (0.06 + 0.7 * fr);
+          }`
+        );
+    };
+    M.customProgramCacheKey = () => 'facility-rim';
+    return M;
+  };
+  /** The name boards (spec §4.40): one quad per facility on the face of its sign block most toward the camera; the lettering is a
+   *  canvas atlas (Fast: plain boards in the accent's dark). Rebuilt when the names change (a place found). */
+  const buildSigns = (facs, names, fast) => {
+    const list = facs.filter(f => f.sign && names[f.id]);
+    if (!list.length) return null;
+    const pos = [],
+      uv = [],
+      col = [],
+      plates = list.map(f => {
+        const S = f.sign,
+          c = Math.cos(f.yaw),
+          sn = Math.sin(f.yaw),
+          // the block face whose world normal points most toward the camera (+z): local normal (nx, nz), its offset and half width
+          faces = [
+            [0, 1, S.hd, S.hw],
+            [1, 0, S.hw, S.hd],
+            [0, -1, S.hd, S.hw],
+            [-1, 0, S.hw, S.hd]
+          ],
+          wz = q => -q[0] * sn + q[1] * c,
+          [nx, nz, off, half] = faces.reduce((a, q) => (wz(q) > wz(a) ? q : a)),
+          sw = Math.min(S.w, half * 2 * 0.92),
+          sh = Math.min(S.h, sw / 2.2);
+        return { f, S, c, sn, nx, nz, off, sw, sh };
+      }),
+      tex = !fast && typeof document !== 'undefined' ? signAtlas(plates.map(P => [names[P.f.id], P.S.color, P.sw / P.sh])) : null;
+    plates.forEach(({ f, S, c, sn, nx, nz, off, sw, sh }, i) => {
+      const tx = nz, // the board's right as you face it: local (nz, −nx)
+        tz = -nx,
+        cx = S.x + nx * (off + 0.08),
+        cz = S.z + nz * (off + 0.08),
+        Pw = (lx, ly, lz) => [f.x + lx * c + lz * sn, f.base + ly, f.z - lx * sn + lz * c],
+        q = [
+          [-sw / 2, -sh / 2],
+          [sw / 2, -sh / 2],
+          [sw / 2, sh / 2],
+          [-sw / 2, sh / 2]
+        ].map(([a, b]) => Pw(cx + tx * a, S.y + b, cz + tz * a)),
+        R = tex ? tex.userData.uv[i] : [0, 0, 1, 1],
+        U = [
+          [R[0], R[1]],
+          [R[2], R[1]],
+          [R[2], R[3]],
+          [R[0], R[3]]
+        ],
+        k = new THREE.Color(tex ? '#ffffff' : S.color || '#2a2d33');
+      if (!tex) k.multiplyScalar(0.55);
+      for (const j of [0, 1, 2, 0, 2, 3]) (pos.push(...q[j]), uv.push(...U[j]), col.push(k.r, k.g, k.b));
+    });
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    const m = new THREE.Mesh(
+      g,
+      new THREE.MeshBasicMaterial({ map: tex, vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1 })
+    );
+    m.userData.signs = true;
+    return m;
   };
 
   /** Dim by the fog like the terrain: base colour × k at each vertex / instance. */
@@ -715,7 +880,7 @@ export function createTown(scene, heightAt, opts = {}) {
       lastModel = model;
       const L = model.land,
         fast = !!fastOf(),
-        key = JSON.stringify([L.roads, L.lots, L.landmarks, L.districts, fast]);
+        key = JSON.stringify([L.roads, L.lots, L.landmarks.map(q => ({ ...q, name: undefined })), L.districts, fast]);
       let dirty = false;
       if (key !== layoutKey) {
         layoutKey = key;
@@ -726,17 +891,30 @@ export function createTown(scene, heightAt, opts = {}) {
         const tint = new Map(L.regions.map(r => [r.id, r.color])),
           roads = buildRoads(L.roads),
           over = buildOverpass(L.roads),
-          lm = buildLandmarks(L.landmarks, L.roads, tint, L.districts);
+          lm = buildLandmarks(L.landmarks, L.roads, tint, L.districts, fast);
         if (fast) fill = buildFill(L.lots);
         else det = buildDetail(L.lots, L.roads);
         for (const v of [roads, over, lm]) if (v) (vparts.push(v), group.add(v.mesh));
         lmPart = lm;
+        facs = lm ? lm.facs : [];
+        facAt = new Map(facs.map((f, i) => [f.id, i]));
+        signKey = rimKey = null;
         if (lm) lm.mesh.userData.landmarks = true;
         lmCut = null;
         if (cutBoxes) applyCut(); // (a cut asked for before this layout)
         for (const f of fill) group.add(f.mesh);
         if (det) for (const p of det.parts) if (p) group.add(p.mesh);
         dirty = true;
+      }
+      // the name boards: the places you know (model.land.landmarks[].name), rebuilt when that changes
+      const names = Object.fromEntries(L.landmarks.filter(q => q.name).map(q => [q.id, q.name])),
+        sk = JSON.stringify([names, fast]);
+      if (sk !== signKey) {
+        signKey = sk;
+        if (signs)
+          (group.remove(signs), signs.geometry.dispose(), signs.material.map && signs.material.map.dispose(), signs.material.dispose());
+        signs = buildSigns(facs, names, fast);
+        if (signs) group.add(signs);
       }
       const fk = JSON.stringify(model.fog);
       if (fk !== fogKey || dirty) {
@@ -756,6 +934,74 @@ export function createTown(scene, heightAt, opts = {}) {
       if (show && !ringG.visible && ringAt) baseHide(ringWant);
       ringG.visible = show;
     },
+    /**
+     * The facility a world ray hits first (spec §4.40): each facility's lot as a turned box w × d × h (the building and its kit), the
+     * nearest along the ray; `ok(id)` = may it be picked (a known place). → id or null.
+     */
+    pickRay(ray, ok = () => true) {
+      let best = null,
+        bt = Infinity;
+      for (const f of facs) {
+        if (!ok(f.id)) continue;
+        const c = Math.cos(f.yaw),
+          sn = Math.sin(f.yaw),
+          ox = ray.origin.x - f.x,
+          oz = ray.origin.z - f.z,
+          // the ray in the lot's frame (lx = x c − z s, lz = x s + z c)
+          o = [ox * c - oz * sn, ray.origin.y - f.base, ox * sn + oz * c],
+          dv = [ray.direction.x * c - ray.direction.z * sn, ray.direction.y, ray.direction.x * sn + ray.direction.z * c],
+          lo = [-f.w / 2, -0.5, -f.d / 2],
+          hi = [f.w / 2, Math.max(2.5, f.h), f.d / 2];
+        let t0 = 0,
+          t1 = Infinity;
+        for (let k = 0; k < 3 && t0 <= t1; k++) {
+          if (Math.abs(dv[k]) < 1e-9) {
+            if (o[k] < lo[k] || o[k] > hi[k]) t0 = Infinity;
+            continue;
+          }
+          const a = (lo[k] - o[k]) / dv[k],
+            b = (hi[k] - o[k]) / dv[k];
+          t0 = Math.max(t0, Math.min(a, b));
+          t1 = Math.min(t1, Math.max(a, b));
+        }
+        if (t0 <= t1 && t0 < bt) ((bt = t0), (best = f.id));
+      }
+      return best;
+    },
+    /** Light the facility `id` up (null: none); it eases in / out over HOVER.ms in tick. */
+    hover(id) {
+      if (id === hov.id) return;
+      hov.id = id;
+      hov.k = 0;
+      HU.uHov.value = id != null && facAt.has(id) ? facAt.get(id) : -1;
+    },
+    /** The hover's ease (call each frame). */
+    tick(dt) {
+      const want = hov.id != null ? 1 : 0;
+      hov.k += Math.sign(want - hov.k) * Math.min(Math.abs(want - hov.k), (dt * 1000) / HOVER.ms);
+      HU.uHovK.value = hov.k;
+    },
+    /** The always-on rims: { id: [css colour, strength 0–1] } (your HQ, your home, your venue; a closed place greyed). */
+    rims(map) {
+      const k = JSON.stringify(map || {});
+      if (!lmPart || k === rimKey) return;
+      rimKey = k;
+      const a = lmPart.mesh.geometry.attributes.rim,
+        arr = a.array,
+        col = new THREE.Color();
+      arr.fill(0);
+      for (const [id, [css, str]] of Object.entries(map || {})) {
+        const f = facs[facAt.get(id)];
+        if (!f) continue;
+        col.set(css);
+        for (let v = f.v0; v < f.v1; v++) arr.set([col.r, col.g, col.b, str], v * 4);
+      }
+      a.needsUpdate = true;
+    },
+    /** A facility's world box { x, z, yaw, w, d, h, base } (m), or null — its top centre anchors the place popup and the tag. */
+    facility: id => (facAt.has(id) ? facs[facAt.get(id)] : null),
+    /** The hovered facility now (QA): { id, k }. */
+    hovered: () => ({ ...hov }),
     /** QA: the ring's counts { on, lots, tris, builds, ms (the last build) }. */
     ringInfo: () => ({ on: ringG.visible, ...ringN }),
     /**

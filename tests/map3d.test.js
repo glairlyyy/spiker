@@ -500,3 +500,59 @@ test('map3d: the detail ring — every face and rooms behind the ground-floor gl
   eq(fast.ringInfo().lots, 0, 'Fast: no detailed lots');
   fast.dispose();
 });
+
+test('map3d: facilities (spec §4.40, T-351) — every design inside its lot; a ray picks the facility; hover and rims light it; name boards', () => {
+  const THREE = require('three'),
+    { FAC, buildFacility } = require('../js/map3d/facility3d.mjs'),
+    { createTown, HOVER } = require('../js/map3d/town3d.mjs'),
+    { load } = require('./harness'),
+    g = load(5);
+  for (const [fac, S] of Object.entries(g.FACILITY)) {
+    assert(FAC[fac], `${fac}: a design`);
+    const { geo, sign } = buildFacility({ fac, ...S, kind: 'gym' }, '#d08a2e');
+    geo.computeBoundingBox();
+    const b = geo.boundingBox;
+    assert(
+      b.min.x >= -S.w / 2 - 1.6 && b.max.x <= S.w / 2 + 1.6 && b.min.z >= -S.d / 2 - 1.6 && b.max.z <= S.d / 2 + 1.6,
+      `${fac}: inside its ${S.w} × ${S.d} m lot (${b.min.x.toFixed(1)}…${b.max.x.toFixed(1)}, ${b.min.z.toFixed(1)}…${b.max.z.toFixed(1)})`
+    );
+    assert(b.max.y <= S.h + 4.5, `${fac}: about ${S.h} m tall (${b.max.y.toFixed(1)})`);
+    assert(!geo.index && geo.attributes.color, `${fac}: flat, vertex-coloured (merges with the others)`);
+    if (fac !== 'home') assert(sign && sign.w > 0 && sign.y > 0, `${fac}: a name board`);
+  }
+  const m = townModel(),
+    sc = new THREE.Scene(),
+    town = createTown(sc, () => 1, { fast: () => false });
+  town.sync(m);
+  const f = town.facility('weiPower');
+  assert(f && f.w === 24 && f.d === 16, 'the Strength Center as a facility box');
+  // a ray straight down onto its middle picks it; a ray beside it picks nothing; ok() can refuse it
+  const down = (x, z) => new THREE.Ray(new THREE.Vector3(x, 200, z), new THREE.Vector3(0, -1, 0));
+  eq(town.pickRay(down(f.x, f.z)), 'weiPower', 'a ray onto it picks it');
+  eq(town.pickRay(down(f.x + 400, f.z + 400)), null, 'off it: nothing');
+  eq(
+    town.pickRay(down(f.x, f.z), id => id !== 'weiPower'),
+    null,
+    'an unknown place cannot be picked'
+  );
+  // the hover eases in over HOVER.ms; the rims write their vertices only
+  let LM = null,
+    signs = null;
+  sc.traverse(o => o.isMesh && o.userData.landmarks && (LM = o));
+  sc.traverse(o => o.isMesh && o.userData.signs && (signs = o));
+  town.hover('weiPower');
+  town.tick(HOVER.ms / 2000);
+  const k1 = town.hovered().k;
+  town.tick(1);
+  assert(k1 > 0.3 && k1 < 0.7 && town.hovered().k === 1, `the hover eases in (${k1.toFixed(2)} → 1)`);
+  town.rims({ weiPower: ['#ff0000', 0.5] });
+  const rim = LM.geometry.attributes.rim.array,
+    fid = LM.geometry.attributes.fid.array;
+  let on = 0,
+    wrong = 0;
+  for (let v = 0; v < fid.length; v++) if (rim[v * 4 + 3] > 0) (on++, fid[v] !== fid[f.v0] && wrong++);
+  assert(on === f.v1 - f.v0 && !wrong, `the rim on the Strength Center's vertices only (${on})`);
+  assert(signs && signs.geometry.attributes.position.count >= 6, 'name boards drawn (known places)');
+  town.hover(null);
+  town.dispose();
+});

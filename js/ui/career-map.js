@@ -130,7 +130,7 @@ function mapRent(id) {
   mapAfter(RUN);
 }
 /**
- * The place popup follows its pin (spec §10.1c): beside the selected pin (or the picked-point flag), right of it when it
+ * The place popup follows its place (spec §10.1c, §4.40): beside the selected building (its anchor over the roof) or the picked-point flag, right of it when it
  * fits, else left; vertically centred on it; kept inside the map area (right of the rail, under the top bar). No pin on
  * screen → the top-right corner. One rAF loop for the page; it only measures while a popup is open.
  */
@@ -149,17 +149,18 @@ function spotPlace() {
   const card = document.querySelector('.hub .spotcard.open'),
     hub = card && card.closest('.hub');
   if (card && hub) {
-    const pin = hub.querySelector(CW.spot && CW.spot.startsWith('pt:') ? '.maplay .mflag' : '.maplay .mpin.sel'),
+    const pin = hub.querySelector(CW.spot && CW.spot.startsWith('pt:') ? '.maplay .mflag' : '.maplay .manchor'),
       p = pin && pin.style.display !== 'none' ? pin.getBoundingClientRect() : null;
-    if (p && p.width) besideAt(card, hub, p.left + p.width / 2, p.top + p.height / 2);
+    if (p && p.width)
+      besideAt(card, hub, p.left + p.width / 2, p.top + p.height / 2, p.width / 2); // (clear of the building: its anchor spans it)
     else if (card.classList.contains('pinned')) {
       card.style.left = card.style.top = card.style.right = '';
       card.classList.remove('pinned');
     }
   }
 }
-/** Place a floating card beside client point (ax, ay): right of it when it fits, else left; centred on it; kept inside the map area. */
-function besideAt(card, hub, ax, ay) {
+/** Place a floating card beside client point (ax, ay) — hw px clear of it each side: right of it when it fits, else left; centred on it; kept inside the map area. */
+function besideAt(card, hub, ax, ay, hw = 0) {
   const H = hub.getBoundingClientRect(),
     cs = getComputedStyle(hub),
     L = H.left + (parseFloat(cs.getPropertyValue('--rail')) || 0) + 16,
@@ -168,8 +169,8 @@ function besideAt(card, hub, ax, ay) {
     B = H.bottom - 16,
     w = card.offsetWidth,
     h = card.offsetHeight;
-  let x = ax + SPOT_GAP;
-  if (x + w > R) x = ax - SPOT_GAP - w; // flip to the left of the pin
+  let x = ax + hw + SPOT_GAP;
+  if (x + w > R) x = ax - hw - SPOT_GAP - w; // flip to the left of the pin
   x = clamp(x, L, R - w);
   const y = clamp(ay - h / 2, T, B - h);
   card.style.left = `${Math.round(x - H.left)}px`;

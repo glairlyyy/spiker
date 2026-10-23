@@ -199,6 +199,58 @@ const step = async (name, fn) => {
     });
     return `tip: ${tip.slice(0, 60)}; night lights ${n.win} windows, ${n.lamp} lamps, ${n.flood} courts`;
   });
+  await step(
+    'facilities (spec §4.40, T-351): no pins; hover a gym → it lights up with its tag; a click → its popup beside it',
+    async () => {
+      const pins = await ev(() => document.querySelectorAll('.mpin, .pin').length);
+      if (pins) throw new Error(`${pins} pins in the DOM`);
+      await ev(() => {
+        mapPick(null);
+        const a = City.at(RUN, 'weiPower');
+        RUN.fog.push(a.slice());
+        renderCareer();
+        MapView.m3.setView({ x: a[0] * 0.5, z: a[1] * 0.5, d: 90 });
+      });
+      const p = await pg
+        .waitForFunction(
+          () => {
+            const c = document.querySelector('#mapwrap canvas'),
+              r = c.getBoundingClientRect(),
+              v = JSON.stringify(MapView.m3.info().view),
+              still = window.__facView === v;
+            window.__facView = v;
+            const s = still && MapView.m3.facilityAt('weiPower');
+            return s && document.elementFromPoint(r.left + s[0], r.top + s[1]) === c ? [r.left + s[0], r.top + s[1]] : null;
+          },
+          null,
+          { timeout: 60000 }
+        )
+        .then(h => h.jsonValue());
+      await pg.mouse.move(p[0], p[1]);
+      await pg.waitForFunction(
+        () => MapView.m3.facHover().id === 'weiPower' && document.querySelector('.mtag').style.display !== 'none',
+        null,
+        {
+          timeout: 60000
+        }
+      );
+      const tag = await ev(() => document.querySelector('.mtag').textContent);
+      if (!/Dynasty Strength Center/.test(tag) || !/trip/.test(tag)) throw new Error(`tag: ${tag}`);
+      await pg.mouse.click(p[0], p[1]);
+      await pg.waitForFunction(() => CW.spot === 'weiPower' && document.querySelector('#spot.open'), null, { timeout: 60000 });
+      const side = await ev(() => {
+        const a = document.querySelector('.maplay .manchor').getBoundingClientRect(),
+          c = document.querySelector('#spot').getBoundingClientRect();
+        return c.left >= a.right || c.right <= a.left
+          ? 'beside'
+          : `over (${Math.round(a.left)}–${Math.round(a.right)} vs ${Math.round(c.left)}–${Math.round(c.right)})`;
+      });
+      await ev(() => mapPick(null));
+      await pg.mouse.move(2, 2);
+      if (side !== 'beside') throw new Error(`the popup is not beside the building: ${side}`);
+      return `tag: ${tag}; popup ${side}`;
+    }
+  );
   await step('the figure menu (T-340): right-click a figure → the menu → Talk → a diary line', async () => {
     await ev(() => MapView.m3.setClock(Math.floor(MapModel.weekTime(RUN)) + 0.5)); // noon: people stand at their places (it holds there)
     const hit = await pg
@@ -375,7 +427,9 @@ const step = async (name, fn) => {
       City.reveal(RUN, SPOTS.weiPower.at);
       Encounter.setPref('never'); // (no road stop on the way in)
       if (typeof briefKey === 'function') CW.briefWeek = briefKey(RUN); // (the week's brief closed: the prompt stays off over it)
-      RUN.pos = SPOTS.weiPower.at.slice(); // (display: you stand in the gym; the day's rules run from the prompt below)
+      RUN.pos = MapModel.landmarks(RUN)
+        .find(l => l.id === 'weiPower')
+        .at.slice(); // (display: you stand in the gym — its hall beside the place's point, T-351; the day's rules run from the prompt below)
       renderCareer();
       MapView.m3.jump(); // (no walk there)
     });

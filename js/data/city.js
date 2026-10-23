@@ -1109,6 +1109,95 @@ const LANDMARK = {
   cargo: 'stall',
   hq: 'hq'
 };
+/** One map unit in metres (the 3D map's MAP_M): FACILITY sizes are metres. */
+const MAP_UNIT_M = 0.5;
+/**
+ * Real facilities (spec §4.40, T-351): each place's and club HQ's own building — its design (FACILITY_OF; LANDMARK keeps the
+ * category the rules read: court, gym …) and its lot FACILITY[design] = { w, d, h } (m: width, depth along the door axis, height).
+ * MapModel.facilities sets the lot beside the place's road node, its door toward the node; filler lots and nature keep off it.
+ * The kit stands on the lot (js/map3d/facility3d.mjs draws both). `hq`: the designs by club (team index). Display data only.
+ */
+const FACILITY_OF = {
+  weiPower: 'strength',
+  weiSpeed: 'sprintlab',
+  weiWit: 'filmlib',
+  weiJump: 'plyotower',
+  gloria: 'club',
+  sand: 'sandcourts',
+  dunes: 'dunesprint',
+  harbor: 'harboryard',
+  pier: 'pierdeck',
+  trail: 'trailhead',
+  steps: 'steps',
+  dojo: 'dojo',
+  stone: 'stonegym',
+  shrine: 'pagoda',
+  cage: 'cage',
+  acaGym: 'acagym',
+  park: 'campus',
+  home: 'home',
+  hotelWei: 'towerhotel',
+  hotelWu: 'inn',
+  hotelShu: 'lodge',
+  noodles: 'noodlebar',
+  hutNoodles: 'noodlehut',
+  arcade: 'arcade',
+  bonfire: 'bonfire',
+  street: 'overcourt',
+  tapes: 'taperoom',
+  light: 'lighthouse',
+  hermit: 'hermit',
+  roof: 'rooftop',
+  onsen: 'onsen',
+  midnight: 'nightcourt',
+  oldScout: 'scoutbar',
+  cargo: 'cargoshed',
+  hq: ['hqGold', 'hqIron', 'hqHarbor', 'hqFort', 'hqPeak', 'hqOutlaws', 'hqGloria', 'hqValley']
+};
+const FACILITY = {
+  strength: { w: 24, d: 16, h: 9 },
+  sprintlab: { w: 46, d: 26, h: 10 },
+  filmlib: { w: 20, d: 16, h: 12 },
+  plyotower: { w: 18, d: 18, h: 30 },
+  club: { w: 30, d: 24, h: 9 },
+  sandcourts: { w: 36, d: 22, h: 5 },
+  dunesprint: { w: 30, d: 24, h: 5 },
+  harboryard: { w: 34, d: 22, h: 14 },
+  pierdeck: { w: 26, d: 16, h: 7 },
+  trailhead: { w: 16, d: 14, h: 6 },
+  steps: { w: 12, d: 30, h: 12 },
+  dojo: { w: 22, d: 20, h: 10 },
+  stonegym: { w: 22, d: 16, h: 8 },
+  pagoda: { w: 20, d: 18, h: 17 },
+  cage: { w: 22, d: 18, h: 6 },
+  acagym: { w: 28, d: 18, h: 9 },
+  campus: { w: 30, d: 22, h: 17 },
+  home: { w: 8, d: 7, h: 6 },
+  towerhotel: { w: 16, d: 14, h: 28 },
+  inn: { w: 22, d: 12, h: 9 },
+  lodge: { w: 18, d: 13, h: 10 },
+  noodlebar: { w: 11, d: 9, h: 7 },
+  noodlehut: { w: 10, d: 9, h: 6 },
+  arcade: { w: 15, d: 11, h: 9 },
+  bonfire: { w: 13, d: 13, h: 4 },
+  overcourt: { w: 24, d: 15, h: 6 },
+  taperoom: { w: 11, d: 9, h: 7 },
+  lighthouse: { w: 11, d: 11, h: 24 },
+  hermit: { w: 18, d: 15, h: 6 },
+  rooftop: { w: 11, d: 11, h: 11 },
+  onsen: { w: 24, d: 18, h: 7 },
+  nightcourt: { w: 24, d: 16, h: 12 },
+  scoutbar: { w: 10, d: 9, h: 7 },
+  cargoshed: { w: 20, d: 14, h: 9 },
+  hqGold: { w: 18, d: 18, h: 38 },
+  hqIron: { w: 20, d: 16, h: 24 },
+  hqHarbor: { w: 24, d: 16, h: 14 },
+  hqFort: { w: 22, d: 22, h: 13 },
+  hqPeak: { w: 20, d: 20, h: 18 },
+  hqOutlaws: { w: 22, d: 16, h: 9 },
+  hqGloria: { w: 24, d: 18, h: 13 },
+  hqValley: { w: 24, d: 15, h: 10 }
+};
 
 /**
  * Street-level interiors (spec §4.37 6, T-336b): the two places with insides (keyed by landmark id: a SPOTS id or `venue:<id>`).
@@ -1121,9 +1210,9 @@ const INTERIOR_NEAR = 2.5;
 const INTERIOR = {
   weiPower: {
     kind: 'gym',
-    w: 13,
-    d: 9,
-    h: 5,
+    w: 24,
+    d: 16,
+    h: 8,
     stations: [
       { id: 'bench', name: 'Bench press', order: 'heavy', at: [-1.6, -0.6], slots: [[-2.6, -0.2]] },
       {

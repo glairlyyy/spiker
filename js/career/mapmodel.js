@@ -36,7 +36,10 @@ const MapModel = {
       },
       RN = ROADS.nodes;
     for (const l of lots) put(l.at, l.size * 0.75 + 3, { c: l.at, r: l.size * 0.75 + 3 });
-    for (const m of MapModel.landmarks(run)) put(m.at, 30, { c: m.at, r: 30 });
+    for (const m of MapModel.landmarks(run)) {
+      const r = m.w ? Math.hypot(m.w, m.d) / 2 / MAP_UNIT_M + 4 : 30; // a facility's lot (spec §4.40), else ~a landmark
+      put(m.at, r, { c: m.at, r });
+    }
     for (const v of Object.values(VENUES)) put(v.at, v.clear + 10, { c: v.at, r: v.clear + 10 });
     for (const q of MapModel.pads()) put(q.at, q.r + 4, { c: q.at, r: q.r + 4 });
     for (const [a, b, kind] of ROADS.edges) {
@@ -312,20 +315,144 @@ const MapModel = {
     const ks = Object.keys(sum).sort((a, b) => sum[b] - sum[a] || BODY.keys.indexOf(a) - BODY.keys.indexOf(b));
     return ks.filter(k => sum[k] >= 0.6 * sum[ks[0]]).slice(0, 3);
   },
-  /** Every place and club HQ with its landmark kind (LANDMARK): [{ id, at, kind, region, kit? }] (kit: the place's KITS tags, drawn beside it). Your home sits where your housing is. */
-  landmarks: run => [
-    ...Object.keys(SPOTS).map(id => ({
-      id,
-      at: City.at(run, id),
-      kind: LANDMARK[id],
-      region: City.region(run, id),
-      kit: SPOTS[id].kit || []
-    })),
-    ...CITY.hq.map((at, i) => ({ id: `hq${i}`, at, kind: LANDMARK.hq, region: FACTIONS[i].region })),
-    ...Object.entries(VENUES).map(([id, v]) => ({ id: `venue:${id}`, at: v.at, kind: v.kind, region: v.region })),
+  /**
+   * Every place and club HQ with its landmark kind (LANDMARK) and its facility (spec §4.40): [{ id, at, kind, region, kit?, fac, node,
+   * rot, w, d, h }] — `at` = the facility lot's centre (MapModel.facilities), `node` = the place's own point (where you stand: its
+   * door), `rot` = its yaw (the door toward the node), w / d / h its lot (m). kit: the place's KITS tags, drawn on the lot. Your
+   * home sits where your housing is.
+   */
+  landmarks(run) {
+    const F = MapModel.facilities(run),
+      lot = (id, node) => {
+        const f = F[id];
+        return f ? { at: f.at, node, fac: f.fac, rot: f.rot, w: f.w, d: f.d, h: f.h } : { at: node, node };
+      };
+    return [
+      ...Object.keys(SPOTS).map(id => ({
+        id,
+        kind: LANDMARK[id],
+        region: City.region(run, id),
+        kit: SPOTS[id].kit || [],
+        ...lot(id, City.at(run, id)),
+        ...(id !== 'home' && MapModel.known(run, id, City.at(run, id)) ? { name: SPOTS[id].name } : {}) // its name board (a known place)
+      })),
+      ...CITY.hq.map((at, i) => ({
+        id: `hq${i}`,
+        kind: LANDMARK.hq,
+        region: FACTIONS[i].region,
+        ...lot(`hq${i}`, at),
+        ...(run.teams[i] && MapModel.known(run, `hq${i}`, at) ? { name: run.teams[i].name } : {})
+      })),
+      ...MapModel.landmarksFixed().map(L => (L.id.startsWith('venue:') ? { ...L, name: VENUES[L.id.slice(6)].name } : L))
+    ];
+  },
+  /** The landmarks that stand where they are drawn (centred on their point): the venues, the ritual ground, the airport. */
+  landmarksFixed: () => [
+    ...Object.entries(VENUES).map(([id, v]) => ({ id: `venue:${id}`, at: v.at, node: v.at, kind: v.kind, region: v.region })),
     { id: 'ritual', at: CITY.ritual, kind: 'ritual', region: 'open' }, // the old ritual ground: no pin, no label
     { id: 'airport', at: CITY.airport, kind: 'airport', region: 'wu', rot: AIRPORT.yaw } // on a fixed heading (spec §4.18d)
   ],
+  /**
+   * The facility lots (spec §4.40, T-351): id → { at (centre), rot, w, d, h (m), fac, node } for every place and club HQ with a
+   * FACILITY design. Each lot stands beside its place's road node, its door (+z) toward it, MapModel.facGap from it: of 24 headings the
+   * one (at two distances) that crosses the fewest roads, other lots, places, venues, the airport and the sea (ties: away from the node's roads). Pure
+   * (fixed data, no randoms); cached per home spot.
+   */
+  facilities(run) {
+    const key = City.at(run, 'home').join(',');
+    if (MapModel.facCache && MapModel.facCache.key === key) return MapModel.facCache.out;
+    const U = 1 / MAP_UNIT_M,
+      N = ROADS.nodes,
+      segs = ROADS.edges.filter(e => e[2] !== 'overpass').map(([a, b, k]) => [N[a], N[b], k]),
+      nodeOf = id => (id === 'home' ? `home:${run.housing || 'studio'}` : id),
+      ids = [...Object.keys(SPOTS), ...CITY.hq.map((_, i) => `hq${i}`)],
+      points = ids.map(id => (id.startsWith('hq') ? CITY.hq[+id.slice(2)] : City.at(run, id))),
+      placed = [],
+      out = {},
+      // a lot { c, cs, sn, hw, hd } holds map point p (+ m units)?
+      holds = (f, p, m = 0) => {
+        const dx = p[0] - f.c[0],
+          dy = p[1] - f.c[1];
+        return Math.abs(dx * f.cs - dy * f.sn) <= f.hw + m && Math.abs(dx * f.sn + dy * f.cs) <= f.hd + m;
+      },
+      corners = f =>
+        [
+          [-1, -1],
+          [1, -1],
+          [1, 1],
+          [-1, 1]
+        ].map(([a, b]) => [f.c[0] + a * f.hw * f.cs + b * f.hd * f.sn, f.c[1] - a * f.hw * f.sn + b * f.hd * f.cs]);
+    ids.forEach((id, n) => {
+      const fac = id.startsWith('hq') ? FACILITY_OF.hq[+id.slice(2)] : FACILITY_OF[id],
+        S = FACILITY[fac];
+      if (!S) return;
+      const p = points[n],
+        nid = nodeOf(id),
+        hw = (S.w / 2) * U,
+        hd = (S.d / 2) * U,
+        far = Math.hypot(hw, hd * 2) + MapModel.facGap + 12,
+        near = segs.filter(([a, b]) => MapModel.segDist(p, a, b) < far),
+        dirs = ROADS.edges
+          .filter(e => e[0] === nid || e[1] === nid)
+          .map(e => N[e[0] === nid ? e[1] : e[0]])
+          .map(q => Math.atan2(q[1] - p[1], q[0] - p[0])),
+        others = points.filter((q, j) => j !== n);
+      let best = null;
+      for (let k = 0; k < 48; k++) {
+        const t = ((k % 24) / 24) * Math.PI * 2,
+          ux = Math.cos(t),
+          uy = Math.sin(t),
+          off = hd + MapModel.facGap + (k >= 24 ? 14 : 0), // (a second ring a little further back: a busy junction)
+          // the door (+z) faces the node: yaw = atan2(−ux, −uy) (the landmarkYaw convention); cs / sn of it
+          yaw = Math.atan2(-ux, -uy),
+          f = { c: [p[0] + ux * off, p[1] + uy * off], cs: Math.cos(yaw), sn: Math.sin(yaw), hw, hd };
+        let bad = 0;
+        for (const [a, b, kind] of near) {
+          const L = Math.hypot(b[0] - a[0], b[1] - a[1]),
+            m = kind === 'main' ? 5 : kind === 'path' ? 2 : 4;
+          for (let s = 0; s <= L; s += 4) if (holds(f, [a[0] + ((b[0] - a[0]) * s) / L, a[1] + ((b[1] - a[1]) * s) / L], m)) bad++;
+        }
+        for (const g of placed)
+          if (corners(g).some(q => holds(f, q, 4)) || corners(f).some(q => holds(g, q, 4)) || holds(f, g.c)) bad += 400;
+        for (const q of others) if (holds(f, q, 6)) bad += 200;
+        for (const v of Object.values(VENUES))
+          if (corners(f).some(q => Math.hypot(q[0] - v.at[0], q[1] - v.at[1]) < v.clear + 6)) bad += 300;
+        for (const q of [...corners(f), f.c]) if (!City.onLand(q) || MapModel.inAirport(q)) bad += 150;
+        const away = dirs.length ? Math.min(...dirs.map(a => Math.abs(Math.atan2(Math.sin(a - t), Math.cos(a - t))))) : Math.PI,
+          score = bad * 10 - away + (k >= 24 ? 4 : 0);
+        if (!best || score < best.score) best = { score, f, yaw };
+      }
+      placed.push(best.f);
+      const r = v => Math.round(v * 10) / 10;
+      out[id] = { at: best.f.c.map(r), rot: Math.round(best.yaw * 1000) / 1000, w: S.w, d: S.d, h: S.h, fac, node: p.slice() };
+    });
+    MapModel.facCache = { key, out };
+    return out;
+  },
+  /** Facility lots stand this far (map units) from their node (the door's apron, clear of the road). */
+  facGap: 7,
+  /** Distance from map point p to the segment a–b. */
+  segDist(p, a, b) {
+    const dx = b[0] - a[0],
+      dy = b[1] - a[1],
+      t = clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1), 0, 1);
+    return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+  },
+  /** Is map point p on a facility lot (+ m map units)? → that lot's id, or null. */
+  onFacility(run, p, m = 0) {
+    for (const [id, f] of Object.entries(MapModel.facilities(run))) {
+      const cs = Math.cos(f.rot),
+        sn = Math.sin(f.rot),
+        dx = p[0] - f.at[0],
+        dy = p[1] - f.at[1];
+      if (
+        Math.abs(dx * cs - dy * sn) <= (f.w / 2) * (1 / MAP_UNIT_M) + m &&
+        Math.abs(dx * sn + dy * cs) <= (f.d / 2) * (1 / MAP_UNIT_M) + m
+      )
+        return id;
+    }
+    return null;
+  },
   /** Map point p on ground no building stands on (GROUND_KEEP: fields, terraces, parks, water, the quarry)? */
   kept: p =>
     GROUND.some(q => {
@@ -391,6 +518,19 @@ const MapModel = {
     const N = ROADS.nodes,
       places = [...Object.keys(SPOTS).map(id => City.at(run, id)), ...CITY.hq, CITY.ritual],
       venues = Object.values(VENUES),
+      facs = Object.values(MapModel.facilities(run)).map(f => ({
+        c: f.at,
+        cs: Math.cos(f.rot),
+        sn: Math.sin(f.rot),
+        hw: f.w / 2 / MAP_UNIT_M,
+        hd: f.d / 2 / MAP_UNIT_M
+      })),
+      onFac = (p, m) =>
+        facs.some(f => {
+          const dx = p[0] - f.c[0],
+            dy = p[1] - f.c[1];
+          return Math.abs(dx * f.cs - dy * f.sn) <= f.hw + m && Math.abs(dx * f.sn + dy * f.cs) <= f.hd + m;
+        }),
       segD = (p, a, b) => {
         const dx = b[0] - a[0],
           dy = b[1] - a[1],
@@ -408,6 +548,7 @@ const MapModel = {
         City.regionAt(p) === reg &&
         near(p) >= size * 0.5 + 4 &&
         places.every(q => Math.hypot(q[0] - p[0], q[1] - p[1]) >= MapModel.placeClear) &&
+        !onFac(p, size * 0.5 + 3) &&
         venues.every(v => Math.hypot(v.at[0] - p[0], v.at[1] - p[1]) >= v.clear) &&
         !MapModel.inAirport(p) &&
         !MapModel.kept(p) &&
@@ -477,7 +618,7 @@ const MapModel = {
     MapModel.lotCache = { key, lots };
     return lots;
   },
-  /** Lots stay this far (map units) from a place or HQ: a landmark is up to ~38 units wide (a court), so ~20 clears its footprint. */
+  /** Lots stay this far (map units) from a place's or HQ's point (its door's apron); its facility lot is kept clear too (MapModel.facilities). */
   placeClear: 20,
   /** Most settlement lots on the island. */
   maxLots: 2400,
@@ -489,6 +630,23 @@ const MapModel = {
    * Pins: places, club HQs and this week's battle. flags: off (no time left for it), far (2+ day trip), turf,
    * hq, can (a club you can sign with), mine (your club), clash, today (a venue where your match is this week; venues are always known).
    */
+  /** A place closed to you now (spec §4.40: its rim greyed): held by another faction (run.own), or its owner won't let you in. */
+  shut: (run, id) => !!(run.own && run.own[id] && run.own[id] !== SPOTS[id].region) || !City.access(run, id).ok,
+  /**
+   * The always-on rims (spec §4.40): { id: [colour, strength] } — your club's HQ in its colour, your home, this week's match venue in
+   * its region's colour (quiet), a known place closed to you greyed. The renderer adds the hover on top.
+   */
+  rims(run) {
+    const out = {},
+      mine = run.team != null && run.teams[run.team];
+    if (mine) out[`hq${run.team}`] = [mine.color, 0.5];
+    out.home = [mine ? mine.color : '#eef0f3', 0.4];
+    const v = City.venue(run);
+    if (v && VENUES[v]) out[`venue:${v}`] = [REGIONS[VENUES[v].region].color, 0.5];
+    for (const id of Object.keys(SPOTS))
+      if (SPOTS[id].at && MapModel.known(run, id, SPOTS[id].at) && MapModel.shut(run, id)) out[id] = ['#7a7d84', 0.6];
+    return out;
+  },
   pins(run) {
     const floor = run.floor || {},
       out = [];
@@ -500,6 +658,8 @@ const MapModel = {
         id,
         kind: 'spot',
         at,
+        name: s.name,
+        trip: City.trip(run, at),
         icon: s.icon,
         badge: mates || '',
         glyphs: MapModel.trains(id).map(k => Body.glyph(k)), // what it trains best (spec §4.33)
@@ -507,7 +667,8 @@ const MapModel = {
         flags: {
           off: !!City.noTime(run, City.cost(run, id)),
           far: City.trip(run, at) >= 2,
-          turf: !!(s.train && City.turf(run, id))
+          turf: !!(s.train && City.turf(run, id)),
+          shut: MapModel.shut(run, id)
         }
       });
     }
@@ -518,6 +679,8 @@ const MapModel = {
         id: `hq${i}`,
         kind: 'hq',
         at: CITY.hq[i],
+        name: `${t.name} HQ`,
+        trip: City.trip(run, CITY.hq[i]),
         icon: '🛡',
         color: t.color,
         badge: can ? '✓' : City.scouted(run, i) ? '👁' : '',
@@ -531,6 +694,8 @@ const MapModel = {
         id: `venue:${id}`,
         kind: 'venue',
         at: v.at,
+        name: v.name,
+        trip: City.trip(run, v.at),
         icon: '🏟',
         color: REGIONS[v.region].color,
         badge: '',
@@ -543,6 +708,8 @@ const MapModel = {
         id: 'clash',
         kind: 'clash',
         at: c.at,
+        name: `Street battle: ${REGIONS[c.a].name} vs ${REGIONS[c.b].name}`,
+        trip: City.trip(run, c.at),
         icon: '⚔',
         badge: '',
         title: `Street battle: ${REGIONS[c.a].name} vs ${REGIONS[c.b].name}`,
@@ -829,7 +996,8 @@ const MapModel = {
       time: MapModel.time(run),
       floods: MapModel.floods(run),
       figures: MapModel.figures(run),
-      fence: City.fence(run) ? { at: [CITY.park.x, CITY.park.y], r: 170 } : null // Story week 1: the camera keeps to the campus
+      rims: MapModel.rims(run),
+      fence: City.fence(run) ? { at: [CITY.park.x, CITY.park.y], r: (170 * MAP_SCALE) / MAP_BASE } : null // Story week 1: the camera keeps to the campus
     };
   },
   /**

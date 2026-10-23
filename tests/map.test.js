@@ -948,3 +948,58 @@ test('map: patrols stand on this week’s border (T-079, T-153, T-313)', () => {
   );
   eq(JSON.stringify(g.MapModel.build(run).life.patrols), JSON.stringify(P), 'deterministic (hashes, no randoms)');
 });
+
+test('map: real facilities (spec §4.40, T-351) — every place and HQ on its own lot beside its point, door toward it; no overlaps; unique in a town', () => {
+  const g = load(11),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Fac', alloc: { power: 20, def: 10, speed: 10, jump: 20 }, witSteps: 0 }),
+    F = g.MapModel.facilities(run),
+    U = 1 / g.MAP_UNIT_M,
+    ids = [...Object.keys(g.SPOTS), ...g.CITY.hq.map((_, i) => `hq${i}`)];
+  eq(Object.keys(F).sort().join(), ids.sort().join(), 'a facility for every place and club HQ');
+  const box = f => ({ c: f.at, cs: Math.cos(f.rot), sn: Math.sin(f.rot), hw: (f.w / 2) * U, hd: (f.d / 2) * U }),
+    holds = (b, p, m = 0) => {
+      const dx = p[0] - b.c[0],
+        dy = p[1] - b.c[1];
+      return Math.abs(dx * b.cs - dy * b.sn) <= b.hw + m && Math.abs(dx * b.sn + dy * b.cs) <= b.hd + m;
+    };
+  for (const [id, f] of Object.entries(F)) {
+    const b = box(f),
+      // the door (+z) faces the node: the node lies on the lot's +z side, just past its front edge
+      dx = f.node[0] - f.at[0],
+      dy = f.node[1] - f.at[1],
+      lz = dx * b.sn + dy * b.cs;
+    assert(g.FACILITY[f.fac] && f.w === g.FACILITY[f.fac].w, `${id}: its design's lot`);
+    assert(lz > b.hd && !holds(b, f.node), `${id}: beside its point, door toward it`);
+    for (const [j, o] of Object.entries(F)) if (j !== id) assert(!holds(b, o.at) && !holds(b, o.node), `${id} clear of ${j}`);
+  }
+  // designs: one per place (home aside), none shared by two places
+  const designs = Object.keys(g.SPOTS).map(id => g.FACILITY_OF[id]);
+  eq(new Set(designs).size, designs.length, 'every place its own design');
+  eq(new Set(g.FACILITY_OF.hq).size, g.CITY.hq.length, 'every club HQ its own');
+  // filler lots and nature keep off them; the model's landmarks carry the lot, a name only when known
+  const M = g.MapModel.build(run, null),
+    boxes = Object.values(F).map(box);
+  assert(
+    M.land.lots.every(l => boxes.every(b => !holds(b, l.at))),
+    'no filler lot on a facility'
+  );
+  assert(
+    M.land.nature.every(o => boxes.every(b => !holds(b, o.at))),
+    'no tree on a facility'
+  );
+  const wp = M.land.landmarks.find(l => l.id === 'weiPower');
+  eq([wp.fac, wp.w, wp.d].join(), 'strength,24,16', 'the Strength Center: its hall is the street-level shell (INTERIOR)');
+  eq([g.INTERIOR.weiPower.w, g.INTERIOR.weiPower.d].join(), '24,16', '… the interior matches');
+  const unknown = Object.keys(g.SPOTS).find(id => g.SPOTS[id].at && !g.MapModel.known(run, id, g.SPOTS[id].at));
+  assert(unknown && !M.land.landmarks.find(l => l.id === unknown).name, 'an unknown place: no name board');
+  // pins (no longer drawn) still carry what the hover tag shows; rims: your home, a venue this week, closed places grey
+  const pin = M.pins.find(p => p.id === 'acaGym');
+  assert(pin && pin.name === g.SPOTS.acaGym.name && Number.isFinite(pin.trip), 'a pin: name and trip for the tag');
+  assert(M.rims.home && M.rims.home[1] > 0, 'your home keeps a quiet rim');
+  let draws = 0;
+  const next = g.RNG.next;
+  g.RNG.next = () => (draws++, next());
+  g.MapModel.facCache = null;
+  eq(JSON.stringify(g.MapModel.facilities(run)), JSON.stringify(F), 'deterministic');
+  eq(draws, 0, 'no randoms');
+});

@@ -633,9 +633,9 @@ mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-vie
    (`createAvatar(scene)`: the default VRM via `loadBase` / `makeVRM`, capsule until loaded): `snap` first, `setTarget` when
    `model.you.at` changes — `setTarget(at, path)` walks the road polyline `model.you.route` (added by `MapView.routed` in js/ui/map-view.js from `City.route(last you.at, you.at)`; the renderer never calls `City`; straight line without it) at 6 m/s over the whole length (trip 1.2–6 s, ramps 0.4 s; faster trips show a ×N badge), facing along the current segment, gait from
    `locoPose`, idle `STAND` + breathing, feet via `groundSnap` + `heightAt`; the camera follows until the user drags.
-   Furniture is `js/map3d/pins3d.mjs` (`createFurniture(scene, heightAt)`): an HTML overlay `.maplay` over the canvas holds one
-   `.mpin` button per `model.pins` item (icon, badge, flag classes, click → `pick(id)`), the region / airport labels (fade out
-   below ~70 m camera distance) and the picked-point flag, all projected onto the terrain every frame after render;
+   Furniture is `js/map3d/pins3d.mjs` (`createFurniture(scene, heightAt, where)`): the HTML overlay `.maplay` over the canvas — no
+   pins since T-351 (see "Real facilities, no pins"): the hover tag, the popup's anchor, far-out region names, figures' names and the
+   picked-point flag, projected after render;
    the war (`model.borders`, layers3d `warLayer`, T-317: each unit's land-border runs a draped ribbon just inside its land in its lead club's colour, the week's hot stretch a pulsing amber glow, banners along it — three meshes, rebuilt on change; pins3d's old hex-decal code gets no `model.hexes` any more) is the terrain decal layer. `sync(model, on)` rebuilds a part only when its JSON changed;
    fog is a per-vertex darkening of the terrain colours (`applyFog(model.fog)` with `fogFactor`, unexplored land dim, not hidden).
    Shared helpers live in `js/map3d/geo3d.mjs` (`MAP_M`, `FOG_DIM`, `FOG_SOFT`, `toWorld` / `toMap`, `clamp` / `lerp` /
@@ -1009,10 +1009,36 @@ TRIP_DAY of each leg's travel cost, stamina `RUN_GROUND.sta` per trip day; `City
 of the `DAY_ORDERS.run` key × DAY_GAIN; no fail roll). UI: `runBtn` (career-panels.js) beside Walk on place cards and inside
 `pointCard`; `mapTravel(x, y, 'run')`.
 
+### Real facilities, no pins (spec §4.40, T-351)
+
+- **Data** — `FACILITY_OF` (place id → design; `hq` by team index) and `FACILITY[design] = { w, d, h }` (m) in js/data/city.js;
+  `LANDMARK` keeps the category the rules read (court, gym …: encounter courts, floodlights). `MAP_UNIT_M` 0.5.
+- **Lots** — `MapModel.facilities(run)` (cached per home): each place / HQ lot beside its road node, door (+z) toward it, `facGap`
+  (7 units) off; of 24 headings × 2 distances the one crossing the fewest road samples, other lots, nodes, venues, the airport, the sea
+  (ties: away from the node's roads). `MapModel.landmarks` carries `{ at (lot centre), node, fac, rot, w, d, h, name? }` (name =
+  the board, known places only); filler lots keep off the lots (`onFac` in `lots`), nature off their half-diagonal. Venues, the
+  ritual ground and the airport stay centred on their point (`landmarksFixed`).
+- **Model** — pins (not drawn) keep `name`, `trip`, `glyphs`, `flags.shut` (`MapModel.shut`: held by another faction or access
+  refused); `model.rims` (`MapModel.rims`): your HQ / home / this week's venue in their colour, closed known places grey.
+- **Geometry** — js/map3d/facility3d.mjs `FAC[design](S, accent)` → `{ parts, sign }` (local m, door +z, inside w × d; the kit on the
+  lot: racks, plyo boxes, the track oval, cranes, crates, courts, pools, dunes …); `buildFacility(L, accent, low)` merges them (+ a
+  footing), unknown designs → kit3d `buildLandmark`. town3d `buildLandmarks` puts every landmark in the one merged mesh with per-vertex
+  `fid` (index into `facs`, −1 not pickable) and `rim` (rgb, strength) on `rimMat` (fresnel + lift in `totalEmissiveRadiance`;
+  uniforms `HU`: `uHov`, `uHovK`, `uInk` = `HOVER.ink`). Name boards: one quad per facility on its sign block's face most toward
+  the camera, lettering from a canvas atlas (`signAtlas`); Fast: plain boards. +1 draw call (boards).
+- **Picking** — `town.pickRay(ray, ok)`: the nearest facility box (w × d × max(h, 2.5), turned by its yaw) a ray enters; map3d
+  `facPick` (only ids in `model.pins` — known places; above street level) then the street battle's ground disc (`CLASH_R` 12 m).
+  `hoverStep`: a named person first, else the facility → `town.hover(id)` (eases over `HOVER.ms`), `furn.hover(id)` (the tag), the
+  cursor; a canvas click on a hovered facility → `on.pick(id)`. `town.rims(model.rims)` each update.
+- **Overlay** — pins3d: `.mtag` (name, glyphs, trip) over the hovered roof; `.manchor` over the selected roof, spanning the
+  building's screen width (career-map.js `spotPlace` → `besideAt(…, hw)`: the popup stands clear of it); region names only far out
+  (`NAMES_AT` 700–1100 m); figures' names and the picked-point flag as before. QA: `m3.facilityAt(id)`, `m3.facHover()`.
+- **Interiors** — `INTERIOR.weiPower` is the Strength Center's hall (24 × 16 × 8 m, the facility's footprint: the cut box covers it).
+
 ### Kit on the map (T-310)
 
 `MapModel.trains(id)`: a kit place's best body stats (each stat's best gain in any of its orders, Stretch aside; the top and any
-within 60 %, ≤ 3) → pin field `glyphs` (BODY glyphs; pins3d draws them on a tab under the pin, `.mpin em.mgl` in css/map.css).
+within 60 %, ≤ 3) → pin field `glyphs` (BODY glyphs; since T-351 the hover tag shows them, `.mtag em.mgl` in css/map.css).
 `MapModel.landmarks` carries `kit` (the SPOTS tags); `buildLandmark(kind, accent, kit)` (kit3d.mjs) adds each tag's `KIT_PROPS`
 (racks, crates + crane, plyo boxes, steps, a track, dunes, a trail post, a pool, a sand court, mats, a shed, a film screen, a
 shelf) in slots along the landmark's sides — merged into the one landmark mesh (town3d.mjs), so no draw call is added.

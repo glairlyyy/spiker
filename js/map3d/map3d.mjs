@@ -30,6 +30,8 @@ import { nightLayer, warLayer } from './layers3d.mjs';
 import { MAP_M, clamp, lerp, fogFactor, inside, edgeDist, sideDist } from './geo3d.mjs';
 export { inside, edgeDist, sideDist }; // (the polygon maths live in geo3d.mjs; tests import them from here too)
 
+/** The street battle's pick radius (m) round its point (spec §4.40: the crowd stands there). */
+const CLASH_R = 12;
 const IDLE_S = 3; // canvas detached this long → release the renderer
 
 /** Free every geometry / material the map made (shared kit caches — userData.shared — survive a re-create), the GPU context. */
@@ -93,6 +95,8 @@ export function create(onIdle) {
     prog = 1,
     lastWalk = null, // model.time.walk[0] last seen: a change = a new action
     hoverId = null,
+    facHov = null, // the facility under the pointer (spec §4.40: it lights up; a click picks it)
+    ray = new THREE.Raycaster(),
     ptr = null, // the pointer over the canvas { x, y, cx, cy } (canvas px, client px) — picked in the frame
     pickN = 0,
     held = null, // QA: a time of day the clock holds (holdClock)
@@ -153,7 +157,10 @@ export function create(onIdle) {
     water.position.set(terrain.W / 2, 0, terrain.D / 2);
     avatar = createAvatar(scene);
     town = createTown(scene, terrain.heightAt, { fast: () => low }); // the Fast boxes follow setLow (T-342 × T-343)
-    furn = createFurniture(scene, terrain.heightAt);
+    furn = createFurniture(scene, terrain.heightAt, id => {
+      const f = town.facility(id); // the tag and the popup's anchor stand over the building's roof (spec §4.40)
+      return f && { x: f.x, y: f.base + f.h, z: f.z, r: Math.max(f.w, f.d) / 2 };
+    });
     life = createLife(scene, terrain.heightAt);
     nature = createNature(scene, terrain.heightAt);
     war = warLayer(scene, terrain.heightAt);
@@ -214,6 +221,30 @@ export function create(onIdle) {
   const offPtr = () => {
     ptr = null;
     if (hoverId !== null) ((hoverId = null), (canvas.style.cursor = ''), life && life.hover(null), on && on.hover && on.hover(null));
+    facHover(null);
+  };
+  /** The facility under the pointer: lit (town), its tag (furniture), the cursor. Only places you know can be picked (model.pins). */
+  const facHover = id => {
+    if (id === facHov) return;
+    facHov = id;
+    if (town) town.hover(id);
+    if (furn) furn.hover(id);
+    if (hoverId === null) canvas.style.cursor = id !== null ? 'pointer' : '';
+  };
+  const facPick = (x, y) => {
+    if (!town || !cur || st > 0.5 || !cw) return null; // (at street level the buildings are walked into, not picked)
+    const known = new Set((cur.pins || []).map(p => p.id));
+    ray.setFromCamera(new THREE.Vector2((x / cw) * 2 - 1, -(y / ch) * 2 + 1), cam);
+    const id = town.pickRay(ray.ray, id => known.has(id));
+    if (id !== null) return id;
+    // this week's street battle keeps its own pick (spec §4.40): the crowd's ground, CLASH_R m round its point
+    const c = (cur.pins || []).find(p => p.id === 'clash');
+    if (!c) return null;
+    const cx = c.at[0] * MAP_M,
+      cz = c.at[1] * MAP_M,
+      R = ray.ray,
+      t = R.direction.y < -1e-6 ? (terrain.heightAt(cx, cz) + 1 - R.origin.y) / R.direction.y : -1;
+    return t > 0 && Math.hypot(R.origin.x + R.direction.x * t - cx, R.origin.z + R.direction.z * t - cz) < CLASH_R ? 'clash' : null;
   };
   /** A right-click on a named figure opens its menu too (spec §4.37 7); the browser's own menu never shows over the map. */
   const onCtx = e => {
@@ -233,7 +264,8 @@ export function create(onIdle) {
     pickN = 6;
     const look = cur.life && cur.life.look,
       id = life.pick(cam, ptr.x, ptr.y, cw, ch, look ? look.pick : 16);
-    if (id !== hoverId) canvas.style.cursor = id !== null ? 'pointer' : '';
+    facHover(id === null && !C.dragged() ? facPick(ptr.x, ptr.y) : null); // a person first, else the building under them
+    if (id !== hoverId) canvas.style.cursor = id !== null || facHov !== null ? 'pointer' : '';
     if (id !== hoverId) life.hover(id);
     if (id !== hoverId || id !== null) {
       hoverId = id;
@@ -300,6 +332,7 @@ export function create(onIdle) {
       if (C.view) life.ringScale((14 * 2 * C.view.d * Math.tan((cam.fov * Math.PI) / 360)) / (ch || 1) / 0.7); // a ring ≥ ~14 px
       life.tick(dt, clock, tod, cam, st); // (cam: the nearest named people on screen as VRMs; st: life size and the near VRMs at street level)
       hoverStep();
+      town.tick(dt);
       nature.tick(dt, clock);
       furn.pulse(clock);
       war.pulse(clock);
@@ -327,7 +360,14 @@ export function create(onIdle) {
     mount(e, m, cb) {
       el = e;
       on = cb;
-      onW = cb && { ...cb, point: p => (hoverId !== null && cb.person ? cb.person(hoverId) : cb.point(p)) };
+      onW = cb && {
+        ...cb,
+        point: p => {
+          if (hoverId !== null && cb.person) return cb.person(hoverId);
+          const f = ptr ? facPick(ptr.x, ptr.y) : null; // a facility under the click opens its place (spec §4.40)
+          return f !== null ? cb.pick(f) : cb.point(p);
+        }
+      };
       el.replaceChildren(canvas);
       badge = document.createElement('div');
       badge.className = 'mapbadge';
@@ -362,6 +402,7 @@ export function create(onIdle) {
       nature.sync(m, low);
       if (interiors) interiors.sync(m); // (before life: lifeM reads where the stations are)
       furn.sync(m, on);
+      town.rims(m.rims);
       life.sync(lifeM(m), low);
       night.sync(m, low);
       war.sync(m.borders);
@@ -455,6 +496,15 @@ export function create(onIdle) {
       const v = new THREE.Vector3(p[0], p[1] - 0.3, p[2]).project(cam);
       return v.z > 1 ? null : [((v.x + 1) / 2) * cw, ((1 - v.y) / 2) * ch];
     },
+    /** QA: a facility's screen point (canvas px; the middle of its front, half-way up) or null — to hover it in the UI smoke. */
+    facilityAt(id) {
+      const f = town && town.facility(id);
+      if (!f) return null;
+      const v = new THREE.Vector3(f.x, f.base + Math.min(f.h, 6) / 2, f.z).project(cam);
+      return v.z > 1 ? null : [((v.x + 1) / 2) * cw, ((1 - v.y) / 2) * ch];
+    },
+    /** QA: the facility lit by the pointer ({ id, k }) and the always-on rims' count. */
+    facHover: () => (town ? town.hovered() : null),
     /** True while your player is walking to a new place (the UI locks its actions until they arrive). */
     busy: () => C.walking(),
     /** Street level (T-336a): 0 = the map, 1 = the follow camera behind you. */

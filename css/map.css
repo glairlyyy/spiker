@@ -1,4 +1,4 @@
-/* Career island map: the map frame, 3D overlay (pins, labels, flag), legend, hex tile labels. Loaded after career.css. */
+/* Career island map: the map frame, 3D overlay (hover tag, anchor, names, flag), legend, hex tile labels. Loaded after career.css. */
 /* ---------- island map ---------- */
 /* outside the map: the same dark as the fog over the sea */
 .hub .mapwrap {
@@ -19,7 +19,7 @@
 .spot .stk.far {
   color: var(--bad-rose);
 }
-/* ---------- 3D map overlay: pins, labels, flag (js/map3d/pins3d.mjs) ---------- */
+/* ---------- 3D map overlay: the hover tag, the popup's anchor, far-out names, flag (js/map3d/pins3d.mjs) ---------- */
 .hub.eve .mapwrap canvas {
   filter: saturate(0.65) brightness(0.72) hue-rotate(12deg);
 }
@@ -34,92 +34,50 @@
   left: 0;
   top: 0;
 }
-.mpin {
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border-radius: 50%;
-  border: 3px solid var(--tc, var(--cyan));
-  background: var(--surf2);
-  color: var(--white);
-  cursor: pointer;
-  pointer-events: auto;
-  transition: opacity 0.2s;
+/* no pins (spec §4.40): the places are their buildings. The anchor over the selected one's roof (the popup stands beside it) */
+.manchor {
+  width: 2px;
+  height: 2px;
 }
-.mpin i {
-  font-style: normal;
-  font-size: 22px;
-  line-height: 38px;
-}
-/* what a place trains best (spec §4.33): body-stat glyphs on a small tab under the pin */
-.mpin em.mgl {
-  position: absolute;
-  left: 50%;
-  bottom: -14px;
-  transform: translateX(-50%);
-  padding: 0 4px;
-  border-radius: 4px;
+/* the hover tag over a facility: its name, what it trains best (spec §4.33 glyphs), the trip there */
+.mtag {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: -34px;
+  padding: 6px 10px;
+  border-radius: 8px;
   background: var(--hud);
   border: 1px solid var(--line-strong);
-  color: var(--cyan);
+  color: var(--white);
   font: 600 12px/16px var(--body);
-  font-style: normal;
-  letter-spacing: 1px;
   white-space: nowrap;
-  pointer-events: none;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+  animation: mtagin var(--dur-fast, 150ms) var(--ease-out, ease-out);
 }
-.mpin b {
-  position: absolute;
-  right: -8px;
-  top: -8px;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 4px;
-  border-radius: 10px;
-  background: var(--hot);
-  font: 800 13px/20px var(--body);
+.mtag b {
+  font: 700 14px/18px var(--body);
+  color: var(--ink);
 }
-.mpin:hover,
-.mpin:focus-visible,
-.mpin.sel {
-  border-color: var(--gold);
-  border-width: 5px;
+.mtag em.mgl {
+  font-style: normal;
+  color: var(--cyan);
+  letter-spacing: 1px;
 }
-.mpin:focus {
-  outline: none;
+.mtag span {
+  color: var(--mute);
 }
-.mpin.off {
-  opacity: 0.4;
+.mtag.shut b {
+  color: var(--mute);
 }
-.mpin.faraway {
-  opacity: 0.55;
-}
-.mpin.turf {
-  border-color: var(--gold);
-}
-.mpin.hq.can {
-  border-width: 5px;
-  box-shadow: 0 0 8px var(--tc);
-}
-.mpin.clash {
-  background: var(--clash-fill);
-  border-color: var(--hot);
-  border-width: 4px;
-  animation: clashp 1.2s ease-in-out infinite alternate;
-}
-/* a venue where your match is this week: a pulsing ring (CSS only) */
-.mpin.today {
-  border-color: var(--gold);
-  border-width: 5px;
-  animation: todayp 1.4s ease-in-out infinite alternate;
-}
-@keyframes todayp {
+@keyframes mtagin {
   from {
-    box-shadow: 0 0 4px 0 var(--gold);
+    opacity: 0;
   }
-  to {
-    box-shadow: 0 0 16px 6px var(--gold);
-  }
+}
+html.reduced .mtag {
+  animation: none;
 }
 .spot .today {
   color: var(--gold);

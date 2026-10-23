@@ -105,7 +105,7 @@ test('interior: shown at street level only; the station you stand at; the roof a
     const B = cuts[cuts.length - 1],
       inB = (x, z) => x >= B.x0 && x <= B.x1 && z >= B.z0 && z <= B.z1;
     assert(B && inB(gx + 1, gz - 1) && inB(gx + 6, gz + 4), 'the gym footprint inside the box');
-    assert(!inB(gx + 12, gz) && !inB(gx, gz + 12), 'outside it: kept');
+    assert(!inB(gx + 18, gz) && !inB(gx, gz + 18), 'outside it: kept'); // (the Strength Center's hall: 24 × 16 m, T-351)
     eq(L.info().alpha, M.CUT.min, 'you inside: the roof fades to CUT.min');
     r = L.tick(0.016, { cam, you: [gx + 60, gz], street: 1 });
     cam.position.set(gx + 60, 10, gz + 30);
