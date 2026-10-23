@@ -1744,6 +1744,13 @@ mood)`.
   - **Parked ideas to weigh (not decided):** the match remembering your choices ("AI memory": they read your favourite lane
     over a match / a season); back-row defensive commands; temperament changing how a team plays (T-259); scouting that
     reveals an ace's weakness shown in the match UI (§8 ace traits); a smarter coach (§8).
+  - **Idea — big moves are a resource (owner, 2026-10-23, the Captain Tsubasa feel) [idea, not decided]**: today big spikes
+    and techniques fire everywhere. Instead the base rally loop gets plainer (ordinary attacks, modest power, fewer effects) and
+    the big moves — a boom spike, an element spike, a technique — become a decision that costs a lot of a player's bars
+    (stamina, HP or morale, by move). You save them for the key moments — set point, a close end of set — or spend one to
+    break the other side's momentum (stop their run, §2.14). Spent too early, the player is tired or shaken when it counts;
+    hoarded, the points go by. Open: who decides (your card / the coach, at turns — no in-rally presses, §2.16), which bar each
+    move costs, how the AI picks when, and how this fits the cards (§2.33) and the director's effects (§2.15).
   - **Decided (owner, 2026-10-16)**: the semi-automatic match — bars (§2.31), turns every 6 points (§2.32) and a tactic-card
     hand (§2.33) replace the one-time plan tables; the career feeds the hand (techniques, traits, trust → how many cards are yours).
   - **Current direction (owner, 2026-10-11 – 12)**: (1) **Laning first** (§2.24, built) so reads and aims are real and visible;
