@@ -51,6 +51,7 @@ Tags: **[built]** · **[locked, not built]** · **[draft]** (to confirm) · **[o
 
 - §2.2 Elements: hidden per player; unlocked for OP, ~1/4 of stars, and you via the Element Trial. Gauge fills by
   element play; full gauge or captain buff → next attack is the signature element spike. Counter elements halve. Fiction: lore.md §2 (Trial = modern method; ritual forgotten).
+  - Lightning (element spikes, OP arcs, sky bolts) never breaks the match view: a bolt with a non-finite end is skipped and its curve clamps to its points (display only) **[built 2026-10-24]**.
 - §2.3 Hype (Off/Normal/Max, tap to skip): attack build-up, blocker read mid-jump (only if a block is attempted; owner 2026-10-07: the blocker's
   wall / read lines only when the block gets a hand on it — kill block, touch, soft block; beaten, broken or tooled: dropped),
   block-break spike cut + ball close-up, kill-block, loose-ball slow-mo, personality chatter. No manga panels. One world

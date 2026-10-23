@@ -3,6 +3,23 @@
 import * as THREE from 'three';
 import { NOISE } from '../trails3d.mjs';
 
+/** A finite x/y/z point. */
+export const finite3 = p => !!p && Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z);
+/** A polyline as a curve (lightning bolts): t is clamped to [0, 1] (NaN → 0), so it never indexes past its points. */
+export class Poly extends THREE.Curve {
+  constructor(pts) {
+    super();
+    this.pts = pts;
+  }
+  getPoint(t, o = new THREE.Vector3()) {
+    const n = this.pts.length - 1;
+    if (n < 1) return o.copy(this.pts[0] || o.set(0, 0, 0));
+    const f = Math.min(n - 1e-6, Math.max(0, t * n || 0)),
+      i = Math.floor(f);
+    return o.lerpVectors(this.pts[i], this.pts[i + 1], f - i);
+  }
+}
+
 function canvasTex(draw, n = 64) {
   const c = document.createElement('canvas');
   c.width = c.height = n;
@@ -401,20 +418,9 @@ export function createKit(scene) {
   }
 
   // lightning: jagged tubes, a white core and a coloured glow
-  class Poly extends THREE.Curve {
-    constructor(pts) {
-      super();
-      this.pts = pts;
-    }
-    getPoint(t, o = new THREE.Vector3()) {
-      const n = this.pts.length - 1,
-        f = Math.min(n - 1e-6, t * n),
-        i = Math.floor(f);
-      return o.lerpVectors(this.pts[i], this.pts[i + 1], f - i);
-    }
-  }
   const bolts = [];
   function bolt(a, b, col, life = 0.12, amp = 0.25, r = 0.014) {
+    if (!finite3(a) || !finite3(b)) return; // a NaN end (a bone mid-load, a NaN ball) made NaN arc lengths → t = NaN → pts[NaN]
     const n = Math.max(4, Math.round(a.distanceTo(b) * 5)),
       pts = [a.clone()];
     for (let i = 1; i < n; i++) pts.push(new THREE.Vector3().lerpVectors(a, b, i / n).add(rv(amp * (Math.sin((i / n) * Math.PI) + 0.2))));

@@ -1447,3 +1447,35 @@ test('engine: the fake set plays while the pass is in the air — no slow motion
   }
   assert(n > 5, `${n} fake sets`);
 });
+
+// ---------- fx kit: lightning curve never indexes past its points (a NaN end threw in Poly.getPoint) ----------
+test('fx: lightning Poly clamps t (NaN / < 0 / > 1) and bolt ends must be finite', () => {
+  const noop = () => {},
+    ctx = new Proxy(
+      {},
+      {
+        get: (t, k) =>
+          k === 'createRadialGradient' || k === 'createLinearGradient'
+            ? () => ({ addColorStop: noop })
+            : k === 'getImageData' || k === 'createImageData'
+              ? () => ({ data: new Uint8ClampedArray(4 * 128 * 128) })
+              : noop,
+        set: () => true
+      }
+    ),
+    had = 'document' in globalThis;
+  if (!had) globalThis.document = { createElement: () => ({ getContext: () => ctx }) };
+  try {
+    const { Poly, finite3 } = require('../js/render3d/fx/kit.mjs'),
+      THREE = require('three'),
+      V = (x, y, z) => new THREE.Vector3(x, y, z),
+      c = new Poly([V(0, 0, 0), V(1, 0, 0), V(2, 0, 0)]);
+    for (const t of [NaN, -0.5, 0, 0.5, 1, 1.5]) assert(finite3(c.getPoint(t)), `getPoint(${t}) finite`);
+    eq(c.getPoint(1.5).x, c.getPoint(1).x, 't > 1 clamps');
+    const bad = new Poly([V(0, 0, 0), V(NaN, 1, 0), V(1, 1, 1)]);
+    bad.getPointAt(0.5); // NaN arc lengths → t = NaN: must not throw
+    assert(!finite3(V(NaN, 0, 0)) && !finite3(null) && finite3(V(0, 1, 2)), 'finite3');
+  } finally {
+    if (!had) delete globalThis.document;
+  }
+});
