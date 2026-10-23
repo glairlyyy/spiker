@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-350** (T-336 is split a / b) (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-352** (T-336 is split a / b) (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,40 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+**The island × 2 and real facilities (owner, 2026-10-23, spec §4.40): T-350 → T-351, one agent, in parallel with the deck
+(T-345–T-349 own js/engine, js/data/cards.js, the match UI; T-350–T-351 own js/data/city.js, js/career/city.js, mapmodel.js,
+js/map3d/*, js/ui/map-view.js, career-map.js, css/map.css).**
+
+### [ ] T-350: The island × 2
+Spec: §4.40 Scale (§4.18b, §4.5)          Goldens: unchanged (career tests may re-seed — say why)          Save: RUN_VERSION 24 (positions, fog, tiles in the new units)
+Goal: the island twice the size; travel costs about twice the days; districts' free hops kept.
+Files: js/data/city.js, js/data/world.js, js/data/war.js, js/career/city.js, hex.js, war.js, front.js, mapmodel.js, encounter.js,
+js/core/storage.js, js/map3d/*, js/ui/map-view.js, tests/*, CLAUDE.md (the RUN_VERSION line), ARCHITECTURE.md, ARCHITECTURE-details.md
+Do not: add transport; change the towns' layout beyond the scale.
+Steps: MAP_SCALE 4.5; TRIP_DAY in today's metres (220 × 2.25 units); TRIP_MAX 5; everything else that scales with MAP_SCALE as
+§4.18b; camera reach and LOD distances; save bump.
+Accept: `npm test`, lint, `npm run test:ui` pass; `npm run career -- 12 both` before / after in the Result (trip days a week, Y2
+rating); the map's fps at the default camera (Fast and High) in the Result.
+Result:
+
+### [ ] T-351: Real facilities — buildings and kit, hover, no pins
+Spec: §4.40 Real facilities (§4.33 kit, §4.37 street level, §4.39 look, §10.1c popup, §9)          Goldens: unchanged          Save: no change
+Goal: every place is a recognisable building with its kit on its own lot; hover lights the facility up with a name tag; click opens
+the place popup beside it; pins and labels are gone.
+Files: js/data/city.js (lot sizes, building kinds), js/career/mapmodel.js, js/map3d/*, js/ui/map-view.js, career-map.js, css/map.css,
+tests/map3d.test.js, map.test.js, tests/ui-smoke.js, ARCHITECTURE-details.md
+Do not: change what a place does (orders, prices, access); draw randoms (hash per place).
+Steps:
+1. Lots: each place gets a footprint by kind; towns lay out around them (no overlaps with roads / fillers).
+2. Buildings and kit per kind and faction style (§4.40), name signs, merged per kind for draw calls; Fast = cheaper versions.
+3. Picking: raycast against facility meshes (building + kit share one id); hover rim + tag (glyphs, trip cost); click → popup
+   anchored to the building's screen point; always-on quiet rims for HQ / home / match venue; seized / closed greyed.
+4. Remove the HTML pins, glyph tabs and labels; district names when zoomed out; flights to a place still work.
+Accept: `npm run test:ui` (hover a facility shows its tag; click opens its popup; no `.pin` in the DOM) and tests pass; QA screenshots
+of each town, a hover, and the popup, checked against the design system.
+QA: new career → the map: hover and click a gym, a track, the harbor yard, a venue; zoom out.
+Result:
 
 **The deck (owner, 2026-10-23, spec §2.37): T-345 (engine) first; then T-346 (OP cards, render) and T-347 (hand UI) in parallel by
 file ownership; then T-349 (types, your hand, requests, Dev deck match — after T-347); then T-348 (balance).** T-346 owns js/render3d/*, js/render/director.js, effects.js, acts.js; T-347 owns js/ui/*,

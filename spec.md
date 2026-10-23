@@ -1724,6 +1724,32 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Settled (owner, 2026-10-22)**: Wei's new ground colours stay in Fast too; ambient occlusion stays on the High setting.
   - **Budget**: the map keeps ≥ 45 fps on a mid laptop GPU at the default camera (dynamic resolution allowed, like matches); Fast
     stays as it is today.
+- §4.40 The island × 2 and real facilities **[draft — T-350–T-351]** (owner, 2026-10-23: "expand the island 2× so travel matters
+  and there is room for proper facilities"; "remove pins entirely — a building or a piece of kit lights up on hover"):
+  - **Scale** (T-350): `MAP_SCALE` 2.25 → 4.5 (~2.4 × 1.6 km). Towns and districts spread out with it (the same layout, twice the
+    room); the fog reveal radius, the war tiles, Wei's wealth fall-off, nature's grid and the map camera's reach scale with it,
+    as in §4.18b. **Travel matters**: a trip day stays the same distance on the ground (`TRIP_DAY` keeps today's metres), so a
+    crossing costs about twice the days; the trip cap 3 → 5; a free hop (`NEAR_R`) still covers one faction's district (scales).
+    Walk / Run only for now (transport — bus, bike, ferry, taxi — is a later pass). RUN_VERSION 24 (older saves dropped). The
+    career bot (`npm run career`) before / after; the map keeps §4.39's frame budget.
+  - **Real facilities, no pins** (T-351):
+    - Every SPOTS place (gyms, courts, tracks, pools, the harbor yard, the dojo, the Academy's grounds, venues, HQs, outings —
+      ramen, arcade …) is **its own building on its own lot**, at a believable size: a gym big enough for a full court inside
+      (street level, §4.37), an outdoor court with its fence and lines, a running track's oval, a pool, the sand courts, the steps.
+    - Its **kit stands where it is used** (§4.33 kit tags): barbell racks and benches in the yard or behind the gym's glass, the
+      track oval, plyo boxes, the crane and crates, the dunes, mats under a roof — real objects, not decoration beside a pin.
+    - **Unique enough to know at a glance**: one silhouette per kind and per faction style (Wei glass and lit signs, Wu warehouses
+      and steel, Shu timber and tiered roofs, the Academy's campus brick, the Outlaws' overpass concrete); the place's name and a
+      big sign on the façade (canvas texture); a gym's kit visible from the road. No two places in a town look alike.
+    - **No pins**: the HTML pins, their glyph tabs and the floating labels go. **Hover** a building or any of its kit → the whole
+      facility lights up (an outline / rim glow in the `ink` accent, ~150 ms ease) and a small tag names it with its 1–3 body-stat
+      glyphs (what the pin's tab showed) and its trip cost; the cursor shows it is clickable. **Click** → the place popup (§10.1c)
+      opens beside the building instead of the pin. Your club's HQ, your home and your match's venue keep a quiet always-on rim in
+      their colour (faction colours on borders only, §9.2). A closed / seized place: its rim greyed, rubble as today.
+    - Far out (zoomed to the whole island), a place too small to hover shows a small district name at the town instead; the
+      buildings themselves stay the way to pick (the map's search / People sheet links still fly the camera to them).
+    - Street battles, people (§4.37) and the airport keep their own picks; the drone's field spots (§4.38) light up like places.
+    - Low-poly setting: the same buildings, cheaper (merged, no signs' texture detail); the hover rim works in both.
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.
