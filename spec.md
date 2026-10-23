@@ -796,6 +796,56 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Unchanged for now**: the lineup formula (rating + form + standing), how the captain is chosen, the card counts (1 card, 2
     when trusted, all 5 as captain). Next to discuss (owner): big moves as a resource (§5.7 idea); the captain picking by bond.
   - **The Academy coach** stays out of matches: a lore NPC and a source of training goals / quests at the Academy (not built).
+- §2.37 The deck — one-shot cards, roguelite (owner, 2026-10-23) **[draft — T-345–T-348]**: the five slots go (§2.33's slotting,
+  Worn / Spent, plays that stay slotted); every card is **played once** from a hand, then cools down. Keeps from §2.33: the cards
+  themselves, their reads (`fit`), counters and edges (`CARD_EDGE`, T-299), traps, the captain as picker (§2.36). Closes the §5.7
+  idea "big moves are a resource": a card is how a big move is called, and it costs the body that makes it.
+  - **Deck** per side, built at match start from the squad: a fixed `DECK.size` (12). The squad's own cards — each technique a
+    player owns, the captain's playbook plays (from the team's style), trait cards, one OP card per OP / element player — take
+    the places of **Basics** (the old boosts: Power Up, High Point, Guard Up, Quick Step — small, cheap). A weak squad owns few
+    cards, so its deck is mostly Basics and its good card comes round rarely; learning a technique visibly upgrades your deck.
+  - **Hand** of 5. Drawn at match start and **refilled to 5 at each turn** (every `TURN.pts` points, §2.32) — only then.
+    **Discard** any time between points: the card goes to the discard pile, its place stays empty until the next turn (a
+    discard is "nothing rather than this", never a free redraw). Deck empty → the discard pile (cooled cards only) is shuffled
+    into a new deck.
+  - **Play**: between points, at most **one card a side per point**; it acts on the next point(s) — its `dur` (serve cards: your
+    next 3 serves; attack / defence plays: 3 points; Basics: 1 point; traps: armed 6 points). Then it goes to the discard pile.
+  - **Cost — the bars** (§2.31): every card names who pays (its holders for a technique, the captain for a play, everyone on
+    court for a team play) and which bar (stamina, HP or morale) and how much; shown on the card as cost → result. Playing
+    with too little bar left is allowed and pushes the payer into Tiring / Spent / Shaken — spam wears the same bodies out.
+  - **Cooldown** in points (`cd`), counted in the discard pile; a cooling card is not shuffled back. Stronger cards cool longer.
+    OP cards are **once a match** (used up, never back).
+  - **Power scales with the holder**: a technique's edge × the holder's level for it (their action level vs the league's,
+    clamped ~0.6–1.2): a 40-rated server's Killer Serve is weaker than an ace's.
+  - **Fit / counter** as T-299: played into its read it pays +10–20 % on the points it acts in; into its counter −10–20 %.
+  - **Who plays**: Monster — "You decide" / "Captain decides" per side. Career — you play the cards you hold (your
+    techniques, ◆); as captain, the whole hand. The captain plays the rest by the same function (no draws in the pick):
+    a card when its read holds and its payer can afford it; OP cards and the strongest plays **saved for key moments** — set
+    point either way, the other side's Fever, 3+ down from 10 points on — or spent to break the other side's run (a 3-point
+    streak). A sharp captain (`capIQ`) waits better; a dull one plays what fits as soon as it is drawn.
+  - **Combos** (§2.33) are dropped for now; open whether two linked cards played on consecutive points should bonus.
+  - **OP cards** (owner, 2026-10-23), once a match each, from OP / element players by role:
+    - **God Resolve** (WS): everyone on court — attack, speed and jump × 2 for 3 points; afterwards everyone's morale −0.3.
+    - **Resolve of the Titan** (MB): its holder grows to 2× size on court (display: the model × 2; positions and reach as the
+      engine's) with defence and jump × 2 for 3 points; afterwards their stamina −0.4.
+    - **INZONE!!** (S): the side goes straight to **Focused** (§2.14) and cannot drop below it for 6 points; the director plays
+      that side's attacks in the **Ink** style (§2.15, VFX ball style Ink) while it lasts.
+    - Element Surge stays (element players); Fever Rush, Iron Wall, Zone, Overload and Last Stand become plays or go (T-345).
+    - Each OP card opens with a full-screen cut-in (its name, the holder, team colour, ~1 s; Hype off: a banner).
+  - **On screen** (T-347; §9 and the design system):
+    - **The hand bar**: your 5 cards along the bottom of the match screen, always visible in a played match (no pause needed),
+      a little fanned; hotkeys **1–5** play (queue for the next point), **Shift+1–5** or right-click discards. Each card: name,
+      kind colour band, the payer's tag, cost → result ("−0.2 stamina Ploy → serve +12 % · 3 serves"), **Fits now** chip,
+      cooldown / duration counter, the number key. A queued card lifts and glows; on the serve it flies onto the court and a
+      banner names it ("Wu Navy plays Killer Serve" for theirs). An active card sits by the scoreboard with its points left.
+    - **Deck / discard piles** at the bar's ends with counts; click to list them (cooling cards with their points left).
+    - **Turn**: the hand refills with a short deal animation; the match pauses only if you set "Pause at turns" (default on in
+      career, off in Monster); Space still pauses any time.
+    - **Match prep**: your deck (12, what replaced the Basics, ◆ yours). **Result card**: cards played per side, and what each
+      won or lost.
+  - **Must hold** (T-348, `npm run cards`): captain > random play > Basics only; a 12-Basics deck never beats the captain on
+    average; a weak team spamming its one good card ends worse than one playing it at its moments (the spam test); saving OP
+    cards for key moments beats playing them at once.
 ## 3. Menu [built]
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two

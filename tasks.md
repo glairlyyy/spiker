@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-345** (T-336 is split a / b) (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-349** (T-336 is split a / b) (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,79 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+**The deck (owner, 2026-10-23, spec §2.37): T-345 (engine) first; then T-346 (OP cards, render) and T-347 (hand UI) in parallel by
+file ownership; then T-348 (balance).** T-346 owns js/render3d/*, js/render/director.js, effects.js, acts.js; T-347 owns js/ui/*,
+css/*, tests/ui-smoke.js. Both read T-345's engine API, never change it (ask instead).
+
+### [ ] T-345: The deck — engine
+Spec: §2.37 (§2.31–§2.33, §2.36)          Goldens: update (deck shuffles draw R(); cards act per point)          Save: no change
+Goal: each side plays from a 12-card deck with a hand of 5, one card a point, costs on the bars, cooldowns, OP once a match; the
+captain plays it; sims and Monster run on it. The slots go.
+Files: js/data/cards.js, js/engine/cards.js, js/engine/match.js, js/engine/rally.js, rally-phases.js, rally-defense.js,
+rally-block.js, serve.js, formulas.js, bars.js, js/engine/reads.js, js/data/momentum.js, js/ui/match-cards.js (only to keep it
+working on the new state — the new UI is T-347), tests/cards.test.js, tests/cards.js, tests/engine.test.js, tests/golden.json,
+ARCHITECTURE.md, ARCHITECTURE-details.md
+Do not: build the hand bar UI or the OP display (T-346 / T-347); change the career's card ownership rules beyond §2.37's "you play
+the cards you hold"; change card edges' sizes (T-348).
+Steps:
+1. Data: `DECK` { size 12, hand 5 }; per card `dur`, `cd`, `cost` { who: holder | captain | court, bar, amt }; Basics from the old
+   boosts; OP set per §2.37 (God Resolve, Resolve of the Titan, INZONE!!, Element Surge; the other OP cards become plays or go).
+2. Engine: `m.deck[side]` { draw, hand, discard (with cooling points), used }; build at match start (squad's cards + Basics);
+   refill at turns; `Cards.play(m, side, i)` / `Cards.discard(m, side, i)` between points (one play a side a point); active cards
+   with points left; costs applied on play; holder-level scaling; fit / counter edges as T-299 while active; traps armed `dur`.
+3. The captain's pick (`Cards.capPlay(m, side)`, no draws): §2.37's rules — fits and affordable; saves OP / strong cards for key
+   moments or to break a run; `capIQ` sets how well it waits.
+4. OP effects in the engine (× 2 buffs for `dur` points, the after-costs, INZONE's stage floor); act `{ k: 'card', side, id, by,
+   op }` on every play (new act kind: handler in render/acts.js — a no-op stub is fine, T-346 draws it) and `{ k: 'cardend' }`.
+5. Remove the slot code (fill, Worn / Spent, combos, spent tally) and its tests; new tests: deck build / size / Basics fill,
+   refill only at turns, discard leaves a gap, reshuffle only cooled cards, one play a point, OP once, costs hit the payer's bar,
+   the captain saves an OP card until a key moment.
+Accept:
+- `npm test`, `npm run lint` pass; goldens updated with the reason; `npm run cards -- 60 both` numbers (captain / random / Basics
+  only / none) and the spam test (a weak side's one good card played on every draw vs by the captain) in the Result.
+QA: Monster game → match prep shows the deck (old screen is fine), a played match draws and plays cards (DBG log), no page errors.
+Result:
+
+### [ ] T-346: OP cards on screen
+Spec: §2.37 OP cards          Goldens: unchanged          Save: no change
+Goal: God Resolve, Resolve of the Titan and INZONE!! look like what they do; every OP card has its cut-in.
+Files: js/render/acts.js, director.js, effects.js, js/render3d/actors3d.mjs, r3d.mjs, players3d.mjs, fx3d.mjs, js/render3d/fx/*,
+js/data/vfx.js, tests/engine.test.js (act handler test), ARCHITECTURE-details.md
+Do not: change the engine or its numbers; draw randoms in presentation code.
+Steps:
+1. The `card` / `cardend` acts: a banner for every card ("‹team› plays ‹card›"); OP: a full-screen cut-in (name, holder, team
+   colour, ~1 s; Hype off → the banner).
+2. Titan: the holder's model eased to × 2 (from the feet; name tag and bars above the new head) for the card's points, then back;
+   their reach / contact points follow the engine as they are. God Resolve: an aura on everyone on court. INZONE!!: the side's
+   attacks in the Ink style while active (director), a focus vignette in the team colour.
+3. Tunables in VFX (cut-in time, Titan scale and ease, aura).
+Accept: `npm test`, lint, `npm run test:ui` pass; QA screenshots of each OP card active and its cut-in.
+QA: Monster game, a side forced to hold all three OP cards (dev hook) → each played.
+Result:
+
+### [ ] T-347: The hand bar
+Spec: §2.37 On screen, §9 (design system)          Goldens: unchanged          Save: no change (the "Pause at turns" setting: prefs)
+Goal: the hand along the bottom of a played match — play with 1–5, discard with Shift+1–5 / right-click, deck and discard piles,
+the active card by the scoreboard, the turn deal; match prep shows the deck; the result card lists cards played.
+Files: js/ui/match-cards.js, match-screen.js, match-controls.js, match-prep.js, match-result.js, career-match.js, css/match.css,
+js/core/storage.js (the pref), tests/ui-smoke.js, ARCHITECTURE-details.md
+Do not: change the engine; put more than one ink primary per card; type under 12 px.
+Steps: per §2.37 On screen; the old slot overlay, drag-and-drop between slots and the slot filters go (filters stay for the
+deck list if useful).
+Accept: `npm run test:ui` extended (play a card by key, discard one, the deck list opens, a turn refills) and passing; QA
+screenshot checked against the design system.
+QA: Monster game "You decide" → play, discard, a turn; career match as a non-captain (only ◆ cards playable).
+Result:
+
+### [ ] T-348: Deck balance
+Spec: §2.37 Must hold          Goldens: update if numbers change          Save: no change
+Goal: the must-holds hold with numbers in spec.
+Files: js/data/cards.js, tests/cards.js, spec.md (Measured lines under §2.37)
+Steps: measure (`npm run cards`, `npm run bot`), tune `dur` / `cd` / costs / Basics' size / OP × 2's after-costs; the spam test
+and the OP-timing test.
+Accept: every must-hold in §2.37 met; numbers in spec.
+Result:
 
 ### [x] T-344: No coach — the captain runs the side
 Spec: §2.36 (lore.md §4)          Goldens: update (the rolled coachIQ goes; the captain's read replaces it)          Save: no change
