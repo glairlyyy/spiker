@@ -1750,7 +1750,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     room); the fog reveal radius, the war tiles, Wei's wealth fall-off, nature's grid and the map camera's reach scale with it,
     as in §4.18b. **Travel matters**: a trip day stays the same distance on the ground (`TRIP_DAY` keeps today's metres), so a
     crossing costs about twice the days; the trip cap 3 → 5; a free hop (`NEAR_R`) still covers one faction's district (scales).
-    Walk / Run only for now (transport — bus, bike, ferry, taxi — is a later pass). RUN_VERSION 24 (older saves dropped). The
+    Walk / Run (transport: §4.42). RUN_VERSION 24 (older saves dropped). The
     career bot (`npm run career`) before / after; the map keeps §4.39's frame budget.
   - **Real facilities, no pins** (T-351):
     - Every SPOTS place (gyms, courts, tracks, pools, the harbor yard, the dojo, the Academy's grounds, venues, HQs, outings —
@@ -1806,6 +1806,23 @@ the AI coach fills every slot you leave with the same function. Built and measur
     hours as dashed blocks, "past 02:00" warning) above the 7 days; a 2 / 3 / 4 h picker on every kit card (Stretch 1 / 2 / 3 h);
     Walk / Run · N h; the home and hotel cards: Sleep 8 / 6 / 4 h → the stamina back · wake at; the map's clock beside Walk 1× 2× 4×.
     Bot (20 runs): good Y1 76.5 → 77.2, Y2 91.8 → 93.5; casual Y1 69.3 → 65.3, Y2 85.7 → 79.8 (its Flexibility only comes from Laps).
+- §4.42 Transport **[draft — T-356–T-357]** (owner, 2026-10-24: "do the transport option"; the proposal of 2026-10-23): ways to
+  cross the bigger island (§4.40) in fewer hours (§4.41), each a cost or a choice. Walk / Run stay as they are. Every Travel shows the
+  ways that work for that trip, each with its hours and its cost → result ("Bus · 1.5 h · $3 → arrive 10:30").
+  | Way | Pace | Cost | Where | Faction |
+  |---|---|---|---|---|
+  | **Bus** | 3 × walking on the main roads | $3 a ride | main roads, fixed stops (the bus stops the towns already show); runs 06:00–23:00, every 30 min — you wait for the next one | Wei runs it: at standing ≤ −20 with Wei the fare doubles, at ≤ −50 the driver won't take you |
+  | **Bike** | 1.8 × walking on roads | buy once ($120, Wu market) | roads, not mountain paths | Wu; trains Endurance a little (a third of a run), small stamina |
+  | **Scooter** | 3 × walking on roads | buy once ($380, Wu market) + $2 fuel an hour | roads, not mountain paths; no training | Wu |
+  | **Ferry** | fastest along the coast | $5 a crossing | the piers: Wu harbor ↔ the airport pier ↔ the beach pier; every 2 h, 07:00–21:00 | Wu harbor |
+  | **Taxi** | 4 × walking, door to door | $8 + $4 an hour of walking saved | both ends inside Wei | Wei |
+  - **Mixed trips**: a bus or ferry trip includes the walk to the stop / pier and from it (and the wait); the Travel option shows
+    the whole trip's hours. The fastest option is never picked for you — the hours and the money are your choice (§9.1).
+  - **Shu's highlands stay on foot** (hardship dogma): no bus, bike, scooter or taxi on the mountain paths — those legs are walked.
+  - **What you give up**: a bus, ferry or taxi skips road stops (§4.37 encounters) and trains nothing; a bike trains a little.
+  - **On the map** (seamless, §4.37): the bus drives its route with you aboard, the ferry crosses with you on deck, your figure rides
+    the bike / scooter; buses and ferries run on their timetable when you are not aboard too (life). Stops and piers are visible.
+  - Save: owned rides `run.ride` (lazy: { bike, scooter }). The career bot (good) takes the bus / bike when it saves time; casual walks.
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.

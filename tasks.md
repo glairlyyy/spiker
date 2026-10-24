@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-356** (T-336 is split a / b) (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-358** (T-336 is split a / b) (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,28 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+**Transport (owner, 2026-10-24, spec §4.42): T-356 → T-357, one agent, before the deck balance (T-348).**
+
+### [ ] T-356: Transport — rules and Travel options
+Spec: §4.42 (§4.41 hours, §4.40 island, §4.37 encounters)          Goldens: unchanged          Save: lazy `run.ride` (no version bump)
+Goal: Bus, Bike, Scooter, Ferry and Taxi as Travel options with hours and cost → result; timetables, fares, standing, Shu on foot.
+Files: js/data/city.js (TRANSPORT, stops, piers), js/career/city.js (route by mode, hours, fares, buying a ride), mapmodel.js (the
+modes for the renderer), encounter.js (skipped on bus / ferry / taxi), js/ui/career-map.js, career-panels.js (the options; the Wu
+market's bike / scooter), tests/*, tests/career-bot.js, ARCHITECTURE.md, ARCHITECTURE-details.md
+Do not: change walking / running hours; pick a mode for the player.
+Accept: tests per mode (pace, fare, timetable wait, standing rules, Shu legs walked, taxi only in Wei); npm test, lint, test:ui pass;
+`npm run career -- 20 both` before / after in the Result.
+Result:
+
+### [ ] T-357: Transport — on the map
+Spec: §4.42 On the map          Goldens: unchanged          Save: no change
+Goal: the bus and the ferry visible on their timetable, you aboard when you take them; your figure on the bike / scooter; stops and
+piers drawn.
+Files: js/map3d/* (a new vehicles3d.mjs for the bus / ferry / bike / scooter), js/ui/map-view.js, tests/map3d.test.js, tests/ui-smoke.js,
+ARCHITECTURE-details.md
+Accept: npm test, lint, test:ui pass; QA screenshots (the bus at a stop, you aboard, the ferry, the bike) to scratchpad/qa/ride-*.png.
+Result:
 
 **The day in hours (owner, 2026-10-24, spec §4.41): T-352 → T-353, one agent, after the fixes agent (arrive inside / net post /
 lightning) lands — both touch js/ui/career-map.js.**
