@@ -556,3 +556,78 @@ test('map3d: facilities (spec §4.40, T-351) — every design inside its lot; a 
   town.hover(null);
   town.dispose();
 });
+
+// ---------- T-357: transport on the map (spec §4.42) ----------
+test('map3d: transport — buses and the ferry on their timetable, stops and piers drawn, your ride; the avatar rides its legs (T-357)', () => {
+  const THREE = require('three'),
+    { createVehicles, onTimetable, VEHICLES } = require('../js/map3d/vehicles3d.mjs'),
+    { createAvatar } = require('../js/map3d/avatar3d.mjs'),
+    { load } = require('./harness'),
+    g = load(5),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Map', mode: { story: false } }),
+    m = g.MapModel.build(run),
+    TT = m.transit.bus;
+  eq(onTimetable({ ...TT, hours: 1 }, 3).length, 0, '03:00: no buses');
+  eq(onTimetable({ ...TT, hours: 1 }, 8.25).length, 4, '08:15 on a 1 h line: the 07:30 and the 08:00 each way');
+  eq(onTimetable({ ...m.transit.ferry }, 7).filter(v => v.u === 0).length, 2, 'the 07:00 ferry leaves both ends');
+  const sc = new THREE.Scene(),
+    V = createVehicles(sc, () => 0.5);
+  V.sync(m);
+  V.tick(0.016, 0, 1 + 8.25 / 24, null);
+  const n = V.count();
+  assert(n.buses > 0 && n.buses <= VEHICLES.cap.bus && n.fixed === 1, `Tue 08:15: buses out (${n.buses}), the stops / piers mesh`);
+  V.tick(0.016, 0, 1 + 3 / 24, null);
+  eq(V.count().buses + V.count().ferries, 0, 'at night: none');
+  V.tick(0.016, 0, 1 + 9.2 / 24, { m: 'ferry', x: 10, z: 10, yaw: 0, v: 5 });
+  assert(V.count().ferries > 0 && V.count().mine === 'ferry', 'the 09:00 ferry out; yours under you');
+  V.dispose();
+  // the avatar plays a ride's legs on their own clock: aboard the bus between, progress 0 → 1
+  const A = createAvatar(new THREE.Scene());
+  A.snap([0, 0]);
+  A.setTarget([200, 0], null, {
+    legs: [
+      {
+        m: 'walk',
+        pts: [
+          [0, 0],
+          [20, 0]
+        ],
+        w: 1,
+        a: 1,
+        b: 1.1
+      },
+      {
+        m: 'bus',
+        pts: [
+          [20, 0],
+          [180, 0]
+        ],
+        w: 1.1,
+        a: 1.15,
+        b: 1.2
+      },
+      {
+        m: 'walk',
+        pts: [
+          [180, 0],
+          [200, 0]
+        ],
+        w: 1.2,
+        a: 1.2,
+        b: 1.25
+      }
+    ]
+  });
+  assert(A.busy() && A.progress() === 0, 'riding');
+  const seen = new Set();
+  let p0 = 0;
+  for (let i = 0; i < 400 && A.busy(); i++) {
+    A.tick(0.05, () => 0);
+    const r = A.ride();
+    seen.add(r ? r.m : 'walk');
+    if (A.progress() !== null) (assert(A.progress() >= p0, 'never back'), (p0 = A.progress()));
+  }
+  assert(!A.busy() && seen.has('bus') && seen.has('walk'), `walked, rode, walked (${[...seen]})`);
+  eq(A.pos().join(','), '100,0', 'arrived (map 200 → 100 m)');
+  A.dispose();
+});

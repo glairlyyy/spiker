@@ -639,7 +639,7 @@ function rideRow(run, id) {
   if (!W.length) return '';
   return `<div class="popts pride"><span class="lab" ${tip('Faster than walking, each at a cost. A bus, the ferry or a taxi passes the road stops by; the bike trains a little.')}>Ride</span><div class="ords">${W.map(
     w =>
-      `<button class="btn ord" onclick="mapTravel(${p[0]},${p[1]},'${w.k}')" ${w.why ? `disabled ${tip(w.why)}` : ''}><b class="onm">${esc(w.name)}</b><span class="oln">${w.why ? `<span class="dn">${esc(w.why)}</span>` : rideLine(run, w)}</span></button>`
+      `<button class="btn ord" onclick="mapTravel(${p[0]},${p[1]},'${w.k}')" ${w.why ? `disabled ${tip(w.why)}` : ''}><b class="onm">${esc(w.name)}</b><span class="oln">${w.why ? `<span class="mute">${esc(w.why)}</span>` : rideLine(run, w)}</span></button>`
   ).join('')}</div></div>`;
 }
 /** The Harbor Market (spec §4.42): buy the bike or the scooter — an hour there, its price → how it rides. */
@@ -658,7 +658,7 @@ function marketPanel(run, id) {
       c = City.can(run, id, k),
       own = City.owns(run, k),
       h = !hot && c.ok ? (hot = true) : false;
-    return `<button class="btn ord ${h ? 'hot' : ''}" onclick="mapGo('${id}','${k}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}><b class="onm">${own ? `${esc(T.name)} <small>yours</small>` : `Buy the ${k}`}</b><span class="oln">${own ? esc(res[k]) : c.ok ? `${term('day', `${City.cost(run, id, k)} h`, 'cost')} $${T.price} → ${esc(res[k])}` : `<span class="dn">${esc(c.why)}</span>`}</span></button>`;
+    return `<button class="btn ord ${h ? 'hot' : ''}" onclick="mapGo('${id}','${k}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}><b class="onm">${own ? `${esc(T.name)} <small>yours</small>` : `Buy the ${k}`}</b><span class="oln">${own ? esc(res[k]) : c.ok ? `${term('day', `${City.cost(run, id, k)} h`, 'cost')} $${T.price} → ${esc(res[k])}` : `<span class="mute">${esc(c.why)}</span>`}</span></button>`;
   });
   return placeCard({
     region: City.region(run, id),

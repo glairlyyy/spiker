@@ -1806,7 +1806,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     hours as dashed blocks, "past 02:00" warning) above the 7 days; a 2 / 3 / 4 h picker on every kit card (Stretch 1 / 2 / 3 h);
     Walk / Run · N h; the home and hotel cards: Sleep 8 / 6 / 4 h → the stamina back · wake at; the map's clock beside Walk 1× 2× 4×.
     Bot (20 runs): good Y1 76.5 → 77.2, Y2 91.8 → 93.5; casual Y1 69.3 → 65.3, Y2 85.7 → 79.8 (its Flexibility only comes from Laps).
-- §4.42 Transport **[draft — T-356–T-357]** (owner, 2026-10-24: "do the transport option"; the proposal of 2026-10-23): ways to
+- §4.42 Transport **[built 2026-10-24 — T-356–T-357]** (owner, 2026-10-24: "do the transport option"; the proposal of 2026-10-23): ways to
   cross the bigger island (§4.40) in fewer hours (§4.41), each a cost or a choice. Walk / Run stay as they are. Every Travel shows the
   ways that work for that trip, each with its hours and its cost → result ("Bus · 1.5 h · $3 → arrive 10:30").
   | Way | Pace | Cost | Where | Faction |
@@ -1823,6 +1823,19 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **On the map** (seamless, §4.37): the bus drives its route with you aboard, the ferry crosses with you on deck, your figure rides
     the bike / scooter; buses and ferries run on their timetable when you are not aboard too (life). Stops and piers are visible.
   - Save: owned rides `run.ride` (lazy: { bike, scooter }). The career bot (good) takes the bus / bike when it saves time; casual walks.
+  - **[built 2026-10-24, T-356–T-357]** Numbers in `TRANSPORT` (js/data/city.js): the bus 3× on its lines, $3 a ride (a change at a
+    shared stop = a second ride), every stop every 30 min 06:00–23:00; the bike 1.8×, $120, ⅓ of a run's Endurance for 0.15 of its
+    stamina; the scooter 3×, $380 + $2 fuel a riding hour; the ferry 10× along its sea line, $5, every 2 h 07:00–21:00; the taxi 4×,
+    both ends in Wei's city, $8 + $4 an hour saved. A trip rounds to ½ h, 1 h at least, and a way is listed only when faster than
+    walking; the legs it can't ride (mountain paths, the Steps, off the roads, everything in Shu) are walked. Three bus lines on the
+    main roads and the overpass — Academy (airport → Academy → Ring West → Gold Tower → League Arena), Coast (Ring West → Iron Yard →
+    Dorms → Fort Gate → Seaside Inn → Wu Town → Overpass Foot → Harbor → Harbor Hall → the Dunes), Overpass (Ring West → Training
+    District → Ring East → Downtown → over the overpass → Harbor); a shelter with a blue sign at every stop (the towns' hashed bus-stop
+    props became benches). Three piers: the airport pier (the Pier Jump Deck), the beach pier (the Sand Courts), the harbor pier, each
+    a jetty out to the ferry's offshore line round the south-east coast. The bike and the scooter are sold at the **Harbor Market**
+    (a new place by the harbor: an open market shed, bikes and scooters lined up out front). On the map the buses and ferries run by
+    the map's clock (they stand still while it is idle and are off at night); your ride plays its legs (walk to the stop, the wait,
+    aboard — your bus / taxi carries a gold ring —, walk on; the ferry with you on deck; you riding the bike / scooter).
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.

@@ -1044,6 +1044,16 @@ of the `DAY_ORDERS.run` key × DAY_GAIN; no fail roll). Since §4.41 the gains a
   stops / piers), the gap printed when it can't go; `mapTravel(x, y, k)`; the lock pill "By bus". `marketPanel`: Buy the bike /
   scooter (the first buyable = the ink primary). Career bot (good): buys the bike at $300, rides the bus / bike when faster than its
   run or walk.
+- **On the map** (T-357) — js/map3d/vehicles3d.mjs `createVehicles(scene, heightAt)` → { sync(m), tick(dt, t, wk, you), count() }:
+  `onTimetable(TT, hr)` = who is out at hour hr (a vehicle leaves each end at every departure, `hours` to the other end; the night
+  before counts as hr + 24); buses as one InstancedMesh (cap 48) placed by the travel cost `c` along their line (so the hours match
+  City.busTrip), 1.6 m right of it, up the overpass deck (town3d `DECK` ramp); ferries (cap 8) on the sea line, bobbing; one merged
+  mesh of the stops' shelters (beside the stop node, a blue sign pole) and the piers' jetties (dock → shore on piles, a sign); your
+  vehicle (a bus / taxi with a gold ring over it, the ferry, the bike / scooter at your figure's scale) from `avatar.ride()`. Fed the
+  shown week time `wt` (map3d), so they stand still while the map's clock is idle. avatar3d `setTarget(at, path, { legs })`: a ride
+  plays its legs on their own clock (RIDE_T 2.5–9 s for the whole trip, a wait = standing at the stop), hidden aboard a bus / taxi,
+  on the ferry's deck, in the RIDE pose on the bike / scooter; `progress()` drives map3d's clock (walkProgress); a bike's road stop
+  (WALK.stop) halts it as a walk. town3d's hashed "bus stop" props are benches now (the real stops are vehicles3d's).
 
 ### Real facilities, no pins (spec §4.40, T-351)
 

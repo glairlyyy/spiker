@@ -693,7 +693,13 @@ const step = async (name, fn) => {
     if (!/Bus[\s\S]*arrive[\s\S]*Bike/.test(row) || !/Scooter[\s\S]*Harbor Market/.test(row))
       throw new Error(`ride row: ${row.slice(0, 240)}`);
     await ev(() => [...document.querySelectorAll('#spot .pride .btn')].find(b => /^Bus/.test(b.textContent)).click());
-    await pg.waitForFunction(() => !CW.lock, null, { timeout: 120000, polling: 200 });
+    let aboard = false; // T-357: your bus on the map while you ride (vehicles3d)
+    for (let i = 0; i < 600 && (await ev(() => !!CW.lock)); i++) {
+      if (!aboard) aboard = await ev(() => !!(MapView.m3 && MapView.m3.info().vehicles && MapView.m3.info().vehicles.mine === 'bus'));
+      await pg.waitForTimeout(200);
+    }
+    const V = await ev(() => MapView.m3 && MapView.m3.info().vehicles);
+    if (V && (!aboard || !V.fixed)) throw new Error(`the bus on the map: aboard ${aboard}, ${JSON.stringify(V)}`);
     const r = await ev(() => ({
       at: City.pos(RUN).join(','),
       to: City.at(RUN, 'harbor').map(Math.round).join(','),

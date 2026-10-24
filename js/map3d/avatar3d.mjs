@@ -1,7 +1,11 @@
 // The player on the 3D map: your own model (Main_v2, as in matches and your portrait; the default model if it fails), idle-breathing, walking or running to wherever the rules put
 // the player. Display only — the rules move instantly; this animates from the previously shown position.
-//   createAvatar(scene, opts?) → { setTarget([x, y], path?, { head?, tail? }), snap([x, y]), face([x, y]), tick(dt, heightAt), busy(), pos(), lapse(),
-//                                  heading(), drive(x, z, v, yaw), setLife(k), dispose() }
+//   createAvatar(scene, opts?) → { setTarget([x, y], path?, { head?, tail?, legs? }), snap([x, y]), face([x, y]), tick(dt, heightAt), busy(), pos(), lapse(),
+//                                  heading(), drive(x, z, v, yaw), setLife(k), progress(), ride(), dispose() }
+// A ride (spec §4.42): o.legs = the trip's legs ([{ m: 'walk' | 'bus' | 'bike' | 'scooter' | 'ferry' | 'taxi', pts, w, a, b }], map
+// points, week time — model.you.ride) replaces the road: the trip plays on the legs' own clock (RIDE_T s in all; a wait = standing at the stop), you
+// ride the bike / scooter (RIDE pose, on its seat), stand on the ferry's deck, and are aboard the bus / taxi (hidden: vehicles3d draws
+// it). progress() = 0–1 of the trip in its own time (the map's clock follows it); ride() = { m, x, z, yaw, v } while riding, else null.
 // Street level (spec §4.37 6, T-336a): setLife(k) scales the figure from map size (HEIGHT, k = 0) to life size (LIFE_H, k = 1) — map3d
 // passes the camera's street weight; drive(x, z, v, yaw) = one WASD frame (display only: stand at world (x, z), moving at v m/s, facing yaw).
 //   opts.kit (shirt / hair / skin colours): another person on the default model, dressed (the story guide, spec §10.10a); none = you.
@@ -23,7 +27,24 @@ const HEIGHT = 6, // metres: drawn about 3.5× life size so you can find yoursel
   TURN = 0.25, // wait for the turn before setting off (s)
   RUN_AT = 2.5, // m/s: above this the gait blends into a run
   LIFE_H = 1.72, // metres: life size at street level (setLife(1))
-  LIFE_PACE = 0.6; // at street level a trip's pace × this (a life-size runner, not a 6 m/s giant)
+  LIFE_PACE = 0.6, // at street level a trip's pace × this (a life-size runner, not a 6 m/s giant)
+  RIDE_T = [2.5, 9], // a ride's duration limits (s): the whole trip, waits included
+  RIDE_V = 22, // m/s: the pace a ride is timed at (its distance ÷ this, within RIDE_T)
+  DECK_Y = 1.7, // m: the ferry's deck over the sea (vehicles3d's FERRY)
+  SEAT = 0.95; // m (× the figure's size ÷ HEIGHT · 6): the bike / scooter's seat lift over the ground snap
+/** On the bike / scooter (spec §4.42): sat up, thighs forward, knees bent over the pedals, hands on the bars. */
+const v3 = (x, y, z) => new THREE.Vector3(x, y, z).normalize();
+const RIDE = {
+  hp: 0.25,
+  sp: 0.12,
+  cp: 0.08,
+  hd: -0.05,
+  L: { a: 1.1, k: 1.25, f: 0.2, s: 0.12 },
+  R: { a: 1.1, k: 1.25, f: 0.2, s: 0.12 },
+  al: [v3(0.2, -0.45, 0.87), v3(0.15, -0.35, 0.92), v3(0.12, -0.3, 0.94)],
+  ar: [v3(-0.2, -0.45, 0.87), v3(-0.15, -0.35, 0.92), v3(-0.12, -0.3, 0.94)],
+  curl: 0.6
+};
 
 const segYaw = (pts, i) => Math.atan2(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]); // facing along segment i
 
@@ -73,7 +94,35 @@ export function createAvatar(scene, opts = {}) {
     rmesh = null, // the route preview (yours only)
     rkey = null;
   const me = !opts.kit, // your own avatar: WALK applies
-    S = { x: 0, z: 0, yaw: 0, walk: null, phase: 0, w: 0, t: 0, next: null, held: false, stepAt: 0, life: 0, drive: null };
+    S = { x: 0, z: 0, yaw: 0, walk: null, phase: 0, w: 0, t: 0, next: null, held: false, stepAt: 0, life: 0, drive: null, ride: null };
+  /**
+   * Ride the legs (world-space: each { m, pts, cum, dist, w, a, b }): the trip's week time T0 … T1 plays over `dur` s; `hold` = the
+   * week time an encounter halts it at (a bike / scooter trip: WALK.stop), else null.
+   */
+  const rideStart = (legs, stop) => {
+    const T0 = legs[0].w,
+      T1 = legs[legs.length - 1].b,
+      dist = legs.reduce((s, l) => s + l.dist, 0);
+    if (!(T1 > T0) || dist < 0.5) return false;
+    let hold = null;
+    if (stop) {
+      let best = Infinity;
+      for (const l of legs)
+        for (let i = 1; i < l.pts.length; i++) {
+          const [ax, az] = l.pts[i - 1],
+            [bx, bz] = l.pts[i],
+            dx = bx - ax,
+            dz = bz - az,
+            L2 = dx * dx + dz * dz || 1,
+            u = clamp(((stop[0] - ax) * dx + (stop[1] - az) * dz) / L2, 0, 1),
+            d = Math.hypot(stop[0] - ax - dx * u, stop[1] - az - dz * u);
+          if (d < best) ((best = d), (hold = l.a + ((l.cum[i - 1] + u * Math.sqrt(L2)) / (l.dist || 1)) * (l.b - l.a)));
+        }
+    }
+    S.walk = S.next = null;
+    S.ride = { legs, T0, T1, dur: clamp(dist / RIDE_V, RIDE_T[0], RIDE_T[1]), t: -TURN, hold, m: legs[0].m, v: 0 };
+    return true;
+  };
   /** Start walking world-space pts (from where you stand) on the trapezoid speed profile. */
   const plan = pts => {
     const cum = [0];
@@ -91,6 +140,7 @@ export function createAvatar(scene, opts = {}) {
     WALK._go = () => {
       if (!S.held) return;
       S.held = WALK.held = false;
+      if (S.ride) return void (S.ride.hold = null); // (a ride halted at a stop: on it goes)
       const rest = S.next;
       S.next = null;
       if (!rest || !plan(rest)) S.walk = null;
@@ -167,7 +217,7 @@ export function createAvatar(scene, opts = {}) {
     /** Stand at a map point at once. */
     snap(at) {
       [S.x, S.z] = toWorld(at);
-      S.walk = S.next = null;
+      S.walk = S.next = S.ride = null;
       S.drive = null;
       if (S.held) S.held = WALK.held = false;
     },
@@ -177,6 +227,21 @@ export function createAvatar(scene, opts = {}) {
      * walked before the road (out of a door) / after `at` (in through a door, to where you stand inside — spec §4.40).
      */
     setTarget(at, path, o = {}) {
+      S.ride = null;
+      if (o.legs && o.legs.length) {
+        const stop = me ? WALK.stop : null;
+        if (me) WALK.via = WALK.stop = null;
+        if (S.held) S.held = WALK.held = false;
+        const L = o.legs.map((l, i) => {
+          const pts = l.pts.map(toWorld);
+          if (!i) pts.unshift([S.x, S.z], ...(o.head || []).map(toWorld)); // from where you stand, out of the door first
+          if (i === o.legs.length - 1) pts.push(...(o.tail || []).map(toWorld)); // …and in through the door at the end
+          const cum = [0];
+          for (let j = 1; j < pts.length; j++) cum.push(cum[j - 1] + Math.hypot(pts[j][0] - pts[j - 1][0], pts[j][1] - pts[j - 1][1]));
+          return { m: l.m, pts, cum, dist: cum[cum.length - 1], w: l.w, a: l.a, b: l.b };
+        });
+        if (rideStart(L, stop && toWorld(stop))) return;
+      }
       const V = me && WALK.via && Math.hypot(WALK.via.to[0] - at[0], WALK.via.to[1] - at[1]) < 2 ? WALK.via.pts : path,
         stop = me ? WALK.stop : null;
       if (me) WALK.via = WALK.stop = null;
@@ -203,13 +268,17 @@ export function createAvatar(scene, opts = {}) {
       const [x, z] = toWorld(at);
       S.yaw = Math.atan2(x - S.x, z - S.z);
     },
-    busy: () => !!S.walk || S.held,
+    busy: () => !!S.walk || !!S.ride || S.held,
+    /** How far through the trip (0–1) a ride has come in its own time; null when not riding. */
+    progress: () => (S.ride ? clamp(S.ride.t / S.ride.dur, 0, 1) : null),
+    /** While on a ride's vehicle leg: { m, x, z, yaw, v (m/s) } (vehicles3d draws your bus / ferry / taxi / bike / scooter), else null. */
+    ride: () => (S.ride && S.ride.m !== 'walk' && S.ride.t >= 0 ? { m: S.ride.m, x: S.x, z: S.z, yaw: S.yaw, v: S.ride.v } : null),
     pos: () => [S.x, S.z],
     /** The way you face (rad, atan2(dx, dz)). */
     heading: () => S.yaw,
     /** One WASD frame (display only): stand at world (x, z), moving at v m/s, turning toward yaw. */
     drive(x, z, v, yaw) {
-      if (S.walk || S.held) return;
+      if (S.walk || S.ride || S.held) return;
       S.x = x;
       S.z = z;
       S.drive = { v, yaw };
@@ -227,6 +296,34 @@ export function createAvatar(scene, opts = {}) {
         v = S.drive.v;
         S.yaw += wrap(S.drive.yaw - S.yaw) * (1 - Math.exp(-dt / 0.08));
         S.drive = null;
+      }
+      const Rd = S.ride;
+      if (Rd && !S.held) {
+        Rd.t += dt;
+        const tau = Rd.T0 + (Rd.T1 - Rd.T0) * clamp(Rd.t / Rd.dur, 0, 1);
+        if (Rd.hold !== null && tau >= Rd.hold) {
+          Rd.t = ((Rd.hold - Rd.T0) / (Rd.T1 - Rd.T0)) * Rd.dur;
+          S.held = true; // an encounter on the bike's road: wait here for WALK.go()
+          if (me) {
+            WALK.held = true;
+            if (WALK.onHold) WALK.onHold();
+          }
+        }
+        const L = Rd.legs.find(l => tau <= l.b + 1e-9) || Rd.legs[Rd.legs.length - 1],
+          f = tau <= L.a ? 0 : clamp((tau - L.a) / (L.b - L.a || 1), 0, 1),
+          s = f * L.dist;
+        let i = 0;
+        while (i < L.pts.length - 2 && s > L.cum[i + 1]) i++;
+        const a = L.pts[i],
+          b = L.pts[i + 1] || a,
+          g = clamp((s - L.cum[i]) / (L.cum[i + 1] - L.cum[i] || 1), 0, 1);
+        S.x = a[0] + (b[0] - a[0]) * g;
+        S.z = a[1] + (b[1] - a[1]) * g;
+        Rd.m = L.m;
+        Rd.v = Rd.t < 0 || tau <= L.a || f >= 1 || S.held ? 0 : L.dist / Math.max(0.05, ((L.b - L.a) / (Rd.T1 - Rd.T0)) * Rd.dur);
+        if (L.pts.length > 1 && Rd.v > 0) S.yaw += wrap(segYaw(L.pts, Math.min(i, L.pts.length - 2)) - S.yaw) * (1 - Math.exp(-dt / 0.08));
+        v = L.m === 'walk' ? Math.min(Rd.v, SPEED) : 0;
+        if (Rd.t >= Rd.dur) S.ride = null;
       }
       if (W) {
         W.t += dt;
@@ -259,8 +356,13 @@ export function createAvatar(scene, opts = {}) {
       }
       if (me) routes(heightAt);
       if (rmesh) rmesh.visible = S.life < 0.5; // (the route preview floats 1.4 m up: over the map, not at street level)
-      const h = heightAt(S.x, S.z);
+      const rm = S.ride && S.ride.t >= 0 ? S.ride.m : 'walk',
+        aboard = rm === 'bus' || rm === 'taxi', // inside the vehicle: vehicles3d draws it (with your ring)
+        seat = rm === 'bike' || rm === 'scooter',
+        h = rm === 'ferry' ? Math.max(heightAt(S.x, S.z), 0) + DECK_Y : heightAt(S.x, S.z);
       const size = 1 + (LIFE_H / HEIGHT - 1) * S.life; // map size → life size
+      marker.visible = !aboard;
+      if (pl) pl.root.visible = !aboard;
       if (!pl) return (marker.scale.setScalar(size), marker.position.set(S.x, h + 3 * size, S.z));
       S.t += dt;
       const gait = Math.min(v, SPEED),
@@ -273,7 +375,7 @@ export function createAvatar(scene, opts = {}) {
       S.w += (clamp(gait, 0, 1) - S.w) * (1 - Math.exp(-dt * 10));
       const sway = Math.sin(S.t * 1.7),
         idle = { ...STAND, cp: 0.02 * sway, sp: 0.02 + 0.012 * sway },
-        pose = S.w > 0.01 ? mix(idle, locoPose({ speed: gait, fwd: gait, lat: 0, phase: S.phase }), S.w) : idle;
+        pose = seat ? RIDE : S.w > 0.01 ? mix(idle, locoPose({ speed: gait, fwd: gait, lat: 0, phase: S.phase }), S.w) : idle;
       pl.scale = pl.base * size;
       pl.root.scale.setScalar(pl.scale);
       pl.root.rotation.set(0, S.yaw, 0);
@@ -281,7 +383,7 @@ export function createAvatar(scene, opts = {}) {
       applyPose(pl, pose);
       smoothBones(pl, dt, gait > 1 ? 26 : 16);
       groundSnap(pl, pose.lift || 0); // feet on the floor (root at y = 0) …
-      pl.root.position.y += h; // … then up onto the terrain
+      pl.root.position.y += h + (seat ? SEAT * size * (HEIGHT / 6) : 0); // … then up onto the terrain (on the bike: its pedals)
       pl.vrm.update(dt);
     },
     dispose() {
