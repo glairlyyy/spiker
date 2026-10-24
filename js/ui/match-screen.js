@@ -63,7 +63,7 @@ function startMatch(fx) {
         <button class="btn" id="tacbtn" onclick="railOpen('tac')">Tactics <kbd>T</kbd></button>
         <button class="btn" id="readsbtn" onclick="railOpen('reads')" ${tip('What your captain has noticed: patterns, hitters, reads, serves')}>Reads <kbd>H</kbd></button></div>
       <div class="cg view"><button class="btn" id="railbtn" onclick="railOpen()" ${tip('Box score and tactics')}>Details <kbd>B</kbd></button>
-        <button class="btn" onclick="toggleFullscreen()" ${tip('Fullscreen court')} aria-label="Fullscreen">⛶ <kbd>F</kbd></button>
+        <button class="btn" onclick="toggleFullscreen()" ${tip('Fullscreen court')} aria-label="Fullscreen">⛶ <kbd>Shift+F</kbd></button>
         <button class="btn" id="snd" onclick="toggleSound()" aria-label="Sound">${SND.on ? '🔊' : '🔇'}</button>
         ${fx.vfx ? `<button class="btn" onclick="devOpen('vfx', () => vfxToggle())" ${tip('Tune every effect live while the game plays; Export the values')}>VFX <kbd>V</kbd></button>` : ''}
         ${pop('⚙', settingsMenu(), 'setpop')}</div>
