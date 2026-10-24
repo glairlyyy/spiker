@@ -153,6 +153,35 @@ html.reduced .mtag {
   padding: 0 8px;
   font-size: 12px;
 }
+/* the running clock (spec §4.43): pause (Space), the time speeds, the match's quiet chip */
+.hub .mapwalk .tpause {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 4px;
+}
+.hub .mapwalk .tpause.on {
+  border-color: var(--sel-line);
+}
+.hub .mapwalk .tchip {
+  margin-right: 6px;
+  font-size: 12px;
+  color: var(--mute);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.hub .mapwalk .tchip.held {
+  color: var(--warn);
+}
+/* a session or a sleep fast-forwarding: the map stays visible, the pill counts the hours */
+.hub .actlock.ff .ffb {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.hub .actlock.ff .mute {
+  font-size: 12px;
+  font-weight: 400;
+}
 /* war */
 /* War units on the Factions cards and the dossier (spec §4.34): name, Strength bar (stage colour, not faction), stage chip */
 .wunits {

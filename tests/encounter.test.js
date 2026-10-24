@@ -521,7 +521,7 @@ test('drone: a road stop’s crew challenged on the spot — on the field there,
   assert(r && r.fx, 'played on the spot');
   eq(r.fx.venue, 'field', 'the field venue');
   const m = g.Cup.simNow(r.fx);
-  eq(Math.round((g.City.wt(run) - d0) * 24), stop, `the hours spent are the stop's (${stop}), not the HQ's (${hq})`);
+  assert(Math.abs((g.City.wt(run) - d0) * 24 - stop) < 1e-6, `the hours spent are the stop's (${stop}), not the HQ's (${hq})`);
   eq(m.ground.k, S.field.g.k, 'its ground');
   eq(JSON.stringify(run.pos), JSON.stringify(S.field.at), 'you stand at the stop, not their HQ');
   run.drone = null;

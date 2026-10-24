@@ -33,7 +33,7 @@ repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
 
-### [ ] T-365: The running clock
+### [x] T-365: The running clock
 Spec: §4.43 (§4.41, §4.42, §4.37)          Goldens: unchanged          Save: the clock keeps game minutes (no version bump if `run.clock` reads old saves; else 26 — say)
 Goal: on the map game time runs (1 game h ≈ 1.5 real min at ×1; Space pause; ×1 / ×2 / ×4); walking, waiting and riding take their real
 time; sessions and sleep fast-forward and can be interrupted; NPCs, buses and ferries move on the clock; no trip-hour charge.
@@ -45,7 +45,7 @@ Do not: change how many hours anything takes; touch js/map3d terrain / town / na
 task owns them); touch js/engine.
 Accept: tests (the clock advances by the walk's minutes; pause stops it; a session fast-forwards its hours; an interrupt keeps the hours so
 far; a bus is caught only if you are at the stop at its time); npm test, lint, test:ui pass; `npm run career -- 20 both` unchanged within noise.
-Result:
+Result: MapView.tick (map-view.js, own section) runs the rules' clock off the page's frame loop: 90 s a game h at ×1 (CLOCK.scale), Space pauses (End week → N; Space still ends a spent week), ×1/×2/×4; stops in sheets / menus / events / scenes / cards / a match; idle hours by City.idle (02:00 nod; a match week holds at 13:00 − the walk, chip from 1 h before). Walks: route ÷ pace in 5-min steps, no 1 h minimum (the short cut's test keeps whole hours, rides keep ½ h rounding); counted at start, played in real time (avatar3d dur / scale; you stand at the stop until the bus's time). Every place action (mapGo / mapStretch → mapFF) walks first, then fast-forwards (lock 'ff', ⏩ pill, the figure drills / sleeps) and runs the rules at the end; Esc cuts a session (whole hours so far) or a sleep (5-min steps) — City.cutDay; scout / rides / matches / figure menu stay commit-at-start. People and buses tick on the shown clock. No save change (RUN_VERSION 25). Also touched (not listed): js/map3d/map3d.mjs (setNow, setWalk 0, act, driving, gclock), pins3d.mjs (walk text), career-court.js (hours text), tests/run.js; tests/clock.test.js new; map.test / encounter.test / day.test adjusted for minutes. Career 20 runs before → after: casual Y1 66.3 → 67.0, Y2 81.3 → 83.8; good Y1 77.5 → 80.3, Y2 94.8 → 96.8 (good: sessions a day 1.9 → 2.9, bike rides 54 → 280 a run — the short hops that cost 1 h now cost minutes: NOT within noise, owner to decide). npm test, lint, test:ui pass; QA: clock-pill / clock-ff / clock-busstop.png.
 
 ### [ ] T-363: Serve odds true again; free moves inside a place; captain's calls out
 Spec: §4.41 Travel, §2.17 (dropped), §2.38          Goldens: unchanged (say if not)          Save: no change

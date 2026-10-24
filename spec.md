@@ -1942,7 +1942,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     (a new place by the harbor: an open market shed, bikes and scooters lined up out front). On the map the buses and ferries run by
     the map's clock (they stand still while it is idle and are off at night); your ride plays its legs (walk to the stop, the wait,
     aboard — your bus / taxi carries a gold ring —, walk on; the ferry with you on deck; you riding the bike / scooter).
-- §4.43 The running clock — Kenshi time **[draft — T-365]** (owner, 2026-10-24: "if we go street level Kenshi-style, drop the walking
+- §4.43 The running clock — Kenshi time **[built 2026-10-25 — T-365]** (owner, 2026-10-24: "if we go street level Kenshi-style, drop the walking
   hours and let time run"): on the map time **runs**; nothing charges trip hours any more. **Replaces** §4.41's trip hours (training,
   sleep and fixed match hours stay).
   - **The clock**: 1 game hour ≈ 1.5 real minutes at ×1 (`CLOCK.scale`); **Space** pauses, ×1 / ×2 / ×4 speeds (the old walk-speed
@@ -1960,6 +1960,20 @@ the AI coach fills every slot you leave with the same function. Built and measur
     venue by 13:00 — the clock warns you an hour before (a quiet chip, never a suggestion).
   - **Rules stay deterministic**: the hours a thing takes are the same numbers as today (walking time = the route ÷ pace), so the
     rules and the career bot count them the same way; only the screen lets them pass in real time.
+  - **[built 2026-10-25, T-365]** `CLOCK` (js/data/life.js): scale 90 s a game hour at ×1, speeds ×1 / ×2 / ×4, a fast-forward
+    1.5 game h a real second (× the speed), the warning 1 h before the hour to leave, a save every ½ game hour. A walk is the route ÷
+    pace in 5-minute steps (one at least; the 1 h minimum is gone — the short cut's "an hour more" test keeps whole hours; rides keep
+    their ½ h rounding). The walk's hours are counted as it begins and play in real time (the figure walks the road at the pace that
+    takes them; a ride's legs too — standing at the stop until the bus comes); between actions the hours pass with nothing done (no
+    block on the strip). A match you are made to play: the clock **waits** at the hour you must leave (13:00 − the walk) with a quiet
+    chip "⚑ Match 13:00 · leave by 12:10" from an hour before (then "· the clock waits"). Sessions (and Stretch, an outing, a sleep —
+    every place action) walk there first, then fast-forward with a "⏩ 1 h 20 / 3 h" pill (you drill block jumps / lie down); Esc on a
+    session or a sleep stops it: an order counts its whole hours so far (under an hour: nothing done, the time passes), a sleep every
+    5 minutes (stamina by straight lines between 4 / 6 / 8 h, under 4 h the 4 h dip; it still ends the day). Scouting, rides, matches
+    and the figure menu's actions run at once as before; the clock catches up at the fast-forward rate. It stands while paused, in a
+    sheet, a figure menu, ⚙, an event, a scene, a card over the map, a road stop's card or a result. WASD: the rules wait while you
+    move, the stop counts the walk. People and buses move on the shown clock (they stop when it does). Space = pause (also mid-walk);
+    End week moved to **N** (Space still ends a spent week). Save unchanged (RUN_VERSION 25: `run.clock.hour` just carries minutes).
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.

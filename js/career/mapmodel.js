@@ -892,6 +892,8 @@ const MapModel = {
    * The map's time for the renderer (map3d: sun, sky, night lights, people walking out and home): { idle, walk: [a, b],
    * order: [a, b] } as week time (weekTime), plus CLOCK's display constants. The renderer runs its clock toward the phase the
    * UI reports (MapView.phase) and never back. A last action without a walk keeps walk = [its start, its start].
+   * The running clock (spec §4.43): `scale` = real seconds a game hour takes at ×1 — a walk / a ride plays in real time (its hours ×
+   * scale ÷ the speed); between actions the UI's clock (MapView.now) leads.
    */
   time(run) {
     const L = City.clock(run).last || {},
@@ -909,6 +911,8 @@ const MapModel = {
       home: CLOCK.home,
       step: CLOCK.step,
       rate: CLOCK.rate,
+      scale: CLOCK.scale,
+      ff: CLOCK.ff,
       keys: CLOCK.keys
     };
   },

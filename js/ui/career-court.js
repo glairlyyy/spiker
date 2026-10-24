@@ -15,7 +15,7 @@ function courtCard(run, id) {
       return `<button class="btn" onclick="mapCourt('${id}','${T.id}', CW.courtSim)" ${why ? `disabled ${tip(why)}` : tip(info)}>${T.name} $${T.fee}→${Math.round(T.fee * COURT.prize)}${sim ? ' ⏭' : ''}</button>`;
     };
   return {
-    opts: `<span class="lab" ${tip('Entry fee → the prize if you win; a loss costs only the fee')}>Court match · ${d} h</span><div class="seg" aria-label="Court match"><button class="btn ${sim ? '' : 'on'}" onclick="CW.courtSim=false;mapPick('venue:${id}')">Play it</button><button class="btn ${sim ? 'on' : ''}" onclick="CW.courtSim=true;mapPick('venue:${id}')" ${tip(GLOSSARY.sim.long)}>Sim it</button></div>`,
+    opts: `<span class="lab" ${tip('Entry fee → the prize if you win; a loss costs only the fee')}>Court match · ${City.hrs(d)}</span><div class="seg" aria-label="Court match"><button class="btn ${sim ? '' : 'on'}" onclick="CW.courtSim=false;mapPick('venue:${id}')">Play it</button><button class="btn ${sim ? 'on' : ''}" onclick="CW.courtSim=true;mapPick('venue:${id}')" ${tip(GLOSSARY.sim.long)}>Sim it</button></div>`,
     row: COURT.tiers.map(btn)
   };
 }

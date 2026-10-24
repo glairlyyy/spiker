@@ -23,6 +23,13 @@ const LIFE = {
  * 0.5 = noon). Display constants for the map: when people walk out and home, how fast the shown clock catches up.
  */
 const CLOCK = {
+  // the running clock (spec §4.43): on the map time runs — a game hour takes `scale` real seconds at ×1; Space pauses, `speeds`
+  scale: 90,
+  speeds: [1, 2, 4],
+  ff: 1.5, // a session or a sleep fast-forwards: game hours a real second (× the speed)
+  min: 1 / 12, // the rules' smallest step: a walk rounds to 5 game minutes (a step inside a gym takes its few minutes)
+  warn: 1, // hours before the time to leave for a match you are made to play: the quiet chip
+  save: 0.5, // game hours between saves while the clock runs on its own
   out: [0.2, 0.3], // people leave home (each at a hashed moment inside) …
   home: [0.76, 0.88], // … and walk back
   step: 0.05, // how long that walk takes (days)

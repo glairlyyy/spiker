@@ -1,8 +1,10 @@
 // The island map phase of a training week: 7 days of 24 hours (spec §4.41, `run.clock`). Every action costs hours — a day
-// order 2–4 h (HOURS), an outing or a match its own, the walk there by the route (City.trip, 1 h at least) — and sleeping
+// order 2–4 h (HOURS), an outing or a match its own, the walk there by the route (City.trip, in 5-minute steps) — and sleeping
 // (home or a hotel, 4 / 6 / 8 h) ends the day. Up past 02:00 you nod off where you stand. A match you are made to play starts at
 // 13:00 (DAY.match). The map is dark where you haven't been (run.fog: points you've stood on, each revealing REVEAL_R around
 // it). The week ends only when the player ends it (sleeping through day 7 leaves only End week).
+// The running clock (spec §4.43): on the map time runs (js/ui/map-view.js drives it) — City.idle lets the hours pass with nothing
+// done; a session or a sleep cut short counts the hours so far (City.cutDay). The rules count the same hours either way.
 // Places belong to regions (REGIONS): the region sets the price and the quality; Wei's premium places may turn out
 // overhyped and Shu's rough ones may be hidden gems (rolled per run, found out by training there). DOM-free.
 
@@ -18,10 +20,23 @@ const City = {
   night: run => City.days(run) <= 0,
   /** The hour now (07 = 7; 01:00 after midnight = 25). */
   hour: run => City.clock(run).hour,
-  /** "07:00" for an hour (wraps past midnight). */
-  hhmm: h => `${String(Math.floor(((h % 24) + 24) % 24)).padStart(2, '0')}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`,
+  /** "07:00" for an hour (wraps past midnight; to the minute). */
+  hhmm(h) {
+    const m = ((Math.round(h * 60) % 1440) + 1440) % 1440;
+    return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  },
+  /** Hours as the screen prints them (spec §4.43: walks in 5-minute steps): "2 h", "1 h 20", "25 min". */
+  hrs(h) {
+    const m = Math.round(h * 60),
+      H = Math.floor(m / 60),
+      M = m % 60;
+    return !H ? `${M} min` : M ? `${H} h ${String(M).padStart(2, '0')}` : `${H} h`;
+  },
+  /** City.hoursAt's answer while a session or a sleep cut short is being counted (City.cutDay), else null. */
+  hOver: null,
   /** The hours a place's thing takes there (not the walk): an order's `h` (or its first option), a sleep's, an outing's own, else DAY.act. */
   hoursAt(id, oid, h) {
+    if (City.hOver !== null) return City.hOver;
     const s = SPOTS[id],
       o = City.orderOf(id, oid);
     if (o) return City.hourOpts(o).includes(h) ? h : City.hourOpts(o)[0];
@@ -47,7 +62,8 @@ const City = {
     if (mt) {
       const walk = mt.at ? City.walkH(to || City.pos(run), mt.at) : 0,
         by = DAY.match - walk;
-      if (C.hour + h > by) return `the match is at ${City.hhmm(DAY.match)}${walk ? ` (${walk} h walk to ${mt.name})` : ''} — be there`;
+      if (C.hour + h > by + 1e-6)
+        return `the match is at ${City.hhmm(DAY.match)}${walk ? ` (${City.hrs(walk)} walk to ${mt.name})` : ''} — be there`;
     }
     return '';
   },
@@ -67,6 +83,61 @@ const City = {
     if (h > 0 && what) C.log.push({ ...what, from: C.hour, h });
     C.hour += h;
   },
+  /**
+   * The running clock (spec §4.43): h hours pass with nothing done (you stand, wait, look round) — no block on today's strip. It stops
+   * at the hour you must leave for a match you are made to play (City.leaveBy: the clock waits for you there) and when the week is
+   * spent; at 02:00 you nod off where you stand (City.nod). Returns { h (the hours that passed), line (the diary text, '' if none) }.
+   */
+  idle(run, h) {
+    const C = City.clock(run);
+    if (!(h > 0) || City.night(run)) return { h: 0, line: '' };
+    const by = City.leaveBy(run);
+    if (by !== null) h = Math.min(h, Math.max(0, by - C.hour));
+    if (C.hour + h >= DAY.late) {
+      const d = Math.max(0, DAY.late - C.hour);
+      C.hour = DAY.late;
+      return { h: d, line: City.nod(run).replace(/^ · /, '') };
+    }
+    C.hour += h;
+    return { h, line: '' };
+  },
+  /** The hour you must set off for this week's match you are made to play (DAY.match − the walk to its venue), or null (none). */
+  leaveBy(run) {
+    const mt = City.matchAt(run);
+    return mt ? DAY.match - (mt.at ? City.walkH(City.pos(run), mt.at) : 0) : null;
+  },
+  /**
+   * A session or a sleep at place id cut short after `done` hours (spec §4.43: Esc — the hours so far count, the rest is lost):
+   * an order counts its whole hours (the same tables as a 1–4 h session; under an hour: nothing done), a sleep every minute
+   * (City.sleepK); the rest of the time passes (City.idle). Callers stand at the place (the walk was taken). The diary line.
+   */
+  cutDay(run, id, hard, mate, done) {
+    const oid = City.orderOf(id, mate),
+      s = SPOTS[id],
+      sleep = !oid && s && s.act === 'rest',
+      H = sleep ? Math.round(done / CLOCK.min) * CLOCK.min : Math.floor(done + 1e-6);
+    let line = '';
+    if (H >= (sleep ? CLOCK.min : 1)) {
+      City.hOver = H;
+      try {
+        line = City.day(run, id, hard, mate, H);
+      } finally {
+        City.hOver = null;
+      }
+    }
+    const rest = sleep ? 0 : done - (line ? H : 0),
+      r = City.idle(run, rest);
+    return `${line || `Stopped after ${City.hrs(done)}: nothing done.`}${line && !sleep ? ` (stopped after ${City.hrs(done)})` : ''}${r.line ? ` · ${r.line}` : ''}`;
+  },
+  /** The share of the missing stamina h hours of sleep bring back (DAY.sleep, in between and under 4 h by straight lines from 0). */
+  sleepK(h) {
+    if (DAY.sleep[h]) return DAY.sleep[h];
+    const ks = [0, ...DAY.sleepH],
+      v = k => (k ? DAY.sleep[k] : 0);
+    for (let i = 1; i < ks.length; i++)
+      if (h <= ks[i]) return v(ks[i - 1]) + ((h - ks[i - 1]) / (ks[i] - ks[i - 1])) * (v(ks[i]) - v(ks[i - 1]));
+    return v(ks[ks.length - 1]);
+  },
   /** Week time (days since the week began, fractional) at hour `hr` of today — for the map's clock (MapModel.time). */
   wt: (run, hr = City.hour(run)) => City.clock(run).day - 1 + hr / 24,
   /** The last action's span for the map (walk, then its own block) in week time: { walk: [a, b] | null, act: [a, b] | null }. */
@@ -85,12 +156,13 @@ const City = {
   sleep(run, h, mul = World.restMul(run), at = null) {
     const C = City.clock(run),
       start = C.hour,
-      frac = Math.min(1, (DAY.sleep[h] || DAY.sleep[4]) * mul * (Feel.has(run, 'insomnia') ? SCARS.insomnia.k : 1)), // Insomnia (spec §4.30)
-      out = [Run.bump(run, 'sta', Math.round((run.staMax - run.sta) * frac))];
-    if (DAY.sleepMood[h]) out.push(Run.bump(run, 'mood', DAY.sleepMood[h]));
-    C.log.push({ k: 'sleep', label: `Sleep ${h} h`, at, from: start, h });
+      frac = Math.min(1, City.sleepK(h) * mul * (Feel.has(run, 'insomnia') ? SCARS.insomnia.k : 1)), // Insomnia (spec §4.30)
+      out = [Run.bump(run, 'sta', Math.round((run.staMax - run.sta) * frac))],
+      mood = DAY.sleepMood[h] || (h < DAY.sleepH[0] ? DAY.sleepMood[DAY.sleepH[0]] : 0); // (a sleep cut short under 4 h: the 4 h dip)
+    if (mood) out.push(Run.bump(run, 'mood', mood));
+    C.log.push({ k: 'sleep', label: `Sleep ${City.hrs(h)}`, at, from: start, h });
     City.endDay(run, start, h);
-    return `Slept ${h} h${at ? ` (${at})` : ''}: ${out.filter(Boolean).join(', ') || 'rested'}`;
+    return `Slept ${City.hrs(h)}${at ? ` (${at})` : ''}: ${out.filter(Boolean).join(', ') || 'rested'}`;
   },
   /** Up past 02:00 (spec §4.41): you nod off where you stand — 4 h, poor sleep, mood down. The diary text. */
   nod(run) {
@@ -107,7 +179,7 @@ const City = {
     C.day++;
     C.hour = wake;
     C.met = [];
-    C.log = wake > s0 ? [{ k: 'sleep', label: `Sleep ${h} h`, from: s0, h: wake - s0 }] : [];
+    C.log = wake > s0 ? [{ k: 'sleep', label: `Sleep ${City.hrs(h)}`, from: s0, h: wake - s0 }] : [];
     C.last = { walk: null, act: [City.wt(run, start) - 1, City.wt(run, wake)] };
   },
   /** A day's entry on the week's day track (spec §10.2): its longest block that isn't a walk or sleep (else the walk, else a rest). */
@@ -139,11 +211,16 @@ const City = {
     (run.dayLog || (run.dayLog = [])).push(City.daySum(C.log));
     Object.assign(C, { day: Math.min(WEEK_DAYS, C.day + 1), hour: DAY.wake, log: [], last: null, met: [] });
   },
-  /** Hours on foot from map point a to b (spec §4.41): the route's cost ÷ WALK_PACE (÷ RUN_PACE more when run), 1 h at least; 0 when you are there. */
+  /**
+   * Hours on foot from map point a to b (spec §4.41): the route's cost ÷ WALK_PACE (÷ RUN_PACE more when run), in CLOCK.min steps (5
+   * game minutes, one at least — spec §4.43: no 1 h minimum); 0 when you are there.
+   */
   walkH(a, b, ran = false) {
     if (Math.hypot(b[0] - a[0], b[1] - a[1]) <= HERE_R) return 0;
-    return Math.max(1, Math.round(City.path(a, b).cost / (WALK_PACE * (ran ? RUN_PACE : 1))));
+    return City.step(City.path(a, b).cost / (WALK_PACE * (ran ? RUN_PACE : 1)));
   },
+  /** Hours in the rules' steps (CLOCK.min, one at least). */
+  step: h => Math.max(1, Math.round(h / CLOCK.min)) * CLOCK.min,
   /** Region of a place (home: where you live). */
   region: (run, id) => Front.owner(run, id) || (HOUSING[run.housing] || HOUSING.studio).region || 'open',
   /** Map position of a place (home moves with your housing). */
@@ -510,7 +587,7 @@ const City = {
     City.mark(run, h0, t, what ? h : 0);
     City.moveTo(run, p);
     City.note(run, from, h0);
-    return t ? `(${t} h walk) ` : '';
+    return t ? `(${City.hrs(t)} walk) ` : '';
   },
   /** The last trip, for the road's encounter (spec §4.37 3; not saved, read at once by the map): { from, to, day (days used before it), hour (its start) }. */
   last: null,
@@ -526,9 +603,9 @@ const City = {
     const from = City.pos(run),
       far = Math.hypot(to[0] - from[0], to[1] - from[1]);
     if (far < 2 * ENC.min) return null;
-    const hrs = cost => (far <= HERE_R ? 0 : Math.max(1, Math.round(cost / WALK_PACE)));
+    const hrs = cost => (far <= HERE_R ? 0 : Math.max(1, Math.round(cost / WALK_PACE))); // (the short cut's test in whole hours, as before §4.43)
     const safe = City.path(from, to),
-      days = City.trip(run, to),
+      days = hrs(safe.cost),
       max = Math.max(safe.cost * ENC.alt.slack, safe.cost + ENC.alt.extra);
     for (const c of Encounter.vias(run)) {
       if (Encounter.dist(safe.pts, c.at).d <= ENC.r) continue;
@@ -592,8 +669,8 @@ const City = {
     }
     return `${trip}${s.name}: ${out.filter(Boolean).join(', ') || 'a quiet night'}`;
   },
-  /** Hours to just travel to point p (spec §4.41: 1 h at least; run = faster, RUN_PACE). */
-  travelDays: (run, p, how = 'walk') => Math.max(1, City.walkH(City.pos(run), p, how === 'run')),
+  /** Hours to just travel to point p (spec §4.41; no 1 h minimum since §4.43; run = faster, RUN_PACE). */
+  travelDays: (run, p, how = 'walk') => City.walkH(City.pos(run), p, how === 'run'),
   travelHours: (run, p, how = 'walk') => City.travelDays(run, p, how),
   /** Travel to any point on the island; `how` 'run' (T-309): faster, the route's ground trains you; a TRANSPORT way (spec §4.42): City.rideTo. Returns the diary line. */
   travelTo(run, p, how = 'walk') {
@@ -608,7 +685,7 @@ const City = {
     City.mark(run, h0, t, 0);
     City.moveTo(run, p);
     City.note(run, from, h0);
-    const where = `${REGIONS[City.loc(run)].name} (${t} h)`;
+    const where = `${REGIONS[City.loc(run)].name} (${City.hrs(t)})`;
     return `${ran ? `Ran to ${where}: ${Training.runTrip(run, plan)}` : `Walked to ${where}.`}${City.upLate(run)}`;
   },
   // ---- transport (spec §4.42; the numbers: TRANSPORT) ---------------------------------------------------------------------
@@ -901,7 +978,7 @@ const City = {
     }
     const verb = { bus: 'Took the bus', bike: 'Biked', scooter: 'Rode the scooter', ferry: 'Took the ferry', taxi: 'Took a taxi' }[k],
       rest = out.filter(Boolean).join(', ');
-    return `${verb} to ${REGIONS[City.loc(run)].name} (${W.h} h${W.cost ? `, −$${W.cost}` : ''})${rest ? `: ${rest}` : ''}.${City.upLate(run)}`;
+    return `${verb} to ${REGIONS[City.loc(run)].name} (${City.hrs(W.h)}${W.cost ? `, −$${W.cost}` : ''})${rest ? `: ${rest}` : ''}.${City.upLate(run)}`;
   },
   /** Why you can't buy ride k at the Harbor Market now ('' if you can). */
   buyWhy(run, k) {

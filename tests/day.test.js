@@ -52,15 +52,15 @@ test('day: a long session can injure even rested; a 2 h one at good stamina neve
   }
 });
 
-test('day: the walk by the route — 1 h at least, none where you stand, a run faster; no free hops (T-352)', () => {
+test('day: the walk by the route — in 5-minute steps (no 1 h minimum, §4.43), none where you stand, a run faster (T-352, T-365)', () => {
   const [g, run] = dayRun();
   eq(g.City.trip(run, run.pos), 0, 'standing there: no walk');
   const near = [run.pos[0] + 10, run.pos[1]];
-  eq(g.City.trip(run, near), 1, 'a few steps: 1 h');
+  eq(g.City.trip(run, near), g.CLOCK.min, 'a few steps: 5 game minutes');
   const far = g.City.at(run, 'trail'),
     w = g.City.trip(run, far),
     r = g.City.travelDays(run, far, 'run');
-  eq(w, Math.max(1, Math.round(g.City.path(run.pos, far).cost / g.WALK_PACE)), 'the route ÷ WALK_PACE');
+  eq(w, Math.max(1, Math.round(g.City.path(run.pos, far).cost / g.WALK_PACE / g.CLOCK.min)) * g.CLOCK.min, 'the route ÷ WALK_PACE');
   assert(r < w, `running is faster (${r} h vs ${w} h)`);
   const h0 = g.City.hour(run);
   assert(g.City.travelTo(run, far), 'walked');

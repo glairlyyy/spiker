@@ -56,7 +56,7 @@ test('transport: fares — bus $3 a ride, ferry $5, taxi $8 + $4 an hour saved, 
     W = k => g.City.way(run, to, k),
     walk = g.City.trip(run, to);
   eq(W('bus').cost, 3 * W('bus').legs.filter(l => l.m === 'bus').length, 'bus: $3 a ride');
-  eq(W('taxi').cost, 8 + 4 * (walk - W('taxi').h), 'taxi: $8 + $4 an hour of walking saved');
+  eq(W('taxi').cost, Math.round(8 + 4 * (walk - W('taxi').h)), 'taxi: $8 + $4 an hour of walking saved');
   eq(W('bike').cost, 0, 'bike: free');
   const sc = g.City.wheelTrip(run.pos, to, 'scooter');
   eq(W('scooter').cost, 2 * Math.max(1, Math.ceil(sc.rideH)), 'scooter: $2 fuel an hour');

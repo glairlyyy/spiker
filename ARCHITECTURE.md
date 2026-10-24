@@ -31,7 +31,8 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   traits only your player carries — spec §4.30; not the NPCs' `TRAITS` in people.js), `gifts.js` (GIFTS, GIFT_TIERS, GIFT_ODDS: talent
   tiers and innate gifts — spec §4.35), `team.js` (TEAM, TEAM_CHAT, TEAM_REPLY, ARCS: team stories — spec §4.36; merges its memory kinds into
   MEMORY / MEM_TEXT), `life.js` (LIFE: the named figures on the map — cap, rings, courts, figure sizes, act words; CLOCK: the day
-  clock — dawn / walk / order / night times, when people walk out and home, display rates, the light keys — spec §4.37 1–2),
+  clock — dawn / walk / order / night times, when people walk out and home, display rates, the light keys — spec §4.37 1–2; the
+  running clock's scale, speeds, fast-forward rate, 5-minute step, match warning — spec §4.43),
   `encounter.js` (ENC, ENC_STOPS, ENC_ACT, ENC_HI, ENC_CREW, ENC_BATTLE, ENC_ROUTE, ENC_MENU, ENC_GROUND: the road's numbers and lines,
   the figure menu, pickup games — spec §4.37 3–4, 7, §4.38; merges `met_road` / `sparred` into MEMORY / MEM_TEXT).
 - **engine** `court.js` (geometry, `Z_UNITS`, `UNIT_M`, `BALL_K` / `SERVE_K`), `players.js`, `teams.js`, `save.js`,

@@ -21,7 +21,7 @@ function placeTags(run, sid, trip) {
     held = s && Front.seized(run, sid);
   return [
     held ? ['Seized', `from ${esc(REGIONS[s.region].name)}`, 'wa'] : front ? ['Border', 'On the front'] : null,
-    trip ? ['Walk', `${trip} h there`, trip >= 4 ? 'wa' : ''] : null
+    trip ? ['Walk', `${City.hrs(trip)} there`, trip >= 4 ? 'wa' : ''] : null
   ].filter(Boolean);
 }
 /** The "Details ›" peek of a place (facility level, streak, border, trip …); '' with nothing to show. */
@@ -52,7 +52,7 @@ function placePanel(run, id) {
     trip = City.trip(run, at),
     trOk = trip && !run.event && !City.noTime(run, trip, at) && !City.outside(run, at),
     travel = trip
-      ? `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${trOk ? '' : `disabled ${tip(City.noTime(run, trip, at) || (City.outside(run, at) ? City.fence(run) : 'answer the event first'))}`}>Walk · ${trip} h</button>${runBtn(run, at, trOk ? '' : City.noTime(run, trip, at) || City.fence(run) || 'answer the event first')}`
+      ? `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${trOk ? '' : `disabled ${tip(City.noTime(run, trip, at) || (City.outside(run, at) ? City.fence(run) : 'answer the event first'))}`}>Walk · ${City.hrs(trip)}</button>${runBtn(run, at, trOk ? '' : City.noTime(run, trip, at) || City.fence(run) || 'answer the event first')}`
       : '',
     base = { region: City.region(run, sid), title: `${s.icon} ${esc(s.name)}`, after: placeDetails(sid, placeTags(run, sid, trip)) };
   if (s.kit) {
@@ -65,7 +65,7 @@ function placePanel(run, id) {
       ...base,
       kind: 'Outing',
       flavour: s.desc,
-      body: `<p class="small">Pick who comes · $${cost} · ${City.hoursAt(sid)} h</p><div class="pmates">${Run.mates(run)
+      body: `<p class="small">Pick who comes · $${cost} · ${City.hrs(City.hoursAt(sid))}</p><div class="pmates">${Run.mates(run)
         .map(
           m =>
             `<button class="btn" onclick="mapGo('${sid}','${m.id}')" ${City.can(run, sid, m.id).ok ? '' : 'disabled'}>${faceSVG(m, 0, 22)} ${esc(m.name)} <small class="mute">Bond ${Run.you(run).bond[m.id] || 0}</small></button>`
@@ -97,7 +97,7 @@ function placePanel(run, id) {
     after: base.after,
     tags: [], // cost and hours are on the button
     row: [
-      `<button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${sid}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}>${label} · ${City.hoursAt(sid)} h${cost ? ` · $${cost}` : ''}</button>`,
+      `<button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${sid}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}>${label} · ${City.hrs(City.hoursAt(sid))}${cost ? ` · $${cost}` : ''}</button>`,
       travel
     ].filter(Boolean)
   });
@@ -117,7 +117,7 @@ function sleepRows(run, sid, trip, cost) {
       const c = City.can(run, sid, null, h),
         gain = Math.round(miss * Math.min(1, DAY.sleep[h] * mul * ins)),
         wake = City.hhmm(City.hour(run) + trip + h),
-        cst = [trip ? term('day', `${trip} h`, 'cost') : '', term('day', `${h} h`, 'cost'), cost ? `$${cost}` : '']
+        cst = [trip ? term('day', `${City.hrs(trip)}`, 'cost') : '', term('day', `${City.hrs(h)}`, 'cost'), cost ? `$${cost}` : '']
           .filter(Boolean)
           .join(' '),
         res = [
@@ -127,7 +127,7 @@ function sleepRows(run, sid, trip, cost) {
         ]
           .filter(Boolean)
           .join(' · ');
-      return `<button class="btn ord ${i === 0 && c.ok ? 'hot' : ''}" onclick="mapGo('${sid}',null,${h})" ${c.ok ? '' : `disabled ${tip(c.why)}`}><b class="onm">Sleep ${h} h</b><span class="oln">${cst} → ${res}</span></button>`;
+      return `<button class="btn ord ${i === 0 && c.ok ? 'hot' : ''}" onclick="mapGo('${sid}',null,${h})" ${c.ok ? '' : `disabled ${tip(c.why)}`}><b class="onm">Sleep ${City.hrs(h)}</b><span class="oln">${cst} → ${res}</span></button>`;
     })
     .join('')}<small class="mute">Sleeping ends the day.</small></div>`;
 }
@@ -136,7 +136,7 @@ function secretPanel(run, sid, base, travel, days, cost) {
   const S = Secret.of(run),
     go = (label, opt = '', hot = true) => {
       const c = City.can(run, sid, opt || undefined);
-      return `<button class="btn ${c.ok && hot ? 'hot' : ''}" onclick="mapGo('${sid}'${opt ? `,'${opt}'` : ''})" ${c.ok ? '' : `disabled ${tip(c.why)}`}>${label} · ${days} h${cost ? ` · $${cost}` : ''}</button>`;
+      return `<button class="btn ${c.ok && hot ? 'hot' : ''}" onclick="mapGo('${sid}'${opt ? `,'${opt}'` : ''})" ${c.ok ? '' : `disabled ${tip(c.why)}`}>${label} · ${City.hrs(days)}${cost ? ` · $${cost}` : ''}</button>`;
     },
     seen = Secret.seen(run),
     body =
@@ -170,10 +170,10 @@ function pointPanel(run, p) {
     region: seen ? r : null,
     kind: 'Travel',
     title: `⚑ ${seen ? esc(REGIONS[r].name) : 'Unexplored land'}`,
-    tags: d >= 4 ? [ptag(`Walk ${d} h`, '', 'warn')] : [],
+    tags: d >= 4 ? [ptag(`Walk ${City.hrs(d)}`, '', 'warn')] : [],
     flavour: seen ? REGIONS[r].desc : 'Nobody you know has been out there. Go and see what you find.',
     row: [
-      `<button class="btn hot" onclick="mapTravel(${p[0]},${p[1]})" ${late ? `disabled ${tip(late)}` : ''}>Walk here · ${d} h → ${City.hhmm(City.hour(run) + d)}</button>`
+      `<button class="btn hot" onclick="mapTravel(${p[0]},${p[1]})" ${late ? `disabled ${tip(late)}` : ''}>Walk here · ${City.hrs(d)} → ${City.hhmm(City.hour(run) + d)}</button>`
     ]
   });
 }
@@ -193,7 +193,7 @@ function clashBorder(run, att, def) {
 function raidBtn(run, d) {
   const why = Fight.raidWhy(run);
   if (why === "your club isn't on this border" || why === 'no hot border this week') return '';
-  return `<button class="btn" onclick="mapRaid()" ${why ? `disabled ${tip(why)}` : tip(`A street game against their crew, played at once. Win: their Strength −${WAR.lose * DAY_ORDERS.raid.k} (× 2). Lose: yours −${WAR.lose}.`)}>Raid · ${d} h · ${term('sta', -DAY_ORDERS.raid.sta, 'cost')} → Strength ×${DAY_ORDERS.raid.k}</button>`;
+  return `<button class="btn" onclick="mapRaid()" ${why ? `disabled ${tip(why)}` : tip(`A street game against their crew, played at once. Win: their Strength −${WAR.lose * DAY_ORDERS.raid.k} (× 2). Lose: yours −${WAR.lose}.`)}>Raid · ${City.hrs(d)} · ${term('sta', -DAY_ORDERS.raid.sta, 'cost')} → Strength ×${DAY_ORDERS.raid.k}</button>`;
 }
 function clashPanel(run) {
   const c = Fight.clashSite(run);
@@ -250,7 +250,7 @@ function clashPanel(run) {
       ['Border', clashBorder(run, att, def)],
       std(c.a),
       std(c.b),
-      ['Walk', trip ? `${trip} h` : 'None', trip >= 4 ? 'wa' : '']
+      ['Walk', trip ? `${City.hrs(trip)}` : 'None', trip >= 4 ? 'wa' : '']
     ])}<div class="pstakes">${card(c.a, c.b)}${card(c.b, c.a)}</div>`,
     opts:
       late || ban
@@ -259,7 +259,7 @@ function clashPanel(run) {
     row: [
       fight(c.a),
       fight(c.b),
-      `<button class="btn" onclick="mapClash(null)" ${late ? `disabled ${tip(late)}` : tip(`See both sides' clubs in action: scouts them. −${CLASH.watchSta} stamina`)}>Watch · ${d} h</button>`,
+      `<button class="btn" onclick="mapClash(null)" ${late ? `disabled ${tip(late)}` : tip(`See both sides' clubs in action: scouts them. −${CLASH.watchSta} stamina`)}>Watch · ${City.hrs(d)}</button>`,
       raidBtn(run, d)
     ]
   });
@@ -295,7 +295,8 @@ function hourSeg(opts = HOURS.opts) {
   const on = opts.filter(v => v <= (CW.hrs || 2)).pop() || opts[0];
   return `<div class="seg hrs" role="group" aria-label="Hours" ${tip('How long: longer gains more, but each hour costs more stamina than the last and the injury risk climbs')}>${opts
     .map(
-      h => `<button class="btn ${h === on ? 'on' : ''}" aria-pressed="${h === on}" onclick="CW.hrs=${h};mapPick(CW.spot)">${h} h</button>`
+      h =>
+        `<button class="btn ${h === on ? 'on' : ''}" aria-pressed="${h === on}" onclick="CW.hrs=${h};mapPick(CW.spot)">${City.hrs(h)}</button>`
     )
     .join('')}</div>`;
 }
@@ -325,7 +326,7 @@ function ordBtn(run, O, pv, c, onclick, days, price, hot) {
         return `<span class="${hot ? '' : r.cls}" ${tip(r.n === Infinity ? `${Body.name(k)}: at the cap this season — matches only` : r.n <= 1 ? `${Body.name(k)}: next point this session` : `${Body.name(k)}: next point in ${r.n} sessions`)}>${Body.glyph(k)} ${BODY.short[k] || 'Wit'} ${r.t}</span>`;
       })
       .join(' · '),
-    cost = [term('day', `${days} h`, 'cost'), term('sta', -pv.sta, 'cost'), price ? `$${price}` : 'free'].join(' ');
+    cost = [term('day', `${City.hrs(days)}`, 'cost'), term('sta', -pv.sta, 'cost'), price ? `$${price}` : 'free'].join(' ');
   return `<button class="btn ord ${hot ? 'hot' : ''}" onclick="${onclick}" ${c.ok ? '' : `disabled ${tip(c.why)}`}><b class="onm">${esc(O.name)}${ORD_KIND[O.kind] ? ` <small>${ORD_KIND[O.kind]}</small>` : ''}</b><span class="oln">${cost} → ${res}${pv.pay ? ` · <b>+$${pv.pay}</b>` : ''}</span></button>`;
 }
 /** A kit place's parts for placeCard (spec §4.33): kind, tags, the orders first, then options (Normal / Hard), who's on the floor, level. */
@@ -397,7 +398,7 @@ function runBtn(run, p, late = '') {
       })
       .join(' · ');
   if (!P.sta) return '';
-  return `<button class="btn run" onclick="mapTravel(${p[0]},${p[1]},'run')" ${why ? `disabled ${tip(why)}` : tip('Run the route: its ground trains you (roads: Endurance; dirt and mountain paths: + Strength; boardwalk: Agility; the Steps: Strength + Agility)')}>Run · ${P.days} h ${term('sta', -P.sta, 'cost')} → ${res}</button>`;
+  return `<button class="btn run" onclick="mapTravel(${p[0]},${p[1]},'run')" ${why ? `disabled ${tip(why)}` : tip('Run the route: its ground trains you (roads: Endurance; dirt and mountain paths: + Strength; boardwalk: Agility; the Steps: Strength + Agility)')}>Run · ${City.hrs(P.days)} ${term('sta', -P.sta, 'cost')} → ${res}</button>`;
 }
 /** Stretch at map point p (spec §4.33: the island is the gym): the hour picker + its order button (cost → result); `pre`: rows before it. */
 function stretchAt(run, p, pre = '') {
@@ -443,7 +444,7 @@ function challengeBlock(run, ti) {
       ]
     ]
   )}
-    <div class="acts pri"><button class="btn ${hot}" onclick="CW.peek=null;mapChallenge(${ti})" ${late ? `disabled ${tip(late)}` : ''}>Challenge · ${cost} h</button><button class="btn" onclick="CW.peek=null;mapChallenge(${ti}, true)" ${late ? 'disabled' : ''} ${tip(GLOSSARY.sim.long)}>Sim ⏭</button></div>`;
+    <div class="acts pri"><button class="btn ${hot}" onclick="CW.peek=null;mapChallenge(${ti})" ${late ? `disabled ${tip(late)}` : ''}>Challenge · ${City.hrs(cost)}</button><button class="btn" onclick="CW.peek=null;mapChallenge(${ti}, true)" ${late ? 'disabled' : ''} ${tip(GLOSSARY.sim.long)}>Sim ⏭</button></div>`;
   // collapsed to one row (§10.8): verdict at a glance, the rest in the peek
   return `<section class="pchal">${peek(`ch:${ti}`, `⚔ Challenge <span class="${W.verdict === 'likely' ? 'up' : 'mute'}">${W.verdict}</span>`, body, 'row')}</section>`;
 }
@@ -495,7 +496,7 @@ function overthrowBlock(run, ti) {
     ['Win', `${name} destroyed: its land and places to ${S ? esc(WAR.units[S.by].name) : 'the winner'}`],
     ['Injury', `~${risk}%`]
   ])}
-    <div class="acts pri"><button class="btn" onclick="CW.peek=null;mapOverthrow('${u}')" ${late ? `disabled ${tip(late)}` : ''}>Overthrow · ${d} h</button><button class="btn" onclick="CW.peek=null;mapOverthrow('${u}', true)" ${late ? 'disabled' : ''} ${tip(GLOSSARY.sim.long)}>Sim ⏭</button></div>`;
+    <div class="acts pri"><button class="btn" onclick="CW.peek=null;mapOverthrow('${u}')" ${late ? `disabled ${tip(late)}` : ''}>Overthrow · ${City.hrs(d)}</button><button class="btn" onclick="CW.peek=null;mapOverthrow('${u}', true)" ${late ? 'disabled' : ''} ${tip(GLOSSARY.sim.long)}>Sim ⏭</button></div>`;
   return `<section class="pchal">${peek(`ot:${ti}`, `⚔ Overthrow <span class="${late ? 'mute' : 'dn'}">${esc(WAR_STAGES[War.stage(run, u)].name)} · ${War.str(run, u)}</span>`, body, 'row')}</section>`;
 }
 function hqPanel(run, ti) {
@@ -547,7 +548,7 @@ function hqPanel(run, ti) {
         ? `<button class="btn ${j.ok ? 'hot' : 'lock'}" onclick="joinClub(${ti})" ${j.ok ? (free ? '' : tip(switchCost(run))) : `disabled ${tip(`They ask: ${World.joinText(ti, run)}. Missing: ${j.why.join(', ')}`)}`}>${j.ok ? (free ? 'Sign' : `Switch · ⚑ ${WINDOW.rep}`) : esc(win.open || Run.cupDef(run) ? (free ? joinGap(run, ti) : j.why[0]) : win.next ? `Window · W${win.next}` : 'Window shut')}</button>`
         : '',
       ti !== run.team
-        ? `<button class="btn" onclick="mapScout(${ti})" ${late ? `disabled ${tip(late)}` : tip(`A day at their HQ${sc > 1 ? ' (+ the trip)' : ''}: see their roster and elements, hear a rumour. −${SCOUT_STA} stamina`)}>${seen ? 'Scout again' : 'Scout'} · ${sc} h</button>`
+        ? `<button class="btn" onclick="mapScout(${ti})" ${late ? `disabled ${tip(late)}` : tip(`A day at their HQ${sc > 1 ? ' (+ the trip)' : ''}: see their roster and elements, hear a rumour. −${SCOUT_STA} stamina`)}>${seen ? 'Scout again' : 'Scout'} · ${City.hrs(sc)}</button>`
         : '',
       `<button class="btn" onclick="openDossier('${f.region}')" ${tip(`Everything you know about ${REGIONS[f.region].name}`)}>Dossier</button>`
     ].filter(Boolean),
@@ -623,7 +624,7 @@ function rideLine(run, W) {
           )
         : '',
     cost = [
-      term('day', `${W.h} h`, 'cost'),
+      term('day', `${City.hrs(W.h)}`, 'cost'),
       W.sta ? term('sta', -W.sta, 'cost') : '',
       W.cost ? `$${W.cost}${W.dbl ? ' <span class="dn">fare ×2: standing</span>' : ''}` : 'free'
     ]
@@ -658,7 +659,7 @@ function marketPanel(run, id) {
       c = City.can(run, id, k),
       own = City.owns(run, k),
       h = !hot && c.ok ? (hot = true) : false;
-    return `<button class="btn ord ${h ? 'hot' : ''}" onclick="mapGo('${id}','${k}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}><b class="onm">${own ? `${esc(T.name)} <small>yours</small>` : `Buy the ${k}`}</b><span class="oln">${own ? esc(res[k]) : c.ok ? `${term('day', `${City.cost(run, id, k)} h`, 'cost')} $${T.price} → ${esc(res[k])}` : `<span class="mute">${esc(c.why)}</span>`}</span></button>`;
+    return `<button class="btn ord ${h ? 'hot' : ''}" onclick="mapGo('${id}','${k}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}><b class="onm">${own ? `${esc(T.name)} <small>yours</small>` : `Buy the ${k}`}</b><span class="oln">${own ? esc(res[k]) : c.ok ? `${term('day', `${City.hrs(City.cost(run, id, k))}`, 'cost')} $${T.price} → ${esc(res[k])}` : `<span class="mute">${esc(c.why)}</span>`}</span></button>`;
   });
   return placeCard({
     region: City.region(run, id),
@@ -668,7 +669,7 @@ function marketPanel(run, id) {
     body: `<div class="ords">${rows.join('')}</div><small class="mute">Bought once. Not on mountain paths: Shu's highlands stay on foot.</small>`,
     row: trip
       ? [
-          `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${late ? `disabled ${tip(late)}` : ''}>Walk · ${trip} h</button>${runBtn(run, at, late)}`
+          `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${late ? `disabled ${tip(late)}` : ''}>Walk · ${City.hrs(trip)}</button>${runBtn(run, at, late)}`
         ]
       : [],
     after: hourSeg(HOURS.stretch) + ordList(run, id, false) + placeDetails(id, placeTags(run, id, trip))
