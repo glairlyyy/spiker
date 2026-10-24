@@ -2202,3 +2202,77 @@ html.reduced .hc.deal {
 .over.settled:not([hidden]) .ocard.ocard {
   animation: none;
 }
+/* your own hand (spec §2.37 Your hand, T-349): the type word in the band, Request, the captain's hand list, the deck pick */
+.hand .hreq {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+.hand .hreq small {
+  font-size: 12px;
+}
+.hli.rq {
+  grid-template-columns: 4px minmax(0, 1fr) auto auto;
+}
+.hli.rq > .btn,
+.hli.rq > small.mute {
+  grid-column: 4;
+  grid-row: 1 / span 2;
+}
+.hli.rq > .btn {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.hli .odds.likely {
+  color: var(--good);
+}
+.hli .odds.maybe {
+  color: var(--warn);
+}
+.hli .odds.unlikely {
+  color: var(--bad-soft);
+}
+.prep .dkg {
+  margin: 4px 0 6px;
+}
+.prep .dkg .cgl {
+  display: block;
+  margin-bottom: 4px;
+}
+.prep .dk.pick {
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.prep .dk.pick.on {
+  border-color: var(--sel-line);
+  background: var(--sel-bg);
+}
+.prep .dk.pick[aria-disabled='true'] {
+  opacity: 0.55;
+}
+.hmini:has(> .hc:nth-child(3):last-child) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.prep .dkp {
+  max-height: 184px;
+  overflow: auto;
+  padding-right: 4px;
+}
+.prep .dkp .dks {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.prep .dk.pick {
+  min-height: 28px;
+  padding: 2px 8px 2px 0;
+}
+.prep .dk.pick small {
+  grid-column: 3;
+  grid-row: 1;
+}
+.hand .hlist:has(.hli.rq) {
+  width: 460px;
+}

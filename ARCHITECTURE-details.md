@@ -1272,7 +1272,7 @@ basic|play|once|trap|op, src base|book|tech|trait|op|duo, dur, per 'pts'|'srv', 
 defaulted by kind at load; `CARD_EDGE` / `EDGE` (fit / counter edges, T-299); `CARD_AI` (the captain); `TURN.pts` 6.
 
 **State** `m.deck[i]` (null with `opts.cards === false`):
-- `by` 'you' | 'ai' (who plays the hand), `me` (career non-captain: your id — the cards you bring are yours, `Cards.mine`)
+- `by` 'you' | 'ai' (who plays the team hand), `me` (a non-captain with their own hand: your id), `my` (that hand, below; null)
 - `size` hand places (5; a Broken war unit fewer), `hand` [id | null] (null = a gap until the next turn), `draw` [ids, top first],
   `disc` [{ id, cd }] (cd = points left cooling; 0 → shuffled back when the draw runs out), `used` [OP ids gone for the match]
 - `act` [{ id, left, per, by, pids, who, lv, at, pin? }] — active cards: `left` points (serves of this side for per 'srv'), `by`
@@ -1281,6 +1281,25 @@ defaulted by kind at load; `CARD_EDGE` / `EDGE` (fit / counter edges, T-299); `C
 - `pt` points played at its last play (one play a side a point), `log` [{ k: play|discard|end|caught|sprung, id, at, by? }],
   `played` { id: n }, `stat` { id: { fit|mis|ctr: [rallies, won] } }; internals `st`, `ek`, `bk`, `force`, `buff`, `cord`.
 - Match: `m.turnN`, `m.turnAt`, `m.turnLog` [{ n, at, hands }], `m.cardQ` (acts waiting for the next serve).
+- **Types** (T-349): `CARDS[id].type` 'team' (the playbook, God Resolve, INZONE!!, Element Surge) | 'debuff' (traps, Float Barrage,
+  Short Serve, Get In Their Head) | 'solo' (the rest), set at load. One team play active a side: `Cards.team(m, i)` (the active
+  entry); a team play with `dur` that is not caught replaces it (`cardEnd(m, i, a, 'replaced')`: after-cost, discard pile, `cardend`
+  why 'replaced'); team plays never clash with each other by `grp`; `capPlay` plays no team play while one is active.
+- **Your own hand** (`D.my`, `Cards.myDeck(m, i, pid, ids, { bond, trusted })` in match prep; `Cards.myDrop`): { pid, ids (the 6),
+  size DECK.myHand, draw, hand, disc, used, pt, got (granted ids), req { bond, trusted, n (turn of the last ask), cool (turns), asks,
+  yes, last } }. Basics fill DECK.mine; the cards only pid brings leave the team deck (Basics in their places); shuffles hashed
+  (`deckMix` / `cardRoll`, no R()). The hand API takes `y` (true = your hand): `Cards.can / play / discard / toDisc(m, i, h|id, y)`,
+  `Cards.pile(m, i, y)`, `Cards.my(m, i)`. Your non-team card: holder and payer you only (`myHolders`), active entry `y`, `my`, `pids`
+  [you] — its orders, forced technique (`D.forceMe`), buffs and edges reach only you (a trait buff `my` skips `needT`); a technique
+  plays at your `techLv`. A granted team play keeps team semantics. Separate `pt`: you and the captain each play once a point.
+  `Cards.refill` refills it too (turns, timeouts); its discard pile cools with the side's. `Cards.collection(m, i, p)`: a player's
+  non-team cards (techniques by level, trait, Titan). `Cards.teamDeck(m, i, ids)`: the Dev captain's rebuilt team deck (hashed).
+- **Requests**: `Cards.canAsk(m, i, h)` → null | 'off' | 'none' | 'gap' | 'type' | 'turn' (more than REQ.win points after m.turnAt)
+  | 'asked' (once a turn) | 'active'; `Cards.askOdds(m, i, h)` → { p, word } (REQ: base + bond × bond/100 + trust + fit / mis − cool,
+  within [min, max]; likely / maybe / unlikely); `Cards.ask(m, i, h)` → { ok, id, p, word, into } (hashed roll by `cardKey`): yes — the
+  card leaves the captain's hand for your first gap (none: your last place, discarded); D.log `{ k: 'ask', id, ok, at }`. A granted
+  card played countered or caught → `req.cool = REQ.coolT` (turns; cardTurn counts it down). Career odds: `Team.cardAsk(run, m,
+  side)` (bond with the side's captain, trusted by tenure / bond — read only).
 
 **API** (`Cards`, js/engine/cards.js; every call no draws except the reshuffle in `refill`):
 - `Cards.can(m, i, h)` → null (playable) or why not: 'off' | 'gap' | 'point' (this side played this point) | 'active' (same card
@@ -1339,8 +1358,8 @@ tests / measurements) }. `npm run cards` (tests/cards.js) measures modes and the
   in `#match`), redrawn by a rAF `handTick` only when its HTML changes; hidden in prep, after the final and when no hand is yours
   (`cardsSides`: `by 'you'` or `me`); tucked down during a staged scene. `#match.hand-on` lifts the rail and the exchange box.
 - **The engine runs a rally ahead of playback**: `A.ptsShown` (board()) is the score on screen. `A.hshow[i]` is the hand as shown —
-  a play / discard empties its place at once; a card the engine dealt (turn, timeout `Cards.extra`) appears only once
-  `ptsPlayed(m) <= A.ptsShown`, then flies in from the deck pile (`handDeal`). Active cards by the scoreboard add the lag back to
+  a play / discard empties its place at once; a card the engine dealt appears only once the last turn is on screen
+  (`m.turnAt <= A.ptsShown`: the opening hand at once), then flies in from the deck pile (`handDeal`). Active cards by the scoreboard add the lag back to
   `left` and keep just-ended ones (`D.log` 'end') until their point is shown.
 - **Play**: `handPlay(i, h)` = `Cards.play` at once (cost paid; acts from the next serve); `A.hq[i]` { h, id, at } keeps it lifted
   (`.hc.q`) until its `card` act (`cardsPlayShow`), which flies a copy onto the court and names every play on the bar's line
@@ -1349,6 +1368,14 @@ tests / measurements) }. `npm run cards` (tests/cards.js) measures modes and the
   Monster off; ⚙ "Pause at turns") `A.paused`. Your timeout's `tobanner` → `cardsTurnOpen` (the line only).
 - Prep: `cardsDeck(i)` (opening hand, click to queue; the deck of 12: own cards with holder, Basics ×n). Result: `cardsRow`
   (× played, rallies won–lost from `D.stat`).
+- **Your own hand** (T-349): `cardsYou(m)` { p, side, cap } (career or the Dev match's `fx.deck` { side, pid, mode, bond, trusted });
+  `cardsMine(m, i)` 'team' | 'my' | ''; `cardsWho` gives the side (prep); `handP(m, i)` = `D.my` or the team deck — the bar, piles,
+  keys and `A.hshow` read it. Prep (`cardsMyDeck`): your opening hand of 3, the request line, `cardsPickHTML` (toggles from `cardsPool`:
+  career `Cards.collection`, Dev every card but duos / Basics; `A.myPick`, `cardsPick` rebuilds; the Dev match teaches picked
+  techniques, `cardsTeach`). The band shows kind · type (TYPE_SHORT). **Request** (`handReqBtn`, R): `handReqList` — the captain's
+  hand with each team play's odds word and Ask (`handAsk` → `Cards.ask`, a line on the bar and `request: …` in DBG); play lines
+  in DBG tag "(you)" / "(captain)". Dev › Deck match: `startDeckMatch(mode)` (menu.js; Average sides 45–70, you a wing of the left
+  side; Bond from the Dev tab).
 
 ## Gifts (spec §4.35, T-320)
 

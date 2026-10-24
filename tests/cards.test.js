@@ -351,3 +351,164 @@ test('cards: a Broken side holds a hand of 4 and starts 10 morale lower; [0, 0] 
   };
   assert(play([0, 0]) === play(null), '[0, 0] changes nothing');
 });
+
+// ---- T-349: card types, your hand of 3, requests (spec §2.37) ----
+
+/** A tournament match with a non-captain wing of side 0 holding their own deck (ids); the captain runs the team deck. */
+function myMatch(g, seed, ids, o = {}) {
+  g.RNG.seed(seed);
+  const T = g.mkTeams(),
+    a = T[0];
+  for (const p of g.squadOf(a)) p.skills = [];
+  const you = a.P.find(p => p.role === 'WS' && !p.cap) || a.P.find(p => !p.cap);
+  you.skills = ['killer', 'delay'];
+  const m = g.newMatch(a, T[1], false);
+  g.Cards.myDeck(m, 0, you.id, ids, o);
+  return { m, you, D: m.deck[0], Y: m.deck[0].my };
+}
+
+test('cards: every card has a type — team plays (the playbook, God Resolve, INZONE!!), debuffs (traps, Float, Short), individual (spec §2.37, T-349)', () => {
+  const g = load(91);
+  for (const [id, c] of Object.entries(g.CARDS)) assert(['team', 'solo', 'debuff'].includes(c.type), `${id} typed`);
+  for (const id of ['hunt', 'quick', 'commit', 'feedhot', 'wall', 'god', 'inzone']) eq(g.CARDS[id].type, 'team', id);
+  for (const id of ['strap', 'qtrap', 'bait', 'float', 'short']) eq(g.CARDS[id].type, 'debuff', id);
+  for (const id of ['killer', 'delay', 'readblk', 'take', 'titan', 'pow', 'duo_quick']) eq(g.CARDS[id].type, 'solo', id);
+  eq(g.DECK.mine, 6, 'your deck of 6');
+  eq(g.DECK.myHand, 3, 'a hand of 3');
+});
+
+test('cards: one team play active a side — a new one replaces it; the captain never stacks two (spec §2.37, T-349)', () => {
+  const g = load(92);
+  g.RNG.seed(4);
+  const T = g.mkTeams(),
+    m = g.newMatch(T[0], T[1], false, { cards: [{ by: 'you' }, { by: 'ai' }] }),
+    D = m.deck[0];
+  D.hand[0] = 'hunt';
+  D.hand[1] = 'deep';
+  assert(g.Cards.play(m, 0, 0), 'Hunt the Passer');
+  g.playRally(m);
+  assert(g.Cards.play(m, 0, 1), 'Dig Deep (another group) is not a clash for a team play');
+  const team = D.act.filter(a => g.CARDS[a.id].type === 'team');
+  eq(team.length, 1, 'one team play active');
+  eq(team[0].id, 'deep', 'the new one');
+  assert(
+    D.log.some(e => e.k === 'end' && e.id === 'hunt' && e.why === 'replaced'),
+    'Hunt replaced, to the discard pile'
+  );
+  assert(
+    D.disc.some(e => e.id === 'hunt'),
+    'cooling'
+  );
+  const end = m.cardQ.find(a => a.k === 'cardend' && a.id === 'hunt');
+  eq(end && end.why, 'replaced', 'a cardend act');
+  // the captain (side 1) over a whole match: never two team plays at once
+  let n = 0;
+  while (!m.over) {
+    g.playRally(m);
+    n = Math.max(n, m.deck[1].act.filter(a => !a.pin && g.CARDS[a.id].type === 'team').length);
+  }
+  assert(n <= 1, `captain: at most one team play (${n})`);
+});
+
+test('cards: your own deck of 6 and hand of 3 beside the captain — Basics fill, your cards leave the team deck, both play on one point, you pay (spec §2.37, T-349)', () => {
+  const g = load(93);
+  const { m, you, D, Y } = myMatch(g, 5, ['killer', 'delay']);
+  eq(Y.size, 3, 'hand of 3');
+  eq(Y.hand.filter(Boolean).length, 3, 'dealt 3');
+  eq(Y.ids.length, 6, 'deck of 6');
+  eq(Y.ids.filter(id => g.CARDS[id].kind === 'basic').length, 4, 'Basics fill');
+  eq(D.by, 'ai', 'the captain runs the team deck');
+  const others = g.squadOf(m.t[0]).filter(p => p !== you),
+    onlyYou = id => g.cardBrings(m, 0, you, id) && !others.some(p => g.cardBrings(m, 0, p, id));
+  assert(
+    [...D.draw, ...D.hand].every(id => !onlyYou(id)),
+    'cards only you bring left the team deck'
+  );
+  eq(D.hand.length, 5, 'the team hand of 5');
+  // your Killer Serve: you hold it, pay it, only you are ordered
+  Y.hand[0] = 'killer';
+  const mates = m.t[0].P.filter(p => p !== you),
+    st = mates.map(p => m.sta[p.id] ?? 1),
+    s0 = m.sta[you.id] ?? 1;
+  const a = g.Cards.play(m, 0, 0, true);
+  assert(a && a.by === you.id, 'your play');
+  assert(Math.abs(m.sta[you.id] - (s0 - g.CARDS.killer.cost.amt)) < 1e-9, 'you pay');
+  mates.forEach((p, k) => eq(m.sta[p.id] ?? 1, st[k], 'teammates do not'));
+  const act = D.act.find(x => x.id === 'killer');
+  assert(act.my && act.pids.length === 1 && act.pids[0] === you.id, 'it acts on you');
+  eq(g.ordOf(m, you, 'srv'), 'killer', 'you are ordered Killer');
+  eq(g.Cards.can(m, 0, 1, true), 'point', 'one card of yours a point');
+  const h = D.hand.findIndex((id, k) => id && !g.Cards.can(m, 0, k));
+  if (h >= 0) assert(g.Cards.play(m, 0, h), 'the captain can still play this point');
+  // refill only at turns (a timeout is an extra turn: held off here)
+  const turn = m.turnN,
+    ex = g.Cards.extra;
+  g.Cards.extra = () => 0;
+  while (m.turnN === turn && !m.over) {
+    assert(Y.hand[0] === null, 'no refill between turns');
+    g.playRally(m);
+  }
+  g.Cards.extra = ex;
+  if (!m.over) assert(Y.hand[0], 'refilled at the turn');
+  assert(D.act.every(x => x.id !== 'killer') || D.act.find(x => x.id === 'killer').my, 'still yours');
+});
+
+test('cards: requests — odds from bond, trust and the read; a yes moves the card, a no changes nothing; a countered grant cools the next (spec §2.37, T-349)', () => {
+  const g = load(94);
+  const { m, D, Y } = myMatch(g, 6, ['killer'], { bond: 20 });
+  D.hand[0] = 'hunt';
+  D.hand[1] = 'pow';
+  eq(g.Cards.canAsk(m, 0, 1), 'type', 'only team plays');
+  eq(g.Cards.canAsk(m, 0, 0), null, 'at the match start: a turn');
+  const p20 = g.Cards.askOdds(m, 0, 0).p;
+  Y.req.bond = 80;
+  const p80 = g.Cards.askOdds(m, 0, 0).p;
+  Y.req.trusted = true;
+  const pT = g.Cards.askOdds(m, 0, 0).p;
+  assert(p80 > p20 && pT > p80, `bond and trust raise the odds (${p20} < ${p80} < ${pT})`);
+  const fit = g.Cards.fits(m, 0, 'hunt');
+  assert(Math.abs(pT - (g.REQ.base + g.REQ.bond * 0.8 + g.REQ.trust + (fit ? g.REQ.fit : g.REQ.mis))) < 1e-9, 'the read counts');
+  eq(g.Cards.askOdds(m, 0, 0).word, pT >= g.REQ.likely ? 'likely' : pT >= g.REQ.maybe ? 'maybe' : 'unlikely', 'the word');
+  // a no: nothing moves, one request a turn
+  const mn = g.REQ.min,
+    mx = g.REQ.max;
+  g.REQ.max = 0;
+  g.REQ.min = 0;
+  const hand0 = [...Y.hand],
+    bond0 = Y.req.bond;
+  const no = g.Cards.ask(m, 0, 0);
+  assert(no && !no.ok, 'no');
+  eq(D.hand[0], 'hunt', 'still the captain’s');
+  eq(JSON.stringify(Y.hand), JSON.stringify(hand0), 'your hand unchanged');
+  eq(Y.req.bond, bond0, 'no bond loss');
+  eq(g.Cards.canAsk(m, 0, 0), 'asked', 'once a turn');
+  // next turn: a yes (odds forced to 1) moves it into your hand
+  while (m.turnN === 0 && !m.over) g.playRally(m);
+  D.hand[0] = 'hunt';
+  g.REQ.min = 1;
+  g.REQ.max = 1;
+  Y.hand[2] = null;
+  const yes = g.Cards.ask(m, 0, 0);
+  g.REQ.min = mn;
+  g.REQ.max = mx;
+  assert(yes && yes.ok && yes.into === 2, 'yes → your empty place');
+  eq(Y.hand[2], 'hunt', 'in your hand');
+  eq(D.hand[0], null, 'a gap in the captain’s');
+  assert(Y.got.includes('hunt'), 'granted');
+  // played into its counter → the cooldown (turns), odds lower; no bond change
+  D.hand[1] = 'beat';
+  const before = g.Cards.askOdds(m, 0, 1).p;
+  m.deck[1].act.push({ id: 'short', left: 9, per: 'pts', by: null, pids: null, who: [], lv: 1, at: [0, 0] }); // Short Serve counters Quick Tempo
+  Y.hand[1] = 'quick';
+  Y.got.push('quick');
+  Y.pt = -1;
+  const a = g.Cards.play(m, 0, 1, true);
+  assert(a && a.st === 'ctr', `a granted Quick Tempo played into Short Serve (${a && a.st})`);
+  eq(Y.req.cool, g.REQ.coolT, 'request cooldown');
+  const after = g.Cards.askOdds(m, 0, 1).p;
+  assert(after < before || after === g.REQ.min, `slower to grant (${before} → ${after})`);
+  eq(Y.req.bond, bond0, 'still no bond loss');
+  const t0 = m.turnN;
+  while (m.turnN < t0 + g.REQ.coolT && !m.over) g.playRally(m);
+  if (!m.over) eq(Y.req.cool, 0, 'the cooldown runs out at turns');
+});

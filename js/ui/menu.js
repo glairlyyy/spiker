@@ -39,6 +39,11 @@ function renderMenu() {
           .map(([v, n]) => `<option value="${v}" ${(TS.venue || 'arena') === v ? 'selected' : ''}>${n}</option>`)
           .join('')}</select></label>
         <button class="btn" onclick="startAverage()" ${tip('A one-off 3D match between two teams of ordinary players: every player rolled at overall 30–60')}>Average game</button>
+        <span class="sset" ${tip('A played match with a career-style player on a generated side (spec §2.37 Dev match): as a player — your own deck of 6, a hand of 3 and requests to the captain; as captain — the team hand of 5. Pick your deck from every card in match prep; the captain’s plays and request answers go to the Debug log.')}><span class="cgl">Deck match</span><button class="btn" onclick="startDeckMatch('player')">As a player</button><button class="btn" onclick="startDeckMatch('captain')">As captain</button><select onchange="TS.deckBond=+this.value" aria-label="Bond with the captain">${[
+          0, 30, 60, 90
+        ]
+          .map(v => `<option value="${v}" ${(TS.deckBond ?? 30) === v ? 'selected' : ''}>Bond ${v}</option>`)
+          .join('')}</select></span>
         <button class="btn" onclick="devOpen('cup', () => startCupSample())" ${tip('Two squads drawn at random from a real year-2 U21 Cup — the squads as auto-played Story runs reached it (your player and Haewon may be in them)')}>Year-2 Cup match</button>
         <label class="btn" ${tip('Load a .vrm from your computer. It stays in this browser (never uploaded); in the Monster game every player picks a random model among the built-in ones (Main_v2, Rival_v2–v4, male1, male2) and the loaded ones (career: your player is always Main_v2).')}>+ Player model<input type="file" accept=".vrm,.glb" hidden onchange="addModelFile(this)"></label>
         <button class="btn" onclick="devOpen('anim', () => startAnimLab())" ${tip('A Monster game that records every player: freeze, scrub frame by frame, orbit, foot marks, edit the pose values and Copy them')}>Animation lab</button>
@@ -152,6 +157,32 @@ function startCupSample() {
     vfx: true,
     venue: TS.venue || 'arena',
     round: `Year-2 Cup sample · run ${run.seed} · ${tag(S[i])} vs ${tag(S[j])}`,
+    back: 'Back to menu',
+    onLeave: () => navigate('menu')
+  });
+}
+/**
+ * Deck match (dev, spec §2.37 Dev match, T-349): two ordinary sides (overall 45–70); you are a wing spiker of the left side — as a
+ * player a non-captain (your own deck, hand of 3, requests; bond with the captain from the Dev tab), as captain its captain (the hand
+ * of 5). Match prep picks your deck from every card.
+ */
+function startDeckMatch(mode) {
+  const [a, b] = mkAverageTeams(45, 70);
+  for (const p of [...a.P, ...b.P]) p.form = +rnd(-0.1, 0.4).toFixed(2);
+  const ws = a.P.filter(p => p.role === 'WS'),
+    you = mode === 'captain' ? ws[0] : ws.find(p => !p.cap) || a.P.find(p => !p.cap);
+  if (mode === 'captain') {
+    for (const q of squadOf(a)) q.cap = false;
+    a.cap = you;
+    you.cap = true;
+  }
+  navigate('match', {
+    a,
+    b,
+    vfx: true,
+    human: you.id,
+    deck: { side: 0, pid: you.id, mode, bond: TS.deckBond ?? 30, trusted: false },
+    round: `Deck match · ${mode === 'captain' ? 'as captain' : 'as a player'} · #${you.num} ${firstName(you)}`,
     back: 'Back to menu',
     onLeave: () => navigate('menu')
   });

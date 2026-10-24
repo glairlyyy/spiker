@@ -62,7 +62,32 @@ const DECK = {
   book: [2, 3],
   iq: 0.7,
   lv: { ref: 65, min: 0.6, max: 1.2 },
-  strong: 12
+  strong: 12,
+  mine: 6, // a non-captain career player's own deck (spec §2.37 Your hand, T-349): picked in match prep, Basics fill
+  myHand: 3 // … and their hand
+};
+/**
+ * Requests (spec §2.37, T-349): at a turn (until `win` points after it) a non-captain asks the captain for one team play from
+ * their hand, once a turn. Yes odds = base + bond × bond / 100 (their bond with you, 0–100) + trust (trusted) + fit (the card's
+ * read holds now) or mis (it does not) − cool (for `coolT` turns after a granted card was played into its counter or caught),
+ * within [min, max]; shown as likely (≥ likely) / maybe (≥ maybe) / unlikely. Trusted (career): `trustWeeks`+ weeks at the club
+ * or a bond of `trustBond`+ with the captain. No bond loss either way.
+ */
+const REQ = {
+  win: 1,
+  base: 0.25,
+  bond: 0.45,
+  trust: 0.15,
+  fit: 0.15,
+  mis: -0.1,
+  cool: 0.3,
+  coolT: 3,
+  min: 0.05,
+  max: 0.95,
+  likely: 0.6,
+  maybe: 0.35,
+  trustWeeks: 8,
+  trustBond: 40
 };
 
 /**
@@ -788,7 +813,8 @@ const EDGE = { ctr: -1.5, mis: -0.6, k: 2 };
  */
 (() => {
   const big = id => CARD_EDGE[id] && CARD_EDGE[id].e.some(e => Math.abs(e[2]) >= 50);
-  const team = ['power', 'tip', 'deep', 'commit', 'sdig', 'float'];
+  const team = ['power', 'tip', 'deep', 'commit', 'sdig', 'float'],
+    debuff = ['float', 'short', 'head'];
   for (const [id, c] of Object.entries(CARDS)) {
     const K =
       c.kind === 'basic'
@@ -818,5 +844,9 @@ const EDGE = { ctr: -1.5, mis: -0.6, k: 2 };
     c.cd ??= K.cd;
     c.cost ??= K.cost;
     c.per ??= c.tally === 'serve' && c.kind === 'play' ? 'srv' : 'pts';
+    // the card's type (spec §2.37 Card types, T-349): a team play changes how the whole side plays (the captain's; yours only by
+    // request), an opponent debuff is aimed at them, the rest (techniques, traits, duos, Basics, Titan) are individual plays
+    c.type ??=
+      c.kind === 'trap' || debuff.includes(id) ? 'debuff' : c.src === 'book' || ['god', 'inzone', 'surge'].includes(id) ? 'team' : 'solo';
   }
 })();

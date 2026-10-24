@@ -37,9 +37,9 @@ function startMatch(fx) {
   Dir.reset();
   // your side in a career fixture (the squad that holds your player): only it gets Timeout / Tactics; Monster game: both
   const you = fx.onFinish && RUN ? Run.you(RUN) : null,
-    mine = you ? ([0, 1].find(i => squadOf(m.t[i]).some(p => p.id === you.id)) ?? null) : null,
+    mine = you ? ([0, 1].find(i => squadOf(m.t[i]).some(p => p.id === you.id)) ?? null) : fx.deck ? fx.deck.side : null, // (the Dev deck match: your side, spec §2.37)
     sides = mine == null ? [0, 1] : [mine];
-  if (mine != null)
+  if (mine != null && you)
     m.human = you.id; // you (spec §2.17): the captain's chips when you captain a career match you play
   else if (fx.human != null) m.human = fx.human; // the Monster game's Play as
   // the full-court screen (spec §9.9): the stage fills the screen; the panels below float over it

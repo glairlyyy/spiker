@@ -819,26 +819,37 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Power scales with the holder**: a technique's edge × the holder's level for it (their action level vs the league's,
     clamped ~0.6–1.2): a 40-rated server's Killer Serve is weaker than an ace's.
   - **Fit / counter** as T-299: played into its read it pays +10–20 % on the points it acts in; into its counter −10–20 %.
-  - **Card types** (owner, 2026-10-23) **[draft — T-349]**: **Team play** — changes how the whole side plays (Hunt the Passer,
+  - **Card types** (owner, 2026-10-23) **[built 2026-10-24, T-349]**: **Team play** — changes how the whole side plays (Hunt the Passer,
     Quick Tempo, Commit, Feed the Hot Hand); the biggest swing and the biggest risk (a countered team play costs the most);
     paid by the court or the captain; held by the captain — a non-captain gets one only by request. **Individual play** — the
     holder's own move (Killer Serve, Delayed Spike, Read Block, Take the Hit); paid by them; scales with them. **Opponent
     debuff** — aimed at the other side (Float Barrage, Short Serve, the traps); its read is the target's state; paid by whoever
-    does it. Basics are individual. At most **one team play active a side**; a new one replaces it.
-  - **Your hand** (career, a non-captain) **[draft — T-349]**: in match prep you pick your **own deck** of `DECK.mine` (6) from
+    does it. Basics are individual. At most **one team play active a side**; a new one replaces it (its after-cost paid; the
+    captain never replaces its own running one). Built: team = the playbook plays, God Resolve, INZONE!!, Element Surge; debuff =
+    the traps, Float Barrage, Short Serve, Get In Their Head; the rest individual. The card's band reads kind · type.
+  - **Your hand** (career, a non-captain) **[built 2026-10-24, T-349]**: in match prep you pick your **own deck** of `DECK.mine` (6) from
     your collection (your techniques, gift and trait cards, any card a team play granted you stays only for that match) —
     your play style; Basics fill it if you own fewer. A **hand of 3**, no role limits (three attack cards are fine), the same
     rules as the team deck (refill at turns, discard leaves a gap, cooldowns, costs on your bars). You and the captain each
-    play at most one card a point — on one point your card and theirs can both go.
-  - **Requests** **[draft — T-349]**: at a turn (when hands refill) you may ask the captain for one team play from their hand;
+    play at most one card a point — on one point your card and theirs can both go. Built: your collection = your techniques,
+    trait card and Titan (no gift cards exist yet; duo cards stay in the team deck); the cards only you bring leave the team deck
+    (Basics take their places); your individual card is held, paid and felt by you alone; your deck's shuffles are hashed (no
+    R()). The pick is per match (not saved).
+  - **Requests** **[built 2026-10-24, T-349]**: at a turn (when hands refill) you may ask the captain for one team play from their hand;
     the answer by your bond and trust with the captain (shown likely / maybe / unlikely, as §4.23 asks), better when the card's
     read holds now. Yes → the card moves into your hand (one of your 3 places), yours to time. No → nothing lost (no memory).
     Played into its counter → the captain grants your next request less readily for a few turns (a request cooldown, not a
     bond loss). Trust widens it: newcomer — one request a turn; trusted — likelier yeses; captain — no requests: your deck
-    joins the team deck and you run its hand of 5 (replaces §2.33's 1 / 2 / 5 cards).
-  - **Dev match** (owner, 2026-10-23) **[draft — T-349]**: menu › Dev › **Deck match** — a played match with your career-style
+    joins the team deck and you run its hand of 5 (replaces §2.33's 1 / 2 / 5 cards). Built (`REQ`, js/data/cards.js): at a turn
+    and the point after it, once a turn; yes odds 0.25 + 0.45 × bond / 100 + 0.15 trusted + 0.15 the card fits now (−0.10 it does
+    not) − 0.30 for 3 turns after a granted card was played into its counter or caught, within 0.05–0.95; likely ≥ 0.6, maybe ≥
+    0.35; trusted = 8+ weeks at the club or bond 40+ with the captain; a hashed roll. A yes takes your first empty place, else your
+    third (that card to your discard pile). The bar: Request <kbd>R</kbd> → the captain's hand with each team play's word and Ask.
+  - **Dev match** (owner, 2026-10-23) **[built 2026-10-24, T-349]**: menu › Dev › **Deck match** — a played match with your career-style
     player on a generated side, **As a player** (your hand of 3 + requests, the captain an NPC) or **As captain** (the hand of
-    5); a pick of your own deck from every card; both modes show the captain's choices in DBG.
+    5); a pick of your own deck from every card; both modes show the captain's choices in DBG. Built: two Average sides (OVR
+    45–70), you a wing of the left side, a Bond 0 / 30 / 60 / 90 pick on the Dev tab; picked techniques are taught to you; as
+    captain your 6 join the team deck (the squad's own cards fill to 12); DBG lines `card: … (you) / (captain)` and `request: …`.
   - **Who plays**: Monster — "You decide" / "Captain decides" per side. Career — your hand (above); as captain, the whole hand.
     The captain plays the rest by the same function (no draws in the pick):
     a card when its read holds and its payer can afford it; OP cards and the strongest plays **saved for key moments** — set

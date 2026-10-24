@@ -307,6 +307,15 @@ const Team = {
       Run.log(run, `${firstName(p)} and me have a move now: ${CARDS[c].name}.`);
     }
   },
+  /**
+   * Your standing with match m's captain on your side for requests (spec §2.37 Requests): { bond 0–100, trusted } — trusted at
+   * REQ.trustWeeks+ weeks at the club or a bond of REQ.trustBond+ with the captain. Read only (no memory, no bond change).
+   */
+  cardAsk(run, m, side) {
+    const cap = m.t[side].cap,
+      bond = cap ? Rel.bondOf(run, cap.id) : 0;
+    return { bond, trusted: World.tenure(run) >= REQ.trustWeeks || bond >= REQ.trustBond };
+  },
   /** The people you left on the other side of match m (side = yours): [player]. */
   exAcross(run, m, side) {
     const ex = Team.ex(run);

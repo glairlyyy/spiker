@@ -1,16 +1,16 @@
 // Match prep (spec §2.26, §2.33): the intro before every played match — both teams, their lineups and the hands. A side you
-// run picks its cards (Monster: "You decide" per side; career: your side — 1 card, 5 as captain); the other hand is hidden.
+// run picks its cards (Monster: "You decide" per side; career / the Dev deck match: your side — your own deck of 6 and hand of 3
+// beside the captain, or the team's hand of 5 as captain, spec §2.37); the other hand is hidden.
 // Play waits (A.prep) until Start. The hand bar (js/ui/match-cards.js) takes over once the match starts.
 
 /** The sides whose run you can choose (You decide / Captain decides): Monster game both; career: none (your side is yours). */
 function prepSides() {
-  return A.fx.onFinish && RUN ? [] : [0, 1];
+  return (A.fx.onFinish && RUN) || A.fx.deck ? [] : [0, 1];
 }
-/** The side you play for (career), or null. */
+/** The side you play for (career, the Dev deck match), or null. */
 function prepMine(m) {
-  if (!(A.fx.onFinish && RUN)) return null;
-  const you = Run.you(RUN);
-  return [0, 1].find(k => squadOf(m.t[k]).some(p => p.id === you.id)) ?? null;
+  const Y = cardsYou(m);
+  return Y ? Y.side : null;
 }
 /** Open match prep (the intro before the first serve). */
 function prepOpen() {
@@ -20,7 +20,7 @@ function prepOpen() {
   A.prepS = A.prepS || { who: [0, 1].map(i => (prepSides().includes(i) && i === 0 ? 'you' : 'ai')) };
   A.prep = true;
   for (const i of [0, 1]) {
-    const n = cardsMine(m, i); // your hand (spec §2.33): the captain's pick to start from
+    const n = cardsMine(m, i); // your hand (spec §2.37): the team's 5, or your own 3 beside the captain
     if (m.deck && n) cardsWho(m, i, n);
   }
   let el = $('#prep');
@@ -99,6 +99,6 @@ function prepStart() {
   A.prep = false;
   const el = $('#prep');
   if (el) el.hidden = true;
-  if (A.m.deck) A.hshow = [0, 1].map(i => A.m.deck[i].hand.map(() => null)); // the bar deals your opening hand
+  if (A.m.deck) A.hshow = [0, 1].map(i => handP(A.m, i).hand.map(() => null)); // the bar deals your opening hand
   if (A.railTab === 'reads') readsPanel();
 }

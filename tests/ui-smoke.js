@@ -834,6 +834,105 @@ const step = async (name, fn) => {
     if (!/Cards[\s\S]*(×\d|No cards played)/.test(await ev(() => $('#over').textContent)))
       throw new Error('no Cards row on the result card');
   });
+  await step('Deck match as a player (T-349): your deck of 6, a hand of 3, a request, the captain plays', async () => {
+    await ev(() => navigate('menu'));
+    await ev(() => startDeckMatch('player'));
+    await pg.waitForFunction(() => typeof A !== 'undefined' && A && A.m && A.prep && document.querySelector('#prep .cdeck'), null, {
+      timeout: 60000
+    });
+    await ev(() => {
+      const Y = Cards.my(A.m, 0);
+      if (!Y || Y.size !== 3 || A.m.deck[0].by !== 'ai') throw new Error('no own hand of 3 beside the captain');
+      if ($('#prep .cdeck .hmini').querySelectorAll('.hc').length !== 3) throw new Error('prep: not a hand of 3');
+      if (!/Your deck · 6 \/ 6/.test($('#prep .cdeck').textContent)) throw new Error('prep: no deck pick of 6');
+      if (document.querySelectorAll('#prep .dk.pick').length < 20) throw new Error('prep: not every card to pick');
+    });
+    // drop one, pick another (a technique you don't own: the Dev match teaches it)
+    const [drop, add] = await ev(() => [A.myPick[0], Object.keys(CARDS).find(id => CARDS[id].src === 'tech' && !A.myPick.includes(id))]);
+    await pg.click(`#prep .dk.pick[onclick*="'${drop}'"]`);
+    await pg.click(`#prep .dk.pick[onclick*="'${add}'"]`);
+    await ev(
+      ([drop, add]) => {
+        const Y = Cards.my(A.m, 0);
+        if (Y.ids.includes(drop) || !Y.ids.includes(add)) throw new Error(`the pick did not change the deck: ${Y.ids}`);
+        prepStart();
+        handTick(true);
+        if ($('#hand').hidden || $('#hand').querySelectorAll('.hslot').length !== 3) throw new Error('no hand bar of 3');
+        if (!$('#hand .hreq')) throw new Error('no Request button');
+      },
+      [drop, add]
+    );
+    // one request: a team play in the captain's hand, the list, Ask
+    await ev(() => {
+      const D = A.m.deck[0];
+      if (!D.hand.some(id => id && CARDS[id].type === 'team')) D.hand[0] = 'hunt';
+      A.sceneOn = false;
+      handTick(true);
+    });
+    await pg.click('#hand .hreq', { force: true });
+    await ev(() => {
+      if ($('#hlist').hidden || !/Captain’s hand/.test($('#hlist').textContent) || !$('#hlist .odds')) throw new Error('no request list');
+    });
+    await pg.click('#hlist .hli.rq .btn', { force: true });
+    const ans = await ev(() => {
+      const D = A.m.deck[0],
+        e = D.log.find(x => x.k === 'ask');
+      if (!e) throw new Error('the request was not made');
+      if (!/request: .* → (yes|no)/.test(DBG.text())) throw new Error('no request line in the debug log');
+      if (e.ok !== Cards.my(A.m, 0).hand.includes(e.id)) throw new Error('a yes did not move the card');
+      if (D.hand.findIndex((id, h) => id && !Cards.canAsk(A.m, 0, h)) >= 0) throw new Error('a second request this turn');
+      return `${CARDS[e.id].name} → ${e.ok ? 'yes' : 'no'}`;
+    });
+    // play one of yours by key, then the captain plays on (its plays in the debug log)
+    const k = await ev(() => Cards.my(A.m, 0).hand.findIndex((id, j) => id && !Cards.can(A.m, 0, j, true)));
+    if (k >= 0) {
+      await pg.keyboard.press(String(k + 1));
+      if (!(await ev(() => A.m.deck[0].log.some(e => e.k === 'play' && e.y)))) throw new Error('the key did not play your card');
+    }
+    const cap = await ev(() => {
+      for (let n = 0; n < 40000 && !A.m.over; n++) {
+        step(16);
+        if (Dir.busy()) exchangeSkip();
+        if (A.paused) togglePause();
+        if (n % 400 === 0 && /\(captain\)/.test(DBG.text())) return true;
+      }
+      return /\(captain\)/.test(DBG.text());
+    });
+    if (!cap) throw new Error("no captain's play in the debug log");
+    await ev(() => {
+      A.hold = true;
+      while (!A.m.over) playRally(A.m);
+      finishMatch();
+    });
+    return `request ${ans}`;
+  });
+  await step('Deck match as captain (T-349): your picks join the team deck, the hand of 5', async () => {
+    await ev(() => navigate('menu'));
+    await ev(() => startDeckMatch('captain'));
+    await pg.waitForFunction(() => typeof A !== 'undefined' && A && A.m && A.prep && document.querySelector('#prep .cdeck'), null, {
+      timeout: 60000
+    });
+    await ev(() => {
+      const D = A.m.deck[0],
+        all = [...D.draw, ...D.hand];
+      if (Cards.my(A.m, 0) || D.by !== 'you') throw new Error('not the team hand');
+      if (!A.myPick.length || !A.myPick.every(id => all.includes(id))) throw new Error('your picks are not in the team deck');
+      if ($('#prep .cdeck .hmini').querySelectorAll('.hc').length !== 5) throw new Error('prep: not a hand of 5');
+      prepStart();
+      handTick(true);
+      if ($('#hand').querySelectorAll('.hslot').length !== 5 || $('#hand .hreq')) throw new Error('captain: hand of 5, no Request');
+    });
+    const k = await ev(() => A.m.deck[0].hand.findIndex((id, j) => id && !Cards.can(A.m, 0, j)));
+    if (k >= 0) {
+      await pg.keyboard.press(String(k + 1));
+      if (!(await ev(() => A.m.deck[0].log.some(e => e.k === 'play')))) throw new Error('the key did not play the card');
+    }
+    await ev(() => {
+      A.hold = true;
+      while (!A.m.over) playRally(A.m);
+      finishMatch();
+    });
+  });
   const dbg = await ev(() => (typeof DBG !== 'undefined' ? DBG.text() : '')).catch(() => '');
   for (const l of dbg.split('\n')) if (/\berror\b/i.test(l) && !/STALL/.test(l)) errors.push(`DBG: ${l.slice(0, 200)}`);
   await browser.close();

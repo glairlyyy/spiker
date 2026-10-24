@@ -6,21 +6,90 @@
 
 /** Is this a career match (your player is in it)? */
 const cardsCareer = () => !!(A && A.fx.onFinish && RUN);
-/** Which of side i's cards are yours: Monster — "You decide" DECK.hand (all); career — your side: all as captain, else 1 (the cards you bring). */
-function cardsMine(m, i) {
-  if (!m || !m.deck) return 0;
-  if (!cardsCareer()) return A.prepS && A.prepS.who && A.prepS.who[i] === 'you' ? DECK.hand : 0;
-  const you = Run.you(RUN);
-  if (!squadOf(m.t[i]).some(p => p.id === you.id)) return 0;
-  return you.cap ? DECK.hand : 1;
+/** You in this match — a career match or the Dev deck match (fx.deck, spec §2.37 Dev match): { p, side, cap } or null. */
+function cardsYou(m) {
+  if (!A || !m) return null;
+  const dv = A.fx.deck,
+    id = dv ? dv.pid : cardsCareer() ? Run.you(RUN).id : null;
+  if (id == null) return null;
+  for (const side of [0, 1]) {
+    const p = squadOf(m.t[side]).find(q => q.id === id);
+    if (p) return { p, side, cap: dv ? dv.mode === 'captain' : !!p.cap };
+  }
+  return null;
 }
-/** Give side i to you (n DECK.hand: the whole hand; 1: the cards you bring, the captain the rest) or to the captain (n 0). */
-function cardsWho(m, i, n) {
+/**
+ * How side i's cards are yours (spec §2.37 Who plays): 'team' — you run the team hand of 5 (Monster "You decide", a career / Dev
+ * captain); 'my' — a non-captain's own hand of 3 (the captain runs the team deck); '' — the captain runs it all.
+ */
+function cardsMine(m, i) {
+  if (!m || !m.deck) return '';
+  const Y = cardsYou(m);
+  if (!Y) return !cardsCareer() && !A.fx.deck && A.prepS && A.prepS.who && A.prepS.who[i] === 'you' ? 'team' : '';
+  return Y.side !== i ? '' : Y.cap ? 'team' : 'my';
+}
+/** Give side i to you ('team'), your own hand of 3 beside the captain ('my') or to the captain (''). */
+function cardsWho(m, i, mode) {
   const D = m && m.deck && m.deck[i];
   if (!D) return;
-  D.by = n >= DECK.hand ? 'you' : 'ai';
-  D.me = n && n < DECK.hand && cardsCareer() ? Run.you(RUN).id : null;
+  D.by = mode === 'team' ? 'you' : 'ai';
+  if (mode !== 'my') Cards.myDrop(m, i);
+  else if (!D.my) cardsMyBuild(m, i);
+  if (mode === 'team' && A.fx.deck && !ptsPlayed(m)) {
+    A.myPick = A.myPick || cardsPool(m, i).slice(0, DECK.mine); // (Dev, as captain: your picks join the team deck)
+    cardsTeach(cardsYou(m).p, A.myPick);
+    Cards.teamDeck(m, i, A.myPick);
+  }
 }
+/** Your deck's choices (match prep): career — your collection (Cards.collection); the Dev deck match — every card but duos and Basics. */
+function cardsPool(m, i) {
+  const Y = cardsYou(m);
+  if (!Y) return [];
+  if (!A.fx.deck) return Cards.collection(m, i, Y.p);
+  const T = { solo: 0, debuff: 1, team: 2 };
+  return Object.keys(CARDS)
+    .filter(id => CARDS[id].src !== 'duo' && CARDS[id].src !== 'base')
+    .sort((a, b) => T[CARDS[a].type] - T[CARDS[b].type] || CARDS[a].name.localeCompare(CARDS[b].name));
+}
+/** Build your own deck from A.myPick (default: the first DECK.mine of your pool — the Dev match: individual plays first). */
+function cardsMyBuild(m, i) {
+  const Y = cardsYou(m);
+  if (!Y || !m.deck) return;
+  if (!A.myPick)
+    A.myPick = cardsPool(m, i)
+      .filter(id => !A.fx.deck || CARDS[id].type !== 'team')
+      .slice(0, DECK.mine);
+  const dv = A.fx.deck,
+    o = dv ? { bond: dv.bond, trusted: !!dv.trusted } : Team.cardAsk(RUN, m, i);
+  if (dv) cardsTeach(Y.p, A.myPick);
+  Cards.myDeck(m, i, Y.p.id, A.myPick, o);
+}
+/** The Dev deck match: you know every technique you pick (so its card has a holder). */
+function cardsTeach(p, ids) {
+  for (const id of ids) {
+    const c = CARDS[id];
+    if (c && c.src === 'tech' && !knowsTech(p, c.need)) (p.skills || (p.skills = [])).push(c.need);
+  }
+}
+/** Match prep: pick or drop card id from your own deck (DECK.mine at most; the Dev match teaches you a technique you pick). */
+function cardsPick(i, id) {
+  const m = A && A.m,
+    Y = cardsYou(m);
+  if (!Y || !A.prep || ptsPlayed(m)) return;
+  const P = A.myPick || (A.myPick = []),
+    k = P.indexOf(id);
+  if (k >= 0) P.splice(k, 1);
+  else if (P.length < DECK.mine) P.push(id);
+  else return handNote(null, `Your deck holds ${DECK.mine}: drop one first`, 'disc');
+  if (A.fx.deck) cardsTeach(Y.p, P);
+  if (cardsMine(m, i) === 'my') cardsMyBuild(m, i);
+  else Cards.teamDeck(m, i, P);
+  if (A.hq) A.hq[i] = null;
+  prepDraw();
+}
+/** The type's word (spec §2.37 Card types) and its short form on the card's band. */
+const TYPE_WORD = { team: 'Team play', solo: 'Individual', debuff: 'Debuff' },
+  TYPE_SHORT = { team: 'Team', solo: 'Solo', debuff: 'Debuff' };
 const BAR_WORD = { sta: 'stamina', hp: 'HP', mor: 'morale' },
   BAR_ICON = { sta: 'sta', mor: 'mood' };
 /** Cost → result in words (spec §2.37): "−0.10 stamina (holders) → serve +5 % · 3 serves". */
@@ -82,7 +151,7 @@ function cardTip(id) {
         : E && E.fit !== 'always'
           ? `Pays when it ${FIT_TIP[E.fit]}.${ctr}`
           : '';
-  return `${c.name}: ${cardCost(id)}. ${rule}`.trim();
+  return `${c.name} (${TYPE_WORD[c.type]}): ${cardCost(id)}. ${rule}`.trim();
 }
 /** Does this card show "Fits now" (a card with a read that holds; never their hand)? */
 const cardFits = (m, i, id) => {
@@ -90,9 +159,10 @@ const cardFits = (m, i, id) => {
   return CARDS[id].kind !== 'basic' && !!E && E.fit !== 'always' && Cards.fits(m, i, id);
 };
 /** The payer's tag: "#9 Rin", "#9 Rin +1", "Captain #4", "Court", "Free". */
-function cardPayer(m, i, id) {
+function cardPayer(m, i, id, y) {
   const C = CARDS[id].cost;
   if (!C) return 'Free';
+  if (y && CARDS[id].type !== 'team') return 'You';
   if (C.who === 'court') return 'Court';
   const P = Cards.payers(m, i, id);
   if (C.who === 'captain') return P[0] ? `Captain #${P[0].num}` : 'Captain';
@@ -105,7 +175,12 @@ const CAN_WORD = {
   clash: 'One of its kind is active',
   holder: 'No holder on court',
   off: 'Match over',
-  mine: "Captain's card"
+  mine: "Captain's card",
+  // requests (Cards.canAsk)
+  type: 'Not a team play',
+  turn: 'Ask at a turn',
+  asked: 'Asked this turn',
+  none: 'Captain runs it'
 };
 /** A card's name on screen: a duo card (spec §4.36 4) names the friend — "Mint × You: Sync Quick". */
 function cardName(m, i, id) {
@@ -120,7 +195,10 @@ function cardName(m, i, id) {
   return f ? `${firstName(f)} × You: ${c.name}` : c.name;
 }
 /** Is card id one you bring (career ◆)? */
-const cardYours = (m, i, id) => cardsCareer() && cardBrings(m, i, Run.you(RUN), id);
+const cardYours = (m, i, id) => {
+  const Y = cardsYou(m);
+  return !!Y && Y.side === i && cardBrings(m, i, Y.p, id);
+};
 
 /**
  * One hand card (the bar's and match prep's): kind band with its key, name, cost → result with the payer's tag, Fits now,
@@ -128,13 +206,15 @@ const cardYours = (m, i, id) => cardsCareer() && cardBrings(m, i, Run.you(RUN), 
  */
 function handCard(m, i, h, id, o = {}) {
   const c = CARDS[id],
-    mine = Cards.mine(m, i, id),
-    why = o.q ? null : !mine ? 'mine' : Cards.can(m, i, h),
+    y = !!Cards.my(m, i), // your own hand of 3 (spec §2.37 Your hand)
+    mine = y || Cards.mine(m, i),
+    why = o.q ? null : !mine ? 'mine' : Cards.can(m, i, h, y),
     ok = !o.q && !why,
     fits = cardFits(m, i, id),
     C = c.cost,
-    poor = C && !Cards.afford(m, i, id),
-    lv = Cards.level(m, i, id),
+    you = y && c.type !== 'team' && cardsYou(m),
+    poor = C && (you ? !myAfford(m, you.p, C) : !Cards.afford(m, i, id)),
+    lv = you && c.src === 'tech' ? techLv(you.p, c.need) : Cards.level(m, i, id),
     cost = C
       ? `<span class="hcost ${poor ? 'poor' : ''}" ${poor ? tip(`Under the floor: the payer goes into Tiring / Spent / Shaken`) : ''}>${BAR_ICON[C.bar] ? statI(BAR_ICON[C.bar], 14) : ''}−${C.amt.toFixed(2)} ${BAR_WORD[C.bar]}</span>`
       : '<span class="hcost">Free</span>',
@@ -145,27 +225,32 @@ function handCard(m, i, h, id, o = {}) {
         : fits
           ? '<span class="hfit">✓ Fits now</span>'
           : '';
-  return `<div class="hc k-${c.kind} z-${c.zone}${mine ? ' me' : ''}${fits && !why ? ' fits' : ''}${why ? ' no' : ''}${o.q ? ' q' : ''}${o.mini ? ' mini' : ''}" data-h="${h}" data-id="${esc(id)}" role="button" tabindex="${ok ? 0 : -1}" aria-disabled="${!ok}" ${tip(cardTip(id))}${
+  return `<div class="hc k-${c.kind} z-${c.zone} t-${c.type}${mine ? ' me' : ''}${fits && !why ? ' fits' : ''}${why ? ' no' : ''}${o.q ? ' q' : ''}${o.mini ? ' mini' : ''}" data-h="${h}" data-id="${esc(id)}" role="button" tabindex="${ok ? 0 : -1}" aria-disabled="${!ok}" ${tip(cardTip(id))}${
     ok ? ` onclick="handPlay(${i},${h})"` : ''
   }${mine && !o.q ? ` oncontextmenu="return handDisc(event,${i},${h})"` : ''}>
-    <span class="hcb"><span>${o.mini ? '' : cardKind(c)}</span><kbd>${h + 1}</kbd></span>
+    <span class="hcb"><span>${o.mini ? '' : `${cardKind(c).replace('Technique', 'Tech')} · ${TYPE_SHORT[c.type]}`}</span><kbd>${h + 1}</kbd></span>
     <b class="hcn">${cardYours(m, i, id) ? '◆ ' : ''}${esc(cardName(m, i, id))}</b>${
       o.mini
-        ? `<small class="hck">${cardKind(c)}</small>`
-        : `<span class="hcc">${cost}<span class="hcpay">${esc(cardPayer(m, i, id))}</span>${
+        ? `<small class="hck">${cardKind(c)} · ${TYPE_SHORT[c.type]}</small>`
+        : `<span class="hcc">${cost}<span class="hcpay">${esc(cardPayer(m, i, id, y))}</span>${
             c.src === 'tech' && Math.abs(lv - 1) > 0.02
               ? `<span class="hlv" ${tip('Holder level: × on its edges and buffs')}>×${lv.toFixed(2)}</span>`
               : ''
           }</span><span class="hcr">→ ${esc(c.desc)}</span>${foot}<span class="hcf"><span>${cardLen(c)}</span><span>${cardCool(c)}</span></span>`
     }</div>`;
 }
+/** Can you pay cost C on your own bars (each after the cost at CARD_AI.floor or above)? */
+const myAfford = (m, p, C) =>
+  (C.bar === 'sta' ? (m.sta[p.id] ?? 1) : C.bar === 'hp' ? hpOf(m, p) : morOf(m, p)) - C.amt >= CARD_AI.floor[C.bar];
+/** The hand you play on side i: your own (spec §2.37 Your hand) or the team's. */
+const handP = (m, i) => Cards.my(m, i) || m.deck[i];
 /** Play hand card h of side i (between points): it acts from the next serve; the bar lifts it (queued) until then. */
 function handPlay(i, h) {
   if (!A || !A.m || !A.m.deck || A.done) return false;
   const m = A.m,
-    D = m.deck[i],
-    id = D.hand[h];
-  if (!id || !Cards.mine(m, i, id) || !Cards.play(m, i, h)) return false;
+    y = !!Cards.my(m, i),
+    id = handP(m, i).hand[h];
+  if (!id || !(y || Cards.mine(m, i)) || !Cards.play(m, i, h, y)) return false;
   (A.hq || (A.hq = []))[i] = { h, id, at: ptsPlayed(m) };
   if (A.hshow && A.hshow[i]) A.hshow[i][h] = null;
   cardsRedraw();
@@ -176,8 +261,9 @@ function handDisc(e, i, h) {
   if (e) e.preventDefault();
   if (!A || !A.m || !A.m.deck || A.done) return false;
   const m = A.m,
-    id = m.deck[i].hand[h];
-  if (!id || !Cards.mine(m, i, id) || !Cards.discard(m, i, h)) return false;
+    y = !!Cards.my(m, i),
+    id = handP(m, i).hand[h];
+  if (!id || !(y || Cards.mine(m, i)) || !Cards.discard(m, i, h, y)) return false;
   if (A.hshow && A.hshow[i]) A.hshow[i][h] = null;
   handNote(m.t[i], `Discarded ${cardName(m, i, id)}`, 'disc');
   cardsRedraw();
@@ -196,7 +282,7 @@ function cardsRedraw() {
 /* ---------- the hand bar ---------- */
 
 /** The hands you play in (none when the captain runs both). */
-const cardsSides = m => (m && m.deck ? [0, 1].filter(i => m.deck[i].by === 'you' || m.deck[i].me) : []);
+const cardsSides = m => (m && m.deck ? [0, 1].filter(i => m.deck[i].by === 'you' || m.deck[i].my) : []);
 /** The side the bar shows: the first of yours; Tab switches when you run both (Monster). */
 function handSide() {
   const S = cardsSides(A.m);
@@ -217,10 +303,10 @@ function handSwitch() {
  * timeout) shows only once the score on screen has caught up with the engine — then it is dealt (returned, for the animation).
  */
 function handSync(m, i) {
-  const D = m.deck[i],
+  const D = handP(m, i),
     S = A.hshow || (A.hshow = []),
     s = S[i] || (S[i] = [...D.hand]),
-    caught = ptsPlayed(m) <= (A.ptsShown || 0),
+    caught = (m.turnAt || 0) <= (A.ptsShown || 0), // (the last turn is on screen: the opening hand at once, a turn's cards once its point shows)
     dealt = [];
   for (let h = 0; h < D.hand.length; h++) {
     const now = D.hand[h] || null;
@@ -235,12 +321,12 @@ function handSync(m, i) {
 /** Pause at turns (spec §2.37): default on in career, off in Monster; stored per mode. */
 function turnPause() {
   const P = store.getJSON(KEYS.turns, {}) || {},
-    k = cardsCareer() ? 'career' : 'exh';
+    k = cardsCareer() || (A && A.fx.deck) ? 'career' : 'exh';
   return k in P ? !!P[k] : k === 'career';
 }
 function setTurnPause(on) {
   const P = store.getJSON(KEYS.turns, {}) || {};
-  P[cardsCareer() ? 'career' : 'exh'] = !!on;
+  P[cardsCareer() || (A && A.fx.deck) ? 'career' : 'exh'] = !!on;
   store.setJSON(KEYS.turns, P);
 }
 /** Mount the bar and the active-card rows (startMatch); the loop redraws only on a change. */
@@ -291,7 +377,8 @@ function handTick(force) {
 }
 /** The bar's row: deck pile · the fanned hand · discard pile, the head line over it. */
 function handHTML(m, i) {
-  const D = m.deck[i],
+  const D = handP(m, i),
+    Y = Cards.my(m, i),
     t = m.t[i],
     S = cardsSides(m),
     s = A.hshow[i],
@@ -315,7 +402,7 @@ function handHTML(m, i) {
       ? `<button class="btn hsw" onclick="handSwitch()" ${tip('Show your other hand')}>${esc(m.t[S.find(x => x !== i)].short)} <kbd>Tab</kbd></button>`
       : ''
   }<span class="htn">Turn ${m.turnN || 0} · refill in ${Math.max(1, left)}</span><span class="hkeys"><kbd>1</kbd>–<kbd>${n}</kbd> play · <kbd>Shift</kbd> or right-click discard</span>${
-    D.me && D.by !== 'you' ? '<span class="hkeys">◆ yours · the captain plays the rest</span>' : ''
+    Y ? handReqBtn(m, i) : ''
   }</div><div class="hmain">${pile('deck', 'Deck', D.draw.length, 'draw order hidden')}<div class="hcards">${cards}</div>${pile(
     'disc',
     'Discard',
@@ -330,7 +417,8 @@ function handPile(k) {
 }
 /** A pile's list: the deck by kind and name (draw order hidden); the discard pile with each card's points left to cool; OP cards used. */
 function handPileList(m, i, k) {
-  const D = m.deck[i],
+  if (k === 'req') return handReqList(m, i);
+  const D = handP(m, i),
     row = (id, right, cls = '') =>
       `<div class="hli k-${CARDS[id].kind} ${cls}" ${tip(cardTip(id))}><i></i><span>${cardYours(m, i, id) ? '◆ ' : ''}${esc(cardName(m, i, id))}</span><small>${cardKind(CARDS[id])}</small><b>${right}</b></div>`,
     order = (a, b) =>
@@ -356,6 +444,75 @@ function handPileList(m, i, k) {
     if (!rows) rows = '<p class="small mute">Nothing yet.</p>';
   }
   return `<div class="hlh"><span class="lab">${head}</span><span class="small mute">${k === 'deck' ? 'draw order hidden' : 'points left to cool · ready = back at the next shuffle'}</span><button class="btn x" onclick="handPile('${k}')" aria-label="Close">✕</button></div><div class="hlb">${rows}</div>`;
+}
+/* ---------- requests (spec §2.37 Requests) ---------- */
+
+/** Why no request can be made now (the button's gap), or null: at a turn, once a turn, a team play in the captain's hand. */
+function handReqWhy(m, i) {
+  const D = m.deck[i],
+    W = D.hand.map((id, h) => (id ? Cards.canAsk(m, i, h) : 'gap'));
+  if (W.includes(null)) return null;
+  return ['off', 'asked', 'turn'].find(w => W.includes(w)) || 'type';
+}
+/** The bar's Request button: open at a turn (once a turn), else the gap it waits for. */
+function handReqBtn(m, i) {
+  const why = handReqWhy(m, i),
+    Y = Cards.my(m, i),
+    word = why === 'type' ? 'none in their hand' : CAN_WORD[why] || '';
+  return `<button class="btn hreq${A.hpile === 'req' ? ' on' : ''}" onclick="handPile('req')" aria-expanded="${A.hpile === 'req'}" ${tip(
+    `Ask your captain for a team play from their hand, at a turn, once a turn. A no costs nothing.${Y.req.cool > 0 ? ' A granted card was played into its counter: they grant less readily for now.' : ''}`
+  )}>Request → a team play${why ? ` <small class="mute">· ${esc(word)}</small>` : ''} <kbd>R</kbd></button>`;
+}
+/** The request list: the captain's hand — each team play with how likely a yes is (a word, never the number) and Ask. */
+function handReqList(m, i) {
+  const D = m.deck[i],
+    Y = Cards.my(m, i),
+    into = Y.hand.indexOf(null),
+    rows = D.hand
+      .map((id, h) => {
+        if (!id) return '';
+        const why = Cards.canAsk(m, i, h),
+          O = Cards.askOdds(m, i, h),
+          team = CARDS[id].type === 'team';
+        return `<div class="hli rq k-${CARDS[id].kind} t-${CARDS[id].type}" ${tip(cardTip(id))}><i></i><span>${esc(cardName(m, i, id))}</span><small>${TYPE_WORD[CARDS[id].type]}</small>${
+          team
+            ? `<b class="odds ${O.word}">${O.word}</b>${
+                why
+                  ? `<small class="mute">${esc(CAN_WORD[why] || '')}</small>`
+                  : `<button class="btn" onclick="handAsk(${i},${h})">Ask → into your hand</button>`
+              }`
+            : '<b class="mute">captain only</b>'
+        }</div>`;
+      })
+      .join(''),
+    note =
+      into >= 0
+        ? `A yes takes your empty place ${into + 1}.`
+        : `A yes takes place ${Y.size} (${esc(cardName(m, i, Y.hand[Y.size - 1]))} goes to your discard pile).`;
+  return `<div class="hlh"><span class="lab">Captain’s hand · ${esc(firstName(m.t[i].cap || m.t[i].P[0]))}</span><span class="small mute">${
+    Y.req.cool > 0 ? 'Slower to grant: a granted card was countered · ' : ''
+  }${note} A no costs nothing.</span><button class="btn x" onclick="handPile('req')" aria-label="Close">✕</button></div><div class="hlb">${rows || '<p class="small mute">Their hand is empty.</p>'}</div>`;
+}
+/** Ask for the captain's card h (Cards.ask): the answer on the bar's line and in the debug log. */
+function handAsk(i, h) {
+  if (!A || !A.m || A.done) return false;
+  const m = A.m,
+    t = m.t[i],
+    id = m.deck[i].hand[h],
+    r = Cards.ask(m, i, h);
+  if (!r) return false;
+  const cap = firstName(t.cap || t.P[0]);
+  if (typeof DBG !== 'undefined')
+    DBG.log('info', `request: ${t.short} asks ${cap} for ${CARDS[id].name} · ${r.word} (${r.p.toFixed(2)}) → ${r.ok ? 'yes' : 'no'}`);
+  if (r.ok && A.hshow && A.hshow[i]) A.hshow[i][r.into] = null; // (dealt into its place on the next redraw)
+  A.hpile = null;
+  handNote(
+    t,
+    r.ok ? `${esc(cap)}: “Yours.” <b>${esc(CARDS[id].name)}</b> is in your hand` : `${esc(cap)}: “Not now.”`,
+    r.ok ? 'turn' : 'disc'
+  );
+  handTick(true);
+  return true;
 }
 /** The deal: each new card flies from the deck pile to its place (30 ms apart). */
 function handDeal(dealt) {
@@ -420,7 +577,12 @@ function cardsTurnShow(a) {
     const pb = $('#pause');
     if (pb) pb.innerHTML = pauseLabel(true);
     setLabel('#fspause', '▶');
-    handNote(t, `Turn ${a.n} · new cards · paused — <kbd>Space</kbd> plays on`, 'turn', 0);
+    handNote(
+      t,
+      `Turn ${a.n} · new cards${Cards.my(A.m, handSide()) ? ' · <kbd>R</kbd> request' : ''} · paused — <kbd>Space</kbd> plays on`,
+      'turn',
+      0
+    );
   } else handNote(t, `Turn ${a.n} · new cards`, 'turn');
   handTick(true);
 }
@@ -444,8 +606,13 @@ function cardsKey(e) {
     handTick(true);
     return true;
   }
+  if (e.code === 'KeyR' && !e.shiftKey && !A.prep && Cards.my(A.m, i)) {
+    e.preventDefault();
+    handPile('req');
+    return true;
+  }
   const k = /^Digit([1-9])$/.exec(e.code || '');
-  if (!k || +k[1] > A.m.deck[i].hand.length) return false;
+  if (!k || +k[1] > handP(A.m, i).hand.length) return false;
   if (A.railTab === 'tac' && !$('#mrail').hidden && !e.shiftKey) return false; // the Tactics tab's 1–9 flip techniques (§9.10)
   e.preventDefault();
   const h = +k[1] - 1;
@@ -460,7 +627,10 @@ function cardsPlayShow(a) {
     t = m.t[a.side],
     n = cardName(m, a.side, a.id);
   if (typeof DBG !== 'undefined')
-    DBG.log('info', `card: ${t.short} plays ${n}${a.caught ? ` (caught: ${a.caught})` : ''} · by ${a.by} · ${a.st}`);
+    DBG.log(
+      'info',
+      `card: ${t.short} plays ${n}${a.caught ? ` (caught: ${a.caught})` : ''} · by ${a.by}${(cardsYou(m) || {}).p?.id === a.by ? ' (you)' : m.t[a.side].cap && m.t[a.side].cap.id === a.by ? ' (captain)' : ''} · ${a.st}`
+    );
   const q = A.hq && A.hq[a.side];
   if (q && q.id === a.id && !q.gone) {
     q.gone = true;
@@ -492,6 +662,7 @@ function cardsDeck(i) {
   const m = A.m,
     D = m.deck && m.deck[i];
   if (!D) return '';
+  if (D.my) return cardsMyDeck(m, i);
   const q = handQ(m, i),
     hand = D.hand
       .map((id, h) =>
@@ -527,8 +698,57 @@ function cardsDeck(i) {
       (bas
         ? `<span class="dk k-basic bas" ${tip('Basics fill the places your squad has no card for: small and cheap, 1 point.')}><i></i><b>Basics ×${bas}</b><small>Power Up · High Point · Guard Up · Quick Step</small></span>`
         : ''),
-    note = D.by === 'you' ? 'Click a card to play it on the first serve.' : '◆ yours to play — the captain plays the rest.';
-  return `<div class="cdeck"><div class="lab">Opening hand</div><div class="hmini">${hand}</div><p class="small mute">${note}</p><div class="lab">Deck · ${all.length} <span class="mute">· ${own.length} own · ${bas} Basics</span></div><div class="dks">${deck}</div></div>`;
+    note = 'Click a card to play it on the first serve.';
+  return `<div class="cdeck">${A.fx.deck ? cardsPickHTML(m, i, 'Your cards join the team deck') : ''}<div class="lab">Opening hand</div><div class="hmini">${hand}</div><p class="small mute">${note}</p><div class="lab">Deck · ${all.length} <span class="mute">· ${own.length} own · ${bas} Basics</span></div><div class="dks">${deck}</div></div>`;
+}
+/**
+ * The deck pick (spec §2.37 Your hand): every card of your pool as a toggle (DECK.mine at most), grouped by type; Basics fill
+ * the rest. `head`: the line under the label.
+ */
+function cardsPickHTML(m, i, head) {
+  const P = A.myPick || [],
+    pool = cardsPool(m, i),
+    by = { solo: [], debuff: [], team: [] };
+  for (const id of pool) by[CARDS[id].type].push(id);
+  const chip = id => {
+      const on = P.includes(id),
+        full = !on && P.length >= DECK.mine;
+      return `<button class="dk k-${CARDS[id].kind} t-${CARDS[id].type} pick${on ? ' on' : ''}" aria-pressed="${on}" ${full ? 'aria-disabled="true"' : ''} onclick="cardsPick(${i},'${esc(id)}')" ${tip(cardTip(id))}><i></i><b>${on ? '✓ ' : ''}${esc(cardName(m, i, id))}</b><small>${cardKind(CARDS[id])}</small></button>`;
+    },
+    groups = Object.entries(by)
+      .filter(([, L]) => L.length)
+      .map(([k, L]) => `<div class="dkg"><span class="cgl">${TYPE_WORD[k]}</span><div class="dks">${L.map(chip).join('')}</div></div>`)
+      .join('');
+  return `<div class="lab">Your deck · ${P.length} / ${DECK.mine} <span class="mute">· ${head}${P.length < DECK.mine ? ` · Basics fill ${DECK.mine - P.length}` : ''}</span></div><div class="dkp">${
+    groups || '<p class="small mute">No cards of your own yet: Basics fill your deck. Learn a technique to bring one.</p>'
+  }</div>`;
+}
+/** Match prep as a non-captain: your deck pick, your opening hand of DECK.myHand and how requests work. */
+function cardsMyDeck(m, i) {
+  const Y = Cards.my(m, i),
+    q = handQ(m, i),
+    hand = Y.hand
+      .map((id, h) =>
+        q && q.h === h
+          ? handCard(m, i, h, q.id, { q: 1, mini: 1 })
+          : id
+            ? handCard(m, i, h, id, { mini: 1 })
+            : `<div class="hc gap mini" data-h="${h}"><kbd>${h + 1}</kbd><span>Empty</span></div>`
+      )
+      .join(''),
+    cap = m.t[i].cap || m.t[i].P[0],
+    O = Cards.askOdds(
+      m,
+      i,
+      Math.max(
+        0,
+        m.deck[i].hand.findIndex(id => id && CARDS[id].type === 'team')
+      )
+    ),
+    trust = Y.req.trusted ? 'trusted' : 'newcomer';
+  return `<div class="cdeck"><div class="lab">Your opening hand · ${Y.size}</div><div class="hmini">${hand}</div><p class="small mute">Click a card to play it on the first serve. Team plays are ${esc(
+    firstName(cap)
+  )}’s: ask for one at a turn <kbd>R</kbd> — bond ${Math.round(Y.req.bond)}, ${trust} · a yes is ${O.word} now. A no costs nothing.</p>${cardsPickHTML(m, i, 'your play style')}</div>`;
 }
 /* ---------- the result card ---------- */
 

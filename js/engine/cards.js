@@ -14,7 +14,12 @@ const ptsPlayed = m => m.pts[0] + m.pts[1];
 /** Is technique `id` forced for p (an active card of p's side, p owns it, p is not Stubborn)? */
 function cardForce(p, id) {
   const D = CM && CM.deck && CM.deck[sideOf(p)];
-  return !!(D && D.force.includes(id) && hasTech(p, id) && mtr(CM, p) !== 'stubborn');
+  return !!(
+    D &&
+    (D.force.includes(id) || (D.forceMe.length && D.forceMe.some(f => f.need === id && f.pids.includes(p.id)))) &&
+    hasTech(p, id) &&
+    mtr(CM, p) !== 'stubborn'
+  );
 }
 /** The active cards' buff on p for stat k (atk, def, spd, jump, serve) → a multiplier (stageBuff multiplies it in). */
 function cardBuff(p, k) {
@@ -47,7 +52,7 @@ function edgeK(p, k) {
  */
 const cardFor = (p, b) =>
   (!b.need || hasTech(p, b.need)) &&
-  (!b.needT || mtr(CM, p) === b.needT) &&
+  (!b.needT || b.my || mtr(CM, p) === b.needT) &&
   (!b.pids || b.pids.includes(p.id)) &&
   (!b.ids || (b.ids.includes(p.id) && duoOn(p.team, b.ids)));
 /** A duo (spec §4.36 4): at least two of its ids on T's court. */
@@ -81,6 +86,8 @@ function cardsInit(m, opts) {
       st: {}, // id → this rally's state (cardEdges)
       ek: {}, // stat → this rally's edges [{ v, need, pids }] (cardBuff)
       force: [],
+      forceMe: [], // techniques your own card forces: [{ need, pids }] (spec §2.37 Your hand: only you)
+      my: null, // a non-captain's own deck and hand (Cards.myDeck, spec §2.37 Your hand), or null
       buff: [],
       bk: {},
       cord: [] // orders the cards set: [player id, kind, value] (cleared before the next apply)
@@ -160,12 +167,13 @@ function cardApply(m, i) {
   for (const [pid, k, v] of D.cord) if (m.ord[pid] && m.ord[pid][k] === v) delete m.ord[pid][k];
   for (const pid in m.ord) if (!Object.keys(m.ord[pid]).length) delete m.ord[pid];
   D.cord = [];
-  for (const id of ids) {
-    const c = CARDS[id];
+  for (const a of A) {
+    const c = CARDS[a.id];
     if (!c.ord) continue;
     const [k, v0] = c.ord,
-      who =
-        c.who === 'mb'
+      who = a.my
+        ? T.P.filter(p => a.pids.includes(p.id))
+        : c.who === 'mb'
           ? T.P.filter(p => p.role === 'MB')
           : c.who === 'hitters'
             ? T.P.filter(p => p.role !== 'S')
@@ -183,7 +191,8 @@ function cardApply(m, i) {
     }
   }
   // forced techniques and buffs
-  D.force = ids.filter(id => CARDS[id].force).map(id => CARDS[id].need);
+  D.force = A.filter(a => CARDS[a.id].force && !a.my).map(a => CARDS[a.id].need);
+  D.forceMe = A.filter(a => CARDS[a.id].force && a.my).map(a => ({ need: CARDS[a.id].need, pids: a.pids }));
   D.buff = [];
   for (const a of A) {
     const c = CARDS[a.id];
@@ -194,7 +203,8 @@ function cardApply(m, i) {
         need: c.need,
         needT: c.needT,
         when: c.when,
-        ...(c.self && a.pids ? { pids: a.pids } : {}),
+        ...((c.self || a.my) && a.pids ? { pids: a.pids } : {}),
+        ...(a.my ? { my: 1 } : {}),
         ...(c.src === 'duo' ? { ids: duoIds(m, i, a.id) || [] } : {})
       });
   }
@@ -285,6 +295,74 @@ function keyMoment(m, i) {
   );
 }
 
+/**
+ * Active card a of side i ends (`why` 'done' | 'replaced'): out of play, its after-cost, to its discard pile (OP: used up).
+ * Returns the `cardend` act. (The caller re-applies the side's levers.)
+ */
+function cardEnd(m, i, a, why) {
+  const D = deckOf(m, i);
+  D.act = D.act.filter(x => x !== a);
+  if (CARDS[a.id].on === 'inzone' && m.stage[i] === 'fever') m.fever[i] = 1; // (Fever ends with the card: pointStage's clock)
+  const after = CARDS[a.id].after,
+    who = after
+      ? cardPay(
+          m,
+          i,
+          a.my
+            ? m.t[i].P.filter(p => a.pids.includes(p.id))
+            : Cards.payers(m, i, a.id, 'after').filter(p => !CARDS[a.id].self || p.id === a.by),
+          after
+        )
+      : [];
+  Cards.toDisc(m, i, a.id, a.y);
+  D.log.push({ k: 'end', id: a.id, at: [...m.pts], ...(why !== 'done' ? { why } : {}) });
+  return { k: 'cardend', side: i, id: a.id, by: a.by, why, ...(after ? { after, who } : {}) };
+}
+/**
+ * Who plays card id from your own hand on side i (spec §2.37 Your hand): a team play — its usual holders; anything else — you,
+ * while you are on court (a technique: while you own it). [] → 'holder'.
+ */
+function myHolders(m, i, id) {
+  const Y = Cards.my(m, i),
+    c = CARDS[id],
+    you = Y && m.t[i].P.find(p => p.id === Y.pid);
+  if (c.type === 'team') return Cards.holders(m, i, id);
+  return you && (c.src !== 'tech' || hasTech(you, c.need)) ? [you] : [];
+}
+/** A 0..1 roll from a string with no R() draw (FNV-1a through an fmix32 finaliser: near keys spread). */
+function cardRoll(s) {
+  let h = Math.floor(hstr(s) * 4294967296);
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+/** A hashed Fisher–Yates (your own deck and the Dev deck match's: no R() draws, so the match stream is the sims'). */
+function deckMix(a, salt) {
+  for (let k = a.length - 1; k > 0; k--) {
+    const j = Math.floor(cardRoll(`${salt}|${k}`) * (k + 1));
+    [a[k], a[j]] = [a[j], a[k]];
+  }
+  return a;
+}
+/** A match's hash key (both teams and the score). */
+const cardKey = m => `${m.t[0].name}|${m.t[1].name}|${m.pts[0]}:${m.pts[1]}|${m.turnN}`;
+/** Your hand's gaps refill from your deck; an empty deck takes your cooled cards back (hashed shuffle). */
+function myRefill(m, Y) {
+  for (let h = 0; h < Y.size; h++) {
+    if (Y.hand[h]) continue;
+    if (!Y.draw.length) {
+      const cool = Y.disc.filter(e => e.cd <= 0).map(e => e.id);
+      Y.disc = Y.disc.filter(e => e.cd > 0);
+      Y.draw = deckMix(cool, `${cardKey(m)}|my`);
+    }
+    if (!Y.draw.length) break;
+    Y.hand[h] = Y.draw.shift();
+  }
+}
+
 const Cards = {
   /** Side i's deck state (m.deck[i]) or null. */
   of: deckOf,
@@ -339,35 +417,166 @@ const Cards = {
     const H = Cards.holders(m, i, id);
     return H.length ? H.reduce((s, p) => s + techLv(p, c.need), 0) / H.length : 1;
   },
-  /** Is card id yours to play on side i (a side you run; career: one you bring)? The captain never plays those. */
-  mine(m, i, id) {
+  /** Is side i's team hand yours to play (a side you run)? The captain never plays it then. (Your own hand: Cards.my.) */
+  mine(m, i) {
     const D = deckOf(m, i);
-    return (
-      !!D &&
-      (D.by === 'you' ||
-        (!!D.me &&
-          cardBrings(
-            m,
-            i,
-            squadOf(m.t[i]).find(p => p.id === D.me),
-            id
-          )))
+    return !!D && D.by === 'you';
+  },
+  /** Side i's non-captain hand (spec §2.37 Your hand: Cards.myDeck), or null. */
+  my: (m, i) => (deckOf(m, i) ? deckOf(m, i).my : null),
+  /** The pile set a hand index reads: your own hand (`y`) or the side's team hand. */
+  pile: (m, i, y) => (y ? Cards.my(m, i) : deckOf(m, i)),
+  /** Is a team play active on side i (spec §2.37: one at a time — a new one replaces it)? Returns the active entry. */
+  team: (m, i) => (deckOf(m, i) ? deckOf(m, i).act.find(a => !a.pin && CARDS[a.id].type === 'team') : null) || null,
+  /**
+   * Player p's collection on side i (spec §2.37 Your hand): the cards they bring that are not team plays — their techniques
+   * (best holder level first), their trait card, their OP card (Resolve of the Titan). No Basics (they fill the deck).
+   */
+  collection(m, i, p) {
+    const out = [];
+    for (const id in CARDS) {
+      const c = CARDS[id];
+      if (c.type === 'team' || c.src === 'duo' || c.src === 'base' || c.src === 'book') continue;
+      if (cardBrings(m, i, p, id)) out.push(id);
+    }
+    return out.sort((a, b) =>
+      CARDS[a].src === 'tech' && CARDS[b].src === 'tech' ? techLv(p, CARDS[b].need) - techLv(p, CARDS[a].need) : 0
     );
+  },
+  /**
+   * A non-captain's own deck on side i (spec §2.37 Your hand; match prep, before the first serve): `ids` (at most DECK.mine;
+   * Basics fill), a hand of DECK.myHand, the captain playing the team deck. The cards only pid brings leave the team deck
+   * (Basics take their places). `o` { bond 0–100 with the captain, trusted } sets the request odds. Hashed shuffle (no R()).
+   */
+  myDeck(m, i, pid, ids, o = {}) {
+    const D = deckOf(m, i),
+      p = squadOf(m.t[i]).find(q => q.id === pid);
+    if (!D || !p) return null;
+    const own = ids.filter(id => CARDS[id]).slice(0, DECK.mine);
+    for (let k = 0; own.length < DECK.mine; k++) own.push(DECK.basics[k % DECK.basics.length]);
+    const sq = squadOf(m.t[i]).filter(q => q !== p),
+      onlyYou = id => cardBrings(m, i, p, id) && !sq.some(q => cardBrings(m, i, q, id));
+    let b = 0;
+    const swap = id => (id && CARDS[id].src !== 'base' && onlyYou(id) ? DECK.basics[b++ % DECK.basics.length] : id);
+    D.draw = D.draw.map(swap);
+    D.hand = D.hand.map(swap);
+    D.by = 'ai';
+    D.me = pid;
+    const Y = (D.my = {
+      pid,
+      ids: [...own], // the picked deck (match prep shows it)
+      size: DECK.myHand,
+      draw: deckMix([...own], `${cardKey(m)}|${pid}|${own.join()}`),
+      hand: [],
+      disc: [],
+      used: [],
+      pt: -1,
+      got: [], // cards a request moved into your hand (yours for this match)
+      req: { bond: o.bond || 0, trusted: !!o.trusted, n: -1, cool: 0, asks: 0, yes: 0, last: null }
+    });
+    Y.hand = Y.draw.splice(0, Y.size);
+    while (Y.hand.length < Y.size) Y.hand.push(null);
+    return Y;
+  },
+  /** Drop side i's own hand (the side goes back to the team deck alone; match prep only — the team deck keeps its Basics). */
+  myDrop(m, i) {
+    const D = deckOf(m, i);
+    if (D) ((D.my = null), (D.me = null));
+  },
+  /**
+   * The Dev deck match as captain (spec §2.37 Dev match; match prep): side i's team deck rebuilt from `ids` (yours) and the squad's
+   * own cards, Basics filling DECK.size; hashed shuffle (no R()), a new opening hand.
+   */
+  teamDeck(m, i, ids) {
+    const D = deckOf(m, i);
+    if (!D) return;
+    const all = [...new Set([...ids.filter(id => CARDS[id]), ...deckOwn(m, i)])].slice(0, DECK.size);
+    for (let k = 0; all.length < DECK.size; k++) all.push(DECK.basics[k % DECK.basics.length]);
+    D.draw = deckMix(all, `${cardKey(m)}|team|${all.join()}`);
+    D.hand = D.draw.splice(0, D.size);
+    D.disc = [];
+    D.held = [...D.hand];
+  },
+  /**
+   * Why you can't ask the captain for team-hand card h of side i now (spec §2.37 Requests), or null: 'off', 'none' (no own hand),
+   * 'gap', 'type' (not a team play), 'turn' (only at a turn: until REQ.win points after it), 'asked' (one request a turn), 'active'.
+   */
+  canAsk(m, i, h) {
+    const D = deckOf(m, i),
+      Y = D && D.my;
+    if (!D || m.over) return 'off';
+    if (!Y) return 'none';
+    const id = D.hand[h];
+    if (!id) return 'gap';
+    if (CARDS[id].type !== 'team') return 'type';
+    if (ptsPlayed(m) - m.turnAt > REQ.win) return 'turn';
+    if (Y.req.n === m.turnN) return 'asked';
+    if (D.act.some(a => a.id === id)) return 'active';
+    return null;
+  },
+  /** The yes odds for asking for team-hand card h of side i: { p (0..1), word 'likely' | 'maybe' | 'unlikely' }. No draws. */
+  askOdds(m, i, h) {
+    const D = deckOf(m, i),
+      Y = D && D.my,
+      id = D && D.hand[h];
+    if (!Y || !id) return { p: 0, word: 'unlikely' };
+    const R0 = Y.req,
+      p = clamp(
+        REQ.base +
+          (REQ.bond * clamp(R0.bond, 0, 100)) / 100 +
+          (R0.trusted ? REQ.trust : 0) +
+          (Cards.fits(m, i, id) ? REQ.fit : REQ.mis) -
+          (R0.cool > 0 ? REQ.cool : 0),
+        REQ.min,
+        REQ.max
+      );
+    return { p, word: p >= REQ.likely ? 'likely' : p >= REQ.maybe ? 'maybe' : 'unlikely' };
+  },
+  /**
+   * Ask the captain for team-hand card h of side i (spec §2.37 Requests): answered by the odds (a hashed roll, no R()). Yes → the card
+   * leaves the captain's hand (a gap there) for your first empty place — none: it takes your last place (that card to your discard
+   * pile). No → nothing changes (no bond loss). Returns { ok, id, p, word, into } or null when it can't be asked (Cards.canAsk).
+   */
+  ask(m, i, h) {
+    if (Cards.canAsk(m, i, h)) return null;
+    const D = deckOf(m, i),
+      Y = D.my,
+      id = D.hand[h],
+      { p, word } = Cards.askOdds(m, i, h),
+      ok = cardRoll(`${cardKey(m)}|ask|${id}|${Y.req.asks}`) < p;
+    Y.req.n = m.turnN;
+    Y.req.asks++;
+    let into = -1;
+    if (ok) {
+      Y.req.yes++;
+      into = Y.hand.indexOf(null);
+      if (into < 0) {
+        into = Y.size - 1;
+        Cards.discard(m, i, into, true);
+      }
+      D.hand[h] = null;
+      Y.hand[into] = id;
+      Y.got.push(id);
+    }
+    Y.req.last = { id, ok, p, at: [...m.pts] };
+    D.log.push({ k: 'ask', id, ok, at: [...m.pts] });
+    return { ok, id, p, word, into };
   },
   /**
    * Why hand card h of side i can't be played now, or null: 'off' (no deck / over), 'gap', 'point' (this side played this
    * point), 'active' (the same card is active), 'clash' (an active card of its group), 'holder' (none on court).
    */
-  can(m, i, h) {
-    const D = deckOf(m, i);
-    if (!D || m.over) return 'off';
-    const id = D.hand[h];
+  can(m, i, h, y) {
+    const D = deckOf(m, i),
+      H = Cards.pile(m, i, y);
+    if (!D || !H || m.over) return 'off';
+    const id = H.hand[h];
     if (!id) return 'gap';
-    if (D.pt === ptsPlayed(m)) return 'point';
+    if (H.pt === ptsPlayed(m)) return 'point';
     if (D.act.some(a => a.id === id)) return 'active';
     const g = CARDS[id].grp;
-    if (g && D.act.some(a => CARDS[a.id].grp === g)) return 'clash';
-    if (!Cards.holders(m, i, id).length) return 'holder';
+    if (g && D.act.some(a => CARDS[a.id].grp === g && !(CARDS[id].type === 'team' && CARDS[a.id].type === 'team'))) return 'clash';
+    if (!(y ? myHolders(m, i, id) : Cards.holders(m, i, id)).length) return 'holder';
     return null;
   },
   /**
@@ -376,28 +585,31 @@ const Cards = {
    * one-shot (`dur` 0) acts at once and goes to the discard pile. Returns the `card` act (queued for the next serve's beats)
    * or null when it can't be played (Cards.can).
    */
-  play(m, i, h) {
-    if (Cards.can(m, i, h)) return null;
+  play(m, i, h, y) {
+    if (Cards.can(m, i, h, y)) return null;
     const cm0 = CM;
     CM = m;
     const D = deckOf(m, i),
-      id = D.hand[h],
+      P = Cards.pile(m, i, y),
+      id = P.hand[h],
       c = CARDS[id],
-      H = Cards.holders(m, i, id),
-      by = (c.src === 'base' ? m.t[i].cap || H[0] : H[0]).id,
-      who = cardPay(m, i, Cards.payers(m, i, id), c.cost),
+      my = !!y && c.type !== 'team', // your own individual / debuff card: you hold it, pay it and it acts on you (spec §2.37)
+      H = y ? myHolders(m, i, id) : Cards.holders(m, i, id),
+      by = (y ? H[0] : c.src === 'base' ? m.t[i].cap || H[0] : H[0]).id,
+      who = cardPay(m, i, my ? (c.cost ? H : []) : Cards.payers(m, i, id), c.cost),
       at = [...m.pts],
       act = { k: 'card', side: i, id, by, op: c.kind === 'op', dur: c.dur, per: c.per, who, cost: c.cost || null, st: cardState(m, i, id) },
       out = [act];
-    D.hand[h] = null;
-    D.pt = ptsPlayed(m);
+    P.hand[h] = null;
+    P.pt = ptsPlayed(m);
     D.played[id] = (D.played[id] || 0) + 1;
-    D.log.push({ k: 'play', id, at, by });
+    D.log.push({ k: 'play', id, at, by, ...(y ? { y: 1 } : {}) });
     const trap = trapsFor(m, i, id)[0];
+    if (y && P.got.includes(id) && (trap || act.st === 'ctr')) P.req.cool = REQ.coolT; // a granted card misplayed (spec §2.37)
     if (trap) {
       // caught (spec §2.33 traps): the card is wasted, the trap used up
       act.caught = trap.id;
-      Cards.toDisc(m, i, id);
+      Cards.toDisc(m, i, id, y);
       D.log.push({ k: 'caught', id, at, by: trap.id });
       const O = deckOf(m, 1 - i);
       O.act = O.act.filter(a => a !== trap);
@@ -406,10 +618,13 @@ const Cards = {
       out.push({ k: 'cardend', side: 1 - i, id: trap.id, by: trap.by, why: 'sprung', hit: id });
     } else if (!c.dur) {
       out.push(...cardOn(m, i, id));
-      Cards.toDisc(m, i, id);
+      Cards.toDisc(m, i, id, y);
     } else {
-      const pids = c.self ? [by] : H.map(p => p.id);
-      D.act.push({ id, left: c.dur, per: c.per, by, pids, who, lv: Cards.level(m, i, id), at });
+      const old = c.type === 'team' && Cards.team(m, i); // one team play active a side: the new one replaces it (spec §2.37)
+      if (old) out.push(cardEnd(m, i, old, 'replaced'));
+      const pids = c.self || my ? [by] : H.map(p => p.id),
+        lv = my && c.src === 'tech' ? techLv(H[0], c.need) : Cards.level(m, i, id);
+      D.act.push({ id, left: c.dur, per: c.per, by, pids, who, lv, at, ...(y ? { y: 1 } : {}), ...(my ? { my: 1 } : {}) });
       out.push(...cardOn(m, i, id));
       cardApply(m, i);
     }
@@ -418,18 +633,19 @@ const Cards = {
     return act;
   },
   /** Discard hand card h of side i (any time between points): to the discard pile (an OP card: gone), the gap stays until the next turn. */
-  discard(m, i, h) {
-    const D = deckOf(m, i);
-    if (!D || m.over || !D.hand[h]) return false;
-    const id = D.hand[h];
-    D.hand[h] = null;
-    Cards.toDisc(m, i, id);
-    D.log.push({ k: 'discard', id, at: [...m.pts] });
+  discard(m, i, h, y) {
+    const D = deckOf(m, i),
+      P = Cards.pile(m, i, y);
+    if (!D || !P || m.over || !P.hand[h]) return false;
+    const id = P.hand[h];
+    P.hand[h] = null;
+    Cards.toDisc(m, i, id, y);
+    D.log.push({ k: 'discard', id, at: [...m.pts], ...(y ? { y: 1 } : {}) });
     return true;
   },
-  /** Card id of side i leaves play: cooling in the discard pile for its `cd` points, an OP card used up for the match. */
-  toDisc(m, i, id) {
-    const D = deckOf(m, i);
+  /** Card id of side i leaves play: cooling in the discard pile (`y`: your own) for its `cd` points, an OP card used up for the match. */
+  toDisc(m, i, id, y) {
+    const D = Cards.pile(m, i, y) || deckOf(m, i);
     if (CARDS[id].cd === Infinity) D.used.push(id);
     else D.disc.push({ id, cd: CARDS[id].cd });
   },
@@ -446,11 +662,12 @@ const Cards = {
       key = keyMoment(m, i),
       seen = deckOf(m, 1 - i)
         .log.filter(e => e.k === 'play')
-        .map(e => e.id);
+        .map(e => e.id),
+      team = !!Cards.team(m, i); // (one team play a side: the captain does not replace its own running one)
     let best = -1,
       bv = 0;
     D.hand.forEach((id, h) => {
-      if (!id || Cards.can(m, i, h) || Cards.mine(m, i, id) || !Cards.afford(m, i, id)) return;
+      if (!id || Cards.can(m, i, h) || !Cards.afford(m, i, id) || (team && CARDS[id].type === 'team')) return;
       const c = CARDS[id],
         strong = Cards.strong(id),
         S = D.stat[id];
@@ -483,7 +700,7 @@ const Cards = {
     const D = deckOf(m, i);
     if (!D || D.by === 'you' || capIQ(m.t[i]) < CARD_AI.waitOp) return;
     D.hand.forEach((id, h) => {
-      if (!id || !D.held.includes(id) || Cards.mine(m, i, id) || Cards.strong(id) || CARDS[id].kind === 'trap') return;
+      if (!id || !D.held.includes(id) || Cards.strong(id) || CARDS[id].kind === 'trap') return;
       if (!Cards.holders(m, i, id).length || !Cards.fits(m, i, id)) Cards.discard(m, i, h);
     });
   },
@@ -503,6 +720,7 @@ const Cards = {
       n++;
     }
     D.held = [...D.hand];
+    if (D.my) myRefill(m, D.my);
     return n;
   },
   /** Before every serve (rallyStart): the captains play, then each side's edges. Returns the play acts since the last serve. */
@@ -546,6 +764,7 @@ const Cards = {
     for (const i of [0, 1]) {
       const D = m.deck[i];
       for (const e of D.disc) if (e.cd > 0) e.cd--;
+      if (D.my) for (const e of D.my.disc) if (e.cd > 0) e.cd--;
       let ch = false;
       for (const a of [...D.act]) {
         if (a.pin) continue;
@@ -554,20 +773,7 @@ const Cards = {
           if (CARDS[a.id].on === 'surge') cardOn(m, i, a.id);
           continue;
         }
-        D.act = D.act.filter(x => x !== a);
-        if (CARDS[a.id].on === 'inzone' && m.stage[i] === 'fever') m.fever[i] = 1; // (Fever ends with the card: pointStage's clock)
-        const after = CARDS[a.id].after,
-          who = after
-            ? cardPay(
-                m,
-                i,
-                Cards.payers(m, i, a.id, 'after').filter(p => !CARDS[a.id].self || p.id === a.by),
-                after
-              )
-            : [];
-        Cards.toDisc(m, i, a.id);
-        D.log.push({ k: 'end', id: a.id, at: [...m.pts] });
-        out.push({ k: 'cardend', side: i, id: a.id, by: a.by, why: 'done', ...(after ? { after, who } : {}) });
+        out.push(cardEnd(m, i, a, 'done'));
         ch = true;
       }
       if (ch) cardApply(m, i);
@@ -621,7 +827,11 @@ function cardEdges(m) {
       m.deck[i].st[id] = st;
       for (const [who, k, v] of E.e) {
         const C = m.deck[who === 'us' ? i : 1 - i];
-        (C.ek[k] || (C.ek[k] = [])).push({ v: v * f, need: who === 'us' && !E.team ? c.need : null });
+        (C.ek[k] || (C.ek[k] = [])).push({
+          v: v * f,
+          need: who === 'us' && !E.team ? c.need : null,
+          ...(who === 'us' && a.my ? { pids: a.pids } : {}) // your own card: its edge is yours (spec §2.37 Your hand)
+        });
       }
     }
 }
@@ -664,6 +874,7 @@ function cardTurn(m) {
   m.turnN++;
   for (const i of [0, 1]) Cards.capClear(m, i);
   for (const i of [0, 1]) Cards.refill(m, i);
+  for (const i of [0, 1]) if (m.deck[i].my && m.deck[i].my.req.cool > 0) m.deck[i].my.req.cool--; // (the request cooldown, in turns)
   m.turnLog.push({ n: m.turnN, at: [...m.pts], hands: [0, 1].map(i => [...m.deck[i].hand]) });
   return m.rec ? { dur: 300, acts: [{ k: 'turn', n: m.turnN, snap: snap(m) }] } : null;
 }
