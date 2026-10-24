@@ -1387,7 +1387,7 @@ tests / measurements) }. `npm run cards` (tests/cards.js) measures modes and the
 - **Your own hand** (T-349): `cardsYou(m)` { p, side, cap } (career or the Dev match's `fx.deck` { side, pid, mode, bond, trusted });
   `cardsMine(m, i)` 'team' | 'my' | ''; `cardsWho` gives the side (prep); `handP(m, i)` = `D.my` or the team deck — the bar, piles,
   keys and `A.hshow` read it. Prep (`cardsMyDeck`): your opening hand of 3, the request line, `cardsPickHTML` (toggles from `cardsPool`:
-  career `Cards.collection`, Dev every card but duos / Basics; `A.myPick`, `cardsPick` rebuilds; the Dev match teaches picked
+  career `Cards.collection`, Dev every card but duos / Basics; `A.myPick`, `cardsPick` rebuilds; career: the pick carries — `prepStart` keeps it (`Team.keepDeck` → lazy `run.mydeck` ids, no Basics), the next prep starts from `Team.myDeck(run, pool)` (kept ids still owned; null = unset → the default pick; T-354); the Dev match teaches picked
   techniques, `cardsTeach`). The band shows kind · type (TYPE_SHORT). **Request** (`handReqBtn`, R): `handReqList` — the captain's
   hand with each team play's odds word and Ask (`handAsk` → `Cards.ask`, a line on the bar and `request: …` in DBG); play lines
   in DBG tag "(you)" / "(captain)". Dev › Deck match: `startDeckMatch(mode)` (menu.js; Average sides 45–70, you a wing of the left

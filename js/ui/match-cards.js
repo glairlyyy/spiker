@@ -56,9 +56,11 @@ function cardsMyBuild(m, i) {
   const Y = cardsYou(m);
   if (!Y || !m.deck) return;
   if (!A.myPick)
-    A.myPick = cardsPool(m, i)
-      .filter(id => !A.fx.deck || CARDS[id].type !== 'team')
-      .slice(0, DECK.mine);
+    A.myPick =
+      (!A.fx.deck && Team.myDeck(RUN, cardsPool(m, i))) || // career: last match's pick carries (spec §2.37)
+      cardsPool(m, i)
+        .filter(id => !A.fx.deck || CARDS[id].type !== 'team')
+        .slice(0, DECK.mine);
   const dv = A.fx.deck,
     o = dv ? { bond: dv.bond, trusted: !!dv.trusted } : Team.cardAsk(RUN, m, i);
   if (dv) cardsTeach(Y.p, A.myPick);

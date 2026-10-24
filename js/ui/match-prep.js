@@ -99,6 +99,8 @@ function prepStart() {
   A.prep = false;
   const el = $('#prep');
   if (el) el.hidden = true;
+  const Y = cardsYou(A.m);
+  if (Y && cardsCareer() && !A.fx.deck && cardsMine(A.m, Y.side) === 'my' && A.myPick) Team.keepDeck(RUN, A.myPick); // carries (§2.37)
   if (A.m.deck) A.hshow = [0, 1].map(i => handP(A.m, i).hand.map(() => null)); // the bar deals your opening hand
   if (A.railTab === 'reads') readsPanel();
 }

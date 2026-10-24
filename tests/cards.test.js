@@ -512,3 +512,27 @@ test('cards: requests — odds from bond, trust and the read; a yes moves the ca
   while (m.turnN < t0 + g.REQ.coolT && !m.over) g.playRally(m);
   if (!m.over) eq(Y.req.cool, 0, 'the cooldown runs out at turns');
 });
+
+test('cards: your deck pick carries to the next match (run.mydeck); a card you no longer own drops out, Basics fill (spec §2.37, T-354)', () => {
+  const g = load(94),
+    run = {};
+  eq(g.Team.myDeck(run, ['killer']), null, 'an old save: nothing kept (the default pick)');
+  const a = myMatch(g, 5, ['killer', 'delay']),
+    pool = g.Cards.collection(a.m, 0, a.you);
+  assert(pool.includes('killer') && pool.includes('delay'), 'both in your collection');
+  g.Team.keepDeck(run, a.Y.ids); // match prep's Start
+  eq(run.mydeck.join(), 'killer,delay', 'kept your cards, not the Basics');
+  while (!a.m.over) g.playRally(a.m);
+  const b = myMatch(g, 6, g.Team.myDeck(run, pool));
+  eq(b.Y.ids.join(), a.Y.ids.join(), 'the next match starts with the same 6');
+  const c = myMatch(
+    g,
+    7,
+    g.Team.myDeck(
+      run,
+      pool.filter(id => id !== 'delay')
+    )
+  ); // Delay no longer yours
+  eq(c.Y.ids.filter(id => g.CARDS[id].kind !== 'basic').join(), 'killer', 'a lost card drops out');
+  eq(c.Y.ids.length, 6, 'Basics fill');
+});
