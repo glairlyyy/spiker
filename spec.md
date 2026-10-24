@@ -1694,12 +1694,18 @@ the AI coach fills every slot you leave with the same function. Built and measur
     wall fade when you or the camera go in) and show the people training there; within ~40 m people become their VRM players
     (≤ 15 on screen; the low-poly setting keeps fewer); the order prompt shows in the world at the kit. Judged on: does it feel
     good, does it hold the frame rate, does walking get tedious. **Phase 3** (only if phase 2 passes): every district.
-    **Phase 3 — go (owner, 2026-10-24) [draft — T-361–T-362]**: street level in **every district** (the follow camera, the detail
+    **Phase 3 — go (owner, 2026-10-24) [built 2026-10-24 — T-361–T-362]**: street level in **every district** (the follow camera, the detail
     ring, WASD, VRM people within ~40 m), and **an interior for every place with a building** (§4.40 facilities): each kind gets its
     own inside with its kit as stations and the day-order prompts (gyms, the dojo, the Academy hall and gym, the harbor yard's shed,
     the pool hall, HQs — a hall with the club's board —, hotels and home — a room with the bed: Sleep —, outings — the noodle bar's
     counter, the arcade's machines —, the Harbor Market — its bikes and scooters —, secret places); outdoor facilities stay open
-    (the kit is the station). Arriving puts you inside everywhere. Fast keeps the same, cheaper. Frame budget §4.39.
+    (the kit is the station). Arriving puts you inside everywhere. Fast keeps the same, cheaper. Frame budget §4.39. **[built 2026-10-24, T-361–T-362: street level opens anywhere on land; every
+    place, HQ and the Academy Hall has its INTERIOR — a hall by size (a shell that fades) furnished from one piece library (racks,
+    bench, mats, plyo boxes, multi-gym, film screen, shelves, a mop, the bed, a counter, arcade machines, a tape deck, a bath, the club
+    board, a shrine, the drone crate, the old court) in its faction's colours, mirrored per place by hash; outdoor places keep their kit
+    as stations. Each station is the place card's own button with F: an order, Sleep 8 / 6 / 4 h at the bed, Buy the bike / scooter, a
+    place's own Go (Night out, Soak, Watch …), else the card (desks, club boards, a noodle counter: pick who comes). Only the hall you
+    are near is built (≤ 2, within 12 m), its facility cut out under it; you arrive at its first station, through the hall's door]**
     **Detail (owner, 2026-10-22: "spec and implement T-336"):** the prototype's places are the **Dynasty Strength Center** (SPOTS
     weiPower) and the **League Arena** (VENUES arena), and the streets between them.
     - **Camera**: one continuous zoom (wheel / pinch / +−): past the map's closest distance it keeps going — the pitch lowers from the

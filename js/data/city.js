@@ -1351,54 +1351,297 @@ const FACILITY = {
 };
 
 /**
- * Street-level interiors (spec §4.37 6, T-336b): the two places with insides (keyed by landmark id: a SPOTS id or `venue:<id>`).
- * Local metres in the landmark's frame (centre at 0, door on +z, as kit3d LANDMARKS). w × d × h = the shell (the landmark's box).
- * stations: where you walk up to (`at`, the prompt shows within INTERIOR_NEAR m) — `order` = one of the place's day orders
- * (City.orders: the prompt runs the place card's mapGo(place, order)), or `card` = the prompt opens the place card; `slots` =
- * where today's people for the place stand training (in order, round-robin). Display data only: no rules here.
+ * Street-level interiors (spec §4.37 6; T-336b the prototype, T-362 every place): keyed by landmark id (a SPOTS id, `hq<i>`,
+ * `venue:<id>`). Local metres in the facility lot's frame (centre 0, door on +z, as facility3d / kit3d). Display data: no rules here.
+ *   { kind, fac, hall: { x, z, w, d, h, y?, roof? } | null, w, d, h (the hall's size; the arena: its bowl), stations }
+ * hall = the building you walk into (its own shell by size; a sub-box of the lot: x / z its centre, y its floor over the lot's feet,
+ * roof how far above h the landmark's roof reaches, pad how far its eaves overhang — the cut takes both); null = an outdoor
+ * facility (open: its kit is the station).
+ * stations [{ id, name, at, slots, piece?, out?, y?, and one action }] — at = where you walk up to (the prompt within INTERIOR_NEAR m),
+ * piece = the furniture interior3d draws there (IPIECE; none outdoors: the facility's own kit stands there), out = outside the hall,
+ * slots = where today's people for the place stand. Actions (what the prompt's F does, the place card's own button):
+ *   order: a day order (City.orders) · sleep: Sleep 8 / 6 / 4 h · act: true | opt (the place's own Go — an outing, a secret place,
+ *   the drone) + verb · buy: 'bike' | 'scooter' (the Harbor Market) · card: the place's card (a desk, a club board, a counter).
+ * The first station is where you arrive (MapModel.inside). Built once at load from INTERIOR_HALL (the hall per facility design),
+ * INTERIOR_OUT (outdoor kit spots, lot fractions) and the place's kit (KITS → orders) + Stretch; varied per place by a hash (the
+ * layout mirrored) — no randoms.
  */
 const INTERIOR_NEAR = 2.5;
-const INTERIOR = {
-  weiPower: {
-    kind: 'gym',
-    w: 24,
-    d: 16,
-    h: 8,
-    stations: [
-      { id: 'bench', name: 'Bench press', order: 'heavy', at: [-1.6, -0.6], slots: [[-2.6, -0.2]] },
-      {
-        id: 'rack',
-        name: 'Weight rack',
-        order: 'heavy',
-        at: [-4.2, -2.4],
-        slots: [
-          [-5, -3.2],
-          [-3.4, -3.2]
-        ]
-      },
-      {
-        id: 'mats',
-        name: 'Mats',
-        order: 'mobility',
-        at: [2.4, -1],
-        slots: [
-          [1.6, -1.6],
-          [3.2, -1.6],
-          [2.4, -0.2]
-        ]
-      },
-      { id: 'mirror', name: 'Mirror wall', order: 'stretch', at: [4.6, 2.2], slots: [[5.6, 1.6]] },
-      { id: 'desk', name: 'Front desk', card: true, at: [-4.2, 2.6], slots: [] }
-    ]
+/** The hall per facility design (m, lot frame; kind = its furniture and look). Designs not listed are open (outdoor). */
+const INTERIOR_HALL = {
+  strength: { kind: 'gym', x: 0, z: 0, w: 24, d: 16, h: 7, roof: 3.5 },
+  filmlib: { kind: 'study', x: 0, z: -0.6, w: 20, d: 16, h: 11, roof: 1.5 },
+  plyotower: { kind: 'gym', x: 0, z: 0, w: 18, d: 18, h: 4, roof: 0.5 },
+  club: { kind: 'lounge', x: -5.4, z: -6.5, w: 18, d: 10, h: 5, roof: 3, pad: 0.9 },
+  harboryard: { kind: 'shed', x: -8, z: -4.5, w: 18, d: 13, h: 6.5, roof: 3 },
+  dojo: { kind: 'dojo', x: 0, z: -5, w: 15.4, d: 10, h: 3.8, y: 0.6, roof: 6, pad: 2 },
+  stonegym: { kind: 'gym', x: -3.96, z: -1.6, w: 13.6, d: 11.2, h: 4, roof: 3, pad: 0.6 },
+  pagoda: { kind: 'library', x: 0, z: 0, w: 10, d: 9, h: 3.4, y: 0.8, roof: 1, pad: 1.3 },
+  acagym: { kind: 'gym', x: -3.36, z: -0.9, w: 19.6, d: 14.4, h: 5.5, roof: 3.5 },
+  campus: { kind: 'hall', x: 0, z: -5.5, w: 24, d: 9.2, h: 7, roof: 1 },
+  home: { kind: 'home', x: 0, z: 0, w: 6.4, d: 5.25, h: 3.4, roof: 2.6, pad: 0.7 },
+  towerhotel: { kind: 'room', x: 0, z: -2, w: 16, d: 10, h: 4, roof: 0.5 },
+  inn: { kind: 'room', x: -1.5, z: -1.3, w: 19, d: 9.4, h: 6, roof: 2.6 },
+  lodge: { kind: 'room', x: 0, z: -1.5, w: 18, d: 10, h: 4, roof: 6 },
+  noodlebar: { kind: 'bar', x: 0, z: -0.9, w: 11, d: 7.2, h: 5.2, roof: 0.5 },
+  noodlehut: { kind: 'bar', x: 0, z: -0.5, w: 8, d: 6.3, h: 3, roof: 1.8, pad: 0.6 },
+  arcade: { kind: 'arcade', x: 0, z: 0, w: 15, d: 11, h: 7, roof: 0.5, pad: 1.4 },
+  taperoom: { kind: 'nook', x: 0, z: 0, w: 8.8, d: 7.2, h: 4, roof: 0.6 },
+  rooftop: { kind: 'nook', x: 0, z: 0, w: 8.8, d: 8.8, h: 7, roof: 0.3 },
+  onsen: { kind: 'bath', x: -6, z: -4.5, w: 12, d: 9, h: 3.6, roof: 2.4, pad: 1.3 },
+  scoutbar: { kind: 'bar', x: 0, z: 0, w: 8, d: 7.2, h: 6, roof: 0.6 },
+  cargoshed: { kind: 'shed', x: 2, z: 0, w: 16, d: 14, h: 5, roof: 3.7 },
+  hqGold: { kind: 'hq', x: 0, z: 0, w: 18, d: 18, h: 5, roof: 0.5 },
+  hqIron: { kind: 'hq', x: 0, z: 0, w: 20, d: 16, h: 8, roof: 0.5 },
+  hqHarbor: { kind: 'hq', x: 0, z: 0, w: 24, d: 16, h: 8, roof: 4.2 },
+  hqFort: { kind: 'hq', x: 0, z: 0, w: 18, d: 18, h: 9, roof: 1.2 },
+  hqPeak: { kind: 'hq', x: 0, z: 0, w: 14, d: 14, h: 4.6, y: 1.6, roof: 9, pad: 2.6 },
+  hqOutlaws: { kind: 'hq', x: 0, z: -2.4, w: 22, d: 11.2, h: 5, roof: 0.5 },
+  hqGloria: { kind: 'hq', x: 0, z: -2.7, w: 19.2, d: 10.8, h: 8, roof: 3.2, pad: 0.8 },
+  hqValley: { kind: 'hq', x: 0, z: -2.25, w: 21.6, d: 9, h: 4, roof: 3.4, pad: 1 }
+};
+/**
+ * Outdoor stations per facility design (lot fractions [fx, fz] of w / d; door on +z): a kit tag, an order id, or `act` / `stretch` /
+ * `bike` / `scooter` → where that station stands on the lot (its kit is drawn by facility3d). `y` = a raised deck (m).
+ */
+const INTERIOR_OUT = {
+  sprintlab: { track: [-0.04, 0.38], mats: [0.12, 0.27], stretch: [-0.25, 0] },
+  club: { water: [-0.12, 0.25], mats: [0.33, 0.22] },
+  sandcourts: { sandDrill: [-0.26, 0], lifeguard: [0.26, 0.05], mats: [0, -0.3], stretch: [0, 0.32] },
+  dunesprint: { dunes: [0.1, 0.33], sandDrill: [0.2, -0.1], lifeguard: [-0.3, 0.2], stretch: [-0.2, -0.15] },
+  harboryard: { crates: [0.24, 0.3] },
+  pierdeck: { plyo: [0, -0.1], water: [-0.17, -0.22], stretch: [0.22, 0.3], y: 1.2 },
+  trailhead: { trail: [0, 0.2], stretch: [-0.25, 0.05] },
+  steps: { steps: [0, 0.47], stretch: [0.36, 0.4] },
+  dojo: { chores: [0.37, 0.33] },
+  stonegym: { crates: [0.3, 0.3] },
+  cage: { weights: [-0.12, -0.12], stretch: [0.25, 0.12] },
+  campus: { act: [0, 0.28] },
+  bonfire: { act: [0, 0.25], stretch: [-0.3, 0.3] },
+  overcourt: { act: [0, 0.15], stretch: [0.36, 0.3] },
+  lighthouse: { act: [0.25, 0.2], stretch: [-0.3, 0.3] },
+  hermit: { act: [0.125, 0.125], stretch: [-0.3, 0.3] },
+  nightcourt: { act: [0, 0.15], stretch: [0.36, 0.32] },
+  ridemarket: { bike: [-0.33, 0.28], scooter: [0.3, 0.28], stretch: [0, -0.2] }
+};
+/** The furniture piece for a day order (interior3d IPIECE draws it) and the station's name. */
+const INTERIOR_ORDER = {
+  heavy: ['rack', 'Weight rack'],
+  plyo: ['plyo', 'Plyo boxes'],
+  sprints: ['lane', 'Sprint lane'],
+  mobility: ['mats', 'Mats'],
+  sandDrill: [null, 'Sand court'],
+  lifeguard: [null, 'Lifeguard chair'],
+  dunes: [null, 'Dune lane'],
+  swim: ['pool', 'Pool'],
+  stepRuns: [null, 'The steps'],
+  trailRun: [null, 'Trailhead'],
+  film: ['screen', 'Film screen'],
+  books: ['shelves', 'Bookshelves'],
+  allRound: ['multigym', 'Multi-gym'],
+  haul: ['crates', 'Crate yard'],
+  chores: ['mop', 'Mop and bucket'],
+  stretch: ['stretch', 'Stretch mat']
+};
+/**
+ * Per kind: the hall's spots (fractions of the hall, [u, v]; v = +0.5 the door wall) the kit's stations take in order, and the
+ * kind's own station(s) at fixed spots (a desk, the bed, a counter, the club board …). `act` = the place's own Go with its verb.
+ */
+const INTERIOR_KIND = {
+  gym: {
+    spots: [
+      [-0.28, -0.22],
+      [0.05, -0.22],
+      [0.3, 0.05],
+      [-0.05, 0.12],
+      [0.3, -0.25]
+    ],
+    own: [{ id: 'desk', piece: 'desk', card: true, at: [-0.34, 0.3] }]
   },
-  'venue:arena': {
+  study: {
+    spots: [
+      [0, -0.2],
+      [0.3, 0.15],
+      [-0.3, 0.1]
+    ],
+    own: [{ id: 'desk', piece: 'desk', card: true, at: [-0.3, 0.3] }]
+  },
+  lounge: { spots: [[0.25, 0.05]], own: [{ id: 'desk', piece: 'desk', card: true, at: [-0.25, -0.05] }] },
+  shed: {
+    spots: [
+      [-0.2, -0.2],
+      [0.25, 0.1]
+    ],
+    own: [{ id: 'thing', piece: 'drone', act: true, at: [-0.1, 0.05] }]
+  },
+  dojo: {
+    spots: [
+      [0, -0.12],
+      [0.3, 0.2]
+    ],
+    own: [{ id: 'altar', piece: 'altar', card: true, at: [-0.3, -0.3], name: 'Shrine' }]
+  },
+  library: {
+    spots: [
+      [-0.22, -0.25],
+      [0.2, -0.05],
+      [-0.2, 0.25]
+    ],
+    own: []
+  },
+  hall: { spots: [[0.25, 0.15]], own: [{ id: 'board', piece: 'board', card: true, at: [-0.3, -0.35], name: 'Notice board' }] },
+  home: { spots: [[0.26, -0.15]], own: [{ id: 'bed', piece: 'bed', sleep: true, at: [-0.2, 0.15], name: 'Bed' }] },
+  room: { spots: [[0.3, 0.2]], own: [{ id: 'bed', piece: 'bed', sleep: true, at: [-0.25, -0.2], name: 'Bed' }] },
+  bar: { spots: [[0.3, 0.25]], own: [{ id: 'counter', piece: 'counter', act: true, at: [-0.1, -0.15], name: 'Counter' }] },
+  arcade: { spots: [[0.3, 0.25]], own: [{ id: 'machines', piece: 'machines', act: true, at: [-0.1, -0.2], name: 'Arcade machines' }] },
+  nook: { spots: [[0.25, 0.25]], own: [{ id: 'thing', piece: 'tv', act: true, at: [-0.15, -0.2], name: 'Tape deck' }] },
+  bath: { spots: [[0.3, 0.3]], own: [{ id: 'bath', piece: 'bath', act: true, at: [-0.1, -0.12], name: 'Hot bath' }] },
+  hq: { spots: [], own: [{ id: 'board', piece: 'board', card: true, at: [0, -0.3], name: 'Club board' }] },
+  open: { spots: [], own: [] }
+};
+/** Per place: the verb of its own Go (an outing, a secret place) and the name of its own thing where the kind's is not it. */
+const INTERIOR_ACT = {
+  park: { verb: 'Relax', name: 'The lawn' },
+  noodles: { card: true, name: 'Counter' }, // (dinner: pick who comes — the card)
+  hutNoodles: { card: true, name: 'Counter' },
+  arcade: { verb: 'Night out' },
+  bonfire: { verb: 'Night out', name: 'The fire' },
+  street: { verb: 'Hustle', name: 'The court' },
+  tapes: { verb: 'Watch' },
+  light: { card: true, name: 'The lighthouse door' }, // (two choices: the card)
+  hermit: { verb: 'Take the trial', name: 'The old court' },
+  roof: { verb: 'Read the letter', name: 'The letterbox', piece: 'letters' },
+  onsen: { verb: 'Soak' },
+  midnight: { verb: 'Play the night game', name: 'The court' },
+  oldScout: { verb: 'Ask for the number', name: 'The bar' },
+  cargo: { verb: 'Buy the drone', name: 'The drone crate', piece: 'drone' }
+};
+const INTERIOR = (() => {
+  const out = {},
+    hash = s => {
+      let h = 2166136261;
+      for (const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+      return h >>> 0;
+    },
+    r2 = v => Math.round(v * 100) / 100;
+  /** Build one place's interior: id = the landmark id, fac = its design, kit = its KITS tags, spot = a SPOTS id (null: an HQ). */
+  const make = (id, fac, kit, spot) => {
+    const H = INTERIOR_HALL[fac] || null,
+      O = INTERIOR_OUT[fac] || {},
+      S = FACILITY[fac],
+      K = INTERIOR_KIND[H ? H.kind : 'open'],
+      flip = hash(id) % 2 ? -1 : 1, // the layout mirrored for half the places (no two alike)
+      inHall = ([u, v]) => [r2(H.x + flip * u * H.w), r2(H.z + v * H.d)],
+      onLot = ([fx, fz]) => [r2(fx * S.w), r2(fz * S.d)],
+      stations = [],
+      spots = K.spots.slice();
+    const place = (st, key, fixed) => {
+      if (O[key]) return { ...st, at: onLot(O[key]), out: true, piece: undefined, ...(O.y ? { y: O.y } : {}) };
+      if (H && fixed) return { ...st, at: inHall(fixed) };
+      if (H && spots.length) return { ...st, at: inHall(spots.shift()) };
+      return null;
+    };
+    // the kit's day orders first (the lead first: where you arrive), then the kind's own, then Stretch
+    const orders = [];
+    for (const t of kit || []) for (const o of (KITS[t] && KITS[t].orders) || []) orders.push([o, t]);
+    const seen = new Set();
+    for (const [o, t] of orders) {
+      if (seen.has(o)) continue;
+      seen.add(o);
+      const [piece, name] = INTERIOR_ORDER[o] || [null, DAY_ORDERS[o].name],
+        st = place({ id: o, name, order: o, piece }, O[o] ? o : t);
+      if (st) stations.push(st);
+    }
+    const A = (spot && INTERIOR_ACT[spot]) || {};
+    for (const q of K.own) {
+      if (q.act && !(spot && SPOTS[spot].act)) continue; // (a shed of a kit place: no Go of its own)
+      const st = { id: q.id, name: q.name || 'Front desk', piece: q.piece };
+      if (q.card) st.card = true;
+      if (q.sleep) st.sleep = true;
+      if (q.act) Object.assign(st, A.card ? { card: true } : { act: true, verb: A.verb || 'Go' });
+      if (A.name && q.act) st.name = A.name;
+      if (A.piece && q.act) st.piece = A.piece;
+      stations.push(place(st, '-', q.at));
+    }
+    if (O.act && spot)
+      stations.unshift({
+        id: 'act',
+        name: A.name || 'Here',
+        ...(A.card ? { card: true } : { act: true, verb: A.verb || 'Go' }),
+        at: onLot(O.act),
+        out: true,
+        ...(O.y ? { y: O.y } : {})
+      });
+    for (const k of ['bike', 'scooter'])
+      if (O[k]) stations.push({ id: k, name: k === 'bike' ? 'Bikes' : 'Scooters', buy: k, at: onLot(O[k]), out: true });
+    if (spot) {
+      const st = place({ id: 'stretch', name: 'Stretch mat', order: 'stretch', piece: 'stretch' }, 'stretch');
+      if (st) stations.push(st);
+    }
+    // where today's people stand: beside each station (two for an order, none at a card / bed / buy), inside the hall
+    for (const st of stations) {
+      const n = st.order && st.order !== 'stretch' ? 2 : st.order || st.act ? 1 : 0,
+        lim = (v, a, b) => Math.max(a, Math.min(b, v));
+      st.slots = Array.from({ length: n }, (_, i) => {
+        let x = st.at[0] + (n === 1 ? 1.1 : i ? 1.1 : -1.1),
+          z = st.at[1] - 0.9;
+        if (H && !st.out) ((x = lim(x, H.x - H.w / 2 + 0.6, H.x + H.w / 2 - 0.6)), (z = lim(z, H.z - H.d / 2 + 0.6, H.z + H.d / 2 - 0.6)));
+        return [r2(x), r2(z)];
+      });
+    }
+    return { kind: H ? H.kind : 'open', fac, hall: H, w: H ? H.w : S.w, d: H ? H.d : S.d, h: H ? H.h : 0, stations };
+  };
+  for (const id of Object.keys(SPOTS)) if (FACILITY[FACILITY_OF[id]]) out[id] = make(id, FACILITY_OF[id], SPOTS[id].kit, id);
+  FACILITY_OF.hq.forEach((fac, i) => (out[`hq${i}`] = make(`hq${i}`, fac, null, null)));
+  // the prototype's gym keeps its hand layout (T-336b, judged good): bench + rack → Heavy sets, mats → Mobility, mirror → Stretch, desk → card
+  out.weiPower.stations = [
+    { id: 'bench', name: 'Bench press', order: 'heavy', piece: 'bench', at: [-1.6, -0.6], slots: [[-2.6, -0.2]] },
+    {
+      id: 'rack',
+      name: 'Weight rack',
+      order: 'heavy',
+      piece: 'rack',
+      at: [-4.2, -2.4],
+      slots: [
+        [-5, -3.2],
+        [-3.4, -3.2]
+      ]
+    },
+    {
+      id: 'mats',
+      name: 'Mats',
+      order: 'mobility',
+      piece: 'mats',
+      at: [2.4, -1],
+      slots: [
+        [1.6, -1.6],
+        [3.2, -1.6],
+        [2.4, -0.2]
+      ]
+    },
+    { id: 'mirror', name: 'Mirror wall', order: 'stretch', piece: 'mirror', at: [4.6, 2.2], slots: [[5.6, 1.6]] },
+    { id: 'desk', name: 'Front desk', card: true, piece: 'desk', at: [-4.2, 2.6], slots: [] }
+  ];
+  out.weiPower.decor = 'strength'; // its sprint lane, dumbbell rack and plate tree
+  // the venues: the arena's open bowl (its centre court → the card; a venue has no day orders); the Academy Hall's old real court
+  out['venue:arena'] = {
     kind: 'arena',
+    hall: null,
     w: 22,
     d: 15,
     h: 0,
     stations: [{ id: 'court', name: 'Centre court', card: true, at: [0, 0], slots: [] }]
-  }
-};
+  };
+  out['venue:hall'] = {
+    kind: 'court',
+    hall: { kind: 'court', x: 0, z: 0, w: 18, d: 10, h: 4.4, roof: 4 },
+    w: 18,
+    d: 10,
+    h: 4.4,
+    stations: [{ id: 'court', name: 'The old court', card: true, piece: 'court', at: [0, 1.6], slots: [] }]
+  };
+  return out;
+})();
 
 /** The spread's lot grid (scaleMap): a district's lot spacing × this (towns spread × K, so ~(K / LOT_SPREAD)² × the lots). */
 const LOT_SPREAD = 1.6;

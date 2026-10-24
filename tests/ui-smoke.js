@@ -537,6 +537,38 @@ const step = async (name, fn) => {
     await ev(() => MapView.m3.setView({ d: 110 }));
     return `cut ${p.i.cut}, roof ${p.i.alpha}, ${City_h(p.days)} → ${City_h(await ev(() => City.wt(RUN)))}, street ${t.street.toFixed(2)} after, ${t.ms} ms a frame`;
   });
+  await step(
+    'street level everywhere (T-361): at the Seaside Inn street level opens, its room is built, the bed offers Sleep (T-362)',
+    async () => {
+      await ev(() => {
+        RUN.clock = City.freshClock();
+        RUN.event = null;
+        City.reveal(RUN, SPOTS.hotelWu.at);
+        City.moveTo(RUN, City.at(RUN, 'hotelWu').slice()); // (you stand inside: MapModel.inside → the bed)
+        renderCareer();
+        MapView.m3.jump();
+      });
+      await pg.waitForFunction(() => !MapView.m3.busy(), null, { timeout: 300000 });
+      await ev(() => {
+        const y = MapView.m3.youPos();
+        MapView.m3.setView({ x: y[0], z: y[2], d: 6.7 });
+      });
+      await pg.waitForFunction(
+        () => MapView.m3.street() > 0.95 && MapView.m3.interiors().built.includes('hotelWu') && document.querySelector('#stprompt .fmb'),
+        null,
+        { timeout: 300000 }
+      );
+      const p = await ev(() => ({
+        txt: document.querySelector('#stprompt').textContent,
+        n: document.querySelectorAll('#stprompt .btn').length,
+        i: MapView.m3.interiors(),
+        ring: MapView.m3.info().ring
+      }));
+      if (!/Sleep 8 h/.test(p.txt) || p.n !== 3) throw new Error(`bed prompt: ${p.txt.slice(0, 120)}`);
+      await ev(() => MapView.m3.setView({ d: 110 }));
+      return `built ${p.i.built.join(', ')} (${p.i.tris} tris), cut ${p.i.cut}, ring ${p.ring.lots} lots`;
+    }
+  );
   await step('island sound (T-334): the map plays; leaving it frees every node and no AudioContext runs', async () => {
     const on = await ev(() => ({ on: Ambience.on, n: Ambience.nodes(), mix: Ambience.mix() }));
     if (!on.on || !on.n) throw new Error(`no ambience on the map: ${JSON.stringify(on)}`);

@@ -462,13 +462,13 @@ export function createTown(scene, heightAt, opts = {}) {
     if (!lmPart.orig) lmPart.orig = arr.slice();
     arr.set(lmPart.orig);
     const B = cutBoxes || [],
-      within = (o, b) =>
-        arr[o] >= b.x0 &&
-        arr[o] <= b.x1 &&
-        arr[o + 2] >= b.z0 &&
-        arr[o + 2] <= b.z1 &&
-        (b.y0 === undefined || arr[o + 1] >= b.y0) &&
-        (b.y1 === undefined || arr[o + 1] <= b.y1);
+      // an axis box { x0, x1, z0, z1 } or a turned one { cx, cz, c, s, hw, hd } (the lot's frame, T-362); y0 / y1 optional
+      flat = (o, b) =>
+        b.cx !== undefined
+          ? Math.abs((arr[o] - b.cx) * b.c - (arr[o + 2] - b.cz) * b.s) <= b.hw &&
+            Math.abs((arr[o] - b.cx) * b.s + (arr[o + 2] - b.cz) * b.c) <= b.hd
+          : arr[o] >= b.x0 && arr[o] <= b.x1 && arr[o + 2] >= b.z0 && arr[o + 2] <= b.z1,
+      within = (o, b) => flat(o, b) && (b.y0 === undefined || arr[o + 1] >= b.y0) && (b.y1 === undefined || arr[o + 1] <= b.y1);
     if (B.length)
       for (let t = 0; t < arr.length; t += 9)
         if (B.some(b => within(t, b) && within(t + 3, b) && within(t + 6, b))) for (let v = 3; v < 9; v++) arr[t + v] = arr[t + (v % 3)];
@@ -1005,8 +1005,9 @@ export function createTown(scene, heightAt, opts = {}) {
     /** QA: the ring's counts { on, lots, tris, builds, ms (the last build) }. */
     ringInfo: () => ({ on: ringG.visible, ...ringN }),
     /**
-     * Cut the landmarks (T-336b: the gym's / arena's shell while you are inside): every landmark triangle wholly inside a box is
-     * dropped (collapsed) — box = { x0, x1, z0, z1, y0?, y1? } (world m), an array of them, or null to restore them all.
+     * Cut the landmarks (the hall you are near while its insides are built, T-336b / T-362): every landmark triangle wholly inside
+     * a box is dropped (collapsed) — box = { x0, x1, z0, z1, y0?, y1? } or a turned { cx, cz, c, s, hw, hd, y0?, y1? } (world m; c / s
+     * the lot's yaw), an array of them, or null to restore them all.
      */
     cut(box) {
       cutBoxes = box ? (Array.isArray(box) ? box : [box]) : null;

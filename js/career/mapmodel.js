@@ -367,30 +367,31 @@ const MapModel = {
     bonfire: [0.18, 0.18] // by the fire
   },
   /**
-   * Arriving inside (owner, 2026-10-24): at rules point p — a place's own point (its door) — the walk on from the door to where you
-   * stand in it: [door outside, door inside, spot] (map units), or null (not a place's point, or nowhere to go in). The spot: the
-   * interior's station nearest the hall's middle (INTERIOR: the gym's bench, the street-level step's spot), else MapModel.FAC_IN on the
-   * lot. Display only: the rules keep you at p (trip costs, what a place does, the fog).
+   * Arriving inside (owner, 2026-10-24; every place since T-362): at rules point p — a place's own point (its door) — the walk on from
+   * the door to where you stand in it: [door outside, door inside, (the hall's door out, in — a hall behind the lot's front), spot]
+   * (map units), or null (not a place's point, or nowhere to go in). The spot: the INTERIOR's first station (its lead order, the bed,
+   * the counter, the club board …), else MapModel.FAC_IN on the lot. Display only: the rules keep you at p (trip costs, what a place
+   * does, the fog).
    */
   inside(run, p) {
     if (!p) return null;
     const L = MapModel.landmarks(run).find(l => l.node && l.w && Math.hypot(l.node[0] - p[0], l.node[1] - p[1]) < 1); // (within 1: City.moveTo rounds)
     if (!L) return null;
     const I = typeof INTERIOR !== 'undefined' && INTERIOR[L.id],
-      f = MapModel.FAC_IN[L.fac];
-    let spot = null;
-    if (I) {
-      const st = I.stations.filter(s => !s.card).length ? I.stations.filter(s => !s.card) : I.stations;
-      spot = st.reduce((a, b) => (Math.hypot(...b.at) < Math.hypot(...a.at) ? b : a)).at;
-    } else if (f) spot = [f[0] * L.w, f[1] * L.d];
+      f = MapModel.FAC_IN[L.fac],
+      st = I && I.stations[0],
+      H = I && I.hall,
+      spot = st ? st.at : f ? [f[0] * L.w, f[1] * L.d] : null;
     if (!spot) return null;
     const c = Math.cos(L.rot || 0),
       s = Math.sin(L.rot || 0),
       w = ([lx, lz]) => [
         Math.round((L.at[0] + (lx * c + lz * s) / MAP_UNIT_M) * 100) / 100,
         Math.round((L.at[1] + (-lx * s + lz * c) / MAP_UNIT_M) * 100) / 100
-      ]; // local m (door on +z) → map units (the interiors' frame: makeRotationY by the lot's yaw)
-    return [w([0, L.d / 2 + 1]), w([0, L.d / 2 - 1.5]), w(spot)];
+      ], // local m (door on +z) → map units (the interiors' frame: makeRotationY by the lot's yaw)
+      front = H && !st.out ? H.z + H.d / 2 : null, // the hall's door wall (z), when you stand in the hall
+      via = front != null && front < L.d / 2 - 2 ? [w([H.x, front + 1]), w([H.x, front - 1])] : []; // a hall behind the lot's front: through its door
+    return [w([0, L.d / 2 + 1]), w([0, L.d / 2 - 1.5]), ...via, w(spot)];
   },
   /** The landmarks that stand where they are drawn (centred on their point): the venues, the ritual ground, the airport. */
   landmarksFixed: () => [
