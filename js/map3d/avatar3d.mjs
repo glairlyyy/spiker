@@ -1,6 +1,6 @@
 // The player on the 3D map: your own model (Main_v2, as in matches and your portrait; the default model if it fails), idle-breathing, walking or running to wherever the rules put
 // the player. Display only — the rules move instantly; this animates from the previously shown position.
-//   createAvatar(scene, opts?) → { setTarget([x, y], path?, { head?, tail?, legs?, dur?, scale? }), snap([x, y]), face([x, y]), tick(dt, heightAt), busy(), pos(), lapse(),
+//   createAvatar(scene, opts?) → { setTarget([x, y], path?, { head?, tail?, legs?, dur?, scale? }), snap([x, y]), face([x, y]), tick(dt, heightAt, view?), busy(), pos(), lapse(),
 //                                  heading(), drive(x, z, v, yaw), setLife(k), progress(), ride(), act(k), dispose() }
 // act('drill' | 'sleep' | null): while a session or a sleep fast-forwards (spec §4.43) you hop block jumps / lie down where you stand.
 // A ride (spec §4.42): o.legs = the trip's legs ([{ m: 'walk' | 'bus' | 'bike' | 'scooter' | 'ferry' | 'taxi', pts, w, a, b }], map
@@ -18,6 +18,8 @@
 // The running clock (spec §4.43): setTarget's o.dur (s at ×1) times the walk in real time — its hours × the clock's scale, the
 // map ticks it × the time speed — and o.scale (s a game hour) a ride's legs (a wait at the stop lasts as long as the bus takes to
 // come); without them a trip keeps the old display timing (SPEED within TIME / RIDE_T).
+// Performance (owner, 2026-10-25): tick's view = { frustum, cam, px (screen px a metre at 1 m: ch ÷ 2 tan(fov / 2)), shadows } — off
+// screen the model is hidden and not posed; small on screen (AV_LOD) it is posed every few frames, without hair springs or a shadow.
 import * as THREE from 'three';
 import { VRMUtils } from '@pixiv/three-vrm';
 import { loadBase, makeVRM, applyPose, smoothBones, groundSnap, dress, MODEL_URL, MAIN_URL } from '../render3d/players3d.mjs';
@@ -51,6 +53,16 @@ const RIDE = {
   curl: 0.6
 };
 
+/** The model's level of detail by its height on screen (px): pose every `every` frames under px, springs / a shadow from px up. */
+export const AV_LOD = {
+  every: [
+    [24, 4],
+    [60, 2]
+  ],
+  springs: 110,
+  shadow: 20
+};
+const SPH = new THREE.Sphere();
 const segYaw = (pts, i) => Math.atan2(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]); // facing along segment i
 
 export const WALK = {
@@ -116,7 +128,12 @@ export function createAvatar(scene, opts = {}) {
       pace: 0,
       scale: 0,
       act: null,
-      drv: 1e9
+      drv: 1e9,
+      acc: 0, // (LOD) seconds since the last pose
+      fr: 0, // frames since the last pose
+      dy: 0, // the last ground snap's lift (between poses)
+      sh: true, // the model casts a shadow
+      shown: true // on screen (the last LOD test)
     };
   /** The trip's real-time pace (m/s at ×1) from its length and o.dur (spec §4.43), else 0 (the display timing). */
   const paceOf = (pts, dur) => {
@@ -331,7 +348,9 @@ export function createAvatar(scene, opts = {}) {
     },
     /** Time-lapse factor of the current trip (ground speed ÷ SPEED), 0 when it is not faster than SPEED. */
     lapse: () => (S.walk && !S.pace && S.walk.dist / S.walk.dur > SPEED * 1.02 ? S.walk.dist / S.walk.dur / SPEED : 0),
-    tick(dt, heightAt) {
+    /** Drawn and posed this frame (the last tick's LOD): the perf overlay's VRM count. */
+    drawn: () => !!pl && pl.root.visible,
+    tick(dt, heightAt, view = null) {
       const W = S.walk;
       if (!S.drive) S.drv += dt;
       let v = 0;
@@ -408,14 +427,46 @@ export function createAvatar(scene, opts = {}) {
       if (pl) pl.root.visible = !aboard;
       if (!pl) return (marker.scale.setScalar(size), marker.position.set(S.x, h + 3 * size, S.z));
       S.t += dt;
+      // level of detail (performance, owner 2026-10-25): off screen → hidden, not posed; small → posed every few frames
+      let every = 1,
+        springs = true,
+        shadow = true;
+      if (view) {
+        const hm = HEIGHT * size,
+          d = Math.max(1, Math.hypot(S.x - view.cam.position.x, h + hm / 2 - view.cam.position.y, S.z - view.cam.position.z)),
+          px = (hm * view.px) / d;
+        SPH.center.set(S.x, h + hm / 2, S.z);
+        SPH.radius = hm;
+        S.shown = view.frustum.intersectsSphere(SPH);
+        const e = AV_LOD.every.find(([lim]) => px < lim);
+        every = e ? e[1] : 1;
+        springs = px >= AV_LOD.springs;
+        shadow = view.shadows !== false && px >= AV_LOD.shadow;
+      } else S.shown = true;
+      if (!S.shown) {
+        pl.root.visible = false;
+        S.acc += dt;
+        S.fr = every; // (on screen again: posed at once)
+        return;
+      }
+      if (shadow !== S.sh) ((S.sh = shadow), pl.root.traverse(o => o.isMesh && (o.castShadow = shadow)));
+      S.acc += dt;
+      if (++S.fr < every) {
+        pl.root.rotation.set(0, S.yaw, 0); // (between poses the figure still moves and turns)
+        pl.root.position.set(S.x, S.dy + h, S.z);
+        return;
+      }
+      const pdt = Math.min(S.acc, 0.1);
+      S.acc = 0;
+      S.fr = 0;
       const gait = Math.min(v, SPEED),
         stride = (1.6 + 0.8 * clamp((gait - RUN_AT) / 1.5, 0, 1)) * ((HEIGHT * size) / 1.65); // metres per gait cycle (× the figure's size)
-      S.phase += ((v * dt) / stride) * Math.PI * 2;
+      S.phase += ((v * pdt) / stride) * Math.PI * 2;
       if (me && gait > 0.4 && S.phase >= S.stepAt) {
         S.stepAt = (Math.floor(S.phase / Math.PI) + 1) * Math.PI; // a foot lands every half gait cycle
         if (WALK.onStep) WALK.onStep(gait);
       }
-      S.w += (clamp(gait, 0, 1) - S.w) * (1 - Math.exp(-dt * 10));
+      S.w += (clamp(gait, 0, 1) - S.w) * (1 - Math.exp(-pdt * 10));
       const sway = Math.sin(S.t * 1.7),
         idle = { ...STAND, cp: 0.02 * sway, sp: 0.02 + 0.012 * sway },
         still = !S.walk && !S.ride && S.w < 0.05,
@@ -428,10 +479,14 @@ export function createAvatar(scene, opts = {}) {
       pl.root.rotation.set(0, S.yaw, 0);
       pl.root.position.set(S.x, 0, S.z);
       applyPose(pl, pose);
-      smoothBones(pl, dt, gait > 1 ? 26 : 16);
+      smoothBones(pl, pdt, gait > 1 ? 26 : 16);
       groundSnap(pl, pose.lift || 0, still && S.act === 'sleep'); // feet on the floor (root at y = 0; asleep: lying) …
-      pl.root.position.y += h + (seat ? SEAT * size * (HEIGHT / 6) : 0); // … then up onto the terrain (on the bike: its pedals)
-      pl.vrm.update(dt);
+      S.dy = pl.root.position.y + (seat ? SEAT * size * (HEIGHT / 6) : 0);
+      pl.root.position.y = S.dy + h; // … then up onto the terrain (on the bike: its pedals)
+      const sb = pl.vrm.springBoneManager;
+      if (!springs) pl.vrm.springBoneManager = null; // (small on screen: the hair holds still)
+      pl.vrm.update(pdt);
+      pl.vrm.springBoneManager = sb;
     },
     dispose() {
       dead = true;

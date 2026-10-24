@@ -825,6 +825,26 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   shallow turquoise to deep blue by depth and distance (the `shore` texture over the island box; open sea beyond), foam at the
   waterline and in bands rolling in.
 
+### Map performance and the perf overlay (spec §4.39 Performance, owner 2026-10-25)
+
+- **Resolution**: `look3d` `basePR()` = min(dpr, 2) within the setting's pixel budget (`GFX[gfx].px3d`, as r3d `syncSize`), × the
+  dynamic factor `dyn.res` (`adapt`, every look incl. Fast; floors `LOOK.dyn.floor` / `rescue`). High never lowers `res`: it
+  sheds instead (`dyn.shed` 1 = GTAO off, 2 = the 2048 shadow map), one step a slow second, back one after `LOOK.dyn.back` quick seconds.
+  `info()` adds `scale` (budget × res) and `shed`.
+- **VRM level of detail**: map3d builds `lodView` { frustum (last frame's camera), cam, px = ch ÷ 2 tan(fov / 2), shadows } and
+  passes it to every avatar's `tick` (you and the story figures; VRM meshes have `frustumCulled = false`, so the test is the
+  avatar's own sphere): off screen → `root.visible = false`, no pose; by height on screen (`AV_LOD`): < 24 px posed every 4th frame,
+  < 60 px every 2nd (the time adds up; between poses only the root moves, at the last ground snap `S.dy`), springs from 110 px
+  (`springBoneManager` nulled for that `vrm.update`), shadow from 20 px. `drawn()` = shown this frame. people3d's VRM pool poses
+  the same way by an 800-px reference (`every`, `pl3`).
+- **Terrain shadow**: the fine chunks don't cast; `shade` = one mesh per chunk on its coarse index (0.6 m lower: no acne), on
+  `SHADOW_LAYER` (1) — the sun's shadow camera enables it, the main camera and raycasts don't see it.
+- **Overlay**: `PerfHUD` (map-view.js; `KEYS.perf`) — `frame(kind, p)` from map3d `perfStep` (EMA of the frame interval, JS ms
+  update = everything before `draw()`, draw = the submit, labels = `furn.tick`; `api.perf()`) and r3d `perfHook` (update = draw()
+  up to the render, draw = the render); `rule(ms)` from career-map `spotFollow` (MapView.tick + the popups' placement). Redraws at
+  4 Hz, the worst frame / rules of the last 2 s. F3 toggles it (capture-phase key, anywhere); ⚙ and the Dev tab have the button.
+- `MapView.saveSoon()`: the running clock's periodic save on `requestIdleCallback` (≤ 1 s), not in the frame.
+
 ### Street level (spec §4.37 6, T-336a)
 
 - **District** — every district (T-361): `MapView.zone()` adds `model.street = MapView.ZONE` (`{ all: true }`: all the land);

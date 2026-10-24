@@ -212,6 +212,12 @@ const HEAD = 1.42; // the VRM's head top at figure scale 1 (the humanoid's: 1.45
  * lift, shirt, skin, hair, g }; on = false hides every VRM (the Fast setting). weight(id) = 0–1, how far that person has faded
  * into their VRM (life3d shrinks their humanoid by it).
  */
+const PX800 = 400; // (half of a reference 800 px view: the LOD's px without the canvas size)
+/** Between poses: the figure only moves (its last ground snap kept). */
+const pl3 = (S, f) => {
+  S.pl.root.rotation.set(0, f.yaw, 0);
+  S.pl.root.position.set(f.x, (S.dy || 0) + f.y, f.z);
+};
 export function createPeopleVRM(scene, opts = {}) {
   const O = { ...VRM_LOD, ...opts },
     slots = [], // { pl, base (root scale at s = 1), id, k, kit, phase, w, px, pz, t }
@@ -313,8 +319,15 @@ export function createPeopleVRM(scene, opts = {}) {
     applyPose(pl, p);
     smoothBones(pl, dt, 14);
     groundSnap(pl, lift, lying);
+    S.dy = pl.root.position.y;
     pl.root.position.y += f.y;
     pl.vrm.update(dt);
+  };
+  /** Performance (owner, 2026-10-25): a small VRM on screen is posed every few frames (AV_LOD in avatar3d: by its height in px). */
+  const every = (f, cam) => {
+    const d = Math.max(1, Math.hypot(f.x - cam.position.x, f.y - cam.position.y, f.z - cam.position.z)),
+      px = (HEAD * f.s * PX800) / (d * Math.tan((cam.fov * Math.PI) / 360));
+    return px < 24 ? 4 : px < 60 ? 2 : 1;
   };
   return {
     tick(dt, states, cam, on = true, SL = null) {
@@ -370,12 +383,18 @@ export function createPeopleVRM(scene, opts = {}) {
         const sh = (near.get(S.id) ?? O.cap) < O.shadows;
         if (sh !== S.sh) for (const m of S.meshes) m.castShadow = sh;
         S.sh = sh;
-        pose(S, f, dt);
+        S.acc = (S.acc || 0) + dt;
+        if ((S.fr = (S.fr || 0) + 1) < every(f, cam)) {
+          pl3(S, f);
+          continue;
+        }
+        pose(S, f, Math.min(S.acc, 0.1));
+        S.acc = S.fr = 0;
       }
     },
     /** How far a person has faded into their VRM (0 = the humanoid only). */
     weight: id => wt.get(id) || 0,
-    count: () => ({ vrm: slots.filter(S => S.pl.root.visible).length, built: slots.length, cap: O.cap }),
+    count: () => ({ vrm: slots.reduce((n, S) => n + (S.pl.root.visible ? 1 : 0), 0), built: slots.length, cap: O.cap }),
     dispose() {
       dead = true;
       for (const S of slots) {

@@ -308,14 +308,87 @@ const MapView = {
       return renderCareer();
     }
     const w = City.wt(RUN);
-    if (K.saveAt === null || w < K.saveAt || w - K.saveAt >= CLOCK.save / 24) ((K.saveAt = w), Run.save(RUN));
+    if (K.saveAt === null || w < K.saveAt || w - K.saveAt >= CLOCK.save / 24) ((K.saveAt = w), MapView.saveSoon());
     if (K.at === null || w < K.at || Math.floor((w * 24) / CLOCK.save) !== Math.floor((K.at * 24) / CLOCK.save)) {
       K.at = w;
       if (typeof clockRefresh === 'function') clockRefresh();
     }
+  },
+  /** The running clock's own save (every CLOCK.save game hours): off the frame, when the page is idle (within 1 s; performance). */
+  saveSoon() {
+    if (MapView.CLK.saving) return;
+    MapView.CLK.saving = true;
+    const go = () => ((MapView.CLK.saving = false), RUN && Run.save(RUN));
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 1000 });
+    else setTimeout(go, 0);
   },
   /** A WASD stop was counted: the roam's hours are the walk's now (refused: tick lets them pass as idle). */
   roamDone(counted) {
     if (counted) MapView.CLK.roam = 0;
   }
 };
+
+/**
+ * The perf overlay (owner, 2026-10-25; spec §4.39 Performance): F3 on the map and in a match, ⚙ › Perf overlay, the title's Dev tab;
+ * off by default, remembered per browser. map3d / r3d call frame(kind, p) each frame while it is on (p = { fps, ms, update, draw,
+ * labels, calls, tris, res, scale, px, vrm, blocks, look, ao, shadow }); the page's rules step (career-map spotFollow) adds rule(ms).
+ * Redrawn 4 times a second: the averages, and the worst frame of the last 2 s (a hitch: a save, a rebuild).
+ */
+const PerfHUD = {
+  on: store.get(KEYS.perf) === '1',
+  el: null,
+  t: 0,
+  rules: 0,
+  peak: 0, // the worst frame interval (ms) in this window …
+  peakR: 0, // … and of rules
+  win: 0,
+  shown: [0, 0],
+  toggle(v = !PerfHUD.on) {
+    PerfHUD.on = !!v;
+    store.set(KEYS.perf, PerfHUD.on ? '1' : '0');
+    if (!PerfHUD.on && PerfHUD.el) (PerfHUD.el.remove(), (PerfHUD.el = null));
+  },
+  /** The page's rules step this frame (the running clock, the popups' placement): ms. */
+  rule(ms) {
+    PerfHUD.rules += (ms - PerfHUD.rules) * 0.1;
+    PerfHUD.peakR = Math.max(PerfHUD.peakR, ms);
+  },
+  frame(kind, p) {
+    const now = performance.now(),
+      H = PerfHUD;
+    H.peak = Math.max(H.peak, p.last || 0);
+    if (now - H.t < 250) return;
+    H.t = now;
+    if (now - H.win > 2000) ((H.win = now), (H.shown = [H.peak, H.peakR]), (H.peak = H.peakR = 0));
+    let el = H.el;
+    if (!el || !el.isConnected) {
+      el = H.el = document.createElement('div');
+      el.className = 'perfhud';
+      el.setAttribute('aria-hidden', 'true');
+      document.body.append(el);
+    }
+    const f = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : '–'),
+      k = v => (v >= 1e6 ? `${(v / 1e6).toFixed(2)}M` : v >= 1e3 ? `${Math.round(v / 1e3)}k` : String(v | 0)),
+      slow = p.fps < 30 ? 'bad' : p.fps < 50 ? 'warn' : '',
+      js = (kind === 'map' ? H.rules : 0) + p.update + p.draw + (p.labels || 0),
+      row = (a, b) => `<div><span>${a}</span><b>${b}</b></div>`;
+    el.innerHTML = `<div class="ph">${kind === 'map' ? 'Map' : 'Match'} · ${esc(String(p.look || G.gfx))} <kbd>F3</kbd></div>
+      ${row('fps', `<i class="${slow}">${f(p.fps, 0)}</i> · ${f(p.ms)} ms · worst ${f(H.shown[0], 0)}`)}
+      ${row('JS ms', `${f(js)} = ${kind === 'map' ? `rules ${f(H.rules, 2)} · ` : ''}${kind === 'map' ? 'map' : 'update'} ${f(p.update)} · draw ${f(p.draw)}${kind === 'map' ? ` · tags ${f(p.labels, 2)}` : ''}`)}
+      ${kind === 'map' ? row('rules worst', `${f(H.shown[1])} ms`) : ''}
+      ${row('draws', `${p.calls} · ${k(p.tris)} tris`)}
+      ${row('scale', `${f(p.scale, 2)} · ${p.px ? p.px.join('×') : '–'}${p.ao !== undefined ? ` · AO ${p.ao ? 'on' : 'off'}` : ''}${p.shadow ? ` · sh ${p.shadow}` : ''}`)}
+      ${row('VRMs', `${p.vrm}${p.blocks !== null && p.blocks !== undefined ? ` · blocks ${p.blocks}` : ''}`)}`;
+  }
+};
+if (typeof addEventListener === 'function')
+  addEventListener(
+    'keydown',
+    e => {
+      if (e.key !== 'F3' || e.ctrlKey || e.metaKey || e.altKey) return;
+      e.preventDefault(); // (the browser's find-next)
+      PerfHUD.toggle();
+      if (typeof renderCareer === 'function' && CW && CW.gear) renderCareer();
+    },
+    true
+  );

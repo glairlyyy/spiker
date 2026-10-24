@@ -643,6 +643,6 @@ function gearToggle() {
 function gearPop() {
   return `<div class="gearpop" role="menu"><button class="btn" onclick="CW.gear=false;navigate('menu')">Main menu</button><button class="btn" onclick="Motion.set(Motion.pref === 'reduced' ? 'full' : 'reduced');renderCareer()" ${tip('Full: panels slide and fade, numbers count. Reduced: short fades only (also follows your system setting).')}>Motion: ${Motion.pref === 'reduced' ? 'Reduced' : 'Full'}</button>${
     /[?&]dev\b/.test(location.search) ? '<button class="btn" onclick="CW.gear=false;openDebug()">Debug log</button>' : ''
-  }<p class="small mute" id="abandon"><button class="btn quiet danger" onclick="abandonRun()" ${tip('Your run saves automatically')}>Abandon run</button></p></div>`;
+  }<button class="btn ${PerfHUD.on ? 'on' : ''}" onclick="PerfHUD.toggle();renderCareer()" aria-pressed="${PerfHUD.on}" ${tip('Frame rate, frame time, draw calls and render scale in the corner — for reporting slow frames')}>Perf overlay <kbd>F3</kbd>: ${PerfHUD.on ? 'On' : 'Off'}</button><p class="small mute" id="abandon"><button class="btn quiet danger" onclick="abandonRun()" ${tip('Your run saves automatically')}>Abandon run</button></p></div>`;
 }
 Screens.career = renderCareer;

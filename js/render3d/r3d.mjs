@@ -313,6 +313,34 @@ function syncSize() {
   s.height = cv.offsetHeight + 'px';
 }
 
+/** The perf overlay (owner, 2026-10-25; map-view.js PerfHUD, F3): the match frame's numbers while it is on. Display only. */
+const perfM = { last: 0, ms: 16.7, update: 0, draw: 0 };
+function perfHook(w, t0, tR) {
+  const H = typeof PerfHUD !== 'undefined' ? PerfHUD : null,
+    t = performance.now();
+  if (!H || !H.on) return void (perfM.last = 0);
+  const iv = perfM.last ? Math.min(1000, t0 - perfM.last) : 16.7,
+    E = (a, v) => a + (v - a) * 0.1;
+  perfM.last = t0;
+  perfM.ms = E(perfM.ms, iv);
+  perfM.update = E(perfM.update, tR - t0);
+  perfM.draw = E(perfM.draw, t - tR);
+  const info = w.renderer.info.render;
+  H.frame('match', {
+    fps: 1000 / perfM.ms,
+    ms: perfM.ms,
+    last: iv,
+    update: perfM.update,
+    draw: perfM.draw,
+    calls: info.calls,
+    tris: info.triangles,
+    scale: +(w.gl.width / Math.max(1, cv.width)).toFixed(2),
+    px: [w.gl.width, w.gl.height],
+    vrm: w.people.length,
+    blocks: null,
+    look: (GFX[G.gfx] || GFX.auto).name
+  });
+}
 function draw() {
   if (!world || !A) return;
   if (bound !== A || !world.gl.isConnected) bind();
@@ -365,7 +393,9 @@ function draw() {
     cam.position.copy(w.ball.position).add(qaOff.set(...A.qaLook));
     cam.lookAt(w.ball.position);
   }
+  const tR = performance.now();
   w.renderer.render(w.scene, cam);
+  perfHook(w, now, tR);
   // overlay: the playback layer's screen-space pieces, now projected through this camera
   Overlay.drawChant(now);
   if (B.vis && !A.trailEl) Overlay.drawTrail(ballScreen());

@@ -1856,6 +1856,19 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Settled (owner, 2026-10-22)**: Wei's new ground colours stay in Fast too; ambient occlusion stays on the High setting.
   - **Budget**: the map keeps ≥ 45 fps on a mid laptop GPU at the default camera (dynamic resolution allowed, like matches); Fast
     stays as it is today.
+  - **Performance (owner, 2026-10-25: "fps still hits the ground" — zoomed out too, Fast and a paused clock didn't help)
+    [built 2026-10-25]**: the constant costs were the story figures and your own VRM posed in full every frame wherever they were
+    (~5–7 ms of JavaScript a frame on any view, ~70k triangles each drawn twice with their shadow), the terrain casting its shadow
+    at full detail (as many triangles again as the terrain), and a render resolution with no pixel budget (a 2× screen drew 4× the
+    pixels, Fast too). Now: a VRM off screen is hidden and not posed; small on screen it is posed every 2nd / 4th frame, without hair
+    springs or a shadow (the people VRMs too); the terrain's shadow comes from its coarse chunks; every setting is capped to the
+    match's pixel budget (High 9 M, Auto 3.7 M, Fast 2 M px) and has dynamic resolution (Fast too: down to 0.55); High keeps its
+    resolution and, when frames run slow, drops AO, then the 4096 shadow map, and takes them back after 5 quick seconds; the running
+    clock's save waits for an idle moment. Measured (headless, JavaScript per frame on the map): 5.5–7 ms → 0.3–0.8 ms zoomed out,
+    8–11 ms → 1.3–2.4 ms at d 150 / street level; draw calls zoomed out (Fast) 220 → 109, triangles 1.57 M → 1.04 M (Auto 3.7 M → 2.6 M).
+    **Perf overlay** (dev): F3 on the map and in a match (also ⚙ › Perf overlay and the title's Dev tab; off by default, remembered):
+    fps, frame ms and the worst frame of the last 2 s, JavaScript ms split (rules · map · draw · tags), draw calls, triangles,
+    render scale and canvas px, AO and the shadow map, VRMs drawn, street blocks loaded.
 - §4.40 The island × 2 and real facilities **[built 2026-10-24 — T-350–T-351; not yet: the drone's field spots lit like places; zoomed out shows region names, not district names;  later (owner, 2026-10-24): more fillers for Wei, the Cup-win drop (63 → 42 %, 12 runs) re-measured]** (owner, 2026-10-23: "expand the island 2× so travel matters
   and there is room for proper facilities"; "remove pins entirely — a building or a piece of kit lights up on hover"):
   - **Scale** (T-350): `MAP_SCALE` 2.25 → 4.5 (~2.4 × 1.6 km). Towns and districts spread out with it (the same layout, twice the

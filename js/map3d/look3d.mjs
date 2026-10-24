@@ -86,8 +86,10 @@ export const LOOK = {
   sky: { turbidity: 5, rayleigh: 1.4, mie: 0.004, g: 0.8, every: 0.25, moved: 0.015 },
   bloom: { strength: 0.85, radius: 0.5, day: 3, night: 0.8 }, // threshold from day (nothing blooms) to night
   shadow: { radius: 3, box: [40, 360], k: 0.85, map: 2048, mapHi: 4096 },
-  // dynamic resolution: ms (frame-time average) to step down / up; far too slow (`dire`, < ~15 fps) steps faster to `rescue`
-  dyn: { floor: { auto: 0.7, high: 1, fast: 1 }, slow: 24, quick: 15, dire: 66, rescue: { auto: 0.45, high: 1, fast: 1 } },
+  // dynamic resolution: ms (frame-time average) to step down / up; far too slow (`dire`, < ~15 fps) steps faster to `rescue`.
+  // Performance (owner, 2026-10-25): every setting (Fast too) is capped to its pixel budget (GFX px3d, as in matches) before
+  // the factor; High keeps its resolution and sheds instead (`shed`: 1 = no AO, 2 = the 2048 shadow map), back after `back` quick s.
+  dyn: { floor: { auto: 0.7, high: 1, fast: 0.55 }, slow: 24, quick: 15, dire: 66, rescue: { auto: 0.45, high: 1, fast: 0.45 }, back: 5 },
   sea: { deep: '#0d3b5e', mid: '#176b8a', shallow: '#3fb2ad', foam: '#f4f8f6', wave: 0.32 },
   detail: 256 // generated texture size (px)
 };
@@ -301,7 +303,13 @@ export function richLook(renderer, scene, cam, sun) {
     w = 1,
     h = 1,
     pr = 1;
-  const dyn = { res: 1, ema: 16.7, t: 0, last: 0 };
+  const dyn = { res: 1, ema: 16.7, t: 0, last: 0, shed: 0, quick: 0, gfx: 'auto' };
+  /** The pixel ratio before the dynamic factor: the device's (≤ 2), within the setting's pixel budget (GFX px3d, as in matches). */
+  const basePR = () => {
+    const d = Math.min(devicePixelRatio || 1, 2),
+      Q = typeof GFX !== 'undefined' && GFX[dyn.gfx];
+    return Q && Q.px3d ? d * Math.min(1, Math.sqrt(Q.px3d / Math.max(1, w * h * d * d))) : d;
+  };
   const makeComposer = () => {
     const rt = new THREE.WebGLRenderTarget(w * pr, h * pr, { type: THREE.HalfFloatType, samples: LOOK.samples });
     composer = new EffectComposer(renderer, rt);
@@ -335,10 +343,36 @@ export function richLook(renderer, scene, cam, sun) {
     if (composer) (composer.setPixelRatio(pr), composer.setSize(w, h));
   };
   const SKYDIR = new THREE.Vector3();
+  /**
+   * Dynamic resolution (like matches, r3d adaptRes), every look: under ~42 fps step down to the setting's floor, back up with
+   * headroom (the real time between frames: the frame's dt is capped at 0.1 s). High sheds AO, then the big shadow map, instead.
+   */
+  const adapt = gfx => {
+    const D = LOOK.dyn,
+      now = performance.now(),
+      ms = dyn.last ? Math.min(1000, now - dyn.last) : 16.7,
+      dire = dyn.ema > D.dire,
+      floor = (dire ? D.rescue[gfx] : D.floor[gfx]) || (dire ? D.rescue.auto : D.floor.auto);
+    dyn.last = now;
+    dyn.ema += (ms - dyn.ema) * (ms > dyn.ema ? 0.2 : 0.05);
+    dyn.t += ms / 1000;
+    if (dyn.t < 1) return;
+    dyn.t = 0;
+    const r0 = dyn.res;
+    dyn.quick = dyn.ema < D.quick ? dyn.quick + 1 : 0;
+    if (gfx === 'high' && on) {
+      if (dyn.ema > D.slow && dyn.shed < 2) ((dyn.shed += 1), (dyn.quick = 0));
+      else if (dyn.quick >= D.back && dyn.shed > 0) ((dyn.shed -= 1), (dyn.quick = 0));
+    } else dyn.shed = 0;
+    if (dyn.ema > D.slow && dyn.res > floor) dyn.res = Math.max(floor, +(dyn.res - (dire ? 0.15 : 0.05)).toFixed(2));
+    else if (dyn.ema < D.quick && dyn.res < 1) dyn.res = Math.min(1, +(dyn.res + 0.05).toFixed(2));
+    if (dyn.res < floor) dyn.res = floor;
+    if (dyn.res !== r0) resize(w, h);
+  };
   const resize = (cw, ch) => {
     w = Math.max(1, cw);
     h = Math.max(1, ch);
-    pr = Math.min(devicePixelRatio || 1, 2) * (on ? dyn.res : 1);
+    pr = basePR() * dyn.res;
     sizeAll();
   };
   return {
@@ -382,8 +416,7 @@ export function richLook(renderer, scene, cam, sun) {
         Object.assign(sc, { left: -SHADOW_BOX, right: SHADOW_BOX, top: SHADOW_BOX, bottom: -SHADOW_BOX, near: 1, far: 500 });
         sc.updateProjectionMatrix();
         sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
-        dyn.res = 1;
-        pr = Math.min(devicePixelRatio || 1, 2);
+        pr = basePR() * dyn.res;
         sizeAll();
       }
       if (sun.shadow.map) (sun.shadow.map.dispose(), (sun.shadow.map = null));
@@ -396,6 +429,8 @@ export function richLook(renderer, scene, cam, sun) {
     resize,
     /** Per frame, before the draw: time, the sky, light balance, bloom by `lit`, the shadow box by zoom, the resolution. */
     step(dt, t, lit, tod, view, gfx) {
+      if (gfx !== dyn.gfx) ((dyn.gfx = gfx), resize(w, h)); // (the pixel budget follows the setting)
+      adapt(gfx);
       if (!on) return;
       U.t.value = t;
       // the real sun (below the horizon at night: the sky goes dark; the moon is only the directional light)
@@ -411,7 +446,7 @@ export function richLook(renderer, scene, cam, sun) {
       const S = LOOK.shadow,
         box = clamp(view ? view.d * S.k : 120, S.box[0], S.box[1]),
         sc = sun.shadow.camera,
-        size = gfx === 'high' ? S.mapHi : S.map;
+        size = gfx === 'high' && dyn.shed < 2 ? S.mapHi : S.map;
       if (sc.right !== box) {
         Object.assign(sc, { left: -box, right: box, top: box, bottom: -box, near: 1, far: box * 4 + 400 });
         sc.updateProjectionMatrix();
@@ -424,32 +459,20 @@ export function richLook(renderer, scene, cam, sun) {
         .sub(sun.target.position)
         .setLength(box * 2 + 200)
         .add(sun.target.position);
-      wantAO(gfx === 'high');
+      wantAO(gfx === 'high' && dyn.shed < 1);
       hi = gfx === 'high';
-      // dynamic resolution (like matches, r3d adaptRes): under ~42 fps step down to the setting's floor, back up with headroom
-      // (the real time between frames: the frame's dt is capped at 0.1 s)
-      const D = LOOK.dyn,
-        now = performance.now(),
-        ms = dyn.last ? Math.min(1000, now - dyn.last) : 16.7,
-        dire = dyn.ema > D.dire,
-        floor = (dire ? D.rescue[gfx] : D.floor[gfx]) || (dire ? D.rescue.auto : D.floor.auto);
-      dyn.last = now;
-      dyn.ema += (ms - dyn.ema) * (ms > dyn.ema ? 0.2 : 0.05);
-      dyn.t += ms / 1000;
-      if (dyn.t >= 1) {
-        dyn.t = 0;
-        const r0 = dyn.res;
-        if (dyn.ema > D.slow && dyn.res > floor) dyn.res = Math.max(floor, +(dyn.res - (dire ? 0.15 : 0.05)).toFixed(2));
-        else if (dyn.ema < LOOK.dyn.quick && dyn.res < 1) dyn.res = Math.min(1, +(dyn.res + 0.05).toFixed(2));
-        if (dyn.res < D.rescue.auto) dyn.res = D.rescue.auto;
-        if (dyn.res !== r0) resize(w, h);
-      }
     },
     /** Draw the frame through the post. */
     render() {
       composer.render();
     },
-    info: () => ({ look: on ? (hi ? 'high' : 'detailed') : 'fast', res: on ? dyn.res : 1, ao: !!(gtao && gtao.enabled) }),
+    info: () => ({
+      look: on ? (hi ? 'high' : 'detailed') : 'fast',
+      res: dyn.res,
+      scale: +(pr / Math.min(devicePixelRatio || 1, 2)).toFixed(2), // the render scale: budget × the dynamic factor
+      ao: !!(gtao && gtao.enabled),
+      shed: dyn.shed
+    }),
     /** The baked sky (PMREM) — street level shows it as the background. */
     envTex: () => (envRT ? envRT.texture : null),
     dispose() {

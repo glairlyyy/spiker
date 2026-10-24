@@ -25,6 +25,10 @@
 // walks when it changes (out of the door it stood inside first: you.exit); the camera follows it.
 // Units: map (x, y) → world (x·MAP_M, 0, y·MAP_M) metres (1 map unit = 0.5 m). One renderer and canvas live across
 // re-mounts (the career screen re-creates its #mapwrap each render); the view (target, distance) survives them.
+// Performance (owner, 2026-10-25): the terrain's shadow is cast by its coarse chunks (a shadow-only copy on layer SHADOW_LAYER);
+// the story figures and you get a level of detail (avatar3d view: hidden off screen, posed every few frames when small);
+// perf() = the frame's numbers (fps, ms, JS ms update / draw / labels, calls, tris, render scale, VRMs, blocks) for the overlay
+// (PerfHUD.frame('map', perf) each frame while it is on).
 // Display only: no rules, no randoms (terrain noise is a fixed hash).
 import * as THREE from 'three';
 import { createAvatar } from './avatar3d.mjs';
@@ -47,6 +51,8 @@ const CLASH_R = 12;
 export const standAt = m => (m.you.inside && m.you.inside.length ? m.you.inside[m.you.inside.length - 1] : m.you.at);
 const STOP_WAIT = 2; // s: WASD's stop resolves within this of the last step (mapcam3d STREET.stop + a margin)
 const IDLE_S = 3; // canvas detached this long → release the renderer
+const SHADOW_LAYER = 1; // the terrain's coarse shadow casters: seen by the sun's shadow camera only
+const EMA = (a, v, k = 0.1) => a + (v - a) * k;
 
 /** Free every geometry / material the map made (shared kit caches — userData.shared — survive a re-create), the GPU context. */
 function releaseScene(scene, renderer, sun) {
@@ -122,7 +128,12 @@ export function create(onIdle) {
     hold = false, // … the block you stand in isn't drawn yet: your walk waits
     waitShown = false, // on.loading(true) was told
     figRoot = new Map(), // the story figures' own groups (hidden beyond the near blocks at street level)
-    st = 0; // the camera's street weight this frame (C.street())
+    st = 0, // the camera's street weight this frame (C.street())
+    shade = null; // the terrain's shadow casters (coarse chunks, SHADOW_LAYER)
+  const frustum = new THREE.Frustum(),
+    projM = new THREE.Matrix4(),
+    lodView = { frustum, cam, px: 400, shadows: true }, // the avatars' level of detail (avatar3d tick)
+    perf = { fps: 0, ms: 16.7, update: 0, draw: 0, labels: 0, calls: 0, tris: 0, last: 0 }; // the overlay's numbers (EMA)
   const bgCol = scene.background,
     skyCol = new THREE.Color(), // the clock's sky colour (skyAt writes it); street level shows the baked sky instead
     haze = (scene.fog = new THREE.Fog(0xffffff, 1e6, 2e6)); // street level: distance haze (off on the map: 1e6 m)
@@ -166,12 +177,20 @@ export function create(onIdle) {
   const build = m => {
     terrain = buildTerrain(m);
     mesh = new THREE.Group(); // the terrain in culled chunks sharing one set of attributes (terrain3d, T-350)
-    for (const g of terrain.chunks) {
+    shade = new THREE.Group(); // (performance: the terrain's shadow from its coarse chunks, ~7× fewer triangles — a little lower: no acne)
+    for (const [k, g] of terrain.chunks.entries()) {
       const c = new THREE.Mesh(g, low ? flatMat : look.terrainMat);
       c.receiveShadow = true;
-      c.castShadow = true;
+      c.castShadow = false;
       mesh.add(c);
+      const sc = new THREE.Mesh(terrain.coarse[k], flatMat);
+      sc.castShadow = true;
+      sc.layers.set(SHADOW_LAYER);
+      shade.add(sc);
     }
+    shade.position.y = -0.6;
+    sun.shadow.camera.layers.enable(SHADOW_LAYER);
+    scene.add(shade);
     look.setTerrain(terrain);
     look.set(!low, water);
     scene.add(mesh);
@@ -356,6 +375,22 @@ export function create(onIdle) {
     haze.far = st > 0 ? haze.near + 900 + (1 - st) * 6000 : 2e6;
     [haze.near, haze.far] = stream.haze(st, haze.near, haze.far, low); // (streaming: closer, over the far version)
   };
+  /** The overlay's numbers (EMA): frame interval, JS ms update / draw submit / labels, the renderer's counts; PerfHUD while it is on. */
+  const perfStep = (t, t0, t1, t2, t3) => {
+    const P = perf,
+      iv = P.last ? Math.min(1000, t - P.last) : 16.7;
+    P.last = t;
+    P.iv = iv;
+    P.ms = EMA(P.ms, iv);
+    P.fps = 1000 / P.ms;
+    P.update = EMA(P.update, t1 - t0);
+    P.draw = EMA(P.draw, t2 - t1);
+    P.labels = EMA(P.labels, t3 - t2);
+    P.calls = renderer.info.render.calls;
+    P.tris = renderer.info.render.triangles;
+    const H = typeof PerfHUD !== 'undefined' ? PerfHUD : null;
+    if (H && H.on) H.frame('map', api.perf());
+  };
   renderer.info.autoReset = false; // (the post draws several passes: info counts the whole frame)
   const draw = () => (renderer.info.reset(), look.on ? look.render() : renderer.render(scene, cam));
   const frame = t => {
@@ -368,10 +403,13 @@ export function create(onIdle) {
       if (gone > IDLE_S) return onIdle && onIdle(); // the career screen is gone: release the GPU objects
     } else {
       gone = 0;
+      const t0 = performance.now();
       st = C.street();
+      frustum.setFromProjectionMatrix(projM.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse)); // (last frame's camera)
+      lodView.px = (ch || 1) / (2 * Math.tan((cam.fov * Math.PI) / 360));
       avatar.setLife(st);
-      avatar.tick(hold ? 0 : dt * walkK, terrain.heightAt); // your walk at the chosen speed (setWalk; the others keep theirs); held while loading
-      for (const f of figs.values()) (f.setLife(st), f.tick(dt, terrain.heightAt)); // (the guide, the rival, the aces: life size too)
+      avatar.tick(hold ? 0 : dt * walkK, terrain.heightAt, lodView); // your walk at the chosen speed (setWalk; the others keep theirs); held while loading
+      for (const f of figs.values()) (f.setLife(st), f.tick(dt, terrain.heightAt, lodView)); // (the guide, the rival, the aces: life size too)
       clock += dt;
       clockStep(dt);
       scene.background = bgCol; // (skyAt mixes into the colour)
@@ -400,8 +438,11 @@ export function create(onIdle) {
         badge.textContent = txt;
         badge.hidden = !txt;
       }
+      const t1 = performance.now();
       draw();
+      const t2 = performance.now();
       furn.tick(cam, cw, ch, C.view.d);
+      perfStep(t, t0, t1, t2, performance.now());
     }
     raf = requestAnimationFrame(frame);
   };
@@ -613,6 +654,33 @@ export function create(onIdle) {
     /** Take you back to the shown position (a WASD walk the rules refused). */
     home() {
       if (avatar && cur && cur.you && cur.you.at) avatar.setTarget(cur.you.at, null, { tail: cur.you.inside || [] });
+    },
+    /** The frame's numbers for the perf overlay (PerfHUD): fps, ms, JS ms (update, draw submit, labels), calls, tris, render scale, VRMs, blocks. */
+    perf() {
+      const P = perf,
+        vr = life ? life.count().vrm || 0 : 0;
+      let figN = avatar && avatar.drawn() ? 1 : 0;
+      for (const f of figs.values()) figN += f.drawn() ? 1 : 0;
+      const L = look.info(),
+        S = stream && stream.info();
+      return {
+        fps: P.fps,
+        ms: P.ms,
+        last: P.iv,
+        update: P.update,
+        draw: P.draw,
+        labels: P.labels,
+        calls: P.calls,
+        tris: P.tris,
+        res: L.res,
+        scale: L.scale,
+        px: [canvas.width, canvas.height],
+        vrm: vr + figN,
+        blocks: S && S.on ? S.near : null,
+        look: { fast: 'Fast', detailed: 'Auto', high: 'High' }[L.look] || L.look,
+        ao: L.ao,
+        shadow: sun.shadow.mapSize.x
+      };
     },
     info: () => ({
       calls: renderer.info.render.calls,

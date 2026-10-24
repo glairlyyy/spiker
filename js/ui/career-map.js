@@ -147,6 +147,7 @@ function mapRent(id) {
 const SPOT_GAP = 24;
 function spotFollow() {
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(spotFollow);
+  const t0 = performance.now();
   MapView.tick(); // the running clock (spec §4.43) — outside the try: a fault in it is a page error, not swallowed
   try {
     spotPlace();
@@ -155,6 +156,7 @@ function spotFollow() {
   } catch (e) {
     /* a frame mid-render: try again next frame */
   }
+  if (PerfHUD.on && MapView.m3) PerfHUD.rule(performance.now() - t0); // (the perf overlay's "rules" share)
 }
 /**
  * The map's clock (spec §4.41): the time the map shows — it runs with your walk and through the night (map3d's clock); without the 3D

@@ -53,7 +53,8 @@ function renderMenu() {
         <button class="btn" onclick="toggleKeepColors()" ${tip('Monster game models (yours and loaded ones). Own: their own colours. Team: the team kit, hair, skin and eye colours like the base model.')}>Model colors: ${Models.keep ? 'Own' : 'Team'}</button>
         ${Models.live.map(n => `<span class="chipm">${esc(n)} <button class="btn x" onclick="removeModel('${esc(n).replace(/'/g, '&#39;')}')" aria-label="Remove">✕</button></span>`).join('')}</span>
       <span class="trow"><button class="btn ${wordsOn() ? 'on' : ''}" onclick="setWords(!wordsOn());renderMenu()" aria-pressed="${wordsOn()}" ${tip('Visible words per screen region against the §10.8 budgets (badge in each corner, red when over)')}>Word counter: ${wordsOn() ? 'On' : 'Off'}</button>
-        <button class="btn" onclick="openDebug()" ${tip('Errors and stalls collected while playing')}>Debug log</button></span>
+        <button class="btn" onclick="openDebug()" ${tip('Errors and stalls collected while playing')}>Debug log</button>
+        <button class="btn ${PerfHUD.on ? 'on' : ''}" onclick="PerfHUD.toggle();renderMenu()" aria-pressed="${PerfHUD.on}" ${tip('Frame rate, frame time, JS time, draw calls, triangles and render scale in the corner, on the map and in matches')}>Perf overlay <kbd>F3</kbd>: ${PerfHUD.on ? 'On' : 'Off'}</button></span>
       <p class="small mute" id="mdl-note"></p></div>`
         : ''
     }
