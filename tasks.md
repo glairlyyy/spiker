@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-360** (T-336 is split a / b) (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-363** (T-336 is split a / b) (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,30 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+### [ ] T-360: War stages bite harder; Wei doubles the taxi fare
+Spec: §4.34 Stages bite harder, §4.42 Taxi          Goldens: unchanged (war stages act only in career matches — say if not)          Save: no change
+Goal: Steady beats Broken ~65 % (Strained ~55, Shaken ~60), measured with paired seeds; at Wei standing ≤ −20 the taxi fare doubles, never refused.
+Files: js/data/war.js (WAR_STAGES), js/engine/* only where a stage effect is read (say which), js/data/city.js (TRANSPORT taxi), js/career/city.js
+(the fare), tests/war.test.js, tests/momentum.test.js, tests/transport.test.js, ARCHITECTURE-details.md
+Accept: the measured win rates in the Result; tests for the taxi fare; npm test, lint pass.
+Result:
+
+### [ ] T-361: Street level everywhere
+Spec: §4.37 6 Phase 3          Goldens: unchanged          Save: no change
+Goal: the street-level camera, detail ring, WASD and VRM people in every district, not only the prototype capsule.
+Files: js/map3d/*, js/ui/map-view.js (zone), js/ui/career-map.js, tests/map3d.test.js, tests/interior.test.js, tests/ui-smoke.js, ARCHITECTURE-details.md
+Accept: tests; npm test, lint, test:ui pass; QA screenshots of street level in each town; the frame budget (triangles / draw calls at
+street level per town) in the Result.
+Result:
+
+### [ ] T-362: An interior for every place
+Spec: §4.37 6 Phase 3, §4.40          Goldens: unchanged          Save: no change
+Goal: every place with a building has its own interior with its kit / furniture as stations and the order prompts; arriving puts you inside.
+Files: js/data/city.js (INTERIOR), js/map3d/interior3d.mjs (+ new interior kinds), facility3d.mjs, mapmodel.js (inside spots),
+js/ui/career-map.js, tests/interior.test.js, tests/map.test.js, tests/ui-smoke.js, ARCHITECTURE-details.md
+Accept: every SPOTS place with a building has an INTERIOR (a test); QA screenshots of each interior kind; npm test, lint, test:ui pass.
+Result:
 
 ### [ ] T-359: Buffs you can feel — fewer coin flips
 Spec: §2.38          Goldens: update (errors, block, feed change every rally)          Save: no change

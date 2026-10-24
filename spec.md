@@ -1694,6 +1694,12 @@ the AI coach fills every slot you leave with the same function. Built and measur
     wall fade when you or the camera go in) and show the people training there; within ~40 m people become their VRM players
     (≤ 15 on screen; the low-poly setting keeps fewer); the order prompt shows in the world at the kit. Judged on: does it feel
     good, does it hold the frame rate, does walking get tedious. **Phase 3** (only if phase 2 passes): every district.
+    **Phase 3 — go (owner, 2026-10-24) [draft — T-361–T-362]**: street level in **every district** (the follow camera, the detail
+    ring, WASD, VRM people within ~40 m), and **an interior for every place with a building** (§4.40 facilities): each kind gets its
+    own inside with its kit as stations and the day-order prompts (gyms, the dojo, the Academy hall and gym, the harbor yard's shed,
+    the pool hall, HQs — a hall with the club's board —, hotels and home — a room with the bed: Sleep —, outings — the noodle bar's
+    counter, the arcade's machines —, the Harbor Market — its bikes and scooters —, secret places); outdoor facilities stay open
+    (the kit is the station). Arriving puts you inside everywhere. Fast keeps the same, cheaper. Frame budget §4.39.
     **Detail (owner, 2026-10-22: "spec and implement T-336"):** the prototype's places are the **Dynasty Strength Center** (SPOTS
     weiPower) and the **League Arena** (VENUES arena), and the streets between them.
     - **Camera**: one continuous zoom (wheel / pinch / +−): past the map's closest distance it keeps going — the pitch lowers from the
@@ -1885,13 +1891,14 @@ the AI coach fills every slot you leave with the same function. Built and measur
   | **Bike** | 1.8 × walking on roads | buy once ($120, Wu market) | roads, not mountain paths | Wu; trains Endurance a little (a third of a run), small stamina |
   | **Scooter** | 3 × walking on roads | buy once ($380, Wu market) + $2 fuel an hour | roads, not mountain paths; no training | Wu |
   | **Ferry** | fastest along the coast | $5 a crossing | the piers: Wu harbor ↔ the airport pier ↔ the beach pier; every 2 h, 07:00–21:00 | Wu harbor |
-  | **Taxi** | 4 × walking, door to door | $8 + $4 an hour of walking saved | both ends inside Wei | Wei |
+  | **Taxi** | 4 × walking, door to door | $8 + $4 an hour of walking saved | both ends inside Wei | Wei: at standing ≤ −20 the fare doubles; a taxi never refuses (owner, 2026-10-24) **[draft — T-360]** |
   - **Mixed trips**: a bus or ferry trip includes the walk to the stop / pier and from it (and the wait); the Travel option shows
     the whole trip's hours. The fastest option is never picked for you — the hours and the money are your choice (§9.1).
   - **Shu's highlands stay on foot** (hardship dogma): no bus, bike, scooter or taxi on the mountain paths — those legs are walked.
   - **What you give up**: a bus, ferry or taxi skips road stops (§4.37 encounters) and trains nothing; a bike trains a little.
   - **On the map** (seamless, §4.37): the bus drives its route with you aboard, the ferry crosses with you on deck, your figure rides
     the bike / scooter; buses and ferries run on their timetable when you are not aboard too (life). Stops and piers are visible.
+  - Buses and ferries run on the map clock — they wait while you are idle (owner, 2026-10-24: keep it that way).
   - Save: owned rides `run.ride` (lazy: { bike, scooter }). The career bot (good) takes the bus / bike when it saves time; casual walks.
   - **[built 2026-10-24, T-356–T-357]** Numbers in `TRANSPORT` (js/data/city.js): the bus 3× on its lines, $3 a ride (a change at a
     shared stop = a second ride), every stop every 30 min 06:00–23:00; the bike 1.8×, $120, ⅓ of a run's Endurance for 0.15 of its
@@ -1946,6 +1953,8 @@ the AI coach fills every slot you leave with the same function. Built and measur
     (§4.33) fights a street game on a hot border (your win counts × 2 on Strength). **[built 2026-10-19, T-318: from the battle card, played at once; a loss costs your unit × 1]**
   - Economy: Strength replaces the tile value (prices × (1 + 0.3 % per point under 100), quality × (0.7 + 0.3 × Strength /
     100), joins easier when Strained or worse). Save: RUN_VERSION bump (`run.war = { str, fallen, last }`, `run.hex` dropped).
+  - **Stages bite harder** (owner, 2026-10-24) **[draft — T-360]**: measured, a Steady side beat a Broken one only ~55 %; the stages'
+    penalties are raised so it is ~65 % (Strained ~55 %, Shaken ~60 %), measured with paired seeds.
 - §4.27 Hex territory **[built, T-131–T-134, T-138, T-153; superseded by §4.34 when T-313 lands]** (owner, 2026-10-03): the war map becomes hex tiles; each tile has its own takeover
   condition. Changes how factions move and seize; the player's travel (roads, days, trips, fog) does not change.
   Replaces the fixed border meters and border places (§4.7 `FRONT.borders`, T-130 lines, seized patches).
