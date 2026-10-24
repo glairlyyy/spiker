@@ -8,8 +8,8 @@
 // greet = 'walk', spin / done / res = 'order', any other lock phase — an encounter's stop — = 'walk'; none = 'idle').
 // The figure menu (spec §4.37 7, T-340): a click or right-click on a figure opens it (figOpen, career-map.js); figureAt(id) = the
 // figure's client point (the menu follows it), mark(id) = the ring under their feet while it is open.
-// Street level (spec §4.37 6, T-336a): MapView adds `street` to the model (the prototype district: a capsule round the Dynasty
-// Strength Center and the League Arena, map units) and walk(p) / canWalk() to the callbacks. At street level a click on the ground
+// Street level (spec §4.37 6, T-336a; every district since T-361): MapView adds `street` to the model ({ all: true }: street
+// level anywhere on land) and walk(p) / canWalk() to the callbacks. At street level a click on the ground
 // is a travel there (mapTravel — the same rules as the point card's Walk; refused → the point card says why); WASD walks you freely
 // and walk(p) resolves where you stopped the same way (only if it changed point; refused → your avatar walks back).
 
@@ -24,13 +24,9 @@ const MapView = {
   last: null, // the you.at last passed on (the road a trip follows starts there)
   lastIn: null, // that model's you.inside (the walk in from its door, display: you walk back out of it on the next trip)
   free: null, // a WASD stop being resolved: the travel goes straight there (you already stand on it)
-  /** The street-level district (map units): the capsule from the Dynasty Strength Center to the League Arena, STREET_R round it. */
-  STREET_R: 200,
-  zone() {
-    const a = SPOTS.weiPower && SPOTS.weiPower.at,
-      b = VENUES.arena && VENUES.arena.at;
-    return a && b ? { a: a.slice(), b: b.slice(), r: MapView.STREET_R } : null;
-  },
+  /** Where street level opens: every district (spec §4.37 6 Phase 3, T-361) — all the land (mapcam3d zoneOf). */
+  ZONE: Object.freeze({ all: true }),
+  zone: () => MapView.ZONE,
   /**
    * The model with you.route = the road path from the last shown position to you.at when that changed (the renderer reads only the
    * model); you.exit = the walk out of the place you stood inside (its door, MapModel.inside), when you did.
@@ -47,7 +43,7 @@ const MapView = {
     MapView.free = null;
     if (!from || (from[0] === at[0] && from[1] === at[1])) return model;
     if (free && free[0] === at[0] && free[1] === at[1]) return { ...model, you: { ...model.you, route: [from, at] } }; // (WASD: you are there)
-    const exit = out ? out.slice(0, 2).reverse() : null; // out of the door you stood inside: [door inside, door outside]
+    const exit = out ? out.slice(0, -1).reverse() : null; // out of the door(s) you stood inside: back from the spot to the door outside
     return { ...model, you: { ...model.you, route: City.route(from, at), exit } };
   },
   /** How far down the camera is (0 = the map, 1 = street level). */

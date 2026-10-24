@@ -912,22 +912,70 @@ function encLeave(L) {
 // The map (interior3d.mjs via map3d) reports the station you stand at, with its client point; the prompt over it is the place
 // card's own button for that order (ordBtn, the card's numbers under City.withInvite) — F (or a click on the station) runs it.
 const STP = { st: null, key: '', t: 0 };
-/** A station's action — the place card's: its day order → mapGo(place, order); a card station (the desk, the court) → the place's card. */
+/**
+ * A station's action — the place card's own button (spec §4.37 6 Phase 3): a day order → mapGo(place, order); the bed → Sleep 8 h
+ * (mapGo(place, null, 8); the prompt lists 8 / 6 / 4); a place's own Go (an outing, a secret place, the drone) → mapGo(place[, opt]);
+ * the Harbor Market's bikes / scooters → mapGo('market', k); a card station (a desk, a club board, a counter, a court) → its card.
+ */
 function stationAct(st) {
   if (!st) return null;
-  if (st.order && SPOTS[st.place] && City.orders(st.place).includes(st.order)) return { fn: 'mapGo', args: [st.place, st.order] };
+  const S = SPOTS[st.place];
+  if (st.order && S && City.orders(st.place).includes(st.order)) return { fn: 'mapGo', args: [st.place, st.order] };
+  if (st.sleep && S && S.act === 'rest') return { fn: 'mapGo', args: [st.place, null, DAY.sleepH[DAY.sleepH.length - 1]] };
+  if (st.buy && S && S.act === 'ride') return { fn: 'mapGo', args: [st.place, st.buy] };
+  if (st.act && S && S.act) return { fn: 'mapGo', args: typeof st.act === 'string' ? [st.place, st.act] : [st.place] };
   return { fn: 'mapPick', args: [st.place] };
 }
-/** The prompt's inside: the station's name, then its order as the place card shows it (cost → result; the gap when locked), key F. */
+/** The F button: the place card's own control, its cost → result, the hotkey printed; locked → the gap below. */
+function stationBtn(head, call, name, line, c) {
+  return `${head}<button class="btn fmb ord ${c.ok ? 'hot' : ''}" onclick="${call}" ${c.ok ? '' : 'disabled'}><kbd>F</kbd><b class="onm">${esc(name)}</b><span class="oln">${line}</span></button>${c.ok ? '' : `<small class="why">${esc(c.why)}</small>`}`;
+}
+/** The prompt's inside: the station's name, then its action as the place card shows it (cost → result; the gap when locked), key F. */
 function stationHTML(run, st) {
   const act = stationAct(st),
-    call = `${act.fn}(${act.args.map(a => `'${esc(a)}'`).join(',')})`,
-    head = `<small class="stn">${esc(st.name)}</small>`;
+    call = `${act.fn}(${act.args.map(a => (a == null ? 'null' : typeof a === 'number' ? a : `'${esc(a)}'`)).join(',')})`,
+    head = `<small class="stn">${esc(st.name)}</small>`,
+    id = act.args[0],
+    S = SPOTS[id];
   if (act.fn !== 'mapGo') {
-    const nm = (SPOTS[st.place] || {}).name || (VENUES[st.place.replace(/^venue:/, '')] || {}).name || 'the place';
-    return `${head}<button class="btn fmb" onclick="${call}"><kbd>F</kbd><b>${esc(nm)}</b><span class="oln">Open the card</span></button>`;
+    const nm =
+      (S || {}).name ||
+      (VENUES[id.replace(/^venue:/, '')] || {}).name ||
+      (/^hq\d+$/.test(id) && run.teams[+id.slice(2)] ? run.teams[+id.slice(2)].name : 'the place');
+    return `${head}<button class="btn fmb hot" onclick="${call}"><kbd>F</kbd><b>${esc(nm)}</b><span class="oln">Open the card</span></button>`;
   }
-  const [id, oid] = act.args,
+  if (st.sleep) {
+    // the bed: Sleep 8 / 6 / 4 h (the card's own rows), F = the first (8 h)
+    const at = City.at(run, id),
+      rows = sleepRows(run, id, City.trip(run, at), City.price(run, id))
+        .replace('class="btn ord', 'class="btn fmb ord')
+        .replace('<b class="onm">', '<kbd>F</kbd><b class="onm">');
+    return `${head}${rows}`;
+  }
+  if (st.buy) {
+    const T = TRANSPORT[st.buy],
+      c = City.can(run, id, st.buy);
+    return stationBtn(
+      head,
+      call,
+      City.owns(run, st.buy) ? `${T.name} · yours` : `Buy the ${st.buy}`,
+      `${term('day', `${City.cost(run, id, st.buy)} h`, 'cost')} $${T.price} → ${T.pace}× walking on roads`,
+      c
+    );
+  }
+  if (!st.order) {
+    // a place's own Go (an outing, a secret place, the drone): the card's button
+    const c = City.can(run, id, act.args[1] || undefined),
+      cost = City.price(run, id);
+    return stationBtn(
+      head,
+      call,
+      st.verb || 'Go',
+      `${term('day', `${City.hoursAt(id)} h`, 'cost')}${cost ? ` $${cost}` : ''} → ${esc(S.desc || S.name)}`,
+      c
+    );
+  }
+  const oid = act.args[1],
     h = ordHours(oid); // the card's picked hours (spec §4.41)
   return City.withInvite(run, id, () => {
     const c = City.can(run, id, oid, h),

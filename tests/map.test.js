@@ -1067,10 +1067,23 @@ test('map: arriving inside (owner, 2026-10-24) — at a place you stand at its i
       I = g.MapModel.inside(run, p);
     if (!f) continue;
     const want = !!(g.INTERIOR[id] || g.MapModel.FAC_IN[f.fac]);
+    assert(g.INTERIOR[id], `${id}: every place has its interior (T-362)`);
     eq(!!I, want, `${id}: inside only with an interior or outdoor kit`);
     if (!I) continue;
     n++;
-    const [out, door, spot] = I.map(q => local(f, q));
+    const P = I.map(q => local(f, q)),
+      [out, door] = P,
+      spot = P[P.length - 1],
+      st = g.INTERIOR[id] && g.INTERIOR[id].stations[0],
+      H = g.INTERIOR[id] && g.INTERIOR[id].hall;
+    if (st) assert(Math.hypot(spot[0] - st.at[0], spot[1] - st.at[1]) < 0.05, `${id}: you stand at its first station`);
+    if (P.length > 3) {
+      assert(H && !st.out, `${id}: through a hall's door only into a hall`);
+      assert(
+        Math.abs(P[2][1] - (H.z + H.d / 2 + 1)) < 0.05 && Math.abs(P[3][1] - (H.z + H.d / 2 - 1)) < 0.05,
+        `${id}: in through the hall's door`
+      );
+    }
     assert(out[1] > f.d / 2 && Math.abs(out[0]) < 0.01, `${id}: the walk starts at its door, outside`);
     assert(door[1] < f.d / 2 && door[1] > 0, `${id}: then just inside the door`);
     assert(Math.abs(spot[0]) < f.w / 2 && Math.abs(spot[1]) < f.d / 2, `${id}: you stand on the lot`);
