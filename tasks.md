@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-363** (T-336 is split a / b) (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-365** (T-336 is split a / b) (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,25 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+### [ ] T-363: Serve odds true again; free moves inside a place; captain's calls out
+Spec: §4.41 Travel, §2.17 (dropped), §2.38          Goldens: unchanged (say if not)          Save: no change
+Goal: (1) the serve odds `ORDERS.odds` (js/data/tactics.js) read true again since §2.38 (SKILL.mid 105) — the serve-odds test's
+tolerance back to 3 points; (2) moving inside the place you are at (its lot / interior / a WASD stop there) costs no hours — the 1 h
+minimum only between places; (3) the captain's-call stubs (capCall / capReady, any UI or tests left) removed.
+Files: js/data/tactics.js, js/engine/orders.js (if the odds live there), js/career/city.js (the trip hours), js/ui/map-view.js (the WASD
+stop), js/engine/fire.js (stubs), tests/*, ARCHITECTURE-details.md, spec.md (mark built)
+Accept: tests (odds within 3 points; a WASD walk inside the gym costs 0 h; between two places ≥ 1 h); npm test, lint, test:ui pass.
+Result:
+
+### [ ] T-364: Street level streams the near blocks
+Spec: §4.37 6 Streaming, §4.39 budget          Goldens: unchanged          Save: no change
+Goal: at street level only the blocks within ~250 m are drawn in full; far = cheap or fog; blocks load as you move; a "Loading…" pause
+if one you walk into isn't ready; ≥ 45 fps target.
+Files: js/map3d/* (town / nature / terrain chunks by block, a stream manager), js/ui/map-view.js (the pause), css/map.css, tests/map3d.test.js,
+tests/ui-smoke.js, ARCHITECTURE-details.md
+Accept: draw calls / triangles at street level per town before / after in the Result (and the map view's unchanged); npm test, lint, test:ui pass.
+Result:
 
 ### [x] T-360: War stages bite harder; Wei doubles the taxi fare
 Spec: §4.34 Stages bite harder, §4.42 Taxi          Goldens: unchanged (war stages act only in career matches — say if not)          Save: no change
@@ -1153,7 +1172,7 @@ Sub order), js/ui/plan-board.js, tests/engine.test.js, tests/golden.json
 Accept: end-of-set stamina median ~0.6 for starters (was ~0.87); subs per match up; a bot that rests its tired starters gains.
 Result: RULES.stamina drain 1.7 → 2.5, hit 0.4 → 0.5, between points court +0.01 / bench +0.05 (was +0.02 for all); SUB.max 2 → 4. 120 league + tournament matches: starters' stamina mid-set 0.92 → 0.83, at the end median 0.87 → 0.64 (p10 0.07: the one who does everything is Spent); subs 2.5 → 6.8 a match. Rest order on the board (a court player off at the next dead ball for the best fresh bench player; `ordSubs` before coachSubs, `subDo` shared). Bot with rest: league +1.9 % points (60 pairs; noise ±1.2) — the bench alone is no big lever yet. Tests: hunt / captain-switch tests run without subs (they read a fixed lineup); the challenge test plays the match on a real stream; the non-setter assist guard 12 → 12.5 %; sharp coaches sub no more than dull (both near the cap). Goldens updated.
 
-### [ ] T-283: Orders pay by situation
+### [dropped] T-283: Orders pay by situation (the Plan board went; the deck's reads replace it)
 Spec: §2.30          Goldens: unchanged (orders only)          Save: no change
 Goal: each order's payoff depends on the read (passer broken, block's read, hot hand, their quick share, their tips).
 Files: js/engine/orders.js, js/engine/lanes.js, js/engine/serve.js, js/engine/rally-phases.js, js/engine/rally-defense.js,
@@ -1161,7 +1180,7 @@ js/data/tactics.js (ORDERS), tests/engine.test.js
 Accept: smart bot +15–20 % points vs Auto (equal league teams, 60+ pairs); blanket orders within ±2 %.
 Result:
 
-### [ ] T-284: The board shows the point it wins
+### [dropped] T-284: The board shows the point it wins (the Plan board went)
 Spec: §2.30          Goldens: unchanged          Save: no change
 Goal: spike / set / block odds read "wins the point N %" (full-rally probe); serve keeps ace-or-broken · miss.
 Files: js/ui/plan-board.js, js/engine/orders.js, tests/ui-smoke.js
@@ -1341,7 +1360,7 @@ Accept: goldens updated with the reason; tests pass; report stage time shares fr
 QA: none (engine).
 Result: Built (spec chat, 2026-10-14). `m.mom` stays the fire (no `m.fire` field: a second array would drift from it in the odds probe's copies; the snapshot has `fire`). pointStage replaces pointZone; the losing captain's random zone call (an R() draw) went with it. Fever triggers: 3+ possessions / the streak reaching 4 / a kill at set point, never re-entered on the point it ended (a held streak chained 8-point Fevers). Speed buff = receive / dig speed terms and block reach. Also rally.js (`RALLY_MAX` 80: a rigged R() = 0.99 test looped forever once the buffs moved), rally-block.js, formulas.js, acts.js (`stage(a, d, bs)` so the act test sees it), match-controls.js (TEMPERS now exists), tests (the middle-orders test paired by seed: unpaired it was noise; a full element gauge swings instead of tipping). Goldens updated: stage buffs replace 0.06 × mom, and the zone captain's draw is gone. 200 tournament matches: Loose 9 % · Composed 51 % · Focused 38 % · Fever 2 % of points, Fever in 47 % of matches (targets 12 / 50 / 30 / 8, Fever in ~40 %: T-260 tunes).
 
-### [ ] T-260: Captain's calls and the balance check (Agent B)
+### [dropped] T-260: Captain's calls and the balance check (owner, 2026-10-24: dropped)
 Spec: §2.17, §2.14 (balance)          Goldens: update (the random captain buff goes)          Save: no change
 Goal: captains call Fire up / Settle on a leadership cooldown (the AI for every captain); `npm run balance` prints the stage numbers and the stage buffs hit their targets.
 Files: js/engine/fire.js (capReady, capCall), match.js (captainThink: the buff → AI calls; drop the zone captain's call),

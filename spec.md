@@ -209,7 +209,7 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   A played match plays itself like a sim, except the captain's calls (§2.17). The AI's own decoy fake set (multi-attack) stays.
   How the player takes part instead: §5.7.
 
-- §2.17 Captain's calls **[open: T-260; UI T-256]** — replace the captain's random personal buff. Between points (the
+- §2.17 Captain's calls **[dropped 2026-10-24 — owner; the dead stubs go, T-363]** — replace the captain's random personal buff. Between points (the
   scoreboard beat) the captain may call, at most once every 5 points (leadership Lv1), 4 (Lv2), 3 (Lv3):
   - **Fire up** `E` (any stage but Fever): team fire +0.2 (cannot trigger Fever by itself); the hottest teammate gets the old
     personal buff (+5 %/lvl power and defence, 4 points) and, with an element, a full gauge.
@@ -1719,6 +1719,10 @@ the AI coach fills every slot you leave with the same function. Built and measur
     the pool hall, HQs — a hall with the club's board —, hotels and home — a room with the bed: Sleep —, outings — the noodle bar's
     counter, the arcade's machines —, the Harbor Market — its bikes and scooters —, secret places); outdoor facilities stay open
     (the kit is the station). Arriving puts you inside everywhere. Fast keeps the same, cheaper. Frame budget §4.39. **[built 2026-10-24, T-361–T-362: street level opens anywhere on land; every
+    **Streaming (owner, 2026-10-24: "FPS drops drastically at street level — load only the near blocks, like Kenshi; pause to load if
+    needed") [draft — T-364]**: at street level only the blocks within ~250 m are drawn in full (town, nature, props, terrain
+    chunks); further out a cheap far version (or fog) — never the whole island's merged meshes; blocks load as you move; if one you
+    walk into isn't ready, the walk pauses with a small "Loading…" until it is. Map view unchanged. Target ≥ 45 fps at street level.
     place, HQ and the Academy Hall has its INTERIOR — a hall by size (a shell that fades) furnished from one piece library (racks,
     bench, mats, plyo boxes, multi-gym, film screen, shelves, a mop, the bed, a counter, arcade machines, a tape deck, a bath, the club
     board, a shrine, the drone crate, the old court) in its faction's colours, mirrored per place by hash; outdoor places keep their kit
@@ -1879,7 +1883,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     (Stretch from 1 h; an outing takes its own time). Longer = more gain, but each hour costs more stamina than the last and the
     injury risk climbs with the hours and with low stamina. Shown on the control as cost → result ("Heavy sets · 3 h · −30
     stamina · $20 → Str +++"). Several sessions a day are fine; stamina is the limit.
-  - **Travel** (Walk / Run, §4.33; transport later): hours by the route's length, **1 h at least**; Run is faster, costs stamina
+  - **Travel** (Walk / Run, §4.33; transport later): hours by the route's length, **1 h at least** between places — moving inside the place you are at (its lot, its interior, WASD at street level) is free (owner, 2026-10-24) **[draft — T-363]**; Run is faster, costs stamina
     and trains the route's ground as today. Pace (`PACE`) set so one old trip day ≈ 2 h walking: crossing the island is most of
     a day (§4.40 — travel matters). The free hop (`NEAR_R`) goes: a short walk is simply 1 h.
   - **Sleep** at home (or a hotel away from home) (owner, 2026-10-24: no earliest bedtime or minimum time awake): **4, 6 or 8 h** — never less than 4. 8 h brings stamina back to full (an
