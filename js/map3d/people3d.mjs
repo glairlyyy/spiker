@@ -179,7 +179,7 @@ export const VRM_LOD = { cap: 16, maxD: 260, every: 0.25, fade: 0.3, delay: 1.5,
 const V = (x, y, z) => new THREE.Vector3(x, y, z).normalize();
 const leg = (a, k, f = 0, s = 0.1) => ({ a, k, f, s });
 // the drill: a block jump — crouched ready on the ground, arms straight up at the top
-const BLOCK = {
+export const BLOCK = {
   ...STAND,
   hp: 0.02,
   sp: 0,
@@ -194,7 +194,7 @@ const BLOCK = {
   curl: 0.15
 };
 // sitting on the ground: legs out in front, leaning back on the hands
-const SIT = {
+export const SIT = {
   hp: 0.05,
   sp: -0.12,
   cp: -0.05,

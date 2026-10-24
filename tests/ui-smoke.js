@@ -47,7 +47,7 @@ const steps = [];
 /** Week time (days) as "day d, hh:00" for the step notes. */
 const City_h = w => `day ${Math.floor(w) + 1}, ${String(Math.round((w % 1) * 24)).padStart(2, '0')}:00`;
 const step = async (name, fn) => {
-  if (process.env.UI_ONLY && !name.includes(process.env.UI_ONLY) && name !== 'title screen') return; // UI_ONLY=Monster: one step alone
+  if (process.env.UI_ONLY && !process.env.UI_ONLY.split('|').some(k => name.includes(k)) && name !== 'title screen') return; // UI_ONLY=Monster: one step alone ('new career|running clock': several)
   const t0 = Date.now();
   try {
     const note = await fn();
@@ -85,6 +85,8 @@ const step = async (name, fn) => {
       RUN.event = null;
       RUN.clock = City.freshClock();
       RUN.money = 3000;
+      CLOCK.scale = 3; // the running clock (spec §4.43): a game hour in 3 s, not 90 (walks play in real time)
+      MapView.CLK.hold = true; // (…and idle hours don't pass between the steps: the running clock's own step lets them)
       renderCareer();
     });
   });
@@ -390,6 +392,75 @@ const step = async (name, fn) => {
     if (bad.length) throw new Error(bad.join('; '));
     return `${r1.log} · walk ${h0} → ${h1} h · slept 6 h: ${r3.head.trim()} · map clock ${r3.clock}`;
   });
+  await step(
+    'the running clock (T-365): pause / speeds, idle time runs, Space pauses, a session fast-forwards, Esc cuts it short',
+    async () => {
+      const bad = [];
+      await pg.waitForFunction(() => MapView.m3 && MapView.m3.info().calls > 0, null, { timeout: 240000 });
+      await ev(() => {
+        RUN.clock = City.freshClock();
+        RUN.dayLog = [];
+        RUN.event = null;
+        RUN.sta = RUN.staMax;
+        RUN.injury = null;
+        CW.spot = null;
+        CW.briefWeek = briefKey(RUN);
+        City.moveTo(RUN, City.at(RUN, 'harbor').slice());
+        renderCareer();
+        MapView.m3.jump();
+        MapView.CLK.hold = false;
+        MapView.setWalk(4);
+        renderCareer();
+      });
+      const ui = await ev(() => ({
+        pause: !!document.getElementById('tpause'),
+        sp: [...document.querySelectorAll('.mapwalk .tsp')].map(b => b.textContent + (b.classList.contains('on') ? '*' : '')).join(',')
+      }));
+      if (!ui.pause || ui.sp !== '×1,×2,×4*') bad.push(`the clock's controls: ${JSON.stringify(ui)}`);
+      const h0 = await ev(() => City.hour(RUN));
+      await pg.waitForTimeout(3000);
+      const h1 = await ev(() => City.hour(RUN));
+      if (!(h1 > h0)) bad.push(`idle time did not run (${h0} → ${h1}: ${await ev(() => MapView.stopped() || 'runs')})`);
+      await pg.keyboard.press('Space');
+      const h2 = await ev(() => City.hour(RUN));
+      await pg.waitForTimeout(1500);
+      const p = await ev(() => ({
+        h: City.hour(RUN),
+        paused: MapView.CLK.paused,
+        btn: document.getElementById('tpause').getAttribute('aria-pressed')
+      }));
+      if (!p.paused || p.h !== h2 || p.btn !== 'true') bad.push(`Space did not pause: ${JSON.stringify(p)}`);
+      await pg.keyboard.press('Space');
+      await ev(() => {
+        MapView.setWalk(1);
+        mapGo('harbor', 'heavy', 4);
+      });
+      await pg.waitForFunction(() => CW.lock && CW.lock.phase === 'ff' && document.getElementById('ffbadge'), null, { timeout: 60000 });
+      const badge = await ev(() => document.getElementById('ffbadge').textContent);
+      if (!/⏩/.test(badge)) bad.push(`no ⏩ badge: ${badge}`);
+      await pg.waitForFunction(() => CW.lock && CW.lock.ff && CW.lock.ff.done > 1.2, null, { timeout: 60000 });
+      await pg.keyboard.press('Escape');
+      await pg.waitForFunction(() => !CW.lock || CW.lock.phase === 'done', null, { timeout: 30000 });
+      const r = await ev(() => ({
+        line: RUN.log[0] && RUN.log[0].t,
+        train: RUN.clock.log
+          .filter(b => b.k === 'train')
+          .map(b => b.h)
+          .join()
+      }));
+      if (!/stopped after/.test(r.line || '') || !/^[1-3]$/.test(r.train))
+        bad.push(`Esc did not cut the session short: ${JSON.stringify(r)}`);
+      await ev(() => {
+        if (CW.lock) lockEnd();
+        MapView.CLK.hold = true;
+        RUN.clock = City.freshClock();
+        RUN.sta = RUN.staMax;
+        renderCareer();
+      });
+      if (bad.length) throw new Error(bad.join('; '));
+      return `idle +${Math.round((h1 - h0) * 60)} game min in 3 s at ×4 · ${badge} · ${r.line}`;
+    }
+  );
   await step('street level (T-336a): zoom down at the gym, walk with a click, zoom back out', async () => {
     const back = await ev(() => City.pos(RUN).slice()); // (put back at the end: the road step walks from there)
     const at = await ev(() => {

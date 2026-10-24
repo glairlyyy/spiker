@@ -14,7 +14,14 @@ const NAMES_AT = [700, 1100], // camera distance (m): the region names fade in b
   TAG_UP = 1.2; // the tag and the anchor float this far above a facility's roof (m)
 
 /** The walk there, in words (the tag; hours since spec §4.41). */
-const tripText = n => (n > 0 ? `${n} h walk` : 'Here');
+/** The walk's hours as City.hrs prints them (spec §4.43: 5-minute steps): "1 h 20 walk", "25 min walk". */
+const tripText = n => {
+  if (!(n > 0)) return 'Here';
+  const m = Math.round(n * 60),
+    H = Math.floor(m / 60),
+    M = m % 60;
+  return `${!H ? `${M} min` : M ? `${H} h ${String(M).padStart(2, '0')}` : `${H} h`} walk`;
+};
 
 export function createFurniture(scene, heightAt, where = () => null) {
   const layer = document.createElement('div');

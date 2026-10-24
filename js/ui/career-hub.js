@@ -323,7 +323,7 @@ function weekRail(run, armed) {
       !match && !run.event
         ? `<div class="acts wend"><button class="btn ${eve ? 'hot' : ''} endw" onclick="mapEndWeek()" ${endTip(days, eve)}>${
             armed ? `Skip ${days} day${days > 1 ? 's' : ''}? Click again` : `End week${days > 0 ? ` · ${days} left` : ''}`
-          } <kbd>Space</kbd></button></div>`
+          } <kbd>N</kbd></button></div>`
         : ''
     }
   </aside>`;
@@ -354,25 +354,69 @@ function railStrip(run, armed) {
     <button class="wicon" onclick="railToggle()" aria-label="Inbox: ${n} waiting" ${tip(`Inbox · ${n} waiting`)}>✉${n ? `<em class="badge">${n}</em>` : ''}</button>
     ${
       !match && !run.event
-        ? `<button class="btn ${eve ? 'hot' : ''} endw wicon" onclick="mapEndWeek()" aria-label="End week (Space)" ${endTip(days, eve)}>${armed ? 'Skip?' : '☾'}<kbd>Space</kbd></button>`
+        ? `<button class="btn ${eve ? 'hot' : ''} endw wicon" onclick="mapEndWeek()" aria-label="End week (N)" ${endTip(days, eve)}>${armed ? 'Skip?' : '☾'}<kbd>N</kbd></button>`
         : ''
     }
   </aside>`;
 }
 /** Fold / unfold the week rail (« / », key `[`); the map resizes into the space (MapView keeps its one canvas). */
-/** The map's walking-speed selector (T-214): top right of the map, usable while you walk (above the walk lock). */
+/**
+ * The map's clock (spec §4.43): the island's time, and the time speed top right (usable while you walk, above the walk lock) —
+ * Pause / Play (Space) and ×1 / ×2 / ×4 (the old walk speeds) — with the match's quiet chip an hour before you must leave for it.
+ */
 function walkSpeed() {
-  const k = MapView.walkK();
-  return `<div class="mapclock" id="mapclock" role="timer" ${tip('The time on the island: walking moves it, sleeping runs it through the night')}>${WEEKDAYS[Math.min(WEEK_DAYS, City.clock(RUN).day) - 1]} ${City.hhmm(City.hour(RUN))}</div><div class="mapwalk" role="group" aria-label="Walking speed" ${tip('Walking speed on the map')}><span class="lab">Walk</span>${MapView.WALKS.map(
-    n => `<button class="btn ${n === k ? 'on' : ''}" aria-pressed="${n === k}" onclick="walkSet(${n}, this)">${n}×</button>`
+  const k = MapView.walkK(),
+    P = MapView.CLK.paused;
+  return `<div class="mapclock" id="mapclock" role="timer" ${tip('The time on the island: it runs while you are on the map — walking takes its time; a session or a sleep fast-forwards')}>${WEEKDAYS[Math.min(WEEK_DAYS, City.clock(RUN).day) - 1]} ${City.hhmm(City.hour(RUN))}</div><div class="mapwalk" role="group" aria-label="Time speed">${matchChip(RUN)}<button class="btn tpause ${P ? 'on' : ''}" id="tpause" aria-pressed="${P}" onclick="MapView.pause()" aria-label="${P ? 'Run the clock' : 'Pause the clock'} (Space)">${P ? 'Play' : 'Pause'}<kbd>Space</kbd></button>${MapView.WALKS.map(
+    n => `<button class="btn tsp ${n === k ? 'on' : ''}" aria-pressed="${n === k}" onclick="walkSet(${n}, this)">×${n}</button>`
   ).join('')}</div>`;
 }
 function walkSet(k, b) {
   MapView.setWalk(k);
-  for (const x of b.parentNode.querySelectorAll('.btn')) {
+  for (const x of b.parentNode.querySelectorAll('.btn.tsp')) {
     const on = x === b;
     x.classList.toggle('on', on);
     x.setAttribute('aria-pressed', on);
+  }
+  clockShow();
+}
+/** The pause button follows the clock (Space, a speed pick). */
+function clockShow() {
+  const b = document.getElementById('tpause'),
+    P = MapView.CLK.paused;
+  if (!b) return;
+  b.classList.toggle('on', P);
+  b.setAttribute('aria-pressed', P);
+  b.setAttribute('aria-label', `${P ? 'Run the clock' : 'Pause the clock'} (Space)`);
+  b.firstChild.textContent = P ? 'Play' : 'Pause';
+}
+/**
+ * The match you are made to play (spec §4.43): a quiet chip from CLOCK.warn hours before you must set off (City.leaveBy) — "Match
+ * 13:00 · leave by 12:10"; at that hour the clock waits for you ("· the clock waits"). Never a suggestion. '' before then / none.
+ */
+function matchChip(run) {
+  const by = run && !City.night(run) ? City.leaveBy(run) : null;
+  if (by === null || City.hour(run) < by - CLOCK.warn) return '';
+  const held = City.hour(run) >= by - 1e-6;
+  return `<span class="tchip ${held ? 'held' : ''}" id="tchip" ${tip(`A match you are made to play starts at ${City.hhmm(DAY.match)}; the walk there counts`)}>⚑ Match ${City.hhmm(DAY.match)} · ${held ? 'the clock waits' : `leave by ${City.hhmm(by)}`}</span>`;
+}
+/** The running clock moved on (MapView.tick, every CLOCK.save game hours): the rail's today, the open card's hours, the match chip. */
+function clockRefresh() {
+  const run = RUN;
+  if (!run || !document.querySelector('.career.hub')) return;
+  const wk = document.querySelector('.wweek');
+  if (wk) wk.outerHTML = weekSection(run);
+  const g = document.querySelector('.hub .mapwalk');
+  if (g) {
+    const c = document.getElementById('tchip'),
+      html = matchChip(run);
+    if (c) c.outerHTML = html || '<span hidden></span>';
+    else if (html) g.insertAdjacentHTML('afterbegin', html);
+  }
+  const el = document.getElementById('spot');
+  if (el && CW.spot && el.classList.contains('open') && !el.matches(':hover') && !CW.lock) {
+    el.innerHTML = spotCard(run);
+    spotPlace();
   }
 }
 function railToggle() {
@@ -488,12 +532,12 @@ function inboxItems(run) {
     facts(
       'battle',
       '⚔',
-      `${short(att)} raid ${short(def)} · ${d} h`,
+      `${short(att)} raid ${short(def)} · ${City.hrs(d)}`,
       [
         ['Sides', `${short(c.a)} vs ${short(c.b)}`],
         ['Where', esc(c.name)],
         ['Border', clashBorder(run, att, def)],
-        ['Walk', d - DAY.act ? `${d - DAY.act} h` : 'None']
+        ['Walk', d - DAY.act ? `${City.hrs(d - DAY.act)}` : 'None']
       ],
       [['View', "mapPick('clash')"]]
     );
@@ -539,7 +583,7 @@ function evalNext(run) {
     v ? ['Venue', esc(VENUES[v].name)] : null
   ];
 }
-/** Hub keys: 1–4 open the sheet tabs, `[` folds the week rail, Space ends the week, Esc closes ⚙, the sheet, then the place card. */
+/** Hub keys: 1–4 open the sheet tabs, `[` folds the week rail, Space pauses the clock (§4.43), N ends the week, Esc closes ⚙, the sheet, then the place card. */
 function hubKey(e) {
   if (A || e.ctrlKey || e.metaKey || e.altKey || !document.querySelector('.career.hub') || $('#dbg') || (CW.dossier && e.key === 'Escape'))
     return;
@@ -547,6 +591,9 @@ function hubKey(e) {
     // the hub waits while you walk; the training / sim match result closes with Space / Enter / Esc
     if ((CW.lock.phase === 'done' || CW.lock.phase === 'res') && [' ', 'Enter', 'Escape'].includes(e.key)) lockEnd();
     else if (CW.lock.phase === 'greet' && [' ', 'Enter', 'Escape'].includes(e.key)) lockGreetDone();
+    else if (CW.lock.phase === 'ff' && e.key === 'Escape')
+      ffStop(); // a session / a sleep cut short (spec §4.43)
+    else if ((CW.lock.phase === 'ff' || CW.lock.phase === 'walk') && e.key === ' ') MapView.pause(); // the clock pauses mid-walk too
     e.preventDefault();
     return;
   }
@@ -560,9 +607,16 @@ function hubKey(e) {
       CW.spot = null;
       renderCareer();
     }
-  } else if (e.key === ' ' && document.querySelector('.hub .endw') && !document.querySelector('.hubmodal')) {
+  } else if (
+    (e.key === 'n' || e.key === 'N' || (e.key === ' ' && City.night(RUN))) &&
+    document.querySelector('.hub .endw') &&
+    !document.querySelector('.hubmodal')
+  ) {
     e.preventDefault();
-    mapEndWeek();
+    mapEndWeek(); // N (spec §4.43: Space is the clock's pause; once the week is spent it ends the week as before)
+  } else if (e.key === ' ') {
+    e.preventDefault();
+    MapView.pause();
   } else if (e.key === '[') railToggle();
   else if (e.key === 'c' || e.key === 'C') MapView.centre();
   else if (/^[1-4]$/.test(e.key) && !document.querySelector('.hubmodal')) hubOpen(HUB_TABS[+e.key - 1][0]);

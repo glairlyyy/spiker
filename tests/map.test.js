@@ -556,7 +556,7 @@ test('map: the day clock — the real hour (spec §4.41), the walk and the order
     seq.push(g.MapModel.weekTime(run));
     const o = g.MapModel.clock(run, 'order', 1);
     eq(o, +((g.City.hour(run) % 24) / 24).toFixed(4), `day ${d + 1}: the order ends at the hour now`);
-    assert(g.City.day(run, 'home', false, null, 8), 'home to sleep');
+    assert(g.City.day(run, 'home', false, null, 4), 'home to sleep'); // (4 h: with §4.43's 5-minute walks 8 h / 6 h days drift onto 02:00 and nod off a day early)
     seq.push(g.MapModel.weekTime(run, 'order', 0.5), g.MapModel.weekTime(run));
   }
   assert(

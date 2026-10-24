@@ -603,8 +603,8 @@ Central Academy = the hex tiles within `ACADEMY.ring` of its middle (`Hex.dist`)
 `price` (TRAIN_FEE / HOTEL × region price), `mul` (quality × home turf, passed to `Training.train/preview` as x),
 `can`/`day`/`scout`. The day in hours (spec §4.41, T-352): `run.clock` = { day 1–7 (8 = the week spent: `City.night`), hour (07 = 7, past
 midnight 24 +), log (today's blocks { k, label, at?, stat?, from, h } — the 24 h strip), last (the map's last action: walk / act in week time),
-met (who trained beside you today: the bond once a day) }. `City.trip` = walking hours (`walkH`: route cost ÷ `WALK_PACE`, 1 h at least, 0 at
-`HERE_R`; a run ÷ `RUN_PACE` more); `City.cost(run, id, oid, h)` = the walk + `hoursAt` (an order's `h` from `hourOpts`: HOURS.opts / .stretch,
+met (who trained beside you today: the bond once a day) }. `City.trip` = walking hours (`walkH`: route cost ÷ `WALK_PACE` in `CLOCK.min` steps — 5 game minutes, one at least
+(`City.step`; no 1 h minimum since §4.43) —, 0 at `HERE_R`; a run ÷ `RUN_PACE` more; the short cut's "an hour more" test keeps whole hours); `City.cost(run, id, oid, h)` = the walk + `hoursAt` (an order's `h` from `hourOpts`: HOURS.opts / .stretch,
 a sleep's DAY.sleepH, an outing's SPOTS `hours`, else DAY.act). `City.go(run, p, what, h)` passes the walk then h hours (`pass`, `mark`).
 `noTime(run, h, to, bed)`: the week spent; past 02:00 (DAY.late — not for a sleep); a match week (`matchAt`): the action + the walk on to the
 venue must end by DAY.match. An action ending past 02:00 → `upLate` → `nod` (4 h where you stand, × DAY.nodMul). `sleep(run, h, mul)`: DAY.sleep[h]
@@ -630,7 +630,7 @@ regions[{id, poly, color, mine}], minors[ellipses], park, relief, pads, labels, 
 mine/clash}], you: {at}, fog: {points, r}, flag (picked point), focus (fresh-view centre), sel, life }`. `life` (`MapModel.life`, display only, no randoms; positions from hashes of ids + place): `people` (MapModel.lifePeople — see "Map life and the day clock" below), `look` (figure sizes, hover px, the Fast cap), `crews[{region, team, at, color, n 2–6, known, walk[[x,y]…]}]` (known clubs' HQs; `known` = scouted or yours), `battle {at, a, b, colors}|null`, `patrols[{id, tile, at, face, color}]` (`MapModel.patrols`: this week's battle border — the defender's 2 on its tile, the raider's 3 on its tile across, facing; colours and points only, the renderer never names factions). Map units
    CITY.w × CITY.h, y down. Selection ids: a pin id, or `pt:x,y` (`ptId` / `ptOf`).
 3. Renderer — `MapView` (`js/ui/map-view.js`): `mount(el, model, { pick(id), point([x, y]) })`, `update(model)`,
-   `select(id)`, `dispose()`, `setWalk(k)` (your walking speed ×1/×2/×4, remembered as `sns_walk`; map3d ticks your avatar ×k). The only renderer is the three.js map: it lazy-imports `js/map3d/map3d.mjs` once (a notice
+   `select(id)`, `dispose()`, `setWalk(k)` (the time speed ×1/×2/×4 since §4.43, remembered as `sns_walk`; map3d ticks your avatar ×k, 0 = paused — see "The running clock"). The only renderer is the three.js map: it lazy-imports `js/map3d/map3d.mjs` once (a notice
    shows while loading; on import / WebGL failure it logs `DBG.log('error')` and shows the failure text — there is no 2D
    fallback). `map3d.create(onIdle)` → `{ mount, update, select, dispose, info, … }` (the full list heads map3d.mjs): one renderer +
    canvas that survive `renderCareer()` (each mount re-attaches the canvas into the new `#mapwrap`); it releases itself
@@ -760,6 +760,29 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   (projection onto the route, ratcheted — it holds while the avatar is stopped, e.g. an encounter), or order[1]; the shown w
   runs toward it at `rate[phase]` days / s and never back (a lower aim = a new week: w wraps forward through the night; a gap
   over 1.5 days skips whole days). Dev / QA: `setClock(w)`, `clock()`.
+- **The running clock (spec §4.43, T-365)** — the UI drives the rules' clock in real time: `MapView.tick()` (js/ui/map-view.js, its own
+  section; called from career-map.js's frame loop `spotFollow`) turns real seconds × the speed (`walkK`: ×1 / ×2 / ×4) ÷ `CLOCK.scale` (90 s a
+  game hour) into hours. `MapView.stopped()` = why it stands ('' = runs): Space (`pause`), no hub / a match, an event / sheet / figure menu / ⚙
+  / scene / `.hubmodal`, a lock phase other than walk / ff, the week spent; it hands map3d `setWalk(k or 0)`. With no lock the hours pass by
+  `City.idle(run, h)` (no strip block; stops at `City.leaveBy` — 13:00 minus the walk to this week's match venue: the clock waits there —
+  and nods off at 02:00); saves every `CLOCK.save` h, `clockRefresh()` (career-hub.js: the rail's today, the match chip, the open card)
+  every `CLOCK.save` h. While WASD moves you (`m3.driving()`: a drive frame within 2 s) the rules wait and `CLK.roam` gathers the hours
+  (now() shows them); the stop's travel counts the walk (`roamDone(true)` drops roam), else roam passes as idle. A walk / a ride: its
+  hours were counted when it began (commit at start, as before) and play in real time — map3d passes avatar3d `setTarget(…, { dur, scale })`
+  (dur = the walk's hours × `model.time.scale`; a ride's legs over (T1 − T0) × 24 × scale), the lock's give-up (`lockWalk`) counts
+  running time × the speed. `MapView.now()` = `City.wt` + a fast-forward's hours so far + roam: map3d `setNow(fn)`; `clockStep` follows it
+  (a jump catches up at `model.time.ff` × speed h/s; a walk still lerps by progress); life3d / vehicles3d tick on the shown clock
+  (`gclock` = wt × 24 × scale), so the people and the buses stop with it. Dev / QA: `MapView.CLK.hold` (idle hours don't pass).
+- **Sessions fast-forward** (career-map.js) — `mapGo` / `mapStretch` → `mapFF(p, F)`: `City.walkTo` first (the encounter as before), then
+  the lock phase `ff` (`lockFF` re-checks `F.can()`; `m3.act('drill' | 'sleep')` poses your figure; the pill "⏩ 1 h 20 / 3 h", Esc stop):
+  `ffStep(h)` from MapView.tick (× `CLOCK.ff` × the speed); the end runs `F.run(null)` = `City.day` (walk 0: you are there), Esc on a
+  session / a sleep `F.run(done)` = `City.cutDay` (an order its whole hours so far — `City.hOver` makes `hoursAt` answer them, the tables
+  have 1–4 h —, under an hour nothing; a sleep every 5 minutes, `City.sleepK` straight lines between DAY.sleep's points, under 4 h the
+  4 h mood dip; the rest of an order's time passes as idle). Then the diary, the save and the result card as before. The other actions
+  (scout, rides, matches, the figure menu's train together) keep commit-at-start and catch up on the clock at the fast-forward rate.
+- **On screen** — the clock group (`walkSpeed`, career-hub.js): the pill, Pause / Play `Space` (`#tpause`, `clockShow`), ×1 ×2 ×4 (`.tsp`), the
+  match chip (`matchChip`: from CLOCK.warn h before `leaveBy`: "⚑ Match 13:00 · leave by 12:10", then "· the clock waits"). Space pauses
+  (also mid-walk / fast-forward); End week moved to `N` (Space still ends a spent week). Hours print through `City.hrs` ("1 h 20", "25 min").
 - **Light** — `skyAt(keys, tod, …)` interpolates `CLOCK.keys` (wrapping): sun colour / intensity, hemisphere sky / ground /
   intensity, background, `lit`; the sun's direction by the hour (east → south-high → west, blending to the moon by `lit`), set
   after the camera step (mapcam still places it; map3d overrides before render); look3d.mjs. `nightLayer` (layers3d.mjs): one Points mesh (ShaderMaterial,

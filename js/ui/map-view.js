@@ -12,6 +12,11 @@
 // level anywhere on land) and walk(p) / canWalk() to the callbacks. At street level a click on the ground
 // is a travel there (mapTravel — the same rules as the point card's Walk; refused → the point card says why); WASD walks you freely
 // and walk(p) resolves where you stopped the same way (only if it changed point; refused → your avatar walks back).
+// The running clock (spec §4.43, T-365 — its own section at the end): MapView drives the rules' clock in real time (`tick`, from the
+// page's frame loop): a game hour = CLOCK.scale s at ×1, Space pauses (`pause`), ×1 / ×2 / ×4 (`setWalk`, the old walk speeds); it
+// runs only while the map is up and nothing modal is open (`stopped`). Idle hours pass by City.idle; a walk / a ride plays in real time
+// (its hours were counted when it began); a session's fast-forward (the 'ff' lock, career-map.js ffStep) runs on it; now() = the week
+// time the map shows (map3d setNow). While WASD moves you the rules wait (the stop counts the walk) and now() runs on (`roam`).
 
 const MapView = {
   m3: null, // the live 3D renderer
@@ -61,11 +66,16 @@ const MapView = {
   walk(p, click = false) {
     const pos = RUN ? City.pos(RUN) : null,
       same = pos && Math.hypot(p[0] - pos[0], p[1] - pos[1]) < 3;
-    if (!pos || same || !MapView.canWalk()) return click ? !same && MapView.on0 && MapView.on0.point(p) : MapView.home();
+    if (!pos || same || !MapView.canWalk()) {
+      MapView.roamDone(false);
+      return click ? !same && MapView.on0 && MapView.on0.point(p) : MapView.home();
+    }
     if (!click) MapView.free = p.slice();
     mapTravel(p[0], p[1]);
-    const now = City.pos(RUN);
-    if (now[0] === pos[0] && now[1] === pos[1]) {
+    const now = City.pos(RUN),
+      moved = now[0] !== pos[0] || now[1] !== pos[1];
+    MapView.roamDone(moved); // (spec §4.43: the walk you made counts once — the travel's hours, or idle when refused)
+    if (!moved) {
       MapView.free = null;
       if (click && MapView.on0) MapView.on0.point(p);
       else MapView.home();
@@ -116,7 +126,7 @@ const MapView = {
         MapView.loading = false;
         if (!MapView.el || !MapView.el.isConnected) return; // the screen changed meanwhile: the next mount loads it
         MapView.m3 = mod.create(() => MapView.drop3D());
-        if (MapView.m3.setWalk) MapView.m3.setWalk(MapView.walkK());
+        if (MapView.m3.setWalk) MapView.m3.setWalk(MapView.CLK.on);
         MapView.prep(MapView.m3);
         MapView.m3.mount(MapView.el, MapView.model, MapView.on);
         // street level survives a release (a screen over the map for a while, e.g. a day's scene): the camera comes back down
@@ -136,6 +146,7 @@ const MapView = {
   /** The renderer's settings from the UI: the phase source and the Fast graphics setting (fewer figures and lights). */
   prep(m3) {
     if (m3.setPhase) m3.setPhase(MapView.phase);
+    if (m3.setNow) m3.setNow(MapView.now);
     if (m3.setLow) m3.setLow(G.gfx === 'fast');
   },
   /** The part of the day the UI is playing (see the header): 'idle' | 'walk' | 'order'. */
@@ -223,16 +234,88 @@ const MapView = {
   overview() {
     if (MapView.m3 && MapView.m3.overview) MapView.m3.overview();
   },
-  /** Your walking speed on the map (the speed selector, T-214): ×1 / ×2 / ×4, remembered per browser. */
-  WALKS: [1, 2, 4],
+  /** The time speed on the map (spec §4.43; the old walk speeds, T-214): ×1 / ×2 / ×4, remembered per browser. */
+  WALKS: CLOCK.speeds,
   walkK: () => (MapView.WALKS.includes(+store.get(KEYS.walk)) ? +store.get(KEYS.walk) : 1),
   setWalk(k) {
     store.set(KEYS.walk, String(k));
-    if (MapView.m3 && MapView.m3.setWalk) MapView.m3.setWalk(k);
+    MapView.CLK.paused = false;
+    MapView.tick(true);
   },
   /** Fly the camera to your player (◎ / key C). */
   centre() {
     if (MapView.m3) MapView.m3.centre();
   },
-  dispose: () => MapView.drop3D()
+  dispose: () => MapView.drop3D(),
+
+  // ---- the running clock (spec §4.43, T-365) ------------------------------------------------------------------------------
+  /** t: the last tick (ms); on: the speed the map runs at now (0 = stopped); paused: Space; roam: hours walked by WASD not yet counted; at: the rules' hour at the last refresh / save. */
+  CLK: { t: 0, on: 0, paused: false, roam: 0, at: null, saveAt: null, hold: false }, // hold: dev / QA — idle hours don't pass (walks and fast-forwards still play)
+  /** Why the clock stands still ('' = it runs): paused, no run / map, a match, an event, a sheet, a menu, a scene, a card over the map, the week spent. */
+  stopped() {
+    const L = CW.lock;
+    if (MapView.CLK.paused) return 'paused';
+    if (!RUN || A || typeof document === 'undefined' || !document.querySelector('.career.hub')) return 'off';
+    if (RUN.event || CW.sheet || CW.fig || CW.gear || Story.step(RUN) || document.querySelector('.hubmodal')) return 'modal';
+    if (L && L.phase !== 'walk' && L.phase !== 'ff') return 'modal'; // (a greeting, an encounter's card, a result: it waits for you)
+    if (City.night(RUN)) return 'night';
+    return '';
+  },
+  /** Space: pause / run the clock. */
+  pause(v = !MapView.CLK.paused) {
+    MapView.CLK.paused = !!v;
+    MapView.tick(true);
+    if (typeof clockShow === 'function') clockShow();
+  },
+  /** The week time the map shows now (days): the rules' clock + a fast-forward's hours so far + WASD hours not yet counted. */
+  now() {
+    if (!RUN) return null;
+    const L = CW.lock,
+      ff = L && L.phase === 'ff' && L.ff ? L.ff.done : 0;
+    return City.wt(RUN) + (ff + MapView.CLK.roam) / 24;
+  },
+  /** WASD moves your figure (map3d: driving) — the rules wait for the stop. */
+  roaming: () => !!(MapView.m3 && MapView.m3.driving && MapView.m3.driving()),
+  /**
+   * One step of the running clock (the page's frame loop; `now` = only re-read the speed): real seconds × the speed ÷ CLOCK.scale
+   * game hours — a fast-forward's (ffStep, × CLOCK.ff × scale), WASD's (roam), else idle (City.idle: the 02:00 nod and the match hold
+   * are the rules'). Saves every CLOCK.save game hours; refreshes the rail and the open card every CLOCK.save (clockRefresh).
+   */
+  tick(now = false) {
+    const K = MapView.CLK,
+      t = typeof performance !== 'undefined' ? performance.now() : Date.now(),
+      dt = K.t ? Math.min(0.25, (t - K.t) / 1000) : 0,
+      why = MapView.stopped(),
+      k = why ? 0 : MapView.walkK();
+    K.t = t;
+    if (k !== K.on || now) {
+      K.on = k;
+      if (MapView.m3 && MapView.m3.setWalk) MapView.m3.setWalk(k);
+    }
+    if (now || !k || !dt || !RUN) return;
+    const L = CW.lock;
+    let h = (dt * k) / CLOCK.scale;
+    if (L && L.phase === 'ff') return ffStep(dt * k * CLOCK.ff);
+    if (L) return; // (a walk / a ride: its hours were counted when it began; the map plays them)
+    if (K.hold) return void (K.roam = 0);
+    if (MapView.roaming()) return void (K.roam += h);
+    if (K.roam) ((h += K.roam), (K.roam = 0)); // (a WASD walk no stop counted: its time passes as idle)
+    const r = City.idle(RUN, h);
+    if (r.line) {
+      Run.log(RUN, r.line);
+      Run.save(RUN);
+      K.at = K.saveAt = City.wt(RUN);
+      return renderCareer();
+    }
+    const w = City.wt(RUN);
+    if (K.saveAt === null || w < K.saveAt || w - K.saveAt >= CLOCK.save / 24) ((K.saveAt = w), Run.save(RUN));
+    if (K.at === null || w < K.at || Math.floor((w * 24) / CLOCK.save) !== Math.floor((K.at * 24) / CLOCK.save)) {
+      K.at = w;
+      if (typeof clockRefresh === 'function') clockRefresh();
+    }
+  },
+  /** A WASD stop was counted: the roam's hours are the walk's now (refused: tick lets them pass as idle). */
+  roamDone(counted) {
+    if (counted) MapView.CLK.roam = 0;
+  }
 };

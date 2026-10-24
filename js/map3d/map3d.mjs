@@ -16,6 +16,9 @@
 // the week time of the waiting day and of the last action's walk and order; setPhase(p | () => p) tells the map which of
 // 'idle' | 'walk' | 'order' is playing; the clock runs toward it (never back), the walk's share by how far the avatar has come
 // along its road (so it holds while the avatar stands still), and sets the sun, the sky and the night lights.
+// The running clock (spec §4.43): setNow(fn) = the UI's week time (MapView.now: the rules' clock as it runs, a session's fast-forward);
+// idle / order follow it (a jump catches up at the fast-forward rate); a walk / a ride plays in real time (its hours × model.time.scale
+// s ÷ the speed, setWalk(k): ×1 / ×2 / ×4, 0 = paused); the people and the vehicles move on the shown clock (gclock), so they stop with it.
 // Transport (spec §4.42, vehicles3d.mjs): the timetable buses / ferry (model.transit, by the shown clock wt), stops and piers, your ride's
 // vehicle (avatar.ride()); a ride's legs (model.you.ride) replace the road and its progress() drives the clock.
 // The player's avatar (avatar3d.mjs) stands at model.you.at — inside the place there (you.inside, spec §4.40: in through its door) — and
@@ -42,6 +45,7 @@ export { inside, edgeDist, sideDist }; // (the polygon maths live in geo3d.mjs; 
 const CLASH_R = 12;
 /** Where your figure stands for model m: inside the place (you.inside's last point, spec §4.40), else you.at. */
 export const standAt = m => (m.you.inside && m.you.inside.length ? m.you.inside[m.you.inside.length - 1] : m.you.at);
+const STOP_WAIT = 2; // s: WASD's stop resolves within this of the last step (mapcam3d STREET.stop + a margin)
 const IDLE_S = 3; // canvas detached this long → release the renderer
 
 /** Free every geometry / material the map made (shared kit caches — userData.shared — survive a re-create), the GPU context. */
@@ -101,6 +105,7 @@ export function create(onIdle) {
     tod = 0.5,
     lit = 0,
     phase = 'idle', // 'idle' | 'walk' | 'order', or a function returning one (MapView.phase)
+    nowFn = null, // the UI's running clock (week time, MapView.now), or null: the model's idle time
     walkPts = null, // the current walk's road (world [x, z]) and its cumulative lengths, for how far along it the avatar is
     walkLen = null,
     prog = 1,
@@ -230,17 +235,18 @@ export function create(onIdle) {
     if (held !== null) return void (tod = held); // (QA: holdClock)
     const ph = typeof phase === 'function' ? phase() : phase,
       acted = T.walk[1] > T.walk[0] + 1e-6;
-    let aim = T.idle,
-      rate = T.rate.idle;
+    const now = nowFn ? nowFn() : null;
+    let aim = Number.isFinite(now) ? now : T.idle,
+      rate = Number.isFinite(now) ? ((T.ff || 1.5) * Math.max(1, walkK)) / 24 : T.rate.idle; // (a jump of the running clock: fast-forward)
     if (ph === 'walk' && acted) {
       prog = walkProgress();
       aim = lerp(T.walk[0], T.walk[1], prog);
       rate = T.rate.walk;
-    } else if (ph === 'order' && acted) ((aim = T.order[1]), (rate = T.rate.order));
+    } else if (ph === 'order' && acted && !Number.isFinite(now)) ((aim = T.order[1]), (rate = T.rate.order));
     if (wt === null) wt = aim;
     if (aim < wt - 0.5) wt -= Math.ceil(wt - aim); // a new week: round through the night to its dawn
     if (aim > wt + 1.5) wt += Math.floor(aim - wt - 0.5); // days passed unseen: skip them
-    if (aim > wt) wt = Math.min(aim, wt + rate * dt);
+    if (aim > wt) wt = aim - wt < 1 / 240 ? aim : Math.min(aim, wt + rate * dt); // (the running clock's own steps: at once)
     tod = wt - Math.floor(wt);
   };
   const onPtr = e => {
@@ -372,8 +378,9 @@ export function create(onIdle) {
       lit = cur && cur.time ? skyAt(cur.time.keys, tod, sun, hemi, scene) : ((hemi.intensity = 0.9), 0);
       if (look.on) hemi.intensity *= lerp(LOOK.hemi[0], LOOK.hemi[1], lit); // (by day the sky's environment light adds the rest)
       if (C.view) life.ringScale((14 * 2 * C.view.d * Math.tan((cam.fov * Math.PI) / 360)) / (ch || 1) / 0.7); // a ring ≥ ~14 px
-      life.tick(dt, clock, tod, cam, st);
-      veh.tick(dt, clock, wt, avatar.ride()); // (cam: the nearest named people on screen as VRMs; st: life size and the near VRMs at street level)
+      const gclock = wt === null ? clock : wt * 24 * ((cur && cur.time && cur.time.scale) || 90); // (the shown clock in ×1 seconds)
+      life.tick(dt, gclock, tod, cam, st);
+      veh.tick(dt, gclock, wt, avatar.ride()); // (cam: the nearest named people on screen as VRMs; st: life size and the near VRMs at street level)
       hoverStep();
       town.tick(dt);
       nature.tick(dt, clock);
@@ -475,7 +482,9 @@ export function create(onIdle) {
       if (seen === null) avatar.snap(standAt(m));
       else if (key !== seen) {
         const [x0, z0] = avatar.pos();
-        avatar.setTarget(at, m.you.route, { head, tail, legs: m.you.ride && m.you.ride.legs }); // (a ride: its legs, spec §4.42)
+        const T = m.time,
+          dur = T && T.scale ? (T.walk[1] - T.walk[0]) * 24 * T.scale : 0; // (spec §4.43: the walk's hours in real time)
+        avatar.setTarget(at, m.you.route, { head, tail, legs: m.you.ride && m.you.ride.legs, dur, scale: T && T.scale }); // (a ride: its legs, spec §4.42)
         walkPts = [
           [x0, z0],
           ...[...head, ...(m.you.route && m.you.route.length > 1 ? m.you.route.slice(1, -1) : []), at, ...tail].map(p => [
@@ -499,9 +508,19 @@ export function create(onIdle) {
     },
     centre: () => C.centre(),
     overview: () => C.overview(),
-    /** Your walking speed on the map: ×k (1, 2, 4). */
+    /** The time speed on the map (spec §4.43): ×k (1, 2, 4); 0 = paused (your walk and WASD stop). */
     setWalk(k) {
-      walkK = k > 0 ? k : 1;
+      walkK = k >= 0 ? k : 1;
+    },
+    /** WASD is moving you (or did within the stop's wait): the UI's clock lets the rules wait (spec §4.43). */
+    driving: () => !!(avatar && avatar.driving && avatar.driving(STOP_WAIT)),
+    /** While a session / a sleep fast-forwards (spec §4.43): your figure drills ('drill') or sleeps ('sleep'); null = stands. */
+    act(k) {
+      if (avatar) avatar.act(k);
+    },
+    /** The running clock (spec §4.43): fn() → the week time now (MapView.now), or null: the model's. */
+    setNow(fn) {
+      nowFn = typeof fn === 'function' ? fn : null;
     },
     /** Which part of the day is playing: 'idle' | 'walk' | 'order', or a function the map asks each frame (MapView.phase). */
     setPhase(p) {

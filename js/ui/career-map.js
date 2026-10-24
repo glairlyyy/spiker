@@ -77,7 +77,7 @@ function pickupRow(run, id) {
     P = Encounter.pickup(run, p),
     foe = P.foe != null ? People.find(run, P.foe) : null,
     g = P.g ? `${P.g.name}${P.g.wind ? ' · windy' : ''}` : '',
-    c = `${term('day', `${P.days} h`, 'cost')} ${term('sta', -P.sta, 'cost')} → ${ENC_MENU.pickup.res}${g ? ` · ${esc(g)}` : ''}${foe ? ` · vs ${esc(firstName(foe))}’s crew` : ''}${City.drone(run) === 'rent' ? ' · the rented drone' : ''}`,
+    c = `${term('day', `${City.hrs(P.days)}`, 'cost')} ${term('sta', -P.sta, 'cost')} → ${ENC_MENU.pickup.res}${g ? ` · ${esc(g)}` : ''}${foe ? ` · vs ${esc(firstName(foe))}’s crew` : ''}${City.drone(run) === 'rent' ? ' · the rented drone' : ''}`,
     no =
       !P.why && P.refused.length
         ? `<small class="mute">${P.refused.map(r => esc(firstName(People.find(run, r.id)))).join(', ')} won’t play off a flat floor</small>`
@@ -89,7 +89,7 @@ function rentRow(run, id) {
   const C = id && Encounter.courts(run).find(q => q.id === id);
   if (!C) return '';
   const t = City.trip(run, C.at),
-    c = `${t ? term('day', `${t} h`, 'cost') : 'here'} $${DRONE.rent} → ${ENC_MENU.rent.res}`;
+    c = `${t ? term('day', `${City.hrs(t)}`, 'cost') : 'here'} $${DRONE.rent} → ${ENC_MENU.rent.res}`;
   return dronePickRow('prent', 'D', ENC_MENU.rent.name, c, City.rentWhy(run, C), `mapRent('${esc(id)}')`, '');
 }
 /** The Cargo Shed (the airport's freight): buy the Ref drone — the trip + a day, DRONE.buy → pickup games anywhere. */
@@ -113,9 +113,9 @@ function cargoPanel(run, id) {
       ['Or', `rent one at any court · $${DRONE.rent} a match`]
     ]),
     row: [
-      `<button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${id}')" ${c.ok ? '' : 'disabled'}>${c.ok ? `${esc(ENC_MENU.buy.name)} · ${days} h · $${DRONE.buy} → ${esc(ENC_MENU.buy.res)}` : esc(c.why)}</button>`,
+      `<button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${id}')" ${c.ok ? '' : 'disabled'}>${c.ok ? `${esc(ENC_MENU.buy.name)} · ${City.hrs(days)} · $${DRONE.buy} → ${esc(ENC_MENU.buy.res)}` : esc(c.why)}</button>`,
       trip
-        ? `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${late ? `disabled ${tip(late)}` : ''}>Walk · ${trip} h</button>`
+        ? `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${late ? `disabled ${tip(late)}` : ''}>Walk · ${City.hrs(trip)}</button>`
         : ''
     ].filter(Boolean),
     after: hourSeg(HOURS.stretch) + ordList(run, id, false) + placeDetails(id, placeTags(run, id, trip)) // Stretch here too (T-355)
@@ -147,6 +147,7 @@ function mapRent(id) {
 const SPOT_GAP = 24;
 function spotFollow() {
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(spotFollow);
+  MapView.tick(); // the running clock (spec §4.43) — outside the try: a fault in it is a page error, not swallowed
   try {
     spotPlace();
     figPlace();
@@ -245,35 +246,120 @@ function spotSwap(el) {
   el._glide = setTimeout(() => el.classList.remove('glide'), 260);
 }
 
-/** Spend h hours at a place (+ the walk; an order's or a sleep's length, spec §4.41). Never ends the week. */
+/**
+ * Spend h hours at a place (+ the walk; an order's or a sleep's length, spec §4.41). Never ends the week. The running clock (spec
+ * §4.43): you walk there first (its hours counted as it begins, played in real time), then the hours fast-forward (the 'ff' lock) and
+ * the rules run when they are over — or when Esc cuts a session / a sleep short (City.cutDay: the hours so far count).
+ */
 function mapGo(id, mate, h) {
   const run = RUN;
   mate = mate == null ? undefined : mate;
   if (!SPOTS[id] || !City.can(run, id, mate, h).ok || CW.lock) return;
   const s = SPOTS[id],
     oid = City.orderOf(id, mate), // a day order (spec §4.33): a kit place's (its lead drill by default) or Stretch (every place)
-    before = oid ? trainSnap(run, DAY_ORDERS[oid].main[0]) : null,
-    via = roadStart(City.at(run, id)),
-    line = City.day(run, id, CW.hard, mate, h != null ? h : oid ? ordHours(oid) : undefined);
-  Run.log(run, line);
-  const fx = oid ? trainFx(run, s, before, line, oid) : null;
-  mapAfter(run, fx, null, roadAfter(run, via));
+    hh = h != null ? h : oid ? ordHours(oid) : undefined,
+    hard = CW.hard;
+  mapFF(City.at(run, id), {
+    H: City.hoursAt(id, mate, hh),
+    cut: !!oid || s.act === 'rest',
+    act: s.act === 'rest' && !oid ? 'sleep' : oid ? 'drill' : null,
+    name: oid ? DAY_ORDERS[oid].name : s.act === 'rest' && !oid ? 'Sleeping' : s.name,
+    can: () => City.can(run, id, mate, hh),
+    run(done) {
+      const before = oid ? trainSnap(run, DAY_ORDERS[oid].main[0]) : null,
+        line = done === null ? City.day(run, id, hard, mate, hh) : City.cutDay(run, id, hard, mate, done);
+      return { line, fx: oid && !/^Stopped after/.test(line) ? trainFx(run, s, before, line, oid) : null };
+    }
+  });
 }
-/** Stretch at map point (x, y) (spec §4.33: anywhere): the walk + h hours there. */
+/** Stretch at map point (x, y) (spec §4.33: anywhere): the walk + h hours there (fast-forwarded and cut short as mapGo's). */
 function mapStretch(x, y, h = ordHours('stretch')) {
-  const run = RUN;
-  if (CW.lock || !City.pointCan(run, [x, y], 'stretch', h).ok) return;
-  const before = trainSnap(run, DAY_ORDERS.stretch.main[0]),
-    via = roadStart([x, y]),
-    line = City.pointDay(run, [x, y], 'stretch', h);
-  if (!line) return;
-  Run.log(run, line);
+  const run = RUN,
+    p = [x, y];
+  if (CW.lock || !City.pointCan(run, p, 'stretch', h).ok) return;
   CW.spot = null;
-  const s = { name: REGIONS[City.loc(run)].name },
-    fx = trainFx(run, s, before, line, 'stretch');
-  fx.redo = () => trainFx(run, s, before, line, 'stretch');
-  mapAfter(run, fx, null, roadAfter(run, via));
+  mapFF(p, {
+    H: h,
+    cut: true,
+    act: 'drill',
+    name: DAY_ORDERS.stretch.name,
+    can: () => City.pointCan(run, p, 'stretch', h),
+    run(done) {
+      const before = trainSnap(run, DAY_ORDERS.stretch.main[0]),
+        H = done === null ? h : Math.floor(done + 1e-6),
+        rest = done === null ? 0 : done - (H >= 1 ? H : 0),
+        line =
+          (H >= 1 ? City.pointDay(run, p, 'stretch', H) : `Stopped after ${City.hrs(done)}: nothing done.`) +
+          (rest > 0 ? clockIdle(run, rest) : ''),
+        S = { name: REGIONS[City.loc(run)].name };
+      return { line, fx: H >= 1 ? trainFx(run, S, before, line, 'stretch') : null };
+    }
+  });
 }
+/** Let h hours pass after a session cut short (City.idle); the diary text it adds ('' or the nod-off). */
+function clockIdle(run, h) {
+  const r = City.idle(run, h);
+  return r.line ? ` · ${r.line}` : '';
+}
+/**
+ * The running clock's actions (spec §4.43): walk to map point p (City.walkTo — its hours counted now, the map plays them in real time,
+ * the road's encounter as before), then the 'ff' lock: the hours of `F` ({ H, cut, act, name, can(), run(done) → { line, fx } })
+ * fast-forward on the clock (ffStep) — the figure drills / sleeps, the "⏩ 2 h" badge — and F.run(null) when they are over, or
+ * F.run(hours so far) on Esc when F.cut (ffStop).
+ */
+function mapFF(p, F) {
+  const run = RUN,
+    via = roadStart(p),
+    walk = City.trip(run, p) ? City.walkTo(run, p) : '';
+  if (walk === null) return;
+  F.walk = walk || '';
+  Run.save(run);
+  actLock(null, null, null, walk ? roadAfter(run, via) : null);
+  CW.lock.ff = { ...F, done: 0 };
+  renderCareer();
+}
+/** The walk is over: the fast-forward starts (its rules checked again: the road may have changed things), else unlock. */
+function lockFF(L) {
+  const F = L.ff,
+    c = F.can();
+  if (!c.ok) {
+    if (F.walk) Run.log(RUN, `${F.walk.trim()} ${F.name}: ${c.why}.`);
+    return lockEnd();
+  }
+  if (MapView.m3 && MapView.m3.act) MapView.m3.act(F.act);
+  lockPhase('ff');
+}
+/** h more game hours of the fast-forward (MapView.tick): the badge, then the end. */
+function ffStep(h) {
+  const L = CW.lock,
+    F = L && L.phase === 'ff' && L.ff;
+  if (!F) return;
+  F.done = Math.min(F.H, F.done + h);
+  const b = document.getElementById('ffbadge');
+  if (b) b.textContent = ffText(F);
+  if (F.done >= F.H - 1e-9) ffEnd(L, null);
+}
+/** Esc during the fast-forward: a session / a sleep stops here — the hours so far count (spec §4.43). */
+function ffStop() {
+  const L = CW.lock;
+  if (L && L.phase === 'ff' && L.ff && L.ff.cut) ffEnd(L, L.ff.done);
+}
+/** The fast-forward is over (done = null: all its hours; else cut short after `done`): the rules, the diary, the result. */
+function ffEnd(L, done) {
+  const F = L.ff,
+    r = F.run(done);
+  L.ff = null;
+  if (MapView.m3 && MapView.m3.act) MapView.m3.act(null);
+  if (!r.line) return (F.walk && (Run.log(RUN, F.walk.trim()), Run.save(RUN)), lockEnd());
+  Run.log(RUN, F.walk + r.line);
+  Run.save(RUN);
+  L.fx = r.fx;
+  if (!r.fx) return (lockEnd(), renderCareer());
+  lockPhase('done');
+  setTimeout(() => CW.lock === L && L.phase === 'done' && lockEnd(), LOCK.show);
+}
+/** The badge's text: "⏩ 1 h 20 / 3 h". */
+const ffText = F => `⏩ ${City.hrs(F.done)} / ${City.hrs(F.H)}`;
 /** After an action on the map: rules, save, render — then the action lock while you walk there (and a training cut-in). */
 function mapAfter(run, fx = null, res = null, enc = null) {
   Run.save(run);
@@ -342,16 +428,19 @@ function actLock(fx, greet = null, res = null, enc = null) {
  * when the map can't stop it; then the friend's greeting, the cut-in or the result.
  */
 function lockWalk(L) {
-  const t0 = Date.now(),
-    W = ROAD.mod && ROAD.mod.WALK;
+  const W = ROAD.mod && ROAD.mod.WALK,
+    T = City.clock(RUN).last,
+    gh = T && T.walk ? (T.walk[1] - T.walk[0]) * 24 : 0, // the walk's game hours: it plays in real time (spec §4.43)
+    max = LOCK.max + gh * CLOCK.scale * 1000 * 1.2;
+  let t = 0;
   clearInterval(actLock.iv);
   if (W) W.onHold = () => CW.lock === L && L.phase === 'walk' && L.enc && lockPhase('enc');
   actLock.iv = setInterval(() => {
     if (CW.lock !== L) return clearInterval(actLock.iv);
     if (L.phase !== 'walk') return;
-    const t = Date.now() - t0;
+    t += 120 * (t < LOCK.min ? 1 : MapView.CLK.on); // (×1 / ×2 / ×4; paused: it waits)
     if (W && W.held) return L.enc ? lockPhase('enc') : W.go(); // (a stop with nothing to show: walk on)
-    if (t > LOCK.min && (!MapView.busy() || t > LOCK.max)) {
+    if (t > LOCK.min && (!MapView.busy() || t > max)) {
       if (L.enc) return lockPhase('enc'); // no stop on the way (no 3D map, a short walk): it meets you on arrival
       clearInterval(actLock.iv);
       if (L.greet) return lockPhase('greet'); // Space / click moves on to the cut-in
@@ -361,6 +450,7 @@ function lockWalk(L) {
 }
 /** The training cut-in: spinner, then the result, then unlock (no cut-in: unlock now). */
 function lockTrain(L) {
+  if (L.ff) return lockFF(L); // the running clock: the hours fast-forward now (spec §4.43)
   if (L.res) return lockPhase('res'); // a simmed match: its result card, until you close it
   if (!L.fx) return lockEnd();
   lockPhase('spin');
@@ -419,6 +509,8 @@ function lockLayer() {
   }
   if (L.phase === 'res') return `<div class="actlock dim res" id="actlock" role="dialog" aria-live="polite">${L.res}</div>`;
   if (L.phase === 'enc') return encLayer(L);
+  if (L.phase === 'ff')
+    return `<div class="actlock walk ff" id="actlock" role="status" aria-live="polite"><span class="lkpill"><b>${esc(L.ff.name)}</b><span class="ffb" id="ffbadge">${esc(ffText(L.ff))}</span>${L.ff.cut ? '<span class="mute"><kbd>Esc</kbd> stop</span>' : ''}</span></div>`;
   const F = L.fx;
   if (L.phase === 'spin')
     return `<div class="actlock dim" id="actlock" role="status" aria-live="polite"><div class="tfx"><i class="spin" aria-hidden="true"></i><b>${esc(F.name)}</b><small class="mute">${esc(F.place)}</small></div></div>`;
@@ -610,21 +702,21 @@ function figPersonRows(run, id, road) {
     st = figStake(run, ti),
     M = st ? Encounter.menu(run, id, road, st) : M0,
     fn = road ? 'encDo' : 'figDo',
-    cost = R0 => (R0.days ? term('day', `${R0.days} h`, 'cost') : 'free'),
+    cost = R0 => (R0.days ? term('day', `${City.hrs(R0.days)}`, 'cost') : 'free'),
     [talk, inv, spar, ch] = M;
   return [
     { t: ENC_MENU.talk.name, c: `${cost(talk)} → ${ENC_MENU.talk.res}`, a: `${fn}('talk')`, dis: talk.why },
     { t: ENC_MENU.invite.name, c: `${cost(inv)} → ${ENC_MENU.invite.res} · says yes: ${inv.verdict}`, a: `${fn}('invite')`, dis: inv.why },
     {
       t: ENC_MENU.spar.name,
-      c: `${term('day', `${spar.days} h`, 'cost')} ${term('sta', -spar.sta, 'cost')} → ${ENC_MENU.spar.res}${spar.court ? ` · ${esc(spar.court.name)}` : ''}`,
+      c: `${term('day', `${City.hrs(spar.days)}`, 'cost')} ${term('sta', -spar.sta, 'cost')} → ${ENC_MENU.spar.res}${spar.court ? ` · ${esc(spar.court.name)}` : ''}`,
       a: `${fn}('spar')`,
       sim: `${fn}('spar',null,true)`,
       dis: spar.why
     },
     {
       t: ENC_MENU.challenge.name,
-      c: `${term('day', `${ch.days} h`, 'cost')} $${st} → ${ENC_MENU.challenge.res} · accepts: ${ch.verdict}`,
+      c: `${term('day', `${City.hrs(ch.days)}`, 'cost')} $${st} → ${ENC_MENU.challenge.res} · accepts: ${ch.verdict}`,
       a: `${fn}('challenge')`,
       sim: `${fn}('challenge',null,true)`,
       dis: ch.why,
@@ -660,7 +752,7 @@ function encRows(run, E) {
     return [
       {
         t: ENC_MENU.challenge.name,
-        c: `${term('day', `${d} h`, 'cost')} → ${ENC_MENU.challenge.res} · accepts: ${W ? W.verdict : 'refuses'}`,
+        c: `${term('day', `${City.hrs(d)}`, 'cost')} → ${ENC_MENU.challenge.res} · accepts: ${W ? W.verdict : 'refuses'}`,
         a: "encDo('challenge')",
         sim: "encDo('challenge',null,true)",
         dis,
@@ -668,7 +760,7 @@ function encRows(run, E) {
       },
       {
         t: ENC_MENU.here.name,
-        c: `${term('day', `${hd} h`, 'cost')} → ${ENC_MENU.here.res}${S.field.g ? ` · ${esc(S.field.g.name)}${S.field.g.wind ? ' · windy' : ''}` : ''} · accepts: ${W ? W.verdict : 'refuses'}`,
+        c: `${term('day', `${City.hrs(hd)}`, 'cost')} → ${ENC_MENU.here.res}${S.field.g ? ` · ${esc(S.field.g.name)}${S.field.g.wind ? ' · windy' : ''}` : ''} · accepts: ${W ? W.verdict : 'refuses'}`,
         a: "encDo('here')",
         sim: "encDo('here',null,true)",
         dis: S.why || City.noTime(run, hd),
@@ -688,7 +780,7 @@ function encRows(run, E) {
     call = Fight.calledFor(run),
     rows = [c.a, c.b].map((r, i) => ({
       t: `Fight for ${REGIONS[r].name}`,
-      c: `${term('day', `${d} h`, 'cost')} → a street match${call === r ? ' · your club’s call' : ''}`,
+      c: `${term('day', `${City.hrs(d)}`, 'cost')} → a street match${call === r ? ' · your club’s call' : ''}`,
       a: `encDo('join','${i ? 'b' : 'a'}')`,
       sim: `encDo('join','${i ? 'b' : 'a'}',true)`,
       dis
@@ -959,7 +1051,7 @@ function stationHTML(run, st) {
       head,
       call,
       City.owns(run, st.buy) ? `${T.name} · yours` : `Buy the ${st.buy}`,
-      `${term('day', `${City.cost(run, id, st.buy)} h`, 'cost')} $${T.price} → ${T.pace}× walking on roads`,
+      `${term('day', `${City.hrs(City.cost(run, id, st.buy))}`, 'cost')} $${T.price} → ${T.pace}× walking on roads`,
       c
     );
   }
@@ -971,7 +1063,7 @@ function stationHTML(run, st) {
       head,
       call,
       st.verb || 'Go',
-      `${term('day', `${City.hoursAt(id)} h`, 'cost')}${cost ? ` $${cost}` : ''} → ${esc(S.desc || S.name)}`,
+      `${term('day', `${City.hrs(City.hoursAt(id))}`, 'cost')}${cost ? ` $${cost}` : ''} → ${esc(S.desc || S.name)}`,
       c
     );
   }

@@ -1,7 +1,8 @@
 // The player on the 3D map: your own model (Main_v2, as in matches and your portrait; the default model if it fails), idle-breathing, walking or running to wherever the rules put
 // the player. Display only — the rules move instantly; this animates from the previously shown position.
-//   createAvatar(scene, opts?) → { setTarget([x, y], path?, { head?, tail?, legs? }), snap([x, y]), face([x, y]), tick(dt, heightAt), busy(), pos(), lapse(),
-//                                  heading(), drive(x, z, v, yaw), setLife(k), progress(), ride(), dispose() }
+//   createAvatar(scene, opts?) → { setTarget([x, y], path?, { head?, tail?, legs?, dur?, scale? }), snap([x, y]), face([x, y]), tick(dt, heightAt), busy(), pos(), lapse(),
+//                                  heading(), drive(x, z, v, yaw), setLife(k), progress(), ride(), act(k), dispose() }
+// act('drill' | 'sleep' | null): while a session or a sleep fast-forwards (spec §4.43) you hop block jumps / lie down where you stand.
 // A ride (spec §4.42): o.legs = the trip's legs ([{ m: 'walk' | 'bus' | 'bike' | 'scooter' | 'ferry' | 'taxi', pts, w, a, b }], map
 // points, week time — model.you.ride) replaces the road: the trip plays on the legs' own clock (RIDE_T s in all; a wait = standing at the stop), you
 // ride the bike / scooter (RIDE pose, on its seat), stand on the ferry's deck, and are aboard the bus / taxi (hidden: vehicles3d draws
@@ -14,10 +15,14 @@
 // map point the next walk halts at (an encounter; `held` until go()), `via` — the road it follows instead ({ to, pts }: the short
 // cut you picked), `routes` — a preview of the safe road and the short cut ([{ pts, on, alt }], drawn as ribbons), `onStep` — a
 // footstep (the island sound). Only your own avatar reads it.
+// The running clock (spec §4.43): setTarget's o.dur (s at ×1) times the walk in real time — its hours × the clock's scale, the
+// map ticks it × the time speed — and o.scale (s a game hour) a ride's legs (a wait at the stop lasts as long as the bus takes to
+// come); without them a trip keeps the old display timing (SPEED within TIME / RIDE_T).
 import * as THREE from 'three';
 import { VRMUtils } from '@pixiv/three-vrm';
 import { loadBase, makeVRM, applyPose, smoothBones, groundSnap, dress, MODEL_URL, MAIN_URL } from '../render3d/players3d.mjs';
-import { STAND, locoPose, mix } from '../render3d/poses3d.mjs';
+import { STAND, READY, locoPose, mix } from '../render3d/poses3d.mjs';
+import { BLOCK, SIT } from './people3d.mjs';
 import { toWorld, clamp, wrap } from './geo3d.mjs';
 
 const HEIGHT = 6, // metres: drawn about 3.5× life size so you can find yourself on the island (owner, 2026-10-03)
@@ -94,7 +99,31 @@ export function createAvatar(scene, opts = {}) {
     rmesh = null, // the route preview (yours only)
     rkey = null;
   const me = !opts.kit, // your own avatar: WALK applies
-    S = { x: 0, z: 0, yaw: 0, walk: null, phase: 0, w: 0, t: 0, next: null, held: false, stepAt: 0, life: 0, drive: null, ride: null };
+    S = {
+      x: 0,
+      z: 0,
+      yaw: 0,
+      walk: null,
+      phase: 0,
+      w: 0,
+      t: 0,
+      next: null,
+      held: false,
+      stepAt: 0,
+      life: 0,
+      drive: null,
+      ride: null,
+      pace: 0,
+      scale: 0,
+      act: null,
+      drv: 1e9
+    };
+  /** The trip's real-time pace (m/s at ×1) from its length and o.dur (spec §4.43), else 0 (the display timing). */
+  const paceOf = (pts, dur) => {
+    let L = 0;
+    for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    return dur > 0 && L > 0.5 ? L / dur : 0;
+  };
   /**
    * Ride the legs (world-space: each { m, pts, cum, dist, w, a, b }): the trip's week time T0 … T1 plays over `dur` s; `hold` = the
    * week time an encounter halts it at (a bike / scooter trip: WALK.stop), else null.
@@ -120,7 +149,8 @@ export function createAvatar(scene, opts = {}) {
         }
     }
     S.walk = S.next = null;
-    S.ride = { legs, T0, T1, dur: clamp(dist / RIDE_V, RIDE_T[0], RIDE_T[1]), t: -TURN, hold, m: legs[0].m, v: 0 };
+    const dur = S.scale > 0 ? (T1 - T0) * 24 * S.scale : clamp(dist / RIDE_V, RIDE_T[0], RIDE_T[1]); // (spec §4.43: real time)
+    S.ride = { legs, T0, T1, dur, t: -TURN, hold, m: legs[0].m, v: 0 };
     return true;
   };
   /** Start walking world-space pts (from where you stand) on the trapezoid speed profile. */
@@ -129,7 +159,7 @@ export function createAvatar(scene, opts = {}) {
     for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
     const dist = cum[cum.length - 1];
     if (dist < 0.5) return false;
-    const dur = clamp(dist / (SPEED * (1 - (1 - LIFE_PACE) * S.life)), TIME[0], TIME[1]),
+    const dur = S.pace > 0 ? Math.max(0.2, dist / S.pace) : clamp(dist / (SPEED * (1 - (1 - LIFE_PACE) * S.life)), TIME[0], TIME[1]),
       r = Math.min(RAMP, dur / 2);
     // trapezoid speed profile: ramp up, cruise at vc, ramp down; the area under it is the distance along the path
     S.walk = { pts, cum, i: 0, dist, dur, r, vc: dist / (dur - r), t: S.walk || S.held ? 0 : -TURN, s: 0, yaw: segYaw(pts, 0) };
@@ -228,6 +258,7 @@ export function createAvatar(scene, opts = {}) {
      */
     setTarget(at, path, o = {}) {
       S.ride = null;
+      S.scale = o.scale > 0 && o.dur > 0 ? o.scale : 0;
       if (o.legs && o.legs.length) {
         const stop = me ? WALK.stop : null;
         if (me) WALK.via = WALK.stop = null;
@@ -251,6 +282,7 @@ export function createAvatar(scene, opts = {}) {
       pts.push(toWorld(at));
       for (const p of o.tail || []) pts.push(toWorld(p));
       const end = o.tail && o.tail.length ? o.tail[o.tail.length - 1] : at;
+      S.pace = paceOf(pts, o.dur);
       S.next = null;
       if (S.held) S.held = WALK.held = false;
       if (stop) {
@@ -272,7 +304,10 @@ export function createAvatar(scene, opts = {}) {
     /** How far through the trip (0–1) a ride has come in its own time; null when not riding. */
     progress: () => (S.ride ? clamp(S.ride.t / S.ride.dur, 0, 1) : null),
     /** While on a ride's vehicle leg: { m, x, z, yaw, v (m/s) } (vehicles3d draws your bus / ferry / taxi / bike / scooter), else null. */
-    ride: () => (S.ride && S.ride.m !== 'walk' && S.ride.t >= 0 ? { m: S.ride.m, x: S.x, z: S.z, yaw: S.yaw, v: S.ride.v } : null),
+    ride: () =>
+      S.ride && S.ride.m !== 'walk' && S.ride.m !== 'wait' && S.ride.t >= 0
+        ? { m: S.ride.m, x: S.x, z: S.z, yaw: S.yaw, v: S.ride.v }
+        : null,
     pos: () => [S.x, S.z],
     /** The way you face (rad, atan2(dx, dz)). */
     heading: () => S.yaw,
@@ -282,15 +317,23 @@ export function createAvatar(scene, opts = {}) {
       S.x = x;
       S.z = z;
       S.drive = { v, yaw };
+      S.drv = 0;
+    },
+    /** WASD moved you within the last `s` seconds of its clock (spec §4.43: the rules wait for the stop). */
+    driving: (s = 1) => S.drv < s,
+    /** What you do standing still while the clock fast-forwards: 'drill' | 'sleep' | null (spec §4.43). */
+    act(k) {
+      S.act = k === 'drill' || k === 'sleep' ? k : null;
     },
     /** 0 = map size (HEIGHT), 1 = life size (LIFE_H): the camera's street weight. */
     setLife(k) {
       S.life = clamp(k, 0, 1);
     },
     /** Time-lapse factor of the current trip (ground speed ÷ SPEED), 0 when it is not faster than SPEED. */
-    lapse: () => (S.walk && S.walk.dist / S.walk.dur > SPEED * 1.02 ? S.walk.dist / S.walk.dur / SPEED : 0),
+    lapse: () => (S.walk && !S.pace && S.walk.dist / S.walk.dur > SPEED * 1.02 ? S.walk.dist / S.walk.dur / SPEED : 0),
     tick(dt, heightAt) {
       const W = S.walk;
+      if (!S.drive) S.drv += dt;
       let v = 0;
       if (S.drive) {
         v = S.drive.v;
@@ -319,7 +362,7 @@ export function createAvatar(scene, opts = {}) {
           g = clamp((s - L.cum[i]) / (L.cum[i + 1] - L.cum[i] || 1), 0, 1);
         S.x = a[0] + (b[0] - a[0]) * g;
         S.z = a[1] + (b[1] - a[1]) * g;
-        Rd.m = L.m;
+        Rd.m = L.m !== 'walk' && tau <= L.a ? 'wait' : L.m; // (spec §4.43: before its time you stand at the stop / pier — the bus comes on the timetable)
         Rd.v = Rd.t < 0 || tau <= L.a || f >= 1 || S.held ? 0 : L.dist / Math.max(0.05, ((L.b - L.a) / (Rd.T1 - Rd.T0)) * Rd.dur);
         if (L.pts.length > 1 && Rd.v > 0) S.yaw += wrap(segYaw(L.pts, Math.min(i, L.pts.length - 2)) - S.yaw) * (1 - Math.exp(-dt / 0.08));
         v = L.m === 'walk' ? Math.min(Rd.v, SPEED) : 0;
@@ -356,7 +399,7 @@ export function createAvatar(scene, opts = {}) {
       }
       if (me) routes(heightAt);
       if (rmesh) rmesh.visible = S.life < 0.5; // (the route preview floats 1.4 m up: over the map, not at street level)
-      const rm = S.ride && S.ride.t >= 0 ? S.ride.m : 'walk',
+      const rm = S.ride && S.ride.t >= 0 && S.ride.m !== 'wait' ? S.ride.m : 'walk',
         aboard = rm === 'bus' || rm === 'taxi', // inside the vehicle: vehicles3d draws it (with your ring)
         seat = rm === 'bike' || rm === 'scooter',
         h = rm === 'ferry' ? Math.max(heightAt(S.x, S.z), 0) + DECK_Y : heightAt(S.x, S.z);
@@ -375,14 +418,18 @@ export function createAvatar(scene, opts = {}) {
       S.w += (clamp(gait, 0, 1) - S.w) * (1 - Math.exp(-dt * 10));
       const sway = Math.sin(S.t * 1.7),
         idle = { ...STAND, cp: 0.02 * sway, sp: 0.02 + 0.012 * sway },
-        pose = seat ? RIDE : S.w > 0.01 ? mix(idle, locoPose({ speed: gait, fwd: gait, lat: 0, phase: S.phase }), S.w) : idle;
+        still = !S.walk && !S.ride && S.w < 0.05,
+        hop = still && S.act === 'drill' ? Math.max(0, Math.sin(S.t * 6)) : 0; // (the session's block jumps, spec §4.43)
+      let pose = seat ? RIDE : S.w > 0.01 ? mix(idle, locoPose({ speed: gait, fwd: gait, lat: 0, phase: S.phase }), S.w) : idle;
+      if (still && S.act === 'drill') pose = { ...mix(READY, BLOCK, hop), lift: hop * 0.22 * size * (HEIGHT / 1.65) * 0.3 };
+      else if (still && S.act === 'sleep') pose = SIT;
       pl.scale = pl.base * size;
       pl.root.scale.setScalar(pl.scale);
       pl.root.rotation.set(0, S.yaw, 0);
       pl.root.position.set(S.x, 0, S.z);
       applyPose(pl, pose);
       smoothBones(pl, dt, gait > 1 ? 26 : 16);
-      groundSnap(pl, pose.lift || 0); // feet on the floor (root at y = 0) …
+      groundSnap(pl, pose.lift || 0, still && S.act === 'sleep'); // feet on the floor (root at y = 0; asleep: lying) …
       pl.root.position.y += h + (seat ? SEAT * size * (HEIGHT / 6) : 0); // … then up onto the terrain (on the bike: its pedals)
       pl.vrm.update(dt);
     },
