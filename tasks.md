@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-355** (T-336 is split a / b) (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-356** (T-336 is split a / b) (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -182,6 +182,16 @@ Goal: the own deck you pick in match prep is kept and pre-filled next match; car
 Files: js/career/team.js, js/ui/match-prep.js, js/ui/match-cards.js (only if needed), tests/cards.test.js, ARCHITECTURE-details.md
 Accept: a test — pick 6, play, the next match's prep starts with the same 6; a lost card drops out (Basics fill); npm test, lint,
 `UI_ONLY=Deck npm run test:ui` pass.
+Result:
+
+### [ ] T-355: Stretch at every place
+Spec: §4.33 Stretch (§4.41 hours)          Goldens: unchanged          Save: no change
+Goal: Stretch (1–3 h) is offered at every SPOTS place — venues, HQs, outings, secret places, not only kit places / home / the grounds.
+Files: js/career/city.js (City.orders, STRETCH_AT), js/ui/career-map.js / career-panels.js (the place card shows it), tests/career.test.js
+or day.test.js, tests/ui-smoke.js (if a card step needs it), ARCHITECTURE-details.md
+Do not: change Stretch's gains or costs; change the career bot's routine.
+Accept: a test (every SPOTS place lists stretch; a stretch at a venue and an HQ works); npm test, lint, the place-card UI step pass;
+`npm run career -- 12 both` numbers in the Result (expected ~unchanged: the bots don't stretch more).
 Result:
 
 ### [ ] T-348: Deck balance
