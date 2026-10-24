@@ -118,7 +118,7 @@ function cargoPanel(run, id) {
         ? `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${late ? `disabled ${tip(late)}` : ''}>Walk · ${trip} h</button>`
         : ''
     ].filter(Boolean),
-    after: placeDetails(id, placeTags(run, id, trip))
+    after: hourSeg(HOURS.stretch) + ordList(run, id, false) + placeDetails(id, placeTags(run, id, trip)) // Stretch here too (T-355)
   });
 }
 PANELS.unshift([id => id === 'cargo', (run, id) => cargoPanel(run, id)]);
@@ -251,7 +251,7 @@ function mapGo(id, mate, h) {
   mate = mate == null ? undefined : mate;
   if (!SPOTS[id] || !City.can(run, id, mate, h).ok || CW.lock) return;
   const s = SPOTS[id],
-    oid = City.orderOf(id, mate), // a day order (spec §4.33): a kit place's (its lead drill by default) or Stretch at home / the grounds
+    oid = City.orderOf(id, mate), // a day order (spec §4.33): a kit place's (its lead drill by default) or Stretch (every place)
     before = oid ? trainSnap(run, DAY_ORDERS[oid].main[0]) : null,
     via = roadStart(City.at(run, id)),
     line = City.day(run, id, CW.hard, mate, h != null ? h : oid ? ordHours(oid) : undefined);

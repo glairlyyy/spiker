@@ -1000,14 +1000,15 @@ A training place is a SPOTS entry with `kit` (KITS tags: weights, crates, plyo, 
 chores, film, books, gym); its `train` (the lead training: NPC plans, the floor, the dossier) is derived from the first tag at
 load (data/city.js). Each tag brings `DAY_ORDERS` (data/career.js — named so because `ORDERS` is the engine's role orders): kind
 `drill` (price × TRAIN_FEE × region price), `work` (free, `pay`), `stretch` (free, never fails). `City.orders(id)` = the kit's
-orders + Stretch (also at home and the grounds, `City.STRETCH_AT`); `City.lead(id)` = the first drill (the card's ink primary);
+orders + Stretch (every SPOTS place has Stretch, T-355; `City.can` skips an outing's / secret place's / the shed's own rules for an order); `City.lead(id)` = the first drill (the card's ink primary);
 `City.orderOf(id, opt)` picks the order a day runs (`City.day(run, id, hard, opt)`: opt = an order id; a kit place without one
 runs its lead drill — Asks' "train together" does). `City.orderDay` → `Training.order(run, oid, at, …)` = `Training.session`
 (the old `Training.train(run, key)` is the same session with no place). The facility level grows per kit place (`run.uses[id]`);
 `Training.facility(run, placeId | trainingKey)` — a training key reads its own uses or its best place's; the Academy Gym is
-fixed (`SPOTS.acaGym.lv`). Map points: `City.pointCan` / `City.pointDay` (Stretch: the trip + a day). UI: `ordList` / `ordBtn`
+fixed (`SPOTS.acaGym.lv`). Map points: `City.pointCan` / `City.pointDay` (Stretch: the trip + h); venues and HQs (not SPOTS) stretch at their point (`VENUES[id].at`, `CITY.hq[ti]`). UI: `ordList` / `ordBtn`
 (career-panels.js; "cost → result" per body stat from `xpRate`), `kitSpot` (the kit card), `pointCard` wraps B's `pointPanel`
-and adds the Stretch row inside it; `mapGo(id, oid)` / `mapStretch(x, y)` (career-map.js).
+and adds the Run + Stretch rows inside it (`stretchAt(run, p, pre)`: picker + order button — also on venue and HQ cards; SPOTS cards:
+`ordList(run, id, false)` in `after`); `mapGo(id, oid)` / `mapStretch(x, y)` (career-map.js).
 
 ### Running a trip (T-309)
 

@@ -625,6 +625,42 @@ test('orders: facilities = kit — every training place ≥ 2 orders, Work pays 
   assert(g.City.day(run, 'home', false, 'stretch', 2) && run.clock.log[run.clock.log.length - 1].label === 'Stretch', 'Stretch at home');
 });
 
+test('map: Stretch at every place — outings, hotels, secret places, venues, HQs (spec §4.33, T-355)', () => {
+  const g = load(355),
+    run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Gym' });
+  run.event = null;
+  run.mode.story = false;
+  for (const id of Object.keys(g.SPOTS)) assert(g.City.orders(id).includes('stretch'), `Stretch at ${id}`);
+  const you = g.Run.you(run);
+  run.fans = 1e6; // the Old Scout is on your map
+  for (const id of ['noodles', 'hotelWu', 'oldScout', 'cargo']) {
+    run.clock = g.City.freshClock();
+    run.sta = run.staMax;
+    run.pos = g.City.at(run, id).slice();
+    const m0 = run.money,
+      f0 = you.body.flex,
+      c = g.City.can(run, id, 'stretch', 2);
+    assert(c.ok, `${id}: ${c.why}`);
+    assert(g.City.day(run, id, false, 'stretch', 2), `stretched at ${id}`);
+    const b = run.clock.log[run.clock.log.length - 1];
+    assert(
+      you.body.flex > f0 && run.money === m0 && b.label === 'Stretch' && g.City.hour(run) === g.DAY.wake + 2,
+      `${id}: free, Flex up, 2 h`
+    );
+    assert(!(run.uses || {})[id], `${id}: no facility level`);
+  }
+  for (const [what, p] of [
+    ['venue', g.VENUES.arena.at],
+    ['HQ', g.CITY.hq[0]]
+  ]) {
+    run.clock = g.City.freshClock();
+    run.pos = p.slice();
+    const f0 = you.body.flex;
+    assert(g.City.pointCan(run, p, 'stretch', 3).ok && g.City.pointDay(run, p, 'stretch', 3), `stretched at a ${what}`);
+    assert(you.body.flex > f0 && g.City.hour(run) === g.DAY.wake + 3, `${what}: Flex up, 3 h`);
+  }
+});
+
 test('map: a training place’s pin shows 1–3 body glyphs of what it trains best; its landmark carries its kit (T-310)', () => {
   const g = load(79),
     run = g.Run.create(g.Run.draft(), { role: 'WS', name: 'Pins' });

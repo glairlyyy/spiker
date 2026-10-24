@@ -184,7 +184,7 @@ Accept: a test — pick 6, play, the next match's prep starts with the same 6; a
 `UI_ONLY=Deck npm run test:ui` pass.
 Result:
 
-### [ ] T-355: Stretch at every place
+### [x] T-355: Stretch at every place
 Spec: §4.33 Stretch (§4.41 hours)          Goldens: unchanged          Save: no change
 Goal: Stretch (1–3 h) is offered at every SPOTS place — venues, HQs, outings, secret places, not only kit places / home / the grounds.
 Files: js/career/city.js (City.orders, STRETCH_AT), js/ui/career-map.js / career-panels.js (the place card shows it), tests/career.test.js
@@ -192,7 +192,7 @@ or day.test.js, tests/ui-smoke.js (if a card step needs it), ARCHITECTURE-detail
 Do not: change Stretch's gains or costs; change the career bot's routine.
 Accept: a test (every SPOTS place lists stretch; a stretch at a venue and an HQ works); npm test, lint, the place-card UI step pass;
 `npm run career -- 12 both` numbers in the Result (expected ~unchanged: the bots don't stretch more).
-Result:
+Result: `City.orders` = kit's + Stretch at every SPOTS place (`STRETCH_AT` gone; `City.can` skips the outing / secret / shed rules for an order); venue + HQ cards stretch at their point (`stretchAt`, career-panels.js); the Cargo Shed card (career-map.js) lists it too; test map.test.js + UI step checks every card's Stretch + picker (47 cards). career 12 both identical to before: casual Y1 66.8 · Y2 83.4, swing short 12/12; good Y1 77.9 · Y2 94.8 (rival 90.0 / 92.8), stretch 6.3 a run, money at Cups $330 / $1020.
 
 ### [ ] T-348: Deck balance
 Spec: §2.37 Must hold          Goldens: update if numbers change          Save: no change

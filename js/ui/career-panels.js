@@ -58,6 +58,7 @@ function placePanel(run, id) {
     const T = kitSpot(run, sid);
     return placeCard({ ...base, ...T, row: [travel].filter(Boolean) });
   }
+  base.after = hourSeg(HOURS.stretch) + ordList(run, sid, false) + base.after; // Stretch at every place (spec §4.33, T-355)
   if (s.act === 'ramen')
     return placeCard({
       ...base,
@@ -74,15 +75,14 @@ function placePanel(run, id) {
   const study = studyPanel(run, sid, base, travel); // the tutor / a bookstore (T-230)
   if (study) return study;
   if (s.secret) return secretPanel(run, sid, base, travel, City.hoursAt(sid), cost);
-  const label = s.act === 'rec' ? 'Relax' : 'Go',
-    stretch = City.orders(sid).length ? hourSeg(HOURS.stretch) + ordList(run, sid, false) : ''; // home and the grounds: Stretch (spec §4.33)
+  const label = s.act === 'rec' ? 'Relax' : 'Go';
   if (s.act === 'rest')
     return placeCard({
       ...base,
       kind: 'Sleep',
       flavour: s.desc,
       body: sleepRows(run, sid, trip, cost),
-      after: stretch + base.after,
+      after: base.after,
       tags:
         sid === 'home'
           ? [ptag(`${esc(HOUSING[run.housing].name)} · sleep ×${World.restMul(run)}`, 'Your home: how much a night’s sleep restores')]
@@ -93,7 +93,7 @@ function placePanel(run, id) {
     ...base,
     kind: s.act === 'street' ? 'Street' : 'Place',
     flavour: s.desc,
-    after: stretch + base.after,
+    after: base.after,
     tags: [], // cost and hours are on the button
     row: [
       `<button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${sid}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}>${label} · ${City.hoursAt(sid)} h${cost ? ` · $${cost}` : ''}</button>`,
@@ -398,16 +398,19 @@ function runBtn(run, p, late = '') {
   if (!P.sta) return '';
   return `<button class="btn run" onclick="mapTravel(${p[0]},${p[1]},'run')" ${why ? `disabled ${tip(why)}` : tip('Run the route: its ground trains you (roads: Endurance; dirt and mountain paths: + Strength; boardwalk: Agility; the Steps: Strength + Agility)')}>Run · ${P.days} h ${term('sta', -P.sta, 'cost')} → ${res}</button>`;
 }
-/** A map point's card (B's pointPanel) + Stretch there (spec §4.33: the island is the gym): the order block goes inside the card. */
+/** Stretch at map point p (spec §4.33: the island is the gym): the hour picker + its order button (cost → result); `pre`: rows before it. */
+function stretchAt(run, p, pre = '') {
+  const h = ordHours('stretch'),
+    pv = Training.preview(run, 'stretch', false, DAY_GAIN * Training.units(h), null, h);
+  return `<div class="ords">${pre}${hourSeg(HOURS.stretch)}${ordBtn(run, DAY_ORDERS.stretch, pv, City.pointCan(run, p, 'stretch', h), `mapStretch(${p[0]},${p[1]},${h})`, h, 0, false)}</div>`;
+}
+/** A map point's card (B's pointPanel) + Run and Stretch there: the order block goes inside the card. */
 function pointCard(run, p) {
   const html = pointPanel(run, p),
-    O = DAY_ORDERS.stretch,
-    h = ordHours('stretch'),
-    pv = Training.preview(run, 'stretch', false, DAY_GAIN * Training.units(h), null, h),
     late = run.event
       ? 'answer the event first'
       : City.noTime(run, City.travelDays(run, p), p) || (City.outside(run, p) ? City.fence(run) : ''),
-    blk = `<div class="ords">${runBtn(run, p, late)}${hourSeg(HOURS.stretch)}${ordBtn(run, O, pv, City.pointCan(run, p, 'stretch', h), `mapStretch(${p[0]},${p[1]},${h})`, h, 0, false)}</div>`,
+    blk = stretchAt(run, p, runBtn(run, p, late)),
     i = html.lastIndexOf('</div>');
   return i < 0 ? html : html.slice(0, i) + blk + html.slice(i);
 }
@@ -447,13 +450,15 @@ function challengeBlock(run, ti) {
 function venuePanel(run, id) {
   const v = VENUES[id];
   if (!v) return '';
+  const C = courtCard(run, id); // court matches (T-229)
   return placeCard({
     region: v.region,
     kind: 'Venue',
     title: `🏟 ${esc(v.name)}`,
     tags: City.venue(run) === id ? [ptag('This week: your match', '', 'sel')] : [],
     body: kv(v.held.map((h, i) => [i ? '' : 'Held here', esc(h)])),
-    ...courtCard(run, id) // court matches (T-229)
+    ...C,
+    after: stretchAt(run, v.at) + (C.after || '') // Stretch at every place (T-355)
   });
 }
 /**
@@ -546,7 +551,7 @@ function hqPanel(run, ti) {
       `<button class="btn" onclick="openDossier('${f.region}')" ${tip(`Everything you know about ${REGIONS[f.region].name}`)}>Dossier</button>`
     ].filter(Boolean),
     split: mine ? 'two' : 'three',
-    after: overthrowBlock(run, ti) + challengeBlock(run, ti) + scouted + (mine ? leaveBlock(run, t) : '')
+    after: stretchAt(run, CITY.hq[ti]) + overthrowBlock(run, ti) + challengeBlock(run, ti) + scouted + (mine ? leaveBlock(run, t) : '')
   });
 }
 /** The transfer window on another club's HQ card (spec §4.36 A): open now, or the week it opens. */

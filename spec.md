@@ -1412,7 +1412,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
       Walk / Run on every Travel (place cards and map points); per trip day of each kind of ground ~5 body points' worth
       (`RUN_GROUND`), −14 stamina a trip day; too tired or injured → Walk only; day orders' own trips are walked.
     - **Stretch** — bodyweight mobility, anywhere (home, the grounds, the shrine, the onsen best): Flexibility, little
-      stamina, free. Every point on the map offers Run and Stretch — and so does **every place** (owner, 2026-10-24: venues, HQs, outings, secret places too; **[draft — T-355]**): **the island is the gym, facilities do it better**.
+      stamina, free. Every point on the map offers Run and Stretch — and so does **every place** (owner, 2026-10-24: venues, HQs, outings, secret places too; **[built 2026-10-24, T-355]**): **the island is the gym, facilities do it better**.
     - **[built 2026-10-19, T-308]** Drill / Work / Stretch: 16 kit places (the Academy Gym fixed at Lv 1), Work at the Harbor
       and the Stone Gym (Haul crates, +$35), the Sand Courts and the Dunes (Lifeguard shift, +$30), the Highland Dojo and the
       Academy Gym (Floor duty, +$20); drills cost 1–1.5 × today's fee; Stretch (Flex + a little Agi, −5 stamina) at every kit
