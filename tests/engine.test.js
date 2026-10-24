@@ -94,8 +94,8 @@ test.slow('engine: net touch and foot fault — ≈ 1 and ≈ 0.5 a match; the c
   }
   net /= 200;
   foot /= 200;
-  // (T-349: one team play a side — fewer Commit blocks on top of another play: 0.82 → 0.69 at this seed; T-348 rebalances)
-  assert(net >= 0.6 && net <= 1.3, `net touches a match ${net}`);
+  // (T-348: FAULTS.net × 1.7 brought it back to ~1 a match after the deck's fewer stacked Commit blocks)
+  assert(net >= 0.7 && net <= 1.3, `net touches a match ${net}`);
   assert(foot >= 0.3 && foot <= 0.7, `foot faults a match ${foot}`);
   // the chances: a Commit block, tired legs, low Agility (speed), a jump serve — likelier
   const F = g.Formula,
@@ -907,9 +907,9 @@ test('engine: defence settings — AI default, captain switch, scouting habits',
   let sw = 0,
     fixedSw = 0;
   for (let i = 0; i < 50; i++) {
-    const m = g.simMatch(foe, cap, { tac: ['mb', 'auto'] });
+    const m = g.simMatch(foe, cap, { tac: ['mb', 'auto'], cards: false }); // (no decks: their Short Serve / Commit cards move the quick share this reads)
     sw += m.dsetLog.filter(x => x.side === 1 && x.to === 'commit').length;
-    fixedSw += g.simMatch(foe, cap, { tac: ['mb', 'auto'], dset: ['read', 'read'] }).dsetLog.length;
+    fixedSw += g.simMatch(foe, cap, { tac: ['mb', 'auto'], dset: ['read', 'read'], cards: false }).dsetLog.length;
   }
   g.SUB.max = max0;
   assert(sw >= 1, 'the captain switches to Commit against an MB-focus attack');

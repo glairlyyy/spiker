@@ -62,7 +62,7 @@ const DECK = {
   book: [2, 3],
   iq: 0.7,
   lv: { ref: 65, min: 0.6, max: 1.2 },
-  strong: 12,
+  strong: 13,
   tech: 0.5, // an owned technique's own rate (spec §2.37, T-358): × today's chance — on some rallies only (engine/skills.js techOn)
   // amplifiers: `rate` added to their group's technique rate while active; Improve X+ is each of its two at `plus`; a technique card
   // active with its group's amplifier: edges × `with`; a full form (amplifier + technique fused): the technique's edges and buffs × `full`
@@ -119,9 +119,9 @@ const CARDS = {
     kind: 'basic',
     src: 'base',
     amp: 'serve',
-    buff: { serve: 4 },
-    hit: { serve: 4 },
-    desc: 'Serve +4 %; serve techniques fire more, hit harder'
+    buff: { serve: 12 },
+    hit: { serve: 8 },
+    desc: 'Serve +12 %; serve techniques fire more, hit harder'
   },
   iatk: {
     name: 'Improve Attack',
@@ -129,9 +129,9 @@ const CARDS = {
     kind: 'basic',
     src: 'base',
     amp: 'attack',
-    buff: { atk: 4 },
-    hit: { atk: 4 },
-    desc: 'Power +4 %; attack techniques fire more, hit harder'
+    buff: { atk: 12 },
+    hit: { atk: 8 },
+    desc: 'Power +12 %; attack techniques fire more, hit harder'
   },
   iset: {
     name: 'Improve Set',
@@ -139,9 +139,9 @@ const CARDS = {
     kind: 'basic',
     src: 'base',
     amp: 'set',
-    buff: { atk: 2 },
-    hit: { atk: 4 },
-    desc: 'Cleaner sets: power +2 %; set techniques fire more'
+    buff: { set: 6 },
+    hit: { atk: 8 },
+    desc: 'Cleaner sets: good set +6 %; set techniques fire more'
   },
   iblk: {
     name: 'Improve Block',
@@ -149,9 +149,9 @@ const CARDS = {
     kind: 'basic',
     src: 'base',
     amp: 'block',
-    buff: { jump: 4 },
-    hit: { jump: 4 },
-    desc: 'Jump +4 %; block techniques fire more, hit harder'
+    buff: { jump: 12 },
+    hit: { jump: 8 },
+    desc: 'Jump +12 %; block techniques fire more, hit harder'
   },
   idig: {
     name: 'Improve Dig',
@@ -159,9 +159,9 @@ const CARDS = {
     kind: 'basic',
     src: 'base',
     amp: 'dig',
-    buff: { spd: 4 },
-    hit: { def: 4 },
-    desc: 'Speed +4 %; dig techniques fire more, hit harder'
+    buff: { spd: 12 },
+    hit: { def: 8 },
+    desc: 'Speed +12 %; dig techniques fire more, hit harder'
   },
   ifake: {
     name: 'Improve Fake',
@@ -169,9 +169,9 @@ const CARDS = {
     kind: 'basic',
     src: 'base',
     amp: 'fake',
-    foe: { jump: -3 },
-    hit: { atk: 4 },
-    desc: 'Their block −3 %; fakes and decoys fire more'
+    foe: { jump: -9 },
+    hit: { atk: 8 },
+    desc: 'Their block −9 %; fakes and decoys fire more'
   },
   // Fused cards (spec §2.37 Fusing in the hand, T-358): never in a deck — two hand cards that make a recipe (`parts`) fuse into one,
   // played as one: both parts' effects (each × `pk`, default 1) plus the card's own, both costs on play, both parts cool after.
@@ -182,9 +182,9 @@ const CARDS = {
     kind: 'play',
     src: 'fuse',
     parts: ['iblk', 'idig'],
-    buff: { def: 4 },
+    buff: { def: 12 },
     tally: 'defend',
-    desc: 'Block and dig as one: defense +4 % more'
+    desc: 'Block and dig as one: defense +12 % more'
   },
   decoy: {
     name: 'Decoy',
@@ -192,9 +192,9 @@ const CARDS = {
     kind: 'play',
     src: 'fuse',
     parts: ['ifake', 'iatk'],
-    foe: { jump: -4 },
+    foe: { jump: -12 },
     tally: 'attack',
-    desc: 'The fake sells the swing: their block −4 % more'
+    desc: 'The fake sells the swing: their block −12 % more'
   },
   pwall: {
     name: 'Pressure Wall',
@@ -202,9 +202,9 @@ const CARDS = {
     kind: 'play',
     src: 'fuse',
     parts: ['isrv', 'iblk'],
-    foe: { def: -3 },
+    foe: { def: -9 },
     tally: 'defend',
-    desc: 'Serve them off the net into a set block: their defense −3 %'
+    desc: 'Serve them off the net into a set block: their defense −9 %'
   },
   tempo: {
     name: 'Tempo',
@@ -212,9 +212,9 @@ const CARDS = {
     kind: 'play',
     src: 'fuse',
     parts: ['iset', 'iatk'],
-    buff: { atk: 4 },
+    buff: { atk: 12 },
     tally: 'attack',
-    desc: 'Fast sets, early swings: power +4 % more'
+    desc: 'Fast sets, early swings: power +12 % more'
   },
   scramble: {
     name: 'Scramble',
@@ -222,9 +222,9 @@ const CARDS = {
     kind: 'play',
     src: 'fuse',
     parts: ['idig', 'iset'],
-    buff: { spd: 4 },
+    buff: { spd: 12 },
     tally: 'defend',
-    desc: 'Dig it, set it from anywhere: speed +4 % more'
+    desc: 'Dig it, set it from anywhere: speed +12 % more'
   },
   fbait: {
     name: 'Bait',
@@ -232,9 +232,9 @@ const CARDS = {
     kind: 'play',
     src: 'fuse',
     parts: ['ifake', 'iblk'],
-    foe: { atk: -4 },
+    foe: { atk: -12 },
     tally: 'defend',
-    desc: 'Show a gap, close it: their power −4 %'
+    desc: 'Show a gap, close it: their power −12 %'
   },
   // the old pairs (§2.33 combos)
   sniper: {
@@ -244,9 +244,9 @@ const CARDS = {
     src: 'fuse',
     parts: ['killer', 'target'],
     need: 'killer',
-    buff: { serve: 6 },
+    buff: { serve: 12 },
     tally: 'serve',
-    desc: 'Killer serves at their weakest passer: serve +6 % more'
+    desc: 'Killer serves at their weakest passer: serve +12 % more'
   },
   lockdown: {
     name: 'Lockdown',
@@ -254,9 +254,9 @@ const CARDS = {
     kind: 'play',
     src: 'fuse',
     parts: ['wall', 'commit'],
-    buff: { jump: 6 },
+    buff: { jump: 12 },
     tally: 'defend',
-    desc: 'Wall their ace, middles committed: jump +6 % more'
+    desc: 'Wall their ace, middles committed: jump +12 % more'
   },
   ifloor: {
     name: 'Iron Floor',
@@ -264,9 +264,9 @@ const CARDS = {
     kind: 'play',
     src: 'fuse',
     parts: ['sdig', 'deep'],
-    buff: { def: 6 },
+    buff: { def: 12 },
     tally: 'defend',
-    desc: 'Line blocked, a middle back, the floor deep: defense +6 % more'
+    desc: 'Line blocked, a middle back, the floor deep: defense +12 % more'
   },
   ftempo: {
     name: 'Freak Tempo',
@@ -274,9 +274,9 @@ const CARDS = {
     kind: 'play',
     src: 'fuse',
     parts: ['quick', 'freak'],
-    buff: { atk: 6 },
+    buff: { atk: 12 },
     tally: 'attack',
-    desc: 'Quick tempo for the freak quick: power +6 % more'
+    desc: 'Quick tempo for the freak quick: power +12 % more'
   },
   stempo: {
     name: 'Slide Tempo',
@@ -284,9 +284,9 @@ const CARDS = {
     kind: 'play',
     src: 'fuse',
     parts: ['quick', 'slide'],
-    buff: { atk: 6 },
+    buff: { atk: 12 },
     tally: 'attack',
-    desc: 'Quick tempo for the slide: power +6 % more'
+    desc: 'Quick tempo for the slide: power +12 % more'
   },
   // the captain's playbook
   hunt: {
@@ -743,8 +743,8 @@ const CARDS = {
     buff: { atk: 15, def: 15, jump: 15 },
     when: 'brink',
     tally: 'defend',
-    cd: 12,
-    cost: { who: 'court', bar: 'sta', amt: 0.08 },
+    cd: 13,
+    cost: { who: 'court', bar: 'sta', amt: 0.03 },
     desc: 'Power, defense and jump +15 % while they are at match point'
   },
   // duo cards (spec §4.36 4, T-330): a friend at bond 60+ (`duo`: your role and theirs, either way); in the pool only while you and
@@ -866,7 +866,7 @@ const CARD_EDGE = {
     fit: 'weakPass',
     ctr: ['cover'],
     e: [
-      ['us', 'serve', 30],
+      ['us', 'serve', 20],
       ['them', 'def', -10]
     ]
   },
@@ -874,7 +874,7 @@ const CARD_EDGE = {
     fit: 'weakPass',
     ctr: ['cover'],
     e: [
-      ['us', 'serve', 30],
+      ['us', 'serve', 20],
       ['them', 'def', -10]
     ]
   },
@@ -982,12 +982,12 @@ const CARD_EDGE = {
   inzone: { fit: 'cold', ctr: [], e: [] } // (cold: below Focused)
 };
 /** The edge's factor: fit × 1, countered × `ctr`, misfit × `mis`; all × `k` (the balance knob). */
-const EDGE = { ctr: -1.5, mis: -0.6, k: 2 };
+const EDGE = { ctr: -1.2, mis: -0.6, k: 4.5 };
 
 /**
  * Every card's deck numbers (spec §2.37), unless the card sets its own: `dur` points active (serve cards: your serves, `per`),
  * `cd` points cooling (OP: Infinity — once a match), `cost` on play. Stronger cards cool longer: a technique with a big edge
- * (50 %+) and Last Stand DECK.strong.
+ * (50 %+) 12, Last Stand DECK.strong (the captain saves it). Fusing: 4 points at least.
  */
 (() => {
   // Improve X+ (spec §2.37): the same amplifier twice — stronger, diminishing (each of the two at DECK.amp.plus)
@@ -1010,7 +1010,7 @@ const EDGE = { ctr: -1.5, mis: -0.6, k: 2 };
     if (c.parts) continue; // (fused: below)
     const K =
       c.kind === 'basic'
-        ? { dur: 2, cd: 3, cost: { who: 'court', bar: 'sta', amt: 0.02 } }
+        ? { dur: 3, cd: 3, cost: { who: 'court', bar: 'hp', amt: 0.02 } }
         : c.kind === 'op'
           ? { dur: 3, cd: Infinity }
           : c.kind === 'trap'
@@ -1022,15 +1022,15 @@ const EDGE = { ctr: -1.5, mis: -0.6, k: 2 };
                   cost: c.on === 'wind' ? { who: 'court', bar: 'mor', amt: 0.1 } : { who: 'captain', bar: 'sta', amt: 0.1 }
                 }
               : c.src === 'tech'
-                ? { dur: 3, cd: big(id) ? DECK.strong : 10, cost: { who: 'holder', bar: 'sta', amt: 0.1 } }
+                ? { dur: 4, cd: big(id) ? 12 : 10, cost: { who: 'holder', bar: 'sta', amt: 0.04 } }
                 : c.src === 'trait'
-                  ? { dur: 3, cd: 8, cost: { who: 'holder', bar: id === 'take' ? 'hp' : 'sta', amt: 0.06 } }
+                  ? { dur: 4, cd: 8, cost: { who: 'holder', bar: id === 'take' ? 'hp' : 'sta', amt: 0.03 } }
                   : c.src === 'duo'
-                    ? { dur: 3, cd: 6, cost: { who: 'holder', bar: 'sta', amt: 0.06 } }
+                    ? { dur: 4, cd: 6, cost: { who: 'holder', bar: 'sta', amt: 0.03 } }
                     : {
-                        dur: 3,
+                        dur: 4,
                         cd: 8,
-                        cost: team.includes(id) ? { who: 'court', bar: 'sta', amt: 0.04 } : { who: 'captain', bar: 'mor', amt: 0.08 }
+                        cost: team.includes(id) ? { who: 'court', bar: 'sta', amt: 0.01 } : { who: 'captain', bar: 'mor', amt: 0.06 }
                       };
     c.dur ??= K.dur;
     c.cd ??= K.cd;
@@ -1045,7 +1045,7 @@ const EDGE = { ctr: -1.5, mis: -0.6, k: 2 };
   const fuseDefaults = c => {
     const P = c.parts.map(x => CARDS[x]),
       lead = P.find(x => x.kind !== 'basic') || P[0];
-    c.dur ??= Math.max(3, lead.dur || 0);
+    c.dur ??= Math.max(4, lead.dur || 0);
     c.per ??= lead.per === 'srv' && c.tally === 'serve' ? 'srv' : 'pts';
     c.cd = Math.max(...P.map(x => x.cd));
     c.type ??= P.some(x => x.type === 'team') ? 'team' : P.some(x => x.type === 'debuff') ? 'debuff' : 'solo';

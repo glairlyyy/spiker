@@ -875,16 +875,17 @@ the AI coach fills every slot you leave with the same function. Built and measur
       (stronger, diminishing); the old pairs (Killer + Target Serve = Sniper, Wall Their Ace + Commit = Lockdown …) fuse too.
     - The captain fuses by the same function (no draws). On screen: drag a card onto another — the cards it fuses with light up,
       each showing the result's name and cost → result; `F` then two keys does the same.
-    - Built (first guesses, T-348 tunes; `DECK.tech`, `DECK.amp`, js/data/cards.js): an owned technique goes on a rally with chance 0.5
+    - Built (tuned T-348, 2026-10-24; `DECK.tech`, `DECK.amp`, js/data/cards.js): an owned technique goes on a rally with chance 0.5
       (decided once a rally per player and technique; a technique card calls it — always on); each amplifier active adds 0.25 to its
-      group's rate (Improve X+: 0.4), lifts its action (Serve +4 % serve, Attack +4 % power, Set +2 % power, Block +4 % jump, Dig
-      +4 % speed, Fake their block −3 %) and +4 % more for a player whose group technique is on; 2 points, cools 3, −0.02 court
-      stamina. Groups: serve Killer / Drive / Target · attack Cut Shot / Pipe Combo · set Sync · fake Delayed Spike / Lefty Dump /
+      group's rate (Improve X+: 0.4), lifts its action (Serve +12 % serve, Attack +12 % power, Set +6 % to a good set — the set's own
+      chance, not power, Block +12 % jump, Dig +12 % speed, Fake their block −9 %) and +8 % more for a player whose group technique
+      is on; 3 points, cools 3, −0.02 court HP (stamina was too dear: −0.005 court stamina a play already cost ~1 % of points). Groups: serve Killer / Drive / Target · attack Cut Shot / Pipe Combo · set Sync · fake Delayed Spike / Lefty Dump /
       Freak Quick / Slide · block Read / Soft Block · dig Rolling Receive / Desperation Save. A technique card with its group's
       amplifier active: edges × 1.25; full form: the technique's edges and buffs × 1.5, always goes for it (a fake's: their block
-      −4 % more). Combo bonuses (3 points): Fortress defence +4 %, Decoy their block −4 %, Pressure Wall their defence −3 %, Tempo
-      power +4 %, Scramble speed +4 %, Bait their power −4 %; old pairs +6 %: Sniper (serve), Lockdown (jump), Iron Floor (Speed Dig +
-      Dig Deep, defence), Freak / Slide Tempo (Quick Tempo + Freak Quick / Slide, power). The captain fuses when a recipe outscores
+      −4 % more). Combo bonuses (4 points — a fused card lasts 4 at least, T-348): Fortress defence +12 %, Decoy their block −12 %,
+      Pressure Wall their defence −9 %, Tempo power +12 %, Scramble speed +12 %, Bait their power −12 %; old pairs +12 %: Sniper
+      (serve), Lockdown (jump), Iron Floor (Speed Dig + Dig Deep, defence), Freak / Slide Tempo (Quick Tempo + Freak Quick / Slide,
+      power). The captain fuses when a recipe outscores
       every single card. `F` fuses while a hand bar shows (Shift+F: fullscreen).
   - **OP cards** (owner, 2026-10-23), once a match each, from OP / element players by role:
     - **God Resolve** (WS): everyone on court — attack, speed and jump × 2 for 3 points; afterwards everyone's morale −0.3.
@@ -915,6 +916,32 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Must hold** (T-348, `npm run cards`): captain > random play > Basics only; a 12-Basics deck never beats the captain on
     average; a weak team spamming its one good card ends worse than one playing it at its moments (the spam test); saving OP
     cards for key moments beats playing them at once.
+  - **Tuned** (T-348, 2026-10-24 **[built]**): edges `EDGE` k 2 → 4.5, countered × −1.2 (was −1.5), misfit × −0.6; Killer / Drive
+    Serve's serve edge 30 → 20; plays, techniques, traits and duos active 4 points (4 serves; were 3); costs: team plays −0.01 court
+    stamina (was −0.04), other playbook plays −0.06 captain morale (−0.08), techniques −0.04 holder stamina (−0.10), traits / duos
+    −0.03 (−0.06), Last Stand −0.03 court stamina (−0.08) and cools 13; `DECK.strong` 12 → 13 (only OP cards and Last Stand are
+    saved: big techniques cool 12 and are played when they fit); amplifiers and fused cards above; net touches `FAULTS.net` × 1.7
+    (hit 0.024, read 0.017, commit 0.027: back to ≈ 1 a match — 0.6 after the deck — the engine test's floor 0.7 again).
+  - **Measured** (T-348, 2026-10-24, `npm run cards -- 250`, paired seeds, side 0 vs the captain; point share / match wins vs side 0
+    playing no cards; league / tournament): captain **+7.9 / +8.6 %** points (wins +32 / +32 %; before T-348 +2.8 / −0.9), random
+    play +4.3 / +5.6 (+17 / +19), amplifiers only +3.0 / +2.2 (+11 / +7; before −1.5 / −2.9) — captain > random > amplifiers only >
+    none holds in both. Below the +10–15 % aim: the engine pays little for stats (a card pinned the whole match, no cost: power
+    × 1.3 → +2.4 % points, × 2 → +6.8 %, God Resolve → +14 %; with every cost at 0 and edges × 8 the captain reached only +9.6 /
+    +10.2), so ≈ +8–9 is about what one card a point can buy. Reads (`npm run reads -- 50`): fit mostly +10–25 (median ≈ +16),
+    countered −8 to −29 (median ≈ −12), misfit −5 to −18; hot: Hunt / Target +28 and Killer / Drive +34 / +35 in tournaments (the
+    forced serve itself; Cover barely counters them). Spam test (the card + 11 amplifiers, spammed vs the captain's timing):
+    Power +0.8 vs +1.8 / +2.3 vs +3.1, Hunt +3.0 vs +5.3 / +6.1 vs +6.1, Wall +2.2 vs +2.9 / +3.9 vs +4.2, Dig Deep +0.9 vs +2.0 /
+    +2.2 vs +2.3 — worse or level (Hunt's read holds ~75 % of rallies in tournaments, so its "moments" are most of them). Fusing
+    (a deck of the two parts, the fused card played into its read vs the parts played alone at the same moments): Fortress +1.9 vs
+    +1.7 / +2.0 vs +1.0, Tempo +2.1 vs +0.5 / +2.0 vs +1.7, Decoy +2.4 vs +1.0 / +2.3 vs +2.6 (wins +11.6 vs +7.2) — fusing pays;
+    Lockdown is too rare to read (both reads together: 0.4 / 1.0 plays a match) and Iron Floor never fits (Speed Dig reads a soft
+    attack, Dig Deep a hard one). **OP timing fails**: God Resolve, Titan and INZONE!! at once +2.2 / +1.1, saved for a key moment
+    +1.9 / +1.7, the captain +2.1 / +1.5 — no difference: a 3-point × 2 is worth ≈ 0.4 points a use, the key moments come late
+    (≈ the 15th point, the card often cut short or never played) and the after-costs don't register (× 2.5 changed nothing; nor
+    did earlier key moments, or OP cards × 3 for 8 points — then at once was better). Needs a rule, not a number: e.g. OP cards
+    only at a key moment, an OP card that is stronger at one, or a bigger after-cost rule. Requests (a wing asks
+    every turn; yes when it fits / when not): newcomer bond 0 35 / 14 %, 30 57 / 25, 60 68 / 34, 90 75 / 53; trusted 57 / 25,
+    69 / 41, 85 / 56, 95 / 75 — rises with bond and trust, a fitting play likelier.
 ## 3. Menu [built]
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two

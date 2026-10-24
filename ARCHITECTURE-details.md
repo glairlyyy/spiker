@@ -1403,7 +1403,7 @@ Element Surge (element players; full gauges on play and each point while active)
 Stubborn players take none), forced techniques (`cardForce` at the R()-gated hooks — a forced technique skips its draw) and
 buffs (`cardBuff` inside `stageBuff`, × holder level for techniques); `cardEdges` before every serve sets each active play's state
 and edges. `opts.cards[i]` = { by, me, deck: [ids] (Basics fill unless fill === false), pin: [ids] (always active, no deck —
-tests / measurements) }. `npm run cards` (tests/cards.js) measures modes and the spam test; `npm run reads` the edges (pinned).
+tests / measurements) }. `npm run cards` (tests/cards.js) measures modes, the spam, OP-timing and fusing tests and the request odds; `npm run reads` the edges (pinned).
 
 **Amplifiers and fusing** (spec §2.37, T-358):
 - **Technique rate**: `hasTech` = owned (`ownsTech`: known, switched on) && `techOn` (engine/skills.js). During a rally (`m.gate` { s, n, c },
@@ -1413,13 +1413,13 @@ tests / measurements) }. `npm run cards` (tests/cards.js) measures modes and the
   not Stubborn) → always on. No gate (between rallies, UI, deck building): owned = on. Card/UI code that means "owns" uses `ownsTech`.
 - **Groups** `SKILLS[id].grp` (js/data/skills.js): serve killer / drive / target · attack cutshot / pipecombo · set sync · fake delay /
   lefty / freak / slide · block readblk / softblk · dig roll / save.
-- **Amplifiers** = the Basics (`DECK.basics`: isrv iatk iset iblk idig ifake; kind 'basic', src 'base', dur 2, cd 3, court −0.02
-  stamina): `amp` group, `buff` (the action), `hit` (buff entries with `grpT`: only a player whose group technique is on this rally,
+- **Amplifiers** = the Basics (`DECK.basics`: isrv iatk iset iblk idig ifake; kind 'basic', src 'base', dur 3, cd 3, court −0.02
+  HP): `amp` group, `buff` (the action; Improve Set's `set` is added to the set's good-set chance in Formula.setSuccess), `hit` (buff entries with `grpT`: only a player whose group technique is on this rally,
   `grpOn`), `foe` (% on the other side's stat, pushed into its `ek` in `cardEdges`). A technique card's edges × `DECK.amp.with` while its
   group's amplifier is active.
 - **Fused cards** (`CARDS[id].parts`, src 'fuse', never in a deck): combos (fortress, decoy, pwall, tempo, scramble, fbait), the old
   pairs (sniper, lockdown, ifloor, ftempo, stempo), Improve X+ (`<amp>p`, built in data/cards.js: parts [a, a], `pk` DECK.amp.plus each),
-  full forms (`full_<tech card>`, built in data/skills.js: [amp, tech], `pk` [1, DECK.amp.full], force). `fuseDefaults`: dur ≥ 3, cd =
+  full forms (`full_<tech card>`, built in data/skills.js: [amp, tech], `pk` [1, DECK.amp.full], force). `fuseDefaults`: dur ≥ 4, cd =
   the slowest part's (display / `strong`), type from the parts. Engine: `cardComps(id)` → [[part, ×], …, [id, 1]]; `cardApply` and
   `cardEdges` compile every part (× pk; holder level only on parts with `need`); `actIds` (active ids with parts) for counters, traps,
   'active' and 'clash'; `fuseLead` (the non-amplifier part) gives holders and level; `payers` / `afford` / `fits` / `cardState` read

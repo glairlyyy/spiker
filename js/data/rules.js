@@ -73,7 +73,7 @@ const COURT_LINES = { end: 80, side: 0.08 };
  * Rate test (200 seeded matches): ≈ 1 net touch and ≈ 0.5 foot faults a match.
  */
 const FAULTS = {
-  net: { hit: 0.014, tip: 0, read: 0.01, commit: 0.016, tired: 1.5, agi: 1, agiFrom: 60, reckless: 1.6 },
+  net: { hit: 0.024, tip: 0, read: 0.017, commit: 0.027, tired: 1.5, agi: 1, agiFrom: 60, reckless: 1.6 },
   foot: { jump: 0.026, jumpfloat: 0.013, float: 0.005, tired: 1 }
 };
 /**

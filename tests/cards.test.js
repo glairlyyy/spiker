@@ -93,7 +93,7 @@ test('cards: one play a side a point; costs hit the payer’s bar; the hand refi
   eq(g.Cards.can(m, 0, 1), 'point', 'one play a point');
   eq(g.Cards.play(m, 0, 1), null, 'the second play is refused');
   eq(D.hand[0], null, 'a gap where it was');
-  eq(g.Cards.active(m, 0)[0].left, 3, 'active for 3 serves');
+  eq(g.Cards.active(m, 0)[0].left, g.CARDS.killer.dur, 'active for its serves');
   g.playRally(m);
   const mor1 = g.morOf(m, cap);
   assert(g.Cards.play(m, 0, 1), 'next point: Hunt the Passer');
@@ -116,7 +116,11 @@ test('cards: one play a side a point; costs hit the payer’s bar; the hand refi
   if (!m.over) assert(D.hand[0] && D.hand[2], 'refilled at the turn');
   // a serve card counts its own side's serves; it ends into the discard pile cooling
   while (hunting() && !m.over) rally();
-  if (!m.over) assert(sv === 3 && D.disc.some(e => e.id === 'hunt' && e.cd > 0), `Hunt the Passer ended after 3 serves (${sv}), cooling`);
+  if (!m.over)
+    assert(
+      sv === g.CARDS.hunt.dur && D.disc.some(e => e.id === 'hunt' && e.cd > 0),
+      `Hunt the Passer ended after its serves (${sv}), cooling`
+    );
 });
 
 test('cards: an empty deck takes back only cooled cards; an OP card is once a match (spec §2.37)', () => {
@@ -541,8 +545,10 @@ test('cards: your deck pick carries to the next match (run.mydeck); a card you n
 /* ---------- amplifiers and fusing (spec §2.37 Amplifiers and fusing, T-358) ---------- */
 
 /** Target Serves fired by side 0 (every player owns it) over `n` matches with side 0's pinned cards `pin`. */
+/** Target Serve fires per 1000 of side 0's serves (per serve: an amplifier's lift also wins side 0 more serves). */
 function killerFires(g, pin, n = 8) {
-  let k = 0;
+  let k = 0,
+    sv = 0;
   for (let s = 0; s < n; s++) {
     g.RNG.seed(40 + s);
     const T = g.mkTeams();
@@ -553,10 +559,13 @@ function killerFires(g, pin, n = 8) {
         { by: 'you', pin: [] }
       ]
     });
-    while (!m.over) g.playRally(m);
+    while (!m.over) {
+      if (m.serve === 0) sv++;
+      g.playRally(m);
+    }
     for (const id in m.techUse) k += (m.techUse[id].target || { n: 0 }).n;
   }
-  return k;
+  return Math.round((1000 * k) / Math.max(1, sv));
 }
 
 test('cards: owned techniques fire on their own at half rate; an amplifier raises its group’s; never locked (spec §2.37, T-358)', () => {
@@ -583,7 +592,7 @@ test('cards: owned techniques fire on their own at half rate; an amplifier raise
   g.DECK.tech = 0.5;
   assert(full > 60 && half / full > 0.35 && half / full < 0.68, `Target Serve fires ${half} at half rate vs ${full} at today’s`);
   const amp = killerFires(g, ['isrv'], 24);
-  assert(amp > half * 1.25, `Improve Serve: ${amp} vs ${half}`);
+  assert(amp > half * 1.15, `Improve Serve: ${amp} vs ${half}`);
   const plus = killerFires(g, ['isrvp'], 24);
   assert(plus > amp, `Improve Serve+: ${plus} vs ${amp}`);
   // an amplifier of another group does not move it
@@ -645,13 +654,19 @@ test('cards: a fused card plays once with both costs; both parts cool after; it 
   eq(g.Cards.fuse(m, 0, 0, 1), 'full_killer', 'Full Killer Serve');
   const H = g.Cards.holders(m, 0, 'full_killer'),
     court = m.t[0].P,
-    st0 = Object.fromEntries(court.map(p => [p.id, m.sta[p.id] ?? 1]));
+    st0 = Object.fromEntries(court.map(p => [p.id, m.sta[p.id] ?? 1])),
+    hp0 = Object.fromEntries(court.map(p => [p.id, g.hpOf(m, p)]));
   assert(H.length && H.every(p => p.skills.includes('killer')), 'its holders: the technique’s');
   const a = g.Cards.play(m, 0, 0);
   assert(a && a.id === 'full_killer' && a.parts.join() === 'isrv,killer', 'one play act, both parts named');
   for (const p of court) {
-    const want = st0[p.id] - g.CARDS.isrv.cost.amt - (H.includes(p) ? g.CARDS.killer.cost.amt : 0);
-    assert(Math.abs(m.sta[p.id] - want) < 1e-9, `#${p.num}: both costs (${m.sta[p.id]} vs ${want})`);
+    // Improve Serve: the court's HP; Killer Serve: its holders' stamina
+    const want = st0[p.id] - (H.includes(p) ? g.CARDS.killer.cost.amt : 0),
+      hp = hp0[p.id] - g.CARDS.isrv.cost.amt;
+    assert(
+      Math.abs((m.sta[p.id] ?? 1) - want) < 1e-9 && Math.abs(g.hpOf(m, p) - hp) < 1e-9,
+      `#${p.num}: both costs (${m.sta[p.id]} vs ${want})`
+    );
   }
   eq(g.Cards.can(m, 0, 2), 'point', 'one play a point');
   eq(g.Cards.active(m, 0).length, 1, 'active as one card');

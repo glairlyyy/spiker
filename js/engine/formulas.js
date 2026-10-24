@@ -64,7 +64,13 @@ const Formula = {
   /** Chance a set is at least "good" (before the double-contact check). */
   setSuccess(setter, qual, team, dual) {
     let succ = clamp(
-      0.5 + 0.23 * W(setter) + (qual - 2) * 0.09 + team.S.set + (dual && setter.role === 'S' ? 0.03 : 0) - Formula.gOff(setter, 'set'),
+      0.5 +
+        0.23 * W(setter) +
+        (qual - 2) * 0.09 +
+        team.S.set +
+        (dual && setter.role === 'S' ? 0.03 : 0) -
+        Formula.gOff(setter, 'set') +
+        (cardBuff(setter, 'set') - 1), // Improve Set (spec §2.37): + its % to a good set
       0.08,
       0.985
     );

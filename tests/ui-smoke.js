@@ -1019,10 +1019,12 @@ const step = async (name, fn) => {
     // play Fortress: one play, both costs, active as one card; on the serve the court names it
     await ev(() => {
       const m = A.m,
-        st0 = m.t[0].P.map(p => m.sta[p.id] ?? 1);
+        bar = CARDS.iblk.cost.bar, // (the amplifiers' bar: both parts pay the same one)
+        val = p => (bar === 'hp' ? hpOf(m, p) : bar === 'mor' ? morOf(m, p) : (m.sta[p.id] ?? 1)),
+        st0 = m.t[0].P.map(val);
       if (!handPlay(0, 0)) throw new Error('Fortress did not play');
       const want = CARDS.iblk.cost.amt + CARDS.idig.cost.amt;
-      if (!m.t[0].P.every((p, k) => Math.abs(st0[k] - m.sta[p.id] - want) < 1e-9)) throw new Error('not both costs');
+      if (!m.t[0].P.every((p, k) => Math.abs(st0[k] - val(p) - want) < 1e-9)) throw new Error('not both costs');
       if (!Cards.active(m, 0).some(x => x.id === 'fortress')) throw new Error('Fortress not active');
       A.paused = false;
     });

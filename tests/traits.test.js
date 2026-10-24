@@ -159,6 +159,7 @@ test('traits: each match trait changes its number; a player without traits is un
   assert(Math.abs(g.stageBuff(p, 'serve') / a0 - 1.08) < 1e-9, 'Spite +8 % against her squad');
   // God of War: two kills running → +8 % until your error
   ({ g, m, p } = mkMatch(5, ['godOfWar']));
+  m.gow = {}; // (from zero: the first rally may have been their kill)
   const g0 = g.stageBuff(p, 'atk');
   m.errBy = null;
   m.lastK = p.id;
