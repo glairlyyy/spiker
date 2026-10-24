@@ -830,12 +830,12 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Your hand** (career, a non-captain) **[built 2026-10-24, T-349]**: in match prep you pick your **own deck** of `DECK.mine` (6) from
     your collection (your techniques, gift and trait cards, any card a team play granted you stays only for that match) —
     your play style; Basics fill it if you own fewer. **Your pick carries to the next match** (owner, 2026-10-24; `run.mydeck`,
-    a lazy field — a card you no longer own drops out, a new one waits in the collection) **[draft — T-354]**. A **hand of 3**, no role limits (three attack cards are fine), the same
+    a lazy field — a card you no longer own drops out, a new one waits in the collection) **[built 2026-10-24, T-354]**. A **hand of 3**, no role limits (three attack cards are fine), the same
     rules as the team deck (refill at turns, discard leaves a gap, cooldowns, costs on your bars). You and the captain each
     play at most one card a point — on one point your card and theirs can both go. Built: your collection = your techniques,
     trait card and Titan (no gift cards exist yet; duo cards stay in the team deck); the cards only you bring leave the team deck
     (Basics take their places); your individual card is held, paid and felt by you alone; your deck's shuffles are hashed (no
-    R()). The pick is per match (not saved).
+    R()). The pick is kept at Start (`run.mydeck`) and pre-fills the next match's prep.
   - **Requests** **[built 2026-10-24, T-349]**: at a turn (when hands refill) you may ask the captain for one team play from their hand;
     the answer by your bond and trust with the captain (shown likely / maybe / unlikely, as §4.23 asks), better when the card's
     read holds now. Yes → the card moves into your hand (one of your 3 places), yours to time. No → nothing lost (no memory).

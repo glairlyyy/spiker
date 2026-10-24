@@ -294,7 +294,7 @@ Plain-default fields live once in `RUN_DEFAULTS` (run.js: name → `[make, valid
 (`academy`, `eval` + `Eval.setup`, `spotQ` via `City.roll`, `fog`, `clash`, `sta`, `mode`, `Feel.sync` → `you.traits` from
 `run.sparks` / `run.scars`). Add a new simple field to
 the table only. `run.grades` (your match grades, newest last) is capped at `MLOG.max` like `run.mlog`. Lazy fields (no RUN_DEFAULTS, no version bump: absent = the
-empty state): `run.enc` (this week's road / menu state), `run.tlife`, `run.drone` (`{ own }` / `{ rent }`: the Ref drone, spec §4.38).
+empty state): `run.enc` (this week's road / menu state), `run.tlife`, `run.drone` (`{ own }` / `{ rent }`: the Ref drone, spec §4.38), `run.mydeck` (your kept deck pick, card ids — Team.myDeck / keepDeck, spec §2.37).
 
 ## Testing
 

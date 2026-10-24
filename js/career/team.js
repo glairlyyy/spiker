@@ -308,6 +308,18 @@ const Team = {
     }
   },
   /**
+   * Your kept deck pick (spec §2.37 Your hand: it carries between matches; lazy `run.mydeck` ids): the kept ids you still own
+   * (in `pool`, your collection now; Basics fill the rest), or null when nothing was kept (an old save — the default pick).
+   */
+  myDeck(run, pool) {
+    const k = run && run.mydeck;
+    return Array.isArray(k) ? k.filter(id => pool.includes(id)).slice(0, DECK.mine) : null;
+  },
+  /** Keep your deck pick for the next match (match prep's Start). Basics are not kept (they fill). */
+  keepDeck(run, ids) {
+    if (run) run.mydeck = ids.filter(id => CARDS[id] && CARDS[id].src !== 'base').slice(0, DECK.mine);
+  },
+  /**
    * Your standing with match m's captain on your side for requests (spec §2.37 Requests): { bond 0–100, trusted } — trusted at
    * REQ.trustWeeks+ weeks at the club or a bond of REQ.trustBond+ with the captain. Read only (no memory, no bond change).
    */
