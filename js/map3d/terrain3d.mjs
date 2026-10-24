@@ -5,7 +5,8 @@ import * as THREE from 'three';
 import { MAP_M, clamp, lerp, smooth, inside, edgeDist, sideDist, hstr, vnoise } from './geo3d.mjs';
 
 const CELL = 2, // terrain grid cell (m)
-  CHUNK = 96, // cells a side of a culled terrain chunk (T-350: ~190 m)
+  CHUNK = 96, // cells a side of a culled terrain chunk (T-350: ~190 m) = a streaming block (T-364)
+  COARSE = 4, // a far chunk's cell (grid cells a side, street level: stream3d)
   BEACH = 12; // beach slope width (m)
 
 /** Ground tint per district style (blended in faintly: no extra draw call). */
@@ -61,6 +62,48 @@ const GROUND_LOOK = {
   water: { s: 0, r: 0, f: 0, w: 1 },
   quarry: { s: 0.2, r: 0.9, f: 0, w: 0 }
 };
+/**
+ * A terrain chunk's far version (street level beyond the near blocks, T-364) — cells [i0, i1) × [j0, j1) of a grid nx cells wide: COARSE × COARSE cells fanned from their middle vertex
+ * (4 triangles), the sides on the chunk's edge keeping every grid vertex so it meets a full chunk without cracks; same
+ * attributes, its own index (~7× fewer triangles). Cells too thin to fan stay full. → the index (array).
+ */
+export function coarseIndex(nx, i0, i1, j0, j1) {
+  const V = (i, j) => j * (nx + 1) + i,
+    out = [],
+    tri = (a, b, e) => out.push(a, b, e);
+  for (let j = j0; j < j1; j += COARSE)
+    for (let i = i0; i < i1; i += COARSE) {
+      const ie = Math.min(i1, i + COARSE),
+        je = Math.min(j1, j + COARSE);
+      if (ie - i < 2 || je - j < 2) {
+        for (let b = j; b < je; b++)
+          for (let a = i; a < ie; a++) {
+            const p = V(a, b);
+            out.push(p, p + nx + 1, p + 1, p + 1, p + nx + 1, p + nx + 2);
+          }
+        continue;
+      }
+      const mid = V(i + ((ie - i) >> 1), j + ((je - j) >> 1)),
+        // the cell's outline, the same turn as the full grid's triangles: up the i side, along je, down ie, back along j
+        ring = [],
+        side = (edge, pts) => (edge ? pts : [pts[0], pts[pts.length - 1]]),
+        line = (a0, b0, a1, b1) => {
+          const n = Math.max(Math.abs(a1 - a0), Math.abs(b1 - b0)),
+            pts = [];
+          for (let s = 0; s <= n; s++) pts.push(V(a0 + Math.sign(a1 - a0) * s, b0 + Math.sign(b1 - b0) * s));
+          return pts;
+        };
+      for (const [edge, pts] of [
+        [i === i0, line(i, j, i, je)],
+        [j1 - je < 2, line(i, je, ie, je)], // (a thin full cell beyond counts as an edge)
+        [i1 - ie < 2, line(ie, je, ie, j)],
+        [j === j0, line(ie, j, i, j)]
+      ])
+        ring.push(...side(edge, pts).slice(0, -1));
+      for (let s = 0; s < ring.length; s++) tri(mid, ring[s], ring[(s + 1) % ring.length]);
+    }
+  return out;
+}
 /** The island's height grid and vertex colours (world metres), from the model's land. */
 export function buildTerrain(model) {
   const L = model.land,
@@ -393,7 +436,17 @@ export function buildTerrain(model) {
   };
   // chunks (the island × 2, T-350): CHUNK × CHUNK cells each, sharing geo's attributes (one upload; the fog's colour writes reach
   // them all) with their own index and bounds, so the camera and the shadow pass cull what they don't see
-  const chunks = [];
+  const chunks = [],
+    coarse = [];
+  /** A chunk's far version (T-364): its coarse index (coarseIndex) on the same attributes and bounds. */
+  const coarseChunk = (c, i0, i1, j0, j1) => {
+    const g = new THREE.BufferGeometry();
+    for (const [k, a] of Object.entries(geo.attributes)) g.setAttribute(k, a);
+    g.setIndex(new THREE.BufferAttribute(new Uint32Array(coarseIndex(nx, i0, i1, j0, j1)), 1));
+    g.boundingBox = c.boundingBox;
+    g.boundingSphere = c.boundingSphere;
+    return g;
+  };
   for (let j0 = 0; j0 < nz; j0 += CHUNK)
     for (let i0 = 0; i0 < nx; i0 += CHUNK) {
       const i1 = Math.min(nx, i0 + CHUNK),
@@ -418,6 +471,17 @@ export function buildTerrain(model) {
       c.boundingBox = new THREE.Box3(new THREE.Vector3(i0 * sx, lo - 1, j0 * sz), new THREE.Vector3(i1 * sx, hi + 1, j1 * sz));
       c.boundingSphere = c.boundingBox.getBoundingSphere(new THREE.Sphere());
       chunks.push(c);
+      coarse.push(coarseChunk(c, i0, i1, j0, j1));
     }
-  return { geo, chunks, heightAt, W, D, base: col.slice(), shore: { data: shore, w: nx + 1, h: nz + 1 } };
+  return {
+    geo,
+    chunks,
+    coarse,
+    block: [CHUNK * sx, CHUNK * sz], // the streaming blocks = the chunks (stream3d, T-364)
+    heightAt,
+    W,
+    D,
+    base: col.slice(),
+    shore: { data: shore, w: nx + 1, h: nz + 1 }
+  };
 }

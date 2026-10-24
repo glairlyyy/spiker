@@ -5,7 +5,10 @@
 // Street level (spec §4.37 6, T-336a): inside model.street's district the zoom goes down to a follow camera behind you (mapcam3d.mjs
 // streetPose); street() = 0–1 how far down it is; youPos() = world [x, y, z]. As it goes down your avatar shrinks to life
 // size, the people near the camera become VRMs (life3d), the town's detail ring builds round the camera (town3d ring), the sky shows
-// and a haze hides the map look far off. The interiors layer (js/map3d/interior3d.mjs, T-336b — imported once at build):
+// and a haze hides the map look far off. Streaming (stream3d.mjs, T-364): from STREAM.show down only the blocks near the camera are
+// drawn in full (terrain chunks, the town's detailed lots, nature, the story figures), beyond them coarse terrain, the Fast boxes and
+// flat trees under a closer haze; while the block you stand in isn't ready your walk holds and on.loading(true) asks for a
+// "Loading…" (false when it goes on). The interiors layer (js/map3d/interior3d.mjs, T-336b — imported once at build):
 // createInteriors(scene, heightAt, { cut }) (cut = town.cut) → see interior3d.mjs; today's people for a place inside stand at its
 // stations (lifeM), the station you stand at goes to on.station(st | null), a street-level click on one to on.station(st, true).
 // on = { pick(id), point([x, y]), hover?(id | null, clientX, clientY, going), person?(id), station?(st | null, click?) }: hover / person are the named figures
@@ -31,6 +34,7 @@ import { createMapCam } from './mapcam3d.mjs';
 import { buildTerrain } from './terrain3d.mjs';
 import { lightScene, skyAt, SKY, LOOK, richLook } from './look3d.mjs';
 import { nightLayer, warLayer } from './layers3d.mjs';
+import { createStream, blockGrid, STREAM } from './stream3d.mjs';
 import { MAP_M, clamp, lerp, fogFactor, inside, edgeDist, sideDist } from './geo3d.mjs';
 export { inside, edgeDist, sideDist }; // (the polygon maths live in geo3d.mjs; tests import them from here too)
 
@@ -109,6 +113,10 @@ export function create(onIdle) {
     held = null, // QA: a time of day the clock holds (holdClock)
     interiors = null, // the interiors layer (interior3d.mjs, T-336b; null until its import lands)
     interNear = null, // the station you stand at (last told to on.station)
+    stream = null, // street level's near blocks (stream3d.mjs, T-364)
+    hold = false, // … the block you stand in isn't drawn yet: your walk waits
+    waitShown = false, // on.loading(true) was told
+    figRoot = new Map(), // the story figures' own groups (hidden beyond the near blocks at street level)
     st = 0; // the camera's street weight this frame (C.street())
   const bgCol = scene.background,
     skyCol = new THREE.Color(), // the clock's sky colour (skyAt writes it); street level shows the baked sky instead
@@ -147,7 +155,8 @@ export function create(onIdle) {
     cw,
     ch,
     walkK,
-    consume
+    consume,
+    hold // (WASD waits too)
   }));
   const build = m => {
     terrain = buildTerrain(m);
@@ -173,6 +182,17 @@ export function create(onIdle) {
     nature = createNature(scene, terrain.heightAt);
     war = warLayer(scene, terrain.heightAt);
     night = nightLayer(scene, terrain.heightAt);
+    // streaming (T-364): the blocks are the terrain's chunks; a far chunk draws its coarse index
+    const G = blockGrid(terrain.W, terrain.D, terrain.block[0], terrain.block[1]);
+    stream = createStream(G, [
+      {
+        id: 'terrain',
+        ver: () => 0,
+        show: keys => mesh.children.forEach((c, k) => (c.geometry = !keys || keys.has(k) ? terrain.chunks[k] : terrain.coarse[k]))
+      },
+      town.layer(G),
+      nature.layer(G)
+    ]);
     furn.layer.addEventListener('wheel', C.onWheel, { passive: false }); // wheel over a pin still zooms
     // the interiors (T-336b): imported here, not up front, so the map draws before it lands
     import('./interior3d.mjs')
@@ -305,6 +325,17 @@ export function create(onIdle) {
     cam.aspect = cw / ch;
     cam.updateProjectionMatrix();
   };
+  /** Street level's near blocks (T-364): prepare / show them, hold the walk while yours isn't drawn, hide far story figures. */
+  const streamStep = dt => {
+    const r = stream.tick({ cam: [cam.position.x, cam.position.z], you: avatar.pos(), st, low, dt });
+    hold = r.hold;
+    for (const [id, g] of figRoot) {
+      const f = figs.get(id);
+      g.visible = !r.on || (f && stream.near(...f.pos()));
+    }
+    if (r.wait !== waitShown && on && on.loading) on.loading(r.wait);
+    waitShown = r.wait;
+  };
   /** Street level's extras each frame: the detail ring round the camera, the sky and the haze. */
   const streetLook = () => {
     const [ax, az] = avatar.pos(),
@@ -317,6 +348,7 @@ export function create(onIdle) {
     haze.color.copy(skyCol);
     haze.near = st > 0 ? 160 + (1 - st) * 4000 : 1e6;
     haze.far = st > 0 ? haze.near + 900 + (1 - st) * 6000 : 2e6;
+    [haze.near, haze.far] = stream.haze(st, haze.near, haze.far, low); // (streaming: closer, over the far version)
   };
   renderer.info.autoReset = false; // (the post draws several passes: info counts the whole frame)
   const draw = () => (renderer.info.reset(), look.on ? look.render() : renderer.render(scene, cam));
@@ -332,7 +364,7 @@ export function create(onIdle) {
       gone = 0;
       st = C.street();
       avatar.setLife(st);
-      avatar.tick(dt * walkK, terrain.heightAt); // your walk at the chosen speed (setWalk; the others keep theirs)
+      avatar.tick(hold ? 0 : dt * walkK, terrain.heightAt); // your walk at the chosen speed (setWalk; the others keep theirs); held while loading
       for (const f of figs.values()) (f.setLife(st), f.tick(dt, terrain.heightAt)); // (the guide, the rival, the aces: life size too)
       clock += dt;
       clockStep(dt);
@@ -349,6 +381,7 @@ export function create(onIdle) {
       war.pulse(clock);
       C.step(dt);
       st = C.street();
+      streamStep(dt);
       streetLook();
       interStep(dt);
       if (cur && cur.time) sun.position.copy(sun.target.position).addScaledVector(SKY.dir, 150); // the hour's sun (after the camera placed it)
@@ -380,6 +413,7 @@ export function create(onIdle) {
         }
       };
       el.replaceChildren(canvas);
+      waitShown = false; // (a "Loading…" of the old wrap is gone with it)
       badge = document.createElement('div');
       badge.className = 'mapbadge';
       badge.hidden = true;
@@ -420,9 +454,14 @@ export function create(onIdle) {
       war.sync(m.borders);
       applyFog(m.fog);
       const want = new Map((m.figures || []).map(f => [f.id, f]));
-      for (const [id, a] of figs) if (!want.has(id)) (a.dispose(), figs.delete(id));
+      for (const [id, a] of figs) if (!want.has(id)) (a.dispose(), figs.delete(id), scene.remove(figRoot.get(id)), figRoot.delete(id));
       for (const [id, f] of want) {
-        if (!figs.has(id)) figs.set(id, createAvatar(scene, { kit: f.kit }));
+        if (!figs.has(id)) {
+          const g = new THREE.Group(); // (its own group: streaming hides it far off)
+          scene.add(g);
+          figRoot.set(id, g);
+          figs.set(id, createAvatar(g, { kit: f.kit }));
+        }
         figs.get(id).snap(f.at);
         figs.get(id).face(f.face);
       }
@@ -533,6 +572,8 @@ export function create(onIdle) {
     },
     /** QA: the interiors' state ({ shown, places, cut, alpha, street, stations }), or null until the module has loaded. */
     interiors: () => interiors && { ...interiors.info(), street: +st.toFixed(3), stations: interiors.stations() },
+    /** Dev / QA: tune the streaming (STREAM: r, pre, per, budget …; stream3d.mjs). */
+    tuneStream: o => Object.assign(STREAM, o),
     /** Dev / QA: the orbit angle round you at street level (rad). */
     setYaw: v => C.setYaw(v),
     /** The camera to keep across a renderer release ({ x, z, d, yaw, street }); restore(v) puts it back. */
@@ -568,13 +609,15 @@ export function create(onIdle) {
       ...look.info(),
       view: C.view && { ...C.view },
       street: +st.toFixed(3),
-      ring: town && town.ringInfo ? town.ringInfo() : null
+      ring: town && town.ringInfo ? town.ringInfo() : null,
+      stream: stream && stream.info()
     }),
     dispose() {
       dead = true;
       if (avatar) avatar.dispose();
       for (const a of figs.values()) a.dispose();
       figs.clear();
+      figRoot.clear();
       if (furn) furn.dispose();
       if (town) town.dispose();
       if (life) life.dispose();

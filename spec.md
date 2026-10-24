@@ -1722,9 +1722,14 @@ the AI coach fills every slot you leave with the same function. Built and measur
     counter, the arcade's machines —, the Harbor Market — its bikes and scooters —, secret places); outdoor facilities stay open
     (the kit is the station). Arriving puts you inside everywhere. Fast keeps the same, cheaper. Frame budget §4.39. **[built 2026-10-24, T-361–T-362: street level opens anywhere on land; every
     **Streaming (owner, 2026-10-24: "FPS drops drastically at street level — load only the near blocks, like Kenshi; pause to load if
-    needed") [draft — T-364]**: at street level only the blocks within ~250 m are drawn in full (town, nature, props, terrain
+    needed") **: at street level only the blocks within ~250 m are drawn in full (town, nature, props, terrain
     chunks); further out a cheap far version (or fog) — never the whole island's merged meshes; blocks load as you move; if one you
-    walk into isn't ready, the walk pauses with a small "Loading…" until it is. Map view unchanged. Target ≥ 45 fps at street level.
+    walk into isn't ready, the walk pauses with a small "Loading…" until it is. Map view unchanged. Target ≥ 45 fps at street level. **[built 2026-10-25, T-364: blocks =
+    the terrain's chunks (~190 m); from street weight 0.6 down the blocks within 250 m of the camera (Fast 190) are drawn in full —
+    terrain, the detailed lots and street props, trees, bushes and grass, the story figures; beyond them coarse terrain (~7× fewer
+    triangles, no cracks), the Fast boxes and flat trees under a closer haze; roads, the overpass and landmarks stay whole; blocks are
+    prepared a few a frame ahead (420 m) as you move; if yours isn't ready your walk (WASD, a click walk, a ride) holds and after
+    0.25 s a "Loading…" pill shows; the map view is untouched]**
     place, HQ and the Academy Hall has its INTERIOR — a hall by size (a shell that fades) furnished from one piece library (racks,
     bench, mats, plyo boxes, multi-gym, film screen, shelves, a mop, the bed, a counter, arcade machines, a tape deck, a bath, the club
     board, a shrine, the drone crate, the old court) in its faction's colours, mirrored per place by hash; outdoor places keep their kit

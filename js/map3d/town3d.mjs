@@ -34,6 +34,7 @@ import {
   LANDMARKS
 } from './kit3d.mjs';
 import { buildFacility } from './facility3d.mjs';
+import { pack, repack, ranges } from './stream3d.mjs';
 
 const ROAD = {
     main: { w: 3.2, color: '#6d6e73' },
@@ -150,7 +151,9 @@ export function createTown(scene, heightAt, opts = {}) {
     fogK = () => 1,
     vparts = [], // vertex-coloured meshes dimmed by the fog: [{ mesh, base }]
     fill = [], // [{ mesh, base: Float32Array (rgb per instance), at: [x, z] per instance }]
-    det = null; // the detailed lots: { parts: [{ mesh, base, glow? }], at: [[x, z]], span: per part [start, end) vertex per item }
+    det = null, // the detailed lots: { parts: [{ mesh, base, glow? }], at: [[x, z]], span: per part [start, end) vertex per item }
+    far = null, // street level's far version of the detailed look (T-364): the Fast boxes ({ fill, group }), built on first need
+    ver = 0; // the layout's build (a new one: the streamed blocks are prepared again)
 
   const clear = () => {
     for (const o of [...group.children]) {
@@ -164,6 +167,9 @@ export function createTown(scene, heightAt, opts = {}) {
     vparts = [];
     fill = [];
     det = null;
+    if (far) for (const f of far.fill) (far.group.remove(f.mesh), f.mesh.dispose());
+    far = null;
+    ver++;
   };
   const stdMat = extra => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0, ...extra });
   /** A mesh from flat position / colour arrays (non-indexed triangles), normals computed. */
@@ -864,15 +870,25 @@ export function createTown(scene, heightAt, opts = {}) {
         a.color.needsUpdate = true;
         if (g) a.glow.needsUpdate = true;
       }
-    for (const f of fill) {
-      const c = f.mesh.instanceColor;
-      f.at.forEach(([x, z], j) => {
-        const k = fogK(x, z);
-        c.setXYZ(j, f.base[j * 3] * k, f.base[j * 3 + 1] * k, f.base[j * 3 + 2] * k);
-      });
-      c.needsUpdate = true;
-    }
+    boxColour([...fill, ...(far ? far.fill : [])]);
   };
+  /** The instanced boxes' colours × the fog (on their full set: a packed far version is packed again). */
+  const boxColour = list => {
+    for (const f of list)
+      repack(f.mesh, () => {
+        const c = f.mesh.instanceColor;
+        f.at.forEach(([x, z], j) => {
+          const k = fogK(x, z);
+          c.setXYZ(j, f.base[j * 3] * k, f.base[j * 3 + 1] * k, f.base[j * 3 + 2] * k);
+        });
+        c.needsUpdate = true;
+      });
+  };
+  // ---- street-level streaming (spec §4.37 6 Streaming, T-364; stream3d.mjs) ----
+  const farG = new THREE.Group();
+  farG.visible = false;
+  scene.add(farG);
+  let blk = null; // { ver, of: item → block, spans: block → per part [v0, v1, …] } for the detailed lots
 
   return {
     /** Bring the layer up to date with a model (reads model.land roads / lots / landmarks / districts and model.fog only). */
@@ -1014,6 +1030,67 @@ export function createTown(scene, heightAt, opts = {}) {
       applyCut();
     },
     /** The detailed look's counts (QA): buildings and props drawn, triangles per part; null in the Fast setting. */
+    /**
+     * The streaming layer over block grid G (stream3d createStream): a block's share = its detailed lots' vertex ranges per
+     * part; shown = the merged meshes draw only the near blocks' ranges (one index each), the Fast boxes stand in for the rest
+     * (the far version, frustum-wide, under the haze). The Fast setting's boxes are cheap: drawn whole, nothing streamed.
+     */
+    layer(G) {
+      return {
+        id: 'town',
+        ver: () => `${ver}|${!!det}`,
+        prep(k) {
+          if (!det) return;
+          if (!blk || blk.ver !== ver) {
+            blk = { ver, by: new Map(), spans: new Map() };
+            det.at.forEach(([x, z], j) => {
+              const b = G.of(x, z);
+              if (!blk.by.has(b)) blk.by.set(b, []);
+              blk.by.get(b).push(j);
+            });
+            if (!far && lastModel) {
+              far = { fill: buildFill(lastModel.land.lots || []), group: farG };
+              for (const f of far.fill) ((f.mesh.castShadow = false), farG.add(f.mesh)); // (far: under the haze, no shadow)
+              boxColour(far.fill);
+            }
+          }
+          const items = blk.by.get(k) || [];
+          blk.spans.set(
+            k,
+            det.parts.map(p => {
+              if (!p) return null;
+              const out = [];
+              for (const j of items) if (p.span[j * 2 + 1] > p.span[j * 2]) out.push(p.span[j * 2], p.span[j * 2 + 1]);
+              return out;
+            })
+          );
+        },
+        show(keys) {
+          if (!det) return void (farG.visible = false);
+          det.parts.forEach((p, n) => {
+            if (!p) return;
+            if (!keys) return ranges(p.mesh.geometry, null);
+            const sp = [];
+            for (const k of keys) {
+              const s = blk && blk.spans.get(k);
+              if (s && s[n]) for (const v of s[n]) sp.push(v);
+            }
+            ranges(p.mesh.geometry, sp);
+          });
+          farG.visible = !!keys && !!far;
+          if (far)
+            for (const f of far.fill) {
+              if (!keys) {
+                pack(f.mesh, null);
+                continue;
+              }
+              const list = [];
+              f.at.forEach(([x, z], j) => keys.has(G.of(x, z)) || list.push(j));
+              pack(f.mesh, list);
+            }
+        }
+      };
+    },
     count: () =>
       det && {
         items: det.at.length,
@@ -1023,6 +1100,7 @@ export function createTown(scene, heightAt, opts = {}) {
       clear();
       ringClear();
       scene.remove(ringG);
+      scene.remove(farG);
       scene.remove(group);
     }
   };

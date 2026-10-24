@@ -644,3 +644,205 @@ test('map3d: transport — buses and the ferry on their timetable, stops and pie
   eq(A.pos().join(','), '100,0', 'arrived (map 200 → 100 m)');
   A.dispose();
 });
+
+// ---------- T-364: street level streams the near blocks (spec §4.37 6 Streaming) ----------
+test('map3d streaming: the block grid, and the manager prepares the near blocks across frames, shows them when all are ready, holds your walk till then', () => {
+  const { blockGrid, createStream, STREAM } = require('../js/map3d/stream3d.mjs'),
+    G = blockGrid(4000, 3000, 200, 200);
+  eq(`${G.nx}x${G.nz}`, '20x15', 'blocks a side');
+  eq(G.of(450, 250), 22, 'block of a point (j × nx + i)');
+  eq(G.of(-5, 9999), 280, 'clamped to the grid');
+  eq(G.dist(22, 450, 250), 0, 'inside: 0');
+  eq(G.dist(23, 450, 250), 150, 'to the next block’s edge');
+  const near = G.within(450, 250, 160);
+  eq(near[0], 22, 'nearest first');
+  const brute = [];
+  for (let k = 0; k < 300; k++) if (G.dist(k, 450, 250) <= 160) brute.push(k);
+  eq(
+    near
+      .slice()
+      .sort((a, b) => a - b)
+      .join(),
+    brute.join(),
+    'the blocks within r'
+  );
+  // fake layers record what they are asked
+  const log = { prep: [], show: [] };
+  let ver = 1;
+  const L = [
+    { id: 'a', ver: () => ver, prep: k => log.prep.push(k), show: s => log.show.push(s && [...s].sort((x, y) => x - y).join(',')) },
+    { id: 'b', ver: () => 0, show: () => {} }
+  ];
+  const S = createStream(G, L),
+    at = { cam: [450, 250], you: [450, 250], low: false, dt: 0.1 };
+  let r = S.tick({ ...at, st: 0.3 });
+  assert(!r.on && !log.prep.length && !log.show.length, 'the map view: nothing streamed, nothing hidden');
+  const want = G.within(450, 250, STREAM.r);
+  let n = 0;
+  do r = S.tick({ ...at, st: 1 });
+  while (!log.show.length && ++n < 50);
+  assert(n >= 1, 'prepared over several frames');
+  assert(log.prep.length <= (n + 1) * STREAM.per * 4, 'a few blocks a frame');
+  eq(
+    log.show[0],
+    want
+      .slice()
+      .sort((x, y) => x - y)
+      .join(','),
+    'shown = the blocks within r, once all are ready'
+  );
+  assert(!r.hold && S.near(450, 250) && !S.near(10, 590), 'your block drawn; a far one not');
+  // walking within the near set: nothing re-shown; a jump far away holds the walk until its blocks are ready
+  S.tick({ ...at, cam: [460, 250], you: [460, 250], st: 1 });
+  eq(log.show.length, 1, 'no re-show while the near set is the same');
+  r = S.tick({ ...at, cam: [3500, 2700], you: [3500, 2700], st: 1, dt: 0.2 });
+  assert(r.hold, 'the walk holds: your block is not drawn yet');
+  n = 0;
+  while (r.hold && ++n < 50) r = S.tick({ ...at, cam: [3500, 2700], you: [3500, 2700], st: 1, dt: 0.2 });
+  assert(!r.hold && log.show.length === 2, 'drawn → the walk goes on');
+  // a rebuilt layer prepares again; going up shows everything
+  const p0 = log.prep.length;
+  ver = 2;
+  for (let i = 0; i < 20; i++) S.tick({ ...at, cam: [3500, 2700], you: [3500, 2700], st: 1 });
+  assert(log.prep.length > p0 && log.show.length === 3, 'a new layer build: prepared and shown again');
+  S.tick({ ...at, st: 0.2 });
+  eq(log.show[log.show.length - 1], null, 'back on the map: everything (show(null))');
+  assert(!S.info().on && S.near(10, 590), 'not streaming');
+  const [h0, h1] = S.haze(1, 160, 1060, false);
+  eq(`${h0},${h1}`, '160,1060', 'the haze is the map’s own when not streaming');
+});
+
+test('map3d streaming: instanced packing and merged ranges keep the full set and give it back', () => {
+  const THREE = require('three'),
+    { pack, repack, ranges } = require('../js/map3d/stream3d.mjs'),
+    m = new THREE.InstancedMesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial(), 5),
+    M = new THREE.Matrix4(),
+    c = new THREE.Color();
+  for (let i = 0; i < 5; i++) (m.setMatrixAt(i, M.makeTranslation(i, 0, 0)), m.setColorAt(i, c.setRGB(i / 10, 0, 0)));
+  pack(m, [3, 1]);
+  eq(m.count, 2, 'drawn: the listed ones');
+  m.getMatrixAt(0, M);
+  eq(new THREE.Vector3().setFromMatrixPosition(M).x, 3, 'packed to the front');
+  repack(m, () => m.setColorAt(1, c.setRGB(0.9, 0, 0)));
+  m.getColorAt(1, c);
+  eq(+c.r.toFixed(2), 0.9, 'a full-set write lands on its packed slot');
+  pack(m, null);
+  eq(m.count, 5, 'all again');
+  m.getMatrixAt(4, M);
+  eq(new THREE.Vector3().setFromMatrixPosition(M).x, 4, 'in their own order');
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(new Array(30).fill(0), 3));
+  ranges(g, [0, 3, 6, 9]);
+  eq(`${[...g.index.array.slice(0, g.drawRange.count)]}`, '0,1,2,6,7,8', 'only the near ranges drawn');
+  const I = g.index;
+  ranges(g, [3, 6]);
+  assert(g.index === I && g.drawRange.count === 3, 'one index, reused');
+  ranges(g, null);
+  assert(!g.index && g.drawRange.count === Infinity, 'the whole mesh again');
+});
+
+test('map3d streaming: the town draws its near lots in full and the Fast boxes beyond; nature its near instances and flat trees beyond; null = the map look', () => {
+  const THREE = require('three'),
+    { createTown } = require('../js/map3d/town3d.mjs'),
+    { createNature } = require('../js/map3d/nature3d.mjs'),
+    { blockGrid } = require('../js/map3d/stream3d.mjs'),
+    m = townModel(),
+    W = m.w * 0.5,
+    D = m.h * 0.5,
+    G = blockGrid(W, D, 192, 192),
+    sc = new THREE.Scene(),
+    town = createTown(sc, () => 1, { fast: () => false });
+  town.sync(m);
+  const g0 = m.land.landmarks.find(l => l.id === 'weiPower').at,
+    near = new Set(G.within(g0[0] * 0.5, g0[1] * 0.5, 250)),
+    T = town.layer(G);
+  for (let k = 0; k < G.nx * G.nz; k++) T.prep(k);
+  const parts = [];
+  sc.traverse(o => o.isMesh && o.userData.town && parts.push(o));
+  const Wm = parts.find(o => o.userData.town === 'W'),
+    all = Wm.geometry.attributes.position.count;
+  T.show(near);
+  const n = Wm.geometry.drawRange.count,
+    pos = Wm.geometry.attributes.position.array;
+  assert(n > 1000 && n < all / 2, `walls drawn: the near blocks’ (${n} of ${all} vertices)`);
+  let off = 0;
+  for (let v = 0; v < n; v += 60) {
+    const i = Wm.geometry.index.array[v];
+    if (!near.has(G.of(pos[i * 3], pos[i * 3 + 2])) && G.dist(G.of(pos[i * 3], pos[i * 3 + 2]), g0[0] * 0.5, g0[1] * 0.5) > 400) off++;
+  }
+  eq(off, 0, 'nothing far off drawn in full');
+  const boxes = [];
+  sc.traverse(o => o.isInstancedMesh && o.parent.visible && boxes.push(o));
+  const lots = m.land.lots.filter(l => require('../js/map3d/kit3d.mjs').KIT[l.kind]),
+    nearLots = lots.filter(l => near.has(G.of(l.at[0] * 0.5, l.at[1] * 0.5))).length;
+  eq(
+    boxes.reduce((a, o) => a + o.count, 0),
+    lots.length - nearLots,
+    'the far version: a box for every lot beyond the near blocks'
+  );
+  T.show(null);
+  assert(!Wm.geometry.index && Wm.geometry.drawRange.count === Infinity, 'the map look: the whole mesh');
+  const shown = [];
+  sc.traverse(o => o.isInstancedMesh && o.visible && o.parent.visible && shown.push(o));
+  eq(shown.length, 0, 'no boxes on the map in the detailed look');
+  town.dispose();
+  // nature
+  const sc2 = new THREE.Scene(),
+    nat = createNature(sc2, () => 1);
+  nat.sync(m, false);
+  const N = nat.layer(G),
+    inst = () => {
+      const o = [];
+      sc2.traverse(x => x.isInstancedMesh && x.visible && !x.userData.proxy && o.push(x));
+      return o;
+    },
+    total = inst().reduce((a, o) => a + o.count, 0);
+  for (let k = 0; k < G.nx * G.nz; k++) N.prep(k);
+  N.show(near);
+  const after = inst(),
+    flatTrees = after.filter(o => o.userData.far);
+  assert(after.reduce((a, o) => a + o.count, 0) < total, 'fewer instances drawn in full');
+  assert(flatTrees.length >= 1 && flatTrees.every(o => o.count > 0), 'the far trees: flat shapes');
+  N.show(null);
+  eq(
+    inst().reduce((a, o) => a + o.count, 0),
+    total,
+    'the map: every instance again, no far trees'
+  );
+  nat.dispose();
+});
+
+test('map3d streaming: a far terrain chunk is coarse, turned like the full grid, and keeps every vertex of its edge (no cracks)', () => {
+  const { coarseIndex } = require('../js/map3d/terrain3d.mjs'),
+    nx = 30,
+    V = (i, j) => j * (nx + 1) + i,
+    ij = v => [v % (nx + 1), Math.floor(v / (nx + 1))],
+    turn = (a, b, e) => {
+      const [ax, az] = ij(a),
+        [bx, bz] = ij(b),
+        [ex, ez] = ij(e);
+      return Math.sign((bx - ax) * (ez - az) - (bz - az) * (ex - ax));
+    },
+    full = turn(V(0, 0), V(0, 1), V(1, 0)); // the full grid's triangle (a, d, b)
+  // a chunk of 13 × 10 cells (a thin last column, an uneven last row) beside a full one
+  const c = coarseIndex(nx, 4, 17, 2, 12),
+    area = (a, b, e) => {
+      const [ax, az] = ij(a),
+        [bx, bz] = ij(b),
+        [ex, ez] = ij(e);
+      return Math.abs((bx - ax) * (ez - az) - (bz - az) * (ex - ax)) / 2;
+    };
+  let A = 0,
+    bad = 0;
+  for (let t = 0; t < c.length; t += 3) ((A += area(c[t], c[t + 1], c[t + 2])), turn(c[t], c[t + 1], c[t + 2]) !== full && bad++);
+  eq(A, 13 * 10, 'covers the chunk exactly');
+  eq(bad, 0, 'every triangle turned like the full grid (faces up)');
+  assert(c.length / 3 < (13 * 10 * 2) / 2.5, `fewer triangles (${c.length / 3} for ${13 * 10 * 2})`);
+  const used = new Set(c);
+  let miss = 0;
+  for (let i = 4; i <= 17; i++) for (const j of [2, 12]) used.has(V(i, j)) || miss++;
+  for (let j = 2; j <= 12; j++) for (const i of [4, 17]) used.has(V(i, j)) || miss++;
+  eq(miss, 0, 'every edge vertex kept: it meets a full chunk without cracks');
+  const big = coarseIndex(nx, 0, 96 > nx ? nx : 96, 0, 24);
+  assert(big.length / 3 < (nx * 24 * 2) / 4, 'a big chunk ≥ 4× lighter');
+});

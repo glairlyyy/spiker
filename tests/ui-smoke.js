@@ -413,7 +413,32 @@ const step = async (name, fn) => {
           `not at street level: ${JSON.stringify(await ev(() => ({ s: MapView.m3.street(), view: MapView.m3.info().view, ring: MapView.m3.info().ring })))}`
         );
       });
-    const st = await ev(() => ({ ms: MapView.m3.bench(3), ring: MapView.m3.info().ring, vrm: MapView.m3.info().life.vrm }));
+    // streaming (T-364): only the near blocks drawn in full once they are ready; the "Loading…" pill comes and goes
+    await pg
+      .waitForFunction(
+        () => {
+          const s = MapView.m3.info().stream;
+          return s && s.on && s.near > 0 && !s.hold;
+        },
+        null,
+        { timeout: 120000 }
+      )
+      .catch(async () => {
+        throw new Error(`the near blocks never showed: ${JSON.stringify(await ev(() => MapView.m3.info().stream))}`);
+      });
+    const pill = await ev(() => {
+      MapView.streamWait(true);
+      const t = (document.querySelector('#mapwrap .mapload') || {}).textContent;
+      MapView.streamWait(false);
+      return [t, !!document.querySelector('#mapwrap .mapload')];
+    });
+    if (pill[0] !== 'Loading…' || pill[1]) throw new Error(`the Loading pill: ${pill}`);
+    const st = await ev(() => ({
+      ms: MapView.m3.bench(3),
+      ring: MapView.m3.info().ring,
+      vrm: MapView.m3.info().life.vrm,
+      stream: MapView.m3.info().stream
+    }));
     // a click on the ground ahead: a map-point travel (the same rules as the point card's Walk)
     const c = await ev(() => {
       const r = document.querySelector('#mapwrap canvas').getBoundingClientRect();
@@ -436,8 +461,10 @@ const step = async (name, fn) => {
       renderCareer();
       MapView.m3.jump();
     }, back);
-    await pg.waitForFunction(() => MapView.m3.street() === 0 && !MapView.m3.info().ring.on, null, { timeout: 120000 });
-    return `${st.ms} ms a frame at street level (ring ${st.ring.lots} lots, ${Math.round(st.ring.tris / 1000)}k tris, built in ${st.ring.ms} ms; ${st.vrm} VRMs); the walk took ${days} h`;
+    await pg.waitForFunction(() => MapView.m3.street() === 0 && !MapView.m3.info().ring.on && !MapView.m3.info().stream.on, null, {
+      timeout: 120000
+    });
+    return `${st.ms} ms a frame at street level (ring ${st.ring.lots} lots, ${Math.round(st.ring.tris / 1000)}k tris, built in ${st.ring.ms} ms; ${st.vrm} VRMs; ${st.stream.near} near blocks); the walk took ${days} h`;
   });
   // the living island, Agent E (spec §4.37 3–5): a stop on the road, the short cut, the island's sound
   await step('the road (T-333): a stop on the way — the card over the map, Space walks on', async () => {
