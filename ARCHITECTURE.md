@@ -38,7 +38,7 @@ Classic scripts, in index.html order (each group only uses earlier groups at loa
   `stats.js`, `skills.js`, `formulas.js`, `elements.js` (also the hash helpers `hstr`, `hitem(L, s)`, `hpick` — no draws), `hype.js`, `fire.js` (momentum stages, spec §2.14: `temperOf`,
   `fireStage`, `pointStage` after every point (in `end`), `stageTimeout`, `stageBuff(p, stat)` read by effD / jumpPx / the
   formulas; `m.mom` is the fire, `m.stage`, `m.temper`, `m.fever`; `m.zone` = the Fever alias; data in data/momentum.js:
-  `STAGES`, `TEMPERS`, `TEMPER_OF`, `FIRE`; the captains' calls `capReady` / `capCall` — T-260), `bars.js` (spec §2.31: HP
+  `STAGES`, `TEMPERS`, `TEMPER_OF`, `FIRE`), `bars.js` (spec §2.31: HP
   `m.hp` — `hpHit` in `knock` (collapse = HP 0, no roll; your Endurance `p.body.end` × (1.2 − 0.4 · end / 100), no body × 1 — spec §4.33), `hpHeal` between rallies; morale `m.mor` per player — `morPoint`
   replaces the fire update, `fireOf` = the on-court average (captain ×2) → `m.mom`, `morAdd` / `fireTo` for team-wide pushes;
   `mtraitOf(p)` by hash; data `HP`, `MTRAITS` in data/cards.js), `cards.js` (the deck and turns, spec §2.32, §2.37:
@@ -124,7 +124,7 @@ onLeave }` (see Screens; `onLeave` only cleans up), opened by the UI with `watch
                     playRally(m) ──┤ serve → receive (engine/serve.js) → rally(m, …) loop (engine/rally.js)
                                    │   uses Formula.* (engine/formulas.js)
                                    ▼
-                              end(m, winner)  scoring, momentum, zone, captain's call, timeouts
+                              end(m, winner)  scoring, momentum, zone, timeouts
 ```
 
 - **One rally at a time**: `playRally(m)` plays a rally whole for every match; playback copies its beats (`rallyPull`). The

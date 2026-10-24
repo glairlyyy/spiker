@@ -1,4 +1,4 @@
-// Team fire, stages and temperament (spec §2.14) and the captain's calls (§2.17, T-260). Fire is `m.mom` (−1..1, its rises and
+// Team fire, stages and temperament (spec §2.14; the captain's calls §2.17 dropped, T-363). Fire is `m.mom` (−1..1, its rises and
 // falls in pointMomentum); the stage (`m.stage[side]`, STAGE_IDS) follows it after every point, shaped by the team's
 // temperament (`m.temper[side]`, TEMPERS). `m.zone` stays an alias of Fever (elements, hype, the Element Trial). No randoms.
 
@@ -99,15 +99,3 @@ const stageBuff = (p, k) => {
   const W = CM && CM.weak && WAR_STAGES[CM.weak[sideOf(p)]]; // × the war stage's cut (spec §4.34: a Strained … Broken side plays weaker)
   return (S && S.buff[k] ? 1 + S.buff[k] / 100 : 1) * cardBuff(p, k) * (p.traits ? trBuff(p, k) : 1) * (W && W.cut ? 1 - W.cut / 100 : 1); // × the tactic cards (spec §2.33), the Sparks / Scars (§4.30)
 };
-
-/** Points until the side's captain can call again (0 = ready). */
-function capReady(m, side) {
-  return m && side >= 0 ? 0 : 0;
-}
-/**
- * The captain's between-point call: kind 'fire' (Fire up) | 'settle' (Settle). Applies it and returns the beats that show
- * it (empty when not ready or in a simulation).
- */
-function capCall(m, side, kind) {
-  return m && side >= 0 && kind ? [] : [];
-}
