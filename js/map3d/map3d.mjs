@@ -13,6 +13,8 @@
 // the week time of the waiting day and of the last action's walk and order; setPhase(p | () => p) tells the map which of
 // 'idle' | 'walk' | 'order' is playing; the clock runs toward it (never back), the walk's share by how far the avatar has come
 // along its road (so it holds while the avatar stands still), and sets the sun, the sky and the night lights.
+// Transport (spec §4.42, vehicles3d.mjs): the timetable buses / ferry (model.transit, by the shown clock wt), stops and piers, your ride's
+// vehicle (avatar.ride()); a ride's legs (model.you.ride) replace the road and its progress() drives the clock.
 // The player's avatar (avatar3d.mjs) stands at model.you.at — inside the place there (you.inside, spec §4.40: in through its door) — and
 // walks when it changes (out of the door it stood inside first: you.exit); the camera follows it.
 // Units: map (x, y) → world (x·MAP_M, 0, y·MAP_M) metres (1 map unit = 0.5 m). One renderer and canvas live across
@@ -22,6 +24,7 @@ import * as THREE from 'three';
 import { createAvatar } from './avatar3d.mjs';
 import { createFurniture } from './pins3d.mjs';
 import { createLife } from './life3d.mjs';
+import { createVehicles } from './vehicles3d.mjs';
 import { createTown } from './town3d.mjs';
 import { createNature } from './nature3d.mjs';
 import { createMapCam } from './mapcam3d.mjs';
@@ -73,6 +76,7 @@ export function create(onIdle) {
     furn = null, // pins, labels, flag, decals (pins3d.mjs)
     town = null, // roads, lots, landmarks (town3d.mjs)
     life = null, // figures, battle crowd, frontier patrols (life3d.mjs)
+    veh = null, // the buses, the ferry, stops and piers, your ride (vehicles3d.mjs, spec §4.42)
     nature = null, // trees, rocks, grass and the animals (nature3d.mjs, spec §4.19c)
     clock = 0,
     fogKey = null,
@@ -165,6 +169,7 @@ export function create(onIdle) {
       return f && { x: f.x, y: f.base + f.h, z: f.z, r: Math.max(f.w, f.d) / 2 };
     });
     life = createLife(scene, terrain.heightAt);
+    veh = createVehicles(scene, terrain.heightAt);
     nature = createNature(scene, terrain.heightAt);
     war = warLayer(scene, terrain.heightAt);
     night = nightLayer(scene, terrain.heightAt);
@@ -180,6 +185,8 @@ export function create(onIdle) {
   };
   /** How far along its road the avatar has come (0–1, never back): the walk's share of the clock holds while it stands. */
   const walkProgress = () => {
+    const rp = avatar && avatar.progress(); // a ride (spec §4.42): its own clock
+    if (rp !== null && rp !== undefined) return Math.max(prog, rp);
     if (!walkPts || !avatar) return 1;
     const [x, z] = avatar.pos();
     let best = Infinity,
@@ -333,7 +340,8 @@ export function create(onIdle) {
       lit = cur && cur.time ? skyAt(cur.time.keys, tod, sun, hemi, scene) : ((hemi.intensity = 0.9), 0);
       if (look.on) hemi.intensity *= lerp(LOOK.hemi[0], LOOK.hemi[1], lit); // (by day the sky's environment light adds the rest)
       if (C.view) life.ringScale((14 * 2 * C.view.d * Math.tan((cam.fov * Math.PI) / 360)) / (ch || 1) / 0.7); // a ring ≥ ~14 px
-      life.tick(dt, clock, tod, cam, st); // (cam: the nearest named people on screen as VRMs; st: life size and the near VRMs at street level)
+      life.tick(dt, clock, tod, cam, st);
+      veh.tick(dt, clock, wt, avatar.ride()); // (cam: the nearest named people on screen as VRMs; st: life size and the near VRMs at street level)
       hoverStep();
       town.tick(dt);
       nature.tick(dt, clock);
@@ -407,6 +415,7 @@ export function create(onIdle) {
       furn.sync(m, on);
       town.rims(m.rims);
       life.sync(lifeM(m), low);
+      veh.sync(m);
       night.sync(m, low);
       war.sync(m.borders);
       applyFog(m.fog);
@@ -427,7 +436,7 @@ export function create(onIdle) {
       if (seen === null) avatar.snap(standAt(m));
       else if (key !== seen) {
         const [x0, z0] = avatar.pos();
-        avatar.setTarget(at, m.you.route, { head, tail });
+        avatar.setTarget(at, m.you.route, { head, tail, legs: m.you.ride && m.you.ride.legs }); // (a ride: its legs, spec §4.42)
         walkPts = [
           [x0, z0],
           ...[...head, ...(m.you.route && m.you.route.length > 1 ? m.you.route.slice(1, -1) : []), at, ...tail].map(p => [
@@ -551,6 +560,7 @@ export function create(onIdle) {
       geos: renderer.info.memory.geometries,
       tex: renderer.info.memory.textures,
       life: life && life.count(),
+      vehicles: veh && veh.count(),
       night: night && night.count(),
       town: town && town.count(), // (null on Fast)
       clock: { week: wt, tod, lit },
@@ -568,6 +578,7 @@ export function create(onIdle) {
       if (furn) furn.dispose();
       if (town) town.dispose();
       if (life) life.dispose();
+      if (veh) veh.dispose();
       if (nature) nature.dispose();
       if (interiors) interiors.dispose();
       interiors = null;

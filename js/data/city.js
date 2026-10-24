@@ -411,6 +411,15 @@ const SPOTS = {
     icon: '☕',
     desc: 'A café in Wei. A retired scout who still rates everyone — honestly, once a month.'
   },
+  // the harbor's market (spec §4.42): a bike or a scooter for sale (TRANSPORT)
+  market: {
+    name: 'Harbor Market',
+    act: 'ride',
+    region: 'wu',
+    at: [900, 372],
+    icon: '🚲',
+    desc: 'Fish at dawn, everything else by noon. A stall of rebuilt bikes and scooters off the mainland boats.'
+  },
   // the airport's freight (spec §4.38, T-339): the Ref drone for sale (DRONE)
   cargo: {
     name: 'Cargo Shed',
@@ -520,6 +529,7 @@ const ROADS = {
   nodes: {
     airport: [470, 600],
     cargo: [495, 578],
+    market: [900, 372],
     // Wu: the coast road, east round to the harbor
     sand: [790, 600],
     pier: [535, 645],
@@ -617,6 +627,7 @@ const ROADS = {
     ['hq2', 'wuVillage', 'dirt'],
     ['hq3', 'home:dorm', 'main'],
     ['airport', 'cargo', 'street'], // the freight yard behind the terminal
+    ['harbor', 'market', 'street'], // the harbor's market (spec §4.42)
     // the boardwalk (sand ↔ pier ↔ bonfire ↔ the resort strip)
     ['airport', 'jBw1', 'boardwalk'],
     ['jBw1', 'pier', 'boardwalk'],
@@ -982,9 +993,7 @@ const GROUND = [
  */
 const TRAFFIC = {
   lines: [
-    // buses: the airport ↔ Academy ↔ downtown line, and the coast line from the Ring to the harbor
-    { id: 'bus-academy', kind: 'bus', n: 2, speed: 6, nodes: ['airport', 'jAc2', 'park', 'jAc1', 'jWp', 'arcade', 'hq0', 'venue:arena'] },
-    { id: 'bus-coast', kind: 'bus', n: 2, speed: 6, nodes: ['hq1', 'home:dorm', 'hq3', 'hotelWu', 'jWu1', 'jWu2', 'harbor', 'hq2'] },
+    // (the buses run on their timetable: TRANSPORT.bus, spec §4.42)
     // vans: the harbor's goods over the overpass into Wei; the North works' run downtown
     { id: 'van-overpass', kind: 'van', n: 3, speed: 8, nodes: ['harbor', 'jWu2', 'jO2', 'jO1', 'jW2', 'jWs', 'jW1', 'jWp'] },
     { id: 'van-works', kind: 'van', n: 1, speed: 7, nodes: ['jWk', 'venue:arena', 'hq0', 'arcade', 'jWp'] }
@@ -994,6 +1003,108 @@ const TRAFFIC = {
     { id: 'boats-south', x: 633.3, y: 686.7, r: 30, n: 2 }
   ],
   plane: { every: 45 }
+};
+/**
+ * Transport (spec §4.42; first guesses — tune here): ways to cross the island in fewer hours than walking, each a cost or a
+ * choice; Travel shows those that work for a trip and never picks one for you. Paces are × walking (City.walkH's WALK_PACE) on the
+ * legs they ride; every other leg is walked (Shu's highlands — its roads and mountain paths — always: `foot`). Hours of a trip are
+ * rounded to `round` h, `min` h at least. `skip`: the ways that pass the road stops by (§4.37 encounters); The bike trains: a
+ * `run` share of a run's ground gains (Endurance only) for a `sta` share of its stamina. Stops and piers are ROADS node ids.
+ * - bus: Wei runs it — `pace` on its lines' roads; departs every stop every `every` h from `first` to `last`; `fare` a ride
+ *   (a transfer at a shared stop is a second ride); standing with `region` ≤ `double` doubles the fare, ≤ `refuse`: no ride.
+ * - bike / scooter: bought once at the Harbor Market (`price`); ridden on roads (not mountain paths, not Shu); the scooter burns
+ *   `fuel` $ an hour of riding (whole hours, rounded up).
+ * - ferry: the coast boat — `pace` along `sea` (design units, scaled with the map: offshore points from the airport pier round to
+ *   the harbor; `piers` index into it); departs every pier every `every` h from `first` to `last`; `fare` a crossing.
+ * - taxi: door to door at `pace`, both ends in Wei's city; `base` + `perH` $ an hour of walking saved.
+ * Lazy `run.ride` = { bike: 1, scooter: 1 } once bought (spec §4.42).
+ */
+const TRANSPORT = {
+  ways: ['bus', 'bike', 'scooter', 'ferry', 'taxi'],
+  round: 0.5,
+  min: 1,
+  skip: ['bus', 'ferry', 'taxi'],
+  foot: ['path', 'steps', 'ground'],
+  bus: {
+    name: 'Bus',
+    pace: 3,
+    fare: 3,
+    first: 6,
+    last: 23,
+    every: 0.5,
+    region: 'wei',
+    double: -20,
+    refuse: -50,
+    // lines along the main roads and the overpass (each consecutive pair a ROADS edge); stops = where it halts (the shelters)
+    lines: [
+      {
+        id: 'bus-academy',
+        name: 'Academy line',
+        nodes: ['airport', 'jAc2', 'park', 'jAc1', 'jWp', 'arcade', 'hq0', 'venue:arena'],
+        stops: ['airport', 'jAc2', 'park', 'jAc1', 'jWp', 'arcade', 'hq0', 'venue:arena']
+      },
+      {
+        id: 'bus-coast',
+        name: 'Coast line',
+        nodes: ['jWp', 'hq1', 'home:dorm', 'hq3', 'hotelWu', 'jWu1', 'jWu2', 'harbor', 'hq2', 'dunes'],
+        stops: ['jWp', 'hq1', 'home:dorm', 'hq3', 'hotelWu', 'jWu1', 'jWu2', 'harbor', 'hq2', 'dunes']
+      },
+      {
+        id: 'bus-overpass',
+        name: 'Overpass line',
+        nodes: ['jWp', 'jW1', 'jWs', 'jW2', 'jO1', 'jO2', 'jWu2', 'harbor'],
+        stops: ['jWp', 'jW1', 'jWs', 'jW2', 'jWu2', 'harbor']
+      }
+    ],
+    names: {
+      airport: 'Airport',
+      jAc2: 'Academy South Gate',
+      park: 'Academy',
+      jAc1: 'Academy North Gate',
+      jWp: 'Ring West',
+      arcade: 'Arcade',
+      hq0: 'Gold Tower',
+      'venue:arena': 'League Arena',
+      hq1: 'Iron Yard',
+      'home:dorm': 'Dorms',
+      hq3: 'Fort Gate',
+      hotelWu: 'Seaside Inn',
+      jWu1: 'Wu Town',
+      jWu2: 'Overpass Foot',
+      harbor: 'Harbor',
+      hq2: 'Harbor Hall',
+      dunes: 'The Dunes',
+      jW1: 'Training District',
+      jWs: 'Ring East',
+      jW2: 'Downtown'
+    }
+  },
+  bike: { name: 'Bike', pace: 1.8, price: 120, run: 1 / 3, sta: 0.15 },
+  scooter: { name: 'Scooter', pace: 3, price: 380, fuel: 2 },
+  ferry: {
+    name: 'Ferry',
+    pace: 10,
+    fare: 5,
+    first: 7,
+    last: 21,
+    every: 2,
+    sea: [
+      [540, 668],
+      [640, 672],
+      [730, 662],
+      [795, 628],
+      [870, 600],
+      [930, 520],
+      [985, 450],
+      [1000, 385]
+    ],
+    piers: [
+      { node: 'pier', name: 'Airport pier', i: 0 },
+      { node: 'sand', name: 'Beach pier', i: 3 },
+      { node: 'harbor', name: 'Harbor pier', i: 7 }
+    ]
+  },
+  taxi: { name: 'Taxi', pace: 4, base: 8, perH: 4 }
 };
 /** Ground kinds no building stands on (yards and quays are built on). */
 const GROUND_KEEP = ['terrace', 'paddy', 'field', 'park', 'water', 'quarry'];
@@ -1144,6 +1255,7 @@ const LANDMARK = {
   midnight: 'court',
   oldScout: 'stall',
   cargo: 'stall',
+  market: 'stall',
   hq: 'hq'
 };
 /** One map unit in metres (the 3D map's MAP_M): FACILITY sizes are metres. */
@@ -1189,6 +1301,7 @@ const FACILITY_OF = {
   midnight: 'nightcourt',
   oldScout: 'scoutbar',
   cargo: 'cargoshed',
+  market: 'ridemarket',
   hq: ['hqGold', 'hqIron', 'hqHarbor', 'hqFort', 'hqPeak', 'hqOutlaws', 'hqGloria', 'hqValley']
 };
 const FACILITY = {
@@ -1226,6 +1339,7 @@ const FACILITY = {
   nightcourt: { w: 24, d: 16, h: 12 },
   scoutbar: { w: 10, d: 9, h: 7 },
   cargoshed: { w: 20, d: 14, h: 9 },
+  ridemarket: { w: 22, d: 14, h: 7 },
   hqGold: { w: 18, d: 18, h: 38 },
   hqIron: { w: 20, d: 16, h: 24 },
   hqHarbor: { w: 24, d: 16, h: 14 },
@@ -1352,6 +1466,7 @@ const LOT_SPREAD = 1.6;
       q.y *= S;
     } else d.density /= S * S; // 'beach', 'wei': the area grew
   }
+  TRANSPORT.ferry.sea.forEach(pt);
   for (const q of [...GROUND.map(g => g.poly), ...TRAFFIC.boats]) {
     q.x *= S;
     q.y *= S;
@@ -1396,6 +1511,7 @@ const LOT_SPREAD = 1.6;
   }
   for (const q of GROUND.map(g => g.poly)) for (const f of ['x', 'y', 'r', 'r0']) if (q[f]) q[f] *= K;
   for (const q of TRAFFIC.boats) for (const f of ['x', 'y', 'r']) q[f] *= K;
+  pks(TRANSPORT.ferry.sea);
   pk(WEALTH.weiCore);
   WEALTH.weiEdge *= K;
   for (const r of Object.values(REGIONS)) pk(r.at);

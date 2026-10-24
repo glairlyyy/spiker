@@ -26,7 +26,7 @@ const City = {
       o = City.orderOf(id, oid);
     if (o) return City.hourOpts(o).includes(h) ? h : City.hourOpts(o)[0];
     if (s && s.act === 'rest') return DAY.sleepH.includes(h) ? h : DAY.sleepH[DAY.sleepH.length - 1];
-    if (s && s.act === 'cargo') return 1;
+    if (s && (s.act === 'cargo' || s.act === 'ride')) return 1;
     return (s && s.hours) || DAY.act;
   },
   /** The hour choices of day order oid (spec §4.41): Stretch from 1 h, drills and work 2–4 h; a raid / a run take their own. */
@@ -309,6 +309,8 @@ const City = {
     if (cost && run.money < cost) return { ok: false, why: `needs $${cost}` };
     if (oid && DAY_ORDERS[oid].kind === 'work' && run.injury) return { ok: false, why: 'injured — no work until it heals' };
     if (!ord && s.act === 'ramen' && !Run.mates(run).some(p => p.id === mate)) return { ok: false, why: 'pick a teammate' };
+    const bw = !ord && s.act === 'ride' ? City.buyWhy(run, mate) : ''; // the Harbor Market (spec §4.42): mate = 'bike' | 'scooter'
+    if (bw) return { ok: false, why: bw };
     const sw = !ord && Secret.acts.includes(s.act) ? Secret.why(run, id, mate) : ''; // a secret place's own rule (mate: the Lighthouse's choice)
     if (sw) return { ok: false, why: sw };
     return { ok: true, why: '' };
@@ -327,6 +329,7 @@ const City = {
     if (Study.acts.includes(SPOTS[id].act)) return Study.day(run, id); // the tutor / a bookstore (T-230)
     if (Secret.acts.includes(SPOTS[id].act)) return Secret.day(run, id, mate); // a secret place (spec §4.31)
     if (SPOTS[id].act === 'cargo') return City.buyDrone(run, id); // the Ref drone (spec §4.38)
+    if (SPOTS[id].act === 'ride') return City.buyRide(run, id, mate); // a bike / a scooter (spec §4.42)
     const s = SPOTS[id],
       cost = City.price(run, id);
     if (s.act === 'rest') {
@@ -549,6 +552,7 @@ const City = {
     }
     if (s.act === 'rest') return { k: 'sleep', label: 'Sleep', at: s.name };
     if (s.act === 'cargo') return { k: 'outing', label: 'Drone', at: s.name };
+    if (s.act === 'ride') return { k: 'outing', label: 'Market', at: s.name };
     if (s.secret) return { k: s.act === 'onsen' ? 'rest' : 'outing', label: SECRET_DAY[s.act] || 'Out', at: s.name };
     if (['ramen', 'arcade', 'street'].includes(s.act)) return { k: 'outing', label: s.act === 'street' ? 'Hustle' : 'Outing', at: s.name };
     return { k: 'rest', label: 'Relax', at: s.name };
@@ -591,8 +595,9 @@ const City = {
   /** Hours to just travel to point p (spec §4.41: 1 h at least; run = faster, RUN_PACE). */
   travelDays: (run, p, how = 'walk') => Math.max(1, City.walkH(City.pos(run), p, how === 'run')),
   travelHours: (run, p, how = 'walk') => City.travelDays(run, p, how),
-  /** Travel to any point on the island; `how` 'run' (T-309): faster, the route's ground trains you. Returns the diary line. */
+  /** Travel to any point on the island; `how` 'run' (T-309): faster, the route's ground trains you; a TRANSPORT way (spec §4.42): City.rideTo. Returns the diary line. */
   travelTo(run, p, how = 'walk') {
+    if (TRANSPORT[how] && TRANSPORT.ways.includes(how)) return City.rideTo(run, p, how);
     const ran = how === 'run',
       t = City.travelDays(run, p, how);
     if (run.event || !City.onLand(p) || City.noTime(run, t, p) || City.outside(run, p) || (ran && City.noRun(run, p))) return '';
@@ -605,6 +610,312 @@ const City = {
     City.note(run, from, h0);
     const where = `${REGIONS[City.loc(run)].name} (${t} h)`;
     return `${ran ? `Ran to ${where}: ${Training.runTrip(run, plan)}` : `Walked to ${where}.`}${City.upLate(run)}`;
+  },
+  // ---- transport (spec §4.42; the numbers: TRANSPORT) ---------------------------------------------------------------------
+  /** Do you own ride k ('bike' | 'scooter')? Lazy `run.ride` = { bike: 1, scooter: 1 }. */
+  owns: (run, k) => !!(run.ride && run.ride[k]),
+  /** Hours on foot from a to b, unrounded (a leg of a mixed trip): the route's cost ÷ WALK_PACE; 0 when there. */
+  walkF: (a, b) => (Math.hypot(b[0] - a[0], b[1] - a[1]) <= HERE_R ? 0 : City.path(a, b).cost / WALK_PACE),
+  /** A ride's hours: rounded to TRANSPORT.round, TRANSPORT.min at least. */
+  rideH: h => Math.max(TRANSPORT.min, Math.round(h / TRANSPORT.round) * TRANSPORT.round),
+  /** The next departure at or after hour t on timetable T ({ first, last, every }): { at, off } — off: outside its hours (none left today). */
+  depart(T, t) {
+    const at = t <= T.first ? T.first : T.first + Math.ceil((t - T.first) / T.every - 1e-9) * T.every;
+    return { at, off: at > T.last + 1e-9 };
+  },
+  /** The bus lines with their travel cost along the line (`cum`, by node index): built once. */
+  busLines() {
+    if (City._bl) return City._bl;
+    const N = ROADS.nodes,
+      K = City.edgeKinds();
+    return (City._bl = TRANSPORT.bus.lines.map(L => {
+      const cum = [0];
+      for (let i = 1; i < L.nodes.length; i++) {
+        const a = N[L.nodes[i - 1]],
+          b = N[L.nodes[i]];
+        cum.push(cum[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1]) * (ROAD_COST[K[`${L.nodes[i - 1]}|${L.nodes[i]}`]] ?? 1));
+      }
+      return { ...L, cum };
+    }));
+  },
+  /** Every bus stop (ROADS node ids), each once. */
+  busStops: () => [...new Set(TRANSPORT.bus.lines.flatMap(L => L.stops))],
+  /** A stop's or pier's name for the diary / the card. */
+  stopName: id => TRANSPORT.bus.names[id] || (SPOTS[id] && SPOTS[id].name) || id,
+  /**
+   * The bus from map point o to p leaving at hour h0 (pure): walk to a stop, wait for the next bus, ride (one change at a shared
+   * stop at most), walk on — the earliest arrival. { raw (hours), legs [{ m, pts, h, wait, from?, to?, line? }], rides, off } or null.
+   */
+  busTrip(o, p, h0) {
+    const B = TRANSPORT.bus,
+      N = ROADS.nodes,
+      v = WALK_PACE * B.pace,
+      Ls = City.busLines();
+    let lab = {};
+    for (const s of City.busStops()) lab[s] = { at: s, t: h0 + City.walkF(o, N[s]), n: 0, prev: null };
+    for (let n = 1; n <= 2; n++) {
+      const nx = { ...lab };
+      for (const s of Object.keys(lab)) {
+        const S = lab[s];
+        if (S.n !== n - 1) continue;
+        for (const L of Ls) {
+          if (!L.stops.includes(s)) continue;
+          const D = City.depart(B, S.t),
+            i = L.nodes.indexOf(s);
+          for (const t of L.stops) {
+            const j = L.nodes.indexOf(t);
+            if (t === s) continue;
+            const a = D.at + Math.abs(L.cum[j] - L.cum[i]) / v;
+            if (!nx[t] || a < nx[t].t - 1e-9) nx[t] = { at: t, t: a, n, prev: S, line: L, dep: D.at, off: D.off || !!S.off, i, j };
+          }
+        }
+      }
+      lab = nx;
+    }
+    let best = null;
+    for (const t of Object.keys(lab)) {
+      const S = lab[t];
+      if (!S.n) continue;
+      const arr = S.t + City.walkF(N[t], p);
+      if (!best || arr < best.arr - 1e-9) best = { arr, S };
+    }
+    if (!best) return null;
+    const legs = [{ m: 'walk', pts: City.route(N[best.S.at], p), h: best.arr - best.S.t, wait: 0 }];
+    let S = best.S;
+    for (; S.n; S = S.prev) {
+      const ids = S.i <= S.j ? S.line.nodes.slice(S.i, S.j + 1) : S.line.nodes.slice(S.j, S.i + 1).reverse();
+      legs.unshift({
+        m: 'bus',
+        line: S.line.id,
+        from: City.stopName(S.prev.at),
+        to: City.stopName(S.at),
+        pts: ids.map(id => N[id].slice()),
+        h: S.t - S.dep,
+        wait: S.dep - S.prev.t
+      });
+    }
+    legs.unshift({ m: 'walk', pts: City.route(o, N[S.at]), h: S.t - h0, wait: 0 });
+    return { raw: best.arr - h0, legs: legs.filter(l => l.m !== 'walk' || l.h > 0), rides: best.S.n, off: best.S.off };
+  },
+  /**
+   * A bike or a scooter (k) from o to p (pure): the walking route, its road legs ridden at TRANSPORT[k].pace — mountain paths, the
+   * legs off the network and everything in Shu walked. { raw, legs, rideH, ridden [{ kind, cost }] } or null (nothing to ride).
+   */
+  wheelTrip(o, p, k) {
+    const T = TRANSPORT[k],
+      P = City.path(o, p),
+      N = ROADS.nodes,
+      K = City.edgeKinds();
+    if (!P.ids.length) return null;
+    const segs = [],
+      ridden = [],
+      add = (m, a, b, h) => {
+        const L = segs[segs.length - 1];
+        if (L && L.m === m) (L.pts.push(b.slice()), (L.h += h));
+        else segs.push({ m, pts: [a.slice(), b.slice()], h, wait: 0 });
+      };
+    let rh = 0;
+    add('walk', o, N[P.ids[0]], City.ground(o, N[P.ids[0]]) / WALK_PACE);
+    for (let i = 1; i < P.ids.length; i++) {
+      const a = P.ids[i - 1],
+        b = P.ids[i],
+        kind = K[`${a}|${b}`],
+        A = N[a],
+        B = N[b],
+        cost = Math.hypot(B[0] - A[0], B[1] - A[1]) * (ROAD_COST[kind] ?? 1),
+        foot =
+          TRANSPORT.foot.includes(kind) ||
+          a === 'steps' ||
+          b === 'steps' ||
+          City.regionAt([(A[0] + B[0]) / 2, (A[1] + B[1]) / 2]) === 'shu'; // Shu's highlands stay on foot (§4.42)
+      if (foot) add('walk', A, B, cost / WALK_PACE);
+      else {
+        const h = cost / (WALK_PACE * T.pace);
+        rh += h;
+        ridden.push({ kind, cost });
+        add(k, A, B, h);
+      }
+    }
+    add('walk', N[P.ids[P.ids.length - 1]], p, City.ground(N[P.ids[P.ids.length - 1]], p) / WALK_PACE);
+    if (!ridden.length) return null;
+    const legs = segs.filter(l => l.h > 0 || l.m !== 'walk');
+    return { raw: legs.reduce((s, l) => s + l.h, 0), legs, rideH: rh, ridden };
+  },
+  /** The ferry's sea line (map points) and the travel cost along it (`cum`): built once. */
+  seaLine() {
+    if (City._sea) return City._sea;
+    const S = TRANSPORT.ferry.sea,
+      cum = [0];
+    for (let i = 1; i < S.length; i++) cum.push(cum[i - 1] + Math.hypot(S[i][0] - S[i - 1][0], S[i][1] - S[i - 1][1]));
+    return (City._sea = { pts: S, cum });
+  },
+  /** The ferry from o to p leaving at hour h0 (pure): walk to a pier, wait, cross, walk on — the earliest arrival over the pier pairs. */
+  ferryTrip(o, p, h0) {
+    const F = TRANSPORT.ferry,
+      N = ROADS.nodes,
+      L = City.seaLine(),
+      v = WALK_PACE * F.pace;
+    let best = null;
+    for (const a of F.piers)
+      for (const b of F.piers) {
+        if (a === b) continue;
+        const w1 = City.walkF(o, N[a.node]),
+          D = City.depart(F, h0 + w1),
+          ride = Math.abs(L.cum[b.i] - L.cum[a.i]) / v,
+          w2 = City.walkF(N[b.node], p),
+          arr = D.at + ride + w2;
+        if (!best || arr < best.arr - 1e-9) best = { arr, a, b, w1, D, ride, w2 };
+      }
+    const { a, b, w1, D, ride, w2 } = best,
+      sea = a.i <= b.i ? L.pts.slice(a.i, b.i + 1) : L.pts.slice(b.i, a.i + 1).reverse();
+    return {
+      raw: best.arr - h0,
+      legs: [
+        { m: 'walk', pts: [...City.route(o, N[a.node]), sea[0].slice()], h: w1, wait: 0 },
+        { m: 'ferry', from: a.name, to: b.name, pts: sea.map(q => q.slice()), h: ride, wait: D.at - h0 - w1 },
+        { m: 'walk', pts: [sea[sea.length - 1].slice(), ...City.route(N[b.node], p)], h: w2, wait: 0 }
+      ],
+      off: D.off
+    };
+  },
+  /** A taxi from o to p (pure): both ends in Wei's city, door to door at TRANSPORT.taxi.pace; null elsewhere. */
+  taxiTrip(o, p) {
+    if (!inPoly(o, CITY.wei) || !inPoly(p, CITY.wei)) return null;
+    const raw = City.walkF(o, p) / TRANSPORT.taxi.pace;
+    return { raw, legs: [{ m: 'taxi', pts: City.route(o, p), h: raw, wait: 0 }] };
+  },
+  /** The trips by way, memoised by (way, from, to, hour): they are pure. */
+  _wm: new Map(),
+  tripOf(k, o, p, h0) {
+    const key = `${k}|${o}|${p}|${h0}`;
+    if (City._wm.has(key)) return City._wm.get(key);
+    if (City._wm.size > 600) City._wm.clear();
+    const r =
+      k === 'bus'
+        ? City.busTrip(o, p, h0)
+        : k === 'ferry'
+          ? City.ferryTrip(o, p, h0)
+          : k === 'taxi'
+            ? City.taxiTrip(o, p)
+            : City.wheelTrip(o, p, k);
+    City._wm.set(key, r);
+    return r;
+  },
+  /**
+   * Way k (TRANSPORT) to map point p now (spec §4.42): { k, name, h (hours, the whole trip: walks, waits, the ride), cost ($), why
+   * (the gap; '' = go), legs, arrive (hour), gains / sta (the bike's training) } — null when it doesn't serve this trip or isn't
+   * faster than walking there. Never picked for you: Travel lists them (City.ways), you choose.
+   */
+  way(run, p, k) {
+    const T = TRANSPORT[k],
+      o = City.pos(run),
+      h0 = City.hour(run),
+      walk = City.trip(run, p);
+    if (!T || !TRANSPORT.ways.includes(k) || walk <= TRANSPORT.min || !City.onLand(p)) return null;
+    const R0 = City.tripOf(k, o, p, h0);
+    if (!R0) return null;
+    const h = City.rideH(R0.raw);
+    if (h >= walk) return null;
+    const B = TRANSPORT.bus,
+      rep = City.rep(run, B.region),
+      cost =
+        k === 'bus'
+          ? R0.rides * B.fare * (rep <= B.double ? 2 : 1)
+          : k === 'ferry'
+            ? T.fare
+            : k === 'taxi'
+              ? Math.round(T.base + T.perH * (walk - h))
+              : k === 'scooter'
+                ? T.fuel * Math.max(1, Math.ceil(R0.rideH - 1e-9))
+                : 0;
+    let gains = null,
+      sta = 0;
+    if (k === 'bike') {
+      const share = TRANSPORT.bike.run,
+        c = R0.ridden.reduce((s, l) => s + l.cost, 0);
+      gains = {
+        end: +(
+          R0.ridden.reduce((s, l) => s + ((RUN_GROUND[l.kind] || RUN_GROUND.ground).end || 0) * l.cost, 0) *
+          ((HOURS.unit * HOURS.run * share) / TRIP_DAY)
+        ).toFixed(2)
+      };
+      sta = Math.max(1, Math.round((RUN_GROUND.sta * HOURS.staK * c * TRANSPORT.bike.sta) / TRIP_DAY));
+    }
+    const hhmm = City.hhmm,
+      why = run.event
+        ? 'answer the event first'
+        : City.outside(run, p)
+          ? City.fence(run)
+          : k === 'bus' && rep <= B.refuse
+            ? `Wei's drivers won't take you (standing ${rep})`
+            : (k === 'bike' || k === 'scooter') && !City.owns(run, k)
+              ? `buy one at the Harbor Market · $${T.price}`
+              : R0.off
+                ? `the ${k} runs ${hhmm(T.first)}–${hhmm(T.last)}`
+                : k === 'bike' && run.injury
+                  ? 'injured — walk'
+                  : k === 'bike' && run.sta < sta
+                    ? `too tired to ride (needs ${sta} stamina)`
+                    : City.noTime(run, h, p) || (cost && run.money < cost ? `needs $${cost}` : '');
+    return { k, name: T.name, h, cost, why, legs: R0.legs, raw: R0.raw, arrive: h0 + h, gains, sta, dbl: k === 'bus' && rep <= B.double };
+  },
+  /** The ways that serve a trip to p now, in TRANSPORT.ways order (each with its gap). */
+  ways: (run, p) => TRANSPORT.ways.map(k => City.way(run, p, k)).filter(Boolean),
+  /**
+   * Take way k to map point p (callers may skip the checks: refused → ''): pay, the hours pass (one 'trip' block named after the way),
+   * the map gets the legs (`run.clock.last.ride` = { k, legs [{ m, pts, w (walk to it from), a, b }] } in week time), you stand at p.
+   * The bike trains (a third of a run's Endurance); a bus, ferry or taxi skips the road stops (City.last.ride). The diary line.
+   */
+  rideTo(run, p, k) {
+    const W = City.way(run, p, k);
+    if (!W || W.why) return '';
+    const from = City.pos(run).slice(),
+      h0 = City.hour(run),
+      C = City.clock(run),
+      f = W.h / (W.raw || W.h),
+      r1 = q => [Math.round(q[0] * 10) / 10, Math.round(q[1] * 10) / 10];
+    run.money -= W.cost;
+    City.pass(run, W.h, { k: 'trip', label: W.name });
+    City.mark(run, h0, W.h, 0);
+    let t = 0;
+    C.last.ride = {
+      k,
+      legs: W.legs.map(l => {
+        const w = t;
+        t += (l.wait || 0) * f;
+        const a = t;
+        t += l.h * f;
+        return { m: l.m, pts: l.pts.map(r1), w: City.wt(run, h0 + w), a: City.wt(run, h0 + a), b: City.wt(run, h0 + t) };
+      })
+    };
+    City.moveTo(run, p);
+    City.note(run, from, h0);
+    City.last.ride = k;
+    const out = [];
+    if (k === 'bike') {
+      const mul = Training.mul(run, 'run', false, DAY_GAIN);
+      for (const s of BODY.keys) if (W.gains[s]) out.push(Training.addXp(run, s, Training.xpFor(s, W.gains[s], mul)));
+      out.push(Run.bump(run, 'sta', -W.sta));
+      Feel.add(run, 'drive', FEEL.drive.train * HOURS.unit * TRANSPORT.bike.run);
+    }
+    const verb = { bus: 'Took the bus', bike: 'Biked', scooter: 'Rode the scooter', ferry: 'Took the ferry', taxi: 'Took a taxi' }[k],
+      rest = out.filter(Boolean).join(', ');
+    return `${verb} to ${REGIONS[City.loc(run)].name} (${W.h} h${W.cost ? `, −$${W.cost}` : ''})${rest ? `: ${rest}` : ''}.${City.upLate(run)}`;
+  },
+  /** Why you can't buy ride k at the Harbor Market now ('' if you can). */
+  buyWhy(run, k) {
+    const T = TRANSPORT[k];
+    if (k !== 'bike' && k !== 'scooter') return 'pick a bike or a scooter';
+    if (City.owns(run, k)) return `you have the ${k}`;
+    return run.money < T.price ? `needs $${T.price}` : '';
+  },
+  /** Buy ride k at the Harbor Market (an hour there; callers checked City.can). The diary line. */
+  buyRide(run, id, k) {
+    const trip = City.arrive(run, id),
+      T = TRANSPORT[k];
+    run.money -= T.price;
+    (run.ride || (run.ride = {}))[k] = 1;
+    return `${trip}${SPOTS[id].name}: bought a ${k} (−$${T.price}). Travel shows ${T.name} on every road trip.`;
   },
   /** The road path from map point `from` to `to` (spec §4.18): the points of City.path. */
   route: (from, to) => City.path(from, to).pts,

@@ -384,6 +384,48 @@ export const FAC = {
       sign: { x: 2, z: 0, hw: (w - 4) / 2, hd: d / 2, y: 6.2, w: w * 0.6, h: 1.2 }
     };
   },
+  // the Harbor Market (spec §4.42): an open steel market shed with fish and junk stalls, rebuilt bikes and scooters lined up out front
+  ridemarket: (S, a) => {
+    const { w, d, h } = S,
+      out = [box(w, 0.25, d, 0, 0, 0, CONC)];
+    for (const x of [-w / 2 + 0.6, -w / 6, w / 6, w / 2 - 0.6])
+      for (const z of [-d / 2 + 0.6, 0]) out.push(post(x, 0, z, h - 1.6, STEEL, 0.35));
+    out.push(gable(w + 0.6, 1.8, d * 0.62, 0, h - 1.6, -d * 0.19, '#7d8a8f'), box(w + 0.6, 0.4, d * 0.62, 0, h - 2, -d * 0.19, a));
+    for (let i = 0; i < 4; i++) {
+      const x = -w / 2 + 2.6 + i * ((w - 5.2) / 3);
+      out.push(box(3.6, 0.9, 1.6, x, 0, -d * 0.22, i % 2 ? WOOD : '#6e7880'), box(3.8, 0.12, 2, x, 2.2, -d * 0.22, i % 2 ? a : WHITE));
+    }
+    // the bikes (thin frames on two wheels) and the scooters (a body on small wheels), facing the road
+    const wheel = (r, x, y, z, c) =>
+      part(
+        new THREE.CylinderGeometry(r, r, 0.12, 12)
+          .rotateX(Math.PI / 2)
+          .rotateY(Math.PI / 2)
+          .translate(x, y, z),
+        c
+      );
+    for (let i = 0; i < 5; i++) {
+      const x = -w / 2 + 1.5 + i * 1.1,
+        z = d / 2 - 2.2;
+      out.push(
+        wheel(0.36, x, 0.36, z - 0.55, DARK),
+        wheel(0.36, x, 0.36, z + 0.55, DARK),
+        box(0.08, 0.08, 1.1, x, 0.62, z, i % 2 ? a : RED)
+      );
+      out.push(box(0.06, 0.5, 0.06, x, 0.6, z - 0.4, STEEL), box(0.4, 0.05, 0.06, x, 1.08, z - 0.45, DARK));
+    }
+    for (let i = 0; i < 3; i++) {
+      const x = w / 2 - 1.8 - i * 1.6,
+        z = d / 2 - 2.2;
+      out.push(
+        wheel(0.25, x, 0.25, z - 0.6, DARK),
+        wheel(0.25, x, 0.25, z + 0.6, DARK),
+        box(0.55, 0.45, 1.2, x, 0.32, z, i % 2 ? WHITE : a)
+      );
+      out.push(box(0.12, 0.8, 0.12, x, 0.6, z - 0.62, STEEL), box(0.7, 0.06, 0.08, x, 1.4, z - 0.62, DARK));
+    }
+    return { parts: out, sign: { x: 0, z: -d * 0.19, hw: w / 2, hd: d * 0.31, y: h - 1.2, w: w * 0.5, h: 1.2 } };
+  },
   // The Lighthouse: a striped tower with a glass lantern on a rock
   lighthouse: (S, a) => {
     const { w } = S;

@@ -27,6 +27,7 @@ require('./story.test');
 require('./drone.test');
 require('./interior.test');
 require('./day.test');
+require('./transport.test');
 
 // ---------- report ----------
 let fail = 0,

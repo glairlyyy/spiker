@@ -694,7 +694,7 @@ test('career: island map — regions, prices, quality, far trips, outings, scout
   for (const id of Object.keys(g.SPOTS)) {
     const s = g.SPOTS[id];
     assert(
-      s.train ? g.TRAININGS[s.train] : ['rest', 'rec', 'ramen', 'arcade', 'street', 'cargo', ...g.Secret.acts].includes(s.act), // (cargo: the Ref drone, §4.38)
+      s.train ? g.TRAININGS[s.train] : ['rest', 'rec', 'ramen', 'arcade', 'street', 'cargo', 'ride', ...g.Secret.acts].includes(s.act), // (cargo: the Ref drone, §4.38; ride: the Harbor Market, §4.42)
       `${id} does something`
     );
     assert(s.region === null || g.REGIONS[s.region], `${id} region`);

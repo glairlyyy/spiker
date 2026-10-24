@@ -371,7 +371,7 @@ export function createTown(scene, heightAt, opts = {}) {
       wealthTint(col, l.wealth, unit(i * 3 + 5), k.rise);
       if (buildLot(M, l, i, heightAt(x, z), [col.r, col.g, col.b])) close(x, z, s0, i);
     });
-    // benches, bins and bus stops on the main roads, clear of the lots (a coarse bucket grid of their footprints)
+    // benches and bins on the main roads, clear of the lots (a coarse bucket grid of their footprints; the bus stops are the real ones: vehicles3d, spec §4.42)
     const cell = 12,
       grid = new Map(),
       key = (x, z) => `${Math.floor(x / cell)},${Math.floor(z / cell)}`;
@@ -395,7 +395,7 @@ export function createTown(scene, heightAt, opts = {}) {
         uz = (b[1] - a[1]) / (len || 1);
       for (let d = PROPS.every, j = 0; d < len - 4; d += PROPS.every, j++) {
         const h = unit(ri * 977 + j * 31),
-          kind = h < 0.16 ? 'stop' : h < 0.5 ? 'bench' : h < 0.66 ? 'bin' : null;
+          kind = h < 0.5 ? 'bench' : h < 0.66 ? 'bin' : null;
         if (!kind) continue;
         const s = unit(ri * 977 + j * 31 + 1) < 0.5 ? 1 : -1,
           o = PROPS.off[kind] * s,

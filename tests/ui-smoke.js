@@ -664,6 +664,50 @@ const step = async (name, fn) => {
     if (!log.some(t => /Pickup game with/.test(t))) throw new Error(`diary: ${log.join(' | ').slice(0, 200)}`);
     return `${v.g}${v.wind ? `, wind ${v.wind}` : ''} · ${log.find(t => /Pickup game/.test(t)).slice(0, 60)}`;
   });
+  await step('transport (T-356, a career): buy the bike at the Harbor Market; a far card lists the rides; take the bus', async () => {
+    await pg.waitForFunction(() => document.querySelector('.career.hub'), null, { timeout: 60000 });
+    const buy = await ev(() => {
+      if (CW.lock) lockEnd();
+      CW.lock = null;
+      Object.assign(RUN, { event: null, money: 3000, sta: 100, injury: null, ride: null, rep: {} });
+      RUN.clock = City.freshClock();
+      RUN.pos = City.at(RUN, 'market').map(Math.round);
+      MapView.setWalk(4);
+      LOCK.max = 120000;
+      mapPick('market');
+      const t = document.querySelector('#spot').textContent,
+        b = document.querySelector('#spot .btn.ord.hot');
+      if (!/Buy the bike/.test(t) || !/Buy the scooter/.test(t) || !b) return `market card: ${t.slice(0, 200)}`;
+      b.click();
+      return '';
+    });
+    if (buy) throw new Error(buy);
+    await pg.waitForFunction(() => !CW.lock, null, { timeout: 120000, polling: 200 });
+    if (!(await ev(() => City.owns(RUN, 'bike')))) throw new Error('the bike not bought');
+    const row = await ev(() => {
+      RUN.pos = City.at(RUN, 'home').map(Math.round);
+      RUN.clock = City.freshClock();
+      mapPick('harbor');
+      return (document.querySelector('#spot .pride') || {}).textContent || '';
+    });
+    if (!/Bus[\s\S]*arrive[\s\S]*Bike/.test(row) || !/Scooter[\s\S]*Harbor Market/.test(row))
+      throw new Error(`ride row: ${row.slice(0, 240)}`);
+    await ev(() => [...document.querySelectorAll('#spot .pride .btn')].find(b => /^Bus/.test(b.textContent)).click());
+    let aboard = false; // T-357: your bus on the map while you ride (vehicles3d)
+    for (let i = 0; i < 600 && (await ev(() => !!CW.lock)); i++) {
+      if (!aboard) aboard = await ev(() => !!(MapView.m3 && MapView.m3.info().vehicles && MapView.m3.info().vehicles.mine === 'bus'));
+      await pg.waitForTimeout(200);
+    }
+    const V = await ev(() => MapView.m3 && MapView.m3.info().vehicles);
+    if (V && (!aboard || !V.fixed)) throw new Error(`the bus on the map: aboard ${aboard}, ${JSON.stringify(V)}`);
+    const r = await ev(() => ({
+      at: City.pos(RUN).join(','),
+      to: City.at(RUN, 'harbor').map(Math.round).join(','),
+      b: RUN.clock.log.slice(-1)[0].label
+    }));
+    if (r.at !== r.to || r.b !== 'Bus') throw new Error(`the bus: ${JSON.stringify(r)}`);
+    return row.replace(/\s+/g, ' ').slice(0, 120);
+  });
   await step('encyclopedia', async () => {
     await ev(() => navigate('encyclopedia'));
     await pg.waitForFunction(() => document.querySelector('#app').textContent.length > 100);

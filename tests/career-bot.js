@@ -50,6 +50,8 @@ function statFor(g, run, pol) {
  * A training week (spec §4.41): each day, 2 h sessions while the stamina lasts (good: Work when money is short, Stretch when a
  * drill can't be paid, Run the trips), then home and 8 h of sleep — the day ends; the week ends after day 7's sleep.
  */
+/** The rides the good policy takes (CAREER_RIDE=none | bus | bike | bus,bike — default both; spec §4.42). */
+const RIDES = (process.env.CAREER_RIDE || 'bus,bike').split(',');
 function week(g, run, pol, M) {
   M.weeks++;
   const good = pol !== 'casual',
@@ -85,6 +87,16 @@ function week(g, run, pol, M) {
         pf = good && run.money < M.workBelow ? placeFor(g, run, null, 'work') : placeFor(g, run, st, 'drill', !good); // casual drills by the main gain only
       if (pf) [id, opt] = pf;
       else if (good && g.City.can(run, 'home', 'stretch', 2).ok) [id, opt] = ['home', 'stretch']; // broke: stretch for free
+      // good: buy the bike once it can spare the money (spec §4.42)
+      if (
+        good &&
+        g.TRANSPORT &&
+        RIDES.includes('bike') &&
+        !g.City.owns(run, 'bike') &&
+        run.money >= M.bikeAt &&
+        g.City.can(run, 'market', 'bike').ok
+      )
+        [id, opt] = ['market', 'bike'];
     }
     if (!id) {
       if (!sleep(g, run, M)) break;
@@ -95,10 +107,22 @@ function week(g, run, pol, M) {
       tripH = g.City.trip(run, at),
       plan = good && tripH > 1 && !g.City.noRun(run, at) ? g.City.runPlan(run, at) : null;
     M.tripH += tripH;
-    if (plan && run.sta - plan.sta > 60 && g.City.travelTo(run, at, 'run')) {
+    const h0 = g.City.hour(run),
+      d0 = g.City.clock(run).day,
+      running = plan && run.sta - plan.sta > 60,
+      // good: the bus or the bike when it beats what it would do on foot (spec §4.42); casual walks
+      ride =
+        good && g.City.ways && tripH > 1
+          ? g.City.ways(run, at)
+              .filter(w => !w.why && RIDES.includes(w.k) && w.h < (running ? plan.days : tripH))
+              .sort((a, b) => a.h - b.h || a.cost - b.cost)[0]
+          : null;
+    if (ride && g.City.travelTo(run, at, ride.k)) M.rides[ride.k] = (M.rides[ride.k] || 0) + 1;
+    else if (running && g.City.travelTo(run, at, 'run')) {
       M.runs++;
       M.runSta += plan.sta;
     }
+    if (g.City.clock(run).day === d0) M.travelH += g.City.hour(run) - h0 + g.City.trip(run, at); // (the ride's hours, or the walk City.day will take)
     obs(run, M);
     const m0 = run.money,
       line = g.City.day(run, id, false, opt, 2),
@@ -212,6 +236,9 @@ function play(seed, pol) {
       fails: 0,
       runs: 0,
       tripH: 0,
+      travelH: 0, // hours actually spent getting there (walk, run or ride)
+      rides: {},
+      bikeAt: 300, // good buys the bike once it has this much (spec §4.42)
       days: 0,
       sessions: 0,
       sleepH: 0,
@@ -386,6 +413,9 @@ function play(seed, pol) {
     fails: M.fails,
     runs: M.runs,
     tripH: M.tripH / Math.max(1, M.weeks),
+    travelH: M.travelH / Math.max(1, M.weeks),
+    rides: M.rides,
+    bike: run.ride && run.ride.bike ? 1 : 0,
     perDay: M.sessions / Math.max(1, M.days),
     sleepH: M.sleepH / Math.max(1, M.nights),
     injuries: M.injuries,
@@ -523,6 +553,10 @@ for (const pol of POL === 'both' ? ['casual', 'good'] : [POL]) {
     `  walk hours a training week ${f1(avg(R.map(r => r.tripH)))} · sessions a day ${f1(avg(R.map(r => r.perDay)))} · sleep ${f1(avg(R.map(r => r.sleepH)))} h a night · injuries ${f1(avg(R.map(r => r.injuries)))} a run`
   );
   console.log(`  run trips ${f1(avg(R.map(r => r.runs)))} a run · stamina spent on them ${f1(avg(R.map(r => r.runSta)))}`);
+  const rk = [...new Set(R.flatMap(r => Object.keys(r.rides || {})))].sort();
+  console.log(
+    `  rides a run ${rk.map(k => `${k} ${f1(avg(R.map(r => (r.rides || {})[k] || 0)))}`).join(' · ') || 'none'} · bike bought ${R.filter(r => r.bike).length} / ${R.length} · travel hours a training week ${f1(avg(R.map(r => r.travelH)))}`
+  );
   if (process.env.CAREER_SAMPLE && pol === (POL === 'both' ? 'good' : POL))
     require('fs').writeFileSync(
       process.env.CAREER_SAMPLE,

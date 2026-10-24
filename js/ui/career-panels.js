@@ -34,7 +34,8 @@ const PANELS = [
   [id => id.startsWith('hq'), (run, id) => hqPanel(run, +id.slice(2))],
   [id => id === 'clash', run => clashPanel(run)],
   [id => id.startsWith('venue:'), (run, id) => venuePanel(run, id.slice(6))],
-  [id => id.startsWith('pt:'), (run, id) => pointCard(run, MapModel.ptOf(id))]
+  [id => id.startsWith('pt:'), (run, id) => pointCard(run, MapModel.ptOf(id))],
+  [id => SPOTS[id] && SPOTS[id].act === 'ride', (run, id) => marketPanel(run, id)]
 ];
 function spotPanel(run, id) {
   if (!id) return `<p class="small mute">Pick a place on the map.</p>`;
@@ -595,4 +596,81 @@ function leaveBlock(run, t) {
 function leaveClub() {
   if (World.leave(RUN)) Run.save(RUN);
   renderCareer();
+}
+
+// ---- transport (spec §4.42): the ways a trip can go, the Harbor Market ----------------------------------------------------
+/** Where a selected place's trip goes (a map point), or null: a place, a club HQ, a venue, the street battle, a map point. */
+function rideDest(run, id) {
+  if (!id) return null;
+  if (id.startsWith('pt:')) return MapModel.ptOf(id);
+  if (id.startsWith('hq')) return CITY.hq[+id.slice(2)] || null;
+  if (id.startsWith('venue:')) return VENUES[id.slice(6)] ? VENUES[id.slice(6)].at : null;
+  if (id === 'clash') {
+    const c = Fight.clashSite(run);
+    return c ? c.at : null;
+  }
+  return SPOTS[id] ? City.at(run, id) : null;
+}
+/** One way's line on its button: what it costs → when you arrive (the bus / ferry: where you get on and off; the bike: what it trains). */
+function rideLine(run, W) {
+  const rides = W.legs.filter(l => l.from),
+    via = rides.map(l => `${l.from} → ${l.to}`).join(', then '),
+    mul = Training.mul(run, 'run', false, DAY_GAIN),
+    gain =
+      W.gains && W.gains.end
+        ? (r => ` · <span class="${r.cls}">${BODY.glyph.end} ${BODY.short.end} ${r.t}</span>`)(
+            xpRate(run, 'end', Training.xpFor('end', W.gains.end, mul))
+          )
+        : '',
+    cost = [
+      term('day', `${W.h} h`, 'cost'),
+      W.sta ? term('sta', -W.sta, 'cost') : '',
+      W.cost ? `$${W.cost}${W.dbl ? ' <span class="dn">fare ×2: standing</span>' : ''}` : 'free'
+    ]
+      .filter(Boolean)
+      .join(' ');
+  return `${cost} → arrive ${City.hhmm(W.arrive)}${gain}${TRANSPORT.skip.includes(W.k) ? ' · no road stops' : ''}${via ? ` · ${esc(via)}` : ''}`;
+}
+/** The ways to ride to the selected place (spec §4.42): one button each, cost → result; the gap printed when it can't go. Never pre-picked. */
+function rideRow(run, id) {
+  const p = rideDest(run, id);
+  if (!p || CW.lock || !City.trip(run, p)) return '';
+  const W = City.ways(run, p);
+  if (!W.length) return '';
+  return `<div class="popts pride"><span class="lab" ${tip('Faster than walking, each at a cost. A bus, the ferry or a taxi passes the road stops by; the bike trains a little.')}>Ride</span><div class="ords">${W.map(
+    w =>
+      `<button class="btn ord" onclick="mapTravel(${p[0]},${p[1]},'${w.k}')" ${w.why ? `disabled ${tip(w.why)}` : ''}><b class="onm">${esc(w.name)}</b><span class="oln">${w.why ? `<span class="mute">${esc(w.why)}</span>` : rideLine(run, w)}</span></button>`
+  ).join('')}</div></div>`;
+}
+/** The Harbor Market (spec §4.42): buy the bike or the scooter — an hour there, its price → how it rides. */
+function marketPanel(run, id) {
+  const s = SPOTS[id],
+    at = City.at(run, id),
+    trip = City.trip(run, at),
+    late = run.event ? 'answer the event first' : City.noTime(run, trip, at) || (City.outside(run, at) ? City.fence(run) : ''),
+    res = {
+      bike: `${TRANSPORT.bike.pace}× walking on roads · trains ${BODY.short.end}`,
+      scooter: `${TRANSPORT.scooter.pace}× walking on roads · $${TRANSPORT.scooter.fuel} fuel an hour`
+    };
+  let hot = false;
+  const rows = ['bike', 'scooter'].map(k => {
+    const T = TRANSPORT[k],
+      c = City.can(run, id, k),
+      own = City.owns(run, k),
+      h = !hot && c.ok ? (hot = true) : false;
+    return `<button class="btn ord ${h ? 'hot' : ''}" onclick="mapGo('${id}','${k}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}><b class="onm">${own ? `${esc(T.name)} <small>yours</small>` : `Buy the ${k}`}</b><span class="oln">${own ? esc(res[k]) : c.ok ? `${term('day', `${City.cost(run, id, k)} h`, 'cost')} $${T.price} → ${esc(res[k])}` : `<span class="mute">${esc(c.why)}</span>`}</span></button>`;
+  });
+  return placeCard({
+    region: City.region(run, id),
+    kind: 'Market',
+    title: `${s.icon} ${esc(s.name)}`,
+    flavour: s.desc,
+    body: `<div class="ords">${rows.join('')}</div><small class="mute">Bought once. Not on mountain paths: Shu's highlands stay on foot.</small>`,
+    row: trip
+      ? [
+          `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${late ? `disabled ${tip(late)}` : ''}>Walk · ${trip} h</button>${runBtn(run, at, late)}`
+        ]
+      : [],
+    after: hourSeg(HOURS.stretch) + ordList(run, id, false) + placeDetails(id, placeTags(run, id, trip))
+  });
 }
