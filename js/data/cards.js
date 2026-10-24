@@ -106,7 +106,8 @@ const REQ = {
  * `when`: a CARD_FIT read that must hold); plan — { atk | def } team plan (PLANS); tac — the tactic (TACTICS); ord — [kind,
  * value] role order for its players (`who`: 'holders' | 'mb' | 'hitters' | 'setter' | 'all'; value 'weak' = their weakest passer,
  * 'hot' = our hitter with the highest morale); force — the technique always fires for its holders; on — on play: 'surge' (full
- * element gauges, again each point while active) | 'taunt' | 'wind' | 'talk' | 'inzone' (js/engine/cards.js cardOn). grp: one
+ * element gauges, again each point while active) | 'taunt' | 'wind' | 'talk' | 'inzone' (js/engine/cards.js cardOn). clean: a
+ * strong / OP card cuts its holders' mistakes by this % while active (Formula.errK, spec §2.38). grp: one
  * active card of a group at a time. tally: the rallies its fit / countered tally reads — 'serve' | 'recv' | 'attack' | 'defend'.
  */
 const CARDS = {
@@ -263,10 +264,10 @@ const CARDS = {
     zone: 'def',
     kind: 'play',
     src: 'fuse',
-    parts: ['sdig', 'deep'],
+    parts: ['sdig', 'idig'], // (owner, 2026-10-24: Speed Dig + Dig Deep never fit together — Speed Dig's soft-attack read)
     buff: { def: 12 },
     tally: 'defend',
-    desc: 'Line blocked, a middle back, the floor deep: defense +12 % more'
+    desc: 'A middle back, quick feet on a soft attack: defense +12 % more'
   },
   ftempo: {
     name: 'Freak Tempo',
@@ -425,6 +426,7 @@ const CARDS = {
   },
   delay: {
     name: 'Delayed Spike',
+    clean: 20,
     zone: 'atk',
     kind: 'play',
     src: 'tech',
@@ -447,6 +449,7 @@ const CARDS = {
   },
   freak: {
     name: 'Freak Quick',
+    clean: 20,
     zone: 'atk',
     kind: 'play',
     src: 'tech',
@@ -458,6 +461,7 @@ const CARDS = {
   },
   slide: {
     name: 'Slide',
+    clean: 20,
     zone: 'atk',
     kind: 'play',
     src: 'tech',
@@ -501,6 +505,7 @@ const CARDS = {
   },
   readblk: {
     name: 'Read Block',
+    clean: 20,
     zone: 'def',
     kind: 'play',
     src: 'tech',
@@ -511,6 +516,7 @@ const CARDS = {
   },
   softblk: {
     name: 'Soft Block',
+    clean: 20,
     zone: 'def',
     kind: 'play',
     src: 'tech',
@@ -690,6 +696,7 @@ const CARDS = {
   // OP cards (spec §2.37): once a match, from OP players by role (DECK.op) and element players
   god: {
     name: 'God Resolve',
+    clean: 30,
     zone: 'op',
     kind: 'op',
     src: 'op',
@@ -702,6 +709,7 @@ const CARDS = {
   },
   titan: {
     name: 'Resolve of the Titan',
+    clean: 30,
     zone: 'op',
     kind: 'op',
     src: 'op',
@@ -715,6 +723,7 @@ const CARDS = {
   },
   inzone: {
     name: 'INZONE!!',
+    clean: 30,
     zone: 'op',
     kind: 'op',
     src: 'op',
@@ -727,6 +736,7 @@ const CARDS = {
   },
   surge: {
     name: 'Element Surge',
+    clean: 30,
     zone: 'op',
     kind: 'op',
     src: 'op',
@@ -737,6 +747,7 @@ const CARDS = {
   },
   stand: {
     name: 'Last Stand',
+    clean: 20,
     zone: 'def',
     kind: 'play',
     src: 'book',

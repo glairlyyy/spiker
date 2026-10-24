@@ -12,7 +12,7 @@ const [
   TEAMS = 'both',
   MODES = 'captain,random,basics',
   SPAM = 'power,hunt',
-  FUSE = 'wall+commit,iblk+idig,iset+iatk,ifake+iatk',
+  FUSE = 'wall+commit,iblk+idig,iset+iatk,ifake+iatk,sdig+idig',
   OP = 'op',
   REQS = 'req'
 ] = process.argv.slice(2).map((v, i) => (i === 0 ? +v : v));

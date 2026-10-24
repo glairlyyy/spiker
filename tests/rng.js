@@ -38,7 +38,11 @@ const PATCH = [
     "serveQuality: (server, team, roll = __R('srv', rnd(0.8, 1.2), server))"
   ],
   ['js/engine/formulas.js', 'team.S.spike *\n    rnd(0.8, 1.2) *', "team.S.spike *\n    __R('spk', rnd(0.8, 1.2), spiker) *"],
-  ['js/engine/formulas.js', "skillMod(b0, 'block') * rnd(0.8, 1.2) +", "skillMod(b0, 'block') * __R('blk', rnd(0.8, 1.2), b0) +"],
+  [
+    'js/engine/formulas.js',
+    "skillMod(b0, 'block') *\n      rnd(0.8, 1.2) +",
+    "skillMod(b0, 'block') *\n      __R('blk', rnd(0.8, 1.2), b0) +"
+  ],
   ['js/engine/formulas.js', 'team.S.dig *\n      rnd(0.8, 1.2) *', "team.S.dig *\n      __R('dig', rnd(0.8, 1.2), dg) *"],
   ['js/engine/serve.js', 'const mg = rs - sq * 0.85 + rnd(-18, 18),', "const mg = rs - sq * 0.85 + __R('rcv', rnd(-18, 18), rc),"],
   [
@@ -641,11 +645,12 @@ const famB = {
   'B1+B2': {}
 };
 famB['B1+B2'] = { ...famB['B1 killChance slope /34 → /20'], ...famB['B2 block contest on the ratio'] };
-// C — the buff reaches the error roll: the attack edge also counts in the hitter's spike skill level (errK, formulas.js:25)
+// C — the buff reaches the error roll: the attack edge also counts in the hitter's spike skill level (errK, formulas.js:25).
+// Built in T-359 (SKILL.edge): C1 now counts it a second time on top
 famA['C1 atk buff lowers own errK (level × buff)'] = { errBuff: 1 };
 famA['C1 + A3'] = { errBuff: 1, roll: famA['A3 defender dig roll ≤ 1.0 vs holder'].roll };
-famB['C2 SKILL.mid 125 → 100 (all errors × 0.72)'] = { mid: 100 };
-famB['C1 + C2'] = { errBuff: 1, mid: 100 };
+famB['C2 SKILL.mid 105 → 85 (all errors × 0.77)'] = { mid: 85 };
+famB['C1 + C2'] = { errBuff: 1, mid: 85 };
 if (PARTS.includes('4'))
   for (const teams of T) {
     console.log(`\n== 4. What would make a buff felt — ${teams}: side 0's point share gain (Δ vs no buff, same family) ==`);
