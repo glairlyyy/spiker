@@ -76,6 +76,7 @@ const Encounter = {
    */
   on(run, trip, opts = {}) {
     if (!trip || Encounter.off(run)) return null;
+    if (trip.ride && TRANSPORT.skip.includes(trip.ride)) return null; // a bus, the ferry, a taxi pass the road by (spec §4.42)
     const stop = opts.stop || Encounter.pref(),
       kinds = ENC.stops[stop] || ENC.stops.friends,
       S = Encounter.of(run),

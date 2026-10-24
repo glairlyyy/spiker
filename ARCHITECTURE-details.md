@@ -1019,6 +1019,32 @@ TRIP_DAY of each leg's travel cost, stamina `RUN_GROUND.sta` (× HOURS.staK) per
 of the `DAY_ORDERS.run` key × DAY_GAIN; no fail roll). Since §4.41 the gains are × HOURS.unit × HOURS.run and the stamina × HOURS.staK. UI: `runBtn` (career-panels.js) beside Walk on place cards and inside
 `pointCard`; `mapTravel(x, y, 'run')`.
 
+### Transport (spec §4.42, T-356)
+
+- **Data** — `TRANSPORT` (js/data/city.js, the one table to tune): `ways` (bus, bike, scooter, ferry, taxi), `round` / `min` (a trip's
+  hours: half hours, 1 h at least), `skip` (bus / ferry / taxi pass the road stops by), `foot` (edge kinds always walked: path, steps,
+  ground); per way its pace (× walking), money, timetable (`first`, `last`, `every`), the bus `lines` (`nodes` = ROADS ids, each pair an
+  edge on main / overpass; `stops`; `names`), Wei standing (`double`, `refuse`), the ferry's `sea` line (design units, scaled by
+  scaleMap) and `piers` (road node + index on the sea line). The Harbor Market = SPOTS `market` (`act: 'ride'`, node `market` off
+  `harbor`, design `ridemarket`). TRAFFIC has no buses any more (vans only): the timetable buses replace them.
+- **Rules** (js/career/city.js, pure trips memoised in `City._wm` by way / from / to / hour): `busTrip(o, p, h0)` = earliest arrival over
+  the stops (walk to each, `depart` = the next departure, ride `cum` ÷ (WALK_PACE × pace), one change at a shared stop, walk on);
+  `wheelTrip(o, p, k)` = the walking route (`City.path`) with its road edges ridden, `foot` kinds, the Steps and every edge whose middle
+  is in Shu walked; `ferryTrip` = best pier pair on the sea line; `taxiTrip` = both ends in `CITY.wei`, walk ÷ pace. `City.way(run, p, k)`
+  → { k, name, h, cost, why (the gap), legs [{ m, pts, h, wait, from?, to? }], arrive, gains / sta (the bike), dbl } — null when it
+  doesn't serve the trip or isn't faster than walking (City.trip); `City.ways` = all of them in order. `City.rideTo(run, p, k)` (=
+  `City.travelTo(run, p, k)`): pay, pass the hours as one 'trip' block labelled with the way, `run.clock.last.ride = { k, legs [{ m,
+  pts, w, a, b }] }` (week time: walking to it from w, aboard a → b), move, `City.last.ride = k` (Encounter.on skips TRANSPORT.skip);
+  the bike adds `gains` (a `run` share of RUN_GROUND's Endurance on the ridden legs) and costs a `sta` share of a run's stamina.
+  Market: `City.can(run, 'market', k)` / `buyWhy` / `buyRide` (1 h there; `run.ride[k] = 1`).
+- **Model** — `MapModel.transit()` (static): bus lines `{ id, pts [[x, y, over, c]], hours, stops [{ id, at, name, c }] }` + timetable,
+  ferry `{ pts [[x, y, c]], hours, piers [{ id, at, dock, name, c }] }` + timetable; `model.you.ride` (`MapModel.ride`: the last ride's
+  legs while you stand at its end) and `you.rides` (owned).
+- **UI** — `rideRow` (career-panels.js, injected by `spotCard`): one `.btn.ord` per way, cost → arrive hh:mm (· no road stops · the
+  stops / piers), the gap printed when it can't go; `mapTravel(x, y, k)`; the lock pill "By bus". `marketPanel`: Buy the bike /
+  scooter (the first buyable = the ink primary). Career bot (good): buys the bike at $300, rides the bus / bike when faster than its
+  run or walk.
+
 ### Real facilities, no pins (spec §4.40, T-351)
 
 - **Data** — `FACILITY_OF` (place id → design; `hq` by team index) and `FACILITY[design] = { w, d, h }` (m) in js/data/city.js;

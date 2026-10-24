@@ -947,6 +947,56 @@ const MapModel = {
       plane: { from: on(R.from), lift: on(R.lift), to: on(R.to), every: TRAFFIC.plane.every }
     });
   },
+  /** The last action's ride (City.rideTo: { k, legs [{ m, pts, w, a, b }] } in week time) while you still stand at its end, else null. */
+  ride(run) {
+    const L = City.clock(run).last,
+      R0 = L && L.ride,
+      end = R0 && R0.legs.length && R0.legs[R0.legs.length - 1].pts.slice(-1)[0],
+      at = City.pos(run);
+    return end && Math.hypot(end[0] - at[0], end[1] - at[1]) < 2 ? R0 : null;
+  },
+  /**
+   * Transport on the map (spec §4.42; display only, static): `bus` = { first, last, every, lines [{ id, pts [[x, y, over, c]] (c = the
+   * travel cost along the line), hours (end to end), stops [{ id, at, name, c }] }] } — a bus leaves each end of a line at every
+   * departure (first … last, every h) and takes `hours` to the other end; `ferry` = { first, last, every, pts [[x, y, c]] (the sea
+   * line), hours, piers [{ id, at (its road node), dock (on the sea line), name, c }] } — a boat leaves each end at every departure.
+   * Positions in map units; times in hours of the day (the renderer reads them off the map's clock).
+   */
+  transit() {
+    if (MapModel.transitCache) return MapModel.transitCache;
+    const N = ROADS.nodes,
+      B = TRANSPORT.bus,
+      F = TRANSPORT.ferry,
+      kinds = City.edgeKinds(),
+      S = City.seaLine(),
+      r1 = v => Math.round(v * 10) / 10;
+    return (MapModel.transitCache = {
+      bus: {
+        first: B.first,
+        last: B.last,
+        every: B.every,
+        lines: City.busLines().map(L => ({
+          id: L.id,
+          name: L.name,
+          pts: L.nodes.map((id, i) => [
+            ...N[id].map(r1),
+            i + 1 < L.nodes.length && kinds[`${id}|${L.nodes[i + 1]}`] === 'overpass' ? 1 : 0,
+            r1(L.cum[i])
+          ]),
+          hours: Math.round((L.cum[L.cum.length - 1] / (WALK_PACE * B.pace)) * 1000) / 1000,
+          stops: L.stops.map(id => ({ id, at: N[id].map(r1), name: City.stopName(id), c: r1(L.cum[L.nodes.indexOf(id)]) }))
+        }))
+      },
+      ferry: {
+        first: F.first,
+        last: F.last,
+        every: F.every,
+        pts: S.pts.map((q, i) => [r1(q[0]), r1(q[1]), r1(S.cum[i])]),
+        hours: Math.round((S.cum[S.cum.length - 1] / (WALK_PACE * F.pace)) * 1000) / 1000,
+        piers: F.piers.map(P => ({ id: P.node, at: N[P.node].map(r1), dock: S.pts[P.i].map(r1), name: P.name, c: r1(S.cum[P.i]) }))
+      }
+    });
+  },
   /**
    * The war on the map (spec §4.34; hex tiles are never drawn): lines — each standing unit's land border (straight runs, War.borders) { unit,
    * color (its lead club's colour), runs: [{ pts, closed }] }; hot — this week's battle stretch { units, colors, lines (open polylines), site };
@@ -1027,7 +1077,14 @@ const MapModel = {
       land: MapModel.land(run),
       borders: MapModel.warMap(run),
       pins: MapModel.pins(run),
-      you: { at: City.pos(run), inside: MapModel.inside(run, City.pos(run)), title: `You are in ${REGIONS[City.loc(run)].name}` }, // inside: the walk in from the door (display)
+      you: {
+        at: City.pos(run),
+        inside: MapModel.inside(run, City.pos(run)), // the walk in from the door (display)
+        ride: MapModel.ride(run), // the last trip's legs when it was a ride (spec §4.42): the renderer plays them
+        rides: Object.keys(run.ride || {}).filter(k => run.ride[k]), // what you own (the bike / scooter you ride)
+        title: `You are in ${REGIONS[City.loc(run)].name}`
+      },
+      transit: MapModel.transit(),
       // the dark map lifts only round you and your home (owner, 2026-10-03); what you've explored stays known (pins) but dark
       fog: { points: [City.pos(run), City.at(run, 'home')], r: REVEAL_R },
       flag: MapModel.ptOf(sel),

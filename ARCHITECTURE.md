@@ -62,7 +62,7 @@ blockMoves and digSetup; tallies `ordLog` / `ordAttack` → `m.ordLog` (the resu
   gift roll, `known`, growth / innate effects — spec §4.35; the engine reads `p.gifts` through `hasGift` in engine/elements.js).
   `team.js` (Team: the team chat, personal arcs, duo cards, ex-teammates — spec §4.36; state `run.tlife`; `Team.matched` from Cup.record, `Team.lean` from Cup.entrants, `Team.week` appended to WEEK_START at load).
   `encounter.js` (Encounter: who stops your walk on the road and the answers, the short cut's vias, the figure menu, pickup games with the
-  Ref drone — spec §4.37 3–4, 7, §4.38; state `run.enc`, lazy; the drone: `run.drone`, lazy — City.drone).
+  Ref drone — spec §4.37 3–4, 7, §4.38; state `run.enc`, lazy; the drone: `run.drone`, lazy — City.drone; transport — bus / bike / scooter / ferry / taxi, `TRANSPORT` in data/city.js, City.ways / rideTo, `run.ride` lazy — spec §4.42).
 - **portraits** `js/render/faces.js` `faceSVG(p, mood, size)` returns a cached 3D portrait `<img>` (PORTRAIT: look key → data URL) or the drawn face (`faceSVG2D`) as a placeholder that is swapped in place when `js/render3d/portrait3d.mjs` (lazy-loaded; one offscreen renderer, the default model re-dressed in hair / skin / team shirt, Main_v2 for you) finishes it.
 - **ui** `dom.js` (esc, tip, info, fold, kv — the vertical label/value list of spec §10.1a, peek — the L2 detail card of §10.8: `CW.peek` holds the open id, `peekSync` (MutationObserver on #app) ports the open card to <body> beside its owner panel…), `icons.js`, `match-screen.js` (startMatch → `A`, 3D load / bind, fit, venue / stakes, leaveMatch), `match-controls.js` (control bar, ⚙ settings,
   camera / follow, fullscreen, timeouts, tactics, speed / pause / skip, scoreboard, commentary, rail, box score, hotkeys), `match-tech.js`
@@ -294,7 +294,7 @@ Plain-default fields live once in `RUN_DEFAULTS` (run.js: name → `[make, valid
 (`academy`, `eval` + `Eval.setup`, `spotQ` via `City.roll`, `fog`, `clash`, `sta`, `mode`, `Feel.sync` → `you.traits` from
 `run.sparks` / `run.scars`). Add a new simple field to
 the table only. `run.grades` (your match grades, newest last) is capped at `MLOG.max` like `run.mlog`. Lazy fields (no RUN_DEFAULTS, no version bump: absent = the
-empty state): `run.enc` (this week's road / menu state), `run.tlife`, `run.drone` (`{ own }` / `{ rent }`: the Ref drone, spec §4.38), `run.mydeck` (your kept deck pick, card ids — Team.myDeck / keepDeck, spec §2.37).
+empty state): `run.enc` (this week's road / menu state), `run.tlife`, `run.drone` (`{ own }` / `{ rent }`: the Ref drone, spec §4.38), `run.ride` (`{ bike, scooter }`: rides you own, spec §4.42 — City.owns), `run.mydeck` (your kept deck pick, card ids — Team.myDeck / keepDeck, spec §2.37).
 
 ## Testing
 

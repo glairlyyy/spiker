@@ -51,7 +51,7 @@ function spotGhost(run, id) {
 function spotCard(run) {
   roadSync(run);
   const body = City.withInvite(run, CW.spot, () => spotPanel(run, CW.spot)), // (an Invite's yes counts on this floor: the numbers include them)
-    row = inviteRow(run, CW.spot) + pickupRow(run, CW.spot) + rentRow(run, CW.spot) + routeRow(run);
+    row = inviteRow(run, CW.spot) + pickupRow(run, CW.spot) + rentRow(run, CW.spot) + rideRow(run, CW.spot) + routeRow(run);
   return `<button class="btn x" onclick="mapPick(null)" aria-label="Close">✕</button>${row ? body.replace(/<\/div>\s*$/, `${row}</div>`) : body}`;
 }
 /** The place card's note when an Invite's yes joins an order here (spec §4.37 7) and they aren't a teammate (those show on the floor). */
@@ -412,7 +412,7 @@ function lockLayer() {
   const L = CW.lock;
   if (!L) return '';
   if (L.phase === 'walk')
-    return `<div class="actlock walk" id="actlock" role="status" aria-live="polite"><span class="lkpill"><i class="spin sm" aria-hidden="true"></i>${L.to ? `Walking to ${esc(L.to)}` : 'On the way'}</span></div>`;
+    return `<div class="actlock walk" id="actlock" role="status" aria-live="polite"><span class="lkpill"><i class="spin sm" aria-hidden="true"></i>${L.by ? `By ${esc(L.by.toLowerCase())}${L.to ? ` to ${esc(L.to)}` : ''}` : L.to ? `Walking to ${esc(L.to)}` : 'On the way'}</span></div>`;
   if (L.phase === 'greet') {
     const P = L.greet.person;
     return `<div class="actlock greet" id="actlock" role="dialog" aria-live="polite" onclick="lockGreetDone()"><div class="sbox">${P ? `<span class="sb-face">${faceSVG(P, 0, 72)}</span>` : ''}<div class="sb-body">${P ? `<b class="sb-name">${esc(P.name)}</b>` : ''}<p class="sb-text">${esc(L.greet.text)}</p>${L.greet.sub ? `<small class="mute">${esc(L.greet.sub)}</small>` : ''}</div><span class="sb-keys"><kbd>Space</kbd> next</span></div></div>`;
@@ -482,7 +482,7 @@ function mapScout(ti) {
   CW.spot = `hq${ti}`;
   mapAfter(RUN, null, null, roadAfter(RUN, via));
 }
-/** Just travel to a point (its trip days, at least one); `how` 'run': run it (T-309 — the ground trains you). */
+/** Just travel to a point (its trip hours, at least one); `how` 'run': run it (T-309 — the ground trains you); a TRANSPORT way: ride it (spec §4.42). */
 function mapTravel(x, y, how = 'walk') {
   if (CW.lock) return;
   const via = roadStart([x, y]),
@@ -493,6 +493,7 @@ function mapTravel(x, y, how = 'walk') {
   const enc = roadAfter(RUN, via);
   Run.save(RUN);
   actLock(null, null, null, enc);
+  if (TRANSPORT[how]) CW.lock.by = TRANSPORT[how].name; // the pill: "By bus" (spec §4.42)
   renderCareer();
 }
 function mapEndWeek() {
