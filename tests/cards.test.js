@@ -126,14 +126,14 @@ test('cards: an empty deck takes back only cooled cards; an OP card is once a ma
     m = g.newMatch(T[0], T[1], false, { cards: [{ by: 'you' }, { by: 'you' }] }),
     D = m.deck[0];
   D.draw = [];
-  D.hand = [null, null, null, 'pow', 'grd'];
+  D.hand = [null, null, null, 'iatk', 'iblk'];
   D.disc = [
     { id: 'hunt', cd: 0 },
     { id: 'power', cd: 3 },
-    { id: 'jmp', cd: 0 }
+    { id: 'idig', cd: 0 }
   ];
   g.Cards.refill(m, 0);
-  eq([...D.hand].sort().join(), ['grd', 'hunt', 'jmp', 'pow', null].sort().join(), 'the cooled two back, one gap');
+  eq([...D.hand].sort().join(), ['iblk', 'hunt', 'idig', 'iatk', null].sort().join(), 'the cooled two back, one gap');
   eq(D.disc.map(e => e.id).join(), 'power', 'the cooling one stays');
   // OP: played, ends, used up — never back
   const w = m.t[0].P.find(p => p.role === 'WS');
@@ -372,7 +372,7 @@ test('cards: every card has a type — team plays (the playbook, God Resolve, IN
   for (const [id, c] of Object.entries(g.CARDS)) assert(['team', 'solo', 'debuff'].includes(c.type), `${id} typed`);
   for (const id of ['hunt', 'quick', 'commit', 'feedhot', 'wall', 'god', 'inzone']) eq(g.CARDS[id].type, 'team', id);
   for (const id of ['strap', 'qtrap', 'bait', 'float', 'short']) eq(g.CARDS[id].type, 'debuff', id);
-  for (const id of ['killer', 'delay', 'readblk', 'take', 'titan', 'pow', 'duo_quick']) eq(g.CARDS[id].type, 'solo', id);
+  for (const id of ['killer', 'delay', 'readblk', 'take', 'titan', 'iatk', 'duo_quick']) eq(g.CARDS[id].type, 'solo', id);
   eq(g.DECK.mine, 6, 'your deck of 6');
   eq(g.DECK.myHand, 3, 'a hand of 3');
 });
@@ -457,7 +457,7 @@ test('cards: requests — odds from bond, trust and the read; a yes moves the ca
   const g = load(94);
   const { m, D, Y } = myMatch(g, 6, ['killer'], { bond: 20 });
   D.hand[0] = 'hunt';
-  D.hand[1] = 'pow';
+  D.hand[1] = 'iatk';
   eq(g.Cards.canAsk(m, 0, 1), 'type', 'only team plays');
   eq(g.Cards.canAsk(m, 0, 0), null, 'at the match start: a turn');
   const p20 = g.Cards.askOdds(m, 0, 0).p;
@@ -485,6 +485,7 @@ test('cards: requests — odds from bond, trust and the read; a yes moves the ca
   // next turn: a yes (odds forced to 1) moves it into your hand
   while (m.turnN === 0 && !m.over) g.playRally(m);
   D.hand[0] = 'hunt';
+  D.act = D.act.filter(a => a.id !== 'hunt'); // (the captain may have played one of its own)
   g.REQ.min = 1;
   g.REQ.max = 1;
   Y.hand[2] = null;
@@ -535,4 +536,182 @@ test('cards: your deck pick carries to the next match (run.mydeck); a card you n
   ); // Delay no longer yours
   eq(c.Y.ids.filter(id => g.CARDS[id].kind !== 'basic').join(), 'killer', 'a lost card drops out');
   eq(c.Y.ids.length, 6, 'Basics fill');
+});
+
+/* ---------- amplifiers and fusing (spec §2.37 Amplifiers and fusing, T-358) ---------- */
+
+/** Target Serves fired by side 0 (every player owns it) over `n` matches with side 0's pinned cards `pin`. */
+function killerFires(g, pin, n = 8) {
+  let k = 0;
+  for (let s = 0; s < n; s++) {
+    g.RNG.seed(40 + s);
+    const T = g.mkTeams();
+    for (const p of g.squadOf(T[0])) p.skills = ['target'];
+    const m = g.newMatch(T[0], T[1], false, {
+      cards: [
+        { by: 'you', pin },
+        { by: 'you', pin: [] }
+      ]
+    });
+    while (!m.over) g.playRally(m);
+    for (const id in m.techUse) k += (m.techUse[id].target || { n: 0 }).n;
+  }
+  return k;
+}
+
+test('cards: owned techniques fire on their own at half rate; an amplifier raises its group’s; never locked (spec §2.37, T-358)', () => {
+  const g = load(95);
+  eq(g.DECK.tech, 0.5, 'half today’s rate');
+  // the gate: a rally decides once per player and technique (hashed), at DECK.tech; a card that calls it: always
+  g.RNG.seed(3);
+  const T0 = g.mkTeams(),
+    q = g.squadOf(T0[0])[0],
+    m0 = g.newMatch(T0[0], T0[1], false, { cards: [{ by: 'you' }, { by: 'you' }] });
+  q.skills = ['target'];
+  g.playRally(m0); // (CM = m0)
+  let on = 0;
+  for (let n = 0; n < 2000; n++) {
+    m0.gate = { s: `t|${n}`, n, c: {} };
+    if (g.hasTech(q, 'target')) on++;
+    eq(g.hasTech(q, 'target'), g.hasTech(q, 'target'), 'one answer a rally');
+  }
+  assert(on > 900 && on < 1100, `on in ${on} of 2000 rallies`);
+  m0.gate = null;
+  const half = killerFires(g, [], 24);
+  g.DECK.tech = 1;
+  const full = killerFires(g, [], 24);
+  g.DECK.tech = 0.5;
+  assert(full > 60 && half / full > 0.35 && half / full < 0.68, `Target Serve fires ${half} at half rate vs ${full} at today’s`);
+  const amp = killerFires(g, ['isrv'], 24);
+  assert(amp > half * 1.25, `Improve Serve: ${amp} vs ${half}`);
+  const plus = killerFires(g, ['isrvp'], 24);
+  assert(plus > amp, `Improve Serve+: ${plus} vs ${amp}`);
+  // an amplifier of another group does not move it
+  const other = killerFires(g, ['iblk'], 24);
+  assert(Math.abs(other - half) < half * 0.3, `Improve Block leaves the serve alone (${other} vs ${half})`);
+  // groups: every technique in exactly one, every group has its amplifier
+  const techs = Object.keys(g.SKILLS).filter(id => g.SKILLS[id].tech);
+  for (const id of techs) assert(g.SKILLS[id].grp, `${id} grouped`);
+  for (const a of g.DECK.basics) assert(g.CARDS[a].amp && techs.some(id => g.SKILLS[id].grp === g.CARDS[a].amp), `${a} amplifies a group`);
+  // outside a rally an owned technique reads as known (holders, the hand bar)
+  g.RNG.seed(3);
+  const T = g.mkTeams(),
+    p = g.squadOf(T[0]).find(q => q.role === 'WS');
+  p.skills = ['killer'];
+  const m = g.newMatch(T[0], T[1], false);
+  g.playRally(m);
+  assert(!m.gate && g.hasTech(p, 'killer'), 'between rallies: owned = on');
+});
+
+test('cards: every recipe fuses in the hand into one card; the second place stays empty (spec §2.37, T-358)', () => {
+  const g = load(96);
+  const F = Object.keys(g.CARDS).filter(id => g.CARDS[id].parts);
+  for (const id of ['fortress', 'decoy', 'pwall', 'tempo', 'scramble', 'fbait', 'sniper', 'lockdown', 'full_delay', 'isrvp'])
+    assert(F.includes(id), `${id} is a recipe`);
+  eq(g.Cards.recipe('iblk', 'idig'), 'fortress', 'Block + Dig = Fortress');
+  eq(g.Cards.recipe('idig', 'iblk'), 'fortress', 'either way round');
+  eq(g.Cards.recipe('ifake', 'delay'), 'full_delay', 'Fake + Delayed Spike = its full form');
+  eq(g.Cards.recipe('iatk', 'delay'), null, 'a technique fuses only with its own group’s amplifier');
+  eq(g.Cards.recipe('iatk', 'iatk'), 'iatkp', 'the same amplifier twice = Improve Attack+');
+  g.RNG.seed(6);
+  const T = g.mkTeams(),
+    m = g.newMatch(T[0], T[1], false, { cards: [{ by: 'you' }, { by: 'you' }] }),
+    D = m.deck[0];
+  for (const id of F) {
+    const [a, b] = g.CARDS[id].parts;
+    D.hand = [a, 'hunt', b, null, null];
+    const L = g.Cards.fusable(m, 0, 0);
+    assert(
+      L.some(x => x.h === 2 && x.id === id),
+      `${id}: the partner lights up`
+    );
+    eq(g.Cards.fuse(m, 0, 0, 2), id, `${id} fused`);
+    eq(D.hand.join(), [id, 'hunt', null, null, null].join(), `${id}: one card, a gap`);
+    for (const k of ['dur', 'cd', 'type', 'per']) assert(g.CARDS[id][k] != null, `${id}.${k}`);
+  }
+  D.hand = ['iatk', 'hunt', null, null, null];
+  eq(g.Cards.fuse(m, 0, 0, 1), null, 'no recipe: nothing');
+});
+
+test('cards: a fused card plays once with both costs; both parts cool after; it acts as both (spec §2.37, T-358)', () => {
+  const g = load(97);
+  g.RNG.seed(6);
+  const T = g.mkTeams();
+  for (const p of g.squadOf(T[0])) p.skills = p.role === 'WS' ? ['killer'] : [];
+  const m = g.newMatch(T[0], T[1], false, { cards: [{ by: 'you' }, { by: 'you' }] }),
+    D = m.deck[0];
+  D.hand = ['isrv', 'killer', 'iatk', null, null];
+  D.disc = [];
+  eq(g.Cards.fuse(m, 0, 0, 1), 'full_killer', 'Full Killer Serve');
+  const H = g.Cards.holders(m, 0, 'full_killer'),
+    court = m.t[0].P,
+    st0 = Object.fromEntries(court.map(p => [p.id, m.sta[p.id] ?? 1]));
+  assert(H.length && H.every(p => p.skills.includes('killer')), 'its holders: the technique’s');
+  const a = g.Cards.play(m, 0, 0);
+  assert(a && a.id === 'full_killer' && a.parts.join() === 'isrv,killer', 'one play act, both parts named');
+  for (const p of court) {
+    const want = st0[p.id] - g.CARDS.isrv.cost.amt - (H.includes(p) ? g.CARDS.killer.cost.amt : 0);
+    assert(Math.abs(m.sta[p.id] - want) < 1e-9, `#${p.num}: both costs (${m.sta[p.id]} vs ${want})`);
+  }
+  eq(g.Cards.can(m, 0, 2), 'point', 'one play a point');
+  eq(g.Cards.active(m, 0).length, 1, 'active as one card');
+  // it acts as both: Improve Serve's buff, the full form's Killer (× DECK.amp.full) and the technique called
+  assert(
+    D.amp.some(x => x.g === 'serve'),
+    'the serve group amplified'
+  );
+  const kb = D.buff.find(b => b.k === 'serve' && b.need === 'killer');
+  assert(kb && Math.abs(kb.v - g.CARDS.killer.buff.serve * g.DECK.amp.full * g.Cards.active(m, 0)[0].lv) < 1e-9, 'the technique × full');
+  // the same card again (either part) is active
+  D.hand[3] = 'isrv';
+  g.playRally(m);
+  eq(g.Cards.can(m, 0, 3), 'active', 'a part of an active fused card is active');
+  while (g.Cards.active(m, 0).length && !m.over) g.playRally(m);
+  if (!m.over) {
+    const ids = D.disc
+      .map(e => e.id)
+      .sort()
+      .join();
+    eq(ids, 'isrv,killer', 'both parts in the discard pile, not the fused card');
+    assert(
+      D.disc.every(e => e.cd <= g.CARDS[e.id].cd),
+      'each cools by its own'
+    );
+  }
+  // a discarded fused card: both parts to the discard pile
+  D.hand = ['iblk', 'idig', null, null, null];
+  D.disc = [];
+  g.Cards.fuse(m, 0, 0, 1);
+  g.Cards.discard(m, 0, 0);
+  eq(
+    D.disc
+      .map(e => e.id)
+      .sort()
+      .join(),
+    'iblk,idig',
+    'discarded: both parts'
+  );
+});
+
+test('cards: the captain fuses by the same rules (no draws) and plays the fused card (spec §2.37, T-358)', () => {
+  const g = load(98);
+  g.RNG.seed(6);
+  const T = g.mkTeams(),
+    m = g.newMatch(T[0], T[1], false),
+    D = m.deck[0];
+  D.act = [];
+  D.hand = ['iblk', 'iatk', 'idig', null, null];
+  const r0 = g.RNG.state ? g.RNG.state() : null,
+    h = g.Cards.capPlay(m, 0);
+  eq(D.hand[h], 'fortress', 'Block + Dig fused: Fortress');
+  eq(D.hand.filter(Boolean).length, 2, 'one card for two');
+  if (r0 != null) eq(g.RNG.state(), r0, 'no draws');
+  assert(g.Cards.play(m, 0, h), 'the captain plays it');
+  eq(D.log.filter(e => e.k === 'fuse').length, 1, 'logged');
+  // your own hand of 3 fuses too
+  const p = g.squadOf(T[0]).find(q => q.role === 'WS'),
+    Y = g.Cards.myDeck(m, 0, p.id, []);
+  Y.hand = ['ifake', 'iatk', null];
+  eq(g.Cards.fuse(m, 0, 0, 1, true), 'decoy', 'your Fake + Attack = Decoy');
+  eq(Y.hand.join(), ['decoy', null, null].join(), 'in your hand');
 });

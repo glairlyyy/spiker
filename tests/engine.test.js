@@ -1220,7 +1220,7 @@ test('engine: a Delayed Spike is never stuffed, broken or tooled (a fingertip to
     }
     return { delayed, fail, touch };
   };
-  const hi = run(false, 32), // (32: knockdowns turn some attacks into high balls over — spec §2.28)
+  const hi = run(false, 64), // (64: knockdowns turn some attacks into high balls over — spec §2.28; owned techniques fire on half the rallies — §2.37)
     lo = run(true, 24);
   assert(hi.delayed > 30 && lo.delayed > 30, `enough delayed spikes (${hi.delayed}, ${lo.delayed})`);
   assert(hi.touch > 0, `fingertip touches happen (${hi.touch}/${hi.delayed})`);

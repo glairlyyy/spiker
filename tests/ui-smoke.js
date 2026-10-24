@@ -916,6 +916,93 @@ const step = async (name, fn) => {
     if (!/Cards[\s\S]*(×\d|No cards played)/.test(await ev(() => $('#over').textContent)))
       throw new Error('no Cards row on the result card');
   });
+  await step('Fusing in the hand (T-358): drag a card onto another, F then two keys, the fused card plays', async () => {
+    await ev(() => navigate('menu'));
+    await ev(() => {
+      TS.playAs = 'a:2';
+      startMonster();
+    });
+    await pg.waitForFunction(() => typeof A !== 'undefined' && A && A.m && A.prep, null, { timeout: 60000 });
+    const shot = process.env.QA_DIR; // (QA screenshots: QA_DIR=<dir>)
+    await ev(() => {
+      prepStart();
+      A.paused = true; // (between points: hold play while we fuse)
+      A.sceneOn = false;
+      const D = A.m.deck[0];
+      D.hand = ['iblk', 'idig', 'ifake', 'iatk', 'isrv'];
+      A.hshow[0] = [...D.hand];
+      handTick(true);
+      if (!$('#hand') || $('#hand').hidden || $('#hand').querySelectorAll('.hc[data-h]').length !== 5) throw new Error('no hand bar');
+    });
+    // drag Improve Block onto Improve Dig: the cards it fuses with light up with the result's name and cost → result
+    const box = async h => (await pg.$(`#hrow .hc[data-h="${h}"]`)).boundingBox();
+    const a = await box(0),
+      b = await box(1);
+    await pg.mouse.move(a.x + a.width / 2, a.y + 40);
+    await pg.mouse.down();
+    await pg.mouse.move(a.x + a.width / 2 + 20, a.y + 30, { steps: 4 });
+    await pg.mouse.move(b.x + b.width / 2, b.y + 60, { steps: 8 });
+    await ev(() => {
+      const fz = [...document.querySelectorAll('#hrow .hc.fz')];
+      if (!fz.length || !fz.some(c => /Fuse → Fortress/.test(c.textContent))) throw new Error('no fuse highlight naming Fortress');
+      if (!fz.every(c => /→/.test(c.querySelector('.hfz small').textContent))) throw new Error('no cost → result on the highlight');
+      if (!document.querySelector('.hc.hghost')) throw new Error('no dragged card');
+    });
+    if (shot) await pg.screenshot({ path: `${shot}/fuse-drag.png` });
+    await pg.mouse.up();
+    await ev(() => {
+      const D = A.m.deck[0];
+      if (D.hand[0] !== 'fortress' || D.hand[1] !== null) throw new Error(`drag did not fuse: ${JSON.stringify(D.hand)}`);
+      if (document.querySelector('.hc.hghost') || document.querySelector('#hrow .hc.fz')) throw new Error('the drag did not clear');
+      if (D.log.some(e => e.k === 'play')) throw new Error('the drop played a card');
+      handTick(true);
+      if (!$('#hrow .hc.fused[data-h="0"]') || !/Fortress/.test($('#hrow .hc[data-h="0"]').textContent))
+        throw new Error('the fused card is not on the bar');
+    });
+    // F, then 3 and 4: Improve Fake + Improve Attack = Decoy
+    await pg.keyboard.press('f');
+    await pg.keyboard.press('3');
+    await ev(() => {
+      if (!A.hfz || A.hfz.h !== 2 || !$('#hrow .hc.fz[data-h="3"]')) throw new Error('F 3: no highlight on its partner');
+    });
+    await pg.keyboard.press('4');
+    await ev(() => {
+      const D = A.m.deck[0];
+      if (D.hand[2] !== 'decoy' || D.hand[3] !== null || A.hfz) throw new Error(`F 3 4 did not fuse: ${JSON.stringify(D.hand)}`);
+      if (document.fullscreenElement) throw new Error('F went fullscreen');
+    });
+    if (shot) await pg.screenshot({ path: `${shot}/fuse-card.png` });
+    // play Fortress: one play, both costs, active as one card; on the serve the court names it
+    await ev(() => {
+      const m = A.m,
+        st0 = m.t[0].P.map(p => m.sta[p.id] ?? 1);
+      if (!handPlay(0, 0)) throw new Error('Fortress did not play');
+      const want = CARDS.iblk.cost.amt + CARDS.idig.cost.amt;
+      if (!m.t[0].P.every((p, k) => Math.abs(st0[k] - m.sta[p.id] - want) < 1e-9)) throw new Error('not both costs');
+      if (!Cards.active(m, 0).some(x => x.id === 'fortress')) throw new Error('Fortress not active');
+      A.paused = false;
+    });
+    const seen = await ev(() => {
+      for (let n = 0; n < 4000; n++) {
+        step(16);
+        if (Dir.busy()) exchangeSkip();
+        if (/plays Fortress/.test(DBG.text())) {
+          handTick(true);
+          return true;
+        }
+      }
+      return false;
+    });
+    if (!seen) throw new Error('no banner / log for the fused play');
+    if (shot) await pg.screenshot({ path: `${shot}/fuse-play.png` });
+    await ev(() => {
+      A.hold = true;
+      while (!A.m.over) playRally(A.m);
+      const D = A.m.deck[0];
+      if (!D.played.fortress) throw new Error('Fortress not counted');
+      finishMatch();
+    });
+  });
   await step('Deck match as a player (T-349): your deck of 6, a hand of 3, a request, the captain plays', async () => {
     await ev(() => navigate('menu'));
     await ev(() => startDeckMatch('player'));

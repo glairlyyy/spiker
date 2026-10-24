@@ -18,7 +18,31 @@ function skillMod(p, key) {
 const bondCombo = (a, b) => ((a.bond && a.bond[b.id]) || 0) >= 60 || ((b.bond && b.bond[a.id]) || 0) >= 60;
 /** Can this player use a technique? Learned (career) or meets the stat requirements, and not held back this match. */
 function hasTech(p, id) {
-  return knowsTech(p, id) && !techHeld(p, id); // techHeld: switched off for this match (spec §9.10)
+  return knowsTech(p, id) && !techHeld(p, id) && techOn(p, id); // techHeld: switched off for this match (spec §9.10)
+}
+/** Owns a technique and has it switched on (hasTech without the rally's rate: cards, holders, the hand bar). */
+const ownsTech = (p, id) => knowsTech(p, id) && !techHeld(p, id);
+/**
+ * Is p's technique `id` on this rally (spec §2.37 Amplifiers and fusing, T-358)? A player never forgets a technique, but goes for
+ * it only on some rallies: at DECK.tech × today's rate, more with its group's amplifier active (techRate), always while a card
+ * forces it. Decided once per player and technique per rally by a hash of the rally's gate (CM.gate, set by Cards.serve; no R()
+ * here). Outside a rally (no gate): on.
+ */
+function techOn(p, id) {
+  const G = CM && !CM.over && CM.gate;
+  if (!G) return true;
+  const k = `${p.id}|${id}`;
+  let v = G.c[k];
+  if (v === undefined) v = G.c[k] = cardCalled(p, id) || cardRoll(`${G.s}|${k}`) < techRate(p, id);
+  return v;
+}
+/** p's chance to go for technique `id` on a rally: DECK.tech, + its group's active amplifiers on p's side (D.amp), at most 1. */
+function techRate(p, id) {
+  const g = SKILLS[id] && SKILLS[id].grp,
+    D = g && CM && CM.deck && CM.deck[sideOf(p)];
+  let r = DECK.tech;
+  if (D && D.amp) for (const a of D.amp) if (a.g === g && (!a.pids || a.pids.includes(p.id))) r += a.v;
+  return Math.min(1, r);
 }
 /** Does the player own a technique (learned, or meets its requirements), switched on or not? */
 function knowsTech(p, id) {

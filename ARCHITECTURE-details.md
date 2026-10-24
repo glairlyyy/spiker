@@ -1369,6 +1369,30 @@ buffs (`cardBuff` inside `stageBuff`, × holder level for techniques); `cardEdge
 and edges. `opts.cards[i]` = { by, me, deck: [ids] (Basics fill unless fill === false), pin: [ids] (always active, no deck —
 tests / measurements) }. `npm run cards` (tests/cards.js) measures modes and the spam test; `npm run reads` the edges (pinned).
 
+**Amplifiers and fusing** (spec §2.37, T-358):
+- **Technique rate**: `hasTech` = owned (`ownsTech`: known, switched on) && `techOn` (engine/skills.js). During a rally (`m.gate` { s, n, c },
+  set at the end of `Cards.serve` — one R() a match for its salt `m.gateS` — and cleared at the top of `Cards.point`) each player ×
+  technique is decided once (memo `gate.c`) by `cardRoll(salt|n|pid|id) < techRate(p, id)` = `DECK.tech` (0.5) + the side's
+  amplifiers of its group (`D.amp` [{ g, v, pids? }]), ≤ 1; `cardCalled` (forced, or an active technique card naming it — `D.calls`,
+  not Stubborn) → always on. No gate (between rallies, UI, deck building): owned = on. Card/UI code that means "owns" uses `ownsTech`.
+- **Groups** `SKILLS[id].grp` (js/data/skills.js): serve killer / drive / target · attack cutshot / pipecombo · set sync · fake delay /
+  lefty / freak / slide · block readblk / softblk · dig roll / save.
+- **Amplifiers** = the Basics (`DECK.basics`: isrv iatk iset iblk idig ifake; kind 'basic', src 'base', dur 2, cd 3, court −0.02
+  stamina): `amp` group, `buff` (the action), `hit` (buff entries with `grpT`: only a player whose group technique is on this rally,
+  `grpOn`), `foe` (% on the other side's stat, pushed into its `ek` in `cardEdges`). A technique card's edges × `DECK.amp.with` while its
+  group's amplifier is active.
+- **Fused cards** (`CARDS[id].parts`, src 'fuse', never in a deck): combos (fortress, decoy, pwall, tempo, scramble, fbait), the old
+  pairs (sniper, lockdown, ifloor, ftempo, stempo), Improve X+ (`<amp>p`, built in data/cards.js: parts [a, a], `pk` DECK.amp.plus each),
+  full forms (`full_<tech card>`, built in data/skills.js: [amp, tech], `pk` [1, DECK.amp.full], force). `fuseDefaults`: dur ≥ 3, cd =
+  the slowest part's (display / `strong`), type from the parts. Engine: `cardComps(id)` → [[part, ×], …, [id, 1]]; `cardApply` and
+  `cardEdges` compile every part (× pk; holder level only on parts with `need`); `actIds` (active ids with parts) for counters, traps,
+  'active' and 'clash'; `fuseLead` (the non-amplifier part) gives holders and level; `payers` / `afford` / `fits` / `cardState` read
+  the parts; `Cards.play` pays each part's cost (act `parts`, `costs`); `Cards.toDisc` sends the parts (each with its own `cd`).
+- API: `Cards.recipe(a, b)` (`fuseOf`, either order) · `Cards.fuse(m, i, a, b, y)` → fused id in place a, place b a gap, D.log
+  `{ k: 'fuse' }` · `Cards.fusable(m, i, h, y)` → [{ h, id }] · `Cards.parts(id)` · `Cards.canId(m, i, id, y, H)` (Cards.can after
+  the gap). The captain (`capPlay`) scores every recipe pair in its hand (`CARD_AI.fuse`) and fuses when one beats every single
+  card, then returns the fused place (no draws).
+
 ## The hand bar (spec §2.37 On screen, T-347)
 
 - `js/ui/match-cards.js`, css/match.css (`.hand`, `.hc`, `.hpile`, `.hlist`, `.cact`). Mounted by startMatch (`handMount`: `#hand`
@@ -1393,6 +1417,12 @@ tests / measurements) }. `npm run cards` (tests/cards.js) measures modes and the
   hand with each team play's odds word and Ask (`handAsk` → `Cards.ask`, a line on the bar and `request: …` in DBG); play lines
   in DBG tag "(you)" / "(captain)". Dev › Deck match: `startDeckMatch(mode)` (menu.js; Average sides 45–70, you a wing of the left
   side; Bond from the Dev tab).
+- **Fusing** (T-358): drag a card of yours (`handDragStart/Move/End`, window pointer listeners: 8 px starts a drag, a ghost `.hghost`
+  rides above the pointer, `body.hdragging` hides tooltips) or `F` then two keys (`A.hfz` { i, h, drag | key }; Shift+F stays
+  fullscreen; Esc cancels) → `handFz` lights the partners (`.hc.fz` with `.hfz`: "Fuse → name" and `cardFuseLine` cost → result;
+  the source `.fsrc`, the rest `.fdim`) → `handFuse` (Cards.fuse, `A.hshow` follows, a `fusein` pop, a line and a `fuse:` DBG line).
+  `A.hdragT` swallows the click that ends a drag. Fused cards: `.hc.fused` (double band), kind word Fused, both costs (`cardCosts`),
+  "cools 3+10". Amplifiers: kind word Amplifier ("Amp" on the band); prep / result rows say amplifiers.
 
 ## Gifts (spec §4.35, T-320)
 

@@ -140,6 +140,44 @@ Object.assign(SKILLS, {
   };
   for (const id in T) SKILLS[id].trade = T[id];
 }
+// Amplifier groups (spec §2.37 Amplifiers and fusing, T-358): each technique in one group. Improve <group> (CARDS `amp`) makes the
+// group's techniques fire more and hit harder; an amplifier fused with a technique card of its group = its full form.
+{
+  const G = {
+    serve: ['killer', 'drive', 'target'],
+    attack: ['cutshot', 'pipecombo'],
+    set: ['sync'],
+    fake: ['delay', 'lefty', 'freak', 'slide'],
+    block: ['readblk', 'softblk'],
+    dig: ['roll', 'save']
+  };
+  for (const g in G) for (const id of G[g]) SKILLS[id].grp = g;
+  // the full forms: "Full Delayed Spike" = Improve Fake + Delayed Spike — always goes for it, its edges and buffs × DECK.amp.full
+  // (a fake's full form: their block −4 % more, the faked block fails more)
+  for (const [id, c] of Object.entries(CARDS)) {
+    if (c.src !== 'tech' || !SKILLS[c.need] || !SKILLS[c.need].grp) continue;
+    const g = SKILLS[c.need].grp,
+      amp = Object.keys(CARDS).find(a => CARDS[a].amp === g);
+    if (!amp) continue;
+    CARDS['full_' + id] = {
+      name: `Full ${c.name}`,
+      zone: c.zone,
+      kind: 'play',
+      src: 'fuse',
+      parts: [amp, id],
+      pk: [1, DECK.amp.full],
+      need: c.need,
+      force: 1,
+      ...(g === 'fake' ? { foe: { jump: -4 } } : {}),
+      tally: c.tally,
+      dur: c.dur,
+      per: c.per,
+      cd: Math.max(c.cd, CARDS[amp].cd),
+      type: c.type,
+      desc: `${c.desc} — full form: always goes for it, edge × ${DECK.amp.full}`
+    };
+  }
+}
 /** Encyclopedia notes: when a technique fires and what beats it. */
 const SKILL_HOW = {
   freak: 'On a quick set, 50% when the setter has 1.6+ wit. The block covers a quarter as much. Counter: Read Block.',

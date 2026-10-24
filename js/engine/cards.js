@@ -11,13 +11,24 @@ const deckOf = (m, i) => (m && m.deck ? m.deck[i] : null);
 /** Points played so far (one play a side a point is keyed on it). */
 const ptsPlayed = m => m.pts[0] + m.pts[1];
 
+/**
+ * Is technique `id` called for p this rally (spec §2.37: a technique card calls the play — its holder goes for it at the next
+ * chance): forced (cardForce), or an active card of p's side that names it (D.calls), p not Stubborn.
+ */
+function cardCalled(p, id) {
+  const D = CM && CM.deck && CM.deck[sideOf(p)];
+  return (
+    !!D &&
+    (cardForce(p, id) || (!!D.calls && D.calls.some(c => c.need === id && (!c.pids || c.pids.includes(p.id))) && mtr(CM, p) !== 'stubborn'))
+  );
+}
 /** Is technique `id` forced for p (an active card of p's side, p owns it, p is not Stubborn)? */
 function cardForce(p, id) {
   const D = CM && CM.deck && CM.deck[sideOf(p)];
   return !!(
     D &&
     (D.force.includes(id) || (D.forceMe.length && D.forceMe.some(f => f.need === id && f.pids.includes(p.id)))) &&
-    hasTech(p, id) &&
+    ownsTech(p, id) &&
     mtr(CM, p) !== 'stubborn'
   );
 }
@@ -52,9 +63,41 @@ function edgeK(p, k) {
  */
 const cardFor = (p, b) =>
   (!b.need || hasTech(p, b.need)) &&
+  (!b.grpT || grpOn(p, b.grpT)) &&
   (!b.needT || b.my || mtr(CM, p) === b.needT) &&
   (!b.pids || b.pids.includes(p.id)) &&
   (!b.ids || (b.ids.includes(p.id) && duoOn(p.team, b.ids)));
+/** Is one of p's techniques of amplifier group g on this rally (an amplifier's `hit`, spec §2.37)? */
+const grpOn = (p, g) => techsOf(g).some(id => hasTech(p, id));
+/** The techniques of amplifier group g (SKILLS[id].grp), cached. */
+const techsOf = g => (techsOf.c || (techsOf.c = {}))[g] || (techsOf.c[g] = Object.keys(SKILLS).filter(id => SKILLS[id].grp === g));
+/**
+ * What card id is made of (spec §2.37 Fusing): [[part id, ×], …, [id, 1]] for a fused card (each part's effects × its `pk`, then
+ * the card's own), [[id, 1]] otherwise.
+ */
+const cardComps = id => {
+  const c = CARDS[id];
+  return c.parts ? [...c.parts.map((x, k) => [x, c.pk ? c.pk[k] : 1]), [id, 1]] : [[id, 1]];
+};
+/** Side i's active card ids, fused cards' parts included (counters, traps, "the same card is active"). */
+const actIds = (m, i) => deckOf(m, i).act.flatMap(a => cardComps(a.id).map(x => x[0]));
+/** A fused card's lead part (its holders, level and read): the part that is not an amplifier, else the first. */
+const fuseLead = id => {
+  const c = CARDS[id];
+  return c.parts ? c.parts.find(x => CARDS[x].kind !== 'basic') || c.parts[0] : id;
+};
+/** The recipe two cards make (spec §2.37 Fusing), either way round: the fused card's id, or null. */
+function fuseOf(a, b) {
+  if (!a || !b) return null;
+  const R0 =
+    fuseOf.ix ||
+    (fuseOf.ix = Object.fromEntries(
+      Object.keys(CARDS)
+        .filter(id => CARDS[id].parts)
+        .map(id => [[...CARDS[id].parts].sort().join('+'), id])
+    ));
+  return R0[[a, b].sort().join('+')] || null;
+}
 /** A duo (spec §4.36 4): at least two of its ids on T's court. */
 const duoOn = (T, ids) => !!T && T.P.filter(q => ids.includes(q.id)).length >= 2;
 /** Side i's duo card id: the ids of its pair (you + the friends it holds), or null (no m.duo: none — every other match). */
@@ -148,7 +191,10 @@ function deckOwn(m, i) {
 function cardApply(m, i) {
   const D = deckOf(m, i),
     T = m.t[i],
-    A = D.act,
+    // each active card's parts (a fused card: its parts × pk, then its own effects; spec §2.37 Fusing)
+    A = D.act.flatMap(a =>
+      cardComps(a.id).map(([id, k]) => ({ ...a, id, k, lv: CARDS[id].need ? a.lv || 1 : 1, need: CARDS[id].need || CARDS[a.id].need }))
+    ),
     ids = A.map(a => a.id);
   // plan
   if (!(m.planFixed && m.planFixed[i])) {
@@ -181,7 +227,7 @@ function cardApply(m, i) {
               ? T.P.filter(p => p === T.s || p.role === 'S').slice(0, 1)
               : c.who === 'all'
                 ? T.P
-                : squadOf(T).filter(p => hasTech(p, c.need));
+                : squadOf(T).filter(p => ownsTech(p, c.need));
     for (const p of who) {
       if (mtr(m, p) === 'stubborn' || ordOf(m, p, k)) continue;
       const v = v0 === 'weak' ? weakPasser(m.t[1 - i]).id : v0 === 'hot' ? hotHand(m, i, p).id : v0;
@@ -191,22 +237,28 @@ function cardApply(m, i) {
     }
   }
   // forced techniques and buffs
-  D.force = A.filter(a => CARDS[a.id].force && !a.my).map(a => CARDS[a.id].need);
-  D.forceMe = A.filter(a => CARDS[a.id].force && a.my).map(a => ({ need: CARDS[a.id].need, pids: a.pids }));
+  D.force = A.filter(a => CARDS[a.id].force && !a.my).map(a => a.need);
+  D.forceMe = A.filter(a => CARDS[a.id].force && a.my).map(a => ({ need: a.need, pids: a.pids }));
   D.buff = [];
+  D.calls = A.filter(a => a.need && CARDS[a.id].src === 'tech').map(a => ({ need: a.need, pids: a.my ? a.pids : null }));
+  D.amp = []; // amplifiers: { g, v, pids? } — their group's technique rate (techRate, spec §2.37)
   for (const a of A) {
-    const c = CARDS[a.id];
+    const c = CARDS[a.id],
+      who = { ...((c.self || a.my) && a.pids ? { pids: a.pids } : {}), ...(a.my ? { my: 1 } : {}) };
     for (const k in c.buff || {})
       D.buff.push({
         k,
-        v: c.buff[k] * (a.lv || 1),
+        v: c.buff[k] * (a.lv || 1) * a.k,
         need: c.need,
         needT: c.needT,
         when: c.when,
-        ...((c.self || a.my) && a.pids ? { pids: a.pids } : {}),
-        ...(a.my ? { my: 1 } : {}),
+        ...who,
         ...(c.src === 'duo' ? { ids: duoIds(m, i, a.id) || [] } : {})
       });
+    if (c.amp) {
+      D.amp.push({ g: c.amp, v: DECK.amp.rate * a.k, ...(a.my ? { pids: a.pids } : {}) });
+      for (const k in c.hit || {}) D.buff.push({ k, v: c.hit[k] * a.k, grpT: c.amp, ...who });
+    }
   }
   D.bk = {}; // stat → its buffs (cardBuff reads this on every effective-stat call)
   for (const b of D.buff) (D.bk[b.k] || (D.bk[b.k] = [])).push(b);
@@ -280,7 +332,8 @@ function cardBrings(m, i, p, id) {
   return false;
 }
 /** The other side's active traps that name card id. */
-const trapsFor = (m, i, id) => deckOf(m, 1 - i).act.filter(a => CARDS[a.id].kind === 'trap' && CARDS[a.id].trap.includes(id));
+const trapsFor = (m, i, id) =>
+  deckOf(m, 1 - i).act.filter(a => CARDS[a.id].kind === 'trap' && cardComps(id).some(([x]) => CARDS[a.id].trap.includes(x)));
 /** Is side i at a key moment (spec §2.37): set point either way, their Fever, CARD_AI.down+ down from CARD_AI.late points, their run? */
 function keyMoment(m, i) {
   const A = CARD_AI,
@@ -327,7 +380,7 @@ function myHolders(m, i, id) {
     c = CARDS[id],
     you = Y && m.t[i].P.find(p => p.id === Y.pid);
   if (c.type === 'team') return Cards.holders(m, i, id);
-  return you && (c.src !== 'tech' || hasTech(you, c.need)) ? [you] : [];
+  return you && (!c.need || ownsTech(you, c.need)) ? [you] : [];
 }
 /** A 0..1 roll from a string with no R() draw (FNV-1a through an fmix32 finaliser: near keys spread). */
 function cardRoll(s) {
@@ -372,6 +425,7 @@ const Cards = {
   strong: id => CARDS[id].kind === 'op' || CARDS[id].cd >= DECK.strong,
   /** Side i's players on court card id belongs to (its holders): technique owners, trait carriers, the duo, the OP / element player; a playbook card or trap: the captain; a Basic: the court. */
   holders(m, i, id) {
+    if (CARDS[id].parts) return Cards.holders(m, i, fuseLead(id)); // a fused card: its lead part's (spec §2.37)
     const c = CARDS[id],
       T = m.t[i];
     if (c.src === 'tech' || c.src === 'trait' || c.src === 'op')
@@ -387,6 +441,7 @@ const Cards = {
   },
   /** Who pays card id's cost (`which`: 'cost' | 'after'): its holders, the captain or everyone on court. */
   payers(m, i, id, which = 'cost') {
+    if (CARDS[id].parts) return [...new Set(CARDS[id].parts.flatMap(x => Cards.payers(m, i, x, which)))]; // (both parts' payers)
     const C = CARDS[id][which],
       T = m.t[i];
     if (!C) return [];
@@ -398,6 +453,7 @@ const Cards = {
   },
   /** Can every payer afford card id (each bar after the cost at CARD_AI.floor or above)? Playing anyway is allowed. */
   afford(m, i, id) {
+    if (CARDS[id].parts) return CARDS[id].parts.every(x => Cards.afford(m, i, x));
     const C = CARDS[id].cost;
     if (!C) return true;
     const F = CARD_AI.floor[C.bar];
@@ -407,14 +463,15 @@ const Cards = {
   },
   /** Does card id's read hold for side i now ("Fits now": what you can read, never their hand)? A card without a read: true. */
   fits(m, i, id) {
+    if (CARDS[id].parts) return CARDS[id].parts.every(x => Cards.fits(m, i, x)); // (a fused card: each part's read)
     const E = CARD_EDGE[id];
     return !E || (CARD_FIT[E.fit] || CARD_FIT.always)(m, i);
   },
   /** The holder level card id would play at (a technique: its best holders' level, spec §2.37; others 1). */
   level(m, i, id) {
-    const c = CARDS[id];
+    const c = CARDS[fuseLead(id)];
     if (c.src !== 'tech') return 1;
-    const H = Cards.holders(m, i, id);
+    const H = Cards.holders(m, i, fuseLead(id));
     return H.length ? H.reduce((s, p) => s + techLv(p, c.need), 0) / H.length : 1;
   },
   /** Is side i's team hand yours to play (a side you run)? The captain never plays it then. (Your own hand: Cards.my.) */
@@ -572,10 +629,43 @@ const Cards = {
     if (!D || !H || m.over) return 'off';
     const id = H.hand[h];
     if (!id) return 'gap';
+    return Cards.canId(m, i, id, y, H);
+  },
+  /**
+   * Fuse hand cards a and b of side i (spec §2.37 Fusing in the hand; `y`: your own hand) when they make a recipe (fuseOf): the
+   * fused card takes a's place, b's place stays empty until the next turn. Final. Returns the fused id or null.
+   */
+  fuse(m, i, a, b, y) {
+    const H = Cards.pile(m, i, y);
+    if (!H || !m.deck || m.over || a === b) return null;
+    const r = fuseOf(H.hand[a], H.hand[b]);
+    if (!r) return null;
+    H.hand[a] = r;
+    H.hand[b] = null;
+    deckOf(m, i).log.push({ k: 'fuse', id: r, at: [...m.pts], ...(y ? { y: 1 } : {}) });
+    return r;
+  },
+  /** What hand card h of side i fuses with: [{ h, id }] (the other place, the fused card) — the hand bar's highlights. */
+  fusable(m, i, h, y) {
+    const H = Cards.pile(m, i, y),
+      a = H && H.hand[h];
+    if (!a) return [];
+    return H.hand.map((b, k) => (k !== h && b ? { h: k, id: fuseOf(a, b) } : null)).filter(x => x && x.id);
+  },
+  /** The fused card two ids make, or null (spec §2.37 recipes). */
+  recipe: (a, b) => fuseOf(a, b),
+  /** A fused card's parts ([] for any other card). */
+  parts: id => (CARDS[id] && CARDS[id].parts) || [],
+  /** Why card id (in pile H of side i: a hand card, or a fused card not made yet) can't be played now, or null (Cards.can after the gap). */
+  canId(m, i, id, y, H) {
     if (H.pt === ptsPlayed(m)) return 'point';
-    if (D.act.some(a => a.id === id)) return 'active';
-    const g = CARDS[id].grp;
-    if (g && D.act.some(a => CARDS[a.id].grp === g && !(CARDS[id].type === 'team' && CARDS[a.id].type === 'team'))) return 'clash';
+    const on = actIds(m, i),
+      mine = cardComps(id).map(x => x[0]);
+    if (mine.some(x => on.includes(x))) return 'active'; // (a fused card: either part active)
+    for (const x of mine) {
+      const g = CARDS[x].grp;
+      if (g && on.some(a => CARDS[a].grp === g && !(CARDS[x].type === 'team' && CARDS[a].type === 'team'))) return 'clash';
+    }
     if (!(y ? myHolders(m, i, id) : Cards.holders(m, i, id)).length) return 'holder';
     return null;
   },
@@ -595,10 +685,25 @@ const Cards = {
       c = CARDS[id],
       my = !!y && c.type !== 'team', // your own individual / debuff card: you hold it, pay it and it acts on you (spec §2.37)
       H = y ? myHolders(m, i, id) : Cards.holders(m, i, id),
-      by = (y ? H[0] : c.src === 'base' ? m.t[i].cap || H[0] : H[0]).id,
-      who = cardPay(m, i, my ? (c.cost ? H : []) : Cards.payers(m, i, id), c.cost),
+      by = (y ? H[0] : CARDS[fuseLead(id)].src === 'base' ? m.t[i].cap || H[0] : H[0]).id,
+      // the cost on the payers' bars — a fused card: both parts' (spec §2.37 Fusing)
+      who = [
+        ...new Set((c.parts || [id]).flatMap(x => cardPay(m, i, my ? (CARDS[x].cost ? H : []) : Cards.payers(m, i, x), CARDS[x].cost)))
+      ],
       at = [...m.pts],
-      act = { k: 'card', side: i, id, by, op: c.kind === 'op', dur: c.dur, per: c.per, who, cost: c.cost || null, st: cardState(m, i, id) },
+      act = {
+        k: 'card',
+        side: i,
+        id,
+        by,
+        op: c.kind === 'op',
+        dur: c.dur,
+        per: c.per,
+        who,
+        cost: c.cost || null,
+        ...(c.parts ? { parts: [...c.parts], costs: c.parts.map(x => CARDS[x].cost || null) } : {}),
+        st: cardState(m, i, id)
+      },
       out = [act];
     P.hand[h] = null;
     P.pt = ptsPlayed(m);
@@ -623,7 +728,7 @@ const Cards = {
       const old = c.type === 'team' && Cards.team(m, i); // one team play active a side: the new one replaces it (spec §2.37)
       if (old) out.push(cardEnd(m, i, old, 'replaced'));
       const pids = c.self || my ? [by] : H.map(p => p.id),
-        lv = my && c.src === 'tech' ? techLv(H[0], c.need) : Cards.level(m, i, id);
+        lv = my && CARDS[fuseLead(id)].src === 'tech' ? techLv(H[0], CARDS[fuseLead(id)].need) : Cards.level(m, i, id);
       D.act.push({ id, left: c.dur, per: c.per, by, pids, who, lv, at, ...(y ? { y: 1 } : {}), ...(my ? { my: 1 } : {}) });
       out.push(...cardOn(m, i, id));
       cardApply(m, i);
@@ -645,6 +750,7 @@ const Cards = {
   },
   /** Card id of side i leaves play: cooling in the discard pile (`y`: your own) for its `cd` points, an OP card used up for the match. */
   toDisc(m, i, id, y) {
+    if (CARDS[id].parts) return CARDS[id].parts.forEach(x => Cards.toDisc(m, i, x, y)); // a fused card: both parts cool (spec §2.37)
     const D = Cards.pile(m, i, y) || deckOf(m, i);
     if (CARDS[id].cd === Infinity) D.used.push(id);
     else D.disc.push({ id, cd: CARDS[id].cd });
@@ -665,9 +771,9 @@ const Cards = {
         .map(e => e.id),
       team = !!Cards.team(m, i); // (one team play a side: the captain does not replace its own running one)
     let best = -1,
-      bv = 0;
-    D.hand.forEach((id, h) => {
-      if (!id || Cards.can(m, i, h) || !Cards.afford(m, i, id) || (team && CARDS[id].type === 'team')) return;
+      bv = 0,
+      pair = null;
+    const score = id => {
       const c = CARDS[id],
         strong = Cards.strong(id),
         S = D.stat[id];
@@ -678,21 +784,38 @@ const Cards = {
       if (strong && !key && iq >= (c.kind === 'op' ? A.waitOp : A.wait)) return; // saved for a key moment
       let v =
         A[
-          c.kind === 'basic'
-            ? 'basic'
-            : c.kind === 'op' || c.kind === 'trap' || c.kind === 'once'
-              ? c.kind
-              : c.src === 'tech' || c.src === 'trait' || c.src === 'duo'
-                ? c.src
-                : 'play'
+          c.parts
+            ? 'fuse'
+            : c.kind === 'basic'
+              ? 'basic'
+              : c.kind === 'op' || c.kind === 'trap' || c.kind === 'once'
+                ? c.kind
+                : c.src === 'tech' || c.src === 'trait' || c.src === 'duo'
+                  ? c.src
+                  : 'play'
         ];
-      const E = CARD_EDGE[id];
+      const E = CARD_EDGE[fuseLead(id)];
       if (E && E.fit !== 'always') v += A.read;
       if (c.need) v *= Math.min(1.6, Cards.holders(m, i, id).length * 0.5 + 0.5); // more holders on court, more worth
       if (S && S.ctr[0] >= A.seenCtr) v += A.countered;
       if (strong && key) v += A.key;
-      if (v > bv) [bv, best] = [v, h];
+      return v;
+    };
+    D.hand.forEach((id, h) => {
+      if (!id || Cards.can(m, i, h) || !Cards.afford(m, i, id) || (team && CARDS[id].type === 'team')) return;
+      const v = score(id);
+      if (v != null && v > bv) [bv, best] = [v, h];
     });
+    // the captain fuses by the same rules (spec §2.37): a recipe in the hand that beats every single card
+    D.hand.forEach((a, h) =>
+      D.hand.forEach((b, k) => {
+        const r = k > h && fuseOf(a, b);
+        if (!r || Cards.canId(m, i, r, false, D) || !Cards.afford(m, i, r) || (team && CARDS[r].type === 'team')) return;
+        const v = score(r);
+        if (v != null && v > bv) ((bv = v), (pair = [h, k]));
+      })
+    );
+    if (pair) return Cards.fuse(m, i, pair[0], pair[1]) ? pair[0] : -1;
     return best;
   },
   /** At a turn: the captain discards its dead cards held since the last turn (no holder on court, or not fitting), if sharp enough. */
@@ -725,13 +848,17 @@ const Cards = {
   },
   /** Before every serve (rallyStart): the captains play, then each side's edges. Returns the play acts since the last serve. */
   serve(m) {
-    if (!m.deck) return [];
-    for (const i of [0, 1]) {
-      const h = Cards.capPlay(m, i);
-      if (h >= 0) Cards.play(m, i, h);
+    if (m.deck) {
+      for (const i of [0, 1]) {
+        const h = Cards.capPlay(m, i);
+        if (h >= 0) Cards.play(m, i, h);
+      }
+      cardEdges(m);
     }
-    cardEdges(m);
-    return m.cardQ.splice(0);
+    // the rally's technique gate (spec §2.37: owned techniques go on some rallies only — techOn): one R() a match for its salt
+    m.gate = { s: m.gateS ?? (m.gateS = R()), n: (m.gateN = (m.gateN || 0) + 1), c: {} };
+    m.gate.s = `${m.gate.s}|${m.gate.n}`;
+    return m.deck ? m.cardQ.splice(0) : [];
   },
   /** After pointMomentum, before Cards.point (end()): INZONE!!'s side keeps Fever's clock from running out while the card lasts. */
   floor(m) {
@@ -758,6 +885,7 @@ const Cards = {
    * discard pile (OP: used up). Element Surge recharges while active. Returns the `cardend` acts.
    */
   point(m, w) {
+    m.gate = null; // (the rally is over: owned techniques read as on again)
     if (!m.deck) return [];
     cardTally(m, w);
     const out = [];
@@ -805,9 +933,14 @@ const Cards = {
 
 /** A card's state for side i this rally: 'ctr' (the other side has its counter active), 'fit', or 'mis'. */
 function cardState(m, i, id) {
+  if (CARDS[id].parts) {
+    // a fused card: countered if a part is, else fits if every part with a read fits
+    const S = CARDS[id].parts.filter(x => CARD_EDGE[x]).map(x => cardState(m, i, x));
+    return S.includes('ctr') ? 'ctr' : S.includes('mis') ? 'mis' : 'fit';
+  }
   const E = CARD_EDGE[id];
   if (!E) return 'fit';
-  const theirs = deckOf(m, 1 - i).act.map(a => a.id);
+  const theirs = actIds(m, 1 - i);
   if (E.ctr.some(x => theirs.includes(x))) return 'ctr';
   return (CARD_FIT[E.fit] || CARD_FIT.always)(m, i) ? 'fit' : 'mis';
 }
@@ -815,25 +948,43 @@ function cardState(m, i, id) {
 function cardEdges(m) {
   if (!m.deck) return;
   for (const i of [0, 1]) ((m.deck[i].st = {}), (m.deck[i].ek = {}));
-  for (const i of [0, 1])
+  for (const i of [0, 1]) {
+    const amps = actIds(m, i)
+      .filter(x => CARDS[x].amp)
+      .map(x => CARDS[x].amp);
     for (const a of m.deck[i].act) {
-      const id = a.id,
-        c = CARDS[id],
-        E = CARD_EDGE[id];
-      if (c.kind !== 'play' || !E) continue;
-      if (c.need && !m.t[i].P.some(p => hasTech(p, c.need))) continue; // (its holders all on the bench: nothing)
-      const st = cardState(m, i, id),
-        f = (st === 'fit' ? 1 : st === 'ctr' ? EDGE.ctr : EDGE.mis) * EDGE.k * (a.lv || 1);
-      m.deck[i].st[id] = st;
-      for (const [who, k, v] of E.e) {
-        const C = m.deck[who === 'us' ? i : 1 - i];
-        (C.ek[k] || (C.ek[k] = [])).push({
-          v: v * f,
-          need: who === 'us' && !E.team ? c.need : null,
-          ...(who === 'us' && a.my ? { pids: a.pids } : {}) // your own card: its edge is yours (spec §2.37 Your hand)
-        });
+      if (CARDS[a.id].parts) m.deck[i].st[a.id] = cardState(m, i, a.id);
+      for (const [id, pk] of cardComps(a.id)) {
+        const c = CARDS[id],
+          E = CARD_EDGE[id],
+          mine = a.my ? { pids: a.pids } : {};
+        // an amplifier's (or a fused card's) `foe`: % on the other side's stat while active
+        for (const k in c.foe || {}) {
+          const C = m.deck[1 - i];
+          (C.ek[k] || (C.ek[k] = [])).push({ v: c.foe[k] * pk });
+        }
+        if (c.kind !== 'play' || !E) continue;
+        if (c.need && !m.t[i].P.some(p => ownsTech(p, c.need))) continue; // (its holders all on the bench: nothing)
+        const st = cardState(m, i, id),
+          g = c.need && SKILLS[c.need] && SKILLS[c.need].grp,
+          f =
+            (st === 'fit' ? 1 : st === 'ctr' ? EDGE.ctr : EDGE.mis) *
+            EDGE.k *
+            (c.need ? a.lv || 1 : 1) *
+            pk *
+            (g && amps.includes(g) ? DECK.amp.with : 1); // a technique with its group's amplifier hits harder (spec §2.37)
+        m.deck[i].st[id] = st;
+        for (const [who, k, v] of E.e) {
+          const C = m.deck[who === 'us' ? i : 1 - i];
+          (C.ek[k] || (C.ek[k] = [])).push({
+            v: v * f,
+            need: who === 'us' && !E.team ? c.need : null,
+            ...(who === 'us' ? mine : {}) // your own card: its edge is yours (spec §2.37 Your hand)
+          });
+        }
       }
     }
+  }
 }
 /** After a rally won by w: every active play / OP card that acted in it counts the rally by its state (D.stat; Stubborn servers / hitters don't count). */
 function cardTally(m, w) {

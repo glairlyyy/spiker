@@ -47,7 +47,7 @@ const TURN = { pts: 6 };
 const DECK = {
   size: 12,
   hand: 5,
-  basics: ['pow', 'grd', 'jmp', 'ftw'],
+  basics: ['isrv', 'iatk', 'iset', 'iblk', 'idig', 'ifake'], // the amplifiers (spec §2.37 Amplifiers and fusing, T-358)
   op: { WS: 'god', MB: 'titan', S: 'inzone' },
   books: {
     power: ['power', 'deep', 'stand'],
@@ -63,6 +63,10 @@ const DECK = {
   iq: 0.7,
   lv: { ref: 65, min: 0.6, max: 1.2 },
   strong: 12,
+  tech: 0.5, // an owned technique's own rate (spec §2.37, T-358): × today's chance — on some rallies only (engine/skills.js techOn)
+  // amplifiers: `rate` added to their group's technique rate while active; Improve X+ is each of its two at `plus`; a technique card
+  // active with its group's amplifier: edges × `with`; a full form (amplifier + technique fused): the technique's edges and buffs × `full`
+  amp: { rate: 0.25, plus: 0.8, with: 1.25, full: 1.5 },
   mine: 6, // a non-captain career player's own deck (spec §2.37 Your hand, T-349): picked in match prep, Basics fill
   myHand: 3 // … and their hand
 };
@@ -106,11 +110,184 @@ const REQ = {
  * active card of a group at a time. tally: the rallies its fit / countered tally reads — 'serve' | 'recv' | 'attack' | 'defend'.
  */
 const CARDS = {
-  // Basics (the old boosts): small and cheap, 1 point
-  pow: { name: 'Power Up', zone: 'atk', kind: 'basic', src: 'base', buff: { atk: 5 }, desc: 'Power +5 %' },
-  jmp: { name: 'High Point', zone: 'atk', kind: 'basic', src: 'base', buff: { jump: 5 }, desc: 'Jump +5 %' },
-  grd: { name: 'Guard Up', zone: 'def', kind: 'basic', src: 'base', buff: { def: 5 }, desc: 'Defense +5 %' },
-  ftw: { name: 'Quick Step', zone: 'def', kind: 'basic', src: 'base', buff: { spd: 5 }, desc: 'Speed +5 %' },
+  // Amplifiers (spec §2.37, T-358; they replace the Basics and fill the deck): cheap and short; each lifts its action a little and
+  // makes its group's techniques (SKILLS[id].grp) fire more (DECK.amp.rate) and hit harder (`hit`: only for a player whose
+  // technique of that group is on this rally). `foe`: % on the other side's stat.
+  isrv: {
+    name: 'Improve Serve',
+    zone: 'atk',
+    kind: 'basic',
+    src: 'base',
+    amp: 'serve',
+    buff: { serve: 4 },
+    hit: { serve: 4 },
+    desc: 'Serve +4 %; serve techniques fire more, hit harder'
+  },
+  iatk: {
+    name: 'Improve Attack',
+    zone: 'atk',
+    kind: 'basic',
+    src: 'base',
+    amp: 'attack',
+    buff: { atk: 4 },
+    hit: { atk: 4 },
+    desc: 'Power +4 %; attack techniques fire more, hit harder'
+  },
+  iset: {
+    name: 'Improve Set',
+    zone: 'atk',
+    kind: 'basic',
+    src: 'base',
+    amp: 'set',
+    buff: { atk: 2 },
+    hit: { atk: 4 },
+    desc: 'Cleaner sets: power +2 %; set techniques fire more'
+  },
+  iblk: {
+    name: 'Improve Block',
+    zone: 'def',
+    kind: 'basic',
+    src: 'base',
+    amp: 'block',
+    buff: { jump: 4 },
+    hit: { jump: 4 },
+    desc: 'Jump +4 %; block techniques fire more, hit harder'
+  },
+  idig: {
+    name: 'Improve Dig',
+    zone: 'def',
+    kind: 'basic',
+    src: 'base',
+    amp: 'dig',
+    buff: { spd: 4 },
+    hit: { def: 4 },
+    desc: 'Speed +4 %; dig techniques fire more, hit harder'
+  },
+  ifake: {
+    name: 'Improve Fake',
+    zone: 'atk',
+    kind: 'basic',
+    src: 'base',
+    amp: 'fake',
+    foe: { jump: -3 },
+    hit: { atk: 4 },
+    desc: 'Their block −3 %; fakes and decoys fire more'
+  },
+  // Fused cards (spec §2.37 Fusing in the hand, T-358): never in a deck — two hand cards that make a recipe (`parts`) fuse into one,
+  // played as one: both parts' effects (each × `pk`, default 1) plus the card's own, both costs on play, both parts cool after.
+  // Improve X+ (an amplifier twice) is built below; the full forms (an amplifier + a technique of its group) in js/data/skills.js.
+  fortress: {
+    name: 'Fortress',
+    zone: 'def',
+    kind: 'play',
+    src: 'fuse',
+    parts: ['iblk', 'idig'],
+    buff: { def: 4 },
+    tally: 'defend',
+    desc: 'Block and dig as one: defense +4 % more'
+  },
+  decoy: {
+    name: 'Decoy',
+    zone: 'atk',
+    kind: 'play',
+    src: 'fuse',
+    parts: ['ifake', 'iatk'],
+    foe: { jump: -4 },
+    tally: 'attack',
+    desc: 'The fake sells the swing: their block −4 % more'
+  },
+  pwall: {
+    name: 'Pressure Wall',
+    zone: 'def',
+    kind: 'play',
+    src: 'fuse',
+    parts: ['isrv', 'iblk'],
+    foe: { def: -3 },
+    tally: 'defend',
+    desc: 'Serve them off the net into a set block: their defense −3 %'
+  },
+  tempo: {
+    name: 'Tempo',
+    zone: 'atk',
+    kind: 'play',
+    src: 'fuse',
+    parts: ['iset', 'iatk'],
+    buff: { atk: 4 },
+    tally: 'attack',
+    desc: 'Fast sets, early swings: power +4 % more'
+  },
+  scramble: {
+    name: 'Scramble',
+    zone: 'def',
+    kind: 'play',
+    src: 'fuse',
+    parts: ['idig', 'iset'],
+    buff: { spd: 4 },
+    tally: 'defend',
+    desc: 'Dig it, set it from anywhere: speed +4 % more'
+  },
+  fbait: {
+    name: 'Bait',
+    zone: 'def',
+    kind: 'play',
+    src: 'fuse',
+    parts: ['ifake', 'iblk'],
+    foe: { atk: -4 },
+    tally: 'defend',
+    desc: 'Show a gap, close it: their power −4 %'
+  },
+  // the old pairs (§2.33 combos)
+  sniper: {
+    name: 'Sniper',
+    zone: 'atk',
+    kind: 'play',
+    src: 'fuse',
+    parts: ['killer', 'target'],
+    need: 'killer',
+    buff: { serve: 6 },
+    tally: 'serve',
+    desc: 'Killer serves at their weakest passer: serve +6 % more'
+  },
+  lockdown: {
+    name: 'Lockdown',
+    zone: 'def',
+    kind: 'play',
+    src: 'fuse',
+    parts: ['wall', 'commit'],
+    buff: { jump: 6 },
+    tally: 'defend',
+    desc: 'Wall their ace, middles committed: jump +6 % more'
+  },
+  ifloor: {
+    name: 'Iron Floor',
+    zone: 'def',
+    kind: 'play',
+    src: 'fuse',
+    parts: ['sdig', 'deep'],
+    buff: { def: 6 },
+    tally: 'defend',
+    desc: 'Line blocked, a middle back, the floor deep: defense +6 % more'
+  },
+  ftempo: {
+    name: 'Freak Tempo',
+    zone: 'atk',
+    kind: 'play',
+    src: 'fuse',
+    parts: ['quick', 'freak'],
+    buff: { atk: 6 },
+    tally: 'attack',
+    desc: 'Quick tempo for the freak quick: power +6 % more'
+  },
+  stempo: {
+    name: 'Slide Tempo',
+    zone: 'atk',
+    kind: 'play',
+    src: 'fuse',
+    parts: ['quick', 'slide'],
+    buff: { atk: 6 },
+    tally: 'attack',
+    desc: 'Quick tempo for the slide: power +6 % more'
+  },
   // the captain's playbook
   hunt: {
     name: 'Hunt the Passer',
@@ -641,6 +818,7 @@ const CARDS = {
  */
 const CARD_AI = {
   basic: 1,
+  fuse: 4.5, // a fused card (T-358): one play for two cards
   duo: 3,
   play: 3,
   tech: 3.5,
@@ -812,13 +990,27 @@ const EDGE = { ctr: -1.5, mis: -0.6, k: 2 };
  * (50 %+) and Last Stand DECK.strong.
  */
 (() => {
+  // Improve X+ (spec §2.37): the same amplifier twice — stronger, diminishing (each of the two at DECK.amp.plus)
+  for (const a of DECK.basics) {
+    const c = CARDS[a];
+    CARDS[a + 'p'] = {
+      name: `${c.name}+`,
+      zone: c.zone,
+      kind: 'play',
+      src: 'fuse',
+      parts: [a, a],
+      pk: [DECK.amp.plus, DECK.amp.plus],
+      desc: `${c.desc} — stronger`
+    };
+  }
   const big = id => CARD_EDGE[id] && CARD_EDGE[id].e.some(e => Math.abs(e[2]) >= 50);
   const team = ['power', 'tip', 'deep', 'commit', 'sdig', 'float'],
     debuff = ['float', 'short', 'head'];
   for (const [id, c] of Object.entries(CARDS)) {
+    if (c.parts) continue; // (fused: below)
     const K =
       c.kind === 'basic'
-        ? { dur: 1, cd: 2, cost: { who: 'court', bar: 'sta', amt: 0.02 } }
+        ? { dur: 2, cd: 3, cost: { who: 'court', bar: 'sta', amt: 0.02 } }
         : c.kind === 'op'
           ? { dur: 3, cd: Infinity }
           : c.kind === 'trap'
@@ -849,4 +1041,14 @@ const EDGE = { ctr: -1.5, mis: -0.6, k: 2 };
     c.type ??=
       c.kind === 'trap' || debuff.includes(id) ? 'debuff' : c.src === 'book' || ['god', 'inzone', 'surge'].includes(id) ? 'team' : 'solo';
   }
+  /** A fused card's deck numbers from its parts (spec §2.37): 3 points (its lead's serves for a serve card), no cost of its own (the parts pay), cools as its slowest part. */
+  const fuseDefaults = c => {
+    const P = c.parts.map(x => CARDS[x]),
+      lead = P.find(x => x.kind !== 'basic') || P[0];
+    c.dur ??= Math.max(3, lead.dur || 0);
+    c.per ??= lead.per === 'srv' && c.tally === 'serve' ? 'srv' : 'pts';
+    c.cd = Math.max(...P.map(x => x.cd));
+    c.type ??= P.some(x => x.type === 'team') ? 'team' : P.some(x => x.type === 'debuff') ? 'debuff' : 'solo';
+  };
+  for (const c of Object.values(CARDS)) if (c.parts) fuseDefaults(c);
 })();

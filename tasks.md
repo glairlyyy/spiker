@@ -216,7 +216,7 @@ Accept: a test (every SPOTS place lists stretch; a stretch at a venue and an HQ 
 `npm run career -- 12 both` numbers in the Result (expected ~unchanged: the bots don't stretch more).
 Result: `City.orders` = kit's + Stretch at every SPOTS place (`STRETCH_AT` gone; `City.can` skips the outing / secret / shed rules for an order); venue + HQ cards stretch at their point (`stretchAt`, career-panels.js); the Cargo Shed card (career-map.js) lists it too; test map.test.js + UI step checks every card's Stretch + picker (47 cards). career 12 both identical to before: casual Y1 66.8 · Y2 83.4, swing short 12/12; good Y1 77.9 · Y2 94.8 (rival 90.0 / 92.8), stretch 6.3 a run, money at Cups $330 / $1020.
 
-### [ ] T-358: Amplifiers, rarer techniques, fusing in the hand
+### [x] T-358: Amplifiers, rarer techniques, fusing in the hand
 Spec: §2.37 Amplifiers and fusing          Goldens: update (techniques at half rate; Basics → amplifiers)          Save: no change
 Goal: Improve Serve / Attack / Set / Block / Dig / Fake replace the Basics and amplify their group's techniques; owned techniques
 fire at half today's rate on their own; two cards that make a recipe fuse in the hand into one card played as one; the captain
@@ -227,7 +227,7 @@ ARCHITECTURE-details.md
 Do not: gate a technique behind a card; change the deck size / hand / turn rules; tune the numbers beyond first guesses (T-348).
 Accept: tests (half rate, an amplifier raises its group's technique use, each recipe fuses, a fused card plays once with both costs,
 the captain fuses); npm test, lint, test:ui pass; `npm run cards -- 60 both` in the Result; QA screenshot of a drag-to-fuse.
-Result:
+Result: built. Technique gate per rally in hasTech (hashed, one R() a match; techOn/techRate/ownsTech in engine/skills.js; a technique card calls it on). First guesses: DECK.tech 0.5; amp rate +0.25 (X+ 2×0.8), action +4 % (Set +2 % power, Fake their block −3 %), +4 % `hit` for an on group technique, dur 2 / cd 3 / −0.02 court sta; tech card with its amp edges ×1.25; full form ×1.5 + forced (fake: their block −4 %); combos +3–4 %, old pairs +6 %; CARD_AI.fuse 4.5. Groups serve killer/drive/target · attack cutshot/pipecombo · set sync · fake delay/lefty/freak/slide · block readblk/softblk · dig roll/save. Recipes: Fortress, Decoy, Pressure Wall, Tempo, Scramble, Bait; Improve X+ ×6; Full <tech> ×12; Sniper, Lockdown, Iron Floor (Speed Dig + Dig Deep — Fortress name taken), Freak Tempo / Slide Tempo (Quick + Freak / Slide). Measured: tech fires /100 pts league 30.9→22.1, tour 77.5→46.5; captain fuses 2.7 a match (league), 0.2 (tour). `npm run cards -- 60 both`: league captain +2.8 % pts / +3.3 % wins (11.2 cards), random +0.3 / −8.3, basics(amps) −1.5 / −15.0, spam:power −3.5 / −20.0 vs cap −2.1 / −16.7, spam:hunt +0.5 / −13.3 vs cap −0.4 / −5.0; tour captain −0.9 / +1.7 (8.3, OP 0.58), random −2.1 / −3.3, basics −2.9 / −6.7, spam:power −5.2 / −11.7 vs cap −2.9 / −3.3, spam:hunt −2.4 / −6.7 vs cap −2.0 / −5.0. Deviations: `F` fuses while a hand bar shows (Shift+F fullscreen; match-screen.js still prints ⛶ F); Improve Set lifts power (no set-quality hook in the listed files); engine Delayed Spike test sample 32→64 matches. test:ui 28/28 (new step: drag-to-fuse, F 3 4, Fortress plays with both costs).
 
 ### [ ] T-348: Deck balance
 Spec: §2.37 Must hold          Goldens: update if numbers change          Save: no change

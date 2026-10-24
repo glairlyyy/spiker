@@ -48,7 +48,7 @@ function cardsPool(m, i) {
   if (!A.fx.deck) return Cards.collection(m, i, Y.p);
   const T = { solo: 0, debuff: 1, team: 2 };
   return Object.keys(CARDS)
-    .filter(id => CARDS[id].src !== 'duo' && CARDS[id].src !== 'base')
+    .filter(id => CARDS[id].src !== 'duo' && CARDS[id].src !== 'base' && !CARDS[id].parts)
     .sort((a, b) => T[CARDS[a].type] - T[CARDS[b].type] || CARDS[a].name.localeCompare(CARDS[b].name));
 }
 /** Build your own deck from A.myPick (default: the first DECK.mine of your pool — the Dev match: individual plays first). */
@@ -98,18 +98,29 @@ const BAR_WORD = { sta: 'stamina', hp: 'HP', mor: 'morale' },
 function cardCost(id) {
   const c = CARDS[id],
     who = { holder: 'holders', captain: 'captain', court: 'court' },
-    pay = C => (C ? `−${C.amt.toFixed(2)} ${BAR_WORD[C.bar]} (${who[C.who]})` : 'free');
-  return `${pay(c.cost)} → ${c.desc} · ${cardLen(c)}${c.after ? ` · after: ${pay(c.after)}` : ''} · ${cardCool(c, true)}`;
+    pay = C => (C ? `−${C.amt.toFixed(2)} ${BAR_WORD[C.bar]} (${who[C.who]})` : 'free'),
+    cost = c.parts ? cardCosts(id).map(pay).join(' + ') || 'free' : pay(c.cost); // a fused card: both parts' costs (spec §2.37)
+  return `${cost} → ${c.desc} · ${cardLen(c)}${c.after ? ` · after: ${pay(c.after)}` : ''} · ${cardCool(c, true)}`;
 }
+/** The costs a card's play pays: a fused card's parts' (spec §2.37 Fusing), else its own. */
+const cardCosts = id => (CARDS[id].parts ? CARDS[id].parts.map(x => CARDS[x].cost) : [CARDS[id].cost]).filter(Boolean);
 /** How long a card acts: "3 serves", "1 point", "armed 6", "at once". */
 const cardLen = c =>
   !c.dur ? 'at once' : c.kind === 'trap' ? `armed ${c.dur}` : `${c.dur} ${c.per === 'srv' ? 'serves' : c.dur === 1 ? 'point' : 'points'}`;
 /** Its cooldown: "cools 8" (long: "cools 8 points"), OP "once a match". */
-const cardCool = (c, long) => (c.cd === Infinity ? 'once a match' : `cools ${c.cd}${long ? ' points' : ''}`);
+const cardCool = (c, long) =>
+  c.cd === Infinity
+    ? 'once a match'
+    : c.parts
+      ? long
+        ? `its parts cool ${c.parts.map(x => CARDS[x].cd).join(' + ')} points`
+        : `cools ${c.parts.map(x => CARDS[x].cd).join('+')}`
+      : `cools ${c.cd}${long ? ' points' : ''}`;
 /** The kind band's word. */
 function cardKind(c) {
   if (c.kind === 'op') return 'OP';
-  if (c.kind === 'basic') return 'Basic';
+  if (c.parts) return 'Fused';
+  if (c.kind === 'basic') return 'Amplifier';
   if (c.kind === 'trap') return 'Trap';
   if (c.kind === 'once') return 'One-shot';
   return { tech: 'Technique', trait: 'Trait', duo: 'Duo' }[c.src] || 'Play';
@@ -145,7 +156,7 @@ const FIT_TIP = {
 /** The card's tooltip: cost → result in full, then its read, counters or trap. */
 function cardTip(id) {
   const c = CARDS[id],
-    E = CARD_EDGE[id],
+    E = CARD_EDGE[c.parts ? c.parts.find(x => CARD_EDGE[x]) || id : id],
     ctr = E && E.ctr.length ? ` Countered by: ${E.ctr.map(x => CARDS[x].name).join(', ')}.` : '',
     rule =
       c.kind === 'trap'
@@ -153,19 +164,22 @@ function cardTip(id) {
         : E && E.fit !== 'always'
           ? `Pays when it ${FIT_TIP[E.fit]}.${ctr}`
           : '';
-  return `${c.name} (${TYPE_WORD[c.type]}): ${cardCost(id)}. ${rule}`.trim();
+  const made = c.parts ? ` Fused from ${c.parts.map(x => CARDS[x].name).join(' + ')}: played as one, both costs, both cool after.` : '',
+    amp = c.amp ? ` Fuses with another amplifier (a combo play), itself (${c.name}+) or a technique of its group (its full form).` : '';
+  return `${c.name} (${TYPE_WORD[c.type]}): ${cardCost(id)}.${made}${amp} ${rule}`.trim();
 }
 /** Does this card show "Fits now" (a card with a read that holds; never their hand)? */
 const cardFits = (m, i, id) => {
-  const E = CARD_EDGE[id];
+  const E = CARD_EDGE[CARDS[id].parts ? CARDS[id].parts.find(x => CARD_EDGE[x]) || id : id];
   return CARDS[id].kind !== 'basic' && !!E && E.fit !== 'always' && Cards.fits(m, i, id);
 };
 /** The payer's tag: "#9 Rin", "#9 Rin +1", "Captain #4", "Court", "Free". */
 function cardPayer(m, i, id, y) {
-  const C = CARDS[id].cost;
+  const C = CARDS[id].parts ? cardCosts(id).find(x => x.who !== 'court') || cardCosts(id)[0] : CARDS[id].cost;
   if (!C) return 'Free';
   if (y && CARDS[id].type !== 'team') return 'You';
   if (C.who === 'court') return 'Court';
+  if (CARDS[id].parts && cardCosts(id).some(x => x.who === 'court')) return 'Court +';
   const P = Cards.payers(m, i, id);
   if (C.who === 'captain') return P[0] ? `Captain #${P[0].num}` : 'Captain';
   return P.length ? `#${P[0].num} ${firstName(P[0])}${P.length > 1 ? ` +${P.length - 1}` : ''}` : 'Holders';
@@ -213,13 +227,22 @@ function handCard(m, i, h, id, o = {}) {
     why = o.q ? null : !mine ? 'mine' : Cards.can(m, i, h, y),
     ok = !o.q && !why,
     fits = cardFits(m, i, id),
-    C = c.cost,
+    Cs = cardCosts(id),
     you = y && c.type !== 'team' && cardsYou(m),
-    poor = C && (you ? !myAfford(m, you.p, C) : !Cards.afford(m, i, id)),
-    lv = you && c.src === 'tech' ? techLv(you.p, c.need) : Cards.level(m, i, id),
-    cost = C
-      ? `<span class="hcost ${poor ? 'poor' : ''}" ${poor ? tip(`Under the floor: the payer goes into Tiring / Spent / Shaken`) : ''}>${BAR_ICON[C.bar] ? statI(BAR_ICON[C.bar], 14) : ''}−${C.amt.toFixed(2)} ${BAR_WORD[C.bar]}</span>`
+    poor = Cs.length && (you ? !Cs.every(C => myAfford(m, you.p, C)) : !Cards.afford(m, i, id)),
+    lead = CARDS[c.parts ? c.parts.find(x => CARDS[x].src === 'tech') || id : id],
+    lv = you && lead.src === 'tech' ? techLv(you.p, lead.need) : Cards.level(m, i, id),
+    cost = Cs.length
+      ? Cs.map(
+          C =>
+            `<span class="hcost ${poor ? 'poor' : ''}" ${poor ? tip(`Under the floor: the payer goes into Tiring / Spent / Shaken`) : ''}>${BAR_ICON[C.bar] ? statI(BAR_ICON[C.bar], 14) : ''}−${C.amt.toFixed(2)} ${BAR_WORD[C.bar]}</span>`
+        ).join('')
       : '<span class="hcost">Free</span>',
+    F = o.fz, // fusing (spec §2.37): { to } the card this one fuses into, { src } the one being dragged, { dim } no recipe
+    fz =
+      F && F.to
+        ? `<span class="hfz"><span class="lab">Fuse → ${esc(CARDS[F.to].name)}</span><small>${esc(cardFuseLine(F.to))}</small></span>`
+        : '',
     foot = o.q
       ? '<span class="hcw q">Queued · next serve</span>'
       : why
@@ -227,10 +250,10 @@ function handCard(m, i, h, id, o = {}) {
         : fits
           ? '<span class="hfit">✓ Fits now</span>'
           : '';
-  return `<div class="hc k-${c.kind} z-${c.zone} t-${c.type}${mine ? ' me' : ''}${fits && !why ? ' fits' : ''}${why ? ' no' : ''}${o.q ? ' q' : ''}${o.mini ? ' mini' : ''}" data-h="${h}" data-id="${esc(id)}" role="button" tabindex="${ok ? 0 : -1}" aria-disabled="${!ok}" ${tip(cardTip(id))}${
+  return `<div class="hc k-${c.kind} z-${c.zone} t-${c.type}${c.parts ? ' fused' : ''}${mine ? ' me' : ''}${fits && !why ? ' fits' : ''}${why ? ' no' : ''}${o.q ? ' q' : ''}${o.mini ? ' mini' : ''}${F ? (F.to ? ' fz' : F.src ? ' fsrc' : ' fdim') : ''}" data-h="${h}" data-id="${esc(id)}" role="button" tabindex="${ok ? 0 : -1}" aria-disabled="${!ok}" ${tip(cardTip(id))}${
     ok ? ` onclick="handPlay(${i},${h})"` : ''
   }${mine && !o.q ? ` oncontextmenu="return handDisc(event,${i},${h})"` : ''}>
-    <span class="hcb"><span>${o.mini ? '' : `${cardKind(c).replace('Technique', 'Tech')} · ${TYPE_SHORT[c.type]}`}</span><kbd>${h + 1}</kbd></span>
+    <span class="hcb"><span>${o.mini ? '' : `${cardKind(c).replace('Technique', 'Tech').replace('Amplifier', 'Amp')} · ${TYPE_SHORT[c.type]}`}</span><kbd>${h + 1}</kbd></span>
     <b class="hcn">${cardYours(m, i, id) ? '◆ ' : ''}${esc(cardName(m, i, id))}</b>${
       o.mini
         ? `<small class="hck">${cardKind(c)} · ${TYPE_SHORT[c.type]}</small>`
@@ -238,8 +261,17 @@ function handCard(m, i, h, id, o = {}) {
             c.src === 'tech' && Math.abs(lv - 1) > 0.02
               ? `<span class="hlv" ${tip('Holder level: × on its edges and buffs')}>×${lv.toFixed(2)}</span>`
               : ''
-          }</span><span class="hcr">→ ${esc(c.desc)}</span>${foot}<span class="hcf"><span>${cardLen(c)}</span><span>${cardCool(c)}</span></span>`
+          }</span><span class="hcr">→ ${esc(c.desc)}</span>${foot}<span class="hcf"><span>${cardLen(c)}</span><span>${cardCool(c)}</span></span>${fz}`
     }</div>`;
+}
+/** The fused card's cost → result in one short line (the fuse highlight): "−0.02 stamina + −0.10 stamina → … · 3 points". */
+function cardFuseLine(id) {
+  const c = CARDS[id];
+  return `${
+    cardCosts(id)
+      .map(C => `−${C.amt.toFixed(2)} ${BAR_WORD[C.bar]}`)
+      .join(' + ') || 'Free'
+  } → ${c.desc} · ${cardLen(c)}`;
 }
 /** Can you pay cost C on your own bars (each after the cost at CARD_AI.floor or above)? */
 const myAfford = (m, p, C) =>
@@ -249,6 +281,7 @@ const handP = (m, i) => Cards.my(m, i) || m.deck[i];
 /** Play hand card h of side i (between points): it acts from the next serve; the bar lifts it (queued) until then. */
 function handPlay(i, h) {
   if (!A || !A.m || !A.m.deck || A.done) return false;
+  if (A.hdragT && performance.now() - A.hdragT < 250 && typeof event !== 'undefined' && event && event.type === 'click') return false; // (the click that ends a drag)
   const m = A.m,
     y = !!Cards.my(m, i),
     id = handP(m, i).hand[h];
@@ -276,6 +309,96 @@ const handQ = (m, i) => {
   const q = A.hq && A.hq[i];
   return q && ptsPlayed(m) <= q.at + 1 && !q.gone ? q : null;
 };
+/* ---------- fusing (spec §2.37 Fusing in the hand) ---------- */
+
+/** The fuse in progress on side i's bar (A.hfz { i, h, drag?, key? }: dragging card h, or `F` waiting for its keys), or null. */
+const handFz = (m, i) => (A.hfz && A.hfz.i === i && !A.prep && !A.done ? A.hfz : null);
+/** Fuse hand cards a and b of side i (Cards.fuse): the fused card takes a's place, b's stays empty; a line on the bar. */
+function handFuse(i, a, b) {
+  A.hfz = null;
+  if (!A || !A.m || !A.m.deck || A.done) return false;
+  const m = A.m,
+    y = !!Cards.my(m, i);
+  if (!(y || Cards.mine(m, i))) return false;
+  const P = handP(m, i),
+    pa = P.hand[a],
+    pb = P.hand[b],
+    r = Cards.fuse(m, i, a, b, y);
+  if (!r) {
+    handNote(m.t[i], 'No recipe: those two don’t fuse', 'disc');
+    handTick(true);
+    return false;
+  }
+  if (A.hshow && A.hshow[i]) ((A.hshow[i][a] = r), (A.hshow[i][b] = null));
+  if (typeof DBG !== 'undefined') DBG.log('info', `fuse: ${m.t[i].short} ${CARDS[pa].name} + ${CARDS[pb].name} → ${CARDS[r].name}`);
+  handNote(m.t[i], `Fused <b>${esc(CARDS[r].name)}</b> · ${esc(CARDS[pa].name)} + ${esc(CARDS[pb].name)}`, 'turn');
+  handTick(true);
+  if (!Motion.reduced) Motion.play($(`#hrow .hc[data-h="${a}"]`), 'fusein');
+  return true;
+}
+/** Drag-to-fuse: press a card of yours and drag — the cards it fuses with light up (name, cost → result); drop on one to fuse. */
+function handDragStart(e) {
+  const c = e.target.closest && e.target.closest('#hrow .hc[data-h]');
+  if (!c || e.button !== 0 || c.classList.contains('gap') || c.classList.contains('q') || !A || !A.m || A.done) return;
+  const i = handSide();
+  if (i == null || !(Cards.my(A.m, i) || Cards.mine(A.m, i))) return;
+  A.hdrag = { i, h: +c.dataset.h, x: e.clientX, y: e.clientY, on: false, el: null };
+}
+function handDragMove(e) {
+  const D = A && A.hdrag;
+  if (!D) return;
+  if (!D.on) {
+    if (Math.hypot(e.clientX - D.x, e.clientY - D.y) < 8) return;
+    D.on = true;
+    A.hfz = { i: D.i, h: D.h, drag: 1 };
+    const src = $(`#hrow .hc[data-h="${D.h}"]`);
+    if (src) {
+      const r = src.getBoundingClientRect(),
+        g = src.cloneNode(true);
+      g.removeAttribute('onclick');
+      g.removeAttribute('oncontextmenu');
+      g.classList.add('hghost');
+      g.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
+      document.body.appendChild(g);
+      document.body.classList.add('hdragging'); // (no tooltips over the bar while dragging)
+      D.el = g;
+      D.lift = r.height * 0.75; // (the dragged card rides above the pointer: the card under it stays readable)
+      D.ox = r.left - D.x;
+      D.oy = r.top - D.y;
+    }
+    handTick(true);
+  }
+  if (D.el)
+    D.el.style.transform = `translate(${(e.clientX - D.x).toFixed(0)}px,${(e.clientY - D.y - D.lift).toFixed(0)}px) rotate(4deg) scale(0.85)`;
+}
+function handDragEnd(e) {
+  const D = A && A.hdrag;
+  if (!D) return;
+  A.hdrag = null;
+  if (D.el) D.el.remove();
+  document.body.classList.remove('hdragging');
+  if (!D.on) return;
+  A.hdragT = performance.now();
+  const t = document.elementFromPoint(e.clientX, e.clientY),
+    c = t && t.closest('#hrow .hc[data-h]'),
+    b = c ? +c.dataset.h : -1;
+  if (b >= 0 && b !== D.h) handFuse(D.i, D.h, b);
+  else {
+    A.hfz = null;
+    handTick(true);
+  }
+}
+addEventListener('pointerdown', e => handDragStart(e));
+addEventListener('pointermove', e => handDragMove(e));
+addEventListener('pointerup', e => handDragEnd(e));
+addEventListener('pointercancel', () => {
+  if (A && A.hdrag) {
+    if (A.hdrag.el) A.hdrag.el.remove();
+    document.body.classList.remove('hdragging');
+    A.hdrag = null;
+    A.hfz = null;
+  }
+});
 function cardsRedraw() {
   if (A && A.prep && $('#prep') && !$('#prep').hidden) prepDraw();
   handTick(true);
@@ -386,12 +509,15 @@ function handHTML(m, i) {
     s = A.hshow[i],
     q = handQ(m, i),
     n = s.length,
+    Z = handFz(m, i),
+    FL = Z && Z.h != null ? Cards.fusable(m, i, Z.h, !!Y) : null,
+    fz = h => (!FL ? null : h === Z.h ? { src: 1 } : { to: (FL.find(x => x.h === h) || {}).id || null }),
     cards = s
       .map((id, h) => {
         const mid = (n - 1) / 2,
           f = `style="--r:${((h - mid) * 2.5).toFixed(1)}deg;--y:${(Math.abs(h - mid) ** 2 * 3).toFixed(0)}px"`;
         if (q && q.h === h) return `<div class="hslot" ${f}>${handCard(m, i, h, q.id, { q: 1 })}</div>`;
-        if (id) return `<div class="hslot" ${f}>${handCard(m, i, h, id)}</div>`;
+        if (id) return `<div class="hslot" ${f}>${handCard(m, i, h, id, { fz: fz(h) })}</div>`;
         return `<div class="hslot" ${f}><div class="hc gap" data-h="${h}"><kbd>${h + 1}</kbd><span>Empty</span><small>Refills at the turn</small></div></div>`;
       })
       .join(''),
@@ -403,7 +529,15 @@ function handHTML(m, i) {
     S.length > 1
       ? `<button class="btn hsw" onclick="handSwitch()" ${tip('Show your other hand')}>${esc(m.t[S.find(x => x !== i)].short)} <kbd>Tab</kbd></button>`
       : ''
-  }<span class="htn">Turn ${m.turnN || 0} · refill in ${Math.max(1, left)}</span><span class="hkeys"><kbd>1</kbd>–<kbd>${n}</kbd> play · <kbd>Shift</kbd> or right-click discard</span>${
+  }<span class="htn">Turn ${m.turnN || 0} · refill in ${Math.max(1, left)}</span>${
+    Z
+      ? `<span class="hkeys hfzk">${
+          Z.h == null
+            ? `Fuse: pick a card <kbd>1</kbd>–<kbd>${n}</kbd>`
+            : `Fuse ${esc(CARDS[D.hand[Z.h]] ? CARDS[D.hand[Z.h]].name : '')} with ${FL && FL.length ? FL.map(x => `<kbd>${x.h + 1}</kbd>`).join(' ') : '— no recipe'}`
+        } · <kbd>Esc</kbd> cancels</span>`
+      : `<span class="hkeys"><kbd>1</kbd>–<kbd>${n}</kbd> play · <kbd>Shift</kbd> or right-click discard · drag onto a card or <kbd>F</kbd> fuse</span>`
+  }${
     Y ? handReqBtn(m, i) : ''
   }</div><div class="hmain">${pile('deck', 'Deck', D.draw.length, 'draw order hidden')}<div class="hcards">${cards}</div>${pile(
     'disc',
@@ -608,6 +742,18 @@ function cardsKey(e) {
     handTick(true);
     return true;
   }
+  if (e.key === 'Escape' && A.hfz) {
+    A.hfz = null;
+    handTick(true);
+    return true;
+  }
+  // F then two keys (spec §2.37): fuse those two cards (Shift+F stays fullscreen)
+  if (e.code === 'KeyF' && !e.shiftKey && !A.prep) {
+    e.preventDefault();
+    A.hfz = A.hfz ? null : { i, h: null, key: 1 };
+    handTick(true);
+    return true;
+  }
   if (e.code === 'KeyR' && !e.shiftKey && !A.prep && Cards.my(A.m, i)) {
     e.preventDefault();
     handPile('req');
@@ -618,6 +764,14 @@ function cardsKey(e) {
   if (A.railTab === 'tac' && !$('#mrail').hidden && !e.shiftKey) return false; // the Tactics tab's 1–9 flip techniques (§9.10)
   e.preventDefault();
   const h = +k[1] - 1;
+  if (A.hfz && A.hfz.key && !e.shiftKey) {
+    if (A.hfz.h == null) {
+      if (handP(A.m, i).hand[h]) A.hfz = { i, h, key: 1 };
+      handTick(true);
+    } else if (h === A.hfz.h) ((A.hfz = null), handTick(true));
+    else if (!handFuse(i, A.hfz.h, h)) $(`#hrow .hc[data-h="${h}"]`)?.classList.add('nope');
+    return true;
+  }
   if (e.shiftKey) handDisc(null, i, h);
   else if (!handPlay(i, h)) $(`#hrow .hc[data-h="${h}"]`)?.classList.add('nope');
   return true;
@@ -698,10 +852,10 @@ function cardsDeck(i) {
         )
         .join('') +
       (bas
-        ? `<span class="dk k-basic bas" ${tip('Basics fill the places your squad has no card for: small and cheap, 1 point.')}><i></i><b>Basics ×${bas}</b><small>Power Up · High Point · Guard Up · Quick Step</small></span>`
+        ? `<span class="dk k-basic bas" ${tip('Amplifiers fill the places your squad has no card for: cheap and short; each lifts its action and makes its group’s techniques fire more. Two in the hand fuse into a combo play.')}><i></i><b>Amplifiers ×${bas}</b><small>${DECK.basics.map(x => esc(CARDS[x].name.replace('Improve ', ''))).join(' · ')}</small></span>`
         : ''),
     note = 'Click a card to play it on the first serve.';
-  return `<div class="cdeck">${A.fx.deck ? cardsPickHTML(m, i, 'Your cards join the team deck') : ''}<div class="lab">Opening hand</div><div class="hmini">${hand}</div><p class="small mute">${note}</p><div class="lab">Deck · ${all.length} <span class="mute">· ${own.length} own · ${bas} Basics</span></div><div class="dks">${deck}</div></div>`;
+  return `<div class="cdeck">${A.fx.deck ? cardsPickHTML(m, i, 'Your cards join the team deck') : ''}<div class="lab">Opening hand</div><div class="hmini">${hand}</div><p class="small mute">${note}</p><div class="lab">Deck · ${all.length} <span class="mute">· ${own.length} own · ${bas} amplifiers</span></div><div class="dks">${deck}</div></div>`;
 }
 /**
  * The deck pick (spec §2.37 Your hand): every card of your pool as a toggle (DECK.mine at most), grouped by type; Basics fill
@@ -721,8 +875,8 @@ function cardsPickHTML(m, i, head) {
       .filter(([, L]) => L.length)
       .map(([k, L]) => `<div class="dkg"><span class="cgl">${TYPE_WORD[k]}</span><div class="dks">${L.map(chip).join('')}</div></div>`)
       .join('');
-  return `<div class="lab">Your deck · ${P.length} / ${DECK.mine} <span class="mute">· ${head}${P.length < DECK.mine ? ` · Basics fill ${DECK.mine - P.length}` : ''}</span></div><div class="dkp">${
-    groups || '<p class="small mute">No cards of your own yet: Basics fill your deck. Learn a technique to bring one.</p>'
+  return `<div class="lab">Your deck · ${P.length} / ${DECK.mine} <span class="mute">· ${head}${P.length < DECK.mine ? ` · amplifiers fill ${DECK.mine - P.length}` : ''}</span></div><div class="dkp">${
+    groups || '<p class="small mute">No cards of your own yet: amplifiers fill your deck. Learn a technique to bring one.</p>'
   }</div>`;
 }
 /** Match prep as a non-captain: your deck pick, your opening hand of DECK.myHand and how requests work. */
@@ -774,7 +928,7 @@ function cardsRow(m) {
               : ''
           }</span>`;
         });
-    if (bas) played.push(`<span class="rcd k-basic"><b>Basics</b> ×${bas}</span>`);
+    if (bas) played.push(`<span class="rcd k-basic"><b>Amplifiers</b> ×${bas}</span>`);
     return `<div class="rplan"><span class="rpt">${chip(m.t[i])}${esc(m.t[i].short)}</span><span class="rcds">${played.join('') || '<span class="mute">No cards played</span>'}</span></div>`;
   };
   return `<div class="rplans"><div class="lab">Cards played <span class="mute">· rallies won–lost while active</span></div>${side(0)}${side(1)}</div>`;

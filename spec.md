@@ -858,7 +858,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     streak). A sharp captain (`capIQ`) waits better; a dull one plays what fits as soon as it is drawn.
   - **Combos** (§2.33) are dropped for now; open whether two linked cards played on consecutive points should bonus. **Superseded by
     Amplifiers and fusing (below).**
-  - **Amplifiers and fusing** (owner, 2026-10-24) **[draft — T-358]**: realism first — a player never forgets what they know.
+  - **Amplifiers and fusing** (owner, 2026-10-24) **[built 2026-10-24, T-358]**: realism first — a player never forgets what they know.
     - **Techniques always on, rarer**: an owned technique still fires on its own (the AI on court decides when), at **half** today's
       rate — rallies are plainer (the §5.7 idea); cards make them bloom.
     - **Amplifiers** replace the Basics: **Improve Serve · Attack · Set · Block · Dig · Fake** (individual or team by who pays; cheap,
@@ -875,6 +875,17 @@ the AI coach fills every slot you leave with the same function. Built and measur
       (stronger, diminishing); the old pairs (Killer + Target Serve = Sniper, Wall Their Ace + Commit = Lockdown …) fuse too.
     - The captain fuses by the same function (no draws). On screen: drag a card onto another — the cards it fuses with light up,
       each showing the result's name and cost → result; `F` then two keys does the same.
+    - Built (first guesses, T-348 tunes; `DECK.tech`, `DECK.amp`, js/data/cards.js): an owned technique goes on a rally with chance 0.5
+      (decided once a rally per player and technique; a technique card calls it — always on); each amplifier active adds 0.25 to its
+      group's rate (Improve X+: 0.4), lifts its action (Serve +4 % serve, Attack +4 % power, Set +2 % power, Block +4 % jump, Dig
+      +4 % speed, Fake their block −3 %) and +4 % more for a player whose group technique is on; 2 points, cools 3, −0.02 court
+      stamina. Groups: serve Killer / Drive / Target · attack Cut Shot / Pipe Combo · set Sync · fake Delayed Spike / Lefty Dump /
+      Freak Quick / Slide · block Read / Soft Block · dig Rolling Receive / Desperation Save. A technique card with its group's
+      amplifier active: edges × 1.25; full form: the technique's edges and buffs × 1.5, always goes for it (a fake's: their block
+      −4 % more). Combo bonuses (3 points): Fortress defence +4 %, Decoy their block −4 %, Pressure Wall their defence −3 %, Tempo
+      power +4 %, Scramble speed +4 %, Bait their power −4 %; old pairs +6 %: Sniper (serve), Lockdown (jump), Iron Floor (Speed Dig +
+      Dig Deep, defence), Freak / Slide Tempo (Quick Tempo + Freak Quick / Slide, power). The captain fuses when a recipe outscores
+      every single card. `F` fuses while a hand bar shows (Shift+F: fullscreen).
   - **OP cards** (owner, 2026-10-23), once a match each, from OP / element players by role:
     - **God Resolve** (WS): everyone on court — attack, speed and jump × 2 for 3 points; afterwards everyone's morale −0.3.
     - **Resolve of the Titan** (MB): its holder grows to 2× size on court (display: the model × 2; positions and reach as the
