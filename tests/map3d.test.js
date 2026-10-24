@@ -388,7 +388,7 @@ test('map3d: street level — one continuous zoom path (pitch, distance, height 
     behind = P.dist * Math.cos(P.pitch),
     above = P.up + STREET.head;
   assert(behind > 5.5 && behind < 7 && above > 2.5 && above < 3.6, `~6 m behind, ~3 m above (${behind.toFixed(2)}, ${above.toFixed(2)})`);
-  // the district: the capsule from the Dynasty Strength Center to the League Arena (MapView.zone's shape)
+  // a capsule district (the T-336a prototype's shape; still supported)
   const { load } = require('./harness'),
     g = load(5),
     Z = zoneOf({ a: g.SPOTS.weiPower.at, b: g.VENUES.arena.at, r: 200 }),
@@ -400,6 +400,19 @@ test('map3d: street level — one continuous zoom path (pitch, distance, height 
     assert(!inZone(Z, ...w(g.SPOTS[id].at)), `${id} is outside (the zoom stops at the map's closest there)`);
   assert(!inZone(Z, ...w(g.CITY.hq[1])) || zoneDist(Z, ...w(g.CITY.hq[1])) <= 0, 'zoneDist agrees with inZone');
   eq(inZone(null, 0, 0), false, 'no district → no street level');
+  // T-361: street level in every district — MapView's zone is all the land
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../js/ui/map-view.js'), 'utf8');
+  assert(/ZONE: Object\.freeze\(\{ all: true \}\)/.test(src) && /zone: \(\) => MapView\.ZONE/.test(src), 'MapView.zone = everywhere');
+  const all = zoneOf({ all: true });
+  for (const p of [
+    ...Object.values(g.SPOTS)
+      .filter(s => s.at)
+      .map(s => s.at),
+    ...g.CITY.hq,
+    ...Object.values(g.VENUES).map(v => v.at)
+  ])
+    assert(inZone(all, ...w(p)), `street level opens at ${p}`);
+  eq(zoneDist(all, 0, 0), -Infinity, 'everywhere: always inside');
 });
 test('map3d: the detail ring — every face and rooms behind the ground-floor glass near the camera, kerbs and markings; hidden → the map look back', () => {
   const THREE = require('three'),

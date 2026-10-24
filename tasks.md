@@ -41,13 +41,13 @@ Files: js/data/war.js (WAR_STAGES), js/engine/* only where a stage effect is rea
 Accept: the measured win rates in the Result; tests for the taxi fare; npm test, lint pass.
 Result:
 
-### [ ] T-361: Street level everywhere
+### [x] T-361: Street level everywhere
 Spec: §4.37 6 Phase 3          Goldens: unchanged          Save: no change
 Goal: the street-level camera, detail ring, WASD and VRM people in every district, not only the prototype capsule.
 Files: js/map3d/*, js/ui/map-view.js (zone), js/ui/career-map.js, tests/map3d.test.js, tests/interior.test.js, tests/ui-smoke.js, ARCHITECTURE-details.md
 Accept: tests; npm test, lint, test:ui pass; QA screenshots of street level in each town; the frame budget (triangles / draw calls at
 street level per town) in the Result.
-Result:
+Result: MapView.zone() = `{ all: true }` (street level anywhere on land); mapcam3d zoneOf / zoneDist / inZone take it (a capsule still works), WASD's lot grid holds every lot + facility (rebuilt per lots / zone); the follow camera, detail ring, WASD and VRM people needed no other change. Budget at street level (d 6.7, the whole frame incl. shadow + post passes, swiftshader): Wei gym 429 calls / 3.31 M tris (ring 84 lots, 28k tris), Wu harbor 461 / 3.43 M (105, 10k), Wu town (Seaside Inn) 437 / 3.46 M (194, 17k), Shu dojo 418 / 3.32 M (43, 3k), Shu steps 405 / 3.17 M (32, 2k), Academy 422 / 3.41 M (147, 21k), Outlaws cage 436 / 3.38 M (136, 10k), Gloria 415 / 3.29 M (112, 28k) — the ring adds ≤ 28k; the bulk is the island's merged meshes (terrain, town, nature) drawn whole at the 900 m far plane (not culled per item: worth a look if a real GPU drops under §4.39's 45 fps). Tests: map3d (zone everywhere); quick 266/266, lint; test:ui in T-362. QA sl-<place>.png ×8, no page errors.
 
 ### [ ] T-362: An interior for every place
 Spec: §4.37 6 Phase 3, §4.40          Goldens: unchanged          Save: no change

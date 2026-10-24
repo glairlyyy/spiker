@@ -1,11 +1,11 @@
 // The island map's camera and input (spec §4.9, §4.18c): the fixed tilted view over a ground point (`view` { x, z, d }),
 // drag to pan (grab the ground point), wheel to zoom, a click picks a map point; flights to a pin, to you (◎ Me) and over
 // the whole island; following your walk; the week-1 fence. map3d.mjs `create` owns the scene and hands this its parts.
-// Street level (spec §4.37 6, T-336a): inside the prototype district (model.street, a capsule round its places) the zoom goes on
-// past DIST[0] down to STREET.d1 — one continuous path (streetPose: the pitch eases from the map's PITCH to STREET.pitch, the
+// Street level (spec §4.37 6, T-336a; every district since T-361): wherever model.street allows it (`{ all: true }` = all the
+// land — MapView's zone; a capsule { a, b, r } still works for tests) the zoom goes on past DIST[0] down to STREET.d1 — one continuous path (streetPose: the pitch eases from the map's PITCH to STREET.pitch, the
 // target rises from the ground point to your head and moves onto you, the camera follows you); Q / E, a right-drag (or a drag at
-// street level) orbit round you; WASD walks your avatar freely inside the district (display only: `on.walk(point)` once you stop,
-// a map-point travel like a click). Outside the district the zoom stops at DIST[0] as before (and eases back up if you leave it).
+// street level) orbit round you; WASD walks your avatar freely on land (display only: `on.walk(point)` once you stop, a map-point
+// travel like a click). Outside a capsule district the zoom stops at DIST[0] as before (and eases back up if you leave it).
 import * as THREE from 'three';
 import { MAP_M, toMap, toWorld, clamp, lerp, smooth, wrap, fitView } from './geo3d.mjs';
 import { lotFrame, LANDMARKS } from './kit3d.mjs';
@@ -43,10 +43,15 @@ export function streetPose(d) {
     pitch = lerp(PITCH, STREET.pitch, k);
   return { s: k, pitch, dist: d, up: d * Math.sin(pitch) };
 }
-/** The district as a world capsule { a: [x, z], b: [x, z], r } (m) from the model's `street` ({ a, b, r } in map units), or null. */
-export const zoneOf = st => (st && st.a && st.b ? { a: toWorld(st.a), b: toWorld(st.b), r: st.r * MAP_M } : null);
-/** Distance (m) from world (x, z) to the district capsule's spine minus its radius (≤ 0 = inside). */
+/**
+ * The district from the model's `street`: `{ all: true }` → { all: true } (street level everywhere, T-361); a capsule { a, b, r }
+ * (map units) → the world capsule { a: [x, z], b: [x, z], r } (m); else null.
+ */
+export const zoneOf = st =>
+  st && st.all ? { all: true } : st && st.a && st.b ? { a: toWorld(st.a), b: toWorld(st.b), r: st.r * MAP_M } : null;
+/** Distance (m) from world (x, z) to the district capsule's spine minus its radius (≤ 0 = inside; everywhere: −∞). */
 export const zoneDist = (Z, x, z) => {
+  if (Z.all) return -Infinity;
   const [ax, az] = Z.a,
     [bx, bz] = Z.b,
     dx = bx - ax,
@@ -87,6 +92,7 @@ export function createMapCam(cam, canvas, sun, S) {
     dragged = false, // the last right-button press orbited (its contextmenu is not a figure click)
     lotGrid = null,
     lotKey = null,
+    lotZone = null,
     lift = 0; // street level: how far the camera has risen over a building behind you (m)
 
   const district = () => {
@@ -259,15 +265,16 @@ export function createMapCam(cam, canvas, sun, S) {
   }
 
   /**
-   * The district's filler lots as world rectangles in a 16 m bucket grid (WASD doesn't walk through walls), plus its landmarks as
-   * squares (`lm`: only the camera keeps out of them — you may walk in, the interiors open by cutaway).
+   * The district's filler lots (every lot when street level is everywhere) as world rectangles in a 16 m bucket grid (WASD doesn't
+   * walk through walls), plus its landmarks as squares (`lm`: only the camera keeps out of them — you may walk in, the interiors open by cutaway).
    */
   const lots = () => {
     const m = S().cur,
       L = m && m.land && m.land.lots;
     if (!L || !zone) return null;
-    if (L === lotKey) return lotGrid;
+    if (L === lotKey && zone === lotZone) return lotGrid;
     lotKey = L;
+    lotZone = zone;
     lotGrid = new Map();
     const marks = (m.land.landmarks || []).map(q => {
       const K = LANDMARKS[q.kind],
@@ -319,7 +326,7 @@ export function createMapCam(cam, canvas, sun, S) {
     // back to world (the inverse of the turn above)
     return [f.x + lx * f.cs + lz * f.sn, f.z - lx * f.sn + lz * f.cs];
   };
-  /** World (x, z) is free to stand on: inside the district, on land, outside every lot (+ 0.35 m). */
+  /** World (x, z) is free to stand on: inside the district (anywhere when it is all the land), on land, outside every lot (+ 0.35 m). */
   const free = (x, z) => inZone(zone, x, z) && heightAt(x, z) >= 0.15 && !lotAt(x, z, 0.35);
   /** WASD: move your avatar (display) relative to the camera's heading; when the keys rest, the rules see where you stopped. */
   const roamStep = dt => {
