@@ -336,6 +336,9 @@ function chooseAttack(c, s, h) {
     (p.role === 'MB' ? 0.5 : p.role === 'S' ? 0.45 : 1) *
     (tac.w[p.role] || 1) *
     (1 + 0.6 * buffLv(p)) * // the captain told everyone to feed this player
+    // a hitter with an attack card on gets the ball more (spec §2.38): their attack buff (the side's stage is the same for all;
+    // traits are who they are, not a buff) ^ SKILL.feed
+    Math.pow(stageBuff(p, 'atk') / (p.traits ? trBuff(p, 'atk') : 1), SKILL.feed) *
     (elReady(m, p) ? 3 : 1); // a full element gauge: the setter looks for them
   // relationships (T-066): in the clutch the setter feeds an ally more and freezes out a resent / enemy hitter — the same single draw,
   // read against two weightings; without m.rel (or before the clutch) this is the plain wpick

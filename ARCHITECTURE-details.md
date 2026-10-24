@@ -118,6 +118,11 @@ engine decides them by chance and skill (`Formula.spikeErrorP` — wit, set qual
 the net; `serveErrorP`) and which way they go (`spikeNetShare`: lower contact → net; `serveNetShare`: flat or tired
 swing → net, too much power → long), then ends those balls at the net or out.
 
+**Buffs you can feel** (spec §2.38, T-359): `Formula.errK` reads the spike level × `Formula.atkEdge` (1 + `SKILL.edge` ×
+(stageBuff atk − 1)) and × `cardBuff(p, 'clean')` (an active card's `clean` %, pushed by `cardApply` as stat 'clean' for its
+holders); the hard-hit step (`pow > 110`) reads pow / stageBuff atk; `blockPower` reads jump × stageBuff jump; the setter's `hitW`
+(rally-phases.js chooseAttack) × (stageBuff atk / trBuff atk)^`SKILL.feed`. `SKILL.mid` 105.
+
 ## Faults — net touch, foot fault, double contact (spec §4.38, T-337)
 
 Three faults, each one draw at a fixed place, chances in `FAULTS` (rules.js) via `Formula.netTouchP(p, kind, fatigue)` /
@@ -1427,7 +1432,7 @@ tests / measurements) }. `npm run cards` (tests/cards.js) measures modes, the sp
   `grpOn`), `foe` (% on the other side's stat, pushed into its `ek` in `cardEdges`). A technique card's edges × `DECK.amp.with` while its
   group's amplifier is active.
 - **Fused cards** (`CARDS[id].parts`, src 'fuse', never in a deck): combos (fortress, decoy, pwall, tempo, scramble, fbait), the old
-  pairs (sniper, lockdown, ifloor, ftempo, stempo), Improve X+ (`<amp>p`, built in data/cards.js: parts [a, a], `pk` DECK.amp.plus each),
+  pairs (sniper, lockdown, ifloor = sdig + idig, ftempo, stempo), Improve X+ (`<amp>p`, built in data/cards.js: parts [a, a], `pk` DECK.amp.plus each),
   full forms (`full_<tech card>`, built in data/skills.js: [amp, tech], `pk` [1, DECK.amp.full], force). `fuseDefaults`: dur ≥ 4, cd =
   the slowest part's (display / `strong`), type from the parts. Engine: `cardComps(id)` → [[part, ×], …, [id, 1]]; `cardApply` and
   `cardEdges` compile every part (× pk; holder level only on parts with `need`); `actIds` (active ids with parts) for counters, traps,

@@ -21,8 +21,15 @@ const Formula = {
   },
   /** How good a player is at an action (SKILL.use: 'serve' | 'spike' | 'set' | 'pass' | 'block'): its stats, weighted. */
   level: (p, act) => Object.entries(SKILL.use[act]).reduce((a, [k, w]) => a + p[k] * w, 0),
-  /** How often they make mistakes at it (SKILL): 1 at SKILL.mid, more below (at most SKILL.max), less above. */
-  errK: (p, act) => Math.min(SKILL.max, Math.exp((SKILL.mid - Formula.level(p, act)) / SKILL.k)),
+  /**
+   * How often they make mistakes at it (SKILL): 1 at SKILL.mid, more below (at most SKILL.max), less above. A hitter's attack buff
+   * counts in their spike level (SKILL.edge), and an active strong / OP card's `clean` cuts its holders' errors (spec §2.38).
+   */
+  errK: (p, act) =>
+    Math.min(SKILL.max, Math.exp((SKILL.mid - Formula.level(p, act) * (act === 'spike' ? Formula.atkEdge(p) : 1)) / SKILL.k)) *
+    cardBuff(p, 'clean'),
+  /** A hitter's attack buff as it counts in their spike level: 1 + SKILL.edge × (stageBuff atk − 1). */
+  atkEdge: p => 1 + SKILL.edge * (stageBuff(p, 'atk') - 1),
   /** An error chance at an action, scaled by the player's mistake factor for it. */
   bySkill: (p, act, base) => base * Formula.errK(p, act),
   /** Serve strength (roughly 20–110). Wing spikers serve hardest. */
@@ -101,13 +108,16 @@ const Formula = {
       clamp((190 - (hS || 190)) / 400, 0, 0.08) +
       (bad ? 0.07 : 0) +
       Math.max(0, 1 - W(spiker)) * 0.07 +
-      (pow > 110 ? 0.03 : 0) +
+      (pow / stageBuff(spiker, 'atk') > 110 ? 0.03 : 0) + // (the unbuffed power: a buff never adds errors, spec §2.38)
       (around ? 0.03 : 0) +
       (back ? 0.02 : 0) +
       (longB ? 0.05 : 0)), // hit from 7 m out: easy to sail it long
   /** Block strength, scaled by how much of the attack lane the block covers (cov 0..~1.25). */
   blockPower: (b0, b1, team, cov) =>
-    ((effD(b0) * 0.55 + b0.jump * Formula.gMul(b0, 'jump') * team.S.jump * 0.45) * team.S.block * skillMod(b0, 'block') * rnd(0.8, 1.2) +
+    ((effD(b0) * 0.55 + b0.jump * stageBuff(b0, 'jump') * Formula.gMul(b0, 'jump') * team.S.jump * 0.45) *
+      team.S.block *
+      skillMod(b0, 'block') *
+      rnd(0.8, 1.2) +
       (b1 ? (b0.role === 'MB' && b1.role === 'MB' ? 18 : 10) : 0)) *
     cov,
   /** Dig quality for a defender who has to cover dist0 to reach the ball. */

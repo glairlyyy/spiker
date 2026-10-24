@@ -22,10 +22,12 @@ const RULES = {
 /**
  * Skill and mistakes (owner, 2026-10-04: as close to the real game as possible; per action, from the stats that do it — no
  * overall level). An action's level = its stats weighted by `use`; the mistake factor = e^((mid − level) / k), at most `max`
- * (×1.4 at 99, ×2.3 at ~63, ×3 at 40, ×4 for a beginner). Serve errors (serve), hitting errors (spike) and double contacts
+ * (mid 105, T-359: ×1.08 at 99, ×1.75 at ~63, ×2.4 at 40, ×4 for a beginner). Serve errors (serve), hitting errors (spike) and double contacts
  * (set) are × it; a passer's receive score − `pass` × (factor − 1) (pass); a blocker's stuff chance × clamp((level − blk[0]) /
  * blk[1], blk[2], blk[3]) (block). Wit stays where it was (inside each base chance).
  * Targets (share of points, real game): elite ~ kills 50 · errors 32 · blocks 11 · aces 6; amateur ~ kills 28 · errors 55 · blocks 5 · aces 12.
+ * Buffs you can feel (spec §2.38, T-359): `edge` — the share of a hitter's attack buff (stageBuff 'atk': cards, stage, traits)
+ * that counts in their spike level (level × (1 + edge × (buff − 1))); `feed` — the setter's weight on a hitter × buff^feed.
  */
 const SKILL = {
   use: {
@@ -35,8 +37,10 @@ const SKILL = {
     pass: { def: 0.7, speed: 0.3 },
     block: { jump: 0.55, def: 0.45 }
   },
-  mid: 125,
+  mid: 105,
   k: 75,
+  edge: 1,
+  feed: 2,
   max: 4,
   blk: [30, 60, 0.2, 1],
   pass: 4

@@ -884,7 +884,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
       amplifier active: edges × 1.25; full form: the technique's edges and buffs × 1.5, always goes for it (a fake's: their block
       −4 % more). Combo bonuses (4 points — a fused card lasts 4 at least, T-348): Fortress defence +12 %, Decoy their block −12 %,
       Pressure Wall their defence −9 %, Tempo power +12 %, Scramble speed +12 %, Bait their power −12 %; old pairs +12 %: Sniper
-      (serve), Lockdown (jump), Iron Floor (Speed Dig + Dig Deep, defence), Freak / Slide Tempo (Quick Tempo + Freak Quick / Slide,
+      (serve), Lockdown (jump), Iron Floor (Speed Dig + Improve Dig, defence — re-paired from Speed Dig + Dig Deep, which never fit: owner, 2026-10-24, T-359; its read Speed Dig's soft attack), Freak / Slide Tempo (Quick Tempo + Freak Quick / Slide,
       power). The captain fuses when a recipe outscores
       every single card. `F` fuses while a hand bar shows (Shift+F: fullscreen).
   - **OP cards** (owner, 2026-10-23), once a match each, from OP / element players by role:
@@ -943,7 +943,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     every turn; yes when it fits / when not): newcomer bond 0 35 / 14 %, 30 57 / 25, 60 68 / 34, 90 75 / 53; trusted 57 / 25,
     69 / 41, 85 / 56, 95 / 75 — rises with bond and trust, a fitting play likelier.
 - §2.38 Buffs you can feel — fewer coin flips (owner, 2026-10-24: "an OP player with ×2 stats still fails miserably; a +15 % or
-  +50 % attack buff barely means anything") **[draft — T-359]**. Measured (`npm run rng`): the ±20 % rolls decide ~1 % of a spike;
+  +50 % attack buff barely means anything") **[built 2026-10-24, T-359]**. Measured (`npm run rng`): the ±20 % rolls decide ~1 % of a spike;
   the yes/no chain does the rest — hitting errors 20–25 % of swings (×1.4 even for a 99), the hard-hit error step growing with a
   buff, the serve deciding 30–42 % of points, jump not reaching the block, a star swinging once every 8 points. Five changes:
   1. **An attack buff makes its holder cleaner**: the attack edge counts in the holder's own spike error level
@@ -956,6 +956,25 @@ the AI coach fills every slot you leave with the same function. Built and measur
      one-player buff is felt.
   - Targets (league, whole side ×2 attack vs none): ≈ +8 % points (+32 % match wins); one hitter ×2 clearly felt; then the deck
     (§2.37 Must hold) and the career (`npm run career`) re-measured.
+  - Built (T-359; data: `SKILL.mid` 105, `SKILL.edge` 1, `SKILL.feed` 2 in js/data/rules.js; per-card `clean` in js/data/cards.js):
+    1. spike level × (1 + edge × (attack buff − 1)) — the buff is stageBuff atk (cards, the momentum stage, Sparks / Scars), so a
+       debuff adds errors; the `pow > 110` step reads pow ÷ that buff. 2. `clean` 30 on God Resolve, Titan, INZONE!!, Element Surge;
+       20 on Last Stand and the cooldown-12 techniques (Delayed Spike, Freak Quick, Slide, Read Block, Soft Block) — every error
+       (serve, set, pass, spike) of its holders × (1 − clean × holder level); a team card's holders are the court. 3. mid 105.
+       4. block power reads jump × stageBuff jump (coverage already did). 5. the setter's weight × (attack buff ÷ trait buff)^2.
+  - Measured (T-359, 2026-10-24, before → after; `npm run rng -- 300` league / tour): hitting errors 23.5 / 19.4 → 16.2 / 12.9 %
+    of swings, kills 37.4 / 41.1 → 42.4 / 46.2; points: kills 25 / 25 → 32 / 31 %, spike errors 20 / 13 → 14 / 9, serve errors
+    18 / 16 → 13 / 11, aces 10 / 24 → 11 / 25, attacks a point 0.96 / 0.81 → 1.06 / 0.88 (a star WS 0.12 → 0.13). One hitter atk
+    +15 / +50 % / ×2: +0.1 / +0.3 / +1.0 → +0.2 / +1.8 / +3.3 points (league; tour +0.3 / +0.2 / +0.6 → +0.0 / +1.1 / +2.5; the
+    sensitivity table: ×2 → 53 → 64 % match wins, its error 27.8 → 8.0 %); whole side +0.6 / +2.5 / +3.9 → +1.0 / +5.3 / +7.9
+    (wins at ×2 +19 → +31 %; tour +2.6 → +6.0, +10 → +24 %). Jump ×2 (whole side, opponent's attacks blocked) 8.1 → 12.4 % (tour
+    8.2 → 14.4). A 10-OVR gap: match wins 71 → 71 % (tour 68 → 73). `npm run cards -- 250` (league / tour): captain +7.9 / +8.6 →
+    +11.3 / +12.6 % points (wins +32 / +32 → +40 / +35), random +4.3 / +5.6 → +7.6 / +9.1, amplifiers only +3.0 / +2.2 → +3.7 /
+    +3.8 — the order holds; spam: Power +1.6 vs +3.3 / +5.2 vs +6.2, Hunt +6.8 vs +6.3 / +9.9 vs +9.5 (level: its read holds most
+    rallies; the hot serve cards kept, owner); OP at once / key moment / captain +5.3 / +4.4 / +4.1, tour +3.9 / +4.0 / +4.5 (OP
+    cards worth ~2× before, timing still no rule — owner: no change); Iron Floor (Speed Dig + Improve Dig) fused +12.2 / +10.2 vs
+    the parts apart +6.1 / +7.6. `npm run career -- 40 both`: good Cup match wins Y1 46 → 59 %, Y2 53 → 56 %, odds vs her squad
+    40 / 51 → 46 / 55 %; casual 46 / 44 → 49 / 51 %, odds 37 / 42 → 38 / 43; ratings unchanged (77.8 / 94.7 → 77.6 / 95.0).
 ## 3. Menu [built]
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two

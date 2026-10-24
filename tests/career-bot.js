@@ -318,7 +318,7 @@ function play(seed, pol) {
     Y.odds = cupOdds(g, r);
     Y.you = g.ovr(you);
     Y.league = g.Season.mean(r);
-    Y.rival = g.ovr(g.Stars.get(r, 'rival'));
+    Y.rival = g.ovr(g.Stars.get(r, 'rival') || you); // (the rival can be gone by a Cup)
     Y.money = r.money;
     Y.stats = g.STATK.map(k => you[k]).concat(Math.round(you.wit * 50));
     Y.body = g.BODY.keys.map(k => you.body[k]);

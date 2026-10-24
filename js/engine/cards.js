@@ -32,7 +32,7 @@ function cardForce(p, id) {
     mtr(CM, p) !== 'stubborn'
   );
 }
-/** The active cards' buff on p for stat k (atk, def, spd, jump, serve) → a multiplier (stageBuff multiplies it in). */
+/** The active cards' buff on p for stat k (atk, def, spd, jump, serve; 'clean': × on errK) → a multiplier (stageBuff multiplies it in). */
 function cardBuff(p, k) {
   if (!CM || !CM.deck) return 1;
   const i = CM.t[0] === p.team ? 0 : 1,
@@ -255,6 +255,8 @@ function cardApply(m, i) {
         ...who,
         ...(c.src === 'duo' ? { ids: duoIds(m, i, a.id) || [] } : {})
       });
+    // a strong / OP card's `clean` (spec §2.38): its holders' mistake factor (Formula.errK) × (1 − clean %), as stat 'clean'
+    if (c.clean) D.buff.push({ k: 'clean', v: -c.clean * (a.lv || 1) * a.k, need: c.need, needT: c.needT, when: c.when, ...who });
     if (c.amp) {
       D.amp.push({ g: c.amp, v: DECK.amp.rate * a.k, ...(a.my ? { pids: a.pids } : {}) });
       for (const k in c.hit || {}) D.buff.push({ k, v: c.hit[k] * a.k, grpT: c.amp, ...who });
