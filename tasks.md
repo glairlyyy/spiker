@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-354** (T-336 is split a / b) (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-355** (T-336 is split a / b) (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -175,6 +175,14 @@ Accept: tests for types, one team play, hand of 3, request odds and moves, the c
 (extended: a Dev deck match both ways, one request) pass.
 QA: Dev › Deck match → both modes: play, discard, request (yes and no), a turn.
 Result: `CARDS[id].type` team (playbook, God Resolve, INZONE!!, Element Surge) / debuff (traps, Float, Short, Get In Their Head) / solo; one team play a side (a new one replaces it: `cardEnd` 'replaced', after-cost paid; team plays never `grp`-clash; the captain plays none while one runs). Your hand: `Cards.myDeck` (DECK.mine 6, DECK.myHand 3, Basics fill; cards only you bring leave the team deck; hashed shuffles, no R()), the hand API takes `y`; your solo card is held / paid / felt by you only (`pids`, `D.forceMe`), separate one-a-point. Requests: `Cards.canAsk / askOdds / ask` (REQ: at a turn + 1 point, once a turn, 0.25 + 0.45 bond + 0.15 trusted ± read, −0.30 for 3 turns after a granted card is countered / caught; hashed roll; career odds `Team.cardAsk`, bond with the captain, trusted = 8+ weeks or bond 40+). UI: prep pick (opening hand of 3, the request line, toggles from your collection / every card in Dev), the bar shows your 3 + Request (R) → the captain's hand with likely / maybe / unlikely and Ask; band kind · type; DBG `card: … (you)/(captain)` and `request: …`. Dev › Deck match As a player / As captain + Bond pick (menu.js `startDeckMatch`; Average sides 45–70; picked techniques taught; as captain your 6 join the team deck). Also: the bar deals once `m.turnAt` is on screen (the opening hand was hidden during the first rally — T-347 lag). Goldens updated: sims moved only by the one-team-play rule (verified: with it off the old hashes hold). Unlisted tests/engine.test.js: two slow statistical asserts relaxed — net touches ≥ 0.6 (0.82 → 0.69 at seed 5: fewer stacked Commit blocks; T-348) and the sharper captain's first sub within +0.25 (6.4 vs 6.3; base also flips at seeds 11–14: noise). npm test 262/262, lint, test:ui 26/26 (2 new steps: Deck match as a player with one request, as captain). QA: /tmp/…/scratchpad/qa/t349-*.png (prep-player, player, request, answer, prep-captain, captain).
+
+### [ ] T-354: Your deck pick carries between matches
+Spec: §2.37 Your hand          Goldens: unchanged          Save: a lazy `run.mydeck` (ids; no version bump — old saves read it as unset)
+Goal: the own deck you pick in match prep is kept and pre-filled next match; cards you no longer own drop out.
+Files: js/career/team.js, js/ui/match-prep.js, js/ui/match-cards.js (only if needed), tests/cards.test.js, ARCHITECTURE-details.md
+Accept: a test — pick 6, play, the next match's prep starts with the same 6; a lost card drops out (Basics fill); npm test, lint,
+`UI_ONLY=Deck npm run test:ui` pass.
+Result:
 
 ### [ ] T-348: Deck balance
 Spec: §2.37 Must hold          Goldens: update if numbers change          Save: no change

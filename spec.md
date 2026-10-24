@@ -829,7 +829,8 @@ the AI coach fills every slot you leave with the same function. Built and measur
     the traps, Float Barrage, Short Serve, Get In Their Head; the rest individual. The card's band reads kind · type.
   - **Your hand** (career, a non-captain) **[built 2026-10-24, T-349]**: in match prep you pick your **own deck** of `DECK.mine` (6) from
     your collection (your techniques, gift and trait cards, any card a team play granted you stays only for that match) —
-    your play style; Basics fill it if you own fewer. A **hand of 3**, no role limits (three attack cards are fine), the same
+    your play style; Basics fill it if you own fewer. **Your pick carries to the next match** (owner, 2026-10-24; `run.mydeck`,
+    a lazy field — a card you no longer own drops out, a new one waits in the collection) **[draft — T-354]**. A **hand of 3**, no role limits (three attack cards are fine), the same
     rules as the team deck (refill at turns, discard leaves a gap, cooldowns, costs on your bars). You and the captain each
     play at most one card a point — on one point your card and theirs can both go. Built: your collection = your techniques,
     trait card and Titan (no gift cards exist yet; duo cards stay in the team deck); the cards only you bring leave the team deck
@@ -1780,7 +1781,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **Travel** (Walk / Run, §4.33; transport later): hours by the route's length, **1 h at least**; Run is faster, costs stamina
     and trains the route's ground as today. Pace (`PACE`) set so one old trip day ≈ 2 h walking: crossing the island is most of
     a day (§4.40 — travel matters). The free hop (`NEAR_R`) goes: a short walk is simply 1 h.
-  - **Sleep** at home (or a hotel away from home): **4, 6 or 8 h** — never less than 4. 8 h brings stamina back to full (an
+  - **Sleep** at home (or a hotel away from home) (owner, 2026-10-24: no earliest bedtime or minimum time awake): **4, 6 or 8 h** — never less than 4. 8 h brings stamina back to full (an
     injury still heals on its own clock), 6 h ~75 % of what is missing, 4 h ~45 % and a mood dip; sleeping is what ends the
     day — you wake and the next day starts. Up past 02:00 without sleeping: you nod off where you are (4 h, mood down).
   - **Fixed hours**: a match you are made to play (an evaluation, a Cup / league match, the rematch) always starts at **13:00**
