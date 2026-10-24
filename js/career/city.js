@@ -150,14 +150,11 @@ const City = {
   at: (run, id) => (SPOTS[id].at ? SPOTS[id].at : HOME_AT[run.housing] || HOME_AT.studio),
   /** The training places for a key (their lead training). */
   spotsFor: key => Object.keys(SPOTS).filter(id => SPOTS[id].train === key),
-  /** Places that offer Stretch without a kit (spec §4.33: home, the grounds — and every map point, City.pointCan). */
-  STRETCH_AT: ['home', 'park'],
-  /** The day orders at place id (spec §4.33): its kit's, then Stretch; [] where there are none. */
+  /** The day orders at place id (spec §4.33): its kit's, then Stretch — every place has it (T-355: the island is the gym); [] for no place. */
   orders(id) {
     const s = SPOTS[id];
     if (!s) return [];
-    const o = s.kit ? [...new Set(s.kit.flatMap(t => KITS[t].orders))] : [];
-    return s.kit || City.STRETCH_AT.includes(id) ? [...o, 'stretch'] : o;
+    return [...(s.kit ? new Set(s.kit.flatMap(t => KITS[t].orders)) : []), 'stretch'];
   },
   /** A place's lead order: its first drill (the card's primary), else its first order; null without any. */
   lead(id) {
@@ -299,7 +296,8 @@ const City = {
     if (!s) return { ok: false, why: 'unknown place' };
     if (DAY_ORDERS[mate] && !City.orders(id).includes(mate)) return { ok: false, why: 'not done here' };
     if (s.secret && !Secret.known(run, id)) return { ok: false, why: 'unknown place' };
-    if (s.act === 'cargo' && City.drone(run) === 'own') return { ok: false, why: 'you have the drone' };
+    const ord = !!DAY_ORDERS[mate]; // a day order (Stretch at an outing / a secret place): the place's own act rules don't apply
+    if (!ord && s.act === 'cargo' && City.drone(run) === 'own') return { ok: false, why: 'you have the drone' };
     if (run.event) return { ok: false, why: 'answer the event first' };
     if (s.at && City.outside(run, s.at)) return { ok: false, why: City.fence(run) };
     const acc = City.access(run, id);
@@ -310,8 +308,8 @@ const City = {
       cost = City.price(run, id, oid, h);
     if (cost && run.money < cost) return { ok: false, why: `needs $${cost}` };
     if (oid && DAY_ORDERS[oid].kind === 'work' && run.injury) return { ok: false, why: 'injured — no work until it heals' };
-    if (s.act === 'ramen' && !Run.mates(run).some(p => p.id === mate)) return { ok: false, why: 'pick a teammate' };
-    const sw = Secret.acts.includes(s.act) ? Secret.why(run, id, mate) : ''; // a secret place's own rule (mate: the Lighthouse's choice)
+    if (!ord && s.act === 'ramen' && !Run.mates(run).some(p => p.id === mate)) return { ok: false, why: 'pick a teammate' };
+    const sw = !ord && Secret.acts.includes(s.act) ? Secret.why(run, id, mate) : ''; // a secret place's own rule (mate: the Lighthouse's choice)
     if (sw) return { ok: false, why: sw };
     return { ok: true, why: '' };
   },

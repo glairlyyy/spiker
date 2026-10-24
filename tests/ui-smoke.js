@@ -134,6 +134,9 @@ const step = async (name, fn) => {
         pt = spotPanel(RUN, MapModel.ptId(City.pos(RUN)));
       if (!/Heavy sets/.test(hb) || !/Haul crates/.test(hb) || (hb.match(/btn ord hot/g) || []).length > 1) bad.push('harbor: orders');
       if (!/Stretch/.test(spotPanel(RUN, 'home')) || !/Stretch/.test(pt)) bad.push('Stretch at home / a point');
+      for (const id of ids.filter(i => !i.startsWith('pt:')))
+        // every place (T-355): its 1/2/3 h picker and the order, cost → result
+        if (!/Stretch/.test(spotPanel(RUN, id)) || !/seg hrs/.test(spotPanel(RUN, id))) bad.push(`${id}: no Stretch`);
       mapPick('venue:arena'); // and one rendered for real
       if (!document.querySelector('#spot').textContent.includes('Court match')) bad.push('venue card: no court match');
       mapPick(null);
