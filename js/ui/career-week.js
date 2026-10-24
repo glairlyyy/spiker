@@ -4,6 +4,7 @@
 /** Hub UI state: Hard toggle, selected place, open sheet and its tabs, cards, the Week report baseline. */
 let CW = {
   hard: false,
+  hrs: 2, // the hour picker on the place cards (spec §4.41): the hours an order runs
   spot: null,
   flash: null,
   briefWeek: null,

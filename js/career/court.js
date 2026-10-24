@@ -13,7 +13,7 @@ const Court = {
   /** The opponents' target OVR for a tier this week. */
   target: (run, tier) => Math.round(Court.mean(run) + Court.tier(tier).off),
   /** Days a court match at venue id takes: the trip + a day. */
-  cost: (run, id) => City.trip(run, VENUES[id].at) + 1,
+  cost: (run, id) => City.trip(run, VENUES[id].at) + DAY.act,
   /** Why you can't play a court match at venue id in this tier now ('' if you can). */
   why(run, id, tier) {
     const v = VENUES[id],

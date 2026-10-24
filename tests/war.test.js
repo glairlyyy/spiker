@@ -63,7 +63,7 @@ test('war: Strength drives the economy — prices, quality, joins, street streng
   const [g, run] = mkRun(33),
     ti = g.WAR.units.iron.clubs[0],
     o0 = g.World.joinReq(run, ti).ovr,
-    p0 = g.City.price(run, 'weiPower');
+    p0 = g.City.price(run, 'weiPower', 'heavy', 4);
   for (const r of g.MAJORS) assert(g.Front.priceMul(run, r) === 1 && g.Front.qMul(run, r) === 1, 'even at 100: ' + r);
   clashOn(g, run, 'wu', 'wei');
   const pre = JSON.stringify(run.war),
@@ -73,7 +73,10 @@ test('war: Strength drives the economy — prices, quality, joins, street streng
   run.war.str.iron = 50;
   eq(g.War.stage(run, 'iron'), 1, 'under 60: Strained');
   eq(g.World.joinReq(run, ti).ovr, o0 - g.FRONT.join, 'a Strained club asks less');
-  assert(g.Front.priceMul(run, 'wei') > 1 && g.Front.qMul(run, 'wei') < 1 && g.City.price(run, 'weiPower') > p0, 'dearer, poorer');
+  assert(
+    g.Front.priceMul(run, 'wei') > 1 && g.Front.qMul(run, 'wei') < 1 && g.City.price(run, 'weiPower', 'heavy', 4) > p0,
+    'dearer, poorer'
+  );
   assert(g.Front.strength(run, 'iron') < g.Front.strength(run, 'harbor'), 'weaker on the street');
   eq(g.Front.owner(run, 'weiPower'), 'wei', 'no place changes hands');
   const d = g.Dossier.build(run, 'wei');
@@ -104,7 +107,7 @@ test('war: stages in the match — Iron bleeds into Gold one lighter, Shu one la
   eq(g.War.weakOf(run, run.teams[g.WAR.units.iron.clubs[0]]), 3, 'a club squad: its unit');
   eq(g.War.weakOf(run, run.pickup), 0, 'the Academy: none');
   // a street battle you fight on the Iron border: your Wu crew Steady, their Iron crew Broken
-  run.days = 7;
+  run.clock = g.City.freshClock();
   run.pos = g.CITY.airport.slice();
   run.war.str.gold = 100;
   clashOn(g, run, 'wu', 'wei');
@@ -185,7 +188,7 @@ test('war: Haewon walks out — never to the winner’s side nor yours; your clu
 test('war: the overthrow — Broken only, your match at its HQ, a loss rallies it for 4 weeks while battles go on; the AI below 10 (T-315)', () => {
   const [g, run] = mkRun(37);
   sign(g, run, g.WAR.units.harbor.clubs[0]);
-  run.days = 7;
+  run.clock = g.City.freshClock();
   run.pos = g.CITY.hq[1].slice();
   assert(!g.War.can(run, 'iron', 'harbor').ok && /not Broken/.test(g.War.can(run, 'iron', 'harbor').why), 'not before it is Broken');
   run.war.str.iron = 4;
@@ -233,7 +236,7 @@ test('war: call-ups — a member is called up on a battle week of their unit; re
   assert(/call-up/.test(line), 'the diary says so: ' + line);
   // answered: fighting for your side costs nothing extra
   on('wu', 'wei', e.tile, e.from);
-  run.days = 7;
+  run.clock = g.City.freshClock();
   run.injury = null;
   run.lastFight = null;
   run.pos = g.CITY.hq[2].slice();
@@ -258,7 +261,7 @@ test('war: the Raid order — a member on the hot border, once a week; a win hit
   assert(/no hot border/.test(g.Fight.raidWhy(run)), 'no battle this week: no raid');
   const e = g.War.edges(run, 'harbor', 'iron')[0];
   run.clash = { tile: e.tile, from: e.from, att: 'wu', def: 'wei', seen: false, done: false };
-  Object.assign(run, { days: 7, injury: null, sta: 100, pos: g.CITY.hq[2].slice() });
+  Object.assign(run, { clock: g.City.freshClock(), injury: null, sta: 100, pos: g.CITY.hq[2].slice() });
   eq(g.Fight.raidWhy(run), '', 'a member on this border may raid');
   const s0 = { harbor: g.War.str(run, 'harbor'), iron: g.War.str(run, 'iron') },
     next = g.RNG.next,

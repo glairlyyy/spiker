@@ -1384,3 +1384,105 @@
 .hub .pinv {
   gap: 8px;
 }
+/* today's 24 h strip (spec §4.41, T-353): 02:00 → 02:00, the hour now, what you did, the ghost of the selected action, a match */
+.hub .dstrip {
+  position: relative;
+  height: 40px;
+  margin: 4px 0 12px;
+  border-radius: 6px;
+  background: linear-gradient(var(--surf2), var(--surf2)) top / 100% 24px no-repeat;
+}
+.hub .dstrip .db {
+  position: absolute;
+  top: 4px;
+  height: 16px;
+  min-width: 2px;
+  border-radius: 3px;
+  background: var(--mute);
+}
+.hub .dstrip .db.train {
+  background: var(--cyan);
+}
+.hub .dstrip .db.trip {
+  background: repeating-linear-gradient(135deg, var(--line-strong) 0 3px, transparent 3px 6px);
+}
+.hub .dstrip .db.sleep {
+  background: var(--meter-mid);
+}
+.hub .dstrip .db.battle,
+.hub .dstrip .db.challenge,
+.hub .dstrip .db.scout {
+  background: var(--ink);
+}
+.hub .dstrip .db.ghost {
+  background: var(--sel-bg);
+  border: 1px dashed var(--sel-line);
+}
+.hub .dstrip .db.match {
+  top: 2px;
+  height: 20px;
+  background: transparent;
+  border: 1px solid var(--warn);
+}
+.hub .dstrip .dnow {
+  position: absolute;
+  top: 0;
+  height: 24px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--ink);
+}
+.hub .dstrip .dmk {
+  position: absolute;
+  bottom: 0;
+  transform: translateX(-50%);
+  font-size: 12px;
+  line-height: 14px;
+  color: var(--mute);
+  font-variant-numeric: tabular-nums;
+}
+.hub .dlate {
+  margin: -8px 0 8px;
+  color: var(--warn);
+}
+.hub .wnow {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.hub .dslot.now {
+  border-color: var(--sel-line);
+}
+/* the map's clock (spec §4.41): the island's time, beside ◎ Me at the map's top left */
+.hub .mapclock {
+  position: absolute;
+  z-index: 3;
+  top: calc(var(--tbar) + 16px);
+  left: calc(var(--rail) + 120px);
+  height: 40px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--hud);
+  font: 600 16px var(--disp);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.hub.cine .mapclock {
+  visibility: hidden;
+}
+/* the hour picker and Sleep 4 / 6 / 8 h on place cards (spec §4.41) */
+.plc .seg.hrs .btn {
+  min-width: 44px;
+}
+.plc .ords .seg.hrs {
+  justify-self: start;
+}
+.plc .ords.sleep small {
+  font-size: 12px;
+}
+.plc .btn.ord .dn {
+  color: var(--bad);
+}

@@ -157,11 +157,49 @@ const ACADEMY = { ring: 1 };
  */
 const AIRPORT = { yaw: -0.133, box: [-150, -22, 30, 46], runway: { from: 14, lift: -100, to: -420, v: 30 } };
 
-// ---- Days, fees and travel (tuning) ----
-/** Days in a training week; every action takes one (+ the trip).*/
+// ---- Days, hours, fees and travel (tuning) ----
+/** Days in a training week (spec §4.41: each a day of hours on the map; the week ends when you sleep through day 7). */
 const WEEK_DAYS = 7;
-/** A day's session is a fraction of the old week-long one: gains and skill points ×. */
+/** The old one-action day's session as a fraction of the week-long one: gains and skill points × (a session's hours scale it, HOURS). */
 const DAY_GAIN = 0.25;
+/**
+ * The day in hours (spec §4.41): `run.clock` = { day 1–7 (8: the week spent), hour (07 = 7; past midnight 24 +), log (today's
+ * blocks) }. wake: the week's first morning; late: 02:00 — nothing starts past it, and an action that ends past it puts you to
+ * sleep where you stand (`nod` h, × `nodMul`, mood down); match: the hour a match you are made to play starts (`matchH` long);
+ * act: the hours of a one-off thing (a match you choose, a scout, an outing); sleep: the share of the missing stamina each length
+ * brings back (× your home's rest, capped at all of it), `sleepMood` its mood.
+ */
+const DAY = {
+  wake: 7,
+  late: 26,
+  nod: 4,
+  nodMul: 0.6,
+  match: 13,
+  matchH: 2,
+  act: 2,
+  sleep: { 4: 0.45, 6: 0.75, 8: 1 },
+  sleepMood: { 4: -1 },
+  sleepH: [4, 6, 8]
+};
+/**
+ * A session's hours (spec §4.41): `opts` for drills and work (Stretch: `stretch`); `unit` = what 2 h are worth in old day
+ * sessions (gains, price, pay, skill points, facility uses — linear in the hours); `sta[h]` × the order's stamina × `staK` (each
+ * hour costs more than the last); `fail[h]` added to the fail chance; `inj[h]` the injury chance of a failed session on top of
+ * the low-stamina one.
+ */
+const HOURS = {
+  opts: [2, 3, 4],
+  stretch: [1, 2, 3],
+  unit: 0.32,
+  run: 0.4,
+  staK: 2.6,
+  sta: [0, 0.45, 1, 1.6, 2.3],
+  fail: [0, 0, 0, 0.04, 0.1],
+  inj: [0, 0, 0, 0.15, 0.3]
+};
+/** Walking: travel cost (City.path) an hour — one old trip day ≈ 2 h (spec §4.41); a run covers RUN_PACE × that. */
+const WALK_PACE = (220 * MAP_BASE) / 2,
+  RUN_PACE = 1.5;
 /** A training session's fee before the region's price (one day's session). */
 const TRAIN_FEE = 8;
 /** Home turf: training in your own faction's region gives this bonus. */
@@ -171,7 +209,7 @@ const SAND_SP = 2;
 /** A night at a hotel away from home: base price (× the region's price). */
 const HOTEL = { price: 12, rest: 1 };
 /**
- * Travel (spec §4.18, T-048): free within NEAR_R, then a day per TRIP_DAY units of travel cost, at most TRIP_MAX days. The cost is
+ * Travel (spec §4.18, T-048; hours since §4.41): the route's cost ÷ WALK_PACE hours, 1 h at least (City.trip). The cost is
  * the cheaper of going cross-country (straight distance × 1) and the road route (the legs to / from the network × 1, each road
  * edge's length × ROAD_COST[kind]): main roads and the overpass are fast, Shu mountain paths are slower than the open ground.
  */
@@ -183,16 +221,15 @@ const GROUND_COST = { shu: 1.35 },
   /** A hex whose centre stands higher than this (m, reliefAt) is highland terrain (spec §4.27). */
   HIGHLAND_M = 18,
   GROUND_STEP = 20 * MAP_SCALE;
-/** Free hops (spec §4.5, T-228): a place within this straight distance costs no trip day — about one faction's district (was 110). */
-const NEAR_R = 280 * MAP_SCALE;
-/** A trip day keeps the 2.25 island's distance on the ground (spec §4.40): a crossing of the spread island costs ~twice the days. */
+/** The old trip day's travel cost (spec §4.40): what a Run's ground gains and stamina are measured in (RUN_GROUND); 2 h on foot (WALK_PACE). */
 const TRIP_DAY = 220 * MAP_BASE;
-const TRIP_MAX = 5;
+/** You stand at a point closer than this (map units): no walk. */
+const HERE_R = 2;
 /** The dark map: each point you've stood on lights up this radius. */
 const REVEAL_R = 170 * MAP_SCALE;
 
 /**
- * Places. Each takes a day (+ the trip there). act: what a non-training place does (rest, rec, or an outing: ramen,
+ * Places. Each takes its hours (+ the walk there; `hours`: an outing's own, else DAY.act; orders: HOURS). act: what a non-training place does (rest, rec, or an outing: ramen,
  * arcade, street). kit: its equipment and ground (KITS tags, spec §4.33) — each tag brings day orders; `train` (the lead
  * training, read by NPC plans and the dossier) is derived from the first tag below. lv: a fixed facility level. region: see
  * REGIONS (null = your home: goes with your housing). cost: money for an outing (× the region's price). sand: technique training (SAND_SP).
@@ -235,7 +272,7 @@ const SPOTS = {
     icon: '🏛',
     desc: 'Campus lawns, open to every student. Mood up, +10 stamina.'
   },
-  home: { name: 'Home', act: 'rest', region: null, icon: '🏠', desc: 'Rest: +30–60 stamina (× how well you sleep there)' },
+  home: { name: 'Home', act: 'rest', region: null, icon: '🏠', desc: 'Sleep 4, 6 or 8 h: the day ends (× how well you sleep there)' },
   // hotels: a night's rest away from home, at the region's price
   hotelWei: {
     name: 'City Hotel',
@@ -245,9 +282,9 @@ const SPOTS = {
     region: 'wei',
     at: [820, 290],
     icon: '🏨',
-    desc: 'Rest at a hotel'
+    desc: 'Sleep at a hotel'
   },
-  hotelWu: { name: 'Seaside Inn', act: 'rest', hotel: true, region: 'wu', at: [735, 525], icon: '🏨', desc: 'Rest at an inn' },
+  hotelWu: { name: 'Seaside Inn', act: 'rest', hotel: true, region: 'wu', at: [735, 525], icon: '🏨', desc: 'Sleep at an inn' },
   hotelShu: {
     name: 'Mountain Lodge',
 
@@ -256,7 +293,7 @@ const SPOTS = {
     region: 'shu',
     at: [410, 250],
     icon: '🏨',
-    desc: 'Rest at a lodge'
+    desc: 'Sleep at a lodge'
   },
   // evenings
   noodles: {
@@ -353,8 +390,8 @@ const SPOTS = {
     at: [240, 270],
     icon: '♨',
     cost: 30,
-    days: 2,
-    desc: 'A hot spring in the hills. The one luxury worth it. Two days: full stamina, mood Great, an injury heals a week sooner.'
+    hours: 6,
+    desc: 'A hot spring in the hills. The one luxury worth it. Six hours: full stamina, mood Great, an injury heals a week sooner.'
   },
   midnight: {
     name: 'The Midnight Court',
@@ -415,7 +452,7 @@ const SECRET = {
   light: { let: 30, sharp: 25, op: 0.05 },
   hermit: { bars: [60, 66, 72, 78, 84], gain: 2 },
   roof: { every: 4 },
-  onsen: { days: 2, cost: 30 },
+  onsen: { hours: 6, cost: 30 },
   midnight: { win: 15, loss: 8 },
   oldScout: { fans: 2000, n: 10, every: 4 }
 };

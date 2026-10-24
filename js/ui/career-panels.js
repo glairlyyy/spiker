@@ -21,7 +21,7 @@ function placeTags(run, sid, trip) {
     held = s && Front.seized(run, sid);
   return [
     held ? ['Seized', `from ${esc(REGIONS[s.region].name)}`, 'wa'] : front ? ['Border', 'On the front'] : null,
-    trip ? ['Trip', `${trip} day${trip > 1 ? 's' : ''}, then the day there`, trip >= 2 ? 'wa' : ''] : null
+    trip ? ['Walk', `${trip} h there`, trip >= 4 ? 'wa' : ''] : null
   ].filter(Boolean);
 }
 /** The "Details ›" peek of a place (facility level, streak, border, trip …); '' with nothing to show. */
@@ -49,10 +49,9 @@ function placePanel(run, id) {
     cost = City.price(run, sid),
     at = City.at(run, sid),
     trip = City.trip(run, at),
-    days = City.cost(run, sid),
-    trOk = trip && !run.event && !City.noTime(run, trip) && !City.outside(run, at),
+    trOk = trip && !run.event && !City.noTime(run, trip, at) && !City.outside(run, at),
     travel = trip
-      ? `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${trOk ? '' : `disabled ${tip(City.noTime(run, trip) || (City.outside(run, at) ? City.fence(run) : 'answer the event first'))}`}>Walk · ${trip}d</button>${runBtn(run, at, trOk ? '' : City.noTime(run, trip) || City.fence(run) || 'answer the event first')}`
+      ? `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${trOk ? '' : `disabled ${tip(City.noTime(run, trip, at) || (City.outside(run, at) ? City.fence(run) : 'answer the event first'))}`}>Walk · ${trip} h</button>${runBtn(run, at, trOk ? '' : City.noTime(run, trip, at) || City.fence(run) || 'answer the event first')}`
       : '',
     base = { region: City.region(run, sid), title: `${s.icon} ${esc(s.name)}`, after: placeDetails(sid, placeTags(run, sid, trip)) };
   if (s.kit) {
@@ -64,7 +63,7 @@ function placePanel(run, id) {
       ...base,
       kind: 'Outing',
       flavour: s.desc,
-      body: `<p class="small">Pick who comes · $${cost} · ${days}d</p><div class="pmates">${Run.mates(run)
+      body: `<p class="small">Pick who comes · $${cost} · ${City.hoursAt(sid)} h</p><div class="pmates">${Run.mates(run)
         .map(
           m =>
             `<button class="btn" onclick="mapGo('${sid}','${m.id}')" ${City.can(run, sid, m.id).ok ? '' : 'disabled'}>${faceSVG(m, 0, 22)} ${esc(m.name)} <small class="mute">Bond ${Run.you(run).bond[m.id] || 0}</small></button>`
@@ -74,30 +73,69 @@ function placePanel(run, id) {
     });
   const study = studyPanel(run, sid, base, travel); // the tutor / a bookstore (T-230)
   if (study) return study;
-  if (s.secret) return secretPanel(run, sid, base, travel, days, cost);
-  const label = s.act === 'rest' ? 'Rest' : s.act === 'rec' ? 'Relax' : 'Go',
-    stretch = City.orders(sid).length ? ordList(run, sid, false) : ''; // home and the grounds: Stretch (spec §4.33)
+  if (s.secret) return secretPanel(run, sid, base, travel, City.hoursAt(sid), cost);
+  const label = s.act === 'rec' ? 'Relax' : 'Go',
+    stretch = City.orders(sid).length ? hourSeg(HOURS.stretch) + ordList(run, sid, false) : ''; // home and the grounds: Stretch (spec §4.33)
+  if (s.act === 'rest')
+    return placeCard({
+      ...base,
+      kind: 'Sleep',
+      flavour: s.desc,
+      body: sleepRows(run, sid, trip, cost),
+      after: stretch + base.after,
+      tags:
+        sid === 'home'
+          ? [ptag(`${esc(HOUSING[run.housing].name)} · sleep ×${World.restMul(run)}`, 'Your home: how much a night’s sleep restores')]
+          : [],
+      row: [travel].filter(Boolean)
+    });
   return placeCard({
     ...base,
-    kind: s.act === 'rest' ? 'Rest' : s.act === 'street' ? 'Street' : 'Place',
+    kind: s.act === 'street' ? 'Street' : 'Place',
     flavour: s.desc,
     after: stretch + base.after,
-    tags:
-      sid === 'home'
-        ? [ptag(`${esc(HOUSING[run.housing].name)} · rest ×${World.restMul(run)}`, 'Your home: how much a rest day restores')]
-        : [], // cost and days are on the button
+    tags: [], // cost and hours are on the button
     row: [
-      `<button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${sid}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}>${label} · ${days}d${cost ? ` · $${cost}` : ''}</button>`,
+      `<button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${sid}')" ${c.ok ? '' : `disabled ${tip(c.why)}`}>${label} · ${City.hoursAt(sid)} h${cost ? ` · $${cost}` : ''}</button>`,
       travel
     ].filter(Boolean)
   });
+}
+/**
+ * Sleep at home or a hotel (spec §4.41): one row per length (8 h first — the card's primary), each cost → result: the walk there,
+ * the hours, the hotel's price → the stamina it brings back, when you wake; 4 h costs mood. Sleeping ends the day.
+ */
+function sleepRows(run, sid, trip, cost) {
+  const s = SPOTS[sid],
+    mul = s.hotel ? HOTEL.rest : World.restMul(run),
+    miss = run.staMax - run.sta,
+    ins = Feel.has(run, 'insomnia') ? SCARS.insomnia.k : 1;
+  return `<div class="ords sleep">${[...DAY.sleepH]
+    .reverse()
+    .map((h, i) => {
+      const c = City.can(run, sid, null, h),
+        gain = Math.round(miss * Math.min(1, DAY.sleep[h] * mul * ins)),
+        wake = City.hhmm(City.hour(run) + trip + h),
+        cst = [trip ? term('day', `${trip} h`, 'cost') : '', term('day', `${h} h`, 'cost'), cost ? `$${cost}` : '']
+          .filter(Boolean)
+          .join(' '),
+        res = [
+          gain >= miss && miss > 0 ? 'stamina full' : term('sta', gain),
+          DAY.sleepMood[h] ? `<span class="dn">mood down</span>` : '',
+          `wake ${wake}`
+        ]
+          .filter(Boolean)
+          .join(' · ');
+      return `<button class="btn ord ${i === 0 && c.ok ? 'hot' : ''}" onclick="mapGo('${sid}',null,${h})" ${c.ok ? '' : `disabled ${tip(c.why)}`}><b class="onm">Sleep ${h} h</b><span class="oln">${cst} → ${res}</span></button>`;
+    })
+    .join('')}<small class="mute">Sleeping ends the day.</small></div>`;
 }
 /** A secret place's card (spec §4.31): what it does, its one action (the Lighthouse: two), the gap when it can't. */
 function secretPanel(run, sid, base, travel, days, cost) {
   const S = Secret.of(run),
     go = (label, opt = '', hot = true) => {
       const c = City.can(run, sid, opt || undefined);
-      return `<button class="btn ${c.ok && hot ? 'hot' : ''}" onclick="mapGo('${sid}'${opt ? `,'${opt}'` : ''})" ${c.ok ? '' : `disabled ${tip(c.why)}`}>${label} · ${days}d${cost ? ` · $${cost}` : ''}</button>`;
+      return `<button class="btn ${c.ok && hot ? 'hot' : ''}" onclick="mapGo('${sid}'${opt ? `,'${opt}'` : ''})" ${c.ok ? '' : `disabled ${tip(c.why)}`}>${label} · ${days} h${cost ? ` · $${cost}` : ''}</button>`;
     },
     seen = Secret.seen(run),
     body =
@@ -126,15 +164,15 @@ function pointPanel(run, p) {
   const d = City.travelDays(run, p),
     seen = City.seen(run, p),
     r = City.regionAt(p),
-    late = run.event ? 'answer the event first' : City.noTime(run, d) || (City.outside(run, p) ? City.fence(run) : '');
+    late = run.event ? 'answer the event first' : City.noTime(run, d, p) || (City.outside(run, p) ? City.fence(run) : '');
   return placeCard({
     region: seen ? r : null,
     kind: 'Travel',
     title: `⚑ ${seen ? esc(REGIONS[r].name) : 'Unexplored land'}`,
-    tags: d >= 2 ? [ptag(`Trip ${d}d`, '', 'warn')] : [],
+    tags: d >= 4 ? [ptag(`Walk ${d} h`, '', 'warn')] : [],
     flavour: seen ? REGIONS[r].desc : 'Nobody you know has been out there. Go and see what you find.',
     row: [
-      `<button class="btn hot" onclick="mapTravel(${p[0]},${p[1]})" ${late ? `disabled ${tip(late)}` : ''}>Travel here · ${d}d</button>`
+      `<button class="btn hot" onclick="mapTravel(${p[0]},${p[1]})" ${late ? `disabled ${tip(late)}` : ''}>Walk here · ${d} h → ${City.hhmm(City.hour(run) + d)}</button>`
     ]
   });
 }
@@ -154,13 +192,13 @@ function clashBorder(run, att, def) {
 function raidBtn(run, d) {
   const why = Fight.raidWhy(run);
   if (why === "your club isn't on this border" || why === 'no hot border this week') return '';
-  return `<button class="btn" onclick="mapRaid()" ${why ? `disabled ${tip(why)}` : tip(`A street game against their crew, played at once. Win: their Strength −${WAR.lose * DAY_ORDERS.raid.k} (× 2). Lose: yours −${WAR.lose}.`)}>Raid · ${d}d · ${term('sta', -DAY_ORDERS.raid.sta, 'cost')} → Strength ×${DAY_ORDERS.raid.k}</button>`;
+  return `<button class="btn" onclick="mapRaid()" ${why ? `disabled ${tip(why)}` : tip(`A street game against their crew, played at once. Win: their Strength −${WAR.lose * DAY_ORDERS.raid.k} (× 2). Lose: yours −${WAR.lose}.`)}>Raid · ${d} h · ${term('sta', -DAY_ORDERS.raid.sta, 'cost')} → Strength ×${DAY_ORDERS.raid.k}</button>`;
 }
 function clashPanel(run) {
   const c = Fight.clashSite(run);
   if (!c) return `<p class="small mute">The street battle is over.</p>`;
   const d = Fight.clashCost(run),
-    trip = d - 1,
+    trip = d - DAY.act,
     late = run.event ? 'answer the event first' : City.noTime(run, d) || City.fence(run),
     ban = Fight.ban(run),
     att = run.clash.att || c.a,
@@ -211,7 +249,7 @@ function clashPanel(run) {
       ['Border', clashBorder(run, att, def)],
       std(c.a),
       std(c.b),
-      ['Trip', trip ? `${trip} day${trip > 1 ? 's' : ''}` : 'None', trip >= 2 ? 'wa' : '']
+      ['Walk', trip ? `${trip} h` : 'None', trip >= 4 ? 'wa' : '']
     ])}<div class="pstakes">${card(c.a, c.b)}${card(c.b, c.a)}</div>`,
     opts:
       late || ban
@@ -220,7 +258,7 @@ function clashPanel(run) {
     row: [
       fight(c.a),
       fight(c.b),
-      `<button class="btn" onclick="mapClash(null)" ${late ? `disabled ${tip(late)}` : tip(`See both sides' clubs in action: scouts them. −${CLASH.watchSta} stamina`)}>Watch · ${d}d</button>`,
+      `<button class="btn" onclick="mapClash(null)" ${late ? `disabled ${tip(late)}` : tip(`See both sides' clubs in action: scouts them. −${CLASH.watchSta} stamina`)}>Watch · ${d} h</button>`,
       raidBtn(run, d)
     ]
   });
@@ -245,26 +283,40 @@ function dayX(run, id) {
   return (Q.known ? Q.q : (REGIONS[s.region] || REGIONS.open).q) * (1 + City.turf(run, id)) * DAY_GAIN;
 }
 const ORD_KIND = { work: 'Work', stretch: 'Free' };
+/** The hours an order runs for the card's picker (CW.hrs, spec §4.41): the longest of its options not over the pick, else its first. */
+function ordHours(oid) {
+  const O = City.hourOpts(oid),
+    h = CW.hrs || 2;
+  return O.filter(v => v <= h).pop() || O[0];
+}
+/** The hour picker (spec §4.41): `opts` hours as a segmented control; the pick re-renders the card (CW.hrs). Selected ≠ primary (§9). */
+function hourSeg(opts = HOURS.opts) {
+  const on = opts.filter(v => v <= (CW.hrs || 2)).pop() || opts[0];
+  return `<div class="seg hrs" role="group" aria-label="Hours" ${tip('How long: longer gains more, but each hour costs more stamina than the last and the injury risk climbs')}>${opts
+    .map(
+      h => `<button class="btn ${h === on ? 'on' : ''}" aria-pressed="${h === on}" onclick="CW.hrs=${h};mapPick(CW.spot)">${h} h</button>`
+    )
+    .join('')}</div>`;
+}
 /**
- * A place's day orders (spec §4.33), each one button: name, then cost → result ("1d · −20 · $12 → ▲ Str +++ · ∿ Flex +"). The
- * lead drill is the card's one ink primary (`lead`); an order it can't do now shows why (the gap) on hover.
+ * A place's day orders (spec §4.33), each one button: name, then cost → result for the picked hours ("3 h · −52 · $12 → ▲ Str +++ ·
+ * ∿ Flex +", §4.41). The lead drill is the card's one ink primary (`lead`); an order it can't do now shows why (the gap) on hover.
  */
 function ordList(run, id, lead = true) {
   const hard = CW.hard && !run.injury,
-    x = dayX(run, id),
-    days = City.cost(run, id),
     first = lead ? City.lead(id) : null;
   return `<div class="ords">${City.orders(id)
     .map(oid => {
       const O = DAY_ORDERS[oid],
-        pv = Training.preview(run, oid, hard, x, id),
-        c = City.can(run, id, oid),
-        price = City.price(run, id, oid);
-      return ordBtn(run, O, pv, c, `mapGo('${id}','${oid}')`, days, price, oid === first && c.ok);
+        h = ordHours(oid),
+        pv = Training.preview(run, oid, hard, dayX(run, id) * Training.units(h), id, h),
+        c = City.can(run, id, oid, h),
+        price = City.price(run, id, oid, h);
+      return ordBtn(run, O, pv, c, `mapGo('${id}','${oid}',${h})`, h, price, oid === first && c.ok);
     })
     .join('')}</div>`;
 }
-/** One order's button (cost → result on the control). */
+/** One order's button (cost → result on the control): its hours (the walk there shows on the Walk button and today's strip). */
 function ordBtn(run, O, pv, c, onclick, days, price, hot) {
   const res = [pv.main, pv.side, ...pv.more]
       .map(([k, , xp]) => {
@@ -272,7 +324,7 @@ function ordBtn(run, O, pv, c, onclick, days, price, hot) {
         return `<span class="${hot ? '' : r.cls}" ${tip(r.n === Infinity ? `${Body.name(k)}: at the cap this season — matches only` : r.n <= 1 ? `${Body.name(k)}: next point this session` : `${Body.name(k)}: next point in ${r.n} sessions`)}>${Body.glyph(k)} ${BODY.short[k] || 'Wit'} ${r.t}</span>`;
       })
       .join(' · '),
-    cost = [term('day', String(days), 'cost'), term('sta', -pv.sta, 'cost'), price ? `$${price}` : 'free'].join(' ');
+    cost = [term('day', `${days} h`, 'cost'), term('sta', -pv.sta, 'cost'), price ? `$${price}` : 'free'].join(' ');
   return `<button class="btn ord ${hot ? 'hot' : ''}" onclick="${onclick}" ${c.ok ? '' : `disabled ${tip(c.why)}`}><b class="onm">${esc(O.name)}${ORD_KIND[O.kind] ? ` <small>${ORD_KIND[O.kind]}</small>` : ''}</b><span class="oln">${cost} → ${res}${pv.pay ? ` · <b>+$${pv.pay}</b>` : ''}</span></button>`;
 }
 /** A kit place's parts for placeCard (spec §4.33): kind, tags, the orders first, then options (Normal / Hard), who's on the floor, level. */
@@ -280,7 +332,8 @@ function kitSpot(run, id) {
   const s = SPOTS[id],
     T = Run.myTeam(run),
     hard = CW.hard && !run.injury,
-    pv = Training.preview(run, City.lead(id), hard, dayX(run, id), id),
+    lh = ordHours(City.lead(id)),
+    pv = Training.preview(run, City.lead(id), hard, dayX(run, id) * Training.units(lh), id, lh),
     turf = City.turf(run, id),
     mates = pv.mates.filter(pid => squadOf(T).some(p => p.id === pid)), // a teammate who has since left
     seg = `<div class="seg"><button class="btn ${hard ? '' : 'on'}" onclick="CW.hard=false;mapPick(CW.spot)">Normal</button><button class="btn ${hard ? 'on' : ''}" ${
@@ -305,14 +358,14 @@ function kitSpot(run, id) {
         `Lv ${pv.lvl}`,
         pv.fixed
           ? 'Facility level: fixed — the Academy keeps this gym basic.'
-          : `Facility level: grows with every day you work out here${pv.next != null ? ` — ${pv.next} more to Lv ${pv.lvl + 1}` : ' — top level'}.`
+          : `Facility level: grows with every session here${pv.next != null ? ` — ${pv.next} more 2 h sessions to Lv ${pv.lvl + 1}` : ' — top level'}.`
       ),
       ptag(esc(s.kit.map(t => KITS[t].name).join(' · ')), 'The kit: what you can do here'),
       s.sand ? ptag(`Sand ×${SAND_SP} pts`, `Sand training builds technique: skill points ×${SAND_SP}`) : '',
       pv.fail // a risk: stays visible (§10.8 never hides penalties)
         ? ptag(
             `${Math.round(pv.fail * 100)}% fail`,
-            `Below 50 stamina training can fail — below ${TRAIN_X.injuryAt} it can injure you.`,
+            `Below 50 stamina training can fail — below ${TRAIN_X.injuryAt} it can injure you. Long sessions (3–4 h) can fail and injure even rested.`,
             pv.fail > 0.25 ? 'bad' : 'warn'
           )
         : ''
@@ -327,10 +380,10 @@ function kitSpot(run, id) {
     ),
     flavour: s.desc || '',
     body: ordList(run, id),
-    opts: seg + chips
+    opts: hourSeg() + seg + chips
   };
 }
-/** Run there (spec §4.33, T-309): the same days as walking, the route's ground trains you — "Run · 2d · −22 → ◆ End ++". `late`: why the trip can't happen now. */
+/** Run there (spec §4.33, T-309): faster than walking (§4.41), the route's ground trains you — "Run · 2 h · −22 → ◆ End ++". `late`: why the trip can't happen now. */
 function runBtn(run, p, late = '') {
   const P = City.runPlan(run, p),
     why = late || City.noRun(run, p),
@@ -343,17 +396,18 @@ function runBtn(run, p, late = '') {
       })
       .join(' · ');
   if (!P.sta) return '';
-  return `<button class="btn run" onclick="mapTravel(${p[0]},${p[1]},'run')" ${why ? `disabled ${tip(why)}` : tip('Run the route: its ground trains you (roads: Endurance; dirt and mountain paths: + Strength; boardwalk: Agility; the Steps: Strength + Agility)')}>Run · ${P.days}d ${term('sta', -P.sta, 'cost')} → ${res}</button>`;
+  return `<button class="btn run" onclick="mapTravel(${p[0]},${p[1]},'run')" ${why ? `disabled ${tip(why)}` : tip('Run the route: its ground trains you (roads: Endurance; dirt and mountain paths: + Strength; boardwalk: Agility; the Steps: Strength + Agility)')}>Run · ${P.days} h ${term('sta', -P.sta, 'cost')} → ${res}</button>`;
 }
 /** A map point's card (B's pointPanel) + Stretch there (spec §4.33: the island is the gym): the order block goes inside the card. */
 function pointCard(run, p) {
   const html = pointPanel(run, p),
     O = DAY_ORDERS.stretch,
-    pv = Training.preview(run, 'stretch', false, DAY_GAIN, null),
+    h = ordHours('stretch'),
+    pv = Training.preview(run, 'stretch', false, DAY_GAIN * Training.units(h), null, h),
     late = run.event
       ? 'answer the event first'
-      : City.noTime(run, City.travelDays(run, p)) || (City.outside(run, p) ? City.fence(run) : ''),
-    blk = `<div class="ords">${runBtn(run, p, late)}${ordBtn(run, O, pv, City.pointCan(run, p), `mapStretch(${p[0]},${p[1]})`, City.trip(run, p) + 1, 0, false)}</div>`,
+      : City.noTime(run, City.travelDays(run, p), p) || (City.outside(run, p) ? City.fence(run) : ''),
+    blk = `<div class="ords">${runBtn(run, p, late)}${hourSeg(HOURS.stretch)}${ordBtn(run, O, pv, City.pointCan(run, p, 'stretch', h), `mapStretch(${p[0]},${p[1]},${h})`, h, 0, false)}</div>`,
     i = html.lastIndexOf('</div>');
   return i < 0 ? html : html.slice(0, i) + blk + html.slice(i);
 }
@@ -385,7 +439,7 @@ function challengeBlock(run, ti) {
       ]
     ]
   )}
-    <div class="acts pri"><button class="btn ${hot}" onclick="CW.peek=null;mapChallenge(${ti})" ${late ? `disabled ${tip(late)}` : ''}>Challenge · ${cost}d</button><button class="btn" onclick="CW.peek=null;mapChallenge(${ti}, true)" ${late ? 'disabled' : ''} ${tip(GLOSSARY.sim.long)}>Sim ⏭</button></div>`;
+    <div class="acts pri"><button class="btn ${hot}" onclick="CW.peek=null;mapChallenge(${ti})" ${late ? `disabled ${tip(late)}` : ''}>Challenge · ${cost} h</button><button class="btn" onclick="CW.peek=null;mapChallenge(${ti}, true)" ${late ? 'disabled' : ''} ${tip(GLOSSARY.sim.long)}>Sim ⏭</button></div>`;
   // collapsed to one row (§10.8): verdict at a glance, the rest in the peek
   return `<section class="pchal">${peek(`ch:${ti}`, `⚔ Challenge <span class="${W.verdict === 'likely' ? 'up' : 'mute'}">${W.verdict}</span>`, body, 'row')}</section>`;
 }
@@ -435,7 +489,7 @@ function overthrowBlock(run, ti) {
     ['Win', `${name} destroyed: its land and places to ${S ? esc(WAR.units[S.by].name) : 'the winner'}`],
     ['Injury', `~${risk}%`]
   ])}
-    <div class="acts pri"><button class="btn" onclick="CW.peek=null;mapOverthrow('${u}')" ${late ? `disabled ${tip(late)}` : ''}>Overthrow · ${d}d</button><button class="btn" onclick="CW.peek=null;mapOverthrow('${u}', true)" ${late ? 'disabled' : ''} ${tip(GLOSSARY.sim.long)}>Sim ⏭</button></div>`;
+    <div class="acts pri"><button class="btn" onclick="CW.peek=null;mapOverthrow('${u}')" ${late ? `disabled ${tip(late)}` : ''}>Overthrow · ${d} h</button><button class="btn" onclick="CW.peek=null;mapOverthrow('${u}', true)" ${late ? 'disabled' : ''} ${tip(GLOSSARY.sim.long)}>Sim ⏭</button></div>`;
   return `<section class="pchal">${peek(`ot:${ti}`, `⚔ Overthrow <span class="${late ? 'mute' : 'dn'}">${esc(WAR_STAGES[War.stage(run, u)].name)} · ${War.str(run, u)}</span>`, body, 'row')}</section>`;
 }
 function hqPanel(run, ti) {
@@ -487,7 +541,7 @@ function hqPanel(run, ti) {
         ? `<button class="btn ${j.ok ? 'hot' : 'lock'}" onclick="joinClub(${ti})" ${j.ok ? (free ? '' : tip(switchCost(run))) : `disabled ${tip(`They ask: ${World.joinText(ti, run)}. Missing: ${j.why.join(', ')}`)}`}>${j.ok ? (free ? 'Sign' : `Switch · ⚑ ${WINDOW.rep}`) : esc(win.open || Run.cupDef(run) ? (free ? joinGap(run, ti) : j.why[0]) : win.next ? `Window · W${win.next}` : 'Window shut')}</button>`
         : '',
       ti !== run.team
-        ? `<button class="btn" onclick="mapScout(${ti})" ${late ? `disabled ${tip(late)}` : tip(`A day at their HQ${sc > 1 ? ' (+ the trip)' : ''}: see their roster and elements, hear a rumour. −${SCOUT_STA} stamina`)}>${seen ? 'Scout again' : 'Scout'} · ${sc}d</button>`
+        ? `<button class="btn" onclick="mapScout(${ti})" ${late ? `disabled ${tip(late)}` : tip(`A day at their HQ${sc > 1 ? ' (+ the trip)' : ''}: see their roster and elements, hear a rumour. −${SCOUT_STA} stamina`)}>${seen ? 'Scout again' : 'Scout'} · ${sc} h</button>`
         : '',
       `<button class="btn" onclick="openDossier('${f.region}')" ${tip(`Everything you know about ${REGIONS[f.region].name}`)}>Dossier</button>`
     ].filter(Boolean),

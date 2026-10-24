@@ -53,7 +53,7 @@ const Story = {
     );
   },
   /** Where the run is in time (week.days spent): scenes remember when the last one ended. */
-  clock: run => `${Season.wk(run)}.${(run.dayLog || []).length}`,
+  clock: run => `${Season.wk(run)}.${(run.dayLog || []).length}.${((run.clock && run.clock.log) || []).length}`,
   /** A line's text with {role} / {key} filled in. */
   text: (run, t) =>
     String(t).replace('{role}', ROLE_NAME[Run.you(run).role].toLowerCase()).replace('{key}', STATNAME[KEYSTAT[Run.you(run).role]]),

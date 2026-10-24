@@ -909,7 +909,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
 - §4.4 Movement: `run.pos` (start: airport); hotels away from home. Dark except near visited points (`run.fog`,
   REVEAL_R). Click any land to travel. **Walking speed** (owner, 2026-10-05, T-214): a small `Walk 1× 2× 4×` selector at
   the map's top right (usable mid-walk; remembered per browser, `sns_walk`) speeds up your walk on the map — display only.
-- §4.5 Week: 7 days. Each action (train/rest/outing/scout) = 1 day + trip (free within NEAR_R, 1 day per TRIP_DAY,
+- §4.5 Week **[superseded by §4.41, 2026-10-24: hours, not days]**: 7 days. Each action (train/rest/outing/scout) = 1 day + trip (free within NEAR_R, 1 day per TRIP_DAY,
   max 3; routing §4.18). **NEAR_R covers a faction's district** (owner, 2026-10-05, T-228): 110 → 280 design units (× MAP_SCALE),
   so hopping between one faction's places is free (Wei, Shu all; Wu all but its far ends); crossing the island still costs days. Nothing spills over; nights free; only the player ends the week. No random training events (owner, 2026-10-05: every variant removed).
   Day session = DAY_GAIN (0.25) of the old weekly gain.
@@ -1770,7 +1770,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     - Street battles, people (§4.37) and the airport keep their own picks; the drone's field spots (§4.38) light up like places.
     - Low-poly setting: the same buildings, cheaper (merged, no signs' texture detail); the hover rim works in both.
   - **Arriving inside** (owner, 2026-10-24): a trip to a place ends with your figure walking in its door to its interior's station (the Strength Center: the bench, the street-level prompt's spot) or onto an outdoor facility's kit (track, courts, yard, cage …); leaving, you walk back out of the door first. A building with no interior keeps you at its door; the arena's centre court is its point. Display only: trip costs and what a place does are unchanged **[built 2026-10-24]**.
-- §4.41 The day in hours **[draft — T-352–T-353]** (owner, 2026-10-24: "resting feels like a burden — a whole day of rest and still
+- §4.41 The day in hours **[built 2026-10-24 — T-352–T-353]** (owner, 2026-10-24: "resting feels like a burden — a whole day of rest and still
   not recovered"): a day is **24 hours** you spend on the map; every action costs hours, not a day. **Replaces** §4.5's one action
   a day + trip days, §4.33's "one order a day" and the Rest action; §4.37's day clock becomes the real clock.
   - **Training and orders** (Drill, Work, Stretch, Watch, Study, outings): you pick how long — **2 h at least**, then 3 or 4 h
@@ -1793,6 +1793,18 @@ the AI coach fills every slot you leave with the same function. Built and measur
   - **On screen** (T-353): the week rail's day track becomes today's 24 h strip (what you did, hour by hour; the hour now) above
     the 7 days; every action shows a 2 / 3 / 4 h picker with its cost → result; Travel shows its hours; the home card offers
     Sleep 4 / 6 / 8 h with what each restores; the map's sun and lights follow the hour; walking moves the clock.
+  - **[built 2026-10-24, T-352–T-353]** Numbers (HOURS, DAY in js/data/city.js): 2 h = 0.32 of an old day session (gains, price, pay,
+    skill points, facility uses and Drive linear in the hours); stamina × 1 / 1.6 / 2.3 for 2 / 3 / 4 h (× 2.6 the old session's); fail
+    + 0 / 4 / 10 %, a failed session's injury + 0 / 15 / 30 %; outings, scouts and the matches you choose 2 h, the onsen 6 h, the drone 1 h;
+    the walk = the route ÷ WALK_PACE (an old trip day = 2 h, 1 h at least; 0 where you stand); a Run takes ⅔ of the hours, its ground
+    gains × 0.32 × 0.4 per old trip day; Sleep brings back 45 / 75 / 100 % of the missing stamina × your home's rest (a hotel × 1);
+    you wake at bedtime + the hours; nodding off: 4 h × 0.6. A match week's morning is open: actions must end by 13:00 minus the
+    walk to the venue; the match is played 13:00–15:00 there and you stand at the venue after; a Cup's rounds go day after day at
+    13:00. The short cut (§4.37 4) may be an hour longer on foot (the walk counted is the safe road's). A teammate's 'trained' bond
+    comes once a day. On screen: the rail's "Today · Tue 14:00" with today's strip (02:00 → 02:00, the selected place's walk and
+    hours as dashed blocks, "past 02:00" warning) above the 7 days; a 2 / 3 / 4 h picker on every kit card (Stretch 1 / 2 / 3 h);
+    Walk / Run · N h; the home and hotel cards: Sleep 8 / 6 / 4 h → the stamina back · wake at; the map's clock beside Walk 1× 2× 4×.
+    Bot (20 runs): good Y1 76.5 → 77.2, Y2 91.8 → 93.5; casual Y1 69.3 → 65.3, Y2 85.7 → 79.8 (its Flexibility only comes from Laps).
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.
@@ -2119,7 +2131,8 @@ floating HUD, the dock and the 12 drawers (§9 rules still apply). No rule or nu
   ✕ failed with what changed (click / Space / Enter / Esc, auto after 3.2 s; the top bar keeps the before-values until then);
   a simmed match shows the §10.6 card instead. The map key (Club HQ / Venue / Street battle, faction colours) lives in the
   Encyclopedia (Map key), not over the map.
-- §10.2 Day track: 7 slots Mon–Sun; each spent day shows what it was (icon + label), trip days hatched, free days empty;
+- §10.2 Day track (since §4.41 [built 2026-10-24, T-353]: each slept-through day by its longest block, today outlined; the selected
+  place's cost shows as ghost blocks on today's 24 h strip above it): 7 slots Mon–Sun; each spent day shows what it was (icon + label), trip days hatched, free days empty;
   a selected place's cost shows as dashed ghost slots before you commit. Match weeks (eval/cup) show one match slot.
   Needs `run.dayLog` (list of `{k, label, stat?, at?}` per spent day, cleared at week start; `run.days` is already the
   days-left number) via RUN_DEFAULTS — no version bump.

@@ -577,9 +577,9 @@ test('asks: each kind writes its memory and effect', () => {
     kinds = () => memKinds(g, run, id);
   // invite_train: a day is spent at their place, memory invited
   const at = g.Asks.place(run, mate),
-    days = g.City.days(run);
+    days = g.City.wt(run);
   let r = g.Asks.answer(run, ask(g, run, id, 'invite_train', { at, day: 1 }), true);
-  assert(r && !r.blocked && g.City.days(run) < days && kinds().includes('invited'), 'invite_train: day spent + invited');
+  assert(r && !r.blocked && g.City.wt(run) > days && kinds().includes('invited'), 'invite_train: hours spent + invited');
   // sit-out: you sit this week only
   run.week = 4;
   const you = g.Run.you(run);

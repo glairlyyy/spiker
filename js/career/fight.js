@@ -404,7 +404,7 @@ const Fight = {
    * the trip + a day are spent, the club won't hear you again this week, and { accepted: false, line } is the diary line.
    */
   /** The days a challenge of club ti takes: the trip to their HQ and the day — or, played on the spot (`at`, a road stop), the trip there. */
-  cost: (run, ti, at = null) => (at ? City.trip(run, at) + 1 : City.scoutCost(run, ti)),
+  cost: (run, ti, at = null) => (at ? City.trip(run, at) + DAY.act : City.scoutCost(run, ti)),
   offer(run, ti, stake = 0, at = null) {
     const side = Fight.challengeSide(run);
     stake = clamp(Math.round(stake) || 0, 0, Fight.stakeMax(run));
@@ -436,7 +436,7 @@ const Fight = {
       at = Array.isArray(c.at) ? c.at : f ? [(t.at[0] + f.at[0]) / 2, (t.at[1] + f.at[1]) / 2] : t.at;
     return { a: c.att, b: c.def, ua: U.ua, ub: U.ub, at, name: Hex.name(t.id), tile: t.id };
   },
-  clashCost: run => City.trip(run, Fight.clashSite(run).at) + 1,
+  clashCost: run => City.trip(run, Fight.clashSite(run).at) + DAY.act,
   /** Go to the battle and watch it (side null). Returns the diary line. Fighting is Fight.clash(run, side), a real match. */
   watch(run, side) {
     const c = Fight.clashSite(run);

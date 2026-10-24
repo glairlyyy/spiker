@@ -28,12 +28,12 @@ const Training = {
     return Math.max(Training.lvOf(u[key] || 0), ...City.spotsFor(key).map(id => (Training.fixed(id) ? 0 : Training.lvOf(u[id] || 0))));
   },
   camp: run => Run.weekType(run) === 'camp',
-  /** Sessions until the next facility level (null at Lv 5 or fixed). */
+  /** 2 h sessions until the next facility level (null at Lv 5 or fixed). */
   toNext(run, key) {
     if (Training.fixed(key) || (SPOTS[key] && !SPOTS[key].kit)) return null;
     const lv = Training.facility(run, key),
       need = TRAIN_X.lvUses[lv + 1];
-    return need == null ? null : need - (run.uses[key] || 0);
+    return need == null ? null : Math.max(1, Math.ceil((need - (run.uses[key] || 0)) / Training.units(2) - 1e-9));
   },
   /** Same training in consecutive weeks: +5% a week, up to +20%. */
   streakBonus(run, key) {
@@ -75,10 +75,20 @@ const Training = {
       Feel.trainMul(run) // Fired up (spec §4.30)
     );
   },
-  staCost: (run, key, hard) =>
-    Math.round(Training.def(key).sta * (Training.camp(run) ? 1.5 : 1) * (hard ? TRAIN_X.hard.sta : 1) * (run.injury ? 0.5 : 1)),
-  /** Failure chance: below 50 stamina, (50 − stamina) × 1.5%; Hard adds 15%. */
-  failP: (run, hard) => clamp((50 - run.sta) * 0.015 + (hard ? TRAIN_X.hard.fail : 0), 0, 0.95),
+  /** A session of h hours in old day sessions (spec §4.41): HOURS.unit for 2 h, linear in the hours. */
+  units: h => (HOURS.unit * (h || 2)) / 2,
+  /** Stamina a session costs; h (hours, §4.41): × HOURS.sta[h] × HOURS.staK — each hour costs more than the last (no h: the old day session). */
+  staCost: (run, key, hard, h) =>
+    Math.round(
+      Training.def(key).sta *
+        (h ? HOURS.sta[h] * HOURS.staK : 1) *
+        (Training.camp(run) ? 1.5 : 1) *
+        (hard ? TRAIN_X.hard.sta : 1) *
+        (run.injury ? 0.5 : 1)
+    ),
+  /** Failure chance: below 50 stamina, (50 − stamina) × 1.5%; Hard adds 15%; a long session (h hours) HOURS.fail[h]. */
+  failP: (run, hard, h) =>
+    clamp(clamp((50 - run.sta) * 0.015 + (hard ? TRAIN_X.hard.fail : 0), 0, 0.95) + ((h && HOURS.fail[h]) || 0), 0, 0.95),
   /** Diminishing returns: ×0.9 from 60, ×0.7 from 70, ×0.45 from 80, ×0.3 from 85, ×0.15 from 92. */
   dim: v => (v >= 92 ? 0.15 : v >= 85 ? 0.3 : v >= 80 ? 0.45 : v >= 70 ? 0.7 : v >= 60 ? 0.9 : 1),
   /** XP needed for the next point of a stat at level v; `npc`: the league's curve (no steep part — PEOPLE growth is calibrated on it). */
@@ -141,7 +151,8 @@ const Training = {
     stat = Training.key(run, stat);
     return { have: (run.xp && run.xp[stat]) || 0, need: Training.need(Training.level(Run.you(run), stat)) };
   },
-  preview(run, key, hard, x = 1, at = null) {
+  /** What a session would do (h: its hours, spec §4.41 — stamina, fail chance, pay; x carries its gains' units). */
+  preview(run, key, hard, x = 1, at = null, h = null) {
     const T = Training.def(key),
       hd = hard && T.kind !== 'stretch',
       mul = Training.mul(run, key, hd, x, at),
@@ -154,11 +165,12 @@ const Training = {
       side: row(T.side),
       more: (T.more || []).map(row),
       fixed: !!Training.fixed(at || key),
-      sta: Training.staCost(run, key, hd),
-      fail: T.kind === 'stretch' ? 0 : Training.failP(run, hd),
+      sta: Training.staCost(run, key, hd, h),
+      fail: T.kind === 'stretch' ? 0 : Training.failP(run, hd, h),
+      h,
       lvl: Training.facility(run, at || key) + 1,
       next: Training.toNext(run, at || key),
-      pay: T.pay || 0,
+      pay: Math.round((T.pay || 0) * (h ? Training.units(h) / Training.units(2) : 1)),
       streak: Training.streakBonus(run, key),
       cap: T.main[0] !== 'wit' && Training.level(Run.you(run), T.main[0]) >= Training.cap(run) ? Training.cap(run) : null,
       mates,
@@ -171,7 +183,7 @@ const Training = {
    * A day order (spec §4.33) at place `at` (a SPOTS id, or null: a map point): its body gains, stamina, a Work order's pay; the
    * facility level grows per kit place. Same rules as a training (fail when tired, Hard, mates, streak). Returns the log line.
    */
-  order: (run, oid, at, hard, x = 1, spMul = 1) => Training.session(run, oid, at, hard, x, spMul),
+  order: (run, oid, at, hard, x = 1, spMul = 1, h = null) => Training.session(run, oid, at, hard, x, spMul, h),
   /** A run (T-309): City.runPlan's gains through the usual multipliers (× DAY_GAIN), its stamina; no fail roll, no facility. The log text. */
   runTrip(run, plan) {
     const mul = Training.mul(run, 'run', false, DAY_GAIN),
@@ -180,14 +192,16 @@ const Training = {
     run.lastMain = Object.keys(plan.gains).reduce((a, k) => (plan.gains[k] > (plan.gains[a] || 0) ? k : a), 'end');
     for (const k of BODY.keys) if (plan.gains[k]) out.push(Training.addXp(run, k, Training.xpFor(k, plan.gains[k], mul)));
     out.push(Run.bump(run, 'sta', -plan.sta));
-    Feel.add(run, 'drive', FEEL.drive.train);
+    Feel.add(run, 'drive', FEEL.drive.train * HOURS.unit);
     return out.filter(Boolean).join(', ');
   },
-  session(run, key, at, hard, x = 1, spMul = 1) {
+  /** A session; h = its hours (spec §4.41: a day order — stamina, fail and injury by the hours, pay, facility uses and Drive × its units; null: the old day session). */
+  session(run, key, at, hard, x = 1, spMul = 1, h = null) {
     const T = Training.def(key),
       O = DAY_ORDERS[key];
     hard = hard && !run.injury && (!O || O.kind !== 'stretch');
-    const pv = Training.preview(run, key, hard, x, at),
+    const pv = Training.preview(run, key, hard, x, at, h),
+      u = h ? Training.units(h) : 1,
       out = [],
       name = O
         ? `${hard ? 'Hard ' : ''}${O.name}${run.injury ? ' (light)' : ''}`
@@ -199,7 +213,9 @@ const Training = {
       run.streak = null;
       out.push(Run.bump(run, 'sta', -pv.sta));
       // exhausted: a failed session can injure you
-      if (run.sta < TRAIN_X.injuryAt && !run.injury && R() < 0.5 * (Feel.has(run, 'glassAnkle') ? SCARS.glassAnkle.k : 1)) {
+      const ip =
+        ((run.sta < TRAIN_X.injuryAt ? 0.5 : 0) + ((h && HOURS.inj[h]) || 0)) * (Feel.has(run, 'glassAnkle') ? SCARS.glassAnkle.k : 1); // a long session can hurt even rested (§4.41)
+      if (ip > 0 && !run.injury && R() < ip) {
         run.injury = { weeks: R() < 0.5 ? 1 : 2 };
         out.push(Run.bump(run, 'mood', -1));
         return `${name} failed — injured! Light training only for ${run.injury.weeks} week${run.injury.weeks > 1 ? 's' : ''}: ${out.filter(Boolean).join(', ')}`;
@@ -218,15 +234,18 @@ const Training = {
     }
     const gen = hasGift(Run.you(run), 'generous') ? GIFTS.generous.k : 1, // Generous (yours): your mates take × more (spec §4.35)
       share = gen === 1 ? pv : { main: [pv.main[0], pv.main[1] * gen], side: [pv.side[0], pv.side[1] * gen] };
+    const C = h && City.clock(run),
+      met = C ? C.met || (C.met = []) : [];
     for (const id of pv.mates) {
-      out.push(Run.bond(run, id, undefined, hard ? 'trained_hard' : 'trained')); // a Hard session side by side (Competitive × 2, spec §4.35)
+      if (!met.includes(id)) out.push(Run.bond(run, id, undefined, hard ? 'trained_hard' : 'trained')); // a Hard session side by side (Competitive × 2, spec §4.35); once a day (§4.41)
+      if (C) met.push(id);
       Growth.shared(run, id, share);
     }
     const fk = at || key, // the facility that levels: the place (an order), else the training key
       grows = at ? !!(SPOTS[at] && SPOTS[at].kit) : !O,
       lv0 = Training.facility(run, fk);
-    if (grows) run.uses[fk] = (run.uses[fk] || 0) + 1;
-    Feel.add(run, 'drive', FEEL.drive.train);
+    if (grows) run.uses[fk] = +((run.uses[fk] || 0) + u).toFixed(2); // an old day session = one use (§4.41: × the hours' units)
+    Feel.add(run, 'drive', FEEL.drive.train * (h ? u : 1));
     if (grows && Training.facility(run, fk) > lv0)
       out.push(`${at ? SPOTS[at].name : T.name} facility Lv ${Training.facility(run, fk) + 1}`);
     return `${name}${Training.camp(run) ? ' (camp)' : ''}: ${out.filter(Boolean).join(', ')}`;

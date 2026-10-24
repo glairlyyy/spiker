@@ -1,26 +1,148 @@
-// The island map phase of a training week: 7 days to spend. Every action (train, rest, relax, an outing, scouting a
-// club HQ) takes a day, plus the trip there: by map distance (City.trip, at most TRIP_MAX days). You can also just
-// walk to any point of the island. The map is dark where you haven't been (run.fog: points you've stood on, each
-// revealing REVEAL_R around it). Nothing may spill into next week; the week ends only when the player ends it.
+// The island map phase of a training week: 7 days of 24 hours (spec §4.41, `run.clock`). Every action costs hours — a day
+// order 2–4 h (HOURS), an outing or a match its own, the walk there by the route (City.trip, 1 h at least) — and sleeping
+// (home or a hotel, 4 / 6 / 8 h) ends the day. Up past 02:00 you nod off where you stand. A match you are made to play starts at
+// 13:00 (DAY.match). The map is dark where you haven't been (run.fog: points you've stood on, each revealing REVEAL_R around
+// it). The week ends only when the player ends it (sleeping through day 7 leaves only End week).
 // Places belong to regions (REGIONS): the region sets the price and the quality; Wei's premium places may turn out
 // overhyped and Shu's rough ones may be hidden gems (rolled per run, found out by training there). DOM-free.
 
 /** City.path results by end points (pure, so safe to keep; ROADS never changes at run time). */
 const PATH_CACHE = new Map();
 const City = {
-  /** Days left this week (night falls at 0: only End week remains). */
-  days: run => (Number.isFinite(run.days) ? run.days : WEEK_DAYS),
+  // ---- the day in hours (spec §4.41) ------------------------------------------------------------------------------------
+  /** The clock: { day 1–7 (8 = the week spent), hour (07 = 7, past midnight 24 +), log: today's blocks { k, label, at?, stat?, from, h } }. */
+  clock: run => run.clock || (run.clock = City.freshClock()),
+  freshClock: (hour = DAY.wake) => ({ day: 1, hour, log: [], last: null, met: [] }),
+  /** Days left this week, today included (0: the week is spent — only End week remains). */
+  days: run => Math.max(0, WEEK_DAYS - City.clock(run).day + 1),
   night: run => City.days(run) <= 0,
-  /** Days an action at a place takes: the trip there + a day there. */
-  cost: (run, id) => City.trip(run, City.at(run, id)) + ((SPOTS[id] && SPOTS[id].days) || 1),
-  /** Spend days (callers checked they fit). */
-  spend(run, n) {
-    run.days = Math.max(0, City.days(run) - n);
+  /** The hour now (07 = 7; 01:00 after midnight = 25). */
+  hour: run => City.clock(run).hour,
+  /** "07:00" for an hour (wraps past midnight). */
+  hhmm: h => `${String(Math.floor(((h % 24) + 24) % 24)).padStart(2, '0')}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`,
+  /** The hours a place's thing takes there (not the walk): an order's `h` (or its first option), a sleep's, an outing's own, else DAY.act. */
+  hoursAt(id, oid, h) {
+    const s = SPOTS[id],
+      o = City.orderOf(id, oid);
+    if (o) return City.hourOpts(o).includes(h) ? h : City.hourOpts(o)[0];
+    if (s && s.act === 'rest') return DAY.sleepH.includes(h) ? h : DAY.sleepH[DAY.sleepH.length - 1];
+    if (s && s.act === 'cargo') return 1;
+    return (s && s.hours) || DAY.act;
   },
-  /** Why n days don't fit ('' if they do). */
-  noTime(run, n) {
-    const d = City.days(run);
-    return n <= d ? '' : d ? `takes ${n} day${n > 1 ? 's' : ''} — only ${d} left this week` : 'no days left — end the week';
+  /** The hour choices of day order oid (spec §4.41): Stretch from 1 h, drills and work 2–4 h; a raid / a run take their own. */
+  hourOpts: oid =>
+    oid === 'stretch' ? HOURS.stretch : DAY_ORDERS[oid] && ['drill', 'work'].includes(DAY_ORDERS[oid].kind) ? HOURS.opts : [DAY.act],
+  /** Hours an action at a place takes: the walk there + its own (h: the order's / the sleep's length). */
+  cost: (run, id, oid, h) => City.trip(run, City.at(run, id)) + City.hoursAt(id, oid, h),
+  /**
+   * Why h more hours from now don't fit ('' if they do): the week spent; past 02:00 (sleep — `bed`: it is the sleep, never refused
+   * for the hour); a match week's 13:00 kick-off — the action and the walk on from `to` (a map point; null: from here) to the
+   * venue must end by then.
+   */
+  noTime(run, h, to = null, bed = false) {
+    const C = City.clock(run);
+    if (City.night(run)) return 'no days left — end the week';
+    if (C.hour >= DAY.late && !bed) return 'past 02:00 — sleep';
+    const mt = City.matchAt(run);
+    if (mt) {
+      const walk = mt.at ? City.walkH(to || City.pos(run), mt.at) : 0,
+        by = DAY.match - walk;
+      if (C.hour + h > by) return `the match is at ${City.hhmm(DAY.match)}${walk ? ` (${walk} h walk to ${mt.name})` : ''} — be there`;
+    }
+    return '';
+  },
+  /** This week's match you are made to play, before it is played: { at (the venue's point or null), name } — else null. */
+  matchAt(run) {
+    const t = Run.weekType(run);
+    if (t !== 'eval' && t !== 'cup') return null;
+    const v = City.venue(run);
+    return v && VENUES[v] ? { at: VENUES[v].at, name: VENUES[v].name } : { at: null, name: 'the match' };
+  },
+  /**
+   * Pass h hours (callers checked they fit): today's log gets the block `what` ({ k, label, at?, stat? }); the clock moves on (an
+   * action that ends past 02:00 puts you to sleep where you stand after it: City.upLate).
+   */
+  pass(run, h, what) {
+    const C = City.clock(run);
+    if (h > 0 && what) C.log.push({ ...what, from: C.hour, h });
+    C.hour += h;
+  },
+  /** Week time (days since the week began, fractional) at hour `hr` of today — for the map's clock (MapModel.time). */
+  wt: (run, hr = City.hour(run)) => City.clock(run).day - 1 + hr / 24,
+  /** The last action's span for the map (walk, then its own block) in week time: { walk: [a, b] | null, act: [a, b] | null }. */
+  mark(run, h0, walkH, actH) {
+    const C = City.clock(run);
+    C.last = {
+      walk: walkH ? [City.wt(run, h0), City.wt(run, h0 + walkH)] : null,
+      act: actH ? [City.wt(run, h0 + walkH), City.wt(run, h0 + walkH + actH)] : null
+    };
+  },
+  /**
+   * Sleep h hours (4 / 6 / 8, spec §4.41) where you are: `mul` = how well you sleep there (home: your housing's rest; a hotel:
+   * HOTEL.rest; nodding off: DAY.nodMul). Brings back DAY.sleep[h] × mul of the missing stamina (all of it at most), 4 h costs mood;
+   * the day ends: its summary joins the week's day track (run.dayLog) and you wake on the next day. Returns the diary text.
+   */
+  sleep(run, h, mul = World.restMul(run), at = null) {
+    const C = City.clock(run),
+      start = C.hour,
+      frac = Math.min(1, (DAY.sleep[h] || DAY.sleep[4]) * mul * (Feel.has(run, 'insomnia') ? SCARS.insomnia.k : 1)), // Insomnia (spec §4.30)
+      out = [Run.bump(run, 'sta', Math.round((run.staMax - run.sta) * frac))];
+    if (DAY.sleepMood[h]) out.push(Run.bump(run, 'mood', DAY.sleepMood[h]));
+    C.log.push({ k: 'sleep', label: `Sleep ${h} h`, at, from: start, h });
+    City.endDay(run, start, h);
+    return `Slept ${h} h${at ? ` (${at})` : ''}: ${out.filter(Boolean).join(', ') || 'rested'}`;
+  },
+  /** Up past 02:00 (spec §4.41): you nod off where you stand — 4 h, poor sleep, mood down. The diary text. */
+  nod(run) {
+    const line = City.sleep(run, DAY.nod, DAY.nodMul, 'nodded off');
+    return ` · past 02:00: ${line.replace(/^Slept/, 'nodded off,')}`;
+  },
+  /** End today after a sleep from hour `start` for h hours: the day's summary on the day track; the next day starts at the wake hour. */
+  endDay(run, start, h) {
+    const C = City.clock(run),
+      end = start + h;
+    (run.dayLog || (run.dayLog = [])).push(City.daySum(C.log));
+    const wake = end % 24,
+      s0 = end >= 24 ? Math.max(0, start - 24) : start;
+    C.day++;
+    C.hour = wake;
+    C.met = [];
+    C.log = wake > s0 ? [{ k: 'sleep', label: `Sleep ${h} h`, from: s0, h: wake - s0 }] : [];
+    C.last = { walk: null, act: [City.wt(run, start) - 1, City.wt(run, wake)] };
+  },
+  /** A day's entry on the week's day track (spec §10.2): its longest block that isn't a walk or sleep (else the walk, else a rest). */
+  daySum(log) {
+    const by = (ks, not) => log.filter(b => (ks ? ks.includes(b.k) : !not.includes(b.k))).reduce((a, b) => (!a || b.h > a.h ? b : a), null);
+    const b = by(null, ['trip', 'sleep']) || by(['trip']);
+    return b ? { k: b.k, label: b.label, stat: b.stat, at: b.at } : { k: 'rest', label: 'Rest' };
+  },
+  /**
+   * The match you were made to play was played (spec §4.41; Cup.result, before the week moves on): the walk to its venue (if you
+   * were not there), a wait until DAY.match, the match's DAY.matchH hours; you stand at the venue.
+   */
+  matchPlayed(run) {
+    const mt = City.matchAt(run);
+    if (!mt || City.night(run)) return;
+    const C = City.clock(run),
+      h0 = C.hour,
+      t = mt.at ? City.trip(run, mt.at) : 0;
+    City.pass(run, t, { k: 'trip', label: 'Walk', at: mt.name });
+    C.hour = Math.max(C.hour, DAY.match);
+    const hm = C.hour;
+    City.pass(run, DAY.matchH, { k: 'battle', label: 'Match', at: mt.name });
+    C.last = { walk: t ? [City.wt(run, h0), City.wt(run, h0 + t)] : null, act: [City.wt(run, hm), City.wt(run, hm + DAY.matchH)] };
+    if (mt.at) City.moveTo(run, mt.at);
+  },
+  /** The night passes without a sleep of yours (a Cup's rounds, day after day): the next day's wake hour, today's log on the day track. */
+  nextMorning(run) {
+    const C = City.clock(run);
+    (run.dayLog || (run.dayLog = [])).push(City.daySum(C.log));
+    Object.assign(C, { day: Math.min(WEEK_DAYS, C.day + 1), hour: DAY.wake, log: [], last: null, met: [] });
+  },
+  /** Hours on foot from map point a to b (spec §4.41): the route's cost ÷ WALK_PACE (÷ RUN_PACE more when run), 1 h at least; 0 when you are there. */
+  walkH(a, b, ran = false) {
+    if (Math.hypot(b[0] - a[0], b[1] - a[1]) <= HERE_R) return 0;
+    return Math.max(1, Math.round(City.path(a, b).cost / (WALK_PACE * (ran ? RUN_PACE : 1))));
   },
   /** Region of a place (home: where you live). */
   region: (run, id) => Front.owner(run, id) || (HOUSING[run.housing] || HOUSING.studio).region || 'open',
@@ -79,16 +201,19 @@ const City = {
     const Q = (run.spotQ && run.spotQ[id]) || { q: (REGIONS[SPOTS[id].region] || REGIONS.open).q, tag: '', known: true };
     return Object.assign({}, Q, { q: Math.round(Q.q * Front.qMul(run, City.region(run, id)) * 100) / 100 });
   },
-  /** Money for a session / outing / hotel night at a place (0 at home and in the park); a kit place: the order's price (default: its lead drill). */
-  price(run, id, oid) {
+  /** Money for a session / outing / hotel night at a place (0 at home and in the park); a kit place: the order's price (default: its lead drill) for h hours (§4.41: × the hours' units). */
+  price(run, id, oid, h) {
     const s = SPOTS[id],
       r = City.region(run, id),
       p =
         ((REGIONS[r] || REGIONS.open).price || 1) *
         Front.priceMul(run, r) *
         (r && r === City.myRegion(run) && World.tenure(run) >= TENURE.members ? TENURE.price : 1); // members' price (spec §4.36)
-    if (DAY_ORDERS[oid]) return Math.round(TRAIN_FEE * (DAY_ORDERS[oid].price || 0) * p);
-    if (s.kit) return Math.round(TRAIN_FEE * (DAY_ORDERS[City.lead(id)].price || 0) * p);
+    const o = DAY_ORDERS[oid] ? oid : s.kit ? City.lead(id) : null;
+    if (o)
+      return Math.round(
+        TRAIN_FEE * (DAY_ORDERS[o].price || 0) * p * Training.units(City.hourOpts(o).includes(h) ? h : City.hourOpts(o)[0])
+      );
     if (s.act === 'cargo') return DRONE.buy; // (freight: a flat price)
     if (s.hotel) return Math.round(HOTEL.price * p);
     return s.cost ? Math.round(s.cost * p) : 0;
@@ -129,11 +254,8 @@ const City = {
   },
   /** On the island? */
   onLand: p => inPoly(p, CITY.coast),
-  /** Travel days from where you are to point p: 0 close by, then one per TRIP_DAY units of travel cost (City.path), at most TRIP_MAX. */
-  trip(run, p) {
-    const from = City.pos(run);
-    return Math.hypot(p[0] - from[0], p[1] - from[1]) <= NEAR_R ? 0 : Math.min(TRIP_MAX, Math.ceil(City.path(from, p).cost / TRIP_DAY));
-  },
+  /** Walking hours from where you are to point p (spec §4.41): 0 when you stand there, else the route ÷ WALK_PACE, 1 h at least. */
+  trip: (run, p) => City.walkH(City.pos(run), p),
   /** Stand at p (you've spent the days): the fog lifts around it. */
   moveTo(run, p) {
     run.pos = [Math.round(p[0]), Math.round(p[1])];
@@ -171,8 +293,8 @@ const City = {
       ? 'Week 1 — the campus first (Fern: learn the routine)'
       : '',
   outside: (run, p) => !!City.fence(run) && City.regionAt(p) !== 'open',
-  /** Can you do this now? { ok, why }. mate: a teammate (dinner), a secret place's choice, or a day order (spec §4.33). */
-  can(run, id, mate) {
+  /** Can you do this now? { ok, why }. mate: a teammate (dinner), a secret place's choice, or a day order (spec §4.33); h: its hours (§4.41). */
+  can(run, id, mate, h) {
     const s = SPOTS[id];
     if (!s) return { ok: false, why: 'unknown place' };
     if (DAY_ORDERS[mate] && !City.orders(id).includes(mate)) return { ok: false, why: 'not done here' };
@@ -182,10 +304,10 @@ const City = {
     if (s.at && City.outside(run, s.at)) return { ok: false, why: City.fence(run) };
     const acc = City.access(run, id);
     if (!acc.ok) return acc;
-    const late = City.noTime(run, City.cost(run, id));
+    const late = City.noTime(run, City.cost(run, id, mate, h), City.at(run, id), s.act === 'rest' && !DAY_ORDERS[mate]);
     if (late) return { ok: false, why: late };
     const oid = City.orderOf(id, mate),
-      cost = City.price(run, id, oid);
+      cost = City.price(run, id, oid, h);
     if (cost && run.money < cost) return { ok: false, why: `needs $${cost}` };
     if (oid && DAY_ORDERS[oid].kind === 'work' && run.injury) return { ok: false, why: 'injured — no work until it heals' };
     if (s.act === 'ramen' && !Run.mates(run).some(p => p.id === mate)) return { ok: false, why: 'pick a teammate' };
@@ -193,38 +315,42 @@ const City = {
     if (sw) return { ok: false, why: sw };
     return { ok: true, why: '' };
   },
-  /** A day at a place (after the trip there): a day order (spec §4.33), rest, relax or an outing. Returns the diary line. */
-  day(run, id, hard, mate) {
-    const line = City.dayDo(run, id, hard, mate);
+  /** Hours at a place (after the walk there): a day order (spec §4.33; h its hours, §4.41), a sleep (h), relax or an outing. Returns the diary line. */
+  day(run, id, hard, mate, h) {
+    const line = City.dayDo(run, id, hard, mate, h);
     if (line) Gifts.ask(run); // a day may have raised a bond to the gift chance (spec §4.35)
-    return line;
+    return line && (SPOTS[id].act !== 'rest' || City.orderOf(id, mate)) ? line + City.upLate(run) : line; // (a sleep ends the day itself)
   },
-  dayDo(run, id, hard, mate) {
-    if (!City.can(run, id, mate).ok) return '';
+  dayDo(run, id, hard, mate, h) {
+    if (!City.can(run, id, mate, h).ok) return '';
     const oid = City.orderOf(id, mate);
-    if (oid) return City.orderDay(run, id, oid, hard);
+    if (oid) return City.orderDay(run, id, oid, hard, City.hoursAt(id, oid, h));
     if (['ramen', 'arcade', 'street'].includes(SPOTS[id].act)) return City.outing(run, id, mate);
     if (Study.acts.includes(SPOTS[id].act)) return Study.day(run, id); // the tutor / a bookstore (T-230)
     if (Secret.acts.includes(SPOTS[id].act)) return Secret.day(run, id, mate); // a secret place (spec §4.31)
     if (SPOTS[id].act === 'cargo') return City.buyDrone(run, id); // the Ref drone (spec §4.38)
     const s = SPOTS[id],
       cost = City.price(run, id);
-    let line;
     if (s.act === 'rest') {
+      const hs = City.hoursAt(id, null, h),
+        trip = City.go(run, City.at(run, id), null, 0);
       if (s.hotel) run.money -= cost;
-      line = `${s.hotel ? `${s.name} (−$${cost}): ` : ''}${Training.rest(run, s.hotel ? HOTEL.rest : null)}`;
-    } else line = Training.recreation(run);
-    return City.arrive(run, id) + line;
+      return `${trip}${s.hotel ? `${s.name} (−$${cost}): ` : ''}${City.sleep(run, hs, s.hotel ? HOTEL.rest : World.restMul(run), s.hotel ? s.name : null)}`;
+    }
+    const trip = City.arrive(run, id);
+    return trip + Training.recreation(run);
   },
-  /** A day order at place id (callers checked City.can): pay its price, run it (Training.order); the diary line. */
-  orderDay(run, id, oid, hard) {
+  /** The x / skill-point × of an order of h hours at place id: its quality × home turf (kit places) × DAY_GAIN × the hours' units (spec §4.41). */
+  orderX: (run, id, h) => (SPOTS[id] && SPOTS[id].kit ? City.mul(run, id) : 1) * DAY_GAIN * Training.units(h),
+  /** A day order of h hours at place id (callers checked City.can): pay its price, run it (Training.order); the diary line. */
+  orderDay(run, id, oid, hard, h = City.hoursAt(id, oid)) {
     const s = SPOTS[id],
-      cost = City.price(run, id, oid),
-      trip = City.arrive(run, id, oid);
+      cost = City.price(run, id, oid, h),
+      trip = City.arrive(run, id, oid, h);
     run.money -= cost;
     const inv = City.joins(run, id),
       line = City.withInvite(run, id, () =>
-        Training.order(run, oid, id, hard, (s.kit ? City.mul(run, id) : 1) * DAY_GAIN, (s.sand ? SAND_SP : 1) * DAY_GAIN)
+        Training.order(run, oid, id, hard, City.orderX(run, id, h), (s.sand ? SAND_SP : 1) * DAY_GAIN * Training.units(h), h)
       );
     if (s.kit && run.spotQ && run.spotQ[id]) run.spotQ[id].known = true; // quality is never shown (owner, T-172); it still scales EXP
     let w = '';
@@ -236,6 +362,8 @@ const City = {
     }
     return `${trip}${line}${cost ? ` (−$${cost})` : ''}${w}`;
   },
+  /** After an action: up past 02:00 you nod off where you stand (spec §4.41). The diary text it adds ('' if not). */
+  upLate: run => (City.hour(run) >= DAY.late && !City.night(run) ? City.nod(run) : ''),
   /** Who an Invite brings to a day order at place id (spec §4.37 7): the invited person if the place has a floor (a training key), else null. */
   joins: (run, id) => (SPOTS[id] && SPOTS[id].train ? Encounter.invited(run) : null),
   /**
@@ -256,14 +384,10 @@ const City = {
       else delete F[k];
     }
   },
-  /** Walk over to map point p (spec §4.37 7: someone you clicked): its trip days (0 close by), no day of its own. The diary prefix, or null when you can't. */
+  /** Walk over to map point p (spec §4.37 7: someone you clicked): its walk (0 h when there), nothing of its own. The diary prefix, or null when you can't. */
   walkTo(run, p) {
-    if (run.event || !City.onLand(p) || City.outside(run, p) || City.noTime(run, City.trip(run, p))) return null;
-    const t = City.trip(run, p);
-    City.spend(run, t);
-    City.logDays(run, t, null);
-    City.moveTo(run, p);
-    return t ? `(${t}-day trip) ` : '';
+    if (run.event || !City.onLand(p) || City.outside(run, p) || City.noTime(run, City.trip(run, p), p)) return null;
+    return City.go(run, p, null, 0);
   },
   // ---- the Ref drone (spec §4.38, T-339): buy / rent it, the ground under a pickup game -------------------------------------
   /** Your drone: 'own' (bought), 'rent' (a rented one waiting for its match) or '' (none). Lazy `run.drone`. */
@@ -280,7 +404,7 @@ const City = {
     if (City.drone(run)) return City.drone(run) === 'own' ? 'you have your own' : 'rented — play its match first';
     if (run.event) return 'answer the event first';
     if (run.money < DRONE.rent) return `needs $${DRONE.rent}`;
-    return City.outside(run, C.at) ? City.fence(run) : City.noTime(run, City.trip(run, C.at));
+    return City.outside(run, C.at) ? City.fence(run) : City.noTime(run, City.trip(run, C.at), C.at);
   },
   /** Rent the drone at court C for one match (the walk there, no day of its own). The diary line, or '' when you can't. */
   rentDrone(run, C) {
@@ -355,51 +479,53 @@ const City = {
       City.goOver = null;
     }
   },
-  /** A day order at map point p (spec §4.33: Stretch anywhere): { ok, why } like City.can, the days = the trip + one. */
-  pointCan(run, p, oid = 'stretch') {
+  /** A day order at map point p (spec §4.33: Stretch anywhere): { ok, why } like City.can, the hours = the walk + h. */
+  pointCan(run, p, oid = 'stretch', h = 1) {
     if (!DAY_ORDERS[oid] || oid !== 'stretch') return { ok: false, why: 'not done here' };
     if (run.event) return { ok: false, why: 'answer the event first' };
     if (!City.onLand(p)) return { ok: false, why: 'in the sea' };
     if (City.outside(run, p)) return { ok: false, why: City.fence(run) };
-    const late = City.noTime(run, City.trip(run, p) + 1);
+    const late = City.noTime(run, City.trip(run, p) + h, p);
     return late ? { ok: false, why: late } : { ok: true, why: '' };
   },
-  /** Go to map point p and spend a day there on order oid (Stretch). Returns the diary line ('' if it can't). */
-  pointDay(run, p, oid = 'stretch') {
-    if (!City.pointCan(run, p, oid).ok) return '';
+  /** Go to map point p and spend h hours there on order oid (Stretch). Returns the diary line ('' if it can't). */
+  pointDay(run, p, oid = 'stretch', h = 1) {
+    if (!City.pointCan(run, p, oid, h).ok) return '';
     const O = DAY_ORDERS[oid],
-      trip = City.go(run, p, { k: 'train', label: O.name, stat: O.main[0], at: REGIONS[City.regionAt(p)].name });
-    return `${trip}${Training.order(run, oid, null, false, DAY_GAIN, DAY_GAIN)}`;
+      trip = City.go(run, p, { k: 'train', label: O.name, stat: O.main[0], at: REGIONS[City.regionAt(p)].name }, h);
+    return `${trip}${Training.order(run, oid, null, false, DAY_GAIN * Training.units(h), DAY_GAIN * Training.units(h), h)}${City.upLate(run)}`;
   },
   /**
-   * Go to point p, spending the trip + a day there; returns the trip's diary prefix. `what` = the day's entry for the
-   * week's day track (run.dayLog, spec §10.2): { k, label, stat? }; trip days are logged as { k: 'trip' } before it.
+   * Go to point p: the walk there (its hours, a 'trip' block), then h hours of `what` (null: just the walk) — today's log (the 24 h
+   * strip, spec §4.41) and the map's last action. Returns the walk's diary prefix ('' with no walk).
    */
-  go(run, p, what = { k: 'day', label: 'Out' }) {
+  go(run, p, what = { k: 'day', label: 'Out' }, h = DAY.act) {
     if (City.goOver) p = City.goOver; // (played on the spot: City.playAt)
     const t = City.trip(run, p),
       from = City.pos(run).slice(),
-      d0 = City.days(run);
-    City.spend(run, t + 1);
-    City.logDays(run, t, what);
+      h0 = City.hour(run);
+    City.pass(run, t, { k: 'trip', label: 'Walk', at: what && what.at });
+    if (what) City.pass(run, h, what);
+    City.mark(run, h0, t, what ? h : 0);
     City.moveTo(run, p);
-    City.note(run, from, d0);
-    return t ? `(${t}-day trip) ` : '';
+    City.note(run, from, h0);
+    return t ? `(${t} h walk) ` : '';
   },
-  /** The last trip, for the road's encounter (spec §4.37 3; not saved, read at once by the map): { from, to, day (days used before it) }. */
+  /** The last trip, for the road's encounter (spec §4.37 3; not saved, read at once by the map): { from, to, day (days used before it), hour (its start) }. */
   last: null,
-  note(run, from, d0) {
-    City.last = { from, to: City.pos(run).slice(), day: WEEK_DAYS - d0 };
+  note(run, from, h0) {
+    City.last = { from, to: City.pos(run).slice(), day: City.clock(run).day - 1, hour: h0 };
   },
   /**
    * The second route to map point `to` (spec §4.37 4, T-335): a short cut past what Encounter.vias lists (the hot border's battle,
-   * your circle's places) — the same trip days (never one more), at most ENC.alt.slack × the safe road's travel cost (or + extra),
+   * your circle's places) — at most an hour more on foot (§4.41; the walk counted is the safe road's), at most ENC.alt.slack × the safe road's travel cost (or + extra),
    * and only when the safe road doesn't pass it already. { kind, key, at, id?, pts (the road: from → it → to) } or null. Pure.
    */
   alt(run, to) {
     const from = City.pos(run),
       far = Math.hypot(to[0] - from[0], to[1] - from[1]);
     if (far < 2 * ENC.min) return null;
+    const hrs = cost => (far <= HERE_R ? 0 : Math.max(1, Math.round(cost / WALK_PACE)));
     const safe = City.path(from, to),
       days = City.trip(run, to),
       max = Math.max(safe.cost * ENC.alt.slack, safe.cost + ENC.alt.extra);
@@ -408,17 +534,11 @@ const City = {
       const a = City.path(from, c.at),
         b = City.path(c.at, to),
         cost = a.cost + b.cost,
-        d = far <= NEAR_R ? 0 : Math.min(TRIP_MAX, Math.ceil(cost / TRIP_DAY));
-      if (d !== days || cost > max) continue;
+        d = hrs(cost);
+      if (d > days + 1 || cost > max) continue; // (hours, §4.41: an hour more at most — the walk is still the safe road's)
       return { kind: c.kind, key: c.key, at: c.at, id: c.id, pts: [...a.pts, ...b.pts.slice(1)] };
     }
     return null;
-  },
-  /** Append to the day track: `trips` trip days, then one day of `what` (null: trips only). Display only. */
-  logDays(run, trips, what) {
-    const L = run.dayLog || (run.dayLog = []);
-    for (let i = 0; i < trips; i++) L.push({ k: 'trip', label: 'Trip' });
-    if (what) L.push(what);
   },
   /** The day-track entry for a day at place id (an order: `oid`, or a kit place's lead drill). */
   dayWhat(id, oid) {
@@ -429,13 +549,13 @@ const City = {
       const O = DAY_ORDERS[o];
       return { k: 'train', label: O.name, stat: O.main[0], at: s.name };
     }
-    if (s.act === 'rest') return { k: 'rest', label: 'Rest', at: s.name };
+    if (s.act === 'rest') return { k: 'sleep', label: 'Sleep', at: s.name };
     if (s.act === 'cargo') return { k: 'outing', label: 'Drone', at: s.name };
     if (s.secret) return { k: s.act === 'onsen' ? 'rest' : 'outing', label: SECRET_DAY[s.act] || 'Out', at: s.name };
     if (['ramen', 'arcade', 'street'].includes(s.act)) return { k: 'outing', label: s.act === 'street' ? 'Hustle' : 'Outing', at: s.name };
     return { k: 'rest', label: 'Relax', at: s.name };
   },
-  arrive: (run, id, oid) => City.go(run, City.at(run, id), City.dayWhat(id, oid)),
+  arrive: (run, id, oid, h) => City.go(run, City.at(run, id), City.dayWhat(id, oid), City.hoursAt(id, oid, h)),
   /** An outing (dinner, a night out, street hustle): returns the diary line. */
   outing(run, id, mate) {
     const s = SPOTS[id],
@@ -470,22 +590,23 @@ const City = {
     }
     return `${trip}${s.name}: ${out.filter(Boolean).join(', ') || 'a quiet night'}`;
   },
-  /** Days to just travel to point p (at least one). */
-  travelDays: (run, p) => Math.max(1, City.trip(run, p)),
-  /** Travel to any point on the island; `how` 'run' (T-309): the same days, the route's ground trains you. Returns the diary line. */
+  /** Hours to just travel to point p (spec §4.41: 1 h at least; run = faster, RUN_PACE). */
+  travelDays: (run, p, how = 'walk') => Math.max(1, City.walkH(City.pos(run), p, how === 'run')),
+  travelHours: (run, p, how = 'walk') => City.travelDays(run, p, how),
+  /** Travel to any point on the island; `how` 'run' (T-309): faster, the route's ground trains you. Returns the diary line. */
   travelTo(run, p, how = 'walk') {
-    const t = City.travelDays(run, p),
-      ran = how === 'run';
-    if (run.event || !City.onLand(p) || City.noTime(run, t) || City.outside(run, p) || (ran && City.noRun(run, p))) return '';
+    const ran = how === 'run',
+      t = City.travelDays(run, p, how);
+    if (run.event || !City.onLand(p) || City.noTime(run, t, p) || City.outside(run, p) || (ran && City.noRun(run, p))) return '';
     const plan = ran ? City.runPlan(run, p) : null,
       from = City.pos(run).slice(),
-      d0 = City.days(run);
-    City.spend(run, t);
-    for (let i = 0; i < t; i++) (run.dayLog || (run.dayLog = [])).push(ran ? { k: 'trip', label: 'Run' } : { k: 'trip', label: 'Trip' });
+      h0 = City.hour(run);
+    City.pass(run, t, { k: 'trip', label: ran ? 'Run' : 'Walk' });
+    City.mark(run, h0, t, 0);
     City.moveTo(run, p);
-    City.note(run, from, d0);
-    const where = `${REGIONS[City.loc(run)].name} (${t} day${t > 1 ? 's' : ''})`;
-    return ran ? `Ran to ${where}: ${Training.runTrip(run, plan)}` : `Travelled to ${where}.`;
+    City.note(run, from, h0);
+    const where = `${REGIONS[City.loc(run)].name} (${t} h)`;
+    return `${ran ? `Ran to ${where}: ${Training.runTrip(run, plan)}` : `Walked to ${where}.`}${City.upLate(run)}`;
   },
   /** The road path from map point `from` to `to` (spec §4.18): the points of City.path. */
   route: (from, to) => City.path(from, to).pts,
@@ -568,18 +689,23 @@ const City = {
     return City._ek;
   },
   /**
-   * Running to map point p (T-309): { gains: { body stat: base units }, sta, days } — RUN_GROUND per TRIP_DAY of each leg's travel
-   * cost; stamina RUN_GROUND.sta per day of the trip's cost (≥ 1 when it moves at all). Pure.
+   * Running to map point p (T-309): { gains: { body stat: base units }, sta, days (its hours, §4.41) } — RUN_GROUND per TRIP_DAY of each
+   * leg's travel cost × HOURS.unit (as a drill: a 2 h session's worth); stamina RUN_GROUND.sta × HOURS.staK per TRIP_DAY of it (≥ 1 when it moves). Pure.
    */
   runPlan(run, p) {
     const gains = {};
     let c = 0;
     for (const l of City.legs(City.pos(run), p)) {
       c += l.cost;
-      for (const [k, v] of Object.entries(RUN_GROUND[l.kind] || RUN_GROUND.ground)) gains[k] = (gains[k] || 0) + (v * l.cost) / TRIP_DAY;
+      for (const [k, v] of Object.entries(RUN_GROUND[l.kind] || RUN_GROUND.ground))
+        gains[k] = (gains[k] || 0) + (v * l.cost * HOURS.unit * HOURS.run) / TRIP_DAY;
     }
     for (const k of Object.keys(gains)) gains[k] = +gains[k].toFixed(2);
-    return { gains, sta: c > 0 ? Math.max(1, Math.round((RUN_GROUND.sta * c) / TRIP_DAY)) : 0, days: City.travelDays(run, p) };
+    return {
+      gains,
+      sta: c > 0 ? Math.max(1, Math.round((RUN_GROUND.sta * HOURS.staK * c) / TRIP_DAY)) : 0,
+      days: City.travelDays(run, p, 'run')
+    };
   },
   /** Why you can't run to p ('' if you can): it must move you, and you need the stamina (too tired → walk only). */
   noRun(run, p) {
@@ -600,17 +726,17 @@ const City = {
     }
     return c;
   },
-  /** Days to scout club ti: the trip to its HQ + a day. */
-  scoutCost: (run, ti) => City.trip(run, CITY.hq[ti]) + 1,
+  /** Hours to scout club ti: the walk to its HQ + DAY.act. */
+  scoutCost: (run, ti) => City.trip(run, CITY.hq[ti]) + DAY.act,
   /** A day at a club HQ: scout them (roster, elements, a rumour). Returns the diary line. */
   scout(run, ti) {
-    if (run.event || !run.teams[ti] || City.noTime(run, City.scoutCost(run, ti)) || City.outside(run, CITY.hq[ti])) return '';
+    if (run.event || !run.teams[ti] || City.noTime(run, City.scoutCost(run, ti), CITY.hq[ti]) || City.outside(run, CITY.hq[ti])) return '';
     const t = run.teams[ti],
       f = FACTIONS[ti],
       trip = City.go(run, CITY.hq[ti], { k: 'scout', label: 'Scout', at: t.name });
     (run.scout || (run.scout = {}))[ti] = run.week;
     Run.news(run, `Word on the street about ${f.name}: ${f.dark}.`); // voice: rumor
-    return `${trip}Scouted ${t.name}: rating ${t.ovr}, ${squadOf(t).filter(p => p.elOn).length} element user(s). ${Run.bump(run, 'sta', -SCOUT_STA)}`;
+    return `${trip}Scouted ${t.name}: rating ${t.ovr}, ${squadOf(t).filter(p => p.elOn).length} element user(s). ${Run.bump(run, 'sta', -SCOUT_STA)}${City.upLate(run)}`;
   },
   scouted: (run, ti) => !!(run.scout && run.scout[ti] != null),
   /** Standing with a region's clubs (−100…100). */

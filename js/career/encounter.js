@@ -90,7 +90,11 @@ const Encounter = {
       let D = Encounter.dist(pts, c.at);
       if (forced && (D.d > ENC.r || D.s < ENC.min || D.s > len - ENC.min)) D = { ...Encounter.along(pts, len / 2), d: 0 };
       if (D.d > ENC.r || D.s < ENC.min || D.s > len - ENC.min) continue;
-      if (!forced && Encounter.roll(run, trip.day, c.key) >= (via ? ENC.alt.p : ENC.p[c.kind])) continue;
+      if (
+        !forced &&
+        Encounter.roll(run, trip.hour != null ? `${trip.day}.${trip.hour}` : trip.day, c.key) >= (via ? ENC.alt.p : ENC.p[c.kind])
+      )
+        continue;
       hits.push({ ...c, stop: D.at.map(v => Math.round(v * 10) / 10), s: D.s, via: !!via });
     }
     hits.sort((a, b) => ENC.rank.indexOf(a.kind) - ENC.rank.indexOf(b.kind) || a.s - b.s);
@@ -157,7 +161,7 @@ const Encounter = {
   // ---- the figure menu (spec §4.37 7, T-340): anyone you see — Talk · Invite · Spar · Challenge · Card, each with its lock -------
   // State in `run.enc` (this week's, lazily): talk / ask = { id: the day (Encounter.today) }, inv = the id joining your next order.
   /** Today: the week and the day of it (Talk and Invite are once a day per person). */
-  today: run => `${Season.wk(run)}|${WEEK_DAYS - City.days(run)}`,
+  today: run => `${Season.wk(run)}|${City.clock(run).day}`,
   /** Why the menu can't open now ('' if it can): an event open, a cup / evaluation week. */
   menuOff(run) {
     const o = Encounter.off(run);
@@ -207,7 +211,7 @@ const Encounter = {
   /** Their club's index in run.teams (a faction club), else -1 (the Academy squad, a street or reserve crew). */
   club: (run, W) => (W && W.t ? run.teams.indexOf(W.t) : -1),
   /**
-   * The menu for person id: [{ k, days, why ('' = open), … }] in order talk · invite · spar · challenge · card — Invite adds p and
+   * The menu for person id: [{ k, days (its hours since §4.41), why ('' = open), … }] in order talk · invite · spar · challenge · card — Invite adds p and
    * verdict, Spar its court, Challenge ti / stake / verdict / accepts' why. `road`: you are already beside them (a road stop: no walk).
    * Pure, no draws. Null when they aren't on the map.
    */
@@ -244,7 +248,7 @@ const Encounter = {
       spar = {
         k: 'spar',
         court: C && !C.why ? C : null,
-        days: C && !C.why ? City.trip(run, C.at) + 1 : 0,
+        days: C && !C.why ? City.trip(run, C.at) + DAY.act : 0,
         sta: ENC.spar.sta,
         why:
           off ||
@@ -255,7 +259,7 @@ const Encounter = {
           (C.why ? `no open ground near them — ${C.why}` : '') ||
           (C.g ? Encounter.refuses(run, id, C.g.k) : '') ||
           (City.outside(run, C.at) ? City.fence(run) : '') ||
-          City.noTime(run, City.trip(run, C.at) + 1) ||
+          City.noTime(run, City.trip(run, C.at) + DAY.act) ||
           (run.sta < ENC.spar.sta ? `too tired (needs ${ENC.spar.sta} stamina)` : '')
       };
     const ti = Encounter.club(run, W),
@@ -428,7 +432,7 @@ const Encounter = {
       n = (m.grd && m.grd.ko[you.id]) || 0;
     City.droneUsed(run);
     if (C.g.k === 'asphalt' && n) {
-      if (hstr(`asph|${run.pseed}|${Season.wk(run)}|${run.days}|${n}`) < 1 - Math.pow(1 - GROUNDS.asphalt.ko, n)) {
+      if (hstr(`asph|${run.pseed}|${Season.wk(run)}|${City.days(run)}|${n}`) < 1 - Math.pow(1 - GROUNDS.asphalt.ko, n)) {
         run.injury = { weeks: Math.max(P.injWeeks, run.injury ? run.injury.weeks : 0) };
         out.push(`hurt on the asphalt — ${P.injWeeks} week of light training`);
       }
@@ -463,7 +467,7 @@ const Encounter = {
         }
         refused.push({ id: q.id, why });
       }
-    const days = City.trip(run, p) + 1,
+    const days = City.trip(run, p) + DAY.act,
       why =
         Encounter.menuOff(run) ||
         (!City.drone(run) ? `needs the drone — $${DRONE.buy} at the Cargo Shed, or rent one at a court ($${DRONE.rent})` : '') ||
