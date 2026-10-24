@@ -1016,7 +1016,8 @@ const TRAFFIC = {
  *   `fuel` $ an hour of riding (whole hours, rounded up).
  * - ferry: the coast boat — `pace` along `sea` (design units, scaled with the map: offshore points from the airport pier round to
  *   the harbor; `piers` index into it); departs every pier every `every` h from `first` to `last`; `fare` a crossing.
- * - taxi: door to door at `pace`, both ends in Wei's city; `base` + `perH` $ an hour of walking saved.
+ * - taxi: door to door at `pace`, both ends in Wei's city; `base` + `perH` $ an hour of walking saved; standing with `region`
+ *   ≤ `double` doubles the fare (a taxi never refuses).
  * Lazy `run.ride` = { bike: 1, scooter: 1 } once bought (spec §4.42).
  */
 const TRANSPORT = {
@@ -1104,7 +1105,7 @@ const TRANSPORT = {
       { node: 'harbor', name: 'Harbor pier', i: 7 }
     ]
   },
-  taxi: { name: 'Taxi', pace: 4, base: 8, perH: 4 }
+  taxi: { name: 'Taxi', pace: 4, base: 8, perH: 4, region: 'wei', double: -20 }
 };
 /** Ground kinds no building stands on (yards and quays are built on). */
 const GROUND_KEEP = ['terrace', 'paddy', 'field', 'park', 'water', 'quarry'];

@@ -1891,7 +1891,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
   | **Bike** | 1.8 × walking on roads | buy once ($120, Wu market) | roads, not mountain paths | Wu; trains Endurance a little (a third of a run), small stamina |
   | **Scooter** | 3 × walking on roads | buy once ($380, Wu market) + $2 fuel an hour | roads, not mountain paths; no training | Wu |
   | **Ferry** | fastest along the coast | $5 a crossing | the piers: Wu harbor ↔ the airport pier ↔ the beach pier; every 2 h, 07:00–21:00 | Wu harbor |
-  | **Taxi** | 4 × walking, door to door | $8 + $4 an hour of walking saved | both ends inside Wei | Wei: at standing ≤ −20 the fare doubles; a taxi never refuses (owner, 2026-10-24) **[draft — T-360]** |
+  | **Taxi** | 4 × walking, door to door | $8 + $4 an hour of walking saved | both ends inside Wei | Wei: at standing ≤ −20 the fare doubles; a taxi never refuses (owner, 2026-10-24) **[built 2026-10-24, T-360]** |
   - **Mixed trips**: a bus or ferry trip includes the walk to the stop / pier and from it (and the wait); the Travel option shows
     the whole trip's hours. The fastest option is never picked for you — the hours and the money are your choice (§9.1).
   - **Shu's highlands stay on foot** (hardship dogma): no bus, bike, scooter or taxi on the mountain paths — those legs are walked.
@@ -1922,7 +1922,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     a run): −8 → −10 a lost battle, the rally after 4 → 6 untouched weeks. 20 runs without you in the war: a unit Strained in 19 / 20
     (was 14), Shaken 12 / 20 (was 7), Broken 6 / 20 (was 4); a fall in 2 / 20 (unchanged); Iron is worn down most (owner: fine).
   - **Stages → match debuffs** for every squad of that unit (evaluations, Cup, street, court; display of the stage on the
-    match prep): **Strained** < 60 — morale starts 10 lower · **Shaken** < 40 — also HP heals 0.25 less between rallies ·
+    match prep): **Strained** < 60 — morale starts 10 lower (numbers now: Stages bite harder, below) · **Shaken** < 40 — also HP heals 0.25 less between rallies ·
     **Broken** < 25 — also one card slot fewer. (Numbers first guesses; the engine takes a per-side `weak` stage, absent = none.) **[built 2026-10-19, T-314: the slot a Broken side loses is FLEX; Broken vs Steady, same squads: Steady wins 58 %]**
   - **Structure — the war units** (owner):
     - **Wei = two rings.** **Iron** is the outer circle (its border faces the island), **Gold** the inner circle (Haewon's
@@ -1953,8 +1953,11 @@ the AI coach fills every slot you leave with the same function. Built and measur
     (§4.33) fights a street game on a hot border (your win counts × 2 on Strength). **[built 2026-10-19, T-318: from the battle card, played at once; a loss costs your unit × 1]**
   - Economy: Strength replaces the tile value (prices × (1 + 0.3 % per point under 100), quality × (0.7 + 0.3 × Strength /
     100), joins easier when Strained or worse). Save: RUN_VERSION bump (`run.war = { str, fallen, last }`, `run.hex` dropped).
-  - **Stages bite harder** (owner, 2026-10-24) **[draft — T-360]**: measured, a Steady side beat a Broken one only ~55 %; the stages'
-    penalties are raised so it is ~65 % (Strained ~55 %, Shaken ~60 %), measured with paired seeds.
+  - **Stages bite harder** (owner, 2026-10-24) **[built 2026-10-24, T-360]**: measured, a Steady side beat a Broken one only ~55 %; the stages'
+    penalties are raised so it is ~65 % (Strained ~55 %, Shaken ~60 %), measured with paired seeds. Built: each stage also plays
+    weaker on every stat — Strained −4 %, Shaken −5 %, Broken −7 % — morale starts 20 lower (all three), HP heals 0.3 less (Shaken,
+    Broken; of 0.35), Broken holds a hand of 4 (the deck's "one card slot fewer"). Start morale and heal alone barely moved a match.
+    Measured (2000 matches each, paired seeds): Steady beats Strained 54.5 %, Shaken 60.3 %, Broken 65.4 % (± 2.1).
 - §4.27 Hex territory **[built, T-131–T-134, T-138, T-153; superseded by §4.34 when T-313 lands]** (owner, 2026-10-03): the war map becomes hex tiles; each tile has its own takeover
   condition. Changes how factions move and seize; the player's travel (roads, days, trips, fog) does not change.
   Replaces the fixed border meters and border places (§4.7 `FRONT.borders`, T-130 lines, seized patches).

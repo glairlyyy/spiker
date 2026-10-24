@@ -818,13 +818,14 @@ const City = {
     if (h >= walk) return null;
     const B = TRANSPORT.bus,
       rep = City.rep(run, B.region),
+      dbl = k === 'bus' ? rep <= B.double : k === 'taxi' && City.rep(run, T.region) <= T.double, // Wei's standing (spec §4.42)
       cost =
         k === 'bus'
-          ? R0.rides * B.fare * (rep <= B.double ? 2 : 1)
+          ? R0.rides * B.fare * (dbl ? 2 : 1)
           : k === 'ferry'
             ? T.fare
             : k === 'taxi'
-              ? Math.round(T.base + T.perH * (walk - h))
+              ? Math.round(T.base + T.perH * (walk - h)) * (dbl ? 2 : 1)
               : k === 'scooter'
                 ? T.fuel * Math.max(1, Math.ceil(R0.rideH - 1e-9))
                 : 0;
@@ -857,7 +858,7 @@ const City = {
                   : k === 'bike' && run.sta < sta
                     ? `too tired to ride (needs ${sta} stamina)`
                     : City.noTime(run, h, p) || (cost && run.money < cost ? `needs $${cost}` : '');
-    return { k, name: T.name, h, cost, why, legs: R0.legs, raw: R0.raw, arrive: h0 + h, gains, sta, dbl: k === 'bus' && rep <= B.double };
+    return { k, name: T.name, h, cost, why, legs: R0.legs, raw: R0.raw, arrive: h0 + h, gains, sta, dbl };
   },
   /** The ways that serve a trip to p now, in TRANSPORT.ways order (each with its gap). */
   ways: (run, p) => TRANSPORT.ways.map(k => City.way(run, p, k)).filter(Boolean),

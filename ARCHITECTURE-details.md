@@ -1024,7 +1024,7 @@ of the `DAY_ORDERS.run` key × DAY_GAIN; no fail roll). Since §4.41 the gains a
 - **Data** — `TRANSPORT` (js/data/city.js, the one table to tune): `ways` (bus, bike, scooter, ferry, taxi), `round` / `min` (a trip's
   hours: half hours, 1 h at least), `skip` (bus / ferry / taxi pass the road stops by), `foot` (edge kinds always walked: path, steps,
   ground); per way its pace (× walking), money, timetable (`first`, `last`, `every`), the bus `lines` (`nodes` = ROADS ids, each pair an
-  edge on main / overpass; `stops`; `names`), Wei standing (`double`, `refuse`), the ferry's `sea` line (design units, scaled by
+  edge on main / overpass; `stops`; `names`), Wei standing (bus `double`, `refuse`; taxi `region` / `double`: × 2, never refused), the ferry's `sea` line (design units, scaled by
   scaleMap) and `piers` (road node + index on the sea line). The Harbor Market = SPOTS `market` (`act: 'ride'`, node `market` off
   `harbor`, design `ridemarket`). TRAFFIC has no buses any more (vans only): the timetable buses replace them.
 - **Rules** (js/career/city.js, pure trips memoised in `City._wm` by way / from / to / hour): `busTrip(o, p, h0)` = earliest arrival over
@@ -1180,8 +1180,9 @@ then edge; `run.clash = { tile (defender's), from (raider's), at (the edge's mid
 hits both units, `Front.sim` reads their Strength. Tiles never flip; the player's travel never reads tiles.
 `MapModel.warMap(run)` (model key `borders`) is what the map draws: `War.borders` (cached by the holders) walks each unit's boundary edges into loops, cuts them where the neighbour changes and keeps only land borders (the coast is the shore, not drawn); each stretch between two neighbours is straightened once in one orientation (`Hex.straight`, Ramer–Douglas–Peucker, tol 0.9 HEX.size, with an `ok(a, b)` test: a run stays on the two sides' tiles and on land), clipped to the coast (`Hex.clip`), reversed for the other side — so both units' ribbons share one line — then joined per unit into `{ pts, closed }` runs (own land on the left) and `Hex.dense` (points ≤ HEX.size / 4 apart, for the terrain drape and banner spacing). `War.outline(run, u)` = a unit's runs, `War.meet(run, a, b)` = the pair's stretches (a's land left), banners every `MapModel.bannerStep` points (each side's colour, facing across), `fall`. Hex tiles and the point panel's tile block are gone (T-317).
 War stages in the match (T-314): the engine takes a per-side stage `opts.weak` / `weakSet(m, [k0, k1])` (match.js; WAR_STAGES
-index, absent = nothing changes): `m.weak`, morale starts −`mor` (morAdd), `hpHeal` heals −`heal`, a Broken side's cards lose
-`slots` from the end of SLOTS (`C.off` = ['flex']; `cardSlots(m, i)`, cardPut / cardFill skip it). Career fixtures call
+index, absent = nothing changes): `m.weak`, morale starts −`mor` (morAdd), `hpHeal` heals −`heal`, a Broken side holds a hand of
+DECK.hand − `slots` (`D.size`), and `stageBuff` (fire.js) multiplies every stat of that side by 1 − `cut` / 100 (T-360: the cut is
+what bites — start morale and heal barely move a sim; tuned with paired seeds to Steady ~55 / 60 / 65 %). Career fixtures call
 `War.match(run, m)` in their `setup` (Cup.fixture, Fight.clash / challenge, Court): `War.weakOf(run, T)` = its club's unit
 (`T.i`), a crew's unit (`T.wu`), a region's drawn squad (`T.wr`: its least-hit standing unit). Match prep shows the chip (`prepStage`).
 The overthrow (T-315, war.js): `War.can(run, u, by)` (Broken, standing, `by` across its border — `foes` —, `cool` = WAR.cool weeks

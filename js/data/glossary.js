@@ -53,7 +53,7 @@ const GLOSSARY = {
   stage: {
     icon: 'text',
     short: 'Stage',
-    long: `War stage of a unit, worn into every match it plays. ${WAR_STAGES[1].name} under ${WAR_STAGES[1].below}: morale starts ${WAR_STAGES[1].mor * 100} lower. ${WAR_STAGES[2].name} under ${WAR_STAGES[2].below}: HP heals ${WAR_STAGES[2].heal * 100} less a rally. ${WAR_STAGES[3].name} under ${WAR_STAGES[3].below}: one card slot fewer.`
+    long: `War stage of a unit, worn into every match it plays. ${WAR_STAGES[1].name} under ${WAR_STAGES[1].below}: plays ${WAR_STAGES[1].cut} % weaker, morale starts ${Math.round(WAR_STAGES[1].mor * 100)} lower. ${WAR_STAGES[2].name} under ${WAR_STAGES[2].below}: ${WAR_STAGES[2].cut} % weaker, HP heals ${Math.round(WAR_STAGES[2].heal * 100)} less a rally. ${WAR_STAGES[3].name} under ${WAR_STAGES[3].below}: ${WAR_STAGES[3].cut} % weaker, a hand of ${DECK.hand - WAR_STAGES[3].slots} cards.`
   },
   sim: { icon: 'text', short: 'Sim', long: 'Sim. The result without watching. Same rules, same rewards.' },
   academy: { icon: 'text', short: 'Academy', long: 'Academy squad. You play evaluations and the U21 Cup with it until a club signs you.' },

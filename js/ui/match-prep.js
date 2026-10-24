@@ -65,8 +65,9 @@ function prepStage(m, i) {
   if (!k) return '';
   const S = WAR_STAGES[k],
     what = [
-      S.mor && `morale starts ${S.mor * 100} lower`,
-      S.heal && `HP heals ${S.heal * 100} less a rally`,
+      S.cut && `plays ${S.cut} % weaker`,
+      S.mor && `morale starts ${Math.round(S.mor * 100)} lower`,
+      S.heal && `HP heals ${Math.round(S.heal * 100)} less a rally`,
       S.slots && `a hand of ${m.deck ? m.deck[i].size : DECK.hand - S.slots} cards`
     ]
       .filter(Boolean)

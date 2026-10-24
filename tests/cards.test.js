@@ -321,7 +321,7 @@ test('traits: twelve traits, ~85 % of players; Iron Body takes less HP damage; C
   for (const q of all) delete q.mtrait;
 });
 
-test('cards: a Broken side holds a hand of 4 and starts 10 morale lower; [0, 0] is today’s match (spec §4.34, T-314, §2.37)', () => {
+test('cards: a Broken side holds a hand of 4 and starts its stage’s morale lower; [0, 0] is today’s match (spec §4.34, T-314, §2.37)', () => {
   const g = load(73);
   g.RNG.seed(5);
   const T = g.mkTeams(),
@@ -330,10 +330,10 @@ test('cards: a Broken side holds a hand of 4 and starts 10 morale lower; [0, 0] 
   eq(m.deck[1].hand.length, 5, 'Steady: 5');
   eq(m.deck[0].hand.length + m.deck[0].draw.length, g.DECK.size, 'the fifth card back on the deck');
   assert(
-    g.squadOf(m.t[0]).every(p => Math.abs(m.mor[p.id] + 0.1) < 1e-9),
-    'every Broken player starts at −10 morale'
+    g.squadOf(m.t[0]).every(p => Math.abs(m.mor[p.id] + g.WAR_STAGES[3].mor) < 1e-9),
+    'every Broken player starts at −mor morale'
   );
-  assert(Math.abs(m.mom[0] + 0.1) < 1e-9 && m.mom[1] === 0, 'the fire follows');
+  assert(Math.abs(m.mom[0] + g.WAR_STAGES[3].mor) < 1e-9 && m.mom[1] === 0, 'the fire follows');
   // after newMatch (a career fixture's setup): the same
   g.RNG.seed(5);
   const U = g.mkTeams(),

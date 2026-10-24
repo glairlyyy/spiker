@@ -30,14 +30,15 @@ const WAR = {
   q: [0.7, 0.3] // facility quality × (q0 + q1 × Strength / 100)
 };
 /**
- * Stages by Strength (spec §4.34; first guesses): each adds to the one above. mor = morale at the start (−), heal = HP heal
- * between rallies (−), slots = card slots fewer. `below` = the Strength a unit falls under to reach it.
+ * Stages by Strength (spec §4.34; T-360 tuned: Steady beats Strained ~55 %, Shaken ~60 %, Broken ~65 %). Each row holds its
+ * full effect: mor = morale at the start (−), heal = HP heal between rallies (−, of HP.heal), slots = cards fewer in the hand
+ * (DECK.hand − slots), cut = % off every stat in play (stageBuff). `below` = the Strength a unit falls under to reach it.
  */
 const WAR_STAGES = [
   { id: 'steady', name: 'Steady', below: Infinity },
-  { id: 'strained', name: 'Strained', below: 60, mor: 0.1 },
-  { id: 'shaken', name: 'Shaken', below: 40, mor: 0.1, heal: 0.25 },
-  { id: 'broken', name: 'Broken', below: 25, mor: 0.1, heal: 0.25, slots: 1 }
+  { id: 'strained', name: 'Strained', below: 60, mor: 0.2, cut: 4 },
+  { id: 'shaken', name: 'Shaken', below: 40, mor: 0.2, heal: 0.3, cut: 5 },
+  { id: 'broken', name: 'Broken', below: 25, mor: 0.2, heal: 0.3, slots: 1, cut: 7 }
 ];
 /**
  * Call-ups (spec §4.34, T-316): a member whose club's unit fights this week's street battle is called up; refusing it (the

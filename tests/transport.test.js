@@ -113,6 +113,22 @@ test('transport: Wei runs the bus — standing ≤ −20 doubles the fare, ≤ �
   eq(g.City.way(run, to, 'bus').cost, base, 'above −20: the fare');
 });
 
+test('transport: Wei’s taxis — standing ≤ −20 doubles the fare; a taxi never refuses (T-360)', () => {
+  const [g, run] = tRun('weiPower');
+  const to = g.VENUES.arena.at,
+    base = g.City.way(run, to, 'taxi');
+  assert(base && !base.why && !base.dbl, `a taxi at the fare: ${base && base.why}`);
+  run.rep = { wei: -19 };
+  eq(g.City.way(run, to, 'taxi').cost, base.cost, 'above −20: the fare');
+  run.rep = { wei: -20 };
+  const d = g.City.way(run, to, 'taxi');
+  eq(d.cost, base.cost * 2, 'standing −20: fare × 2');
+  assert(d.dbl, 'the doubled fare is flagged');
+  run.rep = { wei: -100 };
+  const w = g.City.way(run, to, 'taxi');
+  assert(w && w.cost === base.cost * 2 && !w.why, `standing −100: still a ride at × 2 (${w && w.why})`);
+});
+
 test('transport: Shu’s highlands stay on foot — no bike, scooter, bus or taxi there; those legs walked (T-356)', () => {
   const [g, run] = tRun('dojo');
   run.ride = { bike: 1, scooter: 1 };

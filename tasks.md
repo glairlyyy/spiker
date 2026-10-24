@@ -33,13 +33,13 @@ repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
 
-### [ ] T-360: War stages bite harder; Wei doubles the taxi fare
+### [x] T-360: War stages bite harder; Wei doubles the taxi fare
 Spec: §4.34 Stages bite harder, §4.42 Taxi          Goldens: unchanged (war stages act only in career matches — say if not)          Save: no change
 Goal: Steady beats Broken ~65 % (Strained ~55, Shaken ~60), measured with paired seeds; at Wei standing ≤ −20 the taxi fare doubles, never refused.
 Files: js/data/war.js (WAR_STAGES), js/engine/* only where a stage effect is read (say which), js/data/city.js (TRANSPORT taxi), js/career/city.js
 (the fare), tests/war.test.js, tests/momentum.test.js, tests/transport.test.js, ARCHITECTURE-details.md
 Accept: the measured win rates in the Result; tests for the taxi fare; npm test, lint pass.
-Result:
+Result: stages also cut every stat (new WAR_STAGES `cut`, read in js/engine/fire.js stageBuff: Strained 4 / Shaken 5 / Broken 7 %), morale −20 all, heal −0.3 Shaken+Broken, Broken = hand of 4 (unchanged: `slots` already meant DECK.hand − 1); start morale and heal alone barely move a match (mor 0.8 → 54 %, heal 0.22 → 51 %). Paired seeds, 2000 matches each: Steady beats Strained 54.5, Shaken 60.3, Broken 65.4 % (± 2.1). Taxi: TRANSPORT.taxi `region`/`double` −20 → fare × 2 (flagged `dbl`), never refused. Also touched: glossary.js, match-prep.js, career-dossier.js (stage text), tests/cards.test.js (morale from data). Goldens unchanged.
 
 ### [ ] T-361: Street level everywhere
 Spec: §4.37 6 Phase 3          Goldens: unchanged          Save: no change

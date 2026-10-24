@@ -148,29 +148,60 @@ test('bars: a Shaken side heals less between rallies (spec §4.34, T-314)', () =
   assert(Math.abs(m.hp[a.id] - 0.2 - (g.HP.heal - g.WAR_STAGES[2].heal)) < 1e-9, 'Shaken: 0.25 less');
 });
 
-test.slow('bars: Broken vs Steady, the same squads both ways — the Steady side wins clearly more (spec §4.34, T-314)', () => {
-  const g = load(75);
-  g.RNG.seed(11);
-  const T = g.mkTeams();
-  let steady = 0,
-    n = 0;
-  for (let i = 0; i < 200; i++) {
-    const a = T[i % 8],
-      b = T[(i + 1 + ((i >> 3) % 7)) % 8]; // (never the same team)
-    for (const w of [
-      [3, 0],
-      [0, 3]
-    ]) {
-      const m = g.simMatch(a, b, { weak: w });
-      if (m.winner === (w[0] ? 1 : 0)) steady++;
-      n++;
-    }
+test('bars: a war stage plays weaker — stageBuff × (1 − cut %) for its side only; no stage × 1 (spec §4.34, T-360)', () => {
+  const g = load(77);
+  g.RNG.seed(4);
+  const T = g.mkTeams(),
+    m = g.newMatch(T[0], T[1], false, { weak: [3, 0] }),
+    a = m.t[0].P[0],
+    b = m.t[1].P[0],
+    W = m.weak;
+  g.playRally(m); // (CM = m)
+  for (const k of ['atk', 'def', 'spd', 'jump', 'serve']) {
+    delete m.weak;
+    const a0 = g.stageBuff(a, k),
+      b0 = g.stageBuff(b, k);
+    m.weak = W;
+    assert(Math.abs(g.stageBuff(a, k) - a0 * (1 - g.WAR_STAGES[3].cut / 100)) < 1e-9, `Broken ${k}: −${g.WAR_STAGES[3].cut} %`);
+    eq(g.stageBuff(b, k), b0, `Steady ${k}: unchanged`);
   }
-  const pct = Math.round((100 * steady) / n);
-  console.log(`   Broken vs Steady: Steady wins ${steady}/${n} (${pct} %)`);
-  // (T-348: 400 matches — 200 read 51 % at this seed, 58 % before the deck's numbers; the true value ≈ 55 %)
-  assert(pct >= 53, `Steady wins clearly more: ${pct} %`);
+  assert(
+    g.WAR_STAGES.every((S, i) => !i || S.cut > (g.WAR_STAGES[i - 1].cut || 0)),
+    'each stage cuts deeper'
+  );
 });
+
+test.slow(
+  'bars: Steady vs each war stage, the same squads and seeds both ways — Strained ~55 %, Shaken ~60 %, Broken ~65 % (spec §4.34, T-360)',
+  () => {
+    const g = load(75);
+    g.RNG.seed(11);
+    const T = g.mkTeams(),
+      pct = [];
+    for (const st of [1, 2, 3]) {
+      let steady = 0,
+        n = 0;
+      for (let i = 0; i < 200; i++) {
+        const a = T[i % 8],
+          b = T[(i + 1 + ((i >> 3) % 7)) % 8]; // (never the same team)
+        for (const w of [
+          [st, 0],
+          [0, st]
+        ]) {
+          g.RNG.seed(1000 + i); // paired seeds: the same match both ways, only the stage's side swapped
+          const m = g.simMatch(a, b, { weak: w });
+          if (m.winner === (w[0] ? 1 : 0)) steady++;
+          n++;
+        }
+      }
+      pct.push(Math.round((100 * steady) / n));
+    }
+    console.log(`   Steady wins vs Strained ${pct[0]} % · Shaken ${pct[1]} % · Broken ${pct[2]} % (400 matches each)`);
+    // (T-360, 2000 matches each: 54.5 / 60.3 / 65.4 % ± 2.1; 400 read ± 4.9)
+    assert(pct[0] >= 50 && pct[1] >= 54 && pct[2] >= 59, `the stages bite: ${pct.join(' / ')} %`);
+    assert(pct[2] > pct[0], 'Broken bites harder than Strained');
+  }
+);
 
 test('bars: Endurance lowers rally HP damage — end 90 takes less than end 30 on the same balls; no body × 1 (spec §4.33, T-311)', () => {
   const g = load(76);
