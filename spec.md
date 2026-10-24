@@ -942,6 +942,20 @@ the AI coach fills every slot you leave with the same function. Built and measur
     only at a key moment, an OP card that is stronger at one, or a bigger after-cost rule. Requests (a wing asks
     every turn; yes when it fits / when not): newcomer bond 0 35 / 14 %, 30 57 / 25, 60 68 / 34, 90 75 / 53; trusted 57 / 25,
     69 / 41, 85 / 56, 95 / 75 — rises with bond and trust, a fitting play likelier.
+- §2.38 Buffs you can feel — fewer coin flips (owner, 2026-10-24: "an OP player with ×2 stats still fails miserably; a +15 % or
+  +50 % attack buff barely means anything") **[draft — T-359]**. Measured (`npm run rng`): the ±20 % rolls decide ~1 % of a spike;
+  the yes/no chain does the rest — hitting errors 20–25 % of swings (×1.4 even for a 99), the hard-hit error step growing with a
+  buff, the serve deciding 30–42 % of points, jump not reaching the block, a star swinging once every 8 points. Five changes:
+  1. **An attack buff makes its holder cleaner**: the attack edge counts in the holder's own spike error level
+     (`Formula.level(p, 'spike')` × edge), and the hard-hit error step (`pow > 110`) reads the unbuffed power — a buff never adds errors.
+  2. **Strong cards and OP cards also cut the holder's errors** a further 20–30 % (data per card).
+  3. **Fewer errors for everyone**: `SKILL.mid` 125 → ~105 (the overall hitting error falls from ~23 % toward the real game's ~15 %);
+     a 10-OVR gap must still decide about as often as today (~71 % match wins) — measured.
+  4. **Jump reaches the block**: block power and coverage read the buffed jump (stageBuff / jumpPx), so jump cards and Titan block.
+  5. **A buffed hitter gets the ball**: the setter's choice weights a hitter with an active attack card (as Feed the Hot Hand), so a
+     one-player buff is felt.
+  - Targets (league, whole side ×2 attack vs none): ≈ +8 % points (+32 % match wins); one hitter ×2 clearly felt; then the deck
+    (§2.37 Must hold) and the career (`npm run career`) re-measured.
 ## 3. Menu [built]
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two

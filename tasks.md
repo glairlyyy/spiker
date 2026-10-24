@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-359** (T-336 is split a / b) (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-360** (T-336 is split a / b) (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,19 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+### [ ] T-359: Buffs you can feel — fewer coin flips
+Spec: §2.38          Goldens: update (errors, block, feed change every rally)          Save: no change
+Goal: the five changes of §2.38; buffs and OP players clearly felt; underdogs keep their chances.
+Files: js/engine/formulas.js, stats.js, rally.js, rally-phases.js, rally-block.js, rally-defense.js, serve.js (only if the feed / jump
+paths need it), js/engine/cards.js (per-card error cut, the setter's weight), js/data/rules.js (SKILL), js/data/cards.js (per-card
+`clean`), tests/*, tests/golden.json, tests/rng.js (keep the what-ifs working), ARCHITECTURE-details.md, spec.md (Measured lines)
+Do not: change the deck rules; make a 10-OVR gap decide much more than today.
+Accept: `npm run rng -- 300` before / after (point-end shares, per-spike kill / error, ×1.15 / ×1.5 / ×2 one hitter and whole side,
+10-OVR gap match wins), `npm run cards -- 250` and `npm run career -- 40 both` before / after, all in the Result; npm test, lint,
+test:ui pass.
+Result:
+
 
 **Transport (owner, 2026-10-24, spec §4.42): T-356 → T-357, one agent, before the deck balance (T-348).**
 
