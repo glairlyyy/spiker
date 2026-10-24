@@ -209,7 +209,7 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
   A played match plays itself like a sim, except the captain's calls (§2.17). The AI's own decoy fake set (multi-attack) stays.
   How the player takes part instead: §5.7.
 
-- §2.17 Captain's calls **[dropped 2026-10-24 — owner; the dead stubs go, T-363]** — replace the captain's random personal buff. Between points (the
+- §2.17 Captain's calls **[dropped 2026-10-24 — owner; the dead stubs removed 2026-10-24, T-363]** — replace the captain's random personal buff. Between points (the
   scoreboard beat) the captain may call, at most once every 5 points (leadership Lv1), 4 (Lv2), 3 (Lv3):
   - **Fire up** `E` (any stage but Fever): team fire +0.2 (cannot trigger Fever by itself); the hottest teammate gets the old
     personal buff (+5 %/lvl power and defence, 4 points) and, with an element, a full gauge.
@@ -493,7 +493,9 @@ Parked (tasks.md Later): the match remembering your choices ("AI memory"), back-
     effect in one line) and **‹team› players** per side whose board you see (keys 2–3: the four cards). Each card's choices
     are folded slots — label, current pick, its odds, ▾; a click opens that choice's options with their odds (one open at a
     time; a pick closes it); a set order is gold-edged; the odds legend sits in an ⓘ. The intro and a huddle open on Teams &
-    plans, Tab mid-match on your players. Same screen in the career. **Tab** in a played match pauses and opens the same board
+    plans, Tab mid-match on your players. Same screen in the career. **Serve odds true again** **[built 2026-10-24, T-363]**: they
+    count a serve technique only on the rallies it goes on (§2.37 techOn, T-358), Target Serve off = an ordered target is a lean,
+    and the foot fault (§4.38) as a missed serve (it counts as a serve error in the result tallies too) — within 3 points of play. **Tab** in a played match pauses and opens the same board
     (Tab / Esc / Enter close). An order made mid-rally applies from the next rally (the engine has played the current one).
     The team plan still changes only at a timeout. Captain's calls Fire up / Settle are not on the board (owner, 2026-10-13:
     not for now).

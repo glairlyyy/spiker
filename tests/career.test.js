@@ -1640,7 +1640,7 @@ test('code: every top-level classic-script name is used somewhere else (no dead 
       .flatMap(e => (e.isDirectory() ? walk(`${d}/${e.name}`) : /\.m?js$/.test(e.name) ? [`${d}/${e.name}`] : []));
   // names that may legitimately have no other reference: name → why (inline onclick="…" handlers in js/ strings
   // and index.html already count as references, so they need no entry)
-  const ALLOW = { capReady: 'T-260: the AI captains will call it', capCall: 'T-260: the AI captains will call it' };
+  const ALLOW = {};
   const scripts = [...read('index.html').matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
   // comments are stripped, so a name mentioned only in a comment still counts as dead
   const text = [...walk('js'), ...walk('tests'), 'index.html', 'qa_poses.html']

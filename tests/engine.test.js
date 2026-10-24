@@ -707,9 +707,9 @@ test.slow(
       pc = (a, b) => (100 * a) / b;
     for (const [k, A] of Object.entries({ auto, flt, jmp, aim })) {
       assert(Math.abs(pc(A.err - A.eErr, A.n)) < 3, `${k} errors ${pc(A.err, A.n).toFixed(1)} vs odds ${pc(A.eErr, A.n).toFixed(1)}`);
-      // (T-359: < 3 → < 5 — since SKILL.mid 105 the odds read ~3–5 points high on aces / broken passes; ORDERS.odds wants a re-fit)
+      // (T-363: the odds count a serve technique at its rally share — techOn, T-358 — and the foot fault; back to < 3)
       assert(
-        Math.abs(pc(A.hit - A.eHit, A.n)) < 5,
+        Math.abs(pc(A.hit - A.eHit, A.n)) < 3,
         `${k} aces / broken passes ${pc(A.hit, A.n).toFixed(1)} vs odds ${pc(A.eHit, A.n).toFixed(1)}`
       );
     }

@@ -106,7 +106,9 @@ function ordAttack(m, side, x, kill, err, stf) {
 
 /**
  * Serve odds for one server on side s with a given serve order and target (each 'auto' or an id; undefined = the
- * current order): { err, hit } — hit = an ace or a broken pass. The engine's own formulas over a fixed grid of its rolls.
+ * current order): { err, hit } — err = a miss or a foot fault, hit = an ace or a broken pass. The engine's own formulas over a fixed grid of its rolls.
+ * A serve technique counts at the share of rallies it goes on (techP: the rally's gate, techOn) — off, an ordered target
+ * is only a lean (or, the seam, Auto).
  */
 function srvOdds(m, server, s, srv, tgt) {
   const ST = m.t[s],
@@ -117,7 +119,7 @@ function srvOdds(m, server, s, srv, tgt) {
   if (srv !== undefined) ordSet(m, server, 'srv', srv);
   if (tgt !== undefined) ordSet(m, server, 'tgt', tgt);
   const so = ordOf(m, server, 'srv'),
-    tg = tgtResolve(m, server, RT),
+    tg0 = tgtResolve(m, server, RT),
     ap = atkPlan(m, s),
     cp = defPlan(m, 1 - s),
     wp = weakPasser(RT),
@@ -128,56 +130,78 @@ function srvOdds(m, server, s, srv, tgt) {
     const sq0 = Formula.serveQuality(server, ST, f),
       a = srvApply(m, server, serveType(server, sq0), sq0);
     let sq = a.sq;
-    const jump = a.sType === 'jump';
+    const jump = a.sType === 'jump',
+      ff = Formula.footFaultP(server, a.sType); // the foot fault (spec §4.38) comes first: a missed serve
     if (jump) sq *= 1 + (runUpM(server, a.sType) - 3.2) * 0.05;
-    // techniques: ordered = always; Auto = their usual share (killer / drive 50 %, target 30 %)
-    const kP = jump && hasTech(server, 'killer') ? (so === 'killer' ? 1 : so ? 0 : 0.5) : 0,
-      dP = !jump && hasTech(server, 'drive') ? (so === 'drive' ? 1 : so ? 0 : 0.5) : 0,
-      tP = tg ? 0 : hasTech(server, 'target') ? 0.3 : 0;
-    for (const [kk, pk] of [
-      [1, kP],
-      [0, 1 - kP]
-    ]) {
-      if (!pk) continue;
-      const sqk = kk ? sq * 1.1 : sq,
-        e = Math.min(
-          1,
-          (Formula.serveErrorP(server, ST, sqk) + (kk ? 0.03 : 0)) * (ap.serveErr ?? 1) * a.errK * (tg && !tg.exact ? ORDERS.srv.aimErr : 1)
-        );
-      // who takes it, and how far they move: aimed (beside them) or a random spot (the nearest)
-      const aimed = tg && tg.exact ? [[tg.rc, 1]] : tg ? [[tg.rc, ORDERS.srv.lean]] : [];
-      const huntW = tg ? 0 : ap.huntK ? 1 : tP,
-        rest = 1 - aimed.reduce((x, [, q]) => x + q, 0);
-      const L = passersOf(RT),
-        rcs = [
-          ...aimed.map(([p, q]) => [p, q, tg.seam ? G.dSeam : G.dAim]),
-          ...(rest > 0 ? [[wp, rest * huntW, G.dAim], ...L.map(p => [p, (rest * (1 - huntW)) / L.length, G.dRand])] : [])
-        ];
-      let h = 0;
-      for (const [rc, q, d0] of rcs) {
-        if (!q) continue;
-        for (const [dd, pd] of [
-          [1, dP],
-          [0, 1 - dP]
-        ]) {
-          if (!pd) continue;
-          let rs = Formula.receiveScore(rc, RT, d0) - (dd ? 14 : 0);
-          if (cp.weakRs) rs += rc === wp ? cp.weakRs : cp.otherRs;
-          if (ap.press && rc === wp) rs -= ap.press;
-          if (tg && tg.seam) rs -= ORDERS.srv.seam;
-          const ace = sig((sqk - rs) / 24 - 2.4),
-            bad = clamp((-8 - (rs - sqk * 0.85) + 18) / 36, 0, 1);
-          h += q * pd * (ace + (1 - ace) * bad);
+    // techniques, on their rallies (techP): ordered = always; Auto = their usual share (killer / drive 50 %, target 30 %)
+    const kP = jump ? techP(server, 'killer') * (so === 'killer' ? 1 : so ? 0 : 0.5) : 0,
+      dP = !jump ? techP(server, 'drive') * (so === 'drive' ? 1 : so ? 0 : 0.5) : 0,
+      pT = techP(server, 'target'),
+      // an exact target needs Target Serve on this rally; off, a player is a lean and the seam is Auto
+      tvs =
+        tg0 && tg0.exact
+          ? [
+              [tg0, pT],
+              [tg0.seam ? null : { ...tg0, exact: false }, 1 - pT]
+            ]
+          : [[tg0, 1]];
+    for (const [tg, pv] of tvs) {
+      if (!pv) continue;
+      const tP = tg ? 0 : tg0 ? 0 : pT * 0.3;
+      for (const [kk, pk0] of [
+        [1, kP],
+        [0, 1 - kP]
+      ]) {
+        const pk = pk0 * pv;
+        if (!pk) continue;
+        const sqk = kk ? sq * 1.1 : sq,
+          e = Math.min(
+            1,
+            (Formula.serveErrorP(server, ST, sqk) + (kk ? 0.03 : 0)) *
+              (ap.serveErr ?? 1) *
+              a.errK *
+              (tg && !tg.exact ? ORDERS.srv.aimErr : 1)
+          );
+        // who takes it, and how far they move: aimed (beside them) or a random spot (the nearest)
+        const aimed = tg && tg.exact ? [[tg.rc, 1]] : tg ? [[tg.rc, ORDERS.srv.lean]] : [];
+        const huntW = tg ? 0 : ap.huntK ? 1 : tP,
+          rest = 1 - aimed.reduce((x, [, q]) => x + q, 0);
+        const L = passersOf(RT),
+          rcs = [
+            ...aimed.map(([p, q]) => [p, q, tg.seam ? G.dSeam : G.dAim]),
+            ...(rest > 0 ? [[wp, rest * huntW, G.dAim], ...L.map(p => [p, (rest * (1 - huntW)) / L.length, G.dRand])] : [])
+          ];
+        let h = 0;
+        for (const [rc, q, d0] of rcs) {
+          if (!q) continue;
+          for (const [dd, pd] of [
+            [1, dP],
+            [0, 1 - dP]
+          ]) {
+            if (!pd) continue;
+            let rs = Formula.receiveScore(rc, RT, d0) - (dd ? 14 : 0);
+            if (cp.weakRs) rs += rc === wp ? cp.weakRs : cp.otherRs;
+            if (ap.press && rc === wp) rs -= ap.press;
+            if (tg && tg.seam) rs -= ORDERS.srv.seam;
+            const ace = sig((sqk - rs) / 24 - 2.4),
+              bad = clamp((-8 - (rs - sqk * 0.85) + 18) / 36, 0, 1);
+            h += q * pd * (ace + (1 - ace) * bad);
+          }
         }
+        err += pk * (ff + (1 - ff) * e);
+        hit += pk * (1 - ff) * (1 - e) * h;
       }
-      err += pk * e;
-      hit += pk * (1 - e) * h;
     }
   }
   // restore
   if (keep) m.ord[server.id] = keep;
   else if (m.ord) delete m.ord[server.id];
   return { err: err / G.roll.length, hit: hit / G.roll.length };
+}
+
+/** The share of rallies p goes for technique `id` (techOn): 0 not owned / held, 1 a card calls it, else techRate. No draws. */
+function techP(p, id) {
+  return ownsTech(p, id) ? (cardCalled(p, id) ? 1 : techRate(p, id)) : 0;
 }
 
 // ---- Spike orders (T-278): aim (line / cross / a player / open court) and shot (power / cut / tip) ----

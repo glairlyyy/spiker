@@ -30,7 +30,7 @@ function playRally(m) {
   serveContact(c);
   srvLog(m, c.server);
   // the foot fault (spec §4.38): one draw on every serve, here, before the error roll (FAULTS.foot)
-  if (R() < Formula.footFaultP(c.server, c.sType) && m.dev !== 'ace') return footFault(c); // (not a srvLog error: the serve odds don't model it)
+  if (R() < Formula.footFaultP(c.server, c.sType) && m.dev !== 'ace') return (srvLog(m, c.server, 'err'), footFault(c)); // (a srvLog error: the serve odds count it)
   if (R() < c.serr && m.dev !== 'ace') return (srvLog(m, c.server, 'err'), serveFault(c)); // (m.dev 'ace': the Dev cut-scene preview — same draws)
   serveAim(c);
   if (R() < sig((c.sq - c.rs) / 24 - 2.4) || m.dev === 'ace') return (srvLog(m, c.server, 'ace'), serveAce(c));

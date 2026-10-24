@@ -127,7 +127,7 @@ holders); the hard-hit step (`pow > 110`) reads pow / stageBuff atk; `blockPower
 
 Three faults, each one draw at a fixed place, chances in `FAULTS` (rules.js) via `Formula.netTouchP(p, kind, fatigue)` /
 `Formula.footFaultP(server, type)` and `doubleContactP` (stats.js). **Foot fault**: every serve, in `playRally` (serve.js)
-right before the service-error roll (`footFault(c)`: a service error — `st` err, not a `srvLog` err: the serve odds don't model it;
+right before the service-error roll (`footFault(c)`: a service error — `st` err and a `srvLog` err, counted in the serve odds;
 jump serves × 5 a float). **Net touch**: the draw `x.ntU` is made at the end of `blockCoverage` (rally-block.js) on every attack;
 `netTouch(c, x)` reads it in `attackPhases` (rally.js) after `block()` when the block did not end the attack (a stuff is dead
 first) and before the dig: the bodies at the tape are a front-row hitter (`hit`; a tip never touches) and each blocker (`read`;
@@ -1252,8 +1252,10 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   R() draws); serveContact: `tgtResolve` (exact with Target Serve, else a lean of `.lean`, errors × `.aimErr`); serveAim:
   beside the target, or 40 % from the weaker to the other seam passer (receive − `.seam`). Tallies `m.srvLog`.
 - Odds (`srvOdds(m, p, side, srv, tgt)`): temporarily sets the asked orders, evaluates `Formula.serveQuality(…, roll)` on the
-  grid `ORDERS.odds.roll`, techniques at their Auto shares, the receiver mix (aimed at `dAim`, random `dRand`, seam `dSeam`),
-  ace = the engine's sigmoid, broken = P(receive margin ≤ −8); restores the orders. Within ~2 points of sims (test).
+  grid `ORDERS.odds.roll`, techniques at their Auto shares × `techP` (the share of rallies each goes on: techRate, 1 when a card
+  calls it — techOn's gate; Target Serve off → an ordered target is a lean, the seam Auto), the foot fault first (an error),
+  the receiver mix (aimed at `dAim`, random `dRand`, seam `dSeam`), ace = the engine's sigmoid, broken = P(receive margin ≤ −8);
+  restores the orders. Within 3 points of sims (test; T-363).
 - UI (plan-board.js): `boardSide(i)` renders four cards (rotation order) as a prep tab (`prepTabs` / `prepTab(k)`, keys 1–3,
   `A.prepS.tab`: 'teams' or a side); `boardRow` draws a folded slot (current pick + its odds), `boardSlot(k)` opens one
   (`A.prepS.open` = 'pid.kind'; a pick closes it). `prepOpen(null, true)`
