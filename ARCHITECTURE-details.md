@@ -1078,7 +1078,10 @@ with "XP: …" and the factor note.
 
 `js/ui/career-hub.js` renders the whole career screen (spec §10) as a fixed full-screen layer (covers the page header):
 top bar (`topBar`: labelled resources with one-render deltas, sheet tabs Me · People · World · Season with keys 1–4, ⚙ →
-`gearPop`), week rail (`weekRail`: you + stats, `dayTrack` from `run.dayLog` via `weekCells`, `inboxRows`
+`gearPop`), week rail (`weekRail`: you + stats, `weekSection` = "Today · Tue" + the hour + days left, today's 24 h strip `dayStrip`
+(spec §4.41: 02:00 → 02:00 `STRIP`; `run.clock.log` blocks `.db.<k>` placed by hour, the hour now `.dnow`, the selected place's
+`spotGhost` blocks (walk + its hours) dashed from now with a "past 02:00" warning, a match week's 13:00 outline) and the 7-day
+`dayTrack` from `run.dayLog` via `weekCells` (slept-through days `done`, today `now`, the rest free), `inboxRows`
 over `inboxItems`, End week; folded by «/» or `[` to `railStrip`, a 72px strip with the same reach — `.hub.railmini` sets
 `--rail`, which every layer right of the rail follows; `CW.railMini` is remembered in `KEYS.rail`), the 3D island map
 (`MapView`, see Island map layers; places are found only on the map, no list), the place panel (`#spot`, `placeCard` anatomy in career-panels.js) and a card over the map (`hubCard`: event → Week
@@ -1099,8 +1102,12 @@ diffs it around `Run.endWeek` into `CW.recap` → `recapCard` (the Week report).
 world at the producer; untagged lines fall back to the `LOG_TAGS` text match (career-week.js) — new producers pass `k`. `renderCareer` diffs `run.own` against
 `CW.own` (`ownChanges`); a seize becomes an inbox row for a week (`CW.seizes`) and selects the place on the map.
 `Front.stakes(run, w, l)` is a pure preview of "w beats l" (the losing unit's Strength now / after; `seize` / `place` stay
-false / null) used by the street-battle panel and the brief. `run.dayLog` (RUN_DEFAULTS, cleared by `Run.endWeek`, written by `City.go` / `logDays`)
-feeds the day track. `hubKey`: 1–4 sheets, Space End week, Esc closes ⚙ → list → sheet → place panel; `CW.endArm`
+false / null) used by the street-battle panel and the brief. `run.dayLog` (RUN_DEFAULTS, cleared by `Run.endWeek`, written by `City.endDay` /
+`nextMorning`) feeds the day track, `run.clock.log` today's strip. Hours on the cards (spec §4.41): `CW.hrs` (2 / 3 / 4) is the card's
+hour picker (`hourSeg`; Stretch 1–3); `ordHours(oid)` = the longest option of the order ≤ the pick; `ordList` / `ordBtn` show its hours,
+stamina, price → result (`dayX × Training.units(h)`) and call `mapGo(id, oid, h)`; the home / hotel card is `sleepRows` (Sleep 8 / 6 / 4 h:
+the walk, the hours, the price → the stamina back, mood, the wake hour; 8 h the primary). The map's clock `#mapclock` (in `.mapwalk`)
+shows map3d's `clock().week` as "Tue 14:20", refreshed by `mapClockTick` in the page's rAF loop (`spotFollow`). `hubKey`: 1–4 sheets, Space End week, Esc closes ⚙ → list → sheet → place panel; `CW.endArm`
 makes End week ask twice (4 s) while days are unused.
 
 Short copy (spec §9.4–9.6): `js/data/glossary.js` `GLOSSARY = { id: { icon, short, long, glyph? } }` holds every repeated

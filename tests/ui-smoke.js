@@ -44,6 +44,8 @@ function serve() {
 }
 
 const steps = [];
+/** Week time (days) as "day d, hh:00" for the step notes. */
+const City_h = w => `day ${Math.floor(w) + 1}, ${String(Math.round((w % 1) * 24)).padStart(2, '0')}:00`;
 const step = async (name, fn) => {
   const t0 = Date.now();
   try {
@@ -235,7 +237,7 @@ const step = async (name, fn) => {
         }
       );
       const tag = await ev(() => document.querySelector('.mtag').textContent);
-      if (!/Dynasty Strength Center/.test(tag) || !/trip/.test(tag)) throw new Error(`tag: ${tag}`);
+      if (!/Dynasty Strength Center/.test(tag) || !/walk|Here/.test(tag)) throw new Error(`tag: ${tag}`);
       await pg.mouse.click(p[0], p[1]);
       await pg.waitForFunction(() => CW.spot === 'weiPower' && document.querySelector('#spot.open'), null, { timeout: 60000 });
       const side = await ev(() => {
@@ -307,6 +309,83 @@ const step = async (name, fn) => {
     await pg.waitForFunction(() => !CW.lock, null, { timeout: 30000 });
     return g.log[0].slice(0, 70);
   });
+  await step('the day in hours (T-353): the 24 h strip, train 3 h, walk, Sleep 6 h, a new day', async () => {
+    await pg.waitForFunction(() => MapView.m3 && MapView.m3.info().calls > 0, null, { timeout: 240000 }); // (the map's first frames hold the page)
+    const pref = await ev(() => {
+      const was = Encounter.pref();
+      Encounter.setPref('never'); // (no road stop in this step)
+      RUN.clock = City.freshClock();
+      RUN.dayLog = [];
+      RUN.event = null;
+      RUN.sta = RUN.staMax;
+      RUN.injury = null;
+      City.moveTo(RUN, City.at(RUN, 'harbor').slice());
+      CW.briefWeek = briefKey(RUN);
+      renderCareer();
+      return was;
+    });
+    const bad = [];
+    const r0 = await ev(() => {
+      const st = document.querySelector('.wrail .dstrip');
+      CW.hrs = 3;
+      mapPick('harbor');
+      const card = document.querySelector('#spot').textContent,
+        seg = [...document.querySelectorAll('#spot .seg.hrs .btn')]
+          .map(b => b.textContent + (b.classList.contains('on') ? '*' : ''))
+          .join(','),
+        ghost = document.querySelectorAll('.wrail .dstrip .db.ghost').length;
+      return { strip: !!st && !!st.querySelector('.dnow'), seg, heavy: /Heavy sets[\s\S]*3 h/.test(card), ghost };
+    });
+    if (!r0.strip) bad.push('no 24 h strip with the hour now');
+    if (r0.seg !== '2 h,3 h*,4 h') bad.push(`hour picker: ${r0.seg}`);
+    if (!r0.heavy) bad.push('Heavy sets does not show 3 h');
+    if (!r0.ghost) bad.push('no ghost block for the selected order');
+    await ev(() => mapGo('harbor', 'heavy', 3));
+    await pg.waitForFunction(() => !CW.lock, null, { timeout: 180000 });
+    const r1 = await ev(() => ({
+      log: RUN.clock.log.map(b => `${b.k}:${b.h}`).join(','),
+      done: document.querySelectorAll('.wrail .dstrip .db.done').length
+    }));
+    if (!/train:3/.test(r1.log) || !r1.done) bad.push(`trained 3 h: ${JSON.stringify(r1)}`);
+    const h0 = await ev(() => {
+      RUN.event = null; // (a session may raise a gift's ask: spec §4.35)
+      const h = City.hour(RUN),
+        p = City.at(RUN, 'acaGym');
+      mapTravel(p[0], p[1]);
+      return h;
+    });
+    await pg.waitForFunction(() => !CW.lock, null, { timeout: 180000 });
+    const h1 = await ev(() => City.hour(RUN));
+    if (!(h1 > h0)) bad.push(`the walk did not move the clock (${h0} → ${h1})`);
+    const r2 = await ev(() => {
+      RUN.event = null;
+      RUN.sta = 20;
+      mapPick('home');
+      const txt = document.querySelector('#spot').textContent,
+        pri = document.querySelectorAll('#spot .btn.hot').length;
+      return { sleep: ['8', '6', '4'].every(h => txt.includes(`Sleep ${h} h`)), pri };
+    });
+    if (!r2.sleep || r2.pri !== 1) bad.push(`home card: ${JSON.stringify(r2)}`);
+    await ev(() => mapGo('home', null, 6));
+    await pg.waitForFunction(() => !CW.lock, null, { timeout: 180000 });
+    const r3 = await ev(() => ({
+      day: RUN.clock.day,
+      track: document.querySelectorAll('.wrail #wdays .dslot.done').length,
+      head: document.querySelector('.wrail .wweek .wh').textContent,
+      clock: (document.getElementById('mapclock') || {}).textContent || ''
+    }));
+    if (r3.day !== 2 || r3.track !== 1 || !/Tue/.test(r3.head)) bad.push(`after the sleep: ${JSON.stringify(r3)}`);
+    await ev(p => {
+      Encounter.setPref(p);
+      mapPick(null);
+      RUN.clock = City.freshClock();
+      RUN.dayLog = [];
+      RUN.sta = RUN.staMax;
+      renderCareer();
+    }, pref);
+    if (bad.length) throw new Error(bad.join('; '));
+    return `${r1.log} · walk ${h0} → ${h1} h · slept 6 h: ${r3.head.trim()} · map clock ${r3.clock}`;
+  });
   await step('street level (T-336a): zoom down at the gym, walk with a click, zoom back out', async () => {
     const back = await ev(() => City.pos(RUN).slice()); // (put back at the end: the road step walks from there)
     const at = await ev(() => {
@@ -346,7 +425,7 @@ const step = async (name, fn) => {
       });
     await ev(() => MapView.m3.jump()); // (the walk itself shows in QA; here only its end)
     await pg.waitForFunction(() => !MapView.busy() && !CW.lock, null, { timeout: 120000 });
-    const days = await ev(() => 7 - City.days(RUN));
+    const days = await ev(() => City.hour(RUN) - DAY.wake);
     await ev(() => MapView.m3.setView({ d: 110 })); // (back out to the map, as the walk camera leaves it)
     await ev(p => {
       City.moveTo(RUN, p);
@@ -354,7 +433,7 @@ const step = async (name, fn) => {
       MapView.m3.jump();
     }, back);
     await pg.waitForFunction(() => MapView.m3.street() === 0 && !MapView.m3.info().ring.on, null, { timeout: 120000 });
-    return `${st.ms} ms a frame at street level (ring ${st.ring.lots} lots, ${Math.round(st.ring.tris / 1000)}k tris, built in ${st.ring.ms} ms; ${st.vrm} VRMs); the walk took ${days} day(s)`;
+    return `${st.ms} ms a frame at street level (ring ${st.ring.lots} lots, ${Math.round(st.ring.tris / 1000)}k tris, built in ${st.ring.ms} ms; ${st.vrm} VRMs); the walk took ${days} h`;
   });
   // the living island, Agent E (spec §4.37 3–5): a stop on the road, the short cut, the island's sound
   await step('the road (T-333): a stop on the way — the card over the map, Space walks on', async () => {
@@ -443,16 +522,16 @@ const step = async (name, fn) => {
       txt: document.querySelector('#stprompt').textContent,
       kbd: !!document.querySelector('#stprompt kbd'),
       i: MapView.m3.interiors(),
-      days: RUN.days
+      days: City.wt(RUN)
     }));
     if (!/Heavy sets/.test(p.txt) || !p.kbd) throw new Error(`prompt: ${p.txt.slice(0, 120)}`);
     await pg.keyboard.press('f');
-    await pg.waitForFunction(d => RUN.days < d, p.days, { timeout: 20000 });
+    await pg.waitForFunction(d => City.wt(RUN) > d, p.days, { timeout: 20000 });
     await pg.waitForFunction(() => !CW.lock, null, { timeout: 300000 });
     const t = await ev(() => ({ ms: MapView.m3.bench(3), street: MapView.m3.street() }));
     if (t.street < 0.5) throw new Error(`the day lifted the camera off street level (${t.street})`);
     await ev(() => MapView.m3.setView({ d: 110 }));
-    return `cut ${p.i.cut}, roof ${p.i.alpha}, ${p.days} → ${await ev(() => RUN.days)} days, street ${t.street.toFixed(2)} after, ${t.ms} ms a frame`;
+    return `cut ${p.i.cut}, roof ${p.i.alpha}, ${City_h(p.days)} → ${City_h(await ev(() => City.wt(RUN)))}, street ${t.street.toFixed(2)} after, ${t.ms} ms a frame`;
   });
   await step('island sound (T-334): the map plays; leaving it frees every node and no AudioContext runs', async () => {
     const on = await ev(() => ({ on: Ambience.on, n: Ambience.nodes(), mix: Ambience.mix() }));

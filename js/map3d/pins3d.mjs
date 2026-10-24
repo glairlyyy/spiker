@@ -13,8 +13,8 @@ import { MAP_M, smooth, esc } from './geo3d.mjs';
 const NAMES_AT = [700, 1100], // camera distance (m): the region names fade in between these (far out only)
   TAG_UP = 1.2; // the tag and the anchor float this far above a facility's roof (m)
 
-/** The trip there, in words (the tag). */
-const tripText = n => (n > 0 ? `${n}-day trip` : 'No trip');
+/** The walk there, in words (the tag; hours since spec §4.41). */
+const tripText = n => (n > 0 ? `${n} h walk` : 'Here');
 
 export function createFurniture(scene, heightAt, where = () => null) {
   const layer = document.createElement('div');

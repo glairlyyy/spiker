@@ -1,6 +1,6 @@
 // The island map's UI: mounting the renderer (MapView, js/ui/map-view.js) with the model (MapModel), the panel for the
-// selected place, and the actions behind its buttons. A week has 7 days: every action takes a day plus the trip there (by distance); the player ends the
-// week. The map is dark where you haven't been: places show once explored; click any land to travel there.
+// selected place, and the actions behind its buttons. A week has 7 days of 24 hours (spec §4.41): every action takes hours plus the walk
+// there (by the route); sleeping ends the day; the player ends the week. The map is dark where you haven't been: places show once explored; click any land to travel there.
 
 /** Draw the map for this run (MapView = the renderer; MapModel = what to draw). */
 function mapMount(run) {
@@ -21,21 +21,31 @@ function mapPoint(p) {
   renderCareer();
 }
 
-/** What committing to the selected place would put on the day track (ghost slots): trip days, then the day. [] if nothing. */
+/**
+ * What committing to the selected place would put on today's strip (spec §4.41: ghost blocks from now): the walk's hours, then its
+ * own ({ k, label, h }) — a kit place's lead order for the picked hours, a sleep's 8 h. [] if nothing (an event, the week spent).
+ */
 function spotGhost(run, id) {
-  if (!id || run.event || Run.weekType(run) === 'cup' || Run.weekType(run) === 'eval') return [];
-  const trips = (at, what) => [...Array.from({ length: City.trip(run, at) }, () => ({ k: 'trip', label: 'Trip' })), what];
+  if (!id || run.event || City.night(run)) return [];
+  const walk = (at, what, h) =>
+    [{ k: 'trip', label: 'Walk', h: City.trip(run, at) }, ...(what ? [{ ...what, h }] : [])].filter(b => b.h > 0);
   if (id.startsWith('hq')) {
     const ti = +id.slice(2);
-    return ti === run.team || !run.teams[ti] ? [] : trips(CITY.hq[ti], { k: 'scout', label: 'Scout' });
+    return ti === run.team || !run.teams[ti] ? [] : walk(CITY.hq[ti], { k: 'scout', label: 'Scout' }, DAY.act);
   }
   if (id === 'clash') {
     const c = Fight.clashSite(run);
-    return c ? trips(c.at, { k: 'battle', label: 'Battle' }) : [];
+    return c ? walk(c.at, { k: 'battle', label: 'Battle' }, DAY.act) : [];
   }
-  if (id.startsWith('pt:')) return Array.from({ length: City.travelDays(run, MapModel.ptOf(id)) }, () => ({ k: 'trip', label: 'Trip' }));
+  if (id.startsWith('venue:')) {
+    const v = VENUES[id.slice(6)];
+    return v ? walk(v.at, null, 0) : [];
+  }
+  if (id.startsWith('pt:')) return [{ k: 'trip', label: 'Walk', h: City.travelDays(run, MapModel.ptOf(id)) }];
   if (!SPOTS[id]) return [];
-  return trips(City.at(run, id), City.dayWhat(id));
+  const o = City.orderOf(id),
+    h = o ? ordHours(o) : City.hoursAt(id, null, SPOTS[id].act === 'rest' ? 8 : undefined);
+  return walk(City.at(run, id), City.dayWhat(id), h);
 }
 /** The floating card for the selected place (with the route choice when a short cut exists — spec §4.37 4). */
 function spotCard(run) {
@@ -67,7 +77,7 @@ function pickupRow(run, id) {
     P = Encounter.pickup(run, p),
     foe = P.foe != null ? People.find(run, P.foe) : null,
     g = P.g ? `${P.g.name}${P.g.wind ? ' · windy' : ''}` : '',
-    c = `${term('day', String(P.days), 'cost')} ${term('sta', -P.sta, 'cost')} → ${ENC_MENU.pickup.res}${g ? ` · ${esc(g)}` : ''}${foe ? ` · vs ${esc(firstName(foe))}’s crew` : ''}${City.drone(run) === 'rent' ? ' · the rented drone' : ''}`,
+    c = `${term('day', `${P.days} h`, 'cost')} ${term('sta', -P.sta, 'cost')} → ${ENC_MENU.pickup.res}${g ? ` · ${esc(g)}` : ''}${foe ? ` · vs ${esc(firstName(foe))}’s crew` : ''}${City.drone(run) === 'rent' ? ' · the rented drone' : ''}`,
     no =
       !P.why && P.refused.length
         ? `<small class="mute">${P.refused.map(r => esc(firstName(People.find(run, r.id)))).join(', ')} won’t play off a flat floor</small>`
@@ -79,7 +89,7 @@ function rentRow(run, id) {
   const C = id && Encounter.courts(run).find(q => q.id === id);
   if (!C) return '';
   const t = City.trip(run, C.at),
-    c = `${t ? term('day', String(t), 'cost') : 'here'} $${DRONE.rent} → ${ENC_MENU.rent.res}`;
+    c = `${t ? term('day', `${t} h`, 'cost') : 'here'} $${DRONE.rent} → ${ENC_MENU.rent.res}`;
   return dronePickRow('prent', 'D', ENC_MENU.rent.name, c, City.rentWhy(run, C), `mapRent('${esc(id)}')`, '');
 }
 /** The Cargo Shed (the airport's freight): buy the Ref drone — the trip + a day, DRONE.buy → pickup games anywhere. */
@@ -103,9 +113,9 @@ function cargoPanel(run, id) {
       ['Or', `rent one at any court · $${DRONE.rent} a match`]
     ]),
     row: [
-      `<button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${id}')" ${c.ok ? '' : 'disabled'}>${c.ok ? `${esc(ENC_MENU.buy.name)} · ${days}d · $${DRONE.buy} → ${esc(ENC_MENU.buy.res)}` : esc(c.why)}</button>`,
+      `<button class="btn ${c.ok ? 'hot' : ''}" onclick="mapGo('${id}')" ${c.ok ? '' : 'disabled'}>${c.ok ? `${esc(ENC_MENU.buy.name)} · ${days} h · $${DRONE.buy} → ${esc(ENC_MENU.buy.res)}` : esc(c.why)}</button>`,
       trip
-        ? `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${late ? `disabled ${tip(late)}` : ''}>Walk · ${trip}d</button>`
+        ? `<button class="btn" onclick="mapTravel(${at[0]},${at[1]})" ${late ? `disabled ${tip(late)}` : ''}>Walk · ${trip} h</button>`
         : ''
     ].filter(Boolean),
     after: placeDetails(id, placeTags(run, id, trip))
@@ -140,9 +150,24 @@ function spotFollow() {
   try {
     spotPlace();
     figPlace();
+    mapClockTick();
   } catch (e) {
     /* a frame mid-render: try again next frame */
   }
+}
+/**
+ * The map's clock (spec §4.41): the time the map shows — it runs with your walk and through the night (map3d's clock); without the 3D
+ * map, the rules' hour. "Tue 14:20" in the map's top-right group, refreshed a few times a second.
+ */
+function mapClockTick() {
+  const el = document.getElementById('mapclock');
+  if (!el || !RUN || Date.now() - (mapClockTick.t || 0) < 200) return;
+  mapClockTick.t = Date.now();
+  const c = MapView.m3 && MapView.m3.clock ? MapView.m3.clock() : null,
+    w = c && Number.isFinite(c.week) ? c.week : City.wt(RUN),
+    d = Math.floor(w + 1e-6),
+    t = `${WEEKDAYS[clamp(d, 0, WEEK_DAYS - 1)]} ${City.hhmm(Math.round((w - d) * 24 * 6) / 6)}`;
+  if (el.textContent !== t) el.textContent = t;
 }
 /** Place the open popup beside its pin now. */
 function spotPlace() {
@@ -220,26 +245,27 @@ function spotSwap(el) {
   el._glide = setTimeout(() => el.classList.remove('glide'), 260);
 }
 
-/** Spend a day at a place (+ the trip); the week's one event may come after the first day. Never ends the week. */
-function mapGo(id, mate) {
+/** Spend h hours at a place (+ the walk; an order's or a sleep's length, spec §4.41). Never ends the week. */
+function mapGo(id, mate, h) {
   const run = RUN;
-  if (!SPOTS[id] || !City.can(run, id, mate).ok || CW.lock) return;
+  mate = mate == null ? undefined : mate;
+  if (!SPOTS[id] || !City.can(run, id, mate, h).ok || CW.lock) return;
   const s = SPOTS[id],
     oid = City.orderOf(id, mate), // a day order (spec §4.33): a kit place's (its lead drill by default) or Stretch at home / the grounds
     before = oid ? trainSnap(run, DAY_ORDERS[oid].main[0]) : null,
     via = roadStart(City.at(run, id)),
-    line = City.day(run, id, CW.hard, mate);
+    line = City.day(run, id, CW.hard, mate, h != null ? h : oid ? ordHours(oid) : undefined);
   Run.log(run, line);
   const fx = oid ? trainFx(run, s, before, line, oid) : null;
   mapAfter(run, fx, null, roadAfter(run, via));
 }
-/** Stretch at map point (x, y) (spec §4.33: anywhere): the trip + a day there. */
-function mapStretch(x, y) {
+/** Stretch at map point (x, y) (spec §4.33: anywhere): the walk + h hours there. */
+function mapStretch(x, y, h = ordHours('stretch')) {
   const run = RUN;
-  if (CW.lock || !City.pointCan(run, [x, y]).ok) return;
+  if (CW.lock || !City.pointCan(run, [x, y], 'stretch', h).ok) return;
   const before = trainSnap(run, DAY_ORDERS.stretch.main[0]),
     via = roadStart([x, y]),
-    line = City.pointDay(run, [x, y]);
+    line = City.pointDay(run, [x, y], 'stretch', h);
   if (!line) return;
   Run.log(run, line);
   CW.spot = null;
@@ -367,7 +393,7 @@ function lockEnd() {
  * "I'll stay" closes it for this week (End week stays on the rail).
  */
 function nightCard() {
-  return `<div class="panel night"><h3>No days left</h3><p class="mute">The week is spent. End it?</p>
+  return `<div class="panel night"><h3>No days left</h3><p class="mute">You slept through day ${WEEK_DAYS}: the week is spent. End it?</p>
     <div class="acts two"><button class="btn hot" onclick="nightAnswer(true)">Yes, end the week</button><button class="btn" onclick="nightAnswer(false)">I'll stay</button></div></div>`;
 }
 function nightAnswer(yes) {
@@ -583,21 +609,21 @@ function figPersonRows(run, id, road) {
     st = figStake(run, ti),
     M = st ? Encounter.menu(run, id, road, st) : M0,
     fn = road ? 'encDo' : 'figDo',
-    cost = R0 => (R0.days ? term('day', String(R0.days), 'cost') : 'free'),
+    cost = R0 => (R0.days ? term('day', `${R0.days} h`, 'cost') : 'free'),
     [talk, inv, spar, ch] = M;
   return [
     { t: ENC_MENU.talk.name, c: `${cost(talk)} → ${ENC_MENU.talk.res}`, a: `${fn}('talk')`, dis: talk.why },
     { t: ENC_MENU.invite.name, c: `${cost(inv)} → ${ENC_MENU.invite.res} · says yes: ${inv.verdict}`, a: `${fn}('invite')`, dis: inv.why },
     {
       t: ENC_MENU.spar.name,
-      c: `${term('day', String(spar.days), 'cost')} ${term('sta', -spar.sta, 'cost')} → ${ENC_MENU.spar.res}${spar.court ? ` · ${esc(spar.court.name)}` : ''}`,
+      c: `${term('day', `${spar.days} h`, 'cost')} ${term('sta', -spar.sta, 'cost')} → ${ENC_MENU.spar.res}${spar.court ? ` · ${esc(spar.court.name)}` : ''}`,
       a: `${fn}('spar')`,
       sim: `${fn}('spar',null,true)`,
       dis: spar.why
     },
     {
       t: ENC_MENU.challenge.name,
-      c: `${term('day', String(ch.days), 'cost')} $${st} → ${ENC_MENU.challenge.res} · accepts: ${ch.verdict}`,
+      c: `${term('day', `${ch.days} h`, 'cost')} $${st} → ${ENC_MENU.challenge.res} · accepts: ${ch.verdict}`,
       a: `${fn}('challenge')`,
       sim: `${fn}('challenge',null,true)`,
       dis: ch.why,
@@ -629,11 +655,11 @@ function encRows(run, E) {
       side = Fight.challengeSide(run),
       dis = Fight.ban(run) || City.noTime(run, d) || (run.money < side.cost ? `needs $${side.cost} for a crew` : ''),
       S = Encounter.spot(run, E), // on the spot, with the drone (spec §4.38)
-      hd = S.field.at ? City.trip(run, S.field.at) + 1 : 1;
+      hd = S.field.at ? City.trip(run, S.field.at) + DAY.act : DAY.act;
     return [
       {
         t: ENC_MENU.challenge.name,
-        c: `${term('day', String(d), 'cost')} → ${ENC_MENU.challenge.res} · accepts: ${W ? W.verdict : 'refuses'}`,
+        c: `${term('day', `${d} h`, 'cost')} → ${ENC_MENU.challenge.res} · accepts: ${W ? W.verdict : 'refuses'}`,
         a: "encDo('challenge')",
         sim: "encDo('challenge',null,true)",
         dis,
@@ -641,7 +667,7 @@ function encRows(run, E) {
       },
       {
         t: ENC_MENU.here.name,
-        c: `${term('day', String(hd), 'cost')} → ${ENC_MENU.here.res}${S.field.g ? ` · ${esc(S.field.g.name)}${S.field.g.wind ? ' · windy' : ''}` : ''} · accepts: ${W ? W.verdict : 'refuses'}`,
+        c: `${term('day', `${hd} h`, 'cost')} → ${ENC_MENU.here.res}${S.field.g ? ` · ${esc(S.field.g.name)}${S.field.g.wind ? ' · windy' : ''}` : ''} · accepts: ${W ? W.verdict : 'refuses'}`,
         a: "encDo('here')",
         sim: "encDo('here',null,true)",
         dis: S.why || City.noTime(run, hd),
@@ -661,7 +687,7 @@ function encRows(run, E) {
     call = Fight.calledFor(run),
     rows = [c.a, c.b].map((r, i) => ({
       t: `Fight for ${REGIONS[r].name}`,
-      c: `${term('day', String(d), 'cost')} → a street match${call === r ? ' · your club’s call' : ''}`,
+      c: `${term('day', `${d} h`, 'cost')} → a street match${call === r ? ' · your club’s call' : ''}`,
       a: `encDo('join','${i ? 'b' : 'a'}')`,
       sim: `encDo('join','${i ? 'b' : 'a'}',true)`,
       dis
@@ -900,11 +926,12 @@ function stationHTML(run, st) {
     const nm = (SPOTS[st.place] || {}).name || (VENUES[st.place.replace(/^venue:/, '')] || {}).name || 'the place';
     return `${head}<button class="btn fmb" onclick="${call}"><kbd>F</kbd><b>${esc(nm)}</b><span class="oln">Open the card</span></button>`;
   }
-  const [id, oid] = act.args;
+  const [id, oid] = act.args,
+    h = ordHours(oid); // the card's picked hours (spec §4.41)
   return City.withInvite(run, id, () => {
-    const c = City.can(run, id, oid),
-      pv = Training.preview(run, oid, CW.hard && !run.injury, dayX(run, id), id),
-      b = ordBtn(run, DAY_ORDERS[oid], pv, c, call, City.cost(run, id), City.price(run, id, oid), c.ok)
+    const c = City.can(run, id, oid, h),
+      pv = Training.preview(run, oid, CW.hard && !run.injury, dayX(run, id) * Training.units(h), id, h),
+      b = ordBtn(run, DAY_ORDERS[oid], pv, c, call, h, City.price(run, id, oid, h), c.ok)
         .replace('class="btn ord', 'class="btn fmb ord')
         .replace('<b class="onm">', '<kbd>F</kbd><b class="onm">');
     return `${head}${b}${c.ok ? '' : `<small class="why">${esc(c.why)}</small>`}`;

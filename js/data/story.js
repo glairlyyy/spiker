@@ -83,7 +83,7 @@ const SCENES = {
         who: 'senior',
         text: "That's the rest of it. Wei's gyms up north, the beach courts on the coast, the highlands out west."
       },
-      { k: 'say', who: 'senior', text: 'Click anywhere to go. Trips cost days, and the far side of the island costs two or three.' },
+      { k: 'say', who: 'senior', text: 'Click anywhere to go. Walking costs hours, and the far side of the island most of a day.' },
       { k: 'say', who: 'senior', text: 'Go and look around. Just be back in shape for week 4.' },
       { k: 'cam', to: 'you' },
       { k: 'end' }
@@ -214,7 +214,7 @@ const SCENES = {
         who: 'senior',
         text: "Past the Thousand Steps there's an old national player. Turned everyone away. Me too. Try anyway."
       },
-      { k: 'say', who: 'senior', text: 'The hot spring in the hills. Two days. The one luxury worth it.' },
+      { k: 'say', who: 'senior', text: 'The hot spring in the hills. Six hours. The one luxury worth it.' },
       { k: 'say', who: 'senior', text: "And the roof of this flat. I'll write. Don't expect much — I hate writing." },
       { k: 'choice', opts: [{ text: 'Thank you, Fern.' }, { text: 'You could stay. Try again.', goto: 'stay' }] },
       { k: 'say', who: 'senior', text: "Don't. Just win something.", goto: 'gone' },

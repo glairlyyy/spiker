@@ -83,8 +83,8 @@ const ENC_BATTLE = [
 /** The second route's names and what it risks (registrar). */
 const ENC_ROUTE = {
   safe: { name: 'Safe road', tip: 'The usual road. Nothing on it you didn’t ask for.' },
-  battle: { name: 'Short cut · the hot border', tip: 'Same days. Through this week’s street battle: a fight likely.' },
-  circle: { name: 'Short cut · past {n}', tip: 'Same days. Past {n}’s place: you’ll likely meet.' }
+  battle: { name: 'Short cut · the hot border', tip: 'An hour more at most. Through this week’s street battle: a fight likely.' },
+  circle: { name: 'Short cut · past {n}', tip: 'An hour more at most. Past {n}’s place: you’ll likely meet.' }
 };
 
 /** The figure menu's rows (registrar): name and what it gives — the control reads "cost → result". */

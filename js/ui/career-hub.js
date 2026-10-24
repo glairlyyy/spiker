@@ -218,7 +218,9 @@ function weekBrief(run) {
     row('⚑', 'Evaluation', 'next week', Array.isArray(ev) ? ev : [['Note', ev]], '', 'evaln');
   }
   const title = { train: 'Training week', camp: 'Training camp', eval: 'Evaluation week', cup: 'Cup week' }[wt] || 'This week',
-    line = match ? 'Match weeks have no training days.' : `${WEEK_DAYS} days. Every action takes a day, plus the trip there.`;
+    line = match
+      ? `The match is at ${City.hhmm(DAY.match)} — the morning is yours; be at the venue by then.`
+      : `${WEEK_DAYS} days of 24 hours. Every action takes hours, the walk there too; sleep ends the day.`;
   return `<div class="panel brief"><div class="lab">${run.mode.story ? `Year ${Season.year(run)} · ` : ''}Week ${Math.min(run.week, CAREER.weeks)} / ${CAREER.weeks}</div><h2 ${tip(line)}>${title}</h2>
     ${rows.join('') || '<p class="small mute">A quiet week.</p>'}
     <div class="acts ${run.gazette && !run.gazette.read ? 'pri' : ''}"><button class="btn hot" onclick="briefDone()">${match ? 'Go to match prep' : 'Start the week'}</button>${
@@ -326,7 +328,7 @@ function weekRail(run, armed) {
     }
   </aside>`;
 }
-const endTip = (days, eve) => tip(eve ? 'Sleep: start the next week' : `Skip the ${days} day${days > 1 ? 's' : ''} left`);
+const endTip = (days, eve) => tip(eve ? 'Start the next week' : `Skip the ${days} day${days > 1 ? 's' : ''} left (today included)`);
 /**
  * The folded rail (spec §10.1, 72px): face (→ Me), days left, the 7 day cells stacked, inbox with
  * its count (→ unfolds the rail), End week (same two-click arm and Space). Nothing in the rail is out of reach.
@@ -338,18 +340,16 @@ function railStrip(run, armed) {
     match = wt === 'cup' || wt === 'eval',
     eve = !match && days <= 0,
     n = inboxItems(run).length,
-    cells = match
-      ? '<div class="dslot match" title="Match week">⚑</div>'
-      : weekCells(run)
-          .map(
-            ([e, cls]) =>
-              `<div class="dslot ${cls} ${e ? e.k : ''}" ${e && (e.at || e.label) ? tip(e.at || e.label) : ''}>${e ? `<i>${DAY_ICON[e.k] || '•'}</i>` : ''}</div>`
-          )
-          .join('');
+    cells = weekCells(run)
+      .map(
+        ([e, cls]) =>
+          `<div class="dslot ${cls} ${e ? e.k : ''}" ${e && (e.at || e.label) ? tip(e.at || e.label) : ''}>${e ? `<i>${DAY_ICON[e.k] || '•'}</i>` : ''}</div>`
+      )
+      .join('');
   return `<aside class="wrail mini" aria-label="This week">
     <button class="btn wfold" onclick="railToggle()" aria-label="Expand the week rail ([)">» <kbd>[</kbd></button>
     <button class="wme" onclick="hubOpen('me')" aria-label="Your player" ${tip(you.name)}><span class="portrait ${Feel.fired(run) ? 'fired' : ''}">${faceSVG(you, MOODS[run.mood].form, 40)}</span></button>
-    <div class="wleft"><b>${match ? '⚑' : days}</b><small>${match ? 'match' : 'left'}</small></div>
+    <div class="wleft" ${tip(`${WEEKDAYS[Math.min(WEEK_DAYS, City.clock(run).day) - 1]} ${City.hhmm(City.hour(run))} · ${days} day${days === 1 ? '' : 's'} left`)}><b>${City.hhmm(City.hour(run))}</b><small>${match ? '⚑ match' : `${days} left`}</small></div>
     <div class="wdays">${cells}</div>
     <button class="wicon" onclick="railToggle()" aria-label="Inbox: ${n} waiting" ${tip(`Inbox · ${n} waiting`)}>✉${n ? `<em class="badge">${n}</em>` : ''}</button>
     ${
@@ -363,7 +363,7 @@ function railStrip(run, armed) {
 /** The map's walking-speed selector (T-214): top right of the map, usable while you walk (above the walk lock). */
 function walkSpeed() {
   const k = MapView.walkK();
-  return `<div class="mapwalk" role="group" aria-label="Walking speed" ${tip('Walking speed on the map')}><span class="lab">Walk</span>${MapView.WALKS.map(
+  return `<div class="mapclock" id="mapclock" role="timer" ${tip('The time on the island: walking moves it, sleeping runs it through the night')}>${WEEKDAYS[Math.min(WEEK_DAYS, City.clock(RUN).day) - 1]} ${City.hhmm(City.hour(RUN))}</div><div class="mapwalk" role="group" aria-label="Walking speed" ${tip('Walking speed on the map')}><span class="lab">Walk</span>${MapView.WALKS.map(
     n => `<button class="btn ${n === k ? 'on' : ''}" aria-pressed="${n === k}" onclick="walkSet(${n}, this)">${n}×</button>`
   ).join('')}</div>`;
 }
@@ -380,39 +380,75 @@ function railToggle() {
   store.set(KEYS.rail, CW.railMini ? '1' : '0');
   renderCareer();
 }
-/** "This week · {type}", days left and the day track. */
+/** "Today · Tue 14:00", days left, today's 24 h strip and the week's 7 days (spec §4.41, §10.2). */
 function weekSection(run) {
   const wt = Run.weekType(run),
     days = City.days(run),
     match = wt === 'cup' || wt === 'eval',
-    kind = { train: 'training', camp: 'training camp', eval: 'evaluation', cup: 'cup' }[wt] || wt;
-  return `<section class="wweek"><div class="wh"><span class="lab" ${tip(`This week: ${kind}`)}>This week</span><span class="small mute">${match ? 'Match' : `${days} left`}</span></div>
-      ${dayTrack(run, match)}</section>`;
+    kind = { train: 'training', camp: 'training camp', eval: 'evaluation', cup: 'cup' }[wt] || wt,
+    d = Math.min(WEEK_DAYS, City.clock(run).day) - 1;
+  return `<section class="wweek"><div class="wh"><span class="lab" ${tip(`This week: ${kind}`)}>${City.night(run) ? 'This week' : `Today · ${WEEKDAYS[d]}`}</span><span class="small mute">${
+    City.night(run) ? 'spent' : `<b class="wnow">${City.hhmm(City.hour(run))}</b> · ${days} day${days === 1 ? '' : 's'} left`
+  }</span></div>
+      ${City.night(run) ? '' : dayStrip(run, match)}${dayTrack(run)}</section>`;
 }
 /** Icons of the day-track entries (line icons come with T-111). */
-const DAY_ICON = { train: '✸', rest: '☾', outing: '◐', trip: '↗', scout: '◉', battle: '⚔', challenge: '⚔', day: '•' };
+const DAY_ICON = { train: '✸', rest: '☾', sleep: '☾', outing: '◐', trip: '↗', scout: '◉', battle: '⚔', challenge: '⚔', day: '•' };
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-/** The day track (spec §10.2): what each spent day was, trips hatched, free days empty, the selected place's cost as ghost slots. */
-function dayTrack(run, match) {
-  if (match) return '<div class="wdays"><div class="dslot match">⚑ Match day</div></div>';
+/** Today's strip spans 02:00 → 02:00 (DAY.late: the day's last hour); hour marks every 6 h. */
+const STRIP = { from: DAY.late - 24, to: DAY.late, marks: [6, 12, 18, 24] };
+/**
+ * Today's 24 h strip (spec §4.41): what you did hour by hour (today's log: walks hatched, the sleep dim), the hour now, the
+ * selected place's walk and hours as dashed ghost blocks from now, a match week's 13:00 match, and the 02:00 edge.
+ */
+function dayStrip(run, match) {
+  const S = STRIP,
+    pct = h => `${(((clamp(h, S.from, S.to) - S.from) / (S.to - S.from)) * 100).toFixed(2)}%`,
+    wid = (a, h) => `${(((clamp(a + h, S.from, S.to) - clamp(a, S.from, S.to)) / (S.to - S.from)) * 100).toFixed(2)}%`,
+    now = City.hour(run),
+    blk = (b, cls) => {
+      const t = `${City.hhmm(b.from)}–${City.hhmm(b.from + b.h)} · ${[b.label, b.at].filter(Boolean).join(' · ')}${cls === 'ghost' ? ' (if you go)' : ''}`;
+      return `<i class="db ${cls} ${esc(b.k)}" style="left:${pct(b.from)};width:${wid(b.from, b.h)}" ${tip(t)} aria-label="${esc(t)}"></i>`;
+    },
+    log = City.clock(run).log.filter(b => b.from + b.h > S.from),
+    ghost = [];
+  let at = now;
+  for (const g of spotGhost(run, CW.spot)) {
+    ghost.push({ ...g, from: at });
+    at += g.h;
+  }
+  const late = ghost.length && at > S.to && ghost[ghost.length - 1].k !== 'sleep', // (a sleep is never a nod-off)
+    mt = match ? City.matchAt(run) : null;
+  return `<div class="dstrip" id="dstrip" role="img" aria-label="Today, ${City.hhmm(now)}">${S.marks
+    .map(h => `<span class="dmk" style="left:${pct(h)}">${String(h % 24).padStart(2, '0')}</span>`)
+    .join(
+      ''
+    )}${mt ? `<i class="db match" style="left:${pct(DAY.match)};width:${wid(DAY.match, DAY.matchH)}" ${tip(`${City.hhmm(DAY.match)} · ${esc(mt.name)}: the match`)}></i>` : ''}${log
+    .map(b => blk(b, 'done'))
+    .join('')}${ghost.map(b => blk(b, 'ghost')).join('')}<i class="dnow" style="left:${pct(now)}" aria-hidden="true"></i></div>${
+    late ? `<p class="small dlate">Past 02:00 — you nod off where you are (4 h, mood down)</p>` : ''
+  }`;
+}
+/** The day track (spec §10.2): what each slept-through day was, today, the days to come. */
+function dayTrack(run) {
   const cells = weekCells(run);
   return `<div class="wdn">${WEEKDAYS.map(d => `<span ${tip(d)}>${d[0]}</span>`).join('')}</div><div class="wdays" id="wdays">${cells
     .map(([e, cls], i) =>
       e
-        ? `<div class="dslot ${cls} ${e.k}" ${tip(`${WEEKDAYS[i]}: ${[e.label, e.at].filter(Boolean).join(' · ') || 'spent'}${cls === 'ghost' ? ' (if you go)' : ''}`)} aria-label="${WEEKDAYS[i]} ${esc(e.label || '')}"><i>${DAY_ICON[e.k] || '•'}</i></div>`
-        : `<div class="dslot free" ${tip(`${WEEKDAYS[i]}: free`)}></div>`
+        ? `<div class="dslot ${cls} ${e.k}" ${tip(`${WEEKDAYS[i]}: ${[e.label, e.at].filter(Boolean).join(' · ') || 'spent'}${cls === 'now' ? ' (today)' : ''}`)} aria-label="${WEEKDAYS[i]} ${esc(e.label || '')}"><i>${DAY_ICON[e.k] || '•'}</i></div>`
+        : `<div class="dslot free" ${tip(`${WEEKDAYS[i]}: to come`)}></div>`
     )
     .join('')}</div>`;
 }
-/** The week's 7 cells as [entry, 'done' | 'ghost' | 'free'] (entry null = a free day): spent days, the selected place's ghost, free. */
+/** The week's 7 cells as [entry, 'done' | 'now' | 'free'] (entry null = a day to come): the slept-through days, today, the rest. */
 function weekCells(run) {
-  const spent = WEEK_DAYS - City.days(run),
+  const spent = Math.min(WEEK_DAYS, City.clock(run).day - 1),
     log = (run.dayLog || []).slice(0, spent),
-    ghost = spotGhost(run, CW.spot).slice(0, WEEK_DAYS - spent);
+    today = City.night(run) ? [] : [[City.clock(run).log.length ? City.daySum(City.clock(run).log) : { k: 'day', label: 'Today' }, 'now']];
   return [
     ...Array.from({ length: spent }, (_, i) => [log[i] || { k: 'day', label: '' }, 'done']), // days spent before the log existed
-    ...ghost.map(e => [e, 'ghost']),
-    ...Array.from({ length: WEEK_DAYS - spent - ghost.length }, () => [null, 'free'])
+    ...today,
+    ...Array.from({ length: WEEK_DAYS - spent - today.length }, () => [null, 'free'])
   ];
 }
 /** The rail inbox (spec §10.3): reminders only — what waits for you, one button each, until handled. Max 5. */
@@ -452,12 +488,12 @@ function inboxItems(run) {
     facts(
       'battle',
       '⚔',
-      `${short(att)} raid ${short(def)} · ${d}d`,
+      `${short(att)} raid ${short(def)} · ${d} h`,
       [
         ['Sides', `${short(c.a)} vs ${short(c.b)}`],
         ['Where', esc(c.name)],
         ['Border', clashBorder(run, att, def)],
-        ['Trip', d - 1 ? `${d - 1} day${d > 2 ? 's' : ''}` : 'None']
+        ['Walk', d - DAY.act ? `${d - DAY.act} h` : 'None']
       ],
       [['View', "mapPick('clash')"]]
     );

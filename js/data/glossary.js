@@ -19,7 +19,11 @@ const GLOSSARY = {
     short: 'Stamina',
     long: 'Stamina. Training and fights cost it; rest and the week end restore it. Below 25 a failed session may injure you.'
   },
-  day: { icon: 'day', short: 'Day', long: `Day. ${WEEK_DAYS} a week. Every action takes one, plus the trip there.` },
+  day: {
+    icon: 'day',
+    short: 'Hours',
+    long: `Hours. A day has 24, spent on the map: every action takes some, the walk there too. Sleep ends the day; ${WEEK_DAYS} days a week.`
+  },
   money: { icon: 'mon', short: '$', long: 'Money. Allowance on payday, minus food and rent. Pays for places, fees and crews.' },
   sp: { icon: 'sp', short: 'Skill pts', long: 'Skill points. Earned in matches. Spent on career skills and the physio.' },
   fans: { icon: 'fan', short: 'Fans', long: 'Fans. Earned in matches and battles. Sponsors make offers at set totals.' },
