@@ -207,3 +207,35 @@ html.reduced .mtag {
   color: var(--bad-soft);
   font-size: 12px;
 }
+/* street level streaming (spec §4.37 6, T-364): the walk waits for the block you stand in */
+.mapload {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--hud);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.mapload::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--line-strong);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: mapload-spin 0.8s linear infinite;
+}
+@keyframes mapload-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

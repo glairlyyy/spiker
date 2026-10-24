@@ -9,6 +9,10 @@ import * as THREE from 'three';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MAP_M, fogFactor, lattice, hstr } from './geo3d.mjs';
 import { part, box, mergeParts as merge } from './kit3d.mjs';
+import { pack, repack } from './stream3d.mjs';
+
+/** Street level's far version (T-364): these shapes beyond the near blocks as their flat (Fast) shapes; the rest only near. */
+const FAR = ['pine', 'broad', 'blossom', 'palm', 'bamboo'];
 
 const cyl = (r0, r1, h, n = 5) => new THREE.CylinderGeometry(r0, r1, h, n, 1, true);
 const cone = (r, h, n = 6) => new THREE.ConeGeometry(r, h, n, 1, true);
@@ -406,7 +410,13 @@ export function createNature(scene, heightAt) {
     mat = flat,
     placed = {}, // shape → [{ x, z, tint: [r, g, b] }] in instance order
     wild = [], // { k, x, z, r, up, ph, sp, mesh, i }
-    life = {};
+    life = {},
+    ver = 0, // the build (streaming: a new one is prepared again)
+    far = {}, // shape → its far version (street level, built on first need)
+    blk = null; // { ver, by: shape → block → [instance] }
+  const farMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 });
+  /** An instanced mesh's full instance colours (its packed-away set when streaming packed it). */
+  const fullCol = m => (m.userData.pack && m.userData.pack.c) || (m.instanceColor && m.instanceColor.array);
 
   const clear = () => {
     for (const m of Object.values(shadows)) (scene.remove(m), m.geometry.dispose());
@@ -418,17 +428,25 @@ export function createNature(scene, heightAt) {
     }
     for (const k of Object.keys(meshes)) delete meshes[k];
     life = {};
+    for (const m of Object.values(far)) (scene.remove(m), m.geometry.dispose(), m.dispose());
+    far = {};
+    blk = null;
+    ver++;
   };
   /** Instance tints × the fog's dimming (unexplored land is dim, like the terrain). */
   const recolor = fog => {
     const k = fogFactor(fog);
     for (const [shape, items] of Object.entries(placed)) {
       const m = meshes[shape];
-      items.forEach((o, i) => {
-        const f = k(o.x, o.z);
-        m.setColorAt(i, col.setRGB(o.tint[0] * f, o.tint[1] * f, o.tint[2] * f));
+      repack(m, () => {
+        items.forEach((o, i) => {
+          const f = k(o.x, o.z);
+          m.setColorAt(i, col.setRGB(o.tint[0] * f, o.tint[1] * f, o.tint[2] * f));
+        });
+        if (m.instanceColor) m.instanceColor.needsUpdate = true;
       });
-      if (m.instanceColor) m.instanceColor.needsUpdate = true;
+      const F = far[shape];
+      if (F) repack(F, () => (F.instanceColor.array.set(fullCol(m)), (F.instanceColor.needsUpdate = true)));
     }
     for (const w of wild) {
       const f = k(w.x, w.z);
@@ -578,11 +596,68 @@ export function createNature(scene, heightAt) {
       }
       for (const m of Object.values(life)) m.instanceMatrix.needsUpdate = true;
     },
+    /**
+     * The streaming layer over block grid G (stream3d, T-364): a block's share = its instances per shape; shown = each shape's
+     * mesh (and shadow proxy) draws only the near blocks' instances, packed to the front (draw calls unchanged); the trees (FAR)
+     * beyond them stand as their flat shapes (+≤ 5 draw calls at street level only).
+     */
+    layer(G) {
+      return {
+        id: 'nature',
+        ver: () => ver,
+        prep(k) {
+          if (!blk || blk.ver !== ver) {
+            blk = { ver, by: {}, at: {} };
+            for (const [shape, list] of Object.entries(placed)) blk.at[shape] = list.map(o => G.of(o.x, o.z));
+            for (const shape of FAR) {
+              const m = meshes[shape];
+              if (!m || far[shape]) continue;
+              const F = new THREE.InstancedMesh(SHAPE[shape](), farMat, m.userData.pack ? m.userData.pack.n : m.count);
+              F.instanceMatrix.array.set(m.userData.pack ? m.userData.pack.m : m.instanceMatrix.array);
+              F.setColorAt(0, col.setRGB(1, 1, 1));
+              F.instanceColor.array.set(fullCol(m));
+              F.receiveShadow = true;
+              F.userData.far = true;
+              F.visible = false;
+              far[shape] = F;
+              scene.add(F);
+            }
+          }
+          for (const [shape, at] of Object.entries(blk.at)) {
+            const by = (blk.by[shape] = blk.by[shape] || new Map()),
+              out = [];
+            at.forEach((b, i) => b === k && out.push(i));
+            if (out.length) by.set(k, out);
+          }
+        },
+        show(keys) {
+          for (const [shape, m] of Object.entries(meshes)) {
+            let list = null;
+            if (keys) {
+              list = [];
+              const by = blk && blk.by[shape];
+              if (by) for (const k of keys) for (const i of by.get(k) || []) list.push(i);
+            }
+            pack(m, list);
+            if (shadows[shape]) pack(shadows[shape], list);
+          }
+          for (const [shape, F] of Object.entries(far)) {
+            F.visible = !!keys;
+            if (keys)
+              pack(
+                F,
+                (blk.at[shape] || []).map((b, i) => (keys.has(b) ? -1 : i)).filter(i => i >= 0)
+              );
+          }
+        }
+      };
+    },
     /** Instances drawn (QA). */
     count: () => Object.values(placed).reduce((n, l) => n + l.length, 0) + wild.length,
     dispose() {
       clear();
       shadowMat.dispose();
+      farMat.dispose();
       placed = {};
       wild = [];
     }

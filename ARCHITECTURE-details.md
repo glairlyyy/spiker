@@ -844,6 +844,24 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   (mapcam `consume`). town3d `town.cut(box | [box] | null)`: landmark triangles wholly
   inside a world box `{ x0, x1, z0, z1, y0?, y1? }` collapse (the gym's / arena's shell while you are inside), null restores them.
   Dev / QA: `setYaw(rad)`, `jump()` (stand at you.at, no walk), `home()`, `info().street` / `.ring`.
+- **Streaming (T-364, spec §4.37 6)** — `js/map3d/stream3d.mjs`. Blocks = the terrain's chunks (`terrain.block` [cw, cd] ≈ 192 m;
+  `blockGrid(W, D, cw, cd)`: `of(x, z)` = j × nx + i = the chunk's index, `dist`, `within(x, z, r)` nearest first). `createStream(G,
+  layers)`; map3d's `streamStep` ticks it after the camera with the camera / your point and `st`. At st ≥ `STREAM.show` (0.6): the
+  near set = blocks within `STREAM.r` 250 m of the camera (Fast 190), re-picked after `step` m; blocks within `pre` (420 / 320) are
+  prepared nearest first, ≤ `per` blocks and `budget` ms a frame (× 4 while holding); once every near block is ready each layer
+  `show(set)` (only when the set changes). Below show: `show(null)` = the map look, untouched. `hold` = your block isn't shown →
+  map3d ticks your avatar with dt 0 and mapcam's WASD waits (`S().hold`); after `wait` 0.25 s `on.loading(true)` → MapView.streamWait
+  (a `.mapload` pill, css/map.css), false when it goes on. Haze while streaming: `STREAM.haze` [150, 640] (Fast [120, 480]).
+  Layers (`{ id, ver(), prep?(k), show(keys | null) }`): **terrain** (map3d) — a chunk outside the set draws `terrain.coarse[k]`
+  (terrain3d `coarseIndex`: 4 × 4-cell fans round their middle vertex, the chunk's edges keeping every grid vertex — no cracks
+  against a full chunk; ~7× fewer triangles; same attributes); **town** (town3d `layer`) — prep: the block's detailed items' vertex
+  spans per part; show: stream3d `ranges` gives each merged part (W / G / R) one reused index of the near spans (`setIndex(null)` back),
+  and the Fast boxes (`buildFill`, built on first prep, no shadow) stand for the lots beyond (packed instances, `farG`); roads,
+  overpass and landmarks stay whole (~35k); Fast: its boxes stay whole; **nature** (nature3d `layer`) — prep: the block's instances per
+  shape; show: stream3d `pack` puts the near instances first (count = theirs; the shadow proxies too; `repack` keeps fog recolours on
+  the full set), the trees (`FAR`: pine, broad, blossom, palm, bamboo) beyond as their flat shapes (`userData.far`, +≤ 5 calls).
+  The story figures (`model.figures`) each live in their own group, hidden outside the near blocks. `info().stream` → { on, near,
+  want, queue, built, hold, preps, shows, ms }; dev `tuneStream(o)`.
 - **Keeping street level** — `flyTo` / `walkFrom` / `centre` don't lift the camera at street level (a day order's select and walk);
   a renderer released while a screen covers the map (`drop3D`) keeps `viewState()` ({ x, z, d, yaw, street }) in `MapView.kept`, and
   the next create `restore`s it when it was at street level (≤ 2 min).

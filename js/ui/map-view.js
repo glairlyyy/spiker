@@ -71,6 +71,21 @@ const MapView = {
       else MapView.home();
     }
   },
+  /**
+   * Street level's streaming (spec §4.37 6, T-364): the block you stand in isn't drawn yet, your walk waits — a small "Loading…"
+   * over the map (on = false: gone).
+   */
+  streamWait(on) {
+    const el = MapView.el;
+    let p = el && el.querySelector('.mapload');
+    if (!on) return p && p.remove();
+    if (!el || p) return;
+    p = document.createElement('div');
+    p.className = 'mapload';
+    p.setAttribute('role', 'status');
+    p.textContent = 'Loading…';
+    el.append(p);
+  },
   /** Your avatar walks back to where the rules have you (a WASD walk that didn't become a travel). */
   home() {
     if (MapView.m3 && MapView.m3.home) MapView.m3.home();
@@ -84,7 +99,8 @@ const MapView = {
       person: MapView.person,
       point: p => (MapView.street() > 0.5 ? MapView.walk(p, true) : MapView.on0.point(p)),
       walk: p => MapView.walk(p),
-      canWalk: MapView.canWalk
+      canWalk: MapView.canWalk,
+      loading: MapView.streamWait
     };
     MapView.el = el;
     MapView.model = model;

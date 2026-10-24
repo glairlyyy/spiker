@@ -43,14 +43,14 @@ stop), js/engine/fire.js (stubs), tests/*, ARCHITECTURE-details.md, spec.md (mar
 Accept: tests (odds within 3 points; a WASD walk inside the gym costs 0 h; between two places ≥ 1 h); npm test, lint, test:ui pass.
 Result:
 
-### [ ] T-364: Street level streams the near blocks
+### [x] T-364: Street level streams the near blocks
 Spec: §4.37 6 Streaming, §4.39 budget          Goldens: unchanged          Save: no change
 Goal: at street level only the blocks within ~250 m are drawn in full; far = cheap or fog; blocks load as you move; a "Loading…" pause
 if one you walk into isn't ready; ≥ 45 fps target.
 Files: js/map3d/* (town / nature / terrain chunks by block, a stream manager), js/ui/map-view.js (the pause), css/map.css, tests/map3d.test.js,
 tests/ui-smoke.js, ARCHITECTURE-details.md
 Accept: draw calls / triangles at street level per town before / after in the Result (and the map view's unchanged); npm test, lint, test:ui pass.
-Result:
+Result: new js/map3d/stream3d.mjs — blocks = the terrain's chunks (~192 m); from street weight 0.6 the blocks within 250 m of the camera (Fast 190) drawn in full, prepared ≤ 2 a frame / 3 ms ahead to 420 m, shown once all ready: terrain chunk fine, else a coarse index (4×4-cell fans, edges keep every vertex: no cracks, ~7× fewer tris); town3d `layer` — the detailed W / G / R meshes draw one reused index of the near lots' vertex spans, the Fast boxes (no shadow) beyond; nature3d `layer` — near instances packed to the front (proxies too, fog recolours via `repack`), pine / broad / blossom / palm / bamboo beyond as flat shapes; story figures hidden beyond; haze 150 → 640 m (Fast 120 → 480). Roads, overpass, landmarks stay whole (~35k). Your block not ready → avatar tick dt 0 + mapcam WASD waits; after 0.25 s MapView.streamWait → a `.mapload` "Loading…" pill (css/map.css). Also touched: mapcam3d.mjs (WASD hold), terrain3d (coarseIndex), spec (Streaming built), ARCHITECTURE.md. Street level (d 6.7, whole frame incl. shadows, swiftshader) before → after, calls / tris: Wei gym 415 / 3.34 M → 293 / 1.56 M, Wu harbor 438 / 3.34 M → 262 / 1.14 M, Wu town (Seaside Inn) 464 / 3.56 M → 186 / 0.91 M, Shu dojo 417 / 3.30 M → 179 / 0.93 M, Shu steps 446 / 3.33 M → 170 / 1.04 M, Academy 422 / 3.42 M → 185 / 1.03 M, Outlaws cage 424 / 3.40 M → 146 / 0.76 M, Gloria 430 / 3.27 M → 268 / 1.40 M; map view (d 600) 468 / 4,228,027 before and after (identical). What's left at street level: your + near story VRMs (~36k tris, 13 calls each ×2 with shadows), Wei's broadleaf crowns (~350 tris each). Loading QA: a jump harbor → dojo with 1 block / frame shows the pill, then walks on. Tests: map3d (+4: grid / manager / hold, pack / ranges, town + nature layers, coarse index); full 291/291, lint, test:ui. QA stream-*.png.
 
 ### [x] T-360: War stages bite harder; Wei doubles the taxi fare
 Spec: §4.34 Stages bite harder, §4.42 Taxi          Goldens: unchanged (war stages act only in career matches — say if not)          Save: no change
