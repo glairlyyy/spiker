@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-365** (T-336 is split a / b) (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-366** (T-336 is split a / b) (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,20 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+### [ ] T-365: The running clock
+Spec: §4.43 (§4.41, §4.42, §4.37)          Goldens: unchanged          Save: the clock keeps game minutes (no version bump if `run.clock` reads old saves; else 26 — say)
+Goal: on the map game time runs (1 game h ≈ 1.5 real min at ×1; Space pause; ×1 / ×2 / ×4); walking, waiting and riding take their real
+time; sessions and sleep fast-forward and can be interrupted; NPCs, buses and ferries move on the clock; no trip-hour charge.
+Files: js/data/city.js (CLOCK / TRANSPORT read only for times), js/data/life.js, js/career/city.js (travel = walking on the clock; the
+rules' hour counts stay), mapmodel.js, people.js (the day plan by hour only), js/ui/map-view.js (the clock driver; leave the streaming
+pause alone), career-map.js, career-week.js, career-panels.js, career-hub.js, js/map3d/avatar3d.mjs, vehicles3d.mjs, life3d.mjs,
+people3d.mjs (position by clock only), css/hub.css, css/map.css, tests/*, tests/career-bot.js, ARCHITECTURE*.md
+Do not: change how many hours anything takes; touch js/map3d terrain / town / nature / look / mapcam / interior files (the streaming
+task owns them); touch js/engine.
+Accept: tests (the clock advances by the walk's minutes; pause stops it; a session fast-forwards its hours; an interrupt keeps the hours so
+far; a bus is caught only if you are at the stop at its time); npm test, lint, test:ui pass; `npm run career -- 20 both` unchanged within noise.
+Result:
 
 ### [ ] T-363: Serve odds true again; free moves inside a place; captain's calls out
 Spec: §4.41 Travel, §2.17 (dropped), §2.38          Goldens: unchanged (say if not)          Save: no change

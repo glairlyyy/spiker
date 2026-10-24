@@ -1883,7 +1883,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     (Stretch from 1 h; an outing takes its own time). Longer = more gain, but each hour costs more stamina than the last and the
     injury risk climbs with the hours and with low stamina. Shown on the control as cost → result ("Heavy sets · 3 h · −30
     stamina · $20 → Str +++"). Several sessions a day are fine; stamina is the limit.
-  - **Travel** (Walk / Run, §4.33; transport later): hours by the route's length, **1 h at least** between places — moving inside the place you are at (its lot, its interior, WASD at street level) is free (owner, 2026-10-24) **[draft — T-363]**; Run is faster, costs stamina
+  - **Travel** (Walk / Run, §4.33; transport later): hours by the route's length, **1 h at least** — **superseded by §4.43** (the running clock); Run is faster, costs stamina
     and trains the route's ground as today. Pace (`PACE`) set so one old trip day ≈ 2 h walking: crossing the island is most of
     a day (§4.40 — travel matters). The free hop (`NEAR_R`) goes: a short walk is simply 1 h.
   - **Sleep** at home (or a hotel away from home) (owner, 2026-10-24: no earliest bedtime or minimum time awake): **4, 6 or 8 h** — never less than 4. 8 h brings stamina back to full (an
@@ -1942,6 +1942,24 @@ the AI coach fills every slot you leave with the same function. Built and measur
     (a new place by the harbor: an open market shed, bikes and scooters lined up out front). On the map the buses and ferries run by
     the map's clock (they stand still while it is idle and are off at night); your ride plays its legs (walk to the stop, the wait,
     aboard — your bus / taxi carries a gold ring —, walk on; the ferry with you on deck; you riding the bike / scooter).
+- §4.43 The running clock — Kenshi time **[draft — T-365]** (owner, 2026-10-24: "if we go street level Kenshi-style, drop the walking
+  hours and let time run"): on the map time **runs**; nothing charges trip hours any more. **Replaces** §4.41's trip hours (training,
+  sleep and fixed match hours stay).
+  - **The clock**: 1 game hour ≈ 1.5 real minutes at ×1 (`CLOCK.scale`); **Space** pauses, ×1 / ×2 / ×4 speeds (the old walk-speed
+    buttons become time speed). The clock runs while the map is up and nothing modal is open; it stops in menus, sheets, a match,
+    a story scene.
+  - **Walking takes the time it takes**: your figure walks (or runs) at its pace and the clock runs with it — the island's
+    distances as today (an old trip day ≈ 2 game hours of walking), a step inside a gym a few game minutes. WASD and clicks at street
+    level are plain walking. Run is faster and trains, as today.
+  - **Transport in real time**: you walk to the stop, wait for the bus / ferry on its timetable, ride, walk on; the bike and scooter
+    are faster walking. Buses, ferries and people move while you are idle.
+  - **Sessions and sleep fast-forward**: a 2–4 h order or 4 / 6 / 8 h of sleep runs the clock fast (the figure drills / sleeps, a
+    small "⏩ 2 h" badge) and can be interrupted (Esc: the hours so far count, the rest is lost). Nothing starts after 02:00; at 02:00
+    you nod off where you stand (§4.41).
+  - **People live on the clock**: NPCs walk their day plans in real time (one plan a day, as today); a 13:00 match means being at the
+    venue by 13:00 — the clock warns you an hour before (a quiet chip, never a suggestion).
+  - **Rules stay deterministic**: the hours a thing takes are the same numbers as today (walking time = the route ÷ pace), so the
+    rules and the career bot count them the same way; only the screen lets them pass in real time.
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.
