@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-358** (T-336 is split a / b) (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-359** (T-336 is split a / b) (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -215,6 +215,19 @@ Do not: change Stretch's gains or costs; change the career bot's routine.
 Accept: a test (every SPOTS place lists stretch; a stretch at a venue and an HQ works); npm test, lint, the place-card UI step pass;
 `npm run career -- 12 both` numbers in the Result (expected ~unchanged: the bots don't stretch more).
 Result: `City.orders` = kit's + Stretch at every SPOTS place (`STRETCH_AT` gone; `City.can` skips the outing / secret / shed rules for an order); venue + HQ cards stretch at their point (`stretchAt`, career-panels.js); the Cargo Shed card (career-map.js) lists it too; test map.test.js + UI step checks every card's Stretch + picker (47 cards). career 12 both identical to before: casual Y1 66.8 · Y2 83.4, swing short 12/12; good Y1 77.9 · Y2 94.8 (rival 90.0 / 92.8), stretch 6.3 a run, money at Cups $330 / $1020.
+
+### [ ] T-358: Amplifiers, rarer techniques, fusing in the hand
+Spec: §2.37 Amplifiers and fusing          Goldens: update (techniques at half rate; Basics → amplifiers)          Save: no change
+Goal: Improve Serve / Attack / Set / Block / Dig / Fake replace the Basics and amplify their group's techniques; owned techniques
+fire at half today's rate on their own; two cards that make a recipe fuse in the hand into one card played as one; the captain
+fuses too; drag-to-fuse and `F` in the hand bar.
+Files: js/data/cards.js, js/engine/cards.js, js/engine/skills.js (the technique rate), js/data/skills.js (the technique groups),
+js/ui/match-cards.js, css/match.css, tests/cards.test.js, tests/engine.test.js, tests/golden.json, tests/ui-smoke.js,
+ARCHITECTURE-details.md
+Do not: gate a technique behind a card; change the deck size / hand / turn rules; tune the numbers beyond first guesses (T-348).
+Accept: tests (half rate, an amplifier raises its group's technique use, each recipe fuses, a fused card plays once with both costs,
+the captain fuses); npm test, lint, test:ui pass; `npm run cards -- 60 both` in the Result; QA screenshot of a drag-to-fuse.
+Result:
 
 ### [ ] T-348: Deck balance
 Spec: §2.37 Must hold          Goldens: update if numbers change          Save: no change

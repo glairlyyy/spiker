@@ -856,7 +856,25 @@ the AI coach fills every slot you leave with the same function. Built and measur
     a card when its read holds and its payer can afford it; OP cards and the strongest plays **saved for key moments** — set
     point either way, the other side's Fever, 3+ down from 10 points on — or spent to break the other side's run (a 3-point
     streak). A sharp captain (`capIQ`) waits better; a dull one plays what fits as soon as it is drawn.
-  - **Combos** (§2.33) are dropped for now; open whether two linked cards played on consecutive points should bonus.
+  - **Combos** (§2.33) are dropped for now; open whether two linked cards played on consecutive points should bonus. **Superseded by
+    Amplifiers and fusing (below).**
+  - **Amplifiers and fusing** (owner, 2026-10-24) **[draft — T-358]**: realism first — a player never forgets what they know.
+    - **Techniques always on, rarer**: an owned technique still fires on its own (the AI on court decides when), at **half** today's
+      rate — rallies are plainer (the §5.7 idea); cards make them bloom.
+    - **Amplifiers** replace the Basics: **Improve Serve · Attack · Set · Block · Dig · Fake** (individual or team by who pays; cheap,
+      short). For their points each lifts that action's quality a little and makes **that group's techniques** fire more often and
+      hit harder (Improve Fake: Delayed Spike, Lefty Dump, Freak Quick, the decoy quicks …) — a team's focus, not a switch; never a
+      hard lock on a technique.
+    - **Technique cards stay**: playing one calls the play — the holder goes for it at the next chance; stronger with its group's
+      amplifier.
+    - **Fusing in the hand**: between points, two cards that make a recipe **fuse into one card in your hand** and are played as
+      one (one play, both costs, both cool down after; the second card's place stays empty until the next turn; fusing is final).
+      Recipes: two different amplifiers → a **combo play** (Block + Dig = Fortress, Fake + Attack = Decoy, Serve + Block = Pressure
+      Wall, Set + Attack = Tempo, Dig + Set = Scramble, Fake + Block = Bait); an amplifier + a technique of its group → the technique
+      at **full form** ("Full Delayed Spike": a bigger edge, the faked block fails more); the same amplifier twice → **Improve X+**
+      (stronger, diminishing); the old pairs (Killer + Target Serve = Sniper, Wall Their Ace + Commit = Lockdown …) fuse too.
+    - The captain fuses by the same function (no draws). On screen: drag a card onto another — the cards it fuses with light up,
+      each showing the result's name and cost → result; `F` then two keys does the same.
   - **OP cards** (owner, 2026-10-23), once a match each, from OP / element players by role:
     - **God Resolve** (WS): everyone on court — attack, speed and jump × 2 for 3 points; afterwards everyone's morale −0.3.
     - **Resolve of the Titan** (MB): its holder grows to 2× size on court (display: the model × 2; positions and reach as the
