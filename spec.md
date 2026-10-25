@@ -2092,6 +2092,25 @@ the AI coach fills every slot you leave with the same function. Built and measur
     sheet, a figure menu, ⚙, an event, a scene, a card over the map, a road stop's card or a result. WASD: the rules wait while you
     move, the stop counts the walk. People and buses move on the shown clock (they stop when it does). Space = pause (also mid-walk);
     End week moved to **N** (Space still ends a spent week). Save unchanged (RUN_VERSION 25: `run.clock.hour` just carries minutes).
+- §4.44 Street view, anime-styled (owner, 2026-10-25: "plan to improve the visual quality of the street view"; "stylized anime";
+  "sometimes entering street view a model loads oddly — skin gone, dress not loaded") **[draft — T-368–T-373]**:
+  - **Direction**: an anime background look — soft toon shading (2–3 light bands, coloured shadows, not grey), painted colours
+    per district (the faction palettes), clean outlines on near buildings and props, a sky with painted clouds. Matches the
+    VRM players. No image files: textures are made in code and decoded in memory (CLAUDE.md host quirks). Fast keeps the
+    cheap look; Auto gets most; High all. The FPS fixes (§4.39 Performance) must hold: measured with the F3 overlay.
+  - **Models load whole** (T-368): a VRM at street level (you, story figures, people at stations, the pool) never shows without
+    its skin or its clothes — it appears only when fully dressed, or keeps its old look until then.
+  - **Camera and finish** (T-369): over-the-shoulder at street level, your whole figure in the lower third; poles, trees and
+    walls between the camera and you fade; edge smoothing (anti-aliasing) on Auto / High; a colour grade per time of day
+    (warm morning, clear noon, orange-pink dusk, blue night) instead of the grey haze.
+  - **Ground** (T-370): roads as asphalt with lane markings, curbs and pavements; grass with painted variation and tufts near
+    you; the near terrain smooth (no flat-shaded facets).
+  - **Buildings** (T-371): near facades with window frames, doors, awnings, shop signs and roof edges in the district palette;
+    the far skyline as painted silhouettes instead of white boxes.
+  - **Street life** (T-372): benches, bins, vending machines, parked bikes, signs, overhead wires and utility poles, ground
+    decals (cracks, puddles, leaves); grass and trees sway.
+  - **Dusk and night** (T-373): lamp and window glow (bloom on Auto / High), pools of light under lamps, the sky's gradient and
+    clouds by time of day.
 - §4.34 Faction war: Strength, structure, overthrow **[draft — T-313–T-317]** (owner, 2026-10-19: "the faction war has
   too little impact"). **Supersedes** §4.27's takeover rules and tile economy and §4.7's border meters: no tile changes
   hands; street battles wear a faction down; a broken faction can be overthrown in one match and destroyed.

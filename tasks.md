@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-368** (T-336 is split a / b) (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-374** (T-336 is split a / b) (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,80 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+### [ ] T-368: Street view models load whole
+Spec: §4.44          Goldens: unchanged          Save: no change
+Goal: a VRM at street level (you, story figures, station people, the people pool) never shows without its skin or clothes; it appears dressed or keeps its old look until ready.
+Files: js/map3d/avatar3d.mjs, people3d.mjs, life3d.mjs, interior3d.mjs (people()), js/render3d/players3d.mjs (load / dress / makeVRM only); tests/map3d.test.js; spec.md §4.44; ARCHITECTURE-details.md
+Do not: change the match players' look; touch js/engine or js/data rules; lose the §4.39 Performance numbers (F3: draw calls, tris, JS ms at street level must not rise more than ~15 % on Auto, Fast unchanged); load image files (textures made in code, in memory)
+Steps:
+1. Reproduce headless: enter street level repeatedly (gym, Seaside Inn, a busy street), swap stations, walk in and out of halls; log each VRM's state (materials, textures loaded, dress applied, visible) and catch any frame where a visible VRM lacks textures / dress. Suspects: the VRM level of detail (6773e07: hidden / posed every few frames — visible again before dress), shadowPart toggling castShadow, the pool reusing a VRM whose materials were disposed or re-dressed, a texture decode racing the first show, insideCap swapping figures.
+2. Fix at the cause: a VRM is shown only after load + dress + its textures are ready (a ready flag); never dispose shared materials / textures of a pooled VRM; re-dress atomically.
+Accept:
+- A test (map3d.test.js) for the ready rule; headless repro: 0 frames with an undressed / untextured visible VRM over 20 street-level entries.
+- npm test, lint, test:ui pass.
+QA: career run → street level at the gym and a busy street, in and out of the hall, screenshots
+Result:
+### [ ] T-369: Street view: camera and finish
+Spec: §4.44          Goldens: unchanged          Save: no change
+Goal: over-the-shoulder framing at street level with your whole figure in the lower third; occluders between camera and you fade; anti-aliasing on Auto / High; a colour grade per time of day; the anime toon look starts here (soft bands, coloured shadows).
+Files: js/map3d/mapcam3d.mjs, look3d.mjs, map3d.mjs (camera / post / occluder fade only); css/map.css if needed; tests/map3d.test.js; spec.md §4.44; ARCHITECTURE-details.md
+Do not: change the map view (zoomed out) camera; touch js/engine or js/data rules; lose the §4.39 Performance numbers (F3: draw calls, tris, JS ms at street level must not rise more than ~15 % on Auto, Fast unchanged); load image files (textures made in code, in memory)
+Steps:
+1. Street camera: height, distance, FOV and pitch so the figure sits in the lower third; collision-aware pull-in. 2. Occluder fade (eased, like venue3d fadeOccluders) for meshes on the camera → you ray. 3. AA: SMAA or FXAA pass (or MSAA target) on Auto / High at street level. 4. Grade: tone mapping + a per-time-of-day LUT-like colour curve (warm morning, clear noon, orange-pink dusk, blue night) replacing the grey haze tint; toon bands on the street materials (gradientMap) where cheap.
+Accept:
+- Before / after screenshots at 10:00 and 18:30 at the gym junction; F3 numbers within the budget.
+- npm test, lint, test:ui pass.
+QA: career run → street level, two times of day, screenshots
+Result:
+### [ ] T-370: Street view: ground
+Spec: §4.44          Goldens: unchanged          Save: no change
+Goal: asphalt roads with lane markings, curbs and pavements; painted grass with variation and near tufts; the near terrain smooth-shaded.
+Files: js/map3d/terrain3d.mjs, town3d.mjs (roads), nature3d.mjs (tufts), look3d.mjs (shared textures); tests/map3d.test.js; spec.md §4.44; ARCHITECTURE-details.md
+Do not: touch js/engine or js/data rules; lose the §4.39 Performance numbers (F3: draw calls, tris, JS ms at street level must not rise more than ~15 % on Auto, Fast unchanged); load image files (textures made in code, in memory)
+Steps:
+1. Procedural textures (canvas → DataTexture, in memory): asphalt, lane marks, pavement tiles, grass; tiled with world UVs. 2. Curbs and pavements along the road ribbons at street level (streamed per block). 3. Near terrain chunks: smooth normals. 4. Grass tufts instanced near you (streamed).
+Accept:
+- Screenshots before / after; F3 within budget.
+- npm test, lint, test:ui pass.
+QA: career run → street level on a main road and a residential street
+Result:
+### [ ] T-371: Street view: buildings
+Spec: §4.44          Goldens: unchanged          Save: no change
+Goal: near facades with window frames, doors, awnings, shop signs and roof edges in the district palette; the far skyline as painted silhouettes.
+Files: js/map3d/town3d.mjs, facility3d.mjs, kit3d.mjs, look3d.mjs; tests/map3d.test.js; spec.md §4.44; ARCHITECTURE-details.md
+Do not: change building positions or the layout (MapModel); touch js/engine or js/data rules; lose the §4.39 Performance numbers (F3: draw calls, tris, JS ms at street level must not rise more than ~15 % on Auto, Fast unchanged); load image files (textures made in code, in memory)
+Steps:
+1. A facade texture atlas made in code (window frames, doors, shutters, signs; day / night variants) mapped on near lots. 2. Awnings, roof edges, AC units as cheap merged parts in the ring. 3. Far skyline: silhouette cards / low boxes with the atlas, tinted by haze; no plain white boxes.
+Accept:
+- Screenshots; F3 within budget.
+- npm test, lint, test:ui pass.
+QA: career run → street level in two districts
+Result:
+### [ ] T-372: Street view: street life
+Spec: §4.44          Goldens: unchanged          Save: no change
+Goal: benches, bins, vending machines, parked bikes, signs, utility poles and overhead wires, ground decals; grass and trees sway.
+Files: js/map3d/town3d.mjs or a new js/map3d/props3d.mjs (new — add to the file map), nature3d.mjs, stream3d.mjs (a layer), map3d.mjs (wire it); tests/map3d.test.js; spec.md §4.44; ARCHITECTURE.md, ARCHITECTURE-details.md
+Do not: draw randoms (hash by position); touch js/engine or js/data rules; lose the §4.39 Performance numbers (F3: draw calls, tris, JS ms at street level must not rise more than ~15 % on Auto, Fast unchanged); load image files (textures made in code, in memory)
+Steps:
+1. Props placed along roads / plazas by hash, instanced, streamed per block. 2. Utility poles with sagging wires along main roads (Bangkok feel). 3. Decals. 4. Vertex-shader sway for grass and tree crowns.
+Accept:
+- Screenshots; F3 within budget.
+- npm test, lint, test:ui pass.
+QA: career run → street level on a main road
+Result:
+### [ ] T-373: Street view: dusk and night
+Spec: §4.44          Goldens: unchanged          Save: no change
+Goal: lamp and window glow (bloom on Auto / High), light pools under lamps, the sky's gradient and painted clouds by time of day.
+Files: js/map3d/look3d.mjs, layers3d.mjs (night lights), terrain3d.mjs (sky) or where the sky lives; tests/map3d.test.js; spec.md §4.44; ARCHITECTURE-details.md
+Do not: add real lights per lamp (use decals / emissive + bloom); touch js/engine or js/data rules; lose the §4.39 Performance numbers (F3: draw calls, tris, JS ms at street level must not rise more than ~15 % on Auto, Fast unchanged); load image files (textures made in code, in memory)
+Steps:
+1. Selective bloom on emissive (lamps, windows, signs) at street level, Auto / High. 2. Light-pool decals under lamps, fading in at dusk. 3. Sky: gradient + painted cloud layer, coloured by time of day.
+Accept:
+- Screenshots at 18:30 and 22:00; F3 within budget.
+- npm test, lint, test:ui pass.
+QA: career run → street level at dusk and night
+Result:
 
 ### [x] T-366: The three duels — free aiming, settling, block read / commit
 Spec: §2.39          Goldens: update (serve and attack choices change)          Save: no change
