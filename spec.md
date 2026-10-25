@@ -977,6 +977,25 @@ the AI coach fills every slot you leave with the same function. Built and measur
     cards worth ~2× before, timing still no rule — owner: no change); Iron Floor (Speed Dig + Improve Dig) fused +12.2 / +10.2 vs
     the parts apart +6.1 / +7.6. `npm run career -- 40 both`: good Cup match wins Y1 46 → 59 %, Y2 53 → 56 %, odds vs her squad
     40 / 51 → 46 / 55 %; casual 46 / 44 → 49 / 51 %, odds 37 / 42 → 38 / 43; ratings unchanged (77.8 / 94.7 → 77.6 / 95.0).
+- §2.39 The three duels and the hesitation moment (owner, 2026-10-25: "target the weak passer is the go-to strat … make those our
+  main feature"; "add a hesitation moment where the player can intervene") **[draft — T-366, T-367]**:
+  - **The three duels** are the match's core: the **server** aims at a passer, the seam, deep or safe ↔ the receiving side hides
+    or covers its weak passer; the **spiker** fights the block (power through, tool off the hands) or avoids it (their weak
+    digger, the open court) ↔ the **blocker** reads (waits for the set: solid, late on fast sets) or commits (guesses the hitter
+    early: a stuff if right, an open net if wrong); the setter's hitter and tempo are what the block reads.
+  - **Aiming is free** (no card, no technique): standing orders on the Plan board (serve target, spike aim, each blocker's read /
+    commit). An aimed serve errs a little more. Hunt the Passer (card and team plan) goes; Target Serve and Read Block stay
+    (names kept) as amplifiers, not unlocks — Target Serve = an exact hit, the seam, no aim error.
+  - **Settling** (the anti-spam rule): a passer served at again and again settles in — their pass quality rises with each
+    serve in a row at them (≈ +4 % a serve, up to ≈ +15 %), fading when the serves go elsewhere. The 1st–2nd serve at the weak
+    passer hurts; by the 4th they pass like an average player; switching targets is the play. AI servers read it too.
+  - **The hesitation moment**: in a duel, when the AI's top two options score close (≈ within 10 points), the play goes into very
+    slow motion (≈ 0.1×, ~8 s real, a visible timer) and shows the two options with their odds. You may play a **duel card**
+    to pick one and boost it, or **borrow** a technique you haven't learned from a teammate who knows it (one play, a higher bar
+    cost); no action → the AI's pick. As a player: your own hesitations only; as captain: any teammate's. About 3 a set at
+    most; late points hesitate more easily. Simmed matches: the AI always picks.
+  - **Card kinds**: duel cards (Target Serve, Read Block, Disguise, Commit, Tempo, Pressure — the target doesn't settle for
+    3 serves, Hide — the weak passer screened for 3 serves) play only in a hesitation; power-up and team-play cards any time.
 ## 3. Menu [built]
 
 - One game + a dev Playtest card: Monster game (`startMonster()`, two all-OP teams); Average game (`startAverage()`: two

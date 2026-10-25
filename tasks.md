@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-366** (T-336 is split a / b) (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-368** (T-336 is split a / b) (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,57 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+### [ ] T-366: The three duels — free aiming, settling, block read / commit
+Spec: §2.39          Goldens: update (serve and attack choices change)          Save: no change
+Goal: serve targets, spike aim and each blocker's read / commit are free standing orders; a passer served at in a row settles in;
+Hunt the Passer is gone, Target Serve / Read Block amplify instead of unlocking.
+Files: js/engine/orders.js, serve.js, rally-phases.js, rally-block.js, rally-defense.js, plans.js, match.js, formulas.js;
+js/data/rules.js, cards.js, tactics.js, dialogue.js; js/ui/match-*.js (Plan board orders only); tests/*.test.js; tools under tests/
+(cards / bot / rng scripts) as needed; spec.md §2.39 (mark built), ARCHITECTURE-details.md.
+Do not: change the deck's hand / cooldown rules; touch the map or career code; add the hesitation moment (T-367).
+Steps:
+1. Serve target options (each passer, the seam, deep, safe) need no technique; an aimed serve's error × a small rule constant;
+   Target Serve = exact + seam + no aim error. Remove the Hunt card, the `hunt` team plan and its AI picks (plans.js, books,
+   trap lists); keep SUB.hunt's bench swap if it still reads sensibly, else fold it into settling.
+2. Settling: per-match count of serves in a row at each receiver (`m` state, no draws in presentation); pass quality × (1 + step ×
+   n, capped), fading per serve elsewhere; rule constants in rules.js. AI servers weigh it when choosing a target.
+3. Spike: fight (power / tool) vs avoid (weak digger / open) as the aim order already allows — make the trade-off explicit
+   (fight wins vs a small / late block, avoid vs a big one). Block: per-blocker read / commit order; commit guesses the hitter
+   early (stuff chance up when right, open net when wrong); read is late on fast sets (tempo). AI uses the same.
+4. Encyclopedia / card text strings updated (lore.md voice).
+Accept:
+- npm test, lint, test:ui pass; goldens updated with the reason.
+- `npm run rng` / `npm run bot`: always serving the weakest passer is no longer the best fixed order (alternating ≥ as good);
+  hunting the same passer: serve-point share falls after the 3rd serve in a row; a 10-OVR gap still ≈ 71 % match wins.
+- Numbers written into spec §2.39.
+QA: Monster game → Plan board shows the free orders; a match plays to its result with no page errors.
+Result:
+
+### [ ] T-367: The hesitation moment and duel cards
+Spec: §2.39, §2.37          Goldens: update only if the AI's default pick changes a draw (say why)          Save: no change
+Goal: when the AI's top two options in a duel are close, the play slows to ≈ 0.1× for ~8 s with the two options and their
+odds; you may play a duel card or borrow a teammate's technique; otherwise the AI's pick goes through.
+Files: js/engine/orders.js, serve.js, rally-phases.js, rally-block.js, match.js, cards.js (engine), fire.js; js/data/cards.js,
+rules.js; js/render/playback.js, acts.js, clock.js; js/ui/match-*.js, css/style.css; tests/*.test.js, tests/ui-smoke.js;
+spec.md §2.39, ARCHITECTURE-details.md.
+Do not: add draws to decide a hesitation (the scores already exist — compare them); pause forever; let simmed matches wait.
+Steps:
+1. Engine: where the AI picks a serve target, spike fight / avoid, or block read / commit, if the top two scores are within
+   RULES' margin (bigger on late points) and the set's hesitation count < cap (~3), emit a hesitation act (new act kind
+   `hesit`: options, odds, whose player) — it needs an ACTS handler; the beat's outcome waits on the choice (a resolve hook the
+   match screen calls; headless / simmed: the AI's pick at once).
+2. Duel cards (cards.js `kind: 'duel'`): Target Serve, Read Block, Disguise, Commit, Tempo, Pressure, Hide — playable only in a
+   hesitation; power-up / team-play cards stay any time. Borrow: a teammate's learned technique for one play at a higher bar cost.
+3. Who: as a player only your own hesitations; as captain any teammate's. AI sides: their captains play duel cards by the
+   existing capPlay scoring.
+4. Screen: world time ≈ 0.1× (clock scale), two option buttons with odds, hotkeys printed (1 / 2), a draining timer bar, the
+   playable duel cards lit in the hand bar; design system rules (§9).
+Accept:
+- npm test, lint, test:ui (a new step: a Deck match reaches a hesitation, a duel card resolves it) pass.
+- About 2–4 hesitations a set in a league match; a duel card played in one shifts that duel's odds as shown.
+QA: Dev deck match as player and as captain → a hesitation appears, slow motion, pick / card / time-out each work.
+Result:
 
 ### [x] T-365: The running clock
 Spec: §4.43 (§4.41, §4.42, §4.37)          Goldens: unchanged          Save: the clock keeps game minutes (no version bump if `run.clock` reads old saves; else 26 — say)
