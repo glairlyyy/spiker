@@ -24,7 +24,7 @@ import * as THREE from 'three';
 import { VRMUtils } from '@pixiv/three-vrm';
 import { loadBase, makeVRM, applyPose, smoothBones, groundSnap, dress, MODEL_URL, MAIN_URL } from '../render3d/players3d.mjs';
 import { STAND, READY, locoPose, mix } from '../render3d/poses3d.mjs';
-import { BLOCK, SIT } from './people3d.mjs';
+import { BLOCK, SIT, shadowPart } from './people3d.mjs';
 import { toWorld, clamp, wrap } from './geo3d.mjs';
 
 const HEIGHT = 6, // metres: drawn about 3.5× life size so you can find yourself on the island (owner, 2026-10-03)
@@ -449,7 +449,7 @@ export function createAvatar(scene, opts = {}) {
         S.fr = every; // (on screen again: posed at once)
         return;
       }
-      if (shadow !== S.sh) ((S.sh = shadow), pl.root.traverse(o => o.isMesh && (o.castShadow = shadow)));
+      if (shadow !== S.sh) ((S.sh = shadow), pl.root.traverse(o => o.isMesh && (o.castShadow = shadow && shadowPart(o))));
       S.acc += dt;
       if (++S.fr < every) {
         pl.root.rotation.set(0, S.yaw, 0); // (between poses the figure still moves and turns)

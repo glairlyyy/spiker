@@ -9,7 +9,7 @@
 //     the nearest `cap` named people on screen as the default VRM (players3d loadBase / makeVRM: one model file, parsed once
 //     per slot with its geometry and textures shared; `dress` in their club's colours), posed with the match gait (locoPose),
 //     a block-jump drill, sitting or standing. Slots are built one at a time after the map has shown (never the first frame).
-//   nearestOnScreen(cands, cap, held, keep) — the LOD pick (pure, tested).
+//   nearestOnScreen(cands, cap, held, keep) — the LOD pick; insideCap(cands, n) — the station people's cap (pure, tested).
 import * as THREE from 'three';
 import { VRMUtils } from '@pixiv/three-vrm';
 import { loadBase, makeVRM, applyPose, smoothBones, groundSnap, dress, MODEL_URL } from '../render3d/players3d.mjs';
@@ -165,6 +165,14 @@ export function createHumanoids(cap) {
  * The ids to draw as VRMs: `cands` = [{ id, d }] (on screen, d = distance to the camera); the `cap` nearest, those already
  * shown (`held`, a Set) counted as `keep` × nearer so two people at about the same distance don't swap back and forth.
  */
+/** Keep only the n nearest candidates marked `inside` (an interior's station people); the rest are dropped in place (pure). */
+export function insideCap(cands, n) {
+  const ins = cands.filter(c => c.inside).sort((a, b) => a.d - b.d || (String(a.id) < String(b.id) ? -1 : 1));
+  if (ins.length <= n) return cands;
+  const drop = new Set(ins.slice(n).map(c => c.id));
+  for (let i = cands.length - 1; i >= 0; i--) if (drop.has(cands[i].id)) cands.splice(i, 1);
+  return cands;
+}
 export function nearestOnScreen(cands, cap, held, keep = 0.8) {
   return new Set(
     cands
@@ -174,7 +182,11 @@ export function nearestOnScreen(cands, cap, held, keep = 0.8) {
       .map(c => c.id)
   );
 }
-export const VRM_LOD = { cap: 16, maxD: 260, every: 0.25, fade: 0.3, delay: 1.5, gap: 0.35, shadows: 6 }; // shadows: the nearest n cast one
+/**
+ * shadows: the nearest n cast one; full: the nearest n are posed every frame (the rest at least every 2nd); inside: at most n of the
+ * people at an interior's stations (state `inside`, the nearest) are VRMs — the rest stay humanoids (performance, owner 2026-10-25).
+ */
+export const VRM_LOD = { cap: 16, maxD: 260, every: 0.25, fade: 0.3, delay: 1.5, gap: 0.35, shadows: 6, full: 3, inside: 4 };
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z).normalize();
 const leg = (a, k, f = 0, s = 0.1) => ({ a, k, f, s });
@@ -205,6 +217,14 @@ export const SIT = {
   ar: [V(-0.35, -0.85, -0.4), V(-0.3, -0.85, -0.45), V(-0.2, -0.6, -0.8)],
   curl: 0.2
 };
+/**
+ * A VRM mesh that shapes its shadow: not the face's inner parts (eyes, mouth, brows, eyeline — inside the head's own silhouette),
+ * so a VRM casts with 7 of its 13 meshes (performance, owner 2026-10-25).
+ */
+export const shadowPart = o => {
+  const m = Array.isArray(o.material) ? o.material[0] : o.material;
+  return !/_(EYE|FACE)$/.test((m && m.name) || '');
+};
 const HEAD = 1.42; // the VRM's head top at figure scale 1 (the humanoid's: 1.45 m)
 
 /**
@@ -223,7 +243,10 @@ export function createPeopleVRM(scene, opts = {}) {
     slots = [], // { pl, base (root scale at s = 1), id, k, kit, phase, w, px, pz, t }
     wt = new Map(),
     P = new THREE.Vector3(),
-    held = new Set();
+    held = new Set(),
+    fr = new THREE.Frustum(),
+    fm = new THREE.Matrix4(),
+    sph = new THREE.Sphere();
   let buf = null,
     loading = false,
     failed = false,
@@ -245,7 +268,7 @@ export function createPeopleVRM(scene, opts = {}) {
         pl.root.visible = false;
         scene.add(pl.root);
         const meshes = [];
-        pl.vrm.scene.traverse(o => o.isMesh && meshes.push(o));
+        pl.vrm.scene.traverse(o => o.isMesh && (shadowPart(o) ? meshes.push(o) : (o.castShadow = false)));
         slots.push({
           pl,
           meshes,
@@ -278,8 +301,9 @@ export function createPeopleVRM(scene, opts = {}) {
       if (d > maxD) continue;
       P.project(cam);
       if (P.z > 1 || Math.abs(P.x) > 1.05 || Math.abs(P.y) > 1.1) continue;
-      cands.push({ id, d });
+      cands.push({ id, d, inside: !!f.inside });
     }
+    insideCap(cands, O.inside);
     held.clear();
     for (const s of slots) if (s.id !== null && s.k > 0) held.add(s.id);
     want = nearestOnScreen(cands, cap, held);
@@ -375,16 +399,27 @@ export function createPeopleVRM(scene, opts = {}) {
         break; // one assignment a frame
       }
       wt.clear();
+      fr.setFromProjectionMatrix(fm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse)); // (last frame's camera)
       for (const S of slots) {
         const f = S.id !== null ? states.get(S.id) : null;
         S.pl.root.visible = !!f && S.k > 0.01;
         if (!S.pl.root.visible) continue;
         wt.set(S.id, S.k);
+        sph.center.set(f.x, f.y + 0.9 * f.s, f.z);
+        sph.radius = 1.3 * f.s;
+        if (!fr.intersectsSphere(sph)) {
+          // off screen (behind the camera, beside it): not drawn, not posed — posed at once when back
+          S.pl.root.visible = false;
+          S.acc = (S.acc || 0) + dt;
+          S.fr = 99;
+          continue;
+        }
         const sh = (near.get(S.id) ?? O.cap) < O.shadows;
         if (sh !== S.sh) for (const m of S.meshes) m.castShadow = sh;
         S.sh = sh;
         S.acc = (S.acc || 0) + dt;
-        if ((S.fr = (S.fr || 0) + 1) < every(f, cam)) {
+        const rank = near.get(S.id) ?? O.cap;
+        if ((S.fr = (S.fr || 0) + 1) < Math.max(every(f, cam), rank < O.full ? 1 : 2)) {
           pl3(S, f);
           continue;
         }

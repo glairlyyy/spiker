@@ -124,6 +124,8 @@ export function create(onIdle) {
     held = null, // QA: a time of day the clock holds (holdClock)
     interiors = null, // the interiors layer (interior3d.mjs, T-336b; null until its import lands)
     interNear = null, // the station you stand at (last told to on.station)
+    crect = null, // the canvas's client rect for the station prompt ({ b, t }: re-read each second and on a resize)
+    stV = new THREE.Vector3(),
     stream = null, // street level's near blocks (stream3d.mjs, T-364)
     hold = false, // … the block you stand in isn't drawn yet: your walk waits
     waitShown = false, // on.loading(true) was told
@@ -150,8 +152,9 @@ export function create(onIdle) {
     interNear = near;
     if (!on || !on.station) return;
     if (!near) return on.station(null);
-    const v = new THREE.Vector3(near.p[0], near.p[1], near.p[2]).project(cam),
-      b = canvas.getBoundingClientRect();
+    if (!crect || clock - crect.t > 1) crect = { b: canvas.getBoundingClientRect(), t: clock }; // (not every frame: a forced layout)
+    const v = stV.set(near.p[0], near.p[1], near.p[2]).project(cam),
+      b = crect.b;
     on.station({ ...near, x: b.left + ((v.x + 1) / 2) * cw, y: b.top + ((1 - v.y) / 2) * ch });
   };
   /** A street-level click (canvas px) on a station: on.station(st, true), and the click is taken (no travel). */
@@ -346,6 +349,7 @@ export function create(onIdle) {
     if (!el || !el.clientWidth || !el.clientHeight) return;
     cw = el.clientWidth;
     ch = el.clientHeight;
+    crect = null;
     look.resize(cw, ch);
     cam.aspect = cw / ch;
     cam.updateProjectionMatrix();
@@ -687,6 +691,7 @@ export function create(onIdle) {
       tris: renderer.info.render.triangles,
       geos: renderer.info.memory.geometries,
       tex: renderer.info.memory.textures,
+      progs: (renderer.info.programs || []).length, // (a change = shaders compiled: a hitch)
       life: life && life.count(),
       vehicles: veh && veh.count(),
       night: night && night.count(),

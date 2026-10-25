@@ -242,7 +242,8 @@ export function createLife(scene, heightAt) {
         shirt: f.color,
         skin: lk.skin,
         hair: lk.hair,
-        g: p.g
+        g: p.g,
+        inside: !!p.inside // (at an interior's station: few of them become VRMs, people3d VRM_LOD.inside)
       };
       states.set(p.id, f.st);
       if (p.g === 'circle') circle.push(f);

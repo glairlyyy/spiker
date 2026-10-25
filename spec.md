@@ -1888,6 +1888,14 @@ the AI coach fills every slot you leave with the same function. Built and measur
     **Perf overlay** (dev): F3 on the map and in a match (also ⚙ › Perf overlay and the title's Dev tab; off by default, remembered):
     fps, frame ms and the worst frame of the last 2 s, JavaScript ms split (rules · map · draw · tags), draw calls, triangles,
     render scale and canvas px, AO and the shadow map, VRMs drawn, street blocks loaded.
+    **Inside a building (owner, 2026-10-25: "the frame rate bug happens when I try to walk inside interior") [built 2026-10-25]**:
+    the cost inside is today's people at the stations, all VRMs right by the camera (~43 draw calls and ~110k triangles each with
+    their shadow; the gym has 7). Now at most 4 of an interior's station people are VRMs (the nearest; the rest stay the light
+    figures), a VRM off screen (behind or beside the camera) is neither drawn nor posed, only the nearest 3 are posed every frame (the
+    rest every 2nd), a VRM's shadow comes from its silhouette only (not the eyes, mouth and brows inside the head: 13 → 7 shadow
+    draws), the building's walls and roof draw once, not twice, and the station prompt no longer forces a page layout every frame.
+    Measured headless at the gym (Auto): draw calls inside 317 → 254 (outside 145), VRM shadow meshes 67 → 36, a VRM 43 → 36
+    calls; no shader compiles inside; the look is unchanged but for the station people beyond 4 (light figures).
 - §4.40 The island × 2 and real facilities **[built 2026-10-24 — T-350–T-351; not yet: the drone's field spots lit like places; zoomed out shows region names, not district names;  later (owner, 2026-10-24): more fillers for Wei, the Cup-win drop (63 → 42 %, 12 runs) re-measured]** (owner, 2026-10-23: "expand the island 2× so travel matters
   and there is room for proper facilities"; "remove pins entirely — a building or a piece of kit lights up on hover"):
   - **Scale** (T-350): `MAP_SCALE` 2.25 → 4.5 (~2.4 × 1.6 km). Towns and districts spread out with it (the same layout, twice the
