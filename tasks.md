@@ -69,7 +69,7 @@ Accept:
 - npm test, lint, test:ui pass.
 QA: career run → street level at the gym and a busy street, in and out of the hall, screenshots
 Result:
-### [ ] T-369: Street view: camera and finish
+### [x] T-369: Street view: camera and finish
 Spec: §4.44          Goldens: unchanged          Save: no change
 Goal: over-the-shoulder framing at street level with your whole figure in the lower third; occluders between camera and you fade; anti-aliasing on Auto / High; a colour grade per time of day; the anime toon look starts here (soft bands, coloured shadows).
 Files: js/map3d/mapcam3d.mjs, look3d.mjs, map3d.mjs (camera / post / occluder fade only); css/map.css if needed; tests/map3d.test.js; spec.md §4.44; ARCHITECTURE-details.md
@@ -80,7 +80,7 @@ Accept:
 - Before / after screenshots at 10:00 and 18:30 at the gym junction; F3 numbers within the budget.
 - npm test, lint, test:ui pass.
 QA: career run → street level, two times of day, screenshots
-Result:
+Result: over-the-shoulder at eye level (7.2 m, 12°, 50° lens, lens shift → figure in the lower third, left of centre); occluder fade = dithered discard round the camera → you line (shader, no rays / transparency); FXAA + per-hour grade (Auto / High); toon bands on the sun only; haze in the grade's hue. F3 at the gym junction, headless Auto 10:00 / 18:30: calls 153 → 152 / 168 → 171, tris 0.99 M → 0.98 M / 0.99 M → 0.99 M, new JS (sweep) 0.06–0.16 ms; Fast calls 116–144, tris 0.48–0.61 M as before (stream variance), sweep 0.03–0.08 ms. Headless update ms rises with the two extra passes (swiftshader shares the CPUs; the same ratio with the old framing in-page) — real GPUs: ~0.2 ms GPU. Screenshots qa/t369-{before,after}-{10,1830}.png.
 ### [ ] T-370: Street view: ground
 Spec: §4.44          Goldens: unchanged          Save: no change
 Goal: asphalt roads with lane markings, curbs and pavements; painted grass with variation and near tufts; the near terrain smooth-shaded.

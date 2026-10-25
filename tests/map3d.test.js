@@ -390,11 +390,52 @@ test('map3d: street level — one continuous zoom path (pitch, distance, height 
   eq(streetPose(DIST[0]).pitch, PITCH, '… at its pitch');
   eq(streetPose(40).pitch, PITCH, 'above it the map’s pitch');
   eq(streetPose(STREET.d1).s, 1, 'at d1: street level');
-  assert(Math.abs(streetPose(STREET.d1).pitch - (15 * Math.PI) / 180) < 1e-9, '~15° above the horizon');
+  assert(Math.abs(streetPose(STREET.d1).pitch - (12 * Math.PI) / 180) < 1e-9, '~12° above the horizon');
   const P = streetPose(STREET.d1),
     behind = P.dist * Math.cos(P.pitch),
     above = P.up + STREET.head;
-  assert(behind > 5.5 && behind < 7 && above > 2.5 && above < 3.6, `~6 m behind, ~3 m above (${behind.toFixed(2)}, ${above.toFixed(2)})`);
+  assert(behind > 6 && behind < 8 && above > 2 && above < 3, `~7 m behind, eye level (${behind.toFixed(2)}, ${above.toFixed(2)})`);
+  // T-369: over the shoulder — your whole figure (1.72 m) in the lower third, a little left of centre; the map has no lens shift
+  {
+    const THREE = require('three'),
+      { setLens } = require('../js/map3d/mapcam3d.mjs'),
+      cam = new THREE.PerspectiveCamera(40, 16 / 9, 0.2, 900);
+    cam.position.set(0, above, behind);
+    cam.lookAt(0, STREET.head, 0);
+    cam.updateMatrixWorld();
+    setLens(cam, P.fov, ...P.lens);
+    const feet = new THREE.Vector3(0, 0, 0).project(cam),
+      head = new THREE.Vector3(0, 1.72, 0).project(cam);
+    assert(feet.y > -1 && head.y < -1 / 3, `the figure in the lower third (feet ${feet.y.toFixed(2)}, head ${head.y.toFixed(2)})`);
+    assert(head.x < 0 && head.x > -0.4, `left of centre (${head.x.toFixed(2)})`);
+    const M = streetPose(DIST[0]);
+    eq(M.fov, 40, 'the map keeps its lens');
+    assert(!M.lens[0] && !M.lens[1], '… unshifted');
+    setLens(cam, M.fov, ...M.lens);
+    assert(!cam.view || !cam.view.enabled, 'the shift clears');
+  }
+  // T-369: the street grade by time of day (warm morning, clear noon, orange-pink dusk, blue night), wrapping round midnight
+  {
+    const THREE = require('three'),
+      { gradeAt, GRADE } = require('../js/map3d/look3d.mjs'),
+      g = () => ({ gain: new THREE.Vector3(), lift: new THREE.Vector3(), sat: 1, con: 1, haze: new THREE.Color() }),
+      at = h => gradeAt(h / 24, g());
+    assert(
+      GRADE.every((k, i) => !i || k.t > GRADE[i - 1].t),
+      'keys in order'
+    );
+    const morning = at(7),
+      noon = at(12),
+      dusk = at(17.8),
+      night = at(1);
+    assert(morning.gain.x > morning.gain.z, 'morning is warm');
+    assert(dusk.haze.r > dusk.haze.b && dusk.haze.r > dusk.haze.g, 'dusk is orange-pink');
+    assert(night.haze.b > night.haze.r && night.gain.z > night.gain.x, 'night is blue');
+    assert(noon.haze.b > noon.haze.r && Math.abs(noon.gain.x - noon.gain.z) < 0.1, 'noon is clear');
+    const a = at(23.99),
+      b = at(0.01);
+    assert(Math.abs(a.gain.x - b.gain.x) < 1e-3 && Math.abs(a.haze.b - b.haze.b) < 1e-3, 'no jump at midnight');
+  }
   // a capsule district (the T-336a prototype's shape; still supported)
   const { load } = require('./harness'),
     g = load(5),

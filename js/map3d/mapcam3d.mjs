@@ -13,15 +13,19 @@ import { lotFrame, LANDMARKS } from './kit3d.mjs';
 export const PITCH = (55 * Math.PI) / 180;
 export const DIST = [25, 2600]; // camera distance (m): the scaled island (MAP_SCALE 4.5) needs the longer reach
 /**
- * Street level: d1 = the closest camera distance (m; ~6.5 m behind, ~3 m above the ground with the target at your head), pitch =
- * its angle above the horizon, head = the target's height over your feet (m), pad = how far (m) outside the district the view
+ * Street level (T-369: over the shoulder, your whole figure in the lower third): d1 = the closest camera distance (m; ~7 m behind,
+ * ~2.4 m above the ground — eye level), pitch = its angle above the horizon, head = the target's height over your feet (m; your
+ * middle), fov = the lens at street level (°; the map's 40 → this), lens = the target's place on screen (NDC x, y: left of centre,
+ * low — a lens shift, so the verticals stay upright), pad = how far (m) outside the district the view
  * centre may be for the zoom to go on, speed = WASD pace (m/s × the walk speed setting), orbit = Q / E (rad/s), drag (rad/px),
  * stop = how long (s) the keys rest before the walk resolves, back = the camera's rise (1/s) when you leave the district.
  */
 export const STREET = {
-  d1: 6.7,
-  pitch: (15 * Math.PI) / 180,
-  head: 1.45,
+  d1: 7.2,
+  pitch: (12 * Math.PI) / 180,
+  head: 0.95,
+  fov: [40, 50],
+  lens: [-0.12, -0.62],
   pad: 40,
   speed: 4.2,
   orbit: 1.8,
@@ -35,13 +39,33 @@ export const STREET = {
 };
 /**
  * The zoom's one camera path (pure, tested): distance d (m) → { s (0 = the map, 1 = street level), pitch (rad), dist (m),
- * up (m, camera over the target) }. Above DIST[0] it is today's view; below it the pitch lowers with s (smoothstep).
+ * up (m, camera over the target), fov (°), lens [x, y] (the target's NDC place) }. Above DIST[0] it is today's view; below it
+ * the pitch lowers, the lens widens and the target slides to the lower left with s (smoothstep).
  */
 export function streetPose(d) {
   const s = clamp((DIST[0] - d) / (DIST[0] - STREET.d1), 0, 1),
     k = smooth(0, 1, s),
     pitch = lerp(PITCH, STREET.pitch, k);
-  return { s: k, pitch, dist: d, up: d * Math.sin(pitch) };
+  return {
+    s: k,
+    pitch,
+    dist: d,
+    up: d * Math.sin(pitch),
+    fov: lerp(STREET.fov[0], STREET.fov[1], k),
+    lens: [STREET.lens[0] * k, STREET.lens[1] * k]
+  };
+}
+/** Put the target at NDC lens [x, y] by shifting the camera's view window (three's setViewOffset in fractions); [0, 0] clears it. */
+export function setLens(cam, fov, lx, ly) {
+  const V = cam.view,
+    ox = -lx / 2,
+    oy = ly / 2;
+  if (Math.abs(cam.fov - fov) < 1e-4 && (V && V.enabled ? Math.abs(V.offsetX - ox) < 1e-5 && Math.abs(V.offsetY - oy) < 1e-5 : !lx && !ly))
+    return;
+  cam.fov = fov;
+  if (lx || ly) cam.setViewOffset(1, 1, ox, oy, 1, 1);
+  else if (V && V.enabled) cam.clearViewOffset();
+  cam.updateProjectionMatrix();
 }
 /**
  * The district from the model's `street`: `{ all: true }` → { all: true } (street level everywhere, T-361); a capsule { a, b, r }
@@ -145,6 +169,7 @@ export function createMapCam(cam, canvas, sun, S) {
     cam.position.set(x + c * k * Math.sin(yw), ty + (P.up + lift) * k, z + c * k * Math.cos(yw));
     if (s > 0) cam.position.y = Math.max(cam.position.y, heightAt(cam.position.x, cam.position.z) + 0.6);
     cam.lookAt(x, ty, z);
+    setLens(cam, P.fov, P.lens[0] * k, P.lens[1] * k); // (pulled in front of a building: the shift eases off with it)
     const near = Math.max(lerp(STREET.near[0], STREET.near[1], s), view.d * 0.03 * (1 - s)), // (far out the near plane backs off: no sea showing through the low ground, T-350)
       far = lerp(STREET.far[0], STREET.far[1], s);
     if (Math.abs(cam.near - near) > 0.01 || Math.abs(cam.far - far) > 1) ((cam.near = near), (cam.far = far), cam.updateProjectionMatrix());

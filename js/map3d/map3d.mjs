@@ -37,9 +37,9 @@ import { createLife } from './life3d.mjs';
 import { createVehicles } from './vehicles3d.mjs';
 import { createTown } from './town3d.mjs';
 import { createNature } from './nature3d.mjs';
-import { createMapCam } from './mapcam3d.mjs';
+import { createMapCam, STREET } from './mapcam3d.mjs';
 import { buildTerrain } from './terrain3d.mjs';
-import { lightScene, skyAt, SKY, LOOK, richLook } from './look3d.mjs';
+import { lightScene, skyAt, SKY, LOOK, richLook, streetMat, STREET_FX } from './look3d.mjs';
 import { nightLayer, warLayer } from './layers3d.mjs';
 import { createStream, blockGrid, STREAM } from './stream3d.mjs';
 import { MAP_M, clamp, lerp, fogFactor, inside, edgeDist, sideDist } from './geo3d.mjs';
@@ -77,6 +77,7 @@ export function create(onIdle) {
   const look = richLook(renderer, scene, cam, sun), // the detailed look (T-343); off = the Fast setting's flat look
     flatMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }),
     gfx = () => (typeof G !== 'undefined' && G && G.gfx) || 'auto';
+  for (const m of [look.terrainMat, look.sea.material, water.material, flatMat]) m.userData.noStreetFx = true; // (the ground never fades)
 
   let terrain = null,
     mesh = null,
@@ -136,6 +137,7 @@ export function create(onIdle) {
     fogDrawn = null, // the fog the dimmed layers (terrain, town, nature, night lights) draw now (fogM)
     figRoot = new Map(), // the story figures' own groups (hidden beyond the near blocks at street level)
     st = 0, // the camera's street weight this frame (C.street())
+    fxDirty = true, // objects may have come: the street finish sweeps the scene before the next draw (fxStep)
     shade = null; // the terrain's shadow casters (coarse chunks, SHADOW_LAYER)
   const frustum = new THREE.Frustum(),
     projM = new THREE.Matrix4(),
@@ -151,7 +153,7 @@ export function create(onIdle) {
   const interStep = dt => {
     if (!interiors) return;
     const r = interiors.tick(dt, { cam, you: avatar.pos(), street: st, low, size: [cw, ch] });
-    if (r.flip && cur && life) life.sync(lifeM(cur), low);
+    if (r.flip && cur && life) (life.sync(lifeM(cur), low), (fxDirty = true));
     const near = r.near && !avatar.busy() ? r.near : null;
     if (!near && !interNear) return;
     interNear = near;
@@ -408,7 +410,10 @@ export function create(onIdle) {
     // the sky: the baked one (detailed look), else the clock's sky colour (Fast) — never the map's backdrop
     skyCol.copy(hemi.color).lerp(bgCol, 0.25);
     if (st > 0.15) scene.background = (look.on && look.envTex()) || skyCol;
-    haze.color.copy(skyCol);
+    // (T-369: the grade's hue by time of day instead of the grey sky tint, at the sky colour's brightness — dusk stays dim)
+    const H = look.haze(),
+      lum = c => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+    haze.color.copy(H).multiplyScalar(Math.min(1.25, lum(skyCol) / Math.max(1e-3, lum(H))));
     haze.near = st > 0 ? 160 + (1 - st) * 4000 : 1e6;
     haze.far = st > 0 ? haze.near + 900 + (1 - st) * 6000 : 2e6;
     [haze.near, haze.far] = stream.haze(st, haze.near, haze.far, low); // (streaming: closer, over the far version)
@@ -428,6 +433,40 @@ export function create(onIdle) {
     P.tris = renderer.info.render.triangles;
     const H = typeof PerfHUD !== 'undefined' ? PerfHUD : null;
     if (H && H.on) H.frame('map', api.perf());
+  };
+  /**
+   * Street level's finish (T-369) before each draw: every shown built-in mesh material gets the toon bands and the occluder fade
+   * (look3d streetMat: once, before its first compile); the fade's line runs from the camera to your middle, eased in with st.
+   * The sweep (a scene walk) runs when objects may have come — a model update, a ring rebuild, a new top-level part — and every
+   * FX_EVERY frames (a material it finds already drawn recompiles once); the uniforms every frame.
+   */
+  const FX_EVERY = 20;
+  const fxMats = o => {
+    if (!o.isMesh) return;
+    const M = o.material;
+    if (Array.isArray(M)) for (const m of M) streetMat(m) && (m.needsUpdate = true);
+    else if (streetMat(M)) M.needsUpdate = true; // (not yet drawn: harmless; drawn: it recompiles with the patch)
+  };
+  const fxInfo = { ms: 0, sweeps: 0, sig: '', n: 0 };
+  const fxStep = dt => {
+    const t0 = performance.now(),
+      R = town.ringInfo ? town.ringInfo().builds : 0,
+      sig = `${R}|${scene.children.length}`;
+    if (fxDirty || sig !== fxInfo.sig || ++fxInfo.n >= FX_EVERY) {
+      scene.traverseVisible(fxMats);
+      fxDirty = false;
+      fxInfo.sig = sig;
+      fxInfo.n = 0;
+      fxInfo.sweeps++;
+    }
+    const F = STREET_FX,
+      [x, y, z] = api.youPos(),
+      want = clamp((st - 0.4) / 0.4, 0, 1);
+    F.uFdA.value.copy(cam.position);
+    F.uFdB.value.set(x, y + STREET.head, z);
+    F.uFdK.value += (want - F.uFdK.value) * (1 - Math.exp(-dt * 6));
+    if (F.uFdK.value < 0.003) F.uFdK.value = 0;
+    fxInfo.ms = EMA(fxInfo.ms, performance.now() - t0);
   };
   renderer.info.autoReset = false; // (the post draws several passes: info counts the whole frame)
   const draw = () => (renderer.info.reset(), look.on ? look.render() : renderer.render(scene, cam));
@@ -470,7 +509,8 @@ export function create(onIdle) {
       interStep(dt);
       if (cur && cur.time) sun.position.copy(sun.target.position).addScaledVector(SKY.dir, 150); // the hour's sun (after the camera placed it)
       night.set(lit, (ch * renderer.getPixelRatio()) / (2 * Math.tan((cam.fov * Math.PI) / 360)), renderer.getPixelRatio());
-      look.step(dt, clock, lit, tod, C.view, gfx());
+      look.step(dt, clock, lit, tod, C.view, gfx(), st);
+      fxStep(dt);
       const n = avatar.lapse(),
         txt = n ? `×${n < 2 ? n.toFixed(1) : Math.round(n)}` : '';
       if (badge && badge.textContent !== txt) {
@@ -524,6 +564,7 @@ export function create(onIdle) {
     update(m) {
       if (!furn) return;
       cur = m;
+      fxDirty = true;
       const fall = m.borders && m.borders.fall ? m.borders.fall.key : null;
       if (fallSeen !== undefined && fall && fall !== fallSeen)
         (m.pins || []).some(p => p.id === m.borders.fall.pin) ? C.flyTo(m.borders.fall.pin) : C.overview(); // a unit destroyed: the camera goes to see (spec §4.34)
@@ -623,6 +664,7 @@ export function create(onIdle) {
     },
     /** The Fast graphics setting: fewer named figures (life.look.low) and night lights, the town's instanced boxes, no posts. */
     setLow(v) {
+      fxDirty = true;
       if (low === !!v) return;
       low = !!v;
       const fm = cur && fogM(cur);
@@ -753,7 +795,8 @@ export function create(onIdle) {
       view: C.view && { ...C.view },
       street: +st.toFixed(3),
       ring: town && town.ringInfo ? town.ringInfo() : null,
-      stream: stream && stream.info()
+      stream: stream && stream.info(),
+      fx: { ms: +fxInfo.ms.toFixed(3), sweeps: fxInfo.sweeps } // (T-369: the street finish — JS ms a frame, scene sweeps so far)
     }),
     dispose() {
       dead = true;
