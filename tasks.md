@@ -2,7 +2,7 @@
 
 Owned by the spec chat. The build chat only changes a task's status mark and its `Result:` / `Question:` lines
 (workflow: CLAUDE.md). Do tasks top-down within **Now**. **Later** items are outlines: the spec chat details them
-(files, steps, accept) and moves them to Now. Next free id: **T-374** (T-336 is split a / b) (T-088 is open below).
+(files, steps, accept) and moves them to Now. Next free id: **T-375** (T-336 is split a / b) (T-088 is open below).
 
 Status: `[ ]` todo · `[~]` in progress · `[?]` blocked — see Question · `[x]` done
 
@@ -32,6 +32,29 @@ UI §9–§10, hex territory, the island × 2.25. The one-press prompts are gone
 repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
+
+### [ ] T-374: Duel cards get their own slot; hesitation frequency setting
+Spec: §2.39, §2.37          Goldens: update (duel cards leave the hand's draw: the AI sides' hands change)          Save: no change
+Goal: a duel card never clogs the hand: duel cards sit in a separate duel slot (you as a player 1, as captain 2), drawn from
+the deck's duel cards only, so the hand of 3 / 5 holds only cards you can play between points; and a ⚙ setting "Hesitations"
+(Rare / Normal / Often) scales the hesitation margin and cap for your side.
+Files: js/data/cards.js (DECK.duel slots), js/data/rules.js (RULES.hes levels), js/engine/cards.js, orders.js (hesit margin / cap
+read the level), js/ui/match-cards.js (the duel slot on the hand bar), match-controls.js (⚙ segment), js/core/storage.js (a key),
+css/style.css; tests/cards.test.js, tests/ui-smoke.js; spec.md §2.39; ARCHITECTURE-details.md.
+Do not: change the hand sizes (3 / 5) or cooldown rules; let the setting change AI-vs-AI matches or simmed matches (they use
+Normal); add draws to decide a hesitation.
+Steps:
+1. Deck: duel cards (kind 'duel') go to a separate duel pile; the duel slot(s) refill from it after a duel card is played (its
+   cooldown as now); the hand draws only non-duel cards. Discarding a duel card from its slot works like the hand's.
+2. Hesitation level (owner, 2026-10-26: "make it configurable with a slider"): Rare = margin × 0.6, cap 2; Normal = as now; Often =
+   margin × 1.6, cap 5 — for your side only (m.hesLv), default Normal, remembered (KEYS).
+3. Hand bar: the duel slot beside the hand, dimmed between points with "waits for a hesitation" in its tooltip, lit in one;
+   hotkey printed; design-system rules (§9).
+Accept:
+- npm test, lint, test:ui (the Hesitation and Deck match steps; the duel slot shows) pass; goldens updated with the reason.
+- `npm run cards -- 250`: captain / random / amplifiers order holds; hesitations a side a set at Rare / Normal / Often written in §2.39.
+QA: Dev deck match as captain → the duel slot, a hesitation lights it, the ⚙ Hesitations setting changes how often.
+Result:
 
 ### [ ] T-368: Street view models load whole
 Spec: §4.44          Goldens: unchanged          Save: no change

@@ -995,6 +995,9 @@ the AI coach fills every slot you leave with the same function. Built and measur
     to pick one and boost it, or **borrow** a technique you haven't learned from a teammate who knows it (one play, a higher bar
     cost); no action → the AI's pick. As a player: your own hesitations only; as captain: any teammate's. About 3 a set at
     most; late points hesitate more easily. Simmed matches: the AI always picks.
+  - **Duel slot and frequency** (owner, 2026-10-26: "duel cards sit as trash in the hand if nobody hesitates — improve the
+    threshold, maybe a slider, or a reserve slot") **[draft — T-374]**: duel cards leave the hand for their own slot (a player 1,
+    a captain 2), refilled from the deck's duel cards; a ⚙ "Hesitations" setting Rare / Normal / Often for your side.
   - **Card kinds**: duel cards (Target Serve, Read Block, Disguise, Commit, Tempo, Pressure — the target doesn't settle for
     3 serves, Hide — the weak passer screened for 3 serves) play only in a hesitation; power-up and team-play cards any time.
   - **Built** (T-366, 2026-10-25 **[built]**; numbers in `ORDERS` js/data/tactics.js, `RULES.settle` js/data/rules.js):
