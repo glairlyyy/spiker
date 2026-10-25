@@ -21,8 +21,18 @@
 // Performance (owner, 2026-10-25): tick's view = { frustum, cam, px (screen px a metre at 1 m: ch ÷ 2 tan(fov / 2)), shadows } — off
 // screen the model is hidden and not posed; small on screen (AV_LOD) it is posed every few frames, without hair springs or a shadow.
 import * as THREE from 'three';
-import { VRMUtils } from '@pixiv/three-vrm';
-import { loadBase, makeVRM, applyPose, smoothBones, groundSnap, dress, MODEL_URL, MAIN_URL } from '../render3d/players3d.mjs';
+import {
+  loadBase,
+  makeVRM,
+  applyPose,
+  smoothBones,
+  groundSnap,
+  dress,
+  wholeVRM,
+  releaseVRM,
+  MODEL_URL,
+  MAIN_URL
+} from '../render3d/players3d.mjs';
 import { STAND, READY, locoPose, mix } from '../render3d/poses3d.mjs';
 import { BLOCK, SIT, shadowPart } from './people3d.mjs';
 import { toWorld, clamp, wrap } from './geo3d.mjs';
@@ -107,6 +117,7 @@ export function createAvatar(scene, opts = {}) {
   marker.castShadow = true;
   scene.add(marker);
   let pl = null,
+    pend = null, // (T-368) loaded and dressed, waiting to be whole: the capsule stands in until then
     dead = false,
     rmesh = null, // the route preview (yours only)
     rkey = null;
@@ -249,16 +260,24 @@ export function createAvatar(scene, opts = {}) {
   (opts.kit ? Promise.reject(null) : loadBase(MAIN_URL).then(buf => makeVRM(buf, HEIGHT)))
     .catch(() => loadBase(MODEL_URL).then(buf => makeVRM(buf, HEIGHT))) // Main_v2 missing (or someone else): the default model
     .then(p => {
-      if (dead) return VRMUtils.deepDispose(p.vrm.scene);
+      if (dead) return releaseVRM(p.vrm);
       if (opts.kit) dress(p.vrm, opts.kit);
-      pl = p;
-      pl.base = p.scale;
-      scene.remove(marker);
-      marker.geometry.dispose();
-      marker.material.dispose();
-      scene.add(pl.root);
+      p.base = p.scale;
+      pend = p;
+      adopt();
     })
     .catch(e => console.warn('3D map: the player model failed to load — keeping the marker.', e && e.message ? e.message : e));
+
+  /** The ready rule (T-368, spec §4.44): the model replaces the capsule only when loaded, dressed and whole. */
+  function adopt() {
+    if (!pend || dead || !wholeVRM(pend.vrm)) return;
+    pl = pend;
+    pend = null;
+    scene.remove(marker);
+    marker.geometry.dispose();
+    marker.material.dispose();
+    scene.add(pl.root);
+  }
 
   return {
     /** Stand at a map point at once. */
@@ -424,6 +443,7 @@ export function createAvatar(scene, opts = {}) {
         h = rm === 'ferry' ? Math.max(heightAt(S.x, S.z), 0) + DECK_Y : heightAt(S.x, S.z);
       const size = 1 + (LIFE_H / HEIGHT - 1) * S.life; // map size → life size
       marker.visible = !aboard;
+      if (pend) adopt();
       if (pl) pl.root.visible = !aboard;
       if (!pl) return (marker.scale.setScalar(size), marker.position.set(S.x, h + 3 * size, S.z));
       S.t += dt;
@@ -504,8 +524,9 @@ export function createAvatar(scene, opts = {}) {
       marker.material.dispose();
       if (pl) {
         scene.remove(pl.root);
-        VRMUtils.deepDispose(pl.vrm.scene);
+        releaseVRM(pl.vrm);
       }
+      if (pend) releaseVRM(pend.vrm);
     }
   };
 }

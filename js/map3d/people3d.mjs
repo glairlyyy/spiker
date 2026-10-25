@@ -11,8 +11,7 @@
 //     a block-jump drill, sitting or standing. Slots are built one at a time after the map has shown (never the first frame).
 //   nearestOnScreen(cands, cap, held, keep) — the LOD pick; insideCap(cands, n) — the station people's cap (pure, tested).
 import * as THREE from 'three';
-import { VRMUtils } from '@pixiv/three-vrm';
-import { loadBase, makeVRM, applyPose, smoothBones, groundSnap, dress, MODEL_URL } from '../render3d/players3d.mjs';
+import { loadBase, makeVRM, applyPose, smoothBones, groundSnap, dress, wholeVRM, releaseVRM, MODEL_URL } from '../render3d/players3d.mjs';
 import { STAND, READY, locoPose, mix } from '../render3d/poses3d.mjs';
 import { hstr, clamp, smooth } from './geo3d.mjs';
 import { mergeParts } from './kit3d.mjs';
@@ -225,6 +224,19 @@ export const shadowPart = o => {
   const m = Array.isArray(o.material) ? o.material[0] : o.material;
   return !/_(EYE|FACE)$/.test((m && m.name) || '');
 };
+/**
+ * The ready rule (T-368, spec §4.44): a pool slot is drawn only when its VRM is whole (textures decoded: `ready`), dressed for
+ * the person it holds (`kit` = their shirt | hair | skin) and faded in — else that person stays their humanoid (pure, tested).
+ */
+const kitOf = f => `${f.shirt}|${f.hair}|${f.skin}`;
+export const showVRM = (S, f) => !!f && !!S.ready && S.id !== null && S.kit === kitOf(f) && S.k > 0.01;
+/** Dress a slot for f (synchronous, all materials at once) unless it already wears f's kit. */
+const dressAs = (S, f) => {
+  const kit = kitOf(f);
+  if (S.kit === kit) return;
+  dress(S.pl.vrm, { shirt: f.shirt, shorts: SHORTS, shoes: SHOES, hair: f.hair, skin: f.skin });
+  S.kit = kit;
+};
 const HEAD = 1.42; // the VRM's head top at figure scale 1 (the humanoid's: 1.45 m)
 
 /**
@@ -263,7 +275,7 @@ export function createPeopleVRM(scene, opts = {}) {
       .then(pl => {
         building = false;
         gapT = O.gap;
-        if (dead) return VRMUtils.deepDispose(pl.vrm.scene);
+        if (dead) return releaseVRM(pl.vrm);
         pl.vrm.springBoneManager = null; // hair stays put on the map: no springs to step
         pl.root.visible = false;
         scene.add(pl.root);
@@ -281,7 +293,8 @@ export function createPeopleVRM(scene, opts = {}) {
           w: 0,
           px: 0,
           pz: 0,
-          t: hstr(`slot${slots.length}`) * 9
+          t: hstr(`slot${slots.length}`) * 9,
+          ready: wholeVRM(pl.vrm) // (T-368: a slot takes a person only once whole)
         });
       })
       .catch(e => {
@@ -383,18 +396,14 @@ export function createPeopleVRM(scene, opts = {}) {
       for (const id of want) {
         const f = states.get(id);
         if (shown.has(id) || !f) continue; // (!f: gone since the last LOD pick — a re-sync, e.g. Fast's fewer people)
-        const S = slots.find(q => q.id === null);
+        const S = slots.find(q => q.id === null && (q.ready || (q.ready = wholeVRM(q.pl.vrm))));
         if (S) {
           S.id = id;
           S.k = 0;
           S.px = f.x;
           S.pz = f.z;
           S.pl.prev.clear();
-          const kit = `${f.shirt}|${f.hair}|${f.skin}`;
-          if (S.kit !== kit) {
-            dress(S.pl.vrm, { shirt: f.shirt, shorts: SHORTS, shoes: SHOES, hair: f.hair, skin: f.skin });
-            S.kit = kit;
-          }
+          dressAs(S, f);
         } else if (buf && !building && !failed && slots.length < O.cap && gapT <= 0) build();
         break; // one assignment a frame
       }
@@ -402,7 +411,8 @@ export function createPeopleVRM(scene, opts = {}) {
       fr.setFromProjectionMatrix(fm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse)); // (last frame's camera)
       for (const S of slots) {
         const f = S.id !== null ? states.get(S.id) : null;
-        S.pl.root.visible = !!f && S.k > 0.01;
+        if (f && S.ready) dressAs(S, f); // (their kit changed while shown: re-dressed in one go, before this frame draws)
+        S.pl.root.visible = showVRM(S, f);
         if (!S.pl.root.visible) continue;
         wt.set(S.id, S.k);
         sph.center.set(f.x, f.y + 0.9 * f.s, f.z);
@@ -434,7 +444,7 @@ export function createPeopleVRM(scene, opts = {}) {
       dead = true;
       for (const S of slots) {
         scene.remove(S.pl.root);
-        VRMUtils.deepDispose(S.pl.vrm.scene);
+        releaseVRM(S.pl.vrm);
       }
       slots.length = 0;
     }

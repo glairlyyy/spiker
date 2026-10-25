@@ -2115,7 +2115,10 @@ the AI coach fills every slot you leave with the same function. Built and measur
     VRM players. No image files: textures are made in code and decoded in memory (CLAUDE.md host quirks). Fast keeps the
     cheap look; Auto gets most; High all. The FPS fixes (§4.39 Performance) must hold: measured with the F3 overlay.
   - **Models load whole** (T-368): a VRM at street level (you, story figures, people at stations, the pool) never shows without
-    its skin or its clothes — it appears only when fully dressed, or keeps its old look until then.
+    its skin or its clothes — it appears only when fully dressed, or keeps its old look until then. **[built 2026-10-25, T-368:
+    the cause was two model files parsed at once (your Main_v2 and a base-model figure) reading each other's decoded images —
+    the base figures wore Main_v2's skin / clothes atlases, and every later one too; each parse now keeps its own. A figure
+    shows only when every texture is decoded and it wears its person's kit; until then the capsule / the plain figure stays]**
   - **Camera and finish** (T-369): over-the-shoulder at street level, your whole figure in the lower third; poles, trees and
     walls between the camera and you fade; edge smoothing (anti-aliasing) on Auto / High; a colour grade per time of day
     (warm morning, clear noon, orange-pink dusk, blue night) instead of the grey haze. **[built 2026-10-26]**: the camera

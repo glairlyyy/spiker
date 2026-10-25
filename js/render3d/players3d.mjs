@@ -14,13 +14,17 @@ loader.register(inlineImages);
  * ImageBitmapLoader path (premultiplyAlpha 'none'); anything else falls back to the default loader.
  */
 function inlineImages(parser) {
-  const original = parser.loadImageSource.bind(parser);
+  // the model this parser reads: loader.parse makes its plugins synchronously inside makeVRM's parseAsync call, so `modelKey`
+  // is right here — but not later, when the images decode (T-368: two models parsed at once, e.g. your Main_v2 and a story
+  // figure's base model, read each other's cache by image index: the base figure wore Main_v2's skin / clothes atlases)
+  const key = modelKey,
+    original = parser.loadImageSource.bind(parser);
   parser.loadImageSource = function (sourceIndex, texLoader) {
     const def = parser.json.images[sourceIndex];
     if (def.bufferView === undefined || typeof createImageBitmap === 'undefined') return original(sourceIndex, texLoader);
     if (parser.sourceCache[sourceIndex] !== undefined) return parser.sourceCache[sourceIndex].then(t => t.clone());
     // decoded once per model file: later figures of the same model get clones sharing the image (one GPU upload)
-    const shared = modelKey && imgCache.get(modelKey);
+    const shared = key && imgCache.get(key);
     if (shared && shared.has(sourceIndex)) return (parser.sourceCache[sourceIndex] = shared.get(sourceIndex)).then(t => t.clone());
     const promise = parser
       .getDependency('bufferView', def.bufferView)
@@ -43,8 +47,8 @@ function inlineImages(parser) {
 }
 /**
  * One pass of the heavy work per model file: decoded textures (imgCache) and geometry (geoCache, the first figure's
- * meshes) are shared by every later figure of the same model. Keyed by the model's buffer; `modelKey` is the model
- * being parsed right now (figures are built one at a time).
+ * meshes) are shared by every later figure of the same model. Keyed by the model's buffer; `modelKey` hands the model being
+ * parsed to its parser's inlineImages (set only around the synchronous plugin set-up: parses may overlap).
  */
 const imgCache = new WeakMap(),
   geoCache = new WeakMap();
@@ -121,6 +125,33 @@ const eachMat = (vrm, fn) =>
   vrm.scene.traverse(o => {
     if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => fn(m, o));
   });
+
+/**
+ * A VRM is whole (T-368, spec §4.44): every texture its materials use has its decoded image — show it only then. (The images
+ * resolve before makeVRM does; this guards a fallback decode or a texture swapped in later.)
+ */
+export function wholeVRM(vrm) {
+  let ok = !!vrm && !!vrm.scene;
+  if (ok)
+    eachMat(vrm, m => {
+      const bad = t => t && t.isTexture && !(t.image && (t.image.width > 0 || t.image.videoWidth > 0));
+      for (const k in m) if (bad(m[k])) ok = false; // (plain materials' own fields)
+      if (m.uniforms) for (const k in m.uniforms) if (bad(m.uniforms[k] && m.uniforms[k].value)) ok = false; // (MToon: its maps live in uniforms)
+    });
+  return ok;
+}
+/**
+ * Free one figure without touching what it shares (T-368): geometry (geoCache) and textures (imgCache, greyCache) are the
+ * model's, used by every other figure of it — only its own materials and skeletons go. (VRMUtils.deepDispose would
+ * dispose the shared ones under the other figures.)
+ */
+export function releaseVRM(vrm) {
+  if (!vrm || !vrm.scene) return;
+  vrm.scene.traverse(o => {
+    if (o.material) for (const m of Array.isArray(o.material) ? o.material : [o.material]) m.dispose();
+    if (o.skeleton) o.skeleton.dispose();
+  });
+}
 
 /** Team kit, hair, skin and eye colour on the shared model (the shirt texture is white, so colours multiply cleanly). */
 export function dress(vrm, kit) {
