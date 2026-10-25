@@ -1936,6 +1936,17 @@ the AI coach fills every slot you leave with the same function. Built and measur
     64 m (off street level it catches up at once), the ring builds a lot once and only re-merges it, and only the hidden lots' vertices
     are uploaded. The near blocks are picked round you, not the camera; the block you stand in is prepared and drawn the frame you reach
     it (the rest topped up within a few frames), so the walk never waits — "Loading…" is only a fallback.
+    **Walking never waits (owner, 2026-10-25: "can we remove the waiting-on-walk feature? Only load when I click an automated action
+    like training or sleeping") [built 2026-10-25]**: click-walk, WASD and trips never stop or show "Loading…"; a block not prepared
+    yet shows its far version until it is (pop-in), preparing stays in the small per-frame budget. The heavy loading runs behind a
+    session / a sleep / any place action's fast-forward (the blocks within 420 m round you, a larger budget) and for a few seconds on
+    arrival; "Loading…" shows only behind an action, and only if it takes > 0.25 s.
+    **A WASD stop stays put (owner, 2026-10-25: "when I stop walking it warps me to some location very nearby") [built 2026-10-25]**:
+    a stop within a step (1.5 m) of the rules' point no longer walks you back to it, and a stop the rules take leaves your figure
+    where it stopped (the rules' point, rounded, is within 1.6 m). The stop no longer plays a walk lock (WASD stayed blocked
+    meanwhile) or redraws the hub in that frame: the rules move you, the week strip refreshes, the save waits for an idle moment
+    and the hub redraws once you have rested ~1 s. Measured headless: the stop's own work 76 ms → ~4 ms (the redraw, ~70–110 ms,
+    now once after you rest instead of at every stop and again at its lock's end).
 - §4.40 The island × 2 and real facilities **[built 2026-10-24 — T-350–T-351; not yet: the drone's field spots lit like places; zoomed out shows region names, not district names;  later (owner, 2026-10-24): more fillers for Wei, the Cup-win drop (63 → 42 %, 12 runs) re-measured]** (owner, 2026-10-23: "expand the island 2× so travel matters
   and there is room for proper facilities"; "remove pins entirely — a building or a piece of kit lights up on hover"):
   - **Scale** (T-350): `MAP_SCALE` 2.25 → 4.5 (~2.4 × 1.6 km). Towns and districts spread out with it (the same layout, twice the

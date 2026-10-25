@@ -68,8 +68,7 @@ const FLY_S = 0.45, // a camera move to a selected place
 
 /**
  * S(): the map's live parts (they appear after the first mount): { terrain, mesh, avatar, cur (the model), on (the mount
- * callbacks: point, walk?, canWalk?), cw / ch (canvas px), consume?(xy) (a street-level click the interiors take), hold (streaming:
- * WASD waits) }. Returns the
+ * callbacks: point, walk?, canWalk?), cw / ch (canvas px), consume?(xy) (a street-level click the interiors take) }. Returns the
  * controller; `view` is null until `initView`.
  */
 export function createMapCam(cam, canvas, sun, S) {
@@ -332,7 +331,7 @@ export function createMapCam(cam, canvas, sun, S) {
   /** WASD: move your avatar (display) relative to the camera's heading; when the keys rest, the rules see where you stopped. */
   const roamStep = dt => {
     const A = S().avatar;
-    if (!A || !A.drive || S().hold) return; // (the block you stand in is loading: the walk waits, T-364)
+    if (!A || !A.drive) return;
     let fx = 0,
       fz = 0;
     for (const k of held) if (KEYS[k]) ((fx += KEYS[k][0]), (fz += KEYS[k][1]));
