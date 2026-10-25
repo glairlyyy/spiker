@@ -543,7 +543,8 @@ export function createInteriors(scene, heightAt, opts = {}) {
             roughness: 0.9,
             flatShading: true,
             transparent: true,
-            side: THREE.DoubleSide
+            side: THREE.DoubleSide,
+            forceSinglePass: true // (three draws a transparent double-sided mesh twice, back then front, re-picking its program each pass)
           })
         );
         if (i < 4) {
@@ -650,7 +651,10 @@ export function createInteriors(scene, heightAt, opts = {}) {
       if (!moved.size) return model;
       return {
         ...model,
-        life: { ...model.life, people: model.life.people.map(p => (moved.has(p.id) ? { ...p, at: moved.get(p.id), act: 'train' } : p)) }
+        life: {
+          ...model.life,
+          people: model.life.people.map(p => (moved.has(p.id) ? { ...p, at: moved.get(p.id), act: 'train', inside: true } : p))
+        }
       };
     },
     /**

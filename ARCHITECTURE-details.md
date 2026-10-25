@@ -844,6 +844,15 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   up to the render, draw = the render); `rule(ms)` from career-map `spotFollow` (MapView.tick + the popups' placement). Redraws at
   4 Hz, the worst frame / rules of the last 2 s. F3 toggles it (capture-phase key, anywhere); ⚙ and the Dev tab have the button.
 - `MapView.saveSoon()`: the running clock's periodic save on `requestIdleCallback` (≤ 1 s), not in the frame.
+- **Inside a hall** (owner 2026-10-25): the cost there is the people at its stations as VRMs near the camera (each ~13 meshes,
+  ~36k tris, 7 outlined: ~20 draws + its shadow). interior3d `people()` marks the moved people `inside: true` → life3d state
+  `inside` → people3d `insideCap(cands, VRM_LOD.inside 4)` (the nearest station people only; the rest stay humanoids). people3d
+  tick: a slot whose sphere is outside the camera's frustum is hidden and not posed (posed at once when back); rank ≥
+  `VRM_LOD.full` 3 posed at least every 2nd frame. `shadowPart(o)`: only the silhouette meshes cast (not the face's
+  `_EYE` / `_FACE` parts, inside the head) — the pool and your avatar (7 of 13 shadow draws). interior3d's shell materials are
+  `forceSinglePass` (three draws a transparent double-sided mesh twice and re-picks its program per pass). map3d `interStep`
+  re-reads the canvas rect for the station prompt once a second / on resize (`crect`), not every frame (a forced layout).
+  `info().progs` = `renderer.info.programs.length` (a rise = a shader compile).
 
 ### Street level (spec §4.37 6, T-336a)
 

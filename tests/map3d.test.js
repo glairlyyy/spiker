@@ -99,6 +99,13 @@ test('map3d: fitView frames every point, clamps the distance', () => {
 });
 
 // ---------- T-341: people on the map (people3d.mjs LOD, life3d looks) ----------
+test('map3d people: at an interior only the nearest VRM_LOD.inside station people are VRM candidates (owner 2026-10-25)', () => {
+  const { insideCap, VRM_LOD } = require('../js/map3d/people3d.mjs');
+  const c = [...Array.from({ length: 7 }, (_, i) => ({ id: `in${i}`, d: 2 + i, inside: true })), { id: 'out', d: 30, inside: false }];
+  const k = insideCap(c, VRM_LOD.inside).map(q => q.id);
+  eq(k.length, VRM_LOD.inside + 1, 'the cap + the street person');
+  assert(k.includes('out') && k.includes('in0') && !k.includes('in6'), 'the nearest station people, the street untouched');
+});
 test('map3d people: the VRM LOD takes the nearest on-screen cap, holds the shown ones', () => {
   const { nearestOnScreen, VRM_LOD } = require('../js/map3d/people3d.mjs');
   const cands = Array.from({ length: 40 }, (_, i) => ({ id: i, d: 10 + ((i * 37) % 40) }));
