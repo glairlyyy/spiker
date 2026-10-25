@@ -744,6 +744,13 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   0.85 → 1 while life3d shrinks that humanoid by `weight(id)`) and out the same way. Slots: the base model (`loadBase(MODEL_URL)`,
   started `delay` s after the map's first tick) parsed by `makeVRM` one slot at a time (`gap` s apart; geometry and textures
   shared by players3d's caches), springs off, shadows only for the `shadows` (6) nearest, `dress`ed on assignment (club colour shirt, dark shorts, hashed hair / skin).
+  **Whole models (T-368)**: players3d `inlineImages` keys its decoded-image cache by the parser's model (captured when loader.parse
+  makes the plugin, synchronously inside `makeVRM`), not the module's `modelKey` at decode time — two models parsed at once used
+  to swap images by index. The ready rule: a pool slot takes a person only when `wholeVRM` (every material texture, own fields and
+  MToon uniforms, has its image) and is drawn only by `showVRM(S, f)` (whole, `S.kit` = the person's shirt | hair | skin, faded in);
+  a kit change re-dresses in one go before the frame draws (`dressAs`). avatar3d keeps its capsule until the loaded, dressed model
+  is whole (`adopt`). Figures are freed with `releaseVRM` (own materials and skeletons only — the geometry and textures are the
+  model's, shared by the other figures), not `VRMUtils.deepDispose`.
   Poses: walking / jogging = `locoPose` by the measured ground speed ÷ the figure's size; drill = READY → arms-up BLOCK by the hop;
   wit / rest / out = SIT (`groundSnap` lying); else STAND breathing. Fast: capsules (`look.size`), no humanoids, rings or VRMs.
   life3d.tick takes `cam` (map3d passes it). `count()` adds `look`, `humanoids`, `circle`, `vrm` / `built` / `cap`.

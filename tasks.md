@@ -33,7 +33,7 @@ repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
 
-### [ ] T-368: Street view models load whole
+### [x] T-368: Street view models load whole
 Spec: §4.44          Goldens: unchanged          Save: no change
 Goal: a VRM at street level (you, story figures, station people, the people pool) never shows without its skin or clothes; it appears dressed or keeps its old look until ready.
 Files: js/map3d/avatar3d.mjs, people3d.mjs, life3d.mjs, interior3d.mjs (people()), js/render3d/players3d.mjs (load / dress / makeVRM only); tests/map3d.test.js; spec.md §4.44; ARCHITECTURE-details.md
@@ -45,7 +45,7 @@ Accept:
 - A test (map3d.test.js) for the ready rule; headless repro: 0 frames with an undressed / untextured visible VRM over 20 street-level entries.
 - npm test, lint, test:ui pass.
 QA: career run → street level at the gym and a busy street, in and out of the hall, screenshots
-Result:
+Result: cause = players3d's decoded-image cache keyed by the module's `modelKey` at decode time: two models parsed at once (your Main_v2 + a base-model figure / portrait) swapped images by index and poisoned the cache (node: 10 of 13 base images were Main_v2's); fix = key captured per parser, plus the ready rule (`wholeVRM`, people3d `showVRM` / `dressAs`, avatar3d keeps its capsule until whole) and `releaseVRM` (no shared geometry / textures disposed). Headless repro, 20 street entries (gym, Seaside Inn, market; map re-created every 2nd, a Main_v2 parse every 2 s): before 1498 / 1756 frames with a VRM wearing another model's images, after 0 / 2916. Per frame only a kit-string compare per shown slot (F3 not re-measured).
 ### [ ] T-369: Street view: camera and finish
 Spec: §4.44          Goldens: unchanged          Save: no change
 Goal: over-the-shoulder framing at street level with your whole figure in the lower third; occluders between camera and you fade; anti-aliasing on Auto / High; a colour grade per time of day; the anime toon look starts here (soft bands, coloured shadows).

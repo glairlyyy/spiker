@@ -98,6 +98,79 @@ test('map3d: fitView frames every point, clamps the distance', () => {
   );
 });
 
+// ---------- T-368: street view models load whole (players3d image cache, the ready rule) ----------
+test('map3d people: two models parsed at once keep their own textures (T-368: the image cache key is per parser)', () => {
+  // (async in a child node: the harness is synchronous) your Main_v2 and a base-model figure, as the map starts them together
+  const code = `
+    const fs = require('fs'), path = require('path');
+    let n = 0;
+    globalThis.createImageBitmap = async blob => ({ width: 4, height: 4, id: ++n, size: blob.size, close() {} });
+    const P = require(${JSON.stringify(require('path').join(__dirname, '../js/render3d/players3d.mjs'))});
+    const buf = f => { const b = Buffer.from(fs.readFileSync(path.join(${JSON.stringify(require('path').join(__dirname, '../assets/vrm'))}, f), 'utf8').trim(), 'base64'); return b.buffer.slice(b.byteOffset, b.byteOffset + b.length); };
+    const imgs = pl => { const s = new Set(); pl.vrm.scene.traverse(o => o.material && [].concat(o.material).forEach(m => m.map && m.map.image && s.add(m.map.image))); return s; };
+    (async () => {
+      const mb = buf('main.glb.txt'), bb = buf('base.glb.txt');
+      const [a, c, d] = await Promise.all([P.makeVRM(mb, 1.7), P.makeVRM(bb, 1.7), P.makeVRM(bb, 1.7)]);
+      const A = imgs(a), C = imgs(c), D = imgs(d);
+      console.log(JSON.stringify({ a: A.size, c: C.size, cross: [...C, ...D].filter(x => A.has(x)).length, same: [...D].every(x => C.has(x)), whole: P.wholeVRM(a.vrm) && P.wholeVRM(c.vrm) }));
+    })().catch(e => (console.log(JSON.stringify({ err: String(e) })), process.exit(1)));`;
+  const r = JSON.parse(
+    require('child_process').execFileSync(process.execPath, ['-e', code], { encoding: 'utf8' }).trim().split('\n').pop()
+  );
+  assert(!r.err, r.err);
+  assert(r.a > 5 && r.c > 5, `both models textured (${r.a} / ${r.c})`);
+  eq(r.cross, 0, 'no base-model figure wears a Main_v2 image');
+  assert(r.same, 'two figures of one model share its decoded images');
+  assert(r.whole, 'both whole');
+});
+test('map3d people: the ready rule — a VRM shows only whole, dressed for its person and faded in (T-368)', () => {
+  const { showVRM } = require('../js/map3d/people3d.mjs');
+  const { wholeVRM, releaseVRM } = require('../js/render3d/players3d.mjs');
+  const f = { shirt: '#e4572e', hair: '#101010', skin: '#eec39a' },
+    kit = `${f.shirt}|${f.hair}|${f.skin}`,
+    S = { id: 'p1', ready: true, kit, k: 0.5 };
+  assert(showVRM(S, f), 'whole, dressed, fading in → shown');
+  assert(!showVRM({ ...S, ready: false }, f), 'textures not ready → the humanoid stays');
+  assert(!showVRM({ ...S, kit: null }, f), 'not dressed yet → hidden');
+  assert(!showVRM({ ...S, kit: '#fff|#000|#fff' }, f), "another person's kit → hidden");
+  assert(!showVRM({ ...S, k: 0 }, f) && !showVRM(S, null) && !showVRM({ ...S, id: null }, f), 'faded out / gone / free → hidden');
+  // wholeVRM: every texture (own fields and MToon uniforms) has its image
+  const tex = im => ({
+    isTexture: true,
+    image: im,
+    disposed: 0,
+    dispose() {
+      this.disposed++;
+    }
+  });
+  const fake = mats => ({ scene: { traverse: fn => mats.forEach(m => fn({ material: m })) } });
+  const good = tex({ width: 8, height: 8 }),
+    mat = (u, own) => ({
+      ...(own || {}),
+      uniforms: { map: { value: u } },
+      disposed: 0,
+      dispose() {
+        this.disposed++;
+      }
+    });
+  assert(wholeVRM(fake([mat(good), mat(null, { map: good })])), 'all images there → whole');
+  assert(!wholeVRM(fake([mat(good), mat(tex(null))])), 'a uniform texture without its image → not whole');
+  assert(!wholeVRM(fake([mat(null, { map: tex({ width: 0 }) })])), 'an empty image → not whole');
+  assert(!wholeVRM(null), 'no model → not whole');
+  // releaseVRM frees the figure's own materials, never the textures / geometry it shares with the pool
+  const geo = {
+      disposed: 0,
+      dispose() {
+        this.disposed++;
+      }
+    },
+    m1 = mat(good),
+    rel = { scene: { traverse: fn => fn({ material: m1, geometry: geo }) } };
+  releaseVRM(rel);
+  eq(m1.disposed, 1, 'its material freed');
+  eq(good.disposed + geo.disposed, 0, 'the shared texture and geometry kept');
+});
+
 // ---------- T-341: people on the map (people3d.mjs LOD, life3d looks) ----------
 test('map3d people: at an interior only the nearest VRM_LOD.inside station people are VRM candidates (owner 2026-10-25)', () => {
   const { insideCap, VRM_LOD } = require('../js/map3d/people3d.mjs');
