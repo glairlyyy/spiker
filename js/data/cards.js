@@ -73,8 +73,9 @@ const DECK = {
   myHand: 3, // … and their hand
   // duel cards (spec §2.39, T-367): a borrowed technique (a teammate's, the hesitating player has not learned it) costs × borrow;
   // Target Serve: exact, the receive − target;
-  // Tempo: block coverage ×; Disguise: [coverage ×, errors ×]; Commit (right): coverage ×; Read Block: coverage ×; Pressure / Hide: serves
-  duel: { borrow: 2, target: 20, tempo: 0.7, disguise: [0.75, 0.9], commit: 1.5, read: 1.2, serves: 3 }
+  // Tempo: block coverage ×; Disguise: [coverage ×, errors ×]; Commit (right): coverage ×; Read Block: coverage ×; Pressure / Hide: serves;
+  // slots (T-374): the duel slot(s) beside the hand, drawn from the deck's duel cards only — your own hand `me`, a team hand `cap`
+  duel: { borrow: 2, target: 20, tempo: 0.7, disguise: [0.75, 0.9], commit: 1.5, read: 1.2, serves: 3, slots: { me: 1, cap: 2 } }
 };
 /**
  * Requests (spec §2.37, T-349): at a turn (until `win` points after it) a non-captain asks the captain for one team play from

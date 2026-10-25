@@ -371,10 +371,11 @@ test('rel: save → load keeps run.mem; a v10 save is dropped; Rel draws no R()'
   g.__mem[g.KEYS.career] = JSON.stringify(raw);
   eq(g.Run.load(), null, 'a v10 save is dropped');
 });
-test.slow('rel: calibration — the first mate reaches bond 60 / 80 about when it did (20 seeds)', () => {
+test.slow('rel: calibration — the first mate reaches bond 60 / 80 about when it did (40 seeds)', () => {
   const got = { w60: 0, w80: 0 };
   // (10 seeds, a never-reached bond counted as week 28, the season's end — T-300: one seed of 5 swung the mean by 18 weeks)
-  for (let seed = 1; seed <= 20; seed++) {
+  // (T-374: 20 → 40 seeds — the duel slot moved the stream and seeds 1–20 ran early at 7.0 while 21–60 sat at 10.8, base 11.4)
+  for (let seed = 1; seed <= 40; seed++) {
     const [g, run] = mkPeople(seed);
     let w60 = 99,
       w80 = 99,
@@ -411,8 +412,8 @@ test.slow('rel: calibration — the first mate reaches bond 60 / 80 about when i
       }
       g.Run.endWeek(run);
     }
-    got.w60 += Math.min(28, w60) / 20;
-    got.w80 += Math.min(28, w80) / 20;
+    got.w60 += Math.min(28, w60) / 40;
+    got.w80 += Math.min(28, w80) / 40;
   }
   assert(Math.abs(got.w60 - BOND_BASE.w60) <= 2, `bond 60 at week ${got.w60.toFixed(1)} vs ${BOND_BASE.w60}`);
   assert(Math.abs(got.w80 - BOND_BASE.w80) <= 2, `bond 80 at week ${got.w80.toFixed(1)} vs ${BOND_BASE.w80} (60 at ${got.w60.toFixed(1)})`);

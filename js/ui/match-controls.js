@@ -29,6 +29,11 @@ function setLabel(sel, text) {
   const b = $(sel);
   if (b) b.textContent = text;
 }
+/** The ⚙ Hesitations level (spec §2.39, T-374): stored, default Normal; a played match reads it into m.hesLv (handMount). */
+function hesLevel() {
+  const v = store.get(KEYS.hes);
+  return v && RULES.hes.lv[v] ? v : 'normal';
+}
 /** The ⚙ pop-over: every setting as a labelled segment showing all of its options (click = set it). */
 function settingsMenu() {
   const cam = (R3D && R3D.camMode()) || 'courtside',
@@ -41,6 +46,7 @@ function settingsMenu() {
     ${seg('Zooms', 'zoom', { on: 'On', off: 'Off' }, G.camFixed || RM ? 'off' : 'on', 'On: gentle zoom on big plays at the net. Off: no zooms or pushes (motion-friendly).')}
     ${seg('Motion', 'motion', { full: 'Full', reduced: 'Reduced' }, Motion.pref, 'Full: panels slide and fade, numbers count. Reduced: short fades only (also follows your system setting).')}
     ${seg('Pause at turns', 'turns', { on: 'On', off: 'Off' }, turnPause() ? 'on' : 'off', 'On: the match pauses when the hands refill at a turn (Space plays on). Career and Monster keep their own setting.')}
+    ${seg('Hesitations', 'hes', { rare: 'Rare', normal: 'Normal', often: 'Often' }, hesLevel(), 'How often your side’s close calls go to slow motion for you to pick (a duel card plays there). Rare: closer calls only, 2 a set at most. Often: wider calls, up to 5. Simmed matches always play Normal.')}
     ${seg('Graphics', 'gfx', Object.fromEntries(Object.entries(GFX).map(([k, g]) => [k, g.name])), G.gfx, 'High: full resolution always. Auto: sharp, drops a little only if frames run slow. Fast: lower resolution for weaker devices.')}
     ${seg('Camera <kbd>C</kbd>', 'cam', CAM3, cam, "Courtside: close and low, following the ball. Broadcast: the whole court from the stands. Follow: behind one player. POV: through their eyes. Bird's-eye: from straight above, your side at the bottom.")}
     <select id="folsel" class="folsel" hidden onchange="pickFollow(this.value)" aria-label="Player to follow" title="The player the Follow camera stays behind"></select>
@@ -67,6 +73,10 @@ function setOpt(kind, v) {
     R3D.setCamMode(v);
   } else if (kind === 'motion') Motion.set(v);
   else if (kind === 'turns') setTurnPause(v === 'on');
+  else if (kind === 'hes' && RULES.hes.lv[v]) {
+    store.set(KEYS.hes, v);
+    if (A && A.m) A.m.hesLv = v; // (from the next duel on)
+  }
   const pb = $('.setpop .popb');
   if (pb) pb.innerHTML = settingsMenu();
   cam3Label();

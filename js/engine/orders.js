@@ -580,6 +580,12 @@ function hesYou(m, side, p) {
   const D = m.deck && m.deck[side];
   return !!(D && D.by === 'you') || (m.human != null && !!p && p.id === m.human);
 }
+/** Is side `side` yours (a side you captain, or your player's)? The ⚙ Hesitations level (m.hesLv) scales only its duels. */
+const hesSide = (m, side) =>
+  !!(m.deck && m.deck[side] && m.deck[side].by === 'you') || (m.human != null && squadOf(m.t[side]).some(p => p.id === m.human));
+/** Side's hesitation level (spec §2.39 T-374: RULES.hes.lv — Rare / Normal / Often, yours only; every other side Normal). */
+const hesLvOf = (m, side) =>
+  RULES.hes.lv[(m.hesLv && m.hesLv !== 'normal' && hesSide(m, side) && m.hesLv) || 'normal'] || RULES.hes.lv.normal;
 /** Could any hesitation in m be yours (a side you captain, or your player)? */
 const hesLive = m => m.human != null || !!(m.deck && m.deck.some(D => D && D.by === 'you'));
 /** Is duel card `id` on for p this play (spec §2.39: played in its hesitation; m.duelOn, the possession it was played in)? */
@@ -608,10 +614,11 @@ function hesit(m, kind, side, p, opts, ai) {
   if (m.probe || opts.length < 2 || m.hesP === m.rallyN) return none;
   const a0 = opts.find(o => o.v === ai) || opts[0],
     a1 = opts.filter(o => o !== a0).reduce((a, o) => (!a || o.score > a.score ? o : a), null),
-    late = Math.max(m.pts[0], m.pts[1]) >= H.late[0] ? H.late[1] : 1;
-  if (!a1 || a0.score - a1.score > H.margin[kind] * late) return none;
+    late = Math.max(m.pts[0], m.pts[1]) >= H.late[0] ? H.late[1] : 1,
+    L = hesLvOf(m, side); // (the ⚙ Hesitations level: your side only)
+  if (!a1 || a0.score - a1.score > H.margin[kind] * L.m * late) return none;
   const N = m.hesN || (m.hesN = [0, 0]);
-  if (N[side] >= H.cap) return none;
+  if (N[side] >= (L.cap ?? H.cap)) return none;
   N[side]++;
   m.hesP = m.rallyN;
   const n = m.hesR++,
@@ -653,7 +660,10 @@ function hesit(m, kind, side, p, opts, ai) {
   if (m.rec && m.hesB) {
     const hz = { kind, side, pid: p.id, opts: two },
       hide = // (their server's hesitation is yours to see only with a Hide to play: your side's team hand)
-        kind === 'srv' && hesYou(m, r, null) && m.deck && m.deck[r].hand.some((id, k) => id && !Cards.duelCan(m, r, k, false, hz));
+        kind === 'srv' &&
+        hesYou(m, r, null) &&
+        m.deck &&
+        m.deck[r].duel.some((id, k) => id && !Cards.duelCan(m, r, m.deck[r].hand.length + k, false, hz));
     if (you || hide) m.hesB({ dur: 600, slow: RULES.hes.slow, hes: n, acts: [{ k: 'hesit', ...h }] });
     for (const a of [act, vs]) if (a) m.hesB({ dur: 900, acts: [a] });
   }

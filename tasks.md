@@ -33,7 +33,7 @@ repo): Playwright with `RNG.seed(7)` + a seeded Math.random init script.
 
 ## Now
 
-### [ ] T-374: Duel cards get their own slot; hesitation frequency setting
+### [x] T-374: Duel cards get their own slot; hesitation frequency setting
 Spec: §2.39, §2.37          Goldens: update (duel cards leave the hand's draw: the AI sides' hands change)          Save: no change
 Goal: a duel card never clogs the hand: duel cards sit in a separate duel slot (you as a player 1, as captain 2), drawn from
 the deck's duel cards only, so the hand of 3 / 5 holds only cards you can play between points; and a ⚙ setting "Hesitations"
@@ -54,7 +54,7 @@ Accept:
 - npm test, lint, test:ui (the Hesitation and Deck match steps; the duel slot shows) pass; goldens updated with the reason.
 - `npm run cards -- 250`: captain / random / amplifiers order holds; hesitations a side a set at Rare / Normal / Often written in §2.39.
 QA: Dev deck match as captain → the duel slot, a hesitation lights it, the ⚙ Hesitations setting changes how often.
-Result:
+Result: built as written (slot = hand index hand.length + k; refills at turns; AI teams 2 slots); hesitations a side a set Rare / Normal / Often league 1.46 / 2.28 / 3.90, tour 1.13 / 1.78 / 2.87; cards order holds (captain +10.5 / +9.7, random +8.1 / +5.6, amps +5.1 / +2.2); goldens updated; stream-noise fixes in unlisted tests (career challenge counts staMax growth, people calibration 20 → 40 seeds, war seed 32 → 33, terrain seed 4245 → 4246); duel-part recipes (Sniper, Lockdown, full Target / Read Block) can no longer fuse in a hand.
 
 ### [ ] T-368: Street view models load whole
 Spec: §4.44          Goldens: unchanged          Save: no change

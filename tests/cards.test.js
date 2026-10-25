@@ -46,7 +46,7 @@ test('cards: the deck — DECK.size cards, the squad’s own first, Basics filli
   for (const p of g.squadOf(L[0])) ((p.skills = []), (p.mtrait = null), (p.op = false), (p.elOn = false));
   const m = g.newMatch(L[0], L[1], false),
     D = m.deck[0],
-    all = [...D.hand, ...D.draw];
+    all = [...D.hand, ...D.draw, ...D.duel, ...D.dpile].filter(Boolean);
   eq(all.length, g.DECK.size, 'deck size');
   eq(D.hand.length, g.DECK.hand, 'hand size');
   const own = all.filter(id => g.CARDS[id].kind !== 'basic'),
@@ -328,7 +328,8 @@ test('cards: a Broken side holds a hand of 4 and starts its stage’s morale low
     m = g.newMatch(T[0], T[1], false, { weak: [3, 0] });
   eq(m.deck[0].hand.length, 4, 'Broken: a hand of 4');
   eq(m.deck[1].hand.length, 5, 'Steady: 5');
-  eq(m.deck[0].hand.length + m.deck[0].draw.length, g.DECK.size, 'the fifth card back on the deck');
+  const W = m.deck[0];
+  eq(W.hand.length + W.draw.length + W.duel.filter(Boolean).length + W.dpile.length, g.DECK.size, 'the fifth card back on the deck');
   assert(
     g.squadOf(m.t[0]).every(p => Math.abs(m.mor[p.id] + g.WAR_STAGES[3].mor) < 1e-9),
     'every Broken player starts at −mor morale'
@@ -761,8 +762,8 @@ test('hesitation: a close duel call hesitates — at most RULES.hes.cap a side, 
       m = g.newMatch(L[j % L.length], L[(j * 3 + 1) % L.length], false);
     while (!m.over) g.playRally(m);
     sets++;
-    for (const i of [0, 1]) assert(m.hesLog.filter(h => h.side === i).length <= g.RULES.hes.cap, 'over the cap');
-    for (const h of m.hesLog) {
+    for (const i of [0, 1]) assert((m.hesLog || []).filter(h => h.side === i).length <= g.RULES.hes.cap, 'over the cap');
+    for (const h of m.hesLog || []) {
       n++;
       late += Math.max(...h.at) >= g.RULES.hes.late[0];
       assert(h.v === h.ai || h.card, 'nobody yours: the AI pick, or the captain’s duel card');
@@ -777,30 +778,32 @@ test('hesitation: a close duel call hesitates — at most RULES.hes.cap a side, 
   assert(late / n > 0.3, `late points hesitate more easily (${((100 * late) / n).toFixed(0)} % of them at ${g.RULES.hes.late[0]}+)`);
 });
 test('hesitation: yours gets a beat; the rally replayed with the same dice is the same, your other pick changes only what follows (spec §2.39, T-367)', () => {
-  const g = load(11);
-  g.RNG.seed(5);
-  const L = g.mkLeagueTeams(),
-    m = g.newMatch(L[0], L[3], true, { cards: [{ by: 'you', deck: DUELS }, {}] }),
+  const g = load(11),
     J = x => JSON.stringify(x);
   let seen = 0;
-  while (!m.over) {
-    const { S, draws, r } = pulled(g, m),
-      live = g.rallySnap(m),
-      h = r.beats.findIndex(b => b.hes != null);
-    const same = g.rallyReplay(m, S, draws, {});
-    eq(J(same.r.beats), J(r.beats), 'the same dice, the same rally');
-    if (h >= 0) {
-      seen++;
-      const a = r.beats[h].acts[0];
-      eq(a.k, 'hesit', 'its act');
-      assert(r.beats[h].slow === g.RULES.hes.slow, 'slow motion');
-      const b = g.rallyReplay(m, S, draws, { [a.n]: { v: a.opts[1].v } });
-      eq(J(b.r.beats.slice(0, h)), J(r.beats.slice(0, h)), 'everything before the hesitation stays');
-      eq(b.r.beats[h].hes, a.n, 'the hesitation at the same beat');
-      const o = g.hesOdds(m, S, draws, {}, a.n, { v: a.opts[0].v }, a.side, [0, 1, 2, 3]);
-      assert(o >= 0 && o <= 1, 'odds');
+  for (const seed of [5, 6]) {
+    g.RNG.seed(seed);
+    const L = g.mkLeagueTeams(),
+      m = g.newMatch(L[0], L[3], true, { cards: [{ by: 'you', deck: DUELS }, {}] });
+    while (!m.over) {
+      const { S, draws, r } = pulled(g, m),
+        live = g.rallySnap(m),
+        h = r.beats.findIndex(b => b.hes != null);
+      const same = g.rallyReplay(m, S, draws, {});
+      eq(J(same.r.beats), J(r.beats), 'the same dice, the same rally');
+      if (h >= 0) {
+        seen++;
+        const a = r.beats[h].acts[0];
+        eq(a.k, 'hesit', 'its act');
+        assert(r.beats[h].slow === g.RULES.hes.slow, 'slow motion');
+        const b = g.rallyReplay(m, S, draws, { [a.n]: { v: a.opts[1].v } });
+        eq(J(b.r.beats.slice(0, h)), J(r.beats.slice(0, h)), 'everything before the hesitation stays');
+        eq(b.r.beats[h].hes, a.n, 'the hesitation at the same beat');
+        const o = g.hesOdds(m, S, draws, {}, a.n, { v: a.opts[0].v }, a.side, [0, 1, 2, 3]);
+        assert(o >= 0 && o <= 1, 'odds');
+      }
+      g.rallyRestore(m, live);
     }
-    g.rallyRestore(m, live);
   }
   assert(seen >= 2, `your hesitations seen (${seen})`);
 });
@@ -812,7 +815,8 @@ test('duel cards: only in a hesitation — never played between points, the capt
     g.RNG.seed(300 + j);
     const L = g.mkLeagueTeams(),
       m = g.newMatch(L[j % L.length], L[(j + 2) % L.length], false, { cards: [{ deck: DUELS }, { deck: DUELS }] });
-    for (const i of [0, 1]) m.deck[i].hand.forEach((id, h) => id && eq(g.Cards.can(m, i, h), 'duel', 'not between points'));
+    for (const i of [0, 1])
+      m.deck[i].duel.forEach((id, k) => id && eq(g.Cards.can(m, i, m.deck[i].hand.length + k), 'duel', 'not between points'));
     while (!m.over) g.playRally(m);
     for (const i of [0, 1]) {
       assert(!m.deck[i].log.some(e => e.k === 'play' && g.CARDS[e.id].kind === 'duel'), 'a duel card played between points');
@@ -845,9 +849,85 @@ test('duel cards: only in a hesitation — never played between points, the capt
   g.cardsInit(m, { cards: [{ deck: ['target'], fill: false }, {}] });
   for (const q of m.t[0].P) if (q !== p && g.ownsTech(q, 'target')) q.wit = q.speed = q.power = 1; // (nobody else knows it by the stats)
   if (m.t[0].P.some(q => g.ownsTech(q, 'target'))) return; // (career-learned: no case here)
-  eq(g.Cards.duelCan(m, 0, 0, false, hz), 'need', 'nobody knows it');
+  const ds = m.deck[0].hand.length; // (its duel slot: past the hand, T-374)
+  eq(g.Cards.duelCan(m, 0, ds, false, hz), 'need', 'nobody knows it');
   (mate.skills || (mate.skills = [])).push('target');
-  eq(g.Cards.duelCan(m, 0, 0, false, hz), null, 'a teammate knows it');
+  eq(g.Cards.duelCan(m, 0, ds, false, hz), null, 'a teammate knows it');
   const inf = g.Cards.duelInfo(m, 0, 'target', hz);
   assert(inf.borrow && inf.cost.amt === g.CARDS.target.cost.amt * g.DECK.duel.borrow, 'borrowed: the higher cost');
+});
+
+test('duel slot: duel cards leave the hand for their own slot (captain 2, you 1), refill from the duel pile at a turn; a discard leaves a gap (spec §2.39, T-374)', () => {
+  const g = load(11),
+    dk = id => g.CARDS[id].kind === 'duel';
+  g.RNG.seed(21);
+  const L = g.mkLeagueTeams(),
+    deck = ['power', 'cover', 'tip', 'deep', 'pressure', 'hide', 'dtempo', 'disguise', 'isrv', 'iatk', 'iset', 'iblk'],
+    m = g.newMatch(L[0], L[1], false, { cards: [{ by: 'you', deck }, {}] }),
+    D = m.deck[0];
+  eq(D.duel.length, g.DECK.duel.slots.cap, 'a team hand: 2 duel slots');
+  eq(D.hand.length, g.DECK.hand, 'the hand size stays');
+  assert(D.duel.every(dk) && D.dpile.every(dk), 'the slots and their pile: duel cards only');
+  assert(!D.hand.some(id => id && dk(id)) && !D.draw.some(dk), 'the hand draws no duel card');
+  eq(D.duel.length + D.dpile.length, 4, 'every duel card of the deck in the duel pile or a slot');
+  // every side's hand, all match long: never a duel card
+  for (const i of [0, 1]) assert(!m.deck[i].hand.some(id => id && dk(id)), 'an AI hand with a duel card');
+  // a discard from the slot: a gap until the next turn, then the duel pile refills it
+  const h = D.hand.length,
+    id0 = D.duel[0];
+  assert(g.Cards.discard(m, 0, h), 'discard from the duel slot');
+  eq(D.duel[0], null, 'a gap');
+  assert(
+    D.disc.some(e => e.id === id0),
+    'to the discard pile'
+  );
+  const top = D.dpile[0];
+  g.Cards.refill(m, 0);
+  eq(D.duel[0], top, 'refilled from the duel pile');
+  assert(!D.hand.some(id => id && dk(id)), 'the hand still holds none');
+  while (!m.over) {
+    g.playRally(m);
+    for (const i of [0, 1]) assert(!m.deck[i].hand.some(id => id && dk(id)), 'a duel card in a hand');
+  }
+  // your own hand of 3: one duel slot
+  g.RNG.seed(22);
+  const L2 = g.mkLeagueTeams(),
+    n = g.newMatch(L2[0], L2[1], false),
+    p = n.t[0].P.find(q => q.role === 'WS'),
+    Y = g.Cards.myDeck(n, 0, p.id, ['pressure', 'hide', 'isrv', 'iatk']);
+  eq(Y.duel.length, g.DECK.duel.slots.me, 'your hand: 1 duel slot');
+  eq(Y.hand.length, g.DECK.myHand, 'your hand: 3');
+  assert(dk(Y.duel[0]) && Y.dpile.every(dk) && !Y.hand.some(id => id && dk(id)), 'your duel card in its slot');
+  eq(g.Cards.can(n, 0, Y.hand.length, true), 'duel', 'never between points');
+});
+test('hesitation level: Rare / Normal / Often scale your side only — AI-vs-AI and other sides stay Normal (spec §2.39, T-374)', () => {
+  const g = load(11),
+    per = {};
+  for (const lv of ['rare', 'normal', 'often']) {
+    let you = 0,
+      them = 0;
+    for (let j = 0; j < 16; j++) {
+      g.RNG.seed(8000 + j);
+      const L = g.mkLeagueTeams(),
+        m = g.newMatch(L[j % L.length], L[(j * 3 + 1) % L.length], false, { cards: [{ by: 'you' }, {}] });
+      m.hesLv = lv;
+      while (!m.over) g.playRally(m);
+      const H = m.hesLog || [];
+      you += H.filter(h => h.side === 0).length;
+      them += H.filter(h => h.side === 1).length;
+      assert(H.filter(h => h.side === 0).length <= (g.RULES.hes.lv[lv].cap ?? g.RULES.hes.cap), `${lv}: over its cap`);
+    }
+    per[lv] = { you, them };
+  }
+  assert(per.rare.you < per.normal.you && per.normal.you < per.often.you, `yours: Rare < Normal < Often (${JSON.stringify(per)})`);
+  // AI vs AI: the level does nothing (no side is yours)
+  const run = lv => {
+    g.RNG.seed(8100);
+    const L = g.mkLeagueTeams(),
+      m = g.newMatch(L[0], L[1], false);
+    m.hesLv = lv;
+    while (!m.over) g.playRally(m);
+    return JSON.stringify([m.pts, m.hesLog || []]);
+  };
+  eq(run('often'), run('normal'), 'AI vs AI: unchanged');
 });

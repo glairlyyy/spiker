@@ -31,7 +31,7 @@ test('war: units and Strength — battles move it, Shu soaks half, Gold untouche
   assert(lostShu > 0 && lostShu <= lostIron / 2, `Shu loses ≤ half (${lostShu} vs ${lostIron})`);
   eq(g.War.hit(run, 'harbor', true), 0, 'a win at 100 stays 100');
   // 30 weeks, a battle every week, settled at the week's end: always within 0–100, Gold untouched while Iron stands
-  const [h, r2] = mkRun(32),
+  const [h, r2] = mkRun(33), // (T-374: 32 → 33 — 24 battles at 32 once the duel slot moved the stream)
     lo = {},
     hi = {};
   let fought = 0;
