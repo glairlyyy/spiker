@@ -187,7 +187,7 @@ function fakeSet(c, x) {
       for (const q of others) dr(m, q, 0.02);
       bitten =
         R() < clamp(0.8 - (W(db) - 0.8) * 0.45 + (W(setter) - 1.5) * 0.3 + (skillMod(setter, 'decoy') - 1) - readBonus, 0.15, 0.9) ||
-        ((ordOf(m, db, 'blk') || m.dset[ds]) === 'commit' && db.role === 'MB'); // a Commit middle is already jumping (their own order first: §2.29)
+        (!!db && c.front(ds, db) && upEarly(db, blkCommit(m, ds, db))); // a committed blocker is already jumping (spec §2.39)
       const zOf = p => (p.role === 'MB' && MBs.includes(p) ? mbZ(p) : clamp(HOME[p.slot][1] + (p.slot === 'W0' ? -0.05 : 0.05), 0.1, 0.9)),
         xOf = p => sx(atk, p.role === 'MB' && MBs.includes(p) ? 466 : 420);
       const fk = [];
@@ -381,7 +381,7 @@ function spikePower(c, x) {
   st(m, spiker, 'att');
   dr(m, spiker, 0.035 + pj / 4000);
   const setMul = { perfect: 1.12, good: 1, bad: 0.72 }[sq2];
-  const so = ordOf(m, spiker, 'shot'), // role orders (spec §2.29): Tip always tips, another ordered shot never (the same draw)
+  const so = x.shotO, // the shot played (spec §2.29 / §2.39): Tip always tips, another chosen shot never (the same draw)
     tip0 = bad && !elSrc && R() < 0.35,
     tip = so === 'tip' ? !elSrc : so ? false : tip0;
   let pow = tip ? rnd(18, 30) : Formula.spikePower({ spiker, team: atkT, setMul, quick, back, longB, combo, fat }) * (x.powK ?? 1); // × Power through (spec §2.26)
@@ -515,7 +515,7 @@ function landingSpot(c, x) {
   const bMean = b1 ? (bz0 + bz1) / 2 : bz0;
   let lz = around ? (bMean > 0.5 ? rnd(0.1, 0.35) : rnd(0.65, 0.9)) : clamp(laneZ(spZ, x.ch) + rnd(-0.12, 0.12), 0.1, 0.9); // the channel the hitter aimed at (spec §2.24)
   let lx = sx(ds, tip ? rnd(390, 460) : rnd(170, 400));
-  if (!tip && !around && m.ord[x.spiker.id]) [lx, lz] = atkLand(m, x.spiker, defT, blockers, ds, lx, lz); // aimed (spec §2.29)
+  if (!tip && !around && x.aimO) [lx, lz] = atkLand(m, x.aimO, defT, blockers, ds, lx, lz); // aimed (spec §2.29 / §2.39)
   if (elS && elS.far)
     [lx, lz] = elFar(
       m,

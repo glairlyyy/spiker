@@ -16,6 +16,11 @@ const blockSkill = b => clamp((Formula.level(b, 'block') - SKILL.blk[0]) / SKILL
 /** Tooling it off the hands and out: only off a real but partial block (coverage in this range), at this chance. */
 const TOOL_COV = [0.25, 0.6],
   TOOL_P = 0.05;
+/** Can the block be tooled (a Tool shot, spec §2.39: off a wider range of blocks — ORDERS.atk.tool.cov)? */
+const toolable = (x, cov) => {
+  const r = x.shotO === 'tool' ? ORDERS.atk.tool.cov : TOOL_COV;
+  return cov >= r[0] && cov < r[1];
+};
 
 /**
  * 9. Block: block break (drill + hit-stop) → stuff (kill block, or a block-cover dig) → touch → tool off the hands.
@@ -88,7 +93,7 @@ function block(c, x) {
       meet();
       softTouch = blockTouch(c, x, k);
       pow = k.pow;
-    } else if (!smashed && !late && cov >= TOOL_COV[0] && cov < TOOL_COV[1] && R() < TOOL_P) {
+    } else if (!smashed && !late && toolable(x, cov) && R() < (x.shotO === 'tool' ? ORDERS.atk.tool.p : TOOL_P)) {
       if (c.V) dropDefScene(c.m); // tooled: the blocker's scene line goes too (owner 2026-10-07)
       meet();
       return blockTool(c, x, k);

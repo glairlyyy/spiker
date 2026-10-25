@@ -55,9 +55,9 @@ const DECK = {
     tempo: ['quick', 'beat', 'feedhot'],
     counter: ['deep', 'sdig', 'strap'],
     sky: ['power', 'rset', 'stand'],
-    bombers: ['hunt', 'float', 'short'],
+    bombers: ['float', 'short', 'beat'],
     mind: ['beat', 'cover', 'talk'],
-    balanced: ['hunt', 'cover', 'tip']
+    balanced: ['power', 'cover', 'tip']
   },
   book: [2, 3],
   iq: 0.7,
@@ -290,16 +290,6 @@ const CARDS = {
     desc: 'Quick tempo for the slide: power +12 % more'
   },
   // the captain's playbook
-  hunt: {
-    name: 'Hunt the Passer',
-    zone: 'atk',
-    kind: 'play',
-    src: 'book',
-    plan: { atk: 'hunt' },
-    grp: 'aplan',
-    tally: 'serve',
-    desc: 'Every serve at their weakest passer'
-  },
   power: {
     name: 'Power Through',
     zone: 'atk',
@@ -418,11 +408,10 @@ const CARDS = {
     kind: 'play',
     src: 'tech',
     need: 'target',
-    ord: ['tgt', 'weak'],
     who: 'holders',
     buff: { serve: 2 },
     tally: 'serve',
-    desc: 'Holders serve their weakest passer'
+    desc: 'Holders’ aimed serves land exact, no aim error; serve +2 %'
   },
   delay: {
     name: 'Delayed Spike',
@@ -512,7 +501,7 @@ const CARDS = {
     need: 'readblk',
     buff: { jump: 6 },
     tally: 'defend',
-    desc: 'Holders block +6 %'
+    desc: 'Holders read the quick in time; block +6 %'
   },
   softblk: {
     name: 'Soft Block',
@@ -636,7 +625,7 @@ const CARDS = {
     zone: 'def',
     kind: 'trap',
     src: 'book',
-    trap: ['hunt', 'killer', 'drive', 'target', 'float'],
+    trap: ['killer', 'drive', 'target', 'float'],
     desc: 'Hidden: if they slot a serve play, it burns'
   },
   qtrap: {
@@ -857,14 +846,6 @@ const CARD_AI = {
  * when it fits, × −1 when countered (a counter slotted on the other side), × `mis` when neither. Edges stack with the buffs.
  */
 const CARD_EDGE = {
-  hunt: {
-    fit: 'weakPass',
-    ctr: ['cover'],
-    e: [
-      ['us', 'serve', 30],
-      ['them', 'def', -10]
-    ]
-  },
   target: {
     fit: 'weakPass',
     ctr: ['cover'],

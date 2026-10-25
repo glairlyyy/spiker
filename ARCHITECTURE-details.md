@@ -278,8 +278,9 @@ coverage × `swingCov`, no double). Second blocker `b1` closes beside `b0` on th
 (`defT.S.dbl` × 0.6–1.4 by `readQ`, wit + speed) passes and they can reach the spot; sync attacks never get one. A blocker who
 cannot reach the spot in time is late (coverage × `lateCov`); `readQ` < 0.35 splits the hands (× `splitCov`). Everything
 returns `lane`, `pipe`, `late` for block() / hype. `m.dset[side]` is the defence setting (`DEFSETS`: read = no change;
-commit = the blocker on a quick is already up — reach × `commitReach`, coverage × `commitQuick`, a double forms — but the middle
-counts as bitten on any fake and covers little else (× `commitMiss`); bunch = both defenders start near the middle
+commit = its middles commit on the quick (blkCommit, spec §2.39 — each blocker's own order or read comes first): committed on
+the spiker — reach × `commitReach`, coverage × `commitQuick`, a double forms — on anyone else × `commitMiss`, and bitten on any
+fake; bunch = both defenders start near the middle
 (`bunchStartZ`, as far as their speed allows), middle attacks × `bunchMid` with the double always forming, pins × `bunchPin`).
 Scaled coverage is capped at 1.2 so a setting cannot turn a wall into block-break territory. `m.att[side]` is an engine-only
 tally (attacks / kills / stuffs by kind quick, mid, pin; doubles; late) used by tests — it draws no randoms.
@@ -1357,7 +1358,27 @@ absolute logical Y (push-in / zoom clamps, the timeout banner) shift by `VH − 
   (dig distance × `backDd`). Board odds: `atkOdds(m, their side, null, [[mb, 'blk', v]])` shown as stuff · their kill.
 - Result card (T-281): `m.ordLog[pid]['kind:value'] = { kind, v, n, k, err, stf, ace, bad }` — srvLog adds serve orders,
   tallyAttack → `ordAttack` the hitter's aim / shot, the setter's feed (only when `feedOrd`) / fake and the front-row
-  middles' blk; `boardResult(m)` (plan-board.js) prints them under the plans for the sides whose board you saw.
+  blockers' blk; `boardResult(m)` (plan-board.js) prints them under the plans for the sides whose board you saw.
+- The three duels (spec §2.39, T-366; the board UI itself was removed in T-298 — the orders and their odds stay engine API):
+  - Serve: `tgtOpts` = each passer, `seam`, `deep`, `safe`, all free. `tgtOf(m, server, s)` = the order, else `tgtAI` (each
+    option's `srvOdds` on the coarse grid `ORDERS.odds.aiRoll`, score `100 × (hit × ORDERS.srv.ai − err)`, best wins; cached per
+    serve in `m.tgtAIc` with the scores `S` — T-367's hesitation reads them). serveWalk takes it (`c.tgtV`); serveToss fires Target
+    Serve on any aimed serve; `tgtResolve(m, server, RT, v)` → `{ rc, exact, seam }` | `{ zone }`; `tgtErrK` (aimed without Target ×
+    `aimErr`, deep / safe × their `err`); safe: pace × `safe.pace`; deep: the spot pulled `deep.k` toward their end line (the same
+    draw), receive − `deep.rs`. The Hunt plan / card are gone; SUB.hunt (the captain's targeted sub) stays.
+  - Settling: `m.settle[pid]` = serves in a row at them; serveAim: `rs = settled(m, rc, rs)` (× 1 + `RULES.settle.step` × n, ≤
+    `cap`), then `settleLog` (+1, each teammate − `fade`). srvOdds counts it too. No draws.
+  - Spike: `atkOrd(m, spiker, defT, x)` in laneAim = the aim / shot orders, else `atkPick` (fight / avoid / plain scored from
+    x.cov; fight → shot `power`, or `tool` on a block covering `ORDERS.atk.tool.cov`; avoid → aim `open` (Wit 1.2+) or
+    `weakDigger`). atkApply: avoid → coverage × `avoidCov`, pace × `avoidPow`; Tool → no cut, errors × `tool.err`, block() tools
+    it at `tool.p` (`toolable`). The played aim / shot ride on x (`aimO`, `shotO`, `atkPk`): spikePower (tip) and landingSpot
+    (atkLand) read them.
+  - Block: `blkOpts(p, T)` = Read, Commit (`'quick'`: whoever goes quick), Commit on each hitter, Stay back (middles), for every
+    blocker. `blkCommit(m, ds, b)` = whom b commits to: the order, else `blkPick` (commit on the hitter fed most once
+    `ORDERS.blk.seen` attacks are in and their share beats `commitAt`), else the team's Commit setting (a middle on the quick).
+    blockApproach builds `cm` (front-row blocker → hitter); `right(b)` = committed on the spiker (reach × `commitReach`,
+    coverage × `commitQuick`, a double forms), `wrong(b)` (coverage × `commitMiss`); fakeSet: a committed blocker bites; netTouch:
+    a committed blocker lunges (`commit` rate); Read Block only for a reading blocker.
 
 ## Momentum stages (spec §2.14, T-259)
 
