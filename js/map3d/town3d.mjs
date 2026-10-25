@@ -489,6 +489,7 @@ export function createTown(scene, heightAt, opts = {}) {
     ringLots = new Set(), // lot indices collapsed out of the map look now
     ringWant = new Set(), // … the ones the built ring draws
     ringN = { lots: 0, tris: 0, builds: 0, ms: 0 },
+    ringCache = new Map(), // lot index → its full build { ok, W, G, R, I } (mesher raws), kept while near the ring (rebuilt per layout)
     lastModel = null;
   const ringClear = () => {
     for (const o of [...ringG.children]) {
@@ -504,7 +505,7 @@ export function createTown(scene, heightAt, opts = {}) {
         const a = p.mesh.geometry.attributes.position,
           arr = a.array;
         if (!p.orig) p.orig = arr.slice();
-        let dirty = false;
+        const up = []; // the changed ranges [start, end) (floats): only they are uploaded, not the whole merged buffer
         det.ids.forEach((li, j) => {
           if (li < 0) return;
           const h = want.has(li),
@@ -515,9 +516,14 @@ export function createTown(scene, heightAt, opts = {}) {
           if (v1 <= v0) return;
           if (h) for (let v = v0; v < v1; v++) arr[v] = p.orig[v0 + (v % 3)];
           else arr.set(p.orig.subarray(v0, v1), v0);
-          dirty = true;
+          if (up.length && up[up.length - 1][1] === v0) up[up.length - 1][1] = v1;
+          else up.push([v0, v1]);
         });
-        if (dirty) a.needsUpdate = true;
+        if (up.length) {
+          a.clearUpdateRanges();
+          for (const [v0, v1] of up) a.addUpdateRange(v0, v1 - v0);
+          a.needsUpdate = true;
+        }
       }
     ringLots = want;
   };
@@ -613,7 +619,8 @@ export function createTown(scene, heightAt, opts = {}) {
       want = new Set(),
       M = { W: mesher({ wmask: 3 }), G: mesher({ glow: 3 }), R: mesher(), I: mesher({ room: 4, tan: 3 }) },
       col = new THREE.Color(),
-      frames = [];
+      frames = [],
+      got = []; // the ring's lots' builds (cached), in lot order
     (L.lots || []).forEach((l, i) => {
       const k = KIT[l.kind];
       if (!k) return;
@@ -623,9 +630,26 @@ export function createTown(scene, heightAt, opts = {}) {
       const f = lotFrame(l, i);
       if (f) frames.push(f);
       if (fast || (x - cx) ** 2 + (z - cz) ** 2 > R2) return;
-      lotColour(l, i, k, col);
-      if (buildLot(M, l, i, heightAt(x, z), [col.r, col.g, col.b], true)) want.add(i);
+      let c = ringCache.get(i);
+      if (!c) {
+        // built once (while it stays near): a rebuild only merges the cached vertices again
+        const B = { W: mesher({ wmask: 3 }, 256), G: mesher({ glow: 3 }, 256), R: mesher({}, 256), I: mesher({ room: 4, tan: 3 }, 256) };
+        lotColour(l, i, k, col);
+        c = { ok: buildLot(B, l, i, heightAt(x, z), [col.r, col.g, col.b], true), W: B.W.raw(), G: B.G.raw(), R: B.R.raw(), I: B.I.raw() };
+        ringCache.set(i, c);
+      }
+      got.push(c);
+      if (c.ok) want.add(i);
     });
+    for (const p of ['W', 'G', 'R', 'I']) {
+      M[p].reserve(got.reduce((n, c) => n + (c[p] ? c[p].n : 0), 0) + (p === 'W' ? 30000 : 0)); // (W: + the ground detail)
+      for (const c of got) M[p].append(c[p]);
+    }
+    const keep = (RING.r + 2 * RING.step) ** 2; // (the cache keeps the lots a short walk can bring back)
+    for (const i of ringCache.keys()) {
+      const l = L.lots[i];
+      if (!l || (l.at[0] * MAP_M - cx) ** 2 + (l.at[1] * MAP_M - cz) ** 2 > keep) ringCache.delete(i);
+    }
     ringGround(M.W, L.roads || [], cx, cz, frames);
     ringClear();
     const mats = detailMats();
@@ -902,6 +926,7 @@ export function createTown(scene, heightAt, opts = {}) {
         layoutKey = key;
         clear();
         ringLots = new Set(); // (the new map-look meshes show every lot)
+        ringCache = new Map();
         ringWant = new Set();
         ringAt = null;
         const tint = new Map(L.regions.map(r => [r.id, r.color])),

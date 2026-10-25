@@ -1,9 +1,10 @@
-// Street-level streaming (spec §4.37 6 Streaming, T-364): at street level only the blocks near the camera are drawn in full —
+// Street-level streaming (spec §4.37 6 Streaming, T-364): at street level only the blocks near you are drawn in full —
 // the island is cut into blocks (the terrain's chunks, ~190 m), each layer (terrain3d chunks, town3d's detailed lots, nature3d's
-// instances, the story figures) prepares a block's share lazily (a few per frame, within a time budget) and, once every near
-// block is ready, draws only those (one draw call per part as before: the merged meshes get an index of the near lots, the
-// instanced ones their near instances packed to the front). Beyond them a cheap far version (coarse terrain, the Fast boxes, flat
-// trees) under the street haze. If the block you stand in is not shown yet, the walk holds ("Loading…") until it is.
+// instances, the story figures) prepares a block's share lazily (a few per frame, within a time budget; the block you stand in
+// first, at once) and, once every near block is ready, draws only those (the ready part at once when yours isn't drawn yet;
+// one draw call per part as before: the merged meshes get an index of the near lots, the instanced ones their near instances
+// packed to the front). Beyond them a cheap far version (coarse terrain, the Fast boxes, flat trees) under the street haze.
+// Your own block is prepared and drawn the frame you reach it, so the walk never waits; the hold ("Loading…") is a fallback only.
 // The map view (street weight < STREAM.show) draws everything as before. Display only: no randoms.
 //   createStream(grid, layers) → { tick({ cam, you, st, low }), near(x, z), loading(), haze(st, near, far), info(), reset() }
 //   layer = { id, ver() (a new value = rebuilt: its blocks are prepared again), prep?(k) (block k's share), show(keys | null) }
@@ -12,7 +13,7 @@ import * as THREE from 'three';
 /** The tunables (m, s, ms). Fast: the same streaming, closer. */
 export const STREAM = {
   show: 0.6, // street weight from which only the near blocks are drawn in full (below: the map look, everything)
-  r: 250, // full detail: the blocks whose nearest point is within r of the camera
+  r: 250, // full detail: the blocks whose nearest point is within r of you
   pre: 420, // blocks prepared ahead (so a walk never waits)
   step: 16, // the near set is looked at again when the camera moved this far
   budget: 3, // ms of block preparing per frame (holding: × 4)
@@ -126,7 +127,7 @@ export function ranges(geo, spans) {
   if (geo.index !== I) geo.setIndex(I);
   geo.setDrawRange(0, m);
 }
-/** The stream manager: picks the near blocks round the camera, prepares them across frames, shows them when all are ready. */
+/** The stream manager: picks the near blocks round you, prepares them across frames (yours first), shows them when all are ready. */
 export function createStream(G, layers) {
   const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
   let active = false,
@@ -138,7 +139,7 @@ export function createStream(G, layers) {
     shownKey = null,
     hold = false,
     held = 0,
-    N = { preps: 0, shows: 0, ms: 0 };
+    N = { preps: 0, shows: 0, holds: 0, ms: 0, showMs: 0 };
   const built = new Map(layers.map(l => [l.id, { ver: undefined, set: new Set() }]));
   const T = low => (low ? { ...STREAM, ...STREAM.fast } : STREAM);
   const ready = k => layers.every(l => built.get(l.id).set.has(k));
@@ -152,8 +153,8 @@ export function createStream(G, layers) {
     held = 0;
   };
   const S = {
-    /** Each frame: cam / you = world [x, z], st = the street weight, low = Fast, dt (s). → { on, hold, wait } */
-    tick({ cam, you, st, low, dt = 0 }) {
+    /** Each frame: you = your world [x, z] (cam, the camera's, is not used), st = the street weight, low = Fast, dt (s). → { on, hold, wait } */
+    tick({ you, st, low, dt = 0 }) {
       if (!(st >= STREAM.show)) return (off(), { on: false, hold: false, wait: false });
       active = true;
       const P = T(low);
@@ -165,17 +166,19 @@ export function createStream(G, layers) {
         if (v !== b.ver) ((b.ver = v), b.set.clear(), (dirty = true));
       }
       if (dirty) shownKey = null;
-      if (dirty || !at || Math.hypot(cam[0] - at[0], cam[1] - at[1]) > P.step) {
-        at = cam.slice();
-        want = G.within(cam[0], cam[1], P.r);
-        queue = G.within(cam[0], cam[1], P.pre).filter(k => !ready(k));
+      // the near set round you (not the camera: it can be held back, e.g. by the week-1 fence), looked at again every `step` m
+      if (dirty || !at || Math.hypot(you[0] - at[0], you[1] - at[1]) > P.step) {
+        at = you.slice();
+        want = G.within(you[0], you[1], P.r);
+        queue = G.within(you[0], you[1], P.pre).filter(k => !ready(k));
       }
       const yk = G.of(you[0], you[1]);
-      hold = !shown || !shown.has(yk);
-      // prepare a few blocks (more while the walk holds)
-      const t0 = now(),
-        budget = P.budget * (hold ? 4 : 1),
-        per = P.per * (hold ? 4 : 1);
+      if (!ready(yk)) queue = [yk, ...queue.filter(k => k !== yk)]; // your own block first (an arrival, a rebuilt layer)
+      // prepare a few blocks (more while the near set is only partly drawn)
+      const part = !shown || shownKey === null || shown.size < want.length || !shown.has(yk),
+        t0 = now(),
+        budget = P.budget * (part ? 4 : 1),
+        per = P.per * (part ? 4 : 1);
       let n = 0;
       while (queue.length && (n === 0 || (n < per && now() - t0 < budget))) {
         const k = queue.shift();
@@ -188,16 +191,21 @@ export function createStream(G, layers) {
         n++;
         N.preps++;
       }
-      // show the near set once all of it is ready
-      const key = want.join(',');
-      if (key !== shownKey && want.every(ready)) {
-        const set = new Set(want);
+      // show the near set once all of it is ready — or its ready part at once when your block isn't drawn (topped up later)
+      const all = want.every(ready),
+        have = all ? want : want.filter(ready),
+        key = have.join(',');
+      if (key !== shownKey && ready(yk) && (all || !shown || !shown.has(yk))) {
+        const set = new Set(have),
+          t1 = now();
         for (const l of layers) l.show(set);
+        N.showMs = +(now() - t1).toFixed(1);
         shown = set;
-        shownKey = key;
+        shownKey = all ? key : null; // (a part: shown again when the rest is ready)
         N.shows++;
-        hold = !shown.has(yk);
       }
+      hold = !shown || !shown.has(yk);
+      if (hold) N.holds++;
       if (n) N.ms = +(now() - t0).toFixed(1);
       held = hold ? held + dt : 0;
       return { on: true, hold, wait: hold && held >= STREAM.wait };
@@ -213,7 +221,7 @@ export function createStream(G, layers) {
         k = Math.min(1, Math.max(0, (st - STREAM.show) / (1 - STREAM.show)));
       return [Math.min(near, near + (H[0] - near) * k), Math.min(far, far + (H[1] - far) * k)];
     },
-    /** QA: { on, near (blocks shown), want, queue, built (per layer), hold, preps, shows, ms (the last frame's preparing) }. */
+    /** QA: { on, near (blocks shown), want, queue, built (per layer), hold, preps, shows, holds (frames held), ms (the last frame's preparing), showMs (the last show) }. */
     info: () => ({
       on: active,
       near: shown ? shown.size : 0,

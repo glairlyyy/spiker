@@ -1896,6 +1896,13 @@ the AI coach fills every slot you leave with the same function. Built and measur
     draws), the building's walls and roof draw once, not twice, and the station prompt no longer forces a page layout every frame.
     Measured headless at the gym (Auto): draw calls inside 317 → 254 (outside 145), VRM shadow meshes 67 → 36, a VRM 43 → 36
     calls; no shader compiles inside; the look is unchanged but for the station people beyond 4 (light figures).
+    **Walking at street level (owner, 2026-10-25: "why is there 'Loading…' every time I move with WASD? … it drops when I start spam
+    moving") [built 2026-10-25]**: every WASD stop is a travel, and each moved the fog's lantern (it is lit round where you stand), so
+    the whole island was re-dimmed — terrain, every building, every tree, the night lights rebuilt — ~130 ms a stop headless; the
+    street detail ring (every 30 m) built all its ~250 lots again (~130 ms). Now at street level the lantern follows you only after
+    64 m (off street level it catches up at once), the ring builds a lot once and only re-merges it, and only the hidden lots' vertices
+    are uploaded. The near blocks are picked round you, not the camera; the block you stand in is prepared and drawn the frame you reach
+    it (the rest topped up within a few frames), so the walk never waits — "Loading…" is only a fallback.
 - §4.40 The island × 2 and real facilities **[built 2026-10-24 — T-350–T-351; not yet: the drone's field spots lit like places; zoomed out shows region names, not district names;  later (owner, 2026-10-24): more fillers for Wei, the Cup-win drop (63 → 42 %, 12 runs) re-measured]** (owner, 2026-10-23: "expand the island 2× so travel matters
   and there is room for proper facilities"; "remove pins entirely — a building or a piece of kit lights up on hover"):
   - **Scale** (T-350): `MAP_SCALE` 2.25 → 4.5 (~2.4 × 1.6 km). Towns and districts spread out with it (the same layout, twice the

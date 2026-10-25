@@ -853,6 +853,12 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   `forceSinglePass` (three draws a transparent double-sided mesh twice and re-picks its program per pass). map3d `interStep`
   re-reads the canvas rect for the station prompt once a second / on resize (`crect`), not every frame (a forced layout).
   `info().progs` = `renderer.info.programs.length` (a rise = a shader compile).
+- **Walking at street level** (owner 2026-10-25): every WASD stop is a travel (renderCareer → `update`); `model.fog.points` is your
+  point, so each re-dimmed the island (applyFog, town `recolour`, nature `recolor`, night `build`). map3d `fogM(m)`: at st ≥
+  `STREAM.show` the fog-dimmed layers get the fog last drawn (`fogDrawn`) until a point moved `FOG_LAG` 64 m; below it the frame
+  `fogSync(cur)`s the model's. town3d `ringCache` (lot → its `buildLot` mesher `raw()`s, dropped beyond `RING.r` + 2 `step` or on a new
+  layout): a ring rebuild `reserve`s and `append`s them (kit3d mesher `raw` / `append` / `reserve`); `baseHide` uploads only the
+  changed spans (`addUpdateRange`).
 
 ### Street level (spec §4.37 6, T-336a)
 
@@ -899,9 +905,11 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
 - **Streaming (T-364, spec §4.37 6)** — `js/map3d/stream3d.mjs`. Blocks = the terrain's chunks (`terrain.block` [cw, cd] ≈ 192 m;
   `blockGrid(W, D, cw, cd)`: `of(x, z)` = j × nx + i = the chunk's index, `dist`, `within(x, z, r)` nearest first). `createStream(G,
   layers)`; map3d's `streamStep` ticks it after the camera with the camera / your point and `st`. At st ≥ `STREAM.show` (0.6): the
-  near set = blocks within `STREAM.r` 250 m of the camera (Fast 190), re-picked after `step` m; blocks within `pre` (420 / 320) are
-  prepared nearest first, ≤ `per` blocks and `budget` ms a frame (× 4 while holding); once every near block is ready each layer
-  `show(set)` (only when the set changes). Below show: `show(null)` = the map look, untouched. `hold` = your block isn't shown →
+  near set = blocks within `STREAM.r` 250 m of you (Fast 190; not the camera: the week-1 fence can hold it back), re-picked after
+  `step` m; blocks within `pre` (420 / 320) are prepared nearest first — your block first, at once — ≤ `per` blocks and `budget` ms a
+  frame (× 4 while the set is partly drawn); once every near block is ready each layer `show(set)` (only when the set changes); when
+  your block isn't drawn the ready part is shown at once (`shownKey` null: topped up when the rest is ready). Below show: `show(null)` =
+  the map look, untouched. `hold` = your block isn't shown after that (a fallback: never while walking) →
   map3d ticks your avatar with dt 0 and mapcam's WASD waits (`S().hold`); after `wait` 0.25 s `on.loading(true)` → MapView.streamWait
   (a `.mapload` pill, css/map.css), false when it goes on. Haze while streaming: `STREAM.haze` [150, 640] (Fast [120, 480]).
   Layers (`{ id, ver(), prep?(k), show(keys | null) }`): **terrain** (map3d) — a chunk outside the set draws `terrain.coarse[k]`
@@ -913,7 +921,7 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   shape; show: stream3d `pack` puts the near instances first (count = theirs; the shadow proxies too; `repack` keeps fog recolours on
   the full set), the trees (`FAR`: pine, broad, blossom, palm, bamboo) beyond as their flat shapes (`userData.far`, +≤ 5 calls).
   The story figures (`model.figures`) each live in their own group, hidden outside the near blocks. `info().stream` → { on, near,
-  want, queue, built, hold, preps, shows, ms }; dev `tuneStream(o)`.
+  want, queue, built, hold, preps, shows, holds (frames), ms, showMs }; dev `tuneStream(o)`.
 - **Keeping street level** — `flyTo` / `walkFrom` / `centre` don't lift the camera at street level (a day order's select and walk);
   a renderer released while a screen covers the map (`drop3D`) keeps `viewState()` ({ x, z, d, yaw, street }) in `MapView.kept`, and
   the next create `restore`s it when it was at street level (≤ 2 min).

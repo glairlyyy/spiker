@@ -5,10 +5,10 @@
 // Street level (spec §4.37 6, T-336a): inside model.street's district the zoom goes down to a follow camera behind you (mapcam3d.mjs
 // streetPose); street() = 0–1 how far down it is; youPos() = world [x, y, z]. As it goes down your avatar shrinks to life
 // size, the people near the camera become VRMs (life3d), the town's detail ring builds round the camera (town3d ring), the sky shows
-// and a haze hides the map look far off. Streaming (stream3d.mjs, T-364): from STREAM.show down only the blocks near the camera are
+// and a haze hides the map look far off. Streaming (stream3d.mjs, T-364): from STREAM.show down only the blocks near you are
 // drawn in full (terrain chunks, the town's detailed lots, nature, the story figures), beyond them coarse terrain, the Fast boxes and
-// flat trees under a closer haze; while the block you stand in isn't ready your walk holds and on.loading(true) asks for a
-// "Loading…" (false when it goes on). The interiors layer (js/map3d/interior3d.mjs, T-336b — imported once at build):
+// flat trees under a closer haze; your own block is prepared and drawn the frame you reach it (the hold — your walk waits,
+// on.loading(true) asks for a "Loading…", false when it goes on — is a fallback only). The fog's lantern lags FOG_LAG m there (fogM). The interiors layer (js/map3d/interior3d.mjs, T-336b — imported once at build):
 // createInteriors(scene, heightAt, { cut }) (cut = town.cut) → see interior3d.mjs; today's people for a place inside stand at its
 // stations (lifeM), the station you stand at goes to on.station(st | null), a street-level click on one to on.station(st, true).
 // on = { pick(id), point([x, y]), hover?(id | null, clientX, clientY, going), person?(id), station?(st | null, click?) }: hover / person are the named figures
@@ -53,6 +53,7 @@ const STOP_WAIT = 2; // s: WASD's stop resolves within this of the last step (ma
 const IDLE_S = 3; // canvas detached this long → release the renderer
 const SHADOW_LAYER = 1; // the terrain's coarse shadow casters: seen by the sun's shadow camera only
 const EMA = (a, v, k = 0.1) => a + (v - a) * k;
+const FOG_LAG = 64; // m: at street level the fog's lantern (model.fog: round you) is redrawn only once you've moved this far
 
 /** Free every geometry / material the map made (shared kit caches — userData.shared — survive a re-create), the GPU context. */
 function releaseScene(scene, renderer, sun) {
@@ -129,6 +130,7 @@ export function create(onIdle) {
     stream = null, // street level's near blocks (stream3d.mjs, T-364)
     hold = false, // … the block you stand in isn't drawn yet: your walk waits
     waitShown = false, // on.loading(true) was told
+    fogDrawn = null, // the fog the dimmed layers (terrain, town, nature, night lights) draw now (fogM)
     figRoot = new Map(), // the story figures' own groups (hidden beyond the near blocks at street level)
     st = 0, // the camera's street weight this frame (C.street())
     shade = null; // the terrain's shadow casters (coarse chunks, SHADOW_LAYER)
@@ -330,6 +332,31 @@ export function create(onIdle) {
       if (on && on.hover) on.hover(id, ptr.cx, ptr.cy, id !== null ? life.going(id, tod) : null);
     }
   };
+  /**
+   * The model the fog-dimmed layers draw: at street level the lantern (model.fog.points, you and home) stays where it was drawn until
+   * you have moved FOG_LAG m — every WASD stop is a travel, and each re-dimmed the whole island (terrain, town, trees, night lights);
+   * off street level (frame: refog) or a bigger move, the model's own.
+   */
+  const fogM = m => {
+    const f = m.fog,
+      d = fogDrawn,
+      keep =
+        st >= STREAM.show &&
+        !!(d && f && d.points && f.points) &&
+        d !== f &&
+        d.r === f.r &&
+        d.points.length === f.points.length &&
+        f.points.every((p, i) => Math.hypot(p[0] - d.points[i][0], p[1] - d.points[i][1]) * MAP_M < FOG_LAG);
+    if (!keep) fogDrawn = f;
+    return keep ? { ...m, fog: d } : m;
+  };
+  const fogSync = m => {
+    const fm = fogM(m);
+    town.sync(fm);
+    nature.sync(fm, low);
+    night.sync(fm, low);
+    applyFog(fm.fog);
+  };
   /** Darken the terrain where nothing you have visited lies within fog.r (unexplored land stays visible, dim). */
   const applyFog = f => {
     const key = JSON.stringify(f);
@@ -431,6 +458,7 @@ export function create(onIdle) {
       C.step(dt);
       st = C.street();
       streamStep(dt);
+      if (cur && st < STREAM.show && fogDrawn !== cur.fog) fogSync(cur); // (up from street level: the lantern catches up)
       streetLook();
       interStep(dt);
       if (cur && cur.time) sun.position.copy(sun.target.position).addScaledVector(SKY.dir, 150); // the hour's sun (after the camera placed it)
@@ -495,16 +523,17 @@ export function create(onIdle) {
       fallSeen = fall;
       if (m.sel && m.sel !== lastSel) C.flyTo(m.sel); // selected from outside the map (list, chip, banner)
       lastSel = m.sel;
-      town.sync(m);
-      nature.sync(m, low);
+      const fm = fogM(m); // (street level: the fog's lantern lags a short walk)
+      town.sync(fm);
+      nature.sync(fm, low);
       if (interiors) interiors.sync(m); // (before life: lifeM reads where the stations are)
       furn.sync(m, on);
       town.rims(m.rims);
       life.sync(lifeM(m), low);
       veh.sync(m);
-      night.sync(m, low);
+      night.sync(fm, low);
       war.sync(m.borders);
-      applyFog(m.fog);
+      applyFog(fm.fog);
       const want = new Map((m.figures || []).map(f => [f.id, f]));
       for (const [id, a] of figs) if (!want.has(id)) (a.dispose(), figs.delete(id), scene.remove(figRoot.get(id)), figRoot.delete(id));
       for (const [id, f] of want) {
@@ -575,9 +604,10 @@ export function create(onIdle) {
     setLow(v) {
       if (low === !!v) return;
       low = !!v;
-      if (cur && life) (town.sync(cur), life.sync(lifeM(cur), low), night.sync(cur, low));
+      const fm = cur && fogM(cur);
+      if (cur && life) (town.sync(fm), life.sync(lifeM(cur), low), night.sync(fm, low));
       if (mesh && cur)
-        (look.set(!low, water), mesh.children.forEach(c => (c.material = low ? flatMat : look.terrainMat)), nature.sync(cur, low)); // the look (T-343)
+        (look.set(!low, water), mesh.children.forEach(c => (c.material = low ? flatMat : look.terrainMat)), nature.sync(fm, low)); // the look (T-343)
     },
     /** The shown clock: { week (days), tod (0–1), lit (0–1) } — for QA and the UI. */
     clock: () => ({ week: wt, tod, lit }),

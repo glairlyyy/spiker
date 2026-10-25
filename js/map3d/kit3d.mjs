@@ -826,14 +826,14 @@ export const rgb = hex => {
 const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const mul = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
 /** A mesh under construction: position, normal, colour, uv + extra per-vertex attributes ({ name: size }) in growing typed arrays. */
-export function mesher(extra = {}) {
-  let cap = 4096,
+export function mesher(extra = {}, cap0 = 4096) {
+  let cap = cap0,
     n = 0;
   const sizes = { position: 3, normal: 3, color: 3, uv: 2, ...extra },
     A = {};
   for (const k in sizes) A[k] = new Float32Array(cap * sizes[k]);
-  const grow = () => {
-    cap *= 2;
+  const grow = (to = cap * 2) => {
+    cap = to;
     for (const k in sizes) {
       const b = new Float32Array(cap * sizes[k]);
       b.set(A[k]);
@@ -872,6 +872,19 @@ export function mesher(extra = {}) {
   };
   return {
     count: () => n,
+    /** The vertices so far as plain arrays ({ n, A: name → Float32Array }), to append to another mesher of the same kind later. */
+    raw: () => (n ? { n, A: Object.fromEntries(Object.keys(sizes).map(k => [k, A[k].slice(0, n * sizes[k])])) } : null),
+    /** Room for k more vertices (one allocation instead of doublings). */
+    reserve(k) {
+      if (n + k > cap) grow(n + k);
+    },
+    /** Add a raw() of a mesher of the same kind (street level's ring: a lot built once, merged again on every rebuild). */
+    append(R) {
+      if (!R || !R.n) return;
+      if (n + R.n > cap) grow(Math.max(cap * 2, n + R.n));
+      for (const k in sizes) A[k].set(R.A[k], n * sizes[k]);
+      n += R.n;
+    },
     /** A quad p0..p3 counter-clockwise seen from its front; t = 8 uv numbers (per corner); e = extra values (all four corners). */
     quad(p0, p1, p2, p3, c, t, e) {
       const nr = normal(p0, p1, p3);
