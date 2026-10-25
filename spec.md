@@ -988,7 +988,7 @@ the AI coach fills every slot you leave with the same function. Built and measur
     commit). An aimed serve errs a little more. Hunt the Passer (card and team plan) goes; Target Serve and Read Block stay
     (names kept) as amplifiers, not unlocks — Target Serve = an exact hit, the seam, no aim error.
   - **Settling** (the anti-spam rule): a passer served at again and again settles in — their pass quality rises with each
-    serve in a row at them (≈ +4 % a serve, up to ≈ +15 %), fading when the serves go elsewhere. The 1st–2nd serve at the weak
+    serve in a row at them (≈ +8 % a serve, up to ≈ +30 % — owner, 2026-10-25), fading when the serves go elsewhere. The 1st–2nd serve at the weak
     passer hurts; by the 4th they pass like an average player; switching targets is the play. AI servers read it too.
   - **The hesitation moment**: in a duel, when the AI's top two options score close (≈ within 10 points), the play goes into very
     slow motion (≈ 0.1×, ~8 s real, a visible timer) and shows the two options with their odds. You may play a **duel card**
@@ -1006,8 +1006,13 @@ the AI coach fills every slot you leave with the same function. Built and measur
       14.1 %, aces 10.4 → 8.9, broken passes 13.6 → 16.8 (tournament 14.0 → 11.0 / 26.4 → 24.9 / 15.6 → 22.1).
     - Hunt the Passer (card and team plan, its AI picks, the books — bombers now float / short / beat, balanced power / cover /
       tip — and the Serve Trap's list) is gone; the captain's targeted sub (SUB.hunt) stays.
-    - Settling: each serve taken × (1 + 0.04 × the serves in a row at that passer so far, at most + 15 %); a serve at a teammate
-      takes 1 off. Counted in the serve odds, so AI servers move on.
+    - Settling: each serve taken × (1 + 0.08 × the serves in a row at that passer so far, at most + 30 % — owner 2026-10-25, was
+      0.04 / 15 %: the 4th serve in a row +24 %, the 5th on +30 %); a serve at a teammate takes 1 off. Counted in the serve odds, so
+      AI servers move on. Measured at 0.08 / 0.30 (2026-10-25; `npm run bot -- 300 league` / `1000 tour`): fixed weakest-passer
+      order +0.97 / −1.40 % points vs Auto (wins +1.7 / −4.4), alternating the two weakest +0.99 / −1.34 (+3.0 / −5.9) — alternating
+      ≥ weak; hunting one passer (aces + broken passes by serves in a row before it) league 24.7 · 27.5 · 25.7 · 25.9 · 18.5 · 17.1 %
+      at 0 · 1 · 2 · 3 · 4 · 5+, tour 42.4 · 52.6 · 51.1 · 50.1 · 38.9 · 42.2 — the 5th serve on clearly weaker; a 10-OVR gap
+      (`npm run rng`, 300 pairs) 73 % match wins league, 71 % tour.
     - Spike: fight = Power (pace × 1.08, errors × 1.15) or the new **Tool** shot (off a block covering 0.2–0.8: tooled out 30 %
       of the time, errors × 1.08); avoid = at a player / the open court (now also coverage × 0.8, pace × 0.92). A hitter with no
       aim / shot order reads the block: fight under ≈ 0.37 coverage, avoid over ≈ 0.63 (× their wit), plain between and always

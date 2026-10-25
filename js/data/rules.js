@@ -11,7 +11,7 @@ const RULES = {
   stamina: { drain: 2.5, hit: 0.5, jumpHit: 0.3, court: 0.01, bench: 0.05 },
   // Settling (spec §2.39): a passer served at again and again settles in — their receive score × (1 + step × n), n = the
   // serves in a row at them so far (at most cap); each serve at a teammate takes `fade` off their count
-  settle: { step: 0.04, cap: 0.15, fade: 1 }
+  settle: { step: 0.08, cap: 0.3, fade: 1 }
 };
 /**
  * Substitutions: at most `max` per team per set. The captain takes a player off when their match stamina is under `sta`, or
