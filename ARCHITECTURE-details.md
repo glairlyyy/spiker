@@ -867,8 +867,11 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   mapcam3d `zoneOf` → `{ all: true }` (`zoneDist` −∞, `inZone` true) — a capsule `{ a, b, r }` (map units) still works (tests). WASD's
   lot grid then holds every lot and facility (built once per lots array / zone).
 - **Camera path** — mapcam3d `streetPose(d)` (pure, tested): above `DIST[0]` (25 m) today's view; below it s = smoothstep((25 − d) /
-  (25 − `STREET.d1` 6.7)), pitch 55° → `STREET.pitch` 15°, the target rising to your head (`STREET.head` 1.45 m) and pulled onto your
-  avatar (k by s), so at d1 the camera is ~6.5 m behind, ~3.2 m above the ground. Below 25 m only while your avatar is inside the
+  (25 − `STREET.d1` 7.2)), pitch 55° → `STREET.pitch` 12°, the target rising to your middle (`STREET.head` 0.95 m) and pulled onto your
+  avatar (k by s), so at d1 the camera is ~7 m behind, ~2.4 m above the ground (eye level). T-369: the lens widens 40° → 50°
+  (`STREET.fov`) and a lens shift (`setLens`: three `setViewOffset` in fractions, cleared at s = 0) puts the target at NDC
+  `STREET.lens` [−0.12, −0.62] × s — your whole figure in the lower third, left of centre, verticals upright (picks / project() use the
+  same projection); pulled in front of a building the shift eases off by k. Below 25 m only while your avatar is inside the
   district (everywhere on land since T-361) and the view centre within `STREET.pad` of it (`allowed`); otherwise the zoom stops at 25 m, and leaving the district eases
   the camera back up (`STREET.back`). `yaw` (× s, reset at s = 0): Q / E (`STREET.orbit` rad/s), a right-drag, or any drag at
   s > 0.5 (`STREET.drag`); a click walk swings it behind you (`STREET.behind`). A lot or landmark between your head and the
@@ -894,8 +897,19 @@ dispose() }`): reads `model.land.nature` (`MapModel.nature`: [{ k, at, s, r, c }
   1.6 m, kerb 0.14 m) both sides of main / street roads, trimmed `RING.trim` at junctions; main roads' centre dashes and zebra
   crossings at junctions of 3+; pavement props (bollard, planter, hydrant — kit3d `RING_PROPS`) by hash, clear of lots. Fast: the ground
   detail only (the boxes stay). `ringInfo()` → { on, lots, tris, builds, ms }.
+- **Finish (T-369, spec §4.44)** — look3d: the composer gets a grade pass (`GradeShader`: gain / lift (coloured darks) / saturation /
+  contrast in display colours, weight `uK` = smooth(0.15, 0.8, st); off below) and FXAA (st > 0.3) after the OutputPass — Auto / High only
+  (Fast draws without the composer, its canvas MSAA). `GRADE` keys by time of day (night, warm morning, clear noon, orange-pink dusk,
+  violet after-glow; `gradeAt(tod, out)`, wrapping) also give the haze hue (`look.haze()`, every look; map3d scales it to the sky colour's brightness). `streetMat(m)`: each built-in
+  mesh material (not ShaderMaterial / VRM MToon, not `userData.noStreetFx`: terrain, sea) is patched once before its first compile —
+  map3d `fxStep` before each draw: a `scene.traverseVisible` sweep when objects may have come (`update`, setLow, an interiors flip,
+  a ring rebuild, a new top-level part) and every `FX_EVERY` 20 frames (a material found already drawn recompiles once; `info().fx`
+  { ms, sweeps }) — with `STREET_FX` uniforms: toon bands on the sun's / moon's dotNL only (3 bands; `fdDir` set round the directional loop of lights_fragment_begin — the lamps' point lights keep their smooth fall-off;
+  `uFdToon` = smooth(0.3, 0.9, st) on Auto / High, 0 on Fast) and the occluder fade: fragments within ~1.1 → 0.6 m of the camera →
+  your middle line (not its last ~1 m) or within ~1 m of the lens are discarded by a 4 × 4 ordered dither (`uFdK`, eased in from st
+  0.4; ghost floor 15 %). No transparency, no extra draws; `info()` `aa` / `grade`.
 - **Look** — at s > 0.15 the background is the baked sky (`look.envTex()`; Fast: the clock's sky colour); a `THREE.Fog` haze in the
-  sky colour closes in with s (near 160 m at street level; 1e6 on the map); the war borders (`war.show`) and the route preview
+  grade's colour closes in with s (near 160 m at street level; 1e6 on the map); the war borders (`war.show`) and the route preview
   ribbons hide at s ≥ 0.5; the story figures (`model.figures`) shrink to life size with you.
 - **Contract for the interiors (T-336b)** — map3d `api.street()` (0–1), `api.youPos()` (world [x, y, z]);
   `import('./interior3d.mjs')` once at build: `createInteriors(scene, heightAt, { cut: town.cut })`

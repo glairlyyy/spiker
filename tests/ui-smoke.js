@@ -510,10 +510,10 @@ const step = async (name, fn) => {
       vrm: MapView.m3.info().life.vrm,
       stream: MapView.m3.info().stream
     }));
-    // a click on the ground ahead: a map-point travel (the same rules as the point card's Walk)
+    // a click on the ground ahead: a map-point travel (the same rules as the point card's Walk; T-369: the horizon sits low, you left of centre)
     const c = await ev(() => {
       const r = document.querySelector('#mapwrap canvas').getBoundingClientRect();
-      return [r.left + r.width * 0.5, r.top + r.height * 0.4];
+      return [r.left + r.width * 0.62, r.top + r.height * 0.74];
     });
     await pg.mouse.move(c[0], c[1]);
     await pg.waitForTimeout(3000); // (the hover pick runs every few frames: nobody under the pointer before the click)

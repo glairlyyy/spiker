@@ -7,6 +7,8 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 import { clamp, lerp, smooth, tileNoise, heightToNormal } from './geo3d.mjs';
 
 const SHADOW_MAP = 2048, // sun shadow map size (px; the Fast look)
@@ -125,6 +127,151 @@ function lookTextures(n) {
       det.set([fine[i] * 255, patch[i] * 255, rip * 255, cr * 255], i * 4);
     }
   return { det: dataTex(det, n), wave: dataTex(heightToNormal(tileNoise(n, 8, 5, 9, 0.55), n, 7), n) };
+}
+/**
+ * Street level's colour grade (spec §4.44, T-369) by time of day (wrapping): gain = × the lights, lift = added to the darks
+ * (coloured shadows, not grey), sat / con = saturation and contrast, haze = the distance haze's colour (it replaces the grey
+ * sky tint on every look). Applied after the tone mapping (display colours), weighted by street level.
+ */
+export const GRADE = (() => {
+  const night = { gain: [0.8, 0.88, 1.12], lift: [0.015, 0.03, 0.09], sat: 0.92, con: 1.06, haze: '#22305a' },
+    morning = { gain: [1.08, 1.0, 0.88], lift: [0.05, 0.03, 0.045], sat: 1.1, con: 1.03, haze: '#f1cfae' },
+    noon = { gain: [1.0, 1.02, 1.04], lift: [0.01, 0.025, 0.05], sat: 1.16, con: 1.05, haze: '#bcdcf2' },
+    dusk = { gain: [1.06, 0.95, 0.95], lift: [0.05, 0.02, 0.07], sat: 1.14, con: 1.04, haze: '#f2a28c' },
+    glow = { gain: [0.98, 0.84, 1.0], lift: [0.045, 0.02, 0.09], sat: 1.04, con: 1.05, haze: '#86609a' };
+  return [
+    { t: 0.2, ...night },
+    { t: 0.29, ...morning },
+    { t: 0.45, ...noon },
+    { t: 0.63, ...noon },
+    { t: 0.74, ...dusk },
+    { t: 0.8, ...glow },
+    { t: 0.88, ...night }
+  ];
+})();
+const GRADE_C = GRADE.map(g => ({
+  t: g.t,
+  gain: new THREE.Vector3(...g.gain),
+  lift: new THREE.Vector3(...g.lift),
+  sat: g.sat,
+  con: g.con,
+  haze: new THREE.Color(g.haze)
+}));
+/** The grade at time of day tod (0–1) into out { gain, lift (Vector3), sat, con, haze (Color) }. */
+export function gradeAt(tod, out) {
+  const K = GRADE_C;
+  let i = K.findIndex(k => k.t > tod);
+  if (i < 0) i = K.length;
+  const A = K[(i - 1 + K.length) % K.length],
+    B = K[i % K.length],
+    span = (B.t - A.t + 1) % 1 || 1,
+    u = smooth(0, 1, ((tod - A.t + 1) % 1) / span);
+  out.gain.lerpVectors(A.gain, B.gain, u);
+  out.lift.lerpVectors(A.lift, B.lift, u);
+  out.sat = lerp(A.sat, B.sat, u);
+  out.con = lerp(A.con, B.con, u);
+  out.haze.copy(A.haze).lerp(B.haze, u);
+  return out;
+}
+const GradeShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    uGain: { value: new THREE.Vector3(1, 1, 1) },
+    uLift: { value: new THREE.Vector3() },
+    uSat: { value: 1 },
+    uCon: { value: 1 },
+    uK: { value: 0 }
+  },
+  vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `uniform sampler2D tDiffuse; uniform vec3 uGain, uLift; uniform float uSat, uCon, uK; varying vec2 vUv;
+  void main() {
+    vec4 c = texture2D(tDiffuse, vUv);
+    vec3 x = c.rgb;
+    float l = dot(x, vec3(0.2126, 0.7152, 0.0722));
+    vec3 g = x * uGain + uLift * (1.0 - l) * (1.0 - l);
+    g = mix(vec3(dot(g, vec3(0.2126, 0.7152, 0.0722))), g, uSat);
+    g = (g - 0.5) * uCon + 0.5;
+    gl_FragColor = vec4(mix(x, clamp(g, 0.0, 1.0), uK), c.a);
+  }`
+};
+/**
+ * Street level's material finish (T-369), shared uniforms: the toon bands on the sun's light (uFdToon 0–1: 0 = today's smooth
+ * light) and the occluder fade (uFdA = the camera, uFdB = your middle, uFdK 0–1): what lies within ~1 m of the camera → you line
+ * (not the last metre by you) or right at the lens dissolves by an ordered dither (no transparency, no sorting, no CPU rays).
+ */
+export const STREET_FX = {
+  uFdA: { value: new THREE.Vector3() },
+  uFdB: { value: new THREE.Vector3() },
+  uFdK: { value: 0 },
+  uFdToon: { value: 0 }
+};
+const FD_LIGHT = ['lights_physical_pars_fragment', 'lights_lambert_pars_fragment', 'lights_phong_pars_fragment'];
+const FD_DIR = '#if ( NUM_DIR_LIGHTS > 0 ) && defined( RE_Direct )',
+  FD_RECT = '#if ( NUM_RECT_AREA_LIGHTS > 0 ) && defined( RE_Direct_RectArea )';
+const FD_DOTNL = 'float dotNL = saturate( dot( geometryNormal, directLight.direction ) );';
+const fdDone = new WeakSet();
+/** Patch a built-in mesh material (once; before its first compile) with the toon bands and the occluder fade. Others: false. */
+export function streetMat(m) {
+  if (!m || fdDone.has(m)) return false;
+  fdDone.add(m);
+  if (m.isShaderMaterial || !(m.isMeshStandardMaterial || m.isMeshLambertMaterial || m.isMeshPhongMaterial || m.isMeshBasicMaterial))
+    return false;
+  if (m.userData && m.userData.noStreetFx) return false;
+  const prev = m.onBeforeCompile,
+    hadKey = Object.prototype.hasOwnProperty.call(m, 'customProgramCacheKey'),
+    prevKey = hadKey ? m.customProgramCacheKey : null,
+    src = prev.toString();
+  m.onBeforeCompile = function (sh, r) {
+    prev.call(this, sh, r);
+    Object.assign(sh.uniforms, STREET_FX);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vFdW;').replace(
+      '#include <project_vertex>',
+      `#include <project_vertex>
+        { vec4 fw = vec4(transformed, 1.0);
+          #ifdef USE_BATCHING
+          fw = batchingMatrix * fw;
+          #endif
+          #ifdef USE_INSTANCING
+          fw = instanceMatrix * fw;
+          #endif
+          vFdW = (modelMatrix * fw).xyz; }`
+    );
+    let f = sh.fragmentShader.replace(
+      '#include <common>',
+      `#include <common>
+      varying vec3 vFdW; uniform vec3 uFdA, uFdB; uniform float uFdK, uFdToon; float fdDir;
+      float fdBand(float x) { return mix(x, 0.55 * smoothstep(0.0, 0.08, x) + 0.45 * smoothstep(0.38, 0.46, x), uFdToon * fdDir); }`
+    );
+    // (the bands on the sun / moon only: the lamps' point lights keep their smooth fall-off)
+    if (f.includes('#include <lights_fragment_begin>'))
+      f = f.replace(
+        '#include <lights_fragment_begin>',
+        'fdDir = 0.0;\n' +
+          THREE.ShaderChunk.lights_fragment_begin.replace(FD_DIR, `${FD_DIR}\n\tfdDir = 1.0;`).replace(FD_RECT, `fdDir = 0.0;\n${FD_RECT}`)
+      );
+    for (const c of FD_LIGHT)
+      if (f.includes(`#include <${c}>`))
+        f = f.replace(
+          `#include <${c}>`,
+          THREE.ShaderChunk[c].replace(FD_DOTNL, 'float dotNL = fdBand( saturate( dot( geometryNormal, directLight.direction ) ) );')
+        );
+    sh.fragmentShader = f.replace(
+      '#include <clipping_planes_fragment>',
+      `#include <clipping_planes_fragment>
+      if (uFdK > 0.0) {
+        vec3 ab = uFdB - uFdA, aw = vFdW - uFdA;
+        float L = max(length(ab), 0.01), a = dot(aw, ab) / L;
+        float d = length(aw - ab * (a / L)), r = mix(1.1, 0.6, clamp(a / L, 0.0, 1.0));
+        float fd = (1.0 - smoothstep(r * 0.55, r, d)) * step(0.0, a) * (1.0 - smoothstep(L - 1.3, L - 0.7, a));
+        fd = max(fd, 1.0 - smoothstep(0.7, 1.5, length(aw)));
+        vec2 q = mod(floor(gl_FragCoord.xy), 4.0);
+        float bay = (dot(q, vec2(1.0, 4.0)) * 7.0 - floor(dot(q, vec2(1.0, 4.0)) * 7.0 / 16.0) * 16.0 + 0.5) / 16.0;
+        if (fd * uFdK * 0.85 > bay) discard;
+      }`
+    );
+  };
+  m.customProgramCacheKey = () => (hadKey ? prevKey.call(m) : src) + '|sfx';
+  return true;
 }
 export function richLook(renderer, scene, cam, sun) {
   const U = { t: { value: 0 } }; // shared time uniform (s)
@@ -294,6 +441,8 @@ export function richLook(renderer, scene, cam, sun) {
   // ---- post: render → (GTAO) → bloom → ACES + sRGB
   let composer = null,
     bloom = null,
+    grade = null,
+    fxaa = null,
     gtao = null,
     gtaoWant = false,
     gtaoLoading = false,
@@ -319,7 +468,15 @@ export function richLook(renderer, scene, cam, sun) {
     bloom = new UnrealBloomPass(new THREE.Vector2(w, h), LOOK.bloom.strength, LOOK.bloom.radius, LOOK.bloom.day);
     composer.addPass(bloom);
     composer.addPass(new OutputPass());
+    grade = new ShaderPass(GradeShader); // street level's colour grade (T-369), then the edge smoothing
+    grade.enabled = false;
+    composer.addPass(grade);
+    fxaa = new ShaderPass(FXAAShader);
+    fxaa.enabled = false;
+    composer.addPass(fxaa);
+    fxaaSize();
   };
+  const fxaaSize = () => fxaa && fxaa.material.uniforms.resolution.value.set(1 / Math.max(1, w * pr), 1 / Math.max(1, h * pr));
   /** AO on the High setting (spec §4.39): the pass loads on first use, sits before the bloom. */
   const wantAO = v => {
     gtaoWant = v;
@@ -340,8 +497,9 @@ export function richLook(renderer, scene, cam, sun) {
   const sizeAll = () => {
     renderer.setPixelRatio(pr);
     renderer.setSize(w, h, false);
-    if (composer) (composer.setPixelRatio(pr), composer.setSize(w, h));
+    if (composer) (composer.setPixelRatio(pr), composer.setSize(w, h), fxaaSize());
   };
+  const GR = { gain: new THREE.Vector3(1, 1, 1), lift: new THREE.Vector3(), sat: 1, con: 1, haze: new THREE.Color() };
   const SKYDIR = new THREE.Vector3();
   /**
    * Dynamic resolution (like matches, r3d adaptRes), every look: under ~42 fps step down to the setting's floor, back up with
@@ -427,11 +585,21 @@ export function richLook(renderer, scene, cam, sun) {
     },
     /** The canvas size (CSS px): the renderer and the post at the dynamic resolution. */
     resize,
-    /** Per frame, before the draw: time, the sky, light balance, bloom by `lit`, the shadow box by zoom, the resolution. */
-    step(dt, t, lit, tod, view, gfx) {
+    /**
+     * Per frame, before the draw: time, the sky, light balance, bloom by `lit`, the shadow box by zoom, the resolution; street
+     * level `st` (0–1): the grade, the edge smoothing and the toon bands (Auto / High; Fast: none of them, only the haze colour).
+     */
+    step(dt, t, lit, tod, view, gfx, st = 0) {
       if (gfx !== dyn.gfx) ((dyn.gfx = gfx), resize(w, h)); // (the pixel budget follows the setting)
       adapt(gfx);
+      gradeAt(tod, GR);
+      STREET_FX.uFdToon.value = on ? smooth(0.3, 0.9, st) : 0;
       if (!on) return;
+      const G = grade.material.uniforms;
+      G.uK.value = smooth(0.15, 0.8, st);
+      grade.enabled = G.uK.value > 0.001;
+      if (grade.enabled) (G.uGain.value.copy(GR.gain), G.uLift.value.copy(GR.lift), (G.uSat.value = GR.sat), (G.uCon.value = GR.con));
+      fxaa.enabled = st > 0.3;
       U.t.value = t;
       // the real sun (below the horizon at night: the sky goes dark; the moon is only the directional light)
       const a = ((tod - 0.25) / 0.5) * Math.PI;
@@ -471,8 +639,12 @@ export function richLook(renderer, scene, cam, sun) {
       res: dyn.res,
       scale: +(pr / Math.min(devicePixelRatio || 1, 2)).toFixed(2), // the render scale: budget × the dynamic factor
       ao: !!(gtao && gtao.enabled),
+      aa: !!(fxaa && fxaa.enabled && on),
+      grade: !!(grade && grade.enabled && on),
       shed: dyn.shed
     }),
+    /** The grade's haze colour at this frame's time of day (street level's distance haze, every look). */
+    haze: () => GR.haze,
     /** The baked sky (PMREM) — street level shows it as the background. */
     envTex: () => (envRT ? envRT.texture : null),
     dispose() {
